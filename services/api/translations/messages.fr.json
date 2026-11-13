@@ -130,6 +130,8 @@
     "guest.version_required": "Envoyez la version que vous modifiez, dans l’en-tête If-Match.",
     "guest.changed_since": "Quelqu’un d’autre a modifié les informations de cet invité depuis que vous les avez ouvertes. Votre modification n’a pas été enregistrée.",
     "guest.replies_closed": "Les réponses sont closes. Si quelque chose a changé, contactez votre hôte.",
+    "guest.event_paused": "Answers are closed while the event is paused. Anything you sent is kept.",
+    "guest.event_concluded": "Answers have closed.",
     "validation.guest_answer_unknown": "Choisissez « Je viens », « Je ne viens pas » ou « À confirmer ».",
     "event.currency_in_use": "La devise ne peut plus changer une fois que des montants sont enregistrés pour cet événement.",
     "event.state_invalid": "L’état actuel de cet événement ne le permet pas.",

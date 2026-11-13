@@ -45,7 +45,7 @@ final readonly class GuestPageController
         return $this->answered($this->guest($request));
     }
 
-    /** Refused 422 for an answer the page does not offer and 409 `replies_closed` from the start; answers the page as it now stands. */
+    /** Refused 422 for an answer the page does not offer, 409 `event_paused` or `event_concluded` by the event's phase, and 409 `replies_closed` from the start; answers the page as it now stands. */
     #[Route('/api/guest-links/reply', name: 'guest_links_reply', methods: ['POST'])]
     #[PublicAccess]
     public function reply(Request $request): JsonResponse
@@ -94,6 +94,8 @@ final readonly class GuestPageController
                 'timeZone' => $event->getTimeZone(),
                 'venue' => null === $venue ? null : ['name' => $venue->name, 'address' => $venue->address?->formatted],
             ],
+            'phase' => $this->guestAnswers->phase($guest)->value,
+            'started' => $this->guestAnswers->started($guest),
             'answersOpen' => $this->guestAnswers->open($guest),
         ], headers: ['Cache-Control' => 'no-store']);
     }

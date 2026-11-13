@@ -578,7 +578,12 @@
     "same": "Votre réponse était déjà « {{answer}} ». Rien n’a changé.",
     "unsent": "Vous n’avez pas encore envoyé votre réponse.",
     "closed": "Les réponses sont closes. Si quelque chose a changé, contactez votre hôte.",
-    "didNotAnswer": "Vous n’avez pas répondu."
+    "didNotAnswer": "Vous n’avez pas répondu.",
+    "pausedNotice": "This event is paused. Answers are closed. Nothing you sent has been lost, and this page will update if the event resumes.",
+    "pausedReason": "Answers are closed while the event is paused. Anything you sent is kept.",
+    "calledOffNotice": "This event has been called off. It will not go ahead. There is nothing you need to do.",
+    "finishedNotice": "This event has taken place. This page stays here as a keepsake.",
+    "refused": "Answers closed before this was sent. Everything you chose is still here."
   },
   "signIn": {
     "title": "Se connecter",

@@ -578,7 +578,12 @@
     "same": "Su respuesta ya era «{{answer}}». No ha cambiado nada.",
     "unsent": "Aún no ha enviado su respuesta.",
     "closed": "El plazo para responder ha terminado. Si algo ha cambiado, contacte con quien organiza el evento.",
-    "didNotAnswer": "No llegó a responder."
+    "didNotAnswer": "No llegó a responder.",
+    "pausedNotice": "This event is paused. Answers are closed. Nothing you sent has been lost, and this page will update if the event resumes.",
+    "pausedReason": "Answers are closed while the event is paused. Anything you sent is kept.",
+    "calledOffNotice": "This event has been called off. It will not go ahead. There is nothing you need to do.",
+    "finishedNotice": "This event has taken place. This page stays here as a keepsake.",
+    "refused": "Answers closed before this was sent. Everything you chose is still here."
   },
   "signIn": {
     "title": "Iniciar sesión",

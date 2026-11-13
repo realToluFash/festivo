@@ -216,6 +216,129 @@ final class GuestAnswersTest extends ApiTestCase
     }
 
     #[Test]
+    public function aPausedEventBeforeItsStartKeepsTheAnswerAndRefusesAReply409EventPaused(): void
+    {
+        $guest = $this->add(self::ADAEZE);
+        $token = $this->token($guest);
+        $this->reply($token, 'maybe');
+        $this->lifecycle('pause');
+
+        $page = $this->open($token);
+        $this->reply($token, 'coming');
+
+        self::assertSame(409, $this->statusCode());
+        self::assertSame(ErrorCode::EventPaused->type(), $this->last()['type'] ?? null);
+        self::assertSame(['paused', false, false], [$page['phase'] ?? null, $page['started'] ?? null, $page['answersOpen'] ?? null]);
+        self::assertSame('maybe', $page['guest']['reply']['answer'] ?? null);
+        self::assertSame('maybe', $this->row($guest)['reply']);
+    }
+
+    #[Test]
+    public function aPausedEventAfterItsStartIsStillPausedAndRefusesAReply409EventPaused(): void
+    {
+        $guest = $this->add(self::ADAEZE);
+        $token = $this->token($guest);
+        $this->reply($token, 'coming');
+        self::mockTime(new DateTimeImmutable(self::START)->modify('+1 hour'));
+        $this->lifecycle('pause');
+
+        $page = $this->open($token);
+        $this->reply($token, 'notComing');
+
+        self::assertSame(409, $this->statusCode());
+        self::assertSame(ErrorCode::EventPaused->type(), $this->last()['type'] ?? null);
+        self::assertSame(['paused', true, false], [$page['phase'] ?? null, $page['started'] ?? null, $page['answersOpen'] ?? null]);
+        self::assertSame('coming', $this->row($guest)['reply']);
+    }
+
+    #[Test]
+    public function resumingBeforeTheStartOpensAnswersAgain(): void
+    {
+        $token = $this->token($this->add(self::ADAEZE));
+        $this->lifecycle('pause');
+        $this->lifecycle('resume');
+
+        $page = $this->open($token);
+        $this->reply($token, 'coming');
+
+        self::assertSame(['live', false, true], [$page['phase'] ?? null, $page['started'] ?? null, $page['answersOpen'] ?? null]);
+        self::assertSame(200, $this->statusCode());
+    }
+
+    #[Test]
+    public function aCalledOffEventRefusesAReply409EventConcluded(): void
+    {
+        $guest = $this->add(self::ADAEZE);
+        $token = $this->token($guest);
+        $this->reply($token, 'coming');
+        $this->lifecycle('end');
+
+        $page = $this->open($token);
+        $this->reply($token, 'notComing');
+
+        self::assertSame(409, $this->statusCode());
+        self::assertSame(ErrorCode::EventConcluded->type(), $this->last()['type'] ?? null);
+        self::assertSame(['calledOff', false, false], [$page['phase'] ?? null, $page['started'] ?? null, $page['answersOpen'] ?? null]);
+        self::assertSame('coming', $this->row($guest)['reply']);
+    }
+
+    /** @return iterable<string, array{string}> */
+    public static function finishes(): iterable
+    {
+        yield 'ended by the host after its start' => ['end'];
+        yield 'past its end' => ['clock'];
+        yield 'paused past its end' => ['pause'];
+    }
+
+    #[Test]
+    #[DataProvider('finishes')]
+    public function aFinishedEventKeepsTheAnswerAndRefusesAReply409EventConcluded(string $how): void
+    {
+        $guest = $this->add(self::ADAEZE);
+        $token = $this->token($guest);
+        $this->reply($token, 'coming');
+        self::mockTime(new DateTimeImmutable(self::START)->modify('+1 hour'));
+
+        if ('clock' !== $how) {
+            $this->lifecycle($how);
+        }
+
+        self::mockTime(new DateTimeImmutable(self::START)->modify('end' === $how ? '+2 hours' : '+11 hours'));
+        $page = $this->open($token);
+        $this->reply($token, 'notComing');
+
+        self::assertSame(409, $this->statusCode());
+        self::assertSame(ErrorCode::EventConcluded->type(), $this->last()['type'] ?? null);
+        self::assertSame(['finished', true, false], [$page['phase'] ?? null, $page['started'] ?? null, $page['answersOpen'] ?? null]);
+        self::assertSame('coming', $page['guest']['reply']['answer'] ?? null);
+        self::assertSame('coming', $this->row($guest)['reply']);
+    }
+
+    #[Test]
+    public function aDeletedEventADraftAndAnUnknownTokenAnswerTheSame404(): void
+    {
+        $deleted = $this->token($this->add(self::ADAEZE));
+        $draft = $this->draft('Draft party');
+        $drafted = Type\string()->coerce(self::service(Connection::class)->fetchOne('SELECT link_token FROM guests WHERE event_id = :id', ['id' => $draft]));
+        $this->as($this->owner, 'DELETE', '/api/events/' . $this->eventId, ['name' => "Amara & Tobi's wedding"]);
+        self::assertSame(200, $this->statusCode(), Json\encode($this->last()));
+        self::em()->clear();
+
+        foreach (['page', 'reply'] as $path) {
+            $answers = [];
+            foreach ([Str\repeat('a', 43), $deleted, $drafted] as $token) {
+                $this->anonymous('/api/guest-links/' . $path, ['token' => $token, 'answer' => 'coming']);
+                $body = $this->last();
+                unset($body['correlationId']);
+                $answers[] = [$this->statusCode(), $body];
+            }
+
+            self::assertSame(404, $answers[0][0], $path);
+            self::assertSame([$answers[0], $answers[0], $answers[0]], $answers, $path);
+        }
+    }
+
+    #[Test]
     public function aReplyIsPublishedPrivatelyToThisEventsListAlone(): void
     {
         $guest = $this->add(self::ADAEZE);
@@ -304,6 +427,23 @@ final class GuestAnswersTest extends ApiTestCase
         $this->client->request('POST', $path, server: ['CONTENT_TYPE' => 'application/json', 'HTTP_ACCEPT_LANGUAGE' => 'en'], content: Json\encode($body));
 
         return $this->last();
+    }
+
+    private function lifecycle(string $action): void
+    {
+        $this->as($this->owner, 'POST', '/api/events/' . $this->eventId . '/' . $action);
+        self::assertSame(200, $this->statusCode(), Json\encode($this->last()));
+    }
+
+    private function draft(string $name): string
+    {
+        $body = $this->as($this->owner, 'POST', '/api/orgs/' . $this->organisation->getId()->toRfc4122() . '/events', ['name' => $name, 'type' => 'wedding', 'startsAt' => '2030-11-14T16:00', 'endsAt' => '2030-11-15T02:00', 'timeZone' => 'Africa/Lagos', 'currency' => 'NGN']);
+        self::assertSame(201, $this->statusCode(), Json\encode($body));
+        $id = Type\shape(['id' => Type\string()], true)->coerce($body['event'] ?? null)['id'];
+        $this->as($this->owner, 'POST', $this->guests($id), ['fullName' => 'Bisi Adewale', 'companions' => []]);
+        self::assertSame(201, $this->statusCode(), Json\encode($this->last()));
+
+        return $id;
     }
 
     private function live(string $name): string
