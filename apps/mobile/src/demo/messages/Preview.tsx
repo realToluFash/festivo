@@ -24,6 +24,7 @@ import {
 import { PREVIEW_PEOPLE, type PreviewPerson } from './PreviewSample.ts';
 import { sayPreview } from './PreviewWords.ts';
 import { type Anchored, PreviewAsChooser, PreviewAsControl, anchorAt } from './WriteItOnce.tsx';
+import { noticeSmsOf } from './NoticeStates.ts';
 
 /** The message as the guest's own page shows it (GuestPage-A): the cover, then the hosts' words in a figure, signed. */
 function PagePreview({ draft, person }: { draft: Draft; person: PreviewPerson }) {
@@ -109,7 +110,7 @@ function SmsNotice() {
       <View style={styles.from}>
         <MessageGlyph name="sms" size={14} ink={tokens.colorInkSecondary} />
         <Text size={13} weight="semibold" style={styles.secondary}>
-          {say.smsParts(1)}
+          {say.smsParts(noticeSmsOf(HOSTS, EVENT).parts)}
         </Text>
       </View>
       <View style={styles.smsBubble}>

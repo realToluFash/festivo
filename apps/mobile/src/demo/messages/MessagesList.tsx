@@ -31,7 +31,6 @@ import {
   sectionsOf,
 } from './MessagesModel.ts';
 import {
-  GUESTS,
   NOW,
   PARKING,
   PARKING_REACH,
@@ -42,6 +41,8 @@ import {
   RECEIPTS,
 } from './MessagesSample.ts';
 import { CHANNEL_WORD, W, say } from './MessagesWords.ts';
+import { caseFor, guestOf } from './NoticeStates.ts';
+import { NW } from './NoticeWords.ts';
 
 export type { RowId };
 
@@ -157,15 +158,25 @@ function shownRow(m: Messages, id: RowId, locale: string): Shown {
       lead: <GroupTile />,
     };
   }
-  const guest = GUESTS[id.key];
+  const guest = guestOf(m, id.key);
+  const later = caseFor(m, id.key)?.extras?.find((one) => one.kind === 'later');
   const answer = m.answers[id.key];
   const done = m.done.includes(id.key) || id.key === 'marta';
   const where = guest.asked.where === 'page' ? W.onTheirPage : CHANNEL_WORD[guest.asked.where];
   const asked =
-    id.key === 'marta' ? `${guest.asked.text} · ${say.doneByShort(READER)}` : guest.asked.text;
+    id.key === 'marta'
+      ? `${guest.asked.text} · ${say.doneByShort(READER)}`
+      : later?.kind === 'later'
+        ? later.text
+        : guest.asked.text;
 
   const unmatched = id.key === 'unknown' && m.matched == null;
-  const name = id.key === 'unknown' && m.matched != null ? m.matched : guest.name;
+  const name =
+    id.key === 'unknown' && m.matched != null
+      ? m.matched
+      : unmatched && m.notice?.hidden === true
+        ? NW.unknownSender
+        : guest.name;
   const initials =
     id.key === 'unknown' && m.matched != null
       ? m.matched
@@ -179,9 +190,11 @@ function shownRow(m: Messages, id: RowId, locale: string): Shown {
     line: answer == null ? say.where(where, asked) : say.where(W.onTheirPage, say.you(answer.text)),
     time:
       answer?.time ??
-      (id.key === 'lucia' && m.arrived
-        ? justNow(locale)
-        : rowDay(guest.asked.day, guest.asked.time, locale)),
+      (later?.kind === 'later'
+        ? later.time
+        : id.key === 'lucia' && m.arrived
+          ? justNow(locale)
+          : rowDay(guest.asked.day, guest.asked.time, locale)),
     lead: <Avatar initials={initials} side={40} tone={done ? 4 : 0} />,
     tag: unmatched ? { kind: 'notyet', word: W.notMatched } : undefined,
   };
@@ -352,7 +365,7 @@ export function MessagesList({
         >
           {W.messages}
         </Text>
-        {wide && m.phase !== 'loading' && (
+        {wide && m.phase !== 'loading' && m.notice?.hidden !== true && (
           <Pill
             label={W.newButton}
             glyph="plus"

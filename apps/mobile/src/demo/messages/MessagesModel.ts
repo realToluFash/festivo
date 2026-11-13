@@ -10,19 +10,22 @@ import {
   CANCELLED_AT,
   CANT_TELL,
   DAYS,
+  EVENT,
   EVENT_ENDS,
   FIXED_ADDRESS,
   FOLLOW_UP,
-  GUESTS,
   type GroupKey,
   type GuestKey,
+  HOSTS,
   LONG_BODY,
   LONG_SUBJECT,
   LOW_BALANCE,
   type ManyKey,
+  type MarkKey,
   NOTICE_CREDITS,
   NOW,
   OTHER_CHANNELS,
+  PARKING_TIME,
   PLACE,
   type PersonKey,
   READER,
@@ -57,6 +60,22 @@ import {
   isTellKind,
   runOf,
 } from './TellKinds.ts';
+import {
+  NOTICE_STATES,
+  type NoticeCase,
+  caseFor,
+  guestOf,
+  isNoticeState,
+  languageOf,
+  markOf,
+  noticeCredits,
+  noticeSmsOf,
+  noticeStart,
+  notSentWhy,
+  quietLine,
+  stampOf,
+} from './NoticeStates.ts';
+import { sayNotice } from './NoticeWords.ts';
 
 /** Every state of Messaging B, each a `?state=` in both demos (spec §7 and §7b), in the spec's order. */
 export const MESSAGES_STATES = [
@@ -145,6 +164,7 @@ export const MESSAGES_STATES = [
   'askSentOne',
   'askFailed',
   'sendWithout',
+  ...NOTICE_STATES,
   ...STOP_STATES,
   ...TELL_KINDS,
 ] as const;
@@ -272,6 +292,9 @@ export interface Answer {
   seen: string | null;
   by: ChannelKey;
   notice: Notice;
+  /** sc-3976: the notice refused on its channel with Who it reached's reason, or waiting for quiet hours to end. */
+  refused?: { reason: string; mark: MarkKey };
+  waits?: string;
 }
 
 export interface Messages {
@@ -322,6 +345,9 @@ export interface Messages {
   receipts: boolean;
   /** Without messages.read: the area opens the refusal, with no list and no count. */
   forbidden: boolean;
+  /** sc-3976: the open state's facts about one guest's notice and conversation, and who reads it when not the owner. */
+  notice?: NoticeCase;
+  reader?: string;
 }
 
 export function blankDraft(): Draft {
@@ -546,6 +572,7 @@ export function startOf(state: MessagesState | null, wide: boolean): Messages {
   if (scheduled != null) return scheduledStart(scheduled);
   if (isStopState(state))
     return { ...BASE, open: { kind: 'guest', key: 'ines' }, ...stopStart(state) };
+  if (isNoticeState(state)) return { ...BASE, ...noticeStart(state) };
   if (state === 'whatsAppRead')
     return { ...BASE, receipts: true, open: { kind: 'reached', of: 'receipts' } };
   const ines: Open = { kind: 'guest', key: 'ines' };
@@ -1020,7 +1047,11 @@ export function reduce(m: Messages, action: Action): Messages {
     case 'answer': {
       if (m.closed != null) return m;
       const by = tellingBy(m, action.key);
-      const cost = noticeCostOf(m, action.key);
+      const kase = caseFor(m, action.key);
+      const block = kase?.blocks?.[by];
+      const cost = block == null ? noticeCostOf(m, action.key) : null;
+      const quiet = kase?.quiet == null ? null : quietLine(by, kase.quiet);
+      const language = languageOf(action.key);
 
       return {
         ...m,
@@ -1032,10 +1063,17 @@ export function reduce(m: Messages, action: Action): Messages {
             seen: null,
             by,
             notice: cost?.waits === true ? 'held' : 'told',
+            ...(block == null
+              ? {}
+              : { refused: { reason: notSentWhy(block, language), mark: markOf(block) } }),
+            ...(block != null || quiet == null || kase?.quiet == null
+              ? {}
+              : { waits: sayNotice.waitingUntil(kase.quiet) }),
           },
         },
         typed: { ...m.typed, [action.key]: '' },
         balance: cost == null || cost.waits ? m.balance : cost.after,
+        ...(kase?.windowClosed === true ? { notice: { ...kase, windowClosed: false } } : {}),
       };
     }
     case 'tellBy':
@@ -1166,8 +1204,30 @@ const many = (key: ManyKey): RowId => ({ kind: 'many', key });
 const own = (one: Own): RowId => ({ kind: 'draft', id: one.id });
 
 /** Own messages at the top, then Needs you, Scheduled and Done; a guest marked done moves to the top of Done. */
+function askedAt(m: Messages, id: RowId): string {
+  if (id.kind !== 'guest') return stampOf(DAYS.parking, PARKING_TIME);
+  const later = caseFor(m, id.key)?.extras?.find((one) => one.kind === 'later');
+  const asked = guestOf(m, id.key).asked;
+
+  return later?.kind === 'later' ? stampOf(DAYS.today, later.time) : stampOf(asked.day, asked.time);
+}
+
+/** The guests whose questions wait in the open state: the sample's three, and sc-3976's Valentina in hers. */
+export function waitingGuests(m: Pick<Messages, 'notice'>): GuestKey[] {
+  return m.notice?.key === 'valentina'
+    ? ['ines', 'lucia', 'kwame', 'valentina']
+    : ['ines', 'lucia', 'kwame'];
+}
+
 export function sectionsOf(m: Messages): Sections {
-  const waiting: GuestKey[] = m.arrived ? ['lucia', 'ines', 'kwame'] : ['ines', 'lucia', 'kwame'];
+  const first = m.arrived && !m.done.includes('lucia') ? [guest('lucia')] : [];
+  const rest: RowId[] = [
+    ...waitingGuests(m)
+      .filter((key) => !m.done.includes(key) && !(m.arrived && key === 'lucia'))
+      .map(guest),
+    ...(m.done.includes('unknown') ? [] : [guest('unknown')]),
+    many(m.receipts ? 'receipts' : 'parking'),
+  ];
   const mine = ownThreads(m);
   const change = m.changeRow;
   const changeNeeds = change != null && change.reached < change.of ? [many('change')] : [];
@@ -1177,9 +1237,8 @@ export function sectionsOf(m: Messages): Sections {
     top: mine.filter((one) => !isScheduled(one.draft) && !ended(one.draft)).map(own),
     needs: [
       ...changeNeeds,
-      ...waiting.filter((key) => !m.done.includes(key)).map(guest),
-      ...(m.done.includes('unknown') ? [] : [guest('unknown')]),
-      many(m.receipts ? 'receipts' : 'parking'),
+      ...first,
+      ...rest.sort((one, two) => askedAt(m, two).localeCompare(askedAt(m, one))),
     ],
     scheduled: mine.filter((one) => isScheduled(one.draft)).map(own),
     done: [
@@ -1197,11 +1256,24 @@ export function badgeOf(
 ): { waiting: number; notMatched: number; total: number } | null {
   if (m.phase !== 'list' || m.forbidden) return null;
   const guests: GuestKey[] =
-    m.matched == null ? ['ines', 'lucia', 'kwame'] : ['ines', 'lucia', 'kwame', 'unknown'];
+    m.matched == null ? waitingGuests(m) : [...waitingGuests(m), 'unknown'];
   const waiting = guests.filter((key) => !m.done.includes(key)).length + (m.arrived ? 1 : 0);
   const notMatched = m.matched == null && !m.done.includes('unknown') ? 1 : 0;
 
   return { waiting, notMatched, total: waiting + notMatched };
+}
+
+/** The tab's badge: no badge, and no words, when nothing waits (pm, call 6). */
+export function badgeShown(m: Messages): { count: number; name: string; words: string } | null {
+  const badge = badgeOf(m);
+
+  return badge == null || badge.total === 0
+    ? null
+    : {
+        count: badge.total,
+        name: say.badgeName(badge.waiting, badge.notMatched),
+        words: say.counts(badge.waiting, badge.notMatched),
+      };
 }
 
 export interface Check {
@@ -1423,24 +1495,33 @@ export function noticeCost(
 
 /** The channel Soirely tells this guest by: their latest message's, unless the host picked another. */
 export function tellingBy(m: Messages, key: GuestKey): ChannelKey {
-  return m.tellBy[key] ?? GUESTS[key].channel;
+  return m.tellBy[key] ?? guestOf(m, key).channel;
+}
+
+/** A notice's credits: an SMS costs its parts, counted with the link as built, × the credits a part for the number's country. */
+export function noticeCreditsOf(key: GuestKey, channel: ChannelKey): number {
+  return noticeCredits(
+    channel,
+    NOTICE_CREDITS[key]?.[channel] ?? 0,
+    noticeSmsOf(HOSTS, EVENT).parts,
+  );
 }
 
 export function noticeCostOf(m: Messages, key: GuestKey): NoticeCost | null {
   if (m.closed != null) return null;
   const channel = tellingBy(m, key);
 
-  return noticeCost(channel, NOTICE_CREDITS[key]?.[channel] ?? 0, m.balance);
+  return noticeCost(channel, noticeCreditsOf(key, channel), m.balance);
 }
 
 /** When the notice would wait: the guest's other channels that can tell them now, email first, a paid one only if covered. */
 export function tellNowBy(m: Messages, key: GuestKey): readonly ChannelKey[] {
   const by = tellingBy(m, key);
 
-  return (OTHER_CHANNELS[key] ?? []).filter(
+  return (caseFor(m, key)?.others ?? OTHER_CHANNELS[key] ?? []).filter(
     (channel) =>
       channel !== by &&
-      noticeCost(channel, NOTICE_CREDITS[key]?.[channel] ?? 0, m.balance)?.waits !== true,
+      noticeCost(channel, noticeCreditsOf(key, channel), m.balance)?.waits !== true,
   );
 }
 

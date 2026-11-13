@@ -51,6 +51,7 @@ import {
 import { ConversationPane } from './MessagesThread.tsx';
 import { demoWords } from './demoWords.ts';
 import { IW } from './messagesInvite.ts';
+import { isNoticeState, readerOf } from './messagesNotice.ts';
 import { waitsTicksOf } from './messagesWaits.ts';
 import { InboxContext, type InboxApi } from './messagesContext.ts';
 import { type Group, useTo } from './messagesTo.ts';
@@ -154,6 +155,8 @@ function firstFocus(state: MessagesState | null): string | null {
     case 'inviteCountdown':
       return 'cancel';
     default:
+      if (isNoticeState(state)) return state === 'readOnly' ? null : 'answer';
+
       return waitsTicksOf(state) == null ? null : 'check';
   }
 }
@@ -192,6 +195,7 @@ export function MessagesPage({
           tell={tell}
           inert={covered}
           waiting={waitingLine(inbox)}
+          reader={readerOf(state)}
         />
       )}
     >

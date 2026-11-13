@@ -24,6 +24,7 @@ import {
   many,
 } from './messages.ts';
 import { useInbox } from './messagesContext.ts';
+import { asBuilt } from './messagesNotice.ts';
 import { WhereGlyph } from './MessagesParts.tsx';
 import {
   type Language,
@@ -236,7 +237,7 @@ export function Preview({ draft }: { draft: Draft }) {
                   <div className="mg-notice">
                     <p className="mg-notice-head">
                       <WhereGlyph where="sms" />
-                      {many('smsParts', 1)}
+                      {many('smsParts', asBuilt(notice.sms).parts)}
                     </p>
                     <p className="mg-notice-bubble" lang={lang}>
                       {notice.sms}

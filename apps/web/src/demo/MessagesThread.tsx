@@ -12,7 +12,6 @@ import {
   type MessagesState,
   type Sched,
   ANSWERS,
-  GUESTS,
   RECEIPTS,
   HELD_TOO_LONG,
   MATCHES,
@@ -32,11 +31,13 @@ import {
   draftOf,
   filled,
   freshId,
+  guestOf,
   isGuest,
   isSched,
   listed,
   many,
   noticeOf,
+  noticePrice,
   outTitle,
   outsIn,
   toLine,
@@ -50,6 +51,19 @@ import { type World, MESSAGES_WORLD, isSentTo } from './messagesTo.ts';
 import { TW } from './messagesToWords.ts';
 import { type Bit, useInbox, whereBits } from './messagesContext.ts';
 import { LaterDialog, MatchPicker } from './MessagesDialogs.tsx';
+import {
+  type NoticeCase,
+  NW,
+  SHARED_NUMBER,
+  languageOf,
+  markOf,
+  noticeCaseOf,
+  notSentWhy,
+  quietLine,
+  readerOf,
+  refusalOf as noticeRefusalOf,
+} from './messagesNotice.ts';
+import { NoticeExtras, RefusedNotice, WindowClosed } from './MessagesNotice.tsx';
 import {
   DayRule,
   GuestBubble,
@@ -74,6 +88,12 @@ import {
 import { useStopWriting } from './MessagesStop.tsx';
 import { StreamItems } from './MessagesStream.tsx';
 import { MessagesBell } from './MessagesTell.tsx';
+import { AskOwner } from './MessagesWaits.tsx';
+
+const SHARERS = [
+  { name: 'Kwame Mensah', line: SHARED_NUMBER },
+  { name: 'Abena Mensah', line: SHARED_NUMBER },
+] as const;
 
 export function ConversationPane({
   state,
@@ -214,7 +234,7 @@ export function Head({
         <h2 tabIndex={-1} data-focus="heading">
           {title}
         </h2>
-        <p>{line}</p>
+        {line !== '' && <p>{line}</p>}
       </div>
       {action}
       <MessagesBell />
@@ -244,14 +264,25 @@ function Thread({
   return <ManyThread id={id} />;
 }
 
-function answerBits(answer: Answer, toldBy: Channel): Bit[] {
-  const base: Bit[] = [{ words: MW.onTheirPage }, { words: `${READER} · ${answer.at}` }];
+function answerBits(answer: Answer, toldBy: Channel, reader = READER): Bit[] {
+  const base: Bit[] = [{ words: MW.onTheirPage }, { words: `${reader} · ${answer.at}` }];
   const by = answer.by ?? toldBy;
   const seen: Bit = {
     words: answer.seen == null ? MW.notSeenYet : filled(MW.seen, { time: answer.seen }),
   };
 
   if (answer.stage === 'sending') return [...base, { words: MW.sending, mark: 'sending' }];
+  if (answer.refused != null)
+    return [
+      ...base,
+      {
+        words: `${channelWord(by)} · ${MW.notSent} · ${answer.refused.reason}`,
+        mark: answer.refused.mark,
+      },
+      seen,
+    ];
+  if (answer.waits != null)
+    return [...base, { words: `${channelWord(by)} · ${answer.waits}`, mark: 'held' }, seen];
   if (answer.notice === 'held')
     return [...base, { words: `${channelWord(by)} · ${MW.heldForCredits}`, mark: 'held' }, seen];
   if (answer.notice === 'tooLate')
@@ -280,17 +311,36 @@ function GuestThread({
   const [picking, setPicking] = useState(state === 'matchPicker' && id === 'unknown');
   const done = inbox.done.includes(id);
   const match = id === 'unknown' ? MATCHES.find((one) => one.name === inbox.matched) : null;
-  const guest = id === 'unknown' ? null : GUESTS[id];
-  const name = guest?.name ?? match?.name ?? UNKNOWN.address;
+  const guest = id === 'unknown' ? null : guestOf(inbox, id);
+  const kase = inbox.notice?.id === id ? inbox.notice : null;
+  const hidden = inbox.notice?.hidden === true;
+  const name = guest?.name ?? match?.name ?? (hidden ? NW.unknownSender : UNKNOWN.address);
+  const reader = readerOf(state)?.name ?? READER;
   const answers = inbox.answers[id] ?? [];
   const doneAt = inbox.doneAt[id];
   const toldBy = guest?.toldBy ?? 'email';
   const stop = useStopWriting(id, state);
+  const change = (
+    <button type="button" className="desk-text" onClick={() => setPicking(true)}>
+      {MW.changeGuest}
+    </button>
+  );
   const action =
     to.manage && id === 'unknown' && match != null ? (
-      <button type="button" className="desk-text" onClick={() => setPicking(true)}>
-        {MW.changeGuest}
-      </button>
+      change
+    ) : to.manage && kase?.shared != null && !done ? (
+      <>
+        {change}
+        <button
+          type="button"
+          className="desk-text"
+          aria-keyshortcuts={keys ? 'E' : undefined}
+          onClick={() => onDone(id)}
+        >
+          <Glyph name="tick" size={17} weight={2.3} />
+          {MW.markAsDone}
+        </button>
+      </>
     ) : !to.manage ? null : done ? (
       <button
         type="button"
@@ -334,10 +384,15 @@ function GuestThread({
         }
         title={name}
         line={
-          guest?.contact ??
-          (match == null
-            ? `${MW.email} · ${MW.notMatched}`
-            : `${UNKNOWN.address} · ${MW.matchedByHand}`)
+          guest == null
+            ? match == null
+              ? `${MW.email} · ${MW.notMatched}`
+              : `${UNKNOWN.address} · ${MW.matchedByHand}`
+            : kase?.shared != null
+              ? filled(NW.sharedBy, kase.shared)
+              : hidden
+                ? ''
+                : guest.contact
         }
         action={
           <>
@@ -361,17 +416,19 @@ function GuestThread({
             />
           </>
         )}
+        {guest != null && kase?.askedFirst === true && (
+          <>
+            <DayRule>{guest.day}</DayRule>
+            <GuestBubble text={guest.asked} bits={whereBits(guest.where, guest.at)} />
+          </>
+        )}
         {(id === 'ines' || id === 'kwame') && (
           <>
             <DayRule>{PARKING.day}</DayRule>
             <Stub
               title={PARKING.subject}
               glyph="group"
-              bits={[
-                { words: MW.onTheirPage },
-                { words: id === 'ines' ? MW.toldByEmail : MW.toldBySms, mark: 'delivered' },
-                { words: id === 'ines' ? filled(MW.seen, { time: '19:02' }) : MW.notSeenYet },
-              ]}
+              bits={[{ words: MW.onTheirPage }, ...parkingBits(id, kase)]}
             />
           </>
         )}
@@ -382,9 +439,11 @@ function GuestThread({
             {match == null ? (
               <li className="mg-match">
                 <p>
-                  {filled(to.manage ? MW.couldntMatch : TW.notMatchedYet, {
-                    address: UNKNOWN.address,
-                  })}
+                  {hidden
+                    ? NW.couldNotMatch
+                    : filled(to.manage ? MW.couldntMatch : TW.notMatchedYet, {
+                        address: UNKNOWN.address,
+                      })}
                 </p>
                 {to.manage && (
                   <button
@@ -427,27 +486,32 @@ function GuestThread({
                 />
               </>
             )}
-            {id !== 'kwame' && <DayRule>{guest.day}</DayRule>}
-            <GuestBubble
-              text={guest.asked}
-              bits={whereBits(
-                guest.where,
-                inbox.fresh === id ? MW.now : inbox.arrived === id ? NOW : guest.at,
-              )}
-            />
-            {id === 'kwame' && <SystemLine glyph="sms">{MW.cameBySms}</SystemLine>}
+            {kase?.askedFirst !== true && (
+              <>
+                {(id !== 'kwame' || guest.day !== PARKING.day) && <DayRule>{guest.day}</DayRule>}
+                <GuestBubble
+                  text={guest.asked}
+                  bits={whereBits(
+                    guest.where,
+                    inbox.fresh === id ? MW.now : inbox.arrived === id ? NOW : guest.at,
+                  )}
+                />
+              </>
+            )}
+            {id === 'kwame' && kase == null && <SystemLine glyph="sms">{MW.cameBySms}</SystemLine>}
           </>
         )}
+        {kase?.extras != null && <NoticeExtras extras={kase.extras} name={name} />}
         {answers.map((answer, index) => (
           <HostBubble
             key={index}
             body={answer.text}
-            bits={answerBits(answer, toldBy)}
+            bits={answerBits(answer, toldBy, reader)}
             look={answer.stage === 'sending' ? 'arriving' : 'sent'}
           />
         ))}
         {done && doneAt != null && (
-          <SystemLine glyph="tick">{filled(MW.doneBy, { name: READER, time: doneAt })}</SystemLine>
+          <SystemLine glyph="tick">{filled(MW.doneBy, { name: reader, time: doneAt })}</SystemLine>
         )}
       </ol>
       {(guest != null || match != null) && (
@@ -458,18 +522,27 @@ function GuestThread({
           toldBy={toldBy}
           canAlso={guest?.canAlso ?? []}
           typed={typedOf(state, id)}
+          kase={kase}
         />
       )}
+      {guest == null && match == null && hidden && <NoManage />}
       {stop.ask}
       {picking && (
         <MatchPicker
+          {...(kase?.shared == null
+            ? {}
+            : {
+                picks: SHARERS,
+                first: { query: 'Mensah', picked: name },
+                hinted: false,
+              })}
           onCancel={() => {
             setPicking(false);
             focus(match == null ? 'choose' : 'heading');
           }}
           onMatch={(picked) => {
             setPicking(false);
-            act({ kind: 'match', name: picked });
+            if (kase?.shared == null) act({ kind: 'match', name: picked });
             say(filled(MW.matchedSaid, { name: picked }));
             focus('heading');
           }}
@@ -479,7 +552,22 @@ function GuestThread({
   );
 }
 
+function parkingBits(id: 'ines' | 'kwame', kase: NoticeCase | null): Bit[] {
+  const seen = { words: filled(MW.seen, { time: '19:02' }) };
+
+  if (id === 'kwame') return [{ words: MW.toldBySms, mark: 'delivered' }, { words: MW.notSeenYet }];
+  if (kase?.parking === 'bounced')
+    return [{ words: `${MW.email} · ${MW.bounced}`, mark: 'bounced' }, seen];
+  if (kase?.parking === 'spam')
+    return [{ words: `${MW.email} · ${NW.reportedAsSpam}`, mark: 'delivered' }, seen];
+
+  return [{ words: MW.toldByEmail, mark: 'delivered' }, seen];
+}
+
 function typedOf(state: MessagesState | null, id: GuestId | 'unknown'): string {
+  const kase = noticeCaseOf(state);
+
+  if (kase?.id === id && kase.typed === true && id !== 'unknown') return ANSWERS[id] ?? '';
   if (state === 'channelReply' && id === 'kwame') return ANSWERS.kwame ?? '';
   if ((state === 'noticeCost' || state === 'noticeWaits') && id === 'lucia')
     return ANSWERS.lucia ?? '';
@@ -493,27 +581,55 @@ function AnswerBox({
   toldBy,
   canAlso,
   typed,
+  kase,
 }: {
   id: GuestId | 'unknown';
   name: string;
   toldBy: Channel;
   canAlso: readonly Channel[];
   typed: string;
+  kase: NoticeCase | null;
 }) {
   const { inbox, act, keys, tell, say, focus, whyOff, to } = useInbox();
   const [text, setText] = useState(typed);
   const [by, setBy] = useState<Channel>(toldBy);
+  const [closed, setClosed] = useState(kase?.windowClosed === true);
 
   if (!to.manage) return <NoManage />;
 
   const blank = text.trim() === '';
   const notice = noticeOf(id, by, inbox.balance, canAlso);
+  const language = languageOf(id);
+  const block = kase?.blocks?.[by];
+  const refusal =
+    kase?.blocks == null
+      ? null
+      : noticeRefusalOf(
+          by,
+          kase.blocks,
+          canAlso,
+          language,
+          (one) => noticePrice(id, one) <= inbox.balance,
+        );
+  const quiet = kase?.quiet == null || refusal != null ? null : quietLine(by, kase.quiet);
 
   function send(event?: FormEvent): void {
     event?.preventDefault();
     if (blank) return;
-    act({ kind: 'answer', id, text: text.trim(), ...(by === toldBy ? {} : { by }) });
+    act({
+      kind: 'answer',
+      id,
+      text: text.trim(),
+      ...(by === toldBy ? {} : { by }),
+      ...(block == null
+        ? {}
+        : { refused: { reason: notSentWhy(block, language), mark: markOf(block) } }),
+      ...(quiet == null || kase?.quiet == null
+        ? {}
+        : { waits: filled(NW.waitingUntil, { time: kase.quiet }) }),
+    });
     setText('');
+    setClosed(false);
   }
 
   function tellBy(channel: Channel): void {
@@ -524,24 +640,47 @@ function AnswerBox({
 
   return (
     <form className="mg-answer" onSubmit={send}>
-      <p className="mg-answer-line">
-        <Glyph name="page" size={15} />
-        {filled(MW.answerLine, { name, channel: ANSWER_BY[by] })}
-      </p>
-      {whyOff == null && notice.cost != null && <p className="mg-answer-cost">{notice.cost}</p>}
-      {whyOff == null && notice.waits != null && (
+      {closed && <WindowClosed again={refusal == null} />}
+      {refusal != null ? (
+        <RefusedNotice
+          refusal={refusal}
+          name={name}
+          by={ANSWER_BY[by]}
+          onTell={tellBy}
+          label={(channel) => filled(MW.tellNowAs, { channel: ANSWER_BY[channel] })}
+        />
+      ) : (
+        <p className="mg-answer-line">
+          <Glyph name="page" size={15} />
+          {filled(MW.answerLine, { name, channel: ANSWER_BY[by] })}
+        </p>
+      )}
+      {refusal == null && whyOff == null && notice.cost != null && (
+        <p className="mg-answer-cost">{notice.cost}</p>
+      )}
+      {quiet != null && whyOff == null && (
+        <p className="mg-answer-quiet">
+          <Glyph name="clock" size={15} weight={2.2} />
+          {quiet}
+        </p>
+      )}
+      {refusal == null && whyOff == null && notice.waits != null && (
         <div className="mg-answer-wait">
           <p className="mg-answer-waits">
             <Glyph name="clock" size={15} weight={2.2} />
             {notice.waits}
           </p>
-          <button
-            type="button"
-            className="desk-text"
-            onClick={() => tell(`${MW.addCredits} has its own design.`)}
-          >
-            {MW.addCredits}
-          </button>
+          {kase?.ask == null ? (
+            <button
+              type="button"
+              className="desk-text"
+              onClick={() => tell(`${MW.addCredits} has its own design.`)}
+            >
+              {MW.addCredits}
+            </button>
+          ) : (
+            <AskOwner start={kase.ask} owners={2} />
+          )}
           {notice.others.length > 0 && (
             <div className="mg-answer-others">
               <p>{MW.tellNowBy}</p>

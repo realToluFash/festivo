@@ -937,6 +937,9 @@ export function MatchPicker({
   opener,
   onMatch,
   onClose,
+  picks = MATCHES,
+  first = { search: 'Dubois', picked: MATCHES[0]?.name ?? '' },
+  hinted = true,
 }: {
   open: boolean;
   phone: boolean;
@@ -944,12 +947,13 @@ export function MatchPicker({
   opener: Opener;
   onMatch: (name: string) => void;
   onClose: () => void;
+  picks?: readonly { name: string; line: string }[];
+  first?: { search: string; picked: string };
+  hinted?: boolean;
 }) {
-  const [search, setSearch] = useState('Dubois');
-  const [picked, setPicked] = useState(MATCHES[0]?.name ?? '');
-  const shown = MATCHES.filter((one) =>
-    one.name.toLowerCase().includes(search.trim().toLowerCase()),
-  );
+  const [search, setSearch] = useState(first.search);
+  const [picked, setPicked] = useState(first.picked);
+  const shown = picks.filter((one) => one.name.toLowerCase().includes(search.trim().toLowerCase()));
   const body = (
     <>
       <TextField
@@ -978,9 +982,11 @@ export function MatchPicker({
           />
         ))}
       </View>
-      <Text size={13.5} weight="medium" style={[styles.secondary, styles.line135]}>
-        {say.matchHint(address, picked)}
-      </Text>
+      {hinted && (
+        <Text size={13.5} weight="medium" style={[styles.secondary, styles.line135]}>
+          {say.matchHint(address, picked)}
+        </Text>
+      )}
     </>
   );
 

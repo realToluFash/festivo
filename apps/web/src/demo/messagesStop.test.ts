@@ -22,7 +22,7 @@ describe('stop writing from their page, the rules (sc-3978)', () => {
     const keys = MESSAGE_STATES.map((one) => one.key);
     const group = MESSAGES_PAGES.find((page) => page.name === STOP_GROUP);
 
-    expect(keys.slice(129, 135)).toEqual(STOP_STATES.map((one) => one.key));
+    expect(keys.slice(146, 152)).toEqual(STOP_STATES.map((one) => one.key));
     expect(group?.states.map((one) => one.to)).toEqual(
       STOP_STATES.map((one) => `/demo/events/evt-wed-4/messages?state=${one.key}`),
     );

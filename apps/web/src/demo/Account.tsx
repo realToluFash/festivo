@@ -1,7 +1,15 @@
 import { DemoBell } from './DemoBell.tsx';
 import { DemoOffline } from './DemoOffline.tsx';
 import { LanguageChoices } from './LanguageChoices.tsx';
-import { LOCALES, contactActions, initials, primaryOf, zoneLabel } from '@soirely/domain';
+import {
+  LOCALES,
+  changeEmail,
+  contactActions,
+  initials,
+  primaryOf,
+  undeliverableAddresses,
+  zoneLabel,
+} from '@soirely/domain';
 import { useEffect, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 
@@ -16,7 +24,6 @@ import {
   accountStart,
   canAdd,
   cardLine,
-  changeEmail,
   contactsFoot,
   lifted,
   madePrimary,
@@ -26,10 +33,8 @@ import {
   sampleCodeSource,
   sampleProof,
   sampleSave,
-  undeliverable,
   verifiedWords,
 } from './account.ts';
-import { UndeliverableLines } from './Undeliverable.tsx';
 import {
   AddEmailDialog,
   AddPhoneDialog,
@@ -41,7 +46,13 @@ import {
 import { SAMPLE } from './rules.ts';
 import type { Viewer } from './settings.ts';
 import { saveName, savedNameOf } from './savedName.ts';
-import { AboutRow, ContactsBlock, PersonCard, RowOffers } from '../components/AccountParts.tsx';
+import {
+  AboutRow,
+  ContactsBlock,
+  PersonCard,
+  RowOffers,
+  UndeliverableLines,
+} from '../components/AccountParts.tsx';
 import { Bones } from '../components/GeneralParts.tsx';
 import { Ask, Head, TextAction, TitleRow } from '../components/SettingsParts.tsx';
 import type { Tell } from '../components/SettingsParts.tsx';
@@ -210,7 +221,12 @@ export function Account({ viewer, state, tell }: { viewer: Viewer; state: string
                 <div key={kind} ref={emailBlock}>
                   {contacts}
                   <UndeliverableLines
-                    rows={undeliverable(emails, suppressed)}
+                    rows={undeliverableAddresses(
+                      emails.map((row) => ({
+                        ...row,
+                        undeliverable: suppressed.includes(row.id),
+                      })),
+                    )}
                     onChange={changeTo}
                   />
                 </div>

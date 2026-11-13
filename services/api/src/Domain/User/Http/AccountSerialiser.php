@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Domain\User\Http;
 
+use App\Domain\Messaging\EmailSuppressions;
 use App\Domain\Organisation\DomainJoining\JoinOfferFinder;
 use App\Domain\Organisation\Http\JoinRequestSerialiser;
 use App\Domain\User\Onboarding\AccountCompleteness;
@@ -13,6 +14,7 @@ use App\Entity\ProviderIdentity;
 use App\Entity\User;
 use App\Repository\MembershipRepository;
 use App\Repository\ProviderIdentityRepository;
+use Psl\Iter;
 use Psl\Vec;
 
 final readonly class AccountSerialiser
@@ -23,6 +25,7 @@ final readonly class AccountSerialiser
         private MembershipRepository $membershipRepository,
         private JoinOfferFinder $joinOfferFinder,
         private JoinRequestSerialiser $joinRequestSerialiser,
+        private EmailSuppressions $emailSuppressions,
     ) {
     }
 
@@ -31,6 +34,8 @@ final readonly class AccountSerialiser
     {
         $memberships = $this->membershipRepository->findActiveFor($user);
         $pending = [] === $memberships ? $this->joinOfferFinder->pendingRequestFor($user) : null;
+        $emails = $user->getEmailAddresses();
+        $suppressed = $this->emailSuppressions->suppressedAmong(Vec\map($emails, static fn (EmailAddress $address): string => $address->getAddress()));
 
         return [
             'id' => $user->getId()->toRfc4122(),
@@ -49,11 +54,13 @@ final readonly class AccountSerialiser
             'needsOrganisation' => $this->accountCompleteness->needsOrganisation($user),
             // In no organisation and asked to join one (sc-561): the details screen says whom it is waiting for.
             'waitingFor' => null === $pending ? null : $this->joinRequestSerialiser->request($pending),
-            'emailAddresses' => Vec\map($user->getEmailAddresses(), static fn (EmailAddress $address): array => [
+            // Only ever the person's own: nobody else in an organisation learns whether their mail bounced (sc-44949).
+            'emailAddresses' => Vec\map($emails, static fn (EmailAddress $address): array => [
                 'id' => $address->getId()->toRfc4122(),
                 'address' => $address->getAddress(),
                 'verified' => $address->isVerified(),
                 'primary' => $address->isPrimary(),
+                'undeliverable' => Iter\contains($suppressed, $address->getAddress()),
             ]),
             'phoneNumbers' => Vec\map($user->getPhoneNumbers(), static fn (PhoneNumber $phone): array => [
                 'id' => $phone->getId()->toRfc4122(),

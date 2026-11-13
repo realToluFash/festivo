@@ -241,6 +241,13 @@ function waits(paid: 'sms' | 'wa', count: number): string {
     : `${count} ${name} messages will wait for credits.`;
 }
 
+function countParts(waiting: number, notMatched: number): string[] {
+  return [
+    ...(waiting > 0 ? [`${waiting} waiting`] : []),
+    ...(notMatched > 0 ? [`${notMatched} not matched`] : []),
+  ];
+}
+
 export const say = {
   section: (word: string, count: number) => `${word} · ${count}`,
   where: (where: string, text: string) => `${where} · ${text}`,
@@ -250,11 +257,8 @@ export const say = {
     `Done by ${name} at ${time}. It comes back to Needs you if they write again.`,
   doneByShort: (name: string) => `Done by ${name}`,
   badgeName: (waiting: number, notMatched: number) =>
-    notMatched === 0
-      ? `Messages, ${waiting} waiting`
-      : `Messages, ${waiting} waiting, ${notMatched} not matched`,
-  counts: (waiting: number, notMatched: number) =>
-    notMatched === 0 ? `${waiting} waiting` : `${waiting} waiting · ${notMatched} not matched`,
+    ['Messages', ...countParts(waiting, notMatched)].join(', '),
+  counts: (waiting: number, notMatched: number) => countParts(waiting, notMatched).join(' · '),
   arrived: (name: string) => `${name} answered on their page.`,
   answerLine: (name: string, channel: string) =>
     `Your answer goes on ${name}’s page. Soirely tells them by ${channel}.`,
@@ -286,7 +290,7 @@ export const say = {
   noticeBody: (hosts: string, event: string) =>
     `${hosts} sent you a message about ${event}. It is on your page.`,
   noticeSms: (hosts: string, event: string, link: string) =>
-    `${hosts}: you have a new message about ${event}. Read it on your page: ${link}`,
+    `${hosts}: a new message about ${event}. Read it here: ${link}`,
   emailFrom: (org: string) => `Email · from ${org} via Soirely`,
   smsParts: (parts: number) => (parts === 1 ? 'SMS · 1 part' : `SMS · ${parts} parts`),
   whatsAppTemplate: 'WhatsApp · the approved template',

@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Tests\Functional;
 
+use App\Domain\Messaging\EmailSuppressions;
 use App\Domain\User\Contacts\LinkedContacts;
 use App\Domain\User\Contacts\PhonePromotion;
 use App\Domain\User\UserRegistrar;
@@ -13,7 +14,9 @@ use App\Entity\EmailAddress;
 use App\Entity\PhoneNumber;
 use App\Entity\User;
 use App\Enum\ErrorCode;
+use App\Enum\MailProviderReport;
 use App\Http\Exception\ApiException;
+use App\Repository\MembershipRepository;
 use App\Repository\UserRepository;
 use App\Tests\ApiTestCase;
 use App\Tests\Double\RefusingRateLimiterFactory;
@@ -21,6 +24,7 @@ use App\Tests\Traits\OnboardsAccounts;
 use DateTimeImmutable;
 use Lexik\Bundle\JWTAuthenticationBundle\Services\JWTTokenManagerInterface;
 use PHPUnit\Framework\Attributes\Test;
+use Psl\Dict;
 use Psl\Iter;
 use Psl\Json;
 use Psl\Regex;
@@ -74,6 +78,51 @@ final class AlternativeContactsTest extends ApiTestCase
         self::assertNotNull(self::service(UserRepository::class)->findOneByPrimaryEmailAddress('folake.adeyemi@gmail.com'));
         self::assertNull(self::service(UserRepository::class)->findOneByPrimaryEmailAddress(self::ADDRESS));
         self::assertSame(['email.added', 'email.primary', 'email.removed'], $this->audited());
+    }
+
+    #[Test]
+    public function aSuppressedAddressReadsUndeliverableToItsOwnerOnly(): void
+    {
+        $this->call('POST', '/api/auth/emails', ['address' => 'second@example.com']);
+        self::service(EmailSuppressions::class)->suppress(self::ADDRESS, MailProviderReport::Bounced);
+
+        self::assertSame([self::ADDRESS => true, 'second@example.com' => false], $this->undeliverable());
+
+        $organisation = self::service(MembershipRepository::class)->findActiveFor($this->fresh())[0]->getOrganisation();
+        $members = Json\encode($this->call('GET', '/api/orgs/' . $organisation->getId()->toRfc4122() . '/members'));
+        self::assertSame(200, $this->statusCode(), $members);
+        self::assertFalse(Str\contains($members, 'undeliverable'), 'nobody else in the organisation learns it');
+    }
+
+    #[Test]
+    public function aCodeTypedForASuppressedAddressLiftsItsSuppression(): void
+    {
+        $this->call('POST', '/api/auth/emails', ['address' => 'second@example.com']);
+        self::service(EmailSuppressions::class)->suppress('second@example.com', MailProviderReport::Complained);
+        self::assertSame([self::ADDRESS => false, 'second@example.com' => true], $this->undeliverable());
+
+        $this->call('POST', '/api/auth/verify/email', ['address' => $this->idOf('second@example.com'), 'code' => $this->codeFor('second@example.com')]);
+
+        self::assertSame([self::ADDRESS => false, 'second@example.com' => false], $this->undeliverable());
+        self::assertFalse(self::service(EmailSuppressions::class)->isSuppressed('second@example.com'));
+    }
+
+    #[Test]
+    public function aRemovedAddressLeavesTheListAndStaysSuppressedUntilACodeIsTyped(): void
+    {
+        $this->call('POST', '/api/auth/emails', ['address' => 'second@example.com']);
+        self::service(EmailSuppressions::class)->suppress('second@example.com', MailProviderReport::Bounced);
+
+        $this->call('DELETE', '/api/auth/emails/' . $this->idOf('second@example.com'));
+        self::assertSame(204, $this->statusCode());
+        self::assertSame([self::ADDRESS => false], $this->undeliverable());
+        self::assertTrue(self::service(EmailSuppressions::class)->isSuppressed('second@example.com'), 'removing proves nothing about the mailbox');
+
+        $this->call('POST', '/api/auth/emails', ['address' => 'second@example.com']);
+        self::assertSame([self::ADDRESS => false, 'second@example.com' => true], $this->undeliverable());
+        $this->call('POST', '/api/auth/verify/email', ['address' => $this->idOf('second@example.com'), 'code' => $this->codeFor('second@example.com')]);
+
+        self::assertSame([self::ADDRESS => false, 'second@example.com' => false], $this->undeliverable());
     }
 
     #[Test]
@@ -474,6 +523,15 @@ final class AlternativeContactsTest extends ApiTestCase
             Type\vec(Type\shape(['address' => Type\string(), 'verified' => Type\bool(), 'primary' => Type\bool()], true))->coerce($me['emailAddresses']),
             static fn (array $email): array => ['address' => $email['address'], 'verified' => $email['verified'], 'primary' => $email['primary']],
         );
+    }
+
+    /** @return array<string, bool> by address */
+    private function undeliverable(): array
+    {
+        $me = $this->call('GET', '/api/auth/me');
+        $emails = Type\vec(Type\shape(['address' => Type\string(), 'undeliverable' => Type\bool()], true))->coerce($me['emailAddresses']);
+
+        return Dict\from_entries(Vec\map($emails, static fn (array $email): array => [$email['address'], $email['undeliverable']]));
     }
 
     /** @return list<string> */
