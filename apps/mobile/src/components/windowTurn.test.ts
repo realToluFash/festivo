@@ -216,6 +216,20 @@ describe('a window that opens through a Modal of its own (sc-42690)', () => {
       expect(picker).toMatch(/<Text\s+ref=\{heading\}[^>]*accessibilityRole="header"/);
     });
 
+    it('hands TalkBack back to the picker however the menu closes, on Android only (sc-43908)', () => {
+      expect(picker).toMatch(
+        /const close = \(\) => \{\s*if \(Platform\.OS === 'android'\) setClosed\(\{\}\);\s*setOpen\(false\);\s*\};/,
+      );
+      expect(picker.match(/setOpen\(false\)/g)).toHaveLength(1);
+      expect(picker.match(/setClosed\(\{\}\)/g)).toHaveLength(1);
+      expect(picker).toContain('onRequestClose={close}');
+      expect(picker).toContain('onAccessibilityEscape={close}');
+      expect(picker).toMatch(/onPress=\{close\}[^>]*testID=\{`\$\{testID\}\.close`\}/);
+      expect(picker).toMatch(/onChange\(item\.code\);[^}]*\bclose\(\);/);
+      expect(picker).toContain('useSystemBack(open, close);');
+      expect(picker).toContain('useFocusOnAnswer(windowShown ? undefined : closed, field);');
+    });
+
     it('draws only the rows in sight until its title has taken focus, under TalkBack on Android (qa2 #43597)', () => {
       expect(picker).toMatch(
         /useListFilling\(\s*Platform\.OS === 'android' && readerOn,\s*windowShown,\s*onScreen && !unnamed,?\s*\)/,
