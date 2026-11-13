@@ -1,8 +1,8 @@
 import type { Companion, Guest, HeadcountCounts } from '@soirely/api-client';
 import { compareGuestNames, nameKey, phoneMatches } from '@soirely/domain';
 
-/** Where a person stands, in the host's words: a companion is Held until their guest is Coming. */
-export type Standing = 'coming' | 'maybe' | 'noReply' | 'held' | 'notComing';
+/** Where a person stands, in the host's words: a companion is Not yet invited with their guest, then Held until their guest is Coming. */
+export type Standing = 'coming' | 'maybe' | 'noReply' | 'notYetInvited' | 'held' | 'notComing';
 
 /** The filter menu's choices in its order (sc-3772); `all` is the default and is never written to the address. */
 export const CHOICES = ['all', 'coming', 'maybe', 'noReply', 'held', 'notComing'] as const;

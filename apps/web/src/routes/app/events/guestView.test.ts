@@ -11,6 +11,7 @@ function guest(id: string, fullName: string, more: Partial<Guest> = {}): Guest {
     mobile: null,
     reply: 'noReply',
     repliedAt: null,
+    invitation: null,
     companions: [],
     ...more,
   };
