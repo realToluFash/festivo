@@ -173,8 +173,8 @@ final readonly class EventsController
         $original = $this->event($eventId);
         $copyGuests = $body['copyGuests'] ?? false;
 
-        if ($copyGuests && !$this->grantsOn($original)->holds(Permission::GuestsManage)) {
-            throw new ApiException(ErrorCode::PermissionRequired, 'access.permission_required', [], null, [], ['permission' => Permission::GuestsManage->value], ['{permission}' => Permission::GuestsManage->value]);
+        if ($copyGuests) {
+            $this->grantsOn($original)->require(Permission::GuestsManage);
         }
 
         $duplicate = $this->eventDuplicator->duplicate($original, $this->user(), $body['startsAt'] ?? null, $copyGuests);

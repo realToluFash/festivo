@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\Http\Access;
 
 use App\Enum\Permission;
+use App\Http\Exception\ApiException;
 use Psl\Iter;
 use Psl\Vec;
 
@@ -51,6 +52,18 @@ final readonly class Grants
     public function heldForTwoFactor(): self
     {
         return new self($this->everything, $this->permissions, $this->withheld, $this->readOnly, true);
+    }
+
+    /** The one refusal for a permission not held: 403 `two_factor_required` while two-factor keeps it back, `permission_required` otherwise. */
+    public function require(Permission $permission): void
+    {
+        if ($this->withholds($permission)) {
+            throw ApiException::twoFactorRequired($permission);
+        }
+
+        if (!$this->holds($permission)) {
+            throw ApiException::permissionRequired($permission);
+        }
     }
 
     public function holds(Permission $permission): bool
