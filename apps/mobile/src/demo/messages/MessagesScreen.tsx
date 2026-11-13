@@ -580,7 +580,10 @@ export function MessagesScreen({
         onNew(false);
       }}
       onTell={() => dispatch({ type: 'telling', open: true })}
-      onDismiss={() => dispatch({ type: 'dismissUntold' })}
+      onDismiss={() => {
+        dispatch({ type: 'dismissUntold' });
+        dispatch({ type: 'told', words: W.dismissed });
+      }}
       closed={closed}
     />
   );

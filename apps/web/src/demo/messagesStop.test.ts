@@ -18,11 +18,11 @@ import {
 const INES = 'Inês Duarte';
 
 describe('stop writing from their page, the rules (sc-3978)', () => {
-  it('lists its six states last, in their own group on the demo home', () => {
+  it('lists its six states after the invitation’s, in their own group on the demo home', () => {
     const keys = MESSAGE_STATES.map((one) => one.key);
     const group = MESSAGES_PAGES.find((page) => page.name === STOP_GROUP);
 
-    expect(keys.slice(-6)).toEqual(STOP_STATES.map((one) => one.key));
+    expect(keys.slice(160, 166)).toEqual(STOP_STATES.map((one) => one.key));
     expect(group?.states.map((one) => one.to)).toEqual(
       STOP_STATES.map((one) => `/demo/events/evt-wed-4/messages?state=${one.key}`),
     );
