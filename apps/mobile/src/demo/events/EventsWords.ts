@@ -179,7 +179,7 @@ export const W = {
   keepIt: 'Keep it',
   delete: 'Delete',
   deleteEvent: 'Delete event',
-  draftBody: 'It’s a draft with nobody on its guest list. It will be removed for your whole team.',
+  draftBody: "It's a draft with nobody on its guest list. It will be removed for your whole team.",
   removes: 'This removes, for your whole team:',
   removesEvent: 'the event, its details and its schedule',
   deleteGuests: "Guests following their link will see that it isn't available.",

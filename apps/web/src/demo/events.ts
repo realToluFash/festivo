@@ -523,7 +523,7 @@ export const EVENT_WORDS = {
   deleteLine:
     "Removes the event and everything in it for your whole team. Guests following its link see that it isn't available.",
   deleteTitle: (name: string) => `Delete ${name}?`,
-  draftBody: 'It’s a draft with nobody on its guest list. It will be removed for your whole team.',
+  draftBody: "It's a draft with nobody on its guest list. It will be removed for your whole team.",
   removes: 'This removes, for your whole team:',
   removesEvent: 'the event, its details and its schedule',
   removesGuests: (people: string, count: number) =>
