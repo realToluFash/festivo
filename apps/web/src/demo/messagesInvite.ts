@@ -1,72 +1,308 @@
 import { demoWords } from './demoWords.ts';
-import { type Guest, WEDDING, guestsNow, invitationLine, invitedLine, peopleOf } from './guests.ts';
-import { LW } from './makeLiveWords.ts';
+import { INVITATION_NOTE, LONG_NOTE } from './guest.ts';
+import { type Guest, WEDDING, dayOf, inChoice, sampleGuests } from './guests.ts';
+import { GW } from './guestsWords.ts';
 import {
   type Channel,
-  type ConvoId,
-  type Draft,
-  type Inbox,
-  type Out,
   type Ticks,
   type Untellable,
-  BALANCE,
   EVENT_NAME,
   HOSTS,
   INVITE,
-  NOW,
-  ORGANISATION,
-  THEIR_LINK,
-  figuresOf,
 } from './messages.ts';
+import { IW } from './messagesInviteWords.ts';
 import {
   type Audience,
   type Condition,
   type Group,
-  audienceWords,
-  toLine,
+  type OneGuest,
+  type SampleGuest,
+  type World,
   whoMatches,
 } from './messagesTo.ts';
-import { INVITE_STATES, IW } from './messagesInviteWords.ts';
 import { MW } from './messagesWords.ts';
+import { type SmsAbout, REPLY_BY, inviteSmsOf, oneGuestOf } from './inviteSms.ts';
+import { type Text, textsCredits } from './smsCredits.ts';
 
-export { INVITE_STATES, IW };
+/** Send invitations from the composer (sc-3971): who an invitation goes to, who already has one, who it cannot reach, and the note. */
+export { IW };
+export {
+  type InviteSms,
+  type SmsAbout,
+  LINK_CHARS,
+  REPLY_BY,
+  greetingOf,
+  inviteSmsOf,
+  oneGuestOf,
+  smsParts,
+} from './inviteSms.ts';
 
-export const iw = demoWords(IW);
-const lw = demoWords(LW);
-const mw = demoWords(MW);
-const NUMBER = new Intl.NumberFormat('en-US');
-
-export type InviteState = (typeof INVITE_STATES)[number]['key'];
-
-export function isInviteState(state: string | null): state is InviteState {
-  return INVITE_STATES.some((one) => one.key === state);
+/** The wedding's text, read when asked: messages.ts imports this file before its own values are set. */
+export function weddingAbout(): SmsAbout {
+  return { hosts: HOSTS, event: EVENT_NAME, date: INVITE.date, replyBy: REPLY_BY };
 }
 
-export const NOT_INVITED: Audience = { kind: 'who', conditions: ['notInvited'] };
-export const NOTE_MOST = 10000;
-export const REPLY_BY = 'Wednesday, Nov 4';
-export const SENT_ON = '2026-11-03';
-const PARTS_PER_TEXT = 2;
-const LINK_CHARS = 'https://soirely.app/i/Qm7xK2pV'.length;
+const mw = demoWords(MW);
+const iw = demoWords(IW);
+const COLLATOR = new Intl.Collator('en', { sensitivity: 'base' });
 
-export const NOTE =
-  'We would love you there with us. Children are very welcome, and there is a quiet room by the cloakroom for little ones who need a rest.\nAdaeze & Tunde';
+export const NOTE_MOST = 10_000;
+export const INVITE_TICKS: Ticks = { email: true, sms: true, whatsApp: false };
+export const INVITE_CHANNELS = ['email', 'sms'] as const;
+export const NOTE = INVITATION_NOTE.words;
+export const TOO_LONG_NOTE = Array<string>(Math.ceil(NOTE_MOST / LONG_NOTE.words.length) + 1)
+  .fill(LONG_NOTE.words)
+  .join('\n\n');
+export const ALREADY_SENT_ON = '2026-10-12';
 
-const LONG_PART = [
-  'We are so happy to invite you, and we wanted to tell you a little about the day before it comes.',
-  'The ceremony is in the Grand Hall on the ground floor, with step-free access from Marylebone Road. Doors open at 17:30, and we will start at 18:00 sharp, so please give yourselves time for the traffic on a Thursday evening. There is a cloakroom by the main doors, and the staff there will hold bags and coats all night.',
-  'After the ceremony there are drinks in the Winter Garden while the hall is set for dinner. Dinner is at 20:00, and you will find your table on your own page here once we have shared the tables.',
-].join('\n');
+export const WEDDING_GUESTS: readonly Guest[] = [...sampleGuests(WEDDING)].sort((a, b) =>
+  COLLATOR.compare(a.name, b.name),
+);
 
-export const LONG_NOTE = Array.from({ length: 18 }, () => LONG_PART).join('\n\n');
+function weddingGuest(id: string): OneGuest {
+  const found = WEDDING_GUESTS.find((guest) => guest.id === id);
 
-export interface Invite {
+  if (found == null) throw new Error(`No guest ${id} on the wedding`);
+
+  return oneGuestOf(found);
+}
+
+const INVITED_GUESTS: readonly OneGuest[] = WEDDING_GUESTS.filter((guest) =>
+  inChoice(guest.reply, 'invited'),
+).map(oneGuestOf);
+
+export const FOURTEEN: readonly OneGuest[] = WEDDING_GUESTS.filter(
+  (guest) => guest.reply === 'notYet',
+).map(oneGuestOf);
+
+const FOURTEEN_SAMPLES: readonly SampleGuest[] = FOURTEEN.map((one) => ({
+  name: one.name,
+  reply: 'none',
+  invited: false,
+  group: null,
+  email: one.email,
+  mobile: one.mobile,
+}));
+
+function onlyNotInvited(conditions: readonly Condition[]): boolean {
+  return conditions.length === 1 && conditions[0] === 'notInvited';
+}
+
+/** To on an invitation: All guests is the Guests demo's 156, and Not yet invited its fourteen; every other row as Messages counts it. */
+export const INVITE_WORLD: World = {
+  all: INVITED_GUESTS.length + FOURTEEN.length,
+  matches: (conditions, groups) =>
+    onlyNotInvited(conditions) ? [...FOURTEEN_SAMPLES] : whoMatches(conditions, groups),
+};
+
+export const NOT_YET_INVITED: Audience = {
+  kind: 'who',
+  conditions: ['notInvited'],
+  pick: 'notInvited',
+};
+
+export function guestAudience(id: string): Audience {
+  return { kind: 'guest', guest: weddingGuest(id) };
+}
+
+export function noteTooLong(note: string): boolean {
+  return [...note.trim()].length > NOTE_MOST;
+}
+
+export function noteRefusal(note: string): string | null {
+  return noteTooLong(note) ? iw.filled(IW.noteTooLong, { count: NOTE_MOST }) : null;
+}
+
+export function previewPeople(audience: Audience, groups: readonly Group[]): readonly OneGuest[] {
+  if (audience.kind === 'guest') return [audience.guest];
+  if (audience.kind === 'all') return [oneGuestOf(WEDDING_GUESTS[0] as Guest), ...FOURTEEN];
+  if (onlyNotInvited(audience.conditions)) return FOURTEEN;
+
+  return whoMatches(audience.conditions, groups).slice(0, 5).map(sampleOne);
+}
+
+export function firstOf(audience: Audience, groups: readonly Group[]): OneGuest | null {
+  return previewPeople(audience, groups)[0] ?? null;
+}
+
+function sampleOne(guest: SampleGuest): OneGuest {
+  return {
+    id: guest.name,
+    name: guest.name,
+    greetAs: null,
+    email: guest.email,
+    mobile: guest.mobile,
+    invited: guest.invited ? GW.invitedByMessage(dayOf(ALREADY_SENT_ON)) : null,
+  };
+}
+
+function weddingText(guest: OneGuest): Text {
+  const country = WEDDING_GUESTS.find((one) => one.id === guest.id)?.phone?.country;
+
+  if (country == null) throw new Error(`No number for ${guest.name} on the wedding`);
+
+  return { parts: inviteSmsOf(guest, weddingAbout(), guest.invited == null).parts, country };
+}
+
+interface Members {
+  fresh: readonly OneGuest[];
+  already: number;
+  invited: readonly OneGuest[];
+  /** Guests already invited whom only Messages' own figures count. */
+  counted: boolean;
+}
+
+function membersOf(audience: Audience, groups: readonly Group[]): Members {
+  if (audience.kind === 'guest') {
+    const invited = audience.guest.invited != null;
+
+    return {
+      fresh: invited ? [] : [audience.guest],
+      already: invited ? 1 : 0,
+      invited: invited ? [audience.guest] : [],
+      counted: false,
+    };
+  }
+  if (audience.kind === 'all')
+    return {
+      fresh: FOURTEEN,
+      already: INVITED_GUESTS.length,
+      invited: INVITED_GUESTS,
+      counted: false,
+    };
+  if (onlyNotInvited(audience.conditions))
+    return { fresh: FOURTEEN, already: 0, invited: [], counted: false };
+
+  const matched = whoMatches(audience.conditions, groups);
+  const invited = matched.filter((guest) => guest.invited);
+
+  return {
+    fresh: matched.filter((guest) => !guest.invited).map(sampleOne),
+    already: invited.length,
+    invited: invited.map(sampleOne),
+    counted: true,
+  };
+}
+
+export interface Counted {
+  counts: Record<Channel, number>;
+  cantTell: number;
+  names: readonly Untellable[];
+}
+
+export interface InviteCheck {
+  kind: 'check';
+  count: number;
+  already: number;
+  named: readonly Untellable[];
+  alreadyAll: readonly Untellable[];
+  choose: boolean;
+  pills: readonly { channel: 'email' | 'sms'; count: number }[];
+  cant: number;
+  cantNames: readonly Untellable[];
+  cantAll: readonly Untellable[];
+  credits: string | null;
+}
+
+export interface InviteRefusal {
+  kind: 'refused';
+  count: number;
+  title: string;
+  reason: string;
+  cant: number;
+  cantNames: readonly Untellable[];
+  cantAll: readonly Untellable[];
+}
+
+function whyNot(guest: OneGuest, ticks: Ticks): string[] {
+  return [
+    ...(guest.email ? [] : [MW.noEmail]),
+    ...(guest.mobile ? (ticks.sms ? [] : [MW.smsIsOff]) : [MW.noPhone]),
+  ];
+}
+
+function reaches(guest: OneGuest, ticks: Ticks): boolean {
+  return (guest.email && ticks.email) || (guest.mobile && ticks.sms);
+}
+
+/** The check before an invitation goes, or why it cannot: the note first, then reach (sc-3971). */
+export function inviteCheckOf(
+  audience: Audience,
+  ticks: Ticks,
+  again: boolean,
+  counted: Counted,
+  balance: number,
+  groups: readonly Group[] = [],
+): InviteCheck | InviteRefusal {
+  const members = membersOf(audience, groups);
+  const everyone = again || members.fresh.length === 0;
+  const individuals =
+    everyone && !members.counted ? [...members.invited, ...members.fresh] : members.fresh;
+  const base = everyone && members.counted && members.already > 0 ? counted : null;
+  const count = (everyone ? members.already : 0) + members.fresh.length;
+  const on = INVITE_CHANNELS.filter((channel) => ticks[channel]);
+  const people = (channel: 'email' | 'sms') =>
+    individuals.filter((guest) => (channel === 'email' ? guest.email : guest.mobile)).length +
+    (base?.counts[channel] ?? 0);
+  const cantPeople = individuals.filter((guest) => !reaches(guest, ticks));
+  const cantAll = [
+    ...(base?.names ?? []),
+    ...cantPeople.map((guest) => ({ name: guest.name, why: whyNot(guest, ticks) })),
+  ];
+  const cantNames = cantAll.slice(0, 2);
+  const alreadyAll = members.invited.map((guest) => ({
+    name: guest.name,
+    why: guest.invited == null ? [] : [guest.invited],
+  }));
+  const cant = on.length === 0 ? count : cantPeople.length + (base?.cantTell ?? 0);
+
+  if (count > 0 && cant >= count)
+    return {
+      kind: 'refused',
+      count,
+      title: iw.many('cannotSend', count),
+      reason: iw.many('noneReached', count),
+      cant,
+      cantNames,
+      cantAll,
+    };
+
+  const texted = individuals.filter((guest) => guest.mobile);
+  const credits = !ticks.sms
+    ? 0
+    : members.counted
+      ? texted.length + (base?.counts.sms ?? 0)
+      : textsCredits(texted.map(weddingText));
+
+  return {
+    kind: 'check',
+    count,
+    already: members.already,
+    named: alreadyAll.slice(0, 2),
+    alreadyAll,
+    choose: members.already > 0 && members.fresh.length > 0,
+    pills: on.map((channel) => ({ channel, count: people(channel) })),
+    cant: on.length === 0 ? 0 : cant,
+    cantNames: on.length === 0 ? [] : cantNames,
+    cantAll: on.length === 0 ? [] : cantAll,
+    credits:
+      on.length === 0
+        ? null
+        : credits === 0
+          ? MW.emailNoCredits
+          : `${mw.many('textsUse', credits)} ${mw.filled(MW.creditsAfter, { count: balance - credits })}`,
+  };
+}
+
+export interface InviteDraft {
   note: string;
   again: boolean;
-  one?: string;
-  seeAll?: boolean;
-  tooLong?: boolean;
-  as?: string;
+  /** The note was over the limit when Send was pressed, and still is. */
+  wrong: boolean;
+  /** Send has been pressed once: the note is checked again when it loses focus. */
+  pressed: boolean;
+  previewAs?: string;
+  seeAll?: 'already' | 'cant';
 }
 
 export interface InviteOut {
@@ -74,382 +310,108 @@ export interface InviteOut {
   again: boolean;
   count: number;
   reached: number;
-  ids: readonly string[];
-  greet: string;
-  one?: string;
+  greeting: string;
 }
 
-export interface InvitePerson {
-  id: string;
-  name: string;
-  greet: string;
-  line: string;
-  email: boolean;
-  mobile: boolean;
-  fresh: boolean;
-  companion?: boolean;
-  language?: { code: string; chose: boolean } | null;
+export const INVITE_GROUP = 'Send invitations (sc-3971)';
+
+export const INVITE_STATES = [
+  { key: 'inviteWrite', name: 'The invitation, from Send invitations' },
+  { key: 'inviteTo', name: 'To on an invitation: Not yet invited, a quick pick' },
+  { key: 'inviteWriteOne', name: 'The invitation, from a guest’s details' },
+  { key: 'inviteNote', name: 'The note written' },
+  { key: 'inviteNoteLong', name: 'The note too long' },
+  { key: 'invitePreview', name: 'The preview for one guest, no note' },
+  { key: 'invitePreviewNote', name: 'The preview, with the note on their page' },
+  { key: 'invitePreviewSms', name: 'Previewed as Yusuf Ibrahim, by text' },
+  { key: 'inviteCheck', name: 'The check, nobody already invited' },
+  { key: 'inviteCheckSome', name: 'The check, some already invited' },
+  { key: 'inviteCheckAgain', name: 'The check, Send again chosen' },
+  { key: 'inviteCheckSeeAll', name: 'See all 87 already invited, open' },
+  { key: 'inviteCheckAll', name: 'The check, everyone already invited' },
+  { key: 'inviteRefused', name: 'Refused, nobody can be reached' },
+  { key: 'inviteCountdown', name: 'Ten seconds, an invitation' },
+  { key: 'inviteSent', name: 'Where it lands: its own Invitation conversation' },
+] as const;
+
+export type InviteState = (typeof INVITE_STATES)[number]['key'];
+
+export function isInviteState(key: string): key is InviteState {
+  return INVITE_STATES.some((one) => one.key === key);
 }
 
-function personOf(guest: Guest, name: string, line: string | null, fresh: boolean): InvitePerson {
-  return {
-    id: guest.id,
-    name,
-    greet: guest.greetAs ?? name,
-    line: line ?? '',
-    email: guest.email != null,
-    mobile: guest.phone != null,
-    fresh,
-    language:
-      guest.chose != null
-        ? { code: guest.chose, chose: true }
-        : guest.language == null
-          ? null
-          : { code: guest.language, chose: false },
-  };
-}
+export type InviteSeed =
+  | {
+      kind: 'draft';
+      to: Audience;
+      step: 'write' | 'preview' | 'check';
+      openTo: boolean;
+      invite: InviteDraft;
+    }
+  | {
+      kind: 'out';
+      to: Audience;
+      stage: 'countdown' | 'sent';
+      left: number;
+      invite: Pick<InviteOut, 'note'>;
+    };
 
-function weddingPeople(): InvitePerson[] {
-  return peopleOf(guestsNow(WEDDING))
-    .filter((one) => one.reply !== 'walkIn')
-    .map((one) =>
-      one.companion == null
-        ? personOf(one.guest, one.name, invitationLine(one.guest), one.reply === 'notYet')
-        : {
-            id: one.id,
-            name: one.name,
-            greet: one.name,
-            line: invitationLine(one.guest) ?? '',
-            email: false,
-            mobile: false,
-            fresh: one.guest.reply === 'notYet',
-            companion: true,
-          },
-    );
-}
+const NO_NOTE: InviteDraft = { note: '', again: false, wrong: false, pressed: false };
+const WITH_NOTE: InviteDraft = { ...NO_NOTE, note: NOTE };
 
-function freshMatches(person: InvitePerson, condition: Condition): boolean {
-  switch (condition) {
-    case 'notInvited':
-      return true;
-    case 'hasEmail':
-      return person.email;
-    case 'hasMobile':
-      return person.mobile;
-    default:
-      return false;
-  }
-}
-
-const BY_NAME = new Intl.Collator('en', { sensitivity: 'base' });
-
-function byName(a: InvitePerson, b: InvitePerson): number {
-  return BY_NAME.compare(a.name, b.name);
-}
-
-export interface InviteAudience {
-  fresh: readonly InvitePerson[];
-  already: readonly InvitePerson[];
-  everyone: readonly InvitePerson[];
-}
-
-/** Who To holds, split into who is Not yet invited and who already has their invitation: Guests A's list for the guests, B's sample for any other condition. */
-export function inviteAudienceOf(
-  to: Audience,
-  invite: Pick<Invite, 'one'>,
-  groups: readonly Group[],
-): InviteAudience {
-  const people = weddingPeople();
-  let fresh: InvitePerson[];
-  let already: InvitePerson[];
-
-  if (invite.one != null) {
-    const one = people.filter((person) => person.id === invite.one);
-
-    fresh = one.filter((person) => person.fresh);
-    already = one.filter((person) => !person.fresh);
-  } else if (to.kind === 'all') {
-    fresh = people.filter((person) => person.fresh);
-    already = people.filter((person) => !person.fresh);
-  } else {
-    const { conditions } = to;
-
-    fresh =
-      conditions.length === 0
-        ? []
-        : people.filter(
-            (person) =>
-              person.fresh && conditions.every((condition) => freshMatches(person, condition)),
-          );
-    already = conditions.includes('notInvited')
-      ? []
-      : whoMatches(conditions, groups).map((sample) => {
-          const known = people.find((person) => person.name === sample.name && !person.fresh);
-
-          return (
-            known ?? {
-              id: sample.name,
-              name: sample.name,
-              greet: sample.name,
-              line: invitedLine({ by: null, how: null, on: '2026-10-12' }),
-              email: sample.email,
-              mobile: sample.mobile,
-              fresh: false,
-            }
-          );
-        });
-  }
-
-  return {
-    fresh: fresh.sort(byName),
-    already: to.kind === 'who' && invite.one == null ? already.sort(byName) : already,
-    everyone: [...fresh, ...already].sort(byName),
-  };
-}
-
-export function inviteChipWords(
-  to: Audience,
-  invite: Pick<Invite, 'one'>,
-  audience: InviteAudience,
-): string {
-  if (invite.one != null) return audience.everyone[0]?.name ?? '';
-
-  const count = NUMBER.format(audience.everyone.length);
-
-  return to.kind === 'all' ? `${MW.allGuests} · ${count}` : `${audienceWords(to, [])} · ${count}`;
-}
-
-export function noteProblem(note: string): string | null {
-  return [...note.trim()].length > NOTE_MOST
-    ? iw.filled(IW.noteTooLong, { count: NOTE_MOST })
-    : null;
-}
-
-function whyNot(person: InvitePerson, ticks: Ticks): string[] {
-  return [
-    person.email ? (ticks.email ? null : IW.emailIsOff) : MW.noEmail,
-    person.mobile ? (ticks.sms ? null : MW.smsIsOff) : MW.noPhone,
-  ].filter((why): why is string => why != null);
-}
-
-function reaches(person: InvitePerson, ticks: Ticks): boolean {
-  return (person.email && ticks.email) || (person.mobile && ticks.sms);
-}
-
-export interface InviteCheck {
-  /** Who it goes to: the button's and the sentence's count. */
-  count: number;
-  already: number;
-  named: readonly InvitePerson[];
-  /** Leave them out or Send again: somebody is Not yet invited and somebody already has it. */
-  choice: boolean;
-  pills: readonly { channel: Channel; count: number }[];
-  cant: number;
-  cantNamed: readonly Untellable[];
-  credits: string | null;
-  reached: number;
-  refused: boolean;
-  ids: readonly string[];
-}
-
-/** The check on an invitation: Guests A's people Not yet invited, and B's own figures for anyone already invited it goes to again. */
-export function inviteCheckOf(
-  to: Audience,
-  invite: Pick<Invite, 'one' | 'again'>,
-  ticks: Ticks,
-  groups: readonly Group[],
-  balance = BALANCE,
-): InviteCheck {
-  const audience = inviteAudienceOf(to, invite, groups);
-  const { fresh, already } = audience;
-  const again = already.length > 0 && (invite.again || fresh.length === 0);
-  const sample = again && invite.one == null;
-  const own = [...fresh, ...(again && !sample ? already : [])];
-  const figures = sample ? figuresOf(to, { ...ticks, whatsApp: false }) : null;
-  const ownCant = own.filter((person) => !reaches(person, ticks));
-  const email =
-    (ticks.email ? own.filter((person) => person.email).length : 0) +
-    (ticks.email ? (figures?.counts.email ?? 0) : 0);
-  const sms =
-    (ticks.sms ? own.filter((person) => person.mobile).length : 0) +
-    (ticks.sms ? (figures?.counts.sms ?? 0) : 0);
-  const count = fresh.length + (again ? already.length : 0);
-  const cant = ownCant.length + (figures?.cantTell ?? 0);
-  const credits = sms * PARTS_PER_TEXT;
-  const on = (['email', 'sms'] as const).filter((channel) => ticks[channel]);
-
-  return {
-    count,
-    already: already.length,
-    named: already.filter((person) => person.companion !== true).slice(0, 2),
-    choice: fresh.length > 0 && already.length > 0,
-    pills: on.map((channel) => ({ channel, count: channel === 'email' ? email : sms })),
-    cant,
-    cantNamed: [
-      ...ownCant.map((person) => ({ name: person.name, why: whyNot(person, ticks) })),
-      ...(figures?.names ?? []),
-    ].slice(0, 2),
-    credits:
-      on.length === 0
-        ? null
-        : credits === 0
-          ? MW.emailNoCredits
-          : `${mw.many('textsUse', credits)} ${mw.filled(MW.creditsAfter, { count: balance - credits })}`,
-    reached: count - cant,
-    refused: count - cant <= 0,
-    ids: own.filter((person) => reaches(person, ticks)).map((person) => person.id),
-  };
-}
-
-export function refusalTitle(count: number): string {
-  return lw.many('cannotTitle', count);
-}
-
-export function refusalLine(count: number): string {
-  return lw.many('nobody', count);
-}
-
-export function inviteLines(greet: string): { title: string; lines: string[] } {
-  return {
-    title: mw.filled(MW.inviteSubject, { event: EVENT_NAME, hosts: HOSTS }),
-    lines: [
-      mw.filled(MW.dear, { greeting: greet }),
-      mw.filled(MW.invitedOn, { event: EVENT_NAME, date: INVITE.date }),
-      mw.filled(MW.willYou, { replyBy: REPLY_BY }),
-      [MW.replyYes, MW.replyNo, MW.replyNotSure].join(' · '),
-    ],
-  };
-}
-
-export function emailLines(): { from: string; foot: readonly string[]; stop: string } {
-  return {
-    from: mw.filled(MW.emailFrom, { organisation: HOSTS }),
-    foot: [
-      IW.eachAnswer,
-      IW.yoursAlone,
-      iw.filled(IW.sentBecause, { organisation: ORGANISATION, event: EVENT_NAME }),
-    ],
-    stop: mw.filled(MW.stopEmails, { organisation: ORGANISATION }),
-  };
-}
-
-/** The text in plain punctuation, so it stays in GSM-7 (one part to 160, then 153 a part), counted with their short link. */
-export function smsOf(name: string): { text: string; chars: number; parts: number } {
-  const text = iw
-    .filled(IW.smsLine, {
-      hosts: HOSTS,
-      name,
-      event: EVENT_NAME,
-      date: INVITE.date,
-      replyBy: REPLY_BY,
-      link: THEIR_LINK,
-    })
-    .replaceAll('’', "'");
-  const chars = text.length - THEIR_LINK.length + LINK_CHARS;
-
-  return { text, chars, parts: chars <= 160 ? 1 : Math.ceil(chars / 153) };
-}
-
-export function inviteDraftOf(invite: Invite, step: Draft['step'], thread: ConvoId = 'new'): Draft {
-  return {
-    thread,
-    to: NOT_INVITED,
-    ticks: { email: true, sms: true, whatsApp: false },
-    subject: MW.invitation,
-    body: [],
-    step,
-    seed: 0,
-    invite,
-  };
-}
-
-export function inviteToLine(
-  to: Audience,
-  one: string | undefined,
-  groups: readonly Group[],
-): string {
-  if (one == null) return toLine(to, groups);
-
-  const name = inviteAudienceOf(to, { one }, groups).everyone[0]?.name ?? '';
-
-  return mw.filled(MW.toAudience, { audience: name });
-}
-
-/** The invitation as it goes: the reach is counted once, at Send, from the check. */
-export function inviteGoing(draft: Draft, groups: readonly Group[]): InviteOut | undefined {
-  const invite = draft.invite;
-
-  if (invite == null) return undefined;
-
-  const check = inviteCheckOf(draft.to, invite, draft.ticks, groups);
-  const audience = inviteAudienceOf(draft.to, invite, groups);
-
-  return {
-    note: invite.note,
-    again: invite.again,
-    count: check.count,
-    reached: check.reached,
-    ids: check.ids,
-    greet: audience.everyone[0]?.greet ?? '',
-    ...(invite.one == null ? {} : { one: invite.one }),
-  };
-}
-
-function seedDraft(state: InviteState): Draft | null {
-  const fresh: Invite = { note: '', again: false };
+export function inviteSeedOf(state: string | null): InviteSeed | null {
+  const draft = (
+    to: Audience,
+    step: 'write' | 'preview' | 'check',
+    invite: InviteDraft = NO_NOTE,
+    openTo = false,
+  ): InviteSeed => ({ kind: 'draft', to, step, openTo, invite });
 
   switch (state) {
     case 'inviteWrite':
-      return inviteDraftOf(fresh, 'write');
+      return draft(NOT_YET_INVITED, 'write');
+    case 'inviteTo':
+      return draft(NOT_YET_INVITED, 'write', NO_NOTE, true);
     case 'inviteWriteOne':
-      return inviteDraftOf({ ...fresh, one: 'bisi' }, 'write');
+      return draft(guestAudience('bisi'), 'write');
     case 'inviteNote':
-      return inviteDraftOf({ ...fresh, note: NOTE }, 'write');
+      return draft(NOT_YET_INVITED, 'write', WITH_NOTE);
     case 'inviteNoteLong':
-      return inviteDraftOf({ ...fresh, note: LONG_NOTE, tooLong: true }, 'write');
+      return draft(NOT_YET_INVITED, 'write', {
+        ...NO_NOTE,
+        note: TOO_LONG_NOTE,
+        wrong: true,
+        pressed: true,
+      });
     case 'invitePreview':
-      return inviteDraftOf(fresh, 'preview');
+      return draft(NOT_YET_INVITED, 'preview', { ...NO_NOTE, previewAs: 'bisi' });
     case 'invitePreviewNote':
-      return inviteDraftOf({ ...fresh, note: NOTE }, 'preview');
+      return draft(NOT_YET_INVITED, 'preview', { ...WITH_NOTE, previewAs: 'bisi' });
     case 'invitePreviewSms':
-      return inviteDraftOf({ ...fresh, as: 'yusuf' }, 'preview');
+      return draft(NOT_YET_INVITED, 'preview', { ...WITH_NOTE, previewAs: 'yusuf' });
     case 'inviteCheck':
-      return inviteDraftOf(fresh, 'check');
+      return draft(NOT_YET_INVITED, 'check', WITH_NOTE);
     case 'inviteCheckSome':
-      return { ...inviteDraftOf(fresh, 'check'), to: { kind: 'all' } };
+      return draft({ kind: 'all' }, 'check');
     case 'inviteCheckAgain':
-      return { ...inviteDraftOf({ ...fresh, again: true }, 'check'), to: { kind: 'all' } };
+      return draft({ kind: 'all' }, 'check', { ...NO_NOTE, again: true });
     case 'inviteCheckSeeAll':
-      return { ...inviteDraftOf({ ...fresh, seeAll: true }, 'check'), to: { kind: 'all' } };
+      return draft({ kind: 'all' }, 'check', { ...NO_NOTE, seeAll: 'already' });
     case 'inviteCheckAll':
-      return inviteDraftOf({ ...fresh, one: 'emeka' }, 'check');
+      return draft(guestAudience('emeka'), 'check');
     case 'inviteRefused':
-      return inviteDraftOf({ ...fresh, one: 'joaquin' }, 'check');
+      return draft(guestAudience('joaquin'), 'check');
+    case 'inviteCountdown':
+      return {
+        kind: 'out',
+        to: NOT_YET_INVITED,
+        stage: 'countdown',
+        left: 7,
+        invite: { note: NOTE },
+      };
+    case 'inviteSent':
+      return { kind: 'out', to: NOT_YET_INVITED, stage: 'sent', left: 0, invite: { note: NOTE } };
     default:
       return null;
   }
-}
-
-/** Each invitation state's inbox, on top of B's own. */
-export function inviteSeedOf(state: InviteState, base: Inbox): Inbox {
-  const draft = seedDraft(state);
-
-  if (draft != null) return { ...base, pane: { kind: 'compose' }, draft };
-
-  const going = inviteDraftOf({ note: NOTE, again: false }, 'check');
-  const invite = inviteGoing(going, []);
-  const out: Out = {
-    thread: 'new',
-    subject: MW.invitation,
-    body: [],
-    to: NOT_INVITED,
-    ticks: going.ticks,
-    stage: state === 'inviteCountdown' ? 'countdown' : 'sent',
-    left: 7,
-    at: NOW,
-    seen: 3,
-    ...(invite == null ? {} : { invite }),
-  };
-
-  return { ...base, pane: { kind: 'convo', id: 'new' }, outs: [out] };
 }

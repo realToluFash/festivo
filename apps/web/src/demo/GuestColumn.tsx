@@ -35,7 +35,6 @@ import {
   ReplyMark,
 } from './GuestsParts.tsx';
 import { GW, HOW_INVITED, type HowInvited, REPLY_WORDS } from './guestsWords.ts';
-import { IW } from './messagesInviteWords.ts';
 import { GUESTS as CONVERSATIONS, MESSAGES_AT } from './messages.ts';
 import { Turning } from './DataControlParts.tsx';
 import { THEIR_WORDS } from './guestRequest.ts';
@@ -51,6 +50,7 @@ export interface GuestActions {
   onEdit: () => void;
   onReopen: () => void;
   onCopy: () => void;
+  onSendInvitation: () => void;
   onReplace: () => void;
   onInvite: (invite: Invite | null) => void;
   onMark: (how: HowInvited) => void;
@@ -60,8 +60,6 @@ export interface GuestActions {
   onNotSent: () => void;
   /** The mark from the question: false when it was not saved and the question stays. */
   onSent: () => boolean;
-  /** sc-3971: New message on the invitation, To this guest alone; only where Messages can send it. */
-  onInvitation?: (() => void) | undefined;
 }
 
 type Step = { label: string; does: () => void } | null;
@@ -477,16 +475,16 @@ function Invitation({
               />
             </li>
           )}
-          {invites && actions.onInvitation != null && (
+          {invites && (
             <li>
               <button
                 type="button"
                 className="desk-row gs-do"
                 data-focus="send-invitation"
-                onClick={actions.onInvitation}
+                onClick={actions.onSendInvitation}
               >
                 <IconLead name="mail" />
-                <RowWords title={IW.sendInvitation} lines={[IW.sendInvitationLine]} />
+                <RowWords title={GW.sendInvitation} lines={[GW.sendInvitationLine]} />
               </button>
             </li>
           )}

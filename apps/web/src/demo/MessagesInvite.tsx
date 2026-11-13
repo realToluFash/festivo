@@ -1,81 +1,112 @@
-import { type KeyboardEvent, useId, useRef, useState } from 'react';
+import { useEffect, useId, useRef, useState } from 'react';
 
-import { Glyph } from '../components/Glyph.tsx';
+import { currentLocale } from '../i18n/index.ts';
 import { offButton } from '../offButton.ts';
+import { Glyph } from '../components/Glyph.tsx';
+import { useLater } from '../useLater.ts';
 import {
   type Draft,
+  type Untellable,
   EVENT_NAME,
   HOSTS,
+  INVITE,
   MW,
+  ORGANISATION,
   PAGE_WHEN,
+  byName,
   channelWord,
   filled,
+  inviteCheck,
   many,
+  refusalOf,
 } from './messages.ts';
 import { useInbox } from './messagesContext.ts';
-import { OnEscape, TickChip } from './MessagesCompose.tsx';
 import {
-  type Invite,
-  type InvitePerson,
+  type InviteDraft,
+  type InviteRefusal,
+  INVITE_CHANNELS,
+  INVITE_WORLD,
   IW,
-  emailLines,
-  inviteAudienceOf,
-  inviteChipWords,
-  inviteCheckOf,
-  inviteGoing,
-  inviteLines,
-  iw,
-  noteProblem,
-  refusalLine,
-  refusalTitle,
-  smsOf,
+  REPLY_BY,
+  firstOf,
+  greetingOf,
+  inviteSmsOf,
+  noteRefusal,
+  noteTooLong,
+  previewPeople,
+  weddingAbout,
 } from './messagesInvite.ts';
+import type { OneGuest } from './messagesTo.ts';
+import { chipWords } from './messagesTo.ts';
+import { OnEscape, TickChip } from './MessagesCompose.tsx';
 import { WhereGlyph } from './MessagesParts.tsx';
-import { PreviewAs } from './MessagesPreview.tsx';
+import { FILL_MS, PreviewAs, PreviewBones } from './MessagesPreview.tsx';
 import { PW } from './messagesPreviewWords.ts';
 import { ToPopover } from './MessagesTo.tsx';
+import { demoWords } from './demoWords.ts';
 import './messagesInvite.css';
 
-const INVITE_CHANNELS = ['email', 'sms'] as const;
-const LANGUAGES = new Intl.DisplayNames(['en'], { type: 'language' });
+const iw = demoWords(IW);
+const ANSWERS = [MW.replyYes, MW.replyNo, MW.replyNotSure];
 
-function sendKeys(event: KeyboardEvent, then: () => void): void {
-  if (event.key !== 'Enter' || !(event.metaKey || event.ctrlKey)) return;
-
-  event.preventDefault();
-  then();
+function invitationLines(guest: OneGuest): { subject: string; lines: string[] } {
+  return {
+    subject: filled(MW.inviteSubject, { event: EVENT_NAME, hosts: HOSTS }),
+    lines: [
+      filled(MW.dear, { greeting: greetingOf(guest) }),
+      filled(MW.invitedOn, { event: EVENT_NAME, date: INVITE.date }),
+      filled(MW.willYou, { replyBy: REPLY_BY }),
+    ],
+  };
 }
 
-/** New message on the invitation (sc-3971): To and Email and SMS at its head, Soirely's words shown and not edited, and the hosts' note in the box. */
-export function InviteCompose({ opening }: { opening: boolean }) {
+/** An invitation on the composer (sc-3971): To and Let them know by at the head, Soirely's invitation as the first guest sees it, the check, and the note for their page at the foot. */
+export function InviteCompose() {
   const { inbox, act, focus, to: event } = useInbox();
   const draft = inbox.draft;
-  const [toOpen, setToOpen] = useState(opening || draft?.openTo === true);
+  const [toOpen, setToOpen] = useState(draft?.openTo === true);
+  const [refused, setRefused] = useState<string | null>(null);
   const chip = useRef<HTMLButtonElement>(null);
   const byId = useId();
+  const { viewed } = event;
+
+  useEffect(() => viewed(), [viewed]);
 
   if (draft?.invite == null) return null;
 
+  const current = draft;
   const invite = draft.invite;
   const groups = event.book.groups;
-  const audience = inviteAudienceOf(draft.to, invite, groups);
-  const first = audience.everyone[0] ?? null;
-  const set = (next: Partial<Invite>) =>
+  const first = firstOf(draft.to, groups);
+
+  function update(next: Partial<InviteDraft>): void {
     act({ kind: 'draft', draft: { invite: { ...invite, ...next } } });
+  }
 
   function send(): void {
-    if (noteProblem(invite.note) != null) {
-      set({ tooLong: true });
-      focus('note');
+    const why = refusalOf(current.to, groups, INVITE_WORLD);
+
+    if (why != null) {
+      setRefused(why);
+      focus('refused');
       return;
     }
-    act({ kind: 'draft', draft: { step: 'check', invite: { ...invite, seeAll: false } } });
+    setRefused(null);
+    if (noteTooLong(invite.note)) {
+      update({ wrong: true, pressed: true });
+      focus('body');
+      return;
+    }
+    act({
+      kind: 'draft',
+      draft: { step: 'check', invite: { ...invite, wrong: false, pressed: true } },
+    });
     focus('check');
   }
 
   function edit(): void {
     act({ kind: 'draft', draft: { step: 'write' } });
-    focus('note');
+    focus('body');
   }
 
   return (
@@ -95,19 +126,18 @@ export function InviteCompose({ opening }: { opening: boolean }) {
                 data-focus="to-chip"
                 onClick={() => setToOpen((open) => !open)}
               >
-                {inviteChipWords(draft.to, invite, audience)}
+                {chipWords(draft.to, event.book, INVITE_WORLD)}
                 <Glyph name="chevdown" size={14} weight={2.6} />
               </button>
               {toOpen && (
                 <ToPopover
                   to={draft.to}
                   chip={chip}
-                  onPick={(to) =>
-                    act({
-                      kind: 'draft',
-                      draft: { to, invite: { note: invite.note, again: invite.again } },
-                    })
-                  }
+                  invite
+                  onPick={(to) => {
+                    act({ kind: 'draft', draft: { to } });
+                    setRefused(null);
+                  }}
                   onClose={(back) => {
                     setToOpen(false);
                     if (back) focus('to-chip');
@@ -124,58 +154,57 @@ export function InviteCompose({ opening }: { opening: boolean }) {
           </div>
         </header>
       )}
-      <div className={draft.step === 'preview' ? 'mg-compose-body is-top' : 'mg-compose-body'}>
-        {draft.step === 'preview' ? (
-          <InvitePreview draft={draft} invite={invite} people={audience.everyone} />
-        ) : (
-          <>
-            <InviteWords person={first} />
-            {draft.step === 'check' && (
-              <InviteCheck draft={draft} invite={invite} onChange={edit} />
-            )}
+      {draft.step === 'preview' ? (
+        <>
+          <div className="mg-compose-body is-top">
+            <InvitePreview draft={draft} invite={invite} />
+          </div>
+          <div className="mg-preview-bar">
+            <button type="button" className="desk-text" data-focus="preview-edit" onClick={edit}>
+              <Glyph name="pen" size={17} weight={2.2} />
+              {MW.edit}
+            </button>
+            <button type="button" className="desk-text" aria-pressed="true" onClick={edit}>
+              <Glyph name="eye" size={17} weight={2.2} />
+              {MW.previewOn}
+            </button>
+            <span className="today-grow" />
+            <button type="button" className="mg-send" aria-label={MW.send} onClick={send}>
+              <Glyph name="send" size={20} weight={2.4} />
+            </button>
+          </div>
+        </>
+      ) : (
+        <>
+          <div className="mg-compose-body">
+            {first != null && <Inset guest={first} />}
+            {draft.step === 'check' && <InviteCard draft={draft} invite={invite} />}
             {draft.step === 'write' && inbox.cancelled && (
               <p className="mg-status" role="status">
                 <Glyph name="info" size={15} weight={2.2} />
                 {IW.cancelled}
               </p>
             )}
-          </>
-        )}
-      </div>
-      {draft.step === 'preview' ? (
-        <div className="mg-preview-bar">
-          <button type="button" className="desk-text" data-focus="preview-edit" onClick={edit}>
-            <Glyph name="pen" size={17} weight={2.2} />
-            {MW.edit}
-          </button>
-          <button type="button" className="desk-text" aria-pressed="true" onClick={edit}>
-            <Glyph name="eye" size={17} weight={2.2} />
-            {MW.previewOn}
-          </button>
-          <span className="today-grow" />
-          <button type="button" className="mg-send" aria-label={MW.send} onClick={send}>
-            <Glyph name="send" size={20} weight={2.4} />
-          </button>
-        </div>
-      ) : (
-        <NoteBox
-          invite={invite}
-          held={draft.step !== 'write'}
-          previewOff={first == null ? PW.nobodyToPreview : null}
-          onNote={(note) =>
-            set({ note, tooLong: invite.tooLong === true && noteProblem(note) != null })
-          }
-          onSend={send}
-          onPreview={() => {
-            act({ kind: 'draft', draft: { step: 'preview' } });
-            focus('preview-edit');
-          }}
-        />
+          </div>
+          <NoteBox
+            invite={invite}
+            held={draft.step === 'check'}
+            refused={refused}
+            previewOff={first == null ? PW.nobodyToPreview : null}
+            onNote={update}
+            onSend={send}
+            onPreview={() => {
+              act({ kind: 'draft', draft: { step: 'preview' } });
+              focus('preview-edit');
+            }}
+          />
+        </>
       )}
     </div>
   );
 }
 
+/** Email and SMS only: an invitation has no WhatsApp yet (pm, 13 Nov; sc-45251). */
 function InviteTicks({ draft }: { draft: Draft }) {
   const { act } = useInbox();
 
@@ -198,77 +227,109 @@ function InviteTicks({ draft }: { draft: Draft }) {
   );
 }
 
-/** Soirely's own words, a grey inset as Tell guests has them, filled in for the first guest A to Z. */
-function InviteWords({ person }: { person: InvitePerson | null }) {
-  const words = inviteLines(person?.greet ?? '');
+function Inset({ guest }: { guest: OneGuest }) {
+  const headId = useId();
+  const words = invitationLines(guest);
 
   return (
-    <div className="mg-tell-part mi-words">
-      <p className="mg-tell-label">
-        {person == null ? MW.invitation : iw.filled(IW.asSeenBy, { name: person.name })}
-      </p>
-      <div className="mg-tell-box mi-box">
-        <p className="mi-box-title">{words.title}</p>
-        {(person == null ? words.lines.slice(1) : words.lines).map((line) => (
+    <section className="mgi-inset" aria-labelledby={headId}>
+      <h3 id={headId} className="mgi-inset-head">
+        <span className="mgi-inset-name">{MW.invitation}</span>
+        {` · ${filled(MW.previewAs, { name: guest.name })}`}
+      </h3>
+      <div className="mg-tell-box mgi-inset-box">
+        <p className="mgi-subject">{words.subject}</p>
+        {words.lines.map((line) => (
           <p key={line}>{line}</p>
         ))}
+        <p className="mgi-answers">{ANSWERS.join(' · ')}</p>
       </div>
       <p className="mg-tell-hint">{MW.eachLanguage}</p>
-    </div>
+    </section>
   );
 }
 
 function NoteBox({
   invite,
   held,
+  refused,
   previewOff,
   onNote,
   onSend,
   onPreview,
 }: {
-  invite: Invite;
+  invite: InviteDraft;
   held: boolean;
+  refused: string | null;
   previewOff: string | null;
-  onNote: (note: string) => void;
+  onNote: (next: Partial<InviteDraft>) => void;
   onSend: () => void;
   onPreview: () => void;
 }) {
   const noteId = useId();
   const hintId = useId();
   const wrongId = useId();
+  const refusedId = useId();
   const offId = useId();
-  const problem = invite.tooLong === true ? noteProblem(invite.note) : null;
+  const wrong = invite.wrong ? noteRefusal(invite.note) : null;
 
   return (
     <form
-      className={held ? 'mg-composer is-held' : 'mg-composer'}
-      onSubmit={(event) => {
-        event.preventDefault();
+      className={[
+        'mg-composer mgi-note-box',
+        held ? 'is-held' : '',
+        wrong == null ? '' : 'is-wrong',
+      ].join(' ')}
+      onSubmit={(press) => {
+        press.preventDefault();
         onSend();
       }}
     >
-      <label htmlFor={noteId} className="mg-tell-label mi-note-label">
-        {IW.noteForGuests}
+      <label htmlFor={noteId} className="mg-tell-label">
+        {MW.noteForGuests}
         <span className="mg-optional">{MW.optional}</span>
       </label>
       <textarea
         id={noteId}
-        className={problem == null ? 'mg-tell-note mi-note' : 'mg-tell-note mi-note is-wrong'}
+        className="mgi-note"
+        rows={1}
         value={invite.note}
         readOnly={held}
-        aria-invalid={problem != null || undefined}
-        aria-describedby={problem == null ? hintId : `${wrongId} ${hintId}`}
-        data-focus="note"
-        onChange={(event) => onNote(event.target.value)}
-        onKeyDown={(event) => sendKeys(event, onSend)}
+        aria-invalid={wrong == null ? undefined : true}
+        aria-describedby={wrong == null ? hintId : `${wrongId} ${hintId}`}
+        aria-keyshortcuts="Meta+Enter Control+Enter"
+        data-focus="body"
+        onChange={(typed) => {
+          const note = typed.target.value;
+
+          onNote({ note, wrong: invite.wrong && noteTooLong(note) });
+        }}
+        onBlur={() => {
+          if (invite.pressed && !held) onNote({ wrong: noteTooLong(invite.note) });
+        }}
+        onKeyDown={(key) => {
+          if (key.key !== 'Enter' || !(key.metaKey || key.ctrlKey)) return;
+          key.preventDefault();
+          onSend();
+        }}
       />
-      {problem != null && (
-        <p id={wrongId} className="mg-tell-hint is-wrong">
+      {wrong != null && (
+        <p id={wrongId} className="mg-tell-hint is-wrong" role="alert">
           <Glyph name="alert" size={15} weight={2.2} />
-          {problem}
+          {wrong}
         </p>
       )}
-      {!held && (
+      {refused != null && (
+        <p id={refusedId} className="desk-error" role="alert" tabIndex={-1} data-focus="refused">
+          <Glyph name="alert" size={15} weight={2.2} />
+          {refused}
+        </p>
+      )}
+      {held ? (
+        <p id={hintId} className="mg-tell-hint">
+          {IW.noteHint}
+        </p>
+      ) : (
         <div className="mg-tools">
           <button
             type="button"
@@ -281,7 +342,7 @@ function NoteBox({
             <Glyph name="eye" size={17} weight={2.2} />
             {MW.preview}
           </button>
-          <span id={hintId} className="mg-goes-page mi-hint">
+          <span id={hintId} className="mg-goes-page">
             {IW.noteHint}
           </span>
           <button
@@ -289,6 +350,7 @@ function NoteBox({
             className="mg-send"
             aria-label={MW.send}
             aria-keyshortcuts="Meta+Enter Control+Enter"
+            aria-describedby={refused == null ? undefined : refusedId}
             data-focus="send"
           >
             <Glyph name="send" size={20} weight={2.4} />
@@ -305,192 +367,58 @@ function NoteBox({
   );
 }
 
-/** The check on an invitation: B's card, with who already has it under the title and nobody within reach refused. */
-function InviteCheck({
-  draft,
-  invite,
-  onChange,
+function CantLines({
+  head,
+  count,
+  names,
+  onSeeAll,
 }: {
-  draft: Draft;
-  invite: Invite;
-  onChange: () => void;
+  head: string | null;
+  count: number;
+  names: InviteRefusal['cantNames'];
+  onSeeAll: () => void;
 }) {
-  const { inbox, act, focus, tell, to } = useInbox();
-  const groups = to.book.groups;
-  const check = inviteCheckOf(draft.to, invite, draft.ticks, groups, inbox.balance);
-  const sentenceId = useId();
-  const radios = useId();
-  const set = (next: Partial<Invite>) =>
-    act({ kind: 'draft', draft: { invite: { ...invite, ...next } } });
-  const change = (
-    <button
-      type="button"
-      className="desk-text"
-      onClick={() => {
-        onChange();
-        focus('note');
-      }}
-    >
-      {MW.changeIt}
-    </button>
-  );
-  const cant = check.cant > 0 && (
+  return (
     <div className="mg-cant">
-      {!check.refused && <p className="mg-cant-head">{iw.many('cantBeReached', check.cant)}</p>}
-      {check.cantNamed.map((one) => (
+      {head != null && <p className="mg-cant-head">{head}</p>}
+      {names.map((one) => (
         <p key={one.name}>{[one.name, ...one.why].join(' · ')}</p>
       ))}
-      {check.cant > check.cantNamed.length && (
-        <button
-          type="button"
-          className="desk-text"
-          onClick={() => tell(`${filled(MW.seeAll, { count: check.cant })} has its own design.`)}
-        >
-          {filled(MW.seeAll, { count: check.cant })}
+      {count > names.length && (
+        <button type="button" className="desk-text" data-focus="see-all-cant" onClick={onSeeAll}>
+          {filled(MW.seeAll, { count })}
         </button>
-      )}
-    </div>
-  );
-
-  return (
-    <div
-      className="mg-check mi-check"
-      role="alertdialog"
-      aria-label={MW.checkName}
-      aria-describedby={sentenceId}
-    >
-      <OnEscape
-        then={() => {
-          act({ kind: 'draft', draft: { step: 'write' } });
-          focus('send');
-        }}
-      />
-      {check.refused ? (
-        <>
-          <p id={sentenceId} className="mg-check-sentence" tabIndex={-1} data-focus="check">
-            {refusalTitle(check.count)}
-          </p>
-          <p className="mg-check-line mi-refused">
-            <Glyph name="alert" size={15} weight={2.2} />
-            {refusalLine(check.count)}
-          </p>
-          <InviteTicks draft={draft} />
-          {cant}
-          <div className="mg-check-acts">{change}</div>
-        </>
-      ) : (
-        <>
-          <p id={sentenceId} className="mg-check-sentence" tabIndex={-1} data-focus="check">
-            {many('cannotUndo', check.count)}
-          </p>
-          {invite.seeAll === true ? (
-            <AlreadyAll draft={draft} invite={invite} onBack={() => set({ seeAll: false })} />
-          ) : (
-            <>
-              {check.already > 0 && (
-                <div className="mg-cant mi-already">
-                  <p className="mg-cant-head">{iw.many('already', check.already)}</p>
-                  {check.named.map((one) => (
-                    <p key={one.id}>{`${one.name} · ${one.line}`}</p>
-                  ))}
-                  {check.already > check.named.length && (
-                    <button
-                      type="button"
-                      className="desk-text"
-                      onClick={() => {
-                        set({ seeAll: true });
-                        focus('back-check');
-                      }}
-                    >
-                      {filled(MW.seeAll, { count: check.already })}
-                    </button>
-                  )}
-                </div>
-              )}
-              {check.choice && (
-                <fieldset className="mg-radios mi-radios">
-                  <legend className="desk-unseen">{iw.many('already', check.already)}</legend>
-                  {[false, true].map((again) => (
-                    <label key={String(again)} className="mg-radio-row">
-                      <input
-                        type="radio"
-                        name={radios}
-                        className="desk-radio"
-                        checked={invite.again === again}
-                        onChange={() => set({ again })}
-                      />
-                      {again ? IW.sendAgain : IW.leaveThemOut}
-                    </label>
-                  ))}
-                </fieldset>
-              )}
-              <InviteTicks draft={draft} />
-              {check.pills.length > 0 && (
-                <ul className="mg-pills">
-                  {check.pills.map((pill) => (
-                    <li key={pill.channel}>
-                      <WhereGlyph where={pill.channel} size={15} />
-                      {channelWord(pill.channel)} · {pill.count}
-                    </li>
-                  ))}
-                </ul>
-              )}
-              {cant}
-              {check.credits != null && <p className="mg-credits">{check.credits}</p>}
-            </>
-          )}
-          <div className="mg-check-acts">
-            <button
-              type="button"
-              className="button button-primary mg-go"
-              data-focus="go"
-              onClick={() => {
-                act({ kind: 'go', invite: inviteGoing(draft, groups) });
-                focus('cancel');
-              }}
-            >
-              {many('sendTo', check.count)}
-            </button>
-            {change}
-          </div>
-        </>
       )}
     </div>
   );
 }
 
-/** See all, open in the card: everyone who already has their invitation, A to Z, with how and when. */
-function AlreadyAll({
-  draft,
-  invite,
+/** See all, open in the card as sc-3954's: everyone in it A to Z, each with their line; the actions stay under it. */
+function InviteSeeAll({
+  head,
+  people,
   onBack,
 }: {
-  draft: Draft;
-  invite: Invite;
+  head: string;
+  people: readonly Untellable[];
   onBack: () => void;
 }) {
-  const { focus, to } = useInbox();
-  const { already } = inviteAudienceOf(draft.to, invite, to.book.groups);
+  const headId = useId();
 
   return (
-    <div className="mi-all">
-      <button
-        type="button"
-        className="desk-text"
-        data-focus="back-check"
-        onClick={() => {
-          onBack();
-          focus('check');
-        }}
-      >
-        <Glyph name="back" size={17} weight={2.3} />
-        {IW.backToCheck}
+    <div className="mg-all">
+      <button type="button" className="desk-text mg-all-back" onClick={onBack}>
+        <Glyph name="back" size={17} weight={2.2} />
+        {MW.backToCheck}
       </button>
-      <ul className="mi-all-list" aria-label={iw.many('already', already.length)}>
-        {already.map((one) => (
-          <li key={one.id}>
-            <span className="mi-all-name">{one.name}</span>
-            <span className="mi-all-line">{one.line}</span>
+      <p id={headId} className="mg-cant-head" tabIndex={-1} data-focus="see-all">
+        {head}
+      </p>
+      <ul className="mg-all-list" aria-labelledby={headId}>
+        {byName(people, currentLocale()).map((one) => (
+          <li key={one.name} className="mg-all-row">
+            <span className="mg-all-name">{one.name}</span>
+            <span>{one.why.join(' · ')}</span>
           </li>
         ))}
       </ul>
@@ -498,121 +426,287 @@ function AlreadyAll({
   );
 }
 
-function languageLine(person: InvitePerson): string {
-  if (person.language == null)
-    return filled(PW.organisationLanguage, { language: LANGUAGES.of('en') ?? 'English' });
+/** The invitation's check, or why it cannot go (sc-3971): a card in the stream, Escape and Change it give the note back. */
+function InviteCard({ draft, invite }: { draft: Draft; invite: InviteDraft }) {
+  const { inbox, act, focus, to } = useInbox();
+  const result = inviteCheck(draft, inbox.balance, to.book.groups);
+  const sentenceId = useId();
+  const alreadyId = useId();
+  const choice = useId();
+  const listing =
+    invite.seeAll === 'already' && result.kind === 'check' && result.already > 0
+      ? { head: iw.many('alreadyHave', result.already), people: result.alreadyAll }
+      : invite.seeAll === 'cant' && result.cant > 0
+        ? { head: iw.many('cantBeReached', result.cant), people: result.cantAll }
+        : null;
+  const { seeAll: _open, ...shut } = invite;
 
-  const language = LANGUAGES.of(person.language.code) ?? person.language.code;
+  function back(): void {
+    act({ kind: 'draft', draft: { step: 'write', invite: shut } });
+    focus('send');
+  }
 
-  return filled(person.language.chose ? PW.choseLanguage : MW.inLanguage, { language });
+  function seeAll(open: 'already' | 'cant' | null): void {
+    act({ kind: 'draft', draft: { invite: open == null ? shut : { ...invite, seeAll: open } } });
+    focus(open == null ? `see-all-${invite.seeAll ?? 'already'}` : 'see-all');
+  }
+
+  const close = listing == null ? back : () => seeAll(null);
+  const seeAllList = listing != null && (
+    <InviteSeeAll head={listing.head} people={listing.people} onBack={() => seeAll(null)} />
+  );
+
+  if (result.kind === 'refused')
+    return (
+      <div
+        className="mg-check"
+        role="alertdialog"
+        aria-label={MW.checkName}
+        aria-describedby={sentenceId}
+      >
+        <OnEscape then={close} />
+        <p id={sentenceId} className="mg-check-sentence" tabIndex={-1} data-focus="check">
+          {result.title}
+        </p>
+        {seeAllList || (
+          <>
+            <p className="mg-check-line">{result.reason}</p>
+            <InviteTicks draft={draft} />
+            {result.cantNames.length > 0 && (
+              <CantLines
+                head={null}
+                count={result.cant}
+                names={result.cantNames}
+                onSeeAll={() => seeAll('cant')}
+              />
+            )}
+          </>
+        )}
+        <div className="mg-check-acts">
+          <button type="button" className="desk-text" onClick={back}>
+            {MW.changeIt}
+          </button>
+        </div>
+      </div>
+    );
+
+  return (
+    <div
+      className="mg-check"
+      role="alertdialog"
+      aria-label={MW.checkName}
+      aria-describedby={sentenceId}
+    >
+      <OnEscape then={close} />
+      <p id={sentenceId} className="mg-check-sentence" tabIndex={-1} data-focus="check">
+        {many('cannotUndo', result.count)}
+      </p>
+      {seeAllList || (
+        <>
+          {result.already > 0 && (
+            <div className="mgi-already">
+              <p id={alreadyId} className="mg-cant-head">
+                {iw.many('alreadyHave', result.already)}
+              </p>
+              {result.named.map((one) => (
+                <p key={one.name} className="mgi-named">
+                  {[one.name, ...one.why].join(' · ')}
+                </p>
+              ))}
+              {result.already > result.named.length && (
+                <button
+                  type="button"
+                  className="desk-text"
+                  data-focus="see-all-already"
+                  onClick={() => seeAll('already')}
+                >
+                  {filled(MW.seeAll, { count: result.already })}
+                </button>
+              )}
+              {result.choose && (
+                <div className="mgi-choice" role="radiogroup" aria-labelledby={alreadyId}>
+                  {[false, true].map((value) => (
+                    <label key={String(value)} className="mg-radio-row">
+                      <input
+                        type="radio"
+                        name={choice}
+                        className="desk-radio"
+                        checked={invite.again === value}
+                        onChange={() =>
+                          act({ kind: 'draft', draft: { invite: { ...invite, again: value } } })
+                        }
+                      />
+                      <span>{value ? IW.sendAgain : IW.leaveOut}</span>
+                    </label>
+                  ))}
+                </div>
+              )}
+            </div>
+          )}
+          <InviteTicks draft={draft} />
+          {result.pills.length > 0 && (
+            <ul className="mg-pills">
+              {result.pills.map((pill) => (
+                <li key={pill.channel}>
+                  <WhereGlyph where={pill.channel} size={15} />
+                  {channelWord(pill.channel)} · {pill.count}
+                </li>
+              ))}
+            </ul>
+          )}
+          {result.cant > 0 && (
+            <CantLines
+              head={iw.many('cantBeReached', result.cant)}
+              count={result.cant}
+              names={result.cantNames}
+              onSeeAll={() => seeAll('cant')}
+            />
+          )}
+          {result.credits != null && <p className="mg-credits">{result.credits}</p>}
+        </>
+      )}
+      <div className="mg-check-acts">
+        <button
+          type="button"
+          className="button button-primary mg-go"
+          data-focus="go"
+          onClick={() => {
+            act({ kind: 'go' });
+            focus('cancel');
+          }}
+        >
+          {many('sendTo', result.count)}
+        </button>
+        <button type="button" className="desk-text" onClick={back}>
+          {MW.changeIt}
+        </button>
+      </div>
+    </div>
+  );
 }
 
-/** Preview on the invitation: what Soirely sends one guest by each ticked channel they have, and the note as their page shows it. */
-function InvitePreview({
-  draft,
-  invite,
-  people,
-}: {
-  draft: Draft;
-  invite: Invite;
-  people: readonly InvitePerson[];
-}) {
-  const { act, mesh } = useInbox();
-  const sendsId = useId();
-  const person = people.find((one) => one.id === invite.as) ?? people[0];
+function optionWords(guest: OneGuest): string {
+  return filled(PW.option, { name: guest.name, language: 'English' });
+}
+
+/** The invitation as one guest of the audience gets it: their page with the note, if any, and Soirely's own email and text. */
+function InvitePreview({ draft, invite }: { draft: Draft; invite: InviteDraft }) {
+  const { act, mesh, to } = useInbox();
+  const later = useLater();
+  const people = previewPeople(draft.to, to.book.groups);
+  const [who, setWho] = useState(invite.previewAs ?? people[0]?.id ?? '');
+  const [filling, setFilling] = useState(false);
+  const person = people.find((one) => one.id === who) ?? people[0];
 
   if (person == null) return null;
 
   const note = invite.note.trim();
-  const email = emailLines();
-  const sms = smsOf(person.greet);
-  const words = inviteLines(person.greet);
-  const shownEmail = draft.ticks.email && person.email;
-  const shownSms = draft.ticks.sms && person.mobile;
+  const words = invitationLines(person);
+  const email = draft.ticks.email && person.email;
+  const sms = draft.ticks.sms && person.mobile;
+
+  function pick(id: string): void {
+    setWho(id);
+    setFilling(true);
+    act({ kind: 'draft', draft: { invite: { ...invite, previewAs: id } } });
+    later(FILL_MS, () => setFilling(false));
+  }
 
   return (
     <div className="mg-preview">
       <div className="mg-preview-top">
         <h3 className="mg-preview-heading">{filled(MW.previewAs, { name: person.name })}</h3>
         <PreviewAs
-          options={people.map((one) => ({
-            id: one.id,
-            words: filled(PW.option, {
-              name: one.name,
-              language: LANGUAGES.of(one.language?.code ?? 'en') ?? 'English',
-            }),
-          }))}
           who={person.id}
+          options={people.map((one) => ({ id: one.id, words: optionWords(one) }))}
           first={false}
-          onPick={(as) => act({ kind: 'draft', draft: { invite: { ...invite, as } } })}
+          onPick={pick}
         />
       </div>
-      <div className="mg-preview-cols">
-        {note !== '' && (
-          <div className="mg-page">
-            <div className={`mg-page-cover today-cover is-${mesh}`}>
-              <span className="desk-piece p1" aria-hidden="true" />
-              <span className="desk-piece p2" aria-hidden="true" />
-              <span className="desk-piece p4" aria-hidden="true" />
-              <p className="mg-page-name">{EVENT_NAME}</p>
-              <p className="mg-page-when">{PAGE_WHEN}</p>
-            </div>
-            <figure className="mg-page-figure">
-              <p className="mg-page-subject">{iw.filled(IW.noteFromHosts, { hosts: HOSTS })}</p>
-              <blockquote>{note}</blockquote>
-            </figure>
-          </div>
-        )}
-        {(shownEmail || shownSms) && (
-          <section className="mg-sends" aria-labelledby={sendsId}>
-            <h3 id={sendsId}>{MW.whatSoirelySends}</h3>
-            {shownEmail && (
-              <div className="mg-email">
-                <p className="mg-notice-head">
-                  <WhereGlyph where="email" />
-                  {email.from}
-                </p>
-                <div className="mg-notice-words">
-                  <p>
-                    {words.lines[0]}
-                    <br />
-                    {words.lines[1]}
-                  </p>
-                  {[MW.replyYes, MW.replyNo, MW.replyNotSure].map((answer) => (
-                    <span key={answer} className="mg-email-button">
-                      {answer}
-                    </span>
-                  ))}
-                  {email.foot.map((line) => (
-                    <p key={line} className="mi-email-foot">
-                      {line}
-                    </p>
-                  ))}
-                  <span className="mg-email-stop">{email.stop}</span>
+      <p className="desk-unseen" role="status">
+        {filling ? filled(PW.filling, { name: person.name }) : ''}
+      </p>
+      {filling ? (
+        <PreviewBones name={person.name} />
+      ) : (
+        <>
+          <div className={note === '' ? 'mg-preview-cols mgi-cols-one' : 'mg-preview-cols'}>
+            {note !== '' && (
+              <section
+                className="mg-page"
+                aria-label={filled(IW.onTheirPage, { name: person.name })}
+              >
+                <div className={`mg-page-cover today-cover is-${mesh}`}>
+                  <span className="desk-piece p1" aria-hidden="true" />
+                  <span className="desk-piece p2" aria-hidden="true" />
+                  <span className="desk-piece p4" aria-hidden="true" />
+                  <p className="mg-page-name">{EVENT_NAME}</p>
+                  <p className="mg-page-when">{PAGE_WHEN}</p>
                 </div>
-              </div>
+                <div className="mgi-page-messages">
+                  <h4 className="mgi-page-head">{IW.messages}</h4>
+                  <p className="mgi-page-meta">{filled(IW.noteFrom, { hosts: HOSTS })}</p>
+                  <p className="mgi-page-bubble">{note}</p>
+                </div>
+              </section>
             )}
-            {shownSms && (
-              <div className="mg-notice">
-                <p className="mg-notice-head">
-                  <WhereGlyph where="sms" />
-                  {many('smsParts', sms.parts)}
-                </p>
-                <p className="mg-notice-bubble">{sms.text}</p>
-              </div>
+            {(email || sms) && (
+              <section className="mg-sends" aria-label={MW.whatSoirelySends}>
+                <h3>{MW.whatSoirelySends}</h3>
+                {email && (
+                  <div className="mg-email">
+                    <p className="mg-notice-head">
+                      <WhereGlyph where="email" />
+                      {filled(MW.emailFrom, { organisation: HOSTS })}
+                    </p>
+                    <div className="mg-notice-words">
+                      <p className="mg-email-subject">{words.subject}</p>
+                      {words.lines.map((line) => (
+                        <p key={line}>{line}</p>
+                      ))}
+                      <div className="mgi-email-answers">
+                        {ANSWERS.map((answer) => (
+                          <span key={answer} className="mg-email-button">
+                            {answer}
+                          </span>
+                        ))}
+                      </div>
+                      <p>{IW.eachAnswer}</p>
+                      <p>{IW.notForward}</p>
+                      <p className="mgi-email-why">
+                        {filled(IW.whySent, { organisation: ORGANISATION, event: EVENT_NAME })}
+                      </p>
+                      <span className="mg-email-stop">
+                        {filled(MW.stopEmails, { organisation: ORGANISATION })}
+                      </span>
+                    </div>
+                  </div>
+                )}
+                {sms && (
+                  <div className="mg-notice">
+                    <p className="mg-notice-head">
+                      <WhereGlyph where="sms" />
+                      {many('smsParts', inviteSmsOf(person, weddingAbout()).parts)}
+                    </p>
+                    <p className="mg-notice-bubble mgi-sms">
+                      {inviteSmsOf(person, weddingAbout()).text}
+                    </p>
+                  </div>
+                )}
+              </section>
             )}
-          </section>
-        )}
-      </div>
-      <ul className="mg-preview-lines">
-        <li>
-          {person.greet === person.name
-            ? filled(MW.greetedAs, { name: person.name })
-            : filled(PW.greetedAs, { greetAs: person.greet })}
-        </li>
-        <li>{languageLine(person)}</li>
-        {note !== '' && <li>{MW.onlyOurs}</li>}
-      </ul>
+          </div>
+          <ul className="mg-preview-lines">
+            <li>
+              {person.greetAs == null
+                ? filled(MW.greetedAs, { name: person.name })
+                : filled(PW.greetedAs, { greetAs: person.greetAs })}
+            </li>
+            <li>{filled(PW.organisationLanguage, { language: 'English' })}</li>
+            {note !== '' && <li>{MW.onlyOurs}</li>}
+          </ul>
+        </>
+      )}
     </div>
   );
 }

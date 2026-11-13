@@ -54,10 +54,7 @@ import {
   todayOf,
   viewBase,
   viewOf,
-  WEDDING,
 } from './guests.ts';
-import { inviteDraftOf } from './messagesInvite.ts';
-import { IW } from './messagesInviteWords.ts';
 import { pageKey, useGuestsAddress } from './useGuestsAddress.ts';
 import {
   CHANGES_EVENT,
@@ -82,14 +79,17 @@ import { TheirData } from './TheirData.tsx';
 import { GW, REPLY_WORDS, figure } from './guestsWords.ts';
 import { LayersContext, focusWhenFree } from '../layers.ts';
 import {
+  type Audience,
   MESSAGES_AT,
   NOT_REPLIED,
   changed,
   draftOf,
   freshId,
+  inviteDraftOf,
   keepInbox,
   keptInbox,
 } from './messages.ts';
+import { NOT_YET_INVITED, oneGuestOf } from './messagesInvite.ts';
 import {
   Ask,
   Chevron,
@@ -387,9 +387,7 @@ function GuestsPage({
     if (next == null) focus('guest-heading');
   }
 
-  const sends = manages && event.id === WEDDING && invitesOn(event, start.clock);
   const actions = (id: string): GuestActions => ({
-    onInvitation: sends ? () => writeInvitation(id) : undefined,
     onRecord: () => {
       setPane({ kind: 'record', id, start: {} });
       focus('answer-coming');
@@ -407,6 +405,11 @@ function GuestsPage({
 
       if (navigator.clipboard == null) refused();
       else void navigator.clipboard.writeText(LINK).then(() => invite(id, 'copied'), refused);
+    },
+    onSendInvitation: () => {
+      const one = list.find((guest) => guest.id === id);
+
+      if (one != null) sendInvitations({ kind: 'guest', guest: oneGuestOf(one) });
     },
     onReplace: () => setAsking('replace'),
     onInvite: (next) => invite(id, next),
@@ -467,13 +470,10 @@ function GuestsPage({
     void navigate(MESSAGES_AT);
   }
 
-  function writeInvitation(one?: string): void {
+  function sendInvitations(to: Audience): void {
     const inbox = keptInbox();
-    const invite = one == null ? { note: '', again: false } : { note: '', again: false, one };
 
-    keepInbox(
-      changed(inbox, { kind: 'compose', draft: inviteDraftOf(invite, 'write', freshId(inbox)) }),
-    );
+    keepInbox(changed(inbox, { kind: 'compose', draft: inviteDraftOf(to, freshId(inbox)) }));
     void navigate(MESSAGES_AT);
   }
 
@@ -508,6 +508,8 @@ function GuestsPage({
 
   const plus = manages && status === 'ready' && list.length > 0;
   const exports = (manages || start.role === 'member') && status === 'ready' && list.length > 0;
+  const inviting =
+    manages && status === 'ready' && invitesOn(event, start.clock) && counts.notYet > 0;
   const columns = list.length > 0 || pane.kind === 'add';
   const stepWord =
     card.step === 'add'
@@ -555,14 +557,14 @@ function GuestsPage({
               {XW.export}
             </button>
           )}
-          {sends && status === 'ready' && counts.notYet > 0 && (
+          {inviting && (
             <button
               type="button"
               className="gs-pill is-secondary"
               data-focus="send-invitations"
-              onClick={() => writeInvitation()}
+              onClick={() => sendInvitations(NOT_YET_INVITED)}
             >
-              {IW.sendInvitations}
+              {GW.sendInvitations}
             </button>
           )}
           {plus && (

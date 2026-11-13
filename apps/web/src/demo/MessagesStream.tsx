@@ -22,11 +22,13 @@ import {
   reachFrom,
 } from './messages.ts';
 import { type Bit, useInbox } from './messagesContext.ts';
-import { inviteLines, iw } from './messagesInvite.ts';
+import { IW, REPLY_BY } from './messagesInvite.ts';
 import type { Group } from './messagesTo.ts';
+import { demoWords } from './demoWords.ts';
 import { DayRule, HostBubble, ReachBar, SoirelyCard, SystemLine, Words } from './MessagesParts.tsx';
 
 const RING = 2 * Math.PI * 12.5;
+const iw = demoWords(IW);
 
 /** Ten seconds on the message (sc-3963): said at 10, 5 and 0 only, by the page's status line. */
 export function Countdown({ left, onCancel }: { left: number; onCancel: () => void }) {
@@ -107,90 +109,87 @@ function stageBits(out: Out, compact: boolean, groups: readonly Group[]): Bit[] 
 function OutItem({ out, compact }: { out: Out; compact: boolean }) {
   const { act, focus, to } = useInbox();
   const reach = outReach(out, to.book.groups);
-  const going = (
-    <>
-      {out.stage === 'countdown' && (
-        <Countdown
-          left={out.left}
-          onCancel={() => {
-            act({ kind: 'cancel' });
-            focus(out.invite == null ? 'body' : 'note');
-          }}
-        />
-      )}
-      {out.stage === 'sending' && (
-        <p className="mg-sending">
-          <span className="mg-spin" aria-hidden="true" />
-          {MW.sending} · {filled(MW.reachedSoFar, { count: reach.soFar, total: reach.count })}
-        </p>
-      )}
-      {out.stage === 'sent' && !compact && (
-        <Receipt
-          reach={{
-            reached: reach.reached,
-            of: reach.count,
-            seen: reach.seen,
-            parts: [
-              { kind: 'reached', count: reach.reached },
-              { kind: 'none', count: reach.count - reach.reached },
-            ],
-          }}
-          onWho={() => {
-            act({ kind: 'reached', of: 'new', thread: out.thread });
-            focus('heading');
-          }}
-        />
-      )}
-      {out.stage === 'failed' && (
-        <div className="mg-failed" role="alert">
-          <p>
-            <Glyph name="alert" size={15} weight={2.2} />
-            {MW.failed}
-          </p>
-          <button
-            type="button"
-            className="desk-text"
-            data-focus="try"
-            onClick={() => act({ kind: 'stage', from: 'failed', to: 'sending' })}
-          >
-            <Glyph name="refresh" size={17} weight={2.2} />
-            {MW.tryAgain}
-          </button>
-        </div>
-      )}
-    </>
-  );
-  const look = out.stage === 'failed' ? 'faded' : out.stage === 'countdown' ? 'arriving' : 'sent';
-  const bits = stageBits(out, compact, to.book.groups);
-  const invite = out.invite;
-  const words = invite == null ? null : inviteLines(invite.greet);
+  const note = out.invite?.note.trim() ?? '';
 
   return (
     <>
-      {invite == null || words == null ? (
-        <HostBubble subject={out.subject} body={<Words body={out.body} />} bits={bits} look={look}>
-          {going}
-        </HostBubble>
-      ) : (
-        <>
-          <SoirelyCard title={words.title} lines={words.lines} bits={[{ words: MW.soirelysOwn }]} />
-          {invite.note.trim() === '' ? (
-            <li className="mg-said is-host">{going}</li>
-          ) : (
-            <HostBubble body={invite.note.trim()} bits={bits} look={look}>
-              {going}
-            </HostBubble>
-          )}
-        </>
+      {out.invite != null && (
+        <SoirelyCard
+          title={filled(MW.inviteSubject, { event: EVENT_NAME, hosts: HOSTS })}
+          lines={[
+            filled(MW.dear, { greeting: out.invite.greeting }),
+            filled(MW.invitedOn, { event: EVENT_NAME, date: INVITE.date }),
+            filled(MW.willYou, { replyBy: REPLY_BY }),
+            [MW.replyYes, MW.replyNo, MW.replyNotSure].join(' · '),
+          ]}
+          bits={[{ words: MW.soirelysOwn }]}
+        />
       )}
+      <HostBubble
+        subject={out.invite == null ? out.subject : filled(IW.noteFrom, { hosts: HOSTS })}
+        body={out.invite == null ? <Words body={out.body} /> : note}
+        bits={out.invite != null && note === '' ? [] : stageBits(out, compact, to.book.groups)}
+        look={out.stage === 'failed' ? 'faded' : out.stage === 'countdown' ? 'arriving' : 'sent'}
+        bare={out.invite != null && note === ''}
+      >
+        {out.stage === 'countdown' && (
+          <Countdown
+            left={out.left}
+            onCancel={() => {
+              act({ kind: 'cancel' });
+              focus('body');
+            }}
+          />
+        )}
+        {out.stage === 'sending' && (
+          <p className="mg-sending">
+            <span className="mg-spin" aria-hidden="true" />
+            {MW.sending} · {filled(MW.reachedSoFar, { count: reach.soFar, total: reach.count })}
+          </p>
+        )}
+        {out.stage === 'sent' && !compact && (
+          <Receipt
+            reach={{
+              reached: reach.reached,
+              of: reach.count,
+              seen: reach.seen,
+              parts: [
+                { kind: 'reached', count: reach.reached },
+                { kind: 'none', count: reach.count - reach.reached },
+              ],
+            }}
+            onWho={() => {
+              act({ kind: 'reached', of: 'new', thread: out.thread });
+              focus('heading');
+            }}
+          />
+        )}
+        {out.stage === 'failed' && (
+          <div className="mg-failed" role="alert">
+            <p>
+              <Glyph name="alert" size={15} weight={2.2} />
+              {MW.failed}
+            </p>
+            <button
+              type="button"
+              className="desk-text"
+              data-focus="try"
+              onClick={() => act({ kind: 'stage', from: 'failed', to: 'sending' })}
+            >
+              <Glyph name="refresh" size={17} weight={2.2} />
+              {MW.tryAgain}
+            </button>
+          </div>
+        )}
+      </HostBubble>
       {out.stage === 'sending' && !compact && (
         <li className="mg-status">
           <Glyph name="info" size={15} weight={2.2} />
-          <p>{invite == null ? many('queued', reach.count) : iw.many('queued', reach.count)}</p>
+          <p>{out.invite == null ? many('queued', reach.count) : iw.many('queued', reach.count)}</p>
         </li>
       )}
-      {invite != null && out.stage === 'sent' && !compact && (
-        <SystemLine glyph="tick">{many('nowInvited', reach.reached)}</SystemLine>
+      {out.invite != null && out.stage === 'sent' && (
+        <SystemLine glyph="tick">{many('nowInvited', out.invite.reached)}</SystemLine>
       )}
     </>
   );
