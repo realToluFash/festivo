@@ -7,5 +7,12 @@ appId: host.exp.Exponent
       id: 'events.row.${EVENT}'
     timeout: 30000
 - waitForAnimationToEnd
-- assertVisible: '.*09:00.*'
+- assertVisible:
+    id: 'events.row.${EVENT}'
+    childOf:
+      id: 'events.card'
+- assertVisible:
+    text: '.*09:00.*'
+    childOf:
+      id: 'events.card'
 - takeScreenshot: events-0900
