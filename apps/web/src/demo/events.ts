@@ -521,7 +521,7 @@ export const EVENT_WORDS = {
   keepItOn: 'Keep it on',
   deleteOpen: 'Delete event…',
   deleteLine:
-    'Removes the event and everything in it for your whole team. Guests following its link see that it isn’t available.',
+    "Removes the event and everything in it for your whole team. Guests following its link see that it isn't available.",
   deleteTitle: (name: string) => `Delete ${name}?`,
   draftBody: 'It’s a draft with nobody on its guest list. It will be removed for your whole team.',
   removes: 'This removes, for your whole team:',
@@ -530,9 +530,9 @@ export const EVENT_WORDS = {
     count === 1
       ? `its guest list, with the ${people} person on it`
       : `its guest list, with the ${people} people on it`,
-  guestsLink: 'Guests following their link will see that it isn’t available.',
+  guestsLink: "Guests following their link will see that it isn't available.",
   restoreWindow: (deadline: string) =>
-    `If this was a mistake, support can restore it until ${deadline}. After that it’s gone for good.`,
+    `If this was a mistake, support can restore it until ${deadline}. After that it's gone for good.`,
   restoreUntil: 'Monday, Nov 16 at 14:20 GMT',
   typeName: (name: string) => `Type ${name} to delete it`,
   typeHint: 'Type it exactly, capitals included. A straight or curly apostrophe both count.',
