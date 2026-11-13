@@ -119,7 +119,7 @@ function CalendarOf({
         : [],
     [load, now],
   );
-  const frame = useMemo<CalendarFrame>(() => ({ today, zone, linkOf }), [today, zone]);
+  const frame = useMemo<CalendarFrame>(() => ({ now, today, zone, linkOf }), [now, today, zone]);
   const source = useMemo<FeedSource>(
     () => ({
       read: () => api.calendarFeed(organisationId),

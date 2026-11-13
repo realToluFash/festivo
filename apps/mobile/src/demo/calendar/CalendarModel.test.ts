@@ -1,10 +1,10 @@
 import { firstDayOfWeek, weekdayNames } from '@soirely/domain';
-import { init } from 'i18next';
+import { init, t } from 'i18next';
 import { beforeAll, describe, expect, it } from 'vitest';
 
 import en from '../../i18n/locales/en.json';
-import { CLOCKS, REUNION } from '../events/EventsSample.ts';
-import type { Item } from '../../kit/calendar.ts';
+import { CLOCKS, READER_ZONE, REUNION } from '../events/EventsSample.ts';
+import { type Item, rowWhen as productRowWhen } from '../../kit/calendar.ts';
 import { meshFor } from '../../kit/today.ts';
 import {
   PHONE_WEEK,
@@ -172,6 +172,9 @@ describe('each date on its event’s own day', () => {
     expect(ireti == null ? null : rowWhen(ireti, 'en-US')).toBe(
       '19:00 · Fri, Nov 13 to Sat, Nov 14',
     );
+    expect(
+      ireti == null ? null : productRowWhen(ireti, 'en-US', READER_ZONE, new Date('2025-06-01'), t),
+    ).toBe('19:00 · Fri, Nov 13, 2026 to Sat, Nov 14, 2026');
     expect(gala == null ? null : rowWhen(gala, 'en-US')).toBe('19:30 Europe/Madrid');
   });
 });

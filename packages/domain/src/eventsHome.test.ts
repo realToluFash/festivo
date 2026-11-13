@@ -8,6 +8,7 @@ import {
   eventDays,
   eventsHome,
   forgetEventsTab,
+  formatWallDays,
   howSoon,
   howSoonPhrase,
   howSoonWords,
@@ -534,6 +535,36 @@ describe('milestoneMoment', () => {
     expect(milestoneMoment('2025-12-31T20:00:00+01:00', zone, newYearInMadrid, 'en-US')).toBe(
       'Wed, Dec 31, 2025, 20:00',
     );
+  });
+});
+
+describe('formatWallDays', () => {
+  const zone = 'America/Mexico_City';
+  const now = new Date('2026-11-13T12:00:00Z');
+
+  it('leaves every year out when all the days are this year', () => {
+    expect(formatWallDays(['2026-11-16', '2026-11-20'], zone, now, 'en-US')).toEqual([
+      'Mon, Nov 16',
+      'Fri, Nov 20',
+    ]);
+  });
+
+  it('names every year when any day is not this year', () => {
+    expect(formatWallDays(['2026-10-31', '2028-04-29'], zone, now, 'en-GB')).toEqual([
+      'Sat, 31 Oct 2026',
+      'Sat, 29 Apr 2028',
+    ]);
+    expect(formatWallDays(['2026-10-31', '2028-04-29'], zone, now, 'en-US')).toEqual([
+      'Sat, Oct 31, 2026',
+      'Sat, Apr 29, 2028',
+    ]);
+    expect(formatWallDays(['2027-02-13'], zone, now, 'en-US')).toEqual(['Sat, Feb 13, 2027']);
+  });
+
+  it('takes this year in the event’s zone, not in UTC', () => {
+    const newYearInUtc = new Date('2027-01-01T03:00:00Z');
+
+    expect(formatWallDays(['2026-12-31'], zone, newYearInUtc, 'en-US')).toEqual(['Thu, Dec 31']);
   });
 });
 

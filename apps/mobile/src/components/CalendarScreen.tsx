@@ -198,6 +198,7 @@ function CalendarOf({
         layout={layoutOf(kind)}
         today={today}
         readerZone={zone}
+        now={now}
         locale={locale}
         firstDay={firstDay}
         kept={KEPT}
