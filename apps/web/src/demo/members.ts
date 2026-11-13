@@ -409,16 +409,16 @@ export function invitationRow(
   people: readonly Person[],
   viewer: Pick<Viewer, 'id'>,
   say: SettingsSay,
-): { tag: string | null; line: string; dates: string; notDelivered: boolean } {
+): { tag: string | null; line: string; sent: string; ended: string; notDelivered: boolean } {
   const by = invitation.by === viewer.id ? 'you' : nameOf(people, invitation.by);
   const status = invitation.status;
   const notDelivered = invitation.notDelivered === true;
-  const sent = notDelivered ? NOT_DELIVERED : `Sent ${say.date(invitation.sent)}`;
 
   return {
     tag: status === 'pending' ? null : `${status.charAt(0).toUpperCase()}${status.slice(1)}`,
     line: `${invitation.role} · invited by ${by}`,
-    dates: `${sent} · ${ENDED_WORDS[status]} ${say.date(invitation.ended)}`,
+    sent: notDelivered ? NOT_DELIVERED : `Sent ${say.date(invitation.sent)}`,
+    ended: `${ENDED_WORDS[status]} ${say.date(invitation.ended)}`,
     notDelivered,
   };
 }

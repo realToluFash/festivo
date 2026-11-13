@@ -464,7 +464,7 @@ function MembersBlocks(props: BlocksProps) {
         </Head>
         {filter === 'invited' && invitations.length > 0 ? (
           <>
-            <InvitationRows {...props} invitations={invitations} />
+            <InvitationRows {...props} />
             <p className="desk-foot">{INVITATIONS_NOTE}</p>
           </>
         ) : filter !== 'invited' && shown.length > 0 ? (
@@ -482,7 +482,7 @@ function MembersBlocks(props: BlocksProps) {
       {filter === 'all' && !column && invitations.length > 0 && (
         <section className="desk-block">
           <Head title="Invitations" />
-          <InvitationRows {...props} invitations={invitations} />
+          <InvitationRows {...props} />
           <p className="desk-foot">{INVITATIONS_NOTE}</p>
         </section>
       )}
@@ -647,7 +647,11 @@ function InvitationRows({ invitations, people, viewer, say, onRevoke, onAgain }:
               tag={row.tag == null ? undefined : <Tag kind="ended" word={row.tag} />}
               lines={[
                 row.line,
-                row.notDelivered ? <NotDeliveredDates dates={row.dates} /> : row.dates,
+                row.notDelivered ? (
+                  <NotDeliveredDates ended={row.ended} />
+                ) : (
+                  `${row.sent} · ${row.ended}`
+                ),
               ]}
             />
             {viewer.manages &&
@@ -664,15 +668,14 @@ function InvitationRows({ invitations, people, viewer, say, onRevoke, onAgain }:
 }
 
 /** The broken mark before Not delivered, as a field error has it, so the reading is a shape with its word (sc-46109). */
-function NotDeliveredDates({ dates }: { dates: string }) {
+function NotDeliveredDates({ ended }: { ended: string }) {
   return (
     <span className="not-delivered">
       <span className="mark mark-broken" aria-hidden="true">
         ✕
       </span>
       <span>
-        <span className="not-delivered-word">{NOT_DELIVERED}</span>
-        {dates.slice(NOT_DELIVERED.length)}
+        <span className="not-delivered-word">{NOT_DELIVERED}</span> · {ended}
       </span>
     </span>
   );

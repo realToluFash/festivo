@@ -157,7 +157,8 @@ describe('Members at a desk (sc-29708)', () => {
     expect(invitationRow(pending, samplePeople(), VIEWERS.folake, say)).toEqual({
       tag: null,
       line: 'Member · invited by you',
-      dates: 'Sent Nov 2, 2026 · expires Nov 9, 2026',
+      sent: 'Sent Nov 2, 2026',
+      ended: 'expires Nov 9, 2026',
       notDelivered: false,
     });
     expect(invitationRow(expired, samplePeople(), VIEWERS.folake, say).tag).toBe('Expired');
@@ -168,12 +169,12 @@ describe('Members at a desk (sc-29708)', () => {
       invitationRow(one, samplePeople(), VIEWERS.folake, say),
     );
 
-    expect(rows.map((row) => [row.tag, row.dates, row.notDelivered])).toEqual([
-      [null, 'Sent Nov 2, 2026 · expires Nov 9, 2026', false],
-      [null, 'Not delivered · expires Nov 11, 2026', true],
-      ['Expired', 'Not delivered · expired Oct 21, 2026', true],
-      ['Revoked', 'Not delivered · revoked Nov 3, 2026', true],
-      ['Declined', 'Not delivered · declined Oct 3, 2026', true],
+    expect(rows.map((row) => [row.tag, row.sent, row.ended, row.notDelivered])).toEqual([
+      [null, 'Sent Nov 2, 2026', 'expires Nov 9, 2026', false],
+      [null, 'Not delivered', 'expires Nov 11, 2026', true],
+      ['Expired', 'Not delivered', 'expired Oct 21, 2026', true],
+      ['Revoked', 'Not delivered', 'revoked Nov 3, 2026', true],
+      ['Declined', 'Not delivered', 'declined Oct 3, 2026', true],
     ]);
   });
 
