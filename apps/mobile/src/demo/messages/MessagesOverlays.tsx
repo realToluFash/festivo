@@ -515,7 +515,7 @@ export function TellGuests({
     return () => clearTimeout(later);
   }, [run, onRun]);
   useEffect(() => {
-    if (open && run.line != null) return readOut(run.line.words, { interrupts: run.line.alert });
+    if (open && run.line?.alert === true) return readOut(run.line.words, { interrupts: true });
 
     return undefined;
   }, [open, run.line, run.tries]);
