@@ -60,7 +60,7 @@ export interface Sheet {
 const BALANCE = 1500;
 const UNREACHABLE: readonly Unreachable[] = [
   { name: 'Joaquín Ruiz', why: [MW.noEmail, MW.noPhone] },
-  { name: 'Sophie Laurent', why: [MW.unsubscribed, MW.textedStop] },
+  { name: 'Sophie Laurent', why: [MW.unsubscribed, MW.stoppedTexts] },
 ];
 
 export const STANDARD: Figures = {
@@ -93,7 +93,7 @@ const FIGURES: Record<TellKind, Figures> = {
       { name: 'Camille Dubois', why: [MW.unsubscribed] },
       { name: 'Funke Bello', why: [MW.addressBouncing, MW.noPhone] },
       { name: 'Grace Mensah', why: [MW.noEmail, MW.noPhone] },
-      { name: 'Leila Mansour', why: [MW.addressBouncing, MW.textedStop] },
+      { name: 'Leila Mansour', why: [MW.addressBouncing, MW.stoppedTexts] },
       { name: 'Tobi Ojo', why: [MW.noEmail, MW.noPhone] },
       { name: 'Tola Bakare', why: [MW.unsubscribed, MW.noPhone] },
     ],
@@ -109,7 +109,7 @@ const FIGURES: Record<TellKind, Figures> = {
     ],
     unreachable: [
       { name: 'Hana Sato', why: [MW.addressBouncing, MW.noPhone] },
-      { name: 'Sophie Laurent', why: [MW.unsubscribed, MW.textedStop] },
+      { name: 'Sophie Laurent', why: [MW.unsubscribed, MW.stoppedTexts] },
     ],
     credits: 39,
     balance: BALANCE,

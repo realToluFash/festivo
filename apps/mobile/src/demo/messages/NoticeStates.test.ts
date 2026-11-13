@@ -27,6 +27,7 @@ import {
   refusalOf,
 } from './NoticeStates.ts';
 import { sayNotice } from './NoticeWords.ts';
+import { smsHead } from './Sms.ts';
 import { stoppingOf } from './StopWriting.ts';
 
 const opened = (m: Messages) => (m.open?.kind === 'guest' ? m.open.key : null);
@@ -71,7 +72,7 @@ describe('a guest’s conversation, its refusals and waits (sc-3976)', () => {
     expect([later.chars, later.parts]).toEqual([154, 1]);
     expect(first.text.endsWith('\nReply STOP to opt out.')).toBe(true);
     expect([first.chars, first.parts]).toEqual([177, 2]);
-    expect(say.smsParts(later.parts)).toBe('SMS · 1 part');
+    expect(smsHead(later)).toBe('SMS · 1 part · GSM-7 · 154 characters');
   });
 
   it('prices a text by its parts and a WhatsApp message by the number’s country', () => {
@@ -105,7 +106,7 @@ describe('a guest’s conversation, its refusals and waits (sc-3976)', () => {
       'Has not agreed to WhatsApp',
       'WhatsApp message unavailable in Spanish',
       'Stopped WhatsApp',
-      'Texted STOP',
+      'Stopped texts',
       'Address is bouncing',
       'Reported an earlier email as spam',
       'Unsubscribed',
@@ -155,7 +156,7 @@ describe('a guest’s conversation, its refusals and waits (sc-3976)', () => {
     const sent = answered(startOf('noticeStopped', false), 'kwame');
     const answer = sent.answers.kwame;
 
-    expect(answer?.refused).toEqual({ reason: 'Texted STOP', mark: 'optout' });
+    expect(answer?.refused).toEqual({ reason: 'Stopped texts', mark: 'optout' });
     expect(sent.balance).toBe(startOf('noticeStopped', false).balance);
     expect(sent.typed.kwame).toBe('');
     expect(answered(startOf('noticeNoTemplate', false), 'lucia').answers.lucia?.refused).toEqual({

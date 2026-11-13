@@ -174,7 +174,8 @@ describe('Send invitations from Messages at a desk (sc-3971)', () => {
         { normalizer: (text) => text },
       ),
     ).toBeDefined();
-    expect(screen.getByText('SMS · 2 parts')).toBeDefined();
+    expect(screen.getByText('SMS · 2 parts · GSM-7 · 231 characters')).toBeDefined();
+    expect(screen.getByText(/^Their first text from Ire Events/u)).toBeDefined();
   });
 
   it('checks the fourteen, counts ten seconds, and ⌘ Z gives the note back', SLOW, async () => {

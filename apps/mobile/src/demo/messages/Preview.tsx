@@ -9,7 +9,7 @@ import { tokens } from '../../theme/tokens.ts';
 import { meshFor } from '../../kit/today.ts';
 import { MessageGlyph } from './MessageMarks.tsx';
 import type { Action, Draft } from './MessagesModel.ts';
-import { EVENT, HOSTS, ORG, PREVIEW, SAMPLE_EVENT_ID } from './MessagesSample.ts';
+import { EVENT, HOSTS, ORG, SAMPLE_EVENT_ID } from './MessagesSample.ts';
 import { W, say } from './MessagesWords.ts';
 import {
   FILLING_MS,
@@ -20,11 +20,14 @@ import {
   greetingFor,
   noticeFor,
   previewLines,
+  noticeWordsIn,
 } from './PreviewModel.ts';
 import { PREVIEW_PEOPLE, type PreviewPerson } from './PreviewSample.ts';
 import { sayPreview } from './PreviewWords.ts';
-import { type Anchored, PreviewAsChooser, PreviewAsControl, anchorAt } from './WriteItOnce.tsx';
 import { noticeSmsOf } from './NoticeStates.ts';
+import { smsHead } from './Sms.ts';
+import { saySms } from './SmsWords.ts';
+import { type Anchored, PreviewAsChooser, PreviewAsControl, anchorAt } from './WriteItOnce.tsx';
 
 /** The message as the guest's own page shows it (GuestPage-A): the cover, then the hosts' words in a figure, signed. */
 function PagePreview({ draft, person }: { draft: Draft; person: PreviewPerson }) {
@@ -104,20 +107,27 @@ function EmailNotice({ person }: { person: PreviewPerson }) {
   );
 }
 
-function SmsNotice() {
+function SmsNotice({ person }: { person: PreviewPerson }) {
+  const notice = noticeSmsOf(HOSTS, EVENT, person.firstText, noticeWordsIn(person.language));
+
   return (
     <View style={styles.sms}>
       <View style={styles.from}>
         <MessageGlyph name="sms" size={14} ink={tokens.colorInkSecondary} />
-        <Text size={13} weight="semibold" style={styles.secondary}>
-          {say.smsParts(noticeSmsOf(HOSTS, EVENT).parts)}
+        <Text size={13} weight="semibold" style={[styles.secondary, styles.figures]}>
+          {smsHead(notice)}
         </Text>
       </View>
       <View style={styles.smsBubble}>
         <Text size={14.5} weight="medium" style={styles.body145}>
-          {say.noticeSms(HOSTS, EVENT, PREVIEW.link)}
+          {notice.text}
         </Text>
       </View>
+      {person.firstText && (
+        <Text size={13} weight="medium" style={[styles.secondary, styles.small, styles.under]}>
+          {saySms.firstText(ORG)}
+        </Text>
+      )}
     </View>
   );
 }
@@ -212,14 +222,15 @@ export function Preview({
     return () => clearTimeout(done);
   }, [as, dispatch]);
 
-  const any = draft.channels.email || draft.channels.sms || draft.channels.wa;
+  const email = draft.channels.email && person.email;
+  const any = email || draft.channels.sms || draft.channels.wa;
   const notices = any ? (
     <View style={styles.notices}>
       <Text size={14} weight="semibold" accessibilityRole="header">
         {W.whatSoirelySends}
       </Text>
-      {draft.channels.email && <EmailNotice person={person} />}
-      {draft.channels.sms && <SmsNotice />}
+      {email && <EmailNotice person={person} />}
+      {draft.channels.sms && <SmsNotice person={person} />}
       {draft.channels.wa && <WhatsAppNotice person={person} />}
     </View>
   ) : null;
@@ -370,6 +381,8 @@ const styles = StyleSheet.create({
     borderTopColor: tokens.colorBorder,
   },
   small: { lineHeight: 13.5 * 1.45 },
+  figures: { fontVariant: ['tabular-nums'] },
+  under: { maxWidth: 320 },
   filling: { gap: tokens.spaceMd },
   stacked: { gap: 14 },
   sunkPage: {
