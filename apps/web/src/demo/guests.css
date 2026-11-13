@@ -843,6 +843,19 @@
   margin-inline: 0;
 }
 
+.gs-asked:focus {
+  outline: none;
+  box-shadow: var(--deskRing);
+}
+
+.gs-asked .gs-inset-foot {
+  flex-wrap: wrap;
+}
+
+.gs-none h2:focus {
+  outline: none;
+}
+
 .gs-count-row,
 .gs-counts .desk-row {
   min-height: 52px;
