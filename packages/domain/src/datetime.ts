@@ -129,12 +129,20 @@ export function formatWallClock(time: string, locale: string): string {
 }
 
 /** In the event's own zone, never the reader's: 16:00 in Lagos is 16:00 to everyone who reads it. */
-export function formatEventDate(moment: string, timeZone: string, locale: string): string {
+export function formatEventDate(
+  moment: string,
+  timeZone: string,
+  locale: string,
+  withYear = true,
+): string {
   const date = asDate(moment);
 
   if (date == null) return '';
 
-  return new Intl.DateTimeFormat(locale, { ...EVENT_DAY, timeZone }).format(date);
+  return new Intl.DateTimeFormat(locale, {
+    ...(withYear ? EVENT_DAY : EVENT_DAY_WITHOUT_YEAR),
+    timeZone,
+  }).format(date);
 }
 
 /** "Sat 29 Apr, 17:00", or with its year `withYear`. */
