@@ -97,7 +97,7 @@ describe('Write it once at a desk: Insert, Preview as and its lines (sc-3960)', 
   });
 
   it(
-    'opens Preview as on the five people in To, A to Z, each with their language',
+    'opens Preview as on the six people in To, A to Z, each with their language',
     SLOW,
     async () => {
       await messages('previewAs');
@@ -107,14 +107,15 @@ describe('Write it once at a desk: Insert, Preview as and its lines (sc-3960)', 
 
       expect(button.getAttribute('aria-expanded')).toBe('true');
       expect(options.map((one) => one.textContent)).toEqual([
+        'Amaka Eze · English',
         'Bisi Adewale · English',
         'Camille Dubois · French',
         'Kemi Bankole · English',
         'Kwame Mensah · English',
         'Lucía Ortega · Spanish',
       ]);
-      await vi.waitFor(() => expect(document.activeElement).toBe(options[3]));
-      expect(options[3]?.getAttribute('aria-selected')).toBe('true');
+      await vi.waitFor(() => expect(document.activeElement).toBe(options[4]));
+      expect(options[4]?.getAttribute('aria-selected')).toBe('true');
     },
   );
 
@@ -123,9 +124,9 @@ describe('Write it once at a desk: Insert, Preview as and its lines (sc-3960)', 
     await messages('previewAs');
     const options = within(screen.getByRole('listbox')).getAllByRole('option');
 
-    fireEvent.keyDown(options[3] as HTMLElement, { key: 'ArrowDown' });
-    expect(document.activeElement).toBe(options[4]);
-    fireEvent.keyDown(options[4] as HTMLElement, { key: 'Enter' });
+    fireEvent.keyDown(options[4] as HTMLElement, { key: 'ArrowDown' });
+    expect(document.activeElement).toBe(options[5]);
+    fireEvent.keyDown(options[5] as HTMLElement, { key: 'Enter' });
 
     expect(screen.queryByRole('listbox')).toBeNull();
     expect(

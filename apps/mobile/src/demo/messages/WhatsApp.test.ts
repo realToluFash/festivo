@@ -7,10 +7,18 @@ import {
   sampleDraft,
   sectionsOf,
   startOf,
+  insteadOf,
+  smsLine,
   whatsAppLine,
   whatsAppOf,
 } from './MessagesModel.ts';
-import { TELL, receiptPeople, whatsAppCredits, whatsAppCreditsFor } from './MessagesSample.ts';
+import {
+  TELL,
+  TO_FIGURES,
+  receiptPeople,
+  whatsAppCredits,
+  whatsAppCreditsFor,
+} from './MessagesSample.ts';
 import { say } from './MessagesWords.ts';
 import { reachViewOf } from './Reach.ts';
 
@@ -49,6 +57,46 @@ describe('WhatsApp’s reach line', () => {
       to: 'all',
       channels: { email: true, sms: true, wa: true },
     });
+  });
+});
+
+describe('SMS’s reach line (sc-3946)', () => {
+  it('counts each To: no mobile number, then stopped texts, a part that is 0 left out', () => {
+    expect(smsLine('all')).toBe(
+      'SMS reaches 39 of 142 · 102 have no mobile number and 1 stopped texts',
+    );
+    expect(smsLine('coming')).toBe('SMS reaches 31 of 96 · 65 have no mobile number');
+    expect(smsLine('notReplied')).toBe('SMS reaches 9 of 25 · 16 have no mobile number');
+    expect(say.stoppedTexts(1)).toBe('1 stopped texts');
+  });
+
+  it('counts everyone SMS can text, WhatsApp ticked or not', () => {
+    for (const to of ['all', 'coming', 'notReplied'] as const)
+      expect(smsLine(to)).toMatch(
+        new RegExp(`^SMS reaches ${TO_FIGURES[to].sms} of ${TO_FIGURES[to].count}`, 'u'),
+      );
+    const both = { ...sampleDraft('check'), channels: { email: true, sms: true, wa: true } };
+    expect(checkOf(both).smsReach).toBe(smsLine('coming'));
+  });
+
+  it('shows only while SMS is ticked, and not when To matches nobody', () => {
+    expect(checkOf(startOf('smsLine', false).draft ?? blankDraft()).smsReach).toBe(smsLine('all'));
+    expect(checkOf(startOf('checkChannels', false).draft ?? blankDraft()).smsReach).toBeUndefined();
+    expect(checkOf(startOf('nobody', false).draft ?? blankDraft()).smsReach).toBeUndefined();
+  });
+});
+
+describe('WhatsApp instead of SMS (sc-3954)', () => {
+  it('says how many WhatsApp tells in place of a text, only with both ticked', () => {
+    const draft = sampleDraft('check');
+    expect(insteadOf({ ...draft, channels: { email: true, sms: true, wa: true } })).toBe(
+      '3 by WhatsApp instead of SMS',
+    );
+    expect(insteadOf({ ...draft, to: 'all', channels: { email: true, sms: true, wa: true } })).toBe(
+      '4 by WhatsApp instead of SMS',
+    );
+    expect(insteadOf({ ...draft, channels: { email: true, sms: false, wa: true } })).toBeNull();
+    expect(insteadOf(draft)).toBeNull();
   });
 });
 
