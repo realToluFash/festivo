@@ -166,6 +166,8 @@ export const GW = {
     `Companion’s full name, ${figure(nth)} of ${figure(count)}`,
   remove: 'Remove',
   removeNamed: (name: string) => `Remove ${name}`,
+  removeCompanionOf: (host: string) => `Remove ${host}’s guest`,
+  removeCompanionOfNth: (host: string, nth: number) => `Remove ${host}’s guest · ${figure(nth)}`,
   removed: (name: string) => `${name} removed. Save to keep the change.`,
   removeTitle: (name: string) => `Remove ${name}?`,
   /** The AC's line (sc-3773, 21 Oct): full name, what goes, no pronoun; a seat or a meal alone is a proposal for [en]. */
