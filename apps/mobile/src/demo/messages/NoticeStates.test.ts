@@ -17,6 +17,7 @@ import { say } from './MessagesWords.ts';
 import {
   NOTICE_STATES,
   guestOf,
+  headLineOf,
   languageOf,
   markOf,
   noticeSmsOf,
@@ -219,6 +220,12 @@ describe('a guest’s conversation, its refusals and waits (sc-3976)', () => {
 
     expect(stoppingOf(m).manage).toBe(false);
     expect(m.reader).toBe('Kofi Mensah');
+    expect(['ines', 'lucia', 'kwame'].map((key) => headLineOf(m, key as 'ines'))).toEqual([
+      'Portuguese',
+      'Spanish',
+      'English',
+    ]);
+    expect(headLineOf(startOf(null, false), 'lucia')).toBe('+34 612 345 678 · Spanish');
     expect(sayNotice.sharedBy('+44 7700 900412', 2)).toBe('+44 7700 900412 · shared by 2 guests');
     expect(sayNotice.attachmentsNotKept(1)).toBe('1 attachment not kept');
     expect(sayNotice.attachmentsNotKept(2)).toBe('2 attachments not kept');

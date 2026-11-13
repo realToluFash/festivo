@@ -233,6 +233,15 @@ export function guestOf(m: Pick<Messages, 'notice'>, key: GuestKey): SampleGuest
   };
 }
 
+/** Without guests.manage no conversation's head shows an address, only the guest's language (AC 36). */
+export function headLineOf(m: Pick<Messages, 'notice'>, key: GuestKey, locale = 'en'): string {
+  const shared = caseFor(m, key)?.shared;
+
+  if (shared != null) return sayNotice.sharedBy(shared.number, shared.count);
+
+  return m.notice?.hidden === true ? languageOf(key, locale) : guestOf(m, key).head;
+}
+
 /** The guest's language named in the reader's own (l10n #45417). */
 export function languageOf(key: GuestKey, locale = 'en'): string {
   const code = LANGUAGES[key] ?? 'en';

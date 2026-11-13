@@ -67,11 +67,12 @@ import {
   type NoticeCase,
   caseFor,
   guestOf,
+  headLineOf,
   languageOf,
   quietLine,
   refusalOf as noticeRefusal,
 } from './NoticeStates.ts';
-import { NW, sayNotice } from './NoticeWords.ts';
+import { NW } from './NoticeWords.ts';
 import { MoreActions, StoppedInset } from './StopWritingParts.tsx';
 import {
   type Bit,
@@ -431,12 +432,7 @@ function guestParts(talk: Talk, key: GuestKey): Parts {
 
   return {
     title: guest.name,
-    line:
-      kase?.shared != null
-        ? sayNotice.sharedBy(kase.shared.number, kase.shared.count)
-        : kase?.hidden === true
-          ? languageOf(key, talk.locale)
-          : guest.head,
+    line: headLineOf(m, key, talk.locale),
     right,
     lead: <Avatar initials={guest.initials} side={44} tone={0} />,
     under:
