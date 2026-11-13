@@ -79,6 +79,28 @@ final class EventDuplicateTest extends ApiTestCase
         self::assertSame($copy, $this->show($copy['id']));
     }
 
+    #[Test]
+    public function aCopyKeepsTheArrivalNoteWithTheVenue(): void
+    {
+        $id = $this->original(['venue' => ['name' => 'The Civic Centre', 'address' => '12 Bode Thomas Street, Surulere'], 'arrivalNote' => "Side gate.\nDoors at 17:30."]);
+
+        $copy = $this->duplicate($id, '2031-05-15T16:00');
+
+        self::assertSame(201, $this->statusCode(), Json\encode($this->last()));
+        self::assertSame("Side gate.\nDoors at 17:30.", $copy['arrivalNote']);
+    }
+
+    #[Test]
+    public function aCopyKeepsAnArrivalNoteThatHasNoVenue(): void
+    {
+        $id = $this->original(['arrivalNote' => 'Address to follow; doors at 8']);
+
+        $copy = $this->duplicate($id, '2031-05-15T16:00');
+
+        self::assertSame(201, $this->statusCode(), Json\encode($this->last()));
+        self::assertSame([null, 'Address to follow; doors at 8'], [$copy['venue'], $copy['arrivalNote']]);
+    }
+
     /**
      * @return iterable<string, array{string, string, string, string}>
      */

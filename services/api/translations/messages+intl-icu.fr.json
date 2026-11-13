@@ -15,6 +15,7 @@
     "people.job_label_too_long": "Raccourcissez l’intitulé du poste à {count, plural, one {{count, number, ::group-auto} caractère} many {{count, number, ::group-auto} de caractères} other {{count, number, ::group-auto} caractères}} maximum.",
     "validation.event_name_too_long": "Raccourcissez le nom à {count, number, ::group-auto} caractères maximum.",
     "validation.name_too_long": "Raccourcissez votre nom à {count, number, ::group-auto} caractères maximum.",
+    "validation.event_arrival_note_too_long": "Shorten the arrival note to {count, number, ::group-auto} characters or fewer.",
     "validation.event_venue_address_too_long": "Raccourcissez l’adresse à {count, number, ::group-auto} caractères maximum.",
     "validation.event_venue_name_too_long": "Raccourcissez le nom du lieu à {count, number, ::group-auto} caractères maximum.",
     "validation.organisation_name_too_long": "Ce nom compte {length, number, ::group-auto} caractères. Raccourcissez-le à {count, number, ::group-auto} caractères maximum.",

@@ -37,6 +37,7 @@ final readonly class EventDuplicator
 
         $copy = new Event($original->getOrganisation(), $original->getName(), $original->getType(), $start, LocalTimeResolver::resolve($end->setTimestamp($end->getTimestamp() + $length), $zone), $original->getCurrency());
         EventVenue::write($copy, EventVenue::of($original));
+        $copy->setArrivalNote($original->getArrivalNote());
         $this->entityManager->persist($copy);
         $cover = $this->eventCoverEditor->copy($original, $copy);
         $this->seatingPlanCopier->copy($original, $copy, $by);

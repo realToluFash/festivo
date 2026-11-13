@@ -49,7 +49,7 @@ final readonly class EventEditor
      * A type sent as null is refused like a missing one on create: an event, once typed, stays typed (sc-3588).
      * `hosts` replaces the whole list, and an event made live keeps at least one (sc-6713).
      *
-     * @param array{name?: string, type?: ?string, startsAt?: string, endsAt?: string, timeZone?: string, currency?: string, venue?: array{name?: ?string, address?: ?string, addressId?: ?string}|null, hosts?: list<string>} $fields
+     * @param array{name?: string, type?: ?string, startsAt?: string, endsAt?: string, timeZone?: string, currency?: string, venue?: array{name?: ?string, address?: ?string, addressId?: ?string}|null, arrivalNote?: ?string, hosts?: list<string>} $fields
      */
     public function edit(Event $event, ?string $ifMatch, User $by, array $fields): Event
     {
@@ -75,6 +75,7 @@ final readonly class EventEditor
                 'timeZone' => $fields['timeZone'] ?? $event->getTimeZone(),
                 'currency' => $fields['currency'] ?? $event->getCurrency(),
                 ...Iter\contains_key($fields, 'venue') ? ['venue' => $fields['venue']] : [],
+                ...Iter\contains_key($fields, 'arrivalNote') ? ['arrivalNote' => $fields['arrivalNote']] : [],
                 ...Iter\contains_key($fields, 'hosts') ? ['hosts' => $fields['hosts']] : [],
             ], $event->getCurrency(), EventVenue::of($event));
 
@@ -88,6 +89,10 @@ final readonly class EventEditor
 
             if (Iter\contains_key($checked, 'venue')) {
                 EventVenue::write($event, $checked['venue']);
+            }
+
+            if (Iter\contains_key($checked, 'arrivalNote')) {
+                $event->setArrivalNote($checked['arrivalNote']);
             }
 
             if (Iter\contains_key($checked, 'hosts')) {
@@ -152,6 +157,7 @@ final readonly class EventEditor
             'timeZone' => $event->getTimeZone(),
             'currency' => $event->getCurrency(),
             ...self::venueRecorded($event),
+            'arrivalNote' => $event->getArrivalNote(),
             'hosts' => $event->getHosts(),
         ];
     }

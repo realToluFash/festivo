@@ -15,6 +15,7 @@
     "people.job_label_too_long": "Shorten the job label to {count, plural, one {{count, number, ::group-auto} character} other {{count, number, ::group-auto} characters}} or fewer.",
     "validation.event_name_too_long": "Shorten the name to {count, number, ::group-auto} characters or fewer.",
     "validation.name_too_long": "Shorten your name to {count, number, ::group-auto} characters or fewer.",
+    "validation.event_arrival_note_too_long": "Shorten the arrival note to {count, number, ::group-auto} characters or fewer.",
     "validation.event_venue_address_too_long": "Shorten the address to {count, number, ::group-auto} characters or fewer.",
     "validation.event_venue_name_too_long": "Shorten the venue name to {count, number, ::group-auto} characters or fewer.",
     "validation.organisation_name_too_long": "That name is {length, number, ::group-auto} characters. Use {count, number, ::group-auto} or fewer.",

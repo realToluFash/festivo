@@ -93,6 +93,7 @@ final readonly class GuestPageController
                 'startsAt' => $event->getStartsAt()->format(\DATE_ATOM),
                 'timeZone' => $event->getTimeZone(),
                 'venue' => null === $venue ? null : ['name' => $venue->name, 'address' => $venue->address?->formatted],
+                'arrivalNote' => $event->getArrivalNote(),
             ],
             'phase' => $this->guestAnswers->phase($guest)->value,
             'started' => $this->guestAnswers->started($guest),

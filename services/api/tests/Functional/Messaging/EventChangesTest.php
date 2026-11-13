@@ -120,6 +120,33 @@ final class EventChangesTest extends MessagingTestCase
     }
 
     #[Test]
+    public function anArrivalNoteAloneTellsNobodyAfterTheWindow(): void
+    {
+        $event = $this->liveEvent();
+
+        $this->edit($event, $this->ada, ['arrivalNote' => 'Use the side gate on Marylebone Road.']);
+        self::runUntilIdle();
+        self::at('2026-11-02 10:30');
+        self::runUntilIdle();
+
+        self::assertSame(0, self::rowCount('SELECT COUNT(*) FROM event_changes'));
+        self::assertSame([], $this->items($this->bola));
+        self::assertSame([], self::pushedTo());
+        self::assertSame([], self::sentTo());
+    }
+
+    #[Test]
+    public function aMovedAddressWithANoteTellsOfTheAddressAlone(): void
+    {
+        $event = $this->liveEvent(venue: ['name' => 'Hall A', 'address' => '3 Bourdillon Road, Ikoyi']);
+
+        $this->edit($event, $this->ada, ['venue' => ['name' => 'Hall A', 'address' => '12 Admiralty Way, Lekki'], 'arrivalNote' => 'Gate 2']);
+        self::runUntilIdle();
+
+        self::assertSame([['The venue is now 12 Admiralty Way, Lekki (was 3 Bourdillon Road, Ikoyi).']], Vec\map($this->items($this->bola), static fn (array $item): array => $item['lines']));
+    }
+
+    #[Test]
     public function aFinishedEventsCorrectionTellsNobody(): void
     {
         $event = $this->liveEvent();

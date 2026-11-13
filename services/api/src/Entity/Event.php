@@ -34,6 +34,8 @@ class Event implements SoftDeletableInterface
 
     public const int HOSTS_MAXIMUM = 6;
 
+    public const int ARRIVAL_NOTE_MAXIMUM = 500;
+
     #[ORM\Id]
     #[ORM\Column(type: 'uuid')]
     private Uuid $id;
@@ -117,6 +119,10 @@ class Event implements SoftDeletableInterface
 
     #[ORM\Column(type: Types::FLOAT, nullable: true)]
     private ?float $venueLongitude = null;
+
+    /** The host's, not the venue's: it stays when the venue has neither name nor address (sc-24385). */
+    #[ORM\Column(type: Types::TEXT, nullable: true)]
+    private ?string $arrivalNote = null;
 
     /** @var list<string> the hosts' names as guests read them, in order (sc-6713) */
     #[ORM\Column(type: Types::JSON, options: ['default' => '[]'])]
@@ -308,6 +314,16 @@ class Event implements SoftDeletableInterface
     public function setHosts(array $hosts): void
     {
         $this->hosts = $hosts;
+    }
+
+    public function getArrivalNote(): ?string
+    {
+        return $this->arrivalNote;
+    }
+
+    public function setArrivalNote(?string $note): void
+    {
+        $this->arrivalNote = $note;
     }
 
     public function setType(EventType $type): void

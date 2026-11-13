@@ -30,13 +30,13 @@ final readonly class EventRules
     }
 
     /**
-     * The venue and the hosts are checked only when they are in the fields, and are in what this returns only then.
+     * The venue, the arrival note and the hosts are checked only when they are in the fields, and are in what this returns only then.
      *
-     * @param array{name: ?string, type: ?string, startsAt: ?string, endsAt: ?string, timeZone: string, currency: string, venue?: array{name?: ?string, address?: ?string, addressId?: ?string}|null, hosts?: list<string>} $fields
+     * @param array{name: ?string, type: ?string, startsAt: ?string, endsAt: ?string, timeZone: string, currency: string, venue?: array{name?: ?string, address?: ?string, addressId?: ?string}|null, arrivalNote?: ?string, hosts?: list<string>} $fields
      * @param ?string                                                                                                                                                                                                       $held      the event's currency on an edit, which may stay although no longer offered
      * @param ?Venue                                                                                                                                                                                                        $heldVenue the event's venue on an edit, whose address keeps its parts when sent back unchanged
      *
-     * @return array{name: string, type: EventType, startsAt: DateTimeImmutable, endsAt: DateTimeImmutable, currency: string, venue?: ?Venue, hosts?: list<string>}
+     * @return array{name: string, type: EventType, startsAt: DateTimeImmutable, endsAt: DateTimeImmutable, currency: string, venue?: ?Venue, arrivalNote?: ?string, hosts?: list<string>}
      */
     public function check(array $fields, ?string $held = null, ?Venue $heldVenue = null): array
     {
@@ -78,6 +78,12 @@ final readonly class EventRules
             $violations[] = $this->violation('venueAddress', 'validation.event_venue_address_too_long', ['{count}' => (string) Venue::ADDRESS_MAXIMUM]);
         }
 
+        $note = Iter\contains_key($fields, 'arrivalNote') ? ArrivalNote::saved($fields['arrivalNote']) : null;
+
+        if (null !== $note && ArrivalNote::length($note) > Event::ARRIVAL_NOTE_MAXIMUM) {
+            $violations[] = $this->violation('arrivalNote', 'validation.event_arrival_note_too_long', ['{count}' => (string) Event::ARRIVAL_NOTE_MAXIMUM]);
+        }
+
         $hosts = Iter\contains_key($fields, 'hosts') ? Vec\map($fields['hosts'], self::hostName(...)) : null;
 
         if (null !== $hosts) {
@@ -101,6 +107,10 @@ final readonly class EventRules
 
         if (Iter\contains_key($fields, 'venue')) {
             $checked['venue'] = $venue;
+        }
+
+        if (Iter\contains_key($fields, 'arrivalNote')) {
+            $checked['arrivalNote'] = $note;
         }
 
         if (null !== $hosts) {
