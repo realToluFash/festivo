@@ -53,15 +53,16 @@ import {
 } from './messages.ts';
 import { BOOK, GROUPS } from './messagesTo.ts';
 import { INVITE_STATES } from './messagesInvite.ts';
+import { TELL_STATES } from './messagesTellStates.ts';
 import { WAITS_STATES } from './messagesWaits.ts';
 
 const ids = (rows: readonly { id: string }[]) => rows.map((row) => row.id);
 
 describe('Messaging B · Conversations, the rules (sc-31371)', () => {
-  it('has the spec’s 42 states, the notice’s 3, Who it reached’s 8, sc-3942’s 2, sc-3960’s 10, sc-3963’s 4, sc-3950’s 3, sc-3954’s 6, sc-3971’s 16 and sc-3978’s 6, in order, each linked once from the demo home', () => {
+  it('has the spec’s 42 states, the notice’s 3, Who it reached’s 8, sc-3942’s 2, sc-3960’s 10, sc-3963’s 4, sc-3950’s 3, sc-3954’s 6, sc-3971’s 16, sc-3978’s 6 and sc-4330’s 39, in order, each linked once from the demo home', () => {
     const keys = MESSAGE_STATES.map((one) => one.key);
 
-    expect(keys).toHaveLength(135);
+    expect(keys).toHaveLength(174);
     expect(keys.slice(94, 97)).toEqual(['whatsAppLine', 'checkWhatsApp', 'whatsAppRead']);
     expect(keys.slice(97, 103)).toEqual([
       'channelsWrite',
@@ -73,6 +74,7 @@ describe('Messaging B · Conversations, the rules (sc-31371)', () => {
     ]);
     expect(keys.slice(103, 113)).toEqual(WAITS_STATES.map((one) => one.key));
     expect(keys.slice(113, 129)).toEqual(INVITE_STATES.map((one) => one.key));
+    expect(keys.slice(135)).toEqual(TELL_STATES.map((one) => one.key));
     expect(keys.slice(0, 3)).toEqual(['first', 'loading', 'inUse']);
     expect(keys.slice(6, 10)).toEqual([
       'channelReply',
@@ -98,7 +100,7 @@ describe('Messaging B · Conversations, the rules (sc-31371)', () => {
       'editCancelled',
       'editTooLate',
     ]);
-    expect(new Set(keys).size).toBe(135);
+    expect(new Set(keys).size).toBe(174);
     expect(MESSAGES_PAGES.flatMap((page) => page.states.map((one) => one.to))).toEqual(
       keys.map((key) => `/demo/events/evt-wed-4/messages?state=${key}`),
     );
@@ -307,13 +309,18 @@ describe('Messaging B · Conversations, the rules (sc-31371)', () => {
     if (wedding == null) throw new Error('no sample wedding');
 
     expect(toldOf(wedding, { ...wedding, startsAt: '2026-11-05T17:30:00Z' })).toEqual([
-      { item: 'New start time', line: 'The start time is now 17:30 (was 18:00).' },
+      {
+        field: 'start',
+        item: 'New start time',
+        line: 'The start time is now 17:30 (was 18:00).',
+      },
     ]);
     expect(toldOf(wedding, { ...wedding, startsAt: '2026-11-06T18:00:00Z' })[0]?.line).toBe(
       'The date is now Fri, Nov 6 (was Thu, Nov 5).',
     );
     expect(toldOf(wedding, { ...wedding, venue: ROSEWOOD })).toEqual([
       {
+        field: 'venue',
         item: 'New venue',
         line: 'The venue is now Rosewood London (was The Landmark).',
         venue: true,
