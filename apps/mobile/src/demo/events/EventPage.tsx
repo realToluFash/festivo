@@ -165,8 +165,10 @@ function startEvent(
   if (live != null) return seededEvent(event, live);
   if (messages === 'tell' || messages === 'untold') return { ...event, startsAt: TELL.startsAt };
   if (messages === 'tellPlace') return { ...event, venue: PLACE };
-  if (messages === 'closedDraft') return { ...event, status: 'draft' };
-  if (messages === 'closedEnded') return { ...event, ...LONG_FINISHED, status: 'ended' };
+  if (messages === 'closedDraft' || messages === 'noManageDraft')
+    return { ...event, status: 'draft' };
+  if (messages === 'closedEnded' || messages === 'noManageEnded')
+    return { ...event, ...LONG_FINISHED, status: 'ended' };
   if (state === 'datesReplyBySaved')
     return {
       ...event,

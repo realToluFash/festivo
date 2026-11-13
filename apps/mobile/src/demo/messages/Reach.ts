@@ -32,6 +32,7 @@ import {
 } from './MessagesSample.ts';
 import { CHANNEL_WORD, W, say } from './MessagesWords.ts';
 import { NIGHT_TEXT, REASONS_REACH, REASONS_REACHED, REASON_GROUPS } from './ReasonsSample.ts';
+import { readsOnly } from './NoticeStates.ts';
 import { failedReason } from './Sms.ts';
 import { type TrySmsView, offersTrySms, textedGroup, textedLines, trySmsOf } from './TrySms.ts';
 
@@ -261,18 +262,13 @@ interface Counted {
   reachedCount: number;
 }
 
-/** The Read-only role (messages.read alone): every status and reason, and no action on any row. */
-function readOnly(m: Messages): boolean {
-  return m.notice?.hidden === true;
-}
-
 function withActions(
   m: Messages,
   of: ReachedOf,
   group: GroupKey,
   person: ReachPerson,
 ): ReachPerson {
-  if (readOnly(m)) return { ...person, fixes: [], offer: false };
+  if (readsOnly(m)) return { ...person, fixes: [], offer: false };
   const trySms =
     !person.offer &&
     offersTrySms({ group, told: false, mobile: person.mobile, lines: person.lines });
@@ -358,7 +354,7 @@ function counted(m: Messages, of: ReachedOf): Counted {
       mark: 'delivered',
       word: W.markedAsTold,
       count: told.length,
-      people: readOnly(m) ? told.map((person) => ({ ...person, fixes: [] })) : told,
+      people: readsOnly(m) ? told.map((person) => ({ ...person, fixes: [] })) : told,
     },
     reached: {
       key: 'reached',
@@ -404,6 +400,14 @@ function shownGroups(c: Counted, filter: ReachFilter): readonly GroupView[] {
   }
 }
 
+/** messages.read alone: every status and reason, and nothing to act on (sc-32077; sc-3966, Decided 13 Nov, point 2). */
+function readOnlyGroup(group: GroupView): GroupView {
+  return {
+    ...group,
+    people: group.people.map((person) => ({ ...person, fixes: [], offer: false })),
+  };
+}
+
 const ALWAYS: readonly ReachFilter[] = ['everyone', 'notReached', 'reached', 'told'];
 
 /** The filters offered whatever their count say so in their own words when nobody is in them; Everyone always has someone. */
@@ -437,8 +441,10 @@ export function reachViewOf(m: Messages, of: ReachedOf): ReachView {
     { key: 'told', word: W.markedAsTold, count: c.told.count },
   ];
   const chosen = options.find((option) => option.key === filterOn) ?? options[1];
+  const reading = readsOnly(m);
   const shown = shownGroups(c, filterOn);
-  const groups = of === 'receipts' && filterOn === 'everyone' ? [whatsAppGroup(), ...shown] : shown;
+  const listed = of === 'receipts' && filterOn === 'everyone' ? [whatsAppGroup(), ...shown] : shown;
+  const groups = reading ? listed.map(readOnlyGroup) : listed;
   const count = (key: GroupKey) => c.notReached.find((group) => group.key === key)?.count ?? 0;
   const counts = c.notReached.flatMap((group) => {
     const words = COUNT_WORDS[group.key as GroupKey];
@@ -485,7 +491,7 @@ export function reachViewOf(m: Messages, of: ReachedOf): ReachView {
     options,
     groups,
     empty: groups.length === 0 ? (EMPTY_LINE[filterOn] ?? null) : null,
-    resend: of === 'receipts' || readOnly(m) ? 0 : resendCount(c),
+    resend: of === 'receipts' || reading ? 0 : resendCount(c),
   };
 }
 

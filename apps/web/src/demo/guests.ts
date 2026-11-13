@@ -28,6 +28,7 @@ import {
   midSentence,
 } from './guestsWords.ts';
 import { numberLine } from './rules.ts';
+import { NO_OPT_OUTS, type OptOuts } from './optOuts.ts';
 import { type HowAgreed, NO_CONSENT, type WhatsAppConsent, hostAgreed } from './whatsAppConsent.ts';
 import type { DemoLink } from './settings.ts';
 import { type ExportStart, XW, exportDay, fileName } from './guestExport.ts';
@@ -124,6 +125,7 @@ export interface Guest {
   chose: GuestLanguage | null;
   greetAs: string | null;
   whatsApp: WhatsAppConsent;
+  optOuts: OptOuts;
   askAgain: AskAgain | null;
   needs: Needs;
 }
@@ -154,6 +156,7 @@ function guest(id: string, name: string, reply: Reply, extra: Partial<Guest> = {
     chose: null,
     greetAs: null,
     whatsApp: NO_CONSENT,
+    optOuts: NO_OPT_OUTS,
     askAgain: null,
     needs: NO_NEEDS,
     ...extra,
@@ -1309,6 +1312,31 @@ export function agreeToWhatsApp(
   );
 }
 
+/** sc-3969: the guest's unsubscribe from email or texts on the given days, recorded on the address they have now. */
+export function recordOptOuts(
+  list: readonly Guest[],
+  id: string,
+  days: { email?: string; texts?: string },
+): Guest[] {
+  return list.map((one) =>
+    one.id === id
+      ? {
+          ...one,
+          optOuts: {
+            email:
+              days.email != null && one.email != null
+                ? { address: one.email, on: days.email }
+                : one.optOuts.email,
+            texts:
+              days.texts != null && one.phone != null
+                ? { phone: one.phone, on: days.texts }
+                : one.optOuts.texts,
+          },
+        }
+      : one,
+  );
+}
+
 export function replaceLink(list: readonly Guest[], id: string, on: string): Guest[] {
   return list.map((one) => (one.id === id ? { ...one, replaced: on, flagged: false } : one));
 }
@@ -1700,6 +1728,24 @@ export const GUESTS_STATES = [
   { key: 'whatsAppOptedOut', name: 'Sophie Laurent unsubscribed: only the guest can change it' },
   { key: 'whatsAppNoMobile', name: 'Inês Duarte, no mobile number: no WhatsApp row' },
   { key: 'whatsAppViewer', name: 'Can view (guests.read): no contact details, no WhatsApp row' },
+  { key: 'optOutEmail', name: 'Opt-outs, email · Kwame Mensah: Unsubscribed from email on Oct 22' },
+  {
+    key: 'optOutTexts',
+    name: 'Opt-outs, texts · Kwame Mensah: Unsubscribed from texts on Oct 29, then the WhatsApp row',
+  },
+  {
+    key: 'optOutTextsWhatsApp',
+    name: 'Opt-outs, texts and WhatsApp · Sophie Laurent: two lines, one closing sentence',
+  },
+  { key: 'optOutAll', name: 'Opt-outs, all three · Sophie Laurent: email, texts and WhatsApp' },
+  {
+    key: 'optOutNoMobile',
+    name: 'Opt-outs, no mobile number · Inês Duarte: the email’s line only',
+  },
+  {
+    key: 'optOutViewer',
+    name: 'Opt-outs, Can view · Kwame Mensah: no contact details, no opt-out line',
+  },
   { key: 'export', name: 'Export: This view and Excel, the defaults' },
   { key: 'exportNarrowed', name: 'Export from Coming and “duarte”: a guest and their companion' },
   { key: 'exportEmpty', name: 'Export from an empty view: This view off, All guests chosen' },
@@ -1790,6 +1836,8 @@ export function guestsStart(state: GuestsState | null, params: URLSearchParams):
     choice: 'coming',
   });
   const add = (from: AddStart = {}): GuestsStart => column({ kind: 'add', start: from });
+  const optOut = (id: string, days: { email?: string; texts?: string }): GuestsStart =>
+    column(guestPane(id), { choice: 'coming', list: recordOptOuts(start.list, id, days) });
   const send = (more: Partial<GuestsStart> = {}): GuestsStart =>
     column(guestPane('yusuf'), { choice: 'notYet', ...more });
   const refusedNeeds = (needs: Partial<Needs>, at: string): GuestsStart => ({
@@ -2180,6 +2228,18 @@ export function guestsStart(state: GuestsState | null, params: URLSearchParams):
       return column(guestPane('ines'), { choice: 'coming' });
     case 'whatsAppViewer':
       return column(guestPane('kwame'), { choice: 'coming', role: 'viewer' });
+    case 'optOutEmail':
+      return optOut('kwame', { email: '2026-10-22' });
+    case 'optOutTexts':
+      return optOut('kwame', { texts: '2026-10-29' });
+    case 'optOutTextsWhatsApp':
+      return optOut('sophie', { texts: '2026-10-27' });
+    case 'optOutAll':
+      return optOut('sophie', { email: '2026-10-20', texts: '2026-10-27' });
+    case 'optOutNoMobile':
+      return optOut('ines', { email: '2026-10-25' });
+    case 'optOutViewer':
+      return { ...optOut('kwame', { email: '2026-10-22' }), role: 'viewer' };
     case 'export':
       return { ...start, exporting: {} };
     case 'exportNarrowed':
@@ -2369,6 +2429,14 @@ export const GUESTS_PAGES: readonly { name: string; states: readonly DemoLink[] 
     'whatsAppOptedOut',
     'whatsAppNoMobile',
     'whatsAppViewer',
+  ]),
+  group('A guest’s opt-outs (sc-3969)', [
+    'optOutEmail',
+    'optOutTexts',
+    'optOutTextsWhatsApp',
+    'optOutAll',
+    'optOutNoMobile',
+    'optOutViewer',
   ]),
   group('Export (sc-3784)', [
     'export',
