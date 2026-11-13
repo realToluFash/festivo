@@ -737,6 +737,8 @@
 
 .today-day.is-today .today-weekday {
   color: var(--colorAccentText);
+  white-space: nowrap;
+  overflow-wrap: normal;
 }
 
 .today-date {
