@@ -2152,14 +2152,25 @@ export class ApiClient {
 
   private guestPageOf(raw: unknown, route: string): GuestPage {
     const page = asGuestPage(raw);
+    const feed = (raw as Record<string, unknown> | null)?.calendarFeed;
 
-    if (page == null) {
+    if (page == null || (feed != null && (typeof feed !== 'string' || !feed.startsWith('/')))) {
       throw new Error(
         `The API answered ${route} in a shape this client does not know. Check GuestPageController in services/api.`,
       );
     }
 
-    return page;
+    if (feed == null) return page;
+
+    const webcal = this.url(feed).replace(/^https?:/, 'webcal:');
+
+    return {
+      ...page,
+      calendar: {
+        webcal,
+        google: `https://calendar.google.com/calendar/r?cid=${encodeURIComponent(webcal)}`,
+      },
+    };
   }
 
   /** "Not {name}? Tell us". Refused `too_many_attempts` after five an hour on one link. */
@@ -3655,6 +3666,7 @@ function asGuestPage(raw: unknown): GuestPage | null {
     phase: shown,
     started,
     answersOpen,
+    calendar: null,
   };
 }
 
