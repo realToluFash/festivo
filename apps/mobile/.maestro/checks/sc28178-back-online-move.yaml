@@ -21,8 +21,10 @@ onFlowComplete:
       ASK: /api?to=stopped
 - tapOn:
     id: 'tab-calendar|frame\.calendar'
-- waitForAnimationToEnd:
-    timeout: 5000
+- extendedWaitUntil:
+    visible:
+      id: 'offline.band'
+    timeout: 30000
 - takeScreenshot: offline
 # The harness starts the API again before it makes any membership change.
 - runScript:
