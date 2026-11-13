@@ -4,7 +4,7 @@ appId: host.exp.Exponent
 - openLink: ${METRO_URL}/--/demo/settings/account?state=undeliverable
 - extendedWaitUntil:
     visible:
-      id: 'demo.account.name'
+      id: 'account.card'
     timeout: 30000
 - scrollUntilVisible:
     element:
