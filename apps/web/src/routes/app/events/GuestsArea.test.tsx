@@ -926,6 +926,59 @@ describe('A guest’s details, and correcting them (sc-3773)', () => {
     });
   });
 
+  it('Keep mine brings back a companion their version removed, as a new one (Decided, 13 Nov)', async () => {
+    let reads = 0;
+    let saves = 0;
+    const theirs = { ...DETAILS, companions: [] };
+    const sent = await editNgozi({
+      'GET /api/events/ev_1/guests/g_1': () => {
+        reads += 1;
+        return reads === 1 ? tagged(DETAILS, '"1"') : tagged(theirs, '"2"');
+      },
+      'PUT /api/events/ev_1/guests/g_1': () => {
+        saves += 1;
+        return saves === 1
+          ? problem('precondition_failed', 412)
+          : tagged(
+              {
+                ...theirs,
+                companions: [
+                  { id: 'c_2', fullName: 'Obi Eze', state: 'coming' },
+                  { id: 'c_3', fullName: 'Tolu Bankole', state: 'coming' },
+                ],
+              },
+              '"3"',
+            );
+      },
+    });
+
+    fireEvent.click(screen.getByRole('button', { name: 'Add a companion' }));
+    type('Companion’s full name, 2 of 2', 'Tolu Bankole');
+    fireEvent.click(screen.getByRole('button', { name: 'Save' }));
+    const panel = await screen.findByRole('alert');
+    expect(
+      within(panel)
+        .getAllByRole('term')
+        .map((one) => one.textContent),
+    ).toEqual(['Companions']);
+    expect(puts(sent)[0]?.body).toMatchObject({
+      companions: [
+        { id: 'c_1', fullName: 'Obi Eze' },
+        { id: null, fullName: 'Tolu Bankole' },
+      ],
+    });
+
+    fireEvent.click(within(panel).getByRole('button', { name: 'Keep mine' }));
+
+    expect(await screen.findByText('Saved')).toBeDefined();
+    expect(puts(sent)[1]?.body).toMatchObject({
+      companions: [
+        { id: null, fullName: 'Obi Eze' },
+        { id: null, fullName: 'Tolu Bankole' },
+      ],
+    });
+  });
+
   it('sends nothing on a 412 when their version already holds every change, and shows it', async () => {
     let reads = 0;
     const theirs = { ...DETAILS, email: 'ngozi.eze@example.com' };

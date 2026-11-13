@@ -653,13 +653,16 @@ function changedOf(values: Values, base: Values, held: readonly Field[] = []): r
 /** Their version with only this host's changed fields taken from the form, so Keep mine overwrites nothing a colleague changed. */
 function mergedOf(values: Values, theirs: Values, changed: readonly Field[]): Values {
   const mine = (field: Field) => changed.includes(field);
+  const held = new Set(theirs.companions.map((one) => one.id));
 
   return {
     fullName: mine('fullName') ? values.fullName : theirs.fullName,
     email: mine('email') ? values.email : theirs.email,
     country: mine('mobile') ? values.country : theirs.country,
     number: mine('mobile') ? values.number : theirs.number,
-    companions: mine('companions') ? values.companions : theirs.companions,
+    companions: mine('companions')
+      ? values.companions.map((one) => (held.has(one.id) ? one : { ...one, id: null }))
+      : theirs.companions,
   };
 }
 
