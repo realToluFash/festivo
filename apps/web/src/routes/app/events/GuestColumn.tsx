@@ -5,7 +5,7 @@ import {
   type GuestDetails,
   type TaggedGuest,
 } from '@soirely/api-client';
-import { formatPhone, phoneE164, phoneFields } from '@soirely/domain';
+import { formatPhone, ownLanguageName, phoneE164, phoneFields } from '@soirely/domain';
 import { type ReactNode, useEffect, useEffectEvent, useId, useRef, useState } from 'react';
 import type { TFunction } from 'i18next';
 import { useTranslation } from 'react-i18next';
@@ -35,7 +35,6 @@ import {
   firstProblem,
   isListed,
   newGuestOf,
-  ownName,
   problemsOf,
   violationProblems,
 } from './guestRows.ts';
@@ -478,7 +477,7 @@ function GuestView({
                   <div className="gs-row-words">
                     <RowWords
                       title={
-                        ownName(guest.language) ??
+                        ownLanguageName(guest.language) ??
                         t('guestList.languageNotSetLine', {
                           language: t(`languageNames.${guest.organisationLanguage ?? 'en'}`),
                         })
@@ -857,8 +856,8 @@ function EditForm({
       {
         key: 'language',
         field: t('language.label'),
-        theirs: ownName(theirs.language) ?? t('guestList.languageNotSet'),
-        yours: ownName(sent.language) ?? t('guestList.languageNotSet'),
+        theirs: ownLanguageName(theirs.language) ?? t('guestList.languageNotSet'),
+        yours: ownLanguageName(sent.language) ?? t('guestList.languageNotSet'),
       },
       {
         key: 'companions',

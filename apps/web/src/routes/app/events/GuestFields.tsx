@@ -1,11 +1,10 @@
-import { LOCALES, callingCode, countryChoices } from '@soirely/domain';
+import { LOCALES, callingCode, countryChoices, ownLanguageName } from '@soirely/domain';
 import { type ReactNode, useId, useMemo } from 'react';
 import { useTranslation } from 'react-i18next';
 
 import { Glyph } from '../../../components/Glyph.tsx';
 import { currentLocale } from '../../../i18n/index.ts';
 import { codeChoice } from '../../../phoneProblem.ts';
-import { ownName } from './guestRows.ts';
 
 export function CompanionField({
   at,
@@ -128,7 +127,7 @@ export function ChoseNote({ chose, id }: { chose: string; id?: string }) {
   return (
     <p id={id} className="gs-chose">
       <Glyph name="info" size={16} weight={2.2} />
-      <span>{t('guestList.languageChose', { language: ownName(chose) ?? chose })}</span>
+      <span>{t('guestList.languageChose', { language: ownLanguageName(chose) ?? chose })}</span>
     </p>
   );
 }
@@ -154,7 +153,7 @@ export function LanguageField({
         <span className="gs-optional">{t('eventForm.optional')}</span>
       </label>
       <div className="desk-box gs-select">
-        <span aria-hidden="true">{ownName(value) ?? t('guestList.languageNotSet')}</span>
+        <span aria-hidden="true">{ownLanguageName(value) ?? t('guestList.languageNotSet')}</span>
         <Glyph name="chevdown" size={15} weight={2.4} />
         <select
           id={id}
