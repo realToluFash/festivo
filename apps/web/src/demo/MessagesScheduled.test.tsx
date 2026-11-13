@@ -201,6 +201,24 @@ describe('A scheduled message while its event is paused, finished, or too late (
     ).toBeDefined();
   });
 
+  it.each([
+    ['scheduledPaused', /Paused/u],
+    ['scheduledPausedLate', /Paused/u],
+    ['scheduledPausedEdit', /Paused/u],
+    ['scheduledTooLate', /Paused/u],
+    ['scheduledFinished', /Called off$/u],
+  ])('%s: the event beside it reads %s in the sidebar', SLOW, async (state, reads) => {
+    await messages(state);
+
+    expect(document.querySelector('.ev-side-event')?.textContent).toMatch(reads);
+  });
+
+  it('a scheduled message with its event live: the sidebar reads neither', SLOW, async () => {
+    await messages('scheduled');
+
+    expect(document.querySelector('.ev-side-event')?.textContent).not.toMatch(/Paused|Called off/u);
+  });
+
   it('reads Not sent: too late with the reason, no actions, in Done', SLOW, async () => {
     await messages('scheduledTooLate');
 
