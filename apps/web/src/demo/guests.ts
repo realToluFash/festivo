@@ -19,7 +19,6 @@ import {
   savedNeeds,
 } from './guestNeeds.ts';
 import { repliesOpen } from './replyClose.ts';
-import { GUEST_WORDS, SAMPLE_GUESTS } from './guestCounts.ts';
 import {
   CHOICE_WORDS,
   GW,
@@ -1274,15 +1273,6 @@ function nextDay(iso: string): string {
   at.setUTCDate(at.getUTCDate() + 1);
 
   return at.toISOString().slice(0, 10);
-}
-
-/** Each event's row on Events, in the tiles' measure so the rows add up to the tile (sc-3786, amended). */
-export function guestLineOf(id: string): string | null {
-  const one = SAMPLE_GUESTS[id];
-
-  if (one == null) return null;
-
-  return `${GUEST_WORDS.coming(one.coming)} · ${GUEST_WORDS.notReplied(one.invited - one.replied)}`;
 }
 
 /** member: a member without guests.manage (sc-3784), who exports without the needs columns. */

@@ -378,6 +378,10 @@ export const FILTERS: readonly FilterKey[] = [
   'notyet',
 ];
 
+export function guestsFromOf(value: string | undefined): FilterKey | null {
+  return FILTERS.find((key) => key === value) ?? null;
+}
+
 export function filtersFor(counts: Counts): FilterKey[] {
   return counts.walkin > 0
     ? FILTERS.flatMap((key) => (key === 'coming' ? [key, 'walkin'] : [key]))

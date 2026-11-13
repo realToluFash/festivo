@@ -78,7 +78,7 @@ describe('Events in A at a desk (sc-30304)', () => {
       expect(await screen.findByRole('heading', { level: 1, name: 'Events' })).toBeDefined();
       expect(router.state.location.pathname).toBe('/demo/events');
       expect(screen.getByRole('heading', { level: 2, name: WEDDING })).toBeDefined();
-      expect(within(main()).getByRole('link', { name: /Ireti at 40/ })).toBeDefined();
+      expect(within(main()).getByRole('link', { name: /^Ireti at 40/ })).toBeDefined();
       expect(screen.getByText('4 events · Sorted by date')).toBeDefined();
     },
   );

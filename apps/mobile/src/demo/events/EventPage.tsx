@@ -132,6 +132,7 @@ export function EventScreen({
   guests = null,
   budget = null,
   people = null,
+  guestsFrom: figureOpens = null,
   without,
 }: {
   id: string | undefined;
@@ -144,6 +145,8 @@ export function EventScreen({
   budget?: BudgetState | null;
   /** The People card's state on Overview (sc-29914); none is the populated card. */
   people?: CardState | null;
+  /** A figure on Events opens the event's Guests with its choice in the filter menu (sc-3786). */
+  guestsFrom?: FilterKey | null;
   without?: AreaKey | undefined;
 }) {
   const shell = useShell();
@@ -154,15 +157,17 @@ export function EventScreen({
   );
   const [event, setEvent] = useState(() => startEvent(id, state, messages));
   const [at, setAt] = useState<AreaKey>(
-    guests != null
-      ? isIn(OVERVIEW_STATES, guests)
-        ? 'overview'
-        : 'guests'
-      : area == null || area === 'people' || messages === 'tell' || messages === 'tellPlace'
-        ? 'overview'
-        : area,
+    figureOpens != null
+      ? 'guests'
+      : guests != null
+        ? isIn(OVERVIEW_STATES, guests)
+          ? 'overview'
+          : 'guests'
+        : area == null || area === 'people' || messages === 'tell' || messages === 'tellPlace'
+          ? 'overview'
+          : area,
   );
-  const [guestsFrom, setGuestsFrom] = useState<FilterKey | null>(null);
+  const [guestsFrom, setGuestsFrom] = useState<FilterKey | null>(figureOpens);
   const [m, dispatch] = useReducer(reduceReach, null, () => {
     const begun = startOf(messages, shell.layout !== 'phone');
     if (state !== 'datesReplyBySaved') return begun;
