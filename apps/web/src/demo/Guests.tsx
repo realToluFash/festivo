@@ -1047,7 +1047,10 @@ function Rows({
               }}
             >
               <MarkLead reply={row.person.reply} />
-              <RowWords title={row.person.name} lines={[row.line]} />
+              <RowWords
+                title={row.person.name}
+                lines={row.contact == null ? [row.line] : [row.line, row.contact]}
+              />
               {(row.allergy || row.dietary) && (
                 <span className="gs-row-tags" aria-hidden="true">
                   {row.allergy && <AllergyMark />}

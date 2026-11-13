@@ -822,6 +822,8 @@ export interface ListRow {
   person: Person;
   indent: boolean;
   line: string;
+  /** sc-1468: the guest's email address and mobile number, for members who can edit guests only (sc-3773). */
+  contact: string | null;
   label: string;
   /** sc-3777's grey Dietary notes tag and its allergy mark; never for someone who cannot manage guests. */
   dietary: boolean;
@@ -866,14 +868,24 @@ function rowOf(
   const needs = contacts ? needsOfPerson(person) : undefined;
   const allergy = hasAllergy(needs);
   const tagged = dietary(needs);
+  const reach = contacts && person.companion == null ? reachOf(person.guest) : [];
   const label = [
     person.name,
     line.startsWith(word) ? line : `${word}, ${line}`,
+    ...reach,
     ...(allergy ? [GW.allergy] : []),
     ...(tagged ? [GW.dietaryNotes] : []),
   ].join(', ');
 
-  return { person, indent, line, label, dietary: tagged, allergy };
+  const contact = reach.length === 0 ? null : reach.join(' · ');
+
+  return { person, indent, line, contact, label, dietary: tagged, allergy };
+}
+
+function reachOf(one: Guest): string[] {
+  return [one.email, one.phone == null ? null : phoneShown(one.phone)].filter(
+    (part): part is string => part != null && part !== '',
+  );
 }
 
 export interface ListGroup {
@@ -1017,6 +1029,7 @@ export function changedView(
         person,
         indent: false,
         line,
+        contact: null,
         label: `${person.name}, ${line}`,
         dietary: false,
         allergy: false,
