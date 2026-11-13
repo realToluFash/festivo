@@ -36,7 +36,7 @@ import { config } from '../../../config.ts';
 import { Glyph } from '../../../components/Glyph.tsx';
 import { Skeleton } from '../../../components/Skeleton.tsx';
 import { CardStep, Chevron, RowWords, TextAction } from '../../../components/SettingsParts.tsx';
-import { currentLocale } from '../../../i18n/index.ts';
+import { currentLocale, dateLocale } from '../../../i18n/index.ts';
 import { LayersContext, focusWhenFree, useDeskLayers } from '../../../layers.ts';
 import { type Mesh, meshFor } from '../../../mesh.ts';
 import { pageTitle, usePageTitle } from '../../../pageTitle.ts';
@@ -398,7 +398,12 @@ export function GuestsArea({
                 <div className="gs-cols">
                   <section className="gs-list" aria-label={t('eventPage.guests')}>
                     {guests.length > 0 && (
-                      <Rows rows={rowsOf(guests)} open={open?.id ?? null} onOpen={openGuest} />
+                      <Rows
+                        rows={rowsOf(guests)}
+                        timeZone={event.timeZone}
+                        open={open?.id ?? null}
+                        onOpen={openGuest}
+                      />
                     )}
                   </section>
                   {open != null && (
@@ -513,10 +518,13 @@ function ReplyMark({ reply }: { reply: ReplyWord }) {
 
 function Rows({
   rows,
+  timeZone,
   open,
   onOpen,
 }: {
   rows: readonly ListRow[];
+  /** The event's: a reply's date is the day it was in the event's zone. */
+  timeZone: string;
   open: string | null;
   onOpen: (id: string) => void;
 }) {
@@ -527,7 +535,18 @@ function Rows({
       {rows.map((row) => {
         if (row.kind === 'guest') {
           const { guest } = row;
-          const reply = t(REPLY_KEY[guest.reply]);
+          const word = t(REPLY_KEY[guest.reply]);
+          const reply =
+            guest.repliedAt == null
+              ? word
+              : t('guestList.replied', {
+                  reply: word,
+                  date: new Intl.DateTimeFormat(dateLocale(), {
+                    month: 'short',
+                    day: 'numeric',
+                    timeZone,
+                  }).format(new Date(guest.repliedAt)),
+                });
           const mobile = guest.mobile == null ? null : formatPhone(guest.mobile);
           const contact =
             guest.email != null && mobile != null

@@ -8,6 +8,7 @@ use App\Entity\Event;
 use App\Entity\Guest;
 use App\Enum\GuestReply;
 use App\Repository\GuestRepository;
+use DateTimeZone;
 use Psl\Dict;
 use Psl\Iter;
 use Psl\Vec;
@@ -55,6 +56,8 @@ final readonly class GuestSerialiser
             'email' => $host->getEmail(),
             'mobile' => $host->getMobile(),
             'reply' => $reply->value,
+            'repliedAt' => GuestReply::NoReply === $reply ? null : $host->getRepliedAt()?->setTimezone(new DateTimeZone($host->getEvent()->getTimeZone()))->format(\DATE_ATOM),
+            'replySource' => GuestReply::NoReply === $reply ? null : $host->getReplySource()?->value,
             'companions' => Vec\map($companions, static fn (Guest $companion): array => [
                 'id' => $companion->getId()->toRfc4122(),
                 'fullName' => $companion->getFullName(),

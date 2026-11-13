@@ -24,8 +24,10 @@ import {
   asGuest,
   asGuestList,
   type Guest,
+  type GuestAnswer,
   type GuestList,
   type GuestPage,
+  GUEST_ANSWERS,
   type NewGuest,
 } from './guests.ts';
 import { ApiError, ApiUnreachableError, type Problem, toProblem } from './problem.ts';
@@ -2105,39 +2107,32 @@ export class ApiClient {
     );
   }
 
-  /** The token is a credential, so it travels in the body. Refused `not_found` alike for an unknown, replaced or deleted event's token. */
+  /** The token is a credential, so it travels in the body. Refused `not_found` alike for an unknown, replaced or deleted event's token. Records nothing. */
   async guestPage(token: string): Promise<GuestPage> {
-    const raw = await this.post<Record<string, unknown>>(
-      '/api/guest-links/page',
-      { token },
-      { anonymous: true },
+    return this.guestPageOf(
+      await this.post<unknown>('/api/guest-links/page', { token }, { anonymous: true }),
+      'POST /api/guest-links/page',
     );
-    const guest = raw?.guest as Record<string, unknown> | null | undefined;
-    const event = raw?.event as Record<string, unknown> | null | undefined;
+  }
 
-    if (
-      typeof guest?.fullName !== 'string' ||
-      typeof event?.id !== 'string' ||
-      typeof event.name !== 'string' ||
-      typeof event.type !== 'string'
-    ) {
+  /** Records the guest's answer and answers the page as it now stands (sc-1439). Refused 422 for an answer the page does not offer, 409 `replies_closed` from the start, and `not_found` as the page is. */
+  async sendGuestAnswer(token: string, answer: GuestAnswer): Promise<GuestPage> {
+    return this.guestPageOf(
+      await this.post<unknown>('/api/guest-links/reply', { token, answer }, { anonymous: true }),
+      'POST /api/guest-links/reply',
+    );
+  }
+
+  private guestPageOf(raw: unknown, route: string): GuestPage {
+    const page = asGuestPage(raw);
+
+    if (page == null) {
       throw new Error(
-        'The API answered POST /api/guest-links/page in a shape this client does not know. Check GuestPageController in services/api.',
+        `The API answered ${route} in a shape this client does not know. Check GuestPageController in services/api.`,
       );
     }
 
-    return {
-      guest: { fullName: guest.fullName },
-      event: {
-        id: event.id,
-        name: event.name,
-        type: event.type,
-        cover: asEventCover(event.cover) ?? null,
-        hosts: Array.isArray(event.hosts)
-          ? event.hosts.filter((host): host is string => typeof host === 'string')
-          : [],
-      },
-    };
+    return page;
   }
 
   /** "Not {name}? Tell us". Refused `too_many_attempts` after five an hour on one link. */
@@ -3554,6 +3549,58 @@ function asEventCover(raw: unknown): EventCover | undefined {
     return undefined;
 
   return { position, description, sizes: parsed as EventCover['sizes'] };
+}
+
+function asGuestPage(raw: unknown): GuestPage | null {
+  if (typeof raw !== 'object' || raw == null) return null;
+  const { guest, event, answersOpen } = raw as Record<string, unknown>;
+  if (typeof guest !== 'object' || guest == null || typeof event !== 'object' || event == null)
+    return null;
+  const who = guest as Record<string, unknown>;
+  const what = event as Record<string, unknown>;
+  const reply = who.reply as Record<string, unknown> | null | undefined;
+  const answer = GUEST_ANSWERS.find((known) => known === reply?.answer);
+  const venue = what.venue as Record<string, unknown> | null | undefined;
+
+  if (
+    typeof who.fullName !== 'string' ||
+    typeof who.companions !== 'number' ||
+    (reply != null && (answer == null || typeof reply.at !== 'string')) ||
+    typeof what.id !== 'string' ||
+    typeof what.name !== 'string' ||
+    typeof what.type !== 'string' ||
+    typeof what.startsAt !== 'string' ||
+    typeof what.timeZone !== 'string' ||
+    typeof answersOpen !== 'boolean'
+  )
+    return null;
+
+  return {
+    guest: {
+      fullName: who.fullName,
+      reply: reply == null || answer == null ? null : { answer, at: reply.at as string },
+      companions: who.companions,
+    },
+    event: {
+      id: what.id,
+      name: what.name,
+      type: what.type,
+      cover: asEventCover(what.cover) ?? null,
+      hosts: Array.isArray(what.hosts)
+        ? what.hosts.filter((host): host is string => typeof host === 'string')
+        : [],
+      startsAt: what.startsAt,
+      timeZone: what.timeZone,
+      venue:
+        venue == null
+          ? null
+          : {
+              name: typeof venue.name === 'string' ? venue.name : null,
+              address: typeof venue.address === 'string' ? venue.address : null,
+            },
+    },
+    answersOpen,
+  };
 }
 
 /** Undefined when the shape is not one this client knows. */

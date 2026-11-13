@@ -23,7 +23,11 @@ import { focusChecked, focusRefused } from './Field.tsx';
 import { useKeysUp } from './keyboardWatch.ts';
 import { useSendingWords } from './ReadOut.tsx';
 import { SETTLED_MS } from './Screen.tsx';
-import { type ScreenReaderTarget, moveScreenReaderFocus } from './screenReaderFocus.ts';
+import {
+  type ScreenReaderTarget,
+  focusReadOnce,
+  moveScreenReaderFocus,
+} from './screenReaderFocus.ts';
 import { SilentWindowName, useFocusBack, useWindowTurn } from './Sheet.tsx';
 import type { TextHandle } from './Text.tsx';
 import { TURNS_WITH_THE_APP } from '../layout/orientations.ts';
@@ -189,13 +193,17 @@ export function CreateWalkWindow<Made>({
 
   useEffect(() => {
     if (!shown || opening.walk.asking) return;
+    let cancelKeys = () => {};
     const wait = setTimeout(() => {
-      if (opening.focus === 'search') search.current?.focus();
-      else if (opening.focus === 'name') field.current?.focus();
+      if (opening.focus === 'search') cancelKeys = focusReadOnce(search);
+      else if (opening.focus === 'name') cancelKeys = focusReadOnce(field);
       else moveScreenReaderFocus(question.current);
     }, SETTLED_MS);
 
-    return () => clearTimeout(wait);
+    return () => {
+      clearTimeout(wait);
+      cancelKeys();
+    };
   }, [shown, opening]);
 
   useEffect(
