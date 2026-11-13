@@ -879,6 +879,92 @@ describe('Guests, the link and Mark as invited (sc-1526, sc-3788)', () => {
     fireEvent.click(within(ask).getByRole('button', { name: 'Replace link' }));
 
     expect(await screen.findByText('Link replaced Nov 3')).toBeDefined();
+    expect(
+      screen.getByText(
+        'Link replaced. Kwame Mensah’s old link no longer works. Copy the new one and send it.',
+      ),
+    ).toBeDefined();
+  });
+
+  it('puts the wrong-person notice under the cover card and before Invitation', SLOW, async () => {
+    await guests('flagged');
+
+    const notice = within(column()).getByRole('region', {
+      name: 'Their link may have reached the wrong person',
+    });
+    const invitation = within(column()).getByRole('region', { name: 'Invitation' });
+
+    expect(notice.textContent).toContain(
+      'Someone who opened Dr Emeka Nwosu’s link told us it was not meant for them. The reply is unchanged. Replace the link so the old one stops working, then send Dr Emeka Nwosu the new one.',
+    );
+    expect(notice.querySelector('svg')).not.toBeNull();
+    expect(
+      notice.compareDocumentPosition(invitation) & Node.DOCUMENT_POSITION_FOLLOWING,
+    ).toBeTruthy();
+    expect(screen.queryAllByText('Their link may have reached the wrong person')).toHaveLength(1);
+  });
+
+  it('keeps the notice on Keep it, and a replace from it clears it', SLOW, async () => {
+    await guests('flagged');
+    const title = 'Their link may have reached the wrong person';
+    const notice = within(column()).getByRole('region', { name: title });
+
+    fireEvent.click(within(notice).getByRole('button', { name: 'Replace link…' }));
+    fireEvent.click(
+      within(
+        await screen.findByRole('alertdialog', { name: 'Replace Dr Emeka Nwosu’s link?' }),
+      ).getByRole('button', { name: 'Keep it' }),
+    );
+    expect(within(column()).getByRole('region', { name: title })).toBeDefined();
+
+    fireEvent.click(within(notice).getByRole('button', { name: 'Replace link…' }));
+    fireEvent.click(
+      within(
+        await screen.findByRole('alertdialog', { name: 'Replace Dr Emeka Nwosu’s link?' }),
+      ).getByRole('button', { name: 'Replace link' }),
+    );
+
+    expect(
+      await within(column()).findByText(
+        'Link replaced. Dr Emeka Nwosu’s old link no longer works. Copy the new one and send it.',
+      ),
+    ).toBeDefined();
+    expect(within(column()).queryByRole('region', { name: title })).toBeNull();
+    const invitation = within(column()).getByRole('region', { name: 'Invitation' });
+    await waitFor(() =>
+      expect(document.activeElement).toBe(
+        within(invitation).getByRole('button', { name: /^Replace link…/ }),
+      ),
+    );
+  });
+
+  it('keeps the notice when the replace fails', SLOW, async () => {
+    await guests('flaggedNotReplaced');
+
+    expect(within(column()).getByRole('alert').textContent).toBe(
+      'Not replaced. The old link still works. Try again.',
+    );
+    expect(
+      within(column()).getByRole('region', {
+        name: 'Their link may have reached the wrong person',
+      }),
+    ).toBeDefined();
+  });
+
+  it('shows someone who can view no notice', SLOW, async () => {
+    await guests('flaggedViewer');
+
+    expect(screen.queryByText('Their link may have reached the wrong person')).toBeNull();
+  });
+
+  it('keeps Replace link… on a Draft, with no Copy invitation link', SLOW, async () => {
+    await guests('draftGuest');
+
+    const invitation = within(column()).getByRole('region', { name: 'Invitation' });
+
+    expect(within(invitation).getByRole('button', { name: /Replace link…/u })).toBeDefined();
+    expect(within(invitation).queryByRole('button', { name: /Copy invitation link/u })).toBeNull();
+    expect(within(invitation).queryByRole('button', { name: /Mark as invited/u })).toBeNull();
   });
 
   it('marks a guest as invited, nothing chosen until they say how', SLOW, async () => {

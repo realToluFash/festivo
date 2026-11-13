@@ -8,6 +8,7 @@ import { GUEST_PAGES, THANK_YOU } from './guest.ts';
 import { GUEST_ASK_PAGES } from './guestAskStates.ts';
 import { GUEST_DAY_PAGES } from './guestDay.ts';
 import { GUEST_KITCHEN_PAGES } from './guestKitchen.ts';
+import { GUEST_PARTY_PAGES } from './guestCompanions.ts';
 
 const SLOW = { timeout: 15000 };
 
@@ -71,7 +72,7 @@ describe('the guest’s own page, A · The cover card (sc-31306)', () => {
     expect(head.textContent).toBe('Guest’s page in A · The cover card · phone, tablet and desk');
     const hrefs = screen.getAllByRole('link').map((one) => one.getAttribute('href'));
     const kitchen = new Set(
-      [...GUEST_KITCHEN_PAGES, ...GUEST_ASK_PAGES, ...GUEST_DAY_PAGES]
+      [...GUEST_KITCHEN_PAGES, ...GUEST_PARTY_PAGES, ...GUEST_ASK_PAGES, ...GUEST_DAY_PAGES]
         .flatMap((one) => one.states)
         .map((one) => one.to),
     );

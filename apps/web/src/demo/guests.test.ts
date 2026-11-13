@@ -1,3 +1,6 @@
+import { readFileSync } from 'node:fs';
+import { join } from 'node:path';
+
 import { describe, expect, it } from 'vitest';
 
 import { CLOCKS, sampleEvent } from './events.ts';
@@ -419,5 +422,13 @@ describe('every state (spec §15)', () => {
       expect(start.event).toMatch(/^evt-/u);
       expect(JSON.stringify(start)).not.toMatch(/\b(AM|PM)\b/u);
     }
+  });
+});
+
+describe('a companion field (sc-43267)', () => {
+  it('ends a placeholder too long for the field in an ellipsis, on one line', () => {
+    expect(readFileSync(join(import.meta.dirname, 'guests.css'), 'utf8')).toMatch(
+      /\.desk \.gs-companion \.desk-box input \{\s*overflow: hidden;\s*text-overflow: ellipsis;\s*white-space: nowrap;\s*\}/u,
+    );
   });
 });

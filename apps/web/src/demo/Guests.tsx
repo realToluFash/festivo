@@ -740,6 +740,8 @@ function GuestsPage({
           onGo={() => {
             setList((was) => replaceLink(was, paneGuest.id, today));
             setAsking(null);
+            setPane({ kind: 'guest', id: paneGuest.id, note: 'linkReplaced' });
+            focus('replace');
           }}
         />
       )}

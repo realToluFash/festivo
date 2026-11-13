@@ -112,6 +112,8 @@ export interface Guest {
   companions: readonly Companion[];
   added: Said;
   replaced: string | null;
+  /** sc-1526: someone who opened their link pressed Tell them; a replace clears it. */
+  flagged: boolean;
   arrived: string | null;
   language: GuestLanguage | null;
   chose: GuestLanguage | null;
@@ -141,6 +143,7 @@ function guest(id: string, name: string, reply: Reply, extra: Partial<Guest> = {
     companions: [],
     added: ADDED,
     replaced: null,
+    flagged: false,
     arrived: null,
     language: null,
     chose: null,
@@ -1188,7 +1191,12 @@ export function agreeToWhatsApp(
 }
 
 export function replaceLink(list: readonly Guest[], id: string, on: string): Guest[] {
-  return list.map((one) => (one.id === id ? { ...one, replaced: on } : one));
+  return list.map((one) => (one.id === id ? { ...one, replaced: on, flagged: false } : one));
+}
+
+/** sc-1526: Tell them, pressed on the guest's own page; pressed again it is still one flag. */
+export function flagLink(list: readonly Guest[], id: string): Guest[] {
+  return list.map((one) => (one.id === id ? { ...one, flagged: true } : one));
 }
 
 export function reopen(list: readonly Guest[], id: string, on: string): Guest[] {
@@ -1306,7 +1314,7 @@ function nextDay(iso: string): string {
 
 /** member: a member without guests.manage (sc-3784), who exports without the needs columns. */
 export type Role = 'owner' | 'member' | 'viewer' | 'staff';
-export type GuestNote = 'recorded' | 'notReplaced' | 'unmarked' | 'unmarkRefused';
+export type GuestNote = 'recorded' | 'notReplaced' | 'linkReplaced' | 'unmarked' | 'unmarkRefused';
 export type Invite = 'copied' | 'refused' | 'mark' | 'markRefused' | 'markNotSaved';
 
 export interface EditStart {
@@ -1501,6 +1509,12 @@ export const GUESTS_STATES = [
   { key: 'replaceAsk', name: 'Replace link…: the Ask' },
   { key: 'replaced', name: 'The link replaced' },
   { key: 'notReplaced', name: 'Replace link failed' },
+  { key: 'flagged', name: 'Their link may have reached the wrong person' },
+  { key: 'flaggedAsk', name: 'Replace link… from the notice: the Ask' },
+  { key: 'flaggedReplaced', name: 'Replaced from the notice: the notice gone' },
+  { key: 'flaggedNotReplaced', name: 'Replace from the notice failed: the notice stays' },
+  { key: 'flaggedViewer', name: 'Can view: a flagged guest, no notice' },
+  { key: 'draftGuest', name: 'A Draft: no Copy, Replace link… stays' },
   { key: 'markAsInvited', name: 'Mark as invited: how?' },
   { key: 'markRefused', name: 'Mark as invited with nothing chosen' },
   { key: 'marked', name: 'Marked as invited' },
@@ -1587,7 +1601,7 @@ export function choiceOf(raw: string | null): Choice | null {
 export function guestsStart(state: GuestsState | null, params: URLSearchParams): GuestsStart {
   const asked = params.get('event');
   const event =
-    state === 'draft'
+    state === 'draft' || state === 'draftGuest'
       ? DRAFT
       : state === 'paused'
         ? PARTY
@@ -1786,9 +1800,30 @@ export function guestsStart(state: GuestsState | null, params: URLSearchParams):
     case 'replaceAsk':
       return column(guestPane('kwame'), { asking: 'replace' });
     case 'replaced':
-      return column(guestPane('kwame'), { list: replaceLink(start.list, 'kwame', TODAY) });
+      return column(guestPane('kwame', { note: 'linkReplaced' }), {
+        list: replaceLink(start.list, 'kwame', TODAY),
+      });
     case 'notReplaced':
       return column(guestPane('kwame', { note: 'notReplaced' }));
+    case 'flagged':
+      return column(guestPane('emeka'), { list: flagLink(start.list, 'emeka') });
+    case 'flaggedAsk':
+      return column(guestPane('emeka'), {
+        list: flagLink(start.list, 'emeka'),
+        asking: 'replace',
+      });
+    case 'flaggedReplaced':
+      return column(guestPane('emeka', { note: 'linkReplaced' }), {
+        list: replaceLink(flagLink(start.list, 'emeka'), 'emeka', TODAY),
+      });
+    case 'flaggedNotReplaced':
+      return column(guestPane('emeka', { note: 'notReplaced' }), {
+        list: flagLink(start.list, 'emeka'),
+      });
+    case 'flaggedViewer':
+      return column(guestPane('emeka'), { list: flagLink(start.list, 'emeka'), role: 'viewer' });
+    case 'draftGuest':
+      return { ...start, pane: guestPane('leila') };
     case 'markAsInvited':
       return column(guestPane('bisi', { invite: 'mark' }));
     case 'markRefused':
@@ -2156,12 +2191,20 @@ export const GUESTS_PAGES: readonly { name: string; states: readonly DemoLink[] 
     'sendNoMobile',
     'sendFinished',
   ]),
+  group('Their link may have reached the wrong person (sc-1526)', [
+    'flagged',
+    'flaggedAsk',
+    'flaggedReplaced',
+    'flaggedNotReplaced',
+    'flaggedViewer',
+  ]),
   group('The link and Mark as invited', [
     'linkCopied',
     'clipboardRefused',
     'replaceAsk',
     'replaced',
     'notReplaced',
+    'draftGuest',
     'markAsInvited',
     'markRefused',
     'marked',
