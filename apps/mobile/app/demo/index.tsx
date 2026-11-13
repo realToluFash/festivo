@@ -1183,6 +1183,31 @@ const PAGES: readonly { page: string; boards: readonly Board[] }[] = [
         href: '/demo/events?state=noGuests',
       },
       {
+        title: 'Events · a reply lands',
+        what: 'The wedding’s guest says Coming: 97 coming, 24 haven’t replied, in place',
+        href: '/demo/events?state=replyLands',
+      },
+      {
+        title: 'Events · Guests invited chosen',
+        what: 'The events with invited guests, and Clear',
+        href: '/demo/events?state=tileInvited',
+      },
+      {
+        title: 'Events · Replies in chosen',
+        what: 'The events with guests who haven’t replied, and Clear',
+        href: '/demo/events?state=tileReplied',
+      },
+      {
+        title: 'Events · without guests.read',
+        what: 'No guest numbers anywhere',
+        href: '/demo/events?state=noGuestsRead',
+      },
+      {
+        title: 'An event · Guests from “haven’t replied”',
+        what: 'No reply chosen: 21, under 25 haven’t replied (21 guests and 4 companions)',
+        href: '/demo/events/evt-wed-4?area=guests&filter=noreply',
+      },
+      {
         title: 'An event · loading',
         what: 'The loaded page’s top and tabs, the body as shapes',
         href: '/demo/events/evt-wed-4?state=loading',

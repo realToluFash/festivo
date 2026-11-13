@@ -21,6 +21,8 @@ import {
   leadsWithCode,
 } from './guestDay.ts';
 import type { DemoLink } from './settings.ts';
+import { type AskView, afterAnswer } from './guestAsk.ts';
+import { type ReplyByChoice, askStarts, isAskState } from './guestAskStates.ts';
 
 /** The guest's own page in A · The cover card (sc-31306), on the boards' sample: main's evt-wed-4 and one guest. */
 export const EVENT: SampleEvent = sampleEvent('evt-wed-4') as SampleEvent;
@@ -152,6 +154,11 @@ export function sentAnswer(was: Visit, answer: Answer): Partial<Visit> {
   return {
     recorded: same ? was.recorded : recorded,
     view: { kind: 'recorded', same },
+    ask: afterAnswer(
+      was.ask,
+      was.recorded?.by == null ? (was.recorded?.answer ?? null) : null,
+      answer,
+    ),
     ...(agreed ? { whatsApp: 'agreed' as const } : {}),
   };
 }
@@ -198,6 +205,10 @@ export interface Visit {
   ticked: boolean;
   reach: Reach;
   note: GuestNote;
+  /** sc-1363: when to ask a Not sure yet guest again; null with any other answer. */
+  ask: AskView | null;
+  /** sc-3780: the host let this guest change their reply, so Reply by does not bound the ask. */
+  reopened: boolean;
   day: Day;
   where: WhereShown;
   dayOrder: boolean;
@@ -236,6 +247,8 @@ const BASE: Visit = {
   ticked: false,
   reach: { email: true, sms: true, saved: null },
   note: 'host',
+  ask: null,
+  reopened: false,
   day: 'before',
   where: 'full',
   dayOrder: false,
@@ -553,7 +566,11 @@ export function isGuestState(value: string | null): value is GuestStateName {
   return value != null && Object.hasOwn(STATES, value);
 }
 
-function startsOf(value: string | null): Partial<Visit> {
+function startsOf(
+  value: string | null,
+  ask: { replyBy?: ReplyByChoice; days?: number },
+): Partial<Visit> {
+  if (isAskState(value)) return askStarts(value, ask.replyBy, ask.days);
   if (isGuestKitchenState(value))
     return guestKitchenStarts(value, { earlier: EARLIER, companions: COMPANIONS });
   if (isGuestNoteState(value)) return guestNoteStarts(value);
@@ -562,8 +579,11 @@ function startsOf(value: string | null): Partial<Visit> {
   return STATES[isGuestState(value) ? value : 'open'].starts as Partial<Visit>;
 }
 
-export function startOf(value: string | null): Visit {
-  const visit: Visit = { ...BASE, ...startsOf(value) };
+export function startOf(
+  value: string | null,
+  ask: { replyBy?: ReplyByChoice; days?: number } = {},
+): Visit {
+  const visit: Visit = { ...BASE, ...startsOf(value, ask) };
 
   return { ...visit, dayOrder: leadsWithCode(visit) };
 }

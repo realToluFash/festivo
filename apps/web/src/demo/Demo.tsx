@@ -32,6 +32,7 @@ import { GetBackInBoard } from './GetBackIn.tsx';
 import { GuestPage } from './Guest.tsx';
 import { GUEST_PAGES } from './guest.ts';
 import { GUEST_KITCHEN_PAGES } from './guestKitchen.ts';
+import { GUEST_ASK_PAGES } from './guestAskStates.ts';
 import { GUEST_DAY_PAGES } from './guestDay.ts';
 import { GUEST_NOTE_PAGES } from './guestNote.ts';
 import { Guests } from './Guests.tsx';
@@ -300,6 +301,10 @@ function DemoHome({ from }: { from: string }) {
         <BoardPages pages={GUEST_KITCHEN_PAGES} />
         <h3>The host’s arrival note on the guest’s page · sc-24385 · phone, tablet and desk</h3>
         <BoardPages pages={GUEST_NOTE_PAGES} />
+        <h3>
+          Not sure yet, when to ask again, on the guest’s page · sc-1363 · phone, tablet and desk
+        </h3>
+        <BoardPages pages={GUEST_ASK_PAGES} />
         <h3>The guest’s page on the event’s day · sc-24381 · phone, tablet and desk</h3>
         <BoardPages pages={GUEST_DAY_PAGES} />
       </section>

@@ -12,7 +12,7 @@ import {
 } from '@soirely/domain';
 import { useEffect, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { useLocation, useNavigate, useSearchParams } from 'react-router';
+import { Link, useLocation, useNavigate, useSearchParams } from 'react-router';
 
 import {
   EventsEmptyTab,
@@ -48,8 +48,18 @@ import {
   withoutTab,
 } from './events.ts';
 import { DuplicateDialog } from './EventDialogs.tsx';
-import { GUEST_WORDS as G, SAMPLE_GUESTS, figureOf, guestCountsOf } from './guestCounts.ts';
-import { guestLineOf } from './guests.ts';
+import {
+  FIGURE_OPENS,
+  GUEST_WORDS as G,
+  type GuestsTile,
+  SAMPLE_GUESTS,
+  eventsOfTile,
+  figureOf,
+  guestCountsOf,
+  rowGuests,
+  withReply,
+} from './guestCounts.ts';
+import { guestsAt } from './guests.ts';
 import { EventCard, EventRow, EventsShell } from './EventParts.tsx';
 import { TextAction } from '../components/SettingsParts.tsx';
 import type { Tell } from '../components/SettingsParts.tsx';
@@ -117,6 +127,9 @@ function sidebarEvents(emptied: Tab | null): EventKey[] {
   return SIDEBAR_EVENTS.filter((key) => kept.some((event) => event.id === TODAY_IDS[key]));
 }
 
+const REPLY_AFTER_MS = 2500;
+const REPLYING = 'evt-wed-4';
+
 function EventsList({ start, tell }: { start: ReturnType<typeof listStart>; tell: Tell }) {
   const { t } = useTranslation();
   const [params, setParams] = useSearchParams();
@@ -165,8 +178,25 @@ function EventsList({ start, tell }: { start: ReturnType<typeof listStart>; tell
     },
     t,
   );
-  const guests = guestCountsOf(events, start.noGuests ? {} : SAMPLE_GUESTS, now);
-  const guestsOf = (event: SampleEvent) => (start.noGuests ? null : guestLineOf(event.id));
+  const [sample, setSample] = useState(() => (start.noGuests ? {} : SAMPLE_GUESTS));
+  const [tile, setTile] = useState<GuestsTile | null>(start.tile);
+  const guests = guestCountsOf(events, sample, now);
+  const figuresOf = (event: SampleEvent) => {
+    const figures = start.readsGuests ? rowGuests(event, sample, now) : null;
+
+    return figures == null ? null : <GuestLine event={event} {...figures} />;
+  };
+  const tileEvents = tile == null ? [] : eventsOfTile(tile, upcoming, sample, now);
+
+  useEffect(() => {
+    if (!start.replyLands) return;
+    const wait = window.setTimeout(
+      () => setSample((was) => withReply(was, REPLYING)),
+      REPLY_AFTER_MS,
+    );
+
+    return () => window.clearTimeout(wait);
+  }, [start.replyLands]);
   const firstNew = useRef<HTMLUListElement>(null);
 
   function apply(next: EventsLook, replace = false): void {
@@ -252,7 +282,13 @@ function EventsList({ start, tell }: { start: ReturnType<typeof listStart>; tell
           <ListTop tell={tell} />
           {summary != null && <p className="desk-line">{summary}</p>}
         </div>
-        <GuestTiles counts={guests} />
+        {start.readsGuests && (
+          <GuestTiles
+            counts={guests}
+            chosen={tile}
+            onTile={(next) => setTile((was) => (was === next ? null : next))}
+          />
+        )}
         <Switched />
         <EventsSearchRow
           look={look}
@@ -262,7 +298,27 @@ function EventsList({ start, tell }: { start: ReturnType<typeof listStart>; tell
           calendar={calendar}
           onLook={apply}
         />
-        {looking ? (
+        {tile != null && !looking ? (
+          <>
+            <div className="ev-tile-shown">
+              <p className="desk-line" role="status">
+                {G.tileShown[tile](tileEvents.length, upcoming.length)}
+              </p>
+              <TextAction label={G.clear} onClick={() => setTile(null)} />
+            </div>
+            <ul className="desk-rows ev-rows">
+              {tileEvents.map((event) => (
+                <EventRow
+                  key={event.id}
+                  event={event}
+                  now={now}
+                  tab="upcoming"
+                  figures={figuresOf(event)}
+                />
+              ))}
+            </ul>
+          </>
+        ) : looking ? (
           <EventsResults
             look={look}
             groups={TABS.map((one) => {
@@ -283,13 +339,15 @@ function EventsList({ start, tell }: { start: ReturnType<typeof listStart>; tell
           <>
             <EventsTabs tab={tab} counts={counts} onPick={pick}>
               {tab !== 'past' && byTab[tab][0] != null && (
-                <EventCard
-                  event={byTab[tab][0]}
-                  now={now}
-                  level={2}
-                  guests={guestsOf(byTab[tab][0])}
-                  onStep={stepOn(byTab[tab][0])}
-                />
+                <div className="ev-card-figured">
+                  <EventCard
+                    event={byTab[tab][0]}
+                    now={now}
+                    level={2}
+                    onStep={stepOn(byTab[tab][0])}
+                  />
+                  {figuresOf(byTab[tab][0])}
+                </div>
               )}
               {byTab[tab].length === 0 ? (
                 <EventsEmptyTab tab={tab} />
@@ -304,7 +362,7 @@ function EventsList({ start, tell }: { start: ReturnType<typeof listStart>; tell
                       event={event}
                       now={now}
                       tab={tab}
-                      guests={guestsOf(event)}
+                      figures={figuresOf(event)}
                     />
                   ))}
                 </ul>
@@ -353,19 +411,74 @@ function EventsList({ start, tell }: { start: ReturnType<typeof listStart>; tell
   );
 }
 
-function GuestTiles({ counts }: { counts: ReturnType<typeof guestCountsOf> }) {
+/** sc-3786: under the event's card or row, beside its link and never inside it, each figure its own link into the event's Guests. */
+function GuestLine({
+  event,
+  coming,
+  notReplied,
+}: {
+  event: SampleEvent;
+  coming: number;
+  notReplied: number;
+}) {
+  return (
+    <p className="ev-figures">
+      <Link
+        to={guestsAt(event.id, { filter: FIGURE_OPENS.coming })}
+        aria-label={`${G.coming(coming)}, ${G.comingOpens(event.name)}`}
+      >
+        {G.coming(coming)}
+      </Link>
+      <span aria-hidden="true">·</span>
+      <Link
+        to={guestsAt(event.id, { filter: FIGURE_OPENS.notReplied })}
+        aria-label={`${G.notReplied(notReplied)}, ${G.notRepliedOpens(event.name)}`}
+      >
+        {G.notReplied(notReplied)}
+      </Link>
+    </p>
+  );
+}
+
+function GuestTiles({
+  counts,
+  chosen,
+  onTile,
+}: {
+  counts: ReturnType<typeof guestCountsOf>;
+  chosen: GuestsTile | null;
+  onTile: (tile: GuestsTile) => void;
+}) {
+  const tiles = [
+    { id: 'invited', name: G.invited, figure: counts.invited, line: G.coming(counts.coming) },
+    {
+      id: 'replied',
+      name: G.replied,
+      figure: counts.replied,
+      line: G.notReplied(counts.notReplied),
+    },
+  ] as const;
+
   return (
     <ul className="ev-guests" aria-label={G.label}>
-      <li className="ev-guest">
-        <span className="ev-guest-name">{G.invited}</span>
-        <span className="ev-guest-figure">{figureOf(counts.invited)}</span>
-        <span className="ev-guest-line">{G.coming(counts.coming)}</span>
-      </li>
-      <li className="ev-guest">
-        <span className="ev-guest-name">{G.replied}</span>
-        <span className="ev-guest-figure">{figureOf(counts.replied)}</span>
-        <span className="ev-guest-line">{G.notReplied(counts.notReplied)}</span>
-      </li>
+      {tiles.map((one) => (
+        <li key={one.id}>
+          <button
+            type="button"
+            className="ev-guest"
+            aria-pressed={chosen === one.id}
+            aria-label={`${one.name}, ${figureOf(one.figure)}, ${one.line}, ${G.tileOpens[one.id]}`}
+            onClick={() => onTile(one.id)}
+          >
+            <span className="ev-guest-name">
+              {one.name}
+              {chosen === one.id && <Glyph name="tick" size={16} weight={2.6} />}
+            </span>
+            <span className="ev-guest-figure">{figureOf(one.figure)}</span>
+            <span className="ev-guest-line">{one.line}</span>
+          </button>
+        </li>
+      ))}
     </ul>
   );
 }

@@ -801,3 +801,4 @@ Dated, newest first: the wording, where it is used, and why it won over the alte
   códigos…"; o resto do passo diz "a sua aplicação de autenticação". "Adicionar", como
   `phoneSetupTitle`; "aplicação", nunca "app". No telemóvel pode ocupar duas linhas centradas; no
   iPad, uma.
+- **13 Nov 2026. A lista de convidados do anfitrião e Adicionar convidado** (sc-43267 para sc-1468, `web:guestList.*`, `eventDelete.removesGuests_*`, os `validation.guest_*`, `guest.already_listed` e `errors:guest_already_listed` da API). Um acompanhante sem nome é "Acompanha {{host}}", e "Acompanha {{host}} · {{nth}}" a partir do segundo: o verbo não concorda com género, como "Convidado de" obrigaria. Pelo mesmo motivo, uma adição recusada começa por "Não foi possível adicionar.", nunca "Não adicionado", e a adição feita diz "{{name}} está agora na lista.". As respostas: "Vem", "Por confirmar", "Não vem", "Sem resposta", "Em espera". Um limite é a mesma frase no ecrã e na API.
