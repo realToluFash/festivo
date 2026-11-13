@@ -231,6 +231,8 @@ export function GuestsArea({
   const focus = useFocusKeys(root);
   const [load, setLoad] = useState<Load>({ kind: 'loading' });
   const [attempt, setAttempt] = useState(0);
+  const [heard, setHeard] = useState(0);
+  const [flagged, setFlagged] = useState<ReadonlySet<string>>(new Set());
   const [adding, setAdding] = useState(false);
   const manages = canOn(event, 'guests.manage');
   const country = useStartingCountry(manages);
@@ -250,9 +252,27 @@ export function GuestsArea({
     };
   }, [event.id, attempt]);
 
+  useEffect(() => {
+    let current = true;
+
+    if (manages) {
+      api.flaggedGuests(event.id).then(
+        (ids) => current && setFlagged(new Set(ids)),
+        () => undefined,
+      );
+    }
+
+    return () => {
+      current = false;
+    };
+  }, [event.id, manages, attempt, heard]);
+
   useLiveGuests(
     event.id,
-    (list) => setLoad({ kind: 'loaded', list }),
+    (list) => {
+      setLoad({ kind: 'loaded', list });
+      setHeard((n) => n + 1);
+    },
     () => setAttempt((n) => n + 1),
   );
 
@@ -371,8 +391,15 @@ export function GuestsArea({
                         mark={MARK[open.reply]}
                         manages={manages}
                         invites={invites}
+                        flagged={flagged.has(open.id)}
                         onCopy={() => api.guestLink(event.id, open.id)}
-                        onReplace={() => api.replaceGuestLink(event.id, open.id)}
+                        onReplace={() =>
+                          api
+                            .replaceGuestLink(event.id, open.id)
+                            .then(() =>
+                              setFlagged((was) => new Set([...was].filter((id) => id !== open.id))),
+                            )
+                        }
                       />
                     </section>
                   )}

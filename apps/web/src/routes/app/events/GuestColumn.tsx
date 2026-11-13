@@ -4,17 +4,18 @@ import { useTranslation } from 'react-i18next';
 
 import { Glyph, type GlyphName } from '../../../components/Glyph.tsx';
 import { Ask, Head, RowWords } from '../../../components/SettingsParts.tsx';
+import { focusWhenFree } from '../../../layers.ts';
 import type { Mesh } from '../../../mesh.ts';
 
 type Copy =
   { kind: 'none' } | { kind: 'copied' } | { kind: 'byHand'; url: string } | { kind: 'failed' };
 
 type Replace =
-  { kind: 'none' } | { kind: 'asking'; busy: boolean; failed: boolean } | { kind: 'replaced' };
+  { kind: 'none' } | { kind: 'asking'; busy: boolean } | { kind: 'failed' } | { kind: 'replaced' };
 
 const PIECES = [1, 2, 3, 4, 5, 6];
 
-/** A guest beside the list, as A draws it: the cover card, then Invitation for those who can add guests (sc-1526). sc-3773 adds Details. */
+/** A guest beside the list, as A draws it: the cover card, the wrong-person notice, then Invitation for those who can add guests (sc-1526). sc-3773 adds Details under the notice. */
 export function GuestColumn({
   guest,
   mesh,
@@ -22,6 +23,7 @@ export function GuestColumn({
   mark,
   manages,
   invites,
+  flagged,
   onCopy,
   onReplace,
 }: {
@@ -31,6 +33,8 @@ export function GuestColumn({
   mark: string;
   manages: boolean;
   invites: boolean;
+  /** Someone who opened this guest's link pressed Tell them; only ever true for those who can add guests. */
+  flagged: boolean;
   /** The whole link; refused 409 on a phase that does not invite. */
   onCopy: () => Promise<string>;
   onReplace: () => Promise<void>;
@@ -39,6 +43,11 @@ export function GuestColumn({
   const heading = useId();
   const [copy, setCopy] = useState<Copy>({ kind: 'none' });
   const [replace, setReplace] = useState<Replace>({ kind: 'none' });
+  const replaceButton = useRef<HTMLButtonElement>(null);
+
+  useEffect(() => {
+    if (replace.kind === 'replaced') focusWhenFree(() => replaceButton.current);
+  }, [replace.kind]);
 
   function copied(): void {
     onCopy().then(
@@ -53,18 +62,26 @@ export function GuestColumn({
   }
 
   function replaced(): void {
-    setReplace({ kind: 'asking', busy: true, failed: false });
+    setReplace({ kind: 'asking', busy: true });
     onReplace().then(
       () => {
         setCopy({ kind: 'none' });
         setReplace({ kind: 'replaced' });
       },
-      () => setReplace({ kind: 'asking', busy: false, failed: true }),
+      () => setReplace({ kind: 'failed' }),
     );
   }
 
+  const ask = () => setReplace({ kind: 'asking', busy: false });
+
   return (
     <div className="gs-guest">
+      {replace.kind === 'replaced' && (
+        <p className="gs-ok" role="status">
+          <Glyph name="tick" size={17} weight={2.6} />
+          {t('guestList.linkReplaced', { name: guest.fullName })}
+        </p>
+      )}
       <section
         className={`ev-card today-cover is-${mesh} gs-card is-guest`}
         aria-labelledby={heading}
@@ -85,18 +102,21 @@ export function GuestColumn({
           </h2>
         </div>
       </section>
+      {manages && flagged && (
+        <WrongPerson name={guest.fullName} heading={heading} onReplace={ask} />
+      )}
+      {replace.kind === 'failed' && (
+        <p className="desk-error gs-refused" role="alert">
+          <Glyph name="alert" size={15} weight={2.2} />
+          {t('guestList.notReplaced')}
+        </p>
+      )}
       {manages && (
         <section className="desk-block" aria-labelledby={`${heading}-invitation`}>
           <Head
             level={3}
             title={<span id={`${heading}-invitation`}>{t('guestList.invitation')}</span>}
           />
-          {replace.kind === 'replaced' && (
-            <p className="gs-done" role="status">
-              <Glyph name="tick" size={16} weight={2.6} />
-              {t('guestList.linkReplaced', { name: guest.fullName })}
-            </p>
-          )}
           <ul className="desk-rows gs-rows">
             {invites && (
               <li>
@@ -122,10 +142,11 @@ export function GuestColumn({
             )}
             <li>
               <button
+                ref={replaceButton}
                 type="button"
                 className="desk-row gs-do"
                 data-focus="replace"
-                onClick={() => setReplace({ kind: 'asking', busy: false, failed: false })}
+                onClick={ask}
               >
                 <Lead name="refresh" />
                 <RowWords
@@ -145,12 +166,37 @@ export function GuestColumn({
           go={t('guestList.replace')}
           red={false}
           busy={replace.busy ? t('guestList.replace') : undefined}
-          failed={replace.failed ? t('guestList.notReplaced') : undefined}
           onKeep={() => setReplace({ kind: 'none' })}
           onGo={replaced}
         />
       )}
     </div>
+  );
+}
+
+/** Marked by the triangle and the words, not the amber alone; there when the page opens, so a region, not an alert. */
+function WrongPerson({
+  name,
+  heading,
+  onReplace,
+}: {
+  name: string;
+  heading: string;
+  onReplace: () => void;
+}) {
+  const { t } = useTranslation();
+
+  return (
+    <section className="gs-amber" aria-labelledby={`${heading}-flag`}>
+      <h3 id={`${heading}-flag`} className="gs-amber-head">
+        <Glyph name="warn" size={17} weight={2.2} />
+        {t('guestList.flaggedTitle')}
+      </h3>
+      <p className="gs-amber-line">{t('guestList.flaggedLine', { name })}</p>
+      <button type="button" className="desk-text" data-focus="flag-replace" onClick={onReplace}>
+        {t('guestList.replaceLink')}
+      </button>
+    </section>
   );
 }
 

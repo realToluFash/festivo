@@ -328,6 +328,11 @@
   color: var(--colorAttentionText);
 }
 
+.gs-amber-line {
+  color: var(--colorInkSecondary);
+  font: 500 14px/1.45 var(--fontFamily);
+}
+
 .gs-pair {
   display: flex;
   flex-wrap: wrap;
@@ -470,8 +475,7 @@ button.gs-row {
   padding-left: 40px;
 }
 
-.gs-copied span,
-.gs-done {
+.gs-copied span {
   display: inline-flex;
   align-items: center;
   gap: var(--spaceXs);

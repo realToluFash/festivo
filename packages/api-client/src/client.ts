@@ -2084,6 +2084,20 @@ export class ApiClient {
     return body.url;
   }
 
+  /** The ids of the guests whose link may have reached the wrong person, for those who can add guests (sc-1526). */
+  async flaggedGuests(eventId: string): Promise<readonly string[]> {
+    const body = await this.get<{ guests?: unknown }>(`${this.guestsPath(eventId)}/flagged`);
+    const ids = body?.guests;
+
+    if (!Array.isArray(ids) || !ids.every((id): id is string => typeof id === 'string')) {
+      throw new Error(
+        'The API answered the flagged guests in a shape this client does not know. Check GuestLinkController in services/api.',
+      );
+    }
+
+    return ids;
+  }
+
   /** Ends the guest's old link at once, in any phase. */
   async replaceGuestLink(eventId: string, guestId: string): Promise<void> {
     await this.post<undefined>(
