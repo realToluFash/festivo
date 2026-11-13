@@ -246,6 +246,7 @@ The local stack runs no scheduler, so run it by hand there. sc-1612 routes the l
 
 `app:mail:check-rates` does the same for email over 24 hours: a `critical` line when hard
 bounces exceed 2% or complaints 0.08% of the emails sent, both from the provider's reports.
+The prod crontab runs it hourly, at a quarter past.
 
 ## The mail provider's webhook
 
