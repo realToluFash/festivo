@@ -29,6 +29,8 @@
     "seating_section_limit": "Um plano pode ter até 30 zonas. Elimine uma para adicionar outra.",
     "guest_already_listed": "Esse nome já está na lista.",
     "replies_closed": "O prazo de resposta terminou.",
+    "guest_replied": "They have replied, so they stay invited.",
+    "guest_not_marked_by_hand": "Only an invitation marked by hand can be undone.",
     "unauthenticated": "Inicie sessão para continuar.",
     "invalid_credentials": "Esse endereço de correio electrónico e essa palavra-passe não correspondem.",
     "invalid_refresh_token": "A sua sessão foi encerrada. Inicie sessão novamente.",

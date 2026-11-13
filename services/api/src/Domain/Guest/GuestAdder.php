@@ -41,7 +41,7 @@ final readonly class GuestAdder
                 throw new ApiException(ErrorCode::GuestAlreadyListed, 'guest.already_listed', parameters: ['{name}' => $new->fullName]);
             }
 
-            $guest = Guest::invited($event, $new->fullName, $new->nameKey, $new->email, $new->mobile, $by, InvitationLinks::token());
+            $guest = Guest::listed($event, $new->fullName, $new->nameKey, $new->email, $new->mobile, $by, InvitationLinks::token());
             $this->entityManager->persist($guest);
             self::recordAdded($this->auditor, $guest, $by);
 
