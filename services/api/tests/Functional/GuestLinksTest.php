@@ -169,7 +169,7 @@ final class GuestLinksTest extends ApiTestCase
         self::assertSame(422, $this->statusCode());
         self::assertSame(['chosen' => null, 'host' => null, 'organisation' => 'en'], $this->open($token)['language'] ?? null);
 
-        $this->choose(Strepeat('x', 43), 'fr');
+        $this->choose(Str\repeat('x', 43), 'fr');
         self::assertSame(404, $this->statusCode());
     }
 
