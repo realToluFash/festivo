@@ -104,7 +104,7 @@ const SAYS: [string, () => void][] = [
   [
     'kitchen_not_sent',
     () =>
-      screen.getByText('Your answer wasn’t sent. Everything you chose is still here. Try again.'),
+      screen.getByText('Your answer was not sent. Everything you chose is still here. Try again.'),
   ],
   ['meal_ruled_out', () => screen.getByText('Your guest 1 is allergic to: milk.')],
   ['refused', () => expect(screen.getByRole('alert').textContent).toBe(REFUSED)],

@@ -20,6 +20,7 @@ import {
   greetAsLength,
   linesOf,
   phoneShown,
+  placesTo,
   sameName,
   seatedOf,
   valuesOf,
@@ -135,8 +136,15 @@ export function Verb({
 }
 
 /** One companion out of the form; a seated one is asked about first (sc-3773). */
-function removeCompanion(values: Values, at: number): Partial<Values> {
-  return { companions: values.companions.filter((_, index) => index !== at) };
+function removeCompanion(values: Values, at: number): Values['companions'] {
+  return values.companions.filter((_, index) => index !== at);
+}
+
+/** Each seated place a change drops, asked about in turn; the last Remove applies the change (sc-3779). */
+interface Removing {
+  asks: readonly { name: string; seat: Seated }[];
+  after: Values['companions'];
+  at: number | null;
 }
 
 /** sc-1468's places, each named or not, removed at once while nothing is seated (sc-3773). */
@@ -149,6 +157,7 @@ function CompanionFields({
   onAsk,
   seated,
   focus,
+  refusedStart = false,
   needs,
 }: {
   host: string;
@@ -156,15 +165,50 @@ function CompanionFields({
   said: string | null;
   onChange: (next: Partial<Values>) => void;
   onSaid: (said: string) => void;
-  onAsk?: (at: number, name: string, seat: Seated) => void;
+  onAsk?: (removing: Removing) => void;
   seated?: (id: string | null) => Seated | null;
   focus: (...keys: string[]) => void;
+  refusedStart?: boolean;
   needs: { lines: Lines; open: ReadonlySet<string>; toggle: (who: string, open: boolean) => void };
 }) {
   const id = useId();
   const count = values.companions.length;
+  const [refused, setRefused] = useState<number | null>(() =>
+    refusedStart ? values.companions.filter((one) => one.name.trim() !== '').length : null,
+  );
+
+  function toPlaces(places: number): void {
+    const step = placesTo(values.companions, places);
+
+    if ('refused' in step) {
+      setRefused(step.refused);
+      focus('places');
+      return;
+    }
+    const asks = values.companions.flatMap((one, at) => {
+      const seat = step.companions.includes(one) ? null : (seated?.(one.id) ?? null);
+
+      return seat == null ? [] : [{ name: shownAt(at), seat }];
+    });
+
+    if (asks.length > 0 && onAsk != null) {
+      onAsk({ asks, after: step.companions, at: null });
+      return;
+    }
+    setRefused(null);
+    onChange({ companions: step.companions });
+  }
   const placeholder = (at: number) =>
     host === '' ? '' : at === 0 ? GW.guestOf(host) : GW.guestOfNth(host, at + 1);
+  const shownAt = (at: number) => {
+    const name = values.companions[at]?.name.trim() ?? '';
+
+    return name !== ''
+      ? name
+      : placeholder(at) === ''
+        ? GW.companionName(at + 1, count)
+        : placeholder(at);
+  };
   const [all, setAll] = useState(false);
   const seen = (at: number) => all || at < SHOWN_COMPANIONS || values.companions[at]?.id == null;
   const unseen = values.companions.filter((_, at) => !seen(at)).length;
@@ -172,17 +216,63 @@ function CompanionFields({
   return (
     <fieldset className="gs-fieldset gs-companions">
       <legend className="gs-legend">{GW.companions}</legend>
-      <p className="gs-count" id={`${id}-count`}>
-        {count === 0 ? GW.noneYet(MOST_COMPANIONS) : GW.ofMost(count, MOST_COMPANIONS)}
-      </p>
+      <div className="gs-places">
+        <label htmlFor={`${id}-places`} className="desk-label gs-label">
+          {GW.placesFor}
+        </label>
+        <div className="gs-places-row">
+          <div className={refused == null ? 'gs-stepper' : 'gs-stepper is-wrong'}>
+            <button
+              type="button"
+              className="gs-step"
+              aria-label={GW.fewerPlaces}
+              {...offButton(count === 0, { dim: true })}
+              onClick={() => toPlaces(count - 1)}
+            >
+              <span aria-hidden="true">−</span>
+            </button>
+            <input
+              id={`${id}-places`}
+              type="number"
+              inputMode="numeric"
+              min={0}
+              max={MOST_COMPANIONS}
+              value={count}
+              data-focus="places"
+              aria-invalid={refused != null}
+              aria-describedby={[`${id}-named`, refused == null ? null : `${id}-refused`]
+                .filter(Boolean)
+                .join(' ')}
+              onChange={(event) => {
+                const typed = Number.parseInt(event.target.value, 10);
+
+                if (!Number.isNaN(typed)) toPlaces(typed);
+              }}
+            />
+            <button
+              type="button"
+              className="gs-step"
+              aria-label={GW.morePlaces}
+              {...offButton(count >= MOST_COMPANIONS, { dim: true })}
+              onClick={() => toPlaces(count + 1)}
+            >
+              <Glyph name="plus" size={17} weight={2.3} />
+            </button>
+          </div>
+          <p className="gs-count" id={`${id}-named`}>
+            {GW.namedOf(values.companions.filter((one) => one.name.trim() !== '').length, count)}
+          </p>
+        </div>
+        {refused != null && (
+          <p id={`${id}-refused`} className="desk-error">
+            <Glyph name="alert" size={15} weight={2.2} />
+            {GW.placesRefused(host === '' ? GW.thisGuest : host, refused)}
+          </p>
+        )}
+      </div>
       {values.companions.map((companion, at) => {
         if (!seen(at)) return null;
-        const shown =
-          companion.name.trim() !== ''
-            ? companion.name.trim()
-            : placeholder(at) === ''
-              ? GW.companionName(at + 1, count)
-              : placeholder(at);
+        const shown = shownAt(at);
 
         return (
           <div key={at} className="gs-companion-block">
@@ -195,29 +285,41 @@ function CompanionFields({
                   spellCheck={false}
                   data-focus={`companion-${at}`}
                   aria-label={GW.companionName(at + 1, count)}
-                  onChange={(event) =>
+                  onChange={(event) => {
+                    setRefused(null);
                     onChange({
                       companions: values.companions.map((each, index) =>
                         index === at ? { ...each, name: event.target.value } : each,
                       ),
-                    })
-                  }
+                    });
+                  }}
                 />
               </div>
               <button
                 type="button"
                 className="desk-text gs-remove"
-                aria-label={GW.removeNamed(shown)}
+                aria-label={
+                  companion.name.trim() !== '' || host === ''
+                    ? GW.removeNamed(shown)
+                    : at === 0
+                      ? GW.removeCompanionOf(host)
+                      : GW.removeCompanionOfNth(host, at + 1)
+                }
                 onClick={() => {
                   const seat = seated?.(companion.id) ?? null;
 
                   if (seat != null && onAsk != null) {
-                    onAsk(at, shown, seat);
+                    onAsk({
+                      asks: [{ name: shown, seat }],
+                      after: removeCompanion(values, at),
+                      at,
+                    });
                     return;
                   }
-                  onChange(removeCompanion(values, at));
+                  setRefused(null);
+                  onChange({ companions: removeCompanion(values, at) });
                   onSaid(GW.removed(shown));
-                  focus(`companion-${at}`, `companion-${at - 1}`, 'add-companion');
+                  focus(`companion-${at}`, `companion-${at - 1}`, 'places');
                 }}
               >
                 {GW.remove}
@@ -256,22 +358,7 @@ function CompanionFields({
         </button>
       )}
       {said != null && <OkLine>{said}</OkLine>}
-      {count < MOST_COMPANIONS ? (
-        <button
-          type="button"
-          className="desk-text"
-          data-focus="add-companion"
-          onClick={() => {
-            onChange({ companions: [...values.companions, { id: null, name: '' }] });
-            focus(`companion-${count}`);
-          }}
-        >
-          <Glyph name="plus" size={17} weight={2.3} />
-          {GW.addCompanion}
-        </button>
-      ) : (
-        <p className="gs-most">{GW.mostCompanions(MOST_COMPANIONS)}</p>
-      )}
+      {count >= MOST_COMPANIONS && <p className="gs-most">{GW.mostCompanions(MOST_COMPANIONS)}</p>}
     </fieldset>
   );
 }
@@ -331,15 +418,16 @@ export function EditForm({
   const [said, setSaid] = useState<string | null>(
     start.removed == null ? null : GW.removed(start.removed),
   );
-  const [removing, setRemoving] = useState<{ at: number; name: string; seat: Seated } | null>(
-    () => {
-      const at = values.companions.findIndex((one) => one.id === start.removing);
-      const seat = seatedOf(guest, start.removing ?? null);
-      const name = values.companions[at]?.name ?? '';
+  const [removing, setRemoving] = useState<Removing | null>(() => {
+    const at = values.companions.findIndex((one) => one.id === start.removing);
+    const seat = seatedOf(guest, start.removing ?? null);
+    const name = values.companions[at]?.name ?? '';
 
-      return at < 0 || seat == null ? null : { at, name, seat };
-    },
-  );
+    return at < 0 || seat == null
+      ? null
+      : { asks: [{ name, seat }], after: removeCompanion(values, at), at };
+  });
+  const asking = removing?.asks[0];
   const [busy, setBusy] = useState(false);
   const opened = useNeedsOpen(start.needs);
   const lines = tried ? linesOf(values) : {};
@@ -484,26 +572,36 @@ export function EditForm({
           said={said}
           onChange={change}
           onSaid={setSaid}
-          onAsk={(at, name, seat) => setRemoving({ at, name, seat })}
+          onAsk={setRemoving}
           seated={(id) => seatedOf(guest, id)}
           focus={focus}
+          refusedStart={start.placesRefused === true}
           needs={{ lines, open: opened.open, toggle: opened.toggle }}
         />
       </div>
-      {removing != null && (
+      {removing != null && asking != null && (
         <Ask
-          title={GW.removeTitle(removing.name)}
-          line={GW.seatedLine(removing.name, removing.seat.table, removing.seat.meal)}
+          key={removing.asks.length}
+          title={GW.removeTitle(asking.name)}
+          line={GW.seatedLine(asking.name, asking.seat.table, asking.seat.meal)}
           keep={GW.cancel}
           go={GW.remove}
           onKeep={() => setRemoving(null)}
           onGo={() => {
-            const { at, name } = removing;
+            const { asks, after, at } = removing;
 
+            if (asks.length > 1) {
+              setRemoving({ ...removing, asks: asks.slice(1) });
+              return;
+            }
             setRemoving(null);
-            change(removeCompanion(values, at));
-            setSaid(GW.removed(name));
-            focus(`companion-${at}`, `companion-${at - 1}`, 'add-companion');
+            change({ companions: after });
+            if (at == null) {
+              focus('places');
+              return;
+            }
+            setSaid(GW.removed(asking.name));
+            focus(`companion-${at}`, `companion-${at - 1}`, 'places');
           }}
         />
       )}
@@ -815,6 +913,7 @@ export function AddForm({
           onChange={change}
           onSaid={setCompanionSaid}
           focus={focus}
+          refusedStart={start.placesRefused === true}
           needs={{ lines, open: opened.open, toggle: opened.toggle }}
         />
       </div>

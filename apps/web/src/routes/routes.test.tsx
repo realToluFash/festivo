@@ -799,10 +799,31 @@ describe('the application tree', () => {
 });
 
 describe('the guest tree', () => {
-  it('serves an invitation with no account and no application navigation', () => {
+  it('serves an invitation with no account and no application navigation', async () => {
+    vi.spyOn(globalThis, 'fetch').mockResolvedValue(
+      new Response(
+        JSON.stringify({
+          guest: { fullName: 'Bisi Adewale', reply: null, companions: 0 },
+          event: {
+            id: 'e1',
+            name: 'Owambe',
+            type: 'party',
+            cover: null,
+            hosts: [],
+            startsAt: '2030-11-14T16:00:00+01:00',
+            timeZone: 'Africa/Lagos',
+            venue: null,
+          },
+          phase: 'live',
+          started: false,
+          answersOpen: true,
+        }),
+        { status: 200, headers: { 'Content-Type': 'application/json' } },
+      ),
+    );
     at('/i/abcdefghijklmnop1234');
 
-    expect(screen.getByRole('heading', { name: 'You are invited' })).toBeDefined();
+    expect(await screen.findByRole('heading', { name: 'You are invited' })).toBeDefined();
     expect(screen.queryByLabelText('Switch organisation')).toBeNull();
   });
 
@@ -818,10 +839,10 @@ describe('the guest tree', () => {
     ).toBeDefined();
   });
 
-  it('tells them what to do about it', () => {
+  it('tells them who to ask about it', () => {
     at('/i/nope');
 
-    expect(screen.getByRole('alert').textContent).toMatch(/fresh link/);
+    expect(screen.getByRole('alert').textContent).toMatch(/invited you/);
   });
 });
 

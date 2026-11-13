@@ -10,7 +10,6 @@ use App\Entity\Organisation;
 use App\Entity\User;
 use App\Enum\Actor;
 use App\Enum\ErrorCode;
-use App\Http\AfterResponse;
 use App\Http\Exception\ApiException;
 use App\Repository\MembershipRepository;
 use DateInterval;
@@ -32,7 +31,6 @@ final readonly class SignInRulesEditor
         private MembershipRepository $membershipRepository,
         private SignInRulesMailer $signInRulesMailer,
         private Auditor $auditor,
-        private AfterResponse $afterResponse,
         private EntityManagerInterface $entityManager,
         private ClockInterface $clock,
         private SignInRules $signInRules,
@@ -73,38 +71,38 @@ final readonly class SignInRulesEditor
             $organisation->setAdministratorsNeedTwoFactor($asked['administratorsNeedTwoFactor']);
         }
 
-        $at = $this->clock->now();
+        $this->entityManager->wrapInTransaction(function () use ($organisation, $by, $before, $asked, $request): void {
+            $at = $this->clock->now();
 
-        if (Iter\contains_key($asked, 'everyoneNeedsTwoFactor') && $asked['everyoneNeedsTwoFactor'] !== $before['everyoneNeedsTwoFactor']) {
-            $organisation->setTwoFactorRequiredSince($asked['everyoneNeedsTwoFactor'] ? $at : null);
-            $this->membershipRepository->forgetTwoFactorBlocks($organisation);
-        }
+            if (Iter\contains_key($asked, 'everyoneNeedsTwoFactor') && $asked['everyoneNeedsTwoFactor'] !== $before['everyoneNeedsTwoFactor']) {
+                $organisation->setTwoFactorRequiredSince($asked['everyoneNeedsTwoFactor'] ? $at : null);
+                $this->membershipRepository->forgetTwoFactorBlocks($organisation);
+            }
 
-        $changes = Auditor::diff($before, self::rulesOf($organisation));
+            $changes = Auditor::diff($before, self::rulesOf($organisation));
 
-        if ([] === $changes) {
-            return;
-        }
+            if ([] === $changes) {
+                return;
+            }
 
-        $organisation->setSignInRulesChangedAt($at);
-        $this->auditor->record(self::CHANGED, self::SUBJECT, $organisation->getId(), Actor::User, $by->getId(), $by->getName(), $changes);
-        $this->entityManager->flush();
+            $organisation->setSignInRulesChangedAt($at);
+            $this->auditor->record(self::CHANGED, self::SUBJECT, $organisation->getId(), Actor::User, $by->getId(), $by->getName(), $changes);
+            $this->entityManager->flush();
 
-        $members = Vec\map($this->membershipRepository->findActiveIn($organisation), static fn (Membership $membership): User => $membership->getUser());
-        $stranded = isset($changes['providerOnly']) && $organisation->isProviderSignInOnly()
-            ? Vec\map($this->membershipRepository->findActiveWithoutProviderIn($organisation), static fn (Membership $membership): User => $membership->getUser())
-            : [];
-        $locale = $request?->getLocale();
-        $due = isset($changes['everyoneNeedsTwoFactor']) && $organisation->isTwoFactorRequired()
-            ? Vec\map($this->membershipRepository->findActiveWithoutTwoFactorIn($organisation), static fn (Membership $membership): User => $membership->getUser())
-            : [];
+            $members = Vec\map($this->membershipRepository->findActiveIn($organisation), static fn (Membership $membership): User => $membership->getUser());
+            $stranded = isset($changes['providerOnly']) && $organisation->isProviderSignInOnly()
+                ? Vec\map($this->membershipRepository->findActiveWithoutProviderIn($organisation), static fn (Membership $membership): User => $membership->getUser())
+                : [];
+            $locale = $request?->getLocale();
+            $due = isset($changes['everyoneNeedsTwoFactor']) && $organisation->isTwoFactorRequired()
+                ? Vec\map($this->membershipRepository->findActiveWithoutTwoFactorIn($organisation), static fn (Membership $membership): User => $membership->getUser())
+                : [];
 
-        // Told once: somebody the deadline email reaches does not also hear of the same change in a second one.
-        if ([] !== $due && ['everyoneNeedsTwoFactor'] === Vec\keys($changes)) {
-            $members = Vec\filter($members, static fn (User $member): bool => !Iter\any($due, static fn (User $user): bool => $user->getId()->equals($member->getId())));
-        }
+            // Told once: somebody the deadline email reaches does not also hear of the same change in a second one.
+            if ([] !== $due && ['everyoneNeedsTwoFactor'] === Vec\keys($changes)) {
+                $members = Vec\filter($members, static fn (User $member): bool => !Iter\any($due, static fn (User $user): bool => $user->getId()->equals($member->getId())));
+            }
 
-        $this->afterResponse->defer(function () use ($organisation, $by, $changes, $members, $stranded, $due, $at, $locale): void {
             $this->signInRulesMailer->sendChanged($organisation, $by, $changes, $members, $stranded, $at, $locale);
             $this->signInRulesMailer->sendTwoFactorDue($organisation, $due, $at->add(new DateInterval(SignInRules::TWO_FACTOR_GRACE)));
         });

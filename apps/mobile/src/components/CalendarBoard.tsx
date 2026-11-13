@@ -148,6 +148,7 @@ export interface CalendarBoardProps<S extends string, E extends CalEvent> {
   layout: CoverLayout;
   today: string;
   readerZone: string;
+  now: Date;
   locale: string;
   firstDay: number;
   /** The AsyncStorage key the view and month are kept under. */
@@ -171,6 +172,7 @@ export function CalendarBoard<S extends string, E extends CalEvent>({
   layout,
   today,
   readerZone,
+  now,
   locale,
   firstDay,
   kept,
@@ -436,6 +438,7 @@ export function CalendarBoard<S extends string, E extends CalEvent>({
       Row={parts.Row}
       locale={locale}
       readerZone={readerZone}
+      now={now}
       big={big}
       onOpen={onOpen}
       onClose={closeDay}
@@ -500,6 +503,7 @@ export function CalendarBoard<S extends string, E extends CalEvent>({
         Row={parts.Row}
         locale={locale}
         readerZone={readerZone}
+        now={now}
         big={big}
         lead={big ? 68 : phone ? 44 : 56}
         maxWidth={phone ? null : 640}

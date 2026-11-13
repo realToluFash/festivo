@@ -1,5 +1,11 @@
 import { wallDay } from './calendar.ts';
-import { formatEventMoment, formatEventShortDay, formatEventWeekday } from './datetime.ts';
+import {
+  formatEventDate,
+  formatEventMoment,
+  formatEventShortDay,
+  formatEventWeekday,
+  formatWallDay,
+} from './datetime.ts';
 import { type EventPhase, type EventState, calledOff, shownPhase } from './eventStates.ts';
 import { type LocaleCode, pluralLocale } from './locales.ts';
 import { type Milestone, milestoneDistance, nextUp } from './timeline.ts';
@@ -204,9 +210,32 @@ export function notThisYear(timeZone: string, now: Date, ...moments: string[]): 
   return moments.some((moment) => wallDay(moment, timeZone).slice(0, 4) !== thisYear);
 }
 
+/** Wall days on one line, every one with its year when any is not this year in the event's zone (sc-30413). */
+export function formatWallDays(
+  days: readonly string[],
+  timeZone: string,
+  now: Date,
+  locale: string,
+): string[] {
+  const thisYear = wallDay(now, timeZone).slice(0, 4);
+  const withYear = days.some((day) => day.slice(0, 4) !== thisYear);
+
+  return days.map((day) => formatWallDay(day, locale, withYear));
+}
+
 /** A milestone's day and clock, with its year when that is not this year in the event's zone (sc-30413). */
 export function milestoneMoment(at: string, timeZone: string, now: Date, locale: string): string {
   return formatEventMoment(at, timeZone, locale, notThisYear(timeZone, now, at));
+}
+
+/** The day an event was called off, as the card heading its page writes it, with its year when that is not this year in the event's zone (sc-30413). */
+export function calledOffDay(
+  concludedAt: string,
+  timeZone: string,
+  now: Date,
+  locale: string,
+): string {
+  return formatEventDate(concludedAt, timeZone, locale, notThisYear(timeZone, now, concludedAt));
 }
 
 /** A dates line's dates in the reader's words; every one carries its year unless all are in this year (sc-30413). A called-off event's day it was called off, unless `keepDays`. */

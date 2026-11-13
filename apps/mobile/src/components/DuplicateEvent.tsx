@@ -163,8 +163,8 @@ function DuplicateForm({
   useEffect(() => onBusy(busy), [busy, onBusy]);
 
   useEffect(() => {
-    if (focusOn == null) return;
-    focusPicker(focusOn.half === 'date' ? datePicker : timePicker, startField);
+    if (focusOn == null) return undefined;
+    return focusPicker(focusOn.half === 'date' ? datePicker : timePicker, startField);
   }, [focusOn]);
 
   useEffect(() => {

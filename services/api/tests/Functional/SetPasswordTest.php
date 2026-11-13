@@ -12,7 +12,6 @@ use App\Domain\User\Password\PasswordSetting;
 use App\Domain\User\UserRegistrar;
 use App\Entity\User;
 use App\Enum\ErrorCode;
-use App\Http\AfterResponse;
 use App\Http\Exception\ApiException;
 use App\Repository\PasswordSetCodeRepository;
 use App\Repository\UserRepository;
@@ -299,7 +298,6 @@ final class SetPasswordTest extends ApiTestCase
             self::service(PasswordResolver::class),
             self::service(NewPasswordRules::class),
             self::service(PasswordChangeMailer::class),
-            self::service(AfterResponse::class),
             $em,
             new Clock(),
             $budget,

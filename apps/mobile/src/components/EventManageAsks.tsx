@@ -11,10 +11,8 @@ import {
   pauseRefusalOf,
 } from '../kit/makeLive.ts';
 import { useLifecycleAction } from './LifecycleSheet.tsx';
-import { Ask } from './Summary.tsx';
+import { Ask, ASK_WIDTH } from './Summary.tsx';
 import type { ScreenReaderTarget } from './screenReaderFocus.ts';
-
-const ASK_WIDTH = 340;
 
 type Opener = RefObject<ScreenReaderTarget | null>;
 type End = 'callOff' | 'endNow';

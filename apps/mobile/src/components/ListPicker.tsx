@@ -27,8 +27,9 @@ import { useReducedMotion } from '../reducedMotion.ts';
 import { useModalOpen } from '../updateRequired.ts';
 import { FocusEdge, focusEdge, useFocusEdge, useHeld, useRefused } from './Field.tsx';
 import { controlTaken } from './focusedField.ts';
+import { useScreenReaderOn } from './screenReaderFocus.ts';
 import { LIFT } from './keyboardWatch.ts';
-import { Screen, useFocusOnAnswer } from './Screen.tsx';
+import { SETTLED_MS, Screen, useFocusOnAnswer } from './Screen.tsx';
 import { SilentWindowName, WINDOW_ARRIVES_MS, useUnnamedWindow } from './Sheet.tsx';
 import { Text, type TextHandle } from './Text.tsx';
 import { UnseenName } from './UnseenName.tsx';
@@ -90,10 +91,16 @@ export function ListPicker({
     null,
     reduced ? 0 : WINDOW_ARRIVES_MS,
   );
+  const readerOn = useScreenReaderOn();
+  const listFilling = useListFilling(
+    Platform.OS === 'android' && readerOn,
+    windowShown,
+    onScreen && !unnamed,
+  );
   const heading = useRef<TextHandle>(null);
   const ownField = useRef<ViewInstance>(null);
   const field = pickerRef ?? ownField;
-  const [closedEarly, setClosedEarly] = useState<object>();
+  const [closed, setClosed] = useState<object>();
   const [search, setSearch] = useState('');
   const searchNameID = useId();
   const searching = useHeld(false, search, undefined, setSearch);
@@ -112,12 +119,14 @@ export function ListPicker({
     0,
   );
 
-  // Until the menu's window takes Back, Android gives it to the screen beneath, which stepped back or asked to leave (sc-43145).
-  useSystemBack(open, () => {
-    setClosedEarly({});
+  // Android hands TalkBack's focus to whichever field holds input focus, not to the picker that opened the menu (sc-43908).
+  const close = () => {
+    if (Platform.OS === 'android') setClosed({});
     setOpen(false);
-  });
-  useFocusOnAnswer(windowShown ? undefined : closedEarly, field);
+  };
+  // Until the menu's window takes Back, Android gives it to the screen beneath, which stepped back or asked to leave (sc-43145).
+  useSystemBack(open, close);
+  useFocusOnAnswer(windowShown ? undefined : closed, field);
 
   const chosen = choices.find((choice) => choice.code === value)?.name ?? value;
   const blank = chosen === '';
@@ -159,7 +168,7 @@ export function ListPicker({
         ]}
         onPress={() => {
           controlTaken();
-          setClosedEarly(undefined);
+          setClosed(undefined);
           setOpen(true);
         }}
         {...fieldEdge.edging}
@@ -185,7 +194,7 @@ export function ListPicker({
         visible={windowShown}
         animationType={SLIDES_INSIDE ? 'none' : 'slide'}
         supportedOrientations={TURNS_WITH_THE_APP}
-        onRequestClose={() => setOpen(false)}
+        onRequestClose={close}
         onShow={risen}
       >
         {Platform.OS === 'android' && <SilentWindowName />}
@@ -195,7 +204,7 @@ export function ListPicker({
             style={[styles.fill, SLIDES_INSIDE && { transform: [{ translateY: slide }] }]}
             collapsable={false}
             importantForAccessibility={unnamed ? 'no-hide-descendants' : 'auto'}
-            onAccessibilityEscape={() => setOpen(false)}
+            onAccessibilityEscape={close}
           >
             <Screen
               style={styles.page}
@@ -216,7 +225,7 @@ export function ListPicker({
                 {beside && searchField}
                 <Pressable
                   style={styles.close}
-                  onPress={() => setOpen(false)}
+                  onPress={close}
                   accessibilityRole="button"
                   testID={`${testID}.close`}
                 >
@@ -229,6 +238,7 @@ export function ListPicker({
               <FlatList
                 data={shown}
                 keyExtractor={(choice) => choice.code}
+                windowSize={listFilling ? 1 : undefined}
                 keyboardShouldPersistTaps="handled"
                 // The modal is its own window, so on iOS only the list's own inset lifts its last row above the keys.
                 automaticallyAdjustKeyboardInsets={LIFT.adjustScrollInsets}
@@ -238,7 +248,7 @@ export function ListPicker({
                     onPress={() => {
                       onChange(item.code);
                       setSearch('');
-                      setOpen(false);
+                      close();
                     }}
                     accessibilityRole="button"
                     accessibilityState={{ selected: item.code === value }}
@@ -310,6 +320,21 @@ function usePickerRise(shown: boolean, reduced: boolean) {
       if (shown) setWindowUp(true);
     },
   };
+}
+
+/** While the menu opens under TalkBack, the list draws only the rows in sight: Country, still adding rows below as focus moved to its title, had TalkBack draw its focus there and say nothing (qa2 #43597). Rows out of sight follow `SETTLED_MS` after the title takes focus. */
+function useListFilling(reader: boolean, up: boolean, revealed: boolean): boolean {
+  const [filled, setFilled] = useState(false);
+  if (!up && filled) setFilled(false);
+
+  useEffect(() => {
+    if (!reader || !revealed || filled) return;
+    const fill = setTimeout(() => setFilled(true), SETTLED_MS);
+
+    return () => clearTimeout(fill);
+  }, [reader, revealed, filled]);
+
+  return reader && !filled;
 }
 
 function Chevron() {

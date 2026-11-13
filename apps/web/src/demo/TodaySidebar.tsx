@@ -5,6 +5,7 @@ import { DeskPersonFace, type DeskPerson, DeskSidebar } from '../components/Desk
 import { sampleEvents, TODAY_IDS } from './events.ts';
 import { Glyph, type GlyphName } from '../components/Glyph.tsx';
 import { OrgSwitcher } from './OrgSwitcher.tsx';
+import { SearchRow } from './Search.tsx';
 import { SAMPLE } from './rules.ts';
 import { EVENTS, type EventKey } from './today.ts';
 import type { Tell } from '../components/SettingsParts.tsx';
@@ -75,16 +76,7 @@ export function TodaySidebar({
         </>
       }
     >
-      <button
-        type="button"
-        className="today-search"
-        aria-keyshortcuts="Meta+K Control+K"
-        onClick={() => tell('Search has its own design.')}
-      >
-        <Glyph name="search" size={16} />
-        <span className="today-grow">Search</span>
-        <kbd className="today-key">⌘K</kbd>
-      </button>
+      <SearchRow />
       <ul className="today-places">
         {PLACES.map(([label, glyph]) => (
           <li key={label}>

@@ -32,8 +32,11 @@ import { GetBackInBoard } from './GetBackIn.tsx';
 import { GuestPage } from './Guest.tsx';
 import { GUEST_PAGES } from './guest.ts';
 import { GUEST_KITCHEN_PAGES } from './guestKitchen.ts';
+import { GUEST_PARTY_PAGES } from './guestCompanions.ts';
 import { GUEST_ASK_PAGES } from './guestAskStates.ts';
 import { GUEST_DAY_PAGES } from './guestDay.ts';
+import { GUEST_NOTE_PAGES } from './guestNote.ts';
+import { GUEST_CHANGE_PAGES } from './guestChange.ts';
 import { Guests } from './Guests.tsx';
 import { GUESTS_PAGES } from './guests.ts';
 import { KitchenPage } from './Kitchen.tsx';
@@ -63,6 +66,8 @@ import { Notice } from './parts.tsx';
 import { People } from './People.tsx';
 import { PEOPLE_PAGES } from './people.ts';
 import { Redeem } from './Redeem.tsx';
+import { DoorCheckIn, ShiftPage } from './DoorCheckIn.tsx';
+import { CHECK_IN_PAGES } from './doorCheckIn.ts';
 import { REDEEM_PAGES } from './redeem.ts';
 import { Settings } from './Settings.tsx';
 import { SETTINGS_PAGES } from './settings.ts';
@@ -78,6 +83,7 @@ import { SHARE_PAGES } from './share.ts';
 import { ShareRecipient } from './ShareRecipient.tsx';
 import { TEMPLATES_PAGES } from './templates.ts';
 import { Today } from './Today.tsx';
+import { SEARCH_PAGES, searchStart, searchStateOf } from './search.ts';
 import { TwoFactorBoard } from './TwoFactor.tsx';
 import { Unsubscribe } from './Unsubscribe.tsx';
 import { UNSUBSCRIBE_PAGES } from './unsubscribe.ts';
@@ -189,6 +195,7 @@ export default function Demo() {
       {/* Kept so a link to /demo/signed-in opens Today rather than the not-found page. */}
       <Route path="signed-in" element={<Navigate to="/demo/today" replace />} />
       <Route path="today" element={<Today />} />
+      <Route path="search" element={<SearchBoard />} />
       <Route path="events" element={<Events />} />
       <Route path="events/new" element={<NewEventTop />} />
       <Route path="events/:id" element={<EventPage />} />
@@ -236,6 +243,8 @@ export default function Demo() {
       <Route path="settings/payment-reminders" element={<Settings open="vendors" reminders />} />
       <Route path="people" element={<People />} />
       <Route path="redeem" element={<Redeem />} />
+      <Route path="check-in" element={<DoorCheckIn />} />
+      <Route path="check-in/shift" element={<ShiftPage />} />
       <Route path="vendors" element={<VendorsMoved />} />
       <Route path="share/:scope" element={<ShareRecipient />} />
       <Route path="unsubscribe" element={<Unsubscribe />} />
@@ -273,6 +282,12 @@ function DemoHome({ from }: { from: string }) {
         and <strong>{SAMPLE.usedRecovery}</strong> one used already.
       </p>
 
+      <section className="demo-home-page" aria-labelledby="demo-page-26">
+        <h2 id="demo-page-26">26 · Foundation</h2>
+        <h3>Search in A · Command palette (sc-39534) · desktop</h3>
+        <BoardPages pages={SEARCH_PAGES} />
+      </section>
+
       <section className="demo-home-page" aria-labelledby="demo-page-29">
         <h2 id="demo-page-29">29 · Today · where signing in lands</h2>
         <h3>Today in B Confetti · desktop</h3>
@@ -298,6 +313,12 @@ function DemoHome({ from }: { from: string }) {
         <BoardPages pages={GUEST_PAGES} />
         <h3>The kitchen step on the guest’s page · sc-3778 · phone, tablet and desk</h3>
         <BoardPages pages={GUEST_KITCHEN_PAGES} />
+        <h3>The host’s arrival note on the guest’s page · sc-24385 · phone, tablet and desk</h3>
+        <BoardPages pages={GUEST_NOTE_PAGES} />
+        <h3>A change’s note in the guest’s Messages · sc-4330 · phone, tablet and desk</h3>
+        <BoardPages pages={GUEST_CHANGE_PAGES} />
+        <h3>Who’s coming with you, on the guest’s page · sc-3779 · phone, tablet and desk</h3>
+        <BoardPages pages={GUEST_PARTY_PAGES} />
         <h3>
           Not sure yet, when to ask again, on the guest’s page · sc-1363 · phone, tablet and desk
         </h3>
@@ -415,6 +436,10 @@ function DemoHome({ from }: { from: string }) {
         <BoardPages pages={[...DOOR_PAGES, NO_ORG_PAGE]} />
         <h3>The door code’s redeem pages, signed out · phone, tablet and desk</h3>
         <BoardPages pages={REDEEM_PAGES} />
+        <h3>
+          Check-in in the browser, from a staff link or a door code (sc-28230) · 390, 320 and desk
+        </h3>
+        <BoardPages pages={CHECK_IN_PAGES} />
       </section>
 
       <section className="demo-home-page" aria-labelledby="demo-page-27">
@@ -562,6 +587,13 @@ function BoardPages({
       </ul>
     </div>
   ));
+}
+
+function SearchBoard() {
+  const [params] = useSearchParams();
+  const state = searchStateOf(params.get('state')) ?? 'idle';
+
+  return <Today key={state} search={searchStart(state)} />;
 }
 
 function SignInBoard() {

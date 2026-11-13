@@ -1939,6 +1939,11 @@ export const SCREEN_READER_OFF = [
   ['shell', 'settings', 'put', 'secure', 'accessibility_enabled', '0'],
 ];
 
+// Console-sent touches open Gboard's stylus tryout over the app (sc-43614).
+export const STYLUS_HANDWRITING_OFF = [
+  ['shell', 'settings', 'put', 'secure', 'stylus_handwriting_enabled', '0'],
+];
+
 // Expo Go keeps the JS it already has until it is stopped.
 export const iosExpoGoStops = (args, devices) =>
   args.includes('--clear') ? devices.map((udid) => ['simctl', 'terminate', udid, EXPO_GO]) : [];
@@ -1956,6 +1961,7 @@ export const ANDROID_START = [
     adb: SCREEN_READER_OFF,
     say: '  TalkBack is off: turn it on again in Settings for a screen-reader pass.',
   },
+  { name: 'stylus handwriting off', adb: STYLUS_HANDWRITING_OFF },
   {
     name: 'Expo Go installed',
     run: async (s) => {
@@ -2892,12 +2898,22 @@ function apiSession(email, password, secret) {
   return (path, options) => session((token) => api(path, { ...options, token }));
 }
 
-export const MEMBERSHIP_CHANGES = ['join', 'pause', 'suspend', 'remove', 'delete', 'clear'];
+export const MEMBERSHIP_CHANGES = [
+  'join',
+  'alone',
+  'pause',
+  'suspend',
+  'remove',
+  'delete',
+  'clear',
+];
 const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/;
 
 // Owners are registered as few as possible: sign-ups are limited to ten an hour per address.
-export function membershipChanges({ email, member, ownerOf, sql }) {
+// `alone` joins a second account instead, one in no other organisation, that the check signs in as.
+export function membershipChanges({ email, member, ownerOf, sql, alone }) {
   let owning = null;
+  let away = false;
   const newOwner = (fresh = false) =>
     (owning = ownerOf({ fresh }).catch((error) => {
       owning = null;
@@ -2922,31 +2938,46 @@ export function membershipChanges({ email, member, ownerOf, sql }) {
       throw new Error(`${name} was not joined in this batch: /membership?change=join first`);
     return org;
   };
-  const membershipIn = async ({ id, owner }) => {
+  const membershipIn = async ({ id, owner, as }) => {
     const { members } = await owner(`/api/orgs/${id}/members`, { method: 'GET' });
-    const mine = members.find((m) => m.user.email === email)?.id;
-    if (!UUID.test(mine ?? '')) throw new Error(`${email} holds no membership in ${id}`);
+    const mine = members.find((m) => m.user.email === as)?.id;
+    if (!UUID.test(mine ?? '')) throw new Error(`${as} holds no membership in ${id}`);
     return mine;
   };
+  // Or a name joined again would show twice in the switcher.
+  const enrol = async (name, as, session) => {
+    if (joined.has(name)) await changes.delete(name);
+    const {
+      owner,
+      organisation: { id },
+    } = await create(name);
+    const { roles } = await owner(`/api/orgs/${id}/roles`, { method: 'GET' });
+    // A seeded member reads no events, so it would have no Events or Calendar to move to.
+    const roleId = roles.find((r) => r.seededAs === 'administrator').id;
+    const { invitation } = await owner(`/api/orgs/${id}/members/invite`, {
+      body: { email: as, roleId },
+    });
+    await session(`/api/invitations/${invitation.id}/accept`, {});
+    joined.set(name, { id, owner, as });
+    return { id };
+  };
+  let lone = null;
   const changes = {
-    // Or a name joined again would show twice in the switcher.
-    join: async (name) => {
-      if (joined.has(name)) await changes.delete(name);
-      const {
-        owner,
-        organisation: { id },
-      } = await create(name);
-      const { roles } = await owner(`/api/orgs/${id}/roles`, { method: 'GET' });
-      // A seeded member reads no events, so it would have no Events or Calendar to move to.
-      const roleId = roles.find((r) => r.seededAs === 'administrator').id;
-      const { invitation } = await owner(`/api/orgs/${id}/members/invite`, {
-        body: { email, roleId },
+    join: (name) => enrol(name, email, member),
+    alone: async (name) => {
+      if (!alone) throw new Error('this batch has no second account to join alone');
+      lone ??= alone().catch((error) => {
+        lone = null;
+        throw new Error(`no account in no organisation: ${error.message}`);
       });
-      await member(`/api/invitations/${invitation.id}/accept`, {});
-      joined.set(name, { id, owner });
-      return { id };
+      const { email: as, password, session } = await lone;
+      away = true;
+      return { ...(await enrol(name, as, session)), email: as, password };
     },
-    pause: async (name) => sql(domainPause(await membershipIn(find(name)), email)),
+    pause: async (name) => {
+      const org = find(name);
+      await sql(domainPause(await membershipIn(org), org.as));
+    },
     suspend: async (name) => {
       const org = find(name);
       await org.owner(`/api/orgs/${org.id}/members/${await membershipIn(org)}/suspend`, {});
@@ -2964,9 +2995,12 @@ export function membershipChanges({ email, member, ownerOf, sql }) {
     },
   };
   // Access paused has no way out, so a batch deletes what it joined before each check and after.
+  // Away says the second account may still be signed in on the phone.
   const clear = async () => {
     for (const name of [...joined.keys()]) await changes.delete(name);
-    return { membership: 'clear' };
+    const wasAway = away;
+    away = false;
+    return { membership: 'clear', ...(wasAway && { away: true }) };
   };
   return async (change, name) => {
     if (!MEMBERSHIP_CHANGES.includes(change)) {
@@ -3464,6 +3498,7 @@ async function batch(args) {
     email,
     member: apiSession(email, password, secret),
     ownerOf: (asked) => organisationOwner(root, asked),
+    alone: () => accountAlone(root),
     sql: async (statement) => {
       const psql = ['compose', 'exec', '-T', 'postgres', 'psql', '-U', 'soirely', '-d', 'soirely'];
       const answer = capture('docker', [...psql, '-v', 'ON_ERROR_STOP=1', '-c', statement], {
@@ -3723,25 +3758,26 @@ async function account(args) {
     await api('/api/auth/two-factor/activate', { token, body: { code } });
   }
   const organisation = kind !== 'no-organisation';
-  if (!organisation) {
-    // The founded organisation held the profile's zone; the account keeps it once that is gone.
-    await api('/api/auth/timezone', { method: 'PUT', token, body: { timezone: 'Europe/London' } });
-    const { organisations } = await api('/api/orgs', { method: 'GET', token });
-    for (const { id, name } of organisations) {
-      await api(`/api/orgs/${id}`, { method: 'DELETE', token, body: { name } });
-    }
-  }
+  if (!organisation) await leaveNoOrganisation(token);
   console.log(
     readyReport({ email, password, secret, accessToken: token, sessionId, organisation }),
   );
+}
+
+async function leaveNoOrganisation(token) {
+  // The founded organisation held the profile's zone; the account keeps it once that is gone.
+  await api('/api/auth/timezone', { method: 'PUT', token, body: { timezone: 'Europe/London' } });
+  const { organisations } = await api('/api/orgs', { method: 'GET', token });
+  for (const { id, name } of organisations) {
+    await api(`/api/orgs/${id}`, { method: 'DELETE', token, body: { name } });
+  }
 }
 
 // Kept across batches too: a run of batches that each registered an owner met the sign-up limit.
 export async function keptOwner({ fresh, kept, signIn, register, keep }) {
   if (!fresh && kept) {
     try {
-      await signIn(kept);
-      return kept;
+      if ((await signIn(kept)) !== false) return kept;
     } catch (error) {
       if (error.status !== 401) throw error;
     }
@@ -3751,22 +3787,47 @@ export async function keptOwner({ fresh, kept, signIn, register, keep }) {
   return made;
 }
 
-async function organisationOwner(root, { fresh }) {
-  const file = join(root, '.qa/qa-owner.json');
-  const { email, password } = await keptOwner({
+function keptAccount(root, name, { fresh = false, signIn: usable, register }) {
+  const file = join(root, '.qa', name);
+  return keptOwner({
     fresh,
     kept: existsSync(file) ? JSON.parse(readFileSync(file, 'utf8')) : null,
-    signIn: (owner) => signIn(owner.email, owner.password, null),
-    register: () => founder(root, 'QA Owner'),
-    keep: (owner) => {
+    signIn: usable,
+    register,
+    keep: (account) => {
       mkdirSync(dirname(file), { recursive: true });
       writeFileSync(
         file,
-        JSON.stringify({ email: owner.email, password: owner.password }, null, 2),
+        JSON.stringify({ email: account.email, password: account.password }, null, 2),
       );
     },
   });
+}
+
+async function organisationOwner(root, { fresh }) {
+  const { email, password } = await keptAccount(root, 'qa-owner.json', {
+    fresh,
+    signIn: (owner) => signIn(owner.email, owner.password, null),
+    register: () => founder(root, 'QA Owner'),
+  });
   return apiSession(email, password, null);
+}
+
+// One a failed batch left in an organisation is alone no longer, so another is registered.
+async function accountAlone(root) {
+  const { email, password } = await keptAccount(root, 'qa-alone.json', {
+    signIn: async (account) => {
+      const { accessToken: token } = await signIn(account.email, account.password, null);
+      const { organisations, paused } = await api('/api/orgs', { method: 'GET', token });
+      return organisations.length === 0 && paused.length === 0;
+    },
+    register: async () => {
+      const made = await founder(root, ACCOUNT_ORGANISATION);
+      await leaveNoOrganisation(made.accessToken);
+      return made;
+    },
+  });
+  return { email, password, session: apiSession(email, password, null) };
 }
 
 export function madeAccount({ status, signal, error, stdout, stderr }) {

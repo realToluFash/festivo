@@ -663,6 +663,19 @@
   font-size: 15px;
 }
 
+/* sc-24385: the host's note, in an inset under the Where line, its line breaks kept */
+.gp-note {
+  margin: 4px 0 12px 40px;
+  padding: 12px 14px;
+  border: 1px solid var(--colorBorder);
+  border-radius: 14px;
+  background: var(--colorInset);
+  color: var(--colorInk);
+  font: 400 16px/1.5 var(--fontFamily);
+  white-space: pre-line;
+  overflow-wrap: anywhere;
+}
+
 .gp-filled,
 .gp-outlined {
   display: flex;
@@ -798,26 +811,6 @@
 
 .gp-cal-rows {
   margin-top: 6px;
-}
-
-.gp-thanks {
-  margin: 0;
-  padding: 18px 20px;
-  border: 1px solid var(--colorInsetBorder);
-  border-radius: 18px;
-  background: var(--colorInset);
-}
-
-.gp-thanks blockquote {
-  margin: 0;
-  font: 500 17px/1.45 var(--fontFamily);
-  overflow-wrap: anywhere;
-}
-
-.gp-thanks figcaption {
-  margin-top: 10px;
-  color: var(--colorInkSecondary);
-  font: 600 15px/1.4 var(--fontFamily);
 }
 
 .gp-foot {
@@ -1017,6 +1010,37 @@
 
 .gp-sent {
   color: var(--deskGreen);
+}
+
+/* A change's prepared line above its note (pm, 13 Nov): Soirely's words, set apart from the hosts' bubble */
+.gp-change {
+  display: flex;
+  align-items: flex-start;
+  gap: 8px;
+  margin-bottom: 8px;
+  padding: 10px 14px;
+  border-radius: 14px;
+  background: var(--colorInset);
+  box-shadow: inset 0 0 0 1px var(--colorInsetBorder);
+  color: var(--colorInk);
+  font: 500 15px/1.45 var(--fontFamily);
+  font-variant-numeric: tabular-nums;
+}
+
+.gp-change > svg {
+  flex: none;
+  margin-top: 2px;
+}
+
+/* sc-4330: one line per field changed, each its own key */
+.gp-change-lines {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.gp .gp-change-lines > p {
+  margin: 0;
 }
 
 .gp-compose {
@@ -1416,6 +1440,7 @@
 }
 
 .gp-main.is-two .gp-columns {
+  display: block;
   position: relative;
   width: calc(var(--gpLeft) + var(--gpGap) + var(--gpRight));
   min-height: calc(var(--gpCoverH, var(--gpMin)) + var(--gpLeftGap) + var(--gpDetailsH, 0px));
@@ -1469,6 +1494,7 @@
   left: 0;
   width: var(--gpLeft);
   margin-left: 0;
+  margin-top: 0;
 }
 
 .is-two .gp-columns > .gp-left {
@@ -1561,14 +1587,19 @@
   display: flex;
   flex-direction: column;
   margin-top: 20px;
+  overflow: hidden;
+  border: 1px solid var(--colorBorder);
+  border-radius: var(--radiusCardLarge);
+  background: var(--colorCard);
 }
 
 .gp-yours-row {
   display: flex;
+  box-sizing: border-box;
   align-items: flex-start;
   gap: 12px;
-  min-height: 56px;
-  padding: 10px 0;
+  min-height: 64px;
+  padding: 14px 16px;
 }
 
 .gp-yours-row + .gp-yours-row {
@@ -1688,7 +1719,146 @@
 }
 
 .gp-switch-word {
+  display: grid;
+  justify-items: end;
   min-width: 26px;
   color: var(--colorInk);
   font: 600 14px/1 var(--fontFamily);
+}
+
+/* sc-3969: from an email's link, the button or the words in its place, between the intro and the rows */
+.gp-yours-lead {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  margin-top: 20px;
+}
+
+.gp-filled.is-wraps {
+  max-width: 440px;
+  height: auto;
+  min-height: 48px;
+  padding: 10px 22px;
+  line-height: 1.25;
+  text-align: center;
+  white-space: normal;
+}
+
+.gp-yours-done {
+  display: flex;
+  align-items: flex-start;
+  gap: 12px;
+  animation: gp-fade 200ms var(--gpEase);
+}
+
+.gp-yours-done-words {
+  display: flex;
+  flex: 1;
+  flex-direction: column;
+  min-width: 0;
+}
+
+.gp .gp-yours-done-words p {
+  color: var(--colorInk);
+  font: 600 17px/1.4 var(--fontFamily);
+}
+
+.gp-notice.gp-yours-alert {
+  max-width: 440px;
+  padding-bottom: 4px;
+}
+
+.gp-yours .gp-yours-alert .gp-text,
+.gp-yours .gp-yours-words > .gp-text {
+  font-size: 15px;
+}
+
+.gp-yours-line.is-saved,
+.gp-yours-line.is-failed {
+  animation: gp-drop 120ms var(--gpEase);
+}
+
+.gp .gp-yours-line.is-saved,
+.gp .gp-yours-line.is-failed {
+  color: var(--colorInk);
+}
+
+.gp-yours-line.is-failed svg {
+  margin-top: 2px;
+  color: var(--colorBroken);
+}
+
+/* The word's slot holds On, Off and Saving… at once, so the track never moves while a change is recorded */
+.gp-switch-say {
+  grid-area: 1 / 1;
+  visibility: hidden;
+}
+
+.gp-switch-say.is-shown {
+  visibility: visible;
+}
+
+.gp-switch-track > .gp-switch-knob.is-saving,
+.gp-switch-input:checked + .gp-switch-knob.is-saving {
+  background: none;
+}
+
+.gp-switch-knob > .gp-spin:not(.is-fill) {
+  border-color: var(--colorControlBorder);
+  border-top-color: var(--colorInkSecondary);
+}
+
+.gp-yours-skel.is-intro {
+  width: 100%;
+  height: 16px;
+  margin-top: 8px;
+}
+
+.gp-yours-skel.is-intro-end {
+  width: 70%;
+  height: 16px;
+  margin-top: 6px;
+}
+
+.gp-yours-row.is-waiting {
+  align-items: center;
+}
+
+.gp-yours-skel.is-name {
+  width: 72px;
+  height: 18px;
+}
+
+.gp-yours-row:nth-child(2) > .is-name {
+  width: 128px;
+}
+
+.gp-yours-row:nth-child(3) > .is-name {
+  width: 96px;
+}
+
+.gp-yours-skel.is-switch {
+  width: var(--sizeToggleW);
+  height: var(--sizeToggleH);
+  margin-left: auto;
+  border-radius: var(--radiusPill);
+}
+
+.gp-yours-skel.is-foot {
+  width: 100%;
+  height: 14px;
+  margin-top: 20px;
+}
+
+.gp-yours-skel.is-foot-end {
+  width: 46%;
+  height: 14px;
+  margin-top: 6px;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .gp-yours-line.is-saved,
+  .gp-yours-line.is-failed {
+    animation-name: gp-fade;
+  }
 }

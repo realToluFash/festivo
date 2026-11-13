@@ -1,3 +1,6 @@
+import { readFileSync } from 'node:fs';
+import { join } from 'node:path';
+
 import { describe, expect, it } from 'vitest';
 
 import { CLOCKS, sampleEvent } from './events.ts';
@@ -8,6 +11,7 @@ import {
   PARTY,
   WALK_IN,
   WEDDING,
+  changedView,
   closeLine,
   countsOf,
   guestsCardOf,
@@ -19,7 +23,9 @@ import {
   linesOf,
   markInvited,
   markNotInvited,
+  namedOf,
   numberMatches,
+  placesTo,
   recordReply,
   replyByOf,
   sampleGuests,
@@ -30,6 +36,7 @@ import {
   viewOf,
 } from './guests.ts';
 import { GW } from './guestsWords.ts';
+import { changesSince } from './changedSince.ts';
 import { COMING, GUESTS_N, NOT_REPLIED, countOf } from './messages.ts';
 import { GROUPS } from './messagesTo.ts';
 
@@ -106,12 +113,12 @@ describe('the list (sc-3772)', () => {
       ['notYet', 14, true],
     ]);
     expect(view.groups[0]?.rows.map((row) => [row.person.name, row.indent, row.line])).toEqual([
-      ['Alhaji Musa Bello', false, 'Coming · replied Oct 14 · 1 companion'],
+      ['Alhaji Musa Bello', false, 'Coming · replied Oct 14 · 1 companion · 0 of 1 named'],
       ['Guest of Alhaji Musa Bello', true, 'Coming'],
       ['Amaka Eze', false, 'Coming · replied Oct 13'],
     ]);
     expect(view.groups[1]?.rows.map((row) => row.line)).toEqual([
-      'Not sure yet · asked to decide by Nov 4 · 1 companion',
+      'Not sure yet · asked to decide by Nov 4 · 1 companion · 0 of 1 named',
       'Held · comes only if their host accepts',
       'Not sure yet · asked to decide by Nov 4',
     ]);
@@ -248,9 +255,48 @@ describe('the card’s words (l10n, 8 Nov)', () => {
 
 describe('the view in the address (sc-3772)', () => {
   it('knows what each state opens on before the address says otherwise', () => {
-    expect(viewBase('filtered')).toEqual({ choice: 'noReply', q: '' });
-    expect(viewBase('search')).toEqual({ choice: 'all', q: 'okon' });
-    expect(viewBase(null)).toEqual({ choice: 'all', q: '' });
+    expect(viewBase('filtered')).toEqual({ choice: 'noReply', q: '', since: null });
+    expect(viewBase('search')).toEqual({ choice: 'all', q: 'okon', since: null });
+    expect(viewBase(null)).toEqual({ choice: 'all', q: '', since: null });
+    expect(viewBase('changed')).toEqual({ choice: 'changed', q: '', since: null });
+  });
+});
+
+describe('Changed since you looked (sc-4331)', () => {
+  const clock = new Date('2026-11-03T09:41:00Z');
+
+  it('lists the bell item’s guests newest first, the answer and when', () => {
+    const { view, shown } = changedView(sampleGuests(WEDDING), changesSince(null), '', clock);
+    const lines =
+      view.kind === 'rows' ? view.rows.map((row) => `${row.person.name}: ${row.line}`) : [];
+
+    expect(shown).toBe(5);
+    expect(lines).toEqual([
+      'Lucía Ortega: Not sure yet · Changed at 09:31',
+      'Inês Duarte: Coming · Replied at 08:40',
+      'Amaka Eze: Coming · Replied at 07:52',
+      'Camille Dubois: Not coming · Replied Nov 2',
+      'Alhaji Musa Bello: Coming · Replied Nov 2',
+    ]);
+  });
+
+  it('counts only what changed after the last look, and a search narrows it', () => {
+    expect(changesSince('2026-11-03T08:00:00Z').map((one) => one.id)).toEqual(['lucia', 'ines']);
+    expect(changesSince(clock.toISOString())).toEqual([]);
+    expect(changedView(sampleGuests(WEDDING), changesSince(null), 'eze', clock).shown).toBe(1);
+  });
+
+  it('shows the bell’s label for a change that is not a reply', () => {
+    const { view } = changedView(
+      sampleGuests(WEDDING),
+      [{ id: 'kwame', kind: 'needs', at: '2026-11-02T10:00:00Z' }],
+      '',
+      clock,
+    );
+
+    expect(view.kind === 'rows' && view.rows[0]?.line).toBe(
+      'Updated dietary needs · Changed Nov 2',
+    );
   });
 });
 
@@ -382,6 +428,49 @@ describe('refused before sending (sc-1468)', () => {
   });
 });
 
+describe('places for companions, the host’s side (sc-3779)', () => {
+  const rows = (names: readonly string[]) =>
+    names.map((name, at) => ({ id: name === '' ? null : `c${at}`, name }));
+
+  it('adds unnamed places up to ten, never more', () => {
+    expect(placesTo(rows(['Marc Laurent']), 3)).toEqual({
+      companions: [...rows(['Marc Laurent']), { id: null, name: '' }, { id: null, name: '' }],
+    });
+    expect(placesTo([], 14)).toMatchObject({ companions: { length: 10 } });
+  });
+
+  it('takes unnamed places only, from the end, and refuses once every place left is named', () => {
+    expect(placesTo(rows(['', 'Hauwa Bello', '']), 2)).toEqual({
+      companions: rows(['', 'Hauwa Bello']),
+    });
+    expect(placesTo(rows(['', 'Hauwa Bello', '']), 1)).toEqual({
+      companions: [{ id: 'c1', name: 'Hauwa Bello' }],
+    });
+    expect(placesTo(rows(['Marc Laurent']), 0)).toEqual({ refused: 1 });
+    expect(GW.placesRefused('Sophie Laurent', 1)).toBe(
+      'Sophie Laurent already has 1 named. Remove some first.',
+    );
+  });
+
+  it('counts the places named, and clears Named by the guest once the host edits that name', () => {
+    const list = sampleGuests(WEDDING);
+    const sophie = list.find((one) => one.id === 'sophie');
+
+    if (sophie == null) throw new Error('sophie');
+    expect(namedOf(sophie)).toBe(1);
+    expect(sophie.companions[0]?.namedBy).toBe('guest');
+
+    const kept = saveGuest(list, 'sophie', { ...valuesOf(sophie), email: 'sophie@orange.fr' });
+    const renamed = saveGuest(list, 'sophie', {
+      ...valuesOf(sophie),
+      companions: [{ id: 'sophie-c1', name: 'Marc-Antoine Laurent' }],
+    });
+
+    expect(kept.find((one) => one.id === 'sophie')?.companions[0]?.namedBy).toBe('guest');
+    expect(renamed.find((one) => one.id === 'sophie')?.companions[0]).not.toHaveProperty('namedBy');
+  });
+});
+
 describe('a companion with a seat and a meal (sc-3773)', () => {
   const list = sampleGuests(WEDDING);
   const ines = list.find((one) => one.id === 'ines');
@@ -419,5 +508,13 @@ describe('every state (spec §15)', () => {
       expect(start.event).toMatch(/^evt-/u);
       expect(JSON.stringify(start)).not.toMatch(/\b(AM|PM)\b/u);
     }
+  });
+});
+
+describe('a companion field (sc-43267)', () => {
+  it('ends a placeholder too long for the field in an ellipsis, on one line', () => {
+    expect(readFileSync(join(import.meta.dirname, 'guests.css'), 'utf8')).toMatch(
+      /\.desk \.gs-companion \.desk-box input \{\s*overflow: hidden;\s*text-overflow: ellipsis;\s*white-space: nowrap;\s*\}/u,
+    );
   });
 });

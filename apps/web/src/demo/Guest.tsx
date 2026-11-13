@@ -6,8 +6,6 @@ import { useMatches } from '../phoneWidth.ts';
 import { Glyph } from '../components/Glyph.tsx';
 import {
   type Answer,
-  type Channel,
-  COMPANIONS,
   HOLD_MS,
   LAYOUT_MEDIA,
   LEGAL,
@@ -17,6 +15,7 @@ import {
   OPEN,
   REPLY_BY,
   SEND_MS,
+  THANK_YOU,
   type View,
   type Visit,
   type Words,
@@ -32,6 +31,7 @@ import {
   twoColumns,
   wordsFor,
 } from './guest.ts';
+import { Thanks } from './Thanks.tsx';
 import {
   AddToCalendar,
   AnswerRows,
@@ -49,7 +49,6 @@ import {
   Notice,
   PhaseNotice,
   TextAction,
-  Thanks,
   Unreachable,
   Waiting,
   WhatsAppBox,
@@ -61,9 +60,12 @@ import {
   GUEST_KITCHEN_SAVED_ID,
 } from './GuestKitchen.tsx';
 import { type GuestKitchenActions, useGuestKitchen } from './useGuestKitchen.ts';
+import { PartyCheckRow, WithYou } from './GuestCompanions.tsx';
+import { hasStep, holdsCompanions, partyLine } from './guestCompanions.ts';
+import { type PartyActions, partyActions, withPartyBack } from './guestPartyActions.ts';
 import { DayAnswer, DayWaiting, WhereBlock, YourCode } from './GuestDay.tsx';
 import { inDayOrder } from './guestDay.ts';
-import { YourMessages } from './GuestMessages.tsx';
+import { KeptOut, YourMessages } from './GuestMessages.tsx';
 import { plusDays } from './dataControl.ts';
 import { GuestAsk } from './GuestAsk.tsx';
 import {
@@ -78,7 +80,8 @@ import {
   saveSettled,
 } from './guestAsk.ts';
 import { askClock, askFocus, DAYS_CHOICES, isReplyByChoice } from './guestAskStates.ts';
-import { switched } from './guestMessages.ts';
+import { wayInState } from './guestMessages.ts';
+import { type YourMessagesActions, useYourMessages } from './useYourMessages.ts';
 import { useLater } from '../useLater.ts';
 import { legalPath } from './legal.ts';
 import './today.css';
@@ -162,7 +165,10 @@ function Visitor({
     document.querySelector<HTMLElement>(`.gp [data-focus="${visit.want}"]`)?.focus();
   }, [visit.want, visit.wantId]);
 
-  const kitchen = useGuestKitchen(visit, state, go);
+  const steps = useGuestKitchen(visit, state, go);
+  const party = partyActions(go, steps, visit);
+  const kitchen = withPartyBack(steps, visit, party);
+  const yours = useYourMessages(visit, state, go);
 
   const record = useCallback(
     (answer: Answer, fromCheck = false) =>
@@ -183,7 +189,17 @@ function Visitor({
       draftTried: false,
     }));
     laterMessage(SEND_MS, () =>
-      go((was) => ({ mine: was.mine.map((one) => ({ ...one, sent: true })) })),
+      go((was) =>
+        was.box === 'refused'
+          ? {
+              mine: was.mine.slice(0, -1),
+              draft: was.mine.at(-1)?.words ?? '',
+              draftFailed: true,
+              want: 'sendMessage',
+              wantId: was.wantId + 1,
+            }
+          : { mine: was.mine.map((one) => ({ ...one, sent: true })) },
+      ),
     );
   }
 
@@ -213,6 +229,15 @@ function Visitor({
     const { view } = visit;
 
     if (view.kind !== 'answer' && view.kind !== 'changing') return;
+    if (chosen === 'coming' && hasStep(visit.party)) {
+      go(
+        () => ({
+          view: { kind: 'withYou', from: view.kind === 'changing' ? 'changing' : 'answer' },
+        }),
+        'withYouHead',
+      );
+      return;
+    }
     if (chosen === 'coming') {
       kitchen.open(view.kind === 'changing' ? 'changing' : 'answer');
       return;
@@ -345,6 +370,7 @@ function Visitor({
       visit={visit}
       words={words}
       kitchen={kitchen}
+      party={party}
       onAnswer={answer}
       onSend={send}
       onBack={back}
@@ -392,8 +418,7 @@ function Visitor({
             onRetry={retry}
             saving={saving}
             onSaveAgain={saveAgain}
-            onSwitch={(channel) => go((was) => switched(was, channel))}
-            onLeaveMessages={() => go(() => ({ page: 'event', view: OPEN }), 'h1')}
+            yours={yours}
             onTell={() =>
               go(
                 (was) => ({ view: { kind: 'tellUs', busy: false, result: null, back: was.view } }),
@@ -429,8 +454,7 @@ function Body({
   onRetry,
   saving,
   onSaveAgain,
-  onSwitch,
-  onLeaveMessages,
+  yours,
   onTell,
 }: {
   visit: Visit;
@@ -442,8 +466,7 @@ function Body({
   onRetry: () => void;
   saving: boolean;
   onSaveAgain: () => void;
-  onSwitch: (channel: Channel) => void;
-  onLeaveMessages: () => void;
+  yours: YourMessagesActions;
   onTell: () => void;
 }) {
   const [box, setBox] = useState<HTMLDivElement | null>(null);
@@ -476,7 +499,7 @@ function Body({
     return (
       <div className="gp-alone-wrap">
         {visit.page === 'gone' ? (
-          <Gone words={words} />
+          <Gone title={words.gone} body={words.goneBody} />
         ) : (
           <Unreachable words={words} busy={retrying} onRetry={onRetry} />
         )}
@@ -484,10 +507,26 @@ function Body({
     );
   }
 
+  if (visit.page === 'messages' && visit.yours.opening === 'broken') {
+    return (
+      <div className="gp-alone-wrap">
+        <KeptOut />
+        <Gone title={words.linkBroken} body={words.linkBrokenBody} />
+      </div>
+    );
+  }
+
   if (visit.page === 'messages') {
     return (
       <div className="gp-alone-wrap gp-yours-wrap">
-        <YourMessages visit={visit} words={words} onSwitch={onSwitch} onBack={onLeaveMessages} />
+        <YourMessages
+          visit={visit}
+          words={words}
+          onPress={yours.press}
+          onSwitch={yours.toggle}
+          onRetry={yours.retry}
+          onBack={yours.back}
+        />
       </div>
     );
   }
@@ -512,7 +551,7 @@ function Body({
   }
 
   const ended = visit.phase === 'calledOff' || visit.phase === 'over' || visit.phase === 'finished';
-  const { details, foot, hosts } = shows(visit);
+  const { details, foot, hosts, noAccount } = shows(visit);
 
   return (
     <div ref={setBox} className="gp-columns">
@@ -521,7 +560,15 @@ function Body({
       <Cover visit={visit} words={words} ended={ended} band={band && inDayOrder(visit)} />
       {under}
       {details && <Details visit={visit} words={words} hosts={hosts} />}
-      {foot && <Foot words={words} onTell={onTell} />}
+      {foot && (
+        <Foot
+          words={words}
+          noAccount={noAccount}
+          wayIn={`/demo/guest?state=${wayInState(visit)}`}
+          onYourMessages={yours.open}
+          onTell={onTell}
+        />
+      )}
     </div>
   );
 }
@@ -530,6 +577,7 @@ function Under({
   visit,
   words,
   kitchen,
+  party,
   onAnswer,
   onSend,
   onBack,
@@ -546,6 +594,7 @@ function Under({
   visit: Visit;
   words: Words;
   kitchen: GuestKitchenActions;
+  party: PartyActions;
   onAnswer: (answer: Answer) => void;
   onSend: () => void;
   onBack: () => void;
@@ -589,6 +638,7 @@ function Under({
         visit={visit}
         words={words}
         kitchen={kitchen}
+        party={party}
         onAnswer={onAnswer}
         onSend={onSend}
         onBack={onBack}
@@ -617,6 +667,7 @@ function Shown({
   visit,
   words,
   kitchen,
+  party,
   onAnswer,
   onSend,
   onBack,
@@ -630,6 +681,7 @@ function Shown({
   visit: Visit;
   words: Words;
   kitchen: GuestKitchenActions;
+  party: PartyActions;
   onAnswer: (answer: Answer) => void;
   onSend: () => void;
   onBack: () => void;
@@ -656,6 +708,8 @@ function Shown({
           <AnswerRows words={words} busy={view.busy} onAnswer={onAnswer} />
         </section>
       );
+    case 'withYou':
+      return <WithYou visit={visit} words={words} actions={party} />;
     case 'kitchen':
       return <GuestKitchenStep visit={visit} words={words} actions={kitchen} />;
     case 'check':
@@ -666,6 +720,9 @@ function Shown({
             words={words}
             actions={kitchen}
             box={<WhatsAppBox visit={visit} words={words} busy={view.busy} onTick={onTick} />}
+            party={
+              <PartyCheckRow visit={visit} words={words} busy={view.busy} onChange={party.edit} />
+            }
           />
         );
 
@@ -688,6 +745,11 @@ function Shown({
             <span className="gp-answer-words">{words.answerLine('coming')}</span>
             {!view.refused && <TextAction onClick={onBack}>{words.changeShort}</TextAction>}
           </div>
+          {hasStep(visit.party) && (
+            <div className="gk-rows">
+              <PartyCheckRow visit={visit} words={words} busy={view.busy} onChange={party.edit} />
+            </div>
+          )}
           {!view.refused && (
             <WhatsAppBox visit={visit} words={words} busy={view.busy} onTick={onTick} />
           )}
@@ -723,8 +785,14 @@ function Shown({
               <p className="gp-sub is-recorded">{words.recordedFor(recorded.by, day)}</p>
             )}
             {view.same && <p className="gp-sub is-ink">{words.same(recorded.answer)}</p>}
-            {recorded.answer === 'notSure' && COMPANIONS > 0 && (
+            {recorded.answer === 'coming' && hasStep(visit.party) && (
+              <p className="gp-sub">{partyLine(visit.party, lang)}</p>
+            )}
+            {recorded.answer === 'notSure' && holdsCompanions(visit) && (
               <p className="gp-sub">{words.companions}</p>
+            )}
+            {recorded.answer === 'notComing' && holdsCompanions(visit) && (
+              <p className="gp-sub">{words.companionsNotComing}</p>
             )}
             <TextAction focus="change" onClick={onChange}>
               {words.change}
@@ -814,7 +882,7 @@ function Closed({
   if (phase === 'over' || phase === 'finished') {
     return (
       <div className="gp-ended">
-        {phase === 'finished' && <Thanks words={words} />}
+        {phase === 'finished' && <Thanks line={THANK_YOU} hosts={words.hosts} />}
         <p className="gp-sub">{said}</p>
       </div>
     );

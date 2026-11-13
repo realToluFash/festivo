@@ -86,6 +86,7 @@ export function TitleRow({
 
   return (
     <>
+      {!compact && desk.offline}
       <header className={compact ? 'desk-top is-compact' : 'desk-top'}>
         <h1 ref={titleRef} className="desk-title" tabIndex={-1}>
           {title}
@@ -108,15 +109,20 @@ export function BackRow({
   onBack: () => void;
   bell?: ReactNode;
 }) {
+  const desk = useDeskTop();
+
   return (
-    <div className="desk-top">
-      <button type="button" className="desk-back" onClick={onBack}>
-        <Glyph name="back" size={17} weight={2.4} />
-        {to}
-      </button>
-      <span className="today-grow" />
-      {bell}
-    </div>
+    <>
+      {desk.offline}
+      <div className="desk-top">
+        <button type="button" className="desk-back" onClick={onBack}>
+          <Glyph name="back" size={17} weight={2.4} />
+          {to}
+        </button>
+        <span className="today-grow" />
+        {bell}
+      </div>
+    </>
   );
 }
 
@@ -600,6 +606,8 @@ interface AskProps {
   /** None once nothing is left to decide: the line is an alert, and keep is the one action. */
   go?: string;
   red?: boolean;
+  /** Grey until what the verb needs is there, as Delete is before the name matches; pressing it still calls onGo, to say what is missing. */
+  off?: boolean;
   /** The verb's words while its answer is on its way: it turns and is off, and the way back and Escape wait. */
   busy?: string | undefined;
   /** Why the answer did not go, under the line and any body; the verb tries again. */
@@ -608,6 +616,8 @@ interface AskProps {
   first?: RefObject<HTMLElement | null> | undefined;
   /** More of the body under the line, which stays its description. */
   children?: ReactNode;
+  /** Ids in that body that describe the dialog too, after the line, as Delete event's list and restore window do. */
+  describedBy?: string | undefined;
   onKeep: () => void;
   onGo?: () => void;
 }
@@ -620,7 +630,21 @@ export function Ask(props: AskProps) {
 }
 
 function AskBox(props: AskProps) {
-  const { title, line, keep, go, red = true, busy, failed, first, children, onKeep, onGo } = props;
+  const {
+    title,
+    line,
+    keep,
+    go,
+    red = true,
+    off = false,
+    busy,
+    failed,
+    first,
+    children,
+    describedBy,
+    onKeep,
+    onGo,
+  } = props;
   const id = useId();
   const box = useRef<HTMLDivElement>(null);
   const keepButton = useRef<HTMLButtonElement>(null);
@@ -646,7 +670,9 @@ function AskBox(props: AskProps) {
         role="alertdialog"
         aria-modal="true"
         aria-labelledby={`${id}-title`}
-        aria-describedby={line == null ? undefined : `${id}-line`}
+        aria-describedby={
+          [line == null ? null : `${id}-line`, describedBy].filter(Boolean).join(' ') || undefined
+        }
       >
         <h2 id={`${id}-title`}>{title}</h2>
         {children == null ? (
@@ -680,9 +706,18 @@ function AskBox(props: AskProps) {
               <button
                 ref={goButton}
                 type="button"
-                className={waits ? 'desk-text is-busy' : red ? 'desk-text is-red' : 'desk-text'}
+                className={
+                  waits
+                    ? 'desk-text is-busy'
+                    : off
+                      ? 'desk-text is-off'
+                      : red
+                        ? 'desk-text is-red'
+                        : 'desk-text'
+                }
                 aria-busy={waits || undefined}
                 {...offButton(waits, { dim: false })}
+                aria-disabled={waits || off}
                 onClick={onGo}
               >
                 {waits && <span className="pending-spinner desk-turning" aria-hidden="true" />}

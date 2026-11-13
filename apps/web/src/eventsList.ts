@@ -1,12 +1,12 @@
 import type { EventCover, ListedEvent } from '@soirely/api-client';
 import {
+  calledOffDay,
   type CardStepAction,
   type EventPhase,
   type EventState,
   type Milestone,
   calledOff,
   eventDayWords,
-  formatEventDate,
   milestoneDistance,
   nextStep,
   milestoneMoment,
@@ -272,7 +272,7 @@ export function cardStep(event: Shown, now: Date, locale: string, t: TFunction):
       const line =
         event.calledOff && event.concludedAt != null
           ? t('eventEnd.calledOffNotice', {
-              date: formatEventDate(event.concludedAt, event.timeZone, locale),
+              date: calledOffDay(event.concludedAt, event.timeZone, now, locale),
             })
           : t('timeline.finished');
 

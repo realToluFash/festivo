@@ -337,7 +337,7 @@ export function needsLanding(days: ProductDays, from: string): string {
 }
 
 export function rowWhen(item: ProductItem, locale: string): string {
-  return productRowWhen(item, locale, READER_ZONE, t);
+  return productRowWhen(item, locale, READER_ZONE, NOW, t);
 }
 
 export function needsWhen(item: ProductItem, locale: string, now: Date = NOW): string {

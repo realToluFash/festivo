@@ -799,5 +799,13 @@ export function useTo(state: MessagesState | null): ToApi {
     shown.current = true;
   }, []);
 
-  return { state, book, setBook, manage: state !== 'noManage', view, refused, viewed };
+  return {
+    state,
+    book,
+    setBook,
+    manage: state !== 'noManage' && state !== 'stoppedNoManage',
+    view,
+    refused,
+    viewed,
+  };
 }

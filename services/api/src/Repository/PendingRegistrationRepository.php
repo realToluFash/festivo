@@ -38,19 +38,6 @@ final class PendingRegistrationRepository extends ServiceEntityRepository
             ->getOneOrNullResult();
     }
 
-    /** Whether this address was told it already has an account since `$since`, by any attempt. */
-    public function alreadyRegisteredEmailedSince(string $email, DateTimeImmutable $since): bool
-    {
-        return (int) $this->createQueryBuilder('p')
-            ->select('COUNT(p.id)')
-            ->where('p.email = :email')
-            ->andWhere('p.alreadyRegisteredEmailedAt >= :since')
-            ->setParameter('email', $email)
-            ->setParameter('since', $since, Types::DATETIME_IMMUTABLE)
-            ->getQuery()
-            ->getSingleScalarResult() > 0;
-    }
-
     /** @return int how many were deleted */
     public function deleteExpired(DateTimeImmutable $now): int
     {

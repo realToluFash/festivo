@@ -24,6 +24,7 @@ import {
   WEDDING,
   replyByOf,
 } from './GuestsSample.ts';
+import { type Change, changeLabel, changeWhen } from './ChangedSince.ts';
 import { REPLY_WORD, type ReplyKind, W, say } from './GuestsWords.ts';
 import { type HowAgreed, hostAgreed } from './WhatsAppConsent.ts';
 
@@ -35,6 +36,10 @@ export const LIST_STATES = [
   'search',
   'searchNone',
   'filterNone',
+  'changedRow',
+  'changed',
+  'changedMenu',
+  'changedNone',
   'loading',
   'failed',
   'offline',
@@ -372,6 +377,8 @@ export function countsFrom(guests: readonly SampleGuest[]): Counts {
 }
 
 export type FilterKey = 'all' | 'invited' | ReplyKind | 'walkin';
+/** sc-4331: Changed since you looked sits apart from the reply choices and outside their add-up-to-All rule. */
+export type ListFilter = FilterKey | 'changed';
 
 export const FILTERS: readonly FilterKey[] = [
   'all',
@@ -394,7 +401,8 @@ export function filtersFor(counts: Counts): FilterKey[] {
     : [...FILTERS];
 }
 
-export function filterWord(key: FilterKey): string {
+export function filterWord(key: ListFilter): string {
+  if (key === 'changed') return W.changedSince;
   if (key === 'all') return 'All';
   if (key === 'invited') return W.invited;
   return REPLY_WORD[key];
@@ -588,6 +596,32 @@ export function matchesGuest(
   if (g.email != null && folded(g.email).includes(words)) return true;
   const digits = typed.replace(/\D/gu, '');
   return digits.length >= 3 && g.phone != null && g.phone.replace(/\D/gu, '').includes(digits);
+}
+
+/** sc-4331: one row per guest the bell's item counts, newest first: the answer, or the bell's label for a change that is not a reply, and when. */
+export function changedRows(
+  guests: readonly SampleGuest[],
+  changes: readonly Change[],
+  typed: string,
+  now: Date,
+  locale: string,
+  contacts = true,
+): Person[] {
+  return changes.flatMap((change): Person[] => {
+    const g = guests.find((one) => one.key === change.key);
+    if (g == null || !matchesGuest(g.name, g, typed, contacts)) return [];
+    const answer = changeLabel(change.kind) ?? REPLY_WORD[g.kind];
+    return [
+      {
+        key: g.key,
+        guest: g.key,
+        name: g.name,
+        kind: g.kind,
+        line: joined([answer, changeWhen(change, now, locale)]),
+        companion: false,
+      },
+    ];
+  });
 }
 
 export function rowsOf(
@@ -951,6 +985,13 @@ export function peopleOn(event: string): number {
   return 0;
 }
 
+/** The guests on an event's list who are Invited (sc-3788), which a refused delete counts (sc-14445). */
+export function invitedOn(event: string): number {
+  if (event === WEDDING) return COUNTS.invited;
+  if (event === OWN_SAMPLE.paused) return PAUSED_COUNTS.invited;
+  return 0;
+}
+
 export function startStateOf(state: GuestsState | null, event: string): GuestsState | null {
   return state ?? ownStateOf(event);
 }
@@ -1061,7 +1102,11 @@ export type Overlay =
 export type GuestToastKind = 'saved' | 'copied' | 'manyAdded' | null;
 
 export interface AreaStart {
-  filter: FilterKey;
+  filter: ListFilter;
+  /** sc-4331: the last look Changed since you looked counts from; null counts every change. */
+  since: string | null;
+  /** sc-4331: when the event's Guest replies item was last marked read as the state opens: null is never; by default the state's clock, so nothing has changed since. */
+  looked?: string | null;
   typed: string;
   menu: boolean;
   phase: 'ok' | 'loading' | 'failed';
@@ -1084,6 +1129,7 @@ export interface AreaStart {
 
 const QUIET: AreaStart = {
   filter: 'all',
+  since: null,
   typed: '',
   menu: false,
   phase: 'ok',
@@ -1191,6 +1237,14 @@ export function areaStart(state: GuestsState | null): AreaStart {
       return { ...base, typed: 'kofi' };
     case 'filterNone':
       return { ...base, filter: 'held', typed: 'marta' };
+    case 'changedRow':
+      return { ...base, menu: true, looked: null };
+    case 'changed':
+      return { ...base, filter: 'changed' };
+    case 'changedMenu':
+      return { ...base, filter: 'changed', menu: true };
+    case 'changedNone':
+      return { ...base, filter: 'changed', since: CLOCKS.reader };
     case 'loading':
       return { ...base, phase: 'loading' };
     case 'failed':

@@ -14,6 +14,7 @@ import { FOCUSED_HEADER_BOARDS } from '../../src/demo/focusedHeader/FocusedHeade
 import { SWITCHER_BOARDS } from '../../src/demo/OrgSwitcherBoards.ts';
 import { Heading } from '../../src/steps/Lines.tsx';
 import { SAMPLE } from '../../src/demo/samples.ts';
+import { SEARCH_BOARDS } from '../../src/demo/search/searchRules.ts';
 import { DOOR_CODE_BOARDS } from '../../src/demo/doorCode/DoorCodeBoards.ts';
 import { GUESTS_BOARDS } from '../../src/demo/guests/GuestsBoards.ts';
 import { PASS_BOARDS } from '../../src/demo/pass/PassBoards.ts';
@@ -22,6 +23,7 @@ import { SERVICE_BOARDS, SERVICE_NEXT_BOARDS } from '../../src/demo/service/HowI
 import { REQUEST_BOARDS } from '../../src/demo/service/RequestsBoards.ts';
 import { ROOM_BOARDS } from '../../src/demo/service/ServiceRoomBoards.ts';
 import { MESSAGES_BOARDS } from '../../src/demo/messages/MessagesBoards.ts';
+import { isStopState } from '../../src/demo/messages/StopWriting.ts';
 import { SEATING_BOARDS } from '../../src/demo/seating/SeatingBoards.ts';
 import { MOVED_BOARDS, TEAM_BOARDS } from '../../src/demo/team/TeamBoards.ts';
 import { tokens } from '../../src/theme/tokens.ts';
@@ -34,6 +36,10 @@ interface Board {
 
 /** Every board in the design artifact, by its page, working on sample data. */
 const PAGES: readonly { page: string; boards: readonly Board[] }[] = [
+  {
+    page: '26 · Foundation · Search in A, a command palette (sc-39534)',
+    boards: SEARCH_BOARDS.map(({ title, what, href }) => ({ title, what, href: href as Href })),
+  },
   {
     page: 'Bold text · the weight map',
     boards: BOLD_TEXT_BOARDS.map(({ title, what, href }) => ({ title, what, href: href as Href })),
@@ -436,6 +442,21 @@ const PAGES: readonly { page: string; boards: readonly Board[] }[] = [
         title: 'Your account · email verified',
         what: 'The card says so',
         href: '/demo/settings/account?state=verifyEmailDone',
+      },
+      {
+        title: 'Your account · an address we could not deliver to',
+        what: 'Change email opens Add an email address',
+        href: '/demo/settings/account?state=undeliverable',
+      },
+      {
+        title: 'Your account · two addresses we could not deliver to',
+        what: 'One line each; with 2 held, Change email opens the other row',
+        href: '/demo/settings/account?state=undeliverableTwo',
+      },
+      {
+        title: 'Your account · not verified, and undeliverable',
+        what: 'The card’s line first; a code clears both',
+        href: '/demo/settings/account?state=undeliverableUnverified',
       },
       {
         title: 'Your account · check your messages',
@@ -1405,6 +1426,36 @@ const PAGES: readonly { page: string; boards: readonly Board[] }[] = [
         href: '/demo/events/evt-wed-4?state=venueDown',
       },
       {
+        title: 'Venue · arrival note',
+        what: 'The note under Address, its hint (sc-24385)',
+        href: '/demo/events/evt-wed-4?state=venueNote',
+      },
+      {
+        title: 'Venue · a note of 501',
+        what: 'Refused before sending, focus on the box',
+        href: '/demo/events/evt-wed-4?state=venueNoteTooLong',
+      },
+      {
+        title: 'Venue · the note refused (422)',
+        what: 'The server’s words, in the same place',
+        href: '/demo/events/evt-wed-4?state=venueNoteRefused',
+      },
+      {
+        title: 'Venue · a role changed (403)',
+        what: 'Save: nothing was changed',
+        href: '/demo/events/evt-wed-4?state=venueNoteForbidden',
+      },
+      {
+        title: 'Details · a note and no venue',
+        what: 'Venue to be confirmed, the note, Add the venue',
+        href: '/demo/events/evt-wed-4?state=noteNoVenue',
+      },
+      {
+        title: 'Details · a note of 500, no spaces',
+        what: 'Wraps inside the row',
+        href: '/demo/events/evt-wed-4?state=noteWide',
+      },
+      {
         title: 'Hosted by',
         what: 'The hosts, in order',
         href: '/demo/events/evt-wed-4?state=hosts',
@@ -1497,6 +1548,41 @@ const PAGES: readonly { page: string; boards: readonly Board[] }[] = [
         href: '/demo/events/evt-wed-4?state=deleteTyped',
       },
       {
+        title: 'Delete event · refused',
+        what: 'Guests invited: call it off first',
+        href: '/demo/events/evt-wed-4?state=deleteRefused',
+      },
+      {
+        title: 'Delete event · refused, from the start',
+        what: 'Guests invited: end it first',
+        href: '/demo/events/evt-wed-4?state=deleteRefusedStarted',
+      },
+      {
+        title: 'Delete event · refused, without Change',
+        what: 'Who can call it off, and Keep it alone',
+        href: '/demo/events/evt-wed-4?state=deleteRefusedRead',
+      },
+      {
+        title: 'Delete event · refused, without Change, from the start',
+        what: 'Who can end it, and Keep it alone',
+        href: '/demo/events/evt-wed-4?state=deleteRefusedStartedRead',
+      },
+      {
+        title: 'Delete event · the race',
+        what: 'A guest invited while the name is typed: press Delete',
+        href: '/demo/events/evt-wed-4?state=deleteRace',
+      },
+      {
+        title: 'Delete event · the race, without Change',
+        what: 'Press Delete: who can call it off, and Keep it alone',
+        href: '/demo/events/evt-wed-4?state=deleteRaceRead',
+      },
+      {
+        title: 'Delete event · refused, Paused',
+        what: 'The Paused party: call it off first',
+        href: '/demo/events/evt-party-2?state=deleteRefusedPaused',
+      },
+      {
         title: 'Duplicate',
         what: 'What is copied, and when it starts',
         href: '/demo/events/evt-wed-4?state=duplicate',
@@ -1511,6 +1597,26 @@ const PAGES: readonly { page: string; boards: readonly Board[] }[] = [
         title: 'Mute · not saved',
         what: 'The switch holds',
         href: '/demo/events/evt-wed-4?state=muteNotSaved',
+      },
+      {
+        title: 'Guests can write from their page · off',
+        what: 'Off, and the guests’ pages lose the box',
+        href: '/demo/events/evt-wed-4?state=guestsCanWriteOff',
+      },
+      {
+        title: 'Guests can write from their page · saving',
+        what: 'The pressed value, busy',
+        href: '/demo/events/evt-wed-4?state=guestsCanWriteSaving',
+      },
+      {
+        title: 'Guests can write from their page · not saved',
+        what: 'Back to On, Not saved. Try again.',
+        href: '/demo/events/evt-wed-4?state=guestsCanWriteFailed',
+      },
+      {
+        title: 'Guests can write from their page · read only',
+        what: 'Without messages.manage: On, not changeable',
+        href: '/demo/events/evt-wed-4?state=guestsCanWriteReadOnly',
       },
       {
         title: 'Final numbers due · Next up',
@@ -1541,6 +1647,86 @@ const PAGES: readonly { page: string; boards: readonly Board[] }[] = [
         title: 'Give the changes · at the start',
         what: 'Back after the date: due at the start',
         href: '/demo/events/evt-wed-4?state=changes_late',
+      },
+    ],
+  },
+  {
+    page: 'A thank-you for your guests (sc-6476)',
+    boards: [
+      {
+        title: 'A thank-you · Add',
+        what: 'Finished: first on the Overview, with Add a thank-you',
+        href: '/demo/events/evt-wed-4?state=finished',
+      },
+      {
+        title: 'A thank-you · the field, empty',
+        what: 'Add a thank-you opened, with its count',
+        href: '/demo/events/evt-wed-4?state=thankYouAdding',
+      },
+      {
+        title: 'A thank-you · the line',
+        what: 'Signed with the hosts, and Edit thank-you',
+        href: '/demo/events/evt-wed-4?state=thankYouLine',
+      },
+      {
+        title: 'A thank-you · editing',
+        what: 'The field holds the line; save it empty to remove it',
+        href: '/demo/events/evt-wed-4?state=thankYouEditing',
+      },
+      {
+        title: 'A thank-you · saving',
+        what: 'Saving…, Cancel waits',
+        href: '/demo/events/evt-wed-4?state=thankYouSaving',
+      },
+      {
+        title: 'A thank-you · not saved',
+        what: 'The text kept, Save goes again',
+        href: '/demo/events/evt-wed-4?state=thankYouNotSaved',
+      },
+      {
+        title: 'A thank-you · over 280',
+        what: 'Save pressed: nothing sent, the limit named',
+        href: '/demo/events/evt-wed-4?state=thankYouOver',
+      },
+      {
+        title: 'A thank-you · 280 characters',
+        what: 'The longest line, no scroll sideways',
+        href: '/demo/events/evt-wed-4?state=thankYouLong',
+      },
+      {
+        title: 'A thank-you · read only',
+        what: 'Without the permission to end it: no Edit',
+        href: '/demo/events/evt-wed-4?state=thankYouReadOnly',
+      },
+      {
+        title: 'A thank-you · read only, no line',
+        what: 'No card',
+        href: '/demo/events/evt-wed-4?state=thankYouReadOnlyNone',
+      },
+      {
+        title: 'End now? · with a thank-you',
+        what: 'The optional field, filled',
+        href: '/demo/events/evt-wed-4?state=endNowThankYou',
+      },
+      {
+        title: 'End now? · 280 characters',
+        what: 'The longest line',
+        href: '/demo/events/evt-wed-4?state=endNowLong',
+      },
+      {
+        title: 'End now? · over 280',
+        what: 'Nothing sent, the limit named',
+        href: '/demo/events/evt-wed-4?state=endNowOver',
+      },
+      {
+        title: 'End now? · ending',
+        what: 'Ending…, Keep it on waits',
+        href: '/demo/events/evt-wed-4?state=endNowEnding',
+      },
+      {
+        title: 'End now? · not ended',
+        what: 'The thank-you kept',
+        href: '/demo/events/evt-wed-4?state=endNowNotEnded',
       },
     ],
   },
@@ -1636,7 +1822,15 @@ const PAGES: readonly { page: string; boards: readonly Board[] }[] = [
   },
   {
     page: 'Messages · B Conversations',
-    boards: MESSAGES_BOARDS.map(({ title, what, href }) => ({ title, what, href: href as Href })),
+    boards: MESSAGES_BOARDS.filter(({ state }) => !isStopState(state)).map(
+      ({ title, what, href }) => ({ title, what, href: href as Href }),
+    ),
+  },
+  {
+    page: 'Stop writing from their page (sc-3978)',
+    boards: MESSAGES_BOARDS.filter(({ state }) => isStopState(state)).map(
+      ({ title, what, href }) => ({ title, what, href: href as Href }),
+    ),
   },
   {
     page: 'Seating · A The room',

@@ -14,17 +14,19 @@ import { Link, useNavigate, useSearchParams } from 'react-router';
 
 import { EventsShell } from './EventParts.tsx';
 import { EventSidebar } from './EventSidebar.tsx';
-import { type SampleEvent, TODAY_IDS, sampleEvent } from './events.ts';
+import { type SampleEvent, TODAY_IDS, localDay, sampleEvent } from './events.ts';
 import { TodaySidebar } from './TodaySidebar.tsx';
 import { Glyph } from '../components/Glyph.tsx';
 import { AddForm, EditForm, RecordForm } from './GuestForms.tsx';
 import { AllergyMark } from './GuestNeeds.tsx';
 import { type GuestActions, GuestView } from './GuestColumn.tsx';
 import { AgreeForm } from './GuestWhatsApp.tsx';
+import { ExportDialog } from './GuestExport.tsx';
+import { XW, narrowing } from './guestExport.ts';
 import {
   CHOICES,
   LINK,
-  type Choice,
+  type Filter,
   type Guest,
   type GuestsStart,
   type Invite,
@@ -34,6 +36,7 @@ import {
   type ViewInAddress,
   addGuest,
   agreeToWhatsApp,
+  changedView,
   choiceWord,
   countsOf,
   guestsAt,
@@ -52,6 +55,13 @@ import {
   viewOf,
 } from './guests.ts';
 import { pageKey, useGuestsAddress } from './useGuestsAddress.ts';
+import {
+  CHANGES_EVENT,
+  changesSince,
+  lastLooked,
+  markLooked,
+  resetLooked,
+} from './changedSince.ts';
 import { GuestBones, GuestsCardView, ListBones, MarkLead } from './GuestsParts.tsx';
 import {
   EMEKA,
@@ -128,6 +138,11 @@ function GuestsAt({ params }: { params: URLSearchParams }) {
   });
   const [start] = useState(() => {
     const opened = guestsStart(guestsStateOf(params.get('state')), params);
+
+    if (params.get('state') != null) {
+      if (opened.looked === null) resetLooked();
+      else markLooked(opened.looked === undefined ? opened.clock : new Date(opened.looked));
+    }
 
     return their.state === 'erased' ? { ...opened, list: erasedIn(opened.list, EMEKA.id) } : opened;
   });
@@ -213,12 +228,14 @@ function GuestsPage({
   const [, rerender] = useReducer((count: number) => count + 1, 0);
   const [list, setList] = useState<Guest[]>(start.list);
   const [status, setStatus] = useState(start.status);
-  const { choice, q, setChoice, setQ, clear } = useGuestsAddress(base);
+  const { choice, q, since, setChoice, setQ, clear } = useGuestsAddress(base);
+  const [looked, setLooked] = useState(lastLooked);
   const [dietaryOnly, setDietary] = useState(start.dietary);
   const [menu, setMenu] = useState(start.menu);
   const [expanded, setExpanded] = useState<ReadonlySet<Reply>>(new Set());
   const [pane, setPane] = useState<Pane>(start.pane);
   const [asking, setAsking] = useState(start.asking);
+  const [exporting, setExporting] = useState(start.exporting);
   const [paused, setPaused] = useState(start.paused);
   const event: SampleEvent = paused ? { ...sample, status: 'paused' } : sample;
   const [asked, setAsked] = useState<ReadonlySet<string>>(
@@ -236,16 +253,24 @@ function GuestsPage({
   const today = todayOf(start.clock);
   const counts = countsOf(list);
   const card = guestsCardOf(event, list, start.card, start.clock, manages);
-  const { view, shown } = viewOf(
-    list,
-    choice,
-    q,
-    expanded,
-    replyByOf(event.id),
-    manages,
-    dietaryOnly,
-  );
+  const changes = sample.id === CHANGES_EVENT;
+  const listed = changes ? changesSince(since) : [];
+  const unseen = changes ? changesSince(looked).length : 0;
+  const { view, shown } =
+    choice === 'changed'
+      ? changedView(list, listed, q, start.clock, manages)
+      : viewOf(list, choice, q, expanded, replyByOf(event.id), manages, dietaryOnly);
   const looking = choice !== 'all' || q.trim() !== '' || (manages && dietaryOnly);
+  const nothingChanged = choice === 'changed' && listed.length === 0;
+
+  /** sc-4331: the menu's row does what the bell's item does: the rows since the last look, and the item marked read. */
+  function choose(next: Filter): void {
+    if (next === choice) return;
+    if (next !== 'changed') return setChoice(next);
+    setChoice('changed', looked);
+    markLooked(start.clock);
+    setLooked(lastLooked());
+  }
   const open = pane.kind === 'guest' ? pane.id : null;
   const paneGuest = 'id' in pane ? (list.find((one) => one.id === pane.id) ?? null) : null;
 
@@ -333,7 +358,11 @@ function GuestsPage({
 
   /** sc-26025: the guest just marked leaves a Not yet invited list; the focus goes to the row that took their place. */
   function markedFromQuestion(id: string): void {
-    const rows = viewOf(list, choice, q, expanded, replyByOf(event.id), manages).view;
+    const rows = (
+      choice === 'changed'
+        ? changedView(list, listed, q, start.clock, manages)
+        : viewOf(list, choice, q, expanded, replyByOf(event.id), manages)
+    ).view;
     const ids = rows.kind === 'rows' ? rows.rows.map((row) => row.person.id) : [];
     const at = ids.indexOf(id);
 
@@ -462,6 +491,7 @@ function GuestsPage({
   });
 
   const plus = manages && status === 'ready' && list.length > 0;
+  const exports = (manages || start.role === 'member') && status === 'ready' && list.length > 0;
   const columns = list.length > 0 || pane.kind === 'add';
   const stepWord =
     card.step === 'add'
@@ -499,6 +529,16 @@ function GuestsPage({
           <h1 className="gs-title" tabIndex={-1} data-focus="title">
             {GW.title}
           </h1>
+          {exports && (
+            <button
+              type="button"
+              className="gs-pill is-secondary"
+              data-focus="export"
+              onClick={() => setExporting({})}
+            >
+              {XW.export}
+            </button>
+          )}
           {plus && (
             <button type="button" className="ev-new" data-focus="add" onClick={() => startAdd()}>
               <Glyph name="plus" size={18} weight={2.4} />
@@ -526,9 +566,10 @@ function GuestsPage({
                         q={q}
                         choice={choice}
                         counts={counts}
+                        changed={choice === 'changed' ? listed.length : unseen}
                         menu={menu}
                         onQ={setQ}
-                        onChoice={setChoice}
+                        onChoice={choose}
                         onMenu={setMenu}
                       />
                       {manages && (
@@ -557,7 +598,21 @@ function GuestsPage({
                           />
                         </div>
                       )}
-                      {shown === 0 ? (
+                      {nothingChanged ? (
+                        <div className="gs-none" role="status">
+                          <h2 tabIndex={-1} data-focus="none-heading">
+                            {GW.nothingChanged}
+                          </h2>
+                          <TextAction
+                            label={GW.showAllGuests}
+                            onClick={() => {
+                              clear();
+                              setDietary(false);
+                              focus('find');
+                            }}
+                          />
+                        </div>
+                      ) : shown === 0 ? (
                         <div className="gs-none" role="status">
                           <h2 tabIndex={-1} data-focus="none-heading">
                             {GW.noMatch}
@@ -726,6 +781,28 @@ function GuestsPage({
           onGo={() => {
             setList((was) => replaceLink(was, paneGuest.id, today));
             setAsking(null);
+            setPane({ kind: 'guest', id: paneGuest.id, note: 'linkReplaced' });
+            focus('replace');
+          }}
+        />
+      )}
+      {exporting != null && (
+        <ExportDialog
+          start={exporting}
+          event={event.name}
+          day={localDay(start.clock, event.timeZone)}
+          inView={shown}
+          everyone={counts.all}
+          narrowing={narrowing(choice, q)}
+          needs={manages}
+          onClose={() => {
+            setExporting(null);
+            focus('export');
+          }}
+          onReady={(file) => {
+            setExporting(null);
+            tell(XW.ready(file));
+            focus('export');
           }}
         />
       )}
@@ -765,27 +842,29 @@ function SearchRow({
   q,
   choice,
   counts,
+  changed,
   menu,
   onQ,
   onChoice,
   onMenu,
 }: {
   q: string;
-  choice: Choice;
+  choice: Filter;
   counts: ReturnType<typeof countsOf>;
+  changed: number;
   menu: boolean;
   onQ: (q: string) => void;
-  onChoice: (choice: Choice) => void;
+  onChoice: (choice: Filter) => void;
   onMenu: (open: boolean) => void;
 }) {
   const field = useRef<HTMLInputElement>(null);
-  const items = CHOICES.filter(
-    (key) => (key !== 'walkIn' && key !== 'notYet') || counts[key] > 0,
-  ).map((key) => ({
-    key,
-    word: choiceWord(key),
-    count: counts[key],
-  }));
+  const apart = changed > 0 || choice === 'changed';
+  const items = [
+    ...(apart ? [{ key: 'changed', word: choiceWord('changed'), count: changed }] : []),
+    ...CHOICES.filter((key) => (key !== 'walkIn' && key !== 'notYet') || counts[key] > 0).map(
+      (key) => ({ key, word: choiceWord(key), count: counts[key] }),
+    ),
+  ];
 
   return (
     <div className="ev-search-row gs-search-row">
@@ -825,14 +904,14 @@ function SearchRow({
           )}
         </div>
       </div>
-      <div className="gs-menu">
+      <div className={apart ? 'gs-menu has-apart' : 'gs-menu'}>
         <Menu
           items={items}
           picked={choice}
           open={menu}
           onOpen={() => onMenu(true)}
           onClose={() => onMenu(false)}
-          onPick={(key) => onChoice(key as Choice)}
+          onPick={(key) => onChoice(key as Filter)}
         />
       </div>
     </div>

@@ -37,7 +37,7 @@ const COUNTING_MS = 600;
 const BY_NAME = new Intl.Collator('en', { sensitivity: 'base' });
 
 /** More actions: three dots, drawn here rather than added to the product's icons. */
-function MoreMark() {
+export function MoreMark() {
   return (
     <svg width={20} height={20} viewBox="0 0 20 20" aria-hidden="true" className="mgt-mark">
       <circle cx={4.5} cy={10} r={1.8} />

@@ -26,7 +26,7 @@ export const NOTIFICATION_WORDS = {
   off: 'Off',
   always: 'email always on',
   locked: 'Email cannot be switched off.',
-  blockedLine: "Push is off in this browser, so pushes won't reach you here.",
+  blockedLine: 'Push is off in this browser, so pushes will not reach you here.',
   blockedHere: 'Blocked in this browser',
   allow: 'How to allow push',
   saving: 'Saving…',

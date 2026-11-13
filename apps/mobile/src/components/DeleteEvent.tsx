@@ -1,38 +1,30 @@
 import { type EventDeletion, type OrganisationEvent } from '@soirely/api-client';
 import { typedNameMatches } from '@soirely/domain';
-import { type RefObject, useEffect, useRef, useState } from 'react';
-import {
-  Keyboard,
-  ScrollView,
-  type ScrollViewInstance,
-  StyleSheet,
-  type TextInputInstance,
-  View,
-} from 'react-native';
+import { type RefObject, useRef, useState } from 'react';
+import { StyleSheet, type TextInputInstance, View } from 'react-native';
 import { useTranslation } from 'react-i18next';
 
 import { api } from '../api.ts';
-import { type DeleteAnswer, deleteEvent } from '../kit/eventDelete.ts';
+import { deleteEvent } from '../kit/eventDelete.ts';
 import { refusalTitle } from '../kit/refusal.ts';
-import { type LayoutKind } from '../layout/useLayout.ts';
 import { tokens } from '../theme/tokens.ts';
-import { DestructiveButton, QuietButton } from './Buttons.tsx';
-import { Field, TextField, focusChecked, focusRefused } from './Field.tsx';
+import { Field, focusChecked, focusRefused } from './Field.tsx';
+import { BoxField } from './MomentPick.tsx';
 import { Notice } from './Notice.tsx';
 import { ReadOut, useSendingWords } from './ReadOut.tsx';
-import { SETTLED_MS } from './Screen.tsx';
-import { type ScreenReaderTarget, moveScreenReaderFocus } from './screenReaderFocus.ts';
-import { Sheet, SheetActions } from './Sheet.tsx';
-import { Text, type TextHandle } from './Text.tsx';
+import { type ScreenReaderTarget } from './screenReaderFocus.ts';
+import { useShellLayout } from './settingsShell.ts';
+import { Ask, ASK_WIDTH, FocusedScreen } from './Summary.tsx';
+import { Text } from './Text.tsx';
+
+type Asking = { kind: 'plain' } | { kind: 'named' };
 
 /** sc-3592: Delete event from Manage, to a role with Create events; it reads what deleting removes before it asks. */
 export function useDeleteEvent({
-  kind,
   event,
   onDeleted,
   opener,
 }: {
-  kind: LayoutKind;
   event: OrganisationEvent;
   onDeleted: (event: OrganisationEvent) => void;
   opener: RefObject<ScreenReaderTarget | null>;
@@ -41,15 +33,23 @@ export function useDeleteEvent({
   const [opening, setOpening] = useState(false);
   const [openFailed, setOpenFailed] = useState<string | null>(null);
   const [deletion, setDeletion] = useState<EventDeletion | null>(null);
+  const [asking, setAsking] = useState<Asking | null>(null);
   const [pending, setPending] = useState(false);
+  const [round, setRound] = useState(0);
+  const [failed, setFailed] = useState<string | null>(null);
+  const [named, setNamed] = useState(event.name);
 
-  const open = () => {
+  const open = (name = event.name) => {
     setOpening(true);
     setOpenFailed(null);
     api.eventDeletion(event.id).then(
       (asked) => {
         setOpening(false);
+        setFailed(null);
         setDeletion(asked);
+        setNamed(name);
+        setRound((was) => was + 1);
+        setAsking({ kind: asked.needsName ? 'named' : 'plain' });
       },
       (error: unknown) => {
         setOpening(false);
@@ -57,252 +57,208 @@ export function useDeleteEvent({
       },
     );
   };
-  const close = () => !pending && setDeletion(null);
+  const close = () => {
+    if (pending) return;
+    setAsking(null);
+  };
+  const deleted = (name: string) => {
+    setAsking(null);
+    setDeletion(null);
+    onDeleted({ ...event, name });
+  };
+
+  const plain = async () => {
+    if (pending) return;
+    setPending(true);
+    setFailed(null);
+    const answered = await deleteEvent(api, event, false, '');
+    setPending(false);
+    if (answered.kind === 'deleted') deleted(event.name);
+    else if (answered.kind === 'mismatch') open(answered.current);
+    else setFailed(refusalTitle(answered.error, t('eventDelete.failed')));
+  };
 
   const sheet = (
-    <Sheet open={deletion != null} onClose={close} opener={opener} testID="events.deleteSheet">
+    <>
+      <Ask
+        open={asking?.kind === 'plain'}
+        opener={opener}
+        width={ASK_WIDTH}
+        title={t('eventDelete.title', { event: event.name })}
+        line={t('eventDelete.draftBody')}
+        keep={{ label: t('eventDelete.keep'), off: pending, testID: 'events.deleteKeep' }}
+        confirm={{
+          label: t('eventDelete.delete'),
+          removes: true,
+          busy: pending ? t('eventDelete.deleting') : undefined,
+          testID: 'events.deleteGo',
+        }}
+        failed={failed}
+        onKeep={close}
+        onConfirm={() => void plain()}
+        testID="events.deleteSheet"
+      />
       {deletion != null && (
-        <Confirm
-          phone={kind === 'phone'}
+        <NamedDelete
+          key={round}
+          open={asking?.kind === 'named'}
           event={event}
+          named={named}
           deletion={deletion}
           pending={pending}
           onPending={setPending}
-          onKeep={close}
-          onDeleted={() => {
-            setDeletion(null);
-            onDeleted(event);
-          }}
+          opener={opener}
+          onCancel={close}
+          onDeleted={deleted}
         />
       )}
-    </Sheet>
+    </>
   );
 
-  return { open, opening, openFailed, sheet };
+  return { open: () => open(), opening, openFailed, sheet };
 }
 
-function Confirm({
-  phone,
+/** The typed-name question, for an event that has been live or has anybody on its list: its own screen, Delete off until the name matches. */
+function NamedDelete({
+  open,
   event,
+  named,
   deletion,
   pending,
   onPending,
-  onKeep,
+  opener,
+  onCancel,
   onDeleted,
 }: {
-  phone: boolean;
+  open: boolean;
   event: OrganisationEvent;
+  named: string;
   deletion: EventDeletion;
   pending: boolean;
   onPending: (pending: boolean) => void;
-  onKeep: () => void;
-  onDeleted: () => void;
+  opener: RefObject<ScreenReaderTarget | null>;
+  onCancel: () => void;
+  onDeleted: (name: string) => void;
 }) {
   const { t } = useTranslation();
-  const name = event.name;
+  const [name, setName] = useState(named);
   useSendingWords(pending ? t('eventDelete.deleting') : undefined);
-  const title = useRef<TextHandle>(null);
-  const body = useRef<ScrollViewInstance>(null);
   const input = useRef<TextInputInstance>(null);
-  const typed = useRef('');
-  const typing = useRef(false);
-  const fieldShownByRefusal = useRef(false);
-  const [needsName, setNeedsName] = useState(deletion.needsName);
-  const [answer, setAnswer] = useState<Exclude<DeleteAnswer, { kind: 'deleted' }> | null>(null);
-  const mismatch = answer?.kind === 'mismatch' ? t('eventDelete.mismatch', { event: name }) : null;
-  const failed =
-    answer?.kind === 'failed' ? refusalTitle(answer.error, t('eventDelete.failed')) : null;
-
-  useEffect(() => {
-    const focus = setTimeout(() => moveScreenReaderFocus(title.current), SETTLED_MS);
-
-    return () => clearTimeout(focus);
-  }, []);
-
-  useEffect(() => {
-    if (!needsName || !fieldShownByRefusal.current) return;
-    fieldShownByRefusal.current = false;
-    focusRefused(input);
-  }, [needsName]);
-
-  const fieldInSight = () => {
-    if (typing.current) body.current?.scrollToEnd({ animated: true });
-  };
-
-  useEffect(() => {
-    // iOS lifts the sheet over the keys' rise, so a scroll asked for as it starts stops short of the help (sc-22092).
-    const risen = Keyboard.addListener('keyboardDidShow', fieldInSight);
-
-    return () => risen.remove();
-  }, []);
+  const [typed, setTyped] = useState('');
+  const [left, setLeft] = useState(false);
+  const [refused, setRefused] = useState(false);
+  const [failed, setFailed] = useState<string | null>(null);
+  const matches = typedNameMatches(typed, name);
+  const mismatch = refused || (left && typed !== '' && !matches);
+  const gap = useShellLayout() === 'phone' ? tokens.spaceXl : tokens.spaceLg;
 
   async function submit(): Promise<void> {
     if (pending) return;
 
-    const sends = !needsName || typedNameMatches(typed.current, name);
+    const sends = matches;
     if (sends) {
       onPending(true);
-      setAnswer(null);
+      setRefused(false);
+      setFailed(null);
     }
 
-    const answered = await deleteEvent(api, event, needsName, typed.current);
+    const answered = await deleteEvent(api, { id: event.id, name }, true, typed);
     onPending(false);
 
     if (answered.kind === 'deleted') {
-      onDeleted();
+      onDeleted(name);
       return;
     }
-
-    setAnswer(answered);
-    if (answered.kind === 'mismatch') {
-      if (!needsName) {
-        fieldShownByRefusal.current = true;
-        setNeedsName(true);
-      } else if (sends) focusRefused(input);
-      else focusChecked(input);
+    if (answered.kind === 'failed') {
+      setFailed(refusalTitle(answered.error, t('eventDelete.failed')));
+      return;
     }
+    if (answered.current != null) setName(answered.current);
+    setLeft(true);
+    setRefused(sends);
+    if (sends) focusRefused(input);
+    else focusChecked(input);
   }
 
-  const keep = (
-    <QuietButton
-      label={t('eventDelete.keep')}
-      onPress={onKeep}
-      off={pending}
-      testID="events.deleteKeep"
-    />
-  );
-  const go = (
-    <DestructiveButton
-      label={pending ? t('eventDelete.deleting') : t('eventDelete.delete')}
-      onPress={() => void submit()}
-      busy={pending}
-      testID="events.deleteGo"
-    />
-  );
-
   return (
-    <>
-      <ScrollView
-        ref={body}
-        style={styles.body}
-        contentContainerStyle={styles.content}
-        keyboardShouldPersistTaps="handled"
-        onLayout={fieldInSight}
-        onContentSizeChange={fieldInSight}
-      >
-        <Text
-          ref={title}
-          size={tokens.typeTitleSection.size}
-          weight="bold"
-          accessibilityRole="header"
-        >
-          {t('eventDelete.title', { event: name })}
+    <FocusedScreen
+      gap={gap}
+      open={open}
+      title={t('eventDelete.screen')}
+      verb={{
+        label: pending ? t('eventDelete.deleting') : t('eventDelete.delete'),
+        on: matches && !pending,
+        onPress: () => void submit(),
+        removes: true,
+        busy: pending,
+        testID: 'events.deleteGo',
+      }}
+      waits={pending}
+      onCancel={onCancel}
+      cancelTestID="events.deleteKeep"
+      opener={opener}
+      testID="events.deleteSheet"
+    >
+      <Text size={22} weight="bold" accessibilityRole="header" style={styles.title}>
+        {t('eventDelete.title', { event: name })}
+      </Text>
+      <View style={styles.tight}>
+        <Text size={15} weight="semibold" style={styles.lines}>
+          {t('eventDelete.removes')}
         </Text>
-        {needsName ? (
-          <>
-            <View style={styles.list}>
-              <Text size={tokens.typeBodyPhone.size}>{t('eventDelete.removes')}</Text>
-              <View style={styles.item}>
-                <Text
-                  size={tokens.typeBodyPhone.size}
-                  accessible={false}
-                  accessibilityElementsHidden
-                  importantForAccessibility="no"
-                >
-                  •
-                </Text>
-                <Text size={tokens.typeBodyPhone.size} style={styles.itemWords}>
-                  {t('eventDelete.removesEvent')}
-                </Text>
-              </View>
-              {deletion.people > 0 && (
-                <View style={styles.item} testID="event.delete.guests">
-                  <Text
-                    size={tokens.typeBodyPhone.size}
-                    accessible={false}
-                    accessibilityElementsHidden
-                    importantForAccessibility="no"
-                  >
-                    •
-                  </Text>
-                  <Text size={tokens.typeBodyPhone.size} style={styles.itemWords}>
-                    {t('eventDelete.removesGuests', { count: deletion.people })}
-                  </Text>
-                </View>
-              )}
-            </View>
-            <Text size={tokens.typeBodyPhone.size} muted>
-              {t('eventDelete.guests')}
-            </Text>
-            <Text size={tokens.typeBodyPhone.size} muted>
-              {t('eventDelete.window', { deadline: deletion.restoreCloses })}
-            </Text>
-            <Field
-              label={t('eventDelete.type', { event: name })}
-              error={mismatch}
-              help={t('eventDelete.typeHint')}
-            >
-              <TextField
-                ref={input}
-                accessibilityLabel={t('eventDelete.type', { event: name })}
-                wrong={mismatch != null}
-                submitting={pending}
-                autoCapitalize="none"
-                autoComplete="off"
-                autoCorrect={false}
-                returnKeyType="done"
-                onSubmitEditing={() => void submit()}
-                onFocus={() => {
-                  typing.current = true;
-                  fieldInSight();
-                }}
-                onBlur={() => {
-                  typing.current = false;
-                }}
-                onChangeText={(value) => {
-                  typed.current = value;
-                  if (answer?.kind === 'mismatch' && typedNameMatches(value, name)) setAnswer(null);
-                }}
-                testID="events.deleteName"
-              />
-            </Field>
-          </>
-        ) : (
-          <Text size={tokens.typeBodyPhone.size} muted>
-            {t('eventDelete.draftBody')}
+        <Text size={15} weight="medium" style={styles.lines}>
+          {`• ${t('eventDelete.removesEvent')}`}
+        </Text>
+        {deletion.people > 0 && (
+          <Text size={15} weight="medium" style={styles.lines} testID="event.delete.guests">
+            {`• ${t('eventDelete.removesGuests', { count: deletion.people })}`}
           </Text>
         )}
-      </ScrollView>
-      <View style={styles.footer}>
-        {failed != null && (
-          <ReadOut words={failed} interrupts accessibilityRole="alert">
-            <Notice tone="broken" mark={tokens.marks.broken.glyph} body={failed} />
-          </ReadOut>
-        )}
-        <SheetActions>
-          {phone ? go : keep}
-          {phone ? keep : go}
-        </SheetActions>
       </View>
-    </>
+      <Text size={15} weight="medium" style={[styles.secondary, styles.lines]}>
+        {t('eventDelete.guests')}
+      </Text>
+      <Text size={15} weight="medium" style={[styles.secondary, styles.lines]}>
+        {t('eventDelete.window', { deadline: deletion.restoreCloses })}
+      </Text>
+      <Field
+        label={t('eventDelete.type', { event: name })}
+        error={mismatch ? t('eventDelete.mismatch', { event: name }) : null}
+        help={mismatch ? undefined : t('eventDelete.typeHint')}
+      >
+        <BoxField
+          ref={input}
+          value={typed}
+          wrong={mismatch}
+          submitting={pending}
+          autoFocus
+          autoCapitalize="none"
+          autoComplete="off"
+          autoCorrect={false}
+          returnKeyType="done"
+          onSubmitEditing={() => void submit()}
+          onChangeText={(value) => {
+            setTyped(value);
+            setRefused(false);
+            if (typedNameMatches(value, name)) setLeft(false);
+          }}
+          onBlur={() => setLeft(true)}
+          accessibilityLabel={t('eventDelete.type', { event: name })}
+          testID="events.deleteName"
+        />
+      </Field>
+      {failed != null && (
+        <ReadOut words={failed} interrupts accessibilityRole="alert">
+          <Notice tone="broken" mark={tokens.marks.broken.glyph} body={failed} />
+        </ReadOut>
+      )}
+    </FocusedScreen>
   );
 }
 
 const styles = StyleSheet.create({
-  body: { flexShrink: 1 },
-  content: {
-    gap: tokens.spaceLg,
-    paddingHorizontal: tokens.space3xl,
-    paddingTop: tokens.space3xl,
-    paddingBottom: tokens.spaceLg,
-  },
-  list: { gap: tokens.spaceXs },
-  item: { flexDirection: 'row', gap: tokens.spaceSm },
-  itemWords: { flex: 1 },
-  footer: {
-    gap: tokens.spaceMd,
-    paddingHorizontal: tokens.space3xl,
-    paddingTop: tokens.spaceSm,
-    paddingBottom: tokens.space3xl,
-  },
+  secondary: { color: tokens.colorInkSecondary },
+  title: { letterSpacing: 22 * -0.015, lineHeight: 22 * 1.2 },
+  tight: { gap: tokens.spaceHair },
+  lines: { lineHeight: 15 * 1.45 },
 });

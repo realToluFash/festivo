@@ -10,6 +10,15 @@ import { OrgSwitcher } from './OrgSwitcher.tsx';
 import { SAMPLE } from './rules.ts';
 import { STATIONS_EVENT } from './stations.ts';
 import type { Tell } from '../components/SettingsParts.tsx';
+import { SearchRow } from './Search.tsx';
+
+interface Reader {
+  name: string;
+  initials: string;
+  role: string;
+}
+
+const OWNER: Reader = { name: SAMPLE.name, initials: 'FA', role: 'Owner' };
 
 function whenOf(card: Card): string {
   return card.tags.map((tag) => tag.word).join(' · ');
@@ -24,6 +33,7 @@ export function EventSidebar({
   inert,
   waiting = null,
   without = [],
+  reader = OWNER,
 }: {
   event: SampleEvent;
   area: Area;
@@ -32,6 +42,7 @@ export function EventSidebar({
   inert: boolean;
   waiting?: { line: string; name: string } | null;
   without?: readonly Area[];
+  reader?: Reader;
 }) {
   return (
     <nav className="today-side ev-side" aria-label={event.name} inert={inert}>
@@ -39,16 +50,7 @@ export function EventSidebar({
         <Brand lockup />
       </div>
       <OrgSwitcher tell={tell} toast />
-      <button
-        type="button"
-        className="today-search"
-        aria-keyshortcuts="Meta+K Control+K"
-        onClick={() => tell('Search has its own design.')}
-      >
-        <Glyph name="search" size={16} />
-        <span className="today-grow">Search</span>
-        <kbd className="today-key">⌘K</kbd>
-      </button>
+      <SearchRow />
       <div className="ev-side-event">
         <Link className="today-place ev-side-back" to="/demo/events">
           <Glyph name="back" size={17} weight={2.4} />
@@ -108,15 +110,15 @@ export function EventSidebar({
         <button
           type="button"
           className="today-person"
-          aria-label={`${SAMPLE.name}, Owner`}
+          aria-label={`${reader.name}, ${reader.role}`}
           onClick={() => tell('Your account has its own design.')}
         >
           <span className="today-avatar today-cover is-draft" aria-hidden="true">
-            FA
+            {reader.initials}
           </span>
           <span className="today-grow today-person-words" aria-hidden="true">
-            <span className="today-person-name">{SAMPLE.name}</span>
-            <span className="today-person-role">Owner</span>
+            <span className="today-person-name">{reader.name}</span>
+            <span className="today-person-role">{reader.role}</span>
           </span>
           <Glyph name="updown" size={15} />
         </button>

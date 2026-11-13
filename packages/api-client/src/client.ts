@@ -20,7 +20,22 @@ import {
   serverClock,
 } from '@soirely/domain';
 
-import { asGuest, asGuestList, type Guest, type GuestList, type NewGuest } from './guests.ts';
+import {
+  asGuest,
+  asGuestDetails,
+  asGuestList,
+  asHeadcount,
+  type Guest,
+  type GuestEdit,
+  type GuestAnswer,
+  type GuestList,
+  type GuestPage,
+  type Headcount,
+  GUEST_ANSWERS,
+  GUEST_PAGE_PHASES,
+  type NewGuest,
+  type TaggedGuest,
+} from './guests.ts';
 import { ApiError, ApiUnreachableError, type Problem, toProblem } from './problem.ts';
 import {
   asSeating,
@@ -2069,7 +2084,46 @@ export class ApiClient {
     return added;
   }
 
-  /** A hub token for this event's guest list; each change is published there as the whole list. */
+  /** A guest on the list, not a companion; 404 for anyone else (sc-3773). */
+  async guest(eventId: string, guestId: string): Promise<TaggedGuest> {
+    return this.taggedGuest(
+      await this.exchange<{ guest?: unknown }>(this.guestPath(eventId, guestId), { method: 'GET' }),
+    );
+  }
+
+  /** Refused 412 when somebody saved since `tag`, 404 once the guest is gone, and as addGuest. */
+  async updateGuest(
+    eventId: string,
+    guestId: string,
+    guest: GuestEdit,
+    tag: string,
+  ): Promise<TaggedGuest> {
+    return this.taggedGuest(
+      await this.exchange<{ guest?: unknown }>(this.guestPath(eventId, guestId), {
+        method: 'PUT',
+        body: guest,
+        headers: { 'If-Match': tag },
+      }),
+    );
+  }
+
+  /** Needs guests.read on the event (sc-99). */
+  async headcount(eventId: string): Promise<Headcount> {
+    const body = await this.get<{ headcount?: unknown }>(
+      `/api/events/${encodeURIComponent(eventId)}/headcount`,
+    );
+    const headcount = asHeadcount(body?.headcount);
+
+    if (headcount == null) {
+      throw new Error(
+        'The API answered the headcount in a shape this client does not know. Check HeadcountCalculator in services/api.',
+      );
+    }
+
+    return headcount;
+  }
+
+  /** A hub token for this event's guest list and its headcount; each change publishes the whole list, with no email address or mobile number, then the headcount. */
   async guestsSubscription(eventId: string): Promise<RealtimeSubscription> {
     const body = await this.post<{ token?: unknown; expiresAt?: unknown }>(
       `${this.guestsPath(eventId)}/subscriptions`,
@@ -2081,8 +2135,100 @@ export class ApiClient {
     };
   }
 
+  /** A guest's whole link, for those who can add guests. Refused 409 `event_state_invalid` unless the event's phase allows `invite` (sc-1526). */
+  async guestLink(eventId: string, guestId: string): Promise<string> {
+    const body = await this.get<{ url?: unknown }>(
+      `${this.guestsPath(eventId)}/${encodeURIComponent(guestId)}/link`,
+    );
+
+    if (typeof body?.url !== 'string') {
+      throw new Error(
+        'The API answered a guest link in a shape this client does not know. Check GuestLinkController in services/api.',
+      );
+    }
+
+    return body.url;
+  }
+
+  /** The ids of the guests whose link may have reached the wrong person, for those who can add guests (sc-1526). */
+  async flaggedGuests(eventId: string): Promise<readonly string[]> {
+    const body = await this.get<{ guests?: unknown }>(`${this.guestsPath(eventId)}/flagged`);
+    const ids = body?.guests;
+
+    if (!Array.isArray(ids) || !ids.every((id): id is string => typeof id === 'string')) {
+      throw new Error(
+        'The API answered the flagged guests in a shape this client does not know. Check GuestLinkController in services/api.',
+      );
+    }
+
+    return ids;
+  }
+
+  /** Ends the guest's old link at once, in any phase. */
+  async replaceGuestLink(eventId: string, guestId: string): Promise<void> {
+    await this.post<undefined>(
+      `${this.guestsPath(eventId)}/${encodeURIComponent(guestId)}/link/replace`,
+    );
+  }
+
+  /** The token is a credential, so it travels in the body. Refused `not_found` alike for an unknown or replaced token, a deleted event's and a Draft's. Records nothing. */
+  async guestPage(token: string): Promise<GuestPage> {
+    return this.guestPageOf(
+      await this.post<unknown>('/api/guest-links/page', { token }, { anonymous: true }),
+      'POST /api/guest-links/page',
+    );
+  }
+
+  /** Records the guest's answer and answers the page as it now stands (sc-1439). Refused 422 for an answer the page does not offer, 409 `event_paused` or `event_concluded` by the event's phase, 409 `replies_closed` from the start, and `not_found` as the page is. */
+  async sendGuestAnswer(token: string, answer: GuestAnswer): Promise<GuestPage> {
+    return this.guestPageOf(
+      await this.post<unknown>('/api/guest-links/reply', { token, answer }, { anonymous: true }),
+      'POST /api/guest-links/reply',
+    );
+  }
+
+  private guestPageOf(raw: unknown, route: string): GuestPage {
+    const page = asGuestPage(raw);
+
+    if (page == null) {
+      throw new Error(
+        `The API answered ${route} in a shape this client does not know. Check GuestPageController in services/api.`,
+      );
+    }
+
+    return page;
+  }
+
+  /** "Not {name}? Tell us". Refused `too_many_attempts` after five an hour on one link. */
+  async tellWrongPerson(token: string): Promise<void> {
+    await this.post<undefined>('/api/guest-links/wrong-person', { token }, { anonymous: true });
+  }
+
   private guestsPath(eventId: string): string {
     return `/api/events/${encodeURIComponent(eventId)}/guests`;
+  }
+
+  private guestPath(eventId: string, guestId: string): string {
+    return `${this.guestsPath(eventId)}/${encodeURIComponent(guestId)}`;
+  }
+
+  private taggedGuest({
+    body,
+    response,
+  }: {
+    body: { guest?: unknown } | null | undefined;
+    response: Response;
+  }): TaggedGuest {
+    const tag = response.headers.get('ETag');
+    const guest = asGuestDetails(body?.guest);
+
+    if (tag == null || tag === '' || guest == null) {
+      throw new Error(
+        'The API answered a guest in a shape this client does not know, or with no ETag. Check GuestsController in services/api.',
+      );
+    }
+
+    return { guest, tag };
   }
 
   private seatingPath(eventId: string): string {
@@ -3490,6 +3636,63 @@ function asEventCover(raw: unknown): EventCover | undefined {
     return undefined;
 
   return { position, description, sizes: parsed as EventCover['sizes'] };
+}
+
+function asGuestPage(raw: unknown): GuestPage | null {
+  if (typeof raw !== 'object' || raw == null) return null;
+  const { guest, event, phase, started, answersOpen } = raw as Record<string, unknown>;
+  const shown = GUEST_PAGE_PHASES.find((known) => known === phase);
+  if (typeof guest !== 'object' || guest == null || typeof event !== 'object' || event == null)
+    return null;
+  const who = guest as Record<string, unknown>;
+  const what = event as Record<string, unknown>;
+  const reply = who.reply as Record<string, unknown> | null | undefined;
+  const answer = GUEST_ANSWERS.find((known) => known === reply?.answer);
+  const venue = what.venue as Record<string, unknown> | null | undefined;
+
+  if (
+    typeof who.fullName !== 'string' ||
+    typeof who.companions !== 'number' ||
+    (reply != null && (answer == null || typeof reply.at !== 'string')) ||
+    typeof what.id !== 'string' ||
+    typeof what.name !== 'string' ||
+    typeof what.type !== 'string' ||
+    typeof what.startsAt !== 'string' ||
+    typeof what.timeZone !== 'string' ||
+    shown == null ||
+    typeof started !== 'boolean' ||
+    typeof answersOpen !== 'boolean'
+  )
+    return null;
+
+  return {
+    guest: {
+      fullName: who.fullName,
+      reply: reply == null || answer == null ? null : { answer, at: reply.at as string },
+      companions: who.companions,
+    },
+    event: {
+      id: what.id,
+      name: what.name,
+      type: what.type,
+      cover: asEventCover(what.cover) ?? null,
+      hosts: Array.isArray(what.hosts)
+        ? what.hosts.filter((host): host is string => typeof host === 'string')
+        : [],
+      startsAt: what.startsAt,
+      timeZone: what.timeZone,
+      venue:
+        venue == null
+          ? null
+          : {
+              name: typeof venue.name === 'string' ? venue.name : null,
+              address: typeof venue.address === 'string' ? venue.address : null,
+            },
+    },
+    phase: shown,
+    started,
+    answersOpen,
+  };
 }
 
 /** Undefined when the shape is not one this client knows. */

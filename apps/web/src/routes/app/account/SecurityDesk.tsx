@@ -9,7 +9,7 @@ import { PROOF_MINUTES, confirmWith, othersOf, proveWith, thisDeviceFirst } from
 import { type TFunction } from 'i18next';
 import { useEffect, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { useNavigate } from 'react-router';
+import { useLocation, useNavigate } from 'react-router';
 
 import { api } from '../../../api.ts';
 import { Lead } from '../../../components/AccountParts.tsx';
@@ -76,6 +76,7 @@ import {
   waysOf,
 } from '../../../securityPage.ts';
 import { wayRefusal, wayRefusalLine } from '../../../securityRefusals.ts';
+import { opensSetUp } from '../settings/signInRulesDesk.ts';
 import { forgetSession, refreshAccount, rereadCredentials, useSession } from '../../../session.ts';
 import { useSignOut } from '../../../signOut.ts';
 import { currentSessionId } from '../../../tokens.ts';
@@ -101,6 +102,7 @@ const RETURNS = ['prove', 'link', 'signOutOthers'] as const;
 export function SecurityDesk() {
   const { t } = useTranslation();
   const navigate = useNavigate();
+  const location = useLocation();
   const session = useSession();
   const locale = dateLocale();
   const title = useRef<HTMLHeadingElement>(null);
@@ -124,6 +126,7 @@ export function SecurityDesk() {
   const [acting, setActing] = useState(false);
   const [dialog, setDialog] = useState<Opened | null>(() => returnedProof(returned));
   const [opensOnLine] = useState(() => linksOnArrival(returned));
+  const opensSetup = useRef(opensSetUp(location.state));
   const here = useSignOut(() => navigate('/sign-in'));
   const ways = waysOf(session.hasPassword, session.providers);
   const rules = rulesOf(session.organisations);
@@ -148,6 +151,11 @@ export function SecurityDesk() {
         if (!live) return;
         lineHeld.current = saidLine.current != null && document.activeElement === saidLine.current;
         setTwoFactor(now);
+        // A held step elsewhere in Settings opens two-factor's set-up, once the page knows it is off.
+        if (!opensSetup.current) return;
+        opensSetup.current = false;
+        void navigate(location.pathname, { replace: true, state: null });
+        if (!now.on) setDialog({ kind: 'setup' });
       },
       (error: unknown) =>
         live && setTwoFactor((was) => (was != null && keepsWhatLoaded(error) ? was : 'failed')),
@@ -156,7 +164,7 @@ export function SecurityDesk() {
     return () => {
       live = false;
     };
-  }, [factorTry, refresh, watch]);
+  }, [factorTry, refresh, watch, navigate, location.pathname]);
 
   useEffect(() => {
     let live = true;

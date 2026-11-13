@@ -28,7 +28,7 @@ appId: host.exp.Exponent
     timeout: 20000
 - takeScreenshot: selected
 - tapOn:
-    id: 'events.back'
+    id: 'frame.side.back'
 - extendedWaitUntil:
     visible:
       id: 'events.tab.drafts'

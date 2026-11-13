@@ -32,7 +32,7 @@ import { GuestPage } from './GuestPage.tsx';
 import { AgreeWhatsApp } from './GuestWhatsApp.tsx';
 import {
   type Counts,
-  type FilterKey,
+  type ListFilter,
   GROUPS,
   type GroupKey,
   type GuestsState,
@@ -50,7 +50,9 @@ import {
   markedInvited,
   markedNotInvited,
   rowsOf,
+  changedRows,
 } from './GuestsModel.ts';
+import { changesSince, lastLooked, takeLook } from './ChangedSince.ts';
 import { GuestsFailed, GuestsLoading, GuestsRows } from './GuestsList.tsx';
 import { GuestToast, GuestsCard, GuestsTitle, type Layout } from './GuestsParts.tsx';
 import { type SampleGuest, TODAY, WEDDING } from './GuestsSample.ts';
@@ -74,6 +76,7 @@ export function GuestsScreen({
   onArea,
   badge,
   filterFrom,
+  sinceFrom = null,
   onWrite,
   onConversation,
   onMakeLive,
@@ -85,8 +88,10 @@ export function GuestsScreen({
   onMore: (open: boolean) => void;
   onArea: (area: AreaKey) => void;
   badge: AreaBadge | null;
-  /** A count on Overview opens the guests it counts. */
-  filterFrom: FilterKey | null;
+  /** A count on Overview opens the guests it counts; the bell's Guest replies item opens Changed since you looked (sc-4331). */
+  filterFrom: ListFilter | null;
+  /** sc-4331: the last look the bell's item counts from, taken before it marked the item read. */
+  sinceFrom?: string | null;
   onWrite: () => void;
   onConversation: (guest: string) => void;
   onMakeLive: () => void;
@@ -99,7 +104,9 @@ export function GuestsScreen({
   const { state, start, role, replyBy } = opening;
   const [guests, setGuests] = useState(opening.guests);
   const [added, setAdded] = useState(opening.added);
-  const [filter, setFilter] = useState<FilterKey>(filterFrom ?? start.filter);
+  const [filter, setFilter] = useState<ListFilter>(filterFrom ?? start.filter);
+  const [since, setSince] = useState(filterFrom === 'changed' ? sinceFrom : start.since);
+  const [looked, setLooked] = useState(lastLooked);
   const [typed, setTyped] = useState(start.typed);
   const [searched, setSearched] = useState(start.typed);
   const [phase, setPhase] = useState(start.phase);
@@ -144,6 +151,8 @@ export function GuestsScreen({
   const owner = role === 'owner';
   const guest = guests.find((g) => g.key === open) ?? null;
   const looking = filter !== 'all' || searched.trim() !== '';
+  const listed = changesSince(since);
+  const unseen = event.id === WEDDING ? changesSince(looked).length : 0;
 
   useEffect(() => {
     if (typed === searched) return;
@@ -188,7 +197,12 @@ export function GuestsScreen({
     else if (words.step === 'openCheckIn')
       router.push(`/demo/guests/check-in?state=${doorFrom(state)}` as Href);
   };
-  const chooseFilter = (key: FilterKey) => {
+  const chooseFilter = (key: ListFilter) => {
+    if (key === filter) return;
+    if (key === 'changed') {
+      setSince(takeLook(now));
+      setLooked(lastLooked());
+    }
     setFilter(key);
     scroll.current?.scrollTo({ y: 0, animated: false });
   };
@@ -202,7 +216,12 @@ export function GuestsScreen({
     makeLive: W.makeLive,
     openCheckIn: W.openCheckIn,
   };
-  const rows: Person[] = looking ? rowsOf(guests, filter, searched, locale, replyBy, contacts) : [];
+  const rows: Person[] =
+    filter === 'changed'
+      ? changedRows(guests, listed, searched, now, locale, contacts)
+      : looking
+        ? rowsOf(guests, filter, searched, locale, replyBy, contacts)
+        : [];
   const groups: Partial<Record<GroupKey, Person[]>> = {};
   if (!looking)
     for (const group of GROUPS)
@@ -249,6 +268,7 @@ export function GuestsScreen({
               counts={counts}
               total={total}
               filter={filter}
+              changed={filter === 'changed' ? listed.length : unseen}
               onFilter={chooseFilter}
               typed={typed}
               onTyped={(text) => {

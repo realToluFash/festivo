@@ -13,40 +13,38 @@ export type ReplyWord = Guest['reply'] | Companion['state'];
 
 export type ListRow =
   | { kind: 'guest'; guest: Guest }
-  | { kind: 'companion'; host: Guest; companion: Companion; nth: number | null };
+  | { kind: 'companion'; host: Guest; companion: Companion; at: number };
 
-/** Guests by their whole name, each with their companions straight under them in the API's order; an unnamed companion after the host's first is numbered. */
+/** Guests by their whole name, each with their companions straight under them in the API's order. */
 export function rowsOf(guests: readonly Guest[]): ListRow[] {
   return [...guests]
     .sort((a, b) => compareGuestNames({ name: a.fullName }, { name: b.fullName }))
-    .flatMap((guest) => {
-      let unnamed = 0;
-
-      return [
-        { kind: 'guest' as const, guest },
-        ...guest.companions.map((companion) => {
-          if (blank(companion.fullName)) unnamed += 1;
-
-          return {
-            kind: 'companion' as const,
-            host: guest,
-            companion,
-            nth: blank(companion.fullName) && unnamed > 1 ? unnamed : null,
-          };
-        }),
-      ];
-    });
+    .flatMap((guest) => [
+      { kind: 'guest' as const, guest },
+      ...guest.companions.map((companion, at) => ({
+        kind: 'companion' as const,
+        host: guest,
+        companion,
+        at,
+      })),
+    ]);
 }
 
 export function blank(name: string | null): boolean {
   return name == null || name.trim() === '';
 }
 
-/** The same words ignoring case and accents: "José Ávila" is "jose avila". */
-export function listedAs(guests: readonly Guest[], name: string): Guest | null {
+/** A guest or a named companion with the same words, ignoring case and accents: "José Ávila" is "jose avila". */
+export function isListed(guests: readonly Guest[], name: string): boolean {
   const wanted = nameKey(name);
 
-  return guests.find((one) => nameKey(one.fullName) === wanted) ?? null;
+  return guests.some(
+    (one) =>
+      nameKey(one.fullName) === wanted ||
+      one.companions.some(
+        (companion) => !blank(companion.fullName) && nameKey(companion.fullName ?? '') === wanted,
+      ),
+  );
 }
 
 /** In code points, as the API counts them. */
@@ -63,7 +61,14 @@ export interface Typed {
 }
 
 export type Problem =
-  'blank' | 'tooLong' | 'emailShape' | 'phoneTooShort' | 'phoneTooLong' | 'noCountry';
+  | 'blank'
+  | 'tooLong'
+  | 'emailShape'
+  | 'phoneTooShort'
+  | 'phoneTooLong'
+  | 'noCountry'
+  // A number of a length its country uses that the API still refuses, in the API's words.
+  | { refused: string };
 
 /** Field keys in the form's order: fullName, email, mobile, then companion-0 and on. */
 export type Problems = Readonly<Record<string, Problem>>;
@@ -103,7 +108,7 @@ export function violationProblems(violations: readonly Violation[], typed: Typed
     else if (key === 'email') found.email = 'emailShape';
     else if (key === 'mobile')
       found.mobile =
-        one.propertyPath === 'countryCode' ? 'noCountry' : (own.mobile ?? 'phoneTooShort');
+        one.propertyPath === 'countryCode' ? 'noCountry' : (own.mobile ?? { refused: one.message });
     else if (key.startsWith('companion-')) found[key] = 'tooLong';
   }
 

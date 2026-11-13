@@ -14,7 +14,8 @@ import {
   PickerLayer,
   pick,
 } from '../../components/MomentPick.tsx';
-import { RESTORE_UNTIL, type SampleEvent } from './EventsSample.ts';
+import { type Refusal, type RefusedVerb, refusalWords } from './DeleteRefusal.ts';
+import { ORGANISATION, RESTORE_UNTIL, type SampleEvent } from './EventsSample.ts';
 import { W, say, t } from './EventsWords.ts';
 import { figureOf } from './GuestCounts.ts';
 import { Ask, type AskProps, FocusedScreen, SectionHead } from '../../components/Summary.tsx';
@@ -87,6 +88,51 @@ function asked(ask: LifeAsk, name: string): Omit<AskProps, 'onKeep' | 'onConfirm
         confirm: { label: W.delete, testID: `${testID}.confirm`, removes: true },
       };
   }
+}
+
+/** Delete event, refused while a guest is Invited (sc-14445): A's alert in place of the name, with the page's own Call off or End now, or who can. */
+export function RefusedAsk({
+  open,
+  refusal,
+  name,
+  opener,
+  onKeep,
+  onVerb,
+}: {
+  open: boolean;
+  refusal: Refusal;
+  name: string;
+  opener: Opener;
+  onKeep: () => void;
+  onVerb: (verb: RefusedVerb) => void;
+}) {
+  const words = refusalWords(refusal, name, ORGANISATION);
+
+  return (
+    <Ask
+      open={open}
+      opener={opener}
+      title={words.title}
+      line={words.line}
+      body={
+        words.who == null ? undefined : (
+          <Text size={15} weight="medium" style={styles.lines} testID="event.refused.who">
+            {words.who}
+          </Text>
+        )
+      }
+      keep={{ label: W.keepIt, testID: 'event.refused.keep' }}
+      confirm={
+        words.verb == null
+          ? null
+          : { label: words.verb, testID: 'event.refused.confirm', removes: true }
+      }
+      width={ASK_WIDTH}
+      onKeep={onKeep}
+      onConfirm={() => onVerb(refusal.verb)}
+      testID="event.refused"
+    />
+  );
 }
 
 export type DeleteStart = 'delete' | 'deleteMismatch' | 'deleteTyped';

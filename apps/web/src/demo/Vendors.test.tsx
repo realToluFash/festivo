@@ -42,7 +42,7 @@ describe('Settings › Vendors in A · Summary first (sc-82)', () => {
     const router = await open('/demo/settings/members');
     const sections = within(list())
       .getAllByRole('link')
-      .map((one) => one.querySelector('.today-grow')?.textContent);
+      .map((one) => one.querySelector('.desk-section-name')?.textContent);
 
     expect(sections.slice(-5)).toEqual([
       'General',

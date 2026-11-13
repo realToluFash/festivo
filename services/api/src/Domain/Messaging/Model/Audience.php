@@ -70,6 +70,12 @@ final readonly class Audience
         return new self(NotificationAudienceKind::Member, $organisationId, only: $userIds);
     }
 
+    /** One person at the address they are written to now, whatever becomes of their account or organisation (sc-4332). */
+    public static function person(Uuid $id, string $address, string $locale): self
+    {
+        return new self(NotificationAudienceKind::Person, null, only: [$id], conditions: ['address' => $address, 'locale' => $locale]);
+    }
+
     /** @param array<string, mixed> $conditions */
     public static function guests(Uuid $eventId, array $conditions): self
     {

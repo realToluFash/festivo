@@ -32,17 +32,19 @@ const LINKED = GUEST_PAGES.flatMap((page) => page.states);
 const STATES = LINKED.map((one) => /state=(\w+)/u.exec(one.to)?.[1] ?? '');
 
 describe('the guest’s page states (sc-31306)', () => {
-  it('links every state the boards draw once, in the boards’ six groups', () => {
+  it('links every state the boards draw once, in the boards’ seven groups', () => {
     expect(GUEST_PAGES.map((page) => page.name)).toEqual([
       'Answering',
       'Coming back, and answers closing',
       'Over, gone, and the rest',
       'In the guest’s own language (sc-3790)',
       'The hosts’ messages and the guest’s own',
+      'The hosts’ notes, entries in Messages (sc-3971)',
       'Your messages, opened from the guest’s page (sc-3969, sc-3950)',
+      'Your messages, from an email’s link (sc-3969)',
     ]);
-    expect(STATES).toHaveLength(70);
-    expect(new Set(STATES).size).toBe(70);
+    expect(STATES).toHaveLength(91);
+    expect(new Set(STATES).size).toBe(91);
     expect(STATES.every(isGuestState)).toBe(true);
     expect(LINKED.find((one) => one.to.includes('messageArrival'))?.to).toBe(
       '/demo/guest?state=messageArrival#m-3',
@@ -64,6 +66,8 @@ describe('the guest’s page states (sc-31306)', () => {
     expect(startOf('zone').readerZone).not.toBe(EVENT.timeZone);
     expect(startOf('french')).toMatchObject({ lang: 'fr', menuOpen: true });
     expect(startOf('replyFailed')).toMatchObject({ draftFailed: true, want: 'sendMessage' });
+    expect(startOf('noBox')).toMatchObject({ box: 'none', messages: 3 });
+    expect(startOf('noBoxOpen')).toMatchObject({ box: 'refused', draftFailed: true });
     expect(startOf('gone').page).toBe('gone');
   });
 
@@ -97,7 +101,16 @@ describe('the guest’s page states (sc-31306)', () => {
   it('drops the details and the foot for Check and send and Tell us, and the hosts when called off', () => {
     expect(shows(startOf('check'))).toMatchObject({ details: false, foot: false });
     expect(shows(startOf('tellUs'))).toMatchObject({ details: false, foot: false });
-    expect(shows(startOf('open'))).toEqual({ details: true, foot: true, hosts: true });
+    expect(shows(startOf('open'))).toEqual({
+      details: true,
+      foot: true,
+      hosts: true,
+      noAccount: true,
+    });
+    expect(shows(startOf('closed')).noAccount).toBe(false);
+    expect(shows(startOf('replyByClosed')).noAccount).toBe(false);
+    expect(shows(startOf('paused')).noAccount).toBe(false);
+    expect(shows(startOf('calledOff')).noAccount).toBe(false);
     expect(shows(startOf('calledOff')).hosts).toBe(false);
   });
 

@@ -215,5 +215,76 @@ describe('a window that opens through a Modal of its own (sc-42690)', () => {
       );
       expect(picker).toMatch(/<Text\s+ref=\{heading\}[^>]*accessibilityRole="header"/);
     });
+
+    it('hands TalkBack back to the picker however the menu closes, on Android only (sc-43908)', () => {
+      expect(picker).toMatch(
+        /const close = \(\) => \{\s*if \(Platform\.OS === 'android'\) setClosed\(\{\}\);\s*setOpen\(false\);\s*\};/,
+      );
+      expect(picker.match(/setOpen\(false\)/g)).toHaveLength(1);
+      expect(picker.match(/setClosed\(\{\}\)/g)).toHaveLength(1);
+      expect(picker).toContain('onRequestClose={close}');
+      expect(picker).toContain('onAccessibilityEscape={close}');
+      expect(picker).toMatch(/onPress=\{close\}[^>]*testID=\{`\$\{testID\}\.close`\}/);
+      expect(picker).toMatch(/onChange\(item\.code\);[^}]*\bclose\(\);/);
+      expect(picker).toContain('useSystemBack(open, close);');
+      expect(picker).toContain('useFocusOnAnswer(windowShown ? undefined : closed, field);');
+    });
+
+    it('draws only the rows in sight until its title has taken focus, under TalkBack on Android (qa2 #43597)', () => {
+      expect(picker).toMatch(
+        /useListFilling\(\s*Platform\.OS === 'android' && readerOn,\s*windowShown,\s*onScreen && !unnamed,?\s*\)/,
+      );
+      expect(picker).toContain('windowSize={listFilling ? 1 : undefined}');
+      expect(picker).toContain('const fill = setTimeout(() => setFilled(true), SETTLED_MS);');
+      expect(picker).toContain('if (!up && filled) setFilled(false);');
+    });
+  });
+
+  it('opens the switcher from TalkBack’s double tap without a click, on Android only (qa2 #43597)', () => {
+    const pill = read('OrgPill.tsx');
+
+    expect(pill).toContain('{...quietTap(onPress, expanded)}');
+    expect(pill).toContain(
+      "if (Platform.OS !== 'android' || onPress == null || expanded == null) return {};",
+    );
+    expect(pill).toContain("if (event.nativeEvent.actionName === 'activate') onPress();");
+  });
+
+  it('gives Today’s own opener the same quiet double tap (qa2 #44464)', () => {
+    expect(read('TodayCover.tsx')).toContain('...quietTap(org.onPress, org.expanded),');
+  });
+
+  it('has Create an organisation take the keys while hidden, then TalkBack’s focus on its field (qa2 #44464)', () => {
+    const walk = read('CreateWalkWindow.tsx');
+
+    expect(walk).toContain("const talkBack = Platform.OS === 'android' && readerOn;");
+    expect(walk).toContain(
+      'const unnamed = useUnnamedWindow(talkBack && shown, onScreen, null, arriving);',
+    );
+    expect(walk).toContain('onShow={() => setOnScreen(true)}');
+    expect(walk).toMatch(/const behind = walk\.asking \|\| unnamed \?/);
+    expect(walk).toMatch(
+      /!talkBack \|\| !onScreen \|\| !unnamed \|\| opening\.walk\.asking\) return;\s+const keys = setTimeout/,
+    );
+    expect(walk).toMatch(
+      /!talkBack \|\| !onScreen \|\| unnamed \|\| opening\.walk\.asking\) return;\s+const input =\s+opening\.focus === 'search' \? search\.current : opening\.focus === 'name' \? field\.current : null;/,
+    );
+  });
+
+  it('raises the keys on Create an organisation’s field once shown, moving TalkBack’s focus only onto a field still focused (qa3 #45182)', () => {
+    expect(read('CreateWalkWindow.tsx')).toMatch(
+      /\/\/ .*\s+if \(input\.isFocused\(\)\) moveScreenReaderFocus\(input\);\s+raiseKeysOn\(input\);\s+\}, \[talkBack, onScreen, unnamed, opening\]\);/,
+    );
+  });
+
+  it('keeps main’s keys after the window settles with TalkBack off, on the phone and the tablet (lead, PR #2098)', () => {
+    const walk = read('CreateWalkWindow.tsx');
+
+    expect(walk).toMatch(
+      /if \(talkBack \|\| !shown \|\| opening\.walk\.asking\) return;\s+const wait = setTimeout\(\(\) => \{\s+if \(opening\.focus === 'search'\) search\.current\?\.focus\(\);\s+else if \(opening\.focus === 'name'\) field\.current\?\.focus\(\);\s+else moveScreenReaderFocus\(question\.current\);\s+\}, SETTLED_MS\);/,
+    );
+    expect(walk).toContain(
+      'const arriving = reduced ? 0 : phone ? WINDOW_ARRIVES_MS : tokens.motionBase;',
+    );
   });
 });

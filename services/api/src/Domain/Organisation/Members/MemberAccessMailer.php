@@ -7,6 +7,7 @@ namespace App\Domain\Organisation\Members;
 use App\Domain\Organisation\Roles\SeededRoleLabels;
 use App\Domain\User\Mail\UserMailer;
 use App\Entity\Membership;
+use App\Enum\AccountMail;
 use DateTimeImmutable;
 use Psl\Str;
 
@@ -64,7 +65,7 @@ final readonly class MemberAccessMailer
         $address = $membership->getUser()->getPrimaryEmailAddress()?->getAddress();
 
         if (null !== $address) {
-            $this->userMailer->send($address, $locale, $subjectKey, $paragraphs, ['{organisation}' => $membership->getOrganisation()->getName()]);
+            $this->userMailer->send(AccountMail::MemberAccess, $address, $locale, $subjectKey, $paragraphs, ['{organisation}' => $membership->getOrganisation()->getName()]);
         }
     }
 }

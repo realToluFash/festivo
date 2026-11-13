@@ -1,4 +1,4 @@
-/* Settings › Personalisation at a desk, A · Swatches (Web-Personalisation-*.dc.html). Each scheme's Confetti is drawn in SVG from personalisation.ts. */
+/* Settings › Personalisation at a desk, A · Swatches (Web-Personalisation-*.dc.html), in the product and its demo. */
 
 .desk-card.pers-card {
   background: none;
@@ -21,7 +21,7 @@
   font: 600 14.5px/1.4 var(--fontFamily);
 }
 
-.pers-done .desk-mark {
+.desk-mark.pers-mark {
   width: 16px;
   height: 16px;
   margin-top: var(--spaceHair);

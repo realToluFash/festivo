@@ -1,12 +1,23 @@
 import { formattingLocale } from '@soirely/domain';
 import { getLocales } from 'expo-localization';
 import { type Href, router } from 'expo-router';
-import { type ReactNode, type RefObject, useMemo, useReducer, useRef, useState } from 'react';
-import { StyleSheet, View, type ViewInstance } from 'react-native';
+import {
+  type ReactNode,
+  type RefObject,
+  useEffect,
+  useMemo,
+  useReducer,
+  useRef,
+  useState,
+} from 'react';
+import { Pressable, StyleSheet, View, type ViewInstance } from 'react-native';
 
 import type { ScreenReaderTarget } from '../../components/screenReaderFocus.ts';
 import { tokens } from '../../theme/tokens.ts';
 import { LineIcon } from '../../components/AccountCard.tsx';
+import { AlertLine } from '../../components/AlertLine.tsx';
+import { SwitchTrack } from '../../components/ConfettiSwitch.tsx';
+import { Text } from '../../components/Text.tsx';
 import { EventCard } from '../../components/EventCard.tsx';
 import { EventThumb } from '../../components/EventThumb.tsx';
 import { AcPill, CHANGED, EditScreen } from './EventEdits.tsx';
@@ -26,7 +37,9 @@ import {
   DuplicateScreen,
   type LifeAsk,
   LifecycleAsk,
+  RefusedAsk,
 } from './EventLifecycle.tsx';
+import { invitedOf, refusalOf, refusedStartOf, usableManage } from './DeleteRefusal.ts';
 import {
   type CardStep,
   type EditPart,
@@ -53,7 +66,20 @@ import {
   sampleEvent,
 } from './EventsSample.ts';
 import { W, say } from './EventsWords.ts';
+import { NOTE_WORDS, WIDE_NOTE } from './ArrivalNote.ts';
+import { NoteInset } from './NoteInset.tsx';
+import {
+  WRITE_MS,
+  type WriteSwitch,
+  pressWrite,
+  writeLines,
+  writeSettled,
+  writeSwitchOf,
+  writeWord,
+} from './GuestsCanWrite.ts';
 import { datesSaveSays, replyByInTell, replyByRow, replyBySaved } from './ReplyBy.ts';
+import { TY_WORDS, cardOf, cardShown, endFieldOf, isEndState, opened } from './ThankYou.ts';
+import { EndNowAsk, ThankYouCard, ThankYouScreen } from './ThankYouParts.tsx';
 import { replyByOf } from '../guests/GuestsSample.ts';
 import { useShell } from '../../components/settingsShell.ts';
 import { LoadingBlock, Row, Section, TextAction } from '../../components/Summary.tsx';
@@ -71,13 +97,17 @@ import { PeopleCard } from '../people/PeopleCard.tsx';
 import type { CardState } from '../people/PeopleCardModel.ts';
 import {
   type FilterKey,
+  type ListFilter,
   GUESTS_ON,
   type GuestsState,
   OVERVIEW_STATES,
+  areaStart,
   clockOf as guestsClock,
+  invitedOn,
   isIn,
   peopleOn,
 } from '../guests/GuestsModel.ts';
+import { resetLooked, seedLook, takeLook } from '../guests/ChangedSince.ts';
 import { GuestsScreen } from '../guests/GuestsScreen.tsx';
 import { GUESTS as TALKS, type GuestKey } from '../messages/MessagesSample.ts';
 import type { BudgetState } from '../budget/BudgetModel.ts';
@@ -114,11 +144,15 @@ function startEvent(
       endsAt: instantOf(CHANGED.end.date, CHANGED.end.time, event.timeZone),
     };
 
+  if (state === 'noteNoVenue') return { ...event, venue: null };
+  if (state === 'noteWide') return { ...event, arrivalNote: WIDE_NOTE };
+
   return state === 'photo' ? { ...event, photo: true } : event;
 }
 
 function deleteStart(state: EventDemoState | null): DeleteStart | null {
   if (state === 'deleteDraftGuests') return 'delete';
+  if (state === 'deleteRace' || state === 'deleteRaceRead') return 'deleteTyped';
   return state === 'delete' || state === 'deleteMismatch' || state === 'deleteTyped' ? state : null;
 }
 
@@ -156,8 +190,11 @@ export function EventScreen({
     [state, guests],
   );
   const [event, setEvent] = useState(() => startEvent(id, state, messages));
-  const [at, setAt] = useState<AreaKey>(
-    figureOpens != null
+  const [at, setAt] = useState<AreaKey>(() => {
+    if (guests != null && !isIn(OVERVIEW_STATES, guests)) seedLook(areaStart(guests).looked, now);
+    else if (messages === 'bell') resetLooked();
+
+    return figureOpens != null
       ? 'guests'
       : guests != null
         ? isIn(OVERVIEW_STATES, guests)
@@ -165,9 +202,10 @@ export function EventScreen({
           : 'guests'
         : area == null || area === 'people' || messages === 'tell' || messages === 'tellPlace'
           ? 'overview'
-          : area,
-  );
-  const [guestsFrom, setGuestsFrom] = useState<FilterKey | null>(figureOpens);
+          : area;
+  });
+  const [guestsFrom, setGuestsFrom] = useState<ListFilter | null>(figureOpens);
+  const [sinceFrom, setSinceFrom] = useState<string | null>(null);
   const [m, dispatch] = useReducer(reduceReach, null, () => {
     const begun = startOf(messages, shell.layout !== 'phone');
     if (state !== 'datesReplyBySaved') return begun;
@@ -183,13 +221,35 @@ export function EventScreen({
   const [edit, setEdit] = useState<EditPart | null>(editOf(state));
   const [round, setRound] = useState(0);
   const [part, setPart] = useState<EditPart>(editOf(state) ?? 'dates');
-  const [ask, setAsk] = useState<LifeAsk | null>(state == null ? null : (ASKS[state] ?? null));
+  const [ask, setAsk] = useState<LifeAsk | null>(
+    state == null ? null : isEndState(state) ? 'endNow' : (ASKS[state] ?? null),
+  );
+  const [ending, setEnding] = useState(0);
+  const [thanks, setThanks] = useState(() => cardOf(state));
   const [deleting, setDeleting] = useState(deleteStart(state) != null);
+  const refusedStart = refusedStartOf(state);
+  const canChange = refusedStart?.canChange ?? true;
+  const [pressed, setPressed] = useState(false);
+  const refusal = refusalOf(
+    event,
+    now,
+    invitedOf(state, refusedStart, invitedOn(event.id), pressed),
+    canChange,
+  );
+  const [refused, setRefused] = useState(refusedStart != null && !refusedStart.race);
   const [duplicating, setDuplicating] = useState(state === 'duplicate');
   const [muted, setMuted] = useState(state === 'muted');
   const [mute, setMute] = useState<Mute>(
     state === 'muteNotLoaded' ? 'notLoaded' : state === 'muteNotSaved' ? 'notSaved' : 'ok',
   );
+  const [write, setWrite] = useState(() => writeSwitchOf(state));
+  const [writePressed, setWritePressed] = useState(0);
+  useEffect(() => {
+    if (writePressed === 0) return undefined;
+    const later = setTimeout(() => setWrite((now) => writeSettled(now, true)), WRITE_MS);
+
+    return () => clearTimeout(later);
+  }, [writePressed]);
   const [replyBy, setReplyBy] = useState<string | null>(() =>
     state === 'replyBySaved'
       ? '2026-11-03'
@@ -212,7 +272,7 @@ export function EventScreen({
       : null,
   );
   const refs = useRef<Partial<Record<string, ViewInstance | null>>>({});
-  const from = useRef('card');
+  const from = useRef(refusedStart == null ? 'card' : 'delete');
   const opener = useMemo<RefObject<ScreenReaderTarget | null>>(
     () => ({
       get current() {
@@ -259,6 +319,21 @@ export function EventScreen({
     setDeleting(false);
     router.dismissTo(`/demo/events?deleted=${event.id}` as Href);
   };
+  const pressDelete = () => {
+    const answer = refusalOf(
+      event,
+      now,
+      invitedOf(state, refusedStart, invitedOn(event.id), true),
+      canChange,
+    );
+
+    if (answer == null) deleteIt();
+    else {
+      setPressed(true);
+      setDeleting(false);
+      setRefused(true);
+    }
+  };
   const onStep = (step: Extract<CardStep, { kind: 'button' }>) => {
     from.current = 'card';
     if (step.action === 'makeLive') shell.tell(say.ownDesign(W.makeLive));
@@ -271,7 +346,10 @@ export function EventScreen({
     if (key === 'duplicate') setDuplicating(true);
     else if (key === 'pause') setAsk('pause');
     else if (key === 'callOff') setAsk('callOff');
-    else if (key === 'endNow') setAsk('endNow');
+    else if (key === 'endNow') {
+      setEnding((count) => count + 1);
+      setAsk('endNow');
+    } else if (refusal != null) setRefused(true);
     else if (needsName(event, peopleOn(event.id))) setDeleting(true);
     else setAsk('deleteDraft');
   };
@@ -318,9 +396,27 @@ export function EventScreen({
       locale={locale}
     />
   );
+  const thankYou = shown.phase === 'finished' && !shown.calledOff && cardShown(thanks) && (
+    <ThankYouCard
+      event={shown}
+      card={thanks}
+      locale={locale}
+      refFor={refFor}
+      onOpen={() => {
+        from.current = 'thankYou';
+        setThanks(opened(thanks));
+      }}
+    />
+  );
   const nameCover = <NameAndCover shown={shown} refFor={refFor} onEdit={openEdit} />;
   const openGuests = (filter: FilterKey) => {
     setGuestsFrom(filter);
+    setAt('guests');
+  };
+  /** sc-4331: the bell's item counts from the last look, then marks it read. */
+  const openChanged = () => {
+    setSinceFrom(takeLook(now));
+    setGuestsFrom('changed');
     setAt('guests');
   };
   const numbers = (
@@ -330,7 +426,16 @@ export function EventScreen({
     />
   );
   const peopleCard = <PeopleCard state={people} />;
-  const guestsPage = <GuestsPage />;
+  const guestsPage = (
+    <GuestsPage
+      write={write}
+      onWrite={() => {
+        if (write.saving || !write.canChange) return;
+        setWrite(pressWrite);
+        setWritePressed((count) => count + 1);
+      }}
+    />
+  );
   const forYou = (
     <JustForYou
       words={FOR_YOU}
@@ -348,7 +453,7 @@ export function EventScreen({
   const manage = (
     <Manage
       title={W.manage}
-      items={manageOf(shown, now).map((key) => ({
+      items={usableManage(manageOf(shown, now), canChange).map((key) => ({
         key,
         ...MANAGE[key],
         testID: `event.manage.${key}`,
@@ -434,6 +539,7 @@ export function EventScreen({
         onArea={setAt}
         badge={messagesHere && messagesSeen ? badgeFor(m) : null}
         filterFrom={guestsFrom}
+        sinceFrom={sinceFrom}
         onWrite={writeToThem}
         onConversation={theirConversation}
         onMakeLive={() => shell.tell(say.ownDesign(W.makeLive))}
@@ -463,6 +569,7 @@ export function EventScreen({
         more={more}
         onMore={setMore}
         onArea={setAt}
+        onChanged={openChanged}
         start={{
           fix: messages === 'fix',
           push: messages === 'bell',
@@ -486,6 +593,7 @@ export function EventScreen({
         card={card}
         left={
           <>
+            {thankYou}
             {details}
             {needsYou}
             {nameCover}
@@ -502,6 +610,7 @@ export function EventScreen({
         }
         stacked={
           <>
+            {thankYou}
             {numbers}
             {peopleCard}
             {details}
@@ -545,13 +654,48 @@ export function EventScreen({
               onReplyBy={savedReplyBy}
             />
           ) : null}
+          <ThankYouScreen
+            card={thanks}
+            locale={locale}
+            opener={opener}
+            onCard={setThanks}
+            onSaid={setTold}
+          />
+          <EndNowAsk
+            key={ending}
+            open={ask === 'endNow'}
+            name={event.name}
+            start={endFieldOf(ending === 0 ? state : null)}
+            locale={locale}
+            opener={opener}
+            onKeep={() => setAsk(null)}
+            onEnded={(line) => {
+              setAsk(null);
+              setEvent({ ...event, status: 'ended', concludedAt: now.toISOString() });
+              setThanks(cardOf(null, line));
+              if (line !== '') setTold(TY_WORDS.done);
+            }}
+          />
           <LifecycleAsk
-            ask={ask}
+            ask={ask === 'endNow' ? null : ask}
             name={event.name}
             opener={opener}
             onKeep={() => setAsk(null)}
             onConfirm={onAsked}
           />
+          {refusal != null && (
+            <RefusedAsk
+              open={refused}
+              refusal={refusal}
+              name={event.name}
+              opener={opener}
+              onKeep={() => setRefused(false)}
+              onVerb={(verb) => {
+                setRefused(false);
+                setAsk(verb);
+              }}
+            />
+          )}
           <DeleteScreen
             open={deleting}
             event={event}
@@ -559,7 +703,7 @@ export function EventScreen({
             start={deleteStart(state)}
             opener={opener}
             onClose={() => setDeleting(false)}
-            onDeleted={deleteIt}
+            onDeleted={pressDelete}
           />
           <DuplicateScreen
             open={duplicating}
@@ -614,11 +758,27 @@ function Details({
         {
           part: 'venue',
           title: shown.venue?.name ?? W.venueToBeConfirmed,
-          line: shown.venue == null ? W.venue : `${W.venue} · ${shown.venue.address}`,
-          opens: true,
+          line: shown.venue?.address ? `${W.venue} · ${shown.venue.address}` : W.venue,
+          opens: shown.venue != null || shown.arrivalNote == null,
           after:
-            shown.venue == null ? undefined : (
-              <TextAction label={W.openInMaps} glyph="globe" onPress={onMaps} testID="event.maps" />
+            shown.arrivalNote == null && !shown.venue?.address ? undefined : (
+              <>
+                {shown.arrivalNote != null && <NoteInset note={shown.arrivalNote} />}
+                {shown.venue == null ? (
+                  <TextAction
+                    label={NOTE_WORDS.addVenue}
+                    onPress={() => onEdit('venue')}
+                    testID="event.addVenue"
+                  />
+                ) : shown.venue.address ? (
+                  <TextAction
+                    label={W.openInMaps}
+                    glyph="globe"
+                    onPress={onMaps}
+                    testID="event.maps"
+                  />
+                ) : null}
+              </>
             ),
         },
         { part: 'hosts', ...hosts, opens: true },
@@ -658,8 +818,11 @@ function NameAndCover({
   );
 }
 
-/** sc-1439's page is not built: dashed, in Ink 2, with nothing to press. */
-function GuestsPage() {
+/** sc-1439's page is not built: dashed, in Ink 2, with nothing to press; sc-3978's switch under it saves at once, as Mute does. */
+function GuestsPage({ write, onWrite }: { write: WriteSwitch; onWrite: () => void }) {
+  const lines = writeLines(write);
+  const fixed = write.saving || !write.canChange;
+
   return (
     <Section title={W.guestsPage}>
       <View style={styles.dashed} testID="event.guestsPage">
@@ -673,6 +836,45 @@ function GuestsPage() {
           <AcPill words={W.previewPill} />
         </View>
       </View>
+      <Pressable
+        onPress={fixed ? undefined : onWrite}
+        disabled={fixed}
+        style={({ pressed }) => [styles.writeRow, pressed && styles.pressed]}
+        accessibilityRole="switch"
+        accessibilityLabel={`${W.guestsCanWrite}. ${W.guestsCanWriteLine}`}
+        accessibilityState={{ checked: write.on, busy: write.saving, disabled: fixed }}
+        testID="event.guestsCanWrite"
+      >
+        <Row
+          title={W.guestsCanWrite}
+          line={W.guestsCanWriteLine}
+          lead={<LineIcon name="chat" />}
+          off={write.saving}
+          trail={
+            <View style={styles.switchAt}>
+              <SwitchTrack on={write.on} />
+              <Text
+                size={13.5}
+                weight="semibold"
+                accessible={false}
+                style={[styles.switchWord, write.on ? styles.wordOn : styles.wordOff]}
+              >
+                {writeWord(write)}
+              </Text>
+            </View>
+          }
+        />
+      </Pressable>
+      {lines.note != null && (
+        <Text size={14} weight="medium" style={styles.writeNote}>
+          {lines.note}
+        </Text>
+      )}
+      {lines.alert != null && (
+        <View style={styles.writeAlert}>
+          <AlertLine text={lines.alert} />
+        </View>
+      )}
     </Section>
   );
 }
@@ -706,4 +908,12 @@ const styles = StyleSheet.create({
     borderRadius: 18,
   },
   pillAt: { paddingLeft: 40, alignItems: 'flex-start' },
+  writeRow: { marginTop: tokens.spaceSm },
+  pressed: { opacity: tokens.opacityPressed },
+  switchAt: { flexDirection: 'row', alignItems: 'center', gap: tokens.spaceSm },
+  switchWord: { minWidth: 26 },
+  wordOn: { color: tokens.colorAccentText },
+  wordOff: { color: tokens.colorInkSecondary },
+  writeNote: { paddingLeft: 40, color: tokens.colorInkSecondary, lineHeight: 14 * 1.45 },
+  writeAlert: { paddingLeft: 40, paddingTop: tokens.spaceXxs },
 });

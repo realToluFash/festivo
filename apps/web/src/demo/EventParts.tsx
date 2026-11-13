@@ -1,4 +1,4 @@
-import { type ReactNode, useCallback, useEffect, useMemo, useState } from 'react';
+import { type ReactNode, useCallback, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Link } from 'react-router';
 
@@ -19,6 +19,7 @@ import {
 import { Glyph } from '../components/Glyph.tsx';
 import { type CardMilestone, KW } from './kitchen.ts';
 import { LayersContext } from '../layers.ts';
+import { DeskSearch } from './Search.tsx';
 import { Chevron, RowWords, Tag } from '../components/SettingsParts.tsx';
 import type { Tell } from '../components/SettingsParts.tsx';
 import './today.css';
@@ -49,27 +50,16 @@ export function EventsShell({
   const layers = useMemo(() => ({ stack, push, pop, host }), [stack, push, pop, host]);
   const covered = stack.length > 0;
 
-  useEffect(() => {
-    const search = (event: KeyboardEvent) => {
-      if (event.key.toLowerCase() !== 'k' || !(event.metaKey || event.ctrlKey)) return;
-
-      event.preventDefault();
-      tell('Search has its own design.');
-    };
-
-    window.addEventListener('keydown', search);
-
-    return () => window.removeEventListener('keydown', search);
-  }, [tell]);
-
   return (
     <LayersContext value={layers}>
       <div className="today desk ev">
-        {renderSide(tell, covered)}
-        <main id="content" className="desk-main" inert={covered}>
-          {children(tell)}
-        </main>
-        <div ref={setHost} className="desk-layers" />
+        <DeskSearch tell={tell}>
+          {renderSide(tell, covered)}
+          <main id="content" className="desk-main" inert={covered}>
+            {children(tell)}
+          </main>
+          <div ref={setHost} className="desk-layers" />
+        </DeskSearch>
         {told != null && <Toast key={told} words={told} onClose={() => setTold(null)} />}
       </div>
     </LayersContext>

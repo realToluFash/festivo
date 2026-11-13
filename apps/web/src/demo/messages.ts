@@ -17,6 +17,14 @@ import {
 } from './messagesTo.ts';
 import { type PersonId, previewDraftOf } from './messagesPreviewSample.ts';
 import { EMAIL_ONLY, WAITS_STATES, waitsTicksOf } from './messagesWaits.ts';
+import {
+  OTHER_MEMBER,
+  type Stop,
+  STOPPED_AT,
+  STOP_GROUP,
+  STOP_STATES,
+  isStopState,
+} from './messagesStop.ts';
 import type { DemoLink } from './settings.ts';
 
 /** Messaging B · Conversations (page e36, board/messaging-b-spec.md): the sample and the inbox's rules; the words are in messagesWords.ts. */
@@ -122,7 +130,14 @@ export const MESSAGE_STATES = [
   { key: 'whatsAppLine', name: 'WhatsApp ticked: who it reaches' },
   { key: 'checkWhatsApp', name: 'The check, with WhatsApp' },
   { key: 'whatsAppRead', name: 'WhatsApp’s receipts' },
+  { key: 'channelsWrite', name: 'SMS and WhatsApp ticked' },
+  { key: 'channelsCheck', name: 'The check, SMS and WhatsApp' },
+  { key: 'channelsCant', name: 'Can’t be told, two shown' },
+  { key: 'channelsSeeAll', name: 'See all, open' },
+  { key: 'channelsMany', name: 'See all, 93 names' },
+  { key: 'channelsNone', name: 'Nothing ticked' },
   ...WAITS_STATES,
+  ...STOP_STATES,
 ] as const;
 
 export type MessagesState = (typeof MESSAGE_STATES)[number]['key'];
@@ -149,10 +164,14 @@ export const MESSAGES_AT = `/demo/events/${SAMPLE_EVENT}/messages`;
 export const MESSAGES_PAGES: readonly { name: string; states: readonly DemoLink[] }[] = [
   {
     name: 'Messages',
-    states: MESSAGE_STATES.map((one) => ({
+    states: MESSAGE_STATES.filter((one) => !isStopState(one.key)).map((one) => ({
       to: `${MESSAGES_AT}?state=${one.key}`,
       name: one.name,
     })),
+  },
+  {
+    name: STOP_GROUP,
+    states: STOP_STATES.map((one) => ({ to: `${MESSAGES_AT}?state=${one.key}`, name: one.name })),
   },
 ];
 
@@ -417,18 +436,190 @@ export interface Untellable {
   why: readonly string[];
 }
 
-const TOMAS: Untellable = { name: 'Tomás Ferreira', why: [MW.addressBouncing, MW.noPhone] };
-const JOAQUIN: Untellable = { name: 'Joaquín Ruiz', why: [MW.noEmail, MW.noPhone] };
-const SOPHIE: Untellable = { name: 'Sophie Laurent', why: [MW.unsubscribed, MW.textedStop] };
-const MEI: Untellable = { name: 'Mei Lin Chen', why: [MW.noEmail, MW.noPhone] };
-const SMS_ONLY: readonly Untellable[] = [
-  { name: 'Amaka Eze', why: [MW.noEmail, MW.smsIsOff] },
-  { name: 'Priyanka Nair', why: [MW.noEmail, MW.smsIsOff] },
-];
+/** Why each channel can't reach a guest, or null where it can. */
+type Reasons = { name: string } & Record<Channel, string | null>;
+
+const AMAKA: Reasons = {
+  name: 'Amaka Eze',
+  email: MW.noEmail,
+  sms: null,
+  whatsApp: MW.hasNotAgreedWhatsApp,
+};
+const PRIYANKA: Reasons = {
+  name: 'Priyanka Nair',
+  email: MW.noEmail,
+  sms: null,
+  whatsApp: MW.hasNotAgreedWhatsApp,
+};
+const TOMAS: Reasons = {
+  name: 'Tomás Ferreira',
+  email: MW.addressBouncing,
+  sms: MW.noPhone,
+  whatsApp: MW.noPhone,
+};
+const JOAQUIN: Reasons = {
+  name: 'Joaquín Ruiz',
+  email: MW.noEmail,
+  sms: MW.noPhone,
+  whatsApp: MW.noPhone,
+};
+const MEI: Reasons = {
+  name: 'Mei Lin Chen',
+  email: MW.noEmail,
+  sms: MW.noPhone,
+  whatsApp: MW.noPhone,
+};
 
 export type Ticks = Record<Channel, boolean>;
 
 type Sample = 'all' | 'coming' | 'notReplied';
+
+/** The guests some channel can't reach, by name, in the order the check names them (Web-1, Web-4, Web-Channels). */
+const NAMED: Record<Sample, readonly Reasons[]> = {
+  all: [
+    AMAKA,
+    PRIYANKA,
+    TOMAS,
+    {
+      name: 'Sophie Laurent',
+      email: MW.unsubscribed,
+      sms: MW.textedStop,
+      whatsApp: MW.hasNotAgreedWhatsApp,
+    },
+    { name: 'Yuki Tanaka', email: MW.addressBouncing, sms: MW.noPhone, whatsApp: MW.noPhone },
+    { name: 'Oluwaseun Adebayo', email: MW.addressBouncing, sms: MW.noPhone, whatsApp: MW.noPhone },
+    { name: 'Lars Johansson', email: MW.unsubscribed, sms: MW.noPhone, whatsApp: MW.noPhone },
+    {
+      name: 'Fatima Zahra El Idrissi',
+      email: MW.noEmail,
+      sms: MW.textedStop,
+      whatsApp: MW.hasNotAgreedWhatsApp,
+    },
+    {
+      name: 'Diego Herrera',
+      email: MW.unsubscribed,
+      sms: MW.textedStop,
+      whatsApp: MW.hasNotAgreedWhatsApp,
+    },
+    JOAQUIN,
+    MEI,
+  ],
+  coming: [AMAKA, PRIYANKA, TOMAS, JOAQUIN],
+  notReplied: [MEI],
+};
+
+/** Each sample's notices per channel with SMS alone, before WhatsApp takes its phones. */
+const REACH: Record<Sample, Record<Channel, number>> = {
+  all: { email: 124, sms: 39, whatsApp: 4 },
+  coming: { email: 92, sms: 31, whatsApp: 3 },
+  notReplied: { email: 23, sms: 9, whatsApp: 1 },
+};
+
+const FIRST = [
+  'Ana',
+  'Chidi',
+  'Léa',
+  'João',
+  'Hana',
+  'Mateo',
+  'Zainab',
+  'Lukas',
+  'Sofia',
+  'Kofi',
+  'Inés',
+  'Arjun',
+  'Chloé',
+  'Tiago',
+  'Aisha',
+  'Emil',
+  'Valentina',
+  'Femi',
+  'Camila',
+  'Hugo',
+  'Ngozi',
+  'Pedro',
+  'Yara',
+  'Olu',
+];
+const LAST = [
+  'Silva',
+  'Okonkwo',
+  'Moreau',
+  'Santos',
+  'Kim',
+  'García',
+  'Bello',
+  'Schmidt',
+  'Rossi',
+  'Boateng',
+  'Navarro',
+  'Patel',
+  'Lefèvre',
+  'Almeida',
+  'Owusu',
+  'Larsen',
+  'Romero',
+  'Adeleke',
+  'Torres',
+  'Bernard',
+  'Nnamdi',
+  'Pereira',
+  'Haddad',
+  'Nwosu',
+];
+
+/** The sample's unnamed guests, each name once for the first 576. */
+function crowdName(index: number): string {
+  const first = index % FIRST.length;
+  const last = (first + 5 * Math.floor(index / FIRST.length)) % LAST.length;
+
+  return `${FIRST[first] ?? ''} ${LAST[last] ?? ''}`;
+}
+
+function whyOf(one: Reasons, ticks: Ticks): string[] {
+  const told = CHANNELS.flatMap((channel) => {
+    const reason = one[channel];
+
+    return ticks[channel] && reason != null ? [reason] : [];
+  });
+  const off = !ticks.sms && one.sms == null ? [MW.smsIsOff] : [];
+
+  return [...new Set([...told, ...off])];
+}
+
+/** Everyone no ticked channel can reach, with why: the named, then, with Email off, the sample's guests with no address it knows. */
+export function untoldOf(audience: Audience, ticks: Ticks): readonly Untellable[] {
+  const on = CHANNELS.filter((channel) => ticks[channel]);
+
+  if (on.length === 0) return [];
+
+  const sample = sampleOf(audience);
+  const named = NAMED[sample].filter((one) => on.every((channel) => one[channel] != null));
+  const people = named.map((one) => ({ name: one.name, why: whyOf(one, ticks) }));
+
+  if (ticks.email) return people;
+
+  const wa = whatsAppOf(audience);
+  const left = (why: string, of: number) =>
+    Math.max(0, of - named.filter((one) => one.whatsApp === why).length);
+  const parts: readonly (readonly [number, readonly string[]])[] = ticks.sms
+    ? [[wa.of - REACH[sample].sms - named.length, [MW.noPhone]]]
+    : [
+        [left(MW.noPhone, wa.noMobile), [MW.noPhone]],
+        [left(MW.stoppedWhatsApp, wa.stopped), [MW.stoppedWhatsApp, MW.smsIsOff]],
+        [left(MW.hasNotAgreedWhatsApp, wa.notAgreed), [MW.hasNotAgreedWhatsApp, MW.smsIsOff]],
+      ];
+  const crowd = parts.flatMap(([count, why]) => Array.from({ length: count }, () => why));
+
+  return [...people, ...crowd.map((why, index) => ({ name: crowdName(index), why }))];
+}
+
+/** The check's See all: everyone, by name, in the reader's language's order. */
+export function byName(people: readonly Untellable[], locale: string): Untellable[] {
+  const order = new Intl.Collator(locale);
+
+  return [...people].sort((one, other) => order.compare(one.name, other.name));
+}
 
 /** Which of the boards' three samples an audience counts as: All guests, Hasn't replied alone, or Coming (every other). */
 function sampleOf(audience: Audience): Sample {
@@ -531,22 +722,20 @@ export function figuresOf(
   names: readonly Untellable[];
   smsOff: number;
 } {
-  const sample = sampleOf(audience);
-  const base =
-    sample === 'all'
-      ? { counts: { email: 124, sms: 39, whatsApp: 4 }, cantTell: 9, names: [TOMAS, SOPHIE] }
-      : sample === 'notReplied'
-        ? { counts: { email: 23, sms: 9, whatsApp: 1 }, cantTell: 1, names: [MEI] }
-        : { counts: { email: 92, sms: 31, whatsApp: 3 }, cantTell: 2, names: [TOMAS, JOAQUIN] };
-  const notReplied = audience.kind === 'who' && audience.conditions[0] === 'notReplied';
-  const smsOff = !ticks.sms && ticks.email && !notReplied ? SMS_ONLY.length : 0;
-  const { sms, whatsApp } = base.counts;
-  const counts =
-    ticks.sms && ticks.whatsApp ? { ...base.counts, sms: sms - whatsApp } : base.counts;
+  const base = REACH[sampleOf(audience)];
+  const counts = ticks.sms && ticks.whatsApp ? { ...base, sms: base.sms - base.whatsApp } : base;
+  const names = untoldOf(audience, ticks);
+  const smsOff =
+    ticks.email && !ticks.sms ? names.filter((one) => one.why.includes(MW.smsIsOff)).length : 0;
 
-  if (smsOff === 0) return { ...base, counts, smsOff: 0 };
+  return { counts, cantTell: names.length, names, smsOff };
+}
 
-  return { ...base, counts, cantTell: base.cantTell + smsOff, names: SMS_ONLY, smsOff };
+/** With SMS and WhatsApp both ticked, whoever WhatsApp reaches gets it there and not by SMS. */
+export function insteadOf(audience: Audience, ticks: Ticks): string | null {
+  const reaches = whatsAppOf(audience).reaches;
+
+  return ticks.sms && ticks.whatsApp && reaches > 0 ? many('insteadOfSms', reaches) : null;
 }
 
 export const CHANNELS: readonly Channel[] = ['email', 'sms', 'whatsApp'];
@@ -562,8 +751,10 @@ export interface Check {
   smsOff: string | null;
   cantTell: number;
   cant: readonly Untellable[];
+  untold: readonly Untellable[];
   credits: string | null;
   whatsApp: string | null;
+  instead: string | null;
 }
 
 /** The check before it goes (sc-3942, sc-3963): who is told and how, who cannot be, and the credits. */
@@ -581,10 +772,11 @@ export function checkOf(audience: Audience, ticks: Ticks, groups: readonly Group
   return {
     count,
     pills: on.map((channel) => ({ channel, count: counts[channel] })),
-    told: on.length === 0 ? null : filled(MW.toldThere, { channels: listed(by) }),
+    told: on.length === 0 ? MW.nobodyTold : filled(MW.toldThere, { channels: listed(by) }),
     smsOff: smsOff > 0 ? many('smsOff', smsOff) : null,
-    cantTell: on.length === 0 ? 0 : cantTell,
-    cant: on.length === 0 ? [] : names.slice(0, Math.min(2, cantTell)),
+    cantTell,
+    cant: names.slice(0, 2),
+    untold: names,
     credits:
       on.length === 0
         ? null
@@ -592,6 +784,7 @@ export function checkOf(audience: Audience, ticks: Ticks, groups: readonly Group
           ? MW.emailNoCredits
           : `${ticks.whatsApp ? many('textsAndWhatsAppUse', credits) : many('textsUse', credits)} ${after}`,
     whatsApp: ticks.whatsApp ? whatsAppLine(audience) : null,
+    instead: insteadOf(audience, ticks),
   };
 }
 
@@ -1432,6 +1625,7 @@ export interface Draft {
   openTo?: boolean;
   opens?: 'insert' | 'previewAs' | 'filling' | undefined;
   previewAs?: PersonId;
+  seeAll?: boolean;
 }
 
 export interface Sched {
@@ -1496,6 +1690,8 @@ export interface Inbox {
   marked: Readonly<Partial<Record<ConvoId, readonly string[]>>>;
   resend: { thread: ConvoId; ticks: Ticks } | null;
   untold: readonly Told[];
+  /** sc-3978: who stopped each guest writing from their page, and when. */
+  stopped?: Partial<Record<GuestId, Stop>>;
 }
 
 export const TICKS: Ticks = { email: true, sms: true, whatsApp: false };
@@ -1671,7 +1867,23 @@ export function seedOf(state: MessagesState | null): Inbox {
 
   const allTicked: Ticks = { email: true, sms: true, whatsApp: true };
 
+  const seeAll = (inbox: Inbox): Inbox =>
+    inbox.draft == null ? inbox : { ...inbox, draft: { ...inbox.draft, seeAll: true } };
+  const none: Ticks = { email: false, sms: false, whatsApp: false };
+
   switch (state) {
+    case 'channelsWrite':
+      return compose(base, COMING, 'write', allTicked);
+    case 'channelsCheck':
+      return compose(base, COMING, 'check', allTicked);
+    case 'channelsCant':
+      return compose(base, { kind: 'all' }, 'check', allTicked);
+    case 'channelsSeeAll':
+      return seeAll(compose(base, { kind: 'all' }, 'check', allTicked));
+    case 'channelsMany':
+      return seeAll(compose(base, COMING, 'check', { ...none, whatsApp: true }));
+    case 'channelsNone':
+      return compose(base, COMING, 'check', none);
     case 'whatsAppLine':
       return compose(base, { kind: 'all' }, 'write', allTicked);
     case 'checkWhatsApp':
@@ -1691,7 +1903,18 @@ export function seedOf(state: MessagesState | null): Inbox {
       return { ...base, loading: true };
     case 'conversation':
     case 'bell':
+    case 'stopAction':
+    case 'stopAsk':
+    case 'stopFailed':
       return { ...base, pane: open('ines') };
+    case 'stopped':
+    case 'letAgainFailed':
+    case 'stoppedNoManage':
+      return {
+        ...base,
+        pane: open('ines'),
+        stopped: { ines: { by: OTHER_MEMBER, at: STOPPED_AT } },
+      };
     case 'replyArrived':
       return { ...base, present: ALL.filter((id) => id !== 'lucia'), pane: open('ines') };
     case 'answered':
@@ -2266,7 +2489,9 @@ export type Change =
   | { kind: 'match'; name: string }
   | { kind: 'schedule'; day: string; time: string }
   | { kind: 'resched'; id: ConvoId; sched: Partial<Sched> }
-  | { kind: 'sendNow'; id: ConvoId };
+  | { kind: 'sendNow'; id: ConvoId }
+  | { kind: 'stop'; id: GuestId; stop: Stop }
+  | { kind: 'letWrite'; id: GuestId };
 
 function lastAt(outs: readonly Out[], stage: Stage): number {
   for (let at = outs.length - 1; at >= 0; at -= 1) if (outs[at]?.stage === stage) return at;
@@ -2298,6 +2523,15 @@ function going(draft: Pick<Draft, 'thread' | 'subject' | 'body' | 'to' | 'ticks'
 
 export function changed(inbox: Inbox, change: Change): Inbox {
   switch (change.kind) {
+    case 'stop':
+      return { ...inbox, stopped: { ...inbox.stopped, [change.id]: change.stop } };
+    case 'letWrite':
+      return {
+        ...inbox,
+        stopped: Object.fromEntries(
+          Object.entries(inbox.stopped ?? {}).filter(([id]) => id !== change.id),
+        ),
+      };
     case 'open':
       return {
         ...inbox,
