@@ -216,6 +216,7 @@ final class GuestsTest extends ApiTestCase
     #[Test]
     public function anotherOrganisationsEventAndOneThatDoesNotExistAreTheSameNotFound(): void
     {
+        $guest = $this->add(['fullName' => 'Ngozi Eze']);
         $stranger = $this->account('stranger@else.where');
         self::service(OrganisationFounder::class)->found($stranger, 'Elsewhere', 'NG', 'Africa/Lagos');
         self::em()->flush();
@@ -227,10 +228,16 @@ final class GuestsTest extends ApiTestCase
                 $answers[] = [$this->statusCode(), $this->last()['type'] ?? null, $this->last()['detail'] ?? null];
             }
         }
+        foreach (['GET' => null, 'PUT' => ['fullName' => 'Bisi']] as $method => $body) {
+            $this->as($stranger, $method, $this->guest($guest), $body, '"1"');
+            $answers[] = [$this->statusCode(), $this->last()['type'] ?? null, $this->last()['detail'] ?? null];
+        }
 
         self::assertSame(404, $answers[0][0]);
-        self::assertSame([$answers[0], $answers[0], $answers[0], $answers[0]], $answers);
-        self::assertSame(0, $this->people());
+        self::assertSame(Vec\fill(6, $answers[0]), $answers);
+        self::assertSame(1, $this->people());
+        $details = $this->details($this->as($this->owner, 'GET', $this->guest($guest)));
+        self::assertSame('Ngozi Eze', $details['fullName']);
     }
 
     #[Test]
