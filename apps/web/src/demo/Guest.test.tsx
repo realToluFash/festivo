@@ -4,7 +4,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
 import { __setConfig, config } from '../config.ts';
 import { routes } from '../routes/index.tsx';
-import { GUEST_PAGES, THANK_YOU } from './guest.ts';
+import { GUEST_PAGES, LONG_NOTE, THANK_YOU } from './guest.ts';
 import { GUEST_ASK_PAGES } from './guestAskStates.ts';
 import { GUEST_DAY_PAGES } from './guestDay.ts';
 import { GUEST_KITCHEN_PAGES } from './guestKitchen.ts';
@@ -265,7 +265,15 @@ const SAYS: [string, () => void][] = [
   ['finishedMessages', () => screen.getByText(THANK_YOU)],
   ['noteInvitation', () => screen.getByText(/^We would love you there with us\./u)],
   ['noteAmongMessages', () => screen.getByText(/^We would love you there with us\./u)],
-  ['noteLong', () => screen.getByText(/^We are so happy to invite you/u)],
+  [
+    'noteLong',
+    () =>
+      expect(
+        screen
+          .getAllByRole('article')
+          .map((entry) => entry.querySelector('.gp-bubble')?.textContent),
+      ).toContain(LONG_NOTE.words),
+  ],
   [
     'messagesWhatsAppOff',
     () => expect(screen.getByRole('switch', { name: 'WhatsApp' })).toHaveProperty('checked', false),

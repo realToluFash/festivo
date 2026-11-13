@@ -639,11 +639,7 @@ export function Messages({
         {words.messages}
       </h2>
       {shown.map(({ message, note }) => (
-        <article
-          key={message.id}
-          id={message.id}
-          className={note ? 'gp-message is-note' : 'gp-message'}
-        >
+        <article key={message.id} id={message.id} className="gp-message">
           <p className="gp-meta">
             {`${note ? words.noteFrom : words.hosts} · ${sentWhen(message.at, visit.lang, visit.readerZone)}`}
           </p>

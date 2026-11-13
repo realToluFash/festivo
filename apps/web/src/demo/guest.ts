@@ -96,7 +96,7 @@ export const LONG_NOTE: Message = {
     'After the ceremony there are drinks in the Winter Garden while the hall is set for dinner. Dinner is at 20:00, and you will find your table on your own page here once we have shared the tables. If anything you eat needs care, tell the kitchen on this page, and we will make sure they know.',
     'The dress code is formal, and colour is welcome. Bring comfortable shoes for the dancing, which starts at 21:30 and goes on until 01:00. There will be taxis at the front from 23:00, and the nearest stations are Marylebone and Baker Street, both a few minutes away on foot.',
     'Children are very welcome. There is a quiet room by the cloakroom with books and a sofa for little ones who need a rest, and the kitchen will make them their own dinner.',
-    'If you are travelling from far away, The Landmark has kept rooms for our guests until 15 October; write to us here and we will send you the details.',
+    'If you are travelling from far away, The Landmark has kept rooms for our guests until 1 November; write to us here and we will send you the details.',
     'We cannot wait to see you.\n\nAdaeze & Tunde',
   ].join('\n\n'),
 };
