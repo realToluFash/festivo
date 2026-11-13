@@ -6,6 +6,7 @@ namespace App\Domain\Guest\Invitation;
 
 use App\Audit\Auditor;
 use App\Domain\Guest\GuestListPublisher;
+use App\Entity\Event;
 use App\Entity\Guest;
 use App\Entity\User;
 use App\Enum\Actor;
@@ -41,12 +42,7 @@ final readonly class GuestInvitations
     public function mark(Guest $guest, GuestInvitationMethod $how, User $by): void
     {
         $this->change($guest, function (Guest $guest) use ($how, $by): bool {
-            $event = $guest->getEvent();
-            $phase = EventPhase::of($event->getStatus(), $event->getStartsAt(), $event->getEndsAt(), $this->clock->now());
-
-            if (!$phase->allows(EventAction::Invite)) {
-                throw new ApiException(ErrorCode::EventStateInvalid, $this->translator->trans('event.state_invalid'), members: ['phase' => $phase->value]);
-            }
+            $this->assertInvitable($guest->getEvent());
 
             if (!$guest->invite($how, $this->clock->now(), $by)) {
                 return false;
@@ -56,6 +52,16 @@ final readonly class GuestInvitations
 
             return true;
         });
+    }
+
+    /** Refused 409 `event_state_invalid`, with the `phase`, unless the event's phase allows `invite`: marking, copying a link and Soirely's send alike. */
+    public function assertInvitable(Event $event): void
+    {
+        $phase = EventPhase::of($event->getStatus(), $event->getStartsAt(), $event->getEndsAt(), $this->clock->now());
+
+        if (!$phase->allows(EventAction::Invite)) {
+            throw new ApiException(ErrorCode::EventStateInvalid, $this->translator->trans('event.state_invalid'), members: ['phase' => $phase->value]);
+        }
     }
 
     /** In any phase. Refused 409 `guest_replied` once they have replied and `guest_not_marked_by_hand` for Soirely's message; a guest not invited stays so. */
