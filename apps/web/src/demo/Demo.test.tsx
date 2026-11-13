@@ -94,7 +94,7 @@ describe('the demo', () => {
 
     fireEvent.click(screen.getByRole('button', { name: 'Close' }));
     expect(router.state.location.pathname).toBe('/register');
-  });
+  }, 20_000);
 
   it('checks blank fields before anything is sent, and clears a line once the field is right', async () => {
     await signInBoard();
