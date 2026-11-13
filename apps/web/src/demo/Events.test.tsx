@@ -479,6 +479,185 @@ describe('Guests can write from their page, on the Overview (sc-3978)', () => {
   });
 });
 
+describe('A thank-you for your guests, on a Finished event (sc-6476)', () => {
+  const TITLE = 'A thank-you for your guests';
+  const HOSTS = 'Adaeze Obi and Tunde Bakare';
+
+  beforeEach(() => {
+    __setConfig({ ...tested, environment: 'development' });
+    resetSample();
+  });
+
+  function thankYou(): HTMLElement {
+    return screen.getByRole('heading', { level: 2, name: TITLE }).closest('section') as HTMLElement;
+  }
+
+  it('comes first on a Finished Overview, with Add a thank-you', SLOW, async () => {
+    await page('/demo/events/evt-wed-4?state=finished');
+    const card = thankYou();
+
+    expect(card.closest('.ev-left')?.firstElementChild).toBe(card);
+    expect(
+      within(card).getByText('Every guest sees it on their page, signed with the hosts’ names.'),
+    ).toBeDefined();
+    expect(within(card).getByRole('button', { name: 'Add a thank-you' })).toBeDefined();
+  });
+
+  it('is not on a live, paused or called-off event', SLOW, async () => {
+    for (const [path, name] of [
+      ['/demo/events/evt-wed-4?state=live', WEDDING],
+      ['/demo/events/evt-party-2?state=paused', undefined],
+      ['/demo/events/evt-off?state=calledOff', undefined],
+    ] as const) {
+      open(path);
+      if (name == null) await screen.findAllByRole('heading', { level: 1 }, WAIT);
+      else await screen.findByRole('heading', { level: 1, name }, WAIT);
+      expect(screen.queryByRole('heading', { name: TITLE })).toBeNull();
+      cleanup();
+    }
+  });
+
+  it('adds a line: cleaned, signed with the hosts, then Edit thank-you', SLOW, async () => {
+    await page('/demo/events/evt-wed-4?state=finished');
+    fireEvent.click(within(thankYou()).getByRole('button', { name: 'Add a thank-you' }));
+    const field = within(thankYou()).getByRole('textbox', { name: TITLE });
+
+    expect(document.activeElement).toBe(field);
+    expect(within(thankYou()).getByText('0/280')).toBeDefined();
+    fireEvent.change(field, { target: { value: '  Thank you\n\nall  ' } });
+    expect(within(thankYou()).getByText('13/280').id).toBeTruthy();
+    expect(field.getAttribute('aria-describedby')).toContain(
+      within(thankYou()).getByText('13/280').id,
+    );
+    fireEvent.click(within(thankYou()).getByRole('button', { name: 'Save' }));
+    expect(within(thankYou()).getByRole('button', { name: 'Saving…' })).toBeDefined();
+
+    await waitFor(
+      () => expect(within(thankYou()).getByText('Thank you all').tagName).toBe('BLOCKQUOTE'),
+      WAIT,
+    );
+    expect(within(thankYou()).getByText(HOSTS)).toBeDefined();
+    expect(await screen.findByText('Thank-you saved.')).toBeDefined();
+    expect(document.activeElement).toBe(
+      within(thankYou()).getByRole('button', { name: 'Edit thank-you' }),
+    );
+  });
+
+  it('removes the line when saved empty, and Add comes back', SLOW, async () => {
+    await page('/demo/events/evt-wed-4?state=thankYouEditing');
+    const field = within(thankYou()).getByRole('textbox', { name: TITLE });
+
+    expect(within(thankYou()).getByText('Save it empty to remove it.')).toBeDefined();
+    fireEvent.change(field, { target: { value: '   ' } });
+    fireEvent.click(within(thankYou()).getByRole('button', { name: 'Save' }));
+
+    expect(
+      await within(thankYou()).findByRole('button', { name: 'Add a thank-you' }, WAIT),
+    ).toBeDefined();
+    expect(await screen.findByText('Thank-you removed.')).toBeDefined();
+  });
+
+  it('refuses over 280 without sending, naming the limit', SLOW, async () => {
+    await page('/demo/events/evt-wed-4?state=thankYouOver');
+    const field = within(thankYou()).getByRole('textbox', { name: TITLE });
+    const said = within(thankYou()).getByText('A thank-you can be at most 280 characters.');
+
+    expect(field.getAttribute('aria-invalid')).toBe('true');
+    expect(field.getAttribute('aria-describedby')?.split(' ')).toContain(said.id);
+    expect(field.hasAttribute('maxlength')).toBe(false);
+    fireEvent.click(within(thankYou()).getByRole('button', { name: 'Save' }));
+    expect(within(thankYou()).queryByRole('button', { name: 'Saving…' })).toBeNull();
+  });
+
+  it('keeps the text when not saved, and Save goes again', SLOW, async () => {
+    await page('/demo/events/evt-wed-4?state=thankYouNotSaved');
+
+    expect(within(thankYou()).getByRole('alert').textContent).toBe(
+      'Not saved. Check your connection and try again. Your text is still here.',
+    );
+    fireEvent.click(within(thankYou()).getByRole('button', { name: 'Save' }));
+    expect(
+      await within(thankYou()).findByRole('button', { name: 'Edit thank-you' }, WAIT),
+    ).toBeDefined();
+  });
+
+  it(
+    'shows the line read-only without the permission to end it, and no card without a line',
+    SLOW,
+    async () => {
+      await page('/demo/events/evt-wed-4?state=thankYouReadOnly');
+
+      expect(within(thankYou()).getByText(HOSTS)).toBeDefined();
+      expect(within(thankYou()).queryByRole('button')).toBeNull();
+      cleanup();
+
+      await page('/demo/events/evt-wed-4?state=thankYouReadOnlyNone');
+      expect(screen.queryByRole('heading', { name: TITLE })).toBeNull();
+    },
+  );
+
+  it('ends the event from End now with the field empty, as before', SLOW, async () => {
+    await page('/demo/events/evt-wed-4?state=endNow');
+    const ask = screen.getByRole('alertdialog', { name: `End ${WEDDING} now?` });
+
+    expect(within(ask).getByRole('textbox', { name: `${TITLE} · Optional` })).toBeDefined();
+    fireEvent.click(within(ask).getByRole('button', { name: 'End now' }));
+    expect(within(ask).getByRole('button', { name: 'Ending…' })).toBeDefined();
+
+    await waitFor(() => expect(screen.queryByRole('alertdialog')).toBeNull(), WAIT);
+    expect(within(thankYou()).getByRole('button', { name: 'Add a thank-you' })).toBeDefined();
+  });
+
+  it('ends the event and saves the line in one go', SLOW, async () => {
+    await page('/demo/events/evt-wed-4?state=endNowThankYou');
+    fireEvent.click(
+      within(screen.getByRole('alertdialog')).getByRole('button', { name: 'End now' }),
+    );
+
+    await waitFor(() => expect(screen.queryByRole('alertdialog')).toBeNull(), WAIT);
+    expect(within(thankYou()).getByText(HOSTS)).toBeDefined();
+    expect(within(thankYou()).getByRole('button', { name: 'Edit thank-you' })).toBeDefined();
+    expect(await screen.findByText('Your thank-you is on every guest’s page.')).toBeDefined();
+  });
+
+  it('does not end over 280, and says why', SLOW, async () => {
+    await page('/demo/events/evt-wed-4?state=endNowOver');
+    const ask = screen.getByRole('alertdialog');
+    const field = within(ask).getByRole('textbox');
+
+    expect(document.activeElement).toBe(field);
+    expect(within(ask).getByText('A thank-you can be at most 280 characters.')).toBeDefined();
+    fireEvent.click(within(ask).getByRole('button', { name: 'End now' }));
+    expect(within(ask).queryByRole('button', { name: 'Ending…' })).toBeNull();
+  });
+
+  it('keeps the thank-you when not ended', SLOW, async () => {
+    await page('/demo/events/evt-wed-4?state=endNowNotEnded');
+    const ask = screen.getByRole('alertdialog');
+
+    expect(within(ask).getByRole('alert').textContent).toContain(
+      'Not ended. Check your connection and try again. Your thank-you is still here.',
+    );
+    expect((within(ask).getByRole('textbox') as HTMLTextAreaElement).value).not.toBe('');
+  });
+
+  it('opens End now a second time empty, as the app does', SLOW, async () => {
+    await page('/demo/events/evt-wed-4?state=endNowNotEnded');
+    fireEvent.click(
+      within(screen.getByRole('alertdialog')).getByRole('button', { name: 'Keep it on' }),
+    );
+    fireEvent.click(
+      within(screen.getByRole('region', { name: 'Manage' })).getByRole('button', {
+        name: 'End now…',
+      }),
+    );
+    const again = await screen.findByRole('alertdialog');
+
+    expect((within(again).getByRole('textbox') as HTMLTextAreaElement).value).toBe('');
+    expect(within(again).queryByRole('alert')).toBeNull();
+  });
+});
+
 describe('Delete refused while a guest is Invited (sc-14445)', () => {
   beforeEach(() => {
     __setConfig({ ...tested, environment: 'development' });

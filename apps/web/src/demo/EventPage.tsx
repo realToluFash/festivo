@@ -27,8 +27,11 @@ import {
   partOf,
   resetSample,
   sampleEvent,
+  shownOf,
   stateFits,
 } from './events.ts';
+import { EndNowAsk, ThankYouCard } from './ThankYou.tsx';
+import { TY_WORDS, cardOf, cardShown, endFieldOf, type EndField } from './thankYou.ts';
 import { type DuplicateStart, DeleteByName, DuplicateDialog, RefusedAsk } from './EventDialogs.tsx';
 import {
   AT_READ,
@@ -164,6 +167,12 @@ function needsStateOf(state: EventStateName | null): NeedsState | null {
 
 function askingOf(state: EventStateName | null): Asking | null {
   switch (state) {
+    case 'endNowThankYou':
+    case 'endNowLong':
+    case 'endNowOver':
+    case 'endNowEnding':
+    case 'endNowNotEnded':
+      return 'endNow';
     case 'pause':
     case 'callOff':
     case 'endNow':
@@ -329,6 +338,7 @@ function EventView({
   const [dirty, setDirty] = useState(false);
   const [leaving, setLeaving] = useState<{ to: Part | null } | null>(null);
   const [asking, setAsking] = useState<Asking | null>(askingOf(state));
+  const [ending, setEnding] = useState(0);
   const refusedStart = refusedStartOf(state);
   const canChange = refusedStart?.canChange ?? true;
   const [pressed, setPressed] = useState(false);
@@ -339,6 +349,7 @@ function EventView({
     invitedOf(state, refusedStart, invitedOn(event.id), pressed),
     canChange,
   );
+  const [card, setCard] = useState(() => cardOf(state));
   const [muted, setMuted] = useState(state === 'muted');
   const [muteLoaded, setMuteLoaded] = useState(state !== 'muteNotLoaded');
   const [muteFailed, setMuteFailed] = useState(state === 'muteNotSaved');
@@ -416,6 +427,9 @@ function EventView({
                 />
                 <div className="ev-columns">
                   <div className="ev-left">
+                    {shownOf(event, now) === 'finished' && cardShown(card) && (
+                      <ThankYouCard event={event} card={card} onCard={setCard} onSaid={tell} />
+                    )}
                     <Details
                       event={event}
                       now={now}
@@ -552,9 +566,11 @@ function EventView({
             event={event}
             now={now}
             state={state}
+            endStart={endFieldOf(ending === 0 ? state : null)}
             refusal={refusal}
             turned={turned}
             onKeep={() => {
+              if (asking === 'endNow') setEnding((count) => count + 1);
               setAsking(null);
               setTurned(false);
             }}
@@ -566,6 +582,13 @@ function EventView({
               setAsking(null);
               kept(next);
               if (words != null) tell(words);
+            }}
+            onEnded={(line) => {
+              setEnding((count) => count + 1);
+              setAsking(null);
+              kept({ ...event, status: 'ended', concludedAt: now.toISOString() });
+              setCard(cardOf(null, line));
+              if (line !== '') tell(TY_WORDS.done);
             }}
             onDelete={() => {
               const answer = refusalOf(
@@ -652,11 +675,13 @@ function Asks({
   event,
   now,
   state,
+  endStart,
   refusal,
   turned,
   onKeep,
   onVerb,
   onDone,
+  onEnded,
   onDelete,
   onCreated,
 }: {
@@ -664,11 +689,13 @@ function Asks({
   event: SampleEvent;
   now: Date;
   state: EventStateName | null;
+  endStart: EndField;
   refusal: Refusal | null;
   turned: boolean;
   onKeep: () => void;
   onVerb: (verb: RefusedVerb) => void;
   onDone: (next: SampleEvent, words: string | null) => void;
+  onEnded: (line: string) => void;
   onDelete: () => void;
   onCreated: Tell;
 }) {
@@ -697,16 +724,7 @@ function Asks({
         />
       );
     case 'endNow':
-      return (
-        <Ask
-          title={W.endTitle(event.name)}
-          line={W.endLine}
-          keep={W.keepItOn}
-          go={W.endNow}
-          onKeep={onKeep}
-          onGo={() => onDone({ ...event, status: 'ended', concludedAt: now.toISOString() }, null)}
-        />
-      );
+      return <EndNowAsk event={event} start={endStart} onKeep={onKeep} onEnded={onEnded} />;
     case 'deleteDraft':
       return (
         <Ask
