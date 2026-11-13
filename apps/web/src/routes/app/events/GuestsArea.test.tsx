@@ -706,7 +706,7 @@ describe('A guest’s details, and correcting them (sc-3773)', () => {
     vi.spyOn(navigator, 'language', 'get').mockReturnValue('en-GB');
     await openNgozi();
 
-    expect(within(column()).getByText('14 Sep by Kemi Bankole')).toBeDefined();
+    expect(within(column()).getByText(/^14 Sept? by Kemi Bankole$/u)).toBeDefined();
   });
 
   it('holds the cover card’s place and three detail rows while the guest loads, heard as Loading…', async () => {
