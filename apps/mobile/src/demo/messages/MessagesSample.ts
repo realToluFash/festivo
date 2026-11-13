@@ -22,7 +22,7 @@ export const DAYS = {
 };
 
 export type Where = 'page' | ChannelKey;
-export type GuestKey = 'ines' | 'lucia' | 'kwame' | 'unknown' | 'marta';
+export type GuestKey = 'ines' | 'lucia' | 'kwame' | 'unknown' | 'marta' | 'valentina';
 export type PersonKey =
   | 'tomas'
   | 'yuki'
@@ -107,18 +107,32 @@ export const GUESTS: Record<GuestKey, SampleGuest> = {
     head: 'marta.silva@gmail.com',
     asked: { text: 'Thank you, see you Thursday!', where: 'page', day: DAYS.marta, time: '' },
   },
+  valentina: {
+    initials: 'VR',
+    name: 'Valentina Restrepo',
+    channel: 'wa',
+    head: '+57 310 555 0142 · Spanish',
+    asked: {
+      text: 'Is there a shuttle from the hotel on Thursday?',
+      where: 'wa',
+      day: DAYS.parking,
+      time: '23:52',
+    },
+  },
 };
 
 export const ANSWERS: Partial<Record<GuestKey, string>> = {
   ines: 'Of course. We will set a place for your son at your table.',
   kwame: 'Formal: suits and long dresses are welcome.',
   lucia: 'Yes: free parking under the hotel, entrance on Calle Mayor.',
+  valentina: 'Yes. It leaves the hotel at 17:00 and again at 17:30.',
 };
 
-/** What Soirely's notice to each guest costs, by channel: sc-3928's table for their number's country, one SMS part (sc-3946). */
+/** What Soirely's notice to each guest costs, by channel: sc-3928's table for their number's country, an SMS by the part (sc-3946). */
 export const NOTICE_CREDITS: Partial<Record<GuestKey, Partial<Record<ChannelKey, number>>>> = {
   lucia: { wa: 4, sms: 14 },
   kwame: { sms: 9 },
+  valentina: { wa: 2 },
 };
 
 /** The channels besides their own that could carry each guest's notice (sc-3976): Lucía has an address and agreed to texts. */
