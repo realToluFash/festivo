@@ -758,6 +758,9 @@ function Shown({
             {recorded.answer === 'notSure' && holdsCompanions(visit) && (
               <p className="gp-sub">{words.companions}</p>
             )}
+            {recorded.answer === 'notComing' && holdsCompanions(visit) && (
+              <p className="gp-sub">{words.companionsNotComing}</p>
+            )}
             <TextAction focus="change" onClick={onChange}>
               {words.change}
             </TextAction>

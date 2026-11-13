@@ -302,6 +302,14 @@ export const GUEST_PARTY_STATES = {
       party: { ...SAMPLE_PARTY, people: [CHIDI, { ...NNEKA, coming: false }] },
     },
   },
+  heldNotComing: {
+    name: 'Not coming: companions not coming either',
+    starts: {
+      recorded: { answer: 'notComing', on: '2026-10-27' },
+      view: { kind: 'recorded', same: false },
+      party: { ...SAMPLE_PARTY, people: [CHIDI, NNEKA] },
+    },
+  },
   heldThenBack: {
     name: 'Back to Coming from Not sure yet: each as last chosen',
     starts: {
