@@ -193,16 +193,16 @@ export function CreateWalkWindow<Made>({
 
   useEffect(() => {
     if (!shown || opening.walk.asking) return;
-    let keys = () => {};
+    let cancelKeys = () => {};
     const wait = setTimeout(() => {
-      if (opening.focus === 'search') keys = focusReadOnce(search);
-      else if (opening.focus === 'name') keys = focusReadOnce(field);
+      if (opening.focus === 'search') cancelKeys = focusReadOnce(search);
+      else if (opening.focus === 'name') cancelKeys = focusReadOnce(field);
       else moveScreenReaderFocus(question.current);
     }, SETTLED_MS);
 
     return () => {
       clearTimeout(wait);
-      keys();
+      cancelKeys();
     };
   }, [shown, opening]);
 
