@@ -584,6 +584,29 @@ describe('Guests, Add guest in place (sc-1468)', () => {
     expect(screen.getByRole('menuitemradio', { name: /^Not yet invited\s*15/u })).toBeDefined();
   });
 
+  it('names an unnamed companion’s Remove for their host, a named one by name', SLOW, async () => {
+    await guests('add');
+
+    fireEvent.change(screen.getByRole('textbox', { name: 'Full name' }), {
+      target: { value: 'Ifeoluwa Adebayo-Okonkwo' },
+    });
+    fireEvent.click(screen.getByRole('button', { name: 'More places' }));
+    fireEvent.click(screen.getByRole('button', { name: 'More places' }));
+
+    expect(
+      screen.getByRole('button', { name: 'Remove Ifeoluwa Adebayo-Okonkwo’s guest' }),
+    ).toBeDefined();
+    expect(
+      screen.getByRole('button', { name: 'Remove Ifeoluwa Adebayo-Okonkwo’s guest · 2' }),
+    ).toBeDefined();
+
+    fireEvent.change(screen.getByRole('textbox', { name: 'Companion’s full name, 1 of 2' }), {
+      target: { value: 'Tunde Bello' },
+    });
+
+    expect(screen.getByRole('button', { name: 'Remove Tunde Bello' })).toBeDefined();
+  });
+
   it('refuses a blank name and a number too short', SLOW, async () => {
     await guests('addRefused');
 

@@ -11,6 +11,8 @@ import {
   isGuestKitchenState,
   guestKitchenStarts,
 } from './guestKitchen.ts';
+import type { GuestNote } from './arrivalNote.ts';
+import { guestNoteStarts, isGuestNoteState } from './guestNote.ts';
 import { NO_PLACES, type Party, guestPartyStarts, isGuestPartyState } from './guestCompanions.ts';
 import {
   type Day,
@@ -204,6 +206,7 @@ export interface Visit {
   whatsApp: WhatsAppConsent;
   ticked: boolean;
   reach: Reach;
+  note: GuestNote;
   party: Party;
   /** sc-1363: when to ask a Not sure yet guest again; null with any other answer. */
   ask: AskView | null;
@@ -246,6 +249,7 @@ const BASE: Visit = {
   whatsApp: 'none',
   ticked: false,
   reach: { email: true, sms: true, saved: null },
+  note: 'host',
   party: NO_PLACES,
   ask: null,
   reopened: false,
@@ -573,6 +577,7 @@ function startsOf(
   if (isAskState(value)) return askStarts(value, ask.replyBy, ask.days);
   if (isGuestKitchenState(value))
     return guestKitchenStarts(value, { earlier: EARLIER, companions: COMPANIONS });
+  if (isGuestNoteState(value)) return guestNoteStarts(value);
   if (isGuestPartyState(value)) return guestPartyStarts(value);
   if (isGuestDayState(value)) return guestDayStarts(value);
 

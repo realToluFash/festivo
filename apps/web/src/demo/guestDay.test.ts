@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest';
 
+import { ARRIVAL_NOTE } from './arrivalNote.ts';
 import { startOf } from './guest.ts';
 import {
   GUEST_DAY_PAGES,
@@ -48,16 +49,26 @@ describe('the event’s day (sc-24381)', () => {
 
 describe('Where, as the host filled it in', () => {
   it('keeps each of the name, the address and the note optional', () => {
-    expect(placeOf('full')).toEqual({
+    const live = { phase: 'live', note: 'none' } as const;
+
+    expect(placeOf({ ...live, where: 'full' })).toEqual({
       name: 'The Landmark',
       address: '222 Marylebone Road, London NW1 6JQ',
       note: null,
     });
-    expect(placeOf('nameOnly').address).toBeNull();
-    expect(placeOf('addressOnly').name).toBeNull();
-    expect(placeOf('noteOnly').note).not.toBeNull();
-    expect(hasWhere(placeOf('noteOnly'))).toBe(true);
-    expect(hasWhere(placeOf('none'))).toBe(false);
+    expect(placeOf({ ...live, where: 'nameOnly' }).address).toBeNull();
+    expect(placeOf({ ...live, where: 'addressOnly' }).name).toBeNull();
+    expect(hasWhere(placeOf({ ...live, where: 'none' }))).toBe(false);
+  });
+
+  it('reads the note from the event’s arrival note, the same before and on the day', () => {
+    const full = placeOf({ phase: 'live', note: 'host', where: 'full' });
+    const alone = placeOf({ phase: 'live', note: 'alone', where: 'full' });
+
+    expect(full.note).toBe(ARRIVAL_NOTE);
+    expect(alone).toEqual({ name: null, address: null, note: ARRIVAL_NOTE });
+    expect(hasWhere(alone)).toBe(true);
+    expect(placeOf({ phase: 'over', note: 'host', where: 'full' }).note).toBeNull();
   });
 
   it('opens Google Maps’ search on the address alone', () => {
