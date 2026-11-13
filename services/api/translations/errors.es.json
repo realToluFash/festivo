@@ -28,7 +28,7 @@
     "seating_plan_exists": "Este evento ya tiene un plano de mesas.",
     "seating_section_limit": "Un plano puede tener hasta 30 zonas. Elimine una para añadir otra.",
     "guest_already_listed": "Ese nombre ya está en la lista.",
-    "replies_closed": "Las respuestas están cerradas.",
+    "replies_closed": "El plazo para responder ha terminado.",
     "unauthenticated": "Inicie sesión para continuar.",
     "invalid_credentials": "Ese correo electrónico y esa contraseña no coinciden.",
     "invalid_refresh_token": "Su sesión ha finalizado. Inicie sesión de nuevo.",
