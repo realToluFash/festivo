@@ -226,6 +226,10 @@ describe('Guests (sc-1468)', () => {
       const reply = await screen.findByRole('region', { name: 'Reply' });
       expect(within(reply).getByText('Coming')).toBeDefined();
       expect(within(reply).getByText('replied Nov 14')).toBeDefined();
+      const card = screen
+        .getByRole('heading', { level: 2, name: 'Chief Amaka Obi' })
+        .closest('section') as HTMLElement;
+      expect(card.querySelector('.desk-on-card')?.textContent).toBe('Coming · replied Nov 14');
     } finally {
       if (zone == null) delete process.env.TZ;
       else process.env.TZ = zone;
@@ -236,6 +240,7 @@ describe('Guests (sc-1468)', () => {
     await openNgozi();
 
     expect(within(column()).queryByRole('region', { name: 'Reply' })).toBeNull();
+    expect(column().querySelector('.gs-card.is-guest .desk-on-card')).toBeNull();
   });
 
   it('says No guests yet with Add guest on the event’s cover, and no count', async () => {

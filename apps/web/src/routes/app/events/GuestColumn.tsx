@@ -376,6 +376,11 @@ function GuestView({
           <h2 id={heading} className="gs-name" tabIndex={-1} data-focus="guest-heading">
             {guest.fullName}
           </h2>
+          {replied != null && (
+            <p className="desk-on-card">
+              {t('guestList.replied', { reply: t(REPLY_KEY[guest.reply]), date: replied })}
+            </p>
+          )}
         </div>
       </section>
       {manages && flagged && (
