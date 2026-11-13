@@ -264,6 +264,8 @@ export interface LinkedAddress {
   address: string;
   verified: boolean;
   primary: boolean;
+  /** A hard bounce or a complaint stopped every non-security email to it (sc-4332); only its owner reads this. */
+  undeliverable?: boolean;
 }
 
 export interface LinkedPhone {
@@ -3371,6 +3373,7 @@ function asAccount(raw: unknown): Account | null {
       address: address.address,
       verified: address.verified === true,
       primary: address.primary === true,
+      undeliverable: address.undeliverable === true,
     });
   }
 
