@@ -106,7 +106,6 @@ export const CW = {
   undone: 'Arrival undone',
   announced: (name: string, time: string) => `${name} arrived at ${time}.`,
   notRecorded: 'Not recorded. Try again.',
-  matches: (count: number) => (count === 1 ? '1 match' : `${count} match`),
   noMatch: (typed: string) => `Nobody on the list matches “${typed}”.`,
   addWalkIn: 'Add walk-in',
   fullName: 'Full name',

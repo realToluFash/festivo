@@ -88,8 +88,7 @@
 .ci-event,
 .ci-only,
 .ci-foot,
-.ci-hint,
-.ci-matches {
+.ci-hint {
   color: var(--colorInkSecondary);
 }
 

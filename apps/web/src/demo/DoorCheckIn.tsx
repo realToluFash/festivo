@@ -229,7 +229,6 @@ function CheckInPage({ start, holder }: { start: CheckInStart; holder: Holder })
       ) : (
         <>
           <Search typed={typed} onType={setTyped} />
-          {looking && shown.length > 0 && <p className="ci-matches">{CW.matches(shown.length)}</p>}
           {looking && shown.length === 0 ? (
             <div className="ci-none">
               <p>{CW.noMatch(typed.trim())}</p>
