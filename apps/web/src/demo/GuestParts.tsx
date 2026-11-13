@@ -9,7 +9,6 @@ import {
   GUEST,
   LANGUAGES,
   type Lang,
-  MESSAGES,
   MESSAGE_COUNT_FROM,
   MESSAGE_MOST,
   type Mine,
@@ -19,7 +18,9 @@ import {
   characters,
   eventDay,
   eventTime,
+  hostEntries,
   sentWhen,
+  timeIn,
   shortDay,
   codePath,
   offersWhatsApp,
@@ -611,7 +612,7 @@ export function Messages({
   onSend: () => void;
 }) {
   const box = useRef<HTMLTextAreaElement>(null);
-  const shown = MESSAGES.slice(-visit.messages);
+  const shown = hostEntries(visit);
   const live = visit.draft.trim() !== '';
   const length = characters(visit.draft);
   const tooLong = visit.draftTried && length > MESSAGE_MOST;
@@ -638,10 +639,25 @@ export function Messages({
       <h2 id="gp-messages-h" className="gp-h2">
         {words.messages}
       </h2>
-      {shown.map((message) => (
-        <article key={message.id} id={message.id} className="gp-message">
+      {shown.map(({ message, note }) => (
+        <article
+          key={message.id}
+          id={message.id}
+          className={note == null ? 'gp-message' : 'gp-message is-note'}
+        >
+          {note?.wasStart != null && (
+            <p className="gp-change">
+              <Glyph name="clock" size={16} weight={2.2} />
+              <span>
+                {words.startTimeNow(
+                  eventTime(visit.lang),
+                  timeIn(note.wasStart, visit.lang, EVENT.timeZone),
+                )}
+              </span>
+            </p>
+          )}
           <p className="gp-meta">
-            {`${words.hosts} · ${sentWhen(message.at, visit.lang, visit.readerZone)}`}
+            {`${note == null ? words.hosts : words.noteFrom} · ${sentWhen(message.at, visit.lang, visit.readerZone)}`}
           </p>
           <p className="gp-bubble" dir="auto">
             {message.words}

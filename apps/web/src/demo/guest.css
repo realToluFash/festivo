@@ -1032,6 +1032,26 @@
   color: var(--deskGreen);
 }
 
+/* A change's prepared line above its note (pm, 13 Nov): Soirely's words, set apart from the hosts' bubble */
+.gp-change {
+  display: flex;
+  align-items: flex-start;
+  gap: 8px;
+  margin-bottom: 8px;
+  padding: 10px 14px;
+  border-radius: 14px;
+  background: var(--colorInset);
+  box-shadow: inset 0 0 0 1px var(--colorInsetBorder);
+  color: var(--colorInk);
+  font: 500 15px/1.45 var(--fontFamily);
+  font-variant-numeric: tabular-nums;
+}
+
+.gp-change > svg {
+  flex: none;
+  margin-top: 2px;
+}
+
 .gp-compose {
   display: flex;
   flex-direction: column;

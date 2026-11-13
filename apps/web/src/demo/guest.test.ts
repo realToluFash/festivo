@@ -32,17 +32,18 @@ const LINKED = GUEST_PAGES.flatMap((page) => page.states);
 const STATES = LINKED.map((one) => /state=(\w+)/u.exec(one.to)?.[1] ?? '');
 
 describe('the guest’s page states (sc-31306)', () => {
-  it('links every state the boards draw once, in the boards’ six groups', () => {
+  it('links every state the boards draw once, in the boards’ seven groups', () => {
     expect(GUEST_PAGES.map((page) => page.name)).toEqual([
       'Answering',
       'Coming back, and answers closing',
       'Over, gone, and the rest',
       'In the guest’s own language (sc-3790)',
       'The hosts’ messages and the guest’s own',
+      'The hosts’ notes, entries in Messages (sc-3971, sc-4330)',
       'Your messages, opened from the guest’s page (sc-3969, sc-3950)',
     ]);
-    expect(STATES).toHaveLength(70);
-    expect(new Set(STATES).size).toBe(70);
+    expect(STATES).toHaveLength(74);
+    expect(new Set(STATES).size).toBe(74);
     expect(STATES.every(isGuestState)).toBe(true);
     expect(LINKED.find((one) => one.to.includes('messageArrival'))?.to).toBe(
       '/demo/guest?state=messageArrival#m-3',
