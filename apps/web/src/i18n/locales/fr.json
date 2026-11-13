@@ -2894,7 +2894,7 @@
     "noMatch": "Aucun invité ne correspond",
     "noMatchLine": "Essayez un autre nom, ou effacez les filtres.",
     "figure": "{{count, number}}",
-    "showAll_one": "Tout afficher",
+    "showAll_one": "Afficher {{count, number}}",
     "showAll_other": "Afficher les {{count, number}}",
     "showAll_many": "Afficher les {{count, number}}",
     "heldLine": "En attente · ne vient que si l’invitation est acceptée"
