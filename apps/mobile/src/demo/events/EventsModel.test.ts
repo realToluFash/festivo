@@ -217,7 +217,7 @@ describe('the card’s one step, by nextStep', () => {
     });
     expect(step('evt-off')).toMatchObject({
       action: 'duplicate',
-      line: "Called off on Fri, Oct 30, 2026, before it started. Guests following their link are told it won't go ahead.",
+      line: "Called off on Fri, Oct 30, before it started. Guests following their link are told it won't go ahead.",
     });
   });
 

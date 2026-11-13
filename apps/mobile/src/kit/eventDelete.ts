@@ -8,11 +8,12 @@ export function offersDelete(event: { permissions: readonly string[] } | null): 
 
 export type DeleteAnswer =
   | { kind: 'deleted' }
-  | { kind: 'mismatch'; typed: string }
+  | { kind: 'mismatch'; typed: string; current?: string }
   | { kind: 'failed'; typed: string; error: unknown };
 
 export interface DeletesEvents {
   deleteEvent(eventId: string, name?: string): Promise<void>;
+  event(eventId: string): Promise<{ name: string }>;
 }
 
 /** A Draft is sent with no name; otherwise a name the API would refuse is never sent. */
@@ -34,6 +35,19 @@ export async function deleteEvent(
       error instanceof ApiError &&
       (error.problem.violations ?? []).some((one) => one.propertyPath === 'name');
 
-    return nameRefused ? { kind: 'mismatch', typed } : { kind: 'failed', typed, error };
+    if (!nameRefused) return { kind: 'failed', typed, error };
+
+    const current = await reread(client, event.id);
+
+    return current == null ? { kind: 'mismatch', typed } : { kind: 'mismatch', typed, current };
+  }
+}
+
+/** A name refused by the API may have been renamed since the screen opened (sc-44741); unread, the screen keeps the name it has. */
+async function reread(client: DeletesEvents, eventId: string): Promise<string | null> {
+  try {
+    return (await client.event(eventId)).name;
+  } catch {
+    return null;
   }
 }

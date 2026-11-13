@@ -137,7 +137,7 @@ describe('Events in A at a desk (sc-30304)', () => {
   it('locks the dates once an event is called off, and offers Duplicate', SLOW, async () => {
     await page('/demo/events/evt-off?state=calledOff', 'Team offsite');
 
-    expect(screen.getByText(/Called off on Fri, Oct 30, 2026, before it started/)).toBeDefined();
+    expect(screen.getByText(/Called off on Fri, Oct 30, before it started/)).toBeDefined();
     expect(
       screen.getByText(/This event was called off, so its start, end and time zone/),
     ).toBeDefined();

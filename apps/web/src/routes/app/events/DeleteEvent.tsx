@@ -85,7 +85,7 @@ function DeleteDialog({
   const [failed, setFailed] = useState<string | undefined>(undefined);
   const field = useRef<HTMLInputElement>(null);
   const body = useId();
-  const name = event.name;
+  const [name, setName] = useState(event.name);
   const matched = typedNameMatches(typed, name);
 
   async function go(): Promise<void> {
@@ -105,14 +105,16 @@ function DeleteDialog({
       await api.deleteEvent(event.id, needsName ? typed : undefined);
       void navigate('/app/events', { replace: true, state: { deletedEvent: name } });
     } catch (error) {
-      setBusy(false);
       const refusedName =
         error instanceof ApiError &&
         (error.problem.violations ?? []).some((one) => one.propertyPath === 'name');
+      const current = refusedName ? await reread(event.id) : null;
+      setBusy(false);
 
       if (refusedName) {
         // A Draft made live, or given a guest, elsewhere since the dialog opened now asks for its name.
         flushSync(() => {
+          if (current != null) setName(current);
           setNeedsName(true);
           setMismatch(true);
         });
@@ -192,4 +194,13 @@ function DeleteDialog({
       </div>
     </Ask>
   );
+}
+
+/** A name the API refused may be one renamed since the dialog opened (sc-44741); unread, the dialog keeps the name it has. */
+async function reread(eventId: string): Promise<string | null> {
+  try {
+    return (await api.event(eventId)).name;
+  } catch {
+    return null;
+  }
 }

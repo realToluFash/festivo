@@ -12,7 +12,7 @@ import {
   eventDayWords,
   eventPhase,
   eventsHome,
-  formatEventDate,
+  calledOffDay,
   formatEventMoment,
   milestoneDistance,
   notThisYear,
@@ -834,7 +834,7 @@ export function cardOf(event: SampleEvent, now: Date): Card {
         step: {
           kind: 'button',
           line: W.calledOffNotice(
-            formatEventDate(event.concludedAt ?? event.endsAt, event.timeZone, LOCALE),
+            calledOffDay(event.concludedAt ?? event.endsAt, event.timeZone, now, LOCALE),
           ),
           label: W.duplicate,
           does: 'duplicate',
