@@ -1,7 +1,7 @@
 import { initials } from '@soirely/domain';
 import type { ReactNode } from 'react';
 import { useTranslation } from 'react-i18next';
-import { NavLink, useLocation } from 'react-router';
+import { Link, useLocation } from 'react-router';
 
 import { pageTitle, usePageTitle } from '../pageTitle.ts';
 import { can, useSession } from '../session.ts';
@@ -10,19 +10,37 @@ import { PersonalTile } from './SchemeArt.tsx';
 import './SettingsParts.css';
 import './SettingsList.css';
 
-interface Entry {
-  to: string;
+export interface SectionEntry {
   label: string;
-  look: string;
   tile: ReactNode;
+  /** A section with a page of its own; one without is a button, which `onPress` answers. */
+  to?: string;
+  onPress?: () => void;
+}
+
+export interface SectionGroup {
+  name: string;
+  entries: SectionEntry[];
+}
+
+interface Entry extends SectionEntry {
+  to: string;
   end?: boolean;
 }
 
-interface Group {
-  name: string;
+interface Group extends SectionGroup {
   /** The page title's last part, after the section's name. */
   titled: string;
   entries: Entry[];
+}
+
+/** A section's square tile, in its own colour. */
+export function SectionTile({ look, children }: { look: string; children: ReactNode }) {
+  return (
+    <span className={`desk-tile is-${look}`} aria-hidden="true">
+      {children}
+    </span>
+  );
 }
 
 /** Your account's sections, then the organisation's, as the demo's Settings list draws them; Members only for a role that can read them. */
@@ -41,26 +59,22 @@ export function SettingsList() {
         {
           to: '/app/account',
           label: t('account.sectionAccount'),
-          look: 'account',
-          tile: initials(session.name),
+          tile: <SectionTile look="account">{initials(session.name)}</SectionTile>,
           end: true,
         },
         {
           to: '/app/account/security',
           label: t('account.sectionSecurity'),
-          look: 'security',
-          tile: glyph('shield'),
+          tile: <SectionTile look="security">{glyph('shield')}</SectionTile>,
         },
         {
           to: '/app/account/notifications',
           label: t('account.sectionNotifications'),
-          look: 'notifications',
-          tile: glyph('bell'),
+          tile: <SectionTile look="notifications">{glyph('bell')}</SectionTile>,
         },
         {
           to: '/app/account/personalisation',
           label: t('account.sectionPersonalisation'),
-          look: 'personalisation',
           tile: <PersonalTile />,
         },
       ],
@@ -75,8 +89,7 @@ export function SettingsList() {
         {
           to: '/app/settings',
           label: t('settings.sectionGeneral'),
-          look: 'general',
-          tile: initials(organisation.name),
+          tile: <SectionTile look="general">{initials(organisation.name)}</SectionTile>,
           end: true,
         },
         ...(can(session, 'members.read')
@@ -84,16 +97,14 @@ export function SettingsList() {
               {
                 to: '/app/settings/members',
                 label: t('settings.sectionMembers'),
-                look: 'members',
-                tile: glyph('users'),
+                tile: <SectionTile look="members">{glyph('users')}</SectionTile>,
               },
             ]
           : []),
         {
           to: '/app/settings/sign-in-rules',
           label: t('settings.sectionSignInRules'),
-          look: 'sign-in-rules',
-          tile: glyph('lock'),
+          tile: <SectionTile look="sign-in-rules">{glyph('lock')}</SectionTile>,
         },
       ],
     });
@@ -110,27 +121,50 @@ export function SettingsList() {
   );
 
   return (
-    <nav className="desk desk-list" aria-label={t('nav.settings')}>
+    <SettingsSections
+      className="desk desk-list"
+      label={t('nav.settings')}
+      groups={groups}
+      open={open?.entry}
+    />
+  );
+}
+
+/** The list both the product and its demo draw: each group's caps, then its sections, the open one lit. */
+export function SettingsSections({
+  className = 'desk-list',
+  label,
+  groups,
+  open,
+}: {
+  className?: string;
+  label: string;
+  groups: readonly SectionGroup[];
+  open: SectionEntry | undefined;
+}) {
+  return (
+    <nav className={className} aria-label={label}>
       {groups.map((group) => (
         <div key={group.name} className="desk-group">
           <h2 className="desk-caps">{group.name}</h2>
           <ul className="desk-sections">
             {group.entries.map((entry) => (
-              <li key={entry.to}>
-                <NavLink
-                  className={({ isActive }) => (isActive ? 'desk-section is-on' : 'desk-section')}
-                  to={entry.to}
-                  end={entry.end ?? false}
-                >
-                  {entry.look === 'personalisation' ? (
-                    entry.tile
-                  ) : (
-                    <span className={`desk-tile is-${entry.look}`} aria-hidden="true">
-                      {entry.tile}
-                    </span>
-                  )}
-                  <span className="desk-section-name">{entry.label}</span>
-                </NavLink>
+              <li key={entry.label}>
+                {entry.to == null ? (
+                  <button type="button" className="desk-section" onClick={entry.onPress}>
+                    {entry.tile}
+                    <span className="desk-section-name">{entry.label}</span>
+                  </button>
+                ) : (
+                  <Link
+                    className={entry === open ? 'desk-section is-on' : 'desk-section'}
+                    to={entry.to}
+                    aria-current={entry === open ? 'page' : undefined}
+                  >
+                    {entry.tile}
+                    <span className="desk-section-name">{entry.label}</span>
+                  </Link>
+                )}
               </li>
             ))}
           </ul>

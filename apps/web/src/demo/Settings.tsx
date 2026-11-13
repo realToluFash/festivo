@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { Link, useNavigate, useSearchParams } from 'react-router';
+import { useNavigate, useSearchParams } from 'react-router';
 
 import { Toast } from '../components/Toast.tsx';
 import { Glyph, type GlyphName } from '../components/Glyph.tsx';
@@ -32,6 +32,7 @@ import { Security } from './Security.tsx';
 import { SignInRules } from './SignInRules.tsx';
 import { StorefrontGlyph, Vendors } from './Vendors.tsx';
 import { vendorsViewerKey } from './vendors.ts';
+import { SectionTile, SettingsSections } from '../components/SettingsList.tsx';
 import { TextAction, TitleRow, type Tell } from '../components/SettingsParts.tsx';
 import { DemoBell } from './DemoBell.tsx';
 import { DemoOffline } from './DemoOffline.tsx';
@@ -39,7 +40,6 @@ import { TodaySidebar } from './TodaySidebar.tsx';
 import { usePaused, useSwitcherStart } from './switcher.ts';
 import './today.css';
 import '../components/SettingsParts.css';
-import '../components/SettingsList.css';
 
 const TILES: Record<
   Exclude<Section, 'account' | 'general' | 'personalisation' | 'vendors' | 'data'>,
@@ -194,77 +194,49 @@ function MembersForbidden({ tell }: { tell: Tell }) {
   );
 }
 
-/** Your account's sections, then the organisation's: a tile and the name, the open one Tint with its name in Violet. */
+/** Your account's sections, then the organisation's, drawn by the product's list: a section with no design yet says so. */
 function SettingsList({ open, viewer, tell }: { open: Drawn | null; viewer: Viewer; tell: Tell }) {
+  const groups = groupsFor(viewer).map((group) => ({
+    name: group.name,
+    entries: group.sections.map((section) => ({
+      section,
+      label: SECTION_NAMES[section],
+      tile: <Tile section={section} viewer={viewer} />,
+      ...(isDrawn(section)
+        ? { to: settingsPath(section, viewer) }
+        : { onPress: () => tell(`${SECTION_NAMES[section]} has its own design.`) }),
+    })),
+  }));
+
   return (
-    <nav className="desk-list" aria-label="Settings">
-      {groupsFor(viewer).map((group) => (
-        <div key={group.name} className="desk-group">
-          <h2 className="desk-caps">{group.name}</h2>
-          <ul className="desk-sections">
-            {group.sections.map((section) => (
-              <li key={section}>
-                {isDrawn(section) ? (
-                  <Link
-                    className={section === open ? 'desk-section is-on' : 'desk-section'}
-                    to={settingsPath(section, viewer)}
-                    aria-current={section === open ? 'page' : undefined}
-                  >
-                    <Tile section={section} viewer={viewer} />
-                    <span className="today-grow">{SECTION_NAMES[section]}</span>
-                  </Link>
-                ) : (
-                  <button
-                    type="button"
-                    className="desk-section"
-                    onClick={() => tell(`${SECTION_NAMES[section]} has its own design.`)}
-                  >
-                    <Tile section={section} viewer={viewer} />
-                    <span className="today-grow">{SECTION_NAMES[section]}</span>
-                  </button>
-                )}
-              </li>
-            ))}
-          </ul>
-        </div>
-      ))}
-    </nav>
+    <SettingsSections
+      label="Settings"
+      groups={groups}
+      open={groups.flatMap((group) => group.entries).find((entry) => entry.section === open)}
+    />
   );
 }
 
 function Tile({ section, viewer }: { section: Section; viewer: Viewer }) {
-  if (section === 'account')
-    return (
-      <span className="desk-tile is-account" aria-hidden="true">
-        {viewer.initials}
-      </span>
-    );
+  if (section === 'account') return <SectionTile look="account">{viewer.initials}</SectionTile>;
   if (section === 'personalisation') return <PersonalTile />;
-  if (section === 'general')
-    return (
-      <span className="desk-tile is-general" aria-hidden="true">
-        IE
-      </span>
-    );
+  if (section === 'general') return <SectionTile look="general">IE</SectionTile>;
   if (section === 'vendors')
     return (
-      <span className="desk-tile is-vendors" aria-hidden="true">
+      <SectionTile look="vendors">
         <StorefrontGlyph size={17} />
-      </span>
+      </SectionTile>
     );
   if (section === 'data')
     return (
-      <span className="desk-tile is-data" aria-hidden="true">
+      <SectionTile look="data">
         <DrawnGlyph name="data" size={17} />
-      </span>
+      </SectionTile>
     );
 
   return (
-    <span
-      className={`desk-tile is-${section === 'signInRules' ? 'sign-in-rules' : section}`}
-      aria-hidden="true"
-    >
+    <SectionTile look={section === 'signInRules' ? 'sign-in-rules' : section}>
       <Glyph name={TILES[section]} size={17} />
-    </span>
+    </SectionTile>
   );
 }
