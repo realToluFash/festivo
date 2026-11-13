@@ -63,7 +63,7 @@ final class GuestInvitationsTest extends ApiTestCase
         $guest = $this->add('Emeka Nwosu', ['Ada Nwosu']);
 
         self::assertNull($this->invitation($guest));
-        self::assertSame(['notYetInvited'], Vec\map($this->row($guest)['companions'] ?? [], static fn (mixed $companion): mixed => Type\shape(['state' => Type\string()], true)->coerce($companion)['state']));
+        self::assertSame(['notYetInvited'], $this->companionStates($guest));
     }
 
     /** @return iterable<string, array{string}> */
@@ -88,7 +88,7 @@ final class GuestInvitationsTest extends ApiTestCase
         $expected = ['at' => '2026-10-17T14:20:00+01:00', 'how' => $how, 'by' => 'Person'];
         self::assertSame($expected, Type\shape(['guest' => Type\shape(['invitation' => Type\mixed()], true)], true)->coerce($body)['guest']['invitation']);
         self::assertSame($expected, $this->invitation($guest));
-        self::assertSame('held', Type\shape(['state' => Type\string()], true)->coerce($this->row($guest)['companions'][0] ?? null)['state']);
+        self::assertSame(['held'], $this->companionStates($guest));
         self::assertSame(1, $this->audited(GuestInvitations::MARKED));
     }
 
@@ -171,7 +171,7 @@ final class GuestInvitationsTest extends ApiTestCase
 
         self::assertSame(200, $this->statusCode(), Json\encode($body));
         self::assertNull($this->invitation($guest));
-        self::assertSame('notYetInvited', Type\shape(['state' => Type\string()], true)->coerce($this->row($guest)['companions'][0] ?? null)['state']);
+        self::assertSame(['notYetInvited'], $this->companionStates($guest));
         self::assertSame(1, $this->audited(GuestInvitations::UNMARKED));
     }
 
@@ -299,6 +299,14 @@ final class GuestInvitationsTest extends ApiTestCase
         $guests = Type\vec(Type\dict(Type\string(), Type\mixed()))->coerce($this->as($as ?? $this->owner, 'GET', $this->guests($eventId))['guests'] ?? null);
 
         return Vec\filter($guests, static fn (array $row): bool => $guest === ($row['id'] ?? null))[0] ?? self::fail('not listed');
+    }
+
+    /** @return list<string> */
+    private function companionStates(string $guest): array
+    {
+        $companions = Type\vec(Type\shape(['state' => Type\string()], true))->coerce($this->row($guest)['companions'] ?? null);
+
+        return Vec\map($companions, static fn (array $companion): string => $companion['state']);
     }
 
     /** @return array<string, mixed>|null */
