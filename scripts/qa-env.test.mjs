@@ -52,6 +52,7 @@ import {
   TOOLS_BUTTON,
   MENU_ONBOARDED,
   SCREEN_READER_OFF,
+  STYLUS_HANDWRITING_OFF,
   driverBuilds,
   driverPids,
   leftDriverSay,
@@ -634,6 +635,18 @@ describe('the screen reader on an emulator android opens', () => {
 
   it('says so, so a tester turns it on again', () => {
     expect(ANDROID_START[off].say).toMatch(/TalkBack is off/);
+  });
+});
+
+describe('stylus handwriting on an emulator android opens', () => {
+  const at = (name) => ANDROID_START.findIndex((part) => part.name === name);
+
+  it('is switched off before Expo Go is launched', () => {
+    expect(ANDROID_START[at('stylus handwriting off')].adb).toBe(STYLUS_HANDWRITING_OFF);
+    expect(STYLUS_HANDWRITING_OFF).toEqual([
+      ['shell', 'settings', 'put', 'secure', 'stylus_handwriting_enabled', '0'],
+    ]);
+    expect(at('stylus handwriting off')).toBeLessThan(at('Expo Go launched'));
   });
 });
 
