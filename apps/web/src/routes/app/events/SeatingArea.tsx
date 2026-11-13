@@ -24,6 +24,7 @@ import { useTranslation } from 'react-i18next';
 import { Link } from 'react-router';
 
 import { api } from '../../../api.ts';
+import { useDeskTop } from '../../../deskTop.ts';
 import { config } from '../../../config.ts';
 import { Glyph } from '../../../components/Glyph.tsx';
 import {
@@ -158,6 +159,7 @@ function fitOf(width: number, height: number, room: { w: number; l: number }) {
 
 export function SeatingArea({ event }: { event: OrganisationEvent }) {
   const { t } = useTranslation();
+  const desk = useDeskTop();
   const [load, setLoad] = useState<Load>({ kind: 'loading' });
   const [attempt, setAttempt] = useState(0);
 
@@ -199,6 +201,7 @@ export function SeatingArea({ event }: { event: OrganisationEvent }) {
           </li>
         </ol>
       </nav>
+      {desk.bell}
     </header>
   );
 

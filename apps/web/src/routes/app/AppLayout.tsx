@@ -42,7 +42,7 @@ import { heldRegistration } from '../../pendingRegistration.ts';
 import { useTwoFactorStanding } from '../../twoFactorStanding.ts';
 import { useDialogKeys } from '../../dialogFocus.ts';
 import { PHONE_WIDTH, useDeskWidth } from '../../phoneWidth.ts';
-import { DeskTopContext, isBandless } from '../../deskTop.ts';
+import { DeskTopContext, placesItsNotices } from '../../deskTop.ts';
 import { EventNav, useInsideEvent, useShownEventName } from './events/EventNav.tsx';
 
 /**
@@ -134,7 +134,9 @@ function Shell() {
   const offer = useDomainOffer();
   const overdue = useTwoFactorStanding(organisation) === 'overdue';
   const switchTo = switchOf(location.state);
-  const bandless = useDeskWidth() && isBandless(pathname);
+  // At a desk no page has the band: each page's own top carries the bell (sc-39509).
+  const bandless = useDeskWidth();
+  const ownNotices = placesItsNotices(pathname);
 
   // Before the first paint, so the first signed-in screen is already in the account's language.
   useLayoutEffect(() => {
@@ -340,7 +342,6 @@ function Shell() {
               )}
             </p>
             <NotificationsBell userId={session.userId} />
-            <LanguagePicker automatic={false} pill />
           </header>
         )}
 
@@ -360,9 +361,9 @@ function Shell() {
             value={
               bandless
                 ? {
-                    bell: <NotificationsBell userId={session.userId} desk />,
-                    said,
-                    offline: <OfflineBox />,
+                    bell: <NotificationsBell userId={session.userId} look="desk" />,
+                    said: ownNotices ? said : null,
+                    offline: ownNotices ? <OfflineBox /> : null,
                   }
                 : NO_DESK_TOP
             }
@@ -379,7 +380,15 @@ function Shell() {
                   {standIn}
                 </>
               ) : (
-                <Outlet context={standIn} />
+                <>
+                  {bandless && !ownNotices && (
+                    <>
+                      <OfflineBox />
+                      {said}
+                    </>
+                  )}
+                  <Outlet context={standIn} />
+                </>
               )}
             </ErrorBoundary>
           </DeskTopContext>

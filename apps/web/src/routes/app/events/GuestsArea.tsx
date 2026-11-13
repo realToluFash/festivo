@@ -71,6 +71,7 @@ import { Link, useBlocker, useNavigate, useSearchParams } from 'react-router';
 
 import { api } from '../../../api.ts';
 import { GlassMark } from '../../../components/EventCard.tsx';
+import { useDeskTop } from '../../../deskTop.ts';
 import { Glyph } from '../../../components/Glyph.tsx';
 import { SearchField } from '../../../components/SearchField.tsx';
 import {
@@ -229,6 +230,7 @@ export function GuestsArea({
   onChange: (event: OrganisationEvent, tag: string) => void;
 }) {
   const { t } = useTranslation();
+  const desk = useDeskTop();
   const { layers, covered, setHost } = useDeskLayers();
   const now = useServerNow();
   const phase = shownPhase(event, useLoadedAt(event), now);
@@ -931,6 +933,7 @@ export function GuestsArea({
                 </li>
               </ol>
             </nav>
+            {desk.bell}
           </div>
           <header className="gs-top">
             <h1 ref={heading} className="gs-title" tabIndex={-1} data-focus="title">

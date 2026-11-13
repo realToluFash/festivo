@@ -21,7 +21,7 @@ import type { DeskPerson } from '../components/DeskSidebar.tsx';
 import './today.css';
 
 /** The demo's bell, with its sample's three unread. */
-const ACTIONS: BannerActions = { create: true, unread: 3 };
+const ACTIONS: BannerActions = { create: true, bell: { unread: 3 } };
 
 function isMoment(name: string | null): name is MomentName {
   return MOMENTS.some((moment) => moment === name);

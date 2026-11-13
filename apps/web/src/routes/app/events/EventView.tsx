@@ -11,6 +11,7 @@ import { useTranslation } from 'react-i18next';
 import { Navigate, useParams } from 'react-router';
 
 import { BackControl } from '../../../components/BackControl.tsx';
+import { useDeskTop } from '../../../deskTop.ts';
 import { api } from '../../../api.ts';
 import { Refreshing } from '../../../components/OfflineBand.tsx';
 import { keepsWhatLoaded, useOffline } from '../../../offline.ts';
@@ -105,6 +106,7 @@ function EventOf({
   page: Page;
 }) {
   const { t } = useTranslation();
+  const desk = useDeskTop();
   const [load, setLoad] = useState<Load>({ kind: 'loading' });
   const [attempt, setAttempt] = useState(0);
   const [refresh, setRefresh] = useState(0);
@@ -244,6 +246,7 @@ function EventOf({
           to={`/app/events/${encodeURIComponent(eventId)}`}
         />
         {refreshing && <Refreshing />}
+        {desk.bell}
       </div>
 
       {states}
