@@ -24,7 +24,8 @@ import {
 } from './messages.ts';
 import { useInbox } from './messagesContext.ts';
 import { WhereGlyph } from './MessagesParts.tsx';
-import { counterOf, countText, firstTextLine, smsAsSent } from './messagesSms.ts';
+import { asSent } from './inviteSms.ts';
+import { counterOf, firstTextLine } from './messagesSms.ts';
 import {
   type Language,
   type Person,
@@ -162,7 +163,7 @@ export function Preview({ draft }: { draft: Draft }) {
   const notice = noticeFor(person);
   const lang = person.language === 'en' ? undefined : person.language;
   const shown = CHANNELS.filter((channel) => draft.ticks[channel] && person.has.includes(channel));
-  const sms = smsAsSent(notice.sms, person.firstText === true);
+  const sms = asSent(notice.sms, person.firstText === true);
   const sendsId = useId();
   const seen = useEffectEvent(() => {
     if (draft.opens != null) act({ kind: 'draft', draft: { opens: undefined } });
@@ -237,10 +238,10 @@ export function Preview({ draft }: { draft: Draft }) {
                   <div className="mg-notice">
                     <p className="mg-notice-head">
                       <WhereGlyph where="sms" />
-                      {counterOf(countText(sms))}
+                      {counterOf(sms)}
                     </p>
                     <p className="mg-notice-bubble mg-sms-bubble" lang={lang}>
-                      {sms}
+                      {sms.text}
                     </p>
                     {person.firstText === true && (
                       <p className="mg-sms-first">{firstTextLine(ORGANISATION)}</p>

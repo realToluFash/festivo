@@ -65,17 +65,34 @@ export interface InviteSms {
   /** Its length with the link as built. */
   chars: number;
   parts: number;
+  unicode: boolean;
 }
 
-/** The invitation's text to one guest, in plain punctuation, its first text to a number ending on the STOP line; counted with their link as built. */
+/** The invitation's text to one guest, as sent. */
 export function inviteSmsOf(guest: OneGuest, about: SmsAbout, first = true): InviteSms {
   const { replyBy, ...rest } = about;
   const values = { ...rest, greeting: greetingOf(guest), link: THEIR_LINK };
-  const words = (
-    replyBy == null ? iw.filled(IW.smsNoDate, values) : iw.filled(IW.sms, { ...values, replyBy })
-  ).replaceAll('’', "'");
-  const text = first ? `${words}\n${IW.smsStop}` : words;
+  const words =
+    replyBy == null ? iw.filled(IW.smsNoDate, values) : iw.filled(IW.sms, { ...values, replyBy });
+
+  return asSent(words, first);
+}
+
+const PLAIN: Record<string, string> = {
+  '‘': "'",
+  '’': "'",
+  '“': '"',
+  '”': '"',
+  '–': '-',
+  '—': '-',
+  '…': '...',
+};
+
+/** Every text Soirely sends, as sent (sc-3946): typographic punctuation plain, a first text to a number ending on the STOP line, counted with the guest's link as built. */
+export function asSent(words: string, first = false): InviteSms {
+  const plain = words.replace(/[‘’“”–—…]/gu, (one) => PLAIN[one] ?? one);
+  const text = first ? `${plain}\n${IW.smsStop}` : plain;
   const built = text.replace(THEIR_LINK, 'x'.repeat(LINK_CHARS));
 
-  return { text, chars: [...built].length, parts: smsParts(built) };
+  return { text, chars: [...built].length, parts: smsParts(built), unicode: !isGsm7(built) };
 }

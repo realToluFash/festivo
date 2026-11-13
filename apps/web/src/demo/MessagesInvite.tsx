@@ -45,7 +45,7 @@ import type { OneGuest } from './messagesTo.ts';
 import { chipWords } from './messagesTo.ts';
 import { OnEscape, TickChip } from './MessagesCompose.tsx';
 import { WhatsAppReach, WhereGlyph } from './MessagesParts.tsx';
-import { counterOf, countText, firstTextLine } from './messagesSms.ts';
+import { counterOf, firstTextLine } from './messagesSms.ts';
 import './messagesSms.css';
 import { FILL_MS, PreviewAs, PreviewBones } from './MessagesPreview.tsx';
 import { PW } from './messagesPreviewWords.ts';
@@ -717,7 +717,7 @@ function InvitePreview({ draft, invite }: { draft: Draft; invite: InviteDraft })
                   <div className="mg-notice">
                     <p className="mg-notice-head">
                       <WhereGlyph where="sms" />
-                      {counterOf(countText(text.text))}
+                      {counterOf(text)}
                     </p>
                     <p className="mg-notice-bubble mgi-sms">{text.text}</p>
                     {firstText && <p className="mg-sms-first">{firstTextLine(ORGANISATION)}</p>}

@@ -1,7 +1,6 @@
 import { demoWords } from './demoWords.ts';
-import { LINK_CHARS, THEIR_LINK, isGsm7, smsParts } from './inviteSms.ts';
+import type { InviteSms } from './inviteSms.ts';
 import type { Ticks } from './messages.ts';
-import { IW } from './messagesInviteWords.ts';
 import { SW } from './messagesSmsWords.ts';
 
 export { SW };
@@ -79,33 +78,13 @@ export function waitLine(ticks: Ticks, hour: Hour | undefined): string | null {
   return ticks.sms ? sw.many('textsWait', waiting, slots) : sw.many('whatsAppWait', waiting, slots);
 }
 
-export interface Counted {
-  parts: number;
-  chars: number;
-  unicode: boolean;
-}
-
-/** One text as it is sent: its guest's link counted at its built length (sc-1526). */
-export function countText(text: string): Counted {
-  const built = text.replace(THEIR_LINK, 'x'.repeat(LINK_CHARS));
-
-  return { parts: smsParts(built), chars: [...built].length, unicode: !isGsm7(built) };
-}
-
 /** The SMS card's head (pm #45575): "SMS · 2 parts · GSM-7 · 177 characters". */
-export function counterOf({ parts, chars, unicode }: Counted): string {
+export function counterOf({ parts, chars, unicode }: InviteSms): string {
   return [
     sw.many('counterParts', parts),
     unicode ? SW.unicode : SW.gsm7,
     sw.many('counterChars', chars),
   ].join(' · ');
-}
-
-/** Soirely's SMS as one guest gets it: typographic punctuation sent plain, and their first text from the organisation ending on the STOP line. */
-export function smsAsSent(words: string, first: boolean): string {
-  const plain = words.replaceAll('’', "'").replaceAll('‘', "'").replaceAll(/[“”]/gu, '"');
-
-  return first ? `${plain}\n${IW.smsStop}` : plain;
 }
 
 export function firstTextLine(organisation: string): string {

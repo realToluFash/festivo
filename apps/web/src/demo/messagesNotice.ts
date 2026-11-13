@@ -1,8 +1,7 @@
 import { writtenTime } from './clock.ts';
 import { demoWords } from './demoWords.ts';
-import { type InviteSms, LINK_CHARS, THEIR_LINK, smsParts } from './inviteSms.ts';
+import { type InviteSms, THEIR_LINK, asSent } from './inviteSms.ts';
 import type { Channel, Delivery, GuestId, SampleGuest } from './messages.ts';
-import { IW } from './messagesInviteWords.ts';
 import { NW } from './messagesNoticeWords.ts';
 import { MW } from './messagesWords.ts';
 
@@ -288,19 +287,9 @@ export function quietLine(by: Channel, time: string): string | null {
   return nw.filled(by === 'sms' ? NW.textWaitsUntil : NW.whatsAppWaitsUntil, { time });
 }
 
-/** Soirely's text that the hosts have written (sc-3976, l10n #45754), counted with the guest's link as built; a first text to a number ends on the STOP line. */
+/** Soirely's text that the hosts have written (sc-3976, l10n #45754), as sent. */
 export function noticeSmsOf(hosts: string, event: string, first = false): InviteSms {
-  const words = mw.filled(MW.noticeSms, { hosts, event, link: THEIR_LINK });
-
-  return asBuilt(first ? `${words}\n${IW.smsStop}` : words);
-}
-
-/** A text as it goes: plain punctuation, the link at its built length. */
-export function asBuilt(text: string): InviteSms {
-  const plain = text.replaceAll('’', "'");
-  const built = plain.replace(THEIR_LINK, 'x'.repeat(LINK_CHARS));
-
-  return { text: plain, chars: [...built].length, parts: smsParts(built) };
+  return asSent(mw.filled(MW.noticeSms, { hosts, event, link: THEIR_LINK }), first);
 }
 
 /** A paid notice's credits: an SMS costs its parts × the credits a part for the number's country. */
