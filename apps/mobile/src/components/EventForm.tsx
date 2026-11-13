@@ -329,7 +329,9 @@ export function EventForm({
     setHostErrors(hostFound);
     const first = firstRefusedOf(found, hostFound, hosts);
     const onField = first != null && 'field' in first ? first.field : null;
-    setLinesInSummary(saidFirst != null && onField != null && !typedIn(onField));
+    setLinesInSummary(
+      Platform.OS === 'android' && saidFirst != null && onField != null && !typedIn(onField),
+    );
     setFocusOn(onField != null ? { field: onField, saidFirst } : null);
     setFocusHost(first != null && 'host' in first ? { key: first.host } : null);
   }
