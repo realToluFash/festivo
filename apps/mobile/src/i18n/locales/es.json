@@ -1815,6 +1815,7 @@
   },
   "eventDelete": {
     "open": "Eliminar el evento…",
+    "screen": "Delete event",
     "note": "Elimina el evento y todo su contenido para todo el equipo. Los invitados que abran su enlace verán que ya no está disponible.",
     "title": "¿Eliminar {{event}}?",
     "draftBody": "Es un borrador sin nadie en la lista de invitados. Se eliminará para todo el equipo.",

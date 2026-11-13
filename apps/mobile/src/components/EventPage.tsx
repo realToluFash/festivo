@@ -104,7 +104,6 @@ export function EventPage({
     openers: { pause: pauseOpener, end: endOpener },
   });
   const deletion = useDeleteEvent({
-    kind,
     event,
     onDeleted: onDeleted ?? (() => undefined),
     opener: deleteOpener,
