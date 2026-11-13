@@ -61,7 +61,7 @@ describe('Personalisation at a desk (sc-30441)', () => {
     expect(
       within(yours)
         .getAllByRole('link')
-        .map((one) => one.querySelector('.today-grow')?.textContent),
+        .map((one) => one.querySelector('.desk-section-name')?.textContent),
     ).toEqual(['Account', 'Security', 'Notifications', 'Personalisation']);
     fireEvent.click(within(list).getByRole('link', { name: 'Personalisation' }));
     expect(await screen.findByRole('heading', { level: 1, name: 'Personalisation' })).toBeDefined();

@@ -79,6 +79,12 @@ export const W = {
   muteNote: 'Nobody else on this event is affected.',
   muteNotLoaded: 'Could not check whether this event is muted.',
   muteNotSaved: 'Not saved. Try again.',
+  guestsCanWrite: 'Guests can write from their page',
+  guestsCanWriteLine: 'Changes it for everyone on this event. Texts and emails still arrive.',
+  guestsCanWriteReadOnly: 'Only members who manage messages can change this.',
+  guestsCanWriteNotSaved: 'Not saved. Try again.',
+  on: 'On',
+  off: 'Off',
   notificationSettings: 'Notification settings',
   manage: 'Manage',
   duplicateLine:
@@ -92,7 +98,7 @@ export const W = {
   endLine: 'It will be over for everybody. You can’t undo this.',
   deleteOpen: 'Delete event…',
   deleteLine:
-    'Removes the event and everything in it for your whole team. Guests following its link see that it isn’t available.',
+    "Removes the event and everything in it for your whole team. Guests following its link see that it isn't available.",
   more: 'More',
   closeMore: 'Close More',
   backToEvents: 'Events',
@@ -173,10 +179,10 @@ export const W = {
   keepIt: 'Keep it',
   delete: 'Delete',
   deleteEvent: 'Delete event',
-  draftBody: 'It’s a draft with nobody on its guest list. It will be removed for your whole team.',
+  draftBody: "It's a draft with nobody on its guest list. It will be removed for your whole team.",
   removes: 'This removes, for your whole team:',
   removesEvent: 'the event, its details and its schedule',
-  deleteGuests: 'Guests following their link will see that it isn’t available.',
+  deleteGuests: "Guests following their link will see that it isn't available.",
   typeHint: 'Type it exactly, capitals included. A straight or curly apostrophe both count.',
   createDraft: 'Create draft',
   copied: 'Copied',
@@ -196,6 +202,12 @@ export const W = {
     'Guests can’t reply or change anything until you resume it. Nothing is lost. Check-in and service keep working.',
   callOffBody: 'It won’t go ahead. Guests following their link will be told. You can’t undo this.',
   endBody: 'It will be over for everybody. You can’t undo this.',
+  callOffFirstBody:
+    'Guests have been invited to this event, or staff briefed for it, so it can be deleted only once it is finished. Calling it off is how they hear it will not go ahead.',
+  endFirstBody:
+    'Guests have been invited to this event, or staff briefed for it, so it can be deleted only once it is finished. End it first: it will then be over for everybody.',
+  datesCalledOff:
+    "Dates · This event was called off, so its start, end and time zone can't be changed.",
 } as const;
 
 export const AREA_WORDS: Record<AreaKey, string> = {
@@ -270,10 +282,16 @@ export const say = {
       ? `its guest list, with the ${people} person on it`
       : `its guest list, with the ${people} people on it`,
   deleteWindow: (deadline: string) =>
-    `If this was a mistake, support can restore it until ${deadline}. After that it’s gone for good.`,
+    `If this was a mistake, support can restore it until ${deadline}. After that it's gone for good.`,
   deleteType: (name: string) => `Type ${name} to delete it`,
   deleteMismatch: (name: string) => `Type ${name} exactly as shown to delete it.`,
   deleted: (name: string) => `${name} was deleted.`,
+  callOffFirst: (name: string) => `Call off ${name} first?`,
+  endFirst: (name: string) => `End ${name} first?`,
+  askToCallOff: (area: string, organisation: string) =>
+    `Ask someone who can change ${area} in ${organisation} to call it off.`,
+  askToEnd: (area: string, organisation: string) =>
+    `Ask someone who can change ${area} in ${organisation} to end it.`,
   duplicateTitle: (name: string) => `Duplicate ${name}`,
   ownDesign: (what: string) => `${what} has its own design.`,
   repliesCloseAt: (time: string, zone: string) => `Replies close at ${time}, ${zone} time.`,
@@ -299,8 +317,75 @@ const KEYED: Record<string, (values: Record<string, string | number>) => string>
     `It ends ${String(v.end)}, ${String(v.duration)} later, like the original. Times in ${String(v.timeZone)}.`,
   'eventDuplicate.endsUnchosen': (v) =>
     `It ends ${String(v.duration)} after it starts, like the original. Times in ${String(v.timeZone)}.`,
+  'eventLive.hostEmpty': () => 'Enter who is hosting to make this event live.',
+  'eventHosts.tooLong': (v) =>
+    `A host’s name can be at most ${String(v.most)} characters. This one has ${String(v.length)}.`,
 };
 
 /** The few of main's keys the domain's word helpers ask for, in English. */
 export const t: Translate = (key: string, values: Record<string, string | number> = {}) =>
   KEYED[key]?.(values) ?? key;
+
+/** sc-3971: Make live in main's eventLive.* English, the offer in the story's copy as pm and l10n settled it (#45231, #45271, #45310). */
+export const LIVE = {
+  makeLive: 'Make live',
+  notYet: 'Not yet',
+  making: 'Making live…',
+  confirmLine: 'Guests can be invited, and they can see it. It can’t go back to being a draft.',
+  failed: 'Not made live. Try again in a moment.',
+  madeLive: '✓ Live',
+  close: 'Close',
+  sending: 'Sending…',
+  notSent: 'Not sent. Try again in a moment.',
+  forbidden: 'Your role no longer includes sending messages, so nothing was sent.',
+  messages: 'Messages',
+  notMadeLive: 'Not made live.',
+  changedTitle: 'Somebody else changed this event while you had it open.',
+  nowLive: 'It’s live now. The page shows what it is now.',
+  hostLabel: 'Host 1',
+  smsStop: 'Reply STOP to opt out.',
+  hostExplainer:
+    'Guests read this name on their invitation and their page. Write it the way you want guests to see it.',
+  demoMessages:
+    'The engagement has no Messages sample, so the toast’s Messages opens the wedding’s Invitation conversation, and nothing is sent.',
+} as const;
+
+const LIVE_COUNTED = {
+  offerTitle_one: 'Send the invitation to 1 guest now?',
+  offerTitle_other: 'Send invitations to {{count}} guests now?',
+  send_one: 'Send it',
+  send_other: 'Send them',
+  queued_one: 'Invitation queued. Sending to 1 guest now.',
+  queued_other: 'Invitations queued. Sending to {{count}} guests now.',
+  cannotTitle_one: 'The invitation cannot be sent yet.',
+  cannotTitle_other: 'The invitations cannot be sent yet.',
+  later_one: 'You can send the invitation later from Guests in Soirely on the web.',
+  later_other: 'You can send the invitations later from Guests in Soirely on the web.',
+  textsUse_one: 'Texts use 1 credit.',
+  textsUse_other: 'Texts use {{count}} credits.',
+  whatsAppUse_one: 'WhatsApp messages use 1 credit.',
+  whatsAppUse_other: 'WhatsApp messages use {{count}} credits.',
+  textsAndWhatsAppUse_one: 'Texts and WhatsApp messages use 1 credit.',
+  textsAndWhatsAppUse_other: 'Texts and WhatsApp messages use {{count}} credits.',
+  nobody_one:
+    'This guest cannot be reached. Add an email address or a mobile number for them in Guests.',
+  nobody_other:
+    'None of the {{count}} guests can be reached. Add an email address or a mobile number for them in Guests.',
+} as const;
+
+type Counted = keyof typeof LIVE_COUNTED extends `${infer Key}_${'one' | 'other'}` ? Key : never;
+
+/** One of the _one/_other families, its count written as a number in the reader's locale. */
+export function liveCounted(key: Counted, count: number, locale = 'en-US'): string {
+  const words = count === 1 ? LIVE_COUNTED[`${key}_one`] : LIVE_COUNTED[`${key}_other`];
+
+  return words.replace('{{count}}', new Intl.NumberFormat(locale).format(count));
+}
+
+export const sayLive = {
+  confirmTitle: (name: string) => `Make ${name} live?`,
+  isLive: (name: string) => `${name} is live.`,
+  creditsAfter: (after: string) => `Credits after sending: ${after}.`,
+  inviteText: (hosts: string, greeting: string, event: string, date: string) =>
+    `${hosts}: ${greeting}, you're invited to ${event} on ${date}. Please reply at `,
+};

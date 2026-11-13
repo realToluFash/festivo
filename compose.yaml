@@ -94,6 +94,8 @@ services:
       DATABASE_URL: ${DATABASE_URL}
       MAILER_DSN: ${MAILER_DSN:-smtp://mailpit:1025}
       MAIL_FROM: ${MAIL_FROM:-Soirely <no-reply@soirely.com>}
+      MAIL_WEBHOOK_SECRET: ${MAIL_WEBHOOK_SECRET:-postmark:development-webhook-secret}
+      MAIL_WEBHOOK_ALLOWED_RANGES: ${MAIL_WEBHOOK_ALLOWED_RANGES:-127.0.0.0/8,::1/128,10.0.0.0/8,172.16.0.0/12,192.168.0.0/16}
       DNS_TXT_ENDPOINT: ${DNS_TXT_ENDPOINT:-http://smocker:8080/dns-query}
       SMS_API_BASE: ${SMS_API_BASE:-http://smocker:8080}
       SMS_ACCOUNT_SID: ${SMS_ACCOUNT_SID:-ACdevelopment00000000000000000000}

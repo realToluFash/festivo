@@ -2,6 +2,7 @@ import { init } from 'i18next';
 import { beforeAll, describe, expect, it } from 'vitest';
 
 import en from '../../i18n/locales/en.json';
+import { NOTICE_STATES } from './NoticeStates.ts';
 
 import {
   type Action,
@@ -62,8 +63,11 @@ beforeAll(() =>
 const nameOf = (id: RowId) => (id.kind === 'draft' ? id.id : id.key);
 
 describe('the states', () => {
-  it('are the spec’s 42, the notice’s three, Who it reached’s eight, sc-32077’s six and sc-3960’s and sc-3963’s, by both demos’ names', () => {
-    expect(MESSAGES_STATES).toHaveLength(85);
+  it('are the spec’s 42, the notice’s three, Who it reached’s eight, sc-32077’s six, sc-3960’s, sc-3963’s, sc-3976’s 17, sc-3978’s and sc-4330’s, by both demos’ names', () => {
+    expect(MESSAGES_STATES).toHaveLength(147);
+    expect(MESSAGES_STATES.slice(MESSAGES_STATES.indexOf('sendWithout') + 1).slice(0, 17)).toEqual([
+      ...NOTICE_STATES,
+    ]);
     expect(MESSAGES_STATES.slice(72, 75)).toEqual([
       'whatsAppLine',
       'checkWhatsApp',
@@ -694,7 +698,7 @@ describe('Tell guests after a change', () => {
     };
     const change = tellChange(wedding, moved, 'en-US');
 
-    expect(change.what).toEqual(['New dates', 'New venue']);
+    expect(change.what).toEqual(['New date', 'New venue']);
     expect(change.lines[0]).toMatch(/^The dates are now .+ \(was .+\)\.$/u);
     expect(change.lines[1]).toBe('The venue is now Oslo Hall (was The Landmark).');
   });

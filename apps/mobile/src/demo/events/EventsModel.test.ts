@@ -217,7 +217,7 @@ describe('the card’s one step, by nextStep', () => {
     });
     expect(step('evt-off')).toMatchObject({
       action: 'duplicate',
-      line: "Called off on Fri, Oct 30, 2026, before it started. Guests following their link are told it won't go ahead.",
+      line: "Called off on Fri, Oct 30, before it started. Guests following their link are told it won't go ahead.",
     });
   });
 
@@ -283,6 +283,9 @@ describe('the page', () => {
     });
     expect(datesRow(shown('evt-wed-4', finished), LOCALE).line).toBe(
       "Dates · This event is over, so its start, end and time zone can't be changed.",
+    );
+    expect(datesRow(shown('evt-off'), LOCALE).line).toBe(
+      "Dates · This event was called off, so its start, end and time zone can't be changed.",
     );
   });
 
@@ -416,6 +419,20 @@ describe('the states', () => {
     expect(clockOf(eventStateOf('now')).toISOString()).toBe('2026-11-06T16:10:00.000Z');
     expect(clockOf(eventStateOf('finished')).toISOString()).toBe('2026-11-11T09:41:00.000Z');
     expect(clockOf(eventStateOf('nonsense')).toISOString()).toBe('2026-11-03T09:41:00.000Z');
+    expect(clockOf(eventStateOf('deleteRefusedStarted')).toISOString()).toBe(
+      '2026-11-06T16:10:00.000Z',
+    );
+    expect(clockOf(eventStateOf('deleteRefusedStartedRead')).toISOString()).toBe(
+      '2026-11-06T16:10:00.000Z',
+    );
+    expect(clockOf(eventStateOf('deleteRefusedRead')).toISOString()).toBe(
+      '2026-11-03T09:41:00.000Z',
+    );
+    expect(clockOf(eventStateOf('deleteRace')).toISOString()).toBe('2026-11-03T09:41:00.000Z');
+    expect(clockOf(eventStateOf('deleteRaceRead')).toISOString()).toBe('2026-11-03T09:41:00.000Z');
+    expect(clockOf(eventStateOf('deleteRefusedPaused')).toISOString()).toBe(
+      '2026-11-03T09:41:00.000Z',
+    );
     expect(editOf(eventStateOf('showLatest'))).toBe('dates');
     expect(editOf(eventStateOf('lastHost'))).toBe('hosts');
     expect(editOf(eventStateOf('pause'))).toBeNull();

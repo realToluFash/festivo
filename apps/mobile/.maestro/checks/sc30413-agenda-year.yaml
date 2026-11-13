@@ -1,0 +1,28 @@
+# sc-30413: the Calendar's Agenda on the 547-day event, for the year rule; waits out the long first load.
+appId: host.exp.Exponent
+---
+- openLink: ${METRO_URL}/--/calendar
+- extendedWaitUntil:
+    visible:
+      id: calendar.view.agenda
+    timeout: 30000
+- extendedWaitUntil:
+    notVisible: 'Loading the calendar.*'
+    timeout: 120000
+- tapOn:
+    id: calendar.view.agenda
+- extendedWaitUntil:
+    visible:
+      id: calendar.agenda
+    timeout: 120000
+- waitForAnimationToEnd: { timeout: 3000 }
+- takeScreenshot: agenda-1
+- scroll
+- takeScreenshot: agenda-2
+- tapOn:
+    id: calendar.view.month
+    optional: true
+- waitForAnimationToEnd: { timeout: 3000 }
+- tapOn: '13'
+- waitForAnimationToEnd: { timeout: 3000 }
+- takeScreenshot: month-day-rows

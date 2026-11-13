@@ -250,14 +250,45 @@ describe('a window that opens through a Modal of its own (sc-42690)', () => {
     expect(pill).toContain("if (event.nativeEvent.actionName === 'activate') onPress();");
   });
 
-  it('has Create an organisation’s first field take TalkBack’s focus before the keys (qa2 #43597)', () => {
-    const walk = read('CreateWalkWindow.tsx');
-    const focus = read('screenReaderFocus.ts');
+  it('gives Today’s own opener the same quiet double tap (qa2 #44464)', () => {
+    expect(read('TodayCover.tsx')).toContain('...quietTap(org.onPress, org.expanded),');
+  });
 
-    expect(walk).toContain("if (opening.focus === 'search') cancelKeys = focusReadOnce(search);");
-    expect(walk).toContain("else if (opening.focus === 'name') cancelKeys = focusReadOnce(field);");
-    expect(focus).toMatch(
-      /moveScreenReaderFocus\(input\.current\);\s+keys = setTimeout\(\(\) => input\.current\?\.focus\(\), HOVER_LANDS_MS\);/,
+  it('has Create an organisation take the keys while hidden, then TalkBack’s focus on its field (qa2 #44464)', () => {
+    const walk = read('CreateWalkWindow.tsx');
+
+    expect(walk).toContain("const talkBack = Platform.OS === 'android' && readerOn;");
+    expect(walk).toMatch(
+      /const unnamed = useUnnamedWindow\(\s*talkBack && shown,\s*onScreen,\s*null,\s*phone \? WINDOW_ARRIVES_MS \+ PHONE_FIELD_SETTLES_MS : arriving,\s*\);/,
+    );
+    expect(walk).toContain('onShow={() => setOnScreen(true)}');
+    expect(walk).toMatch(/const behind = walk\.asking \|\| unnamed \?/);
+    expect(walk).toMatch(
+      /!talkBack \|\| !onScreen \|\| !unnamed \|\| opening\.walk\.asking\) return;\s+const keys = setTimeout/,
+    );
+    expect(walk).toMatch(
+      /!talkBack \|\| !onScreen \|\| unnamed \|\| opening\.walk\.asking\) return;\s+const input =\s+opening\.focus === 'search' \? search\.current : opening\.focus === 'name' \? field\.current : null;/,
+    );
+  });
+
+  it('raises the keys on Create an organisation’s field once shown, moving TalkBack’s focus only onto a field still focused (qa3 #45182)', () => {
+    expect(read('CreateWalkWindow.tsx')).toMatch(
+      /\/\/ .*\s+if \(input\.isFocused\(\)\) moveScreenReaderFocus\(input\);\s+raiseKeysOn\(input\);\s+\}, \[talkBack, onScreen, unnamed, opening\]\);/,
+    );
+  });
+
+  it('keeps the phone’s window hidden from TalkBack until its field has given up the focus it took while hidden (qa3 #46182)', () => {
+    expect(read('CreateWalkWindow.tsx')).toContain('const PHONE_FIELD_SETTLES_MS = 150;');
+  });
+
+  it('keeps main’s keys after the window settles with TalkBack off, on the phone and the tablet (lead, PR #2098)', () => {
+    const walk = read('CreateWalkWindow.tsx');
+
+    expect(walk).toMatch(
+      /if \(talkBack \|\| !shown \|\| opening\.walk\.asking\) return;\s+const wait = setTimeout\(\(\) => \{\s+if \(opening\.focus === 'search'\) search\.current\?\.focus\(\);\s+else if \(opening\.focus === 'name'\) field\.current\?\.focus\(\);\s+else moveScreenReaderFocus\(question\.current\);\s+\}, SETTLED_MS\);/,
+    );
+    expect(walk).toContain(
+      'const arriving = reduced ? 0 : phone ? WINDOW_ARRIVES_MS : tokens.motionBase;',
     );
   });
 });

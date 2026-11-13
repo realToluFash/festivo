@@ -4,6 +4,7 @@ import { RouterProvider, createMemoryRouter } from 'react-router';
 import { act } from 'react';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 
+import { atPhoneWidth, atWideWidth } from '../../test-widths.ts';
 import { routes } from '../index.tsx';
 
 const TOKEN = 'goJP8j72G8dKsdGysCtB7qA4o2SdVzDrjFodz60tDDc';
@@ -106,6 +107,66 @@ describe("a guest's own link", () => {
       account.compareDocumentPosition(closing) & Node.DOCUMENT_POSITION_FOLLOWING,
     ).toBeTruthy();
     expect(screen.queryByText(/This page is yours for this event/)).toBeNull();
+  });
+
+  it('reads cover, answers, when, where and who, then the foot', async () => {
+    api({ '/api/guest-links/page': [{ status: 200, body: PAGE }] });
+    open();
+
+    const answers = await screen.findByRole('heading', { name: 'Your answer' });
+    const where = screen.getByText('The Civic Centre');
+    const foot = screen.getByText('You do not need an account to answer.');
+    const after = (first: Node, second: Node) =>
+      first.compareDocumentPosition(second) & Node.DOCUMENT_POSITION_FOLLOWING;
+    expect(after(screen.getByRole('heading', { level: 1 }), answers)).toBeTruthy();
+    expect(after(answers, where)).toBeTruthy();
+    expect(after(where, foot)).toBeTruthy();
+  });
+
+  it('draws only the cover, the answer and three rows while it loads at a phone', async () => {
+    atPhoneWidth();
+    vi.spyOn(globalThis, 'fetch').mockImplementation(() => new Promise<Response>(() => {}));
+    const { container } = open();
+
+    await screen.findByRole('status');
+    expect(container.querySelector('.gp-skel-cover')).not.toBeNull();
+    expect(container.querySelectorAll('.gp-skel-row')).toHaveLength(3);
+    expect(container.querySelector('.gp-skel-details')).toBeNull();
+  });
+
+  it('adds the details beside the answer while it loads in two columns', async () => {
+    atWideWidth();
+    vi.spyOn(globalThis, 'fetch').mockImplementation(() => new Promise<Response>(() => {}));
+    const { container } = open();
+
+    await screen.findByRole('status');
+    expect(container.querySelectorAll('.gp-skel-row')).toHaveLength(3);
+    expect(container.querySelector('.gp-skel-details')).not.toBeNull();
+  });
+
+  it('names the language shown on a button that opens the four in their own names', async () => {
+    api({ '/api/guest-links/page': [{ status: 200, body: PAGE }] });
+    open();
+
+    const button = await screen.findByRole('button', { name: 'Language: English' });
+    expect(screen.queryByRole('combobox')).toBeNull();
+    fireEvent.click(button);
+
+    const items = screen.getAllByRole('menuitemradio');
+    expect(items.map((item) => item.textContent)).toEqual([
+      'English',
+      'Español',
+      'Français',
+      'Português',
+    ]);
+    expect(items[0]?.getAttribute('aria-checked')).toBe('true');
+    expect(items[2]?.getAttribute('lang')).toBe('fr');
+    expect(screen.queryByText('Your language follows you to every device.')).toBeNull();
+
+    fireEvent.keyDown(items[0] as HTMLElement, { key: 'End' });
+    expect(document.activeElement).toBe(items[3]);
+    fireEvent.keyDown(items[3] as HTMLElement, { key: 'Home' });
+    expect(document.activeElement).toBe(items[0]);
   });
 
   it('is marked not to be indexed and to send no referrer', async () => {
@@ -483,6 +544,18 @@ describe('when answers have closed', () => {
     expect(screen.queryByRole('button', { name: 'Yes, I’ll be there' })).toBeNull();
   });
 
+  it('keeps the closing line and Not {name}? in the foot, without the line about answering', async () => {
+    api({ '/api/guest-links/page': [{ status: 200, body: { ...PAGE, answersOpen: false } }] });
+    open();
+
+    expect(
+      await screen.findByText(
+        'This invitation is for you and your family. Other guests cannot see your answer.',
+      ),
+    ).toBeDefined();
+    expect(screen.queryByText('You do not need an account to answer.')).toBeNull();
+  });
+
   it('says You didn’t answer to a guest who never did', async () => {
     api({ '/api/guest-links/page': [{ status: 200, body: { ...PAGE, answersOpen: false } }] });
     open();
@@ -539,6 +612,19 @@ describe('when the event is paused, called off or over (sc-3591)', () => {
     expect(screen.queryByText(/Answers have closed/)).toBeNull();
   });
 
+  it('reads the notice before the cover card at a desk, where the columns sit side by side', async () => {
+    atWideWidth();
+    api({
+      '/api/guest-links/page': [{ status: 200, body: at('paused', false, answered('coming')) }],
+    });
+    open();
+
+    const notice = (await screen.findByText(PAUSED_NOTICE)).closest('[role="status"]');
+    const h1 = screen.getByRole('heading', { level: 1 });
+    expect(notice?.parentElement?.classList.contains('gp-columns')).toBe(true);
+    expect(notice?.compareDocumentPosition(h1)).toBe(Node.DOCUMENT_POSITION_FOLLOWING);
+  });
+
   it('says You didn’t answer, paused before the start, and offers no answer', async () => {
     api({ '/api/guest-links/page': [{ status: 200, body: at('paused', false) }] });
     open();
@@ -584,7 +670,7 @@ describe('when the event is paused, called off or over (sc-3591)', () => {
     expect(screen.queryByText('Coming')).toBeNull();
     expect(screen.queryByText(ADAEZE)).toBeNull();
     expect(screen.getByRole('button', { name: `Not ${ADAEZE}? Tell us` })).toBeDefined();
-    expect(screen.getByText('You do not need an account to answer.')).toBeDefined();
+    expect(screen.queryByText('You do not need an account to answer.')).toBeNull();
   });
 
   it('keeps the answer read-only once finished, under the event’s name', async () => {
@@ -604,6 +690,25 @@ describe('when the event is paused, called off or over (sc-3591)', () => {
     expect(screen.queryByText('You are invited')).toBeNull();
     expect(screen.getByRole('button', { name: `Not ${ADAEZE}? Tell us` })).toBeDefined();
   });
+
+  it.each([
+    ['paused before the start', 'paused', false],
+    ['paused after the start', 'paused', true],
+    ['called off', 'calledOff', false],
+    ['finished', 'finished', true],
+  ])(
+    'drops the account line from the foot when %s, keeping the closing line and Tell us',
+    async (_, phase, started) => {
+      api({
+        '/api/guest-links/page': [{ status: 200, body: at(phase, started, answered('coming')) }],
+      });
+      open();
+
+      expect(await screen.findByText(i18next.t('guest.closing'))).toBeDefined();
+      expect(screen.getByRole('button', { name: `Not ${ADAEZE}? Tell us` })).toBeDefined();
+      expect(screen.queryByText('You do not need an account to answer.')).toBeNull();
+    },
+  );
 
   it('keeps Check and send with what was chosen when a send is refused 409 event_paused', async () => {
     api({
@@ -716,6 +821,7 @@ describe('a page left open (sc-3591)', () => {
     await later();
 
     expect(await screen.findByRole('button', { name: 'Sorry, I can’t' })).toBeDefined();
+    expect(screen.getByText('You do not need an account to answer.')).toBeDefined();
     const h1 = screen.getByRole('heading', { level: 1, name: 'You are invited' });
     await waitFor(() => expect(document.activeElement).toBe(h1));
   });
@@ -807,5 +913,94 @@ describe('a page left open (sc-3591)', () => {
     expect(
       await screen.findByRole('heading', { name: 'This invitation link does not work' }),
     ).toBeDefined();
+  });
+});
+
+describe('Add to calendar (sc-3627)', () => {
+  const FEED = '/api/guest-calendars/abc.ics';
+  const coming = (extra: Record<string, unknown> = {}) => ({
+    ...answered('coming'),
+    calendarFeed: FEED,
+    ...extra,
+  });
+
+  it('offers Apple / Outlook by webcal and Google Calendar by URL after Coming, each read with the line', async () => {
+    api({ '/api/guest-links/page': [{ status: 200, body: coming() }] });
+    open();
+
+    const heading = await screen.findByRole('heading', { level: 2, name: 'Add to calendar' });
+    const apple = screen.getByRole('link', { name: 'Apple / Outlook' });
+    const google = screen.getByRole('link', { name: 'Google Calendar' });
+    const line = screen.getByText(
+      'Your calendar updates by itself if the date, time or place changes.',
+    );
+
+    expect(heading).toBeDefined();
+    expect(apple.getAttribute('href')).toMatch(/^webcal:\/\/.+\/api\/guest-calendars\/abc\.ics$/);
+    expect(google.getAttribute('href')).toMatch(
+      /^https:\/\/calendar\.google\.com\/calendar\/r\?cid=webcal%3A%2F%2F.+abc\.ics$/,
+    );
+    expect(google.getAttribute('target')).toBe('_blank');
+    for (const link of [apple, google]) {
+      expect(link.getAttribute('aria-describedby')).toBe(line.id);
+    }
+  });
+
+  it('stays with Coming once answers have closed, during Happening now', async () => {
+    api({
+      '/api/guest-links/page': [
+        { status: 200, body: coming({ answersOpen: false, started: true }) },
+      ],
+    });
+    open();
+
+    expect(await screen.findByRole('heading', { name: 'Add to calendar' })).toBeDefined();
+  });
+
+  it('is not there without a feed: another answer, or a paused, called-off or finished event', async () => {
+    for (const body of [
+      { ...answered('notComing'), calendarFeed: null },
+      { ...answered('maybe'), calendarFeed: null },
+      { ...answered('coming'), phase: 'paused', answersOpen: false, calendarFeed: null },
+      { ...answered('coming'), phase: 'calledOff', answersOpen: false, calendarFeed: null },
+      { ...answered('coming'), phase: 'finished', answersOpen: false, calendarFeed: null },
+    ]) {
+      api({ '/api/guest-links/page': [{ status: 200, body }] });
+      const { unmount } = open();
+
+      expect(await screen.findAllByRole('heading', { level: 1 })).toBeDefined();
+      expect(screen.queryByRole('heading', { name: 'Add to calendar' })).toBeNull();
+      unmount();
+      vi.restoreAllMocks();
+    }
+  });
+
+  it('leaves while the answer is being changed, and comes back on keeping it', async () => {
+    api({ '/api/guest-links/page': [{ status: 200, body: coming() }] });
+    open();
+
+    fireEvent.click(await screen.findByRole('button', { name: 'Change my answer' }));
+    expect(screen.queryByRole('heading', { name: 'Add to calendar' })).toBeNull();
+
+    fireEvent.click(screen.getByRole('button', { name: 'Keep my answer' }));
+    expect(screen.getByRole('heading', { name: 'Add to calendar' })).toBeDefined();
+  });
+
+  it('leaves when Coming changes to Sorry, I can’t', async () => {
+    api({
+      '/api/guest-links/page': [{ status: 200, body: coming() }],
+      '/api/guest-links/reply': [
+        { status: 200, body: { ...answered('notComing'), calendarFeed: null } },
+      ],
+    });
+    open();
+
+    fireEvent.click(await screen.findByRole('button', { name: 'Change my answer' }));
+    fireEvent.click(screen.getByRole('button', { name: 'Sorry, I can’t' }));
+
+    expect(
+      await screen.findByRole('heading', { name: `We’ll miss you, ${ADAEZE}.` }),
+    ).toBeDefined();
+    expect(screen.queryByRole('heading', { name: 'Add to calendar' })).toBeNull();
   });
 });

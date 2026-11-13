@@ -32,17 +32,19 @@ const LINKED = GUEST_PAGES.flatMap((page) => page.states);
 const STATES = LINKED.map((one) => /state=(\w+)/u.exec(one.to)?.[1] ?? '');
 
 describe('the guest’s page states (sc-31306)', () => {
-  it('links every state the boards draw once, in the boards’ six groups', () => {
+  it('links every state the boards draw once, in the boards’ seven groups', () => {
     expect(GUEST_PAGES.map((page) => page.name)).toEqual([
       'Answering',
       'Coming back, and answers closing',
       'Over, gone, and the rest',
       'In the guest’s own language (sc-3790)',
       'The hosts’ messages and the guest’s own',
+      'The hosts’ notes, entries in Messages (sc-3971)',
       'Your messages, opened from the guest’s page (sc-3969, sc-3950)',
+      'Your messages, from an email’s link (sc-3969)',
     ]);
-    expect(STATES).toHaveLength(70);
-    expect(new Set(STATES).size).toBe(70);
+    expect(STATES).toHaveLength(91);
+    expect(new Set(STATES).size).toBe(91);
     expect(STATES.every(isGuestState)).toBe(true);
     expect(LINKED.find((one) => one.to.includes('messageArrival'))?.to).toBe(
       '/demo/guest?state=messageArrival#m-3',
@@ -64,6 +66,8 @@ describe('the guest’s page states (sc-31306)', () => {
     expect(startOf('zone').readerZone).not.toBe(EVENT.timeZone);
     expect(startOf('french')).toMatchObject({ lang: 'fr', menuOpen: true });
     expect(startOf('replyFailed')).toMatchObject({ draftFailed: true, want: 'sendMessage' });
+    expect(startOf('noBox')).toMatchObject({ box: 'none', messages: 3 });
+    expect(startOf('noBoxOpen')).toMatchObject({ box: 'refused', draftFailed: true });
     expect(startOf('gone').page).toBe('gone');
   });
 
@@ -179,17 +183,17 @@ describe('the words and dates', () => {
     expect(en.messageCount(1042)).toBe('1,042 of 1,000 characters');
   });
 
-  it('writes French as the board does: main’s, #5535’s, and the bracketed proposals', () => {
+  it('writes French as the product does, and the bracketed proposals where it has none', () => {
     const fr = wordsFor('fr');
 
     expect(fr.invited).toBe('Vous avez une invitation');
     expect(wordsFor('es').invited).toBe('Tiene una invitación');
     expect(wordsFor('pt').invited).toBe('Tem um convite');
-    expect(fr.yourAnswer).toBe('[Votre réponse]');
+    expect(fr.yourAnswer).toBe('Votre réponse');
     expect(fr.replyBy(dayOf('2026-10-30', 'fr'))).toBe(
       '[Merci de répondre avant le vendredi 30 octobre. Vous pourrez modifier votre réponse d’ici là.]',
     );
-    expect(fr.tell).toBe('Vous n’êtes pas Maria Fernanda Albuquerque Santos ? Dites-le-nous');
+    expect(fr.tell).toBe('Vous n’êtes pas Maria Fernanda Albuquerque Santos ? Prévenez-nous');
     expect(fr.hosts).toBe('Adaeze Obi et Tunde Bakare');
     expect(fr.languageCurrent('Français')).toMatch(/^Langue\s:\sFrançais$/u);
   });
@@ -211,7 +215,7 @@ describe('the words and dates', () => {
     expect(en.answered('coming', day)).toBe('You answered Coming on Tuesday, October 27.');
     expect(en.answered('notComing', day)).toBe('You answered Not coming on Tuesday, October 27.');
     expect(wordsFor('fr').answered('notComing', dayOf('2026-10-27', 'fr'))).toBe(
-      '[Vous avez répondu Absent le mardi 27 octobre.]',
+      'Vous avez répondu « Je ne viens pas » le mardi 27 octobre.',
     );
   });
 

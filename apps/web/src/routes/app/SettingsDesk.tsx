@@ -17,6 +17,7 @@ export function SettingsDesk() {
           <Outlet />
         ) : (
           <>
+            {desk.offline}
             {desk.said}
             {standIn}
           </>

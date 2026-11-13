@@ -86,17 +86,45 @@ export const W = {
   ownLanguage: 'Each guest gets this in their own language.',
   noteForGuests: 'Note for your guests',
   optional: 'Optional',
-  noteOnPage:
-    'Shown on each guest’s page, under the change. Never sent by email, text or WhatsApp.',
+  noteOnPage: 'Shown on each guest’s page, in Messages. Never sent by email, text or WhatsApp.',
   send: 'Send',
   notNow: 'Not now',
   notTold: 'Guests have not been told yet',
   newStartTime: 'New start time',
   newDate: 'New date',
-  newDates: 'New dates',
   newVenue: 'New venue',
+  venueTbc: 'Venue to be confirmed',
+  venueAddressAdded: 'Venue address added',
+  pausedItem: 'Paused',
+  calledOffItem: 'Called off',
+  endedEarlyItem: 'Ended early',
+  backOnItem: 'Back on',
+  tablesShared: 'Tables shared',
+  menuAgain: 'Menu choices to make again',
   tellThem: 'Tell them',
   dismiss: 'Dismiss',
+  dismissed: 'Dismissed. Nothing was sent.',
+  tellGuests: 'Tell guests?',
+  everyoneInvited: 'Everyone invited.',
+  toldItPaused: 'Everyone who was told it was paused.',
+  comingWithTable: 'Coming guests who have a table.',
+  chooseAgain: 'Guests who need to choose again.',
+  ownTable: 'Each guest’s own table is added under your message.',
+  sendOffline: 'Not sent. Check your connection and try again.',
+  sendUnconfirmed:
+    'Soirely could not confirm this was sent. Press Send again. Nobody is told twice.',
+  sendRefusedRole: 'Nothing was sent. Your role does not include the permission this needs.',
+  sendRefusedDraft:
+    'Nothing was sent. This event is a draft. Make it live to write to your guests.',
+  sendRefusedFinished:
+    'Nothing was sent. This event finished more than 30 days ago, so you can no longer write to its guests.',
+  sendRefusedDeleted: 'Nothing was sent. This event is not available.',
+  sendRefused: 'Not sent. Try again in a moment.',
+  figuresFailed:
+    'The numbers did not load. Press Send to load them again. Nothing is sent until they show.',
+  pressedEarly: 'Not sent yet. Check the numbers, then press Send.',
+  allTold: 'Your guests had already been told, so nothing was sent again.',
+  openYourPage: 'Open your page',
   invitation: 'Invitation',
   invitationReplies: 'Yes, I’ll be there · Sorry, I can’t · I’m not sure yet',
   soirelysOwn: 'Soirely’s own words, in each guest’s language, with their own link',
@@ -213,6 +241,13 @@ function waits(paid: 'sms' | 'wa', count: number): string {
     : `${count} ${name} messages will wait for credits.`;
 }
 
+function countParts(waiting: number, notMatched: number): string[] {
+  return [
+    ...(waiting > 0 ? [`${waiting} waiting`] : []),
+    ...(notMatched > 0 ? [`${notMatched} not matched`] : []),
+  ];
+}
+
 export const say = {
   section: (word: string, count: number) => `${word} · ${count}`,
   where: (where: string, text: string) => `${where} · ${text}`,
@@ -222,11 +257,8 @@ export const say = {
     `Done by ${name} at ${time}. It comes back to Needs you if they write again.`,
   doneByShort: (name: string) => `Done by ${name}`,
   badgeName: (waiting: number, notMatched: number) =>
-    notMatched === 0
-      ? `Messages, ${waiting} waiting`
-      : `Messages, ${waiting} waiting, ${notMatched} not matched`,
-  counts: (waiting: number, notMatched: number) =>
-    notMatched === 0 ? `${waiting} waiting` : `${waiting} waiting · ${notMatched} not matched`,
+    ['Messages', ...countParts(waiting, notMatched)].join(', '),
+  counts: (waiting: number, notMatched: number) => countParts(waiting, notMatched).join(' · '),
   arrived: (name: string) => `${name} answered on their page.`,
   answerLine: (name: string, channel: string) =>
     `Your answer goes on ${name}’s page. Soirely tells them by ${channel}.`,
@@ -258,7 +290,7 @@ export const say = {
   noticeBody: (hosts: string, event: string) =>
     `${hosts} sent you a message about ${event}. It is on your page.`,
   noticeSms: (hosts: string, event: string, link: string) =>
-    `${hosts}: you have a new message about ${event}. Read it on your page: ${link}`,
+    `${hosts}: a new message about ${event}. Read it here: ${link}`,
   emailFrom: (org: string) => `Email · from ${org} via Soirely`,
   smsParts: (parts: number) => (parts === 1 ? 'SMS · 1 part' : `SMS · ${parts} parts`),
   whatsAppTemplate: 'WhatsApp · the approved template',
@@ -303,7 +335,34 @@ export const say = {
   datesMoved: (now: string, was: string) => `The dates are now ${now} (was ${was}).`,
   venueMoved: (now: string, was: string) => `The venue is now ${now} (was ${was}).`,
   venueAdded: (now: string) => `The venue is now ${now}.`,
-  venueGone: (was: string) => `The venue is now to be confirmed (was ${was}).`,
+  venueGone: (was: string) => `The venue is to be confirmed (was ${was}).`,
+  addressAt: (venue: string, address: string) => `${venue} is at ${address}.`,
+  tellName: (name: string) => `Tell ${name}?`,
+  sendingTo: (count: number) => `Sending to ${count} guests.`,
+  guestsCount: (count: number) => `${count} guests`,
+  sendingToName: (name: string) => `Sending to ${name}.`,
+  pausedFor: (event: string) =>
+    `${event} is paused for now. Your hosts will tell you when it is back on.`,
+  calledOff: (event: string) => `${event} has been called off. It won’t go ahead.`,
+  endedEarly: (event: string) => `${event} has ended early. What was still to come won’t go ahead.`,
+  backOn: (event: string) => `${event} is back on.`,
+  tableReady: (event: string) => `Your table at ${event} is ready to see.`,
+  dishGone: (event: string) =>
+    `A dish you chose for ${event} is no longer on the menu. Please choose again.`,
+  newLinkSent: (event: string) =>
+    `Your hosts have sent you a new link for ${event}. Your old link no longer works.`,
+  newLinkFor: (name: string) => `New link for ${name}`,
+  held: (count: number) =>
+    count === 1
+      ? '1 text or WhatsApp message will wait until you top up. Every email still goes.'
+      : `${count} texts and WhatsApp messages will wait until you top up. Every email still goes.`,
+  quietWait: (count: number, time: string) =>
+    count === 1
+      ? `The text to 1 person waits until ${time}, their time.`
+      : `Texts to ${count} people wait until ${time}, their time.`,
+  change: (what: string) => `Change · ${what}`,
+  changes: (count: number) => `${count} changes`,
+  changedSubject: (event: string) => `Changed: ${event}`,
   inviteTitle: (event: string, hosts: string) => `${event}: an invitation from ${hosts}`,
   invitedTo: (event: string, date: string) => `You are invited to ${event} on ${date}.`,
   replyBy: (date: string) => `Will you be there? Please reply by ${date}.`,
@@ -362,4 +421,23 @@ export const say = {
   subjectTooLong: (most: string) => `Shorten the subject to ${most} characters or fewer.`,
   messageTooLong: (most: string) => `Shorten the message to ${most} characters or fewer.`,
   ownDesign: (what: string) => `${what.replace(/…$/u, '')} has its own design.`,
+};
+
+/** sc-3978's stop in a guest's conversation, in l10n's English (#44809). */
+export const STOP = {
+  moreActions: 'More actions',
+  letThemWriteAgain: 'Let them write again',
+  line: 'The box to write to you leaves their page. Their texts, emails and WhatsApp messages still reach you here, and they are not told.',
+  stop: 'Stop',
+  notSaved: 'Not saved. Try again.',
+  cancel: 'Cancel',
+} as const;
+
+export const sayStop = {
+  item: (guest: string) => `Stop ${guest} writing from their page…`,
+  title: (guest: string) => `Stop ${guest} writing from their page?`,
+  stopped: (member: string, date: string) =>
+    `${member} stopped them writing from their page on ${date}.`,
+  youStopped: (date: string) => `You stopped them writing from their page on ${date}.`,
+  writesAgain: (guest: string) => `${guest} can write from their page again.`,
 };

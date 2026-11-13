@@ -1,6 +1,3 @@
-import { readFileSync } from 'node:fs';
-import { join } from 'node:path';
-
 import { act, fireEvent, render, screen, waitFor, within } from '@testing-library/react';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { RouterProvider, createMemoryRouter } from 'react-router';
@@ -8,8 +5,10 @@ import { RouterProvider, createMemoryRouter } from 'react-router';
 import { __setConfig, config } from '../../../config.ts';
 import { __setSessionState, type Session } from '../../../session.ts';
 import { OWNER_PERMISSIONS, membership } from '../../../test-memberships.ts';
+import { cssRule, stylesheet } from '../../../test-styles.ts';
 import { routes } from '../../index.tsx';
 
+const GUESTS_CSS = stylesheet(import.meta.dirname, 'guests.css');
 const IRE = membership({ id: 'org_1', name: 'Ìrè Events' });
 
 const EVENT = {
@@ -226,6 +225,10 @@ describe('Guests (sc-1468)', () => {
       const reply = await screen.findByRole('region', { name: 'Reply' });
       expect(within(reply).getByText('Coming')).toBeDefined();
       expect(within(reply).getByText('replied Nov 14')).toBeDefined();
+      const card = screen
+        .getByRole('heading', { level: 2, name: 'Chief Amaka Obi' })
+        .closest('section') as HTMLElement;
+      expect(card.querySelector('.desk-on-card')?.textContent).toBe('Coming · replied Nov 14');
     } finally {
       if (zone == null) delete process.env.TZ;
       else process.env.TZ = zone;
@@ -236,6 +239,7 @@ describe('Guests (sc-1468)', () => {
     await openNgozi();
 
     expect(within(column()).queryByRole('region', { name: 'Reply' })).toBeNull();
+    expect(column().querySelector('.gs-card.is-guest .desk-on-card')).toBeNull();
   });
 
   it('says No guests yet with Add guest on the event’s cover, and no count', async () => {
@@ -698,6 +702,28 @@ describe('A guest’s details, and correcting them (sc-3773)', () => {
     expect(details.getByRole('button', { name: 'Edit' })).toBeDefined();
   });
 
+  it('writes the Added date in the browser’s date order, as the reply’s (sc-3773, #44910)', async () => {
+    vi.spyOn(navigator, 'language', 'get').mockReturnValue('en-GB');
+    await openNgozi();
+
+    expect(within(column()).getByText(/^14 Sept? by Kemi Bankole$/u)).toBeDefined();
+  });
+
+  it('holds the cover card’s place and three detail rows while the guest loads, heard as Loading…', async () => {
+    signedIn();
+    await onGuests({
+      'GET /api/events/ev_1/guests': () => json(listOf([NGOZI, AMAKA])),
+      'GET /api/events/ev_1/guests/g_1': () => new Promise<Response>(() => {}),
+    });
+    fireEvent.click(await screen.findByRole('link', { name: /^Ngozi Eze/u }));
+
+    const loading = await within(column()).findByRole('status');
+    expect(loading.textContent).toBe('Loading…');
+    expect(loading.querySelectorAll('.gs-bone-guest')).toHaveLength(1);
+    expect(loading.querySelectorAll('.desk-row.is-bones')).toHaveLength(3);
+    expect(cssRule('.gs-bone-guest', GUESTS_CSS)).toContain('height: 170px;');
+  });
+
   it('shows no contact details and no Edit with guests.read alone', async () => {
     const { email: _email, mobile: _mobile, ...withoutContacts } = DETAILS;
     await openNgozi(
@@ -734,6 +760,62 @@ describe('A guest’s details, and correcting them (sc-3773)', () => {
     );
     expect(puts(sent)).toHaveLength(0);
   });
+
+  it('focuses the guest’s name once they load, however long the read takes (#45708)', async () => {
+    let answer: (response: Response) => void = () => undefined;
+    signedIn();
+    await onGuests({
+      'GET /api/events/ev_1/guests': () => json(listOf([NGOZI, AMAKA])),
+      'GET /api/events/ev_1/guests/g_1': () =>
+        new Promise<Response>((resolve) => {
+          answer = resolve;
+        }),
+    });
+    fireEvent.click(await screen.findByRole('link', { name: /^Ngozi Eze/u }));
+    await within(column()).findByRole('status');
+    await act(() => new Promise((resolve) => setTimeout(resolve, 300)));
+
+    act(() => answer(tagged(DETAILS, '"1"')));
+
+    await waitFor(() =>
+      expect(document.activeElement).toBe(
+        screen.getByRole('heading', { level: 2, name: 'Ngozi Eze' }),
+      ),
+    );
+  });
+
+  it.each(['Save', 'Cancel'])(
+    'shows a colleague’s save that landed mid-edit after %s with nothing changed (#45708)',
+    async (leave) => {
+      const before = config();
+      __setConfig({ ...before, mercureUrl: 'http://hub.test/.well-known/mercure' });
+      StubSource.made = [];
+      vi.stubGlobal('EventSource', StubSource);
+      const hub = () =>
+        json({ token: 'tok', expiresAt: new Date(Date.now() + 3_600_000).toISOString() });
+      let details = DETAILS;
+
+      try {
+        await editNgozi({
+          'GET /api/events/ev_1/guests/g_1': () => tagged(details, '"1"'),
+          'POST /api/events/ev_1/guests/subscriptions': hub,
+          'POST /api/realtime/subscriptions': hub,
+        });
+        const source = StubSource.made.find((one) => one.url.includes('guests'))!;
+        details = { ...DETAILS, fullName: 'Ngozi Okafor' };
+        source.publish(listOf([{ ...NGOZI, fullName: 'Ngozi Okafor' }, AMAKA]));
+
+        fireEvent.click(within(column()).getByRole('button', { name: leave }));
+
+        expect(
+          await screen.findByRole('heading', { level: 2, name: 'Ngozi Okafor' }),
+        ).toBeDefined();
+      } finally {
+        __setConfig(before);
+        vi.unstubAllGlobals();
+      }
+    },
+  );
 
   it('saves against the version it read, and says Saved', async () => {
     const saved = { ...DETAILS, fullName: 'Ngozi Eze-Okafor' };
@@ -784,7 +866,7 @@ describe('A guest’s details, and correcting them (sc-3773)', () => {
     expect(puts(sent)).toHaveLength(0);
   });
 
-  it('shows a colleague’s change on a 412, only the fields that differ, and holds Save until one is chosen', async () => {
+  it('shows on a 412 only the fields this host changed, holds Save, and Keep mine keeps the colleague’s other change', async () => {
     let reads = 0;
     let saves = 0;
     const theirs = { ...DETAILS, mobile: '+2348035550199' };
@@ -819,7 +901,7 @@ describe('A guest’s details, and correcting them (sc-3773)', () => {
       within(panel)
         .getAllByRole('term')
         .map((one) => one.textContent),
-    ).toEqual(['Email address', 'Mobile number']);
+    ).toEqual(['Email address']);
     fireEvent.click(screen.getByRole('button', { name: 'Save' }));
     expect(puts(sent)).toHaveLength(1);
 
@@ -828,6 +910,172 @@ describe('A guest’s details, and correcting them (sc-3773)', () => {
     expect(await screen.findByText('Saved')).toBeDefined();
     expect(puts(sent)).toHaveLength(2);
     expect(ifMatches).toEqual(['"1"', '"2"']);
+    expect(puts(sent)[1]?.body).toMatchObject({
+      email: 'ngozi.eze@example.com',
+      mobile: { countryCode: 'NG', number: '0803 555 0199' },
+    });
+  });
+
+  it('after Keep mine fails, Save sends the merged form against their version, not the colleague’s old field', async () => {
+    let reads = 0;
+    let saves = 0;
+    const theirs = { ...DETAILS, mobile: '+2348035550199' };
+    const sent = await editNgozi({
+      'GET /api/events/ev_1/guests/g_1': () => {
+        reads += 1;
+        return reads === 1 ? tagged(DETAILS, '"1"') : tagged(theirs, '"2"');
+      },
+      'PUT /api/events/ev_1/guests/g_1': () => {
+        saves += 1;
+        if (saves === 1) return problem('precondition_failed', 412);
+        if (saves === 2) return problem('server_error', 500);
+        return tagged({ ...theirs, email: 'ngozi.eze@example.com' }, '"3"');
+      },
+    });
+    const ifMatches: (string | null)[] = [];
+    const fetch = vi.mocked(globalThis.fetch);
+    const answer = fetch.getMockImplementation()!;
+    fetch.mockImplementation(async (input, init) => {
+      if (init?.method === 'PUT') ifMatches.push(new Headers(init.headers).get('If-Match'));
+      return answer(input, init);
+    });
+
+    type(EMAIL, 'ngozi.eze@example.com');
+    fireEvent.click(screen.getByRole('button', { name: 'Save' }));
+    const panel = await screen.findByRole('alert');
+    fireEvent.click(within(panel).getByRole('button', { name: 'Keep mine' }));
+
+    expect(await screen.findByText('Not saved. Nothing was changed. Try again.')).toBeDefined();
+    fireEvent.click(screen.getByRole('button', { name: 'Save' }));
+
+    expect(await screen.findByText('Saved')).toBeDefined();
+    expect(ifMatches).toEqual(['"1"', '"2"', '"2"']);
+    expect(puts(sent)[2]?.body).toMatchObject({
+      email: 'ngozi.eze@example.com',
+      mobile: { countryCode: 'NG', number: '0803 555 0199' },
+    });
+  });
+
+  it('on a second 412 from Keep mine, the panel lists what this host changed and Keep mine sends its Yours', async () => {
+    let reads = 0;
+    let saves = 0;
+    const first = { ...DETAILS, email: 'ngozi.eze@example.com' };
+    const second = { ...DETAILS, email: 'other@example.com' };
+    const sent = await editNgozi({
+      'GET /api/events/ev_1/guests/g_1': () => {
+        reads += 1;
+        if (reads === 1) return tagged(DETAILS, '"1"');
+        return reads === 2 ? tagged(first, '"2"') : tagged(second, '"3"');
+      },
+      'PUT /api/events/ev_1/guests/g_1': () => {
+        saves += 1;
+        return saves < 3
+          ? problem('precondition_failed', 412)
+          : tagged(
+              { ...second, fullName: 'Ngozi Eze-Okafor', email: 'ngozi.eze@example.com' },
+              '"4"',
+            );
+      },
+    });
+
+    type('Full name', 'Ngozi Eze-Okafor');
+    type(EMAIL, 'ngozi.eze@example.com');
+    fireEvent.click(screen.getByRole('button', { name: 'Save' }));
+    const terms = (panel: HTMLElement) =>
+      within(panel)
+        .getAllByRole('term')
+        .map((one) => one.textContent);
+    const panel = await screen.findByRole('alert');
+    expect(terms(panel)).toEqual(['Full name']);
+
+    fireEvent.click(within(panel).getByRole('button', { name: 'Keep mine' }));
+    await waitFor(() => expect(puts(sent)).toHaveLength(2));
+    const again = await screen.findByRole('alert');
+    await waitFor(() => expect(terms(again)).toEqual(['Full name', 'Email address']));
+    expect(within(again).getByText('ngozi.eze@example.com')).toBeDefined();
+
+    fireEvent.click(within(again).getByRole('button', { name: 'Keep mine' }));
+
+    expect(await screen.findByText('Saved')).toBeDefined();
+    expect(puts(sent)[2]?.body).toMatchObject({
+      fullName: 'Ngozi Eze-Okafor',
+      email: 'ngozi.eze@example.com',
+    });
+  });
+
+  it('Keep mine brings back a companion their version removed, as a new one (Decided, 13 Nov)', async () => {
+    let reads = 0;
+    let saves = 0;
+    const theirs = { ...DETAILS, companions: [] };
+    const sent = await editNgozi({
+      'GET /api/events/ev_1/guests/g_1': () => {
+        reads += 1;
+        return reads === 1 ? tagged(DETAILS, '"1"') : tagged(theirs, '"2"');
+      },
+      'PUT /api/events/ev_1/guests/g_1': () => {
+        saves += 1;
+        return saves === 1
+          ? problem('precondition_failed', 412)
+          : tagged(
+              {
+                ...theirs,
+                companions: [
+                  { id: 'c_2', fullName: 'Obi Eze', state: 'coming' },
+                  { id: 'c_3', fullName: 'Tolu Bankole', state: 'coming' },
+                ],
+              },
+              '"3"',
+            );
+      },
+    });
+
+    fireEvent.click(screen.getByRole('button', { name: 'Add a companion' }));
+    type('Companion’s full name, 2 of 2', 'Tolu Bankole');
+    fireEvent.click(screen.getByRole('button', { name: 'Save' }));
+    const panel = await screen.findByRole('alert');
+    expect(
+      within(panel)
+        .getAllByRole('term')
+        .map((one) => one.textContent),
+    ).toEqual(['Companions']);
+    expect(puts(sent)[0]?.body).toMatchObject({
+      companions: [
+        { id: 'c_1', fullName: 'Obi Eze' },
+        { id: null, fullName: 'Tolu Bankole' },
+      ],
+    });
+
+    fireEvent.click(within(panel).getByRole('button', { name: 'Keep mine' }));
+
+    expect(await screen.findByText('Saved')).toBeDefined();
+    expect(puts(sent)[1]?.body).toMatchObject({
+      companions: [
+        { id: null, fullName: 'Obi Eze' },
+        { id: null, fullName: 'Tolu Bankole' },
+      ],
+    });
+  });
+
+  it('sends nothing on a 412 when their version already holds every change, and shows it', async () => {
+    let reads = 0;
+    const theirs = { ...DETAILS, email: 'ngozi.eze@example.com' };
+    const sent = await editNgozi({
+      'GET /api/events/ev_1/guests/g_1': () => {
+        reads += 1;
+        return reads === 1 ? tagged(DETAILS, '"1"') : tagged(theirs, '"2"');
+      },
+      'PUT /api/events/ev_1/guests/g_1': () => problem('precondition_failed', 412),
+    });
+
+    type(EMAIL, 'ngozi.eze@example.com');
+    fireEvent.click(screen.getByRole('button', { name: 'Save' }));
+
+    expect(await screen.findByText('ngozi.eze@example.com')).toBeDefined();
+    expect(
+      screen.queryByText('Someone else changed this guest. Here is their version.'),
+    ).toBeNull();
+    expect(screen.queryByRole('button', { name: 'Keep mine' })).toBeNull();
+    expect(puts(sent)).toHaveLength(1);
   });
 
   it('keeps everything typed when the save fails, and says so', async () => {
@@ -1161,7 +1409,11 @@ describe('The wrong-person flag (sc-1526)', () => {
       permissions,
     );
     fireEvent.click(await screen.findByRole('link', { name: /^Ngozi Eze/u }));
-    await screen.findByRole('heading', { level: 2, name: 'Ngozi Eze' });
+    await waitFor(() =>
+      expect(document.activeElement).toBe(
+        screen.getByRole('heading', { level: 2, name: 'Ngozi Eze' }),
+      ),
+    );
 
     return sent;
   }
@@ -1258,8 +1510,41 @@ describe('The wrong-person flag (sc-1526)', () => {
 
 describe('a companion field (sc-43267)', () => {
   it('ends a placeholder too long for the field in an ellipsis, on one line', () => {
-    expect(readFileSync(join(import.meta.dirname, 'guests.css'), 'utf8')).toMatch(
-      /\.gs-companion \.desk-box input \{\s*overflow: hidden;\s*text-overflow: ellipsis;\s*white-space: nowrap;\s*\}/u,
+    const input = cssRule('.gs-companion .desk-box input', GUESTS_CSS);
+
+    expect(input).toContain('overflow: hidden;');
+    expect(input).toContain('text-overflow: ellipsis;');
+    expect(input).toContain('white-space: nowrap;');
+  });
+});
+
+describe('a guest’s column at 320 (sc-3773)', () => {
+  it('shrinks below its widest field row, so the phone row never pushes the form past the screen', () => {
+    expect(cssRule('.gs-column', GUESTS_CSS)).toContain('min-width: 0;');
+  });
+});
+describe('the Guests top at 320 (sc-3773, ux #44604)', () => {
+  it('wraps the title only at spaces, with Add guest dropping to its own row', () => {
+    expect(cssRule('.gs-top', GUESTS_CSS)).toContain('flex-wrap: wrap;');
+    expect(cssRule('.gs-title', GUESTS_CSS)).toContain('flex: 1 1 auto;');
+    expect(cssRule('.gs-title', GUESTS_CSS)).toContain('overflow-wrap: break-word;');
+    expect(cssRule('.gs-title', GUESTS_CSS)).not.toContain('min-width: 0;');
+  });
+
+  it('wraps the crumbs whole at word breaks rather than truncating them', () => {
+    expect(cssRule('.gs .ev-crumb ol', GUESTS_CSS)).toContain('flex-wrap: wrap;');
+    expect(cssRule('.gs .ev-crumb-part', GUESTS_CSS)).toContain('min-width: auto;');
+    expect(cssRule('.gs .ev-crumb-part', GUESTS_CSS)).toContain('overflow-wrap: break-word;');
+    expect(cssRule('.gs .ev-crumb-name', GUESTS_CSS)).toContain('white-space: normal;');
+  });
+
+  it('keeps the switcher’s name to one line in the phone’s bar, ellipsised', () => {
+    const name = cssRule(
+      '.shell-sidebar .sw-opener-name',
+      stylesheet(import.meta.dirname, '../../../components/desk.css'),
     );
+
+    expect(name).toContain('text-overflow: ellipsis;');
+    expect(name).toContain('white-space: nowrap;');
   });
 });

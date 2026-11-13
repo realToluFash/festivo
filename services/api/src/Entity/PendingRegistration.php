@@ -24,9 +24,6 @@ class PendingRegistration
 
     public const int LIFETIME_HOURS = 24;
 
-    /** The "you already have an account" email, at most this often per address. */
-    public const int ALREADY_REGISTERED_EMAIL_MINUTES = 60;
-
     #[ORM\Id]
     #[ORM\Column(type: 'uuid')]
     private Uuid $id;
@@ -61,9 +58,6 @@ class PendingRegistration
 
     #[ORM\Column(type: Types::DATETIME_IMMUTABLE)]
     private DateTimeImmutable $codeSentAt;
-
-    #[ORM\Column(type: Types::DATETIME_IMMUTABLE, nullable: true)]
-    private ?DateTimeImmutable $alreadyRegisteredEmailedAt = null;
 
     #[ORM\Column(type: Types::DATETIME_IMMUTABLE)]
     private DateTimeImmutable $expiresAt;
@@ -158,10 +152,5 @@ class PendingRegistration
     public function secondsUntilResendAt(DateTimeImmutable $now): int
     {
         return Math\maxva(0, $this->codeSentAt->getTimestamp() + VerificationChallenge::RESEND_COOLDOWN_SECONDS - $now->getTimestamp());
-    }
-
-    public function alreadyRegisteredEmailed(DateTimeImmutable $now): void
-    {
-        $this->alreadyRegisteredEmailedAt = $now;
     }
 }

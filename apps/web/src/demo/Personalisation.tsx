@@ -14,8 +14,14 @@ import { ActionPair } from '../components/ActionPair.tsx';
 import { DemoBell } from './DemoBell.tsx';
 import { DemoOffline } from './DemoOffline.tsx';
 import { offButton } from '../offButton.ts';
-import { choose, useChosenScheme } from './chosenScheme.ts';
 import { Glyph } from '../components/Glyph.tsx';
+import { choose, useChosenScheme } from './chosenScheme.ts';
+import {
+  NotSaved,
+  PersonalisationFailed,
+  PersonalisationLoading,
+  SavedMark,
+} from '../components/PersonalisationParts.tsx';
 import { LayersContext, focusWhenFree, useDeskDialog } from '../layers.ts';
 import {
   HOLD_MS,
@@ -38,10 +44,9 @@ import {
   statusLine,
 } from './personalisation.ts';
 import { Dots, Ground, Pieces } from './SchemeArt.tsx';
-import { TextAction, TitleRow } from '../components/SettingsParts.tsx';
+import { TitleRow } from '../components/SettingsParts.tsx';
 import type { Tell } from '../components/SettingsParts.tsx';
 import { useLater } from '../useLater.ts';
-import './personalisation.css';
 
 /** Settings › Personalisation at a desk, A · Swatches (Web-Personalisation-*.dc.html): the person's colours, the same for every role. */
 export function Personalisation({ state, tell }: { state: string; tell: Tell }) {
@@ -137,13 +142,14 @@ export function Personalisation({ state, tell }: { state: string; tell: Tell }) 
       <div className="desk-column">
         <DemoOffline />
         <TitleRow title={W.title} bell={<DemoBell tell={tell} />} />
-        {load === 'loading' && <Loading />}
+        {load === 'loading' && <PersonalisationLoading words={W.loading} />}
         {load === 'failed' && (
-          <div className="desk-failed" role="alert">
-            <h2>{W.couldNotLoad}</h2>
-            <p className="desk-line">{W.check}</p>
-            <TextAction label={W.tryAgain} onClick={retry} />
-          </div>
+          <PersonalisationFailed
+            title={W.couldNotLoad}
+            line={W.check}
+            retry={W.tryAgain}
+            onRetry={retry}
+          />
         )}
         {load === 'loaded' && (
           <>
@@ -182,20 +188,6 @@ export function Personalisation({ state, tell }: { state: string; tell: Tell }) 
   );
 }
 
-function Loading() {
-  return (
-    <div className="desk-loading" role="status" aria-label={W.loading}>
-      <span className="desk-unseen">{W.loading}</span>
-      <span className="desk-sunk is-card" aria-hidden="true" />
-      <span className="pers-bones" aria-hidden="true">
-        {[1, 2, 3].map((bar) => (
-          <span key={bar} className={`desk-sunk pers-bone b${bar}`} />
-        ))}
-      </span>
-    </div>
-  );
-}
-
 /** The card in the person's colours: what they see, the line under it, the scheme's dots and the one step. */
 function PageCard({
   scheme,
@@ -222,9 +214,7 @@ function PageCard({
         <p className="desk-says pers-says">{W.says(name)}</p>
         {line === 'saved' ? (
           <p className="pers-done">
-            <span className="desk-mark is-yes" aria-hidden="true">
-              <Glyph name="tick" size={11} weight={3.4} />
-            </span>
+            <SavedMark />
             {W.saved}
           </p>
         ) : (
@@ -346,13 +336,11 @@ function ColoursBox({
                 {statusLine(pick, current)}
               </p>
             ) : (
-              <div className="pers-failed">
-                <p className="desk-error" role="alert">
-                  <Glyph name="alert" size={15} weight={2.2} />
-                  {notSaved(unsaved, pick, current)}
-                </p>
-                <TextAction label={W.tryAgain} onClick={again} />
-              </div>
+              <NotSaved
+                words={notSaved(unsaved, pick, current)}
+                retry={W.tryAgain}
+                onRetry={again}
+              />
             )}
           </div>
           <div

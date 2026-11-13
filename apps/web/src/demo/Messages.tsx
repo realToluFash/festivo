@@ -49,17 +49,22 @@ import {
   litOf,
 } from './messages.ts';
 import { ConversationPane } from './MessagesThread.tsx';
+import { demoWords } from './demoWords.ts';
+import { IW } from './messagesInvite.ts';
+import { isNoticeState, readerOf } from './messagesNotice.ts';
 import { waitsTicksOf } from './messagesWaits.ts';
 import { InboxContext, type InboxApi } from './messagesContext.ts';
 import { type Group, useTo } from './messagesTo.ts';
 import { LeadMark, WhyNot } from './MessagesParts.tsx';
 import { UntoldBanner } from './MessagesTell.tsx';
 import { MESSAGES_WORD } from './messagesWords.ts';
+import { resetLooked } from './changedSince.ts';
 import { offButton } from '../offButton.ts';
 import { Tag } from '../components/SettingsParts.tsx';
 import type { Tell } from '../components/SettingsParts.tsx';
 import './messages.css';
 
+const iw = demoWords(IW);
 const ARRIVES_MS = 1200;
 const WASH_MS = 2000;
 const SENDING_MS = 3000;
@@ -87,7 +92,15 @@ function firstFocus(state: MessagesState | null): string | null {
     case 'checkAll':
     case 'checkNotReplied':
     case 'checkChannels':
+    case 'channelsCheck':
+    case 'channelsCant':
+    case 'channelsNone':
       return 'check';
+    case 'channelsSeeAll':
+    case 'channelsMany':
+      return 'see-all';
+    case 'channelsWrite':
+      return 'body';
     case 'cancelAsk':
       return 'keep';
     case 'fixed':
@@ -116,7 +129,34 @@ function firstFocus(state: MessagesState | null): string | null {
       return 'refused';
     case 'sendWithout':
       return 'cancel';
+    case 'stopAction':
+      return 'stop-item';
+    case 'letAgainFailed':
+      return 'let-again';
+    case 'inviteWrite':
+    case 'inviteWriteOne':
+    case 'inviteNote':
+    case 'inviteNoteLong':
+      return 'body';
+    case 'inviteTo':
+      return 'to-pick';
+    case 'invitePreview':
+    case 'invitePreviewNote':
+    case 'invitePreviewSms':
+      return 'preview-edit';
+    case 'inviteCheck':
+    case 'inviteCheckSome':
+    case 'inviteCheckAgain':
+    case 'inviteCheckAll':
+    case 'inviteRefused':
+      return 'check';
+    case 'inviteCheckSeeAll':
+      return 'see-all';
+    case 'inviteCountdown':
+      return 'cancel';
     default:
+      if (isNoticeState(state)) return state === 'readOnly' ? null : 'answer';
+
       return waitsTicksOf(state) == null ? null : 'check';
   }
 }
@@ -134,6 +174,7 @@ export function MessagesPage({
   const [params] = useSearchParams();
   const [inbox, act] = useReducer(changed, null, () => {
     const start = state != null ? seedOf(state) : keptInbox();
+    if (state === 'bell') resetLooked();
     const asked = params.get('c') as ConvoId | null;
 
     return asked != null && start.present.includes(asked)
@@ -145,6 +186,7 @@ export function MessagesPage({
 
   return (
     <EventsShell
+      told={state === 'untoldDismissed' ? MW.dismissed : null}
       renderSide={(tell, covered) => (
         <EventSidebar
           event={event}
@@ -153,6 +195,7 @@ export function MessagesPage({
           tell={tell}
           inert={covered}
           waiting={waitingLine(inbox)}
+          reader={readerOf(state)}
         />
       )}
     >
@@ -522,7 +565,7 @@ function sendingSaid(inbox: Inbox, groups: readonly Group[]): string {
     case 'countdown':
       return filled(MW.sendingIn, { count: out.left > 5 ? 10 : 5 });
     case 'sending':
-      return many('queued', reach.count);
+      return out.invite == null ? many('queued', reach.count) : iw.many('queued', reach.count);
     case 'sent':
       return filled(MW.reached, { count: reach.reached, total: reach.count });
     default:

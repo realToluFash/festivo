@@ -12,20 +12,8 @@ const ASKING_MS = 600;
 /** The check's too-few-credits part (sc-3963): what goes either way, what waits, and the ways past. */
 export function WaitBlock({ waits }: { waits: Waits }) {
   const { act, focus, tell, to } = useInbox();
-  const [billing, setBilling] = useState<Billing>(() => billingOf(to.state));
-  const timer = useRef<number | undefined>(undefined);
+  const billing = billingOf(to.state);
   const way = waits.way;
-
-  useEffect(() => () => window.clearTimeout(timer.current), []);
-
-  function ask(): void {
-    if (billing === 'asking') return;
-    setBilling('asking');
-    timer.current = window.setTimeout(() => {
-      setBilling('sent');
-      focus('asked');
-    }, ASKING_MS);
-  }
 
   return (
     <div className="mg-waits">
@@ -63,31 +51,56 @@ export function WaitBlock({ waits }: { waits: Waits }) {
           >
             {MW.addCredits}
           </button>
-        ) : billing === 'sent' ? (
-          <p className="mg-waits-asked" role="status" tabIndex={-1} data-focus="asked">
-            <Glyph name="tick" size={15} weight={2.8} />
-            {askedWords(ownersOf(to.state))}
-          </p>
         ) : (
-          <div className="mg-waits-ask">
-            <button
-              type="button"
-              className={billing === 'asking' ? 'desk-text is-busy' : 'desk-text'}
-              aria-busy={billing === 'asking'}
-              {...offButton(billing === 'asking', { dim: false })}
-              onClick={ask}
-            >
-              {WW.askOwner}
-            </button>
-            {billing === 'failed' && (
-              <p className="desk-error" role="alert">
-                <Glyph name="alert" size={15} weight={2.3} />
-                {WW.askFailed}
-              </p>
-            )}
-          </div>
+          <AskOwner start={billing} owners={ownersOf(to.state)} />
         )}
       </div>
+    </div>
+  );
+}
+
+/** Ask an owner, for a member without billing.manage (sc-3963): the owners sent the link, or Not sent and try again. */
+export function AskOwner({ start, owners }: { start: Exclude<Billing, 'add'>; owners: number }) {
+  const { focus } = useInbox();
+  const [billing, setBilling] = useState<Billing>(start);
+  const timer = useRef<number | undefined>(undefined);
+
+  useEffect(() => () => window.clearTimeout(timer.current), []);
+
+  function ask(): void {
+    if (billing === 'asking') return;
+    setBilling('asking');
+    timer.current = window.setTimeout(() => {
+      setBilling('sent');
+      focus('asked');
+    }, ASKING_MS);
+  }
+
+  if (billing === 'sent')
+    return (
+      <p className="mg-waits-asked" role="status" tabIndex={-1} data-focus="asked">
+        <Glyph name="tick" size={15} weight={2.8} />
+        {askedWords(owners)}
+      </p>
+    );
+
+  return (
+    <div className="mg-waits-ask">
+      <button
+        type="button"
+        className={billing === 'asking' ? 'desk-text is-busy' : 'desk-text'}
+        aria-busy={billing === 'asking'}
+        {...offButton(billing === 'asking', { dim: false })}
+        onClick={ask}
+      >
+        {WW.askOwner}
+      </button>
+      {billing === 'failed' && (
+        <p className="desk-error" role="alert">
+          <Glyph name="alert" size={15} weight={2.3} />
+          {WW.askFailed}
+        </p>
+      )}
     </div>
   );
 }

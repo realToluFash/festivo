@@ -13,7 +13,7 @@ import { useSignedIn } from '../signedIn.ts';
 import { useTappedSwitch } from '../tappedSwitch.ts';
 import { tokens } from '../theme/tokens.ts';
 import { AnswerHeading } from './AnswerHeading.tsx';
-import { AppFrame, useOpenSwitcher } from './AppFrame.tsx';
+import { AppFrame, FrameBodySwitched, useOpenSwitcher } from './AppFrame.tsx';
 import { bodyEdges } from './bodyEdges.ts';
 import { PrimaryButton, SecondaryButton } from './Buttons.tsx';
 import { LinkedNotice } from './LinkedNotice.tsx';
@@ -69,15 +69,18 @@ function TodayBody({
       organisation={organisation}
       onOffline={onOffline}
       notices={
-        <View style={styles.notices}>
-          <LinkedNotice wordsRef={place('linked')} onDismissed={() => onClosed('linked')} />
-          <SignInRulesNotices
-            key={organisation.id}
-            organisation={organisation}
-            place={place}
-            onClosed={onClosed}
-          />
-        </View>
+        <>
+          <FrameBodySwitched />
+          <View style={styles.notices}>
+            <LinkedNotice wordsRef={place('linked')} onDismissed={() => onClosed('linked')} />
+            <SignInRulesNotices
+              key={organisation.id}
+              organisation={organisation}
+              place={place}
+              onClosed={onClosed}
+            />
+          </View>
+        </>
       }
     />
   );

@@ -1,4 +1,5 @@
 import { type KeyboardEvent, type ReactNode, useEffect, useRef } from 'react';
+import { Link } from 'react-router';
 
 import { offButton } from '../offButton.ts';
 import { Glyph } from '../components/Glyph.tsx';
@@ -9,22 +10,22 @@ import {
   GUEST,
   LANGUAGES,
   type Lang,
-  MESSAGES,
   MESSAGE_COUNT_FROM,
   MESSAGE_MOST,
   type Mine,
-  THANK_YOU,
   type Visit,
   type Words,
   characters,
   eventDay,
   eventTime,
+  hostEntries,
   sentWhen,
   shortDay,
   codePath,
   offersWhatsApp,
 } from './guest.ts';
 import { hasWhere, inDayOrder, mapsLink, placeOf } from './guestDay.ts';
+import { ChangeLines } from './GuestChange.tsx';
 
 const LINES = {
   map: [
@@ -45,6 +46,7 @@ const LINES = {
     'M21.174 6.812a1 1 0 0 0-3.986-3.987L3.842 16.174a2 2 0 0 0-.5.83l-1.321 4.352a.5.5 0 0 0 .623.622l4.353-1.32a2 2 0 0 0 .83-.497z',
   ],
   send: ['M12 19V5', 'm5 12 7-7 7 7'],
+  ringCross: ['M21 12a9 9 0 1 1-18 0 9 9 0 0 1 18 0', 'm15 9-6 6', 'm9 9 6 6'],
 } as const;
 
 /** The boards' strokes Today's set lacks, drawn the same way: beside words, so hidden. */
@@ -191,6 +193,7 @@ export function Cover({
 export function TextAction({
   children,
   off = false,
+  busy = false,
   ink = false,
   icon,
   focus,
@@ -199,6 +202,7 @@ export function TextAction({
 }: {
   children: ReactNode;
   off?: boolean;
+  busy?: boolean;
   ink?: boolean;
   icon?: ReactNode;
   focus?: string;
@@ -211,10 +215,11 @@ export function TextAction({
       type="button"
       data-focus={focus}
       aria-describedby={describedBy}
-      {...offButton(off, { dim: false })}
+      aria-busy={busy || undefined}
+      {...offButton(off || busy, { dim: false })}
       onClick={onClick}
     >
-      {icon}
+      {busy ? <Spinner size={13} /> : icon}
       <span>{children}</span>
     </button>
   );
@@ -225,17 +230,19 @@ export function Filled({
   busy = false,
   focus,
   narrow = false,
+  wraps = false,
   onClick,
 }: {
   children: ReactNode;
   busy?: boolean;
   focus?: string;
   narrow?: boolean;
+  wraps?: boolean;
   onClick: () => void;
 }) {
   return (
     <button
-      className={`gp-filled${narrow ? ' is-narrow' : ''}`}
+      className={`gp-filled${narrow ? ' is-narrow' : ''}${wraps ? ' is-wraps' : ''}`}
       type="button"
       data-focus={focus}
       aria-busy={busy}
@@ -293,15 +300,20 @@ export function Notice({
   kind,
   alert = kind === 'broken',
   action,
+  className,
   children,
 }: {
   kind: 'broken' | 'attention';
   alert?: boolean;
   action?: ReactNode;
+  className?: string;
   children: ReactNode;
 }) {
   return (
-    <div className={`gp-notice is-${kind}`} role={alert ? 'alert' : 'status'}>
+    <div
+      className={`gp-notice is-${kind}${className == null ? '' : ` ${className}`}`}
+      role={alert ? 'alert' : 'status'}
+    >
       <span className="gp-notice-mark" aria-hidden="true">
         {kind === 'broken' && <Glyph name="clear" size={14} weight={3} />}
       </span>
@@ -492,10 +504,14 @@ export function Details({ visit, words, hosts }: { visit: Visit; words: Words; h
 export function Foot({
   words,
   noAccount,
+  wayIn,
+  onYourMessages,
   onTell,
 }: {
   words: Words;
   noAccount: boolean;
+  wayIn: string;
+  onYourMessages: () => void;
   onTell: () => void;
 }) {
   return (
@@ -503,6 +519,16 @@ export function Foot({
       {noAccount && (
         <>
           <p>{words.noAccount}</p>
+          <Link
+            className="gp-text"
+            to={wayIn}
+            onClick={(event) => {
+              event.preventDefault();
+              onYourMessages();
+            }}
+          >
+            <span>{words.wayIn}</span>
+          </Link>
           <hr />
         </>
       )}
@@ -589,16 +615,6 @@ export function AddToCalendar({ words }: { words: Words }) {
   );
 }
 
-/** sc-6476: the hosts' own words, never translated or linked, signed with their names, outside the notice. */
-export function Thanks({ words }: { words: Words }) {
-  return (
-    <figure className="gp-thanks">
-      <blockquote dir="auto">{THANK_YOU}</blockquote>
-      <figcaption>{words.hosts}</figcaption>
-    </figure>
-  );
-}
-
 export function Messages({
   visit,
   words,
@@ -611,7 +627,7 @@ export function Messages({
   onSend: () => void;
 }) {
   const box = useRef<HTMLTextAreaElement>(null);
-  const shown = MESSAGES.slice(-visit.messages);
+  const shown = hostEntries(visit);
   const live = visit.draft.trim() !== '';
   const length = characters(visit.draft);
   const tooLong = visit.draftTried && length > MESSAGE_MOST;
@@ -638,10 +654,11 @@ export function Messages({
       <h2 id="gp-messages-h" className="gp-h2">
         {words.messages}
       </h2>
-      {shown.map((message) => (
+      {shown.map(({ message, note }) => (
         <article key={message.id} id={message.id} className="gp-message">
+          {note != null && <ChangeLines note={note} visit={visit} words={words} />}
           <p className="gp-meta">
-            {`${words.hosts} · ${sentWhen(message.at, visit.lang, visit.readerZone)}`}
+            {`${note == null ? words.hosts : words.noteFrom} · ${sentWhen(message.at, visit.lang, visit.readerZone)}`}
           </p>
           <p className="gp-bubble" dir="auto">
             {message.words}
@@ -668,59 +685,61 @@ export function Messages({
           </p>
         </article>
       ))}
-      <div className="gp-compose">
-        <label htmlFor="gp-box">{words.writeTo}</label>
-        {visit.draftFailed && <Notice kind="broken">{words.messageFailed}</Notice>}
-        <div className={tooLong ? 'gp-compose-row is-wrong' : 'gp-compose-row'}>
-          <textarea
-            ref={box}
-            id="gp-box"
-            className="gp-box"
-            rows={1}
-            value={visit.draft}
-            data-focus="box"
-            aria-invalid={tooLong}
-            aria-describedby={
-              tooLong ? 'gp-box-error gp-box-count' : counting ? 'gp-box-count' : undefined
-            }
-            onChange={(event) => onDraft(event.target.value)}
-          />
-          <button
-            className={live ? 'gp-send is-live' : 'gp-send'}
-            type="button"
-            aria-label={words.sendMessage}
-            data-focus="sendMessage"
-            {...offButton(!live, { dim: false })}
-            onClick={onSend}
-          >
-            <Line name="send" size={20} weight={2.6} />
-          </button>
+      {visit.box !== 'none' && (
+        <div className="gp-compose">
+          <label htmlFor="gp-box">{words.writeTo}</label>
+          {visit.draftFailed && <Notice kind="broken">{words.messageFailed}</Notice>}
+          <div className={tooLong ? 'gp-compose-row is-wrong' : 'gp-compose-row'}>
+            <textarea
+              ref={box}
+              id="gp-box"
+              className="gp-box"
+              rows={1}
+              value={visit.draft}
+              data-focus="box"
+              aria-invalid={tooLong}
+              aria-describedby={
+                tooLong ? 'gp-box-error gp-box-count' : counting ? 'gp-box-count' : undefined
+              }
+              onChange={(event) => onDraft(event.target.value)}
+            />
+            <button
+              className={live ? 'gp-send is-live' : 'gp-send'}
+              type="button"
+              aria-label={words.sendMessage}
+              data-focus="sendMessage"
+              {...offButton(!live, { dim: false })}
+              onClick={onSend}
+            >
+              <Line name="send" size={20} weight={2.6} />
+            </button>
+          </div>
+          {counting && (
+            <p id="gp-box-count" className={tooLong ? 'gp-count is-over' : 'gp-count'}>
+              {tooLong && <Glyph name="alert" size={14} weight={2.4} />}
+              {words.messageCount(length)}
+            </p>
+          )}
+          {tooLong && (
+            <p id="gp-box-error" className="gp-error">
+              <Glyph name="alert" size={15} weight={2.2} />
+              {words.messageTooLong}
+            </p>
+          )}
         </div>
-        {counting && (
-          <p id="gp-box-count" className={tooLong ? 'gp-count is-over' : 'gp-count'}>
-            {tooLong && <Glyph name="alert" size={14} weight={2.4} />}
-            {words.messageCount(length)}
-          </p>
-        )}
-        {tooLong && (
-          <p id="gp-box-error" className="gp-error">
-            <Glyph name="alert" size={15} weight={2.2} />
-            {words.messageTooLong}
-          </p>
-        )}
-      </div>
+      )}
     </section>
   );
 }
 
-export function Gone({ words }: { words: Words }) {
+export function Gone({ title, body }: { title: string; body: string }) {
   return (
     <div className="gp-alone" role="alert">
       <span className="gp-alone-mark" aria-hidden="true">
         <Line name="broken" size={26} />
       </span>
-      <h1 className="gp-alone-title">{words.gone}</h1>
-      <p>{words.goneBody}</p>
+      <h1 className="gp-alone-title">{title}</h1>
+      <p>{body}</p>
     </div>
   );
 }

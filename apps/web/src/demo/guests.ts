@@ -31,12 +31,15 @@ import { numberLine } from './rules.ts';
 import { type HowAgreed, NO_CONSENT, type WhatsAppConsent, hostAgreed } from './whatsAppConsent.ts';
 import type { DemoLink } from './settings.ts';
 import { type ExportStart, XW, exportDay, fileName } from './guestExport.ts';
+import { type Change, changeLabel, changeWhen } from './changedSince.ts';
 
 /** Guests in A · Summary first (page e30, board/guests-a-spec.md): the sample, its counts and the states; the words are in guestsWords.ts. */
 export { GW };
 
 export type Reply = 'coming' | 'notSure' | 'noReply' | 'notComing' | 'held' | 'notYet' | 'walkIn';
 export type Choice = 'all' | 'invited' | Reply;
+/** sc-4331: Changed since you looked sits apart from the reply choices and outside their add-up-to-All rule. */
+export type Filter = Choice | 'changed';
 export type Answer = 'coming' | 'notComing' | 'notSure';
 
 export const ANSWERS: readonly Answer[] = ['coming', 'notComing', 'notSure'];
@@ -511,25 +514,34 @@ function party(): Guest[] {
 function draft(): Guest[] {
   return [
     guest('funke', 'Funke Bello', 'notYet', {
-      phone: { country: 'GB', number: '7700 900655' },
+      email: 'funke.bello@gmail.com',
       companions: companions('funke', 1, 'notYet'),
     }),
     guest('leila', 'Leila Mansour', 'notYet', { email: 'leila.mansour@gmail.com' }),
     guest('tobi', 'Tobi Ojo', 'notYet', { email: 'tobi.ojo@gmail.com' }),
+    guest('tola', 'Tola Bakare', 'notYet', {
+      email: 'tola.bakare@gmail.com',
+      phone: { country: 'NG', number: '803 618 2204' },
+    }),
+    guest('grace', 'Grace Mensah', 'notYet', {
+      email: 'grace.mensah@gmail.com',
+      phone: { country: 'GB', number: '7700 900874' },
+    }),
+    guest('ryan', 'Ryan Cole', 'notYet', {
+      email: 'ryan.cole@gmail.com',
+      phone: { country: 'US', number: '202 555 0148' },
+    }),
     ...more(
       [
         ['Tolani Ademola', '', 0],
         ['Toyin Fashola', '', 0],
         ['Uche Nwafor', '', 0],
         ['Vivian Eze', '', 0],
-        ['Wumi Lawal', '', 0],
-        ['Yemisi Ilori', '', 0],
-        ['Yinka Balogun', '', 0],
-        ['Zara Ilesanmi', '', 0],
       ],
       'notYet',
       'notYet',
     ),
+    guest('tomas-os', 'Tomás Okonkwo-Silva', 'notYet'),
   ];
 }
 
@@ -579,6 +591,11 @@ function copiedGuests(from: string): Guest[] {
 /** The Guests header's N, guests and companions together, which Delete event's question counts (sc-1468). */
 export function peopleOn(id: string): number {
   return peopleOf(sampleGuests(id)).length;
+}
+
+/** The people on an event's list who are Invited (sc-3788), which a refused delete counts (sc-14445). */
+export function invitedOn(id: string): number {
+  return countsOf(sampleGuests(id)).invited;
 }
 
 export function replyByOf(id: string): string | null {
@@ -666,6 +683,11 @@ export function peopleOf(list: readonly Guest[]): Person[] {
       companion,
     })),
   ]);
+}
+
+/** The guests Not yet invited, never a companion: Send invitations' audience and the offer's {count} (sc-3971). */
+export function notYetInvited(list: readonly Guest[]): Guest[] {
+  return list.filter((one) => one.reply === 'notYet');
 }
 
 export function inChoice(reply: Reply, choice: Choice): boolean {
@@ -966,8 +988,39 @@ export function viewOf(
   };
 }
 
-export function choiceWord(choice: Choice): string {
-  return CHOICE_WORDS[choice];
+export function choiceWord(choice: Filter): string {
+  return choice === 'changed' ? GW.changedSince : CHOICE_WORDS[choice];
+}
+
+/** sc-4331: one row per guest the bell's item counts, newest first: the answer, or the bell's label for a change that is not a reply, and when. */
+export function changedView(
+  list: readonly Guest[],
+  changes: readonly Change[],
+  q: string,
+  clock: Date,
+  contacts = true,
+): { view: ListView; shown: number } {
+  const people = peopleOf(list);
+  const rows = changes.flatMap((change): ListRow[] => {
+    const person = people.find((one) => one.companion == null && one.guest.id === change.id);
+
+    if (person == null || !matches(person, q, contacts)) return [];
+    const answer = changeLabel(change.kind) ?? REPLY_WORDS[person.reply];
+    const line = `${answer} · ${changeWhen(change, clock)}`;
+
+    return [
+      {
+        person,
+        indent: false,
+        line,
+        label: `${person.name}, ${line}`,
+        dietary: false,
+        allergy: false,
+      },
+    ];
+  });
+
+  return { view: { kind: 'rows', rows }, shown: rows.length };
 }
 
 export interface Values {
@@ -1442,8 +1495,12 @@ export interface GuestsStart {
   status: 'ready' | 'loading' | 'failed';
   card: CardKind;
   clock: Date;
-  choice: Choice;
+  choice: Filter;
   q: string;
+  /** sc-4331: the last look the Changed since you looked filter counts from, kept in the address; null counts every change. */
+  since: string | null;
+  /** sc-4331: when the event's Guest replies item was last marked read, as the state opens: null is never, and by default it is the state's clock, so nothing has changed since. */
+  looked?: string | null;
   /** sc-3777's Dietary notes chip. */
   dietary: boolean;
   menu: boolean;
@@ -1527,6 +1584,10 @@ export const GUESTS_STATES = [
   { key: 'search', name: 'A search: “okon”' },
   { key: 'searchNone', name: 'A search that matches nobody: “kofi”' },
   { key: 'filterNone', name: 'Held and “marta”: nobody in both' },
+  { key: 'changedRow', name: 'The filter menu with Changed since you looked first' },
+  { key: 'changed', name: 'Changed since you looked, from the bell' },
+  { key: 'changedMenu', name: 'Changed since you looked, the menu open on it' },
+  { key: 'changedNone', name: 'Changed since you looked: nothing since' },
   { key: 'searchNumber', name: 'A number in its national form: “0803 412”' },
   { key: 'everyoneReplied', name: 'Everyone has replied' },
   { key: 'noCompanionsWaiting', name: 'No companion among those who haven’t replied' },
@@ -1660,6 +1721,11 @@ export const GUESTS_STATES = [
   { key: 'sendInvited', name: 'Already invited: a press asks nothing' },
   { key: 'sendNoMobile', name: 'Bisi Adewale, no mobile number: not offered' },
   { key: 'sendFinished', name: 'A Finished event: Yusuf Ibrahim is not offered Send' },
+  { key: 'inviteList', name: 'Send invitations in the header' },
+  { key: 'inviteGuest', name: 'Send invitation, first in a guest’s Invitation' },
+  { key: 'inviteGuestMobile', name: 'Send invitation beside Send on WhatsApp' },
+  { key: 'inviteGuestInvited', name: 'Send invitation on a guest already invited' },
+  { key: 'inviteNoneLeft', name: 'After the send, nobody left to invite' },
 ] as const;
 
 export type GuestsState = (typeof GUESTS_STATES)[number]['key'];
@@ -1692,6 +1758,7 @@ export function guestsStart(state: GuestsState | null, params: URLSearchParams):
     clock: CLOCKS.rest,
     choice: 'all',
     q: '',
+    since: null,
     dietary: false,
     menu: false,
     pane: { kind: 'none' },
@@ -1738,6 +1805,7 @@ export function guestsStart(state: GuestsState | null, params: URLSearchParams):
     case 'first':
       return { ...start, list: [] };
     case 'inUse':
+    case 'inviteList':
     case 'draft':
     case 'paused':
     case 'eventDeleted':
@@ -1746,13 +1814,41 @@ export function guestsStart(state: GuestsState | null, params: URLSearchParams):
       return column(guestPane('emeka'), { menu: true });
     case 'filtered':
     case 'guest':
+    case 'inviteGuestInvited':
       return column(guestPane('emeka'));
+    case 'inviteNoneLeft':
+      return {
+        ...start,
+        choice: 'noReply',
+        list: start.list.map((one) =>
+          one.reply === 'notYet'
+            ? {
+                ...one,
+                reply: 'noReply' as const,
+                invited: { by: null, how: null, on: TODAY },
+              }
+            : one,
+        ),
+      };
     case 'search':
       return { ...start, q: 'okon' };
     case 'searchNone':
       return { ...start, q: 'kofi' };
     case 'filterNone':
       return { ...start, choice: 'held', q: 'marta' };
+    case 'changed':
+      return { ...start, choice: 'changed', looked: start.clock.toISOString() };
+    case 'changedMenu':
+      return { ...start, choice: 'changed', menu: true, looked: start.clock.toISOString() };
+    case 'changedRow':
+      return { ...start, menu: true, looked: null };
+    case 'changedNone':
+      return {
+        ...start,
+        choice: 'changed',
+        since: start.clock.toISOString(),
+        looked: start.clock.toISOString(),
+      };
     case 'searchNumber':
       return { ...start, q: '0803 412' };
     case 'everyoneReplied':
@@ -1910,6 +2006,7 @@ export function guestsStart(state: GuestsState | null, params: URLSearchParams):
     case 'markNotSaved':
       return column(guestPane('bisi', { invite: 'markNotSaved' }));
     case 'sendNone':
+    case 'inviteGuestMobile':
       return send();
     case 'sendQuestion':
       return send({ asked: ['yusuf'] });
@@ -1954,6 +2051,7 @@ export function guestsStart(state: GuestsState | null, params: URLSearchParams):
     case 'sendFinished':
       return send({ clock: CLOCKS.finished });
     case 'notYetFilter':
+    case 'inviteGuest':
       return column(guestPane('bisi'), { choice: 'notYet' });
     case 'invitedByMessage':
       return column(guestPane('marta'), { choice: 'coming' });
@@ -2122,15 +2220,20 @@ function applyParams(start: GuestsStart, params: URLSearchParams): GuestsStart {
 
 /** The menu's choice and the search, as the address keeps them. */
 export interface ViewInAddress {
-  choice: Choice;
+  choice: Filter;
   q: string;
+  since: string | null;
+}
+
+export function filterOf(raw: string | null): Filter | null {
+  return raw === 'changed' ? 'changed' : choiceOf(raw);
 }
 
 /** What a state's list opens on before the address says otherwise. */
 export function viewBase(state: GuestsState | null): ViewInAddress {
   const opened = guestsStart(state, new URLSearchParams());
 
-  return { choice: opened.choice, q: opened.q };
+  return { choice: opened.choice, q: opened.q, since: opened.since };
 }
 
 export const NUMBERS_STATES = [
@@ -2277,6 +2380,13 @@ export const GUESTS_PAGES: readonly { name: string; states: readonly DemoLink[] 
     'exportFailed',
     'exportReady',
     'exportGrantView',
+  ]),
+  group('Send invitations (sc-3971)', [
+    'inviteList',
+    'inviteGuest',
+    'inviteGuestMobile',
+    'inviteGuestInvited',
+    'inviteNoneLeft',
   ]),
   group('Send on WhatsApp (sc-26025)', [
     'sendNone',

@@ -5,7 +5,6 @@ declare(strict_types=1);
 namespace App\Domain\Guest;
 
 use App\Audit\Auditor;
-use App\Domain\Guest\Http\GuestSerialiser;
 use App\Domain\Guest\Link\InvitationLinks;
 use App\Domain\Guest\Model\NewGuest;
 use App\Entity\Event;
@@ -13,10 +12,8 @@ use App\Entity\Guest;
 use App\Entity\User;
 use App\Enum\Actor;
 use App\Enum\ErrorCode;
-use App\Enum\RealtimeTopic;
 use App\Http\Exception\ApiException;
 use App\Locale\NameNormaliser;
-use App\Realtime\RealtimePublisher;
 use App\Repository\GuestRepository;
 use Doctrine\DBAL\LockMode;
 use Doctrine\ORM\EntityManagerInterface;
@@ -28,10 +25,9 @@ final readonly class GuestAdder
 
     public function __construct(
         private GuestRepository $guestRepository,
-        private GuestSerialiser $guestSerialiser,
         private EntityManagerInterface $entityManager,
         private Auditor $auditor,
-        private RealtimePublisher $realtimePublisher,
+        private GuestListPublisher $guestListPublisher,
     ) {
     }
 
@@ -47,12 +43,12 @@ final readonly class GuestAdder
 
             $guest = Guest::invited($event, $new->fullName, $new->nameKey, $new->email, $new->mobile, $by, InvitationLinks::token());
             $this->entityManager->persist($guest);
-            $this->audited($guest, $by);
+            self::recordAdded($this->auditor, $guest, $by);
 
             foreach ($new->companions as $index => $name) {
                 $companion = Guest::companionOf($guest, $name, null === $name ? null : NameNormaliser::key($name), $index + 1, $by);
                 $this->entityManager->persist($companion);
-                $this->audited($companion, $by);
+                self::recordAdded($this->auditor, $companion, $by);
             }
 
             $this->entityManager->flush();
@@ -60,13 +56,14 @@ final readonly class GuestAdder
             return $guest;
         });
 
-        $this->realtimePublisher->publish(RealtimeTopic::EventGuests, $event->getId()->toRfc4122(), $this->guestSerialiser->list($event, contacts: false));
+        $this->guestListPublisher->publish($event);
 
         return $guest;
     }
 
-    private function audited(Guest $guest, User $by): void
+    /** The one audit entry for a guest arriving, added here or copied with a duplicated event (sc-3656). */
+    public static function recordAdded(Auditor $auditor, Guest $guest, User $by): void
     {
-        $this->auditor->record(self::ADDED, 'Guest', $guest->getId(), Actor::User, $by->getId(), $by->getName());
+        $auditor->record(self::ADDED, 'Guest', $guest->getId(), Actor::User, $by->getId(), $by->getName());
     }
 }

@@ -56,7 +56,9 @@ function showFirst(state: MessagesState | null, of: ReachedOf): Show {
   if (state === 'added') return 'none';
   if (state === 'addedPhone') return 'optedOut';
 
-  return of === 'new' || of === 'receipts' ? 'everyone' : 'notReached';
+  return of === 'new' || of === 'receipts' || of.startsWith('whatsAppInvite')
+    ? 'everyone'
+    : 'notReached';
 }
 
 /** Who it reached, per person and grouped as sc-3966 counts them: a line per channel for Soirely's notice, its fix beside a failure, and their page. */
@@ -88,7 +90,7 @@ export function ReachedView({
   const back =
     of === 'parking' || of === 'receipts'
       ? PARKING.subject
-      : of === 'invite'
+      : of === 'invite' || of.startsWith('whatsAppInvite')
         ? MW.invitation
         : first == null
           ? MW.newMessage
@@ -104,7 +106,7 @@ export function ReachedView({
   }
 
   function onFix(person: Unreached, fix: Fix): void {
-    if (fix === 'copyLink') tell(`${fixWord(fix)} has its own design.`);
+    if (fix === 'copyLink' || fix === 'trySms') tell(`${fixWord(fix)} has its own design.`);
     else if (fix === 'toldInPerson')
       hostDid(
         { kind: 'toldInPerson', id: person.id, thread },

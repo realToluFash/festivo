@@ -469,21 +469,38 @@ export function AppFrame({
   const ownTop = framed && top != null && standIn == null;
   const underTabs =
     floatingTabs && listUnderTabs && standIn == null ? phoneTabBarClearance(insets.bottom) : 0;
-  const switchedNotice =
-    switched == null ? null : created?.takesFocus === true ? (
-      <View style={ownTop ? styles.switchedUnderTitle : styles.created}>
-        <Notice
-          tone="done"
-          mark={tokens.marks.done.glyph}
-          body={switched}
-          wordsRef={createdWords}
-        />
-      </View>
-    ) : (
-      <ReadOut style={ownTop ? styles.switchedUnderTitle : styles.created} words={switched}>
-        <Notice tone="done" mark={tokens.marks.done.glyph} body={switched} />
-      </ReadOut>
+  const switchedRead = created?.takesFocus !== true;
+  // A body with its own top, as Today, draws it where its demo does, under its cover, while the frame says it once whatever the body shows (sc-44087, sc-46032).
+  const inBody = !framed;
+  // Today shows once its events have loaded, so the notice there takes focus as it shows, not as the walk closes (sc-46032).
+  const focusInBody = inBody && !switchedRead;
+  const switchedWords =
+    switched == null ? null : (
+      <Notice
+        tone="done"
+        mark={tokens.marks.done.glyph}
+        body={switched}
+        wordsRef={switchedRead || inBody ? undefined : createdWords}
+        {...(focusInBody ? { answer: created, takesFocus: true, readMs: SETTLED_MS * 2 } : {})}
+      />
     );
+  const switchedStyle = ownTop ? styles.switchedUnderTitle : styles.created;
+  const switchedNotice =
+    switched == null ? null : inBody ? (
+      switchedRead && <ReadOut words={switched} />
+    ) : switchedRead ? (
+      <ReadOut style={switchedStyle} words={switched}>
+        {switchedWords}
+      </ReadOut>
+    ) : (
+      <View style={switchedStyle}>{switchedWords}</View>
+    );
+  const bodySwitched =
+    inBody && switched != null ? (
+      <View style={kind === 'tabletLandscape' ? undefined : styles.switchedInBody}>
+        {switchedWords}
+      </View>
+    ) : null;
   const header: FrameHeaderProps = {
     current,
     kind,
@@ -562,7 +579,9 @@ export function AppFrame({
                     ) : (
                       <FrameSwitch.Provider value={switchAnswer}>
                         <ScrolledTop.Provider value={ownTop && top === 'scrolls' ? header : null}>
-                          <UnderTabsProvider value={underTabs}>{children}</UnderTabsProvider>
+                          <BodySwitched.Provider value={bodySwitched}>
+                            <UnderTabsProvider value={underTabs}>{children}</UnderTabsProvider>
+                          </BodySwitched.Provider>
                         </ScrolledTop.Provider>
                       </FrameSwitch.Provider>
                     )}
@@ -603,7 +622,10 @@ export function AppFrame({
             onPick={(id) => {
               closeSwitcher();
               if (id !== signedIn.organisation?.id || signedIn.pausedIn != null) {
-                switchOrganisation(id);
+                const name = signedIn.organisations.find((known) => known.id === id)?.name;
+                switchOrganisation(id, () => {
+                  if (name != null) setCreated({ name, takesFocus: false });
+                });
               }
             }}
             onCreate={() => {
@@ -699,6 +721,13 @@ export function FrameTop({
   if (top == null) return null;
 
   return <ScreenTop {...top} style={style} rowStyle={rowStyle} />;
+}
+
+const BodySwitched = createContext<ReactNode>(null);
+
+/** "Now working in …" in the notices of a body that draws its own top, as Today does, where its demo draws it (sc-44087). */
+export function FrameBodySwitched() {
+  return useContext(BodySwitched);
 }
 
 /** "Now working in …" for a heading in the body that stands in for the frame's top, as Members' in the Settings column on its side; nothing on a screen whose frame draws its top (sc-39471). */
@@ -1567,6 +1596,7 @@ const styles = StyleSheet.create({
   whitePill: { flexDirection: 'row', flexShrink: 1, minWidth: 0 },
   created: { paddingTop: tokens.spaceLg, paddingHorizontal: tokens.spaceXl },
   switchedUnderTitle: { marginTop: 18 },
+  switchedInBody: { alignSelf: 'stretch', marginBottom: tokens.spaceXl },
 });
 
 let currenciesRead: Currencies | null = null;

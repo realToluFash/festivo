@@ -3,7 +3,7 @@ import type { ViewInstance } from 'react-native';
 let focused: ViewInstance | null = null;
 const watchers = new Set<() => void>();
 let checking = false;
-const checkWatchers = new Set<(field: ViewInstance) => void>();
+const checkWatchers = new Set<(field: ViewInstance, inView?: () => void) => void>();
 
 /** The Field whose control has focus: its label, control and error, which a lift keeps in sight. */
 export function focusedField(): ViewInstance | null {
@@ -30,17 +30,23 @@ export function watchFocusedField(moved: () => void): () => void {
   return () => watchers.delete(moved);
 }
 
-/** A check is moving focus to a field: the Field it lands in is handed to each `watchCheckedField`. With `landed`, focus is already there and no focus event is coming; a picker, which takes none, passes its own `field`. */
-export function fieldChecked(landed: boolean, field: ViewInstance | null = focused): void {
+/** A check is moving focus to a field: the Field it lands in is handed to each `watchCheckedField`. With `landed`, focus is already there and no focus event is coming; a picker, which takes none, passes its own `field`, and `inView` to hear when the scroll bringing it has landed. */
+export function fieldChecked(
+  landed: boolean,
+  field: ViewInstance | null = focused,
+  inView?: () => void,
+): void {
   if (!landed) {
     checking = true;
     return;
   }
-  if (field != null) checkWatchers.forEach((checked) => checked(field));
+  if (field != null) checkWatchers.forEach((checked) => checked(field, inView));
 }
 
-/** Calls `checked` with the Field a client check moved focus to (sc-20721). Returns the unsubscribe. */
-export function watchCheckedField(checked: (field: ViewInstance) => void): () => void {
+/** Calls `checked` with the Field a client check moved focus to (sc-20721), and what to call once it is in view, when the check asks. Returns the unsubscribe. */
+export function watchCheckedField(
+  checked: (field: ViewInstance, inView?: () => void) => void,
+): () => void {
   checkWatchers.add(checked);
 
   return () => checkWatchers.delete(checked);

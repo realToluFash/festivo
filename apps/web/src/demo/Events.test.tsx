@@ -137,7 +137,11 @@ describe('Events in A at a desk (sc-30304)', () => {
   it('locks the dates once an event is called off, and offers Duplicate', SLOW, async () => {
     await page('/demo/events/evt-off?state=calledOff', 'Team offsite');
 
-    expect(screen.getByText(/Called off on Fri, Oct 30, 2026, before it started/)).toBeDefined();
+    expect(screen.getByText(/Called off on Fri, Oct 30, before it started/)).toBeDefined();
+    expect(
+      screen.getByText(/This event was called off, so its start, end and time zone/),
+    ).toBeDefined();
+    expect(screen.queryByText(/This event is over/)).toBeNull();
     expect(screen.queryByRole('button', { name: /Thu, Nov 12, 2026/ })).toBeNull();
     expect(screen.getAllByRole('button', { name: /Duplicate/ }).length).toBeGreaterThan(0);
   });
@@ -279,19 +283,21 @@ describe('Events in A at a desk (sc-30304)', () => {
   );
 
   it('leaves without a second ask once Delete is confirmed by name', SLOW, async () => {
-    const router = await page('/demo/events/evt-wed-4?state=name');
+    const router = await page('/demo/events/evt-ireti-2', 'Ireti at 40');
+
+    fireEvent.click(screen.getByRole('button', { name: /^Ireti at 40\s*Event name/ }));
     const part = screen.getByRole('group', { name: 'Event name' });
     const manage = screen.getByRole('region', { name: 'Manage' });
 
     fireEvent.change(within(part).getByRole('textbox'), { target: { value: 'Our big day' } });
     fireEvent.click(within(manage).getByRole('button', { name: 'Delete event…' }));
 
-    const ask = await screen.findByRole('alertdialog', { name: `Delete ${WEDDING}?` });
+    const ask = await screen.findByRole('alertdialog', { name: 'Delete Ireti at 40?' });
 
-    fireEvent.change(within(ask).getByRole('textbox'), { target: { value: WEDDING } });
+    fireEvent.change(within(ask).getByRole('textbox'), { target: { value: 'Ireti at 40' } });
     fireEvent.click(within(ask).getByRole('button', { name: 'Delete' }));
 
-    expect(await screen.findByText(`${WEDDING} was deleted.`)).toBeDefined();
+    expect(await screen.findByText('Ireti at 40 was deleted.')).toBeDefined();
     expect(router.state.location.pathname).toBe('/demo/events');
     expect(screen.queryByRole('alertdialog', { name: 'Discard your change?' })).toBeNull();
   });
@@ -361,7 +367,7 @@ describe('Events in A at a desk (sc-30304)', () => {
       expect(within(plain).queryByRole('textbox')).toBeNull();
       expect(
         within(plain).getByText(
-          'It’s a draft with nobody on its guest list. It will be removed for your whole team.',
+          "It's a draft with nobody on its guest list. It will be removed for your whole team.",
         ),
       ).toBeDefined();
     },
@@ -389,6 +395,463 @@ describe('Events in A at a desk (sc-30304)', () => {
 
     expect(mute.getAttribute('aria-checked')).toBe('true');
     expect(mute.textContent).toBe('On');
+  });
+});
+
+describe('Guests can write from their page, on the Overview (sc-3978)', () => {
+  const NAME = 'Guests can write from their page';
+
+  beforeEach(() => {
+    __setConfig({ ...tested, environment: 'development' });
+    resetSample();
+  });
+
+  async function guestsSwitch(state?: string): Promise<HTMLElement> {
+    open(state == null ? '/demo/events/evt-wed-4' : `/demo/events/evt-wed-4?state=${state}`);
+
+    return screen.findByRole('switch', { name: NAME }, WAIT);
+  }
+
+  it(
+    'sits under the dashed preview, on, and saves Off at once after a busy moment',
+    SLOW,
+    async () => {
+      const write = await guestsSwitch();
+      const block = write.closest('section') as HTMLElement;
+
+      expect(within(block).getByRole('heading', { name: 'Guests’ page' })).toBeDefined();
+      expect(write.closest('.ev-dashed')).toBeNull();
+      expect(block.querySelector('.ev-dashed')).not.toBeNull();
+      expect(
+        within(block).getAllByText(
+          'Changes it for everyone on this event. Texts and emails still arrive.',
+        ),
+      ).toHaveLength(2);
+      expect(write.getAttribute('aria-checked')).toBe('true');
+      expect(write.textContent).toBe('On');
+
+      fireEvent.click(write);
+      expect(write.getAttribute('aria-checked')).toBe('false');
+      expect(write.getAttribute('aria-busy')).toBe('true');
+      fireEvent.click(write);
+      expect(write.getAttribute('aria-checked')).toBe('false');
+
+      await waitFor(() => expect(write.getAttribute('aria-busy')).toBe('false'), WAIT);
+      expect(write.textContent).toBe('Off');
+    },
+  );
+
+  it('opens Off, Saving busy, and Not saved back On', SLOW, async () => {
+    const off = await guestsSwitch('guestsCanWriteOff');
+
+    expect(off.getAttribute('aria-checked')).toBe('false');
+    expect(off.textContent).toBe('Off');
+    cleanup();
+
+    const saving = await guestsSwitch('guestsCanWriteSaving');
+
+    expect(saving.getAttribute('aria-checked')).toBe('false');
+    expect(saving.getAttribute('aria-busy')).toBe('true');
+    cleanup();
+
+    const failed = await guestsSwitch('guestsCanWriteFailed');
+    const block = failed.closest('section') as HTMLElement;
+
+    expect(failed.getAttribute('aria-checked')).toBe('true');
+    expect(within(block).getByRole('alert').textContent).toBe('Not saved. Try again.');
+    fireEvent.click(failed);
+    expect(within(block).queryByRole('alert')).toBeNull();
+    await waitFor(() => expect(failed.getAttribute('aria-busy')).toBe('false'), WAIT);
+    expect(failed.getAttribute('aria-checked')).toBe('false');
+  });
+
+  it('cannot be changed without messages.manage, and says why', SLOW, async () => {
+    const fixed = await guestsSwitch('guestsCanWriteReadOnly');
+
+    expect(fixed.getAttribute('aria-disabled')).toBe('true');
+    expect(fixed.textContent).toBe('On');
+    fireEvent.click(fixed);
+    expect(fixed.getAttribute('aria-checked')).toBe('true');
+    expect(fixed.getAttribute('aria-busy')).toBeNull();
+    const why = screen.getByText('Only members who manage messages can change this.');
+
+    expect(fixed.getAttribute('aria-describedby')?.split(' ')).toContain(why.id);
+  });
+});
+
+describe('A thank-you for your guests, on a Finished event (sc-6476)', () => {
+  const TITLE = 'A thank-you for your guests';
+  const HOSTS = 'Adaeze Obi and Tunde Bakare';
+
+  beforeEach(() => {
+    __setConfig({ ...tested, environment: 'development' });
+    resetSample();
+  });
+
+  function thankYou(): HTMLElement {
+    return screen.getByRole('heading', { level: 2, name: TITLE }).closest('section') as HTMLElement;
+  }
+
+  it('comes first on a Finished Overview, with Add a thank-you', SLOW, async () => {
+    await page('/demo/events/evt-wed-4?state=finished');
+    const card = thankYou();
+
+    expect(card.closest('.ev-left')?.firstElementChild).toBe(card);
+    expect(
+      within(card).getByText('Every guest sees it on their page, signed with the hosts’ names.'),
+    ).toBeDefined();
+    expect(within(card).getByRole('button', { name: 'Add a thank-you' })).toBeDefined();
+  });
+
+  it('is not on a live, paused or called-off event', SLOW, async () => {
+    for (const [path, name] of [
+      ['/demo/events/evt-wed-4?state=live', WEDDING],
+      ['/demo/events/evt-party-2?state=paused', undefined],
+      ['/demo/events/evt-off?state=calledOff', undefined],
+    ] as const) {
+      open(path);
+      if (name == null) await screen.findAllByRole('heading', { level: 1 }, WAIT);
+      else await screen.findByRole('heading', { level: 1, name }, WAIT);
+      expect(screen.queryByRole('heading', { name: TITLE })).toBeNull();
+      cleanup();
+    }
+  });
+
+  it('adds a line: cleaned, signed with the hosts, then Edit thank-you', SLOW, async () => {
+    await page('/demo/events/evt-wed-4?state=finished');
+    fireEvent.click(within(thankYou()).getByRole('button', { name: 'Add a thank-you' }));
+    const field = within(thankYou()).getByRole('textbox', { name: TITLE });
+
+    expect(document.activeElement).toBe(field);
+    expect(within(thankYou()).getByText('0/280')).toBeDefined();
+    fireEvent.change(field, { target: { value: '  Thank you\n\nall  ' } });
+    expect(within(thankYou()).getByText('13/280').id).toBeTruthy();
+    expect(field.getAttribute('aria-describedby')).toContain(
+      within(thankYou()).getByText('13/280').id,
+    );
+    fireEvent.click(within(thankYou()).getByRole('button', { name: 'Save' }));
+    expect(within(thankYou()).getByRole('button', { name: 'Saving…' })).toBeDefined();
+
+    await waitFor(
+      () => expect(within(thankYou()).getByText('Thank you all').tagName).toBe('BLOCKQUOTE'),
+      WAIT,
+    );
+    expect(within(thankYou()).getByText(HOSTS)).toBeDefined();
+    expect(await screen.findByText('Thank-you saved.')).toBeDefined();
+    expect(document.activeElement).toBe(
+      within(thankYou()).getByRole('button', { name: 'Edit thank-you' }),
+    );
+  });
+
+  it('removes the line when saved empty, and Add comes back', SLOW, async () => {
+    await page('/demo/events/evt-wed-4?state=thankYouEditing');
+    const field = within(thankYou()).getByRole('textbox', { name: TITLE });
+
+    expect(within(thankYou()).getByText('Save it empty to remove it.')).toBeDefined();
+    fireEvent.change(field, { target: { value: '   ' } });
+    fireEvent.click(within(thankYou()).getByRole('button', { name: 'Save' }));
+
+    expect(
+      await within(thankYou()).findByRole('button', { name: 'Add a thank-you' }, WAIT),
+    ).toBeDefined();
+    expect(await screen.findByText('Thank-you removed.')).toBeDefined();
+  });
+
+  it('refuses over 280 without sending, naming the limit', SLOW, async () => {
+    await page('/demo/events/evt-wed-4?state=thankYouOver');
+    const field = within(thankYou()).getByRole('textbox', { name: TITLE });
+    const said = within(thankYou()).getByText('A thank-you can be at most 280 characters.');
+
+    expect(field.getAttribute('aria-invalid')).toBe('true');
+    expect(field.getAttribute('aria-describedby')?.split(' ')).toContain(said.id);
+    expect(field.hasAttribute('maxlength')).toBe(false);
+    fireEvent.click(within(thankYou()).getByRole('button', { name: 'Save' }));
+    expect(within(thankYou()).queryByRole('button', { name: 'Saving…' })).toBeNull();
+  });
+
+  it('keeps the text when not saved, and Save goes again', SLOW, async () => {
+    await page('/demo/events/evt-wed-4?state=thankYouNotSaved');
+
+    expect(within(thankYou()).getByRole('alert').textContent).toBe(
+      'Not saved. Check your connection and try again. Your text is still here.',
+    );
+    fireEvent.click(within(thankYou()).getByRole('button', { name: 'Save' }));
+    expect(
+      await within(thankYou()).findByRole('button', { name: 'Edit thank-you' }, WAIT),
+    ).toBeDefined();
+  });
+
+  it(
+    'shows the line read-only without the permission to end it, and no card without a line',
+    SLOW,
+    async () => {
+      await page('/demo/events/evt-wed-4?state=thankYouReadOnly');
+
+      expect(within(thankYou()).getByText(HOSTS)).toBeDefined();
+      expect(within(thankYou()).queryByRole('button')).toBeNull();
+      cleanup();
+
+      await page('/demo/events/evt-wed-4?state=thankYouReadOnlyNone');
+      expect(screen.queryByRole('heading', { name: TITLE })).toBeNull();
+    },
+  );
+
+  it('ends the event from End now with the field empty, as before', SLOW, async () => {
+    await page('/demo/events/evt-wed-4?state=endNow');
+    const ask = screen.getByRole('alertdialog', { name: `End ${WEDDING} now?` });
+
+    expect(within(ask).getByRole('textbox', { name: `${TITLE} · Optional` })).toBeDefined();
+    fireEvent.click(within(ask).getByRole('button', { name: 'End now' }));
+    expect(within(ask).getByRole('button', { name: 'Ending…' })).toBeDefined();
+
+    await waitFor(() => expect(screen.queryByRole('alertdialog')).toBeNull(), WAIT);
+    expect(within(thankYou()).getByRole('button', { name: 'Add a thank-you' })).toBeDefined();
+  });
+
+  it('ends the event and saves the line in one go', SLOW, async () => {
+    await page('/demo/events/evt-wed-4?state=endNowThankYou');
+    fireEvent.click(
+      within(screen.getByRole('alertdialog')).getByRole('button', { name: 'End now' }),
+    );
+
+    await waitFor(() => expect(screen.queryByRole('alertdialog')).toBeNull(), WAIT);
+    expect(within(thankYou()).getByText(HOSTS)).toBeDefined();
+    expect(within(thankYou()).getByRole('button', { name: 'Edit thank-you' })).toBeDefined();
+    expect(await screen.findByText('Your thank-you is on every guest’s page.')).toBeDefined();
+  });
+
+  it('does not end over 280, and says why', SLOW, async () => {
+    await page('/demo/events/evt-wed-4?state=endNowOver');
+    const ask = screen.getByRole('alertdialog');
+    const field = within(ask).getByRole('textbox');
+
+    expect(document.activeElement).toBe(field);
+    expect(within(ask).getByText('A thank-you can be at most 280 characters.')).toBeDefined();
+    fireEvent.click(within(ask).getByRole('button', { name: 'End now' }));
+    expect(within(ask).queryByRole('button', { name: 'Ending…' })).toBeNull();
+  });
+
+  it('keeps the thank-you when not ended', SLOW, async () => {
+    await page('/demo/events/evt-wed-4?state=endNowNotEnded');
+    const ask = screen.getByRole('alertdialog');
+
+    expect(within(ask).getByRole('alert').textContent).toContain(
+      'Not ended. Check your connection and try again. Your thank-you is still here.',
+    );
+    expect((within(ask).getByRole('textbox') as HTMLTextAreaElement).value).not.toBe('');
+  });
+
+  it('opens End now a second time empty, as the app does', SLOW, async () => {
+    await page('/demo/events/evt-wed-4?state=endNowNotEnded');
+    fireEvent.click(
+      within(screen.getByRole('alertdialog')).getByRole('button', { name: 'Keep it on' }),
+    );
+    fireEvent.click(
+      within(screen.getByRole('region', { name: 'Manage' })).getByRole('button', {
+        name: 'End now…',
+      }),
+    );
+    const again = await screen.findByRole('alertdialog');
+
+    expect((within(again).getByRole('textbox') as HTMLTextAreaElement).value).toBe('');
+    expect(within(again).queryByRole('alert')).toBeNull();
+  });
+});
+
+describe('Delete refused while a guest is Invited (sc-14445)', () => {
+  beforeEach(() => {
+    __setConfig({ ...tested, environment: 'development' });
+    resetSample();
+  });
+
+  it(
+    'says to call it off first, asks for no name, and Call off asks as the page does',
+    SLOW,
+    async () => {
+      const router = await page('/demo/events/evt-wed-4?state=deleteRefused');
+      const ask = screen.getByRole('alertdialog', { name: `Call off ${WEDDING} first?` });
+
+      expect(within(ask).queryByRole('textbox')).toBeNull();
+      expect(within(ask).getByRole('button', { name: 'Keep it' })).toBeDefined();
+      fireEvent.click(within(ask).getByRole('button', { name: 'Call off' }));
+
+      const callOff = await screen.findByRole('alertdialog', { name: `Call off ${WEDDING}?` });
+
+      expect(screen.queryByRole('alertdialog', { name: `Call off ${WEDDING} first?` })).toBeNull();
+      fireEvent.click(within(callOff).getByRole('button', { name: 'Call off' }));
+
+      await waitFor(() => expect(screen.queryByRole('alertdialog')).toBeNull());
+      expect(router.state.location.pathname).toBe('/demo/events/evt-wed-4');
+      fireEvent.click(
+        within(screen.getByRole('region', { name: 'Manage' })).getByRole('button', {
+          name: 'Delete event…',
+        }),
+      );
+      expect(
+        within(await screen.findByRole('alertdialog', { name: `Delete ${WEDDING}?` })).getByRole(
+          'textbox',
+        ),
+      ).toBeDefined();
+    },
+  );
+
+  it(
+    'says to end it first once it has started, and End now asks as the page does',
+    SLOW,
+    async () => {
+      await page('/demo/events/evt-wed-4?state=deleteRefusedStarted');
+      const ask = screen.getByRole('alertdialog', { name: `End ${WEDDING} first?` });
+
+      expect(within(ask).queryByRole('textbox')).toBeNull();
+      fireEvent.click(within(ask).getByRole('button', { name: 'End now' }));
+
+      expect(await screen.findByRole('alertdialog', { name: `End ${WEDDING} now?` })).toBeDefined();
+    },
+  );
+
+  it('closes on Keep it and refuses again from Delete event…', SLOW, async () => {
+    await page('/demo/events/evt-wed-4?state=deleteRefused');
+
+    fireEvent.click(
+      within(screen.getByRole('alertdialog', { name: `Call off ${WEDDING} first?` })).getByRole(
+        'button',
+        { name: 'Keep it' },
+      ),
+    );
+    await waitFor(() => expect(screen.queryByRole('alertdialog')).toBeNull());
+
+    fireEvent.click(
+      within(screen.getByRole('region', { name: 'Manage' })).getByRole('button', {
+        name: 'Delete event…',
+      }),
+    );
+    expect(
+      await screen.findByRole('alertdialog', { name: `Call off ${WEDDING} first?` }),
+    ).toBeDefined();
+  });
+
+  it(
+    'says who can, and offers only Keep it, to a reader without Events at Change',
+    SLOW,
+    async () => {
+      for (const [state, title, who] of [
+        [
+          'deleteRefusedRead',
+          `Call off ${WEDDING} first?`,
+          'Ask someone who can change Events in Ire Events to call it off.',
+        ],
+        [
+          'deleteRefusedStartedRead',
+          `End ${WEDDING} first?`,
+          'Ask someone who can change Events in Ire Events to end it.',
+        ],
+      ] as const) {
+        await page(`/demo/events/evt-wed-4?state=${state}`);
+        const ask = screen.getByRole('alertdialog', { name: title });
+        const manage = screen.getByRole('region', { name: 'Manage' });
+
+        expect(within(ask).getByText(who)).toBeDefined();
+        expect(
+          within(ask)
+            .getAllByRole('button')
+            .map((one) => one.textContent),
+        ).toEqual(['Keep it']);
+        expect(within(manage).queryByRole('button', { name: /^Pause/ })).toBeNull();
+        expect(within(manage).queryByRole('button', { name: /^Call off/ })).toBeNull();
+        expect(within(manage).queryByRole('button', { name: /^End now/ })).toBeNull();
+        expect(within(manage).getByRole('button', { name: 'Delete event…' })).toBeDefined();
+        expect(
+          within(screen.getByRole('navigation', { name: WEDDING })).getByRole('button', {
+            name: 'Ana Souza, Coordinator',
+          }),
+        ).toBeDefined();
+        cleanup();
+      }
+    },
+  );
+
+  it(
+    'turns the name screen into the refusal when a guest was invited before Delete',
+    SLOW,
+    async () => {
+      const router = await page('/demo/events/evt-wed-4?state=deleteRace');
+      const ask = screen.getByRole('alertdialog', { name: `Delete ${WEDDING}?` });
+
+      expect((within(ask).getByRole('textbox') as HTMLInputElement).value).toBe(WEDDING);
+      fireEvent.click(within(ask).getByRole('button', { name: 'Delete' }));
+
+      const refused = await screen.findByRole('alertdialog', {
+        name: `Call off ${WEDDING} first?`,
+      });
+
+      expect(within(refused).queryByRole('textbox')).toBeNull();
+      await waitFor(() =>
+        expect(document.activeElement).toBe(
+          within(refused).getByRole('heading', { name: `Call off ${WEDDING} first?` }),
+        ),
+      );
+      expect(within(refused).getByRole('button', { name: 'Call off' })).toBeDefined();
+      expect(router.state.location.pathname).toBe('/demo/events/evt-wed-4');
+      expect(screen.queryByText(`${WEDDING} was deleted.`)).toBeNull();
+    },
+  );
+
+  it(
+    'turns the name screen into who can, with Keep it alone, for a reader at Read',
+    SLOW,
+    async () => {
+      const router = await page('/demo/events/evt-wed-4?state=deleteRaceRead');
+      const ask = screen.getByRole('alertdialog', { name: `Delete ${WEDDING}?` });
+
+      expect((within(ask).getByRole('textbox') as HTMLInputElement).value).toBe(WEDDING);
+      expect(
+        within(screen.getByRole('navigation', { name: WEDDING })).getByRole('button', {
+          name: 'Ana Souza, Coordinator',
+        }),
+      ).toBeDefined();
+      fireEvent.click(within(ask).getByRole('button', { name: 'Delete' }));
+
+      const refused = await screen.findByRole('alertdialog', {
+        name: `Call off ${WEDDING} first?`,
+      });
+
+      expect(within(refused).queryByRole('textbox')).toBeNull();
+      expect(
+        within(refused).getByText(
+          'Ask someone who can change Events in Ire Events to call it off.',
+        ),
+      ).toBeDefined();
+      expect(
+        within(refused)
+          .getAllByRole('button')
+          .map((one) => one.textContent),
+      ).toEqual(['Keep it']);
+      expect(router.state.location.pathname).toBe('/demo/events/evt-wed-4');
+      expect(screen.queryByText(`${WEDDING} was deleted.`)).toBeNull();
+    },
+  );
+
+  it('refuses the Paused party as a Live event, and Call off calls it off', SLOW, async () => {
+    const party = 'Ire Events end-of-year party';
+    const router = await page('/demo/events/evt-party-2?state=deleteRefusedPaused', party);
+    const ask = screen.getByRole('alertdialog', { name: `Call off ${party} first?` });
+
+    expect(within(ask).queryByRole('textbox')).toBeNull();
+    expect(
+      within(ask)
+        .getAllByRole('button')
+        .map((one) => one.textContent),
+    ).toEqual(['Keep it', 'Call off']);
+    fireEvent.click(within(ask).getByRole('button', { name: 'Call off' }));
+    fireEvent.click(
+      within(await screen.findByRole('alertdialog', { name: `Call off ${party}?` })).getByRole(
+        'button',
+        { name: 'Call off' },
+      ),
+    );
+
+    await waitFor(() => expect(screen.queryByRole('alertdialog')).toBeNull());
+    expect(router.state.location.pathname).toBe('/demo/events/evt-party-2');
   });
 });
 

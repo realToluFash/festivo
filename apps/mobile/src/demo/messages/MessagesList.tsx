@@ -1,3 +1,4 @@
+import { changeTitle } from './TellKinds.ts';
 import { type ReactNode, useEffect, useState } from 'react';
 import { Animated, Easing, StyleSheet, View, type ViewInstance } from 'react-native';
 
@@ -30,7 +31,6 @@ import {
   sectionsOf,
 } from './MessagesModel.ts';
 import {
-  GUESTS,
   NOW,
   PARKING,
   PARKING_REACH,
@@ -41,6 +41,8 @@ import {
   RECEIPTS,
 } from './MessagesSample.ts';
 import { CHANNEL_WORD, W, say } from './MessagesWords.ts';
+import { caseFor, guestOf } from './NoticeStates.ts';
+import { NW } from './NoticeWords.ts';
 
 export type { RowId };
 
@@ -121,6 +123,18 @@ function shownRow(m: Messages, id: RowId, locale: string): Shown {
     };
   }
   if (id.kind === 'many') {
+    const change = m.changeRow;
+    if (id.key === 'change' && change != null) {
+      const missed = change.of - change.reached;
+
+      return {
+        title: changeTitle(change.what),
+        line: missed > 0 ? say.didntGetIt(missed) : say.reached(change.reached, change.of),
+        time: NOW,
+        lead: <GroupTile />,
+        tag: missed > 0 ? { kind: 'waiting', word: say.notReached(missed) } : undefined,
+      };
+    }
     if (id.key === 'parking')
       return {
         title: PARKING,
@@ -144,15 +158,25 @@ function shownRow(m: Messages, id: RowId, locale: string): Shown {
       lead: <GroupTile />,
     };
   }
-  const guest = GUESTS[id.key];
+  const guest = guestOf(m, id.key);
+  const later = caseFor(m, id.key)?.extras?.find((one) => one.kind === 'later');
   const answer = m.answers[id.key];
   const done = m.done.includes(id.key) || id.key === 'marta';
   const where = guest.asked.where === 'page' ? W.onTheirPage : CHANNEL_WORD[guest.asked.where];
   const asked =
-    id.key === 'marta' ? `${guest.asked.text} · ${say.doneByShort(READER)}` : guest.asked.text;
+    id.key === 'marta'
+      ? `${guest.asked.text} · ${say.doneByShort(READER)}`
+      : later?.kind === 'later'
+        ? later.text
+        : guest.asked.text;
 
   const unmatched = id.key === 'unknown' && m.matched == null;
-  const name = id.key === 'unknown' && m.matched != null ? m.matched : guest.name;
+  const name =
+    id.key === 'unknown' && m.matched != null
+      ? m.matched
+      : unmatched && m.notice?.hidden === true
+        ? NW.unknownSender
+        : guest.name;
   const initials =
     id.key === 'unknown' && m.matched != null
       ? m.matched
@@ -166,9 +190,11 @@ function shownRow(m: Messages, id: RowId, locale: string): Shown {
     line: answer == null ? say.where(where, asked) : say.where(W.onTheirPage, say.you(answer.text)),
     time:
       answer?.time ??
-      (id.key === 'lucia' && m.arrived
-        ? justNow(locale)
-        : rowDay(guest.asked.day, guest.asked.time, locale)),
+      (later?.kind === 'later'
+        ? later.time
+        : id.key === 'lucia' && m.arrived
+          ? justNow(locale)
+          : rowDay(guest.asked.day, guest.asked.time, locale)),
     lead: <Avatar initials={initials} side={40} tone={done ? 4 : 0} />,
     tag: unmatched ? { kind: 'notyet', word: W.notMatched } : undefined,
   };
@@ -237,12 +263,13 @@ function SectionTitle({ word, count }: { word: string; count?: number }) {
   );
 }
 
-function Untold({
+/** Not told yet (sc-4330): each untold change on its own line, under the cover on Overview and at the head of Messages. */
+export function Untold({
   what,
   onTell,
   onDismiss,
 }: {
-  what: string;
+  what: readonly string[];
   onTell: () => void;
   onDismiss: () => void;
 }) {
@@ -254,9 +281,13 @@ function Untold({
           {W.notTold}
         </Text>
       </View>
-      <Text size={14} weight="medium" style={[styles.secondary, styles.untoldLine]}>
-        {what}
-      </Text>
+      <View style={styles.untoldLine}>
+        {what.map((item) => (
+          <Text key={item} size={14} weight="medium" style={styles.secondary}>
+            {item}
+          </Text>
+        ))}
+      </View>
       <View style={styles.untoldActions}>
         <TextAction label={W.tellThem} onPress={onTell} testID="messages.untold.tell" />
         <TextAction label={W.dismiss} plain onPress={onDismiss} testID="messages.untold.dismiss" />
@@ -334,7 +365,7 @@ export function MessagesList({
         >
           {W.messages}
         </Text>
-        {wide && m.phase !== 'loading' && (
+        {wide && m.phase !== 'loading' && m.notice?.hidden !== true && (
           <Pill
             label={W.newButton}
             glyph="plus"
@@ -383,9 +414,7 @@ export function MessagesList({
   return (
     <View style={styles.list}>
       {title}
-      {m.untold && (
-        <Untold what={m.change.what.join(' · ')} onTell={onTell} onDismiss={onDismiss} />
-      )}
+      {m.untold && <Untold what={m.change.what} onTell={onTell} onDismiss={onDismiss} />}
       {sections.top.length > 0 && (
         <View style={styles.bleed}>
           <RowList items={sections.top.map(item)} gutter={10} />

@@ -13,8 +13,7 @@ import { useTranslation } from 'react-i18next';
 import { api } from '../../../api.ts';
 import { Glyph, type GlyphName } from '../../../components/Glyph.tsx';
 import { Ask, Head, RowWords } from '../../../components/SettingsParts.tsx';
-import { Skeleton } from '../../../components/Skeleton.tsx';
-import { currentLocale, dateLocale } from '../../../i18n/index.ts';
+import { dateLocale } from '../../../i18n/index.ts';
 import { focusWhenFree } from '../../../layers.ts';
 import { type Mesh } from '../../../mesh.ts';
 import { offButton } from '../../../offButton.ts';
@@ -138,6 +137,7 @@ export function GuestColumn({
   onDirty,
   onAsk,
   onSaved,
+  onShown,
   onClose,
 }: {
   eventId: string;
@@ -160,19 +160,31 @@ export function GuestColumn({
   /** Asks "Discard your changes?" and runs `then` only on Discard. */
   onAsk: (then: () => void) => void;
   onSaved: (guest: GuestDetails) => void;
+  /** Once the guest, or why they cannot be shown, first replaces the loading bones. */
+  onShown: () => void;
   onClose: () => void;
 }) {
   const { t } = useTranslation();
   const [pane, setPane] = useState<Pane>({ kind: 'loading' });
   const [attempt, setAttempt] = useState(0);
   const editing = useRef(false);
+  const missed = useRef(false);
+  const shown = pane.kind !== 'loading';
+  const showing = useEffectEvent(onShown);
 
   useEffect(() => {
     editing.current = pane.kind === 'edit';
   });
 
   useEffect(() => {
-    if (editing.current) return;
+    if (shown) showing();
+  }, [shown]);
+
+  useEffect(() => {
+    if (editing.current) {
+      missed.current = true;
+      return;
+    }
     let current = true;
 
     api.guest(eventId, guestId).then(
@@ -195,8 +207,20 @@ export function GuestColumn({
 
   if (pane.kind === 'loading') {
     return (
-      <div aria-busy="true">
-        <Skeleton words={t('pending.loading')} shape="rows" rowHeight={64} />
+      <div className="desk-loading gs-bones" role="status" aria-busy="true">
+        <span className="desk-unseen">{t('pending.loading')}</span>
+        <span className="desk-sunk gs-bone-guest" aria-hidden="true" />
+        <ul className="desk-rows gs-rows" aria-hidden="true">
+          {[1, 2, 3].map((bone) => (
+            <li key={bone} className="desk-row is-bones">
+              <span className="desk-sunk gs-bone-icon" />
+              <span className="desk-row-words">
+                <span className={`desk-sunk is-title b${bone}`} />
+                <span className={`desk-sunk is-line b${bone}`} />
+              </span>
+            </li>
+          ))}
+        </ul>
       </div>
     );
   }
@@ -237,6 +261,15 @@ export function GuestColumn({
   }
 
   if (pane.kind === 'edit') {
+    const leave = (tagged: TaggedGuest): void => {
+      onDirty(false);
+      setPane({ kind: 'guest', tagged });
+      if (missed.current) {
+        missed.current = false;
+        setAttempt((n) => n + 1);
+      }
+    };
+
     return (
       <EditForm
         eventId={eventId}
@@ -247,8 +280,7 @@ export function GuestColumn({
         onDirty={onDirty}
         onCancel={(dirty) => {
           const back = () => {
-            onDirty(false);
-            setPane({ kind: 'guest', tagged: pane.tagged });
+            leave(pane.tagged);
             focus('edit');
           };
 
@@ -261,8 +293,7 @@ export function GuestColumn({
           focus('guest-heading');
         }}
         onSaved={(tagged, changed) => {
-          onDirty(false);
-          setPane({ kind: 'guest', tagged });
+          leave(tagged);
           if (changed) onSaved(tagged.guest);
           focus('edit');
         }}
@@ -343,7 +374,7 @@ function GuestView({
   }
 
   const ask = () => setReplace({ kind: 'asking', busy: false });
-  const added = new Intl.DateTimeFormat(currentLocale(), {
+  const added = new Intl.DateTimeFormat(dateLocale(), {
     month: 'short',
     day: 'numeric',
   }).format(new Date(guest.added.at));
@@ -376,6 +407,11 @@ function GuestView({
           <h2 id={heading} className="gs-name" tabIndex={-1} data-focus="guest-heading">
             {guest.fullName}
           </h2>
+          {replied != null && (
+            <p className="desk-on-card">
+              {t('guestList.replied', { reply: t(REPLY_KEY[guest.reply]), date: replied })}
+            </p>
+          )}
         </div>
       </section>
       {manages && flagged && (
@@ -615,19 +651,53 @@ function mobileOf(values: Values): string | null {
     : (phoneE164(number, values.country) ?? `${values.country} ${number}`);
 }
 
-/** What the API would keep, so a save that changes nothing sends nothing. */
-function kept(values: Values): string {
+type Field = 'fullName' | 'email' | 'mobile' | 'companions';
+
+const FIELDS: readonly Field[] = ['fullName', 'email', 'mobile', 'companions'];
+
+/** What the API would keep of each field, so a save that changes nothing sends nothing. */
+function keptOf(values: Values): Record<Field, string> {
   const sent = newGuestOf(typedOf(values), false);
 
-  return JSON.stringify([
-    sent.fullName,
-    sent.email,
-    mobileOf(values),
-    values.companions.map((one, at) => [one.id, sent.companions?.[at]?.fullName ?? null]),
-  ]);
+  return {
+    fullName: sent.fullName,
+    email: JSON.stringify(sent.email),
+    mobile: JSON.stringify(mobileOf(values)),
+    companions: JSON.stringify(
+      values.companions.map((one, at) => [one.id, sent.companions?.[at]?.fullName ?? null]),
+    ),
+  };
 }
 
-type Differs = readonly { field: string; theirs: string; yours: string }[];
+function kept(values: Values): string {
+  return JSON.stringify(keptOf(values));
+}
+
+/** The fields this host changed against the version they opened or took with Use theirs, with those held through a Keep mine. */
+function changedOf(values: Values, base: Values, held: readonly Field[] = []): readonly Field[] {
+  const now = keptOf(values);
+  const was = keptOf(base);
+
+  return FIELDS.filter((field) => held.includes(field) || now[field] !== was[field]);
+}
+
+/** Their version with only this host's changed fields taken from the form, so Keep mine overwrites nothing a colleague changed. */
+function mergedOf(values: Values, theirs: Values, changed: readonly Field[]): Values {
+  const mine = (field: Field) => changed.includes(field);
+  const held = new Set(theirs.companions.map((one) => one.id));
+
+  return {
+    fullName: mine('fullName') ? values.fullName : theirs.fullName,
+    email: mine('email') ? values.email : theirs.email,
+    country: mine('mobile') ? values.country : theirs.country,
+    number: mine('mobile') ? values.number : theirs.number,
+    companions: mine('companions')
+      ? values.companions.map((one) => (held.has(one.id) ? one : { ...one, id: null }))
+      : theirs.companions,
+  };
+}
+
+type Differs = readonly { key: Field; field: string; theirs: string; yours: string }[];
 
 /** Edit (sc-3773), in place in the guest's column: refused before sending, a duplicate asked about, a colleague's change (412) held at the top. */
 function EditForm({
@@ -659,7 +729,13 @@ function EditForm({
   const [tried, setTried] = useState(false);
   const [refused, setRefused] = useState<Problems>({});
   const [duplicate, setDuplicate] = useState<'asked' | 'kept' | null>(null);
-  const [conflict, setConflict] = useState<{ theirs: TaggedGuest; differs: Differs } | null>(null);
+  const [held, setHeld] = useState<readonly Field[]>([]);
+  const [conflict, setConflict] = useState<{
+    theirs: TaggedGuest;
+    differs: Differs;
+    sent: Values;
+    changed: readonly Field[];
+  } | null>(null);
   const [failed, setFailed] = useState(false);
   const [said, setSaid] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
@@ -713,8 +789,8 @@ function EditForm({
     );
   }
 
-  function differs(theirs: GuestDetails): Differs {
-    const mine = newGuestOf(typed, false);
+  function differs(theirs: GuestDetails, sent: Values, changed: readonly Field[]): Differs {
+    const mine = newGuestOf(typedOf(sent), false);
     const theirNames = theirs.companions.map((one, at) =>
       companionShown(
         t,
@@ -723,49 +799,62 @@ function EditForm({
         at,
       ),
     );
-    const myNames = values.companions.map((_, at) =>
+    const myNames = sent.companions.map((_, at) =>
       companionShown(
         t,
         mine.fullName,
-        values.companions.map((c) => c.name),
+        sent.companions.map((c) => c.name),
         at,
       ),
     );
     const none = t('guestList.none');
-    const mobile = mobileOf(values);
-    const rows = [
-      { field: t('account.fullName'), theirs: theirs.fullName, yours: mine.fullName },
+    const mobile = mobileOf(sent);
+    const rows: Differs = [
       {
+        key: 'fullName',
+        field: t('account.fullName'),
+        theirs: theirs.fullName,
+        yours: mine.fullName,
+      },
+      {
+        key: 'email',
         field: t('guestList.emailAddress'),
         theirs: theirs.email ?? none,
         yours: mine.email ?? none,
       },
       {
+        key: 'mobile',
         field: t('guestList.mobileNumber'),
         theirs: theirs.mobile == null ? none : formatPhone(theirs.mobile),
         yours: mobile == null ? none : formatPhone(mobile),
       },
       {
+        key: 'companions',
         field: t('guestList.companionsTitle'),
         theirs: theirNames.join(', ') || none,
         yours: myNames.join(', ') || none,
       },
     ];
 
-    return rows.filter((row) => row.theirs !== row.yours);
+    return rows.filter((row) => changed.includes(row.key) && row.theirs !== row.yours);
   }
 
-  async function send(allowDuplicate: boolean, against: string): Promise<void> {
+  async function send(
+    allowDuplicate: boolean,
+    against: string,
+    sending = values,
+    changed = changedOf(values, base, held),
+  ): Promise<void> {
     setBusy(true);
     setFailed(false);
     try {
-      const sent = newGuestOf(typed, allowDuplicate);
+      const sent = newGuestOf(typedOf(sending), allowDuplicate);
       const saved = await api.updateGuest(
         eventId,
         host.id,
         {
           ...sent,
-          companions: values.companions.map((one, at) => ({
+          companions: sending.companions.map((one, at) => ({
             id: one.id,
             fullName: sent.companions?.[at]?.fullName ?? null,
           })),
@@ -779,9 +868,13 @@ function EditForm({
       else if (error instanceof ApiError && error.status === 412) {
         try {
           const theirs = await api.guest(eventId, host.id);
+          const rows = differs(theirs.guest, sending, changed);
 
-          setConflict({ theirs, differs: differs(theirs.guest) });
-          focus('conflict');
+          if (rows.length === 0) onSaved(theirs, false);
+          else {
+            setConflict({ theirs, differs: rows, sent: sending, changed });
+            focus('conflict');
+          }
         } catch (again) {
           if (again instanceof ApiError && again.status === 404) onGone();
           else setFailed(true);
@@ -790,8 +883,8 @@ function EditForm({
         setDuplicate('asked');
         focus('duplicate');
       } else if (error instanceof ApiError && error.status === 422) {
-        const found = violationProblems(error.problem.violations ?? [], typed);
-        const at = firstProblem(found, values.companions.length);
+        const found = violationProblems(error.problem.violations ?? [], typedOf(sending));
+        const at = firstProblem(found, sending.companions.length);
 
         if (at == null) setFailed(true);
         else {
@@ -885,6 +978,7 @@ function EditForm({
                 setHost(conflict.theirs.guest);
                 setBase(theirs);
                 setValues(theirs);
+                setHeld([]);
                 setTag(conflict.theirs.tag);
                 setConflict(null);
                 setDuplicate(null);
@@ -901,10 +995,16 @@ function EditForm({
               aria-busy={busy || undefined}
               onClick={() => {
                 const against = conflict.theirs.tag;
+                const theirs = valuesOf(conflict.theirs.guest, country);
+                const sending = mergedOf(conflict.sent, theirs, conflict.changed);
 
+                setHost(conflict.theirs.guest);
+                setBase(theirs);
+                setHeld(conflict.changed);
+                setValues(sending);
                 setTag(against);
                 setConflict(null);
-                void send(duplicate === 'kept', against);
+                void send(duplicate === 'kept', against, sending, conflict.changed);
               }}
             >
               {t('guestList.keepMine')}

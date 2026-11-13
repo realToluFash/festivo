@@ -18,6 +18,7 @@ import { backToEvents } from './EventFrame.tsx';
 import { EventsList } from './EventsList.tsx';
 import { EventGone } from './EventGone.tsx';
 import { eventStateOf, listStateOf } from './EventsModel.ts';
+import { AT_READ, refusedStartOf } from './DeleteRefusal.ts';
 import { messagesStateOf } from '../messages/MessagesModel.ts';
 import { seatingStateOf } from '../seating/SeatingModel.ts';
 import { guestsFromOf, guestsStateOf } from '../guests/GuestsModel.ts';
@@ -25,17 +26,26 @@ import { budgetStateOf } from '../budget/BudgetModel.ts';
 import { cardStateOf } from '../people/PeopleCardModel.ts';
 import { areaOf, sampleEvent } from './EventsSample.ts';
 import { say } from './EventsWords.ts';
-import { type Shell, ShellContext, type ShellSection } from '../../components/settingsShell.ts';
+import {
+  type Looking,
+  type Shell,
+  ShellContext,
+  type ShellSection,
+} from '../../components/settingsShell.ts';
 import { PageToast } from '../../components/Summary.tsx';
+
+const OWNER = lookingAs('owner');
 
 /** Events on sample data, in Settings' shell: Today and Settings a tab away, and anything unbuilt said so. */
 export function EventsShell({
   told: start,
   switcher,
+  looking = OWNER,
   children,
 }: {
   told?: string | undefined;
   switcher?: string | undefined;
+  looking?: Looking;
   children: ReactNode;
 }) {
   const layout = layoutOf(useLayout().kind);
@@ -63,7 +73,7 @@ export function EventsShell({
     () => ({
       layout,
       viewer: 'owner',
-      looking: lookingAs('owner'),
+      looking,
       open: null,
       openSection,
       toSettings,
@@ -71,7 +81,7 @@ export function EventsShell({
       onTab,
       listColumn: null,
     }),
-    [layout, openSection, toSettings, tell, onTab],
+    [layout, looking, openSection, toSettings, tell, onTab],
   );
   const foot = Math.max(insets.bottom - tokens.spaceXxs, tokens.spaceLg);
 
@@ -144,7 +154,12 @@ export function EventRoute() {
     );
 
   return (
-    <EventsShell switcher={params.switcher}>
+    <EventsShell
+      switcher={params.switcher}
+      {...(refusedStartOf(state)?.canChange === false || state === 'makeLiveCannotSend'
+        ? { looking: AT_READ }
+        : {})}
+    >
       <EventScreen
         key={`${params.id ?? ''}:${state ?? ''}:${area ?? ''}:${messages ?? ''}:${seating ?? ''}:${guests ?? ''}:${budget ?? ''}:${people ?? ''}:${from ?? ''}`}
         id={params.id}

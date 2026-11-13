@@ -131,4 +131,22 @@ describe('cardStep', () => {
       cardStep(nextUpAt('2026-11-20T17:00:00+01:00'), before, 'en-GB', withDate),
     ).toMatchObject({ kind: 'next', line: 'Fri 20 Nov, 17:00' });
   });
+
+  it('writes the called-off day with its year only when it is not this year', () => {
+    const calledOffOn = (concludedAt: string) =>
+      shownEvent({ ...lasting(1, 'finished'), status: 'ended', concludedAt }, 'finished');
+    const after = new Date('2026-11-10T12:00:00+01:00');
+
+    expect(
+      cardStep(calledOffOn('2026-11-05T10:00:00+01:00'), after, 'en-GB', withDate),
+    ).toMatchObject({ kind: 'button', line: 'Thu 5 Nov' });
+    expect(
+      cardStep(
+        calledOffOn('2025-11-05T10:00:00+01:00'),
+        new Date('2027-01-10T12:00:00+01:00'),
+        'en-GB',
+        withDate,
+      ),
+    ).toMatchObject({ kind: 'button', line: 'Wed, 5 Nov 2025' });
+  });
 });

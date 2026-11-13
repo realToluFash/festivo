@@ -3025,6 +3025,23 @@ describe('events (sc-1486)', () => {
     ]);
   });
 
+  test('a copy brings the guest list when asked, and says how many guests came (sc-3656)', async () => {
+    const { api, sent } = client(() =>
+      json({ event: { ...EVENT, id: 'e2' }, guestsCopied: 118 }, 201),
+    );
+
+    expect(await api.duplicateEventWithGuests(EVENT.id, '2027-05-15T16:00')).toEqual({
+      event: { ...EVENT, id: 'e2' },
+      guestsCopied: 118,
+    });
+    expect(sent).toEqual([
+      {
+        line: `POST /api/events/${EVENT.id}/duplicate`,
+        body: { startsAt: '2027-05-15T16:00', copyGuests: true },
+      },
+    ]);
+  });
+
   test('an event’s timeline is read as served, and a shape it does not know is an error', async () => {
     const timeline = {
       timeZone: 'Europe/Madrid',
@@ -3627,5 +3644,59 @@ describe('the calendar feed link (sc-3626)', () => {
     const { client } = answering({ url: 'https://elsewhere.test/x.ics' });
 
     await expect(client.calendarFeed('org_1')).rejects.toThrow(/CalendarFeedController/);
+  });
+});
+
+describe("the guest's calendar on their page (sc-3627)", () => {
+  const PAGE = {
+    guest: {
+      fullName: 'Adaeze Okonkwo',
+      reply: { answer: 'coming', at: '2026-10-17T14:20:00+01:00' },
+      companions: 0,
+    },
+    event: {
+      id: 'ev_1',
+      name: 'Owambe',
+      type: 'party',
+      cover: null,
+      hosts: ['Funmi'],
+      startsAt: '2030-11-14T16:00:00+01:00',
+      timeZone: 'Africa/Lagos',
+      venue: null,
+    },
+    phase: 'live',
+    started: false,
+    answersOpen: true,
+  };
+
+  function answering(body: unknown) {
+    return new ApiClient({
+      baseUrl: () => 'https://api.soirely.test/',
+      fetch: async () =>
+        new Response(JSON.stringify(body), {
+          status: 200,
+          headers: { 'Content-Type': 'application/json' },
+        }),
+    });
+  }
+
+  test('offers the feed as webcal for Apple and Outlook, and by URL to Google Calendar', async () => {
+    const client = answering({ ...PAGE, calendarFeed: '/api/guest-calendars/abc.ics' });
+
+    expect((await client.guestPage('tok')).calendar).toEqual({
+      webcal: 'webcal://api.soirely.test/api/guest-calendars/abc.ics',
+      google:
+        'https://calendar.google.com/calendar/r?cid=webcal%3A%2F%2Fapi.soirely.test%2Fapi%2Fguest-calendars%2Fabc.ics',
+    });
+  });
+
+  test('has none when the API gives none', async () => {
+    expect((await answering({ ...PAGE, calendarFeed: null }).guestPage('tok')).calendar).toBeNull();
+  });
+
+  test('refuses a feed that is not a path', async () => {
+    await expect(
+      answering({ ...PAGE, calendarFeed: 'https://elsewhere.test/x.ics' }).guestPage('tok'),
+    ).rejects.toThrow(/GuestPageController/);
   });
 });

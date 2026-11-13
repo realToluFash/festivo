@@ -11,6 +11,7 @@ import {
   PARTY,
   WALK_IN,
   WEDDING,
+  changedView,
   closeLine,
   countsOf,
   guestsCardOf,
@@ -35,6 +36,7 @@ import {
   viewOf,
 } from './guests.ts';
 import { GW } from './guestsWords.ts';
+import { changesSince } from './changedSince.ts';
 import { COMING, GUESTS_N, NOT_REPLIED, countOf } from './messages.ts';
 import { GROUPS } from './messagesTo.ts';
 
@@ -253,9 +255,48 @@ describe('the card’s words (l10n, 8 Nov)', () => {
 
 describe('the view in the address (sc-3772)', () => {
   it('knows what each state opens on before the address says otherwise', () => {
-    expect(viewBase('filtered')).toEqual({ choice: 'noReply', q: '' });
-    expect(viewBase('search')).toEqual({ choice: 'all', q: 'okon' });
-    expect(viewBase(null)).toEqual({ choice: 'all', q: '' });
+    expect(viewBase('filtered')).toEqual({ choice: 'noReply', q: '', since: null });
+    expect(viewBase('search')).toEqual({ choice: 'all', q: 'okon', since: null });
+    expect(viewBase(null)).toEqual({ choice: 'all', q: '', since: null });
+    expect(viewBase('changed')).toEqual({ choice: 'changed', q: '', since: null });
+  });
+});
+
+describe('Changed since you looked (sc-4331)', () => {
+  const clock = new Date('2026-11-03T09:41:00Z');
+
+  it('lists the bell item’s guests newest first, the answer and when', () => {
+    const { view, shown } = changedView(sampleGuests(WEDDING), changesSince(null), '', clock);
+    const lines =
+      view.kind === 'rows' ? view.rows.map((row) => `${row.person.name}: ${row.line}`) : [];
+
+    expect(shown).toBe(5);
+    expect(lines).toEqual([
+      'Lucía Ortega: Not sure yet · Changed at 09:31',
+      'Inês Duarte: Coming · Replied at 08:40',
+      'Amaka Eze: Coming · Replied at 07:52',
+      'Camille Dubois: Not coming · Replied Nov 2',
+      'Alhaji Musa Bello: Coming · Replied Nov 2',
+    ]);
+  });
+
+  it('counts only what changed after the last look, and a search narrows it', () => {
+    expect(changesSince('2026-11-03T08:00:00Z').map((one) => one.id)).toEqual(['lucia', 'ines']);
+    expect(changesSince(clock.toISOString())).toEqual([]);
+    expect(changedView(sampleGuests(WEDDING), changesSince(null), 'eze', clock).shown).toBe(1);
+  });
+
+  it('shows the bell’s label for a change that is not a reply', () => {
+    const { view } = changedView(
+      sampleGuests(WEDDING),
+      [{ id: 'kwame', kind: 'needs', at: '2026-11-02T10:00:00Z' }],
+      '',
+      clock,
+    );
+
+    expect(view.kind === 'rows' && view.rows[0]?.line).toBe(
+      'Updated dietary needs · Changed Nov 2',
+    );
   });
 });
 

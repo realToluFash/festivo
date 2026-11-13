@@ -386,6 +386,7 @@ span {
   .shell-content.is-card:has(.cal-page) {
     display: flex;
     flex-direction: column;
+    padding-bottom: var(--space3xl);
     overflow: hidden;
   }
 
@@ -7233,6 +7234,12 @@ button.members-row {
   max-width: 680px;
 }
 
+@media (width > 60rem) {
+  .account.personalisation {
+    gap: 18px;
+  }
+}
+
 .scheme-ground,
 .scheme-pieces {
   position: absolute;
@@ -7370,6 +7377,7 @@ button.members-row {
 
 .dialog.colours-dialog {
   top: 50%;
+  animation: none;
   gap: 0;
   width: 540px;
   max-height: calc(100% - 2 * var(--space6xl));

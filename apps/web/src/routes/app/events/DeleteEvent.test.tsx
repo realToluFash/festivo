@@ -415,6 +415,74 @@ describe('Delete an event (sc-3592)', () => {
     expect(screen.queryByRole('heading', { level: 1, name: 'Events' })).toBeNull();
   });
 
+  it('asks for the current name after the API refuses one renamed since the dialog opened (sc-44741)', async () => {
+    signedIn();
+    let renamed = false;
+    const { sent, dialog } = await asking(live(), true, {
+      'GET /api/events/ev_1': () =>
+        json({ event: renamed ? live({ name: 'Adaeze at Forty' }) : live() }),
+      'DELETE /api/events/ev_1': (body) => {
+        if ((body as { name?: string }).name === 'Adaeze at Forty') {
+          return new Response(null, { status: 204 });
+        }
+        renamed = true;
+
+        return mismatch();
+      },
+    });
+    const field = within(dialog).getByLabelText('Type Adaeze and Tunde to delete it');
+    const button = within(dialog).getByRole('button', { name: 'Delete' });
+
+    fireEvent.change(field, { target: { value: 'Adaeze and Tunde' } });
+    fireEvent.click(button);
+
+    expect(
+      await within(dialog).findByText('Type Adaeze at Forty exactly as shown to delete it.'),
+    ).toBeDefined();
+    expect(screen.getByRole('alertdialog', { name: 'Delete Adaeze at Forty?' })).toBe(dialog);
+    expect(within(dialog).getByLabelText('Type Adaeze at Forty to delete it')).toBe(field);
+    expect((field as HTMLInputElement).value).toBe('Adaeze and Tunde');
+    expect(field.getAttribute('aria-invalid')).toBe('true');
+    expect(document.activeElement).toBe(field);
+    expect(button.getAttribute('aria-disabled')).toBe('true');
+
+    fireEvent.change(field, { target: { value: 'Adaeze and Tunde' } });
+    expect(button.getAttribute('aria-disabled')).toBe('true');
+
+    fireEvent.change(field, { target: { value: 'Adaeze at Forty' } });
+    expect(button.getAttribute('aria-disabled')).not.toBe('true');
+    fireEvent.click(button);
+
+    await screen.findByRole('heading', { level: 1, name: 'Events' });
+    expect(
+      sent.filter(({ line }) => line === 'DELETE /api/events/ev_1').map(({ body }) => body),
+    ).toEqual([{ name: 'Adaeze and Tunde' }, { name: 'Adaeze at Forty' }]);
+  });
+
+  it('keeps the name it opened with when the event cannot be reread after a refusal (sc-44741)', async () => {
+    signedIn();
+    let refused = false;
+    const { dialog } = await asking(live(), true, {
+      'GET /api/events/ev_1': () =>
+        refused ? json({ title: 'Server error' }, 500) : json({ event: live() }),
+      'DELETE /api/events/ev_1': () => {
+        refused = true;
+
+        return mismatch();
+      },
+    });
+    const field = within(dialog).getByLabelText('Type Adaeze and Tunde to delete it');
+
+    fireEvent.change(field, { target: { value: 'Adaeze and Tunde' } });
+    fireEvent.click(within(dialog).getByRole('button', { name: 'Delete' }));
+
+    expect(
+      await within(dialog).findByText('Type Adaeze and Tunde exactly as shown to delete it.'),
+    ).toBeDefined();
+    expect(screen.getByRole('alertdialog', { name: 'Delete Adaeze and Tunde?' })).toBe(dialog);
+    expect(document.activeElement).toBe(field);
+  });
+
   it('keeps the dialog open with what was typed when it was not deleted', async () => {
     signedIn();
     const { dialog } = await asking(live(), true, {

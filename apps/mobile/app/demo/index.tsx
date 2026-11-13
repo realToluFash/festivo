@@ -23,6 +23,7 @@ import { SERVICE_BOARDS, SERVICE_NEXT_BOARDS } from '../../src/demo/service/HowI
 import { REQUEST_BOARDS } from '../../src/demo/service/RequestsBoards.ts';
 import { ROOM_BOARDS } from '../../src/demo/service/ServiceRoomBoards.ts';
 import { MESSAGES_BOARDS } from '../../src/demo/messages/MessagesBoards.ts';
+import { isStopState } from '../../src/demo/messages/StopWriting.ts';
 import { SEATING_BOARDS } from '../../src/demo/seating/SeatingBoards.ts';
 import { MOVED_BOARDS, TEAM_BOARDS } from '../../src/demo/team/TeamBoards.ts';
 import { tokens } from '../../src/theme/tokens.ts';
@@ -441,6 +442,21 @@ const PAGES: readonly { page: string; boards: readonly Board[] }[] = [
         title: 'Your account · email verified',
         what: 'The card says so',
         href: '/demo/settings/account?state=verifyEmailDone',
+      },
+      {
+        title: 'Your account · an address we could not deliver to',
+        what: 'Change email opens Add an email address',
+        href: '/demo/settings/account?state=undeliverable',
+      },
+      {
+        title: 'Your account · two addresses we could not deliver to',
+        what: 'One line each; with 2 held, Change email opens the other row',
+        href: '/demo/settings/account?state=undeliverableTwo',
+      },
+      {
+        title: 'Your account · not verified, and undeliverable',
+        what: 'The card’s line first; a code clears both',
+        href: '/demo/settings/account?state=undeliverableUnverified',
       },
       {
         title: 'Your account · check your messages',
@@ -1223,6 +1239,126 @@ const PAGES: readonly { page: string; boards: readonly Board[] }[] = [
         href: '/demo/events/evt-draft-4?state=draft',
       },
       {
+        title: 'Make live?',
+        what: 'A’s alert: Not yet, then Make live',
+        href: '/demo/events/evt-draft-4?state=makeLive',
+      },
+      {
+        title: 'Make live · making live',
+        what: 'Making live…, Not yet waits',
+        href: '/demo/events/evt-draft-4?state=makeLiveMaking',
+      },
+      {
+        title: 'Make live · not made live',
+        what: 'Not made live. Try again in a moment.',
+        href: '/demo/events/evt-draft-4?state=makeLiveNotMade',
+      },
+      {
+        title: 'Make live · Host 1',
+        what: 'No host yet: Host 1 in the alert',
+        href: '/demo/events/evt-draft-4?state=makeLiveHost',
+      },
+      {
+        title: 'Make live · Host 1 empty',
+        what: 'Enter who is hosting to make this event live.',
+        href: '/demo/events/evt-draft-4?state=makeLiveHostBlank',
+      },
+      {
+        title: 'Make live · changed elsewhere',
+        what: 'Somebody else made it live: Close alone',
+        href: '/demo/events/evt-draft-4?state=makeLiveChanged',
+      },
+      {
+        title: 'Make live · cannot send messages',
+        what: 'A member without Messages: Make live ends with ✓ Live',
+        href: '/demo/events/evt-draft-4?state=makeLiveCannotSend',
+      },
+      {
+        title: 'Make live · the offer',
+        what: 'Send invitations to 11 guests now? Texts use 146 credits',
+        href: '/demo/events/evt-draft-4?state=makeLiveOffer',
+      },
+      {
+        title: 'Make live · the offer, everyone by email',
+        what: 'Send invitations to 11 guests now? No texts, so no cost line',
+        href: '/demo/events/evt-draft-4?state=makeLiveOfferEmail',
+      },
+      {
+        title: 'Make live · the offer, one guest',
+        what: 'Send the invitation to 1 guest now? and Send it',
+        href: '/demo/events/evt-draft-4?state=makeLiveOfferOne',
+      },
+      {
+        title: 'Make live · the offer, every text waits',
+        what: 'At 0 credits: Email goes either way, 3 SMS messages will wait',
+        href: '/demo/events/evt-draft-4?state=makeLiveOfferWaits',
+      },
+      {
+        title: 'Make live · the offer, credits for some texts',
+        what: 'Texts use 22 credits, then 1 SMS message will wait',
+        href: '/demo/events/evt-draft-4?state=makeLiveOfferPart',
+      },
+      {
+        title: 'Make live · the offer, texts and WhatsApp (sc-45251)',
+        what: 'Template at marketing: Texts and WhatsApp messages use 26 credits',
+        href: '/demo/events/evt-draft-4?state=makeLiveOfferWhatsApp',
+      },
+      {
+        title: 'Make live · the offer, WhatsApp only (sc-45251)',
+        what: 'Template at utility: WhatsApp messages use 8 credits',
+        href: '/demo/events/evt-draft-4?state=makeLiveOfferWhatsAppOnly',
+      },
+      {
+        title: 'Make live · sending',
+        what: 'Sending…, Not yet waits',
+        href: '/demo/events/evt-draft-4?state=makeLiveOfferSending',
+      },
+      {
+        title: 'Make live · invitations queued',
+        what: 'The toast, and Messages opens the Invitation',
+        href: '/demo/events/evt-draft-4?state=makeLiveOfferSent',
+      },
+      {
+        title: 'Make live · Not yet on the offer',
+        what: 'Live, no toast',
+        href: '/demo/events/evt-draft-4?state=makeLiveOfferNotYet',
+      },
+      {
+        title: 'Make live · not sent',
+        what: 'Not sent. Try again in a moment. The offer stays',
+        href: '/demo/events/evt-draft-4?state=makeLiveOfferNotSent',
+      },
+      {
+        title: 'Make live · nobody can be reached',
+        what: 'No offer: why, and Close alone',
+        href: '/demo/events/evt-draft-4?state=makeLiveOfferNobody',
+      },
+      {
+        title: 'Make live · refused after Send them',
+        what: 'The same refusal in the offer’s place: why, and Close alone',
+        href: '/demo/events/evt-draft-4?state=makeLiveOfferRefused',
+      },
+      {
+        title: 'Make live · no longer allowed to send',
+        what: '403 after Send them: why, and Close alone',
+        href: '/demo/events/evt-draft-4?state=makeLiveOfferForbidden',
+      },
+      {
+        title: 'Make live · end has passed',
+        what: 'Not made live: Close, or Change dates',
+        href: '/demo/events/evt-shower-2?state=makeLiveEndPassed',
+      },
+      {
+        title: 'Make live · nobody on the list',
+        what: 'No offer: Make live ends with ✓ Live',
+        href: '/demo/events/evt-cena-4?state=makeLiveNoOffer',
+      },
+      {
+        title: 'Make live · made live',
+        what: 'Live, with ✓ Live',
+        href: '/demo/events/evt-cena-4?state=madeLive',
+      },
+      {
         title: 'An event · draft, dates gone',
         what: 'Change the dates',
         href: '/demo/events/evt-shower-2?state=draftPast',
@@ -1532,6 +1668,41 @@ const PAGES: readonly { page: string; boards: readonly Board[] }[] = [
         href: '/demo/events/evt-wed-4?state=deleteTyped',
       },
       {
+        title: 'Delete event · refused',
+        what: 'Guests invited: call it off first',
+        href: '/demo/events/evt-wed-4?state=deleteRefused',
+      },
+      {
+        title: 'Delete event · refused, from the start',
+        what: 'Guests invited: end it first',
+        href: '/demo/events/evt-wed-4?state=deleteRefusedStarted',
+      },
+      {
+        title: 'Delete event · refused, without Change',
+        what: 'Who can call it off, and Keep it alone',
+        href: '/demo/events/evt-wed-4?state=deleteRefusedRead',
+      },
+      {
+        title: 'Delete event · refused, without Change, from the start',
+        what: 'Who can end it, and Keep it alone',
+        href: '/demo/events/evt-wed-4?state=deleteRefusedStartedRead',
+      },
+      {
+        title: 'Delete event · the race',
+        what: 'A guest invited while the name is typed: press Delete',
+        href: '/demo/events/evt-wed-4?state=deleteRace',
+      },
+      {
+        title: 'Delete event · the race, without Change',
+        what: 'Press Delete: who can call it off, and Keep it alone',
+        href: '/demo/events/evt-wed-4?state=deleteRaceRead',
+      },
+      {
+        title: 'Delete event · refused, Paused',
+        what: 'The Paused party: call it off first',
+        href: '/demo/events/evt-party-2?state=deleteRefusedPaused',
+      },
+      {
         title: 'Duplicate',
         what: 'What is copied, and when it starts',
         href: '/demo/events/evt-wed-4?state=duplicate',
@@ -1546,6 +1717,26 @@ const PAGES: readonly { page: string; boards: readonly Board[] }[] = [
         title: 'Mute · not saved',
         what: 'The switch holds',
         href: '/demo/events/evt-wed-4?state=muteNotSaved',
+      },
+      {
+        title: 'Guests can write from their page · off',
+        what: 'Off, and the guests’ pages lose the box',
+        href: '/demo/events/evt-wed-4?state=guestsCanWriteOff',
+      },
+      {
+        title: 'Guests can write from their page · saving',
+        what: 'The pressed value, busy',
+        href: '/demo/events/evt-wed-4?state=guestsCanWriteSaving',
+      },
+      {
+        title: 'Guests can write from their page · not saved',
+        what: 'Back to On, Not saved. Try again.',
+        href: '/demo/events/evt-wed-4?state=guestsCanWriteFailed',
+      },
+      {
+        title: 'Guests can write from their page · read only',
+        what: 'Without messages.manage: On, not changeable',
+        href: '/demo/events/evt-wed-4?state=guestsCanWriteReadOnly',
       },
       {
         title: 'Final numbers due · Next up',
@@ -1576,6 +1767,86 @@ const PAGES: readonly { page: string; boards: readonly Board[] }[] = [
         title: 'Give the changes · at the start',
         what: 'Back after the date: due at the start',
         href: '/demo/events/evt-wed-4?state=changes_late',
+      },
+    ],
+  },
+  {
+    page: 'A thank-you for your guests (sc-6476)',
+    boards: [
+      {
+        title: 'A thank-you · Add',
+        what: 'Finished: first on the Overview, with Add a thank-you',
+        href: '/demo/events/evt-wed-4?state=finished',
+      },
+      {
+        title: 'A thank-you · the field, empty',
+        what: 'Add a thank-you opened, with its count',
+        href: '/demo/events/evt-wed-4?state=thankYouAdding',
+      },
+      {
+        title: 'A thank-you · the line',
+        what: 'Signed with the hosts, and Edit thank-you',
+        href: '/demo/events/evt-wed-4?state=thankYouLine',
+      },
+      {
+        title: 'A thank-you · editing',
+        what: 'The field holds the line; save it empty to remove it',
+        href: '/demo/events/evt-wed-4?state=thankYouEditing',
+      },
+      {
+        title: 'A thank-you · saving',
+        what: 'Saving…, Cancel waits',
+        href: '/demo/events/evt-wed-4?state=thankYouSaving',
+      },
+      {
+        title: 'A thank-you · not saved',
+        what: 'The text kept, Save goes again',
+        href: '/demo/events/evt-wed-4?state=thankYouNotSaved',
+      },
+      {
+        title: 'A thank-you · over 280',
+        what: 'Save pressed: nothing sent, the limit named',
+        href: '/demo/events/evt-wed-4?state=thankYouOver',
+      },
+      {
+        title: 'A thank-you · 280 characters',
+        what: 'The longest line, no scroll sideways',
+        href: '/demo/events/evt-wed-4?state=thankYouLong',
+      },
+      {
+        title: 'A thank-you · read only',
+        what: 'Without the permission to end it: no Edit',
+        href: '/demo/events/evt-wed-4?state=thankYouReadOnly',
+      },
+      {
+        title: 'A thank-you · read only, no line',
+        what: 'No card',
+        href: '/demo/events/evt-wed-4?state=thankYouReadOnlyNone',
+      },
+      {
+        title: 'End now? · with a thank-you',
+        what: 'The optional field, filled',
+        href: '/demo/events/evt-wed-4?state=endNowThankYou',
+      },
+      {
+        title: 'End now? · 280 characters',
+        what: 'The longest line',
+        href: '/demo/events/evt-wed-4?state=endNowLong',
+      },
+      {
+        title: 'End now? · over 280',
+        what: 'Nothing sent, the limit named',
+        href: '/demo/events/evt-wed-4?state=endNowOver',
+      },
+      {
+        title: 'End now? · ending',
+        what: 'Ending…, Keep it on waits',
+        href: '/demo/events/evt-wed-4?state=endNowEnding',
+      },
+      {
+        title: 'End now? · not ended',
+        what: 'The thank-you kept',
+        href: '/demo/events/evt-wed-4?state=endNowNotEnded',
       },
     ],
   },
@@ -1671,7 +1942,15 @@ const PAGES: readonly { page: string; boards: readonly Board[] }[] = [
   },
   {
     page: 'Messages · B Conversations',
-    boards: MESSAGES_BOARDS.map(({ title, what, href }) => ({ title, what, href: href as Href })),
+    boards: MESSAGES_BOARDS.filter(({ state }) => !isStopState(state)).map(
+      ({ title, what, href }) => ({ title, what, href: href as Href }),
+    ),
+  },
+  {
+    page: 'Stop writing from their page (sc-3978)',
+    boards: MESSAGES_BOARDS.filter(({ state }) => isStopState(state)).map(
+      ({ title, what, href }) => ({ title, what, href: href as Href }),
+    ),
   },
   {
     page: 'Seating · A The room',

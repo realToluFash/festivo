@@ -7,6 +7,7 @@ import { __setConfig, config } from '../config.ts';
 import { routes } from '../routes/index.tsx';
 import { resetSample } from './events.ts';
 import { resetInbox } from './messages.ts';
+import { lastLooked, resetLooked } from './changedSince.ts';
 
 const tested = config();
 const SLOW = { timeout: 20000 };
@@ -69,7 +70,7 @@ describe('Messages in B · Conversations at a desk (sc-31371)', () => {
       .parentElement as HTMLElement;
     const links = within(group).getAllByRole('link');
 
-    expect(links).toHaveLength(107);
+    expect(links).toHaveLength(130);
     expect(links[0]?.getAttribute('href')).toBe(`${AT}?state=first`);
     expect(links[7]?.getAttribute('href')).toBe(`${AT}?state=noticeCost`);
     expect(links[26]?.getAttribute('href')).toBe(`${AT}?state=bell`);
@@ -1084,7 +1085,7 @@ describe('Messages in B · Conversations at a desk (sc-31371)', () => {
       expect(within(dialog).getByText('Note for your guests')).toBeDefined();
       expect(
         within(dialog).getByText(
-          'Shown on each guest’s page, under the change. Never sent by email, text or WhatsApp.',
+          'Shown on each guest’s page, in Messages. Never sent by email, text or WhatsApp.',
         ),
       ).toBeDefined();
       fireEvent.click(within(dialog).getByRole('button', { name: 'Not now' }));
@@ -1215,6 +1216,50 @@ describe('Messages in B · Conversations at a desk (sc-31371)', () => {
       await screen.findByRole('heading', { level: 2, name: 'Reached 131 of 142' }),
     ).toBeDefined();
   });
+
+  it('opens the guest list on Changed since you looked from the bell (sc-4331)', SLOW, async () => {
+    resetLooked();
+    const router = await messages('bell');
+    const bell = screen.getByRole('dialog', { name: 'Notifications' });
+
+    fireEvent.click(
+      within(bell).getByRole('button', { name: /^3 coming, 1 not coming, 1 changed their reply/u }),
+    );
+
+    expect(
+      await screen.findByRole('button', { name: 'Changed since you looked · 5' }, WAIT),
+    ).toBeDefined();
+    expect(router.state.location.search).toBe('?filter=changed');
+    expect(lastLooked()).toBe('2026-11-03T09:41:00.000Z');
+  });
+
+  it(
+    'reads the replies item once it is opened, and the missed one stays unread (sc-4331)',
+    SLOW,
+    async () => {
+      const router = await messages('bell');
+      const replies = /^3 coming, 1 not coming, 1 changed their reply/u;
+
+      fireEvent.click(
+        within(screen.getByRole('dialog', { name: 'Notifications' })).getByRole('button', {
+          name: replies,
+        }),
+      );
+      await screen.findByRole('button', { name: 'Changed since you looked · 5' }, WAIT);
+
+      await act(() => router.navigate(AT));
+      await screen.findByRole('heading', { level: 1, name: 'Messages' }, WAIT);
+      fireEvent.click(screen.getByRole('button', { name: /^Notifications/u }));
+      const bell = screen.getByRole('dialog', { name: 'Notifications' });
+
+      expect(within(bell).getByRole('button', { name: replies }).textContent).not.toContain(
+        'Unread',
+      );
+      expect(
+        within(bell).getByRole('button', { name: /11 people didn’t get it/u }).textContent,
+      ).toContain('Unread');
+    },
+  );
 
   it(
     'shows invitations as Soirely’s own card, its reach and who is now Invited',
@@ -1552,6 +1597,138 @@ describe('Messages in B · Conversations at a desk (sc-31371)', () => {
       ).toBeDefined();
     },
   );
+
+  it('says under the ticks how many WhatsApp tells instead of SMS (sc-3954)', SLOW, async () => {
+    await messages('channelsWrite');
+    const head = screen.getByRole('group', { name: 'Let them know by' })
+      .parentElement as HTMLElement;
+
+    expect(within(head).getByText(/^WhatsApp reaches 3 of 96/)).toBeDefined();
+    expect(within(head).getByText('3 by WhatsApp instead of SMS')).toBeDefined();
+
+    fireEvent.click(screen.getByRole('checkbox', { name: 'SMS' }));
+    expect(screen.queryByText('3 by WhatsApp instead of SMS')).toBeNull();
+    expect(within(head).getByText(/^WhatsApp reaches 3 of 96/)).toBeDefined();
+  });
+
+  it(
+    'checks SMS and WhatsApp: the SMS count leaves WhatsApp’s out, the credits count each once',
+    SLOW,
+    async () => {
+      await messages('channelsCheck');
+      const check = screen.getByRole('alertdialog', { name: 'Check it before it goes' });
+
+      expect(document.activeElement?.textContent).toBe('Sending to 96 people cannot be undone.');
+      for (const pill of ['Email · 92', 'SMS · 28', 'WhatsApp · 3'])
+        expect(within(check).getByText(pill)).toBeDefined();
+      expect(within(check).getByText('3 by WhatsApp instead of SMS')).toBeDefined();
+      expect(
+        within(check).getByText(
+          'Texts and WhatsApp messages use 39 credits. Credits after sending: 1,461.',
+        ),
+      ).toBeDefined();
+    },
+  );
+
+  it(
+    'says nobody is told with nothing ticked, and a tick brings the figures back (sc-3954)',
+    SLOW,
+    async () => {
+      await messages('channelsNone');
+      const check = screen.getByRole('alertdialog', { name: 'Check it before it goes' });
+
+      expect(
+        within(check).getByText(
+          'Your message goes on their page. Soirely tells nobody it is there. Guests see it only if they open their page.',
+        ),
+      ).toBeDefined();
+      expect(within(check).queryByRole('list')).toBeNull();
+      expect(within(check).queryByText(/can’t be told/)).toBeNull();
+      expect(within(check).queryByText(/credits/)).toBeNull();
+      expect(within(check).getByRole('button', { name: 'Send to 96 people' })).toBeDefined();
+
+      fireEvent.click(within(check).getByRole('checkbox', { name: 'Email' }));
+      expect(
+        within(check).getByText(
+          'Your message goes on their page. Soirely tells them it is there by email.',
+        ),
+      ).toBeDefined();
+      expect(within(check).getByText('Email · 92')).toBeDefined();
+      expect(
+        within(check).getByText('4 can’t be told · it is on their page if they open it'),
+      ).toBeDefined();
+      expect(within(check).getByText('Email uses no credits.')).toBeDefined();
+    },
+  );
+
+  it(
+    'opens See all in the check, by name with why, and Escape or Back returns to it',
+    SLOW,
+    async () => {
+      await messages('channelsCant');
+      const check = screen.getByRole('alertdialog', { name: 'Check it before it goes' });
+
+      expect(
+        within(check).getByText('Tomás Ferreira · Address is bouncing · No phone number'),
+      ).toBeDefined();
+      fireEvent.click(within(check).getByRole('button', { name: 'See all 9' }));
+      const all = within(check).getByRole('list', {
+        name: '9 can’t be told · it is on their page if they open it',
+      });
+
+      await vi.waitFor(() =>
+        expect(document.activeElement?.textContent).toBe(
+          '9 can’t be told · it is on their page if they open it',
+        ),
+      );
+      expect(
+        within(all)
+          .getAllByRole('listitem')
+          .map((one) => one.firstChild?.textContent),
+      ).toEqual([
+        'Diego Herrera',
+        'Fatima Zahra El Idrissi',
+        'Joaquín Ruiz',
+        'Lars Johansson',
+        'Mei Lin Chen',
+        'Oluwaseun Adebayo',
+        'Sophie Laurent',
+        'Tomás Ferreira',
+        'Yuki Tanaka',
+      ]);
+      expect(within(check).queryByRole('checkbox', { name: 'Email' })).toBeNull();
+      expect(within(check).getByRole('button', { name: 'Send to 142 people' })).toBeDefined();
+
+      press('Escape');
+      await vi.waitFor(() =>
+        expect(document.activeElement).toBe(
+          within(check).getByRole('button', { name: 'See all 9' }),
+        ),
+      );
+      expect(screen.getByRole('alertdialog', { name: 'Check it before it goes' })).toBe(check);
+
+      fireEvent.click(within(check).getByRole('button', { name: 'See all 9' }));
+      fireEvent.click(within(check).getByRole('button', { name: 'Back to the check' }));
+      expect(within(check).getByRole('checkbox', { name: 'Email' })).toBeDefined();
+    },
+  );
+
+  it('reads See all at 93 names: WhatsApp alone, each why', SLOW, async () => {
+    await messages('channelsMany');
+    const all = screen.getByRole('list', {
+      name: '93 can’t be told · it is on their page if they open it',
+    });
+    const whys = within(all)
+      .getAllByRole('listitem')
+      .map((one) => one.lastChild?.textContent);
+
+    expect(whys).toHaveLength(93);
+    expect(whys.filter((why) => why === 'No phone number')).toHaveLength(65);
+    expect(whys.filter((why) => why === 'Stopped WhatsApp · SMS is off')).toHaveLength(1);
+    expect(whys.filter((why) => why === 'Has not agreed to WhatsApp · SMS is off')).toHaveLength(
+      27,
+    );
+  });
 
   it(
     'shows WhatsApp’s receipts: Sent, Delivered, Read with its time, Failed, and Not sent with its reason',
