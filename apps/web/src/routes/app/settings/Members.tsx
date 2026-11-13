@@ -23,16 +23,9 @@ import { useTranslation } from 'react-i18next';
 import { api } from '../../../api.ts';
 import { Refreshing } from '../../../components/OfflineBand.tsx';
 import {
-  Avatar,
   BackRow,
-  Card,
-  CardStep as Step,
-  Chevron,
   Head,
   Menu,
-  OnCard,
-  RowWords,
-  Says,
   Tag,
   TextAction,
   TitleRow,
@@ -52,7 +45,14 @@ import {
   type RecoveryAnswer,
   waitingMembers,
 } from './membersCard.ts';
-import { MembersLoading } from '../../../components/MembersParts.tsx';
+import {
+  InvitationLine,
+  MemberRow,
+  MembersCardView,
+  MembersEmpty,
+  MembersFailed,
+  MembersLoading,
+} from '../../../components/MembersParts.tsx';
 import { useOwnerClaim } from './MembersClaim.tsx';
 import { InviteDialog, RequestDialog } from './MembersDialogs.tsx';
 import { RecoveryAsk, RecoveryBlock } from './MembersRecovery.tsx';
@@ -176,20 +176,15 @@ export function Members() {
           {load.kind === 'failed' && (
             <Column>
               <TitleRow title={t('membersScreen.title')} />
-              <div className="desk-failed" role={load.retried ? undefined : 'alert'}>
-                <h2 ref={failedTitle} tabIndex={-1}>
-                  {t('membersScreen.failedTitle')}
-                </h2>
-                <p className="desk-line">{t('membersScreen.failedLine')}</p>
-                <TextAction
-                  label={t('membersScreen.retry')}
-                  onClick={() => {
-                    retrying.current = true;
-                    setLoad({ kind: 'loading' });
-                    setAttempt((n) => n + 1);
-                  }}
-                />
-              </div>
+              <MembersFailed
+                heading={failedTitle}
+                alert={!load.retried}
+                onRetry={() => {
+                  retrying.current = true;
+                  setLoad({ kind: 'loading' });
+                  setAttempt((n) => n + 1);
+                }}
+              />
             </Column>
           )}
           {load.kind === 'loaded' && (
@@ -454,7 +449,7 @@ function MembersLoaded({
       <div className="members-split">
         <div className="desk-split">
           <TitleRow title={t('membersScreen.title')} action={invite} compact />
-          <MembersCardView card={card} size="column" onStep={step} />
+          <MembersCard card={card} size="column" onStep={step} />
           {claim.under}
           <MembersBlocks {...blocks} column />
         </div>
@@ -477,7 +472,7 @@ function MembersLoaded({
   return (
     <Column>
       <TitleRow title={t('membersScreen.title')} action={invite} />
-      <MembersCardView card={card} onStep={step} />
+      <MembersCard card={card} onStep={step} />
       {claim.under}
       <MembersBlocks {...blocks} column={false} />
       {dialogs}
@@ -485,7 +480,7 @@ function MembersLoaded({
   );
 }
 
-function MembersCardView({
+function MembersCard({
   card,
   size = 'page',
   onStep,
@@ -495,25 +490,18 @@ function MembersCardView({
   onStep: (step: CardStep) => void;
 }) {
   return (
-    <Card size={size}>
-      <div className="desk-said-lines" tabIndex={-1}>
-        <Says focusable>{card.says}</Says>
-        {card.lines.map((line) => (
-          <OnCard key={line}>{line}</OnCard>
-        ))}
-      </div>
-      {card.faces.length > 0 && (
-        <div className="desk-faces" aria-hidden="true">
-          {card.faces.map((face, tone) => (
-            <Avatar key={face.id} initials={initials(face.user.name)} tone={tone} size="face" />
-          ))}
-          {card.more > 0 && <span className="desk-more">+{card.more}</span>}
-        </div>
-      )}
-      {card.step != null && (
-        <Step label={card.step.label} onClick={() => card.step != null && onStep(card.step)} />
-      )}
-    </Card>
+    <MembersCardView
+      card={{
+        ...card,
+        faces: card.faces.map((face, tone) => ({
+          key: face.id,
+          initials: initials(face.user.name),
+          tone,
+        })),
+      }}
+      size={size}
+      onStep={onStep}
+    />
   );
 }
 
@@ -611,21 +599,21 @@ function MembersBlocks(props: BlocksProps) {
           <PeopleRows {...props} shown={shown} />
         ) : (
           filter !== 'all' && (
-            <div className="desk-empty">
-              <p className="desk-empty-title">
-                {filter === 'invited'
+            <MembersEmpty
+              title={
+                filter === 'invited'
                   ? t('membersScreen.noInvitations')
-                  : t(`membersScreen.empty.${filter}.title`)}
-              </p>
-              {filter !== 'invited' && (
-                <p className="desk-line">
-                  {t(`membersScreen.empty.${filter}.body`, {
-                    organisation: props.organisation.name,
-                  })}
-                </p>
-              )}
-              <TextAction label={t('membersScreen.showEveryone')} onClick={() => onFilter('all')} />
-            </div>
+                  : t(`membersScreen.empty.${filter}.title`)
+              }
+              line={
+                filter === 'invited'
+                  ? undefined
+                  : t(`membersScreen.empty.${filter}.body`, {
+                      organisation: props.organisation.name,
+                    })
+              }
+              onEveryone={() => onFilter('all')}
+            />
           )
         )}
       </section>
@@ -654,24 +642,17 @@ function WaitingRow({
   const asked = member.since == null ? '' : formatDay(member.since, dateLocale());
 
   return (
-    <button
-      type="button"
-      className="desk-row"
-      data-member={member.id}
-      onClick={() => onAnswer(member.id)}
-    >
-      <Avatar initials={initials(member.user.name)} tone={tone} />
-      <RowWords
-        title={member.user.name}
-        tag={<Tag {...tag} />}
-        lines={[
-          [member.user.email, t('membersScreen.when.asked', { date: asked })]
-            .filter((one) => one != null && one !== '')
-            .join(' · '),
-        ]}
-      />
-      <Chevron />
-    </button>
+    <MemberRow
+      member={member.id}
+      initials={initials(member.user.name)}
+      tone={tone}
+      name={member.user.name}
+      tag={<Tag {...tag} />}
+      line={[member.user.email, t('membersScreen.when.asked', { date: asked })]
+        .filter((one) => one != null && one !== '')
+        .join(' · ')}
+      onPress={() => onAnswer(member.id)}
+    />
   );
 }
 
@@ -698,27 +679,18 @@ function PeopleRows({
           <li key={one.id}>
             {one.status === 'pending_approval' ? (
               <WaitingRow member={one} tone={tone} onAnswer={onAnswer} />
-            ) : one.status === 'left_or_removed' ? (
-              <div className="desk-row" data-member={one.id}>
-                <Avatar initials={initials(one.user.name)} tone={tone} />
-                <RowWords title={one.user.name} tag={tag} lines={[line]} />
-              </div>
             ) : (
-              <button
-                type="button"
-                className={on ? 'desk-row is-on' : 'desk-row'}
-                aria-current={on || undefined}
-                data-member={one.id}
-                onClick={() => onPerson(one.id)}
-              >
-                <Avatar
-                  initials={initials(one.user.name)}
-                  tone={tone}
-                  size={column ? 'small' : 'row'}
-                />
-                <RowWords title={one.user.name} tag={tag} lines={[line]} />
-                <Chevron />
-              </button>
+              <MemberRow
+                member={one.id}
+                initials={initials(one.user.name)}
+                tone={tone}
+                name={one.user.name}
+                tag={tag}
+                line={line}
+                {...(one.status === 'left_or_removed'
+                  ? {}
+                  : { size: column ? 'small' : 'row', on, onPress: () => onPerson(one.id) })}
+              />
             )}
           </li>
         );
@@ -802,25 +774,20 @@ function InvitationRow({
   }
 
   return (
-    <li className="desk-row">
-      <RowWords
-        title={invitation.email}
-        tag={
-          pending ? undefined : (
-            <Tag kind="ended" word={t(`membersScreen.invitationState.${invitation.status}`)} />
-          )
-        }
-        lines={[
-          invitation.invitedBy?.id === caller
-            ? t('membersScreen.invitedAsByYou', { role })
-            : t('membersScreen.invitedAs', { role, inviter: invitation.invitedBy?.name ?? '' }),
-          t(`membersScreen.dates.${invitation.status}`, {
-            sent: day(invitation.sentAt),
-            ended: day(ended[invitation.status] ?? null),
-          }),
-          ...(failed ? [t('membersScreen.revokeFailed')] : []),
-        ]}
-      />
+    <InvitationLine
+      email={invitation.email}
+      ended={pending ? undefined : t(`membersScreen.invitationState.${invitation.status}`)}
+      lines={[
+        invitation.invitedBy?.id === caller
+          ? t('membersScreen.invitedAsByYou', { role })
+          : t('membersScreen.invitedAs', { role, inviter: invitation.invitedBy?.name ?? '' }),
+        t(`membersScreen.dates.${invitation.status}`, {
+          sent: day(invitation.sentAt),
+          ended: day(ended[invitation.status] ?? null),
+        }),
+        ...(failed ? [t('membersScreen.revokeFailed')] : []),
+      ]}
+    >
       {manages && (
         <span data-invite-again={pending ? undefined : invitation.id}>
           {pending ? (
@@ -830,6 +797,6 @@ function InvitationRow({
           )}
         </span>
       )}
-    </li>
+    </InvitationLine>
   );
 }
