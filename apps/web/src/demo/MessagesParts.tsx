@@ -138,20 +138,25 @@ export function HostBubble({
   body,
   bits,
   look = 'sent',
+  bare = false,
   children,
 }: {
   subject?: string;
   body: ReactNode;
   bits: readonly Bit[];
   look?: 'sent' | 'dashed' | 'dashedFaded' | 'faded' | 'arriving' | 'greyed';
+  /** Only what goes under the bubble: an invitation sent with no note (sc-3971). */
+  bare?: boolean;
   children?: ReactNode;
 }) {
   return (
     <li className="mg-said is-host">
-      <div className={`mg-bubble is-host ${LOOK[look]}`}>
-        {subject != null && subject.trim() !== '' && <p className="mg-subject-line">{subject}</p>}
-        <p>{body}</p>
-      </div>
+      {!bare && (
+        <div className={`mg-bubble is-host ${LOOK[look]}`}>
+          {subject != null && subject.trim() !== '' && <p className="mg-subject-line">{subject}</p>}
+          <p>{body}</p>
+        </div>
+      )}
       {bits.length > 0 && <Meta bits={bits} end />}
       {children}
     </li>

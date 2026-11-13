@@ -35,7 +35,7 @@ import {
 import { PW, STAND_INS } from './messagesPreviewWords.ts';
 import './messagesPreview.css';
 
-const FILL_MS = 900;
+export const FILL_MS = 900;
 const EVENT_DAY = new Date('2026-11-05T12:00:00Z');
 const HOST_NAMES = ['Adaeze Obi', 'Tunde Bakare'];
 const LANGUAGE_NAMES = new Intl.DisplayNames(['en'], { type: 'language' });
@@ -182,7 +182,12 @@ export function Preview({ draft }: { draft: Draft }) {
     <div className="mg-preview">
       <div className="mg-preview-top">
         <h3 className="mg-preview-heading">{filled(MW.previewAs, { name: person.name })}</h3>
-        <PreviewAs who={who} first={first} onPick={pick} />
+        <PreviewAs
+          who={who}
+          options={PEOPLE.map((one) => ({ id: one.id, words: optionWords(one) }))}
+          first={first}
+          onPick={(id) => pick(id as PersonId)}
+        />
       </div>
       <p className="desk-unseen" role="status">
         {filling ? filled(PW.filling, { name: person.name }) : ''}
@@ -265,7 +270,7 @@ export function Preview({ draft }: { draft: Draft }) {
 }
 
 /** While the preview fills for another guest: the words, and the page and its notices as Sunk shapes. */
-function PreviewBones({ name }: { name: string }) {
+export function PreviewBones({ name }: { name: string }) {
   return (
     <div className="mg-preview-bones" aria-hidden="true">
       <p className="mg-preview-filling">{filled(PW.filling, { name })}</p>
@@ -292,14 +297,16 @@ function optionsIn(list: HTMLElement | null): HTMLElement[] {
 }
 
 /** Preview as: a button that drops the people in To as a listbox (WAI-ARIA APG), the chosen one ticked. */
-function PreviewAs({
+export function PreviewAs({
   who,
+  options,
   first,
   onPick,
 }: {
-  who: PersonId;
+  who: string;
+  options: readonly { id: string; words: string }[];
   first: boolean;
-  onPick: (id: PersonId) => void;
+  onPick: (id: string) => void;
 }) {
   const id = useId();
   const [open, setOpen] = useState(first);
@@ -334,7 +341,7 @@ function PreviewAs({
     if (back) button.current?.focus();
   }
 
-  function choose(next: PersonId): void {
+  function choose(next: string): void {
     close(true);
     if (next !== who) onPick(next);
   }
@@ -358,7 +365,7 @@ function PreviewAs({
       case 'Enter':
       case ' ': {
         event.preventDefault();
-        const one = PEOPLE[at];
+        const one = options[at];
 
         if (one != null) choose(one.id);
         return;
@@ -403,7 +410,9 @@ function PreviewAs({
             setOpen(true);
           }}
         >
-          <span className="mg-preview-as-words">{optionWords(personOf(who))}</span>
+          <span className="mg-preview-as-words">
+            {options.find((one) => one.id === who)?.words ?? ''}
+          </span>
           <Glyph name="chevdown" size={15} weight={2.4} />
         </button>
         {open && (
@@ -414,7 +423,7 @@ function PreviewAs({
             aria-labelledby={`${id}-label`}
             className="mg-pop mg-preview-as-list"
           >
-            {PEOPLE.map((one, at) => (
+            {options.map((one, at) => (
               <li
                 key={one.id}
                 role="option"
@@ -427,7 +436,7 @@ function PreviewAs({
                 <span className="mg-preview-as-tick">
                   {one.id === who && <Glyph name="tick" size={15} weight={2.6} />}
                 </span>
-                {optionWords(one)}
+                {one.words}
               </li>
             ))}
           </ul>

@@ -79,6 +79,12 @@ export interface TaggedGuest {
   tag: string;
 }
 
+/** A guest's subscription, as Apple and Outlook open it (webcal) and as Google Calendar adds it by URL. */
+export interface GuestCalendarLink {
+  webcal: string;
+  google: string;
+}
+
 /** What a guest's own link opens (sc-1526): their name as the host typed it, their answer (sc-1439), and the event behind it. */
 export interface GuestPage {
   guest: {
@@ -110,6 +116,8 @@ export interface GuestPage {
   started: boolean;
   /** False from the start, in the event's zone, and whenever the event is not Live. */
   answersOpen: boolean;
+  /** The guest's own calendar feed for Add to calendar (sc-3627): only for Coming while the event is Live. */
+  calendar: GuestCalendarLink | null;
 }
 
 export const GUEST_PAGE_PHASES = ['live', 'paused', 'calledOff', 'finished'] as const;

@@ -849,7 +849,8 @@
 }
 
 :where(.guest-page) .gp-answers,
-:where(.guest-page) .gp-details {
+:where(.guest-page) .gp-details,
+:where(.guest-page) .gp-cal-rows {
   display: flex;
   flex-direction: column;
 }
@@ -906,7 +907,8 @@
   font: 600 17px/1.3 var(--fontFamily);
 }
 
-:where(.guest-page) .gp-chev {
+:where(.guest-page) .gp-chev,
+:where(.guest-page) .gp-out {
   display: flex;
   flex: none;
   margin-left: 12px;
@@ -924,8 +926,28 @@
   white-space: nowrap;
 }
 
+/* sc-3627: Add to calendar, the demo's rows (GuestParts AddToCalendar) */
+:where(.guest-page) .gp-cal {
+  color: var(--colorAccent);
+  text-decoration: none;
+}
+
+:where(.guest-page) .gp-block .gp-h2 {
+  line-height: 1.25;
+  letter-spacing: -0.01em;
+}
+
+:where(.guest-page) .gp-block > .gp-sub {
+  margin-top: 6px;
+}
+
+:where(.guest-page) .gp-cal-rows {
+  margin-top: 6px;
+}
+
 :where(.guest-page) .gp-details > .gp-row,
-:where(.guest-page) .gp-where.has-rule {
+:where(.guest-page) .gp-where.has-rule,
+:where(.guest-page) .gp-cal:not(:last-child) {
   border-bottom: 1px solid var(--colorBorder);
 }
 
@@ -983,6 +1005,7 @@
 :where(.guest-page) .gp-changing,
 :where(.guest-page) .gp-closed,
 :where(.guest-page) .gp-ended,
+:where(.guest-page) .gp-block,
 :where(.guest-page) .gp-recorded {
   display: flex;
   flex-direction: column;

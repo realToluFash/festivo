@@ -49,6 +49,8 @@ import {
   litOf,
 } from './messages.ts';
 import { ConversationPane } from './MessagesThread.tsx';
+import { demoWords } from './demoWords.ts';
+import { IW } from './messagesInvite.ts';
 import { waitsTicksOf } from './messagesWaits.ts';
 import { InboxContext, type InboxApi } from './messagesContext.ts';
 import { type Group, useTo } from './messagesTo.ts';
@@ -61,6 +63,7 @@ import { Tag } from '../components/SettingsParts.tsx';
 import type { Tell } from '../components/SettingsParts.tsx';
 import './messages.css';
 
+const iw = demoWords(IW);
 const ARRIVES_MS = 1200;
 const WASH_MS = 2000;
 const SENDING_MS = 3000;
@@ -129,6 +132,27 @@ function firstFocus(state: MessagesState | null): string | null {
       return 'stop-item';
     case 'letAgainFailed':
       return 'let-again';
+    case 'inviteWrite':
+    case 'inviteWriteOne':
+    case 'inviteNote':
+    case 'inviteNoteLong':
+      return 'body';
+    case 'inviteTo':
+      return 'to-pick';
+    case 'invitePreview':
+    case 'invitePreviewNote':
+    case 'invitePreviewSms':
+      return 'preview-edit';
+    case 'inviteCheck':
+    case 'inviteCheckSome':
+    case 'inviteCheckAgain':
+    case 'inviteCheckAll':
+    case 'inviteRefused':
+      return 'check';
+    case 'inviteCheckSeeAll':
+      return 'see-all';
+    case 'inviteCountdown':
+      return 'cancel';
     default:
       return waitsTicksOf(state) == null ? null : 'check';
   }
@@ -536,7 +560,7 @@ function sendingSaid(inbox: Inbox, groups: readonly Group[]): string {
     case 'countdown':
       return filled(MW.sendingIn, { count: out.left > 5 ? 10 : 5 });
     case 'sending':
-      return many('queued', reach.count);
+      return out.invite == null ? many('queued', reach.count) : iw.many('queued', reach.count);
     case 'sent':
       return filled(MW.reached, { count: reach.reached, total: reach.count });
     default:

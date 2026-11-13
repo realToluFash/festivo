@@ -43,8 +43,10 @@ import {
   guestsCardOf,
   guestsStart,
   guestsStateOf,
+  invitesOn,
   markInvited,
   markNotInvited,
+  notYetInvited,
   recordReply,
   reopen,
   replaceLink,
@@ -78,14 +80,17 @@ import { TheirData } from './TheirData.tsx';
 import { GW, REPLY_WORDS, figure } from './guestsWords.ts';
 import { LayersContext, focusWhenFree } from '../layers.ts';
 import {
+  type Audience,
   MESSAGES_AT,
   NOT_REPLIED,
   changed,
   draftOf,
   freshId,
+  inviteDraftOf,
   keepInbox,
   keptInbox,
 } from './messages.ts';
+import { NOT_YET_INVITED, oneGuestOf } from './messagesInvite.ts';
 import {
   Ask,
   Chevron,
@@ -402,6 +407,11 @@ function GuestsPage({
       if (navigator.clipboard == null) refused();
       else void navigator.clipboard.writeText(LINK).then(() => invite(id, 'copied'), refused);
     },
+    onSendInvitation: () => {
+      const one = list.find((guest) => guest.id === id);
+
+      if (one != null) sendInvitations({ kind: 'guest', guest: oneGuestOf(one) });
+    },
     onReplace: () => setAsking('replace'),
     onInvite: (next) => invite(id, next),
     onMark: (how) => {
@@ -461,6 +471,13 @@ function GuestsPage({
     void navigate(MESSAGES_AT);
   }
 
+  function sendInvitations(to: Audience): void {
+    const inbox = keptInbox();
+
+    keepInbox(changed(inbox, { kind: 'compose', draft: inviteDraftOf(to, freshId(inbox)) }));
+    void navigate(MESSAGES_AT);
+  }
+
   function onStep(): void {
     if (card.step === 'add') startAdd();
     else if (card.step === 'write') writeToThem();
@@ -492,6 +509,11 @@ function GuestsPage({
 
   const plus = manages && status === 'ready' && list.length > 0;
   const exports = (manages || start.role === 'member') && status === 'ready' && list.length > 0;
+  const inviting =
+    manages &&
+    status === 'ready' &&
+    invitesOn(event, start.clock) &&
+    notYetInvited(list).length > 0;
   const columns = list.length > 0 || pane.kind === 'add';
   const stepWord =
     card.step === 'add'
@@ -537,6 +559,16 @@ function GuestsPage({
               onClick={() => setExporting({})}
             >
               {XW.export}
+            </button>
+          )}
+          {inviting && (
+            <button
+              type="button"
+              className="gs-pill is-secondary"
+              data-focus="send-invitations"
+              onClick={() => sendInvitations(NOT_YET_INVITED)}
+            >
+              {GW.sendInvitations}
             </button>
           )}
           {plus && (

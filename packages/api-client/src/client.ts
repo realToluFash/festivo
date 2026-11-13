@@ -2170,14 +2170,25 @@ export class ApiClient {
 
   private guestPageOf(raw: unknown, route: string): GuestPage {
     const page = asGuestPage(raw);
+    const feed = (raw as Record<string, unknown> | null)?.calendarFeed;
 
-    if (page == null) {
+    if (page == null || (feed != null && (typeof feed !== 'string' || !feed.startsWith('/')))) {
       throw new Error(
         `The API answered ${route} in a shape this client does not know. Check GuestPageController in services/api.`,
       );
     }
 
-    return page;
+    if (feed == null) return page;
+
+    const webcal = this.webcalOf(feed);
+
+    return {
+      ...page,
+      calendar: {
+        webcal,
+        google: `https://calendar.google.com/calendar/r?cid=${encodeURIComponent(webcal)}`,
+      },
+    };
   }
 
   /** The guest's own language menu (sc-3790): kept on the guest, never on an account. Refused 422 for a language Soirely does not offer, and `not_found` as the page is. */
@@ -2746,9 +2757,11 @@ export class ApiClient {
       );
     }
 
-    const url = this.url(path);
+    return { url: this.url(path), webcal: this.webcalOf(path) };
+  }
 
-    return { url, webcal: url.replace(/^https?:/, 'webcal:') };
+  private webcalOf(path: string): string {
+    return this.url(path).replace(/^https?:/, 'webcal:');
   }
 
   async joinOffers(): Promise<JoinOffers> {
@@ -3689,6 +3702,7 @@ function asGuestPage(raw: unknown): GuestPage | null {
     phase: shown,
     started,
     answersOpen,
+    calendar: null,
   };
 }
 

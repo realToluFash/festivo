@@ -50,6 +50,7 @@ export interface GuestActions {
   onEdit: () => void;
   onReopen: () => void;
   onCopy: () => void;
+  onSendInvitation: () => void;
   onReplace: () => void;
   onInvite: (invite: Invite | null) => void;
   onMark: (how: HowInvited) => void;
@@ -472,6 +473,19 @@ function Invitation({
                 title={GW.linkReplaced(dayOf(guest.replaced))}
                 lines={[GW.linkReplacedLine]}
               />
+            </li>
+          )}
+          {invites && (
+            <li>
+              <button
+                type="button"
+                className="desk-row gs-do"
+                data-focus="send-invitation"
+                onClick={actions.onSendInvitation}
+              >
+                <IconLead name="mail" />
+                <RowWords title={GW.sendInvitation} lines={[GW.sendInvitationLine]} />
+              </button>
             </li>
           )}
           {invites && (

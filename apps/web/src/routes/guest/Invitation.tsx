@@ -3,6 +3,7 @@ import {
   type EventCover,
   GUEST_ANSWERS,
   type GuestAnswer,
+  type GuestCalendarLink,
   type GuestPage,
   type GuestPagePhase,
 } from '@soirely/api-client';
@@ -412,6 +413,9 @@ function Card({ token, first }: { token: string; first: GuestPage }) {
             }}
           />
         )}
+        {tell.kind === 'card' && forTheDay(page, view) && page.calendar != null && (
+          <AddToCalendar calendar={page.calendar} />
+        )}
         {tell.kind === 'asking' && (
           <section className="gp-tell" aria-labelledby="gp-tell-h">
             <h2 id="gp-tell-h" className="gp-h2" tabIndex={-1} data-focus="tellHead">
@@ -474,6 +478,63 @@ function Card({ token, first }: { token: string; first: GuestPage }) {
         </div>
       )}
     </div>
+  );
+}
+
+/** For Coming, while there is still something to attend (pm, 7 Nov): the demo's forTheDay. */
+function forTheDay(page: GuestPage, view: View): boolean {
+  return (
+    page.guest.reply?.answer === 'coming' &&
+    page.phase === 'live' &&
+    (view.kind === 'recorded' || view.kind === 'closed')
+  );
+}
+
+/** sc-3627: one subscribed feed, offered to Apple and Outlook by webcal and to Google Calendar by URL. */
+function AddToCalendar({ calendar }: { calendar: GuestCalendarLink }) {
+  const { t } = useTranslation();
+  const row = (name: string, href: string, outside: boolean) => (
+    <a
+      className="gp-row gp-cal"
+      href={href}
+      aria-describedby="gp-calendar-line"
+      {...(outside ? { target: '_blank', rel: 'noopener noreferrer' } : {})}
+    >
+      <span className="gp-lead">
+        <Glyph name="calendar" size={22} />
+      </span>
+      <span className="gp-row-title">{name}</span>
+      <span className="gp-out">
+        <svg
+          className="gp-line"
+          width={18}
+          height={18}
+          viewBox="0 0 24 24"
+          aria-hidden="true"
+          focusable="false"
+          strokeWidth={2}
+        >
+          <path d="M15 3h6v6" />
+          <path d="M10 14 21 3" />
+          <path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6" />
+        </svg>
+      </span>
+    </a>
+  );
+
+  return (
+    <section className="gp-block" aria-labelledby="gp-calendar">
+      <h2 id="gp-calendar" className="gp-h2 is-19">
+        {t('guest.calendarTitle')}
+      </h2>
+      <p id="gp-calendar-line" className="gp-sub">
+        {t('guest.calendarLine')}
+      </p>
+      <div className="gp-cal-rows">
+        {row(t('guest.calendarApple'), calendar.webcal, false)}
+        {row(t('guest.calendarGoogle'), calendar.google, true)}
+      </div>
+    </section>
   );
 }
 

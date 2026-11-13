@@ -789,7 +789,7 @@ export function ResendCard() {
   );
 }
 
-function OnEscape({ then }: { then: () => void }) {
+export function OnEscape({ then }: { then: () => void }) {
   const escape = useEffectEvent(then);
 
   useEffect(() => {

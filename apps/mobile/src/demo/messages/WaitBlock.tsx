@@ -24,17 +24,19 @@ export function WaitBlock({
   view,
   waits,
   onWithout,
+  linesOnly = false,
 }: {
   view: WaitsCheck;
   waits: Waits;
   onWithout: (drops: readonly ChannelKey[]) => void;
+  linesOnly?: boolean;
 }) {
   const [ask, setAsk] = useState<Ask>(waits.ask);
   const now = useRef<Ask>(waits.ask);
   const pressed = useRef(false);
   const sentRef = useRef<ViewInstance>(null);
   const answer = useRef<ReturnType<typeof setTimeout> | null>(null);
-  const asks = !waits.canBill && ask !== 'sent';
+  const asks = !linesOnly && !waits.canBill && ask !== 'sent';
   const sent = say.ownersAsked(waits.owners);
 
   const move = (next: Ask) => {
@@ -84,7 +86,7 @@ export function WaitBlock({
           </Text>
         </View>
       ))}
-      {(view.way != null || asks) && (
+      {!linesOnly && (view.way != null || asks) && (
         <View style={styles.ways}>
           {view.way != null && (
             <Pill
@@ -103,7 +105,7 @@ export function WaitBlock({
           )}
         </View>
       )}
-      {waits.canBill && (
+      {!linesOnly && waits.canBill && (
         <Text size={13.5} weight="medium" style={[styles.secondary, styles.line]}>
           {W.creditsNotInApp}
         </Text>
