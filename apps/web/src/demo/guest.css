@@ -1576,14 +1576,19 @@
   display: flex;
   flex-direction: column;
   margin-top: 20px;
+  overflow: hidden;
+  border: 1px solid var(--colorBorder);
+  border-radius: var(--radiusCardLarge);
+  background: var(--colorCard);
 }
 
 .gp-yours-row {
   display: flex;
+  box-sizing: border-box;
   align-items: flex-start;
   gap: 12px;
-  min-height: 56px;
-  padding: 10px 0;
+  min-height: 64px;
+  padding: 14px 16px;
 }
 
 .gp-yours-row + .gp-yours-row {
@@ -1704,6 +1709,7 @@
 
 .gp-switch-word {
   display: grid;
+  justify-items: end;
   min-width: 26px;
   color: var(--colorInk);
   font: 600 14px/1 var(--fontFamily);
@@ -1761,6 +1767,7 @@
   animation: gp-drop 120ms var(--gpEase);
 }
 
+.gp .gp-yours-line.is-saved,
 .gp .gp-yours-line.is-failed {
   color: var(--colorInk);
 }
