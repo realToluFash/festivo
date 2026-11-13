@@ -7,7 +7,7 @@ import {
   eventPhase,
 } from '@soirely/domain';
 
-import { CLOCKS, EVENT_WORDS, type SampleEvent, cardOf, localDay, sampleEvent } from './events.ts';
+import { CLOCKS, type SampleEvent, cardOf, localDay, sampleEvent } from './events.ts';
 import {
   NO_NEEDS,
   type Needs,
@@ -1377,13 +1377,14 @@ export function guestsCardOf(
   const comingOf = GW.comingOf(counts.coming, counts.invited);
 
   if (event.status === 'draft') {
-    const passed = now.getTime() >= Date.parse(event.endsAt);
+    const { step } = cardOf(event, now);
+    const passed = step.kind === 'button' && step.does === 'changeDates';
 
     return {
       tags: [{ kind: 'draft', word: 'Draft' }],
       says: GW.onList(counts.all),
       arrived: null,
-      line: passed ? EVENT_WORDS.endPassed : GW.draftLine,
+      line: passed ? step.line : GW.draftLine,
       step: manages ? (passed ? 'changeDates' : 'makeLive') : null,
     };
   }
