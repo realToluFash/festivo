@@ -285,7 +285,7 @@ describe('the page', () => {
       "Dates · This event is over, so its start, end and time zone can't be changed.",
     );
     expect(datesRow(shown('evt-off'), LOCALE).line).toBe(
-      'Dates · This event was called off, so its start, end and time zone can’t be changed.',
+      "Dates · This event was called off, so its start, end and time zone can't be changed.",
     );
   });
 
