@@ -206,6 +206,10 @@ const BOARDS: Record<MessagesState, readonly [string, string]> = {
     'A tap after answers closed',
     'Kwame Mensah tapped Not sure yet; Answers closed on 2 November 2026.',
   ],
+  tapFirst: [
+    'A tap from a guest with no conversation: one starts in Done',
+    'Valentina Restrepo answered Not coming by WhatsApp. · 08:20, under the invitation; first in Done, not unread, not counted',
+  ],
   stopAction: [
     'the conversation’s actions, open',
     'Inês Duarte’s conversation, the menu or action sheet open',

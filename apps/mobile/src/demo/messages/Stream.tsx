@@ -163,7 +163,7 @@ export function Stub({
   bits,
 }: {
   title: string;
-  mark: 'mail' | 'group';
+  mark: 'mail' | 'group' | 'wa';
   bits: readonly Bit[];
 }) {
   return (
@@ -172,7 +172,7 @@ export function Stub({
         {mark === 'mail' ? (
           <Glyph name="mail" size={16} ink={INK2} />
         ) : (
-          <MessageGlyph name="group" size={16} ink={INK2} />
+          <MessageGlyph name={mark} size={16} ink={INK2} />
         )}
         <View style={styles.grow}>
           <Text size={14} weight="semibold" style={styles.stubTitle}>

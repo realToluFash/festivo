@@ -17,6 +17,7 @@ export const TAP_STATES = [
   'tapRepeat',
   'tapRepeatAgain',
   'tapClosed',
+  'tapFirst',
 ] as const;
 
 export type TapState = (typeof TAP_STATES)[number];
@@ -42,9 +43,11 @@ export interface Tap {
 }
 
 export interface TapCase {
-  key: 'kwame' | 'lucia';
+  key: 'kwame' | 'lucia' | 'valentina';
   language: TapLanguage;
   taps: readonly Tap[];
+  /** pm's (3) on #46799: the guest had written nothing, so the tap starts their conversation, in Done and not unread. */
+  first?: boolean;
 }
 
 export type TapItem =
@@ -182,12 +185,20 @@ export function tapCaseOf(state: string | null): TapCase | null {
       return kwame(
         once({ answer: 'notSure', recorded: false, reply: 'closed', receipt: 'delivered' }),
       );
+    case 'tapFirst':
+      return {
+        key: 'valentina',
+        language: 'es',
+        first: true,
+        taps: once({ answer: 'notComing', recorded: true, reply: 'recorded', receipt: 'read' }),
+      };
     default:
       return null;
   }
 }
 
 function noticeFor(state: TapState, key: TapCase['key']): NoticeCase {
+  if (key === 'valentina') return { key };
   if (key === 'kwame') return { key, turn: { channel: 'wa', asked: { where: 'wa' } } };
   if (state !== 'tapStopped') return { key };
 
@@ -199,7 +210,7 @@ function noticeFor(state: TapState, key: TapCase['key']): NoticeCase {
   };
 }
 
-/** Kwame's conversation was marked done before his tap, and stays in Done; Lucía's waits in Needs you. */
+/** Kwame's conversation was marked done before his tap, and stays in Done; Lucía's waits in Needs you; Valentina's starts in Done, marked by nobody. */
 export function tapStart(state: string | null): Partial<Messages> {
   const tap = tapCaseOf(state);
 
@@ -210,6 +221,7 @@ export function tapStart(state: string | null): Partial<Messages> {
     notice: noticeFor(state, tap.key),
     open: { kind: 'guest', key: tap.key },
     ...(tap.key === 'kwame' ? { done: ['kwame'], doneAt: { kwame: '21:30' } } : {}),
+    ...(tap.first === true ? { done: [tap.key] } : {}),
   };
 }
 
@@ -263,7 +275,8 @@ function notSentOf(why: TapNotSent): { word: string; mark: MarkKey } {
 /** The tap lines in a guest's stream, each with Soirely's message under it or why none went; a Today rule first when the question came earlier. */
 export function tapItemsOf(kase: TapCase): TapItem[] {
   const name = GUESTS[kase.key].name;
-  const today: TapItem[] = GUESTS[kase.key].asked.day === DAYS.today ? [] : [{ kind: 'today' }];
+  const today: TapItem[] =
+    kase.first !== true && GUESTS[kase.key].asked.day === DAYS.today ? [] : [{ kind: 'today' }];
 
   return [
     ...today,

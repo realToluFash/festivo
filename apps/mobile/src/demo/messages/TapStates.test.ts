@@ -45,10 +45,10 @@ const RECORDED_NOT_COMING = [
 ];
 
 describe('a WhatsApp tap in a guest’s conversation (sc-46343)', () => {
-  it('are eleven states after sc-3976’s, each with a board in the demo', () => {
+  it('are twelve states after sc-3976’s, each with a board in the demo', () => {
     const at = MESSAGES_STATES.indexOf('readOnly') + 1;
 
-    expect(MESSAGES_STATES.slice(at, at + 11)).toEqual([...TAP_STATES]);
+    expect(MESSAGES_STATES.slice(at, at + 12)).toEqual([...TAP_STATES]);
     expect(
       MESSAGES_BOARDS.filter((board) => board.state.startsWith('tap')).map((board) => board.title),
     ).toEqual([
@@ -63,6 +63,7 @@ describe('a WhatsApp tap in a guest’s conversation (sc-46343)', () => {
       'Messages · A repeat tap, the first in 24 hours',
       'Messages · A further repeat: no line',
       'Messages · A tap after answers closed',
+      'Messages · A tap from a guest with no conversation: one starts in Done',
     ]);
   });
 
@@ -98,6 +99,7 @@ describe('a WhatsApp tap in a guest’s conversation (sc-46343)', () => {
         'Kwame Mensah tapped Not sure yet in WhatsApp. Nothing changed. · 08:31',
       ],
       ['Kwame Mensah tapped Not sure yet in WhatsApp. Nothing changed. · 08:20'],
+      ['Valentina Restrepo answered Not coming by WhatsApp. · 08:20'],
     ]);
   });
 
@@ -159,6 +161,7 @@ describe('a WhatsApp tap in a guest’s conversation (sc-46343)', () => {
         ['delivered', 'WhatsApp · Delivered'],
       ],
       [['delivered', 'WhatsApp · Delivered']],
+      [['delivered', 'WhatsApp · Read']],
     ]);
   });
 
@@ -181,6 +184,28 @@ describe('a WhatsApp tap in a guest’s conversation (sc-46343)', () => {
     expect(sectionOf(startOf('tapNeedsYou', false), 'lucia')).toBe('needs');
     expect(sectionOf(startOf('tapStopped', false), 'lucia')).toBe('needs');
     expect(badgeOf(startOf('tapNeedsYou', false))).toEqual(badgeOf(startOf(null, false)));
+  });
+
+  it('starts a first conversation in Done, top of it, not unread, uncounted, with no Done by line', () => {
+    const first = startOf('tapFirst', false);
+    const done = sectionsOf(first).done;
+
+    expect(first.open).toEqual({ kind: 'guest', key: 'valentina' });
+    expect(sectionOf(first, 'valentina')).toBe('done');
+    expect(done[0]).toEqual({ kind: 'guest', key: 'valentina' });
+    expect(first.doneAt.valentina).toBeUndefined();
+    expect(badgeOf(first)).toEqual(badgeOf(startOf(null, false)));
+    expect(itemsOf('tapFirst')[0]).toEqual({ kind: 'today' });
+    expect(messagesOf('tapFirst')).toEqual([
+      [
+        'Gracias. Hemos avisado a Adaeze Obi y Tunde Bakare de que no viene.',
+        'Si cambia de opinión, los botones de la invitación siguen funcionando.',
+      ],
+    ]);
+    expect(tapRowOf(first, 'valentina')).toEqual({
+      line: 'Valentina Restrepo answered Not coming by WhatsApp.',
+      time: '08:20',
+    });
   });
 
   it('gives the row the latest tap line and its time', () => {

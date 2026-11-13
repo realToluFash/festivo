@@ -376,7 +376,19 @@ function guestParts(talk: Talk, key: GuestKey): Parts {
         ]}
       />,
     );
-  if (key === 'lucia' || key === 'valentina')
+  const tap = tapFor(m, key);
+
+  if (tap?.first === true)
+    history.push(
+      <DayRule key="d1" text={dayWords(DAYS.invite, talk.locale)} />,
+      <Stub
+        key="inv"
+        title={W.invitation}
+        mark="wa"
+        bits={[{ word: say.where(CHANNEL_WORD.wa, W.read), mark: 'delivered' }]}
+      />,
+    );
+  else if (key === 'lucia' || key === 'valentina')
     history.push(
       <DayRule
         key="d1"
@@ -386,12 +398,11 @@ function guestParts(talk: Talk, key: GuestKey): Parts {
   if (key === 'marta') history.push(<DayRule key="d1" text={dayWords(DAYS.marta, talk.locale)} />);
 
   const doneLine = m.done.includes(key) && at != null;
-  const tap = tapFor(m, key);
   const taps = tap == null ? null : tapParts(tapItemsOf(tap));
   const stream = (
     <>
       {history}
-      {kase?.askedFirst !== true && asked}
+      {kase?.askedFirst !== true && tap?.first !== true && asked}
       {key === 'kwame' && kase == null && <SystemLine text={W.cameBySms} mark="sms" />}
       {kase?.extras != null && noticeExtras(kase.extras, guest.name)}
       {!doneLine && taps}
