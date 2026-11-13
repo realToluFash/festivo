@@ -23,7 +23,7 @@ import { Glyph, type GlyphName } from './Glyph.tsx';
 import type { Moment, Now } from '../kit/today.ts';
 import { useAccessibilitySizes, useLayout, useNameLines } from '../layout/useLayout.ts';
 import { OrgMark } from './OrgMark.tsx';
-import { OPENER, OpenerWords } from './OrgPill.tsx';
+import { OPENER, OpenerWords, quietTap } from './OrgPill.tsx';
 import { useTodayShell } from './todayShell.ts';
 import { usePillFit } from './usePillFit.tsx';
 
@@ -162,6 +162,7 @@ export function OrgButton({
     accessibilityRole: 'button',
     accessibilityLabel: org.label,
     accessibilityState: { expanded: org.expanded },
+    ...quietTap(org.onPress, org.expanded),
     hitSlop: tokens.spaceXxs,
     testID: 'home.switchOrganisation',
   } as const;
