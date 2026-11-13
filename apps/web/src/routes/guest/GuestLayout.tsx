@@ -22,7 +22,7 @@ export function GuestLayout() {
   useLayoutEffect(() => holdScheme(config().scheme), []);
 
   return (
-    <div className="gp desk">
+    <div className="guest-page desk">
       <meta name="robots" content="noindex, nofollow" />
       <meta name="referrer" content="no-referrer" />
       <header className="gp-header">

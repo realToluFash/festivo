@@ -229,14 +229,16 @@ function Card({ token, first }: { token: string; first: GuestPage }) {
 
   useEffect(() => {
     if (want == null) return;
-    document.querySelector<HTMLElement>(`.gp [data-focus="${want.on}"]`)?.focus();
+    document.querySelector<HTMLElement>(`.guest-page [data-focus="${want.on}"]`)?.focus();
   }, [want]);
 
   useEffect(() => {
     if (held == null || held.was.isConnected) return;
     const same =
-      held.on == null ? null : document.querySelector<HTMLElement>(`.gp [data-focus="${held.on}"]`);
-    (same ?? document.querySelector<HTMLElement>('.gp [data-focus="h1"]'))?.focus();
+      held.on == null
+        ? null
+        : document.querySelector<HTMLElement>(`.guest-page [data-focus="${held.on}"]`);
+    (same ?? document.querySelector<HTMLElement>('.guest-page [data-focus="h1"]'))?.focus();
   }, [held]);
 
   const focus = (on: string) => setWant({ on });
