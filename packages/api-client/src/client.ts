@@ -22,14 +22,17 @@ import {
 
 import {
   asGuest,
+  asGuestDetails,
   asGuestList,
   type Guest,
+  type GuestEdit,
   type GuestAnswer,
   type GuestList,
   type GuestPage,
   GUEST_ANSWERS,
   GUEST_PAGE_PHASES,
   type NewGuest,
+  type TaggedGuest,
 } from './guests.ts';
 import { ApiError, ApiUnreachableError, type Problem, toProblem } from './problem.ts';
 import {
@@ -2060,7 +2063,30 @@ export class ApiClient {
     return added;
   }
 
-  /** A hub token for this event's guest list; each change is published there as the whole list. */
+  /** A guest on the list, not a companion; 404 for anyone else (sc-3773). */
+  async guest(eventId: string, guestId: string): Promise<TaggedGuest> {
+    return this.taggedGuest(
+      await this.exchange<{ guest?: unknown }>(this.guestPath(eventId, guestId), { method: 'GET' }),
+    );
+  }
+
+  /** Refused 412 when somebody saved since `tag`, 404 once the guest is gone, and as addGuest. */
+  async updateGuest(
+    eventId: string,
+    guestId: string,
+    guest: GuestEdit,
+    tag: string,
+  ): Promise<TaggedGuest> {
+    return this.taggedGuest(
+      await this.exchange<{ guest?: unknown }>(this.guestPath(eventId, guestId), {
+        method: 'PUT',
+        body: guest,
+        headers: { 'If-Match': tag },
+      }),
+    );
+  }
+
+  /** A hub token for this event's guest list; each change is published there as the whole list, with no email address or mobile number. */
   async guestsSubscription(eventId: string): Promise<RealtimeSubscription> {
     const body = await this.post<{ token?: unknown; expiresAt?: unknown }>(
       `${this.guestsPath(eventId)}/subscriptions`,
@@ -2143,6 +2169,29 @@ export class ApiClient {
 
   private guestsPath(eventId: string): string {
     return `/api/events/${encodeURIComponent(eventId)}/guests`;
+  }
+
+  private guestPath(eventId: string, guestId: string): string {
+    return `${this.guestsPath(eventId)}/${encodeURIComponent(guestId)}`;
+  }
+
+  private taggedGuest({
+    body,
+    response,
+  }: {
+    body: { guest?: unknown } | null | undefined;
+    response: Response;
+  }): TaggedGuest {
+    const tag = response.headers.get('ETag');
+    const guest = asGuestDetails(body?.guest);
+
+    if (tag == null || tag === '' || guest == null) {
+      throw new Error(
+        'The API answered a guest in a shape this client does not know, or with no ETag. Check GuestsController in services/api.',
+      );
+    }
+
+    return { guest, tag };
   }
 
   private seatingPath(eventId: string): string {

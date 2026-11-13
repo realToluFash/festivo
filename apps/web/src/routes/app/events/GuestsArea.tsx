@@ -8,8 +8,6 @@ import {
   realtimeTopic,
 } from '@soirely/api-client';
 import {
-  callingCode,
-  countryChoices,
   deviceCountry,
   formatPhone,
   eventAllows,
@@ -22,37 +20,38 @@ import {
   useCallback,
   useEffect,
   useEffectEvent,
-  useId,
-  useMemo,
   useReducer,
   useRef,
   useState,
 } from 'react';
 import { useTranslation } from 'react-i18next';
-import { Link, useSearchParams } from 'react-router';
+import { Link, useBlocker, useSearchParams } from 'react-router';
 
 import { api } from '../../../api.ts';
 import { config } from '../../../config.ts';
 import { Glyph } from '../../../components/Glyph.tsx';
 import { Skeleton } from '../../../components/Skeleton.tsx';
-import { CardStep, Chevron, RowWords, TextAction } from '../../../components/SettingsParts.tsx';
-import { currentLocale, dateLocale } from '../../../i18n/index.ts';
+import {
+  Ask,
+  CardStep,
+  Chevron,
+  RowWords,
+  TextAction,
+} from '../../../components/SettingsParts.tsx';
+import { Toast } from '../../../components/Toast.tsx';
 import { LayersContext, focusWhenFree, useDeskLayers } from '../../../layers.ts';
 import { type Mesh, meshFor } from '../../../mesh.ts';
 import { pageTitle, usePageTitle } from '../../../pageTitle.ts';
-import { codeChoice, phoneProblemMessage } from '../../../phoneProblem.ts';
+import { phoneProblemMessage } from '../../../phoneProblem.ts';
 import { useLoadedAt, useServerNow } from '../../../serverNow.ts';
 import { canOn, useSession } from '../../../session.ts';
-import { GuestColumn } from './GuestColumn.tsx';
 import { DraftRow } from './MakeLive.tsx';
 import {
   type ListRow,
   MOST_COMPANIONS,
   type Problem,
   type Problems,
-  type ReplyWord,
   type Typed,
-  blank,
   firstProblem,
   isListed,
   newGuestOf,
@@ -61,6 +60,15 @@ import {
   violationProblems,
   withGuest,
 } from './guestRows.ts';
+import {
+  GuestColumn,
+  REPLY_KEY,
+  ReplyMark,
+  companionShown,
+  guestAddress,
+  replyDate,
+} from './GuestColumn.tsx';
+import { CompanionField, GuestField, PhoneField } from './GuestFields.tsx';
 import '../../../components/desk.css';
 import '../../../components/SettingsParts.css';
 import '../../../components/eventsDesk.css';
@@ -73,22 +81,6 @@ type Load = { kind: 'loading' } | { kind: 'failed' } | { kind: 'loaded'; list: G
 const RETRY_MS = 5_000;
 const RENEW_BEFORE_MS = 60_000;
 const FOCUSABLE = 'button, a[href], input, select, [tabindex]';
-
-const REPLY_KEY: Record<ReplyWord, string> = {
-  coming: 'guestList.reply.coming',
-  maybe: 'guestList.reply.maybe',
-  notComing: 'guestList.reply.notComing',
-  noReply: 'guestList.reply.noReply',
-  held: 'guestList.reply.held',
-};
-
-const MARK: Record<ReplyWord, string> = {
-  coming: 'is-coming',
-  maybe: 'is-maybe',
-  notComing: 'is-not-coming',
-  noReply: 'is-no-reply',
-  held: 'is-held',
-};
 
 /** The guest list as the API holds it, published to every page open on it. */
 function useLiveGuests(eventId: string, onList: (list: GuestList) => void, onGap: () => void) {
@@ -243,7 +235,6 @@ export function GuestsArea({
 }) {
   const { t } = useTranslation();
   const { layers, covered, setHost } = useDeskLayers();
-  const [address, setAddress] = useSearchParams();
   const now = useServerNow();
   const phase = shownPhase(event, useLoadedAt(event), now);
   const invites = eventAllows(phase, 'invite');
@@ -254,8 +245,31 @@ export function GuestsArea({
   const [heard, setHeard] = useState(0);
   const [flagged, setFlagged] = useState<ReadonlySet<string>>(new Set());
   const [adding, setAdding] = useState(false);
+  const [params, setParams] = useSearchParams();
+  const open = adding ? null : params.get('guest');
+  const [stamp, setStamp] = useState(0);
+  const [dirty, setDirty] = useState(false);
+  const [asking, setAsking] = useState<(() => void) | null>(null);
+  const [saved, setSaved] = useState(false);
+  const lastRow = useRef<string | null>(open);
+  const addAfter = useRef(false);
+  const column = useRef<HTMLElement>(null);
   const manages = canOn(event, 'guests.manage');
   const country = useStartingCountry(manages);
+  const away = useBlocker(dirty);
+
+  useEffect(() => {
+    if (!dirty) return;
+
+    const ask = (leaving: BeforeUnloadEvent): void => leaving.preventDefault();
+    window.addEventListener('beforeunload', ask);
+
+    return () => window.removeEventListener('beforeunload', ask);
+  }, [dirty]);
+
+  useEffect(() => {
+    if (open != null) lastRow.current = open;
+  }, [open]);
 
   usePageTitle(pageTitle(t, [t('eventPage.guests'), event.name]));
 
@@ -290,27 +304,57 @@ export function GuestsArea({
   useLiveGuests(
     event.id,
     (list) => {
-      setLoad({ kind: 'loaded', list });
+      setStamp((n) => n + 1);
       setHeard((n) => n + 1);
+      if (manages) setAttempt((n) => n + 1);
+      else setLoad({ kind: 'loaded', list });
     },
     () => setAttempt((n) => n + 1),
   );
 
   function startAdd(): void {
+    if (dirty) {
+      addAfter.current = true;
+      setParams({}, { replace: true });
+      return;
+    }
+    if (open != null) setParams({}, { replace: true });
+    showAdd();
+  }
+
+  function showAdd(): void {
     setAdding(true);
     focus('fullName');
   }
 
-  const guests = load.kind === 'loaded' ? load.list.guests : [];
-  const counts = load.kind === 'loaded' ? load.list.counts : null;
-  const openId = address.get('guest');
-  const open = adding ? null : (guests.find((guest) => guest.id === openId) ?? null);
-
   function openGuest(id: string): void {
     setAdding(false);
-    setAddress({ guest: id });
+    setParams({ guest: id });
     focus('guest-heading');
   }
+
+  function close(): void {
+    setParams({});
+    focus(`row:${lastRow.current ?? ''}`, 'title');
+  }
+
+  const onEscape = useEffectEvent((key: globalThis.KeyboardEvent) => {
+    if (key.key !== 'Escape' || key.defaultPrevented || adding || open == null || dirty) return;
+    key.preventDefault();
+    close();
+  });
+
+  useEffect(() => {
+    const at = column.current;
+    const listen = (key: globalThis.KeyboardEvent) => onEscape(key);
+
+    at?.addEventListener('keydown', listen);
+
+    return () => at?.removeEventListener('keydown', listen);
+  });
+
+  const guests = load.kind === 'loaded' ? load.list.guests : [];
+  const counts = load.kind === 'loaded' ? load.list.counts : null;
 
   return (
     <LayersContext value={layers}>
@@ -400,46 +444,78 @@ export function GuestsArea({
                     {guests.length > 0 && (
                       <Rows
                         rows={rowsOf(guests)}
+                        eventId={event.id}
                         timeZone={event.timeZone}
-                        open={open?.id ?? null}
+                        open={open}
                         onOpen={openGuest}
                       />
                     )}
                   </section>
-                  {open != null && (
-                    <section className="gs-column" aria-label={open.fullName}>
-                      <GuestColumn
-                        key={open.id}
-                        guest={open}
-                        mesh={meshFor(event.id)}
-                        reply={t(REPLY_KEY[open.reply])}
-                        mark={MARK[open.reply]}
-                        manages={manages}
-                        invites={invites}
-                        flagged={flagged.has(open.id)}
-                        onCopy={() =>
-                          api.guestLink(event.id, open.id).catch((error: unknown) => {
-                            if (error instanceof ApiError && error.is('event_state_invalid')) {
-                              void api.taggedEvent(event.id).then(
-                                (latest) => {
-                                  onChange(latest.event, latest.tag);
-                                  window.setTimeout(() => heading.current?.focus(), 0);
-                                },
-                                () => undefined,
-                              );
-                            }
+                  {!adding && (
+                    <section
+                      ref={column}
+                      className="gs-column"
+                      aria-label={guests.find((one) => one.id === open)?.fullName}
+                    >
+                      {open == null ? (
+                        <p className="gs-pick">{t('guestList.pick')}</p>
+                      ) : (
+                        <GuestColumn
+                          key={open}
+                          eventId={event.id}
+                          guestId={open}
+                          timeZone={event.timeZone}
+                          mesh={meshFor(event.id)}
+                          manages={manages}
+                          guests={guests}
+                          country={country}
+                          stamp={stamp}
+                          invites={invites}
+                          flagged={flagged.has(open)}
+                          onCopy={() =>
+                            api.guestLink(event.id, open).catch((error: unknown) => {
+                              if (error instanceof ApiError && error.is('event_state_invalid')) {
+                                void api.taggedEvent(event.id).then(
+                                  (latest) => {
+                                    onChange(latest.event, latest.tag);
+                                    window.setTimeout(() => heading.current?.focus(), 0);
+                                  },
+                                  () => undefined,
+                                );
+                              }
 
-                            throw error;
-                          })
-                        }
-                        onReplace={() =>
-                          api
-                            .replaceGuestLink(event.id, open.id)
-                            .then(() =>
-                              setFlagged((was) => new Set([...was].filter((id) => id !== open.id))),
-                            )
-                        }
-                      />
+                              throw error;
+                            })
+                          }
+                          onReplace={() =>
+                            api
+                              .replaceGuestLink(event.id, open)
+                              .then(() =>
+                                setFlagged((was) => new Set([...was].filter((id) => id !== open))),
+                              )
+                          }
+                          focus={focus}
+                          onDirty={setDirty}
+                          onAsk={(then) => setAsking(() => then)}
+                          onClose={close}
+                          onSaved={(guest) => {
+                            setSaved(true);
+                            setLoad((was) =>
+                              was.kind === 'loaded'
+                                ? {
+                                    kind: 'loaded',
+                                    list: {
+                                      ...was.list,
+                                      guests: was.list.guests.map((one) =>
+                                        one.id === guest.id ? guest : one,
+                                      ),
+                                    },
+                                  }
+                                : was,
+                            );
+                          }}
+                        />
+                      )}
                     </section>
                   )}
                   {adding && (
@@ -468,6 +544,34 @@ export function GuestsArea({
             </>
           )}
         </div>
+        {(asking != null || away.state === 'blocked') && (
+          <Ask
+            title={t('guestList.discardTitle')}
+            line={t('guestList.discardLine', {
+              name: guests.find((one) => one.id === open)?.fullName ?? '',
+            })}
+            keep={t('guestList.keepEditing')}
+            go={t('guestList.discard')}
+            onKeep={() => {
+              addAfter.current = false;
+              setAsking(null);
+              away.reset?.();
+            }}
+            onGo={() => {
+              const then = asking;
+
+              setAsking(null);
+              setDirty(false);
+              if (then != null) then();
+              else away.proceed?.();
+              if (addAfter.current) {
+                addAfter.current = false;
+                showAdd();
+              }
+            }}
+          />
+        )}
+        {saved && <Toast words={t('guestList.saved')} onClose={() => setSaved(false)} />}
         <div ref={setHost} className="desk-layers" />
       </div>
     </LayersContext>
@@ -504,25 +608,16 @@ function GuestsCover({
   );
 }
 
-function ReplyMark({ reply }: { reply: ReplyWord }) {
-  return (
-    <span className="gs-lead">
-      <span className={`gs-mark ${MARK[reply]}`} aria-hidden="true">
-        {reply === 'coming' && <Glyph name="tick" size={15} weight={3.2} />}
-        {reply === 'notComing' && <span className="gs-bar" />}
-        {reply === 'maybe' && <Glyph name="question" size={18} weight={2.8} />}
-      </span>
-    </span>
-  );
-}
-
+/** Each row is a link to its guest's address; a companion's opens their guest. */
 function Rows({
   rows,
+  eventId,
   timeZone,
   open,
   onOpen,
 }: {
   rows: readonly ListRow[];
+  eventId: string;
   /** The event's: a reply's date is the day it was in the event's zone. */
   timeZone: string;
   open: string | null;
@@ -541,11 +636,7 @@ function Rows({
               ? word
               : t('guestList.replied', {
                   reply: word,
-                  date: new Intl.DateTimeFormat(dateLocale(), {
-                    month: 'short',
-                    day: 'numeric',
-                    timeZone,
-                  }).format(new Date(guest.repliedAt)),
+                  date: replyDate(guest.repliedAt, timeZone),
                 });
           const mobile = guest.mobile == null ? null : formatPhone(guest.mobile);
           const contact =
@@ -555,41 +646,86 @@ function Rows({
 
           return (
             <li key={guest.id}>
-              <button
-                type="button"
-                className={guest.id === open ? 'desk-row gs-row is-on' : 'desk-row gs-row'}
-                aria-current={guest.id === open ? 'true' : undefined}
-                data-focus={`row:${guest.id}`}
-                onClick={() => onOpen(guest.id)}
+              <RowLink
+                eventId={eventId}
+                guestId={guest.id}
+                rowId={guest.id}
+                open={open}
+                onOpen={onOpen}
               >
-                <ReplyMark reply={guest.reply} />
+                <span className="gs-lead">
+                  <ReplyMark reply={guest.reply} />
+                </span>
                 <RowWords
                   title={guest.fullName}
                   lines={[contact == null ? reply : t('guestList.line', { reply, contact })]}
                 />
-                <Chevron />
-              </button>
+              </RowLink>
             </li>
           );
         }
 
-        const { host, companion, nth } = row;
-        const name = blank(companion.fullName)
-          ? nth == null
-            ? t('guestList.guestOf', { host: host.fullName })
-            : t('guestList.guestOfNth', { host: host.fullName, nth })
-          : (companion.fullName ?? '');
+        const { host, companion, at } = row;
+        const name = companionShown(
+          t,
+          host.fullName,
+          host.companions.map((one) => one.fullName),
+          at,
+        );
 
         return (
           <li key={companion.id} className="is-companion">
-            <div className="desk-row gs-row">
-              <ReplyMark reply={companion.state} />
+            <RowLink
+              eventId={eventId}
+              guestId={host.id}
+              rowId={companion.id}
+              open={null}
+              onOpen={onOpen}
+            >
+              <span className="gs-lead">
+                <ReplyMark reply={companion.state} />
+              </span>
               <RowWords title={name} lines={[t(REPLY_KEY[companion.state])]} />
-            </div>
+            </RowLink>
           </li>
         );
       })}
     </ul>
+  );
+}
+
+function RowLink({
+  eventId,
+  guestId,
+  rowId,
+  open,
+  onOpen,
+  children,
+}: {
+  eventId: string;
+  guestId: string;
+  rowId: string;
+  open: string | null;
+  onOpen: (id: string) => void;
+  children: ReactNode;
+}) {
+  const on = open === guestId;
+
+  return (
+    <Link
+      to={guestAddress(eventId, guestId)}
+      className={on ? 'desk-row gs-row is-on' : 'desk-row gs-row'}
+      aria-current={on ? 'true' : undefined}
+      data-focus={`row:${rowId}`}
+      onClick={(press) => {
+        if (press.metaKey || press.ctrlKey || press.shiftKey || press.button !== 0) return;
+        press.preventDefault();
+        onOpen(guestId);
+      }}
+    >
+      {children}
+      <Chevron />
+    </Link>
   );
 }
 
@@ -855,16 +991,8 @@ function CompanionFields({
             key={at}
             at={at}
             name={name}
+            host={host}
             label={label}
-            remove={
-              name.trim() !== ''
-                ? t('guestList.removeNamed', { name: name.trim() })
-                : host === ''
-                  ? t('guestList.removeNamed', { name: label })
-                  : at === 0
-                    ? t('guestList.removeCompanionOf', { host })
-                    : t('guestList.removeCompanionOfNth', { host, nth: at + 1 })
-            }
             placeholder={placeholder}
             error={error}
             onChange={(typed) =>
@@ -894,175 +1022,5 @@ function CompanionFields({
         <p className="gs-most">{t('guestList.mostCompanions', { most: MOST_COMPANIONS })}</p>
       )}
     </fieldset>
-  );
-}
-
-function CompanionField({
-  at,
-  name,
-  label,
-  remove,
-  placeholder,
-  error,
-  onChange,
-  onRemove,
-}: {
-  at: number;
-  name: string;
-  label: string;
-  remove: string;
-  placeholder: string;
-  error: string | undefined;
-  onChange: (name: string) => void;
-  onRemove: () => void;
-}) {
-  const { t } = useTranslation();
-  const id = useId();
-
-  return (
-    <div className="gs-companion-field">
-      <div className="gs-companion">
-        <div className={error == null ? 'desk-box' : 'desk-box is-wrong'}>
-          <input
-            type="text"
-            value={name}
-            placeholder={placeholder}
-            spellCheck={false}
-            autoComplete="off"
-            data-focus={`companion-${at}`}
-            aria-label={label}
-            aria-invalid={error != null}
-            aria-describedby={error == null ? undefined : `${id}-error`}
-            onChange={(event) => onChange(event.target.value)}
-          />
-        </div>
-        <button
-          type="button"
-          className="desk-text gs-remove"
-          aria-label={remove}
-          onClick={onRemove}
-        >
-          {t('guestList.remove')}
-        </button>
-      </div>
-      {error != null && <FieldWrong id={`${id}-error`}>{error}</FieldWrong>}
-    </div>
-  );
-}
-
-function FieldWrong({ id, children }: { id: string; children: ReactNode }) {
-  return (
-    <p id={id} className="desk-error">
-      <Glyph name="alert" size={15} weight={2.2} />
-      {children}
-    </p>
-  );
-}
-
-function GuestField({
-  label,
-  value,
-  optional = false,
-  error,
-  focusKey,
-  type = 'text',
-  onChange,
-}: {
-  label: string;
-  value: string;
-  optional?: boolean;
-  error: string | undefined;
-  focusKey: string;
-  type?: 'text' | 'email';
-  onChange: (value: string) => void;
-}) {
-  const { t } = useTranslation();
-  const id = useId();
-
-  return (
-    <div className="desk-field">
-      <label htmlFor={id} className="desk-label gs-label">
-        {label}
-        {optional && <span className="gs-optional">{t('eventForm.optional')}</span>}
-      </label>
-      <div className={error == null ? 'desk-box' : 'desk-box is-wrong'}>
-        <input
-          id={id}
-          type={type}
-          value={value}
-          autoComplete="off"
-          spellCheck={false}
-          data-focus={focusKey}
-          aria-invalid={error != null}
-          aria-describedby={error == null ? undefined : `${id}-error`}
-          onChange={(event) => onChange(event.target.value)}
-        />
-      </div>
-      {error != null && <FieldWrong id={`${id}-error`}>{error}</FieldWrong>}
-    </div>
-  );
-}
-
-/** The account's Mobile number: the code and the number side by side, only countries that can be dialled. */
-function PhoneField({
-  country,
-  number,
-  error,
-  onCountry,
-  onNumber,
-}: {
-  country: string;
-  number: string;
-  error: string | undefined;
-  onCountry: (code: string) => void;
-  onNumber: (number: string) => void;
-}) {
-  const { t } = useTranslation();
-  const id = useId();
-  const locale = currentLocale();
-  const countries = useMemo(
-    () => countryChoices(locale).filter(({ code }) => callingCode(code) != null),
-    [locale],
-  );
-
-  return (
-    <div className="desk-field">
-      <label htmlFor={id} className="desk-label gs-label">
-        {t('verifyPhone.numberLabel')}
-        <span className="gs-optional">{t('eventForm.optional')}</span>
-      </label>
-      <div className="gs-phone">
-        <div className="desk-box gs-country">
-          <span aria-hidden="true">{`${country} ${callingCode(country) ?? ''}`.trim()}</span>
-          <Glyph name="chevdown" size={15} weight={2.4} />
-          <select
-            aria-label={t('guestList.country')}
-            value={country}
-            data-focus="country"
-            onChange={(event) => onCountry(event.target.value)}
-          >
-            <option value="" disabled hidden />
-            {countries.map(({ code, name }) => (
-              <option key={code} value={code}>
-                {codeChoice(code, name)}
-              </option>
-            ))}
-          </select>
-        </div>
-        <div className={error == null ? 'desk-box' : 'desk-box is-wrong'}>
-          <input
-            id={id}
-            type="tel"
-            value={number}
-            autoComplete="off"
-            data-focus="mobile"
-            aria-invalid={error != null}
-            aria-describedby={error == null ? undefined : `${id}-error`}
-            onChange={(event) => onNumber(event.target.value)}
-          />
-        </div>
-      </div>
-      {error != null && <FieldWrong id={`${id}-error`}>{error}</FieldWrong>}
-    </div>
   );
 }

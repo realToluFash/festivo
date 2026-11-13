@@ -164,7 +164,10 @@ export function EventForm({
   const endField = useRef<ViewInstance>(null);
   const zoneField = useRef<ViewInstance>(null);
   const currencyField = useRef<ViewInstance>(null);
-  const [focusOn, setFocusOn] = useState<{ field: EventFormField } | null>(() =>
+  const [focusOn, setFocusOn] = useState<{
+    field: EventFormField;
+    saidFirst?: string | undefined;
+  } | null>(() =>
     arriveAt == null || arriveAt === 'hosts' ? null : { field: ARRIVE_AT[arriveAt] },
   );
 
@@ -173,25 +176,28 @@ export function EventForm({
     const field = focusOn.field;
     const typedIn = { name: nameInput, venueName: venueNameInput, venueAddress: venueAddressInput };
 
-    if (field === 'name' || field === 'venueName' || field === 'venueAddress')
+    if (field === 'name' || field === 'venueName' || field === 'venueAddress') {
       focusChecked(typedIn[field]);
-    else
-      focusPicker(
-        {
-          type: typePicker,
-          startsAt: startPicker,
-          endsAt: endPicker,
-          timeZone: zonePicker,
-          currency: currencyPicker,
-        }[field],
-        {
-          type: typeField,
-          startsAt: startField,
-          endsAt: endField,
-          timeZone: zoneField,
-          currency: currencyField,
-        }[field],
-      );
+      return;
+    }
+
+    return focusPicker(
+      {
+        type: typePicker,
+        startsAt: startPicker,
+        endsAt: endPicker,
+        timeZone: zonePicker,
+        currency: currencyPicker,
+      }[field],
+      {
+        type: typeField,
+        startsAt: startField,
+        endsAt: endField,
+        timeZone: zoneField,
+        currency: currencyField,
+      }[field],
+      focusOn.saidFirst,
+    );
   }, [focusOn]);
 
   const held = dirty && !leaving;
@@ -310,11 +316,11 @@ export function EventForm({
     if (line != null) readOut(line);
   }
 
-  function refuse(found: EventErrors, hostFound: HostErrors = {}): void {
+  function refuse(found: EventErrors, hostFound: HostErrors = {}, saidFirst?: string): void {
     setErrors(found);
     setHostErrors(hostFound);
     const first = firstRefusedOf(found, hostFound, hosts);
-    setFocusOn(first != null && 'field' in first ? { field: first.field } : null);
+    setFocusOn(first != null && 'field' in first ? { field: first.field, saidFirst } : null);
     setFocusHost(first != null && 'host' in first ? { key: first.host } : null);
   }
 
@@ -346,7 +352,7 @@ export function EventForm({
     if (count > 0) {
       setUnsent({ count });
       setStatus('editing');
-      refuse(found, hostFound);
+      refuse(found, hostFound, t('eventForm.problems', { count }));
       return;
     }
 

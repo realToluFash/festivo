@@ -230,6 +230,24 @@ final class GuestLinksTest extends ApiTestCase
         self::assertSame(['guests' => [$guest]], $this->as($this->owner, 'GET', $this->guests() . '/flagged'));
     }
 
+    #[Test]
+    public function correctingTheGuestsEmailAndMobileKeepsTheirLinkAndItsFlag(): void
+    {
+        $guest = $this->add('Bisi Adewale', [], null, 'bisi@example.com');
+        $before = $this->link($guest);
+        $this->anonymous('/api/guest-links/wrong-person', $this->token($guest));
+
+        $this->as($this->owner, 'PUT', $this->guests() . '/' . $guest, [
+            'fullName' => 'Bisi Adewale',
+            'email' => 'bisi.adewale@example.com',
+            'mobile' => ['countryCode' => 'NG', 'number' => '0803 123 4567'],
+        ], '"1"');
+        self::assertSame(200, $this->statusCode(), Json\encode($this->last()));
+
+        self::assertSame($before, $this->link($guest));
+        self::assertTrue($this->flagged($guest));
+    }
+
     /** The configured pool is tagged `kernel.reset`, so its budget is full again on every request: a spent one is swapped in, and the numbers are the test below. */
     #[Test]
     public function aSpentBudgetRefusesTheTellWith429AndRetryAfter(): void
@@ -426,13 +444,14 @@ final class GuestLinksTest extends ApiTestCase
      *
      * @return array<string, mixed>
      */
-    private function as(User $user, string $method, string $path, ?array $body = null): array
+    private function as(User $user, string $method, string $path, ?array $body = null, ?string $ifMatch = null): array
     {
         $who = self::em()->find(User::class, $user->getId()) ?? self::fail('no user');
         $this->client->request($method, $path, server: [
             'CONTENT_TYPE' => 'application/json',
             'HTTP_AUTHORIZATION' => 'Bearer ' . self::service(JWTTokenManagerInterface::class)->create($who),
             'HTTP_ACCEPT_LANGUAGE' => 'en',
+            ...null === $ifMatch ? [] : ['HTTP_IF_MATCH' => $ifMatch],
         ], content: null === $body ? null : Json\encode($body));
 
         return $this->last();

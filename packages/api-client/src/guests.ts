@@ -21,8 +21,9 @@ export interface Companion {
 export interface Guest {
   id: string;
   fullName: string;
+  /** Null for none, and for anyone without guests.manage, whom the API never sends it (sc-3773). */
   email: string | null;
-  /** E.164. */
+  /** E.164; null as `email` is. */
   mobile: string | null;
   reply: GuestReply;
   /** When the current reply was given, in the event's zone; null with no reply. */
@@ -50,6 +51,22 @@ export interface NewGuest {
   companions?: { fullName?: string | null }[];
   /** Sent once the host pressed Add anyway on "<name> is already on the list". */
   allowDuplicate?: boolean;
+}
+
+/** One guest as their details show them (sc-3773). */
+export interface GuestDetails extends Guest {
+  added: { at: string; by: string | null };
+}
+
+/** The whole guest as Edit saves it: each companion kept by `id`, one with no id added, one left out removed. */
+export interface GuestEdit extends Omit<NewGuest, 'companions'> {
+  companions: { id?: string | null; fullName?: string | null }[];
+}
+
+/** A guest with the `ETag` an edit sends back as `If-Match`. */
+export interface TaggedGuest {
+  guest: GuestDetails;
+  tag: string;
 }
 
 /** What a guest's own link opens (sc-1526): their name as the host typed it, their answer (sc-1439), and the event behind it. */
@@ -146,4 +163,14 @@ export function asGuestList(value: unknown): GuestList | null {
     guests: guests as Guest[],
     counts: { people: counts.people, guests: counts.guests, companions: counts.companions },
   };
+}
+
+export function asGuestDetails(value: unknown): GuestDetails | null {
+  const guest = asGuest(value);
+  const added = (value as { added?: unknown } | null)?.added as Record<string, unknown> | undefined;
+  const at = typeof added === 'object' && added != null ? text(added.at) : null;
+
+  if (guest == null || at == null) return null;
+
+  return { ...guest, added: { at, by: text(added?.by) } };
 }

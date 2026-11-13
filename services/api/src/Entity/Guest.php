@@ -70,6 +70,10 @@ class Guest
     #[ORM\JoinColumn(nullable: true, onDelete: 'SET NULL')]
     private ?User $addedBy;
 
+    /** A host's ETag (sc-3773): GuestEditor raises it on each saved change, their companions' included. */
+    #[ORM\Column(type: Types::INTEGER, options: ['default' => 1])]
+    private int $version = 1;
+
     /** What `/i/<token>` carries (sc-1526); null for a companion, who has no link. */
     #[ORM\Column(type: Types::STRING, length: 43, unique: true, nullable: true)]
     private ?string $linkToken;
@@ -175,6 +179,37 @@ class Guest
     public function getAddedBy(): ?User
     {
         return $this->addedBy;
+    }
+
+    public function setFullName(?string $fullName, ?string $nameKey): void
+    {
+        $this->fullName = $fullName;
+        $this->nameKey = $nameKey;
+    }
+
+    public function setEmail(?string $email): void
+    {
+        $this->email = $email;
+    }
+
+    public function setMobile(?string $mobile): void
+    {
+        $this->mobile = $mobile;
+    }
+
+    public function setPosition(int $position): void
+    {
+        $this->position = $position;
+    }
+
+    public function getVersion(): int
+    {
+        return $this->version;
+    }
+
+    public function raiseVersion(): void
+    {
+        ++$this->version;
     }
 
     public function getLinkToken(): ?string

@@ -78,7 +78,7 @@ final readonly class GuestAnswers
 
         if ($changed) {
             $event = $guest->getEvent();
-            $this->realtimePublisher->publish(RealtimeTopic::EventGuests, $event->getId()->toRfc4122(), $this->guestSerialiser->list($event));
+            $this->realtimePublisher->publish(RealtimeTopic::EventGuests, $event->getId()->toRfc4122(), $this->guestSerialiser->list($event, contacts: false));
         }
     }
 }

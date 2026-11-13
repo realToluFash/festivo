@@ -348,7 +348,8 @@ final class GuestAnswersTest extends ApiTestCase
         $update = Iter\last(self::service(RecordingHub::class)->published) ?? self::fail('nothing published');
         self::assertSame(['events/' . $this->eventId . '/guests'], $update->getTopics());
         self::assertTrue($update->isPrivate());
-        self::assertSame($this->as($this->owner, 'GET', $this->guests()), Json\decode($update->getData()));
+        $viewer = $this->member('ada@ire.events', SeededRole::Member, EventRole::CanView);
+        self::assertSame($this->as($viewer, 'GET', $this->guests()), Json\decode($update->getData()));
     }
 
     #[Test]

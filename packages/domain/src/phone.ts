@@ -43,6 +43,22 @@ export function formatPhone(e164: string): string {
   return parsePhoneNumberFromString(e164)?.formatInternational() ?? e164;
 }
 
+/** An E.164 number as the code-and-number field shows it: "+2348031234567" is NG and "0803 123 4567". */
+export function phoneFields(e164: string): { country: string; number: string } | null {
+  const parsed = parsePhoneNumberFromString(e164);
+
+  return parsed?.country == null
+    ? null
+    : { country: parsed.country, number: parsed.formatNational() };
+}
+
+/** The number typed beside a country, in E.164; null when it does not parse, for the API to refuse. */
+export function phoneE164(typed: string, country: string): string | null {
+  return isPhoneCountry(country)
+    ? (parsePhoneNumberFromString(typed, country)?.number ?? null)
+    : null;
+}
+
 /** The mobile number's country code on "A few details" (sc-485): it follows the Country until picked by hand. */
 export interface PhoneCountry {
   code: string;
