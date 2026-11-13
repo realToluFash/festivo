@@ -761,6 +761,11 @@ Dated, newest first: the wording, where it is used, and why it won over the alte
   "Comando". Os estados no calendário subscrito são os da lista de eventos, no masculino com
   "evento": Rascunho, Publicado, Em pausa, Terminado, Cancelado, Eliminado. "Dietary notes" é
   "As notas sobre alimentação". O limite concorda o artigo com a hora, como `limits.tries`.
+- **13 Nov 2026. Adicionar ao calendário na página do convidado** (sc-45546 para sc-3627,
+  `web:guest.calendar*`). O título é "Adicionar ao seu calendário", com "seu" para não se ler como
+  o Calendário da organização. A linha: "O seu calendário atualiza-se sozinho se a data, a hora ou
+  o local mudarem.", com o futuro do conjuntivo. Os botões nomeiam as aplicações, "Apple /
+  Outlook" e "Google Calendar", iguais ao inglês (`same-as-english.json`).
 - **A faixa sem ligação** (sc-22586): "Sem ligação · atualizado: {{time}}", e "… atualizado:
   {{day}}, {{time}}" quando o carregamento foi noutro dia. Rótulo com dois pontos, sem
   preposição: "no {{day}}" falha de segunda a sexta ("na"), e "às" falha à 01:00 (2 Nov, de QA). "Sem ligação", não "offline" nem "sem conexão".

@@ -122,6 +122,8 @@
     "mobile:calendar.agenda",
     "web:eventNav.menu",
     "mobile:eventNav.menu",
-    "web:auth.copyright"
+    "web:auth.copyright",
+    "web:guest.calendarApple",
+    "web:guest.calendarGoogle"
   ]
 }
