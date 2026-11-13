@@ -27,6 +27,7 @@
     "seating_plan_exists": "This event already has a seating plan.",
     "seating_section_limit": "A plan can have up to 30 sections. Delete one to add another.",
     "guest_already_listed": "That name is already on the list.",
+    "replies_closed": "Answers have closed.",
     "unauthenticated": "Please sign in to continue.",
     "invalid_credentials": "That email and password do not match.",
     "invalid_refresh_token": "Your session has ended. Please sign in again.",

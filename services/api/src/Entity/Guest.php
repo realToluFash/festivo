@@ -6,6 +6,8 @@ namespace App\Entity;
 
 use App\Doctrine\Traits\Timestampable;
 use App\Enum\GuestReply;
+use App\Enum\GuestReplySource;
+use DateTimeImmutable;
 use Doctrine\DBAL\Types\Types;
 use Doctrine\ORM\Mapping as ORM;
 use SensitiveParameter;
@@ -52,6 +54,13 @@ class Guest
 
     #[ORM\Column(type: Types::STRING, length: 16, nullable: true, enumType: GuestReply::class)]
     private ?GuestReply $reply;
+
+    /** When the current reply was given; sending the same answer again keeps it. */
+    #[ORM\Column(type: Types::DATETIME_IMMUTABLE, nullable: true)]
+    private ?DateTimeImmutable $repliedAt = null;
+
+    #[ORM\Column(type: Types::STRING, length: 16, nullable: true, enumType: GuestReplySource::class)]
+    private ?GuestReplySource $replySource = null;
 
     /** A companion's place under their host, from 1; a host's is 0. */
     #[ORM\Column(type: Types::SMALLINT, options: ['default' => 0])]
@@ -132,6 +141,30 @@ class Guest
     public function getReply(): ?GuestReply
     {
         return $this->reply;
+    }
+
+    public function getRepliedAt(): ?DateTimeImmutable
+    {
+        return $this->repliedAt;
+    }
+
+    public function getReplySource(): ?GuestReplySource
+    {
+        return $this->replySource;
+    }
+
+    /** Replaces the reply; the same answer again changes nothing and keeps its date. False when nothing changed. */
+    public function reply(GuestReply $reply, DateTimeImmutable $at, GuestReplySource $source): bool
+    {
+        if ($reply === $this->reply) {
+            return false;
+        }
+
+        $this->reply = $reply;
+        $this->repliedAt = $at;
+        $this->replySource = $source;
+
+        return true;
     }
 
     public function getPosition(): int
