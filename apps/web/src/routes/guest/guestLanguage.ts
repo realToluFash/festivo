@@ -3,7 +3,7 @@ import { guestLanguage } from '@soirely/domain';
 import { useSyncExternalStore } from 'react';
 
 import { api } from '../../api.ts';
-import { showLanguage } from '../../i18n/index.ts';
+import { setLanguage, showLanguage, storedLanguage } from '../../i18n/index.ts';
 
 /** `said` counts the switches, so the status says each one once; `unsaved` is the choice the guest's record did not take. */
 export interface GuestLanguageState {
@@ -34,17 +34,34 @@ export function useGuestLanguage(): GuestLanguageState {
   return useSyncExternalStore(subscribe, () => state);
 }
 
-/** The page opens in the rule's language, the browser asked through `navigator.languages`; nothing is kept on the device. */
+/** The guest's saved choice, then this device's copy of it, then the browser (pm #5238). */
 export async function openIn(language: GuestPage['language']): Promise<void> {
-  await showLanguage(guestLanguage({ ...language, browser: navigator.languages ?? [] }));
+  const device = storedLanguage();
+  const browser = navigator.languages ?? [];
+
+  await showLanguage(
+    guestLanguage({ ...language, browser: device == null ? browser : [device, ...browser] }),
+  );
 }
 
-/** Switches at once, then keeps the choice on the guest, never on an account or this device. */
-export async function chooseGuestLanguage(token: string, code: string): Promise<void> {
+/** Switches at once and saves on the guest; signed out, this device keeps a copy, and a signed-in account's language is left alone. */
+export async function chooseGuestLanguage(
+  token: string,
+  code: string,
+  signedIn: boolean,
+): Promise<void> {
   latest = code;
   set({ said: state.said + 1, unsaved: null });
-  await showLanguage(code);
+  await (signedIn ? showLanguage(code) : keepOnDevice(code));
   await save(token, code);
+}
+
+async function keepOnDevice(code: string): Promise<void> {
+  try {
+    await setLanguage(code);
+  } catch {
+    await showLanguage(code);
+  }
 }
 
 export async function saveAgain(token: string): Promise<void> {

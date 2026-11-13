@@ -4,6 +4,8 @@ import { RouterProvider, createMemoryRouter } from 'react-router';
 import { act } from 'react';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 
+import { setLanguage } from '../../i18n/index.ts';
+import { __setSessionState } from '../../session.ts';
 import { atPhoneWidth, atWideWidth } from '../../test-widths.ts';
 import { routes } from '../index.tsx';
 
@@ -967,7 +969,7 @@ describe("the guest's language (sc-3790)", () => {
     expect(document.documentElement.lang).toBe('en');
   });
 
-  it('switches at once, says so once, and keeps the choice on the guest and never on this device', async () => {
+  it('switches at once, says so once, and keeps the choice on the guest with a copy on this device', async () => {
     browser('en');
     const { sent } = api({
       '/api/guest-links/page': [{ status: 200, body: PAGE }],
@@ -987,8 +989,90 @@ describe("the guest's language (sc-3790)", () => {
         body: { token: TOKEN, language: 'fr' },
       }),
     );
-    expect(localStorage.getItem('soirely:language')).toBeNull();
+    expect(localStorage.getItem('soirely:language')).toBe('fr');
+    expect(localStorage.getItem('soirely:language:chosen-signed-out')).toBeNull();
     expect(screen.queryByRole('alert')).toBeNull();
+  });
+
+  it('opens again in the language a failed save kept on this device, ahead of the browser', async () => {
+    browser('en');
+    api({
+      '/api/guest-links/page': [{ status: 200, body: PAGE }],
+      '/api/guest-links/language': [{ status: 500, body: BROKEN }],
+    });
+    const first = open();
+
+    fireEvent.click(await screen.findByRole('button', { name: 'Language: English' }));
+    fireEvent.click(screen.getByRole('menuitemradio', { name: 'Français' }));
+    await screen.findByRole('alert');
+    first.unmount();
+    await i18next.changeLanguage('en');
+
+    api({ '/api/guest-links/page': [{ status: 200, body: PAGE }] });
+    open();
+
+    expect(await screen.findByRole('button', { name: /Français/u })).toBeDefined();
+    expect(document.documentElement.lang).toBe('fr');
+  });
+
+  it('opens in the saved choice over this device’s copy', async () => {
+    browser('en');
+    localStorage.setItem('soirely:language', 'es');
+    api({ '/api/guest-links/page': [{ status: 200, body: language('pt', null) }] });
+    open();
+
+    expect(await screen.findByRole('button', { name: /Português/u })).toBeDefined();
+  });
+
+  it('leaves a signed-in account’s language alone: no account request, no device write, and Español again on the way out', async () => {
+    browser('en');
+    await setLanguage('es');
+    __setSessionState({
+      status: 'signedIn',
+      session: {
+        userId: 'u1',
+        name: 'Folake Adeyemi',
+        email: 'folake@ire.events',
+        verified: true,
+        complete: true,
+        awaiting: null,
+        providers: [],
+        hasPassword: true,
+        needsOrganisation: false,
+        organisation: null,
+        organisationCountry: null,
+        organisations: [],
+        timezone: null,
+        waitingFor: null,
+      },
+    });
+    try {
+      const { sent } = api({
+        '/api/guest-links/page': [{ status: 200, body: PAGE }],
+        '/api/guest-links/language': [{ status: 204 }],
+      });
+      const page = open();
+
+      fireEvent.click(await screen.findByRole('button', { name: /Español/u }));
+      fireEvent.click(screen.getByRole('menuitemradio', { name: 'English' }));
+
+      await waitFor(() =>
+        expect(sent).toContainEqual({
+          path: '/api/guest-links/language',
+          body: { token: TOKEN, language: 'en' },
+        }),
+      );
+      expect(document.documentElement.lang).toBe('en');
+      expect(sent.some((one) => one.path === '/api/auth/locale')).toBe(false);
+      expect(localStorage.getItem('soirely:language')).toBe('es');
+      expect(localStorage.getItem('soirely:language:chosen-signed-out')).toBeNull();
+
+      page.unmount();
+
+      await waitFor(() => expect(document.documentElement.lang).toBe('es'));
+    } finally {
+      __setSessionState({ status: 'unknown' });
+    }
   });
 
   it('says the language was not saved, as an alert with Try again, and clears it once saved', async () => {

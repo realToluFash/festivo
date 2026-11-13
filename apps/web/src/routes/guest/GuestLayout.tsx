@@ -7,6 +7,7 @@ import { holdScheme } from '../../colourScheme.ts';
 import { LanguageMenu } from '../../components/LanguageMenu.tsx';
 import { config } from '../../config.ts';
 import { currentLocale, showLanguage } from '../../i18n/index.ts';
+import { useSessionState } from '../../session.ts';
 import { InvalidInvitation } from './InvalidInvitation.tsx';
 import { chooseGuestLanguage, leaveGuestPage, useGuestLanguage } from './guestLanguage.ts';
 import '../../components/desk.css';
@@ -20,6 +21,7 @@ const TOKEN_SHAPE = /^[A-Za-z0-9_-]{16,128}$/;
 export function GuestLayout() {
   const { t } = useTranslation();
   const { token } = useParams<{ token: string }>();
+  const signedIn = useSessionState().status === 'signedIn';
   const valid = token != null && TOKEN_SHAPE.test(token);
   const { said } = useGuestLanguage();
 
@@ -36,7 +38,7 @@ export function GuestLayout() {
           look="guest"
           current={currentLocale()}
           onChoose={(code) => {
-            if (token != null && valid) void chooseGuestLanguage(token, code);
+            if (token != null && valid) void chooseGuestLanguage(token, code, signedIn);
             else void showLanguage(code);
           }}
         />
