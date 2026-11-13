@@ -200,7 +200,7 @@ export function EventScreen({
   const refusal = refusalOf(
     event,
     now,
-    invitedOf(refusedStart, invitedOn(event.id), pressed),
+    invitedOf(state, refusedStart, invitedOn(event.id), pressed),
     canChange,
   );
   const [refused, setRefused] = useState(refusedStart != null && !refusedStart.race);
@@ -282,7 +282,7 @@ export function EventScreen({
     const answer = refusalOf(
       event,
       now,
-      invitedOf(refusedStart, invitedOn(event.id), true),
+      invitedOf(state, refusedStart, invitedOn(event.id), true),
       canChange,
     );
 

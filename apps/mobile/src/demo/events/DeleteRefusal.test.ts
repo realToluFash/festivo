@@ -5,6 +5,7 @@ import {
   AT_READ,
   REFUSED_STATES,
   invitedOf,
+  NAMED_DELETE_STATES,
   refusalOf,
   refusalWords,
   refusedStartOf,
@@ -129,7 +130,7 @@ describe('the demo’s states', () => {
       return refusalOf(
         event(id),
         before,
-        invitedOf(start, invitedOn(id), pressed),
+        invitedOf(state, start, invitedOn(id), pressed),
         start?.canChange ?? true,
       );
     };
@@ -148,7 +149,12 @@ describe('the demo’s states', () => {
 
   it('gives the race at Read the words a reader at Read opens on: who can, and no verb', () => {
     const start = refusedStartOf('deleteRaceRead');
-    const refusal = refusalOf(event('evt-wed-4'), before, invitedOf(start, 142, true), false);
+    const refusal = refusalOf(
+      event('evt-wed-4'),
+      before,
+      invitedOf('deleteRaceRead', start, 142, true),
+      false,
+    );
 
     expect(refusal == null ? null : refusalWords(refusal, WEDDING, 'Ire Events')).toEqual({
       title: `Call off ${WEDDING} first?`,
@@ -163,7 +169,16 @@ describe('the demo’s states', () => {
   });
 
   it('leaves sc-3592’s delete states deleting by name, as they were drawn', () => {
-    for (const state of ['delete', 'deleteMismatch', 'deleteTyped'])
-      expect(invitedOf(refusedStartOf(state), 142, true), state).toBe(0);
+    for (const state of NAMED_DELETE_STATES)
+      expect(invitedOf(state, refusedStartOf(state), 142, true), state).toBe(0);
+  });
+
+  it('refuses on the plain page and in the other states, as the product will', () => {
+    for (const state of [null, 'muted']) {
+      expect(invitedOf(state, refusedStartOf(state), 142, false), String(state)).toBe(142);
+      expect(
+        refusalOf(event('evt-wed-4'), before, invitedOf(state, null, 142, false), true),
+      ).not.toBeNull();
+    }
   });
 });
