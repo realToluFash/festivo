@@ -1960,6 +1960,63 @@
   font: 500 14px/1.45 var(--fontFamily);
 }
 
+.mg-tell-cost {
+  display: flex;
+  flex-direction: column;
+  gap: var(--spaceSm);
+}
+
+.mg-tell-shapes {
+  display: flex;
+  gap: var(--spaceSm);
+}
+
+.mg-tell-shape {
+  width: 96px;
+  height: var(--space5xl);
+  border-radius: var(--spaceXl);
+}
+
+.mg-tell-shape.is-line {
+  width: 60%;
+  height: 18px;
+  border-radius: var(--radiusSmall);
+}
+
+.mg-tell-people {
+  display: flex;
+  flex-direction: column;
+  gap: var(--spaceSm);
+  margin-top: var(--spaceSm);
+  padding: var(--spaceMd) var(--spaceXl);
+  border-radius: var(--radiusInset);
+  background: var(--colorInset);
+}
+
+.mg-tell-people[hidden] {
+  display: none;
+}
+
+.mg-tell-name {
+  display: block;
+  font: 600 14.5px/1.4 var(--fontFamily);
+}
+
+.mg-tell-change {
+  display: flex;
+  flex-direction: column;
+  gap: var(--spaceXs);
+}
+
+.mg-tell-change + .mg-tell-change {
+  margin-top: var(--spaceSm);
+}
+
+.mg-tell-head {
+  color: var(--colorInkSecondary);
+  font: 600 13px/1.3 var(--fontFamily);
+}
+
 .mg-rows > li + li {
   padding-top: 1px;
   background: linear-gradient(var(--colorBorder), var(--colorBorder)) no-repeat 52px 0 /

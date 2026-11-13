@@ -188,6 +188,105 @@ const BOARDS: Record<MessagesState, readonly [string, string]> = {
     'stopped, without messages.manage',
     'No More actions; the inset without Let them write again',
   ],
+  tellDates: [
+    'tell guests, the dates',
+    'The end moved to Sunday: the dates line, each side a range',
+  ],
+  tellDateTime: [
+    'tell guests, a date and a start time',
+    'Cut to Friday evening: the date, then the start',
+  ],
+  tellVenueAdded: [
+    'tell guests, a venue added',
+    'The venue is now Rosewood London; the email adds its address',
+  ],
+  tellVenueGone: [
+    'tell guests, a venue removed',
+    'The venue is to be confirmed (was The Landmark)',
+  ],
+  tellAddress: ['tell guests, only the address changed', 'Both sides give the address'],
+  tellAddressAdded: ['tell guests, an address added', 'The Landmark is at 222 Marylebone Road'],
+  tellPause: ['tell guests, Pause', 'Over the paused page: paused for now'],
+  tellCallOff: ['tell guests, Call off', 'Everyone invited, 142: called off'],
+  tellResume: ['tell guests, Resume', 'Everyone who was told it was paused: back on'],
+  tellEndNow: [
+    'tell guests, End now before the last day',
+    'Ended early: what was still to come won’t go ahead',
+  ],
+  tellTables: [
+    'tell guests, Share tables',
+    'Coming guests who have a table, 96; each guest’s own table added',
+  ],
+  tellMenu: ['tell guests, a menu change', 'Six guests by email alone: no cost line'],
+  tellLink: ['tell guests, Replace link', 'Tell Kwame Mensah? and no line saying who'],
+  tellSeeWho: [
+    'tell guests, See who',
+    'Joaquín Ruiz and Sophie Laurent, each with why; pressed again it closes',
+  ],
+  tellHeld: [
+    'tell guests, too few credits',
+    '14 texts and WhatsApp messages will wait; Send still sends',
+  ],
+  tellQuiet: ['tell guests, quiet hours', 'Texts to 3 people wait until 09:00, their time'],
+  tellMerged: [
+    'tell guests, two changes',
+    'The start time and the venue, one message, a line a field',
+  ],
+  tellMixed: [
+    'tell guests, changes for different guests',
+    'A new venue and tables shared, each with who gets it',
+  ],
+  untoldEvent: [
+    'not told yet, on the event’s page',
+    'The banner under the cover card, above Details',
+  ],
+  untoldMerged: ['not told yet, two changes', 'New start time and New venue, an item to a line'],
+  untoldPaused: [
+    'not told yet, a pause',
+    'Paused on the banner, over the paused page; Resume takes it off',
+  ],
+  untoldDismissed: ['not told yet, dismissed', 'Dismissed. Nothing was sent.'],
+  changeSending: ['a change, sending', 'Sending to 130 guests.'],
+  changeRow: ['a change, its row', 'Change · New start time, Not reached · 2, in Needs you'],
+  changeSent: ['a change, opened', 'What Soirely sent, the note on their page, and the reach'],
+  changeMerged: ['a change, several sent', 'Change · 2 changes'],
+  changeDone: ['a change, everyone reached', 'Change · Menu choices to make again, in Done'],
+  tellMenuOne: ['tell guests, one guest', 'Tell Lucía Ortega? over a menu change'],
+  sendOffline: [
+    'tell guests, Send with no connection',
+    'Not sent. Check your connection and try again.',
+  ],
+  sendUnconfirmed: ['tell guests, Send not confirmed', 'Press Send again: nobody is told twice'],
+  sendRefusedRole: [
+    'tell guests, Send refused for the role',
+    'Your role does not include the permission this needs',
+  ],
+  sendRefusedEvent: [
+    'tell guests, Send refused, a draft',
+    'This event is a draft. Make it live to write to your guests.',
+  ],
+  sendRefusedFinished: [
+    'tell guests, Send refused, long finished',
+    'Finished more than 30 days ago',
+  ],
+  sendRefusedDeleted: ['tell guests, Send refused, deleted', 'This event is not available.'],
+  sendRefused: ['tell guests, Send refused', 'Not sent. Try again in a moment.'],
+  allTold: [
+    'tell guests, every change already told',
+    'Your guests had already been told, so nothing was sent again.',
+  ],
+  figuresLoading: [
+    'tell guests, the figures loading',
+    'Tell guests? over quiet shapes; Send sends nothing',
+  ],
+  figuresPressedEarly: [
+    'tell guests, Send pressed while loading',
+    'Not sent yet. Check the numbers, then press Send.',
+  ],
+  figuresFailed: [
+    'tell guests, the figures did not load',
+    'Send loads them again, sending nothing',
+  ],
 };
 
 export const MESSAGES_BOARDS = MESSAGES_STATES.map((state) => ({

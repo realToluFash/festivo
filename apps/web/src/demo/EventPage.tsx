@@ -91,12 +91,15 @@ import {
 } from './guests.ts';
 import { GuestNumbers } from './GuestsParts.tsx';
 import {
+  type Out,
   type Told,
+  MW as MESSAGE_WORDS,
   NEW_PLACE,
   ROSEWOOD,
   SAMPLE_EVENT,
   STARTS_LATER,
   TELL,
+  changeId,
   keepInbox,
   keptInbox,
   messagesStateOf,
@@ -104,12 +107,27 @@ import {
   toldOf,
   waitingLine,
 } from './messages.ts';
+import {
+  type Figures,
+  type Flow,
+  type TellSeed,
+  changeFor,
+  clockOfPage,
+  dayStillToCome,
+  kindOf,
+  mergeUntold,
+  pageEvent,
+  tellSeedOf,
+  toldOfKind,
+  withoutTold,
+} from './messagesTell.ts';
+import { TELL_ON_MESSAGES, isTellState } from './messagesTellStates.ts';
 import { MessagesPage } from './Messages.tsx';
 import { DOOR_EVENT_ID } from './doorCode.ts';
 import { repliesOpen } from './replyClose.ts';
 import { noOrgStateOf } from './noOrg.ts';
 import { NoOrgEvent } from './NoOrgEvent.tsx';
-import { TellDialog } from './MessagesTell.tsx';
+import { TellDialog, UntoldCard } from './MessagesTell.tsx';
 import { Ask, Head, RowWords } from '../components/SettingsParts.tsx';
 import { Crumb, Lead, ManageItem, ManageList, PartRow } from '../components/EventPageParts.tsx';
 import { JustForYou } from '../components/JustForYou.tsx';
@@ -253,6 +271,14 @@ function EventAt({
     if (raw != null && messages) resetInbox();
     seedFromEvent(raw);
 
+    const said = messages ? messagesStateOf(raw) : null;
+    const tellState = isTellState(said) && !TELL_ON_MESSAGES.includes(said) ? said : null;
+    const seed = tellState == null ? null : tellSeedOf(tellState);
+    const base = sampleEvent(id);
+
+    if (seed?.untold != null && base != null)
+      keepInbox({ ...keptInbox(), untold: seed.untold, toldAs: base });
+
     const event = sampleEvent(id);
     const named = messages ? null : eventStateOf(raw);
     const state = event != null && named != null && stateFits(named, event) ? named : null;
@@ -268,7 +294,7 @@ function EventAt({
               ? seededEvent(event, state)
               : event;
 
-    return { event: shown, state };
+    return { event: shown, state, seed };
   });
 
   useEffect(() => {
@@ -280,8 +306,12 @@ function EventAt({
   if (first.event == null) return <Navigate to="/demo/events" replace />;
 
   const said = messages ? messagesStateOf(raw) : null;
+  const seed = first.seed;
 
-  const telling = said === 'tell' || said === 'tellPlace';
+  if (said === 'tellLink')
+    return <Navigate to={guestsAt(SAMPLE_EVENT, { state: 'replaced', tell: 'link' })} replace />;
+
+  const telling = said === 'tell' || said === 'tellPlace' || seed != null;
 
   if (messages && first.event.id === SAMPLE_EVENT && !telling)
     return <MessagesPage event={eventWhile(said, first.event)} state={said} now={clockOf(null)} />;
@@ -293,16 +323,45 @@ function EventAt({
           ? { ...first.event, startsAt: TELL.movedTo }
           : said === 'tellPlace'
             ? { ...first.event, venue: ROSEWOOD }
-            : first.event
+            : seed != null
+              ? pageEvent(seed.page, first.event)
+              : first.event
       }
       state={first.state}
       numbers={messages ? null : numbersStateOf(raw)}
       arrival={arrival}
       dates={dates}
       fixedArea={messages && !telling ? 'messages' : null}
-      telling={said === 'tell' ? [STARTS_LATER] : said === 'tellPlace' ? [NEW_PLACE] : null}
+      telling={
+        said === 'tell'
+          ? { changes: [STARTS_LATER] }
+          : said === 'tellPlace'
+            ? { changes: [NEW_PLACE] }
+            : tellingOf(seed)
+      }
+      clock={seed == null ? null : clockOfPage(seed.page)}
+      said={seed?.said ?? null}
     />
   );
+}
+
+interface Telling {
+  changes: readonly Told[];
+  figures?: Figures;
+  flow?: Flow;
+  note?: string;
+  from?: SampleEvent | null;
+}
+
+function tellingOf(seed: TellSeed | null): Telling | null {
+  if (seed?.changes == null) return null;
+
+  return {
+    changes: seed.changes,
+    ...(seed.figures == null ? {} : { figures: seed.figures }),
+    ...(seed.flow == null ? {} : { flow: seed.flow }),
+    ...(seed.note == null ? {} : { note: seed.note }),
+  };
 }
 
 function EventView({
@@ -313,6 +372,8 @@ function EventView({
   dates,
   fixedArea = null,
   telling: tellingFirst = null,
+  clock = null,
+  said = null,
 }: {
   initial: SampleEvent;
   state: EventStateName | null;
@@ -320,13 +381,18 @@ function EventView({
   arrival: Arrival;
   dates: boolean;
   fixedArea?: Area | null;
-  telling?: readonly Told[] | null;
+  telling?: Telling | null;
+  clock?: Date | null;
+  said?: string | null;
 }) {
   const [params] = useSearchParams();
   const navigate = useNavigate();
-  const now = clockOf(state);
+  const now = clock ?? clockOf(state);
   const area = fixedArea ?? areaOf(params.get('area'));
-  const [telling, setTelling] = useState<readonly Told[] | null>(tellingFirst);
+  const [telling, setTelling] = useState<Telling | null>(tellingFirst);
+  const [untold, setUntold] = useState<readonly Told[]>(() =>
+    initial.id === SAMPLE_EVENT ? keptInbox().untold : [],
+  );
   const [event, setEvent] = useState(initial);
   const [replyBy, setReplyBy] = useState(() => replyByStart(state, initial.id));
   const [tellMoved, setTellMoved] = useState<string | null>(null);
@@ -367,6 +433,17 @@ function EventView({
     setEvent(next);
   }
 
+  function keepUntold(next: readonly Told[], toldAs: SampleEvent | null, out: Out | null = null) {
+    const was = keptInbox();
+
+    keepInbox({ ...was, untold: next, toldAs, outs: out == null ? was.outs : [...was.outs, out] });
+    setUntold(next);
+  }
+
+  function tellOf(kind: 'pause' | 'callOff' | 'resume' | 'endNow'): void {
+    if (event.id === SAMPLE_EVENT) setTelling({ changes: [toldOfKind(kind)] });
+  }
+
   function open(next: Part): void {
     const to = next === part ? null : next;
 
@@ -381,6 +458,7 @@ function EventView({
     <EventsShell
       told={
         arrival.told ??
+        said ??
         (state === 'replyBySaved' || state === 'replyByRemoved'
           ? replyBySays(replyBy, now, event.timeZone).toast
           : liveToldOf(event, live))
@@ -419,12 +497,29 @@ function EventView({
                     } else if (does === 'resume') {
                       kept({ ...event, status: 'live' });
                       tell(W.resumed(event.name));
+                      if (untold.some((told) => kindOf(told) === 'pause'))
+                        keepUntold(
+                          withoutTold(untold, [toldOfKind('resume')]),
+                          keptInbox().toldAs ?? null,
+                        );
+                      else tellOf('resume');
                     } else setAsking('duplicate');
                   }}
                 />
                 {sent && <p className="ml-demo-only">{LW.demoMessages}</p>}
                 <div className="ev-columns">
                   <div className="ev-left">
+                    {untold.length > 0 && (
+                      <UntoldCard
+                        items={untold}
+                        onTell={() => setTelling({ changes: untold })}
+                        onDismiss={() => {
+                          keepUntold([], null);
+                          tell(MESSAGE_WORDS.dismissed);
+                          document.querySelector<HTMLElement>('.desk-main h1')?.focus();
+                        }}
+                      />
+                    )}
                     {shownOf(event, now) === 'finished' && cardShown(card) && (
                       <ThankYouCard event={event} card={card} onCard={setCard} onSaid={tell} />
                     )}
@@ -440,10 +535,9 @@ function EventView({
                         setDirty(false);
                       }}
                       onSave={(next) => {
-                        const changes =
-                          event.id === SAMPLE_EVENT && event.status === 'live'
-                            ? toldOf(event, next)
-                            : [];
+                        const from = keptInbox().toldAs ?? event;
+                        const tells = event.id === SAMPLE_EVENT && event.status === 'live';
+                        const changes = tells ? toldOf(from, next) : [];
 
                         const moved = replyByAfterStart(replyBy, next.startsAt, next.timeZone);
 
@@ -456,8 +550,12 @@ function EventView({
                         if (moved != null) setReplyBy(moved);
                         if (changes.length > 0) {
                           setTellMoved(says.inTell ? said.line : null);
-                          setTelling(changes);
-                        }
+                          setTelling({ changes, from });
+                        } else if (tells && untold.some((told) => kindOf(told) === 'fields'))
+                          keepUntold(
+                            untold.filter((told) => kindOf(told) !== 'fields'),
+                            null,
+                          );
                         if (says.toast === 'moved') tell(said.toast);
                         if (says.toast === 'saved') tell(W.saved);
                       }}
@@ -580,6 +678,8 @@ function EventView({
               setAsking(null);
               kept(next);
               if (words != null) tell(words);
+              if (next.status === 'paused') tellOf('pause');
+              if (next.status === 'ended') tellOf('callOff');
             }}
             onEnded={(line) => {
               setEnding((count) => count + 1);
@@ -587,6 +687,7 @@ function EventView({
               kept({ ...event, status: 'ended', concludedAt: now.toISOString() });
               setCard(cardOf(null, line));
               if (line !== '') tell(TY_WORDS.done);
+              if (dayStillToCome(event, now)) tellOf('endNow');
             }}
             onDelete={() => {
               const answer = refusalOf(
@@ -637,21 +738,29 @@ function EventView({
           {telling != null && (
             <TellDialog
               tell={tell}
-              changes={telling}
+              changes={telling.changes}
+              figures={telling.figures ?? null}
+              {...(telling.flow == null ? {} : { flow: telling.flow })}
+              note={telling.note ?? ''}
               before={tellMoved}
               onNotNow={() => {
-                const was = keptInbox();
-
                 setTelling(null);
-                keepInbox({
-                  ...was,
-                  untold: [
-                    ...was.untold.filter((one) => !telling.some((now) => now.item === one.item)),
-                    ...telling,
-                  ],
-                });
+                keepUntold(
+                  mergeUntold(untold, telling.changes),
+                  telling.from ?? keptInbox().toldAs ?? null,
+                );
               }}
-              onSent={() => setTelling(null)}
+              onSent={(sent) => {
+                setTelling(null);
+                if (event.id !== SAMPLE_EVENT) return;
+                keepUntold(
+                  withoutTold(untold, telling.changes),
+                  null,
+                  sent.allTold
+                    ? null
+                    : changeFor(telling.changes, sent.figures, sent.note, changeId(keptInbox())),
+                );
+              }}
             />
           )}
         </div>

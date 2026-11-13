@@ -367,7 +367,7 @@ describe('Events in A at a desk (sc-30304)', () => {
       expect(within(plain).queryByRole('textbox')).toBeNull();
       expect(
         within(plain).getByText(
-          'It’s a draft with nobody on its guest list. It will be removed for your whole team.',
+          "It's a draft with nobody on its guest list. It will be removed for your whole team.",
         ),
       ).toBeDefined();
     },
