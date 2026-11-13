@@ -438,11 +438,13 @@ export function GuestKitchenCheck({
   words,
   actions,
   box,
+  party,
 }: {
   visit: Visit;
   words: Words;
   actions: GuestKitchenActions;
   box?: ReactNode;
+  party?: ReactNode;
 }) {
   const say = useSay(visit);
   const { kitchen, view } = visit;
@@ -483,6 +485,7 @@ export function GuestKitchenCheck({
             </RowChange>
           )}
         </div>
+        {party}
         <div className="gk-row">
           <div className="gk-row-words">
             <p className="gk-label">{say.say('row')}</p>

@@ -32,6 +32,7 @@ import { GetBackInBoard } from './GetBackIn.tsx';
 import { GuestPage } from './Guest.tsx';
 import { GUEST_PAGES } from './guest.ts';
 import { GUEST_KITCHEN_PAGES } from './guestKitchen.ts';
+import { GUEST_PARTY_PAGES } from './guestCompanions.ts';
 import { GUEST_ASK_PAGES } from './guestAskStates.ts';
 import { GUEST_DAY_PAGES } from './guestDay.ts';
 import { Guests } from './Guests.tsx';
@@ -298,6 +299,8 @@ function DemoHome({ from }: { from: string }) {
         <BoardPages pages={GUEST_PAGES} />
         <h3>The kitchen step on the guest’s page · sc-3778 · phone, tablet and desk</h3>
         <BoardPages pages={GUEST_KITCHEN_PAGES} />
+        <h3>Who’s coming with you, on the guest’s page · sc-3779 · phone, tablet and desk</h3>
+        <BoardPages pages={GUEST_PARTY_PAGES} />
         <h3>
           Not sure yet, when to ask again, on the guest’s page · sc-1363 · phone, tablet and desk
         </h3>

@@ -7,7 +7,6 @@ import { Glyph } from '../components/Glyph.tsx';
 import {
   type Answer,
   type Channel,
-  COMPANIONS,
   HOLD_MS,
   LAYOUT_MEDIA,
   LEGAL,
@@ -61,6 +60,9 @@ import {
   GUEST_KITCHEN_SAVED_ID,
 } from './GuestKitchen.tsx';
 import { type GuestKitchenActions, useGuestKitchen } from './useGuestKitchen.ts';
+import { PartyCheckRow, WithYou } from './GuestCompanions.tsx';
+import { hasStep, holdsCompanions, partyLine } from './guestCompanions.ts';
+import { type PartyActions, partyActions, withPartyBack } from './guestPartyActions.ts';
 import { DayAnswer, DayWaiting, WhereBlock, YourCode } from './GuestDay.tsx';
 import { inDayOrder } from './guestDay.ts';
 import { YourMessages } from './GuestMessages.tsx';
@@ -162,7 +164,9 @@ function Visitor({
     document.querySelector<HTMLElement>(`.gp [data-focus="${visit.want}"]`)?.focus();
   }, [visit.want, visit.wantId]);
 
-  const kitchen = useGuestKitchen(visit, state, go);
+  const steps = useGuestKitchen(visit, state, go);
+  const party = partyActions(go, steps, visit);
+  const kitchen = withPartyBack(steps, visit, party);
 
   const record = useCallback(
     (answer: Answer, fromCheck = false) =>
@@ -213,6 +217,15 @@ function Visitor({
     const { view } = visit;
 
     if (view.kind !== 'answer' && view.kind !== 'changing') return;
+    if (chosen === 'coming' && hasStep(visit.party)) {
+      go(
+        () => ({
+          view: { kind: 'withYou', from: view.kind === 'changing' ? 'changing' : 'answer' },
+        }),
+        'withYouHead',
+      );
+      return;
+    }
     if (chosen === 'coming') {
       kitchen.open(view.kind === 'changing' ? 'changing' : 'answer');
       return;
@@ -345,6 +358,7 @@ function Visitor({
       visit={visit}
       words={words}
       kitchen={kitchen}
+      party={party}
       onAnswer={answer}
       onSend={send}
       onBack={back}
@@ -530,6 +544,7 @@ function Under({
   visit,
   words,
   kitchen,
+  party,
   onAnswer,
   onSend,
   onBack,
@@ -546,6 +561,7 @@ function Under({
   visit: Visit;
   words: Words;
   kitchen: GuestKitchenActions;
+  party: PartyActions;
   onAnswer: (answer: Answer) => void;
   onSend: () => void;
   onBack: () => void;
@@ -589,6 +605,7 @@ function Under({
         visit={visit}
         words={words}
         kitchen={kitchen}
+        party={party}
         onAnswer={onAnswer}
         onSend={onSend}
         onBack={onBack}
@@ -617,6 +634,7 @@ function Shown({
   visit,
   words,
   kitchen,
+  party,
   onAnswer,
   onSend,
   onBack,
@@ -630,6 +648,7 @@ function Shown({
   visit: Visit;
   words: Words;
   kitchen: GuestKitchenActions;
+  party: PartyActions;
   onAnswer: (answer: Answer) => void;
   onSend: () => void;
   onBack: () => void;
@@ -656,6 +675,8 @@ function Shown({
           <AnswerRows words={words} busy={view.busy} onAnswer={onAnswer} />
         </section>
       );
+    case 'withYou':
+      return <WithYou visit={visit} words={words} actions={party} />;
     case 'kitchen':
       return <GuestKitchenStep visit={visit} words={words} actions={kitchen} />;
     case 'check':
@@ -666,6 +687,9 @@ function Shown({
             words={words}
             actions={kitchen}
             box={<WhatsAppBox visit={visit} words={words} busy={view.busy} onTick={onTick} />}
+            party={
+              <PartyCheckRow visit={visit} words={words} busy={view.busy} onChange={party.edit} />
+            }
           />
         );
 
@@ -688,6 +712,11 @@ function Shown({
             <span className="gp-answer-words">{words.answerLine('coming')}</span>
             {!view.refused && <TextAction onClick={onBack}>{words.changeShort}</TextAction>}
           </div>
+          {hasStep(visit.party) && (
+            <div className="gk-rows">
+              <PartyCheckRow visit={visit} words={words} busy={view.busy} onChange={party.edit} />
+            </div>
+          )}
           {!view.refused && (
             <WhatsAppBox visit={visit} words={words} busy={view.busy} onTick={onTick} />
           )}
@@ -723,7 +752,10 @@ function Shown({
               <p className="gp-sub is-recorded">{words.recordedFor(recorded.by, day)}</p>
             )}
             {view.same && <p className="gp-sub is-ink">{words.same(recorded.answer)}</p>}
-            {recorded.answer === 'notSure' && COMPANIONS > 0 && (
+            {recorded.answer === 'coming' && hasStep(visit.party) && (
+              <p className="gp-sub">{partyLine(visit.party, lang)}</p>
+            )}
+            {recorded.answer === 'notSure' && holdsCompanions(visit) && (
               <p className="gp-sub">{words.companions}</p>
             )}
             <TextAction focus="change" onClick={onChange}>
