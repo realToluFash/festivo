@@ -981,7 +981,11 @@ export type ListState =
   | 'manyFiltersOpen'
   | 'longHost'
   | 'noMatch'
-  | 'noGuests';
+  | 'noGuests'
+  | 'replyLands'
+  | 'noGuestsRead'
+  | 'tileInvited'
+  | 'tileReplied';
 
 const LIST_STATES: readonly ListState[] = [
   'loading',
@@ -1004,6 +1008,10 @@ const LIST_STATES: readonly ListState[] = [
   'longHost',
   'noMatch',
   'noGuests',
+  'replyLands',
+  'noGuestsRead',
+  'tileInvited',
+  'tileReplied',
 ];
 
 /** guests-a-spec §15 names Events' first run and its 0 for both demos; `first` and `noGuests` are this page's own. */
@@ -1024,6 +1032,11 @@ export interface ListStart {
   menu: 'top' | 'type' | null;
   look: EventsLook | null;
   noGuests: boolean;
+  /** sc-3786: a reply lands on the wedding a moment after the page opens. */
+  replyLands: boolean;
+  /** Without guests.read, no guest numbers anywhere (sc-3786). */
+  readsGuests: boolean;
+  tile: 'invited' | 'replied' | null;
   failed: boolean;
   moreFailed: boolean;
 }
@@ -1049,6 +1062,9 @@ export function listStart(state: ListState | null): ListStart {
     menu: null,
     look: null,
     noGuests: false,
+    replyLands: false,
+    readsGuests: true,
+    tile: null,
     failed: false,
     moreFailed: false,
   };
@@ -1102,6 +1118,14 @@ export function listStart(state: ListState | null): ListStart {
       };
     case 'noGuests':
       return { ...rest, noGuests: true };
+    case 'replyLands':
+      return { ...rest, replyLands: true };
+    case 'noGuestsRead':
+      return { ...rest, readsGuests: false };
+    case 'tileInvited':
+      return { ...rest, tile: 'invited' };
+    case 'tileReplied':
+      return { ...rest, tile: 'replied' };
   }
 }
 
@@ -1388,6 +1412,10 @@ export const EVENTS_PAGES: readonly { name: string; states: readonly DemoLink[] 
       list('emptyPast', 'Nothing on Past'),
       list('offline', 'Offline'),
       list('noGuests', 'Nobody invited yet, the guest counts at 0'),
+      list('replyLands', 'A reply lands: 97 coming, 24 haven’t replied, in place'),
+      list('tileInvited', 'Guests invited chosen: the events with invited guests, and Clear'),
+      list('tileReplied', 'Replies in chosen: the events with guests who haven’t replied'),
+      list('noGuestsRead', 'Without guests.read: no guest numbers anywhere'),
     ],
   },
   {
