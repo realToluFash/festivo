@@ -1441,3 +1441,28 @@ describe('a guest’s column at 320 (sc-3773)', () => {
     expect(cssRule('.gs-column', GUESTS_CSS)).toContain('min-width: 0;');
   });
 });
+describe('the Guests top at 320 (sc-3773, ux #44604)', () => {
+  it('wraps the title only at spaces, with Add guest dropping to its own row', () => {
+    expect(cssRule('.gs-top', GUESTS_CSS)).toContain('flex-wrap: wrap;');
+    expect(cssRule('.gs-title', GUESTS_CSS)).toContain('flex: 1 1 auto;');
+    expect(cssRule('.gs-title', GUESTS_CSS)).toContain('overflow-wrap: break-word;');
+    expect(cssRule('.gs-title', GUESTS_CSS)).not.toContain('min-width: 0;');
+  });
+
+  it('wraps the crumbs whole at word breaks rather than truncating them', () => {
+    expect(cssRule('.gs .ev-crumb ol', GUESTS_CSS)).toContain('flex-wrap: wrap;');
+    expect(cssRule('.gs .ev-crumb-part', GUESTS_CSS)).toContain('min-width: auto;');
+    expect(cssRule('.gs .ev-crumb-part', GUESTS_CSS)).toContain('overflow-wrap: break-word;');
+    expect(cssRule('.gs .ev-crumb-name', GUESTS_CSS)).toContain('white-space: normal;');
+  });
+
+  it('keeps the switcher’s name to one line in the phone’s bar, ellipsised', () => {
+    const name = cssRule(
+      '.shell-sidebar .sw-opener-name',
+      stylesheet(import.meta.dirname, '../../../components/desk.css'),
+    );
+
+    expect(name).toContain('text-overflow: ellipsis;');
+    expect(name).toContain('white-space: nowrap;');
+  });
+});

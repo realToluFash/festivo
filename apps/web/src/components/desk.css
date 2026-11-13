@@ -256,6 +256,15 @@
   font: 600 15px/1.25 var(--fontFamily);
 }
 
+/* In the phone's bar the name keeps to one line; the button's label and the menu carry it whole (ux, sc-3773). */
+@media (width <= 40rem) {
+  .shell-sidebar .sw-opener-name {
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+}
+
 .sw-opener-waiting {
   display: flex;
   align-items: center;
