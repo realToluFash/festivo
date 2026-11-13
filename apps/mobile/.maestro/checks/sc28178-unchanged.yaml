@@ -1,0 +1,45 @@
+# sc-28178: nothing changed: working in Alpha, each move (Events, Calendar, Settings, back to the
+# front, Home) keeps Alpha, with no notice, no Access paused and no You are not in an
+# organisation.
+appId: host.exp.Exponent
+---
+- runFlow:
+    file: ../checks/sc28178/joined.yaml
+    env:
+      ORG: Alpha
+- extendedWaitUntil:
+    notVisible: '{{t:switcher.switched}}'
+    timeout: 20000
+- tapOn:
+    id: 'tab-events|frame\.events'
+- assertNotVisible: '{{t:switcher.switched}}'
+- assertNotVisible: '{{t:accessPaused.since}}'
+- takeScreenshot: events
+- tapOn:
+    id: 'tab-calendar|frame\.calendar'
+- assertNotVisible: '{{t:switcher.switched}}'
+- assertNotVisible: '{{t:accessPaused.since}}'
+- takeScreenshot: calendar
+- tapOn:
+    id: 'tab-settings|frame\.settings'
+- assertNotVisible: '{{t:switcher.switched}}'
+- assertNotVisible:
+    id: 'noOrganisation'
+- takeScreenshot: settings
+- pressKey: Home
+- runScript:
+    file: ../batch/helper.js
+    env:
+      ASK: /open?path=/--/settings
+- extendedWaitUntil:
+    visible:
+      id: 'never.there'
+    timeout: 4000
+    optional: true
+- assertNotVisible: '{{t:switcher.switched}}'
+- assertNotVisible: '{{t:accessPaused.since}}'
+- tapOn:
+    id: 'tab-today|frame\.home'
+- assertVisible: '.*Alpha.*'
+- assertNotVisible: '{{t:switcher.switched}}'
+- takeScreenshot: home

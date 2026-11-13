@@ -1,0 +1,42 @@
+# sc-28178 (the sc-27086 case): working in Alpha with the API stopped, Calendar's load fails;
+# Alpha is paused through the domain, which brings the API back; Try again on Calendar opens
+# Access paused, not "The calendar did not load".
+appId: host.exp.Exponent
+---
+- runFlow:
+    file: ../checks/sc28178/joined.yaml
+    env:
+      ORG: Alpha
+- extendedWaitUntil:
+    notVisible: '{{t:switcher.switched}}'
+    timeout: 20000
+- extendedWaitUntil:
+    visible:
+      id: 'tab-calendar|frame\.calendar'
+    timeout: 30000
+- runScript:
+    file: ../batch/helper.js
+    env:
+      ASK: /api?to=stopped
+- tapOn:
+    id: 'tab-calendar|frame\.calendar'
+- extendedWaitUntil:
+    visible:
+      id: 'calendar.retry'
+    timeout: 45000
+- takeScreenshot: calendar-failed
+# The harness starts the API again before it makes any membership change.
+- runScript:
+    file: ../batch/helper.js
+    env:
+      ASK: /membership?change=pause&org=Alpha
+- tapOn:
+    id: 'calendar.retry'
+- extendedWaitUntil:
+    visible: '{{t:accessPaused.since}}'
+    timeout: 20000
+- assertNotVisible:
+    id: 'calendar.retry'
+- assertNotVisible: '{{t:calendar.failed}}'
+- assertVisible: '.*Alpha.*'
+- takeScreenshot: paused

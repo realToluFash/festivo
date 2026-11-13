@@ -1,0 +1,33 @@
+# sc-28178: working in Alpha with the API stopped, Calendar shows the offline band; Alpha's
+# member is suspended, which brings the API back, and the next move, a tap on Settings, catches
+# up: Now working in ‹name›.
+appId: host.exp.Exponent
+---
+- runFlow:
+    file: ../checks/sc28178/joined.yaml
+    env:
+      ORG: Alpha
+- extendedWaitUntil:
+    notVisible: '{{t:switcher.switched}}'
+    timeout: 20000
+- runScript:
+    file: ../batch/helper.js
+    env:
+      ASK: /api?to=stopped
+- tapOn:
+    id: 'tab-calendar|frame\.calendar'
+- waitForAnimationToEnd:
+    timeout: 5000
+- takeScreenshot: offline
+# The harness starts the API again before it makes any membership change.
+- runScript:
+    file: ../batch/helper.js
+    env:
+      ASK: /membership?change=suspend&org=Alpha
+- takeScreenshot: back-online-before
+- tapOn:
+    id: 'tab-settings|frame\.settings'
+- extendedWaitUntil:
+    visible: '{{t:switcher.switched}}'
+    timeout: 30000
+- takeScreenshot: back-online-moved-on
