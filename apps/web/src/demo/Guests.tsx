@@ -118,6 +118,8 @@ import {
   renameGroup,
   settleGroup,
 } from './guestGroups.ts';
+import { RemoveAsk, UndoMessage } from './GuestRemove.tsx';
+import { type Removed, type Removing, arrivedIn, putBack, removeGuest } from './guestRemove.ts';
 import './guests.css';
 
 const FOCUSABLE = 'button, a[href], input, textarea, select, [tabindex]';
@@ -126,6 +128,8 @@ const FOCUSABLE = 'button, a[href], input, textarea, select, [tabindex]';
 function firstFocus(start: GuestsStart): string[] {
   const pane = start.pane;
 
+  if (start.undo != null) return ['undo'];
+  if (pane.kind === 'guest' && pane.note === 'backOnList') return ['guest-heading'];
   if (pane.kind === 'edit') {
     if (pane.start.conflict === true) return ['conflict'];
     if (pane.start.duplicate === true) return ['duplicate'];
@@ -269,6 +273,11 @@ function GuestsPage({
     () => new Set(start.asked ?? keptAsked(sample.id)),
   );
   const markEnds = useRef(start.markEnds);
+  const [removing, setRemoving] = useState<Removing | null>(start.removing);
+  const removeEnds = useRef(start.removing?.ends ?? 'removes');
+  const [undo, setUndo] = useState<Removed | null>(start.undo);
+  const removingGuest =
+    removing == null ? null : (list.find((one) => one.id === removing.id) ?? null);
   const [dirty, setDirty] = useState(false);
   const [leaving, setLeaving] = useState<Leaving>(
     start.pane.kind === 'edit' && start.pane.start.discard === true ? { then: 'back' } : null,
@@ -426,6 +435,60 @@ function GuestsPage({
     focus(next == null ? 'none-heading' : `row:${next}`, 'title');
   }
 
+  /** sc-3774: Remove takes them and their companions off at once, Undo open; a 409 or a 404 takes the question's place. */
+  function remove(): void {
+    if (removing == null) return;
+    const { id, ends } = removing;
+
+    removeEnds.current = 'removes';
+    if (ends === 'arrived') {
+      setList((was) => arrivedIn(was, id, '18:05'));
+      setRemoving({ id, ends, refused: 'arrived' });
+      return;
+    }
+    if (ends === 'gone') {
+      setRemoving({ id, ends, refused: 'gone' });
+      return;
+    }
+    const after = removeGuest(list, id);
+
+    setList(after.list);
+    setRemoving(null);
+    setPane({ kind: 'none' });
+    setUndo(after.removed);
+    focus('undo');
+  }
+
+  function removeRefused(): void {
+    if (removing == null) return;
+    const { id, refused } = removing;
+
+    setRemoving(null);
+    if (refused === 'arrived') {
+      setPane({ kind: 'guest', id });
+      focus('arrival', 'guest-heading');
+      return;
+    }
+    const ids = view.kind === 'rows' ? view.rows.map((row) => row.person.id) : [];
+    const at = ids.indexOf(id);
+    const next = at < 0 ? undefined : (ids[at + 1] ?? ids[at - 1]);
+
+    setList((was) => removeGuest(was, id).list);
+    setPane({ kind: 'none' });
+    focus(next == null ? 'title' : `row:${next}`, 'title');
+  }
+
+  function undone(): void {
+    if (undo == null) return;
+    const id = undo.guest.id;
+
+    setList((was) => putBack(was, undo));
+    setUndo(null);
+    lastRow.current = id;
+    setPane({ kind: 'guest', id, note: 'backOnList' });
+    focus('guest-heading');
+  }
+
   function invite(id: string, next: Invite | null): void {
     setPane(next == null ? { kind: 'guest', id } : { kind: 'guest', id, invite: next });
     if (next == null) focus('guest-heading');
@@ -500,6 +563,7 @@ function GuestsPage({
       markedFromQuestion(id);
       return true;
     },
+    onRemove: () => setRemoving({ id, ends: removeEnds.current }),
   });
 
   function writeToThem(): void {
@@ -919,6 +983,26 @@ function GuestsPage({
             focus('replace');
             if (sample.id === SAMPLE_EVENT) setLinkTold(paneGuest.name);
           }}
+        />
+      )}
+      {removing != null && removingGuest != null && (
+        <RemoveAsk
+          guest={removingGuest}
+          removing={removing}
+          onKeep={() => {
+            setRemoving(null);
+            focus('remove');
+          }}
+          onRemove={remove}
+          onBack={removeRefused}
+        />
+      )}
+      {undo != null && (
+        <UndoMessage
+          key={undo.guest.id}
+          removed={undo}
+          onUndo={undone}
+          onGone={() => setUndo(null)}
         />
       )}
       {linkTold != null && (

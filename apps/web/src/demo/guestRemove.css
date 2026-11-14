@@ -1,0 +1,44 @@
+/* sc-3774: Remove from the list, the question, the undo message and the arrival row. */
+.gr-foot {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: var(--spaceSm);
+  padding-top: var(--spaceMd);
+}
+
+.gr-stays {
+  color: var(--colorInkSecondary);
+  font: var(--deskSmall);
+}
+
+.desk-ask .gr-goes {
+  margin: 0;
+  padding: 0;
+}
+
+.gr-undo {
+  gap: var(--spaceXs);
+}
+
+.gr-count {
+  flex: none;
+  min-width: 3ch;
+  color: var(--colorInkOnDark);
+  font: var(--typeButton);
+  font-variant-numeric: tabular-nums;
+}
+
+/* At 320 the question sits at the foot of the screen, and the message spans it. */
+@media (width <= 40rem) {
+  .desk-ask:has(.gr-goes) {
+    inset: auto 0 0;
+    width: 100%;
+    max-width: 100%;
+    border-radius: var(--space3xl) var(--space3xl) 0 0;
+  }
+
+  .gr-undo {
+    width: calc(100% - var(--spaceXl) * 2);
+  }
+}
