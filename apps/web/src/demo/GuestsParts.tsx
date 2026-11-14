@@ -150,15 +150,17 @@ export function SelectedSaid({ count, companions }: { count: number | null; comp
   );
 }
 
-/** A guest's row has a box; a companion's has none, since they follow their guest. Without guests.manage, no row has one. */
+/** The box selects and the rest of the row opens the guest, as on Find a guest (sc-3772). A companion's row has no box, since they follow their guest; without guests.manage, no row has one. */
 export function SelectRows({
   rows,
+  event,
   selected,
   onToggle,
   groups = [],
   manages = true,
 }: {
   rows: readonly ListRow[];
+  event: string;
   selected: ReadonlySet<string>;
   onToggle: (id: string) => void;
   groups?: readonly GuestGroup[];
@@ -168,37 +170,39 @@ export function SelectRows({
     <ul className="desk-rows gs-rows">
       {rows.map((row) => {
         const group = row.indent ? null : groupNameOf(groups, row.person.guest.group);
-        const words = (
-          <>
-            <MarkLead reply={row.person.reply} />
-            <RowWords title={row.person.name} lines={[row.line]} />
-            {group != null && (
-              <span className="gs-row-tags" aria-hidden="true">
-                <span className="gs-tag gg-tag">{group}</span>
-              </span>
-            )}
-          </>
-        );
         const label = group == null ? row.label : `${row.label}, ${GGW.inGroup(group)}`;
+        const boxed = manages && row.person.companion == null;
 
-        return manages && row.person.companion == null ? (
-          <li key={row.person.id}>
-            <label className="desk-row gs-row gm-row">
-              <input
-                type="checkbox"
-                className="gs-box"
-                aria-label={label}
-                checked={selected.has(row.person.id)}
-                onChange={() => onToggle(row.person.id)}
-              />
-              {words}
-            </label>
-          </li>
-        ) : (
-          <li key={row.person.id} className={row.indent ? 'is-companion' : undefined}>
-            <div className="desk-row gs-row gm-row is-companion" aria-label={label}>
-              {words}
-            </div>
+        return (
+          <li
+            key={row.person.id}
+            className={row.indent ? 'is-companion' : boxed ? 'gm-pick' : undefined}
+          >
+            {boxed && (
+              <label className="gm-box">
+                <input
+                  type="checkbox"
+                  className="gs-box"
+                  aria-label={label}
+                  checked={selected.has(row.person.id)}
+                  onChange={() => onToggle(row.person.id)}
+                />
+              </label>
+            )}
+            <Link
+              to={guestsAt(event, { guest: row.person.guest.id })}
+              className="desk-row gs-row"
+              aria-label={label}
+            >
+              <MarkLead reply={row.person.reply} />
+              <RowWords title={row.person.name} lines={[row.line]} />
+              {group != null && (
+                <span className="gs-row-tags" aria-hidden="true">
+                  <span className="gs-tag gg-tag">{group}</span>
+                </span>
+              )}
+              <Chevron />
+            </Link>
           </li>
         );
       })}

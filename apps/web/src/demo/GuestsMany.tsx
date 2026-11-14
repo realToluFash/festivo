@@ -391,6 +391,7 @@ function ManyPage({ event, start, tell }: { event: SampleEvent; start: ManyStart
                 </h2>
                 <SelectRows
                   rows={group.rows}
+                  event={event.id}
                   groups={groups}
                   manages={manages}
                   selected={selected}
@@ -401,6 +402,7 @@ function ManyPage({ event, start, tell }: { event: SampleEvent; start: ManyStart
           ) : (
             <SelectRows
               rows={view.rows}
+              event={event.id}
               groups={groups}
               manages={manages}
               selected={selected}
