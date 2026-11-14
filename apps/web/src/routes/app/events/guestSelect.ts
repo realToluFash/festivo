@@ -58,8 +58,13 @@ export type Line =
   | { kind: 'undone'; guests: number }
   | { kind: 'failed'; action: Action };
 
-function counted(t: TFunction, guests: number, companions: number): Record<string, string> {
+function counted(
+  t: TFunction,
+  guests: number,
+  companions: number,
+): { count: number; guests: string; companions: string } {
   return {
+    count: guests,
     guests: t('guestSelect.guests', { count: guests }),
     companions: t('guestSelect.companions', { count: companions }),
   };
