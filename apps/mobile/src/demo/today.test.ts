@@ -196,10 +196,29 @@ describe('no guests.read, and figures that fail to load (?figures=hidden, ?figur
     const none = momentOf('plan', us, t, { guests: planGuests(undefined, figures) });
 
     expect(none.events.map(({ ready }) => ready)).toEqual([null, null, null, null]);
-    expect(none.events.map(({ name, dates, count }) => [name, dates, count])).toEqual(
-      shown.events.map(({ name, dates, count }) => [name, dates, count]),
-    );
+    const card = ({ name, dates, count, stage, live }: (typeof shown.events)[number]) => [
+      name,
+      dates,
+      count,
+      stage,
+      live,
+    ];
+
+    expect(none.events.map(card)).toEqual(shown.events.map(card));
     expect(none.needs).toEqual(shown.needs);
+    expect([none.lead, none.sub]).toEqual([shown.lead, shown.sub]);
+  });
+
+  it.each(['hidden', 'failed'])('names no guest number in the agenda (%s)', (figures) => {
+    const shown = momentOf('plan', us, t);
+    const none = momentOf('plan', us, t, { guests: planGuests(undefined, figures) });
+    const titles = (moment: typeof shown) =>
+      moment.agenda.flatMap(({ items }) => items.map(({ title }) => title));
+
+    expect(titles(shown)[0]).toBe('Reminder goes to the 22 who haven’t replied');
+    expect(titles(none)[0]).toBe('Reminder goes to those who haven’t replied');
+    expect(titles(none).some((title) => /\d/.test(title))).toBe(false);
+    expect(titles(none).slice(1)).toEqual(titles(shown).slice(1));
   });
 
   it('wins over ?invites, since no figure reaches the device', () => {
