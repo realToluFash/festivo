@@ -45,6 +45,18 @@ describe('select many guests (sc-3776)', () => {
     expect(bar().textContent).toContain('and 1 companion with them');
   });
 
+  it('selects with the box and opens the guest from the rest of the row', SLOW, async () => {
+    await open('none');
+    const box = screen.getByRole<HTMLInputElement>('checkbox', { name: /^Amaka Eze/u });
+    const row = screen.getByRole('link', { name: /^Amaka Eze/u });
+
+    expect(row.contains(box)).toBe(false);
+    fireEvent.click(box);
+    expect(box.checked).toBe(true);
+    expect(bar().textContent).toContain('1 selected');
+    expect(row.getAttribute('href')).toMatch(/^\/demo\/guests\?guest=/u);
+  });
+
   it('clears the selection when the search changes, and says so', SLOW, async () => {
     await open('some');
     fireEvent.change(screen.getByRole('searchbox', { name: 'Find a guest' }), {

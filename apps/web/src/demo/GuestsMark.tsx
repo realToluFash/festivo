@@ -230,7 +230,12 @@ function MarkPage({ event, start, tell }: { event: SampleEvent; start: MarkStart
                 {REPLY_WORDS[group.reply]}
                 <span className="gs-group-count"> · {figure(group.count)}</span>
               </h2>
-              <SelectRows rows={group.rows} selected={selected} onToggle={toggle} />
+              <SelectRows
+                rows={group.rows}
+                event={event.id}
+                selected={selected}
+                onToggle={toggle}
+              />
             </section>
           ))}
         </section>
