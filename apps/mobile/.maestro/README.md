@@ -264,6 +264,9 @@ link, which in Expo Go lands on Home (sc-22740): each starts from Home or from a
   `tapOn: point: '2%,45%'`, since `hideKeyboard` hangs there. That point is for a phone only: on a
   tablet it lands in the settings split list and opens another section. Their Android copies,
   `sc9674-a-*`, press `pressKey: back` instead.
+- **On Android, `hideKeyboard` presses Back.** With the keys already down it leaves the screen,
+  and on a form with unsaved changes that opens Discard your changes?. Put the keys away on a
+  form only while they are up, through `keys-away.yaml`, and never as a precaution before a tap.
 - **Expo Go is the app**, so `appId` is `host.exp.Exponent` and the flow opens the project
   with `openLink`. A standalone build would use `com.soirely.app` and `launchApp`. On Android
   the package is `host.exp.exponent`, in lower case. Write iOS's: `qa-env.mjs maestro --android`
@@ -295,11 +298,12 @@ link, which in Expo Go lands on Home (sc-22740): each starts from Home or from a
   at 85% across in a `repeat` until it shows, then `assertVisible` it, as
   `checks/sc18978-ownership-transfer-note-provider-tablet.yaml` does.
 - **An Android tablet whose natural orientation is landscape swaps `setOrientation`.**
-  Soirely_QA2_Tablet's rotation 0 is 2560x1600, so `PORTRAIT` gives landscape and
-  `LANDSCAPE_LEFT` portrait. `batch/reset.yaml` asks the harness for `/portrait`, which reads
+  Soirely_QA2_Tablet's and Soirely_QA5_Tablet's rotation 0 is 2560x1600, so `PORTRAIT` gives
+  landscape and `LANDSCAPE_LEFT` portrait. `batch/reset.yaml` asks the harness for `/portrait`, which reads
   `wm size` and turns such a display to real portrait, so every check there starts in
   portrait. A check's own `setOrientation` is still swapped: pass `ORIENT=LANDSCAPE_LEFT` for
-  portrait, and a hard-coded `setOrientation: PORTRAIT` (`checks/sc19212-regression-upright.yaml`,
+  portrait (`checks/sc3785-guest-back-landscape.yaml` takes `SIDE=PORTRAIT` there), and a
+  hard-coded `setOrientation: PORTRAIT` (`checks/sc19212-regression-upright.yaml`,
   `checks/sc16389-upright.yaml`, the turn back at the end of the landscape checks) leaves the
   tablet in landscape until the next check's reset. A `--cold` run skips the reset, so its
   checks start at whatever rotation the tablet was left in: rotation 0, landscape, on a fresh
