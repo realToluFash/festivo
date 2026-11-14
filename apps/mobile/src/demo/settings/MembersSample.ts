@@ -315,6 +315,8 @@ export const MEMBERS_STATES = [
   'readOnly',
   'nobodySuspended',
   'nobodyLeft',
+  'ninetyNine',
+  'crowd',
   'loading',
   'failed',
   'approving',
@@ -751,6 +753,114 @@ const MORE_PEOPLE: readonly (readonly [string, string, string])[] = [
   ['Pierre Lambert', 'PL', 'pierre.lambert'],
 ];
 
+const FIRST = [
+  'Ada',
+  'Bruno',
+  'Camille',
+  'Dayo',
+  'Elena',
+  'Femi',
+  'Gabriel',
+  'Hugo',
+  'Inès',
+  'Jade',
+  'Kemi',
+  'Léa',
+  'Malik',
+  'Nadia',
+  'Omar',
+  'Paula',
+  'Quentin',
+  'Rosa',
+  'Sade',
+  'Tiago',
+  'Uche',
+  'Vera',
+  'Wale',
+  'Xavier',
+  'Yara',
+  'Zoé',
+  'Adaeze',
+  'Beatriz',
+  'Chidi',
+  'Diego',
+  'Emeka',
+  'Flor',
+  'Gil',
+  'Helena',
+  'Ifeoma',
+  'Javier',
+  'Kai',
+  'Lina',
+] as const;
+
+const LAST = [
+  'Adeyemi',
+  'Bianchi',
+  'Costa',
+  'Dubois',
+  'Eze',
+  'Fontaine',
+  'García',
+  'Haddad',
+  'Ibekwe',
+  'Jansen',
+  'Kowalski',
+  'López',
+  'Martin',
+  'Nwosu',
+  'Oliveira',
+  'Petit',
+  'Ramos',
+  'Santos',
+  'Torres',
+  'Uzor',
+  'Vidal',
+  'Wright',
+  'Yusuf',
+  'Zanetti',
+  'Alves',
+  'Bernard',
+  'Cruz',
+  'Diallo',
+  'Eriksen',
+  'Faure',
+  'Gomes',
+  'Hall',
+  'Ito',
+  'Jiménez',
+  'Klein',
+  'Lima',
+] as const;
+
+/** All at 104 shows +99 beside the faces, the chip's widest figure; at 1,326 it shows 99+ (sc-48825). */
+export const CROWDS = { ninetyNine: 104, crowd: 1326 } as const;
+
+/** Ire Events grown to `total` on All, so the card's chip has more beyond its five faces than its circle holds (sc-48825). */
+export function crowdOf(people: readonly Person[], total: number): Person[] {
+  const shown = people.filter((one) => isShown(one.status, 'all')).length;
+  const extra = Array.from({ length: Math.max(0, total - shown) }, (_, index) => {
+    const first = FIRST[index % FIRST.length] ?? '';
+    const last = LAST[Math.floor(index / FIRST.length) % LAST.length] ?? '';
+    const id = `crowd-${index + 1}@${DOMAIN}`;
+
+    return {
+      name: `${first} ${last}`,
+      initials: `${first[0] ?? ''}${last[0] ?? ''}`,
+      email: id,
+      id,
+      role: 'Member',
+      status: 'active' as const,
+      how: 'Company email address',
+      when: '2026-10-05',
+      tone: people.length + index,
+      gone: null,
+    };
+  });
+
+  return [...people, ...extra];
+}
+
 /** handoverSearch's Ire Events: eleven more people, 18 in all, so the menu offers 16 and starts with its search. */
 export function withMorePeople(people: readonly Person[]): Person[] {
   return [
@@ -900,6 +1010,9 @@ export function membersStart(
       return { ...base, people: restored(people, MARTA), filter: 'suspended' };
     case 'nobodyLeft':
       return { ...base, people: people.filter(({ id }) => id !== DANIEL), filter: 'former' };
+    case 'ninetyNine':
+    case 'crowd':
+      return { ...base, people: crowdOf(people, CROWDS[state]) };
     case 'loading':
     case 'failed':
       return { ...base, load: state };
