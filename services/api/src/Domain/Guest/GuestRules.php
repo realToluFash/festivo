@@ -116,8 +116,8 @@ final readonly class GuestRules
     }
 
     /**
-     * @param NeedsInput                                                                                           $typed
-     * @param list<array{propertyPath: string, message: string, code: string, parameters?: array<string, string>}> $violations
+     * @param NeedsInput                                                                                               $typed
+     * @param list<array{propertyPath: string, message: string, code: string, parameters?: array<string, int|string>}> $violations
      */
     private function needs(array $typed, string $path, array &$violations): GuestNeeds
     {

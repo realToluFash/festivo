@@ -104,7 +104,7 @@ final readonly class GuestsTogetherController
                 'propertyPath' => 'guestIds',
                 'message' => 'validation.guests_too_many',
                 'code' => ErrorCode::ValidationFailed->value,
-                'parameters' => [],
+                'parameters' => ['{most}' => self::MOST_AT_ONCE],
             ]]);
         }
 
