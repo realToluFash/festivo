@@ -181,6 +181,9 @@ describe('the list (sc-3772)', () => {
     expect(held.kind === 'rows' && held.rows.map((row) => row.line)).toEqual([
       'Guest of Dr Emeka Nwosu · Held · comes only if their host accepts',
     ]);
+    expect(held.kind === 'rows' && held.rows.map((row) => row.label)).toEqual([
+      'Adanna Nwosu, Guest of Dr Emeka Nwosu · Held · comes only if their host accepts',
+    ]);
     expect(viewOf(list, 'all', 'nhs.net', NONE, replyBy).shown).toBe(1);
     expect(viewOf(list, 'all', '900412', NONE, replyBy).shown).toBe(1);
     expect(viewOf(list, 'all', 'ines', NONE, replyBy).shown).toBe(2);

@@ -873,7 +873,7 @@ function rowOf(
   const reach = contacts && person.companion == null ? reachOf(person.guest) : [];
   const label = [
     person.name,
-    line.startsWith(word) ? line : `${word}, ${line}`,
+    line.startsWith(word) || line.includes(GW.heldLine) ? line : `${word}, ${line}`,
     ...reach,
     ...(allergy ? [GW.allergy] : []),
     ...(tagged ? [GW.dietaryNotes] : []),
