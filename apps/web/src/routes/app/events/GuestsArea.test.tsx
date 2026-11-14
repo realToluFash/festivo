@@ -361,8 +361,11 @@ describe('Guests (sc-1468)', () => {
     expect(loading.getAttribute('aria-busy')).toBe('true');
     expect(loading.textContent).toBe('Loading…');
     expect(loading.querySelector('.desk-unseen')?.textContent).toBe('Loading…');
-    expect(loading.querySelectorAll('.gs-bone-card')).toHaveLength(1);
-    expect(loading.querySelectorAll('.gs-bone-field')).toHaveLength(0);
+    expect(
+      [...loading.children].map((child) =>
+        ['gs-bone-card', 'gs-bone-field', 'gs-rows'].find((name) => child.classList.contains(name)),
+      ),
+    ).toEqual([undefined, 'gs-bone-card', 'gs-bone-field', 'gs-rows']);
     const rows = loading.querySelectorAll('.desk-row.is-bones');
     expect(rows).toHaveLength(5);
     rows.forEach((row) => {
@@ -373,6 +376,7 @@ describe('Guests (sc-1468)', () => {
     expect(screen.getByRole('heading', { level: 1, name: 'Guests' })).toBeDefined();
     expect(screen.queryByRole('button', { name: 'Add guest' })).toBeNull();
     expect(cssRule('.gs-bone-card', GUESTS_CSS)).toContain('height: 150px;');
+    expect(cssRule('.gs-bone-field', GUESTS_CSS)).toContain('height: 48px;');
     expect(cssRule('.gs-bone-mark', GUESTS_CSS)).toContain('border-radius: 50%;');
   });
 

@@ -550,10 +550,15 @@
   background: var(--colorAccentTint);
 }
 
-/* The list loading (sc-44950): the cover card's place, then five guest rows. */
+/* The list loading (sc-44950): the cover card's place, the search field's, then five guest rows. */
 .gs-bone-card {
   height: 150px;
   border-radius: var(--deskCard);
+}
+
+.gs-bone-field {
+  height: 48px;
+  border-radius: var(--radiusInset);
 }
 
 .gs-bone-mark {

@@ -624,6 +624,7 @@ export function GuestsArea({
             <div className="desk-loading gs-bones" role="status" aria-busy="true">
               <span className="desk-unseen">{t('pending.loading')}</span>
               <span className="desk-sunk gs-bone-card" aria-hidden="true" />
+              <span className="desk-sunk gs-bone-field" aria-hidden="true" />
               <ul className="desk-rows gs-rows" aria-hidden="true">
                 {[1, 2, 3, 4, 1].map((bone, index) => (
                   <li key={index} className="desk-row is-bones">
