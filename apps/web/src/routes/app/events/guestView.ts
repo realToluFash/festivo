@@ -1,6 +1,8 @@
 import type { Companion, Guest, HeadcountCounts } from '@soirely/api-client';
 import { compareGuestNames, nameKey, phoneMatches } from '@soirely/domain';
 
+import { dietary } from './guestNeeds.ts';
+
 /** Where a person stands, in the host's words: a companion is Held until their guest is Coming. */
 export type Standing = 'coming' | 'maybe' | 'noReply' | 'held' | 'notComing';
 
@@ -95,19 +97,23 @@ export interface ViewGroup {
 
 export type ListView = { kind: 'groups'; groups: ViewGroup[] } | { kind: 'rows'; rows: ViewRow[] };
 
-/** On All with no search, the groups; otherwise the flat rows the choice and the search keep, a companion under their guest when both are kept. */
+/** On All with no search and no Dietary notes, the groups; otherwise the flat rows the choice, the search and Dietary notes keep, a companion under their guest when both are kept. */
 export function viewOf(
   guests: readonly Guest[],
   counts: Counts,
   choice: Choice,
   q: string,
   expanded: ReadonlySet<Standing>,
+  dietaryOnly = false,
 ): { view: ListView; shown: number } {
   const people = peopleOf(guests);
 
-  if (choice !== 'all' || q.trim() !== '') {
+  if (choice !== 'all' || q.trim() !== '' || dietaryOnly) {
     const found = people.filter(
-      (one) => (choice === 'all' || one.standing === choice) && matches(one, q),
+      (one) =>
+        (choice === 'all' || one.standing === choice) &&
+        matches(one, q) &&
+        (!dietaryOnly || dietary(one.companion == null ? one.guest.needs : one.companion.needs)),
     );
     const hosts = new Set(found.filter((one) => one.companion == null).map((one) => one.id));
 
