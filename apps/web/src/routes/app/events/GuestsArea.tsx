@@ -21,6 +21,7 @@ import {
   type ViewRow,
   countsOf,
   deviceCountry,
+  dietary,
   eventAllows,
   firstProblem,
   isListed,
@@ -74,6 +75,7 @@ import { useLoadedAt, useServerNow } from '../../../serverNow.ts';
 import { canOn, useSession } from '../../../session.ts';
 import { useMakeLive } from './MakeLive.tsx';
 import { GuestColumn, ReplyMark, guestAddress } from './GuestColumn.tsx';
+import { invitationLine } from './GuestInvitation.tsx';
 import {
   CompanionField,
   GuestField,
@@ -81,6 +83,25 @@ import {
   PhoneField,
   PlacesStepper,
 } from './GuestFields.tsx';
+import {
+  AllergyMark,
+  type CompanionNeeds,
+  CompanionNeedsSection,
+  NeedsRefused,
+  NeedsSection,
+} from './GuestNeeds.tsx';
+import {
+  NO_NEEDS,
+  type NeedsProblems,
+  type NeedsTyped,
+  firstNeedsFailing,
+  hasAllergy,
+  needsFailingCount,
+  needsInputOf,
+  needsViolations,
+  problemsByWho,
+  useNeedsOpen,
+} from './guestNeeds.ts';
 import { useGuestsAddress } from './useGuestsAddress.ts';
 import '../../../components/desk.css';
 import '../../../components/SettingsParts.css';
@@ -94,7 +115,7 @@ type Load = { kind: 'loading' } | { kind: 'failed' } | { kind: 'loaded'; list: G
 
 const RETRY_MS = 5_000;
 const RENEW_BEFORE_MS = 60_000;
-const FOCUSABLE = 'button, a[href], input, select, [tabindex]';
+const FOCUSABLE = 'button, a[href], input, select, textarea, [tabindex]';
 
 /** The guest list as the API holds it, published to every page open on it. */
 function useLiveGuests(eventId: string, onList: (list: GuestList) => void, onGap: () => void) {
@@ -269,6 +290,7 @@ export function GuestsArea({
   const [counted, setCounted] = useState<Counts | 'failed' | null>(null);
   const [recount, setRecount] = useState(0);
   const { choice, q, setChoice, setQ, clear } = useGuestsAddress();
+  const [dietaryOnly, setDietary] = useState(false);
   const [menu, setMenu] = useState(false);
   const [expanded, setExpanded] = useState<ReadonlySet<Standing>>(new Set());
   const [stamp, setStamp] = useState(0);
@@ -455,8 +477,8 @@ export function GuestsArea({
   const { view, shown } =
     counts == null
       ? { view: { kind: 'rows' as const, rows: [] }, shown: 0 }
-      : viewOf(guests, counts, choice, q, expanded);
-  const looking = choice !== 'all' || q.trim() !== '';
+      : viewOf(guests, counts, choice, q, expanded, manages && dietaryOnly);
+  const looking = choice !== 'all' || q.trim() !== '' || (manages && dietaryOnly);
 
   /** The card as `/demo/guests` draws it: a Draft, Paused or Finished event says so on the card, in place of its counts' step. */
   function cover(counts: Counts): Cover {
@@ -505,6 +527,7 @@ export function GuestsArea({
 
   function clearView(): void {
     clear();
+    setDietary(false);
     focus('find');
   }
 
@@ -586,6 +609,20 @@ export function GuestsArea({
                           onChoice={setChoice}
                           onMenu={setMenu}
                         />
+                        {manages && (
+                          <div className="gs-chips gs-filters">
+                            <button
+                              type="button"
+                              className={dietaryOnly ? 'gs-chip is-on' : 'gs-chip'}
+                              aria-pressed={dietaryOnly}
+                              data-focus="dietary"
+                              onClick={() => setDietary((was) => !was)}
+                            >
+                              {dietaryOnly && <Glyph name="tick" size={16} weight={2.6} />}
+                              {t('guestNeeds.dietaryNotes')}
+                            </button>
+                          </div>
+                        )}
                         <div className={looking ? 'gs-shown' : 'visually-hidden'}>
                           <p role="status">
                             {looking ? t('guestList.shown', { shown, total: counts.all }) : ''}
@@ -944,6 +981,7 @@ function Rows({
           timeZone,
           dateLocale(),
           choice !== 'noReply',
+          companion == null ? invitationLine(t, guest, timeZone) : null,
         );
 
         if (companion == null)
@@ -960,6 +998,7 @@ function Rows({
                   <ReplyMark reply={shownReply(guest)} />
                 </span>
                 <RowWords title={name} lines={[line]} />
+                <NeedsTags needs={guest.needs} />
               </RowLink>
             </li>
           );
@@ -977,11 +1016,28 @@ function Rows({
                 <ReplyMark reply={companion.state} />
               </span>
               <RowWords title={name} lines={[line]} />
+              <NeedsTags needs={companion.needs} />
             </RowLink>
           </li>
         );
       })}
     </ul>
+  );
+}
+
+/** sc-3777: the Allergy mark, then the grey Dietary notes tag, both words in the row's name; only sent to those who manage guests. */
+function NeedsTags({ needs }: { needs: Guest['needs'] }) {
+  const { t } = useTranslation();
+  const allergy = hasAllergy(needs);
+  const tagged = dietary(needs);
+
+  if (!allergy && !tagged) return null;
+
+  return (
+    <span className="gs-row-tags">
+      {allergy && <AllergyMark />}
+      {tagged && <span className="gs-tag">{t('guestNeeds.dietaryNotes')}</span>}
+    </span>
   );
 }
 
@@ -1024,13 +1080,23 @@ function fieldOf(key: string, problems: Problems): string {
   return key === 'mobile' && problems.mobile === 'noCountry' ? 'country' : key;
 }
 
-const EMPTY: Omit<Typed, 'country'> = {
+interface AddTyped extends Omit<Typed, 'country' | 'companions'> {
+  companions: readonly { name: string; needs: NeedsTyped }[];
+  needs: NeedsTyped;
+}
+
+const EMPTY: AddTyped = {
   fullName: '',
   email: '',
   number: '',
   companions: [],
   language: null,
+  needs: NO_NEEDS,
 };
+
+function needsByWho(typed: AddTyped): Record<string, NeedsProblems> {
+  return problemsByWho([typed.needs, ...typed.companions.map((one) => one.needs)]);
+}
 
 /** Add guest in place beside the list: it stays open after each guest, cleared, focus back on Full name. */
 function AddForm({
@@ -1049,7 +1115,7 @@ function AddForm({
   onDone: () => void;
 }) {
   const { t } = useTranslation();
-  const [typed, setTyped] = useState<Omit<Typed, 'country'>>(EMPTY);
+  const [typed, setTyped] = useState<AddTyped>(EMPTY);
   const [picked, setPicked] = useState<string | null>(null);
   const [tried, setTried] = useState(false);
   const [refused, setRefused] = useState<Problems>({});
@@ -1058,12 +1124,23 @@ function AddForm({
   const [said, setSaid] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
   const box = useRef<HTMLDivElement>(null);
-  const values: Typed = { ...typed, country: picked ?? country };
+  const values: Typed = {
+    ...typed,
+    companions: typed.companions.map((one) => one.name),
+    country: picked ?? country,
+  };
   const problems: Problems = { ...(tried ? problemsOf(values) : {}), ...refused };
+  const [needsRefused, setNeedsRefused] = useState<Record<string, NeedsProblems>>({});
+  const opened = useNeedsOpen();
+  const needsProblems: Record<string, NeedsProblems> = {
+    ...(tried ? needsByWho(typed) : {}),
+    ...needsRefused,
+  };
 
-  function change(next: Partial<Omit<Typed, 'country'>>): void {
+  function change(next: Partial<AddTyped>): void {
     setTyped((was) => ({ ...was, ...next }));
     setRefused({});
+    setNeedsRefused({});
     if (next.fullName != null) setDuplicate(false);
   }
 
@@ -1092,11 +1169,16 @@ function AddForm({
   async function add(allowDuplicate = false): Promise<void> {
     if (busy) return;
     const first = firstProblem(problemsOf(values), values.companions.length);
+    const needsFound = needsByWho(typed);
+    const needsFirst = firstNeedsFailing(needsFound);
 
-    if (first != null) {
+    if (first != null || needsFirst != null) {
       setTried(true);
       setRefused({});
-      focus(fieldOf(first, problemsOf(values)));
+      setNeedsRefused({});
+      opened.openFailing(needsFound);
+      if (first != null) focus(fieldOf(first, problemsOf(values)));
+      else if (needsFirst != null) focus(needsFirst);
       return;
     }
     if (!allowDuplicate && isListed(guests, values.fullName)) {
@@ -1108,11 +1190,20 @@ function AddForm({
     setFailed(false);
     setSaid(null);
     try {
-      const guest = await api.addGuest(eventId, newGuestOf(values, allowDuplicate));
+      const sent = newGuestOf(values, allowDuplicate);
+      const guest = await api.addGuest(eventId, {
+        ...sent,
+        needs: needsInputOf(typed.needs),
+        companions: (sent.companions ?? []).map((one, at) => ({
+          ...one,
+          needs: needsInputOf(typed.companions[at]?.needs ?? NO_NEEDS),
+        })),
+      });
 
       onAdded(guest);
       setSaid(t('guestList.justAdded', { name: guest.fullName }));
       setTyped(EMPTY);
+      opened.closeAll();
       setTried(false);
       setDuplicate(false);
       focus('fullName');
@@ -1121,13 +1212,23 @@ function AddForm({
         setDuplicate(true);
         focus('duplicate');
       } else if (error instanceof ApiError && error.status === 422) {
-        const found = violationProblems(error.problem.violations ?? [], values);
+        const violations = error.problem.violations ?? [];
+        const found = violationProblems(violations, values);
         const at = firstProblem(found, values.companions.length);
+        const theirNeeds = needsViolations(violations, (who) =>
+          who === 'guest'
+            ? typed.needs
+            : (typed.companions[Number(who.slice(1))]?.needs ?? NO_NEEDS),
+        );
+        const needsAt = firstNeedsFailing(theirNeeds);
 
-        if (at == null) setFailed(true);
+        if (at == null && needsAt == null) setFailed(true);
         else {
           setRefused(found);
-          focus(fieldOf(at, found));
+          setNeedsRefused(theirNeeds);
+          opened.openFailing(theirNeeds);
+          if (at != null) focus(fieldOf(at, found));
+          else if (needsAt != null) focus(needsAt);
         }
       } else setFailed(true);
     } finally {
@@ -1174,6 +1275,7 @@ function AddForm({
           {t('guestList.notAdded')}
         </p>
       )}
+      <NeedsRefused count={needsFailingCount(needsProblems)} />
       <div className="desk-fields gs-fields">
         <GuestField
           label={t('account.fullName')}
@@ -1205,6 +1307,15 @@ function AddForm({
           value={typed.language}
           chose={null}
           onChange={(language) => change({ language })}
+        />
+        <NeedsSection
+          title={t('guestNeeds.needs')}
+          needs={typed.needs}
+          problems={needsProblems.guest ?? {}}
+          open={opened.open.has('guest')}
+          focusKey="needs"
+          onOpen={(open) => opened.toggle('guest', open)}
+          onChange={(needs) => change({ needs })}
         />
         {duplicate && (
           <div className="gs-amber" role="alert">
@@ -1238,6 +1349,7 @@ function AddForm({
           host={values.fullName.trim()}
           companions={typed.companions}
           words={words}
+          needs={{ problems: needsProblems, open: opened.open, toggle: opened.toggle }}
           focus={focus}
           onChange={(companions) => change({ companions })}
         />
@@ -1258,14 +1370,16 @@ function CompanionFields({
   host,
   companions,
   words,
+  needs,
   focus,
   onChange,
 }: {
   host: string;
-  companions: readonly string[];
+  companions: AddTyped['companions'];
   words: (key: string) => string | undefined;
+  needs: CompanionNeeds;
   focus: (...keys: string[]) => void;
-  onChange: (companions: string[]) => void;
+  onChange: (companions: AddTyped['companions']) => void;
 }) {
   const { t } = useTranslation();
   const count = companions.length;
@@ -1275,15 +1389,15 @@ function CompanionFields({
       <legend className="gs-legend">{t('guestList.companionsTitle')}</legend>
       <PlacesStepper
         host={host}
-        names={companions}
+        names={companions.map((one) => one.name)}
         onStep={(kept, added) =>
           onChange([
-            ...kept.map((at) => companions[at] ?? ''),
-            ...Array.from({ length: added }, () => ''),
+            ...kept.flatMap((at) => companions[at] ?? []),
+            ...Array.from({ length: added }, () => ({ name: '', needs: NO_NEEDS })),
           ])
         }
       />
-      {companions.map((name, at) => {
+      {companions.map(({ name, needs: theirs }, at) => {
         const placeholder =
           host === ''
             ? ''
@@ -1294,22 +1408,35 @@ function CompanionFields({
         const error = words(`companion-${at}`);
 
         return (
-          <CompanionField
-            key={at}
-            at={at}
-            name={name}
-            host={host}
-            label={label}
-            placeholder={placeholder}
-            error={error}
-            onChange={(typed) =>
-              onChange(companions.map((each, index) => (index === at ? typed : each)))
-            }
-            onRemove={() => {
-              onChange(companions.filter((_, index) => index !== at));
-              focus(`companion-${at + 1 < count ? at : at - 1}`, 'places');
-            }}
-          />
+          <div key={at} className="gs-companion-block">
+            <CompanionField
+              at={at}
+              name={name}
+              host={host}
+              label={label}
+              placeholder={placeholder}
+              error={error}
+              onChange={(typed) =>
+                onChange(
+                  companions.map((each, index) => (index === at ? { ...each, name: typed } : each)),
+                )
+              }
+              onRemove={() => {
+                onChange(companions.filter((_, index) => index !== at));
+                focus(`companion-${at + 1 < count ? at : at - 1}`, 'places');
+              }}
+            />
+            <CompanionNeedsSection
+              at={at}
+              typed={theirs}
+              needs={needs}
+              onChange={(next) =>
+                onChange(
+                  companions.map((each, index) => (index === at ? { ...each, needs: next } : each)),
+                )
+              }
+            />
+          </div>
         );
       })}
       {count >= MOST_COMPANIONS && (

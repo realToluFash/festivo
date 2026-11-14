@@ -43,7 +43,7 @@ export function contactOf(t: Translate, guest: Guest): string | null {
     : (guest.email ?? mobile);
 }
 
-/** A row's name and the line under it: a guest's reply and when, their places when shown, then their contact; a companion's own standing. */
+/** A row's name and the line under it: a guest's reply and when, their places when shown or else how they were invited, then their contact; a companion's own standing. */
 export function rowWords(
   t: Translate,
   { guest, companion, at }: Person,
@@ -51,6 +51,7 @@ export function rowWords(
   timeZone: string,
   locale: string,
   placesShown: boolean,
+  invitation: string | null = null,
 ): { name: string; line: string } {
   if (companion == null) {
     const word = t(REPLY_KEY[shownReply(guest)]);
@@ -62,8 +63,9 @@ export function rowWords(
             date: replyDate(guest.repliedAt, timeZone, locale),
           });
     const places = guest.companions.length;
-    const line =
-      places === 0 || !placesShown
+    const line = !placesShown
+      ? (invitation ?? reply)
+      : places === 0
         ? reply
         : t('guestList.withPlaces', {
             reply,

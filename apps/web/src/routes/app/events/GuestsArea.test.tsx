@@ -8,6 +8,15 @@ import { OWNER_PERMISSIONS, membership } from '../../../test-memberships.ts';
 import { cssRule, stylesheet } from '../../../test-styles.ts';
 import { routes } from '../../index.tsx';
 
+const NONE = {
+  allergies: [],
+  diet: [],
+  access: [],
+  otherAllergy: null,
+  otherDiet: null,
+  otherAccess: null,
+  note: null,
+};
 const GUESTS_CSS = stylesheet(import.meta.dirname, 'guests.css');
 const IRE = membership({ id: 'org_1', name: 'Ìrè Events' });
 
@@ -255,7 +264,7 @@ describe('Guests (sc-1468)', () => {
     ]);
   });
 
-  it('keeps a guest’s row to their reply under the No reply filter (sc-3779, sc-3788)', async () => {
+  it('puts who invited a guest, how and when on their row under the No reply filter (sc-3779, sc-3788)', async () => {
     signedIn();
     const bisi = guest('g_3', 'Bisi Adewale', {
       invitation: INVITED,
@@ -267,7 +276,7 @@ describe('Guests (sc-1468)', () => {
       '?filter=noReply',
     );
 
-    expect(await screen.findByText('No reply')).toBeDefined();
+    expect(await screen.findByText('Invited by Folake Adeyemi, WhatsApp, Nov 1')).toBeDefined();
     expect(screen.queryByText(/of 1 named/u)).toBeNull();
   });
 
@@ -419,8 +428,9 @@ describe('Guests (sc-1468)', () => {
       fullName: 'Bimpe Adeyemi',
       email: 'bimpe@example.com',
       mobile: { countryCode: 'GB', number: '07700 900123' },
-      companions: [{ fullName: null }],
+      companions: [{ fullName: null, needs: NONE }],
       language: null,
+      needs: NONE,
     });
     expect(field('Full name').value).toBe('');
     expect(within(form()).getByText('0 of 0 named')).toBeDefined();
@@ -1318,8 +1328,9 @@ describe('A guest’s details, and correcting them (sc-3773)', () => {
       fullName: 'Ngozi Eze-Okafor',
       email: 'ngozi@example.com',
       mobile: { countryCode: 'NG', number: '0803 555 0142' },
-      companions: [{ id: 'c_1', fullName: 'Obi Eze' }],
+      companions: [{ id: 'c_1', fullName: 'Obi Eze', needs: NONE }],
       language: null,
+      needs: NONE,
     });
     expect(screen.getByRole('heading', { level: 2, name: 'Ngozi Eze-Okafor' })).toBeDefined();
   });
@@ -2237,7 +2248,7 @@ describe('Not yet invited, and Mark as invited (sc-3788)', () => {
     expect(within(invitation()).getByText(/^Invited by Folake Adeyemi, WhatsApp/u)).toBeDefined();
     expect(
       within(invitation()).getByText(
-        'You can see names, replies and who is invited. Marking guests as invited needs a host or organiser role.',
+        'You can see names, replies and who is invited. Marking guests as invited needs the Lead or Can edit role.',
       ),
     ).toBeDefined();
     expect(screen.queryByRole('button', { name: 'Mark as not invited' })).toBeNull();
@@ -2345,5 +2356,235 @@ describe('The host’s Language for a guest (sc-3790)', () => {
 
     expect(within(column()).queryByText(/^Not set ·/u)).toBeNull();
     expect(within(column()).queryByText(/They chose/u)).toBeNull();
+  });
+});
+
+describe('A guest’s needs (sc-3777)', () => {
+  const needs = (more: Record<string, unknown>) => ({ ...NONE, ...more });
+  const BISI = guest('g_3', 'Bisi Adewale', {
+    reply: 'coming',
+    needs: needs({ allergies: ['peanuts', 'tree_nuts'], diet: ['halal'] }),
+    companions: [
+      { id: 'c_5', fullName: 'Tunde Adewale', state: 'coming', needs: needs({ diet: ['vegan'] }) },
+    ],
+  });
+  const FOLA = guest('g_4', 'Fola Bello', {
+    reply: 'maybe',
+    needs: needs({ access: ['step_free'], note: 'Arrives by taxi' }),
+  });
+  const KEMI = guest('g_5', 'Kemi Ola', { reply: 'notComing', needs: NONE });
+
+  function openNeeds(scope: HTMLElement, title = 'Needs'): void {
+    fireEvent.click(within(scope).getByRole('button', { name: new RegExp(`^${title}`, 'u') }));
+  }
+
+  it('records a guest’s and a companion’s needs as codes, collapsed until opened', async () => {
+    const sent = await opened({
+      'POST /api/events/ev_1/guests': () => json({ guest: guest('g_9', 'Bimpe') }, 201),
+    });
+    const needsButton = within(form()).getByRole('button', { name: /^Needs/u });
+
+    expect(needsButton.getAttribute('aria-expanded')).toBe('false');
+    expect(
+      within(form()).getByText('None recorded. Open it to note allergies, diet or access needs.'),
+    ).toBeDefined();
+    type('Full name', 'Bimpe');
+    openNeeds(form());
+    const allergies = within(form()).getByRole('group', { name: /^Allergies/u });
+    expect(within(allergies).getByText('Shown first, everywhere')).toBeDefined();
+    fireEvent.click(within(allergies).getByRole('checkbox', { name: 'Peanuts' }));
+    fireEvent.click(within(form()).getByRole('checkbox', { name: 'Halal' }));
+    fireEvent.click(within(form()).getByRole('button', { name: 'More places' }));
+    openNeeds(form(), 'Their needs');
+    fireEvent.click(within(form()).getAllByRole('checkbox', { name: 'Step-free access' }).at(-1)!);
+    fireEvent.click(addButton());
+
+    await within(form()).findByText('Bimpe added.');
+    expect(sent.find((one) => one.line === 'POST /api/events/ev_1/guests')?.body).toEqual({
+      fullName: 'Bimpe',
+      email: null,
+      mobile: null,
+      language: null,
+      needs: needs({ allergies: ['peanuts'], diet: ['halal'] }),
+      companions: [{ fullName: null, needs: needs({ access: ['step_free'] }) }],
+    });
+  });
+
+  it('refuses an Other with no words, or more than 100, beside it, and sends nothing', async () => {
+    const sent = await opened({});
+    type('Full name', 'Bimpe');
+    openNeeds(form());
+    fireEvent.click(within(form()).getByRole('checkbox', { name: 'Other allergy' }));
+    fireEvent.click(addButton());
+
+    const other = field('Which allergy?');
+    await waitFor(() => expect(document.activeElement).toBe(other));
+    expect(other.getAttribute('aria-invalid')).toBe('true');
+    expect(within(form()).getByText('Say which')).toBeDefined();
+    expect(within(form()).getByText('One field needs fixing. Nothing was saved.')).toBeDefined();
+
+    type('Which allergy?', 'k'.repeat(101));
+    fireEvent.click(addButton());
+    expect(within(form()).getByText('Shorten it to 100 characters or fewer.')).toBeDefined();
+
+    fireEvent.click(within(form()).getAllByRole('checkbox', { name: 'Other' })[0]!);
+    fireEvent.click(addButton());
+    expect(within(form()).getByText('2 fields need fixing. Nothing was saved.')).toBeDefined();
+    expect(sent.some((one) => one.line === 'POST /api/events/ev_1/guests')).toBe(false);
+  });
+
+  it('marks a row with Allergy and Dietary notes in words, never for access alone', async () => {
+    signedIn();
+    await onGuests({ 'GET /api/events/ev_1/guests': () => json(listOf([BISI, FOLA, KEMI])) });
+
+    const bisi = await screen.findByRole('link', { name: /^Bisi Adewale/u });
+    expect(bisi.textContent).toContain('Allergy');
+    expect(bisi.textContent).toContain('Dietary notes');
+    expect(bisi.textContent!.indexOf('Allergy')).toBeLessThan(
+      bisi.textContent!.indexOf('Dietary notes'),
+    );
+    const tunde = screen.getByRole('link', { name: /^Tunde Adewale/u });
+    expect(tunde.textContent).not.toContain('Allergy');
+    expect(tunde.textContent).toContain('Dietary notes');
+    for (const name of [/^Fola Bello/u, /^Kemi Ola/u]) {
+      expect(screen.getByRole('link', { name }).textContent).not.toMatch(/Allergy|Dietary notes/u);
+    }
+  });
+
+  it('keeps only those with an allergy or a diet on Dietary notes', async () => {
+    signedIn();
+    await onGuests({ 'GET /api/events/ev_1/guests': () => json(listOf([BISI, FOLA, KEMI])) });
+    const chip = await screen.findByRole('button', { name: 'Dietary notes' });
+
+    expect(chip.getAttribute('aria-pressed')).toBe('false');
+    fireEvent.click(chip);
+
+    expect(chip.getAttribute('aria-pressed')).toBe('true');
+    expect(screen.getByRole('link', { name: /^Bisi Adewale/u })).toBeDefined();
+    expect(screen.getByRole('link', { name: /^Tunde Adewale/u })).toBeDefined();
+    expect(screen.queryByRole('link', { name: /^Fola Bello/u })).toBeNull();
+    expect(screen.queryByRole('link', { name: /^Kemi Ola/u })).toBeNull();
+  });
+
+  it('offers no Dietary notes chip to someone who cannot manage guests', async () => {
+    signedIn();
+    await onGuests(
+      { 'GET /api/events/ev_1/guests': () => json(listOf([KEMI])) },
+      OWNER_PERMISSIONS.filter((one) => one !== 'guests.manage'),
+    );
+
+    await screen.findByRole('link', { name: /^Kemi Ola/u });
+    expect(screen.queryByRole('button', { name: 'Dietary notes' })).toBeNull();
+  });
+
+  it('reads the needs in the guest’s column, allergies first, then each companion’s', async () => {
+    await openNgozi({
+      'GET /api/events/ev_1/guests/g_1': () =>
+        tagged(
+          {
+            ...DETAILS,
+            needs: needs({
+              allergies: ['peanuts', 'other'],
+              otherAllergy: 'Kiwi',
+              diet: ['no_alcohol'],
+              note: 'Carries a pen',
+            }),
+            companions: [{ ...DETAILS.companions[0], needs: needs({ diet: ['vegan'] }) }],
+          },
+          '"1"',
+        ),
+    });
+    const block = within(column()).getByRole('region', { name: 'Needs' });
+
+    expect(within(block).getByText('Peanuts, Kiwi')).toBeDefined();
+    expect(within(block).getByText('Allergy')).toBeDefined();
+    expect(within(block).getByText('No alcohol')).toBeDefined();
+    expect(within(block).getByText('Carries a pen')).toBeDefined();
+    expect(within(block).getByRole('heading', { level: 4, name: 'Obi Eze' })).toBeDefined();
+    expect(within(block).getByText('Vegan')).toBeDefined();
+  });
+
+  it('says No dietary notes when nobody has any', async () => {
+    await openNgozi({
+      'GET /api/events/ev_1/guests/g_1': () => tagged({ ...DETAILS, needs: NONE }, '"1"'),
+    });
+
+    expect(within(column()).getByText('No dietary notes.')).toBeDefined();
+  });
+
+  it('saves the needs changed on Edit, and words a refusal from the server beside its field', async () => {
+    let refuse = true;
+    const sent = await editNgozi({
+      'PUT /api/events/ev_1/guests/g_1': () => {
+        if (!refuse) return tagged({ ...DETAILS, needs: needs({ diet: ['other'] }) }, '"2"');
+        refuse = false;
+
+        return problem('validation_failed', 422, {
+          violations: [
+            { propertyPath: 'needs.otherDiet', message: 'x', code: 'validation_failed' },
+          ],
+        });
+      },
+    });
+    const edit = column();
+    openNeeds(edit);
+    fireEvent.click(within(edit).getAllByRole('checkbox', { name: 'Other' })[0]!);
+    type('Which diet?', 'Low salt');
+    fireEvent.click(within(edit).getByRole('button', { name: 'Save' }));
+
+    expect(await within(edit).findByText('Shorten it to 100 characters or fewer.')).toBeDefined();
+    expect(puts(sent)[0]?.body).toMatchObject({
+      needs: needs({ diet: ['other'], otherDiet: 'Low salt' }),
+    });
+  });
+
+  async function conflictOn(theirs: Record<string, unknown>) {
+    let reads = 0;
+    const sent = await editNgozi({
+      'GET /api/events/ev_1/guests/g_1': () => {
+        reads += 1;
+        return reads === 1 ? tagged(DETAILS, '"1"') : tagged({ ...DETAILS, ...theirs }, '"2"');
+      },
+      'PUT /api/events/ev_1/guests/g_1': () => problem('precondition_failed', 412),
+    });
+
+    return sent;
+  }
+
+  async function conflictRows(): Promise<string[][]> {
+    await screen.findByText('Someone else changed this guest. Here is their version.');
+
+    return [...screen.getByRole('alert').querySelectorAll('.gs-differ-field')].map((row) =>
+      [...row.querySelectorAll('dt, dd')].map((one) => one.textContent ?? ''),
+    );
+  }
+
+  it('on a 412, shows a Private note row with each text when only the note differs', async () => {
+    await conflictOn({ needs: needs({ note: 'Arrives by taxi' }) });
+    const edit = column();
+    openNeeds(edit);
+    type(/^Private note/u, 'Needs a quiet seat');
+    fireEvent.click(within(edit).getByRole('button', { name: 'Save' }));
+
+    expect(await conflictRows()).toEqual([
+      ['Private note', 'TheirsArrives by taxi', 'YoursNeeds a quiet seat'],
+    ]);
+  });
+
+  it('on a 412, shows a row for a companion whose needs alone differ, in their name', async () => {
+    await conflictOn({ needs: NONE });
+    const edit = column();
+    openNeeds(edit, 'Their needs');
+    fireEvent.click(within(edit).getAllByRole('checkbox', { name: 'Peanuts' }).at(-1)!);
+    fireEvent.click(within(edit).getByRole('button', { name: 'Save' }));
+
+    expect(await conflictRows()).toEqual([
+      ['Needs, Obi Eze', 'TheirsNone', 'YoursAllergy · Peanuts'],
+    ]);
+  });
+
+  it('draws each checkbox 24 by 24', () => {
+    expect(cssRule('.gs-box', GUESTS_CSS)).toContain('width: 24px;');
+    expect(cssRule('.gs-box', GUESTS_CSS)).toContain('height: 24px;');
   });
 });

@@ -1,4 +1,4 @@
-import type { Companion, Guest, HeadcountCounts } from '@soirely/api-client';
+import type { Companion, Guest, GuestNeeds, HeadcountCounts } from '@soirely/api-client';
 import { compareGuestNames } from './guestName.ts';
 import { shownReply } from './guestForm.ts';
 import { nameKey } from './nameKey.ts';
@@ -40,6 +40,11 @@ export interface Person {
   guest: Guest;
   companion: Companion | null;
   at: number;
+}
+
+/** sc-3777: an allergy or a diet recorded, what the Dietary notes filter and tag keep; access needs alone are not dietary. */
+export function dietary(needs: GuestNeeds | null | undefined): boolean {
+  return needs != null && (needs.allergies.length > 0 || needs.diet.length > 0);
 }
 
 export function peopleOf(guests: readonly Guest[]): Person[] {
@@ -113,19 +118,23 @@ export interface ViewGroup {
 
 export type ListView = { kind: 'groups'; groups: ViewGroup[] } | { kind: 'rows'; rows: ViewRow[] };
 
-/** On All with no search, the groups; otherwise the flat rows the choice and the search keep, a companion under their guest when both are kept. */
+/** On All with no search and no Dietary notes, the groups; otherwise the flat rows the choice, the search and Dietary notes keep, a companion under their guest when both are kept. */
 export function viewOf(
   guests: readonly Guest[],
   counts: Counts,
   choice: Choice,
   q: string,
   expanded: ReadonlySet<Standing>,
+  dietaryOnly = false,
 ): { view: ListView; shown: number } {
   const people = peopleOf(guests);
 
-  if (choice !== 'all' || q.trim() !== '') {
+  if (choice !== 'all' || q.trim() !== '' || dietaryOnly) {
     const found = people.filter(
-      (one) => (choice === 'all' || one.standing === choice) && matches(one, q),
+      (one) =>
+        (choice === 'all' || one.standing === choice) &&
+        matches(one, q) &&
+        (!dietaryOnly || dietary(one.companion == null ? one.guest.needs : one.companion.needs)),
     );
     const hosts = new Set(found.filter((one) => one.companion == null).map((one) => one.id));
 
