@@ -644,6 +644,7 @@ function Shown({
           party={party}
           fullName={fullName}
           hosts={hostsLine(page.event.hosts, currentLocale())}
+          oneHost={page.event.hosts.length <= 1}
           onChange={onParty}
           onBack={onBack}
           onNext={onPartyNext}
@@ -851,6 +852,7 @@ function WithYou({
   party,
   fullName,
   hosts,
+  oneHost,
   onChange,
   onBack,
   onNext,
@@ -858,6 +860,7 @@ function WithYou({
   party: Party;
   fullName: string;
   hosts: string;
+  oneHost: boolean;
   onChange: (change: (was: Party) => Party, focus?: string) => void;
   onBack: () => void;
   onNext: () => void;
@@ -874,14 +877,19 @@ function WithYou({
       <h2 id={`${id}-h`} className="gp-h2 is-24" tabIndex={-1} data-focus="withYouHead">
         {t('guest.withYouTitle')}
       </h2>
-      <p className="gp-sub">{t('guest.withYouPlaces', { hosts, count: party.places })}</p>
+      <p className="gp-sub">
+        {t(oneHost ? 'guest.withYouPlacesByOne' : 'guest.withYouPlaces', {
+          hosts,
+          count: party.places,
+        })}
+      </p>
       <ul className="gp-with-rows">
         <li className="gp-with-row is-on">
           <span className="gp-with-words">
             <span className="gp-with-name">{fullName}</span>
             <span className="gp-with-sub">{t('guest.withYouThatsYou')}</span>
           </span>
-          <span className="gp-with-tag">{t('guest.withYouComing')}</span>
+          <span className="gp-with-tag">{t('guest.withYouSelfComing')}</span>
         </li>
         {party.people.map((one) => (
           <li key={one.key} className={one.coming ? 'gp-with-row is-on' : 'gp-with-row'}>

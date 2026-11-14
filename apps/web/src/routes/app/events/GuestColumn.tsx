@@ -33,6 +33,26 @@ import { type Copy, IconLead, Invitation, invitationLine } from './GuestInvitati
 import { replyDate } from './guestDates.ts';
 import { languageNameInSentence } from '../settings/organisationDetails.ts';
 import {
+  type CompanionNeeds,
+  CompanionNeedsSection,
+  NeedsBlock,
+  NeedsRefused,
+  NeedsSection,
+} from './GuestNeeds.tsx';
+import {
+  NO_NEEDS,
+  type NeedsProblems,
+  type NeedsTyped,
+  firstNeedsFailing,
+  needsChips,
+  needsFailingCount,
+  needsInputOf,
+  needsTypedOf,
+  needsViolations,
+  problemsByWho,
+  useNeedsOpen,
+} from './guestNeeds.ts';
+import {
   MOST_COMPANIONS,
   type Problem,
   type Problems,
@@ -647,6 +667,13 @@ function GuestView({
           </ul>
         </section>
       )}
+      {manages && (
+        <NeedsBlock
+          guest={guest}
+          heading={heading}
+          nameOf={(at) => companionShown(t, guest.fullName, names, at)}
+        />
+      )}
       {manages || !draft ? (
         <Invitation
           guest={guest}
@@ -752,8 +779,9 @@ interface Values {
   email: string;
   country: string;
   number: string;
-  companions: readonly { id: string | null; name: string }[];
+  companions: readonly { id: string | null; name: string; needs: NeedsTyped }[];
   language: string | null;
+  needs: NeedsTyped;
 }
 
 function valuesOf(guest: GuestDetails, country: string): Values {
@@ -764,9 +792,80 @@ function valuesOf(guest: GuestDetails, country: string): Values {
     email: guest.email ?? '',
     country: phone?.country ?? country,
     number: phone?.number ?? guest.mobile ?? '',
-    companions: guest.companions.map((one) => ({ id: one.id, name: one.fullName ?? '' })),
+    companions: guest.companions.map((one) => ({
+      id: one.id,
+      name: one.fullName ?? '',
+      needs: needsTypedOf(one.needs),
+    })),
     language: guest.language,
+    needs: needsTypedOf(guest.needs),
   };
+}
+
+function needsOf(values: Values, who: string): NeedsTyped {
+  return who === 'guest'
+    ? values.needs
+    : (values.companions[Number(who.slice(1))]?.needs ?? NO_NEEDS);
+}
+
+function needsProblemsByWho(values: Values): Record<string, NeedsProblems> {
+  return problemsByWho([values.needs, ...values.companions.map((one) => one.needs)]);
+}
+
+function needsWords(t: TFunction, needs: NeedsTyped): string {
+  return needsChips(t, needs)
+    .filter((chip) => chip.kind !== 'note')
+    .map((chip) => chip.word)
+    .join(', ');
+}
+
+function factsOf(needs: NeedsTyped): string {
+  const kept = needsInputOf(needs);
+
+  return JSON.stringify([
+    [...kept.allergies].sort(),
+    [...kept.diet].sort(),
+    [...kept.access].sort(),
+    kept.otherAllergy,
+    kept.otherDiet,
+    kept.otherAccess,
+  ]);
+}
+
+/** One person's Needs and Private note rows on a 412, each shown when its record differs, since two different records can read the same words. */
+function needsDiffers(
+  t: TFunction,
+  theirs: NeedsTyped,
+  yours: NeedsTyped,
+  name: string | null,
+): Differs {
+  const none = t('guestList.none');
+  const theirNote = needsInputOf(theirs).note;
+  const myNote = needsInputOf(yours).note;
+
+  return [
+    ...(factsOf(theirs) === factsOf(yours)
+      ? []
+      : [
+          {
+            key: 'needs' as const,
+            field: name == null ? t('guestNeeds.needs') : t('guestNeeds.needsOf', { name }),
+            theirs: needsWords(t, theirs) || none,
+            yours: needsWords(t, yours) || none,
+          },
+        ]),
+    ...(theirNote === myNote
+      ? []
+      : [
+          {
+            key: 'needs' as const,
+            field:
+              name == null ? t('guestNeeds.privateNote') : t('guestNeeds.privateNoteOf', { name }),
+            theirs: theirNote ?? none,
+            yours: myNote ?? none,
+          },
+        ]),
+  ];
 }
 
 function typedOf(values: Values): Typed {
@@ -781,9 +880,9 @@ function mobileOf(values: Values): string | null {
     : (phoneE164(number, values.country) ?? `${values.country} ${number}`);
 }
 
-type Field = 'fullName' | 'email' | 'mobile' | 'language' | 'companions';
+type Field = 'fullName' | 'email' | 'mobile' | 'language' | 'companions' | 'needs';
 
-const FIELDS: readonly Field[] = ['fullName', 'email', 'mobile', 'language', 'companions'];
+const FIELDS: readonly Field[] = ['fullName', 'email', 'mobile', 'language', 'companions', 'needs'];
 
 /** What the API would keep of each field, so a save that changes nothing sends nothing. */
 function keptOf(values: Values): Record<Field, string> {
@@ -797,6 +896,10 @@ function keptOf(values: Values): Record<Field, string> {
     companions: JSON.stringify(
       values.companions.map((one, at) => [one.id, sent.companions?.[at]?.fullName ?? null]),
     ),
+    needs: JSON.stringify([
+      needsInputOf(values.needs),
+      ...values.companions.map((one) => needsInputOf(one.needs)),
+    ]),
   };
 }
 
@@ -825,7 +928,13 @@ function mergedOf(values: Values, theirs: Values, changed: readonly Field[]): Va
     language: mine('language') ? values.language : theirs.language,
     companions: mine('companions')
       ? values.companions.map((one) => (held.has(one.id) ? one : { ...one, id: null }))
-      : theirs.companions,
+      : theirs.companions.map((one) => ({
+          ...one,
+          needs: mine('needs')
+            ? (values.companions.find((mineOne) => mineOne.id === one.id)?.needs ?? one.needs)
+            : one.needs,
+        })),
+    needs: mine('needs') ? values.needs : theirs.needs,
   };
 }
 
@@ -874,6 +983,12 @@ function EditForm({
   const form = useRef<HTMLDivElement>(null);
   const typed = typedOf(values);
   const problems: Problems = { ...(tried ? problemsOf(typed) : {}), ...refused };
+  const [needsRefused, setNeedsRefused] = useState<Record<string, NeedsProblems>>({});
+  const opened = useNeedsOpen();
+  const needsProblems: Record<string, NeedsProblems> = {
+    ...(tried ? needsProblemsByWho(values) : {}),
+    ...needsRefused,
+  };
   const dirty = kept(values) !== kept(base);
 
   useEffect(() => onDirty(dirty), [dirty, onDirty]);
@@ -896,6 +1011,7 @@ function EditForm({
   function change(next: Partial<Values>): void {
     setValues((was) => ({ ...was, ...next }));
     setRefused({});
+    setNeedsRefused({});
     if (next.fullName != null && duplicate === 'asked') setDuplicate(null);
   }
 
@@ -973,8 +1089,26 @@ function EditForm({
         yours: myNames.join(', ') || none,
       },
     ];
+    const their = valuesOf(theirs, country);
+    const needs: Differs = changed.includes('needs')
+      ? [
+          ...needsDiffers(t, their.needs, sent.needs, null),
+          ...sent.companions.flatMap((one, at) =>
+            needsDiffers(
+              t,
+              (one.id == null ? null : their.companions.find((c) => c.id === one.id)?.needs) ??
+                NO_NEEDS,
+              one.needs,
+              myNames[at] ?? one.name,
+            ),
+          ),
+        ]
+      : [];
 
-    return rows.filter((row) => changed.includes(row.key) && row.theirs !== row.yours);
+    return [
+      ...rows.filter((row) => changed.includes(row.key) && row.theirs !== row.yours),
+      ...needs,
+    ];
   }
 
   async function send(
@@ -992,9 +1126,11 @@ function EditForm({
         host.id,
         {
           ...sent,
+          needs: needsInputOf(sending.needs),
           companions: sending.companions.map((one, at) => ({
             id: one.id,
             fullName: sent.companions?.[at]?.fullName ?? null,
+            needs: needsInputOf(one.needs),
           })),
         },
         against,
@@ -1021,13 +1157,19 @@ function EditForm({
         setDuplicate('asked');
         focus('duplicate');
       } else if (error instanceof ApiError && error.status === 422) {
-        const found = violationProblems(error.problem.violations ?? [], typedOf(sending));
+        const violations = error.problem.violations ?? [];
+        const found = violationProblems(violations, typedOf(sending));
         const at = firstProblem(found, sending.companions.length);
+        const theirNeeds = needsViolations(violations, (who) => needsOf(sending, who));
+        const needsAt = firstNeedsFailing(theirNeeds);
 
-        if (at == null) setFailed(true);
+        if (at == null && needsAt == null) setFailed(true);
         else {
           setRefused(found);
-          focus(at === 'mobile' && found.mobile === 'noCountry' ? 'country' : at);
+          setNeedsRefused(theirNeeds);
+          opened.openFailing(theirNeeds);
+          if (at != null) focus(at === 'mobile' && found.mobile === 'noCountry' ? 'country' : at);
+          else if (needsAt != null) focus(needsAt);
         }
       } else setFailed(true);
     } finally {
@@ -1039,11 +1181,17 @@ function EditForm({
     if (busy || conflict != null) return;
     const found = problemsOf(typed);
     const first = firstProblem(found, values.companions.length);
+    const needsFound = needsProblemsByWho(values);
+    const needsFirst = firstNeedsFailing(needsFound);
 
-    if (first != null) {
+    if (first != null || needsFirst != null) {
       setTried(true);
       setRefused({});
-      focus(first === 'mobile' && found.mobile === 'noCountry' ? 'country' : first);
+      setNeedsRefused({});
+      opened.openFailing(needsFound);
+      if (first != null)
+        focus(first === 'mobile' && found.mobile === 'noCountry' ? 'country' : first);
+      else if (needsFirst != null) focus(needsFirst);
       return;
     }
     if (!dirty) {
@@ -1088,11 +1236,12 @@ function EditForm({
           {t('guestList.notSaved')}
         </p>
       )}
+      <NeedsRefused count={needsFailingCount(needsProblems)} />
       {conflict != null && (
         <Amber title={t('guestList.conflict')} focusKey="conflict">
           <dl className="gs-differ">
-            {conflict.differs.map((row) => (
-              <div key={row.field} className="gs-differ-field">
+            {conflict.differs.map((row, at) => (
+              <div key={`${row.field}-${at}`} className="gs-differ-field">
                 <dt>{row.field}</dt>
                 <dd>
                   <span className="gs-who">{t('guestList.theirs')}</span>
@@ -1211,11 +1360,21 @@ function EditForm({
           chose={host.chosenLanguage}
           onChange={(language) => change({ language })}
         />
+        <NeedsSection
+          title={t('guestNeeds.needs')}
+          needs={values.needs}
+          problems={needsProblems.guest ?? {}}
+          open={opened.open.has('guest')}
+          focusKey="needs"
+          onOpen={(open) => opened.toggle('guest', open)}
+          onChange={(needs) => change({ needs })}
+        />
         <EditCompanions
           host={values.fullName.trim() === '' ? host.fullName : values.fullName.trim()}
           companions={values.companions}
           said={said}
           words={words}
+          needs={{ problems: needsProblems, open: opened.open, toggle: opened.toggle }}
           focus={focus}
           onSaid={setSaid}
           onChange={(companions) => change({ companions })}
@@ -1251,6 +1410,7 @@ function EditCompanions({
   companions,
   said,
   words,
+  needs,
   focus,
   onSaid,
   onChange,
@@ -1259,6 +1419,7 @@ function EditCompanions({
   companions: Values['companions'];
   said: string | null;
   words: (key: string) => string | undefined;
+  needs: CompanionNeeds;
   focus: (...keys: string[]) => void;
   onSaid: (said: string) => void;
   onChange: (companions: Values['companions']) => void;
@@ -1280,7 +1441,7 @@ function EditCompanions({
         onStep={(kept, added) =>
           onChange([
             ...kept.flatMap((at) => companions[at] ?? []),
-            ...Array.from({ length: added }, () => ({ id: null, name: '' })),
+            ...Array.from({ length: added }, () => ({ id: null, name: '', needs: NO_NEEDS })),
           ])
         }
       />
@@ -1290,23 +1451,34 @@ function EditCompanions({
         const shown = companion.name.trim() === '' ? placeholder(at) : companion.name.trim();
 
         return (
-          <CompanionField
-            key={companion.id ?? `new-${at}`}
-            at={at}
-            name={companion.name}
-            host={host}
-            label={label}
-            placeholder={placeholder(at)}
-            error={words(`companion-${at}`)}
-            onChange={(name) =>
-              onChange(companions.map((each, index) => (index === at ? { ...each, name } : each)))
-            }
-            onRemove={() => {
-              onChange(companions.filter((_, index) => index !== at));
-              onSaid(t('guestList.removed', { name: shown }));
-              focus(`companion-${at + 1 < count ? at : at - 1}`, 'places');
-            }}
-          />
+          <div key={companion.id ?? `new-${at}`} className="gs-companion-block">
+            <CompanionField
+              at={at}
+              name={companion.name}
+              host={host}
+              label={label}
+              placeholder={placeholder(at)}
+              error={words(`companion-${at}`)}
+              onChange={(name) =>
+                onChange(companions.map((each, index) => (index === at ? { ...each, name } : each)))
+              }
+              onRemove={() => {
+                onChange(companions.filter((_, index) => index !== at));
+                onSaid(t('guestList.removed', { name: shown }));
+                focus(`companion-${at + 1 < count ? at : at - 1}`, 'places');
+              }}
+            />
+            <CompanionNeedsSection
+              at={at}
+              typed={companion.needs}
+              needs={needs}
+              onChange={(next) =>
+                onChange(
+                  companions.map((each, index) => (index === at ? { ...each, needs: next } : each)),
+                )
+              }
+            />
+          </div>
         );
       })}
       {unseen > 0 && (
