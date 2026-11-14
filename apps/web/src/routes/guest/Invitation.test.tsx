@@ -469,6 +469,20 @@ describe('answering', () => {
 
     expect(screen.getByRole('button', { name: 'Type their name' })).toBeDefined();
     expect(screen.getByLabelText('Their name').getAttribute('aria-invalid')).toBe('true');
+    expect(screen.getByLabelText('Their name')).toBe(document.activeElement);
+  });
+
+  it('keeps Not sure yet on the cover while the guest changes to Coming with companions', async () => {
+    api({
+      '/api/guest-links/page': [{ status: 200, body: answered('maybe', undefined, 2, [CHIDI]) }],
+    });
+    open();
+
+    fireEvent.click(await screen.findByRole('button', { name: 'Change my answer' }));
+    fireEvent.click(screen.getByRole('button', { name: /Yes, I’ll be there/ }));
+
+    expect(screen.getByRole('heading', { name: 'Who’s coming with you?' })).toBeDefined();
+    expect(document.querySelector('.gp-tag')?.textContent).toBe('?Not sure yet');
   });
 
   it('sends who fills the places with Send my answer: a toggle, a rename and a name added', async () => {

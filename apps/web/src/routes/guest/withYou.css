@@ -137,12 +137,6 @@
   box-shadow: inset 0 0 0 2px var(--colorBroken);
 }
 
-:where(.guest-page) .gp-with-small {
-  align-self: flex-start;
-  width: auto;
-  height: 44px;
-}
-
 :where(.guest-page) .gp-with > .gp-filled {
   margin-top: 12px;
 }
