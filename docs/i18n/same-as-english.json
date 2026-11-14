@@ -110,7 +110,9 @@
     "mobile:eventsSearch.type",
     "web:guestList.invitation",
     "web:guest.calendarApple",
-    "web:guestList.how.whatsapp"
+    "web:guestList.how.whatsapp",
+    "web:guestNeeds.dietName.halal",
+    "web:guestNeeds.allergen.lupin"
   ],
   "pt": [
     "web:nav.menu",
