@@ -1,4 +1,4 @@
-import type { Guest } from '@soirely/api-client';
+import { ApiError, GUEST_ANSWERS, type Guest, type GuestAnswer } from '@soirely/api-client';
 import { type Translate } from './eventWords.ts';
 import { type ReplyWord, blank, namedCount, shownReply } from './guestForm.ts';
 import { type Person } from './guestView.ts';
@@ -17,6 +17,41 @@ export function replyDate(repliedAt: string, timeZone: string, locale: string): 
   return new Intl.DateTimeFormat(locale, { month: 'short', day: 'numeric', timeZone }).format(
     new Date(repliedAt),
   );
+}
+
+/** What a 409 `guest_replied` on Mark as not invited names: the reply that keeps them invited and when (sc-3788). */
+export function repliedRefusal(error: unknown): { reply: GuestAnswer; at: string } | null {
+  if (!(error instanceof ApiError) || !error.is('guest_replied')) return null;
+  const reply = GUEST_ANSWERS.find((known) => known === error.problem.reply);
+  const at = error.problem.repliedAt;
+
+  return reply == null || at == null ? null : { reply, at };
+}
+
+/** The guest's one Invitation line (sc-3788): by hand, by Soirely's message, or when they replied; null while Not yet invited. */
+export function invitationLine(
+  t: Translate,
+  guest: Pick<Guest, 'invitation'>,
+  timeZone: string,
+  locale: string,
+): string | null {
+  const invitation = guest.invitation;
+  if (invitation == null) return null;
+  const date = replyDate(invitation.at, timeZone, locale);
+
+  switch (invitation.how) {
+    case 'soirelyMessage':
+      return t('guestList.invitedByMessage', { date });
+    case 'reply':
+      return t('guestList.invitedWhenReplied', { date });
+    default: {
+      const how = t(`guestList.howMid.${invitation.how}`);
+
+      return invitation.by == null
+        ? t('guestList.invitedHow', { how, date })
+        : t('guestList.invitedBy', { name: invitation.by, how, date });
+    }
+  }
 }
 
 /** A companion left blank is "Guest of <host>", numbered from the second blank one. */
