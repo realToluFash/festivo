@@ -1,0 +1,5 @@
+# sc-30413: turn the device to ${O} (PORTRAIT or LANDSCAPE_LEFT) before the checks after it in a batch.
+appId: host.exp.Exponent
+---
+- setOrientation: ${O}
+- waitForAnimationToEnd: { timeout: 4000 }

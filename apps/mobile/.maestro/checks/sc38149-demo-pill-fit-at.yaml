@@ -1,0 +1,15 @@
+# The pill-fit demo at ?${DEMO_QS}, scrolled to the invitation's answers. sc-38149.
+appId: host.exp.Exponent
+---
+- openLink: ${METRO_URL}/--/demo/pill-fit?${DEMO_QS}
+- waitForAnimationToEnd:
+    timeout: 5000
+- takeScreenshot: top
+- scrollUntilVisible:
+    element:
+      text: 'Celebraciones Alameda'
+    centerElement: true
+    timeout: 10000
+- waitForAnimationToEnd:
+    timeout: 2000
+- takeScreenshot: answers

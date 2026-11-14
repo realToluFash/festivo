@@ -1,0 +1,123 @@
+/* sc-3775: the group chips, the Group combobox and the Groups column, in Guests A at a desk. */
+.gg-chips {
+  margin-top: calc(-1 * var(--spaceXs));
+}
+
+.gg-field {
+  position: relative;
+}
+
+.gg-combo {
+  gap: var(--spaceSm);
+}
+
+.gg-options {
+  display: flex;
+  flex-direction: column;
+  max-height: 264px;
+  margin: 0;
+  padding: var(--spaceXs);
+  overflow-y: auto;
+  border-radius: var(--radiusInset);
+  background: var(--colorCard);
+  box-shadow: var(--shadowPopover);
+  list-style: none;
+}
+
+.gg-option {
+  display: flex;
+  flex: none;
+  align-items: center;
+  gap: var(--spaceSm);
+  min-height: var(--sizeHit);
+  padding: var(--spaceXs) var(--spaceMd);
+  border-radius: var(--radiusRow);
+  font: 500 15px/1.3 var(--fontFamily);
+  overflow-wrap: anywhere;
+  cursor: pointer;
+}
+
+.gg-option.is-active {
+  background: var(--colorRowHover);
+}
+
+.gg-option.is-create {
+  color: var(--colorAccent);
+  font-weight: 600;
+}
+
+.gg-new {
+  display: flex;
+  flex-direction: column;
+  gap: var(--spaceMd);
+}
+
+.gg-create {
+  align-self: flex-start;
+}
+
+.gg-read-only {
+  margin: 0;
+}
+
+.gg-rows {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.gg-row {
+  display: flex;
+  align-items: center;
+  gap: var(--spaceMd);
+  min-height: 64px;
+  padding: var(--spaceSm) 0;
+  border-bottom: 1px solid var(--deskHairline);
+}
+
+.gg-row > .desk-row-words {
+  flex: 1;
+  min-width: 0;
+  overflow-wrap: anywhere;
+}
+
+.gg-row.is-none {
+  color: var(--colorInkSecondary);
+}
+
+.gg-row.is-renaming {
+  display: block;
+}
+
+.gg-rename {
+  display: flex;
+  flex-direction: column;
+  gap: var(--spaceSm);
+}
+
+.gg-row-acts {
+  display: flex;
+  flex: none;
+  align-items: center;
+  gap: var(--spaceMd);
+}
+
+.gg-rename .gg-row-acts {
+  justify-content: flex-end;
+}
+
+.gg-adds-up {
+  margin: var(--spaceMd) 0 0;
+}
+
+.gg-none h3 {
+  margin: 0;
+  font: 700 17px/1.3 var(--fontFamily);
+}
+
+/* The guest's group beside their name on the card, as their reply sits. */
+.gs-row-tags .gg-tag {
+  max-width: 160px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}

@@ -1,0 +1,8 @@
+# sc-23361 regression: Home's header has no back.
+appId: host.exp.Exponent
+---
+- runFlow: ../return-home.yaml
+- waitForAnimationToEnd
+- assertNotVisible:
+    id: 'frame.back'
+- takeScreenshot: home

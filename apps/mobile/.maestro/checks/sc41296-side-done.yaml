@@ -1,0 +1,19 @@
+# sc-41296: On the phone on its side, Set a new password lands on Your organisation with the keys up and Password changed stepped aside; the soft keys' Done lowers the keys with nothing focused, and Password changed comes back within its 10 seconds. Pass METRO_URL and TOKEN, a reset token for an account with no organisation, invitation or offer.
+appId: host.exp.Exponent
+---
+- runFlow: ../sign-out.yaml
+- setOrientation: LANDSCAPE_LEFT
+- openLink: ${METRO_URL}/--/reset-password?token=${TOKEN}
+- extendedWaitUntil: { visible: { id: 'recovery.password' }, timeout: 30000 }
+- tapOn: { id: 'recovery.password' }
+- inputText: 'a-brand-new-password-41296'
+- hideKeyboard
+- tapOn: { id: 'recovery.save' }
+- extendedWaitUntil: { visible: { id: 'completeProfile.organisation' }, timeout: 30000 }
+- takeScreenshot: done-01-landed-aside
+- tapOn: { point: '93%,83%' }
+- extendedWaitUntil: { visible: { id: 'never.there' }, timeout: 1500, optional: true }
+- takeScreenshot: done-02-keys-down
+- assertVisible: '{{t:any:recovery.changed}}'
+- setOrientation: PORTRAIT
+- runFlow: ../sign-out-from-complete-profile.yaml
