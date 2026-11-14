@@ -110,5 +110,8 @@ export function stripTitle(name: string): string {
  * organiser scanning for it concludes the guest is missing.
  */
 export function compareGuestNames(a: GuestLike, b: GuestLike): number {
-  return guestFullName(a).localeCompare(guestFullName(b), undefined, { sensitivity: 'base' });
+  return nameOrder.compare(guestFullName(a), guestFullName(b));
 }
+
+/** `localeCompare` with options builds a collator on every call, which costs a 2,000-guest sort most of a keystroke (sc-3772). */
+const nameOrder = new Intl.Collator(undefined, { sensitivity: 'base' });
