@@ -17,13 +17,22 @@ import {
   type Standing,
   countsOf,
   eventAllows,
+  invitationLine,
   repliedRefusal,
   replyDate,
   roleHolds,
   rowWords,
   viewOf,
 } from '@soirely/domain';
-import { type ReactNode, useCallback, useEffect, useRef, useState } from 'react';
+import {
+  type ReactNode,
+  type RefObject,
+  useCallback,
+  useEffect,
+  useLayoutEffect,
+  useRef,
+  useState,
+} from 'react';
 import {
   Pressable,
   RefreshControl,
@@ -38,19 +47,21 @@ import { useTranslation } from 'react-i18next';
 import { api } from '../api.ts';
 import { followReadingAgain } from '../followTopic.ts';
 import { dateLocale } from '../i18n/index.ts';
+import type { Shown } from '../kit/eventsList.ts';
+import { sidebarCardOf } from '../kit/eventTop.ts';
 import { filterChoices, markOf } from '../kit/guestRows.ts';
 import { type ScreenOffline, useHandOffline, useOffline } from '../offline.ts';
 import { useSignedIn } from '../signedIn.ts';
 import { tokens } from '../theme/tokens.ts';
-import { PrimaryButton } from './Buttons.tsx';
 import { SearchField } from './EventsSearch.tsx';
 import { Glyph } from './Glyph.tsx';
 import { GuestDetails, type GuestNotice, type GuestPane } from './GuestDetails.tsx';
 import { GuestForm, type GuestFormMode } from './GuestForm.tsx';
+import { GuestsCard } from './GuestsCard.tsx';
 import { type MarkRefusal, MarkInvited } from './GuestInvitation.tsx';
 import { DraftRow } from './MakeLive.tsx';
 import type { ScreenReaderTarget } from './screenReaderFocus.ts';
-import { useLayout } from '../layout/useLayout.ts';
+import { type LayoutKind, useLayout } from '../layout/useLayout.ts';
 import { type ListAndPageSpacing, ListAndPage, useListAndPageLayout } from './ListAndPage.tsx';
 import { LIST_EDGES } from './listFrame.ts';
 import { useReadOut } from './ReadOut.tsx';
@@ -78,12 +89,20 @@ const CHOICE_KEY: Record<Choice, string> = {
   notYetInvited: REPLY_KEY.notYetInvited,
 };
 
+/** What Guests puts in the frame's top: Add guest at the end of the title row, and on a phone the ‹ back to the list from a guest's details. */
+export interface GuestsTop {
+  add: (() => void) | null;
+  back: (() => void) | null;
+}
+
 /** An event's Guests in the app (sc-3785): the list to find and read a guest, and the small edits; planning at scale stays on the web. */
 export function EventGuests({
   event,
   phase,
   now,
   heading,
+  addRef,
+  onTop,
   onOffline,
   onEventChange,
   onEventStale,
@@ -92,6 +111,9 @@ export function EventGuests({
   phase: EventPhase | null;
   now: Date;
   heading: ReactNode;
+  /** The frame's Add guest, where focus goes back once the form closes. */
+  addRef: RefObject<ViewInstance | null>;
+  onTop: (top: GuestsTop) => void;
   onOffline: (offline: ScreenOffline) => void;
   onEventChange: (event: OrganisationEvent) => void;
   /** A refusal said the event's phase moved on, so the event is read again for its line. */
@@ -120,7 +142,7 @@ export function EventGuests({
   const [markOpen, setMarkOpen] = useState(false);
   const title = useRef<TextHandle>(null);
   const guestName = useRef<TextHandle>(null);
-  const addButton = useRef<ViewInstance>(null);
+  const emptyAdd = useRef<ViewInstance>(null);
   const editButton = useRef<ViewInstance>(null);
   const markButton = useRef<ViewInstance>(null);
   const unmarkButton = useRef<ViewInstance>(null);
@@ -209,11 +231,11 @@ export function EventGuests({
     setOpen(guestId);
     readGuest(guestId, false);
   };
-  const closeGuest = () => {
+  const closeGuest = useCallback(() => {
     setOpen(null);
     setSaved(false);
     setNotice(null);
-  };
+  }, []);
   const showGuest = (tagged: TaggedGuest) => {
     tags.current.set(tagged.guest.id, tagged);
     setPane({ kind: 'guest', guest: tagged.guest });
@@ -289,14 +311,24 @@ export function EventGuests({
         },
       );
   };
-  const openForm = (mode: GuestFormMode, from: ViewInstance | null) => {
+  const openForm = useCallback((mode: GuestFormMode, from: ViewInstance | null) => {
     opener.current = from;
     setRound((was) => was + 1);
     setForm(mode);
-  };
+  }, []);
+  const add = useCallback(() => openForm({ kind: 'add' }, addRef.current), [openForm, addRef]);
 
   const counts = loaded ? countsOf(load.headcount.counts) : null;
   const empty = loaded && load.list.guests.length === 0;
+  const adds = manages && loaded && !empty;
+  const guestInFront = open != null && kind === 'phone';
+  const shown = sidebarCardOf(event, phase);
+
+  useLayoutEffect(() => {
+    onTop({ add: adds ? add : null, back: guestInFront ? closeGuest : null });
+  }, [onTop, adds, add, guestInFront, closeGuest]);
+  useLayoutEffect(() => () => onTop({ add: null, back: null }), [onTop]);
+
   const timeZone = event.timeZone;
   const locale = dateLocale();
 
@@ -320,18 +352,24 @@ export function EventGuests({
         />
       </View>
     ) : empty || counts == null ? (
-      <View style={styles.empty} testID="guests.empty">
-        <Text size={20} weight="bold" accessibilityRole="header">
-          {t('guestList.noGuests')}
-        </Text>
-        {manages && (
-          <PrimaryButton
-            ref={addButton}
-            label={t('guestList.addGuest')}
-            onPress={() => openForm({ kind: 'add' }, addButton.current)}
-            testID="guests.add"
-          />
-        )}
+      <View testID="guests.empty">
+        <GuestsCard
+          kind={kind}
+          event={shown}
+          says={t('guestList.noGuests')}
+          heading
+          line={null}
+          step={
+            manages
+              ? {
+                  label: t('guestList.addGuest'),
+                  ref: emptyAdd,
+                  onPress: () => openForm({ kind: 'add' }, emptyAdd.current),
+                  testID: 'guests.add',
+                }
+              : null
+          }
+        />
       </View>
     ) : (
       <GuestRows
@@ -345,10 +383,9 @@ export function EventGuests({
         onShowAll={(standing) => setExpanded((was) => new Set([...was, standing]))}
         open={open}
         onOpen={openGuest}
-        manages={manages}
         added={added}
-        addRef={addButton}
-        onAdd={() => openForm({ kind: 'add' }, addButton.current)}
+        card={shown}
+        kind={kind}
         searchRef={searchField}
         timeZone={timeZone}
         locale={locale}
@@ -370,6 +407,8 @@ export function EventGuests({
       </View>
     ) : (
       <GuestDetails
+        kind={kind}
+        event={shown}
         pane={pane}
         manages={manages}
         timeZone={timeZone}
@@ -458,10 +497,9 @@ function GuestRows({
   onShowAll,
   open,
   onOpen,
-  manages,
   added,
-  addRef,
-  onAdd,
+  card,
+  kind,
   searchRef,
   timeZone,
   locale,
@@ -476,10 +514,9 @@ function GuestRows({
   onShowAll: (standing: Standing) => void;
   open: string | null;
   onOpen: (guestId: string) => void;
-  manages: boolean;
   added: string | null;
-  addRef: React.RefObject<ViewInstance | null>;
-  onAdd: () => void;
+  card: Shown | null;
+  kind: LayoutKind;
   searchRef: React.RefObject<TextInputInstance | null>;
   timeZone: string;
   locale: string;
@@ -487,6 +524,7 @@ function GuestRows({
   const { t } = useTranslation();
   const { view, shown } = viewOf(list.guests, counts, choice, typed, expanded);
   const looking = choice !== 'all' || typed.trim() !== '';
+  const noReply = choice === 'noReply';
   const clear = () => {
     onTyped('');
     onChoice('all');
@@ -499,7 +537,14 @@ function GuestRows({
           invitedWords: t('guestList.countInvited', { count: counts.invited }),
         });
   const row = (person: Person, indent: boolean) => {
-    const { name, line } = rowWords(t, person, indent, timeZone, locale, false);
+    const { name, line } = rowWords(t, person, indent, timeZone, locale, {
+      places: noReply ? null : 'counted',
+      contact: false,
+      invitation:
+        noReply && person.companion == null
+          ? invitationLine(t, person.guest, timeZone, locale)
+          : null,
+    });
     const selected = open === person.guest.id && person.companion == null;
     const item = (
       <Row
@@ -526,27 +571,15 @@ function GuestRows({
   return (
     <View style={styles.rows}>
       {added != null && <AddedLine name={added} />}
-      <View style={styles.countRow}>
-        <View style={styles.grow}>
-          <Text size={17} weight="bold" style={styles.figures} testID="guests.count">
-            {says}
-          </Text>
-          {counts.invited > 0 && (
-            <Text size={15} weight="medium" style={[styles.secondary, styles.figures]}>
-              {haventLine(t, counts)}
-            </Text>
-          )}
-        </View>
-        {manages && (
-          <TextAction
-            ref={addRef}
-            label={t('guestList.addGuest')}
-            glyph="plus"
-            onPress={onAdd}
-            testID="guests.add"
-          />
-        )}
-      </View>
+      {typed.trim() === '' && (
+        <GuestsCard
+          kind={kind}
+          event={card}
+          says={says}
+          line={counts.invited > 0 ? haventLine(t, counts) : null}
+          step={null}
+        />
+      )}
       <View style={styles.searchRow}>
         <SearchField
           typed={typed}
@@ -799,13 +832,11 @@ const styles = StyleSheet.create({
   accent: { color: tokens.colorAccentText },
   figures: { fontVariant: ['tabular-nums'] },
   rows: { gap: LIST_GAP },
-  countRow: { flexDirection: 'row', alignItems: 'center', gap: tokens.spaceSm },
   searchRow: { flexDirection: 'row', alignItems: 'center', gap: 10 },
   shownRow: { flexDirection: 'row', alignItems: 'center', gap: tokens.spaceSm },
   indent: { paddingLeft: 40 },
   groupHead: { minHeight: tokens.sizeHit, flexDirection: 'row', alignItems: 'center' },
   headTitle: { letterSpacing: -0.18, lineHeight: 18 * 1.25 },
-  empty: { gap: tokens.spaceLg, paddingTop: tokens.spaceXs, alignItems: 'flex-start' },
   pick: { paddingTop: 120, alignItems: 'center' },
   added: { flexDirection: 'row', alignItems: 'center', gap: tokens.spaceXs },
   noMatch: { gap: 6, paddingTop: tokens.spaceXs },

@@ -1188,15 +1188,13 @@ function RowsFrom({
     <>
       {rows.slice(from, to).map(({ person, indent }) => {
         const { guest, companion } = person;
-        const { name, line } = rowWords(
-          t,
-          person,
-          indent,
-          timeZone,
-          dateLocale(),
-          choice !== 'noReply',
-          companion == null ? invitationLine(t, guest, timeZone, dateLocale()) : null,
-        );
+        const noReply = choice === 'noReply';
+        const { name, line } = rowWords(t, person, indent, timeZone, dateLocale(), {
+          places: noReply ? null : 'named',
+          contact: true,
+          invitation:
+            noReply && companion == null ? invitationLine(t, guest, timeZone, dateLocale()) : null,
+        });
 
         if (companion == null)
           return (
