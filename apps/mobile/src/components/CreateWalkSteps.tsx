@@ -181,7 +181,6 @@ export function NameStep({
   onTyped,
   onContinue,
   quiet = false,
-  onTaken,
   onLeft,
 }: StepProps & {
   field: RefObject<TextInputInstance | null>;
@@ -189,7 +188,6 @@ export function NameStep({
   onContinue: () => void;
   /** Hidden from the screen reader, so taking input focus says nothing. */
   quiet?: boolean;
-  onTaken?: (() => void) | undefined;
   onLeft?: (() => void) | undefined;
 }) {
   const { t } = useTranslation();
@@ -253,7 +251,6 @@ export function NameStep({
             onSubmitEditing={onContinue}
             onFocus={() => {
               setFocused(true);
-              onTaken?.();
             }}
             onBlur={() => {
               setFocused(false);
