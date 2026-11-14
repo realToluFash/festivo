@@ -116,8 +116,8 @@ export function GuestPage({
   replies: 'closed' | 'reopened' | null;
   replaced: boolean;
   notReplaced: boolean;
-  /** sc-3788: Mark as not invited landed, or the guest replied first (409). */
-  unmarked: 'done' | 'refused' | null;
+  /** sc-3788: Mark as not invited landed, the guest replied first (409), or it failed (sc-46879). */
+  unmarked: 'done' | 'refused' | 'notSaved' | null;
   status: string | null;
   /** The event's Reply by date, or none (sc-3780). */
   replyBy: string | null;
@@ -162,6 +162,7 @@ export function GuestPage({
         nameRef={nameRef}
       />
       {notReplaced && <AlertLine text={W.notReplaced} />}
+      {unmarked === 'notSaved' && <AlertLine text={W.unmarkNotSaved} />}
       {unmarked === 'refused' && g.when != null && (
         <AlertLine text={say.unmarkRefused(g.name, REPLY_WORD[kind], dayWords(g.when, locale))} />
       )}
