@@ -379,6 +379,12 @@
     "typeHint": "Tel qu’il est écrit, majuscules comprises. L’apostrophe droite comme l’apostrophe courbe sont acceptées.",
     "mismatch": "Saisissez {{event}} exactement comme indiqué pour le supprimer.",
     "keep": "Le conserver",
+    "refusedCallOffTitle": "Call off {{event}} first?",
+    "refusedEndTitle": "End {{event}} first?",
+    "refusedCallOffBody": "Guests have been invited to this event, or staff briefed for it, so it can be deleted only once it is finished. Calling it off is how they hear it will not go ahead.",
+    "refusedEndBody": "Guests have been invited to this event, or staff briefed for it, so it can be deleted only once it is finished. End it first: it will then be over for everybody.",
+    "refusedAskCallOff": "Ask someone who can change {{area}} in {{organisation}} to call it off.",
+    "refusedAskEnd": "Ask someone who can change {{area}} in {{organisation}} to end it.",
     "delete": "Supprimer",
     "deleted": "L’événement {{event}} a été supprimé.",
     "deleting": "Suppression…"

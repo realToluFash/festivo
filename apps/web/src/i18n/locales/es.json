@@ -379,6 +379,12 @@
     "typeHint": "Tal como está escrito, con las mayúsculas. Sirve tanto el apóstrofo recto como el curvo.",
     "mismatch": "Escriba {{event}} exactamente como aparece para eliminarlo.",
     "keep": "Conservarlo",
+    "refusedCallOffTitle": "Call off {{event}} first?",
+    "refusedEndTitle": "End {{event}} first?",
+    "refusedCallOffBody": "Guests have been invited to this event, or staff briefed for it, so it can be deleted only once it is finished. Calling it off is how they hear it will not go ahead.",
+    "refusedEndBody": "Guests have been invited to this event, or staff briefed for it, so it can be deleted only once it is finished. End it first: it will then be over for everybody.",
+    "refusedAskCallOff": "Ask someone who can change {{area}} in {{organisation}} to call it off.",
+    "refusedAskEnd": "Ask someone who can change {{area}} in {{organisation}} to end it.",
     "delete": "Eliminar",
     "deleted": "Se ha eliminado {{event}}.",
     "deleting": "Eliminando…"

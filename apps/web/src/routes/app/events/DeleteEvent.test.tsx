@@ -2,6 +2,8 @@ import { act, fireEvent, render, screen, waitFor, within } from '@testing-librar
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import { RouterProvider, createMemoryRouter } from 'react-router';
 
+import { serverClock } from '@soirely/domain';
+
 import { __setSessionState, type Session } from '../../../session.ts';
 import { OWNER_PERMISSIONS, membership } from '../../../test-memberships.ts';
 import { routes } from '../../index.tsx';
@@ -77,10 +79,15 @@ function json(body: unknown, status = 200): Response {
   return new Response(JSON.stringify(body), { status, headers: { ETag: '"1"' } });
 }
 
-function deletion(needsName: boolean, people = 0): Response {
+function deletion(
+  needsName: boolean,
+  people = 0,
+  deleteRefusedBecause: string | null = null,
+): Response {
   return json({
     needsName,
     people,
+    deleteRefusedBecause,
     restoreClosesAt: '2026-11-25T13:20:00+00:00',
     restoreCloses: 'Wednesday, Nov 25 at 14:20 WAT',
   });
@@ -524,3 +531,217 @@ describe('Delete an event (sc-3592)', () => {
 function spaced(text: string | null | undefined): string {
   return (text ?? '').replace(/\s/g, ' ');
 }
+
+describe('Delete event refused while a guest is Invited (sc-14445)', () => {
+  const READ = OWNER_PERMISSIONS.filter((permission) => permission !== 'events.manage');
+  const HAPPENING = { startsAt: '2020-11-14T16:00:00+01:00', phase: 'happening_now' };
+  const BEFORE_BODY =
+    'Guests have been invited to this event, or staff briefed for it, so it can be deleted only once it is finished. Calling it off is how they hear it will not go ahead.';
+  const FROM_BODY =
+    'Guests have been invited to this event, or staff briefed for it, so it can be deleted only once it is finished. End it first: it will then be over for everybody.';
+
+  function clockAt(device: string): void {
+    vi.useFakeTimers({ shouldAdvanceTime: true, toFake: ['Date', 'setInterval', 'clearInterval'] });
+    vi.setSystemTime(new Date(device));
+    serverClock.observe(new Date(device).toUTCString());
+  }
+
+  afterEach(() => {
+    vi.useRealTimers();
+    serverClock.observe(new Date().toUTCString());
+  });
+
+  async function refused(shown: ReturnType<typeof event>, title: string) {
+    const { sent } = await onTheEvent(shown, {
+      'GET /api/events/ev_1/deletion': () => deletion(true, 3, 'guestsInvited'),
+    });
+    fireEvent.click(screen.getByRole('button', { name: 'Delete event…' }));
+
+    return { sent, dialog: await screen.findByRole('alertdialog', { name: title }) };
+  }
+
+  function callOffFirst(): Response {
+    return json(
+      {
+        type: 'https://soirely.com/errors/event_call_off_first',
+        title: 'This event cannot be deleted until it is finished.',
+        detail:
+          'Guests have been invited to it, or staff briefed for it. Call it off or end it first.',
+        status: 409,
+      },
+      409,
+    );
+  }
+
+  it('opens on Call off first before the start, with no name to type and focus on Keep it', async () => {
+    signedIn();
+    const { sent, dialog } = await refused(live(), 'Call off Adaeze and Tunde first?');
+
+    expect(within(dialog).getByText(BEFORE_BODY)).toBeDefined();
+    expect(within(dialog).queryByRole('textbox')).toBeNull();
+    expect(
+      within(dialog)
+        .getAllByRole('button')
+        .map((button) => button.textContent),
+    ).toEqual(['Keep it', 'Call off']);
+    expect(within(dialog).getByRole('button', { name: 'Call off' }).className).toContain('is-red');
+    await waitFor(() =>
+      expect(document.activeElement).toBe(within(dialog).getByRole('button', { name: 'Keep it' })),
+    );
+    expect(deletes(sent)).toBe(false);
+  });
+
+  it('opens on End first from the start', async () => {
+    signedIn();
+    const { dialog } = await refused(live(HAPPENING), 'End Adaeze and Tunde first?');
+
+    expect(within(dialog).getByText(FROM_BODY)).toBeDefined();
+    expect(within(dialog).getByRole('button', { name: 'End now' })).toBeDefined();
+  });
+
+  it('turns Call off first into End first at the start, without a reload', async () => {
+    clockAt('2030-11-14T14:59:55Z');
+    signedIn();
+    const { sent } = await refused(live(), 'Call off Adaeze and Tunde first?');
+
+    await act(() => vi.advanceTimersByTimeAsync(15_000));
+
+    const dialog = screen.getByRole('alertdialog', { name: 'End Adaeze and Tunde first?' });
+    expect(within(dialog).getByRole('button', { name: 'End now' })).toBeDefined();
+    expect(sent.filter(({ line }) => line === 'GET /api/events/ev_1')).toHaveLength(1);
+  });
+
+  it('refuses a Paused event as a Live one', async () => {
+    signedIn();
+    await refused(
+      live({ status: 'paused', phase: 'paused', pausedAt: '2026-10-27T10:00:00+00:00' }),
+      'Call off Adaeze and Tunde first?',
+    );
+  });
+
+  it("opens Call off's own question a second before the start, and leaves the host on the page", async () => {
+    clockAt('2030-11-14T14:59:59Z');
+    signedIn();
+    const { sent, dialog } = await refused(live(), 'Call off Adaeze and Tunde first?');
+
+    fireEvent.click(within(dialog).getByRole('button', { name: 'Call off' }));
+    const question = await screen.findByRole('dialog', { name: 'Call off Adaeze and Tunde?' });
+
+    expect(screen.queryByRole('alertdialog')).toBeNull();
+    fireEvent.click(within(question).getByRole('button', { name: 'Keep it on' }));
+    await waitFor(() =>
+      expect(document.activeElement).toBe(screen.getByRole('button', { name: 'Call off…' })),
+    );
+    expect(screen.getByRole('heading', { level: 1, name: 'Adaeze and Tunde' })).toBeDefined();
+    expect(sent.map(({ line }) => line)).not.toContain('POST /api/events/ev_1/end');
+    expect(deletes(sent)).toBe(false);
+  });
+
+  it("opens End now's own question at the start, and nothing carries on into the delete", async () => {
+    clockAt('2030-11-14T15:00:00Z');
+    signedIn();
+    const { sent, dialog } = await refused(live(), 'End Adaeze and Tunde first?');
+
+    fireEvent.click(within(dialog).getByRole('button', { name: 'End now' }));
+    const question = await screen.findByRole('dialog', { name: 'End Adaeze and Tunde now?' });
+    fireEvent.click(within(question).getByRole('button', { name: 'End now' }));
+
+    await waitFor(() =>
+      expect(sent.map(({ line }) => line)).toContain('POST /api/events/ev_1/end'),
+    );
+    expect(screen.getByRole('heading', { level: 1, name: 'Adaeze and Tunde' })).toBeDefined();
+    expect(deletes(sent)).toBe(false);
+  });
+
+  it.each([
+    ['before the start', live(), 'Call off Adaeze and Tunde first?', 'to call it off.'],
+    ['from the start', live(HAPPENING), 'End Adaeze and Tunde first?', 'to end it.'],
+  ])(
+    'shows somebody with Events at Read who can, and Keep it alone, %s',
+    async (_, shown, title, ending) => {
+      signedIn(membership({ ...IRE, permissions: READ }));
+      const { dialog } = await refused({ ...shown, permissions: READ }, title);
+
+      expect(
+        within(dialog).getByText(`Ask someone who can change Events in Ìrè Events ${ending}`),
+      ).toBeDefined();
+      expect(
+        within(dialog)
+          .getAllByRole('button')
+          .map((button) => button.textContent),
+      ).toEqual(['Keep it']);
+    },
+  );
+
+  it.each([
+    ['the host', OWNER_PERMISSIONS, ['Keep it', 'Call off']],
+    ['somebody with Events at Read', READ, ['Keep it']],
+  ])(
+    'turns the name screen into the refusal for %s when a guest was Invited since it opened',
+    async (_, permissions, buttons) => {
+      signedIn(membership({ ...IRE, permissions }));
+      await onTheEvent(live({ permissions }), {
+        'GET /api/events/ev_1/deletion': () => deletion(true),
+        'DELETE /api/events/ev_1': () => callOffFirst(),
+      });
+      fireEvent.click(screen.getByRole('button', { name: 'Delete event…' }));
+      const named = await screen.findByRole('alertdialog', { name: 'Delete Adaeze and Tunde?' });
+      fireEvent.change(within(named).getByLabelText('Type Adaeze and Tunde to delete it'), {
+        target: { value: 'Adaeze and Tunde' },
+      });
+
+      fireEvent.click(within(named).getByRole('button', { name: 'Delete' }));
+
+      const dialog = await screen.findByRole('alertdialog', {
+        name: 'Call off Adaeze and Tunde first?',
+      });
+      await waitFor(() =>
+        expect(document.activeElement).toBe(
+          within(dialog).getByRole('heading', { name: 'Call off Adaeze and Tunde first?' }),
+        ),
+      );
+      expect(
+        within(dialog)
+          .getAllByRole('button')
+          .map((button) => button.textContent),
+      ).toEqual(buttons);
+      expect(screen.queryByText(/Call it off or end it first/)).toBeNull();
+      expect(screen.queryByText('This event cannot be deleted until it is finished.')).toBeNull();
+    },
+  );
+
+  it('opens on the name screen once a page left open has crossed the end, without a reload', async () => {
+    clockAt('2030-11-15T00:59:55Z');
+    signedIn();
+    const { sent } = await onTheEvent(live(HAPPENING), {
+      'GET /api/events/ev_1/deletion': () => deletion(true, 3, 'guestsInvited'),
+    });
+
+    await act(() => vi.advanceTimersByTimeAsync(15_000));
+    fireEvent.click(screen.getByRole('button', { name: 'Delete event…' }));
+
+    await screen.findByRole('alertdialog', { name: 'Delete Adaeze and Tunde?' });
+    expect(sent.filter(({ line }) => line === 'GET /api/events/ev_1')).toHaveLength(1);
+  });
+
+  it.each([
+    [
+      'Keep it',
+      (dialog: HTMLElement) =>
+        fireEvent.click(within(dialog).getByRole('button', { name: 'Keep it' })),
+    ],
+    ['Escape', () => fireEvent.keyDown(document, { key: 'Escape' })],
+  ])('closes on %s, changes nothing and returns focus to Delete event', async (_, close) => {
+    signedIn();
+    const { sent, dialog } = await refused(live(), 'Call off Adaeze and Tunde first?');
+
+    close(dialog);
+
+    expect(screen.queryByRole('alertdialog')).toBeNull();
+    await waitFor(() =>
+      expect(document.activeElement).toBe(screen.getByRole('button', { name: 'Delete event…' })),
+    );
+    expect(sent.map(({ line }) => line)).not.toContain('POST /api/events/ev_1/end');
+    expect(deletes(sent)).toBe(false);
+  });
+});

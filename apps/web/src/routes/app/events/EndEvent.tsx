@@ -1,6 +1,6 @@
 import { type OrganisationEvent } from '@soirely/api-client';
 import { type EventPhase, endLabel } from '@soirely/domain';
-import { type RefObject } from 'react';
+import { type RefObject, useEffect } from 'react';
 import { useTranslation } from 'react-i18next';
 
 import { api } from '../../../api.ts';
@@ -16,6 +16,7 @@ export function EndButton({
   now,
   heading,
   inManage = false,
+  asks,
   onChange,
   onEnded,
 }: {
@@ -24,6 +25,8 @@ export function EndButton({
   now: Date;
   heading: RefObject<HTMLHeadingElement | null>;
   inManage?: boolean;
+  /** Opens this button's own confirmation from elsewhere, as Delete event's refusal does (sc-14445). */
+  asks?: RefObject<(() => void) | null>;
   onChange: (event: OrganisationEvent, tag: string) => void;
   onEnded: () => void;
 }) {
@@ -43,6 +46,15 @@ export function EndButton({
         : null,
   });
   const callOff = asking?.kind === 'confirm' && asking.label === 'callOff';
+
+  useEffect(() => {
+    if (asks == null) return;
+    asks.current = label == null ? null : () => ask({ label });
+
+    return () => {
+      asks.current = null;
+    };
+  });
 
   return (
     <>

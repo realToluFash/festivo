@@ -2810,10 +2810,25 @@ describe('invitations and members', () => {
     expect(await api.eventDeletion('event_1')).toEqual({
       needsName: true,
       people: 421,
+      deleteRefusedBecause: null,
       restoreClosesAt: '2026-11-16T13:20:00+00:00',
       restoreCloses: 'Monday 16 Nov at 14:20 WAT',
     });
     expect(sent[0]?.line).toBe('GET /api/events/event_1/deletion');
+  });
+
+  test('an event deletion preview says why it would be refused (sc-14445)', async () => {
+    const { api } = client(
+      json({
+        needsName: true,
+        people: 3,
+        deleteRefusedBecause: 'guestsInvited',
+        restoreClosesAt: '2026-11-16T13:20:00+00:00',
+        restoreCloses: 'Monday 16 Nov at 14:20 WAT',
+      }),
+    );
+
+    expect((await api.eventDeletion('event_1')).deleteRefusedBecause).toBe('guestsInvited');
   });
 
   test('an event delete sends the name as typed, and none for a Draft', async () => {
@@ -2850,6 +2865,7 @@ describe('events (sc-1486)', () => {
     pausedAt: null,
     phase: 'draft',
     concludedAt: null,
+    deleteRefusedBecause: null,
     createdAt: '2026-10-21T09:00:00+00:00',
     permissions: ['events.read', 'events.manage'],
   };
@@ -3183,6 +3199,7 @@ describe('events (sc-1486)', () => {
     ['a phase nobody declared', { phase: 'over' }],
     ['no phase', { phase: undefined }],
     ['a concludedAt that is not a string or null', { concludedAt: 1 }],
+    ['a deleteRefusedBecause that is not a string or null', { deleteRefusedBecause: true }],
     ['no permissions', { permissions: undefined }],
     ['a permission that is not a string', { permissions: [1] }],
   ])('an event with %s is an error', async (_, change) => {
