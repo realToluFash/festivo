@@ -1,15 +1,31 @@
 import type { Companion, Guest, HeadcountCounts } from '@soirely/api-client';
 import { compareGuestNames, nameKey, phoneMatches } from '@soirely/domain';
 
-/** Where a person stands, in the host's words: a companion is Held until their guest is Coming. */
-export type Standing = 'coming' | 'maybe' | 'noReply' | 'held' | 'notComing';
+import { shownReply } from './guestRows.ts';
+
+/** Where a person stands, in the host's words: a companion is Not yet invited with their guest, then Held until their guest is Coming. */
+export type Standing = 'coming' | 'maybe' | 'noReply' | 'notYetInvited' | 'held' | 'notComing';
 
 /** The filter menu's choices in its order (sc-3772); `all` is the default and is never written to the address. */
-export const CHOICES = ['all', 'coming', 'maybe', 'noReply', 'held', 'notComing'] as const;
+export const CHOICES = [
+  'all',
+  'coming',
+  'maybe',
+  'noReply',
+  'held',
+  'notComing',
+  'notYetInvited',
+] as const;
 export type Choice = (typeof CHOICES)[number];
 
 /** On All, the groups in the menu's order. A held companion is always under their guest, so Held has no group. */
-const GROUPS: readonly Standing[] = ['coming', 'maybe', 'noReply', 'notComing'];
+const GROUPS: readonly (Standing & Choice)[] = [
+  'coming',
+  'maybe',
+  'noReply',
+  'notComing',
+  'notYetInvited',
+];
 
 export const FIRST_ROWS = 2;
 
@@ -29,7 +45,7 @@ export function peopleOf(guests: readonly Guest[]): Person[] {
   return [...guests]
     .sort((a, b) => compareGuestNames({ name: a.fullName }, { name: b.fullName }))
     .flatMap((guest) => [
-      { id: guest.id, standing: guest.reply, guest, companion: null, at: 0 },
+      { id: guest.id, standing: shownReply(guest), guest, companion: null, at: 0 },
       ...guest.companions.map((companion, at) => ({
         id: companion.id,
         standing: companion.state,
@@ -57,6 +73,7 @@ export function countsOf(headcount: HeadcountCounts): Counts {
     noReply: headcount.awaitingReply,
     held: headcount.held,
     notComing: headcount.declined,
+    notYetInvited: headcount.notYetInvited,
     invited: headcount.invited,
     havent: headcount.awaitingReply + headcount.heldBy.hostNoReply,
     haventGuests: headcount.awaitingReply,

@@ -30,6 +30,7 @@ import {
   type Guest,
   type GuestEdit,
   type GuestAnswer,
+  type GuestInvitationHow,
   type GuestList,
   type GuestPage,
   type Headcount,
@@ -757,6 +758,8 @@ export interface SentInvitation {
   invitedBy: MemberPerson | null;
   status: SentInvitationStatus;
   sentAt: string | null;
+  /** Its latest send could not be delivered, never why (sc-46109). */
+  undelivered: boolean;
   expiresAt: string | null;
   acceptedAt: string | null;
   declinedAt: string | null;
@@ -2107,6 +2110,29 @@ export class ApiClient {
         method: 'PUT',
         body: guest,
         headers: { 'If-Match': tag },
+      }),
+    );
+  }
+
+  /** Refused 409 `event_state_invalid` unless the event's phase allows `invite`; a guest already invited stays as recorded (sc-3788). */
+  async markInvited(
+    eventId: string,
+    guestId: string,
+    how: GuestInvitationHow,
+  ): Promise<TaggedGuest> {
+    return this.taggedGuest(
+      await this.exchange<{ guest?: unknown }>(`${this.guestPath(eventId, guestId)}/invitation`, {
+        method: 'PUT',
+        body: { how },
+      }),
+    );
+  }
+
+  /** In any phase; refused 409 `guest_replied` once they have replied, and `guest_not_marked_by_hand` for Soirely's message. */
+  async markNotInvited(eventId: string, guestId: string): Promise<TaggedGuest> {
+    return this.taggedGuest(
+      await this.exchange<{ guest?: unknown }>(`${this.guestPath(eventId, guestId)}/invitation`, {
+        method: 'DELETE',
       }),
     );
   }
@@ -4010,6 +4036,7 @@ function asSentInvitation(raw: unknown): SentInvitation | null {
     invitedBy: asPerson(invitation.invitedBy),
     status,
     sentAt: stringOrNull(invitation.sentAt),
+    undelivered: invitation.undelivered === true,
     expiresAt: stringOrNull(invitation.expiresAt),
     acceptedAt: stringOrNull(invitation.acceptedAt),
     declinedAt: stringOrNull(invitation.declinedAt),

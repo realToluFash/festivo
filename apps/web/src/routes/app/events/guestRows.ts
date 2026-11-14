@@ -11,6 +11,11 @@ import { emailProblem, nameKey, phoneLengthProblem } from '@soirely/domain';
 
 export type ReplyWord = Guest['reply'] | Companion['state'];
 
+/** Not yet invited stands where the reply goes until somebody invites them (sc-3788). */
+export function shownReply(guest: Guest): ReplyWord {
+  return guest.invitation == null && guest.reply === 'noReply' ? 'notYetInvited' : guest.reply;
+}
+
 export function blank(name: string | null): boolean {
   return name == null || name.trim() === '';
 }

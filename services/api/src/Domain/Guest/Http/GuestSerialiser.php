@@ -52,6 +52,8 @@ final readonly class GuestSerialiser
     public static function guest(Guest $host, array $companions, bool $contacts): array
     {
         $reply = $host->getReply() ?? GuestReply::NoReply;
+        $zone = new DateTimeZone($host->getEvent()->getTimeZone());
+        $invitedAt = $host->getInvitedAt();
 
         return [
             'id' => $host->getId()->toRfc4122(),
@@ -64,21 +66,27 @@ final readonly class GuestSerialiser
                 'messageLanguage' => GuestLanguage::forMessage($host),
             ] : [],
             'reply' => $reply->value,
-            'repliedAt' => GuestReply::NoReply === $reply ? null : $host->getRepliedAt()?->setTimezone(new DateTimeZone($host->getEvent()->getTimeZone()))->format(\DATE_ATOM),
+            'repliedAt' => GuestReply::NoReply === $reply ? null : $host->getRepliedAt()?->setTimezone($zone)->format(\DATE_ATOM),
             'replySource' => GuestReply::NoReply === $reply ? null : $host->getReplySource()?->value,
+            'invitation' => null === $invitedAt ? null : [
+                'at' => $invitedAt->setTimezone($zone)->format(\DATE_ATOM),
+                'how' => $host->getInvitationMethod()?->value,
+                'by' => $host->getInvitedBy()?->getName(),
+            ],
             'companions' => Vec\map($companions, static fn (Guest $companion): array => [
                 'id' => $companion->getId()->toRfc4122(),
                 'fullName' => $companion->getFullName(),
-                'state' => self::companionState(GuestStanding::of($reply, companion: true, notComingByGuest: $companion->isNotComingByGuest())),
+                'state' => self::companionState(GuestStanding::of($reply, companion: true, invited: $host->isInvited(), notComingByGuest: $companion->isNotComingByGuest())),
                 'namedByGuest' => $companion->isNamedByGuest(),
             ]),
         ];
     }
 
-    /** @return 'coming'|'notComing'|'held' */
+    /** @return 'notYetInvited'|'held'|'coming'|'notComing' */
     public static function companionState(GuestStanding $standing): string
     {
         return match (true) {
+            GuestStanding::NotYetInvited === $standing => 'notYetInvited',
             $standing->isHeld() => 'held',
             GuestStanding::Declined === $standing => 'notComing',
             default => 'coming',

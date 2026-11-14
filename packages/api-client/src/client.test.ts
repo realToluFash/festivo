@@ -2670,6 +2670,7 @@ describe('invitations and members', () => {
             invitedBy: { id: 'u2', name: 'Bisi Adeyemi' },
             status: 'pending',
             sentAt: '2026-10-18T10:00:00+00:00',
+            undelivered: false,
             expiresAt: '2026-10-25T10:00:00+00:00',
             acceptedAt: null,
             declinedAt: null,
@@ -2703,6 +2704,7 @@ describe('invitations and members', () => {
           invitedBy: { id: 'u2', name: 'Bisi Adeyemi' },
           status: 'pending',
           sentAt: null,
+          undelivered: true,
           expiresAt: '2026-10-25T10:00:00+00:00',
           acceptedAt: null,
           declinedAt: null,
@@ -2714,6 +2716,7 @@ describe('invitations and members', () => {
     const sentInvitation = await api.inviteMember('org_1', 'amara@example.com', 'role_5');
 
     expect(sentInvitation.id).toBe('inv_2');
+    expect(sentInvitation.undelivered).toBe(true);
     expect(sent[0]).toEqual({
       line: 'POST /api/orgs/org_1/members/invite',
       body: { email: 'amara@example.com', roleId: 'role_5' },

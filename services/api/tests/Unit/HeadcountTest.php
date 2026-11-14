@@ -14,7 +14,7 @@ use Psl\Vec;
 
 final class HeadcountTest extends TestCase
 {
-    /** @return iterable<string, array{GuestReply, bool, GuestStanding}> */
+    /** @return iterable<string, array{0: GuestReply, 1: bool, 2: GuestStanding, 3?: bool}> */
     public static function standings(): iterable
     {
         yield 'a guest Coming' => [GuestReply::Coming, false, GuestStanding::Accepted];
@@ -25,13 +25,15 @@ final class HeadcountTest extends TestCase
         yield 'a companion of a host Not sure yet' => [GuestReply::Maybe, true, GuestStanding::HeldHostMaybe];
         yield 'a companion of a host Not coming' => [GuestReply::NotComing, true, GuestStanding::HeldHostNotComing];
         yield 'a companion of a host with no reply' => [GuestReply::NoReply, true, GuestStanding::HeldHostNoReply];
+        yield 'a guest nobody has invited' => [GuestReply::NoReply, false, GuestStanding::NotYetInvited, false];
+        yield 'a companion of a host nobody has invited' => [GuestReply::NoReply, true, GuestStanding::NotYetInvited, false];
     }
 
     #[Test]
     #[DataProvider('standings')]
-    public function aCompanionStandsAsTheirHostRepliedAndIsAcceptedOnlyWhenTheHostIsComing(GuestReply $reply, bool $companion, GuestStanding $standing): void
+    public function aCompanionStandsAsTheirHostRepliedAndIsAcceptedOnlyWhenTheHostIsComing(GuestReply $reply, bool $companion, GuestStanding $standing, bool $invited = true): void
     {
-        self::assertSame($standing, GuestStanding::of($reply, $companion));
+        self::assertSame($standing, GuestStanding::of($reply, $companion, $invited));
     }
 
     /** @return iterable<string, array{GuestReply, bool, GuestStanding}> */
@@ -51,7 +53,7 @@ final class HeadcountTest extends TestCase
     #[DataProvider('choices')]
     public function aCompanionTheGuestMarkedNotComingIsDeclinedOnlyWhileTheirHostIsComingAndHeldOtherwise(GuestReply $reply, bool $coming, GuestStanding $standing): void
     {
-        self::assertSame($standing, GuestStanding::of($reply, companion: true, notComingByGuest: !$coming));
+        self::assertSame($standing, GuestStanding::of($reply, companion: true, invited: true, notComingByGuest: !$coming));
     }
 
     #[Test]
@@ -61,7 +63,8 @@ final class HeadcountTest extends TestCase
 
         $counts = HeadcountCalculator::counts(...$everyone);
 
-        self::assertSame(14, $counts['onList']);
+        self::assertSame(16, $counts['onList']);
+        self::assertSame(2, $counts['notYetInvited']);
         self::assertSame($counts['invited'], $counts['accepted'] + $counts['maybe'] + $counts['awaitingReply'] + $counts['held'] + $counts['declined']);
         self::assertSame($counts['onList'], $counts['invited'] + $counts['notYetInvited']);
         self::assertSame($counts['held'], $counts['heldBy']['hostNoReply'] + $counts['heldBy']['hostMaybe'] + $counts['heldBy']['hostNotComing']);
