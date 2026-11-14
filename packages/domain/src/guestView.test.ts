@@ -165,6 +165,29 @@ describe('the list as the choice and the search leave it', () => {
     ]);
   });
 
+  it('groups Invited as All, without the guests nobody has invited, and counts it as the five replies (sc-3786)', () => {
+    const EMEKA = guest('g_6', 'Emeka Obi', {
+      invitation: null,
+      companions: [{ id: 'c_3', fullName: null, state: 'notYetInvited', namedByGuest: false }],
+    });
+    const list = [...LIST, EMEKA];
+    const counts = countsOf({ ...HEADCOUNT, onList: 9, notYetInvited: 2 });
+    const { view, shown } = viewOf(list, counts, 'invited', '', new Set());
+
+    expect(shown).toBe(counts.invited);
+    expect(counts.coming + counts.maybe + counts.noReply + counts.held + counts.notComing).toBe(
+      counts.invited,
+    );
+    if (view.kind !== 'groups') throw new Error('expected groups');
+    expect(view.groups.map((group) => group.standing)).toEqual(['coming', 'noReply', 'notComing']);
+
+    const found = viewOf(list, counts, 'invited', 'obi', new Set());
+
+    expect(found.view.kind === 'rows' && found.view.rows.map((row) => row.person.id)).not.toContain(
+      'g_6',
+    );
+  });
+
   it('filters 2,000 guests in well under 100 ms', () => {
     const many = Array.from({ length: 2000 }, (_, at) =>
       guest(`g_${at}`, `Guest ${at} Okafor`, { email: `guest${at}@example.com` }),

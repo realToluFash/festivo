@@ -1,5 +1,11 @@
 import type { Membership, OrganisationEvent } from '@soirely/api-client';
-import { type EventArea, rememberTabHolding, roleHolds, takesCardStep } from '@soirely/domain';
+import {
+  type Choice,
+  type EventArea,
+  rememberTabHolding,
+  roleHolds,
+  takesCardStep,
+} from '@soirely/domain';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { router, useFocusEffect, useNavigation } from 'expo-router';
 import { type ReactNode, useCallback, useEffect, useRef, useState } from 'react';
@@ -18,7 +24,13 @@ import { DESTINATION_HREF } from '../kit/appNav.ts';
 import { offersDelete } from '../kit/eventDelete.ts';
 import { offersEdit } from '../kit/eventEdit.ts';
 import { backToOriginal } from '../kit/eventDuplicate.ts';
-import { type EditAt, EVENT_AREA, type EventPlace, areaBack } from '../kit/eventNav.ts';
+import {
+  type EditAt,
+  EVENT_AREA,
+  type EventPlace,
+  GUESTS_FILTER,
+  areaBack,
+} from '../kit/eventNav.ts';
 import { markDeleted, takeCoverRefused, takeSaved } from '../kit/eventSaved.ts';
 import { type Opened, openedOf, openedWithoutAsking } from '../kit/eventsOpen.ts';
 import { SHOWN_EVENT, goUpToEvent } from '../kit/upToEvent.ts';
@@ -53,11 +65,14 @@ import { useSystemBack } from './useSystemBack.ts';
 export function EventScreen({
   eventId,
   area,
+  filter = 'all',
   copiedFrom,
   keepsTab,
 }: {
   eventId: string;
   area: EventPlace;
+  /** The choice Guests opens on, from a figure that counts it (sc-3786). */
+  filter?: Choice;
   /** The event this one was duplicated from, when Duplicate opened it (sc-22145). */
   copiedFrom?: string | undefined;
   /** Opened from Happening now, so Back returns to the tab that was showing. */
@@ -69,7 +84,11 @@ export function EventScreen({
   const organisationId = organisation?.id;
   const phone = kind === 'phone';
   const navigation = useNavigation<{
-    setParams(params: { [SHOWN_EVENT]?: string; [EVENT_AREA]?: EventPlace }): void;
+    setParams(params: {
+      [SHOWN_EVENT]?: string;
+      [EVENT_AREA]?: EventPlace;
+      [GUESTS_FILTER]?: Choice | undefined;
+    }): void;
     getState(): { routes: readonly { params?: unknown }[]; index: number } | undefined;
   }>();
   const [savedEvent, setSavedEvent] = useState<string | null>(null);
@@ -120,7 +139,8 @@ export function EventScreen({
     }, [reload, freshen]),
   );
 
-  const chooseArea = (next: EventPlace) => navigation.setParams({ [EVENT_AREA]: next });
+  const chooseArea = (next: EventPlace, choice?: Choice) =>
+    navigation.setParams({ [EVENT_AREA]: next, [GUESTS_FILTER]: choice });
   const leave = () => {
     if (original != null) goUpToEvent(navigation, router, original);
     else if (router.canGoBack()) router.back();
@@ -159,6 +179,7 @@ export function EventScreen({
           <EventPage
             kind={kind}
             event={event}
+            onGuests={(choice) => chooseArea('guests', choice)}
             nameRef={cardNamed ? cardName : undefined}
             manages={manages}
             takes={(action) => takesCardStep(event, action)}
@@ -260,8 +281,9 @@ export function EventScreen({
     >
       {guests ? (
         <EventGuests
-          key={event.id}
+          key={`${event.id}.${filter}`}
           event={event}
+          filter={filter}
           heading={
             <>
               {kind === 'tabletLandscape' && !cardNamed && (

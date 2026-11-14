@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 
-import { areaBack, areaOf, editAtOf, eventHref } from './eventNav.ts';
+import { areaBack, areaOf, editAtOf, eventHref, guestsHref } from './eventNav.ts';
 
 describe('areaOf', () => {
   it('reads an area the event has', () => {
@@ -41,5 +41,11 @@ describe('editAtOf', () => {
     expect(editAtOf('currency')).toBe('currency');
     expect(editAtOf('cover')).toBeUndefined();
     expect(editAtOf(undefined)).toBeUndefined();
+  });
+});
+
+describe('guestsHref', () => {
+  it("opens an event's Guests on the choice a figure counts (sc-3786)", () => {
+    expect(guestsHref('evt 1', 'noReply')).toBe('/events/evt%201?area=guests&filter=noReply');
   });
 });

@@ -870,6 +870,7 @@ function GuestsCover({
 
 const CHOICE_KEY: Record<Choice, string> = {
   all: 'guestList.all',
+  invited: 'guestNumbers.invited',
   coming: REPLY_KEY.coming,
   maybe: REPLY_KEY.maybe,
   noReply: REPLY_KEY.noReply,

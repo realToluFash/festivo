@@ -2882,15 +2882,20 @@ describe('events (sc-1486)', () => {
       area: 'events',
       action: null,
     };
+    const WEDDING_GUESTS = { invited: 142, coming: 96, notReplied: 25 };
     const later = { ...EVENT, id: 'e2', name: 'Later', milestones: [] };
     const { api, sent } = client(() =>
-      json({ events: [{ ...EVENT, milestones: [starts] }, later], total: 12 }),
+      json({
+        events: [{ ...EVENT, milestones: [starts], guests: WEDDING_GUESTS }, later],
+        total: 12,
+      }),
     );
 
     const page = await api.events('org_1', { finished: true, page: 2, itemsPerPage: 10 });
 
     expect(page.events.map(({ name }) => name)).toEqual(['Adaeze and Tunde', 'Later']);
-    expect(page.events[0]).toEqual({ ...EVENT, milestones: [starts] });
+    expect(page.events[0]).toEqual({ ...EVENT, milestones: [starts], guests: WEDDING_GUESTS });
+    expect(page.events[1]?.guests).toBeNull();
     expect(page.total).toBe(12);
     expect(sent[0]?.line).toBe('GET /api/orgs/org_1/events');
   });

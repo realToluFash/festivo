@@ -458,9 +458,17 @@ export interface OrganisationEvent {
   permissions: string[];
 }
 
-/** As a list shows it: with its timeline's milestones, so the list's Next up is the timeline's (sc-3624). */
+/** The tiles' measure on Events (sc-23284), which each event's guest line adds up to: `notReplied` is the guests who owe an answer and the companions held behind them. */
+export interface EventGuestFigures {
+  invited: number;
+  coming: number;
+  notReplied: number;
+}
+
+/** As a list shows it: with its timeline's milestones, so the list's Next up is the timeline's (sc-3624), and its guest figures from the list, null without guests.read on it (sc-3786). */
 export interface ListedEvent extends OrganisationEvent {
   milestones: Milestone[];
+  guests?: EventGuestFigures | null;
 }
 
 export interface EventsQuery {
@@ -2165,6 +2173,22 @@ export class ApiClient {
     };
   }
 
+  /** A hub token for the headcounts of the events a list shows, those the caller reads guests on (sc-3786). */
+  async headcountsSubscription(
+    organisationId: string,
+    eventIds: readonly string[],
+  ): Promise<RealtimeSubscription> {
+    const body = await this.post<{ token?: unknown; expiresAt?: unknown }>(
+      `/api/orgs/${encodeURIComponent(organisationId)}/events/headcounts/subscriptions`,
+      { events: eventIds },
+    );
+
+    return {
+      token: typeof body.token === 'string' ? body.token : '',
+      expiresAt: typeof body.expiresAt === 'string' ? body.expiresAt : '',
+    };
+  }
+
   /** A guest's whole link, for those who can add guests. Refused 409 `event_state_invalid` unless the event's phase allows `invite` (sc-1526). */
   async guestLink(eventId: string, guestId: string): Promise<string> {
     const body = await this.get<{ url?: unknown }>(
@@ -3594,12 +3618,22 @@ function asMilestone(raw: unknown): Milestone | null {
 
 function asListedEvent(raw: unknown): ListedEvent | null {
   const event = asOrganisationEvent(raw);
-  const milestones = (raw as { milestones?: unknown } | null)?.milestones;
+  const { milestones, guests } = (raw ?? {}) as { milestones?: unknown; guests?: unknown };
   const read = Array.isArray(milestones) ? milestones.map(asMilestone) : null;
+  const figures = guests == null ? null : asEventGuestFigures(guests);
 
-  return event == null || read == null || read.some((one) => one == null)
+  return event == null || read == null || read.some((one) => one == null) || figures === undefined
     ? null
-    : { ...event, milestones: read as Milestone[] };
+    : { ...event, milestones: read as Milestone[], guests: figures };
+}
+
+/** An event's guest figures, from the events list or from its headcount as published (sc-3786); undefined for a shape this client does not know. */
+export function asEventGuestFigures(raw: unknown): EventGuestFigures | undefined {
+  const { invited, coming, notReplied } = (raw ?? {}) as Record<string, unknown>;
+
+  return isCount(invited) && isCount(coming) && isCount(notReplied)
+    ? { invited, coming, notReplied }
+    : undefined;
 }
 
 function isCount(value: unknown): value is number {

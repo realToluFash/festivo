@@ -7,9 +7,10 @@ import { phoneMatches } from './phone.ts';
 /** Where a person stands, in the host's words: a companion is Not yet invited with their guest, then Held until their guest is Coming. */
 export type Standing = 'coming' | 'maybe' | 'noReply' | 'notYetInvited' | 'held' | 'notComing';
 
-/** The filter menu's choices in its order (sc-3772); `all` is the default and is never written to the address. */
+/** The filter menu's choices in its order (sc-3772); `all` is the default and is never written to the address. All and Invited are totals, set apart from the replies below them, which add up to All; Invited is the five replies together (sc-3786). */
 export const CHOICES = [
   'all',
+  'invited',
   'coming',
   'maybe',
   'noReply',
@@ -63,7 +64,6 @@ export function peopleOf(guests: readonly Guest[]): Person[] {
 }
 
 export type Counts = Record<Choice, number> & {
-  invited: number;
   /** Everyone without an answer of their own: the guests who owe one and the companions held behind them. */
   havent: number;
   haventGuests: number;
@@ -118,7 +118,7 @@ export interface ViewGroup {
 
 export type ListView = { kind: 'groups'; groups: ViewGroup[] } | { kind: 'rows'; rows: ViewRow[] };
 
-/** On All with no search and no Dietary notes, the groups; otherwise the flat rows the choice, the search and Dietary notes keep, a companion under their guest when both are kept. */
+/** On All or Invited with no search and no Dietary notes, the groups (Invited's without Not yet invited); otherwise the flat rows the choice, the search and Dietary notes keep, a companion under their guest when both are kept. */
 export function viewOf(
   guests: readonly Guest[],
   counts: Counts,
@@ -129,10 +129,13 @@ export function viewOf(
 ): { view: ListView; shown: number } {
   const people = peopleOf(guests);
 
-  if (choice !== 'all' || q.trim() !== '' || dietaryOnly) {
+  const totals = choice === 'all' || choice === 'invited';
+
+  if (!totals || q.trim() !== '' || dietaryOnly) {
     const found = people.filter(
       (one) =>
-        (choice === 'all' || one.standing === choice) &&
+        (choice === 'all' ||
+          (choice === 'invited' ? one.standing !== 'notYetInvited' : one.standing === choice)) &&
         matches(one, q) &&
         (!dietaryOnly || dietary(one.companion == null ? one.guest.needs : one.companion.needs)),
     );
@@ -150,24 +153,26 @@ export function viewOf(
     };
   }
 
-  const groups = GROUPS.map((standing) => {
-    const heads = people.filter((one) => one.companion == null && one.standing === standing);
-    const open = expanded.has(standing) || heads.length <= FIRST_ROWS;
-    const rows = (open ? heads : heads.slice(0, FIRST_ROWS)).flatMap((head) => [
-      { person: head, indent: false },
-      ...people
-        .filter((one) => one.companion != null && one.guest.id === head.id)
-        .map((person) => ({ person, indent: true })),
-    ]);
+  const groups = GROUPS.filter((standing) => choice === 'all' || standing !== 'notYetInvited')
+    .map((standing) => {
+      const heads = people.filter((one) => one.companion == null && one.standing === standing);
+      const open = expanded.has(standing) || heads.length <= FIRST_ROWS;
+      const rows = (open ? heads : heads.slice(0, FIRST_ROWS)).flatMap((head) => [
+        { person: head, indent: false },
+        ...people
+          .filter((one) => one.companion != null && one.guest.id === head.id)
+          .map((person) => ({ person, indent: true })),
+      ]);
 
-    return {
-      standing,
-      count: counts[standing],
-      rows,
-      collapsed: !open,
-      next: open ? null : (heads[FIRST_ROWS]?.id ?? null),
-    };
-  }).filter((group) => group.rows.length > 0);
+      return {
+        standing,
+        count: counts[standing],
+        rows,
+        collapsed: !open,
+        next: open ? null : (heads[FIRST_ROWS]?.id ?? null),
+      };
+    })
+    .filter((group) => group.rows.length > 0);
 
-  return { view: { kind: 'groups', groups }, shown: counts.all };
+  return { view: { kind: 'groups', groups }, shown: counts[choice] };
 }

@@ -1,4 +1,6 @@
+import { realtimeTopic } from '@soirely/api-client';
 import {
+  type Choice,
   type EventsFilters,
   type EventsSearch,
   type EventsTab,
@@ -22,7 +24,9 @@ import { useTranslation } from 'react-i18next';
 import { api } from '../api.ts';
 import { dateLocale } from '../i18n/index.ts';
 import { DESTINATION_HREF } from '../kit/appNav.ts';
-import { eventHref } from '../kit/eventNav.ts';
+import { eventHref, guestsHref } from '../kit/eventNav.ts';
+import { followReadingAgain } from '../followTopic.ts';
+import { followedIds, withFiguresFrom } from '../kit/guestLine.ts';
 import { takeDeleted } from '../kit/eventSaved.ts';
 import { hasNoEvents } from '../kit/eventsOpen.ts';
 import { useServerNow } from '../kit/serverNow.ts';
@@ -67,6 +71,9 @@ type Load =
   { kind: 'loading' } | { kind: 'failed' } | ({ kind: 'loaded'; refreshing: boolean } & HomeLoad);
 
 const PAST_PAGE = 10;
+
+/** How often each event's guest figures are read again while no live line to the hub is open: a reply shows within 10 seconds (sc-3786). */
+const FIGURES_AGAIN_MS = 10_000;
 
 /** How long typing rests before it searches; Return searches at once. */
 const SEARCH_PAUSE_MS = 300;
@@ -271,6 +278,49 @@ export function EventsScreen() {
     };
   }, [organisationId, reads, attempt, watch]);
 
+  const followed =
+    load.kind === 'loaded' && organisationId != null ? followedIds(load.unfinished).join(',') : '';
+
+  useEffect(() => {
+    if (organisationId == null || followed === '') return;
+    const ids = followed.split(',');
+    let live = true;
+    const readFigures = () =>
+      api.unfinishedEvents(organisationId).then(
+        (read) => {
+          if (!live) return;
+          setHeld((before) =>
+            before.in === organisationId && before.load.kind === 'loaded'
+              ? {
+                  ...before,
+                  load: {
+                    ...before.load,
+                    unfinished: withFiguresFrom(before.load.unfinished, read),
+                  },
+                }
+              : before,
+          );
+          setFound((before) =>
+            before?.kind === 'loaded'
+              ? { ...before, unfinished: withFiguresFrom(before.unfinished, read) }
+              : before,
+          );
+        },
+        () => undefined,
+      );
+    const stop = followReadingAgain(
+      ids.map((id) => realtimeTopic('EventHeadcount', id)),
+      () => api.headcountsSubscription(organisationId, ids),
+      () => void readFigures(),
+      FIGURES_AGAIN_MS,
+    );
+
+    return () => {
+      live = false;
+      stop();
+    };
+  }, [organisationId, followed]);
+
   const [more, setMore] = useState<'idle' | 'loading' | 'failed'>('idle');
   const [moreShown, setMoreShown] = useState<string | null>(null);
   const showMore = () => {
@@ -304,6 +354,10 @@ export function EventsScreen() {
   const openEvent = (id: string, fromHappeningNow: boolean) => {
     setDeleted(null);
     router.push(eventHref(id, fromHappeningNow));
+  };
+  const openFigure = (id: string, filter: Choice) => {
+    setDeleted(null);
+    router.push(guestsHref(id, filter));
   };
 
   const searchRow = (off: boolean) => (
@@ -351,6 +405,7 @@ export function EventsScreen() {
         typed={searched}
         filters={filters}
         onOpen={openEvent}
+        onFigure={openFigure}
         onClearSearch={clearSearch}
         onClearFilters={() => setFilters(NO_EVENTS_FILTERS)}
       />
@@ -385,6 +440,7 @@ export function EventsScreen() {
               setTab({ in: organisationId, tab: next });
             }}
             onOpen={openEvent}
+            onFigure={openFigure}
             takes={(action) => organisation != null && takesCardStep(organisation, action)}
             onStep={(event, step) => {
               const id = encodeURIComponent(event.id);

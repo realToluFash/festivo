@@ -1,5 +1,11 @@
 import type { ListedEvent } from '@soirely/api-client';
-import { type EventsFilters, type EventsTab, eventsHome, shownPhase } from '@soirely/domain';
+import {
+  type Choice,
+  type EventsFilters,
+  type EventsTab,
+  eventsHome,
+  shownPhase,
+} from '@soirely/domain';
 import { StyleSheet, View } from 'react-native';
 import { useTranslation } from 'react-i18next';
 
@@ -19,6 +25,7 @@ import { useServerNow } from '../kit/serverNow.ts';
 import { type LayoutKind } from '../layout/useLayout.ts';
 import { tokens } from '../theme/tokens.ts';
 import { EventCard } from './EventCard.tsx';
+import { EventGuestLine } from './EventGuestLine.tsx';
 import { EventThumb } from './EventThumb.tsx';
 import { EventsEmptyTab, EventsSummaryLine, EventsTabs, Said, SaidLine } from './EventsList.tsx';
 import { EventsResults } from './EventsSearch.tsx';
@@ -78,6 +85,7 @@ export function EventsHome({
   tab,
   onTab,
   onOpen,
+  onFigure,
   takes,
   onStep,
   more,
@@ -90,6 +98,8 @@ export function EventsHome({
   onTab: (tab: EventsTab) => void;
   /** Opened from Happening now, Back returns to the tab that was showing. */
   onOpen: (id: string, fromHappeningNow: boolean) => void;
+  /** A figure on an event's guest line, opening its Guests on that choice (sc-3786). */
+  onFigure: (id: string, filter: Choice) => void;
   takes: (action: StepAction) => boolean;
   onStep: (event: Shown, step: Extract<CardStep, { kind: 'button' }>) => void;
   more: 'idle' | 'loading' | 'failed';
@@ -115,17 +125,20 @@ export function EventsHome({
       <EventsTabs tab={tab} counts={counts} onTab={onTab} />
       {events.length === 0 && <EventsEmptyTab tab={tab} />}
       {card != null && (
-        <EventCard
-          event={card}
-          now={now}
-          locale={locale}
-          wide={wide}
-          onOpen={() => open(card)}
-          takes={takes}
-          onStep={(step) => onStep(card, step)}
-          testID="events.card"
-          openTestID={eventTestID(card)}
-        />
+        <View>
+          <EventCard
+            event={card}
+            now={now}
+            locale={locale}
+            wide={wide}
+            onOpen={() => open(card)}
+            takes={takes}
+            onStep={(step) => onStep(card, step)}
+            testID="events.card"
+            openTestID={eventTestID(card)}
+          />
+          <EventGuestLine event={card} inset={0} onOpen={(filter) => onFigure(card.id, filter)} />
+        </View>
       )}
       {rows.length > 0 && (
         <RowList
@@ -133,16 +146,23 @@ export function EventsHome({
             key: event.id,
             inset: 60,
             row: (
-              <Row
-                title={event.name}
-                line={rowLine(event, now, locale, t)}
-                lead={<EventThumb event={event} />}
-                tag={rowTag(event, false, t)}
-                value={wide ? (howSoon(event, now, t) ?? undefined) : undefined}
-                opens
-                onPress={() => open(event)}
-                testID={eventTestID(event)}
-              />
+              <View>
+                <Row
+                  title={event.name}
+                  line={rowLine(event, now, locale, t)}
+                  lead={<EventThumb event={event} />}
+                  tag={rowTag(event, false, t)}
+                  value={wide ? (howSoon(event, now, t) ?? undefined) : undefined}
+                  opens
+                  onPress={() => open(event)}
+                  testID={eventTestID(event)}
+                />
+                <EventGuestLine
+                  event={event}
+                  inset={60}
+                  onOpen={(filter) => onFigure(event.id, filter)}
+                />
+              </View>
             ),
           }))}
         />
@@ -183,6 +203,7 @@ export function EventsFound({
   typed,
   filters,
   onOpen,
+  onFigure,
   onClearSearch,
   onClearFilters,
 }: {
@@ -191,6 +212,7 @@ export function EventsFound({
   typed: string;
   filters: EventsFilters;
   onOpen: (id: string, fromHappeningNow: boolean) => void;
+  onFigure: (id: string, filter: Choice) => void;
   onClearSearch: () => void;
   onClearFilters: () => void;
 }) {
@@ -215,16 +237,23 @@ export function EventsFound({
               key: event.id,
               inset: 60,
               row: (
-                <Row
-                  title={event.name}
-                  line={rowLine(event, now, locale, t)}
-                  lead={<EventThumb event={event} />}
-                  tag={rowTag(event, true, t)}
-                  value={wide ? (howSoon(event, now, t) ?? undefined) : undefined}
-                  opens
-                  onPress={() => onOpen(event.id, event.phase === 'happening_now')}
-                  testID={eventTestID(event)}
-                />
+                <View>
+                  <Row
+                    title={event.name}
+                    line={rowLine(event, now, locale, t)}
+                    lead={<EventThumb event={event} />}
+                    tag={rowTag(event, true, t)}
+                    value={wide ? (howSoon(event, now, t) ?? undefined) : undefined}
+                    opens
+                    onPress={() => onOpen(event.id, event.phase === 'happening_now')}
+                    testID={eventTestID(event)}
+                  />
+                  <EventGuestLine
+                    event={event}
+                    inset={60}
+                    onOpen={(filter) => onFigure(event.id, filter)}
+                  />
+                </View>
               ),
             }))}
           />

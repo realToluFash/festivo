@@ -61,6 +61,7 @@ type Load =
 
 const CHOICE_KEY: Record<Choice, string> = {
   all: 'guestList.all',
+  invited: 'guestList.invited',
   coming: REPLY_KEY.coming,
   maybe: REPLY_KEY.maybe,
   noReply: REPLY_KEY.noReply,
@@ -72,10 +73,13 @@ const CHOICE_KEY: Record<Choice, string> = {
 /** An event's Guests in the app (sc-3785): the list to find and read a guest, and the small edits; planning at scale stays on the web. */
 export function EventGuests({
   event,
+  filter = 'all',
   heading,
   onOffline,
 }: {
   event: OrganisationEvent;
+  /** The choice it opens on: a figure elsewhere opens the guests it counts (sc-3786). */
+  filter?: Choice;
   heading: ReactNode;
   onOffline: (offline: ScreenOffline) => void;
 }) {
@@ -85,7 +89,7 @@ export function EventGuests({
   const manages = roleHolds(event, 'guests.manage');
   const { kind } = useListAndPageLayout(SPACING, 'nothing');
   const [load, setLoad] = useState<Load>({ kind: 'loading' });
-  const [choice, setChoice] = useState<Choice>('all');
+  const [choice, setChoice] = useState<Choice>(filter);
   const [typed, setTyped] = useState('');
   const [expanded, setExpanded] = useState<ReadonlySet<Standing>>(new Set());
   const [open, setOpen] = useState<string | null>(null);
@@ -538,7 +542,11 @@ function FilterChoice({
                 setAt(null);
                 onChoose(key);
               }}
-              style={({ pressed }) => [styles.menuRow, pressed && styles.menuPressed]}
+              style={({ pressed }) => [
+                styles.menuRow,
+                key === 'invited' && styles.menuApart,
+                pressed && styles.menuPressed,
+              ]}
               accessibilityRole="button"
               accessibilityState={{ selected: on }}
               accessibilityLabel={`${t(CHOICE_KEY[key])}, ${n}`}
@@ -649,6 +657,11 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     gap: tokens.spaceSm,
     paddingHorizontal: tokens.spaceLg,
+  },
+  menuApart: {
+    marginBottom: tokens.spaceXs,
+    borderBottomWidth: 1,
+    borderBottomColor: tokens.colorBorder,
   },
   menuPressed: { backgroundColor: tokens.colorInset },
   menuTick: { width: 18, alignItems: 'center' },

@@ -131,6 +131,7 @@ export function EventRow({
   to,
   everyPhase = false,
   guests = null,
+  figures = null,
 }: {
   event: Shown;
   now: Date;
@@ -139,6 +140,8 @@ export function EventRow({
   /** Tabs mixed, as a search's results are: every row says its phase. */
   everyPhase?: boolean;
   guests?: string | null;
+  /** The event's guest line, under the row's link and never inside it (sc-3786). */
+  figures?: ReactNode;
 }) {
   const { t } = useTranslation();
   const tag = rowTag(event, everyPhase, t);
@@ -146,7 +149,7 @@ export function EventRow({
   const line = rowLine(event, now, locale, t);
 
   return (
-    <li>
+    <li className={figures == null ? undefined : 'ev-figured'}>
       <Link className="desk-row ev-row" to={to}>
         <EventThumb event={event} size={48} />
         <RowWords
@@ -157,7 +160,43 @@ export function EventRow({
         {soon != null && <span className="ev-soon">{soon}</span>}
         <Chevron />
       </Link>
+      {figures}
     </li>
+  );
+}
+
+/** An event's guest line on Events (sc-3786): each figure its own link to the event's Guests, with Coming or No reply chosen. */
+export function GuestLine({
+  name,
+  guests,
+  coming,
+  notReplied,
+}: {
+  name: string;
+  guests: string;
+  coming: number;
+  notReplied: number;
+}) {
+  const { t } = useTranslation();
+  const comingWords = t('guestList.countComing', { count: coming });
+  const notRepliedWords = t('guestList.havent', { count: notReplied });
+
+  return (
+    <p className="ev-figures">
+      <Link
+        to={`${guests}?filter=coming`}
+        aria-label={t('events.comingOpens', { figure: comingWords, event: name })}
+      >
+        {comingWords}
+      </Link>
+      <span aria-hidden="true">·</span>
+      <Link
+        to={`${guests}?filter=noReply`}
+        aria-label={t('events.notRepliedOpens', { figure: notRepliedWords, event: name })}
+      >
+        {notRepliedWords}
+      </Link>
+    </p>
   );
 }
 

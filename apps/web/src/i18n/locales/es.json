@@ -164,7 +164,9 @@
     "nextUp": "Lo próximo: {{title}}",
     "footer_one": "{{count, number}} evento · Ordenado por fecha",
     "footer_other": "{{count, number}} eventos · Ordenados por fecha",
-    "footer_many": "{{count, number}} eventos · Ordenados por fecha"
+    "footer_many": "{{count, number}} eventos · Ordenados por fecha",
+    "comingOpens": "{{figure}}, opens the guests coming to {{event}}",
+    "notRepliedOpens": "{{figure}}, opens the guests of {{event}} with no reply"
   },
   "eventsSearch": {
     "label": "Buscar eventos",
@@ -2976,6 +2978,26 @@
     "showAll_many": "Mostrar los {{count, number}}",
     "heldLine": "En espera · solo viene si se acepta la invitación",
     "heldAway": "{{guestOf}} · {{held}}"
+  },
+  "guestNumbers": {
+    "title": "Guests",
+    "openList": "Open the guest list",
+    "lead": "{{says}}. Each number opens the guests it counts.",
+    "invited": "Invited",
+    "heldLine": "Companions waiting on their guest’s answer",
+    "opens": "{{figure}} {{word}}, opens {{word}}",
+    "opensInvited_one": "{{count, number}} Invited, opens the guest list showing invited guests",
+    "opensInvited_other": "{{count, number}} Invited, opens the guest list showing invited guests",
+    "opensInvited_many": "{{count, number}} Invited, opens the guest list showing invited guests",
+    "notYet_one": "{{count, number}} not yet invited",
+    "notYet_other": "{{count, number}} not yet invited",
+    "notYet_many": "{{count, number}} not yet invited",
+    "notYetName_one": "{{count, number}} not yet invited, opens the guest list showing guests not yet invited",
+    "notYetName_other": "{{count, number}} not yet invited, opens the guest list showing guests not yet invited",
+    "notYetName_many": "{{count, number}} not yet invited, opens the guest list showing guests not yet invited",
+    "failed": "Guest numbers didn’t load.",
+    "retry": "Try again",
+    "noneInvited": "No guests invited yet"
   },
   "guestNeeds": {
     "needs": "Necesidades",

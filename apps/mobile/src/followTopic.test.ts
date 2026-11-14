@@ -1,15 +1,16 @@
+import { realtimeTopic } from '@soirely/api-client';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
 type Listener = () => void;
 
-const sources = vi.hoisted(() => [] as { listeners: Map<string, Listener> }[]);
+const sources = vi.hoisted(() => [] as { url: string; listeners: Map<string, Listener> }[]);
 const settings = vi.hoisted(() => ({ mercureUrl: 'http://hub.test/.well-known/mercure' }));
 
 vi.mock('./config.ts', () => ({ config: settings }));
 vi.mock('react-native-sse', () => ({
   default: class {
     listeners = new Map<string, Listener>();
-    constructor() {
+    constructor(public url: string) {
       sources.push(this);
     }
     addEventListener(type: string, listener: Listener): void {
@@ -58,5 +59,21 @@ describe('reading again while the hub is down', () => {
     stop();
     await vi.advanceTimersByTimeAsync(EVERY_MS * 3);
     expect(read).toHaveBeenCalledTimes(3);
+  });
+
+  it('follows several topics on one line (sc-3786)', async () => {
+    const stop = followReadingAgain(
+      [realtimeTopic('EventHeadcount', 'e1'), realtimeTopic('EventHeadcount', 'e2')],
+      subscribe,
+      vi.fn(),
+      EVERY_MS,
+    );
+    await vi.advanceTimersByTimeAsync(0);
+
+    expect(sources).toHaveLength(1);
+    expect(sources[0]!.url).toBe(
+      'http://hub.test/.well-known/mercure?topic=events%2Fe1%2Fheadcount&topic=events%2Fe2%2Fheadcount',
+    );
+    stop();
   });
 });

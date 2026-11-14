@@ -1096,3 +1096,39 @@
   font: 600 12.5px/1.3 var(--fontFamily);
   white-space: nowrap;
 }
+
+/* All and Invited, the totals, sit apart from the reply choices below them (sc-3786). */
+.gs-menu .desk-menu > li:nth-child(2) {
+  margin-bottom: var(--spaceXs);
+  padding-bottom: var(--spaceXs);
+  border-bottom: 1px solid var(--colorBorder);
+}
+
+/* Overview's guest numbers (sc-3786), measured as the web demo's GuestNumbers draws them. */
+.gs-counts .desk-row {
+  min-height: 52px;
+  padding-block: var(--spaceXxs);
+}
+
+.gs-figure {
+  flex: none;
+  font: 600 16px/1 var(--fontFamily);
+  font-variant-numeric: tabular-nums;
+}
+
+.ev .gs-not-yet {
+  gap: var(--spaceSm);
+  margin-top: var(--spaceXxs);
+  font-variant-numeric: tabular-nums;
+}
+
+.gs-none-yet {
+  font: 600 16px/1.4 var(--fontFamily);
+}
+
+.gs-bone-figure {
+  flex: none;
+  width: 34px;
+  height: 14px;
+  border-radius: 7px;
+}
