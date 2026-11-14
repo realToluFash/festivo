@@ -443,6 +443,22 @@ describe('answering', () => {
     expect(sent.map(({ path }) => path)).toEqual(['/api/guest-links/page']);
   });
 
+  it('says one host has saved the places, not have (sc-47095)', async () => {
+    api({
+      '/api/guest-links/page': [
+        {
+          status: 200,
+          body: { ...WITH_PLACES, event: { ...WITH_PLACES.event, hosts: ['Funmi'] } },
+        },
+      ],
+    });
+    open();
+
+    fireEvent.click(await screen.findByRole('button', { name: 'Yes, I’ll be there' }));
+
+    expect(screen.getByText('Funmi has saved places for you and up to 2 others.')).toBeDefined();
+  });
+
   it('does not add a blank name, and says why on the button', async () => {
     api({ '/api/guest-links/page': [{ status: 200, body: WITH_PLACES }] });
     open();
