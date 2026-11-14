@@ -1546,6 +1546,12 @@
       "declined": "Enviada el {{sent}} · rechazada el {{ended}}",
       "accepted": "Enviada el {{sent}}"
     },
+    "notDelivered": {
+      "pending": "<word>Not delivered</word> · expires {{ended}}",
+      "expired": "<word>Not delivered</word> · expired {{ended}}",
+      "revoked": "<word>Not delivered</word> · revoked {{ended}}",
+      "declined": "<word>Not delivered</word> · declined {{ended}}"
+    },
     "invitationState": {
       "pending": "Pendiente",
       "expired": "Caducada",
