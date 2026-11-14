@@ -1,17 +1,5 @@
-import {
-  type Account,
-  type ListedEvent,
-  type Membership,
-  realtimeTopic,
-} from '@soirely/api-client';
-import {
-  firstName,
-  followedIds,
-  roleHolds,
-  roleName,
-  serverClock,
-  withFiguresFrom,
-} from '@soirely/domain';
+import { type Account, type ListedEvent, type Membership } from '@soirely/api-client';
+import { firstName, followedIds, roleHolds, roleName, serverClock } from '@soirely/domain';
 import { router } from 'expo-router';
 import { type ReactNode, useCallback, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
@@ -19,6 +7,7 @@ import { AppState, StyleSheet, View } from 'react-native';
 
 import { api } from '../api.ts';
 import type { Tab } from './TodayCover.tsx';
+import { followTodayFigures } from './todayFigures.ts';
 import { TodayScreen } from './TodayScreen.tsx';
 import { type Opens, type TodayShell, TodayShellProvider } from './todayShell.ts';
 import { dateLocale } from '../i18n/index.ts';
@@ -26,7 +15,6 @@ import { DESTINATION_HREF, SECTION_HREF } from '../kit/appNav.ts';
 import { todayMoment } from '../kit/todayMoment.ts';
 import { SKELETON_AFTER_MS } from '../kit/skeleton.ts';
 import { useLayout } from '../layout/useLayout.ts';
-import { followReadingAgain } from '../followTopic.ts';
 import { publishSidebarEvents } from '../sidebarEvents.ts';
 import { useUnread } from '../notificationsUnread.ts';
 import { type ScreenOffline, useHandOffline, useOffline } from '../offline.ts';
@@ -42,9 +30,6 @@ type Load =
   | { kind: 'loading' }
   | { kind: 'failed' }
   | { kind: 'loaded'; events: readonly ListedEvent[]; at: Date };
-
-/** As Events reads its figures again (sc-3786), so a reply shows within ten seconds with no line open. */
-const FIGURES_AGAIN_MS = 10_000;
 
 const TAB_HREF = {
   Events: DESTINATION_HREF.events,
@@ -108,32 +93,12 @@ export function TodayLanding({
 
   const followed = load.kind === 'loaded' ? followedIds(load.events).join(',') : '';
 
-  // A reply moves its event's line in place (sc-29881): only the figures are read again.
   useEffect(() => {
     if (followed === '') return;
-    const ids = followed.split(',');
-    let live = true;
-    const readFigures = () =>
-      api.unfinishedEvents(organisation.id).then(
-        (read) => {
-          if (!live) return;
-          setLoad((was) =>
-            was.kind === 'loaded' ? { ...was, events: withFiguresFrom(was.events, read) } : was,
-          );
-        },
-        () => undefined,
-      );
-    const stop = followReadingAgain(
-      ids.map((id) => realtimeTopic('EventHeadcount', id)),
-      () => api.headcountsSubscription(organisation.id, ids),
-      () => void readFigures(),
-      FIGURES_AGAIN_MS,
-    );
 
-    return () => {
-      live = false;
-      stop();
-    };
+    return followTodayFigures(organisation.id, followed.split(','), (merge) =>
+      setLoad((was) => (was.kind === 'loaded' ? { ...was, events: merge(was.events) } : was)),
+    );
   }, [organisation.id, followed]);
 
   const open = useCallback((opens: Opens) => {
