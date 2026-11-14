@@ -138,7 +138,6 @@
     "validation.guest_invitation_how_required": "Elija cómo hizo la invitación.",
     "validation.guest_answer_unknown": "Elija «Viene», «No viene» o «Por confirmar».",
     "validation.guest_language_unknown": "Elija English, Español, Français o Português, o déjelo en «Sin definir».",
-    "validation.guests_too_many": "Puede gestionar a la vez un máximo de 2000 invitados. Acote la lista con una pestaña, una búsqueda o un filtro y vuelva a seleccionar.",
     "validation.guest_group_name_required": "Escriba un nombre para el grupo.",
     "validation.guest_group_name_too_long": "El nombre de un grupo puede tener hasta {groupMax} caracteres.",
     "validation.guest_group_name_taken": "Ya hay un grupo llamado {name}.",
