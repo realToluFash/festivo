@@ -149,6 +149,7 @@ export function Overview({
   const [resumed, setResumed] = useState(false);
   const [copying, setCopying] = useState(false);
   const stepButton = useRef<HTMLButtonElement>(null);
+  const askEnd = useRef<(() => void) | null>(null);
   const makeLive = useMakeLive({
     event,
     tag,
@@ -307,6 +308,7 @@ export function Overview({
                     now={now}
                     heading={heading}
                     inManage
+                    askRef={askEnd}
                     onChange={onChange}
                     onEnded={() => setEnded(true)}
                   />
@@ -314,7 +316,15 @@ export function Overview({
               )}
               {creates && (
                 <ManageItem red line={t('eventDelete.note')}>
-                  {(look) => <DeleteEvent event={event} look={look} />}
+                  {(look) => (
+                    <DeleteEvent
+                      event={event}
+                      phase={phase}
+                      now={now}
+                      look={look}
+                      onVerb={() => askEnd.current?.()}
+                    />
+                  )}
                 </ManageItem>
               )}
             </ManageList>
