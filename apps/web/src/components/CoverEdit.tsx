@@ -124,6 +124,7 @@ export function CoverEdit<Saved>({
         setDescription('');
         setTooLong(false);
         setSaveRefused(null);
+        setPickRefused(null);
         setUploading(false);
       },
       (error: unknown) => {
