@@ -10,6 +10,7 @@ use App\Domain\Event\EventEditor;
 use App\Domain\Event\EventLifecycle;
 use App\Domain\Event\Http\EventSerialiser;
 use App\Domain\Event\Http\MilestoneSerialiser;
+use App\Domain\Guest\Headcount\HeadcountCalculator;
 use App\Entity\Event;
 use App\Entity\Organisation;
 use App\Entity\User;
@@ -29,6 +30,7 @@ use App\Repository\EventSearch;
 use App\Repository\OrganisationRepository;
 use DateTimeImmutable;
 use DateTimeZone;
+use Psl\Iter;
 use Psl\Math;
 use Psl\Str;
 use Psl\Type;
@@ -58,10 +60,11 @@ final readonly class EventsController
         private MilestoneSerialiser $milestoneSerialiser,
         private ClockInterface $clock,
         private EventDuplicator $eventDuplicator,
+        private HeadcountCalculator $headcountCalculator,
     ) {
     }
 
-    /** A page of the unfinished, or with `finished=true` the Finished, each with its timeline's milestones (sc-3594). A Member's has only the events they have a role on (sc-29912). */
+    /** A page of the unfinished, or with `finished=true` the Finished, each with its timeline's milestones (sc-3594) and its guest figures (sc-3786). A Member's has only the events they have a role on (sc-29912). */
     #[Route('/api/orgs/{organisationId}/events', name: 'events_list', methods: ['GET'])]
     #[InOrganisation(null)]
     public function list(Request $request, string $organisationId): JsonResponse
@@ -84,9 +87,15 @@ final readonly class EventsController
         $perPage = Math\minva($query['itemsPerPage'] ?? self::PER_PAGE, self::MOST_PER_PAGE);
         $now = $this->clock->now();
         $events = $this->eventRepository->findPageInOrganisation($organisation, $finished, $now, $page, $perPage, $scope->onlyFor, $search);
+        $counted = $this->headcountCalculator->forEvents(Vec\filter($events, static fn (Event $event): bool => $scope->on($event->getId())?->holds(Permission::GuestsRead) ?? false));
 
         return new JsonResponse([
-            'events' => Vec\map(Vec\zip($events, $this->eventSerialiser->events($events, $scope)), fn (array $pair): array => [...$pair[1], 'milestones' => $this->milestoneSerialiser->milestones($pair[0], $scope->on($pair[0]->getId()) ?? Grants::only([]))]),
+            'events' => Vec\map(Vec\zip($events, $this->eventSerialiser->events($events, $scope)), fn (array $pair): array => [
+                ...$pair[1],
+                'milestones' => $this->milestoneSerialiser->milestones($pair[0], $scope->on($pair[0]->getId()) ?? Grants::only([])),
+                // Each event's guest line (sc-3786), only where the caller reads its guests.
+                'guests' => Iter\contains_key($counted, $pair[0]->getId()->toRfc4122()) ? HeadcountCalculator::figures($counted[$pair[0]->getId()->toRfc4122()]) : null,
+            ]),
             'total' => $this->eventRepository->countPhaseInOrganisation($organisation, $finished, $now, $scope->onlyFor, $search),
             'page' => $page,
             'itemsPerPage' => $perPage,

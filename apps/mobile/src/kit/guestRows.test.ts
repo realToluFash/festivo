@@ -4,6 +4,7 @@ import { filterChoices } from './guestRows.ts';
 
 const counts = {
   all: 12,
+  invited: 10,
   coming: 4,
   maybe: 1,
   noReply: 3,
