@@ -1,0 +1,19 @@
+# sc-36347: Colours open with Berry picked, not yet saved; the API is then stopped by hand before sc36347-offline-save.
+appId: host.exp.Exponent
+---
+- openLink: ${METRO_URL}/--/settings/personalisation
+- extendedWaitUntil:
+    visible:
+      id: personalisation.choose
+    timeout: 30000
+- runFlow: developer-menu-close.yaml
+- tapOn:
+    id: personalisation.choose
+- extendedWaitUntil:
+    visible:
+      id: personalisation.colours
+    timeout: 15000
+- tapOn:
+    id: personalisation.swatch.berry
+- waitForAnimationToEnd
+- takeScreenshot: offline-picked

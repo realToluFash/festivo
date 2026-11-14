@@ -1,0 +1,18 @@
+# On Check your email, waits for Send a new code and presses it. sc-29923.
+# Needs the sign-up hold expired (set pending_registrations.expires_at back); on a fresh hold the screen stays on Check your email.
+#   node .qa/bin/qa-env.mjs maestro sc29923-resend SHOT=…
+appId: host.exp.Exponent
+---
+- extendedWaitUntil:
+    visible:
+      id: 'verifyEmail.resend'
+      text: 'Send a new code'
+    timeout: 120000
+- tapOn:
+    id: 'verifyEmail.resend'
+- extendedWaitUntil:
+    visible:
+      id: 'register.password'
+    timeout: 20000
+- waitForAnimationToEnd
+- takeScreenshot: ${SHOT}

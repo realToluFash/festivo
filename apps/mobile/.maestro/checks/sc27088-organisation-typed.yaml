@@ -1,0 +1,105 @@
+# sc-27088, Android only: Organisation keeps a typed name across offline, a refused Save, the automatic rereads being refused, and a pressed Try again.
+appId: host.exp.Exponent
+onFlowComplete:
+  - runScript:
+      file: ../batch/helper.js
+      env:
+        ASK: /api?to=up
+---
+# organisation.card is drawn before the read answers, so only the band proves the screen had
+# loaded. A try that went offline too early leaves no band and nothing reads again, so each
+# try reloads the bundle to remount the screen.
+- retry:
+    maxRetries: 2
+    commands:
+      - runFlow: ../batch/reset.yaml
+      - openLink: ${METRO_URL}/--/settings/organisation
+      - extendedWaitUntil:
+          visible:
+            id: 'organisation.card'
+          timeout: 30000
+      - assertNotVisible: 'Offline Org Name'
+      - extendedWaitUntil:
+          notVisible:
+            id: 'organisation.refreshing'
+          timeout: 20000
+      - tapOn:
+          id: 'organisation.edit'
+      - extendedWaitUntil:
+          visible:
+            id: 'organisation.name'
+          timeout: 10000
+      - tapOn:
+          id: 'organisation.name'
+      - eraseText: 120
+      - inputText: 'Offline Org Name'
+      - hideKeyboard
+      - setAirplaneMode: enabled
+      - extendedWaitUntil:
+          visible:
+            id: 'offline.band'
+          timeout: 8000
+- runScript:
+    file: ../batch/helper.js
+    env:
+      ASK: /api?to=stopped
+- scrollUntilVisible:
+    element:
+      id: 'organisation.details.save'
+    direction: DOWN
+    timeout: 15000
+- assertVisible:
+    id: 'organisation.details.save'
+    enabled: true
+- tapOn:
+    id: 'organisation.details.save'
+- extendedWaitUntil:
+    visible: '{{t:orgGeneral.failed}}'
+    timeout: 60000
+- takeScreenshot: save-refused
+- assertVisible: 'Offline Org Name'
+# Soirely still stopped, so the rereads on coming back online are refused at once, band still up.
+- setAirplaneMode: disabled
+- extendedWaitUntil:
+    visible:
+      id: 'organisation.refreshing'
+    timeout: 6000
+    optional: true
+- extendedWaitUntil:
+    notVisible:
+      id: 'organisation.refreshing'
+    timeout: 10000
+- assertVisible:
+    id: 'offline.band'
+- runScript:
+    file: ../batch/helper.js
+    env:
+      ASK: /api?to=paused
+- assertNotVisible:
+    id: 'organisation.refreshing'
+- tapOn:
+    id: 'offline.retry'
+    waitToSettleTimeoutMs: 500
+    retryTapIfNoChange: false
+# Nothing else is out, so Refreshing straight after the tap is Try again's own load.
+- extendedWaitUntil:
+    visible:
+      id: 'organisation.refreshing'
+    timeout: 3000
+- assertVisible:
+    id: 'offline.band'
+- runScript:
+    file: ../batch/helper.js
+    env:
+      ASK: /api?to=up
+- extendedWaitUntil:
+    notVisible:
+      id: 'offline.band'
+    timeout: 30000
+- scrollUntilVisible:
+    element:
+      id: 'organisation.name'
+    direction: UP
+    timeout: 15000
+- assertVisible: 'Offline Org Name'
+- takeScreenshot: name-kept

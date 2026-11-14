@@ -1,0 +1,20 @@
+# sc-34175: Make primary asked for the address ROW, left open.
+appId: host.exp.Exponent
+---
+- openLink: ${METRO_URL}/--/settings/account
+- scrollUntilVisible:
+    element:
+      id: 'account.${ROW}'
+    timeout: 30000
+    centerElement: true
+- waitForAnimationToEnd
+- tapOn:
+    id: 'account.${ROW}'
+- tapOn:
+    id: 'account.${ROW}.primary'
+- extendedWaitUntil:
+    visible:
+      id: 'account.promote.confirm'
+    timeout: 10000
+- waitForAnimationToEnd
+- takeScreenshot: promote-ask

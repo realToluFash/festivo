@@ -1,0 +1,104 @@
+/* sc-46880: the selection bar docks above the list, and its line takes the bar's place. */
+.gm-list {
+  max-width: 720px;
+}
+
+.gm-all {
+  padding-left: var(--spaceSm);
+}
+
+.gm-dock {
+  position: sticky;
+  top: 0;
+  z-index: 1;
+  display: flex;
+  flex-direction: column;
+  gap: var(--spaceSm);
+  background: var(--colorPage);
+}
+
+.gm-bar,
+.gm-line {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--spaceSm) var(--spaceMd);
+  padding: var(--spaceMd) var(--spaceLg);
+  border-radius: var(--radiusInset);
+  background: var(--colorCard);
+  box-shadow: var(--shadowRaised);
+}
+
+.gm-count {
+  display: flex;
+  flex: 1 1 auto;
+  flex-direction: column;
+  color: var(--colorInk);
+  font: 600 16px/1.3 var(--fontFamily);
+}
+
+.gm-count span {
+  color: var(--colorInkSecondary);
+  font-weight: 500;
+  font-size: 14px;
+}
+
+.gm-narrow,
+.gm-pretend {
+  flex-basis: 100%;
+}
+
+.gm-actions {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--spaceSm);
+}
+
+.gm-line p {
+  display: flex;
+  flex: 1 1 0;
+  flex-direction: column;
+  gap: var(--spaceXxs);
+  color: var(--colorInk);
+  font: 600 15px/1.4 var(--fontFamily);
+}
+
+.gm-line > svg {
+  flex: none;
+  align-self: flex-start;
+  margin-top: var(--spaceHair);
+}
+
+.gm-line.is-done > svg {
+  color: var(--deskGreen);
+}
+
+.gm-line.is-quiet > svg {
+  color: var(--colorInkSecondary);
+}
+
+.gm-line.is-held > svg {
+  color: var(--colorBroken);
+}
+
+.gm-row {
+  gap: var(--spaceLg);
+  cursor: pointer;
+}
+
+.gm-row.is-companion {
+  cursor: default;
+}
+
+.gm-already {
+  margin-bottom: var(--spaceMd);
+}
+
+.gm-said:focus {
+  outline: none;
+}
+
+.gm-said:focus-visible > .gm-line {
+  box-shadow: inset 0 0 0 2px var(--colorAccent);
+}

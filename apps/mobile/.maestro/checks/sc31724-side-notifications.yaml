@@ -1,0 +1,13 @@
+# sc-31724: the design demo's Settings on a tablet on its side, notifications: the open row lit by Tint alone, no ring.
+appId: host.exp.Exponent
+---
+# At ${ORIENT}: LANDSCAPE_LEFT, or PORTRAIT on a landscape-native tablet such as Soirely_QA2_Tablet (sc-23471).
+- setOrientation: ${ORIENT}
+- openLink: ${METRO_URL}/--/demo/settings/notifications
+- extendedWaitUntil:
+    visible:
+      id: 'notifications.card'
+    timeout: 30000
+- waitForAnimationToEnd:
+    timeout: 8000
+- takeScreenshot: side-notifications

@@ -1,0 +1,49 @@
+# sc-46032: picking the organisation already being worked in, or closing the switcher, shows no Now working in ‹name›.
+appId: host.exp.Exponent
+---
+- runScript:
+    file: ../batch/helper.js
+    env:
+      ASK: /membership?change=join&org=Beta
+- openLink: ${METRO_URL}/--/
+- tapOn:
+    id: 'frame.home'
+    optional: true
+- waitForAnimationToEnd:
+    timeout: 5000
+- tapOn:
+    id: 'frame.organisation'
+- extendedWaitUntil:
+    visible:
+      id: 'switcher.heading'
+    timeout: 20000
+- waitForAnimationToEnd:
+    timeout: 5000
+- takeScreenshot: open
+- tapOn: 'QA Organisation, .*'
+- extendedWaitUntil:
+    notVisible:
+      id: 'switcher.heading'
+    timeout: 20000
+- waitForAnimationToEnd:
+    timeout: 3000
+- assertNotVisible: '{{t:switcher.switched}}'
+- takeScreenshot: same-picked
+- tapOn:
+    id: 'frame.organisation'
+- extendedWaitUntil:
+    visible:
+      id: 'switcher.heading'
+    timeout: 20000
+- waitForAnimationToEnd:
+    timeout: 5000
+- tapOn:
+    id: 'switcher.close'
+- extendedWaitUntil:
+    notVisible:
+      id: 'switcher.heading'
+    timeout: 20000
+- waitForAnimationToEnd:
+    timeout: 3000
+- assertNotVisible: '{{t:switcher.switched}}'
+- takeScreenshot: closed

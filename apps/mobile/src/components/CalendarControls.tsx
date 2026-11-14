@@ -1,0 +1,493 @@
+import type { CalendarView } from '@soirely/domain';
+import { type Ref, type RefObject, useEffect, useRef, useState } from 'react';
+import { Animated, Easing, Pressable, StyleSheet, View, type ViewInstance } from 'react-native';
+import Svg, { Circle, Path } from 'react-native-svg';
+import { useTranslation } from 'react-i18next';
+
+import { motionEase } from '../motion.ts';
+import { useReducedMotion } from '../reducedMotion.ts';
+import { tokens } from '../theme/tokens.ts';
+import { Glyph, type GlyphName } from './Glyph.tsx';
+import { useReadOut } from './ReadOut.tsx';
+import { type Anchor, AnchoredMenu } from './Summary.tsx';
+import { Text } from './Text.tsx';
+import { Pill } from './SettingsParts.tsx';
+
+/** The toolbar's words grow to twice their size and no further, so Month, Show and the month's name are never cut. */
+const DOUBLED = 2;
+
+const hidden = {
+  accessibilityElementsHidden: true,
+  importantForAccessibility: 'no-hide-descendants',
+} as const;
+
+const VIEWS: readonly [CalendarView, string][] = [
+  ['month', 'calendar.month'],
+  ['agenda', 'calendar.agenda'],
+];
+
+/** One of Show's options: the first one listed shows everything. */
+export interface ShowChoice<S extends string> {
+  value: S;
+  word: string;
+}
+
+/** View, main's radiogroup, in B's segment: the chosen half white with a tick. */
+export function ViewSwitch({
+  view,
+  onView,
+  big,
+}: {
+  view: CalendarView;
+  onView: (view: CalendarView) => void;
+  big: boolean;
+}) {
+  const { t } = useTranslation();
+
+  return (
+    <View style={[styles.segment, big && styles.segmentBig]} accessibilityRole="radiogroup">
+      {VIEWS.map(([each, key]) => {
+        const on = each === view;
+        const word = t(key);
+
+        return (
+          <Pressable
+            key={each}
+            onPress={() => onView(each)}
+            style={[styles.cell, big && styles.cellBig, on && styles.cellOn]}
+            accessibilityRole="radio"
+            accessibilityState={{ checked: on }}
+            accessibilityLabel={word}
+            testID={`calendar.view.${each}`}
+          >
+            {on && <Glyph name="tick" size={14} ink={tokens.colorAccent} weight={2.6} />}
+            <Text
+              size={14.5}
+              weight={on ? 'semibold' : 'medium'}
+              numberOfLines={1}
+              maxFontSizeMultiplier={DOUBLED}
+              accessible={false}
+              style={{ color: on ? tokens.colorAccentText : tokens.colorInkSecondary }}
+            >
+              {word}
+            </Text>
+          </Pressable>
+        );
+      })}
+    </View>
+  );
+}
+
+/** Show, a 44 pill in Surf that reads its choice in Tint while one is on; a long choice wraps inside it, never cut. */
+export function ShowButton<S extends string>({
+  show,
+  choices,
+  big,
+  onPress,
+  ref,
+}: {
+  show: S;
+  choices: readonly ShowChoice<S>[];
+  big: boolean;
+  onPress: () => void;
+  ref: Ref<ViewInstance>;
+}) {
+  const { t } = useTranslation();
+  const only = show !== choices[0]?.value;
+  const ink = only ? tokens.colorAccentText : tokens.colorInk;
+  const word = choices.find((choice) => choice.value === show)?.word ?? '';
+
+  return (
+    <Pressable
+      ref={ref}
+      onPress={onPress}
+      style={({ pressed }) => [
+        styles.pill,
+        styles.showPill,
+        big && styles.pillBig,
+        only && styles.pillOn,
+        pressed && styles.pressed,
+      ]}
+      accessibilityRole="button"
+      accessibilityLabel={t('calendar.choiceIn', { group: t('calendar.show'), choice: word })}
+      testID="calendar.show"
+    >
+      <Glyph name="filter" size={17} ink={ink} weight={2.2} />
+      <Text
+        size={15}
+        weight="semibold"
+        maxFontSizeMultiplier={DOUBLED}
+        accessible={false}
+        style={[styles.showWords, { color: ink }]}
+      >
+        {only ? word : t('calendar.show')}
+      </Text>
+    </Pressable>
+  );
+}
+
+/** Show's choices, under the button with its right edge on Show's. */
+export function ShowMenu<S extends string>({
+  at,
+  show,
+  choices,
+  opener,
+  onShow,
+  onClose,
+}: {
+  at: Anchor | null;
+  show: S;
+  choices: readonly ShowChoice<S>[];
+  opener: RefObject<ViewInstance | null>;
+  onShow: (show: S) => void;
+  onClose: () => void;
+}) {
+  return (
+    <AnchoredMenu
+      at={at == null ? null : { ...at, y: at.y + tokens.spaceXxs }}
+      onClose={onClose}
+      opener={opener}
+      width={264}
+      testID="calendar.showMenu"
+    >
+      <View style={styles.menu}>
+        {choices.map(({ value, word }) => {
+          const on = value === show;
+
+          return (
+            <Pressable
+              key={value}
+              onPress={() => {
+                onShow(value);
+                onClose();
+              }}
+              style={({ pressed }) => [
+                styles.choice,
+                on && styles.choiceOn,
+                pressed && !on && styles.choicePressed,
+              ]}
+              accessibilityRole="radio"
+              accessibilityState={{ checked: on }}
+              accessibilityLabel={word}
+              testID={`calendar.show.${value}`}
+            >
+              <Text
+                size={16}
+                weight={on ? 'semibold' : 'medium'}
+                accessible={false}
+                style={[styles.grow, on && styles.accent]}
+              >
+                {word}
+              </Text>
+              <View style={styles.tick}>
+                {on && <Glyph name="tick" size={18} ink={tokens.colorAccent} weight={2.6} />}
+              </View>
+            </Pressable>
+          );
+        })}
+      </View>
+    </AnchoredMenu>
+  );
+}
+
+function RoundStep({
+  glyph,
+  label,
+  onPress,
+  testID,
+}: {
+  glyph: GlyphName;
+  label: string;
+  onPress: () => void;
+  testID: string;
+}) {
+  return (
+    <Pressable
+      onPress={onPress}
+      style={({ pressed }) => [styles.round, pressed && styles.pressed]}
+      accessibilityRole="button"
+      accessibilityLabel={label}
+      testID={testID}
+    >
+      <Glyph name={glyph} size={18} ink={tokens.colorInk} weight={2.4} />
+    </Pressable>
+  );
+}
+
+/** Previous, Today and Next, 6 apart; Today is Tint while its scroll runs. */
+export function Stepper({
+  running,
+  onStep,
+  onToday,
+}: {
+  running: boolean;
+  onStep: (step: -1 | 1) => void;
+  onToday: () => void;
+}) {
+  const { t } = useTranslation();
+
+  return (
+    <View style={styles.stepper}>
+      <RoundStep
+        glyph="back"
+        label={t('calendar.previous')}
+        onPress={() => onStep(-1)}
+        testID="calendar.previous"
+      />
+      <Pressable
+        onPress={onToday}
+        style={({ pressed }) => [styles.pill, running && styles.pillOn, pressed && styles.pressed]}
+        accessibilityRole="button"
+        accessibilityLabel={t('calendar.today')}
+        testID="calendar.today"
+      >
+        <Text
+          size={15}
+          weight="semibold"
+          maxFontSizeMultiplier={DOUBLED}
+          accessible={false}
+          style={{ color: running ? tokens.colorAccentText : tokens.colorInk }}
+        >
+          {t('calendar.today')}
+        </Text>
+      </Pressable>
+      <RoundStep
+        glyph="chevron"
+        label={t('calendar.next')}
+        onPress={() => onStep(1)}
+        testID="calendar.next"
+      />
+    </View>
+  );
+}
+
+/** The pinned month's name, a heading said once as it turns, cross-fading in motionFast; `wraps` lets it take lines rather than cut. */
+export function MonthName({ name, size, wraps }: { name: string; size: number; wraps?: boolean }) {
+  const reduced = useReducedMotion();
+  const [was, setWas] = useState<string | null>(null);
+  const [shown, setShown] = useState(name);
+  const [fade] = useState(() => new Animated.Value(1));
+
+  useReadOut(name, { quietAtMount: true });
+
+  if (name !== shown) {
+    setWas(reduced ? null : shown);
+    setShown(name);
+  }
+
+  useEffect(() => {
+    if (was == null) return;
+    fade.setValue(0);
+    const run = Animated.timing(fade, {
+      toValue: 1,
+      duration: tokens.motionFast,
+      easing: motionEase,
+      useNativeDriver: true,
+    });
+    run.start(({ finished }) => finished && setWas(null));
+
+    return () => run.stop();
+  }, [was, fade]);
+
+  const look = [styles.month, { lineHeight: Math.round(size * 1.2), letterSpacing: size * -0.015 }];
+  const lines = wraps ? undefined : 1;
+
+  return (
+    <View style={[styles.monthBox, wraps && styles.clipped]}>
+      <Animated.View style={{ opacity: was == null ? 1 : fade }}>
+        <Text
+          size={size}
+          weight="bold"
+          numberOfLines={lines}
+          maxFontSizeMultiplier={DOUBLED}
+          accessibilityRole="header"
+          style={look}
+          testID="calendar.month"
+        >
+          {shown}
+        </Text>
+      </Animated.View>
+      {was != null && (
+        <Animated.View
+          {...hidden}
+          style={[StyleSheet.absoluteFill, { opacity: Animated.subtract(1, fade) }]}
+        >
+          <Text
+            size={size}
+            weight="bold"
+            numberOfLines={lines}
+            maxFontSizeMultiplier={DOUBLED}
+            style={look}
+          >
+            {was}
+          </Text>
+        </Animated.View>
+      )}
+    </View>
+  );
+}
+
+/** Subscribe in your calendar app: a 44 round button in Surf on the phone. */
+export function SubscribeRound({ onPress, ref }: { onPress: () => void; ref: Ref<ViewInstance> }) {
+  const { t } = useTranslation();
+
+  return (
+    <Pressable
+      ref={ref}
+      onPress={onPress}
+      style={({ pressed }) => [styles.round, pressed && styles.pressed]}
+      accessibilityRole="button"
+      accessibilityLabel={t('calendarFeed.open')}
+      testID="calendarFeed.open"
+    >
+      <Glyph name="calendar" size={20} ink={tokens.colorInk} weight={2.1} />
+    </Pressable>
+  );
+}
+
+/** Subscribe at the end of the Calendar's title row: round on the phone, the pill with its words wider. */
+export function Subscribe({
+  phone,
+  onPress,
+  ref,
+}: {
+  phone: boolean;
+  onPress: () => void;
+  ref: Ref<ViewInstance>;
+}) {
+  const { t } = useTranslation();
+
+  if (phone) return <SubscribeRound onPress={onPress} ref={ref} />;
+
+  return (
+    <Pill
+      label={t('calendarFeed.open')}
+      kind="secondary"
+      glyph="calendar"
+      height={tokens.sizeHit}
+      full={false}
+      onPress={onPress}
+      ref={ref}
+      testID="calendarFeed.open"
+    />
+  );
+}
+
+const SPIN_MS = 800;
+
+/** A 16 ring with a Violet arc, turning once every 800 ms; still under Reduce Motion, where its words carry it. */
+export function Spinner() {
+  const reduced = useReducedMotion();
+  const [turn] = useState(() => new Animated.Value(0));
+  const loop = useRef<Animated.CompositeAnimation | null>(null);
+
+  useEffect(() => {
+    if (reduced) return;
+    loop.current = Animated.loop(
+      Animated.timing(turn, {
+        toValue: 1,
+        duration: SPIN_MS,
+        easing: Easing.linear,
+        useNativeDriver: true,
+      }),
+    );
+    loop.current.start();
+
+    return () => loop.current?.stop();
+  }, [reduced, turn]);
+
+  const rotate = turn.interpolate({ inputRange: [0, 1], outputRange: ['0deg', '360deg'] });
+
+  return (
+    <Animated.View {...hidden} style={[styles.spinner, { transform: [{ rotate }] }]}>
+      <Svg width={16} height={16} viewBox="0 0 16 16">
+        <Circle cx={8} cy={8} r={6.75} fill="none" stroke={tokens.colorBorder} strokeWidth={2.5} />
+        <Path
+          d="M8 1.25a6.75 6.75 0 0 1 6.75 6.75"
+          fill="none"
+          stroke={tokens.colorAccent}
+          strokeWidth={2.5}
+          strokeLinecap="round"
+        />
+      </Svg>
+    </Animated.View>
+  );
+}
+
+const styles = StyleSheet.create({
+  grow: { flex: 1, minWidth: 0 },
+  accent: { color: tokens.colorAccentText },
+  pressed: { opacity: tokens.opacityPressed },
+  segment: {
+    height: tokens.sizeHit,
+    flexDirection: 'row',
+    gap: tokens.spaceHair,
+    padding: 3,
+    borderRadius: tokens.sizeHit / 2,
+    backgroundColor: tokens.colorInsetBorder,
+  },
+  segmentBig: { height: 60, borderRadius: 30, alignSelf: 'stretch' },
+  cell: {
+    height: 38,
+    paddingHorizontal: 14,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 5,
+    borderRadius: 19,
+  },
+  cellBig: { flex: 1, height: 54, borderRadius: 27 },
+  cellOn: {
+    backgroundColor: tokens.colorCard,
+    shadowColor: tokens.colorInk,
+    shadowOpacity: 0.12,
+    shadowRadius: 1.5,
+    shadowOffset: { width: 0, height: 1 },
+    elevation: 2,
+  },
+  pill: {
+    height: tokens.sizeHit,
+    paddingHorizontal: tokens.spaceXl,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 7,
+    borderRadius: tokens.sizeHit / 2,
+    backgroundColor: tokens.colorInset,
+  },
+  showPill: {
+    height: undefined,
+    minHeight: tokens.sizeHit,
+    flexShrink: 1,
+    paddingLeft: tokens.spacePillEnd,
+    paddingVertical: tokens.spaceXxs,
+  },
+  showWords: { flexShrink: 1 },
+  pillBig: { minHeight: 60, height: undefined, borderRadius: 30, alignSelf: 'stretch' },
+  pillOn: { backgroundColor: tokens.colorAccentTint },
+  round: {
+    width: tokens.sizeHit,
+    height: tokens.sizeHit,
+    borderRadius: tokens.sizeHit / 2,
+    alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: tokens.colorInset,
+  },
+  stepper: { flexDirection: 'row', alignItems: 'center', gap: tokens.spaceXs },
+  monthBox: { flexShrink: 1, minWidth: 0 },
+  clipped: { overflow: 'hidden' },
+  month: { color: tokens.colorInk },
+  menu: { gap: tokens.spaceHair, paddingHorizontal: tokens.spaceXs },
+  choice: {
+    minHeight: 48,
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: tokens.spaceMd,
+    paddingHorizontal: tokens.spacePillEnd,
+    borderRadius: tokens.spaceLg,
+  },
+  choiceOn: { backgroundColor: tokens.colorAccentTint },
+  choicePressed: { backgroundColor: tokens.colorInset },
+  tick: { width: 18, alignItems: 'center' },
+  spinner: { width: 16, height: 16 },
+});
