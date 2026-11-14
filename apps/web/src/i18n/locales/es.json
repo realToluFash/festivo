@@ -3192,7 +3192,6 @@
     "narrowing": "You can act on up to {{most, number}} guests at once. Narrow the list with a tab, a search or a filter, then select again.",
     "cleared": "Selection cleared.",
     "clearedWhy": "The list changed, so nothing hidden stays selected.",
-    "clearedSaid": "Selection cleared",
     "heldNote": "Companions are selected with their guest, on the All tab.",
     "viewOnly": "You can see the list. Selecting guests is for people who manage guests.",
     "groupTitle_one": "Add {{count, number}} guest to a group",
