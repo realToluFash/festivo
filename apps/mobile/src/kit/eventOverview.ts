@@ -9,6 +9,7 @@ import {
 } from '@soirely/domain';
 import type { TFunction } from 'i18next';
 
+import type { EditPart } from './eventNav.ts';
 import { dayCount } from './eventsList.ts';
 
 export type ManageKey = 'duplicate' | 'pause' | 'callOff' | 'endNow' | 'delete';
@@ -27,6 +28,11 @@ export function manageOf(event: { startsAt: string }, phase: EventPhase, now: Da
 
 export function scheduleLocked(phase: EventPhase): boolean {
   return !eventAllows(phase, 'edit_schedule');
+}
+
+/** A part whose row does not open, as Dates once the event is over, does not open from a link either. */
+export function partLocked(part: EditPart, phase: EventPhase): boolean {
+  return part === 'dates' && scheduleLocked(phase);
 }
 
 export interface RowWords {

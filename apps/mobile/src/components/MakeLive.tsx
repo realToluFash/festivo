@@ -11,7 +11,7 @@ import { StyleSheet, type TextInputInstance, View, type ViewInstance } from 'rea
 import { useTranslation } from 'react-i18next';
 
 import { api } from '../api.ts';
-import { type EditAt } from '../kit/eventNav.ts';
+import { type EditPart } from '../kit/eventNav.ts';
 import {
   type LiveAsking,
   type LiveQuestion,
@@ -41,7 +41,7 @@ export function DraftRow({
   manages: boolean;
   now: Date;
   onChange: (event: OrganisationEvent) => void;
-  onEdit?: ((at?: EditAt) => void) | undefined;
+  onEdit?: ((part: EditPart) => void) | undefined;
 }) {
   const { t } = useTranslation();
   const opener = useRef<ViewInstance>(null);
@@ -82,7 +82,7 @@ export function useMakeLive({
 }: {
   event: OrganisationEvent;
   onChange: (event: OrganisationEvent) => void;
-  onEdit?: ((at?: EditAt) => void) | undefined;
+  onEdit?: ((part: EditPart) => void) | undefined;
   /** Says ✓ Live where the page shows its toasts; without it, it is only read out. */
   onLive?: ((words: string) => void) | undefined;
   opener: RefObject<ScreenReaderTarget | null>;
@@ -212,7 +212,7 @@ export function useMakeLive({
       if (!asking.pending) void go(asking);
     } else if (asking?.kind === 'told' && asking.changeDates && onEdit != null) {
       setAsking(null);
-      onEdit('starts');
+      onEdit('dates');
     }
   };
 

@@ -1642,7 +1642,8 @@
     "yourPhoto": "Votre photo",
     "pauseLine": "Les invités ne pourront ni répondre ni rien modifier jusqu’à la reprise. Rien n’est perdu. L’accueil des invités et le service continuent.",
     "callOffLine": "L’événement n’aura pas lieu. Les invités qui ouvriront leur lien en seront informés. Cette action est irréversible.",
-    "endLine": "L’événement sera terminé pour tout le monde. Cette action est irréversible."
+    "endLine": "L’événement sera terminé pour tout le monde. Cette action est irréversible.",
+    "dates": "Dates"
   },
   "eventForm": {
     "title": "Nouvel événement",
@@ -1714,7 +1715,11 @@
     "leave": "Quitter sans enregistrer",
     "saved": "Modifications enregistrées",
     "scheduleConcluded": "Cet événement est terminé, son début, sa fin et son fuseau horaire ne peuvent donc plus être modifiés.",
-    "scheduleLocked": "Cet événement est terminé, son début, sa fin et son fuseau horaire ne peuvent donc plus être modifiés."
+    "scheduleLocked": "Cet événement est terminé, son début, sa fin et son fuseau horaire ne peuvent donc plus être modifiés.",
+    "savePart": "Save",
+    "discardTitle": "Discard your change?",
+    "discardLine": "What you changed here is not saved.",
+    "discard": "Discard"
   },
   "eventCover": {
     "heading": "Image de couverture",
@@ -1745,7 +1750,9 @@
     "remove": "Retirer la photo",
     "cancel": "Annuler",
     "use": "Utiliser cette photo",
-    "saving": "Enregistrement…"
+    "saving": "Enregistrement…",
+    "meshLine": "Soirely’s cover, in this event’s own colours. Add your own photo if you like.",
+    "removeLine": "The default cover comes back."
   },
   "eventLive": {
     "guestsBlocked": "Vous ne pourrez inviter personne tant que cet événement n’est pas publié.",

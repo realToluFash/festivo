@@ -5,7 +5,7 @@ import { StyleSheet, View, type ViewInstance } from 'react-native';
 import { useTranslation } from 'react-i18next';
 
 import { dateLocale } from '../i18n/index.ts';
-import type { EditAt } from '../kit/eventNav.ts';
+import type { EditPart } from '../kit/eventNav.ts';
 import { PHASE_WORD } from '../kit/makeLive.ts';
 import { useLoadedAt } from '../kit/serverNow.ts';
 import { type LayoutKind } from '../layout/useLayout.ts';
@@ -105,7 +105,7 @@ export function EventTop({
   manages: boolean;
   now: Date;
   onChange?: ((event: OrganisationEvent) => void) | undefined;
-  onEdit?: ((at?: EditAt) => void) | undefined;
+  onEdit?: ((part: EditPart) => void) | undefined;
   onDuplicate?: ((opener: RefObject<ScreenReaderTarget | null>) => void) | undefined;
 }) {
   const { t } = useTranslation();
@@ -137,7 +137,7 @@ export function EventTop({
           {endPassed && onEdit != null && (
             <PrimaryButton
               label={t('eventLive.changeDates')}
-              onPress={() => onEdit('starts')}
+              onPress={() => onEdit('dates')}
               testID="events.changeDates"
             />
           )}

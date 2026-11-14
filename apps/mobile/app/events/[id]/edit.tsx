@@ -1,10 +1,11 @@
 import { useLocalSearchParams } from 'expo-router';
 
-import { EditEventScreen } from '../../../src/components/EventFormScreen.tsx';
-import { editAtOf } from '../../../src/kit/eventNav.ts';
+import { EventScreen } from '../../../src/components/EventScreen.tsx';
+import { editPartOf } from '../../../src/kit/eventNav.ts';
 
+/** A link into the old Edit details: the event's page, with the part `at` names open over it (sc-48600). */
 export default function EditEvent() {
   const { id = '', at } = useLocalSearchParams<{ id?: string; at?: string }>();
 
-  return <EditEventScreen eventId={id} at={editAtOf(at)} />;
+  return <EventScreen eventId={id} area="overview" opensEdit={editPartOf(at)} keepsTab={false} />;
 }
