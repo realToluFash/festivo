@@ -126,6 +126,11 @@ class Guest
     #[ORM\Column(type: Types::BOOLEAN, options: ['default' => false])]
     private bool $namedByGuest = false;
 
+    /** A host's group (sc-3775); a companion's is always null, since they are in their host's. Deleting the group leaves the guest in none. */
+    #[ORM\ManyToOne(targetEntity: GuestGroup::class)]
+    #[ORM\JoinColumn(nullable: true, onDelete: 'SET NULL')]
+    private ?GuestGroup $group = null;
+
     private function __construct(Event $event, ?Guest $host, ?string $fullName, ?string $nameKey, ?string $email, ?string $mobile, ?GuestReply $reply, int $position, ?User $addedBy, #[SensitiveParameter] ?string $linkToken)
     {
         $this->id = Uuid::v7();
@@ -370,6 +375,16 @@ class Guest
     public function setNeedsNote(?string $note): void
     {
         $this->needsNote = $note;
+    }
+
+    public function getGroup(): ?GuestGroup
+    {
+        return $this->group;
+    }
+
+    public function setGroup(?GuestGroup $group): void
+    {
+        $this->group = $group;
     }
 
     public function setPosition(int $position): void

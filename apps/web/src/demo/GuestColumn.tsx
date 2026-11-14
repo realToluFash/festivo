@@ -408,22 +408,12 @@ function recorded(needs: Needs | undefined): needs is Needs {
   );
 }
 
-function ChangedByGuest({ needs }: { needs: Needs | undefined }) {
-  if (needs?.changed?.by !== 'guest') return null;
-
-  return <p className="desk-help">{NW.changedByGuest(dayOf(needs.changed.on))}</p>;
-}
-
-function shown(needs: Needs | undefined): needs is Needs {
-  return needs?.changed?.by === 'guest' || recorded(needs);
-}
-
-/** sc-3777: allergies, diet and access under their own headings, the guest's then each companion's; for people who manage guests only. sc-3778: under each person's, "Last changed by the guest on {date}." when the guest made the last change on their own page. */
+/** sc-3777: allergies, diet and access under their own headings, the guest's then each companion's; for people who manage guests only. */
 function NeedsBlock({ guest, heading }: { guest: Guest; heading: string }) {
   const companions = guest.companions.flatMap((one) =>
-    shown(one.needs) ? [{ one, needs: one.needs }] : [],
+    recorded(one.needs) ? [{ one, needs: one.needs }] : [],
   );
-  const none = !shown(guest.needs) && companions.length === 0;
+  const none = !recorded(guest.needs) && companions.length === 0;
 
   return (
     <section className="desk-block" aria-labelledby={`${heading}-needs`}>
@@ -432,31 +422,22 @@ function NeedsBlock({ guest, heading }: { guest: Guest; heading: string }) {
         <p className="desk-line">{NW.noDietary}</p>
       ) : (
         <>
-          {shown(guest.needs) && <PersonNeeds needs={guest.needs} />}
+          {recorded(guest.needs) && (
+            <ul className="desk-rows gs-rows">
+              <NeedsRows needs={guest.needs} />
+            </ul>
+          )}
           {companions.map(({ one, needs }) => (
             <div key={one.id} className="gs-their-needs">
               <h4 className="gs-their-head">{companionName(guest, one)}</h4>
-              <PersonNeeds needs={needs} />
+              <ul className="desk-rows gs-rows">
+                <NeedsRows needs={needs} />
+              </ul>
             </div>
           ))}
         </>
       )}
     </section>
-  );
-}
-
-function PersonNeeds({ needs }: { needs: Needs }) {
-  return (
-    <>
-      {recorded(needs) ? (
-        <ul className="desk-rows gs-rows">
-          <NeedsRows needs={needs} />
-        </ul>
-      ) : (
-        <p className="desk-line">{NW.noDietary}</p>
-      )}
-      <ChangedByGuest needs={needs} />
-    </>
   );
 }
 

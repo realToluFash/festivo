@@ -11,6 +11,7 @@ final readonly class NewGuest
      * @param list<?string>     $companions
      * @param ?GuestNeeds       $needs          null leaves the guest's as they are
      * @param list<?GuestNeeds> $companionNeeds beside `$companions`; null leaves a kept companion's as they are, and gives one added none
+     * @param ?GroupChoice      $group          null leaves an edited guest's as it is, and puts one added in none
      */
     public function __construct(
         public string $fullName,
@@ -21,6 +22,7 @@ final readonly class NewGuest
         public ?string $language = null,
         public ?GuestNeeds $needs = null,
         public array $companionNeeds = [],
+        public ?GroupChoice $group = null,
     ) {
     }
 }

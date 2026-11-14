@@ -8,7 +8,9 @@ use App\Audit\Auditor;
 use App\Domain\Guest\Link\InvitationLinks;
 use App\Entity\Event;
 use App\Entity\Guest;
+use App\Entity\GuestGroup;
 use App\Entity\User;
+use App\Repository\GuestGroupRepository;
 use App\Repository\GuestRepository;
 use Doctrine\ORM\EntityManagerInterface;
 
@@ -17,6 +19,7 @@ final readonly class GuestListCopier
 {
     public function __construct(
         private GuestRepository $guestRepository,
+        private GuestGroupRepository $guestGroupRepository,
         private EntityManagerInterface $entityManager,
         private Auditor $auditor,
     ) {
@@ -46,6 +49,14 @@ final readonly class GuestListCopier
         }
 
         return $copied;
+    }
+
+    /** The original's groups, by name and with nobody in them (sc-3775): the bride's side is this wedding's, and a copy starts its own list. */
+    public function copyGroups(Event $original, Event $copy): void
+    {
+        foreach ($this->guestGroupRepository->findOnEvent($original) as $group) {
+            $this->entityManager->persist(new GuestGroup($copy, $group->getName(), $group->getNameKey()));
+        }
     }
 
     private function added(Guest $guest, User $by): Guest

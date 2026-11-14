@@ -23,6 +23,7 @@ import {
 import {
   asGuest,
   asGuestDetails,
+  asGuestGroup,
   asGuestList,
   asGuestPageCompanion,
   asHeadcount,
@@ -31,6 +32,7 @@ import {
   type GuestEdit,
   type GuestAnswer,
   type GuestInvitationHow,
+  type GuestGroup,
   type GuestList,
   type GuestPage,
   type Headcount,
@@ -2135,6 +2137,44 @@ export class ApiClient {
         method: 'DELETE',
       }),
     );
+  }
+
+  /** Refused `validation_failed` on `name`: blank, over 60 characters, a name already used, or 50 groups (sc-3775). */
+  async makeGuestGroup(eventId: string, name: string): Promise<GuestGroup> {
+    return this.guestGroup(
+      await this.post<{ group?: unknown }>(this.guestGroupsPath(eventId), { name }),
+    );
+  }
+
+  /** Refused as makeGuestGroup, though the group's own name in another case is allowed. */
+  async renameGuestGroup(eventId: string, groupId: string, name: string): Promise<GuestGroup> {
+    return this.guestGroup(
+      await this.put<{ group?: unknown }>(
+        `${this.guestGroupsPath(eventId)}/${encodeURIComponent(groupId)}`,
+        { name },
+      ),
+    );
+  }
+
+  /** Its guests stay on the list, with no group. */
+  async deleteGuestGroup(eventId: string, groupId: string): Promise<void> {
+    await this.delete<undefined>(`${this.guestGroupsPath(eventId)}/${encodeURIComponent(groupId)}`);
+  }
+
+  private guestGroupsPath(eventId: string): string {
+    return `/api/events/${encodeURIComponent(eventId)}/guest-groups`;
+  }
+
+  private guestGroup(body: { group?: unknown } | undefined): GuestGroup {
+    const group = asGuestGroup(body?.group);
+
+    if (group == null) {
+      throw new Error(
+        'The API answered a guest group in a shape this client does not know. Check GuestGroupsController in services/api.',
+      );
+    }
+
+    return group;
   }
 
   /** Needs guests.read on the event (sc-99). */

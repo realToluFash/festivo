@@ -1333,34 +1333,6 @@ describe('Guests, needs recorded as facts (sc-3777)', () => {
     expect(within(needs).getByText('Sesame')).toBeDefined();
   });
 
-  it(
-    'says under each person’s needs when the guest last changed them (sc-3778)',
-    SLOW,
-    async () => {
-      await guests('needsChangedByGuest');
-
-      const needs = within(column()).getByRole('region', { name: 'Needs' });
-
-      expect(within(needs).getAllByText('Last changed by the guest on Oct 13.')).toHaveLength(2);
-    },
-  );
-
-  it('drops the guest’s line once a host changes that record (sc-3778)', SLOW, async () => {
-    await guests('needsChangedByHosts');
-
-    const needs = within(column()).getByRole('region', { name: 'Needs' });
-    const rui = within(needs).getByRole('heading', { level: 4, name: 'Rui Duarte' });
-
-    expect(within(needs).getAllByText(/^Last changed by/u)).toHaveLength(1);
-    expect(rui.parentElement?.textContent).toContain('Last changed by the guest on Oct 13.');
-  });
-
-  it('says nothing about who changed needs the hosts entered (sc-3778)', SLOW, async () => {
-    await guests('needsDetails');
-
-    expect(within(column()).queryByText(/^Last changed by/u)).toBeNull();
-  });
-
   it('narrows the list with the Dietary notes chip, said on in words', SLOW, async () => {
     await guests('inUse');
 

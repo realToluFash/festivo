@@ -5,10 +5,12 @@ declare(strict_types=1);
 namespace App\Domain\Guest;
 
 use App\Domain\Guest\Model\CompanionChoice;
+use App\Domain\Guest\Model\GroupChoice;
 use App\Domain\Guest\Model\GuestNeeds;
 use App\Domain\Guest\Model\NewGuest;
 use App\Domain\User\Phone\PhoneNumberParser;
 use App\Entity\Guest;
+use App\Entity\GuestGroup;
 use App\Enum\ErrorCode;
 use App\Enum\NeedKind;
 use App\Http\Exception\ApiException;
@@ -43,8 +45,9 @@ final readonly class GuestRules
      * @param ?string                                     $language       the host's Language, null for Not set
      * @param ?NeedsInput                                 $needs          null leaves them as they are
      * @param list<?NeedsInput>                           $companionNeeds beside `$companions`
+     * @param ?GroupChoice                                $group          null leaves it as it is
      */
-    public function guest(string $fullName, ?string $email, ?array $mobile, array $companions, ?string $language = null, ?array $needs = null, array $companionNeeds = []): NewGuest
+    public function guest(string $fullName, ?string $email, ?array $mobile, array $companions, ?string $language = null, ?array $needs = null, array $companionNeeds = [], ?GroupChoice $group = null): NewGuest
     {
         $violations = [];
         $name = Str\trim($fullName);
@@ -99,11 +102,15 @@ final readonly class GuestRules
             $theirNeeds[] = null === $typed ? null : $this->needs($typed, "companions[{$index}].needs", $violations);
         }
 
+        if (null !== $group?->name && Str\length(NameNormaliser::name($group->name)) > GuestGroup::NAME_MAXIMUM) {
+            $violations[] = $this->violation('group.name', 'validation.guest_group_name_too_long');
+        }
+
         if ([] !== $violations) {
             throw ApiException::validation($violations);
         }
 
-        return new NewGuest($name, NameNormaliser::key($name), '' === $email ? null : $email, $e164, $named, $language, $hostNeeds, $theirNeeds);
+        return new NewGuest($name, NameNormaliser::key($name), '' === $email ? null : $email, $e164, $named, $language, $hostNeeds, $theirNeeds, $group);
     }
 
     /**
@@ -198,6 +205,8 @@ final readonly class GuestRules
                 '{max}' => (string) Guest::NAME_MAXIMUM,
                 '{otherMax}' => (string) self::OTHER_MAXIMUM,
                 '{noteMax}' => (string) self::NOTE_MAXIMUM,
+                '{groupMax}' => (string) GuestGroup::NAME_MAXIMUM,
+                '{groupsMost}' => (string) GuestGroup::MOST_PER_EVENT,
             ]),
             'code' => ErrorCode::ValidationFailed->value,
         ];

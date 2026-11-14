@@ -14,6 +14,7 @@ import {
   phoneAwaitingCode,
   primaryEmailAddress,
 } from './client.ts';
+import { asGuestList } from './guests.ts';
 import { ApiError, ApiUnreachableError } from './problem.ts';
 
 function problem(status: number, code: string, extra: Record<string, unknown> = {}): Response {
@@ -3703,5 +3704,61 @@ describe("the guest's calendar on their page (sc-3627)", () => {
     await expect(
       answering({ ...PAGE, calendarFeed: 'https://elsewhere.test/x.ics' }).guestPage('tok'),
     ).rejects.toThrow(/GuestPageController/);
+  });
+});
+
+describe('guest groups (sc-3775)', () => {
+  const counts = { people: 3, guests: 2, companions: 1 };
+
+  test('makes, renames and deletes a group under its event', async () => {
+    const sent: { url: string; method: string; body: unknown }[] = [];
+    const client = new ApiClient({
+      baseUrl: () => 'http://api.test',
+      fetch: async (input, init) => {
+        sent.push({
+          url: String(input),
+          method: init?.method ?? 'GET',
+          body: typeof init?.body === 'string' ? JSON.parse(init.body) : null,
+        });
+
+        return init?.method === 'DELETE'
+          ? new Response(null, { status: 204 })
+          : new Response(JSON.stringify({ group: { id: 'gr_1', name: 'Work' } }), {
+              status: 200,
+              headers: { 'Content-Type': 'application/json' },
+            });
+      },
+    });
+
+    expect(await client.makeGuestGroup('ev 1', 'Work')).toEqual({ id: 'gr_1', name: 'Work' });
+    expect(await client.renameGuestGroup('ev 1', 'gr_1', 'Work')).toEqual({
+      id: 'gr_1',
+      name: 'Work',
+    });
+    await client.deleteGuestGroup('ev 1', 'gr_1');
+
+    expect(sent.map(({ method, url, body }) => [method, url, body])).toEqual([
+      ['POST', 'http://api.test/api/events/ev%201/guest-groups', { name: 'Work' }],
+      ['PUT', 'http://api.test/api/events/ev%201/guest-groups/gr_1', { name: 'Work' }],
+      ['DELETE', 'http://api.test/api/events/ev%201/guest-groups/gr_1', null],
+    ]);
+  });
+
+  test('reads the list’s groups with their counts, and a list without them as all in No group', () => {
+    expect(
+      asGuestList({
+        guests: [],
+        counts,
+        groups: [{ id: 'gr_1', name: 'Work', counts }],
+        ungrouped: { people: 0, guests: 0, companions: 0 },
+      })?.groups,
+    ).toEqual([{ id: 'gr_1', name: 'Work', counts }]);
+    expect(asGuestList({ guests: [], counts })).toEqual({
+      guests: [],
+      counts,
+      groups: [],
+      ungrouped: counts,
+    });
+    expect(asGuestList({ guests: [], counts, groups: [{ id: 'gr_1' }] })).toBeNull();
   });
 });
