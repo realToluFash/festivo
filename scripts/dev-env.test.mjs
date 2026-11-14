@@ -11,7 +11,7 @@ import {
   roleOf,
   STACKS,
 } from './dev-env.mjs';
-import { qaConfig, TESTERS } from './qa-env.mjs';
+import { LAN, qaConfig, TESTERS } from './qa-env.mjs';
 
 // Two stacks on one port is a developer's tests reading another stack's database.
 describe('a developer’s own stack', () => {
@@ -29,6 +29,7 @@ describe('a developer’s own stack', () => {
     const ports = [
       ...Object.values(qaConfig(1).ports).map((port) => port - 10000),
       ...TESTERS.flatMap((tester) => Object.values(qaConfig(tester).ports)),
+      ...Object.values(qaConfig(LAN, '192.168.1.40').ports),
       ...Object.keys(STACKS).flatMap((role) => Object.values(roleConfig(role).ports)),
     ];
     expect(new Set(ports).size).toBe(ports.length);

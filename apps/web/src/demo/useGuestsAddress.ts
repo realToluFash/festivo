@@ -1,12 +1,12 @@
 import { useEffect, useRef, useState } from 'react';
 import { useLocation, useSearchParams } from 'react-router';
 
-import { type ViewInAddress, choiceOf } from './guests.ts';
+import { type ViewInAddress, filterOf } from './guests.ts';
 
 export const SEARCH_SETTLES_MS = 300;
 
 /** The keys the list keeps in the address; a change to them is not a new page. */
-export const VIEW_KEYS = ['filter', 'q'] as const;
+export const VIEW_KEYS = ['filter', 'q', 'since'] as const;
 
 export function pageKey(params: URLSearchParams): string {
   const page = new URLSearchParams(params);
@@ -16,11 +16,12 @@ export function pageKey(params: URLSearchParams): string {
   return page.toString();
 }
 
-/** sc-3772: the menu's choice and the search live in the address, each change a step Back undoes; the search is written once typing settles, with the next choice if that comes first, and dropped if Back or Forward moves the address under it. `base` is what the state opens on with neither key. */
+/** sc-3772: the menu's choice and the search live in the address (sc-4331: with the last look Changed since you looked counts from), each change a step Back undoes; the search is written once typing settles, with the next choice if that comes first, and dropped if Back or Forward moves the address under it. `base` is what the state opens on with neither key. */
 export function useGuestsAddress(base: ViewInAddress) {
   const [params, setParams] = useSearchParams();
   const { key } = useLocation();
-  const choice = choiceOf(params.get('filter')) ?? base.choice;
+  const choice = filterOf(params.get('filter')) ?? base.choice;
+  const since = choice === 'changed' ? (params.get('since') ?? base.since) : null;
   const addressQ = params.get('q') ?? base.q;
   const [q, setTyped] = useState(addressQ);
   const written = useRef(addressQ);
@@ -55,6 +56,8 @@ export function useGuestsAddress(base: ViewInAddress) {
       if (next.choice !== undefined) {
         if (next.choice === base.choice) at.delete('filter');
         else at.set('filter', next.choice);
+        at.delete('since');
+        if (next.choice === 'changed' && next.since != null) at.set('since', next.since);
       }
       if (nextQ !== undefined) {
         if (nextQ === base.q) at.delete('q');
@@ -75,7 +78,9 @@ export function useGuestsAddress(base: ViewInAddress) {
   return {
     choice,
     q,
-    setChoice: (next: ViewInAddress['choice']) => write({ choice: next }),
+    since,
+    setChoice: (next: ViewInAddress['choice'], from: string | null = null) =>
+      write({ choice: next, since: from }),
     setQ: type,
     clear: () => {
       setTyped('');

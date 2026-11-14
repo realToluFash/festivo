@@ -24,7 +24,11 @@ import {
   WEDDING,
   replyByOf,
 } from './GuestsSample.ts';
+import { type Change, changeLabel, changeWhen } from './ChangedSince.ts';
 import { REPLY_WORD, type ReplyKind, W, say } from './GuestsWords.ts';
+import { hasAllergy, needsOf } from './GuestNeeds.ts';
+import { EXPORT_STATES } from './GuestExportModel.ts';
+import { withOptOuts } from './OptOuts.ts';
 import { type HowAgreed, hostAgreed } from './WhatsAppConsent.ts';
 
 export const LIST_STATES = [
@@ -35,6 +39,10 @@ export const LIST_STATES = [
   'search',
   'searchNone',
   'filterNone',
+  'changedRow',
+  'changed',
+  'changedMenu',
+  'changedNone',
   'loading',
   'failed',
   'offline',
@@ -51,6 +59,9 @@ export const LIST_STATES = [
 
 export const GUEST_STATES = [
   'guest',
+  'guestNeeds',
+  'guestNeedsViewer',
+  'needsSaved',
   'guestComing',
   'recorded',
   'notYetInvited',
@@ -73,6 +84,7 @@ export const GUEST_STATES = [
   'invitedWhenReplied',
   'unmarked',
   'unmarkRefused',
+  'unmarkNotSaved',
   'finished',
   'languageNotSet',
   'languageSet',
@@ -86,6 +98,12 @@ export const GUEST_STATES = [
   'whatsAppOptedOut',
   'whatsAppNoMobile',
   'whatsAppViewer',
+  'optOutEmail',
+  'optOutTexts',
+  'optOutTextsWhatsApp',
+  'optOutAll',
+  'optOutNoMobile',
+  'optOutViewer',
   'askAgain',
   'askAgainWont',
 ] as const;
@@ -105,6 +123,19 @@ export const EDIT_STATES = [
   'greetAsEmpty',
   'greetAsEdit',
   'greetAsLong',
+  'editGroup',
+  'groupBlank',
+  'groupTooLong',
+  'groupNew',
+  'groupTaken',
+  'groupLimit',
+  'needsEmpty',
+  'needsOpen',
+  'needsFilled',
+  'otherBlank',
+  'otherTooLong',
+  'noteTooLong',
+  'companionNeeds',
 ] as const;
 
 export const RECORD_STATES = [
@@ -135,6 +166,7 @@ export const ADD_STATES = [
   'androidNone',
   'androidRefused',
   'languageAdd',
+  'addGroupNeeds',
 ] as const;
 
 export const REVIEW_STATES = [
@@ -189,6 +221,7 @@ export const GUESTS_STATES = [
   ...ADD_STATES,
   ...REVIEW_STATES,
   ...OVERVIEW_STATES,
+  ...EXPORT_STATES,
 ] as const;
 
 export type GuestsState = (typeof GUESTS_STATES)[number];
@@ -235,10 +268,13 @@ export function roleOf(state: GuestsState | null): Role {
   if (
     state === 'viewer' ||
     state === 'guestViewer' ||
+    state === 'guestNeedsViewer' ||
     state === 'repliesClosedViewer' ||
     state === 'overviewViewer' ||
     state === 'greetAsViewer' ||
-    state === 'whatsAppViewer'
+    state === 'whatsAppViewer' ||
+    state === 'optOutViewer' ||
+    state === 'exportGrantView'
   )
     return 'viewer';
   if (state === 'staffBefore' || state === 'staffDayBefore' || state === 'staffDoorOpen')
@@ -372,6 +408,8 @@ export function countsFrom(guests: readonly SampleGuest[]): Counts {
 }
 
 export type FilterKey = 'all' | 'invited' | ReplyKind | 'walkin';
+/** sc-4331: Changed since you looked sits apart from the reply choices and outside their add-up-to-All rule. */
+export type ListFilter = FilterKey | 'changed';
 
 export const FILTERS: readonly FilterKey[] = [
   'all',
@@ -394,7 +432,28 @@ export function filtersFor(counts: Counts): FilterKey[] {
     : [...FILTERS];
 }
 
-export function filterWord(key: FilterKey): string {
+/** The people This view holds, and the "{n} of {total} shown" line the list draws above it. */
+export function inViewOf({
+  filter,
+  searched,
+  rows,
+  filtered,
+  total,
+}: {
+  filter: ListFilter;
+  searched: string;
+  rows: number;
+  filtered: number;
+  total: number;
+}): number {
+  const looking = filter !== 'all' || searched.trim() !== '';
+  if (!looking) return total;
+  if (rows === 0) return 0;
+  return searched.trim() === '' && filter !== 'changed' ? filtered : rows;
+}
+
+export function filterWord(key: ListFilter): string {
+  if (key === 'changed') return W.changedSince;
   if (key === 'all') return 'All';
   if (key === 'invited') return W.invited;
   return REPLY_WORD[key];
@@ -426,6 +485,8 @@ export interface Person {
   kind: SampleGuest['kind'];
   line: string;
   companion: boolean;
+  /** sc-5519: any allergy recorded, and only for guests.manage: rowsOf and groupRows leave it off for everyone else. */
+  allergy?: boolean;
 }
 
 function capital(text: string): string {
@@ -521,10 +582,16 @@ function rowLine(
   filter: FilterKey,
   replyBy: string | null,
 ): string {
-  if (filter === 'noreply' && g.kind === 'noreply') return capital(invitedWords(g, locale));
+  const group = g.group ?? null;
+  if (filter === 'noreply' && g.kind === 'noreply')
+    return joined([capital(invitedWords(g, locale)), group]);
   const short = g.kind === 'noreply' || g.kind === 'notyet';
   const count = g.companions.length;
-  return joined([replyLine(g, locale, replyBy, short), count > 0 ? say.companions(count) : null]);
+  return joined([
+    replyLine(g, locale, replyBy, short),
+    group,
+    count > 0 ? say.companions(count) : null,
+  ]);
 }
 
 function hostRow(
@@ -532,6 +599,7 @@ function hostRow(
   locale: string,
   filter: FilterKey,
   replyBy: string | null,
+  manage: boolean,
 ): Person {
   return {
     key: g.key,
@@ -540,26 +608,31 @@ function hostRow(
     kind: g.kind,
     line: rowLine(g, locale, filter, replyBy),
     companion: false,
+    allergy: manage && hasAllergy(g.needs),
   };
 }
 
-function companionRow(g: SampleGuest, c: Companion, index: number): Person {
+function companionRow(g: SampleGuest, c: Companion, index: number, manage: boolean): Person {
   return {
     key: `${g.key}.${index}`,
     guest: g.key,
     name: c.name,
     kind: c.kind,
-    line: c.kind === 'held' ? W.heldLine : REPLY_WORD[c.kind],
+    line: joined([c.kind === 'held' ? W.heldLine : REPLY_WORD[c.kind], g.group ?? null]),
     companion: true,
+    allergy: manage && hasAllergy(c.needs),
   };
 }
 
 /** sc-3773 (ux, 8 Nov): a companion whose reply differs from their guest's is a row of their own in their own reply. */
-function ownRow(g: SampleGuest, c: Companion, index: number): Person {
+function ownRow(g: SampleGuest, c: Companion, index: number, manage: boolean): Person {
   const unnamed = c.name.startsWith(say.guestOf(g.name));
+  const group = g.group ?? null;
   return {
-    ...companionRow(g, c, index),
-    line: c.kind === 'held' || unnamed ? companionRow(g, c, index).line : say.guestOf(g.name),
+    ...companionRow(g, c, index, manage),
+    line: unnamed
+      ? companionRow(g, c, index, manage).line
+      : joined([say.guestOf(g.name), c.kind === 'held' ? W.heldLine : null, group]),
     companion: false,
   };
 }
@@ -590,6 +663,34 @@ export function matchesGuest(
   return digits.length >= 3 && g.phone != null && g.phone.replace(/\D/gu, '').includes(digits);
 }
 
+/** sc-4331: one row per guest the bell's item counts, newest first: the answer, or the bell's label for a change that is not a reply, and when. */
+export function changedRows(
+  guests: readonly SampleGuest[],
+  changes: readonly Change[],
+  typed: string,
+  now: Date,
+  locale: string,
+  contacts = true,
+  manage = false,
+): Person[] {
+  return changes.flatMap((change): Person[] => {
+    const g = guests.find((one) => one.key === change.key);
+    if (g == null || !matchesGuest(g.name, g, typed, contacts)) return [];
+    const answer = changeLabel(change.kind) ?? REPLY_WORD[g.kind];
+    return [
+      {
+        key: g.key,
+        guest: g.key,
+        name: g.name,
+        kind: g.kind,
+        line: joined([answer, changeWhen(change, now, locale), g.group ?? null]),
+        companion: false,
+        allergy: manage && hasAllergy(g.needs),
+      },
+    ];
+  });
+}
+
 export function rowsOf(
   guests: readonly SampleGuest[],
   filter: FilterKey,
@@ -597,14 +698,17 @@ export function rowsOf(
   locale: string,
   replyBy: string | null,
   contacts = true,
+  manage = false,
 ): Person[] {
   const out: Person[] = [];
   for (const g of guests) {
     const hostMatch = inFilter(g.kind, filter) && matchesGuest(g.name, g, typed, contacts);
-    if (hostMatch) out.push(hostRow(g, locale, filter, replyBy));
+    if (hostMatch) out.push(hostRow(g, locale, filter, replyBy, manage));
     g.companions.forEach((c, index) => {
       if (!inFilter(c.kind, filter) || !(hostMatch || matchesGuest(c.name, null, typed))) return;
-      out.push(hostMatch && shares(g, c) ? companionRow(g, c, index) : ownRow(g, c, index));
+      out.push(
+        hostMatch && shares(g, c) ? companionRow(g, c, index, manage) : ownRow(g, c, index, manage),
+      );
     });
   }
   return out;
@@ -616,6 +720,7 @@ export function groupRows(
   locale: string,
   replyBy: string | null,
   all = false,
+  manage = false,
 ): Person[] {
   const first = FIRST_ROWS[group];
   const original = new Map(GUESTS.map((g) => [g.key, g.kind]));
@@ -623,10 +728,10 @@ export function groupRows(
   for (const g of guests) {
     const shown =
       g.kind === group && (all || first.includes(g.key) || original.get(g.key) !== g.kind);
-    if (shown) out.push(hostRow(g, locale, 'all', replyBy));
+    if (shown) out.push(hostRow(g, locale, 'all', replyBy, manage));
     g.companions.forEach((c, index) => {
-      if (shown && shares(g, c)) out.push(companionRow(g, c, index));
-      else if (c.kind === group && !shares(g, c)) out.push(ownRow(g, c, index));
+      if (shown && shares(g, c)) out.push(companionRow(g, c, index, manage));
+      else if (c.kind === group && !shares(g, c)) out.push(ownRow(g, c, index, manage));
     });
   }
   return out;
@@ -991,6 +1096,14 @@ const ASKS_ON_30_OCT: Readonly<Record<string, AskAgain>> = {
   lucia: { kind: 'will', day: '2026-11-01' },
 };
 
+/** sc-5519: what Kwame's form saved in needsSaved: a new group, an allergy, an Other diet and the note. */
+export const KWAME_SAVED = needsOf({
+  allergies: ['milk'],
+  diet: ['other'],
+  otherDiet: 'No raw fish',
+  note: 'Sits with his grandmother; she needs the step-free way in.',
+});
+
 export function guestsAt(state: GuestsState | null): SampleGuest[] {
   const swap = (key: string, change: (g: SampleGuest) => SampleGuest) =>
     GUESTS.map((g) => (g.key === key ? change(g) : g));
@@ -1013,8 +1126,21 @@ export function guestsAt(state: GuestsState | null): SampleGuest[] {
       return swap('seun', (g) => ({ ...g, kind: 'coming', when: TODAY }));
     case 'whatsAppRecorded':
       return swap('kwame', (g) => agreedToWhatsApp(g, 'In person', TODAY));
+    case 'optOutEmail':
+    case 'optOutViewer':
+      return swap('kwame', (g) => withOptOuts(g, { email: '2026-10-22' }));
+    case 'optOutTexts':
+      return swap('kwame', (g) => withOptOuts(g, { texts: '2026-10-29' }));
+    case 'optOutTextsWhatsApp':
+      return swap('sophie', (g) => withOptOuts(g, { texts: '2026-10-27' }));
+    case 'optOutAll':
+      return swap('sophie', (g) => withOptOuts(g, { email: '2026-10-20', texts: '2026-10-27' }));
+    case 'optOutNoMobile':
+      return swap('ines', (g) => withOptOuts(g, { email: '2026-10-25' }));
     case 'saved':
       return swap('kwame', (g) => ({ ...g, email: 'kwame@mensah.co.uk' }));
+    case 'needsSaved':
+      return swap('kwame', (g) => ({ ...g, group: 'Family', needs: KWAME_SAVED }));
     case 'greetAsSpaces':
       return swap('bisi', (g) => ({ ...g, greetAs: greetAsSaved('   ') }));
     case 'askAgain':
@@ -1068,7 +1194,11 @@ export type Overlay =
 export type GuestToastKind = 'saved' | 'copied' | 'manyAdded' | null;
 
 export interface AreaStart {
-  filter: FilterKey;
+  filter: ListFilter;
+  /** sc-4331: the last look Changed since you looked counts from; null counts every change. */
+  since: string | null;
+  /** sc-4331: when the event's Guest replies item was last marked read as the state opens: null is never; by default the state's clock, so nothing has changed since. */
+  looked?: string | null;
   typed: string;
   menu: boolean;
   phase: 'ok' | 'loading' | 'failed';
@@ -1082,8 +1212,8 @@ export interface AreaStart {
   replaced: boolean;
   notReplaced: boolean;
   recorded: boolean;
-  /** sc-3788: Mark as not invited landed, or was refused because the guest replied first (409). */
-  unmarked: 'done' | 'refused' | null;
+  /** sc-3788: Mark as not invited landed, was refused because the guest replied first (409), or failed on a server error. */
+  unmarked: 'done' | 'refused' | 'notSaved' | null;
   marked: boolean;
   added: number;
   walkIn: boolean;
@@ -1091,6 +1221,7 @@ export interface AreaStart {
 
 const QUIET: AreaStart = {
   filter: 'all',
+  since: null,
   typed: '',
   menu: false,
   phase: 'ok',
@@ -1128,6 +1259,7 @@ export function guestOf(state: GuestsState | null): string | null {
     case 'invitedWhenReplied':
       return 'ngozi';
     case 'unmarked':
+    case 'unmarkNotSaved':
       return 'emeka';
     case 'unmarkRefused':
       return 'seun';
@@ -1145,6 +1277,10 @@ export function guestOf(state: GuestsState | null): string | null {
     case 'editCompanions':
     case 'editMax':
       return 'musa';
+    case 'guestNeeds':
+    case 'guestNeedsViewer':
+    case 'companionNeeds':
+      return 'ines';
     case 'languageEdit':
     case 'languageGuestChose':
     case 'editSeated':
@@ -1156,8 +1292,11 @@ export function guestOf(state: GuestsState | null): string | null {
     case 'askAgainWont':
       return 'lucia';
     case 'whatsAppOptedOut':
+    case 'optOutTextsWhatsApp':
+    case 'optOutAll':
       return 'sophie';
     case 'whatsAppNoMobile':
+    case 'optOutNoMobile':
       return 'ines';
     case 'greetAs':
     case 'greetAsSpaces':
@@ -1198,12 +1337,26 @@ export function areaStart(state: GuestsState | null): AreaStart {
       return { ...base, typed: 'kofi' };
     case 'filterNone':
       return { ...base, filter: 'held', typed: 'marta' };
+    case 'changedRow':
+      return { ...base, menu: true, looked: null };
+    case 'changed':
+      return { ...base, filter: 'changed' };
+    case 'changedMenu':
+      return { ...base, filter: 'changed', menu: true };
+    case 'changedNone':
+      return { ...base, filter: 'changed', since: CLOCKS.reader };
     case 'loading':
       return { ...base, phase: 'loading' };
     case 'failed':
       return { ...base, phase: 'failed' };
     case 'offline':
+    case 'exportOffline':
+    case 'exportDropped':
       return { ...base, offline: true };
+    case 'exportNarrowed':
+      return { ...base, filter: 'noreply' };
+    case 'exportEmpty':
+      return { ...base, filter: 'held', typed: 'marta' };
     case 'onTheDay':
     case 'secondDay':
       return { ...base, walkIn: true };
@@ -1223,6 +1376,7 @@ export function areaStart(state: GuestsState | null): AreaStart {
     case 'saved':
     case 'greetAsSpaces':
     case 'whatsAppRecorded':
+    case 'needsSaved':
       return { ...base, toast: 'saved' };
     case 'linkCopied':
       return { ...base, toast: 'copied' };
@@ -1242,6 +1396,8 @@ export function areaStart(state: GuestsState | null): AreaStart {
       return { ...base, unmarked: 'done' };
     case 'unmarkRefused':
       return { ...base, unmarked: 'refused' };
+    case 'unmarkNotSaved':
+      return { ...base, unmarked: 'notSaved' };
     default:
       return base;
   }

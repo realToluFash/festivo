@@ -20,7 +20,7 @@ import {
 } from '../../components/Summary.tsx';
 import type { GuestsCardWords } from './GuestsModel.ts';
 import { W, say } from './GuestsWords.ts';
-import { type MarkKind, ReplyMark } from './ReplyMark.tsx';
+import { type MarkKind, ReplyMark } from '../../components/ReplyMark.tsx';
 
 export type Layout = 'phone' | 'portrait' | 'landscape';
 
@@ -344,12 +344,14 @@ export function GuestsTitle({
   plus,
   onPlus,
   plusLabel = W.addGuest,
+  extra = null,
 }: {
   layout: Layout;
   title?: string;
   plus: boolean;
   onPlus: () => void;
   plusLabel?: string;
+  extra?: ReactNode;
 }) {
   const size = layout === 'landscape' ? 26 : 30;
 
@@ -363,6 +365,7 @@ export function GuestsTitle({
       >
         {title}
       </Text>
+      {extra}
       {plus &&
         (layout === 'phone' ? (
           <Pressable

@@ -4,11 +4,13 @@ declare(strict_types=1);
 
 namespace App\Domain\User\TwoFactor\Recovery;
 
+use App\Domain\User\Mail\MailCode;
 use App\Domain\User\Mail\UserMailer;
 use App\Entity\Organisation;
 use App\Entity\TwoFactorRecovery;
 use App\Entity\User;
 use App\Entity\VerificationChallenge;
+use App\Enum\AccountMail;
 use DateTimeImmutable;
 use Psl\Str;
 use Psl\Vec;
@@ -29,13 +31,13 @@ final readonly class TwoFactorRecoveryMailer
         $user = $recovery->getUser();
         $locale = $this->userMailer->localeFor($user);
 
-        $this->userMailer->send($recovery->getEmailAddress()->getAddress(), $locale, 'twoFactorRecovery.code.subject', [
+        $this->userMailer->send(AccountMail::TwoFactorRecoveryCode, $recovery->getEmailAddress()->getAddress(), $locale, 'twoFactorRecovery.code.subject', [
             $this->line('twoFactorRecovery.code.body', $locale),
             $code,
             $this->line('twoFactorRecovery.code.expiry', $locale, ['{minutes}' => (string) VerificationChallenge::LIFETIME_MINUTES]),
             $this->line('twoFactorRecovery.code.notYou', $locale),
             ...$this->notMe($recovery, $locale),
-        ]);
+        ], code: new MailCode($code, VerificationChallenge::LIFETIME_MINUTES));
     }
 
     public function sendStarted(TwoFactorRecovery $recovery, ?string $userAgent): void
@@ -44,7 +46,7 @@ final readonly class TwoFactorRecoveryMailer
         $locale = $this->userMailer->localeFor($user);
         $device = $this->userMailer->agentName($userAgent, $locale);
 
-        $this->userMailer->sendToEveryVerified($user, 'twoFactorRecovery.started.subject', [
+        $this->userMailer->sendToEveryVerified(AccountMail::TwoFactorRecovery, $user, 'twoFactorRecovery.started.subject', [
             $this->line('twoFactorRecovery.started.heading', $locale),
             $this->line('twoFactorRecovery.started.body', $locale),
             Str\join(Vec\filter_nulls([
@@ -69,7 +71,7 @@ final readonly class TwoFactorRecoveryMailer
             return;
         }
 
-        $this->userMailer->send($address, $locale, 'twoFactorRecovery.approver.subject', [
+        $this->userMailer->send(AccountMail::TwoFactorRecovery, $address, $locale, 'twoFactorRecovery.approver.subject', [
             $this->line('twoFactorRecovery.approver.heading', $locale, ['{name}' => $user->getName()]),
             $this->line(null === $recovery->getPhoneNumber() ? 'twoFactorRecovery.approver.bodyEmail' : 'twoFactorRecovery.approver.bodyBoth', $locale),
             Str\join([
@@ -122,7 +124,7 @@ final readonly class TwoFactorRecoveryMailer
     {
         $locale = $this->locale($recovery);
 
-        $this->userMailer->sendToEveryVerified($recovery->getUser(), 'twoFactorRecovery.' . $kind . '.subject', [
+        $this->userMailer->sendToEveryVerified(AccountMail::TwoFactorRecovery, $recovery->getUser(), 'twoFactorRecovery.' . $kind . '.subject', [
             $this->line('twoFactorRecovery.' . $kind . '.heading', $locale),
             $this->line('twoFactorRecovery.' . $kind . '.body', $locale),
             ...$facts,

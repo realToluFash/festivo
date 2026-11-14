@@ -4,6 +4,7 @@ import { type Href, router } from 'expo-router';
 import {
   type ReactNode,
   type RefObject,
+  useCallback,
   useEffect,
   useMemo,
   useReducer,
@@ -28,7 +29,9 @@ import {
   PartsSection,
   type RefFor,
 } from '../../components/EventOverview.tsx';
-import { AreaPage, EventFrame } from './EventFrame.tsx';
+import { AreaPage, EventFrame, type EventToast } from './EventFrame.tsx';
+import { INVITATION_HREF, liveToastOf, makeLiveStateOf, reachOf, seededEvent } from './MakeLive.ts';
+import { MakeLiveAsk, useMakeLive } from './MakeLiveAsk.tsx';
 import { EventNeedsYou } from './EventNeedsYou.tsx';
 import { needsStateOf, readerOf } from './NeedsYouModel.ts';
 import {
@@ -40,6 +43,7 @@ import {
   RefusedAsk,
 } from './EventLifecycle.tsx';
 import { invitedOf, refusalOf, refusedStartOf, usableManage } from './DeleteRefusal.ts';
+import { duplicateStateOf } from './Duplicate.ts';
 import {
   type CardStep,
   type EditPart,
@@ -65,7 +69,8 @@ import {
   currencyWords,
   sampleEvent,
 } from './EventsSample.ts';
-import { W, say } from './EventsWords.ts';
+import { LIVE, W, say } from './EventsWords.ts';
+import { EventNotice } from '../../components/EventNotice.tsx';
 import { NOTE_WORDS, WIDE_NOTE } from './ArrivalNote.ts';
 import { NoteInset } from './NoteInset.tsx';
 import {
@@ -78,16 +83,29 @@ import {
   writeWord,
 } from './GuestsCanWrite.ts';
 import { datesSaveSays, replyByInTell, replyByRow, replyBySaved } from './ReplyBy.ts';
+import { TY_WORDS, cardOf, cardShown, endFieldOf, isEndState, opened } from './ThankYou.ts';
+import { EndNowAsk, ThankYouCard, ThankYouScreen } from './ThankYouParts.tsx';
 import { replyByOf } from '../guests/GuestsSample.ts';
 import { useShell } from '../../components/settingsShell.ts';
 import { LoadingBlock, Row, Section, TextAction } from '../../components/Summary.tsx';
 import { type MessagesState, startOf } from '../messages/MessagesModel.ts';
 import { reduceReach } from '../messages/Reach.ts';
 import { TellGuests } from '../messages/MessagesOverlays.tsx';
+import { Untold } from '../messages/MessagesList.tsx';
 import { LONG_FINISHED, PLACE, SAMPLE_EVENT_ID, TELL } from '../messages/MessagesSample.ts';
 import { tellChange } from '../messages/TellChange.ts';
+import {
+  type TellRun,
+  dayStillToCome,
+  eventBehind,
+  fieldEvents,
+  isTellKind,
+  pressSend,
+  sendingWords,
+  sheetOf,
+} from '../messages/TellKinds.ts';
 import { MessagesScreen, badgeFor } from '../messages/MessagesScreen.tsx';
-import { W as MW, say as sayMessages } from '../messages/MessagesWords.ts';
+import { W as MW } from '../messages/MessagesWords.ts';
 import type { SeatingState } from '../seating/SeatingModel.ts';
 import { SeatingScreen } from '../seating/SeatingScreen.tsx';
 import { GuestNumbers } from '../guests/GuestNumbers.tsx';
@@ -95,15 +113,19 @@ import { PeopleCard } from '../people/PeopleCard.tsx';
 import type { CardState } from '../people/PeopleCardModel.ts';
 import {
   type FilterKey,
+  type ListFilter,
   GUESTS_ON,
   type GuestsState,
   OVERVIEW_STATES,
+  areaStart,
   clockOf as guestsClock,
   invitedOn,
   isIn,
   peopleOn,
 } from '../guests/GuestsModel.ts';
+import { resetLooked, seedLook, takeLook } from '../guests/ChangedSince.ts';
 import { GuestsScreen } from '../guests/GuestsScreen.tsx';
+import { DemoOnly } from '../../steps/Lines.tsx';
 import { GUESTS as TALKS, type GuestKey } from '../messages/MessagesSample.ts';
 import type { BudgetState } from '../budget/BudgetModel.ts';
 import { BudgetScreen } from '../budget/BudgetScreen.tsx';
@@ -120,18 +142,35 @@ const ASKS: Partial<Record<EventDemoState, LifeAsk>> = {
   deleteDraft: 'deleteDraft',
 };
 
+/** Where sc-4330's states open: Messages for its list and rows, Overview under every sheet and its banner. */
+const TELL_IN_MESSAGES: readonly string[] = [
+  'untoldMerged',
+  'untoldDismissed',
+  'changeRow',
+  'changeSent',
+  'changeMerged',
+  'changeDone',
+];
+
 function startEvent(
   id: string | undefined,
   state: EventDemoState | null,
   messages: MessagesState | null,
+  now: Date,
 ): SampleEvent {
   const event = sampleEvent(id) ?? sampleEvent('evt-wed-4');
   if (event == null) throw new Error('The sample has the wedding.');
   seedFinalNumbers(state);
+  if (isTellKind(messages))
+    return eventBehind(messages, fieldEvents(messages, event)?.now ?? event, now);
+  const live = makeLiveStateOf(state);
+  if (live != null) return seededEvent(event, live);
   if (messages === 'tell' || messages === 'untold') return { ...event, startsAt: TELL.startsAt };
   if (messages === 'tellPlace') return { ...event, venue: PLACE };
-  if (messages === 'closedDraft') return { ...event, status: 'draft' };
-  if (messages === 'closedEnded') return { ...event, ...LONG_FINISHED, status: 'ended' };
+  if (messages === 'closedDraft' || messages === 'noManageDraft')
+    return { ...event, status: 'draft' };
+  if (messages === 'closedEnded' || messages === 'noManageEnded')
+    return { ...event, ...LONG_FINISHED, status: 'ended' };
   if (state === 'datesReplyBySaved')
     return {
       ...event,
@@ -184,35 +223,62 @@ export function EventScreen({
     () => (guests == null ? clockOf(state) : guestsClock(guests)),
     [state, guests],
   );
-  const [event, setEvent] = useState(() => startEvent(id, state, messages));
-  const [at, setAt] = useState<AreaKey>(
-    figureOpens != null
+  const [event, setEvent] = useState(() => startEvent(id, state, messages, now));
+  const reach = useMemo(() => reachOf(state, event), [state, event]);
+  const live = useMakeLive(state, reach, (host) =>
+    setEvent((now) => ({ ...now, hosts: host == null ? now.hosts : [host], status: 'live' })),
+  );
+  const [at, setAt] = useState<AreaKey>(() => {
+    if (guests != null && !isIn(OVERVIEW_STATES, guests)) seedLook(areaStart(guests).looked, now);
+    else if (messages === 'bell') resetLooked();
+
+    return figureOpens != null
       ? 'guests'
       : guests != null
         ? isIn(OVERVIEW_STATES, guests)
           ? 'overview'
           : 'guests'
-        : area == null || area === 'people' || messages === 'tell' || messages === 'tellPlace'
+        : area == null ||
+            area === 'people' ||
+            messages === 'tell' ||
+            messages === 'tellPlace' ||
+            (isTellKind(messages) && !TELL_IN_MESSAGES.includes(messages))
           ? 'overview'
-          : area,
-  );
-  const [guestsFrom, setGuestsFrom] = useState<FilterKey | null>(figureOpens);
+          : area;
+  });
+  const [guestsFrom, setGuestsFrom] = useState<ListFilter | null>(figureOpens);
+  const [sinceFrom, setSinceFrom] = useState<string | null>(null);
   const [m, dispatch] = useReducer(reduceReach, null, () => {
     const begun = startOf(messages, shell.layout !== 'phone');
+    if (isTellKind(messages)) {
+      const fields = fieldEvents(messages, sampleEvent(id) ?? event);
+      const lines = fields == null ? null : tellChange(fields.told, fields.now, locale);
+
+      return { ...begun, change: sheetOf(messages, lines) };
+    }
     if (state !== 'datesReplyBySaved') return begun;
     const change = tellChange(sampleEvent(id) ?? event, event, locale);
 
     return reduceReach(begun, { type: 'offerTell', change });
   });
+  const onTellRun = useCallback((run: TellRun) => dispatch({ type: 'tellRun', run }), []);
   const [messagesSeen, setMessagesSeen] = useState(messages != null || at === 'messages');
   if (at === 'messages' && !messagesSeen) setMessagesSeen(true);
   const messagesHere = event.id === SAMPLE_EVENT_ID;
-  const [toldEvent, setToldEvent] = useState(() => sampleEvent(id) ?? event);
+  const [toldEvent, setToldEvent] = useState(() => {
+    const sample = sampleEvent(id) ?? event;
+
+    return (isTellKind(messages) ? fieldEvents(messages, sample)?.told : null) ?? sample;
+  });
   const [more, setMore] = useState(state === 'more');
   const [edit, setEdit] = useState<EditPart | null>(editOf(state));
   const [round, setRound] = useState(0);
   const [part, setPart] = useState<EditPart>(editOf(state) ?? 'dates');
-  const [ask, setAsk] = useState<LifeAsk | null>(state == null ? null : (ASKS[state] ?? null));
+  const [ask, setAsk] = useState<LifeAsk | null>(
+    state == null ? null : isEndState(state) ? 'endNow' : (ASKS[state] ?? null),
+  );
+  const [ending, setEnding] = useState(0);
+  const [thanks, setThanks] = useState(() => cardOf(state));
   const [deleting, setDeleting] = useState(deleteStart(state) != null);
   const refusedStart = refusedStartOf(state);
   const canChange = refusedStart?.canChange ?? true;
@@ -224,7 +290,13 @@ export function EventScreen({
     canChange,
   );
   const [refused, setRefused] = useState(refusedStart != null && !refusedStart.race);
-  const [duplicating, setDuplicating] = useState(state === 'duplicate');
+  const [duplicating, setDuplicating] = useState(duplicateStateOf(state) != null);
+  const [copies, setCopies] = useState(0);
+  const duplicate = () => {
+    setCopies((count) => count + 1);
+    setDuplicating(true);
+  };
+  const [noPhoto, setNoPhoto] = useState(state === 'createdNoPhoto');
   const [muted, setMuted] = useState(state === 'muted');
   const [mute, setMute] = useState<Mute>(
     state === 'muteNotLoaded' ? 'notLoaded' : state === 'muteNotSaved' ? 'notSaved' : 'ok',
@@ -247,11 +319,15 @@ export function EventScreen({
           : replyByOf(event.id),
   );
   const [told, setTold] = useState<string | null>(() =>
-    state === 'saved'
-      ? W.saved
-      : state === 'replyBySaved' || state === 'replyByRemoved'
-        ? replyBySaved(replyBy, event.timeZone, locale, now)
-        : null,
+    messages === 'changeSending'
+      ? sendingWords(m.change)
+      : messages === 'allTold'
+        ? MW.allTold
+        : state === 'saved'
+          ? W.saved
+          : state === 'replyBySaved' || state === 'replyByRemoved'
+            ? replyBySaved(replyBy, event.timeZone, locale, now)
+            : null,
   );
   const [tellMoved, setTellMoved] = useState<string | null>(() =>
     state === 'datesReplyBySaved' && replyBy != null
@@ -273,6 +349,9 @@ export function EventScreen({
   const refFor = (key: string) => (node: ViewInstance | null) => {
     refs.current[key] = node;
   };
+  const cardStep = useCallback((node: ViewInstance | null) => {
+    refs.current.card = node;
+  }, []);
   const openEdit = (which: EditPart) => {
     from.current = which;
     setPart(which);
@@ -321,28 +400,43 @@ export function EventScreen({
       setRefused(true);
     }
   };
+  const tellOf = (kind: 'tellPause' | 'tellCallOff' | 'tellEndNow' | 'tellResume') => {
+    if (!messagesHere) return;
+    const change = sheetOf(kind, null);
+
+    setTimeout(() => dispatch({ type: 'offerTell', change }), TELL_AFTER_MS);
+  };
   const onStep = (step: Extract<CardStep, { kind: 'button' }>) => {
     from.current = 'card';
-    if (step.action === 'makeLive') shell.tell(say.ownDesign(W.makeLive));
+    if (step.action === 'makeLive') live.open(event.hosts.length === 0);
     else if (step.action === 'changeDates') openEdit('dates');
-    else if (step.action === 'resume') setEvent({ ...event, status: 'live' });
-    else setDuplicating(true);
+    else if (step.action === 'resume') {
+      setEvent({ ...event, status: 'live' });
+      if (!(m.untold && m.change.what.includes(MW.pausedItem))) tellOf('tellResume');
+    } else duplicate();
   };
   const onManage = (key: ManageKey) => {
     from.current = key;
-    if (key === 'duplicate') setDuplicating(true);
+    if (key === 'duplicate') duplicate();
     else if (key === 'pause') setAsk('pause');
     else if (key === 'callOff') setAsk('callOff');
-    else if (key === 'endNow') setAsk('endNow');
-    else if (refusal != null) setRefused(true);
+    else if (key === 'endNow') {
+      setEnding((count) => count + 1);
+      setAsk('endNow');
+    } else if (refusal != null) setRefused(true);
     else if (needsName(event, peopleOn(event.id))) setDeleting(true);
     else setAsk('deleteDraft');
   };
   const onAsked = (which: LifeAsk) => {
     setAsk(null);
-    if (which === 'pause') setEvent({ ...event, status: 'paused' });
-    else if (which === 'deleteDraft') deleteIt();
-    else setEvent({ ...event, status: 'ended', concludedAt: now.toISOString() });
+    if (which === 'pause') {
+      setEvent({ ...event, status: 'paused' });
+      tellOf('tellPause');
+    } else if (which === 'deleteDraft') deleteIt();
+    else {
+      setEvent({ ...event, status: 'ended', concludedAt: now.toISOString() });
+      tellOf('tellCallOff');
+    }
   };
   const toggleMute = () => {
     setMute('ok');
@@ -357,6 +451,7 @@ export function EventScreen({
       wide={shell.layout !== 'phone'}
       takes={() => true}
       onStep={onStep}
+      stepRef={cardStep}
       testID="event.card"
     />
   );
@@ -381,9 +476,27 @@ export function EventScreen({
       locale={locale}
     />
   );
+  const thankYou = shown.phase === 'finished' && !shown.calledOff && cardShown(thanks) && (
+    <ThankYouCard
+      event={shown}
+      card={thanks}
+      locale={locale}
+      refFor={refFor}
+      onOpen={() => {
+        from.current = 'thankYou';
+        setThanks(opened(thanks));
+      }}
+    />
+  );
   const nameCover = <NameAndCover shown={shown} refFor={refFor} onEdit={openEdit} />;
   const openGuests = (filter: FilterKey) => {
     setGuestsFrom(filter);
+    setAt('guests');
+  };
+  /** sc-4331: the bell's item counts from the last look, then marks it read. */
+  const openChanged = () => {
+    setSinceFrom(takeLook(now));
+    setGuestsFrom('changed');
     setAt('guests');
   };
   const numbers = (
@@ -434,23 +547,95 @@ export function EventScreen({
     else setTold(words);
   };
   const tellSent = () => {
-    dispatch({ type: 'tellSent' });
+    const pressed = pressSend(m.tell);
+    if (pressed.kind === 'run') {
+      dispatch({ type: 'tellRun', run: pressed.run });
+      return;
+    }
+    dispatch({ type: pressed.told === 'sent' ? 'tellSent' : 'tellAllTold' });
     setToldEvent(event);
-    tellHere(sayMessages.queued(TELL.count));
+    tellHere(pressed.told === 'sent' ? sendingWords(m.change) : MW.allTold);
   };
   const tell = messagesHere && (
     <TellGuests
       open={m.telling}
-      lines={m.change.lines}
-      address={m.change.address === true}
+      change={m.change}
+      run={m.tell}
       phone={shell.layout === 'phone'}
       opener={opener}
       onSend={tellSent}
       onNotNow={() => dispatch({ type: 'notNow' })}
-      onSeeWho={() => tellHere(sayMessages.ownDesign(MW.seeWho))}
+      onRun={onTellRun}
       before={tellMoved}
     />
   );
+  const banner = messagesHere && m.untold && m.change.what.length > 0 && (
+    <Untold
+      what={m.change.what}
+      onTell={() => dispatch({ type: 'telling', open: true })}
+      onDismiss={() => {
+        dispatch({ type: 'dismissUntold' });
+        setTold(MW.dismissed);
+      }}
+    />
+  );
+
+  const makeLive = (
+    <MakeLiveAsk
+      live={live.s}
+      reach={reach}
+      name={event.name}
+      hosts={event.hosts}
+      opener={opener}
+      onKeep={live.keep}
+      onConfirm={live.confirm}
+      onTyped={live.typed}
+      onSend={live.send}
+      onChangeDates={() => {
+        live.keep();
+        openEdit('dates');
+      }}
+    />
+  );
+  const liveSaid = liveToastOf(live.s, reach);
+  const photoNotice = noPhoto && (
+    <EventNotice
+      tone="broken"
+      words={say.createdWithout(W.coverRefused)}
+      actions={
+        <TextAction
+          label={W.upload}
+          glyph="camera"
+          onPress={() => {
+            setNoPhoto(false);
+            openEdit('cover');
+          }}
+          testID="event.createdNoPhoto.cover"
+        />
+      }
+    />
+  );
+  const demoNote = live.s.toast === 'queued' && (
+    <DemoOnly title={LIVE.demoMessages}>{null}</DemoOnly>
+  );
+  const liveToast: EventToast | null =
+    liveSaid == null
+      ? null
+      : {
+          words: liveSaid,
+          onClose: live.closeToast,
+          action:
+            live.s.toast === 'queued'
+              ? {
+                  label: LIVE.messages,
+                  testID: 'event.toast.messages',
+                  onPress: () => {
+                    live.closeToast();
+                    router.push(INVITATION_HREF as Href);
+                  },
+                }
+              : null,
+        };
 
   if (state === 'loading')
     return (
@@ -506,6 +691,7 @@ export function EventScreen({
         onArea={setAt}
         badge={messagesHere && messagesSeen ? badgeFor(m) : null}
         filterFrom={guestsFrom}
+        sinceFrom={sinceFrom}
         onWrite={writeToThem}
         onConversation={theirConversation}
         onMakeLive={() => shell.tell(say.ownDesign(W.makeLive))}
@@ -535,6 +721,7 @@ export function EventScreen({
         more={more}
         onMore={setMore}
         onArea={setAt}
+        onChanged={openChanged}
         start={{
           fix: messages === 'fix',
           push: messages === 'bell',
@@ -558,6 +745,10 @@ export function EventScreen({
         card={card}
         left={
           <>
+            {photoNotice}
+            {banner}
+            {demoNote}
+            {thankYou}
             {details}
             {needsYou}
             {nameCover}
@@ -574,6 +765,10 @@ export function EventScreen({
         }
         stacked={
           <>
+            {photoNotice}
+            {banner}
+            {demoNote}
+            {thankYou}
             {numbers}
             {peopleCard}
             {details}
@@ -597,7 +792,7 @@ export function EventScreen({
       onMore={setMore}
       badge={messagesHere && messagesSeen ? badgeFor(m) : null}
       without={without}
-      toast={told == null ? null : { words: told, onClose: () => setTold(null) }}
+      toast={liveToast ?? (told == null ? null : { words: told, onClose: () => setTold(null) })}
       overlay={
         <>
           {tell}
@@ -617,8 +812,32 @@ export function EventScreen({
               onReplyBy={savedReplyBy}
             />
           ) : null}
+          {makeLive}
+          <ThankYouScreen
+            card={thanks}
+            locale={locale}
+            opener={opener}
+            onCard={setThanks}
+            onSaid={setTold}
+          />
+          <EndNowAsk
+            key={ending}
+            open={ask === 'endNow'}
+            name={event.name}
+            start={endFieldOf(ending === 0 ? state : null)}
+            locale={locale}
+            opener={opener}
+            onKeep={() => setAsk(null)}
+            onEnded={(line) => {
+              setAsk(null);
+              setEvent({ ...event, status: 'ended', concludedAt: now.toISOString() });
+              setThanks(cardOf(null, line));
+              if (line !== '') setTold(TY_WORDS.done);
+              if (dayStillToCome(event, now)) tellOf('tellEndNow');
+            }}
+          />
           <LifecycleAsk
-            ask={ask}
+            ask={ask === 'endNow' ? null : ask}
             name={event.name}
             opener={opener}
             onKeep={() => setAsk(null)}
@@ -647,14 +866,16 @@ export function EventScreen({
             onDeleted={pressDelete}
           />
           <DuplicateScreen
+            key={copies}
             open={duplicating}
             event={event}
             locale={locale}
+            start={copies === 0 ? duplicateStateOf(state) : null}
             opener={opener}
             onClose={() => setDuplicating(false)}
-            onCreated={() => {
+            onCreated={(copy) => {
               setDuplicating(false);
-              setTold(W.created);
+              setEvent(copy);
             }}
           />
         </>

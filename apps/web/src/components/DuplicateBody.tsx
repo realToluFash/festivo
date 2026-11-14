@@ -7,6 +7,8 @@ import { DateTime } from './EventPageParts.tsx';
 import { Glyph } from './Glyph.tsx';
 import { Head } from './SettingsParts.tsx';
 
+import './DuplicateBody.css';
+
 type Wall = { date: string; time: string };
 
 /** What a copied guest list adds to Copied, and the one Not copied line that replaces Guests and Replies (sc-3656). */
@@ -99,5 +101,50 @@ export function DuplicateBody({
         </p>
       )}
     </>
+  );
+}
+
+/** The tick under Starts that brings the guest list, its whole label the target and its hint always shown (sc-3656). */
+export function CopyGuestsBox({
+  label,
+  hint,
+  ticked,
+  busy,
+  onTick,
+  box,
+}: {
+  label: string;
+  hint: string;
+  ticked: boolean;
+  busy: boolean;
+  onTick: () => void;
+  box?: Ref<HTMLInputElement>;
+}) {
+  const id = useId();
+
+  return (
+    <label className="ev-copy-guests">
+      <span className="ev-copy-box">
+        <input
+          ref={box}
+          type="checkbox"
+          className="ev-copy-input"
+          checked={ticked}
+          disabled={busy}
+          aria-labelledby={`${id}-copy`}
+          aria-describedby={`${id}-copy-hint`}
+          onChange={onTick}
+        />
+        {ticked && <Glyph name="tick" size={16} weight={3} className="ev-copy-tick" />}
+      </span>
+      <span className="ev-copy-words">
+        <span id={`${id}-copy`} className="ev-copy-label">
+          {label}
+        </span>
+        <span id={`${id}-copy-hint`} className="ev-copy-hint">
+          {hint}
+        </span>
+      </span>
+    </label>
   );
 }

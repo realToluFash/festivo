@@ -392,3 +392,79 @@ describe('Your account at a desk (sc-30209)', () => {
     );
   });
 });
+
+describe('Your account says which address Soirely could not deliver to (sc-44949)', () => {
+  beforeEach(() => __setConfig({ ...tested, environment: 'development' }));
+  afterEach(() => forgetNames());
+
+  const line = (address: string) => `We couldn’t deliver email to ${address}.`;
+
+  it('says so for the one address, and Change email opens Add an email address', async () => {
+    await account('/demo/settings/account?state=undeliverable');
+
+    expect(screen.getByText(line('folake@ire.events'))).toBeDefined();
+    fireEvent.click(
+      screen.getByRole('button', { name: 'Change email, instead of folake@ire.events' }),
+    );
+
+    expect(within(dialog()).getByLabelText('Email address to add')).toBeDefined();
+  });
+
+  it('gives each address its own line, and at two Change email opens the other row', async () => {
+    await account('/demo/settings/account?state=undeliverableTwo');
+
+    expect(screen.getByText(line('folake@ire.events'))).toBeDefined();
+    expect(screen.getByText(line('folake.adeyemi@gmail.com'))).toBeDefined();
+    fireEvent.click(
+      screen.getByRole('button', { name: 'Change email, instead of folake@ire.events' }),
+    );
+
+    expect(screen.queryByRole('dialog')).toBeNull();
+    const row = within(block('Email addresses')).getByRole('button', {
+      name: /folake.adeyemi@gmail.com/,
+    });
+    expect(row.getAttribute('aria-expanded')).toBe('true');
+    await waitFor(() => expect(document.activeElement).toBe(row));
+  });
+
+  it('keeps the card’s line first, and a code typed takes both away', async () => {
+    await account('/demo/settings/account?state=undeliverableUnverified');
+
+    expect(screen.getByText('folake.adeyemi@gmail.com is not verified yet.')).toBeDefined();
+    expect(screen.getByText(line('folake.adeyemi@gmail.com'))).toBeDefined();
+    fireEvent.click(screen.getByRole('button', { name: 'Send a code' }));
+    fireEvent.change(await within(dialog()).findByLabelText('Code from the email'), {
+      target: { value: '482913' },
+    });
+    fireEvent.click(within(dialog()).getByRole('button', { name: 'Verify' }));
+
+    await waitFor(
+      () => expect(screen.queryByText(line('folake.adeyemi@gmail.com'))).toBeNull(),
+      WAIT,
+    );
+    expect(screen.queryByText('folake.adeyemi@gmail.com is not verified yet.')).toBeNull();
+  });
+
+  it('goes once the address is removed, and shows nothing at rest', async () => {
+    await account('/demo/settings/account?state=undeliverableUnverified');
+    const row = within(block('Email addresses')).getByRole('button', {
+      name: /folake.adeyemi@gmail.com/,
+    });
+
+    fireEvent.click(row);
+    fireEvent.click(
+      within(screen.getByRole('group', { name: 'folake.adeyemi@gmail.com' })).getByRole('button', {
+        name: 'Remove',
+      }),
+    );
+
+    expect(screen.queryByText(line('folake.adeyemi@gmail.com'))).toBeNull();
+  });
+
+  it('shows nothing about delivery on the page at rest', async () => {
+    await account('/demo/settings/account');
+
+    expect(screen.queryByText(/couldn’t deliver/)).toBeNull();
+    expect(screen.queryByRole('button', { name: /Change email/ })).toBeNull();
+  });
+});

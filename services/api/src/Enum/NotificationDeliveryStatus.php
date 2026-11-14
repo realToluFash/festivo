@@ -12,4 +12,6 @@ enum NotificationDeliveryStatus: string
     case Failed = 'failed';
     case Cancelled = 'cancelled';
     case TooLate = 'too_late';
+    /** A code's send that a newer code for the same address replaced before it went. */
+    case Superseded = 'superseded';
 }

@@ -7,6 +7,7 @@ namespace App\Domain\Organisation\OwnerClaims;
 use App\Domain\User\Mail\UserMailer;
 use App\Entity\OwnerClaim;
 use App\Entity\User;
+use App\Enum\AccountMail;
 use App\Enum\OwnerClaimOutcome;
 use App\Repository\UserRepository;
 use DateTimeImmutable;
@@ -94,7 +95,7 @@ final readonly class OwnerClaimMailer
             $locale = $this->userMailer->localeFor($reader);
             $words = [...$named, ...$moment($reader, $locale, $this->userMailer), '{link}' => $link];
 
-            $this->userMailer->send($primary->getAddress(), $locale, $key . '.subject', [
+            $this->userMailer->send(AccountMail::OwnerClaim, $primary->getAddress(), $locale, $key . '.subject', [
                 $this->userMailer->line($key . '.heading', $locale, $words),
                 ...(null === $reasonKey ? [] : [$this->userMailer->line($reasonKey, $locale, $words)]),
                 $this->userMailer->line($words['{claimant}'] === $words['{email}'] ? 'ownerClaim.claimantAddress' : 'ownerClaim.claimant', $locale, $words),

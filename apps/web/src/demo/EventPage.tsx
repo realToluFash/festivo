@@ -1,5 +1,5 @@
 import { DemoBell } from './DemoBell.tsx';
-import { eventPhase, formatEventRange, hostsLine } from '@soirely/domain';
+import { calledOff, eventPhase, formatEventRange, hostsLine } from '@soirely/domain';
 import { type ComponentType, type ReactNode, useEffect, useState } from 'react';
 import { Link, Navigate, useLocation, useNavigate, useParams, useSearchParams } from 'react-router';
 
@@ -12,7 +12,7 @@ import {
   type SampleEvent,
   AREAS,
   COMING,
-  CURRENCIES,
+  currencyLabel,
   EVENT_WORDS as W,
   TYPE_WORDS,
   areaOf,
@@ -27,8 +27,12 @@ import {
   partOf,
   resetSample,
   sampleEvent,
+  shownOf,
   stateFits,
 } from './events.ts';
+import { EndNowAsk, ThankYouCard } from './ThankYou.tsx';
+import { eventWhile } from './messagesScheduled.ts';
+import { TY_WORDS, cardOf, cardShown, endFieldOf, type EndField } from './thankYou.ts';
 import { type DuplicateStart, DeleteByName, DuplicateDialog, RefusedAsk } from './EventDialogs.tsx';
 import {
   AT_READ,
@@ -87,12 +91,15 @@ import {
 } from './guests.ts';
 import { GuestNumbers } from './GuestsParts.tsx';
 import {
+  type Out,
   type Told,
+  MW as MESSAGE_WORDS,
   NEW_PLACE,
   ROSEWOOD,
   SAMPLE_EVENT,
   STARTS_LATER,
   TELL,
+  changeId,
   keepInbox,
   keptInbox,
   messagesStateOf,
@@ -100,25 +107,64 @@ import {
   toldOf,
   waitingLine,
 } from './messages.ts';
+import {
+  type Figures,
+  type Flow,
+  type TellSeed,
+  changeFor,
+  clockOfPage,
+  dayStillToCome,
+  kindOf,
+  mergeUntold,
+  pageEvent,
+  tellSeedOf,
+  toldOfKind,
+  withoutTold,
+} from './messagesTell.ts';
+import { TELL_ON_MESSAGES, isTellState } from './messagesTellStates.ts';
 import { MessagesPage } from './Messages.tsx';
 import { DOOR_EVENT_ID } from './doorCode.ts';
 import { repliesOpen } from './replyClose.ts';
 import { noOrgStateOf } from './noOrg.ts';
 import { NoOrgEvent } from './NoOrgEvent.tsx';
-import { TellDialog } from './MessagesTell.tsx';
-import { Ask, Head, RowWords } from '../components/SettingsParts.tsx';
-import { Crumb, Lead, ManageItem, ManageList, PartRow } from '../components/EventPageParts.tsx';
+import { TellDialog, UntoldCard } from './MessagesTell.tsx';
+import { Ask, Head, RowWords, TextAction } from '../components/SettingsParts.tsx';
+import {
+  Broken,
+  Crumb,
+  Lead,
+  ManageItem,
+  ManageList,
+  PartRow,
+} from '../components/EventPageParts.tsx';
 import { JustForYou } from '../components/JustForYou.tsx';
 import { GuestsCanWrite } from './GuestsCanWrite.tsx';
 import type { Tell } from '../components/SettingsParts.tsx';
 import { useSwitcherStart } from './switcher.ts';
 import { useLeaveAsk } from './useLeaveAsk.ts';
+import { MakeLiveAsk } from './EventMakeLive.tsx';
+import type { Told as ShellTold } from './ActionToast.tsx';
+import {
+  type MakeLiveState,
+  type Offer,
+  type Phase,
+  ASK,
+  INVITED_AT,
+  LW,
+  isMakeLive,
+  lw,
+  maySend,
+  offerOf,
+  phaseOf,
+  seededEvent,
+} from './makeLive.ts';
 
 const LOCALE = 'en-US';
 
 interface Arrival {
   open?: Part;
   told?: string;
+  noPhoto?: string;
 }
 
 type Asking = 'pause' | 'callOff' | 'endNow' | 'deleteDraft' | 'delete' | 'refused' | 'duplicate';
@@ -147,6 +193,12 @@ function needsStateOf(state: EventStateName | null): NeedsState | null {
 
 function askingOf(state: EventStateName | null): Asking | null {
   switch (state) {
+    case 'endNowThankYou':
+    case 'endNowLong':
+    case 'endNowOver':
+    case 'endNowEnding':
+    case 'endNowNotEnded':
+      return 'endNow';
     case 'pause':
     case 'callOff':
     case 'endNow':
@@ -227,6 +279,14 @@ function EventAt({
     if (raw != null && messages) resetInbox();
     seedFromEvent(raw);
 
+    const said = messages ? messagesStateOf(raw) : null;
+    const tellState = isTellState(said) && !TELL_ON_MESSAGES.includes(said) ? said : null;
+    const seed = tellState == null ? null : tellSeedOf(tellState);
+    const base = sampleEvent(id);
+
+    if (seed?.untold != null && base != null)
+      keepInbox({ ...keptInbox(), untold: seed.untold, toldAs: base });
+
     const event = sampleEvent(id);
     const named = messages ? null : eventStateOf(raw);
     const state = event != null && named != null && stateFits(named, event) ? named : null;
@@ -234,13 +294,18 @@ function EventAt({
     const shown =
       event == null || state == null
         ? event
-        : state === 'photo'
+        : state === 'photo' ||
+            state === 'coverPhoto' ||
+            state === 'coverPhotoUploading' ||
+            state === 'coverChangeRefused'
           ? { ...event, photo: true }
           : state === 'noteNoVenue' || state === 'noteWide' || state === 'noteMarkup'
             ? withNote(event, state)
-            : event;
+            : isMakeLive(state)
+              ? seededEvent(event, state)
+              : event;
 
-    return { event: shown, state };
+    return { event: shown, state, seed };
   });
 
   useEffect(() => {
@@ -252,11 +317,15 @@ function EventAt({
   if (first.event == null) return <Navigate to="/demo/events" replace />;
 
   const said = messages ? messagesStateOf(raw) : null;
+  const seed = first.seed;
 
-  const telling = said === 'tell' || said === 'tellPlace';
+  if (said === 'tellLink')
+    return <Navigate to={guestsAt(SAMPLE_EVENT, { state: 'replaced', tell: 'link' })} replace />;
+
+  const telling = said === 'tell' || said === 'tellPlace' || seed != null;
 
   if (messages && first.event.id === SAMPLE_EVENT && !telling)
-    return <MessagesPage event={first.event} state={said} now={clockOf(null)} />;
+    return <MessagesPage event={eventWhile(said, first.event)} state={said} now={clockOf(null)} />;
 
   return (
     <EventView
@@ -265,16 +334,45 @@ function EventAt({
           ? { ...first.event, startsAt: TELL.movedTo }
           : said === 'tellPlace'
             ? { ...first.event, venue: ROSEWOOD }
-            : first.event
+            : seed != null
+              ? pageEvent(seed.page, first.event)
+              : first.event
       }
       state={first.state}
       numbers={messages ? null : numbersStateOf(raw)}
       arrival={arrival}
       dates={dates}
       fixedArea={messages && !telling ? 'messages' : null}
-      telling={said === 'tell' ? [STARTS_LATER] : said === 'tellPlace' ? [NEW_PLACE] : null}
+      telling={
+        said === 'tell'
+          ? { changes: [STARTS_LATER] }
+          : said === 'tellPlace'
+            ? { changes: [NEW_PLACE] }
+            : tellingOf(seed)
+      }
+      clock={seed == null ? null : clockOfPage(seed.page)}
+      said={seed?.said ?? null}
     />
   );
+}
+
+interface Telling {
+  changes: readonly Told[];
+  figures?: Figures;
+  flow?: Flow;
+  note?: string;
+  from?: SampleEvent | null;
+}
+
+function tellingOf(seed: TellSeed | null): Telling | null {
+  if (seed?.changes == null) return null;
+
+  return {
+    changes: seed.changes,
+    ...(seed.figures == null ? {} : { figures: seed.figures }),
+    ...(seed.flow == null ? {} : { flow: seed.flow }),
+    ...(seed.note == null ? {} : { note: seed.note }),
+  };
 }
 
 function EventView({
@@ -285,6 +383,8 @@ function EventView({
   dates,
   fixedArea = null,
   telling: tellingFirst = null,
+  clock = null,
+  said = null,
 }: {
   initial: SampleEvent;
   state: EventStateName | null;
@@ -292,20 +392,27 @@ function EventView({
   arrival: Arrival;
   dates: boolean;
   fixedArea?: Area | null;
-  telling?: readonly Told[] | null;
+  telling?: Telling | null;
+  clock?: Date | null;
+  said?: string | null;
 }) {
   const [params] = useSearchParams();
   const navigate = useNavigate();
-  const now = clockOf(state);
+  const now = clock ?? clockOf(state);
   const area = fixedArea ?? areaOf(params.get('area'));
-  const [telling, setTelling] = useState<readonly Told[] | null>(tellingFirst);
+  const [telling, setTelling] = useState<Telling | null>(tellingFirst);
+  const [untold, setUntold] = useState<readonly Told[]>(() =>
+    initial.id === SAMPLE_EVENT ? keptInbox().untold : [],
+  );
   const [event, setEvent] = useState(initial);
   const [replyBy, setReplyBy] = useState(() => replyByStart(state, initial.id));
   const [tellMoved, setTellMoved] = useState<string | null>(null);
   const [part, setPart] = useState<Part | null>(partOf(state) ?? arrival.open ?? null);
   const [dirty, setDirty] = useState(false);
+  const [noPhoto, setNoPhoto] = useState(arrival.noPhoto ?? null);
   const [leaving, setLeaving] = useState<{ to: Part | null } | null>(null);
   const [asking, setAsking] = useState<Asking | null>(askingOf(state));
+  const [ending, setEnding] = useState(0);
   const refusedStart = refusedStartOf(state);
   const canChange = refusedStart?.canChange ?? true;
   const [pressed, setPressed] = useState(false);
@@ -316,10 +423,14 @@ function EventView({
     invitedOf(state, refusedStart, invitedOn(event.id), pressed),
     canChange,
   );
+  const [card, setCard] = useState(() => cardOf(state));
   const [muted, setMuted] = useState(state === 'muted');
   const [muteLoaded, setMuteLoaded] = useState(state !== 'muteNotLoaded');
   const [muteFailed, setMuteFailed] = useState(state === 'muteNotSaved');
   const away = useLeaveAsk(dirty);
+  const live = isMakeLive(state) ? state : null;
+  const [making, setMaking] = useState<Phase | null>(() => phaseOf(live));
+  const [sent, setSent] = useState(live === 'makeLiveOfferSent');
 
   if (area === 'people') return <Navigate to="/demo/people" replace />;
   if (area === 'budget' && initial.id === BUDGET_EVENT) return <BudgetEntry event={initial} />;
@@ -332,6 +443,17 @@ function EventView({
   function kept(next: SampleEvent): void {
     keepChange(next);
     setEvent(next);
+  }
+
+  function keepUntold(next: readonly Told[], toldAs: SampleEvent | null, out: Out | null = null) {
+    const was = keptInbox();
+
+    keepInbox({ ...was, untold: next, toldAs, outs: out == null ? was.outs : [...was.outs, out] });
+    setUntold(next);
+  }
+
+  function tellOf(kind: 'pause' | 'callOff' | 'resume' | 'endNow'): void {
+    if (event.id === SAMPLE_EVENT) setTelling({ changes: [toldOfKind(kind)] });
   }
 
   function open(next: Part): void {
@@ -348,9 +470,10 @@ function EventView({
     <EventsShell
       told={
         arrival.told ??
+        said ??
         (state === 'replyBySaved' || state === 'replyByRemoved'
           ? replyBySays(replyBy, now, event.timeZone).toast
-          : null)
+          : liveToldOf(event, live))
       }
       renderSide={(tell, covered) => (
         <EventSidebar
@@ -360,11 +483,11 @@ function EventView({
           tell={tell}
           inert={covered}
           waiting={event.id === SAMPLE_EVENT ? waitingLine(keptInbox()) : null}
-          {...(canChange ? {} : { reader: AT_READ })}
+          {...(canChange && maySend(live) ? {} : { reader: AT_READ })}
         />
       )}
     >
-      {(tell) => (
+      {(tell, show) => (
         <div className="desk-page ev-page">
           <div className="ev-wide">
             <Crumb to="/demo/events" back={W.back} name={event.name}>
@@ -380,17 +503,53 @@ function EventView({
                   level={1}
                   milestone={cardMilestone(event, now)}
                   onStep={(does: CardDoes) => {
-                    if (does === 'makeLive') tell('Make live has its own design.');
+                    if (does === 'makeLive') setMaking(ASK);
                     else if (does === 'changeDates') {
                       if (part !== 'dates') open('dates');
                     } else if (does === 'resume') {
                       kept({ ...event, status: 'live' });
                       tell(W.resumed(event.name));
+                      if (untold.some((told) => kindOf(told) === 'pause'))
+                        keepUntold(
+                          withoutTold(untold, [toldOfKind('resume')]),
+                          keptInbox().toldAs ?? null,
+                        );
+                      else tellOf('resume');
                     } else setAsking('duplicate');
                   }}
                 />
+                {sent && <p className="ml-demo-only">{LW.demoMessages}</p>}
                 <div className="ev-columns">
                   <div className="ev-left">
+                    {noPhoto != null && (
+                      <Broken
+                        action={
+                          <TextAction
+                            label={W.upload}
+                            onClick={() => {
+                              setNoPhoto(null);
+                              open('cover');
+                            }}
+                          />
+                        }
+                      >
+                        {noPhoto}
+                      </Broken>
+                    )}
+                    {untold.length > 0 && (
+                      <UntoldCard
+                        items={untold}
+                        onTell={() => setTelling({ changes: untold })}
+                        onDismiss={() => {
+                          keepUntold([], null);
+                          tell(MESSAGE_WORDS.dismissed);
+                          document.querySelector<HTMLElement>('.desk-main h1')?.focus();
+                        }}
+                      />
+                    )}
+                    {shownOf(event, now) === 'finished' && cardShown(card) && (
+                      <ThankYouCard event={event} card={card} onCard={setCard} onSaid={tell} />
+                    )}
                     <Details
                       event={event}
                       now={now}
@@ -403,10 +562,9 @@ function EventView({
                         setDirty(false);
                       }}
                       onSave={(next) => {
-                        const changes =
-                          event.id === SAMPLE_EVENT && event.status === 'live'
-                            ? toldOf(event, next)
-                            : [];
+                        const from = keptInbox().toldAs ?? event;
+                        const tells = event.id === SAMPLE_EVENT && event.status === 'live';
+                        const changes = tells ? toldOf(from, next) : [];
 
                         const moved = replyByAfterStart(replyBy, next.startsAt, next.timeZone);
 
@@ -419,8 +577,12 @@ function EventView({
                         if (moved != null) setReplyBy(moved);
                         if (changes.length > 0) {
                           setTellMoved(says.inTell ? said.line : null);
-                          setTelling(changes);
-                        }
+                          setTelling({ changes, from });
+                        } else if (tells && untold.some((told) => kindOf(told) === 'fields'))
+                          keepUntold(
+                            untold.filter((told) => kindOf(told) !== 'fields'),
+                            null,
+                          );
                         if (says.toast === 'moved') tell(said.toast);
                         if (says.toast === 'saved') tell(W.saved);
                       }}
@@ -527,9 +689,11 @@ function EventView({
             event={event}
             now={now}
             state={state}
+            endStart={endFieldOf(ending === 0 ? state : null)}
             refusal={refusal}
             turned={turned}
             onKeep={() => {
+              if (asking === 'endNow') setEnding((count) => count + 1);
               setAsking(null);
               setTurned(false);
             }}
@@ -541,6 +705,16 @@ function EventView({
               setAsking(null);
               kept(next);
               if (words != null) tell(words);
+              if (next.status === 'paused') tellOf('pause');
+              if (next.status === 'ended') tellOf('callOff');
+            }}
+            onEnded={(line) => {
+              setEnding((count) => count + 1);
+              setAsking(null);
+              kept({ ...event, status: 'ended', concludedAt: now.toISOString() });
+              setCard(cardOf(null, line));
+              if (line !== '') tell(TY_WORDS.done);
+              if (dayStillToCome(event, now)) tellOf('endNow');
             }}
             onDelete={() => {
               const answer = refusalOf(
@@ -564,24 +738,56 @@ function EventView({
               tell(words);
             }}
           />
+          {making != null && (
+            <MakeLiveAsk
+              event={event}
+              phase={making}
+              offer={maySend(live) ? offerOf(event, live) : null}
+              onLive={(host) =>
+                kept({ ...event, status: 'live', hosts: host == null ? event.hosts : [host] })
+              }
+              onClose={() => setMaking(null)}
+              onMadeLive={() => {
+                setMaking(null);
+                tell(LW.madeLive);
+              }}
+              onSent={(offer) => {
+                setMaking(null);
+                setSent(true);
+                show(sentTold(offer));
+              }}
+              onChangeDates={() => {
+                setMaking(null);
+                if (part !== 'dates') open('dates');
+              }}
+            />
+          )}
           {telling != null && (
             <TellDialog
               tell={tell}
-              changes={telling}
+              changes={telling.changes}
+              figures={telling.figures ?? null}
+              {...(telling.flow == null ? {} : { flow: telling.flow })}
+              note={telling.note ?? ''}
               before={tellMoved}
               onNotNow={() => {
-                const was = keptInbox();
-
                 setTelling(null);
-                keepInbox({
-                  ...was,
-                  untold: [
-                    ...was.untold.filter((one) => !telling.some((now) => now.item === one.item)),
-                    ...telling,
-                  ],
-                });
+                keepUntold(
+                  mergeUntold(untold, telling.changes),
+                  telling.from ?? keptInbox().toldAs ?? null,
+                );
               }}
-              onSent={() => setTelling(null)}
+              onSent={(sent) => {
+                setTelling(null);
+                if (event.id !== SAMPLE_EVENT) return;
+                keepUntold(
+                  withoutTold(untold, telling.changes),
+                  null,
+                  sent.allTold
+                    ? null
+                    : changeFor(telling.changes, sent.figures, sent.note, changeId(keptInbox())),
+                );
+              }}
             />
           )}
         </div>
@@ -590,16 +796,32 @@ function EventView({
   );
 }
 
+function sentTold(offer: Offer): ShellTold {
+  return { words: lw.many('queued', offer.reached), action: { word: LW.messages, to: INVITED_AT } };
+}
+
+/** What a Make live state's page says as it opens: the toast after Send them, or ✓ Live. */
+function liveToldOf(event: SampleEvent, state: MakeLiveState | null): ShellTold | string | null {
+  if (state === 'madeLive') return LW.madeLive;
+  if (state !== 'makeLiveOfferSent') return null;
+
+  const offer = offerOf(event, state);
+
+  return offer == null ? null : sentTold(offer);
+}
+
 function Asks({
   asking,
   event,
   now,
   state,
+  endStart,
   refusal,
   turned,
   onKeep,
   onVerb,
   onDone,
+  onEnded,
   onDelete,
   onCreated,
 }: {
@@ -607,11 +829,13 @@ function Asks({
   event: SampleEvent;
   now: Date;
   state: EventStateName | null;
+  endStart: EndField;
   refusal: Refusal | null;
   turned: boolean;
   onKeep: () => void;
   onVerb: (verb: RefusedVerb) => void;
   onDone: (next: SampleEvent, words: string | null) => void;
+  onEnded: (line: string) => void;
   onDelete: () => void;
   onCreated: Tell;
 }) {
@@ -640,16 +864,7 @@ function Asks({
         />
       );
     case 'endNow':
-      return (
-        <Ask
-          title={W.endTitle(event.name)}
-          line={W.endLine}
-          keep={W.keepItOn}
-          go={W.endNow}
-          onKeep={onKeep}
-          onGo={() => onDone({ ...event, status: 'ended', concludedAt: now.toISOString() }, null)}
-        />
-      );
+      return <EndNowAsk event={event} start={endStart} onKeep={onKeep} onEnded={onEnded} />;
     case 'deleteDraft':
       return (
         <Ask
@@ -830,7 +1045,7 @@ function Details({
             <Lead name="calendar" />,
             formatEventRange(event.startsAt, event.endsAt, event.timeZone, LOCALE),
             locked
-              ? `${W.dates} · ${W.scheduleLocked}`
+              ? `${W.dates} · ${calledOff(event) ? W.scheduleCalledOff : W.scheduleLocked}`
               : [W.dates, ...(days > 1 ? [W.dayCount(days)] : []), event.timeZone].join(' · '),
           )}
           {row(
@@ -880,12 +1095,7 @@ function Details({
             event.hosts.length === 0 ? `${W.hostedBy} · ${W.noHostsLine}` : W.hostedBy,
           )}
           {row('type', <Lead name="events" />, TYPE_WORDS[event.type], W.type)}
-          {row(
-            'currency',
-            <Lead name="wallet" />,
-            `${event.currency} · ${CURRENCIES[event.currency]}`,
-            W.currency,
-          )}
+          {row('currency', <Lead name="wallet" />, currencyLabel(event.currency), W.currency)}
         </ul>
       </section>
       {needs}

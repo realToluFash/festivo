@@ -43,6 +43,17 @@ export function formatPhone(e164: string): string {
   return parsePhoneNumberFromString(e164)?.formatInternational() ?? e164;
 }
 
+/** A search typed as a number finds a stored one from 3 digits with no letters, with or without spaces, its country code or the national 0 (sc-3772): "0803 123 4567" finds +234 803 123 4567. */
+export function phoneMatches(e164: string, typed: string): boolean {
+  const digits = typed.replaceAll(/\D/gu, '');
+
+  if (/\p{L}/u.test(typed) || digits.length < 3) return false;
+  if (e164.replaceAll(/\D/gu, '').includes(digits)) return true;
+  const national = parsePhoneNumberFromString(e164)?.nationalNumber ?? '';
+
+  return digits.startsWith('0') && national.startsWith(digits.slice(1));
+}
+
 /** An E.164 number as the code-and-number field shows it: "+2348031234567" is NG and "0803 123 4567". */
 export function phoneFields(e164: string): { country: string; number: string } | null {
   const parsed = parsePhoneNumberFromString(e164);

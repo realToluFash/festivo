@@ -15,7 +15,6 @@ use App\Enum\Actor;
 use App\Enum\MembershipChannel;
 use App\Enum\MembershipStatus;
 use App\Enum\Suspension;
-use App\Http\AfterResponse;
 use App\Repository\MembershipRepository;
 use Doctrine\DBAL\LockMode;
 use Doctrine\ORM\EntityManagerInterface;
@@ -33,7 +32,6 @@ final readonly class DomainSuspender
         private MembershipMachine $membershipMachine,
         private DomainSuspensionMailer $domainSuspensionMailer,
         private Auditor $auditor,
-        private AfterResponse $afterResponse,
         private EntityManagerInterface $entityManager,
         private ClockInterface $clock,
     ) {
@@ -106,10 +104,6 @@ final readonly class DomainSuspender
             $this->membershipRepository->findAdministratorsIn($membership->getOrganisation()),
             static fn (Membership $administrator): User => $administrator->getUser(),
         );
-        $this->afterResponse->defer(function () use ($membership, $administrators): void {
-            if ($this->membershipRepository->isSuspendedInStore($membership->getId())) {
-                $this->domainSuspensionMailer->sendSuspended($membership, $administrators);
-            }
-        });
+        $this->domainSuspensionMailer->sendSuspended($membership, $administrators);
     }
 }

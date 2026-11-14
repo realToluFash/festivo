@@ -1,6 +1,7 @@
 import { type Account, ApiError, type TimeZoneOption } from '@soirely/api-client';
 import {
   CONTACTS_MOST,
+  changeEmail,
   cleanCode,
   codeProblem,
   confirmWith,
@@ -14,10 +15,11 @@ import {
   zoneValue,
   firstUnverified,
   primaryOf,
+  undeliverableAddresses,
 } from '@soirely/domain';
 import type { TFunction } from 'i18next';
 import { createRef, type RefObject, useContext, useEffect, useMemo, useRef, useState } from 'react';
-import type { ViewInstance } from 'react-native';
+import { View, type ViewInstance } from 'react-native';
 import { useTranslation } from 'react-i18next';
 
 import { api } from '../api.ts';
@@ -43,6 +45,7 @@ import { AddScreen } from './AccountAdd.tsx';
 import { AboutSection, YouCard } from './AccountCard.tsx';
 import { ConfirmScreen, type ConfirmSays } from './AccountConfirm.tsx';
 import { ContactsSection } from './AccountContacts.tsx';
+import { UndeliverableLines } from './AccountUndeliverable.tsx';
 import { NameScreen } from './AccountName.tsx';
 import { type CodeSays, VerifyScreen } from './AccountVerify.tsx';
 import { ZoneScreen } from './AccountZone.tsx';
@@ -56,7 +59,16 @@ import type { TextHandle } from './Text.tsx';
 type Screen = 'name' | 'zone' | 'addEmail' | 'addPhone' | 'confirm' | 'verify';
 
 type Target =
-  'card' | 'step' | 'name' | 'zone' | 'addEmail' | 'addPhone' | 'send' | 'promote' | 'remove';
+  | 'card'
+  | 'step'
+  | 'name'
+  | 'zone'
+  | 'addEmail'
+  | 'addPhone'
+  | 'send'
+  | 'promote'
+  | 'remove'
+  | 'change';
 
 /** Settings › Your account in the app, summary first, as its demo draws it (sc-30411). */
 export function AccountPage({
@@ -81,6 +93,8 @@ export function AccountPage({
   const [verifying, setVerifying] = useState<{ kind: ContactKind; id: string } | null>(null);
   const [visit, setVisit] = useState(0);
   const blocks = useRef<Partial<Record<string, ViewInstance | null>>>({});
+  const changes = useRef<Partial<Record<string, ViewInstance | null>>>({});
+  const changed = useRef('');
   const [targets] = useState(() => ({
     card: createRef<TextHandle>(),
     step: createRef<ViewInstance>(),
@@ -91,6 +105,11 @@ export function AccountPage({
     send: createRef<ViewInstance>(),
     promote: createRef<ViewInstance>(),
     remove: createRef<ViewInstance>(),
+    change: {
+      get current() {
+        return changes.current[changed.current] ?? null;
+      },
+    },
   }));
   const from = useRef<Target>('card');
   const timer = useRef<ReturnType<typeof setTimeout>>(undefined);
@@ -107,6 +126,7 @@ export function AccountPage({
     shown: held.address,
     verified: held.verified,
     primary: held.primary,
+    undeliverable: held.undeliverable === true,
   }));
   const phones: Contact[] = listedContacts(account.phoneNumbers).map((held) => ({
     id: held.id,
@@ -220,6 +240,25 @@ export function AccountPage({
     }
   }
 
+  /** While there is room, the add screen; at the most an account holds, the address that is not primary, opened in place. */
+  function changeFrom(row: Contact): void {
+    changed.current = row.id;
+    const goes = changeEmail(emails);
+    if (goes.to === 'add') {
+      show('addEmail', 'change');
+      return;
+    }
+    from.current = 'change';
+    setRowError(null);
+    setOpened(goes.id);
+    bringIntoView(blocks.current[goes.id], screenScroll?.ref.current ?? null, clear, true);
+    clearTimeout(timer.current);
+    timer.current = setTimeout(
+      () => moveScreenReaderFocus(blocks.current[goes.id] ?? null),
+      SETTLED_MS,
+    );
+  }
+
   function promoteEmail(row: Contact): void {
     const proof = heldProof();
     // An address signs the account in, so it is proved first; a proof still standing is enough.
@@ -300,7 +339,16 @@ export function AccountPage({
         onName={() => show('name', 'name')}
         onZone={() => show('zone', 'zone')}
       />
-      {contacts('email')}
+      <View>
+        {contacts('email')}
+        <UndeliverableLines
+          rows={undeliverableAddresses(emails)}
+          onChange={changeFrom}
+          onAction={(id, action) => {
+            changes.current[id] = action;
+          }}
+        />
+      </View>
       {contacts('phone')}
       <Ask
         open={ask === 'promote' && openedRow != null}

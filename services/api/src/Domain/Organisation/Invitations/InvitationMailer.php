@@ -8,6 +8,7 @@ use App\Domain\Organisation\Roles\SeededRoleLabels;
 use App\Domain\User\Mail\UserMailer;
 use App\Entity\Invitation;
 use App\Entity\User;
+use App\Enum\AccountMail;
 use App\Locale\SupportedLocales;
 use IntlDateFormatter;
 use IntlDatePatternGenerator;
@@ -46,7 +47,7 @@ final readonly class InvitationMailer
 
         $paragraphs[] = $this->userMailer->line('invitation.ignore', $locale);
 
-        $this->userMailer->send($invitation->getEmail(), $locale, 'invitation.subject', $paragraphs, $parameters);
+        $this->userMailer->send(AccountMail::Invitation, $invitation->getEmail(), $locale, 'invitation.subject', $paragraphs, $parameters, source: InvitationDeliveries::source($invitation));
     }
 
     public function link(#[SensitiveParameter] string $token): string

@@ -180,10 +180,17 @@ export function NameStep({
   field,
   onTyped,
   onContinue,
+  quiet = false,
+  onFocused,
+  onLeft,
 }: StepProps & {
   field: RefObject<TextInputInstance | null>;
   onTyped: (name: string) => void;
   onContinue: () => void;
+  /** Hidden from the screen reader and unnamed, so taking input focus says nothing: TalkBack voiced a hidden field's name as it took focus (qa2 #49329). */
+  quiet?: boolean;
+  onFocused?: (() => void) | undefined;
+  onLeft?: (() => void) | undefined;
 }) {
   const { t } = useTranslation();
   const sizes = sizesOf(look);
@@ -244,8 +251,14 @@ export function NameStep({
             value={walk.name}
             onChangeText={onTyped}
             onSubmitEditing={onContinue}
-            onFocus={() => setFocused(true)}
-            onBlur={() => setFocused(false)}
+            onFocus={() => {
+              setFocused(true);
+              onFocused?.();
+            }}
+            onBlur={() => {
+              setFocused(false);
+              onLeft?.();
+            }}
             submitBehavior="submit"
             wrong={refusal != null}
             autoComplete="organization"
@@ -253,8 +266,8 @@ export function NameStep({
             autoCorrect={false}
             spellCheck={false}
             returnKeyType="next"
-            accessibilityLabel={t('createOrganisation.name')}
-            accessibilityHint={refusal ?? help}
+            accessibilityLabel={quiet ? '' : t('createOrganisation.name')}
+            accessibilityHint={quiet ? undefined : (refusal ?? help)}
             style={[
               styles.name,
               {
@@ -274,6 +287,7 @@ export function NameStep({
               },
               beside && styles.nameFieldBeside,
             ]}
+            importantForAccessibility={quiet ? 'no' : 'auto'}
             testID="createWalk.name"
           />
         </View>
@@ -393,11 +407,13 @@ function CountryRow({
 function CountrySearch({
   value,
   field,
+  quiet,
   onQuery,
   onFocused,
 }: {
   value: string;
   field: RefObject<TextInputInstance | null>;
+  quiet: boolean;
   onQuery: (query: string) => void;
   onFocused: (focused: boolean) => void;
 }) {
@@ -432,6 +448,7 @@ function CountrySearch({
         accessibilityRole="search"
         accessibilityLabel={words}
         style={styles.searchInput}
+        importantForAccessibility={quiet ? 'no' : 'auto'}
         testID="createWalk.search"
       />
       {Platform.OS !== 'ios' && value !== '' && (
@@ -466,11 +483,14 @@ export function CountryStep({
   onScrolled,
   field,
   toPick,
+  quiet = false,
   onQuery,
   onPick,
   onSearchFocused,
 }: Omit<StepProps, 'foot'> & {
   field: RefObject<TextInputInstance | null>;
+  /** The search, hidden from the screen reader, so taking input focus says nothing. */
+  quiet?: boolean;
   /** Reached by Back, or opened at the list: it scrolls to the pick, unless the device's own is ticked at the top. */
   toPick: boolean;
   onQuery: (query: string) => void;
@@ -518,6 +538,7 @@ export function CountryStep({
       <CountrySearch
         value={walk.query}
         field={field}
+        quiet={quiet}
         onQuery={onQuery}
         onFocused={onSearchFocused}
       />

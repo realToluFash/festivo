@@ -7,6 +7,7 @@ namespace App\Domain\Organisation\Members;
 use App\Domain\User\Mail\UserMailer;
 use App\Entity\Organisation;
 use App\Entity\User;
+use App\Enum\AccountMail;
 
 /** Both sides of a transfer hear of it, each in their own language. */
 final readonly class OwnershipTransferMailer
@@ -29,7 +30,7 @@ final readonly class OwnershipTransferMailer
             }
 
             $locale = $this->userMailer->localeFor($reader, $language);
-            $this->userMailer->send($address, $locale, 'ownershipTransferred.subject', [
+            $this->userMailer->send(AccountMail::Ownership, $address, $locale, 'ownershipTransferred.subject', [
                 $this->userMailer->line($key, $locale, [...$named, '{from}' => $from->getName(), '{to}' => $to->getName()]),
                 '--',
                 $this->userMailer->line('ownershipTransferred.footer', $locale, $named),

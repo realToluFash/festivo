@@ -32,7 +32,7 @@ import { GuestPage } from './GuestPage.tsx';
 import { AgreeWhatsApp } from './GuestWhatsApp.tsx';
 import {
   type Counts,
-  type FilterKey,
+  type ListFilter,
   GROUPS,
   type GroupKey,
   type GuestsState,
@@ -50,7 +50,14 @@ import {
   markedInvited,
   markedNotInvited,
   rowsOf,
+  changedRows,
+  filterCount,
+  filterWord,
+  inViewOf,
 } from './GuestsModel.ts';
+import { changesSince, lastLooked, takeLook } from './ChangedSince.ts';
+import { ExportButton, ExportPanel, ExportSheet, ShareStandIn } from './GuestExport.tsx';
+import { exportDay, exportStart, fileName, narrowing } from './GuestExportModel.ts';
 import { GuestsFailed, GuestsLoading, GuestsRows } from './GuestsList.tsx';
 import { GuestToast, GuestsCard, GuestsTitle, type Layout } from './GuestsParts.tsx';
 import { type SampleGuest, TODAY, WEDDING } from './GuestsSample.ts';
@@ -74,6 +81,7 @@ export function GuestsScreen({
   onArea,
   badge,
   filterFrom,
+  sinceFrom = null,
   onWrite,
   onConversation,
   onMakeLive,
@@ -85,8 +93,10 @@ export function GuestsScreen({
   onMore: (open: boolean) => void;
   onArea: (area: AreaKey) => void;
   badge: AreaBadge | null;
-  /** A count on Overview opens the guests it counts. */
-  filterFrom: FilterKey | null;
+  /** A count on Overview opens the guests it counts; the bell's Guest replies item opens Changed since you looked (sc-4331). */
+  filterFrom: ListFilter | null;
+  /** sc-4331: the last look the bell's item counts from, taken before it marked the item read. */
+  sinceFrom?: string | null;
   onWrite: () => void;
   onConversation: (guest: string) => void;
   onMakeLive: () => void;
@@ -99,7 +109,9 @@ export function GuestsScreen({
   const { state, start, role, replyBy } = opening;
   const [guests, setGuests] = useState(opening.guests);
   const [added, setAdded] = useState(opening.added);
-  const [filter, setFilter] = useState<FilterKey>(filterFrom ?? start.filter);
+  const [filter, setFilter] = useState<ListFilter>(filterFrom ?? start.filter);
+  const [since, setSince] = useState(filterFrom === 'changed' ? sinceFrom : start.since);
+  const [looked, setLooked] = useState(lastLooked);
   const [typed, setTyped] = useState(start.typed);
   const [searched, setSearched] = useState(start.typed);
   const [phase, setPhase] = useState(start.phase);
@@ -124,6 +136,12 @@ export function GuestsScreen({
   const [notReplaced, setNotReplaced] = useState(start.notReplaced);
   const [unmarked, setUnmarked] = useState(start.unmarked);
   const [status, setStatus] = useState<string | null>(start.recorded ? W.recorded : null);
+  const exported = useMemo(() => exportStart(state), [state]);
+  const [exporting, setExporting] = useState(exported.open);
+  const [exportRound, setExportRound] = useState(0);
+  const day = exportDay(now, event.timeZone);
+  const fileFor = (format: 'xlsx' | 'csv') => fileName(event.name, day, format);
+  const [sharing, setSharing] = useState<string | null>(exported.share ? fileFor('xlsx') : null);
   const refs = useRef<Partial<Record<string, ViewInstance | null>>>({});
   const from = useRef<string>('card');
   const nameRef = useRef<TextHandle>(null);
@@ -144,6 +162,8 @@ export function GuestsScreen({
   const owner = role === 'owner';
   const guest = guests.find((g) => g.key === open) ?? null;
   const looking = filter !== 'all' || searched.trim() !== '';
+  const listed = changesSince(since);
+  const unseen = event.id === WEDDING ? changesSince(looked).length : 0;
 
   useEffect(() => {
     if (typed === searched) return;
@@ -165,6 +185,7 @@ export function GuestsScreen({
     setReplies(null);
     setReplaced(false);
     setGuestPhase('ok');
+    setExporting(false);
     setOpen(key);
     if (layout !== 'landscape') scroll.current?.scrollTo({ y: 0, animated: false });
     setTimeout(() => moveScreenReaderFocus(nameRef.current), FOCUS_AFTER_MS);
@@ -188,7 +209,12 @@ export function GuestsScreen({
     else if (words.step === 'openCheckIn')
       router.push(`/demo/guests/check-in?state=${doorFrom(state)}` as Href);
   };
-  const chooseFilter = (key: FilterKey) => {
+  const chooseFilter = (key: ListFilter) => {
+    if (key === filter) return;
+    if (key === 'changed') {
+      setSince(takeLook(now));
+      setLooked(lastLooked());
+    }
     setFilter(key);
     scroll.current?.scrollTo({ y: 0, animated: false });
   };
@@ -202,7 +228,12 @@ export function GuestsScreen({
     makeLive: W.makeLive,
     openCheckIn: W.openCheckIn,
   };
-  const rows: Person[] = looking ? rowsOf(guests, filter, searched, locale, replyBy, contacts) : [];
+  const rows: Person[] =
+    filter === 'changed'
+      ? changedRows(guests, listed, searched, now, locale, contacts, owner)
+      : looking
+        ? rowsOf(guests, filter, searched, locale, replyBy, contacts, owner)
+        : [];
   const groups: Partial<Record<GroupKey, Person[]>> = {};
   if (!looking)
     for (const group of GROUPS)
@@ -212,13 +243,49 @@ export function GuestsScreen({
         locale,
         replyBy,
         event.id !== WEDDING || expanded.includes(group),
+        owner,
       );
   const showAll = (group: GroupKey) => {
     const before = new Set((groups[group] ?? []).map((p) => p.key));
-    const next = groupRows(guests, group, locale, replyBy, true).find((p) => !before.has(p.key));
+    const next = groupRows(guests, group, locale, replyBy, true, owner).find(
+      (p) => !before.has(p.key),
+    );
     setExpanded((was) => [...was, group]);
     if (next != null)
       setTimeout(() => moveScreenReaderFocus(refs.current[next.key] ?? null), FOCUS_AFTER_MS);
+  };
+
+  const inView = inViewOf({
+    filter,
+    searched,
+    rows: rows.length,
+    filtered: filter === 'changed' ? rows.length : filterCount(filter, counts),
+    total,
+  });
+  const openExport = () => {
+    from.current = 'export';
+    setExportRound((count) => count + 1);
+    setExporting(true);
+  };
+  const exportProps = {
+    file: fileFor,
+    inView,
+    everyone: total,
+    narrowed: narrowing(filterWord(filter), searched),
+    needs: exported.needs,
+    offline,
+    format: exported.format,
+    making: exportRound === 0 ? exported.making : ('ready' as const),
+    refused: exportRound === 0 && exported.dropped,
+    onClose: () => {
+      setExporting(false);
+      if (layout === 'landscape')
+        setTimeout(() => moveScreenReaderFocus(refs.current.export ?? null), FOCUS_AFTER_MS);
+    },
+    onShare: (file: string) => {
+      setExporting(false);
+      setSharing(file);
+    },
   };
 
   const list = (
@@ -227,6 +294,16 @@ export function GuestsScreen({
         layout={layout}
         plus={owner && phase !== 'loading' && !empty}
         onPlus={() => show('add', 'plus')}
+        extra={
+          owner && phase === 'ok' && !empty ? (
+            <ExportButton
+              ref={refFor('export')}
+              layout={layout}
+              offline={offline}
+              onPress={openExport}
+            />
+          ) : null
+        }
       />
       {phase === 'loading' ? (
         <GuestsLoading cardHeight={layout === 'landscape' ? 140 : 180} />
@@ -249,6 +326,7 @@ export function GuestsScreen({
               counts={counts}
               total={total}
               filter={filter}
+              changed={filter === 'changed' ? listed.length : unseen}
               onFilter={chooseFilter}
               typed={typed}
               onTyped={(text) => {
@@ -260,7 +338,9 @@ export function GuestsScreen({
               menu={start.menu}
               rows={rows}
               groups={groups}
-              walkIns={looking ? [] : rowsOf(guests, 'walkin', '', locale, replyBy)}
+              walkIns={
+                looking ? [] : rowsOf(guests, 'walkin', '', locale, replyBy, contacts, owner)
+              }
               expanded={expanded}
               onShowAll={showAll}
               lit={layout === 'landscape' ? open : null}
@@ -464,6 +544,15 @@ export function GuestsScreen({
           />
         </>
       )}
+      {layout !== 'landscape' && (
+        <ExportSheet
+          key={`export:${exportRound}`}
+          open={exporting}
+          opener={opener}
+          {...exportProps}
+        />
+      )}
+      <ShareStandIn file={sharing} opener={opener} onClose={() => setSharing(null)} />
       {told}
     </>
   );
@@ -494,13 +583,17 @@ export function GuestsScreen({
           >
             {list}
           </ScrollView>
-          <ScrollView
-            style={styles.grow}
-            contentContainerStyle={styles.guestBody}
-            showsVerticalScrollIndicator={false}
-          >
-            {page ?? <Nobody />}
-          </ScrollView>
+          {exporting ? (
+            <ExportPanel key={`export:${exportRound}`} {...exportProps} />
+          ) : (
+            <ScrollView
+              style={styles.grow}
+              contentContainerStyle={styles.guestBody}
+              showsVerticalScrollIndicator={false}
+            >
+              {page ?? <Nobody />}
+            </ScrollView>
+          )}
         </View>
       </EventFrame>
     );

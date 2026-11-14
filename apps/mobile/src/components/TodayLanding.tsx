@@ -1,5 +1,5 @@
-import type { Account, ListedEvent, Membership } from '@soirely/api-client';
-import { firstName, roleHolds, roleName, serverClock } from '@soirely/domain';
+import { type Account, type ListedEvent, type Membership } from '@soirely/api-client';
+import { firstName, followedIds, roleHolds, roleName, serverClock } from '@soirely/domain';
 import { router } from 'expo-router';
 import { type ReactNode, useCallback, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
@@ -7,6 +7,7 @@ import { AppState, StyleSheet, View } from 'react-native';
 
 import { api } from '../api.ts';
 import type { Tab } from './TodayCover.tsx';
+import { followTodayFigures } from './todayFigures.ts';
 import { TodayScreen } from './TodayScreen.tsx';
 import { type Opens, type TodayShell, TodayShellProvider } from './todayShell.ts';
 import { dateLocale } from '../i18n/index.ts';
@@ -89,6 +90,16 @@ export function TodayLanding({
       live = false;
     };
   }, [account.id, organisation.id, attempt, refresh, watch]);
+
+  const followed = load.kind === 'loaded' ? followedIds(load.events).join(',') : '';
+
+  useEffect(() => {
+    if (followed === '') return;
+
+    return followTodayFigures(organisation.id, followed.split(','), (merge) =>
+      setLoad((was) => (was.kind === 'loaded' ? { ...was, events: merge(was.events) } : was)),
+    );
+  }, [organisation.id, followed]);
 
   const open = useCallback((opens: Opens) => {
     switch (opens.to) {

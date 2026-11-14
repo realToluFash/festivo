@@ -40,9 +40,12 @@ import { Turning } from './DataControlParts.tsx';
 import { THEIR_WORDS } from './guestRequest.ts';
 import { type Needs, NW, accessNames, allergyNames, dietNames } from './guestNeeds.ts';
 import { AllergyMark } from './GuestNeeds.tsx';
+import { type OptOutRow, optOutRowsOf } from './optOuts.ts';
 import { whatsAppRowOf } from './whatsAppConsent.ts';
 import { sendOffered, whatsAppHref } from './whatsAppSend.ts';
 import { useLater } from '../useLater.ts';
+import { GGW } from './guestGroups.ts';
+import { RMW, removable, staysBecause } from './guestRemove.ts';
 import { CardStep, Chevron, Head, RowWords, TextAction } from '../components/SettingsParts.tsx';
 
 export interface GuestActions {
@@ -50,6 +53,7 @@ export interface GuestActions {
   onEdit: () => void;
   onReopen: () => void;
   onCopy: () => void;
+  onSendInvitation: () => void;
   onReplace: () => void;
   onInvite: (invite: Invite | null) => void;
   onMark: (how: HowInvited) => void;
@@ -59,6 +63,7 @@ export interface GuestActions {
   onNotSent: () => void;
   /** The mark from the question: false when it was not saved and the question stays. */
   onSent: () => boolean;
+  onRemove: () => void;
 }
 
 type Step = { label: string; does: () => void } | null;
@@ -68,6 +73,7 @@ const SAVE_MS = 900;
 /** A guest beside the list (sc-3773): the cover card the guest sees, their reply, Details, Invitation and their conversation. */
 export function GuestView({
   guest,
+  group = null,
   event,
   clock,
   manages,
@@ -81,6 +87,8 @@ export function GuestView({
   askFailed = false,
 }: {
   guest: Guest;
+  /** sc-3775: their group's name, beside their name; none shows nothing. */
+  group?: string | null;
   event: SampleEvent;
   clock: Date;
   manages: boolean;
@@ -122,6 +130,7 @@ export function GuestView({
     <div className="gs-guest">
       {note === 'recorded' && <OkLine>{GW.recorded}</OkLine>}
       {note === 'unmarked' && <OkLine>{GW.unmarked}</OkLine>}
+      {note === 'backOnList' && <OkLine>{RMW.backOnList}</OkLine>}
       {note === 'linkReplaced' && <OkLine>{GW.linkReplacedNote(guest.name)}</OkLine>}
       <Cover mesh={event.mesh} size="guest" label={heading}>
         <ul className="desk-glass-tags">
@@ -129,6 +138,12 @@ export function GuestView({
             <ReplyMark reply={guest.reply} size={16} cover />
             {REPLY_WORDS[guest.reply]}
           </li>
+          {group != null && (
+            <li className="desk-glass gg-pill">
+              <span className="visually-hidden">{GGW.group}: </span>
+              {group}
+            </li>
+          )}
         </ul>
         <h2 id={heading} className="gs-name" tabIndex={-1} data-focus="guest-heading">
           {guest.name}
@@ -179,6 +194,7 @@ export function GuestView({
         heading={heading}
         onEdit={actions.onEdit}
         onAgree={actions.onAgree}
+        onRemove={actions.onRemove}
       />
       {manages && erase !== 'erased' && <NeedsBlock guest={guest} heading={heading} />}
       {showsInvitation ? (
@@ -236,6 +252,7 @@ function Details({
   heading,
   onEdit,
   onAgree,
+  onRemove,
 }: {
   guest: Guest;
   manages: boolean;
@@ -244,12 +261,14 @@ function Details({
   heading: string;
   onEdit: () => void;
   onAgree: () => void;
+  onRemove: () => void;
 }) {
   const whatsApp = whatsAppRowOf(
     guest.whatsApp,
     { mobile: guest.phone != null, edits: manages && !erased },
     dayOf,
   );
+  const optOuts = optOutRowsOf(guest, { edits: manages && !erased }, dayOf);
 
   return (
     <section className="desk-block" aria-labelledby={`${heading}-details`}>
@@ -274,6 +293,7 @@ function Details({
               <IconLead name="mail" />
               <RowWords title={guest.email ?? GW.none} lines={[GW.emailAddress]} />
             </li>
+            {optOuts.email != null && <OptOutLine row={optOuts.email} />}
             <li className={guest.phone == null ? 'desk-row is-none' : 'desk-row'}>
               <IconLead name="phone" />
               <RowWords
@@ -281,6 +301,7 @@ function Details({
                 lines={[GW.mobileNumber]}
               />
             </li>
+            {optOuts.texts != null && <OptOutLine row={optOuts.texts} />}
             {whatsApp != null && (
               <li className="desk-row gs-whatsapp" tabIndex={-1} data-focus="whatsapp">
                 <IconLead name="whatsApp" />
@@ -324,7 +345,13 @@ function Details({
           </li>
         )}
         {guest.companions.map((companion) => (
-          <li key={companion.id} className="desk-row">
+          <li
+            key={companion.id}
+            className="desk-row"
+            {...(companion.arrived != null && guest.arrived == null
+              ? { tabIndex: -1, 'data-focus': 'arrival' }
+              : {})}
+          >
             <MarkLead reply={companion.reply} />
             <div className="gs-row-words">
               <RowWords
@@ -333,6 +360,7 @@ function Details({
                   companion.reply === 'held'
                     ? GW.heldCompanion
                     : GW.companion(REPLY_WORDS[companion.reply]),
+                  ...(companion.arrived == null ? [] : [RMW.arrived]),
                 ]}
               />
               {companion.namedBy === 'guest' && (
@@ -341,6 +369,12 @@ function Details({
             </div>
           </li>
         ))}
+        {guest.arrived != null && (
+          <li className="desk-row" tabIndex={-1} data-focus="arrival">
+            <IconLead name="tick" />
+            <RowWords title={RMW.arrived} lines={[RMW.arrival]} />
+          </li>
+        )}
         {manages && (
           <li className="desk-row">
             <IconLead name="user" />
@@ -351,7 +385,36 @@ function Details({
           </li>
         )}
       </ul>
+      {edits && (
+        <div className="gr-foot">
+          {removable(guest, manages) ? (
+            <button
+              type="button"
+              className="gs-pill is-secondary"
+              data-focus="remove"
+              onClick={onRemove}
+            >
+              {RMW.remove}
+            </button>
+          ) : (
+            <p className="gr-stays">
+              {staysBecause(guest) === 'companionArrived'
+                ? RMW.staysCompanionArrived
+                : RMW.staysArrived}
+            </p>
+          )}
+        </div>
+      )}
     </section>
+  );
+}
+
+function OptOutLine({ row }: { row: OptOutRow }) {
+  return (
+    <li className="desk-row">
+      <IconLead name="slash" />
+      <RowWords title={row.title} lines={row.note == null ? [] : [row.note]} />
+    </li>
   );
 }
 
@@ -384,12 +447,22 @@ function recorded(needs: Needs | undefined): needs is Needs {
   );
 }
 
-/** sc-3777: allergies, diet and access under their own headings, the guest's then each companion's; for people who manage guests only. */
+function ChangedByGuest({ needs }: { needs: Needs | undefined }) {
+  if (needs?.changed?.by !== 'guest') return null;
+
+  return <p className="desk-help">{NW.changedByGuest(dayOf(needs.changed.on))}</p>;
+}
+
+function shown(needs: Needs | undefined): needs is Needs {
+  return needs?.changed?.by === 'guest' || recorded(needs);
+}
+
+/** sc-3777: allergies, diet and access under their own headings, the guest's then each companion's; for people who manage guests only. sc-3778: under each person's, "Last changed by the guest on {date}." when the guest made the last change on their own page. */
 function NeedsBlock({ guest, heading }: { guest: Guest; heading: string }) {
   const companions = guest.companions.flatMap((one) =>
-    recorded(one.needs) ? [{ one, needs: one.needs }] : [],
+    shown(one.needs) ? [{ one, needs: one.needs }] : [],
   );
-  const none = !recorded(guest.needs) && companions.length === 0;
+  const none = !shown(guest.needs) && companions.length === 0;
 
   return (
     <section className="desk-block" aria-labelledby={`${heading}-needs`}>
@@ -398,22 +471,31 @@ function NeedsBlock({ guest, heading }: { guest: Guest; heading: string }) {
         <p className="desk-line">{NW.noDietary}</p>
       ) : (
         <>
-          {recorded(guest.needs) && (
-            <ul className="desk-rows gs-rows">
-              <NeedsRows needs={guest.needs} />
-            </ul>
-          )}
+          {shown(guest.needs) && <PersonNeeds needs={guest.needs} />}
           {companions.map(({ one, needs }) => (
             <div key={one.id} className="gs-their-needs">
               <h4 className="gs-their-head">{companionName(guest, one)}</h4>
-              <ul className="desk-rows gs-rows">
-                <NeedsRows needs={needs} />
-              </ul>
+              <PersonNeeds needs={needs} />
             </div>
           ))}
         </>
       )}
     </section>
+  );
+}
+
+function PersonNeeds({ needs }: { needs: Needs }) {
+  return (
+    <>
+      {recorded(needs) ? (
+        <ul className="desk-rows gs-rows">
+          <NeedsRows needs={needs} />
+        </ul>
+      ) : (
+        <p className="desk-line">{NW.noDietary}</p>
+      )}
+      <ChangedByGuest needs={needs} />
+    </>
   );
 }
 
@@ -472,6 +554,19 @@ function Invitation({
                 title={GW.linkReplaced(dayOf(guest.replaced))}
                 lines={[GW.linkReplacedLine]}
               />
+            </li>
+          )}
+          {invites && (
+            <li>
+              <button
+                type="button"
+                className="desk-row gs-do"
+                data-focus="send-invitation"
+                onClick={actions.onSendInvitation}
+              >
+                <IconLead name="mail" />
+                <RowWords title={GW.sendInvitation} lines={[GW.sendInvitationLine]} />
+              </button>
             </li>
           )}
           {invites && (

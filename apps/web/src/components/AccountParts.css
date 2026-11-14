@@ -136,3 +136,56 @@
 .desk-text.account-wait:hover {
   text-decoration: none;
 }
+
+/* An address we could not deliver to (sc-44949), as Web-Account-Undeliverable.dc.html draws it. */
+.undeliverable-lines {
+  display: flex;
+  flex-direction: column;
+  gap: var(--spaceHair);
+  margin: 0;
+  padding: var(--spaceLg) 0 0;
+  list-style: none;
+}
+
+.undeliverable-line {
+  display: flex;
+  align-items: flex-start;
+  gap: var(--spaceLg);
+}
+
+.undeliverable-lead {
+  display: flex;
+  flex: none;
+  align-items: center;
+  justify-content: center;
+  width: 28px;
+  height: 28px;
+}
+
+.undeliverable-mark {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  box-sizing: border-box;
+  width: 20px;
+  height: 20px;
+  border: 1.5px solid var(--colorBroken);
+  border-radius: 50%;
+  background: var(--colorCard);
+  color: var(--colorBroken);
+}
+
+.undeliverable-words {
+  display: flex;
+  flex: 1;
+  flex-direction: column;
+  min-width: 0;
+  padding-top: 3px;
+}
+
+.undeliverable-words p {
+  margin: 0;
+  color: var(--colorInk);
+  font: 600 15px/1.4 var(--fontFamily);
+  overflow-wrap: anywhere;
+}

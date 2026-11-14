@@ -95,6 +95,13 @@ export async function setLanguage(locale: string | null): Promise<void> {
   applyDirection(currentLocale());
 }
 
+/** Shows a language without keeping it on this device; null goes back to the device's own (sc-3790). */
+export async function showLanguage(locale: string | null): Promise<void> {
+  await i18next.changeLanguage(locale ?? storedLanguage() ?? undefined);
+
+  applyDirection(currentLocale());
+}
+
 /** The stored override, or null when following the browser. */
 export function storedLanguage(): string | null {
   const stored = localStorage.getItem(LANGUAGE_KEY);

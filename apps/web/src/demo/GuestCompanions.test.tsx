@@ -55,19 +55,67 @@ describe('Who’s coming with you? on the guest’s page (sc-3779)', { timeout: 
     expect(toggle.textContent).toBe('Not coming');
   });
 
-  it('adds a named companion while places remain, and no blank one', async () => {
-    await guest('withYou');
-    fireEvent.click(button('Add someone · 1 place left'));
+  it('shows each unnamed place as its own row, Coming, and no Add someone (sc-48740)', async () => {
+    await guest('withYouUnnamed');
+
+    expect(button('Change Obi Okonkwo’s name')).toBeDefined();
+    expect(button('Add a name for Your guest 2')).toBeDefined();
+    expect(button('Add a name for Your guest 3')).toBeDefined();
+    expect(within(step()).getAllByText('No name yet')).toHaveLength(2);
+    for (const name of ['Obi Okonkwo', 'Your guest 2', 'Your guest 3'])
+      expect(button(`${name} is coming`).getAttribute('aria-pressed')).toBe('true');
+    expect(screen.queryByRole('button', { name: /^Add someone/u })).toBeNull();
+  });
+
+  it('calls the one place in all Your guest (sc-48740)', async () => {
+    await guest('withYouOnePlace');
+
+    expect(button('Your guest is coming')).toBeDefined();
+  });
+
+  it('names a place by selecting its label, and leaves it unnamed on a blank Done (sc-48740)', async () => {
+    await guest('withYouUnnamed');
+    fireEvent.click(button('Add a name for Your guest 3'));
     const field = screen.getByRole('textbox', { name: 'Their name' });
 
     expect(document.activeElement).toBe(field);
-    fireEvent.click(button('Add someone · 1 place left'));
-    expect(button('Type their name')).toBeDefined();
-    expect(field.getAttribute('aria-invalid')).toBe('true');
-    fireEvent.change(field, { target: { value: 'Nneka Okonkwo-Williams' } });
-    fireEvent.click(button('Add someone · 1 place left'));
-    expect(button('Nneka Okonkwo-Williams is coming')).toBeDefined();
-    expect(screen.queryByRole('button', { name: /^Add someone/u })).toBeNull();
+    expect((field as HTMLInputElement).value).toBe('');
+    fireEvent.click(button('Done'));
+    expect(button('Add a name for Your guest 3')).toBeDefined();
+    expect(screen.queryByText('Type their name')).toBeNull();
+
+    fireEvent.click(button('Your guest 3 is coming'));
+    fireEvent.click(button('Add a name for Your guest 2'));
+    fireEvent.change(screen.getByRole('textbox', { name: 'Their name' }), {
+      target: { value: 'Ifeoma Okonkwo' },
+    });
+    fireEvent.click(button('Done'));
+    expect(button('Change Ifeoma Okonkwo’s name')).toBeDefined();
+    expect(within(step()).getAllByText('Named by you')).toHaveLength(1);
+    expect(button('Your guest 3 is coming').getAttribute('aria-pressed')).toBe('false');
+  });
+
+  it('gives a place the same label on the kitchen step and Check and send, another declined (sc-48740)', async () => {
+    await guest('withYouUnnamed');
+    fireEvent.click(button('Your guest 2 is coming'));
+    fireEvent.click(button('Next'));
+
+    expect(screen.getByRole('group', { name: 'Your guest 3' })).toBeDefined();
+    expect(screen.queryByRole('group', { name: 'Your guest 2' })).toBeNull();
+    fireEvent.click(button('Nothing to add'));
+    expect(screen.getByText('You, Obi Okonkwo and Your guest 3 · 3 people')).toBeDefined();
+  });
+
+  it('counts a guest coming alone as one person on Check and send (sc-48740)', async () => {
+    await guest('checkAlone');
+
+    expect(screen.getByText('You · 1 person')).toBeDefined();
+  });
+
+  it('counts an unnamed place in the returning guest’s line (sc-48740)', async () => {
+    await guest('comingUnnamed');
+
+    expect(screen.getByText('You, Obi Okonkwo and Your guest 2 · 3 people')).toBeDefined();
   });
 
   it('renames a companion by selecting the name', async () => {
@@ -83,11 +131,11 @@ describe('Who’s coming with you? on the guest’s page (sc-3779)', { timeout: 
 
   it('goes on to the kitchen with Next, each person by name, and Back there returns here', async () => {
     await guest('withYou');
-    fireEvent.click(button('Add someone · 1 place left'));
+    fireEvent.click(button('Add a name for Your guest 2'));
     fireEvent.change(screen.getByRole('textbox', { name: 'Their name' }), {
       target: { value: 'Nneka Okonkwo-Williams' },
     });
-    fireEvent.click(button('Add someone · 1 place left'));
+    fireEvent.click(button('Done'));
     fireEvent.click(button('Chidi Okonkwo-Williams is coming'));
     fireEvent.click(button('Next'));
 
@@ -144,11 +192,11 @@ describe('Who’s coming with you? on the guest’s page (sc-3779)', { timeout: 
 
   it('keeps the names when the guest has nothing to add', async () => {
     await guest('withYou');
-    fireEvent.click(button('Add someone · 1 place left'));
+    fireEvent.click(button('Add a name for Your guest 2'));
     fireEvent.change(screen.getByRole('textbox', { name: 'Their name' }), {
       target: { value: 'Nneka Okonkwo-Williams' },
     });
-    fireEvent.click(button('Add someone · 1 place left'));
+    fireEvent.click(button('Done'));
     fireEvent.click(button('Next'));
     fireEvent.click(button('Nothing to add'));
     fireEvent.click(button('Change what the kitchen must know'));

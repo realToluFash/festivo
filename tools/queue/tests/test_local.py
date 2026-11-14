@@ -423,3 +423,37 @@ class Worktrees(unittest.TestCase):
         self.assertEqual(local.measure_litter(self.config, False, out),
                          {"worktrees": 2.0, "qa": 0.5})
         self.assertIsNone(local.measure_litter(self.config, False, self.root / "none"))
+
+
+class WakeDocker(unittest.TestCase):
+    def setUp(self):
+        self.db = store.connect(":memory:")
+        self.started, self.said = [], []
+
+    def wake(self, now=DAY, system="darwin", installed=True, answers=False):
+        app = mock.Mock(exists=lambda: installed)
+        return local.wake_docker(self.db, now, self.said.append, system=system, app=app,
+                                 answers=lambda: answers,
+                                 start=lambda: self.started.append(now))
+
+    def test_a_mac_whose_docker_is_down_starts_it_once_in_five_minutes(self):
+        self.assertTrue(self.wake(DAY))
+        self.assertFalse(self.wake(DAY + 60))
+        self.assertTrue(self.wake(DAY + local.WAKE_SECONDS))
+        self.assertEqual(self.started, [DAY, DAY + local.WAKE_SECONDS])
+        self.assertIn("started Docker Desktop", self.said[0])
+
+    def test_nothing_is_started_when_docker_answers_or_cannot_be_started_here(self):
+        self.assertFalse(self.wake(answers=True))
+        self.assertFalse(self.wake(system="linux"))
+        self.assertFalse(self.wake(installed=False))
+        self.assertEqual(self.started, [])
+
+    def test_a_start_that_fails_is_said_and_not_retried_at_once(self):
+        def refuse():
+            raise subprocess.CalledProcessError(1, ["open"])
+        app = mock.Mock(exists=lambda: True)
+        self.assertFalse(local.wake_docker(self.db, DAY, self.said.append, system="darwin",
+                                           app=app, answers=lambda: False, start=refuse))
+        self.assertIn("would not start", self.said[0])
+        self.assertFalse(self.wake(DAY + 60))

@@ -386,6 +386,7 @@ span {
   .shell-content.is-card:has(.cal-page) {
     display: flex;
     flex-direction: column;
+    padding-bottom: var(--space3xl);
     overflow: hidden;
   }
 
@@ -5733,6 +5734,25 @@ button.members-row {
   text-underline-offset: 3px;
 }
 
+/* A counted toast (sc-3774): its seconds beside Undo, and at 320 CSS px it spans the screen. */
+.toast.is-counted {
+  gap: var(--spaceXs);
+}
+
+.toast-count {
+  flex: none;
+  min-width: 3ch;
+  font: var(--typeButton);
+  font-variant-numeric: tabular-nums;
+}
+
+@media (width <= 40rem) {
+  .toast.is-counted {
+    width: calc(100% - var(--spaceXl) * 2);
+    max-width: none;
+  }
+}
+
 .toast-undo:hover,
 .toast-close:hover {
   background: var(--colorDarkInset);
@@ -6279,6 +6299,13 @@ button.members-row {
 .skeleton-field {
   height: 44px;
   border-radius: var(--radiusRow);
+}
+
+/* A list's search field, where it will stand above the rows (sc-3772). */
+.skeleton-find {
+  height: 48px;
+  margin-bottom: 18px;
+  border-radius: var(--radiusInset);
 }
 
 .skeleton-option {

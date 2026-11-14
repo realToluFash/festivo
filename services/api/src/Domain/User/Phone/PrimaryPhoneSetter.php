@@ -5,7 +5,6 @@ declare(strict_types=1);
 namespace App\Domain\User\Phone;
 
 use App\Domain\User\Contacts\PhonePromotion;
-use App\Domain\User\Verification\VerificationCodeIssuer;
 use App\Domain\User\Verification\VerificationCodeSender;
 use App\Entity\PhoneNumber;
 use App\Entity\User;
@@ -19,7 +18,6 @@ final readonly class PrimaryPhoneSetter
 {
     public function __construct(
         private PhoneNumberRepository $phoneNumberRepository,
-        private VerificationCodeIssuer $verificationCodeIssuer,
         private VerificationCodeSender $verificationCodeSender,
         private EntityManagerInterface $entityManager,
         private PhonePromotion $phonePromotion,
@@ -82,9 +80,7 @@ final readonly class PrimaryPhoneSetter
         $this->entityManager->persist($next);
         $this->entityManager->flush();
 
-        $issued = $this->verificationCodeIssuer->issueFor($next);
-        $this->entityManager->flush();
-        $this->verificationCodeSender->send($next, $issued);
+        $this->verificationCodeSender->issue($next);
 
         return $next;
     }

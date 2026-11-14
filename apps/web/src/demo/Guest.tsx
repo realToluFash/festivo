@@ -15,6 +15,7 @@ import {
   OPEN,
   REPLY_BY,
   SEND_MS,
+  THANK_YOU,
   type View,
   type Visit,
   type Words,
@@ -30,6 +31,7 @@ import {
   twoColumns,
   wordsFor,
 } from './guest.ts';
+import { Thanks } from './Thanks.tsx';
 import {
   AddToCalendar,
   AnswerRows,
@@ -47,7 +49,6 @@ import {
   Notice,
   PhaseNotice,
   TextAction,
-  Thanks,
   Unreachable,
   Waiting,
   WhatsAppBox,
@@ -881,7 +882,7 @@ function Closed({
   if (phase === 'over' || phase === 'finished') {
     return (
       <div className="gp-ended">
-        {phase === 'finished' && <Thanks words={words} />}
+        {phase === 'finished' && <Thanks line={THANK_YOU} hosts={words.hosts} />}
         <p className="gp-sub">{said}</p>
       </div>
     );

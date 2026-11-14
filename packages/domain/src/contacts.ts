@@ -85,3 +85,22 @@ export function firstUnverified<T extends ContactFacts>(
 
   return phone == null ? null : { kind: 'phone', row: phone };
 }
+
+/** The addresses Soirely stopped sending to (sc-4332), one Change email line each, in the rows' order (sc-44949). */
+export function undeliverableAddresses<T extends ContactFacts & { undeliverable?: boolean }>(
+  emails: readonly T[],
+): T[] {
+  return primaryFirst(listedContacts(emails)).filter((row) => row.undeliverable === true);
+}
+
+export type ChangeEmail = { to: 'add' } | { to: 'row'; id: string };
+
+/** Adds an address while there is room; with the most held, opens the one address that can make room (pm, 13 Nov). */
+export function changeEmail<T extends ContactFacts & { id: string }>(
+  emails: readonly T[],
+): ChangeEmail {
+  const other = listedContacts(emails).find((row) => !row.primary);
+  if (contactsLeft(emails) > 0 || other == null) return { to: 'add' };
+
+  return { to: 'row', id: other.id };
+}

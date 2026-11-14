@@ -6,6 +6,7 @@ namespace App\Domain\User\TwoFactor;
 
 use App\Domain\User\Mail\UserMailer;
 use App\Entity\User;
+use App\Enum\AccountMail;
 use DateTimeImmutable;
 
 /** That two-factor was turned on or off, and when, so a person who did not do it finds out. */
@@ -21,7 +22,7 @@ final readonly class TwoFactorMailer
         $locale = $this->userMailer->localeFor($user, $asked);
         $when = $this->userMailer->moment($at, $user, $locale);
 
-        $this->userMailer->sendTo($user, 'twoFactor.on.subject', [
+        $this->userMailer->sendTo(AccountMail::TwoFactor, $user, 'twoFactor.on.subject', [
             $this->userMailer->line('twoFactor.on.body', $locale, ['{when}' => $when]),
             $this->userMailer->line('twoFactor.on.notYou', $locale),
         ], $locale);
@@ -32,7 +33,7 @@ final readonly class TwoFactorMailer
         $locale = $this->userMailer->localeFor($user);
         $when = $this->userMailer->moment($at, $user, $locale);
 
-        $this->userMailer->sendTo($user, 'twoFactor.off.subject', [
+        $this->userMailer->sendTo(AccountMail::TwoFactor, $user, 'twoFactor.off.subject', [
             $this->userMailer->line('twoFactor.off.body', $locale, ['{when}' => $when]),
             $this->userMailer->line('twoFactor.off.notYou', $locale),
         ]);

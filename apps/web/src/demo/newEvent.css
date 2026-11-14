@@ -1,0 +1,43 @@
+.ev-new {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space3xl);
+  max-width: 720px;
+}
+
+.ev-new-fields {
+  display: flex;
+  flex-direction: column;
+  gap: var(--spaceLg);
+}
+
+.ev-new-when {
+  min-width: 0;
+  margin: 0;
+  padding: 0;
+  border: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 7px;
+}
+
+.ev-new-pair {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: var(--spaceLg);
+}
+
+.ev-new-cover {
+  max-width: 480px;
+}
+
+.ev-new-foot {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: var(--spaceMd);
+}
+
+.ev .ev-select select.is-empty {
+  color: var(--colorInkSecondary);
+}

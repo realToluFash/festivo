@@ -7,6 +7,7 @@ import { type CardStepAction, type Milestone, eventPhase } from '@soirely/domain
 import { EventCard as ProductCard, EventThumb } from '../components/EventCard.tsx';
 import { EventRow as ProductRow } from '../components/EventsList.tsx';
 import { Toast } from '../components/Toast.tsx';
+import { type Told, ActionToast } from './ActionToast.tsx';
 import { type Shown, howSoon, rowLine, rowTag, shownEvent } from '../eventsList.ts';
 import { dateLocale } from '../i18n/index.ts';
 import {
@@ -35,11 +36,14 @@ export function EventsShell({
   children,
 }: {
   renderSide: (tell: Tell, covered: boolean) => ReactNode;
-  told?: string | null;
-  children: (tell: Tell) => ReactNode;
+  told?: string | Told | null;
+  children: (tell: Tell, show: (told: Told) => void) => ReactNode;
 }) {
-  const [told, setTold] = useState<string | null>(first);
-  const tell = useCallback<Tell>((words) => setTold(words), []);
+  const [told, setTold] = useState<Told | null>(() =>
+    typeof first === 'string' ? { words: first } : first,
+  );
+  const tell = useCallback<Tell>((words) => setTold({ words }), []);
+  const show = useCallback((next: Told) => setTold(next), []);
   const [stack, setStack] = useState<readonly string[]>([]);
   const push = useCallback(
     (id: string) => setStack((now) => [...now.filter((one) => one !== id), id]),
@@ -56,11 +60,17 @@ export function EventsShell({
         <DeskSearch tell={tell}>
           {renderSide(tell, covered)}
           <main id="content" className="desk-main" inert={covered}>
-            {children(tell)}
+            {children(tell, show)}
           </main>
           <div ref={setHost} className="desk-layers" />
         </DeskSearch>
-        {told != null && <Toast key={told} words={told} onClose={() => setTold(null)} />}
+        {told?.action != null ? (
+          <ActionToast key={told.words} told={told} onClose={() => setTold(null)} />
+        ) : (
+          told != null && (
+            <Toast key={told.words} words={told.words} onClose={() => setTold(null)} />
+          )
+        )}
       </div>
     </LayersContext>
   );

@@ -266,6 +266,11 @@ export function cardLine(
   };
 }
 
+/** A code typed for the address, or the address removed, ends the line (pm, 13 Nov). */
+export function lifted(suppressed: readonly string[], id: string): string[] {
+  return suppressed.filter((each) => each !== id);
+}
+
 export function rowLine(row: Contact): string {
   return row.primary ? KIND_WORDS[row.kind].primaryLine : KIND_WORDS[row.kind].otherLine;
 }
@@ -396,6 +401,8 @@ export interface AccountStart {
   open: string | null;
   ask: 'promote' | 'remove' | null;
   dialog: DialogStart | null;
+  /** The addresses sc-4332 stopped sending to, by id: AC, not yet built, so the sample says which. */
+  undeliverable: readonly string[];
 }
 
 /** The app's states after the page at rest, then the moments only the web links to. */
@@ -414,6 +421,9 @@ export const ACCOUNT_STATES = [
   'verifyPhone',
   'verifyPhoneExpired',
   'verifyPhoneDone',
+  'undeliverable',
+  'undeliverableTwo',
+  'undeliverableUnverified',
 ] as const;
 
 export const WEB_MOMENTS = [
@@ -463,6 +473,7 @@ export function accountStart(state: string, viewer: Viewer = VIEWERS.folake): Ac
     open: null,
     ask: null,
     dialog: null,
+    undeliverable: [],
   };
   const proved = { ...REST, emails: PROVED };
   const onlyPrimary = { ...REST, emails: [EMAIL_1] };
@@ -561,6 +572,12 @@ export function accountStart(state: string, viewer: Viewer = VIEWERS.folake): Ac
       return { ...secondPhone, dialog: verify('text') };
     case 'verifyPhoneExpired':
       return { ...secondPhone, dialog: verify('whatsApp', { expired: true }) };
+    case 'undeliverable':
+      return { ...onlyPrimary, undeliverable: [EMAIL_1.id] };
+    case 'undeliverableTwo':
+      return { ...proved, undeliverable: [EMAIL_1.id, EMAIL_2.id] };
+    case 'undeliverableUnverified':
+      return { ...REST, undeliverable: [EMAIL_2.id] };
     case 'verifyPhoneDone':
       return {
         ...proved,
@@ -630,6 +647,14 @@ export const ACCOUNT_PAGES: readonly { name: string; states: readonly DemoLink[]
       account('added', 'Added'),
       account('addPhone', 'Add a phone number'),
       account('addPhoneShort', 'Add, too short'),
+    ],
+  },
+  {
+    name: 'Email we could not deliver (sc-44949)',
+    states: [
+      account('undeliverable', 'An address we could not deliver to'),
+      account('undeliverableTwo', 'Two addresses, one line each'),
+      account('undeliverableUnverified', 'Not verified yet, and undeliverable'),
     ],
   },
   {

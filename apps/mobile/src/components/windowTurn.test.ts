@@ -244,36 +244,99 @@ describe('a window that opens through a Modal of its own (sc-42690)', () => {
     const pill = read('OrgPill.tsx');
 
     expect(pill).toContain('{...quietTap(onPress, expanded)}');
-    expect(pill).toContain(
-      "if (Platform.OS !== 'android' || onPress == null || expanded == null) return {};",
+    expect(pill).toContain("if (Platform.OS !== 'android' || expanded == null) return {};");
+    expect(pill).toContain('return pressOnDoubleTap(onPress);');
+    expect(read('screenReaderFocus.ts')).toContain(
+      "if (event.nativeEvent.actionName === 'activate') onPress();",
     );
-    expect(pill).toContain("if (event.nativeEvent.actionName === 'activate') onPress();");
   });
 
   it('gives Today’s own opener the same quiet double tap (qa2 #44464)', () => {
     expect(read('TodayCover.tsx')).toContain('...quietTap(org.onPress, org.expanded),');
   });
 
-  it('has Create an organisation take the keys while hidden, then TalkBack’s focus on its field (qa2 #44464)', () => {
+  it('has Create an organisation take the keys while hidden on the tablet, then TalkBack’s focus on its field (qa2 #44464)', () => {
     const walk = read('CreateWalkWindow.tsx');
 
     expect(walk).toContain("const talkBack = Platform.OS === 'android' && readerOn;");
-    expect(walk).toContain(
-      'const unnamed = useUnnamedWindow(talkBack && shown, onScreen, null, arriving);',
+    expect(walk).toMatch(
+      /const unnamed = useUnnamedWindow\(\s*talkBack && shown,\s*onScreen,\s*null,\s*phone \? WINDOW_ARRIVES_MS : arriving,\s*\);/,
     );
     expect(walk).toContain('onShow={() => setOnScreen(true)}');
     expect(walk).toMatch(/const behind = walk\.asking \|\| unnamed \?/);
     expect(walk).toMatch(
-      /!talkBack \|\| !onScreen \|\| !unnamed \|\| opening\.walk\.asking\) return;\s+const keys = setTimeout/,
+      /!talkBack \|\| phone \|\| !onScreen \|\| !unnamed \|\| opening\.walk\.asking\) return;\s+const keys = setTimeout/,
     );
     expect(walk).toMatch(
       /!talkBack \|\| !onScreen \|\| unnamed \|\| opening\.walk\.asking\) return;\s+const input =\s+opening\.focus === 'search' \? search\.current : opening\.focus === 'name' \? field\.current : null;/,
     );
   });
 
-  it('raises the keys again on Create an organisation’s field once TalkBack’s focus is on it (qa3 #45108)', () => {
+  it('raises the keys on Create an organisation’s field once shown, moving TalkBack’s focus only onto a field still focused (qa3 #45182)', () => {
     expect(read('CreateWalkWindow.tsx')).toMatch(
-      /moveScreenReaderFocus\(input\);\s+\/\/ .*\s+const keys = setTimeout\(\(\) => raiseKeysOn\(input\), HOVER_LANDS_MS\);/,
+      /\/\/ .*\s+if \(input\.isFocused\(\)\) moveScreenReaderFocus\(input\);\s+if \(phone\) holding\.current = input;\s+raiseKeysOn\(input\);\s+\}, \[talkBack, onScreen, unnamed, opening, phone\]\);/,
+    );
+  });
+
+  it('on the phone, hides and unnames Create an organisation’s field until it has taken input focus, unnames it again before raising its keys once more, and leaves TalkBack to move its own focus onto it (qa4 #48525, #48921, qa2 #49329, #49366)', () => {
+    const walk = read('CreateWalkWindow.tsx');
+    const steps = read('CreateWalkSteps.tsx');
+
+    expect(walk).toMatch(
+      /const quiet =\s+talkBack && phone && !voiced && opening\.focus !== 'question' && !opening\.walk\.asking;/,
+    );
+    expect(walk).toContain("quiet={live && quiet && opening.focus === 'name'}");
+    expect(walk).toContain("quiet={live && quiet && opening.focus === 'search'}");
+    expect(walk).not.toContain('voice()');
+    expect(steps).not.toContain('onTaken');
+    expect(walk).not.toContain('voicing');
+    expect(walk).toMatch(
+      /const taken = \(\) => \{\s+if \(quiet && onScreen && !unnamed\) setVoiced\(true\);/,
+    );
+    expect(walk).toContain('onFocused={live ? taken : undefined}');
+    expect(walk).toContain('if (focused && live) taken();');
+    expect(steps).toMatch(/setFocused\(true\);\s+onFocused\?\.\(\);/);
+    expect(walk).toMatch(
+      /if \(!quiet \|\| !onScreen \|\| unnamed\) return;\s+const reachable = setTimeout\(\(\) => setVoiced\(true\), KEYS_AWAITED_MS\);/,
+    );
+    expect(walk).toMatch(/regaining\.current = input;\s+setVoiced\(false\);/);
+    expect(walk).toMatch(
+      /if \(!quiet \|\| input == null\) return;\s+regaining\.current = null;\s+raiseKeysOn\(input\);\s+\}, \[quiet\]\);/,
+    );
+    expect(steps).toContain("accessibilityLabel={quiet ? '' : t('createOrganisation.name')}");
+    expect(steps).toContain('accessibilityHint={quiet ? undefined : (refusal ?? help)}');
+    expect(steps.match(/importantForAccessibility=\{quiet \? 'no' : 'auto'\}/g)).toHaveLength(2);
+  });
+
+  it('raises the keys once more on a field that gives up focus before the keys it was raised with come up (qa3 #47084)', () => {
+    const walk = read('CreateWalkWindow.tsx');
+
+    expect(walk).toMatch(
+      /Keyboard\.addListener\('keyboardDidShow', \(\) => \{\s+holding\.current = null;/,
+    );
+    expect(walk).toMatch(
+      /const keysLost = \(\) => \{\s+const input = holding\.current;\s+holding\.current = null;\s+if \(input == null \|\| !open \|\| walk\.asking\) return;/,
+    );
+    expect(walk).toContain('onLeft={live ? keysLost : undefined}');
+    expect(walk).toContain('if (!focused && live) keysLost();');
+    expect(walk.match(/^ {4}holding\.current = null;$/gm)).toHaveLength(3);
+    expect(read('CreateWalkSteps.tsx')).toMatch(/setFocused\(false\);\s+onLeft\?\.\(\);/);
+  });
+
+  it('with TalkBack on, gives Create an organisation’s buttons and the tablet’s scrim no input focus to take from its field as it is revealed (qa2 #46600)', () => {
+    const walk = read('CreateWalkWindow.tsx');
+    const parts = read('CreateWalkParts.tsx');
+
+    expect(walk.match(/<NavAction\s+takesFocus=\{!talkBack\}/g)).toHaveLength(3);
+    expect(walk.match(/<WalkButton\s+takesFocus=\{!talkBack\}/g)).toHaveLength(3);
+    expect(walk.match(/<(NavAction|WalkButton)\b/g)).toHaveLength(6);
+    expect(parts.match(/\{\.\.\.takingFocus\(takesFocus, /g)).toHaveLength(2);
+    expect(walk).toContain('{...takingFocus(!talkBack, creating ? undefined : cancel)}');
+  });
+
+  it('presses a button left without input focus from TalkBack’s double tap, which its click no longer reaches (lead, PR #2155)', () => {
+    expect(read('CreateWalkParts.tsx')).toContain(
+      'return { focusable: false, ...pressOnDoubleTap(onPress) };',
     );
   });
 

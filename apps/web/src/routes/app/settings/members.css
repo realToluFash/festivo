@@ -40,3 +40,20 @@
   min-width: auto;
   overflow-wrap: break-word;
 }
+
+.not-delivered {
+  display: inline-flex;
+  align-items: flex-start;
+  gap: var(--spaceXs);
+}
+
+.not-delivered .mark {
+  width: 18px;
+  height: 18px;
+  margin-top: 1px;
+}
+
+.not-delivered-word {
+  color: var(--colorBrokenText);
+  font-weight: 600;
+}

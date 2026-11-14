@@ -14,6 +14,7 @@ import {
   phoneAwaitingCode,
   primaryEmailAddress,
 } from './client.ts';
+import { asGuestList } from './guests.ts';
 import { ApiError, ApiUnreachableError } from './problem.ts';
 
 function problem(status: number, code: string, extra: Record<string, unknown> = {}): Response {
@@ -2670,6 +2671,7 @@ describe('invitations and members', () => {
             invitedBy: { id: 'u2', name: 'Bisi Adeyemi' },
             status: 'pending',
             sentAt: '2026-10-18T10:00:00+00:00',
+            undelivered: false,
             expiresAt: '2026-10-25T10:00:00+00:00',
             acceptedAt: null,
             declinedAt: null,
@@ -2703,6 +2705,7 @@ describe('invitations and members', () => {
           invitedBy: { id: 'u2', name: 'Bisi Adeyemi' },
           status: 'pending',
           sentAt: null,
+          undelivered: true,
           expiresAt: '2026-10-25T10:00:00+00:00',
           acceptedAt: null,
           declinedAt: null,
@@ -2714,6 +2717,7 @@ describe('invitations and members', () => {
     const sentInvitation = await api.inviteMember('org_1', 'amara@example.com', 'role_5');
 
     expect(sentInvitation.id).toBe('inv_2');
+    expect(sentInvitation.undelivered).toBe(true);
     expect(sent[0]).toEqual({
       line: 'POST /api/orgs/org_1/members/invite',
       body: { email: 'amara@example.com', roleId: 'role_5' },
@@ -2879,15 +2883,20 @@ describe('events (sc-1486)', () => {
       area: 'events',
       action: null,
     };
+    const WEDDING_GUESTS = { invited: 142, coming: 96, notReplied: 25 };
     const later = { ...EVENT, id: 'e2', name: 'Later', milestones: [] };
     const { api, sent } = client(() =>
-      json({ events: [{ ...EVENT, milestones: [starts] }, later], total: 12 }),
+      json({
+        events: [{ ...EVENT, milestones: [starts], guests: WEDDING_GUESTS }, later],
+        total: 12,
+      }),
     );
 
     const page = await api.events('org_1', { finished: true, page: 2, itemsPerPage: 10 });
 
     expect(page.events.map(({ name }) => name)).toEqual(['Adaeze and Tunde', 'Later']);
-    expect(page.events[0]).toEqual({ ...EVENT, milestones: [starts] });
+    expect(page.events[0]).toEqual({ ...EVENT, milestones: [starts], guests: WEDDING_GUESTS });
+    expect(page.events[1]?.guests).toBeNull();
     expect(page.total).toBe(12);
     expect(sent[0]?.line).toBe('GET /api/orgs/org_1/events');
   });
@@ -3022,6 +3031,23 @@ describe('events (sc-1486)', () => {
     expect(await api.duplicateEvent(EVENT.id, '2027-05-15T16:00')).toEqual({ ...EVENT, id: 'e2' });
     expect(sent).toEqual([
       { line: `POST /api/events/${EVENT.id}/duplicate`, body: { startsAt: '2027-05-15T16:00' } },
+    ]);
+  });
+
+  test('a copy brings the guest list when asked, and says how many guests came (sc-3656)', async () => {
+    const { api, sent } = client(() =>
+      json({ event: { ...EVENT, id: 'e2' }, guestsCopied: 118 }, 201),
+    );
+
+    expect(await api.duplicateEventWithGuests(EVENT.id, '2027-05-15T16:00')).toEqual({
+      event: { ...EVENT, id: 'e2' },
+      guestsCopied: 118,
+    });
+    expect(sent).toEqual([
+      {
+        line: `POST /api/events/${EVENT.id}/duplicate`,
+        body: { startsAt: '2027-05-15T16:00', copyGuests: true },
+      },
     ]);
   });
 
@@ -3627,5 +3653,127 @@ describe('the calendar feed link (sc-3626)', () => {
     const { client } = answering({ url: 'https://elsewhere.test/x.ics' });
 
     await expect(client.calendarFeed('org_1')).rejects.toThrow(/CalendarFeedController/);
+  });
+});
+
+describe("the guest's calendar on their page (sc-3627)", () => {
+  const PAGE = {
+    guest: {
+      fullName: 'Adaeze Okonkwo',
+      reply: { answer: 'coming', at: '2026-10-17T14:20:00+01:00' },
+      needs: {
+        allergies: [],
+        otherAllergy: null,
+        diet: [],
+        otherDiet: null,
+        access: [],
+        otherAccess: null,
+        changed: null,
+      },
+      places: 0,
+      unnamed: [],
+      companions: [],
+    },
+    language: { chosen: null, host: null, organisation: 'en' },
+    event: {
+      id: 'ev_1',
+      name: 'Owambe',
+      type: 'party',
+      cover: null,
+      hosts: ['Funmi'],
+      startsAt: '2030-11-14T16:00:00+01:00',
+      timeZone: 'Africa/Lagos',
+      venue: null,
+    },
+    phase: 'live',
+    started: false,
+    answersOpen: true,
+  };
+
+  function answering(body: unknown) {
+    return new ApiClient({
+      baseUrl: () => 'https://api.soirely.test/',
+      fetch: async () =>
+        new Response(JSON.stringify(body), {
+          status: 200,
+          headers: { 'Content-Type': 'application/json' },
+        }),
+    });
+  }
+
+  test('offers the feed as webcal for Apple and Outlook, and by URL to Google Calendar', async () => {
+    const client = answering({ ...PAGE, calendarFeed: '/api/guest-calendars/abc.ics' });
+
+    expect((await client.guestPage('tok')).calendar).toEqual({
+      webcal: 'webcal://api.soirely.test/api/guest-calendars/abc.ics',
+      google:
+        'https://calendar.google.com/calendar/r?cid=webcal%3A%2F%2Fapi.soirely.test%2Fapi%2Fguest-calendars%2Fabc.ics',
+    });
+  });
+
+  test('has none when the API gives none', async () => {
+    expect((await answering({ ...PAGE, calendarFeed: null }).guestPage('tok')).calendar).toBeNull();
+  });
+
+  test('refuses a feed that is not a path', async () => {
+    await expect(
+      answering({ ...PAGE, calendarFeed: 'https://elsewhere.test/x.ics' }).guestPage('tok'),
+    ).rejects.toThrow(/GuestPageController/);
+  });
+});
+
+describe('guest groups (sc-3775)', () => {
+  const counts = { people: 3, guests: 2, companions: 1 };
+
+  test('makes, renames and deletes a group under its event', async () => {
+    const sent: { url: string; method: string; body: unknown }[] = [];
+    const client = new ApiClient({
+      baseUrl: () => 'http://api.test',
+      fetch: async (input, init) => {
+        sent.push({
+          url: String(input),
+          method: init?.method ?? 'GET',
+          body: typeof init?.body === 'string' ? JSON.parse(init.body) : null,
+        });
+
+        return init?.method === 'DELETE'
+          ? new Response(null, { status: 204 })
+          : new Response(JSON.stringify({ group: { id: 'gr_1', name: 'Work' } }), {
+              status: 200,
+              headers: { 'Content-Type': 'application/json' },
+            });
+      },
+    });
+
+    expect(await client.makeGuestGroup('ev 1', 'Work')).toEqual({ id: 'gr_1', name: 'Work' });
+    expect(await client.renameGuestGroup('ev 1', 'gr_1', 'Work')).toEqual({
+      id: 'gr_1',
+      name: 'Work',
+    });
+    await client.deleteGuestGroup('ev 1', 'gr_1');
+
+    expect(sent.map(({ method, url, body }) => [method, url, body])).toEqual([
+      ['POST', 'http://api.test/api/events/ev%201/guest-groups', { name: 'Work' }],
+      ['PUT', 'http://api.test/api/events/ev%201/guest-groups/gr_1', { name: 'Work' }],
+      ['DELETE', 'http://api.test/api/events/ev%201/guest-groups/gr_1', null],
+    ]);
+  });
+
+  test('reads the list’s groups with their counts, and a list without them as all in No group', () => {
+    expect(
+      asGuestList({
+        guests: [],
+        counts,
+        groups: [{ id: 'gr_1', name: 'Work', counts }],
+        ungrouped: { people: 0, guests: 0, companions: 0 },
+      })?.groups,
+    ).toEqual([{ id: 'gr_1', name: 'Work', counts }]);
+    expect(asGuestList({ guests: [], counts })).toEqual({
+      guests: [],
+      counts,
+      groups: [],
+      ungrouped: counts,
+    });
+    expect(asGuestList({ guests: [], counts, groups: [{ id: 'gr_1' }] })).toBeNull();
   });
 });

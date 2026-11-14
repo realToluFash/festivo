@@ -24,5 +24,5 @@ appId: host.exp.Exponent
 - takeScreenshot: duplicate-after-tap
 - scrollUntilVisible:
     element:
-      id: 'eventDuplicate.start.date'
+      id: 'eventDuplicate.date'
     timeout: 10000

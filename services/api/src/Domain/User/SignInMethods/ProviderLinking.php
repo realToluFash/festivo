@@ -13,7 +13,6 @@ use App\Entity\User;
 use App\Enum\Actor;
 use App\Enum\ErrorCode;
 use App\Enum\IdentityProvider;
-use App\Http\AfterResponse;
 use App\Http\Exception\ApiException;
 use App\Repository\ProviderIdentityRepository;
 use Doctrine\DBAL\Exception\UniqueConstraintViolationException;
@@ -36,7 +35,6 @@ final readonly class ProviderLinking
         private TokenIssuer $tokenIssuer,
         private Auditor $auditor,
         private SignInMethodMailer $signInMethodMailer,
-        private AfterResponse $afterResponse,
         private EntityManagerInterface $entityManager,
         private ClockInterface $clock,
         private SignInRules $signInRules,
@@ -86,6 +84,7 @@ final readonly class ProviderLinking
             $this->record($user, 'provider.linked', [null, $provider->value]);
             $this->entityManager->flush();
             $this->carryOn($user, $caller, $provider);
+            $this->tell($user, $provider, $identity->getEmail(), $request, linked: true);
             $connection->commit();
         } catch (UniqueConstraintViolationException $e) {
             $connection->rollBack();
@@ -96,8 +95,6 @@ final readonly class ProviderLinking
 
             throw $e;
         }
-
-        $this->tell($user, $provider, $identity->getEmail(), $request, linked: true);
 
         return $identity;
     }
@@ -154,14 +151,13 @@ final readonly class ProviderLinking
             $this->record($user, 'provider.unlinked', [$provider->value, null]);
             $this->entityManager->flush();
             $ended = $this->tokenIssuer->revokeSignedInWith($user, $provider);
+            $this->tell($user, $provider, Iter\first($removed)->getEmail(), $request, linked: false);
             $connection->commit();
         } catch (Throwable $e) {
             $connection->rollBack();
 
             throw $e;
         }
-
-        $this->tell($user, $provider, Iter\first($removed)?->getEmail(), $request, linked: false);
 
         // The session the caller holds, never one it names (sessions.md); no chain cannot be told it stays in.
         return [
@@ -195,9 +191,9 @@ final readonly class ProviderLinking
         $ipAddress = $request?->getClientIp();
         $asked = $request?->getLocale();
 
-        $this->afterResponse->defer($linked
-            ? fn () => $this->signInMethodMailer->sendLinked($user, $provider, $vouchedFor, $at, $userAgent, $ipAddress, $asked)
-            : fn () => $this->signInMethodMailer->sendUnlinked($user, $provider, $vouchedFor, $at, $userAgent, $ipAddress, $asked));
+        $linked
+            ? $this->signInMethodMailer->sendLinked($user, $provider, $vouchedFor, $at, $userAgent, $ipAddress, $asked)
+            : $this->signInMethodMailer->sendUnlinked($user, $provider, $vouchedFor, $at, $userAgent, $ipAddress, $asked);
     }
 
     private static function taken(IdentityProvider $provider, ?Throwable $previous = null): ApiException

@@ -59,17 +59,18 @@ final readonly class PasswordRecovery
             return;
         }
 
-        if (null === $user->getPassword()) {
-            $this->recoveryMailer->sendHowYouSignIn($user, $this->providerNames($user), $locale);
+        $this->entityManager->wrapInTransaction(function () use ($user, $locale): void {
+            if (null === $user->getPassword()) {
+                $this->recoveryMailer->sendHowYouSignIn($user, $this->providerNames($user), $locale);
 
-            return;
-        }
+                return;
+            }
 
-        $plain = \bin2hex(SecureRandom\bytes(self::TOKEN_BYTES));
-        $this->entityManager->persist(new PasswordResetToken($user, TokenIssuer::hash($plain), $this->clock->now()));
-        $this->entityManager->flush();
-
-        $this->recoveryMailer->sendLink($user, $plain, $locale);
+            $plain = \bin2hex(SecureRandom\bytes(self::TOKEN_BYTES));
+            $this->entityManager->persist(new PasswordResetToken($user, TokenIssuer::hash($plain), $this->clock->now()));
+            $this->entityManager->flush();
+            $this->recoveryMailer->sendLink($user, $plain, $locale);
+        });
     }
 
     /** Whose link this is, so the page can say "For <address>", or why it no longer works. */
@@ -124,14 +125,16 @@ final readonly class PasswordRecovery
             throw new ApiException(ErrorCode::TwoFactorRequired, 'two_factor.code_first');
         }
 
-        $user->setPassword($this->passwordResolver->hash($password));
-        $reset->markUsed($now);
-        $this->entityManager->flush();
+        $this->entityManager->wrapInTransaction(function () use ($user, $reset, $password, $now): void {
+            $user->setPassword($this->passwordResolver->hash($password));
+            $reset->markUsed($now);
+            $this->entityManager->flush();
 
-        $this->passwordResetTokenRepository->spendAllFor($user, $now);
-        $this->tokenIssuer->revokeAllFor($user);
-        $this->entityManager->flush();
-        $this->recoveryMailer->sendChanged($user, $now);
+            $this->passwordResetTokenRepository->spendAllFor($user, $now);
+            $this->tokenIssuer->revokeAllFor($user);
+            $this->entityManager->flush();
+            $this->recoveryMailer->sendChanged($user, $now);
+        });
 
         // The password is set either way; it signs in only where a password sign-in would (sc-69).
         $refusal = $this->signInRules->passwordRefusal($user);

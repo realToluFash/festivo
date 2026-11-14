@@ -10,7 +10,6 @@ use App\Domain\User\TokenIssuer;
 use App\Entity\User;
 use App\Enum\ErrorCode;
 use App\Enum\PasswordFailure;
-use App\Http\AfterResponse;
 use App\Http\Exception\ApiException;
 use Doctrine\DBAL\LockMode;
 use Doctrine\ORM\EntityManagerInterface;
@@ -30,7 +29,6 @@ final readonly class PasswordChange
         private NewPasswordRules $newPasswordRules,
         private TokenIssuer $tokenIssuer,
         private PasswordChangeMailer $passwordChangeMailer,
-        private AfterResponse $afterResponse,
         private EntityManagerInterface $entityManager,
         private TranslatorInterface $translator,
         private ClockInterface $clock,
@@ -49,10 +47,10 @@ final readonly class PasswordChange
         ?Uuid $keepSession = null,
         ?Request $request = null,
     ): int {
-        $signedOut = $this->guardedAttempt->attempt(
+        return $this->guardedAttempt->attempt(
             fn () => $this->entityManager->refresh($user, LockMode::PESSIMISTIC_WRITE),
             fn (): array => [$this->passwordChangeAccountLimiter->create($user->getId()->toRfc4122())],
-            function () use ($user, $current, $new, $keepSession): int|WrongSecret {
+            function () use ($user, $current, $new, $keepSession, $request): int|WrongSecret {
                 if (!$this->passwordResolver->verify($user, $current)) {
                     return new WrongSecret(new ApiException(ErrorCode::InvalidCredentials, 'password.current_wrong'));
                 }
@@ -60,19 +58,13 @@ final readonly class PasswordChange
                 $this->refuseUnfit($user, $new);
                 $user->setPassword($this->passwordResolver->hash($new));
                 $this->entityManager->flush();
+                $signedOut = Iter\count($this->tokenIssuer->revokeAllExcept($user, $keepSession));
+                $this->passwordChangeMailer->sendChanged($user, $this->clock->now(), $request?->headers->get('User-Agent'), $request?->getClientIp(), $request?->getLocale());
 
-                return Iter\count($this->tokenIssuer->revokeAllExcept($user, $keepSession));
+                return $signedOut;
             },
             'limits.tries',
         );
-
-        $at = $this->clock->now();
-        $userAgent = $request?->headers->get('User-Agent');
-        $ipAddress = $request?->getClientIp();
-        $asked = $request?->getLocale();
-        $this->afterResponse->defer(fn () => $this->passwordChangeMailer->sendChanged($user, $at, $userAgent, $ipAddress, $asked));
-
-        return $signedOut;
     }
 
     private function refuseUnfit(User $user, #[SensitiveParameter] string $new): void

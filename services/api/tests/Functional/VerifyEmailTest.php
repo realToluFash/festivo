@@ -339,6 +339,7 @@ final class VerifyEmailTest extends ApiTestCase
         $left = $this->body()['cooldownSeconds'];
         self::assertIsInt($left);
         self::assertGreaterThan(0, $left);
+        self::drainNotifications();
 
         $this->endCooldownFor('reads@example.com');
         $this->client->request('GET', '/api/auth/verify/resend', server: $this->authenticated($token));

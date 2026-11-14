@@ -34,6 +34,7 @@ export interface Bit {
   words: string;
   where?: Where;
   mark?: Delivery;
+  clip?: boolean;
 }
 
 export function whereBits(where: Where, at: string): Bit[] {

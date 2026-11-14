@@ -21,6 +21,7 @@ import {
   useRef,
   useState,
 } from 'react';
+import { type TFunction } from 'i18next';
 import { useTranslation } from 'react-i18next';
 import { useLocation, useNavigate } from 'react-router';
 
@@ -42,7 +43,7 @@ import { useLoadedAt, useServerNow } from '../../../serverNow.ts';
 import { canOn } from '../../../session.ts';
 import { DeleteEvent } from './DeleteEvent.tsx';
 import { DuplicateDialog, DuplicateEvent } from './DuplicateEvent.tsx';
-import { wasDuplicated } from './duplicated.ts';
+import { guestsCopied, wasDuplicated } from './duplicated.ts';
 import { type EditOutcome } from './EditEvent.tsx';
 import { EndButton } from './EndEvent.tsx';
 import { EventCoverImage } from './EventCoverImage.tsx';
@@ -60,6 +61,7 @@ import {
 import { useMakeLive } from './MakeLive.tsx';
 import { PHASE_WORD } from './eventWords.ts';
 import { typeLabel } from './eventTypes.ts';
+import { GuestNumbers } from './GuestNumbers.tsx';
 import { MuteEvent } from './MuteEvent.tsx';
 import { OutcomeLine } from './OutcomeLine.tsx';
 import { PauseButton, useResume } from './PauseEvent.tsx';
@@ -134,7 +136,7 @@ export function Overview({
   const [dirty, setDirty] = useState(false);
   const [leaving, setLeaving] = useState<{ to: Part | null } | null>(null);
   const [toast, setToast] = useState<string | null>(() =>
-    wasDuplicated(location.state) ? t('eventDuplicate.created') : null,
+    wasDuplicated(location.state) ? createdLine(guestsCopied(location.state), t) : null,
   );
   const [shown, setShown] = useState(0);
   const now = useServerNow();
@@ -274,12 +276,13 @@ export function Overview({
             part={part}
             parts={parts}
             shown={shown}
-            onCover={(next) => onChange(next, tag)}
+            onCover={(next) => saved({ event: next, tag })}
             onOpen={open}
             comingUp={<ComingUp event={event} timeline={timeline} heading={comingUpHeading} />}
           />
         </div>
         <div className="ev-right">
+          {canOn(event, 'guests.read') && <GuestNumbers event={event} />}
           <MuteEvent eventId={event.id} />
           {(creates || manages) && (
             <ManageList title={t('eventPage.manage')}>
@@ -393,7 +396,14 @@ function Details({
       case 'currency':
         return <CurrencyPart {...parts} />;
       case 'cover':
-        return <CoverPart event={event} onClose={parts.onClose} onCover={onCover} />;
+        return (
+          <CoverPart
+            event={event}
+            onDirty={parts.onDirty}
+            onClose={parts.onClose}
+            onCover={onCover}
+          />
+        );
     }
   };
 
@@ -509,4 +519,13 @@ function editOutcome(state: unknown): EditOutcome | null {
   const edit = typeof state === 'object' && state != null && 'edit' in state ? state.edit : null;
 
   return edit === 'saved' || edit === 'unchanged' ? edit : null;
+}
+
+/** The copy's toast, with how many guests came when the guest list did (sc-3656). */
+function createdLine(guests: number | null, t: TFunction): string {
+  const created = t('eventDuplicate.created');
+
+  return guests == null
+    ? created
+    : `${created} ${t('eventDuplicate.guestsCopied', { count: guests })}`;
 }

@@ -23,15 +23,26 @@ import {
 import {
   asGuest,
   asGuestDetails,
+  asGuestGroup,
   asGuestList,
+  asGuestPageCompanion,
+  asGuestPagePlace,
+  asPageNeeds,
+  asHeadcount,
+  type CompanionChoice,
   type Guest,
   type GuestEdit,
   type GuestAnswer,
+  type GuestInvitationHow,
+  type GuestGroup,
   type GuestList,
   type GuestPage,
+  type Headcount,
   GUEST_ANSWERS,
   GUEST_PAGE_PHASES,
   type NewGuest,
+  type PageNeeds,
+  type PlaceNeeds,
   type TaggedGuest,
 } from './guests.ts';
 import { ApiError, ApiUnreachableError, type Problem, toProblem } from './problem.ts';
@@ -262,6 +273,8 @@ export interface LinkedAddress {
   address: string;
   verified: boolean;
   primary: boolean;
+  /** A hard bounce or a complaint stopped every non-security email to it (sc-4332); only its owner reads this. */
+  undeliverable?: boolean;
 }
 
 export interface LinkedPhone {
@@ -451,9 +464,17 @@ export interface OrganisationEvent {
   permissions: string[];
 }
 
-/** As a list shows it: with its timeline's milestones, so the list's Next up is the timeline's (sc-3624). */
+/** The tiles' measure on Events (sc-23284), which each event's guest line adds up to: `notReplied` is the guests who owe an answer and the companions held behind them. */
+export interface EventGuestFigures {
+  invited: number;
+  coming: number;
+  notReplied: number;
+}
+
+/** As a list shows it: with its timeline's milestones, so the list's Next up is the timeline's (sc-3624), and its guest figures from the list, null without guests.read on it (sc-3786). */
 export interface ListedEvent extends OrganisationEvent {
   milestones: Milestone[];
+  guests?: EventGuestFigures | null;
 }
 
 export interface EventsQuery {
@@ -751,6 +772,8 @@ export interface SentInvitation {
   invitedBy: MemberPerson | null;
   status: SentInvitationStatus;
   sentAt: string | null;
+  /** Its latest send could not be delivered, never why (sc-46109). */
+  undelivered: boolean;
   expiresAt: string | null;
   acceptedAt: string | null;
   declinedAt: string | null;
@@ -844,6 +867,8 @@ export interface RequestOptions {
   query?: Record<string, string | number | boolean | undefined>;
   headers?: Record<string, string>;
   signal?: AbortSignal;
+  /** Sent even as the page goes, as an erasure on leaving it is. */
+  keepalive?: boolean;
   /** Skip the Authorization header — for sign-in and guest routes. */
   anonymous?: boolean;
 }
@@ -1839,6 +1864,25 @@ export class ApiClient {
     );
   }
 
+  /** As `duplicateEvent`, bringing the guest list too, with no replies and nobody invited (sc-3656). Refused 403 `permission_required` without guests.manage. */
+  async duplicateEventWithGuests(
+    eventId: string,
+    startsAt: string,
+  ): Promise<{ event: OrganisationEvent; guestsCopied: number }> {
+    const body = await this.post<{ event?: unknown; guestsCopied?: unknown }>(
+      `/api/events/${encodeURIComponent(eventId)}/duplicate`,
+      { startsAt, copyGuests: true },
+    );
+
+    if (typeof body.guestsCopied !== 'number') {
+      throw new Error(
+        'The API answered a copied guest list without its count. Check the events controller in services/api.',
+      );
+    }
+
+    return { event: this.organisationEvent(body), guestsCopied: body.guestsCopied };
+  }
+
   /** Empty under three characters, with nothing asked. Refused 503 when the lookup is down. */
   async addressSuggestions(query: string): Promise<AddressSuggestion[]> {
     if (query.trim().length < 3) return [];
@@ -2086,10 +2130,124 @@ export class ApiClient {
     );
   }
 
-  /** A hub token for this event's guest list; each change is published there as the whole list, with no email address or mobile number. */
+  /** Refused 409 `event_state_invalid` unless the event's phase allows `invite`; a guest already invited stays as recorded (sc-3788). */
+  async markInvited(
+    eventId: string,
+    guestId: string,
+    how: GuestInvitationHow,
+  ): Promise<TaggedGuest> {
+    return this.taggedGuest(
+      await this.exchange<{ guest?: unknown }>(`${this.guestPath(eventId, guestId)}/invitation`, {
+        method: 'PUT',
+        body: { how },
+      }),
+    );
+  }
+
+  /** In any phase; refused 409 `guest_replied` once they have replied, and `guest_not_marked_by_hand` for Soirely's message. */
+  async markNotInvited(eventId: string, guestId: string): Promise<TaggedGuest> {
+    return this.taggedGuest(
+      await this.exchange<{ guest?: unknown }>(`${this.guestPath(eventId, guestId)}/invitation`, {
+        method: 'DELETE',
+      }),
+    );
+  }
+
+  /** Off the list and the counts at once, with their companions; their link works until eraseGuest (sc-3774). Refused 404 when somebody removed them already. */
+  async removeGuest(eventId: string, guestId: string): Promise<void> {
+    await this.delete<undefined>(this.guestPath(eventId, guestId));
+  }
+
+  /** Back on the list as they were; refused 404 once erased. */
+  async undoGuestRemoval(eventId: string, guestId: string): Promise<TaggedGuest> {
+    return this.taggedGuest(
+      await this.exchange<{ guest?: unknown }>(`${this.guestPath(eventId, guestId)}/removal`, {
+        method: 'DELETE',
+      }),
+    );
+  }
+
+  /** Once the undo has run out, or as the page goes: they, their companions and their link are gone. */
+  async eraseGuest(eventId: string, guestId: string): Promise<void> {
+    await this.post<undefined>(`${this.guestPath(eventId, guestId)}/erasure`, undefined, {
+      keepalive: true,
+    });
+  }
+
+  /** Refused `validation_failed` on `name`: blank, over 60 characters, a name already used, or 50 groups (sc-3775). */
+  async makeGuestGroup(eventId: string, name: string): Promise<GuestGroup> {
+    return this.guestGroup(
+      await this.post<{ group?: unknown }>(this.guestGroupsPath(eventId), { name }),
+    );
+  }
+
+  /** Refused as makeGuestGroup, though the group's own name in another case is allowed. */
+  async renameGuestGroup(eventId: string, groupId: string, name: string): Promise<GuestGroup> {
+    return this.guestGroup(
+      await this.put<{ group?: unknown }>(
+        `${this.guestGroupsPath(eventId)}/${encodeURIComponent(groupId)}`,
+        { name },
+      ),
+    );
+  }
+
+  /** Its guests stay on the list, with no group. */
+  async deleteGuestGroup(eventId: string, groupId: string): Promise<void> {
+    await this.delete<undefined>(`${this.guestGroupsPath(eventId)}/${encodeURIComponent(groupId)}`);
+  }
+
+  private guestGroupsPath(eventId: string): string {
+    return `/api/events/${encodeURIComponent(eventId)}/guest-groups`;
+  }
+
+  private guestGroup(body: { group?: unknown } | undefined): GuestGroup {
+    const group = asGuestGroup(body?.group);
+
+    if (group == null) {
+      throw new Error(
+        'The API answered a guest group in a shape this client does not know. Check GuestGroupsController in services/api.',
+      );
+    }
+
+    return group;
+  }
+
+  /** Needs guests.read on the event (sc-99). */
+  async headcount(eventId: string): Promise<Headcount> {
+    const body = await this.get<{ headcount?: unknown }>(
+      `/api/events/${encodeURIComponent(eventId)}/headcount`,
+    );
+    const headcount = asHeadcount(body?.headcount);
+
+    if (headcount == null) {
+      throw new Error(
+        'The API answered the headcount in a shape this client does not know. Check HeadcountCalculator in services/api.',
+      );
+    }
+
+    return headcount;
+  }
+
+  /** A hub token for this event's guest list and its headcount; each change publishes the whole list, with no email address or mobile number, then the headcount. */
   async guestsSubscription(eventId: string): Promise<RealtimeSubscription> {
     const body = await this.post<{ token?: unknown; expiresAt?: unknown }>(
       `${this.guestsPath(eventId)}/subscriptions`,
+    );
+
+    return {
+      token: typeof body.token === 'string' ? body.token : '',
+      expiresAt: typeof body.expiresAt === 'string' ? body.expiresAt : '',
+    };
+  }
+
+  /** A hub token for the headcounts of the events a list shows, those the caller reads guests on (sc-3786). */
+  async headcountsSubscription(
+    organisationId: string,
+    eventIds: readonly string[],
+  ): Promise<RealtimeSubscription> {
+    const body = await this.post<{ token?: unknown; expiresAt?: unknown }>(
+      `/api/orgs/${encodeURIComponent(organisationId)}/events/headcounts/subscriptions`,
+      { events: eventIds },
     );
 
     return {
@@ -2142,24 +2300,60 @@ export class ApiClient {
     );
   }
 
-  /** Records the guest's answer and answers the page as it now stands (sc-1439). Refused 422 for an answer the page does not offer, 409 `event_paused` or `event_concluded` by the event's phase, 409 `replies_closed` from the start, and `not_found` as the page is. */
-  async sendGuestAnswer(token: string, answer: GuestAnswer): Promise<GuestPage> {
+  /** Records the guest's answer, and with Coming who fills the places (sc-3779), the guest's own needs and those of each place left unnamed (sc-3778), and answers the page as it now stands (sc-1439). Refused 422 for an answer the page does not offer, a name beyond the places, a need the API does not know or a place the reply names, 409 `event_paused` or `event_concluded` by the event's phase, 409 `replies_closed` from the start, and `not_found` as the page is. */
+  async sendGuestAnswer(
+    token: string,
+    answer: GuestAnswer,
+    companions: readonly CompanionChoice[] = [],
+    needs: PageNeeds | null = null,
+    unnamed: readonly PlaceNeeds[] = [],
+  ): Promise<GuestPage> {
     return this.guestPageOf(
-      await this.post<unknown>('/api/guest-links/reply', { token, answer }, { anonymous: true }),
+      await this.post<unknown>(
+        '/api/guest-links/reply',
+        {
+          token,
+          answer,
+          ...(companions.length === 0 ? {} : { companions }),
+          ...(needs == null ? {} : { needs }),
+          ...(unnamed.length === 0 ? {} : { unnamed }),
+        },
+        { anonymous: true },
+      ),
       'POST /api/guest-links/reply',
     );
   }
 
   private guestPageOf(raw: unknown, route: string): GuestPage {
     const page = asGuestPage(raw);
+    const feed = (raw as Record<string, unknown> | null)?.calendarFeed;
 
-    if (page == null) {
+    if (page == null || (feed != null && (typeof feed !== 'string' || !feed.startsWith('/')))) {
       throw new Error(
         `The API answered ${route} in a shape this client does not know. Check GuestPageController in services/api.`,
       );
     }
 
-    return page;
+    if (feed == null) return page;
+
+    const webcal = this.webcalOf(feed);
+
+    return {
+      ...page,
+      calendar: {
+        webcal,
+        google: `https://calendar.google.com/calendar/r?cid=${encodeURIComponent(webcal)}`,
+      },
+    };
+  }
+
+  /** The guest's own language menu (sc-3790): kept on the guest, never on an account. Refused 422 for a language Soirely does not offer, and `not_found` as the page is. */
+  async chooseGuestLanguage(token: string, language: string): Promise<void> {
+    await this.post<undefined>(
+      '/api/guest-links/language',
+      { token, language },
+      { anonymous: true },
+    );
   }
 
   /** "Not {name}? Tell us". Refused `too_many_attempts` after five an hour on one link. */
@@ -2719,9 +2913,11 @@ export class ApiClient {
       );
     }
 
-    const url = this.url(path);
+    return { url: this.url(path), webcal: this.webcalOf(path) };
+  }
 
-    return { url, webcal: url.replace(/^https?:/, 'webcal:') };
+  private webcalOf(path: string): string {
+    return this.url(path).replace(/^https?:/, 'webcal:');
   }
 
   async joinOffers(): Promise<JoinOffers> {
@@ -2992,6 +3188,7 @@ export class ApiClient {
     // accept it.
     if (init.body !== undefined) request.body = JSON.stringify(init.body);
     if (init.signal !== undefined) request.signal = init.signal;
+    if (init.keepalive === true) request.keepalive = true;
 
     try {
       const response = await doFetch(this.url(path, init.query), request);
@@ -3340,6 +3537,7 @@ function asAccount(raw: unknown): Account | null {
       address: address.address,
       verified: address.verified === true,
       primary: address.primary === true,
+      undeliverable: address.undeliverable === true,
     });
   }
 
@@ -3496,12 +3694,22 @@ function asMilestone(raw: unknown): Milestone | null {
 
 function asListedEvent(raw: unknown): ListedEvent | null {
   const event = asOrganisationEvent(raw);
-  const milestones = (raw as { milestones?: unknown } | null)?.milestones;
+  const { milestones, guests } = (raw ?? {}) as { milestones?: unknown; guests?: unknown };
   const read = Array.isArray(milestones) ? milestones.map(asMilestone) : null;
+  const figures = guests == null ? null : asEventGuestFigures(guests);
 
-  return event == null || read == null || read.some((one) => one == null)
+  return event == null || read == null || read.some((one) => one == null) || figures === undefined
     ? null
-    : { ...event, milestones: read as Milestone[] };
+    : { ...event, milestones: read as Milestone[], guests: figures };
+}
+
+/** An event's guest figures, from the events list or from its headcount as published (sc-3786); undefined for a shape this client does not know. */
+export function asEventGuestFigures(raw: unknown): EventGuestFigures | undefined {
+  const { invited, coming, notReplied } = (raw ?? {}) as Record<string, unknown>;
+
+  return isCount(invited) && isCount(coming) && isCount(notReplied)
+    ? { invited, coming, notReplied }
+    : undefined;
 }
 
 function isCount(value: unknown): value is number {
@@ -3603,7 +3811,7 @@ function asEventCover(raw: unknown): EventCover | undefined {
 
 function asGuestPage(raw: unknown): GuestPage | null {
   if (typeof raw !== 'object' || raw == null) return null;
-  const { guest, event, phase, started, answersOpen } = raw as Record<string, unknown>;
+  const { guest, event, phase, started, answersOpen, language } = raw as Record<string, unknown>;
   const shown = GUEST_PAGE_PHASES.find((known) => known === phase);
   if (typeof guest !== 'object' || guest == null || typeof event !== 'object' || event == null)
     return null;
@@ -3612,10 +3820,20 @@ function asGuestPage(raw: unknown): GuestPage | null {
   const reply = who.reply as Record<string, unknown> | null | undefined;
   const answer = GUEST_ANSWERS.find((known) => known === reply?.answer);
   const venue = what.venue as Record<string, unknown> | null | undefined;
+  const languages = (language ?? {}) as Record<string, unknown>;
+  const companions = Array.isArray(who.companions) ? who.companions.map(asGuestPageCompanion) : [];
+  const needs = asPageNeeds(who.needs);
+  const unnamed = Array.isArray(who.unnamed) ? who.unnamed.map(asGuestPagePlace) : [];
 
   if (
+    typeof languages.organisation !== 'string' ||
     typeof who.fullName !== 'string' ||
-    typeof who.companions !== 'number' ||
+    typeof who.places !== 'number' ||
+    needs == null ||
+    !Array.isArray(who.unnamed) ||
+    unnamed.some((one) => one == null) ||
+    !Array.isArray(who.companions) ||
+    companions.some((one) => one == null) ||
     (reply != null && (answer == null || typeof reply.at !== 'string')) ||
     typeof what.id !== 'string' ||
     typeof what.name !== 'string' ||
@@ -3632,7 +3850,15 @@ function asGuestPage(raw: unknown): GuestPage | null {
     guest: {
       fullName: who.fullName,
       reply: reply == null || answer == null ? null : { answer, at: reply.at as string },
-      companions: who.companions,
+      needs,
+      places: who.places,
+      unnamed: unnamed.filter((one) => one != null),
+      companions: companions.filter((one) => one != null),
+    },
+    language: {
+      chosen: typeof languages.chosen === 'string' ? languages.chosen : null,
+      host: typeof languages.host === 'string' ? languages.host : null,
+      organisation: languages.organisation,
     },
     event: {
       id: what.id,
@@ -3655,6 +3881,7 @@ function asGuestPage(raw: unknown): GuestPage | null {
     phase: shown,
     started,
     answersOpen,
+    calendar: null,
   };
 }
 
@@ -3926,6 +4153,7 @@ function asSentInvitation(raw: unknown): SentInvitation | null {
     invitedBy: asPerson(invitation.invitedBy),
     status,
     sentAt: stringOrNull(invitation.sentAt),
+    undelivered: invitation.undelivered === true,
     expiresAt: stringOrNull(invitation.expiresAt),
     acceptedAt: stringOrNull(invitation.acceptedAt),
     declinedAt: stringOrNull(invitation.declinedAt),

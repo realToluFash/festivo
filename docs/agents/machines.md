@@ -57,6 +57,7 @@ repository because it describes the machine, not the project. The repository shi
 | `dailyBudgetUsd`                          | no new worker once today's spend reaches it. Unset until the owner picks one                                                                                                                                                                                                                                                                                                                                                                                                                                         |
 | `minFreeGb`                               | no new worker under this much free disk; 15 by default                                                                                                                                                                                                                                                                                                                                                                                                                                                               |
 | `sliceMemoryMax`                          | what every worker on the machine may use between them, the cap on systemd's `soirely.slice`; `16G` by default. Raise it before adding roles, since each worker's own `memoryMax` counts against it                                                                                                                                                                                                                                                                                                                   |
+| `emulatorHost`                            | per tester role: the computer its Android emulator runs on, `"me@laptop"` or `{"ssh": "me@192.168.1.9", "name": "my-laptop", "gpu": "host", "sdk": "%LOCALAPPDATA%\\Android\\Sdk"}`. Unset, the emulator starts on this machine as always. A malformed value refuses only that role. See [An emulator on another computer](#an-emulator-on-another-computer)                                                                                                                                                         |
 | `manualTesters`                           | people who test, by Shortcut mention name: `{"@name": {"machine": "<the machine their stack runs on>", "member": "<Shortcut member id>"}}`. Kept out of the repository, which is public. A malformed entry is a warning in `sq status`, and stops no role                                                                                                                                                                                                                                                            |
 
 - **Changes take effect within a minute.** `sq run` reads the file every minute. A removed
@@ -329,6 +330,7 @@ ops work of its own kind, `machine`, in the queue `ops@<machine>`:
 | free disk under `minFreeGb`                             | urgent: free space so workers can start                                                                  |
 | Docker's build cache over 20 GB (read every 30 minutes) | urgent: `just prune-build-cache`                                                                         |
 | once a day                                              | the sweep: disk, Docker, the stacks, the manager                                                         |
+| Docker Desktop's socket not answering, on a Mac         | no work: the tick runs `open -a Docker` itself, at most every 5 minutes, and says so in the journal      |
 | free disk under twice `minFreeGb`                       | not urgent: the five largest workspace folders, the simulators and `~/.android/avd`, measured once a day |
 
 - **Testers' `.qa/` is cleared once a day, with no model.** In each `soirely-qa<n>` here,
@@ -338,6 +340,11 @@ ops work of its own kind, `machine`, in the queue `ops@<machine>`:
   each sweep freed and where. An entry whose stories have all passed QA or are Done goes
   at the next sweep, whatever its age; so does a merged story's clean, pushed worktree
   (`README.md`, Guards and alerts).
+- **No Claude run starts Docker Desktop.** An app a run opens is quit when the run ends, so a
+  Docker started with `open -a Docker` from a run stops seconds after it (sc-46912). The
+  minute tick runs outside every session and starts it instead; a run that finds Docker
+  down waits a tick or two. A paused machine (`sq pause`, here or everywhere) starts
+  nothing, so pause it to keep Docker quit.
 - **This machine's ops takes its machine work whoever holds the ops lease.** A machine
   without the lease runs ops for `ops@<machine>` items only.
 - **A full disk holds every other role, but not this.** The disk guard is the one hold
@@ -376,6 +383,72 @@ through its own server, so the browser holds one token and talks to one address.
   warning on `sq status`.
 - It is plain HTTP on a trusted network, as Docker's own ports here are. Over anything else,
   put it behind a tunnel.
+
+## An emulator on another computer
+
+A tester's stack, bundler and worker stay on this machine; with `emulatorHost` set on its role,
+only its emulator runs elsewhere. Two testers on tolu-linux do this, each on its own host:
+
+| Tester | Stack ports       | Console, adb | `emulatorHost`                                                       |
+| ------ | ----------------- | ------------ | -------------------------------------------------------------------- |
+| `qa4`  | +5100 (API 13180) | 5578, 5579   | the owner's Windows laptop                                           |
+| `qa5`  | +5200 (API 13280) | 5580, 5581   | `{"ssh": "hp@192.168.1.228", "name": "princess-shalew"}`, Wi-Fi only |
+
+`android` starts it there in one systemd user unit,
+`soirely-qa<n>-emulator`, holding an ssh session that runs the emulator and carries its
+console and adb ports (5578 and 5579 for qa4) back here, so adb, `adb reverse`, screenshots
+and Maestro see `emulator-5578` as if it were local. `android --stop` ends the emulator, the
+unit and anything left on that port over there. If the session drops, the unit ends and
+Windows ends the emulator with it; the next `android` boots it again. An unreachable host
+fails within a minute, naming it; ssh waits up to 30 s for the handshake, which a host on
+Wi-Fi can take more than 10 s over.
+
+What the other computer needs, once:
+
+- **Windows, with OpenSSH Server** running (Settings > System > Optional features), and this
+  machine's public key in its `authorized_keys` (for an administrator,
+  `C:\ProgramData\ssh\administrators_authorized_keys`). `ssh -o BatchMode=yes <host> echo ok`
+  from here must answer without a prompt.
+- **The Android SDK** at `%LOCALAPPDATA%\Android\Sdk` (or `sdk` in the setting), with the
+  Android Emulator, the Command-line Tools (latest), and a Google Play x86_64 system image.
+  `just qa-env setup --tester <n>` then makes the tester's phone and tablet AVDs there, the
+  tablet at 4096 MB, and says exactly what to install when something is missing. An AVD
+  already there is reported and left alone.
+- **A JDK, when Android Studio is not installed.** The Command-line Tools' `avdmanager` is a
+  Java program, and Android Studio's bundled one is the JDK it usually finds. Without Studio,
+  install one (17 or later, such as Eclipse Temurin) with `java` on `PATH` or `JAVA_HOME` set,
+  and unpack the Command-line Tools zip so that
+  `%LOCALAPPDATA%\Android\Sdk\cmdline-tools\latest\bin\avdmanager.bat` exists.
+- **Hardware acceleration**: the Windows Hypervisor Platform or the Android Emulator
+  hypervisor driver. `-gpu host` (the default here) boots in about 50 s on a discrete GPU;
+  set `"gpu": "swiftshader_indirect"` where there is none, at about twice that.
+- **Memory for one emulator at a time.** The phone or the tablet, never both; the tablet's
+  4096 MB needs the rest of the computer quiet.
+- **Mains power, awake.** Turn off sleep on mains (Settings > System > Power), or the
+  session drops mid-batch.
+
+Two steps by hand, since they hold keys:
+
+1. **The console token.** `adb emu` signs in with this machine's
+   `~/.emulator_console_auth_token`, so the host must hold the same one. Keep the host's as
+   `%USERPROFILE%\.emulator_console_auth_token.bak-soirely`, then
+   `scp ~/.emulator_console_auth_token <host>:.emulator_console_auth_token`. `setup` says
+   whether the two match.
+2. **This machine's adb key.** A Play image accepts only the keys it was given, and the host's
+   emulator hands it the host's. Boot the phone once with `android`; until the device accepts
+   this machine's key, adb here sees it as `unauthorized` and refuses `shell` and
+   `exec-out`, so look and tap with the host's own adb, which the host's key already
+   authorizes: `ssh <host> %LOCALAPPDATA%\Android\Sdk\platform-tools\adb -s emulator-<port>
+exec-out screencap -p > prompt.png` shows the prompt, and the same with
+   `shell input tap <x> <y>` ticks **Always allow from this computer** and taps **Allow**.
+   It lasts until the AVD's data is wiped. Do the same once on the tablet.
+   Until then, the unauthorized emulator breaks every Android tester on this machine, not only
+   its own: maestro's adb client throws on any unauthorized device on the shared server and
+   reports each tester's emulator as `not connected`. `android` stops after 30 seconds of it, and `maestro` and `batch` name the
+   unauthorized serial when they see one; authorize it, or disconnect it, before going on.
+
+After `adb kill-server` the next harness command announces the emulator to the new server
+itself (`host:emulator:<port>`), since adb only scans for emulators as it starts.
 
 ## Permission asks
 

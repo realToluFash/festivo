@@ -18,6 +18,8 @@ export interface ContactRow {
   shown: string;
   verified: boolean;
   primary: boolean;
+  /** An address Soirely stopped sending to (sc-4332); never a number. */
+  undeliverable?: boolean;
 }
 
 /** The one line under you: what just happened until the page is left, else what is not verified yet. */

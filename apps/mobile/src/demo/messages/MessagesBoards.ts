@@ -40,6 +40,20 @@ const BOARDS: Record<MessagesState, readonly [string, string]> = {
   sendNow: ['send now', 'The check set to now, or Keep it scheduled'],
   cancelAsk: ['cancel…, asked', 'Keep it first; Cancel message'],
   scheduledCancelled: ['cancelled, scheduled', 'Greyed; its row in Done reads Cancelled'],
+  scheduledPaused: [
+    'scheduled, the event paused',
+    'The paused line where Goes… was; Edit, Send now, Cancel… stay',
+  ],
+  scheduledPausedLate: [
+    'paused past its time',
+    'Set for 08:00 today, still paused: the same line, no Goes…',
+  ],
+  scheduledPausedEdit: ['editing while paused', 'Editing., with no time'],
+  scheduledFinished: [
+    'cancelled by Soirely',
+    'The event finished before this message was due; in Done',
+  ],
+  scheduledTooLate: ['not sent: too late', 'Not resumed or restored within 48 hours; in Done'],
   fixed: ['after a fix', 'Bounced kept; Updated · not sent yet, and Send to Tomás Ferreira again'],
   sentAgain: ['sent again', 'Sent to Tomás Ferreira; Resend to the 10 not reached'],
   checkAll: ['the check, all guests', 'Sending to 142 people; 9 can’t be told'],
@@ -67,6 +81,15 @@ const BOARDS: Record<MessagesState, readonly [string, string]> = {
   longMessage: ['a message too long', 'Shorten the message to 10,000 characters or fewer'],
   closedDraft: ['new unavailable, a draft', 'This event is a draft; New is off'],
   closedEnded: ['new unavailable, long finished', 'Finished more than 30 days ago; New is off'],
+  noManage: [
+    'reading without sending',
+    'Kofi Mensah, Read-only: no New, no To; Only someone who can change Messages can send.',
+  ],
+  noManageDraft: ['reading without sending, a draft', 'The line alone, not the draft’s reason'],
+  noManageEnded: [
+    'reading without sending, long finished',
+    'The line alone, not the finished event’s reason',
+  ],
   forbidden: ['no access', 'Without messages.read: the refusal, no list, no count'],
   insert: ['Insert', 'A menu on the iPad, a sheet on the phone: four tokens, each with its line'],
   previewAs: ['Preview as', 'Open on the five people in To, A to Z'],
@@ -109,6 +132,98 @@ const BOARDS: Record<MessagesState, readonly [string, string]> = {
   askSentOne: ['ask an owner, one owner', 'The owner has been sent the link to Plan and billing'],
   askFailed: ['ask an owner, not sent', 'Not sent. Try again in a moment.'],
   sendWithout: ['after Send without SMS', 'The ten seconds, told by Email only'],
+  noticeNoConsent: [
+    'refused: has not agreed to WhatsApp',
+    'Kwame Mensah: Has not agreed to WhatsApp; tell them now by Email or SMS',
+  ],
+  noticeNoTemplate: [
+    'refused: the WhatsApp message can’t be used',
+    'Lucía Ortega: cannot be sent in Spanish at the moment; Email or SMS',
+  ],
+  noticeStoppedWhatsApp: [
+    'refused: stopped WhatsApp',
+    'Lucía Ortega stopped WhatsApp · 08:15; Email or SMS',
+  ],
+  noticeStopped: ['refused: texted STOP', 'Kwame Mensah stopped texts · 21:40; Email'],
+  noticeBouncing: [
+    'refused: address bouncing, none left',
+    'Inês Duarte: Address is bouncing; no other channel',
+  ],
+  noticeSpam: ['refused: reported as spam', 'Inês Duarte: Reported an earlier email as spam'],
+  noticeUnsubscribed: ['refused: unsubscribed', 'Inês Duarte: Unsubscribed; no other channel'],
+  noticeWindowClosed: [
+    'the 24 hours ran out while writing',
+    'Nothing was sent; Send again goes as the approved WhatsApp message',
+  ],
+  noticeWindowRefused: [
+    'the 24 hours ran out, then refused',
+    'Nothing was sent, then the refusal; Email or SMS',
+  ],
+  noticeQuiet: [
+    'quiet hours: the notice waits',
+    'Valentina Restrepo: This WhatsApp message waits until 09:00, their time.',
+  ],
+  noticeAskOwner: [
+    'the notice waits: Ask an owner',
+    'Bisi Okafor, Admin: Ask an owner where the app’s line was',
+  ],
+  noticeAskSent: [
+    'the notice waits: owners asked',
+    'The owners have been sent the link to Plan and billing',
+  ],
+  noticeAskFailed: ['the notice waits: asking failed', 'Not sent. Try again in a moment.'],
+  textsBackOn: ['texts back on after START', 'Kwame Mensah started texts again · 08:30'],
+  attachmentsNotKept: [
+    'attachments not kept',
+    'Camille Dubois: a later email · 2 attachments not kept',
+  ],
+  sharedNumber: ['a number two guests share', '+44 7700 900412 · shared by 2 guests; Change guest'],
+  readOnly: [
+    'a Read-only member',
+    'Kofi Mensah, Read-only: Only someone who can change Messages can send; Who it reached without actions',
+  ],
+  tapNotComing: [
+    'A tap: Not coming, with companions',
+    'Kwame Mensah answered Not coming by WhatsApp. · 08:20; WhatsApp · Read; in Done',
+  ],
+  tapNotSure: [
+    'A tap: Not sure yet',
+    'Kwame Mensah answered Not sure yet by WhatsApp. · 08:20; WhatsApp · Delivered',
+  ],
+  tapNeedsYou: [
+    'A tap under a question that waits',
+    'Lucía Ortega answered Not sure yet; the message in Spanish; still in Needs you',
+  ],
+  tapFailed: ['A tap: the message failed', 'Kwame Mensah answered Not coming; WhatsApp · Failed'],
+  tapNoCredits: [
+    'A tap: not enough credits',
+    'Kwame Mensah answered Not coming; Not sent · Not enough credits',
+  ],
+  tapStopped: [
+    'A tap after stopping WhatsApp',
+    'Lucía Ortega answered Not coming; Not sent · Stopped WhatsApp',
+  ],
+  tapComing: [
+    'A Coming guest’s tap',
+    'Kwame Mensah tapped Not coming in WhatsApp. Nothing changed.; WhatsApp · Read',
+  ],
+  tapComingNotSent: [
+    'A Coming guest’s tap, not enough credits',
+    'Kwame Mensah tapped Not coming; Not sent · Not enough credits',
+  ],
+  tapRepeat: [
+    'A repeat tap, the first in 24 hours',
+    'Not sure yet at 08:20, then tapped again at 08:31; WhatsApp · Delivered',
+  ],
+  tapRepeatAgain: ['A further repeat: no line', 'The conversation as the first repeat left it'],
+  tapClosed: [
+    'A tap after answers closed',
+    'Kwame Mensah tapped Not sure yet; Answers closed on 2 November 2026.',
+  ],
+  tapFirst: [
+    'A tap from a guest with no conversation: one starts in Done',
+    'Valentina Restrepo answered Not coming by WhatsApp. · 08:20, under the invitation; first in Done, not unread, not counted',
+  ],
   stopAction: [
     'the conversation’s actions, open',
     'Inês Duarte’s conversation, the menu or action sheet open',
@@ -123,6 +238,151 @@ const BOARDS: Record<MessagesState, readonly [string, string]> = {
   stoppedNoManage: [
     'stopped, without messages.manage',
     'No More actions; the inset without Let them write again',
+  ],
+  reasons: [
+    'every reason',
+    'Parking by Email only: Bounced, Failed, Opted out, Skipped; Try SMS instead by the person',
+  ],
+  trySms: ['try SMS instead', 'Olumide Bello: SMS · 1 part · GSM-7; 62 credits, 1,438 after'],
+  trySmsQuiet: [
+    'try SMS instead, at night for them',
+    'Rafael Costa at 06:41: This text waits until 09:00, their time.',
+  ],
+  trySmsShort: [
+    'try SMS instead, too few credits',
+    'Yuki Tanaka: 1 SMS message will wait for credits.',
+  ],
+  trySmsSent: ['then send by SMS', 'Sent to Olumide Bello; Bounced · 1, Resend to the 8'],
+  closedReached: [
+    'who it reached, the sends off',
+    'Finished more than 30 days ago: Try SMS instead, Send again and Resend off',
+  ],
+  reachedQuiet: [
+    'a text waiting for the morning',
+    'Valentina Restrepo: SMS · Waiting until 09:00, their time; In progress',
+  ],
+  smsLine: [
+    'SMS ticked: who it reaches',
+    'To All guests · 142: SMS reaches 39 of 142, under the chips',
+  ],
+  checkQuiet: [
+    'the check, texts waiting for morning',
+    'Coming · 96 by email and SMS: Texts to 4 people wait until 09:00, their time',
+  ],
+  checkQuietBoth: [
+    'the check, texts and WhatsApp waiting',
+    'Email · 92, SMS · 28, WhatsApp · 3; texts and WhatsApp messages to 4 people wait',
+  ],
+  checkNow: [
+    'happening now at 23:00: nothing waits',
+    'Thu, Nov 5 at 23:00 while the wedding is on: no wait line',
+  ],
+  reachedSmsFailed: [
+    'who it reached, texts that failed',
+    'Six reached by email whose text failed, each with its reason',
+  ],
+  previewFirstText: [
+    'preview: a first text',
+    'Amaka Eze: SMS · 2 parts · GSM-7 · 177 characters, ending Reply STOP to opt out.',
+  ],
+  tellDates: [
+    'tell guests, the dates',
+    'The end moved to Sunday: the dates line, each side a range',
+  ],
+  tellDateTime: [
+    'tell guests, a date and a start time',
+    'Cut to Friday evening: the date, then the start',
+  ],
+  tellVenueAdded: [
+    'tell guests, a venue added',
+    'The venue is now Rosewood London; the email adds its address',
+  ],
+  tellVenueGone: [
+    'tell guests, a venue removed',
+    'The venue is to be confirmed (was The Landmark)',
+  ],
+  tellAddress: ['tell guests, only the address changed', 'Both sides give the address'],
+  tellAddressAdded: ['tell guests, an address added', 'The Landmark is at 222 Marylebone Road'],
+  tellPause: ['tell guests, Pause', 'Over the paused page: paused for now'],
+  tellCallOff: ['tell guests, Call off', 'Everyone invited, 142: called off'],
+  tellResume: ['tell guests, Resume', 'Everyone who was told it was paused: back on'],
+  tellEndNow: [
+    'tell guests, End now before the last day',
+    'Ended early: what was still to come won’t go ahead',
+  ],
+  tellTables: [
+    'tell guests, Share tables',
+    'Coming guests who have a table, 96; each guest’s own table added',
+  ],
+  tellMenu: ['tell guests, a menu change', 'Six guests by email alone: no cost line'],
+  tellLink: ['tell guests, Replace link', 'Tell Kwame Mensah? and no line saying who'],
+  tellSeeWho: [
+    'tell guests, See who',
+    'Joaquín Ruiz and Sophie Laurent, each with why; pressed again it closes',
+  ],
+  tellHeld: [
+    'tell guests, too few credits',
+    '14 texts and WhatsApp messages will wait; Send still sends',
+  ],
+  tellQuiet: ['tell guests, quiet hours', 'Texts to 3 people wait until 09:00, their time'],
+  tellMerged: [
+    'tell guests, two changes',
+    'The start time and the venue, one message, a line a field',
+  ],
+  tellMixed: [
+    'tell guests, changes for different guests',
+    'A new venue and tables shared, each with who gets it',
+  ],
+  untoldEvent: [
+    'not told yet, on the event’s page',
+    'The banner under the cover card, above Details',
+  ],
+  untoldMerged: ['not told yet, two changes', 'New start time and New venue, an item to a line'],
+  untoldPaused: [
+    'not told yet, a pause',
+    'Paused on the banner, over the paused page; Resume takes it off',
+  ],
+  untoldDismissed: ['not told yet, dismissed', 'Dismissed. Nothing was sent.'],
+  changeSending: ['a change, sending', 'Sending to 130 guests.'],
+  changeRow: ['a change, its row', 'Change · New start time, Not reached · 2, in Needs you'],
+  changeSent: ['a change, opened', 'What Soirely sent, the note on their page, and the reach'],
+  changeMerged: ['a change, several sent', 'Change · 2 changes'],
+  changeDone: ['a change, everyone reached', 'Change · Menu choices to make again, in Done'],
+  tellMenuOne: ['tell guests, one guest', 'Tell Lucía Ortega? over a menu change'],
+  sendOffline: [
+    'tell guests, Send with no connection',
+    'Not sent. Check your connection and try again.',
+  ],
+  sendUnconfirmed: ['tell guests, Send not confirmed', 'Press Send again: nobody is told twice'],
+  sendRefusedRole: [
+    'tell guests, Send refused for the role',
+    'Your role does not include the permission this needs',
+  ],
+  sendRefusedEvent: [
+    'tell guests, Send refused, a draft',
+    'This event is a draft. Make it live to write to your guests.',
+  ],
+  sendRefusedFinished: [
+    'tell guests, Send refused, long finished',
+    'Finished more than 30 days ago',
+  ],
+  sendRefusedDeleted: ['tell guests, Send refused, deleted', 'This event is not available.'],
+  sendRefused: ['tell guests, Send refused', 'Not sent. Try again in a moment.'],
+  allTold: [
+    'tell guests, every change already told',
+    'Your guests had already been told, so nothing was sent again.',
+  ],
+  figuresLoading: [
+    'tell guests, the figures loading',
+    'Tell guests? over quiet shapes; Send sends nothing',
+  ],
+  figuresPressedEarly: [
+    'tell guests, Send pressed while loading',
+    'Not sent yet. Check the numbers, then press Send.',
+  ],
+  figuresFailed: [
+    'tell guests, the figures did not load',
+    'Send loads them again, sending nothing',
   ],
 };
 

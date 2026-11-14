@@ -12,7 +12,6 @@ use App\Entity\Membership;
 use App\Entity\Organisation;
 use App\Entity\User;
 use App\Enum\Actor;
-use App\Http\AfterResponse;
 use App\Http\Exception\ApiException;
 use App\Repository\MembershipRepository;
 use DateTimeImmutable;
@@ -31,7 +30,6 @@ final readonly class OrganisationDeleter
         private OwnerCheck $ownerCheck,
         private EntityManagerInterface $entityManager,
         private Auditor $auditor,
-        private AfterResponse $afterResponse,
         private OrganisationDeletionMailer $organisationDeletionMailer,
         private TranslatorInterface $translator,
         private ClockInterface $clock,
@@ -52,14 +50,16 @@ final readonly class OrganisationDeleter
 
         $members = Vec\map($this->membershipRepository->findActiveIn($organisation), static fn (Membership $membership): User => $membership->getUser());
         $at = RestoreWindow::toTheSecond($this->clock->now());
-        $organisation->setDeletedAt($at);
-        $organisation->setDeletedBy($by->getId());
-        $this->auditor->record(self::DELETED, 'Organisation', $organisation->getId(), Actor::User, $by->getId(), $by->getName(), [
-            'deletedAt' => [null, $at->format(\DATE_ATOM)],
-        ]);
-        $this->entityManager->flush();
 
-        $this->afterResponse->defer(fn () => $this->organisationDeletionMailer->sendDeleted($organisation, $by, $members, $at, $asked));
+        $this->entityManager->wrapInTransaction(function () use ($organisation, $by, $members, $at, $asked): void {
+            $organisation->setDeletedAt($at);
+            $organisation->setDeletedBy($by->getId());
+            $this->auditor->record(self::DELETED, 'Organisation', $organisation->getId(), Actor::User, $by->getId(), $by->getName(), [
+                'deletedAt' => [null, $at->format(\DATE_ATOM)],
+            ]);
+            $this->entityManager->flush();
+            $this->organisationDeletionMailer->sendDeleted($organisation, $by, $members, $at, $asked);
+        });
 
         return $at;
     }

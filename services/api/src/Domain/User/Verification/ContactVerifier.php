@@ -4,6 +4,8 @@ declare(strict_types=1);
 
 namespace App\Domain\User\Verification;
 
+use App\Domain\Messaging\EmailSuppressions;
+use App\Entity\EmailAddress;
 use App\Entity\VerifiableContact;
 use App\Entity\VerificationChallenge;
 use App\Enum\CodeState;
@@ -21,6 +23,7 @@ final readonly class ContactVerifier
     public function __construct(
         private VerificationChallengeRepository $verificationChallengeRepository,
         private EntityManagerInterface $entityManager,
+        private EmailSuppressions $emailSuppressions,
     ) {
     }
 
@@ -67,6 +70,10 @@ final readonly class ContactVerifier
 
         $contact->setVerifiedAt(new DateTimeImmutable());
         $challenge->setRevokedAt(new DateTimeImmutable());
+
+        if ($contact instanceof EmailAddress) {
+            $this->emailSuppressions->lift($contact->getAddress());
+        }
     }
 
     /** A try against one challenge, counted when wrong but never spent: recovery spends two codes together (sc-509). */

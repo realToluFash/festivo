@@ -1,6 +1,6 @@
 import { CLOCKS, localDay, sampleEvent } from './events.ts';
 import type { Choice } from './guests.ts';
-import { CHOICE_WORDS, figure } from './guestsWords.ts';
+import { CHOICE_WORDS, GW, figure } from './guestsWords.ts';
 
 /** sc-3784's Export at a desk: the dialog's choices, the file it names, and what it says while the file is made. */
 export type Scope = 'view' | 'all';
@@ -76,8 +76,8 @@ export const XW = {
 };
 
 /** What narrows This view, as whole lines with slots: the menu's choice, then the search. */
-export function narrowing(choice: Choice, q: string): string {
-  const shown = CHOICE_WORDS[choice];
+export function narrowing(choice: Choice | 'changed', q: string): string {
+  const shown = choice === 'changed' ? GW.changedSince : CHOICE_WORDS[choice];
   const query = q.trim();
 
   return query === '' ? `Filter: ${shown}` : `Filter: ${shown} · search “${query}”`;

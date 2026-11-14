@@ -12,6 +12,7 @@ import {
 import Svg, { Circle } from 'react-native-svg';
 
 import { Glyph } from './Glyph.tsx';
+import { pressOnDoubleTap } from './screenReaderFocus.ts';
 import { useReadOut } from './ReadOut.tsx';
 import { Text, type TextHandle } from './Text.tsx';
 import { glide } from '../motion.ts';
@@ -24,6 +25,13 @@ const hidden = {
   accessibilityElementsHidden: true,
   importantForAccessibility: 'no-hide-descendants',
 } as const;
+
+/** With TalkBack on, a button left without input focus loses its click too, so its double tap presses it instead (PR #2155). */
+export function takingFocus(takesFocus: boolean, onPress: (() => void) | undefined) {
+  if (takesFocus) return {};
+
+  return { focusable: false, ...pressOnDoubleTap(onPress) };
+}
 
 /** Three bars, Violet as far as the step, and "Step n of 3" under them: one element. */
 export function Progress({
@@ -105,17 +113,20 @@ function Bar({
 export function NavAction({
   label,
   back = false,
+  takesFocus = true,
   onPress,
   testID,
 }: {
   label: string;
   back?: boolean;
+  takesFocus?: boolean;
   onPress: () => void;
   testID: string;
 }) {
   return (
     <Pressable
       onPress={onPress}
+      {...takingFocus(takesFocus, onPress)}
       hitSlop={tokens.spaceXxs}
       style={({ pressed }) => [styles.nav, back && styles.navBack, pressed && styles.pressed]}
       accessibilityRole="button"
@@ -187,6 +198,7 @@ export function WalkButton({
   height,
   size,
   full = true,
+  takesFocus = true,
   onPress,
   ref,
   testID,
@@ -198,6 +210,7 @@ export function WalkButton({
   height: number;
   size: number;
   full?: boolean;
+  takesFocus?: boolean;
   onPress: () => void;
   ref?: Ref<ViewInstance>;
   testID: string;
@@ -208,6 +221,7 @@ export function WalkButton({
     <Pressable
       ref={ref}
       onPress={busy ? undefined : onPress}
+      {...takingFocus(takesFocus, busy ? undefined : onPress)}
       style={({ pressed }) => [
         styles.button,
         primary ? styles.primary : styles.secondary,

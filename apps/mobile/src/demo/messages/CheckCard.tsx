@@ -11,9 +11,10 @@ import { OWNER, type Waits, waitsCheckOf } from './CheckWaits.ts';
 import { ChannelTick } from './Composers.tsx';
 import { MessageGlyph } from './MessageMarks.tsx';
 import { type Draft, checkOf, dayWords } from './MessagesModel.ts';
-import { RESEND, formatCount, BALANCE } from './MessagesSample.ts';
+import { RESEND, formatCount, BALANCE, MOBILES } from './MessagesSample.ts';
 import type { ResendView } from './Reach.ts';
-import { WhatsAppReach } from './WhatsAppParts.tsx';
+import { quietLineOf } from './Sms.ts';
+import { ChannelReach, InsteadLine } from './WhatsAppParts.tsx';
 import { CHANNEL_WORD, type ChannelKey, W, say } from './MessagesWords.ts';
 import { WaitBlock } from './WaitBlock.tsx';
 
@@ -117,11 +118,13 @@ export function CheckCard({
   onSeeAll,
   balance = BALANCE,
   waits,
+  clock,
   onWithout,
 }: {
   draft: Draft;
   locale: string;
   balance?: number;
+  clock?: string | undefined;
   waits?: Waits | undefined;
   onWithout?: (drops: readonly ChannelKey[]) => void;
   headRef?: Ref<TextHandle>;
@@ -136,6 +139,7 @@ export function CheckCard({
   const waiting = draft.at == null ? waitsCheckOf(draft, balance, locale) : null;
   const check = waiting?.check ?? checkOf(draft);
   const at = draft.at;
+  const quiet = at == null ? quietLineOf(MOBILES[draft.to], draft.channels, clock) : null;
 
   return (
     <Rising>
@@ -173,7 +177,9 @@ export function CheckCard({
           ))}
         </View>
       )}
-      {check.reach != null && <WhatsAppReach line={check.reach} />}
+      {check.smsReach != null && <ChannelReach channel="sms" line={check.smsReach} />}
+      {check.reach != null && <ChannelReach channel="wa" line={check.reach} />}
+      {check.instead != null && <InsteadLine line={check.instead} />}
       {check.smsOff > 0 && (
         <Text size={14} weight="semibold" style={styles.line}>
           {say.smsOff(check.smsOff)}
@@ -210,6 +216,16 @@ export function CheckCard({
           waits={waits ?? OWNER}
           onWithout={(drops) => onWithout?.(drops)}
         />
+      )}
+      {quiet != null && (
+        <View style={styles.quiet} testID="messages.check.quiet">
+          <View style={styles.quietMark}>
+            <Glyph name="clock" size={15} ink={tokens.colorInkSecondary} weight={2.2} />
+          </View>
+          <Text size={13.5} weight="semibold" style={[styles.small, styles.grow]}>
+            {quiet}
+          </Text>
+        </View>
       )}
       <View style={styles.actions}>
         <BigButton
@@ -414,6 +430,9 @@ const styles = StyleSheet.create({
     backgroundColor: tokens.colorInset,
   },
   cant: { gap: 3 },
+  quiet: { flexDirection: 'row', alignItems: 'flex-start', gap: tokens.spaceXs },
+  quietMark: { paddingTop: 2 },
+  grow: { flex: 1 },
   ask: {
     width: '100%',
     maxWidth: 520,

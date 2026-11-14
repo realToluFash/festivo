@@ -96,6 +96,72 @@ describe('Guests, the list (sc-31781)', () => {
     expect(screen.getByRole('button', { name: 'All · 156' })).toBeDefined();
   });
 
+  it(
+    'puts Changed since you looked first in the menu while something changed (sc-4331)',
+    SLOW,
+    async () => {
+      const router = await guests('changedRow');
+      const menu = screen.getByRole('menu');
+      const items = within(menu).getAllByRole('menuitemradio');
+
+      expect(items.slice(0, 2).map((item) => item.textContent)).toEqual([
+        'Changed since you looked5',
+        'All156',
+      ]);
+      fireEvent.click(items[0] as HTMLElement);
+
+      expect(screen.getByRole('button', { name: 'Changed since you looked · 5' })).toBeDefined();
+      expect(screen.getByText('5 of 156 shown')).toBeDefined();
+      expect(router.state.location.search).toContain('filter=changed');
+      expect(
+        screen.getByRole('link', { name: 'Lucía Ortega, Not sure yet · Changed at 09:31' }),
+      ).toBeDefined();
+
+      fireEvent.click(screen.getByRole('button', { name: 'Changed since you looked · 5' }));
+      fireEvent.click(
+        within(screen.getByRole('menu')).getByRole('menuitemradio', {
+          name: /^Changed since you looked/u,
+          checked: true,
+        }),
+      );
+      expect(screen.getByRole('button', { name: 'Changed since you looked · 5' })).toBeDefined();
+      expect(screen.getByText('5 of 156 shown')).toBeDefined();
+
+      fireEvent.click(within(main()).getByRole('button', { name: 'Clear' }));
+      fireEvent.click(screen.getByRole('button', { name: 'All · 156' }));
+      expect(
+        within(screen.getByRole('menu')).queryByRole('menuitemradio', {
+          name: /^Changed since you looked/u,
+        }),
+      ).toBeNull();
+    },
+  );
+
+  it('counts no changes on an event other than the wedding (sc-4331)', SLOW, async () => {
+    await guests('changedRow');
+    cleanup();
+    open('/demo/guests?event=evt-party-2');
+    fireEvent.click(await screen.findByRole('button', { name: /^All · 48$/u }, WAIT));
+
+    expect(
+      within(screen.getByRole('menu')).queryByRole('menuitemradio', {
+        name: /^Changed since you looked/u,
+      }),
+    ).toBeNull();
+  });
+
+  it('says when nothing has changed since the last look (sc-4331)', SLOW, async () => {
+    await guests('changedNone');
+
+    expect(screen.getByRole('button', { name: 'Changed since you looked · 0' })).toBeDefined();
+    expect(
+      screen.getByRole('heading', { name: 'Nothing has changed since you last looked.' }),
+    ).toBeDefined();
+    fireEvent.click(screen.getByRole('button', { name: 'Show all guests' }));
+
+    expect(screen.getByRole('button', { name: 'All · 156' })).toBeDefined();
+  });
+
   it('finds a guest and their companion as one types', SLOW, async () => {
     await guests('search');
 
@@ -178,6 +244,22 @@ describe('Guests, the list (sc-31781)', () => {
     expect(screen.getByRole('button', { name: 'Make live' })).toBeDefined();
   });
 
+  it('offers Change dates on a Draft whose end has passed, opening its dates', SLOW, async () => {
+    const router = await guests('draftPast');
+
+    expect(
+      screen.getByText(
+        'This event’s end has passed, so it cannot be made live. Change its dates first.',
+      ),
+    ).toBeDefined();
+    expect(screen.queryByRole('button', { name: 'Make live' })).toBeNull();
+    fireEvent.click(screen.getByRole('button', { name: 'Change dates' }));
+    await waitFor(
+      () => expect(router.state.location.pathname).toBe('/demo/events/evt-shower-2'),
+      WAIT,
+    );
+  });
+
   it('answers not-found once the event is deleted (sc-1468)', SLOW, async () => {
     open('/demo/guests?state=eventDeleted');
     const gone = await screen.findByRole(
@@ -254,11 +336,12 @@ describe('Guests, the card’s words and the view in the address (sc-3772)', () 
     fireEvent.change(box, { target: { value: 'okon' } });
 
     expect(screen.getByText('2 of 156 shown')).toBeDefined();
-    await waitFor(() => expect(router.state.location.search).toBe('?state=inUse&q=okon'), WAIT);
+    await act(() => new Promise((settled) => setTimeout(settled, SEARCH_SETTLES_MS + 100)));
+    expect(router.state.location.search).toBe('?state=inUse&q=okon');
 
     await act(() => router.navigate(-1));
 
-    await waitFor(() => expect(box.value).toBe(''), WAIT);
+    expect(box.value).toBe('');
     expect(screen.queryByText('2 of 156 shown')).toBeNull();
   });
 
@@ -946,6 +1029,12 @@ describe('Guests, the link and Mark as invited (sc-1526, sc-3788)', () => {
         await screen.findByRole('alertdialog', { name: 'Replace Dr Emeka Nwosu’s link?' }),
       ).getByRole('button', { name: 'Replace link' }),
     );
+    fireEvent.click(
+      within(await screen.findByRole('dialog', { name: 'Tell Dr Emeka Nwosu?' })).getByRole(
+        'button',
+        { name: 'Not now' },
+      ),
+    );
 
     expect(
       await within(column()).findByText(
@@ -1060,7 +1149,7 @@ describe('Guests, the link and Mark as invited (sc-1526, sc-3788)', () => {
       expect(within(invitation).getByText('Invited by Soirely’s message, Oct 12')).toBeDefined();
       expect(
         within(invitation).getByText(
-          'You can see names, replies and who is invited. Marking guests as invited needs a host or organiser role.',
+          'You can see names, replies and who is invited. Marking guests as invited needs the Lead or Can edit role.',
         ),
       ).toBeDefined();
       expect(within(invitation).queryByRole('button')).toBeNull();
@@ -1201,6 +1290,14 @@ describe('Guests, places for companions (sc-3779)', () => {
     expect(within(column()).getByText('Named by the guest')).toBeDefined();
     expect(within(column()).getByText('1 companion · 1 of 1 named')).toBeDefined();
   });
+
+  it('says how many places are named in the list row, under the guest’s name', SLOW, async () => {
+    await guests('namedByGuest');
+
+    const row = screen.getByRole('link', { name: /^Sophie Laurent, Coming/u });
+
+    expect(within(row).getByText(/· 1 companion · 1 of 1 named$/u)).toBeDefined();
+  });
 });
 
 describe('Guests, needs recorded as facts (sc-3777)', () => {
@@ -1235,6 +1332,34 @@ describe('Guests, needs recorded as facts (sc-3777)', () => {
     expect(within(needs).getByText('Vegetarian')).toBeDefined();
     expect(within(needs).getByRole('heading', { level: 4, name: 'Rui Duarte' })).toBeDefined();
     expect(within(needs).getByText('Sesame')).toBeDefined();
+  });
+
+  it(
+    'says under each person’s needs when the guest last changed them (sc-3778)',
+    SLOW,
+    async () => {
+      await guests('needsChangedByGuest');
+
+      const needs = within(column()).getByRole('region', { name: 'Needs' });
+
+      expect(within(needs).getAllByText('Last changed by the guest on Oct 13.')).toHaveLength(2);
+    },
+  );
+
+  it('drops the guest’s line once a host changes that record (sc-3778)', SLOW, async () => {
+    await guests('needsChangedByHosts');
+
+    const needs = within(column()).getByRole('region', { name: 'Needs' });
+    const rui = within(needs).getByRole('heading', { level: 4, name: 'Rui Duarte' });
+
+    expect(within(needs).getAllByText(/^Last changed by/u)).toHaveLength(1);
+    expect(rui.parentElement?.textContent).toContain('Last changed by the guest on Oct 13.');
+  });
+
+  it('says nothing about who changed needs the hosts entered (sc-3778)', SLOW, async () => {
+    await guests('needsDetails');
+
+    expect(within(column()).queryByText(/^Last changed by/u)).toBeNull();
   });
 
   it('narrows the list with the Dietary notes chip, said on in words', SLOW, async () => {
@@ -1461,6 +1586,155 @@ describe('Guests, WhatsApp on a guest’s page (sc-3950)', () => {
     expect(
       within(column()).queryByRole('button', { name: 'The guest agreed to WhatsApp' }),
     ).toBeNull();
+  });
+});
+
+describe('Guests, a guest’s opt-outs (sc-3969)', () => {
+  const ONLY = 'Only the guest can change this.';
+
+  function detailRows(): string[][] {
+    const details = within(column()).getByRole('region', { name: 'Details' });
+
+    return [...details.querySelectorAll('.desk-rows > li')].map((row) =>
+      [...row.querySelectorAll('.desk-row-name, .desk-row-line')].map(
+        (words) => words.textContent ?? '',
+      ),
+    );
+  }
+
+  async function rowsOf(state: string): Promise<string[][]> {
+    await guests(state);
+    const rows = detailRows();
+    cleanup();
+
+    return rows;
+  }
+
+  const isOptOut = (row: readonly string[]) =>
+    /^Unsubscribed from (email|texts) /u.test(row[0] ?? '');
+
+  it('puts each line under its contact row, the rest as sc-3950’s state has it', SLOW, async () => {
+    const pairs = [
+      ['optOutEmail', 'whatsAppNone'],
+      ['optOutTexts', 'whatsAppNone'],
+      ['optOutTextsWhatsApp', 'whatsAppOptedOut'],
+      ['optOutAll', 'whatsAppOptedOut'],
+      ['optOutNoMobile', 'whatsAppNoMobile'],
+    ] as const;
+    const read: Record<string, string[][]> = {};
+
+    for (const [state, plain] of pairs) {
+      read[state] = await rowsOf(state);
+      expect(read[state].filter((row) => !isOptOut(row))).toEqual(await rowsOf(plain));
+    }
+
+    const contact = (state: string) => {
+      const rows = read[state] ?? [];
+
+      return rows.slice(
+        rows.findIndex((row) => row[1] === 'Email address'),
+        rows.findIndex((row) => row[1] === 'Language'),
+      );
+    };
+
+    expect(contact('optOutEmail')).toEqual([
+      ['kwame.mensah@outlook.com', 'Email address'],
+      ['Unsubscribed from email on Oct 22', ONLY],
+      ['+44 7700 900412', 'Mobile number'],
+      ['Has not agreed to WhatsApp', 'WhatsApp'],
+    ]);
+    expect(contact('optOutTexts')).toEqual([
+      ['kwame.mensah@outlook.com', 'Email address'],
+      ['+44 7700 900412', 'Mobile number'],
+      ['Unsubscribed from texts on Oct 29', ONLY],
+      ['Has not agreed to WhatsApp', 'WhatsApp'],
+    ]);
+    expect(contact('optOutTextsWhatsApp')).toEqual([
+      ['sophie.laurent@orange.fr', 'Email address'],
+      ['+33 6 41 27 88 05', 'Mobile number'],
+      ['Unsubscribed from texts on Oct 27'],
+      ['Unsubscribed from WhatsApp on Nov 1', ONLY],
+    ]);
+    expect(contact('optOutAll')).toEqual([
+      ['sophie.laurent@orange.fr', 'Email address'],
+      ['Unsubscribed from email on Oct 20', ONLY],
+      ['+33 6 41 27 88 05', 'Mobile number'],
+      ['Unsubscribed from texts on Oct 27'],
+      ['Unsubscribed from WhatsApp on Nov 1', ONLY],
+    ]);
+    expect(contact('optOutNoMobile')).toEqual([
+      ['ines.duarte@sapo.pt', 'Email address'],
+      ['Unsubscribed from email on Oct 25', ONLY],
+      ['None', 'Mobile number'],
+    ]);
+  });
+
+  it('draws a line as a row with the opted-out mark, not a control', SLOW, async () => {
+    await guests('optOutAll');
+    const line = within(column()).getByText('Unsubscribed from email on Oct 20').closest('li');
+
+    expect(line?.querySelector('.gs-lead[aria-hidden="true"] svg')).not.toBeNull();
+    expect(line?.querySelectorAll('button, a, [tabindex]')).toHaveLength(0);
+    expect(line?.getAttribute('tabindex')).toBeNull();
+    expect(within(column()).getAllByText(ONLY)).toHaveLength(2);
+  });
+
+  it('shows a view-only role exactly what whatsAppViewer shows', SLOW, async () => {
+    await guests('whatsAppViewer');
+    const plain = column().textContent;
+    cleanup();
+
+    await guests('optOutViewer');
+
+    expect(column().textContent).toBe(plain);
+    expect(within(column()).queryByText(/^Unsubscribed from/u)).toBeNull();
+    expect(within(column()).queryByText(ONLY)).toBeNull();
+  });
+
+  it('keeps the lines through The guest agreed to WhatsApp', SLOW, async () => {
+    await guests('optOutTexts');
+
+    fireEvent.click(within(column()).getByRole('button', { name: 'The guest agreed to WhatsApp' }));
+    fireEvent.click(await screen.findByRole('radio', { name: 'In person' }));
+    fireEvent.click(within(column()).getByRole('button', { name: 'Save' }));
+
+    expect(
+      await within(column()).findByText(
+        'Agreed to WhatsApp in person, recorded by Folake Adeyemi on Nov 3',
+        {},
+        WAIT,
+      ),
+    ).toBeDefined();
+    expect(within(column()).getByText('Unsubscribed from texts on Oct 29')).toBeDefined();
+    expect(within(column()).getByText(ONLY)).toBeDefined();
+  });
+
+  it('drops a line once Edit puts another address on its row', SLOW, async () => {
+    await guests('optOutAll');
+
+    fireEvent.click(within(column()).getByRole('button', { name: 'Edit' }));
+    fireEvent.change(await screen.findByRole('textbox', { name: /Email address/u }), {
+      target: { value: 'sophie@laurent.fr' },
+    });
+    fireEvent.change(screen.getByRole('textbox', { name: /Mobile number/u }), {
+      target: { value: '' },
+    });
+    fireEvent.click(within(column()).getByRole('button', { name: 'Save' }));
+
+    expect(await within(column()).findByText('sophie@laurent.fr', {}, WAIT)).toBeDefined();
+    expect(within(column()).queryByText(/^Unsubscribed from/u)).toBeNull();
+    expect(within(column()).queryByText(ONLY)).toBeNull();
+    cleanup();
+
+    await guests('optOutTexts');
+    fireEvent.click(within(column()).getByRole('button', { name: 'Edit' }));
+    fireEvent.change(await screen.findByRole('textbox', { name: /Mobile number/u }), {
+      target: { value: '7700900412' },
+    });
+    fireEvent.click(within(column()).getByRole('button', { name: 'Save' }));
+
+    expect(await within(column()).findByText('+44 7700900412', {}, WAIT)).toBeDefined();
+    expect(within(column()).getByText('Unsubscribed from texts on Oct 29')).toBeDefined();
   });
 });
 

@@ -10,6 +10,7 @@ use App\Domain\Event\EventEditor;
 use App\Domain\Event\EventLifecycle;
 use App\Domain\Event\Http\EventSerialiser;
 use App\Domain\Event\Http\MilestoneSerialiser;
+use App\Domain\Guest\Headcount\HeadcountCalculator;
 use App\Entity\Event;
 use App\Entity\Organisation;
 use App\Entity\User;
@@ -29,6 +30,7 @@ use App\Repository\EventSearch;
 use App\Repository\OrganisationRepository;
 use DateTimeImmutable;
 use DateTimeZone;
+use Psl\Iter;
 use Psl\Math;
 use Psl\Str;
 use Psl\Type;
@@ -58,10 +60,11 @@ final readonly class EventsController
         private MilestoneSerialiser $milestoneSerialiser,
         private ClockInterface $clock,
         private EventDuplicator $eventDuplicator,
+        private HeadcountCalculator $headcountCalculator,
     ) {
     }
 
-    /** A page of the unfinished, or with `finished=true` the Finished, each with its timeline's milestones (sc-3594). A Member's has only the events they have a role on (sc-29912). */
+    /** A page of the unfinished, or with `finished=true` the Finished, each with its timeline's milestones (sc-3594) and its guest figures (sc-3786). A Member's has only the events they have a role on (sc-29912). */
     #[Route('/api/orgs/{organisationId}/events', name: 'events_list', methods: ['GET'])]
     #[InOrganisation(null)]
     public function list(Request $request, string $organisationId): JsonResponse
@@ -84,9 +87,15 @@ final readonly class EventsController
         $perPage = Math\minva($query['itemsPerPage'] ?? self::PER_PAGE, self::MOST_PER_PAGE);
         $now = $this->clock->now();
         $events = $this->eventRepository->findPageInOrganisation($organisation, $finished, $now, $page, $perPage, $scope->onlyFor, $search);
+        $counted = $this->headcountCalculator->forEvents(Vec\filter($events, static fn (Event $event): bool => $scope->on($event->getId())?->holds(Permission::GuestsRead) ?? false));
 
         return new JsonResponse([
-            'events' => Vec\map(Vec\zip($events, $this->eventSerialiser->events($events, $scope)), fn (array $pair): array => [...$pair[1], 'milestones' => $this->milestoneSerialiser->milestones($pair[0], $scope->on($pair[0]->getId()) ?? Grants::only([]))]),
+            'events' => Vec\map(Vec\zip($events, $this->eventSerialiser->events($events, $scope)), fn (array $pair): array => [
+                ...$pair[1],
+                'milestones' => $this->milestoneSerialiser->milestones($pair[0], $scope->on($pair[0]->getId()) ?? Grants::only([])),
+                // Each event's guest line (sc-3786), only where the caller reads its guests.
+                'guests' => Iter\contains_key($counted, $pair[0]->getId()->toRfc4122()) ? HeadcountCalculator::figures($counted[$pair[0]->getId()->toRfc4122()]) : null,
+            ]),
             'total' => $this->eventRepository->countPhaseInOrganisation($organisation, $finished, $now, $scope->onlyFor, $search),
             'page' => $page,
             'itemsPerPage' => $perPage,
@@ -164,18 +173,28 @@ final readonly class EventsController
         return $this->tagged($this->eventEditor->edit($event, $request->headers->get('If-Match'), $this->user(), $body));
     }
 
-    /** A Draft from `startsAt`, local to the original's zone, in any phase (sc-3593). Needs Create events, since it creates one. */
+    /** A Draft from `startsAt`, local to the original's zone, in any phase (sc-3593). Needs Create events, since it creates one, and guests.manage as well to bring the guest list (sc-3656). */
     #[Route('/api/events/{eventId}/duplicate', name: 'events_duplicate', methods: ['POST'])]
     #[InEvent(Permission::EventsCreate)]
     public function duplicate(Request $request, string $eventId): JsonResponse
     {
         $body = Input::body($request, Type\shape([
             'startsAt' => Type\optional(Type\nullable(Type\string())),
+            'copyGuests' => Type\optional(Type\bool()),
         ]));
+        $original = $this->event($eventId);
+        $copyGuests = $body['copyGuests'] ?? false;
 
-        $copy = $this->eventDuplicator->duplicate($this->event($eventId), $this->user(), $body['startsAt'] ?? null);
+        if ($copyGuests) {
+            $this->grantsOn($original)->require(Permission::GuestsManage);
+        }
 
-        return new JsonResponse(['event' => $this->eventSerialiser->event($copy, $this->grantsOn($copy))], Response::HTTP_CREATED);
+        $duplicate = $this->eventDuplicator->duplicate($original, $this->user(), $body['startsAt'] ?? null, $copyGuests);
+
+        return new JsonResponse([
+            'event' => $this->eventSerialiser->event($duplicate->copy, $this->grantsOn($duplicate->copy)),
+            ...(null === $duplicate->guestsCopied ? [] : ['guestsCopied' => $duplicate->guestsCopied]),
+        ], Response::HTTP_CREATED);
     }
 
     /** Refused 409 `event_state_invalid` unless it is a Draft, 409 `event_concluded` once its end has passed, 409 `event_host_required` with no host (sc-6713), and 403 `plan_limit` (sc-3584). */

@@ -263,9 +263,9 @@ outcome: the alternative is writing a thirty-day credential somewhere readable.
 `POST /api/auth/password/forgot` always answers `202 {}`, so it cannot be used to find out
 who has an account: a password account is emailed a link, an account with no password is
 told how it signs in, and an unknown address is sent nothing. The answer is also the same
-in time: the lookup and the email happen on `kernel.terminate`, after the response has
-gone (`AfterResponse`, the one home for work the client must not wait for), so a
-registered address is no slower to answer. Under
+in time: the lookup and the queueing of the email happen on `kernel.terminate`, after the
+response has gone (`AfterResponse`, the one home for work the client must not wait for), so a
+registered address is no slower to answer. The worker sends it (notifications.md). Under
 FrankenPHP that needs `FinishResponseListener`, which ends the response first: Symfony
 only does so itself for FastCGI and LiteSpeed. It is limited per
 address (keyed on what was typed) and per IP, and a refusal states a time.
@@ -298,7 +298,7 @@ answers `{signedOut}`, the number of other sessions it ended.
   every live refresh token but the chain of the session named, in the same transaction as
   the new hash. A `sessionId` that is not this account's keeps nothing. Other devices are
   refused on their next request (see above).
-- **The primary address is emailed** after the response (`AfterResponse`): when, and the
+- **The primary address is emailed** through the notification queue: when, and the
   device as the devices card reads it (`ReadableAgent`, the PHP twin of `readableAgent()`)
   with the network address and no place, and to reset by "Forgot your password?" if it was
   not them. It links only to sign-in, carries no part of either password, and a failed send
@@ -367,8 +367,8 @@ address is proved first:
 
 A password sign-up does not sign in, and does not make the account. `POST /api/auth/register`
 answers `202 {registration, email}` for every address, new or held by an account, with the
-same shape and in the same time: the password is hashed either way, and every email goes
-after the response (`RegistrationMail`, through `AfterResponse`). The handle lasts 24 hours and works once.
+same shape and in the same time: the password is hashed either way, and either email is one
+queued row (`RegistrationMail`), sent by the worker. The handle lasts 24 hours and works once.
 
 - **New address:** the code goes to it. `POST /api/auth/register/verify` with the handle and
   the code makes the account, its address verified, and signs it in. An unverified holder of

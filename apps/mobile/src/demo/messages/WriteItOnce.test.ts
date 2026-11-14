@@ -112,6 +112,7 @@ describe('Insert (sc-3960)', () => {
 describe('Preview as (sc-3960)', () => {
   it('offers the people in To, A to Z, each with their language named in the reader’s', () => {
     expect(PREVIEW_AS.map((person) => optionOf(person))).toEqual([
+      'Amaka Eze · English',
       'Bisi Adewale · English',
       'Camille Dubois · French',
       'Kemi Bankole · English',

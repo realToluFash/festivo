@@ -1,0 +1,53 @@
+# sc-3785 on a phone, or a tablet upright (ORIENT PORTRAIT): ${GUEST_ID}'s details in ${EVENT_ID}'s Guests go back to the list by Back to Guests, by Android's Back and by iOS's swipe from the left edge.
+appId: host.exp.Exponent
+---
+- setOrientation: ${ORIENT}
+- openLink: ${METRO_URL}/--/events/${EVENT_ID}?area=guests
+- extendedWaitUntil:
+    visible:
+      id: 'guests.row.${GUEST_ID}'
+    timeout: 30000
+- tapOn:
+    id: 'guests.row.${GUEST_ID}'
+- extendedWaitUntil:
+    visible:
+      id: 'guest.${GUEST_ID}'
+    timeout: 20000
+- assertNotVisible:
+    id: 'guests.search'
+- takeScreenshot: guest-open
+- tapOn:
+    id: 'guest.back'
+- extendedWaitUntil:
+    visible:
+      id: 'guests.row.${GUEST_ID}'
+    timeout: 10000
+- assertNotVisible:
+    id: 'guest.${GUEST_ID}'
+- takeScreenshot: back-by-button
+- tapOn:
+    id: 'guests.row.${GUEST_ID}'
+- extendedWaitUntil:
+    visible:
+      id: 'guest.${GUEST_ID}'
+    timeout: 20000
+- runFlow:
+    when:
+      platform: Android
+    commands:
+      - back
+- runFlow:
+    when:
+      platform: iOS
+    commands:
+      - swipe:
+          start: 1%, 50%
+          end: 85%, 50%
+          duration: 400
+- extendedWaitUntil:
+    visible:
+      id: 'guests.row.${GUEST_ID}'
+    timeout: 10000
+- assertNotVisible:
+    id: 'guest.${GUEST_ID}'
+- takeScreenshot: back-by-system

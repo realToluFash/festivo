@@ -27,7 +27,6 @@ use App\Enum\MembershipChannel;
 use App\Enum\MembershipStatus;
 use App\Enum\SeededRole;
 use App\Enum\Suspension;
-use App\Http\AfterResponse;
 use App\Repository\MembershipRepository;
 use App\Tests\ApiTestCase;
 use App\Tests\Traits\OnboardsAccounts;
@@ -145,8 +144,10 @@ final class DomainSuspensionTest extends ApiTestCase
         $proved = $this->list($prover, 'ire.events');
         $proved->setProvedAt(new DateTimeImmutable());
 
-        self::service(DomainSuspender::class)->domainProved($proved);
-        self::service(EntityManagerInterface::class)->flush();
+        self::service(EntityManagerInterface::class)->wrapInTransaction(static function () use ($proved): void {
+            self::service(DomainSuspender::class)->domainProved($proved);
+            self::service(EntityManagerInterface::class)->flush();
+        });
 
         self::assertSame(Suspension::DomainManagedElsewhere, $this->membershipOf($tunde, $organisation)->getSuspension());
         self::assertSame(MembershipStatus::Active, $this->membershipOf($kemi, $prover)->getStatus(), 'the organisation that proved it keeps its own');
@@ -521,7 +522,7 @@ final class DomainSuspensionTest extends ApiTestCase
         self::service(DomainSuspender::class)->addressChanged($tunde);
         $entityManager->flush();
         $connection->rollBack();
-        self::service(AfterResponse::class)->run();
+        self::drainNotifications();
 
         self::assertSame([], $this->mails());
     }
@@ -701,10 +702,11 @@ final class DomainSuspensionTest extends ApiTestCase
         }
 
         $entityManager->flush();
-        Iter\search($user->getEmailAddresses(), static fn (EmailAddress $held): bool => $held->getAddress() === $address)?->setPrimary(true);
-        self::service(DomainSuspender::class)->addressChanged($user);
-        $entityManager->flush();
-        self::service(AfterResponse::class)->run();
+        $entityManager->wrapInTransaction(static function () use ($entityManager, $user, $address): void {
+            Iter\search($user->getEmailAddresses(), static fn (EmailAddress $held): bool => $held->getAddress() === $address)?->setPrimary(true);
+            self::service(DomainSuspender::class)->addressChanged($user);
+            $entityManager->flush();
+        });
     }
 
     private function suspendAt(Membership $membership, DateTimeImmutable $at): void

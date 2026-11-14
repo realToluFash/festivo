@@ -7,6 +7,7 @@ import {
   languageChoices,
   listFormat,
   numberFormat,
+  ownLanguageName,
   pluralLocale,
 } from './locales.ts';
 
@@ -74,6 +75,15 @@ describe('languageChoices', () => {
       { code: 'fr', name: 'Français' },
       { code: 'pt', name: 'Portugais · Português' },
     ]);
+  });
+});
+
+describe('ownLanguageName', () => {
+  it('names each language in itself, and nothing for a code Soirely does not offer', () => {
+    expect(ownLanguageName('fr')).toBe('Français');
+    expect(ownLanguageName('pt')).toBe('Português');
+    expect(ownLanguageName('de')).toBeNull();
+    expect(ownLanguageName(null)).toBeNull();
   });
 });
 

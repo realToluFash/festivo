@@ -172,3 +172,28 @@ class Ideas(unittest.TestCase):
         start = lines.index("Ideas waiting on a decision:") + 1
         listed = lines[start:lines.index("", start)]
         self.assertEqual([entry.split()[0] for entry in listed], ["sc-1", "sc-5"])
+
+
+class AcceptedIdeas(Ideas):
+    STORIES = [{**ready(n), "labels": labels, "state": "Backlog", "description": "",
+                "links": []}
+               for n, labels in [(37133, ["idea", "idea accepted"]),
+                                 (42749, ["idea", "idea accepted"]), (33457, ["idea"])]]
+
+    def test_the_creative_director_counts_the_ideas_the_cap_counts(self):
+        lines = self.render("cd")
+        self.assertEqual(lines[0], "Your open ideas (1, at most 3):")
+        self.assertEqual([entry.split()[0] for entry in lines[1:]], ["sc-33457"])
+        self.assertEqual(digests.W.open_ideas(self.STORIES), [self.STORIES[2]])
+
+    def test_the_product_manager_is_asked_about_the_ideas_still_in_backlog(self):
+        lines = self.render("pm")
+        start = lines.index("Ideas waiting on a decision:") + 1
+        listed = lines[start:lines.index("", start)]
+        self.assertEqual([entry.split()[0] for entry in listed], ["sc-33457"])
+
+    def test_an_accepted_idea_waits_in_the_backlog_list_with_its_epic(self):
+        lines = self.render("pm")
+        start = next(i for i, x in enumerate(lines) if x.startswith("Backlog (")) + 1
+        listed = [x.split()[0] for x in lines[start:] if x.strip().startswith("sc-")]
+        self.assertEqual(sorted(listed), ["sc-37133", "sc-42749"])

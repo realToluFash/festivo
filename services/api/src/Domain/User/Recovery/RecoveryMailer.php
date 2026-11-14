@@ -4,9 +4,11 @@ declare(strict_types=1);
 
 namespace App\Domain\User\Recovery;
 
+use App\Domain\User\Mail\MailCode;
 use App\Domain\User\Mail\UserMailer;
 use App\Entity\PasswordResetToken;
 use App\Entity\User;
+use App\Enum\AccountMail;
 use DateTimeImmutable;
 use Psl\Str;
 use SensitiveParameter;
@@ -25,13 +27,13 @@ final readonly class RecoveryMailer
         $locale = $this->userMailer->localeFor($user, $asked);
         $link = Str\trim_right($this->webOrigin, '/') . '/reset-password?token=' . \rawurlencode($token);
 
-        $this->userMailer->sendTo($user, 'recovery.link.subject', [
+        $this->userMailer->sendTo(AccountMail::RecoveryLink, $user, 'recovery.link.subject', [
             $this->line('recovery.link.heading', $locale),
             $this->line('recovery.link.body', $locale),
             $link,
             $this->line('recovery.link.expiry', $locale, ['{minutes}' => (string) PasswordResetToken::LIFETIME_MINUTES]),
             $this->line('recovery.link.ignore', $locale),
-        ], $locale);
+        ], $locale, new MailCode($token, PasswordResetToken::LIFETIME_MINUTES));
     }
 
     /** @param list<string> $providers the names the person signs in with, such as Google */
@@ -39,7 +41,7 @@ final readonly class RecoveryMailer
     {
         $locale = $this->userMailer->localeFor($user, $asked);
 
-        $this->userMailer->sendTo($user, 'recovery.provider.subject', [
+        $this->userMailer->sendTo(AccountMail::RecoveryHowYouSignIn, $user, 'recovery.provider.subject', [
             $this->line('recovery.provider.body', $locale, [
                 '{providers}' => Str\join($providers, $this->line('recovery.or', $locale)),
             ]),
@@ -51,7 +53,7 @@ final readonly class RecoveryMailer
     {
         $locale = $this->userMailer->localeFor($user);
 
-        $this->userMailer->sendTo($user, 'recovery.changed.subject', [
+        $this->userMailer->sendTo(AccountMail::RecoveryChanged, $user, 'recovery.changed.subject', [
             $this->line('recovery.changed.body', $locale, ['{when}' => $this->userMailer->moment($at, $user, $locale)]),
             $this->line('recovery.changed.notYou', $locale),
         ], $locale);

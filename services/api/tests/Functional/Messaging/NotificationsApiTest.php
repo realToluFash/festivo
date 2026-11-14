@@ -217,7 +217,7 @@ final class NotificationsApiTest extends ApiTestCase
 
         $this->notify('quiet', null);
 
-        self::assertSame(['in_app'], Type\vec(Type\string())->coerce(self::connection()->fetchFirstColumn('SELECT channel FROM notification_deliveries')));
+        self::assertSame(['in_app'], Type\vec(Type\string())->coerce(self::connection()->fetchFirstColumn("SELECT channel FROM notification_deliveries WHERE recipient_kind <> 'person'")));
     }
 
     #[Test]

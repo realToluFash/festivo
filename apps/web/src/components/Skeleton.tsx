@@ -7,7 +7,7 @@ export type RowHeight = 56 | 60 | 64 | 76;
 export type CardShape = { lines?: number; fields?: number; options?: number; cover?: boolean };
 
 type Shape =
-  | { shape: 'rows'; rowHeight: RowHeight; picture?: boolean; rows?: number }
+  | { shape: 'rows'; rowHeight: RowHeight; picture?: boolean; rows?: number; field?: boolean }
   | { shape: 'cards'; cards: readonly CardShape[]; titled?: boolean }
   | { shape: 'line' }
   | { shape: 'month'; weeks: number };
@@ -26,6 +26,9 @@ export function Skeleton({
         {shown ? words : ''}
       </p>
       <div className="skeleton-blocks" aria-hidden="true">
+        {shape.shape === 'rows' && shape.field === true && (
+          <span className="skeleton-field skeleton-find" />
+        )}
         {shape.shape === 'rows' && <Rows {...shape} framed={!inCard} />}
         {shape.shape === 'cards' &&
           shape.cards.map((card, index) => (

@@ -5,15 +5,17 @@ declare(strict_types=1);
 namespace App\Entity;
 
 use App\Doctrine\Traits\Timestampable;
+use App\Enum\GuestInvitationMethod;
 use App\Enum\GuestReply;
 use App\Enum\GuestReplySource;
+use App\Enum\NeedKind;
 use DateTimeImmutable;
 use Doctrine\DBAL\Types\Types;
 use Doctrine\ORM\Mapping as ORM;
 use SensitiveParameter;
 use Symfony\Component\Uid\Uuid;
 
-/** On an event's list (sc-1468). A companion has a `host` and no contact, reply or link: they come as their host replies. */
+/** On an event's list (sc-1468). A companion has a `host` and no contact, reply, link or invitation: they come as their host replies, and are invited when their host is. */
 #[ORM\Entity]
 #[ORM\HasLifecycleCallbacks]
 #[ORM\Table(name: 'guests')]
@@ -82,6 +84,68 @@ class Guest
     #[ORM\Column(type: Types::BOOLEAN, options: ['default' => false])]
     private bool $linkFlagged = false;
 
+    /** Null while Not yet invited (sc-3788); any reply sets it, and only a mark by hand is ever taken back. */
+    #[ORM\Column(type: Types::DATETIME_IMMUTABLE, nullable: true)]
+    private ?DateTimeImmutable $invitedAt = null;
+
+    #[ORM\Column(type: Types::STRING, length: 16, nullable: true, enumType: GuestInvitationMethod::class)]
+    private ?GuestInvitationMethod $invitationMethod = null;
+
+    /** Who marked them by hand; null for the other methods. */
+    #[ORM\ManyToOne(targetEntity: User::class)]
+    #[ORM\JoinColumn(nullable: true, onDelete: 'SET NULL')]
+    private ?User $invitedBy = null;
+
+    /** The host's Language for them (sc-3790): one of SupportedLocales::ALL, or null for Not set. */
+    #[ORM\Column(type: Types::STRING, length: 8, nullable: true)]
+    private ?string $language = null;
+
+    /** What the guest picked on their own page, which outranks the host's Language. */
+    #[ORM\Column(type: Types::STRING, length: 8, nullable: true)]
+    private ?string $chosenLanguage = null;
+
+    /** The words of each ticked Other (sc-3777), keyed by NeedKind::otherField(); its code is a GuestNeed. */
+    #[ORM\Column(type: Types::STRING, length: 100, nullable: true)]
+    private ?string $otherAllergy = null;
+
+    #[ORM\Column(type: Types::STRING, length: 100, nullable: true)]
+    private ?string $otherDiet = null;
+
+    #[ORM\Column(type: Types::STRING, length: 100, nullable: true)]
+    private ?string $otherAccess = null;
+
+    /** For those who manage guests only: never the kitchen, the floor or the guest. */
+    #[ORM\Column(type: Types::TEXT, nullable: true)]
+    private ?string $needsNote = null;
+
+    /** When the needs were last changed, and whether by the guest on their own page (sc-3778) or by a host; null until anyone records one. */
+    #[ORM\Column(type: Types::DATETIME_IMMUTABLE, nullable: true)]
+    private ?DateTimeImmutable $needsChangedAt = null;
+
+    #[ORM\Column(type: Types::BOOLEAN, options: ['default' => false])]
+    private bool $needsChangedByGuest = false;
+
+    /** A companion the guest unticked (sc-3779): Not coming only while their host is Coming, and kept while Held so Coming again restores it. */
+    #[ORM\Column(type: Types::BOOLEAN, options: ['default' => false])]
+    private bool $notComingByGuest = false;
+
+    /** The guest typed this companion's name on their page; the host changing it clears it (sc-3779). */
+    #[ORM\Column(type: Types::BOOLEAN, options: ['default' => false])]
+    private bool $namedByGuest = false;
+
+    /** A host's group (sc-3775); a companion's is always null, since they are in their host's. Deleting the group leaves the guest in none. */
+    #[ORM\ManyToOne(targetEntity: GuestGroup::class)]
+    #[ORM\JoinColumn(nullable: true, onDelete: 'SET NULL')]
+    private ?GuestGroup $group = null;
+
+    /** Taken off the list and inside their undo (sc-3774): gone from the list and the counts, their link still working, until GuestRemovals erases them. A companion carries their host's. */
+    #[ORM\Column(type: Types::DATETIME_IMMUTABLE, nullable: true)]
+    private ?DateTimeImmutable $removedAt = null;
+
+    #[ORM\ManyToOne(targetEntity: User::class)]
+    #[ORM\JoinColumn(nullable: true, onDelete: 'SET NULL')]
+    private ?User $removedBy = null;
+
     private function __construct(Event $event, ?Guest $host, ?string $fullName, ?string $nameKey, ?string $email, ?string $mobile, ?GuestReply $reply, int $position, ?User $addedBy, #[SensitiveParameter] ?string $linkToken)
     {
         $this->id = Uuid::v7();
@@ -97,7 +161,8 @@ class Guest
         $this->linkToken = $linkToken;
     }
 
-    public static function invited(Event $event, string $fullName, string $nameKey, ?string $email, ?string $mobile, ?User $addedBy, #[SensitiveParameter] string $linkToken): self
+    /** Not yet invited, until somebody invites them (sc-3788). */
+    public static function listed(Event $event, string $fullName, string $nameKey, ?string $email, ?string $mobile, ?User $addedBy, #[SensitiveParameter] string $linkToken): self
     {
         return new self($event, null, $fullName, $nameKey, $email, $mobile, GuestReply::NoReply, 0, $addedBy, $linkToken);
     }
@@ -168,7 +233,58 @@ class Guest
         $this->repliedAt = $at;
         $this->replySource = $source;
 
+        if (!$this->isInvited()) {
+            $this->invite(GuestInvitationMethod::Reply, $at, null);
+        }
+
         return true;
+    }
+
+    public function isInvited(): bool
+    {
+        return null !== $this->invitedAt;
+    }
+
+    public function getInvitedAt(): ?DateTimeImmutable
+    {
+        return $this->invitedAt;
+    }
+
+    public function getInvitationMethod(): ?GuestInvitationMethod
+    {
+        return $this->invitationMethod;
+    }
+
+    public function getInvitedBy(): ?User
+    {
+        return $this->invitedBy;
+    }
+
+    /** The first invitation stands: a guest already invited stays as recorded. False when nothing changed. */
+    public function invite(GuestInvitationMethod $method, DateTimeImmutable $at, ?User $by): bool
+    {
+        if ($this->isInvited()) {
+            return false;
+        }
+
+        $this->invitedAt = $at;
+        $this->invitationMethod = $method;
+        $this->invitedBy = $by;
+
+        return true;
+    }
+
+    /** Only a mark made by hand on a guest who has not replied can be taken back. */
+    public function canUninvite(): bool
+    {
+        return true === $this->invitationMethod?->isByHand() && (null === $this->reply || GuestReply::NoReply === $this->reply);
+    }
+
+    public function uninvite(): void
+    {
+        $this->invitedAt = null;
+        $this->invitationMethod = null;
+        $this->invitedBy = null;
     }
 
     public function getPosition(): int
@@ -181,10 +297,41 @@ class Guest
         return $this->addedBy;
     }
 
+    /** As the host typed it: a name the guest gave becomes the host's once the host changes it. */
     public function setFullName(?string $fullName, ?string $nameKey): void
     {
+        if ($fullName !== $this->fullName) {
+            $this->namedByGuest = false;
+        }
+
         $this->fullName = $fullName;
         $this->nameKey = $nameKey;
+    }
+
+    public function nameByGuest(string $fullName, string $nameKey): void
+    {
+        if ($fullName === $this->fullName) {
+            return;
+        }
+
+        $this->fullName = $fullName;
+        $this->nameKey = $nameKey;
+        $this->namedByGuest = true;
+    }
+
+    public function isNamedByGuest(): bool
+    {
+        return $this->namedByGuest;
+    }
+
+    public function isNotComingByGuest(): bool
+    {
+        return $this->notComingByGuest;
+    }
+
+    public function markComingByGuest(bool $coming): void
+    {
+        $this->notComingByGuest = !$coming;
     }
 
     public function setEmail(?string $email): void
@@ -195,6 +342,80 @@ class Guest
     public function setMobile(?string $mobile): void
     {
         $this->mobile = $mobile;
+    }
+
+    public function getLanguage(): ?string
+    {
+        return $this->language;
+    }
+
+    public function setLanguage(?string $language): void
+    {
+        $this->language = $language;
+    }
+
+    public function getChosenLanguage(): ?string
+    {
+        return $this->chosenLanguage;
+    }
+
+    public function choseLanguage(string $language): void
+    {
+        $this->chosenLanguage = $language;
+    }
+
+    public function getOther(NeedKind $kind): ?string
+    {
+        return match ($kind) {
+            NeedKind::Allergen => $this->otherAllergy,
+            NeedKind::Diet => $this->otherDiet,
+            NeedKind::Access => $this->otherAccess,
+        };
+    }
+
+    public function setOther(NeedKind $kind, ?string $words): void
+    {
+        match ($kind) {
+            NeedKind::Allergen => $this->otherAllergy = $words,
+            NeedKind::Diet => $this->otherDiet = $words,
+            NeedKind::Access => $this->otherAccess = $words,
+        };
+    }
+
+    public function getNeedsNote(): ?string
+    {
+        return $this->needsNote;
+    }
+
+    public function setNeedsNote(?string $note): void
+    {
+        $this->needsNote = $note;
+    }
+
+    public function getGroup(): ?GuestGroup
+    {
+        return $this->group;
+    }
+
+    public function setGroup(?GuestGroup $group): void
+    {
+        $this->group = $group;
+    }
+
+    public function getNeedsChangedAt(): ?DateTimeImmutable
+    {
+        return $this->needsChangedAt;
+    }
+
+    public function isNeedsChangedByGuest(): bool
+    {
+        return $this->needsChangedByGuest;
+    }
+
+    public function needsChanged(DateTimeImmutable $at, bool $byGuest): void
+    {
+        $this->needsChangedAt = $at;
+        $this->needsChangedByGuest = $byGuest;
     }
 
     public function setPosition(int $position): void
@@ -232,5 +453,32 @@ class Guest
     public function flagLink(): void
     {
         $this->linkFlagged = true;
+    }
+
+    public function isRemoved(): bool
+    {
+        return null !== $this->removedAt;
+    }
+
+    public function getRemovedAt(): ?DateTimeImmutable
+    {
+        return $this->removedAt;
+    }
+
+    public function getRemovedBy(): ?User
+    {
+        return $this->removedBy;
+    }
+
+    public function remove(DateTimeImmutable $at, ?User $by): void
+    {
+        $this->removedAt = $at;
+        $this->removedBy = $by;
+    }
+
+    public function undoRemoval(): void
+    {
+        $this->removedAt = null;
+        $this->removedBy = null;
     }
 }

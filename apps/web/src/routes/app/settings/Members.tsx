@@ -18,7 +18,7 @@ import {
   roleName,
 } from '@soirely/domain';
 import { type ReactNode, useCallback, useEffect, useRef, useState } from 'react';
-import { useTranslation } from 'react-i18next';
+import { Trans, useTranslation } from 'react-i18next';
 
 import { api } from '../../../api.ts';
 import { Refreshing } from '../../../components/OfflineBand.tsx';
@@ -781,10 +781,14 @@ function InvitationRow({
         invitation.invitedBy?.id === caller
           ? t('membersScreen.invitedAsByYou', { role })
           : t('membersScreen.invitedAs', { role, inviter: invitation.invitedBy?.name ?? '' }),
-        t(`membersScreen.dates.${invitation.status}`, {
-          sent: day(invitation.sentAt),
-          ended: day(ended[invitation.status] ?? null),
-        }),
+        invitation.undelivered && invitation.status !== 'accepted' ? (
+          <NotDelivered status={invitation.status} ended={day(ended[invitation.status] ?? null)} />
+        ) : (
+          t(`membersScreen.dates.${invitation.status}`, {
+            sent: day(invitation.sentAt),
+            ended: day(ended[invitation.status] ?? null),
+          })
+        ),
         ...(failed ? [t('membersScreen.revokeFailed')] : []),
       ]}
     >
@@ -798,5 +802,23 @@ function InvitationRow({
         </span>
       )}
     </InvitationLine>
+  );
+}
+
+/** The broken mark before the words, as a field error has it: the mark is a shape, the words are read (sc-46109). */
+function NotDelivered({ status, ended }: { status: SentInvitation['status']; ended: string }) {
+  return (
+    <span className="not-delivered">
+      <span className="mark mark-broken" aria-hidden="true">
+        ✕
+      </span>
+      <span>
+        <Trans
+          i18nKey={`membersScreen.notDelivered.${status}`}
+          values={{ ended }}
+          components={{ word: <span className="not-delivered-word" /> }}
+        />
+      </span>
+    </span>
   );
 }

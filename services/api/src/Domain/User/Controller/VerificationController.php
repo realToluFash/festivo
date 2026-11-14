@@ -6,7 +6,6 @@ namespace App\Domain\User\Controller;
 
 use App\Domain\User\Verification\ContactVerifier;
 use App\Domain\User\Verification\ResendCooldown;
-use App\Domain\User\Verification\VerificationCodeMailer;
 use App\Domain\User\Verification\VerificationCodeResender;
 use App\Entity\EmailAddress;
 use App\Entity\User;
@@ -30,7 +29,6 @@ final class VerificationController
         private readonly Security $security,
         private readonly ContactVerifier $contactVerifier,
         private readonly VerificationCodeResender $verificationCodeResender,
-        private readonly VerificationCodeMailer $verificationCodeMailer,
         private readonly ResendCooldown $resendCooldown,
         private readonly CodeField $codeField,
     ) {
@@ -90,8 +88,6 @@ final class VerificationController
                 ['Retry-After' => (string) $issued],
             );
         }
-
-        $this->verificationCodeMailer->send($address, $issued->code);
 
         return new JsonResponse(['cooldownSeconds' => VerificationChallenge::RESEND_COOLDOWN_SECONDS]);
     }

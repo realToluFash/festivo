@@ -5,6 +5,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { __setConfig, config } from '../config.ts';
 import { routes } from '../routes/index.tsx';
 import { ARRIVAL_NOTE } from './arrivalNote.ts';
+import { wordsFor } from './guest.ts';
 import { GUEST_DAY_PAGES } from './guestDay.ts';
 
 const SLOW = { timeout: 15000 };
@@ -38,7 +39,7 @@ async function guest(state: string) {
   await screen.findByRole('banner');
 }
 
-const CALENDAR = new Set(['Add to calendar', '[Ajouter au calendrier]']);
+const CALENDAR = new Set([wordsFor('en').calendarTitle, wordsFor('fr').calendarTitle]);
 const allHeadings = () =>
   within(document.querySelector('main') as HTMLElement)
     .getAllByRole('heading', { level: 2 })
@@ -189,7 +190,7 @@ describe('the guest’s page on the event’s day (sc-24381)', () => {
   it('reads in French, the host’s words untranslated', async () => {
     await guest('onTheDayFrench');
 
-    expect(headings()).toEqual(['[Votre code]', '[Où]', '[Votre réponse]']);
+    expect(headings()).toEqual(['[Votre code]', '[Où]', 'Votre réponse']);
   });
 });
 

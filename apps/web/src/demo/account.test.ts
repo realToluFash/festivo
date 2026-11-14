@@ -8,6 +8,7 @@ import {
   accountStart,
   cardLine,
   contactsFoot,
+  lifted,
   madePrimary,
   opening,
   sampleCodeSource,
@@ -132,5 +133,18 @@ describe('Your account’s sample (sc-30209)', () => {
     const whatsApp = sampleCodeSource(opening('verify', { channel: 'whatsApp' }));
     await whatsApp.textInstead();
     await expect(whatsApp.opening()).resolves.toMatchObject({ route: 'sms_chosen' });
+  });
+});
+
+describe('an address we could not deliver to (sc-44949)', () => {
+  it('is nobody’s at rest, and only the account’s own addresses on its states', () => {
+    expect(rest.undeliverable).toEqual([]);
+    expect(accountStart('undeliverable').emails).toHaveLength(1);
+    expect(accountStart('undeliverableTwo').undeliverable).toEqual(['email-1', 'email-2']);
+    expect(accountStart('undeliverableUnverified').emails[1]?.verified).toBe(false);
+  });
+
+  it('goes for the address verified again or removed, and only that one', () => {
+    expect(lifted(['email-1', 'email-2'], 'email-2')).toEqual(['email-1']);
   });
 });

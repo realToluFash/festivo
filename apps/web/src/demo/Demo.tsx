@@ -39,6 +39,10 @@ import { GUEST_NOTE_PAGES } from './guestNote.ts';
 import { GUEST_CHANGE_PAGES } from './guestChange.ts';
 import { Guests } from './Guests.tsx';
 import { GUESTS_PAGES } from './guests.ts';
+import { GuestsMark } from './GuestsMark.tsx';
+import { MARK_PAGES } from './guestsMark.ts';
+import { GuestsMany } from './GuestsMany.tsx';
+import { MANY_PAGES } from './guestsMany.ts';
 import { KitchenPage } from './Kitchen.tsx';
 import { MenuPage } from './MenuServed.tsx';
 import { MENU_PAGES } from './menuServed.ts';
@@ -250,6 +254,8 @@ export default function Demo() {
       <Route path="unsubscribe" element={<Unsubscribe />} />
       <Route path="guest" element={<GuestPage />} />
       <Route path="guests" element={<Guests />} />
+      <Route path="guests/select" element={<GuestsMark />} />
+      <Route path="guests/many" element={<GuestsMany />} />
       <Route path="pass" element={<PassPage />} />
       <Route path="queue" element={<QueuePage />} />
       <Route path="team" element={<TeamPage />} />
@@ -331,6 +337,12 @@ function DemoHome({ from }: { from: string }) {
         <h2 id="demo-page-30">30 · Guests · the planner’s side</h2>
         <h3>Guests in A · Summary first · desktop</h3>
         <BoardPages pages={GUESTS_PAGES} />
+        <h3>Mark many as invited, from the selection bar · sc-46880 · desktop</h3>
+        <BoardPages pages={MARK_PAGES} />
+        <h3>
+          Select many guests, Add to group and Remove from the list · sc-3776 · desktop and 320
+        </h3>
+        <BoardPages pages={MANY_PAGES} />
         <h3>Final numbers due and the kitchen’s copies, in Guests A · desktop</h3>
         <BoardPages pages={KITCHEN_PAGES} />
         <h3>Changes since the kitchen’s last copy, in Guests A · desktop</h3>

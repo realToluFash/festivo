@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\Http\Exception;
 
 use App\Enum\ErrorCode;
+use App\Enum\Permission;
 use DateTimeImmutable;
 use DateTimeZone;
 use Psl\Math;
@@ -44,6 +45,16 @@ class ApiException extends RuntimeException
     public static function conflict(string $message = ''): self
     {
         return new self(ErrorCode::Conflict, $message);
+    }
+
+    public static function permissionRequired(Permission $permission): self
+    {
+        return new self(ErrorCode::PermissionRequired, 'access.permission_required', [], null, [], ['permission' => $permission->value], ['{permission}' => $permission->value]);
+    }
+
+    public static function twoFactorRequired(Permission $permission): self
+    {
+        return new self(ErrorCode::OrganisationTwoFactorRequired, 'access.two_factor_required', [], null, [], ['permission' => $permission->value]);
     }
 
     /** @param list<array{propertyPath: string, message: string, code: string, parameters?: array<string, string>}> $violations */

@@ -81,6 +81,7 @@ services:
       LOCALES_FILE: /locales.json
       EVENT_STATES_FILE: /event-states.json
       QUIET_HOURS_FILE: /quiet-hours.json
+      GUEST_LANGUAGE_FILE: /guest-language.json
       ADDRESS_ENDPOINT: ${ADDRESS_ENDPOINT}
       ADDRESS_USER_AGENT: ${ADDRESS_USER_AGENT}
       STORAGE_ENDPOINT: ${STORAGE_ENDPOINT}
@@ -94,6 +95,8 @@ services:
       DATABASE_URL: ${DATABASE_URL}
       MAILER_DSN: ${MAILER_DSN:-smtp://mailpit:1025}
       MAIL_FROM: ${MAIL_FROM:-Soirely <no-reply@soirely.com>}
+      MAIL_WEBHOOK_SECRET: ${MAIL_WEBHOOK_SECRET:-postmark:development-webhook-secret}
+      MAIL_WEBHOOK_ALLOWED_RANGES: ${MAIL_WEBHOOK_ALLOWED_RANGES:-127.0.0.0/8,::1/128,10.0.0.0/8,172.16.0.0/12,192.168.0.0/16}
       DNS_TXT_ENDPOINT: ${DNS_TXT_ENDPOINT:-http://smocker:8080/dns-query}
       SMS_API_BASE: ${SMS_API_BASE:-http://smocker:8080}
       SMS_ACCOUNT_SID: ${SMS_ACCOUNT_SID:-ACdevelopment00000000000000000000}
@@ -163,6 +166,8 @@ services:
       - ./event-states.json:/event-states.json:ro
       # The hours only Event day pushes come through, which the clients' footer reads too (sc-20494).
       - ./quiet-hours.json:/quiet-hours.json:ro
+      # Which language a guest reads in, whose cases the clients test against too (sc-3790).
+      - ./guest-language.json:/guest-language.json:ro
     ports:
       - '${API_PORT:-8080}:80'
     depends_on:

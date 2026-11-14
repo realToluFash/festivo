@@ -1,7 +1,7 @@
 import { tokenText } from './TokenText.ts';
 
 /** sc-3960's sample, not spec: the people in To (Coming) that Preview as offers, as the boards draw them. */
-export type PreviewKey = 'bisi' | 'camille' | 'kemi' | 'kwame' | 'lucia';
+export type PreviewKey = 'amaka' | 'bisi' | 'camille' | 'kemi' | 'kwame' | 'lucia';
 export type PreviewLanguage = 'en' | 'es' | 'fr';
 /** Where their language comes from, in sc-3790's order: their page, the host, or the organisation. */
 export type LanguageFrom = 'chose' | 'set' | 'organisation';
@@ -12,26 +12,63 @@ export interface PreviewPerson {
   language: PreviewLanguage;
   greetAs: string | null;
   from: LanguageFrom;
+  email: boolean;
+  /** Ire Events has never texted them, so this text ends with the STOP line (sc-3946). */
+  firstText: boolean;
 }
 
+const KNOWN = { email: true, firstText: false };
+
 export const PREVIEW_PEOPLE: Record<PreviewKey, PreviewPerson> = {
+  amaka: {
+    key: 'amaka',
+    name: 'Amaka Eze',
+    language: 'en',
+    greetAs: null,
+    from: 'set',
+    email: false,
+    firstText: true,
+  },
   bisi: {
     key: 'bisi',
     name: 'Bisi Adewale',
     language: 'en',
     greetAs: 'Auntie Bisi',
     from: 'organisation',
+    ...KNOWN,
   },
-  camille: { key: 'camille', name: 'Camille Dubois', language: 'fr', greetAs: null, from: 'chose' },
+  camille: {
+    key: 'camille',
+    name: 'Camille Dubois',
+    language: 'fr',
+    greetAs: null,
+    from: 'chose',
+    ...KNOWN,
+  },
   kemi: {
     key: 'kemi',
     name: 'Kemi Bankole',
     language: 'en',
     greetAs: 'Kemi "KB" <Bankole> & Co',
     from: 'set',
+    ...KNOWN,
   },
-  kwame: { key: 'kwame', name: 'Kwame Mensah', language: 'en', greetAs: null, from: 'set' },
-  lucia: { key: 'lucia', name: 'Lucía Ortega', language: 'es', greetAs: null, from: 'set' },
+  kwame: {
+    key: 'kwame',
+    name: 'Kwame Mensah',
+    language: 'en',
+    greetAs: null,
+    from: 'set',
+    ...KNOWN,
+  },
+  lucia: {
+    key: 'lucia',
+    name: 'Lucía Ortega',
+    language: 'es',
+    greetAs: null,
+    from: 'set',
+    ...KNOWN,
+  },
 };
 
 export const CLOSING_LINES =
@@ -51,4 +88,6 @@ export const FRENCH = {
   noticeBody:
     '[Adaeze Obi et Tunde Bakare vous ont envoyé un message à propos de Adaeze & Tunde’s wedding. Il est sur votre page.]',
   readOnYourPage: '[Le lire sur votre page]',
+  noticeSms: (link: string) =>
+    `[Adaeze Obi et Tunde Bakare : un nouveau message à propos de Adaeze & Tunde’s wedding. Lisez-le ici : ${link}]`,
 } as const;

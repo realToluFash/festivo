@@ -14,6 +14,7 @@ import {
   accountStateOf,
   addRefusal,
   confirmSays,
+  PRIMARY_EMAIL_ID,
   SECOND_EMAIL_ID,
   SECOND_PHONE_ID,
   WRONG_CODE,
@@ -34,7 +35,7 @@ const start = (state: (typeof ACCOUNT_STATES)[number]) => accountStart(state, t)
 
 describe('a state link', () => {
   it('opens the state it names, and the page at rest for anything else', () => {
-    expect(ACCOUNT_STATES).toHaveLength(17);
+    expect(ACCOUNT_STATES).toHaveLength(20);
     expect(accountStateOf('verifyPhoneExpired')).toBe('verifyPhoneExpired');
     expect(accountStateOf('done')).toBe('rest');
     expect(accountStateOf(undefined)).toBe('rest');
@@ -156,6 +157,32 @@ describe('proving it’s you', () => {
       password: null,
       code: null,
       checked: false,
+    });
+  });
+});
+
+describe('an address we could not deliver to', () => {
+  it('is nobody’s at rest', () => {
+    expect(start('rest').undeliverable).toEqual([]);
+  });
+
+  it('is the only address, with room to add another', () => {
+    expect(start('undeliverable')).toMatchObject({
+      emails: [EMAILS[0]],
+      undeliverable: [PRIMARY_EMAIL_ID],
+    });
+  });
+
+  it('is both addresses, verified, with the account full', () => {
+    const two = start('undeliverableTwo');
+    expect(verifiedAll(two.emails)).toBe(true);
+    expect(two.undeliverable).toEqual([PRIMARY_EMAIL_ID, SECOND_EMAIL_ID]);
+  });
+
+  it('is the second address while it is still not verified', () => {
+    expect(start('undeliverableUnverified')).toMatchObject({
+      emails: EMAILS,
+      undeliverable: [SECOND_EMAIL_ID],
     });
   });
 });

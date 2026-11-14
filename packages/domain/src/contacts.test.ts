@@ -2,6 +2,7 @@ import { describe, expect, it, vi } from 'vitest';
 
 import {
   CONTACTS_MOST,
+  changeEmail,
   contactActions,
   contactsLeft,
   firstUnverified,
@@ -10,6 +11,7 @@ import {
   primaryFirst,
   primaryOf,
   rereadAfterRefusal,
+  undeliverableAddresses,
 } from './contacts.ts';
 
 describe('alternative addresses and numbers', () => {
@@ -118,5 +120,29 @@ describe('the order Your account lists them in', () => {
     const proved = emails.map((row) => ({ ...row, verified: true }));
     expect(firstUnverified(proved, phones)).toEqual({ kind: 'phone', row: phones[1] });
     expect(firstUnverified(proved, [phones[0]!])).toBeNull();
+  });
+});
+
+describe('an address we could not deliver to (sc-44949)', () => {
+  const primary = { id: 'one', verified: true, primary: true };
+  const second = { id: 'two', verified: false, primary: false };
+
+  it('names each suppressed address once, the primary first', () => {
+    expect(
+      undeliverableAddresses([
+        { ...second, undeliverable: true },
+        { ...primary, undeliverable: true },
+      ]).map((row) => row.id),
+    ).toEqual(['one', 'two']);
+    expect(undeliverableAddresses([primary, { ...second, undeliverable: false }])).toEqual([]);
+  });
+
+  it('adds an address while there is room', () => {
+    expect(changeEmail([primary])).toEqual({ to: 'add' });
+  });
+
+  it('at the most an account holds, opens the address that is not primary, whichever bounced', () => {
+    expect(changeEmail([primary, second])).toEqual({ to: 'row', id: 'two' });
+    expect(changeEmail([second, primary])).toEqual({ to: 'row', id: 'two' });
   });
 });

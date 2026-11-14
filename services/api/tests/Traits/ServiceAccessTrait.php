@@ -4,8 +4,11 @@ declare(strict_types=1);
 
 namespace App\Tests\Traits;
 
+use App\Domain\Messaging\NotificationWorker;
 use App\Http\Exception\ApiException;
 use Doctrine\ORM\EntityManagerInterface;
+use Psl\Vec;
+use Symfony\Component\Mime\RawMessage;
 use Symfony\Contracts\Translation\TranslatorInterface;
 
 /**
@@ -65,5 +68,32 @@ trait ServiceAccessTrait
     protected static function worded(ApiException $refusal): string
     {
         return self::service(TranslatorInterface::class)->trans($refusal->getMessage(), $refusal->parameters, null, 'en');
+    }
+
+    /**
+     * Every email is queued (sc-4332): the worker sends what is due before the test reads what went.
+     *
+     * @return list<RawMessage>
+     */
+    public static function getMailerMessages(?string $transport = null): array
+    {
+        self::drainNotifications();
+
+        return Vec\values(parent::getMailerMessages($transport));
+    }
+
+    public static function getMailerMessage(int $index = 0, ?string $transport = null): ?RawMessage
+    {
+        return self::getMailerMessages($transport)[$index] ?? null;
+    }
+
+    protected static function drainNotifications(int $atMost = 500): void
+    {
+        $worker = self::service(NotificationWorker::class);
+        $steps = 0;
+
+        while ($steps < $atMost && $worker->step()) {
+            ++$steps;
+        }
     }
 }

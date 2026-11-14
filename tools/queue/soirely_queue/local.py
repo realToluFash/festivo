@@ -9,6 +9,7 @@ import os
 import pathlib
 import re
 import shutil
+import socket
 import subprocess
 import sys
 import time
@@ -42,6 +43,9 @@ GENERATED = ("node_modules", "pnpm-workspace.yaml")
 LARGEST = 5
 MEASURE_SECONDS = 30 * 60
 DEVICES = ("~/Library/Developer/CoreSimulator/Devices", "~/.android/avd")
+DOCKER_APP = pathlib.Path("/Applications/Docker.app")
+DOCKER_SOCKET = "~/.docker/run/docker.sock"
+WAKE_SECONDS = 5 * 60
 
 
 def gigabytes(text):
@@ -63,6 +67,39 @@ def build_cache_gb():
         if row.get("Type") == "Build Cache":
             return gigabytes(row.get("Size"))
     return None
+
+
+def docker_answers(sock=DOCKER_SOCKET):
+    try:
+        with socket.socket(socket.AF_UNIX) as conn:
+            conn.settimeout(2)
+            conn.connect(os.path.expanduser(sock))
+        return True
+    except OSError:
+        return False
+
+
+def open_docker():
+    subprocess.run(["open", "-a", "Docker"], capture_output=True, timeout=30, check=True)
+
+
+def wake_docker(db, now, say=print, system=None, app=None, answers=None, start=None):
+    """Docker Desktop on a Mac, started from this tick when its daemon is gone. A Claude
+    run that starts it takes it down again when the run ends (sc-46912)."""
+    if (system or sys.platform) != "darwin" or not (app or DOCKER_APP).exists():
+        return False
+    if (answers or docker_answers)():
+        return False
+    if now - (store.get_meta(db, "docker_woken") or {}).get("at", 0) < WAKE_SECONDS:
+        return False
+    store.set_meta(db, "docker_woken", {"at": now})
+    try:
+        (start or open_docker)()
+    except (OSError, subprocess.SubprocessError) as error:
+        say(f"Docker is down on this Mac and would not start: {error}")
+        return False
+    say("Docker was down on this Mac: started Docker Desktop")
+    return True
 
 
 def stack_problem(role):

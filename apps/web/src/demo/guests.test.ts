@@ -7,10 +7,12 @@ import { CLOCKS, sampleEvent } from './events.ts';
 import { SAMPLE_GUESTS } from './guestCounts.ts';
 import {
   DRAFT,
+  DRAFT_PAST,
   GUESTS_STATES,
   PARTY,
   WALK_IN,
   WEDDING,
+  changedView,
   closeLine,
   countsOf,
   guestsCardOf,
@@ -35,10 +37,12 @@ import {
   viewOf,
 } from './guests.ts';
 import { GW } from './guestsWords.ts';
+import { changesSince } from './changedSince.ts';
 import { COMING, GUESTS_N, NOT_REPLIED, countOf } from './messages.ts';
 import { GROUPS } from './messagesTo.ts';
 
 const NONE = new Set<never>();
+const DAY = '2026-11-03';
 
 describe('the wedding counts as Messaging B counts it (pm, 7 Nov)', () => {
   const counts = countsOf(sampleGuests(WEDDING));
@@ -137,9 +141,16 @@ describe('the list (sc-3772)', () => {
     if (view.kind !== 'rows') throw new Error('rows');
     expect(view.rows[0]).toMatchObject({
       line: 'Invited by Folake Adeyemi, WhatsApp, Oct 9',
+      contact: 'emeka.nwosu@nhs.net · +44 7700 900231',
       label:
-        'Dr Emeka Nwosu, No reply, Invited by Folake Adeyemi, WhatsApp, Oct 9, Allergy, Dietary notes',
+        'Dr Emeka Nwosu, No reply, Invited by Folake Adeyemi, WhatsApp, Oct 9, emeka.nwosu@nhs.net, +44 7700 900231, Allergy, Dietary notes',
     });
+
+    const viewer = viewOf(list, 'noReply', '', NONE, replyBy, false).view;
+
+    if (viewer.kind !== 'rows') throw new Error('rows');
+    expect(viewer.rows.every((row) => row.contact == null)).toBe(true);
+    expect(viewer.rows[0]?.label).not.toContain('nhs.net');
     expect(view.rows.slice(0, 5).map((row) => row.person.name)).toEqual([
       'Dr Emeka Nwosu',
       'Joaquín Ruiz',
@@ -167,6 +178,13 @@ describe('the list (sc-3772)', () => {
     expect(viewOf(list, 'all', 'okon', NONE, replyBy).shown).toBe(2);
     expect(viewOf(list, 'all', 'kofi', NONE, replyBy).shown).toBe(0);
     expect(viewOf(list, 'held', 'marta', NONE, replyBy).shown).toBe(0);
+    const held = viewOf(list, 'held', 'adanna', NONE, replyBy).view;
+    expect(held.kind === 'rows' && held.rows.map((row) => row.line)).toEqual([
+      'Guest of Dr Emeka Nwosu · Held · comes only if their host accepts',
+    ]);
+    expect(held.kind === 'rows' && held.rows.map((row) => row.label)).toEqual([
+      'Adanna Nwosu, Guest of Dr Emeka Nwosu · Held · comes only if their host accepts',
+    ]);
     expect(viewOf(list, 'all', 'nhs.net', NONE, replyBy).shown).toBe(1);
     expect(viewOf(list, 'all', '900412', NONE, replyBy).shown).toBe(1);
     expect(viewOf(list, 'all', 'ines', NONE, replyBy).shown).toBe(2);
@@ -253,9 +271,48 @@ describe('the card’s words (l10n, 8 Nov)', () => {
 
 describe('the view in the address (sc-3772)', () => {
   it('knows what each state opens on before the address says otherwise', () => {
-    expect(viewBase('filtered')).toEqual({ choice: 'noReply', q: '' });
-    expect(viewBase('search')).toEqual({ choice: 'all', q: 'okon' });
-    expect(viewBase(null)).toEqual({ choice: 'all', q: '' });
+    expect(viewBase('filtered')).toEqual({ choice: 'noReply', q: '', since: null });
+    expect(viewBase('search')).toEqual({ choice: 'all', q: 'okon', since: null });
+    expect(viewBase(null)).toEqual({ choice: 'all', q: '', since: null });
+    expect(viewBase('changed')).toEqual({ choice: 'changed', q: '', since: null });
+  });
+});
+
+describe('Changed since you looked (sc-4331)', () => {
+  const clock = new Date('2026-11-03T09:41:00Z');
+
+  it('lists the bell item’s guests newest first, the answer and when', () => {
+    const { view, shown } = changedView(sampleGuests(WEDDING), changesSince(null), '', clock);
+    const lines =
+      view.kind === 'rows' ? view.rows.map((row) => `${row.person.name}: ${row.line}`) : [];
+
+    expect(shown).toBe(5);
+    expect(lines).toEqual([
+      'Lucía Ortega: Not sure yet · Changed at 09:31',
+      'Inês Duarte: Coming · Replied at 08:40',
+      'Amaka Eze: Coming · Replied at 07:52',
+      'Camille Dubois: Not coming · Replied Nov 2',
+      'Alhaji Musa Bello: Coming · Replied Nov 2',
+    ]);
+  });
+
+  it('counts only what changed after the last look, and a search narrows it', () => {
+    expect(changesSince('2026-11-03T08:00:00Z').map((one) => one.id)).toEqual(['lucia', 'ines']);
+    expect(changesSince(clock.toISOString())).toEqual([]);
+    expect(changedView(sampleGuests(WEDDING), changesSince(null), 'eze', clock).shown).toBe(1);
+  });
+
+  it('shows the bell’s label for a change that is not a reply', () => {
+    const { view } = changedView(
+      sampleGuests(WEDDING),
+      [{ id: 'kwame', kind: 'needs', at: '2026-11-02T10:00:00Z' }],
+      '',
+      clock,
+    );
+
+    expect(view.kind === 'rows' && view.rows[0]?.line).toBe(
+      'Updated dietary needs · Changed Nov 2',
+    );
   });
 });
 
@@ -303,6 +360,25 @@ describe('the card (spec §4)', () => {
     expect(
       guestsCardOf(wedding, sampleGuests(WEDDING), 'live', CLOCKS.rest, false).step,
     ).toBeNull();
+  });
+
+  it('sends a Draft whose end has passed to its dates, not to Make live (sc-3772)', () => {
+    const draft = sampleEvent(DRAFT);
+    const passed = sampleEvent(DRAFT_PAST);
+    if (draft == null || passed == null) throw new Error('drafts');
+    const list = sampleGuests(DRAFT);
+
+    expect(guestsCardOf(draft, list, 'live', CLOCKS.rest, true)).toMatchObject({
+      line: 'Guests can’t be invited until this event is live.',
+      step: 'makeLive',
+    });
+    expect(guestsCardOf(passed, list, 'live', CLOCKS.rest, true)).toMatchObject({
+      tags: [{ kind: 'draft', word: 'Draft' }],
+      says: '12 on the list',
+      line: 'This event’s end has passed, so it cannot be made live. Change its dates first.',
+      step: 'changeDates',
+    });
+    expect(guestsCardOf(passed, list, 'live', CLOCKS.rest, false).step).toBeNull();
   });
 
   it('counts a recorded reply straight away (sc-3787)', () => {
@@ -419,11 +495,16 @@ describe('places for companions, the host’s side (sc-3779)', () => {
     expect(namedOf(sophie)).toBe(1);
     expect(sophie.companions[0]?.namedBy).toBe('guest');
 
-    const kept = saveGuest(list, 'sophie', { ...valuesOf(sophie), email: 'sophie@orange.fr' });
-    const renamed = saveGuest(list, 'sophie', {
-      ...valuesOf(sophie),
-      companions: [{ id: 'sophie-c1', name: 'Marc-Antoine Laurent' }],
-    });
+    const kept = saveGuest(list, 'sophie', { ...valuesOf(sophie), email: 'sophie@orange.fr' }, DAY);
+    const renamed = saveGuest(
+      list,
+      'sophie',
+      {
+        ...valuesOf(sophie),
+        companions: [{ id: 'sophie-c1', name: 'Marc-Antoine Laurent' }],
+      },
+      DAY,
+    );
 
     expect(kept.find((one) => one.id === 'sophie')?.companions[0]?.namedBy).toBe('guest');
     expect(renamed.find((one) => one.id === 'sophie')?.companions[0]).not.toHaveProperty('namedBy');
@@ -449,13 +530,31 @@ describe('a companion with a seat and a meal (sc-3773)', () => {
   });
 
   it('keeps the seat on a companion who stays when the guest is saved', () => {
-    const saved = saveGuest(list, 'ines', { ...valuesOf(ines ?? null), email: 'ines@sapo.pt' });
+    const saved = saveGuest(
+      list,
+      'ines',
+      { ...valuesOf(ines ?? null), email: 'ines@sapo.pt' },
+      DAY,
+    );
 
     expect(saved.find((one) => one.id === 'ines')?.companions[0]).toMatchObject({
       name: 'Rui Duarte',
       table: 'Table 4',
       meal: true,
     });
+  });
+
+  it('keeps the guest as the last to change needs when a host saves without changing them (sc-3778)', () => {
+    const saved = saveGuest(
+      list,
+      'ines',
+      { ...valuesOf(ines ?? null), email: 'ines@sapo.pt' },
+      DAY,
+    );
+    const after = saved.find((one) => one.id === 'ines');
+
+    expect(after?.needs.changed).toEqual({ by: 'guest', on: '2026-10-13' });
+    expect(after?.companions[0]?.needs?.changed).toEqual({ by: 'guest', on: '2026-10-13' });
   });
 });
 

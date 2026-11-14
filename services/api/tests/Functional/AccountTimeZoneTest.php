@@ -12,6 +12,7 @@ use App\Repository\UserRepository;
 use App\Tests\ApiTestCase;
 use App\Tests\Traits\OnboardsAccounts;
 use DateTimeImmutable;
+use Doctrine\ORM\EntityManagerInterface;
 use Lexik\Bundle\JWTAuthenticationBundle\Services\JWTTokenManagerInterface;
 use PHPUnit\Framework\Attributes\Test;
 use Psl\Iter;
@@ -74,7 +75,8 @@ final class AccountTimeZoneTest extends ApiTestCase
         $this->call('PUT', '/api/auth/timezone', ['timezone' => 'Europe/London'], $user);
         self::assertSame('Europe/London', $this->call('GET', '/api/auth/me', null, $user)['timezone']);
 
-        self::service(PasswordChangeMailer::class)->sendChanged($this->fresh($user), new DateTimeImmutable(self::AT), null, null);
+        $fresh = $this->fresh($user);
+        self::service(EntityManagerInterface::class)->wrapInTransaction(static fn () => self::service(PasswordChangeMailer::class)->sendChanged($fresh, new DateTimeImmutable(self::AT), null, null));
         self::assertStringContainsString('14:05 BST', (string) $this->lastMail()->getTextBody());
     }
 

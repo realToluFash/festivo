@@ -4,45 +4,67 @@ declare(strict_types=1);
 
 namespace App\Domain\User\Mail;
 
+use App\Domain\Messaging\Model\Audience;
+use App\Domain\Messaging\NotificationScheduler;
 use App\Entity\User;
+use App\Enum\AccountMail;
 use App\Locale\SupportedLocales;
+use Closure;
 use DateTimeImmutable;
 use DateTimeZone;
 use IntlDateFormatter;
 use IntlDatePatternGenerator;
 use Psl\Regex;
 use Psl\Str;
-use Symfony\Component\Mailer\MailerInterface;
-use Symfony\Component\Mime\Address;
-use Symfony\Component\Mime\Email;
+use Psr\Clock\ClockInterface;
+use Symfony\Component\DependencyInjection\Attribute\AutowireServiceClosure;
+use Symfony\Component\Uid\Uuid;
 use Symfony\Contracts\Translation\TranslatorInterface;
 
-/** A plain-text email to one person, in their locale, from Soirely's one sender. */
+/** A plain-text email to one person, in their locale, from Soirely's one sender: queued on the notification path, never sent from the request (sc-4332). */
 final readonly class UserMailer
 {
     private const string DOMAIN = 'emails';
 
+    /** Names the address, so every send to it is one person's: a newer code supersedes theirs, and a bounce suppresses it. */
+    private const string ADDRESS_NAMESPACE = '6f1d3f0e-3a59-4c1c-9b8e-4b2f0f7c5a11';
+
+    /** @param Closure(): NotificationScheduler $notificationScheduler a closure: the registry's types use this class's dates, and the scheduler needs the registry */
     public function __construct(
-        private MailerInterface $mailer,
+        #[AutowireServiceClosure(NotificationScheduler::class)]
+        private Closure $notificationScheduler,
         private TranslatorInterface $translator,
         private AccountLanguage $accountLanguage,
-        private string $mailFrom,
+        private ClockInterface $clock,
     ) {
     }
 
     /**
+     * Written in the caller's transaction, with the words it will carry; the worker hands it to the provider.
+     *
      * @param list<string>          $paragraphs        already in the person's locale, joined by a blank line
      * @param array<string, string> $subjectParameters
+     * @param ?string               $source            what it is about, when a second queueing of it must not send again
      */
-    public function send(string $address, ?string $locale, string $subjectKey, array $paragraphs, array $subjectParameters = []): void
+    public function send(AccountMail $mail, string $address, ?string $locale, string $subjectKey, array $paragraphs, array $subjectParameters = [], ?MailCode $code = null, ?string $source = null): void
     {
-        $this->mailer->send(
-            new Email()
-                ->from(Address::create($this->mailFrom))
-                ->to($address)
-                ->subject($this->line($subjectKey, $locale, $subjectParameters))
-                ->text(Str\join($paragraphs, "\n\n")),
+        ($this->notificationScheduler)()->scheduleForPerson(
+            $mail->typeName(),
+            match (true) {
+                null !== $source => $source,
+                null !== $code => \hash('sha256', $address . "\0" . $code->code),
+                default => Uuid::v7()->toRfc4122(),
+            },
+            Audience::person(self::person($address), $address, $locale ?? SupportedLocales::DEFAULT),
+            ['subject' => $this->line($subjectKey, $locale, $subjectParameters), 'body' => Str\join($paragraphs, "\n\n")],
+            null === $code ? null : $this->clock->now()->modify(Str\format('+%d minutes', $code->lifetimeMinutes)),
         );
+    }
+
+    /** Every send to one address is to one person, whatever account holds it then. */
+    public static function person(string $address): Uuid
+    {
+        return Uuid::v5(Uuid::fromString(self::ADDRESS_NAMESPACE), Str\lowercase(Str\trim($address)));
     }
 
     /**
@@ -50,12 +72,12 @@ final readonly class UserMailer
      *
      * @param list<string> $paragraphs
      */
-    public function sendTo(User $user, string $subjectKey, array $paragraphs, ?string $asked = null): void
+    public function sendTo(AccountMail $mail, User $user, string $subjectKey, array $paragraphs, ?string $asked = null, ?MailCode $code = null): void
     {
         $address = $user->getPrimaryEmailAddress()?->getAddress();
 
         if (null !== $address) {
-            $this->send($address, $this->localeFor($user, $asked), $subjectKey, $paragraphs);
+            $this->send($mail, $address, $this->localeFor($user, $asked), $subjectKey, $paragraphs, code: $code);
         }
     }
 
@@ -134,11 +156,11 @@ final readonly class UserMailer
      *
      * @param list<string> $paragraphs
      */
-    public function sendToEveryVerified(User $user, string $subjectKey, array $paragraphs): void
+    public function sendToEveryVerified(AccountMail $mail, User $user, string $subjectKey, array $paragraphs): void
     {
         foreach ($user->getEmailAddresses() as $address) {
             if ($address->isVerified()) {
-                $this->send($address->getAddress(), $this->localeFor($user), $subjectKey, $paragraphs);
+                $this->send($mail, $address->getAddress(), $this->localeFor($user), $subjectKey, $paragraphs);
             }
         }
     }

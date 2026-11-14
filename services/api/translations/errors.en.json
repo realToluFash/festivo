@@ -29,6 +29,8 @@
     "seating_section_limit": "A plan can have up to 30 sections. Delete one to add another.",
     "guest_already_listed": "That name is already on the list.",
     "replies_closed": "Answers have closed.",
+    "guest_replied": "They have replied, so they stay invited.",
+    "guest_not_marked_by_hand": "Only an invitation marked by hand can be undone.",
     "unauthenticated": "Please sign in to continue.",
     "invalid_credentials": "That email and password do not match.",
     "invalid_refresh_token": "Your session has ended. Please sign in again.",

@@ -117,6 +117,11 @@ services:
     App\Domain\Organisation\Members\TeamSeats:
         arguments:
             $teamSeatLimit: '%env(TEAM_SEAT_LIMIT)%'
+    # Basic-auth credentials as user:password, and the provider's published ranges, comma-separated (sc-4332).
+    App\Domain\Messaging\Controller\MailWebhookController:
+        arguments:
+            $secret: '%env(MAIL_WEBHOOK_SECRET)%'
+            $allowedRanges: '%env(MAIL_WEBHOOK_ALLOWED_RANGES)%'
     App\Domain\User\Controller\WhatsAppWebhookController:
         arguments:
             $verifyToken: '%env(WHATSAPP_WEBHOOK_VERIFY_TOKEN)%'
@@ -197,6 +202,9 @@ services:
     App\Domain\Event\CalendarFeed\FeedLinkIssuer:
         arguments:
             $secret: '%kernel.secret%'
+    App\Domain\Guest\Calendar\GuestCalendarWriter:
+        arguments:
+            $webOrigin: '%env(CORS_WEB_ORIGIN)%'
     App\Domain\Event\CalendarFeed\CalendarFeedWriter:
         arguments:
             $webOrigin: '%env(CORS_WEB_ORIGIN)%'
@@ -232,9 +240,17 @@ services:
 when@test:
     services:
         # No notification type has merged yet (sc-104 is the machine); the suite schedules these.
+        test.email_sender:
+            class: App\Domain\Messaging\Channel\EmailSender
+            autoconfigure: false
+            arguments:
+                $mailer: '@Symfony\Component\Mailer\MailerInterface'
+                $mailFrom: '%env(MAIL_FROM)%'
         App\Tests\Double\Messaging\RecordingEmailSender:
             public: true
             autoconfigure: true
+            arguments:
+                $mailer: '@test.email_sender'
         App\Domain\Messaging\Channel\EmailSender: '@App\Tests\Double\Messaging\RecordingEmailSender'
         App\Tests\Double\Messaging\RecordingPushSender:
             public: true
@@ -423,6 +439,12 @@ when@test:
         App\Tests\Double\ScriptedActiveEventsLimit:
             public: true
         App\Domain\Event\Interfaces\ActiveEventsLimitInterface: '@App\Tests\Double\ScriptedActiveEventsLimit'
+
+        # A test takes a permission away here, for a holder no seeded role makes (sc-3656).
+        App\Tests\Double\WithholdingMembershipDirectory:
+            public: true
+            arguments: ['@App\Domain\Organisation\MembershipDirectory']
+        App\Http\Access\Interfaces\MembershipDirectoryInterface: '@App\Tests\Double\WithholdingMembershipDirectory'
 
         App\Tests\Double\ScriptedAddressProvider:
             public: true

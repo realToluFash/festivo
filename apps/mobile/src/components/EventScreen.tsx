@@ -1,18 +1,36 @@
 import type { Membership, OrganisationEvent } from '@soirely/api-client';
-import { type EventArea, rememberTabHolding, roleHolds, takesCardStep } from '@soirely/domain';
+import {
+  type Choice,
+  type EventArea,
+  rememberTabHolding,
+  roleHolds,
+  takesCardStep,
+} from '@soirely/domain';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { router, useFocusEffect, useNavigation } from 'expo-router';
-import { type ReactNode, useCallback, useEffect, useRef, useState } from 'react';
-import { StyleSheet, View } from 'react-native';
+import { type ReactNode, type RefObject, useCallback, useEffect, useRef, useState } from 'react';
+import { StyleSheet, View, type ViewInstance } from 'react-native';
 import { useTranslation } from 'react-i18next';
 
 import { api } from '../api.ts';
-import { type Stale, keepsWhatLoaded, useOffline } from '../offline.ts';
+import {
+  NOT_OFFLINE,
+  type ScreenOffline,
+  type Stale,
+  keepsWhatLoaded,
+  useOffline,
+} from '../offline.ts';
 import { DESTINATION_HREF } from '../kit/appNav.ts';
 import { offersDelete } from '../kit/eventDelete.ts';
 import { offersEdit } from '../kit/eventEdit.ts';
-import { backToOriginal } from '../kit/eventDuplicate.ts';
-import { type EditAt, EVENT_AREA, type EventPlace, areaBack } from '../kit/eventNav.ts';
+import { DUPLICATING, backToOriginal } from '../kit/eventDuplicate.ts';
+import {
+  type EditAt,
+  EVENT_AREA,
+  type EventPlace,
+  GUESTS_FILTER,
+  areaBack,
+} from '../kit/eventNav.ts';
 import { markDeleted, takeCoverRefused, takeSaved } from '../kit/eventSaved.ts';
 import { type Opened, openedOf, openedWithoutAsking } from '../kit/eventsOpen.ts';
 import { SHOWN_EVENT, goUpToEvent } from '../kit/upToEvent.ts';
@@ -24,7 +42,9 @@ import { AppFrame, BackButton } from './AppFrame.tsx';
 import { bodyEdges } from './bodyEdges.ts';
 import { SecondaryButton } from './Buttons.tsx';
 import { cardFrame } from './cardFrame.ts';
+import { DuplicateEvent } from './DuplicateEvent.tsx';
 import { EventPage } from './EventPage.tsx';
+import { EventGuests, type GuestsTop } from './EventGuests.tsx';
 import { EventPeople } from './EventPeople.tsx';
 import { EventNotFound, EventTop, EventsFailed, usePhaseOf } from './Events.tsx';
 import { Notice } from './Notice.tsx';
@@ -33,9 +53,10 @@ import { Refreshing } from './Refreshing.tsx';
 import { Screen, useScrolledToTop } from './Screen.tsx';
 import { LoadingBlock, PageToast } from './Summary.tsx';
 import { Arrived } from './Skeleton.tsx';
-import { moveScreenReaderFocus } from './screenReaderFocus.ts';
+import { type ScreenReaderTarget, moveScreenReaderFocus } from './screenReaderFocus.ts';
 import { Text, type TextHandle } from './Text.tsx';
 import { Title } from './Title.tsx';
+import { TopPrimary } from './TopPrimary.tsx';
 import { PAGE_TITLE, pageTitle } from './topTitle.ts';
 import { useSidebarCard } from './sidebarCard.ts';
 import { eventTop } from '../kit/eventTop.ts';
@@ -46,13 +67,19 @@ import { useSystemBack } from './useSystemBack.ts';
 export function EventScreen({
   eventId,
   area,
+  filter = 'all',
   copiedFrom,
+  opensDuplicate = false,
   keepsTab,
 }: {
   eventId: string;
   area: EventPlace;
+  /** The choice Guests opens on, from a figure that counts it (sc-3786). */
+  filter?: Choice;
   /** The event this one was duplicated from, when Duplicate opened it (sc-22145). */
   copiedFrom?: string | undefined;
+  /** Opened by an Events card's Duplicate, so Duplicate is over the page as it opens. */
+  opensDuplicate?: boolean;
   /** Opened from Happening now, so Back returns to the tab that was showing. */
   keepsTab: boolean;
 }) {
@@ -62,11 +89,28 @@ export function EventScreen({
   const organisationId = organisation?.id;
   const phone = kind === 'phone';
   const navigation = useNavigation<{
-    setParams(params: { [SHOWN_EVENT]?: string; [EVENT_AREA]?: EventPlace }): void;
+    setParams(params: {
+      [SHOWN_EVENT]?: string;
+      [EVENT_AREA]?: EventPlace;
+      [GUESTS_FILTER]?: Choice | undefined;
+      [DUPLICATING]?: string | undefined;
+    }): void;
     getState(): { routes: readonly { params?: unknown }[]; index: number } | undefined;
   }>();
   const [savedEvent, setSavedEvent] = useState<string | null>(null);
-  const [toast, setToast] = useState<{ eventId: string; words: string } | null>(null);
+  const [guestsOffline, setGuestsOffline] = useState<ScreenOffline>(NOT_OFFLINE);
+  const [guestsTop, setGuestsTop] = useState<GuestsTop>({ add: null, back: null });
+  const guestsAdd = useRef<ViewInstance>(null);
+  const [toast, setToast] = useState<{
+    eventId: string;
+    area: EventPlace;
+    words: string;
+  } | null>(null);
+  const [duplicating, setDuplicating] = useState<{
+    opener: RefObject<ScreenReaderTarget | null>;
+    count: number;
+    open: boolean;
+  } | null>(null);
   const insets = useSafeAreaInsets();
   const [coverRefused, setCoverRefused] = useState<{ eventId: string; reason: string } | null>(
     null,
@@ -112,7 +156,8 @@ export function EventScreen({
     }, [reload, freshen]),
   );
 
-  const chooseArea = (next: EventPlace) => navigation.setParams({ [EVENT_AREA]: next });
+  const chooseArea = (next: EventPlace, choice?: Choice) =>
+    navigation.setParams({ [EVENT_AREA]: next, [GUESTS_FILTER]: choice });
   const leave = () => {
     if (original != null) goUpToEvent(navigation, router, original);
     else if (router.canGoBack()) router.back();
@@ -134,8 +179,17 @@ export function EventScreen({
         router.push(`/events/${encodeURIComponent(eventId)}/edit${at == null ? '' : `?at=${at}`}`)
     : undefined;
   const onDuplicate = creates
-    ? () => router.push(`/events/${encodeURIComponent(eventId)}/duplicate`)
+    ? (opener: RefObject<ScreenReaderTarget | null>) =>
+        setDuplicating((now) => ({ opener, count: (now?.count ?? 0) + 1, open: true }))
     : undefined;
+  const fromList = useRef(opensDuplicate);
+
+  useEffect(() => {
+    if (!fromList.current || event == null || !creates) return;
+    fromList.current = false;
+    navigation.setParams({ [DUPLICATING]: undefined });
+    setDuplicating({ opener: cardName.current == null ? title : cardName, count: 1, open: true });
+  }, [event, creates, navigation]);
   const onDeleted = deletes
     ? (gone: OrganisationEvent) => {
         markDeleted(gone.name);
@@ -151,6 +205,7 @@ export function EventScreen({
           <EventPage
             kind={kind}
             event={event}
+            onGuests={(choice) => chooseArea('guests', choice)}
             nameRef={cardNamed ? cardName : undefined}
             manages={manages}
             takes={(action) => takesCardStep(event, action)}
@@ -158,6 +213,7 @@ export function EventScreen({
             onEdit={onEdit}
             onDuplicate={onDuplicate}
             onDeleted={onDeleted}
+            tell={(words) => setToast({ eventId, area, words })}
           />
           {coverRefused?.eventId === eventId && (
             <View style={styles.stack}>
@@ -181,7 +237,7 @@ export function EventScreen({
         <EventPeople
           key={event.id}
           event={event}
-          tell={(words) => setToast(words == null ? null : { eventId, words })}
+          tell={(words) => setToast(words == null ? null : { eventId, area, words })}
         />
       ) : (
         <PlaceholderArea area={area}>
@@ -205,32 +261,58 @@ export function EventScreen({
       <LoadingBlock words={t('eventsScreen.loadingEvent')} />
     );
 
-  const refreshing = opened.refreshing ? <Refreshing testID="events.page.refreshing" /> : null;
+  const guests = area === 'guests' && event != null;
+  const refreshing =
+    opened.refreshing || (guests && guestsOffline.refreshing) ? (
+      <Refreshing testID="events.page.refreshing" />
+    ) : null;
   const underTitle =
     area === 'people' && event != null ? (
       <Text size={15} weight="medium" style={styles.secondary}>
         {event.name}
       </Text>
     ) : undefined;
+  const addGuest =
+    guests && guestsTop.add != null ? (
+      <TopPrimary
+        ref={guestsAdd}
+        label={t('guestList.addGuest')}
+        onPress={guestsTop.add}
+        wide={!phone}
+        testID="guests.add"
+      />
+    ) : null;
+  const guestBack = guests ? guestsTop.back : null;
   const frameBack =
-    top.frameBack === 'area'
-      ? { label: backLabel, onPress: back }
-      : top.frameBack === 'events'
-        ? {
-            label: original != null ? t('timeline.backToEvent') : t('eventsScreen.title'),
-            onPress: leave,
-          }
-        : undefined;
+    guestBack != null
+      ? { label: t('eventNav.guests'), onPress: guestBack }
+      : top.frameBack === 'area'
+        ? { label: backLabel, onPress: back }
+        : top.frameBack === 'events'
+          ? {
+              label: original != null ? t('timeline.backToEvent') : t('eventsScreen.title'),
+              onPress: leave,
+            }
+          : undefined;
 
   return (
     <AppFrame
       current="events"
       title={t(`eventNav.${area}`)}
       titleRef={title}
-      untitled={cardNamed || areaTitled}
-      offline={opened.stale}
+      untitled={cardNamed || areaTitled || guestBack != null}
+      offline={guests ? (guestsOffline.stale ?? opened.stale) : opened.stale}
       besideBack={phone || cardNamed ? refreshing : undefined}
-      besideTitle={phone || areaTitled ? undefined : refreshing}
+      besideTitle={
+        phone ? (
+          addGuest
+        ) : areaTitled ? undefined : (
+          <>
+            {refreshing}
+            {addGuest}
+          </>
+        )
+      }
       back={frameBack}
       backInBody={top.frameBack == null}
       inEvent={
@@ -246,40 +328,90 @@ export function EventScreen({
       }
       underTitle={areaTitled ? undefined : underTitle}
     >
-      <Screen
-        edges={bodyEdges(kind)}
-        contentStyle={
-          phone
-            ? cardNamed
-              ? styles.phoneUntitled
-              : styles.phone
-            : kind === 'tabletLandscape' && cardNamed
-              ? styles.landscapeUntitled
-              : styles.tablet
-        }
-      >
-        {kind === 'tabletLandscape' &&
-          (cardNamed ? (
-            refreshing
-          ) : (
-            <BackButton label={backLabel} onPress={back} testID="events.back" />
-          ))}
-        {areaTitled && (
-          <View style={styles.areaTop}>
-            <View style={styles.titleRow}>
-              <View style={styles.fill}>
-                <Title size={PAGE_TITLE} accessibilityRole="header" ref={title} style={pageTitle}>
-                  {t(`eventNav.${area}`)}
-                </Title>
+      {guests ? (
+        <EventGuests
+          key={`${event.id}.${filter}`}
+          event={event}
+          filter={filter}
+          phase={phase}
+          now={now}
+          onEventChange={change}
+          onEventStale={reload}
+          addRef={guestsAdd}
+          onTop={setGuestsTop}
+          heading={
+            <>
+              {kind === 'tabletLandscape' && !cardNamed && (
+                <BackButton label={backLabel} onPress={back} testID="events.back" />
+              )}
+              {areaTitled && (
+                <View style={styles.areaTop}>
+                  <View style={styles.titleRow}>
+                    <View style={styles.fill}>
+                      <Title
+                        size={PAGE_TITLE}
+                        accessibilityRole="header"
+                        ref={title}
+                        style={pageTitle}
+                      >
+                        {t(`eventNav.${area}`)}
+                      </Title>
+                    </View>
+                    {refreshing}
+                    {addGuest}
+                  </View>
+                  {underTitle}
+                </View>
+              )}
+            </>
+          }
+          onOffline={setGuestsOffline}
+        />
+      ) : (
+        <Screen
+          edges={bodyEdges(kind)}
+          contentStyle={
+            phone
+              ? cardNamed
+                ? styles.phoneUntitled
+                : styles.phone
+              : kind === 'tabletLandscape' && cardNamed
+                ? styles.landscapeUntitled
+                : styles.tablet
+          }
+        >
+          {kind === 'tabletLandscape' &&
+            (cardNamed ? (
+              refreshing
+            ) : (
+              <BackButton label={backLabel} onPress={back} testID="events.back" />
+            ))}
+          {areaTitled && (
+            <View style={styles.areaTop}>
+              <View style={styles.titleRow}>
+                <View style={styles.fill}>
+                  <Title size={PAGE_TITLE} accessibilityRole="header" ref={title} style={pageTitle}>
+                    {t(`eventNav.${area}`)}
+                  </Title>
+                </View>
+                {refreshing}
               </View>
-              {refreshing}
+              {underTitle}
             </View>
-            {underTitle}
-          </View>
-        )}
-        {body}
-      </Screen>
-      {toast?.eventId === eventId && area === 'people' && (
+          )}
+          {body}
+        </Screen>
+      )}
+      {event != null && duplicating != null && (
+        <DuplicateEvent
+          key={duplicating.count}
+          open={duplicating.open}
+          event={event}
+          opener={duplicating.opener}
+          onClose={() => setDuplicating((now) => (now == null ? now : { ...now, open: false }))}
+        />
+      )}
+      {toast?.eventId === eventId && toast.area === area && (
         <PageToast
           words={toast.words}
           onClose={() => setToast(null)}

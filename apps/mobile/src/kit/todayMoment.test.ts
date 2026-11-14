@@ -1,5 +1,6 @@
-import type { ListedEvent } from '@soirely/api-client';
+import type { EventGuestFigures, ListedEvent } from '@soirely/api-client';
 import { createInstance } from 'i18next';
+import { followNumberLocales, followPluralLocales } from '@soirely/domain';
 import { beforeAll, describe, expect, it } from 'vitest';
 
 import en from '../i18n/locales/en.json';
@@ -225,5 +226,77 @@ describe('todayMoment', () => {
     });
 
     expect(moment([draft]).events[0]).toMatchObject({ count: 'Draft', draft: true, live: false });
+  });
+});
+
+describe("Your events' replies line (sc-29881)", () => {
+  const wedding = { invited: 142, coming: 96, notReplied: 25 };
+  const read = (guests: EventGuestFigures | null, rest: Partial<ListedEvent> = {}) =>
+    moment([event('Wedding', { guests, ...rest })]).events[0]?.ready;
+
+  it('reads coming and the share replied, as Events counts them, over a bar in the same share', () => {
+    expect(read(wedding)).toEqual({
+      words: '96 coming · 82% replied',
+      spoken: '96 coming, 82% replied',
+      percent: 82,
+      track: true,
+    });
+  });
+
+  it('keeps the empty bar for an event invited with no replies yet', () => {
+    expect(read({ invited: 40, coming: 0, notReplied: 40 })).toEqual({
+      words: '0 coming · 0% replied',
+      spoken: '0 coming, 0% replied',
+      percent: 0,
+      track: true,
+    });
+  });
+
+  it('reads Invitations not sent, with no bar, when nobody is invited', () => {
+    expect(read({ invited: 0, coming: 0, notReplied: 0 })).toEqual({
+      words: 'Invitations not sent',
+      percent: 0,
+    });
+  });
+
+  it('shows nothing on a draft, without guests.read, or without figures', () => {
+    expect(read(wedding, { status: 'draft', phase: 'draft' })).toBeNull();
+    expect(read(null)).toBeNull();
+    expect(moment([event('Wedding')]).events[0]?.ready).toBeNull();
+  });
+
+  it('shows on an event under way as before it', () => {
+    const under = event('Wedding', {
+      guests: wedding,
+      phase: 'happening_now',
+      startsAt: '2026-11-02T10:00:00Z',
+    });
+
+    expect(moment([under]).events[0]).toMatchObject({
+      live: true,
+      ready: { words: '96 coming · 82% replied' },
+    });
+  });
+
+  it('writes its numbers in the reader’s locale', async () => {
+    const french = createInstance();
+    await french.init({
+      resources: { fr: { translation: en } },
+      lng: 'fr',
+      interpolation: { escapeValue: false },
+    });
+    followPluralLocales(french.services.pluralResolver);
+    followNumberLocales(french.services.formatter!);
+    const guests = { invited: 1400, coming: 1204, notReplied: 126 };
+
+    const ready = todayMoment(
+      { events: [event('Mariage', { guests })], at: AT },
+      NOW,
+      { timeZone: 'Europe/Paris', locale: 'fr-FR' },
+      'Folake',
+      french.t,
+    ).events[0]?.ready;
+
+    expect(ready?.words).toBe('1 204 coming · 91 % replied');
   });
 });

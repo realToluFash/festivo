@@ -1,0 +1,37 @@
+# sc-44741: the refused screen after a rename, held for the side-by-side pair: nothing deleted, Keep it closes. Needs ${METRO_URL}, ${PAIR_ID}, ${PAIR_OLD}, ${PAIR_NEW}.
+appId: host.exp.Exponent
+---
+- openLink: ${METRO_URL}/--/events/${PAIR_ID}
+- extendedWaitUntil:
+    visible:
+      id: 'events.page'
+    timeout: 30000
+- scrollUntilVisible:
+    element:
+      id: 'events.delete'
+    centerElement: true
+    timeout: 30000
+- tapOn:
+    id: 'events.delete'
+- extendedWaitUntil:
+    visible:
+      id: 'events.deleteName'
+    timeout: 15000
+- runScript:
+    file: ../scripts/change-event-elsewhere.js
+    env:
+      EVENT_ID: ${PAIR_ID}
+      ELSEWHERE_NAME: ${PAIR_NEW}
+- assertTrue:
+    condition: ${output.changed == 200}
+    label: 'Renamed elsewhere, answered ${output.changed}'
+- tapOn:
+    id: 'events.deleteName'
+- inputText: ${PAIR_OLD}
+- hideKeyboard
+- tapOn:
+    id: 'events.deleteGo'
+- waitForAnimationToEnd
+- takeScreenshot: refused
+- tapOn:
+    id: 'events.deleteKeep'

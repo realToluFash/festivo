@@ -16,6 +16,7 @@ import en from '../i18n/locales/en.json';
 import { SAMPLE } from './rules.ts';
 import { type SettingsSay, type Viewer, VIEWERS } from './settings.ts';
 import { fold } from '../components/orgMenu.ts';
+import { crowdName } from './sampleNames.ts';
 
 export const ORGANISATION = SAMPLE.organisation;
 export const DOMAIN = 'ire.events';
@@ -140,6 +141,22 @@ export function morePeople(): Person[] {
   }));
 }
 
+/** Ire Events grown to `total` on All, so the card's chip has more beyond its five faces than its circle holds (sc-48825). */
+export function crowdOf(people: readonly Person[], total: number): Person[] {
+  const shown = people.filter((one) => isShown(one.status, 'all')).length;
+  const extra = Array.from({ length: Math.max(0, total - shown) }, (_, index) => ({
+    ...person(`crowd-${index + 1}@ire.events`, crowdName(index), 'Member', [
+      { what: 'Joined with a company email address', when: '2026-10-05' },
+    ]),
+    tone: people.length + index,
+  }));
+
+  return [...people, ...extra];
+}
+
+/** All at 104 shows +99 beside the faces, the chip's widest figure; at 1,326 it shows 99+ (sc-48825). */
+export const CROWDS = { ninetyNine: 104, crowd: 1326 } as const;
+
 const EVENT = {
   wed: 'evt-wed-4',
   ireti: 'evt-ireti-2',
@@ -167,6 +184,8 @@ export interface Invitation {
   status: 'pending' | 'expired' | 'revoked' | 'declined';
   sent: string;
   ended: string;
+  /** Its latest send failed, was held back for a suppressed address, or hard-bounced (sc-46109); the field's name is dev's. */
+  notDelivered?: boolean;
 }
 
 export function sampleInvitations(): Invitation[] {
@@ -197,6 +216,63 @@ export function sampleInvitations(): Invitation[] {
     },
   ];
 }
+
+/** Every reading of an invitation whose email never arrived (sc-46109), after one that did. */
+export function undeliveredInvitations(): Invitation[] {
+  return [
+    {
+      email: 'nnamdi.eze@ire.events',
+      role: 'Member',
+      by: FOLAKE,
+      status: 'pending',
+      sent: '2026-11-02',
+      ended: '2026-11-09',
+    },
+    {
+      email: 'ada.obi@ire.events',
+      role: 'Member',
+      by: JULIEN,
+      status: 'pending',
+      sent: '2026-11-04',
+      ended: '2026-11-11',
+      notDelivered: true,
+    },
+    {
+      email: 'ines.duarte@gmail.com',
+      role: 'Member',
+      by: FOLAKE,
+      status: 'expired',
+      sent: '2026-10-14',
+      ended: '2026-10-21',
+      notDelivered: true,
+    },
+    {
+      email: 'lena.vogel@web.de',
+      role: 'Admin',
+      by: FOLAKE,
+      status: 'revoked',
+      sent: '2026-10-28',
+      ended: '2026-11-03',
+      notDelivered: true,
+    },
+    {
+      email: 'yusuf.bello@outlook.com',
+      role: 'Member',
+      by: JULIEN,
+      status: 'declined',
+      sent: '2026-10-01',
+      ended: '2026-10-03',
+      notDelivered: true,
+    },
+  ];
+}
+
+/** The sample's addresses that sc-4332 still holds back, so inviting one again is not delivered either. */
+export const SUPPRESSED: ReadonlySet<string> = new Set([
+  'ada.obi@ire.events',
+  'ines.duarte@gmail.com',
+  'lena.vogel@web.de',
+]);
 
 export type Filter = 'all' | 'active' | 'invited' | 'waiting' | 'suspended' | 'former';
 
@@ -302,7 +378,7 @@ export function rowLine(person: Person, viewer: Pick<Viewer, 'id'>): string {
 }
 
 export function headcount(count: number): string {
-  return count === 1 ? '1 person' : `${count} people`;
+  return count === 1 ? '1 person' : `${count.toLocaleString('en')} people`;
 }
 
 export const DEADLINES = {
@@ -343,19 +419,24 @@ const ENDED_WORDS = {
   declined: 'declined',
 } as const;
 
+export const NOT_DELIVERED = 'Not delivered';
+
 export function invitationRow(
   invitation: Invitation,
   people: readonly Person[],
   viewer: Pick<Viewer, 'id'>,
   say: SettingsSay,
-): { tag: string | null; line: string; dates: string } {
+): { tag: string | null; line: string; sent: string; ended: string; notDelivered: boolean } {
   const by = invitation.by === viewer.id ? 'you' : nameOf(people, invitation.by);
   const status = invitation.status;
+  const notDelivered = invitation.notDelivered === true;
 
   return {
     tag: status === 'pending' ? null : `${status.charAt(0).toUpperCase()}${status.slice(1)}`,
     line: `${invitation.role} · invited by ${by}`,
-    dates: `Sent ${say.date(invitation.sent)} · ${ENDED_WORDS[status]} ${say.date(invitation.ended)}`,
+    sent: notDelivered ? NOT_DELIVERED : `Sent ${say.date(invitation.sent)}`,
+    ended: `${ENDED_WORDS[status]} ${say.date(invitation.ended)}`,
+    notDelivered,
   };
 }
 
@@ -963,9 +1044,17 @@ export function invited(
   by: string,
 ): Invitation[] {
   const address = email.trim();
+  const fresh: Invitation = {
+    email: address,
+    role,
+    by,
+    status: 'pending',
+    sent: TODAY,
+    ended: '2026-11-11',
+  };
 
   return [
-    { email: address, role, by, status: 'pending', sent: TODAY, ended: '2026-11-11' },
+    SUPPRESSED.has(address) ? { ...fresh, notDelivered: true } : fresh,
     ...invitations.filter((one) => one.email !== address),
   ];
 }
@@ -1051,6 +1140,8 @@ export const MEMBERS_STATES = [
   'menu',
   'nobodySuspended',
   'nobodyLeft',
+  'ninetyNine',
+  'crowd',
   'invited',
   'revoked',
   'loading',
@@ -1059,6 +1150,9 @@ export const MEMBERS_STATES = [
   'inviteBlank',
   'inviteShape',
   'sent',
+  'notDelivered',
+  'notDeliveredInvited',
+  'notDeliveredAgain',
   'request',
   'turningDown',
   'requestDiscard',
@@ -1385,6 +1479,9 @@ function peopleOf(state: MembersState, viewer: Pick<Viewer, 'id'>): Person[] {
       }));
     case 'nobodyLeft':
       return people.filter((one) => one.id !== DANIEL);
+    case 'ninetyNine':
+    case 'crowd':
+      return crowdOf(people, CROWDS[state]);
     case 'approved':
       return approved(people, LUCIA, 'Member', viewer.id);
     case 'turnedDown':
@@ -1450,6 +1547,8 @@ function noticeOf(state: MembersState): Notice | null {
   switch (state) {
     case 'sent':
       return { kind: 'sent', email: 'chidi.okafor@ire.events' };
+    case 'notDeliveredAgain':
+      return { kind: 'sent', email: 'ines.duarte@gmail.com' };
     case 'approved':
       return { kind: 'approved', id: LUCIA, role: 'Member' };
     case 'turnedDown':
@@ -1467,8 +1566,25 @@ const FILTERS: Partial<Record<MembersState, Filter>> = {
   nobodyLeft: 'former',
   invited: 'invited',
   revoked: 'invited',
+  notDeliveredInvited: 'invited',
   former: 'former',
 };
+
+function invitationsOf(state: MembersState, viewer: Pick<Viewer, 'id'>): Invitation[] {
+  switch (state) {
+    case 'revoked':
+      return revoked(sampleInvitations(), 'nnamdi.eze@ire.events');
+    case 'sent':
+      return invited(sampleInvitations(), 'chidi.okafor@ire.events', 'Member', viewer.id);
+    case 'notDelivered':
+    case 'notDeliveredInvited':
+      return undeliveredInvitations();
+    case 'notDeliveredAgain':
+      return invited(undeliveredInvitations(), 'ines.duarte@gmail.com', 'Member', viewer.id);
+    default:
+      return sampleInvitations();
+  }
+}
 
 const EVENTS: Partial<Record<MembersState, PersonEvent>> = {
   justSuspended: 'justSuspended',
@@ -1508,12 +1624,7 @@ export function membersStart(name: string, viewer: Pick<Viewer, 'id' | 'manages'
     leadsLoad:
       state === 'martaLoading' ? 'loading' : state === 'martaLoadFailed' ? 'failed' : 'loaded',
     people: peopleOf(state, viewer),
-    invitations:
-      state === 'revoked'
-        ? revoked(invitations, 'nnamdi.eze@ire.events')
-        : state === 'sent'
-          ? invited(invitations, 'chidi.okafor@ire.events', 'Member', viewer.id)
-          : invitations,
+    invitations: invitationsOf(state, viewer),
     filter: FILTERS[state] ?? 'all',
     menu: state === 'menu',
     open: openOf(state, viewer),

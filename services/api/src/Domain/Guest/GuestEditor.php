@@ -5,17 +5,17 @@ declare(strict_types=1);
 namespace App\Domain\Guest;
 
 use App\Audit\Auditor;
-use App\Domain\Guest\Http\GuestSerialiser;
+use App\Domain\Guest\Group\GuestGroupEditor;
+use App\Domain\Guest\Model\GuestNeeds;
 use App\Domain\Guest\Model\NewGuest;
 use App\Entity\Guest;
+use App\Entity\GuestGroup;
 use App\Entity\User;
 use App\Enum\Actor;
 use App\Enum\ErrorCode;
-use App\Enum\RealtimeTopic;
 use App\Http\EntityTag;
 use App\Http\Exception\ApiException;
 use App\Locale\NameNormaliser;
-use App\Realtime\RealtimePublisher;
 use App\Repository\GuestRepository;
 use Doctrine\DBAL\LockMode;
 use Doctrine\ORM\EntityManagerInterface;
@@ -23,7 +23,6 @@ use Psl\Dict;
 use Psl\Iter;
 use Psl\Str;
 use Psl\Vec;
-use Symfony\Contracts\Translation\TranslatorInterface;
 
 /** The audit names the fields changed and holds none of their values: no name or contact may outlive the purge (sc-1468). */
 final readonly class GuestEditor
@@ -32,11 +31,12 @@ final readonly class GuestEditor
 
     public function __construct(
         private GuestRepository $guestRepository,
-        private GuestSerialiser $guestSerialiser,
         private EntityManagerInterface $entityManager,
         private Auditor $auditor,
-        private RealtimePublisher $realtimePublisher,
-        private TranslatorInterface $translator,
+        private GuestListPublisher $guestListPublisher,
+        private GuestNeedsRecord $guestNeedsRecord,
+        private GuestRules $guestRules,
+        private GuestGroupEditor $guestGroupEditor,
     ) {
     }
 
@@ -58,9 +58,12 @@ final readonly class GuestEditor
 
             $companions = $this->guestRepository->findCompanionsOf($guest);
             $kept = $this->kept($companions, $companionIds);
-            $fields = self::changed($guest, $companions, $new, $companionIds);
+            $group = null === $new->group ? $guest->getGroup() : $this->guestGroupEditor->settle($event, $new->group, $by);
+            $fields = self::changed($guest, $companions, $new, $companionIds, $group);
+            $needsBefore = $this->guestNeedsRecord->of([$guest, ...$companions]);
+            $needsChanged = self::needsChanged($needsBefore, $guest, $new, $companionIds);
 
-            if ([] === $fields) {
+            if ([] === $fields && !$needsChanged) {
                 return false;
             }
 
@@ -73,6 +76,8 @@ final readonly class GuestEditor
             $guest->setFullName($new->fullName, $new->nameKey);
             $guest->setEmail($new->email);
             $guest->setMobile($new->mobile);
+            $guest->setLanguage($new->language);
+            $guest->setGroup($group);
             $guest->raiseVersion();
 
             foreach ($companions as $companion) {
@@ -81,36 +86,50 @@ final readonly class GuestEditor
                 }
             }
 
+            if (null !== $new->needs) {
+                $this->guestNeedsRecord->write($guest, $new->needs, $by);
+            }
+
             foreach ($new->companions as $index => $name) {
                 $id = $companionIds[$index] ?? null;
                 $nameKey = null === $name ? null : NameNormaliser::key($name);
+                $needs = $new->companionNeeds[$index] ?? null;
 
                 if (null === $id) {
-                    $this->entityManager->persist(Guest::companionOf($guest, $name, $nameKey, $index + 1, $by));
+                    $companion = Guest::companionOf($guest, $name, $nameKey, $index + 1, $by);
+                    $this->entityManager->persist($companion);
+                    $this->guestNeedsRecord->write($companion, $needs ?? GuestNeeds::none(), $by);
                     continue;
                 }
 
                 $companion = $kept[$id];
                 $companion->setFullName($name, $nameKey);
                 $companion->setPosition($index + 1);
+
+                if (null !== $needs) {
+                    $this->guestNeedsRecord->write($companion, $needs, $by);
+                }
             }
 
-            $this->auditor->record(
-                self::UPDATED,
-                'Guest',
-                $guest->getId(),
-                Actor::User,
-                $by->getId(),
-                $by->getName(),
-                Dict\from_keys($fields, static fn (string $_): array => [null, null]),
-            );
+            if ([] !== $fields) {
+                $this->auditor->record(
+                    self::UPDATED,
+                    'Guest',
+                    $guest->getId(),
+                    Actor::User,
+                    $by->getId(),
+                    $by->getName(),
+                    Dict\from_keys($fields, static fn (string $_): array => [null, null]),
+                );
+            }
+
             $this->entityManager->flush();
 
             return true;
         });
 
         if ($changed) {
-            $this->realtimePublisher->publish(RealtimeTopic::EventGuests, $event->getId()->toRfc4122(), $this->guestSerialiser->list($event, contacts: false));
+            $this->guestListPublisher->publish($event);
         }
 
         return $guest;
@@ -134,11 +153,7 @@ final readonly class GuestEditor
             }
 
             if (!Iter\contains_key($theirs, $id) || Iter\contains_key($kept, $id)) {
-                $violations[] = [
-                    'propertyPath' => "companions[{$index}].id",
-                    'message' => $this->translator->trans('validation.guest_companion_unknown'),
-                    'code' => ErrorCode::ValidationFailed->value,
-                ];
+                $violations[] = $this->guestRules->violation("companions[{$index}].id", 'validation.guest_companion_unknown');
                 continue;
             }
 
@@ -153,12 +168,26 @@ final readonly class GuestEditor
     }
 
     /**
+     * @param array<string, GuestNeeds> $before by the person's id
+     * @param list<?string>             $ids
+     */
+    private static function needsChanged(array $before, Guest $guest, NewGuest $new, array $ids): bool
+    {
+        $differs = static fn (?string $id, ?GuestNeeds $needs): bool => null === $id
+            ? null !== $needs && !$needs->equals(GuestNeeds::none())
+            : null !== $needs && !($before[$id] ?? GuestNeeds::none())->equals($needs);
+
+        return $differs($guest->getId()->toRfc4122(), $new->needs)
+            || Iter\any(Vec\keys($new->companions), static fn (int $index): bool => $differs($ids[$index] ?? null, $new->companionNeeds[$index] ?? null));
+    }
+
+    /**
      * @param list<Guest>   $companions
      * @param list<?string> $ids
      *
      * @return list<string>
      */
-    private static function changed(Guest $guest, array $companions, NewGuest $new, array $ids): array
+    private static function changed(Guest $guest, array $companions, NewGuest $new, array $ids, ?GuestGroup $group): array
     {
         $before = Vec\map($companions, static fn (Guest $companion): array => [$companion->getId()->toRfc4122(), $companion->getFullName()]);
         $after = Vec\map(Vec\keys($new->companions), static fn (int $index): array => [$ids[$index] ?? null, $new->companions[$index]]);
@@ -167,7 +196,9 @@ final readonly class GuestEditor
             'fullName' => $guest->getFullName() !== $new->fullName,
             'email' => $guest->getEmail() !== $new->email,
             'mobile' => $guest->getMobile() !== $new->mobile,
+            'language' => $guest->getLanguage() !== $new->language,
             'companions' => $before !== $after,
+            'group' => $guest->getGroup() !== $group,
         ]));
     }
 }

@@ -583,20 +583,20 @@ describe('the step in Spanish and Portuguese (lead, 4506242145)', () => {
   it.each([
     [
       'es',
-      '[Sí, asistiré]',
+      'Sí, allí estaré',
       '[¿Hay algo que la cocina deba saber?]',
       '[Su invitado 1]',
       '[Cacahuetes]',
     ],
     [
       'pt',
-      '[Sim, vou estar presente]',
+      'Sim, lá estarei',
       '[Há alguma coisa que a cozinha deva saber?]',
       '[O seu convidado 1]',
       '[Amendoins]',
     ],
   ])(
-    '?state=%s reads the step in its bracketed samples',
+    '?state=%s reads the step in its bracketed samples, the answer in the product’s words',
     async (state, yes, title, first, peanuts) => {
       await guest(state);
 

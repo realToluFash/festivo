@@ -43,10 +43,9 @@ final readonly class CalendarFeedWriter
     {
         $entries = [];
         $instants = [];
-        $keptAfter = RestoreWindow::openForDeletionsAfter($now);
 
         foreach ($events as $event) {
-            $status = FeedEntryStatus::of($event->getDeletedAt(), $event->getEndedAt(), $event->getStartsAt(), $keptAfter);
+            $status = self::statusOf($event, $now);
 
             if (null === $status) {
                 continue;
@@ -63,7 +62,7 @@ final readonly class CalendarFeedWriter
             $instants[$zone->getName()] = [
                 ...$instants[$zone->getName()] ?? [],
                 $event->getStartsAt()->getTimestamp(),
-                $this->endOf($event)->getTimestamp(),
+                self::endOf($event)->getTimestamp(),
                 ...Vec\map($milestones, static fn (Milestone $milestone): int => $milestone->at->getTimestamp()),
             ];
         }
@@ -89,6 +88,12 @@ final readonly class CalendarFeedWriter
         ]);
     }
 
+    /** Null once a call-off or deletion is past its restore window, when the event leaves every feed (sc-3626, sc-3627). */
+    public static function statusOf(Event $event, DateTimeImmutable $now): ?FeedEntryStatus
+    {
+        return FeedEntryStatus::of($event->getDeletedAt(), $event->getEndedAt(), $event->getStartsAt(), RestoreWindow::openForDeletionsAfter($now));
+    }
+
     /** @return list<Milestone> its timeline less the event's own dates, which its DTSTART and DTEND already say, so it shows once in a calendar app (sc-3626) */
     private function areaMilestones(Event $event, Grants $grants): array
     {
@@ -104,7 +109,7 @@ final readonly class CalendarFeedWriter
         $summary = EventPhase::Paused === EventPhase::of($event->getStatus(), $event->getStartsAt(), $event->getEndsAt(), $now) && null === $event->getDeletedAt()
             ? $this->translator->trans('calendar_feed.paused_summary', ['{name}' => $event->getName()])
             : $event->getName();
-        $venue = $this->venueLine($event);
+        $venue = self::venueLine($event);
 
         return [
             'BEGIN:VEVENT',
@@ -114,7 +119,7 @@ final readonly class CalendarFeedWriter
             'LAST-MODIFIED:' . ICalendarLines::utc($event->getUpdatedAt()),
             'SEQUENCE:' . $event->getVersion(),
             'DTSTART' . $tzid . ':' . ICalendarLines::local($event->getStartsAt(), $zone),
-            'DTEND' . $tzid . ':' . ICalendarLines::local($this->endOf($event), $zone),
+            'DTEND' . $tzid . ':' . ICalendarLines::local(self::endOf($event), $zone),
             'SUMMARY:' . ICalendarLines::text($summary),
             ...(null === $venue ? [] : ['LOCATION:' . ICalendarLines::text($venue)]),
             'DESCRIPTION:' . ICalendarLines::text($this->translator->trans('calendar_feed.status_line', ['{status}' => $word]) . "\n" . $this->translator->trans('calendar_feed.open_line', ['{link}' => $link])),
@@ -147,7 +152,7 @@ final readonly class CalendarFeedWriter
     }
 
     /** Ended early after its start, it ends when it was ended, as its own timeline says (sc-16709). */
-    private function endOf(Event $event): DateTimeImmutable
+    public static function endOf(Event $event): DateTimeImmutable
     {
         $endedAt = $event->getEndedAt();
 
@@ -170,7 +175,7 @@ final readonly class CalendarFeedWriter
         return $this->translator->trans('calendar_feed.status.' . $key);
     }
 
-    private function venueLine(Event $event): ?string
+    public static function venueLine(Event $event): ?string
     {
         $venue = EventVenue::of($event);
 

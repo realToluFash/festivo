@@ -8,7 +8,17 @@ export const SW = {
   textStillHere: 'Your text is still here. Reload to see the message as it is now.',
   reload: 'Reload',
   tooLateWhy: 'The event was not resumed or restored within 48 hours of this message’s time.',
+  editingPaused: 'Editing.',
+  finishedWhy: 'The event finished before this message was due.',
 } as const;
+
+/** How late a held message may go: the API's figure, 48 in the sample. */
+export const TOO_LATE_HOURS = 48;
+
+/** sc-3963's paused line: one string for both sides of the message's time (l10n #28804), a plural family on the API's hours. */
+export function pausedWaits(hours = TOO_LATE_HOURS): string {
+  return `This message is waiting while the event is paused. If the event is live again by this message’s time, it goes then. If not, it goes soon after the event is live again, unless that is more than ${hours} ${hours === 1 ? 'hour' : 'hours'} late.`;
+}
 
 export const saySaved = {
   notSavedChanged: (name: string) => `Not saved. ${name} changed this message.`,

@@ -60,7 +60,7 @@ import {
   useNameLines,
 } from '../layout/useLayout.ts';
 import { inModal } from '../kit/anchoredMenu.ts';
-import { type DropFrame, frameFor, switcherSession } from '../kit/orgSwitcher.ts';
+import { type DropFrame, frameFor, openerAfterTurn, switcherSession } from '../kit/orgSwitcher.ts';
 import {
   joinOrganisation,
   onMovedOn,
@@ -130,6 +130,9 @@ type Opening = (opener: RefObject<ViewInstance | null>) => void;
 
 const OpenSwitcher = createContext<Opening | undefined>(undefined);
 const SwitcherOpenedBy = createContext<OpenerRef | null>(null);
+const RegisterOpener = createContext<
+  ((opener: OpenerRef, primary: boolean) => () => void) | undefined
+>(undefined);
 
 /** Opens the frame's organisation switcher; undefined while there is no organisation and no invitation. */
 export function useOpenSwitcher(): Opening | undefined {
@@ -149,13 +152,16 @@ function useOpenerLabel(organisation: Membership | null, waiting: number, switch
 }
 
 /** Today's openers in the signed-in app: the organisation being worked in, opening the frame's switcher. */
-export function useFrameOrgOpener(ref: OpenerRef): OrgOpening {
+export function useFrameOrgOpener(ref: OpenerRef, primary = true): OrgOpening {
   const { t } = useTranslation();
   const { organisation } = useSignedIn();
   const { invitations, outcomes } = useWaitingInvitations();
   const open = useOpenSwitcher();
   const openedBy = useContext(SwitcherOpenedBy);
+  const register = useContext(RegisterOpener);
   const count = waitingInvitations(invitations, outcomes);
+
+  useEffect(() => register?.(ref, primary), [register, ref, primary]);
 
   return {
     id: organisation?.id ?? '',
@@ -415,10 +421,23 @@ export function AppFrame({
         }
       : undefined;
   const closeSwitcher = useCallback(() => setChoosing(false), []);
-  // The opener moves when the window turns, so the drop-down follows it there.
+  const openers = useRef(new Map<OpenerRef, boolean>());
+  const registerOpener = useCallback((opener: OpenerRef, primary: boolean) => {
+    openers.current.set(opener, primary);
+
+    return () => {
+      openers.current.delete(opener);
+    };
+  }, []);
+  // The opener moves when the window turns, or is drawn anew, as Today's sidebar head turned upright, so the drop-down follows it there.
   useEffect(() => {
     if (!choosing || switcherFrom == null) return;
-    const wait = setTimeout(() => dropFrom(switcherFrom, true), SETTLED_MS);
+    const wait = setTimeout(() => {
+      const drawn = [...openers.current].filter(([, primary]) => primary).map(([opener]) => opener);
+      const opener = openerAfterTurn(switcherFrom, [...drawn, pill]);
+      if (opener !== switcherFrom) setSwitcherFrom(opener);
+      dropFrom(opener, true);
+    }, SETTLED_MS);
 
     return () => clearTimeout(wait);
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -470,21 +489,24 @@ export function AppFrame({
   const underTabs =
     floatingTabs && listUnderTabs && standIn == null ? phoneTabBarClearance(insets.bottom) : 0;
   const switchedRead = created?.takesFocus !== true;
+  // A body with its own top, as Today, draws it where its demo does, under its cover, while the frame says it once whatever the body shows (sc-44087, sc-46032).
+  const inBody = !framed;
+  // Today shows once its events have loaded, so the notice there takes focus as it shows, not as the walk closes (sc-46032).
+  const focusInBody = inBody && !switchedRead;
   const switchedWords =
     switched == null ? null : (
       <Notice
         tone="done"
         mark={tokens.marks.done.glyph}
         body={switched}
-        wordsRef={switchedRead ? undefined : createdWords}
+        wordsRef={switchedRead || inBody ? undefined : createdWords}
+        {...(focusInBody ? { answer: created, takesFocus: true, readMs: SETTLED_MS * 2 } : {})}
       />
     );
   const switchedStyle = ownTop ? styles.switchedUnderTitle : styles.created;
-  // A body with its own top, as Today, draws it where its demo does, while the frame says it once whatever the body shows (sc-44087).
-  const inBody = !framed && switchedRead;
   const switchedNotice =
     switched == null ? null : inBody ? (
-      <ReadOut words={switched} />
+      switchedRead && <ReadOut words={switched} />
     ) : switchedRead ? (
       <ReadOut style={switchedStyle} words={switched}>
         {switchedWords}
@@ -522,153 +544,158 @@ export function AppFrame({
   };
 
   return (
-    <SwitcherOpenedBy.Provider value={choosing ? switcherFrom : null}>
-      <View
-        style={[styles.root, sidebar && side.chrome]}
-        importantForAccessibility={inFront ? 'auto' : 'no-hide-descendants'}
-      >
-        {sidebar && (
-          <FrameSidebar
-            current={current}
-            entries={entries}
-            inEvent={inEvent != null}
-            card={inEvent?.card}
-            up={inEvent?.up}
-            organisation={signedIn.organisation}
-            waiting={count}
-            onSwitch={switchFromPill}
-            pill={pill}
-          />
-        )}
-        <View style={[styles.column, sidebar && side.card]}>
-          {framed && !ownTop && <FrameHeader {...header} />}
-          {ownTop && <FixedTop {...header} />}
-          {ownTop && top === 'stays' && <ScreenTop {...header} stays />}
-          <OfflineBand stale={standIn == null ? offline : null} inFront={inFront} />
-          <View
-            style={[
-              styles.body,
-              (eventTabs || (floatingTabs && underTabs === 0)) && {
-                paddingBottom: phoneTabBarClearance(insets.bottom) + tokens.spaceMd,
-              },
-            ]}
-          >
-            {!ownTop && switchedNotice}
-            <OpenSwitcher.Provider value={openSwitcher}>
-              <StartOrganisation.Provider value={startOrganisation}>
-                <HideBack.Provider value={backRow.hide}>
-                  <EdgeSwipeStrip.Provider value={setEdgeSwipe}>
-                    {standIn === 'paused' && signedIn.pausedIn != null ? (
-                      <AccessPaused
-                        paused={signedIn.pausedIn}
-                        others={signedIn.organisations}
-                        onSwitch={(next) => switchByTap(next.id)}
-                        onChoose={(opener) => openSwitcher?.(opener)}
-                      />
-                    ) : standIn === 'overdue' && signedIn.organisation != null ? (
-                      <TwoFactorOverdue
-                        organisation={signedIn.organisation.name}
-                        answer={switchAnswer ?? lapsed}
-                        headingRef={overdueHeading}
-                        onTurnOn={() => router.navigate(SECTION_HREF.security)}
-                        onSignOut={signOutHere}
-                      />
-                    ) : (
-                      <FrameSwitch.Provider value={switchAnswer}>
-                        <ScrolledTop.Provider value={ownTop && top === 'scrolls' ? header : null}>
-                          <BodySwitched.Provider value={bodySwitched}>
-                            <UnderTabsProvider value={underTabs}>{children}</UnderTabsProvider>
-                          </BodySwitched.Provider>
-                        </ScrolledTop.Provider>
-                      </FrameSwitch.Provider>
-                    )}
-                  </EdgeSwipeStrip.Provider>
-                </HideBack.Provider>
-              </StartOrganisation.Provider>
-            </OpenSwitcher.Provider>
+    <RegisterOpener.Provider value={registerOpener}>
+      <SwitcherOpenedBy.Provider value={choosing ? switcherFrom : null}>
+        <View
+          style={[styles.root, sidebar && side.chrome]}
+          importantForAccessibility={inFront ? 'auto' : 'no-hide-descendants'}
+        >
+          {sidebar && (
+            <FrameSidebar
+              current={current}
+              entries={entries}
+              inEvent={inEvent != null}
+              card={inEvent?.card}
+              up={inEvent?.up}
+              organisation={signedIn.organisation}
+              waiting={count}
+              onSwitch={switchFromPill}
+              pill={pill}
+            />
+          )}
+          <View style={[styles.column, sidebar && side.card]}>
+            {framed && !ownTop && <FrameHeader {...header} />}
+            {ownTop && <FixedTop {...header} />}
+            {ownTop && top === 'stays' && <ScreenTop {...header} stays />}
+            <OfflineBand stale={standIn == null ? offline : null} inFront={inFront} />
+            <View
+              style={[
+                styles.body,
+                (eventTabs || (floatingTabs && underTabs === 0)) && {
+                  paddingBottom: phoneTabBarClearance(insets.bottom) + tokens.spaceMd,
+                },
+              ]}
+            >
+              {!ownTop && switchedNotice}
+              <OpenSwitcher.Provider value={openSwitcher}>
+                <StartOrganisation.Provider value={startOrganisation}>
+                  <HideBack.Provider value={backRow.hide}>
+                    <EdgeSwipeStrip.Provider value={setEdgeSwipe}>
+                      {standIn === 'paused' && signedIn.pausedIn != null ? (
+                        <AccessPaused
+                          paused={signedIn.pausedIn}
+                          others={signedIn.organisations}
+                          onSwitch={(next) => switchByTap(next.id)}
+                          onChoose={(opener) => openSwitcher?.(opener)}
+                        />
+                      ) : standIn === 'overdue' && signedIn.organisation != null ? (
+                        <TwoFactorOverdue
+                          organisation={signedIn.organisation.name}
+                          answer={switchAnswer ?? lapsed}
+                          headingRef={overdueHeading}
+                          onTurnOn={() => router.navigate(SECTION_HREF.security)}
+                          onSignOut={signOutHere}
+                        />
+                      ) : (
+                        <FrameSwitch.Provider value={switchAnswer}>
+                          <ScrolledTop.Provider value={ownTop && top === 'scrolls' ? header : null}>
+                            <BodySwitched.Provider value={bodySwitched}>
+                              <UnderTabsProvider value={underTabs}>{children}</UnderTabsProvider>
+                            </BodySwitched.Provider>
+                          </ScrolledTop.Provider>
+                        </FrameSwitch.Provider>
+                      )}
+                    </EdgeSwipeStrip.Provider>
+                  </HideBack.Provider>
+                </StartOrganisation.Provider>
+              </OpenSwitcher.Provider>
+            </View>
+            {floatingTabs && <FrameTabBar current={current} organisation={signedIn.organisation} />}
+            {eventTabs && inEvent != null && <TabBar inEvent={inEvent} />}
           </View>
-          {floatingTabs && <FrameTabBar current={current} organisation={signedIn.organisation} />}
-          {eventTabs && inEvent != null && <TabBar inEvent={inEvent} />}
-        </View>
-        {edgeSwipe != null && (
-          <View
-            style={styles.edgeSwipe}
-            accessibilityElementsHidden
-            importantForAccessibility="no-hide-descendants"
-            {...edgeSwipe}
-          />
-        )}
-        {drop != null && (
-          <OrgDropDown
-            key={drop.visit}
-            session={switcherSession({
-              organisations: signedIn.organisations,
-              current: signedIn.pausedIn != null ? null : signedIn.organisation,
-              waiting,
-              answeredHere,
-              offer,
-              offerRefused,
-              expanded,
-              role: (role) => roleName(t, role),
-            })}
-            frame={drop.frame}
-            open={choosing}
-            back={switcherOpener}
-            email={email}
-            onClose={closeSwitcher}
-            onPick={(id) => {
-              closeSwitcher();
-              if (id !== signedIn.organisation?.id || signedIn.pausedIn != null) {
-                switchOrganisation(id);
+          {edgeSwipe != null && (
+            <View
+              style={styles.edgeSwipe}
+              accessibilityElementsHidden
+              importantForAccessibility="no-hide-descendants"
+              {...edgeSwipe}
+            />
+          )}
+          {drop != null && (
+            <OrgDropDown
+              key={drop.visit}
+              session={switcherSession({
+                organisations: signedIn.organisations,
+                current: signedIn.pausedIn != null ? null : signedIn.organisation,
+                waiting,
+                answeredHere,
+                offer,
+                offerRefused,
+                expanded,
+                role: (role) => roleName(t, role),
+              })}
+              frame={drop.frame}
+              open={choosing}
+              back={switcherOpener}
+              email={email}
+              onClose={closeSwitcher}
+              onPick={(id) => {
+                closeSwitcher();
+                if (id !== signedIn.organisation?.id || signedIn.pausedIn != null) {
+                  const name = signedIn.organisations.find((known) => known.id === id)?.name;
+                  switchOrganisation(id, () => {
+                    if (name != null) setCreated({ name, takesFocus: false });
+                  });
+                }
+              }}
+              onCreate={() => {
+                setToSheet(true);
+                closeSwitcher();
+                startOrganisation(switcherFrom ?? pill);
+              }}
+              onExpand={(id) => setExpanded((open) => (open === id ? null : id))}
+              onAnswer={(invite, yes) => {
+                const invitation = waiting.invitations.find((known) => known.id === invite.id);
+                if (invitation == null) return;
+                setAnsweredHere((answered) => new Set(answered).add(invite.id));
+                void waiting.answer(invitation, yes ? 'accept' : 'decline');
+              }}
+              onAsk={() => {
+                setOfferRefused(false);
+                return offer.ask().catch(() => setOfferRefused(true));
+              }}
+              onNotNow={() => {
+                setExpanded(null);
+                void offer.dismiss();
+              }}
+            />
+          )}
+          {walking != null && (
+            <CreateWalkWindow
+              key={`walk${walking.visit}`}
+              opening={walking}
+              open={creating}
+              email={email}
+              statusBar="dark"
+              currencies={currencies}
+              create={(walk) =>
+                createNewOrganisation((organisation) => api.createOrganisation(organisation), walk)
               }
-            }}
-            onCreate={() => {
-              setToSheet(true);
-              closeSwitcher();
-              startOrganisation(switcherFrom ?? pill);
-            }}
-            onExpand={(id) => setExpanded((open) => (open === id ? null : id))}
-            onAnswer={(invite, yes) => {
-              const invitation = waiting.invitations.find((known) => known.id === invite.id);
-              if (invitation == null) return;
-              setAnsweredHere((answered) => new Set(answered).add(invite.id));
-              void waiting.answer(invitation, yes ? 'accept' : 'decline');
-            }}
-            onAsk={() => {
-              setOfferRefused(false);
-              return offer.ask().catch(() => setOfferRefused(true));
-            }}
-            onNotNow={() => {
-              setExpanded(null);
-              void offer.dismiss();
-            }}
-          />
-        )}
-        {walking != null && (
-          <CreateWalkWindow
-            key={`walk${walking.visit}`}
-            opening={walking}
-            open={creating}
-            email={email}
-            statusBar="dark"
-            currencies={currencies}
-            create={(walk) =>
-              createNewOrganisation((organisation) => api.createOrganisation(organisation), walk)
-            }
-            onCancel={() => setCreating(false)}
-            onCreated={(organisation) => {
-              // In no organisation, what opened the walk goes with it, so it hands focus to the notice (sc-11173).
-              const fromNone = signedIn.organisation == null;
-              if (fromNone) walkBack.current = createdWords;
-              setCreating(false);
-              joinOrganisation(organisation);
-              switchOrganisation(organisation.id);
-              setCreated({ name: organisation.name, takesFocus: fromNone });
-            }}
-          />
-        )}
-      </View>
-    </SwitcherOpenedBy.Provider>
+              onCancel={() => setCreating(false)}
+              onCreated={(organisation) => {
+                // In no organisation, what opened the walk goes with it, so it hands focus to the notice (sc-11173).
+                const fromNone = signedIn.organisation == null;
+                if (fromNone) walkBack.current = createdWords;
+                setCreating(false);
+                joinOrganisation(organisation);
+                switchOrganisation(organisation.id);
+                setCreated({ name: organisation.name, takesFocus: fromNone });
+              }}
+            />
+          )}
+        </View>
+      </SwitcherOpenedBy.Provider>
+    </RegisterOpener.Provider>
   );
 }
 

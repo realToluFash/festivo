@@ -8,9 +8,11 @@ import {
   useState,
 } from 'react';
 
+import { currentLocale } from '../i18n/index.ts';
 import { offButton } from '../offButton.ts';
 import { Glyph } from '../components/Glyph.tsx';
 import {
+  type Check,
   type Draft,
   type Segment,
   type Token,
@@ -31,6 +33,9 @@ import {
   refusalOf,
   resendOf,
   tokenWord,
+  byName,
+  insteadOf,
+  sampleOf,
   whatsAppLine,
 } from './messages.ts';
 import { useInbox } from './messagesContext.ts';
@@ -41,6 +46,8 @@ import { Preview } from './MessagesPreview.tsx';
 import { PW } from './messagesPreviewWords.ts';
 import { StreamItems } from './MessagesStream.tsx';
 import { ToPopover } from './MessagesTo.tsx';
+import { SmsClock, SmsReach, SmsWait } from './MessagesSms.tsx';
+import { smsReachLine } from './messagesSms.ts';
 import { WaitBlock } from './MessagesWaits.tsx';
 import { waitsCheckOf, waitsOf } from './messagesWaits.ts';
 
@@ -85,7 +92,7 @@ export function ComposePane({ opening, later: laterFirst }: { opening: boolean; 
   }
 
   function edit(): void {
-    act({ kind: 'draft', draft: { step: 'write' } });
+    act({ kind: 'draft', draft: { step: 'write', seeAll: false } });
     focus('body');
   }
 
@@ -145,7 +152,9 @@ export function ComposePane({ opening, later: laterFirst }: { opening: boolean; 
               ))}
             </div>
           </div>
+          <SmsReach line={draft.ticks.sms ? smsReachLine(sampleOf(draft.to)) : null} />
           {draft.ticks.whatsApp && <WhatsAppReach line={whatsAppLine(draft.to)} />}
+          <Instead line={insteadOf(draft.to, draft.ticks)} />
         </header>
       )}
       {draft.step !== 'preview' && following ? (
@@ -517,11 +526,17 @@ export function CheckCard({
   onChange: () => void;
   onLater: () => void;
 }) {
-  const { inbox, act, focus, tell, to } = useInbox();
-  const counted = checkOf(draft.to, draft.ticks, to.book.groups);
+  const { inbox, act, focus, to } = useInbox();
+  const counted = checkOf(draft.to, draft.ticks, to.book.groups, draft.hour);
   const check = inbox.balance === 0 ? waitsCheckOf(counted, draft.to, draft.ticks) : counted;
   const waits = inbox.balance === 0 ? waitsOf(check, draft.ticks) : null;
   const sentenceId = useId();
+  const listing = draft.seeAll === true && check.cantTell > 0;
+
+  function seeAll(open: boolean): void {
+    act({ kind: 'draft', draft: { seeAll: open } });
+    focus(open ? 'see-all' : 'see-all-open');
+  }
 
   return (
     <div
@@ -532,64 +547,20 @@ export function CheckCard({
     >
       <OnEscape
         then={() => {
+          if (listing) return seeAll(false);
           act({ kind: 'draft', draft: { step: 'write' } });
           focus('send');
         }}
       />
+      <SmsClock hour={draft.hour} />
       <p id={sentenceId} className="mg-check-sentence" tabIndex={-1} data-focus="check">
         {many('cannotUndo', check.count)}
       </p>
-      <p className="mg-check-line">
-        {[MW.goesOnPage, check.told].filter((line) => line != null).join(' ')}
-      </p>
-      <div className="mg-ticks" role="group" aria-label={MW.letThemKnowBy}>
-        {CHANNELS.map((channel) => (
-          <TickChip
-            key={channel}
-            word={channelWord(channel)}
-            on={draft.ticks[channel]}
-            onToggle={() =>
-              act({
-                kind: 'draft',
-                draft: { ticks: { ...draft.ticks, [channel]: !draft.ticks[channel] } },
-              })
-            }
-          />
-        ))}
-      </div>
-      {check.pills.length > 0 && (
-        <ul className="mg-pills">
-          {check.pills.map((pill) => (
-            <li key={pill.channel}>
-              <WhereGlyph where={pill.channel} size={15} />
-              {channelWord(pill.channel)} · {pill.count}
-            </li>
-          ))}
-        </ul>
+      {listing ? (
+        <SeeAll check={check} onBack={() => seeAll(false)} />
+      ) : (
+        <CheckBody draft={draft} check={check} waits={waits} onSeeAll={() => seeAll(true)} />
       )}
-      {check.whatsApp != null && <WhatsAppReach line={check.whatsApp} />}
-      {check.smsOff != null && <p className="mg-cant-head">{check.smsOff}</p>}
-      {check.cantTell > 0 && (
-        <div className="mg-cant">
-          <p className="mg-cant-head">{filled(MW.cantBeTold, { count: check.cantTell })}</p>
-          {check.cant.map((one) => (
-            <p key={one.name}>{[one.name, ...one.why].join(' · ')}</p>
-          ))}
-          {check.cantTell > check.cant.length && (
-            <button
-              type="button"
-              className="desk-text"
-              onClick={() =>
-                tell(`${filled(MW.seeAll, { count: check.cantTell })} has its own design.`)
-              }
-            >
-              {filled(MW.seeAll, { count: check.cantTell })}
-            </button>
-          )}
-        </div>
-      )}
-      {check.credits != null && <p className="mg-credits">{check.credits}</p>}
-      {waits != null && <WaitBlock waits={waits} />}
       <div className="mg-check-acts">
         <button
           type="button"
@@ -620,6 +591,109 @@ export function CheckCard({
   );
 }
 
+/** With SMS and WhatsApp both ticked: how many WhatsApp tells in place of a text, under the reach line. */
+function Instead({ line }: { line: string | null }) {
+  return line == null ? null : <p className="mg-instead">{line}</p>;
+}
+
+/** See all {k}: everyone no ticked channel can tell, by name, each with why; the actions stay under it. */
+function SeeAll({ check, onBack }: { check: Check; onBack: () => void }) {
+  const headId = useId();
+  const people = byName(check.untold, currentLocale());
+
+  return (
+    <div className="mg-all">
+      <button type="button" className="desk-text mg-all-back" onClick={onBack}>
+        <Glyph name="back" size={17} weight={2.2} />
+        {MW.backToCheck}
+      </button>
+      <p id={headId} className="mg-cant-head" tabIndex={-1} data-focus="see-all">
+        {filled(MW.cantBeTold, { count: check.cantTell })}
+      </p>
+      <ul className="mg-all-list" aria-labelledby={headId}>
+        {people.map((one) => (
+          <li key={one.name} className="mg-all-row">
+            <span className="mg-all-name">{one.name}</span>
+            <span>{one.why.join(' · ')}</span>
+          </li>
+        ))}
+      </ul>
+    </div>
+  );
+}
+
+function CheckBody({
+  draft,
+  check,
+  waits,
+  onSeeAll,
+}: {
+  draft: Draft;
+  check: Check;
+  waits: ReturnType<typeof waitsOf> | null;
+  onSeeAll: () => void;
+}) {
+  const { act } = useInbox();
+
+  return (
+    <>
+      <p className="mg-check-line">
+        {[MW.goesOnPage, check.told].filter((line) => line != null).join(' ')}
+      </p>
+      <div className="mg-ticks" role="group" aria-label={MW.letThemKnowBy}>
+        {CHANNELS.map((channel) => (
+          <TickChip
+            key={channel}
+            word={channelWord(channel)}
+            on={draft.ticks[channel]}
+            onToggle={() =>
+              act({
+                kind: 'draft',
+                draft: { ticks: { ...draft.ticks, [channel]: !draft.ticks[channel] } },
+              })
+            }
+          />
+        ))}
+      </div>
+      {check.pills.length > 0 && (
+        <ul className="mg-pills">
+          {check.pills.map((pill) => (
+            <li key={pill.channel}>
+              <WhereGlyph where={pill.channel} size={15} />
+              {channelWord(pill.channel)} · {pill.count}
+            </li>
+          ))}
+        </ul>
+      )}
+      <SmsReach line={check.sms} />
+      {check.whatsApp != null && <WhatsAppReach line={check.whatsApp} />}
+      <Instead line={check.instead} />
+      {check.smsOff != null && <p className="mg-cant-head">{check.smsOff}</p>}
+      {check.cantTell > 0 && (
+        <div className="mg-cant">
+          <p className="mg-cant-head">{filled(MW.cantBeTold, { count: check.cantTell })}</p>
+          {check.cant.map((one) => (
+            <p key={one.name}>{[one.name, ...one.why].join(' · ')}</p>
+          ))}
+          {check.cantTell > check.cant.length && (
+            <button
+              type="button"
+              className="desk-text"
+              data-focus="see-all-open"
+              onClick={onSeeAll}
+            >
+              {filled(MW.seeAll, { count: check.cantTell })}
+            </button>
+          )}
+        </div>
+      )}
+      {check.credits != null && <p className="mg-credits">{check.credits}</p>}
+      <SmsWait line={check.wait} />
+      {waits != null && <WaitBlock waits={waits} />}
+    </>
+  );
+}
+
 /** Resend to those not reached (sc-3966): the message is already on their page, so only the notice goes again. */
 export function ResendCard() {
   const { inbox, act, focus, tell, to } = useInbox();
@@ -633,7 +707,7 @@ export function ResendCard() {
   const none = check.count === 0;
 
   function back(): void {
-    act({ kind: 'reached', of: reachedOfThread(thread), thread });
+    act({ kind: 'reached', of: reachedOfThread(thread, inbox), thread });
     focus('resend');
   }
 
@@ -722,7 +796,7 @@ export function ResendCard() {
   );
 }
 
-function OnEscape({ then }: { then: () => void }) {
+export function OnEscape({ then }: { then: () => void }) {
   const escape = useEffectEvent(then);
 
   useEffect(() => {

@@ -1,3 +1,5 @@
+import type { ReplyKind } from '../../components/ReplyMark.tsx';
+
 /** Guests A's English, as the boards and guests-a-spec.md §16 give it; main's words where they exist. */
 export const W = {
   guests: 'Guests',
@@ -5,6 +7,12 @@ export const W = {
   addGuest: 'Add guest',
   findGuest: 'Find a guest',
   noMatch: 'No guests match',
+  changedSince: 'Changed since you looked',
+  nothingChanged: 'Nothing has changed since you last looked.',
+  showAllGuests: 'Show all guests',
+  updatedNeeds: 'Updated dietary needs',
+  linkWrongPerson: 'Link may have reached the wrong person',
+  newQuestion: 'New question',
   noMatchLine: 'Try a different name, or clear the filters.',
   clear: 'Clear',
   clearSearch: 'Clear the search',
@@ -18,8 +26,9 @@ export const W = {
   finishedLine: 'This event has finished, so guests can’t be invited.',
   markNotInvited: 'Mark as not invited',
   unmarked: 'Marked as not invited.',
+  unmarkNotSaved: 'Not saved. They are still invited. Try again.',
   readOnlyInvited:
-    'You can see names, replies and who is invited. Marking guests as invited needs a host or organiser role.',
+    'You can see names, replies and who is invited. Marking guests as invited needs the Lead or Can edit role.',
   makeLive: 'Make live',
   openCheckIn: 'Open check-in',
   arrived: 'arrived',
@@ -87,7 +96,7 @@ export const W = {
   changeName: 'Change the name',
   conflict: 'Someone else changed this guest. Here is their version.',
   conflictLine:
-    'Use theirs puts their version in the form and drops yours. Keep mine saves yours over theirs.',
+    'Use theirs fills the form with their version and drops your changes. Keep mine saves your changes over theirs.',
   theirs: 'Theirs',
   yours: 'Yours',
   useTheirs: 'Use theirs',
@@ -206,7 +215,7 @@ export const W = {
   greetedByName: 'Messages greet them by their full name.',
 } as const;
 
-export type ReplyKind = 'coming' | 'maybe' | 'notcoming' | 'held' | 'noreply' | 'notyet';
+export type { ReplyKind };
 
 /** One word for one state, on the row, the group, the filter, the tag and the counts: the guest's own (pm, 7 Nov). */
 export const REPLY_WORD: Record<ReplyKind | 'walkin', string> = {
@@ -252,6 +261,10 @@ export const say = {
   showAll: (count: number, words: string) => `Show all ${count} ${words}`,
   filterLabel: (word: string, count: number) => `Filter: ${word}, ${count}`,
   menuItem: (word: string, count: number) => `${word} · ${count}`,
+  repliedAt: (time: string) => `Replied at ${time}`,
+  repliedDay: (date: string) => `Replied ${date}`,
+  changedAt: (time: string) => `Changed at ${time}`,
+  changedDay: (date: string) => `Changed ${date}`,
   group: (word: string, count: number) => `${word} · ${count}`,
   repliedOn: (when: string) => `replied ${when}`,
   askedBy: (date: string) => `asked to decide by ${date}`,
@@ -298,6 +311,8 @@ export const say = {
       `Agreed to WhatsApp in writing, recorded by ${name} on ${date}`,
   },
   optedOut: (date: string) => `Unsubscribed from WhatsApp on ${date}`,
+  optedOutEmail: (date: string) => `Unsubscribed from email on ${date}`,
+  optedOutTexts: (date: string) => `Unsubscribed from texts on ${date}`,
   onlyTheGuest: 'Only the guest can change this.',
   forAgreed: (name: string, mobile: string) =>
     `For ${name}, on ${mobile}. It will show as recorded by you.`,

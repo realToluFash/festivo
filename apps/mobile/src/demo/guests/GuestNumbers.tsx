@@ -11,7 +11,7 @@ import { type FilterKey, type OverviewState, countsOf, filterWord } from './Gues
 import { BlockHead } from './GuestsParts.tsx';
 import { GUESTS } from './GuestsSample.ts';
 import { W, say } from './GuestsWords.ts';
-import { MarkSlot, ReplyMark } from './ReplyMark.tsx';
+import { MarkSlot, ReplyMark } from '../../components/ReplyMark.tsx';
 
 const COUNTED = ['invited', 'coming', 'notcoming', 'maybe', 'noreply', 'held'] as const;
 

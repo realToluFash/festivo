@@ -2,6 +2,7 @@ import {
   type EventsFilters,
   type Milestone,
   NO_EVENTS_FILTERS,
+  calledOff,
   eventPhase,
   eventsHome,
   searching,
@@ -34,10 +35,14 @@ import {
   scheduleLocked as productScheduleLocked,
 } from '../../kit/eventOverview.ts';
 import { REFUSED_STATES, refusedStartOf } from './DeleteRefusal.ts';
+import { DUPLICATE_STATES } from './Duplicate.ts';
 import { CLOCKS, READER_ZONE, type SampleEvent } from './EventsSample.ts';
 import { W, say } from './EventsWords.ts';
 import { CHANGES_STATES, FINAL_NUMBERS_STATES, kitchenOwed, othersOwed } from './FinalNumbers.ts';
+import { NEW_STATES } from './NewEventModel.ts';
 import { WRITE_STATES } from './GuestsCanWrite.ts';
+import { MAKE_LIVE_STATES } from './MakeLive.ts';
+import { CARD_STATES, END_STATES, isCardState, isEndState } from './ThankYou.ts';
 
 export type {
   CardStep,
@@ -188,8 +193,11 @@ export function scheduleLocked(event: Shown): boolean {
   return productScheduleLocked(event.phase);
 }
 
+/** A called-off event's locked dates say it was called off (sc-45141); any other locked event keeps the over line. */
 export function datesRow(event: Shown, locale: string): RowWords {
-  return productDatesRow(event, event.phase, locale, t);
+  const row = productDatesRow(event, event.phase, locale, t);
+
+  return scheduleLocked(event) && calledOff(event) ? { ...row, line: W.datesCalledOff } : row;
 }
 
 export function hostsRow(event: Omit<SampleEvent, 'photo'>, locale: string): RowWords {
@@ -327,6 +335,7 @@ export const LIST_STATES = [
   'eventsFirst',
   'eventsZero',
   'eventsOffline',
+  ...NEW_STATES,
 ] as const;
 export type ListState = (typeof LIST_STATES)[number];
 
@@ -454,6 +463,7 @@ export const EVENT_STATES = [
   'cover',
   'coverRefused',
   'coverPhoto',
+  'createdNoPhoto',
   'pause',
   'callOff',
   'endNow',
@@ -463,11 +473,13 @@ export const EVENT_STATES = [
   'deleteMismatch',
   'deleteTyped',
   ...REFUSED_STATES,
-  'duplicate',
+  ...DUPLICATE_STATES,
   'muted',
   'muteNotLoaded',
   'muteNotSaved',
   ...WRITE_STATES,
+  ...CARD_STATES,
+  ...END_STATES,
   'more',
   'needsYou',
   'needsYouOne',
@@ -478,6 +490,7 @@ export const EVENT_STATES = [
   'needsYouFailed',
   ...FINAL_NUMBERS_STATES,
   ...CHANGES_STATES,
+  ...MAKE_LIVE_STATES,
 ] as const;
 export type EventDemoState = (typeof EVENT_STATES)[number];
 
@@ -487,9 +500,14 @@ export function eventStateOf(value: string | undefined): EventDemoState | null {
 
 /** Happening now, and a refusal from the start, is the wedding's second day; Finished the week after it; every other state reads the reader's clock. */
 export function clockOf(state: EventDemoState | null): Date {
-  if (state === 'now' || state === 'endNow' || refusedStartOf(state)?.started === true)
+  if (
+    state === 'now' ||
+    state === 'endNow' ||
+    isEndState(state) ||
+    refusedStartOf(state)?.started === true
+  )
     return new Date(CLOCKS.happening);
-  if (state === 'finished') return new Date(CLOCKS.finished);
+  if (state === 'finished' || isCardState(state)) return new Date(CLOCKS.finished);
 
   return new Date(CLOCKS.reader);
 }

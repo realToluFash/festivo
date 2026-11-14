@@ -29,6 +29,12 @@ final class RecordingEmailSender implements ChannelSenderInterface
     /** A real sender to hand each send to, for a test about what a provider does. */
     public ?ChannelSenderInterface $through = null;
 
+    /** @param ?ChannelSenderInterface $mailer the real email sender on the suite's mailer, so a test reads what went as Symfony's mailer assertions see it */
+    public function __construct(
+        private readonly ?ChannelSenderInterface $mailer = null,
+    ) {
+    }
+
     public function channel(): NotificationChannel
     {
         return NotificationChannel::Email;
@@ -54,6 +60,7 @@ final class RecordingEmailSender implements ChannelSenderInterface
         }
 
         $this->sent[] = ['delivery' => $deliveryId->toRfc4122(), 'recipient' => $recipient, 'notification' => $notification];
+        $this->mailer?->send($deliveryId, $recipient, $category, $notification, $collapseKey);
 
         return 'provider-' . $deliveryId->toRfc4122();
     }

@@ -25,7 +25,6 @@ use App\Enum\MembershipChannel;
 use App\Enum\MembershipStatus;
 use App\Enum\OwnerClaimOutcome;
 use App\Enum\SeededRole;
-use App\Http\AfterResponse;
 use App\Repository\MembershipRepository;
 use App\Repository\OwnerClaimRepository;
 use App\Tests\ApiTestCase;
@@ -822,10 +821,11 @@ final class OwnerClaimTest extends ApiTestCase
         }
 
         $entityManager->flush();
-        Iter\search($user->getEmailAddresses(), static fn (EmailAddress $held): bool => $held->getAddress() === $address)?->setPrimary(true);
-        self::service(DomainSuspender::class)->addressChanged($user);
-        $entityManager->flush();
-        self::service(AfterResponse::class)->reset();
+        $entityManager->wrapInTransaction(static function () use ($entityManager, $user, $address): void {
+            Iter\search($user->getEmailAddresses(), static fn (EmailAddress $held): bool => $held->getAddress() === $address)?->setPrimary(true);
+            self::service(DomainSuspender::class)->addressChanged($user);
+            $entityManager->flush();
+        });
     }
 
     private function demote(User $user, Organisation $organisation): void

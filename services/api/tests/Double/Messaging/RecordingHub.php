@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\Tests\Double\Messaging;
 
 use Psl\Iter;
+use Psl\Vec;
 use RuntimeException;
 use Symfony\Component\Mercure\HubInterface;
 use Symfony\Component\Mercure\Jwt\TokenFactoryInterface;
@@ -45,6 +46,11 @@ final class RecordingHub implements HubInterface
         $this->published[] = $update;
 
         return 'urn:uuid:' . Iter\count($this->published);
+    }
+
+    public function lastOn(string $topic): ?Update
+    {
+        return Iter\last(Vec\filter($this->published, static fn (Update $update): bool => Iter\contains($update->getTopics(), $topic)));
     }
 
     public function getProtocolVersion(): ProtocolVersion

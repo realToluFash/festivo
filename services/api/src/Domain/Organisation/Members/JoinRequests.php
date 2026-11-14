@@ -79,15 +79,13 @@ final readonly class JoinRequests
 
     public function turnDown(Organisation $organisation, string $membershipId, User $by): Membership
     {
-        $membership = $this->answer($organisation, $membershipId, $by, function (Membership $membership) use ($by): void {
+        return $this->answer($organisation, $membershipId, $by, function (Membership $membership) use ($by): void {
             $this->membershipMachine->move($membership, MembershipStatus::LeftOrRemoved, MembershipChannel::Settings, $by);
             $this->record(self::TURNED_DOWN, $membership, $by, [
                 'status' => [MembershipStatus::PendingApproval->value, MembershipStatus::LeftOrRemoved->value],
             ]);
+            $this->joinRequestMailer->sendTurnedDown($membership);
         });
-        $this->joinRequestMailer->sendTurnedDown($membership);
-
-        return $membership;
     }
 
     /** @return int how many were removed, each as of its own instant rather than this run */
@@ -109,6 +107,7 @@ final readonly class JoinRequests
                     'status' => [MembershipStatus::PendingApproval->value, MembershipStatus::LeftOrRemoved->value],
                 ]);
                 $this->entityManager->flush();
+                $this->joinRequestMailer->sendExpired($membership, $at);
 
                 return $at;
             });
@@ -117,7 +116,6 @@ final readonly class JoinRequests
                 continue;
             }
 
-            $this->joinRequestMailer->sendExpired($membership, $at);
             ++$expired;
         }
 
@@ -152,9 +150,11 @@ final readonly class JoinRequests
                 continue;
             }
 
-            $organisation->setJoinRequestsNoticedAt($now);
-            $this->entityManager->flush();
-            $this->joinRequestMailer->sendWaiting($organisation, $this->deciders($organisation), $requests);
+            $this->entityManager->wrapInTransaction(function () use ($organisation, $now, $requests): void {
+                $organisation->setJoinRequestsNoticedAt($now);
+                $this->entityManager->flush();
+                $this->joinRequestMailer->sendWaiting($organisation, $this->deciders($organisation), $requests);
+            });
             ++$told;
         }
 

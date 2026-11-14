@@ -1,8 +1,16 @@
 import { DemoBell } from './DemoBell.tsx';
 import { DemoOffline } from './DemoOffline.tsx';
 import { LanguageChoices } from './LanguageChoices.tsx';
-import { LOCALES, contactActions, initials, primaryOf, zoneLabel } from '@soirely/domain';
-import { useState } from 'react';
+import {
+  LOCALES,
+  changeEmail,
+  contactActions,
+  initials,
+  primaryOf,
+  undeliverableAddresses,
+  zoneLabel,
+} from '@soirely/domain';
+import { useEffect, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 
 import {
@@ -17,6 +25,7 @@ import {
   canAdd,
   cardLine,
   contactsFoot,
+  lifted,
   madePrimary,
   opening,
   phoneShown,
@@ -37,7 +46,13 @@ import {
 import { SAMPLE } from './rules.ts';
 import type { Viewer } from './settings.ts';
 import { saveName, savedNameOf } from './savedName.ts';
-import { AboutRow, ContactsBlock, PersonCard, RowOffers } from '../components/AccountParts.tsx';
+import {
+  AboutRow,
+  ContactsBlock,
+  PersonCard,
+  RowOffers,
+  UndeliverableLines,
+} from '../components/AccountParts.tsx';
 import { Bones } from '../components/GeneralParts.tsx';
 import { Ask, Head, TextAction, TitleRow } from '../components/SettingsParts.tsx';
 import type { Tell } from '../components/SettingsParts.tsx';
@@ -54,6 +69,9 @@ export function Account({ viewer, state, tell }: { viewer: Viewer; state: string
   const [language, setLanguage] = useState(start.language);
   const [emails, setEmails] = useState(start.emails);
   const [phones, setPhones] = useState(start.phones);
+  const [suppressed, setSuppressed] = useState(start.undeliverable);
+  const [revealed, setRevealed] = useState(0);
+  const emailBlock = useRef<HTMLDivElement>(null);
   const [said, setSaid] = useState(start.said);
   const [open, setOpen] = useState(start.open);
   const [ask, setAsk] = useState(start.ask);
@@ -64,6 +82,21 @@ export function Account({ viewer, state, tell }: { viewer: Viewer; state: string
   const primary = primaryOf(emails);
   const target = all.find((row) => row.id === dialog?.contact) ?? null;
   const setRows = (kind: Kind) => (kind === 'email' ? setEmails : setPhones);
+
+  useEffect(() => {
+    if (revealed > 0)
+      emailBlock.current?.querySelector<HTMLElement>('.account-row.is-open')?.focus();
+  }, [revealed]);
+
+  function changeTo(): void {
+    const goes = changeEmail(emails);
+    if (goes.to === 'add') {
+      setDialog(opening('addEmail'));
+      return;
+    }
+    setOpen(goes.id);
+    setRevealed((count) => count + 1);
+  }
 
   function finish(words: string): void {
     setDialog(null);
@@ -79,6 +112,7 @@ export function Account({ viewer, state, tell }: { viewer: Viewer; state: string
 
   function remove(row: Contact): void {
     setRows(row.kind)((rows) => rows.filter((other) => other.id !== row.id));
+    setSuppressed((ids) => lifted(ids, row.id));
     setOpen(null);
     setAsk(null);
     setSaid(W.removed(row.shown));
@@ -169,17 +203,35 @@ export function Account({ viewer, state, tell }: { viewer: Viewer; state: string
                 )}
               </section>
             ))
-          : (['email', 'phone'] as const).map((kind) => (
-              <Contacts
-                key={kind}
-                kind={kind}
-                rows={kind === 'email' ? emails : phones}
-                open={open}
-                onToggle={(row) => setOpen((now) => (now === row.id ? null : row.id))}
-                onAct={act}
-                onAdd={() => setDialog(opening(kind === 'email' ? 'addEmail' : 'addPhone'))}
-              />
-            ))}
+          : (['email', 'phone'] as const).map((kind) => {
+              const contacts = (
+                <Contacts
+                  key={kind}
+                  kind={kind}
+                  rows={kind === 'email' ? emails : phones}
+                  open={open}
+                  onToggle={(row) => setOpen((now) => (now === row.id ? null : row.id))}
+                  onAct={act}
+                  onAdd={() => setDialog(opening(kind === 'email' ? 'addEmail' : 'addPhone'))}
+                />
+              );
+              if (kind === 'phone') return contacts;
+
+              return (
+                <div key={kind} ref={emailBlock}>
+                  {contacts}
+                  <UndeliverableLines
+                    rows={undeliverableAddresses(
+                      emails.map((row) => ({
+                        ...row,
+                        undeliverable: suppressed.includes(row.id),
+                      })),
+                    )}
+                    onChange={changeTo}
+                  />
+                </div>
+              );
+            })}
       </div>
       {ask === 'promote' && opened != null && (
         <Ask
@@ -287,6 +339,7 @@ export function Account({ viewer, state, tell }: { viewer: Viewer; state: string
             setRows(target.kind)((rows) =>
               rows.map((row) => (row.id === target.id ? { ...row, verified: true } : row)),
             );
+            setSuppressed((ids) => lifted(ids, target.id));
             finish(verifiedWords(target));
           }}
         />

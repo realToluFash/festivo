@@ -7,6 +7,7 @@ namespace App\Domain\Organisation\SignInRules;
 use App\Domain\User\Mail\UserMailer;
 use App\Entity\Organisation;
 use App\Entity\User;
+use App\Enum\AccountMail;
 use DateTimeImmutable;
 use Psl\Iter;
 use Psl\Str;
@@ -52,7 +53,7 @@ final readonly class SignInRulesMailer
             $named = ['{organisation}' => $organisation->getName()];
             $due = [...$named, '{deadline}' => $this->userMailer->deadline($deadline, $member, $locale)];
 
-            $this->userMailer->send($address, $locale, 'signInRules.twoFactorDue.subject', [
+            $this->userMailer->send(AccountMail::SignInRules, $address, $locale, 'signInRules.twoFactorDue.subject', [
                 $this->userMailer->line('signInRules.twoFactorDue.body', $locale, $due),
                 $this->userMailer->line('signInRules.twoFactorDue.explain', $locale),
                 $this->userMailer->line('signInRules.twoFactorDue.facts', $locale, [...$due, '{address}' => $address]),
@@ -92,7 +93,7 @@ final readonly class SignInRulesMailer
         $paragraphs[] = '--';
         $paragraphs[] = $this->userMailer->line('signInRules.changed.footer', $locale, $named);
 
-        $this->userMailer->send($address, $locale, 'signInRules.changed.subject', $paragraphs, $named);
+        $this->userMailer->send(AccountMail::SignInRules, $address, $locale, 'signInRules.changed.subject', $paragraphs, $named);
     }
 
     private function ruleLine(string $rule, mixed $now, string $locale): string

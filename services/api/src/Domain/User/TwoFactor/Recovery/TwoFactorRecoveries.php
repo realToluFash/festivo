@@ -194,7 +194,7 @@ final readonly class TwoFactorRecoveries
     {
         $this->proving($recovery);
 
-        $refusal = $this->entityManager->wrapInTransaction(function () use ($recovery, $emailCode, $phoneCode): ?ApiException {
+        $refusal = $this->entityManager->wrapInTransaction(function () use ($recovery, $emailCode, $phoneCode, $userAgent): ?ApiException {
             $this->entityManager->refresh($recovery, LockMode::PESSIMISTIC_WRITE);
 
             $past = $this->pastItsCodes($recovery);
@@ -253,6 +253,7 @@ final readonly class TwoFactorRecoveries
             $recovery->proved($now);
             $this->audit('two_factor_recovery.requested', $recovery, Actor::User, $recovery->getUser());
             $this->entityManager->flush();
+            $this->tellEveryone($recovery, $userAgent);
 
             return null;
         });
@@ -260,8 +261,6 @@ final readonly class TwoFactorRecoveries
         if ($refusal instanceof ApiException) {
             throw $refusal;
         }
-
-        $this->tellEveryone($recovery, $userAgent);
     }
 
     /** "This wasn't you? Cancel the request": whoever is on that screen has the password, so every session ends too. */
