@@ -1,0 +1,20 @@
+# sc-34920: with the API stopped, Personalisation opened fresh says the colours did not load. Needs a cold launch with the api down (a release build, release --offline): while the app holds the colours in memory it never reaches personalisation.tryAgainLoad, so run in Expo Go after any other check it fails its 30 s wait.
+appId: host.exp.Exponent
+onFlowComplete:
+  - runScript:
+      file: ../batch/helper.js
+      env:
+        ASK: /api?to=up
+---
+- runScript:
+    file: ../batch/helper.js
+    env:
+      ASK: /api?to=stopped
+- openLink: ${METRO_URL}/--/settings/personalisation
+- waitForAnimationToEnd:
+    timeout: 8000
+- extendedWaitUntil:
+    visible:
+      id: personalisation.tryAgainLoad
+    timeout: 30000
+- takeScreenshot: not-loaded

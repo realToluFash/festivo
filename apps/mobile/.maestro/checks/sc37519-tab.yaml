@@ -1,0 +1,17 @@
+# Tab on a hardware keyboard moves focus off Organisation name and closes Password changed. sc-37519.
+appId: host.exp.Exponent
+---
+- runFlow: ../sign-out.yaml
+- openLink: ${METRO_URL}/--/reset-password?token=${TOKEN_STEP}
+- extendedWaitUntil: { visible: { id: 'recovery.password' }, timeout: 30000 }
+- tapOn: { id: 'recovery.password' }
+- inputText: 'a-brand-new-password-37519'
+- tapOn: { id: 'recovery.save' }
+- extendedWaitUntil: { visible: { id: 'completeProfile.organisation' }, timeout: 30000 }
+- assertVisible: '{{t:any:recovery.changed}}'
+- extendedWaitUntil: { visible: { id: 'never.there' }, timeout: 1500, optional: true }
+- takeScreenshot: tab-01-landed
+- pressKey: Tab
+- takeScreenshot: tab-02-after-tab
+- assertNotVisible: '{{t:any:recovery.changed}}'
+- runFlow: ../sign-out-from-complete-profile.yaml

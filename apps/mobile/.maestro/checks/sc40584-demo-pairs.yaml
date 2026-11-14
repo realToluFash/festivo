@@ -1,0 +1,27 @@
+# sc-40584 side-by-side: the app's design demo Create an organisation, name step, upright then on its side: as loaded, typing (create=typing), and blank refused (create=name-blank) with the field tapped so the keys are up. Turns back upright at the end.
+appId: host.exp.Exponent
+---
+- setOrientation: PORTRAIT
+- openLink: ${METRO_URL}/--/demo/today?create=typing
+- extendedWaitUntil: { visible: { id: 'createWalk.name' }, timeout: 30000 }
+- extendedWaitUntil: { visible: { id: 'never.there' }, timeout: 2000, optional: true }
+- takeScreenshot: demo-up-typing
+- openLink: ${METRO_URL}/--/demo/today?create=name-blank
+- extendedWaitUntil: { visible: { id: 'createWalk.name' }, timeout: 30000 }
+- extendedWaitUntil: { visible: { id: 'never.there' }, timeout: 2000, optional: true }
+- takeScreenshot: demo-up-blank-loaded
+- tapOn: { id: 'createWalk.name' }
+- extendedWaitUntil: { visible: { id: 'never.there' }, timeout: 2000, optional: true }
+- takeScreenshot: demo-up-blank-keys-up
+- hideKeyboard: { optional: true }
+- setOrientation: LANDSCAPE_LEFT
+- openLink: ${METRO_URL}/--/demo/today?create=name-blank
+- extendedWaitUntil: { visible: { id: 'createWalk.name' }, timeout: 30000 }
+- tapOn: { id: 'createWalk.name' }
+- extendedWaitUntil: { visible: { id: 'never.there' }, timeout: 2000, optional: true }
+- takeScreenshot: demo-side-blank-keys-up
+- swipe: { start: '50%, 32%', end: '50%, 21%', duration: 400 }
+- extendedWaitUntil: { visible: { id: 'never.there' }, timeout: 2000, optional: true }
+- takeScreenshot: demo-side-blank-scrolled
+- hideKeyboard: { optional: true }
+- setOrientation: PORTRAIT

@@ -1,0 +1,96 @@
+# The sign-in form for EMAIL and PASSWORD, submitted, and nothing checked after. sign-in-form.yaml
+# reads back whose session it is; a check signing in as another account runs this alone.
+appId: host.exp.Exponent
+---
+- openLink: ${METRO_URL}/--/sign-in
+- extendedWaitUntil:
+    visible:
+      id: 'signIn.email'
+    timeout: 60000
+# 120 rather than the default 50: an address is longer than that, and a partial
+# erase leaves a fragment that the new text is typed on top of.
+- runFlow:
+    when:
+      platform: iOS
+    commands:
+      - tapOn:
+          id: 'signIn.email'
+      - eraseText: 120
+      - inputText: ${EMAIL}
+# On a remote Android emulator the keyboard typed part of the address twice (sc-3785),
+# so it is read back and typed again if it is not the address.
+- runFlow:
+    when:
+      platform: Android
+    commands:
+      - retry:
+          maxRetries: 2
+          commands:
+            - tapOn:
+                id: 'signIn.email'
+            - eraseText: 120
+            - inputText: ${EMAIL}
+            - copyTextFrom:
+                id: 'signIn.email'
+            - assertTrue: ${maestro.copiedText == EMAIL}
+# Scrolled to: the You were signed out notice pushes Password under the keyboard. sc-20997.
+# On Android the keys are put away first: with them up the scroll stopped short of Password (sc-28596).
+- runFlow:
+    when:
+      platform: Android
+    commands:
+      - hideKeyboard
+- scrollUntilVisible:
+    element:
+      id: 'signIn.password'
+    direction: DOWN
+    centerElement: true
+    timeout: 15000
+- runFlow:
+    when:
+      platform: iOS
+    commands:
+      - tapOn:
+          id: 'signIn.password'
+      - eraseText: 120
+      - inputText: ${PASSWORD}
+# On Android the masked field dropped characters while typing: a 28-character password
+# arrived as about 20 (sc-38149). So it is typed shown, read back and typed again if short.
+- runFlow:
+    when:
+      platform: Android
+    commands:
+      - tapOn:
+          id: 'signIn.password.reveal'
+      - retry:
+          maxRetries: 2
+          commands:
+            - tapOn:
+                id: 'signIn.password'
+            - eraseText: 120
+            - inputText: ${PASSWORD}
+            - copyTextFrom:
+                id: 'signIn.password'
+            - assertTrue: ${maestro.copiedText == PASSWORD}
+      # Hidden again: sign-in's field keeps it shown after a refusal, and a failure screenshot would carry it.
+      - tapOn:
+          id: 'signIn.password.reveal'
+# On iOS the password field's Go key, not a tap: on an iPad hideKeyboard can scroll the
+# form instead, and the tap lands where the button was (sc-19359). On Android Enter can
+# type into the field instead of submitting (sc-18648), so it taps. No retry.
+- runFlow:
+    when:
+      platform: iOS
+    commands:
+      - pressKey: Enter
+- runFlow:
+    when:
+      platform: Android
+    commands:
+      - hideKeyboard
+      - tapOn:
+          id: 'signIn.submit'
+- extendedWaitUntil:
+    notVisible:
+      id: 'signIn.submit'
+    timeout: 30000

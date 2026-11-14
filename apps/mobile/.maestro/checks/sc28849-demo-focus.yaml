@@ -1,0 +1,24 @@
+# The demo's InsideField (sign-in email, password) and CodeBoxes (two-factor) at rest and focused. sc-28849.
+appId: host.exp.Exponent
+---
+- openLink: ${METRO_URL}/--/demo/sign-in
+- extendedWaitUntil:
+    visible:
+      id: 'demo.email'
+    timeout: 30000
+- takeScreenshot: demo-sign-in-rest
+- tapOn:
+    id: 'demo.email'
+- takeScreenshot: demo-email-focused
+- tapOn:
+    id: 'demo.password'
+- takeScreenshot: demo-password-focused
+- openLink: ${METRO_URL}/--/demo/two-factor
+- extendedWaitUntil:
+    visible:
+      id: 'demo.code'
+    timeout: 30000
+- takeScreenshot: demo-code-rest
+- tapOn:
+    id: 'demo.code'
+- takeScreenshot: demo-code-focused

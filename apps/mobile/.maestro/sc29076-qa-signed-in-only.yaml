@@ -1,0 +1,4 @@
+# Signs in and waits on home, for a test that then ends this session from another client. Needs EMAIL, PASSWORD. sc-29076.
+appId: host.exp.Exponent
+---
+- runFlow: sign-in.yaml

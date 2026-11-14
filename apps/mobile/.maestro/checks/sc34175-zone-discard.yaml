@@ -1,0 +1,30 @@
+# sc-34175: a time zone picked and left unsaved asks to discard it, naming the zone it keeps (or that it stays unset).
+appId: host.exp.Exponent
+---
+- openLink: ${METRO_URL}/--/settings/account
+- scrollUntilVisible:
+    element:
+      id: 'account.zone'
+    timeout: 30000
+- waitForAnimationToEnd
+- tapOn:
+    id: 'account.zone'
+- extendedWaitUntil:
+    visible:
+      id: 'account.zone.field'
+    timeout: 15000
+- tapOn:
+    id: 'account.zone.field'
+- inputText: 'Lagos'
+- tapOn:
+    id: 'account.zone.Africa/Lagos'
+- tapOn:
+    id: 'account.zone.cancel'
+- extendedWaitUntil:
+    visible:
+      id: 'account.zone.discard'
+    timeout: 10000
+- waitForAnimationToEnd
+- takeScreenshot: zone-discard-ask
+- tapOn:
+    id: 'account.zone.discard'

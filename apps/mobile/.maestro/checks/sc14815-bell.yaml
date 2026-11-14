@@ -1,0 +1,8 @@
+# The bell's feed, opened by its link (sc-14815).
+appId: host.exp.Exponent
+---
+- openLink: ${METRO_URL}/--/notifications
+- extendedWaitUntil:
+    visible: '{{t:notifications.heading}}'
+    timeout: 30000
+- takeScreenshot: bell-feed

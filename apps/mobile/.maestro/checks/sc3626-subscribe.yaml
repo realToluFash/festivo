@@ -1,0 +1,88 @@
+# sc-3626: Calendar's Subscribe opens the panel with the link, Copy link reads Copied, Open in calendar app with no webcal handler keeps the panel with the no-app line, the same link shows on reopening, Keep this link leaves it, and Reset link shows a new one.
+appId: host.exp.Exponent
+---
+- runFlow: ../return-home.yaml
+- tapOn:
+    id: 'frame.calendar'
+- extendedWaitUntil:
+    visible:
+      id: 'calendarFeed.open'
+    timeout: 30000
+- takeScreenshot: calendar
+- tapOn:
+    id: 'calendarFeed.open'
+- extendedWaitUntil:
+    visible:
+      id: 'calendarFeed.url'
+    timeout: 20000
+- copyTextFrom:
+    id: 'calendarFeed.url'
+- evalScript: ${output.first = maestro.copiedText}
+- takeScreenshot: panel
+- tapOn:
+    id: 'calendarFeed.copy'
+- assertVisible: '{{t:calendarFeed.copied}}'
+- takeScreenshot: copied
+- tapOn:
+    id: 'calendarFeed.openInApp'
+- waitForAnimationToEnd
+- takeScreenshot: open-in-app
+- assertVisible:
+    id: 'calendarFeed.url'
+- assertVisible: '{{t:calendarFeed.noApp}}'
+- tapOn:
+    id: 'calendarFeed.close'
+- waitForAnimationToEnd
+- tapOn:
+    id: 'calendarFeed.open'
+- extendedWaitUntil:
+    visible:
+      id: 'calendarFeed.url'
+    timeout: 20000
+- copyTextFrom:
+    id: 'calendarFeed.url'
+- assertTrue: ${maestro.copiedText == output.first}
+- scrollUntilVisible:
+    element:
+      id: 'calendarFeed.reset'
+    direction: DOWN
+- tapOn:
+    id: 'calendarFeed.reset'
+- extendedWaitUntil:
+    visible:
+      id: 'calendarFeed.confirm'
+    timeout: 10000
+- takeScreenshot: confirm
+- tapOn:
+    id: 'calendarFeed.keep'
+- waitForAnimationToEnd
+- scrollUntilVisible:
+    element:
+      id: 'calendarFeed.url'
+    direction: UP
+- copyTextFrom:
+    id: 'calendarFeed.url'
+- assertTrue: ${maestro.copiedText == output.first}
+- scrollUntilVisible:
+    element:
+      id: 'calendarFeed.reset'
+    direction: DOWN
+- tapOn:
+    id: 'calendarFeed.reset'
+- extendedWaitUntil:
+    visible:
+      id: 'calendarFeed.resetConfirm'
+    timeout: 10000
+- tapOn:
+    id: 'calendarFeed.resetConfirm'
+- extendedWaitUntil:
+    visible: '{{t:calendarFeed.newLink}}'
+    timeout: 15000
+- scrollUntilVisible:
+    element:
+      id: 'calendarFeed.url'
+    direction: UP
+- copyTextFrom:
+    id: 'calendarFeed.url'
+- assertTrue: ${maestro.copiedText != output.first}
+- takeScreenshot: new-link

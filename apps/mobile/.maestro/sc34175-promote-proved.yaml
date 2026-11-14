@@ -1,0 +1,19 @@
+# sc-34175: the open Make primary ask confirmed, proved with PASSWORD, and the notice.
+appId: host.exp.Exponent
+---
+- tapOn:
+    id: 'account.promote.confirm'
+- extendedWaitUntil:
+    visible:
+      id: 'account.confirm.password'
+    timeout: 15000
+- tapOn:
+    id: 'account.confirm.password'
+- inputText: ${PASSWORD}
+- tapOn:
+    id: 'account.confirm.continue'
+- extendedWaitUntil:
+    visible:
+      id: 'account.said'
+    timeout: 20000
+- takeScreenshot: promoted

@@ -1,0 +1,7 @@
+# On a tablet in landscape, runs sc23279-lost-loading (pause the api during its hold) and turns
+# it back upright. Pass EMAIL and PASSWORD of a two-factor account. sc-23279.
+appId: host.exp.Exponent
+---
+- setOrientation: LANDSCAPE_LEFT
+- runFlow: sc23279-lost-loading.yaml
+- setOrientation: PORTRAIT

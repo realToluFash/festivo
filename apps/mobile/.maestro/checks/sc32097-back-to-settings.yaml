@@ -1,0 +1,13 @@
+# The ‹ control on demo settings pages reads and is labelled with Settings in the account's language, never the English word in another one. sc-32097.
+appId: host.exp.Exponent
+---
+- openLink: ${METRO_URL}/--/demo/settings/notifications
+- extendedWaitUntil:
+    visible: '(Back to|Volver a|Retour à|Voltar a) (Settings|Configuración|Paramètres|Definições)'
+    timeout: 30000
+- takeScreenshot: notifications-back
+- openLink: ${METRO_URL}/--/demo/settings/members
+- extendedWaitUntil:
+    visible: '(Back to|Volver a|Retour à|Voltar a) (Settings|Configuración|Paramètres|Definições)'
+    timeout: 30000
+- takeScreenshot: members-back

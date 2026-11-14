@@ -1,0 +1,99 @@
+/* No organisation: main's page under the public header, with no card. */
+.cw-alone {
+  display: flex;
+  flex-direction: column;
+  min-height: 100vh;
+  background: var(--colorCard);
+  color: var(--colorInk);
+}
+
+:where(.cw-alone) button {
+  margin: 0;
+  padding: 0;
+  border: 0;
+  background: none;
+  color: inherit;
+  font: inherit;
+  text-align: start;
+  cursor: pointer;
+}
+
+:where(.cw-alone) :is(h1, h2, p, dl, dd) {
+  margin: 0;
+}
+
+.cw-header {
+  display: flex;
+  flex: none;
+  align-items: center;
+  justify-content: space-between;
+  height: 72px;
+  padding: 0 var(--space6xl);
+  border-bottom: 1px solid var(--colorBorder);
+}
+
+.cw-header .brand img {
+  width: auto;
+  height: var(--space4xl);
+}
+
+.cw-language {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--spaceSm);
+  height: var(--space6xl);
+  padding: 0 var(--spacePillEnd);
+  border-radius: var(--spaceXxl);
+  background: var(--colorInset);
+  font: 600 14px/1 var(--fontFamily);
+  white-space: nowrap;
+}
+
+.cw-language svg {
+  color: var(--colorInkSecondary);
+}
+
+.cw-none {
+  display: flex;
+  flex-direction: column;
+  gap: var(--spaceXl);
+  box-sizing: border-box;
+  width: 100%;
+  max-width: 560px;
+  margin: 48px auto 0;
+  padding-bottom: 48px;
+}
+
+.cw-none h1 {
+  font: 700 32px/1.15 var(--fontFamily);
+  letter-spacing: -0.02em;
+}
+
+.cw-none-body {
+  font: 500 16px/1.5 var(--fontFamily);
+}
+
+.cw-none-body.is-quiet {
+  color: var(--colorInkSecondary);
+}
+
+.cw-signed {
+  display: flex;
+  flex-direction: column;
+  gap: var(--spaceHair);
+  color: var(--colorInkSecondary);
+  font: 500 14px/1.45 var(--fontFamily);
+}
+
+.cw-signed-ways {
+  display: flex;
+  gap: var(--space3xl);
+}
+
+.cw-signed-ways a.desk-text {
+  text-decoration: none;
+}
+
+.cw-signed-ways a.desk-text:hover {
+  text-decoration: underline;
+}

@@ -1,0 +1,13 @@
+# sc-17675: runs after sc17675-hold-fails in the same batch and passes only if the api that check held is live again.
+appId: host.exp.Exponent
+---
+- setOrientation: ${ORIENT}
+- openLink: ${METRO_URL}/--/settings/members
+- extendedWaitUntil:
+    visible: '{{t:membersScreen.title}}'
+    timeout: 30000
+- extendedWaitUntil:
+    notVisible: '{{t:membersScreen.loading}}'
+    timeout: 30000
+- assertNotVisible: '{{t:membersScreen.failedTitle}}'
+- takeScreenshot: members-live

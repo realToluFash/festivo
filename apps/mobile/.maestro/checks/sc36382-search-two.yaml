@@ -1,0 +1,21 @@
+# Two organisations match a search, Ìfẹ́ Parties by its folded letters. sc-36382.
+appId: host.exp.Exponent
+---
+- openLink: ${METRO_URL}/--/
+- tapOn:
+    id: 'tab-today|frame.home'
+    optional: true
+- tapOn:
+    id: 'frame.organisation|home.switchOrganisation'
+- extendedWaitUntil:
+    visible:
+      id: 'switcher.heading'
+    timeout: 10000
+- waitForAnimationToEnd:
+    timeout: 5000
+- tapOn:
+    id: 'switcher.search'
+- inputText: 'Part'
+- waitForAnimationToEnd:
+    timeout: 3000
+- takeScreenshot: two

@@ -1,0 +1,19 @@
+# Opens a reset link that doesn't work in the signed-out app, taps Send a new link, and checks
+# Reset your password has no ‹ back control: the dead link replaced itself. sc-23279.
+appId: host.exp.Exponent
+---
+- runFlow: sign-in-screen-english.yaml
+- openLink: ${METRO_URL}/--/reset-password?token=not-a-token
+- extendedWaitUntil:
+    visible:
+      id: 'recovery.sendNew'
+    timeout: 30000
+- tapOn:
+    id: 'recovery.sendNew'
+- extendedWaitUntil:
+    visible:
+      id: 'recovery.email'
+    timeout: 10000
+- assertNotVisible:
+    id: 'recovery.back'
+- takeScreenshot: mobile-dead-link-no-back

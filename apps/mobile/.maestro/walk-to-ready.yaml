@@ -1,0 +1,20 @@
+# On an open Create an organisation: names it NAME, picks Portugal, and reaches Ready to create it?
+appId: host.exp.Exponent
+---
+- tapOn:
+    id: 'createWalk.name'
+- inputText: ${NAME}
+- tapOn:
+    id: 'createWalk.primary'
+- tapOn:
+    id: 'createWalk.search'
+- inputText: 'Portugal'
+- tapOn:
+    id: 'createWalk.country.PT'
+- hideKeyboard:
+    optional: true
+- tapOn:
+    id: 'createWalk.primary'
+- extendedWaitUntil:
+    visible: '{{t:createOrganisation.readyTitle}}'
+    timeout: 10000

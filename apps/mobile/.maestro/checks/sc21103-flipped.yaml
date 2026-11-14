@@ -1,0 +1,104 @@
+# Notification settings with every switchable switch flipped, so each cell shows its other word (sc-21103).
+appId: host.exp.Exponent
+---
+- openLink: ${METRO_URL}/--/settings/notifications
+- extendedWaitUntil:
+    visible:
+      id: notificationSettings.guest_replies.push
+    timeout: 30000
+- scrollUntilVisible:
+    element:
+      id: notificationSettings.guest_replies.push
+    timeout: 15000
+    centerElement: true
+- tapOn:
+    id: notificationSettings.guest_replies.push
+- waitForAnimationToEnd
+- scrollUntilVisible:
+    element:
+      id: notificationSettings.guest_replies.email
+    timeout: 15000
+    centerElement: true
+- tapOn:
+    id: notificationSettings.guest_replies.email
+- waitForAnimationToEnd
+- scrollUntilVisible:
+    element:
+      id: notificationSettings.messages.push
+    timeout: 15000
+    centerElement: true
+- tapOn:
+    id: notificationSettings.messages.push
+- waitForAnimationToEnd
+- scrollUntilVisible:
+    element:
+      id: notificationSettings.messages.email
+    timeout: 15000
+    centerElement: true
+- tapOn:
+    id: notificationSettings.messages.email
+- waitForAnimationToEnd
+- scrollUntilVisible:
+    element:
+      id: notificationSettings.event_day.push
+    timeout: 15000
+    centerElement: true
+- tapOn:
+    id: notificationSettings.event_day.push
+- waitForAnimationToEnd
+- scrollUntilVisible:
+    element:
+      id: notificationSettings.event_day.email
+    timeout: 15000
+    centerElement: true
+- tapOn:
+    id: notificationSettings.event_day.email
+- waitForAnimationToEnd
+- scrollUntilVisible:
+    element:
+      id: notificationSettings.event_changes.push
+    timeout: 15000
+    centerElement: true
+- tapOn:
+    id: notificationSettings.event_changes.push
+- waitForAnimationToEnd
+- scrollUntilVisible:
+    element:
+      id: notificationSettings.event_changes.email
+    timeout: 15000
+    centerElement: true
+- tapOn:
+    id: notificationSettings.event_changes.email
+- waitForAnimationToEnd
+- scrollUntilVisible:
+    element:
+      id: notificationSettings.money.push
+    timeout: 15000
+    centerElement: true
+- tapOn:
+    id: notificationSettings.money.push
+- waitForAnimationToEnd
+- scrollUntilVisible:
+    element:
+      id: notificationSettings.money.email
+    timeout: 15000
+    centerElement: true
+- tapOn:
+    id: notificationSettings.money.email
+- waitForAnimationToEnd
+- scrollUntilVisible:
+    element:
+      id: notificationSettings.account_security.push
+    timeout: 15000
+    centerElement: true
+- tapOn:
+    id: notificationSettings.account_security.push
+- waitForAnimationToEnd
+- scrollUntilVisible:
+    element:
+      id: notificationSettings.guest_replies.push
+    direction: UP
+    timeout: 15000
+- takeScreenshot: settings-grid-flipped
+- scroll
+- takeScreenshot: settings-grid-flipped-end

@@ -1,0 +1,52 @@
+# Delete organisation: name typed, keys hidden by the back gesture (Android), API stopped. Keys never open. sc-9674.
+appId: host.exp.Exponent
+onFlowComplete:
+  - runScript:
+      file: ../batch/helper.js
+      env:
+        ASK: /api?to=up
+---
+- openLink: ${METRO_URL}/--/settings/organisation
+- extendedWaitUntil:
+    visible:
+      id: organisation.card
+    timeout: 30000
+- scrollUntilVisible:
+    element:
+      id: organisation.ownership.delete
+    centerElement: true
+- tapOn:
+    id: organisation.ownership.delete
+- extendedWaitUntil:
+    visible:
+      id: organisation.delete.name
+    timeout: 30000
+- scrollUntilVisible:
+    element:
+      id: organisation.delete.name
+    centerElement: true
+- tapOn:
+    id: organisation.delete.name
+- inputText: ${ORG_NAME}
+- pressKey: back
+- waitForAnimationToEnd
+- takeScreenshot: keys-hidden
+- assertNotVisible: '(?i)(shift|delete)'
+- runScript:
+    file: ../batch/helper.js
+    env:
+      ASK: /api?to=stopped
+- scrollUntilVisible:
+    element:
+      id: organisation.delete.send
+    centerElement: true
+- tapOn:
+    id: organisation.delete.send
+- extendedWaitUntil:
+    visible: '.*{{t:ownership.failed}}.*'
+    timeout: 45000
+- waitForAnimationToEnd:
+    timeout: 3000
+- waitForAnimationToEnd
+- takeScreenshot: refused
+- assertNotVisible: '(?i)(shift|delete)'

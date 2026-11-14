@@ -1,0 +1,34 @@
+# sc-22146: on Android, New event's Starts date dialog, a new day (DAY) tapped and Cancel pressed; Starts' date still shows no date.
+appId: host.exp.Exponent
+---
+- openLink: ${METRO_URL}/--/events/new
+- extendedWaitUntil:
+    visible:
+      id: 'eventForm.name'
+    timeout: 30000
+- scrollUntilVisible:
+    element:
+      id: 'eventForm.start.date'
+    direction: DOWN
+    centerElement: true
+- takeScreenshot: before
+- tapOn:
+    id: 'eventForm.start.date'
+- extendedWaitUntil:
+    visible:
+      text: '(?i)(cancel|annuler)'
+    timeout: 10000
+- tapOn:
+    text: '${DAY}'
+- takeScreenshot: picked
+- tapOn:
+    text: '(?i)(cancel|annuler)'
+- waitForAnimationToEnd
+- assertNotVisible:
+    text: 'OK'
+- assertVisible:
+    id: 'eventForm.start.date'
+- assertNotVisible:
+    id: 'eventForm.start.date'
+    text: '.*\b${DAY}\b.*'
+- takeScreenshot: kept

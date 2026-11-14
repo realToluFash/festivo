@@ -1,0 +1,11 @@
+#!/bin/sh
+# Checks the minimum app versions before the server starts, so a malformed one
+# stops the API rather than serving as no minimum (sc-22620). Other commands,
+# such as the notification worker's, pass straight through.
+set -e
+
+if [ "${1#-}" != "$1" ] || [ "$1" = frankenphp ]; then
+	php /app/bin/console app:minimum-app-versions:check --no-interaction
+fi
+
+exec docker-php-entrypoint "$@"

@@ -1,0 +1,33 @@
+# sc-34920: Colours, as opened, then with another scheme picked and not yet saved.
+appId: host.exp.Exponent
+---
+- openLink: ${METRO_URL}/--/settings/personalisation
+- extendedWaitUntil:
+    visible:
+      id: personalisation.choose
+    timeout: 30000
+- runFlow: ../developer-menu-close.yaml
+- tapOn:
+    id: personalisation.choose
+- extendedWaitUntil:
+    visible:
+      id: personalisation.colours
+    timeout: 15000
+- waitForAnimationToEnd
+- takeScreenshot: colours-open
+- scrollUntilVisible:
+    element:
+      id: personalisation.swatch.terracotta
+    direction: DOWN
+    timeout: 10000
+- takeScreenshot: colours-bottom
+- tapOn:
+    id: personalisation.swatch.cobalt
+- waitForAnimationToEnd
+- takeScreenshot: colours-picked
+- scrollUntilVisible:
+    element:
+      id: personalisation.swatch.terracotta
+    direction: DOWN
+    timeout: 10000
+- takeScreenshot: colours-picked-bottom

@@ -1,0 +1,18 @@
+# sc-34901: the demo's push-blocked page with a kind open, Blocked on this device on its push switch.
+appId: host.exp.Exponent
+---
+- openLink: ${METRO_URL}/--/demo/settings/notifications?state=pushBlocked
+- extendedWaitUntil:
+    visible:
+      id: 'notifications.messages'
+    timeout: 30000
+- runFlow: ../developer-menu-close.yaml
+- tapOn:
+    id: 'notifications.messages'
+- waitForAnimationToEnd:
+    timeout: 5000
+- scrollUntilVisible:
+    element:
+      id: 'notifications.messages.email'
+    direction: DOWN
+- takeScreenshot: demo-pushBlocked-open

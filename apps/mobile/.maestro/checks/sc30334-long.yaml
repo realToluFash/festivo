@@ -1,0 +1,15 @@
+# sc-30334: a 101-character name typed in is refused before Create.
+appId: host.exp.Exponent
+---
+- openLink: ${METRO_URL}/--/demo/today?create=name
+- extendedWaitUntil:
+    visible:
+      id: 'createWalk.name'
+    timeout: 15000
+- tapOn:
+    id: 'createWalk.name'
+- inputText: 'AAAAAAAAAABBBBBBBBBBCCCCCCCCCCDDDDDDDDDDEEEEEEEEEEFFFFFFFFFFGGGGGGGGGGHHHHHHHHHHIIIIIIIIIIJJJJJJJJJJK'
+- tapOn:
+    id: 'createWalk.primary'
+- waitForAnimationToEnd: { timeout: 3000 }
+- takeScreenshot: long-101-refused

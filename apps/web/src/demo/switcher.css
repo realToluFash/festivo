@@ -1,0 +1,13 @@
+.sw {
+  flex: none;
+}
+
+.today .sw-switched .sw-lands:focus-visible {
+  outline: none;
+  box-shadow: var(--swRing);
+}
+
+.today .sw-paused .sw-button:focus-visible {
+  outline: none;
+  box-shadow: var(--swRing);
+}

@@ -1,0 +1,21 @@
+# sc-37983: In landscape from the start, Set a new password lands on Your organisation with the keys up and Password changed stepped aside; the keys stay up past its 10 seconds, then go down, and it does not come back. Pass METRO_URL and TOKEN_ORG, a reset token for an account with no organisation, invitation or offer.
+appId: host.exp.Exponent
+---
+- runFlow: ../sign-out.yaml
+- setOrientation: LANDSCAPE_LEFT
+- openLink: ${METRO_URL}/--/reset-password?token=${TOKEN_ORG}
+- extendedWaitUntil: { visible: { id: 'recovery.password' }, timeout: 30000 }
+- tapOn: { id: 'recovery.password' }
+- inputText: 'a-brand-new-password-37983'
+- hideKeyboard
+- tapOn: { id: 'recovery.save' }
+- extendedWaitUntil: { visible: { id: 'completeProfile.organisation' }, timeout: 30000 }
+- takeScreenshot: aside10-01-landed
+- extendedWaitUntil: { visible: { id: 'never.there' }, timeout: 12000, optional: true }
+- takeScreenshot: aside10-02-keys-up-12s
+- hideKeyboard
+- extendedWaitUntil: { visible: { id: 'never.there' }, timeout: 1500, optional: true }
+- takeScreenshot: aside10-03-keys-down
+- assertNotVisible: '{{t:any:recovery.changed}}'
+- setOrientation: PORTRAIT
+- runFlow: ../sign-out-from-complete-profile.yaml

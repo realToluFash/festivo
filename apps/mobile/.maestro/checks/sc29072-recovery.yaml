@@ -1,0 +1,41 @@
+# sc-29072: Enter your code (no button, wrong code clears) and Enter a recovery code: the shape line, blank, short, dropped characters, wrong, then RCODE (typed in capitals, no dash) signs in.
+appId: host.exp.Exponent
+---
+- runFlow: ../sc29072-to-code.yaml
+- waitForAnimationToEnd
+- takeScreenshot: code-step
+- assertNotVisible: { id: 'twoFactor.verify' }
+- tapOn: { id: 'twoFactor.code' }
+- inputText: '000000'
+- extendedWaitUntil: { visible: '{{t:twoFactor.codeWrong}}', timeout: 15000 }
+- takeScreenshot: code-wrong
+- runFlow: ../sc29072-close-code-pad.yaml
+- tapOn: { id: 'twoFactor.switch' }
+- extendedWaitUntil: { visible: '{{t:twoFactor.recoveryTitle}}', timeout: 10000 }
+- waitForAnimationToEnd
+- assertVisible: '{{t:twoFactor.recoveryShape}}'
+- assertVisible: '{{t:twoFactor.useApp}}'
+- assertVisible: '{{t:twoFactor.lostBoth}}'
+- takeScreenshot: recovery-keys
+- tapOn: { id: 'twoFactor.verify' }
+- extendedWaitUntil: { visible: '{{t:twoFactor.recoveryBlank}}', timeout: 5000 }
+- takeScreenshot: recovery-blank
+- tapOn: { id: 'twoFactor.code' }
+- inputText: 'AB1'
+- tapOn: { id: 'twoFactor.verify' }
+- extendedWaitUntil: { visible: '{{t:twoFactor.recoveryShort}}', timeout: 5000 }
+- takeScreenshot: recovery-short
+- tapOn: { id: 'twoFactor.code' }
+- eraseText: 30
+- inputText: 'VTXP RH7Y--Z9'
+- assertVisible: 'vtxp-rh7y'
+- takeScreenshot: recovery-shaped
+- tapOn: { id: 'twoFactor.verify' }
+- extendedWaitUntil: { visible: '{{t:twoFactor.recoveryWrong}}', timeout: 15000 }
+- takeScreenshot: recovery-wrong
+- inputText: ${RCODE}
+- takeScreenshot: recovery-typed-over
+- tapOn: { id: 'twoFactor.verify' }
+- extendedWaitUntil: { notVisible: { id: 'twoFactor.code' }, timeout: 30000 }
+- waitForAnimationToEnd
+- takeScreenshot: recovery-in

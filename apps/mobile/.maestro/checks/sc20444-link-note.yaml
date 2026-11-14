@@ -1,0 +1,23 @@
+# Security: Link Apple's prove step, with its note, then Cancel. sc-20444.
+appId: host.exp.Exponent
+---
+- openLink: ${METRO_URL}/--/settings/security
+- scrollUntilVisible:
+    element:
+      id: 'ways.apple.link'
+    timeout: 30000
+    centerElement: true
+- tapOn:
+    id: 'ways.apple.link'
+- extendedWaitUntil:
+    visible:
+      id: 'ways.password'
+    timeout: 10000
+- takeScreenshot: link-note
+- scrollUntilVisible:
+    element:
+      id: 'ways.cancel'
+    centerElement: true
+- takeScreenshot: link-note-foot
+- tapOn:
+    id: 'ways.cancel'

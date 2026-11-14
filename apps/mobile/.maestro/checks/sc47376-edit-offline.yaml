@@ -1,0 +1,28 @@
+# sc-47376: ${GUEST_ID}'s Edit in ${EVENT_ID}'s Guests, a name changed, the API stopped, Save: the form stays open with the offline refusal and its line (guest.form.offline), the change kept.
+appId: host.exp.Exponent
+onFlowComplete:
+  - runScript:
+      file: ../batch/helper.js
+      env:
+        ASK: /api?to=up
+---
+- setOrientation: ${ORIENT}
+- openLink: ${METRO_URL}/--/events/${EVENT_ID}?area=guests
+- extendedWaitUntil: { visible: { id: 'guests.row.${GUEST_ID}' }, timeout: 30000 }
+- tapOn: { id: 'guests.row.${GUEST_ID}' }
+- extendedWaitUntil: { visible: { id: 'guest.edit' }, timeout: 20000 }
+- tapOn: { id: 'guest.edit' }
+- extendedWaitUntil: { visible: { id: 'guest.form.fullName' }, timeout: 15000 }
+- tapOn: { id: 'guest.form.fullName' }
+- inputText: ' Jr'
+- runScript:
+    file: ../batch/helper.js
+    env:
+      ASK: /api?to=stopped
+- tapOn: { id: 'guest.form.save' }
+- extendedWaitUntil: { visible: { id: 'guest.form.offline' }, timeout: 30000 }
+- takeScreenshot: edit-offline-keys-up
+- hideKeyboard
+- extendedWaitUntil: { visible: { id: 'never.there' }, timeout: 1500, optional: true }
+- assertVisible: { id: 'guest.form.offline' }
+- takeScreenshot: edit-offline-keys-down

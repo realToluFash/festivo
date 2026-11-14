@@ -1,0 +1,60 @@
+# Change your password: return key from New password with the keys up, API held, refused; then a key typed and the return key send again. sc-13408.
+appId: host.exp.Exponent
+onFlowComplete:
+  - runScript:
+      file: ../batch/helper.js
+      env:
+        ASK: /api?to=up
+---
+- openLink: ${METRO_URL}/--/settings/security
+- scrollUntilVisible:
+    element:
+      id: 'security.password'
+    timeout: 60000
+    centerElement: true
+- tapOn:
+    id: 'security.password'
+- extendedWaitUntil:
+    visible:
+      id: 'security.change.current'
+    timeout: 15000
+- tapOn:
+    id: 'security.change.current'
+- inputText: 'not-my-password-at-all'
+- tapOn:
+    id: 'security.change.new'
+- inputText: 'a-long-new-password-2026'
+- waitForAnimationToEnd
+- takeScreenshot: keys-up
+- assertVisible: '(?i)(shift|delete)'
+- runScript:
+    file: ../batch/helper.js
+    env:
+      ASK: /api?to=paused
+- pressKey: Enter
+- waitForAnimationToEnd
+- takeScreenshot: at-return
+- assertVisible: '(?i)(shift|delete)'
+- assertVisible:
+    id: 'security.change.cancel'
+    enabled: false
+- runScript:
+    file: ../batch/helper.js
+    env:
+      ASK: /api?to=up
+- extendedWaitUntil:
+    visible: '{{t:passwordCard.wrongCurrent}}'
+    timeout: 30000
+- waitForAnimationToEnd
+- takeScreenshot: refused
+- assertVisible: '(?i)(shift|delete)'
+- inputText: 'x'
+- waitForAnimationToEnd
+- takeScreenshot: typed-after
+- assertVisible: '(?i)(shift|delete)'
+- pressKey: Enter
+- waitForAnimationToEnd:
+    timeout: 4000
+- waitForAnimationToEnd
+- takeScreenshot: sent-again
+- assertVisible: '(?i)(shift|delete)'

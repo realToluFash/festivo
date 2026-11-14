@@ -1,0 +1,420 @@
+/* Share (Budget-A-Share, page e81): sc-94's links at a desk, and the signed-out share in the guest page A's frame (guest.css). */
+
+.share-none {
+  color: var(--colorInkSecondary);
+  font: 500 16px/1.5 var(--fontFamily);
+}
+
+.share-form,
+.share-created {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+}
+
+.share-scopes {
+  min-width: 0;
+  margin: 0;
+  padding: 0;
+  border: 0;
+}
+
+.share-caps {
+  padding: 0 0 6px;
+  color: var(--colorInkSecondary);
+  font: 600 12.5px/1.2 var(--fontFamily);
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+.share-scope .desk-row-name {
+  font-weight: 500;
+}
+
+.share-scope:has(:checked) .desk-row-name {
+  font-weight: 600;
+}
+
+.share .desk-box :is(select, input) {
+  flex: 1;
+  min-width: 0;
+  height: 100%;
+  padding: 0;
+  border: 0;
+  outline: none;
+  background: none;
+  color: var(--colorInk);
+  font: 500 16px/1 var(--fontFamily);
+}
+
+.share .desk-box select {
+  appearance: none;
+  cursor: pointer;
+}
+
+.share-chev {
+  flex: none;
+  color: var(--colorInkSecondary);
+  pointer-events: none;
+}
+
+.share-primary {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 100%;
+  height: 48px;
+  padding: 0 22px;
+  border-radius: 24px;
+  background: var(--colorAccent);
+  color: var(--colorInkOnDark);
+  font: 600 16px/1 var(--fontFamily);
+  white-space: nowrap;
+}
+
+.share-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0 var(--space3xl);
+}
+
+.share-actions .desk-text {
+  margin-inline: 0;
+}
+
+.share-quiet {
+  color: var(--colorInkSecondary);
+}
+
+.share-copied {
+  display: flex;
+  align-items: flex-start;
+  gap: 7px;
+  color: var(--deskGreen);
+  font: 600 14px/1.4 var(--fontFamily);
+}
+
+.share-copied.is-ink {
+  color: var(--colorInk);
+  font-weight: 500;
+}
+
+.share-copied svg {
+  flex: none;
+  margin-top: 2px;
+}
+
+.share-link input {
+  text-overflow: ellipsis;
+}
+
+.share-row:focus,
+.share-created h2:focus {
+  outline: none;
+}
+
+/* ── The signed-out share: one column of 362 at 402, of 600 at 834, then 520 · 48 · 440 and 560 · 64 · 440 ── */
+
+.sh {
+  --shCoverMin: 200px;
+  --shCoverPad: 20px;
+  --shTitle: 15px;
+  --shName: 26px;
+  --shAfterCover: 20px;
+}
+
+.sh:is(.is-upright, .is-side, .is-desk) {
+  --shCoverMin: 260px;
+  --shCoverPad: 28px;
+  --shTitle: 17px;
+  --shName: 34px;
+  --shAfterCover: 24px;
+}
+
+.sh-columns {
+  display: flex;
+  flex-direction: column;
+  width: min(600px, calc(100% - 40px));
+  margin: 0 auto;
+}
+
+.sh:is(.is-phone, .is-small) .sh-columns {
+  width: auto;
+  margin: 0 var(--gpGut);
+}
+
+.gp-main.is-two .sh-columns {
+  display: grid;
+  grid-template-columns: var(--gpLeft) var(--gpRight);
+  gap: var(--gpGap);
+  align-items: start;
+  width: calc(var(--gpLeft) + var(--gpGap) + var(--gpRight));
+}
+
+.sh .sh-cover {
+  min-height: var(--shCoverMin);
+  border-radius: var(--gpCoverR);
+}
+
+/* The share's phone cover is 200 tall, so the lower pieces would sit behind its words: they stay off. */
+.sh:is(.is-phone, .is-small) .sh-cover .gp-piece:is(.p4, .p5, .p6, .p7) {
+  display: none;
+}
+
+.sh-cover-inner {
+  position: relative;
+  z-index: 2;
+  display: flex;
+  flex: 1;
+  flex-direction: column;
+  justify-content: flex-end;
+  padding: var(--shCoverPad);
+}
+
+.sh .sh-cover-title {
+  color: var(--deskWhite);
+  font: 600 var(--shTitle) / 1.3 var(--fontFamily);
+  overflow-wrap: anywhere;
+}
+
+.sh .sh-cover-name {
+  margin-top: 4px;
+  font: 700 var(--shName) / 1.15 var(--fontFamily);
+  letter-spacing: -0.02em;
+  overflow-wrap: anywhere;
+}
+
+.sh .sh-cover-line {
+  margin-top: 10px;
+  color: var(--deskWhite);
+  font: 500 14px/1.4 var(--fontFamily);
+}
+
+.sh-rest {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+}
+
+.is-one .sh-rest {
+  margin-top: var(--shAfterCover);
+}
+
+.sh .sh-label {
+  margin-bottom: 4px;
+  color: var(--colorInkSecondary);
+  font: 600 15px/1.3 var(--fontFamily);
+}
+
+.sh .sh-figure {
+  font: 700 30px/1.15 var(--fontFamily);
+  font-variant-numeric: tabular-nums;
+  letter-spacing: -0.02em;
+}
+
+.sh .sh-sentence {
+  margin-top: 6px;
+  color: var(--colorInkSecondary);
+  font: 400 15px/1.45 var(--fontFamily);
+}
+
+.sh-block {
+  margin-top: 12px;
+}
+
+.sh-block:is(.is-loose, :has(> h2)) {
+  margin-top: 20px;
+}
+
+.sh .sh-h2 {
+  margin-bottom: 6px;
+  font: 700 18px/1.25 var(--fontFamily);
+  letter-spacing: -0.01em;
+}
+
+.sh-rows {
+  margin: 0;
+}
+
+.sh-row {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  box-sizing: border-box;
+  min-height: 56px;
+  padding: 10px 0;
+}
+
+.sh-row:not(:last-child) {
+  border-bottom: 1px solid var(--colorBorder);
+}
+
+.sh-row dt {
+  display: flex;
+  flex: 1;
+  flex-direction: column;
+  gap: 2px;
+  min-width: 0;
+}
+
+.sh-row-title {
+  font: 600 16px/1.3 var(--fontFamily);
+  overflow-wrap: anywhere;
+}
+
+.sh-row-line {
+  color: var(--colorInkSecondary);
+  font: 400 14px/1.4 var(--fontFamily);
+  overflow-wrap: anywhere;
+}
+
+.sh-row dd {
+  flex: none;
+  margin: 0;
+  font: 600 16px/1.3 var(--fontFamily);
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+}
+
+.sh-print {
+  display: flex;
+  margin-top: 12px;
+}
+
+.sh .gp-main.is-one .gp-alone-wrap.sh-gate {
+  padding-top: 0;
+}
+
+.sh .sh-gate-event {
+  color: var(--colorInkSecondary);
+  font: 600 15px/1.3 var(--fontFamily);
+}
+
+.sh .sh-gate-title {
+  margin-top: 4px;
+  font: 700 24px/1.2 var(--fontFamily);
+  letter-spacing: -0.02em;
+}
+
+.sh .sh-gate-line {
+  margin-top: 8px;
+  color: var(--colorInkSecondary);
+  font: 400 15px/1.45 var(--fontFamily);
+}
+
+.sh-gate-form {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  margin-top: 16px;
+}
+
+.sh-field {
+  display: flex;
+  flex-direction: column;
+  gap: 7px;
+}
+
+.sh-field label {
+  font: 600 14px/1.3 var(--fontFamily);
+}
+
+.sh-box {
+  display: flex;
+  align-items: center;
+  box-sizing: border-box;
+  height: 48px;
+  padding: 0 14px;
+  border-radius: 12px;
+  background: var(--colorCard);
+  box-shadow: inset 0 0 0 1.5px var(--colorFieldBorder);
+}
+
+.sh-box:focus-within {
+  box-shadow: inset 0 0 0 2px var(--colorAccent);
+}
+
+.sh-box.is-wrong {
+  box-shadow: inset 0 0 0 2px var(--colorBroken);
+}
+
+.sh .sh-box input {
+  flex: 1;
+  min-width: 0;
+  height: 100%;
+  padding: 0;
+  border: 0;
+  outline: none;
+  background: none;
+  color: var(--colorInk);
+  font: 500 16px/1 var(--fontFamily);
+}
+
+.sh .sh-box input:focus-visible {
+  box-shadow: none;
+}
+
+.sh-field .gp-error {
+  margin-top: 0;
+}
+
+.sh .sh-gone-title {
+  font: 700 26px/1.2 var(--fontFamily);
+  letter-spacing: -0.02em;
+}
+
+.sh .sh-gone-line {
+  margin-top: 8px;
+  color: var(--colorInkSecondary);
+  font: 400 15px/1.45 var(--fontFamily);
+}
+
+/* Printed for a meeting: one column, the cover as ink on white, nothing the reader needs left out. */
+@media print {
+  .sh {
+    min-height: 0;
+  }
+
+  .sh :is(.gp-lang-wrap, .sh-print),
+  .sh-way-in {
+    display: none;
+  }
+
+  .sh .gp-main {
+    padding: 16px 0;
+  }
+
+  .sh :is(.gp-header, .gp-footer) {
+    padding-inline: 0;
+  }
+
+  .sh .sh-columns,
+  .gp-main.is-two .sh-columns {
+    display: flex;
+    width: auto;
+    margin: 0;
+  }
+
+  .sh .sh-cover {
+    min-height: 0;
+    border: 1px solid var(--colorBorder);
+    background: none;
+    color: var(--colorInk);
+  }
+
+  .sh .sh-cover :is(.ev-scrim, .gp-piece) {
+    display: none;
+  }
+
+  .sh .sh-cover :is(.sh-cover-title, .sh-cover-line) {
+    color: var(--colorInkSecondary);
+  }
+
+  .sh .sh-rest {
+    margin-top: 20px;
+  }
+
+  .sh-row {
+    break-inside: avoid;
+  }
+}

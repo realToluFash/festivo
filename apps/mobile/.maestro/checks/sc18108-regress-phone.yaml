@@ -1,0 +1,37 @@
+# Android only. sc-18108 regression: Back from New event with a name typed asks before leaving; Back from Settings > Account shows Settings.
+appId: host.exp.Exponent
+---
+- runFlow: ../return-home.yaml
+- tapOn:
+    id: 'frame.events'
+- extendedWaitUntil:
+    visible:
+      id: 'events.new'
+    timeout: 30000
+- tapOn:
+    id: 'events.new'
+- extendedWaitUntil:
+    visible:
+      id: 'eventForm.name'
+    timeout: 20000
+- tapOn:
+    id: 'eventForm.name'
+- inputText: 'Unsaved'
+- hideKeyboard
+- back
+- waitForAnimationToEnd
+- takeScreenshot: new-event-back
+- tapOn: '{{t:eventEdit.leave}}'
+- waitForAnimationToEnd
+- takeScreenshot: new-event-left
+- runFlow: ../open-settings.yaml
+- tapOn:
+    id: 'settings.account'
+- waitForAnimationToEnd
+- takeScreenshot: account
+- back
+- extendedWaitUntil:
+    visible:
+      id: 'settings.account'
+    timeout: 10000
+- takeScreenshot: account-back

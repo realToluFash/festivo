@@ -1,0 +1,8 @@
+# sc-40661: opens Create an organisation, names it, Continues to the country step and focuses the search.
+appId: host.exp.Exponent
+---
+- runFlow: open-create-organisation.yaml
+- inputText: 'Accent Supper Club'
+- tapOn: { id: 'createWalk.primary' }
+- extendedWaitUntil: { visible: { id: 'createWalk.search' }, timeout: 10000 }
+- tapOn: { id: 'createWalk.search' }

@@ -1,0 +1,16 @@
+# With nothing typed on sign-in, Reset your password opens blank with the keyboard up. sc-29071.
+appId: host.exp.Exponent
+---
+- runFlow: ../sign-out.yaml
+- openLink: ${METRO_URL}/--/sign-in
+- extendedWaitUntil: { visible: { id: 'signIn.email' }, timeout: 30000 }
+- tapOn: { id: 'signIn.email' }
+- eraseText: 80
+- hideKeyboard
+- takeScreenshot: blank-01-sign-in-empty
+- tapOn: { id: 'signIn.forgot' }
+- extendedWaitUntil: { visible: { id: 'recovery.email' }, timeout: 15000 }
+- waitForAnimationToEnd
+- takeScreenshot: blank-02-reset-blank-keys
+- tapOn: { id: 'recovery.send' }
+- takeScreenshot: blank-03-send-blank

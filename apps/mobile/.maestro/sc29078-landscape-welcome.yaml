@@ -1,0 +1,21 @@
+# The welcome and No connection on a landscape tablet: the cover on the left half, the choices on the right. sc-29078.
+#
+#   node .qa/bin/qa-env.mjs maestro sc29078-landscape-welcome --ipad
+appId: host.exp.Exponent
+---
+- setOrientation: LANDSCAPE_LEFT
+- openLink: ${METRO_URL}/--/welcome?providerFailed=Google
+- extendedWaitUntil:
+    visible:
+      id: 'welcome.notice'
+    timeout: 60000
+- waitForAnimationToEnd
+- takeScreenshot: ipad-landscape-google
+- openLink: ${METRO_URL}/--/unreachable
+- extendedWaitUntil:
+    visible:
+      id: 'unreachable.retry'
+    timeout: 30000
+- waitForAnimationToEnd
+- takeScreenshot: ipad-landscape-unreachable
+- setOrientation: PORTRAIT

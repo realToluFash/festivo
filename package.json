@@ -1,0 +1,60 @@
+{
+  "name": "soirely",
+  "private": true,
+  "description": "Event management for the people running the event.",
+  "engines": {
+    "node": ">=22.18"
+  },
+  "scripts": {
+    "setup": "node scripts/setup.mjs",
+    "lint": "npm run lint:js && npm run lint:css && npm run lint:php && npm run lint:actions",
+    "lint:js": "eslint .",
+    "lint:css": "stylelint \"apps/web/src/**/*.css\"",
+    "lint:php": "node scripts/php-tool.mjs php-cs-fixer check",
+    "lint:actions": "node scripts/lint-actions.mjs",
+    "lint:comments": "node scripts/check-comments.mjs",
+    "lint:topics": "node scripts/check-topic-strings.mjs",
+    "lint:api": "docker compose exec -T api php vendor/bin/mago lint",
+    "analyse:api": "docker compose exec -T api php vendor/bin/mago analyze",
+    "guard:api": "docker compose exec -T api php vendor/bin/mago guard && node scripts/check-migrations.mjs",
+    "test": "npm run test:scripts && npm run test:api && npm run test:packages",
+    "test:scripts": "vitest run --dir scripts",
+    "test:queue": "python3 -m unittest discover -s tools/queue/tests -t tools/queue",
+    "test:db": "node scripts/test-db.mjs",
+    "qa:account": "node scripts/qa-account.mjs",
+    "test:api": "docker compose exec -T api sh -c \"APP_ENV=test vendor/bin/phpunit\"",
+    "test:packages": "npm run test --workspaces --if-present",
+    "typecheck": "npm run typecheck --workspaces --if-present",
+    "format": "npm run format:js && npm run format:php",
+    "format:js": "prettier --write .",
+    "format:php": "node scripts/php-tool.mjs php-cs-fixer fix",
+    "format:css": "stylelint \"apps/web/src/**/*.css\" --fix",
+    "fix:api": "docker compose exec -T api php vendor/bin/mago fix --no-fmt",
+    "format:check": "prettier --check .",
+    "prepare": "node scripts/install-hooks.mjs"
+  },
+  "devDependencies": {
+    "@eslint/js": "^9.37.0",
+    "eslint": "^9.37.0",
+    "eslint-config-expo": "^57.0.2",
+    "eslint-plugin-jsx-a11y": "^6.10.2",
+    "eslint-plugin-react": "^7.37.5",
+    "eslint-plugin-react-hooks": "^7.1.1",
+    "eslint-plugin-react-refresh": "^0.5.7",
+    "globals": "^16.4.0",
+    "lefthook": "^1.13.6",
+    "prettier": "^3.6.2",
+    "stylelint": "^17.16.0",
+    "stylelint-config-standard": "^40.0.0",
+    "toqr": "0.1.1",
+    "typescript-eslint": "^8.46.0",
+    "vitest": "^4.1.11",
+    "ws": "^8.22.0",
+    "yaml": "2.9.1"
+  },
+  "workspaces": [
+    "packages/*",
+    "apps/*",
+    "tools/agent-gateway"
+  ]
+}

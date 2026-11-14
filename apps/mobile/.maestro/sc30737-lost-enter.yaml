@@ -1,0 +1,22 @@
+# On Enter the code(s): types CODE into every field shown and presses Ask, then waits WAIT_MS.
+# SHOT names the screenshot. sc-30737.
+appId: host.exp.Exponent
+---
+- tapOn:
+    id: 'lostTwoFactor.emailCode'
+- eraseText: 60
+- inputText: ${CODE}
+- runFlow:
+    when:
+      visible:
+        id: 'lostTwoFactor.phoneCode'
+    commands:
+      - tapOn:
+          id: 'lostTwoFactor.phoneCode'
+      - eraseText: 60
+      - inputText: ${CODE}
+- tapOn:
+    id: 'lostTwoFactor.ask'
+- waitForAnimationToEnd:
+    timeout: 4000
+- takeScreenshot: ${SHOT}

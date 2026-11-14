@@ -1,0 +1,8 @@
+# sc-40661: the demo's Step 2 · nothing matches state.
+appId: host.exp.Exponent
+---
+- openLink: ${METRO_URL}/--/demo/today?create=country-nomatch
+- extendedWaitUntil: { visible: { id: 'createWalk.search' }, timeout: 20000 }
+- extendedWaitUntil: { visible: { id: 'never.there' }, timeout: 2000, optional: true }
+- takeScreenshot: s40661-demo
+- assertVisible: { id: 'createWalk.countries.noMatch' }

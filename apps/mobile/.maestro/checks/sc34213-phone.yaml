@@ -1,0 +1,74 @@
+# Android only. sc-34213, a phone: after saving Oluwafolakemi Bello on Your account, going back to the Settings list shows its card as Oluwafolakemi Bello and OB; then Cher and C. Needs ${METRO_URL}.
+appId: host.exp.Exponent
+---
+- openLink: ${METRO_URL}/--/demo/settings
+- extendedWaitUntil:
+    visible: 'Folake Adeyemi'
+    timeout: 30000
+- waitForAnimationToEnd:
+    timeout: 8000
+- takeScreenshot: list-start
+- tapOn: 'Folake Adeyemi'
+- extendedWaitUntil:
+    visible:
+      id: 'account.name'
+    timeout: 30000
+- waitForAnimationToEnd:
+    timeout: 8000
+- tapOn:
+    id: 'account.name'
+- extendedWaitUntil:
+    visible:
+      id: 'account.name.field'
+    timeout: 10000
+- eraseText: 120
+- inputText: 'Oluwafolakemi Bello'
+- tapOn:
+    id: 'account.name.save'
+- extendedWaitUntil:
+    notVisible:
+      id: 'account.name.screen'
+    timeout: 10000
+- waitForAnimationToEnd:
+    timeout: 8000
+- takeScreenshot: page-ob
+- back
+- waitForAnimationToEnd:
+    timeout: 8000
+- assertVisible: 'Oluwafolakemi Bello'
+- assertVisible: 'OB'
+- assertNotVisible: 'Folake Adeyemi'
+- assertNotVisible: 'FA'
+- takeScreenshot: list-ob
+- tapOn: 'Oluwafolakemi Bello'
+- extendedWaitUntil:
+    visible:
+      id: 'account.name'
+    timeout: 10000
+- waitForAnimationToEnd:
+    timeout: 8000
+- assertVisible: 'OB'
+- tapOn:
+    id: 'account.name'
+- extendedWaitUntil:
+    visible:
+      id: 'account.name.field'
+    timeout: 10000
+- eraseText: 120
+- inputText: 'Cher'
+- tapOn:
+    id: 'account.name.save'
+- extendedWaitUntil:
+    notVisible:
+      id: 'account.name.screen'
+    timeout: 10000
+- waitForAnimationToEnd:
+    timeout: 8000
+- back
+- waitForAnimationToEnd:
+    timeout: 8000
+- assertVisible: 'Cher'
+- assertVisible: 'C'
+- assertNotVisible: 'Oluwafolakemi Bello'
+- assertNotVisible: 'Folake Adeyemi'
+- takeScreenshot: list-cher

@@ -1,0 +1,42 @@
+# On a code step (sign-in or reset), types CODE, sends it, and screenshots the answer as SHOT.
+# Pass RECOVERY=true to switch to a recovery code first. sc-22740.
+appId: host.exp.Exponent
+---
+- runFlow:
+    when:
+      true: ${RECOVERY == 'true'}
+    commands:
+      - tapOn:
+          id: 'twoFactor.switch'
+- tapOn:
+    id: 'twoFactor.code'
+- eraseText: 30
+- inputText: ${CODE}
+# The sixth digit sends the sign-in step's authenticator code (sc-29072). A step with a send
+# button, a recovery code or the reset step, sends with Return on iOS, where hideKeyboard fails on
+# an iPhone (sc-19584), and with the button on Android.
+- runFlow:
+    when:
+      platform: iOS
+    commands:
+      - runFlow:
+          when:
+            visible:
+              id: 'twoFactor.verify'
+          commands:
+            - pressKey: Enter
+- runFlow:
+    when:
+      platform: Android
+    commands:
+      - hideKeyboard
+      - runFlow:
+          when:
+            visible:
+              id: 'twoFactor.verify'
+          commands:
+            - tapOn:
+                id: 'twoFactor.verify'
+- waitForAnimationToEnd:
+    timeout: 6000
+- takeScreenshot: ${SHOT}

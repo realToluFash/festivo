@@ -1,0 +1,25 @@
+# Settings > Account > Add an email address: an address with no @ is refused by the app's own check, in one sentence under the field. sc-20577.
+appId: host.exp.Exponent
+---
+- openLink: ${METRO_URL}/--/settings/account
+- extendedWaitUntil:
+    visible: '{{t:account.title}}'
+    timeout: 30000
+- scrollUntilVisible:
+    element:
+      id: 'contacts.email.add'
+    timeout: 30000
+- tapOn:
+    id: 'contacts.email.add'
+- tapOn:
+    id: 'contacts.email.field'
+- inputText: 'amara.gmail.com'
+- tapOn:
+    id: 'contacts.email.send'
+- waitForAnimationToEnd
+- scrollUntilVisible:
+    element:
+      id: 'contacts.email.send'
+    timeout: 10000
+- takeScreenshot: refused
+- assertVisible: '{{t:forms.emailShape}}'

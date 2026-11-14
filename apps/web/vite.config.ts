@@ -1,0 +1,28 @@
+import react from '@vitejs/plugin-react';
+// From vitest rather than vite: `test` is vitest's key, and vite's own
+// defineConfig rejects it as unknown.
+import { defineConfig } from 'vitest/config';
+
+export default defineConfig({
+  plugins: [react()],
+  server: {
+    host: true,
+    port: 5173,
+  },
+  test: {
+    environment: 'jsdom',
+    // Deliberately not `globals: true`. Every test imports what it uses, so a
+    // reader can tell where `expect` came from, and the type surface does not
+    // depend on an ambient declaration being picked up.
+    setupFiles: ['./src/test-setup.ts'],
+    // At least three times asyncUtilTimeout in test-setup.ts, so a test with
+    // two waits on a loaded runner is not killed before its waits run out.
+    testTimeout: 10000,
+    // One Mac runs many worktrees' suites at once; an uncapped pool per run
+    // starved Docker and the iOS simulators (sc-30334). CI keeps the default.
+    // VITEST_MAX_WORKERS still overrides it, as a count, not a percentage.
+    ...(process.env.CI ? {} : { maxWorkers: '25%' }),
+    // schemeTokens.ts reads tokens.css?raw, which vitest otherwise hands over empty.
+    css: { include: [/tokens\.css/] },
+  },
+});

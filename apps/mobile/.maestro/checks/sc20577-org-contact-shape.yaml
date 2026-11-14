@@ -1,0 +1,40 @@
+# Organisation > General: a contact address with no @ is refused by the app's own check under the field. Saves nothing. sc-20577.
+appId: host.exp.Exponent
+---
+- openLink: ${METRO_URL}/--/settings/organisation
+- extendedWaitUntil:
+    visible:
+      id: organisation.edit
+    timeout: 30000
+- tapOn:
+    id: organisation.edit
+- extendedWaitUntil:
+    visible:
+      id: organisation.name
+    timeout: 30000
+- scrollUntilVisible:
+    element:
+      id: 'organisation.contact'
+    timeout: 15000
+- repeat:
+    times: 3
+    commands:
+      - tapOn:
+          id: organisation.contact
+      - eraseText: 80
+- inputText: 'amara.gmail.com'
+- pressKey: Enter
+- scrollUntilVisible:
+    element:
+      id: 'organisation.details.save'
+    timeout: 15000
+- tapOn:
+    id: 'organisation.details.save'
+- waitForAnimationToEnd
+- scrollUntilVisible:
+    element:
+      id: 'organisation.contact'
+    timeout: 15000
+    centerElement: true
+- takeScreenshot: refused
+- assertVisible: '{{t:orgGeneral.contactInvalid}}'

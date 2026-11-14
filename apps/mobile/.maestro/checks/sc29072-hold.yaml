@@ -1,0 +1,35 @@
+# sc-29072: Lost the authenticator up to Waiting, then waits (the screen following by itself) for EXPECT1 and then EXPECT2 while the request is changed from outside. P prefixes the screenshots.
+appId: host.exp.Exponent
+---
+- runFlow: ../sc29072-to-code.yaml
+- runFlow: ../sc29072-close-code-pad.yaml
+- tapOn: { id: 'twoFactor.lostBoth' }
+- extendedWaitUntil: { visible: { id: 'lostTwoFactor.send' }, timeout: 30000 }
+- waitForAnimationToEnd
+- takeScreenshot: ${P}-start
+- tapOn: { id: 'lostTwoFactor.send' }
+- extendedWaitUntil: { visible: { id: 'lostTwoFactor.emailCode' }, timeout: 60000 }
+- waitForAnimationToEnd
+- takeScreenshot: ${P}-codes
+- evalScript: "${output.mails = json(http.get(MAILPIT_URL + '/api/v1/search?limit=1&query=' + encodeURIComponent('to:' + EMAIL)).body)}"
+- evalScript: "${output.ecode = json(http.get(MAILPIT_URL + '/api/v1/message/' + output.mails.messages[0].ID).body).Text.match(/\\b\\d{6}\\b/)[0]}"
+- tapOn: { id: 'lostTwoFactor.emailCode' }
+- inputText: ${output.ecode}
+- runFlow:
+    when: { visible: { id: 'lostTwoFactor.phoneCode' } }
+    commands:
+      - runScript: ../scripts/latest-sms-code.js
+      - tapOn: { id: 'lostTwoFactor.phoneCode' }
+      - inputText: ${output.code}
+- takeScreenshot: ${P}-codes-typed
+- runFlow: ../sc29072-close-codes-pad.yaml
+- tapOn: { id: 'lostTwoFactor.ask' }
+- extendedWaitUntil: { visible: { id: 'lostTwoFactor.cancel' }, timeout: 30000 }
+- waitForAnimationToEnd
+- takeScreenshot: ${P}-waiting
+- extendedWaitUntil: { visible: '${EXPECT1}', timeout: 150000 }
+- waitForAnimationToEnd
+- takeScreenshot: ${P}-held1
+- extendedWaitUntil: { visible: '${EXPECT2}', timeout: 150000 }
+- waitForAnimationToEnd
+- takeScreenshot: ${P}-held2

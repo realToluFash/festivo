@@ -1,0 +1,11 @@
+# Opens ROUTE on the running app and waits for WAIT, for reading what one screen lays out. sc-29078.
+#
+#   node .qa/bin/qa-env.mjs maestro sc29078-open-route ROUTE='welcome?signedOut=1' WAIT=welcome.notice
+appId: host.exp.Exponent
+---
+- openLink: ${METRO_URL}/--/${ROUTE}
+- extendedWaitUntil:
+    visible:
+      id: ${WAIT}
+    timeout: 60000
+- waitForAnimationToEnd

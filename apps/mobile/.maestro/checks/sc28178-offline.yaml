@@ -1,0 +1,60 @@
+# sc-28178: working in Alpha on Calendar, the member is suspended; with the API stopped, coming
+# back to the front and a tap on Events change nothing: Alpha stays, with the offline band.
+# With the API back, the next move (Settings) moves them on.
+appId: host.exp.Exponent
+onFlowComplete:
+  - runScript:
+      file: ../batch/helper.js
+      env:
+        ASK: /api?to=up
+---
+- runFlow:
+    file: ../checks/sc28178/joined.yaml
+    env:
+      ORG: Alpha
+- extendedWaitUntil:
+    notVisible: '{{t:switcher.switched}}'
+    timeout: 20000
+- tapOn:
+    id: 'tab-calendar|frame\.calendar'
+- extendedWaitUntil:
+    visible:
+      id: 'calendar.today'
+    timeout: 30000
+- runScript:
+    file: ../batch/helper.js
+    env:
+      ASK: /membership?change=suspend&org=Alpha
+- runScript:
+    file: ../batch/helper.js
+    env:
+      ASK: /api?to=stopped
+- pressKey: Home
+- openLink: ${METRO_URL}/--/calendar
+- extendedWaitUntil:
+    visible:
+      id: 'offline.band'
+    timeout: 30000
+- assertNotVisible: '{{t:switcher.switched}}'
+- takeScreenshot: offline-calendar
+- tapOn:
+    id: 'tab-events|frame\.events'
+- extendedWaitUntil:
+    visible:
+      id: 'never.there'
+    timeout: 8000
+    optional: true
+- assertNotVisible:
+    id: 'noOrganisation'
+- assertNotVisible: '{{t:switcher.switched}}'
+- takeScreenshot: offline-events
+- runScript:
+    file: ../batch/helper.js
+    env:
+      ASK: /api?to=up
+- tapOn:
+    id: 'tab-settings|frame\.settings'
+- extendedWaitUntil:
+    visible: '{{t:switcher.switched}}'
+    timeout: 30000
+- takeScreenshot: back-moved-on

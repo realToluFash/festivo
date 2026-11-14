@@ -1,0 +1,44 @@
+# sc-41787: the Calendar's Agenda turned to ${O}, from Today, screenshotted over 12 pages, so the month the Calendar last showed does not hide the start of a ladder.
+appId: host.exp.Exponent
+---
+- setOrientation: ${O}
+- waitForAnimationToEnd:
+    timeout: 4000
+- openLink: ${METRO_URL}/--/calendar
+- extendedWaitUntil:
+    visible:
+      id: calendar.view.agenda
+    timeout: 30000
+- tapOn:
+    id: calendar.view.agenda
+- extendedWaitUntil:
+    visible:
+      id: calendar.agenda
+    timeout: 15000
+- tapOn:
+    id: calendar.today
+- waitForAnimationToEnd:
+    timeout: 3000
+- takeScreenshot: agenda-1
+- scroll
+- takeScreenshot: agenda-2
+- scroll
+- takeScreenshot: agenda-3
+- scroll
+- takeScreenshot: agenda-4
+- scroll
+- takeScreenshot: agenda-5
+- scroll
+- takeScreenshot: agenda-6
+- scroll
+- takeScreenshot: agenda-7
+- scroll
+- takeScreenshot: agenda-8
+- scroll
+- takeScreenshot: agenda-9
+- scroll
+- takeScreenshot: agenda-10
+- scroll
+- takeScreenshot: agenda-11
+- scroll
+- takeScreenshot: agenda-12

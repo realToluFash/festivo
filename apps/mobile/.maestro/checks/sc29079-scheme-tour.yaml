@@ -1,0 +1,39 @@
+# One build's colours on the product's home and B's demo: the cover's white brand, a refused field, the welcome. Run once per EXPO_PUBLIC_SCHEME (and unset), Metro restarted with --clear. sc-29079.
+#
+#   EXPO_PUBLIC_SCHEME=violet node .qa/bin/qa-env.mjs android --clear   (then)
+#   node .qa/bin/qa-env.mjs batch sc29079-violet sc29079-scheme-tour EMAIL=… PASSWORD=… --android
+appId: host.exp.Exponent
+---
+- launchApp:
+    appId: host.exp.Exponent
+    stopApp: true
+- openLink: ${METRO_URL}/--/
+- extendedWaitUntil:
+    notVisible: 'Bundling.*'
+    timeout: 180000
+- waitForAnimationToEnd:
+    timeout: 8000
+- takeScreenshot: home
+- openLink: ${METRO_URL}/--/demo/unreachable
+- extendedWaitUntil:
+    notVisible: 'Bundling.*'
+    timeout: 180000
+- waitForAnimationToEnd:
+    timeout: 15000
+- takeScreenshot: demo-cover
+- openLink: ${METRO_URL}/--/demo/sign-in
+- extendedWaitUntil:
+    visible:
+      id: 'demo.email'
+    timeout: 120000
+- tapOn:
+    id: 'demo.email'
+- inputText: 'folake@ire'
+- tapOn:
+    id: 'demo.signIn'
+- waitForAnimationToEnd
+- takeScreenshot: demo-refused
+- openLink: ${METRO_URL}/--/demo/welcome
+- waitForAnimationToEnd:
+    timeout: 8000
+- takeScreenshot: demo-welcome

@@ -1,0 +1,87 @@
+/* Against plan (Budget-A-Plan): the card at 150, the not-known mark in a row's line, and the A4 sheet, 794 × 1123. */
+.plan-card .bud-card {
+  min-height: 150px;
+}
+
+.plan-mark {
+  flex: none;
+}
+
+.plan-mark.is-quiet {
+  color: var(--colorInkSecondary);
+}
+
+.plan-not-known .bud-dashed {
+  margin-right: 5px;
+  vertical-align: -2px;
+}
+
+.plan-paper {
+  display: flex;
+  justify-content: center;
+  min-height: 100vh;
+  background: var(--colorInset);
+}
+
+.plan-sheet {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+  box-sizing: border-box;
+  width: 794px;
+  max-width: 100%;
+  min-height: 1123px;
+  padding: 56px 48px;
+  background: var(--colorCard);
+  box-shadow: var(--shadowFrame);
+  color: var(--colorInk);
+  font-family: var(--fontFamily);
+}
+
+.plan-sheet-title {
+  font: 700 22px/1.25 var(--fontFamily);
+  letter-spacing: -0.02em;
+  overflow-wrap: anywhere;
+}
+
+.plan-sheet-line {
+  color: var(--colorInkSecondary);
+  font: 500 13px/1.4 var(--fontFamily);
+}
+
+.plan-print {
+  display: none;
+}
+
+@page {
+  size: a4;
+  margin: 0;
+}
+
+@media print {
+  body:has(> .plan-print) > :not(.plan-print) {
+    display: none;
+  }
+
+  .plan-print {
+    display: block;
+  }
+
+  .plan-paper {
+    min-height: 0;
+    background: none;
+  }
+
+  .plan-sheet {
+    width: auto;
+    min-height: 0;
+    box-shadow: none;
+  }
+}
+
+@media (width <= 600px) {
+  .plan-sheet {
+    min-height: 0;
+    padding: 32px 20px;
+  }
+}

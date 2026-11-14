@@ -1,0 +1,10 @@
+# Notification settings, its grid of switches, opened by its link (sc-14815).
+appId: host.exp.Exponent
+---
+- openLink: ${METRO_URL}/--/settings/notifications
+- extendedWaitUntil:
+    visible: '{{t:notificationSettings.category.guest_replies}}'
+    timeout: 30000
+- takeScreenshot: settings-grid
+- scroll
+- takeScreenshot: settings-grid-end

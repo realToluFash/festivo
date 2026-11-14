@@ -1,0 +1,22 @@
+# The profile step after signing up, on starting an organisation, at rest, for a TalkBack pass on its Country picker. sc-42690.
+appId: host.exp.Exponent
+---
+- extendedWaitUntil:
+    visible:
+      id: 'completeProfile'
+    timeout: 30000
+- runFlow:
+    when:
+      visible:
+        id: 'completeProfile.startOwn'
+    commands:
+      - tapOn:
+          id: 'completeProfile.startOwn'
+- scrollUntilVisible:
+    element:
+      id: 'completeProfile.country'
+    direction: DOWN
+    centerElement: true
+- hideKeyboard
+- waitForAnimationToEnd
+- takeScreenshot: profile-ready

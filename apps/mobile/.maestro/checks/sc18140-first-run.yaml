@@ -1,0 +1,10 @@
+# sc-18140: the events first run's three step marks, on the account's only organisation, which has no events.
+appId: host.exp.Exponent
+---
+- openLink: ${METRO_URL}/--/events
+- extendedWaitUntil:
+    visible:
+      id: 'events.none.new'
+    timeout: 30000
+- waitForAnimationToEnd
+- takeScreenshot: first-run

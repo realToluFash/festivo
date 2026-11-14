@@ -1,0 +1,35 @@
+# sc-19212 regression: on a tablet on its side, ${ORG} with event ${EVENT}: the list beside Choose an event, New event, the three tabs; the event opens in the pane.
+appId: host.exp.Exponent
+---
+- setOrientation: LANDSCAPE_LEFT
+- runFlow:
+    file: ../switch-organisation.yaml
+    env:
+      ORG: ${ORG}
+- openLink: ${METRO_URL}/--/events
+- extendedWaitUntil:
+    visible:
+      id: 'events.new'
+    timeout: 30000
+- waitForAnimationToEnd
+- assertNotVisible:
+    id: 'events.page'
+- assertVisible:
+    id: 'events.tab.upcoming'
+- assertVisible:
+    id: 'events.tab.drafts'
+- assertVisible:
+    id: 'events.tab.past'
+- takeScreenshot: side-list
+- tapOn:
+    id: 'events.tab.drafts'
+- tapOn:
+    id: 'events.row.${EVENT}'
+- extendedWaitUntil:
+    visible:
+      id: 'events.page'
+    timeout: 20000
+- assertVisible:
+    id: 'events.new'
+- waitForAnimationToEnd
+- takeScreenshot: side-opened

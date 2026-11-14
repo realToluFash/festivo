@@ -1,0 +1,17 @@
+# sc-16709: ${EV_OFF}, called off before its start: Coming up's Finished line, and All dates with its one called-off row marked Passed.
+appId: host.exp.Exponent
+---
+- openLink: ${METRO_URL}/--/events/${EV_OFF}
+- scrollUntilVisible:
+    element:
+      id: 'timeline.finished'
+    direction: DOWN
+    timeout: 30000
+- takeScreenshot: called-off-coming-up
+- tapOn:
+    id: 'timeline.allDates'
+- extendedWaitUntil:
+    visible:
+      id: 'timeline.row'
+    timeout: 15000
+- takeScreenshot: called-off-all-dates

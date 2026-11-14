@@ -1,0 +1,53 @@
+# sc-23327 on iOS: from ${EVENT}'s page, ${EVENT} an Upcoming event, a swipe from the left edge let go short leaves the page showing; then a swipe started over the header and one started over the tab bar each return to the list.
+appId: host.exp.Exponent
+---
+- openLink: ${METRO_URL}/--/events/${EVENT}
+- extendedWaitUntil:
+    visible:
+      id: 'events.page'
+    timeout: 20000
+- waitForAnimationToEnd
+- takeScreenshot: page-before
+- swipe:
+    start: 1%, 50%
+    end: 30%, 50%
+    duration: 2500
+- waitForAnimationToEnd
+- assertVisible:
+    id: 'events.page'
+- takeScreenshot: after-short
+- swipe:
+    start: 1%, 8%
+    end: 85%, 8%
+    duration: 400
+- waitForAnimationToEnd
+- extendedWaitUntil:
+    visible:
+      id: 'events.tab.upcoming'
+    timeout: 10000
+- assertNotVisible:
+    id: 'events.page'
+- takeScreenshot: after-header-swipe
+- scrollUntilVisible:
+    element:
+      id: 'events.row.${EVENT}'
+    timeout: 20000
+- tapOn:
+    id: 'events.row.${EVENT}'
+- extendedWaitUntil:
+    visible:
+      id: 'events.page'
+    timeout: 20000
+- waitForAnimationToEnd
+- swipe:
+    start: 1%, 95%
+    end: 85%, 95%
+    duration: 400
+- waitForAnimationToEnd
+- takeScreenshot: after-tabbar-swipe
+- extendedWaitUntil:
+    visible:
+      id: 'events.row.${EVENT}'
+    timeout: 10000
+- assertNotVisible:
+    id: 'events.page'

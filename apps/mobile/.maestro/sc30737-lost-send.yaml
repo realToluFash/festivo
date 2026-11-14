@@ -1,0 +1,12 @@
+# On the start page: presses Send, catches the sending label, and waits for the code fields.
+# SHOT names the screenshots. sc-30737.
+appId: host.exp.Exponent
+---
+- tapOn:
+    id: 'lostTwoFactor.send'
+- takeScreenshot: ${SHOT}-sending
+- extendedWaitUntil:
+    visible:
+      id: 'lostTwoFactor.emailCode'
+    timeout: 30000
+- takeScreenshot: ${SHOT}-codes
