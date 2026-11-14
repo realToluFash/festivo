@@ -51,8 +51,12 @@ import {
   markedNotInvited,
   rowsOf,
   changedRows,
+  filterCount,
+  filterWord,
 } from './GuestsModel.ts';
 import { changesSince, lastLooked, takeLook } from './ChangedSince.ts';
+import { ExportButton, ExportPanel, ExportSheet, ShareStandIn } from './GuestExport.tsx';
+import { exportDay, exportStart, fileName, inViewOf, narrowing } from './GuestExportModel.ts';
 import { GuestsFailed, GuestsLoading, GuestsRows } from './GuestsList.tsx';
 import { GuestToast, GuestsCard, GuestsTitle, type Layout } from './GuestsParts.tsx';
 import { type SampleGuest, TODAY, WEDDING } from './GuestsSample.ts';
@@ -131,6 +135,12 @@ export function GuestsScreen({
   const [notReplaced, setNotReplaced] = useState(start.notReplaced);
   const [unmarked, setUnmarked] = useState(start.unmarked);
   const [status, setStatus] = useState<string | null>(start.recorded ? W.recorded : null);
+  const exported = useMemo(() => exportStart(state), [state]);
+  const [exporting, setExporting] = useState(exported.open);
+  const [exportRound, setExportRound] = useState(0);
+  const day = exportDay(now, event.timeZone);
+  const fileFor = (format: 'xlsx' | 'csv') => fileName(event.name, day, format);
+  const [sharing, setSharing] = useState<string | null>(exported.share ? fileFor('xlsx') : null);
   const refs = useRef<Partial<Record<string, ViewInstance | null>>>({});
   const from = useRef<string>('card');
   const nameRef = useRef<TextHandle>(null);
@@ -174,6 +184,7 @@ export function GuestsScreen({
     setReplies(null);
     setReplaced(false);
     setGuestPhase('ok');
+    setExporting(false);
     setOpen(key);
     if (layout !== 'landscape') scroll.current?.scrollTo({ y: 0, animated: false });
     setTimeout(() => moveScreenReaderFocus(nameRef.current), FOCUS_AFTER_MS);
@@ -240,12 +251,55 @@ export function GuestsScreen({
       setTimeout(() => moveScreenReaderFocus(refs.current[next.key] ?? null), FOCUS_AFTER_MS);
   };
 
+  const inView = inViewOf({
+    filter,
+    searched,
+    rows: rows.length,
+    filtered: filter === 'changed' ? rows.length : filterCount(filter, counts),
+    total,
+  });
+  const openExport = () => {
+    from.current = 'export';
+    setExportRound((count) => count + 1);
+    setExporting(true);
+  };
+  const exportProps = {
+    file: fileFor,
+    inView,
+    everyone: total,
+    narrowed: narrowing(filterWord(filter), searched),
+    needs: exported.needs,
+    offline,
+    format: exported.format,
+    making: exportRound === 0 ? exported.making : ('ready' as const),
+    refused: exportRound === 0 && exported.dropped,
+    onClose: () => {
+      setExporting(false);
+      if (layout === 'landscape')
+        setTimeout(() => moveScreenReaderFocus(refs.current.export ?? null), FOCUS_AFTER_MS);
+    },
+    onShare: (file: string) => {
+      setExporting(false);
+      setSharing(file);
+    },
+  };
+
   const list = (
     <>
       <GuestsTitle
         layout={layout}
         plus={owner && phase !== 'loading' && !empty}
         onPlus={() => show('add', 'plus')}
+        extra={
+          owner && phase === 'ok' && !empty ? (
+            <ExportButton
+              ref={refFor('export')}
+              layout={layout}
+              offline={offline}
+              onPress={openExport}
+            />
+          ) : null
+        }
       />
       {phase === 'loading' ? (
         <GuestsLoading cardHeight={layout === 'landscape' ? 140 : 180} />
@@ -484,6 +538,15 @@ export function GuestsScreen({
           />
         </>
       )}
+      {layout !== 'landscape' && (
+        <ExportSheet
+          key={`export:${exportRound}`}
+          open={exporting}
+          opener={opener}
+          {...exportProps}
+        />
+      )}
+      <ShareStandIn file={sharing} opener={opener} onClose={() => setSharing(null)} />
       {told}
     </>
   );
@@ -514,13 +577,17 @@ export function GuestsScreen({
           >
             {list}
           </ScrollView>
-          <ScrollView
-            style={styles.grow}
-            contentContainerStyle={styles.guestBody}
-            showsVerticalScrollIndicator={false}
-          >
-            {page ?? <Nobody />}
-          </ScrollView>
+          {exporting ? (
+            <ExportPanel key={`export:${exportRound}`} {...exportProps} />
+          ) : (
+            <ScrollView
+              style={styles.grow}
+              contentContainerStyle={styles.guestBody}
+              showsVerticalScrollIndicator={false}
+            >
+              {page ?? <Nobody />}
+            </ScrollView>
+          )}
         </View>
       </EventFrame>
     );

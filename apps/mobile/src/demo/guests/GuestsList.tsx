@@ -32,6 +32,7 @@ import {
   filtersFor,
   showAllWords,
 } from './GuestsModel.ts';
+import { inViewOf } from './GuestExportModel.ts';
 import { GroupHead, type Layout, ShownLine } from './GuestsParts.tsx';
 import { REPLY_WORD, W, say } from './GuestsWords.ts';
 import { MarkSlot } from '../../components/ReplyMark.tsx';
@@ -244,13 +245,13 @@ export function GuestsRows({
       {looking ? (
         <View>
           <ShownLine
-            shown={
-              rows.length === 0
-                ? 0
-                : searched.trim() === '' && filter !== 'changed'
-                  ? filterCount(filter, counts)
-                  : rows.length
-            }
+            shown={inViewOf({
+              filter,
+              searched,
+              rows: rows.length,
+              filtered: filter === 'changed' ? rows.length : filterCount(filter, counts),
+              total,
+            })}
             total={total}
             onClear={clear}
           />
