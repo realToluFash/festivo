@@ -1,0 +1,59 @@
+# sc-44741: a Draft's plain Delete question is open while it is renamed and made live elsewhere. Delete then asks for the current name, the old name keeps Delete off, the current name deletes. Needs ${METRO_URL}, ${DRAFT_ID}, ${DRAFT_OLD}, ${DRAFT_NEW}.
+appId: host.exp.Exponent
+---
+- openLink: ${METRO_URL}/--/events/${DRAFT_ID}
+- extendedWaitUntil:
+    visible:
+      id: 'events.page'
+    timeout: 30000
+- scrollUntilVisible:
+    element:
+      id: 'events.delete'
+    centerElement: true
+    timeout: 30000
+- tapOn:
+    id: 'events.delete'
+- extendedWaitUntil:
+    visible:
+      id: 'events.deleteGo'
+    timeout: 15000
+- waitForAnimationToEnd
+- takeScreenshot: plain
+- runScript:
+    file: ../scripts/rename-and-make-live-elsewhere.js
+    env:
+      EVENT_ID: ${DRAFT_ID}
+      ELSEWHERE_NAME: ${DRAFT_NEW}
+- assertTrue:
+    condition: ${output.changed == '200/200'}
+    label: 'Renamed and made live elsewhere, answered ${output.changed}'
+- tapOn:
+    id: 'events.deleteGo'
+- extendedWaitUntil:
+    visible:
+      id: 'events.deleteName'
+    timeout: 15000
+- waitForAnimationToEnd
+- takeScreenshot: asked
+- assertVisible: '.*${DRAFT_NEW}.*'
+- tapOn:
+    id: 'events.deleteName'
+- inputText: ${DRAFT_OLD}
+- hideKeyboard
+- tapOn:
+    id: 'events.deleteGo'
+- waitForAnimationToEnd
+- takeScreenshot: old-pressed
+- assertVisible:
+    id: 'events.deleteName'
+- tapOn:
+    id: 'events.deleteName'
+- eraseText: 80
+- inputText: ${DRAFT_NEW}
+- hideKeyboard
+- tapOn:
+    id: 'events.deleteGo'
+- extendedWaitUntil:
+    visible: '{{t:eventDelete.deleted}}'
+    timeout: 15000
+- takeScreenshot: deleted

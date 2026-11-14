@@ -1,0 +1,24 @@
+# sc-41673, Android phone on its side: a run that scrolls the name step, keys up, to its title and back to its foot, then cancels. Run it straight before sc41673-qa2-run.
+appId: host.exp.Exponent
+---
+- setOrientation: LANDSCAPE_LEFT
+- waitForAnimationToEnd
+- runFlow: ../open-create-organisation.yaml
+- inputText: 'Lagos Supper Club'
+- swipe: { start: '50%, 21%', end: '50%, 32%', duration: 400 }
+- swipe: { start: '50%, 21%', end: '50%, 32%', duration: 400 }
+- swipe: { start: '50%, 21%', end: '50%, 32%', duration: 400 }
+- swipe: { start: '50%, 21%', end: '50%, 32%', duration: 400 }
+- swipe: { start: '50%, 21%', end: '50%, 32%', duration: 400 }
+- extendedWaitUntil: { visible: { id: 'never.there' }, timeout: 800, optional: true }
+- takeScreenshot: s1-top
+- swipe: { start: '50%, 32%', end: '50%, 21%', duration: 400 }
+- swipe: { start: '50%, 32%', end: '50%, 21%', duration: 400 }
+- swipe: { start: '50%, 32%', end: '50%, 21%', duration: 400 }
+- swipe: { start: '50%, 32%', end: '50%, 21%', duration: 400 }
+- swipe: { start: '50%, 32%', end: '50%, 21%', duration: 400 }
+- swipe: { start: '50%, 32%', end: '50%, 21%', duration: 400 }
+- swipe: { start: '50%, 32%', end: '50%, 21%', duration: 400 }
+- extendedWaitUntil: { visible: { id: 'never.there' }, timeout: 800, optional: true }
+- takeScreenshot: s2-foot
+- tapOn: { id: 'createWalk.cancel', optional: true }

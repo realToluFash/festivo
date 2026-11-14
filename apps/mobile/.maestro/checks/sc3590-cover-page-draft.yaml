@@ -1,0 +1,22 @@
+# sc-3590: the draft event ${ID} opened from the Drafts tab of Events, with its cover across the top of its page.
+appId: host.exp.Exponent
+---
+- openLink: ${METRO_URL}/--/events
+- extendedWaitUntil:
+    visible:
+      id: 'frame.events'
+    timeout: 30000
+- tapOn:
+    id: 'events.tab.drafts'
+- scrollUntilVisible:
+    element:
+      id: 'events.row.${ID}'
+    direction: DOWN
+    timeout: 30000
+- tapOn:
+    id: 'events.row.${ID}'
+- extendedWaitUntil:
+    visible:
+      id: 'events.page.cover'
+    timeout: 20000
+- takeScreenshot: page

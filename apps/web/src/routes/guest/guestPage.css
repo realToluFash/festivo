@@ -1,0 +1,1189 @@
+/* The guest's own page, measured as the web demo draws A · The cover card (apps/web/src/demo/guest.css, sc-31306). Scoped under .guest-page so none of it reaches the demo's same-named gp- classes. */
+
+.guest-page {
+  --gpGut: 20px;
+  --gpHead: 60px;
+  --gpHeadPad: 0 10px 0 var(--gpGut);
+  --gpLockup: 24px;
+  --gpMainPad: 8px 0 36px;
+  --gpCoverR: 26px;
+  --gpPad: 20px;
+  --gpMin: 236px;
+  --gpTop: 44px;
+  --gpH1: 15px;
+  --gpGuest: 20px;
+  --gpName: 30px;
+  --gpLine: 15px;
+  --gpLeft: 520px;
+  --gpRight: 440px;
+  --gpGap: 48px;
+  --gpLeftGap: 28px;
+  --gpLang: 44px;
+  --gpLangFont: 15px;
+  --gpLangR: 10px;
+  --gpItem: 48px;
+  --gpItemFont: 16px;
+  --gpEase: cubic-bezier(0.2, 0, 0, 1);
+
+  display: flex;
+  flex: none;
+  flex-direction: column;
+  min-height: 100vh;
+  background: var(--colorPage);
+  color: var(--colorInk);
+  font-family: var(--fontFamily);
+}
+
+@media (width < 22.5rem) {
+  .guest-page {
+    --gpGut: 16px;
+    --gpCoverR: 22px;
+    --gpPad: 18px;
+    --gpMin: 220px;
+    --gpTop: 40px;
+    --gpH1: 14px;
+    --gpGuest: 18px;
+    --gpName: 26px;
+    --gpLine: 14px;
+  }
+}
+
+@media (width > 40rem) {
+  .guest-page {
+    --gpHead: 72px;
+    --gpHeadPad: 0 24px 0 32px;
+    --gpLockup: 28px;
+    --gpCoverR: 28px;
+    --gpMainPad: 32px 0 44px;
+    --gpPad: 26px;
+    --gpMin: 300px;
+    --gpTop: 56px;
+    --gpH1: 16px;
+    --gpGuest: 22px;
+    --gpName: 38px;
+    --gpLine: 16px;
+  }
+}
+
+@media (width >= 64rem) {
+  .guest-page {
+    --gpMainPad: 36px 0 48px;
+    --gpPad: 28px;
+    --gpMin: 340px;
+    --gpTop: 64px;
+    --gpH1: 17px;
+    --gpGuest: 24px;
+    --gpName: 40px;
+    --gpLine: 17px;
+  }
+}
+
+@media (width >= 80rem) {
+  .guest-page {
+    --gpName: 42px;
+    --gpLeft: 560px;
+    --gpGap: 64px;
+    --gpHeadPad: 0 32px 0 40px;
+    --gpLangFont: 13px;
+    --gpLangR: 8px;
+    --gpItem: 44px;
+    --gpItemFont: 14px;
+  }
+
+  :where(.guest-page) .gp-lang-globe {
+    width: 15px;
+    height: 15px;
+  }
+
+  :where(.guest-page) .gp-lang-chev {
+    width: 12px;
+    height: 12px;
+  }
+
+  :where(.guest-page) .gp-menu {
+    top: calc(100% + 12px);
+    right: -4px;
+  }
+}
+
+.guest-page :where(p, h1, h2) {
+  margin: 0;
+}
+
+.guest-page :where(h1, h2, p):focus {
+  outline: none;
+}
+
+:where(.guest-page) .gp-header {
+  position: relative;
+  z-index: 3;
+  display: flex;
+  flex: none;
+  align-items: center;
+  justify-content: space-between;
+  height: var(--gpHead);
+  padding: var(--gpHeadPad);
+}
+
+:where(.guest-page) .gp-lockup {
+  display: block;
+  width: auto;
+  height: var(--gpLockup);
+}
+
+:where(.guest-page) .gp-main {
+  flex: 1 0 auto;
+  padding: var(--gpMainPad);
+}
+
+/* ── The language button at the header's right end, and its menu ── */
+
+:where(.guest-page) .gp-lang-wrap {
+  position: relative;
+}
+
+:where(.guest-page) .gp-lang {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  height: var(--gpLang);
+  padding: 0 10px;
+  border: 0;
+  border-radius: var(--gpLangR);
+  background: none;
+  color: var(--colorInkSecondary);
+  font: 500 var(--gpLangFont) / 1 var(--fontFamily);
+  cursor: pointer;
+}
+
+:where(.guest-page) .gp-lang.is-open {
+  background: var(--colorInset);
+}
+
+:where(.guest-page) .gp-menu {
+  position: absolute;
+  top: calc(100% + 2px);
+  right: 0;
+  z-index: 30;
+  display: flex;
+  flex-direction: column;
+  width: 240px;
+  padding: 6px;
+  border: 1px solid var(--colorBorder);
+  border-radius: 16px;
+  background: var(--colorCard);
+  box-shadow:
+    0 2px 4px color-mix(in srgb, var(--colorInk) 5%, transparent),
+    0 20px 50px color-mix(in srgb, var(--colorInk) 20%, transparent);
+}
+
+:where(.guest-page) .gp-menu-title {
+  padding: 8px 12px 6px;
+  color: var(--colorInkSecondary);
+  font: 600 13px/1.2 var(--fontFamily);
+}
+
+:where(.guest-page) .gp-menu [role='menu'] {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+:where(.guest-page) .gp-menu-item {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  width: 100%;
+  height: var(--gpItem);
+  padding: 0 12px;
+  border: 0;
+  border-radius: 10px;
+  background: none;
+  color: var(--colorInk);
+  font: 500 var(--gpItemFont) / 1 var(--fontFamily);
+  text-align: left;
+  cursor: pointer;
+}
+
+:where(.guest-page) .gp-menu-item span {
+  flex: 1;
+}
+
+:where(.guest-page) .gp-menu-item:hover {
+  background: var(--colorInset);
+}
+
+:where(.guest-page) .gp-menu-item[aria-checked='true'] {
+  background: var(--colorAccentTint);
+  font-weight: 600;
+}
+
+:where(.guest-page) .gp-menu-item svg {
+  color: var(--colorAccent);
+}
+
+.guest-page .gp-menu-item:focus-visible {
+  box-shadow: inset 0 0 0 2px var(--colorAccent);
+}
+
+/* ── One column up to 64rem, 600 wide and centred from 641; from it the cover and details sit left, measured, beside the answer and the foot ── */
+
+:where(.guest-page) .gp-columns,
+:where(.guest-page) .gp-alone-wrap {
+  display: flex;
+  flex-direction: column;
+  width: min(600px, calc(100% - 40px));
+  margin: 0 auto;
+}
+
+@media (width <= 40rem) {
+  :where(.guest-page) .gp-columns,
+  :where(.guest-page) .gp-alone-wrap {
+    width: auto;
+    margin: 0 var(--gpGut);
+  }
+}
+
+:where(.guest-page) .gp-alone-wrap {
+  padding-top: 48px;
+}
+
+:where(.guest-page) .gp-under {
+  display: flex;
+  flex-direction: column;
+  gap: 28px;
+  margin-top: 24px;
+}
+
+:where(.guest-page) .gp-under > * {
+  animation: guest-page-fade 200ms var(--gpEase);
+}
+
+@media (width >= 64rem) {
+  :where(.guest-page) .gp-columns {
+    display: block;
+    position: relative;
+    width: calc(var(--gpLeft) + var(--gpGap) + var(--gpRight));
+    min-height: calc(var(--gpCoverH, var(--gpMin)) + var(--gpLeftGap) + var(--gpDetailsH, 0px));
+    margin: 0 auto;
+  }
+
+  :where(.guest-page) .gp-columns:not(:has(> .gp-left-after)) {
+    min-height: var(--gpCoverH, var(--gpMin));
+  }
+
+  :where(.guest-page) .gp-columns > * {
+    margin-left: calc(var(--gpLeft) + var(--gpGap));
+  }
+
+  :where(.guest-page) .gp-under {
+    margin-top: 0;
+  }
+
+  :where(.guest-page) .gp-columns > .gp-left,
+  :where(.guest-page) .gp-columns > .gp-left-after {
+    position: absolute;
+    left: 0;
+    width: var(--gpLeft);
+    margin-left: 0;
+  }
+
+  :where(.guest-page) .gp-columns > .gp-left {
+    top: 0;
+  }
+
+  :where(.guest-page) .gp-columns > .gp-left-after {
+    top: calc(var(--gpCoverH, var(--gpMin)) + var(--gpLeftGap));
+  }
+
+  :where(.guest-page) .gp-columns > .gp-phase-live > .gp-phase {
+    margin-bottom: 20px;
+  }
+
+  :where(.guest-page) .gp-alone-wrap {
+    width: 560px;
+    padding: 36px 0 16px;
+  }
+}
+
+/* ── The cover: the organiser's photo, or the event's Confetti from meshFor, under Events A's scrim ── */
+
+.guest-page .gp-cover {
+  flex: none;
+  min-height: var(--gpMin);
+  border-radius: var(--gpCoverR);
+}
+
+:where(.guest-page) .gp-piece {
+  position: absolute;
+  z-index: 1;
+  display: block;
+  height: 8px;
+  border-radius: var(--radiusPill);
+}
+
+:where(.guest-page) .gp-piece.p1 {
+  top: 8px;
+  right: 103px;
+  width: 22px;
+  height: 11px;
+  border-radius: 11px 11px 0 0;
+  background: var(--optionAmber);
+  transform: rotate(-18deg);
+}
+
+:where(.guest-page) .gp-piece.p2 {
+  top: 16px;
+  right: 47px;
+  width: 26px;
+  background: var(--deskWhite);
+  transform: rotate(24deg);
+}
+
+:where(.guest-page) .gp-piece.p3 {
+  top: 30px;
+  right: 7px;
+  width: 14px;
+  height: 7px;
+  border-radius: 7px 7px 0 0;
+  background: var(--deskOrange);
+  transform: rotate(200deg);
+}
+
+:where(.guest-page) .gp-piece.p4 {
+  top: 108px;
+  right: 58px;
+  width: 20px;
+  height: 10px;
+  border-radius: 10px 10px 0 0;
+  background: color-mix(in srgb, var(--optionRose) 55%, var(--colorInkOnDark));
+  transform: rotate(32deg);
+}
+
+:where(.guest-page) .gp-piece.p5 {
+  top: 122px;
+  right: 16px;
+  width: 24px;
+  background: var(--optionAmber);
+  transform: rotate(-40deg);
+}
+
+:where(.guest-page) .gp-piece.p6 {
+  top: 130px;
+  right: 142px;
+  width: 16px;
+  background: var(--deskWhite);
+  transform: rotate(62deg);
+}
+
+:where(.guest-page) .gp-piece.p7 {
+  top: 104px;
+  right: 3px;
+  width: 14px;
+  background: var(--deskWhite);
+  transform: rotate(-60deg);
+}
+
+:where(.guest-page) .gp-cover-inner {
+  position: relative;
+  z-index: 2;
+  display: flex;
+  flex: 1;
+  flex-direction: column;
+  justify-content: flex-end;
+  padding: calc(var(--gpPad) + var(--gpTop)) var(--gpPad) 22px;
+}
+
+.guest-page .gp-cover-h1 {
+  color: var(--deskWhite);
+  font: 600 var(--gpH1) / 1.3 var(--fontFamily);
+  letter-spacing: 0;
+  text-wrap: wrap;
+}
+
+.guest-page .gp-cover-guest {
+  margin-top: 4px;
+  font: 600 var(--gpGuest) / 1.25 var(--fontFamily);
+  overflow-wrap: anywhere;
+}
+
+.guest-page .gp-cover-name {
+  margin-top: 12px;
+  font: 700 var(--gpName) / 1.08 var(--fontFamily);
+  letter-spacing: -0.02em;
+  text-wrap: wrap;
+  overflow-wrap: anywhere;
+}
+
+/* ── The foot, Not {full name}? Tell us, and its question ── */
+
+:where(.guest-page) .gp-h2 {
+  color: var(--colorInk);
+  font: 700 20px/1.2 var(--fontFamily);
+  letter-spacing: -0.015em;
+  overflow-wrap: anywhere;
+}
+
+:where(.guest-page) .gp-sub {
+  color: var(--colorInkSecondary);
+  font: 400 15px/1.45 var(--fontFamily);
+}
+
+:where(.guest-page) .gp-foot,
+:where(.guest-page) .gp-tell {
+  display: flex;
+  flex-direction: column;
+}
+
+:where(.guest-page) .gp-foot p {
+  color: var(--colorInkSecondary);
+  font: 400 14px/1.45 var(--fontFamily);
+}
+
+:where(.guest-page) .gp-foot hr {
+  width: 100%;
+  height: 1px;
+  margin: 14px 0;
+  border: 0;
+  background: var(--colorBorder);
+}
+
+:where(.guest-page) .gp-text {
+  display: inline-flex;
+  align-items: center;
+  align-self: flex-start;
+  gap: 6px;
+  min-height: 44px;
+  padding: 6px 0;
+  border: 0;
+  background: none;
+  color: var(--colorAccent);
+  font: 600 16px/1.3 var(--fontFamily);
+  text-align: left;
+  overflow-wrap: anywhere;
+  cursor: pointer;
+}
+
+:where(.guest-page) .gp-text:hover span {
+  text-decoration: underline;
+}
+
+:where(.guest-page) .gp-foot .gp-text {
+  margin-top: 4px;
+  font-size: 15px;
+}
+
+:where(.guest-page) .gp-filled,
+:where(.guest-page) .gp-outlined {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  width: 100%;
+  height: 48px;
+  padding: 0 22px;
+  border: 0;
+  border-radius: 24px;
+  font: 600 16px/1 var(--fontFamily);
+  cursor: pointer;
+  transition: opacity 120ms var(--gpEase);
+}
+
+:where(.guest-page) .gp-filled {
+  background: var(--colorAccent);
+  color: var(--colorInkOnDark);
+  white-space: nowrap;
+}
+
+:where(.guest-page) .gp-filled.is-narrow {
+  width: min(100%, 240px);
+}
+
+:where(.guest-page) .gp-outlined {
+  text-align: center;
+  background: none;
+  box-shadow: inset 0 0 0 1.5px var(--colorControlBorder);
+  color: var(--colorInk);
+}
+
+.guest-page :is(.gp-filled, .gp-outlined, .gp-text):active {
+  opacity: 0.85;
+}
+
+:where(.guest-page) .gp-alone .gp-filled {
+  margin-top: 22px;
+}
+
+:where(.guest-page) .gp-tell > .gp-sub {
+  margin-top: 8px;
+}
+
+:where(.guest-page) .gp-tell > .gp-sub + * {
+  margin-top: 20px;
+}
+
+:where(.guest-page) .gp-tell > .gp-notice + .gp-filled {
+  margin-top: 14px;
+}
+
+:where(.guest-page) .gp-tell > .gp-outlined {
+  margin-top: 10px;
+}
+
+:where(.guest-page) .gp-told {
+  display: flex;
+  align-items: flex-start;
+  gap: 12px;
+}
+
+:where(.guest-page) .gp-told p {
+  flex: 1;
+  min-width: 0;
+  font: 600 17px/1.4 var(--fontFamily);
+}
+
+:where(.guest-page) .gp-mark {
+  display: inline-flex;
+  flex: none;
+  align-items: center;
+  justify-content: center;
+  box-sizing: border-box;
+  width: 28px;
+  height: 28px;
+  border-radius: 50%;
+  background: var(--deskGreen);
+  color: var(--colorInkOnDark);
+  font: 700 14px/1 var(--fontFamily);
+}
+
+:where(.guest-page) .gp-spinner {
+  width: 16px;
+  height: 16px;
+  border: 2px solid color-mix(in srgb, currentcolor 35%, transparent);
+  border-top-color: currentcolor;
+  border-radius: 50%;
+  animation: guest-page-turn 700ms linear infinite;
+}
+
+:where(.guest-page) .gp-notice {
+  display: flex;
+  align-items: flex-start;
+  gap: 12px;
+  padding: 14px 16px;
+  border-radius: 16px;
+  animation: guest-page-drop 120ms var(--gpEase);
+}
+
+:where(.guest-page) .gp-notice p {
+  flex: 1;
+  min-width: 0;
+  font: 600 15px/1.4 var(--fontFamily);
+}
+
+:where(.guest-page) .gp-notice-mark {
+  display: flex;
+  flex: none;
+  align-items: center;
+  justify-content: center;
+  box-sizing: border-box;
+  width: 24px;
+  height: 24px;
+  border-radius: 50%;
+}
+
+:where(.guest-page) .gp-notice.is-broken {
+  border: 1px solid color-mix(in srgb, var(--colorBroken) 22%, var(--colorCard));
+  background: var(--colorBrokenTint);
+}
+
+:where(.guest-page) .gp-notice.is-broken .gp-notice-mark {
+  background: var(--colorBroken);
+  color: var(--colorInkOnDark);
+}
+
+:where(.guest-page) .gp-notice.is-attention {
+  background: var(--colorAttentionTint);
+}
+
+:where(.guest-page) .gp-notice.is-attention .gp-notice-mark {
+  border: 3px solid var(--colorAttentionText);
+}
+
+:where(.guest-page) .gp-notice.gp-unsaved {
+  margin-bottom: 16px;
+  padding-bottom: 4px;
+}
+
+:where(.guest-page) .gp-unsaved-words {
+  display: flex;
+  flex: 1;
+  flex-direction: column;
+  gap: 2px;
+  min-width: 0;
+}
+
+@media (width >= 64rem) {
+  :where(.guest-page) .gp-notice.gp-unsaved {
+    margin-bottom: 20px;
+  }
+}
+
+/* ── A link that does not work, and Soirely out of reach: alone on the page ── */
+
+:where(.guest-page) .gp-alone {
+  display: flex;
+  flex-direction: column;
+}
+
+:where(.guest-page) .gp-alone-mark {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 56px;
+  height: 56px;
+  border-radius: 16px;
+  background: var(--colorInset);
+  color: var(--colorInkSecondary);
+}
+
+:where(.guest-page) .gp-line {
+  display: block;
+  flex: none;
+  fill: none;
+  stroke: currentcolor;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+}
+
+.guest-page .gp-alone-title {
+  margin-top: 20px;
+  font: 700 26px/1.15 var(--fontFamily);
+  letter-spacing: -0.02em;
+  text-wrap: wrap;
+}
+
+.guest-page .gp-alone p {
+  margin-top: 10px;
+  color: var(--colorInkSecondary);
+  font: 400 16px/1.5 var(--fontFamily);
+}
+
+:where(.guest-page) .gp-skel {
+  display: block;
+  border-radius: 8px;
+  background: var(--colorInset);
+  animation: guest-page-pulse 1400ms ease-in-out 3;
+}
+
+:where(.guest-page) .gp-skel-cover {
+  width: 100%;
+  height: var(--gpMin);
+  border-radius: var(--gpCoverR);
+}
+
+:where(.guest-page) .gp-skel-details {
+  width: 100%;
+  height: 180px;
+  border-radius: 14px;
+}
+
+:where(.guest-page) .gp-skel-under {
+  display: flex;
+  flex-direction: column;
+  margin-top: 24px;
+}
+
+:where(.guest-page) .gp-skel.is-head {
+  width: 140px;
+  height: 22px;
+}
+
+:where(.guest-page) .gp-skel.is-line {
+  width: 100%;
+  height: 16px;
+  margin-top: 10px;
+}
+
+:where(.guest-page) .gp-skel.is-short {
+  width: 70%;
+  height: 16px;
+  margin-top: 6px;
+}
+
+:where(.guest-page) .gp-skel-row {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  height: 56px;
+  margin-bottom: 1px;
+}
+
+:where(.guest-page) .gp-skel.is-short + .gp-skel-row {
+  margin-top: 18px;
+}
+
+:where(.guest-page) .gp-skel.is-dot {
+  width: 28px;
+  height: 28px;
+  border-radius: 14px;
+}
+
+:where(.guest-page) .gp-skel.is-bar {
+  width: min(200px, calc(100% - 60px));
+  height: 18px;
+}
+
+@keyframes guest-page-turn {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+@keyframes guest-page-fade {
+  from {
+    opacity: 0;
+  }
+}
+
+@keyframes guest-page-drop {
+  from {
+    opacity: 0;
+    transform: translateY(-4px);
+  }
+}
+
+@keyframes guest-page-pulse {
+  50% {
+    opacity: 0.55;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  :where(.guest-page) .gp-under > *,
+  :where(.guest-page) .gp-phase,
+  :where(.guest-page) .gp-notice,
+  :where(.guest-page) .gp-skel,
+  :where(.guest-page) .gp-spinner {
+    animation: none;
+  }
+}
+
+/* ── sc-1439: the answer, Check and send, the recorded answer and the closed view, as the demo draws them ── */
+
+:where(.guest-page) .gp-cover-inner.has-tag {
+  padding-top: var(--gpPad);
+}
+
+:where(.guest-page) .gp-tag {
+  display: inline-flex;
+  flex: none;
+  align-items: center;
+  align-self: flex-start;
+  gap: 7px;
+  height: 30px;
+  margin-bottom: 16px;
+  padding: 0 12px 0 6px;
+  border-radius: 15px;
+  background: var(--deskGlass);
+  font: 600 14px/1 var(--fontFamily);
+  white-space: nowrap;
+  backdrop-filter: blur(14px);
+}
+
+.guest-page .gp-cover-line {
+  margin-top: 10px;
+  font: 500 var(--gpLine) / 1.4 var(--fontFamily);
+}
+
+:where(.guest-page) .gp-h2.is-19 {
+  font-size: 19px;
+}
+
+:where(.guest-page) .gp-h2.is-24 {
+  font-size: 24px;
+}
+
+:where(.guest-page) .gp-mark.is-20 {
+  width: 20px;
+  height: 20px;
+  font-size: 12px;
+}
+
+:where(.guest-page) .gp-mark.is-not-coming {
+  background: var(--replyNotComingDot);
+}
+
+:where(.guest-page) .gp-bar {
+  width: 44%;
+  height: 3px;
+  border-radius: 2px;
+  background: currentcolor;
+}
+
+:where(.guest-page) .gp-mark.is-not-sure {
+  border: 3px solid var(--colorAttention);
+  background: var(--colorAttentionTint);
+  color: var(--colorAttentionText);
+}
+
+:where(.guest-page) .gp-mark.on-cover {
+  background: var(--colorInkOnDark);
+  color: var(--evScrim);
+}
+
+:where(.guest-page) .gp-mark.on-cover.is-not-sure {
+  border: 2.5px solid var(--colorInkOnDark);
+  background: none;
+  color: var(--colorInkOnDark);
+}
+
+:where(.guest-page) .gp-spin {
+  display: inline-block;
+  flex: none;
+  box-sizing: border-box;
+  width: 20px;
+  height: 20px;
+  border: 2.4px solid var(--colorAccentTintBorder);
+  border-top-color: var(--colorAccent);
+  border-radius: 50%;
+  animation: guest-page-turn 0.8s linear infinite;
+}
+
+:where(.guest-page) .gp-answers,
+:where(.guest-page) .gp-details,
+:where(.guest-page) .gp-cal-rows {
+  display: flex;
+  flex-direction: column;
+}
+
+:where(.guest-page) .gp-answer,
+:where(.guest-page) .gp-row {
+  display: flex;
+  align-items: center;
+  width: 100%;
+  min-height: 56px;
+  padding: 10px 0;
+  color: var(--colorInk);
+}
+
+:where(.guest-page) .gp-answer {
+  border: 0;
+  border-bottom: 1px solid var(--colorBorder);
+  border-radius: 0;
+  background: none;
+  font: inherit;
+  text-align: left;
+  cursor: pointer;
+  transition: opacity 120ms var(--gpEase);
+}
+
+:where(.guest-page) .gp-answer:last-child {
+  border-bottom: 0;
+}
+
+:where(.guest-page) .gp-answer:active {
+  opacity: 0.85;
+}
+
+:where(.guest-page) .gp-answer.is-lit {
+  width: calc(100% + 20px);
+  margin: 0 -10px;
+  padding: 10px;
+  border-bottom: 0;
+  border-radius: 12px;
+  background: var(--colorAccentTint);
+}
+
+:where(.guest-page) .gp-lead {
+  display: flex;
+  flex: none;
+  justify-content: center;
+  width: 28px;
+  margin-right: 12px;
+}
+
+:where(.guest-page) .gp-answer-words {
+  flex: 1;
+  min-width: 0;
+  font: 600 17px/1.3 var(--fontFamily);
+}
+
+:where(.guest-page) .gp-chev,
+:where(.guest-page) .gp-out {
+  display: flex;
+  flex: none;
+  margin-left: 12px;
+  color: var(--colorInkTertiary);
+}
+
+:where(.guest-page) .gp-now {
+  display: flex;
+  flex: none;
+  align-items: center;
+  gap: 5px;
+  margin-left: 12px;
+  color: var(--colorAccent);
+  font: 600 13px/1 var(--fontFamily);
+  white-space: nowrap;
+}
+
+/* sc-3627: Add to calendar, the demo's rows (GuestParts AddToCalendar) */
+:where(.guest-page) .gp-cal {
+  color: var(--colorAccent);
+  text-decoration: none;
+}
+
+:where(.guest-page) .gp-block .gp-h2 {
+  line-height: 1.25;
+  letter-spacing: -0.01em;
+}
+
+:where(.guest-page) .gp-block > .gp-sub {
+  margin-top: 6px;
+}
+
+:where(.guest-page) .gp-cal-rows {
+  margin-top: 6px;
+}
+
+:where(.guest-page) .gp-details > .gp-row,
+:where(.guest-page) .gp-where.has-rule,
+:where(.guest-page) .gp-cal:not(:last-child) {
+  border-bottom: 1px solid var(--colorBorder);
+}
+
+:where(.guest-page) .gp-details > .gp-row:last-child {
+  border-bottom: 0;
+}
+
+:where(.guest-page) .gp-details .gp-lead {
+  color: var(--colorInkSecondary);
+}
+
+:where(.guest-page) .gp-row-words {
+  display: flex;
+  flex: 1;
+  flex-direction: column;
+  min-width: 0;
+}
+
+:where(.guest-page) .gp-row-title {
+  flex: 1;
+  min-width: 0;
+  font: 600 16px/1.3 var(--fontFamily);
+  overflow-wrap: anywhere;
+}
+
+:where(.guest-page) .gp-row-line {
+  margin-top: 2px;
+  color: var(--colorInkSecondary);
+  font: 400 14px/1.4 var(--fontFamily);
+  overflow-wrap: anywhere;
+}
+
+:where(.guest-page) .gp-text.is-ink {
+  color: var(--colorInk);
+}
+
+:where(.guest-page) .gp-maps {
+  margin-left: 40px;
+  font-size: 15px;
+  text-decoration: none;
+}
+
+:where(.guest-page) .gp-sub.is-ink {
+  color: var(--colorInk);
+}
+
+:where(.guest-page) .gp-small {
+  margin-top: 10px;
+  color: var(--colorInkSecondary);
+  font: 400 14px/1.45 var(--fontFamily);
+}
+
+:where(.guest-page) .gp-ask,
+:where(.guest-page) .gp-check,
+:where(.guest-page) .gp-changing,
+:where(.guest-page) .gp-closed,
+:where(.guest-page) .gp-ended,
+:where(.guest-page) .gp-block,
+:where(.guest-page) .gp-recorded {
+  display: flex;
+  flex-direction: column;
+}
+
+:where(.guest-page) .gp-greet {
+  display: flex;
+  align-items: flex-start;
+  gap: 12px;
+}
+
+:where(.guest-page) .gp-greet .gp-mark {
+  margin-top: 1px;
+}
+
+:where(.guest-page) .gp-indent {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  padding: 6px 0 0 40px;
+}
+
+:where(.guest-page) .gp-ask > .gp-notice {
+  margin-top: 12px;
+}
+
+:where(.guest-page) .gp-ask > .gp-answers,
+:where(.guest-page) .gp-changing > .gp-answers {
+  margin-top: 8px;
+}
+
+:where(.guest-page) .gp-changing > .gp-h2 {
+  margin-top: 10px;
+}
+
+:where(.guest-page) .gp-changing > .gp-text {
+  margin-top: 4px;
+}
+
+:where(.guest-page) .gp-check-row {
+  margin-top: 14px;
+}
+
+:where(.guest-page) .gp-check-row .gp-text {
+  flex: none;
+  margin-left: 12px;
+}
+
+:where(.guest-page) .gp-check > .gp-check-row + * {
+  margin-top: 18px;
+}
+
+:where(.guest-page) .gp-check > .gp-notice:first-child {
+  margin-bottom: 18px;
+}
+
+:where(.guest-page) .gp-check > .gp-text:first-child {
+  margin-bottom: 2px;
+}
+
+:where(.guest-page) .gp-check > .gp-notice + .gp-filled {
+  margin-top: 14px;
+}
+
+:where(.guest-page) .gp-closed > .gp-sub {
+  margin-top: 6px;
+}
+
+/* ── Under the answer: when, where and who, then the foot; at 64rem the details move left and the foot follows the answer ── */
+
+:where(.guest-page) .gp-columns > .gp-details,
+:where(.guest-page) .gp-columns > .gp-foot {
+  margin-top: 28px;
+}
+
+@media (width >= 64rem) {
+  :where(.guest-page) .gp-skel-under,
+  :where(.guest-page) .gp-columns > .gp-details {
+    margin-top: 0;
+  }
+
+  :where(.guest-page) .gp-columns > .gp-foot {
+    margin-top: 32px;
+  }
+}
+
+/* ── sc-3591: the phase notice above the card, Called off's grey cover, and the answer kept under Paused and Finished ── */
+
+:where(.guest-page) .gp-phase {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  margin-bottom: 16px;
+  padding: 14px 16px 16px;
+  border: 1px solid var(--colorInsetBorder);
+  border-radius: 18px;
+  background: var(--colorInset);
+  animation: guest-page-fade 200ms var(--gpEase);
+}
+
+.guest-page .gp-phase p {
+  font: 500 15px/1.45 var(--fontFamily);
+}
+
+:where(.guest-page) .gp-chip {
+  display: inline-flex;
+  align-items: center;
+  align-self: flex-start;
+  gap: 7px;
+  height: 28px;
+  padding: 0 11px 0 9px;
+  border-radius: 14px;
+  font: 600 13px/1 var(--fontFamily);
+  white-space: nowrap;
+}
+
+:where(.guest-page) .gp-chip.is-paused {
+  background: var(--colorPausedTint);
+  color: var(--colorPausedText);
+}
+
+:where(.guest-page) .gp-chip.is-ended {
+  background: color-mix(in srgb, var(--markInfoInk) 9%, var(--colorCard));
+  color: var(--markInfoInk);
+}
+
+:where(.guest-page) .gp-chip-mark {
+  display: flex;
+  flex: none;
+  gap: 2px;
+}
+
+:where(.guest-page) .gp-chip.is-paused .gp-chip-mark span {
+  width: 3px;
+  height: 11px;
+  border-radius: 1px;
+  background: currentcolor;
+}
+
+:where(.guest-page) .gp-chip.is-ended .gp-chip-mark {
+  align-items: center;
+  justify-content: center;
+  box-sizing: border-box;
+  width: 15px;
+  height: 15px;
+  border: 1.5px solid currentcolor;
+  border-radius: 50%;
+}
+
+.guest-page .gp-cover.is-grey {
+  --evScrim: var(--colorInk);
+
+  filter: grayscale(1);
+}
+
+:where(.guest-page) .gp-cover.is-grey .ev-scrim {
+  background: linear-gradient(
+    180deg,
+    color-mix(in srgb, var(--colorInk) 50%, transparent) 0%,
+    color-mix(in srgb, var(--colorInk) 46%, transparent) 45%,
+    color-mix(in srgb, var(--colorInk) 62%, transparent) 100%
+  );
+}
+
+.guest-page h1.gp-cover-name {
+  margin-top: 0;
+}
+
+:where(.guest-page) .gp-text.is-off {
+  color: var(--colorInkTertiary);
+  cursor: default;
+}
+
+:where(.guest-page) .gp-closed > .gp-text:first-of-type {
+  margin-top: 8px;
+}
+
+:where(.guest-page) .gp-closed > .gp-text + .gp-sub {
+  margin-top: 2px;
+}

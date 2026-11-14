@@ -1,0 +1,14 @@
+# Notification settings: the grid of six categories against Push and Email (sc-3980).
+appId: host.exp.Exponent
+---
+- openLink: ${METRO_URL}/--/settings/notifications
+- extendedWaitUntil:
+    visible:
+      id: notificationSettings.event_changes.push
+    timeout: 30000
+- takeScreenshot: notification-settings
+- scrollUntilVisible:
+    element:
+      id: notificationSettings.account_security.email
+    timeout: 15000
+- takeScreenshot: notification-settings-end
