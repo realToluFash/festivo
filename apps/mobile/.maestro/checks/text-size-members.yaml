@@ -1,0 +1,16 @@
+# members, top to bottom, at whatever text size the simulator is set to. sc-13281.
+appId: host.exp.Exponent
+---
+- openLink: ${METRO_URL}/--/settings/members
+- extendedWaitUntil:
+    visible: '{{t:membersScreen.title}}'
+    timeout: 30000
+- waitForAnimationToEnd:
+    timeout: 5000
+- takeScreenshot: members-1
+- scroll
+- takeScreenshot: members-2
+- scroll
+- takeScreenshot: members-3
+- scroll
+- takeScreenshot: members-4

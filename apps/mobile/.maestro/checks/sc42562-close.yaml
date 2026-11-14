@@ -1,0 +1,16 @@
+# sc-42562: on a tablet, Close on Password changed closes it, on a step with nothing at its foot. Pass METRO_URL and TOKEN.
+appId: host.exp.Exponent
+---
+- runFlow: ../batch/sign-out.yaml
+- openLink: ${METRO_URL}/--/reset-password?token=${TOKEN}
+- extendedWaitUntil: { visible: { id: 'recovery.password' }, timeout: 30000 }
+- tapOn: { id: 'recovery.password' }
+- inputText: 'a-brand-new-password-42562'
+- hideKeyboard
+- tapOn: { id: 'recovery.save' }
+- extendedWaitUntil: { visible: '{{t:any:recovery.changed}}', timeout: 30000 }
+- takeScreenshot: close-01-shown
+- tapOn: '{{t:any:toast.close}}'
+- extendedWaitUntil: { visible: { id: 'never.there' }, timeout: 1000, optional: true }
+- assertNotVisible: '{{t:any:recovery.changed}}'
+- takeScreenshot: close-02-closed

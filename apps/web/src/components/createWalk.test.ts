@@ -1,0 +1,138 @@
+import { newOrganisationEntered, newOrganisationLimit } from '@soirely/domain';
+import i18next from 'i18next';
+import { describe, expect, it } from 'vitest';
+
+import {
+  type Walk,
+  answered,
+  cardLine,
+  countriesOf,
+  freshWalk,
+  optionLabel,
+  pickLine,
+  shrinks,
+  stepRefused,
+} from './createWalk.ts';
+
+const t = i18next.t;
+const LISBON = { country: 'PT', zone: 'Europe/Lisbon' };
+const CURRENCIES = new Map<string, string | null>([
+  ['PT', 'EUR'],
+  ['BR', 'BRL'],
+  ['AQ', null],
+]);
+const countries = countriesOf('en', CURRENCIES, t);
+const named: Walk = { ...freshWalk(LISBON), name: 'Lumen Feiras' };
+
+function country(code: string, from = countries) {
+  const found = from.find((one) => one.code === code);
+  if (found == null) throw new Error(`No country ${code}`);
+
+  return found;
+}
+
+describe('the countries (sc-30412)', () => {
+  it('names each currency the way currencyLabel does, and one with none as none yet', () => {
+    expect(optionLabel(country('PT'))).toBe('Portugal, Euro (EUR)');
+    expect(optionLabel(country('AQ'))).toBe('Antarctica, None yet');
+    expect(country('AQ').currency?.none).toBe(true);
+  });
+
+  it('offers only the countries the API founds in, once it has said which', () => {
+    expect(countries.map((one) => one.code)).toEqual(['AQ', 'BR', 'PT']);
+  });
+
+  it('offers every country, the currency left out, while it is not yet known, never saying none', () => {
+    const unread = countriesOf('en', null, t);
+
+    expect(unread.length).toBeGreaterThan(200);
+    expect(unread.every((one) => one.currency == null)).toBe(true);
+    expect(optionLabel(country('NG', unread))).toBe('Nigeria');
+    expect(pickLine(country('NG', unread), named, t)).toBe(
+      'Time zone, from this device, Lisbon · Europe/Lisbon.',
+    );
+  });
+
+  it('says the currency and the device’s zone when a pick changes', () => {
+    expect(pickLine(country('BR'), named, t)).toBe(
+      'Currency, Brazilian Real (BRL). Time zone, from this device, Lisbon · Europe/Lisbon.',
+    );
+  });
+});
+
+describe('the step checks', () => {
+  it('checks only the step Continue is on', () => {
+    expect(stepRefused(freshWalk(LISBON), t)).toEqual({
+      nameRefused: "Enter the organisation's name.",
+      countryRefused: null,
+    });
+    expect(stepRefused({ ...named, country: null }, t)).toBeNull();
+    expect(stepRefused({ ...named, country: null, step: 2 }, t)).toEqual({
+      nameRefused: null,
+      countryRefused: 'Choose a country.',
+    });
+    expect(stepRefused({ ...named, step: 2 }, t)).toBeNull();
+  });
+
+  it('shrinks the card’s name from 40 characters', () => {
+    expect(shrinks('x'.repeat(39))).toBe(false);
+    expect(shrinks('x'.repeat(40))).toBe(true);
+  });
+
+  it('asks before Cancel only once a name is typed or the country is not the device’s', () => {
+    expect(newOrganisationEntered(freshWalk(LISBON))).toBe(false);
+    expect(newOrganisationEntered({ ...freshWalk(LISBON), name: '  ' })).toBe(false);
+    expect(newOrganisationEntered(named)).toBe(true);
+    expect(newOrganisationEntered({ ...freshWalk(LISBON), country: 'BR' })).toBe(true);
+  });
+});
+
+describe('the answer', () => {
+  const sending: Walk = { ...named, step: 3, creating: true };
+
+  it('holds too many on Ready, with the time it lifts, or no time when none came', () => {
+    const lifts = new Date(2026, 10, 3, 10, 41);
+    const limited = answered(sending, { kind: 'limited', until: lifts });
+
+    expect(limited).toMatchObject({ step: 3, creating: false, answer: 'limited' });
+    expect(newOrganisationLimit(limited.lifts, 'en-GB', t).body).toBe('Try again at 10:41.');
+    expect(
+      newOrganisationLimit(answered(sending, { kind: 'limited', until: null }).lifts, 'en-GB', t)
+        .body,
+    ).toBeNull();
+  });
+
+  it('says it did not work on Ready, focus on Create', () => {
+    expect(answered(sending, { kind: 'failed' })).toMatchObject({
+      step: 3,
+      answer: 'failed',
+      landing: 'create',
+    });
+  });
+
+  it('takes a refused field back to its step, with the server’s reason', () => {
+    expect(answered(sending, { kind: 'refused', errors: { name: 'Taken.' } })).toMatchObject({
+      step: 1,
+      nameRefused: 'Taken.',
+      countryRefused: null,
+      landing: 'field',
+    });
+    expect(answered(sending, { kind: 'refused', errors: { countryCode: 'No.' } })).toMatchObject({
+      step: 2,
+      nameRefused: null,
+      countryRefused: 'No.',
+      landing: 'search',
+    });
+  });
+
+  it('reads the card as one line, the currency left out while unknown', () => {
+    const ready = { ...named, step: 3 as const };
+
+    expect(cardLine(ready, countries, 'folake@ire.events', t)).toBe(
+      'Lumen Feiras. Your role · Owner. Country, Portugal. Currency, Euro (EUR). Time zone, Lisbon · Europe/Lisbon. Contact address, folake@ire.events.',
+    );
+    expect(cardLine(ready, countriesOf('en', null, t), 'folake@ire.events', t)).toBe(
+      'Lumen Feiras. Your role · Owner. Country, Portugal. Time zone, Lisbon · Europe/Lisbon. Contact address, folake@ire.events.',
+    );
+  });
+});

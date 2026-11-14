@@ -1,0 +1,19 @@
+# On Check your email, in any language, waits for Send a new code and presses it, then waits
+# for Create your account with Password. sc-35256 (sc29923-resend matches the English label).
+# Needs the sign-up hold expired (set pending_registrations.expires_at back); on a fresh hold the screen stays on Check your email.
+#   node .qa/bin/qa-env.mjs maestro sign-up-resend-any-language SHOT=…
+appId: host.exp.Exponent
+---
+- extendedWaitUntil:
+    visible:
+      id: 'verifyEmail.resend'
+      enabled: true
+    timeout: 120000
+- tapOn:
+    id: 'verifyEmail.resend'
+- extendedWaitUntil:
+    visible:
+      id: 'register.password'
+    timeout: 20000
+- waitForAnimationToEnd
+- takeScreenshot: ${SHOT}

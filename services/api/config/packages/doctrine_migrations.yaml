@@ -1,0 +1,8 @@
+doctrine_migrations:
+    migrations_paths:
+        'DoctrineMigrations': '%kernel.project_dir%/migrations'
+    enable_profiler: false
+    # Refuse to run a migration whose file has changed since it ran. Silently
+    # accepting an edit is how two environments end up with the same migration
+    # version and different schemas.
+    check_database_platform: true
