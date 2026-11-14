@@ -28,7 +28,7 @@ function markButton(): HTMLElement {
 }
 
 function said(): string {
-  return screen.getByRole('status').textContent ?? '';
+  return document.querySelector('.gm-said')?.textContent ?? '';
 }
 
 beforeEach(() => {
@@ -117,7 +117,10 @@ describe('Mark as invited from the selection bar (sc-46880)', () => {
     fireEvent.click(markButton());
     expect(screen.queryByRole('dialog')).toBeNull();
     expect(said()).toBe('4 already invited. Nothing to mark.');
-    await waitFor(() => expect(document.activeElement).toBe(screen.getByRole('status')), WAIT);
+    await waitFor(
+      () => expect(document.activeElement).toBe(document.querySelector('.gm-said')),
+      WAIT,
+    );
   });
 
   it(
