@@ -436,7 +436,7 @@ function Card({ token, first }: { token: string; first: GuestPage }) {
   if (gone) return <InvalidInvitation />;
 
   const alone = tell.kind !== 'card' || view.kind === 'check' || view.kind === 'withYou';
-  const tagged = guest.reply != null && view.kind !== 'check' && view.kind !== 'withYou';
+  const tagged = guest.reply != null && view.kind !== 'check';
 
   return (
     <div ref={columns} className="gp-columns">
@@ -914,7 +914,7 @@ function WithYou({
                   />
                   <button
                     type="button"
-                    className="gp-outlined gp-with-small"
+                    className="gp-outlined"
                     onClick={() => onChange(renamed, `rename-${one.key}`)}
                   >
                     {party.tried ? t('guest.withYouTypeTheirName') : t('guest.withYouDone')}
@@ -981,7 +981,7 @@ function WithYou({
             type="button"
             className="gp-outlined"
             data-focus="addNamed"
-            onClick={() => onChange(added, 'add')}
+            onClick={() => onChange(added, party.adding?.trim() === '' ? 'newName' : 'add')}
           >
             {party.tried ? t('guest.withYouTypeTheirName') : t('guest.withYouAdd', { count: left })}
           </button>
