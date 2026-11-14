@@ -1,0 +1,15 @@
+# sc-47208: the app's design demo, Your account ?state=undeliverableTwo, scrolled to its delivery lines, in any language.
+appId: host.exp.Exponent
+---
+- openLink: ${METRO_URL}/--/demo/settings/account?state=undeliverableTwo
+- extendedWaitUntil:
+    visible:
+      id: 'account.card'
+    timeout: 30000
+- scrollUntilVisible:
+    element:
+      id: 'account.undeliverable'
+    direction: DOWN
+    centerElement: true
+- waitForAnimationToEnd
+- takeScreenshot: demo

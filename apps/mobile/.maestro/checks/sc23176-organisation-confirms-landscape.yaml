@@ -1,0 +1,85 @@
+# Settings > Organisation in [fd] (sc-23176), turned to landscape: each card, then each confirm opened in place.
+# Needs an owner with one company domain, soirely.test, the request link on, and one other member.
+appId: host.exp.Exponent
+---
+- setOrientation: LANDSCAPE_LEFT
+- openLink: ${METRO_URL}/--/settings/organisation
+- extendedWaitUntil:
+    visible:
+      id: organisation.card
+    timeout: 30000
+- takeScreenshot: details
+- scrollUntilVisible:
+    element:
+      id: organisation.domain.add
+    centerElement: true
+- takeScreenshot: domains
+- runFlow:
+    file: ../scroll-tap.yaml
+    env:
+      ID: organisation.domain.soirely.test.remove
+- takeScreenshot: domain-confirm
+- runFlow:
+    file: ../scroll-tap.yaml
+    env:
+      ID: organisation.domain.keep
+- runFlow:
+    file: ../scroll-tap.yaml
+    env:
+      ID: organisation.link.replace
+- takeScreenshot: link-confirm
+- runFlow:
+    file: ../scroll-tap.yaml
+    env:
+      ID: organisation.link.keep
+- scrollUntilVisible:
+    element:
+      id: organisation.ownership.delete
+    centerElement: true
+- takeScreenshot: ownership
+- runFlow:
+    file: ../scroll-tap.yaml
+    env:
+      ID: organisation.ownership.transfer
+- takeScreenshot: transfer-open
+- tapOn:
+    id: organisation\.transfer\.[0-9a-f-]{8,}.*
+- takeScreenshot: transfer-picked
+- runFlow:
+    file: ../scroll-tap.yaml
+    env:
+      ID: organisation.transfer.send
+- takeScreenshot: transfer-checked
+- runFlow:
+    file: ../scroll-tap.yaml
+    env:
+      ID: organisation.transfer.cancel
+- runFlow:
+    file: ../scroll-tap.yaml
+    env:
+      ID: organisation.ownership.leave
+- takeScreenshot: leave-confirm
+- runFlow:
+    file: ../scroll-tap.yaml
+    env:
+      ID: organisation.leave.stay
+- runFlow:
+    file: ../scroll-tap.yaml
+    env:
+      ID: organisation.ownership.delete
+- extendedWaitUntil:
+    visible:
+      id: organisation.delete.name
+    timeout: 15000
+- takeScreenshot: delete-confirm
+- runFlow:
+    file: ../scroll-tap.yaml
+    env:
+      ID: organisation.delete.send
+- takeScreenshot: delete-checked
+- runFlow:
+    file: ../scroll-tap.yaml
+    env:
+      ID: organisation.delete.cancel
+- takeScreenshot: closed
+- setOrientation: PORTRAIT

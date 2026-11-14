@@ -1,0 +1,7 @@
+# Presses Send while the API is paused by the caller, so the sending label stays; SHOT names it. sc-30737.
+appId: host.exp.Exponent
+---
+- tapOn:
+    id: 'lostTwoFactor.send'
+- waitForAnimationToEnd
+- takeScreenshot: ${SHOT}-sending

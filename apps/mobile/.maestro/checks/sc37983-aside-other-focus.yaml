@@ -1,0 +1,23 @@
+# sc-37983: In landscape from the start, Set a new password lands on Your organisation with Password changed stepped aside; the keyboard's Enter moves focus on to Country while it is aside, then the keys go down, and it does not come back. Pass METRO_URL and TOKEN_ORG, a reset token for an account with no organisation, invitation or offer.
+# On Android, Enter focuses Cerrar sesión and Password changed comes back until sc-41296, so the last assertion fails there.
+appId: host.exp.Exponent
+---
+- runFlow: ../sign-out.yaml
+- setOrientation: LANDSCAPE_LEFT
+- openLink: ${METRO_URL}/--/reset-password?token=${TOKEN_ORG}
+- extendedWaitUntil: { visible: { id: 'recovery.password' }, timeout: 30000 }
+- tapOn: { id: 'recovery.password' }
+- inputText: 'a-brand-new-password-37983'
+- hideKeyboard
+- tapOn: { id: 'recovery.save' }
+- extendedWaitUntil: { visible: { id: 'completeProfile.organisation' }, timeout: 30000 }
+- takeScreenshot: asideF-01-landed
+- pressKey: Enter
+- extendedWaitUntil: { visible: { id: 'never.there' }, timeout: 1500, optional: true }
+- takeScreenshot: asideF-02-country-focused
+- hideKeyboard
+- extendedWaitUntil: { visible: { id: 'never.there' }, timeout: 1500, optional: true }
+- takeScreenshot: asideF-03-keys-down
+- assertNotVisible: '{{t:any:recovery.changed}}'
+- setOrientation: PORTRAIT
+- runFlow: ../sign-out-from-complete-profile.yaml

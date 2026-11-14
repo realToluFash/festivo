@@ -1,0 +1,34 @@
+# sc-38005: turn down a request to get back in: Sending your answer… (the API paused), then the outcome on the card. Needs ${METRO_URL}, ${HELPER_URL}; request 22222222-2222-4222-8222-222222222221 waiting.
+appId: host.exp.Exponent
+---
+- openLink: ${METRO_URL}/--/settings/members
+- extendedWaitUntil:
+    visible:
+      id: 'members.card'
+    timeout: 30000
+- scrollUntilVisible:
+    element:
+      id: 'members.recovery.22222222-2222-4222-8222-222222222221.turnDown'
+    centerElement: true
+- tapOn:
+    id: 'members.recovery.22222222-2222-4222-8222-222222222221.turnDown'
+- waitForAnimationToEnd
+- evalScript: "${http.get(HELPER_URL + '/api?to=paused').body}"
+- tapOn:
+    id: 'members.recovery.turnDownConfirm'
+- waitForAnimationToEnd
+- takeScreenshot: sending
+- evalScript: "${http.get(HELPER_URL + '/api?to=up').body}"
+- extendedWaitUntil:
+    notVisible:
+      id: 'members.recovery.turnDownConfirm'
+    timeout: 30000
+- waitForAnimationToEnd
+- swipe:
+    start: 50%, 30%
+    end: 50%, 90%
+- swipe:
+    start: 50%, 30%
+    end: 50%, 90%
+- waitForAnimationToEnd
+- takeScreenshot: card-after
