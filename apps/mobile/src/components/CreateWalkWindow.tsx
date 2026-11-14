@@ -252,20 +252,16 @@ export function CreateWalkWindow<Made>({
     raiseKeysOn(input);
   }, [talkBack, onScreen, unnamed, opening, phone]);
 
-  // Shown to TalkBack once its keys are up: shown on its first input focus, a field that lost it and was raised again had that focus voiced (qa4 #48921). TalkBack moves its focus onto the shown field itself, and a hover after it read the field twice (qa2 #49329). One the keys never reach is shown after KEYS_AWAITED_MS.
+  // Named and shown to TalkBack as soon as it has taken input focus unnamed, before TalkBack's focus follows it: named once its keys were up, TalkBack's focus read an unnamed field (qa2 #49366). One that never takes focus is shown after KEYS_AWAITED_MS.
+  const taken = () => {
+    if (quiet && onScreen && !unnamed) setVoiced(true);
+  };
   useEffect(() => {
     if (!quiet || !onScreen || unnamed) return;
-    const input = opening.focus === 'search' ? search.current : field.current;
-    const up = Keyboard.addListener('keyboardDidShow', () => {
-      if (input?.isFocused()) setVoiced(true);
-    });
     const reachable = setTimeout(() => setVoiced(true), KEYS_AWAITED_MS);
 
-    return () => {
-      up.remove();
-      clearTimeout(reachable);
-    };
-  }, [quiet, onScreen, unnamed, opening]);
+    return () => clearTimeout(reachable);
+  }, [quiet, onScreen, unnamed]);
 
   useEffect(() => {
     const up = Keyboard.addListener('keyboardDidShow', () => {
@@ -274,12 +270,25 @@ export function CreateWalkWindow<Made>({
 
     return () => up.remove();
   }, []);
-  // A field that gives up focus after the window raised its keys and before they came up gets them once more (qa3 #47084).
+  // A field that gives up focus after the window raised its keys and before they came up gets them once more (qa3 #47084), unnamed again first, as a named one had that focus voiced (qa4 #48921).
+  const regaining = useRef<TextInputInstance | null>(null);
   const keysLost = () => {
     const input = holding.current;
     holding.current = null;
-    if (input != null && open && !walk.asking) raiseKeysOn(input);
+    if (input == null || !open || walk.asking) return;
+    if (!voiced) {
+      raiseKeysOn(input);
+      return;
+    }
+    regaining.current = input;
+    setVoiced(false);
   };
+  useEffect(() => {
+    const input = regaining.current;
+    if (!quiet || input == null) return;
+    regaining.current = null;
+    raiseKeysOn(input);
+  }, [quiet]);
 
   useEffect(
     () => () => {
@@ -448,6 +457,7 @@ export function CreateWalkWindow<Made>({
           onTyped={(name) => setWalk((now) => typed(now, name))}
           onContinue={onPrimary}
           quiet={live && quiet && opening.focus === 'name'}
+          onFocused={live ? taken : undefined}
           onLeft={live ? keysLost : undefined}
         />
       );
@@ -462,6 +472,7 @@ export function CreateWalkWindow<Made>({
           onPick={(code) => setWalk((now) => picked(now, code))}
           onSearchFocused={(focused) => {
             setSearchFocused(focused);
+            if (focused && live) taken();
             if (!focused && live) keysLost();
           }}
         />
