@@ -55,6 +55,8 @@ export interface ListAndPageProps {
   pageless?: boolean;
   /** The page's own back, the header's on a phone included; Android's Back and iOS's swipe from the left edge run it too wherever the page is in front. `revealsList: false` when it leads elsewhere, so the swipe shows no list under the page. */
   back: { label: string; onPress: () => void; testID: string; revealsList?: boolean };
+  /** The frame's top already carries the back, so the upright tablet's page draws none of its own. */
+  backInFrame?: boolean;
   spacing: ListAndPageSpacing;
   /** The screen's own `useListAndPageLayout`, so the two never decide apart. */
   kind: LayoutKind;
@@ -94,6 +96,7 @@ export function ListAndPage({
   pageInFront,
   pageless = false,
   back,
+  backInFrame = false,
   spacing,
   kind,
   settingsColumn = false,
@@ -158,7 +161,7 @@ export function ListAndPage({
             contentContainerStyle={inColumn ? [LIST_EDGES.tabletLandscape, column] : column}
           >
             {!landscape && pageInFront && <FrameTop />}
-            {kind === 'tabletPortrait' && (
+            {kind === 'tabletPortrait' && !backInFrame && (
               <View style={styles.start}>
                 <QuietButton label={back.label} onPress={back.onPress} testID={back.testID} />
               </View>

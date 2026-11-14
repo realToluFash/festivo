@@ -320,8 +320,8 @@ export function EventGuests({
 
   const counts = loaded ? countsOf(load.headcount.counts) : null;
   const empty = loaded && load.list.guests.length === 0;
-  const adds = manages && loaded && !empty;
-  const guestInFront = open != null && kind === 'phone';
+  const guestInFront = open != null && kind !== 'tabletLandscape';
+  const adds = manages && loaded && !empty && !guestInFront;
   const shown = sidebarCardOf(event, phase);
 
   useLayoutEffect(() => {
@@ -446,6 +446,7 @@ export function EventGuests({
         pageInFront={open != null}
         pageless={!loaded || empty}
         back={{ label: t('guestList.backToGuests'), onPress: closeGuest, testID: 'guest.back' }}
+        backInFrame
         spacing={SPACING}
       />
       {open != null && (
