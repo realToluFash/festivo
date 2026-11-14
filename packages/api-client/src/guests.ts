@@ -337,6 +337,9 @@ export function asGuestGroup(value: unknown): GuestGroup | null {
   return id == null || name == null ? null : { id, name };
 }
 
+/** The most guests one action on a selection takes (sc-3776), as GuestsTogetherController::MOST_AT_ONCE. */
+export const GUESTS_TOGETHER_MOST = 2000;
+
 /** What Add to group did to each selected guest (sc-3776): `already` were in it, `gone` were not on the list to move. */
 export interface MovedTogether {
   group: GuestGroup;

@@ -2,9 +2,6 @@ import type { Guest, MovedTogether, RemovedTogether } from '@soirely/api-client'
 import type { ListView, ViewRow } from '@soirely/domain';
 import { type TFunction } from 'i18next';
 
-/** sc-3776 limits every action in the bar to this many guests, as GuestsTogetherController does. */
-export const MOST_AT_ONCE = 2000;
-
 function rowsOf(view: ListView): ViewRow[] {
   return view.kind === 'groups' ? view.groups.flatMap((group) => group.rows) : view.rows;
 }

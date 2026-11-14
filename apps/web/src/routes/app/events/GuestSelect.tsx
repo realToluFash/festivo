@@ -1,4 +1,8 @@
-import { GUEST_GROUP_NAME_MAXIMUM, type GuestList } from '@soirely/api-client';
+import {
+  GUEST_GROUP_NAME_MAXIMUM,
+  GUESTS_TOGETHER_MOST,
+  type GuestList,
+} from '@soirely/api-client';
 import { groupNameLength, groupProblem, sortedGroups } from '@soirely/domain';
 import { type FocusEvent, useEffect, useId, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
@@ -10,7 +14,6 @@ import { problemLine } from './guestGroups.ts';
 import {
   type Action,
   type Line,
-  MOST_AT_ONCE,
   type RemoveQuestion,
   lineWords,
   removeTitle,
@@ -48,8 +51,10 @@ export function SelectBar({
         <strong>{t('guestSelect.selected', { count })}</strong>
         {companions > 0 && <span>{t('guestSelect.withCompanions', { count: companions })}</span>}
       </p>
-      {count > MOST_AT_ONCE && (
-        <p className="desk-line gm-narrow">{t('guestSelect.narrowing', { most: MOST_AT_ONCE })}</p>
+      {count > GUESTS_TOGETHER_MOST && (
+        <p className="desk-line gm-narrow">
+          {t('guestSelect.narrowing', { most: GUESTS_TOGETHER_MOST })}
+        </p>
       )}
       <div className="gm-actions">
         <button

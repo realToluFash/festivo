@@ -7,6 +7,7 @@ import {
   type GuestGroup,
   type GuestList,
   type OrganisationEvent,
+  GUESTS_TOGETHER_MOST,
   asGuestList,
   realtimeTopic,
 } from '@soirely/api-client';
@@ -95,7 +96,6 @@ import { GroupSheet, RemoveMany, ResultLine, SelectBar, SelectedSaid } from './G
 import {
   type Action,
   type Line,
-  MOST_AT_ONCE,
   companionsWith,
   onlyCompanions,
   removeQuestion,
@@ -754,12 +754,12 @@ export function GuestsArea({
   }
 
   function pressAdd(): void {
-    if (picked.size > MOST_AT_ONCE) return;
+    if (picked.size > GUESTS_TOGETHER_MOST) return;
     setSheet({ refused: null });
   }
 
   function pressRemove(): void {
-    if (picked.size > MOST_AT_ONCE) return;
+    if (picked.size > GUESTS_TOGETHER_MOST) return;
     setRemoving({ busy: false });
   }
 
