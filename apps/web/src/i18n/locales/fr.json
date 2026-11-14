@@ -3006,9 +3006,9 @@
   "guestNumbers": {
     "title": "Invités",
     "openList": "Ouvrir la liste des invités",
-    "lead_one": "Sur $t(guestNumbers.invitedPeople, {\"count\": {{invited}} }), {{count, number}} vient. Chaque nombre mène aux invités qu’il compte.",
-    "lead_other": "Sur $t(guestNumbers.invitedPeople, {\"count\": {{invited}} }), {{count, number}} viennent. Chaque nombre mène aux invités qu’il compte.",
-    "lead_many": "Sur $t(guestNumbers.invitedPeople, {\"count\": {{invited}} }), {{count, number}} viennent. Chaque nombre mène aux invités qu’il compte.",
+    "lead_one": "{{count, number}} vient sur {{invited, number}} avec invitation. Chaque nombre mène aux invités qu’il compte.",
+    "lead_other": "{{count, number}} viennent sur {{invited, number}} avec invitation. Chaque nombre mène aux invités qu’il compte.",
+    "lead_many": "{{count, number}} viennent sur {{invited, number}} avec invitation. Chaque nombre mène aux invités qu’il compte.",
     "invitedPeople_one": "{{count, number}} invité",
     "invitedPeople_other": "{{count, number}} invités",
     "invitedPeople_many": "{{count, number}} d’invités",

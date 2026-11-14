@@ -3006,9 +3006,9 @@
   "guestNumbers": {
     "title": "Convidados",
     "openList": "Abrir a lista de convidados",
-    "lead_one": "Vem {{count, number}} de $t(guestNumbers.invitedPeople, {\"count\": {{invited}} }). Cada número leva aos convidados que conta.",
-    "lead_other": "Vêm {{count, number}} de $t(guestNumbers.invitedPeople, {\"count\": {{invited}} }). Cada número leva aos convidados que conta.",
-    "lead_many": "Vêm {{count, number}} de $t(guestNumbers.invitedPeople, {\"count\": {{invited}} }). Cada número leva aos convidados que conta.",
+    "lead_one": "Vem {{count, number}} de {{invited, number}} com convite. Cada número leva aos convidados que conta.",
+    "lead_other": "Vêm {{count, number}} de {{invited, number}} com convite. Cada número leva aos convidados que conta.",
+    "lead_many": "Vêm {{count, number}} de {{invited, number}} com convite. Cada número leva aos convidados que conta.",
     "invitedPeople_one": "{{count, number}} convidado",
     "invitedPeople_other": "{{count, number}} convidados",
     "invitedPeople_many": "{{count, number}} de convidados",

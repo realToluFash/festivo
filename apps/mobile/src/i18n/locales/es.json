@@ -2497,9 +2497,9 @@
   "guestNumbers": {
     "title": "Invitados",
     "openList": "Abrir la lista de invitados",
-    "lead_one": "Viene {{count, number}} de $t(guestNumbers.invitedPeople, {\"count\": {{invited}} }). Cada número lleva a los invitados que cuenta.",
-    "lead_other": "Vienen {{count, number}} de $t(guestNumbers.invitedPeople, {\"count\": {{invited}} }). Cada número lleva a los invitados que cuenta.",
-    "lead_many": "Vienen {{count, number}} de $t(guestNumbers.invitedPeople, {\"count\": {{invited}} }). Cada número lleva a los invitados que cuenta.",
+    "lead_one": "Viene {{count, number}} de {{invited, number}} con invitación. Cada número lleva a los invitados que cuenta.",
+    "lead_other": "Vienen {{count, number}} de {{invited, number}} con invitación. Cada número lleva a los invitados que cuenta.",
+    "lead_many": "Vienen {{count, number}} de {{invited, number}} con invitación. Cada número lleva a los invitados que cuenta.",
     "invitedPeople_one": "{{count, number}} invitado",
     "invitedPeople_other": "{{count, number}} invitados",
     "invitedPeople_many": "{{count, number}} de invitados",
