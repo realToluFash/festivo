@@ -12,7 +12,7 @@ import {
   type SampleEvent,
   AREAS,
   COMING,
-  CURRENCIES,
+  currencyLabel,
   EVENT_WORDS as W,
   TYPE_WORDS,
   areaOf,
@@ -1095,12 +1095,7 @@ function Details({
             event.hosts.length === 0 ? `${W.hostedBy} · ${W.noHostsLine}` : W.hostedBy,
           )}
           {row('type', <Lead name="events" />, TYPE_WORDS[event.type], W.type)}
-          {row(
-            'currency',
-            <Lead name="wallet" />,
-            `${event.currency} · ${CURRENCIES[event.currency]}`,
-            W.currency,
-          )}
+          {row('currency', <Lead name="wallet" />, currencyLabel(event.currency), W.currency)}
         </ul>
       </section>
       {needs}

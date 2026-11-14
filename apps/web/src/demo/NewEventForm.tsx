@@ -22,8 +22,15 @@ import { useNavigate } from 'react-router';
 import { Broken, DateTime, EditText as Text } from '../components/EventPageParts.tsx';
 import { Glyph } from '../components/Glyph.tsx';
 import { Ask, Head, RedAction } from '../components/SettingsParts.tsx';
-import { CoverPreview, CoverUpload, HostFields, VenueFields, ZoneSelect } from './EventEdits.tsx';
-import { CURRENCIES, type Currency, EVENT_WORDS as W, TYPE_WORDS, type Wall } from './events.ts';
+import {
+  CoverPreview,
+  CoverUpload,
+  HostFields,
+  Select,
+  VenueFields,
+  ZoneSelect,
+} from './EventEdits.tsx';
+import { CURRENCY_CHOICES, EVENT_WORDS as W, TYPE_WORDS, type Wall } from './events.ts';
 import { meshFor } from '../mesh.ts';
 import {
   FILLED,
@@ -39,6 +46,7 @@ import {
   typedFor,
   typedSomething,
 } from './newEvent.ts';
+import { useCoverPick } from './useCoverPick.tsx';
 import { useLeaveAsk } from './useLeaveAsk.ts';
 import './newEvent.css';
 
@@ -48,7 +56,6 @@ const ORGANISATION = 'Ire Events';
 export const CREATED_ID = 'evt-draft-4';
 const CREATING_MS = 1200;
 const OPENING_MS = 1600;
-const CURRENCY_CODES = Object.keys(CURRENCIES) as Currency[];
 
 type Status = 'editing' | 'creating' | 'failed' | 'created';
 
@@ -81,6 +88,7 @@ export function NewEventForm({ state }: { state: NewEventState | null }) {
   const [typed, setTyped] = useState<NewTyped>(() => typedFor(state));
   const [tried, setTried] = useState(state === 'refused');
   const [status, setStatus] = useState<Status>(() => statusOf(state));
+  const cover = useCoverPick(() => change({ photo: true }));
   const [server, setServer] = useState<Refusals>(
     state === 'server' ? { timeZone: N.zoneRefused } : {},
   );
@@ -253,6 +261,7 @@ export function NewEventForm({ state }: { state: NewEventState | null }) {
           mesh={meshFor(typed.type === '' ? 'new-event' : typed.type)}
           className="ev-new-cover"
         />
+        {cover.input}
         {typed.photo ? (
           !busy && (
             <RedAction
@@ -262,7 +271,7 @@ export function NewEventForm({ state }: { state: NewEventState | null }) {
             />
           )
         ) : (
-          <CoverUpload off={busy} onUpload={() => change({ photo: true })} />
+          <CoverUpload refusal={cover.refusal} off={busy} onUpload={cover.pick} />
         )}
       </Block>
 
@@ -345,7 +354,7 @@ export function NewEventForm({ state }: { state: NewEventState | null }) {
             label={W.currency}
             value={typed.currency}
             placeholder={N.currencyBlank}
-            choices={CURRENCY_CODES.map((code) => [code, `${code} · ${CURRENCIES[code]}`])}
+            choices={CURRENCY_CHOICES}
             error={shown.currency}
             help={N.defaultsHint(ORGANISATION)}
             off={busy}
@@ -411,74 +420,5 @@ function Block({ title, children }: { title: string; children: ReactNode }) {
       <Head title={<span id={id}>{title}</span>} />
       <div className="ev-new-fields">{children}</div>
     </section>
-  );
-}
-
-function Select({
-  refTo,
-  label,
-  value,
-  placeholder,
-  choices,
-  error,
-  help,
-  off,
-  onChange,
-}: {
-  refTo: RefObject<HTMLDivElement | null>;
-  label: string;
-  value: string;
-  placeholder?: string;
-  choices: readonly (readonly [string, string])[];
-  error: string | undefined;
-  help?: string;
-  off: boolean;
-  onChange: (value: string) => void;
-}) {
-  const id = useId();
-  const told = [error == null ? null : `${id}-error`, help == null ? null : `${id}-help`]
-    .filter(Boolean)
-    .join(' ');
-
-  return (
-    <div ref={refTo} className="desk-field">
-      <label htmlFor={id} className="desk-label">
-        {label}
-      </label>
-      <div className={error == null ? 'desk-box ev-select' : 'desk-box ev-select is-wrong'}>
-        <select
-          id={id}
-          value={value}
-          disabled={off}
-          aria-invalid={error != null}
-          aria-describedby={told === '' ? undefined : told}
-          className={value === '' ? 'is-empty' : undefined}
-          onChange={(change) => onChange(change.target.value)}
-        >
-          {placeholder != null && (
-            <option value="" disabled>
-              {placeholder}
-            </option>
-          )}
-          {choices.map(([one, words]) => (
-            <option key={one} value={one}>
-              {words}
-            </option>
-          ))}
-        </select>
-        <Glyph name="chevdown" size={18} weight={2.3} />
-      </div>
-      {error != null && (
-        <p id={`${id}-error`} className="desk-error">
-          <Glyph name="alert" size={15} weight={2.2} />
-          {error}
-        </p>
-      )}
-      {help != null && (
-        <p id={`${id}-help`} className="desk-help">
-          {help}
-        </p>
-      )}
-    </div>
   );
 }
