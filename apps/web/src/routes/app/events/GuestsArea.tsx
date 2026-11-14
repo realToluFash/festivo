@@ -38,6 +38,10 @@ import {
   viewOf,
   violationProblems,
   withGuest as listedWith,
+  withGuestAt,
+  withoutGuest,
+  companionShown,
+  listFormat,
 } from '@soirely/domain';
 import {
   type ReactNode,
@@ -70,7 +74,7 @@ import {
   TextAction,
 } from '../../../components/SettingsParts.tsx';
 import { Toast } from '../../../components/Toast.tsx';
-import { dateLocale } from '../../../i18n/index.ts';
+import { currentLocale, dateLocale } from '../../../i18n/index.ts';
 import { LayersContext, focusWhenFree, useDeskLayers } from '../../../layers.ts';
 import { type Mesh, meshFor } from '../../../mesh.ts';
 import { pageTitle, usePageTitle } from '../../../pageTitle.ts';
@@ -307,6 +311,8 @@ export function GuestsArea({
   const [dirty, setDirty] = useState(false);
   const [asking, setAsking] = useState<(() => void) | null>(null);
   const [saved, setSaved] = useState(false);
+  const [removed, setRemoved] = useState<{ guest: Guest; at: number } | null>(null);
+  const [backOnList, setBackOnList] = useState<string | null>(null);
   const [asked, setAsked] = useState<ReadonlySet<string>>(() =>
     invites ? keptAsked(event.id) : new Set(),
   );
@@ -343,6 +349,36 @@ export function GuestsArea({
   }, [open]);
 
   usePageTitle(pageTitle(t, [t('eventPage.guests'), event.name]));
+
+  const erasing = removed?.guest.id ?? null;
+
+  // Leaving the page ends the undo as running out would (sc-3774).
+  useEffect(() => {
+    if (erasing == null) return;
+    const erase = (): void => void api.eraseGuest(event.id, erasing).catch(() => undefined);
+
+    window.addEventListener('pagehide', erase);
+
+    return () => window.removeEventListener('pagehide', erase);
+  }, [event.id, erasing]);
+
+  const unmounting = useRef<{ eventId: string; id: string | null }>({
+    eventId: event.id,
+    id: null,
+  });
+
+  useEffect(() => {
+    unmounting.current = { eventId: event.id, id: erasing };
+  });
+
+  useEffect(
+    () => () => {
+      const { eventId, id } = unmounting.current;
+
+      if (id != null) void api.eraseGuest(eventId, id).catch(() => undefined);
+    },
+    [],
+  );
 
   useEffect(() => {
     let current = true;
@@ -494,6 +530,68 @@ export function GuestsArea({
           }
         : was,
     );
+  }
+
+  /** Off the list at once, with Undo open; a guest still inside an earlier undo is erased now, since only one message shows. */
+  async function remove(gone: GuestDetails): Promise<void> {
+    await api.removeGuest(event.id, gone.id);
+    if (removed != null) void api.eraseGuest(event.id, removed.guest.id).catch(() => undefined);
+    const at = guests.findIndex((one) => one.id === gone.id);
+    const row = guests[at] ?? gone;
+
+    setLoad((was) =>
+      was.kind === 'loaded' ? { kind: 'loaded', list: withoutGuest(was.list, gone.id).list } : was,
+    );
+    setRecount((n) => n + 1);
+    setBackOnList(null);
+    setRemoved({ guest: row, at });
+    setParams(withGuest(null));
+    focus('undo');
+  }
+
+  function undoRemoval(): void {
+    if (removed == null) return;
+    const { guest, at } = removed;
+
+    setRemoved(null);
+    api.undoGuestRemoval(event.id, guest.id).then(
+      () => {
+        setLoad((was) =>
+          was.kind === 'loaded' ? { kind: 'loaded', list: withGuestAt(was.list, guest, at) } : was,
+        );
+        setRecount((n) => n + 1);
+        setBackOnList(guest.id);
+        lastRow.current = guest.id;
+        setParams(withGuest(guest.id));
+        headingOwed.current = true;
+        focus('guest-heading');
+      },
+      () => setAttempt((n) => n + 1),
+    );
+  }
+
+  function removedLine(guest: Guest): string {
+    const names = guest.companions.map((one) => one.fullName);
+    const companions = names.map((_, at) => companionShown(t, guest.fullName, names, at));
+
+    return companions.length === 0
+      ? t('guestList.guestRemoved', { name: guest.fullName })
+      : t('guestList.guestRemovedWith', {
+          name: guest.fullName,
+          companions: listFormat(currentLocale(), { style: 'long', type: 'conjunction' }).format(
+            companions,
+          ),
+        });
+  }
+
+  /** The 404 "already removed by someone else": Back to guests drops their row. */
+  function removedAlready(id: string): void {
+    setLoad((was) =>
+      was.kind === 'loaded' ? { kind: 'loaded', list: withoutGuest(was.list, id).list } : was,
+    );
+    setRecount((n) => n + 1);
+    setParams(withGuest(null));
+    focus('title');
   }
 
   /** A phase that no longer invites: the event is read again, so the page says why, and the refusal still reaches the caller. */
@@ -869,6 +967,9 @@ export function GuestsArea({
                           onDirty={setDirty}
                           onAsk={(then) => setAsking(() => then)}
                           onClose={close}
+                          backOnList={backOnList === open}
+                          onRemove={remove}
+                          onRemovedAlready={() => removedAlready(open)}
                           onShown={() => {
                             if (!headingOwed.current) return;
                             headingOwed.current = false;
@@ -946,6 +1047,18 @@ export function GuestsArea({
         )}
         {makeLive.dialogs}
         {saved && <Toast words={t('guestList.saved')} onClose={() => setSaved(false)} />}
+        {removed != null && (
+          <Toast
+            key={removed.guest.id}
+            words={removedLine(removed.guest)}
+            counted={{ said: t('guestList.undoOpen') }}
+            onUndo={undoRemoval}
+            onClose={() => {
+              setRemoved(null);
+              void api.eraseGuest(event.id, removed.guest.id).catch(() => undefined);
+            }}
+          />
+        )}
         <div ref={setHost} className="desk-layers" />
       </div>
     </LayersContext>

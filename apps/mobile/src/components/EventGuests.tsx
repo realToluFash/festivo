@@ -61,7 +61,7 @@ import { GuestsCard } from './GuestsCard.tsx';
 import { type MarkRefusal, MarkInvited } from './GuestInvitation.tsx';
 import { DraftRow } from './MakeLive.tsx';
 import type { ScreenReaderTarget } from './screenReaderFocus.ts';
-import { type LayoutKind, useLayout } from '../layout/useLayout.ts';
+import type { LayoutKind } from '../layout/useLayout.ts';
 import { type ListAndPageSpacing, ListAndPage, useListAndPageLayout } from './ListAndPage.tsx';
 import { LIST_EDGES } from './listFrame.ts';
 import { useReadOut } from './ReadOut.tsx';
@@ -750,12 +750,10 @@ function PhaseLine({
   onChange: (event: OrganisationEvent) => void;
 }) {
   const { t } = useTranslation();
-  const { kind } = useLayout();
 
   if (phase === 'draft')
     return (
       <DraftRow
-        kind={kind}
         event={event}
         manages={roleHolds(event, 'events.manage')}
         now={now}

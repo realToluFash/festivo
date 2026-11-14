@@ -193,7 +193,7 @@ describe('Groups: make, rename, delete (sc-3775)', () => {
 
   it('refuses a used name, naming the group as it is spelt, and at 50 groups', SLOW, async () => {
     await guests('groupsNewTaken');
-    expect(column().textContent).toContain('There’s already a group called Work.');
+    expect(column().textContent).toContain('There is already a group called Work.');
 
     cleanup();
     await guests('groupsNewLimit');
@@ -204,7 +204,7 @@ describe('Groups: make, rename, delete (sc-3775)', () => {
 
   it('renames in place, everywhere at once, and refuses a name taken', SLOW, async () => {
     await guests('groupsRenameTaken');
-    expect(column().textContent).toContain('There’s already a group called Bride’s side.');
+    expect(column().textContent).toContain('There is already a group called Bride’s side.');
 
     const field = within(column()).getByRole('textbox', { name: 'New name for Work' });
 

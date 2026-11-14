@@ -16,6 +16,7 @@ import en from '../i18n/locales/en.json';
 import { SAMPLE } from './rules.ts';
 import { type SettingsSay, type Viewer, VIEWERS } from './settings.ts';
 import { fold } from '../components/orgMenu.ts';
+import { crowdName } from './sampleNames.ts';
 
 export const ORGANISATION = SAMPLE.organisation;
 export const DOMAIN = 'ire.events';
@@ -139,6 +140,22 @@ export function morePeople(): Person[] {
     tone: index + 9,
   }));
 }
+
+/** Ire Events grown to `total` on All, so the card's chip has more beyond its five faces than its circle holds (sc-48825). */
+export function crowdOf(people: readonly Person[], total: number): Person[] {
+  const shown = people.filter((one) => isShown(one.status, 'all')).length;
+  const extra = Array.from({ length: Math.max(0, total - shown) }, (_, index) => ({
+    ...person(`crowd-${index + 1}@ire.events`, crowdName(index), 'Member', [
+      { what: 'Joined with a company email address', when: '2026-10-05' },
+    ]),
+    tone: people.length + index,
+  }));
+
+  return [...people, ...extra];
+}
+
+/** All at 104 shows +99 beside the faces, the chip's widest figure; at 1,326 it shows 99+ (sc-48825). */
+export const CROWDS = { ninetyNine: 104, crowd: 1326 } as const;
 
 const EVENT = {
   wed: 'evt-wed-4',
@@ -361,7 +378,7 @@ export function rowLine(person: Person, viewer: Pick<Viewer, 'id'>): string {
 }
 
 export function headcount(count: number): string {
-  return count === 1 ? '1 person' : `${count} people`;
+  return count === 1 ? '1 person' : `${count.toLocaleString('en')} people`;
 }
 
 export const DEADLINES = {
@@ -1123,6 +1140,8 @@ export const MEMBERS_STATES = [
   'menu',
   'nobodySuspended',
   'nobodyLeft',
+  'ninetyNine',
+  'crowd',
   'invited',
   'revoked',
   'loading',
@@ -1460,6 +1479,9 @@ function peopleOf(state: MembersState, viewer: Pick<Viewer, 'id'>): Person[] {
       }));
     case 'nobodyLeft':
       return people.filter((one) => one.id !== DANIEL);
+    case 'ninetyNine':
+    case 'crowd':
+      return crowdOf(people, CROWDS[state]);
     case 'approved':
       return approved(people, LUCIA, 'Member', viewer.id);
     case 'turnedDown':

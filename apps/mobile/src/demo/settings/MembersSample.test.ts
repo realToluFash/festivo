@@ -332,6 +332,8 @@ describe('Requests to get back in, in the app’s Members (sc-30893)', () => {
       'readOnly',
       'nobodySuspended',
       'nobodyLeft',
+      'ninetyNine',
+      'crowd',
       'loading',
       'failed',
       'approving',
@@ -661,5 +663,28 @@ describe('sc-40153’s organisation names', () => {
     expect(membersStart('longName')).toMatchObject({ open: PRIYA, organisation: LONG_NAME });
     expect(membersStart('oneWordName')).toMatchObject({ open: PRIYA, organisation: ONE_WORD_NAME });
     expect(membersStart('priya').organisation).toBe(ORGANISATION);
+  });
+});
+
+describe("Members' card with more people than its chip writes (sc-48825)", () => {
+  const cardOf = (state: 'ninetyNine' | 'crowd' | 'list') =>
+    membersCard({ ...plainCard, people: membersStart(state).people });
+
+  it('has 99 beyond the five faces at 104 people', () => {
+    expect(cardOf('ninetyNine')).toMatchObject({ more: 99 });
+    expect(cardOf('ninetyNine').faces).toHaveLength(5);
+    expect(cardOf('ninetyNine').says).toMatch(/^104 people/u);
+  });
+
+  it('has 1,321 beyond the faces at 1,326 people, and the sentence groups the figure', () => {
+    expect(cardOf('crowd')).toMatchObject({ more: 1321 });
+    expect(cardOf('crowd').says).toMatch(/^1,326 people/u);
+  });
+
+  it('keeps the first five faces as they were, and counts the crowd under All', () => {
+    expect(cardOf('crowd').faces.map(({ id }) => id)).toEqual(
+      cardOf('list').faces.map(({ id }) => id),
+    );
+    expect(counts(membersStart('crowd').people).all).toBe(1326);
   });
 });

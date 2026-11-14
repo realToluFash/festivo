@@ -10,6 +10,7 @@ use App\Entity\GuestGroup;
 use App\Entity\Organisation;
 use App\Enum\EventStatus;
 use App\Http\Access\Interfaces\EventScopedRepositoryInterface;
+use DateTimeImmutable;
 use Doctrine\Bundle\DoctrineBundle\Repository\ServiceEntityRepository;
 use Doctrine\Persistence\ManagerRegistry;
 use Psl\Type;
@@ -31,7 +32,7 @@ final class GuestRepository extends ServiceEntityRepository implements EventScop
 
     public function findOneInEvent(Uuid $eventId, Uuid $id): ?Guest
     {
-        return $this->findOneBy(['event' => $eventId, 'id' => $id]);
+        return $this->findOneBy(['event' => $eventId, 'id' => $id, 'removedAt' => null]);
     }
 
     /** @return list<Guest> hosts and companions alike, each companion in its place */
@@ -40,6 +41,7 @@ final class GuestRepository extends ServiceEntityRepository implements EventScop
         /** @var list<Guest> */
         return $this->createQueryBuilder('g')
             ->where('g.event = :event')
+            ->andWhere('g.removedAt IS NULL')
             ->setParameter('event', $event->getId(), 'uuid')
             ->orderBy('g.position', 'ASC')
             ->addOrderBy('g.id', 'ASC')
@@ -50,7 +52,7 @@ final class GuestRepository extends ServiceEntityRepository implements EventScop
     /** @return list<Guest> the hosts in it; their companions follow them */
     public function findInGroup(GuestGroup $group): array
     {
-        return $this->findBy(['group' => $group]);
+        return $this->findBy(['group' => $group, 'removedAt' => null]);
     }
 
     /** Guests and companions together: the Guests header's N. */
@@ -59,6 +61,7 @@ final class GuestRepository extends ServiceEntityRepository implements EventScop
         return Type\int()->coerce($this->createQueryBuilder('g')
             ->select('COUNT(g.id)')
             ->where('g.event = :event')
+            ->andWhere('g.removedAt IS NULL')
             ->setParameter('event', $event->getId(), 'uuid')
             ->getQuery()
             ->getSingleScalarResult());
@@ -71,6 +74,7 @@ final class GuestRepository extends ServiceEntityRepository implements EventScop
             ->select('COUNT(g.id)')
             ->innerJoin('g.event', 'e')
             ->where('e.organisation = :organisation')
+            ->andWhere('g.removedAt IS NULL')
             ->setParameter('organisation', $organisation->getId(), 'uuid')
             ->getQuery()
             ->getSingleScalarResult());
@@ -81,6 +85,7 @@ final class GuestRepository extends ServiceEntityRepository implements EventScop
         $query = $this->createQueryBuilder('g')
             ->where('g.event = :event')
             ->andWhere('g.nameKey = :key')
+            ->andWhere('g.removedAt IS NULL')
             ->setParameter('event', $event->getId(), 'uuid')
             ->setParameter('key', $nameKey)
             ->setMaxResults(1);
@@ -105,10 +110,42 @@ final class GuestRepository extends ServiceEntityRepository implements EventScop
             ->where('g.event = :event')
             ->andWhere('g.host IS NULL')
             ->andWhere('g.id = :id')
+            ->andWhere('g.removedAt IS NULL')
             ->setParameter('event', $event->getId(), 'uuid')
             ->setParameter('id', Uuid::fromString($id), 'uuid')
             ->getQuery()
             ->getOneOrNullResult();
+    }
+
+    /** A guest of this event taken off the list and still inside their undo (sc-3774); once erased, or never removed, null. */
+    public function findRemovedHostOn(Event $event, string $id): ?Guest
+    {
+        if (!Uuid::isValid($id)) {
+            return null;
+        }
+
+        /** @var ?Guest */
+        return $this->createQueryBuilder('g')
+            ->where('g.event = :event')
+            ->andWhere('g.host IS NULL')
+            ->andWhere('g.id = :id')
+            ->andWhere('g.removedAt IS NOT NULL')
+            ->setParameter('event', $event->getId(), 'uuid')
+            ->setParameter('id', Uuid::fromString($id), 'uuid')
+            ->getQuery()
+            ->getOneOrNullResult();
+    }
+
+    /** @return list<Guest> hosts whose removal began at or before the cutoff and was never undone or erased */
+    public function findRemovedBefore(DateTimeImmutable $cutoff): array
+    {
+        /** @var list<Guest> */
+        return $this->createQueryBuilder('g')
+            ->where('g.host IS NULL')
+            ->andWhere('g.removedAt <= :cutoff')
+            ->setParameter('cutoff', $cutoff, 'datetime_immutable')
+            ->getQuery()
+            ->getResult();
     }
 
     /** @return list<Guest> in their places under the host */
@@ -176,6 +213,7 @@ final class GuestRepository extends ServiceEntityRepository implements EventScop
         return $this->createQueryBuilder('g')
             ->where('g.event = :event')
             ->andWhere('g.linkFlagged = true')
+            ->andWhere('g.removedAt IS NULL')
             ->setParameter('event', $event->getId(), 'uuid')
             ->orderBy('g.position', 'ASC')
             ->getQuery()

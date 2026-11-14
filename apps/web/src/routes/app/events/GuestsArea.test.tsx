@@ -3179,7 +3179,7 @@ describe('Groups (sc-3775)', () => {
     type('New group', ' work ');
     fireEvent.click(within(column).getByRole('button', { name: 'Create group' }));
 
-    expect(within(column).getByText('There’s already a group called Work.')).toBeDefined();
+    expect(within(column).getByText('There is already a group called Work.')).toBeDefined();
     expect(sent.some((one) => one.line === 'POST /api/events/ev_1/guest-groups')).toBe(false);
 
     type('New group', 'Cousins');
@@ -3313,5 +3313,192 @@ describe('Groups (sc-3775)', () => {
     expect(sent.find((one) => one.line === 'POST /api/events/ev_1/guests')?.body).toMatchObject({
       group: { id: 'gr_work' },
     });
+  });
+});
+
+describe('Remove from the list, with a short undo (sc-3774)', () => {
+  const NGOZI_TWO = {
+    ...DETAILS,
+    companions: [
+      { id: 'c_1', fullName: 'Obi Eze', state: 'coming', namedByGuest: false },
+      { id: 'c_2', fullName: null, state: 'held', namedByGuest: false },
+    ],
+  };
+  const NGOZI_ROW = { ...NGOZI, companions: NGOZI_TWO.companions };
+
+  async function removing(answers: Record<string, Answer> = {}) {
+    let listed = [NGOZI_ROW, AMAKA];
+    const sent = await openNgozi({
+      'GET /api/events/ev_1/guests': () => json(listOf(listed)),
+      'GET /api/events/ev_1/guests/g_1': () => tagged(NGOZI_TWO, '"1"'),
+      'DELETE /api/events/ev_1/guests/g_1': () => {
+        listed = [AMAKA];
+
+        return new Response(null, { status: 204 });
+      },
+      'DELETE /api/events/ev_1/guests/g_1/removal': () => {
+        listed = [NGOZI_ROW, AMAKA];
+
+        return tagged(NGOZI_TWO, '"1"');
+      },
+      'POST /api/events/ev_1/guests/g_1/erasure': () => new Response(null, { status: 204 }),
+      ...answers,
+    });
+    fireEvent.click(within(column()).getByRole('button', { name: 'Remove from the list' }));
+    await waitFor(() =>
+      expect(document.activeElement).toBe(screen.getByRole('button', { name: 'Keep on the list' })),
+    );
+
+    return sent;
+  }
+
+  function rows(): string[] {
+    return within(screen.getByRole('region', { name: 'Guests' }))
+      .getAllByRole('link')
+      .map((row) => row.textContent ?? '');
+  }
+
+  it('asks first, naming their reply and each companion, Held as Held, with Keep on the list focused', async () => {
+    await removing();
+
+    const ask = screen.getByRole('alertdialog', { name: 'Remove Ngozi Eze?' });
+    expect(
+      within(ask)
+        .getAllByRole('listitem')
+        .map((row) => row.textContent),
+    ).toEqual([
+      'ComingTheir reply',
+      'Obi EzeCompanion · Coming',
+      'Guest of Ngozi EzeCompanion · Held',
+    ]);
+    expect(within(ask).getByText('Nothing is sent to them.')).toBeDefined();
+  });
+
+  it('keeps them on the list with Keep on the list, sending nothing', async () => {
+    const sent = await removing();
+
+    fireEvent.click(screen.getByRole('button', { name: 'Keep on the list' }));
+
+    expect(screen.queryByRole('alertdialog')).toBeNull();
+    expect(sent.some((one) => one.line.startsWith('DELETE'))).toBe(false);
+    await waitFor(() =>
+      expect(document.activeElement).toBe(
+        screen.getByRole('button', { name: 'Remove from the list' }),
+      ),
+    );
+  });
+
+  it('takes them off at once with Remove, closes their details and moves focus to Undo', async () => {
+    const sent = await removing();
+
+    fireEvent.click(
+      within(screen.getByRole('alertdialog')).getByRole('button', { name: 'Remove' }),
+    );
+
+    const undo = await screen.findByRole('button', { name: 'Undo' });
+    await waitFor(() => expect(document.activeElement).toBe(undo));
+    expect(sent.some((one) => one.line === 'DELETE /api/events/ev_1/guests/g_1')).toBe(true);
+    expect(rows().some((row) => row.startsWith('Ngozi Eze'))).toBe(false);
+    await waitFor(() =>
+      expect(screen.queryByRole('heading', { level: 2, name: 'Ngozi Eze' })).toBeNull(),
+    );
+    const message = undo.closest('[role="status"]') as HTMLElement;
+    expect(message.querySelector('.toast-words')?.textContent).toBe(
+      'Ngozi Eze removed, with Obi Eze and Guest of Ngozi Eze. Undo is open for 10 seconds.',
+    );
+    expect(within(message).getByText('10 s').getAttribute('aria-hidden')).toBe('true');
+    expect(within(message).queryByRole('button', { name: 'Close' })).toBeNull();
+    await waitFor(() =>
+      expect(sent.filter((one) => one.line === 'GET /api/events/ev_1/headcount').length).toBe(2),
+    );
+  });
+
+  it('puts them back in their place with Undo and reopens their details on their name', async () => {
+    const sent = await removing();
+    fireEvent.click(
+      within(screen.getByRole('alertdialog')).getByRole('button', { name: 'Remove' }),
+    );
+    fireEvent.click(await screen.findByRole('button', { name: 'Undo' }));
+
+    const name = await screen.findByRole('heading', { level: 2, name: 'Ngozi Eze' });
+    await waitFor(() => expect(document.activeElement).toBe(name));
+    expect(sent.some((one) => one.line === 'DELETE /api/events/ev_1/guests/g_1/removal')).toBe(
+      true,
+    );
+    expect(rows()[0]?.startsWith('Ngozi Eze')).toBe(true);
+    expect(
+      screen.getByText('Back on the list. As they were, with their link, reply and companions.'),
+    ).toBeDefined();
+    expect(screen.queryByRole('button', { name: 'Undo' })).toBeNull();
+    expect(sent.some((one) => one.line.endsWith('/erasure'))).toBe(false);
+  });
+
+  it('erases them once the count runs out, and says nothing more', async () => {
+    vi.useFakeTimers({ shouldAdvanceTime: true });
+    try {
+      const sent = await removing();
+      fireEvent.click(
+        within(screen.getByRole('alertdialog')).getByRole('button', { name: 'Remove' }),
+      );
+      const undo = await screen.findByRole('button', { name: 'Undo' });
+      await waitFor(() => expect(document.activeElement).toBe(undo));
+      act(() => undo.blur());
+      act(() => vi.advanceTimersByTime(9000));
+      expect(sent.some((one) => one.line.endsWith('/erasure'))).toBe(false);
+      act(() => vi.advanceTimersByTime(1000));
+
+      await waitFor(() =>
+        expect(sent.some((one) => one.line === 'POST /api/events/ev_1/guests/g_1/erasure')).toBe(
+          true,
+        ),
+      );
+      expect(screen.queryByRole('button', { name: 'Undo' })).toBeNull();
+    } finally {
+      vi.useRealTimers();
+    }
+  });
+
+  it('erases them as the page goes, while Undo is still open', async () => {
+    const sent = await removing();
+    fireEvent.click(
+      within(screen.getByRole('alertdialog')).getByRole('button', { name: 'Remove' }),
+    );
+    await screen.findByRole('button', { name: 'Undo' });
+
+    window.dispatchEvent(new Event('pagehide'));
+
+    await waitFor(() =>
+      expect(sent.some((one) => one.line === 'POST /api/events/ev_1/guests/g_1/erasure')).toBe(
+        true,
+      ),
+    );
+  });
+
+  it('says somebody else removed them already, and Back to guests drops the row', async () => {
+    await removing({
+      'DELETE /api/events/ev_1/guests/g_1': () => problem('not_found', 404),
+    });
+
+    fireEvent.click(
+      within(screen.getByRole('alertdialog')).getByRole('button', { name: 'Remove' }),
+    );
+
+    expect(await screen.findByText('Ngozi Eze was already removed by someone else.')).toBeDefined();
+    const back = screen.getByRole('button', { name: 'Back to guests' });
+    await waitFor(() => expect(document.activeElement).toBe(back));
+    fireEvent.click(back);
+
+    expect(screen.queryByRole('alertdialog')).toBeNull();
+    expect(rows().some((row) => row.startsWith('Ngozi Eze'))).toBe(false);
+    expect(screen.queryByRole('button', { name: 'Undo' })).toBeNull();
+  });
+
+  it('offers no Remove without guests.manage', async () => {
+    await openNgozi(
+      {},
+      OWNER_PERMISSIONS.filter((one) => one !== 'guests.manage'),
+    );
+
+    expect(within(column()).queryByRole('button', { name: 'Remove from the list' })).toBeNull();
   });
 });

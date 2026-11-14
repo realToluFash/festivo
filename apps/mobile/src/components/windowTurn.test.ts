@@ -278,7 +278,7 @@ describe('a window that opens through a Modal of its own (sc-42690)', () => {
     );
   });
 
-  it('on the phone, hides Create an organisation’s field from TalkBack until it has taken input focus, then moves TalkBack’s focus onto it (qa4 #48525)', () => {
+  it('on the phone, hides Create an organisation’s field from TalkBack until its keys are up, then moves TalkBack’s focus onto it (qa4 #48525, #48921)', () => {
     const walk = read('CreateWalkWindow.tsx');
     const steps = read('CreateWalkSteps.tsx');
 
@@ -287,16 +287,15 @@ describe('a window that opens through a Modal of its own (sc-42690)', () => {
     );
     expect(walk).toContain("quiet={live && quiet && opening.focus === 'name'}");
     expect(walk).toContain("quiet={live && quiet && opening.focus === 'search'}");
-    expect(walk).toContain('onTaken={live ? voice : undefined}');
-    expect(walk).toContain('if (focused && live) voice();');
+    expect(walk).not.toContain('voice()');
+    expect(steps).not.toContain('onTaken');
     expect(walk).toMatch(
       /if \(input\?\.isFocused\(\)\) moveScreenReaderFocus\(input\);\s+\}, \[voiced, opening\]\);/,
     );
     expect(walk).toMatch(
-      /if \(!quiet \|\| !onScreen \|\| unnamed\) return;\s+const reachable = setTimeout\(\(\) => setVoiced\(true\), SETTLED_MS\);\s+return \(\) => clearTimeout\(reachable\);\s+\}, \[quiet, onScreen, unnamed\]\);/,
+      /if \(!quiet \|\| !onScreen \|\| unnamed\) return;\s+const input = opening\.focus === 'search' \? search\.current : field\.current;\s+const up = Keyboard\.addListener\('keyboardDidShow', \(\) => \{\s+if \(!input\?\.isFocused\(\)\) return;\s+voicing\.current = true;\s+setVoiced\(true\);\s+\}\);\s+const reachable = setTimeout\(\(\) => setVoiced\(true\), KEYS_AWAITED_MS\);/,
     );
     expect(steps.match(/importantForAccessibility=\{quiet \? 'no' : 'auto'\}/g)).toHaveLength(2);
-    expect(steps).toMatch(/setFocused\(true\);\s+onTaken\?\.\(\);/);
   });
 
   it('raises the keys once more on a field that gives up focus before the keys it was raised with come up (qa3 #47084)', () => {

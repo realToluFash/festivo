@@ -10,23 +10,23 @@ appId: host.exp.Exponent
       platform: Android
     commands:
       - tapOn:
-          id: 'eventDuplicate.start.time'
+          id: 'eventDuplicate.time'
       - tapOn: 'OK'
 - runFlow:
     when:
       platform: iOS
     commands:
       - tapOn:
-          id: 'eventDuplicate.start.date'
+          id: 'eventDuplicate.date'
       - waitForAnimationToEnd
       - tapOn:
-          id: 'eventDuplicate.start.done'
+          id: 'events.pick.done'
       - waitForAnimationToEnd
       - tapOn:
-          id: 'eventDuplicate.start.time'
+          id: 'eventDuplicate.time'
       - waitForAnimationToEnd
       - tapOn:
-          id: 'eventDuplicate.start.done'
+          id: 'events.pick.done'
       - waitForAnimationToEnd
       - scrollUntilVisible:
           element:

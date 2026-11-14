@@ -61,6 +61,7 @@ final class GuestNeedRepository extends ServiceEntityRepository
             ->select('n.kind AS kind', 'n.code AS code', 'COUNT(DISTINCT g.id) AS people')
             ->innerJoin('n.guest', 'g')
             ->where('g.event = :event')
+            ->andWhere('g.removedAt IS NULL')
             ->setParameter('event', $event->getId(), 'uuid')
             ->groupBy('n.kind', 'n.code')
             ->getQuery()
