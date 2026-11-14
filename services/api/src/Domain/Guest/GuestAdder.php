@@ -42,6 +42,7 @@ final readonly class GuestAdder
             }
 
             $guest = Guest::invited($event, $new->fullName, $new->nameKey, $new->email, $new->mobile, $by, InvitationLinks::token());
+            $guest->setLanguage($new->language);
             $this->entityManager->persist($guest);
             self::recordAdded($this->auditor, $guest, $by);
 

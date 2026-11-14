@@ -133,6 +133,7 @@
     "guest.event_paused": "Não é possível responder enquanto o evento estiver em pausa. O que já enviou fica guardado.",
     "guest.event_concluded": "O prazo de resposta terminou.",
     "validation.guest_answer_unknown": "Escolha «Vem», «Não vem» ou «Por confirmar».",
+    "validation.guest_language_unknown": "Choose English, Español, Français or Português, or leave it as Not set.",
     "event.currency_in_use": "A moeda não pode ser alterada depois de haver montantes registados neste evento.",
     "event.state_invalid": "O estado atual deste evento não o permite.",
     "event.concluded": "Este evento já terminou, por isso não pode ser publicado. Altere primeiro as datas.",

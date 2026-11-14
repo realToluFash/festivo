@@ -25,6 +25,12 @@ export interface Guest {
   email: string | null;
   /** E.164; null as `email` is. */
   mobile: string | null;
+  /** The host's Language for them (sc-3790), null for Not set; null as `email` is. */
+  language: string | null;
+  /** What the guest picked on their own page, which wins over `language`; null as `email` is. */
+  chosenLanguage: string | null;
+  /** What messages to them are written in, by the rule (guestMessageLanguage); null as `email` is. */
+  messageLanguage: string | null;
   reply: GuestReply;
   /** When the current reply was given, in the event's zone; null with no reply. */
   repliedAt: string | null;
@@ -49,6 +55,8 @@ export interface NewGuest {
   /** As the account's Mobile number field sends it: the country picked and the number typed. Answered as E.164. */
   mobile?: { countryCode: string; number: string } | null;
   companions?: { fullName?: string | null }[];
+  /** The host's Language for them, null for Not set. Left out of an edit, it stays as it was. */
+  language?: string | null;
   /** Sent once the host pressed Add anyway on "<name> is already on the list". */
   allowDuplicate?: boolean;
 }
@@ -56,6 +64,8 @@ export interface NewGuest {
 /** One guest as their details show them (sc-3773). */
 export interface GuestDetails extends Guest {
   added: { at: string; by: string | null };
+  /** What Not set falls back to; null as `email` is. */
+  organisationLanguage: string | null;
 }
 
 /** The whole guest as Edit saves it: each companion kept by `id`, one with no id added, one left out removed. */
@@ -83,6 +93,8 @@ export interface GuestPage {
     reply: { answer: GuestAnswer; at: string } | null;
     companions: number;
   };
+  /** What the page's language is chosen from (guestLanguage, sc-3790), with the browser's own languages. */
+  language: { chosen: string | null; host: string | null; organisation: string };
   event: {
     /** For its colour (meshFor) until it has a photo, as its event page has it. */
     id: string;
@@ -146,6 +158,9 @@ export function asGuest(value: unknown): Guest | null {
     fullName,
     email: text(row.email),
     mobile: text(row.mobile),
+    language: text(row.language),
+    chosenLanguage: text(row.chosenLanguage),
+    messageLanguage: text(row.messageLanguage),
     reply,
     repliedAt: reply === 'noReply' ? null : text(row.repliedAt),
     companions: companions as Companion[],
@@ -262,5 +277,9 @@ export function asGuestDetails(value: unknown): GuestDetails | null {
 
   if (guest == null || at == null) return null;
 
-  return { ...guest, added: { at, by: text(added?.by) } };
+  return {
+    ...guest,
+    added: { at, by: text(added?.by) },
+    organisationLanguage: text((value as { organisationLanguage?: unknown }).organisationLanguage),
+  };
 }

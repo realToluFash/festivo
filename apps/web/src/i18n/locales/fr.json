@@ -598,7 +598,9 @@
     "pausedReason": "Les réponses sont closes tant que l’événement est en pause. Tout ce que vous avez envoyé est conservé.",
     "calledOffNotice": "Cet événement a été annulé. Il n’aura pas lieu. Vous n’avez rien à faire.",
     "finishedNotice": "Cet événement a eu lieu. Cette page reste en ligne, en souvenir.",
-    "refused": "Non envoyé : les réponses ont été closes entre-temps. Tous vos choix sont conservés."
+    "refused": "Non envoyé : les réponses ont été closes entre-temps. Tous vos choix sont conservés.",
+    "languageSwitched": "This page is now in English.",
+    "languageNotSaved": "Your language was not saved. This page stays in English on this device, but it may open in another language on other devices."
   },
   "signIn": {
     "title": "Se connecter",
@@ -2832,6 +2834,10 @@
     "saved": "Modifications enregistrées",
     "notSaved": "Non enregistré. Rien n’a été modifié. Réessayez.",
     "keepsLink": "Si vous modifiez l’adresse e-mail ou le numéro de portable, le lien d’invitation reste le même.",
+    "languageNotSet": "Not set",
+    "languageHint": "Their page opens in their browser’s language when Soirely offers it, otherwise in this language. Messages use this language. When this is Not set, both use your organisation’s language.",
+    "languageNotSetLine": "Not set · their browser’s language, or {{language}} when Soirely does not offer it",
+    "languageChose": "They chose {{language}} on their page, and that wins.",
     "removed": "Vous avez retiré {{name}}. Enregistrez pour conserver la modification.",
     "moreCompanions_one": "{{count, number}} accompagnant de plus",
     "moreCompanions_other": "{{count, number}} accompagnants de plus",

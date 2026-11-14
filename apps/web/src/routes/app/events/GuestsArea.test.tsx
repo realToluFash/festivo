@@ -372,6 +372,7 @@ describe('Guests (sc-1468)', () => {
       email: 'bimpe@example.com',
       mobile: { countryCode: 'GB', number: '07700 900123' },
       companions: [{ fullName: null }],
+      language: null,
     });
     expect(field('Full name').value).toBe('');
     expect(within(form()).getByText('None yet · 0 of 10')).toBeDefined();
@@ -1094,6 +1095,7 @@ describe('A guest’s details, and correcting them (sc-3773)', () => {
       email: 'ngozi@example.com',
       mobile: { countryCode: 'NG', number: '0803 555 0142' },
       companions: [{ id: 'c_1', fullName: 'Obi Eze' }],
+      language: null,
     });
     expect(screen.getByRole('heading', { level: 2, name: 'Ngozi Eze-Okafor' })).toBeDefined();
   });
@@ -1800,5 +1802,108 @@ describe('the Guests top at 320 (sc-3773, ux #44604)', () => {
 
     expect(name).toContain('text-overflow: ellipsis;');
     expect(name).toContain('white-space: nowrap;');
+  });
+});
+
+describe('The host’s Language for a guest (sc-3790)', () => {
+  const HINT =
+    'Their page opens in their browser’s language when Soirely offers it, otherwise in this language. Messages use this language. When this is Not set, both use your organisation’s language.';
+
+  function language(): HTMLSelectElement {
+    return within(document.querySelector<HTMLElement>('.gs-form, .gs-column')!).getByRole(
+      'combobox',
+      { name: /^Language/u },
+    ) as HTMLSelectElement;
+  }
+
+  it('reads Not set with the organisation’s language in the details, and Edit opens on Not set with the hint', async () => {
+    await openNgozi({
+      'GET /api/events/ev_1/guests/g_1': () =>
+        tagged({ ...DETAILS, language: null, organisationLanguage: 'en' }, '"1"'),
+    });
+
+    expect(
+      within(column()).getByText(
+        'Not set · their browser’s language, or English when Soirely does not offer it',
+      ),
+    ).toBeDefined();
+
+    fireEvent.click(within(column()).getByRole('button', { name: 'Edit' }));
+    await waitFor(() => expect(document.activeElement).toBe(field('Full name')));
+
+    expect(language().value).toBe('');
+    expect([...language().options].map((one) => [one.textContent, one.lang])).toEqual([
+      ['Not set', ''],
+      ['English', 'en'],
+      ['Español', 'es'],
+      ['Français', 'fr'],
+      ['Português', 'pt'],
+    ]);
+    expect(screen.getByText(HINT)).toBeDefined();
+  });
+
+  it('saves the Language chosen, and only it when nothing else changed', async () => {
+    const sent = await editNgozi({
+      'PUT /api/events/ev_1/guests/g_1': () => tagged({ ...DETAILS, language: 'pt' }, '"2"'),
+    });
+
+    fireEvent.change(language(), { target: { value: 'pt' } });
+    fireEvent.click(screen.getByRole('button', { name: 'Save' }));
+
+    expect(await screen.findByText('Saved')).toBeDefined();
+    expect((puts(sent)[0]?.body as { language?: unknown }).language).toBe('pt');
+    expect(within(column()).getByText('Português')).toBeDefined();
+  });
+
+  it('says the guest’s own choice wins, under the field and in the details, and keeps the host’s set', async () => {
+    await openNgozi({
+      'GET /api/events/ev_1/guests/g_1': () =>
+        tagged({ ...DETAILS, language: 'es', chosenLanguage: 'pt' }, '"1"'),
+    });
+
+    expect(
+      within(column()).getByText('They chose Português on their page, and that wins.'),
+    ).toBeDefined();
+
+    fireEvent.click(within(column()).getByRole('button', { name: 'Edit' }));
+    await waitFor(() => expect(document.activeElement).toBe(field('Full name')));
+
+    expect(language().value).toBe('es');
+    expect(language().disabled).toBe(false);
+    const note = screen.getByText('They chose Português on their page, and that wins.');
+    expect(language().getAttribute('aria-describedby')).toContain(note.parentElement!.id);
+  });
+
+  it('is on Add guest after the mobile number, and sent with the guest', async () => {
+    const sent = await opened({
+      'POST /api/events/ev_1/guests': () =>
+        json({ guest: guest('g_9', 'Lucas Martin', { language: 'fr' }) }, 201),
+    });
+
+    type('Full name', 'Lucas Martin');
+    fireEvent.change(language(), { target: { value: 'fr' } });
+    fireEvent.click(addButton());
+
+    expect(await within(form()).findByText('Lucas Martin added.')).toBeDefined();
+    expect(
+      (
+        sent.find((one) => one.line === 'POST /api/events/ev_1/guests')?.body as {
+          language?: unknown;
+        }
+      ).language,
+    ).toBe('fr');
+  });
+
+  it('shows neither the field’s row nor the guest’s choice to somebody who only views guests', async () => {
+    await openNgozi(
+      {
+        'GET /api/events/ev_1/guests/g_1': () =>
+          tagged({ ...DETAILS, email: null, mobile: null, companions: DETAILS.companions }, '"1"'),
+      },
+      OWNER_PERMISSIONS.filter((one) => one !== 'guests.manage'),
+    );
+
+    expect(within(column()).queryByText(/^Not set ·/u)).toBeNull();
+    expect(within(column()).queryByText(/They chose/u)).toBeNull();
   });
 });

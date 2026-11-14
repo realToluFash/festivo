@@ -1,9 +1,11 @@
-import { fireEvent, render, screen, waitFor } from '@testing-library/react';
+import { fireEvent, render, screen, waitFor, within } from '@testing-library/react';
 import i18next from 'i18next';
 import { RouterProvider, createMemoryRouter } from 'react-router';
 import { act } from 'react';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 
+import { setLanguage } from '../../i18n/index.ts';
+import { __setSessionState } from '../../session.ts';
 import { atPhoneWidth, atWideWidth } from '../../test-widths.ts';
 import { routes } from '../index.tsx';
 
@@ -21,6 +23,7 @@ function json({ status, body }: Answer): Response {
 
 const PAGE = {
   guest: { fullName: ADAEZE, reply: null, companions: 0 },
+  language: { chosen: null, host: null, organisation: 'en' },
   event: {
     id: '0193f5a8-0000-7000-8000-000000000001',
     name: "Amara & Tobi's wedding",
@@ -78,7 +81,8 @@ function open(token = TOKEN) {
   );
 }
 
-afterEach(() => {
+afterEach(async () => {
+  await i18next.changeLanguage('en');
   vi.useRealTimers();
   vi.restoreAllMocks();
   localStorage.clear();
@@ -913,6 +917,222 @@ describe('a page left open (sc-3591)', () => {
     expect(
       await screen.findByRole('heading', { name: 'This invitation link does not work' }),
     ).toBeDefined();
+  });
+});
+
+describe("the guest's language (sc-3790)", () => {
+  function browser(...languages: string[]): void {
+    vi.spyOn(navigator, 'languages', 'get').mockReturnValue(languages);
+  }
+
+  function language(chosen: string | null, host: string | null, organisation = 'en') {
+    return { ...PAGE, language: { chosen, host, organisation } };
+  }
+
+  it('opens in Portuguese for a browser asking for pt-BR, with <html lang> following', async () => {
+    browser('pt-BR');
+    api({ '/api/guest-links/page': [{ status: 200, body: language(null, 'fr') }] });
+    open();
+
+    expect(await screen.findByRole('button', { name: /Português/u })).toBeDefined();
+    expect(document.documentElement.lang).toBe('pt');
+  });
+
+  it('falls through a browser asking only for de to the host’s Language, then the organisation’s', async () => {
+    browser('de');
+    api({ '/api/guest-links/page': [{ status: 200, body: language(null, 'fr') }] });
+    const first = open();
+
+    expect(await screen.findByRole('button', { name: /Français/u })).toBeDefined();
+    first.unmount();
+
+    api({ '/api/guest-links/page': [{ status: 200, body: language(null, null, 'es') }] });
+    open();
+
+    expect(await screen.findByRole('button', { name: /Español/u })).toBeDefined();
+  });
+
+  it('opens in what the guest chose, whatever the browser asks for', async () => {
+    browser('en-GB', 'en');
+    api({ '/api/guest-links/page': [{ status: 200, body: language('fr', 'pt') }] });
+    open();
+
+    expect(await screen.findByRole('button', { name: /Français/u })).toBeDefined();
+  });
+
+  it('opens exactly as before in English for a guest with nothing set on an English browser', async () => {
+    browser('en-US', 'en');
+    api({ '/api/guest-links/page': [{ status: 200, body: PAGE }] });
+    open();
+
+    expect(await screen.findByRole('heading', { level: 1, name: 'You are invited' })).toBeDefined();
+    expect(document.documentElement.lang).toBe('en');
+  });
+
+  it('switches at once, says so once, and keeps the choice on the guest with a copy on this device', async () => {
+    browser('en');
+    const { sent } = api({
+      '/api/guest-links/page': [{ status: 200, body: PAGE }],
+      '/api/guest-links/language': [{ status: 204 }],
+    });
+    open();
+
+    fireEvent.click(await screen.findByRole('button', { name: 'Language: English' }));
+    fireEvent.click(screen.getByRole('menuitemradio', { name: 'Français' }));
+
+    await waitFor(() => expect(document.documentElement.lang).toBe('fr'));
+    expect(document.activeElement).toBe(screen.getByRole('button', { name: /Français/u }));
+    expect(screen.getByText(i18next.t('guest.languageSwitched'))).toBeDefined();
+    await waitFor(() =>
+      expect(sent).toContainEqual({
+        path: '/api/guest-links/language',
+        body: { token: TOKEN, language: 'fr' },
+      }),
+    );
+    expect(localStorage.getItem('soirely:language')).toBe('fr');
+    expect(localStorage.getItem('soirely:language:chosen-signed-out')).toBeNull();
+    expect(screen.queryByRole('alert')).toBeNull();
+  });
+
+  it('opens again in the language a failed save kept on this device, ahead of the browser', async () => {
+    browser('en');
+    api({
+      '/api/guest-links/page': [{ status: 200, body: PAGE }],
+      '/api/guest-links/language': [{ status: 500, body: BROKEN }],
+    });
+    const first = open();
+
+    fireEvent.click(await screen.findByRole('button', { name: 'Language: English' }));
+    fireEvent.click(screen.getByRole('menuitemradio', { name: 'Français' }));
+    await screen.findByRole('alert');
+    first.unmount();
+    await i18next.changeLanguage('en');
+
+    api({ '/api/guest-links/page': [{ status: 200, body: PAGE }] });
+    open();
+
+    expect(await screen.findByRole('button', { name: /Français/u })).toBeDefined();
+    expect(document.documentElement.lang).toBe('fr');
+  });
+
+  it('opens in the saved choice over this device’s copy', async () => {
+    browser('en');
+    localStorage.setItem('soirely:language', 'es');
+    api({ '/api/guest-links/page': [{ status: 200, body: language('pt', null) }] });
+    open();
+
+    expect(await screen.findByRole('button', { name: /Português/u })).toBeDefined();
+  });
+
+  it('leaves a signed-in account’s language alone: no account request, no device write, and Español again on the way out', async () => {
+    browser('en');
+    await setLanguage('es');
+    __setSessionState({
+      status: 'signedIn',
+      session: {
+        userId: 'u1',
+        name: 'Folake Adeyemi',
+        email: 'folake@ire.events',
+        verified: true,
+        complete: true,
+        awaiting: null,
+        providers: [],
+        hasPassword: true,
+        needsOrganisation: false,
+        organisation: null,
+        organisationCountry: null,
+        organisations: [],
+        timezone: null,
+        waitingFor: null,
+      },
+    });
+    try {
+      const { sent } = api({
+        '/api/guest-links/page': [{ status: 200, body: PAGE }],
+        '/api/guest-links/language': [{ status: 204 }],
+      });
+      const page = open();
+
+      fireEvent.click(await screen.findByRole('button', { name: /Español/u }));
+      fireEvent.click(screen.getByRole('menuitemradio', { name: 'English' }));
+
+      await waitFor(() =>
+        expect(sent).toContainEqual({
+          path: '/api/guest-links/language',
+          body: { token: TOKEN, language: 'en' },
+        }),
+      );
+      expect(document.documentElement.lang).toBe('en');
+      expect(sent.some((one) => one.path === '/api/auth/locale')).toBe(false);
+      expect(localStorage.getItem('soirely:language')).toBe('es');
+      expect(localStorage.getItem('soirely:language:chosen-signed-out')).toBeNull();
+
+      page.unmount();
+
+      await waitFor(() => expect(document.documentElement.lang).toBe('es'));
+    } finally {
+      __setSessionState({ status: 'unknown' });
+    }
+  });
+
+  it('says the language was not saved, as an alert with Try again, and clears it once saved', async () => {
+    browser('en');
+    const { sent } = api({
+      '/api/guest-links/page': [{ status: 200, body: PAGE }],
+      '/api/guest-links/language': [{ status: 500, body: BROKEN }, { status: 204 }],
+    });
+    open();
+
+    fireEvent.click(await screen.findByRole('button', { name: 'Language: English' }));
+    fireEvent.click(screen.getByRole('menuitemradio', { name: 'Português' }));
+
+    const alert = await screen.findByRole('alert');
+    expect(alert.textContent).toContain(i18next.t('guest.languageNotSaved'));
+    expect(document.documentElement.lang).toBe('pt');
+
+    fireEvent.click(within(alert).getByRole('button', { name: i18next.t('error.retry') }));
+
+    await waitFor(() => expect(screen.queryByRole('alert')).toBeNull());
+    expect(sent.filter((one) => one.path === '/api/guest-links/language')).toHaveLength(2);
+  });
+
+  it('saves only the last of quick picks, once the save before it has answered', async () => {
+    browser('en');
+    let answerFirst: (response: Response) => void = () => {};
+    const saves: string[] = [];
+    vi.spyOn(globalThis, 'fetch').mockImplementation(async (input, init) => {
+      const path = new URL(typeof input === 'string' ? input : (input as Request).url).pathname;
+      if (path === '/api/guest-links/page') return json({ status: 200, body: PAGE });
+      saves.push((JSON.parse(String(init?.body)) as { language: string }).language);
+      if (saves.length > 1) return json({ status: 204 });
+
+      return new Promise<Response>((resolve) => {
+        answerFirst = resolve;
+      });
+    });
+    open();
+
+    fireEvent.click(await screen.findByRole('button', { name: 'Language: English' }));
+    fireEvent.click(screen.getByRole('menuitemradio', { name: 'Français' }));
+    await waitFor(() => expect(saves).toEqual(['fr']));
+
+    fireEvent.click(screen.getByRole('button', { name: /Français/u }));
+    fireEvent.click(screen.getByRole('menuitemradio', { name: 'Español' }));
+    await waitFor(() => expect(document.documentElement.lang).toBe('es'));
+    fireEvent.click(screen.getByRole('button', { name: /Español/u }));
+    fireEvent.click(screen.getByRole('menuitemradio', { name: 'Português' }));
+    await waitFor(() => expect(document.documentElement.lang).toBe('pt'));
+    await act(async () => {
+      await new Promise((resolve) => setTimeout(resolve, 20));
+    });
+    expect(saves).toEqual(['fr']);
+
+    await act(async () => {
+      answerFirst(json({ status: 204 }));
+    });
+
+    await waitFor(() => expect(saves).toEqual(['fr', 'pt']));
+    expect(screen.queryByRole('alert')).toBeNull();
   });
 });
 

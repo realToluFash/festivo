@@ -130,6 +130,7 @@ final class GuestLinksTest extends ApiTestCase
         self::assertSame(200, $this->statusCode());
         self::assertSame([
             'guest' => ['fullName' => self::ADAEZE, 'reply' => null, 'companions' => 0],
+            'language' => ['chosen' => null, 'host' => null, 'organisation' => 'en'],
             'event' => ['id' => $this->eventId, 'name' => "Amara & Tobi's wedding", 'type' => 'wedding', 'cover' => null, 'hosts' => ['Funmi Adeyemi'], 'startsAt' => '2030-11-14T16:00:00+01:00', 'timeZone' => 'Africa/Lagos', 'venue' => null],
             'phase' => 'live',
             'started' => false,
@@ -139,6 +140,38 @@ final class GuestLinksTest extends ApiTestCase
         self::assertSame('no-store, private', $this->client->getResponse()->headers->get('Cache-Control'));
         self::assertSame($audited, $this->auditRows());
         self::assertSame($before, self::em()->getConnection()->fetchAssociative('SELECT * FROM guests'));
+    }
+
+    #[Test]
+    public function theGuestsChoiceIsKeptOnTheGuestBesideTheHostsLanguageAndNeverOnAnAccount(): void
+    {
+        $guest = $this->add(self::ADAEZE, language: 'pt');
+        $token = $this->token($guest);
+        $accounts = self::em()->getConnection()->fetchAllAssociative('SELECT id, locale FROM users ORDER BY id');
+
+        self::assertSame(['chosen' => null, 'host' => 'pt', 'organisation' => 'en'], $this->open($token)['language'] ?? null);
+
+        $this->choose($token, 'fr');
+
+        self::assertSame(204, $this->statusCode(), Json\encode($this->last()));
+        self::assertSame(['chosen' => 'fr', 'host' => 'pt', 'organisation' => 'en'], $this->open($token)['language'] ?? null);
+        self::assertSame($accounts, self::em()->getConnection()->fetchAllAssociative('SELECT id, locale FROM users ORDER BY id'));
+
+        $details = Type\shape(['guest' => Type\dict(Type\string(), Type\mixed())], true)->coerce($this->as($this->owner, 'GET', $this->guests() . '/' . $guest));
+        self::assertSame(['pt', 'fr', 'fr'], [$details['guest']['language'] ?? null, $details['guest']['chosenLanguage'] ?? null, $details['guest']['messageLanguage'] ?? null]);
+    }
+
+    #[Test]
+    public function aLanguageSoirelyDoesNotOfferIsRefusedAndAnUnknownLinkIsNotFound(): void
+    {
+        $token = $this->token($this->add(self::ADAEZE));
+
+        $this->choose($token, 'de');
+        self::assertSame(422, $this->statusCode());
+        self::assertSame(['chosen' => null, 'host' => null, 'organisation' => 'en'], $this->open($token)['language'] ?? null);
+
+        $this->choose(Str\repeat('x', 43), 'fr');
+        self::assertSame(404, $this->statusCode());
     }
 
     #[Test]
@@ -345,11 +378,12 @@ final class GuestLinksTest extends ApiTestCase
     }
 
     /** @param list<string> $companions */
-    private function add(string $name, array $companions = [], ?string $eventId = null, ?string $email = null): string
+    private function add(string $name, array $companions = [], ?string $eventId = null, ?string $email = null, ?string $language = null): string
     {
         $body = $this->as($this->owner, 'POST', $this->guests($eventId), [
             'fullName' => $name,
             'email' => $email,
+            'language' => $language,
             'companions' => Vec\map($companions, static fn (string $companion): array => ['fullName' => $companion]),
         ]);
         self::assertSame(201, $this->statusCode(), Json\encode($body));
@@ -384,6 +418,11 @@ final class GuestLinksTest extends ApiTestCase
     private function open(#[SensitiveParameter] string $token): array
     {
         return $this->anonymous('/api/guest-links/page', $token);
+    }
+
+    private function choose(#[SensitiveParameter] string $token, string $language): void
+    {
+        $this->client->request('POST', '/api/guest-links/language', server: ['CONTENT_TYPE' => 'application/json', 'HTTP_ACCEPT_LANGUAGE' => 'en'], content: Json\encode(['token' => $token, 'language' => $language]));
     }
 
     /** @return array<string, mixed> */

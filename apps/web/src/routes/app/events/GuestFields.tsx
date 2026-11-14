@@ -1,4 +1,4 @@
-import { callingCode, countryChoices } from '@soirely/domain';
+import { LOCALES, callingCode, countryChoices, ownLanguageName } from '@soirely/domain';
 import { type ReactNode, useId, useMemo } from 'react';
 import { useTranslation } from 'react-i18next';
 
@@ -116,6 +116,66 @@ export function GuestField({
         />
       </div>
       {error != null && <FieldWrong id={`${id}-error`}>{error}</FieldWrong>}
+    </div>
+  );
+}
+
+/** The guest's own choice, under the host's Language: the info mark and the words, never colour alone (sc-3790). */
+export function ChoseNote({ chose, id }: { chose: string; id?: string }) {
+  const { t } = useTranslation();
+
+  return (
+    <p id={id} className="gs-chose">
+      <Glyph name="info" size={16} weight={2.2} />
+      <span>{t('guestList.languageChose', { language: ownLanguageName(chose) ?? chose })}</span>
+    </p>
+  );
+}
+
+/** sc-3790: Language after the contact fields, optional, Not set first, each language in its own name and lang. */
+export function LanguageField({
+  value,
+  chose,
+  onChange,
+}: {
+  value: string | null;
+  chose: string | null;
+  onChange: (language: string | null) => void;
+}) {
+  const { t } = useTranslation();
+  const id = useId();
+  const told = [chose == null ? null : `${id}-chose`, `${id}-help`].filter(Boolean).join(' ');
+
+  return (
+    <div className="desk-field">
+      <label htmlFor={id} className="desk-label gs-label">
+        {t('language.label')}
+        <span className="gs-optional">{t('eventForm.optional')}</span>
+      </label>
+      <div className="desk-box gs-select">
+        <span aria-hidden="true">{ownLanguageName(value) ?? t('guestList.languageNotSet')}</span>
+        <Glyph name="chevdown" size={15} weight={2.4} />
+        <select
+          id={id}
+          value={value ?? ''}
+          data-focus="language"
+          aria-describedby={told}
+          onChange={(event) =>
+            onChange(LOCALES.find((one) => one.code === event.target.value)?.code ?? null)
+          }
+        >
+          <option value="">{t('guestList.languageNotSet')}</option>
+          {LOCALES.map((one) => (
+            <option key={one.code} value={one.code} lang={one.code}>
+              {one.nativeName}
+            </option>
+          ))}
+        </select>
+      </div>
+      {chose != null && <ChoseNote chose={chose} id={`${id}-chose`} />}
+      <p id={`${id}-help`} className="desk-help">
+        {t('guestList.languageHint')}
+      </p>
     </div>
   );
 }
