@@ -68,8 +68,8 @@ final readonly class HeadcountCalculator
 
         return [
             'onList' => Iter\count($standings),
-            'notYetInvited' => 0,
-            'invited' => Iter\count($standings),
+            'notYetInvited' => $count(GuestStanding::NotYetInvited),
+            'invited' => Iter\count($standings) - $count(GuestStanding::NotYetInvited),
             'accepted' => $count(GuestStanding::Accepted),
             'maybe' => $count(GuestStanding::Maybe),
             'awaitingReply' => $count(GuestStanding::AwaitingReply),
@@ -82,7 +82,8 @@ final readonly class HeadcountCalculator
     public static function standing(Guest $person): GuestStanding
     {
         $host = $person->getHost();
+        $decides = $host ?? $person;
 
-        return GuestStanding::of(($host ?? $person)->getReply() ?? GuestReply::NoReply, null !== $host);
+        return GuestStanding::of($decides->getReply() ?? GuestReply::NoReply, null !== $host, $decides->isInvited());
     }
 }

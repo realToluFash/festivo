@@ -2,6 +2,7 @@ import {
   ApiError,
   GUEST_NAME_MAXIMUM,
   type Guest,
+  type GuestDetails,
   type GuestList,
   type OrganisationEvent,
   asGuestList,
@@ -61,17 +62,12 @@ import {
   isListed,
   newGuestOf,
   problemsOf,
+  shownReply,
   violationProblems,
   withGuest as listedWith,
 } from './guestRows.ts';
-import {
-  GuestColumn,
-  REPLY_KEY,
-  ReplyMark,
-  companionShown,
-  guestAddress,
-  replyDate,
-} from './GuestColumn.tsx';
+import { GuestColumn, REPLY_KEY, ReplyMark, companionShown, guestAddress } from './GuestColumn.tsx';
+import { replyDate } from './guestDates.ts';
 import { CompanionField, GuestField, LanguageField, PhoneField } from './GuestFields.tsx';
 import {
   AllergyMark,
@@ -436,6 +432,36 @@ export function GuestsArea({
     return () => at?.removeEventListener('keydown', listen);
   });
 
+  function changed(guest: GuestDetails): void {
+    setRecount((n) => n + 1);
+    setLoad((was) =>
+      was.kind === 'loaded'
+        ? {
+            kind: 'loaded',
+            list: {
+              ...was.list,
+              guests: was.list.guests.map((one) => (one.id === guest.id ? guest : one)),
+            },
+          }
+        : was,
+    );
+  }
+
+  /** A phase that no longer invites: the event is read again, so the page says why, and the refusal still reaches the caller. */
+  function phaseRefused(error: unknown): never {
+    if (error instanceof ApiError && error.is('event_state_invalid')) {
+      void api.taggedEvent(event.id).then(
+        (latest) => {
+          onChange(latest.event, latest.tag);
+          window.setTimeout(() => heading.current?.focus(), 0);
+        },
+        () => undefined,
+      );
+    }
+
+    throw error;
+  }
+
   const guests = load.kind === 'loaded' ? load.list.guests : [];
   const shows =
     load.kind === 'failed' || counted === 'failed'
@@ -662,22 +688,12 @@ export function GuestsArea({
                           country={country}
                           stamp={stamp}
                           invites={invites}
+                          draft={phase === 'draft'}
                           flagged={flagged.has(open)}
-                          onCopy={() =>
-                            api.guestLink(event.id, open).catch((error: unknown) => {
-                              if (error instanceof ApiError && error.is('event_state_invalid')) {
-                                void api.taggedEvent(event.id).then(
-                                  (latest) => {
-                                    onChange(latest.event, latest.tag);
-                                    window.setTimeout(() => heading.current?.focus(), 0);
-                                  },
-                                  () => undefined,
-                                );
-                              }
-
-                              throw error;
-                            })
-                          }
+                          onCopy={() => api.guestLink(event.id, open).catch(phaseRefused)}
+                          onMark={(how) => api.markInvited(event.id, open, how).catch(phaseRefused)}
+                          onUnmark={() => api.markNotInvited(event.id, open)}
+                          onChanged={changed}
                           onReplace={() =>
                             api
                               .replaceGuestLink(event.id, open)
@@ -695,21 +711,8 @@ export function GuestsArea({
                             focus('guest-heading');
                           }}
                           onSaved={(guest) => {
+                            changed(guest);
                             setSaved(true);
-                            setRecount((n) => n + 1);
-                            setLoad((was) =>
-                              was.kind === 'loaded'
-                                ? {
-                                    kind: 'loaded',
-                                    list: {
-                                      ...was.list,
-                                      guests: was.list.guests.map((one) =>
-                                        one.id === guest.id ? guest : one,
-                                      ),
-                                    },
-                                  }
-                                : was,
-                            );
                           }}
                         />
                       )}
@@ -856,6 +859,7 @@ const CHOICE_KEY: Record<Choice, string> = {
   noReply: REPLY_KEY.noReply,
   held: REPLY_KEY.held,
   notComing: REPLY_KEY.notComing,
+  notYetInvited: REPLY_KEY.notYetInvited,
 };
 
 /** Find a guest, and the house filter menu beside it reading "{choice} · {n}". */
@@ -893,7 +897,11 @@ function SearchRow({
       </div>
       <div className="gs-menu">
         <Menu
-          items={CHOICES.map((key) => ({ key, word: t(CHOICE_KEY[key]), count: counts[key] }))}
+          items={CHOICES.filter((key) => key !== 'notYetInvited' || counts[key] > 0).map((key) => ({
+            key,
+            word: t(CHOICE_KEY[key]),
+            count: counts[key],
+          }))}
           picked={choice}
           open={menu}
           onOpen={() => onMenu(true)}
@@ -960,7 +968,8 @@ function Rows({
         const { guest, companion } = person;
 
         if (companion == null) {
-          const word = t(REPLY_KEY[guest.reply]);
+          const shown = shownReply(guest);
+          const word = t(REPLY_KEY[shown]);
           const reply =
             guest.repliedAt == null
               ? word
@@ -984,7 +993,7 @@ function Rows({
                 onOpen={onOpen}
               >
                 <span className="gs-lead">
-                  <ReplyMark reply={guest.reply} />
+                  <ReplyMark reply={shown} />
                 </span>
                 <RowWords
                   title={guest.fullName}

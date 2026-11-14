@@ -60,6 +60,8 @@ final readonly class GuestSerialiser
         $reply = $host->getReply() ?? GuestReply::NoReply;
         $contacts = null !== $needs;
         $needsOf = static fn (Guest $person): array => null === $needs ? [] : ['needs' => self::needs($needs[$person->getId()->toRfc4122()] ?? GuestNeeds::none())];
+        $zone = new DateTimeZone($host->getEvent()->getTimeZone());
+        $invitedAt = $host->getInvitedAt();
 
         return [
             'id' => $host->getId()->toRfc4122(),
@@ -72,13 +74,18 @@ final readonly class GuestSerialiser
                 'messageLanguage' => GuestLanguage::forMessage($host),
             ] : [],
             'reply' => $reply->value,
-            'repliedAt' => GuestReply::NoReply === $reply ? null : $host->getRepliedAt()?->setTimezone(new DateTimeZone($host->getEvent()->getTimeZone()))->format(\DATE_ATOM),
+            'repliedAt' => GuestReply::NoReply === $reply ? null : $host->getRepliedAt()?->setTimezone($zone)->format(\DATE_ATOM),
             'replySource' => GuestReply::NoReply === $reply ? null : $host->getReplySource()?->value,
+            'invitation' => null === $invitedAt ? null : [
+                'at' => $invitedAt->setTimezone($zone)->format(\DATE_ATOM),
+                'how' => $host->getInvitationMethod()?->value,
+                'by' => $host->getInvitedBy()?->getName(),
+            ],
             ...$needsOf($host),
             'companions' => Vec\map($companions, static fn (Guest $companion): array => [
                 'id' => $companion->getId()->toRfc4122(),
                 'fullName' => $companion->getFullName(),
-                'state' => GuestStanding::of($reply, companion: true)->isHeld() ? 'held' : 'coming',
+                'state' => self::companionState(GuestStanding::of($reply, companion: true, invited: $host->isInvited())),
                 ...$needsOf($companion),
             ]),
         ];
@@ -92,6 +99,15 @@ final readonly class GuestSerialiser
             ...Dict\from_entries(Vec\map(NeedKind::cases(), static fn (NeedKind $kind): array => [$kind->otherField(), $needs->otherOf($kind)])),
             'note' => $needs->note,
         ];
+    }
+
+    private static function companionState(GuestStanding $standing): string
+    {
+        return match (true) {
+            GuestStanding::NotYetInvited === $standing => 'notYetInvited',
+            $standing->isHeld() => 'held',
+            default => 'coming',
+        };
     }
 
     /** @return array<string, mixed> */

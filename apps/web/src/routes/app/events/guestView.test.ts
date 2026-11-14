@@ -14,6 +14,7 @@ function guest(id: string, fullName: string, more: Partial<Guest> = {}): Guest {
     messageLanguage: null,
     reply: 'noReply',
     repliedAt: null,
+    invitation: { at: '2026-11-01T10:00:00+01:00', how: 'whatsapp', by: 'Folake Adeyemi' },
     companions: [],
     ...more,
   };
@@ -61,6 +62,14 @@ describe('the counts above the list (sc-3772)', () => {
     expect(COUNTS.coming + COUNTS.maybe + COUNTS.noReply + COUNTS.held + COUNTS.notComing).toBe(
       COUNTS.all,
     );
+  });
+
+  it('counts the people nobody has invited apart, so every choice but All still adds up to All (sc-3788)', () => {
+    const counts = countsOf({ ...HEADCOUNT, onList: 9, notYetInvited: 2 });
+    const { all, coming, maybe, noReply, held, notComing, notYetInvited } = counts;
+
+    expect(notYetInvited).toBe(2);
+    expect(coming + maybe + noReply + held + notComing + notYetInvited).toBe(all);
   });
 
   it('opens on All for anything the address does not know', () => {
@@ -123,6 +132,37 @@ describe('the list as the choice and the search leave it', () => {
 
     if (view.kind !== 'rows') throw new Error('expected rows');
     expect(view.rows.map((row) => row.indent)).toEqual([false, true]);
+  });
+
+  it('lists a guest nobody invited, and their companions, apart from No reply (sc-3788)', () => {
+    const EMEKA = guest('g_6', 'Emeka Obi', {
+      invitation: null,
+      companions: [{ id: 'c_3', fullName: null, state: 'notYetInvited' }],
+    });
+    const list = [...LIST, EMEKA];
+    const counts = countsOf({ ...HEADCOUNT, onList: 9, notYetInvited: 2 });
+    const ids = (choice: 'noReply' | 'notYetInvited') => {
+      const { view } = viewOf(list, counts, choice, '', new Set());
+
+      return view.kind === 'rows' ? view.rows.map((row) => row.person.id) : [];
+    };
+
+    expect(ids('noReply')).toEqual(['g_4', 'g_5', 'g_2']);
+    expect(ids('notYetInvited')).toEqual(['g_6', 'c_3']);
+
+    const { view } = viewOf(list, counts, 'all', '', new Set());
+
+    if (view.kind !== 'groups') throw new Error('expected groups');
+    expect(view.groups.map((group) => [group.standing, group.count])).toEqual([
+      ['coming', 2],
+      ['noReply', 3],
+      ['notComing', 1],
+      ['notYetInvited', 2],
+    ]);
+    expect(view.groups[3]!.rows.map((row) => [row.person.id, row.indent])).toEqual([
+      ['g_6', false],
+      ['c_3', true],
+    ]);
   });
 
   it('filters 2,000 guests in well under 100 ms', () => {

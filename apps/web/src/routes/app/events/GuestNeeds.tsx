@@ -12,9 +12,10 @@ import {
 import { useId } from 'react';
 import { useTranslation } from 'react-i18next';
 
-import { Glyph, type GlyphName } from '../../../components/Glyph.tsx';
+import { Glyph } from '../../../components/Glyph.tsx';
 import { Head, RowWords } from '../../../components/SettingsParts.tsx';
 import { FieldWrong } from './GuestFields.tsx';
+import { IconLead } from './GuestInvitation.tsx';
 import {
   type NeedsProblems,
   type NeedsTyped,
@@ -347,14 +348,6 @@ export function CompanionNeedsSection({
       onOpen={(open) => needs.toggle(who, open)}
       onChange={onChange}
     />
-  );
-}
-
-function IconLead({ name }: { name: GlyphName }) {
-  return (
-    <span className="gs-lead is-icon" aria-hidden="true">
-      <Glyph name={name} size={20} weight={2} />
-    </span>
   );
 }
 

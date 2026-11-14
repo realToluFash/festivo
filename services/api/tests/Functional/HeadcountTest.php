@@ -90,18 +90,18 @@ final class HeadcountTest extends ApiTestCase
         $this->answer($this->add('Adaeze', ['Obi', null]), 'coming');
         $this->answer($this->add('Bisi', ['Tunde']), 'maybe');
         $this->answer($this->add('Chidi', ['Ngozi']), 'notComing');
-        $this->add('Dayo', ['Femi']);
+        $this->markInvited($this->add('Dayo', ['Femi']));
         $this->add('Emeka');
 
         $counts = $this->counts();
 
         self::assertSame([
             'onList' => 10,
-            'notYetInvited' => 0,
-            'invited' => 10,
+            'notYetInvited' => 1,
+            'invited' => 9,
             'accepted' => 3,
             'maybe' => 1,
-            'awaitingReply' => 2,
+            'awaitingReply' => 1,
             'held' => 3,
             'heldBy' => ['hostNoReply' => 1, 'hostMaybe' => 1, 'hostNotComing' => 1],
             'declined' => 1,
@@ -124,19 +124,32 @@ final class HeadcountTest extends ApiTestCase
     }
 
     #[Test]
-    public function aHostsReplyMovesTheirCompanionAndNeverChangesWhoIsInvited(): void
+    public function aHostsReplyInvitesThemWithTheirCompanionAndMovesTheCompanion(): void
     {
         $token = $this->token($this->add('Adaeze', ['Obi']));
         $this->add('Bisi');
-        $held = fn (): array => Vec\map(['heldBy', 'accepted', 'invited'], fn (string $key): mixed => $this->counts()[$key]);
+        $held = fn (): array => Vec\map(['heldBy', 'accepted', 'invited', 'notYetInvited'], fn (string $key): mixed => $this->counts()[$key]);
 
-        self::assertSame([['hostNoReply' => 1, 'hostMaybe' => 0, 'hostNotComing' => 0], 0, 3], $held());
+        self::assertSame([['hostNoReply' => 0, 'hostMaybe' => 0, 'hostNotComing' => 0], 0, 0, 3], $held());
 
         $this->reply($token, 'notComing');
-        self::assertSame([['hostNoReply' => 0, 'hostMaybe' => 0, 'hostNotComing' => 1], 0, 3], $held());
+        self::assertSame([['hostNoReply' => 0, 'hostMaybe' => 0, 'hostNotComing' => 1], 0, 2, 1], $held());
 
         $this->reply($token, 'coming');
-        self::assertSame([['hostNoReply' => 0, 'hostMaybe' => 0, 'hostNotComing' => 0], 2, 3], $held());
+        self::assertSame([['hostNoReply' => 0, 'hostMaybe' => 0, 'hostNotComing' => 0], 2, 2, 1], $held());
+    }
+
+    #[Test]
+    public function aGuestMarkedByHandIsAwaitingAReplyAndTheirCompanionIsHeld(): void
+    {
+        $guest = $this->add('Dayo', ['Femi']);
+        self::assertSame([0, 2, 0], Vec\map(['awaitingReply', 'notYetInvited', 'held'], fn (string $key): mixed => $this->counts()[$key]));
+
+        $this->markInvited($guest);
+        self::assertSame([1, 0, 1, 2], Vec\map(['awaitingReply', 'notYetInvited', 'held', 'invited'], fn (string $key): mixed => $this->counts()[$key]));
+
+        $this->as($this->owner, 'DELETE', $this->guests() . '/' . $guest . '/invitation');
+        self::assertSame([0, 2, 0, 0], Vec\map(['awaitingReply', 'notYetInvited', 'held', 'invited'], fn (string $key): mixed => $this->counts()[$key]));
     }
 
     #[Test]
@@ -250,6 +263,12 @@ final class HeadcountTest extends ApiTestCase
         self::assertSame(201, $this->statusCode(), Json\encode($body));
 
         return Type\shape(['id' => Type\string()], true)->coerce($body['guest'] ?? null)['id'];
+    }
+
+    private function markInvited(string $guest): void
+    {
+        $this->as($this->owner, 'PUT', $this->guests() . '/' . $guest . '/invitation', ['how' => 'inPerson']);
+        self::assertSame(200, $this->statusCode(), Json\encode($this->last()));
     }
 
     private function answer(string $guest, string $answer): void
