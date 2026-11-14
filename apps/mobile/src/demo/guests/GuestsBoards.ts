@@ -140,6 +140,17 @@ const GUESTS: Record<GuestsState, Board> = {
   overviewFailed: ['Overview, counts failed', 'Guest numbers didn’t load'],
   overviewNone: ['Overview, nobody invited', 'One line, no zeros'],
   overviewViewer: ['Overview without guests.read', 'No guest numbers at all'],
+  export: ['Export', 'sc-3784: This view and All guests both 156, Excel, then Share'],
+  exportNarrowed: ['Export, a narrowed view', 'This view (21 people), Filter: No reply'],
+  exportEmpty: ['Export, an empty view', 'Nothing in this view to export; All guests chosen'],
+  exportCsv: ['Export, CSV', 'The file name ends .csv'],
+  exportNoNeeds: ['Export without guests.manage', 'No Allergies, Diet or Access, and why'],
+  exportPreparing: ['Export, preparing', 'Preparing the file…, busy'],
+  exportFailed: ['Export failed', 'Nothing was shared; Share is the retry'],
+  exportShare: ['Export, the share sheet', 'The system’s own sheet, with the file'],
+  exportOffline: ['Export offline', 'Export needs a connection in its place'],
+  exportDropped: ['Export, the connection dropped', 'Share refused: Nothing was exported.'],
+  exportGrantView: ['Export, Can view grant', 'No Export, no Add guest'],
 };
 
 const DOOR: Record<DoorState, Board> = {

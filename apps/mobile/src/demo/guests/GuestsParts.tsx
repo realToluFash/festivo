@@ -344,12 +344,14 @@ export function GuestsTitle({
   plus,
   onPlus,
   plusLabel = W.addGuest,
+  extra = null,
 }: {
   layout: Layout;
   title?: string;
   plus: boolean;
   onPlus: () => void;
   plusLabel?: string;
+  extra?: ReactNode;
 }) {
   const size = layout === 'landscape' ? 26 : 30;
 
@@ -363,6 +365,7 @@ export function GuestsTitle({
       >
         {title}
       </Text>
+      {extra}
       {plus &&
         (layout === 'phone' ? (
           <Pressable

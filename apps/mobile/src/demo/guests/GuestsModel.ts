@@ -26,6 +26,7 @@ import {
 } from './GuestsSample.ts';
 import { type Change, changeLabel, changeWhen } from './ChangedSince.ts';
 import { REPLY_WORD, type ReplyKind, W, say } from './GuestsWords.ts';
+import { EXPORT_STATES } from './GuestExportModel.ts';
 import { withOptOuts } from './OptOuts.ts';
 import { type HowAgreed, hostAgreed } from './WhatsAppConsent.ts';
 
@@ -201,6 +202,7 @@ export const GUESTS_STATES = [
   ...ADD_STATES,
   ...REVIEW_STATES,
   ...OVERVIEW_STATES,
+  ...EXPORT_STATES,
 ] as const;
 
 export type GuestsState = (typeof GUESTS_STATES)[number];
@@ -251,7 +253,8 @@ export function roleOf(state: GuestsState | null): Role {
     state === 'overviewViewer' ||
     state === 'greetAsViewer' ||
     state === 'whatsAppViewer' ||
-    state === 'optOutViewer'
+    state === 'optOutViewer' ||
+    state === 'exportGrantView'
   )
     return 'viewer';
   if (state === 'staffBefore' || state === 'staffDayBefore' || state === 'staffDoorOpen')
@@ -1276,7 +1279,13 @@ export function areaStart(state: GuestsState | null): AreaStart {
     case 'failed':
       return { ...base, phase: 'failed' };
     case 'offline':
+    case 'exportOffline':
+    case 'exportDropped':
       return { ...base, offline: true };
+    case 'exportNarrowed':
+      return { ...base, filter: 'noreply' };
+    case 'exportEmpty':
+      return { ...base, filter: 'held', typed: 'marta' };
     case 'onTheDay':
     case 'secondDay':
       return { ...base, walkIn: true };
