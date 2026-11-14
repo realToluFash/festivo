@@ -113,7 +113,8 @@
     "web:guestList.how.whatsapp",
     "web:guestNeeds.dietName.halal",
     "web:guestNeeds.allergen.lupin",
-    "web:guestNeeds.allergies"
+    "web:guestNeeds.allergies",
+    "web:guestKitchen.allergies"
   ],
   "pt": [
     "web:nav.menu",
