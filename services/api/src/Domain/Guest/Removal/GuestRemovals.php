@@ -140,7 +140,7 @@ final readonly class GuestRemovals
                 throw ApiException::notFound('access.not_found');
             }
 
-            $this->eraseAllNow($hosts);
+            $this->eraseNow($hosts, self::REMOVED_TOGETHER);
         });
     }
 
@@ -178,7 +178,7 @@ final readonly class GuestRemovals
                 throw ApiException::notFound('access.not_found');
             }
 
-            $this->eraseNow($guest);
+            $this->eraseNow([$guest], self::REMOVED);
         });
     }
 
@@ -197,13 +197,13 @@ final readonly class GuestRemovals
                 $removal = $guest->getRemovalId();
 
                 if (null === $removal) {
-                    $this->eraseNow($guest);
+                    $this->eraseNow([$guest], self::REMOVED);
 
                     return 1;
                 }
 
                 $together = $this->guestRepository->lockRemovedTogether($guest->getEvent(), $removal->toRfc4122());
-                $this->eraseAllNow($together);
+                $this->eraseNow($together, self::REMOVED_TOGETHER);
 
                 return Iter\count($together);
             });
@@ -212,22 +212,12 @@ final readonly class GuestRemovals
         return $erased;
     }
 
-    /** Their companions and needs go by the foreign keys' cascade. */
-    private function eraseNow(Guest $guest): void
-    {
-        $by = $guest->getRemovedBy();
-        $party = $this->party($guest);
-        $this->auditor->record(self::REMOVED, 'Event', $guest->getEvent()->getId(), null === $by ? Actor::System : Actor::User, $by?->getId(), $by?->getName(), occurredAt: $guest->getRemovedAt());
-        $this->entityManager->flush();
-        $this->connection->executeStatement('DELETE FROM guests WHERE id = :id', ['id' => $guest->getId()->toRfc4122()]);
-
-        foreach ($party as $person) {
-            $this->entityManager->detach($person);
-        }
-    }
-
-    /** @param list<Guest> $hosts one audit entry for them all, with the counts */
-    private function eraseAllNow(array $hosts): void
+    /**
+     * Their companions and needs go by the foreign keys' cascade. One audit entry for them all; removed together, it carries the counts.
+     *
+     * @param list<Guest> $hosts
+     */
+    private function eraseNow(array $hosts, string $action): void
     {
         if ([] === $hosts) {
             return;
@@ -236,10 +226,11 @@ final readonly class GuestRemovals
         $first = $hosts[0];
         $by = $first->getRemovedBy();
         $parties = Vec\map($hosts, $this->party(...));
-        $this->auditor->record(self::REMOVED_TOGETHER, 'Event', $first->getEvent()->getId(), null === $by ? Actor::System : Actor::User, $by?->getId(), $by?->getName(), changes: [
+        $changes = self::REMOVED_TOGETHER === $action ? [
             'guests' => [null, Iter\count($hosts)],
             'companions' => [null, Iter\count(Vec\flatten($parties)) - Iter\count($hosts)],
-        ], occurredAt: $first->getRemovedAt());
+        ] : [];
+        $this->auditor->record($action, 'Event', $first->getEvent()->getId(), null === $by ? Actor::System : Actor::User, $by?->getId(), $by?->getName(), changes: $changes, occurredAt: $first->getRemovedAt());
         $this->entityManager->flush();
         $this->connection->executeStatement('DELETE FROM guests WHERE id IN (:ids)', ['ids' => Vec\map($hosts, static fn (Guest $host): string => $host->getId()->toRfc4122())], ['ids' => ArrayParameterType::STRING]);
 
