@@ -29,6 +29,24 @@ function choose(file: File) {
   fireEvent.change(input, { target: { files: [file] } });
 }
 
+function stubPhoto() {
+  vi.stubGlobal(
+    'URL',
+    Object.assign(URL, { createObjectURL: () => 'blob:x', revokeObjectURL() {} }),
+  );
+  vi.stubGlobal(
+    'Image',
+    class {
+      naturalWidth = 2400;
+      naturalHeight = 1350;
+      onload: (() => void) | null = null;
+      set src(_: string) {
+        queueMicrotask(() => this.onload?.());
+      }
+    },
+  );
+}
+
 beforeEach(() => {
   __setConfig({ ...tested, environment: 'development' });
   resetSample();
@@ -126,25 +144,24 @@ describe('The cover edited in place, its states for sc-48606', () => {
     expect(part().querySelector('.ev-preview.is-photo')).toBeNull();
   });
 
+  it('drops the upload when Remove photo is clicked during it', SLOW, async () => {
+    stubPhoto();
+    await page('coverPhoto');
+
+    await act(async () => choose(new File(['x'], 'arch.jpg', { type: 'image/jpeg' })));
+    expect(await within(part()).findByRole('status')).toBeDefined();
+    fireEvent.click(button(W.removePhoto));
+    expect(within(part()).queryByRole('status')).toBeNull();
+    await act(() => new Promise((done) => setTimeout(done, 1800)));
+    expect(part().querySelector('.ev-preview.is-photo')).toBeNull();
+    expect(within(part()).queryByRole('status')).toBeNull();
+  });
+
   it(
     'uploads a picked photo, a second pick replacing it, then Use this photo is on',
     SLOW,
     async () => {
-      vi.stubGlobal(
-        'URL',
-        Object.assign(URL, { createObjectURL: () => 'blob:x', revokeObjectURL() {} }),
-      );
-      vi.stubGlobal(
-        'Image',
-        class {
-          naturalWidth = 2400;
-          naturalHeight = 1350;
-          onload: (() => void) | null = null;
-          set src(_: string) {
-            queueMicrotask(() => this.onload?.());
-          }
-        },
-      );
+      stubPhoto();
       await page('cover');
 
       await act(async () => choose(new File(['x'], 'arch.jpg', { type: 'image/jpeg' })));

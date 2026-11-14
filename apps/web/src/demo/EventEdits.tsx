@@ -981,6 +981,8 @@ export function CoverPart({ event, state, onDirty, onClose, onSave }: PartProps)
             label={W.removePhoto}
             line={W.removePhotoLine}
             onClick={() => {
+              window.clearTimeout(timer.current);
+              setUploading(false);
               setPhoto(false);
               setPicked(false);
               setPickRefused(null);
