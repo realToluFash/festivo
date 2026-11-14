@@ -131,6 +131,58 @@ describe('the app guest rows', () => {
   });
 });
 
+describe("the app row's group (sc-5519)", () => {
+  const EN: Record<string, string> = {
+    'guestList.reply.coming': 'Coming',
+    'guestList.replied': '{reply} · replied {date}',
+    'guestList.withGroup': '{reply} · {group}',
+    'guestList.withPlaces': '{reply} · {places}',
+    'guestList.countCompanions': '{count} companion',
+  };
+  const en = (key: string, values: Record<string, string | number> = {}) =>
+    (EN[key] ?? key).replaceAll(/\{(\w+)\}/gu, (_, name: string) => String(values[name]));
+  const counted = { places: 'counted', contact: false } as const;
+  const bride = guest({
+    reply: 'coming',
+    repliedAt: '2026-10-14T12:00:00+01:00',
+    group: { id: 'gr_bride', name: 'Bride’s side' },
+    companions: [{ id: 'c1', fullName: 'Bo', state: 'coming', namedByGuest: false }],
+  });
+
+  it('says the group after the reply and before the places', () => {
+    const [person] = peopleOf([bride]);
+
+    expect(
+      rowWords(en, person!, false, 'Europe/London', 'en-GB', { ...counted, group: true }).line,
+    ).toBe('Coming · replied 14 Oct · Bride’s side · 1 companion');
+  });
+
+  it("gives a companion their host's group", () => {
+    const people = peopleOf([bride]);
+
+    expect(
+      rowWords(en, people[1]!, true, 'Europe/London', 'en-GB', { ...counted, group: true }).line,
+    ).toBe('Coming · Bride’s side');
+  });
+
+  it('says nothing more of a guest in no group', () => {
+    const [person] = peopleOf([guest({ ...bride, group: null })]);
+
+    expect(
+      rowWords(en, person!, false, 'Europe/London', 'en-GB', { ...counted, group: true }).line,
+    ).toBe('Coming · replied 14 Oct · 1 companion');
+  });
+
+  it('leaves the group out of a row that does not ask for it, as the web’s', () => {
+    const people = peopleOf([bride]);
+
+    expect(rowWords(en, people[0]!, false, 'Europe/London', 'en-GB', counted).line).toBe(
+      'Coming · replied 14 Oct · 1 companion',
+    );
+    expect(rowWords(en, people[1]!, true, 'Europe/London', 'en-GB', counted).line).toBe('Coming');
+  });
+});
+
 describe('the people of a guest list', () => {
   it('sorts a list once, and a new list again', () => {
     const list = [guest({ id: 'g2', fullName: 'Émile Bassey' }), guest()];

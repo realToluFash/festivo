@@ -17,6 +17,7 @@ import {
   type Standing,
   countsOf,
   eventAllows,
+  hasAllergy,
   invitationLine,
   repliedRefusal,
   replyDate,
@@ -57,6 +58,7 @@ import { SearchField } from './EventsSearch.tsx';
 import { Glyph } from './Glyph.tsx';
 import { GuestDetails, type GuestNotice, type GuestPane } from './GuestDetails.tsx';
 import { GuestForm, type GuestFormMode } from './GuestForm.tsx';
+import { AllergyMark } from './GuestNeeds.tsx';
 import { GuestsCard } from './GuestsCard.tsx';
 import { type MarkRefusal, MarkInvited } from './GuestInvitation.tsx';
 import { DraftRow, useMakeLive } from './MakeLive.tsx';
@@ -404,6 +406,7 @@ export function EventGuests({
         searchRef={searchField}
         timeZone={timeZone}
         locale={locale}
+        manages={manages}
       />
     );
   const list = (
@@ -483,6 +486,16 @@ export function EventGuests({
           mode={form}
           eventId={eventId}
           startCountry={account?.organisationCountry ?? ''}
+          groups={
+            load.kind === 'loaded'
+              ? load.list.groups.map((one) => ({
+                  id: one.id,
+                  name: one.name,
+                  people: one.counts.people,
+                }))
+              : []
+          }
+          onGroupsStale={() => readList(watch)}
           opener={opener}
           onClose={() => setForm(null)}
           onSaved={({ guest, tagged }) => {
@@ -522,6 +535,7 @@ function GuestRows({
   searchRef,
   timeZone,
   locale,
+  manages,
 }: {
   list: GuestList;
   counts: Counts;
@@ -541,6 +555,8 @@ function GuestRows({
   searchRef: React.RefObject<TextInputInstance | null>;
   timeZone: string;
   locale: string;
+  /** The allergy mark is for people who manage guests (sc-3777). */
+  manages: boolean;
 }) {
   const { t } = useTranslation();
   const { view, shown } = viewOf(list.guests, counts, choice, typed, expanded);
@@ -561,22 +577,31 @@ function GuestRows({
     const { name, line } = rowWords(t, person, indent, timeZone, locale, {
       places: noReply ? null : 'counted',
       contact: false,
+      group: true,
       invitation:
         noReply && person.companion == null
           ? invitationLine(t, person.guest, timeZone, locale)
           : null,
     });
+    const allergy =
+      manages &&
+      (person.companion == null
+        ? [person.guest, ...person.guest.companions].some((one) => hasAllergy(one.needs))
+        : hasAllergy(person.companion.needs));
     const selected = open === person.guest.id && person.companion == null;
     const item = (
       <Row
         title={name}
         line={line}
+        below={allergy ? <AllergyMark testID={`guests.row.${person.id}.allergy`} /> : undefined}
         lead={<MarkSlot kind={markOf(person.standing)} />}
         opens
         selected={selected}
         pad={person.companion == null ? 11 : 8}
         onPress={() => onOpen(person.guest.id)}
-        accessibilityLabel={`${name}, ${line}`}
+        accessibilityLabel={[name, line, allergy ? t('guestNeeds.allergy') : null]
+          .filter((part) => part != null)
+          .join(', ')}
         testID={`guests.row.${person.id}`}
       />
     );

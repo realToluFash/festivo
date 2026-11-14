@@ -56,7 +56,7 @@ final readonly class GuestsController
         return new JsonResponse($this->guestSerialiser->list($event, $this->seesContacts($event)));
     }
 
-    /** Refused `validation_failed` on each field at once, and 409 `guest_already_listed` until `allowDuplicate`. A `group` by `name` is the group already called that, or one made with the guest (sc-3775). */
+    /** Refused `validation_failed` on each field at once, and 409 `guest_already_listed` until `allowDuplicate`. A `group` by `name` is the group already called that, or one made with the guest (sc-3775); with `create` it is refused `validation.guest_group_name_taken` instead of joined (sc-5519). */
     #[Route('/api/events/{eventId}/guests', name: 'guests_add', methods: ['POST'])]
     #[InEvent(Permission::GuestsManage)]
     public function add(Request $request, string $eventId): JsonResponse
@@ -160,19 +160,22 @@ final readonly class GuestsController
         ]);
     }
 
-    /** @return Type\TypeInterface<array{id?: ?string, name?: ?string}> */
+    /** @return Type\TypeInterface<array{id?: ?string, name?: ?string, create?: bool}> */
     private static function groupShape(): Type\TypeInterface
     {
         return Type\shape([
             'id' => Type\optional(Type\nullable(Type\string())),
             'name' => Type\optional(Type\nullable(Type\string())),
+            'create' => Type\optional(Type\bool()),
         ]);
     }
 
-    /** @param ?array{id?: ?string, name?: ?string} $group */
+    /** @param ?array{id?: ?string, name?: ?string, create?: bool} $group */
     private static function groupChoice(?array $group): GroupChoice
     {
-        return new GroupChoice($group['id'] ?? null, null === ($group['id'] ?? null) ? $group['name'] ?? null : null);
+        $id = $group['id'] ?? null;
+
+        return new GroupChoice($id, null === $id ? $group['name'] ?? null : null, null === $id && ($group['create'] ?? false));
     }
 
     /** @return Type\TypeInterface<array{allergies?: list<string>, diet?: list<string>, access?: list<string>, otherAllergy?: ?string, otherDiet?: ?string, otherAccess?: ?string, note?: ?string}> */

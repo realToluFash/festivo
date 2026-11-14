@@ -11,6 +11,8 @@ export * from './sentenceStops.ts';
 export * from './guestName.ts';
 export * from './guestLanguage.ts';
 export * from './guestForm.ts';
+export * from './guestGroups.ts';
+export * from './guestNeeds.ts';
 export * from './guestLine.ts';
 export * from './guestView.ts';
 export * from './guestRows.ts';

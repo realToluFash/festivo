@@ -213,8 +213,8 @@ export interface GuestList {
   ungrouped: GuestCounts;
 }
 
-/** The Group field: a group by `id`, a `name` found or made on save, or null for none. Left out of an edit, it stays as it was. */
-export type GroupChoice = { id: string } | { name: string } | null;
+/** The Group field: a group by `id`, a `name` found or made on save, or null for none. Left out of an edit, it stays as it was. With `create`, a name already used is refused 422 on `group.name` rather than joined (sc-5519). */
+export type GroupChoice = { id: string } | { name: string; create?: boolean } | null;
 
 export interface NewGuest {
   fullName: string;

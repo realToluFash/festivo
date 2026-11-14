@@ -39,7 +39,7 @@ import {
 } from './GuestFields.tsx';
 import { GroupField } from './GuestGroups.tsx';
 import { RemoveAsk, type Removing } from './GuestRemove.tsx';
-import { choiceLine, groupChanged, groupRefusal, listOpen } from './guestGroups.ts';
+import { choiceLine, groupRefusal, listOpen } from './guestGroups.ts';
 import { type Copy, IconLead, Invitation } from './GuestInvitation.tsx';
 import { languageNameInSentence } from '../settings/organisationDetails.ts';
 import { type InvitationEvent, whatsAppHref } from './whatsAppSend.ts';
@@ -50,19 +50,7 @@ import {
   NeedsRefused,
   NeedsSection,
 } from './GuestNeeds.tsx';
-import {
-  NO_NEEDS,
-  type NeedsProblems,
-  type NeedsTyped,
-  firstNeedsFailing,
-  needsChips,
-  needsFailingCount,
-  needsInputOf,
-  needsTypedOf,
-  needsViolations,
-  problemsByWho,
-  useNeedsOpen,
-} from './guestNeeds.ts';
+import { useNeedsOpen } from './guestNeeds.ts';
 import {
   MOST_COMPANIONS,
   type Problem,
@@ -79,6 +67,17 @@ import {
   replyDate,
   shownReply,
   violationProblems,
+  NO_NEEDS,
+  type NeedsProblems,
+  type NeedsTyped,
+  firstNeedsFailing,
+  groupChanged,
+  needsChips,
+  needsFailingCount,
+  needsInputOf,
+  needsTypedOf,
+  needsViolations,
+  problemsByWho,
 } from '@soirely/domain';
 
 const SHOWN_COMPANIONS = 3;
