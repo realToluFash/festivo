@@ -203,10 +203,10 @@ function sameNeeds(one: Needs, other: Needs): boolean {
 }
 
 /** sc-3778: a host's save that changes the record makes the hosts its last changer, so "Last changed by the guest" goes; one that changes nothing keeps it. */
-export function hostsSaved(was: Needs | undefined, now: Needs, on: string | undefined): Needs {
+export function hostsSaved(was: Needs | undefined, now: Needs, on: string): Needs {
   const saved = savedNeeds(now);
 
-  if (on == null || sameNeeds(was ?? NO_NEEDS, saved)) return saved;
+  if (sameNeeds(was ?? NO_NEEDS, saved)) return saved;
 
   return { ...saved, changed: { by: 'hosts', on } };
 }

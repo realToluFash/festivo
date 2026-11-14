@@ -1224,12 +1224,7 @@ function hostNamed(one: Companion): Companion {
   return copy;
 }
 
-export function saveGuest(
-  list: readonly Guest[],
-  id: string,
-  values: Values,
-  on?: string,
-): Guest[] {
+export function saveGuest(list: readonly Guest[], id: string, values: Values, on: string): Guest[] {
   return list.map((one) => {
     if (one.id !== id) return one;
     const kept = values.companions.map((companion, index) => {
@@ -2115,10 +2110,15 @@ export function guestsStart(state: GuestsState | null, params: URLSearchParams):
       return edit('kwame', { values: { email: 'kwame@mensah.co.uk' }, notSaved: true });
     case 'saved':
       return column(guestPane('kwame'), {
-        list: saveGuest(start.list, 'kwame', {
-          ...valuesOf(start.list.find((one) => one.id === 'kwame') ?? null),
-          email: 'kwame@mensah.co.uk',
-        }),
+        list: saveGuest(
+          start.list,
+          'kwame',
+          {
+            ...valuesOf(start.list.find((one) => one.id === 'kwame') ?? null),
+            email: 'kwame@mensah.co.uk',
+          },
+          TODAY,
+        ),
         told: GW.saved,
       });
     case 'record':
@@ -2273,10 +2273,15 @@ export function guestsStart(state: GuestsState | null, params: URLSearchParams):
     case 'greetAsSpaces':
       return column(guestPane('bisi'), {
         choice: 'notYet',
-        list: saveGuest(start.list, 'bisi', {
-          ...valuesOf(start.list.find((one) => one.id === 'bisi') ?? null),
-          greetAs: '   ',
-        }),
+        list: saveGuest(
+          start.list,
+          'bisi',
+          {
+            ...valuesOf(start.list.find((one) => one.id === 'bisi') ?? null),
+            greetAs: '   ',
+          },
+          TODAY,
+        ),
         told: GW.saved,
       });
     case 'greetAsViewer':
@@ -2346,10 +2351,15 @@ export function guestsStart(state: GuestsState | null, params: URLSearchParams):
     case 'needsSaved':
       return column(guestPane('kwame'), {
         choice: 'coming',
-        list: saveGuest(start.list, 'kwame', {
-          ...valuesOf(start.list.find((one) => one.id === 'kwame') ?? null),
-          needs: needsOf({ allergies: ['milk'], diet: ['pescatarian'] }),
-        }),
+        list: saveGuest(
+          start.list,
+          'kwame',
+          {
+            ...valuesOf(start.list.find((one) => one.id === 'kwame') ?? null),
+            needs: needsOf({ allergies: ['milk'], diet: ['pescatarian'] }),
+          },
+          TODAY,
+        ),
         told: GW.saved,
       });
     case 'whatsAppNone':
