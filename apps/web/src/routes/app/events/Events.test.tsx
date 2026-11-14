@@ -2340,6 +2340,71 @@ describe('Change dates opens Dates in place, and Edit details is gone (sc-48602)
     await datesOpened();
   });
 
+  it('takes focus to Starts from Make live’s refusal when Dates is already open', async () => {
+    const ahead = { startsAt: '2030-11-14T16:00:00+01:00', endsAt: '2030-11-15T02:00:00+01:00' };
+    signedIn();
+    answering({
+      'GET /api/events/ev_1': () => json({ event: event(ahead) }),
+      'POST /api/events/ev_1/make-live': () => problem(409, 'event_concluded'),
+    });
+    from('/app/events/ev_1');
+    const details = await screen.findByRole('region', { name: 'Details' });
+    fireEvent.click(within(details).getByRole('button', { name: /^.*Dates/u }));
+    await screen.findByRole('group', { name: 'Starts' });
+    fireEvent.click(screen.getByRole('button', { name: 'Make live' }));
+    const dialog = await screen.findByRole('dialog', { name: 'Make Adaeze and Tunde live?' });
+    fireEvent.click(within(dialog).getByRole('button', { name: 'Make live' }));
+    const refused = await screen.findByRole('alertdialog', { name: /^Not made live\./u });
+    fireEvent.click(within(refused).getByRole('link', { name: 'Change dates' }));
+
+    await waitFor(() => expect(screen.queryByRole('alertdialog')).toBeNull());
+    await datesOpened();
+    expect(lit()).toHaveLength(1);
+  });
+
+  it('opens from Make live’s refusal on the event’s Guests, and Back returns to Guests', async () => {
+    const ahead = { startsAt: '2030-11-14T16:00:00+01:00', endsAt: '2030-11-15T02:00:00+01:00' };
+    let served = event(ahead);
+    signedIn();
+    answering({
+      'GET /api/events/ev_1': () => json({ event: served }),
+      'POST /api/events/ev_1/make-live': () => {
+        served = event(PAST);
+
+        return problem(409, 'event_concluded');
+      },
+      'GET /api/events/ev_1/guests': () =>
+        json({
+          guests: [],
+          counts: { people: 0, guests: 0, companions: 0 },
+          groups: [],
+          ungrouped: { people: 0, guests: 0, companions: 0 },
+        }),
+    });
+    from('/app/events/ev_1/guests');
+    fireEvent.click(await screen.findByRole('button', { name: 'Make live' }));
+    const dialog = await screen.findByRole('dialog', { name: 'Make Adaeze and Tunde live?' });
+    fireEvent.click(within(dialog).getByRole('button', { name: 'Make live' }));
+    const refused = await screen.findByRole('alertdialog', { name: /^Not made live\./u });
+    fireEvent.click(within(refused).getByRole('link', { name: 'Change dates' }));
+
+    await datesOpened();
+    await act(() => router.navigate(-1));
+    expect(router.state.location.pathname).toBe('/app/events/ev_1/guests');
+  });
+
+  it('shows /edit#starts of an event that is not there as its page shows it', async () => {
+    signedIn();
+    answering({ 'GET /api/events/ev_1': () => problem(404, 'not_found') });
+    from('/app/events/ev_1/edit#starts');
+
+    expect(
+      await screen.findByRole('heading', { name: 'This event is not available' }),
+    ).toBeDefined();
+    expect(router.state.location.pathname).toBe('/app/events/ev_1');
+    expect(screen.queryByRole('group', { name: 'Starts' })).toBeNull();
+  });
+
   it.each([
     ['#starts', 'Dates'],
     ['#venue', 'Venue'],
