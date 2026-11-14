@@ -131,6 +131,8 @@
     "web:auth.copyright",
     "web:guest.calendarApple",
     "web:guest.calendarGoogle",
-    "web:guestList.how.whatsapp"
+    "web:guestList.how.whatsapp",
+    "web:guestNeeds.dietName.halal",
+    "web:guestNeeds.dietName.kosher"
   ]
 }
