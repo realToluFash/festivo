@@ -470,7 +470,7 @@
   "eventCover": {
     "heading": "Image de couverture",
     "defaultLine": "L’image de couverture par défaut pour ce type d’événement. Vous pouvez la remplacer par votre propre photo.",
-    "coverLine": "Soirely’s cover, in this event’s own colours. Add your own photo if you like.",
+    "coverLine": "L’image de couverture de Soirely, aux couleurs de cet événement. Vous pouvez la remplacer par votre propre photo.",
     "upload": "Importer une photo",
     "accepted": "JPEG, PNG, WebP ou HEIC, 15 Mo maximum, au moins 1200 × 675 pixels.",
     "change": "Changer de photo",
@@ -497,7 +497,7 @@
     "describeCount": "{{count, number}} sur {{most, number}} caractères",
     "describeTooLong": "Raccourcissez la description à {{most, number}} caractères maximum.",
     "remove": "Retirer la photo",
-    "removeLine": "The default cover comes back.",
+    "removeLine": "L’image de couverture par défaut sera rétablie.",
     "cancel": "Annuler",
     "use": "Utiliser cette photo",
     "saving": "Enregistrement…"
