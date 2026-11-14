@@ -48,3 +48,17 @@ it.each([
   expect(menuFigure(i18n, count)).toBe(figure);
   expect(i18n.t('membersScreen.card.people', { count })).toContain(figure);
 });
+
+it('is what the People filter writes, on its trigger, its spoken label and every row', () => {
+  const overlays = readFileSync(join(import.meta.dirname, 'SummaryOverlays.tsx'), 'utf8');
+
+  expect(overlays).toMatch(/const figure = menuFigure\(i18n, current\?\.count \?\? 0\);/u);
+  expect(overlays).toMatch(/label=\{`\$\{current\?\.word \?\? ''\} · \$\{figure\}`\}/u);
+  expect(overlays).toMatch(
+    /accessibilityLabel=\{`\$\{name\}: \$\{current\?\.word \?\? ''\}, \$\{figure\}`\}/u,
+  );
+  expect(overlays).toMatch(/figure=\{menuFigure\(i18n, choice\.count\)\}/u);
+  expect(overlays).toMatch(/accessibilityLabel=\{`\$\{choice\.word\}, \$\{figure\}`\}/u);
+  expect(overlays).toMatch(/>\s*\{figure\}\s*<\/Text>/u);
+  expect(overlays).not.toMatch(/String\([^)]*\.count\)|\$\{[^}]*\.count[^}]*\}/u);
+});
