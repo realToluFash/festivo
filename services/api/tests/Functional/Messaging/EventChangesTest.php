@@ -815,7 +815,7 @@ final class EventChangesTest extends MessagingTestCase
         return $event;
     }
 
-    /** @param array{name?: string, type?: ?string, startsAt?: string, endsAt?: string, timeZone?: string, currency?: string, venue?: array{name?: ?string, address?: ?string, addressId?: ?string}|null, hosts?: list<string>} $fields */
+    /** @param array{name?: string, type?: ?string, startsAt?: string, endsAt?: string, timeZone?: string, currency?: string, venue?: array{name?: ?string, address?: ?string, addressId?: ?string}|null, arrivalNote?: ?string, hosts?: list<string>} $fields */
     private function edit(Event $event, User $by, array $fields): void
     {
         self::service(EventEditor::class)->edit($event, EntityTag::of($event->getVersion()), $by, $fields);
