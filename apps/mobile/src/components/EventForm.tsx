@@ -478,7 +478,7 @@ export function EventForm({
           </ReadOut>
         </InSight>
       )}
-      {problems != null && <ReadOut words={problems} answer={unsent} />}
+      {problems != null && <ReadOut words={problems} answer={unsent} afterKeysDown />}
 
       <View style={cardFrame(kind)}>
         <Field
