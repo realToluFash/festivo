@@ -165,7 +165,6 @@ export function CreateWalkWindow<Made>({
   // On the phone TalkBack sometimes spoke the field's own input focus before its focus reached it, so the name was heard twice (qa4 #48525): the field stays hidden from TalkBack until its keys are up.
   const quiet =
     talkBack && phone && !voiced && opening.focus !== 'question' && !opening.walk.asking;
-  const voicing = useRef(false);
   const arriving = reduced ? 0 : phone ? WINDOW_ARRIVES_MS : tokens.motionBase;
   // With TalkBack on, hidden while the window arrives, so its focus lands on nothing, Cancel included (sc-42690).
   const unnamed = useUnnamedWindow(
@@ -253,14 +252,12 @@ export function CreateWalkWindow<Made>({
     raiseKeysOn(input);
   }, [talkBack, onScreen, unnamed, opening, phone]);
 
-  // Shown to TalkBack once its keys are up: shown on its first input focus, a field that lost it and was raised again had that focus voiced, and TalkBack's focus followed it as well as the app's (qa4 #48921). One the keys never reach is shown after KEYS_AWAITED_MS, at worst read twice (lead, PR #2216).
+  // Shown to TalkBack once its keys are up: shown on its first input focus, a field that lost it and was raised again had that focus voiced (qa4 #48921). TalkBack moves its focus onto the shown field itself, and a hover after it read the field twice (qa2 #49329). One the keys never reach is shown after KEYS_AWAITED_MS.
   useEffect(() => {
     if (!quiet || !onScreen || unnamed) return;
     const input = opening.focus === 'search' ? search.current : field.current;
     const up = Keyboard.addListener('keyboardDidShow', () => {
-      if (!input?.isFocused()) return;
-      voicing.current = true;
-      setVoiced(true);
+      if (input?.isFocused()) setVoiced(true);
     });
     const reachable = setTimeout(() => setVoiced(true), KEYS_AWAITED_MS);
 
@@ -277,12 +274,6 @@ export function CreateWalkWindow<Made>({
 
     return () => up.remove();
   }, []);
-  useEffect(() => {
-    if (!voiced || !voicing.current) return;
-    voicing.current = false;
-    const input = opening.focus === 'search' ? search.current : field.current;
-    if (input?.isFocused()) moveScreenReaderFocus(input);
-  }, [voiced, opening]);
   // A field that gives up focus after the window raised its keys and before they came up gets them once more (qa3 #47084).
   const keysLost = () => {
     const input = holding.current;
