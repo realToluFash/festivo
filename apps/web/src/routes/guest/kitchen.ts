@@ -95,7 +95,6 @@ function recordedPeople(page: GuestPage): Person[] {
 interface Coming {
   key: string;
   name: string | null;
-  /** The record this card starts from: a name the guest added fills the next unnamed place, in order, and keeps its needs. */
   from: string;
 }
 
