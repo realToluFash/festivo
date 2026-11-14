@@ -163,14 +163,19 @@ export function EventGuests({
   }, [readList, watch]);
 
   useEffect(() => {
+    let every: ReturnType<typeof setInterval> | undefined = setInterval(
+      () => reloadRef.current(),
+      READ_AGAIN_MS,
+    );
     const live = followTopic(realtimeTopic('EventGuests', eventId), {
       subscribe: () => api.guestsSubscription(eventId),
       onData: () => reloadRef.current(),
-      onGap: () => reloadRef.current(),
+      onGap: () => {
+        clearInterval(every);
+        every = undefined;
+        reloadRef.current();
+      },
     });
-    const every = live.following
-      ? undefined
-      : setInterval(() => reloadRef.current(), READ_AGAIN_MS);
 
     return () => {
       live.stop();
