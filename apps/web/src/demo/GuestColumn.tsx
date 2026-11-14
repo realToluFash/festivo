@@ -45,6 +45,7 @@ import { whatsAppRowOf } from './whatsAppConsent.ts';
 import { sendOffered, whatsAppHref } from './whatsAppSend.ts';
 import { useLater } from '../useLater.ts';
 import { GGW } from './guestGroups.ts';
+import { RMW, removable } from './guestRemove.ts';
 import { CardStep, Chevron, Head, RowWords, TextAction } from '../components/SettingsParts.tsx';
 
 export interface GuestActions {
@@ -62,6 +63,7 @@ export interface GuestActions {
   onNotSent: () => void;
   /** The mark from the question: false when it was not saved and the question stays. */
   onSent: () => boolean;
+  onRemove: () => void;
 }
 
 type Step = { label: string; does: () => void } | null;
@@ -128,6 +130,7 @@ export function GuestView({
     <div className="gs-guest">
       {note === 'recorded' && <OkLine>{GW.recorded}</OkLine>}
       {note === 'unmarked' && <OkLine>{GW.unmarked}</OkLine>}
+      {note === 'backOnList' && <OkLine>{RMW.backOnList}</OkLine>}
       {note === 'linkReplaced' && <OkLine>{GW.linkReplacedNote(guest.name)}</OkLine>}
       <Cover mesh={event.mesh} size="guest" label={heading}>
         <ul className="desk-glass-tags">
@@ -191,6 +194,7 @@ export function GuestView({
         heading={heading}
         onEdit={actions.onEdit}
         onAgree={actions.onAgree}
+        onRemove={actions.onRemove}
       />
       {manages && erase !== 'erased' && <NeedsBlock guest={guest} heading={heading} />}
       {showsInvitation ? (
@@ -248,6 +252,7 @@ function Details({
   heading,
   onEdit,
   onAgree,
+  onRemove,
 }: {
   guest: Guest;
   manages: boolean;
@@ -256,6 +261,7 @@ function Details({
   heading: string;
   onEdit: () => void;
   onAgree: () => void;
+  onRemove: () => void;
 }) {
   const whatsApp = whatsAppRowOf(
     guest.whatsApp,
@@ -356,6 +362,12 @@ function Details({
             </div>
           </li>
         ))}
+        {guest.arrived != null && (
+          <li className="desk-row" tabIndex={-1} data-focus="arrival">
+            <IconLead name="tick" />
+            <RowWords title={RMW.arrived} lines={[RMW.arrival]} />
+          </li>
+        )}
         {manages && (
           <li className="desk-row">
             <IconLead name="user" />
@@ -366,6 +378,22 @@ function Details({
           </li>
         )}
       </ul>
+      {edits && (
+        <div className="gr-foot">
+          {removable(guest, manages) ? (
+            <button
+              type="button"
+              className="gs-pill is-secondary"
+              data-focus="remove"
+              onClick={onRemove}
+            >
+              {RMW.remove}
+            </button>
+          ) : (
+            <p className="gr-stays">{RMW.staysArrived}</p>
+          )}
+        </div>
+      )}
     </section>
   );
 }
