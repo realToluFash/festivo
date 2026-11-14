@@ -1,0 +1,70 @@
+# Choose a password: keys hidden (card tap), Save password tapped with the API held, then let through. Keys stay down. sc-13408.
+# This sets the account's password, so in a batch on one no-password account it runs last.
+appId: host.exp.Exponent
+onFlowComplete:
+  - runScript:
+      file: ../batch/helper.js
+      env:
+        ASK: /api?to=up
+---
+- openLink: ${METRO_URL}/--/settings/security
+- scrollUntilVisible:
+    element:
+      id: 'security.password'
+    timeout: 60000
+    centerElement: true
+- tapOn:
+    id: 'security.password'
+- extendedWaitUntil:
+    visible:
+      id: 'security.code.field'
+    timeout: 15000
+- runScript:
+    file: ../scripts/latest-code.js
+- tapOn:
+    id: 'security.code.field'
+- inputText: ${output.code}
+- tapOn:
+    id: 'security.code.continue'
+- extendedWaitUntil:
+    visible:
+      id: 'security.choose.password'
+    timeout: 15000
+- tapOn:
+    id: 'security.choose.password'
+- inputText: 'a-long-new-password-2026'
+- waitForAnimationToEnd
+- takeScreenshot: keys-up
+- assertVisible: '(?i)(shift|delete)'
+- tapOn: '{{t:register.ruleNote}}'
+- waitForAnimationToEnd
+- takeScreenshot: keys-hidden
+- assertNotVisible: '(?i)(shift|delete)'
+- runScript:
+    file: ../batch/helper.js
+    env:
+      ASK: /api?to=paused
+- tapOn:
+    id: 'security.choose.save'
+- waitForAnimationToEnd
+- takeScreenshot: at-tap
+- assertNotVisible: '(?i)(shift|delete)'
+- assertVisible:
+    id: 'security.choose.cancel'
+    enabled: false
+- waitForAnimationToEnd:
+    timeout: 3000
+- waitForAnimationToEnd
+- takeScreenshot: while-held
+- assertNotVisible: '(?i)(shift|delete)'
+- runScript:
+    file: ../batch/helper.js
+    env:
+      ASK: /api?to=up
+- extendedWaitUntil:
+    visible:
+      id: 'security.password'
+    timeout: 15000
+- waitForAnimationToEnd
+- takeScreenshot: answered
+- assertNotVisible: '(?i)(shift|delete)'

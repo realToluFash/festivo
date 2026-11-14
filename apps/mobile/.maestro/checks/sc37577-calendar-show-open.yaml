@@ -1,0 +1,17 @@
+# sc-37577: Calendar, Show opened, left open for measuring.
+appId: host.exp.Exponent
+---
+- openLink: ${METRO_URL}/--/calendar
+- extendedWaitUntil:
+    visible:
+      id: 'calendar.show'
+    timeout: 30000
+- tapOn:
+    id: 'calendar.show'
+- extendedWaitUntil:
+    visible:
+      id: 'calendar.showMenu'
+    timeout: 10000
+- waitForAnimationToEnd:
+    timeout: 3000
+- takeScreenshot: calendar-show-open

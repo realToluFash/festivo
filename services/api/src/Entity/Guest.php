@@ -1,0 +1,411 @@
+<?php
+
+declare(strict_types=1);
+
+namespace App\Entity;
+
+use App\Doctrine\Traits\Timestampable;
+use App\Enum\GuestInvitationMethod;
+use App\Enum\GuestReply;
+use App\Enum\GuestReplySource;
+use App\Enum\NeedKind;
+use DateTimeImmutable;
+use Doctrine\DBAL\Types\Types;
+use Doctrine\ORM\Mapping as ORM;
+use SensitiveParameter;
+use Symfony\Component\Uid\Uuid;
+
+/** On an event's list (sc-1468). A companion has a `host` and no contact, reply, link or invitation: they come as their host replies, and are invited when their host is. */
+#[ORM\Entity]
+#[ORM\HasLifecycleCallbacks]
+#[ORM\Table(name: 'guests')]
+class Guest
+{
+    use Timestampable;
+
+    public const int NAME_MAXIMUM = 200;
+
+    public const int COMPANIONS_MAXIMUM = 10;
+
+    #[ORM\Id]
+    #[ORM\Column(type: 'uuid')]
+    private Uuid $id;
+
+    #[ORM\ManyToOne(targetEntity: Event::class)]
+    #[ORM\JoinColumn(nullable: false, onDelete: 'CASCADE')]
+    private Event $event;
+
+    #[ORM\ManyToOne(targetEntity: self::class)]
+    #[ORM\JoinColumn(nullable: true, onDelete: 'CASCADE')]
+    private ?Guest $host;
+
+    /** Exactly as typed, title and all; null only for a companion left unnamed. */
+    #[ORM\Column(type: Types::STRING, length: 200, nullable: true)]
+    private ?string $fullName;
+
+    /** The name without case or accents, for "already on the list". */
+    #[ORM\Column(type: Types::STRING, length: 800, nullable: true)]
+    private ?string $nameKey;
+
+    #[ORM\Column(type: Types::STRING, length: 254, nullable: true)]
+    private ?string $email;
+
+    /** E.164. */
+    #[ORM\Column(type: Types::STRING, length: 20, nullable: true)]
+    private ?string $mobile;
+
+    #[ORM\Column(type: Types::STRING, length: 16, nullable: true, enumType: GuestReply::class)]
+    private ?GuestReply $reply;
+
+    /** When the current reply was given; sending the same answer again keeps it. */
+    #[ORM\Column(type: Types::DATETIME_IMMUTABLE, nullable: true)]
+    private ?DateTimeImmutable $repliedAt = null;
+
+    #[ORM\Column(type: Types::STRING, length: 16, nullable: true, enumType: GuestReplySource::class)]
+    private ?GuestReplySource $replySource = null;
+
+    /** A companion's place under their host, from 1; a host's is 0. */
+    #[ORM\Column(type: Types::SMALLINT, options: ['default' => 0])]
+    private int $position;
+
+    #[ORM\ManyToOne(targetEntity: User::class)]
+    #[ORM\JoinColumn(nullable: true, onDelete: 'SET NULL')]
+    private ?User $addedBy;
+
+    /** A host's ETag (sc-3773): GuestEditor raises it on each saved change, their companions' included. */
+    #[ORM\Column(type: Types::INTEGER, options: ['default' => 1])]
+    private int $version = 1;
+
+    /** What `/i/<token>` carries (sc-1526); null for a companion, who has no link. */
+    #[ORM\Column(type: Types::STRING, length: 43, unique: true, nullable: true)]
+    private ?string $linkToken;
+
+    /** Somebody holding the link said it reached the wrong person; replacing the link clears it. */
+    #[ORM\Column(type: Types::BOOLEAN, options: ['default' => false])]
+    private bool $linkFlagged = false;
+
+    /** Null while Not yet invited (sc-3788); any reply sets it, and only a mark by hand is ever taken back. */
+    #[ORM\Column(type: Types::DATETIME_IMMUTABLE, nullable: true)]
+    private ?DateTimeImmutable $invitedAt = null;
+
+    #[ORM\Column(type: Types::STRING, length: 16, nullable: true, enumType: GuestInvitationMethod::class)]
+    private ?GuestInvitationMethod $invitationMethod = null;
+
+    /** Who marked them by hand; null for the other methods. */
+    #[ORM\ManyToOne(targetEntity: User::class)]
+    #[ORM\JoinColumn(nullable: true, onDelete: 'SET NULL')]
+    private ?User $invitedBy = null;
+
+    /** The host's Language for them (sc-3790): one of SupportedLocales::ALL, or null for Not set. */
+    #[ORM\Column(type: Types::STRING, length: 8, nullable: true)]
+    private ?string $language = null;
+
+    /** What the guest picked on their own page, which outranks the host's Language. */
+    #[ORM\Column(type: Types::STRING, length: 8, nullable: true)]
+    private ?string $chosenLanguage = null;
+
+    /** The words of each ticked Other (sc-3777), keyed by NeedKind::otherField(); its code is a GuestNeed. */
+    #[ORM\Column(type: Types::STRING, length: 100, nullable: true)]
+    private ?string $otherAllergy = null;
+
+    #[ORM\Column(type: Types::STRING, length: 100, nullable: true)]
+    private ?string $otherDiet = null;
+
+    #[ORM\Column(type: Types::STRING, length: 100, nullable: true)]
+    private ?string $otherAccess = null;
+
+    /** For those who manage guests only: never the kitchen, the floor or the guest. */
+    #[ORM\Column(type: Types::TEXT, nullable: true)]
+    private ?string $needsNote = null;
+
+    /** A companion the guest unticked (sc-3779): Not coming only while their host is Coming, and kept while Held so Coming again restores it. */
+    #[ORM\Column(type: Types::BOOLEAN, options: ['default' => false])]
+    private bool $notComingByGuest = false;
+
+    /** The guest typed this companion's name on their page; the host changing it clears it (sc-3779). */
+    #[ORM\Column(type: Types::BOOLEAN, options: ['default' => false])]
+    private bool $namedByGuest = false;
+
+    private function __construct(Event $event, ?Guest $host, ?string $fullName, ?string $nameKey, ?string $email, ?string $mobile, ?GuestReply $reply, int $position, ?User $addedBy, #[SensitiveParameter] ?string $linkToken)
+    {
+        $this->id = Uuid::v7();
+        $this->event = $event;
+        $this->host = $host;
+        $this->fullName = $fullName;
+        $this->nameKey = $nameKey;
+        $this->email = $email;
+        $this->mobile = $mobile;
+        $this->reply = $reply;
+        $this->position = $position;
+        $this->addedBy = $addedBy;
+        $this->linkToken = $linkToken;
+    }
+
+    /** Not yet invited, until somebody invites them (sc-3788). */
+    public static function listed(Event $event, string $fullName, string $nameKey, ?string $email, ?string $mobile, ?User $addedBy, #[SensitiveParameter] string $linkToken): self
+    {
+        return new self($event, null, $fullName, $nameKey, $email, $mobile, GuestReply::NoReply, 0, $addedBy, $linkToken);
+    }
+
+    public static function companionOf(self $host, ?string $fullName, ?string $nameKey, int $position, ?User $addedBy): self
+    {
+        return new self($host->event, $host, $fullName, $nameKey, null, null, null, $position, $addedBy, null);
+    }
+
+    public function getId(): Uuid
+    {
+        return $this->id;
+    }
+
+    public function getEvent(): Event
+    {
+        return $this->event;
+    }
+
+    public function getHost(): ?Guest
+    {
+        return $this->host;
+    }
+
+    public function getFullName(): ?string
+    {
+        return $this->fullName;
+    }
+
+    public function getNameKey(): ?string
+    {
+        return $this->nameKey;
+    }
+
+    public function getEmail(): ?string
+    {
+        return $this->email;
+    }
+
+    public function getMobile(): ?string
+    {
+        return $this->mobile;
+    }
+
+    public function getReply(): ?GuestReply
+    {
+        return $this->reply;
+    }
+
+    public function getRepliedAt(): ?DateTimeImmutable
+    {
+        return $this->repliedAt;
+    }
+
+    public function getReplySource(): ?GuestReplySource
+    {
+        return $this->replySource;
+    }
+
+    /** Replaces the reply; the same answer again changes nothing and keeps its date. False when nothing changed. */
+    public function reply(GuestReply $reply, DateTimeImmutable $at, GuestReplySource $source): bool
+    {
+        if ($reply === $this->reply) {
+            return false;
+        }
+
+        $this->reply = $reply;
+        $this->repliedAt = $at;
+        $this->replySource = $source;
+
+        if (!$this->isInvited()) {
+            $this->invite(GuestInvitationMethod::Reply, $at, null);
+        }
+
+        return true;
+    }
+
+    public function isInvited(): bool
+    {
+        return null !== $this->invitedAt;
+    }
+
+    public function getInvitedAt(): ?DateTimeImmutable
+    {
+        return $this->invitedAt;
+    }
+
+    public function getInvitationMethod(): ?GuestInvitationMethod
+    {
+        return $this->invitationMethod;
+    }
+
+    public function getInvitedBy(): ?User
+    {
+        return $this->invitedBy;
+    }
+
+    /** The first invitation stands: a guest already invited stays as recorded. False when nothing changed. */
+    public function invite(GuestInvitationMethod $method, DateTimeImmutable $at, ?User $by): bool
+    {
+        if ($this->isInvited()) {
+            return false;
+        }
+
+        $this->invitedAt = $at;
+        $this->invitationMethod = $method;
+        $this->invitedBy = $by;
+
+        return true;
+    }
+
+    /** Only a mark made by hand on a guest who has not replied can be taken back. */
+    public function canUninvite(): bool
+    {
+        return true === $this->invitationMethod?->isByHand() && (null === $this->reply || GuestReply::NoReply === $this->reply);
+    }
+
+    public function uninvite(): void
+    {
+        $this->invitedAt = null;
+        $this->invitationMethod = null;
+        $this->invitedBy = null;
+    }
+
+    public function getPosition(): int
+    {
+        return $this->position;
+    }
+
+    public function getAddedBy(): ?User
+    {
+        return $this->addedBy;
+    }
+
+    /** As the host typed it: a name the guest gave becomes the host's once the host changes it. */
+    public function setFullName(?string $fullName, ?string $nameKey): void
+    {
+        if ($fullName !== $this->fullName) {
+            $this->namedByGuest = false;
+        }
+
+        $this->fullName = $fullName;
+        $this->nameKey = $nameKey;
+    }
+
+    public function nameByGuest(string $fullName, string $nameKey): void
+    {
+        if ($fullName === $this->fullName) {
+            return;
+        }
+
+        $this->fullName = $fullName;
+        $this->nameKey = $nameKey;
+        $this->namedByGuest = true;
+    }
+
+    public function isNamedByGuest(): bool
+    {
+        return $this->namedByGuest;
+    }
+
+    public function isNotComingByGuest(): bool
+    {
+        return $this->notComingByGuest;
+    }
+
+    public function markComingByGuest(bool $coming): void
+    {
+        $this->notComingByGuest = !$coming;
+    }
+
+    public function setEmail(?string $email): void
+    {
+        $this->email = $email;
+    }
+
+    public function setMobile(?string $mobile): void
+    {
+        $this->mobile = $mobile;
+    }
+
+    public function getLanguage(): ?string
+    {
+        return $this->language;
+    }
+
+    public function setLanguage(?string $language): void
+    {
+        $this->language = $language;
+    }
+
+    public function getChosenLanguage(): ?string
+    {
+        return $this->chosenLanguage;
+    }
+
+    public function choseLanguage(string $language): void
+    {
+        $this->chosenLanguage = $language;
+    }
+
+    public function getOther(NeedKind $kind): ?string
+    {
+        return match ($kind) {
+            NeedKind::Allergen => $this->otherAllergy,
+            NeedKind::Diet => $this->otherDiet,
+            NeedKind::Access => $this->otherAccess,
+        };
+    }
+
+    public function setOther(NeedKind $kind, ?string $words): void
+    {
+        match ($kind) {
+            NeedKind::Allergen => $this->otherAllergy = $words,
+            NeedKind::Diet => $this->otherDiet = $words,
+            NeedKind::Access => $this->otherAccess = $words,
+        };
+    }
+
+    public function getNeedsNote(): ?string
+    {
+        return $this->needsNote;
+    }
+
+    public function setNeedsNote(?string $note): void
+    {
+        $this->needsNote = $note;
+    }
+
+    public function setPosition(int $position): void
+    {
+        $this->position = $position;
+    }
+
+    public function getVersion(): int
+    {
+        return $this->version;
+    }
+
+    public function raiseVersion(): void
+    {
+        ++$this->version;
+    }
+
+    public function getLinkToken(): ?string
+    {
+        return $this->linkToken;
+    }
+
+    /** Ends the old link at once and clears the wrong-person flag. */
+    public function replaceLink(#[SensitiveParameter] string $linkToken): void
+    {
+        $this->linkToken = $linkToken;
+        $this->linkFlagged = false;
+    }
+
+    public function isLinkFlagged(): bool
+    {
+        return $this->linkFlagged;
+    }
+
+    public function flagLink(): void
+    {
+        $this->linkFlagged = true;
+    }
+}

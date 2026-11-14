@@ -1,0 +1,12 @@
+# sc-41296: Set a new password lands on the step with Password changed showing and the keys up, and stops there for key events from adb. Pass METRO_URL and TOKEN, a reset token for an account owing a step.
+appId: host.exp.Exponent
+---
+- runFlow: ../sign-out.yaml
+- setOrientation: PORTRAIT
+- openLink: ${METRO_URL}/--/reset-password?token=${TOKEN}
+- extendedWaitUntil: { visible: { id: 'recovery.password' }, timeout: 30000 }
+- tapOn: { id: 'recovery.password' }
+- inputText: 'a-brand-new-password-41296'
+- tapOn: { id: 'recovery.save' }
+- extendedWaitUntil: { visible: { id: 'completeProfile.left' }, timeout: 30000 }
+- extendedWaitUntil: { visible: { id: 'never.there' }, timeout: 20000, optional: true }

@@ -1,0 +1,20 @@
+# Skips the mobile-number code step mid sign-up, then signs out to welcome. sc-29126.
+# Starts where sc29126-steps-language leaves the app: signed in, on Verify your mobile.
+appId: host.exp.Exponent
+---
+- launchApp:
+    appId: host.exp.Exponent
+    stopApp: true
+- openLink: ${METRO_URL}/--/
+- extendedWaitUntil:
+    visible:
+      id: 'verifyPhone.right'
+    timeout: 60000
+- tapOn:
+    id: 'verifyPhone.right'
+- waitForAnimationToEnd
+- runFlow: sign-out.yaml
+- extendedWaitUntil:
+    visible:
+      id: 'welcome.email'
+    timeout: 20000

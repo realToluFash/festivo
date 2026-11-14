@@ -1,0 +1,57 @@
+# sc-38816: the Calendar's Month grid overflow chip on a phone, over sc-36920's seed plus a 12-event 19 Dec and a 105-event 20 Dec 2026 (a Sunday), and 6 on 29 Nov. Takes November's busy weeks, the 19-20 Dec week, and 25 Nov's and 20 Dec's day lists.
+appId: host.exp.Exponent
+---
+- openLink: ${METRO_URL}/--/calendar
+- extendedWaitUntil:
+    visible:
+      id: calendar.view.month
+    timeout: 30000
+- tapOn:
+    id: calendar.view.month
+- tapOn:
+    id: calendar.today
+- extendedWaitUntil:
+    visible:
+      id: calendar.day.2026-11-18
+    timeout: 15000
+- scrollUntilVisible:
+    element:
+      id: calendar.day.2026-11-29
+    direction: DOWN
+- waitForAnimationToEnd:
+    timeout: 4000
+- takeScreenshot: month-nov
+- scrollUntilVisible:
+    element:
+      id: calendar.day.2026-12-20
+    direction: DOWN
+    centerElement: true
+- waitForAnimationToEnd:
+    timeout: 4000
+- takeScreenshot: month-dec
+- tapOn:
+    id: calendar.day.2026-12-20
+- extendedWaitUntil:
+    visible:
+      id: calendar.dayList
+    timeout: 10000
+- takeScreenshot: day-20dec
+- tapOn:
+    id: calendar.dayList.close
+- scrollUntilVisible:
+    element:
+      id: calendar.day.2026-11-25
+    direction: UP
+    centerElement: true
+- waitForAnimationToEnd:
+    timeout: 4000
+- takeScreenshot: month-25nov
+- tapOn:
+    id: calendar.day.2026-11-25
+- extendedWaitUntil:
+    visible:
+      id: calendar.dayList
+    timeout: 10000
+- takeScreenshot: day-25nov
+- tapOn:
+    id: calendar.dayList.close

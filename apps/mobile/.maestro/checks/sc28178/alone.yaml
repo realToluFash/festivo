@@ -1,0 +1,17 @@
+# sc-28178 subflow: ORG, made for this batch, with the harness's second account an administrator in
+# it and in no other organisation, signed in on the phone and on Home.
+appId: host.exp.Exponent
+---
+- runScript:
+    file: ../../batch/helper.js
+    env:
+      ASK: /membership?change=alone&org=${ORG}
+- evalScript: ${output.alone = output.helper}
+# Signed in again each time rather than reloaded: a fresh session reads the one organisation it has.
+- runFlow: ../../batch/sign-out.yaml
+- runFlow:
+    file: ../../batch/sign-in-typed.yaml
+    env:
+      EMAIL: ${output.alone.email}
+      PASSWORD: ${output.alone.password}
+- runFlow: ../../return-home.yaml

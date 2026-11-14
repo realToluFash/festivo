@@ -1,0 +1,5 @@
+{
+  "$comment": "Epic 36 §5: between `start` and `end`, in the member's own zone, only Event day pushes come through (sc-20494). Hours of a 24-hour clock. Read by packages/domain for the Notification settings footer, and mounted into the API, whose QuietHours QuietHoursSourceTest checks against this file.",
+  "start": 21,
+  "end": 8
+}
