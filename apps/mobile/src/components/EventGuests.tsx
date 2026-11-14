@@ -466,6 +466,7 @@ export function EventGuests({
         pageless={!loaded || empty}
         back={{ label: t('guestList.backToGuests'), onPress: closeGuest, testID: 'guest.back' }}
         backInFrame
+        headingInList
         spacing={SPACING}
       />
       {open != null && (

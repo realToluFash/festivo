@@ -1,0 +1,20 @@
+# sc-48438: the Guests card on the event's Overview, head and foot, in the batch language.
+appId: host.exp.Exponent
+---
+- openLink: ${METRO_URL}/--/events/${EVENT_ID}
+- scrollUntilVisible:
+    element:
+      id: 'overview.guests.open'
+    direction: DOWN
+    centerElement: true
+    timeout: 30000
+- waitForAnimationToEnd
+- takeScreenshot: head
+- scrollUntilVisible:
+    element:
+      id: 'overview.guests.held'
+    direction: DOWN
+    centerElement: true
+    timeout: 15000
+- waitForAnimationToEnd
+- takeScreenshot: foot

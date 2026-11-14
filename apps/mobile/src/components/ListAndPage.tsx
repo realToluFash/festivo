@@ -62,6 +62,8 @@ export interface ListAndPageProps {
   kind: LayoutKind;
   /** On its side, the list takes the Settings list's column with the heading at its top, and the page sits beside it (sc-39471). */
   settingsColumn?: boolean;
+  /** On its side, the heading scrolls away at the top of the list's column rather than standing above both. */
+  headingInList?: boolean;
 }
 
 function listBeside(spacing: ListAndPageSpacing) {
@@ -100,12 +102,14 @@ export function ListAndPage({
   spacing,
   kind,
   settingsColumn = false,
+  headingInList = false,
 }: ListAndPageProps) {
   const { kind: frame } = useLayout();
   const listWidth = useSideListWidth(spacing.listWidth);
   const landscape = kind === 'tabletLandscape';
   const split = landscape && !pageless;
   const inColumn = landscape && settingsColumn;
+  const headingAbove = landscape && !inColumn && !headingInList;
   const takesBack = pageTakesBack(kind, pageInFront);
   useSystemBack(takesBack, back.onPress);
   const swipe = useEdgeSwipeBack(takesBack, back.onPress);
@@ -122,7 +126,7 @@ export function ListAndPage({
       scroll={false}
       contentStyle={landscape && !inColumn ? spacing.landscape : styles.bare}
     >
-      {landscape && !inColumn && (heading || besideHeading) && (
+      {headingAbove && (heading || besideHeading) && (
         <View style={styles.head}>
           <View style={styles.fill}>{heading}</View>
           {besideHeading}
@@ -143,7 +147,7 @@ export function ListAndPage({
             away={!landscape && pageInFront}
           >
             {(landscape ? pageless : !pageInFront) && <FrameTop />}
-            {(!landscape || inColumn) && heading}
+            {!headingAbove && heading}
             {list}
           </ScrollColumn>
         </View>

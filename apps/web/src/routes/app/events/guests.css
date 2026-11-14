@@ -4,7 +4,6 @@
   --gsList: 520px;
   --gsGuest: 380px;
   --gsGap: 38px;
-  --gsGrey: var(--replyNotComingDot);
   --gsAmberRing: color-mix(in srgb, var(--colorAttention) 45%, var(--colorAttentionTint));
 }
 
@@ -163,7 +162,7 @@
 }
 
 .gs-mark.is-not-coming {
-  background: var(--gsGrey);
+  background: var(--replyNotComingDot);
 }
 
 .gs-bar {
@@ -175,7 +174,7 @@
 
 .gs-mark.is-held {
   border: var(--replyHeldRing);
-  background: linear-gradient(90deg, var(--gsGrey) 50%, var(--colorCard) 50%);
+  background: linear-gradient(90deg, var(--replyNotComingDot) 50%, var(--colorCard) 50%);
 }
 
 .gs-mark.is-no-reply {
@@ -183,7 +182,7 @@
 }
 
 .gs-mark.is-not-yet {
-  border: 1.5px dashed var(--gsGrey);
+  border: 1.5px dashed var(--replyNotComingDot);
 }
 
 .gs-ok {

@@ -36,7 +36,7 @@ final readonly class EventDeletionController
     ) {
     }
 
-    /** The deadline a deletion sent now would get, written in the caller's zone, and how many people its guest list loses. */
+    /** The deadline a deletion sent now would get, written in the caller's zone, how many people its guest list loses, and why it would be refused (sc-14445). */
     #[Route('/api/events/{eventId}/deletion', name: 'events_deletion', methods: ['GET'])]
     #[InEvent(Permission::EventsCreate)]
     public function preview(string $eventId): JsonResponse
@@ -46,6 +46,7 @@ final readonly class EventDeletionController
         return new JsonResponse([
             'needsName' => $this->eventDeleter->needsName($event),
             'people' => $this->eventDeleter->people($event),
+            'deleteRefusedBecause' => $this->eventDeleter->refusedBecause($event),
             ...$this->window(RestoreWindow::toTheSecond($this->clock->now())),
         ]);
     }
