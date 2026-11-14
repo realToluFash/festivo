@@ -556,7 +556,7 @@ function GuestsPage({
     status === 'ready' &&
     invitesOn(event, start.clock) &&
     notYetInvited(list).length > 0;
-  const columns = list.length > 0 || pane.kind === 'add';
+  const columns = list.length > 0 || pane.kind === 'add' || pane.kind === 'groups';
   const stepWord =
     card.step === 'add'
       ? GW.addGuest
@@ -595,7 +595,7 @@ function GuestsPage({
           <h1 className="gs-title" tabIndex={-1} data-focus="title">
             {GW.title}
           </h1>
-          {status === 'ready' && list.length > 0 && (
+          {status === 'ready' && (
             <button
               type="button"
               className="gs-pill is-secondary"

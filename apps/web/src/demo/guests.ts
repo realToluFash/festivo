@@ -1856,6 +1856,7 @@ export const GUESTS_STATES = [
   { key: 'groupFieldAdd', name: 'Add guest: the Group field, empty' },
   { key: 'groupsPane', name: 'Groups: each group and its count, Rename and Delete' },
   { key: 'groupsFirst', name: 'Groups: none yet, the first time' },
+  { key: 'groupsNoGuests', name: 'Groups on a new event: no guests, no groups yet' },
   { key: 'groupsNewBlank', name: 'New group: Create group pressed with no name' },
   { key: 'groupsNewLong', name: 'New group: a name over 60 characters' },
   { key: 'groupsNewTaken', name: 'New group: “work”, already Work' },
@@ -2429,6 +2430,8 @@ export function guestsStart(state: GuestsState | null, params: URLSearchParams):
       return groupsPane();
     case 'groupsFirst':
       return groupsPane({}, { groups: [], list: start.list });
+    case 'groupsNoGuests':
+      return groupsPane({}, { groups: [], list: [] });
     case 'groupsNewBlank':
       return groupsPane({ typed: '', tried: true });
     case 'groupsNewLong':
@@ -2655,6 +2658,7 @@ export const GUESTS_PAGES: readonly { name: string; states: readonly DemoLink[] 
   group('Groups: make, rename, delete (sc-3775)', [
     'groupsPane',
     'groupsFirst',
+    'groupsNoGuests',
     'groupsNewBlank',
     'groupsNewLong',
     'groupsNewTaken',

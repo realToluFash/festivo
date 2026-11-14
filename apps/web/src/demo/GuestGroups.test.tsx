@@ -258,4 +258,20 @@ describe('Groups: make, rename, delete (sc-3775)', () => {
     expect(newGroup()).toBeDefined();
     expect(within(column()).getByRole('heading', { name: 'No groups yet' })).toBeDefined();
   });
+
+  it('on a new event with no guests, Groups opens and a group can be made', SLOW, async () => {
+    await guests('first');
+    fireEvent.click(screen.getByRole('button', { name: 'Groups' }));
+    fireEvent.change(newGroup(), { target: { value: 'Bride’s side' } });
+    fireEvent.click(within(column()).getByRole('button', { name: 'Create group' }));
+
+    await waitFor(() => expect(groupRows()).toContain('Bride’s side'), WAIT);
+  });
+
+  it('the state for a new event shows New group above No groups yet', SLOW, async () => {
+    await guests('groupsNoGuests');
+
+    expect(newGroup()).toBeDefined();
+    expect(within(column()).getByRole('heading', { name: 'No groups yet' })).toBeDefined();
+  });
 });
