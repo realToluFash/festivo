@@ -107,21 +107,18 @@ type Answer = (body: unknown) => Response | Promise<Response>;
 type Listed = ReturnType<typeof listOf>;
 
 /** sc-99's headcount for a list, as HeadcountCalculator counts it. */
-function headcountOf({ guests: all }: Listed) {
-  const waiting = all.filter((one) => one.invitation == null && one.reply === 'noReply');
-  const notYetInvited = waiting.reduce((sum, one) => sum + 1 + one.companions.length, 0);
-  const guests = all.filter((one) => !waiting.includes(one));
+function headcountOf({ guests }: Listed) {
   const companions = guests.flatMap((one) => one.companions.map(() => one.reply));
   const count = (reply: string) => guests.filter((one) => one.reply === reply).length;
   const held = (reply: string) => companions.filter((host) => host === reply).length;
-  const invited = guests.length + companions.length;
+  const onList = guests.length + companions.length;
 
   return {
     headcount: {
       counts: {
-        onList: invited + notYetInvited,
-        notYetInvited,
-        invited,
+        onList,
+        notYetInvited: 0,
+        invited: onList,
         accepted: count('coming') + held('coming'),
         maybe: count('maybe'),
         awaitingReply: count('noReply'),
@@ -777,7 +774,18 @@ describe('Finding a guest (sc-3772)', () => {
     const BISI = guest('g_6', 'Bisi Adewale', {
       companions: [{ id: 'c_6', fullName: 'Tunde Adewale', state: 'notYetInvited' }],
     });
-    await onGuests({ 'GET /api/events/ev_1/guests': () => json(listOf([...EVERYONE, BISI])) });
+    const counts = headcountOf(listOf(EVERYONE)).headcount.counts;
+    await onGuests({
+      'GET /api/events/ev_1/guests': () => json(listOf([...EVERYONE, BISI])),
+      'GET /api/events/ev_1/headcount': () =>
+        json({
+          headcount: {
+            counts: { ...counts, onList: 11, notYetInvited: 2 },
+            byGroup: [],
+            byDietaryNeed: { addsUp: false, needs: [] },
+          },
+        }),
+    });
     await screen.findByText('4 coming of 9 invited');
 
     const groups = screen.getAllByRole('heading', { level: 2 }).map((one) => one.textContent);
@@ -802,7 +810,7 @@ describe('Finding a guest (sc-3772)', () => {
     ]);
     fireEvent.click(within(menu).getByRole('menuitemradio', { name: /^No reply/u }));
 
-    expect(names()).toEqual(['Bola Ade', 'José Ávila', 'Dayo Kalu']);
+    expect(names()).toEqual(['Bola Ade', 'Dayo Kalu', 'José Ávila']);
     fireEvent.click(screen.getByRole('button', { name: 'No reply · 3' }));
     fireEvent.click(
       within(screen.getByRole('menu')).getByRole('menuitemradio', { name: /^Not yet invited/u }),
