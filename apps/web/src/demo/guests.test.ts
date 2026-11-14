@@ -140,9 +140,16 @@ describe('the list (sc-3772)', () => {
     if (view.kind !== 'rows') throw new Error('rows');
     expect(view.rows[0]).toMatchObject({
       line: 'Invited by Folake Adeyemi, WhatsApp, Oct 9',
+      contact: 'emeka.nwosu@nhs.net · +44 7700 900231',
       label:
-        'Dr Emeka Nwosu, No reply, Invited by Folake Adeyemi, WhatsApp, Oct 9, Allergy, Dietary notes',
+        'Dr Emeka Nwosu, No reply, Invited by Folake Adeyemi, WhatsApp, Oct 9, emeka.nwosu@nhs.net, +44 7700 900231, Allergy, Dietary notes',
     });
+
+    const viewer = viewOf(list, 'noReply', '', NONE, replyBy, false).view;
+
+    if (viewer.kind !== 'rows') throw new Error('rows');
+    expect(viewer.rows.every((row) => row.contact == null)).toBe(true);
+    expect(viewer.rows[0]?.label).not.toContain('nhs.net');
     expect(view.rows.slice(0, 5).map((row) => row.person.name)).toEqual([
       'Dr Emeka Nwosu',
       'Joaquín Ruiz',
@@ -170,6 +177,13 @@ describe('the list (sc-3772)', () => {
     expect(viewOf(list, 'all', 'okon', NONE, replyBy).shown).toBe(2);
     expect(viewOf(list, 'all', 'kofi', NONE, replyBy).shown).toBe(0);
     expect(viewOf(list, 'held', 'marta', NONE, replyBy).shown).toBe(0);
+    const held = viewOf(list, 'held', 'adanna', NONE, replyBy).view;
+    expect(held.kind === 'rows' && held.rows.map((row) => row.line)).toEqual([
+      'Guest of Dr Emeka Nwosu · Held · comes only if their host accepts',
+    ]);
+    expect(held.kind === 'rows' && held.rows.map((row) => row.label)).toEqual([
+      'Adanna Nwosu, Guest of Dr Emeka Nwosu · Held · comes only if their host accepts',
+    ]);
     expect(viewOf(list, 'all', 'nhs.net', NONE, replyBy).shown).toBe(1);
     expect(viewOf(list, 'all', '900412', NONE, replyBy).shown).toBe(1);
     expect(viewOf(list, 'all', 'ines', NONE, replyBy).shown).toBe(2);
