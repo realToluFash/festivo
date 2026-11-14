@@ -1266,6 +1266,16 @@ const PAGES: readonly { page: string; boards: readonly Board[] }[] = [
         href: '/demo/events/evt-draft-4?state=makeLiveHostBlank',
       },
       {
+        title: 'Make live · changed meanwhile, still no host',
+        what: 'Not saved, and Host 1 as typed',
+        href: '/demo/events/evt-draft-4?state=makeLiveStillNoHost',
+      },
+      {
+        title: 'Make live · changed meanwhile, hosted now',
+        what: 'Not saved, then who is hosting now, one per line',
+        href: '/demo/events/evt-draft-4?state=makeLiveNowHosted',
+      },
+      {
         title: 'Make live · changed elsewhere',
         what: 'Somebody else made it live: Close alone',
         href: '/demo/events/evt-draft-4?state=makeLiveChanged',
@@ -1349,6 +1359,11 @@ const PAGES: readonly { page: string; boards: readonly Board[] }[] = [
         title: 'Make live · end has passed',
         what: 'Not made live: Close, or Change dates',
         href: '/demo/events/evt-shower-2?state=makeLiveEndPassed',
+      },
+      {
+        title: 'Make live · the plan’s limit',
+        what: 'Not made live: the plan’s limit, and Close alone',
+        href: '/demo/events/evt-draft-4?state=makeLivePlanLimit',
       },
       {
         title: 'Make live · nobody on the list',
@@ -1708,6 +1723,31 @@ const PAGES: readonly { page: string; boards: readonly Board[] }[] = [
         title: 'Duplicate',
         what: 'What is copied, and when it starts',
         href: '/demo/events/evt-wed-4?state=duplicate',
+      },
+      {
+        title: 'Duplicate · creating',
+        what: 'Create draft turns, Cancel waits',
+        href: '/demo/events/evt-wed-4?state=duplicateCreating',
+      },
+      {
+        title: 'Duplicate · Starts left empty',
+        what: 'Choose when the copy starts.',
+        href: '/demo/events/evt-wed-4?state=duplicateStartsBlank',
+      },
+      {
+        title: 'Duplicate · start refused',
+        what: 'The API’s words under Starts',
+        href: '/demo/events/evt-wed-4?state=duplicateStartsRefused',
+      },
+      {
+        title: 'Duplicate · not created',
+        what: 'Not created. Nothing was saved. Try again.',
+        href: '/demo/events/evt-wed-4?state=duplicateNotCreated',
+      },
+      {
+        title: 'Duplicate · created',
+        what: 'Draft created. Opening it.',
+        href: '/demo/events/evt-wed-4?state=duplicateCreated',
       },
       { title: 'Mute · on', what: 'Just for you', href: '/demo/events/evt-wed-4?state=muted' },
       {
