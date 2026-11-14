@@ -43,6 +43,7 @@ final readonly class EventDuplicator
         $this->entityManager->persist($copy);
         $cover = $this->eventCoverEditor->copy($original, $copy);
         $this->seatingPlanCopier->copy($original, $copy, $by);
+        $this->guestListCopier->copyGroups($original, $copy);
         $guestsCopied = $copyGuests ? $this->guestListCopier->copy($original, $copy, $by) : null;
 
         $this->auditor->record(EventCreator::CREATED, 'Event', $copy->getId(), Actor::User, $by->getId(), $by->getName(), [
