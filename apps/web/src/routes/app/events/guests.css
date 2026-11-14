@@ -1063,12 +1063,7 @@
 }
 
 .gs-note {
-  width: 100%;
   min-height: 72px;
-  border: 0;
-  background: none;
-  font: inherit;
-  resize: vertical;
 }
 
 .gs-companion-block {

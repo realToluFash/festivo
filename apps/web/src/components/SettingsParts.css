@@ -1221,6 +1221,23 @@
   box-shadow: inset 0 0 0 2px var(--colorBroken);
 }
 
+.desk-box.is-area {
+  height: auto;
+  padding-block: var(--spaceMd);
+}
+
+.desk .desk-box.is-area textarea {
+  flex: 1;
+  min-width: 0;
+  padding: 0;
+  border: 0;
+  outline: none;
+  background: none;
+  color: var(--colorInk);
+  font: 500 16px/1.45 var(--fontFamily);
+  resize: vertical;
+}
+
 .desk .desk-box input {
   flex: 1;
   min-width: 0;
