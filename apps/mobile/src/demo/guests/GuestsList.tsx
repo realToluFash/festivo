@@ -98,7 +98,7 @@ function FilterChoice({
               }}
               style={({ pressed }) => [
                 styles.menuRow,
-                key === 'changed' && styles.menuApart,
+                (key === 'changed' || key === 'invited') && styles.menuApart,
                 pressed && styles.menuPressed,
               ]}
               accessibilityRole="button"

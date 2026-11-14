@@ -822,6 +822,8 @@ export interface ListRow {
   person: Person;
   indent: boolean;
   line: string;
+  /** sc-1468: the guest's email address and mobile number, for members who can edit guests only (sc-3773). */
+  contact: string | null;
   label: string;
   /** sc-3777's grey Dietary notes tag and its allergy mark; never for someone who cannot manage guests. */
   dietary: boolean;
@@ -844,11 +846,13 @@ function rowOf(
 
   if (person.companion != null)
     line =
-      person.reply === 'held'
-        ? GW.heldLine
-        : !indent && person.companion.name != null
-          ? GW.guestOf(person.guest.name)
-          : word;
+      indent || person.companion.name == null
+        ? person.reply === 'held'
+          ? GW.heldLine
+          : word
+        : person.reply === 'held'
+          ? `${GW.guestOf(person.guest.name)} · ${GW.heldLine}`
+          : GW.guestOf(person.guest.name);
   else if (mode === 'noReply') line = invitedLine(person.guest.invited ?? BY_MESSAGE);
   else {
     const short =
@@ -866,14 +870,24 @@ function rowOf(
   const needs = contacts ? needsOfPerson(person) : undefined;
   const allergy = hasAllergy(needs);
   const tagged = dietary(needs);
+  const reach = contacts && person.companion == null ? reachOf(person.guest) : [];
   const label = [
     person.name,
-    line.startsWith(word) ? line : `${word}, ${line}`,
+    line.startsWith(word) || line.includes(GW.heldLine) ? line : `${word}, ${line}`,
+    ...reach,
     ...(allergy ? [GW.allergy] : []),
     ...(tagged ? [GW.dietaryNotes] : []),
   ].join(', ');
 
-  return { person, indent, line, label, dietary: tagged, allergy };
+  const contact = reach.length === 0 ? null : reach.join(' · ');
+
+  return { person, indent, line, contact, label, dietary: tagged, allergy };
+}
+
+function reachOf(one: Guest): string[] {
+  return [one.email, one.phone == null ? null : phoneShown(one.phone)].filter(
+    (part): part is string => part != null && part !== '',
+  );
 }
 
 export interface ListGroup {
@@ -1017,6 +1031,7 @@ export function changedView(
         person,
         indent: false,
         line,
+        contact: null,
         label: `${person.name}, ${line}`,
         dietary: false,
         allergy: false,
