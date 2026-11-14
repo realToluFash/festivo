@@ -286,7 +286,7 @@
     "timesIn": "Times in {{timeZone}}"
   },
   "eventLive": {
-    "guestsBlocked": "Guests can't be invited until this event is live.",
+    "guestsBlocked": "Guests can’t be invited until this event is live.",
     "makeLive": "Make live",
     "endPassed": "This event's end has passed, so it cannot be made live. Change its dates first.",
     "changeDates": "Change dates",
@@ -2835,6 +2835,7 @@
     "figure": "{{count, number}}",
     "showAll_one": "Show all {{count, number}}",
     "showAll_other": "Show all {{count, number}}",
-    "heldLine": "Held · comes only if their host accepts"
+    "heldLine": "Held · comes only if their host accepts",
+    "heldAway": "{{guestOf}} · {{held}}"
   }
 }

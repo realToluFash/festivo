@@ -599,8 +599,8 @@
     "calledOffNotice": "Este evento foi cancelado. Não se vai realizar. Não precisa de fazer nada.",
     "finishedNotice": "Este evento já se realizou. Esta página fica aqui como recordação.",
     "refused": "Não foi enviado: deixou de ser possível responder antes do envio. Tudo o que escolheu continua aqui.",
-    "languageSwitched": "This page is now in English.",
-    "languageNotSaved": "Your language was not saved. This page stays in English on this device, but it may open in another language on other devices."
+    "languageSwitched": "Esta página está agora em português.",
+    "languageNotSaved": "O seu idioma não foi guardado. Esta página continua em português neste dispositivo, mas pode abrir noutro idioma noutros dispositivos."
   },
   "signIn": {
     "title": "Iniciar sessão",
@@ -2835,10 +2835,10 @@
     "saved": "Alterações guardadas",
     "notSaved": "Não foi guardado. Nada foi alterado. Tente novamente.",
     "keepsLink": "Se alterar o endereço de e-mail ou o número de telemóvel, a ligação do convite continua a ser a mesma.",
-    "languageNotSet": "Not set",
-    "languageHint": "Their page opens in their browser’s language when Soirely offers it, otherwise in this language. Messages use this language. When this is Not set, both use your organisation’s language.",
-    "languageNotSetLine": "Not set · their browser’s language, or {{language}} when Soirely does not offer it",
-    "languageChose": "They chose {{language}} on their page, and that wins.",
+    "languageNotSet": "Não definido",
+    "languageHint": "A página do convidado abre no idioma do navegador, se a Soirely o oferecer; se não, neste. As mensagens usam este idioma. Com «Não definido», ambos usam o idioma da sua organização.",
+    "languageNotSetLine": "Não definido · o idioma do navegador ou, se a Soirely não o oferecer, o da organização: {{language}}",
+    "languageChose": "Idioma escolhido na própria página: {{language}}. Essa escolha prevalece.",
     "removed": "Removeu {{name}}. Guarde para manter a alteração.",
     "moreCompanions_one": "Mais {{count, number}} acompanhante",
     "moreCompanions_other": "Mais {{count, number}} acompanhantes",
@@ -2922,7 +2922,7 @@
     "countCompanions_other": "{{count, number}} acompanhantes",
     "countCompanions_many": "{{count, number}} de acompanhantes",
     "everyoneReplied": "Já todos responderam.",
-    "find": "Pesquisar convidados",
+    "find": "Pesquisar",
     "clearSearch": "Limpar a pesquisa",
     "shown": "A mostrar {{shown, number}} de {{total, number}}",
     "clear": "Limpar",
@@ -2932,6 +2932,7 @@
     "showAll_one": "Mostrar {{count, number}}",
     "showAll_other": "Mostrar os {{count, number}}",
     "showAll_many": "Mostrar os {{count, number}}",
-    "heldLine": "Em espera · só vem se o convite for aceite"
+    "heldLine": "Em espera · só vem se o convite for aceite",
+    "heldAway": "{{guestOf}} · {{held}}"
   }
 }

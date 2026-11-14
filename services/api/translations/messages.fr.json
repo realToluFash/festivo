@@ -136,7 +136,7 @@
     "guest.not_marked_by_hand": "Not changed. Only an invitation marked by hand can be undone.",
     "validation.guest_invitation_how_required": "Choose how you invited them.",
     "validation.guest_answer_unknown": "Choisissez « Je viens », « Je ne viens pas » ou « À confirmer ».",
-    "validation.guest_language_unknown": "Choose English, Español, Français or Português, or leave it as Not set.",
+    "validation.guest_language_unknown": "Choisissez English, Español, Français ou Português, ou laissez « Non défini ».",
     "event.currency_in_use": "La devise ne peut plus changer une fois que des montants sont enregistrés pour cet événement.",
     "event.state_invalid": "L’état actuel de cet événement ne le permet pas.",
     "event.concluded": "Cet événement est déjà terminé, il ne peut donc pas être publié. Modifiez d’abord ses dates.",

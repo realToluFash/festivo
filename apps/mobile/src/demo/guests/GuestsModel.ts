@@ -575,7 +575,11 @@ function ownRow(g: SampleGuest, c: Companion, index: number): Person {
   const unnamed = c.name.startsWith(say.guestOf(g.name));
   return {
     ...companionRow(g, c, index),
-    line: c.kind === 'held' || unnamed ? companionRow(g, c, index).line : say.guestOf(g.name),
+    line: unnamed
+      ? companionRow(g, c, index).line
+      : c.kind === 'held'
+        ? `${say.guestOf(g.name)} · ${W.heldLine}`
+        : say.guestOf(g.name),
     companion: false,
   };
 }

@@ -599,8 +599,8 @@
     "calledOffNotice": "Cet événement a été annulé. Il n’aura pas lieu. Vous n’avez rien à faire.",
     "finishedNotice": "Cet événement a eu lieu. Cette page reste en ligne, en souvenir.",
     "refused": "Non envoyé : les réponses ont été closes entre-temps. Tous vos choix sont conservés.",
-    "languageSwitched": "This page is now in English.",
-    "languageNotSaved": "Your language was not saved. This page stays in English on this device, but it may open in another language on other devices."
+    "languageSwitched": "Cette page est maintenant en français.",
+    "languageNotSaved": "Votre langue n’a pas été enregistrée. Cette page reste en français sur cet appareil, mais elle peut s’ouvrir dans une autre langue sur vos autres appareils."
   },
   "signIn": {
     "title": "Se connecter",
@@ -680,9 +680,9 @@
     "phonePrimaryLine": "Principal · sur votre profil",
     "phoneOtherLine": "Pour vous joindre",
     "notVerifiedYet": "{{shown}} reste à vérifier.",
-    "undeliverable": "Nous n’avons pas pu remettre d’e-mail à {{address}}.",
+    "undeliverable": "Nos e-mails ne parviennent pas à {{address}}.",
     "changeEmail": "Changer d’adresse",
-    "changeEmailFor": "Changer d’adresse, à la place de {{address}}",
+    "changeEmailFor": "Changer d’adresse, au lieu de {{address}}",
     "verifiedAlternative": "{{address}} est vérifiée. Elle ne deviendra votre adresse principale que si vous la définissez comme telle.",
     "verifiedAlternativePhone": "{{number}} est vérifié. Il ne deviendra votre numéro principal que si vous le définissez comme tel.",
     "save": "Enregistrer",
@@ -2835,10 +2835,10 @@
     "saved": "Modifications enregistrées",
     "notSaved": "Non enregistré. Rien n’a été modifié. Réessayez.",
     "keepsLink": "Si vous modifiez l’adresse e-mail ou le numéro de portable, le lien d’invitation reste le même.",
-    "languageNotSet": "Not set",
-    "languageHint": "Their page opens in their browser’s language when Soirely offers it, otherwise in this language. Messages use this language. When this is Not set, both use your organisation’s language.",
-    "languageNotSetLine": "Not set · their browser’s language, or {{language}} when Soirely does not offer it",
-    "languageChose": "They chose {{language}} on their page, and that wins.",
+    "languageNotSet": "Non défini",
+    "languageHint": "La page de l’invité s’ouvre dans la langue du navigateur si Soirely la propose, sinon dans celle-ci. Les messages sont envoyés dans cette langue. Avec « Non défini », les deux suivent la langue de votre organisation.",
+    "languageNotSetLine": "Non défini · la langue du navigateur ou, si Soirely ne la propose pas, celle de l’organisation : {{language}}",
+    "languageChose": "Langue choisie sur sa propre page : {{language}}. Ce choix l’emporte.",
     "removed": "Vous avez retiré {{name}}. Enregistrez pour conserver la modification.",
     "moreCompanions_one": "{{count, number}} accompagnant de plus",
     "moreCompanions_other": "{{count, number}} accompagnants de plus",
@@ -2922,7 +2922,7 @@
     "countCompanions_other": "{{count, number}} accompagnants",
     "countCompanions_many": "{{count, number}} d’accompagnants",
     "everyoneReplied": "Tout le monde a répondu.",
-    "find": "Rechercher un invité",
+    "find": "Rechercher",
     "clearSearch": "Effacer la recherche",
     "shown": "Affichage : {{shown, number}} sur {{total, number}}",
     "clear": "Effacer",
@@ -2932,6 +2932,7 @@
     "showAll_one": "Afficher {{count, number}}",
     "showAll_other": "Afficher les {{count, number}}",
     "showAll_many": "Afficher les {{count, number}}",
-    "heldLine": "En attente · ne vient que si l’invitation est acceptée"
+    "heldLine": "En attente · ne vient que si l’invitation est acceptée",
+    "heldAway": "{{guestOf}} · {{held}}"
   }
 }
