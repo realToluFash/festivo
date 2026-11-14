@@ -90,6 +90,14 @@ class Guest
     #[ORM\Column(type: Types::STRING, length: 8, nullable: true)]
     private ?string $chosenLanguage = null;
 
+    /** A companion the guest unticked (sc-3779): Not coming only while their host is Coming, and kept while Held so Coming again restores it. */
+    #[ORM\Column(type: Types::BOOLEAN, options: ['default' => false])]
+    private bool $notComingByGuest = false;
+
+    /** The guest typed this companion's name on their page; the host changing it clears it (sc-3779). */
+    #[ORM\Column(type: Types::BOOLEAN, options: ['default' => false])]
+    private bool $namedByGuest = false;
+
     private function __construct(Event $event, ?Guest $host, ?string $fullName, ?string $nameKey, ?string $email, ?string $mobile, ?GuestReply $reply, int $position, ?User $addedBy, #[SensitiveParameter] ?string $linkToken)
     {
         $this->id = Uuid::v7();
@@ -189,10 +197,41 @@ class Guest
         return $this->addedBy;
     }
 
+    /** As the host typed it: a name the guest gave becomes the host's once the host changes it. */
     public function setFullName(?string $fullName, ?string $nameKey): void
     {
+        if ($fullName !== $this->fullName) {
+            $this->namedByGuest = false;
+        }
+
         $this->fullName = $fullName;
         $this->nameKey = $nameKey;
+    }
+
+    public function nameByGuest(string $fullName, string $nameKey): void
+    {
+        if ($fullName === $this->fullName) {
+            return;
+        }
+
+        $this->fullName = $fullName;
+        $this->nameKey = $nameKey;
+        $this->namedByGuest = true;
+    }
+
+    public function isNamedByGuest(): bool
+    {
+        return $this->namedByGuest;
+    }
+
+    public function isNotComingByGuest(): bool
+    {
+        return $this->notComingByGuest;
+    }
+
+    public function markComingByGuest(bool $coming): void
+    {
+        $this->notComingByGuest = !$coming;
     }
 
     public function setEmail(?string $email): void

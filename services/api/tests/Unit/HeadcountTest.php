@@ -34,6 +34,26 @@ final class HeadcountTest extends TestCase
         self::assertSame($standing, GuestStanding::of($reply, $companion));
     }
 
+    /** @return iterable<string, array{GuestReply, bool, GuestStanding}> */
+    public static function choices(): iterable
+    {
+        foreach ([true, false] as $coming) {
+            $as = $coming ? 'left Coming' : 'marked Not coming';
+
+            yield "host Coming, companion {$as}" => [GuestReply::Coming, $coming, $coming ? GuestStanding::Accepted : GuestStanding::Declined];
+            yield "host Not sure yet, companion {$as}" => [GuestReply::Maybe, $coming, GuestStanding::HeldHostMaybe];
+            yield "host Not coming, companion {$as}" => [GuestReply::NotComing, $coming, GuestStanding::HeldHostNotComing];
+            yield "host with no reply, companion {$as}" => [GuestReply::NoReply, $coming, GuestStanding::HeldHostNoReply];
+        }
+    }
+
+    #[Test]
+    #[DataProvider('choices')]
+    public function aCompanionTheGuestMarkedNotComingIsDeclinedOnlyWhileTheirHostIsComingAndHeldOtherwise(GuestReply $reply, bool $coming, GuestStanding $standing): void
+    {
+        self::assertSame($standing, GuestStanding::of($reply, companion: true, notComingByGuest: !$coming));
+    }
+
     #[Test]
     public function everyStandingIsCountedOnceSoTheCountsAddUp(): void
     {

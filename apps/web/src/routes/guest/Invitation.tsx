@@ -7,8 +7,8 @@ import {
   type GuestPage,
   type GuestPagePhase,
 } from '@soirely/api-client';
-import { formatEventClock, hostsLine } from '@soirely/domain';
-import { type ReactNode, useEffect, useLayoutEffect, useRef, useState } from 'react';
+import { formatEventClock, hostsLine, listFormat } from '@soirely/domain';
+import { type ReactNode, useEffect, useId, useLayoutEffect, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useOutletContext } from 'react-router';
 
@@ -20,7 +20,21 @@ import { offButton } from '../../offButton.ts';
 import { useWideWidth } from '../../phoneWidth.ts';
 import { InvalidInvitation } from './InvalidInvitation.tsx';
 import { openIn, saveAgain, useGuestLanguage } from './guestLanguage.ts';
+import {
+  type Party,
+  added,
+  choices,
+  comingNames,
+  hasStep,
+  opened,
+  partyOf,
+  placesLeft,
+  renamed,
+  renaming,
+  toggled,
+} from './party.ts';
 import { forgetStarted, markStarted, wasStarted } from './started.ts';
+import './withYou.css';
 
 type Load =
   | { kind: 'loading' }
@@ -30,6 +44,7 @@ type Load =
 
 type View =
   | { kind: 'answer'; busy: GuestAnswer | null; note: 'unsent' | 'notSentTap' | null }
+  | { kind: 'withYou'; from: 'answer' | 'changing' }
   | {
       kind: 'check';
       busy: boolean;
@@ -78,6 +93,10 @@ function ended(phase: GuestPagePhase): boolean {
 
 function standing(page: GuestPage): string {
   return `${page.phase}:${String(page.started)}:${String(page.answersOpen)}`;
+}
+
+function sameParty(was: GuestPage, now: GuestPage): boolean {
+  return JSON.stringify(was.guest.companions) === JSON.stringify(now.guest.companions);
 }
 
 /** The control that had focus before an update, so focus can follow it or fall to the h1 (sc-3591). */
@@ -222,6 +241,7 @@ function Card({ token, first }: { token: string; first: GuestPage }) {
   const { t } = useTranslation();
   const [page, setPage] = useState(first);
   const [view, setView] = useState<View>(() => opening(first, token));
+  const [party, setParty] = useState<Party>(() => partyOf(first));
   const [tell, setTell] = useState<Tell>({ kind: 'card' });
   const [want, setWant] = useState<{ on: string } | null>(null);
   const [gone, setGone] = useState(false);
@@ -256,6 +276,7 @@ function Card({ token, first }: { token: string; first: GuestPage }) {
 
     seen.current = standing(next);
     setView(opening(next, token));
+    setParty(partyOf(next));
     setHeld(had);
   }
 
@@ -278,12 +299,16 @@ function Card({ token, first }: { token: string; first: GuestPage }) {
 
   function send(answer: GuestAnswer, onFail: () => void): void {
     sends.current += 1;
-    api.sendGuestAnswer(token, answer).then(
+    const companions = answer === 'coming' && hasStep(party) ? choices(party) : [];
+    api.sendGuestAnswer(token, answer, companions).then(
       (next) => {
         forgetStarted(token);
         const same =
-          page.guest.reply?.answer === answer && next.guest.reply?.at === page.guest.reply.at;
+          page.guest.reply?.answer === answer &&
+          next.guest.reply?.at === page.guest.reply.at &&
+          sameParty(page, next);
         setPage(next);
+        setParty(partyOf(next));
         setView({ kind: 'recorded', same });
         focus('greeting');
       },
@@ -330,6 +355,11 @@ function Card({ token, first }: { token: string; first: GuestPage }) {
 
     if (answer === 'coming') {
       if (from === 'answer') markStarted(token);
+      if (hasStep(party)) {
+        setView({ kind: 'withYou', from });
+        focus('withYouHead');
+        return;
+      }
       setView({ kind: 'check', busy: false, failed: false, from });
       focus('checkHead');
       return;
@@ -359,8 +389,26 @@ function Card({ token, first }: { token: string; first: GuestPage }) {
     });
   }
 
-  function back(): void {
+  function withYou(): void {
     if (view.kind !== 'check') return;
+    setView({ kind: 'withYou', from: view.from });
+    focus('withYouHead');
+  }
+
+  function partyNext(): void {
+    if (view.kind !== 'withYou') return;
+    setView({ kind: 'check', busy: false, failed: false, from: view.from });
+    focus('checkHead');
+  }
+
+  /** Check and send's Back returns to the step before it; its answer row's Change, to the answers. */
+  function checkBack(): void {
+    if (hasStep(party)) withYou();
+    else back();
+  }
+
+  function back(): void {
+    if (view.kind !== 'check' && view.kind !== 'withYou') return;
     setView(
       view.from === 'changing'
         ? { kind: 'changing', busy: null, failed: false }
@@ -387,8 +435,8 @@ function Card({ token, first }: { token: string; first: GuestPage }) {
 
   if (gone) return <InvalidInvitation />;
 
-  const alone = tell.kind !== 'card' || view.kind === 'check';
-  const tagged = guest.reply != null && view.kind !== 'check';
+  const alone = tell.kind !== 'card' || view.kind === 'check' || view.kind === 'withYou';
+  const tagged = guest.reply != null && view.kind !== 'check' && view.kind !== 'withYou';
 
   return (
     <div ref={columns} className="gp-columns">
@@ -400,6 +448,14 @@ function Card({ token, first }: { token: string; first: GuestPage }) {
           <Shown
             view={view}
             page={page}
+            party={party}
+            onParty={(change, on) => {
+              setParty(change);
+              if (on != null) focus(on);
+            }}
+            onPartyNext={partyNext}
+            onPartyChange={withYou}
+            onCheckBack={checkBack}
             onChoose={choose}
             onSend={sendComing}
             onBack={back}
@@ -541,6 +597,11 @@ function AddToCalendar({ calendar }: { calendar: GuestCalendarLink }) {
 function Shown({
   view,
   page,
+  party,
+  onParty,
+  onPartyNext,
+  onPartyChange,
+  onCheckBack,
   onChoose,
   onSend,
   onBack,
@@ -549,6 +610,11 @@ function Shown({
 }: {
   view: View;
   page: GuestPage;
+  party: Party;
+  onParty: (change: (was: Party) => Party, focus?: string) => void;
+  onPartyNext: () => void;
+  onPartyChange: () => void;
+  onCheckBack: () => void;
   onChoose: (answer: GuestAnswer) => void;
   onSend: () => void;
   onBack: () => void;
@@ -556,8 +622,9 @@ function Shown({
   onKeep: () => void;
 }) {
   const { t } = useTranslation();
-  const { reply, fullName, companions } = page.guest;
+  const { reply, fullName } = page.guest;
   const day = reply == null ? '' : dayOf(reply.at, page.event.timeZone);
+  const places = hasStep(party);
 
   switch (view.kind) {
     case 'answer':
@@ -571,13 +638,28 @@ function Shown({
           <AnswerRows busy={view.busy} onChoose={onChoose} />
         </section>
       );
+    case 'withYou':
+      return (
+        <WithYou
+          party={party}
+          fullName={fullName}
+          hosts={hostsLine(page.event.hosts, currentLocale())}
+          onChange={onParty}
+          onBack={onBack}
+          onNext={onPartyNext}
+        />
+      );
     case 'check':
       return (
         <section className="gp-check" aria-labelledby="gp-check-h">
           {view.refused === true ? (
             <Notice kind="broken">{t('guest.refused')}</Notice>
           ) : (
-            <TextAction ink icon={<Glyph name="back" size={18} weight={2.2} />} onClick={onBack}>
+            <TextAction
+              ink
+              icon={<Glyph name="back" size={18} weight={2.2} />}
+              onClick={onCheckBack}
+            >
               {t('guest.back')}
             </TextAction>
           )}
@@ -595,6 +677,20 @@ function Shown({
               <TextAction onClick={onBack}>{t('guest.changeShort')}</TextAction>
             )}
           </div>
+          {places && (
+            <div className="gp-party-row">
+              <div className="gp-party-words">
+                <p className="gp-party-label">{t('guest.withYouRow')}</p>
+                <p className="gp-party-value">{partyLine(party, t)}</p>
+              </div>
+              {view.refused !== true && (
+                <TextAction off={view.busy} onClick={onPartyChange}>
+                  <span className="visually-hidden">{t('guest.withYouChange')}</span>
+                  <span aria-hidden="true">{t('guest.changeShort')}</span>
+                </TextAction>
+              )}
+            </div>
+          )}
           {view.failed && <Notice kind="broken">{t('guest.notSent')}</Notice>}
           {view.refused !== true && (
             <>
@@ -622,10 +718,13 @@ function Shown({
             {view.same && (
               <p className="gp-sub is-ink">{t('guest.same', { answer: t(WORD[reply.answer]) })}</p>
             )}
-            {companions > 0 && reply.answer === 'notComing' && (
+            {places && reply.answer === 'coming' && (
+              <p className="gp-sub">{partyLine(partyOf(page), t)}</p>
+            )}
+            {places && reply.answer === 'notComing' && (
               <p className="gp-sub">{t('guest.companionsNotComing')}</p>
             )}
-            {companions > 0 && reply.answer === 'maybe' && (
+            {places && reply.answer === 'maybe' && (
               <p className="gp-sub">{t('guest.companionsOnHold')}</p>
             )}
             <TextAction focus="change" onClick={onChange}>
@@ -736,6 +835,177 @@ function AnswerRows({
 }
 
 /** The answer's mark (replyStates): a tick on a disc, a bar on a grey disc, a question in a ring; beside its words, so hidden. */
+type Translate = ReturnType<typeof useTranslation>['t'];
+
+/** "You, Chidi Okonkwo-Williams · 2 people": the guest and each companion left Coming. */
+function partyLine(party: Party, t: Translate): string {
+  const names = [t('guest.withYouYou'), ...comingNames(party)];
+
+  return t('guest.withYouPeople', {
+    names: listFormat(currentLocale(), { type: 'conjunction' }).format(names),
+    count: names.length,
+  });
+}
+
+/** sc-3779's Who's coming with you?, after Coming and before Check and send, as the guest demo draws it. */
+function WithYou({
+  party,
+  fullName,
+  hosts,
+  onChange,
+  onBack,
+  onNext,
+}: {
+  party: Party;
+  fullName: string;
+  hosts: string;
+  onChange: (change: (was: Party) => Party, focus?: string) => void;
+  onBack: () => void;
+  onNext: () => void;
+}) {
+  const { t } = useTranslation();
+  const id = useId();
+  const left = placesLeft(party);
+
+  return (
+    <section className="gp-with" aria-labelledby={`${id}-h`}>
+      <TextAction ink icon={<Glyph name="back" size={18} weight={2.2} />} onClick={onBack}>
+        {t('guest.back')}
+      </TextAction>
+      <h2 id={`${id}-h`} className="gp-h2 is-24" tabIndex={-1} data-focus="withYouHead">
+        {t('guest.withYouTitle')}
+      </h2>
+      <p className="gp-sub">{t('guest.withYouPlaces', { hosts, count: party.places })}</p>
+      <ul className="gp-with-rows">
+        <li className="gp-with-row is-on">
+          <span className="gp-with-words">
+            <span className="gp-with-name">{fullName}</span>
+            <span className="gp-with-sub">{t('guest.withYouThatsYou')}</span>
+          </span>
+          <span className="gp-with-tag">{t('guest.withYouComing')}</span>
+        </li>
+        {party.people.map((one) => (
+          <li key={one.key} className={one.coming ? 'gp-with-row is-on' : 'gp-with-row'}>
+            <span className="gp-with-words">
+              {party.renaming === one.key ? (
+                <span className="gp-with-edit">
+                  <label htmlFor={`${id}-rename`} className="gp-with-label">
+                    {t('guest.withYouTheirName')}
+                  </label>
+                  <input
+                    id={`${id}-rename`}
+                    className="gp-with-input"
+                    type="text"
+                    value={party.draft}
+                    autoComplete="off"
+                    data-focus="renameField"
+                    aria-invalid={party.tried}
+                    onChange={(event) => {
+                      const draft = event.target.value;
+                      onChange((was) => ({ ...was, draft, tried: false }));
+                    }}
+                  />
+                  <button
+                    type="button"
+                    className="gp-outlined gp-with-small"
+                    onClick={() => onChange(renamed, `rename-${one.key}`)}
+                  >
+                    {party.tried ? t('guest.withYouTypeTheirName') : t('guest.withYouDone')}
+                  </button>
+                </span>
+              ) : (
+                <button
+                  type="button"
+                  className="gp-with-name is-button"
+                  aria-label={t('guest.withYouRename', { name: one.name })}
+                  data-focus={`rename-${one.key}`}
+                  onClick={() => onChange((was) => renaming(was, one.key), 'renameField')}
+                >
+                  <span>{one.name}</span>
+                  <Pencil />
+                </button>
+              )}
+              <span className="gp-with-sub">
+                {one.byGuest ? t('guest.withYouByYou') : t('guest.withYouByInvitation')}
+              </span>
+            </span>
+            <button
+              type="button"
+              className={one.coming ? 'gp-with-toggle is-on' : 'gp-with-toggle'}
+              aria-pressed={one.coming}
+              aria-label={t('guest.withYouIsComing', { name: one.name })}
+              onClick={() => onChange((was) => toggled(was, one.key))}
+            >
+              {one.coming && <Glyph name="tick" size={16} weight={2.6} />}
+              <span>{one.coming ? t('guest.withYouComing') : t('guest.withYouNotComing')}</span>
+            </button>
+          </li>
+        ))}
+      </ul>
+      {left > 0 && party.adding == null && (
+        <button
+          type="button"
+          className="gp-outlined"
+          data-focus="add"
+          onClick={() => onChange(opened, 'newName')}
+        >
+          {t('guest.withYouAdd', { count: left })}
+        </button>
+      )}
+      {left > 0 && party.adding != null && (
+        <div className="gp-with-edit is-new">
+          <label htmlFor={`${id}-new`} className="gp-with-label">
+            {t('guest.withYouTheirName')}
+          </label>
+          <input
+            id={`${id}-new`}
+            className="gp-with-input"
+            type="text"
+            value={party.adding}
+            autoComplete="off"
+            data-focus="newName"
+            aria-invalid={party.tried}
+            onChange={(event) => {
+              const adding = event.target.value;
+              onChange((was) => ({ ...was, adding, tried: false }));
+            }}
+          />
+          <button
+            type="button"
+            className="gp-outlined"
+            data-focus="addNamed"
+            onClick={() => onChange(added, 'add')}
+          >
+            {party.tried ? t('guest.withYouTypeTheirName') : t('guest.withYouAdd', { count: left })}
+          </button>
+        </div>
+      )}
+      <p className="visually-hidden" role="status">
+        {party.tried ? t('guest.withYouTypeTheirName') : null}
+      </p>
+      <Filled busy={false} focus="withYouNext" onClick={onNext}>
+        {t('guest.withYouNext')}
+      </Filled>
+    </section>
+  );
+}
+
+function Pencil() {
+  return (
+    <svg
+      className="gp-line"
+      width={15}
+      height={15}
+      viewBox="0 0 24 24"
+      aria-hidden="true"
+      focusable="false"
+      strokeWidth={2.2}
+    >
+      <path d="M21.174 6.812a1 1 0 0 0-3.986-3.987L3.842 16.174a2 2 0 0 0-.5.83l-1.321 4.352a.5.5 0 0 0 .623.622l4.353-1.32a2 2 0 0 0 .83-.497z" />
+    </svg>
+  );
+}
+
 function Mark({
   answer,
   size = 28,

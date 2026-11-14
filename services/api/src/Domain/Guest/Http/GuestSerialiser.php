@@ -69,9 +69,20 @@ final readonly class GuestSerialiser
             'companions' => Vec\map($companions, static fn (Guest $companion): array => [
                 'id' => $companion->getId()->toRfc4122(),
                 'fullName' => $companion->getFullName(),
-                'state' => GuestStanding::of($reply, companion: true)->isHeld() ? 'held' : 'coming',
+                'state' => self::companionState(GuestStanding::of($reply, companion: true, notComingByGuest: $companion->isNotComingByGuest())),
+                'namedByGuest' => $companion->isNamedByGuest(),
             ]),
         ];
+    }
+
+    /** @return 'coming'|'notComing'|'held' */
+    public static function companionState(GuestStanding $standing): string
+    {
+        return match (true) {
+            $standing->isHeld() => 'held',
+            GuestStanding::Declined === $standing => 'notComing',
+            default => 'coming',
+        };
     }
 
     /** @return array<string, mixed> */

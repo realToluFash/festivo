@@ -68,6 +68,6 @@ final readonly class HeadcountCalculator
     {
         $host = $person->getHost();
 
-        return GuestStanding::of(($host ?? $person)->getReply() ?? GuestReply::NoReply, null !== $host);
+        return GuestStanding::of(($host ?? $person)->getReply() ?? GuestReply::NoReply, null !== $host, $person->isNotComingByGuest());
     }
 }

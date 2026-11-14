@@ -126,6 +126,7 @@
     "validation.guest_companion_unknown": "That companion is not with this guest. Open the guest again.",
     "validation.guest_name_too_long": "Shorten the name to {max} characters or fewer.",
     "validation.guest_companions_too_many": "10 companions is the most one guest can bring.",
+    "validation.guest_places_full": "Every place your hosts saved is named. Ask them if you need another.",
     "guest.already_listed": "{name} is already on the list",
     "guest.version_required": "Send the version you are changing, as If-Match.",
     "guest.changed_since": "Someone else changed this guest since you opened it. Your change was not saved.",
