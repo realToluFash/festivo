@@ -132,7 +132,7 @@ final class GuestGroupsTest extends ApiTestCase
     {
         yield 'blank' => ['   ', 'Enter a name for the group.'];
         yield 'over 60 characters' => [Str\repeat('é', 61), 'A group name can be up to 60 characters.'];
-        yield 'a name already used, case and accents aside' => ['WÖRK', "There's already a group called Work."];
+        yield 'a name already used, case and accents aside' => ['WÖRK', 'There is already a group called Work.'];
     }
 
     #[Test]

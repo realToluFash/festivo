@@ -3179,7 +3179,7 @@ describe('Groups (sc-3775)', () => {
     type('New group', ' work ');
     fireEvent.click(within(column).getByRole('button', { name: 'Create group' }));
 
-    expect(within(column).getByText('There’s already a group called Work.')).toBeDefined();
+    expect(within(column).getByText('There is already a group called Work.')).toBeDefined();
     expect(sent.some((one) => one.line === 'POST /api/events/ev_1/guest-groups')).toBe(false);
 
     type('New group', 'Cousins');
