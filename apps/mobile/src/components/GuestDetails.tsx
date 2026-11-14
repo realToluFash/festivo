@@ -6,6 +6,7 @@ import {
   invitationLine,
   ownLanguageName,
   replyDate,
+  shownReply,
 } from '@soirely/domain';
 import type { ReactNode, Ref } from 'react';
 import { StyleSheet, View, type ViewInstance } from 'react-native';
@@ -100,7 +101,8 @@ export function GuestDetails({
 
   const { guest } = pane;
   const locale = dateLocale();
-  const word = t(REPLY_KEY[guest.reply]);
+  const shown = shownReply(guest);
+  const word = t(REPLY_KEY[shown]);
   const names = guest.companions.map((one) => one.fullName);
   const language = ownLanguageName(guest.language);
   const fallback = ownLanguageName(guest.organisationLanguage) ?? guest.organisationLanguage ?? '';
@@ -211,7 +213,7 @@ export function GuestDetails({
       <GuestCover
         kind={kind}
         event={event}
-        mark={markOf(guest.reply)}
+        mark={markOf(shown)}
         word={word}
         name={guest.fullName}
         line={
@@ -220,26 +222,26 @@ export function GuestDetails({
                 reply: word,
                 date: replyDate(guest.repliedAt, timeZone, locale),
               })
-            : invitationLine(t, guest, timeZone, locale)
+            : shown === 'notYetInvited'
+              ? t('guestList.copyFirst')
+              : invitationLine(t, guest, timeZone, locale)
         }
         nameRef={nameRef}
       />
       {notice?.kind === 'refused' && <AlertLine text={notice.line} />}
       {notice?.kind === 'offline' && <AlertLine text={t('guestList.offlineRefused')} />}
       {notice?.kind === 'failed' && <AlertLine text={t('guestList.unmarkNotSaved')} />}
-      <View>
-        <BlockHead title={t('guestList.replyHeading')} />
-        <Row
-          title={word}
-          line={
-            guest.repliedAt == null
-              ? undefined
-              : t('guestList.repliedOn', { date: replyDate(guest.repliedAt, timeZone, locale) })
-          }
-          lead={<MarkSlot kind={markOf(guest.reply)} />}
-          testID="guest.reply"
-        />
-      </View>
+      {guest.repliedAt != null && (
+        <View>
+          <BlockHead title={t('guestList.replyHeading')} />
+          <Row
+            title={word}
+            line={t('guestList.repliedOn', { date: replyDate(guest.repliedAt, timeZone, locale) })}
+            lead={<MarkSlot kind={markOf(shown)} />}
+            testID="guest.reply"
+          />
+        </View>
+      )}
       <View>
         <BlockHead
           title={t('guestList.details')}
