@@ -42,7 +42,11 @@ export const DEVELOPMENT_PORTS = {
   AGENT_GATEWAY_PORT: 8095,
 };
 
-export const TESTERS = [1, 2, 3];
+export const TESTERS = [1, 2, 3, 4];
+
+export function testerOffset(tester) {
+  return tester === 4 ? 5100 : tester * 10000;
+}
 
 // The stack a person on the QA team tests on, from their own phone and laptop: soirely-qa-lan,
 // served on the machine's network address. Only a plan run touches it.
@@ -130,12 +134,13 @@ export function qaConfig(tester = 1, address = undefined) {
   }
   const { project, ports, urls, overrides, app } = stackConfig(
     lan ? 'soirely-qa-lan' : tester === 1 ? 'soirely-qa' : `soirely-qa${tester}`,
-    lan ? LAN_OFFSET : tester * 10000,
+    lan ? LAN_OFFSET : testerOffset(tester),
     lan ? (address ?? lanAddress()) : '127.0.0.1',
     { secure: lan },
   );
-  // The person brings the phone: setup makes none of its simulators or emulators, and their ports stay unused.
-  const slot = lan ? TESTERS.length + 1 : tester;
+  // The person brings the phone: setup makes none of its simulators or emulators.
+  // The lan stack kept slot 4 when tester 4 came.
+  const slot = lan ? 4 : tester === 4 ? 5 : tester;
   // Expo names this address in the QR code, so the person's phone reaches Metro.
   if (lan) app.REACT_NATIVE_PACKAGER_HOSTNAME = new URL(urls.api).hostname;
   if (lan) overrides.COMPOSE_FILE = `compose.yaml:${LAN_PROXY_COMPOSE}`;
@@ -153,7 +158,7 @@ export function qaConfig(tester = 1, address = undefined) {
     tablet: { name: `${avd}_Tablet`, device: 'pixel_tablet', ramMb: 4096 },
   };
   // Inside 5554–5584, the only consoles adb finds, and clear of 5554, where one started by hand lands.
-  const emulatorPort = 5570 + 2 * slot;
+  const emulatorPort = lan ? null : 5570 + 2 * tester;
   return {
     tester,
     simulated: !lan,
@@ -460,6 +465,96 @@ export function emulatorGpu(platform = process.platform, env = process.env) {
   return env.SOIRELY_QA_EMULATOR_GPU || (platform === 'linux' ? 'swangle_indirect' : 'host');
 }
 
+export function testerRole(tester) {
+  return tester === 1 ? 'qa' : `qa${tester}`;
+}
+
+export function agentsFile(env = process.env, home = homedir()) {
+  return join(env.SOIRELY_CONFIG ?? join(home, '.config/soirely'), 'agents.json');
+}
+
+const WINDOWS_SDK = '%LOCALAPPDATA%\\Android\\Sdk';
+
+// `emulatorHost` (docs/agents/machines.md): a Windows computer, over ssh. Unset, it runs here.
+export function emulatorHostOf(agents, tester) {
+  const value = agents?.roles?.[testerRole(tester)]?.emulatorHost;
+  if (value === undefined || value === null) return null;
+  const entry = typeof value === 'string' ? { ssh: value } : value;
+  if (typeof entry !== 'object' || typeof entry.ssh !== 'string' || !entry.ssh.trim()) {
+    throw new Error(
+      `emulatorHost of ${testerRole(tester)} in agents.json is not an ssh destination such as "me@laptop"`,
+    );
+  }
+  return {
+    ssh: entry.ssh,
+    name: entry.name ?? entry.ssh.replace(/^.*@/, ''),
+    sdk: entry.sdk ?? WINDOWS_SDK,
+    gpu: entry.gpu ?? 'host',
+  };
+}
+
+export const SSH_OPTIONS = ['-o', 'BatchMode=yes', '-o', 'ConnectTimeout=10'];
+
+// Windows' OpenSSH ends the emulator with the session, so stopping the unit stops all three.
+export function remoteEmulatorCommand(host, port, args) {
+  return [
+    'ssh',
+    ...SSH_OPTIONS,
+    '-o',
+    'ExitOnForwardFailure=yes',
+    '-o',
+    'ServerAliveInterval=15',
+    '-o',
+    'ServerAliveCountMax=4',
+    '-L',
+    `${port}:127.0.0.1:${port}`,
+    '-L',
+    `${port + 1}:127.0.0.1:${port + 1}`,
+    host.ssh,
+    `${host.sdk}\\emulator\\emulator.exe ${args.join(' ')}`,
+  ];
+}
+
+export function remoteEmulatorScript(port, kill = false) {
+  const found = `Get-CimInstance Win32_Process | Where-Object { $_.Name -match '^(emulator|qemu-system)' -and $_.CommandLine -like '*-port ${port}*' }`;
+  const stop = kill
+    ? ` | ForEach-Object { Stop-Process -Id $_.ProcessId -Force -ErrorAction SilentlyContinue }; Start-Sleep -Seconds 2; @(${found})`
+    : '';
+  return `powershell -NoProfile -Command "@(${found}${stop}).Count"`;
+}
+
+// adb scans for emulators only as it starts; one elsewhere is announced to it instead.
+export function adbAnnouncement(port) {
+  const message = `host:emulator:${port + 1}`;
+  return message.length.toString(16).padStart(4, '0') + message;
+}
+
+export function pickPlayImage(paths, abi) {
+  const installed = paths
+    .map((path) => path.split(/[\\/]/))
+    .filter(([, tag, arch]) => tag?.startsWith('google_apis_playstore') && arch === abi)
+    .map(([version, tag]) => ({
+      version,
+      tag,
+      api: Number.parseFloat(version.replace('android-', '')),
+    }))
+    .filter(({ api }) => Number.isFinite(api));
+  installed.sort((a, b) => b.api - a.api || a.tag.length - b.tag.length);
+  const { version, tag } = installed[0] ?? { version: 'android-35', tag: 'google_apis_playstore' };
+  return `system-images;${version};${tag};${abi}`;
+}
+
+export function missingRemoteTools(host, what) {
+  return [
+    `  ${host.name} (${host.ssh}) has no ${what} in ${host.sdk}`,
+    `  install it there, then run \`node scripts/qa-env.mjs setup\` again:`,
+    '    - Android Studio > Settings > Languages & Frameworks > Android SDK > SDK Tools:',
+    '      tick "Android SDK Command-line Tools (latest)" and "Android Emulator", and apply',
+    '    - SDK Platforms, Show Package Details: tick a "Google Play" x86_64 system image',
+    '  docs/agents/machines.md, An emulator on another computer, lists the rest it needs.',
+  ].join('\n');
+}
+
 // The system image and the release APK both read this: an APK for another ABI is refused on install.
 export function emulatorAbi(arch = process.arch) {
   return arch === 'arm64' ? 'arm64-v8a' : 'x86_64';
@@ -663,20 +758,13 @@ const directoriesIn = (path) =>
 
 // Only a Play image carries TalkBack, and a host may have any released version of one.
 export function playImage(sdk, arch = process.arch) {
-  const abi = emulatorAbi(arch);
   const root = join(sdk, 'system-images');
-  const installed = directoriesIn(root)
-    .map((version) => ({ version, api: Number.parseFloat(version.replace('android-', '')) }))
-    .filter(({ api }) => Number.isFinite(api))
-    .flatMap(({ version, api }) =>
-      directoriesIn(join(root, version))
-        .filter((tag) => tag.startsWith('google_apis_playstore'))
-        .filter((tag) => existsSync(join(root, version, tag, abi)))
-        .map((tag) => ({ version, tag, api })),
-    );
-  installed.sort((a, b) => b.api - a.api || a.tag.length - b.tag.length);
-  const { version, tag } = installed[0] ?? { version: 'android-35', tag: 'google_apis_playstore' };
-  return `system-images;${version};${tag};${abi}`;
+  const paths = directoriesIn(root).flatMap((version) =>
+    directoriesIn(join(root, version)).flatMap((tag) =>
+      directoriesIn(join(root, version, tag)).map((abi) => join(version, tag, abi)),
+    ),
+  );
+  return pickPlayImage(paths, emulatorAbi(arch));
 }
 
 export function expoSdkMajor(expoRange) {
@@ -1041,7 +1129,84 @@ export function missingCmdlineTools({ sdk, avdmanager }) {
   ].join('\n');
 }
 
+function createRemoteEmulators(host) {
+  reachHost(host);
+  const listed = onHost(host, `${host.sdk}\\emulator\\emulator.exe -list-avds`);
+  const existing = (listed.stdout ?? '').split(/\r?\n/).map((line) => line.trim());
+  const missing = Object.values(CONFIG.emulators).filter((avd) => !existing.includes(avd.name));
+  for (const avd of Object.values(CONFIG.emulators)) {
+    if (!missing.includes(avd)) console.log(`  ${avd.name}: already there on ${host.name}`);
+  }
+  if (missing.length) {
+    const avdmanager = `${host.sdk}\\cmdline-tools\\latest\\bin\\avdmanager.bat`;
+    const has = onHost(host, `if exist ${avdmanager} (echo found) else (echo missing)`);
+    if (has.stdout?.trim() !== 'found') {
+      console.log(missingRemoteTools(host, 'Android SDK Command-line Tools'));
+    } else {
+      const images = onHost(
+        host,
+        `powershell -NoProfile -Command "Get-ChildItem -Directory -Path '${host.sdk}\\system-images\\*\\*\\*' | ForEach-Object { $_.FullName.Substring($_.FullName.IndexOf('system-images') + 14) }"`,
+      );
+      const image = pickPlayImage((images.stdout ?? '').split(/\r?\n/).filter(Boolean), 'x86_64');
+      for (const avd of missing) {
+        const created = onHost(
+          host,
+          `echo no| ${avdmanager} create avd -n ${avd.name} -k "${image}" -d ${avd.device}`,
+          { timeout: 180000 },
+        );
+        console.log(
+          created.status === 0
+            ? `  ${avd.name}: created on ${image} on ${host.name}`
+            : `  ${avd.name}: could not create one on ${host.name}. Is ${image} installed there?`,
+        );
+      }
+    }
+  }
+  for (const avd of Object.values(CONFIG.emulators)) {
+    if (avd.ramMb) raiseRemoteAvdRam(host, avd);
+  }
+  checkConsoleToken(host);
+}
+
+function raiseRemoteAvdRam(host, avd) {
+  const file = `%USERPROFILE%\\.android\\avd\\${avd.name}.avd\\config.ini`;
+  const read = onHost(host, `type ${file}`);
+  if (read.status !== 0) return;
+  const before = read.stdout.replace(/\r\n/g, '\n');
+  const after = withAvdRam(before, avd.ramMb);
+  if (after === before) return;
+  const wrote = onHost(
+    host,
+    `powershell -NoProfile -Command "[Console]::In.ReadToEnd() | Set-Content -NoNewline -Encoding ascii -Path '${file}'"`,
+    { input: after.replace(/\n/g, '\r\n') },
+  );
+  console.log(
+    wrote.status === 0
+      ? `  ${avd.name}: RAM raised to ${avd.ramMb} MB on ${host.name}; it takes effect on its next cold boot`
+      : `  ${avd.name}: could not raise its RAM to ${avd.ramMb} MB on ${host.name}`,
+  );
+}
+
+function checkConsoleToken(host) {
+  const local = join(homedir(), '.emulator_console_auth_token');
+  const theirs = onHost(host, 'type %USERPROFILE%\\.emulator_console_auth_token');
+  const ours = existsSync(local) ? readFileSync(local, 'utf8').trim() : null;
+  if (ours && theirs.status === 0 && theirs.stdout.trim() === ours) {
+    console.log(`  console token: the same on ${host.name}`);
+    return;
+  }
+  console.log(
+    `  console token: ${host.name}'s differs from ${local}, so \`adb emu\` cannot stop its emulator.\n` +
+      '  docs/agents/machines.md, An emulator on another computer, says how to copy it over.',
+  );
+}
+
 function createEmulators() {
+  const host = remoteHost();
+  if (host) {
+    createRemoteEmulators(host);
+    return;
+  }
   const tools = androidTools();
   if (!existsSync(tools.avdmanager)) {
     console.log(missingCmdlineTools(tools));
@@ -1745,11 +1910,72 @@ async function serve() {
 
 const LAUNCH_RECORDING = '/sdcard/soirely-launch.mp4';
 
+let REMOTE;
+function remoteHost() {
+  if (REMOTE === undefined) {
+    const file = agentsFile();
+    REMOTE = existsSync(file)
+      ? emulatorHostOf(JSON.parse(readFileSync(file, 'utf8')), CONFIG.tester)
+      : null;
+  }
+  return REMOTE;
+}
+
+function onHost(host, command, { input, timeout = 60000 } = {}) {
+  return spawnSync('ssh', [...SSH_OPTIONS, host.ssh, command], {
+    encoding: 'utf8',
+    input,
+    timeout,
+  });
+}
+
+function reachHost(host) {
+  const exe = `${host.sdk}\\emulator\\emulator.exe`;
+  const tried = `ssh ${SSH_OPTIONS.join(' ')} ${host.ssh} "if exist ${exe} echo found"`;
+  const answer = onHost(host, `if exist ${exe} (echo found) else (echo missing)`, {
+    timeout: 30000,
+  });
+  if (answer.error || answer.status !== 0) {
+    const why =
+      answer.error?.code === 'ETIMEDOUT' ? 'no answer in 30 s' : (answer.stderr || '').trim();
+    throw new Error(
+      `the emulator host ${host.name} (${host.ssh}) could not be reached: ${why || `ssh exited ${answer.status}`}\n` +
+        `  tried: ${tried}\n` +
+        "  is it awake, on mains power and on this network, with OpenSSH Server running and this machine's key?",
+    );
+  }
+  if (answer.stdout.trim() !== 'found')
+    throw new Error(missingRemoteTools(host, 'Android Emulator'));
+}
+
+function remoteEmulators(host, kill = false) {
+  const answer = onHost(host, remoteEmulatorScript(CONFIG.emulatorPort, kill));
+  const count = Number(answer.stdout?.trim());
+  return answer.status === 0 && Number.isFinite(count) ? count : null;
+}
+
+function announceEmulator(tools) {
+  capture(tools.adb, ['start-server'], { env: tools.env });
+  const script =
+    'const s=require("net").connect(5037,"127.0.0.1",()=>s.end(process.argv[1]));s.on("error",()=>{})';
+  spawnSync(process.execPath, ['-e', script, adbAnnouncement(CONFIG.emulatorPort)]);
+}
+
+let SEEN = false;
+function seeRemoteEmulator(tools) {
+  if (SEEN || !remoteHost()) return;
+  SEEN = true;
+  if (emulatorOnline(tools) || unitState(`${CONFIG.project}-emulator`) !== 'active') return;
+  announceEmulator(tools);
+  for (let i = 0; i < 20 && !emulatorOnline(tools); i++) spawnSync('sleep', ['0.25']);
+}
+
 function emulatorSerial() {
   return `emulator-${CONFIG.emulatorPort}`;
 }
 
 function adbOut(tools, args) {
+  seeRemoteEmulator(tools);
   return capture(tools.adb, ['-s', emulatorSerial(), ...args], { env: tools.env });
 }
 
@@ -1784,10 +2010,21 @@ async function stopEmulator(tools) {
   for (let i = 0; i < 60; i++) {
     const stopping =
       usesSystemd() && ['active', 'activating', 'deactivating'].includes(unitState(unit));
-    if (!emulatorOnline(tools) && !stopping) return;
+    if (!emulatorOnline(tools) && !stopping) break;
+    if (remoteHost() && i === 15) capture('systemctl', ['--user', 'stop', unit]);
     await pause(1000);
+    if (i === 59)
+      throw new Error(`the emulator on ${emulatorSerial()} did not stop within a minute`);
   }
-  throw new Error(`the emulator on ${emulatorSerial()} did not stop within a minute`);
+  const host = remoteHost();
+  if (!host) return;
+  capture('systemctl', ['--user', 'stop', unit]);
+  const left = remoteEmulators(host, true);
+  if (left !== 0) {
+    throw new Error(
+      `${host.name} ${left === null ? 'could not be asked whether' : `still runs ${left} emulator process(es)`} on console ${CONFIG.emulatorPort}`,
+    );
+  }
 }
 
 async function bootEmulator(tools, name) {
@@ -1812,7 +2049,31 @@ async function bootEmulator(tools, name) {
   ];
   const unit = `${CONFIG.project}-emulator`;
   let gone;
-  if (usesSystemd()) {
+  const host = remoteHost();
+  if (host) {
+    if (!usesSystemd()) throw new Error('an emulator on another computer needs systemd here');
+    reachHost(host);
+    capture('systemctl', ['--user', 'stop', unit]);
+    remoteEmulators(host, true);
+    const since = Math.floor(Date.now() / 1000);
+    const remoteArgs = args.map((arg) => (arg === emulatorGpu() ? host.gpu : arg));
+    run('systemd-run', [
+      '--user',
+      `--unit=${unit}`,
+      '--collect',
+      '--quiet',
+      ...remoteEmulatorCommand(host, CONFIG.emulatorPort, remoteArgs),
+    ]);
+    console.log(`  ${name}: starting on ${host.name}`);
+    gone = () => {
+      if (!emulatorOnline(tools)) announceEmulator(tools);
+      return emulatorUnitGone(
+        unit,
+        unitState(unit),
+        () => capture('journalctl', emulatorJournalArgs(unit, since)) ?? '(no journal lines)',
+      );
+    };
+  } else if (usesSystemd()) {
     const env = Object.entries(tools.vars).map(([key, value]) => `--setenv=${key}=${value}`);
     const since = Math.floor(Date.now() / 1000);
     run('systemd-run', [
@@ -2143,13 +2404,15 @@ async function resetForBatch(onAndroid, device) {
 }
 
 async function android(args) {
+  if (!CONFIG.simulated) throw new Error('the lan stack runs no emulator: use a tester stack');
   const tools = androidTools();
-  if (!existsSync(tools.emulator)) {
-    throw new Error(`no Android emulator in ${tools.sdk}: set ANDROID_HOME`);
+  const host = remoteHost();
+  if (!existsSync(host ? tools.adb : tools.emulator)) {
+    throw new Error(`no Android ${host ? 'adb' : 'emulator'} in ${tools.sdk}: set ANDROID_HOME`);
   }
   if (args.includes('--stop')) {
     await stopEmulator(tools);
-    console.log(`Stopped the emulator on ${emulatorSerial()}.`);
+    console.log(`Stopped the emulator on ${emulatorSerial()}${host ? `, on ${host.name}` : ''}.`);
     return;
   }
   const root = qaWorktree();

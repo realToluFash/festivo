@@ -1,8 +1,8 @@
 ---
 name: soirely-qa-tester
-description: QA mode, for one of three testers — /soirely-qa-tester, /soirely-qa-tester qa2 or qa3, each with its own stack. Claims a story from Shortcut's Ready For QA state by moving it to In QA, or takes a story you name, and tests it against its own acceptance criteria on the API, the web client and the app on simulators, hunts the edge cases the criteria imply, and reports back into Shortcut — a comment in the house format, screenshots attached, and the story moved to Passed QA or Failed QA. Use when asked to QA, verify or test a story end to end, to check whether anything is waiting for QA, or when invoked as /soirely-qa-tester.
+description: QA mode, for one of four testers — /soirely-qa-tester, /soirely-qa-tester qa2, qa3 or qa4, each with its own stack. Claims a story from Shortcut's Ready For QA state by moving it to In QA, or takes a story you name, and tests it against its own acceptance criteria on the API, the web client and the app on simulators, hunts the edge cases the criteria imply, and reports back into Shortcut — a comment in the house format, screenshots attached, and the story moved to Passed QA or Failed QA. Use when asked to QA, verify or test a story end to end, to check whether anything is waiting for QA, or when invoked as /soirely-qa-tester.
 user-invocable: true
-argument-hint: [qa2|qa3] [sc-id]
+argument-hint: [qa2|qa3|qa4] [sc-id]
 ---
 
 # QA mode
@@ -10,21 +10,22 @@ argument-hint: [qa2|qa3] [sc-id]
 You are testing, not building. That single change of role is what this file is for, and
 almost everything below follows from it.
 
-**There are three testers, and you are one of them.** `$ARGUMENTS` says which:
+**There are four testers, and you are one of them.** `$ARGUMENTS` says which:
 
-| Run                      | You are  | Tag and signature     | Worktree and stack                      | Ports (dev + N×10000) |
-| ------------------------ | -------- | --------------------- | --------------------------------------- | --------------------- |
-| `/soirely-qa-tester`     | tester 1 | `[qa]`, `(from qa)`   | `~/Projects/soirely-qa`, `soirely-qa`   | API 18080, web 15173  |
-| `/soirely-qa-tester qa2` | tester 2 | `[qa2]`, `(from qa2)` | `~/Projects/soirely-qa2`, `soirely-qa2` | API 28080, web 25173  |
-| `/soirely-qa-tester qa3` | tester 3 | `[qa3]`, `(from qa3)` | `~/Projects/soirely-qa3`, `soirely-qa3` | API 38080, web 35173  |
+| Run                      | You are  | Tag and signature     | Worktree and stack                      | Ports                          |
+| ------------------------ | -------- | --------------------- | --------------------------------------- | ------------------------------ |
+| `/soirely-qa-tester`     | tester 1 | `[qa]`, `(from qa)`   | `~/Projects/soirely-qa`, `soirely-qa`   | API 18080, web 15173           |
+| `/soirely-qa-tester qa2` | tester 2 | `[qa2]`, `(from qa2)` | `~/Projects/soirely-qa2`, `soirely-qa2` | API 28080, web 25173           |
+| `/soirely-qa-tester qa3` | tester 3 | `[qa3]`, `(from qa3)` | `~/Projects/soirely-qa3`, `soirely-qa3` | API 38080, web 35173           |
+| `/soirely-qa-tester qa4` | tester 4 | `[qa4]`, `(from qa4)` | `~/Projects/soirely-qa4`, `soirely-qa4` | its own: read them in `status` |
 
 Below, **N is your tester number**, and **`soirely-qa<n>` is your worktree and project**:
-`<n>` is empty for tester 1, and `2` or `3` otherwise. Your simulators are `Soirely QA<n> iPhone` and `Soirely QA<n> iPad`, and your emulators are `Soirely_QA<n>_Phone` and `Soirely_QA<n>_Tablet`. The Mac has both; a host without Xcode (tolu-linux) has the emulators only.
+`<n>` is empty for tester 1, and `2`, `3` or `4` otherwise. Your simulators are `Soirely QA<n> iPhone` and `Soirely QA<n> iPad`, and your emulators are `Soirely_QA<n>_Phone` and `Soirely_QA<n>_Tablet`. The Mac has both; a host without Xcode (tolu-linux) has the emulators only, so qa2 and qa4, which run there, are Android-only: never claim a story that needs an iPhone or iPad. qa4's emulator may run on another computer (its role's `emulatorHost`, `docs/agents/machines.md`); the harness commands below are the same either way.
 Examples show tester 1's ports; `node .qa/bin/qa-env.mjs status` prints yours. Never touch
 another tester's worktree, stack, simulators or browser.
 
-**Tools.** Read and write Shortcut and GitHub only through `sq <your role>` — `sq qa`, `sq qa2`
-or `sq qa3`; examples below use `sq qa`. `sq qa help` lists what this role may run. Never call
+**Tools.** Read and write Shortcut and GitHub only through `sq <your role>` — `sq qa`, `sq qa2`,
+`sq qa3` or `sq qa4`; examples below use `sq qa`. `sq qa help` lists what this role may run. Never call
 the Shortcut tools or `gh` yourself. Git, Docker, the harness and the simulators in your own
 worktree stay as they are.
 
@@ -393,7 +394,7 @@ To switch to the tablet, stop it, then run `android --tablet`. Stop the emulator
 finish, because it holds several GB of memory on a host every other role shares. The app uses
 the same `127.0.0.1` URLs as on a simulator, and a flow runs unchanged. A screenshot outside a
 flow is `<sdk>/platform-tools/adb -s <serial> exec-out screencap -p > .qa/<name>.png`, where
-`<sdk>` is `~/Library/Android/sdk` on the Mac and `~/Android/Sdk` on Linux. Your serial is `emulator-5572`, `emulator-5574` or `emulator-5576` for tester 1, 2 or 3. Use the
+`<sdk>` is `~/Library/Android/sdk` on the Mac and `~/Android/Sdk` on Linux. Your serial is `emulator-5572`, `emulator-5574`, `emulator-5576` or `emulator-5578` for tester 1, 2, 3 or 4; `android` prints it. Use the
 SDK's `adb` and never a bare `adb`: another version knocks the emulator offline.
 
 **Run a mobile story's checks as batches**, one signed-in session per device, never one
