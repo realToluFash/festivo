@@ -133,14 +133,7 @@ export function EventTop({
       <Placeholder label={t('eventPage.invited')} />
       {onChange != null && (
         <>
-          <DraftRow
-            kind={kind}
-            event={event}
-            manages={manages}
-            now={now}
-            onChange={onChange}
-            onEdit={onEdit}
-          />
+          <DraftRow event={event} manages={manages} now={now} onChange={onChange} onEdit={onEdit} />
           {endPassed && onEdit != null && (
             <PrimaryButton
               label={t('eventLive.changeDates')}

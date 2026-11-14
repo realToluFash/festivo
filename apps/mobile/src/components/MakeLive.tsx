@@ -21,7 +21,6 @@ import {
   refusalOf,
   toldOf,
 } from '../kit/makeLive.ts';
-import { type LayoutKind } from '../layout/useLayout.ts';
 import { tokens } from '../theme/tokens.ts';
 import { PrimaryButton } from './Buttons.tsx';
 import { MakeLiveAlert } from './MakeLiveAlert.tsx';
@@ -32,14 +31,12 @@ import { Text } from './Text.tsx';
 
 /** `EventView-*` (tweak: Draft) and `Lifecycle-*` (sc-3584): the Draft's row, and Make live's confirmation. */
 export function DraftRow({
-  kind,
   event,
   manages,
   now,
   onChange,
   onEdit,
 }: {
-  kind: LayoutKind;
   event: OrganisationEvent;
   manages: boolean;
   now: Date;
@@ -48,7 +45,7 @@ export function DraftRow({
 }) {
   const { t } = useTranslation();
   const opener = useRef<ViewInstance>(null);
-  const makeLive = useMakeLive({ kind, event, onChange, onEdit, opener });
+  const makeLive = useMakeLive({ event, onChange, onEdit, opener });
   const row = draftRowOf(event, now, manages);
 
   // A refusal reloads the event, which may then be no Draft: its alert stays to say so.
@@ -83,7 +80,6 @@ export function useMakeLive({
   onLive,
   opener,
 }: {
-  kind?: LayoutKind;
   event: OrganisationEvent;
   onChange: (event: OrganisationEvent) => void;
   onEdit?: ((at?: EditAt) => void) | undefined;

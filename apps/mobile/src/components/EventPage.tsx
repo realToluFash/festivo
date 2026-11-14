@@ -102,7 +102,6 @@ export function EventPage({
   const deleteOpener = useRef<ViewInstance>(null);
   const duplicateOpener = useRef<ViewInstance>(null);
   const makeLive = useMakeLive({
-    kind,
     event,
     onChange,
     onEdit,
