@@ -170,11 +170,10 @@ function useStartingCountry(asks: boolean): string {
 function useFocusKeys(root: RefObject<HTMLElement | null>) {
   const pending = useRef<{ keys: string[]; turn: number } | null>(null);
   const asked = useRef(0);
-  const [drawn, drawFor] = useReducer((_: number, turn: number) => turn, 0);
+  const [committedTurn, commitTurn] = useReducer((_: number, turn: number) => turn, 0);
 
   useEffect(() => {
-    // A child's effect can ask before the render that draws its target; this commit is not that one.
-    if (pending.current == null || pending.current.turn !== drawn) return;
+    if (pending.current == null || pending.current.turn !== committedTurn) return;
     const { keys, turn } = pending.current;
 
     pending.current = null;
@@ -198,7 +197,7 @@ function useFocusKeys(root: RefObject<HTMLElement | null>) {
     const turn = ++asked.current;
 
     pending.current = { keys, turn };
-    drawFor(turn);
+    commitTurn(turn);
   }, []);
 }
 
