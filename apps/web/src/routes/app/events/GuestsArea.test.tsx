@@ -353,6 +353,50 @@ describe('Guests (sc-1468)', () => {
     expect(screen.queryByText(/on the list/u)).toBeNull();
   });
 
+  it('holds the card’s place and five guest rows while the list loads, heard as Loading… (sc-44950)', async () => {
+    signedIn();
+    await onGuests({ 'GET /api/events/ev_1/guests': () => new Promise<Response>(() => {}) });
+
+    const loading = await screen.findByRole('status');
+    expect(loading.getAttribute('aria-busy')).toBe('true');
+    expect(loading.textContent).toBe('Loading…');
+    expect(loading.querySelector('.desk-unseen')?.textContent).toBe('Loading…');
+    expect(
+      [...loading.children].map((child) =>
+        ['gs-bone-card', 'gs-bone-field', 'gs-rows'].find((name) => child.classList.contains(name)),
+      ),
+    ).toEqual([undefined, 'gs-bone-card', 'gs-bone-field', 'gs-rows']);
+    const rows = loading.querySelectorAll('.desk-row.is-bones');
+    expect(rows).toHaveLength(5);
+    rows.forEach((row) => {
+      expect(row.querySelectorAll('.gs-bone-mark')).toHaveLength(1);
+      expect(row.querySelectorAll('.is-title, .is-line')).toHaveLength(2);
+    });
+    expect(loading.querySelector('[tabindex], button, a, input')).toBeNull();
+    expect(screen.getByRole('heading', { level: 1, name: 'Guests' })).toBeDefined();
+    expect(screen.queryByRole('button', { name: 'Add guest' })).toBeNull();
+    expect(cssRule('.gs-bone-card', GUESTS_CSS)).toContain('height: 150px;');
+    expect(cssRule('.gs-bone-field', GUESTS_CSS)).toContain('height: 48px;');
+    expect(cssRule('.gs-bone-mark', GUESTS_CSS)).toContain('border-radius: 50%;');
+  });
+
+  it('shows the five rows again while Try again reloads the list (sc-44950)', async () => {
+    signedIn();
+    let asked = 0;
+    await onGuests({
+      'GET /api/events/ev_1/guests': () =>
+        ++asked === 1
+          ? Promise.resolve(new Response('', { status: 500 }))
+          : new Promise<Response>(() => {}),
+    });
+
+    fireEvent.click(await screen.findByRole('button', { name: 'Try again' }));
+
+    const loading = await screen.findByRole('status');
+    expect(loading.querySelectorAll('.desk-row.is-bones')).toHaveLength(5);
+    expect(screen.queryByRole('alert')).toBeNull();
+  });
+
   it('says No guests yet alone without guests.manage', async () => {
     signedIn();
     await onGuests(
