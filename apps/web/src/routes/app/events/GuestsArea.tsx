@@ -1532,13 +1532,15 @@ function RowsFrom({
           return (
             <li key={guest.id} className={picked == null ? undefined : 'gm-pick'}>
               {picked != null && (
-                <input
-                  type="checkbox"
-                  className="gs-box"
-                  aria-label={t('guestSelect.select', { name: guest.fullName })}
-                  checked={picked.has(guest.id)}
-                  onChange={() => onPick(guest.id)}
-                />
+                <label className="gm-box">
+                  <input
+                    type="checkbox"
+                    className="gs-box"
+                    aria-label={t('guestSelect.select', { name: guest.fullName })}
+                    checked={picked.has(guest.id)}
+                    onChange={() => onPick(guest.id)}
+                  />
+                </label>
               )}
               <RowLink
                 eventId={eventId}

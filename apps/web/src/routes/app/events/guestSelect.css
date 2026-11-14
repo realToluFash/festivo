@@ -96,14 +96,18 @@
   box-shadow: inset 0 0 0 2px var(--colorAccent);
 }
 
+/* The box is its own target, the row's height and 36 wide, so the row beside it can open the guest. */
 .gm-pick {
   display: flex;
-  align-items: center;
-  gap: var(--spaceSm);
+  align-items: stretch;
 }
 
-.gm-pick > .gs-box {
-  margin-left: var(--spaceSm);
+.gm-box {
+  display: flex;
+  flex: none;
+  align-items: center;
+  width: 36px;
+  cursor: pointer;
 }
 
 .gm-pick > .gs-row {

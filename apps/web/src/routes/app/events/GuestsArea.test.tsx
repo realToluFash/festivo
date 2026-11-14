@@ -19,6 +19,7 @@ const NONE = {
   note: null,
 };
 const GUESTS_CSS = stylesheet(import.meta.dirname, 'guests.css');
+const SELECT_CSS = stylesheet(import.meta.dirname, 'guestSelect.css');
 const SETTINGS_CSS = stylesheet(import.meta.dirname, '../../../components/SettingsParts.css');
 const IRE = membership({ id: 'org_1', name: 'Ìrè Events' });
 
@@ -3654,6 +3655,8 @@ describe('Select many guests, then Add to group or Remove from the list (sc-3776
       'Select Kemi Bello',
     ]);
     expect(cssRule('.gs-box', GUESTS_CSS)).toContain('height: 24px;');
+    expect(cssRule('.gm-box', SELECT_CSS)).toContain('width: 36px;');
+    expect(box('Select Ngozi Eze').closest('a')).toBeNull();
   });
 
   it('selects a guest’s companions with them, and says the count', async () => {
