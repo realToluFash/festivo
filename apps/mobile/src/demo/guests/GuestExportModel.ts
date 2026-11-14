@@ -107,7 +107,7 @@ export function scopeFor(asked: Scope, inView: number): Scope {
   return inView === 0 ? 'all' : asked;
 }
 
-/** The people This view holds, as the list's own "{n} of {total} shown" counts them. */
+/** The people This view holds, and the "{n} of {total} shown" line the list draws above it. */
 export function inViewOf({
   filter,
   searched,
