@@ -29,6 +29,7 @@ import {
   asGuestPagePlace,
   asPageNeeds,
   asHeadcount,
+  asMarkedTogether,
   asMovedTogether,
   asRemovedTogether,
   type CompanionChoice,
@@ -40,6 +41,7 @@ import {
   type GuestList,
   type GuestPage,
   type Headcount,
+  type MarkedTogether,
   type MovedTogether,
   type RemovedTogether,
   GUEST_ANSWERS,
@@ -2186,6 +2188,20 @@ export class ApiClient {
     await this.post<undefined>(`${this.guestPath(eventId, guestId)}/erasure`, undefined, {
       keepalive: true,
     });
+  }
+
+  /** Every selected guest not yet invited, marked with one how (sc-46880); refused 409 `event_state_invalid` unless the phase allows `invite`, and `validation_failed` on `guestIds` over 2,000. */
+  async markGuestsInvited(
+    eventId: string,
+    guestIds: readonly string[],
+    how: GuestInvitationHow,
+  ): Promise<MarkedTogether> {
+    const body = await this.post<unknown>(`${this.guestsPath(eventId)}/invitations`, {
+      guestIds,
+      how,
+    });
+
+    return asMarkedTogether(body) ?? together();
   }
 
   /** Many guests into one group, chosen by `id` or made from `name` (sc-3776); refused `validation_failed` on `guestIds` over 2,000, or on the name as makeGuestGroup. */

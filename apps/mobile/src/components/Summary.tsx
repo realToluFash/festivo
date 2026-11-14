@@ -242,6 +242,27 @@ export function StepButton({ label, onPress, testID, ref, busy = false }: StepPr
   );
 }
 
+/** A card's second step, in glass, so the white step stays the card's one filled button. */
+export function GlassStep({ label, onPress, testID, ref, busy = false }: StepProps) {
+  return (
+    <Pressable
+      ref={ref}
+      onPress={busy ? undefined : onPress}
+      style={({ pressed }) => [pressed && !busy && styles.pressed]}
+      accessibilityRole="button"
+      accessibilityLabel={label}
+      accessibilityState={{ disabled: busy, busy }}
+      testID={testID}
+    >
+      <Glass height={tokens.sizeHit} grows style={styles.glassStep}>
+        <Text size={15} weight="semibold" accessible={false} style={styles.white}>
+          {label}
+        </Text>
+      </Glass>
+    </Pressable>
+  );
+}
+
 export function CardSays({
   text,
   size = 24,
@@ -590,6 +611,7 @@ const styles = StyleSheet.create({
     borderRadius: tokens.sizeHit / 2,
     backgroundColor: tokens.colorCard,
   },
+  glassStep: { justifyContent: 'center', paddingHorizontal: 18 },
   faces: { flexDirection: 'row', alignItems: 'center', marginLeft: -2.5 },
   ring: { backgroundColor: tokens.colorCard },
   overlap: { marginLeft: -14 },

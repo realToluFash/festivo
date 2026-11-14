@@ -6,6 +6,7 @@ namespace App\Domain\Guest\Controller;
 
 use App\Domain\Guest\Group\GuestGroupMoves;
 use App\Domain\Guest\Http\GuestSerialiser;
+use App\Domain\Guest\Invitation\GuestInvitations;
 use App\Domain\Guest\Model\GroupChoice;
 use App\Domain\Guest\Removal\GuestRemovals;
 use App\Entity\Event;
@@ -24,7 +25,7 @@ use Symfony\Component\HttpFoundation\Request;
 use Symfony\Component\HttpFoundation\Response;
 use Symfony\Component\Routing\Attribute\Route;
 
-/** One action on many selected guests (sc-3776): Add to group, and Remove from the list with its one Undo and its erasure. Up to MOST_AT_ONCE guests; each answers what it did to each, so nothing is skipped silently. */
+/** One action on many selected guests (sc-3776): Mark as invited (sc-46880), Add to group, and Remove from the list with its one Undo and its erasure. Up to MOST_AT_ONCE guests; each answers what it did to each, so nothing is skipped silently. */
 final readonly class GuestsTogetherController
 {
     public const int MOST_AT_ONCE = 2000;
@@ -34,7 +35,27 @@ final readonly class GuestsTogetherController
         private EventRepository $eventRepository,
         private GuestGroupMoves $guestGroupMoves,
         private GuestRemovals $guestRemovals,
+        private GuestInvitations $guestInvitations,
     ) {
+    }
+
+    /** `how` is one of the five ways by hand; refused 409 `event_state_invalid` unless the event's phase allows `invite`. */
+    #[Route('/api/events/{eventId}/guests/invitations', name: 'guests_mark_invited_together', methods: ['POST'])]
+    #[InEvent(Permission::GuestsManage)]
+    public function mark(Request $request, string $eventId): JsonResponse
+    {
+        $body = Input::body($request, Type\shape([
+            'guestIds' => Type\vec(Type\string()),
+            'how' => Type\optional(Type\nullable(Type\string())),
+        ]));
+        $ids = self::checked($body['guestIds']);
+        $marked = $this->guestInvitations->markTogether($this->event($eventId), $ids, $this->guestInvitations->chosen($body['how'] ?? null), $this->user());
+
+        return new JsonResponse([
+            'marked' => $marked->marked,
+            'already' => $marked->already,
+            'gone' => $marked->gone,
+        ]);
     }
 
     /** `group` is one of the event's by `id`, or a `name` to find or make by sc-3775's rules. */
@@ -104,7 +125,7 @@ final readonly class GuestsTogetherController
                 'propertyPath' => 'guestIds',
                 'message' => 'validation.guests_too_many',
                 'code' => ErrorCode::ValidationFailed->value,
-                'parameters' => [],
+                'parameters' => ['{most}' => self::MOST_AT_ONCE],
             ]]);
         }
 

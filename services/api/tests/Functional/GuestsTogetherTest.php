@@ -4,7 +4,9 @@ declare(strict_types=1);
 
 namespace App\Tests\Functional;
 
+use App\Domain\Guest\Controller\GuestsTogetherController;
 use App\Domain\Guest\Group\GuestGroupMoves;
+use App\Domain\Guest\Invitation\GuestInvitations;
 use App\Domain\Guest\Removal\GuestRemovals;
 use App\Domain\Organisation\OrganisationFounder;
 use App\Domain\User\UserRegistrar;
@@ -13,9 +15,11 @@ use App\Entity\Membership;
 use App\Entity\Organisation;
 use App\Entity\Role;
 use App\Entity\User;
+use App\Enum\ErrorCode;
 use App\Enum\EventRole;
 use App\Enum\MembershipStatus;
 use App\Enum\SeededRole;
+use App\Http\Exception\ApiException;
 use App\Tests\ApiTestCase;
 use App\Tests\Traits\OnboardsAccounts;
 use App\Tests\Traits\PutsPeopleOnEvents;
@@ -28,9 +32,10 @@ use Psl\Json;
 use Psl\Type;
 use Psl\Vec;
 use Symfony\Component\Clock\Test\ClockSensitiveTrait;
+use Symfony\Component\HttpFoundation\Request;
 use Symfony\Component\Uid\Uuid;
 
-/** sc-3776: one action on many selected guests, with what it did to each in its answer. */
+/** sc-3776 and sc-46880: one action on many selected guests, with what it did to each in its answer. */
 final class GuestsTogetherTest extends ApiTestCase
 {
     use ClockSensitiveTrait;
@@ -184,6 +189,118 @@ final class GuestsTogetherTest extends ApiTestCase
     }
 
     #[Test]
+    public function markAsInvitedMarksEveryoneNotYetInvitedAndKeepsWhoWasInvitedAndSaysWhoWasGone(): void
+    {
+        $sophie = $this->add('Sophie Laurent', ['Marc Laurent']);
+        $tomas = $this->add('Tomás Ruiz');
+        $emeka = $this->add('Emeka Obi');
+        $this->as($this->owner, 'PUT', $this->guests() . '/' . $emeka . '/invitation', ['how' => 'email']);
+        $joaquin = $this->add('Joaquín Peña');
+        $this->as($this->owner, 'DELETE', $this->guests() . '/' . $joaquin);
+        $untouched = $this->add('Bisi Adewale');
+
+        $marked = $this->as($this->owner, 'POST', $this->guests() . '/invitations', ['guestIds' => [$sophie, $tomas, $emeka, $joaquin], 'how' => 'whatsapp']);
+
+        self::assertSame(200, $this->statusCode(), Json\encode($marked));
+        self::assertSame(['marked' => 2, 'already' => 1, 'gone' => 1], $marked);
+        $invited = ['at' => '2026-10-17T14:20:00+01:00', 'how' => 'whatsapp', 'by' => 'Person'];
+        self::assertSame([$invited, $invited, ['at' => '2026-10-17T14:20:00+01:00', 'how' => 'email', 'by' => 'Person'], null], Vec\map([$sophie, $tomas, $emeka, $untouched], $this->invitationOf(...)));
+        self::assertSame([5, 1, 4], [$this->counts()['onList'], $this->counts()['notYetInvited'], $this->counts()['invited']]);
+    }
+
+    #[Test]
+    public function markAsInvitedWritesOneAuditEntryNamingHowAndTheCount(): void
+    {
+        $ids = [$this->add('Sophie Laurent', ['Marc Laurent']), $this->add('Tomás Ruiz'), $this->add('Emeka Obi')];
+
+        $this->as($this->owner, 'POST', $this->guests() . '/invitations', ['guestIds' => $ids, 'how' => 'inPerson']);
+
+        $entries = self::em()->getRepository(AuditEntry::class)->findBy(['action' => GuestInvitations::MARKED_TOGETHER]);
+        self::assertCount(1, $entries);
+        self::assertSame(['Event', $this->eventId, ['how' => [null, 'inPerson'], 'guests' => [null, 3]]], [$entries[0]->getSubjectType(), $entries[0]->getSubjectId()->toRfc4122(), $entries[0]->getChanges()]);
+    }
+
+    #[Test]
+    public function aCompanionIsNeverMarkedOrCountedThemselves(): void
+    {
+        $guest = $this->as($this->owner, 'POST', $this->guests(), ['fullName' => 'Sophie Laurent', 'companions' => [['fullName' => 'Marc Laurent']]]);
+        $companion = Type\shape(['guest' => Type\shape(['companions' => Type\vec(Type\shape(['id' => Type\string()], true))], true)], true)->coerce($guest)['guest']['companions'][0]['id'];
+
+        $marked = $this->as($this->owner, 'POST', $this->guests() . '/invitations', ['guestIds' => [$companion], 'how' => 'whatsapp']);
+
+        self::assertSame(['marked' => 0, 'already' => 0, 'gone' => 1], $marked);
+        self::assertSame(2, $this->counts()['notYetInvited']);
+    }
+
+    #[Test]
+    public function whenEveryoneSelectedIsAlreadyInvitedNothingIsMarkedOrAudited(): void
+    {
+        $ids = [$this->add('Sophie Laurent'), $this->add('Tomás Ruiz')];
+        $this->as($this->owner, 'POST', $this->guests() . '/invitations', ['guestIds' => $ids, 'how' => 'email']);
+
+        $marked = $this->as($this->owner, 'POST', $this->guests() . '/invitations', ['guestIds' => $ids, 'how' => 'whatsapp']);
+
+        self::assertSame(['marked' => 0, 'already' => 2, 'gone' => 0], $marked);
+        self::assertSame(['email', 'email'], Vec\map($ids, fn (string $id): mixed => $this->invitationOf($id)['how'] ?? null));
+        self::assertCount(1, self::em()->getRepository(AuditEntry::class)->findBy(['action' => GuestInvitations::MARKED_TOGETHER]));
+    }
+
+    /** @return iterable<string, array{?string}> */
+    public static function howsNotByHand(): iterable
+    {
+        yield 'none' => [null];
+        yield 'blank' => [''];
+        yield "Soirely's message" => ['soirelyMessage'];
+        yield 'a reply' => ['reply'];
+        yield 'unknown' => ['pigeon'];
+    }
+
+    #[Test]
+    #[DataProvider('howsNotByHand')]
+    public function aHowThatIsNotOneOfTheFiveIsRefusedAndMarksNobody(?string $how): void
+    {
+        $guest = $this->add('Sophie Laurent');
+
+        $this->as($this->owner, 'POST', $this->guests() . '/invitations', ['guestIds' => [$guest], 'how' => $how]);
+
+        self::assertSame([422, ErrorCode::ValidationFailed->type()], [$this->statusCode(), $this->last()['type'] ?? null]);
+        self::assertNull($this->invitationOf($guest));
+    }
+
+    /** @return iterable<string, array{string, string}> */
+    public static function phasesThatCannotInvite(): iterable
+    {
+        yield 'Paused' => ['/pause', 'paused'];
+        yield 'Finished' => ['/end', 'finished'];
+    }
+
+    #[Test]
+    #[DataProvider('phasesThatCannotInvite')]
+    public function aPhaseThatDoesNotAllowInviteRefusesAndMarksNobody(string $action, string $phase): void
+    {
+        $guest = $this->add('Sophie Laurent');
+        $this->as($this->owner, 'POST', '/api/events/' . $this->eventId . $action);
+        self::assertSame(200, $this->statusCode(), Json\encode($this->last()));
+
+        $this->as($this->owner, 'POST', $this->guests() . '/invitations', ['guestIds' => [$guest], 'how' => 'whatsapp']);
+
+        self::assertSame([409, ErrorCode::EventStateInvalid->type(), $phase], [$this->statusCode(), $this->last()['type'] ?? null, $this->last()['phase'] ?? null]);
+        self::assertNull($this->invitationOf($guest));
+    }
+
+    #[Test]
+    public function aDraftRefusesAndMarksNobody(): void
+    {
+        $this->eventId = $this->draft('Draft party');
+        $guest = $this->add('Sophie Laurent');
+
+        $this->as($this->owner, 'POST', $this->guests() . '/invitations', ['guestIds' => [$guest], 'how' => 'whatsapp']);
+
+        self::assertSame([409, 'draft'], [$this->statusCode(), $this->last()['phase'] ?? null]);
+        self::assertNull($this->invitationOf($guest));
+    }
+
+    #[Test]
     public function aCompanionIsNotOneToActOnByThemselves(): void
     {
         $guest = $this->as($this->owner, 'POST', $this->guests(), ['fullName' => 'Sophie Laurent', 'companions' => [['fullName' => 'Marc Laurent']]]);
@@ -205,9 +322,29 @@ final class GuestsTogetherTest extends ApiTestCase
         self::assertSame(422, $this->statusCode());
         $this->as($this->owner, 'POST', $this->guests() . '/group-moves', ['guestIds' => $ids, 'group' => ['name' => 'Cousins']]);
         self::assertSame(422, $this->statusCode());
+        $this->as($this->owner, 'POST', $this->guests() . '/invitations', ['guestIds' => $ids, 'how' => 'whatsapp']);
+        self::assertSame(422, $this->statusCode());
 
         self::assertSame(['Sophie Laurent'], $this->names());
         self::assertNull($this->groupOf($guest));
+        self::assertNull($this->invitationOf($guest));
+    }
+
+    #[Test]
+    public function theTooManyRefusalGivesItsLimitAsTheMostSlot(): void
+    {
+        $ids = Vec\map(Vec\range(0, GuestsTogetherController::MOST_AT_ONCE), static fn (int $at): string => Uuid::v4()->toRfc4122());
+        $request = Request::create('/', 'POST', server: ['CONTENT_TYPE' => 'application/json'], content: Json\encode(['guestIds' => $ids]));
+
+        try {
+            self::service(GuestsTogetherController::class)->remove($request, $this->eventId);
+            self::fail('2,001 guests were acted on at once');
+        } catch (ApiException $e) {
+            self::assertSame(
+                [['propertyPath' => 'guestIds', 'message' => 'validation.guests_too_many', 'code' => ErrorCode::ValidationFailed->value, 'parameters' => ['{most}' => 2000]]],
+                $e->violations,
+            );
+        }
     }
 
     /** @return iterable<string, array{EventRole}> */
@@ -225,6 +362,9 @@ final class GuestsTogetherTest extends ApiTestCase
         $bride = $this->group("Bride's side");
         $viewer = $this->member('ada@ire.events', SeededRole::Member, $role);
 
+        $this->as($viewer, 'POST', $this->guests() . '/invitations', ['guestIds' => [$guest], 'how' => 'whatsapp']);
+        self::assertSame(403, $this->statusCode());
+        self::assertNull($this->invitationOf($guest));
         $this->as($viewer, 'POST', $this->guests() . '/group-moves', ['guestIds' => [$guest], 'group' => ['id' => $bride]]);
         self::assertSame(403, $this->statusCode());
         $this->as($viewer, 'POST', $this->guests() . '/removals', ['guestIds' => [$guest]]);
@@ -261,6 +401,14 @@ final class GuestsTogetherTest extends ApiTestCase
         return Type\shape(['guest' => Type\shape(['group' => Type\nullable(Type\shape(['id' => Type\string()], true))], true)], true)->coerce($body)['guest']['group']['id'] ?? null;
     }
 
+    /** @return array<string, mixed>|null */
+    private function invitationOf(string $guest): ?array
+    {
+        $body = $this->as($this->owner, 'GET', $this->guests() . '/' . $guest);
+
+        return Type\shape(['guest' => Type\shape(['invitation' => Type\nullable(Type\dict(Type\string(), Type\mixed()))], true)], true)->coerce($body)['guest']['invitation'];
+    }
+
     /** @param list<?string> $companions */
     private function add(string $name, array $companions = []): string
     {
@@ -294,11 +442,17 @@ final class GuestsTogetherTest extends ApiTestCase
         return Type\int()->coerce(self::em()->getConnection()->fetchOne('SELECT COUNT(*) FROM guests'));
     }
 
-    private function live(string $name): string
+    private function draft(string $name): string
     {
         $body = $this->as($this->owner, 'POST', '/api/orgs/' . $this->organisation->getId()->toRfc4122() . '/events', ['name' => $name, 'type' => 'wedding', 'startsAt' => '2030-11-14T16:00', 'endsAt' => '2030-11-15T02:00', 'timeZone' => 'Africa/Lagos', 'currency' => 'NGN']);
         self::assertSame(201, $this->statusCode(), Json\encode($body));
-        $id = Type\shape(['id' => Type\string()], true)->coerce($body['event'] ?? null)['id'];
+
+        return Type\shape(['id' => Type\string()], true)->coerce($body['event'] ?? null)['id'];
+    }
+
+    private function live(string $name): string
+    {
+        $id = $this->draft($name);
         self::service(Connection::class)->executeStatement('UPDATE events SET hosts = :hosts WHERE id = :id', ['hosts' => '["Funmi Adeyemi"]', 'id' => $id]);
         $this->as($this->owner, 'POST', '/api/events/' . $id . '/make-live');
         self::assertSame(200, $this->statusCode(), Json\encode($this->last()));

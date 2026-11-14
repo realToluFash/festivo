@@ -76,6 +76,7 @@ import { AskLayer } from './AskLayer.tsx';
 
 const GROW_FROM = 0.96;
 const KEYS_AWAITED_MS = 5000;
+const NAMED_SETTLES_MS = 300;
 const PANEL = 760;
 const CARD = 300;
 const SIDE_PADDING = 32;
@@ -162,6 +163,8 @@ export function CreateWalkWindow<Made>({
   const talkBack = Platform.OS === 'android' && readerOn;
   const [voiced, setVoiced] = useState(false);
   if (!shown && voiced) setVoiced(false);
+  const [named, setNamed] = useState(false);
+  if (!shown && named) setNamed(false);
   // On the phone TalkBack sometimes spoke the field's own input focus before its focus reached it, so the name was heard twice (qa4 #48525): the field stays hidden from TalkBack until its keys are up.
   const quiet =
     talkBack && phone && !voiced && opening.focus !== 'question' && !opening.walk.asking;
@@ -252,16 +255,22 @@ export function CreateWalkWindow<Made>({
     raiseKeysOn(input);
   }, [talkBack, onScreen, unnamed, opening, phone]);
 
-  // Named and shown to TalkBack as soon as it has taken input focus unnamed, before TalkBack's focus follows it: named once its keys were up, TalkBack's focus read an unnamed field (qa2 #49366). One that never takes focus is shown after KEYS_AWAITED_MS.
+  // Named while still hidden, once it has taken input focus unnamed, and shown to TalkBack only NAMED_SETTLES_MS later: named and shown together, the name's content change reached TalkBack up to 100 ms late and was said before its focus or after it (qa2 #49942). One that never takes focus is named after KEYS_AWAITED_MS.
   const taken = () => {
-    if (quiet && onScreen && !unnamed) setVoiced(true);
+    if (quiet && onScreen && !unnamed) setNamed(true);
   };
   useEffect(() => {
-    if (!quiet || !onScreen || unnamed) return;
-    const reachable = setTimeout(() => setVoiced(true), KEYS_AWAITED_MS);
+    if (!quiet || !onScreen || unnamed || named) return;
+    const reachable = setTimeout(() => setNamed(true), KEYS_AWAITED_MS);
 
     return () => clearTimeout(reachable);
-  }, [quiet, onScreen, unnamed]);
+  }, [quiet, onScreen, unnamed, named]);
+  useEffect(() => {
+    if (!quiet || !named) return;
+    const settled = setTimeout(() => setVoiced(true), NAMED_SETTLES_MS);
+
+    return () => clearTimeout(settled);
+  }, [quiet, named]);
 
   useEffect(() => {
     const up = Keyboard.addListener('keyboardDidShow', () => {
@@ -276,19 +285,20 @@ export function CreateWalkWindow<Made>({
     const input = holding.current;
     holding.current = null;
     if (input == null || !open || walk.asking) return;
-    if (!voiced) {
+    if (!named) {
       raiseKeysOn(input);
       return;
     }
     regaining.current = input;
+    setNamed(false);
     setVoiced(false);
   };
   useEffect(() => {
     const input = regaining.current;
-    if (!quiet || input == null) return;
+    if (!quiet || named || input == null) return;
     regaining.current = null;
     raiseKeysOn(input);
-  }, [quiet]);
+  }, [quiet, named]);
 
   useEffect(
     () => () => {
@@ -457,6 +467,7 @@ export function CreateWalkWindow<Made>({
           onTyped={(name) => setWalk((now) => typed(now, name))}
           onContinue={onPrimary}
           quiet={live && quiet && opening.focus === 'name'}
+          nameless={live && quiet && !named && opening.focus === 'name'}
           onFocused={live ? taken : undefined}
           onLeft={live ? keysLost : undefined}
         />
