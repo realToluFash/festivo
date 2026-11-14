@@ -1619,6 +1619,7 @@
   "eventPage": {
     "venue": "Lugar",
     "venueToBeConfirmed": "Lugar por confirmar",
+    "addVenue": "Añadir el lugar",
     "invited": "Invitados",
     "details": "Detalles",
     "manage": "Gestionar",
@@ -1677,6 +1678,9 @@
     "venueAddress": "Dirección",
     "venueNameTooLong": "Acorte el nombre del lugar a {{most, number}} caracteres como máximo.",
     "venueAddressTooLong": "Acorte la dirección a {{most, number}} caracteres como máximo.",
+    "arrivalNote": "Arrival note",
+    "arrivalNoteHint": "How to find the entrance, where to park, when the doors open. Every guest sees this on their page.",
+    "arrivalNoteTooLong": "Shorten the arrival note to {{most, number}} characters or fewer.",
     "searchType": "Buscar tipos de evento",
     "timesIn": "Horas en {{zone}}",
     "notChosen": "Sin elegir",
