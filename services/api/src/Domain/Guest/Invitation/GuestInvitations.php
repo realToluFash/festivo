@@ -6,6 +6,7 @@ namespace App\Domain\Guest\Invitation;
 
 use App\Audit\Auditor;
 use App\Domain\Guest\GuestListPublisher;
+use App\Domain\Guest\Model\MarkedTogether;
 use App\Entity\Event;
 use App\Entity\Guest;
 use App\Entity\User;
@@ -16,9 +17,12 @@ use App\Enum\EventPhase;
 use App\Enum\GuestInvitationMethod;
 use App\Enum\GuestReply;
 use App\Http\Exception\ApiException;
+use App\Repository\GuestRepository;
 use DateTimeZone;
 use Doctrine\DBAL\LockMode;
 use Doctrine\ORM\EntityManagerInterface;
+use Psl\Iter;
+use Psl\Vec;
 use Psr\Clock\ClockInterface;
 use Symfony\Contracts\Translation\TranslatorInterface;
 
@@ -29,13 +33,32 @@ final readonly class GuestInvitations
 
     public const string UNMARKED = 'guest.marked_not_invited';
 
+    public const string MARKED_TOGETHER = 'guests.marked_invited';
+
     public function __construct(
         private EntityManagerInterface $entityManager,
         private Auditor $auditor,
         private GuestListPublisher $guestListPublisher,
         private ClockInterface $clock,
         private TranslatorInterface $translator,
+        private GuestRepository $guestRepository,
     ) {
+    }
+
+    /** One of the five ways chosen by hand, or refused 422 `validation_failed`. */
+    public function chosen(?string $how): GuestInvitationMethod
+    {
+        $method = GuestInvitationMethod::tryFrom($how ?? '');
+
+        if (null === $method || !$method->isByHand()) {
+            throw ApiException::validation([[
+                'propertyPath' => 'how',
+                'message' => $this->translator->trans('validation.guest_invitation_how_required'),
+                'code' => ErrorCode::ValidationFailed->value,
+            ]]);
+        }
+
+        return $method;
     }
 
     /** Refused 409 `event_state_invalid` unless the event's phase allows `invite`; a guest already invited stays as recorded. */
@@ -52,6 +75,44 @@ final readonly class GuestInvitations
 
             return true;
         });
+    }
+
+    /**
+     * Many guests at once (sc-46880): every one not yet invited is marked, or none is, with one audit entry for the count.
+     *
+     * @param list<string> $guestIds
+     */
+    public function markTogether(Event $event, array $guestIds, GuestInvitationMethod $how, User $by): MarkedTogether
+    {
+        $marked = $this->entityManager->wrapInTransaction(function () use ($event, $guestIds, $how, $by): MarkedTogether {
+            $this->entityManager->refresh($event, LockMode::PESSIMISTIC_WRITE);
+            $this->assertInvitable($event);
+            $hosts = $this->guestRepository->lockHostsOn($event, $guestIds);
+            $now = $this->clock->now();
+            $marking = Vec\filter($hosts, static fn (Guest $host): bool => !$host->isInvited());
+
+            foreach ($marking as $host) {
+                $host->invite($how, $now, $by);
+                $host->raiseVersion();
+            }
+
+            if ([] !== $marking) {
+                $this->auditor->record(self::MARKED_TOGETHER, 'Event', $event->getId(), Actor::User, $by->getId(), $by->getName(), changes: [
+                    'how' => [null, $how->value],
+                    'guests' => [null, Iter\count($marking)],
+                ]);
+            }
+
+            $this->entityManager->flush();
+
+            return new MarkedTogether(Iter\count($marking), Iter\count($hosts) - Iter\count($marking), Iter\count(Vec\unique($guestIds)) - Iter\count($hosts));
+        });
+
+        if (0 !== $marked->marked) {
+            $this->guestListPublisher->publish($event);
+        }
+
+        return $marked;
     }
 
     /** Refused 409 `event_state_invalid`, with the `phase`, unless the event's phase allows `invite`: marking, copying a link and Soirely's send alike. */

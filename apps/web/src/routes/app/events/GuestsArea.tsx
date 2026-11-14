@@ -3,6 +3,7 @@ import {
   GUEST_NAME_MAXIMUM,
   type GroupChoice,
   type Guest,
+  type GuestInvitationHow,
   type GuestDetails,
   type GuestGroup,
   type GuestList,
@@ -92,11 +93,19 @@ import { useLoadedAt, useServerNow } from '../../../serverNow.ts';
 import { canOn, useSession } from '../../../session.ts';
 import { useMakeLive } from './MakeLive.tsx';
 import { GroupChips, GroupField, GroupTag, GroupsColumn } from './GuestGroups.tsx';
-import { GroupSheet, RemoveMany, ResultLine, SelectBar, SelectedSaid } from './GuestSelect.tsx';
+import {
+  GroupSheet,
+  MarkMany,
+  RemoveMany,
+  ResultLine,
+  SelectBar,
+  SelectedSaid,
+} from './GuestSelect.tsx';
 import {
   type Action,
   type Line,
   companionsWith,
+  markQuestion,
   onlyCompanions,
   removeQuestion,
   shownGuests,
@@ -276,6 +285,8 @@ export function GuestsArea({
   const [selectionCleared, setSelectionCleared] = useState(false);
   const [sheet, setSheet] = useState<{ refused: string | null } | null>(null);
   const [removing, setRemoving] = useState<{ busy: boolean } | null>(null);
+  const [marking, setMarking] = useState(false);
+  const [notLiveAt, setNotLiveAt] = useState<string | null>(null);
   const [line, setLine] = useState<Line | null>(null);
   const [removal, setRemoval] = useState<string | null>(null);
   const [asked, setAsked] = useState<ReadonlySet<string>>(() =>
@@ -693,6 +704,7 @@ export function GuestsArea({
     setLine(next);
     setSheet(null);
     setRemoving(null);
+    setMarking(false);
     focus('many-line');
   }
 
@@ -700,6 +712,42 @@ export function GuestsArea({
   function endUndo(): void {
     if (removal != null) void api.eraseGuestsRemoval(event.id, removal).catch(() => undefined);
     setRemoval(null);
+  }
+
+  function pressMark(): void {
+    if (picked.size > GUESTS_TOGETHER_MOST) return;
+    const asked = markQuestion(guests, picked);
+
+    if (asked.marks === 0) {
+      ended({ kind: 'nothing', already: asked.already.length });
+      return;
+    }
+    setMarking(true);
+  }
+
+  /** A phase that no longer invites is read again, so Mark as invited leaves the bar while the selection stays. */
+  function mark(how: GuestInvitationHow, ids: readonly string[] = [...picked]): void {
+    api.markGuestsInvited(event.id, ids, how).then(
+      (marked) => {
+        endUndo();
+        setSelected(NONE);
+        setRecount((n) => n + 1);
+        setAttempt((n) => n + 1);
+        ended({ kind: 'marked', marked, how });
+      },
+      (error: unknown) => {
+        if (error instanceof ApiError && error.is('event_state_invalid')) {
+          setNotLiveAt(tag);
+          void api.taggedEvent(event.id).then(
+            (latest) => onChange(latest.event, latest.tag),
+            () => undefined,
+          );
+          ended({ kind: 'notLive' });
+          return;
+        }
+        ended({ kind: 'failed', action: { kind: 'mark', how } });
+      },
+    );
   }
 
   function move(to: { id: string } | { name: string }, ids: readonly string[] = [...picked]): void {
@@ -749,7 +797,8 @@ export function GuestsArea({
   }
 
   function retry(action: Action): void {
-    if (action.kind === 'move') move(action.to);
+    if (action.kind === 'mark') mark(action.how);
+    else if (action.kind === 'move') move(action.to);
     else removeMany();
   }
 
@@ -1034,6 +1083,7 @@ export function GuestsArea({
                               <SelectBar
                                 count={picked.size}
                                 companions={companionsPicked}
+                                onMark={invites && notLiveAt !== tag ? pressMark : null}
                                 onAdd={pressAdd}
                                 onRemove={pressRemove}
                                 onClear={() => {
@@ -1243,6 +1293,16 @@ export function GuestsArea({
               focus('many-add');
             }}
             onMove={(to) => move(to)}
+          />
+        )}
+        {marking && picked.size > 0 && (
+          <MarkMany
+            asked={markQuestion(guests, picked)}
+            onCancel={() => {
+              setMarking(false);
+              focus('many-mark');
+            }}
+            onMark={(how) => mark(how)}
           />
         )}
         {removing != null && picked.size > 0 && (
