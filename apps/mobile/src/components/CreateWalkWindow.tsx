@@ -75,6 +75,7 @@ import {
 import { AskLayer } from './AskLayer.tsx';
 
 const GROW_FROM = 0.96;
+const KEYS_AWAITED_MS = 5000;
 const PANEL = 760;
 const CARD = 300;
 const SIDE_PADDING = 32;
@@ -161,7 +162,7 @@ export function CreateWalkWindow<Made>({
   const talkBack = Platform.OS === 'android' && readerOn;
   const [voiced, setVoiced] = useState(false);
   if (!shown && voiced) setVoiced(false);
-  // On the phone TalkBack sometimes spoke the field's own input focus before its focus reached it, so the name was heard twice (qa4 #48525): the field stays hidden from TalkBack until it has taken input focus.
+  // On the phone TalkBack sometimes spoke the field's own input focus before its focus reached it, so the name was heard twice (qa4 #48525): the field stays hidden from TalkBack until its keys are up.
   const quiet =
     talkBack && phone && !voiced && opening.focus !== 'question' && !opening.walk.asking;
   const voicing = useRef(false);
@@ -252,13 +253,22 @@ export function CreateWalkWindow<Made>({
     raiseKeysOn(input);
   }, [talkBack, onScreen, unnamed, opening, phone]);
 
-  // A field the raise never focuses would stay out of TalkBack's reach, so it is shown to TalkBack once the raise has had time to land, at worst read twice (lead, PR #2216).
+  // Shown to TalkBack once its keys are up: shown on its first input focus, a field that lost it and was raised again had that focus voiced, and TalkBack's focus followed it as well as the app's (qa4 #48921). One the keys never reach is shown after KEYS_AWAITED_MS, at worst read twice (lead, PR #2216).
   useEffect(() => {
     if (!quiet || !onScreen || unnamed) return;
-    const reachable = setTimeout(() => setVoiced(true), SETTLED_MS);
+    const input = opening.focus === 'search' ? search.current : field.current;
+    const up = Keyboard.addListener('keyboardDidShow', () => {
+      if (!input?.isFocused()) return;
+      voicing.current = true;
+      setVoiced(true);
+    });
+    const reachable = setTimeout(() => setVoiced(true), KEYS_AWAITED_MS);
 
-    return () => clearTimeout(reachable);
-  }, [quiet, onScreen, unnamed]);
+    return () => {
+      up.remove();
+      clearTimeout(reachable);
+    };
+  }, [quiet, onScreen, unnamed, opening]);
 
   useEffect(() => {
     const up = Keyboard.addListener('keyboardDidShow', () => {
@@ -267,11 +277,6 @@ export function CreateWalkWindow<Made>({
 
     return () => up.remove();
   }, []);
-  const voice = () => {
-    if (!quiet) return;
-    voicing.current = true;
-    setVoiced(true);
-  };
   useEffect(() => {
     if (!voiced || !voicing.current) return;
     voicing.current = false;
@@ -452,7 +457,6 @@ export function CreateWalkWindow<Made>({
           onTyped={(name) => setWalk((now) => typed(now, name))}
           onContinue={onPrimary}
           quiet={live && quiet && opening.focus === 'name'}
-          onTaken={live ? voice : undefined}
           onLeft={live ? keysLost : undefined}
         />
       );
@@ -467,7 +471,6 @@ export function CreateWalkWindow<Made>({
           onPick={(code) => setWalk((now) => picked(now, code))}
           onSearchFocused={(focused) => {
             setSearchFocused(focused);
-            if (focused && live) voice();
             if (!focused && live) keysLost();
           }}
         />
