@@ -342,10 +342,16 @@ export function EventGuests({
 
   const onCard = loaded && !empty;
   const phaseLine =
-    phase == null || onCard ? null : (
+    phase == null || loaded ? null : (
       <PhaseLine event={event} phase={phase} now={now} onChange={onEventChange} />
     );
   const phaseCard = phaseCardOf(t, event, shown, phase, now);
+  const liveStep: StepProps = {
+    label: t('eventLive.makeLive'),
+    ref: liveOpener,
+    onPress: makeLive.start,
+    testID: 'events.makeLive',
+  };
   const rows =
     load.kind === 'loading' ? (
       <GuestsLoading />
@@ -366,9 +372,11 @@ export function EventGuests({
         <GuestsCard
           kind={kind}
           event={shown}
+          tags={phaseCard?.tags ?? []}
           says={t('guestList.noGuests')}
           heading
-          line={null}
+          line={phaseCard?.line ?? null}
+          also={phaseCard?.offersMakeLive === true ? liveStep : null}
           step={
             manages
               ? {
@@ -396,12 +404,7 @@ export function EventGuests({
         added={added}
         card={shown}
         phaseCard={phaseCard}
-        makeLive={{
-          label: t('eventLive.makeLive'),
-          ref: liveOpener,
-          onPress: makeLive.start,
-          testID: 'events.makeLive',
-        }}
+        makeLive={liveStep}
         kind={kind}
         searchRef={searchField}
         timeZone={timeZone}
@@ -413,7 +416,7 @@ export function EventGuests({
     <>
       {phaseLine}
       {rows}
-      {onCard && makeLive.sheet}
+      {loaded && makeLive.sheet}
     </>
   );
 
@@ -788,7 +791,7 @@ function FilterChoice({
   );
 }
 
-/** Before the list is read, or on an empty one, the phase's line stands above it: a Draft's with Make live, a Paused or Finished event's alone (sc-46879). */
+/** Before the list is read, the phase's line stands above where the card will be: a Draft's with Make live, a Paused or Finished event's alone (sc-46879). */
 function PhaseLine({
   event,
   phase,

@@ -10,6 +10,7 @@ import { type MarkKind, ReplyMark } from './ReplyMark.tsx';
 import {
   type CardSize,
   CardSays,
+  GlassStep,
   GlassTag,
   OnCard,
   StepButton,
@@ -37,6 +38,7 @@ export function GuestsCard({
   says,
   line,
   step,
+  also = null,
   heading = false,
 }: {
   kind: LayoutKind;
@@ -47,6 +49,8 @@ export function GuestsCard({
   heading?: boolean;
   line: string | null;
   step: StepProps | null;
+  /** The quieter second step beside the first: Make live on an empty Draft (sc-46879). */
+  also?: StepProps | null;
 }) {
   return (
     <SummaryCard
@@ -68,9 +72,10 @@ export function GuestsCard({
       )}
       <CardSays text={says} heading={heading} />
       {line != null && <OnCard text={line} />}
-      {step != null && (
+      {(step != null || also != null) && (
         <View style={styles.foot}>
-          <StepButton {...step} />
+          {step != null && <StepButton {...step} />}
+          {also != null && <GlassStep {...also} />}
         </View>
       )}
     </SummaryCard>
@@ -118,5 +123,12 @@ export function GuestCover({
 
 const styles = StyleSheet.create({
   tags: { flexDirection: 'row', flexWrap: 'wrap', gap: tokens.spaceSm },
-  foot: { marginTop: 'auto', paddingTop: tokens.spaceXs },
+  foot: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    alignItems: 'center',
+    gap: tokens.spaceSm,
+    marginTop: 'auto',
+    paddingTop: tokens.spaceXs,
+  },
 });
