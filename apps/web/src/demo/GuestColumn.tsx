@@ -45,7 +45,7 @@ import { whatsAppRowOf } from './whatsAppConsent.ts';
 import { sendOffered, whatsAppHref } from './whatsAppSend.ts';
 import { useLater } from '../useLater.ts';
 import { GGW } from './guestGroups.ts';
-import { RMW, removable } from './guestRemove.ts';
+import { RMW, removable, staysBecause } from './guestRemove.ts';
 import { CardStep, Chevron, Head, RowWords, TextAction } from '../components/SettingsParts.tsx';
 
 export interface GuestActions {
@@ -345,7 +345,13 @@ function Details({
           </li>
         )}
         {guest.companions.map((companion) => (
-          <li key={companion.id} className="desk-row">
+          <li
+            key={companion.id}
+            className="desk-row"
+            {...(companion.arrived != null && guest.arrived == null
+              ? { tabIndex: -1, 'data-focus': 'arrival' }
+              : {})}
+          >
             <MarkLead reply={companion.reply} />
             <div className="gs-row-words">
               <RowWords
@@ -354,6 +360,7 @@ function Details({
                   companion.reply === 'held'
                     ? GW.heldCompanion
                     : GW.companion(REPLY_WORDS[companion.reply]),
+                  ...(companion.arrived == null ? [] : [RMW.arrived]),
                 ]}
               />
               {companion.namedBy === 'guest' && (
@@ -390,7 +397,11 @@ function Details({
               {RMW.remove}
             </button>
           ) : (
-            <p className="gr-stays">{RMW.staysArrived}</p>
+            <p className="gr-stays">
+              {staysBecause(guest) === 'companionArrived'
+                ? RMW.staysCompanionArrived
+                : RMW.staysArrived}
+            </p>
           )}
         </div>
       )}
