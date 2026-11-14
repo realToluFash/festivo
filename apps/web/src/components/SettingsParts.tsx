@@ -762,6 +762,8 @@ export function Menu({
   onClose: () => void;
   onPick: (key: string) => void;
 }) {
+  const { i18n } = useTranslation();
+  const figure = new Intl.NumberFormat(i18n.language);
   const id = useId();
   const button = useRef<HTMLButtonElement>(null);
   const menu = useRef<HTMLUListElement>(null);
@@ -833,7 +835,7 @@ export function Menu({
           }
         }}
       >
-        {word?.word} · {word?.count}
+        {word?.word} · {word == null ? null : figure.format(word.count)}
         <Glyph name={open ? 'chevup' : 'chevdown'} size={16} weight={2.4} />
       </button>
       {open && (
@@ -856,7 +858,7 @@ export function Menu({
                   {item.key === picked && <Glyph name="tick" size={16} weight={2.6} />}
                 </span>
                 <span className="today-grow">{item.word}</span>
-                <span className="desk-menu-count">{item.count}</span>
+                <span className="desk-menu-count">{figure.format(item.count)}</span>
               </button>
             </li>
           ))}
