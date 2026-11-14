@@ -545,18 +545,23 @@ export interface BroughtIntoView {
   read: RefObject<ViewInstance | null>;
 }
 
-/** Keeps the control under TalkBack's focus in sight each time `asked` is a new answer that grows the page above it: pushed wholly out of sight, TalkBack moves its focus to the nearest view still in sight and reads it before anything said (sc-43907, as sc-22357). Null asks nothing. */
-export function useKeptInSight(asked: object | null): RefObject<ViewInstance | null> {
+/** Keeps the control under TalkBack's focus in sight each time `asked` is a new answer that grows the page above it: pushed wholly out of sight, TalkBack moves its focus to the nearest view still in sight and reads it before anything said (sc-43907, sc-22357). Null or false asks nothing. */
+export function useKeptInSight(
+  asked: object | boolean | null,
+  { aboveKeys = false, holding = false }: Pick<Sight, 'aboveKeys' | 'holding'> = {},
+): RefObject<ViewInstance | null> {
   const scroll = useContext(ScreenScroll);
   const kept = useRef<ViewInstance>(null);
 
   useLayoutEffect(() => {
-    if (asked == null) return;
+    if (asked == null || asked === false) return;
 
-    const keep = () => bringIntoView(scroll, kept.current, false, { when: 'outOfSight' });
+    const keep = () =>
+      bringIntoView(scroll, kept.current, false, { when: 'outOfSight', aboveKeys, holding });
     keep();
+    // Fabric on Android runs a scroll before the mount it was asked in, so at the page's end the one above stops at the content's old end, with the control under the keys (sc-18587).
     return afterMount(keep);
-  }, [asked, scroll]);
+  }, [asked, scroll, aboveKeys, holding]);
 
   return kept;
 }
@@ -746,7 +751,8 @@ export function useStepClose(
   const started = useRef(false);
   const view = useRef<ViewInstance | null>(null);
   const holder = useRef<ViewInstance | null>(null);
-  const closer = useRef<ViewInstance | null>(null);
+  // The opener showing above the step pushes it down, and a Cancel pushed out of sight under TalkBack's focus has TalkBack read the step's nearest view still in sight before the opener takes focus.
+  const closer = useKeptInSight(closing, { aboveKeys: true, holding: true });
   const toBlur = useRef<HostInstance | null>(null);
   const stepField = useRef<HostInstance | null>(null);
   const stepFieldRef = useCallback((shown: HostInstance | null) => {
@@ -871,7 +877,7 @@ export function useStepClose(
 
       return () => cancels.forEach((stop) => stop());
     },
-    [scroll, to],
+    [closer, scroll, to],
   );
 
   useEffect(() => () => cancel.current(), []);
@@ -892,21 +898,6 @@ export function useStepClose(
       changed.remove();
     };
   }, []);
-
-  // The opener showing above the step pushes it down, and a Cancel pushed out of sight under TalkBack's focus has TalkBack move that focus to the step's nearest view still in sight, and read it, before the opener takes it (sc-22357).
-  useLayoutEffect(() => {
-    if (!closing) return;
-
-    const keepCloser = () =>
-      bringIntoView(scroll, closer.current, false, {
-        when: 'outOfSight',
-        aboveKeys: true,
-        holding: true,
-      });
-    keepCloser();
-    // Fabric on Android runs a scroll before the mount it was asked in, so at the page's end the one above stops at the content's old end, with the closer under the keys; TalkBack then reads the step's top as the keys go (sc-18587).
-    return afterMount(keepCloser);
-  }, [closing, scroll]);
 
   useEffect(() => {
     if (!closing) return;
