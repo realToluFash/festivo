@@ -119,7 +119,14 @@ import {
   settleGroup,
 } from './guestGroups.ts';
 import { RemoveAsk, UndoMessage } from './GuestRemove.tsx';
-import { type Removed, type Removing, arrivedIn, putBack, removeGuest } from './guestRemove.ts';
+import {
+  type Removed,
+  type Removing,
+  arrivedIn,
+  companionArrivedIn,
+  putBack,
+  removeGuest,
+} from './guestRemove.ts';
 import './guests.css';
 
 const FOCUSABLE = 'button, a[href], input, textarea, select, [tabindex]';
@@ -446,6 +453,11 @@ function GuestsPage({
       setRemoving({ id, ends, refused: 'arrived' });
       return;
     }
+    if (ends === 'companionArrived') {
+      setList((was) => companionArrivedIn(was, id, '18:05'));
+      setRemoving({ id, ends, refused: 'companionArrived' });
+      return;
+    }
     if (ends === 'gone') {
       setRemoving({ id, ends, refused: 'gone' });
       return;
@@ -464,7 +476,7 @@ function GuestsPage({
     const { id, refused } = removing;
 
     setRemoving(null);
-    if (refused === 'arrived') {
+    if (refused === 'arrived' || refused === 'companionArrived') {
       setPane({ kind: 'guest', id });
       focus('arrival', 'guest-heading');
       return;

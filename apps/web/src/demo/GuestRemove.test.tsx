@@ -202,6 +202,38 @@ describe('Remove from the list (sc-3774)', () => {
     expect(column().textContent).toContain('They have arrived, so they stay on the list.');
   });
 
+  it('a guest whose companion arrived shows it, and no Remove', SLOW, async () => {
+    await guests('removeCompanionArrived');
+
+    expect(column().textContent).toContain('Rui Duarte');
+    expect(column().textContent).toContain(
+      'One of their companions has arrived, so they stay on the list.',
+    );
+    expect(within(column()).queryByRole('button', { name: 'Remove from the list' })).toBeNull();
+  });
+
+  it(
+    'a 409 for a companion says one has just arrived, and goes back to their details',
+    SLOW,
+    async () => {
+      await guests('removeCompanionArrives');
+      const dialog = await screen.findByRole('alertdialog', { name: 'Remove Inês Duarte?' }, WAIT);
+
+      fireEvent.click(within(dialog).getByRole('button', { name: 'Remove' }));
+      expect(dialog.textContent).toContain(
+        'A companion of Inês Duarte has just arrived, so they stay on the list.',
+      );
+      fireEvent.click(within(dialog).getByRole('button', { name: 'Back to their details' }));
+
+      expect(screen.queryByRole('alertdialog')).toBeNull();
+      expect(row(/^Inês Duarte/u)).not.toBeNull();
+      expect(within(column()).queryByRole('button', { name: 'Remove from the list' })).toBeNull();
+      expect(column().textContent).toContain(
+        'One of their companions has arrived, so they stay on the list.',
+      );
+    },
+  );
+
   it('a 404 says someone else removed them, and Back to guests drops the row', SLOW, async () => {
     await guests('removeGoes');
     const dialog = await screen.findByRole('alertdialog', { name: 'Remove Tomás Ferreira?' }, WAIT);

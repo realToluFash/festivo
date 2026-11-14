@@ -34,7 +34,13 @@ import { type HowAgreed, NO_CONSENT, type WhatsAppConsent, hostAgreed } from './
 import type { DemoLink } from './settings.ts';
 import { type ExportStart, XW, exportDay, fileName } from './guestExport.ts';
 import { type Change, changeLabel, changeWhen } from './changedSince.ts';
-import { type Removed, type Removing, arrivedIn, removeGuest } from './guestRemove.ts';
+import {
+  type Removed,
+  type Removing,
+  arrivedIn,
+  companionArrivedIn,
+  removeGuest,
+} from './guestRemove.ts';
 import {
   type GroupFieldStart,
   type GroupFilter,
@@ -109,6 +115,8 @@ export interface Companion {
   namedBy?: 'guest';
   /** sc-3777: their own needs, as the guest's are. */
   needs?: Needs;
+  /** sc-1454: when door staff marked them arrived; their host then stays on the list. */
+  arrived?: string;
 }
 
 /** sc-3790: a guest's language, en, es, fr or pt; null is Not set. The host's and the guest's own are the AC, not yet built. */
@@ -1893,6 +1901,18 @@ export const GUESTS_STATES = [
   { key: 'removeArrived', name: 'Kwame Mensah has arrived: Arrival · Arrived, no Remove' },
   { key: 'removeArrives', name: 'They arrive while the question is open: Remove meets a 409' },
   { key: 'removeRefusedArrived', name: 'Refused: has just arrived, Back to their details' },
+  {
+    key: 'removeCompanionArrived',
+    name: 'Rui Duarte has arrived: Inês Duarte has no Remove',
+  },
+  {
+    key: 'removeCompanionArrives',
+    name: 'Their companion arrives while the question is open: Remove meets a 409',
+  },
+  {
+    key: 'removeRefusedCompanionArrived',
+    name: 'Refused: a companion has just arrived, Back to their details',
+  },
   { key: 'removeGoes', name: 'Someone else removed them first: Remove meets a 404' },
   { key: 'removeRefusedGone', name: 'Refused: already removed by someone else, Back to guests' },
   { key: 'removeViewer', name: 'Without guests.manage: no Remove' },
@@ -2559,6 +2579,24 @@ export function guestsStart(state: GuestsState | null, params: URLSearchParams):
         list: arrivedIn(start.list, 'kwame', '18:05'),
         removing: { id: 'kwame', ends: 'arrived', refused: 'arrived' },
       });
+    case 'removeCompanionArrived':
+      return column(guestPane('ines'), {
+        choice: 'coming',
+        clock: CLOCK_DAY1,
+        card: 'day1',
+        list: companionArrivedIn(start.list, 'ines', '18:05'),
+      });
+    case 'removeCompanionArrives':
+      return column(guestPane('ines'), {
+        choice: 'coming',
+        removing: { id: 'ines', ends: 'companionArrived' },
+      });
+    case 'removeRefusedCompanionArrived':
+      return column(guestPane('ines'), {
+        choice: 'coming',
+        list: companionArrivedIn(start.list, 'ines', '18:05'),
+        removing: { id: 'ines', ends: 'companionArrived', refused: 'companionArrived' },
+      });
     case 'removeGoes':
       return column(guestPane('tomas'), { removing: { id: 'tomas', ends: 'gone' } });
     case 'removeRefusedGone':
@@ -2803,6 +2841,9 @@ export const GUESTS_PAGES: readonly { name: string; states: readonly DemoLink[] 
     'removeArrived',
     'removeArrives',
     'removeRefusedArrived',
+    'removeCompanionArrived',
+    'removeCompanionArrives',
+    'removeRefusedCompanionArrived',
     'removeGoes',
     'removeRefusedGone',
     'removeViewer',
