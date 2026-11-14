@@ -682,7 +682,7 @@
     "notVerifiedYet": "{{shown}} reste à vérifier.",
     "undeliverable": "Nos e-mails ne parviennent pas à {{address}}.",
     "changeEmail": "Changer d’adresse",
-    "changeEmailFor": "Changer d’adresse, au lieu de {{address}}",
+    "changeEmailFor": "Changer d’adresse, actuellement {{address}}",
     "verifiedAlternative": "{{address}} est vérifiée. Elle ne deviendra votre adresse principale que si vous la définissez comme telle.",
     "verifiedAlternativePhone": "{{number}} est vérifié. Il ne deviendra votre numéro principal que si vous le définissez comme tel.",
     "save": "Enregistrer",
