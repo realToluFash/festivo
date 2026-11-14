@@ -90,6 +90,7 @@ export function EventScreen({
   const [duplicating, setDuplicating] = useState<{
     opener: RefObject<ScreenReaderTarget | null>;
     count: number;
+    open: boolean;
   } | null>(null);
   const insets = useSafeAreaInsets();
   const [coverRefused, setCoverRefused] = useState<{ eventId: string; reason: string } | null>(
@@ -159,7 +160,7 @@ export function EventScreen({
     : undefined;
   const onDuplicate = creates
     ? (opener: RefObject<ScreenReaderTarget | null>) =>
-        setDuplicating((now) => ({ opener, count: (now?.count ?? 0) + 1 }))
+        setDuplicating((now) => ({ opener, count: (now?.count ?? 0) + 1, open: true }))
     : undefined;
   const fromList = useRef(opensDuplicate);
 
@@ -167,7 +168,7 @@ export function EventScreen({
     if (!fromList.current || event == null || !creates) return;
     fromList.current = false;
     navigation.setParams({ [DUPLICATING]: undefined });
-    setDuplicating({ opener: cardName.current == null ? title : cardName, count: 1 });
+    setDuplicating({ opener: cardName.current == null ? title : cardName, count: 1, open: true });
   }, [event, creates, navigation]);
   const onDeleted = deletes
     ? (gone: OrganisationEvent) => {
@@ -357,10 +358,10 @@ export function EventScreen({
       {event != null && duplicating != null && (
         <DuplicateEvent
           key={duplicating.count}
-          open
+          open={duplicating.open}
           event={event}
           opener={duplicating.opener}
-          onClose={() => setDuplicating(null)}
+          onClose={() => setDuplicating((now) => (now == null ? now : { ...now, open: false }))}
         />
       )}
       {toast?.eventId === eventId && toast.area === area && (

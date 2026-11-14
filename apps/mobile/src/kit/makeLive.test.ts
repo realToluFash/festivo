@@ -140,7 +140,8 @@ describe('pauseRefusalOf', () => {
 });
 
 describe('Make live’s alert (sc-48601)', () => {
-  const t: Translate = (key, values) => (values == null ? key : `${key} ${JSON.stringify(values)}`);
+  const t: Translate = (key: string, values?: Record<string, string | number>) =>
+    values == null ? key : `${key} ${JSON.stringify(values)}`;
   const event = { name: 'Ada at 40', hosts: ['Bisi Akindele', 'Kola Mensah'] };
   const question: LiveQuestion = {
     kind: 'confirm',
