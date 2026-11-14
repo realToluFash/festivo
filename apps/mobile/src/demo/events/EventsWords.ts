@@ -217,7 +217,6 @@ export const W = {
   leaveTitle: 'Leave without saving?',
   leave: 'Leave without saving',
   leaveBody: 'What you typed for this event will be lost.',
-  addPhotoAgain: 'Add the photo',
   pauseBody:
     'Guests can’t reply or change anything until you resume it. Nothing is lost. Check-in and service keep working.',
   callOffBody: 'It won’t go ahead. Guests following their link will be told. You can’t undo this.',
@@ -344,6 +343,9 @@ const KEYED: Record<string, (values: Record<string, string | number>) => string>
     `It ends ${String(v.end)}, ${String(v.duration)} later, like the original. Times in ${String(v.timeZone)}.`,
   'eventDuplicate.endsUnchosen': (v) =>
     `It ends ${String(v.duration)} after it starts, like the original. Times in ${String(v.timeZone)}.`,
+  'eventDuplicate.startMissing': () => 'Choose when the copy starts.',
+  'eventDuplicate.dateMissing': () => 'Choose the date the copy starts.',
+  'eventDuplicate.timeMissing': () => 'Choose the time the copy starts.',
   'eventLive.hostEmpty': () => 'Enter who is hosting to make this event live.',
   'eventForm.clocksSkip': (v) =>
     `There is no ${String(v.time)} on ${String(v.day)} in ${String(v.zone)}: the clocks go forward that night. It will be saved as ${String(v.savedAs)}.`,
@@ -373,6 +375,9 @@ export const LIVE = {
   notMadeLive: 'Not made live.',
   changedTitle: 'Somebody else changed this event while you had it open.',
   nowLive: 'It’s live now. The page shows what it is now.',
+  planLimitStays: 'This event stays a draft. Finish or call off another event, or change plan.',
+  notSavedChanged: 'Not saved. Somebody else changed this event since you opened it.',
+  hostsNow: 'Who is hosting now, as guests will see it:',
   hostLabel: 'Host 1',
   smsStop: 'Reply STOP to opt out.',
   hostExplainer:
@@ -415,6 +420,8 @@ export function liveCounted(key: Counted, count: number, locale = 'en-US'): stri
 
 export const sayLive = {
   confirmTitle: (name: string) => `Make ${name} live?`,
+  planLimit: (plan: string, count: number) =>
+    `Not made live. Your ${plan} plan allows ${new Intl.NumberFormat('en-US').format(count)} ${count === 1 ? 'event' : 'events'} to be live or paused at a time.`,
   isLive: (name: string) => `${name} is live.`,
   creditsAfter: (after: string) => `Credits after sending: ${after}.`,
   inviteText: (hosts: string, greeting: string, event: string, date: string) =>

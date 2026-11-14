@@ -42,7 +42,7 @@ function eventIn(state: (typeof MAKE_LIVE_STATES)[number], id = 'evt-draft-4'): 
 function alertIn(state: (typeof MAKE_LIVE_STATES)[number], id = 'evt-draft-4') {
   const event = eventIn(state, id);
 
-  return liveAlertOf(makeLiveStart(state).turn, reachOf(state, event), event.name);
+  return liveAlertOf(makeLiveStart(state).turn, reachOf(state, event), event.name, event.hosts);
 }
 
 function run(
@@ -58,13 +58,15 @@ function run(
 const MAKE: readonly LiveAction[] = [{ type: 'confirm', hostError: null }, { type: 'made' }];
 
 describe('Make live’s states (sc-3971)', () => {
-  it('are the board’s twenty-two and sc-45251’s two, in its order, all on the event’s page', () => {
+  it('are the board’s twenty-two, sc-45251’s two and sc-48601’s three, in its order, all on the event’s page', () => {
     expect(MAKE_LIVE_STATES).toEqual([
       'makeLive',
       'makeLiveMaking',
       'makeLiveNotMade',
       'makeLiveHost',
       'makeLiveHostBlank',
+      'makeLiveStillNoHost',
+      'makeLiveNowHosted',
       'makeLiveChanged',
       'makeLiveCannotSend',
       'makeLiveOffer',
@@ -82,10 +84,11 @@ describe('Make live’s states (sc-3971)', () => {
       'makeLiveOfferRefused',
       'makeLiveOfferForbidden',
       'makeLiveEndPassed',
+      'makeLivePlanLimit',
       'makeLiveNoOffer',
       'madeLive',
     ]);
-    expect(MAKE_LIVE_STATES).toHaveLength(24);
+    expect(MAKE_LIVE_STATES).toHaveLength(27);
     for (const state of MAKE_LIVE_STATES) expect(EVENT_STATES).toContain(state);
   });
 
@@ -321,6 +324,50 @@ describe('the alerts', () => {
       alert: true,
       confirm: null,
     });
+  });
+
+  it('refuses at the plan’s limit in today’s two lines, with Close alone, and it stays a draft (sc-48601)', () => {
+    expect(alertIn('makeLivePlanLimit')).toMatchObject({
+      title: 'Not made live. Your Free plan allows 3 events to be live or paused at a time.',
+      line: 'This event stays a draft. Finish or call off another event, or change plan.',
+      alert: true,
+      keep: { label: 'Close' },
+      confirm: null,
+    });
+    expect(makeLiveStart('makeLivePlanLimit').live).toBe(false);
+    expect(eventIn('makeLivePlanLimit').status).toBe('draft');
+  });
+
+  it('keeps Host 1 as typed when somebody else changed it and it still has no host (sc-22143’s 412)', () => {
+    const turn = makeLiveStart('makeLiveStillNoHost').turn;
+    expect(turn).toMatchObject({ at: 'question', host: { error: null, kept: 'Bisi Akindele' } });
+    expect(eventIn('makeLiveStillNoHost').hosts).toEqual([]);
+    expect(alertIn('makeLiveStillNoHost')).toMatchObject({
+      title: 'Make Bisi & Kola’s engagement live?',
+      failed:
+        'Not saved. Somebody else changed this event since you opened it. What you typed is still here.',
+      host: { error: null },
+      hostsNow: null,
+      keep: { label: 'Not yet' },
+      confirm: { label: 'Make live' },
+    });
+  });
+
+  it('lists who hosts it now, one per line, with no Host 1, when somebody else gave it a host', () => {
+    expect(eventIn('makeLiveNowHosted').hosts).toEqual(['Bisi Akindele', 'Kola Mensah']);
+    expect(alertIn('makeLiveNowHosted')).toMatchObject({
+      failed: 'Not saved. Somebody else changed this event since you opened it.',
+      host: null,
+      hostsNow: ['Bisi Akindele', 'Kola Mensah'],
+      keep: { label: 'Not yet' },
+      confirm: { label: 'Make live', busy: undefined },
+    });
+  });
+
+  it('drops the changed line once Make live is pressed again, and makes it live', () => {
+    const making = run('makeLiveNowHosted', [{ type: 'confirm', hostError: null }]);
+    expect(making.turn).toMatchObject({ at: 'question', making: true, changed: null });
+    expect(run('makeLiveNowHosted', MAKE, 'evt-draft-4').live).toBe(true);
   });
 });
 

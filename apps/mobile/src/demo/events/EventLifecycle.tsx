@@ -1,12 +1,27 @@
-import { addDays, copyEndsLine, typedNameMatches } from '@soirely/domain';
-import { type RefObject, useState } from 'react';
-import { StyleSheet, View } from 'react-native';
+import { copyEndsLine, typedNameMatches } from '@soirely/domain';
+import { type Ref, type RefObject, useEffect, useRef, useState } from 'react';
+import { Pressable, StyleSheet, View, type ViewInstance } from 'react-native';
+
+import { AlertLine } from '../../components/AlertLine.tsx';
+import { EventNotice } from '../../components/EventNotice.tsx';
+import { SETTLED_MS } from '../../components/Screen.tsx';
+import { moveScreenReaderFocus } from '../../components/screenReaderFocus.ts';
 
 import type { ScreenReaderTarget } from '../../components/screenReaderFocus.ts';
 import { Text } from '../../components/Text.tsx';
 import { tokens } from '../../theme/tokens.ts';
 import { ASK_WIDTH, EventField, useEditGap } from './EventEdits.tsx';
-import { wallOf } from './EventsModel.ts';
+import {
+  CREATING_MS,
+  type DuplicateAction,
+  type DuplicateState,
+  OPENING_MS,
+  copyOf,
+  duplicateStart,
+  reduceDuplicate,
+  startsAfter,
+} from './Duplicate.ts';
+import { instantOf, wallOf } from './EventsModel.ts';
 import {
   BoxField,
   MomentBox,
@@ -235,6 +250,7 @@ export function DuplicateScreen({
   open,
   event,
   locale,
+  start,
   opener,
   onClose,
   onCreated,
@@ -242,19 +258,65 @@ export function DuplicateScreen({
   open: boolean;
   event: SampleEvent;
   locale: string;
+  start: DuplicateState | null;
   opener: Opener;
   onClose: () => void;
-  onCreated: () => void;
+  onCreated: (copy: SampleEvent) => void;
 }) {
-  const begins = wallOf(event.startsAt, event.timeZone);
-  const [starts, setStarts] = useState({
-    date: addDays(begins.date, 52 * 7),
-    time: begins.time,
-  });
+  const [run, setRun] = useState(() =>
+    duplicateStart(start, startsAfter(wallOf(event.startsAt, event.timeZone))),
+  );
+  const { starts, status, error } = run;
+  const [aim, setAim] = useState(run.focus == null ? 0 : 1);
   const [picking, setPicking] = useState<Picking | null>(null);
-  const choose = (mode: 'date' | 'time') =>
-    pick({ title: say.timesIn(event.timeZone), mode, field: starts, take: setStarts }, setPicking);
+  const date = useRef<ViewInstance>(null);
+  const time = useRef<ViewInstance>(null);
+  const timer = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const busy = status === 'creating' || status === 'created';
   const gap = useEditGap();
+  const act = (action: DuplicateAction) => setRun((now) => reduceDuplicate(now, action));
+  const choose = (mode: 'date' | 'time') =>
+    pick(
+      {
+        title: say.timesIn(event.timeZone),
+        mode,
+        field: starts,
+        take: (picked) => act({ type: 'picked', starts: picked }),
+      },
+      setPicking,
+    );
+  const create = () => {
+    if (busy) return;
+    const next = reduceDuplicate(run, { type: 'create' });
+    setRun(next);
+    if (next.status !== 'creating') {
+      setAim((count) => count + 1);
+      return;
+    }
+    timer.current = setTimeout(() => {
+      act({ type: 'created' });
+      timer.current = setTimeout(
+        () => onCreated(copyOf(event, instantOf(starts.date, starts.time, event.timeZone))),
+        OPENING_MS,
+      );
+    }, CREATING_MS);
+  };
+
+  useEffect(
+    () => () => {
+      if (timer.current != null) clearTimeout(timer.current);
+    },
+    [],
+  );
+  useEffect(() => {
+    if (aim === 0 || !open) return undefined;
+    const later = setTimeout(
+      () => moveScreenReaderFocus((run.focus === 'time' ? time : date).current),
+      SETTLED_MS,
+    );
+
+    return () => clearTimeout(later);
+  }, [aim, open, run.focus]);
 
   return (
     <FocusedScreen
@@ -264,12 +326,15 @@ export function DuplicateScreen({
       verb={{
         label: W.createDraft,
         on: true,
-        onPress: onCreated,
+        busy,
+        onPress: create,
         testID: 'event.duplicate.create',
       }}
+      waits={busy}
       onCancel={onClose}
       cancelTestID="event.duplicate.cancel"
       opener={opener}
+      toast={status === 'created' ? { words: W.created, onClose: () => {} } : null}
       over={
         picking == null
           ? null
@@ -282,6 +347,7 @@ export function DuplicateScreen({
       }
       testID="event.duplicate"
     >
+      {status === 'failed' && <EventNotice tone="broken" words={W.notCreated} interrupts />}
       <Text size={22} weight="bold" accessibilityRole="header" style={styles.title}>
         {say.duplicateTitle(event.name)}
       </Text>
@@ -295,29 +361,88 @@ export function DuplicateScreen({
           {W.starts}
         </Text>
         <View style={styles.pair}>
-          <MomentBox
+          <StartBox
+            ref={date}
             label={`${W.starts}, ${W.date}`}
             mode="date"
             value={starts.date}
             locale={locale}
+            wrong={error != null && (starts.date === '' || run.focus === 'date')}
             onPress={() => choose('date')}
             testID="event.duplicate.date"
           />
-          <MomentBox
+          <StartBox
+            ref={time}
             label={`${W.starts}, ${W.time}`}
             mode="time"
             value={starts.time}
             locale={locale}
             width={104}
+            wrong={error != null && starts.time === ''}
             onPress={() => choose('time')}
             testID="event.duplicate.time"
           />
         </View>
+        {error != null && <AlertLine text={error} />}
       </View>
       <Text size={14} weight="medium" style={[styles.secondary, styles.said]}>
         {copyEndsLine(starts.date, starts.time, event, locale, t)}
       </Text>
     </FocusedScreen>
+  );
+}
+
+/** A half of Starts: the chosen date or time, or the empty box the Reply by edit draws when none is chosen. */
+function StartBox({
+  ref,
+  label,
+  mode,
+  value,
+  locale,
+  width,
+  wrong,
+  onPress,
+  testID,
+}: {
+  ref: Ref<ViewInstance>;
+  label: string;
+  mode: 'date' | 'time';
+  value: string;
+  locale: string;
+  width?: number;
+  wrong: boolean;
+  onPress: () => void;
+  testID: string;
+}) {
+  if (value !== '')
+    return (
+      <MomentBox
+        ref={ref}
+        label={label}
+        mode={mode}
+        value={value}
+        locale={locale}
+        {...(width == null ? {} : { width })}
+        wrong={wrong}
+        onPress={onPress}
+        testID={testID}
+      />
+    );
+
+  return (
+    <Pressable
+      ref={ref}
+      onPress={onPress}
+      style={({ pressed }) => [
+        styles.empty,
+        width == null ? styles.grow : { width },
+        wrong && styles.wrong,
+        pressed && styles.pressed,
+      ]}
+      accessibilityRole="button"
+      accessibilityLabel={label}
+      testID={testID}
+    />
   );
 }
 
@@ -344,4 +469,14 @@ const styles = StyleSheet.create({
   said: { lineHeight: 14 * 1.45 },
   starts: { gap: 7 },
   pair: { flexDirection: 'row', gap: tokens.spaceSm },
+  grow: { flex: 1, minWidth: 0 },
+  pressed: { opacity: tokens.opacityPressed },
+  empty: {
+    minHeight: 52,
+    borderWidth: 1.5,
+    borderColor: tokens.colorFieldBorder,
+    borderRadius: tokens.radiusInset,
+    backgroundColor: tokens.colorCard,
+  },
+  wrong: { borderWidth: 2, borderColor: tokens.colorBroken },
 });

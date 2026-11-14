@@ -35,6 +35,7 @@ import {
   scheduleLocked as productScheduleLocked,
 } from '../../kit/eventOverview.ts';
 import { REFUSED_STATES, refusedStartOf } from './DeleteRefusal.ts';
+import { DUPLICATE_STATES } from './Duplicate.ts';
 import { CLOCKS, READER_ZONE, type SampleEvent } from './EventsSample.ts';
 import { W, say } from './EventsWords.ts';
 import { CHANGES_STATES, FINAL_NUMBERS_STATES, kitchenOwed, othersOwed } from './FinalNumbers.ts';
@@ -472,7 +473,7 @@ export const EVENT_STATES = [
   'deleteMismatch',
   'deleteTyped',
   ...REFUSED_STATES,
-  'duplicate',
+  ...DUPLICATE_STATES,
   'muted',
   'muteNotLoaded',
   'muteNotSaved',

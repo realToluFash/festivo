@@ -262,6 +262,10 @@ export function EventScreen({
         <EventGuests
           key={event.id}
           event={event}
+          phase={phase}
+          now={now}
+          onEventChange={change}
+          onEventStale={reload}
           heading={
             <>
               {kind === 'tabletLandscape' && !cardNamed && (
