@@ -22,7 +22,7 @@ import {
 } from './GuestNeeds.ts';
 import { eventGroups, groupNeedsStart, shownProblem, THEIR_GROUP } from './GuestNeedsStart.ts';
 import { GUESTS } from './GuestsSample.ts';
-import { GROUPS, groupRows, rowsOf } from './GuestsModel.ts';
+import { GROUPS, changedRows, groupRows, rowsOf } from './GuestsModel.ts';
 
 const kwame = GUESTS.find((g) => g.key === 'kwame');
 if (kwame == null) throw new Error('Kwame is in the sample');
@@ -178,6 +178,15 @@ describe('the Guests row (sc-5519, amended 14 Nov)', () => {
     expect(viewer.filter((p) => p.allergy === true)).toEqual([]);
     const host = GROUPS.flatMap((group) => groupRows(GUESTS, group, 'en', null, true, true));
     expect(host.some((p) => p.allergy === true)).toBe(true);
+  });
+
+  it('marks the same allergy and group under the Changed filter as in every other list', () => {
+    const emeka = [{ key: 'emeka', kind: 'needs' as const, at: '2026-11-02T10:00:00Z' }];
+    const now = new Date('2026-11-03T10:00:00Z');
+    const [host] = changedRows(GUESTS, emeka, '', now, 'en-US', true, true);
+    expect(host?.allergy).toBe(true);
+    expect(host?.line).toContain('Bride’s side');
+    expect(changedRows(GUESTS, emeka, '', now, 'en-US')[0]?.allergy).toBe(false);
   });
 
   it('draws no group for a guest with none', () => {

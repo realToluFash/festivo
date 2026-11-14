@@ -230,7 +230,7 @@ export function GuestsScreen({
   };
   const rows: Person[] =
     filter === 'changed'
-      ? changedRows(guests, listed, searched, now, locale, contacts)
+      ? changedRows(guests, listed, searched, now, locale, contacts, owner)
       : looking
         ? rowsOf(guests, filter, searched, locale, replyBy, contacts, owner)
         : [];

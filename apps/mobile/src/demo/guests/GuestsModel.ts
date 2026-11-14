@@ -671,6 +671,7 @@ export function changedRows(
   now: Date,
   locale: string,
   contacts = true,
+  manage = false,
 ): Person[] {
   return changes.flatMap((change): Person[] => {
     const g = guests.find((one) => one.key === change.key);
@@ -682,8 +683,9 @@ export function changedRows(
         guest: g.key,
         name: g.name,
         kind: g.kind,
-        line: joined([answer, changeWhen(change, now, locale)]),
+        line: joined([answer, changeWhen(change, now, locale), g.group ?? null]),
         companion: false,
+        allergy: manage && hasAllergy(g.needs),
       },
     ];
   });

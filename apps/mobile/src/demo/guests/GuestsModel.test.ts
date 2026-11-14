@@ -683,11 +683,11 @@ describe('Changed since you looked (sc-4331)', () => {
     expect(
       changedRows(GUESTS, changesSince(null), '', now, 'en-US').map((p) => `${p.name}: ${p.line}`),
     ).toEqual([
-      'Lucía Ortega: Not sure yet · Changed at 09:31',
-      'Inês Duarte: Coming · Replied at 08:40',
-      'Amaka Eze: Coming · Replied at 07:52',
-      'Camille Dubois: Not coming · Replied Nov 2',
-      'Alhaji Musa Bello: Coming · Replied Nov 2',
+      'Lucía Ortega: Not sure yet · Changed at 09:31 · Old school friends',
+      'Inês Duarte: Coming · Replied at 08:40 · Work',
+      'Amaka Eze: Coming · Replied at 07:52 · Bride’s side',
+      'Camille Dubois: Not coming · Replied Nov 2 · Work',
+      'Alhaji Musa Bello: Coming · Replied Nov 2 · Bride’s side',
     ]);
   });
 
@@ -705,7 +705,7 @@ describe('Changed since you looked (sc-4331)', () => {
       now,
       'en-US',
     );
-    expect(row?.line).toBe('Updated dietary needs · Changed Nov 2');
+    expect(row?.line).toBe('Updated dietary needs · Changed Nov 2 · Groom’s side');
   });
 
   it('keeps the bell’s item and the filter on one look: bell, filter, bell', () => {
