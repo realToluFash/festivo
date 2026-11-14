@@ -69,6 +69,7 @@ import {
 } from './guestRows.ts';
 import { GuestColumn, REPLY_KEY, ReplyMark, companionShown, guestAddress } from './GuestColumn.tsx';
 import { replyDate } from './guestDates.ts';
+import { invitationLine } from './GuestInvitation.tsx';
 import {
   CompanionField,
   GuestField,
@@ -954,15 +955,17 @@ function Rows({
                 });
           const places = guest.companions.length;
           const line =
-            places === 0 || choice === 'noReply'
-              ? reply
-              : t('guestList.withPlaces', {
-                  reply,
-                  places: t('guestList.companionsNamed', {
-                    count: places,
-                    named: namedCount(guest.companions.map((one) => one.fullName)),
-                  }),
-                });
+            choice === 'noReply'
+              ? (invitationLine(t, guest, timeZone) ?? reply)
+              : places === 0
+                ? reply
+                : t('guestList.withPlaces', {
+                    reply,
+                    places: t('guestList.companionsNamed', {
+                      count: places,
+                      named: namedCount(guest.companions.map((one) => one.fullName)),
+                    }),
+                  });
           const mobile = guest.mobile == null ? null : formatPhone(guest.mobile);
           const contact =
             guest.email != null && mobile != null

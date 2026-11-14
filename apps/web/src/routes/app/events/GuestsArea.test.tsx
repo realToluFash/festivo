@@ -255,7 +255,7 @@ describe('Guests (sc-1468)', () => {
     ]);
   });
 
-  it('keeps a guest’s row to their reply under the No reply filter (sc-3779, sc-3788)', async () => {
+  it('puts who invited a guest, how and when on their row under the No reply filter (sc-3779, sc-3788)', async () => {
     signedIn();
     const bisi = guest('g_3', 'Bisi Adewale', {
       invitation: INVITED,
@@ -267,7 +267,7 @@ describe('Guests (sc-1468)', () => {
       '?filter=noReply',
     );
 
-    expect(await screen.findByText('No reply')).toBeDefined();
+    expect(await screen.findByText('Invited by Folake Adeyemi, WhatsApp, Nov 1')).toBeDefined();
     expect(screen.queryByText(/of 1 named/u)).toBeNull();
   });
 
