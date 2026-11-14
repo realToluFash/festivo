@@ -46,6 +46,7 @@ import { useModalOpen } from '../updateRequired.ts';
 import { Glyph } from './Glyph.tsx';
 import { AskLayer, type AskProps } from './AskLayer.tsx';
 import { TextAction } from './SummaryRows.tsx';
+import { menuFigure } from './menuFigure.ts';
 import { FocusNav, type FocusVerb } from './FocusNav.tsx';
 import { useShellLayout } from './settingsShell.ts';
 
@@ -523,19 +524,21 @@ export function FilterMenu<T extends string>({
   name: string;
   testID: string;
 }) {
+  const { i18n } = useTranslation();
   const trigger = useRef<ViewInstance>(null);
   const [at, setAt] = useState<Anchor | null>(null);
   const current = choices.find((choice) => choice.value === value) ?? choices[0];
+  const figure = menuFigure(i18n, current?.count ?? 0);
   const close = () => setAt(null);
 
   return (
     <>
       <TextAction
         ref={trigger}
-        label={`${current?.word ?? ''} · ${current?.count ?? 0}`}
+        label={`${current?.word ?? ''} · ${figure}`}
         after="down"
         onPress={() => anchorUnder(trigger, setAt)}
-        accessibilityLabel={`${name}: ${current?.word ?? ''}, ${current?.count ?? 0}`}
+        accessibilityLabel={`${name}: ${current?.word ?? ''}, ${figure}`}
         testID={testID}
       />
       <AnchoredMenu at={at} onClose={close} opener={trigger}>
@@ -543,6 +546,7 @@ export function FilterMenu<T extends string>({
           <MenuRow
             key={choice.value}
             choice={choice}
+            figure={menuFigure(i18n, choice.count)}
             on={choice.value === value}
             onPress={() => {
               close();
@@ -563,11 +567,13 @@ function menuLeft(at: Anchor, width: number, align: 'start' | 'end', across: num
 
 function MenuRow<T extends string>({
   choice,
+  figure,
   on,
   onPress,
   testID,
 }: {
   choice: MenuChoice<T>;
+  figure: string;
   on: boolean;
   onPress: () => void;
   testID: string;
@@ -578,7 +584,7 @@ function MenuRow<T extends string>({
       style={({ pressed }) => [styles.menuRow, pressed && styles.menuPressed]}
       accessibilityRole="button"
       accessibilityState={{ selected: on }}
-      accessibilityLabel={`${choice.word}, ${choice.count}`}
+      accessibilityLabel={`${choice.word}, ${figure}`}
       testID={testID}
     >
       <View style={styles.menuTick}>
@@ -593,7 +599,7 @@ function MenuRow<T extends string>({
         {choice.word}
       </Text>
       <Text size={15} weight="medium" accessible={false} style={[styles.secondary, styles.count]}>
-        {String(choice.count)}
+        {figure}
       </Text>
     </Pressable>
   );
