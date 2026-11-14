@@ -122,7 +122,7 @@ type Pane =
   | { kind: 'loading' }
   | { kind: 'failed' }
   | { kind: 'notFound' }
-  | { kind: 'guest'; tagged: TaggedGuest }
+  | { kind: 'guest'; tagged: TaggedGuest; gone?: boolean }
   | { kind: 'edit'; tagged: TaggedGuest };
 
 type Replace =
@@ -242,7 +242,9 @@ export function GuestColumn({
         current &&
         setPane((was) =>
           error instanceof ApiError && error.status === 404
-            ? { kind: 'notFound' }
+            ? was.kind === 'guest'
+              ? { ...was, gone: true }
+              : { kind: 'notFound' }
             : was.kind === 'guest'
               ? was
               : { kind: 'failed' },
@@ -393,6 +395,8 @@ export function GuestColumn({
       backOnList={backOnList}
       onRemove={onRemove}
       onRemovedAlready={onRemovedAlready}
+      gone={pane.gone === true}
+      onNotFound={() => setPane({ kind: 'notFound' })}
     />
   );
 }
@@ -419,6 +423,8 @@ function GuestView({
   backOnList,
   onRemove,
   onRemovedAlready,
+  gone,
+  onNotFound,
 }: {
   guest: GuestDetails;
   timeZone: string;
@@ -441,6 +447,9 @@ function GuestView({
   backOnList: boolean;
   onRemove: (guest: GuestDetails) => Promise<void>;
   onRemovedAlready: () => void;
+  /** Read again as not found, from another host's change: an open "Remove {full name}?" turns into the 404's refusal. */
+  gone: boolean;
+  onNotFound: () => void;
 }) {
   const { t } = useTranslation();
   const heading = useId();
@@ -449,7 +458,10 @@ function GuestView({
   const [marking, setMarking] = useState(false);
   const [markFailed, setMarkFailed] = useState(false);
   const [unmark, setUnmark] = useState<Unmark>({ kind: 'none' });
-  const [removing, setRemoving] = useState<Removing | null>(null);
+  const [question, setRemoving] = useState<Removing | null>(null);
+  const removing: Removing | null =
+    gone && question?.kind === 'asking' && !question.busy ? { kind: 'gone' } : question;
+  const notFound = useEffectEvent(onNotFound);
   const replaceButton = useRef<HTMLButtonElement>(null);
   const [link, setLink] = useState<string | null>(null);
   const [linkTurn, setLinkTurn] = useState(0);
@@ -459,6 +471,10 @@ function GuestView({
   useEffect(() => {
     if (replace.kind === 'replaced') focusWhenFree(() => replaceButton.current);
   }, [replace.kind]);
+
+  useEffect(() => {
+    if (gone && question == null) notFound();
+  }, [gone, question]);
 
   // The address has to be whole before the press, so the link is read with the guest rather than on it.
   useEffect(() => {

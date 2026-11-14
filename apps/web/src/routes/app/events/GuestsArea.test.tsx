@@ -3493,6 +3493,44 @@ describe('Remove from the list, with a short undo (sc-3774)', () => {
     expect(screen.queryByRole('button', { name: 'Undo' })).toBeNull();
   });
 
+  it('turns the open question into already removed when another host’s removal arrives live (#49283)', async () => {
+    const before = config();
+    __setConfig({ ...before, mercureUrl: 'http://hub.test/.well-known/mercure' });
+    StubSource.made = [];
+    vi.stubGlobal('EventSource', StubSource);
+    const hub = () =>
+      json({ token: 'tok', expiresAt: new Date(Date.now() + 3_600_000).toISOString() });
+    let there = true;
+
+    try {
+      const sent = await removing({
+        'GET /api/events/ev_1/guests': () => json(listOf(there ? [NGOZI_ROW, AMAKA] : [AMAKA])),
+        'GET /api/events/ev_1/guests/g_1': () =>
+          there ? tagged(NGOZI_TWO, '"1"') : problem('not_found', 404),
+        'POST /api/events/ev_1/guests/subscriptions': hub,
+        'POST /api/realtime/subscriptions': hub,
+      });
+      const source = StubSource.made.find((one) => one.url.includes('guests'))!;
+      there = false;
+      source.publish(listOf([AMAKA]));
+
+      expect(
+        await screen.findByText('Ngozi Eze was already removed by someone else.'),
+      ).toBeDefined();
+      const back = screen.getByRole('button', { name: 'Back to guests' });
+      await waitFor(() => expect(document.activeElement).toBe(back));
+      expect(screen.queryByText('This guest is not on this list')).toBeNull();
+      fireEvent.click(back);
+
+      expect(screen.queryByRole('alertdialog')).toBeNull();
+      expect(rows().some((row) => row.startsWith('Ngozi Eze'))).toBe(false);
+      expect(sent.some((one) => one.line === 'DELETE /api/events/ev_1/guests/g_1')).toBe(false);
+    } finally {
+      __setConfig(before);
+      vi.unstubAllGlobals();
+    }
+  });
+
   it('offers no Remove without guests.manage', async () => {
     await openNgozi(
       {},
