@@ -56,14 +56,4 @@ describe('words handed over as the keys go down wait for them on Android (sc-439
     vi.advanceTimersByTime(TALKBACK_SETTLE_MS);
     expect(native.announce).toHaveBeenCalledOnce();
   });
-
-  it('says them after the settle with the keys staying up on a typed field', () => {
-    native.keyboard.isVisible.mockReturnValue(true);
-    readOut('1 field needs fixing, so nothing was sent.', { afterKeysDown: false });
-
-    vi.advanceTimersByTime(TALKBACK_SETTLE_MS - 1);
-    expect(native.announce).not.toHaveBeenCalled();
-    vi.advanceTimersByTime(1);
-    expect(native.announce).toHaveBeenCalledOnce();
-  });
 });

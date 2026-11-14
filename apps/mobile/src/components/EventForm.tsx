@@ -65,6 +65,7 @@ import {
 } from '../kit/eventForm.ts';
 import { coverRefusalOf } from '../kit/coverUpload.ts';
 import { refusedHint } from '../kit/fields.ts';
+import { keysGoDownFor, typedIn } from './refusedField.ts';
 import { markCoverRefused } from '../kit/eventSaved.ts';
 import { useLoadedAt, useServerNow } from '../kit/serverNow.ts';
 import { type LayoutKind } from '../layout/useLayout.ts';
@@ -337,13 +338,11 @@ export function EventForm({
     setHostErrors(hostFound);
     const first = firstRefusedOf(found, hostFound, hosts);
     const onField = first != null && 'field' in first ? first.field : null;
-    setLinesInSummary(
-      Platform.OS === 'android' && saidFirst != null && onField != null && !typedIn(onField),
-    );
+    setLinesInSummary(Platform.OS === 'android' && saidFirst != null && keysGoDownFor(onField));
     setFocusOn(onField != null ? { field: onField, saidFirst } : null);
     setFocusHost(first != null && 'host' in first ? { key: first.host } : null);
 
-    return onField != null && !typedIn(onField);
+    return keysGoDownFor(onField);
   }
 
   function editHosts(rows: HostRow[], touched: number | null): void {
@@ -674,13 +673,6 @@ export function EventForm({
       />
     </LinesInSummary.Provider>
   );
-}
-
-const TYPED_IN = ['name', 'venueName', 'venueAddress'] as const;
-
-/** A field typed in, which takes input focus, where the rest are pickers the screen reader is moved to. */
-function typedIn(field: EventFormField): field is (typeof TYPED_IN)[number] {
-  return (TYPED_IN as readonly string[]).includes(field);
 }
 
 const ARRIVE_AT: Record<Exclude<EditAt, 'hosts'>, EventFormField> = {
