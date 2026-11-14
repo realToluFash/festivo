@@ -792,10 +792,60 @@ function needsProblemsByWho(values: Values): Record<string, NeedsProblems> {
   return problemsByWho([values.needs, ...values.companions.map((one) => one.needs)]);
 }
 
-function needsSummary(t: TFunction, values: Values): string {
-  return needsChips(t, values.needs)
+function needsWords(t: TFunction, needs: NeedsTyped): string {
+  return needsChips(t, needs)
+    .filter((chip) => chip.kind !== 'note')
     .map((chip) => chip.word)
     .join(', ');
+}
+
+function factsOf(needs: NeedsTyped): string {
+  const kept = needsInputOf(needs);
+
+  return JSON.stringify([
+    [...kept.allergies].sort(),
+    [...kept.diet].sort(),
+    [...kept.access].sort(),
+    kept.otherAllergy,
+    kept.otherDiet,
+    kept.otherAccess,
+  ]);
+}
+
+/** One person's Needs and Private note rows on a 412, each shown when its record differs, since two different records can read the same words. */
+function needsDiffers(
+  t: TFunction,
+  theirs: NeedsTyped,
+  yours: NeedsTyped,
+  name: string | null,
+): Differs {
+  const none = t('guestList.none');
+  const theirNote = needsInputOf(theirs).note;
+  const myNote = needsInputOf(yours).note;
+
+  return [
+    ...(factsOf(theirs) === factsOf(yours)
+      ? []
+      : [
+          {
+            key: 'needs' as const,
+            field: name == null ? t('guestNeeds.needs') : t('guestNeeds.needsOf', { name }),
+            theirs: needsWords(t, theirs) || none,
+            yours: needsWords(t, yours) || none,
+          },
+        ]),
+    ...(theirNote === myNote
+      ? []
+      : [
+          {
+            key: 'needs' as const,
+            field:
+              name == null ? t('guestNeeds.privateNote') : t('guestNeeds.privateNoteOf', { name }),
+            theirs: theirNote ?? none,
+            yours: myNote ?? none,
+          },
+        ]),
+  ];
 }
 
 function typedOf(values: Values): Typed {
@@ -1018,15 +1068,27 @@ function EditForm({
         theirs: theirNames.join(', ') || none,
         yours: myNames.join(', ') || none,
       },
-      {
-        key: 'needs',
-        field: t('guestNeeds.needs'),
-        theirs: needsSummary(t, valuesOf(theirs, country)) || none,
-        yours: needsSummary(t, sent) || none,
-      },
     ];
+    const their = valuesOf(theirs, country);
+    const needs: Differs = changed.includes('needs')
+      ? [
+          ...needsDiffers(t, their.needs, sent.needs, null),
+          ...sent.companions.flatMap((one, at) =>
+            needsDiffers(
+              t,
+              (one.id == null ? null : their.companions.find((c) => c.id === one.id)?.needs) ??
+                NO_NEEDS,
+              one.needs,
+              myNames[at] ?? one.name,
+            ),
+          ),
+        ]
+      : [];
 
-    return rows.filter((row) => changed.includes(row.key) && row.theirs !== row.yours);
+    return [
+      ...rows.filter((row) => changed.includes(row.key) && row.theirs !== row.yours),
+      ...needs,
+    ];
   }
 
   async function send(
@@ -1158,8 +1220,8 @@ function EditForm({
       {conflict != null && (
         <Amber title={t('guestList.conflict')} focusKey="conflict">
           <dl className="gs-differ">
-            {conflict.differs.map((row) => (
-              <div key={row.field} className="gs-differ-field">
+            {conflict.differs.map((row, at) => (
+              <div key={`${row.field}-${at}`} className="gs-differ-field">
                 <dt>{row.field}</dt>
                 <dd>
                   <span className="gs-who">{t('guestList.theirs')}</span>

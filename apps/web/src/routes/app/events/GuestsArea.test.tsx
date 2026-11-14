@@ -2422,6 +2422,51 @@ describe('A guest’s needs (sc-3777)', () => {
     });
   });
 
+  async function conflictOn(theirs: Record<string, unknown>) {
+    let reads = 0;
+    const sent = await editNgozi({
+      'GET /api/events/ev_1/guests/g_1': () => {
+        reads += 1;
+        return reads === 1 ? tagged(DETAILS, '"1"') : tagged({ ...DETAILS, ...theirs }, '"2"');
+      },
+      'PUT /api/events/ev_1/guests/g_1': () => problem('precondition_failed', 412),
+    });
+
+    return sent;
+  }
+
+  async function conflictRows(): Promise<string[][]> {
+    await screen.findByText('Someone else changed this guest. Here is their version.');
+
+    return [...screen.getByRole('alert').querySelectorAll('.gs-differ-field')].map((row) =>
+      [...row.querySelectorAll('dt, dd')].map((one) => one.textContent ?? ''),
+    );
+  }
+
+  it('on a 412, shows a Private note row with each text when only the note differs', async () => {
+    await conflictOn({ needs: needs({ note: 'Arrives by taxi' }) });
+    const edit = column();
+    openNeeds(edit);
+    type(/^Private note/u, 'Needs a quiet seat');
+    fireEvent.click(within(edit).getByRole('button', { name: 'Save' }));
+
+    expect(await conflictRows()).toEqual([
+      ['Private note', 'TheirsArrives by taxi', 'YoursNeeds a quiet seat'],
+    ]);
+  });
+
+  it('on a 412, shows a row for a companion whose needs alone differ, in their name', async () => {
+    await conflictOn({ needs: NONE });
+    const edit = column();
+    openNeeds(edit, 'Their needs');
+    fireEvent.click(within(edit).getAllByRole('checkbox', { name: 'Peanuts' }).at(-1)!);
+    fireEvent.click(within(edit).getByRole('button', { name: 'Save' }));
+
+    expect(await conflictRows()).toEqual([
+      ['Needs, Obi Eze', 'TheirsNone', 'YoursAllergy · Peanuts'],
+    ]);
+  });
+
   it('draws each checkbox 24 by 24', () => {
     expect(cssRule('.gs-box', GUESTS_CSS)).toContain('width: 24px;');
     expect(cssRule('.gs-box', GUESTS_CSS)).toContain('height: 24px;');

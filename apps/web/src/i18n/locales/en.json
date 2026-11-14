@@ -2864,6 +2864,8 @@
     "sayWhich": "Say which",
     "otherTooLong": "Shorten it to {{most, number}} characters or fewer.",
     "privateNote": "Private note",
+    "privateNoteOf": "Private note, {{name}}",
+    "needsOf": "Needs, {{name}}",
     "noteHint": "Only people who manage guests see this. Never the kitchen, the floor or the guest.",
     "noteCount": "{{count, number}} of {{most, number}}",
     "noteTooLong": "Shorten the note to {{most, number}} characters or fewer.",
