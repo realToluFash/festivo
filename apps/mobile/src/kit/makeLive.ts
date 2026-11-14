@@ -149,7 +149,7 @@ export function liveAlertOf(
     ...PLAIN,
     turn: 'question',
     title: t('eventLive.confirmTitle', { name: event.name }),
-    line: `${t('eventLive.confirmGuests')} ${t('eventLive.confirmFinal')}`,
+    line: t('eventLive.confirmLine'),
     alert: false,
     failed: asking.failed
       ? t('eventLive.failed')
