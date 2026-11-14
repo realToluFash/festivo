@@ -1309,6 +1309,7 @@
   box-shadow: 0 0 0 2.5px var(--colorInkOnDark);
   color: var(--colorAccent);
   font: 700 13px/1 var(--fontFamily);
+  white-space: nowrap;
 }
 
 .desk-split .desk-block {

@@ -9,6 +9,7 @@ import {
   type ViewInstance,
 } from 'react-native';
 import { useTranslation } from 'react-i18next';
+import { moreChip } from '@soirely/domain';
 
 import { Initials } from './Initials.tsx';
 import { useReadOut } from './ReadOut.tsx';
@@ -344,8 +345,15 @@ export function Faces({
       {more > 0 && (
         <View style={[styles.ring, ringed, styles.overlap]}>
           <View style={[styles.more, { width: side, height: side, borderRadius: side / 2 }]}>
-            <Text size={13} weight="bold" accessible={false} style={styles.accent}>
-              {`+${more}`}
+            <Text
+              size={13}
+              weight="bold"
+              accessible={false}
+              numberOfLines={1}
+              maxFontSizeMultiplier={1}
+              style={styles.accent}
+            >
+              {moreChip(more)}
             </Text>
           </View>
         </View>
