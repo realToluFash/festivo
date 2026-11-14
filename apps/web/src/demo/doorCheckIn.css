@@ -1,0 +1,355 @@
+.ci {
+  min-height: 100vh;
+  background: var(--colorCard);
+  color: var(--colorInk);
+  font: 500 17px/1.45 var(--fontFamily);
+}
+
+:where(.ci) :is(h1, h2, p) {
+  margin: 0;
+}
+
+:where(.ci) button {
+  margin: 0;
+  border: 0;
+  background: none;
+  color: inherit;
+  font: inherit;
+  cursor: pointer;
+}
+
+.ci-bar {
+  display: flex;
+  align-items: center;
+  gap: var(--spaceLg);
+  min-height: 56px;
+  padding: 0 var(--spaceXl);
+  border-bottom: 1px solid var(--colorBorder);
+}
+
+.ci-back {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--spaceXxs);
+  min-width: 0;
+  min-height: var(--sizeHit);
+  color: var(--colorAccent);
+  font-weight: 600;
+  text-decoration: none;
+}
+
+.ci-back span {
+  overflow-wrap: anywhere;
+}
+
+.ci-brand {
+  margin-left: auto;
+}
+
+/* The web's own offline band, under the bar rather than bled into a shell, with check-in's 17 px. */
+.ci-band.offline-band {
+  margin: 0;
+  padding: var(--spaceXxs) var(--spaceXl);
+}
+
+.ci-band .offline-band-words {
+  padding-block: calc((var(--sizeHit) - 24px) / 2);
+  font-size: 17px;
+  line-height: 24px;
+}
+
+.ci-band .offline-band-retry {
+  font-size: 17px;
+}
+
+.ci-column {
+  display: flex;
+  flex-direction: column;
+  gap: var(--spaceXl);
+  box-sizing: border-box;
+  width: 100%;
+  max-width: 480px;
+  margin: 0 auto;
+  padding: var(--spaceXxl) var(--spaceXl) 48px;
+}
+
+.ci-head {
+  display: flex;
+  flex-direction: column;
+  gap: var(--spaceXxs);
+}
+
+.ci-title {
+  font: 700 28px/1.2 var(--fontFamily);
+  letter-spacing: -0.01em;
+  overflow-wrap: anywhere;
+}
+
+.ci-event,
+.ci-only,
+.ci-foot,
+.ci-hint {
+  color: var(--colorInkSecondary);
+}
+
+.ci-count {
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
+}
+
+.ci-notice,
+.ci-card,
+.ci-empty,
+.ci-you {
+  display: flex;
+  flex-direction: column;
+  gap: var(--spaceSm);
+  padding: var(--spaceXl);
+  border: 1px solid var(--colorInsetBorder);
+  border-radius: var(--radiusInset);
+  background: var(--colorInset);
+}
+
+.ci-notice-title,
+.ci-empty h2 {
+  font: 700 19px/1.3 var(--fontFamily);
+}
+
+.ci-search,
+.ci-form {
+  display: flex;
+  flex-direction: column;
+  gap: var(--spaceSm);
+}
+
+.ci-label {
+  font-weight: 600;
+}
+
+.ci-field {
+  display: flex;
+  align-items: center;
+  gap: var(--spaceSm);
+  min-height: 48px;
+  padding: 0 var(--spaceLg);
+  border: 1px solid var(--colorFieldBorder);
+  border-radius: var(--radiusSmall);
+  background: var(--colorCard);
+}
+
+.ci-field.is-wrong {
+  border: 2px solid var(--colorBroken);
+}
+
+.ci-field input {
+  flex: 1;
+  min-width: 0;
+  min-height: 46px;
+  border: 0;
+  background: none;
+  color: inherit;
+  font: inherit;
+  outline: none;
+}
+
+.ci-field:focus-within {
+  outline: 2px solid var(--colorAccent);
+  outline-offset: 2px;
+}
+
+.ci-clear {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: var(--sizeHit);
+  height: var(--sizeHit);
+  margin-right: calc(-1 * var(--spaceLg));
+  color: var(--colorInkSecondary);
+}
+
+.ci-rows {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.ci-row {
+  display: flex;
+  align-items: center;
+  gap: var(--spaceLg);
+  padding: var(--spaceLg) 0;
+  border-bottom: 1px solid var(--colorBorder);
+}
+
+.ci-row.is-companion {
+  padding-left: var(--space3xl);
+}
+
+.ci-row.is-fresh {
+  background: var(--colorAccentTint);
+}
+
+.ci-row.is-bone {
+  min-height: 72px;
+}
+
+.ci-bone {
+  width: 60%;
+  height: 16px;
+  border-radius: 8px;
+  background: var(--colorInset);
+}
+
+.ci-who {
+  display: flex;
+  flex: 1;
+  flex-direction: column;
+  gap: 2px;
+  min-width: 0;
+}
+
+.ci-name {
+  font-weight: 600;
+  overflow-wrap: anywhere;
+}
+
+.ci-reply,
+.ci-here,
+.ci-failed,
+.ci-error {
+  display: flex;
+  align-items: center;
+  gap: var(--spaceXs);
+}
+
+.ci-reply {
+  color: var(--colorInkSecondary);
+}
+
+.ci-here svg {
+  flex: none;
+  color: var(--colorAccent);
+}
+
+.ci-failed,
+.ci-error {
+  color: var(--colorBroken);
+}
+
+.ci-primary,
+.ci-secondary {
+  display: inline-flex;
+  flex: none;
+  align-items: center;
+  justify-content: center;
+  box-sizing: border-box;
+  min-height: 48px;
+  padding: 0 var(--spaceXxl);
+  border-radius: var(--radiusPill);
+  font: 600 17px/1.2 var(--fontFamily);
+  text-align: center;
+  text-decoration: none;
+}
+
+.ci-primary {
+  background: var(--colorAccent);
+  color: var(--colorInkOnDark);
+}
+
+.ci-primary:hover {
+  background: var(--colorPrimaryHover);
+}
+
+.ci-secondary {
+  border: 1px solid var(--colorFieldBorder);
+  background: var(--colorCard);
+  color: var(--colorInk);
+}
+
+.ci-none,
+.ci-amber {
+  display: flex;
+  flex-direction: column;
+  gap: var(--spaceLg);
+}
+
+.ci-amber {
+  padding: var(--spaceXl);
+  border-radius: var(--radiusInset);
+  background: var(--colorAttentionTint);
+}
+
+.ci-scrim {
+  position: fixed;
+  inset: 0;
+  z-index: 20;
+  background: rgb(20 22 28 / 40%);
+}
+
+.ci-sheet {
+  position: fixed;
+  right: 0;
+  bottom: 0;
+  left: 0;
+  z-index: 21;
+  display: flex;
+  flex-direction: column;
+  gap: var(--spaceLg);
+  max-height: calc(100vh - 48px);
+  overflow-y: auto;
+  box-sizing: border-box;
+  padding: var(--spaceSm) var(--spaceXl) var(--space3xl);
+  border-radius: var(--space3xl) var(--space3xl) 0 0;
+  background: var(--colorCard);
+  box-shadow: var(--shadowDialog);
+  animation: ci-rise 240ms cubic-bezier(0.2, 0, 0, 1) both;
+}
+
+.ci-sheet h2 {
+  font: 700 22px/1.25 var(--fontFamily);
+}
+
+.ci-grabber {
+  align-self: center;
+  width: 36px;
+  height: 5px;
+  border-radius: 3px;
+  background: var(--colorFieldBorder);
+}
+
+.ci-demo {
+  align-self: flex-start;
+}
+
+@media (width > 40rem) {
+  .ci-sheet {
+    inset: 50% auto auto 50%;
+    width: 480px;
+    padding: var(--space3xl);
+    border-radius: var(--space3xl);
+    animation-name: ci-appear;
+    transform: translate(-50%, -50%);
+  }
+
+  .ci-grabber {
+    display: none;
+  }
+}
+
+@keyframes ci-rise {
+  from {
+    transform: translateY(100%);
+  }
+}
+
+@keyframes ci-appear {
+  from {
+    opacity: 0;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .ci-sheet {
+    animation-name: ci-appear;
+  }
+}

@@ -1,0 +1,28 @@
+# sc-41787: the Calendar's Month turned to ${O}, the day ${DAY} (YYYY-MM-DD) picked, and the list under it, so each row's title can be read beside or above its tag.
+appId: host.exp.Exponent
+---
+- setOrientation: ${O}
+- waitForAnimationToEnd:
+    timeout: 4000
+- openLink: ${METRO_URL}/--/calendar
+- extendedWaitUntil:
+    visible:
+      id: calendar.view.month
+    timeout: 30000
+- tapOn:
+    id: calendar.view.month
+- tapOn:
+    id: calendar.today
+- scrollUntilVisible:
+    element:
+      id: calendar.day.${DAY}
+    direction: DOWN
+- tapOn:
+    id: calendar.day.${DAY}
+- extendedWaitUntil:
+    visible:
+      id: calendar.dayList
+    timeout: 10000
+- waitForAnimationToEnd:
+    timeout: 3000
+- takeScreenshot: day-list

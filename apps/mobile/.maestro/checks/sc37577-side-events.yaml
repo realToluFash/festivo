@@ -1,0 +1,32 @@
+# sc-37577: on its side, the events menu opened, then scrolled inside to its last choice.
+appId: host.exp.Exponent
+---
+- setOrientation: ${ORIENT}
+- waitForAnimationToEnd:
+    timeout: 3000
+- openLink: ${METRO_URL}/--/events
+- extendedWaitUntil:
+    visible:
+      id: 'events.filter'
+    timeout: 30000
+- waitForAnimationToEnd:
+    timeout: 3000
+- tapOn:
+    id: 'events.filter'
+- extendedWaitUntil:
+    visible:
+      id: 'events.filter.menu'
+    timeout: 10000
+- waitForAnimationToEnd:
+    timeout: 3000
+- takeScreenshot: side-events-open
+- swipe:
+    from:
+      id: 'events.filter.menu'
+    direction: UP
+    duration: 600
+- waitForAnimationToEnd:
+    timeout: 3000
+- takeScreenshot: side-events-scrolled
+- assertVisible:
+    id: 'events.filter.hosts'

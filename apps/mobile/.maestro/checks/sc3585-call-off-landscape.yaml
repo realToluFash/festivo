@@ -1,0 +1,45 @@
+# sc-3585, tablet landscape: ${EV_CALL}, a Live event before its start: Call off, its sheet, Keep it on, then Call off confirmed and the called-off notice.
+appId: host.exp.Exponent
+---
+- setOrientation: LANDSCAPE_LEFT
+- openLink: ${METRO_URL}/--/events/${EV_CALL}
+- extendedWaitUntil:
+    visible:
+      id: 'events.phase.live'
+    timeout: 30000
+- scrollUntilVisible:
+    element:
+      id: 'events.end'
+- takeScreenshot: live-call-off
+- tapOn:
+    id: 'events.end'
+- extendedWaitUntil:
+    visible:
+      id: 'events.endYes'
+    timeout: 10000
+- takeScreenshot: confirm
+- tapOn:
+    id: 'events.endNo'
+- extendedWaitUntil:
+    notVisible:
+      id: 'events.endYes'
+    timeout: 10000
+- assertVisible:
+    id: 'events.phase.live'
+- takeScreenshot: kept
+- tapOn:
+    id: 'events.end'
+- extendedWaitUntil:
+    visible:
+      id: 'events.endYes'
+    timeout: 10000
+- tapOn:
+    id: 'events.endYes'
+- extendedWaitUntil:
+    visible:
+      id: 'events.phase.finished'
+    timeout: 15000
+- assertNotVisible:
+    id: 'events.end'
+- takeScreenshot: called-off
+- setOrientation: PORTRAIT

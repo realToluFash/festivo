@@ -1,0 +1,42 @@
+/* sc-24385: the host's arrival note, in Edit details › Venue and under the venue on the event's page. */
+
+.desk .desk-box.ev-note-box {
+  align-items: stretch;
+  height: auto;
+  padding: 0;
+}
+
+.desk .ev-note-box textarea {
+  flex: 1;
+  box-sizing: border-box;
+  min-width: 0;
+  min-height: calc(6em + 24px);
+  max-height: calc(15em + 24px);
+  padding: 12px var(--spaceLg) 12px var(--spaceXl);
+  border: 0;
+  outline: none;
+  background: none;
+  color: var(--colorInk);
+  font: 500 16px/1.5 var(--fontFamily);
+  resize: vertical;
+  field-sizing: content;
+}
+
+.desk .ev-note-box textarea[style*='height'] {
+  max-height: none;
+}
+
+.desk .ev-note-box textarea:focus-visible {
+  box-shadow: none;
+}
+
+.ev .ev-note {
+  margin: -4px 0 10px 32px;
+  padding: 10px 12px;
+  border: 1px solid var(--colorBorder);
+  border-radius: 12px;
+  background: var(--colorInset);
+  font: 400 14px/1.5 var(--fontFamily);
+  white-space: pre-line;
+  overflow-wrap: anywhere;
+}

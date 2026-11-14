@@ -1,0 +1,27 @@
+# sc-40584 unchanged (sc-20721): A few details with every field empty; Organisation name (the first field when the account has a name) focused, keys up, Continue keeps the keys up on Organisation name; the back key, then Continue opens them there. Needs an account with no profile, signed in.
+appId: host.exp.Exponent
+---
+- setOrientation: PORTRAIT
+- extendedWaitUntil: { visible: { id: 'completeProfile.organisation' }, timeout: 30000 }
+- tapOn: { id: 'completeProfile.organisation' }
+- eraseText: 60
+- extendedWaitUntil: { visible: { id: 'never.there' }, timeout: 1500, optional: true }
+- takeScreenshot: details-01-keys-up
+- tapOn: { point: '92%,91%' }
+- extendedWaitUntil: { visible: { id: 'never.there' }, timeout: 1500, optional: true }
+- takeScreenshot: details-02-action
+- tapOn: { id: 'completeProfile.organisation' }
+- eraseText: 60
+- tapOn: { id: 'completeProfile.save' }
+- extendedWaitUntil: { visible: { id: 'never.there' }, timeout: 1500, optional: true }
+- takeScreenshot: details-03-save-keys-up
+- inputText: 'Q'
+- extendedWaitUntil: { visible: { id: 'never.there' }, timeout: 1500, optional: true }
+- takeScreenshot: details-04-typed
+- eraseText: 10
+- hideKeyboard
+- extendedWaitUntil: { visible: { id: 'never.there' }, timeout: 1500, optional: true }
+- takeScreenshot: details-05-keys-down
+- tapOn: { id: 'completeProfile.save' }
+- extendedWaitUntil: { visible: { id: 'never.there' }, timeout: 1500, optional: true }
+- takeScreenshot: details-06-save-keys-down

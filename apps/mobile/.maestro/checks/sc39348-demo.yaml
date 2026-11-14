@@ -1,0 +1,24 @@
+# sc-39348: the app's Design demo states Events · many filters, with the menu open, and one long host.
+appId: host.exp.Exponent
+---
+- openLink: ${METRO_URL}/--/demo/events?state=manyFilters
+- extendedWaitUntil:
+    visible:
+      id: 'events.filter'
+    timeout: 30000
+- waitForAnimationToEnd
+- takeScreenshot: demo-many
+- openLink: ${METRO_URL}/--/demo/events?state=manyFiltersOpen
+- extendedWaitUntil:
+    visible:
+      id: 'events.filter.menu'
+    timeout: 30000
+- waitForAnimationToEnd
+- takeScreenshot: demo-many-open
+- openLink: ${METRO_URL}/--/demo/events?state=longHost
+- extendedWaitUntil:
+    visible:
+      id: 'events.filter'
+    timeout: 30000
+- waitForAnimationToEnd
+- takeScreenshot: demo-longhost

@@ -1,0 +1,23 @@
+# sc-26608: the Events list, scrolled to ${EVENT} under way, showing how soon it ends, in the batch's language. Needs ${METRO_URL}, ${EVENT}.
+appId: host.exp.Exponent
+---
+- openLink: ${METRO_URL}/--/
+- extendedWaitUntil:
+    visible:
+      id: 'frame.events'
+    timeout: 30000
+- tapOn:
+    id: 'frame.events'
+- extendedWaitUntil:
+    visible:
+      id: 'events.summary'
+    timeout: 30000
+- waitForAnimationToEnd
+- takeScreenshot: events
+- scrollUntilVisible:
+    element:
+      id: 'events.now.${EVENT}'
+    direction: DOWN
+    timeout: 20000
+    centerElement: true
+- takeScreenshot: events-row

@@ -1,0 +1,27 @@
+# sc-22741: typing past 180 stops at 180, and a 180-letter name saves.
+appId: host.exp.Exponent
+---
+- openLink: ${METRO_URL}/--/settings/account
+- extendedWaitUntil:
+    visible:
+      id: 'account.name'
+    timeout: 30000
+- tapOn:
+    id: 'account.name'
+- extendedWaitUntil:
+    visible:
+      id: 'account.name.field'
+    timeout: 5000
+- eraseText: 200
+- inputText: 'aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaZZZZZZZZZZ'
+- takeScreenshot: long-typed
+- tapOn:
+    id: 'account.name.save'
+- extendedWaitUntil:
+    notVisible:
+      id: 'account.name.field'
+    timeout: 10000
+- assertVisible:
+    id: 'account.name'
+- assertNotVisible: '.*ZZZ.*'
+- takeScreenshot: long-saved

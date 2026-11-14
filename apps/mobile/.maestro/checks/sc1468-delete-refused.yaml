@@ -1,0 +1,46 @@
+# sc-1468: Delete event's typed-name screen holds an API refusal until the name changes. The event is renamed under the open screen, so the typed old name is refused. Needs ${METRO_URL}, ${EV_ONE}, ${EMAIL}, ${PASSWORD}.
+appId: host.exp.Exponent
+---
+- openLink: ${METRO_URL}/--/events/${EV_ONE}
+- extendedWaitUntil:
+    visible:
+      id: 'events.page'
+    timeout: 30000
+- scrollUntilVisible:
+    element:
+      id: 'events.delete'
+    centerElement: true
+    timeout: 30000
+- tapOn:
+    id: 'events.delete'
+- extendedWaitUntil:
+    visible:
+      id: 'events.deleteName'
+    timeout: 15000
+- runScript:
+    file: ../scripts/change-event-elsewhere.js
+    env:
+      EVENT_ID: ${EV_ONE}
+      ELSEWHERE_NAME: QA One Renamed
+- assertTrue:
+    condition: ${output.changed == 200}
+    label: 'Renamed elsewhere, answered ${output.changed}'
+- tapOn:
+    id: 'events.deleteName'
+- inputText: 'QA One Person'
+- hideKeyboard
+- tapOn:
+    id: 'events.deleteGo'
+- waitForAnimationToEnd
+- takeScreenshot: refused
+- tapOn:
+    id: 'events.deleteGo'
+- waitForAnimationToEnd
+- takeScreenshot: refused-again
+- tapOn:
+    id: 'events.deleteName'
+- eraseText: 1
+- waitForAnimationToEnd
+- takeScreenshot: refused-changed
+- tapOn:
+    id: 'events.deleteKeep'

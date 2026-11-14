@@ -1,0 +1,63 @@
+# sc-23814, iPad upright: Events > ${EVENT} > the bell shows Back atop the body; Back, then the swipe, return to ${EVENT}'s page beside the list, which shows ${NAME}, the event's name. Needs Expo Go's Tools button off, as Maestro's tap on the bell otherwise lands on it.
+appId: host.exp.Exponent
+---
+- setOrientation: PORTRAIT
+- runFlow: ../return-home.yaml
+- tapOn:
+    id: 'frame.events'
+- scrollUntilVisible:
+    element:
+      id: 'events.row.${EVENT}'
+    timeout: 20000
+- tapOn:
+    id: 'events.row.${EVENT}'
+- extendedWaitUntil:
+    visible:
+      id: 'events.page'
+    timeout: 20000
+- takeScreenshot: event-before
+- tapOn:
+    id: 'frame.bell'
+- extendedWaitUntil:
+    visible:
+      id: 'notifications.back'
+    timeout: 15000
+- runFlow:
+    when:
+      visible:
+        id: notifications.pushAsk.notNow
+    commands:
+      - tapOn:
+          id: notifications.pushAsk.notNow
+- assertNotVisible:
+    id: 'frame.back'
+- takeScreenshot: notifications-up
+- tapOn:
+    id: 'notifications.back'
+- extendedWaitUntil:
+    visible:
+      id: 'events.page'
+    timeout: 10000
+- assertVisible: '${NAME}'
+- assertNotVisible:
+    id: 'notifications.back'
+- takeScreenshot: after-back
+- tapOn:
+    id: 'frame.bell'
+- extendedWaitUntil:
+    visible:
+      id: 'notifications.back'
+    timeout: 15000
+- waitForAnimationToEnd
+- swipe:
+    start: 1%, 50%
+    end: 85%, 50%
+    duration: 400
+- waitForAnimationToEnd
+- extendedWaitUntil:
+    visible:
+      id: 'events.page'
+    timeout: 10000
+- assertNotVisible:
+    id: 'notifications.back'
+- takeScreenshot: after-swipe

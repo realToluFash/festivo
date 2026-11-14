@@ -1,0 +1,38 @@
+# On the event's page: All dates, then two areas from the tab bar, then Back lands on Overview.
+appId: host.exp.Exponent
+---
+- extendedWaitUntil:
+    visible:
+      id: 'events.page'
+    timeout: 30000
+- scrollUntilVisible:
+    element:
+      id: 'timeline.allDates'
+    centerElement: true
+    timeout: 20000
+- tapOn:
+    id: 'timeline.allDates'
+- extendedWaitUntil:
+    visible:
+      id: 'timeline.allDates.page'
+    timeout: 20000
+- takeScreenshot: alldates
+- tapOn:
+    id: 'event.nav.guests'
+- waitForAnimationToEnd
+- takeScreenshot: guests
+- tapOn:
+    id: 'event.nav.menu'
+- waitForAnimationToEnd
+- takeScreenshot: menu
+- tapOn:
+    id: 'frame.back'
+- waitForAnimationToEnd
+- extendedWaitUntil:
+    visible:
+      id: 'events.page'
+    timeout: 15000
+- takeScreenshot: back-overview
+- tapOn:
+    id: 'frame.back'
+- waitForAnimationToEnd

@@ -1,0 +1,13 @@
+# One tap on the upright tablet's bell opens Notifications. sc-40401.
+appId: host.exp.Exponent
+---
+- openLink: ${METRO_URL}/--/
+- tapOn:
+    id: 'tab-today|frame.home'
+    optional: true
+- tapOn:
+    text: '(Notifications|Notificaciones|Notificações).*'
+    index: 0
+- waitForAnimationToEnd:
+    timeout: 5000
+- takeScreenshot: notifications

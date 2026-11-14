@@ -1,0 +1,15 @@
+# Signs out from the two-factor overdue screen, which has no Settings button, and ends on the screen the app opens on signed out. sc-28020.
+appId: host.exp.Exponent
+---
+- openLink: ${METRO_URL}/--/
+- extendedWaitUntil:
+    visible:
+      id: 'twoFactorOverdue.signOut'
+    timeout: 30000
+- tapOn:
+    id: 'twoFactorOverdue.signOut'
+- extendedWaitUntil:
+    visible:
+      id: 'welcome.email'
+    timeout: 30000
+- takeScreenshot: signed-out

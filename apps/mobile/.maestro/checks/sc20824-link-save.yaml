@@ -1,0 +1,24 @@
+# sc-20824: ${EVENT_ID}'s Edit details opened from its link, from Home in the running app; ' Gala' typed onto the name, Save changes leaves; the screenshot shows where it lands.
+appId: host.exp.Exponent
+---
+- openLink: ${METRO_URL}/--/events/${EVENT_ID}/edit
+- extendedWaitUntil:
+    visible:
+      id: 'eventForm.name'
+    timeout: 30000
+- takeScreenshot: opened
+- tapOn:
+    id: 'eventForm.name'
+- inputText: ' Gala'
+- hideKeyboard
+- scrollUntilVisible:
+    element:
+      id: 'eventForm.send'
+    direction: DOWN
+- tapOn:
+    id: 'eventForm.send'
+- extendedWaitUntil:
+    notVisible:
+      id: 'eventForm.name'
+    timeout: 3000
+- takeScreenshot: saved

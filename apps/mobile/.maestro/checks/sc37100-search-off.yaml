@@ -1,0 +1,28 @@
+# Needs an organisation with at least one event (the band shows over a list, not the empty state).
+# sc-37100: with the API stopped, Events' search field and Filter go off and say search needs a connection, in the batch's language.
+appId: host.exp.Exponent
+onFlowComplete:
+  - runScript:
+      file: ../batch/helper.js
+      env:
+        ASK: /api?to=up
+---
+- openLink: ${METRO_URL}/--/events
+- extendedWaitUntil:
+    visible:
+      id: 'events.filter'
+    timeout: 30000
+- runScript:
+    file: ../batch/helper.js
+    env:
+      ASK: /api?to=stopped
+- swipe:
+    start: 50%, 45%
+    end: 50%, 85%
+    duration: 400
+- extendedWaitUntil:
+    visible:
+      id: 'offline.band'
+    timeout: 60000
+- waitForAnimationToEnd
+- takeScreenshot: off

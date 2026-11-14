@@ -1,0 +1,18 @@
+# Opens the sign-in screen, holds 20 seconds (pause the api container meanwhile: docker compose
+# pause api), then opens a reset link and checks the screen says Loading… (testID pending) while
+# the link is checked. sc-23279.
+appId: host.exp.Exponent
+---
+- runFlow: sign-in-screen-english.yaml
+- extendedWaitUntil:
+    visible:
+      id: 'never-there'
+    timeout: 20000
+    optional: true
+- openLink: ${METRO_URL}/--/reset-password?token=not-a-token
+- extendedWaitUntil:
+    visible:
+      id: 'pending'
+    timeout: 10000
+- assertVisible: 'Loading.*'
+- takeScreenshot: mobile-reset-loading

@@ -1,0 +1,25 @@
+# sc-33828: from signed out (Lost two-factor's ending), EMAIL and PASSWORD up to Enter your code.
+appId: host.exp.Exponent
+---
+- openLink: ${METRO_URL}/--/sign-in
+- extendedWaitUntil: { visible: { id: 'welcome\.email|signIn\.email' }, timeout: 60000 }
+- runFlow:
+    when: { visible: { id: 'welcome.email' } }
+    commands:
+      - tapOn: { id: 'welcome.email' }
+- tapOn: { id: 'signIn.email' }
+- eraseText: 120
+- inputText: ${EMAIL}
+- tapOn: { id: 'signIn.password' }
+- eraseText: 120
+- inputText: ${PASSWORD}
+- runFlow:
+    when: { platform: iOS }
+    commands:
+      - pressKey: Enter
+- runFlow:
+    when: { platform: Android }
+    commands:
+      - hideKeyboard
+      - tapOn: { id: 'signIn.submit' }
+- extendedWaitUntil: { visible: { id: 'twoFactor.code' }, timeout: 30000 }

@@ -1,0 +1,23 @@
+# sc-37542: on a tablet, the switcher opened on its side from the sidebar's head, then turned upright while open, and left open.
+appId: host.exp.Exponent
+---
+- setOrientation: LANDSCAPE_LEFT
+- openLink: ${METRO_URL}/--/
+- extendedWaitUntil:
+    visible:
+      id: 'home.switchOrganisation|frame.organisation'
+    timeout: 30000
+- tapOn:
+    id: 'home.switchOrganisation|frame.organisation'
+- extendedWaitUntil:
+    visible:
+      id: 'switcher.heading'
+    timeout: 10000
+- waitForAnimationToEnd:
+    timeout: 3000
+- setOrientation: PORTRAIT
+- waitForAnimationToEnd:
+    timeout: 5000
+- assertVisible:
+    id: 'switcher.heading'
+- takeScreenshot: turned-upright

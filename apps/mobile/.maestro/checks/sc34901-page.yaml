@@ -1,0 +1,27 @@
+# sc-34901: Settings › Notification settings in the app, the header's says and counts lines, the rows, and Account & security open on its locked email line.
+appId: host.exp.Exponent
+---
+- openLink: ${METRO_URL}/--/settings/notifications
+- extendedWaitUntil:
+    visible:
+      id: 'notifications.guest_replies'
+    timeout: 30000
+- runFlow: ../developer-menu-close.yaml
+- waitForAnimationToEnd:
+    timeout: 5000
+- takeScreenshot: page-top
+- scrollUntilVisible:
+    element:
+      id: 'notifications.account_security'
+    direction: DOWN
+- takeScreenshot: page-rows
+- tapOn:
+    id: 'notifications.account_security'
+- waitForAnimationToEnd:
+    timeout: 5000
+- scrollUntilVisible:
+    element:
+      id: 'notifications.account_security.email'
+    direction: DOWN
+- scroll
+- takeScreenshot: page-locked

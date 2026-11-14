@@ -1,0 +1,29 @@
+# sc-34792: the Set up two-factor sheet's header title (security.setupTitle) and its verb, in the batch's language. An account with two-factor off.
+appId: host.exp.Exponent
+---
+- openLink: ${METRO_URL}/--/settings/security
+- extendedWaitUntil:
+    visible:
+      id: 'security.card'
+    timeout: 30000
+- scrollUntilVisible:
+    element:
+      id: 'security.authenticator'
+    timeout: 20000
+    centerElement: true
+- tapOn:
+    id: 'security.authenticator'
+- extendedWaitUntil:
+    visible:
+      id: 'security.setup.screen'
+    timeout: 15000
+- assertVisible: '{{t:security.setupTitle}}'
+- assertVisible:
+    id: 'security.setup.turnOn'
+- waitForAnimationToEnd
+- takeScreenshot: sc34792-setup-title
+- tapOn:
+    id: 'security.setup.cancel'
+- waitForAnimationToEnd
+- assertVisible:
+    id: 'security.authenticator'

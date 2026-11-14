@@ -1,0 +1,39 @@
+# sc-30413: Events and Today in an organisation with no events (QA Empty Org), loaded, beside the demo's ${STATE} and Today's ${MOMENT}; then Events' Drafts tab in QA Organisation, for the card's step by role.
+appId: host.exp.Exponent
+---
+- openLink: ${METRO_URL}/--/events
+- extendedWaitUntil: { visible: 'Search events', timeout: 30000 }
+- tapOn: 'Today'
+- extendedWaitUntil: { visible: { id: 'home.switchOrganisation' }, timeout: 30000 }
+- takeScreenshot: today-member
+- tapOn: 'Events'
+- extendedWaitUntil: { visible: 'Drafts.*', timeout: 30000 }
+- tapOn: 'Drafts.*'
+- waitForAnimationToEnd: { timeout: 4000 }
+- takeScreenshot: events-drafts
+- runFlow: ../open-switcher.yaml
+- tapOn: 'QA Empty Org'
+- waitForAnimationToEnd: { timeout: 6000 }
+- openLink: ${METRO_URL}/--/events
+- extendedWaitUntil: { visible: 'Check its time zone.*', timeout: 30000 }
+- waitForAnimationToEnd: { timeout: 4000 }
+- takeScreenshot: events-first-product
+- openLink: ${METRO_URL}/--/demo/events?state=${STATE}
+- extendedWaitUntil: { visible: 'Check its time zone.*', timeout: 30000 }
+- waitForAnimationToEnd: { timeout: 4000 }
+- takeScreenshot: events-first-demo
+- openLink: ${METRO_URL}/--/events
+- extendedWaitUntil: { visible: 'Search events', timeout: 30000 }
+- tapOn: 'Today'
+- extendedWaitUntil: { visible: 'Set up your first event', timeout: 30000 }
+- waitForAnimationToEnd: { timeout: 4000 }
+- takeScreenshot: today-first-product
+- openLink: ${METRO_URL}/--/demo/today?moment=${MOMENT}
+- waitForAnimationToEnd: { timeout: 6000 }
+- takeScreenshot: today-first-demo
+- openLink: ${METRO_URL}/--/events
+- extendedWaitUntil: { visible: 'Search events', timeout: 30000 }
+- tapOn: 'Today'
+- runFlow: ../open-switcher.yaml
+- tapOn: 'QA Organisation'
+- waitForAnimationToEnd: { timeout: 6000 }

@@ -1,0 +1,192 @@
+/* The unsubscribe page (sc-4331) in the signed-out frame: the desk's frame up to a tablet on its side, reflowed at a phone's width. */
+
+.unsub {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space3xl);
+}
+
+.unsub-mark {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 56px;
+  height: 56px;
+  border-radius: var(--radiusPill);
+  background: var(--colorAccentTint);
+  color: var(--colorAccent);
+}
+
+.unsub-glyph {
+  display: block;
+  fill: none;
+  stroke: currentcolor;
+  stroke-width: 2;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+}
+
+/* The line through the envelope, cut clear of it in the circle's own Tint. */
+.unsub-glyph .unsub-knock {
+  stroke: var(--colorAccentTint);
+  stroke-width: 6;
+}
+
+.unsub-words {
+  display: flex;
+  flex-direction: column;
+  gap: var(--spaceLg);
+}
+
+.unsub-words h1 {
+  margin: 0;
+  font: var(--typeTitleFrameCompact);
+  letter-spacing: var(--typeTitleFrameCompactTracking);
+  overflow-wrap: anywhere;
+}
+
+.unsub-words h1:focus {
+  outline: none;
+}
+
+.unsub-words .unsub-body {
+  font: 400 16px/1.5 var(--fontFamily);
+  color: var(--colorInkSecondary);
+}
+
+.unsub-actions {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--spaceXl);
+}
+
+/* 44 at every width, its label and width kept while it saves: the spinner and its gap take 12 from each end. */
+.unsub-actions .button.unsub-pill {
+  --buttonHit: var(--sizeHit);
+
+  gap: var(--spaceSm);
+  padding-inline: var(--space3xl);
+}
+
+.unsub-actions .button.unsub-pill[aria-busy='true'] {
+  padding-inline: var(--spaceLg);
+}
+
+.unsub-pill .demo-spinner {
+  flex: none;
+  width: 16px;
+  height: 16px;
+  border-color: color-mix(in srgb, var(--colorInkOnDark) 35%, transparent);
+  border-top-color: var(--colorInkOnDark);
+}
+
+.unsub-actions .unsub-link {
+  display: inline-flex;
+  align-items: center;
+  text-decoration: none;
+}
+
+.unsub-failed {
+  display: flex;
+  flex-basis: 100%;
+  align-items: flex-start;
+  gap: var(--spaceMd);
+  padding: var(--spaceLg) var(--spaceXl) 0;
+  border: var(--borderInset);
+  border-radius: var(--radiusInset);
+  background: var(--colorInset);
+}
+
+.unsub-failed-mark {
+  flex: none;
+  fill: none;
+  stroke: var(--colorBroken);
+  stroke-width: 2;
+  stroke-linecap: round;
+}
+
+.unsub-failed-words {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  min-width: 0;
+}
+
+.unsub-failed .unsub-failed-line {
+  font: var(--typeBody);
+  color: var(--colorInk);
+}
+
+.unsub-retry {
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+}
+
+/* Before its label, under the ring, so Try again keeps its place. */
+.unsub-retry .demo-spinner {
+  position: absolute;
+  right: calc(100% + var(--spaceLg));
+  width: 16px;
+  height: 16px;
+  border-color: var(--colorBorder);
+  border-top-color: var(--colorAccent);
+}
+
+.demo-page:has(.unsub) :is(.demo-page-links .demo-link, .language-menu-button) {
+  display: inline-flex;
+  align-items: center;
+  min-height: var(--sizeHit);
+}
+
+@media (width <= 40rem) {
+  .demo-page:has(.unsub) .demo-page-header {
+    padding: 0 var(--space3xl);
+  }
+
+  .demo-page:has(.unsub) .demo-page-main {
+    padding: var(--space5xl) var(--space3xl) var(--space3xl);
+  }
+
+  .unsub-actions {
+    flex-direction: column;
+    align-items: stretch;
+  }
+
+  .unsub-actions .unsub-link {
+    align-self: flex-start;
+  }
+
+  .unsub-failed {
+    flex-basis: auto;
+  }
+
+  /* The copyright on its own line, then Terms, Privacy and the language, as the legal pages have it. */
+  .demo-page:has(.unsub) .demo-page-footer {
+    flex-direction: column;
+    align-items: stretch;
+    gap: var(--spaceXxs);
+    height: auto;
+    padding: var(--spaceLg) var(--space3xl) var(--spaceXl);
+  }
+
+  .demo-page:has(.unsub) .demo-page-links {
+    flex-wrap: wrap;
+    column-gap: var(--spaceXl);
+  }
+
+  .demo-page:has(.unsub) .language-menu {
+    margin-left: auto;
+  }
+
+  .demo-page:has(.unsub) .demo-way-in {
+    flex-wrap: wrap;
+  }
+}
+
+@media (width < 22.5rem) {
+  .demo-page:has(.unsub) :is(.demo-page-header, .demo-page-main, .demo-page-footer) {
+    padding-inline: var(--spaceXl);
+  }
+}

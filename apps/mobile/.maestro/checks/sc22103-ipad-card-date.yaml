@@ -1,0 +1,46 @@
+# sc-22103: on the iPad, each Events card puts its date, how-soon phrase and time at its top right, across from the chip, in landscape and in portrait. iPad only. Needs ${METRO_URL} and an account with upcoming events; run with --lang en,fr, since French is where the date line wraps. Waits on a card in each orientation, so an empty list fails; where the date sits has no testID and stays a screenshot call.
+appId: host.exp.Exponent
+---
+- setOrientation: LANDSCAPE_LEFT
+- waitForAnimationToEnd
+- runFlow: ../checks/sc22103/to-upcoming.yaml
+- extendedWaitUntil:
+    visible:
+      id: 'events.row\..+'
+    timeout: 20000
+- scrollUntilVisible:
+    element:
+      id: 'events.tab.upcoming'
+    centerElement: true
+    timeout: 20000
+- swipe:
+    start: 50%, 70%
+    end: 50%, 35%
+    duration: 600
+- waitForAnimationToEnd
+- takeScreenshot: cards-landscape
+- swipe:
+    start: 50%, 70%
+    end: 50%, 40%
+    duration: 600
+- waitForAnimationToEnd
+- takeScreenshot: cards-landscape-more
+- setOrientation: PORTRAIT
+- waitForAnimationToEnd
+- runFlow: ../checks/sc22103/to-upcoming.yaml
+- extendedWaitUntil:
+    visible:
+      id: 'events.row\..+'
+    timeout: 20000
+- swipe:
+    start: 50%, 70%
+    end: 50%, 40%
+    duration: 600
+- waitForAnimationToEnd
+- takeScreenshot: cards-portrait
+- swipe:
+    start: 50%, 70%
+    end: 50%, 40%
+    duration: 600
+- waitForAnimationToEnd
+- takeScreenshot: cards-portrait-more

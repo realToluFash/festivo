@@ -1,0 +1,30 @@
+# sc-31163: (edge case) a lower-case name, extra spaces and a diacritic name: initials are upper case, first two words. Needs ${METRO_URL}.
+appId: host.exp.Exponent
+---
+- openLink: ${METRO_URL}/--/demo/settings/account
+- extendedWaitUntil:
+    visible:
+      id: 'account.name'
+    timeout: 30000
+- waitForAnimationToEnd:
+    timeout: 8000
+- takeScreenshot: before
+- tapOn:
+    id: 'account.name'
+- extendedWaitUntil:
+    visible:
+      id: 'account.name.field'
+    timeout: 10000
+- eraseText: 120
+- inputText: '  ọlá   adé  bello '
+- tapOn:
+    id: 'account.name.save'
+- extendedWaitUntil:
+    notVisible:
+      id: 'account.name.screen'
+    timeout: 10000
+- waitForAnimationToEnd:
+    timeout: 8000
+- assertVisible: 'ọlá.*'
+- assertVisible: 'ỌA'
+- takeScreenshot: saved-diacritic

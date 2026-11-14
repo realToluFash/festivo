@@ -1,0 +1,33 @@
+/* sc-6476: the hosts' thank-you on a Finished event's Overview and in End now. The line is the guest page's own (Thanks.tsx). */
+
+.ty-action {
+  display: flex;
+  margin-top: 4px;
+}
+
+.ty-under {
+  display: flex;
+  align-items: flex-start;
+  gap: var(--spaceLg);
+}
+
+.ty-under .desk-help:first-child {
+  flex: 1;
+  min-width: 0;
+}
+
+.ty-count {
+  flex: none;
+  font-variant-numeric: tabular-nums;
+}
+
+.ty-count.is-over {
+  color: var(--colorBrokenText);
+  font-weight: 700;
+}
+
+.ty .ev-opened {
+  margin: 0;
+  padding: 0;
+  border-left: 0;
+}

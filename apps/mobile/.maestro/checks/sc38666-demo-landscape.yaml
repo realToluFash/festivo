@@ -1,0 +1,24 @@
+# sc-38666: the design demo's Create an organisation name step (name, typing) on a phone on its side, keys up, to compare with the product's sc38666-name-landscape-keys pictures; then upright.
+appId: host.exp.Exponent
+---
+- setOrientation: LANDSCAPE_LEFT
+- waitForAnimationToEnd
+- openLink: ${METRO_URL}/--/demo/today?create=name
+- waitForAnimationToEnd: { timeout: 8000 }
+- tapOn: { id: 'createWalk.name', optional: true }
+- extendedWaitUntil: { visible: { id: 'never.there' }, timeout: 1500, optional: true }
+- takeScreenshot: demo-side-name-arrive
+- openLink: ${METRO_URL}/--/demo/today?create=typing
+- waitForAnimationToEnd: { timeout: 8000 }
+- tapOn: { id: 'createWalk.name', optional: true }
+- extendedWaitUntil: { visible: { id: 'never.there' }, timeout: 1500, optional: true }
+- takeScreenshot: demo-side-name-typed
+- hideKeyboard: { optional: true }
+- extendedWaitUntil: { visible: { id: 'never.there' }, timeout: 1000, optional: true }
+- takeScreenshot: demo-side-name-keys-down
+- setOrientation: PORTRAIT
+- openLink: ${METRO_URL}/--/demo/today?create=typing
+- waitForAnimationToEnd: { timeout: 8000 }
+- tapOn: { id: 'createWalk.name', optional: true }
+- extendedWaitUntil: { visible: { id: 'never.there' }, timeout: 1500, optional: true }
+- takeScreenshot: demo-up-name-typed

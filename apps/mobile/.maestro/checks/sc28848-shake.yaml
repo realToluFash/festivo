@@ -1,0 +1,18 @@
+# The demo's two-factor boxes: a wrong code shakes them; judge on the recording, with animations on. Needs ${METRO_URL}. sc-28848.
+appId: host.exp.Exponent
+---
+- openLink: ${METRO_URL}/--/demo/two-factor
+- extendedWaitUntil:
+    visible:
+      id: 'demo.code'
+    timeout: 30000
+- tapOn:
+    id: 'demo.code'
+- inputText: '11111'
+- startRecording: shake-wrong-code
+- inputText: '1'
+- extendedWaitUntil:
+    visible: 'That code does not match.*'
+    timeout: 5000
+- stopRecording
+- takeScreenshot: two-factor-wrong

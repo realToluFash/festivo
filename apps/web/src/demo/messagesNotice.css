@@ -1,0 +1,63 @@
+.mg-closed {
+  display: flex;
+  flex-direction: column;
+  gap: var(--spaceHair);
+}
+
+.mg-closed-line {
+  display: flex;
+  align-items: flex-start;
+  gap: var(--spaceXs);
+  margin: 0;
+  color: var(--colorBroken);
+  font: 500 14px/1.45 var(--fontFamily);
+}
+
+.mg-closed-line svg {
+  flex: none;
+  margin-top: 3px;
+}
+
+.mg-closed-again {
+  margin: 0;
+  padding-left: 23px;
+  color: var(--colorInkSecondary);
+  font: 500 13.5px/1.4 var(--fontFamily);
+}
+
+.mg-refused-why,
+.mg-answer-quiet {
+  display: flex;
+  align-items: center;
+  gap: var(--spaceXs);
+  margin: 0;
+  padding-left: 23px;
+  color: var(--colorInk);
+  font: 600 14px/1.4 var(--fontFamily);
+}
+
+.mg-answer-quiet svg {
+  flex: none;
+  color: var(--colorAttentionText);
+}
+
+.mg-refused-none {
+  margin: 0;
+  padding-left: 23px;
+  color: var(--colorInk);
+  font: 500 13.5px/1.4 var(--fontFamily);
+}
+
+.mg-refused-others {
+  padding-left: 23px;
+}
+
+.mg .mg-refused-others .mg-answer-other {
+  min-height: var(--sizeHit);
+}
+
+.mg-clip {
+  flex: none;
+  margin-right: var(--spaceHair);
+  vertical-align: -2px;
+}

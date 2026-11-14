@@ -1,0 +1,45 @@
+# The floating bar and Settings' person card at whatever text size the device is set to: each of the four destinations opens with one tap, and each screen's foot is shown. sc-37298.
+appId: host.exp.Exponent
+---
+- openLink: ${METRO_URL}/--/
+- extendedWaitUntil:
+    visible:
+      id: 'tab-today|frame.home'
+    timeout: 30000
+- waitForAnimationToEnd:
+    timeout: 5000
+- takeScreenshot: today
+- tapOn:
+    id: 'tab-events|frame.events'
+- extendedWaitUntil:
+    visible:
+      id: 'tab-events|frame.events'
+    timeout: 15000
+- waitForAnimationToEnd:
+    timeout: 5000
+- takeScreenshot: events
+- tapOn:
+    id: 'tab-calendar|frame.calendar'
+- extendedWaitUntil:
+    visible:
+      id: 'tab-calendar|frame.calendar'
+    timeout: 15000
+- waitForAnimationToEnd:
+    timeout: 5000
+- takeScreenshot: calendar
+- tapOn:
+    id: 'home.openSettings|frame.settings'
+- extendedWaitUntil:
+    visible:
+      id: 'settings.account'
+    timeout: 15000
+- waitForAnimationToEnd:
+    timeout: 5000
+- takeScreenshot: settings
+- tapOn:
+    id: 'tab-today|frame.home'
+- extendedWaitUntil:
+    visible:
+      id: 'tab-today|frame.home'
+    timeout: 15000
+- takeScreenshot: today-back

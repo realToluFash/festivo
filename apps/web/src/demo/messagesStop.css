@@ -1,0 +1,50 @@
+.mgs-menu {
+  width: max-content;
+  max-width: 400px;
+}
+
+.mgs-menu .mgt-menu-item {
+  white-space: nowrap;
+}
+
+.mgs-inset {
+  display: flex;
+  flex: none;
+  align-items: flex-start;
+  gap: var(--spaceLg);
+  padding: var(--spaceLg) var(--spaceXl);
+  border-radius: var(--radiusInset);
+  background: var(--colorInset);
+}
+
+.mgs-inset-mark {
+  flex: none;
+  margin-top: var(--spaceHair);
+  color: var(--colorInkSecondary);
+}
+
+.mgs-inset-words {
+  display: flex;
+  flex-direction: column;
+  gap: var(--spaceXxs);
+  min-width: 0;
+}
+
+.mgs-inset-line {
+  margin: 0;
+  color: var(--colorInk);
+  font: 500 14px/1.45 var(--fontFamily);
+}
+
+.mgs-ask {
+  display: none;
+}
+
+.desk-ask:has(.mgs-ask) .desk-ask-pair .desk-text {
+  flex: 0 1 auto;
+  min-width: 0;
+  padding-block: var(--spaceSm);
+  line-height: 1.3;
+  text-align: center;
+  white-space: normal;
+}

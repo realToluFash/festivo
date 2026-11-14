@@ -1,0 +1,53 @@
+/* sc-563's managed refusal, the same in the switcher, the walk, a request link and A few details. */
+
+.managed {
+  display: flex;
+  gap: var(--spaceLg);
+  box-sizing: border-box;
+  width: 100%;
+  padding: var(--spaceXl) var(--spaceXl) var(--spaceXs);
+  border-radius: var(--radiusRow);
+  background: var(--colorInset);
+  color: var(--colorInk);
+  text-align: left;
+}
+
+.managed-mark {
+  display: flex;
+  flex: none;
+  padding-top: 1px;
+  color: var(--colorInkSecondary);
+}
+
+.managed-words {
+  display: flex;
+  flex-direction: column;
+  gap: var(--spaceXs);
+  min-width: 0;
+}
+
+.managed .managed-title {
+  margin: 0;
+  font: 700 16px/1.3 var(--fontFamily);
+  letter-spacing: -0.01em;
+}
+
+.managed p {
+  margin: 0;
+  color: var(--colorInkSecondary);
+  font: 500 15px/1.45 var(--fontFamily);
+}
+
+.managed .managed-way {
+  display: inline-flex;
+  align-self: flex-start;
+  align-items: center;
+  min-height: var(--sizeHit);
+  color: var(--colorAccent);
+  font: 600 15px/1.2 var(--fontFamily);
+  text-decoration: none;
+}
+
+.managed .managed-way:hover {
+  text-decoration: underline;
+}

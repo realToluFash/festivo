@@ -1,0 +1,32 @@
+# Android back: from Sign in to the demo list, and from the demo list back to Settings.
+appId: host.exp.Exponent
+---
+- runFlow: ../open-settings.yaml
+- scrollUntilVisible:
+    element:
+      id: 'settings.designDemo'
+    direction: DOWN
+- tapOn:
+    id: 'settings.designDemo'
+- extendedWaitUntil:
+    visible: 'folake@ire.events'
+    timeout: 15000
+- tapOn:
+    id: 'demo.board.Sign in with email'
+- extendedWaitUntil:
+    visible:
+      id: 'demo.email'
+    timeout: 10000
+- hideKeyboard
+- back
+- extendedWaitUntil:
+    visible:
+      id: 'demo.board.Sign in with email'
+    timeout: 10000
+- takeScreenshot: back-to-list
+- back
+- extendedWaitUntil:
+    visible:
+      id: 'settings.designDemo'
+    timeout: 10000
+- takeScreenshot: back-to-settings

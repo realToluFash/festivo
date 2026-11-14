@@ -1,0 +1,17 @@
+# Settings, opened from the floating bar and left open, for a text-size change made with it on screen. sc-37298.
+appId: host.exp.Exponent
+---
+- openLink: ${METRO_URL}/--/
+- extendedWaitUntil:
+    visible:
+      id: 'tab-today|frame.home'
+    timeout: 30000
+- tapOn:
+    id: 'home.openSettings|frame.settings'
+- extendedWaitUntil:
+    visible:
+      id: 'settings.account'
+    timeout: 15000
+- waitForAnimationToEnd:
+    timeout: 5000
+- takeScreenshot: settings-open

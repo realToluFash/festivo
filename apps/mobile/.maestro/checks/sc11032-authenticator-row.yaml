@@ -1,0 +1,11 @@
+# sc-11032: Settings > Security with the Authenticator app row (Off) centred, nothing tapped. Leaves the row for a screen-reader double-tap. Needs ${METRO_URL}, two-factor off.
+appId: host.exp.Exponent
+---
+- openLink: ${METRO_URL}/--/settings/security
+- scrollUntilVisible:
+    element:
+      id: 'security.authenticator'
+    timeout: 30000
+    centerElement: true
+- waitForAnimationToEnd
+- takeScreenshot: authenticator-row

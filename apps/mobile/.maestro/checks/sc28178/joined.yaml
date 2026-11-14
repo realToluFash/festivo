@@ -1,0 +1,27 @@
+# sc-28178 subflow: joins ORG, made for this batch, and switches to it. Leaves its id in
+# output.joined, and Today without the Now working in ‹name›. the pick left (sc-46032).
+appId: host.exp.Exponent
+---
+- runScript:
+    file: ../../batch/helper.js
+    env:
+      ASK: /membership?change=join&org=${ORG}
+- evalScript: ${output.joined = output.helper.id}
+# A move reads the organisations again, so the switcher lists the one just joined. From Today,
+# where a change before may have left Calendar or Events open.
+- runFlow: ../../return-home.yaml
+- tapOn:
+    id: 'tab-events'
+- waitForAnimationToEnd:
+    timeout: 5000
+- runFlow:
+    file: ../../switch-organisation.yaml
+    env:
+      ORG: ${output.joined}
+# The notice stays until the switcher opens again.
+- extendedWaitUntil:
+    visible: '{{t:switcher.switched}}'
+    timeout: 20000
+- runFlow: ../../open-switcher.yaml
+- runFlow: ../../return-home.yaml
+- assertNotVisible: '{{t:switcher.switched}}'

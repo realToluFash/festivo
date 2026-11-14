@@ -1,0 +1,18 @@
+# Close closes Password changed; it is 44 wide. sc-37519.
+appId: host.exp.Exponent
+---
+- runFlow: ../sign-out.yaml
+- openLink: ${METRO_URL}/--/reset-password?token=${TOKEN_STEP}
+- extendedWaitUntil: { visible: { id: 'recovery.password' }, timeout: 30000 }
+- tapOn: { id: 'recovery.password' }
+- inputText: 'a-brand-new-password-37519'
+- tapOn: { id: 'recovery.save' }
+- extendedWaitUntil: { visible: { id: 'completeProfile.organisation' }, timeout: 30000 }
+- assertVisible: '{{t:any:recovery.changed}}'
+- extendedWaitUntil: { visible: { id: 'never.there' }, timeout: 1500, optional: true }
+- takeScreenshot: close-01-landed
+- tapOn: '{{t:any:toast.close}}'
+- takeScreenshot: close-02-closed
+- assertNotVisible: '{{t:any:recovery.changed}}'
+- assertVisible: { id: 'completeProfile.organisation', focused: true }
+- runFlow: ../sign-out-from-complete-profile.yaml

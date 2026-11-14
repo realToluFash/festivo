@@ -1,0 +1,16 @@
+# The language sheet in LANGUAGE (English, Español, Français, Português) shows the line under its heading, the
+# line FOLLOWS the language's own words. sc-28816.
+#
+#   node .qa/bin/qa-env.mjs maestro language-sheet-follows LANGUAGE=Español FOLLOWS='Su idioma le sigue en todos los dispositivos.' [--ipad | --se | --android [--tablet]]
+appId: host.exp.Exponent
+---
+- runFlow: sign-in-screen-language.yaml
+- tapOn:
+    id: 'language.open'
+- extendedWaitUntil:
+    visible:
+      id: 'language.sheet'
+    timeout: 10000
+- assertVisible:
+    text: '${FOLLOWS}'
+- takeScreenshot: language-sheet-${LANGUAGE}

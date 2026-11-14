@@ -1,0 +1,54 @@
+# Settings > Organisation, deleting it with the API stopped: the failure notice and Try again, then the counts once it answers. sc-16866.
+appId: host.exp.Exponent
+onFlowComplete:
+  - runScript:
+      file: ../batch/helper.js
+      env:
+        ASK: /api?to=up
+---
+- openLink: ${METRO_URL}/--/settings/organisation
+- extendedWaitUntil:
+    visible: '{{t:settings.organisation}}'
+    timeout: 30000
+- scrollUntilVisible:
+    element:
+      id: 'organisation.ownership.delete'
+    timeout: 60000
+- runScript:
+    file: ../batch/helper.js
+    env:
+      ASK: /api?to=stopped
+- tapOn:
+    id: 'organisation.ownership.delete'
+- extendedWaitUntil:
+    visible:
+      id: 'organisation.delete.retry'
+    timeout: 30000
+- assertVisible: '.*{{t:ownership.deleteUncounted}}.*'
+- assertNotVisible: '.*{{t:ownership.deleteLoading}}.*'
+- waitForAnimationToEnd
+- takeScreenshot: failed
+- tapOn:
+    id: 'organisation.delete.retry'
+- extendedWaitUntil:
+    visible:
+      id: 'organisation.delete.retry'
+    timeout: 30000
+- assertVisible: '.*{{t:ownership.deleteUncounted}}.*'
+- takeScreenshot: failed-again
+- runScript:
+    file: ../batch/helper.js
+    env:
+      ASK: /api?to=up
+- tapOn:
+    id: 'organisation.delete.retry'
+- extendedWaitUntil:
+    notVisible:
+      id: 'organisation.delete.retry'
+    timeout: 30000
+- extendedWaitUntil:
+    notVisible: '.*{{t:ownership.deleteLoading}}.*'
+    timeout: 15000
+- assertNotVisible: '.*{{t:ownership.deleteUncounted}}.*'
+- waitForAnimationToEnd
+- takeScreenshot: counted

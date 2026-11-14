@@ -1,0 +1,13 @@
+# sc-23327 on iOS: with ${EVENT}'s page open, a tap about 4pt from the left edge on the tab bar's first tab still reaches it.
+appId: host.exp.Exponent
+---
+- openLink: ${METRO_URL}/--/events/${EVENT}
+- extendedWaitUntil:
+    visible:
+      id: 'events.page'
+    timeout: 20000
+- waitForAnimationToEnd
+- tapOn:
+    point: 1%,96%
+- waitForAnimationToEnd
+- takeScreenshot: after-edge-tap

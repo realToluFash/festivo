@@ -1,0 +1,74 @@
+# The signed-out screens in English then the language CODE, named NAME. sc-28812.
+#
+#   node .qa/bin/qa-env.mjs maestro signed-out-polish-in CODE=pt NAME=Português [--ipad | --se | --android [--tablet]]
+appId: host.exp.Exponent
+---
+- runFlow: sign-in-screen-english.yaml
+- takeScreenshot: polish-sign-in-en
+# Back to welcome, where the language button and Create an account are (sc-29076).
+- tapOn:
+    id: 'signIn.back'
+- extendedWaitUntil:
+    visible:
+      id: 'welcome.register'
+    timeout: 10000
+- takeScreenshot: polish-welcome-en
+- tapOn:
+    id: 'language.open'
+- extendedWaitUntil:
+    visible:
+      id: 'language.done'
+    timeout: 10000
+- assertVisible: 'Language'
+- assertVisible: 'Your language follows you to every device.'
+- takeScreenshot: polish-sheet-en
+- tapOn:
+    id: 'language.done'
+- assertNotVisible:
+    id: 'language.done'
+- assertVisible: 'English'
+- tapOn:
+    id: 'language.open'
+- tapOn:
+    id: 'language.${CODE}'
+- assertNotVisible:
+    id: 'language.done'
+- assertVisible: '${NAME}'
+- takeScreenshot: polish-welcome-${CODE}
+- tapOn:
+    id: 'language.open'
+- extendedWaitUntil:
+    visible:
+      id: 'language.done'
+    timeout: 10000
+- takeScreenshot: polish-sheet-${CODE}
+- tapOn:
+    id: 'language.done'
+- tapOn:
+    id: 'welcome.register'
+- extendedWaitUntil:
+    visible:
+      id: 'register.name'
+    timeout: 10000
+- takeScreenshot: polish-register-${CODE}
+- back
+- extendedWaitUntil:
+    visible:
+      id: 'welcome.email'
+    timeout: 10000
+- tapOn:
+    id: 'welcome.email'
+- extendedWaitUntil:
+    visible:
+      id: 'signIn.email'
+    timeout: 10000
+- takeScreenshot: polish-sign-in-${CODE}
+- tapOn:
+    id: 'signIn.forgot'
+- extendedWaitUntil:
+    visible:
+      id: 'recovery.email'
+    timeout: 10000
+- takeScreenshot: polish-forgot-${CODE}
+- back
+- runFlow: sign-in-screen-english.yaml

@@ -1,0 +1,79 @@
+# sc-28122: Time zone: the Time zone row, tap Find your time zone, type, keys up: matches, Save and Cancel above the keys; a match takes a tap; Cancel with keys up closes, past the ask that discards what was typed, five in five. Needs ${METRO_URL}.
+appId: host.exp.Exponent
+---
+- openLink: ${METRO_URL}/--/settings/account
+- scrollUntilVisible:
+    element:
+      id: 'account.zone'
+    timeout: 30000
+    centerElement: true
+- waitForAnimationToEnd:
+    timeout: 3000
+- tapOn:
+    id: 'account.zone'
+- waitForAnimationToEnd:
+    timeout: 3000
+- tapOn:
+    id: 'account.zone.field'
+- waitForAnimationToEnd:
+    timeout: 3000
+- takeScreenshot: tz-keys-up-empty
+- inputText: 'America'
+- waitForAnimationToEnd:
+    timeout: 3000
+- takeScreenshot: tz-keys-up-many
+- eraseText: 20
+- inputText: 'Lisbon'
+- waitForAnimationToEnd:
+    timeout: 3000
+- takeScreenshot: tz-keys-up-one
+- tapOn:
+    id: 'account.zone.Europe/Lisbon'
+- waitForAnimationToEnd:
+    timeout: 3000
+- assertVisible:
+    id: 'account.zone.field'
+    text: 'Lisbon \(UTC.*\)'
+- takeScreenshot: tz-picked
+- repeat:
+    times: 5
+    commands:
+      - tapOn:
+          id: 'account.zone.cancel'
+          waitToSettleTimeoutMs: 0
+          retryTapIfNoChange: false
+      # Typed text makes Cancel ask before it discards it; the ask showing is the tap landing.
+      - extendedWaitUntil:
+          visible:
+            id: 'account.zone.discard'
+          timeout: 5000
+      - tapOn:
+          id: 'account.zone.discard'
+      - waitForAnimationToEnd:
+          timeout: 3000
+      - takeScreenshot: tz-after-cancel
+      - assertNotVisible:
+          id: 'account.zone.cancel'
+      - tapOn:
+          id: 'account.zone'
+      - waitForAnimationToEnd:
+          timeout: 3000
+      - tapOn:
+          id: 'account.zone.field'
+      - inputText: 'Eu'
+      - waitForAnimationToEnd:
+          timeout: 3000
+      - takeScreenshot: tz-keys-up
+- tapOn:
+    id: 'account.zone.cancel'
+# Typed text makes Cancel ask before it discards it; the ask showing is the tap landing.
+- extendedWaitUntil:
+    visible:
+      id: 'account.zone.discard'
+    timeout: 5000
+- tapOn:
+    id: 'account.zone.discard'
+- waitForAnimationToEnd:
+    timeout: 3000
+- assertNotVisible:
+    id: 'account.zone.cancel'

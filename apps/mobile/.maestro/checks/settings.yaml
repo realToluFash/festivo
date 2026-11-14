@@ -1,0 +1,8 @@
+# Settings, opened by its link.
+appId: host.exp.Exponent
+---
+- openLink: ${METRO_URL}/--/settings
+- extendedWaitUntil:
+    visible: '{{t:settings.title}}'
+    timeout: 30000
+- takeScreenshot: settings

@@ -1,0 +1,15 @@
+# sc-3594: in ${ORG}, an organisation with no events, a role without Create events reads the first run with the ask-an-owner notice and no Create an event.
+appId: host.exp.Exponent
+---
+- runFlow:
+    file: ../switch-organisation.yaml
+    env:
+      ORG: ${ORG}
+- openLink: ${METRO_URL}/--/events
+- extendedWaitUntil:
+    visible:
+      id: 'events.firstRun'
+    timeout: 30000
+- assertNotVisible:
+    id: 'events.none.new'
+- takeScreenshot: first-run

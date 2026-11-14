@@ -1,0 +1,58 @@
+# sc-34213: after saving Oluwafolakemi Bello, opening Security, then Members, and coming back to Your account keeps it on the page's card, the list and the sidebar's foot; a deep link starts again from Folake Adeyemi. Needs ${METRO_URL} and ${ORIENT} (PORTRAIT on a phone).
+appId: host.exp.Exponent
+---
+- setOrientation: ${ORIENT}
+- openLink: ${METRO_URL}/--/demo/settings/account
+- extendedWaitUntil:
+    visible:
+      id: 'account.name'
+    timeout: 30000
+- waitForAnimationToEnd:
+    timeout: 8000
+- tapOn:
+    id: 'account.name'
+- extendedWaitUntil:
+    visible:
+      id: 'account.name.field'
+    timeout: 10000
+- eraseText: 120
+- inputText: 'Oluwafolakemi Bello'
+- tapOn:
+    id: 'account.name.save'
+- extendedWaitUntil:
+    notVisible:
+      id: 'account.name.screen'
+    timeout: 10000
+- waitForAnimationToEnd:
+    timeout: 8000
+- tapOn: '{{t:settings.security}}'
+- waitForAnimationToEnd:
+    timeout: 8000
+- assertVisible: 'Oluwafolakemi Bello.*'
+- assertNotVisible: 'Folake Adeyemi'
+- takeScreenshot: on-security
+- tapOn: '{{t:settings.members}}'
+- waitForAnimationToEnd:
+    timeout: 8000
+- takeScreenshot: on-members
+- tapOn: 'Oluwafolakemi Bello.*'
+- waitForAnimationToEnd:
+    timeout: 8000
+- extendedWaitUntil:
+    visible:
+      id: 'account.name'
+    timeout: 10000
+- assertVisible: 'OB'
+- assertNotVisible: 'Folake Adeyemi'
+- assertNotVisible: 'FA'
+- takeScreenshot: back-on-account
+- openLink: ${METRO_URL}/--/demo/settings/account
+- extendedWaitUntil:
+    visible:
+      id: 'account.name'
+    timeout: 30000
+- waitForAnimationToEnd:
+    timeout: 8000
+- assertVisible: 'FA'
+- assertNotVisible: 'Oluwafolakemi Bello'
+- takeScreenshot: after-deep-link

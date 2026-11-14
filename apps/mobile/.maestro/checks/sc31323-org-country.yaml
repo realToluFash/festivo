@@ -1,0 +1,21 @@
+# Your organisation (sign-up), a name typed and Country blank, saved: Country refused with "Choose a country.". Leaves it on screen for a screen-reader pass. Needs an account with no profile on a device region that is no listed country. sc-31323.
+appId: host.exp.Exponent
+---
+- openLink: ${METRO_URL}/--/complete-profile
+- extendedWaitUntil:
+    visible:
+      id: 'completeProfile.organisation'
+    timeout: 30000
+- tapOn:
+    id: 'completeProfile.organisation'
+- inputText: 'QA Edge Ltd'
+- runFlow:
+    when:
+      platform: Android
+    commands:
+      - hideKeyboard
+- tapOn:
+    id: 'completeProfile.save'
+- waitForAnimationToEnd
+- assertVisible: '{{t:forms.countryBlank}}'
+- takeScreenshot: org-country-refused

@@ -1,0 +1,45 @@
+# Android only. sc-25667: Create organisation pressed with the API paused reads Creating…, a second tap sends nothing, Cancel and Back are gone, Android back does nothing; once the API is back the walk closes into the new organisation with Now working in it.
+appId: host.exp.Exponent
+onFlowComplete:
+  - runScript:
+      file: ../batch/helper.js
+      env:
+        ASK: /api?to=up
+---
+- runFlow: ../open-create-organisation.yaml
+- runFlow:
+    file: ../walk-to-ready.yaml
+    env:
+      NAME: 'Held Made Android'
+- runScript:
+    file: ../batch/helper.js
+    env:
+      ASK: /api?to=paused
+- tapOn:
+    id: 'createWalk.primary'
+- tapOn:
+    id: 'createWalk.primary'
+- takeScreenshot: held-creating
+- assertVisible: '{{t:createOrganisation.creating}}'
+- assertNotVisible:
+    id: 'createWalk.cancel'
+- assertNotVisible:
+    id: 'createWalk.back'
+- back
+- waitForAnimationToEnd:
+    timeout: 3000
+- assertVisible:
+    id: 'createWalk'
+- takeScreenshot: held-after-back
+- runScript:
+    file: ../batch/helper.js
+    env:
+      ASK: /api?to=up
+- extendedWaitUntil:
+    notVisible:
+      id: 'createWalk'
+    timeout: 30000
+- extendedWaitUntil:
+    visible: '{{t:switcher.switched}}'
+    timeout: 20000
+- takeScreenshot: held-created-home

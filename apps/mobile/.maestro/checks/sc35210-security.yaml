@@ -1,0 +1,36 @@
+# sc-35210: Security's why line, then Forgot password's sent page to its end, in the batch's language.
+appId: host.exp.Exponent
+---
+- openLink: ${METRO_URL}/--/settings/security
+- extendedWaitUntil:
+    visible:
+      id: 'security.card'
+    timeout: 30000
+- waitForAnimationToEnd
+- takeScreenshot: sc35210-security
+- tapOn:
+    id: 'security.password'
+- extendedWaitUntil:
+    visible:
+      id: 'security.change.screen'
+    timeout: 10000
+- scrollUntilVisible:
+    element:
+      id: 'security.change.forgot'
+- tapOn:
+    id: 'security.change.forgot'
+- extendedWaitUntil:
+    visible:
+      id: 'security.reset.email'
+    timeout: 10000
+- tapOn:
+    id: 'security.reset.send'
+- extendedWaitUntil:
+    visible:
+      id: 'security.reset.done'
+    timeout: 15000
+- waitForAnimationToEnd
+- takeScreenshot: sc35210-forgot-sent
+- scrollUntilVisible:
+    element: '{{t:security.gotTheLink}}'
+- takeScreenshot: sc35210-forgot-sent-end

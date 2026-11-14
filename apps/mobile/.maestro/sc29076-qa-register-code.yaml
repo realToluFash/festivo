@@ -1,0 +1,7 @@
+# From Check your email after registering, the code, then the step after it. Needs CODE. sc-29076.
+appId: host.exp.Exponent
+---
+- inputText: ${CODE}
+- waitForAnimationToEnd:
+    timeout: 8000
+- takeScreenshot: qa-register-step2

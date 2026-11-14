@@ -1,0 +1,13 @@
+# sc-23361 on a phone: the copy ${COPY} of ${EVENT} shows ‹ Event on its back row, whole.
+appId: host.exp.Exponent
+---
+- openLink: ${METRO_URL}/--/events/${COPY}?from=${EVENT}
+- extendedWaitUntil:
+    visible:
+      id: 'events.page'
+    timeout: 30000
+- waitForAnimationToEnd
+- assertVisible:
+    id: 'frame.back'
+    text: '{{t:timeline.backToEvent}}'
+- takeScreenshot: copy-top

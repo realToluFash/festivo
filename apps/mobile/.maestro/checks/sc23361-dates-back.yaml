@@ -1,0 +1,10 @@
+# sc-23361: All dates of ${EVENT} shows ‹ Event on its back, whole.
+appId: host.exp.Exponent
+---
+- openLink: ${METRO_URL}/--/events/${EVENT}/dates
+- extendedWaitUntil:
+    visible:
+      id: 'timeline.allDates.page'
+    timeout: 30000
+- waitForAnimationToEnd
+- takeScreenshot: dates-top

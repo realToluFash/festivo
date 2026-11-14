@@ -1,0 +1,78 @@
+# sc-24696: with the API stopped, Settings > Organisation keeps the Company domain joining and Requests to join cards, each with its heading, one line and Try again, and no On/Off word, switch or field. With the API back, each Try again reloads its own card alone. Needs ORIENT.
+appId: host.exp.Exponent
+onFlowComplete:
+  - runScript:
+      file: ../batch/helper.js
+      env:
+        ASK: /api?to=up
+---
+- setOrientation: ${ORIENT}
+- runFlow: ../return-home.yaml
+- runScript:
+    file: ../batch/helper.js
+    env:
+      ASK: /api?to=stopped
+- openLink: ${METRO_URL}/--/settings/organisation
+- extendedWaitUntil:
+    visible:
+      id: 'organisation.card'
+    timeout: 60000
+- scrollUntilVisible:
+    element:
+      id: 'organisation.link.tryAgain'
+    timeout: 60000
+    centerElement: true
+- assertVisible: '{{t:requestLink.title}}'
+- assertVisible: '{{t:requestLink.unreadable}}'
+- assertNotVisible:
+    id: 'organisation.link.switch'
+- takeScreenshot: request-failed
+- scrollUntilVisible:
+    element:
+      id: 'organisation.domain.tryAgain'
+    direction: UP
+    centerElement: true
+- assertVisible: '{{t:companyDomains.title}}'
+- assertVisible: '{{t:companyDomains.unreadable}}'
+- assertNotVisible:
+    id: 'organisation.domain.add'
+- takeScreenshot: domains-failed
+- scrollUntilVisible:
+    element:
+      id: 'organisation.link.tryAgain'
+    centerElement: true
+- tapOn:
+    id: 'organisation.link.tryAgain'
+- extendedWaitUntil:
+    visible:
+      id: 'organisation.link.tryAgain'
+    timeout: 30000
+- takeScreenshot: request-failed-again
+- runScript:
+    file: ../batch/helper.js
+    env:
+      ASK: /api?to=up
+- tapOn:
+    id: 'organisation.link.tryAgain'
+- extendedWaitUntil:
+    visible:
+      id: 'organisation.link.switch'
+    timeout: 30000
+- assertNotVisible:
+    id: 'organisation.link.tryAgain'
+- takeScreenshot: request-recovered
+- scrollUntilVisible:
+    element:
+      id: 'organisation.domain.tryAgain'
+    direction: UP
+    centerElement: true
+- takeScreenshot: domains-still-failed
+- tapOn:
+    id: 'organisation.domain.tryAgain'
+- extendedWaitUntil:
+    visible:
+      id: 'organisation.domain.add'
+    timeout: 30000
+- assertNotVisible:
+    id: 'organisation.domain.tryAgain'
+- takeScreenshot: domains-recovered

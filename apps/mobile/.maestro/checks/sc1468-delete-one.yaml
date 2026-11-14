@@ -1,0 +1,23 @@
+# sc-1468: Delete event's confirmation lists the guest list with its count (none on an empty Draft). Needs ${METRO_URL}, ${EV_ONE}.
+appId: host.exp.Exponent
+---
+- openLink: ${METRO_URL}/--/events/${EV_ONE}
+- extendedWaitUntil:
+    visible:
+      id: 'events.page'
+    timeout: 30000
+- scrollUntilVisible:
+    element:
+      id: 'events.delete'
+    centerElement: true
+    timeout: 30000
+- tapOn:
+    id: 'events.delete'
+- extendedWaitUntil:
+    visible:
+      id: 'events.deleteGo'
+    timeout: 15000
+- waitForAnimationToEnd
+- takeScreenshot: confirm
+- tapOn:
+    id: 'events.deleteKeep'

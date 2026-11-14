@@ -1,0 +1,5 @@
+# The real sign-in screen's Apple and Google buttons, signed out. Run last in a batch. sc-28848.
+appId: host.exp.Exponent
+---
+- runFlow: ../sign-out.yaml
+- takeScreenshot: real-sign-in-providers
