@@ -4,11 +4,23 @@ import { KEYBOARD_HIDDEN_SAID_MS, saidInFullMs } from '../kit/readOut.ts';
 
 const native = vi.hoisted(() => ({
   platform: { OS: 'android' },
-  keyboard: { isVisible: vi.fn(() => false), dismiss: vi.fn() },
+  hidden: new Set<() => void>(),
+  keyboard: {
+    isVisible: vi.fn(() => false),
+    dismiss: vi.fn(),
+    addListener: vi.fn((_event: string, listener: () => void) => {
+      native.hidden.add(listener);
+      return { remove: () => native.hidden.delete(listener) };
+    }),
+  },
   fieldChecked: vi.fn(),
 }));
 
-vi.mock('react-native', () => ({ Platform: native.platform, Keyboard: native.keyboard }));
+vi.mock('react-native', () => ({
+  Platform: native.platform,
+  Keyboard: native.keyboard,
+  codegenNativeCommands: () => ({}),
+}));
 vi.mock('react-i18next', () => ({ useTranslation: () => ({ t: (key: string) => key }) }));
 vi.mock('../i18n/index.ts', () => ({ currentLocale: () => 'en' }));
 vi.mock('./ListPicker.tsx', () => ({ ListPicker: () => null }));
@@ -29,6 +41,7 @@ describe('a refused picker on Android waits for the summary to be said (sc-43907
   beforeEach(() => {
     vi.useFakeTimers();
     native.fieldChecked.mockClear();
+    native.hidden.clear();
   });
 
   afterEach(() => {
@@ -49,8 +62,25 @@ describe('a refused picker on Android waits for the summary to be said (sc-43907
   it('scrolls only after TalkBack says the keyboard is hidden too, with the keyboard up', () => {
     native.keyboard.isVisible.mockReturnValue(true);
     const cancel = focusPicker(picker, field, summary);
+    native.keyboard.isVisible.mockReturnValue(false);
+    native.hidden.forEach((hidden) => hidden());
 
     vi.advanceTimersByTime(saidInFullMs('android', summary) + KEYBOARD_HIDDEN_SAID_MS - 1);
+    expect(native.fieldChecked).not.toHaveBeenCalled();
+    vi.advanceTimersByTime(1);
+    expect(native.fieldChecked).toHaveBeenCalledOnce();
+    cancel();
+  });
+
+  it('times the wait from the keys going down when they close late, with the keyboard up', () => {
+    const keysLateMs = 1500;
+    native.keyboard.isVisible.mockReturnValue(true);
+    const cancel = focusPicker(picker, field, summary);
+
+    vi.advanceTimersByTime(keysLateMs);
+    native.keyboard.isVisible.mockReturnValue(false);
+    native.hidden.forEach((hidden) => hidden());
+    vi.advanceTimersByTime(saidInFullMs('android', summary, true) - 1);
     expect(native.fieldChecked).not.toHaveBeenCalled();
     vi.advanceTimersByTime(1);
     expect(native.fieldChecked).toHaveBeenCalledOnce();
