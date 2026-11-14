@@ -2455,7 +2455,7 @@
     "showAll_many": "Mostrar os {{count, number}}",
     "heldLine": "Em espera · só vem se o convite for aceite",
     "heldAway": "{{guestOf}} · {{held}}",
-    "offlineRefused": "You’re offline. Nothing was saved.",
-    "offlineRefusedLine": "Your changes stay in this form. Save again once you’re connected."
+    "offlineRefused": "Está sem ligação à Internet. Nada foi guardado.",
+    "offlineRefusedLine": "As suas alterações continuam neste formulário. Guarde novamente quando voltar a ter Internet."
   }
 }
