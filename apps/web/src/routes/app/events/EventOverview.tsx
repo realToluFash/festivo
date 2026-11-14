@@ -276,7 +276,7 @@ export function Overview({
             part={part}
             parts={parts}
             shown={shown}
-            onCover={(next) => onChange(next, tag)}
+            onCover={(next) => saved({ event: next, tag })}
             onOpen={open}
             comingUp={<ComingUp event={event} timeline={timeline} heading={comingUpHeading} />}
           />
@@ -396,7 +396,14 @@ function Details({
       case 'currency':
         return <CurrencyPart {...parts} />;
       case 'cover':
-        return <CoverPart event={event} onClose={parts.onClose} onCover={onCover} />;
+        return (
+          <CoverPart
+            event={event}
+            onDirty={parts.onDirty}
+            onClose={parts.onClose}
+            onCover={onCover}
+          />
+        );
     }
   };
 
