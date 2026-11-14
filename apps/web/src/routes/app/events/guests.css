@@ -732,7 +732,9 @@
 
 .gs-copied {
   display: flex;
+  flex-wrap: wrap;
   align-items: center;
+  gap: 0 14px;
   padding-left: 40px;
 }
 
