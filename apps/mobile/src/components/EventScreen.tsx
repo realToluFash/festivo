@@ -7,7 +7,13 @@ import { StyleSheet, View } from 'react-native';
 import { useTranslation } from 'react-i18next';
 
 import { api } from '../api.ts';
-import { type Stale, keepsWhatLoaded, useOffline } from '../offline.ts';
+import {
+  NOT_OFFLINE,
+  type ScreenOffline,
+  type Stale,
+  keepsWhatLoaded,
+  useOffline,
+} from '../offline.ts';
 import { DESTINATION_HREF } from '../kit/appNav.ts';
 import { offersDelete } from '../kit/eventDelete.ts';
 import { offersEdit } from '../kit/eventEdit.ts';
@@ -25,6 +31,7 @@ import { bodyEdges } from './bodyEdges.ts';
 import { SecondaryButton } from './Buttons.tsx';
 import { cardFrame } from './cardFrame.ts';
 import { EventPage } from './EventPage.tsx';
+import { EventGuests } from './EventGuests.tsx';
 import { EventPeople } from './EventPeople.tsx';
 import { EventNotFound, EventTop, EventsFailed, usePhaseOf } from './Events.tsx';
 import { Notice } from './Notice.tsx';
@@ -66,6 +73,7 @@ export function EventScreen({
     getState(): { routes: readonly { params?: unknown }[]; index: number } | undefined;
   }>();
   const [savedEvent, setSavedEvent] = useState<string | null>(null);
+  const [guestsOffline, setGuestsOffline] = useState<ScreenOffline>(NOT_OFFLINE);
   const [toast, setToast] = useState<{ eventId: string; words: string } | null>(null);
   const insets = useSafeAreaInsets();
   const [coverRefused, setCoverRefused] = useState<{ eventId: string; reason: string } | null>(
@@ -205,7 +213,11 @@ export function EventScreen({
       <LoadingBlock words={t('eventsScreen.loadingEvent')} />
     );
 
-  const refreshing = opened.refreshing ? <Refreshing testID="events.page.refreshing" /> : null;
+  const guests = area === 'guests' && event != null;
+  const refreshing =
+    opened.refreshing || (guests && guestsOffline.refreshing) ? (
+      <Refreshing testID="events.page.refreshing" />
+    ) : null;
   const underTitle =
     area === 'people' && event != null ? (
       <Text size={15} weight="medium" style={styles.secondary}>
@@ -228,7 +240,7 @@ export function EventScreen({
       title={t(`eventNav.${area}`)}
       titleRef={title}
       untitled={cardNamed || areaTitled}
-      offline={opened.stale}
+      offline={guests ? (guestsOffline.stale ?? opened.stale) : opened.stale}
       besideBack={phone || cardNamed ? refreshing : undefined}
       besideTitle={phone || areaTitled ? undefined : refreshing}
       back={frameBack}
@@ -246,39 +258,72 @@ export function EventScreen({
       }
       underTitle={areaTitled ? undefined : underTitle}
     >
-      <Screen
-        edges={bodyEdges(kind)}
-        contentStyle={
-          phone
-            ? cardNamed
-              ? styles.phoneUntitled
-              : styles.phone
-            : kind === 'tabletLandscape' && cardNamed
-              ? styles.landscapeUntitled
-              : styles.tablet
-        }
-      >
-        {kind === 'tabletLandscape' &&
-          (cardNamed ? (
-            refreshing
-          ) : (
-            <BackButton label={backLabel} onPress={back} testID="events.back" />
-          ))}
-        {areaTitled && (
-          <View style={styles.areaTop}>
-            <View style={styles.titleRow}>
-              <View style={styles.fill}>
-                <Title size={PAGE_TITLE} accessibilityRole="header" ref={title} style={pageTitle}>
-                  {t(`eventNav.${area}`)}
-                </Title>
+      {guests ? (
+        <EventGuests
+          key={event.id}
+          event={event}
+          heading={
+            <>
+              {kind === 'tabletLandscape' && !cardNamed && (
+                <BackButton label={backLabel} onPress={back} testID="events.back" />
+              )}
+              {areaTitled && (
+                <View style={styles.areaTop}>
+                  <View style={styles.titleRow}>
+                    <View style={styles.fill}>
+                      <Title
+                        size={PAGE_TITLE}
+                        accessibilityRole="header"
+                        ref={title}
+                        style={pageTitle}
+                      >
+                        {t(`eventNav.${area}`)}
+                      </Title>
+                    </View>
+                    {refreshing}
+                  </View>
+                  {underTitle}
+                </View>
+              )}
+            </>
+          }
+          onOffline={setGuestsOffline}
+        />
+      ) : (
+        <Screen
+          edges={bodyEdges(kind)}
+          contentStyle={
+            phone
+              ? cardNamed
+                ? styles.phoneUntitled
+                : styles.phone
+              : kind === 'tabletLandscape' && cardNamed
+                ? styles.landscapeUntitled
+                : styles.tablet
+          }
+        >
+          {kind === 'tabletLandscape' &&
+            (cardNamed ? (
+              refreshing
+            ) : (
+              <BackButton label={backLabel} onPress={back} testID="events.back" />
+            ))}
+          {areaTitled && (
+            <View style={styles.areaTop}>
+              <View style={styles.titleRow}>
+                <View style={styles.fill}>
+                  <Title size={PAGE_TITLE} accessibilityRole="header" ref={title} style={pageTitle}>
+                    {t(`eventNav.${area}`)}
+                  </Title>
+                </View>
+                {refreshing}
               </View>
-              {refreshing}
+              {underTitle}
             </View>
-            {underTitle}
-          </View>
-        )}
-        {body}
-      </Screen>
+          )}
+          {body}
+        </Screen>
+      )}
       {toast?.eventId === eventId && area === 'people' && (
         <PageToast
           words={toast.words}

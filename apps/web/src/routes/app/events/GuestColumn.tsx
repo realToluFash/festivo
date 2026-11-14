@@ -9,8 +9,8 @@ import {
   type TaggedGuest,
 } from '@soirely/api-client';
 import { formatPhone, ownLanguageName, phoneE164, phoneFields } from '@soirely/domain';
-import { type ReactNode, useEffect, useEffectEvent, useId, useRef, useState } from 'react';
 import type { TFunction } from 'i18next';
+import { type ReactNode, useEffect, useEffectEvent, useId, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 
 import { api } from '../../../api.ts';
@@ -30,7 +30,6 @@ import {
   PlacesStepper,
 } from './GuestFields.tsx';
 import { type Copy, IconLead, Invitation, invitationLine } from './GuestInvitation.tsx';
-import { replyDate } from './guestDates.ts';
 import {
   type CompanionNeeds,
   CompanionNeedsSection,
@@ -55,29 +54,22 @@ import {
   MOST_COMPANIONS,
   type Problem,
   type Problems,
+  REPLY_KEY,
   type ReplyWord,
   type Typed,
-  blank,
+  companionShown,
   firstProblem,
   isListed,
   namedCount,
   newGuestOf,
   problemsOf,
+  replyDate,
   shownReply,
   violationProblems,
-} from './guestRows.ts';
+} from '@soirely/domain';
 
 const SHOWN_COMPANIONS = 3;
 const PIECES = [1, 2, 3, 4, 5, 6];
-
-export const REPLY_KEY: Record<ReplyWord, string> = {
-  coming: 'guestList.reply.coming',
-  maybe: 'guestList.reply.maybe',
-  notComing: 'guestList.reply.notComing',
-  noReply: 'guestList.reply.noReply',
-  held: 'guestList.reply.held',
-  notYetInvited: 'guestList.reply.notYetInvited',
-};
 
 const MARK: Record<ReplyWord, string> = {
   coming: 'is-coming',
@@ -106,21 +98,6 @@ function MarkLead({ reply }: { reply: ReplyWord }) {
       <ReplyMark reply={reply} />
     </span>
   );
-}
-
-/** "Guest of Bisi Adewale", numbered after the first unnamed one, as the list names them. */
-export function companionShown(
-  t: TFunction,
-  host: string,
-  names: readonly (string | null)[],
-  at: number,
-): string {
-  const name = names[at];
-
-  if (!blank(name ?? null)) return (name ?? '').trim();
-  const nth = names.slice(0, at + 1).filter((one) => blank(one)).length;
-
-  return nth > 1 ? t('guestList.guestOfNth', { host, nth }) : t('guestList.guestOf', { host });
 }
 
 /** A guest's address on the list (sc-3773): opening it opens them beside the list. */
@@ -483,7 +460,8 @@ function GuestView({
     day: 'numeric',
   }).format(new Date(guest.added.at));
   const names = guest.companions.map((one) => one.fullName);
-  const replied = guest.repliedAt == null ? null : replyDate(guest.repliedAt, timeZone);
+  const replied =
+    guest.repliedAt == null ? null : replyDate(guest.repliedAt, timeZone, dateLocale());
   const reply = shownReply(guest);
   const notYet = reply === 'notYetInvited';
   const cardLine =
@@ -550,7 +528,7 @@ function GuestView({
           {t('guestList.unmarkRefused', {
             name: guest.fullName,
             reply: t(REPLY_KEY[unmark.reply]),
-            date: replyDate(unmark.at, timeZone),
+            date: replyDate(unmark.at, timeZone, dateLocale()),
           })}
         </p>
       )}

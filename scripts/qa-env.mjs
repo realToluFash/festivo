@@ -2173,6 +2173,12 @@ async function bootEmulator(tools, name) {
     booted: () => adbOut(tools, ['shell', 'getprop', 'sys.boot_completed']) === '1',
     gone,
     pause,
+    unauthorized: () =>
+      (capture(tools.adb, ['devices'], { env: tools.env }) ?? '').includes(
+        `${emulatorSerial()}\tunauthorized`,
+      )
+        ? emulatorSerial()
+        : null,
   });
   console.log(`  ${name}: booted on ${emulatorSerial()}`);
 }
@@ -2186,11 +2192,29 @@ export function emulatorUnitGone(unit, state, journal) {
   return `the emulator unit ${unit} stopped (${state || 'gone'}) before it booted:\n${journal()}`;
 }
 
-export async function waitForBoot({ name, booted, gone, pause, tries = 180, everyMs = 1000 }) {
+// A device that has not accepted this machine's adb key refuses getprop, so it never reads as booted (sc-48212).
+export async function waitForBoot({
+  name,
+  booted,
+  gone,
+  pause,
+  unauthorized = () => null,
+  tries = 180,
+  everyMs = 1000,
+  unauthorizedTries = 30,
+}) {
+  let refused = 0;
   for (let i = 0; i < tries; i++) {
     const reason = gone();
     if (reason) throw new Error(`${name}: ${reason}`);
     if (booted()) return;
+    const serial = unauthorized();
+    refused = serial ? refused + 1 : 0;
+    if (refused >= unauthorizedTries) {
+      throw new Error(
+        `${name}: adb here sees ${serial} as unauthorized, so it cannot tell whether it booted; accept this machine's adb key (docs/agents/machines.md, An emulator on another computer, step 2), then run this again`,
+      );
+    }
     await pause(everyMs);
   }
   throw new Error(`${name} did not boot within three minutes`);
