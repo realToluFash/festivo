@@ -2903,6 +2903,7 @@
     "showAll_one": "Afficher {{count, number}}",
     "showAll_other": "Afficher les {{count, number}}",
     "showAll_many": "Afficher les {{count, number}}",
-    "heldLine": "En attente · ne vient que si l’invitation est acceptée"
+    "heldLine": "En attente · ne vient que si l’invitation est acceptée",
+    "heldAway": "{{guestOf}} · {{held}}"
   }
 }

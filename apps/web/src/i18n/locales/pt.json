@@ -2903,6 +2903,7 @@
     "showAll_one": "Mostrar {{count, number}}",
     "showAll_other": "Mostrar os {{count, number}}",
     "showAll_many": "Mostrar os {{count, number}}",
-    "heldLine": "Em espera · só vem se o convite for aceite"
+    "heldLine": "Em espera · só vem se o convite for aceite",
+    "heldAway": "{{guestOf}} · {{held}}"
   }
 }
