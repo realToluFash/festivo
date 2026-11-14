@@ -1,19 +1,20 @@
 import type { Answer, Lang, Visit } from './guest.ts';
 import { demoWords } from './demoWords.ts';
+import { guestKitchenWordsFor } from './guestKitchenWords.ts';
 import type { DemoLink } from './settings.ts';
 
 export interface Companion {
   key: string;
-  name: string;
-  by: 'invitation' | 'you';
+  /** Null for a place the hosts saved and nobody has named (sc-48740). */
+  name: string | null;
+  by: 'invitation' | 'you' | null;
   coming: boolean;
 }
 
-/** sc-3779: the host decides how many places, the guest decides who fills them. */
+/** sc-3779: the host decides how many places, the guest decides who fills them. Every place is a row (sc-48740). */
 export interface Party {
   places: number;
   people: readonly Companion[];
-  adding: string | null;
   tried: boolean;
   renaming: string | null;
   draft: string;
@@ -22,7 +23,6 @@ export interface Party {
 export const NO_PLACES: Party = {
   places: 0,
   people: [],
-  adding: null,
   tried: false,
   renaming: null,
   draft: '',
@@ -35,15 +35,42 @@ const CHIDI: Companion = {
   coming: true,
 };
 const NNEKA: Companion = { key: 'you-1', name: 'Nneka Okonkwo-Williams', by: 'you', coming: true };
+const OBI: Companion = { key: 'obi', name: 'Obi Okonkwo', by: 'invitation', coming: true };
 
-export const SAMPLE_PARTY: Party = { ...NO_PLACES, places: 2, people: [CHIDI] };
+/** The places the hosts saved, named ones first, then one unnamed row for each place left. */
+export function partyOf(places: number, named: readonly Companion[] = []): Party {
+  const unnamed = Array.from(
+    { length: Math.max(0, places - named.length) },
+    (_, at): Companion => ({
+      key: `place-${String(named.length + at + 1)}`,
+      name: null,
+      by: null,
+      coming: true,
+    }),
+  );
+
+  return { ...NO_PLACES, places, people: [...named, ...unnamed] };
+}
+
+export const SAMPLE_PARTY: Party = partyOf(2, [CHIDI]);
+const ONE_PLACE = partyOf(1);
+const OBI_AND_TWO = partyOf(3, [OBI]);
 
 export function hasStep(party: Party): boolean {
   return party.places > 0;
 }
 
-export function placesLeft(party: Party): number {
-  return Math.max(0, party.places - party.people.length);
+/** 0 for "Your guest" (one place in all), else the place's position, named first; fixed for the visit, so naming or declining one renumbers none of the others. */
+export function placeOf(party: Party, one: Companion): number {
+  return party.places === 1 ? 0 : party.people.indexOf(one) + 1;
+}
+
+export function labelOf(party: Party, one: Companion, lang: Lang): string {
+  if (one.name != null) return one.name;
+  const place = placeOf(party, one);
+  const words = guestKitchenWordsFor(lang);
+
+  return place === 0 ? words.say('yourGuest') : words.nth(place);
 }
 
 export function toggled(party: Party, key: string): Party {
@@ -53,47 +80,26 @@ export function toggled(party: Party, key: string): Party {
   };
 }
 
-export function opened(party: Party): Party {
-  return placesLeft(party) > 0 ? { ...party, adding: '', tried: false, renaming: null } : party;
-}
-
-/** A blank name is not added, and the button says why. */
-export function added(party: Party): Party {
-  const name = party.adding?.trim() ?? '';
-
-  if (name === '') return { ...party, tried: true };
-  if (placesLeft(party) === 0) return { ...party, adding: null, tried: false };
-
-  return {
-    ...party,
-    people: [
-      ...party.people,
-      { key: `you-${String(party.people.length + 1)}`, name, by: 'you', coming: true },
-    ],
-    adding: null,
-    tried: false,
-  };
-}
-
 export function renaming(party: Party, key: string): Party {
   const one = party.people.find((each) => each.key === key);
 
-  return one == null
-    ? party
-    : { ...party, renaming: key, draft: one.name, adding: null, tried: false };
+  return one == null ? party : { ...party, renaming: key, draft: one.name ?? '', tried: false };
 }
 
+/** A blank name is refused for a named companion; for an unnamed place it leaves the place unnamed (sc-48740). */
 export function renamed(party: Party): Party {
   const name = party.draft.trim();
+  const one = party.people.find((each) => each.key === party.renaming);
 
-  if (party.renaming == null) return party;
-  if (name === '') return { ...party, tried: true };
+  if (one == null) return party;
+  if (name === '' && one.name != null) return { ...party, tried: true };
 
   return {
     ...party,
-    people: party.people.map((one) =>
-      one.key === party.renaming ? { ...one, name, by: 'you' } : one,
-    ),
+    people:
+      name === ''
+        ? party.people
+        : party.people.map((each) => (each === one ? { ...each, name, by: 'you' } : each)),
     renaming: null,
     draft: '',
     tried: false,
@@ -123,8 +129,8 @@ const ENGLISH = {
   notComing: 'Not coming',
   invitation: 'Named on your invitation',
   byYou: 'Named by you',
-  add_one: 'Add someone · {{count}} place left',
-  add_other: 'Add someone · {{count}} places left',
+  unnamed: 'No name yet',
+  name: 'Add a name for {{label}}',
   theirName: 'Their name',
   typeTheirName: 'Type their name',
   rename: 'Change {{name}}’s name',
@@ -153,8 +159,8 @@ const SAMPLES: Record<Exclude<Lang, 'en'>, Record<Key, string>> = {
     notComing: '[Absent]',
     invitation: '[Nommé sur votre invitation]',
     byYou: '[Nommé par vous]',
-    add_one: '[Ajouter quelqu’un · {{count}} place restante]',
-    add_other: '[Ajouter quelqu’un · {{count}} places restantes]',
+    unnamed: '[Pas encore de nom]',
+    name: '[Ajouter un nom pour {{label}}]',
     theirName: '[Son nom]',
     typeTheirName: '[Saisissez son nom]',
     rename: '[Modifier le nom de {{name}}]',
@@ -176,8 +182,8 @@ const SAMPLES: Record<Exclude<Lang, 'en'>, Record<Key, string>> = {
     notComing: '[No asistirá]',
     invitation: '[Nombrado en su invitación]',
     byYou: '[Nombrado por usted]',
-    add_one: '[Añadir a alguien · queda {{count}} plaza]',
-    add_other: '[Añadir a alguien · quedan {{count}} plazas]',
+    unnamed: '[Aún sin nombre]',
+    name: '[Añadir un nombre para {{label}}]',
     theirName: '[Su nombre]',
     typeTheirName: '[Escriba su nombre]',
     rename: '[Cambiar el nombre de {{name}}]',
@@ -199,8 +205,8 @@ const SAMPLES: Record<Exclude<Lang, 'en'>, Record<Key, string>> = {
     notComing: '[Não vou]',
     invitation: '[Indicado no seu convite]',
     byYou: '[Indicado por si]',
-    add_one: '[Adicionar alguém · resta {{count}} lugar]',
-    add_other: '[Adicionar alguém · restam {{count}} lugares]',
+    unnamed: '[Ainda sem nome]',
+    name: '[Adicionar um nome para {{label}}]',
     theirName: '[O nome]',
     typeTheirName: '[Escreva o nome]',
     rename: '[Alterar o nome de {{name}}]',
@@ -229,7 +235,8 @@ export function partyWords(lang: Lang) {
     notComing: table.notComing,
     invitation: table.invitation,
     byYou: table.byYou,
-    add: (left: number) => many('add', left),
+    unnamed: table.unnamed,
+    name: (label: string) => filled(table.name, { label }),
     theirName: table.theirName,
     typeTheirName: table.typeTheirName,
     rename: (name: string) => filled(table.rename, { name }),
@@ -247,27 +254,22 @@ export type PartyWords = ReturnType<typeof partyWords>;
 
 const ANSWERED = { recorded: { answer: 'coming', on: '2026-10-27' } } as const;
 const STEP = { view: { kind: 'withYou', from: 'answer' } } as const;
+const CHECK = {
+  kind: 'check',
+  busy: false,
+  failed: false,
+  refused: false,
+  from: 'answer',
+} as const;
 
 export const GUEST_PARTY_STATES = {
   withYou: {
-    name: 'Coming, then Who’s coming with you?: one named, one place left',
+    name: 'Coming, then Who’s coming with you?: one named, one place unnamed',
     starts: { ...STEP, party: SAMPLE_PARTY, want: 'withYouHead' },
   },
   withYouToggle: {
     name: 'A companion marked Not coming',
     starts: { ...STEP, party: toggled(SAMPLE_PARTY, 'chidi') },
-  },
-  withYouAdd: {
-    name: 'Add someone, a name typed',
-    starts: {
-      ...STEP,
-      party: { ...SAMPLE_PARTY, adding: 'Nneka Okonkwo-Williams' },
-      want: 'newName',
-    },
-  },
-  withYouBlank: {
-    name: 'Add someone with no name: Type their name',
-    starts: { ...STEP, party: { ...SAMPLE_PARTY, adding: '', tried: true }, want: 'newName' },
   },
   withYouRename: {
     name: 'Renaming a companion the host named',
@@ -277,9 +279,53 @@ export const GUEST_PARTY_STATES = {
       want: 'renameField',
     },
   },
+  withYouRenameBlank: {
+    name: 'Renaming a named companion to nothing: Type their name',
+    starts: {
+      ...STEP,
+      party: { ...SAMPLE_PARTY, renaming: 'chidi', draft: '', tried: true },
+      want: 'renameField',
+    },
+  },
   withYouFull: {
-    name: 'Every place named: no Add someone',
+    name: 'Every place named',
     starts: { ...STEP, party: { ...SAMPLE_PARTY, people: [CHIDI, NNEKA] } },
+  },
+  withYouOnePlace: {
+    name: 'One place in all, unnamed: Your guest (sc-48740)',
+    starts: { ...STEP, party: ONE_PLACE, want: 'withYouHead' },
+  },
+  withYouUnnamed: {
+    name: 'Obi named, two places unnamed: Your guest 2 and 3 (sc-48740)',
+    starts: { ...STEP, party: OBI_AND_TWO, want: 'withYouHead' },
+  },
+  withYouUnnamedOff: {
+    name: 'An unnamed place marked Not coming (sc-48740)',
+    starts: { ...STEP, party: toggled(OBI_AND_TWO, 'place-3') },
+  },
+  withYouNaming: {
+    name: 'Naming an unnamed place, a name typed (sc-48740)',
+    starts: {
+      ...STEP,
+      party: { ...OBI_AND_TWO, renaming: 'place-2', draft: 'Ifeoma Okonkwo' },
+      want: 'renameField',
+    },
+  },
+  withYouNamedOne: {
+    name: 'Your guest 2 named by the guest, Your guest 3 keeps its number (sc-48740)',
+    starts: {
+      ...STEP,
+      party: {
+        ...OBI_AND_TWO,
+        people: OBI_AND_TWO.people.map((one) =>
+          one.key === 'place-2' ? { ...one, name: 'Ifeoma Okonkwo', by: 'you' as const } : one,
+        ),
+      },
+    },
+  },
+  withYouAlone: {
+    name: 'Coming alone: every place marked Not coming (sc-48740)',
+    starts: { ...STEP, party: toggled(toggled(OBI_AND_TWO, 'obi'), 'place-2') },
   },
   withYouNoPlaces: {
     name: 'No places: Coming goes straight on, with no step',
@@ -288,9 +334,27 @@ export const GUEST_PARTY_STATES = {
   checkWithCompanions: {
     name: 'Check and send, listing who is coming',
     starts: {
-      view: { kind: 'check', busy: false, failed: false, refused: false, from: 'answer' },
+      view: CHECK,
       party: { ...SAMPLE_PARTY, people: [CHIDI, NNEKA] },
       companionsComing: 2,
+      want: 'checkHead',
+    },
+  },
+  checkUnnamed: {
+    name: 'Check and send counting an unnamed place, another declined (sc-48740)',
+    starts: {
+      view: CHECK,
+      party: toggled(OBI_AND_TWO, 'place-3'),
+      companionsComing: 2,
+      want: 'checkHead',
+    },
+  },
+  checkAlone: {
+    name: 'Check and send, coming alone: You · 1 person (sc-48740)',
+    starts: {
+      view: CHECK,
+      party: toggled(toggled(toggled(OBI_AND_TWO, 'obi'), 'place-2'), 'place-3'),
+      companionsComing: 0,
       want: 'checkHead',
     },
   },
@@ -319,12 +383,30 @@ export const GUEST_PARTY_STATES = {
       want: 'withYouHead',
     },
   },
+  heldUnnamedThenBack: {
+    name: 'Back to Coming from Not sure yet: unnamed places as last chosen (sc-48740)',
+    starts: {
+      recorded: { answer: 'notSure', on: '2026-10-27' },
+      view: { kind: 'withYou', from: 'changing' },
+      party: toggled(OBI_AND_TWO, 'place-3'),
+      want: 'withYouHead',
+    },
+  },
   comingWithCompanions: {
     name: 'Answered Coming with companions',
     starts: {
       ...ANSWERED,
       view: { kind: 'recorded', same: false },
       party: { ...SAMPLE_PARTY, people: [CHIDI, NNEKA] },
+    },
+  },
+  comingUnnamed: {
+    name: 'Answered Coming: the line counts an unnamed place (sc-48740)',
+    starts: {
+      ...ANSWERED,
+      view: { kind: 'recorded', same: false },
+      party: toggled(OBI_AND_TWO, 'place-3'),
+      companionsComing: 2,
     },
   },
 } satisfies Record<string, { name: string; starts: Partial<Visit> }>;
@@ -349,8 +431,9 @@ export const GUEST_PARTY_PAGES: readonly { name: string; states: readonly DemoLi
   },
 ];
 
+/** Every place left Coming, named or not; a place marked Not coming is neither listed nor counted (sc-48740). */
 export function partyLine(party: Party, lang: Lang): string {
-  return partyWords(lang).people(comingWith(party).map((one) => one.name));
+  return partyWords(lang).people(comingWith(party).map((one) => labelOf(party, one, lang)));
 }
 
 /** The held line under Not sure yet or Not coming: only when a companion is held by the guest's own answer. */
