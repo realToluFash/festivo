@@ -31,7 +31,7 @@ import type { TFunction } from 'i18next';
 import { useTranslation } from 'react-i18next';
 
 import { api } from '../api.ts';
-import { followTopic } from '../followTopic.ts';
+import { followReadingAgain } from '../followTopic.ts';
 import { dateLocale } from '../i18n/index.ts';
 import { markOf } from '../kit/guestRows.ts';
 import { type ScreenOffline, useHandOffline, useOffline } from '../offline.ts';
@@ -163,28 +163,16 @@ export function EventGuests({
     readList(watch);
   }, [readList, watch]);
 
-  useEffect(() => {
-    let every: ReturnType<typeof setInterval> | undefined;
-    const readAgain = () => {
-      every ??= setInterval(() => reloadRef.current(), READ_AGAIN_MS);
-    };
-    readAgain();
-    const live = followTopic(realtimeTopic('EventGuests', eventId), {
-      subscribe: () => api.guestsSubscription(eventId),
-      onData: () => reloadRef.current(),
-      onGap: () => {
-        clearInterval(every);
-        every = undefined;
-        reloadRef.current();
-      },
-      onDrop: readAgain,
-    });
-
-    return () => {
-      live.stop();
-      clearInterval(every);
-    };
-  }, [eventId]);
+  useEffect(
+    () =>
+      followReadingAgain(
+        realtimeTopic('EventGuests', eventId),
+        () => api.guestsSubscription(eventId),
+        () => reloadRef.current(),
+        READ_AGAIN_MS,
+      ),
+    [eventId],
+  );
 
   const openGuest = (guestId: string) => {
     setSaved(false);

@@ -73,3 +73,33 @@ export function followTopic(
     following: true,
   };
 }
+
+/** A topic whose every change means reading again: read every so often while no line is open, and once at each line that opens. */
+export function followReadingAgain(
+  topic: string,
+  subscribe: () => Promise<RealtimeSubscription>,
+  read: () => void,
+  everyMs: number,
+): () => void {
+  let every: ReturnType<typeof setInterval> | undefined;
+  const readEvery = () => {
+    every ??= setInterval(read, everyMs);
+  };
+
+  readEvery();
+  const live = followTopic(topic, {
+    subscribe,
+    onData: read,
+    onGap: () => {
+      clearInterval(every);
+      every = undefined;
+      read();
+    },
+    onDrop: readEvery,
+  });
+
+  return () => {
+    live.stop();
+    clearInterval(every);
+  };
+}
