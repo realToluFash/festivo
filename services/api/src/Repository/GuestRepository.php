@@ -82,7 +82,7 @@ final class GuestRepository extends ServiceEntityRepository implements EventScop
     }
 
     /**
-     * Of these events, the ids of those with at least one guest on the list Invited now (sc-3788): a companion is invited with their host, so hosts alone are counted.
+     * Of these events, the ids of those with at least one guest on the list Invited now (sc-3788).
      *
      * @param list<Event> $events
      *
@@ -97,6 +97,7 @@ final class GuestRepository extends ServiceEntityRepository implements EventScop
         $ids = $this->createQueryBuilder('g')
             ->select('DISTINCT IDENTITY(g.event) AS event')
             ->where('g.event IN (:events)')
+            ->andWhere('g.removedAt IS NULL')
             ->andWhere('g.invitedAt IS NOT NULL')
             ->setParameter('events', $events)
             ->getQuery()

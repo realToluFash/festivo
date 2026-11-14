@@ -495,6 +495,21 @@ final class EventDeletionTest extends ApiTestCase
     }
 
     #[Test]
+    public function anInvitedGuestTakenOffTheListDoesNotCount(): void
+    {
+        $id = $this->live(self::NAME);
+        $guest = $this->invited($id, 'Bisi Adeyemi');
+        $this->as($this->owner, 'DELETE', '/api/events/' . $id . '/guests/' . $guest);
+        self::assertSame(204, $this->statusCode(), Json\encode($this->last()));
+
+        $event = $this->eventOf($id);
+        self::assertArrayHasKey('deleteRefusedBecause', $event);
+        self::assertNull($event['deleteRefusedBecause']);
+        $this->delete($id, self::NAME);
+        self::assertSame(200, $this->statusCode(), Json\encode($this->last()));
+    }
+
+    #[Test]
     public function aGuestNotYetInvitedRefusesNothingAndTheListSaysWhichIsRefused(): void
     {
         $open = $this->live(self::NAME);
