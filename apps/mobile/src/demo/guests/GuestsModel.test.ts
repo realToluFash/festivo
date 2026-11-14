@@ -85,7 +85,7 @@ describe('the states, as guests-a-spec §15 names them', () => {
     expect(
       GUESTS_STATES.filter((state) => (DOOR_STATES as readonly string[]).includes(state)),
     ).toEqual([]);
-    expect(GUESTS_STATES).toHaveLength(149);
+    expect(GUESTS_STATES).toHaveLength(153);
     expect(DOOR_STATES).toHaveLength(13);
   });
 
@@ -283,6 +283,69 @@ describe('invited is a fact with a date and a way (sc-3788)', () => {
       tags: [{ word: 'Finished', mark: 'finished' }],
       line: 'This event has finished, so guests can’t be invited.',
       step: null,
+    });
+  });
+});
+
+describe('an empty list on a Draft, a Paused or a Finished event (sc-46879)', () => {
+  const none = countsFrom([]);
+
+  it('opens each on an event of that phase, with nobody on the list', () => {
+    expect(eventOf('emptyDraft')).toBe('evt-cena-4');
+    expect(eventOf('emptyDraftViewer')).toBe('evt-cena-4');
+    expect(eventOf('emptyPaused')).toBe('evt-party-2');
+    expect(eventOf('emptyFinished')).toBe('evt-off');
+    for (const state of ['emptyDraft', 'emptyPaused', 'emptyFinished'] as const) {
+      expect(areaStart(state).empty).toBe(true);
+      expect(guestsAt(state)).toEqual([]);
+      expect(guestsOpening(state, eventOf(state), EN).counts.list).toBe(0);
+    }
+    expect(roleOf('emptyDraft')).toBe('owner');
+    expect(roleOf('emptyDraftViewer')).toBe('viewer');
+  });
+
+  it('keeps No guests yet and Add guest, with the phase’s chip and line under the title', () => {
+    expect(cardWords('emptyDraft', 'owner', none, true, EN, null)).toEqual({
+      tags: [{ word: 'Draft', mark: 'draft' }],
+      says: 'No guests yet',
+      count: null,
+      line: 'Guests can’t be invited until this event is live.',
+      step: 'addGuest',
+      also: 'makeLive',
+    });
+    expect(cardWords('emptyPaused', 'owner', none, true, EN, null)).toEqual({
+      tags: [{ word: 'Paused', mark: 'paused' }],
+      says: 'No guests yet',
+      count: null,
+      line: 'Guests can’t be invited while this event is paused.',
+      step: 'addGuest',
+    });
+    expect(cardWords('emptyFinished', 'owner', none, true, EN, null)).toEqual({
+      tags: [{ word: 'Finished', mark: 'finished' }],
+      says: 'No guests yet',
+      count: null,
+      line: 'This event has finished, so guests can’t be invited.',
+      step: 'addGuest',
+    });
+  });
+
+  it('gives someone without events.manage the line alone: no Add guest, no Make live', () => {
+    expect(cardWords('emptyDraftViewer', 'viewer', none, true, EN, null)).toEqual({
+      tags: [{ word: 'Draft', mark: 'draft' }],
+      says: 'No guests yet',
+      count: null,
+      line: 'Guests can’t be invited until this event is live.',
+      step: null,
+    });
+  });
+
+  it('leaves the first-time card on a Live event as it was', () => {
+    expect(cardWords('first', 'owner', none, true, EN, null)).toEqual({
+      tags: [],
+      says: 'No guests yet',
+      count: null,
+      line: null,
+      step: 'addGuest',
     });
   });
 });
