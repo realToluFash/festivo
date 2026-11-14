@@ -19,6 +19,32 @@ export function replyDate(repliedAt: string, timeZone: string, locale: string): 
   );
 }
 
+/** The guest's one Invitation line (sc-3788): by hand, by Soirely's message, or when they replied; null while Not yet invited. */
+export function invitationLine(
+  t: Translate,
+  guest: Pick<Guest, 'invitation'>,
+  timeZone: string,
+  locale: string,
+): string | null {
+  const invitation = guest.invitation;
+  if (invitation == null) return null;
+  const date = replyDate(invitation.at, timeZone, locale);
+
+  switch (invitation.how) {
+    case 'soirelyMessage':
+      return t('guestList.invitedByMessage', { date });
+    case 'reply':
+      return t('guestList.invitedWhenReplied', { date });
+    default: {
+      const how = t(`guestList.howMid.${invitation.how}`);
+
+      return invitation.by == null
+        ? t('guestList.invitedHow', { how, date })
+        : t('guestList.invitedBy', { name: invitation.by, how, date });
+    }
+  }
+}
+
 /** A companion left blank is "Guest of <host>", numbered from the second blank one. */
 export function companionShown(
   t: Translate,
