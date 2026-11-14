@@ -88,13 +88,14 @@ final class GuestPageNeedsTest extends ApiTestCase
         $guest = $this->add(['needs' => ['note' => self::NOTE], 'companions' => [['fullName' => 'Tunde'], ['fullName' => null]]]);
         $token = $this->token($guest);
         $tunde = $this->companionIds($this->open($token))[0];
+        $place = $this->unnamedIds($this->open($token))[0];
         self::mockTime(new DateTimeImmutable('2026-10-05T18:30:00+00:00'));
 
         $page = $this->reply($token, 'coming', [
             'needs' => ['allergies' => ['sesame', 'peanuts', 'other'], 'otherAllergy' => '  Kiwi ', 'diet' => ['halal', 'other'], 'otherDiet' => 'No raw onion'],
             'companions' => [
                 ['id' => $tunde, 'fullName' => 'Tunde', 'coming' => true, 'needs' => ['diet' => ['vegetarian']]],
-                ['fullName' => 'Kemi Adewale', 'coming' => true, 'needs' => ['access' => ['other'], 'otherAccess' => 'A chair by the door']],
+                ['id' => $place, 'fullName' => 'Kemi Adewale', 'coming' => true, 'needs' => ['access' => ['other'], 'otherAccess' => 'A chair by the door']],
             ],
         ]);
 
@@ -172,7 +173,7 @@ final class GuestPageNeedsTest extends ApiTestCase
     }
 
     #[Test]
-    public function aPlaceNobodyNamedTakesItsOwnNeedsByItsId(): void
+    public function aPlaceNobodyNamedTakesItsOwnNeedsByItsIdAndKeepsThemOnceTheGuestNamesIt(): void
     {
         $guest = $this->add(['companions' => [['fullName' => null], ['fullName' => null]]]);
         $token = $this->token($guest);
@@ -181,18 +182,27 @@ final class GuestPageNeedsTest extends ApiTestCase
         self::mockTime(new DateTimeImmutable('2026-10-05T18:30:00+00:00'));
 
         $page = $this->reply($token, 'coming', [
-            'companions' => [['fullName' => 'Kemi Adewale', 'coming' => true]],
-            'unnamed' => [['id' => $places[1], 'needs' => ['allergies' => ['peanuts']]]],
+            'unnamed' => [['id' => $places[0], 'coming' => true], ['id' => $places[1], 'coming' => true, 'needs' => ['allergies' => ['peanuts']]]],
         ]);
 
         self::assertSame(200, $this->statusCode(), Json\encode($page));
-        self::assertSame([$places[1]], $this->unnamedIds($page), 'the new name took the first unnamed place');
+        self::assertSame($places, $this->unnamedIds($page));
         $guestOf = Type\dict(Type\string(), Type\mixed())->coerce(Type\dict(Type\string(), Type\mixed())->coerce($page)['guest'] ?? null);
         self::assertSame(
             [...self::NONE, 'allergies' => ['peanuts'], 'changed' => ['by' => 'guest', 'at' => '2026-10-05T19:30:00+01:00']],
-            Type\shape(['needs' => Type\dict(Type\string(), Type\mixed())], true)->coerce(Type\vec(Type\mixed())->coerce($guestOf['unnamed'] ?? [])[0] ?? null)['needs'],
+            Type\shape(['needs' => Type\dict(Type\string(), Type\mixed())], true)->coerce(Type\vec(Type\mixed())->coerce($guestOf['unnamed'] ?? [])[1] ?? null)['needs'],
         );
         self::assertSame(['peanuts'], $this->details($guest)['companions'][1]['needs']['allergies'] ?? null);
+
+        $page = $this->reply($token, 'coming', [
+            'companions' => [['id' => $places[1], 'fullName' => 'Kemi Adewale', 'coming' => true]],
+            'unnamed' => [['id' => $places[0], 'coming' => true]],
+        ]);
+
+        self::assertSame(200, $this->statusCode(), Json\encode($page));
+        self::assertSame([$places[0]], $this->unnamedIds($page), 'the name went on the place it named');
+        $kemi = $this->details($guest)['companions'][1] ?? self::fail('no companion');
+        self::assertSame(['Kemi Adewale', true, ['peanuts']], [$kemi['fullName'] ?? null, $kemi['namedByGuest'] ?? null, $kemi['needs']['allergies'] ?? null]);
     }
 
     #[Test]
@@ -203,8 +213,8 @@ final class GuestPageNeedsTest extends ApiTestCase
         $place = $this->unnamedIds($this->open($token))[0];
 
         $this->reply($token, 'coming', [
-            'companions' => [['fullName' => 'Kemi Adewale', 'coming' => true]],
-            'unnamed' => [['id' => $place, 'needs' => ['allergies' => ['peanuts']]], ['id' => '0195f1c2-0000-7000-8000-000000000000', 'needs' => []]],
+            'companions' => [['id' => $place, 'fullName' => 'Kemi Adewale', 'coming' => true]],
+            'unnamed' => [['id' => $place, 'coming' => true, 'needs' => ['allergies' => ['peanuts']]], ['id' => '0195f1c2-0000-7000-8000-000000000000', 'coming' => true, 'needs' => []]],
         ]);
 
         self::assertSame(422, $this->statusCode(), Json\encode($this->last()));
