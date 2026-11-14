@@ -2816,7 +2816,7 @@
     "markNotInvited": "Mark as not invited",
     "unmarked": "Marked as not invited.",
     "unmarkRefused": "Not changed. {{name}} replied {{reply}} on {{date}}, so they stay invited.",
-    "readOnlyInvited": "You can see names, replies and who is invited. Marking guests as invited needs the Lead or Can edit role.",
+    "readOnlyInvited": "You can see names, replies and who is invited. Marking guests as invited needs a host or organiser role.",
     "all": "All",
     "comingOf": "{{comingWords}} of {{invitedWords}}",
     "countComing_one": "{{count, number}} coming",
