@@ -1,32 +1,13 @@
 import { hostNameOf, makeLiveHostError } from '@soirely/domain';
 import { type RefObject, useEffect, useRef, useState } from 'react';
-import {
-  Keyboard,
-  type KeyboardEvent,
-  LayoutAnimation,
-  Modal,
-  Platform,
-  StyleSheet,
-  View,
-} from 'react-native';
-import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import { StyleSheet } from 'react-native';
 
-import { Glyph } from '../../components/Glyph.tsx';
-import { BoxField } from '../../components/MomentPick.tsx';
-import { ReadOut } from '../../components/ReadOut.tsx';
+import { MakeLiveAlert } from '../../components/MakeLiveAlert.tsx';
 import type { ScreenReaderTarget } from '../../components/screenReaderFocus.ts';
-import { useShell } from '../../components/settingsShell.ts';
-import { SilentWindowName, useFocusBack, useWindowTurn } from '../../components/Sheet.tsx';
-import { ASK_WIDTH, AskLayer } from '../../components/Summary.tsx';
 import { Text } from '../../components/Text.tsx';
-import { TURNS_WITH_THE_APP } from '../../layout/orientations.ts';
-import { useReducedMotion } from '../../reducedMotion.ts';
-import { tokens } from '../../theme/tokens.ts';
-import { useModalOpen } from '../../updateRequired.ts';
 import { OWNER, type WaitsCheck } from '../messages/CheckWaits.ts';
 import { formatCount } from '../messages/MessagesSample.ts';
 import { WaitBlock } from '../messages/WaitBlock.tsx';
-import { EventField } from './EventEdits.tsx';
 import { LIVE, t } from './EventsWords.ts';
 import {
   type LiveAction,
@@ -115,57 +96,6 @@ function waitsView(reach: Reach, waiting: number): WaitsCheck {
   };
 }
 
-function followKeys({ duration, easing }: KeyboardEvent): void {
-  if (duration > 0) LayoutAnimation.configureNext({ duration, update: { type: easing } });
-}
-
-/** Up from under the keys while Host 1 is typed in, as Members' handover is. */
-function useKeysLift(asking: boolean): number | null {
-  const shell = useShell();
-  const insets = useSafeAreaInsets();
-  const reduced = useReducedMotion();
-  const [keys, setKeys] = useState(false);
-
-  useEffect(() => {
-    if (!asking) return undefined;
-    const ios = Platform.OS === 'ios';
-    const up = Keyboard.addListener(ios ? 'keyboardWillShow' : 'keyboardDidShow', (event) => {
-      if (!reduced) followKeys(event);
-      setKeys(true);
-    });
-    const down = Keyboard.addListener(ios ? 'keyboardWillHide' : 'keyboardDidHide', (event) => {
-      if (!reduced) followKeys(event);
-      setKeys(false);
-    });
-
-    return () => {
-      up.remove();
-      down.remove();
-    };
-  }, [asking, reduced]);
-
-  return asking && keys && shell.layout !== 'portrait' ? insets.top + tokens.spaceLg : null;
-}
-
-function MarkedLine({ words, testID }: { words: string; testID: string }) {
-  return (
-    <ReadOut
-      words={words}
-      interrupts
-      accessibilityRole="alert"
-      style={styles.marked}
-      testID={testID}
-    >
-      <View style={styles.mark}>
-        <Glyph name="alert" size={18} ink={tokens.colorInkSecondary} weight={2.2} />
-      </View>
-      <Text size={15} weight="medium" style={styles.markedWords}>
-        {words}
-      </Text>
-    </ReadOut>
-  );
-}
-
 /** A's alert on every layout, in its own window so the question can turn into the offer, its title taking focus as it does. */
 export function MakeLiveAsk({
   live,
@@ -190,18 +120,10 @@ export function MakeLiveAsk({
   onSend: () => void;
   onChangeDates: () => void;
 }) {
-  const reduced = useReducedMotion();
   const alert = liveAlertOf(live.turn, reach, name, hosts);
-  const open = alert != null;
-  const { shown, gone } = useWindowTurn(useModalOpen(open));
   const [typed, setTyped] = useState(() =>
     live.turn.at === 'question' ? (live.turn.host?.kept ?? '') : '',
   );
-  const host = alert?.host ?? null;
-  const making = live.turn.at === 'question' && live.turn.making;
-  const top = useKeysLift(host != null);
-
-  useFocusBack(open, opener);
 
   const confirm = () => {
     if (alert?.turn === 'offer') onSend();
@@ -209,61 +131,7 @@ export function MakeLiveAsk({
     else onConfirm(typed);
   };
   const credits = alert?.credits;
-  const hostsNow = alert?.hostsNow ?? null;
-  const parts = [
-    hostsNow != null && (
-      <View key="hostsNow" style={styles.lines} testID="event.makeLive.hostsNow">
-        <Text size={15} weight="medium" style={[styles.secondary, styles.later]}>
-          {LIVE.hostsNow}
-        </Text>
-        <View role="list">
-          {hostsNow.map((one) => (
-            <Text key={one} role="listitem" size={15} weight="semibold" style={styles.later}>
-              {`• ${one}`}
-            </Text>
-          ))}
-        </View>
-      </View>
-    ),
-    host != null && (
-      <EventField key="host" label={LIVE.hostLabel} error={host.error} help={LIVE.hostExplainer}>
-        <BoxField
-          value={typed}
-          onChangeText={(text) => {
-            setTyped(text.replace(/[\r\n]+/g, ' '));
-            onTyped();
-          }}
-          autoFocus
-          multiline
-          scrollEnabled={false}
-          autoCorrect={false}
-          spellCheck={false}
-          returnKeyType="go"
-          enterKeyHint="go"
-          submitBehavior="submit"
-          onSubmitEditing={confirm}
-          wrong={host.error != null}
-          submitting={making}
-          accessibilityLabel={LIVE.hostLabel}
-          accessibilityHint={LIVE.hostExplainer}
-          testID="event.makeLive.host"
-        />
-      </EventField>
-    ),
-    alert?.reason != null && (
-      <MarkedLine key="reason" words={alert.reason} testID="event.makeLive.reason" />
-    ),
-    alert?.later != null && (
-      <Text
-        key="later"
-        size={15}
-        weight="medium"
-        style={[styles.secondary, styles.later]}
-        testID="event.makeLive.later"
-      >
-        {alert.later}
-      </Text>
-    ),
+  const extra = [
     credits?.line != null && (
       <Text
         key="credits"
@@ -284,55 +152,37 @@ export function MakeLiveAsk({
         linesOnly
       />
     ),
-    alert?.failedLast != null && (
-      <MarkedLine key="failed" words={alert.failedLast} testID="event.makeLive.failed" />
-    ),
   ].filter(Boolean);
 
   return (
-    <Modal
-      visible={shown}
-      transparent
-      animationType={reduced ? 'none' : 'fade'}
-      supportedOrientations={TURNS_WITH_THE_APP}
-      statusBarTranslucent
-      navigationBarTranslucent
-      onRequestClose={onKeep}
-      onDismiss={gone}
-    >
-      {Platform.OS === 'android' && <SilentWindowName />}
-      {alert != null && (
-        <View style={styles.fill} collapsable={false} onAccessibilityEscape={onKeep}>
-          <AskLayer
-            key={alert.turn}
-            title={alert.title}
-            line={alert.line}
-            alert={alert.alert}
-            failed={alert.failed}
-            body={parts.length > 0 ? <View style={styles.lines}>{parts}</View> : undefined}
-            keep={{ ...alert.keep, testID: 'event.makeLive.keep' }}
-            confirm={
-              alert.confirm == null ? null : { ...alert.confirm, testID: 'event.makeLive.confirm' }
+    <MakeLiveAlert
+      alert={
+        alert == null
+          ? null
+          : {
+              ...alert,
+              host:
+                alert.host == null
+                  ? null
+                  : { label: LIVE.hostLabel, help: LIVE.hostExplainer, error: alert.host.error },
+              hostsNow:
+                alert.hostsNow == null ? null : { line: LIVE.hostsNow, names: alert.hostsNow },
             }
-            width={ASK_WIDTH}
-            top={top}
-            onKeep={onKeep}
-            onConfirm={confirm}
-            testID={`event.makeLive.${alert.turn}`}
-          />
-        </View>
-      )}
-    </Modal>
+      }
+      typed={typed}
+      opener={opener}
+      extra={extra.length > 0 ? extra : undefined}
+      onTyped={(text) => {
+        setTyped(text);
+        onTyped();
+      }}
+      onKeep={onKeep}
+      onConfirm={confirm}
+      testID="event.makeLive"
+    />
   );
 }
 
 const styles = StyleSheet.create({
-  fill: { flex: 1 },
-  lines: { gap: tokens.spaceXs },
-  later: { lineHeight: 15 * 1.45 },
   small: { lineHeight: 13.5 * 1.4, fontVariant: ['tabular-nums'] },
-  secondary: { color: tokens.colorInkSecondary },
-  marked: { flexDirection: 'row', alignItems: 'flex-start', gap: tokens.spaceSm },
-  mark: { marginTop: tokens.spaceHair },
-  markedWords: { flex: 1, minWidth: 0, lineHeight: 15 * 1.45 },
 });

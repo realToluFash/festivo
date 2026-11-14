@@ -14,13 +14,13 @@ appId: host.exp.Exponent
     id: 'events.card.step'
 - extendedWaitUntil:
     visible:
-      id: 'events.makeLiveHost'
+      id: 'events.makeLive.host'
     timeout: 10000
 - assertVisible: '{{t:eventLive.hostExplainer}}'
 - assertNotVisible: '{{t:eventLive.hostEmpty}}'
 - takeScreenshot: explainer
 - tapOn:
-    id: 'events.makeLiveYes'
+    id: 'events.makeLive.confirm'
 - extendedWaitUntil:
     visible: '{{t:eventLive.hostEmpty}}'
     timeout: 10000

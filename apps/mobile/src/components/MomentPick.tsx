@@ -81,7 +81,7 @@ export function PickerLayer({
   );
 }
 
-/** A date or a time as a box to tap, as main's form draws them: the date with its year, the time 24-hour. */
+/** A date or a time as a box to tap, as main's form draws them: the date with its year, the time 24-hour, or the empty box when none is chosen. */
 export function MomentBox({
   label,
   mode,
@@ -107,12 +107,15 @@ export function MomentBox({
   ref?: Ref<ViewInstance>;
   testID?: string;
 }) {
+  const { t } = useTranslation();
   const words =
-    mode === 'time'
-      ? formatWallClock(value, locale)
-      : year
-        ? formatEventDate(`${value}T12:00:00Z`, 'UTC', locale)
-        : formatWallDay(value, locale);
+    value === ''
+      ? ''
+      : mode === 'time'
+        ? formatWallClock(value, locale)
+        : year
+          ? formatEventDate(`${value}T12:00:00Z`, 'UTC', locale)
+          : formatWallDay(value, locale);
   const tall = height > tokens.sizeHit;
   const inside = (tall ? tokens.spacePillEnd : tokens.spaceLg) - (wrong ? 2 : 1.5);
 
@@ -132,7 +135,7 @@ export function MomentBox({
         pressed && styles.pressed,
       ]}
       accessibilityRole="button"
-      accessibilityLabel={`${label}, ${words}`}
+      accessibilityLabel={`${label}, ${words === '' ? t('eventForm.notChosen') : words}`}
       testID={testID}
     >
       <Text size={tall ? 16 : 15} weight="medium" accessible={false} style={styles.figures}>
