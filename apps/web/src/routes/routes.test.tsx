@@ -812,7 +812,22 @@ describe('the guest tree', () => {
     vi.spyOn(globalThis, 'fetch').mockResolvedValue(
       new Response(
         JSON.stringify({
-          guest: { fullName: 'Bisi Adewale', reply: null, places: 0, companions: [] },
+          guest: {
+            fullName: 'Bisi Adewale',
+            reply: null,
+            needs: {
+              allergies: [],
+              otherAllergy: null,
+              diet: [],
+              otherDiet: null,
+              access: [],
+              otherAccess: null,
+              changed: null,
+            },
+            places: 0,
+            unnamed: [],
+            companions: [],
+          },
           language: { chosen: null, host: null, organisation: 'en' },
           event: {
             id: 'e1',

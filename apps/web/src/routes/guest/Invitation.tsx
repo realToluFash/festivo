@@ -18,7 +18,9 @@ import { currentLocale, dateLocale } from '../../i18n/index.ts';
 import { meshFor } from '../../mesh.ts';
 import { offButton } from '../../offButton.ts';
 import { useWideWidth } from '../../phoneWidth.ts';
+import { Filled, Notice, TextAction, dayOf, format, readerZone } from './GuestParts.tsx';
 import { InvalidInvitation } from './InvalidInvitation.tsx';
+import { KitchenCheck, KitchenStep } from './Kitchen.tsx';
 import { openIn, saveAgain, useGuestLanguage } from './guestLanguage.ts';
 import {
   type Party,
@@ -33,6 +35,16 @@ import {
   renaming,
   toggled,
 } from './party.ts';
+import {
+  type Kitchen,
+  type Person,
+  YOU,
+  firstProblem,
+  kitchenOf,
+  unnamedNeeds,
+  needsOf,
+  skipped,
+} from './kitchen.ts';
 import { forgetStarted, markStarted, wasStarted } from './started.ts';
 import './withYou.css';
 
@@ -45,11 +57,13 @@ type Load =
 type View =
   | { kind: 'answer'; busy: GuestAnswer | null; note: 'unsent' | 'notSentTap' | null }
   | { kind: 'withYou'; from: 'answer' | 'changing' }
+  | { kind: 'kitchen'; from: 'answer' | 'changing' }
   | {
       kind: 'check';
       busy: boolean;
       failed: boolean;
       refused?: boolean;
+      unsaved?: boolean;
       from: 'answer' | 'changing';
     }
   | { kind: 'recorded'; same: boolean }
@@ -96,7 +110,22 @@ function standing(page: GuestPage): string {
 }
 
 function sameParty(was: GuestPage, now: GuestPage): boolean {
-  return JSON.stringify(was.guest.companions) === JSON.stringify(now.guest.companions);
+  return (
+    JSON.stringify(was.guest.companions) === JSON.stringify(now.guest.companions) &&
+    JSON.stringify(was.guest.needs) === JSON.stringify(now.guest.needs)
+  );
+}
+
+/** What Send my answer sends with Coming: the party, each companion coming with their card from the kitchen step. */
+function sentParty(party: Party, kitchen: Kitchen | null): ReturnType<typeof choices> {
+  const card = (key: string): Person | undefined =>
+    kitchen?.left === false ? kitchen.people.find((one) => one.key === key) : undefined;
+
+  return choices(party).map((choice, at) => {
+    const one = choice.coming ? card(party.people[at]?.key ?? '') : undefined;
+
+    return one == null ? choice : { ...choice, needs: needsOf(one) };
+  });
 }
 
 /** The control that had focus before an update, so focus can follow it or fall to the h1 (sc-3591). */
@@ -242,6 +271,7 @@ function Card({ token, first }: { token: string; first: GuestPage }) {
   const [page, setPage] = useState(first);
   const [view, setView] = useState<View>(() => opening(first, token));
   const [party, setParty] = useState<Party>(() => partyOf(first));
+  const [kitchen, setKitchen] = useState<Kitchen | null>(null);
   const [tell, setTell] = useState<Tell>({ kind: 'card' });
   const [want, setWant] = useState<{ on: string } | null>(null);
   const [gone, setGone] = useState(false);
@@ -277,6 +307,7 @@ function Card({ token, first }: { token: string; first: GuestPage }) {
     seen.current = standing(next);
     setView(opening(next, token));
     setParty(partyOf(next));
+    setKitchen(null);
     setHeld(had);
   }
 
@@ -297,10 +328,14 @@ function Card({ token, first }: { token: string; first: GuestPage }) {
     // eslint-disable-next-line react-hooks/exhaustive-deps -- refreshed reads only setters and refs
   }, [token]);
 
-  function send(answer: GuestAnswer, onFail: () => void): void {
+  function send(answer: GuestAnswer, onFail: (refused: boolean) => void): void {
     sends.current += 1;
-    const companions = answer === 'coming' && hasStep(party) ? choices(party) : [];
-    api.sendGuestAnswer(token, answer, companions).then(
+    const coming = answer === 'coming';
+    const companions = coming && hasStep(party) ? sentParty(party, kitchen) : [];
+    const me =
+      coming && kitchen?.left === false ? kitchen.people.find((one) => one.key === YOU) : undefined;
+    const unnamed = coming && me != null && kitchen != null ? unnamedNeeds(kitchen) : [];
+    api.sendGuestAnswer(token, answer, companions, me == null ? null : needsOf(me), unnamed).then(
       (next) => {
         forgetStarted(token);
         const same =
@@ -309,6 +344,7 @@ function Card({ token, first }: { token: string; first: GuestPage }) {
           sameParty(page, next);
         setPage(next);
         setParty(partyOf(next));
+        setKitchen(null);
         setView({ kind: 'recorded', same });
         focus('greeting');
       },
@@ -320,7 +356,7 @@ function Card({ token, first }: { token: string; first: GuestPage }) {
           setView({ kind: 'closed' });
           focus('closedHead');
         } else if (error instanceof ApiError && error.status === 404) setGone(true);
-        else onFail();
+        else onFail(error instanceof ApiError && error.status === 422);
       },
     );
   }
@@ -360,8 +396,7 @@ function Card({ token, first }: { token: string; first: GuestPage }) {
         focus('withYouHead');
         return;
       }
-      setView({ kind: 'check', busy: false, failed: false, from });
-      focus('checkHead');
+      toKitchen(from);
       return;
     }
 
@@ -383,32 +418,78 @@ function Card({ token, first }: { token: string; first: GuestPage }) {
   function sendComing(): void {
     if (view.kind !== 'check' || view.busy) return;
     setView({ ...view, busy: true, failed: false });
-    send('coming', () => {
-      setView({ ...view, busy: false, failed: true });
-      focus('send');
+    send('coming', (refused) => {
+      setView({ ...view, busy: false, failed: !refused, unsaved: refused });
+      focus(refused ? 'kitchenRow' : 'send');
     });
   }
 
   function withYou(): void {
-    if (view.kind !== 'check') return;
+    if (view.kind !== 'check' && view.kind !== 'kitchen') return;
     setView({ kind: 'withYou', from: view.from });
     focus('withYouHead');
   }
 
+  function toKitchen(from: 'answer' | 'changing'): void {
+    setKitchen((was) => kitchenOf(page, party, was));
+    setView({ kind: 'kitchen', from });
+    focus('kitchenHead');
+  }
+
   function partyNext(): void {
     if (view.kind !== 'withYou') return;
-    setView({ kind: 'check', busy: false, failed: false, from: view.from });
+    toKitchen(view.from);
+  }
+
+  function toCheck(from: 'answer' | 'changing'): void {
+    setView({ kind: 'check', busy: false, failed: false, from });
     focus('checkHead');
   }
 
-  /** Check and send's Back returns to the step before it; its answer row's Change, to the answers. */
-  function checkBack(): void {
+  /** Next checks every card first: the first field still wrong takes focus and the step stays. */
+  function kitchenNext(): void {
+    if (view.kind !== 'kitchen' || kitchen == null) return;
+    const failing = firstProblem(kitchen);
+    if (failing != null) {
+      setKitchen({ ...kitchen, tried: true });
+      focus(failing);
+      return;
+    }
+    setKitchen({ ...kitchen, tried: false });
+    toCheck(view.from);
+  }
+
+  function kitchenSkip(): void {
+    if (view.kind !== 'kitchen' || kitchen == null) return;
+    setKitchen(skipped(kitchen, page, party));
+    toCheck(view.from);
+  }
+
+  function kitchenBack(): void {
     if (hasStep(party)) withYou();
     else back();
   }
 
+  function card(key: string, change: (one: Person) => Partial<Person>, on?: string): void {
+    setKitchen((was) =>
+      was == null
+        ? was
+        : {
+            ...was,
+            people: was.people.map((one) => (one.key === key ? { ...one, ...change(one) } : one)),
+          },
+    );
+    if (on != null) focus(on);
+  }
+
+  /** Check and send's Back and its kitchen row's Change return to the kitchen step; its answer row's Change, to the answers. */
+  function checkBack(): void {
+    if (view.kind !== 'check') return;
+    toKitchen(view.from);
+  }
+
   function back(): void {
-    if (view.kind !== 'check' && view.kind !== 'withYou') return;
+    if (view.kind !== 'check' && view.kind !== 'withYou' && view.kind !== 'kitchen') return;
     setView(
       view.from === 'changing'
         ? { kind: 'changing', busy: null, failed: false }
@@ -435,7 +516,8 @@ function Card({ token, first }: { token: string; first: GuestPage }) {
 
   if (gone) return <InvalidInvitation />;
 
-  const alone = tell.kind !== 'card' || view.kind === 'check' || view.kind === 'withYou';
+  const stepping = view.kind === 'check' || view.kind === 'withYou' || view.kind === 'kitchen';
+  const alone = tell.kind !== 'card' || stepping;
   const tagged = guest.reply != null && view.kind !== 'check';
 
   return (
@@ -449,6 +531,11 @@ function Card({ token, first }: { token: string; first: GuestPage }) {
             view={view}
             page={page}
             party={party}
+            kitchen={kitchen}
+            onCard={card}
+            onKitchenBack={kitchenBack}
+            onKitchenNext={kitchenNext}
+            onKitchenSkip={kitchenSkip}
             onParty={(change, on) => {
               setParty(change);
               if (on != null) focus(on);
@@ -598,6 +685,11 @@ function Shown({
   view,
   page,
   party,
+  kitchen,
+  onCard,
+  onKitchenBack,
+  onKitchenNext,
+  onKitchenSkip,
   onParty,
   onPartyNext,
   onPartyChange,
@@ -611,6 +703,11 @@ function Shown({
   view: View;
   page: GuestPage;
   party: Party;
+  kitchen: Kitchen | null;
+  onCard: (key: string, change: (one: Person) => Partial<Person>, focus?: string) => void;
+  onKitchenBack: () => void;
+  onKitchenNext: () => void;
+  onKitchenSkip: () => void;
   onParty: (change: (was: Party) => Party, focus?: string) => void;
   onPartyNext: () => void;
   onPartyChange: () => void;
@@ -650,7 +747,44 @@ function Shown({
           onNext={onPartyNext}
         />
       );
+    case 'kitchen':
+      if (kitchen == null) return null;
+
+      return (
+        <KitchenStep
+          kitchen={kitchen}
+          hosts={hostsLine(page.event.hosts, currentLocale())}
+          hostCount={Math.max(page.event.hosts.length, 1)}
+          timeZone={page.event.timeZone}
+          onChange={onCard}
+          onBack={onKitchenBack}
+          onNext={onKitchenNext}
+          onSkip={onKitchenSkip}
+        />
+      );
     case 'check':
+      if (kitchen != null && view.refused !== true) {
+        return (
+          <KitchenCheck
+            kitchen={kitchen}
+            busy={view.busy}
+            alert={
+              view.unsaved === true
+                ? t('guestKitchen.notSaved')
+                : view.failed
+                  ? t('guest.notSent')
+                  : null
+            }
+            party={places ? { line: partyLine(party, t) } : null}
+            onBack={onCheckBack}
+            onAnswer={onBack}
+            onParty={onPartyChange}
+            onKitchen={onCheckBack}
+            onSend={onSend}
+          />
+        );
+      }
+
       return (
         <section className="gp-check" aria-labelledby="gp-check-h">
           {view.refused === true ? (
@@ -1035,64 +1169,6 @@ function Mark({
   );
 }
 
-function TextAction({
-  children,
-  off = false,
-  ink = false,
-  icon,
-  focus,
-  describedBy,
-  onClick,
-}: {
-  children: ReactNode;
-  off?: boolean;
-  ink?: boolean;
-  icon?: ReactNode;
-  focus?: string;
-  describedBy?: string;
-  onClick?: () => void;
-}) {
-  return (
-    <button
-      className={`gp-text${ink ? ' is-ink' : ''}${off ? ' is-off' : ''}`}
-      type="button"
-      data-focus={focus}
-      aria-describedby={describedBy}
-      {...offButton(off, { dim: false })}
-      onClick={onClick}
-    >
-      {icon}
-      <span>{children}</span>
-    </button>
-  );
-}
-
-function Filled({
-  children,
-  busy,
-  focus,
-  onClick,
-}: {
-  children: ReactNode;
-  busy: boolean;
-  focus?: string;
-  onClick: () => void;
-}) {
-  return (
-    <button
-      className="gp-filled"
-      type="button"
-      data-focus={focus}
-      aria-busy={busy}
-      {...offButton(busy, { dim: false })}
-      onClick={onClick}
-    >
-      {busy && <span className="gp-spinner" aria-hidden="true" />}
-      {children}
-    </button>
-  );
-}
-
 /** One notice at the top, in a status region mounted while Live so a pause is announced (WCAG 2.2 §4.1.3); its chip's shape tells it apart as well as its colour (§1.4.1). */
 function PhaseNotice({ phase }: { phase: GuestPagePhase }) {
   return (
@@ -1155,42 +1231,6 @@ function LanguageUnsaved({ token }: { token: string }) {
       </div>
     </div>
   );
-}
-
-function Notice({
-  kind,
-  alert = kind === 'broken',
-  children,
-}: {
-  kind: 'broken' | 'attention';
-  alert?: boolean;
-  children: ReactNode;
-}) {
-  return (
-    <div className={`gp-notice is-${kind}`} role={alert ? 'alert' : 'status'}>
-      <span className="gp-notice-mark" aria-hidden="true">
-        {kind === 'broken' && <Glyph name="clear" size={14} weight={3} />}
-      </span>
-      <p>{children}</p>
-    </div>
-  );
-}
-
-function readerZone(): string | undefined {
-  try {
-    return Intl.DateTimeFormat().resolvedOptions().timeZone;
-  } catch {
-    return undefined;
-  }
-}
-
-function format(at: string, timeZone: string, options: Intl.DateTimeFormatOptions): string {
-  return new Intl.DateTimeFormat(dateLocale(), { timeZone, ...options }).format(new Date(at));
-}
-
-/** The day an answer was given, in the event's zone, written for the reader's locale. */
-function dayOf(at: string, timeZone: string): string {
-  return format(at, timeZone, { weekday: 'long', month: 'long', day: 'numeric' });
 }
 
 /** The start's time in the event's zone, naming the zone when the reader's browser is in another. */
