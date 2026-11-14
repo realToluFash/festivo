@@ -48,9 +48,9 @@ export function dietary(needs: GuestNeeds | null | undefined): boolean {
 }
 
 /** Sorted once per list the API returned, not once per keystroke (sc-3772). */
-const sorted = new WeakMap<readonly Guest[], Person[]>();
+const sorted = new WeakMap<readonly Guest[], readonly Person[]>();
 
-export function peopleOf(guests: readonly Guest[]): Person[] {
+export function peopleOf(guests: readonly Guest[]): readonly Person[] {
   const known = sorted.get(guests);
 
   if (known != null) return known;
