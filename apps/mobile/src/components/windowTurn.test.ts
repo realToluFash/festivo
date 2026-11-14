@@ -292,6 +292,9 @@ describe('a window that opens through a Modal of its own (sc-42690)', () => {
     expect(walk).toMatch(
       /if \(input\?\.isFocused\(\)\) moveScreenReaderFocus\(input\);\s+\}, \[voiced, opening\]\);/,
     );
+    expect(walk).toMatch(
+      /if \(!quiet \|\| !onScreen \|\| unnamed\) return;\s+const reachable = setTimeout\(\(\) => setVoiced\(true\), SETTLED_MS\);\s+return \(\) => clearTimeout\(reachable\);\s+\}, \[quiet, onScreen, unnamed\]\);/,
+    );
     expect(steps.match(/importantForAccessibility=\{quiet \? 'no' : 'auto'\}/g)).toHaveLength(2);
     expect(steps).toMatch(/setFocused\(true\);\s+onTaken\?\.\(\);/);
   });

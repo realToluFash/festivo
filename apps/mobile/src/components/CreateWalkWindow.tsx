@@ -252,6 +252,14 @@ export function CreateWalkWindow<Made>({
     raiseKeysOn(input);
   }, [talkBack, onScreen, unnamed, opening, phone]);
 
+  // A field the raise never focuses would stay out of TalkBack's reach, so it is shown to TalkBack once the raise has had time to land, at worst read twice (lead, PR #2216).
+  useEffect(() => {
+    if (!quiet || !onScreen || unnamed) return;
+    const reachable = setTimeout(() => setVoiced(true), SETTLED_MS);
+
+    return () => clearTimeout(reachable);
+  }, [quiet, onScreen, unnamed]);
+
   useEffect(() => {
     const up = Keyboard.addListener('keyboardDidShow', () => {
       holding.current = null;
