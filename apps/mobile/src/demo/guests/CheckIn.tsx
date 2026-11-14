@@ -30,7 +30,7 @@ import {
 import { Amber, Choices, GuestToast, GuestsCard, type Layout } from './GuestsParts.tsx';
 import { ARRIVALS, COLLEAGUE, KOFI_WALKIN, READER, WEDDING } from './GuestsSample.ts';
 import { REPLY_WORD, W, say } from './GuestsWords.ts';
-import { DoorGlyph, MarkSlot } from './ReplyMark.tsx';
+import { DoorGlyph, MarkSlot } from '../../components/ReplyMark.tsx';
 
 type Phase = 'open' | 'before' | 'ended';
 

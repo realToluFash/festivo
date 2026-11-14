@@ -1,4 +1,12 @@
-import { LOCALES, callingCode, countryChoices, ownLanguageName } from '@soirely/domain';
+import {
+  LOCALES,
+  MOST_COMPANIONS,
+  callingCode,
+  countryChoices,
+  namedCount,
+  ownLanguageName,
+  placesTo,
+} from '@soirely/domain';
 import { type ReactNode, useId, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 
@@ -6,7 +14,6 @@ import { Glyph } from '../../../components/Glyph.tsx';
 import { currentLocale } from '../../../i18n/index.ts';
 import { offButton } from '../../../offButton.ts';
 import { codeChoice } from '../../../phoneProblem.ts';
-import { MOST_COMPANIONS, namedCount, placesTo } from './guestRows.ts';
 
 export function CompanionField({
   at,

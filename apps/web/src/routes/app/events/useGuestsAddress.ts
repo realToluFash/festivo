@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState } from 'react';
 import { useLocation, useSearchParams } from 'react-router';
 
-import { type Choice, choiceOf } from './guestView.ts';
+import { type Choice, choiceOf } from '@soirely/domain';
 
 export const SEARCH_SETTLES_MS = 300;
 

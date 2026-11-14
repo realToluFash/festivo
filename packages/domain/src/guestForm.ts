@@ -1,13 +1,12 @@
-import {
-  COMPANIONS_MAXIMUM,
-  type Companion,
-  GUEST_NAME_MAXIMUM,
-  type Guest,
-  type GuestList,
-  type NewGuest,
-  type Violation,
-} from '@soirely/api-client';
-import { emailProblem, nameKey, phoneLengthProblem } from '@soirely/domain';
+import type { Companion, Guest, GuestList, NewGuest, Violation } from '@soirely/api-client';
+
+import { emailProblem } from './forms.ts';
+import { nameKey } from './nameKey.ts';
+import { phoneLengthProblem } from './phone.ts';
+
+/** The API's Guest limits, which the form checks before sending. */
+export const GUEST_NAME_MAXIMUM = 200;
+export const COMPANIONS_MAXIMUM = 10;
 
 export type ReplyWord = Guest['reply'] | Companion['state'];
 

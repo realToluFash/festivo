@@ -34,7 +34,7 @@ import {
 import { REPLY_WORD, W, say } from './GuestsWords.ts';
 import { MessageGlyph } from '../messages/MessageMarks.tsx';
 import { type OptOutRow, optOutRowsOf } from './OptOuts.ts';
-import { MarkSlot } from './ReplyMark.tsx';
+import { MarkSlot } from '../../components/ReplyMark.tsx';
 import { type WhatsAppRow, whatsAppRowOf } from './WhatsAppConsent.ts';
 
 const REOPENED_ON = '2026-11-05';
