@@ -2622,8 +2622,8 @@
     "people_one": "{{count, number}} pessoa",
     "people_other": "{{count, number}} pessoas",
     "people_many": "{{count, number}} de pessoas",
-    "forWhom": "For {{name}} and their companions.",
-    "chooseOrType": "Choose or type a group",
+    "forWhom": "Para {{name}} e respetivos acompanhantes.",
+    "chooseOrType": "Escolha ou escreva um grupo",
     "limitApp": "Este evento tem {{most, number}} grupos, o máximo possível. Escolha um deles ou, para criar outro, use a Soirely na web e elimine um em Grupos."
   }
 }
