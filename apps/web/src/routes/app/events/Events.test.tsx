@@ -4253,7 +4253,7 @@ describe('The cover (sc-3590)', () => {
       });
       expect(await screen.findByText('Saved')).toBeDefined();
       expect(sent.map(({ line }) => line)).not.toContain(
-        'DELETE /api/orgs/org_1/event-cover-uploads/event_cover/org_1/2026/10/one.jpg',
+        'DELETE /api/orgs/org_1/event-cover-uploads',
       );
       await waitFor(() => expect(document.activeElement).toBe(row));
     });
@@ -4335,6 +4335,25 @@ describe('The cover (sc-3590)', () => {
       );
       expect(part().querySelector('.ev-preview.is-photo')).toBeNull();
       expect(sent.filter(({ line }) => line.includes('cover'))).toEqual([]);
+    });
+
+    it('an upload the server refuses is discarded, and says why above Upload a photo', async () => {
+      const { sent } = await opened(null, {
+        'POST /api/orgs/org_1/event-cover-uploads/preview': () => problem(500, 'server_error'),
+      });
+
+      pick(file());
+
+      expect((await within(part()).findByRole('alert')).textContent).toContain(
+        'The photo did not upload. Try again.',
+      );
+      expect(part().querySelector('.ev-preview.is-photo')).toBeNull();
+      expect(within(part()).getByRole('button', { name: 'Upload a photo' })).toBeDefined();
+      await waitFor(() =>
+        expect(
+          sent.find(({ line }) => line === 'DELETE /api/orgs/org_1/event-cover-uploads')?.body,
+        ).toEqual({ uploadKey: 'event_cover/org_1/2026/10/one.jpg' }),
+      );
     });
 
     it('a refused Change photo keeps the photo', async () => {
