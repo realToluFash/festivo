@@ -14,6 +14,7 @@ import {
   type NeedsLines,
   dietary,
   hasAllergy,
+  hostsSaved,
   needsLines,
   needsOf,
   savedNeeds,
@@ -353,7 +354,7 @@ function wedding(): Guest[] {
       email: 'musa.bello@gmail.com',
       phone: { country: 'NG', number: '803 412 7730' },
       companions: companions('musa', 1, 'coming'),
-      needs: needsOf({ diet: ['halal'] }),
+      needs: needsOf({ diet: ['halal'], changed: { by: 'hosts', on: '2026-10-05' } }),
     }),
     guest('amaka', 'Amaka Eze', 'coming', {
       replied: '2026-10-13',
@@ -391,9 +392,9 @@ function wedding(): Guest[] {
         ...one,
         table: 'Table 4',
         meal: true,
-        needs: needsOf({ allergies: ['sesame'] }),
+        needs: needsOf({ allergies: ['sesame'], changed: { by: 'guest', on: '2026-10-13' } }),
       })),
-      needs: needsOf({ diet: ['vegetarian'] }),
+      needs: needsOf({ diet: ['vegetarian'], changed: { by: 'guest', on: '2026-10-13' } }),
       language: 'es',
       chose: 'pt',
     }),
@@ -1223,7 +1224,7 @@ function hostNamed(one: Companion): Companion {
   return copy;
 }
 
-export function saveGuest(list: readonly Guest[], id: string, values: Values): Guest[] {
+export function saveGuest(list: readonly Guest[], id: string, values: Values, on: string): Guest[] {
   return list.map((one) => {
     if (one.id !== id) return one;
     const kept = values.companions.map((companion, index) => {
@@ -1236,7 +1237,7 @@ export function saveGuest(list: readonly Guest[], id: string, values: Values): G
         id: was?.id ?? `${id}-n${index + 1}`,
         name: companion.name.trim() === '' ? null : companion.name.trim(),
         reply: was?.reply ?? placeReply(one.reply),
-        needs: savedNeeds(companion.needs ?? was?.needs ?? NO_NEEDS),
+        needs: hostsSaved(found?.needs, companion.needs ?? was?.needs ?? NO_NEEDS, on),
       };
     });
 
@@ -1251,7 +1252,7 @@ export function saveGuest(list: readonly Guest[], id: string, values: Values): G
             : { country: values.country, number: values.number.trim() },
         language: values.language,
         greetAs: greetAsOf(values),
-        needs: savedNeeds(values.needs),
+        needs: hostsSaved(one.needs, values.needs, on),
         companions: kept,
       },
       values.group,
@@ -1786,6 +1787,14 @@ export const GUESTS_STATES = [
   { key: 'needsCompanionForm', name: 'Edit guest: Their needs under a companion' },
   { key: 'needsSaved', name: 'Saved: the needs in Details' },
   {
+    key: 'needsChangedByGuest',
+    name: 'Details: Last changed by the guest, under Inês Duarte’s needs and Rui Duarte’s',
+  },
+  {
+    key: 'needsChangedByHosts',
+    name: 'Details: the host changed Inês Duarte’s diet, so only Rui Duarte’s line stays',
+  },
+  {
     key: 'whatsAppNone',
     name: 'WhatsApp: Has not agreed to WhatsApp, and The guest agreed to WhatsApp',
   },
@@ -2101,10 +2110,15 @@ export function guestsStart(state: GuestsState | null, params: URLSearchParams):
       return edit('kwame', { values: { email: 'kwame@mensah.co.uk' }, notSaved: true });
     case 'saved':
       return column(guestPane('kwame'), {
-        list: saveGuest(start.list, 'kwame', {
-          ...valuesOf(start.list.find((one) => one.id === 'kwame') ?? null),
-          email: 'kwame@mensah.co.uk',
-        }),
+        list: saveGuest(
+          start.list,
+          'kwame',
+          {
+            ...valuesOf(start.list.find((one) => one.id === 'kwame') ?? null),
+            email: 'kwame@mensah.co.uk',
+          },
+          TODAY,
+        ),
         told: GW.saved,
       });
     case 'record':
@@ -2259,10 +2273,15 @@ export function guestsStart(state: GuestsState | null, params: URLSearchParams):
     case 'greetAsSpaces':
       return column(guestPane('bisi'), {
         choice: 'notYet',
-        list: saveGuest(start.list, 'bisi', {
-          ...valuesOf(start.list.find((one) => one.id === 'bisi') ?? null),
-          greetAs: '   ',
-        }),
+        list: saveGuest(
+          start.list,
+          'bisi',
+          {
+            ...valuesOf(start.list.find((one) => one.id === 'bisi') ?? null),
+            greetAs: '   ',
+          },
+          TODAY,
+        ),
         told: GW.saved,
       });
     case 'greetAsViewer':
@@ -2313,13 +2332,34 @@ export function guestsStart(state: GuestsState | null, params: URLSearchParams):
       return refusedNeeds({ note: NOTE_LONG }, 'needs-note');
     case 'needsCompanionForm':
       return { ...edit('ines', { needs: ['c0'] }), choice: 'coming' };
+    case 'needsChangedByGuest':
+      return column(guestPane('ines'), { choice: 'coming' });
+    case 'needsChangedByHosts': {
+      const ines = start.list.find((one) => one.id === 'ines') ?? null;
+
+      return column(guestPane('ines'), {
+        choice: 'coming',
+        list: saveGuest(
+          start.list,
+          'ines',
+          { ...valuesOf(ines), needs: needsOf({ diet: ['vegetarian', 'no_alcohol'] }) },
+          TODAY,
+        ),
+        told: GW.saved,
+      });
+    }
     case 'needsSaved':
       return column(guestPane('kwame'), {
         choice: 'coming',
-        list: saveGuest(start.list, 'kwame', {
-          ...valuesOf(start.list.find((one) => one.id === 'kwame') ?? null),
-          needs: needsOf({ allergies: ['milk'], diet: ['pescatarian'] }),
-        }),
+        list: saveGuest(
+          start.list,
+          'kwame',
+          {
+            ...valuesOf(start.list.find((one) => one.id === 'kwame') ?? null),
+            needs: needsOf({ allergies: ['milk'], diet: ['pescatarian'] }),
+          },
+          TODAY,
+        ),
         told: GW.saved,
       });
     case 'whatsAppNone':
@@ -2608,6 +2648,7 @@ export const GUESTS_PAGES: readonly { name: string; states: readonly DemoLink[] 
     'needsCompanionForm',
     'needsSaved',
   ]),
+  group('Last changed by the guest (sc-3778)', ['needsChangedByGuest', 'needsChangedByHosts']),
   group('WhatsApp, only to guests who agreed (sc-3950)', [
     'whatsAppNone',
     'whatsAppAgree',

@@ -824,7 +824,7 @@ function GuestsPage({
                       onSave={(values) => {
                         const saved = settled(values);
 
-                        setList((was) => saveGuest(was, paneGuest.id, saved));
+                        setList((was) => saveGuest(was, paneGuest.id, saved, today));
                         setDirty(false);
                         setPane({ kind: 'guest', id: paneGuest.id });
                         tell(GW.saved);

@@ -2373,7 +2373,7 @@
     "showAll_other": "Show all {{count, number}}",
     "heldLine": "Held · comes only if their host accepts",
     "heldAway": "{{guestOf}} · {{held}}",
-    "offlineRefused": "You’re offline. Nothing was saved.",
-    "offlineRefusedLine": "Your changes stay in this form. Save again once you’re connected."
+    "offlineRefused": "You are offline. Nothing was saved.",
+    "offlineRefusedLine": "Your changes stay in this form. Save again once you are connected."
   }
 }
