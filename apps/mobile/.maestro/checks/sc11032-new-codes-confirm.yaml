@@ -1,0 +1,38 @@
+# sc-11032: Settings > Security, Recovery codes, Make new codes, the ask's Make new codes, then Confirm it's you with a fresh code typed and the keyboard closed. Leaves Continue for a screen-reader tap. Needs ${METRO_URL}, two-factor on, a batch holding TOTP_SECRET.
+appId: host.exp.Exponent
+---
+- openLink: ${METRO_URL}/--/settings/security
+- scrollUntilVisible:
+    element:
+      id: 'security.codes'
+    timeout: 30000
+    centerElement: true
+- tapOn:
+    id: 'security.codes'
+- scrollUntilVisible:
+    element:
+      id: 'security.newCodes'
+    timeout: 15000
+    centerElement: true
+- tapOn:
+    id: 'security.newCodes'
+- extendedWaitUntil:
+    visible:
+      id: 'security.newCodes.confirm'
+    timeout: 15000
+- tapOn:
+    id: 'security.newCodes.confirm'
+- extendedWaitUntil:
+    visible:
+      id: 'security.confirm.code'
+    timeout: 15000
+- runScript:
+    file: ../batch/helper.js
+    env:
+      ASK: /code
+- tapOn:
+    id: 'security.confirm.code'
+- inputText: ${output.helper.code}
+- hideKeyboard
+- waitForAnimationToEnd
+- takeScreenshot: confirm-ready

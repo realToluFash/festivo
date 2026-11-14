@@ -1,0 +1,63 @@
+# A new account: Create your account, Check your email (wrong then right), Your organisation, Your mobile number, Check WhatsApp, Home.
+appId: host.exp.Exponent
+---
+- openLink: ${METRO_URL}/--/demo/create
+- extendedWaitUntil:
+    visible:
+      id: 'demo.name'
+    timeout: 20000
+- tapOn:
+    id: 'demo.name'
+- inputText: 'Adebayo Olopade'
+- pressKey: Enter
+- inputText: 'ade@ire.events'
+- pressKey: Enter
+- inputText: 'short'
+- takeScreenshot: create-short
+- inputText: ' and now long enough'
+- takeScreenshot: create-long
+- tapOn:
+    id: 'demo.createAccount'
+- extendedWaitUntil:
+    visible: 'Check your email'
+    timeout: 5000
+- takeScreenshot: email-code
+- inputText: '123456'
+- extendedWaitUntil:
+    visible: 'That code does not match.*'
+    timeout: 5000
+- takeScreenshot: email-code-wrong
+- inputText: '482913'
+- extendedWaitUntil:
+    visible:
+      id: 'demo.organisation'
+    timeout: 5000
+- takeScreenshot: organisation
+- tapOn:
+    id: 'demo.continue'
+- assertVisible: 'Enter your organisation’s name.'
+- tapOn:
+    id: 'demo.organisation'
+- inputText: 'Ire Events'
+- tapOn:
+    id: 'demo.continue'
+- extendedWaitUntil:
+    visible:
+      id: 'demo.number'
+    timeout: 5000
+- takeScreenshot: mobile
+- tapOn:
+    id: 'demo.number'
+- inputText: '7400123456'
+- tapOn:
+    id: 'demo.sendCode'
+- extendedWaitUntil:
+    visible: 'Check WhatsApp'
+    timeout: 5000
+- takeScreenshot: phone-code
+- inputText: '482913'
+- extendedWaitUntil:
+    visible:
+      id: 'demo.list'
+    timeout: 5000
+- takeScreenshot: new-account-home

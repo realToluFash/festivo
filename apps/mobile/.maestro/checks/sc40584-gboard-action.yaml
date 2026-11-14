@@ -1,0 +1,34 @@
+# sc-40584, Android phone upright: Gboard's own action key (its bottom-right key, tapped where Gboard draws it) on a blank Organisation name, twice, with a picture at 0.3s and 1.5s each time, and the next key typed after. Then a name and the action key go on to the country step.
+appId: host.exp.Exponent
+---
+- setOrientation: PORTRAIT
+- runFlow: ../open-create-organisation.yaml
+- extendedWaitUntil: { visible: { id: 'never.there' }, timeout: 1500, optional: true }
+- takeScreenshot: gb-01-arrive
+- tapOn: { point: '92%,91%' }
+- extendedWaitUntil: { visible: { id: 'never.there' }, timeout: 300, optional: true }
+- takeScreenshot: gb-02-action-early
+- extendedWaitUntil: { visible: { id: 'never.there' }, timeout: 1500, optional: true }
+- takeScreenshot: gb-03-action-settled
+- inputText: 'Q'
+- extendedWaitUntil: { visible: { id: 'never.there' }, timeout: 1500, optional: true }
+- takeScreenshot: gb-04-typed
+- eraseText: 10
+- extendedWaitUntil: { visible: { id: 'never.there' }, timeout: 1500, optional: true }
+- tapOn: { point: '92%,91%' }
+- extendedWaitUntil: { visible: { id: 'never.there' }, timeout: 1500, optional: true }
+- takeScreenshot: gb-05-action-again
+- inputText: ${NAME}
+- extendedWaitUntil: { visible: { id: 'never.there' }, timeout: 1500, optional: true }
+- takeScreenshot: gb-06-named
+- tapOn: { point: '92%,91%' }
+- extendedWaitUntil: { visible: { id: 'createWalk.search' }, timeout: 10000 }
+- extendedWaitUntil: { visible: { id: 'never.there' }, timeout: 1500, optional: true }
+- takeScreenshot: gb-07-country
+- tapOn: { id: 'createWalk.search' }
+- inputText: Nig
+- extendedWaitUntil: { visible: { id: 'never.there' }, timeout: 1500, optional: true }
+- tapOn: { point: '92%,91%' }
+- extendedWaitUntil: { visible: { id: 'never.there' }, timeout: 1500, optional: true }
+- takeScreenshot: gb-08-search-key
+- tapOn: { id: 'createWalk.cancel', optional: true }

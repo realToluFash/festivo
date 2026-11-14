@@ -1,0 +1,25 @@
+# New event with a name typed and Engagement chosen on Type, scrolled to Type and left at rest, for an early-Back pass. sc-43145.
+appId: host.exp.Exponent
+---
+- openLink: ${METRO_URL}/--/events/new
+- extendedWaitUntil:
+    visible:
+      id: 'eventForm.name'
+    timeout: 30000
+- tapOn:
+    id: 'eventForm.name'
+- inputText: 'Early Back party'
+- hideKeyboard
+- scrollUntilVisible:
+    element:
+      id: 'eventForm.type'
+    direction: DOWN
+    centerElement: true
+- tapOn:
+    id: 'eventForm.type'
+- runFlow:
+    file: ../scroll-tap.yaml
+    env:
+      ID: eventForm.type.engagement
+- waitForAnimationToEnd
+- takeScreenshot: type-engaged

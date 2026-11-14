@@ -1,0 +1,32 @@
+export interface MenuPlace {
+  top: number;
+  floor: number | null;
+}
+
+/** A `y` measured in the window, moved into a statusBarTranslucent Modal's frame, which starts behind the status bar where Android's window starts below it. */
+export function inModal(y: number, origin: number): number {
+  return y - origin;
+}
+
+/** A menu's top and floor, both given in measureInWindow's frame, moved into its Modal's. */
+export function menuInModal({
+  under,
+  below,
+  floor,
+  origin,
+}: {
+  under: number;
+  below: number;
+  floor: number | null;
+  origin: number;
+}): MenuPlace {
+  return {
+    top: inModal(under, origin) + below,
+    floor: floor == null ? null : inModal(floor, origin),
+  };
+}
+
+/** The most a menu may grow, in its Modal's frame: from its top to its floor, or to `foot` with no floor; never past either, however little room that leaves. */
+export function menuMost({ top, floor }: MenuPlace, foot: number): number {
+  return Math.max((floor ?? foot) - top, 0);
+}

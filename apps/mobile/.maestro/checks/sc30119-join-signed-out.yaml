@@ -1,0 +1,10 @@
+# sc-30119: a join link opened signed out: the line under Ask to join <organisation>. Pass LINK. Signs the session out: run it last.
+appId: host.exp.Exponent
+---
+- runFlow: ../sign-out.yaml
+- openLink: ${METRO_URL}/--/join/${LINK}
+- extendedWaitUntil:
+    visible:
+      id: 'requestToJoin.signIn'
+    timeout: 30000
+- takeScreenshot: join-signed-out

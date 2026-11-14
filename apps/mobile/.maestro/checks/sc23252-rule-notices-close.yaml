@@ -1,0 +1,24 @@
+# sc-23252: Not now puts the two-factor prompt off and Close this notice closes Sign-in rules changed, on Home, leaving the others in order.
+appId: host.exp.Exponent
+---
+- openLink: ${METRO_URL}/--/
+- scrollUntilVisible:
+    element:
+      id: 'signInRules.later'
+    direction: DOWN
+    timeout: 20000
+- tapOn:
+    id: 'signInRules.later'
+- assertNotVisible:
+    id: 'signInRules.later'
+- takeScreenshot: after-not-now
+- scrollUntilVisible:
+    element:
+      id: 'signInRules.close'
+    direction: DOWN
+    timeout: 20000
+- tapOn:
+    id: 'signInRules.close'
+- assertNotVisible:
+    id: 'signInRules.close'
+- takeScreenshot: after-close

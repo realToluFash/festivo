@@ -1,0 +1,21 @@
+# Change your mobile number, phone on its side: the Code list's Search countries sits whole above the keys with its placeholder, then typed text, in sight; leaves the list open, keys up, for the matches to be scrolled by hand (a Maestro swipe lands on the keys). Turns the phone on its side itself. sc-35256.
+appId: host.exp.Exponent
+---
+- openLink: ${METRO_URL}/--/phone
+- extendedWaitUntil:
+    visible:
+      id: 'phone.number'
+    timeout: 30000
+- setOrientation: LANDSCAPE_LEFT
+- waitForAnimationToEnd
+- tapOn:
+    id: 'phone.country'
+- waitForAnimationToEnd
+- takeScreenshot: search-countries-open
+- tapOn:
+    id: 'phone.country.search'
+- waitForAnimationToEnd
+- takeScreenshot: search-countries-focused
+- inputText: 'an'
+- waitForAnimationToEnd
+- takeScreenshot: search-countries-typed

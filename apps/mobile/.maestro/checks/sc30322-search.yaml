@@ -1,0 +1,26 @@
+# sc-30322: search above 15 organisations, by a word from a name cut at two lines, then no match and Clear search.
+appId: host.exp.Exponent
+---
+- openLink: ${METRO_URL}/--/demo/events?switcher=many
+- extendedWaitUntil:
+    visible:
+      id: 'switcher.heading'
+    timeout: 30000
+- tapOn:
+    id: 'switcher.search'
+- inputText: 'COMUNICACOES'
+- waitForAnimationToEnd: { timeout: 3000 }
+- takeScreenshot: accentless
+- eraseText: 30
+- inputText: 'Mariages'
+- waitForAnimationToEnd: { timeout: 3000 }
+- takeScreenshot: cut-word
+- eraseText: 30
+- inputText: 'zzz'
+- waitForAnimationToEnd: { timeout: 3000 }
+- assertVisible: '.*zzz.*'
+- takeScreenshot: no-match
+- tapOn:
+    id: 'switcher.search.clearAll'
+- waitForAnimationToEnd: { timeout: 3000 }
+- takeScreenshot: cleared

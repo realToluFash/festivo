@@ -1,0 +1,42 @@
+# sc-22741: the Name row opens Name, its own screen, holding Full name; Cancel, past the ask that discards what was typed, returns to Your account with the Name row showing and nothing saved.
+appId: host.exp.Exponent
+---
+- openLink: ${METRO_URL}/--/settings/account
+- extendedWaitUntil:
+    visible:
+      id: 'account.name'
+    timeout: 30000
+- waitForAnimationToEnd:
+    timeout: 3000
+- takeScreenshot: card
+- tapOn:
+    id: 'account.name'
+- extendedWaitUntil:
+    visible:
+      id: 'account.name.screen'
+    timeout: 5000
+- assertVisible:
+    id: 'account.name.field'
+- waitForAnimationToEnd:
+    timeout: 3000
+- takeScreenshot: editing
+- eraseText: 80
+- inputText: 'Should Not Save'
+- hideKeyboard
+- tapOn:
+    id: 'account.name.cancel'
+# Typed text makes Cancel ask before it discards it.
+- extendedWaitUntil:
+    visible:
+      id: 'account.name.discard'
+    timeout: 5000
+- tapOn:
+    id: 'account.name.discard'
+- waitForAnimationToEnd:
+    timeout: 3000
+- assertNotVisible:
+    id: 'account.name.screen'
+- assertVisible:
+    id: 'account.name'
+- assertNotVisible: 'Should Not Save'
+- takeScreenshot: cancelled

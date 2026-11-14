@@ -1,0 +1,31 @@
+# Ask to join: 501 characters, keys hidden by the back gesture (Android). The check opens the keys on Message. sc-9674.
+appId: host.exp.Exponent
+---
+- openLink: ${METRO_URL}/--/join/${TOKEN}
+- extendedWaitUntil:
+    visible:
+      id: requestToJoin.message
+    timeout: 30000
+- scrollUntilVisible:
+    element:
+      id: requestToJoin.message
+    centerElement: true
+- tapOn:
+    id: requestToJoin.message
+- inputText: 'abcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijk'
+- pressKey: back
+- waitForAnimationToEnd
+- takeScreenshot: keys-hidden
+- assertNotVisible: '(?i)(shift|delete)'
+- scrollUntilVisible:
+    element:
+      id: requestToJoin.ask
+    centerElement: true
+- tapOn:
+    id: requestToJoin.ask
+- extendedWaitUntil:
+    visible: '(?:Keep your message to 500 characters or fewer|Acorte su mensaje a 500 caracteres como máximo|Raccourcissez votre message à 500 caractères maximum|Encurte a mensagem para um máximo de 500 caracteres).*'
+    timeout: 10000
+- waitForAnimationToEnd
+- takeScreenshot: checked
+- assertVisible: '(?i)(shift|delete)'
