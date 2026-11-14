@@ -118,6 +118,13 @@ class Guest
     #[ORM\Column(type: Types::TEXT, nullable: true)]
     private ?string $needsNote = null;
 
+    /** When the needs were last changed, and whether by the guest on their own page (sc-3778) or by a host; null until anyone records one. */
+    #[ORM\Column(type: Types::DATETIME_IMMUTABLE, nullable: true)]
+    private ?DateTimeImmutable $needsChangedAt = null;
+
+    #[ORM\Column(type: Types::BOOLEAN, options: ['default' => false])]
+    private bool $needsChangedByGuest = false;
+
     /** A companion the guest unticked (sc-3779): Not coming only while their host is Coming, and kept while Held so Coming again restores it. */
     #[ORM\Column(type: Types::BOOLEAN, options: ['default' => false])]
     private bool $notComingByGuest = false;
@@ -370,6 +377,22 @@ class Guest
     public function setNeedsNote(?string $note): void
     {
         $this->needsNote = $note;
+    }
+
+    public function getNeedsChangedAt(): ?DateTimeImmutable
+    {
+        return $this->needsChangedAt;
+    }
+
+    public function isNeedsChangedByGuest(): bool
+    {
+        return $this->needsChangedByGuest;
+    }
+
+    public function needsChanged(DateTimeImmutable $at, bool $byGuest): void
+    {
+        $this->needsChangedAt = $at;
+        $this->needsChangedByGuest = $byGuest;
     }
 
     public function setPosition(int $position): void

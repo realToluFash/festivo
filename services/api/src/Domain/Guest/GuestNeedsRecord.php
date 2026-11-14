@@ -16,6 +16,7 @@ use Doctrine\ORM\EntityManagerInterface;
 use Psl\Dict;
 use Psl\Iter;
 use Psl\Vec;
+use Psr\Clock\ClockInterface;
 
 /** A guest's and each companion's needs (sc-3777): codes as GuestNeed rows, each Other's words and the note on the Guest. The audit says "Needs changed" and holds none of them. */
 final readonly class GuestNeedsRecord
@@ -26,6 +27,7 @@ final readonly class GuestNeedsRecord
         private GuestNeedRepository $guestNeedRepository,
         private EntityManagerInterface $entityManager,
         private Auditor $auditor,
+        private ClockInterface $clock,
     ) {
     }
 
@@ -53,8 +55,8 @@ final readonly class GuestNeedsRecord
         }));
     }
 
-    /** Replaces what the person had; nothing is written, and nothing audited, when it is the same. False when nothing changed. */
-    public function write(Guest $person, GuestNeeds $needs, User $by): bool
+    /** Replaces what the person had and stamps who changed it: `$by` null is the guest on their own page (sc-3778). Nothing is written, and nothing audited, when it is the same. False when nothing changed. */
+    public function write(Guest $person, GuestNeeds $needs, ?User $by): bool
     {
         if ($this->of([$person])[$person->getId()->toRfc4122()]->equals($needs)) {
             return false;
@@ -71,7 +73,13 @@ final readonly class GuestNeedsRecord
         }
 
         $person->setNeedsNote($needs->note);
-        $this->auditor->record(self::CHANGED, 'Guest', $person->getId(), Actor::User, $by->getId(), $by->getName());
+        $person->needsChanged($this->clock->now(), null === $by);
+
+        if (null === $by) {
+            $this->auditor->record(self::CHANGED, 'Guest', $person->getId());
+        } else {
+            $this->auditor->record(self::CHANGED, 'Guest', $person->getId(), Actor::User, $by->getId(), $by->getName());
+        }
 
         return true;
     }

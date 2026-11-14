@@ -97,7 +97,7 @@ describe('the opt-out rows (sc-3969)', () => {
     const seeded = recordOptOuts(list, 'kwame', { email: '2026-10-22', texts: '2026-10-29' });
     const values = valuesOf(seeded.find((guest) => guest.id === 'kwame') ?? null);
     const rowsAfter = (changed: Partial<typeof values>) => {
-      const saved = saveGuest(seeded, 'kwame', { ...values, ...changed });
+      const saved = saveGuest(seeded, 'kwame', { ...values, ...changed }, '2026-11-03');
 
       return optOutRowsOf(saved.find((guest) => guest.id === 'kwame') as Guest, EDITS, dayOf);
     };

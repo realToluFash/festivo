@@ -3244,6 +3244,9 @@ describe('the flows a batch runs', () => {
       const signInForm = readFileSync(join(target, 'batch/sign-in-form.yaml'), 'utf8');
       expect(signInForm).toContain('- runFlow: sign-in-typed.yaml');
       expect(readFileSync(join(target, 'batch/sign-in-typed.yaml'), 'utf8')).toMatch(
+        /platform: Android\s+commands:\s+- retry:[\s\S]*?inputText: \$\{EMAIL\}\s+- copyTextFrom:\s+id: 'signIn\.email'\s+- assertTrue: \$\{maestro\.copiedText == EMAIL\}/,
+      );
+      expect(readFileSync(join(target, 'batch/sign-in-typed.yaml'), 'utf8')).toMatch(
         /tapOn:\s+id: 'signIn\.password\.reveal'\s+- retry:[\s\S]*?inputText: \$\{PASSWORD\}\s+- copyTextFrom:\s+id: 'signIn\.password'\s+- assertTrue: \$\{maestro\.copiedText == PASSWORD\}/,
       );
       const landed = new RegExp(
@@ -4153,6 +4156,39 @@ describe('waitForBoot', () => {
     await expect(
       waitForBoot({ name: 'qa_pixel', booted: () => false, gone: () => null, pause, tries: 3 }),
     ).rejects.toThrow('qa_pixel did not boot within three minutes');
+  });
+
+  it('names an unauthorized device and the adb-key step, not a boot timeout', async () => {
+    let passes = 0;
+    const unauthorized = () => (++passes, 'emulator-5578');
+    const waiting = waitForBoot({
+      name: 'Soirely_QA4_Tablet',
+      booted: () => false,
+      gone: () => null,
+      pause,
+      unauthorized,
+    });
+    await expect(waiting).rejects.toThrow(
+      'Soirely_QA4_Tablet: adb here sees emulator-5578 as unauthorized',
+    );
+    await expect(waiting).rejects.toThrow('machines.md, An emulator on another computer, step 2');
+    expect(passes).toBe(30);
+  });
+
+  it('still boots a device that was unauthorized only for a while', async () => {
+    let passes = 0;
+    const unauthorized = () => (++passes < 29 ? 'emulator-5578' : null);
+    const booted = () => passes === 40;
+    await waitForBoot({ name: 'qa_pixel', booted, gone: () => null, pause, unauthorized });
+    expect(passes).toBe(40);
+  });
+
+  it('counts unauthorized passes in a row, so a device that flaps still boots', async () => {
+    let passes = 0;
+    const unauthorized = () => (++passes === 16 || passes > 31 ? null : 'emulator-5578');
+    const booted = () => passes === 35;
+    await waitForBoot({ name: 'qa_pixel', booted, gone: () => null, pause, unauthorized });
+    expect(passes).toBe(35);
   });
 });
 

@@ -45,6 +45,7 @@ import { whatsAppRowOf } from './whatsAppConsent.ts';
 import { sendOffered, whatsAppHref } from './whatsAppSend.ts';
 import { useLater } from '../useLater.ts';
 import { GGW } from './guestGroups.ts';
+import { RMW, removable } from './guestRemove.ts';
 import { CardStep, Chevron, Head, RowWords, TextAction } from '../components/SettingsParts.tsx';
 
 export interface GuestActions {
@@ -62,6 +63,7 @@ export interface GuestActions {
   onNotSent: () => void;
   /** The mark from the question: false when it was not saved and the question stays. */
   onSent: () => boolean;
+  onRemove: () => void;
 }
 
 type Step = { label: string; does: () => void } | null;
@@ -128,6 +130,7 @@ export function GuestView({
     <div className="gs-guest">
       {note === 'recorded' && <OkLine>{GW.recorded}</OkLine>}
       {note === 'unmarked' && <OkLine>{GW.unmarked}</OkLine>}
+      {note === 'backOnList' && <OkLine>{RMW.backOnList}</OkLine>}
       {note === 'linkReplaced' && <OkLine>{GW.linkReplacedNote(guest.name)}</OkLine>}
       <Cover mesh={event.mesh} size="guest" label={heading}>
         <ul className="desk-glass-tags">
@@ -191,6 +194,7 @@ export function GuestView({
         heading={heading}
         onEdit={actions.onEdit}
         onAgree={actions.onAgree}
+        onRemove={actions.onRemove}
       />
       {manages && erase !== 'erased' && <NeedsBlock guest={guest} heading={heading} />}
       {showsInvitation ? (
@@ -248,6 +252,7 @@ function Details({
   heading,
   onEdit,
   onAgree,
+  onRemove,
 }: {
   guest: Guest;
   manages: boolean;
@@ -256,6 +261,7 @@ function Details({
   heading: string;
   onEdit: () => void;
   onAgree: () => void;
+  onRemove: () => void;
 }) {
   const whatsApp = whatsAppRowOf(
     guest.whatsApp,
@@ -356,6 +362,12 @@ function Details({
             </div>
           </li>
         ))}
+        {guest.arrived != null && (
+          <li className="desk-row" tabIndex={-1} data-focus="arrival">
+            <IconLead name="tick" />
+            <RowWords title={RMW.arrived} lines={[RMW.arrival]} />
+          </li>
+        )}
         {manages && (
           <li className="desk-row">
             <IconLead name="user" />
@@ -366,6 +378,22 @@ function Details({
           </li>
         )}
       </ul>
+      {edits && (
+        <div className="gr-foot">
+          {removable(guest, manages) ? (
+            <button
+              type="button"
+              className="gs-pill is-secondary"
+              data-focus="remove"
+              onClick={onRemove}
+            >
+              {RMW.remove}
+            </button>
+          ) : (
+            <p className="gr-stays">{RMW.staysArrived}</p>
+          )}
+        </div>
+      )}
     </section>
   );
 }
@@ -408,12 +436,22 @@ function recorded(needs: Needs | undefined): needs is Needs {
   );
 }
 
-/** sc-3777: allergies, diet and access under their own headings, the guest's then each companion's; for people who manage guests only. */
+function ChangedByGuest({ needs }: { needs: Needs | undefined }) {
+  if (needs?.changed?.by !== 'guest') return null;
+
+  return <p className="desk-help">{NW.changedByGuest(dayOf(needs.changed.on))}</p>;
+}
+
+function shown(needs: Needs | undefined): needs is Needs {
+  return needs?.changed?.by === 'guest' || recorded(needs);
+}
+
+/** sc-3777: allergies, diet and access under their own headings, the guest's then each companion's; for people who manage guests only. sc-3778: under each person's, "Last changed by the guest on {date}." when the guest made the last change on their own page. */
 function NeedsBlock({ guest, heading }: { guest: Guest; heading: string }) {
   const companions = guest.companions.flatMap((one) =>
-    recorded(one.needs) ? [{ one, needs: one.needs }] : [],
+    shown(one.needs) ? [{ one, needs: one.needs }] : [],
   );
-  const none = !recorded(guest.needs) && companions.length === 0;
+  const none = !shown(guest.needs) && companions.length === 0;
 
   return (
     <section className="desk-block" aria-labelledby={`${heading}-needs`}>
@@ -422,22 +460,31 @@ function NeedsBlock({ guest, heading }: { guest: Guest; heading: string }) {
         <p className="desk-line">{NW.noDietary}</p>
       ) : (
         <>
-          {recorded(guest.needs) && (
-            <ul className="desk-rows gs-rows">
-              <NeedsRows needs={guest.needs} />
-            </ul>
-          )}
+          {shown(guest.needs) && <PersonNeeds needs={guest.needs} />}
           {companions.map(({ one, needs }) => (
             <div key={one.id} className="gs-their-needs">
               <h4 className="gs-their-head">{companionName(guest, one)}</h4>
-              <ul className="desk-rows gs-rows">
-                <NeedsRows needs={needs} />
-              </ul>
+              <PersonNeeds needs={needs} />
             </div>
           ))}
         </>
       )}
     </section>
+  );
+}
+
+function PersonNeeds({ needs }: { needs: Needs }) {
+  return (
+    <>
+      {recorded(needs) ? (
+        <ul className="desk-rows gs-rows">
+          <NeedsRows needs={needs} />
+        </ul>
+      ) : (
+        <p className="desk-line">{NW.noDietary}</p>
+      )}
+      <ChangedByGuest needs={needs} />
+    </>
   );
 }
 

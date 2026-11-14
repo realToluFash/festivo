@@ -284,6 +284,10 @@ export function EventScreen({
           key={`${event.id}.${filter}`}
           event={event}
           filter={filter}
+          phase={phase}
+          now={now}
+          onEventChange={change}
+          onEventStale={reload}
           heading={
             <>
               {kind === 'tabletLandscape' && !cardNamed && (

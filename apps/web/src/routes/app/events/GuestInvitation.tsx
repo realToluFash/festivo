@@ -1,12 +1,12 @@
 import {
+  ApiError,
   GUEST_INVITATION_HOWS,
   type GuestDetails,
   type GuestInvitationHow,
   canMarkNotInvited,
 } from '@soirely/api-client';
-import { replyDate, shownReply } from '@soirely/domain';
+import { invitationLine, shownReply } from '@soirely/domain';
 import { type ReactNode, type RefObject, useEffect, useId, useRef, useState } from 'react';
-import type { TFunction } from 'i18next';
 import { useTranslation } from 'react-i18next';
 
 import { Glyph, type GlyphName } from '../../../components/Glyph.tsx';
@@ -16,32 +16,7 @@ import { dateLocale } from '../../../i18n/index.ts';
 export type Copy =
   { kind: 'none' } | { kind: 'copied' } | { kind: 'byHand'; url: string } | { kind: 'failed' };
 
-/** The guest's one Invitation line (sc-3788): by hand, by Soirely's message, or when they replied; null while Not yet invited. */
-export function invitationLine(
-  t: TFunction,
-  guest: Pick<GuestDetails, 'invitation'>,
-  timeZone: string,
-): string | null {
-  const invitation = guest.invitation;
-  if (invitation == null) return null;
-  const date = replyDate(invitation.at, timeZone, dateLocale());
-
-  switch (invitation.how) {
-    case 'soirelyMessage':
-      return t('guestList.invitedByMessage', { date });
-    case 'reply':
-      return t('guestList.invitedWhenReplied', { date });
-    default: {
-      const how = t(`guestList.howMid.${invitation.how}`);
-
-      return invitation.by == null
-        ? t('guestList.invitedHow', { how, date })
-        : t('guestList.invitedBy', { name: invitation.by, how, date });
-    }
-  }
-}
-
-/** A guest's Invitation at a desk: the line, Copy invitation link, Replace link… and Mark as invited, which opens an inset. */
+/** A guest's Invitation at a desk: the line, Copy invitation link, Send on WhatsApp with its question, Replace link… and Mark as invited, which opens an inset. */
 export function Invitation({
   guest,
   timeZone,
@@ -53,7 +28,12 @@ export function Invitation({
   marking,
   markFailed,
   replaceButton,
+  send,
+  asked,
   onCopy,
+  onSend,
+  onNotSent,
+  onSent,
   onReplace,
   onMarking,
   onMark,
@@ -69,7 +49,13 @@ export function Invitation({
   marking: boolean;
   markFailed: boolean;
   replaceButton: RefObject<HTMLButtonElement | null>;
+  /** sc-26025: WhatsApp's own address for this guest, null where it is not offered. */
+  send: string | null;
+  asked: boolean;
   onCopy: () => void;
+  onSend: () => void;
+  onNotSent: () => void;
+  onSent: () => Promise<void>;
   onReplace: () => void;
   onMarking: (marking: boolean) => void;
   onMark: (how: GuestInvitationHow) => void;
@@ -77,7 +63,7 @@ export function Invitation({
 }) {
   const { t } = useTranslation();
   const notYet = shownReply(guest) === 'notYetInvited';
-  const line = invitationLine(t, guest, timeZone);
+  const line = invitationLine(t, guest, timeZone, dateLocale());
 
   return (
     <section className="desk-block" aria-labelledby={`${heading}-invitation`}>
@@ -138,6 +124,28 @@ export function Invitation({
               )}
             </li>
           )}
+          {manages && invites && (send != null || (asked && notYet)) && (
+            <li>
+              {send != null && (
+                <a
+                  href={send}
+                  className="desk-row gs-do"
+                  aria-label={t('guestList.sendOnWhatsAppTo', { name: guest.fullName })}
+                  data-focus="send"
+                  onClick={onSend}
+                >
+                  <IconLead name="whatsApp" />
+                  <RowWords
+                    title={t('guestList.sendOnWhatsApp')}
+                    lines={[t('guestList.sendLine')]}
+                  />
+                </a>
+              )}
+              {asked && notYet && (
+                <SentQuestion name={guest.fullName} onNotSent={onNotSent} onSent={onSent} />
+              )}
+            </li>
+          )}
           {manages && (
             <li>
               <button
@@ -155,7 +163,7 @@ export function Invitation({
               </button>
             </li>
           )}
-          {manages && notYet && invites && (
+          {manages && notYet && invites && !asked && (
             <li>
               <button
                 type="button"
@@ -175,6 +183,70 @@ export function Invitation({
       )}
       {!manages && <p className="gs-inset gs-read-only">{t('guestList.readOnlyInvited')}</p>}
     </section>
+  );
+}
+
+/** sc-26025: asked on the press, since a page can't tell whether WhatsApp opened; it stays until answered, a failed mark included. */
+function SentQuestion({
+  name,
+  onNotSent,
+  onSent,
+}: {
+  name: string;
+  onNotSent: () => void;
+  onSent: () => Promise<void>;
+}) {
+  const { t } = useTranslation();
+  const id = useId();
+  const [busy, setBusy] = useState(false);
+  const [failed, setFailed] = useState(false);
+
+  function sent(): void {
+    if (busy) return;
+    setFailed(false);
+    setBusy(true);
+    onSent().then(
+      () => setBusy(false),
+      (error: unknown) => {
+        setBusy(false);
+        if (!(error instanceof ApiError && error.is('event_state_invalid'))) setFailed(true);
+      },
+    );
+  }
+
+  return (
+    <div
+      className="gs-inset gs-asked"
+      role="group"
+      aria-labelledby={`${id}-title`}
+      aria-describedby={`${id}-line`}
+      tabIndex={-1}
+      data-focus="send-question"
+    >
+      {failed && (
+        <p className="desk-error gs-refused" role="alert">
+          <Glyph name="alert" size={15} weight={2.2} />
+          {t('guestList.markNotSaved')}
+        </p>
+      )}
+      <p id={`${id}-title`} className="gs-inset-title" aria-live="polite">
+        {t('guestList.sentOnWhatsApp', { name })}
+      </p>
+      <div className="gs-inset-foot">
+        <TextAction label={t('guestList.notSent')} onClick={onNotSent} />
+        <button
+          type="button"
+          className="gs-pill is-primary"
+          aria-busy={busy || undefined}
+          onClick={sent}
+        >
+          {busy ? t('guestList.saving') : t('guestList.markAsInvited')}
+        </button>
+      </div>
+      <p id={`${id}-line`} className="desk-help">
+        {t('guestList.ifNotOpened')}
+      </p>
+    </div>
   );
 }
 
