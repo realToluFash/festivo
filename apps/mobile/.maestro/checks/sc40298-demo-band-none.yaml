@@ -1,0 +1,18 @@
+# The Today demo in ${DEMO_LANG}, no invitation waiting, at its cover then scrolled until the band shows. sc-40298.
+appId: host.exp.Exponent
+---
+- openLink: ${METRO_URL}/--/demo/today?lang=${DEMO_LANG}&switcher=one
+- waitForAnimationToEnd:
+    timeout: 8000
+- takeScreenshot: cover
+- swipe:
+    start: 50%, 80%
+    end: 50%, 20%
+    duration: 600
+- swipe:
+    start: 50%, 80%
+    end: 50%, 20%
+    duration: 600
+- waitForAnimationToEnd:
+    timeout: 5000
+- takeScreenshot: band

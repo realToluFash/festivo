@@ -1,0 +1,282 @@
+import configPlugins, { type ConfigPlugin } from 'expo/config-plugins';
+
+import { TEXT_SCALE_LAID_OUT } from '../src/components/textScaleLaidOutEvent.ts';
+
+const { AndroidConfig, withAndroidManifest, withMainActivity } = configPlugins;
+
+const IMPORTS = [
+  'import android.content.ComponentCallbacks',
+  'import android.content.Context',
+  'import android.content.res.Configuration',
+  'import android.os.Bundle',
+  'import android.view.ContextThemeWrapper',
+  'import android.view.View',
+  'import android.view.ViewGroup',
+  'import android.widget.FrameLayout',
+  'import com.facebook.react.bridge.LifecycleEventListener',
+  'import com.facebook.react.uimanager.DisplayMetricsHolder',
+  'import com.th3rdwave.safeareacontext.SafeAreaProvider',
+  'import android.os.Build',
+  'import android.view.ViewTreeObserver',
+  'import android.view.inspector.WindowInspector',
+  'import com.facebook.react.views.modal.ReactModalHostView',
+  'import java.util.WeakHashMap',
+];
+
+// React Native measures text against the display metrics it last read, and caches each measurement under the font scale the activity's resources had when the root view was measured.
+// Android may give the activity's resources a new scale with the application's change, before the activity's own callback: a layout in between caches the old size under the new scale, and asking for a layout again finds nothing changed and keeps it.
+// So the metrics are read again from the activity on either change, and the root view is laid out when the scale the activity last saw has moved.
+// Android can also apply a new scale to the activity's resources and lay the window out before either callback, so the root view sits in a parent that reads the metrics again first whenever they no longer match the activity's.
+// JavaScript's next commit puts back the texts it last laid out, so one made before the root view's layout at the new scale keeps the old size. The root view is measured whenever the scale moved, and once that layout is in, JavaScript is told to make its texts again.
+// React Native tells JavaScript about a new font scale only on resume, and DeviceInfo reads both scale and density from the application, so the forward waits until the application has the activity's current ones, however many changes it is behind, then lays out again for the root view to send the new dimensions.
+// DeviceInfo is internal to React Native, so a debug build fails here on the first upgrade that renames it or drops the interface.
+// The safe-area frame, which picks the tablet layout, is sent only when it moves in pixels, and a display-size change keeps the window's pixels, so its last frame is forgotten to send it again at the new density.
+// Android draws a field's own text one heavier with Bold text by itself, and React Native's text not at all, so the app draws its heavier faces for both and its own views take no adjustment (sc-19877).
+// A view reads the adjustment from its context when it is made and from the configuration its window hands down on a change, so the root view's parent hands every change down without it.
+// A Modal is a window of its own that hands down the activity's configuration, adjustment and all, so before it draws after a change its views are handed the change again without it.
+const OVERRIDE = `
+  private val applicationChanges = object : ComponentCallbacks {
+    override fun onConfigurationChanged(applicationConfig: Configuration) {
+      takeSizeChanges()
+    }
+
+    override fun onLowMemory() = Unit
+  }
+  private var lastFontScale = 0f
+  private var lastDensityDpi = 0
+  private var forwardPending = false
+  private val modalsKept = WeakHashMap<ViewTreeObserver, Unit>()
+  private val modalsShown = ViewTreeObserver.OnGlobalLayoutListener { keepModalsWithoutBold(settled = true) }
+
+  private class ModalWithoutBold(
+    private val root: View,
+    settled: Boolean,
+  ) : ViewTreeObserver.OnPreDrawListener {
+    private var handled: Configuration? = if (settled) Configuration(root.resources.configuration) else null
+
+    override fun onPreDraw(): Boolean {
+      val config = root.resources.configuration
+      if (config == handled) return true
+      handled = Configuration(config)
+      if (config.fontWeightAdjustment == 0) return true
+      root.dispatchConfigurationChanged(Configuration(config).apply { fontWeightAdjustment = 0 })
+      return false
+    }
+  }
+
+  private class MetricsReadFirst(
+    context: Context,
+    private val laidOutAtNewScale: () -> Unit,
+  ) : FrameLayout(context) {
+    private var laidOutFontScale = Float.NaN
+
+    override fun onMeasure(widthMeasureSpec: Int, heightMeasureSpec: Int) {
+      readMetricsIfMoved()
+      val fontScale = resources.configuration.fontScale
+      val newScale = fontScale != laidOutFontScale
+      if (newScale) getChildAt(0)?.forceLayout()
+      super.onMeasure(widthMeasureSpec, heightMeasureSpec)
+      if (newScale) {
+        if (!laidOutFontScale.isNaN()) laidOutAtNewScale()
+        laidOutFontScale = fontScale
+      }
+    }
+
+    override fun onLayout(changed: Boolean, left: Int, top: Int, right: Int, bottom: Int) {
+      readMetricsIfMoved()
+      super.onLayout(changed, left, top, right, bottom)
+    }
+
+    override fun dispatchConfigurationChanged(newConfig: Configuration) {
+      super.dispatchConfigurationChanged(
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
+          Configuration(newConfig).apply { fontWeightAdjustment = 0 }
+        } else {
+          newConfig
+        },
+      )
+    }
+
+    @Suppress("DEPRECATION")
+    private fun readMetricsIfMoved() {
+      DisplayMetricsHolder.initDisplayMetricsIfNotInitialized(context)
+      val activityMetrics = resources.displayMetrics
+      val reactMetrics = DisplayMetricsHolder.getScreenDisplayMetrics()
+      if (reactMetrics.scaledDensity != activityMetrics.scaledDensity ||
+        reactMetrics.densityDpi != activityMetrics.densityDpi
+      ) {
+        DisplayMetricsHolder.initDisplayMetrics(context)
+      }
+    }
+  }
+
+  override fun setContentView(view: View?) {
+    super.setContentView(
+      view?.let {
+        MetricsReadFirst(this) {
+          reactHost?.currentReactContext?.emitDeviceEvent("${TEXT_SCALE_LAID_OUT}")
+        }.apply {
+          addView(it, ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.MATCH_PARENT)
+        }
+      },
+    )
+  }
+
+  override fun onPostCreate(savedInstanceState: Bundle?) {
+    super.onPostCreate(savedInstanceState)
+    lastFontScale = resources.configuration.fontScale
+    lastDensityDpi = resources.configuration.densityDpi
+    application.registerComponentCallbacks(applicationChanges)
+    window.decorView.viewTreeObserver.addOnGlobalLayoutListener(modalsShown)
+  }
+
+  override fun onConfigurationChanged(newConfig: Configuration) {
+    super.onConfigurationChanged(newConfig)
+    takeSizeChanges()
+    keepModalsWithoutBold(settled = false)
+  }
+
+  override fun onDestroy() {
+    application.unregisterComponentCallbacks(applicationChanges)
+    window.decorView.viewTreeObserver.removeOnGlobalLayoutListener(modalsShown)
+    super.onDestroy()
+  }
+
+  private fun keepModalsWithoutBold(settled: Boolean) {
+    if (Build.VERSION.SDK_INT < Build.VERSION_CODES.S) return
+    for (root in WindowInspector.getGlobalWindowViews()) {
+      val observer = root.viewTreeObserver
+      if (observer in modalsKept || !isModal(root)) continue
+      modalsKept[observer] = Unit
+      observer.addOnPreDrawListener(ModalWithoutBold(root, settled))
+    }
+  }
+
+  private fun isModal(root: View): Boolean {
+    val frame = root.findViewById<ViewGroup>(android.R.id.content)?.getChildAt(0) as? ViewGroup
+    return frame?.getChildAt(0) is ReactModalHostView.DialogRootViewGroup
+  }
+
+  private fun takeSizeChanges() {
+    val activityConfig = resources.configuration
+    DisplayMetricsHolder.initDisplayMetrics(this)
+    if (activityConfig.fontScale != lastFontScale) {
+      reactDelegate?.reactRootView?.requestLayout()
+      forwardPending = true
+    }
+    if (activityConfig.densityDpi != lastDensityDpi) {
+      reactDelegate?.reactRootView?.let { resendSafeAreaFrames(it) }
+      forwardPending = true
+    }
+    lastFontScale = activityConfig.fontScale
+    lastDensityDpi = activityConfig.densityDpi
+    val applicationConfig = application.resources.configuration
+    if (forwardPending &&
+      applicationConfig.fontScale == activityConfig.fontScale &&
+      applicationConfig.densityDpi == activityConfig.densityDpi
+    ) {
+      forwardPending = false
+      forwardSizes()
+    }
+  }
+
+  private fun forwardSizes() {
+    val context = reactHost?.currentReactContext ?: return
+    val deviceInfo = context.getNativeModule("DeviceInfo") as? LifecycleEventListener
+    check(deviceInfo != null || !BuildConfig.DEBUG) {
+      "DeviceInfo no longer listens for resume; a font-size change will not reach JavaScript."
+    }
+    deviceInfo?.onHostResume()
+    reactDelegate?.reactRootView?.requestLayout()
+  }
+
+  private fun resendSafeAreaFrames(view: View) {
+    if (view is SafeAreaProvider) {
+      val lastFrame = runCatching {
+        SafeAreaProvider::class.java.getDeclaredField("mLastFrame").apply { isAccessible = true }
+      }.getOrNull()
+      check(lastFrame != null || !BuildConfig.DEBUG) {
+        "SafeAreaProvider no longer keeps mLastFrame; a display-size change will not move the layout."
+      }
+      lastFrame?.set(view, null)
+      view.invalidate()
+    }
+    if (view is ViewGroup) {
+      for (index in 0 until view.childCount) {
+        resendSafeAreaFrames(view.getChildAt(index))
+      }
+    }
+  }
+`;
+
+// The surface is made in a context without the adjustment, so every view React Native makes in it takes none.
+// The activity keeps the phone's, so the views Android draws for it, the date and time pickers and a field's text menu, follow Bold text as in any other app (sc-34209).
+const SURFACE_WITHOUT_BOLD = `
+            override fun loadApp(appKey: String?) {
+              val host = reactHost
+              if (host != null && appKey != null && Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
+                val withoutBold = ContextThemeWrapper(this@MainActivity, this@MainActivity.theme).apply {
+                  applyOverrideConfiguration(Configuration().apply { fontWeightAdjustment = 0 })
+                }
+                setReactSurface(host.createSurface(withoutBold, appKey, composeLaunchOptions()))
+              }
+              super.loadApp(appKey)
+            }
+          `;
+
+const EMPTY_DELEGATE = /(object : DefaultReactActivityDelegate\([^)]*\)\s*)\{\s*\}/;
+
+// A weight change reaches JavaScript through the bold-text module, which draws the new faces in place, so it needs nothing laid out here.
+const TEXT_CHANGES = ['fontScale', 'density', 'fontWeightAdjustment'];
+
+/** The activity's configChanges with font size, display size and bold text among them, so Android hands each change to the app instead of recreating it. */
+export function withTextChangesHandled(configChanges: string | undefined): string {
+  const changes = (configChanges ?? '').split('|').filter(Boolean);
+
+  return [...changes, ...TEXT_CHANGES.filter((change) => !changes.includes(change))].join('|');
+}
+
+/** MainActivity.kt, passing a configuration change on to JavaScript at once. */
+export function withFontScaleForwarded(source: string): string {
+  if (
+    /override fun (onConfigurationChanged|onPostCreate|onDestroy|setContentView|loadApp)\b/.test(
+      source,
+    )
+  ) {
+    throw new Error(
+      'MainActivity already handles configuration changes, its content view, its creation, its destruction or loading the app; merge the font-scale forward into it.',
+    );
+  }
+  if (!EMPTY_DELEGATE.test(source)) {
+    throw new Error(
+      "MainActivity's delegate is no longer the template's empty DefaultReactActivityDelegate; make its surface without Bold text's adjustment by hand.",
+    );
+  }
+  const missing = IMPORTS.filter((line) => !source.includes(line));
+
+  return source
+    .replace(EMPTY_DELEGATE, (_, opening: string) => `${opening}{${SURFACE_WITHOUT_BOLD}}`)
+    .replace(/^package .+$/m, (line) => [line, ...missing].join('\n'))
+    .replace(/\n}\s*$/, `\n${OVERRIDE}}\n`);
+}
+
+/** Android keeps the open screen through a font-size, display-size or bold-text change, as iOS does through a font-size change, rather than starting the app over. */
+export const withFontScaleKept: ConfigPlugin = (config) => {
+  config = withAndroidManifest(config, (manifest) => {
+    const activity = AndroidConfig.Manifest.getMainActivityOrThrow(manifest.modResults);
+    activity.$['android:configChanges'] = withTextChangesHandled(
+      activity.$['android:configChanges'],
+    );
+
+    return manifest;
+  });
+
+  return withMainActivity(config, (activity) => {
+    if (activity.modResults.language !== 'kt') {
+      throw new Error('withFontScaleKept expects a Kotlin MainActivity.');
+    }
+    activity.modResults.contents = withFontScaleForwarded(activity.modResults.contents);
+
+    return activity;
+  });
+};

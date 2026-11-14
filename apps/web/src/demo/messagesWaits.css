@@ -1,0 +1,60 @@
+.mg-waits {
+  display: flex;
+  flex-direction: column;
+  gap: var(--spaceXs);
+}
+
+.mg-waits-either,
+.mg-waits-line,
+.mg-waits-asked {
+  display: flex;
+  align-items: flex-start;
+  gap: var(--spaceXs);
+  margin: 0;
+  color: var(--colorInk);
+  font: 500 13.5px/1.4 var(--fontFamily);
+  font-variant-numeric: tabular-nums;
+}
+
+.mg-waits-line {
+  font-weight: 600;
+}
+
+.mg-waits-either svg,
+.mg-waits-line svg,
+.mg-waits-asked svg {
+  flex: none;
+  margin-top: 1px;
+}
+
+.mg-waits-either svg {
+  color: var(--colorInkSecondary);
+}
+
+.mg-waits-line svg {
+  color: var(--colorAttention);
+}
+
+.mg-waits-asked svg {
+  color: var(--colorAccent);
+}
+
+.mg-waits-past {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--spaceXs) 18px;
+}
+
+.mg .mg-waits-without {
+  min-height: var(--sizeHit);
+  padding: 0 var(--spaceXxl);
+  border-radius: var(--radiusPill);
+  font: 600 15px/1 var(--fontFamily);
+}
+
+.mg-waits-ask {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+}
