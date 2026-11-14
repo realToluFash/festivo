@@ -36,6 +36,19 @@ describe('The invitation Send on WhatsApp writes (sc-26025)', () => {
     expect(whatsAppMessage(guestIn('pt'), EVENT, LINK)).toContain('14 de novembro de 2030');
   });
 
+  it('has a sentence for one host as for several, in every language, so each can agree its verb', () => {
+    const alone = { ...EVENT, hosts: ['Amara Okafor'] };
+
+    for (const language of ['en', 'es', 'fr', 'pt']) {
+      expect(whatsAppMessage(guestIn(language), alone, LINK)).toMatch(
+        /^Yusuf Ibrahim, Amara Okafor /u,
+      );
+      expect(whatsAppMessage(guestIn(language), EVENT, LINK)).toMatch(
+        /^Yusuf Ibrahim, Amara Okafor /u,
+      );
+    }
+  });
+
   it('dates the event by its own zone, not the browser’s', () => {
     const late = { ...EVENT, startsAt: '2030-11-14T23:30:00+00:00', timeZone: 'Africa/Lagos' };
 

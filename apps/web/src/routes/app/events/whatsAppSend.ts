@@ -1,5 +1,5 @@
 import type { GuestDetails, OrganisationEvent } from '@soirely/api-client';
-import { hostsLine, narrowLocale, pluralLocale } from '@soirely/domain';
+import { copyLocale, hostsLine, narrowLocale } from '@soirely/domain';
 import i18next from 'i18next';
 
 export type InvitationEvent = Pick<OrganisationEvent, 'name' | 'hosts' | 'startsAt' | 'timeZone'>;
@@ -11,12 +11,13 @@ export function whatsAppMessage(
   link: string,
 ): string {
   const language = narrowLocale(guest.messageLanguage ?? guest.organisationLanguage);
-  const date = new Intl.DateTimeFormat(language === 'en' ? 'en-GB' : pluralLocale(language), {
+  const date = new Intl.DateTimeFormat(copyLocale(language), {
     dateStyle: 'long',
     timeZone: event.timeZone,
   }).format(new Date(event.startsAt));
 
   return i18next.getFixedT(language)('guestList.whatsAppMessage', {
+    count: event.hosts.length,
     greeting: guest.fullName,
     hosts: hostsLine(event.hosts, language),
     event: event.name,

@@ -2836,7 +2836,8 @@
     "sentOnWhatsApp": "Sent to {{name}} on WhatsApp?",
     "notSent": "Not sent",
     "ifNotOpened": "If WhatsApp didn’t open, use Copy invitation link instead.",
-    "whatsAppMessage": "{{greeting}}, {{hosts}} would love you to come to {{event}} on {{date}}. Your own page, to reply and see the details: {{link}}",
+    "whatsAppMessage_one": "{{greeting}}, {{hosts}} would love you to come to {{event}} on {{date}}. Your own page, to reply and see the details: {{link}}",
+    "whatsAppMessage_other": "{{greeting}}, {{hosts}} would love you to come to {{event}} on {{date}}. Your own page, to reply and see the details: {{link}}",
     "how": {
       "whatsapp": "WhatsApp",
       "textMessage": "Text message",
