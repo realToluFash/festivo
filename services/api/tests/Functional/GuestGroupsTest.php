@@ -279,17 +279,42 @@ final class GuestGroupsTest extends ApiTestCase
     }
 
     #[Test]
-    public function aDuplicatedEventCopiesTheGroupsEmpty(): void
+    public function aDuplicateWithItsGuestsKeepsEachInTheirGroup(): void
+    {
+        $work = $this->make('Work');
+        $this->make('Family');
+        $this->add(['fullName' => 'Bisi', 'group' => ['id' => $work], 'companions' => [['fullName' => 'Tunde']]]);
+        $this->add(['fullName' => 'Kemi']);
+
+        $this->duplicate(true);
+
+        self::assertSame(['Family', 'Work'], $this->names());
+        self::assertSame(['people' => 0, 'guests' => 0, 'companions' => 0], $this->countsOf($this->idOf('Family')));
+        self::assertSame(['people' => 2, 'guests' => 1, 'companions' => 1], $this->countsOf($this->idOf('Work')));
+        $groupOf = [];
+        foreach (Type\vec(Type\shape(['fullName' => Type\string(), 'group' => Type\optional(Type\nullable(Type\shape(['name' => Type\string()], true)))], true))->coerce($this->list()['guests'] ?? []) as $guest) {
+            $groupOf[$guest['fullName']] = $guest['group']['name'] ?? null;
+        }
+        self::assertSame(['Bisi' => 'Work', 'Kemi' => null], $groupOf);
+    }
+
+    #[Test]
+    public function aDuplicateWithoutItsGuestsHasTheGroupsEmpty(): void
     {
         $work = $this->make('Work');
         $this->add(['fullName' => 'Bisi', 'group' => ['id' => $work]]);
 
-        $copy = $this->as($this->owner, 'POST', '/api/events/' . $this->eventId . '/duplicate', ['startsAt' => '2027-05-15T16:00', 'copyGuests' => true]);
-        self::assertSame(201, $this->statusCode(), Json\encode($copy));
-        $this->eventId = Type\shape(['id' => Type\string()], true)->coerce($copy['event'] ?? null)['id'];
+        $this->duplicate(false);
 
         self::assertSame(['Work'], $this->names());
-        self::assertSame([['people' => 0, 'guests' => 0, 'companions' => 0]], Vec\map(Type\vec(Type\shape(['counts' => Type\mixed()], true))->coerce($this->list()['groups'] ?? []), static fn (array $row): mixed => $row['counts']));
+        self::assertSame(['people' => 0, 'guests' => 0, 'companions' => 0], $this->countsOf($this->idOf('Work')));
+    }
+
+    private function duplicate(bool $copyGuests): void
+    {
+        $copy = $this->as($this->owner, 'POST', '/api/events/' . $this->eventId . '/duplicate', ['startsAt' => '2027-05-15T16:00', 'copyGuests' => $copyGuests]);
+        self::assertSame(201, $this->statusCode(), Json\encode($copy));
+        $this->eventId = Type\shape(['id' => Type\string()], true)->coerce($copy['event'] ?? null)['id'];
     }
 
     private function make(string $name): string
