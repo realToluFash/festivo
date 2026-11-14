@@ -2374,6 +2374,37 @@
     "heldLine": "Held · comes only if their host accepts",
     "heldAway": "{{guestOf}} · {{held}}",
     "offlineRefused": "You are offline. Nothing was saved.",
-    "offlineRefusedLine": "Your changes stay in this form. Save again once you are connected."
+    "offlineRefusedLine": "Your changes stay in this form. Save again once you are connected.",
+    "invitation": "Invitation",
+    "invitedBy": "Invited by {{name}}, {{how}}, {{date}}",
+    "invitedHow": "Invited, {{how}}, {{date}}",
+    "invitedByMessage": "Invited by Soirely’s message, {{date}}",
+    "invitedWhenReplied": "Invited when they replied, {{date}}",
+    "copyFirst": "Copying their link does not mark them. Mark them once you have sent it.",
+    "markAsInvited": "Mark as invited",
+    "markLine": "How you invited them, so they count as invited",
+    "howInvited": "How did you invite them?",
+    "howInvitedBlank": "Choose how you invited them.",
+    "markNotSaved": "Not saved. They are still Not yet invited. Try again.",
+    "how": {
+      "whatsapp": "WhatsApp",
+      "textMessage": "Text message",
+      "email": "Email",
+      "inPerson": "In person",
+      "other": "Other"
+    },
+    "howMid": {
+      "whatsapp": "WhatsApp",
+      "textMessage": "text message",
+      "email": "email",
+      "inPerson": "in person",
+      "other": "another way"
+    },
+    "markNotInvited": "Mark as not invited",
+    "unmarked": "Marked as not invited.",
+    "unmarkRefused": "Not changed. {{name}} replied {{reply}} on {{date}}, so they stay invited.",
+    "readOnlyInvited": "You can see names, replies and who is invited. Marking guests as invited needs the Lead or Can edit role.",
+    "pausedLine": "Guests can’t be invited while this event is paused.",
+    "finishedLine": "This event has finished, so guests can’t be invited."
   }
 }

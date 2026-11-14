@@ -34,6 +34,7 @@ import { type HowAgreed, NO_CONSENT, type WhatsAppConsent, hostAgreed } from './
 import type { DemoLink } from './settings.ts';
 import { type ExportStart, XW, exportDay, fileName } from './guestExport.ts';
 import { type Change, changeLabel, changeWhen } from './changedSince.ts';
+import { type Removed, type Removing, arrivedIn, removeGuest } from './guestRemove.ts';
 import {
   type GroupFieldStart,
   type GroupFilter,
@@ -1524,7 +1525,8 @@ function nextDay(iso: string): string {
 
 /** member: a member without guests.manage (sc-3784), who exports without the needs columns. */
 export type Role = 'owner' | 'member' | 'viewer' | 'staff';
-export type GuestNote = 'recorded' | 'notReplaced' | 'linkReplaced' | 'unmarked' | 'unmarkRefused';
+export type GuestNote =
+  'recorded' | 'notReplaced' | 'linkReplaced' | 'unmarked' | 'unmarkRefused' | 'backOnList';
 export type Invite = 'copied' | 'refused' | 'mark' | 'markRefused' | 'markNotSaved';
 
 export interface EditStart {
@@ -1611,6 +1613,10 @@ export interface GuestsStart {
   /** sc-3775: the event's groups, and the chip pressed. */
   groups: GuestGroup[];
   groupFilter: GroupFilter | null;
+  /** sc-3774: Remove's question open, and what the next Remove meets. */
+  removing: Removing | null;
+  /** sc-3774: a guest just removed, Undo open. */
+  undo: Removed | null;
 }
 
 export const THEIRS = { email: 'kwame.mensha@outlook.com', number: '7700 900518' } as const;
@@ -1877,6 +1883,19 @@ export const GUESTS_STATES = [
   { key: 'groupsDeleteEmpty', name: 'Delete Cousins? No one in it' },
   { key: 'groupsViewer', name: 'Groups without guests.manage: seen, not changed' },
   { key: 'groupsViewerFirst', name: 'Groups without guests.manage, none yet' },
+  { key: 'removeOffered', name: 'Dr Emeka Nwosu: Remove from the list at the foot of Details' },
+  { key: 'removeAsk', name: 'Remove Dr Emeka Nwosu? Their reply and a Held companion' },
+  { key: 'removeAskSeated', name: 'Remove Inês Duarte? Rui Duarte seated, a meal chosen' },
+  { key: 'removeAskUnnamed', name: 'Remove Alhaji Musa Bello? An unnamed Guest of' },
+  { key: 'removeAskAlone', name: 'Remove Kwame Mensah? Their reply only' },
+  { key: 'removed', name: 'Removed: Undo and its 10 seconds, focus on Undo' },
+  { key: 'removeUndone', name: 'Undo pressed: back on the list, the details reopened' },
+  { key: 'removeArrived', name: 'Kwame Mensah has arrived: Arrival · Arrived, no Remove' },
+  { key: 'removeArrives', name: 'They arrive while the question is open: Remove meets a 409' },
+  { key: 'removeRefusedArrived', name: 'Refused: has just arrived, Back to their details' },
+  { key: 'removeGoes', name: 'Someone else removed them first: Remove meets a 404' },
+  { key: 'removeRefusedGone', name: 'Refused: already removed by someone else, Back to guests' },
+  { key: 'removeViewer', name: 'Without guests.manage: no Remove' },
 ] as const;
 
 export type GuestsState = (typeof GUESTS_STATES)[number]['key'];
@@ -1924,6 +1943,8 @@ export function guestsStart(state: GuestsState | null, params: URLSearchParams):
     paused: false,
     groups: [],
     groupFilter: null,
+    removing: null,
+    undo: null,
   };
   const column = (pane: Pane, more: Partial<GuestsStart> = {}): GuestsStart => ({
     ...start,
@@ -2494,6 +2515,58 @@ export function guestsStart(state: GuestsState | null, params: URLSearchParams):
       return groupsPane({}, { role: 'viewer' });
     case 'groupsViewerFirst':
       return groupsPane({}, { role: 'viewer', groups: [], list: start.list });
+    case 'removeOffered':
+      return column(guestPane('emeka'));
+    case 'removeAsk':
+      return column(guestPane('emeka'), { removing: { id: 'emeka', ends: 'removes' } });
+    case 'removeAskSeated':
+      return column(guestPane('ines'), {
+        choice: 'coming',
+        removing: { id: 'ines', ends: 'removes' },
+      });
+    case 'removeAskUnnamed':
+      return column(guestPane('musa'), {
+        choice: 'coming',
+        removing: { id: 'musa', ends: 'removes' },
+      });
+    case 'removeAskAlone':
+      return column(guestPane('kwame'), {
+        choice: 'coming',
+        removing: { id: 'kwame', ends: 'removes' },
+      });
+    case 'removed': {
+      const after = removeGuest(start.list, 'emeka');
+
+      return column({ kind: 'none' }, { list: after.list, undo: after.removed });
+    }
+    case 'removeUndone':
+      return column(guestPane('emeka', { note: 'backOnList' }));
+    case 'removeArrived':
+      return column(guestPane('kwame'), {
+        choice: 'coming',
+        clock: CLOCK_DAY1,
+        card: 'day1',
+        list: arrivedIn(start.list, 'kwame', '18:05'),
+      });
+    case 'removeArrives':
+      return column(guestPane('kwame'), {
+        choice: 'coming',
+        removing: { id: 'kwame', ends: 'arrived' },
+      });
+    case 'removeRefusedArrived':
+      return column(guestPane('kwame'), {
+        choice: 'coming',
+        list: arrivedIn(start.list, 'kwame', '18:05'),
+        removing: { id: 'kwame', ends: 'arrived', refused: 'arrived' },
+      });
+    case 'removeGoes':
+      return column(guestPane('tomas'), { removing: { id: 'tomas', ends: 'gone' } });
+    case 'removeRefusedGone':
+      return column(guestPane('tomas'), {
+        removing: { id: 'tomas', ends: 'gone', refused: 'gone' },
+      });
+    case 'removeViewer':
+      return column(guestPane('kwame'), { choice: 'coming', role: 'viewer' });
   }
 }
 
@@ -2718,6 +2791,21 @@ export const GUESTS_PAGES: readonly { name: string; states: readonly DemoLink[] 
     'inviteGuestMobile',
     'inviteGuestInvited',
     'inviteNoneLeft',
+  ]),
+  group('Remove from the list (sc-3774)', [
+    'removeOffered',
+    'removeAsk',
+    'removeAskSeated',
+    'removeAskUnnamed',
+    'removeAskAlone',
+    'removed',
+    'removeUndone',
+    'removeArrived',
+    'removeArrives',
+    'removeRefusedArrived',
+    'removeGoes',
+    'removeRefusedGone',
+    'removeViewer',
   ]),
   group('Send on WhatsApp (sc-26025)', [
     'sendNone',

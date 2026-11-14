@@ -26,6 +26,7 @@ import {
   dietary,
   eventAllows,
   firstProblem,
+  invitationLine,
   isListed,
   makeLiveRow,
   newGuestOf,
@@ -81,7 +82,6 @@ import { useMakeLive } from './MakeLive.tsx';
 import { GroupChips, GroupField, GroupTag, GroupsColumn } from './GuestGroups.tsx';
 import { choiceLine, groupRefusal, listOpen } from './guestGroups.ts';
 import { GuestColumn, ReplyMark, guestAddress } from './GuestColumn.tsx';
-import { invitationLine } from './GuestInvitation.tsx';
 import {
   CompanionField,
   GuestField,
@@ -1181,7 +1181,7 @@ function RowsFrom({
           timeZone,
           dateLocale(),
           choice !== 'noReply',
-          companion == null ? invitationLine(t, guest, timeZone) : null,
+          companion == null ? invitationLine(t, guest, timeZone, dateLocale()) : null,
         );
 
         if (companion == null)
