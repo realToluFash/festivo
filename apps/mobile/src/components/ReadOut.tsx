@@ -10,7 +10,7 @@ import {
 } from '../kit/readOut.ts';
 import { onceKeysDownThen } from './keyboardWatch.ts';
 
-/** Hands words to the screen reader to say, without moving its focus; the returned function takes them back unsaid. With `afterKeysDown`, the wait runs from the keys going down, when they are going down, as TalkBack drops words handed over just before the window grows under keys that close late (sc-43907). */
+/** Hands words to the screen reader to say, without moving its focus; the returned function takes them back unsaid. Pass `afterKeysDown` only for words handed over as the keys go down: the wait then runs from their going down, as TalkBack drops words handed over just before the window grows under keys that close late (sc-43907). */
 export function readOut(
   words: string,
   {

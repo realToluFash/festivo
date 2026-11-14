@@ -133,7 +133,7 @@ export function EventForm({
   const [hostErrors, setHostErrors] = useState<HostErrors>({});
   const [hostsChecked, setHostsChecked] = useState(false);
   const [focusHost, setFocusHost] = useState<{ key: number } | null>(null);
-  const [unsent, setUnsent] = useState<{ count: number } | null>(null);
+  const [unsent, setUnsent] = useState<{ count: number; keysGoDown: boolean } | null>(null);
   const [status, setStatus] = useState<Status>('editing');
   const readerOn = useScreenReaderOn();
   const [linesInSummary, setLinesInSummary] = useState(false);
@@ -331,7 +331,8 @@ export function EventForm({
     if (line != null) readOut(line);
   }
 
-  function refuse(found: EventErrors, hostFound: HostErrors = {}, saidFirst?: string): void {
+  /** Returns whether the keys go down for the field it focuses: only a field not typed in puts them down. */
+  function refuse(found: EventErrors, hostFound: HostErrors = {}, saidFirst?: string): boolean {
     setErrors(found);
     setHostErrors(hostFound);
     const first = firstRefusedOf(found, hostFound, hosts);
@@ -341,6 +342,8 @@ export function EventForm({
     );
     setFocusOn(onField != null ? { field: onField, saidFirst } : null);
     setFocusHost(first != null && 'host' in first ? { key: first.host } : null);
+
+    return onField != null && !typedIn(onField);
   }
 
   function editHosts(rows: HostRow[], touched: number | null): void {
@@ -369,11 +372,15 @@ export function EventForm({
     setHostsChecked(true);
 
     if (count > 0) {
-      setUnsent({ count });
       setStatus('editing');
       const summary = t('eventForm.problems', { count });
       if (Platform.OS === 'android' && readerOn) setRefusedUnderReader({});
-      refuse(found, hostFound, Platform.OS !== 'android' || readerOn ? summary : undefined);
+      const keysGoDown = refuse(
+        found,
+        hostFound,
+        Platform.OS !== 'android' || readerOn ? summary : undefined,
+      );
+      setUnsent({ count, keysGoDown });
       return;
     }
 
@@ -478,7 +485,9 @@ export function EventForm({
           </ReadOut>
         </InSight>
       )}
-      {problems != null && <ReadOut words={problems} answer={unsent} afterKeysDown />}
+      {problems != null && (
+        <ReadOut words={problems} answer={unsent} afterKeysDown={unsent?.keysGoDown} />
+      )}
 
       <View style={cardFrame(kind)}>
         <Field
