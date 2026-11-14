@@ -30,9 +30,9 @@ import {
   filterCount,
   filterWord,
   filtersFor,
+  inViewOf,
   showAllWords,
 } from './GuestsModel.ts';
-import { inViewOf } from './GuestExportModel.ts';
 import { GroupHead, type Layout, ShownLine } from './GuestsParts.tsx';
 import { REPLY_WORD, W, say } from './GuestsWords.ts';
 import { MarkSlot } from '../../components/ReplyMark.tsx';

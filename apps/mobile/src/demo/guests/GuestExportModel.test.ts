@@ -8,12 +8,11 @@ import {
   exportDay,
   exportStart,
   fileName,
-  inViewOf,
   narrowing,
   scopeFor,
 } from './GuestExportModel.ts';
 import { GUESTS_BOARDS } from './GuestsBoards.ts';
-import { areaStart, guestsStateOf, roleOf } from './GuestsModel.ts';
+import { areaStart, guestsStateOf, inViewOf, roleOf } from './GuestsModel.ts';
 
 describe('the app’s guest export (sc-3784)', () => {
   it('names the file by the event and today in the event’s zone', () => {

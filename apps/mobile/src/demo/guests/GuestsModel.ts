@@ -412,6 +412,26 @@ export function filtersFor(counts: Counts): FilterKey[] {
     : [...FILTERS];
 }
 
+/** The people This view holds, and the "{n} of {total} shown" line the list draws above it. */
+export function inViewOf({
+  filter,
+  searched,
+  rows,
+  filtered,
+  total,
+}: {
+  filter: ListFilter;
+  searched: string;
+  rows: number;
+  filtered: number;
+  total: number;
+}): number {
+  const looking = filter !== 'all' || searched.trim() !== '';
+  if (!looking) return total;
+  if (rows === 0) return 0;
+  return searched.trim() === '' && filter !== 'changed' ? filtered : rows;
+}
+
 export function filterWord(key: ListFilter): string {
   if (key === 'changed') return W.changedSince;
   if (key === 'all') return 'All';
