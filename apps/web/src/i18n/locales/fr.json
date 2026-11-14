@@ -245,7 +245,10 @@
     "venueZoneKeep": "Conserver {{zone}}",
     "venueZoneSet": "Fuseau horaire défini sur {{zone}}.",
     "venueNameTooLong": "Raccourcissez le nom du lieu à {{most, number}} caractères maximum.",
-    "venueAddressTooLong": "Raccourcissez l’adresse à {{most, number}} caractères maximum."
+    "venueAddressTooLong": "Raccourcissez l’adresse à {{most, number}} caractères maximum.",
+    "arrivalNote": "Arrival note",
+    "arrivalNoteHint": "How to find the entrance, where to park, when the doors open. Every guest sees this on their page.",
+    "arrivalNoteTooLong": "Shorten the arrival note to {{most, number}} characters or fewer."
   },
   "eventTypes": {
     "wedding": "Mariage",

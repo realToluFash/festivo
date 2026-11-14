@@ -16,6 +16,7 @@ import { Glyph, type GlyphName } from './Glyph.tsx';
 import { Ask, Chevron, Head, RowWords, TextAction } from './SettingsParts.tsx';
 import './eventsDesk.css';
 import './eventPage.css';
+import './arrivalNote.css';
 
 /** The page's way back: Events, then the event's name as where you are once it has loaded. */
 export function Crumb({

@@ -17,6 +17,8 @@ import {
   isEventType,
   localDateTime,
   type VenueDraft,
+  arrivalNoteSent,
+  arrivalNoteTooLong,
   venueDraftOf,
   venueSent,
 } from '@soirely/domain';
@@ -202,6 +204,7 @@ function EventForm({ organisation }: { organisation: Membership }) {
     const land = focusWhereSent();
 
     const sentVenue = venueSent(venue);
+    const sentNote = arrivalNoteSent(venue.note);
 
     try {
       const created = await api.createEvent(organisation.id, {
@@ -212,6 +215,7 @@ function EventForm({ organisation }: { organisation: Membership }) {
         timeZone,
         currency,
         ...(sentVenue == null ? {} : { venue: sentVenue }),
+        ...(sentNote == null ? {} : { arrivalNote: sentNote }),
         hosts: hostsSent(sentHosts.map((row) => row.name)),
       });
 
@@ -380,6 +384,9 @@ function EventForm({ organisation }: { organisation: Membership }) {
               ...previous,
               ...('name' in change ? { venueName: undefined } : {}),
               ...('address' in change ? { venueAddress: undefined } : {}),
+              ...(change.note != null && !arrivalNoteTooLong(change.note)
+                ? { arrivalNote: undefined }
+                : {}),
             }));
           }}
           onUseZone={(zone) => {

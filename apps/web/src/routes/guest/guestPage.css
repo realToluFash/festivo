@@ -1187,3 +1187,16 @@
 :where(.guest-page) .gp-closed > .gp-text + .gp-sub {
   margin-top: 2px;
 }
+
+/* sc-24385: the host's arrival note, in an inset under the Where line, its line breaks kept */
+:where(.guest-page) .gp-note {
+  margin: 4px 0 12px 40px;
+  padding: 12px 14px;
+  border: 1px solid var(--colorBorder);
+  border-radius: 14px;
+  background: var(--colorInset);
+  color: var(--colorInk);
+  font: 400 16px/1.5 var(--fontFamily);
+  white-space: pre-line;
+  overflow-wrap: anywhere;
+}

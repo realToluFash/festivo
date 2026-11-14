@@ -11,6 +11,7 @@ import {
   type HostRow,
   type VenueDraft,
   addressLookup,
+  arrivalNoteTooLong,
   coverTypeOf,
   draftOf,
   eventChanges,
@@ -75,7 +76,7 @@ function typedOf(event: OrganisationEvent): Typed {
     draft: draftOf(event),
     timeZone: event.timeZone,
     currency: event.currency,
-    venue: venueDraftOf(event.venue),
+    venue: venueDraftOf(event.venue, event.arrivalNote),
   };
 }
 
@@ -467,13 +468,15 @@ export function VenuePart({
 }: PartProps & { over: boolean }) {
   const { t } = useTranslation();
   const id = useId();
-  const savedVenue = venueDraftOf(event.venue);
+  const savedVenue = venueDraftOf(event.venue, event.arrivalNote);
   const [venue, setVenue] = useState(savedVenue);
   const [zone, setZone] = useState(event.timeZone);
   const [zoneSet, setZoneSet] = useState<string | null>(null);
   const [errors, setErrors] = useState<Errors>({});
+  const [said, setSaid] = useState('');
   const [seen, setSeen] = useState(NOTHING_SEEN);
   const field = useRef<HTMLInputElement>(null);
+  const noteBox = useRef<HTMLTextAreaElement>(null);
   const { busy, save, latest } = useSave({ event, tag, onSaved });
   const outcome = useOutcome(onLatest, latest);
   const [lookup] = useState(() =>
@@ -497,22 +500,31 @@ export function VenuePart({
   const changed =
     venue.name !== savedVenue.name ||
     venue.address !== savedVenue.address ||
+    venue.note !== savedVenue.note ||
     zone !== event.timeZone;
 
   useDirty(changed, onDirty);
   useEffect(() => () => lookup.stop(), [lookup]);
 
-  async function send(): Promise<void> {
-    const typed = { ...typedOf(event), venue, timeZone: zone };
-    const found = only(eventFormErrors(typed, t), ['venueName', 'venueAddress']);
+  function refused(found: Errors): void {
+    const count = Object.keys(found).length;
 
     setErrors(found);
+    setSaid(count === 0 ? '' : t('eventForm.problems', { count }));
+    if (found.arrivalNote != null) noteBox.current?.focus();
+  }
+
+  async function send(): Promise<void> {
+    const typed = { ...typedOf(event), venue, timeZone: zone };
+    const found = only(eventFormErrors(typed, t), ['venueName', 'venueAddress', 'arrivalNote']);
+
+    refused(found);
     if (Object.keys(found).length > 0) return;
 
     const saving = await save(typed, null);
 
     outcome.took(saving);
-    if (saving.kind === 'refused') setErrors(saving.errors);
+    if (saving.kind === 'refused') refused(saving.errors);
   }
 
   return (
@@ -609,6 +621,47 @@ export function VenuePart({
           </ul>
         )}
       </div>
+      <div className="desk-field">
+        <label htmlFor={`${id}-note`} className="desk-label">
+          {t('eventForm.arrivalNote')}
+          <span className="ev-optional">{` · ${t('eventForm.optional')}`}</span>
+        </label>
+        <div
+          className={
+            errors.arrivalNote == null ? 'desk-box ev-note-box' : 'desk-box ev-note-box is-wrong'
+          }
+        >
+          <textarea
+            ref={noteBox}
+            id={`${id}-note`}
+            rows={4}
+            value={venue.note}
+            aria-invalid={errors.arrivalNote != null}
+            aria-describedby={
+              errors.arrivalNote == null ? `${id}-note-help` : `${id}-note-error ${id}-note-help`
+            }
+            onChange={(change) => {
+              const note = change.target.value;
+
+              setVenue((was) => ({ ...was, note }));
+              if (!arrivalNoteTooLong(note))
+                setErrors((was) => ({ ...was, arrivalNote: undefined }));
+            }}
+          />
+        </div>
+        {errors.arrivalNote != null && (
+          <p id={`${id}-note-error`} className="desk-error">
+            <Glyph name="alert" size={15} weight={2.2} />
+            {errors.arrivalNote}
+          </p>
+        )}
+        <p id={`${id}-note-help`} className="desk-help">
+          {t('eventForm.arrivalNoteHint')}
+        </p>
+      </div>
+      <p className="visually-hidden" role="status">
+        {said}
+      </p>
       {offer != null && (
         <Quiet
           action={
