@@ -79,7 +79,14 @@ export interface EventCard {
   live: boolean;
   draft: boolean;
   stage: string | null;
-  ready: { words: string; percent: number } | null;
+  ready: {
+    words: string;
+    /** What a screen reader says for the line, when that is not its words. */
+    spoken?: string;
+    percent: number;
+    /** The bar's track drawn at 0% too, so invited with no replies reads apart from not sent (sc-29881). */
+    track?: boolean;
+  } | null;
 }
 
 export interface RailStop {

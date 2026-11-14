@@ -547,12 +547,12 @@ function StageChip({ stage, onCover, small }: { stage: string; onCover: boolean;
   );
 }
 
-function Readiness({ card, full }: { card: EventCard; full: boolean }) {
-  if (!full || card.ready == null) return null;
+function Readiness({ card }: { card: EventCard }) {
+  if (card.ready == null) return null;
 
   return (
     <View style={styles.ready}>
-      {card.ready.percent > 0 && (
+      {(card.ready.percent > 0 || card.ready.track === true) && (
         <View style={styles.track}>
           <View
             style={[
@@ -562,14 +562,19 @@ function Readiness({ card, full }: { card: EventCard; full: boolean }) {
           />
         </View>
       )}
-      <Text size={TYPE.meta} weight="medium" style={styles.secondary}>
+      <Text
+        size={TYPE.meta}
+        weight="medium"
+        style={styles.secondary}
+        accessibilityLabel={card.ready.spoken}
+      >
         {card.ready.words}
       </Text>
     </View>
   );
 }
 
-function Tile({ card, full }: { card: EventCard; full: boolean }) {
+function Tile({ card }: { card: EventCard }) {
   const { open } = useTodayShell();
 
   return (
@@ -592,13 +597,13 @@ function Tile({ card, full }: { card: EventCard; full: boolean }) {
         <Text size={13} weight="medium" style={[styles.secondary, styles.dates]}>
           {card.dates}
         </Text>
-        <Readiness card={card} full={full} />
+        <Readiness card={card} />
       </View>
     </Pressable>
   );
 }
 
-function Row({ card, full, last }: { card: EventCard; full: boolean; last: boolean }) {
+function Row({ card, last }: { card: EventCard; last: boolean }) {
   const { open } = useTodayShell();
 
   return (
@@ -619,7 +624,7 @@ function Row({ card, full, last }: { card: EventCard; full: boolean; last: boole
           <CountChip card={card} onCover={false} small />
           {card.stage != null && <StageChip stage={card.stage} onCover={false} small />}
         </View>
-        <Readiness card={card} full={full} />
+        <Readiness card={card} />
       </View>
     </Pressable>
   );
@@ -636,7 +641,7 @@ export function YourEvents({
 }) {
   const { t } = useTranslation();
   const { open } = useTodayShell();
-  const { events, full } = moment;
+  const { events } = moment;
 
   return (
     <>
@@ -654,13 +659,13 @@ export function YourEvents({
           contentContainerStyle={styles.carouselRow}
         >
           {events.map((card) => (
-            <Tile key={card.event.id} card={card} full={full} />
+            <Tile key={card.event.id} card={card} />
           ))}
         </ScrollView>
       ) : (
         <Panel style={styles.list}>
           {events.map((card, index) => (
-            <Row key={card.event.id} card={card} full={full} last={index === events.length - 1} />
+            <Row key={card.event.id} card={card} last={index === events.length - 1} />
           ))}
         </Panel>
       )}
