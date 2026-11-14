@@ -846,11 +846,13 @@ function rowOf(
 
   if (person.companion != null)
     line =
-      person.reply === 'held'
-        ? GW.heldLine
-        : !indent && person.companion.name != null
-          ? GW.guestOf(person.guest.name)
-          : word;
+      indent || person.companion.name == null
+        ? person.reply === 'held'
+          ? GW.heldLine
+          : word
+        : person.reply === 'held'
+          ? `${GW.guestOf(person.guest.name)} · ${GW.heldLine}`
+          : GW.guestOf(person.guest.name);
   else if (mode === 'noReply') line = invitedLine(person.guest.invited ?? BY_MESSAGE);
   else {
     const short =
