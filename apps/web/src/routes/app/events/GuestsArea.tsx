@@ -619,7 +619,7 @@ export function GuestsArea({
                       aria-label={guests.find((one) => one.id === open)?.fullName}
                     >
                       {open == null ? (
-                        <p className="gs-pick">{t('guestList.pick')}</p>
+                        shown > 0 && <p className="gs-pick">{t('guestList.pick')}</p>
                       ) : (
                         <GuestColumn
                           key={open}
@@ -971,12 +971,15 @@ function Rows({
           guest.companions.map((one) => one.fullName),
           person.at,
         );
-        const line =
-          indent || companion.fullName == null
-            ? t(REPLY_KEY[companion.state])
-            : companion.state === 'held'
-              ? t('guestList.heldLine')
-              : t('guestList.guestOf', { host: guest.fullName });
+        const hostShown = t('guestList.guestOf', { host: guest.fullName });
+        const away = !indent && companion.fullName != null;
+        let line = t(REPLY_KEY[companion.state]);
+
+        if (companion.state === 'held')
+          line = away
+            ? t('guestList.heldAway', { guestOf: hostShown, held: t('guestList.heldLine') })
+            : t('guestList.heldLine');
+        else if (away) line = hostShown;
 
         return (
           <li key={companion.id} className={indent ? 'is-companion' : undefined}>

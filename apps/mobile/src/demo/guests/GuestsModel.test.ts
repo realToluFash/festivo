@@ -352,6 +352,10 @@ describe('the list: groups, the filter and search (sc-3772)', () => {
       'Guest of Chief Mrs Folasade Okonkwo-Williams',
       'Adanna Nwosu',
     ]);
+    expect(rowsOf(GUESTS, 'held', '', EN, REPLY_BY).map((row) => row.line)).toEqual([
+      'Held · comes only if their host accepts',
+      'Guest of Dr Emeka Nwosu · Held · comes only if their host accepts',
+    ]);
   });
 
   it('finds by name, email address or number, and nobody for kofi or Held and marta', () => {

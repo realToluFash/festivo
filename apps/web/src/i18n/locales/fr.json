@@ -704,9 +704,9 @@
     "phonePrimaryLine": "Principal · sur votre profil",
     "phoneOtherLine": "Pour vous joindre",
     "notVerifiedYet": "{{shown}} reste à vérifier.",
-    "undeliverable": "Nous n’avons pas pu remettre d’e-mail à {{address}}.",
+    "undeliverable": "Nos e-mails ne parviennent pas à {{address}}.",
     "changeEmail": "Changer d’adresse",
-    "changeEmailFor": "Changer d’adresse, à la place de {{address}}",
+    "changeEmailFor": "Changer d’adresse, au lieu de {{address}}",
     "verifiedAlternative": "{{address}} est vérifiée. Elle ne deviendra votre adresse principale que si vous la définissez comme telle.",
     "verifiedAlternativePhone": "{{number}} est vérifié. Il ne deviendra votre numéro principal que si vous le définissez comme tel.",
     "save": "Enregistrer",
@@ -2924,7 +2924,7 @@
     "countCompanions_other": "{{count, number}} accompagnants",
     "countCompanions_many": "{{count, number}} d’accompagnants",
     "everyoneReplied": "Tout le monde a répondu.",
-    "find": "Rechercher un invité",
+    "find": "Rechercher",
     "clearSearch": "Effacer la recherche",
     "shown": "Affichage : {{shown, number}} sur {{total, number}}",
     "clear": "Effacer",
@@ -2934,6 +2934,7 @@
     "showAll_one": "Afficher {{count, number}}",
     "showAll_other": "Afficher les {{count, number}}",
     "showAll_many": "Afficher les {{count, number}}",
-    "heldLine": "En attente · ne vient que si l’invitation est acceptée"
+    "heldLine": "En attente · ne vient que si l’invitation est acceptée",
+    "heldAway": "{{guestOf}} · {{held}}"
   }
 }

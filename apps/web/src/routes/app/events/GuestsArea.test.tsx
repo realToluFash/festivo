@@ -387,7 +387,7 @@ describe('Guests (sc-1468)', () => {
       within(screen.getByRole('region', { name: 'Guests' }))
         .getAllByRole('listitem')
         .map((row) => row.textContent),
-    ).toContain('Guest of Bimpe AdeyemiHeld');
+    ).toContain('Guest of Bimpe AdeyemiHeld · comes only if their host accepts');
   });
 
   it('sends nothing for a blank name and says every problem at once, focus on the first', async () => {
@@ -735,7 +735,7 @@ describe('Finding a guest (sc-3772)', () => {
 
     expect(within(card).getByText('Draft')).toBeDefined();
     expect(
-      within(card).getByText("Guests can't be invited until this event is live."),
+      within(card).getByText('Guests can’t be invited until this event is live.'),
     ).toBeDefined();
     fireEvent.click(within(card).getByRole('button', { name: 'Make live' }));
 
@@ -798,9 +798,63 @@ describe('Finding a guest (sc-3772)', () => {
     fireEvent.click(within(menu).getByRole('menuitemradio', { name: /^Held/u }));
 
     expect(names()).toEqual(['Rui Ávila']);
-    expect(screen.getByText('Held · comes only if their host accepts')).toBeDefined();
+    expect(
+      screen.getByText('Guest of José Ávila · Held · comes only if their host accepts'),
+    ).toBeDefined();
     expect(screen.getByText('1 of 9 shown')).toBeDefined();
     expect(shownRouter?.state.location.search).toBe('?filter=held');
+  });
+
+  it('keeps the held line alone for an unnamed companion away from their host, already called Guest of', async () => {
+    signedIn();
+    await onGuests(
+      {
+        'GET /api/events/ev_1/guests': () =>
+          json(
+            listOf([
+              guest('g_6', 'Kemi Bello', {
+                companions: [{ id: 'c_6', fullName: null, state: 'held' }],
+              }),
+            ]),
+          ),
+      },
+      undefined,
+      '?filter=held',
+    );
+
+    expect(await screen.findByText('Held · comes only if their host accepts')).toBeDefined();
+    expect(names()).toEqual(['Guest of Kemi Bello']);
+  });
+
+  it('gives a held companion under their host the held line, as the demo does', async () => {
+    signedIn();
+    await onGuests({
+      'GET /api/events/ev_1/guests': () =>
+        json(
+          listOf([
+            guest('g_6', 'Kemi Bello', {
+              companions: [{ id: 'c_6', fullName: 'Tunde Bello', state: 'held' }],
+            }),
+          ]),
+        ),
+    });
+
+    expect(await screen.findByText('Held · comes only if their host accepts')).toBeDefined();
+    expect(screen.queryByText(/Guest of Kemi Bello/u)).toBeNull();
+  });
+
+  it('writes the menu’s counts as numbers are read, with a thousands separator', async () => {
+    signedIn();
+    const many = Array.from({ length: 1000 }, (_, at) =>
+      guest(`g_${at}`, `Guest ${String(at).padStart(4, '0')}`),
+    );
+    await onGuests({ 'GET /api/events/ev_1/guests': () => json(listOf(many)) });
+
+    fireEvent.click(await screen.findByRole('button', { name: 'All · 1,000' }));
+
+    expect(
+      within(screen.getByRole('menu')).getByRole('menuitemradio', { name: /^All/u }).textContent,
+    ).toBe('All1,000');
   });
 
   it('steps Back through each change, the search once typing settles, then the choice', async () => {
@@ -851,6 +905,7 @@ describe('Finding a guest (sc-3772)', () => {
 
     expect(screen.getByRole('heading', { name: 'No guests match' })).toBeDefined();
     expect(screen.getByText('0 of 9 shown')).toBeDefined();
+    expect(screen.queryByText('Pick a guest to see their details, or add one.')).toBeNull();
     fireEvent.click(screen.getAllByRole('button', { name: 'Clear' }).at(-1)!);
 
     await waitFor(() => expect(shownRouter?.state.location.search).toBe(''));
@@ -1682,7 +1737,7 @@ describe('A guest’s invitation link (sc-1526)', () => {
   it('offers no copy on a Draft, says why with Make live, and keeps Replace link…', async () => {
     await openNgozi({}, { status: 'draft', phase: 'draft', madeLiveAt: null });
 
-    expect(screen.getByText("Guests can't be invited until this event is live.")).toBeDefined();
+    expect(screen.getByText('Guests can’t be invited until this event is live.')).toBeDefined();
     expect(screen.getByRole('button', { name: 'Make live' })).toBeDefined();
     expect(screen.queryByRole('button', { name: /^Copy invitation link/u })).toBeNull();
     expect(screen.getByRole('button', { name: /^Replace link…/u })).toBeDefined();

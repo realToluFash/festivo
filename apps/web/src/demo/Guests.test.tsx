@@ -1289,6 +1289,14 @@ describe('Guests, places for companions (sc-3779)', () => {
     expect(within(column()).getByText('Named by the guest')).toBeDefined();
     expect(within(column()).getByText('1 companion · 1 of 1 named')).toBeDefined();
   });
+
+  it('says how many places are named in the list row, under the guest’s name', SLOW, async () => {
+    await guests('namedByGuest');
+
+    const row = screen.getByRole('link', { name: /^Sophie Laurent, Coming/u });
+
+    expect(within(row).getByText(/· 1 companion · 1 of 1 named$/u)).toBeDefined();
+  });
 });
 
 describe('Guests, needs recorded as facts (sc-3777)', () => {
