@@ -1615,6 +1615,48 @@ describe('Anything the kitchen must know? (sc-3778)', () => {
     expect(body.unnamed.map((one) => [one.id, one.needs.diet])).toEqual([[PLACE_2, ['vegan']]]);
   });
 
+  it('starts a name added from the needs recorded on the place it fills, and sends them with it', async () => {
+    const page = unnamed(PLACE_1, PLACE_2);
+    const recorded = {
+      ...page,
+      guest: {
+        ...page.guest,
+        unnamed: [
+          { id: PLACE_1, needs: { ...NO_NEEDS, allergies: ['peanuts'] } },
+          { id: PLACE_2, needs: NO_NEEDS },
+        ],
+      },
+    };
+    const { sent } = api({
+      '/api/guest-links/page': [{ status: 200, body: recorded }],
+      '/api/guest-links/reply': [{ status: 200, body: answered('coming', undefined, 2) }],
+    });
+    open();
+    fireEvent.click(await screen.findByRole('button', { name: 'Yes, I’ll be there' }));
+    fireEvent.click(screen.getByRole('button', { name: 'Add someone · 2 places left' }));
+    fireEvent.change(screen.getByLabelText('Their name'), { target: { value: 'Kemi Adewale' } });
+    fireEvent.click(screen.getByRole('button', { name: 'Add someone · 2 places left' }));
+    fireEvent.click(screen.getByRole('button', { name: 'Next' }));
+
+    const kemi = screen.getByRole('group', { name: 'Kemi Adewale' });
+    expect(within(kemi).getByRole('button', { name: 'Peanuts' }).getAttribute('aria-pressed')).toBe(
+      'true',
+    );
+    fireEvent.click(screen.getByRole('button', { name: 'Next' }));
+    expect(screen.getByText('Allergy: peanuts')).toBeDefined();
+    fireEvent.click(screen.getByRole('button', { name: 'Send my answer' }));
+
+    await waitFor(() => expect(sent.at(-1)?.path).toBe('/api/guest-links/reply'));
+    const body = sent.at(-1)?.body as {
+      companions: { id: string | null; fullName: string; needs: { allergies: string[] } }[];
+      unnamed: { id: string }[];
+    };
+    expect(body.companions.map((one) => [one.id, one.fullName, one.needs.allergies])).toEqual([
+      [null, 'Kemi Adewale', ['peanuts']],
+    ]);
+    expect(body.unnamed.map((one) => one.id)).toEqual([PLACE_2]);
+  });
+
   it.each([
     ['the Other allergy', 'Which allergy?'],
     ['Anything else', /Anything else, in your own words/],

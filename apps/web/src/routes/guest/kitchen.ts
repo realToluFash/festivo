@@ -92,27 +92,57 @@ function recordedPeople(page: GuestPage): Person[] {
   ];
 }
 
-function comingPeople(page: GuestPage, party: Party): { key: string; name: string | null }[] {
-  const added = party.people.filter((one) => one.id == null).length;
+interface Coming {
+  key: string;
+  name: string | null;
+  /** The record this card starts from: a name the guest added fills the next unnamed place, in order, and keeps its needs. */
+  from: string;
+}
+
+function comingPeople(page: GuestPage, party: Party): Coming[] {
+  const added = party.people.filter((one) => one.id == null);
+  const place = (key: string): string => {
+    const one = page.guest.unnamed[added.findIndex((each) => each.key === key)];
+
+    return one == null ? key : placeKey(one.id);
+  };
 
   return [
-    ...party.people.filter((one) => one.coming).map((one) => ({ key: one.key, name: one.name })),
-    ...page.guest.unnamed.slice(added).map((one) => ({ key: placeKey(one.id), name: null })),
+    ...party.people
+      .filter((one) => one.coming)
+      .map((one) => ({
+        key: one.key,
+        name: one.name,
+        from: one.id == null ? place(one.key) : one.key,
+      })),
+    ...page.guest.unnamed
+      .slice(added.length)
+      .map((one) => ({ key: placeKey(one.id), name: null, from: placeKey(one.id) })),
   ];
+}
+
+function fromRecord(
+  recorded: readonly Person[],
+  from: string,
+  key: string,
+  name: string | null,
+): Person {
+  const one = recorded.find((each) => each.key === from);
+
+  return one == null ? blank(key, name) : { ...one, key, name };
 }
 
 /** The guest and each companion coming, keeping what was chosen on the step so far, then the record, then nothing. */
 export function kitchenOf(page: GuestPage, party: Party, was: Kitchen | null): Kitchen {
   const recorded = recordedPeople(page);
-  const kept = (key: string, name: string | null): Person => {
-    const one =
-      was?.people.find((each) => each.key === key) ?? recorded.find((each) => each.key === key);
+  const kept = ({ key, name, from }: Coming): Person => {
+    const one = was?.people.find((each) => each.key === key);
 
-    return one == null ? blank(key, name) : { ...one, name };
+    return one == null ? fromRecord(recorded, from, key, name) : { ...one, name };
   };
   const people = [
-    kept(YOU, null),
-    ...comingPeople(page, party).map((one) => kept(one.key, one.name)),
+    kept({ key: YOU, name: null, from: YOU }),
+    ...comingPeople(page, party).map(kept),
   ];
 
   return {
@@ -128,8 +158,9 @@ export function kitchenOf(page: GuestPage, party: Party, was: Kitchen | null): K
 }
 
 /** Nothing to add clears every card; Leave it as it is puts the record back. Neither is sent as a change. */
-export function skipped(kitchen: Kitchen, page: GuestPage): Kitchen {
+export function skipped(kitchen: Kitchen, page: GuestPage, party: Party): Kitchen {
   const recorded = recordedPeople(page);
+  const from = new Map(comingPeople(page, party).map((one) => [one.key, one.from]));
 
   return {
     ...kitchen,
@@ -137,10 +168,7 @@ export function skipped(kitchen: Kitchen, page: GuestPage): Kitchen {
     left: true,
     people: kitchen.people.map((one) =>
       kitchen.record
-        ? {
-            ...(recorded.find((each) => each.key === one.key) ?? blank(one.key, null)),
-            name: one.name,
-          }
+        ? fromRecord(recorded, from.get(one.key) ?? one.key, one.key, one.name)
         : blank(one.key, one.name),
     ),
   };

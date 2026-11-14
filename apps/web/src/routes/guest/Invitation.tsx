@@ -461,7 +461,7 @@ function Card({ token, first }: { token: string; first: GuestPage }) {
 
   function kitchenSkip(): void {
     if (view.kind !== 'kitchen' || kitchen == null) return;
-    setKitchen(skipped(kitchen, page));
+    setKitchen(skipped(kitchen, page, party));
     toCheck(view.from);
   }
 
