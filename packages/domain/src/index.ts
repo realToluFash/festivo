@@ -12,6 +12,7 @@ export * from './guestName.ts';
 export * from './guestLanguage.ts';
 export * from './guestForm.ts';
 export * from './guestView.ts';
+export * from './guestRows.ts';
 export * from './userAgent.ts';
 export * from './contacts.ts';
 export * from './connection.ts';

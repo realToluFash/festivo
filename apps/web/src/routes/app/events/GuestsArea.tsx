@@ -8,11 +8,12 @@ import {
   realtimeTopic,
 } from '@soirely/api-client';
 import {
+  REPLY_KEY,
   deviceCountry,
-  formatPhone,
   eventAllows,
   makeLiveRow,
   phoneScreenCountry,
+  rowWords,
   shownPhase,
 } from '@soirely/domain';
 import {
@@ -45,6 +46,7 @@ import {
   TextAction,
 } from '../../../components/SettingsParts.tsx';
 import { Toast } from '../../../components/Toast.tsx';
+import { dateLocale } from '../../../i18n/index.ts';
 import { LayersContext, focusWhenFree, useDeskLayers } from '../../../layers.ts';
 import { type Mesh, meshFor } from '../../../mesh.ts';
 import { pageTitle, usePageTitle } from '../../../pageTitle.ts';
@@ -64,14 +66,7 @@ import {
   violationProblems,
   withGuest as listedWith,
 } from '@soirely/domain';
-import {
-  GuestColumn,
-  REPLY_KEY,
-  ReplyMark,
-  companionShown,
-  guestAddress,
-  replyDate,
-} from './GuestColumn.tsx';
+import { GuestColumn, ReplyMark, guestAddress } from './GuestColumn.tsx';
 import { CompanionField, GuestField, LanguageField, PhoneField } from './GuestFields.tsx';
 import {
   CHOICES,
@@ -922,22 +917,9 @@ function Rows({
     <ul className="desk-rows gs-rows">
       {rows.map(({ person, indent }) => {
         const { guest, companion } = person;
+        const { name, line } = rowWords(t, person, indent, timeZone, dateLocale());
 
-        if (companion == null) {
-          const word = t(REPLY_KEY[guest.reply]);
-          const reply =
-            guest.repliedAt == null
-              ? word
-              : t('guestList.replied', {
-                  reply: word,
-                  date: replyDate(guest.repliedAt, timeZone),
-                });
-          const mobile = guest.mobile == null ? null : formatPhone(guest.mobile);
-          const contact =
-            guest.email != null && mobile != null
-              ? t('guestList.contacts', { email: guest.email, mobile })
-              : (guest.email ?? mobile);
-
+        if (companion == null)
           return (
             <li key={guest.id}>
               <RowLink
@@ -950,30 +932,10 @@ function Rows({
                 <span className="gs-lead">
                   <ReplyMark reply={guest.reply} />
                 </span>
-                <RowWords
-                  title={guest.fullName}
-                  lines={[contact == null ? reply : t('guestList.line', { reply, contact })]}
-                />
+                <RowWords title={name} lines={[line]} />
               </RowLink>
             </li>
           );
-        }
-
-        const name = companionShown(
-          t,
-          guest.fullName,
-          guest.companions.map((one) => one.fullName),
-          person.at,
-        );
-        const hostShown = t('guestList.guestOf', { host: guest.fullName });
-        const away = !indent && companion.fullName != null;
-        let line = t(REPLY_KEY[companion.state]);
-
-        if (companion.state === 'held')
-          line = away
-            ? t('guestList.heldAway', { guestOf: hostShown, held: t('guestList.heldLine') })
-            : t('guestList.heldLine');
-        else if (away) line = hostShown;
 
         return (
           <li key={companion.id} className={indent ? 'is-companion' : undefined}>

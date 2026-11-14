@@ -8,12 +8,14 @@ import {
 } from '@soirely/api-client';
 import {
   CHOICES,
+  REPLY_KEY,
   type Choice,
   type Counts,
   type Person,
   type Standing,
   countsOf,
   roleHolds,
+  rowWords,
   viewOf,
 } from '@soirely/domain';
 import { type ReactNode, useCallback, useEffect, useRef, useState } from 'react';
@@ -31,7 +33,7 @@ import { useTranslation } from 'react-i18next';
 import { api } from '../api.ts';
 import { followTopic } from '../followTopic.ts';
 import { dateLocale } from '../i18n/index.ts';
-import { REPLY_KEY, markOf, rowWords } from '../kit/guestRows.ts';
+import { markOf } from '../kit/guestRows.ts';
 import { type ScreenOffline, useHandOffline, useOffline } from '../offline.ts';
 import { useSignedIn } from '../signedIn.ts';
 import { tokens } from '../theme/tokens.ts';

@@ -1,5 +1,5 @@
 import type { Guest } from '@soirely/api-client';
-import { peopleOf } from '@soirely/domain';
+import { peopleOf } from './guestView.ts';
 import { describe, expect, it } from 'vitest';
 
 import { companionShown, contactOf, rowWords } from './guestRows.ts';

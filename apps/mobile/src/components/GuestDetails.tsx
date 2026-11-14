@@ -1,11 +1,17 @@
 import type { GuestDetails as Details } from '@soirely/api-client';
-import { formatPhone, ownLanguageName } from '@soirely/domain';
+import {
+  REPLY_KEY,
+  companionShown,
+  formatPhone,
+  ownLanguageName,
+  replyDate,
+} from '@soirely/domain';
 import type { ReactNode, Ref } from 'react';
 import { StyleSheet, View, type ViewInstance } from 'react-native';
 import { useTranslation } from 'react-i18next';
 
 import { dateLocale } from '../i18n/index.ts';
-import { REPLY_KEY, companionShown, markOf, replyDate } from '../kit/guestRows.ts';
+import { markOf } from '../kit/guestRows.ts';
 import { tokens } from '../theme/tokens.ts';
 import { LineIcon } from './AccountCard.tsx';
 import { ChoseNote } from './GuestLanguage.tsx';

@@ -7,7 +7,6 @@ import {
 } from '@soirely/api-client';
 import { formatPhone, ownLanguageName, phoneE164, phoneFields } from '@soirely/domain';
 import { type ReactNode, useEffect, useEffectEvent, useId, useRef, useState } from 'react';
-import type { TFunction } from 'i18next';
 import { useTranslation } from 'react-i18next';
 
 import { api } from '../../../api.ts';
@@ -29,32 +28,20 @@ import {
   MOST_COMPANIONS,
   type Problem,
   type Problems,
+  REPLY_KEY,
   type ReplyWord,
   type Typed,
-  blank,
+  companionShown,
   firstProblem,
   isListed,
   newGuestOf,
   problemsOf,
+  replyDate,
   violationProblems,
 } from '@soirely/domain';
 
 const SHOWN_COMPANIONS = 3;
 const PIECES = [1, 2, 3, 4, 5, 6];
-
-export const REPLY_KEY: Record<ReplyWord, string> = {
-  coming: 'guestList.reply.coming',
-  maybe: 'guestList.reply.maybe',
-  notComing: 'guestList.reply.notComing',
-  noReply: 'guestList.reply.noReply',
-  held: 'guestList.reply.held',
-};
-
-export function replyDate(repliedAt: string, timeZone: string): string {
-  return new Intl.DateTimeFormat(dateLocale(), { month: 'short', day: 'numeric', timeZone }).format(
-    new Date(repliedAt),
-  );
-}
 
 const MARK: Record<ReplyWord, string> = {
   coming: 'is-coming',
@@ -90,21 +77,6 @@ function IconLead({ name }: { name: GlyphName }) {
       <Glyph name={name} size={20} weight={2} />
     </span>
   );
-}
-
-/** "Guest of Bisi Adewale", numbered after the first unnamed one, as the list names them. */
-export function companionShown(
-  t: TFunction,
-  host: string,
-  names: readonly (string | null)[],
-  at: number,
-): string {
-  const name = names[at];
-
-  if (!blank(name ?? null)) return (name ?? '').trim();
-  const nth = names.slice(0, at + 1).filter((one) => blank(one)).length;
-
-  return nth > 1 ? t('guestList.guestOfNth', { host, nth }) : t('guestList.guestOf', { host });
 }
 
 /** A guest's address on the list (sc-3773): opening it opens them beside the list. */
@@ -385,7 +357,8 @@ function GuestView({
     day: 'numeric',
   }).format(new Date(guest.added.at));
   const names = guest.companions.map((one) => one.fullName);
-  const replied = guest.repliedAt == null ? null : replyDate(guest.repliedAt, timeZone);
+  const replied =
+    guest.repliedAt == null ? null : replyDate(guest.repliedAt, timeZone, dateLocale());
 
   return (
     <div className="gs-guest">
