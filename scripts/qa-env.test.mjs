@@ -4154,6 +4154,31 @@ describe('waitForBoot', () => {
       waitForBoot({ name: 'qa_pixel', booted: () => false, gone: () => null, pause, tries: 3 }),
     ).rejects.toThrow('qa_pixel did not boot within three minutes');
   });
+
+  it('names an unauthorized device and the adb-key step, not a boot timeout', async () => {
+    let passes = 0;
+    const unauthorized = () => (++passes, 'emulator-5578');
+    const waiting = waitForBoot({
+      name: 'Soirely_QA4_Tablet',
+      booted: () => false,
+      gone: () => null,
+      pause,
+      unauthorized,
+    });
+    await expect(waiting).rejects.toThrow(
+      'Soirely_QA4_Tablet: adb here sees emulator-5578 as unauthorized',
+    );
+    await expect(waiting).rejects.toThrow('machines.md, An emulator on another computer, step 2');
+    expect(passes).toBe(30);
+  });
+
+  it('still boots a device that was unauthorized only for a while', async () => {
+    let passes = 0;
+    const unauthorized = () => (++passes < 29 ? 'emulator-5578' : null);
+    const booted = () => passes === 40;
+    await waitForBoot({ name: 'qa_pixel', booted, gone: () => null, pause, unauthorized });
+    expect(passes).toBe(40);
+  });
 });
 
 describe('emulatorJournalArgs', () => {
