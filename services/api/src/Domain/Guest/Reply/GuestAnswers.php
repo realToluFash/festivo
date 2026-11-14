@@ -6,6 +6,7 @@ namespace App\Domain\Guest\Reply;
 
 use App\Audit\Auditor;
 use App\Domain\Guest\GuestListPublisher;
+use App\Domain\Guest\GuestRules;
 use App\Domain\Guest\Model\CompanionChoice;
 use App\Entity\Guest;
 use App\Enum\ErrorCode;
@@ -20,7 +21,6 @@ use Psl\Dict;
 use Psl\Iter;
 use Psl\Vec;
 use Psr\Clock\ClockInterface;
-use Symfony\Contracts\Translation\TranslatorInterface;
 
 /** A guest's answer from their own page (sc-1439): one current reply, replaced by the next, open until the event starts and while it is neither paused nor over (sc-3591). */
 final readonly class GuestAnswers
@@ -32,7 +32,7 @@ final readonly class GuestAnswers
         private Auditor $auditor,
         private GuestListPublisher $guestListPublisher,
         private GuestRepository $guestRepository,
-        private TranslatorInterface $translator,
+        private GuestRules $guestRules,
         private ClockInterface $clock,
     ) {
     }
@@ -122,14 +122,14 @@ final readonly class GuestAnswers
             }
 
             if (!Iter\contains_key($named, $choice->id) || Iter\contains_key($seen, $choice->id)) {
-                $violations[] = $this->violation("companions[{$index}].id", 'validation.guest_companion_unknown');
+                $violations[] = $this->guestRules->violation("companions[{$index}].id", 'validation.guest_companion_unknown');
             }
 
             $seen[$choice->id] = true;
         }
 
         if ($fills > Iter\count($unnamed)) {
-            $violations[] = $this->violation('companions', 'validation.guest_places_full');
+            $violations[] = $this->guestRules->violation('companions', 'validation.guest_places_full');
         }
 
         if ([] !== $violations) {
@@ -145,22 +145,18 @@ final readonly class GuestAnswers
             $place->markComingByGuest($choice->coming);
         }
 
-        return $before !== Vec\map($places, self::state(...));
+        if ($before === Vec\map($places, self::state(...))) {
+            return false;
+        }
+
+        $guest->raiseVersion();
+
+        return true;
     }
 
     /** @return array{?string, bool} */
     private static function state(Guest $place): array
     {
         return [$place->getFullName(), $place->isNotComingByGuest()];
-    }
-
-    /** @return array{propertyPath: string, message: string, code: string} */
-    private function violation(string $path, string $key): array
-    {
-        return [
-            'propertyPath' => $path,
-            'message' => $this->translator->trans($key),
-            'code' => ErrorCode::ValidationFailed->value,
-        ];
     }
 }

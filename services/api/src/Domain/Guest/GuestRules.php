@@ -124,7 +124,7 @@ final readonly class GuestRules
     }
 
     /** @return array{propertyPath: string, message: string, code: string} */
-    private function violation(string $path, string $key): array
+    public function violation(string $path, string $key): array
     {
         return [
             'propertyPath' => $path,

@@ -494,12 +494,33 @@ final class GuestAnswersTest extends ApiTestCase
         self::assertSame(['Chidi Okonkwo-Williams', true], [$companion['fullName'] ?? null, $companion['namedByGuest'] ?? null]);
         self::assertTrue($this->companionsOn($token)[0]['namedByGuest'] ?? null);
 
-        $this->as($this->owner, 'PUT', $this->guests() . '/' . $guest, ['fullName' => self::ADAEZE, 'companions' => [['id' => $chidi, 'fullName' => 'Chidi Okonkwo-Williams']]], '"1"');
+        $this->as($this->owner, 'PUT', $this->guests() . '/' . $guest, ['fullName' => self::ADAEZE, 'companions' => [['id' => $chidi, 'fullName' => 'Chidi Okonkwo-Williams']]], '"2"');
         self::assertTrue($this->row($guest)['companions'][0]['namedByGuest'] ?? null, 'the host saving the same name keeps whose it is');
 
-        $this->as($this->owner, 'PUT', $this->guests() . '/' . $guest, ['fullName' => self::ADAEZE, 'companions' => [['id' => $chidi, 'fullName' => 'Chief Chidi Okonkwo-Williams']]], '"1"');
+        $this->as($this->owner, 'PUT', $this->guests() . '/' . $guest, ['fullName' => self::ADAEZE, 'companions' => [['id' => $chidi, 'fullName' => 'Chief Chidi Okonkwo-Williams']]], '"2"');
         self::assertSame(200, $this->statusCode(), Json\encode($this->last()));
         self::assertFalse($this->row($guest)['companions'][0]['namedByGuest'] ?? null);
+    }
+
+    #[Test]
+    public function namesTheGuestGivesRaiseTheVersionSoTheHostsOpenFormCannotOverwriteThem412(): void
+    {
+        $guest = $this->add(self::ADAEZE, ['Chidi', null]);
+        $token = $this->token($guest);
+        $chidi = $this->companionsOn($token)[0]['id'] ?? self::fail('no companion');
+        $place = $this->row($guest)['companions'][1]['id'] ?? self::fail('no place');
+
+        $this->answerWith($token, 'coming', [['id' => $chidi, 'fullName' => 'Chidi Okonkwo-Williams', 'coming' => true], ['fullName' => 'Nneka', 'coming' => true]]);
+        self::assertSame(200, $this->statusCode(), Json\encode($this->last()));
+
+        $this->as($this->owner, 'PUT', $this->guests() . '/' . $guest, [
+            'fullName' => self::ADAEZE,
+            'email' => 'adaeze@example.com',
+            'companions' => [['id' => $chidi, 'fullName' => 'Chidi'], ['id' => $place, 'fullName' => null]],
+        ], '"1"');
+
+        self::assertSame([412, ErrorCode::PreconditionFailed->type()], [$this->statusCode(), $this->last()['type'] ?? null], Json\encode($this->last()));
+        self::assertSame(['Chidi Okonkwo-Williams', 'Nneka'], Vec\map($this->companionsOn($token), static fn (array $one): mixed => $one['fullName']));
     }
 
     #[Test]
