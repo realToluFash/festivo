@@ -1,0 +1,15 @@
+# sc-33972: Events' Past tab, with ${EV_OFF}'s row carrying the Called off tag in the account's language.
+appId: host.exp.Exponent
+---
+- openLink: ${METRO_URL}/--/events
+- extendedWaitUntil:
+    visible:
+      id: 'events.tab.past'
+    timeout: 30000
+- tapOn:
+    id: 'events.tab.past'
+- extendedWaitUntil:
+    visible:
+      id: 'events.row.${EV_OFF}'
+    timeout: 30000
+- takeScreenshot: past-called-off

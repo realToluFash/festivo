@@ -1,0 +1,78 @@
+# sc-30412, on its side: the switcher's Create an organisation opens the walk; name ${NAME}, Continue to the country, Nigeria, Continue, Create; lands on the new organisation's Today.
+appId: host.exp.Exponent
+---
+- setOrientation: LANDSCAPE_LEFT
+- waitForAnimationToEnd:
+    timeout: 3000
+- openLink: ${METRO_URL}/--/
+- tapOn:
+    id: 'tab-today|frame.home'
+    optional: true
+- tapOn:
+    id: 'frame.organisation|home.switchOrganisation'
+- extendedWaitUntil:
+    visible:
+      id: 'switcher.heading'
+    timeout: 10000
+- waitForAnimationToEnd:
+    timeout: 3000
+- takeScreenshot: side-switcher
+- scrollUntilVisible:
+    element:
+      id: 'switcher.tile.create'
+    direction: DOWN
+    timeout: 20000
+- tapOn:
+    id: 'switcher.tile.create'
+- extendedWaitUntil:
+    visible:
+      id: 'createWalk.name'
+    timeout: 5000
+- takeScreenshot: side-step1
+- tapOn:
+    id: 'createWalk.name'
+- inputText: ${NAME}
+- takeScreenshot: side-step1-typed
+- pressKey: Enter
+- extendedWaitUntil:
+    visible:
+      id: 'createWalk.search'
+    timeout: 5000
+- waitForAnimationToEnd:
+    timeout: 3000
+- takeScreenshot: side-step2
+- tapOn:
+    id: 'createWalk.search'
+- inputText: Nig
+- hideKeyboard:
+    optional: true
+- scrollUntilVisible:
+    element:
+      id: 'createWalk.country.NG'
+    direction: DOWN
+    timeout: 10000
+- tapOn:
+    id: 'createWalk.country.NG'
+- waitForAnimationToEnd:
+    timeout: 2000
+- takeScreenshot: side-step2-chosen
+- tapOn:
+    id: 'createWalk.primary'
+- waitForAnimationToEnd:
+    timeout: 3000
+- extendedWaitUntil:
+    visible: '.*Africa/Lagos.*'
+    timeout: 5000
+- takeScreenshot: side-step3
+- tapOn:
+    id: 'createWalk.primary'
+- takeScreenshot: side-creating
+- extendedWaitUntil:
+    notVisible:
+      id: 'createWalk'
+    timeout: 15000
+- waitForAnimationToEnd:
+    timeout: 3000
+- assertVisible: '.*${NAME}.*'
+- takeScreenshot: side-landed
+- setOrientation: PORTRAIT

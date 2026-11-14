@@ -1,0 +1,11 @@
+# sc-16709 regression: ${EV_LIVE}, a Live event ahead: Coming up still marks its first date Next up.
+appId: host.exp.Exponent
+---
+- openLink: ${METRO_URL}/--/events/${EV_LIVE}
+- scrollUntilVisible:
+    element:
+      id: 'timeline.row'
+    direction: DOWN
+    timeout: 30000
+- takeScreenshot: live-coming-up
+- assertVisible: '{{t:timeline.nextUp}}'

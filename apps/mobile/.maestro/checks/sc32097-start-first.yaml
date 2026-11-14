@@ -1,0 +1,10 @@
+# Today's Start your first event button, scrolled into view, in the account's language. sc-32097.
+appId: host.exp.Exponent
+---
+- openLink: ${METRO_URL}/--/demo/today?moment=first
+- extendedWaitUntil:
+    visible: '(Start your first event|Crear su primer evento|Créer votre premier événement|Criar o seu primeiro evento)'
+    timeout: 30000
+- scroll
+- scroll
+- takeScreenshot: today-first-button

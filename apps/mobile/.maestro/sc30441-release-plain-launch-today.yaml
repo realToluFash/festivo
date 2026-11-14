@@ -1,0 +1,11 @@
+# Release build, signed in: stop the app and launch it again with no colour save; it opens on Today. sc-30441.
+appId: com.soirely.app
+---
+- stopApp: com.soirely.app
+- launchApp:
+    appId: com.soirely.app
+- extendedWaitUntil:
+    visible:
+      id: 'home.openSettings'
+    timeout: 60000
+- takeScreenshot: plain-launch

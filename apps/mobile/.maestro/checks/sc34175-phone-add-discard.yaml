@@ -1,0 +1,28 @@
+# sc-34175: a number typed into Add a phone and left unsaved asks to discard it: Nothing is added. Needs fewer than two phones on the account.
+appId: host.exp.Exponent
+---
+- openLink: ${METRO_URL}/--/settings/account
+- scrollUntilVisible:
+    element:
+      id: 'account.phone.add'
+    timeout: 30000
+- waitForAnimationToEnd
+- tapOn:
+    id: 'account.phone.add'
+- extendedWaitUntil:
+    visible:
+      id: 'account.phone.add.screen'
+    timeout: 15000
+- waitForAnimationToEnd
+- takeScreenshot: phone-add-sheet
+- inputText: '7400123459'
+- tapOn:
+    id: 'account.phone.add.cancel'
+- extendedWaitUntil:
+    visible:
+      id: 'account.phone.add.discard'
+    timeout: 10000
+- waitForAnimationToEnd
+- takeScreenshot: phone-add-discard-ask
+- tapOn:
+    id: 'account.phone.add.discard'
