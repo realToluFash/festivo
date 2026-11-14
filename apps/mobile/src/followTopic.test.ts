@@ -1,3 +1,4 @@
+import { realtimeTopic } from '@soirely/api-client';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
 type Listener = () => void;
@@ -62,7 +63,7 @@ describe('reading again while the hub is down', () => {
 
   it('follows several topics on one line (sc-3786)', async () => {
     const stop = followReadingAgain(
-      ['events/e1/headcount', 'events/e2/headcount'],
+      [realtimeTopic('EventHeadcount', 'e1'), realtimeTopic('EventHeadcount', 'e2')],
       subscribe,
       vi.fn(),
       EVERY_MS,

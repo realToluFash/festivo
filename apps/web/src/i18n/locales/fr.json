@@ -2982,7 +2982,7 @@
   "guestNumbers": {
     "title": "Guests",
     "openList": "Open the guest list",
-    "lead": "{{coming}} of {{invited}}. Each number opens the guests it counts.",
+    "lead": "{{says}}. Each number opens the guests it counts.",
     "invited": "Invited",
     "heldLine": "Companions waiting on their guest’s answer",
     "opens": "{{figure}} {{word}}, opens {{word}}",

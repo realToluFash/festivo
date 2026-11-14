@@ -107,8 +107,10 @@ export function GuestNumbers({ event }: { event: OrganisationEvent }) {
       {counts != null && (
         <p className="desk-line is-small">
           {t('guestNumbers.lead', {
-            coming: t('guestList.countComing', { count: counts.accepted }),
-            invited: t('guestList.countInvited', { count: counts.invited }),
+            says: t('guestList.comingOf', {
+              comingWords: t('guestList.countComing', { count: counts.accepted }),
+              invitedWords: t('guestList.countInvited', { count: counts.invited }),
+            }),
           })}
         </p>
       )}
