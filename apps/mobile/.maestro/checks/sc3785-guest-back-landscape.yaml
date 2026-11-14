@@ -1,7 +1,9 @@
-# sc-3785 on a tablet on its side: ${GUEST_ID}'s details open beside ${EVENT_ID}'s Guests list, with no Back to Guests, and the list stays in reach.
+# sc-3785 on a tablet on its side (SIDE, LANDSCAPE_LEFT unless the tablet's natural orientation is landscape, then PORTRAIT): ${GUEST_ID}'s details open beside ${EVENT_ID}'s Guests list, with no ‹ Guests, and the list stays in reach.
 appId: host.exp.Exponent
+env:
+  SIDE: LANDSCAPE_LEFT
 ---
-- setOrientation: LANDSCAPE_LEFT
+- setOrientation: ${SIDE}
 - openLink: ${METRO_URL}/--/events/${EVENT_ID}?area=guests
 - extendedWaitUntil:
     visible:
@@ -16,6 +18,7 @@ appId: host.exp.Exponent
 - assertVisible:
     id: 'guests.search'
 - assertNotVisible:
-    id: 'guest.back'
+    id: 'frame.back'
+    text: '{{t:eventNav.guests}}'
 - takeScreenshot: guest-beside
 - setOrientation: PORTRAIT
