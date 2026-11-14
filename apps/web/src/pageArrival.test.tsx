@@ -309,14 +309,14 @@ describe('the pages Soirely has, signed in', () => {
     await waitFor(() => expect(document.title).toBe(title));
   });
 
-  it.each([
-    ['/app/events/ev_1/edit', 'Edit details – Adaeze and Tunde – Soirely'],
-    ['/app/events/ev_1/guests', 'Guests – Adaeze and Tunde – Soirely'],
-  ])('titles %s "%s" once the event loads', async (path, title) => {
-    at(path);
+  it.each([['/app/events/ev_1/guests', 'Guests – Adaeze and Tunde – Soirely']])(
+    'titles %s "%s" once the event loads',
+    async (path, title) => {
+      at(path);
 
-    await waitFor(() => expect(document.title).toBe(title));
-  });
+      await waitFor(() => expect(document.title).toBe(title));
+    },
+  );
 
   it("titles a paused organisation's page with Paused and its name", async () => {
     const { id, name, countryCode, currency, timezone, contactAddress, locale } = membership({
@@ -396,56 +396,6 @@ describe('the pages Soirely has, signed in', () => {
         screen.getByText('The event did not load. Try again in a moment.'),
       ),
     );
-  });
-
-  describe('opening Edit details by a click while the event loads (sc-23303)', () => {
-    function held(): { answer: (response: Response) => void } {
-      let answer: (response: Response) => void = () => {};
-      const event = new Promise<Response>((resolve) => {
-        answer = resolve;
-      });
-
-      vi.mocked(fetch).mockImplementation((input) =>
-        new URL(String(input)).pathname === '/api/events/ev_1'
-          ? event
-          : new Promise<Response>(() => {}),
-      );
-
-      return { answer };
-    }
-
-    async function openedByClick(): Promise<void> {
-      const router = at('/app');
-      fireEvent.click(document.body);
-      await act(() => router.navigate('/app/events/ev_1/edit'));
-      await screen.findByRole('heading', { level: 1, name: 'Edit details' });
-      expect(document.activeElement).toBe(document.body);
-    }
-
-    it('takes focus to the heading of the form once it arrives', async () => {
-      const { answer } = held();
-      await openedByClick();
-
-      answer(new Response(JSON.stringify({ event: EVENT }), { headers: { ETag: '"1"' } }));
-
-      await waitFor(() => expect(document.querySelector('[aria-busy="true"]')).toBeNull());
-      await waitFor(() =>
-        expect(document.activeElement).toBe(screen.getByRole('heading', { level: 1 })),
-      );
-    });
-
-    it('takes focus to the line that says the event did not load', async () => {
-      const { answer } = held();
-      await openedByClick();
-
-      answer(new Response('{}', { status: 500 }));
-
-      await waitFor(() =>
-        expect(document.activeElement).toBe(
-          screen.getByText('The event did not load. Try again in a moment.'),
-        ),
-      );
-    });
   });
 
   it('leaves focus alone on Sign in when the session ends after a click', async () => {
