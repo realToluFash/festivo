@@ -344,12 +344,7 @@ export function EventGuests({
     phase == null || onCard ? null : (
       <PhaseLine event={event} phase={phase} now={now} onChange={onEventChange} />
     );
-  const phaseCard = phaseCardOf(t, event, shown, phase, now, {
-    label: t('eventLive.makeLive'),
-    ref: liveOpener,
-    onPress: makeLive.start,
-    testID: 'events.makeLive',
-  });
+  const phaseCard = phaseCardOf(t, event, shown, phase, now);
   const rows =
     load.kind === 'loading' ? (
       <GuestsLoading />
@@ -400,6 +395,12 @@ export function EventGuests({
         added={added}
         card={shown}
         phaseCard={phaseCard}
+        makeLive={{
+          label: t('eventLive.makeLive'),
+          ref: liveOpener,
+          onPress: makeLive.start,
+          testID: 'events.makeLive',
+        }}
         kind={kind}
         searchRef={searchField}
         timeZone={timeZone}
@@ -517,6 +518,7 @@ function GuestRows({
   added,
   card,
   phaseCard,
+  makeLive,
   kind,
   searchRef,
   timeZone,
@@ -535,6 +537,7 @@ function GuestRows({
   added: string | null;
   card: Shown | null;
   phaseCard: PhaseCard | null;
+  makeLive: StepProps;
   kind: LayoutKind;
   searchRef: React.RefObject<TextInputInstance | null>;
   timeZone: string;
@@ -597,7 +600,7 @@ function GuestRows({
           tags={phaseCard?.tags ?? []}
           says={says}
           line={phaseCard?.line ?? (counts.invited > 0 ? haventLine(t, counts) : null)}
-          step={phaseCard?.step ?? null}
+          step={phaseCard?.offersMakeLive === true ? makeLive : null}
         />
       )}
       <View style={styles.searchRow}>
@@ -765,7 +768,7 @@ interface PhaseCard {
   /** A Draft counts who is on the list, since nobody is invited yet. */
   onList: boolean;
   line: string;
-  step: StepProps | null;
+  offersMakeLive: boolean;
 }
 
 /** Why nobody can be invited, on the card as the demo's draft, paused and finished draw it: the phase's chip, its line, and on a Draft Make live for someone with events.manage (sc-46879). */
@@ -775,7 +778,6 @@ function phaseCardOf(
   shown: Shown | null,
   phase: EventPhase | null,
   now: Date,
-  makeLive: StepProps,
 ): PhaseCard | null {
   if (shown == null) return null;
   const tags = cardTags(shown, now, t).filter((tag) => tag.mark != null);
@@ -789,7 +791,7 @@ function phaseCardOf(
           tags,
           onList: true,
           line: row.line === 'endPassed' ? t('eventLive.endPassed') : t('eventLive.guestsBlocked'),
-          step: row.offersMakeLive ? makeLive : null,
+          offersMakeLive: row.offersMakeLive,
         };
   }
   if (phase !== 'paused' && phase !== 'finished') return null;
@@ -798,7 +800,7 @@ function phaseCardOf(
     tags,
     onList: false,
     line: t(phase === 'paused' ? 'guestList.pausedLine' : 'guestList.finishedLine'),
-    step: null,
+    offersMakeLive: false,
   };
 }
 
