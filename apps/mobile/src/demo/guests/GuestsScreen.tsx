@@ -342,6 +342,7 @@ export function GuestsScreen({
               onOpen={openGuest}
               refFor={refFor}
               fieldRef={fieldRef}
+              manage={owner}
             />
           )}
         </>

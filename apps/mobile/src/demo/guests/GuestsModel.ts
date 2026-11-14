@@ -26,6 +26,7 @@ import {
 } from './GuestsSample.ts';
 import { type Change, changeLabel, changeWhen } from './ChangedSince.ts';
 import { REPLY_WORD, type ReplyKind, W, say } from './GuestsWords.ts';
+import { hasAllergy, needsOf } from './GuestNeeds.ts';
 import { EXPORT_STATES } from './GuestExportModel.ts';
 import { withOptOuts } from './OptOuts.ts';
 import { type HowAgreed, hostAgreed } from './WhatsAppConsent.ts';
@@ -58,6 +59,9 @@ export const LIST_STATES = [
 
 export const GUEST_STATES = [
   'guest',
+  'guestNeeds',
+  'guestNeedsViewer',
+  'needsSaved',
   'guestComing',
   'recorded',
   'notYetInvited',
@@ -119,6 +123,19 @@ export const EDIT_STATES = [
   'greetAsEmpty',
   'greetAsEdit',
   'greetAsLong',
+  'editGroup',
+  'groupBlank',
+  'groupTooLong',
+  'groupNew',
+  'groupTaken',
+  'groupLimit',
+  'needsEmpty',
+  'needsOpen',
+  'needsFilled',
+  'otherBlank',
+  'otherTooLong',
+  'noteTooLong',
+  'companionNeeds',
 ] as const;
 
 export const RECORD_STATES = [
@@ -149,6 +166,7 @@ export const ADD_STATES = [
   'androidNone',
   'androidRefused',
   'languageAdd',
+  'addGroupNeeds',
 ] as const;
 
 export const REVIEW_STATES = [
@@ -250,6 +268,7 @@ export function roleOf(state: GuestsState | null): Role {
   if (
     state === 'viewer' ||
     state === 'guestViewer' ||
+    state === 'guestNeedsViewer' ||
     state === 'repliesClosedViewer' ||
     state === 'overviewViewer' ||
     state === 'greetAsViewer' ||
@@ -466,6 +485,8 @@ export interface Person {
   kind: SampleGuest['kind'];
   line: string;
   companion: boolean;
+  /** sc-5519: any allergy recorded, drawn as the mark and Allergy only for guests.manage. */
+  allergy?: boolean;
 }
 
 function capital(text: string): string {
@@ -561,10 +582,16 @@ function rowLine(
   filter: FilterKey,
   replyBy: string | null,
 ): string {
-  if (filter === 'noreply' && g.kind === 'noreply') return capital(invitedWords(g, locale));
+  const group = g.group ?? null;
+  if (filter === 'noreply' && g.kind === 'noreply')
+    return joined([capital(invitedWords(g, locale)), group]);
   const short = g.kind === 'noreply' || g.kind === 'notyet';
   const count = g.companions.length;
-  return joined([replyLine(g, locale, replyBy, short), count > 0 ? say.companions(count) : null]);
+  return joined([
+    replyLine(g, locale, replyBy, short),
+    group,
+    count > 0 ? say.companions(count) : null,
+  ]);
 }
 
 function hostRow(
@@ -580,6 +607,7 @@ function hostRow(
     kind: g.kind,
     line: rowLine(g, locale, filter, replyBy),
     companion: false,
+    allergy: hasAllergy(g.needs),
   };
 }
 
@@ -589,21 +617,21 @@ function companionRow(g: SampleGuest, c: Companion, index: number): Person {
     guest: g.key,
     name: c.name,
     kind: c.kind,
-    line: c.kind === 'held' ? W.heldLine : REPLY_WORD[c.kind],
+    line: joined([c.kind === 'held' ? W.heldLine : REPLY_WORD[c.kind], g.group ?? null]),
     companion: true,
+    allergy: hasAllergy(c.needs),
   };
 }
 
 /** sc-3773 (ux, 8 Nov): a companion whose reply differs from their guest's is a row of their own in their own reply. */
 function ownRow(g: SampleGuest, c: Companion, index: number): Person {
   const unnamed = c.name.startsWith(say.guestOf(g.name));
+  const group = g.group ?? null;
   return {
     ...companionRow(g, c, index),
     line: unnamed
       ? companionRow(g, c, index).line
-      : c.kind === 'held'
-        ? `${say.guestOf(g.name)} · ${W.heldLine}`
-        : say.guestOf(g.name),
+      : joined([say.guestOf(g.name), c.kind === 'held' ? W.heldLine : null, group]),
     companion: false,
   };
 }
@@ -1061,6 +1089,14 @@ const ASKS_ON_30_OCT: Readonly<Record<string, AskAgain>> = {
   lucia: { kind: 'will', day: '2026-11-01' },
 };
 
+/** sc-5519: what Kwame's form saved in needsSaved: a new group, an allergy, an Other diet and the note. */
+export const KWAME_SAVED = needsOf({
+  allergies: ['milk'],
+  diet: ['other'],
+  otherDiet: 'No raw fish',
+  note: 'Sits with his grandmother; she needs the step-free way in.',
+});
+
 export function guestsAt(state: GuestsState | null): SampleGuest[] {
   const swap = (key: string, change: (g: SampleGuest) => SampleGuest) =>
     GUESTS.map((g) => (g.key === key ? change(g) : g));
@@ -1096,6 +1132,8 @@ export function guestsAt(state: GuestsState | null): SampleGuest[] {
       return swap('ines', (g) => withOptOuts(g, { email: '2026-10-25' }));
     case 'saved':
       return swap('kwame', (g) => ({ ...g, email: 'kwame@mensah.co.uk' }));
+    case 'needsSaved':
+      return swap('kwame', (g) => ({ ...g, group: 'Family', needs: KWAME_SAVED }));
     case 'greetAsSpaces':
       return swap('bisi', (g) => ({ ...g, greetAs: greetAsSaved('   ') }));
     case 'askAgain':
@@ -1232,6 +1270,10 @@ export function guestOf(state: GuestsState | null): string | null {
     case 'editCompanions':
     case 'editMax':
       return 'musa';
+    case 'guestNeeds':
+    case 'guestNeedsViewer':
+    case 'companionNeeds':
+      return 'ines';
     case 'languageEdit':
     case 'languageGuestChose':
     case 'editSeated':
@@ -1327,6 +1369,7 @@ export function areaStart(state: GuestsState | null): AreaStart {
     case 'saved':
     case 'greetAsSpaces':
     case 'whatsAppRecorded':
+    case 'needsSaved':
       return { ...base, toast: 'saved' };
     case 'linkCopied':
       return { ...base, toast: 'copied' };

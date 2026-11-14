@@ -36,6 +36,8 @@ import {
 import { GroupHead, type Layout, ShownLine } from './GuestsParts.tsx';
 import { REPLY_WORD, W, say } from './GuestsWords.ts';
 import { MarkSlot } from '../../components/ReplyMark.tsx';
+import { NW } from './GuestNeeds.ts';
+import { AllergyMark } from './GuestNeedsParts.tsx';
 
 const MENU_AFTER_MS = 700;
 
@@ -140,20 +142,25 @@ function personRow(
   refFor: (key: string) => Ref<ViewInstance>,
   lit: string | null,
   wide: boolean,
+  manage: boolean,
 ) {
   const selected = lit === p.key;
+  const allergy = manage && p.allergy === true;
   const row = (
     <Row
       ref={refFor(p.key)}
       title={p.name}
       line={p.line}
+      below={allergy ? <AllergyMark testID={`guests.row.${p.key}.allergy`} /> : undefined}
       lead={<MarkSlot kind={p.kind} />}
       opens
       selected={selected}
       gutter={wide ? 10 : 0}
       pad={p.companion ? 8 : 11}
       onPress={() => onOpen(p.guest, p.key)}
-      accessibilityLabel={[p.name, p.line].join('. ')}
+      accessibilityLabel={[p.name, p.line, allergy ? NW.allergy : null]
+        .filter((part) => part != null)
+        .join('. ')}
       testID={`guests.row.${p.key}`}
     />
   );
@@ -187,6 +194,8 @@ export interface ListProps {
   onOpen: (guest: string, from: string) => void;
   refFor: (key: string) => Ref<ViewInstance>;
   fieldRef: RefObject<TextInputInstance | null>;
+  /** sc-5519: guests.manage, the only role that sees the allergy mark. */
+  manage: boolean;
 }
 
 /** Find a guest and the filter as one row, then the groups by reply, or the rows a filter or search leaves. */
@@ -211,6 +220,7 @@ export function GuestsRows({
   onOpen,
   refFor,
   fieldRef,
+  manage,
 }: ListProps) {
   const looking = filter !== 'all' || searched.trim() !== '';
   const wide = layout === 'landscape';
@@ -262,7 +272,7 @@ export function GuestsRows({
           ) : (
             <View style={wide && styles.reach}>
               <RowList
-                items={rows.map((p) => personRow(p, onOpen, refFor, lit, wide))}
+                items={rows.map((p) => personRow(p, onOpen, refFor, lit, wide, manage))}
                 gutter={wide ? 10 : 0}
               />
             </View>
@@ -279,7 +289,7 @@ export function GuestsRows({
                 <GroupHead word={REPLY_WORD[group]} count={count} />
                 <View style={wide && styles.reach}>
                   <RowList
-                    items={shown.map((p) => personRow(p, onOpen, refFor, lit, wide))}
+                    items={shown.map((p) => personRow(p, onOpen, refFor, lit, wide, manage))}
                     gutter={wide ? 10 : 0}
                   />
                 </View>
@@ -299,7 +309,7 @@ export function GuestsRows({
               <GroupHead word={W.walkIn} count={counts.walkin} />
               <View style={wide && styles.reach}>
                 <RowList
-                  items={walkIns.map((p) => personRow(p, onOpen, refFor, lit, wide))}
+                  items={walkIns.map((p) => personRow(p, onOpen, refFor, lit, wide, manage))}
                   gutter={wide ? 10 : 0}
                 />
               </View>

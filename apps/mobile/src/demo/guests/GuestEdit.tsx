@@ -47,6 +47,10 @@ import {
 } from './GuestsSample.ts';
 import { HOW_INVITED, HOW_TOLD, REPLY_WORD, W, say } from './GuestsWords.ts';
 import { ReplyMark } from '../../components/ReplyMark.tsx';
+import { readOut } from '../../components/ReadOut.tsx';
+import { NO_NEEDS, NW, type Needs, NEEDS_FIELDS, needsLines, savedNeeds } from './GuestNeeds.ts';
+import { NeedsSection, useGroupChoice, useNeedsRefs } from './GuestNeedsParts.tsx';
+import { groupNeedsStart } from './GuestNeedsStart.ts';
 
 type Opener = RefObject<ScreenReaderTarget | null>;
 
@@ -275,6 +279,16 @@ export function EditGuest({
   const [discarding, setDiscarding] = useState(start === 'editDiscard');
   const [language, setLanguage] = useState<GuestLanguage | null>(g.language ?? null);
   const [choosing, setChoosing] = useState(false);
+  const [gn] = useState(() => groupNeedsStart(start, g));
+  const [needs, setNeeds] = useState<Needs>(gn.needs);
+  const [needsOpen, setNeedsOpen] = useState(gn.open);
+  const [needsChecked, setNeedsChecked] = useState(gn.checked);
+  const [companionNeeds, setCompanionNeeds] = useState<Needs[]>(() =>
+    startCompanions(start, g).map((_, at) => gn.companionNeeds[at] ?? NO_NEEDS),
+  );
+  const [companionOpen, setCompanionOpen] = useState<number[]>(gn.companionOpen);
+  const group = useGroupChoice(gn, name.trim() === '' ? g.name : name.trim(), 'guest.edit.group');
+  const needsRefs = useNeedsRefs();
   const nameRef = useRef<TextInputInstance>(null);
   const greetAsRef = useRef<TextInputInstance>(null);
   const emailRef = useRef<TextInputInstance>(null);
@@ -291,7 +305,11 @@ export function EditGuest({
     email !== (g.email ?? '') ||
     joinPhone(country, number) !== g.phone ||
     language !== (g.language ?? null) ||
+    group.name !== (g.group ?? null) ||
+    JSON.stringify(savedNeeds(needs)) !== JSON.stringify(savedNeeds(g.needs ?? NO_NEEDS)) ||
     companions.join() !== g.companions.map((c) => c.name).join();
+  const lines = needsChecked ? needsLines(needs) : {};
+  const companionLines = companionNeeds.map((one) => (needsChecked ? needsLines(one) : {}));
 
   const next = (): SampleGuest => ({
     ...g,
@@ -300,7 +318,12 @@ export function EditGuest({
     email: email.trim() === '' ? null : email.trim(),
     phone: joinPhone(country, number),
     language,
-    companions: companionsAfterEdit(companions, seats, g.kind),
+    group: group.name,
+    needs: savedNeeds(needs),
+    companions: companionsAfterEdit(companions, seats, g.kind).map((c, at) => ({
+      ...c,
+      needs: savedNeeds(companionNeeds[at] ?? NO_NEEDS),
+    })),
   });
   const save = (anyway = false) => {
     const problems = {
@@ -309,11 +332,29 @@ export function EditGuest({
       email: emailCheck(email),
       phone: phoneCheck(number, country),
     };
+    const guestLines = needsLines(needs);
+    const theirLines = companionNeeds.map(needsLines);
+    const failing =
+      Object.values(problems).filter((one) => one != null).length +
+      Object.keys(guestLines).length +
+      theirLines.reduce((sum, one) => sum + Object.keys(one).length, 0);
     setChecked(true);
+    setNeedsChecked(true);
+    if (failing > 0) readOut(NW.toFix(failing), { interrupts: true });
+    if (Object.keys(guestLines).length > 0) setNeedsOpen(true);
+    const theirs = theirLines.flatMap((one, at) => (Object.keys(one).length > 0 ? [at] : []));
+    if (theirs.length > 0) setCompanionOpen([...new Set([...companionOpen, ...theirs])]);
     if (problems.name != null) return focusChecked(nameRef);
     if (problems.greetAs != null) return focusChecked(greetAsRef);
     if (problems.email != null) return focusChecked(emailRef);
     if (problems.phone != null) return focusChecked(numberRef);
+    const first = NEEDS_FIELDS.find((field) => guestLines[field] != null);
+    if (first != null) {
+      setTimeout(() => focusChecked(needsRefs[first]), 300);
+      return;
+    }
+    if (theirs.length > 0) return;
+    if (group.refusedOnSave()) return;
     if (!anyway && name.trim() !== g.name && sameNameAs(guests, name, g.key) != null) {
       setSame(true);
       return;
@@ -336,6 +377,10 @@ export function EditGuest({
     setRemoved(companions[index] ?? '');
     setCompanions(companions.filter((_, i) => i !== index));
     setSeats(seats.filter((_, i) => i !== index));
+    setCompanionNeeds(companionNeeds.filter((_, i) => i !== index));
+    setCompanionOpen(
+      companionOpen.filter((at) => at !== index).map((at) => (at > index ? at - 1 : at)),
+    );
   };
   const seat = removing == null ? null : (seats[removing] ?? null);
   const seatedName = removing == null ? '' : (companions[removing] ?? '');
@@ -375,7 +420,7 @@ export function EditGuest({
               },
               () => setChoosing(false),
             )
-          : null
+          : group.over
       }
       testID="guest.edit"
     >
@@ -453,6 +498,7 @@ export function EditGuest({
         fieldRef={greetAsRef}
         testID="guest.edit.greetAs"
       />
+      {group.field}
       <GuestField
         label={W.emailAddress}
         value={email}
@@ -480,36 +526,65 @@ export function EditGuest({
         onOpen={() => setChoosing(true)}
         testID="guest.edit.language"
       />
+      <NeedsSection
+        title={NW.needs}
+        needs={needs}
+        onChange={setNeeds}
+        open={needsOpen}
+        onToggle={() => setNeedsOpen(!needsOpen)}
+        lines={lines}
+        refs={needsRefs}
+        testID="guest.edit.needs"
+      />
       <View style={styles.companions}>
         <Legend
           text={W.companions}
           line={companions.length === 0 ? say.noneYet(0) : say.ofTen(companions.length)}
         />
         {shown.map((c, index) => (
-          <View key={`${index}`} style={styles.companion}>
-            <View style={styles.grow}>
-              <BoxField
-                value={c}
-                onChangeText={(text) =>
-                  setCompanions(companions.map((one, i) => (i === index ? text : one)))
-                }
-                accessibilityLabel={W.companionName}
-                testID={`guest.edit.companion.${index}`}
+          <View key={`${index}`} style={styles.companionBlock}>
+            <View style={styles.companion}>
+              <View style={styles.grow}>
+                <BoxField
+                  value={c}
+                  onChangeText={(text) =>
+                    setCompanions(companions.map((one, i) => (i === index ? text : one)))
+                  }
+                  accessibilityLabel={W.companionName}
+                  testID={`guest.edit.companion.${index}`}
+                />
+              </View>
+              <TextAction
+                label={W.remove}
+                plain
+                onPress={() => {
+                  const held = seats[index];
+                  if (held != null && (held.table != null || held.meal === true)) {
+                    setRemoving(index);
+                    return;
+                  }
+                  drop(index);
+                }}
+                accessibilityLabel={`${W.remove} ${c}`}
+                testID={`guest.edit.remove.${index}`}
               />
             </View>
-            <TextAction
-              label={W.remove}
-              plain
-              onPress={() => {
-                const held = seats[index];
-                if (held != null && (held.table != null || held.meal === true)) {
-                  setRemoving(index);
-                  return;
-                }
-                drop(index);
-              }}
-              accessibilityLabel={`${W.remove} ${c}`}
-              testID={`guest.edit.remove.${index}`}
+            <NeedsSection
+              title={NW.theirNeeds}
+              needs={companionNeeds[index] ?? NO_NEEDS}
+              onChange={(next) =>
+                setCompanionNeeds(companionNeeds.map((one, at) => (at === index ? next : one)))
+              }
+              open={companionOpen.includes(index)}
+              onToggle={() =>
+                setCompanionOpen(
+                  companionOpen.includes(index)
+                    ? companionOpen.filter((at) => at !== index)
+                    : [...companionOpen, index],
+                )
+              }
+              lines={companionLines[index] ?? {}}
+              testID={`guest.edit.companion.${index}.needs`}
             />
           </View>
         ))}
@@ -534,6 +609,7 @@ export function EditGuest({
             onPress={() => {
               setCompanions([...companions, '']);
               setSeats([...seats, null]);
+              setCompanionNeeds([...companionNeeds, NO_NEEDS]);
             }}
             testID="guest.edit.addCompanion"
           />
@@ -972,6 +1048,7 @@ const styles = StyleSheet.create({
   legend: { gap: 4 },
   companions: { gap: 8 },
   companion: { flexDirection: 'row', alignItems: 'center', gap: 10 },
+  companionBlock: { gap: 4 },
   differs: {
     gap: 2,
     paddingVertical: 8,
