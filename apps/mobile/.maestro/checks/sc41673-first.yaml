@@ -1,0 +1,21 @@
+# sc-41673, Android phone on its side: a fresh Create an organisation, name empty and focused, keys up; the first letter typed, a second later, then the rest of the name word by word and whole. Leaves the step cancelled, still on its side.
+appId: host.exp.Exponent
+---
+- setOrientation: LANDSCAPE_LEFT
+- waitForAnimationToEnd
+- runFlow: ../open-create-organisation.yaml
+- extendedWaitUntil: { visible: { id: 'never.there' }, timeout: 1500, optional: true }
+- takeScreenshot: f0-arrive
+- inputText: 'I'
+- extendedWaitUntil: { visible: { id: 'never.there' }, timeout: 1000, optional: true }
+- takeScreenshot: f1-letter
+- inputText: 'badan'
+- extendedWaitUntil: { visible: { id: 'never.there' }, timeout: 800, optional: true }
+- takeScreenshot: f2-word
+- inputText: ' Supper'
+- extendedWaitUntil: { visible: { id: 'never.there' }, timeout: 800, optional: true }
+- takeScreenshot: f3-two-words
+- inputText: ' Club'
+- extendedWaitUntil: { visible: { id: 'never.there' }, timeout: 1000, optional: true }
+- takeScreenshot: f4-whole
+- tapOn: { id: 'createWalk.cancel', optional: true }

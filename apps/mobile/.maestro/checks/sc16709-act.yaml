@@ -1,0 +1,34 @@
+# sc-16709: ${EV_ACT}, a Live event: Call off or End now confirmed on the open page, then Coming up read straight away and again a little later, with no reload.
+appId: host.exp.Exponent
+---
+- openLink: ${METRO_URL}/--/events/${EV_ACT}
+- extendedWaitUntil:
+    visible:
+      id: 'events.phase.*'
+    timeout: 30000
+- scrollUntilVisible:
+    element:
+      id: 'timeline.row'
+    direction: DOWN
+    timeout: 30000
+- scrollUntilVisible:
+    element:
+      id: 'events.end'
+    direction: UP
+- takeScreenshot: act-before
+- tapOn:
+    id: 'events.end'
+- tapOn:
+    id: 'events.endYes'
+- scrollUntilVisible:
+    element:
+      id: 'timeline.comingUp'
+    direction: DOWN
+    timeout: 15000
+- takeScreenshot: act-after
+- scrollUntilVisible:
+    element:
+      id: 'timeline.finished'
+    direction: DOWN
+    timeout: 30000
+- takeScreenshot: act-after-settled

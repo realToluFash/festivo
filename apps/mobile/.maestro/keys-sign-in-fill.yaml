@@ -1,0 +1,19 @@
+# Sign in filled, not sent, keys up on Password. sc-13408.
+#
+#   node .qa/bin/qa-env.mjs maestro keys-sign-in-fill -e EMAIL=… -e PASSWORD=…
+appId: host.exp.Exponent
+---
+- openLink: ${METRO_URL}/--/sign-in
+- extendedWaitUntil:
+    visible:
+      id: 'signIn.email'
+    timeout: 30000
+- tapOn:
+    id: 'signIn.email'
+- eraseText: 120
+- inputText: ${EMAIL}
+- tapOn:
+    id: 'signIn.password'
+- eraseText: 120
+- inputText: ${PASSWORD}
+- takeScreenshot: mobile-13408-sign-in-fill

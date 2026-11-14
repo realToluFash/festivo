@@ -1,0 +1,15 @@
+# sc-23330, sc-28811: the tablet frame's sidebar title is Dusk's wordmark, in landscape. Portrait has no
+# wordmark since the pill, tabs and bell head the page (sc-30410), so the check turns the tablet itself.
+# The wait matches the Brand's accessibility label, which the plain-text name would match too; the rail
+# shot checks the wordmark.
+# On a landscape-native tablet such as Soirely_QA2_Tablet, LANDSCAPE_LEFT gives portrait and the wait
+# times out; the rail there is shot by the sc31724-side-* checks at ORIENT=PORTRAIT (README, sc-23471).
+appId: host.exp.Exponent
+---
+- setOrientation: LANDSCAPE_LEFT
+- openLink: ${METRO_URL}/--/events
+- extendedWaitUntil:
+    visible: '{{t:app.name}}'
+    timeout: 30000
+- waitForAnimationToEnd
+- takeScreenshot: rail

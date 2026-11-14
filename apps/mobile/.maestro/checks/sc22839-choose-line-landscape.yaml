@@ -1,0 +1,14 @@
+# Settings' empty tablet pane asks for a section, in landscape. sc-22839, sc-30412.
+appId: host.exp.Exponent
+---
+- setOrientation: LANDSCAPE_LEFT
+- openLink: ${METRO_URL}/--/settings
+- extendedWaitUntil:
+    visible:
+      id: 'settings.account'
+    timeout: 30000
+- waitForAnimationToEnd:
+    timeout: 5000
+- assertVisible: '{{t:settings.choose}}'
+- takeScreenshot: choose-landscape
+- setOrientation: PORTRAIT

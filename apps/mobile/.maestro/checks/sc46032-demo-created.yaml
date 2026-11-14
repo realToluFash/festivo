@@ -1,0 +1,10 @@
+# sc-46032: /demo/today?create=created, the demo's notice under Today's cover after Create.
+appId: host.exp.Exponent
+---
+- openLink: ${METRO_URL}/--/demo/today?create=created
+- waitForAnimationToEnd:
+    timeout: 8000
+- runFlow: ../developer-menu-close.yaml
+- waitForAnimationToEnd:
+    timeout: 3000
+- takeScreenshot: demo-created

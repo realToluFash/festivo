@@ -1,0 +1,65 @@
+# Android only: back has no meaning on the iOS simulator.
+# Android back steps Create an organisation back from Where is it based? with the name kept, then on its first step asks to discard it; and closes a Settings > Organisation list with the field unchanged.
+appId: host.exp.Exponent
+---
+- runFlow: ../open-create-organisation.yaml
+- tapOn:
+    id: 'createWalk.name'
+- inputText: 'Back Typed'
+- hideKeyboard
+- tapOn:
+    id: 'createWalk.primary'
+- extendedWaitUntil:
+    visible:
+      id: 'createWalk.search'
+    timeout: 10000
+- hideKeyboard:
+    optional: true
+- takeScreenshot: android-country-step
+- back
+- extendedWaitUntil:
+    visible: '{{t:createOrganisation.whatTitle}}'
+    timeout: 10000
+- assertVisible:
+    id: 'createWalk'
+- assertVisible: 'Back Typed'
+- takeScreenshot: android-after-step-back
+- hideKeyboard:
+    optional: true
+- back
+- extendedWaitUntil:
+    visible:
+      id: 'createWalk.ask'
+    timeout: 10000
+- tapOn:
+    id: 'createWalk.discard'
+- extendedWaitUntil:
+    notVisible:
+      id: 'createWalk'
+    timeout: 10000
+- takeScreenshot: android-after-walk-back
+- openLink: ${METRO_URL}/--/settings/organisation
+- extendedWaitUntil:
+    visible:
+      id: organisation.edit
+    timeout: 30000
+- tapOn:
+    id: organisation.edit
+- extendedWaitUntil:
+    visible:
+      id: 'organisation.timezone'
+    timeout: 30000
+- tapOn:
+    id: 'organisation.timezone'
+- extendedWaitUntil:
+    visible:
+      id: 'organisation.timezone.search'
+    timeout: 10000
+- back
+- extendedWaitUntil:
+    notVisible:
+      id: 'organisation.timezone.search'
+    timeout: 10000
+- assertVisible:
+    id: 'organisation.timezone'
+- takeScreenshot: android-org-after-back

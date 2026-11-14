@@ -1,0 +1,20 @@
+# sc-30322: the drop-down open from Events' pill, turned to each side and back while open.
+appId: host.exp.Exponent
+---
+- openLink: ${METRO_URL}/--/demo/events?switcher=populated
+- extendedWaitUntil:
+    visible:
+      id: 'switcher.heading'
+    timeout: 30000
+- waitForAnimationToEnd: { timeout: 5000 }
+- takeScreenshot: upright
+- setOrientation: LANDSCAPE_LEFT
+- waitForAnimationToEnd: { timeout: 5000 }
+- assertVisible:
+    id: 'switcher.heading'
+- takeScreenshot: left
+- setOrientation: PORTRAIT
+- waitForAnimationToEnd: { timeout: 5000 }
+- assertVisible:
+    id: 'switcher.heading'
+- takeScreenshot: upright-again

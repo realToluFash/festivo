@@ -1,0 +1,11 @@
+# sc-34920: Settings shows the Personalisation row and its line, in the account's language.
+appId: host.exp.Exponent
+---
+- runFlow: ../open-settings.yaml
+- runFlow: ../developer-menu-close.yaml
+- scrollUntilVisible:
+    element:
+      id: settings.personalisation.tile
+    direction: DOWN
+    timeout: 15000
+- takeScreenshot: settings-row
