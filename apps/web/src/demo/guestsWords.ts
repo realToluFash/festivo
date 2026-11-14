@@ -77,7 +77,7 @@ export const GW = {
   unmarkRefused: (name: string, reply: string, date: string) =>
     `Not changed. ${name} replied ${reply} on ${date}, so they stay invited.`,
   readOnlyInvited:
-    'You can see names, replies and who is invited. Marking guests as invited needs a host or organiser role.',
+    'You can see names, replies and who is invited. Marking guests as invited needs the Lead or Can edit role.',
   companionCount: (count: number) => (count === 1 ? '1 companion' : `${figure(count)} companions`),
   heldLine: 'Held · comes only if their host accepts',
   guestOf: (host: string) => `Guest of ${host}`,
