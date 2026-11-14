@@ -1,4 +1,4 @@
-/* sc-3776: the selection bar and its one line dock above the list at a desk, and as a card at the foot of the screen from 320. */
+/* sc-3776: the selection bar and its one line dock above the list at a desk, and reflow to a card at the foot of the screen at 400% zoom. */
 .gm-all {
   padding-left: var(--spaceSm);
 }
@@ -159,7 +159,7 @@
   font: 500 15px/1.4 var(--fontFamily);
 }
 
-/* From 320 CSS px the bar docks to the foot of the screen as a card, its pills wrapping at 44 px. */
+/* At 400% zoom (320 CSS px) the bar reflows to a card docked at the foot of the screen, its pills wrapping at 44 px. */
 @media (width <= 720px) {
   .gm-dock {
     position: fixed;
