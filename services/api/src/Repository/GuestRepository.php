@@ -46,6 +46,20 @@ final class GuestRepository extends ServiceEntityRepository implements EventScop
             ->getResult();
     }
 
+    /**
+     * @param list<Event> $events
+     *
+     * @return list<Guest> every list's hosts and companions, loaded together
+     */
+    public function findOnListsOf(array $events): array
+    {
+        if ([] === $events) {
+            return [];
+        }
+
+        return $this->findBy(['event' => $events]);
+    }
+
     /** Guests and companions together: the Guests header's N. */
     public function countPeople(Event $event): int
     {

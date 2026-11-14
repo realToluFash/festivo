@@ -11,6 +11,7 @@ use App\Enum\GuestStanding;
 use App\Enum\NeedKind;
 use App\Repository\GuestNeedRepository;
 use App\Repository\GuestRepository;
+use Psl\Dict;
 use Psl\Iter;
 use Psl\Vec;
 
@@ -38,6 +39,33 @@ final readonly class HeadcountCalculator
             'byGroup' => [] === $standings ? [] : [['group' => null, 'counts' => $counts]],
             'byDietaryNeed' => ['addsUp' => false, 'needs' => $this->byNeed($event)],
         ];
+    }
+
+    /**
+     * @param list<Event> $events
+     *
+     * @return array<string, Counts> by event id
+     */
+    public function forEvents(array $events): array
+    {
+        $standings = [];
+        foreach ($this->guestRepository->findOnListsOf($events) as $person) {
+            $standings[$person->getEvent()->getId()->toRfc4122()][] = self::standing($person);
+        }
+
+        return Dict\from_keys(Vec\map($events, static fn (Event $event): string => $event->getId()->toRfc4122()), static fn (string $id): array => self::counts(...($standings[$id] ?? [])));
+    }
+
+    /**
+     * Events' measure (sc-23284): the companions held behind a guest who owes an answer have not replied either.
+     *
+     * @param Counts $counts
+     *
+     * @return array{invited: int, coming: int, notReplied: int}
+     */
+    public static function figures(array $counts): array
+    {
+        return ['invited' => $counts['invited'], 'coming' => $counts['accepted'], 'notReplied' => $counts['awaitingReply'] + $counts['heldBy']['hostNoReply']];
     }
 
     /**
