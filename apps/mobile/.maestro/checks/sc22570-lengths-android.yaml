@@ -109,14 +109,14 @@ appId: host.exp.Exponent
     times: 15
     while:
       notVisible:
-        id: 'eventDuplicate.start.date'
+        id: 'eventDuplicate.date'
     commands:
       - swipe:
           start: 50%, 85%
           end: 50%, 65%
           duration: 400
 - tapOn:
-    id: 'eventDuplicate.start.date'
+    id: 'eventDuplicate.date'
 - tapOn: 'OK'
 - waitForAnimationToEnd
 - repeat:
@@ -137,14 +137,14 @@ appId: host.exp.Exponent
     times: 15
     while:
       notVisible:
-        id: 'eventDuplicate.start.time'
+        id: 'eventDuplicate.time'
     commands:
       - swipe:
           start: 50%, 85%
           end: 50%, 65%
           duration: 400
 - tapOn:
-    id: 'eventDuplicate.start.time'
+    id: 'eventDuplicate.time'
 - tapOn: 'OK'
 - waitForAnimationToEnd
 - repeat:

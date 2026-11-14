@@ -25,14 +25,14 @@ appId: host.exp.Exponent
     id: 'events.card.step'
 - extendedWaitUntil:
     visible:
-      id: 'events.makeLiveSheet'
+      id: 'events.makeLive.question'
     timeout: 10000
 - takeScreenshot: confirm
 - tapOn:
-    id: 'events.makeLiveNo'
+    id: 'events.makeLive.keep'
 - extendedWaitUntil:
     notVisible:
-      id: 'events.makeLiveSheet'
+      id: 'events.makeLive.question'
     timeout: 10000
 - assertVisible:
     id: 'events.phase.draft'
@@ -70,10 +70,10 @@ appId: host.exp.Exponent
     id: 'events.card.step'
 - extendedWaitUntil:
     visible:
-      id: 'events.makeLiveYes'
+      id: 'events.makeLive.confirm'
     timeout: 10000
 - tapOn:
-    id: 'events.makeLiveYes'
+    id: 'events.makeLive.confirm'
 - extendedWaitUntil:
     visible:
       id: 'events.phase.live'
