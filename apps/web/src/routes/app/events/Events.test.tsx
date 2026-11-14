@@ -34,6 +34,7 @@ function event(overrides: Record<string, unknown> = {}) {
     currency: 'NGN',
     cover: null,
     venue: null,
+    arrivalNote: null,
     hosts: ['Funmi Adeyemi'],
     madeLiveAt: null,
     pausedAt: null,

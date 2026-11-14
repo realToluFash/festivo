@@ -2846,6 +2846,7 @@ describe('events (sc-1486)', () => {
     currency: 'NGN',
     cover: null,
     venue: null,
+    arrivalNote: null,
     hosts: ['Funmi Adeyemi', 'Tayo Adeyemi'],
     madeLiveAt: null,
     pausedAt: null,
@@ -3418,6 +3419,7 @@ describe("an event's venue (sc-3589)", () => {
     dayCount: 2,
     currency: 'NGN',
     cover: null,
+    arrivalNote: null,
     hosts: [],
     madeLiveAt: null,
     pausedAt: null,
@@ -3475,6 +3477,19 @@ describe("an event's venue (sc-3589)", () => {
 
   test('refuses an event with no venue field, naming where to look', async () => {
     await expect(client(json({ event })).api.event('e1')).rejects.toThrow(/events controller/);
+  });
+
+  test("reads the host's arrival note, with its line breaks, apart from the venue (sc-24385)", async () => {
+    const note = 'Use the side gate.\nDoors open at 17:30.';
+    const read = await client(
+      json({ event: { ...event, venue: null, arrivalNote: note } }),
+    ).api.event('e1');
+
+    expect(read.venue).toBeNull();
+    expect(read.arrivalNote).toBe(note);
+    await expect(
+      client(json({ event: { ...event, venue: null, arrivalNote: 5 } })).api.event('e1'),
+    ).rejects.toThrow(/events controller/);
   });
 
   const answers = JSON.parse(

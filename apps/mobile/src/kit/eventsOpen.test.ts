@@ -12,6 +12,7 @@ const gala: OrganisationEvent = {
   startsAt: '2026-11-14T16:00',
   endsAt: '2026-11-14T23:00',
   venue: null,
+  arrivalNote: null,
   timeZone: 'Europe/London',
   dayCount: 1,
   currency: 'GBP',

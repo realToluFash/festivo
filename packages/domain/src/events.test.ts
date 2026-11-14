@@ -5,6 +5,9 @@ import { describe, expect, it } from 'vitest';
 import {
   EVENT_TYPES,
   type EventDraft,
+  arrivalNoteLength,
+  arrivalNoteSent,
+  arrivalNoteTooLong,
   clockMinutes,
   copiedEnd,
   draftLength,
@@ -86,7 +89,7 @@ describe('the new event form', () => {
 });
 
 describe('the whole form, as both clients check it (sc-3595)', () => {
-  const venue: VenueDraft = { name: '', address: '', addressId: null };
+  const venue: VenueDraft = { name: '', address: '', addressId: null, note: '' };
 
   it('passes a filled form', () => {
     expect(
@@ -247,6 +250,7 @@ describe('editing an event (sc-3587)', () => {
     timeZone: 'Europe/London',
     currency: 'GBP',
     venue: null,
+    arrivalNote: null,
   };
   const venue = venueDraftOf(null);
 
@@ -339,6 +343,7 @@ describe("an event's venue (sc-3589)", () => {
     timeZone: 'Africa/Lagos',
     currency: 'NGN',
     venue: { name: 'The Civic Centre', address: { formatted: 'Ozumba Mbadiwe Avenue, Lagos' } },
+    arrivalNote: null,
   };
 
   function changes(venue: Partial<VenueDraft>) {
@@ -355,6 +360,7 @@ describe("an event's venue (sc-3589)", () => {
       name: 'The Civic Centre',
       address: 'Ozumba Mbadiwe Avenue, Lagos',
       addressId: null,
+      note: '',
     });
     expect(changes({ name: ' The Civic Centre ' })).toEqual({});
   });
@@ -376,11 +382,11 @@ describe("an event's venue (sc-3589)", () => {
   });
 
   it('refuses what the API refuses, after trimming', () => {
-    expect(venueProblems({ name: ` ${'a'.repeat(120)} `, address: '', addressId: null })).toEqual(
-      [],
-    );
     expect(
-      venueProblems({ name: 'a'.repeat(121), address: 'b'.repeat(301), addressId: null }),
+      venueProblems({ name: ` ${'a'.repeat(120)} `, address: '', addressId: null, note: '' }),
+    ).toEqual([]);
+    expect(
+      venueProblems({ name: 'a'.repeat(121), address: 'b'.repeat(301), addressId: null, note: '' }),
     ).toEqual([
       { field: 'venueName', problem: 'venueNameTooLong' },
       { field: 'venueAddress', problem: 'venueAddressTooLong' },
@@ -389,6 +395,61 @@ describe("an event's venue (sc-3589)", () => {
 
   it('is null for a new event with neither field', () => {
     expect(venueSent(venueDraftOf(null))).toBeNull();
+  });
+});
+
+describe("the host's arrival note (sc-24385)", () => {
+  const saved = {
+    name: 'Owambe',
+    type: 'wedding' as const,
+    startsAt: '2026-11-14T16:00:00+01:00',
+    endsAt: '2026-11-14T23:00:00+01:00',
+    timeZone: 'Africa/Lagos',
+    currency: 'NGN',
+    venue: null,
+    arrivalNote: 'Use the side gate.',
+  };
+  const fiveHundred = `${'é'.repeat(200)}${'ñ'.repeat(150)}${'ç'.repeat(149)}🚗`;
+
+  function changes(note: string) {
+    return eventChanges(saved, {
+      draft: draftOf(saved),
+      timeZone: saved.timeZone,
+      currency: saved.currency,
+      venue: venueDraftOf(saved.venue, note),
+    });
+  }
+
+  it('counts code points of what is saved, as the API does', () => {
+    expect(arrivalNoteLength(fiveHundred)).toBe(500);
+    expect(arrivalNoteLength('e\u0301'.repeat(500))).toBe(500);
+    expect(arrivalNoteLength(`\n  ${fiveHundred}  \n\n`)).toBe(500);
+    expect(arrivalNoteTooLong(fiveHundred)).toBe(false);
+    expect(arrivalNoteTooLong(`${fiveHundred}x`)).toBe(true);
+  });
+
+  it('refuses a note past 500, and nothing else about it', () => {
+    expect(venueProblems({ ...venueDraftOf(null), note: `${fiveHundred} ` })).toEqual([]);
+    expect(venueProblems({ ...venueDraftOf(null), note: `${fiveHundred}!` })).toEqual([
+      { field: 'arrivalNote', problem: 'arrivalNoteTooLong' },
+    ]);
+  });
+
+  it('opens with the saved note, and sends nothing while it stays', () => {
+    expect(venueDraftOf(null, 'Use the side gate.').note).toBe('Use the side gate.');
+    expect(changes('  Use the side gate.\n')).toEqual({});
+  });
+
+  it('sends a changed note trimmed, with no venue, and keeps its line breaks', () => {
+    expect(changes(' Side gate.\nDoors at 17:30. ')).toEqual({
+      arrivalNote: 'Side gate.\nDoors at 17:30.',
+    });
+  });
+
+  it('sends null to remove it, for an empty field or one of only blank lines', () => {
+    expect(changes('')).toEqual({ arrivalNote: null });
+    expect(changes(' \n\n  ')).toEqual({ arrivalNote: null });
+    expect(arrivalNoteSent(' \n ')).toBeNull();
   });
 });
 

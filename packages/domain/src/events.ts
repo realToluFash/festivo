@@ -255,12 +255,14 @@ export function scheduleKept<T extends { draft: EventDraft; timeZone: string }>(
 /** The API's venue limits, counted in characters after trimming (sc-3589). */
 export const VENUE_NAME_MAXIMUM = 120;
 export const VENUE_ADDRESS_MAXIMUM = 300;
+export const ARRIVAL_NOTE_MAXIMUM = 500;
 
-/** `addressId` is the suggestion the address was picked from, and is cleared by typing in it. */
+/** `addressId` is the suggestion the address was picked from, and is cleared by typing in it. `note` is the arrival note, which the form keeps in the Venue section (sc-24385). */
 export interface VenueDraft {
   name: string;
   address: string;
   addressId: string | null;
+  note: string;
 }
 
 export interface SavedVenue {
@@ -275,12 +277,33 @@ export interface VenueSent {
   addressId?: string | null;
 }
 
-export type VenueField = 'venueName' | 'venueAddress';
+export type VenueField = 'venueName' | 'venueAddress' | 'arrivalNote';
 
-export type VenueProblem = 'venueNameTooLong' | 'venueAddressTooLong';
+export type VenueProblem = 'venueNameTooLong' | 'venueAddressTooLong' | 'arrivalNoteTooLong';
 
-export function venueDraftOf(venue: SavedVenue | null): VenueDraft {
-  return { name: venue?.name ?? '', address: venue?.address?.formatted ?? '', addressId: null };
+export function venueDraftOf(venue: SavedVenue | null, note: string | null = null): VenueDraft {
+  return {
+    name: venue?.name ?? '',
+    address: venue?.address?.formatted ?? '',
+    addressId: null,
+    note: note ?? '',
+  };
+}
+
+/** The note as it is saved, as the API's ArrivalNote has it: trimmed and in NFC; only spaces or blank lines is no note. */
+export function arrivalNoteSent(typed: string): string | null {
+  const kept = typed.trim().normalize('NFC');
+
+  return kept === '' ? null : kept;
+}
+
+/** In code points of what is saved, so é, ñ, ç and 🚗 count one each, as the API counts. */
+export function arrivalNoteLength(typed: string): number {
+  return Array.from(arrivalNoteSent(typed) ?? '').length;
+}
+
+export function arrivalNoteTooLong(typed: string): boolean {
+  return arrivalNoteLength(typed) > ARRIVAL_NOTE_MAXIMUM;
 }
 
 export function venueProblems(draft: VenueDraft): { field: VenueField; problem: VenueProblem }[] {
@@ -290,6 +313,8 @@ export function venueProblems(draft: VenueDraft): { field: VenueField; problem: 
     problems.push({ field: 'venueName', problem: 'venueNameTooLong' });
   if (Array.from(draft.address.trim()).length > VENUE_ADDRESS_MAXIMUM)
     problems.push({ field: 'venueAddress', problem: 'venueAddressTooLong' });
+  if (arrivalNoteTooLong(draft.note))
+    problems.push({ field: 'arrivalNote', problem: 'arrivalNoteTooLong' });
 
   return problems;
 }
@@ -317,6 +342,7 @@ export const EVENT_FORM_FIELDS: readonly EventFormField[] = [
   'endsAt',
   'venueName',
   'venueAddress',
+  'arrivalNote',
   'timeZone',
   'currency',
 ];
@@ -350,11 +376,13 @@ export interface EventDetails {
 
 /** Only what differs from the saved event, in the API's terms; empty when nothing changed, and then nothing is sent (sc-3587). */
 export function eventChanges(
-  saved: EventDetails & { venue: SavedVenue | null },
+  saved: EventDetails & { venue: SavedVenue | null; arrivalNote: string | null },
   typed: { draft: EventDraft; timeZone: string; currency: string; venue: VenueDraft },
-): Partial<EventDetails & { venue: VenueSent | null }> {
+): Partial<EventDetails & { venue: VenueSent | null; arrivalNote: string | null }> {
   const was = { ...draftOf(saved), timeZone: saved.timeZone, currency: saved.currency };
-  const changes: Partial<EventDetails & { venue: VenueSent | null }> = {};
+  const changes: Partial<EventDetails & { venue: VenueSent | null; arrivalNote: string | null }> =
+    {};
+  const note = arrivalNoteSent(typed.venue.note);
   const venue = venueSent(typed.venue);
   const savedVenue = venueSent(venueDraftOf(saved.venue));
   const startsAt = localDateTime(typed.draft.startDate, typed.draft.startTime) ?? '';
@@ -372,6 +400,7 @@ export function eventChanges(
     venue?.address !== savedVenue?.address
   )
     changes.venue = venue;
+  if (note !== saved.arrivalNote) changes.arrivalNote = note;
 
   return changes;
 }
