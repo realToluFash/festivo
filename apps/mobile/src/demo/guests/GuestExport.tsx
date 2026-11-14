@@ -204,7 +204,9 @@ export function ExportSheet({
       held={held}
       testID="guests.export.sheet"
     >
-      <Head onClose={props.onClose} off={held} />
+      <View style={styles.sheetHead}>
+        <Head onClose={props.onClose} off={held} />
+      </View>
       <ScrollView style={styles.scroll} contentContainerStyle={styles.body} bounces={false}>
         {body}
       </ScrollView>
@@ -373,7 +375,8 @@ const styles = StyleSheet.create({
   offlineWords: { flexShrink: 1, lineHeight: 13.5 * 1.3 },
   head: { minHeight: tokens.sizeHit, flexDirection: 'row', alignItems: 'center' },
   scroll: { flexGrow: 0, flexShrink: 1 },
-  body: { gap: 18, paddingHorizontal: tokens.spaceXxl, paddingTop: 20, paddingBottom: 8 },
+  sheetHead: { paddingHorizontal: tokens.spaceXxl, paddingTop: 20 },
+  body: { gap: 18, paddingHorizontal: tokens.spaceXxl, paddingTop: 12, paddingBottom: 8 },
   sheetFoot: { paddingHorizontal: tokens.spaceXxl, paddingTop: 12, paddingBottom: 20 },
   foot: { gap: 12 },
   choices: { gap: 6 },
