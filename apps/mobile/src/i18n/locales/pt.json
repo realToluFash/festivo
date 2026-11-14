@@ -2484,6 +2484,7 @@
     },
     "markNotInvited": "Anular registo",
     "unmarked": "Registo anulado. O estado volta a ser «Sem convite».",
+    "unmarkNotSaved": "Not saved. They are still invited. Try again.",
     "unmarkRefused": "Nada foi alterado. {{name}} respondeu «{{reply}}» no dia {{date}}, por isso o convite mantém-se.",
     "readOnlyInvited": "Pode ver os nomes, as respostas e os convites. Para registar convites, é necessária a função Responsável ou Pode editar.",
     "pausedLine": "Não é possível convidar pessoas enquanto este evento estiver em pausa.",
