@@ -150,18 +150,23 @@ export function Invitation({
               )}
             </li>
           )}
-          {manages && invites && send != null && (
+          {manages && invites && (send != null || (asked && notYet)) && (
             <li>
-              <a
-                href={send}
-                className="desk-row gs-do"
-                aria-label={t('guestList.sendOnWhatsAppTo', { name: guest.fullName })}
-                data-focus="send"
-                onClick={onSend}
-              >
-                <IconLead name="whatsApp" />
-                <RowWords title={t('guestList.sendOnWhatsApp')} lines={[t('guestList.sendLine')]} />
-              </a>
+              {send != null && (
+                <a
+                  href={send}
+                  className="desk-row gs-do"
+                  aria-label={t('guestList.sendOnWhatsAppTo', { name: guest.fullName })}
+                  data-focus="send"
+                  onClick={onSend}
+                >
+                  <IconLead name="whatsApp" />
+                  <RowWords
+                    title={t('guestList.sendOnWhatsApp')}
+                    lines={[t('guestList.sendLine')]}
+                  />
+                </a>
+              )}
               {asked && notYet && (
                 <SentQuestion name={guest.fullName} onNotSent={onNotSent} onSent={onSent} />
               )}
