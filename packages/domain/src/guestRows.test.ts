@@ -1,8 +1,14 @@
-import type { Guest } from '@soirely/api-client';
+import { ApiError, type Guest } from '@soirely/api-client';
 import { peopleOf } from './guestView.ts';
 import { describe, expect, it } from 'vitest';
 
-import { companionShown, contactOf, rowWords } from './guestRows.ts';
+import {
+  companionShown,
+  contactOf,
+  invitationLine,
+  repliedRefusal,
+  rowWords,
+} from './guestRows.ts';
 
 const t = (key: string, values?: Record<string, unknown>) =>
   values == null ? key : `${key}${JSON.stringify(values)}`;
@@ -97,5 +103,67 @@ describe('the app guest rows', () => {
       name: 'guestList.guestOf{"host":"Adaeze Okafor"}',
       line: 'guestList.heldLine',
     });
+  });
+});
+
+describe('the Invitation line', () => {
+  const at = '2026-11-03T10:00:00+00:00';
+  const line = (invitation: Guest['invitation']) =>
+    invitationLine(t, { invitation }, 'Europe/London', 'en-GB');
+
+  it('names who marked them by hand, how and when', () => {
+    expect(line({ at, how: 'whatsapp', by: 'Folake Adeyemi' })).toBe(
+      'guestList.invitedBy{"name":"Folake Adeyemi","how":"guestList.howMid.whatsapp","date":"3 Nov"}',
+    );
+  });
+
+  it('leaves the name out once their account is gone', () => {
+    expect(line({ at, how: 'email', by: null })).toBe(
+      'guestList.invitedHow{"how":"guestList.howMid.email","date":"3 Nov"}',
+    );
+  });
+
+  it('says Soirely’s message, or that they replied, with no name', () => {
+    expect(line({ at, how: 'soirelyMessage', by: null })).toBe(
+      'guestList.invitedByMessage{"date":"3 Nov"}',
+    );
+    expect(line({ at, how: 'reply', by: null })).toBe(
+      'guestList.invitedWhenReplied{"date":"3 Nov"}',
+    );
+  });
+
+  it('is null while nobody has invited them', () => {
+    expect(line(null)).toBeNull();
+  });
+});
+
+describe('repliedRefusal', () => {
+  const refused = (code: string, more: Record<string, string> = {}) => {
+    const problem = {
+      type: `https://soirely.com/errors/${code}`,
+      title: code,
+      status: 409,
+      ...more,
+    };
+    return new ApiError(problem, new Response(JSON.stringify(problem), { status: 409 }));
+  };
+
+  it('names the reply and when it came', () => {
+    expect(
+      repliedRefusal(
+        refused('guest_replied', { reply: 'maybe', repliedAt: '2026-11-02T10:00:00+01:00' }),
+      ),
+    ).toEqual({ reply: 'maybe', at: '2026-11-02T10:00:00+01:00' });
+  });
+
+  it('is nothing without a known reply and its date, or for another refusal', () => {
+    expect(
+      repliedRefusal(refused('guest_replied', { reply: 'noReply', repliedAt: '2026-11-02' })),
+    ).toBeNull();
+    expect(repliedRefusal(refused('guest_replied', { reply: 'coming' }))).toBeNull();
+    expect(
+      repliedRefusal(refused('not_found', { reply: 'coming', repliedAt: '2026-11-02' })),
+    ).toBeNull();
+    expect(repliedRefusal(new Error('offline'))).toBeNull();
   });
 });

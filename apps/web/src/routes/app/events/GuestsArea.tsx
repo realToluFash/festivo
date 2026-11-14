@@ -24,6 +24,7 @@ import {
   dietary,
   eventAllows,
   firstProblem,
+  invitationLine,
   isListed,
   makeLiveRow,
   newGuestOf,
@@ -77,7 +78,6 @@ import { useLoadedAt, useServerNow } from '../../../serverNow.ts';
 import { canOn, useSession } from '../../../session.ts';
 import { useMakeLive } from './MakeLive.tsx';
 import { GuestColumn, ReplyMark, guestAddress } from './GuestColumn.tsx';
-import { invitationLine } from './GuestInvitation.tsx';
 import {
   CompanionField,
   GuestField,
@@ -1089,7 +1089,7 @@ function RowsFrom({
           timeZone,
           dateLocale(),
           choice !== 'noReply',
-          companion == null ? invitationLine(t, guest, timeZone) : null,
+          companion == null ? invitationLine(t, guest, timeZone, dateLocale()) : null,
         );
 
         if (companion == null)

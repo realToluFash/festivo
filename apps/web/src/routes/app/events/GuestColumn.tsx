@@ -1,6 +1,5 @@
 import {
   ApiError,
-  GUEST_ANSWERS,
   GUEST_NAME_MAXIMUM,
   type Guest,
   type GuestAnswer,
@@ -8,7 +7,14 @@ import {
   type GuestInvitationHow,
   type TaggedGuest,
 } from '@soirely/api-client';
-import { formatPhone, ownLanguageName, phoneE164, phoneFields } from '@soirely/domain';
+import {
+  formatPhone,
+  invitationLine,
+  ownLanguageName,
+  phoneE164,
+  phoneFields,
+  repliedRefusal,
+} from '@soirely/domain';
 import type { TFunction } from 'i18next';
 import { type ReactNode, useEffect, useEffectEvent, useId, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
@@ -29,7 +35,7 @@ import {
   PhoneField,
   PlacesStepper,
 } from './GuestFields.tsx';
-import { type Copy, IconLead, Invitation, invitationLine } from './GuestInvitation.tsx';
+import { type Copy, IconLead, Invitation } from './GuestInvitation.tsx';
 import { languageNameInSentence } from '../settings/organisationDetails.ts';
 import { type InvitationEvent, whatsAppHref } from './whatsAppSend.ts';
 import {
@@ -505,16 +511,9 @@ function GuestView({
         focus('guest-heading');
       },
       (error: unknown) => {
-        const refused =
-          error instanceof ApiError && error.is('guest_replied') ? error.problem : null;
-        const answer = GUEST_ANSWERS.find((known) => known === refused?.reply);
-        const at = refused?.repliedAt;
+        const refused = repliedRefusal(error);
 
-        setUnmark(
-          answer != null && at != null
-            ? { kind: 'replied', reply: answer, at }
-            : { kind: 'failed' },
-        );
+        setUnmark(refused == null ? { kind: 'failed' } : { kind: 'replied', ...refused });
       },
     );
   }
@@ -536,7 +535,7 @@ function GuestView({
         ? manages && invites
           ? t('guestList.copyFirst')
           : null
-        : invitationLine(t, guest, timeZone);
+        : invitationLine(t, guest, timeZone, dateLocale());
 
   return (
     <div className="gs-guest">

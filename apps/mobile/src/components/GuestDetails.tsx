@@ -15,6 +15,8 @@ import { markOf } from '../kit/guestRows.ts';
 import { tokens } from '../theme/tokens.ts';
 import { LineIcon } from './AccountCard.tsx';
 import { ChoseNote } from './GuestLanguage.tsx';
+import { type InvitationOffer, InvitationBlock } from './GuestInvitation.tsx';
+import { AlertLine } from './AlertLine.tsx';
 import { MarkSlot } from './ReplyMark.tsx';
 import { Row, RowList, TextAction } from './SummaryRows.tsx';
 import { FailedBlock } from './Summary.tsx';
@@ -28,15 +30,29 @@ export type GuestPane =
   | { kind: 'notFound' }
   | { kind: 'guest'; guest: Details };
 
+/** What the last Mark as not invited left above the guest (sc-46879). */
+export type GuestNotice =
+  | { kind: 'unmarked' }
+  | { kind: 'refused'; line: string }
+  | { kind: 'offline' }
+  | { kind: 'failed' }
+  | null;
+
 /** A guest's details (sc-3773's content and order): their name, Reply, then Details with Edit; contact and Language only for those who can edit guests. */
 export function GuestDetails({
   pane,
   manages,
   timeZone,
   saved,
+  notice,
+  invitation,
   nameRef,
   editRef,
+  markRef,
+  unmarkRef,
   onEdit,
+  onMark,
+  onUnmark,
   onBack,
   onRetry,
 }: {
@@ -44,9 +60,16 @@ export function GuestDetails({
   manages: boolean;
   timeZone: string;
   saved: boolean;
+  notice: GuestNotice;
+  /** Null on a Draft, where nobody can be invited yet. */
+  invitation: InvitationOffer | null;
   nameRef: Ref<TextHandle>;
   editRef: Ref<ViewInstance>;
+  markRef: Ref<ViewInstance>;
+  unmarkRef: Ref<ViewInstance>;
   onEdit: () => void;
+  onMark: () => void;
+  onUnmark: () => void;
   onBack: () => void;
   onRetry: () => void;
 }) {
@@ -158,9 +181,30 @@ export function GuestDetails({
   return (
     <View style={styles.blocks} testID={`guest.${guest.id}`}>
       {saved && <SavedLine />}
+      {notice?.kind === 'unmarked' && <SavedLine words={t('guestList.unmarked')} />}
       <Title size={26} accessibilityRole="header" ref={nameRef}>
         {guest.fullName}
       </Title>
+      {notice?.kind === 'refused' && <AlertLine text={notice.line} />}
+      {notice?.kind === 'offline' && <AlertLine text={t('guestList.offlineRefused')} />}
+      {notice?.kind === 'failed' && <AlertLine text={t('guestList.loadFailedLine')} />}
+      {invitation != null ? (
+        <InvitationBlock
+          guest={guest}
+          timeZone={timeZone}
+          offer={invitation}
+          markRef={markRef}
+          unmarkRef={unmarkRef}
+          onMark={onMark}
+          onUnmark={onUnmark}
+        />
+      ) : (
+        !manages && (
+          <Text size={15} weight="medium" style={styles.secondary} testID="guest.readOnly">
+            {t('guestList.readOnlyInvited')}
+          </Text>
+        )
+      )}
       <View>
         <BlockHead title={t('guestList.replyHeading')} />
         <Row
@@ -194,15 +238,16 @@ export function GuestDetails({
   );
 }
 
-function SavedLine() {
+function SavedLine({ words }: { words?: string }) {
   const { t } = useTranslation();
-  useReadOut(t('guestList.saved'));
+  const said = words ?? t('guestList.saved');
+  useReadOut(said);
 
   return (
     <View style={styles.saved} testID="guest.saved">
       <LineIcon name="tick" />
       <Text size={15} weight="semibold">
-        {t('guestList.saved')}
+        {said}
       </Text>
     </View>
   );
