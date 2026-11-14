@@ -1548,6 +1548,12 @@
       "declined": "Enviada el {{sent}} · rechazada el {{ended}}",
       "accepted": "Enviada el {{sent}}"
     },
+    "notDelivered": {
+      "pending": "<word>No entregada</word> · caduca el {{ended}}",
+      "expired": "<word>No entregada</word> · caducó el {{ended}}",
+      "revoked": "<word>No entregada</word> · retirada el {{ended}}",
+      "declined": "<word>No entregada</word> · rechazada el {{ended}}"
+    },
     "invitationState": {
       "pending": "Pendiente",
       "expired": "Caducada",
@@ -2787,7 +2793,8 @@
       "maybe": "Por confirmar",
       "notComing": "No viene",
       "noReply": "Sin respuesta",
-      "held": "En espera"
+      "held": "En espera",
+      "notYetInvited": "Sin invitar"
     },
     "replied": "{{reply}} · respondió el {{date}}",
     "repliedOn": "respondió el {{date}}",
@@ -2873,6 +2880,34 @@
     "linkReplaced": "Enlace sustituido. El enlace anterior de {{name}} ya no funciona. Copie el nuevo y envíeselo.",
     "flaggedTitle": "Puede que el enlace haya llegado a otra persona",
     "flaggedLine": "Quien abrió el enlace de {{name}} nos ha avisado de que le llegó por error. La respuesta no ha cambiado. Sustituya el enlace para que el anterior deje de funcionar y envíe el nuevo a {{name}}.",
+    "invitedBy": "Invitación de {{name}} {{how}} el {{date}}",
+    "invitedHow": "Invitación {{how}} el {{date}}",
+    "invitedByMessage": "Invitación por mensaje de Soirely el {{date}}",
+    "invitedWhenReplied": "Invitación registrada al responder, el {{date}}",
+    "copyFirst": "Copiar el enlace no cuenta como invitación. Regístrela cuando lo haya enviado.",
+    "markAsInvited": "Registrar invitación",
+    "markLine": "Cómo hizo la invitación, para que cuente",
+    "howInvited": "¿Cómo hizo la invitación?",
+    "howInvitedBlank": "Elija cómo hizo la invitación.",
+    "markNotSaved": "No se ha guardado. Sigue en «Sin invitar». Inténtelo de nuevo.",
+    "how": {
+      "whatsapp": "WhatsApp",
+      "textMessage": "SMS",
+      "email": "Correo electrónico",
+      "inPerson": "En persona",
+      "other": "Otra vía"
+    },
+    "howMid": {
+      "whatsapp": "por WhatsApp",
+      "textMessage": "por SMS",
+      "email": "por correo electrónico",
+      "inPerson": "en persona",
+      "other": "por otra vía"
+    },
+    "markNotInvited": "Anular registro",
+    "unmarked": "Registro anulado. Vuelve a estar en «Sin invitar».",
+    "unmarkRefused": "No se ha cambiado. {{name}} respondió «{{reply}}» el {{date}}, así que la invitación se mantiene.",
+    "readOnlyInvited": "Puede ver los nombres, las respuestas y a quién se ha invitado. Para registrar invitaciones hace falta el rol Responsable o Puede editar.",
     "all": "Todos",
     "comingOf": "{{comingWords}} de {{invitedWords}}",
     "countComing_one": "Viene {{count, number}}",

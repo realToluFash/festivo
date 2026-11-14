@@ -8,6 +8,7 @@ const MARK: Record<ReplyWord, ReplyKind> = {
   notComing: 'notcoming',
   noReply: 'noreply',
   held: 'held',
+  notYetInvited: 'notyet',
 };
 
 export function markOf(reply: ReplyWord): ReplyKind {

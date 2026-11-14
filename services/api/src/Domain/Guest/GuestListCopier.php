@@ -32,7 +32,7 @@ final readonly class GuestListCopier
             $host = $guest->getHost();
 
             if (null === $host) {
-                $hosts[$guest->getId()->toRfc4122()] = $this->added(Guest::invited($copy, (string) $guest->getFullName(), (string) $guest->getNameKey(), $guest->getEmail(), $guest->getMobile(), $by, InvitationLinks::token()), $by);
+                $hosts[$guest->getId()->toRfc4122()] = $this->added(Guest::listed($copy, (string) $guest->getFullName(), (string) $guest->getNameKey(), $guest->getEmail(), $guest->getMobile(), $by, InvitationLinks::token()), $by);
                 ++$copied;
 
                 continue;

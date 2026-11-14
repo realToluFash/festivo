@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\Entity;
 
 use App\Doctrine\Traits\Timestampable;
+use App\Enum\GuestInvitationMethod;
 use App\Enum\GuestReply;
 use App\Enum\GuestReplySource;
 use DateTimeImmutable;
@@ -13,7 +14,7 @@ use Doctrine\ORM\Mapping as ORM;
 use SensitiveParameter;
 use Symfony\Component\Uid\Uuid;
 
-/** On an event's list (sc-1468). A companion has a `host` and no contact, reply or link: they come as their host replies. */
+/** On an event's list (sc-1468). A companion has a `host` and no contact, reply, link or invitation: they come as their host replies, and are invited when their host is. */
 #[ORM\Entity]
 #[ORM\HasLifecycleCallbacks]
 #[ORM\Table(name: 'guests')]
@@ -82,6 +83,18 @@ class Guest
     #[ORM\Column(type: Types::BOOLEAN, options: ['default' => false])]
     private bool $linkFlagged = false;
 
+    /** Null while Not yet invited (sc-3788); any reply sets it, and only a mark by hand is ever taken back. */
+    #[ORM\Column(type: Types::DATETIME_IMMUTABLE, nullable: true)]
+    private ?DateTimeImmutable $invitedAt = null;
+
+    #[ORM\Column(type: Types::STRING, length: 16, nullable: true, enumType: GuestInvitationMethod::class)]
+    private ?GuestInvitationMethod $invitationMethod = null;
+
+    /** Who marked them by hand; null for the other methods. */
+    #[ORM\ManyToOne(targetEntity: User::class)]
+    #[ORM\JoinColumn(nullable: true, onDelete: 'SET NULL')]
+    private ?User $invitedBy = null;
+
     /** The host's Language for them (sc-3790): one of SupportedLocales::ALL, or null for Not set. */
     #[ORM\Column(type: Types::STRING, length: 8, nullable: true)]
     private ?string $language = null;
@@ -105,7 +118,8 @@ class Guest
         $this->linkToken = $linkToken;
     }
 
-    public static function invited(Event $event, string $fullName, string $nameKey, ?string $email, ?string $mobile, ?User $addedBy, #[SensitiveParameter] string $linkToken): self
+    /** Not yet invited, until somebody invites them (sc-3788). */
+    public static function listed(Event $event, string $fullName, string $nameKey, ?string $email, ?string $mobile, ?User $addedBy, #[SensitiveParameter] string $linkToken): self
     {
         return new self($event, null, $fullName, $nameKey, $email, $mobile, GuestReply::NoReply, 0, $addedBy, $linkToken);
     }
@@ -176,7 +190,58 @@ class Guest
         $this->repliedAt = $at;
         $this->replySource = $source;
 
+        if (!$this->isInvited()) {
+            $this->invite(GuestInvitationMethod::Reply, $at, null);
+        }
+
         return true;
+    }
+
+    public function isInvited(): bool
+    {
+        return null !== $this->invitedAt;
+    }
+
+    public function getInvitedAt(): ?DateTimeImmutable
+    {
+        return $this->invitedAt;
+    }
+
+    public function getInvitationMethod(): ?GuestInvitationMethod
+    {
+        return $this->invitationMethod;
+    }
+
+    public function getInvitedBy(): ?User
+    {
+        return $this->invitedBy;
+    }
+
+    /** The first invitation stands: a guest already invited stays as recorded. False when nothing changed. */
+    public function invite(GuestInvitationMethod $method, DateTimeImmutable $at, ?User $by): bool
+    {
+        if ($this->isInvited()) {
+            return false;
+        }
+
+        $this->invitedAt = $at;
+        $this->invitationMethod = $method;
+        $this->invitedBy = $by;
+
+        return true;
+    }
+
+    /** Only a mark made by hand on a guest who has not replied can be taken back. */
+    public function canUninvite(): bool
+    {
+        return true === $this->invitationMethod?->isByHand() && (null === $this->reply || GuestReply::NoReply === $this->reply);
+    }
+
+    public function uninvite(): void
+    {
+        $this->invitedAt = null;
+        $this->invitationMethod = null;
+        $this->invitedBy = null;
     }
 
     public function getPosition(): int

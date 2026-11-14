@@ -2367,7 +2367,8 @@
       "maybe": "À confirmer",
       "notComing": "Ne vient pas",
       "noReply": "Sans réponse",
-      "held": "En attente"
+      "held": "En attente",
+      "notYetInvited": "Sans invitation"
     },
     "repliedOn": "a répondu le {{date}}",
     "replyHeading": "Réponse",

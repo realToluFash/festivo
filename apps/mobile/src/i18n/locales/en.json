@@ -2291,7 +2291,8 @@
       "maybe": "Not sure yet",
       "notComing": "Not coming",
       "noReply": "No reply",
-      "held": "Held"
+      "held": "Held",
+      "notYetInvited": "Not yet invited"
     },
     "repliedOn": "replied {{date}}",
     "replyHeading": "Reply",

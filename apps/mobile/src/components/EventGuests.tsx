@@ -66,6 +66,7 @@ const CHOICE_KEY: Record<Choice, string> = {
   noReply: REPLY_KEY.noReply,
   held: REPLY_KEY.held,
   notComing: REPLY_KEY.notComing,
+  notYetInvited: REPLY_KEY.notYetInvited,
 };
 
 /** An event's Guests in the app (sc-3785): the list to find and read a guest, and the small edits; planning at scale stays on the web. */

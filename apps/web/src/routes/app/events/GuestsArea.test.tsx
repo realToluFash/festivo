@@ -40,6 +40,7 @@ function guest(id: string, fullName: string, more: Record<string, unknown> = {})
     email: null,
     mobile: null,
     reply: 'noReply',
+    invitation: null as { at: string; how: string; by: string | null } | null,
     companions: [] as { id: string; fullName: string | null; state: string }[],
     ...more,
   };
@@ -65,6 +66,7 @@ const NGOZI = guest('g_1', 'Ngozi Eze', {
   ],
 });
 const AMAKA = guest('g_2', 'Chief Amaka Obi', { reply: 'maybe' });
+const INVITED = { at: '2026-11-01T10:00:00+01:00', how: 'whatsapp', by: 'Folake Adeyemi' };
 
 function signedIn(): void {
   const session: Session = {
@@ -105,19 +107,21 @@ type Answer = (body: unknown) => Response | Promise<Response>;
 
 type Listed = ReturnType<typeof listOf>;
 
-/** sc-99's headcount for a list, as HeadcountCalculator counts it. */
+/** sc-99's headcount for a list, as HeadcountCalculator counts it: nobody waits on a reply until invited (sc-3788). */
 function headcountOf({ guests }: Listed) {
-  const companions = guests.flatMap((one) => one.companions.map(() => one.reply));
-  const count = (reply: string) => guests.filter((one) => one.reply === reply).length;
+  const asked = guests.filter((one) => one.invitation != null || one.reply !== 'noReply');
+  const companions = asked.flatMap((one) => one.companions.map(() => one.reply));
+  const count = (reply: string) => asked.filter((one) => one.reply === reply).length;
   const held = (reply: string) => companions.filter((host) => host === reply).length;
-  const onList = guests.length + companions.length;
+  const onList = guests.reduce((sum, one) => sum + 1 + one.companions.length, 0);
+  const invited = asked.length + companions.length;
 
   return {
     headcount: {
       counts: {
         onList,
-        notYetInvited: 0,
-        invited: onList,
+        notYetInvited: onList - invited,
+        invited,
         accepted: count('coming') + held('coming'),
         maybe: count('maybe'),
         awaitingReply: count('noReply'),
@@ -332,7 +336,7 @@ describe('Guests (sc-1468)', () => {
                 ? [
                     NGOZI,
                     guest('g_9', 'Bimpe', {
-                      companions: [{ id: 'c_9', fullName: null, state: 'held' }],
+                      companions: [{ id: 'c_9', fullName: null, state: 'notYetInvited' }],
                     }),
                   ]
                 : [NGOZI],
@@ -347,7 +351,7 @@ describe('Guests (sc-1468)', () => {
             guest: guest('g_9', 'Bimpe Adeyemi', {
               email: 'bimpe@example.com',
               mobile: '+447700900123',
-              companions: [{ id: 'c_9', fullName: null, state: 'held' }],
+              companions: [{ id: 'c_9', fullName: null, state: 'notYetInvited' }],
             }),
           },
           201,
@@ -377,15 +381,16 @@ describe('Guests (sc-1468)', () => {
     expect(field('Full name').value).toBe('');
     expect(within(form()).getByText('None yet · 0 of 10')).toBeDefined();
     await waitFor(() => expect(document.activeElement).toBe(field('Full name')));
-    expect(await screen.findByText('4 coming of 6 invited')).toBeDefined();
-    expect(screen.getByText('2 haven’t replied (1 guest and 1 companion).')).toBeDefined();
+    expect(await screen.findByRole('button', { name: 'All · 6' })).toBeDefined();
+    expect(screen.getByText('4 coming of 4 invited')).toBeDefined();
+    expect(screen.getByText('Everyone has replied.')).toBeDefined();
     expect(screen.getByText('Bimpe Adeyemi')).toBeDefined();
-    expect(screen.getByText('No reply · bimpe@example.com · +44 7700 900123')).toBeDefined();
+    expect(screen.getByText('Not yet invited · bimpe@example.com · +44 7700 900123')).toBeDefined();
     expect(
       within(screen.getByRole('region', { name: 'Guests' }))
         .getAllByRole('listitem')
         .map((row) => row.textContent),
-    ).toContain('Guest of Bimpe AdeyemiHeld · comes only if their host accepts');
+    ).toContain('Guest of Bimpe AdeyemiNot yet invited');
   });
 
   it('sends nothing for a blank name and says every problem at once, focus on the first', async () => {
@@ -640,12 +645,14 @@ class StubSource {
 }
 
 describe('Finding a guest (sc-3772)', () => {
+  const invitation = { at: '2026-11-01T10:00:00+01:00', how: 'whatsapp', by: 'Folake Adeyemi' };
   const WAITING = [
-    guest('g_3', 'Bola Ade'),
+    guest('g_3', 'Bola Ade', { invitation }),
     guest('g_4', 'José Ávila', {
+      invitation,
       companions: [{ id: 'c_4', fullName: 'Rui Ávila', state: 'held' }],
     }),
-    guest('g_5', 'Dayo Kalu', { mobile: '+2348031234567' }),
+    guest('g_5', 'Dayo Kalu', { invitation, mobile: '+2348031234567' }),
   ];
   const EVERYONE = [NGOZI, AMAKA, ...WAITING];
 
@@ -769,6 +776,58 @@ describe('Finding a guest (sc-3772)', () => {
     expect(shownRouter?.state.location.search).toBe('?filter=held');
   });
 
+  it('lists Not yet invited last, counting companions, with its own group on All and none of them under No reply (sc-3788)', async () => {
+    signedIn();
+    const BISI = guest('g_6', 'Bisi Adewale', {
+      companions: [{ id: 'c_6', fullName: 'Tunde Adewale', state: 'notYetInvited' }],
+    });
+    const counts = headcountOf(listOf(EVERYONE)).headcount.counts;
+    await onGuests({
+      'GET /api/events/ev_1/guests': () => json(listOf([...EVERYONE, BISI])),
+      'GET /api/events/ev_1/headcount': () =>
+        json({
+          headcount: {
+            counts: { ...counts, onList: 11, notYetInvited: 2 },
+            byGroup: [],
+            byDietaryNeed: { addsUp: false, needs: [] },
+          },
+        }),
+    });
+    await screen.findByText('4 coming of 9 invited');
+
+    const groups = screen.getAllByRole('heading', { level: 2 }).map((one) => one.textContent);
+
+    expect(groups.slice(-2)).toEqual(['No reply · 3', 'Not yet invited · 2']);
+
+    fireEvent.click(screen.getByRole('button', { name: 'All · 11' }));
+    const menu = screen.getByRole('menu');
+
+    expect(
+      within(menu)
+        .getAllByRole('menuitemradio')
+        .map((item) => item.textContent),
+    ).toEqual([
+      'All11',
+      'Coming4',
+      'Not sure yet1',
+      'No reply3',
+      'Held1',
+      'Not coming0',
+      'Not yet invited2',
+    ]);
+    fireEvent.click(within(menu).getByRole('menuitemradio', { name: /^No reply/u }));
+
+    expect(names()).toEqual(['Bola Ade', 'Dayo Kalu', 'José Ávila']);
+    fireEvent.click(screen.getByRole('button', { name: 'No reply · 3' }));
+    fireEvent.click(
+      within(screen.getByRole('menu')).getByRole('menuitemradio', { name: /^Not yet invited/u }),
+    );
+
+    expect(names()).toEqual(['Bisi Adewale', 'Tunde Adewale']);
+    expect(screen.getByText('2 of 11 shown')).toBeDefined();
+    expect(shownRouter?.state.location.search).toBe('?filter=notYetInvited');
+  });
+
   it('keeps the held line alone for an unnamed companion away from their host, already called Guest of', async () => {
     signedIn();
     await onGuests(
@@ -777,6 +836,7 @@ describe('Finding a guest (sc-3772)', () => {
           json(
             listOf([
               guest('g_6', 'Kemi Bello', {
+                invitation: INVITED,
                 companions: [{ id: 'c_6', fullName: null, state: 'held' }],
               }),
             ]),
@@ -797,6 +857,7 @@ describe('Finding a guest (sc-3772)', () => {
         json(
           listOf([
             guest('g_6', 'Kemi Bello', {
+              invitation: INVITED,
               companions: [{ id: 'c_6', fullName: 'Tunde Bello', state: 'held' }],
             }),
           ]),
@@ -922,7 +983,7 @@ describe('Guests, live (sc-1468)', () => {
     );
 
     expect(source.url).toContain('topic=events%2Fev_1%2Fguests');
-    listed = listOf([AMAKA, guest('g_3', 'Tomás Ferreira')]);
+    listed = listOf([AMAKA, guest('g_3', 'Tomás Ferreira', { invitation: INVITED })]);
     source.publish(listed);
 
     expect(await screen.findByText('Tomás Ferreira')).toBeDefined();
@@ -939,7 +1000,7 @@ describe('Guests, live (sc-1468)', () => {
     list = listOf([AMAKA, guest('g_3', 'Tomás Ferreira', { email: 'tomas@example.com' })]);
     source.publish(listOf([AMAKA, guest('g_3', 'Tomás Ferreira')]));
 
-    expect(await screen.findByText('No reply · tomas@example.com')).toBeDefined();
+    expect(await screen.findByText('Not yet invited · tomas@example.com')).toBeDefined();
     expect(reads()).toBe(before + 1);
   });
 });
@@ -1857,6 +1918,214 @@ describe('the Guests top at 320 (sc-3773, ux #44604)', () => {
 
     expect(name).toContain('text-overflow: ellipsis;');
     expect(name).toContain('white-space: nowrap;');
+  });
+});
+
+describe('Not yet invited, and Mark as invited (sc-3788)', () => {
+  const BISI = guest('g_4', 'Bisi Adewale', {
+    companions: [{ id: 'c_4', fullName: 'Tunde Adewale', state: 'notYetInvited' }],
+  });
+  const BISI_DETAILS = { ...BISI, added: { at: '2026-09-14T10:00:00+00:00', by: 'Kemi Bankole' } };
+  const MARKED = {
+    ...BISI_DETAILS,
+    invitation: { at: '2026-11-13T10:00:00+01:00', how: 'whatsapp', by: 'Folake Adeyemi' },
+    companions: [{ id: 'c_4', fullName: 'Tunde Adewale', state: 'held' }],
+  };
+
+  async function openBisi(
+    answers: Record<string, Answer> = {},
+    event: Record<string, unknown> = {},
+    permissions: string[] = OWNER_PERMISSIONS,
+  ) {
+    signedIn();
+    const sent = await onGuests(
+      {
+        'GET /api/events/ev_1': () => json({ event: { ...EVENT, ...event, permissions } }),
+        'GET /api/events/ev_1/guests': () => json(listOf([BISI])),
+        'GET /api/events/ev_1/guests/g_4': () => tagged(BISI_DETAILS, '"1"'),
+        ...answers,
+      },
+      permissions,
+    );
+    fireEvent.click(await screen.findByRole('link', { name: /^Bisi Adewale/u }));
+    await waitFor(() =>
+      expect(document.activeElement).toBe(
+        screen.getByRole('heading', { level: 2, name: 'Bisi Adewale' }),
+      ),
+    );
+
+    return sent;
+  }
+
+  function invitation(): HTMLElement {
+    return screen.getByRole('region', { name: 'Invitation' });
+  }
+
+  function listed(): (string | null)[] {
+    return within(screen.getByRole('region', { name: 'Guests' }))
+      .getAllByRole('listitem')
+      .map((row) => row.textContent);
+  }
+
+  it('lists a guest nobody has invited, and their companion, as Not yet invited', async () => {
+    await openBisi();
+
+    expect(listed()).toContain('Bisi AdewaleNot yet invited');
+    expect(listed()).toContain('Tunde AdewaleNot yet invited');
+    expect(
+      screen.getByText('Copying their link does not mark them. Mark them once you have sent it.'),
+    ).toBeDefined();
+  });
+
+  it('asks how, sends nothing with nothing chosen, then records the way chosen', async () => {
+    const sent = await openBisi({
+      'PUT /api/events/ev_1/guests/g_4/invitation': () => tagged(MARKED, '"1"'),
+    });
+
+    fireEvent.click(within(invitation()).getByRole('button', { name: /^Mark as invited/u }));
+    const ways = within(invitation()).getByRole('group', { name: 'How did you invite them?' });
+    expect(
+      within(ways)
+        .getAllByRole('radio')
+        .map((one) => [one.closest('label')?.textContent, (one as HTMLInputElement).checked]),
+    ).toEqual([
+      ['WhatsApp', false],
+      ['Text message', false],
+      ['Email', false],
+      ['In person', false],
+      ['Other', false],
+    ]);
+    await waitFor(() => expect(document.activeElement).toBe(within(ways).getAllByRole('radio')[0]));
+
+    fireEvent.click(within(invitation()).getByRole('button', { name: 'Mark as invited' }));
+    expect(within(invitation()).getByText('Choose how you invited them.')).toBeDefined();
+    expect(sent.filter(({ line }) => line.includes('/guests/g_4/invitation'))).toEqual([]);
+
+    fireEvent.click(within(ways).getByRole('radio', { name: 'WhatsApp' }));
+    fireEvent.click(within(invitation()).getByRole('button', { name: 'Mark as invited' }));
+
+    expect(
+      await within(invitation()).findByText(/^Invited by Folake Adeyemi, WhatsApp, Nov 13$/u),
+    ).toBeDefined();
+    expect(sent.filter(({ line }) => line.includes('/guests/g_4/invitation'))).toEqual([
+      { line: 'PUT /api/events/ev_1/guests/g_4/invitation', body: { how: 'whatsapp' } },
+    ]);
+    expect(screen.queryByRole('group', { name: 'How did you invite them?' })).toBeNull();
+    expect(listed()).toContain('Bisi AdewaleNo reply');
+    expect(listed()).toContain('Tunde AdewaleHeld · comes only if their host accepts');
+  });
+
+  it('says a failed mark was not saved and keeps the choices open', async () => {
+    await openBisi({
+      'PUT /api/events/ev_1/guests/g_4/invitation': () => problem('internal_error', 500),
+    });
+
+    fireEvent.click(within(invitation()).getByRole('button', { name: /^Mark as invited/u }));
+    fireEvent.click(screen.getByRole('radio', { name: 'In person' }));
+    fireEvent.click(within(invitation()).getByRole('button', { name: 'Mark as invited' }));
+
+    expect(
+      await screen.findByText('Not saved. They are still Not yet invited. Try again.'),
+    ).toBeDefined();
+    expect(screen.getByRole('group', { name: 'How did you invite them?' })).toBeDefined();
+  });
+
+  it('offers Mark as invited after copying the link of a guest nobody has invited', async () => {
+    Object.defineProperty(navigator, 'clipboard', {
+      configurable: true,
+      value: { writeText: () => Promise.resolve() },
+    });
+    await openBisi({
+      'GET /api/events/ev_1/guests/g_4/link': () => json({ url: 'https://app.soirely.test/i/x' }),
+    });
+
+    fireEvent.click(screen.getByRole('button', { name: /^Copy invitation link/u }));
+    await screen.findByText('Link copied');
+    const offers = within(invitation()).getAllByRole('button', { name: /^Mark as invited/u });
+    fireEvent.click(offers.find((one) => one.classList.contains('is-green'))!);
+
+    expect(screen.getByRole('group', { name: 'How did you invite them?' })).toBeDefined();
+  });
+
+  it('undoes a mark made by hand, and says so', async () => {
+    const sent = await openBisi({
+      'GET /api/events/ev_1/guests/g_4': () => tagged(MARKED, '"1"'),
+      'DELETE /api/events/ev_1/guests/g_4/invitation': () => tagged(BISI_DETAILS, '"1"'),
+    });
+
+    fireEvent.click(within(invitation()).getByRole('button', { name: 'Mark as not invited' }));
+
+    expect(await screen.findByText('Marked as not invited.')).toBeDefined();
+    expect(sent.filter(({ line }) => line.includes('/guests/g_4/invitation'))).toEqual([
+      { line: 'DELETE /api/events/ev_1/guests/g_4/invitation', body: null },
+    ]);
+    expect(within(invitation()).queryByText(/^Invited by/u)).toBeNull();
+  });
+
+  it('says they stay invited when they replied before the undo landed', async () => {
+    await openBisi({
+      'GET /api/events/ev_1/guests/g_4': () => tagged(MARKED, '"1"'),
+      'DELETE /api/events/ev_1/guests/g_4/invitation': () =>
+        problem('guest_replied', 409, { reply: 'coming', repliedAt: '2026-11-13T11:00:00+01:00' }),
+    });
+
+    fireEvent.click(within(invitation()).getByRole('button', { name: 'Mark as not invited' }));
+
+    expect(
+      await screen.findByText(
+        'Not changed. Bisi Adewale replied Coming on Nov 13, so they stay invited.',
+      ),
+    ).toBeDefined();
+  });
+
+  it('offers no undo for Soirely’s message', async () => {
+    await openBisi({
+      'GET /api/events/ev_1/guests/g_4': () =>
+        tagged(
+          {
+            ...MARKED,
+            invitation: { at: '2026-11-13T10:00:00+01:00', how: 'soirelyMessage', by: null },
+          },
+          '"1"',
+        ),
+    });
+
+    expect(within(invitation()).getByText(/^Invited by Soirely’s message, Nov 13$/u)).toBeDefined();
+    expect(screen.queryByRole('button', { name: 'Mark as not invited' })).toBeNull();
+  });
+
+  it('offers no Mark as invited on a Draft', async () => {
+    await openBisi({}, { status: 'draft', phase: 'draft', madeLiveAt: null });
+
+    expect(screen.getByText('Guests can’t be invited until this event is live.')).toBeDefined();
+    expect(screen.queryByRole('button', { name: /^Mark as invited/u })).toBeNull();
+  });
+
+  it('offers no Mark as invited on a Paused event, and says why', async () => {
+    await openBisi(
+      {},
+      { status: 'paused', phase: 'paused', pausedAt: '2026-11-01T10:00:00+00:00' },
+    );
+
+    expect(screen.getByText('Guests can’t be invited while this event is paused.')).toBeDefined();
+    expect(screen.queryByRole('button', { name: /^Mark as invited/u })).toBeNull();
+  });
+
+  it('shows the marks, with no way to change them, to someone who cannot add guests', async () => {
+    await openBisi(
+      { 'GET /api/events/ev_1/guests/g_4': () => tagged(MARKED, '"1"') },
+      {},
+      OWNER_PERMISSIONS.filter((one) => one !== 'guests.manage'),
+    );
+
+    expect(within(invitation()).getByText(/^Invited by Folake Adeyemi, WhatsApp/u)).toBeDefined();
+    expect(
+      within(invitation()).getByText(
+        'You can see names, replies and who is invited. Marking guests as invited needs a host or organiser role.',
+      ),
+    ).toBeDefined();
+    expect(screen.queryByRole('button', { name: 'Mark as not invited' })).toBeNull();
+    expect(screen.queryByRole('button', { name: /^Mark as invited/u })).toBeNull();
   });
 });
 

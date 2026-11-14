@@ -1,6 +1,6 @@
 import type { Guest } from '@soirely/api-client';
 import { type Translate } from './eventWords.ts';
-import { type ReplyWord, blank } from './guestForm.ts';
+import { type ReplyWord, blank, shownReply } from './guestForm.ts';
 import { type Person } from './guestView.ts';
 import { formatPhone } from './phone.ts';
 
@@ -10,6 +10,7 @@ export const REPLY_KEY: Record<ReplyWord, string> = {
   notComing: 'guestList.reply.notComing',
   noReply: 'guestList.reply.noReply',
   held: 'guestList.reply.held',
+  notYetInvited: 'guestList.reply.notYetInvited',
 };
 
 export function replyDate(repliedAt: string, timeZone: string, locale: string): string {
@@ -51,7 +52,7 @@ export function rowWords(
   locale: string,
 ): { name: string; line: string } {
   if (companion == null) {
-    const word = t(REPLY_KEY[guest.reply]);
+    const word = t(REPLY_KEY[shownReply(guest)]);
     const reply =
       guest.repliedAt == null
         ? word

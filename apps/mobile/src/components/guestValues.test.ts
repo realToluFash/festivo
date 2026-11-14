@@ -14,6 +14,7 @@ function details(more: Partial<GuestDetails> = {}): GuestDetails {
     messageLanguage: null,
     reply: 'noReply',
     repliedAt: null,
+    invitation: null,
     companions: [],
     added: { at: '2026-11-01T10:00:00Z', by: null },
     organisationLanguage: 'en',

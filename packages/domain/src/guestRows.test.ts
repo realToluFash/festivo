@@ -18,6 +18,7 @@ function guest(more: Partial<Guest> = {}): Guest {
     messageLanguage: null,
     reply: 'noReply',
     repliedAt: null,
+    invitation: { at: '2026-11-01T10:00:00+01:00', how: 'whatsapp', by: null },
     companions: [],
     ...more,
   };
@@ -44,6 +45,14 @@ describe('the app guest rows', () => {
       name: 'Adaeze Okafor',
       line: 'guestList.reply.noReply',
     });
+  });
+
+  it('says a guest nobody has invited is Not yet invited', () => {
+    const [person] = peopleOf([guest({ invitation: null })]);
+
+    expect(rowWords(t, person!, false, 'Europe/London', 'en-GB').line).toBe(
+      'guestList.reply.notYetInvited',
+    );
   });
 
   it('says a held companion is held, under their host', () => {
