@@ -44,6 +44,8 @@ final class GuestAnswersTest extends ApiTestCase
 
     private const string ADAEZE = 'Chief Mrs Adaeze Okonkwo-Williams';
 
+    private const array NO_NEEDS = ['allergies' => [], 'diet' => [], 'access' => [], 'otherAllergy' => null, 'otherDiet' => null, 'otherAccess' => null, 'changed' => null];
+
     /** 16:00 in Lagos, an hour ahead of UTC. */
     private const string START = '2030-11-14T15:00:00+00:00';
 
@@ -80,8 +82,9 @@ final class GuestAnswersTest extends ApiTestCase
         self::assertSame([
             'fullName' => self::ADAEZE,
             'reply' => null,
+            'needs' => self::NO_NEEDS,
             'places' => 1,
-            'companions' => [['id' => $obi, 'fullName' => 'Obi Okonkwo', 'coming' => true, 'namedByGuest' => false]],
+            'companions' => [['id' => $obi, 'fullName' => 'Obi Okonkwo', 'coming' => true, 'namedByGuest' => false, 'needs' => self::NO_NEEDS]],
         ], $page['guest'] ?? null);
         self::assertSame(true, $page['answersOpen'] ?? null);
         self::assertSame($list, $this->as($this->owner, 'GET', $this->guests()));

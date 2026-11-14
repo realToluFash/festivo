@@ -7,6 +7,7 @@ namespace App\Domain\Guest;
 use App\Domain\Guest\Model\CompanionChoice;
 use App\Domain\Guest\Model\GuestNeeds;
 use App\Domain\Guest\Model\NewGuest;
+use App\Domain\Guest\Model\PageReply;
 use App\Domain\User\Phone\PhoneNumberParser;
 use App\Entity\Guest;
 use App\Enum\ErrorCode;
@@ -150,13 +151,12 @@ final readonly class GuestRules
     }
 
     /**
-     * The names a guest gave on Who's coming with you? (sc-3779): a blank name is never added, so it is refused rather than left unnamed.
+     * What a guest sends with Coming from their own page: the names they gave on Who's coming with you? (sc-3779), a blank name never added, so it is refused rather than left unnamed, and each person's needs (sc-3778) by sc-3777's rules, every problem at once.
      *
-     * @param list<array{id?: ?string, fullName: string, coming: bool}> $companions
-     *
-     * @return list<CompanionChoice>
+     * @param list<array{id?: ?string, fullName: string, coming: bool, needs?: ?NeedsInput}> $companions
+     * @param ?NeedsInput                                                                    $needs      the guest's own; null leaves them as they are
      */
-    public function companionChoices(array $companions): array
+    public function pageReply(array $companions, ?array $needs): PageReply
     {
         $violations = [];
         $choices = [];
@@ -165,8 +165,12 @@ final readonly class GuestRules
             $violations[] = $this->violation('companions', 'validation.guest_places_full');
         }
 
+        $own = null === $needs ? null : $this->needs($needs, 'needs', $violations);
+
         foreach ($companions as $index => $companion) {
             $name = Str\trim($companion['fullName']);
+            $typed = $companion['needs'] ?? null;
+            $theirs = null === $typed ? null : $this->needs($typed, "companions[{$index}].needs", $violations);
 
             if ('' === $name) {
                 $violations[] = $this->violation("companions[{$index}].fullName", 'validation.guest_name_required');
@@ -178,14 +182,14 @@ final readonly class GuestRules
                 continue;
             }
 
-            $choices[] = new CompanionChoice($companion['id'] ?? null, $name, NameNormaliser::key($name), $companion['coming']);
+            $choices[] = new CompanionChoice($companion['id'] ?? null, $name, NameNormaliser::key($name), $companion['coming'], $theirs);
         }
 
         if ([] !== $violations) {
             throw ApiException::validation($violations);
         }
 
-        return $choices;
+        return new PageReply($choices, $own);
     }
 
     /** @return array{propertyPath: string, message: string, code: string} */
