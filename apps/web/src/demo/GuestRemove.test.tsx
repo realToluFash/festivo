@@ -50,7 +50,11 @@ describe('Remove from the list (sc-3774)', () => {
       await guests('removeOffered');
       fireEvent.click(within(column()).getByRole('button', { name: 'Remove from the list' }));
 
-      const dialog = await screen.findByRole('alertdialog', { name: 'Remove Dr Emeka Nwosu?' });
+      const dialog = await screen.findByRole(
+        'alertdialog',
+        { name: 'Remove Dr Emeka Nwosu?' },
+        WAIT,
+      );
 
       expect(dialog.textContent).toContain('No reply');
       expect(dialog.textContent).toContain('Their reply');
@@ -69,7 +73,7 @@ describe('Remove from the list (sc-3774)', () => {
 
   it('Keep on the list changes nothing and goes back to Remove', SLOW, async () => {
     await guests('removeAsk');
-    const dialog = await screen.findByRole('alertdialog', { name: 'Remove Dr Emeka Nwosu?' });
+    const dialog = await screen.findByRole('alertdialog', { name: 'Remove Dr Emeka Nwosu?' }, WAIT);
 
     fireEvent.click(within(dialog).getByRole('button', { name: 'Keep on the list' }));
 
@@ -89,7 +93,7 @@ describe('Remove from the list (sc-3774)', () => {
     SLOW,
     async () => {
       await guests('removeAskSeated');
-      const seated = await screen.findByRole('alertdialog', { name: 'Remove Inês Duarte?' });
+      const seated = await screen.findByRole('alertdialog', { name: 'Remove Inês Duarte?' }, WAIT);
 
       expect(seated.textContent).toContain('Companion · Coming · seated at Table 4 · meal chosen');
     },
@@ -101,7 +105,11 @@ describe('Remove from the list (sc-3774)', () => {
     async () => {
       await guests('removeAsk');
       expect(screen.getByRole('button', { name: /^No reply · 21/u })).toBeDefined();
-      const dialog = await screen.findByRole('alertdialog', { name: 'Remove Dr Emeka Nwosu?' });
+      const dialog = await screen.findByRole(
+        'alertdialog',
+        { name: 'Remove Dr Emeka Nwosu?' },
+        WAIT,
+      );
 
       fireEvent.click(within(dialog).getByRole('button', { name: 'Remove' }));
 
@@ -179,7 +187,7 @@ describe('Remove from the list (sc-3774)', () => {
 
   it('a 409 says they have just arrived, and goes back to their details', SLOW, async () => {
     await guests('removeArrives');
-    const dialog = await screen.findByRole('alertdialog', { name: 'Remove Kwame Mensah?' });
+    const dialog = await screen.findByRole('alertdialog', { name: 'Remove Kwame Mensah?' }, WAIT);
 
     fireEvent.click(within(dialog).getByRole('button', { name: 'Remove' }));
     expect(dialog.textContent).toContain(
@@ -195,7 +203,7 @@ describe('Remove from the list (sc-3774)', () => {
 
   it('a 404 says someone else removed them, and Back to guests drops the row', SLOW, async () => {
     await guests('removeGoes');
-    const dialog = await screen.findByRole('alertdialog', { name: 'Remove Tomás Ferreira?' });
+    const dialog = await screen.findByRole('alertdialog', { name: 'Remove Tomás Ferreira?' }, WAIT);
 
     fireEvent.click(within(dialog).getByRole('button', { name: 'Remove' }));
     expect(dialog.textContent).toContain('Tomás Ferreira was already removed by someone else.');
