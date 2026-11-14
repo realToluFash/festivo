@@ -466,18 +466,6 @@ export function filterCount(key: FilterKey, counts: Counts): number {
 export const GROUPS = ['coming', 'maybe', 'noreply', 'notcoming', 'notyet'] as const;
 export type GroupKey = (typeof GROUPS)[number];
 
-const SHOW_ALL_WORDS: Record<GroupKey, string> = {
-  coming: 'coming',
-  maybe: 'not sure yet',
-  noreply: 'with no reply',
-  notcoming: 'not coming',
-  notyet: 'not yet invited',
-};
-
-export function showAllWords(group: GroupKey, count: number): string {
-  return say.showAll(count, SHOW_ALL_WORDS[group]);
-}
-
 export interface Person {
   key: string;
   guest: string;

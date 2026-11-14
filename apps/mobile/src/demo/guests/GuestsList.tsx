@@ -31,7 +31,6 @@ import {
   filterWord,
   filtersFor,
   inViewOf,
-  showAllWords,
 } from './GuestsModel.ts';
 import { GroupHead, type Layout, ShownLine } from './GuestsParts.tsx';
 import { REPLY_WORD, W, say } from './GuestsWords.ts';
@@ -291,7 +290,7 @@ export function GuestsRows({
                 </View>
                 {count > shown.length && !expanded.includes(group) && (
                   <TextAction
-                    label={showAllWords(group, count)}
+                    label={say.showAll(count)}
                     figures
                     onPress={() => onShowAll(group)}
                     testID={`guests.showAll.${group}`}
