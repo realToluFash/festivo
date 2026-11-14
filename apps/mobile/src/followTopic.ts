@@ -11,6 +11,8 @@ export interface TopicFollower {
   onData: (data: string | null) => void;
   /** At every line that opens, the first one included: what was published before it never arrives. */
   onGap: () => void;
+  /** When a line drops, until the next one opens: what is published meanwhile never arrives. */
+  onDrop?: () => void;
 }
 
 /** One Mercure topic. The subscriber token goes in a header, renewed before it lapses; a refusal or a dropped line connects again with a fresh one. False with no hub to follow. */
@@ -53,6 +55,7 @@ export function followTopic(
     current.addEventListener('error', () => {
       if (stopped || source !== current) return;
       current.close();
+      follower.onDrop?.();
       again(RETRY_MS);
     });
 
