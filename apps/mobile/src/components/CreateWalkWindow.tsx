@@ -159,6 +159,12 @@ export function CreateWalkWindow<Made>({
   if (!shown && onScreen) setOnScreen(false);
   const readerOn = useScreenReaderOn();
   const talkBack = Platform.OS === 'android' && readerOn;
+  const [voiced, setVoiced] = useState(false);
+  if (!shown && voiced) setVoiced(false);
+  // On the phone TalkBack sometimes spoke the field's own input focus before its focus reached it, so the name was heard twice (qa4 #48525): the field stays hidden from TalkBack until it has taken input focus.
+  const quiet =
+    talkBack && phone && !voiced && opening.focus !== 'question' && !opening.walk.asking;
+  const voicing = useRef(false);
   const arriving = reduced ? 0 : phone ? WINDOW_ARRIVES_MS : tokens.motionBase;
   // With TalkBack on, hidden while the window arrives, so its focus lands on nothing, Cancel included (sc-42690).
   const unnamed = useUnnamedWindow(
@@ -253,6 +259,17 @@ export function CreateWalkWindow<Made>({
 
     return () => up.remove();
   }, []);
+  const voice = () => {
+    if (!quiet) return;
+    voicing.current = true;
+    setVoiced(true);
+  };
+  useEffect(() => {
+    if (!voiced || !voicing.current) return;
+    voicing.current = false;
+    const input = opening.focus === 'search' ? search.current : field.current;
+    if (input?.isFocused()) moveScreenReaderFocus(input);
+  }, [voiced, opening]);
   // A field that gives up focus after the window raised its keys and before they came up gets them once more (qa3 #47084).
   const keysLost = () => {
     const input = holding.current;
@@ -426,6 +443,8 @@ export function CreateWalkWindow<Made>({
           field={live ? field : spare}
           onTyped={(name) => setWalk((now) => typed(now, name))}
           onContinue={onPrimary}
+          quiet={live && quiet && opening.focus === 'name'}
+          onTaken={live ? voice : undefined}
           onLeft={live ? keysLost : undefined}
         />
       );
@@ -435,10 +454,12 @@ export function CreateWalkWindow<Made>({
           {...shared}
           field={live ? search : spare}
           toPick={shownWalk.cameBack || opening.toPick}
+          quiet={live && quiet && opening.focus === 'search'}
           onQuery={(query) => setWalk((now) => ({ ...now, query }))}
           onPick={(code) => setWalk((now) => picked(now, code))}
           onSearchFocused={(focused) => {
             setSearchFocused(focused);
+            if (focused && live) voice();
             if (!focused && live) keysLost();
           }}
         />
