@@ -20,7 +20,7 @@ import {
   startMoved,
   formatWallDay,
 } from '@soirely/domain';
-import { useEffect, useId, useRef, useState } from 'react';
+import { type Ref, type RefObject, useEffect, useId, useRef, useState } from 'react';
 
 import {
   type Currency,
@@ -263,31 +263,61 @@ export function DatesPart({
           {W.endsHint}
         </p>
       )}
-      <div className="desk-field">
-        <label htmlFor={`${id}-zone`} className="desk-label">
-          {W.timeZone}
-        </label>
-        <div className="desk-box ev-select">
-          <select
-            id={`${id}-zone`}
-            value={zone}
-            aria-describedby={`${id}-zone-help`}
-            onChange={(change) => setZone(change.target.value)}
-          >
-            {ZONES.map((one) => (
-              <option key={one} value={one}>
-                {one}
-              </option>
-            ))}
-          </select>
-          <Glyph name="chevdown" size={18} weight={2.3} />
-        </div>
-        <p id={`${id}-zone-help`} className="desk-help">
-          {W.timesIn(zone)}
-        </p>
-      </div>
+      <ZoneSelect value={zone} onChange={setZone} />
       <OnceSaved />
     </Opened>
+  );
+}
+
+/** The event's time zone, and the line saying its times are in it. */
+export function ZoneSelect({
+  value,
+  error,
+  off = false,
+  refTo,
+  onChange,
+}: {
+  value: string;
+  error?: string | undefined;
+  off?: boolean;
+  refTo?: RefObject<HTMLDivElement | null>;
+  onChange: (zone: string) => void;
+}) {
+  const id = useId();
+  const told = error == null ? `${id}-help` : `${id}-error ${id}-help`;
+
+  return (
+    <div ref={refTo} className="desk-field">
+      <label htmlFor={id} className="desk-label">
+        {W.timeZone}
+      </label>
+      <div className={error == null ? 'desk-box ev-select' : 'desk-box ev-select is-wrong'}>
+        <select
+          id={id}
+          value={value}
+          disabled={off}
+          aria-invalid={error != null}
+          aria-describedby={told}
+          onChange={(change) => onChange(change.target.value)}
+        >
+          {ZONES.map((one) => (
+            <option key={one} value={one}>
+              {one}
+            </option>
+          ))}
+        </select>
+        <Glyph name="chevdown" size={18} weight={2.3} />
+      </div>
+      {error != null && (
+        <p id={`${id}-error`} className="desk-error">
+          <Glyph name="alert" size={15} weight={2.2} />
+          {error}
+        </p>
+      )}
+      <p id={`${id}-help`} className="desk-help">
+        {W.timesIn(value)}
+      </p>
+    </div>
   );
 }
 
@@ -303,124 +333,102 @@ function movedDay(end: Wall): string {
   return `${day}, ${writtenTime(end.time, LOCALE)}`;
 }
 
-/** Venue: its name and address, suggestions from 3 characters, and the zone it is in when that differs. */
-export function VenuePart({ event, state, onDirty, onClose, onSave }: PartProps) {
+/** Venue name and Address with the sample's suggestions from 3 characters, shared by the Venue part and New event; a venue in another zone offers it. */
+export function VenueFields({
+  name,
+  onName,
+  address,
+  onAddress,
+  zone,
+  onZone,
+  down,
+  listing = false,
+  offering = null,
+  focus = false,
+  nameError = null,
+  addressError = null,
+  nameRef,
+  addressRef,
+  off = false,
+  onPicked,
+}: {
+  name: string;
+  onName: (name: string) => void;
+  address: string;
+  onAddress: (address: string) => void;
+  zone: string;
+  onZone: (zone: string) => void;
+  down: boolean;
+  listing?: boolean;
+  offering?: string | null;
+  focus?: boolean;
+  nameError?: string | null;
+  addressError?: string | null;
+  nameRef?: RefObject<HTMLInputElement | null>;
+  addressRef?: RefObject<HTMLInputElement | null>;
+  off?: boolean;
+  onPicked?: (venue: SampleVenue | null) => void;
+}) {
   const id = useId();
-  const typing = state === 'venueSuggestions' || state === 'venueDown';
-  const [name, setName] = useState(
-    typing ? '' : state === 'venueZone' ? 'Eko Hotel' : (event.venue?.name ?? ''),
-  );
-  const [address, setAddress] = useState(
-    state === 'venueSuggestions'
-      ? 'Eko Hot'
-      : state === 'venueDown'
-        ? '12 Rua'
-        : state === 'venueZone'
-          ? 'Adetokunbo Ademola Street, Victoria Island, Lagos'
-          : (event.venue?.address ?? ''),
-  );
-  const [picked, setPicked] = useState<SampleVenue | null>(null);
-  const [listOpen, setListOpen] = useState(state === 'venueSuggestions');
+  const own = useRef<HTMLInputElement>(null);
+  const field = addressRef ?? own;
+  const [listOpen, setListOpen] = useState(listing);
   const [active, setActive] = useState(-1);
-  const [offer, setOffer] = useState<string | null>(state === 'venueZone' ? 'Africa/Lagos' : null);
-  const [zone, setZone] = useState(event.timeZone);
+  const [offer, setOffer] = useState<string | null>(offering);
   const [zoneSaid, setZoneSaid] = useState<string | null>(null);
-  const down = state === 'venueDown';
-  const field = useRef<HTMLInputElement>(null);
-  const noteBox = useRef<HTMLTextAreaElement>(null);
-  const refusedNote = state === 'venueNoteTooLong' || state === 'venueNoteRefused';
-  const [note, setNote] = useState(
-    refusedNote
-      ? LONG_NOTE
-      : state === 'venueNoteForbidden'
-        ? `${ARRIVAL_NOTE}\nDoors close at 23:00.`
-        : (event.arrivalNote ?? ''),
-  );
-  const [noteError, setNoteError] = useState<string | null>(
-    refusedNote ? NOTE_WORDS.tooLong : null,
-  );
-  const [said, setSaid] = useState<string | null>(
-    state === 'venueNoteTooLong' ? NOTE_WORDS.oneField : null,
-  );
-  const [forbidden, setForbidden] = useState(false);
-  const shown = down || !listOpen ? [] : suggestionsFor(address);
-  const changed =
-    name !== (event.venue?.name ?? '') ||
-    address !== (event.venue?.address ?? '') ||
-    note !== (event.arrivalNote ?? '') ||
-    zone !== event.timeZone;
+  const shown = down || !listOpen || off ? [] : suggestionsFor(address);
+  const told = [addressError == null ? null : `${id}-error`, `${id}-help`]
+    .filter(Boolean)
+    .join(' ');
 
-  useDirty(changed, onDirty);
   useEffect(() => {
-    if (typing) field.current?.focus();
-  }, [typing]);
-  useEffect(() => {
-    if (state === 'venueNote' || refusedNote) noteBox.current?.focus();
-  }, [state, refusedNote]);
+    if (focus) field.current?.focus();
+  }, [focus, field]);
 
   function choose(one: SampleVenue): void {
-    setPicked(one);
-    setAddress(one.address);
-    if (name.trim() === '') setName(one.name);
+    onPicked?.(one);
+    onAddress(one.address);
+    if (name.trim() === '') onName(one.name);
     setListOpen(false);
     setActive(-1);
     setOffer(one.timeZone === zone ? null : one.timeZone);
   }
 
   return (
-    <Opened
-      label={W.venue}
-      changed={changed}
-      onCancel={onClose}
-      onSave={() => {
-        const city = picked?.city ?? address.split(',').at(-1)?.trim() ?? event.venue?.city ?? '';
-        const title = name.trim() || address.trim();
-
-        if (noteTooLong(note)) {
-          setNoteError(NOTE_WORDS.tooLong);
-          setSaid(NOTE_WORDS.oneField);
-          noteBox.current?.focus();
-          return;
-        }
-        if (state === 'venueNoteForbidden') {
-          setForbidden(true);
-          return;
-        }
-
-        onSave({
-          ...event,
-          arrivalNote: savedNote(note),
-          timeZone: zone,
-          venue:
-            title === ''
-              ? null
-              : { name: title, address: address.trim() === '' ? null : address.trim(), city },
-        });
-      }}
-    >
-      <Text label={W.venueName} optional value={name} onChange={setName} />
+    <>
+      <Text
+        label={W.venueName}
+        optional
+        value={name}
+        error={nameError}
+        {...(nameRef == null ? {} : { inputRef: nameRef })}
+        input={{ readOnly: off }}
+        onChange={onName}
+      />
       <div className="desk-field ev-combo">
         <label htmlFor={id} className="desk-label">
           {W.address}
           <span className="ev-optional">{` · ${W.optional}`}</span>
         </label>
-        <div className="desk-box">
+        <div className={addressError == null ? 'desk-box' : 'desk-box is-wrong'}>
           <input
             ref={field}
             id={id}
             type="text"
             role="combobox"
             value={address}
+            readOnly={off}
+            aria-invalid={addressError != null}
             spellCheck={false}
             autoComplete="off"
             aria-autocomplete="list"
             aria-expanded={shown.length > 0}
             aria-controls={shown.length > 0 ? `${id}-list` : undefined}
             aria-activedescendant={active >= 0 ? `${id}-option-${active}` : undefined}
-            aria-describedby={`${id}-help`}
+            aria-describedby={told}
             onChange={(change) => {
-              setAddress(change.target.value);
-              setPicked(null);
+              onAddress(change.target.value);
+              onPicked?.(null);
               setListOpen(true);
               setActive(-1);
             }}
@@ -441,6 +449,12 @@ export function VenuePart({ event, state, onDirty, onClose, onSave }: PartProps)
             }}
           />
         </div>
+        {addressError != null && (
+          <p id={`${id}-error`} className="desk-error">
+            <Glyph name="alert" size={15} weight={2.2} />
+            {addressError}
+          </p>
+        )}
         {down ? (
           <Alert>{W.lookupDown}</Alert>
         ) : shown.length > 0 ? (
@@ -486,7 +500,7 @@ export function VenuePart({ event, state, onDirty, onClose, onSave }: PartProps)
               <TextAction
                 label={W.takeZone(offer)}
                 onClick={() => {
-                  setZone(offer);
+                  onZone(offer);
                   setOffer(null);
                   setZoneSaid(W.zoneSet(offer));
                 }}
@@ -503,6 +517,100 @@ export function VenuePart({ event, state, onDirty, onClose, onSave }: PartProps)
           {zoneSaid}
         </p>
       )}
+    </>
+  );
+}
+
+/** Venue: its name and address, suggestions from 3 characters, and the zone it is in when that differs. */
+export function VenuePart({ event, state, onDirty, onClose, onSave }: PartProps) {
+  const id = useId();
+  const typing = state === 'venueSuggestions' || state === 'venueDown';
+  const [name, setName] = useState(
+    typing ? '' : state === 'venueZone' ? 'Eko Hotel' : (event.venue?.name ?? ''),
+  );
+  const [address, setAddress] = useState(
+    state === 'venueSuggestions'
+      ? 'Eko Hot'
+      : state === 'venueDown'
+        ? '12 Rua'
+        : state === 'venueZone'
+          ? 'Adetokunbo Ademola Street, Victoria Island, Lagos'
+          : (event.venue?.address ?? ''),
+  );
+  const [picked, setPicked] = useState<SampleVenue | null>(null);
+  const [zone, setZone] = useState(event.timeZone);
+  const down = state === 'venueDown';
+  const noteBox = useRef<HTMLTextAreaElement>(null);
+  const refusedNote = state === 'venueNoteTooLong' || state === 'venueNoteRefused';
+  const [note, setNote] = useState(
+    refusedNote
+      ? LONG_NOTE
+      : state === 'venueNoteForbidden'
+        ? `${ARRIVAL_NOTE}\nDoors close at 23:00.`
+        : (event.arrivalNote ?? ''),
+  );
+  const [noteError, setNoteError] = useState<string | null>(
+    refusedNote ? NOTE_WORDS.tooLong : null,
+  );
+  const [said, setSaid] = useState<string | null>(
+    state === 'venueNoteTooLong' ? NOTE_WORDS.oneField : null,
+  );
+  const [forbidden, setForbidden] = useState(false);
+  const changed =
+    name !== (event.venue?.name ?? '') ||
+    address !== (event.venue?.address ?? '') ||
+    note !== (event.arrivalNote ?? '') ||
+    zone !== event.timeZone;
+
+  useDirty(changed, onDirty);
+  useEffect(() => {
+    if (state === 'venueNote' || refusedNote) noteBox.current?.focus();
+  }, [state, refusedNote]);
+
+  return (
+    <Opened
+      label={W.venue}
+      changed={changed}
+      onCancel={onClose}
+      onSave={() => {
+        const city = picked?.city ?? address.split(',').at(-1)?.trim() ?? event.venue?.city ?? '';
+        const title = name.trim() || address.trim();
+
+        if (noteTooLong(note)) {
+          setNoteError(NOTE_WORDS.tooLong);
+          setSaid(NOTE_WORDS.oneField);
+          noteBox.current?.focus();
+          return;
+        }
+        if (state === 'venueNoteForbidden') {
+          setForbidden(true);
+          return;
+        }
+
+        onSave({
+          ...event,
+          arrivalNote: savedNote(note),
+          timeZone: zone,
+          venue:
+            title === ''
+              ? null
+              : { name: title, address: address.trim() === '' ? null : address.trim(), city },
+        });
+      }}
+    >
+      <VenueFields
+        name={name}
+        onName={setName}
+        address={address}
+        onAddress={setAddress}
+        zone={zone}
+        onZone={setZone}
+        down={down}
+        listing={state === 'venueSuggestions'}
+        offering={state === 'venueZone' ? 'Africa/Lagos' : null}
+        focus={typing}
+        onPicked={setPicked}
+      />
       <div className="desk-field">
         <label htmlFor={`${id}-note`} className="desk-label">
           {NOTE_WORDS.label}
@@ -543,6 +651,134 @@ export function VenuePart({ event, state, onDirty, onClose, onSave }: PartProps)
       </p>
       <OnceSaved />
     </Opened>
+  );
+}
+
+/** Hosted by's list, shared by its part and New event: the explainer, Host 1 on down, then Add a host. */
+export function HostFields({
+  typed,
+  onTyped,
+  errors,
+  keep = false,
+  off = false,
+  fieldsRef,
+  focusAtRef,
+  onSaid,
+}: {
+  typed: readonly string[];
+  onTyped: (typed: string[]) => void;
+  errors: readonly (string | null)[];
+  keep?: boolean;
+  off?: boolean;
+  fieldsRef: RefObject<(HTMLInputElement | null)[]>;
+  focusAtRef: RefObject<number | null>;
+  onSaid: (said: string) => void;
+}) {
+  function move(index: number, by: -1 | 1): void {
+    const next = [...typed];
+    const [one] = next.splice(index, 1);
+    next.splice(index + by, 0, one ?? '');
+    onTyped(next);
+    onSaid(W.hostMoved(one ?? '', index + by + 1, next.length));
+  }
+
+  return (
+    <>
+      <p className="desk-line">{W.hostsExplainer}</p>
+      <ol className="ev-hosts">
+        {typed.map((name, index) => {
+          const error = errors[index] ?? null;
+          const only = typed.length === 1;
+          const called = name.trim() || W.host(index + 1);
+
+          return (
+            <li key={index} className="ev-host">
+              <div className="ev-host-head">
+                <label htmlFor={`host-${index}`} className="desk-label">
+                  {W.host(index + 1)}
+                </label>
+                {!(only && keep) && !off && (
+                  <button
+                    type="button"
+                    className="desk-text"
+                    aria-label={W.removeNamed(called)}
+                    onClick={() => {
+                      onTyped(only ? [''] : typed.filter((_, at) => at !== index));
+                      onSaid(W.hostRemoved(called));
+                      focusAtRef.current = Math.max(0, index - 1);
+                    }}
+                  >
+                    {W.remove}
+                  </button>
+                )}
+              </div>
+              <div className="ev-host-line">
+                <div className={error == null ? 'desk-box' : 'desk-box is-wrong'}>
+                  <input
+                    ref={(input) => {
+                      fieldsRef.current[index] = input;
+                    }}
+                    id={`host-${index}`}
+                    type="text"
+                    value={name}
+                    spellCheck={false}
+                    readOnly={off}
+                    aria-invalid={error != null}
+                    aria-describedby={error == null ? undefined : `host-${index}-error`}
+                    onChange={(change) =>
+                      onTyped(typed.map((one, at) => (at === index ? change.target.value : one)))
+                    }
+                  />
+                </div>
+                {!only && !off && (
+                  <>
+                    <button
+                      type="button"
+                      className="ev-round"
+                      aria-label={W.moveUp(called)}
+                      aria-disabled={index === 0}
+                      onClick={() => index > 0 && move(index, -1)}
+                    >
+                      <Glyph name="chevup" size={18} weight={2.4} />
+                    </button>
+                    <button
+                      type="button"
+                      className="ev-round"
+                      aria-label={W.moveDown(called)}
+                      aria-disabled={index === typed.length - 1}
+                      onClick={() => index < typed.length - 1 && move(index, 1)}
+                    >
+                      <Glyph name="chevdown" size={18} weight={2.4} />
+                    </button>
+                  </>
+                )}
+              </div>
+              {error != null && (
+                <p id={`host-${index}-error`} className="desk-error">
+                  <Glyph name="alert" size={15} weight={2.2} />
+                  {error}
+                </p>
+              )}
+            </li>
+          );
+        })}
+      </ol>
+      {typed.length === 1 && keep && <p className="desk-note">{W.lastHost}</p>}
+      {typed.length >= HOSTS_MAXIMUM ? (
+        <p className="desk-note">{W.mostHosts(HOSTS_MAXIMUM)}</p>
+      ) : (
+        !off && (
+          <TextAction
+            label={W.addHost}
+            before="plus"
+            onClick={() => {
+              onTyped([...typed, '']);
+              focusAtRef.current = typed.length;
+            }}
+          />
+        )
+      )}
+    </>
   );
 }
 
@@ -587,14 +823,6 @@ export function HostsPart({ event, state, onDirty, onClose, onSave }: PartProps)
     return W.hostDuplicate(problem.name);
   }
 
-  function move(index: number, by: -1 | 1): void {
-    const next = [...typed];
-    const [one] = next.splice(index, 1);
-    next.splice(index + by, 0, one ?? '');
-    setTyped(next);
-    setSaid(W.hostMoved(one ?? '', index + by + 1, next.length));
-  }
-
   return (
     <Opened
       label={W.hostedBy}
@@ -611,97 +839,15 @@ export function HostsPart({ event, state, onDirty, onClose, onSave }: PartProps)
         onSave({ ...event, hosts: sent });
       }}
     >
-      <p className="desk-line">{W.hostsExplainer}</p>
-      <ol className="ev-hosts">
-        {typed.map((name, index) => {
-          const error = problemWords(index);
-          const only = typed.length === 1;
-          const called = name.trim() || W.host(index + 1);
-
-          return (
-            <li key={index} className="ev-host">
-              <div className="ev-host-head">
-                <label htmlFor={`host-${index}`} className="desk-label">
-                  {W.host(index + 1)}
-                </label>
-                {!(only && keep) && (
-                  <button
-                    type="button"
-                    className="desk-text"
-                    aria-label={W.removeNamed(called)}
-                    onClick={() => {
-                      setTyped(only ? [''] : typed.filter((_, at) => at !== index));
-                      setSaid(W.hostRemoved(called));
-                      focusAt.current = Math.max(0, index - 1);
-                    }}
-                  >
-                    {W.remove}
-                  </button>
-                )}
-              </div>
-              <div className="ev-host-line">
-                <div className={error == null ? 'desk-box' : 'desk-box is-wrong'}>
-                  <input
-                    ref={(input) => {
-                      fields.current[index] = input;
-                    }}
-                    id={`host-${index}`}
-                    type="text"
-                    value={name}
-                    spellCheck={false}
-                    aria-invalid={error != null}
-                    aria-describedby={error == null ? undefined : `host-${index}-error`}
-                    onChange={(change) =>
-                      setTyped(typed.map((one, at) => (at === index ? change.target.value : one)))
-                    }
-                  />
-                </div>
-                {!only && (
-                  <>
-                    <button
-                      type="button"
-                      className="ev-round"
-                      aria-label={W.moveUp(called)}
-                      aria-disabled={index === 0}
-                      onClick={() => index > 0 && move(index, -1)}
-                    >
-                      <Glyph name="chevup" size={18} weight={2.4} />
-                    </button>
-                    <button
-                      type="button"
-                      className="ev-round"
-                      aria-label={W.moveDown(called)}
-                      aria-disabled={index === typed.length - 1}
-                      onClick={() => index < typed.length - 1 && move(index, 1)}
-                    >
-                      <Glyph name="chevdown" size={18} weight={2.4} />
-                    </button>
-                  </>
-                )}
-              </div>
-              {error != null && (
-                <p id={`host-${index}-error`} className="desk-error">
-                  <Glyph name="alert" size={15} weight={2.2} />
-                  {error}
-                </p>
-              )}
-            </li>
-          );
-        })}
-      </ol>
-      {typed.length === 1 && keep && <p className="desk-note">{W.lastHost}</p>}
-      {typed.length >= HOSTS_MAXIMUM ? (
-        <p className="desk-note">{W.mostHosts(HOSTS_MAXIMUM)}</p>
-      ) : (
-        <TextAction
-          label={W.addHost}
-          before="plus"
-          onClick={() => {
-            setTyped([...typed, '']);
-            focusAt.current = typed.length;
-          }}
-        />
-      )}
+      <HostFields
+        typed={typed}
+        onTyped={setTyped}
+        errors={typed.map((_, index) => problemWords(index))}
+        keep={keep}
+        fieldsRef={fields}
+        focusAtRef={focusAt}
+        onSaid={setSaid}
+      />
       <p className="desk-unseen" role="status">
         {said}
       </p>
@@ -822,6 +968,57 @@ export function NamePart({ event, state, onDirty, onClose, onSave }: PartProps) 
   );
 }
 
+/** The cover as it will show: the photo, or Soirely's cover in the event's own colours. */
+export function CoverPreview({
+  photo,
+  mesh,
+  className = '',
+}: {
+  photo: boolean;
+  mesh: string;
+  className?: string;
+}) {
+  return (
+    <div
+      className={`ev-preview ${className} ${photo ? 'is-photo' : `today-cover is-${mesh}`}`}
+      aria-hidden="true"
+    >
+      <span className="ev-scrim" />
+      {photo ? (
+        <Glyph name="photo" size={56} weight={1.6} />
+      ) : (
+        [1, 2, 3, 4, 5, 6].map((piece) => <span key={piece} className={`desk-piece p${piece}`} />)
+      )}
+    </div>
+  );
+}
+
+/** With no photo yet: what the cover is, Upload (gone while held), and what is accepted. */
+export function CoverUpload({
+  refusal = null,
+  off = false,
+  buttonRef,
+  onUpload,
+}: {
+  refusal?: string | null;
+  off?: boolean;
+  buttonRef?: Ref<HTMLButtonElement>;
+  onUpload: () => void;
+}) {
+  return (
+    <>
+      {refusal != null ? <Broken>{refusal}</Broken> : <p className="desk-line">{W.coverLine}</p>}
+      {!off && (
+        <button ref={buttonRef} type="button" className="ev-upload" onClick={onUpload}>
+          <Glyph name="photo" size={19} weight={2.2} />
+          {W.upload}
+        </button>
+      )}
+      <p className="desk-help">{W.accepted}</p>
+    </>
+  );
+}
+
 const COVER_ACCEPT = [...COVER_TYPES, '.heic', '.heif'].join(',');
 const UPLOAD_MS = 1500;
 
@@ -924,19 +1121,7 @@ export function CoverPart({ event, state, onDirty, onClose, onSave }: PartProps)
         onChange={(change) => void chosen(change.target.files)}
       />
       <div className="ev-cover-frame">
-        <div
-          className={photo ? 'ev-preview is-photo' : `ev-preview today-cover is-${event.mesh}`}
-          aria-hidden="true"
-        >
-          <span className="ev-scrim" />
-          {photo ? (
-            <Glyph name="photo" size={56} weight={1.6} />
-          ) : (
-            [1, 2, 3, 4, 5, 6].map((piece) => (
-              <span key={piece} className={`desk-piece p${piece}`} />
-            ))
-          )}
-        </div>
+        <CoverPreview photo={photo} mesh={event.mesh} />
         {uploading && (
           <p className="ev-cover-uploading" role="status">
             {W.uploading}
@@ -990,18 +1175,7 @@ export function CoverPart({ event, state, onDirty, onClose, onSave }: PartProps)
           />
         </>
       ) : (
-        <>
-          {pickRefused != null ? (
-            <Broken>{pickRefused}</Broken>
-          ) : (
-            <p className="desk-line">{W.coverLine}</p>
-          )}
-          <button ref={picker} type="button" className="ev-upload" onClick={pick}>
-            <Glyph name="photo" size={19} weight={2.2} />
-            {W.upload}
-          </button>
-          <p className="desk-help">{W.accepted}</p>
-        </>
+        <CoverUpload refusal={pickRefused} buttonRef={picker} onUpload={pick} />
       )}
       {asking && (
         <Ask

@@ -1520,8 +1520,25 @@ export const EVENTS_PAGES: readonly { name: string; states: readonly DemoLink[] 
     ],
   },
   {
-    name: 'New event, its top once the band has gone (sc-39509)',
-    states: [{ to: '/demo/events/new', name: 'New event: ‹ Events and the bell, then the title' }],
+    name: 'New event, its top (sc-39509) and its form (sc-48607)',
+    states: [
+      {
+        to: '/demo/events/new',
+        name: 'New event, empty: ‹ Events and the bell, the title, the form',
+      },
+      { to: '/demo/events/new?state=filled', name: 'Filled in' },
+      { to: '/demo/events/new?state=refused', name: 'Four fields refused at once' },
+      { to: '/demo/events/new?state=creating', name: 'Creating…, the fields held' },
+      { to: '/demo/events/new?state=notCreated', name: 'Not created, the form kept' },
+      { to: '/demo/events/new?state=server', name: 'The server refuses the time zone' },
+      { to: '/demo/events/new?state=offline', name: 'Offline: not created' },
+      { to: '/demo/events/new?state=leave', name: 'Leaving with something typed' },
+      { to: '/demo/events/new?state=moved', name: 'The end moved with the start' },
+      { to: '/demo/events/new?state=skipped', name: 'A start the clocks skip' },
+      { to: '/demo/events/new?state=created', name: 'Created, opening the event' },
+      { to: '/demo/events/new?state=photo', name: 'With a photo chosen' },
+      { to: '/demo/events/new?state=photoRefused', name: 'Created, its photo refused' },
+    ],
   },
   {
     name: 'Searching and filtering',
