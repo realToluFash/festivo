@@ -166,6 +166,10 @@ class Checked(unittest.TestCase):
             errors, refused, ready = machine.check(config(self.root, roles=roles))
             self.assertIn(said, refused["qa4"])
             self.assertIn("ops", ready)
+        (self.root / "soirely-qa5").mkdir()
+        qa5 = {"ops": {}, "qa5": {"emulatorHost": {"ssh": "hp@192.168.1.228",
+                                                   "name": "princess-shalew"}}}
+        self.assertIn("qa5", machine.check(config(self.root, roles=qa5))[2])
         on_ops = machine.check(config(self.root, roles={"ops": {"emulatorHost": "me@l"}}))[1]
         self.assertIn("runs no emulator", on_ops["ops"])
 

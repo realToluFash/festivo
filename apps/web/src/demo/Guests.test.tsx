@@ -1148,7 +1148,7 @@ describe('Guests, the link and Mark as invited (sc-1526, sc-3788)', () => {
       expect(within(invitation).getByText('Invited by Soirely’s message, Oct 12')).toBeDefined();
       expect(
         within(invitation).getByText(
-          'You can see names, replies and who is invited. Marking guests as invited needs a host or organiser role.',
+          'You can see names, replies and who is invited. Marking guests as invited needs the Lead or Can edit role.',
         ),
       ).toBeDefined();
       expect(within(invitation).queryByRole('button')).toBeNull();

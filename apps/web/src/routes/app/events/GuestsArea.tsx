@@ -9,20 +9,42 @@ import {
   realtimeTopic,
 } from '@soirely/api-client';
 import {
+  CHOICES,
+  type Choice,
+  type Counts,
+  MOST_COMPANIONS,
+  type Problem,
+  type Problems,
+  REPLY_KEY,
+  type Standing,
+  type Typed,
+  type ViewRow,
+  countsOf,
   deviceCountry,
-  formatPhone,
+  dietary,
   eventAllows,
+  firstProblem,
+  isListed,
   makeLiveRow,
+  newGuestOf,
   phoneScreenCountry,
+  problemsOf,
+  rowWords,
   shownPhase,
+  shownReply,
+  viewOf,
+  violationProblems,
+  withGuest as listedWith,
 } from '@soirely/domain';
 import {
   type ReactNode,
   type RefObject,
+  memo,
   useCallback,
   useEffect,
   useEffectEvent,
   useId,
+  useMemo,
   useReducer,
   useRef,
   useState,
@@ -46,6 +68,7 @@ import {
   TextAction,
 } from '../../../components/SettingsParts.tsx';
 import { Toast } from '../../../components/Toast.tsx';
+import { dateLocale } from '../../../i18n/index.ts';
 import { LayersContext, focusWhenFree, useDeskLayers } from '../../../layers.ts';
 import { type Mesh, meshFor } from '../../../mesh.ts';
 import { pageTitle, usePageTitle } from '../../../pageTitle.ts';
@@ -53,22 +76,7 @@ import { phoneProblemMessage } from '../../../phoneProblem.ts';
 import { useLoadedAt, useServerNow } from '../../../serverNow.ts';
 import { canOn, useSession } from '../../../session.ts';
 import { useMakeLive } from './MakeLive.tsx';
-import {
-  MOST_COMPANIONS,
-  type Problem,
-  type Problems,
-  type Typed,
-  firstProblem,
-  isListed,
-  namedCount,
-  newGuestOf,
-  problemsOf,
-  shownReply,
-  violationProblems,
-  withGuest as listedWith,
-} from './guestRows.ts';
-import { GuestColumn, REPLY_KEY, ReplyMark, companionShown, guestAddress } from './GuestColumn.tsx';
-import { replyDate } from './guestDates.ts';
+import { GuestColumn, ReplyMark, guestAddress } from './GuestColumn.tsx';
 import { invitationLine } from './GuestInvitation.tsx';
 import {
   CompanionField,
@@ -88,7 +96,6 @@ import {
   NO_NEEDS,
   type NeedsProblems,
   type NeedsTyped,
-  dietary,
   firstNeedsFailing,
   hasAllergy,
   needsFailingCount,
@@ -97,15 +104,6 @@ import {
   problemsByWho,
   useNeedsOpen,
 } from './guestNeeds.ts';
-import {
-  CHOICES,
-  type Choice,
-  type Counts,
-  type Standing,
-  type ViewRow,
-  countsOf,
-  viewOf,
-} from './guestView.ts';
 import { useGuestsAddress } from './useGuestsAddress.ts';
 import '../../../components/desk.css';
 import '../../../components/SettingsParts.css';
@@ -265,6 +263,8 @@ export function GuestsGone({ heading }: { heading: RefObject<HTMLHeadingElement 
     </div>
   );
 }
+
+const NO_GUESTS: GuestList['guests'] = [];
 
 export function GuestsArea({
   event,
@@ -470,7 +470,7 @@ export function GuestsArea({
     throw error;
   }
 
-  const guests = load.kind === 'loaded' ? load.list.guests : [];
+  const guests = load.kind === 'loaded' ? load.list.guests : NO_GUESTS;
   const shows =
     load.kind === 'failed' || counted === 'failed'
       ? 'failed'
@@ -478,11 +478,15 @@ export function GuestsArea({
         ? 'loading'
         : 'loaded';
   const counts = typeof counted === 'object' ? counted : null;
-  const { view, shown } =
-    counts == null
-      ? { view: { kind: 'rows' as const, rows: [] }, shown: 0 }
-      : viewOf(guests, counts, choice, q, expanded, manages && dietaryOnly);
-  const looking = choice !== 'all' || q.trim() !== '' || (manages && dietaryOnly);
+  const dietaryOn = manages && dietaryOnly;
+  const { view, shown } = useMemo(
+    () =>
+      counts == null
+        ? { view: { kind: 'rows' as const, rows: [] }, shown: 0 }
+        : viewOf(guests, counts, choice, q, expanded, dietaryOn),
+    [guests, counts, choice, q, expanded, dietaryOn],
+  );
+  const looking = choice !== 'all' || q.trim() !== '' || dietaryOn;
 
   /** The card as `/demo/guests` draws it: a Draft, Paused or Finished event says so on the card, in place of its counts' step. */
   function cover(counts: Counts): Cover {
@@ -646,6 +650,7 @@ export function GuestsArea({
                         ) : view.kind === 'rows' ? (
                           <Rows
                             rows={view.rows}
+                            look={`${choice} ${q}`}
                             choice={choice}
                             eventId={event.id}
                             timeZone={event.timeZone}
@@ -666,6 +671,7 @@ export function GuestsArea({
                             >
                               <Rows
                                 rows={group.rows}
+                                look={`${choice} ${q}`}
                                 choice={choice}
                                 eventId={event.id}
                                 timeZone={event.timeZone}
@@ -955,9 +961,55 @@ function Group({
   );
 }
 
+/** Rows drawn in one frame: a search matching most of 2,000 guests draws its first rows, then the rest a frame at a time, so the list changes in under 100 ms. */
+const ROWS_PER_FRAME = 100;
+
+const RowsPart = memo(RowsFrom);
+
 /** Each row is a link to its guest's address; a companion's opens their guest. */
 function Rows({
   rows,
+  look,
+  ...rest
+}: {
+  rows: readonly ViewRow[];
+  /** The choice and search: a new one starts again from the first rows. */
+  look: string;
+  choice: Choice;
+  eventId: string;
+  timeZone: string;
+  open: string | null;
+  onOpen: (id: string) => void;
+}) {
+  const [drawn, setDrawn] = useState({ look, upTo: ROWS_PER_FRAME });
+  const upTo = drawn.look === look ? drawn.upTo : ROWS_PER_FRAME;
+
+  if (drawn.look !== look) setDrawn({ look, upTo });
+
+  useEffect(() => {
+    if (upTo >= rows.length) return;
+
+    const frame = requestAnimationFrame(() =>
+      setDrawn((was) => (was.look === look ? { look, upTo: was.upTo + ROWS_PER_FRAME } : was)),
+    );
+
+    return () => cancelAnimationFrame(frame);
+  }, [look, upTo, rows.length]);
+
+  const parts = [];
+
+  for (let from = 0; from < Math.min(upTo, rows.length); from += ROWS_PER_FRAME)
+    parts.push(
+      <RowsPart key={from} rows={rows} from={from} to={from + ROWS_PER_FRAME} {...rest} />,
+    );
+
+  return <ul className="desk-rows gs-rows">{parts}</ul>;
+}
+
+function RowsFrom({
+  rows,
+  from,
+  to,
   choice,
   eventId,
   timeZone,
@@ -965,6 +1017,8 @@ function Rows({
   onOpen,
 }: {
   rows: readonly ViewRow[];
+  from: number;
+  to: number;
   choice: Choice;
   eventId: string;
   /** The event's: a reply's date is the day it was in the event's zone. */
@@ -975,39 +1029,20 @@ function Rows({
   const { t } = useTranslation();
 
   return (
-    <ul className="desk-rows gs-rows">
-      {rows.map(({ person, indent }) => {
+    <>
+      {rows.slice(from, to).map(({ person, indent }) => {
         const { guest, companion } = person;
+        const { name, line } = rowWords(
+          t,
+          person,
+          indent,
+          timeZone,
+          dateLocale(),
+          choice !== 'noReply',
+          companion == null ? invitationLine(t, guest, timeZone) : null,
+        );
 
-        if (companion == null) {
-          const shown = shownReply(guest);
-          const word = t(REPLY_KEY[shown]);
-          const reply =
-            guest.repliedAt == null
-              ? word
-              : t('guestList.replied', {
-                  reply: word,
-                  date: replyDate(guest.repliedAt, timeZone),
-                });
-          const places = guest.companions.length;
-          const line =
-            choice === 'noReply'
-              ? (invitationLine(t, guest, timeZone) ?? reply)
-              : places === 0
-                ? reply
-                : t('guestList.withPlaces', {
-                    reply,
-                    places: t('guestList.companionsNamed', {
-                      count: places,
-                      named: namedCount(guest.companions.map((one) => one.fullName)),
-                    }),
-                  });
-          const mobile = guest.mobile == null ? null : formatPhone(guest.mobile);
-          const contact =
-            guest.email != null && mobile != null
-              ? t('guestList.contacts', { email: guest.email, mobile })
-              : (guest.email ?? mobile);
-
+        if (companion == null)
           return (
             <li key={guest.id}>
               <RowLink
@@ -1018,33 +1053,13 @@ function Rows({
                 onOpen={onOpen}
               >
                 <span className="gs-lead">
-                  <ReplyMark reply={shown} />
+                  <ReplyMark reply={shownReply(guest)} />
                 </span>
-                <RowWords
-                  title={guest.fullName}
-                  lines={[contact == null ? line : t('guestList.line', { reply: line, contact })]}
-                />
+                <RowWords title={name} lines={[line]} />
                 <NeedsTags needs={guest.needs} />
               </RowLink>
             </li>
           );
-        }
-
-        const name = companionShown(
-          t,
-          guest.fullName,
-          guest.companions.map((one) => one.fullName),
-          person.at,
-        );
-        const hostShown = t('guestList.guestOf', { host: guest.fullName });
-        const away = !indent && companion.fullName != null;
-        let line = t(REPLY_KEY[companion.state]);
-
-        if (companion.state === 'held')
-          line = away
-            ? t('guestList.heldAway', { guestOf: hostShown, held: t('guestList.heldLine') })
-            : t('guestList.heldLine');
-        else if (away) line = hostShown;
 
         return (
           <li key={companion.id} className={indent ? 'is-companion' : undefined}>
@@ -1064,7 +1079,7 @@ function Rows({
           </li>
         );
       })}
-    </ul>
+    </>
   );
 }
 

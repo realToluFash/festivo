@@ -180,10 +180,12 @@ export function NameStep({
   field,
   onTyped,
   onContinue,
+  onLeft,
 }: StepProps & {
   field: RefObject<TextInputInstance | null>;
   onTyped: (name: string) => void;
   onContinue: () => void;
+  onLeft?: (() => void) | undefined;
 }) {
   const { t } = useTranslation();
   const sizes = sizesOf(look);
@@ -245,7 +247,10 @@ export function NameStep({
             onChangeText={onTyped}
             onSubmitEditing={onContinue}
             onFocus={() => setFocused(true)}
-            onBlur={() => setFocused(false)}
+            onBlur={() => {
+              setFocused(false);
+              onLeft?.();
+            }}
             submitBehavior="submit"
             wrong={refusal != null}
             autoComplete="organization"

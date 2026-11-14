@@ -387,14 +387,21 @@ through its own server, so the browser holds one token and talks to one address.
 ## An emulator on another computer
 
 A tester's stack, bundler and worker stay on this machine; with `emulatorHost` set on its role,
-only its emulator runs elsewhere. qa4's is the owner's Windows laptop, named in its
-`emulatorHost`. `android` starts it there in one systemd user unit,
+only its emulator runs elsewhere. Two testers on tolu-linux do this, each on its own host:
+
+| Tester | Stack ports       | Console, adb | `emulatorHost`                                                       |
+| ------ | ----------------- | ------------ | -------------------------------------------------------------------- |
+| `qa4`  | +5100 (API 13180) | 5578, 5579   | the owner's Windows laptop                                           |
+| `qa5`  | +5200 (API 13280) | 5580, 5581   | `{"ssh": "hp@192.168.1.228", "name": "princess-shalew"}`, Wi-Fi only |
+
+`android` starts it there in one systemd user unit,
 `soirely-qa<n>-emulator`, holding an ssh session that runs the emulator and carries its
 console and adb ports (5578 and 5579 for qa4) back here, so adb, `adb reverse`, screenshots
 and Maestro see `emulator-5578` as if it were local. `android --stop` ends the emulator, the
 unit and anything left on that port over there. If the session drops, the unit ends and
 Windows ends the emulator with it; the next `android` boots it again. An unreachable host
-fails within a minute, naming it.
+fails within a minute, naming it; ssh waits up to 30 s for the handshake, which a host on
+Wi-Fi can take more than 10 s over.
 
 What the other computer needs, once:
 
@@ -405,7 +412,13 @@ What the other computer needs, once:
 - **The Android SDK** at `%LOCALAPPDATA%\Android\Sdk` (or `sdk` in the setting), with the
   Android Emulator, the Command-line Tools (latest), and a Google Play x86_64 system image.
   `just qa-env setup --tester <n>` then makes the tester's phone and tablet AVDs there, the
-  tablet at 4096 MB, and says exactly what to install when something is missing.
+  tablet at 4096 MB, and says exactly what to install when something is missing. An AVD
+  already there is reported and left alone.
+- **A JDK, when Android Studio is not installed.** The Command-line Tools' `avdmanager` is a
+  Java program, and Android Studio's bundled one is the JDK it usually finds. Without Studio,
+  install one (17 or later, such as Eclipse Temurin) with `java` on `PATH` or `JAVA_HOME` set,
+  and unpack the Command-line Tools zip so that
+  `%LOCALAPPDATA%\Android\Sdk\cmdline-tools\latest\bin\avdmanager.bat` exists.
 - **Hardware acceleration**: the Windows Hypervisor Platform or the Android Emulator
   hypervisor driver. `-gpu host` (the default here) boots in about 50 s on a discrete GPU;
   set `"gpu": "swiftshader_indirect"` where there is none, at about twice that.
@@ -425,10 +438,14 @@ Two steps by hand, since they hold keys:
    emulator hands it the host's. Boot the phone once with `android`; until the device accepts
    this machine's key, adb here sees it as `unauthorized` and refuses `shell` and
    `exec-out`, so look and tap with the host's own adb, which the host's key already
-   authorizes: `ssh <host> %LOCALAPPDATA%\Android\Sdk\platform-tools\adb -s emulator-5578
+   authorizes: `ssh <host> %LOCALAPPDATA%\Android\Sdk\platform-tools\adb -s emulator-<port>
 exec-out screencap -p > prompt.png` shows the prompt, and the same with
    `shell input tap <x> <y>` ticks **Always allow from this computer** and taps **Allow**.
    It lasts until the AVD's data is wiped. Do the same once on the tablet.
+   Until then, the unauthorized emulator breaks every Android tester on this machine, not only
+   its own: maestro's adb client throws on any unauthorized device on the shared server and
+   reports each tester's emulator as `not connected`. `android` stops after 30 seconds of it, and `maestro` and `batch` name the
+   unauthorized serial when they see one; authorize it, or disconnect it, before going on.
 
 After `adb kill-server` the next harness command announces the emulator to the new server
 itself (`host:emulator:<port>`), since adb only scans for emulators as it starts.

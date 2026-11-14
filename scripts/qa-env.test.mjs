@@ -102,6 +102,8 @@ import {
   pickPlayImage,
   missingRemoteTools,
   SSH_OPTIONS,
+  REACH_TIMEOUT_MS,
+  missingAvdTools,
   expoGoApk,
   expoGoFits,
   expoGoIosClient,
@@ -117,6 +119,8 @@ import {
   runHeld,
   maestroTarget,
   missingCmdlineTools,
+  setupAgain,
+  unauthorizedWarning,
   withAvdRam,
   parseTarget,
   hardwareKeyboardOff,
@@ -607,7 +611,7 @@ describe('the device a maestro run drives', () => {
       '--device',
       'UDID',
       '--driver-host-port',
-      String(22087 + (tester === 4 ? 5 : tester)),
+      String(22087 + (tester >= 4 ? tester + 1 : tester)),
     ]);
   });
 
@@ -1574,7 +1578,7 @@ describe('the branch for a story', () => {
   });
 });
 
-// Four testers run at once. A port two stacks share is one tester's stack failing to
+// Five testers run at once. A port two stacks share is one tester's stack failing to
 // start, and a shared project name is one tester's reset dropping another's database.
 describe('the QA testers', () => {
   const configs = TESTERS.map((tester) => qaConfig(tester));
@@ -1636,8 +1640,8 @@ describe('the QA testers', () => {
     expect(testerOf('/Users/x/Projects/soirely')).toBeNull();
   });
 
-  it('stop at four', () => {
-    expect(() => qaConfig(5)).toThrow(/no QA tester 5/);
+  it('stop at five', () => {
+    expect(() => qaConfig(6)).toThrow(/no QA tester 6/);
   });
 
   it('keep testers 1 to 3 and the lan stack where they were when tester 4 came', () => {
@@ -1670,6 +1674,24 @@ describe('the QA testers', () => {
     expect([c.chromePort, c.driverPort, c.helperPort]).toEqual([9226, 22092, 22195]);
     expect(c.emulators.tablet).toMatchObject({ name: 'Soirely_QA4_Tablet', ramMb: 4096 });
     expect(testerOf('/Users/x/Projects/soirely-qa4')).toBe(4);
+  });
+
+  it('give tester 5 the 5200 block, console 5580 and the slot after tester 4', () => {
+    const c = qaConfig(5);
+    expect(testerOffset(5)).toBe(5200);
+    expect([c.project, c.ports.API_PORT, c.ports.MERCURE_PORT, c.emulatorPort]).toEqual([
+      'soirely-qa5',
+      13280,
+      8200,
+      5580,
+    ]);
+    expect([c.chromePort, c.driverPort, c.helperPort]).toEqual([9227, 22093, 22196]);
+    expect(c.emulators).toMatchObject({
+      phone: { name: 'Soirely_QA5_Phone' },
+      tablet: { name: 'Soirely_QA5_Tablet', ramMb: 4096 },
+    });
+    expect(testerOf('/Users/x/Projects/soirely-qa5')).toBe(5);
+    expect(testerRole(5)).toBe('qa5');
   });
 });
 
@@ -1713,7 +1735,20 @@ describe('an emulator on another computer', () => {
     expect(command.join(' ')).toContain('-L 5578:127.0.0.1:5578 -L 5579:127.0.0.1:5579');
     expect(command.at(-2)).toBe('me@laptop');
     expect(command.at(-1)).toBe('C:\\Sdk\\emulator\\emulator.exe -avd A -port 5578');
-    expect(SSH_OPTIONS).toContain('ConnectTimeout=10');
+    expect(SSH_OPTIONS).toContain('ConnectTimeout=30');
+    expect(REACH_TIMEOUT_MS).toBeGreaterThan(30000);
+    expect(REACH_TIMEOUT_MS).toBeLessThan(60000);
+  });
+
+  it('names the Command-line Tools and a JDK when a host without Android Studio cannot make an AVD', () => {
+    const host = { ssh: 'hp@192.168.1.228', name: 'princess-shalew', sdk: 'C:\\Sdk' };
+    const both = missingAvdTools(host, { tools: false, jdk: false }, ['Soirely_QA5_Tablet']);
+    expect(both).toContain('Soirely_QA5_Tablet: not made on princess-shalew (hp@192.168.1.228)');
+    expect(both).toContain('lacks the Android SDK Command-line Tools and a JDK (17 or later)');
+    expect(both).toContain('C:\\Sdk\\cmdline-tools\\latest\\bin\\avdmanager.bat');
+    const jdk = missingAvdTools(host, { tools: true, jdk: false }, ['A']);
+    expect(jdk).toContain('which lacks a JDK (17 or later)');
+    expect(jdk).not.toContain('avdmanager.bat');
   });
 
   it('is announced to adb as the server protocol frames it', () => {
@@ -1750,6 +1785,31 @@ describe('an emulator on another computer', () => {
     expect(said).toContain('laptop (me@laptop) has no Android SDK Command-line Tools');
     expect(said).toContain('Android SDK Command-line Tools (latest)');
     expect(said).toContain('Google Play');
+  });
+
+  it('names the tester when it says to run setup again', () => {
+    const host = { name: 'laptop', ssh: 'me@laptop', sdk: 'C:\\Sdk' };
+    expect(missingRemoteTools(host, 'Android Emulator', 4)).toContain(
+      '`node scripts/qa-env.mjs setup --tester 4` again',
+    );
+    expect(setupAgain(1)).toBe('`node scripts/qa-env.mjs setup` again');
+  });
+});
+
+describe('an unauthorized device on the shared adb server', () => {
+  it('names it, since maestro then calls our own emulator not connected', () => {
+    const devices =
+      'List of devices attached\nemulator-5578\tdevice\nemulator-5580\tunauthorized\n';
+    const said = unauthorizedWarning(devices, 'emulator-5578');
+    expect(said).toContain('emulator-5580 as unauthorized');
+    expect(said).toContain('emulator-5578 as not connected');
+    expect(said).toContain('step 2');
+  });
+
+  it('says nothing when every device is authorized', () => {
+    expect(
+      unauthorizedWarning('List of devices attached\nemulator-5578\tdevice\n', 'emulator-5578'),
+    ).toBeNull();
   });
 });
 
@@ -4093,6 +4153,39 @@ describe('waitForBoot', () => {
     await expect(
       waitForBoot({ name: 'qa_pixel', booted: () => false, gone: () => null, pause, tries: 3 }),
     ).rejects.toThrow('qa_pixel did not boot within three minutes');
+  });
+
+  it('names an unauthorized device and the adb-key step, not a boot timeout', async () => {
+    let passes = 0;
+    const unauthorized = () => (++passes, 'emulator-5578');
+    const waiting = waitForBoot({
+      name: 'Soirely_QA4_Tablet',
+      booted: () => false,
+      gone: () => null,
+      pause,
+      unauthorized,
+    });
+    await expect(waiting).rejects.toThrow(
+      'Soirely_QA4_Tablet: adb here sees emulator-5578 as unauthorized',
+    );
+    await expect(waiting).rejects.toThrow('machines.md, An emulator on another computer, step 2');
+    expect(passes).toBe(30);
+  });
+
+  it('still boots a device that was unauthorized only for a while', async () => {
+    let passes = 0;
+    const unauthorized = () => (++passes < 29 ? 'emulator-5578' : null);
+    const booted = () => passes === 40;
+    await waitForBoot({ name: 'qa_pixel', booted, gone: () => null, pause, unauthorized });
+    expect(passes).toBe(40);
+  });
+
+  it('counts unauthorized passes in a row, so a device that flaps still boots', async () => {
+    let passes = 0;
+    const unauthorized = () => (++passes === 16 || passes > 31 ? null : 'emulator-5578');
+    const booted = () => passes === 35;
+    await waitForBoot({ name: 'qa_pixel', booted, gone: () => null, pause, unauthorized });
+    expect(passes).toBe(35);
   });
 });
 

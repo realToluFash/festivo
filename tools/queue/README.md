@@ -12,7 +12,7 @@ sq status | sync [--full] | install
 ```
 
 `sq` is `python3 .git/soirely-roles/sq/sq` once installed (`python3 tools/queue/sq install`),
-so a branch switch never takes it away. Roles: pm, ux, dev, dev2, dev3, dev4, qa, qa2, qa3, qa4, lead, bm,
+so a branch switch never takes it away. Roles: pm, ux, dev, dev2, dev3, dev4, qa, qa2, qa3, qa4, qa5, lead, bm,
 ops, en, es, fr, pt, cd.
 
 ## Reads print each thing once

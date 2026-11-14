@@ -979,6 +979,24 @@ describe('Finding a guest (sc-3772)', () => {
     ).toBe('All1,000');
   });
 
+  it('draws a search matching most of a long list a hundred rows at a time, until every row is there', async () => {
+    signedIn();
+    const many = Array.from({ length: 1000 }, (_, at) =>
+      guest(`g_${at}`, `Guest ${String(at).padStart(4, '0')}`),
+    );
+    await onGuests({ 'GET /api/events/ev_1/guests': () => json(listOf(many)) });
+    const rows = () => [...document.querySelectorAll('.gs-rows > li')];
+
+    fireEvent.change(await screen.findByRole('searchbox', { name: 'Find a guest' }), {
+      target: { value: 'guest' },
+    });
+
+    expect(rows()).toHaveLength(100);
+    expect(screen.getByText('1,000 of 1,000 shown')).toBeDefined();
+    await waitFor(() => expect(rows()).toHaveLength(1000));
+    expect(rows().at(-1)?.textContent).toContain('Guest 0999');
+  });
+
   it('steps Back through each change, the search once typing settles, then the choice', async () => {
     await shown();
     fireEvent.click(screen.getByRole('button', { name: 'All · 9' }));

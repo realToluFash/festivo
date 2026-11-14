@@ -1,8 +1,10 @@
 import { StyleSheet, View } from 'react-native';
 import Svg, { Circle, Path, Rect } from 'react-native-svg';
 
-import { tokens } from '../../theme/tokens.ts';
-import type { ReplyKind } from './GuestsWords.ts';
+import { tokens } from '../theme/tokens.ts';
+
+/** Where a guest stands, as the mark draws it; Not yet invited is sc-3788's. */
+export type ReplyKind = 'coming' | 'maybe' | 'notcoming' | 'held' | 'noreply' | 'notyet';
 
 export type MarkKind = ReplyKind | 'arrived' | 'walkin';
 

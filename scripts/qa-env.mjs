@@ -42,10 +42,13 @@ export const DEVELOPMENT_PORTS = {
   AGENT_GATEWAY_PORT: 8095,
 };
 
-export const TESTERS = [1, 2, 3, 4];
+export const TESTERS = [1, 2, 3, 4, 5];
+
+// At 5000, Mercure's 8000 was another project's on this machine.
+const OFFSETS = { 4: 5100, 5: 5200 };
 
 export function testerOffset(tester) {
-  return tester === 4 ? 5100 : tester * 10000;
+  return OFFSETS[tester] ?? tester * 10000;
 }
 
 // The stack a person on the QA team tests on, from their own phone and laptop: soirely-qa-lan,
@@ -140,7 +143,7 @@ export function qaConfig(tester = 1, address = undefined) {
   );
   // The person brings the phone: setup makes none of its simulators or emulators.
   // The lan stack kept slot 4 when tester 4 came.
-  const slot = lan ? 4 : tester === 4 ? 5 : tester;
+  const slot = lan ? 4 : tester >= 4 ? tester + 1 : tester;
   // Expo names this address in the QR code, so the person's phone reaches Metro.
   if (lan) app.REACT_NATIVE_PACKAGER_HOSTNAME = new URL(urls.api).hostname;
   if (lan) overrides.COMPOSE_FILE = `compose.yaml:${LAN_PROXY_COMPOSE}`;
@@ -493,7 +496,9 @@ export function emulatorHostOf(agents, tester) {
   };
 }
 
-export const SSH_OPTIONS = ['-o', 'BatchMode=yes', '-o', 'ConnectTimeout=10'];
+// ConnectTimeout covers the handshake too, and a host on Wi-Fi can take over 10 s for it.
+export const SSH_OPTIONS = ['-o', 'BatchMode=yes', '-o', 'ConnectTimeout=30'];
+export const REACH_TIMEOUT_MS = 45000;
 
 // Windows' OpenSSH ends the emulator with the session, so stopping the unit stops all three.
 export function remoteEmulatorCommand(host, port, args) {
@@ -544,13 +549,37 @@ export function pickPlayImage(paths, abi) {
   return `system-images;${version};${tag};${abi}`;
 }
 
-export function missingRemoteTools(host, what) {
+export function setupAgain(tester) {
+  return `\`node scripts/qa-env.mjs setup${tester === 1 ? '' : ` --tester ${tester}`}\` again`;
+}
+
+export function missingRemoteTools(host, what, tester = CONFIG.tester) {
   return [
     `  ${host.name} (${host.ssh}) has no ${what} in ${host.sdk}`,
-    `  install it there, then run \`node scripts/qa-env.mjs setup\` again:`,
+    `  install it there, then run ${setupAgain(tester)}:`,
     '    - Android Studio > Settings > Languages & Frameworks > Android SDK > SDK Tools:',
     '      tick "Android SDK Command-line Tools (latest)" and "Android Emulator", and apply',
     '    - SDK Platforms, Show Package Details: tick a "Google Play" x86_64 system image',
+    '  docs/agents/machines.md, An emulator on another computer, lists the rest it needs.',
+  ].join('\n');
+}
+
+// avdmanager is a Java program: a host without Android Studio has no JDK for it either.
+export function missingAvdTools(host, { tools, jdk }, avds) {
+  const lacks = [
+    !tools && 'the Android SDK Command-line Tools',
+    !jdk && 'a JDK (17 or later)',
+  ].filter(Boolean);
+  return [
+    `  ${avds.join(' and ')}: not made on ${host.name} (${host.ssh}), which lacks ${lacks.join(' and ')}`,
+    `  install ${lacks.length > 1 ? 'them' : 'it'} there, then run \`node scripts/qa-env.mjs setup\` again:`,
+    ...(tools
+      ? []
+      : [
+          '    - the Command-line Tools zip from developer.android.com/studio, unpacked so that',
+          `      ${host.sdk}\\cmdline-tools\\latest\\bin\\avdmanager.bat exists`,
+        ]),
+    ...(jdk ? [] : ['    - a JDK, such as Eclipse Temurin 17, with java on PATH or JAVA_HOME set']),
     '  docs/agents/machines.md, An emulator on another computer, lists the rest it needs.',
   ].join('\n');
 }
@@ -1117,11 +1146,11 @@ function androidTools() {
   };
 }
 
-export function missingCmdlineTools({ sdk, avdmanager }) {
+export function missingCmdlineTools({ sdk, avdmanager }, tester = CONFIG.tester) {
   return [
     `  no Android SDK command-line tools in ${sdk}`,
     `  expected avdmanager at ${avdmanager}`,
-    '  install them either way, then run `node scripts/qa-env.mjs setup` again:',
+    `  install them either way, then run ${setupAgain(tester)}:`,
     '    - Android Studio: Settings > Languages & Frameworks > Android SDK > SDK Tools,',
     '      tick "Android SDK Command-line Tools (latest)" and apply',
     '    - or download the command-line tools zip from https://developer.android.com/studio#command-tools',
@@ -1140,8 +1169,19 @@ function createRemoteEmulators(host) {
   if (missing.length) {
     const avdmanager = `${host.sdk}\\cmdline-tools\\latest\\bin\\avdmanager.bat`;
     const has = onHost(host, `if exist ${avdmanager} (echo found) else (echo missing)`);
-    if (has.stdout?.trim() !== 'found') {
-      console.log(missingRemoteTools(host, 'Android SDK Command-line Tools'));
+    const java = onHost(
+      host,
+      'if defined JAVA_HOME (if exist "%JAVA_HOME%\\bin\\java.exe" (echo found) else (echo missing)) else (where java >nul 2>nul && echo found || echo missing)',
+    );
+    const found = { tools: has.stdout?.trim() === 'found', jdk: java.stdout?.trim() === 'found' };
+    if (!found.tools || !found.jdk) {
+      console.log(
+        missingAvdTools(
+          host,
+          found,
+          missing.map((avd) => avd.name),
+        ),
+      );
     } else {
       const images = onHost(
         host,
@@ -1933,11 +1973,13 @@ function reachHost(host) {
   const exe = `${host.sdk}\\emulator\\emulator.exe`;
   const tried = `ssh ${SSH_OPTIONS.join(' ')} ${host.ssh} "if exist ${exe} echo found"`;
   const answer = onHost(host, `if exist ${exe} (echo found) else (echo missing)`, {
-    timeout: 30000,
+    timeout: REACH_TIMEOUT_MS,
   });
   if (answer.error || answer.status !== 0) {
     const why =
-      answer.error?.code === 'ETIMEDOUT' ? 'no answer in 30 s' : (answer.stderr || '').trim();
+      answer.error?.code === 'ETIMEDOUT'
+        ? `no answer in ${REACH_TIMEOUT_MS / 1000} s`
+        : (answer.stderr || '').trim();
     throw new Error(
       `the emulator host ${host.name} (${host.ssh}) could not be reached: ${why || `ssh exited ${answer.status}`}\n` +
         `  tried: ${tried}\n` +
@@ -1983,6 +2025,25 @@ function emulatorOnline(tools) {
   return (capture(tools.adb, ['devices'], { env: tools.env }) ?? '').includes(
     `${emulatorSerial()}\tdevice`,
   );
+}
+
+// Maestro's adb client throws on any unauthorized device on the shared server, ours or not (sc-47688).
+export function unauthorizedWarning(devices, ours) {
+  const others = [...devices.matchAll(/^(\S+)\tunauthorized$/gm)].map((m) => m[1]);
+  if (!others.length) return null;
+  return [
+    `  adb here sees ${others.join(', ')} as unauthorized: maestro will then report ${ours} as not connected`,
+    '  authorize it (docs/agents/machines.md, An emulator on another computer, step 2), or have',
+    '  whoever forwarded it disconnect it, then run this again',
+  ].join('\n');
+}
+
+function warnUnauthorized(tools) {
+  const said = unauthorizedWarning(
+    capture(tools.adb, ['devices'], { env: tools.env }) ?? '',
+    emulatorSerial(),
+  );
+  if (said) console.warn(said);
 }
 
 function unitState(unit) {
@@ -2112,6 +2173,12 @@ async function bootEmulator(tools, name) {
     booted: () => adbOut(tools, ['shell', 'getprop', 'sys.boot_completed']) === '1',
     gone,
     pause,
+    unauthorized: () =>
+      (capture(tools.adb, ['devices'], { env: tools.env }) ?? '').includes(
+        `${emulatorSerial()}\tunauthorized`,
+      )
+        ? emulatorSerial()
+        : null,
   });
   console.log(`  ${name}: booted on ${emulatorSerial()}`);
 }
@@ -2125,11 +2192,29 @@ export function emulatorUnitGone(unit, state, journal) {
   return `the emulator unit ${unit} stopped (${state || 'gone'}) before it booted:\n${journal()}`;
 }
 
-export async function waitForBoot({ name, booted, gone, pause, tries = 180, everyMs = 1000 }) {
+// A device that has not accepted this machine's adb key refuses getprop, so it never reads as booted (sc-48212).
+export async function waitForBoot({
+  name,
+  booted,
+  gone,
+  pause,
+  unauthorized = () => null,
+  tries = 180,
+  everyMs = 1000,
+  unauthorizedTries = 30,
+}) {
+  let refused = 0;
   for (let i = 0; i < tries; i++) {
     const reason = gone();
     if (reason) throw new Error(`${name}: ${reason}`);
     if (booted()) return;
+    const serial = unauthorized();
+    refused = serial ? refused + 1 : 0;
+    if (refused >= unauthorizedTries) {
+      throw new Error(
+        `${name}: adb here sees ${serial} as unauthorized, so it cannot tell whether it booted; accept this machine's adb key (docs/agents/machines.md, An emulator on another computer, step 2), then run this again`,
+      );
+    }
     await pause(everyMs);
   }
   throw new Error(`${name} did not boot within three minutes`);
@@ -2853,6 +2938,7 @@ async function maestro(args) {
     onAndroid,
   });
   const file = join(flows, `${flow}.yaml`);
+  if (onAndroid) warnUnauthorized(androidTools());
 
   const ok = await runAsync(
     maestroBin() ?? 'maestro',
@@ -3720,6 +3806,7 @@ async function batch(args) {
   }
 
   await clearForBatch(onAndroid, device);
+  if (onAndroid) warnUnauthorized(androidTools());
 
   const out = join(root, '.qa', name);
   rmSync(out, { recursive: true, force: true });
