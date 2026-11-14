@@ -1,9 +1,11 @@
 import {
   ApiError,
   GUEST_NAME_MAXIMUM,
+  type GroupChoice,
   type Guest,
   type GuestAnswer,
   type GuestDetails,
+  type GuestGroup,
   type GuestInvitationHow,
   type TaggedGuest,
 } from '@soirely/api-client';
@@ -35,6 +37,8 @@ import {
   PhoneField,
   PlacesStepper,
 } from './GuestFields.tsx';
+import { GroupField } from './GuestGroups.tsx';
+import { choiceLine, groupChanged, groupRefusal, listOpen } from './guestGroups.ts';
 import { type Copy, IconLead, Invitation } from './GuestInvitation.tsx';
 import { languageNameInSentence } from '../settings/organisationDetails.ts';
 import { type InvitationEvent, whatsAppHref } from './whatsAppSend.ts';
@@ -138,6 +142,7 @@ export function GuestColumn({
   mesh,
   manages,
   guests,
+  groups,
   country,
   stamp,
   invites,
@@ -167,6 +172,7 @@ export function GuestColumn({
   mesh: Mesh;
   manages: boolean;
   guests: readonly Guest[];
+  groups: readonly GuestGroup[];
   country: string;
   /** Raised on each change published to the list; the guest is read again unless being edited. */
   stamp: number;
@@ -309,6 +315,7 @@ export function GuestColumn({
         eventId={eventId}
         tagged={pane.tagged}
         guests={guests}
+        groups={groups}
         country={country}
         focus={focus}
         onDirty={onDirty}
@@ -565,6 +572,12 @@ function GuestView({
               <ReplyMark reply={reply} cover />
               {t(REPLY_KEY[reply])}
             </li>
+            {guest.group != null && (
+              <li className="desk-glass gg-pill">
+                <span className="visually-hidden">{t('guestGroups.group')}: </span>
+                {guest.group.name}
+              </li>
+            )}
           </ul>
           <h2 id={heading} className="gs-name" tabIndex={-1} data-focus="guest-heading">
             {guest.fullName}
@@ -1000,6 +1013,7 @@ function EditForm({
   eventId,
   tagged,
   guests,
+  groups,
   country,
   focus,
   onDirty,
@@ -1010,6 +1024,7 @@ function EditForm({
   eventId: string;
   tagged: TaggedGuest;
   guests: readonly Guest[];
+  groups: readonly GuestGroup[];
   country: string;
   focus: (...keys: string[]) => void;
   onDirty: (dirty: boolean) => void;
@@ -1044,12 +1059,16 @@ function EditForm({
     ...(tried ? needsProblemsByWho(values) : {}),
     ...needsRefused,
   };
-  const dirty = kept(values) !== kept(base);
+  const [group, setGroup] = useState<GroupChoice | undefined>(undefined);
+  const [groupRefused, setGroupRefused] = useState<string | undefined>(undefined);
+  const regrouped = groupChanged(host.group, group);
+  const groupLine = groupRefused ?? (tried ? choiceLine(t, groups, group) : undefined);
+  const dirty = kept(values) !== kept(base) || regrouped;
 
   useEffect(() => onDirty(dirty), [dirty, onDirty]);
 
   const onEscape = useEffectEvent((key: globalThis.KeyboardEvent) => {
-    if (key.key !== 'Escape' || key.defaultPrevented) return;
+    if (key.key !== 'Escape' || key.defaultPrevented || listOpen(key)) return;
     key.preventDefault();
     onCancel(dirty);
   });
@@ -1181,6 +1200,7 @@ function EditForm({
         host.id,
         {
           ...sent,
+          ...(regrouped && group !== undefined ? { group } : {}),
           needs: needsInputOf(sending.needs),
           companions: sending.companions.map((one, at) => ({
             id: one.id,
@@ -1217,13 +1237,16 @@ function EditForm({
         const at = firstProblem(found, sending.companions.length);
         const theirNeeds = needsViolations(violations, (who) => needsOf(sending, who));
         const needsAt = firstNeedsFailing(theirNeeds);
+        const groupAt = groupRefusal(error);
 
-        if (at == null && needsAt == null) setFailed(true);
+        if (at == null && groupAt == null && needsAt == null) setFailed(true);
         else {
           setRefused(found);
           setNeedsRefused(theirNeeds);
+          setGroupRefused(groupAt ?? undefined);
           opened.openFailing(theirNeeds);
           if (at != null) focus(at === 'mobile' && found.mobile === 'noCountry' ? 'country' : at);
+          else if (groupAt != null) focus('group');
           else if (needsAt != null) focus(needsAt);
         }
       } else setFailed(true);
@@ -1238,14 +1261,17 @@ function EditForm({
     const first = firstProblem(found, values.companions.length);
     const needsFound = needsProblemsByWho(values);
     const needsFirst = firstNeedsFailing(needsFound);
+    const groupFirst = choiceLine(t, groups, group);
 
-    if (first != null || needsFirst != null) {
+    if (first != null || groupFirst != null || needsFirst != null) {
       setTried(true);
       setRefused({});
       setNeedsRefused({});
+      setGroupRefused(undefined);
       opened.openFailing(needsFound);
       if (first != null)
         focus(first === 'mobile' && found.mobile === 'noCountry' ? 'country' : first);
+      else if (groupFirst != null) focus('group');
       else if (needsFirst != null) focus(needsFirst);
       return;
     }
@@ -1414,6 +1440,15 @@ function EditForm({
           value={values.language}
           chose={host.chosenLanguage}
           onChange={(language) => change({ language })}
+        />
+        <GroupField
+          groups={groups}
+          value={group === undefined && host.group != null ? { id: host.group.id } : group}
+          error={groupLine}
+          onChange={(next) => {
+            setGroup(next);
+            setGroupRefused(undefined);
+          }}
         />
         <NeedsSection
           title={t('guestNeeds.needs')}

@@ -11,7 +11,7 @@ appId: host.exp.Exponent
     id: 'events.card.step'
 - extendedWaitUntil:
     visible:
-      id: 'events.makeLiveHost'
+      id: 'events.makeLive.host'
     timeout: 10000
 - inputText: 'Typed Name'
 - extendedWaitUntil:
@@ -21,7 +21,7 @@ appId: host.exp.Exponent
     optional: true
 - takeScreenshot: before
 - tapOn:
-    id: 'events.makeLiveYes'
+    id: 'events.makeLive.confirm'
 - extendedWaitUntil:
     visible:
       id: 'sc22143.never'

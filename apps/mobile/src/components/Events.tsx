@@ -1,6 +1,7 @@
 import type { OrganisationEvent } from '@soirely/api-client';
 import { type EventPhase, PHASE_LOOK, formatEventRange, shownPhase } from '@soirely/domain';
-import { StyleSheet, View } from 'react-native';
+import { type RefObject, useRef } from 'react';
+import { StyleSheet, View, type ViewInstance } from 'react-native';
 import { useTranslation } from 'react-i18next';
 
 import { dateLocale } from '../i18n/index.ts';
@@ -14,6 +15,7 @@ import { DraftRow } from './MakeLive.tsx';
 import { PausedRow } from './PauseEvent.tsx';
 import { Notice } from './Notice.tsx';
 import { Placeholder } from './Placeholder.tsx';
+import type { ScreenReaderTarget } from './screenReaderFocus.ts';
 import { StatusChip } from './StatusChip.tsx';
 import { Text } from './Text.tsx';
 import { cardFrame } from './cardFrame.ts';
@@ -104,9 +106,10 @@ export function EventTop({
   now: Date;
   onChange?: ((event: OrganisationEvent) => void) | undefined;
   onEdit?: ((at?: EditAt) => void) | undefined;
-  onDuplicate?: (() => void) | undefined;
+  onDuplicate?: ((opener: RefObject<ScreenReaderTarget | null>) => void) | undefined;
 }) {
   const { t } = useTranslation();
+  const duplicateOpener = useRef<ViewInstance>(null);
   const endPassed = phase === 'draft' && now.getTime() >= Date.parse(event.endsAt);
 
   return (
@@ -130,14 +133,7 @@ export function EventTop({
       <Placeholder label={t('eventPage.invited')} />
       {onChange != null && (
         <>
-          <DraftRow
-            kind={kind}
-            event={event}
-            manages={manages}
-            now={now}
-            onChange={onChange}
-            onEdit={onEdit}
-          />
+          <DraftRow event={event} manages={manages} now={now} onChange={onChange} onEdit={onEdit} />
           {endPassed && onEdit != null && (
             <PrimaryButton
               label={t('eventLive.changeDates')}
@@ -150,8 +146,9 @@ export function EventTop({
       )}
       {phase === 'finished' && onDuplicate != null && (
         <PrimaryButton
+          ref={duplicateOpener}
           label={t('eventDuplicate.open')}
-          onPress={onDuplicate}
+          onPress={() => onDuplicate(duplicateOpener)}
           testID="events.page.duplicate"
         />
       )}

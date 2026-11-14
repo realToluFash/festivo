@@ -6,8 +6,8 @@ import {
   copyOf,
   duplicateStart,
   reduceDuplicate,
-  startsAfter,
 } from './Duplicate.ts';
+import { startsAfter } from '../../kit/eventDuplicate.ts';
 import { EVENT_STATES } from './EventsModel.ts';
 import { sampleEvent } from './EventsSample.ts';
 

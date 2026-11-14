@@ -1,15 +1,18 @@
 import { ApiError } from '@soirely/api-client';
 import { describe, expect, it } from 'vitest';
 
-import { EVENT_PHASES } from '@soirely/domain';
+import { EVENT_PHASES, type Translate } from '@soirely/domain';
 
 import {
   PHASE_WORD,
   changedSinceOpening,
   draftRowOf,
   endRefusalOf,
+  type LiveQuestion,
+  liveAlertOf,
   pauseRefusalOf,
   refusalOf,
+  toldOf,
 } from './makeLive.ts';
 
 const STARTS = '2026-11-14T16:00:00+01:00';
@@ -133,5 +136,81 @@ describe('pauseRefusalOf', () => {
     problem('internal_error', { status: 500 }),
   ])('reads anything else as failed', (error) => {
     expect(pauseRefusalOf(error)).toEqual({ kind: 'failed' });
+  });
+});
+
+describe('Make live’s alert (sc-48601)', () => {
+  const t: Translate = (key: string, values?: Record<string, string | number>) =>
+    values == null ? key : `${key} ${JSON.stringify(values)}`;
+  const event = { name: 'Ada at 40', hosts: ['Bisi Akindele', 'Kola Mensah'] };
+  const question: LiveQuestion = {
+    kind: 'confirm',
+    askHost: false,
+    typed: '',
+    error: null,
+    notice: null,
+    pending: false,
+    failed: false,
+  };
+
+  it('opens makeLivePlanLimit on a 403 plan_limit, with its plan and limit and Close alone', () => {
+    const told = toldOf(
+      refusalOf(problem('plan_limit', { status: 403, plan: 'Pro', limit: 7 })),
+      t,
+    );
+
+    expect(liveAlertOf(told, event, t, true)).toMatchObject({
+      turn: 'told',
+      title: 'eventLive.planLimit {"plan":"Pro","count":7}',
+      line: 'eventLive.planLimitStays',
+      alert: true,
+      keep: { label: 'eventLive.close' },
+      confirm: null,
+    });
+  });
+
+  it('opens makeLiveEndPassed on event_concluded, with Change dates for somebody who can edit', () => {
+    const told = toldOf(refusalOf(problem('event_concluded')), t);
+
+    expect(liveAlertOf(told, event, t, true)).toMatchObject({
+      title: 'eventLive.notMadeLive',
+      line: 'eventLive.endPassed',
+      confirm: { label: 'eventLive.changeDates' },
+    });
+    expect(liveAlertOf(told, event, t, false)?.confirm).toBeNull();
+  });
+
+  it('keeps a failure that is not a refusal in the question, as makeLiveNotMade', () => {
+    expect(toldOf(refusalOf(new Error('offline')), t)).toBeNull();
+    expect(liveAlertOf({ ...question, failed: true }, event, t, true)).toMatchObject({
+      turn: 'question',
+      failed: 'eventLive.failed',
+      confirm: { label: 'eventLive.makeLive', busy: undefined },
+    });
+  });
+
+  it('turns Make live and keeps Not yet waiting while it sends, as makeLiveMaking', () => {
+    expect(liveAlertOf({ ...question, pending: true }, event, t, true)).toMatchObject({
+      keep: { label: 'eventLive.notYet', off: true },
+      confirm: { busy: 'eventLive.making' },
+    });
+  });
+
+  it('asks for Host 1 with no host, and keeps what was typed when somebody else changed it', () => {
+    expect(
+      liveAlertOf({ ...question, askHost: true, notice: 'stillNoHost' }, event, t, true),
+    ).toMatchObject({
+      failed: 'eventEdit.changedElsewhere',
+      host: { help: 'eventLive.hostExplainer', error: null },
+      hostsNow: null,
+    });
+  });
+
+  it('lists who hosts it now, one per line, once somebody else gave it a host', () => {
+    expect(liveAlertOf({ ...question, notice: 'nowHosted' }, event, t, true)).toMatchObject({
+      failed: 'eventLive.notSavedChanged',
+      host: null,
+      hostsNow: { line: 'eventLive.hostsNow', names: ['Bisi Akindele', 'Kola Mensah'] },
+    });
   });
 });

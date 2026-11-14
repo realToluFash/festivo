@@ -1,8 +1,10 @@
 import {
   ApiError,
   GUEST_NAME_MAXIMUM,
+  type GroupChoice,
   type Guest,
   type GuestDetails,
+  type GuestGroup,
   type GuestList,
   type OrganisationEvent,
   asGuestList,
@@ -58,7 +60,6 @@ import { api } from '../../../api.ts';
 import { GlassMark } from '../../../components/EventCard.tsx';
 import { Glyph } from '../../../components/Glyph.tsx';
 import { SearchField } from '../../../components/SearchField.tsx';
-import { Skeleton } from '../../../components/Skeleton.tsx';
 import {
   Ask,
   CardStep,
@@ -76,6 +77,8 @@ import { phoneProblemMessage } from '../../../phoneProblem.ts';
 import { useLoadedAt, useServerNow } from '../../../serverNow.ts';
 import { canOn, useSession } from '../../../session.ts';
 import { useMakeLive } from './MakeLive.tsx';
+import { GroupChips, GroupField, GroupTag, GroupsColumn } from './GuestGroups.tsx';
+import { choiceLine, groupRefusal, listOpen } from './guestGroups.ts';
 import { GuestColumn, ReplyMark, guestAddress } from './GuestColumn.tsx';
 import {
   CompanionField,
@@ -244,6 +247,8 @@ export function GuestsArea({
   const [recount, setRecount] = useState(0);
   const { choice, q, setChoice, setQ, clear } = useGuestsAddress();
   const [dietaryOnly, setDietary] = useState(false);
+  const [groupFilter, setGroupFilter] = useState<string | null>(null);
+  const [grouping, setGrouping] = useState(false);
   const [menu, setMenu] = useState(false);
   const [expanded, setExpanded] = useState<ReadonlySet<Standing>>(new Set());
   const [stamp, setStamp] = useState(0);
@@ -255,6 +260,7 @@ export function GuestsArea({
   );
   const lastRow = useRef<string | null>(open);
   const addAfter = useRef(false);
+  const groupsAfter = useRef(false);
   const headingOwed = useRef(false);
   const column = useRef<HTMLElement>(null);
   const manages = canOn(event, 'guests.manage');
@@ -361,12 +367,36 @@ export function GuestsArea({
   }
 
   function showAdd(): void {
+    setGrouping(false);
     setAdding(true);
     focus('fullName');
   }
 
+  function openGroups(): void {
+    if (dirty) {
+      groupsAfter.current = true;
+      setParams(withGuest(null), { replace: true });
+      return;
+    }
+    if (open != null) setParams(withGuest(null), { replace: true });
+    showGroups();
+  }
+
+  function showGroups(): void {
+    setAdding(false);
+    setGrouping(true);
+    setAttempt((n) => n + 1);
+    focus('form-heading');
+  }
+
+  function closeGroups(): void {
+    setGrouping(false);
+    focus('groups', 'title');
+  }
+
   function openGuest(id: string): void {
     setAdding(false);
+    setGrouping(false);
     setParams(withGuest(id));
     headingOwed.current = id !== open;
     focus('guest-heading');
@@ -378,7 +408,14 @@ export function GuestsArea({
   }
 
   const onEscape = useEffectEvent((key: globalThis.KeyboardEvent) => {
-    if (key.key !== 'Escape' || key.defaultPrevented || adding || open == null || dirty) return;
+    if (key.key !== 'Escape' || key.defaultPrevented || adding || listOpen(key)) return;
+    if (grouping) {
+      if (key.target instanceof Element && key.target.closest('.gg-rename') != null) return;
+      key.preventDefault();
+      closeGroups();
+      return;
+    }
+    if (open == null || dirty) return;
     key.preventDefault();
     close();
   });
@@ -464,6 +501,13 @@ export function GuestsArea({
     setParams(withGuest(null));
     focus(next == null ? 'none-heading' : `row:${next.person.id}`, 'title');
   }
+
+  /** A new name on the form became a group as the guest was saved: the list is read again to carry it. */
+  function madeGroup(guest: Guest): boolean {
+    const id = guest.group?.id;
+
+    return id != null && load.kind === 'loaded' && !load.list.groups.some((one) => one.id === id);
+  }
   const shows =
     load.kind === 'failed' || counted === 'failed'
       ? 'failed'
@@ -476,10 +520,10 @@ export function GuestsArea({
     () =>
       counts == null
         ? { view: { kind: 'rows' as const, rows: [] }, shown: 0 }
-        : viewOf(guests, counts, choice, q, expanded, dietaryOn),
-    [guests, counts, choice, q, expanded, dietaryOn],
+        : viewOf(guests, counts, choice, q, expanded, dietaryOn, groupFilter),
+    [guests, counts, choice, q, expanded, dietaryOn, groupFilter],
   );
-  const looking = choice !== 'all' || q.trim() !== '' || dietaryOn;
+  const looking = choice !== 'all' || q.trim() !== '' || dietaryOn || groupFilter != null;
 
   /** The card as `/demo/guests` draws it: a Draft, Paused or Finished event says so on the card, in place of its counts' step. */
   function cover(counts: Counts): Cover {
@@ -529,6 +573,7 @@ export function GuestsArea({
   function clearView(): void {
     clear();
     setDietary(false);
+    setGroupFilter(null);
     focus('find');
   }
 
@@ -562,6 +607,17 @@ export function GuestsArea({
             <h1 ref={heading} className="gs-title" tabIndex={-1} data-focus="title">
               {t('eventPage.guests')}
             </h1>
+            {shows === 'loaded' && (
+              <button
+                type="button"
+                className="gs-pill is-secondary"
+                aria-pressed={grouping}
+                data-focus="groups"
+                onClick={openGroups}
+              >
+                {t('guestGroups.groups')}
+              </button>
+            )}
             {manages && guests.length > 0 && (
               <button type="button" className="ev-new" data-focus="add" onClick={startAdd}>
                 <Glyph name="plus" size={18} weight={2.4} />
@@ -570,7 +626,22 @@ export function GuestsArea({
             )}
           </header>
           {shows === 'loading' && (
-            <Skeleton words={t('pending.loading')} shape="rows" rowHeight={64} field />
+            <div className="desk-loading gs-bones" role="status" aria-busy="true">
+              <span className="desk-unseen">{t('pending.loading')}</span>
+              <span className="desk-sunk gs-bone-card" aria-hidden="true" />
+              <span className="desk-sunk gs-bone-field" aria-hidden="true" />
+              <ul className="desk-rows gs-rows" aria-hidden="true">
+                {[1, 2, 3, 4, 1].map((bone, index) => (
+                  <li key={index} className="desk-row is-bones">
+                    <span className="desk-sunk gs-bone-mark" />
+                    <span className="desk-row-words">
+                      <span className={`desk-sunk is-title b${bone}`} />
+                      <span className={`desk-sunk is-line b${bone}`} />
+                    </span>
+                  </li>
+                ))}
+              </ul>
+            </div>
           )}
           {shows === 'failed' && (
             <div className="desk-failed gs-failed" role="alert">
@@ -596,7 +667,7 @@ export function GuestsArea({
                   onStep={onStep}
                 />
               )}
-              {(guests.length > 0 || adding) && (
+              {(guests.length > 0 || adding || grouping) && (
                 <div className="gs-cols">
                   <section className="gs-list" aria-label={t('eventPage.guests')}>
                     {guests.length > 0 && counts != null && (
@@ -623,6 +694,13 @@ export function GuestsArea({
                               {t('guestNeeds.dietaryNotes')}
                             </button>
                           </div>
+                        )}
+                        {load.kind === 'loaded' && (
+                          <GroupChips
+                            list={load.list}
+                            filter={groupFilter}
+                            onFilter={setGroupFilter}
+                          />
                         )}
                         <div className={looking ? 'gs-shown' : 'visually-hidden'}>
                           <p role="status">
@@ -677,7 +755,26 @@ export function GuestsArea({
                       </>
                     )}
                   </section>
-                  {!adding && (
+                  {grouping && load.kind === 'loaded' && (
+                    <section
+                      ref={column}
+                      className="gs-column"
+                      aria-label={t('guestGroups.groups')}
+                    >
+                      <GroupsColumn
+                        eventId={event.id}
+                        list={load.list}
+                        manages={manages}
+                        focus={focus}
+                        onChanged={(deleted) => {
+                          if (deleted != null && groupFilter === deleted) setGroupFilter(null);
+                          setAttempt((n) => n + 1);
+                        }}
+                        onDone={closeGroups}
+                      />
+                    </section>
+                  )}
+                  {!adding && !grouping && (
                     <section
                       ref={column}
                       className="gs-column"
@@ -695,6 +792,7 @@ export function GuestsArea({
                           mesh={meshFor(event.id)}
                           manages={manages}
                           guests={guests}
+                          groups={load.kind === 'loaded' ? load.list.groups : []}
                           country={country}
                           stamp={stamp}
                           invites={invites}
@@ -726,6 +824,7 @@ export function GuestsArea({
                           }}
                           onSaved={(guest) => {
                             changed(guest);
+                            if (madeGroup(guest)) setAttempt((n) => n + 1);
                             setSaved(true);
                           }}
                         />
@@ -737,10 +836,12 @@ export function GuestsArea({
                       <AddForm
                         eventId={event.id}
                         guests={guests}
+                        groups={load.kind === 'loaded' ? load.list.groups : []}
                         country={country}
                         focus={focus}
                         onAdded={(guest) => {
                           setRecount((n) => n + 1);
+                          if (madeGroup(guest)) setAttempt((n) => n + 1);
                           setLoad((was) =>
                             was.kind === 'loaded'
                               ? { kind: 'loaded', list: listedWith(was.list, guest) }
@@ -769,6 +870,7 @@ export function GuestsArea({
             go={t('guestList.discard')}
             onKeep={() => {
               addAfter.current = false;
+              groupsAfter.current = false;
               setAsking(null);
               away.reset?.();
             }}
@@ -782,6 +884,10 @@ export function GuestsArea({
               if (addAfter.current) {
                 addAfter.current = false;
                 showAdd();
+              }
+              if (groupsAfter.current) {
+                groupsAfter.current = false;
+                showGroups();
               }
             }}
           />
@@ -1055,7 +1161,7 @@ function RowsFrom({
                   <ReplyMark reply={shownReply(guest)} />
                 </span>
                 <RowWords title={name} lines={[line]} />
-                <NeedsTags needs={guest.needs} />
+                <NeedsTags needs={guest.needs} group={guest.group?.name ?? null} />
               </RowLink>
             </li>
           );
@@ -1073,7 +1179,10 @@ function RowsFrom({
                 <ReplyMark reply={companion.state} />
               </span>
               <RowWords title={name} lines={[line]} />
-              <NeedsTags needs={companion.needs} />
+              <NeedsTags
+                needs={companion.needs}
+                group={indent ? null : (guest.group?.name ?? null)}
+              />
             </RowLink>
           </li>
         );
@@ -1082,18 +1191,19 @@ function RowsFrom({
   );
 }
 
-/** sc-3777: the Allergy mark, then the grey Dietary notes tag, both words in the row's name; only sent to those who manage guests. */
-function NeedsTags({ needs }: { needs: Guest['needs'] }) {
+/** sc-3777: the Allergy mark, then the grey Dietary notes tag, both words in the row's name; only sent to those who manage guests. sc-3775's group tag is last, for everyone. */
+function NeedsTags({ needs, group }: { needs: Guest['needs']; group: string | null }) {
   const { t } = useTranslation();
   const allergy = hasAllergy(needs);
   const tagged = dietary(needs);
 
-  if (!allergy && !tagged) return null;
+  if (!allergy && !tagged && group == null) return null;
 
   return (
     <span className="gs-row-tags">
       {allergy && <AllergyMark />}
       {tagged && <span className="gs-tag">{t('guestNeeds.dietaryNotes')}</span>}
+      {group != null && <GroupTag name={group} />}
     </span>
   );
 }
@@ -1159,6 +1269,7 @@ function needsByWho(typed: AddTyped): Record<string, NeedsProblems> {
 function AddForm({
   eventId,
   guests,
+  groups,
   country,
   focus,
   onAdded,
@@ -1166,6 +1277,7 @@ function AddForm({
 }: {
   eventId: string;
   guests: readonly Guest[];
+  groups: readonly GuestGroup[];
   country: string;
   focus: (...keys: string[]) => void;
   onAdded: (guest: Guest) => void;
@@ -1180,6 +1292,10 @@ function AddForm({
   const [failed, setFailed] = useState(false);
   const [said, setSaid] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
+  const [group, setGroup] = useState<GroupChoice | undefined>(undefined);
+  const [groupRefused, setGroupRefused] = useState<string | undefined>(undefined);
+  const [round, setRound] = useState(0);
+  const groupLine = groupRefused ?? (tried ? choiceLine(t, groups, group) : undefined);
   const box = useRef<HTMLDivElement>(null);
   const values: Typed = {
     ...typed,
@@ -1228,13 +1344,16 @@ function AddForm({
     const first = firstProblem(problemsOf(values), values.companions.length);
     const needsFound = needsByWho(typed);
     const needsFirst = firstNeedsFailing(needsFound);
+    const groupFirst = choiceLine(t, groups, group);
 
-    if (first != null || needsFirst != null) {
+    if (first != null || groupFirst != null || needsFirst != null) {
       setTried(true);
       setRefused({});
       setNeedsRefused({});
+      setGroupRefused(undefined);
       opened.openFailing(needsFound);
       if (first != null) focus(fieldOf(first, problemsOf(values)));
+      else if (groupFirst != null) focus('group');
       else if (needsFirst != null) focus(needsFirst);
       return;
     }
@@ -1250,6 +1369,7 @@ function AddForm({
       const sent = newGuestOf(values, allowDuplicate);
       const guest = await api.addGuest(eventId, {
         ...sent,
+        ...(group === undefined ? {} : { group }),
         needs: needsInputOf(typed.needs),
         companions: (sent.companions ?? []).map((one, at) => ({
           ...one,
@@ -1260,6 +1380,8 @@ function AddForm({
       onAdded(guest);
       setSaid(t('guestList.justAdded', { name: guest.fullName }));
       setTyped(EMPTY);
+      setGroup(undefined);
+      setRound((was) => was + 1);
       opened.closeAll();
       setTried(false);
       setDuplicate(false);
@@ -1278,13 +1400,16 @@ function AddForm({
             : (typed.companions[Number(who.slice(1))]?.needs ?? NO_NEEDS),
         );
         const needsAt = firstNeedsFailing(theirNeeds);
+        const groupAt = groupRefusal(error);
 
-        if (at == null && needsAt == null) setFailed(true);
+        if (at == null && groupAt == null && needsAt == null) setFailed(true);
         else {
           setRefused(found);
           setNeedsRefused(theirNeeds);
+          setGroupRefused(groupAt ?? undefined);
           opened.openFailing(theirNeeds);
           if (at != null) focus(fieldOf(at, found));
+          else if (groupAt != null) focus('group');
           else if (needsAt != null) focus(needsAt);
         }
       } else setFailed(true);
@@ -1294,7 +1419,7 @@ function AddForm({
   }
 
   const onEscape = useEffectEvent((event: globalThis.KeyboardEvent) => {
-    if (event.key !== 'Escape' || event.defaultPrevented) return;
+    if (event.key !== 'Escape' || event.defaultPrevented || listOpen(event)) return;
     event.preventDefault();
     onDone();
   });
@@ -1364,6 +1489,16 @@ function AddForm({
           value={typed.language}
           chose={null}
           onChange={(language) => change({ language })}
+        />
+        <GroupField
+          key={round}
+          groups={groups}
+          value={group}
+          error={groupLine}
+          onChange={(next) => {
+            setGroup(next);
+            setGroupRefused(undefined);
+          }}
         />
         <NeedsSection
           title={t('guestNeeds.needs')}

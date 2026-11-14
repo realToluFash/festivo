@@ -2,7 +2,7 @@ import type { OrganisationEvent } from '@soirely/api-client';
 import { type Choice, changedWords } from '@soirely/domain';
 import { router } from 'expo-router';
 import type { TFunction } from 'i18next';
-import { type Ref, useEffect, useRef } from 'react';
+import { type Ref, type RefObject, useEffect, useRef } from 'react';
 import { StyleSheet, View, type ViewInstance } from 'react-native';
 import { useTranslation } from 'react-i18next';
 
@@ -44,6 +44,7 @@ import { useMakeLive } from './MakeLive.tsx';
 import { useEventMute } from './MuteEventCard.tsx';
 import { useResume } from './PauseEvent.tsx';
 import { readOut } from './ReadOut.tsx';
+import type { ScreenReaderTarget } from './screenReaderFocus.ts';
 import type { TextHandle } from './Text.tsx';
 import { ComingUp, useTimeline } from './Timeline.tsx';
 
@@ -70,6 +71,7 @@ export function EventPage({
   onDuplicate,
   onDeleted,
   onGuests,
+  tell,
 }: {
   kind: LayoutKind;
   event: OrganisationEvent;
@@ -83,10 +85,12 @@ export function EventPage({
   onChange: (event: OrganisationEvent) => void;
   /** Absent for a role without events.manage (sc-3595); `at` is the field it opens with focus on. */
   onEdit?: ((at?: EditAt) => void) | undefined;
-  /** Absent for a role without events.create (sc-22145). */
-  onDuplicate?: (() => void) | undefined;
+  /** Absent for a role without events.create (sc-22145); opens Duplicate over the page, focus going back to `opener`. */
+  onDuplicate?: ((opener: RefObject<ScreenReaderTarget | null>) => void) | undefined;
   /** Absent for a role without events.create (sc-3592). */
   onDeleted?: ((event: OrganisationEvent) => void) | undefined;
+  /** Says a toast at the foot of the page. */
+  tell?: ((words: string) => void) | undefined;
 }) {
   const { t } = useTranslation();
   const locale = dateLocale();
@@ -100,7 +104,14 @@ export function EventPage({
   const pauseOpener = useRef<ViewInstance>(null);
   const endOpener = useRef<ViewInstance>(null);
   const deleteOpener = useRef<ViewInstance>(null);
-  const makeLive = useMakeLive({ kind, event, onChange, onEdit, opener: cardOpener });
+  const duplicateOpener = useRef<ViewInstance>(null);
+  const makeLive = useMakeLive({
+    event,
+    onChange,
+    onEdit,
+    onLive: tell,
+    opener: cardOpener,
+  });
   const resume = useResume(event, onChange);
   const { askPause, askEnd, asks } = useManageAsks({
     event,
@@ -127,7 +138,7 @@ export function EventPage({
     if (step.action === 'makeLive') makeLive.start();
     else if (step.action === 'changeDates') onEdit?.('starts');
     else if (step.action === 'resume') resume.resume();
-    else onDuplicate?.();
+    else onDuplicate?.(cardOpener);
   };
   const refFor: RefFor = (key) =>
     key === 'pause'
@@ -136,9 +147,11 @@ export function EventPage({
         ? endOpener
         : key === 'delete'
           ? deleteOpener
-          : undefined;
+          : key === 'duplicate'
+            ? duplicateOpener
+            : undefined;
   const onManage = (key: ManageKey) => {
-    if (key === 'duplicate') onDuplicate?.();
+    if (key === 'duplicate') onDuplicate?.(duplicateOpener);
     else if (key === 'pause') askPause();
     else if (key === 'callOff' || key === 'endNow') askEnd(key);
     else deletion.open();

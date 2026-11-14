@@ -17,6 +17,7 @@ import {
   type Field,
   type From,
   type GuestKitchen,
+  type PartyPlace,
   type Person,
   blankParty,
   changes,
@@ -62,7 +63,7 @@ function checkView(from: From): View {
 export function freshKitchen(
   from: From,
   was: Visit,
-  coming: readonly { key: string; name: string }[] | null = null,
+  coming: readonly PartyPlace[] | null = null,
 ): GuestKitchen {
   const count = coming?.length ?? was.companionsComing;
   const sample = was.recorded?.answer === 'coming' ? recorded(count, EARLIER) : null;

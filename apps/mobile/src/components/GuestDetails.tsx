@@ -187,7 +187,7 @@ export function GuestDetails({
       </Title>
       {notice?.kind === 'refused' && <AlertLine text={notice.line} />}
       {notice?.kind === 'offline' && <AlertLine text={t('guestList.offlineRefused')} />}
-      {notice?.kind === 'failed' && <AlertLine text={t('guestList.loadFailedLine')} />}
+      {notice?.kind === 'failed' && <AlertLine text={t('guestList.unmarkNotSaved')} />}
       <View>
         <BlockHead title={t('guestList.replyHeading')} />
         <Row

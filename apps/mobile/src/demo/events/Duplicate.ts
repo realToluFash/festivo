@@ -1,5 +1,11 @@
-import { addDays, copyStartRefusal } from '@soirely/domain';
+import { copyStartRefusal } from '@soirely/domain';
 
+import {
+  type DuplicateRun,
+  OPENING_AFTER,
+  type Starts,
+  pickedRun,
+} from '../../kit/eventDuplicate.ts';
 import type { SampleEvent } from './EventsSample.ts';
 import { t } from './EventsWords.ts';
 
@@ -21,28 +27,7 @@ export function duplicateStateOf(state: string | null): DuplicateState | null {
 export const START_REFUSED = 'Enter a date and a time with no time zone offset.';
 
 export const CREATING_MS = 900;
-/** As the app's `OPENING_AFTER`: the line is read before the copy opens. */
-export const OPENING_MS = 700;
-
-export interface Starts {
-  date: string;
-  time: string;
-}
-
-export type DuplicateStatus = 'editing' | 'creating' | 'failed' | 'created';
-
-export interface DuplicateRun {
-  starts: Starts;
-  status: DuplicateStatus;
-  error: string | null;
-  /** The half that takes focus with the error. */
-  focus: 'date' | 'time' | null;
-}
-
-/** The copy starts on the original's weekday and time, a year on. */
-export function startsAfter(begins: Starts): Starts {
-  return { date: addDays(begins.date, 52 * 7), time: begins.time };
-}
+export const OPENING_MS = OPENING_AFTER;
 
 export function duplicateStart(state: DuplicateState | null, starts: Starts): DuplicateRun {
   const run: DuplicateRun = { starts, status: 'editing', error: null, focus: null };
@@ -79,19 +64,8 @@ export function reduceDuplicate(run: DuplicateRun, action: DuplicateAction): Dup
   const busy = run.status === 'creating' || run.status === 'created';
 
   switch (action.type) {
-    case 'picked': {
-      if (busy) return run;
-      const { date, time } = action.starts;
-      const whole = date !== '' && time !== '';
-
-      return {
-        ...run,
-        starts: action.starts,
-        status: 'editing',
-        error: whole ? null : run.error,
-        focus: whole ? null : run.focus,
-      };
-    }
+    case 'picked':
+      return pickedRun(run, action.starts);
     case 'create': {
       if (busy) return run;
       const refused = refusedOf(run.starts.date, run.starts.time);

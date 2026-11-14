@@ -286,7 +286,10 @@ function EventAt({
     const shown =
       event == null || state == null
         ? event
-        : state === 'photo'
+        : state === 'photo' ||
+            state === 'coverPhoto' ||
+            state === 'coverPhotoUploading' ||
+            state === 'coverChangeRefused'
           ? { ...event, photo: true }
           : state === 'noteNoVenue' || state === 'noteWide' || state === 'noteMarkup'
             ? withNote(event, state)

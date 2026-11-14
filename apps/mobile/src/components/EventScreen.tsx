@@ -8,7 +8,7 @@ import {
 } from '@soirely/domain';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { router, useFocusEffect, useNavigation } from 'expo-router';
-import { type ReactNode, useCallback, useEffect, useRef, useState } from 'react';
+import { type ReactNode, type RefObject, useCallback, useEffect, useRef, useState } from 'react';
 import { StyleSheet, View } from 'react-native';
 import { useTranslation } from 'react-i18next';
 
@@ -23,7 +23,7 @@ import {
 import { DESTINATION_HREF } from '../kit/appNav.ts';
 import { offersDelete } from '../kit/eventDelete.ts';
 import { offersEdit } from '../kit/eventEdit.ts';
-import { backToOriginal } from '../kit/eventDuplicate.ts';
+import { DUPLICATING, backToOriginal } from '../kit/eventDuplicate.ts';
 import {
   type EditAt,
   EVENT_AREA,
@@ -42,6 +42,7 @@ import { AppFrame, BackButton } from './AppFrame.tsx';
 import { bodyEdges } from './bodyEdges.ts';
 import { SecondaryButton } from './Buttons.tsx';
 import { cardFrame } from './cardFrame.ts';
+import { DuplicateEvent } from './DuplicateEvent.tsx';
 import { EventPage } from './EventPage.tsx';
 import { EventGuests } from './EventGuests.tsx';
 import { EventPeople } from './EventPeople.tsx';
@@ -52,7 +53,7 @@ import { Refreshing } from './Refreshing.tsx';
 import { Screen, useScrolledToTop } from './Screen.tsx';
 import { LoadingBlock, PageToast } from './Summary.tsx';
 import { Arrived } from './Skeleton.tsx';
-import { moveScreenReaderFocus } from './screenReaderFocus.ts';
+import { type ScreenReaderTarget, moveScreenReaderFocus } from './screenReaderFocus.ts';
 import { Text, type TextHandle } from './Text.tsx';
 import { Title } from './Title.tsx';
 import { PAGE_TITLE, pageTitle } from './topTitle.ts';
@@ -67,6 +68,7 @@ export function EventScreen({
   area,
   filter = 'all',
   copiedFrom,
+  opensDuplicate = false,
   keepsTab,
 }: {
   eventId: string;
@@ -75,6 +77,8 @@ export function EventScreen({
   filter?: Choice;
   /** The event this one was duplicated from, when Duplicate opened it (sc-22145). */
   copiedFrom?: string | undefined;
+  /** Opened by an Events card's Duplicate, so Duplicate is over the page as it opens. */
+  opensDuplicate?: boolean;
   /** Opened from Happening now, so Back returns to the tab that was showing. */
   keepsTab: boolean;
 }) {
@@ -88,12 +92,22 @@ export function EventScreen({
       [SHOWN_EVENT]?: string;
       [EVENT_AREA]?: EventPlace;
       [GUESTS_FILTER]?: Choice | undefined;
+      [DUPLICATING]?: string | undefined;
     }): void;
     getState(): { routes: readonly { params?: unknown }[]; index: number } | undefined;
   }>();
   const [savedEvent, setSavedEvent] = useState<string | null>(null);
   const [guestsOffline, setGuestsOffline] = useState<ScreenOffline>(NOT_OFFLINE);
-  const [toast, setToast] = useState<{ eventId: string; words: string } | null>(null);
+  const [toast, setToast] = useState<{
+    eventId: string;
+    area: EventPlace;
+    words: string;
+  } | null>(null);
+  const [duplicating, setDuplicating] = useState<{
+    opener: RefObject<ScreenReaderTarget | null>;
+    count: number;
+    open: boolean;
+  } | null>(null);
   const insets = useSafeAreaInsets();
   const [coverRefused, setCoverRefused] = useState<{ eventId: string; reason: string } | null>(
     null,
@@ -162,8 +176,17 @@ export function EventScreen({
         router.push(`/events/${encodeURIComponent(eventId)}/edit${at == null ? '' : `?at=${at}`}`)
     : undefined;
   const onDuplicate = creates
-    ? () => router.push(`/events/${encodeURIComponent(eventId)}/duplicate`)
+    ? (opener: RefObject<ScreenReaderTarget | null>) =>
+        setDuplicating((now) => ({ opener, count: (now?.count ?? 0) + 1, open: true }))
     : undefined;
+  const fromList = useRef(opensDuplicate);
+
+  useEffect(() => {
+    if (!fromList.current || event == null || !creates) return;
+    fromList.current = false;
+    navigation.setParams({ [DUPLICATING]: undefined });
+    setDuplicating({ opener: cardName.current == null ? title : cardName, count: 1, open: true });
+  }, [event, creates, navigation]);
   const onDeleted = deletes
     ? (gone: OrganisationEvent) => {
         markDeleted(gone.name);
@@ -187,6 +210,7 @@ export function EventScreen({
             onEdit={onEdit}
             onDuplicate={onDuplicate}
             onDeleted={onDeleted}
+            tell={(words) => setToast({ eventId, area, words })}
           />
           {coverRefused?.eventId === eventId && (
             <View style={styles.stack}>
@@ -210,7 +234,7 @@ export function EventScreen({
         <EventPeople
           key={event.id}
           event={event}
-          tell={(words) => setToast(words == null ? null : { eventId, words })}
+          tell={(words) => setToast(words == null ? null : { eventId, area, words })}
         />
       ) : (
         <PlaceholderArea area={area}>
@@ -350,7 +374,16 @@ export function EventScreen({
           {body}
         </Screen>
       )}
-      {toast?.eventId === eventId && area === 'people' && (
+      {event != null && duplicating != null && (
+        <DuplicateEvent
+          key={duplicating.count}
+          open={duplicating.open}
+          event={event}
+          opener={duplicating.opener}
+          onClose={() => setDuplicating((now) => (now == null ? now : { ...now, open: false }))}
+        />
+      )}
+      {toast?.eventId === eventId && toast.area === area && (
         <PageToast
           words={toast.words}
           onClose={() => setToast(null)}

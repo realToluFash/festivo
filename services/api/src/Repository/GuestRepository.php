@@ -6,6 +6,7 @@ namespace App\Repository;
 
 use App\Entity\Event;
 use App\Entity\Guest;
+use App\Entity\GuestGroup;
 use App\Entity\Organisation;
 use App\Enum\EventStatus;
 use App\Http\Access\Interfaces\EventScopedRepositoryInterface;
@@ -58,6 +59,12 @@ final class GuestRepository extends ServiceEntityRepository implements EventScop
         }
 
         return $this->findBy(['event' => $events]);
+    }
+
+    /** @return list<Guest> the hosts in it; their companions follow them */
+    public function findInGroup(GuestGroup $group): array
+    {
+        return $this->findBy(['group' => $group]);
     }
 
     /** Guests and companions together: the Guests header's N. */
