@@ -124,6 +124,7 @@ export function EventGuests({
   const editButton = useRef<ViewInstance>(null);
   const markButton = useRef<ViewInstance>(null);
   const unmarkButton = useRef<ViewInstance>(null);
+  const unmarking = useRef(false);
   const markOpener = useRef<ScreenReaderTarget | null>(null);
   const searchField = useRef<TextInputInstance>(null);
   const opener = useRef<ViewInstance | null>(null);
@@ -251,35 +252,42 @@ export function EventGuests({
     );
   };
   const unmark = (guestId: string) => {
+    if (unmarking.current) return;
+    unmarking.current = true;
     setNotice(null);
     setSaved(false);
-    api.markNotInvited(eventId, guestId).then(
-      (tagged) => {
-        setNotice({ kind: 'unmarked' });
-        showGuest(tagged);
-        guestName.current?.focus?.();
-      },
-      (error: unknown) => {
-        if (error instanceof ApiUnreachableError) {
-          setNotice({ kind: 'offline' });
-          return;
-        }
-        const refused = repliedRefusal(error);
-        const name = pane.kind === 'guest' ? pane.guest.fullName : '';
+    api
+      .markNotInvited(eventId, guestId)
+      .finally(() => {
+        unmarking.current = false;
+      })
+      .then(
+        (tagged) => {
+          setNotice({ kind: 'unmarked' });
+          showGuest(tagged);
+          guestName.current?.focus?.();
+        },
+        (error: unknown) => {
+          if (error instanceof ApiUnreachableError) {
+            setNotice({ kind: 'offline' });
+            return;
+          }
+          const refused = repliedRefusal(error);
+          const name = pane.kind === 'guest' ? pane.guest.fullName : '';
 
-        if (refused != null) {
-          setNotice({
-            kind: 'refused',
-            line: t('guestList.unmarkRefused', {
-              name,
-              reply: t(REPLY_KEY[refused.reply]),
-              date: replyDate(refused.at, event.timeZone, dateLocale()),
-            }),
-          });
-          readGuest(guestId, true);
-        } else setNotice({ kind: 'failed' });
-      },
-    );
+          if (refused != null) {
+            setNotice({
+              kind: 'refused',
+              line: t('guestList.unmarkRefused', {
+                name,
+                reply: t(REPLY_KEY[refused.reply]),
+                date: replyDate(refused.at, event.timeZone, dateLocale()),
+              }),
+            });
+            readGuest(guestId, true);
+          } else setNotice({ kind: 'failed' });
+        },
+      );
   };
   const openForm = (mode: GuestFormMode, from: ViewInstance | null) => {
     opener.current = from;
