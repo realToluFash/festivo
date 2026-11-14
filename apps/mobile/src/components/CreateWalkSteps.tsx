@@ -181,6 +181,7 @@ export function NameStep({
   onTyped,
   onContinue,
   quiet = false,
+  onFocused,
   onLeft,
 }: StepProps & {
   field: RefObject<TextInputInstance | null>;
@@ -188,6 +189,7 @@ export function NameStep({
   onContinue: () => void;
   /** Hidden from the screen reader and unnamed, so taking input focus says nothing: TalkBack voiced a hidden field's name as it took focus (qa2 #49329). */
   quiet?: boolean;
+  onFocused?: (() => void) | undefined;
   onLeft?: (() => void) | undefined;
 }) {
   const { t } = useTranslation();
@@ -251,6 +253,7 @@ export function NameStep({
             onSubmitEditing={onContinue}
             onFocus={() => {
               setFocused(true);
+              onFocused?.();
             }}
             onBlur={() => {
               setFocused(false);

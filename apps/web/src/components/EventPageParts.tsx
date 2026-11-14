@@ -124,6 +124,7 @@ export function PartRow({
 export function Opened({
   label,
   changed,
+  unsaved = changed,
   verb,
   asking: first = null,
   refused = false,
@@ -135,6 +136,8 @@ export function Opened({
 }: {
   label: string;
   changed: boolean;
+  /** What Cancel asks about, when it is more than what Save would save: a photo still uploading. */
+  unsaved?: boolean;
   verb?: string;
   asking?: 'discard' | 'latest' | null;
   refused?: boolean;
@@ -148,7 +151,7 @@ export function Opened({
   const [asking, setAsking] = useState(first);
   const cancel = () => {
     if (busy) return;
-    if (changed) setAsking('discard');
+    if (unsaved) setAsking('discard');
     else onCancel();
   };
   const box = useRef<HTMLDivElement>(null);
@@ -164,14 +167,14 @@ export function Opened({
       if (event.key !== 'Escape' || event.defaultPrevented || open || busy) return;
       event.preventDefault();
       event.stopPropagation();
-      if (changed) setAsking('discard');
+      if (unsaved) setAsking('discard');
       else onCancel();
     };
 
     node.addEventListener('keydown', keys);
 
     return () => node.removeEventListener('keydown', keys);
-  }, [asking, busy, changed, onCancel]);
+  }, [asking, busy, unsaved, onCancel]);
 
   return (
     <div className="ev-opened" role="group" aria-label={label} ref={box}>

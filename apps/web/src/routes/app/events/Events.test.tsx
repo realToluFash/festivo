@@ -4403,6 +4403,212 @@ describe('The cover (sc-3590)', () => {
       ),
     ).toBeDefined();
     expect(screen.getByRole('heading', { level: 1, name: 'Adaeze and Tunde' })).toBeDefined();
+
+    fireEvent.click(screen.getByRole('button', { name: 'Edit details' }));
+    const opened = screen.getByRole('group', { name: 'Cover' });
+    expect(within(opened).getByRole('button', { name: 'Upload a photo' })).toBeDefined();
+    expect(screen.queryByRole('dialog')).toBeNull();
+  });
+
+  describe("on an event's page, edited in place (sc-48606)", () => {
+    const part = () => screen.getByRole('group', { name: 'Cover' });
+    const off = (name: string) =>
+      within(part()).getByRole('button', { name }).getAttribute('aria-disabled') === 'true';
+
+    function pick(chosen: File): void {
+      fireEvent.change(part().querySelector('input[type="file"]')!, {
+        target: { files: [chosen] },
+      });
+    }
+
+    async function opened(cover: unknown, answers: Record<string, Answer> = {}) {
+      signedIn();
+      const sent = serving(cover, answers);
+      at('/app/events/ev_1');
+      const row = await screen.findByRole('button', { name: /^(Default cover|Your photo)/u });
+      fireEvent.click(row);
+
+      return { sent, row };
+    }
+
+    it('opens under Cover photo with no dialog, focus on Upload a photo, and Use this photo saves the upload, its position and description', async () => {
+      const { sent, row } = await opened(null);
+
+      expect(screen.queryByRole('dialog')).toBeNull();
+      expect(
+        within(part()).getByText(/Soirely’s cover, in this event’s own colours/u),
+      ).toBeDefined();
+      expect(within(part()).getByText(/JPEG, PNG, WebP or HEIC, up to 15 MB/u)).toBeDefined();
+      await waitFor(() =>
+        expect(document.activeElement).toBe(
+          within(part()).getByRole('button', { name: 'Upload a photo' }),
+        ),
+      );
+      expect(off('Save')).toBe(true);
+
+      pick(file());
+      const slider = await within(part()).findByLabelText('Photo position');
+      expect(part().querySelector('.ev-preview img')?.getAttribute('src')).toBe('blob:chosen');
+      fireEvent.change(slider, { target: { value: '80' } });
+      expect(slider.getAttribute('aria-valuetext')).toBe('Showing the bottom of the photo');
+      expect(within(part()).getByText('Showing the bottom of the photo')).toBeDefined();
+      fireEvent.change(within(part()).getByLabelText(/Describe the image/u), {
+        target: { value: ' The arch ' },
+      });
+      fireEvent.click(within(part()).getByRole('button', { name: 'Use this photo' }));
+
+      await waitFor(() => expect(screen.queryByRole('group', { name: 'Cover' })).toBeNull());
+      expect(sent.find(({ line }) => line === 'PUT /api/events/ev_1/cover')?.body).toEqual({
+        uploadKey: 'event_cover/org_1/2026/10/one.jpg',
+        position: 80,
+        description: 'The arch',
+      });
+      expect(await screen.findByText('Saved')).toBeDefined();
+      expect(sent.map(({ line }) => line)).not.toContain(
+        'DELETE /api/orgs/org_1/event-cover-uploads',
+      );
+      await waitFor(() => expect(document.activeElement).toBe(row));
+    });
+
+    it('on a photo, Save waits for a change; a description is one', async () => {
+      await opened(PHOTO);
+
+      await waitFor(() =>
+        expect(document.activeElement).toBe(
+          within(part()).getByRole('button', { name: 'Change photo' }),
+        ),
+      );
+      expect(off('Save')).toBe(true);
+      expect((within(part()).getByLabelText(/Describe the image/u) as HTMLInputElement).value).toBe(
+        PHOTO.description,
+      );
+      fireEvent.change(within(part()).getByLabelText(/Describe the image/u), {
+        target: { value: 'The arch' },
+      });
+      expect(off('Save')).toBe(false);
+    });
+
+    it('Remove photo asks nothing and removes only on Save', async () => {
+      const { sent } = await opened(PHOTO);
+
+      fireEvent.click(await within(part()).findByRole('button', { name: 'Remove photo' }));
+      expect(screen.queryByRole('alertdialog')).toBeNull();
+      expect(part().querySelector('.ev-preview.is-photo')).toBeNull();
+      expect(sent.map(({ line }) => line)).not.toContain('DELETE /api/events/ev_1/cover');
+
+      fireEvent.click(within(part()).getByRole('button', { name: 'Save' }));
+      await waitFor(() => expect(screen.queryByRole('group', { name: 'Cover' })).toBeNull());
+      expect(sent.map(({ line }) => line)).toContain('DELETE /api/events/ev_1/cover');
+    });
+
+    it('Cancel after Remove photo asks first, and Discard keeps the photo', async () => {
+      const { sent } = await opened(PHOTO);
+
+      fireEvent.click(await within(part()).findByRole('button', { name: 'Remove photo' }));
+      fireEvent.click(within(part()).getByRole('button', { name: 'Cancel' }));
+      const ask = screen.getByRole('alertdialog', { name: 'Discard your change?' });
+      fireEvent.click(within(ask).getByRole('button', { name: 'Discard' }));
+
+      expect(screen.queryByRole('group', { name: 'Cover' })).toBeNull();
+      expect(sent.map(({ line }) => line)).not.toContain('DELETE /api/events/ev_1/cover');
+      expect(screen.getByRole('button', { name: /^Your photo/u })).toBeDefined();
+    });
+
+    it('Cancel during an upload asks first, and Discard drops the upload', async () => {
+      const { sent } = await opened(null, {
+        'POST /api/orgs/org_1/event-cover-uploads/preview': () => new Promise(() => undefined),
+      });
+
+      pick(file());
+      expect((await within(part()).findByRole('status')).textContent).toBe('Uploading…');
+      expect(part().querySelector('.ev-preview.is-photo')).toBeNull();
+      expect(off('Save')).toBe(true);
+      expect(off('Upload a photo')).toBe(false);
+      fireEvent.click(within(part()).getByRole('button', { name: 'Cancel' }));
+      fireEvent.click(
+        within(screen.getByRole('alertdialog', { name: 'Discard your change?' })).getByRole(
+          'button',
+          { name: 'Discard' },
+        ),
+      );
+
+      expect(screen.queryByRole('group', { name: 'Cover' })).toBeNull();
+      expect(sent.map(({ line }) => line)).not.toContain('PUT /api/events/ev_1/cover');
+    });
+
+    it('refuses a file too small before it uploads, above Upload a photo', async () => {
+      const { sent } = await opened(null);
+      nextImage = { width: 1199, height: 900 };
+
+      pick(file());
+
+      expect((await within(part()).findByRole('alert')).textContent).toContain(
+        'That photo is smaller than 1200 × 675 pixels',
+      );
+      expect(part().querySelector('.ev-preview.is-photo')).toBeNull();
+      expect(sent.filter(({ line }) => line.includes('cover'))).toEqual([]);
+    });
+
+    it('an upload the server refuses is discarded, and says why above Upload a photo', async () => {
+      const { sent } = await opened(null, {
+        'POST /api/orgs/org_1/event-cover-uploads/preview': () => problem(500, 'server_error'),
+      });
+
+      pick(file());
+
+      expect((await within(part()).findByRole('alert')).textContent).toContain(
+        'The photo did not upload. Try again.',
+      );
+      expect(part().querySelector('.ev-preview.is-photo')).toBeNull();
+      expect(within(part()).getByRole('button', { name: 'Upload a photo' })).toBeDefined();
+      await waitFor(() =>
+        expect(
+          sent.find(({ line }) => line === 'DELETE /api/orgs/org_1/event-cover-uploads')?.body,
+        ).toEqual({ uploadKey: 'event_cover/org_1/2026/10/one.jpg' }),
+      );
+    });
+
+    it('a refused Change photo keeps the photo', async () => {
+      await opened(PHOTO);
+
+      pick(file('notes.txt', 'text/plain'));
+
+      expect((await within(part()).findByRole('alert')).textContent).toContain(
+        'That file is not a photo we can use.',
+      );
+      expect(part().querySelector('.ev-preview.is-photo')).not.toBeNull();
+      expect(off('Save')).toBe(true);
+    });
+
+    it('a save the server refuses keeps the edit open with the photo chosen, and says why', async () => {
+      await opened(null, {
+        'PUT /api/events/ev_1/cover': () => problem(500, 'server_error'),
+      });
+
+      pick(file());
+      await within(part()).findByLabelText('Photo position');
+      fireEvent.click(within(part()).getByRole('button', { name: 'Use this photo' }));
+
+      expect((await within(part()).findByRole('alert')).textContent).toContain(
+        'The photo did not upload. Try again.',
+      );
+      expect(part().querySelector('.ev-preview.is-photo')).not.toBeNull();
+      expect(off('Use this photo')).toBe(false);
+    });
+
+    it('refuses a description over 250 characters and saves nothing', async () => {
+      const { sent } = await opened(PHOTO);
+
+      fireEvent.change(await within(part()).findByLabelText(/Describe the image/u), {
+        target: { value: 'x'.repeat(251) },
+      });
+      fireEvent.click(within(part()).getByRole('button', { name: 'Save' }));
+
+      expect(
+        await within(part()).findByText('Shorten the description to 250 characters or fewer.'),
+      ).toBeDefined();
+      expect(sent.map(({ line }) => line)).not.toContain('PUT /api/events/ev_1/cover');
+    });
   });
 });
 

@@ -11,6 +11,7 @@ import {
   type HostRow,
   type VenueDraft,
   addressLookup,
+  coverTypeOf,
   draftOf,
   eventChanges,
   eventSaveRefusal,
@@ -41,11 +42,13 @@ import {
   Radios,
   type Wall,
 } from '../../../components/EventPageParts.tsx';
+import { type CoverEdited, type CoverUploaded, CoverEdit } from '../../../components/CoverEdit.tsx';
 import { Glyph } from '../../../components/Glyph.tsx';
 import { RowWords, TextAction } from '../../../components/SettingsParts.tsx';
 import { currentLocale, dateLocale } from '../../../i18n/index.ts';
+import { meshFor } from '../../../mesh.ts';
 import { currencyChoices, timeZoneChoices } from '../../../zoneAndCurrencyChoices.ts';
-import { CoverSection } from './CoverSection.tsx';
+import { discardCoverUpload, refusalOf } from './coverPhoto.ts';
 import { typeChoices } from './eventTypes.ts';
 import { useStartCarriesEnd } from './useStartCarriesEnd.ts';
 
@@ -827,34 +830,66 @@ export function HostsPart({ event, tag, onDirty, onClose, onSaved, onLatest }: P
   );
 }
 
-/** Cover: the product's cover and its Cover photo dialog, which save as they are used, so Close is all this edit needs. */
+/** Cover: Soirely's cover in the event's own colours, or a photo, its position and what a screen reader says for it. */
 export function CoverPart({
   event,
+  onDirty,
   onClose,
   onCover,
-}: Pick<PartProps, 'event' | 'onClose'> & { onCover: (event: OrganisationEvent) => void }) {
+}: Pick<PartProps, 'event' | 'onDirty' | 'onClose'> & {
+  onCover: (event: OrganisationEvent) => void;
+}) {
   const { t } = useTranslation();
+  const organisationId = event.organisationId;
+
+  async function upload(file: File, shows: boolean): Promise<CoverUploaded> {
+    let key: string | null = null;
+
+    try {
+      const signed = await api.signEventCoverUpload(organisationId, {
+        contentType: coverTypeOf(file) ?? file.type,
+        size: file.size,
+        filename: file.name,
+      });
+      await api.uploadTo(signed, file);
+      key = signed.key;
+      // The server reads every new photo whole, so a damaged JPEG the browser sized is refused here, not saved grey.
+      const copy = await api.previewEventCoverUpload(organisationId, signed.key);
+
+      return { key: signed.key, url: shows ? URL.createObjectURL(file) : copy };
+    } catch (error) {
+      if (key != null) discardCoverUpload(organisationId, key);
+      throw new Error(refusalOf(error, t));
+    }
+  }
+
+  async function save(change: CoverEdited): Promise<OrganisationEvent> {
+    try {
+      return change.removed
+        ? await api.removeEventCover(event.id)
+        : await api.setEventCover(event.id, {
+            ...(change.upload == null ? {} : { uploadKey: change.upload.key }),
+            position: change.position,
+            description: change.description,
+          });
+    } catch (error) {
+      throw new Error(refusalOf(error, t));
+    }
+  }
 
   return (
-    <div className="ev-opened" role="group" aria-label={t('eventCover.heading')}>
-      <CoverSection
-        type={event.type}
-        photo={event.cover}
-        organisationId={event.organisationId}
-        onUse={async ({ upload, position, description }) =>
-          onCover(
-            await api.setEventCover(event.id, {
-              ...(upload == null ? {} : { uploadKey: upload.key }),
-              position,
-              description,
-            }),
-          )
-        }
-        onRemove={async () => onCover(await api.removeEventCover(event.id))}
-      />
-      <div className="ev-opened-actions">
-        <TextAction label={t('eventCover.close')} onClick={onClose} />
-      </div>
-    </div>
+    <CoverEdit
+      mesh={meshFor(event.id)}
+      saved={event.cover}
+      upload={upload}
+      discard={(uploaded) => {
+        if (uploaded.url.startsWith('blob:')) URL.revokeObjectURL(uploaded.url);
+        discardCoverUpload(organisationId, uploaded.key);
+      }}
+      save={save}
+      onSaved={onCover}
+      onDirty={onDirty}
+      onClose={onClose}
+    />
   );
 }

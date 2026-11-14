@@ -1,5 +1,4 @@
 import {
-  COVER_DESCRIPTION_MAXIMUM,
   COVER_MIDDLE,
   EVENT_NAME_MAXIMUM,
   EVENT_TYPES,
@@ -12,7 +11,6 @@ import {
   hostProblems,
   hostsSent,
   keepsLastHost,
-  positionPart,
   startMoved,
   formatWallDay,
 } from '@soirely/domain';
@@ -47,7 +45,6 @@ import {
   replyByAfterStart,
 } from './replyBy.ts';
 import { NotBuilt } from './EventParts.tsx';
-import { useCoverPick } from './useCoverPick.tsx';
 import {
   Alert,
   Broken,
@@ -57,8 +54,9 @@ import {
   Quiet,
   Radios,
 } from '../components/EventPageParts.tsx';
+import { type CoverStart, type CoverUploaded, CoverEdit } from '../components/CoverEdit.tsx';
 import { Glyph } from '../components/Glyph.tsx';
-import { Ask, RedAction, RowWords, TextAction } from '../components/SettingsParts.tsx';
+import { Ask, RowWords, TextAction } from '../components/SettingsParts.tsx';
 
 const LOCALE = 'en-US';
 
@@ -1057,134 +1055,47 @@ export function CoverUpload({
 }
 
 const UPLOAD_MS = 1500;
+const STAND_IN: CoverUploaded = { key: 'demo', url: '' };
 
-/** Cover: Soirely's cover in the event's own colours, or a photo, its position and what a screen reader says for it. */
+/** Cover: the product's edit on the sample event; a pick uploads after a moment and nothing is sent. */
 export function CoverPart({ event, state, onDirty, onClose, onSave }: PartProps) {
-  const [photo, setPhoto] = useState(state === 'coverSaveRefused' ? true : event.photo);
-  const [picked, setPicked] = useState(false);
-  const [uploading, setUploading] = useState(
-    state === 'coverUploading' || state === 'coverPhotoUploading',
-  );
-  const [position, setPosition] = useState(COVER_MIDDLE);
-  const [described, setDescribed] = useState(PHOTO_DESCRIPTION);
-  const [saveRefused, setSaveRefused] = useState(state === 'coverSaveRefused');
-  const [asking, setAsking] = useState(false);
-  const picker = useRef<HTMLButtonElement>(null);
   const timer = useRef<number | undefined>(undefined);
-  const cover = useCoverPick(
-    () => {
-      setUploading(true);
-      window.clearTimeout(timer.current);
-      timer.current = window.setTimeout(() => {
-        setUploading(false);
-        setPhoto(true);
-        setPicked(true);
-        setPosition(COVER_MIDDLE);
-      }, UPLOAD_MS);
-    },
-    state === 'coverRefused'
-      ? W.refusedDimensions
-      : state === 'coverChangeRefused'
-        ? W.refusedType
-        : null,
+  const [start] = useState<CoverStart>(() =>
+    state === 'coverUploading' || state === 'coverPhotoUploading'
+      ? { uploading: new Promise<CoverUploaded>(() => undefined) }
+      : state === 'coverRefused'
+        ? { pickRefused: W.refusedDimensions }
+        : state === 'coverChangeRefused'
+          ? { pickRefused: W.refusedType }
+          : state === 'coverSaveRefused'
+            ? { chosen: STAND_IN, saveRefused: W.uploadFailed }
+            : {},
   );
-  const part = positionPart(position);
-  const changed =
-    photo !== event.photo ||
-    picked ||
-    (photo && (position !== COVER_MIDDLE || described !== PHOTO_DESCRIPTION));
-  const id = useId();
 
-  useDirty(changed || uploading, onDirty);
-  useEffect(() => {
-    picker.current?.focus();
-
-    return () => window.clearTimeout(timer.current);
-  }, []);
+  useEffect(() => () => window.clearTimeout(timer.current), []);
 
   return (
-    <Opened
-      label={W.cover}
-      changed={changed && !uploading}
-      verb={photo && !event.photo ? W.usePhoto : W.save}
-      onCancel={() => (uploading ? setAsking(true) : onClose())}
-      onSave={() => {
-        if (state === 'coverSaveRefused') setSaveRefused(true);
-        else onSave({ ...event, photo });
+    <CoverEdit
+      mesh={event.mesh}
+      saved={
+        event.photo ? { sizes: [], position: COVER_MIDDLE, description: PHOTO_DESCRIPTION } : null
+      }
+      standIn
+      start={start}
+      upload={() =>
+        new Promise((done) => {
+          window.clearTimeout(timer.current);
+          timer.current = window.setTimeout(() => done(STAND_IN), UPLOAD_MS);
+        })
+      }
+      discard={() => undefined}
+      save={async (change) => {
+        if (state === 'coverSaveRefused') throw new Error(W.uploadFailed);
+        return { ...event, photo: change.upload != null || (event.photo && !change.removed) };
       }}
-    >
-      {saveRefused && <Broken>{W.uploadFailed}</Broken>}
-      {cover.input}
-      <div className="ev-cover-frame">
-        <CoverPreview photo={photo} mesh={event.mesh} />
-        {uploading && (
-          <p className="ev-cover-uploading" role="status">
-            {W.uploading}
-          </p>
-        )}
-      </div>
-      {photo ? (
-        <>
-          {cover.refusal != null && <Broken>{cover.refusal}</Broken>}
-          <button ref={picker} type="button" className="desk-text" onClick={cover.pick}>
-            {W.changePhoto}
-          </button>
-          <div className="desk-field">
-            <label htmlFor={`${id}-position`} className="desk-label">
-              {W.position}
-            </label>
-            <input
-              id={`${id}-position`}
-              type="range"
-              className="ev-slider"
-              min={0}
-              max={100}
-              value={position}
-              aria-valuetext={W.showing(part)}
-              onChange={(change) => setPosition(Number(change.target.value))}
-            />
-            <div className="ev-slider-ends" aria-hidden="true">
-              <span>{W.top}</span>
-              <span>{W.bottom}</span>
-            </div>
-            <p className="desk-help">{W.showing(part)}</p>
-          </div>
-          <Text
-            label={W.describe}
-            optional
-            value={described}
-            maxLength={COVER_DESCRIPTION_MAXIMUM}
-            help={`${W.describeHint} ${W.describeCount(Array.from(described).length, COVER_DESCRIPTION_MAXIMUM)}`}
-            onChange={setDescribed}
-          />
-          <RedAction
-            label={W.removePhoto}
-            line={W.removePhotoLine}
-            onClick={() => {
-              window.clearTimeout(timer.current);
-              setUploading(false);
-              setPhoto(false);
-              setPicked(false);
-              cover.setRefusal(null);
-            }}
-          />
-        </>
-      ) : (
-        <CoverUpload refusal={cover.refusal} buttonRef={picker} onUpload={cover.pick} />
-      )}
-      {asking && (
-        <Ask
-          title={W.discardTitle}
-          line={W.discardLine}
-          keep={W.keepEditing}
-          go={W.discard}
-          onKeep={() => setAsking(false)}
-          onGo={() => {
-            setAsking(false);
-            onClose();
-          }}
-        />
-      )}
-    </Opened>
+      onSaved={onSave}
+      onDirty={onDirty}
+      onClose={onClose}
+    />
   );
 }

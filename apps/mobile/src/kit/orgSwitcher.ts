@@ -183,6 +183,15 @@ const SIDE = 12;
 const TAB_BAR = 64;
 const LEAST_HEIGHT = 160;
 
+/** What the drop-down hangs from once the window has turned: its opener while still drawn, else the first opener drawn in its place. */
+export function openerAfterTurn<T extends { current: unknown }>(opened: T, drawn: Iterable<T>): T {
+  if (opened.current != null) return opened;
+
+  for (const opener of drawn) if (opener.current != null) return opener;
+
+  return opened;
+}
+
 export function frameFor({
   opener,
   window,
