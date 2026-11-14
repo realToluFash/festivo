@@ -711,14 +711,6 @@
 }
 
 /* sc-3788: the Invitation line, Mark as invited's inset and the read-only line, as the demo draws them. */
-.gs-row-words {
-  display: flex;
-  flex: 1;
-  flex-direction: column;
-  gap: var(--spaceXs);
-  min-width: 0;
-}
-
 .gs-row-words .desk-text {
   align-self: flex-start;
   margin-inline: 0;
