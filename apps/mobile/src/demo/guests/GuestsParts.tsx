@@ -20,7 +20,7 @@ import {
 } from '../../components/Summary.tsx';
 import type { GuestsCardWords } from './GuestsModel.ts';
 import { W, say } from './GuestsWords.ts';
-import { type MarkKind, ReplyMark } from './ReplyMark.tsx';
+import { type MarkKind, ReplyMark } from '../../components/ReplyMark.tsx';
 
 export type Layout = 'phone' | 'portrait' | 'landscape';
 

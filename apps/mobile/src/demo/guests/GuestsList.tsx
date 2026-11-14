@@ -34,7 +34,7 @@ import {
 } from './GuestsModel.ts';
 import { GroupHead, type Layout, ShownLine } from './GuestsParts.tsx';
 import { REPLY_WORD, W, say } from './GuestsWords.ts';
-import { MarkSlot } from './ReplyMark.tsx';
+import { MarkSlot } from '../../components/ReplyMark.tsx';
 
 const MENU_AFTER_MS = 700;
 
