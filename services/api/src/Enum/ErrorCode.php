@@ -34,6 +34,7 @@ enum ErrorCode: string
     case EventConcluded = 'event_concluded';
     case EventPaused = 'event_paused';
     case EventHostRequired = 'event_host_required';
+    case EventCallOffFirst = 'event_call_off_first';
     case PlanLimit = 'plan_limit';
     case SeatingPlanExists = 'seating_plan_exists';
     case SeatingSectionLimit = 'seating_section_limit';
@@ -133,7 +134,7 @@ enum ErrorCode: string
             self::UnsupportedMediaType => 415,
             self::PreconditionFailed => 412,
             self::PreconditionRequired => 428,
-            self::EventCurrencyInUse, self::EventStateInvalid, self::EventConcluded, self::EventPaused, self::EventHostRequired => 409,
+            self::EventCurrencyInUse, self::EventStateInvalid, self::EventConcluded, self::EventPaused, self::EventHostRequired, self::EventCallOffFirst => 409,
             self::PlanLimit => 403,
             self::SeatingPlanExists, self::SeatingSectionLimit, self::GuestAlreadyListed, self::RepliesClosed, self::GuestReplied, self::GuestNotMarkedByHand => 409,
             self::Unauthenticated, self::InvalidCredentials, self::InvalidRefreshToken, self::OAuthTokenInvalid, self::TwoFactorChallengeInvalid, self::SessionTimedOut => 401,

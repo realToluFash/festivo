@@ -465,6 +465,8 @@ export interface OrganisationEvent {
   phase: EventPhase;
   /** The end, or when it was ended or called off; null until it is Finished. */
   concludedAt: string | null;
+  /** Why Delete event would be refused 409 `event_call_off_first` now, worked out by the server (sc-14445); absent reads as null. */
+  deleteRefusedBecause?: DeleteRefusal | null;
   createdAt: string;
   /** What the caller may do on this event: a Member's follow their role on it, not the organisation's (sc-29915). */
   permissions: string[];
@@ -802,11 +804,15 @@ export interface OrganisationDeletion {
   restoreCloses: string;
 }
 
+/** `guestsInvited`: a Live or Paused event with a guest Invited is deleted only once it is Finished (sc-14445). Any reason refuses the same way. */
+export type DeleteRefusal = string;
+
 /** What an event's delete asks for: its name typed unless it is a Draft with nobody on its list, and until when support can restore it (sc-3592). */
 export interface EventDeletion {
   needsName: boolean;
   /** The Guests header's N, guests and companions together (sc-1468). */
   people: number;
+  deleteRefusedBecause: DeleteRefusal | null;
   restoreClosesAt: string;
   restoreCloses: string;
 }
@@ -2588,7 +2594,8 @@ export class ApiClient {
       typeof body.needsName !== 'boolean' ||
       typeof body.people !== 'number' ||
       typeof body.restoreClosesAt !== 'string' ||
-      typeof body.restoreCloses !== 'string'
+      typeof body.restoreCloses !== 'string' ||
+      refusalOf(body.deleteRefusedBecause) === undefined
     ) {
       throw new Error(
         'The API answered an event deletion in a shape this client does not know. Check EventDeletionController in services/api.',
@@ -2598,6 +2605,7 @@ export class ApiClient {
     return {
       needsName: body.needsName,
       people: body.people,
+      deleteRefusedBecause: refusalOf(body.deleteRefusedBecause) ?? null,
       restoreClosesAt: body.restoreClosesAt,
       restoreCloses: body.restoreCloses,
     };
@@ -3787,6 +3795,7 @@ function asOrganisationEvent(raw: unknown): OrganisationEvent | null {
   const pausedAt = candidate.pausedAt;
   const phase = oneOf(candidate.phase, EVENT_PHASES);
   const concludedAt = candidate.concludedAt;
+  const deleteRefusedBecause = refusalOf(candidate.deleteRefusedBecause);
   const permissions = stringList(candidate.permissions);
 
   if (
@@ -3794,6 +3803,7 @@ function asOrganisationEvent(raw: unknown): OrganisationEvent | null {
     permissions == null ||
     phase == null ||
     !isStringOrNull(concludedAt) ||
+    deleteRefusedBecause === undefined ||
     !isStringOrNull(madeLiveAt) ||
     !isStringOrNull(pausedAt) ||
     type == null ||
@@ -3828,9 +3838,17 @@ function asOrganisationEvent(raw: unknown): OrganisationEvent | null {
     pausedAt,
     phase,
     concludedAt,
+    deleteRefusedBecause,
     createdAt: candidate.createdAt as string,
     permissions,
   };
+}
+
+/** Null, or absent, when nothing is refused; undefined when it is not a reason at all. */
+function refusalOf(raw: unknown): DeleteRefusal | null | undefined {
+  if (raw == null) return null;
+
+  return typeof raw === 'string' ? raw : undefined;
 }
 
 function asEventCover(raw: unknown): EventCover | undefined {

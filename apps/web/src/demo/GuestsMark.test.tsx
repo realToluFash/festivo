@@ -48,6 +48,28 @@ describe('Mark as invited from the selection bar (sc-46880)', () => {
     expect(bar().textContent).toContain('12 selected');
   });
 
+  it(
+    'selects with the box and opens the guest from the rest of the row (sc-3776)',
+    SLOW,
+    async () => {
+      await open('selected');
+      const box = screen
+        .getAllByRole<HTMLInputElement>('checkbox')
+        .find((one) => !one.checked && one.closest('.gm-pick') != null);
+
+      expect(box).toBeDefined();
+      if (box == null) return;
+
+      const row = screen.getByRole('link', { name: box.getAttribute('aria-label') ?? '' });
+
+      expect(row.contains(box)).toBe(false);
+      fireEvent.click(box);
+      expect(box.checked).toBe(true);
+      expect(bar().textContent).toContain('13 selected');
+      expect(row.getAttribute('href')).toMatch(/^\/demo\/guests\?guest=/u);
+    },
+  );
+
   it('asks how, refuses a blank press, and marks the Not yet invited', SLOW, async () => {
     await open('selected');
     fireEvent.click(markButton());

@@ -122,7 +122,11 @@ export function EventPage({
   });
   const deletion = useDeleteEvent({
     event,
+    phase,
+    now,
+    manages,
     onDeleted: onDeleted ?? (() => undefined),
+    onVerb: askEnd,
     opener: deleteOpener,
   });
   const mute = useEventMute(event.id);
