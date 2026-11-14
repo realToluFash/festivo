@@ -4179,6 +4179,14 @@ describe('waitForBoot', () => {
     await waitForBoot({ name: 'qa_pixel', booted, gone: () => null, pause, unauthorized });
     expect(passes).toBe(40);
   });
+
+  it('counts unauthorized passes in a row, so a device that flaps still boots', async () => {
+    let passes = 0;
+    const unauthorized = () => (++passes === 16 || passes > 31 ? null : 'emulator-5578');
+    const booted = () => passes === 35;
+    await waitForBoot({ name: 'qa_pixel', booted, gone: () => null, pause, unauthorized });
+    expect(passes).toBe(35);
+  });
 });
 
 describe('emulatorJournalArgs', () => {
