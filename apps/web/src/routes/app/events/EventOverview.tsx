@@ -137,7 +137,7 @@ export function Overview({
   const opens = (one: Part | null): Part | null =>
     one == null || !manages || (one === 'dates' && phase === 'finished') ? null : one;
   const [part, setPart] = useState<Part | null>(() => opens(arrivingPart(location.state)));
-  const [arrived, setArrived] = useState(part === 'dates');
+  const [arrivals, setArrivals] = useState(part === 'dates' ? 1 : 0);
   const [arrival, setArrival] = useState(location.key);
   const guard = useLeaveGuard({ dirty, busy: false, body: t('eventEdit.leaveBody') });
   const [madeLive, setMadeLive] = useState(false);
@@ -178,7 +178,7 @@ export function Overview({
   function open(next: Part, arriving = false): void {
     const to = next === part ? null : next;
 
-    setArrived(arriving);
+    setArrivals((count) => (arriving ? count + 1 : 0));
     if (part != null && dirty) setLeaving({ to });
     else {
       setPart(to);
@@ -197,6 +197,7 @@ export function Overview({
 
     setArrival(location.key);
     if (arriving != null && arriving !== part) open(arriving, true);
+    else if (arriving === 'dates') setArrivals((count) => count + 1);
   }
 
   const onStep = (step: ButtonStep) => {
@@ -274,7 +275,7 @@ export function Overview({
             phase={phase}
             manages={manages}
             part={part}
-            arrived={arrived}
+            arrivals={arrivals}
             parts={parts}
             shown={shown}
             onCover={(next) => saved({ event: next, tag })}
@@ -366,7 +367,7 @@ function Details({
   phase,
   manages,
   part,
-  arrived,
+  arrivals,
   parts,
   shown,
   onCover,
@@ -377,7 +378,7 @@ function Details({
   phase: ReturnType<typeof shownPhase>;
   manages: boolean;
   part: Part | null;
-  arrived: boolean;
+  arrivals: number;
   parts: PartProps;
   shown: number;
   onCover: (event: OrganisationEvent) => void;
@@ -399,7 +400,7 @@ function Details({
       case 'name':
         return <NamePart {...parts} />;
       case 'dates':
-        return <DatesPart {...parts} focusStart={arrived} />;
+        return <DatesPart {...parts} focusStart={arrivals} />;
       case 'venue':
         return <VenuePart {...parts} over={finished} />;
       case 'hosts':

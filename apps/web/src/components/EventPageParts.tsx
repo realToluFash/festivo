@@ -244,25 +244,24 @@ export function DateTime({
   wall,
   wrong = false,
   told,
-  focus = false,
+  focus = 0,
   onChange,
 }: {
   legend: string;
   wall: Wall;
   wrong?: boolean;
   told?: string | undefined;
-  /** Its date takes focus as it opens. */
-  focus?: boolean;
+  /** Its date takes focus whenever this count moves past 0, at mount too. */
+  focus?: number;
   onChange: (wall: Wall) => void;
 }) {
   const { t } = useTranslation();
   const id = useId();
   const date = useRef<HTMLInputElement>(null);
-  const [focusFirst] = useState(focus);
 
   useEffect(() => {
-    if (focusFirst) date.current?.focus();
-  }, [focusFirst]);
+    if (focus > 0) date.current?.focus();
+  }, [focus]);
 
   return (
     <fieldset className="ev-when">

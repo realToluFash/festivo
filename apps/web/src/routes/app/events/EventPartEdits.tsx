@@ -321,8 +321,8 @@ export function DatesPart({
   onClose,
   onSaved,
   onLatest,
-  focusStart = false,
-}: PartProps & { focusStart?: boolean }) {
+  focusStart = 0,
+}: PartProps & { focusStart?: number }) {
   const { t } = useTranslation();
   const id = useId();
   const saved = draftOf(event);
