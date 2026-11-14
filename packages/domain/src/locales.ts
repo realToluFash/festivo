@@ -71,14 +71,19 @@ export function numberFormat(
   return new Intl.NumberFormat(pluralLocale(narrowLocale(locale)), options);
 }
 
-/** A list in the copy's own punctuation, from the shown language and never the device region: English copy is British (docs/i18n/en.md), so no serial comma. */
+/** The tag a sentence of copy is written in, from the shown language and never the device region: English copy is British (docs/i18n/en.md). */
+export function copyLocale(locale: string | null | undefined): string {
+  const shown = narrowLocale(locale);
+
+  return shown === 'en' ? 'en-GB' : pluralLocale(shown);
+}
+
+/** A list in the copy's own punctuation, so no serial comma in English. */
 export function listFormat(
   locale: string | null | undefined,
   options: Intl.ListFormatOptions,
 ): Intl.ListFormat {
-  const shown = narrowLocale(locale);
-
-  return new Intl.ListFormat(shown === 'en' ? 'en-GB' : pluralLocale(shown), options);
+  return new Intl.ListFormat(copyLocale(locale), options);
 }
 
 interface PluralResolver {

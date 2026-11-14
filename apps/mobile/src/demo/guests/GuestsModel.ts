@@ -26,6 +26,7 @@ import {
 } from './GuestsSample.ts';
 import { type Change, changeLabel, changeWhen } from './ChangedSince.ts';
 import { REPLY_WORD, type ReplyKind, W, say } from './GuestsWords.ts';
+import { EXPORT_STATES } from './GuestExportModel.ts';
 import { withOptOuts } from './OptOuts.ts';
 import { type HowAgreed, hostAgreed } from './WhatsAppConsent.ts';
 
@@ -201,6 +202,7 @@ export const GUESTS_STATES = [
   ...ADD_STATES,
   ...REVIEW_STATES,
   ...OVERVIEW_STATES,
+  ...EXPORT_STATES,
 ] as const;
 
 export type GuestsState = (typeof GUESTS_STATES)[number];
@@ -251,7 +253,8 @@ export function roleOf(state: GuestsState | null): Role {
     state === 'overviewViewer' ||
     state === 'greetAsViewer' ||
     state === 'whatsAppViewer' ||
-    state === 'optOutViewer'
+    state === 'optOutViewer' ||
+    state === 'exportGrantView'
   )
     return 'viewer';
   if (state === 'staffBefore' || state === 'staffDayBefore' || state === 'staffDoorOpen')
@@ -407,6 +410,26 @@ export function filtersFor(counts: Counts): FilterKey[] {
   return counts.walkin > 0
     ? FILTERS.flatMap((key) => (key === 'coming' ? [key, 'walkin'] : [key]))
     : [...FILTERS];
+}
+
+/** The people This view holds, and the "{n} of {total} shown" line the list draws above it. */
+export function inViewOf({
+  filter,
+  searched,
+  rows,
+  filtered,
+  total,
+}: {
+  filter: ListFilter;
+  searched: string;
+  rows: number;
+  filtered: number;
+  total: number;
+}): number {
+  const looking = filter !== 'all' || searched.trim() !== '';
+  if (!looking) return total;
+  if (rows === 0) return 0;
+  return searched.trim() === '' && filter !== 'changed' ? filtered : rows;
 }
 
 export function filterWord(key: ListFilter): string {
@@ -1276,7 +1299,13 @@ export function areaStart(state: GuestsState | null): AreaStart {
     case 'failed':
       return { ...base, phase: 'failed' };
     case 'offline':
+    case 'exportOffline':
+    case 'exportDropped':
       return { ...base, offline: true };
+    case 'exportNarrowed':
+      return { ...base, filter: 'noreply' };
+    case 'exportEmpty':
+      return { ...base, filter: 'held', typed: 'marta' };
     case 'onTheDay':
     case 'secondDay':
       return { ...base, walkIn: true };

@@ -31,6 +31,7 @@ import {
 } from './GuestFields.tsx';
 import { type Copy, IconLead, Invitation, invitationLine } from './GuestInvitation.tsx';
 import { languageNameInSentence } from '../settings/organisationDetails.ts';
+import { type InvitationEvent, whatsAppHref } from './whatsAppSend.ts';
 import {
   type CompanionNeeds,
   CompanionNeedsSection,
@@ -127,6 +128,7 @@ export function GuestColumn({
   eventId,
   guestId,
   timeZone,
+  event,
   mesh,
   manages,
   guests,
@@ -136,9 +138,13 @@ export function GuestColumn({
   draft,
   flagged,
   onCopy,
+  onLink,
   onReplace,
   onMark,
   onUnmark,
+  asked,
+  onAsked,
+  onSentMarked,
   focus,
   onDirty,
   onAsk,
@@ -150,6 +156,8 @@ export function GuestColumn({
   eventId: string;
   guestId: string;
   timeZone: string;
+  /** What the WhatsApp invitation says (sc-26025). */
+  event: InvitationEvent;
   mesh: Mesh;
   manages: boolean;
   guests: readonly Guest[];
@@ -163,10 +171,16 @@ export function GuestColumn({
   flagged: boolean;
   /** The whole link; refused 409 on a phase that does not invite. */
   onCopy: () => Promise<string>;
+  /** The same link, read for Send on WhatsApp's address before any press, so a refusal says nothing. */
+  onLink: () => Promise<string>;
   onReplace: () => Promise<void>;
   /** Mark as invited (sc-3788); refused 409 on a phase that does not invite. */
   onMark: (how: GuestInvitationHow) => Promise<TaggedGuest>;
   onUnmark: () => Promise<TaggedGuest>;
+  /** "Sent to {name} on WhatsApp?" is open for this guest, kept by the page so a reload keeps it. */
+  asked: boolean;
+  onAsked: (open: boolean) => void;
+  onSentMarked: () => void;
   focus: (...keys: string[]) => void;
   onDirty: (dirty: boolean) => void;
   /** Asks "Discard your changes?" and runs `then` only on Discard. */
@@ -319,12 +333,14 @@ export function GuestColumn({
     <GuestView
       guest={pane.tagged.guest}
       timeZone={timeZone}
+      event={event}
       mesh={mesh}
       manages={manages}
       invites={invites}
       draft={draft}
       flagged={flagged}
       onCopy={onCopy}
+      onLink={onLink}
       onReplace={onReplace}
       onMark={(how) =>
         onMark(how).then((tagged) => {
@@ -332,6 +348,9 @@ export function GuestColumn({
           onChanged(tagged.guest);
         })
       }
+      asked={asked}
+      onAsked={onAsked}
+      onSentMarked={onSentMarked}
       onUnmark={() =>
         onUnmark().then(
           (tagged) => {
@@ -356,29 +375,39 @@ export function GuestColumn({
 function GuestView({
   guest,
   timeZone,
+  event,
   mesh,
   manages,
   invites,
   draft,
   flagged,
   onCopy,
+  onLink,
   onReplace,
   onMark,
   onUnmark,
+  asked,
+  onAsked,
+  onSentMarked,
   focus,
   onEdit,
 }: {
   guest: GuestDetails;
   timeZone: string;
+  event: InvitationEvent;
   mesh: Mesh;
   manages: boolean;
   invites: boolean;
   draft: boolean;
   flagged: boolean;
   onCopy: () => Promise<string>;
+  onLink: () => Promise<string>;
   onReplace: () => Promise<void>;
   onMark: (how: GuestInvitationHow) => Promise<void>;
   onUnmark: () => Promise<void>;
+  asked: boolean;
+  onAsked: (open: boolean) => void;
+  onSentMarked: () => void;
   focus: (...keys: string[]) => void;
   onEdit: () => void;
 }) {
@@ -390,10 +419,29 @@ function GuestView({
   const [markFailed, setMarkFailed] = useState(false);
   const [unmark, setUnmark] = useState<Unmark>({ kind: 'none' });
   const replaceButton = useRef<HTMLButtonElement>(null);
+  const [link, setLink] = useState<string | null>(null);
+  const [linkTurn, setLinkTurn] = useState(0);
+  const sends = manages && invites && guest.mobile != null;
+  const fetchLink = useEffectEvent(onLink);
 
   useEffect(() => {
     if (replace.kind === 'replaced') focusWhenFree(() => replaceButton.current);
   }, [replace.kind]);
+
+  // The address has to be whole before the press, so the link is read with the guest rather than on it.
+  useEffect(() => {
+    if (!sends) return;
+    let current = true;
+
+    fetchLink().then(
+      (url) => current && setLink(url),
+      () => undefined,
+    );
+
+    return () => {
+      current = false;
+    };
+  }, [sends, linkTurn]);
 
   function copied(): void {
     onCopy().then(
@@ -412,6 +460,8 @@ function GuestView({
     onReplace().then(
       () => {
         setCopy({ kind: 'none' });
+        setLink(null);
+        setLinkTurn((n) => n + 1);
         setReplace({ kind: 'replaced' });
       },
       () => setReplace({ kind: 'failed' }),
@@ -430,6 +480,20 @@ function GuestView({
       (error: unknown) => {
         if (error instanceof ApiError && error.is('event_state_invalid')) setMarking(false);
         else setMarkFailed(true);
+      },
+    );
+  }
+
+  function sentOnWhatsApp(): Promise<void> {
+    return onMark('whatsapp').then(
+      () => {
+        onAsked(false);
+        setCopy({ kind: 'none' });
+        onSentMarked();
+      },
+      (error: unknown) => {
+        if (error instanceof ApiError && error.is('event_state_invalid')) onAsked(false);
+        throw error;
       },
     );
   }
@@ -507,7 +571,7 @@ function GuestView({
             {guest.fullName}
           </h2>
           {cardLine != null && <p className="desk-on-card">{cardLine}</p>}
-          {manages && invites && notYet && (
+          {manages && invites && notYet && !asked && (
             <div className="ev-card-foot" data-focus="step">
               <CardStep label={t('guestList.markAsInvited')} onClick={() => setMarking(true)} />
             </div>
@@ -665,7 +729,20 @@ function GuestView({
           marking={marking}
           markFailed={markFailed}
           replaceButton={replaceButton}
+          send={sends && link != null ? whatsAppHref(guest, event, link) : null}
+          asked={asked}
           onCopy={copied}
+          onSend={() => {
+            if (!notYet) return;
+            setMarking(false);
+            onAsked(true);
+            focus('send-question');
+          }}
+          onNotSent={() => {
+            onAsked(false);
+            focus('send');
+          }}
+          onSent={sentOnWhatsApp}
           onReplace={ask}
           onMarking={(on) => {
             setMarkFailed(false);
