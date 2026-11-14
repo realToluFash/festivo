@@ -5,9 +5,11 @@ declare(strict_types=1);
 namespace App\Domain\Guest;
 
 use App\Audit\Auditor;
+use App\Domain\Guest\Group\GuestGroupEditor;
 use App\Domain\Guest\Model\GuestNeeds;
 use App\Domain\Guest\Model\NewGuest;
 use App\Entity\Guest;
+use App\Entity\GuestGroup;
 use App\Entity\User;
 use App\Enum\Actor;
 use App\Enum\ErrorCode;
@@ -34,6 +36,7 @@ final readonly class GuestEditor
         private GuestListPublisher $guestListPublisher,
         private GuestNeedsRecord $guestNeedsRecord,
         private GuestRules $guestRules,
+        private GuestGroupEditor $guestGroupEditor,
     ) {
     }
 
@@ -55,7 +58,8 @@ final readonly class GuestEditor
 
             $companions = $this->guestRepository->findCompanionsOf($guest);
             $kept = $this->kept($companions, $companionIds);
-            $fields = self::changed($guest, $companions, $new, $companionIds);
+            $group = null === $new->group ? $guest->getGroup() : $this->guestGroupEditor->settle($event, $new->group, $by);
+            $fields = self::changed($guest, $companions, $new, $companionIds, $group);
             $needsBefore = $this->guestNeedsRecord->of([$guest, ...$companions]);
             $needsChanged = self::needsChanged($needsBefore, $guest, $new, $companionIds);
 
@@ -73,6 +77,7 @@ final readonly class GuestEditor
             $guest->setEmail($new->email);
             $guest->setMobile($new->mobile);
             $guest->setLanguage($new->language);
+            $guest->setGroup($group);
             $guest->raiseVersion();
 
             foreach ($companions as $companion) {
@@ -182,7 +187,7 @@ final readonly class GuestEditor
      *
      * @return list<string>
      */
-    private static function changed(Guest $guest, array $companions, NewGuest $new, array $ids): array
+    private static function changed(Guest $guest, array $companions, NewGuest $new, array $ids, ?GuestGroup $group): array
     {
         $before = Vec\map($companions, static fn (Guest $companion): array => [$companion->getId()->toRfc4122(), $companion->getFullName()]);
         $after = Vec\map(Vec\keys($new->companions), static fn (int $index): array => [$ids[$index] ?? null, $new->companions[$index]]);
@@ -193,6 +198,7 @@ final readonly class GuestEditor
             'mobile' => $guest->getMobile() !== $new->mobile,
             'language' => $guest->getLanguage() !== $new->language,
             'companions' => $before !== $after,
+            'group' => $guest->getGroup() !== $group,
         ]));
     }
 }

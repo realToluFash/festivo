@@ -65,7 +65,7 @@ final class GuestsTest extends ApiTestCase
         $list = $this->as($this->owner, 'GET', $this->guests());
 
         self::assertSame(200, $this->statusCode());
-        self::assertSame(['guests' => [], 'counts' => ['people' => 0, 'guests' => 0, 'companions' => 0]], $list);
+        self::assertSame(['guests' => [], 'counts' => ['people' => 0, 'guests' => 0, 'companions' => 0], 'groups' => [], 'ungrouped' => ['people' => 0, 'guests' => 0, 'companions' => 0]], $list);
     }
 
     #[Test]
