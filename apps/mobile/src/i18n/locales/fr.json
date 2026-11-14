@@ -2455,7 +2455,7 @@
     "showAll_many": "Afficher les {{count, number}}",
     "heldLine": "En attente · ne vient que si l’invitation est acceptée",
     "heldAway": "{{guestOf}} · {{held}}",
-    "offlineRefused": "You’re offline. Nothing was saved.",
-    "offlineRefusedLine": "Your changes stay in this form. Save again once you’re connected."
+    "offlineRefused": "Vous êtes hors ligne. Rien n’a été enregistré.",
+    "offlineRefusedLine": "Vos modifications restent dans ce formulaire. Enregistrez de nouveau une fois la connexion rétablie."
   }
 }
