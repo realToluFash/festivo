@@ -838,6 +838,16 @@ const PAGES: readonly { page: string; boards: readonly Board[] }[] = [
         href: '/demo/settings/members?state=nobodyLeft',
       },
       {
+        title: 'Members · 104 people',
+        what: 'The card, +99 beside its five faces',
+        href: '/demo/settings/members?state=ninetyNine',
+      },
+      {
+        title: 'Members · 1,326 people',
+        what: 'The card, 99+ beside its five faces',
+        href: '/demo/settings/members?state=crowd',
+      },
+      {
         title: 'Members · loading',
         what: 'Loading members',
         href: '/demo/settings/members?state=loading',
