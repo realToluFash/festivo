@@ -3696,7 +3696,7 @@ describe('Select many guests, then Add to group or Remove from the list (sc-3776
 
     expect(await screen.findByText('Selection cleared.')).toBeDefined();
     expect(screen.queryByRole('region', { name: 'Selected guests' })).toBeNull();
-    expect(box('Select all 1 shown').checked).toBe(false);
+    expect(box('Select the 1 shown').checked).toBe(false);
     fireEvent.click(box('Select Chief Amaka Obi'));
     expect(screen.queryByText('Selection cleared.')).toBeNull();
   });
@@ -3709,7 +3709,7 @@ describe('Select many guests, then Add to group or Remove from the list (sc-3776
     fireEvent.change(screen.getByRole('searchbox', { name: 'Find a guest' }), {
       target: { value: 'Amaka' },
     });
-    fireEvent.click(await screen.findByRole('checkbox', { name: 'Select all 1 shown' }));
+    fireEvent.click(await screen.findByRole('checkbox', { name: 'Select the 1 shown' }));
 
     fireEvent.click(within(bar()).getByRole('button', { name: 'Add to group' }));
     const sheet = await screen.findByRole('dialog', { name: 'Add 1 guest to a group' });

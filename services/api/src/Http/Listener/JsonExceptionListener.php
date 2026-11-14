@@ -58,7 +58,7 @@ final readonly class JsonExceptionListener
         $event->setResponse($response);
     }
 
-    /** @return array{0: ErrorCode, 1: list<array{propertyPath: string, message: string, code: string, parameters?: array<string, string>}>} */
+    /** @return array{0: ErrorCode, 1: list<array{propertyPath: string, message: string, code: string, parameters?: array<string, int|string>}>} */
     private function classify(Throwable $e): array
     {
         if ($e instanceof ApiException) {
