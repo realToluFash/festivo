@@ -1,4 +1,4 @@
-# sc-3785 on a phone, or a tablet upright (ORIENT PORTRAIT): ${GUEST_ID}'s details in ${EVENT_ID}'s Guests go back to the list by Back to Guests, by Android's Back and by iOS's swipe from the left edge.
+# sc-3785 on a phone, or a tablet upright (ORIENT PORTRAIT): ${GUEST_ID}'s details in ${EVENT_ID}'s Guests go back to the list by the frame's ‹ Guests, by Android's Back and by iOS's swipe from the left edge.
 appId: host.exp.Exponent
 ---
 - setOrientation: ${ORIENT}
@@ -17,7 +17,7 @@ appId: host.exp.Exponent
     id: 'guests.search'
 - takeScreenshot: guest-open
 - tapOn:
-    id: 'guest.back'
+    id: 'frame.back'
 - extendedWaitUntil:
     visible:
       id: 'guests.row.${GUEST_ID}'
