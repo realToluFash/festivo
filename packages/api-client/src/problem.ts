@@ -46,6 +46,9 @@ export interface Problem {
   permission?: string;
   /** On a seating plan's `precondition_failed`: who changed it since (sc-3998). */
   changedBy?: string;
+  /** On `guest_replied`: the reply that keeps them invited and when, in the event's zone (sc-3788). */
+  reply?: string;
+  repliedAt?: string;
 }
 
 /**
