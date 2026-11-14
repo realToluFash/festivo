@@ -2258,6 +2258,287 @@ describe('Not yet invited, and Mark as invited (sc-3788)', () => {
   });
 });
 
+describe('Send on WhatsApp (sc-26025)', () => {
+  const LINK = 'https://app.soirely.test/i/goJP8j72G8dKsdGysCtB7qA4o2SdVzDrjFodz60tDDc';
+  const YUSUF = guest('g_4', 'Yusuf Ibrahim', {
+    mobile: '+2348035550199',
+    companions: [
+      { id: 'c_4', fullName: 'Amina Ibrahim', state: 'notYetInvited', namedByGuest: false },
+    ],
+  });
+  const CHUKA = guest('g_5', 'Chuka Nwankwo', { mobile: '+2348035550111' });
+  const YUSUF_DETAILS = {
+    ...YUSUF,
+    messageLanguage: 'en',
+    added: { at: '2026-09-14T10:00:00+00:00', by: 'Kemi Bankole' },
+  };
+  const MARKED = {
+    ...YUSUF_DETAILS,
+    invitation: { at: '2026-11-13T10:00:00+01:00', how: 'whatsapp', by: 'Folake Adeyemi' },
+    companions: [{ id: 'c_4', fullName: 'Amina Ibrahim', state: 'held', namedByGuest: false }],
+  };
+  const SEND = 'Send on WhatsApp to Yusuf Ibrahim';
+  const QUESTION = 'Sent to Yusuf Ibrahim on WhatsApp?';
+  const MARK = 'PUT /api/events/ev_1/guests/g_4/invitation';
+  const KEPT = 'soirely:whatsapp-asked:ev_1';
+
+  async function openYusuf(
+    answers: Record<string, Answer> = {},
+    event: Record<string, unknown> = {},
+    { permissions = OWNER_PERMISSIONS, at = '' }: { permissions?: string[]; at?: string } = {},
+  ) {
+    signedIn();
+    const sent = await onGuests(
+      {
+        'GET /api/events/ev_1': () =>
+          json({ event: { ...EVENT, hosts: ['Amara Okafor'], ...event, permissions } }),
+        'GET /api/events/ev_1/guests': () => json(listOf([YUSUF, CHUKA])),
+        'GET /api/events/ev_1/guests/g_4': () => tagged(YUSUF_DETAILS, '"1"'),
+        'GET /api/events/ev_1/guests/g_4/link': () => json({ url: LINK }),
+        ...answers,
+      },
+      permissions,
+      at,
+    );
+    fireEvent.click(await screen.findByRole('link', { name: /^Yusuf Ibrahim/u }));
+    await waitFor(() =>
+      expect(document.activeElement).toBe(
+        screen.getByRole('heading', { level: 2, name: 'Yusuf Ibrahim' }),
+      ),
+    );
+
+    return sent;
+  }
+
+  function invitation(): HTMLElement {
+    return screen.getByRole('region', { name: 'Invitation' });
+  }
+
+  function question(): HTMLElement | null {
+    return screen.queryByRole('group', { name: QUESTION });
+  }
+
+  async function press(): Promise<void> {
+    const send = await within(invitation()).findByRole('link', { name: SEND });
+
+    send.addEventListener('click', (click) => click.preventDefault());
+    fireEvent.click(send);
+  }
+
+  async function pressed(): Promise<HTMLElement> {
+    await press();
+    await waitFor(() => expect(document.activeElement).toBe(question()));
+
+    return question()!;
+  }
+
+  function marks(sent: { line: string; body: unknown }[]) {
+    return sent.filter(({ line }) => line === MARK);
+  }
+
+  afterEach(() => {
+    sessionStorage.clear();
+  });
+
+  it('sits between Copy invitation link and Replace link…, a link to WhatsApp’s own address named for the guest', async () => {
+    await openYusuf();
+
+    const send = await within(invitation()).findByRole('link', { name: SEND });
+    const href = send.getAttribute('href')!;
+    expect(send.textContent).toMatch(/^Send on WhatsApp/u);
+    expect(href.startsWith('whatsapp://send?phone=2348035550199&text=')).toBe(true);
+    expect(new URL(href).searchParams.get('text')).toBe(
+      `Yusuf Ibrahim, Amara Okafor would love you to come to Adaeze and Tunde on 14 November 2030. Your own page, to reply and see the details: ${LINK}`,
+    );
+    expect(href).not.toMatch(/wa\.me|whatsapp\.com/u);
+    expect(
+      within(invitation())
+        .getAllByRole('listitem')
+        .map((row) => row.querySelector('.desk-row-name')?.textContent),
+    ).toEqual(['Copy invitation link', 'Send on WhatsApp', 'Replace link…', 'Mark as invited']);
+  });
+
+  it('is not offered to a guest with no mobile number', async () => {
+    await openYusuf({
+      'GET /api/events/ev_1/guests/g_4': () => tagged({ ...YUSUF_DETAILS, mobile: null }, '"1"'),
+    });
+
+    expect(
+      within(invitation()).getByRole('button', { name: /^Copy invitation link/u }),
+    ).toBeDefined();
+    expect(screen.queryByRole('link', { name: SEND })).toBeNull();
+  });
+
+  it.each([
+    ['a Draft', { status: 'draft', phase: 'draft', madeLiveAt: null }],
+    [
+      'a Paused event',
+      { status: 'paused', phase: 'paused', pausedAt: '2026-11-01T10:00:00+00:00' },
+    ],
+    ['a Finished event', { status: 'live', phase: 'finished' }],
+  ])('is not offered on %s', async (_, event) => {
+    const sent = await openYusuf({}, event);
+
+    expect(screen.queryByRole('link', { name: SEND })).toBeNull();
+    expect(sent.filter(({ line }) => line.endsWith('/link'))).toEqual([]);
+  });
+
+  it('is not offered to someone who cannot add guests', async () => {
+    await openYusuf(
+      {},
+      {},
+      { permissions: OWNER_PERMISSIONS.filter((one) => one !== 'guests.manage') },
+    );
+
+    expect(screen.queryByRole('link', { name: SEND })).toBeNull();
+  });
+
+  it('asks on the press, with focus on the question, in place of the other Mark as invited', async () => {
+    const sent = await openYusuf();
+
+    const asked = await pressed();
+    expect(
+      within(asked).getByText('If WhatsApp didn’t open, use Copy invitation link instead.'),
+    ).toBeDefined();
+    expect(
+      within(asked)
+        .getAllByRole('button')
+        .map((one) => one.textContent),
+    ).toEqual(['Not sent', 'Mark as invited']);
+    expect(screen.getAllByRole('button', { name: /^Mark as invited/u })).toHaveLength(1);
+    expect(marks(sent)).toEqual([]);
+  });
+
+  it('records nothing on Not sent, and gives focus back to Send on WhatsApp', async () => {
+    const sent = await openYusuf();
+    await pressed();
+
+    fireEvent.click(screen.getByRole('button', { name: 'Not sent' }));
+
+    expect(question()).toBeNull();
+    await waitFor(() =>
+      expect(document.activeElement).toBe(screen.getByRole('link', { name: SEND })),
+    );
+    expect(marks(sent)).toEqual([]);
+    await waitFor(() => expect(sessionStorage.getItem(KEPT)).toBeNull());
+  });
+
+  it('records the mark with WhatsApp on Mark as invited, and the question goes', async () => {
+    const sent = await openYusuf({ [MARK]: () => tagged(MARKED, '"1"') });
+    const asked = await pressed();
+
+    fireEvent.click(within(asked).getByRole('button', { name: 'Mark as invited' }));
+
+    expect(
+      await within(invitation()).findByText(/^Invited by Folake Adeyemi, WhatsApp, Nov 13$/u),
+    ).toBeDefined();
+    expect(question()).toBeNull();
+    expect(marks(sent)).toEqual([{ line: MARK, body: { how: 'whatsapp' } }]);
+  });
+
+  it('asks nothing of a guest already invited, whose record stays as it was', async () => {
+    const sent = await openYusuf({
+      'GET /api/events/ev_1/guests/g_4': () => tagged(MARKED, '"1"'),
+    });
+
+    await press();
+
+    expect(question()).toBeNull();
+    expect(marks(sent)).toEqual([]);
+  });
+
+  it('leaves a guest who became invited meanwhile as they were, and the question goes', async () => {
+    const theirs = {
+      ...MARKED,
+      invitation: { at: '2026-11-13T09:00:00+01:00', how: 'inPerson', by: 'Tunde Bakare' },
+    };
+    await openYusuf({ [MARK]: () => tagged(theirs, '"1"') });
+    const asked = await pressed();
+
+    fireEvent.click(within(asked).getByRole('button', { name: 'Mark as invited' }));
+
+    expect(
+      await within(invitation()).findByText(/^Invited by Tunde Bakare, in person, Nov 13$/u),
+    ).toBeDefined();
+    expect(question()).toBeNull();
+  });
+
+  it('says a failed mark was not saved, and keeps the question', async () => {
+    await openYusuf({ [MARK]: () => problem('internal_error', 500) });
+    const asked = await pressed();
+
+    fireEvent.click(within(asked).getByRole('button', { name: 'Mark as invited' }));
+
+    expect(
+      await within(asked).findByText('Not saved. They are still Not yet invited. Try again.'),
+    ).toBeDefined();
+    expect(question()).not.toBeNull();
+  });
+
+  it('drops the question, recording nothing, once a mark is refused because the event was paused', async () => {
+    let reads = 0;
+    await openYusuf({
+      'GET /api/events/ev_1': () => {
+        reads += 1;
+
+        return json({
+          event: {
+            ...EVENT,
+            ...(reads > 1
+              ? { status: 'paused', phase: 'paused', pausedAt: '2026-11-13T10:00:00+00:00' }
+              : {}),
+            permissions: OWNER_PERMISSIONS,
+          },
+        });
+      },
+      [MARK]: () => problem('event_state_invalid', 409),
+    });
+    const asked = await pressed();
+
+    fireEvent.click(within(asked).getByRole('button', { name: 'Mark as invited' }));
+
+    expect(
+      await screen.findByText('Guests can’t be invited while this event is paused.'),
+    ).toBeDefined();
+    expect(question()).toBeNull();
+    expect(screen.queryByRole('link', { name: SEND })).toBeNull();
+    expect(screen.queryByText('Not saved. They are still Not yet invited. Try again.')).toBeNull();
+    await waitFor(() => expect(sessionStorage.getItem(KEPT)).toBeNull());
+  });
+
+  it('keeps an unanswered question through a reload in the same tab', async () => {
+    sessionStorage.setItem(KEPT, JSON.stringify(['g_4']));
+
+    await openYusuf();
+
+    expect(question()).not.toBeNull();
+  });
+
+  it('brings no question back once the event has left Live', async () => {
+    sessionStorage.setItem(KEPT, JSON.stringify(['g_4']));
+
+    await openYusuf(
+      {},
+      { status: 'paused', phase: 'paused', pausedAt: '2026-11-13T10:00:00+00:00' },
+    );
+
+    expect(question()).toBeNull();
+    await waitFor(() => expect(sessionStorage.getItem(KEPT)).toBeNull());
+  });
+
+  it('with Not yet invited on, moves focus to the row that took the marked guest’s place', async () => {
+    await openYusuf({ [MARK]: () => tagged(MARKED, '"1"') }, {}, { at: '?filter=notYetInvited' });
+    const asked = await pressed();
+
+    fireEvent.click(within(asked).getByRole('button', { name: 'Mark as invited' }));
+
+    await waitFor(() =>
+      expect(document.activeElement).toBe(screen.getByRole('link', { name: /^Chuka Nwankwo/u })),
+    );
+    expect(screen.queryByRole('link', { name: /^Yusuf Ibrahim/u })).toBeNull();
+  });
+});
+
 describe('The host’s Language for a guest (sc-3790)', () => {
   const HINT =
     'Their page opens in their browser’s language when Soirely offers it, otherwise in this language. Messages use this language. When this is Not set, both use your organisation’s language.';

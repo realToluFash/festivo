@@ -28,9 +28,7 @@ describe('The invitation Send on WhatsApp writes (sc-26025)', () => {
     expect(whatsAppMessage(guestIn('en'), EVENT, LINK)).toBe(
       `Yusuf Ibrahim, Amara Okafor and Tomi Bello would love you to come to Adaeze and Tunde on 14 November 2030. Your own page, to reply and see the details: ${LINK}`,
     );
-    expect(whatsAppMessage(guestIn('es'), EVENT, LINK)).toContain(
-      'Amara Okafor y Tomi Bello',
-    );
+    expect(whatsAppMessage(guestIn('es'), EVENT, LINK)).toContain('Amara Okafor y Tomi Bello');
     expect(whatsAppMessage(guestIn('es'), EVENT, LINK)).toContain('14 de noviembre de 2030');
     expect(whatsAppMessage(guestIn('fr'), EVENT, LINK)).toContain('Amara Okafor et Tomi Bello');
     expect(whatsAppMessage(guestIn('fr'), EVENT, LINK)).toContain('14 novembre 2030');
