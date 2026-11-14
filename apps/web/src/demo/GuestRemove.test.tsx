@@ -231,6 +231,13 @@ describe('Remove from the list (sc-3774)', () => {
       expect(column().textContent).toContain(
         'One of their companions has arrived, so they stay on the list.',
       );
+      await waitFor(
+        () =>
+          expect(document.activeElement).toBe(
+            within(column()).getByText('Rui Duarte', { selector: '.desk-row-name' }).closest('li'),
+          ),
+        WAIT,
+      );
     },
   );
 
