@@ -3,7 +3,6 @@ import {
   ApiUnreachableError,
   type Guest,
   type GuestDetails,
-  type GuestEdit,
   type TaggedGuest,
 } from '@soirely/api-client';
 import {
@@ -11,10 +10,8 @@ import {
   MOST_COMPANIONS,
   type Problem,
   type Problems,
-  type Typed,
   firstProblem,
   newGuestOf,
-  phoneFields,
   problemsOf,
   violationProblems,
 } from '@soirely/domain';
@@ -33,62 +30,13 @@ import { PhoneEntry } from './PhoneEntry.tsx';
 import { FocusedScreen } from './SummaryOverlays.tsx';
 import { TextAction } from './SummaryRows.tsx';
 import { Text } from './Text.tsx';
+import { type Values, editOf, typedOf, valuesOf } from './guestValues.ts';
 
 export type GuestFormMode = { kind: 'add' } | { kind: 'edit'; tagged: TaggedGuest };
-
-interface Companion {
-  id: string | null;
-  name: string;
-}
-
-interface Values {
-  fullName: string;
-  email: string;
-  country: string;
-  number: string;
-  companions: readonly Companion[];
-  language: string | null;
-}
 
 type Ask = 'duplicate' | 'discard' | null;
 
 type Refusal = 'offline' | 'notSaved' | null;
-
-function valuesOf(guest: GuestDetails | null, startCountry: string): Values {
-  const phone = guest?.mobile == null ? null : phoneFields(guest.mobile);
-
-  return {
-    fullName: guest?.fullName ?? '',
-    email: guest?.email ?? '',
-    country: phone?.country ?? startCountry,
-    number: phone?.number ?? '',
-    companions: (guest?.companions ?? []).map((one) => ({ id: one.id, name: one.fullName ?? '' })),
-    language: guest?.language ?? null,
-  };
-}
-
-function typedOf(values: Values): Typed {
-  return {
-    fullName: values.fullName,
-    email: values.email,
-    country: values.country,
-    number: values.number,
-    companions: values.companions.map((one) => one.name),
-    language: values.language,
-  };
-}
-
-function editOf(values: Values, allowDuplicate: boolean): GuestEdit {
-  const sent = newGuestOf(typedOf(values), allowDuplicate);
-
-  return {
-    ...sent,
-    companions: values.companions.map((one, at) => ({
-      id: one.id,
-      fullName: sent.companions?.[at]?.fullName ?? null,
-    })),
-  };
-}
 
 /** Add guest and Edit (sc-1468, sc-3773) with sc-3790's Language: refused before sending, a duplicate asked about, a colleague's change held at the top, and offline refused with nothing typed lost. Group and Needs are not on it (sc-5519). */
 export function GuestForm({
