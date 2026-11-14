@@ -185,7 +185,7 @@ export function NameStep({
   field: RefObject<TextInputInstance | null>;
   onTyped: (name: string) => void;
   onContinue: () => void;
-  onLeft?: () => void;
+  onLeft?: (() => void) | undefined;
 }) {
   const { t } = useTranslation();
   const sizes = sizesOf(look);

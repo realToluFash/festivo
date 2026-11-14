@@ -285,11 +285,11 @@ describe('a window that opens through a Modal of its own (sc-42690)', () => {
       /Keyboard\.addListener\('keyboardDidShow', \(\) => \{\s+holding\.current = null;/,
     );
     expect(walk).toMatch(
-      /const keysLost = \(\) => \{\s+const input = holding\.current;\s+holding\.current = null;\s+if \(input != null\) raiseKeysOn\(input\);/,
+      /const keysLost = \(\) => \{\s+const input = holding\.current;\s+holding\.current = null;\s+if \(input != null && open && !walk\.asking\) raiseKeysOn\(input\);/,
     );
     expect(walk).toContain('onLeft={live ? keysLost : undefined}');
     expect(walk).toContain('if (!focused && live) keysLost();');
-    expect(walk.match(/^ {4}holding\.current = null;$/gm)).toHaveLength(4);
+    expect(walk.match(/^ {4}holding\.current = null;$/gm)).toHaveLength(3);
     expect(read('CreateWalkSteps.tsx')).toMatch(/setFocused\(false\);\s+onLeft\?\.\(\);/);
   });
 

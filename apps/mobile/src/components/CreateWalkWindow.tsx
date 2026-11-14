@@ -257,7 +257,7 @@ export function CreateWalkWindow<Made>({
   const keysLost = () => {
     const input = holding.current;
     holding.current = null;
-    if (input != null) raiseKeysOn(input);
+    if (input != null && open && !walk.asking) raiseKeysOn(input);
   };
 
   useEffect(
@@ -330,7 +330,6 @@ export function CreateWalkWindow<Made>({
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [creating]);
   const cancel = () => {
-    holding.current = null;
     if (creating) return;
     if (newOrganisationEntered(walk)) setWalk((now) => ({ ...now, asking: true }));
     else onCancel();
