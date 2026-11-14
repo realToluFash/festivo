@@ -168,20 +168,20 @@ function useStartingCountry(asks: boolean): string {
 
 /** Focus asked for by `data-focus` key, given once the next render has drawn it. */
 function useFocusKeys(root: RefObject<HTMLElement | null>) {
-  const pending = useRef<string[]>([]);
-  const latest = useRef(0);
-  const [, rerender] = useReducer((count: number) => count + 1, 0);
+  const pending = useRef<{ keys: string[]; turn: number } | null>(null);
+  const asked = useRef(0);
+  const [drawn, drawFor] = useReducer((_: number, turn: number) => turn, 0);
 
   useEffect(() => {
-    const keys = pending.current;
+    // A child's effect can ask before the render that draws its target; this commit is not that one.
+    if (pending.current == null || pending.current.turn !== drawn) return;
+    const { keys, turn } = pending.current;
 
-    if (keys.length === 0) return;
-    pending.current = [];
-    const turn = ++latest.current;
+    pending.current = null;
 
     // A request still retrying for its target must not take the focus from a later one.
     focusWhenFree(() => {
-      if (turn !== latest.current) return null;
+      if (turn !== asked.current) return null;
       for (const key of keys) {
         const at = root.current?.querySelector<HTMLElement>(`[data-focus="${key}"]`);
 
@@ -195,8 +195,10 @@ function useFocusKeys(root: RefObject<HTMLElement | null>) {
   });
 
   return useCallback((...keys: string[]) => {
-    pending.current = keys;
-    rerender();
+    const turn = ++asked.current;
+
+    pending.current = { keys, turn };
+    drawFor(turn);
   }, []);
 }
 

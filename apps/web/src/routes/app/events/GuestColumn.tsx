@@ -845,10 +845,7 @@ function GuestView({
             focus('remove');
           }}
           onRemove={removed}
-          onGone={() => {
-            setRemoving(null);
-            onRemovedAlready();
-          }}
+          onGone={onRemovedAlready}
         />
       )}
       {replace.kind === 'asking' && (
