@@ -89,7 +89,7 @@ import { HostsSection } from './HostsSection.tsx';
 import { ListPicker } from './ListPicker.tsx';
 import { Notice } from './Notice.tsx';
 import { ReadOut, readOut } from './ReadOut.tsx';
-import { useBroughtIntoView } from './Screen.tsx';
+import { useBroughtIntoView, useKeptInSight } from './Screen.tsx';
 import { useScreenReaderOn } from './screenReaderFocus.ts';
 import { Sheet } from './Sheet.tsx';
 import { Text } from './Text.tsx';
@@ -137,6 +137,8 @@ export function EventForm({
   const [status, setStatus] = useState<Status>('editing');
   const readerOn = useScreenReaderOn();
   const [linesInSummary, setLinesInSummary] = useState(false);
+  const [refusedUnderReader, setRefusedUnderReader] = useState<object | null>(null);
+  const sendButton = useKeptInSight(refusedUnderReader);
   useEffect(() => {
     if (!linesInSummary) return;
     const later = setTimeout(() => setLinesInSummary(false));
@@ -370,6 +372,7 @@ export function EventForm({
       setUnsent({ count });
       setStatus('editing');
       const summary = t('eventForm.problems', { count });
+      if (Platform.OS === 'android' && readerOn) setRefusedUnderReader({});
       refuse(found, hostFound, Platform.OS !== 'android' || readerOn ? summary : undefined);
       return;
     }
@@ -621,6 +624,7 @@ export function EventForm({
         </Field>
 
         <PrimaryButton
+          ref={sendButton}
           label={
             editing
               ? busy

@@ -545,6 +545,22 @@ export interface BroughtIntoView {
   read: RefObject<ViewInstance | null>;
 }
 
+/** Keeps the control under TalkBack's focus in sight each time `asked` is a new answer that grows the page above it: pushed wholly out of sight, TalkBack moves its focus to the nearest view still in sight and reads it before anything said (sc-43907, as sc-22357). Null asks nothing. */
+export function useKeptInSight(asked: object | null): RefObject<ViewInstance | null> {
+  const scroll = useContext(ScreenScroll);
+  const kept = useRef<ViewInstance>(null);
+
+  useLayoutEffect(() => {
+    if (asked == null) return;
+
+    const keep = () => bringIntoView(scroll, kept.current, false, { when: 'outOfSight' });
+    keep();
+    return afterMount(keep);
+  }, [asked, scroll]);
+
+  return kept;
+}
+
 /** Brings `shown` wholly into sight once it mounts, unless it already is, then moves screen reader focus to `read` (`readRef` when given). */
 export function useBroughtIntoView(readRef?: RefObject<ViewInstance | null>): BroughtIntoView {
   const scroll = useContext(ScreenScroll);
