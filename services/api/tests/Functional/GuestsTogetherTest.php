@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Tests\Functional;
 
+use App\Domain\Guest\Controller\GuestsTogetherController;
 use App\Domain\Guest\Group\GuestGroupMoves;
 use App\Domain\Guest\Removal\GuestRemovals;
 use App\Domain\Organisation\OrganisationFounder;
@@ -13,9 +14,11 @@ use App\Entity\Membership;
 use App\Entity\Organisation;
 use App\Entity\Role;
 use App\Entity\User;
+use App\Enum\ErrorCode;
 use App\Enum\EventRole;
 use App\Enum\MembershipStatus;
 use App\Enum\SeededRole;
+use App\Http\Exception\ApiException;
 use App\Tests\ApiTestCase;
 use App\Tests\Traits\OnboardsAccounts;
 use App\Tests\Traits\PutsPeopleOnEvents;
@@ -28,6 +31,7 @@ use Psl\Json;
 use Psl\Type;
 use Psl\Vec;
 use Symfony\Component\Clock\Test\ClockSensitiveTrait;
+use Symfony\Component\HttpFoundation\Request;
 use Symfony\Component\Uid\Uuid;
 
 /** sc-3776: one action on many selected guests, with what it did to each in its answer. */
@@ -208,6 +212,23 @@ final class GuestsTogetherTest extends ApiTestCase
 
         self::assertSame(['Sophie Laurent'], $this->names());
         self::assertNull($this->groupOf($guest));
+    }
+
+    #[Test]
+    public function theTooManyRefusalGivesItsLimitAsTheMostSlot(): void
+    {
+        $ids = Vec\map(Vec\range(0, GuestsTogetherController::MOST_AT_ONCE), static fn (int $at): string => Uuid::v4()->toRfc4122());
+        $request = Request::create('/', 'POST', server: ['CONTENT_TYPE' => 'application/json'], content: Json\encode(['guestIds' => $ids]));
+
+        try {
+            self::service(GuestsTogetherController::class)->remove($request, $this->eventId);
+            self::fail('2,001 guests were acted on at once');
+        } catch (ApiException $e) {
+            self::assertSame(
+                [['propertyPath' => 'guestIds', 'message' => 'validation.guests_too_many', 'code' => ErrorCode::ValidationFailed->value, 'parameters' => ['{most}' => 2000]]],
+                $e->violations,
+            );
+        }
     }
 
     /** @return iterable<string, array{EventRole}> */
