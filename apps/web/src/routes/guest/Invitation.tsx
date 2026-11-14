@@ -834,7 +834,6 @@ function AnswerRows({
   );
 }
 
-/** The answer's mark (replyStates): a tick on a disc, a bar on a grey disc, a question in a ring; beside its words, so hidden. */
 type Translate = ReturnType<typeof useTranslation>['t'];
 
 /** "You, Chidi Okonkwo-Williams · 2 people": the guest and each companion left Coming. */
@@ -1006,6 +1005,7 @@ function Pencil() {
   );
 }
 
+/** The answer's mark (replyStates): a tick on a disc, a bar on a grey disc, a question in a ring; beside its words, so hidden. */
 function Mark({
   answer,
   size = 28,
