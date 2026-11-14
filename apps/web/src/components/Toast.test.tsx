@@ -60,4 +60,67 @@ describe('the toast', () => {
     expect(screen.queryByRole('button', { name: 'Undo' })).toBeNull();
     expect(screen.getByRole('button', { name: 'Close' })).toBeTruthy();
   });
+
+  describe('counted (sc-3774)', () => {
+    it('shows its seconds, hidden from screen readers, and has no ×', () => {
+      render(
+        <Toast
+          words="Ngozi Eze removed."
+          counted={{ said: 'Undo is open for 10 seconds.' }}
+          onUndo={() => undefined}
+          onClose={() => undefined}
+        />,
+      );
+
+      expect(screen.getByRole('status').querySelector('.toast-words')?.textContent).toBe(
+        'Ngozi Eze removed. Undo is open for 10 seconds.',
+      );
+      expect(screen.getByText('10 s').getAttribute('aria-hidden')).toBe('true');
+      act(() => vi.advanceTimersByTime(3000));
+      expect(screen.getByText('7 s')).toBeDefined();
+      expect(screen.queryByRole('button', { name: 'Close' })).toBeNull();
+    });
+
+    it('counts only while focus and the pointer are off it, and starts again from 10 when they leave', () => {
+      const onClose = vi.fn();
+      render(
+        <Toast
+          words="Ngozi Eze removed."
+          counted={{ said: '' }}
+          onUndo={() => undefined}
+          onClose={onClose}
+        />,
+      );
+
+      act(() => vi.advanceTimersByTime(8000));
+      fireEvent.pointerEnter(screen.getByRole('status'));
+      act(() => vi.advanceTimersByTime(30000));
+      expect(onClose).not.toHaveBeenCalled();
+      expect(screen.getByText('10 s')).toBeDefined();
+
+      fireEvent.pointerLeave(screen.getByRole('status'));
+      act(() => vi.advanceTimersByTime(9000));
+      expect(onClose).not.toHaveBeenCalled();
+      act(() => vi.advanceTimersByTime(1000));
+      expect(onClose).toHaveBeenCalledTimes(1);
+    });
+
+    it('leaves closing to whoever holds Undo, since its end is what Undo takes back', () => {
+      const onUndo = vi.fn();
+      const onClose = vi.fn();
+      render(
+        <Toast
+          words="Ngozi Eze removed."
+          counted={{ said: '' }}
+          onUndo={onUndo}
+          onClose={onClose}
+        />,
+      );
+
+      fireEvent.click(screen.getByRole('button', { name: 'Undo' }));
+
+      expect(onUndo).toHaveBeenCalledTimes(1);
+      expect(onClose).not.toHaveBeenCalled();
+    });
+  });
 });

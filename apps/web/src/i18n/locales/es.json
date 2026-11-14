@@ -2598,7 +2598,10 @@
   },
   "toast": {
     "undo": "Deshacer",
-    "close": "Cerrar"
+    "close": "Cerrar",
+    "secondsLeft_one": "{{count, number}} s",
+    "secondsLeft_many": "{{count, number}} s",
+    "secondsLeft_other": "{{count, number}} s"
   },
   "eventNav": {
     "label": "Evento",
@@ -2984,7 +2987,19 @@
     "showAll_other": "Mostrar los {{count, number}}",
     "showAll_many": "Mostrar los {{count, number}}",
     "heldLine": "En espera · solo viene si se acepta la invitación",
-    "heldAway": "{{guestOf}} · {{held}}"
+    "heldAway": "{{guestOf}} · {{held}}",
+    "removeFromList": "Remove from the list",
+    "removeTitle": "Remove {{name}}?",
+    "removeGoes": "These go with them:",
+    "theirReply": "Their reply",
+    "removeNothingSent": "Nothing is sent to them.",
+    "keepOnList": "Keep on the list",
+    "removeGo": "Remove",
+    "guestRemoved": "{{name}} removed.",
+    "guestRemovedWith": "{{name}} removed, with {{companions}}.",
+    "undoOpen": "Undo is open for 10 seconds.",
+    "backOnList": "Back on the list. As they were, with their link, reply and companions.",
+    "alreadyRemoved": "{{name}} was already removed by someone else."
   },
   "guestNeeds": {
     "needs": "Necesidades",

@@ -138,6 +138,14 @@ class Guest
     #[ORM\JoinColumn(nullable: true, onDelete: 'SET NULL')]
     private ?GuestGroup $group = null;
 
+    /** Taken off the list and inside their undo (sc-3774): gone from the list and the counts, their link still working, until GuestRemovals erases them. A companion carries their host's. */
+    #[ORM\Column(type: Types::DATETIME_IMMUTABLE, nullable: true)]
+    private ?DateTimeImmutable $removedAt = null;
+
+    #[ORM\ManyToOne(targetEntity: User::class)]
+    #[ORM\JoinColumn(nullable: true, onDelete: 'SET NULL')]
+    private ?User $removedBy = null;
+
     private function __construct(Event $event, ?Guest $host, ?string $fullName, ?string $nameKey, ?string $email, ?string $mobile, ?GuestReply $reply, int $position, ?User $addedBy, #[SensitiveParameter] ?string $linkToken)
     {
         $this->id = Uuid::v7();
@@ -445,5 +453,32 @@ class Guest
     public function flagLink(): void
     {
         $this->linkFlagged = true;
+    }
+
+    public function isRemoved(): bool
+    {
+        return null !== $this->removedAt;
+    }
+
+    public function getRemovedAt(): ?DateTimeImmutable
+    {
+        return $this->removedAt;
+    }
+
+    public function getRemovedBy(): ?User
+    {
+        return $this->removedBy;
+    }
+
+    public function remove(DateTimeImmutable $at, ?User $by): void
+    {
+        $this->removedAt = $at;
+        $this->removedBy = $by;
+    }
+
+    public function undoRemoval(): void
+    {
+        $this->removedAt = null;
+        $this->removedBy = null;
     }
 }

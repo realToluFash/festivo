@@ -2519,7 +2519,9 @@
   },
   "toast": {
     "undo": "Undo",
-    "close": "Close"
+    "close": "Close",
+    "secondsLeft_one": "{{count, number}} s",
+    "secondsLeft_other": "{{count, number}} s"
   },
   "eventNav": {
     "label": "Event",
@@ -2881,7 +2883,19 @@
     "showAll_one": "Show all {{count, number}}",
     "showAll_other": "Show all {{count, number}}",
     "heldLine": "Held · comes only if their host accepts",
-    "heldAway": "{{guestOf}} · {{held}}"
+    "heldAway": "{{guestOf}} · {{held}}",
+    "removeFromList": "Remove from the list",
+    "removeTitle": "Remove {{name}}?",
+    "removeGoes": "These go with them:",
+    "theirReply": "Their reply",
+    "removeNothingSent": "Nothing is sent to them.",
+    "keepOnList": "Keep on the list",
+    "removeGo": "Remove",
+    "guestRemoved": "{{name}} removed.",
+    "guestRemovedWith": "{{name}} removed, with {{companions}}.",
+    "undoOpen": "Undo is open for 10 seconds.",
+    "backOnList": "Back on the list. As they were, with their link, reply and companions.",
+    "alreadyRemoved": "{{name}} was already removed by someone else."
   },
   "guestNeeds": {
     "needs": "Needs",
