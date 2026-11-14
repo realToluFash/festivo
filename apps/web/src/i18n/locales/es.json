@@ -468,6 +468,7 @@
   "eventCover": {
     "heading": "Portada",
     "defaultLine": "La portada predeterminada para este tipo de evento. Si lo desea, añada su propia foto.",
+    "coverLine": "Soirely’s cover, in this event’s own colours. Add your own photo if you like.",
     "upload": "Subir una foto",
     "accepted": "JPEG, PNG, WebP o HEIC, hasta 15 MB y de al menos 1200 × 675 píxeles.",
     "change": "Cambiar la foto",
@@ -494,6 +495,7 @@
     "describeCount": "{{count, number}} de {{most, number}} caracteres",
     "describeTooLong": "Acorte la descripción a {{most, number}} caracteres como máximo.",
     "remove": "Quitar la foto",
+    "removeLine": "The default cover comes back.",
     "cancel": "Cancelar",
     "use": "Usar esta foto",
     "saving": "Guardando…"

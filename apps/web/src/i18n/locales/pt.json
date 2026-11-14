@@ -468,6 +468,7 @@
   "eventCover": {
     "heading": "Capa",
     "defaultLine": "A capa predefinida para este tipo de evento. Se quiser, adicione uma fotografia sua.",
+    "coverLine": "Soirely’s cover, in this event’s own colours. Add your own photo if you like.",
     "upload": "Carregar uma fotografia",
     "accepted": "JPEG, PNG, WebP ou HEIC, até 15 MB, com pelo menos 1200 × 675 píxeis.",
     "change": "Alterar fotografia",
@@ -494,6 +495,7 @@
     "describeCount": "{{count, number}} de {{most, number}} caracteres",
     "describeTooLong": "Encurte a descrição para um máximo de {{most, number}} caracteres.",
     "remove": "Remover fotografia",
+    "removeLine": "The default cover comes back.",
     "cancel": "Cancelar",
     "use": "Usar esta fotografia",
     "saving": "A guardar…"

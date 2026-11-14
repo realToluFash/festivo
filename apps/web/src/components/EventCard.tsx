@@ -30,7 +30,7 @@ function usePhoto(photo: CardPhoto | null): [CardPhoto | null, () => void] {
 }
 
 /** The organiser's photo over the whole box, decorative: the event's name is beside it. */
-function Photo({
+export function Photo({
   photo,
   sizes,
   onFail,
