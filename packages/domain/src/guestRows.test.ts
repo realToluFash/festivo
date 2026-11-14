@@ -99,3 +99,14 @@ describe('the app guest rows', () => {
     });
   });
 });
+
+describe('the people of a guest list', () => {
+  it('sorts a list once, and a new list again', () => {
+    const list = [guest({ id: 'g2', fullName: 'Émile Bassey' }), guest()];
+    const first = peopleOf(list);
+
+    expect(first.map((one) => one.id)).toEqual(['g1', 'g2']);
+    expect(peopleOf(list)).toBe(first);
+    expect(peopleOf([...list])).not.toBe(first);
+  });
+});

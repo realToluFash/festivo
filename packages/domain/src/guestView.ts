@@ -47,8 +47,14 @@ export function dietary(needs: GuestNeeds | null | undefined): boolean {
   return needs != null && (needs.allergies.length > 0 || needs.diet.length > 0);
 }
 
+/** Sorted once per list the API returned, not once per keystroke (sc-3772). */
+const sorted = new WeakMap<readonly Guest[], Person[]>();
+
 export function peopleOf(guests: readonly Guest[]): Person[] {
-  return [...guests]
+  const known = sorted.get(guests);
+
+  if (known != null) return known;
+  const people = [...guests]
     .sort((a, b) => compareGuestNames({ name: a.fullName }, { name: b.fullName }))
     .flatMap((guest) => [
       { id: guest.id, standing: shownReply(guest), guest, companion: null, at: 0 },
@@ -60,6 +66,10 @@ export function peopleOf(guests: readonly Guest[]): Person[] {
         at,
       })),
     ]);
+
+  sorted.set(guests, people);
+
+  return people;
 }
 
 export type Counts = Record<Choice, number> & {
@@ -92,15 +102,31 @@ export function matches(person: Person, q: string): boolean {
   const typed = nameKey(q);
 
   if (typed === '') return true;
-  const name = person.companion == null ? person.guest.fullName : person.companion.fullName;
+  const { name, email } = keysOf(person);
 
-  if (name != null && nameKey(name).includes(typed)) return true;
+  if (name != null && name.includes(typed)) return true;
   if (person.companion != null) return false;
-  const { email, mobile } = person.guest;
+  const { mobile } = person.guest;
 
-  return (
-    (email != null && nameKey(email).includes(typed)) || (mobile != null && phoneMatches(mobile, q))
-  );
+  return (email != null && email.includes(typed)) || (mobile != null && phoneMatches(mobile, q));
+}
+
+const keys = new WeakMap<Person, { name: string | null; email: string | null }>();
+
+function keysOf(person: Person): { name: string | null; email: string | null } {
+  const known = keys.get(person);
+
+  if (known != null) return known;
+  const name = person.companion == null ? person.guest.fullName : person.companion.fullName;
+  const email = person.companion == null ? person.guest.email : null;
+  const made = {
+    name: name == null ? null : nameKey(name),
+    email: email == null ? null : nameKey(email),
+  };
+
+  keys.set(person, made);
+
+  return made;
 }
 
 export interface ViewRow {
