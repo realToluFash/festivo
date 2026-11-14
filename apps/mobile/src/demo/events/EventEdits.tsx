@@ -1367,6 +1367,73 @@ const SHOWING: Record<Position, string> = {
   bottom: W.showingBottom,
 };
 
+/** The cover as it will show: the photo, or Soirely's cover in the colours its key gives. */
+export function CoverPreview({
+  photo,
+  meshKey,
+  id,
+}: {
+  photo: boolean;
+  meshKey: string;
+  id: string;
+}) {
+  return (
+    <View
+      style={styles.preview}
+      accessibilityElementsHidden
+      importantForAccessibility="no-hide-descendants"
+    >
+      {photo ? (
+        <>
+          <PhotoFill id={id} />
+          <Glyph name="photo" size={56} ink={tokens.colorInkOnDark} weight={1.6} />
+        </>
+      ) : (
+        <EventMesh event={{ mesh: meshFor(meshKey), photo: null }} />
+      )}
+    </View>
+  );
+}
+
+/** With no photo yet: what the cover is (or why the last one was refused), Upload unless held, and what is accepted. */
+export function CoverUpload({
+  refused = false,
+  off = false,
+  kind,
+  onUpload,
+  testID,
+}: {
+  refused?: boolean;
+  off?: boolean;
+  kind?: 'secondary';
+  onUpload: () => void;
+  testID: string;
+}) {
+  return (
+    <>
+      {refused ? (
+        <EventNotice tone="broken" words={W.coverRefused} />
+      ) : (
+        <Text size={15} weight="medium" style={[styles.secondary, styles.lines]}>
+          {W.coverDefaultLine}
+        </Text>
+      )}
+      {!off && (
+        <Pill
+          label={W.upload}
+          {...(kind == null ? {} : { kind })}
+          glyph="camera"
+          onPress={onUpload}
+          testID={testID}
+        />
+      )}
+      <Text size={13.5} weight="medium" style={[styles.secondary, styles.hint]}>
+        {W.accepted}
+      </Text>
+    </>
+  );
+}
+
 function CoverEdit(edit: EditProps) {
   const { event, start } = edit;
   const [photo, setPhoto] = useState(event.photo || start === 'coverPhoto');
@@ -1388,20 +1455,7 @@ function CoverEdit(edit: EditProps) {
       edit={edit}
       toast={told == null ? null : { words: told, onClose: () => setTold(null) }}
     >
-      <View
-        style={styles.preview}
-        accessibilityElementsHidden
-        importantForAccessibility="no-hide-descendants"
-      >
-        {photo ? (
-          <>
-            <PhotoFill id="cover-edit" />
-            <Glyph name="photo" size={56} ink={tokens.colorInkOnDark} weight={1.6} />
-          </>
-        ) : (
-          <EventMesh event={{ mesh: meshFor(event.id), photo: null }} />
-        )}
-      </View>
+      <CoverPreview photo={photo} meshKey={event.id} id="cover-edit" />
       {photo ? (
         <>
           <TextAction
@@ -1436,28 +1490,15 @@ function CoverEdit(edit: EditProps) {
           />
         </>
       ) : (
-        <>
-          {refused ? (
-            <EventNotice tone="broken" words={W.coverRefused} />
-          ) : (
-            <Text size={15} weight="medium" style={[styles.secondary, styles.lines]}>
-              {W.coverDefaultLine}
-            </Text>
-          )}
-          <Pill
-            label={W.upload}
-            glyph="camera"
-            onPress={() => {
-              setRefused(false);
-              setPhoto(true);
-              setDescribed('');
-            }}
-            testID="event.edit.cover.upload"
-          />
-          <Text size={13.5} weight="medium" style={[styles.secondary, styles.hint]}>
-            {W.accepted}
-          </Text>
-        </>
+        <CoverUpload
+          refused={refused}
+          onUpload={() => {
+            setRefused(false);
+            setPhoto(true);
+            setDescribed('');
+          }}
+          testID="event.edit.cover.upload"
+        />
       )}
     </EditShell>
   );

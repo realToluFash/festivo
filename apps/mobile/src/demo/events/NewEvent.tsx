@@ -10,11 +10,8 @@ import {
 } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
-import { EventMesh } from '../../components/EventMesh.tsx';
 import { EventNotice } from '../../components/EventNotice.tsx';
-import { PhotoFill } from '../../components/EventThumb.tsx';
 import { focusChecked } from '../../components/Field.tsx';
-import { Glyph } from '../../components/Glyph.tsx';
 import { BoxField, type Picking, PickerLayer, pick } from '../../components/MomentPick.tsx';
 import { useReadOut } from '../../components/ReadOut.tsx';
 import {
@@ -24,7 +21,6 @@ import {
 import { Pill } from '../../components/SettingsParts.tsx';
 import { type AskProps, FocusedScreen, TextAction } from '../../components/Summary.tsx';
 import { Text } from '../../components/Text.tsx';
-import { meshFor } from '../../kit/today.ts';
 import { tokens } from '../../theme/tokens.ts';
 import { DoneLine } from '../guests/GuestsParts.tsx';
 import { Legend, SheetBody, SheetLayer } from '../guests/GuestEdit.tsx';
@@ -32,6 +28,8 @@ import {
   ASK_WIDTH,
   AlertLine,
   Choices,
+  CoverPreview,
+  CoverUpload,
   DatePair,
   EventField,
   type Host,
@@ -534,20 +532,7 @@ function CoverPart({
 }) {
   return (
     <>
-      <View
-        style={styles.preview}
-        accessibilityElementsHidden
-        importantForAccessibility="no-hide-descendants"
-      >
-        {photo ? (
-          <>
-            <PhotoFill id="new-event-cover" />
-            <Glyph name="photo" size={56} ink={tokens.colorInkOnDark} weight={1.6} />
-          </>
-        ) : (
-          <EventMesh event={{ mesh: meshFor(meshKey), photo: null }} />
-        )}
-      </View>
+      <CoverPreview photo={photo} meshKey={meshKey} id="new-event-cover" />
       {photo ? (
         !off && (
           <TextAction
@@ -559,23 +544,12 @@ function CoverPart({
           />
         )
       ) : (
-        <>
-          <Text size={15} weight="medium" style={[styles.secondary, styles.lines]}>
-            {W.coverDefaultLine}
-          </Text>
-          {!off && (
-            <Pill
-              label={W.upload}
-              kind="secondary"
-              glyph="camera"
-              onPress={() => onPhoto(true)}
-              testID="events.new.cover.upload"
-            />
-          )}
-          <Text size={13.5} weight="medium" style={[styles.secondary, styles.hint]}>
-            {W.accepted}
-          </Text>
-        </>
+        <CoverUpload
+          off={off}
+          kind="secondary"
+          onUpload={() => onPhoto(true)}
+          testID="events.new.cover.upload"
+        />
       )}
     </>
   );
@@ -601,12 +575,4 @@ const styles = StyleSheet.create({
   secondary: { color: tokens.colorInkSecondary },
   hint: { lineHeight: 13.5 * 1.4 },
   lines: { lineHeight: 15 * 1.45 },
-  preview: {
-    width: '100%',
-    aspectRatio: 16 / 9,
-    borderRadius: 18,
-    overflow: 'hidden',
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
 });

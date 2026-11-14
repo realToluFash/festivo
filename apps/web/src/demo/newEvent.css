@@ -12,6 +12,10 @@
 }
 
 .ev-new-when {
+  min-width: 0;
+  margin: 0;
+  padding: 0;
+  border: 0;
   display: flex;
   flex-direction: column;
   gap: 7px;

@@ -258,31 +258,61 @@ export function DatesPart({
           {W.endsHint}
         </p>
       )}
-      <div className="desk-field">
-        <label htmlFor={`${id}-zone`} className="desk-label">
-          {W.timeZone}
-        </label>
-        <div className="desk-box ev-select">
-          <select
-            id={`${id}-zone`}
-            value={zone}
-            aria-describedby={`${id}-zone-help`}
-            onChange={(change) => setZone(change.target.value)}
-          >
-            {ZONES.map((one) => (
-              <option key={one} value={one}>
-                {one}
-              </option>
-            ))}
-          </select>
-          <Glyph name="chevdown" size={18} weight={2.3} />
-        </div>
-        <p id={`${id}-zone-help`} className="desk-help">
-          {W.timesIn(zone)}
-        </p>
-      </div>
+      <ZoneSelect value={zone} onChange={setZone} />
       <OnceSaved />
     </Opened>
+  );
+}
+
+/** The event's time zone, and the line saying its times are in it. */
+export function ZoneSelect({
+  value,
+  error,
+  off = false,
+  refTo,
+  onChange,
+}: {
+  value: string;
+  error?: string | undefined;
+  off?: boolean;
+  refTo?: RefObject<HTMLDivElement | null>;
+  onChange: (zone: string) => void;
+}) {
+  const id = useId();
+  const told = error == null ? `${id}-help` : `${id}-error ${id}-help`;
+
+  return (
+    <div ref={refTo} className="desk-field">
+      <label htmlFor={id} className="desk-label">
+        {W.timeZone}
+      </label>
+      <div className={error == null ? 'desk-box ev-select' : 'desk-box ev-select is-wrong'}>
+        <select
+          id={id}
+          value={value}
+          disabled={off}
+          aria-invalid={error != null}
+          aria-describedby={told}
+          onChange={(change) => onChange(change.target.value)}
+        >
+          {ZONES.map((one) => (
+            <option key={one} value={one}>
+              {one}
+            </option>
+          ))}
+        </select>
+        <Glyph name="chevdown" size={18} weight={2.3} />
+      </div>
+      {error != null && (
+        <p id={`${id}-error`} className="desk-error">
+          <Glyph name="alert" size={15} weight={2.2} />
+          {error}
+        </p>
+      )}
+      <p id={`${id}-help`} className="desk-help">
+        {W.timesIn(value)}
+      </p>
+    </div>
   );
 }
 
@@ -933,6 +963,59 @@ export function NamePart({ event, state, onDirty, onClose, onSave }: PartProps) 
   );
 }
 
+/** The cover as it will show: the photo, or Soirely's cover in the event's own colours. */
+export function CoverPreview({
+  photo,
+  mesh,
+  className = '',
+}: {
+  photo: boolean;
+  mesh: string;
+  className?: string;
+}) {
+  return (
+    <div
+      className={`ev-preview ${className} ${photo ? 'is-photo' : `today-cover is-${mesh}`}`}
+      aria-hidden="true"
+    >
+      <span className="ev-scrim" />
+      {photo ? (
+        <Glyph name="photo" size={56} weight={1.6} />
+      ) : (
+        [1, 2, 3, 4, 5, 6].map((piece) => <span key={piece} className={`desk-piece p${piece}`} />)
+      )}
+    </div>
+  );
+}
+
+/** With no photo yet: what the cover is, Upload (gone while held), and what is accepted. */
+export function CoverUpload({
+  refused = false,
+  off = false,
+  onUpload,
+}: {
+  refused?: boolean;
+  off?: boolean;
+  onUpload: () => void;
+}) {
+  return (
+    <>
+      {refused ? (
+        <Broken>{W.refusedDimensions}</Broken>
+      ) : (
+        <p className="desk-line">{W.coverLine}</p>
+      )}
+      {!off && (
+        <button type="button" className="ev-upload" onClick={onUpload}>
+          <Glyph name="photo" size={19} weight={2.2} />
+          {W.upload}
+        </button>
+      )}
+      <p className="desk-help">{W.accepted}</p>
+    </>
+  );
+}
+
 /** Cover: Soirely's cover in the event's own colours, or a photo, its position and what a screen reader says for it. */
 export function CoverPart({ event, state, onDirty, onClose, onSave }: PartProps) {
   const [photo, setPhoto] = useState(state === 'coverPhoto' ? true : event.photo);
@@ -953,17 +1036,7 @@ export function CoverPart({ event, state, onDirty, onClose, onSave }: PartProps)
       onCancel={onClose}
       onSave={() => onSave({ ...event, photo })}
     >
-      <div
-        className={photo ? 'ev-preview is-photo' : `ev-preview today-cover is-${event.mesh}`}
-        aria-hidden="true"
-      >
-        <span className="ev-scrim" />
-        {photo ? (
-          <Glyph name="photo" size={56} weight={1.6} />
-        ) : (
-          [1, 2, 3, 4, 5, 6].map((piece) => <span key={piece} className={`desk-piece p${piece}`} />)
-        )}
-      </div>
+      <CoverPreview photo={photo} mesh={event.mesh} />
       {photo ? (
         <>
           <TextAction label={W.changePhoto} onClick={() => setPosition(50)} />
@@ -1002,18 +1075,7 @@ export function CoverPart({ event, state, onDirty, onClose, onSave }: PartProps)
           />
         </>
       ) : (
-        <>
-          {refused ? (
-            <Broken>{W.refusedDimensions}</Broken>
-          ) : (
-            <p className="desk-line">{W.coverLine}</p>
-          )}
-          <button type="button" className="ev-upload" onClick={() => setPhoto(true)}>
-            <Glyph name="photo" size={19} weight={2.2} />
-            {W.upload}
-          </button>
-          <p className="desk-help">{W.accepted}</p>
-        </>
+        <CoverUpload refused={refused} onUpload={() => setPhoto(true)} />
       )}
     </Opened>
   );

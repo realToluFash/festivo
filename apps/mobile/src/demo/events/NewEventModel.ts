@@ -3,6 +3,7 @@ import {
   type EventFormField,
   type EventType,
   eventFormProblems,
+  firstRefusedOf,
   newEventHosts,
 } from '@soirely/domain';
 
@@ -189,27 +190,17 @@ export function checkOf(typed: NewTyped): {
   return { refusals, hosts, count, summary: count === 0 ? null : say.problems(count) };
 }
 
-/** Where focus lands on a refusal: Event name and Type come before the hosts, the rest after them (sc-22143). */
+/** Where focus lands on a refusal, by the domain's order: Event name and Type before the hosts, the rest after them (sc-22143). */
 export function firstRefused(
   refusals: Refusals,
   hosts: readonly (string | null)[],
 ): { field: EventFormField } | { host: number } | null {
-  const order: readonly EventFormField[] = [
-    'name',
-    'type',
-    'startsAt',
-    'endsAt',
-    'venueName',
-    'venueAddress',
-    'timeZone',
-    'currency',
-  ];
-  const field = order.find((one) => refusals[one] != null) ?? null;
-  const host = hosts.findIndex((one) => one != null);
+  const rows = hosts.map((_, key) => ({ key, name: '' }));
+  const hostErrors = Object.fromEntries(
+    hosts.flatMap((one, key) => (one == null ? [] : [[key, one]])),
+  );
 
-  if (field != null && (field === 'name' || field === 'type' || host < 0)) return { field };
-
-  return host < 0 ? null : { host };
+  return firstRefusedOf(refusals, hostErrors, rows);
 }
 
 /** Anything typed or chosen beyond what the form opened with, which Cancel asks about first. */

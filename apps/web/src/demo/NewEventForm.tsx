@@ -22,15 +22,8 @@ import { useNavigate } from 'react-router';
 import { Broken, DateTime, EditText as Text } from '../components/EventPageParts.tsx';
 import { Glyph } from '../components/Glyph.tsx';
 import { Ask, Head, RedAction } from '../components/SettingsParts.tsx';
-import { HostFields, VenueFields } from './EventEdits.tsx';
-import {
-  CURRENCIES,
-  type Currency,
-  EVENT_WORDS as W,
-  TYPE_WORDS,
-  type Wall,
-  ZONES,
-} from './events.ts';
+import { CoverPreview, CoverUpload, HostFields, VenueFields, ZoneSelect } from './EventEdits.tsx';
+import { CURRENCIES, type Currency, EVENT_WORDS as W, TYPE_WORDS, type Wall } from './events.ts';
 import { meshFor } from '../mesh.ts';
 import {
   FILLED,
@@ -108,8 +101,8 @@ export function NewEventForm({ state }: { state: NewEventState | null }) {
   const away = useLeaveAsk(typedSomething(typed) && status !== 'created');
   const id = useId();
   const typeRef = useRef<HTMLDivElement>(null);
-  const startRef = useRef<HTMLDivElement>(null);
-  const endRef = useRef<HTMLDivElement>(null);
+  const startRef = useRef<HTMLFieldSetElement>(null);
+  const endRef = useRef<HTMLFieldSetElement>(null);
   const zoneRef = useRef<HTMLDivElement>(null);
   const currencyRef = useRef<HTMLDivElement>(null);
   const hostFields = useRef<(HTMLInputElement | null)[]>([]);
@@ -255,23 +248,11 @@ export function NewEventForm({ state }: { state: NewEventState | null }) {
       </Block>
 
       <Block title={W.coverPhoto}>
-        <div
-          className={
-            typed.photo
-              ? 'ev-preview ev-new-cover is-photo'
-              : `ev-preview ev-new-cover today-cover is-${meshFor(typed.type === '' ? 'new-event' : typed.type)}`
-          }
-          aria-hidden="true"
-        >
-          <span className="ev-scrim" />
-          {typed.photo ? (
-            <Glyph name="photo" size={56} weight={1.6} />
-          ) : (
-            [1, 2, 3, 4, 5, 6].map((piece) => (
-              <span key={piece} className={`desk-piece p${piece}`} />
-            ))
-          )}
-        </div>
+        <CoverPreview
+          photo={typed.photo}
+          mesh={meshFor(typed.type === '' ? 'new-event' : typed.type)}
+          className="ev-new-cover"
+        />
         {typed.photo ? (
           !busy && (
             <RedAction
@@ -281,21 +262,12 @@ export function NewEventForm({ state }: { state: NewEventState | null }) {
             />
           )
         ) : (
-          <>
-            <p className="desk-line">{W.coverLine}</p>
-            {!busy && (
-              <button type="button" className="ev-upload" onClick={() => change({ photo: true })}>
-                <Glyph name="photo" size={19} weight={2.2} />
-                {W.upload}
-              </button>
-            )}
-            <p className="desk-help">{W.accepted}</p>
-          </>
+          <CoverUpload off={busy} onUpload={() => change({ photo: true })} />
         )}
       </Block>
 
       <Block title={N.whenHeading}>
-        <div ref={startRef} className="ev-new-when">
+        <fieldset ref={startRef} className="ev-new-when" disabled={busy}>
           <DateTime
             legend={W.starts}
             wall={typed.start}
@@ -309,8 +281,8 @@ export function NewEventForm({ state }: { state: NewEventState | null }) {
               {skipped}
             </p>
           )}
-        </div>
-        <div ref={endRef} className="ev-new-when">
+        </fieldset>
+        <fieldset ref={endRef} className="ev-new-when" disabled={busy}>
           <DateTime
             legend={W.ends}
             wall={typed.end}
@@ -333,7 +305,7 @@ export function NewEventForm({ state }: { state: NewEventState | null }) {
               {W.endsHint}
             </p>
           )}
-        </div>
+        </fieldset>
       </Block>
 
       <Block title={N.venueHeading}>
@@ -358,13 +330,10 @@ export function NewEventForm({ state }: { state: NewEventState | null }) {
 
       <Block title={N.zoneHeading}>
         <div className="ev-new-pair">
-          <Select
+          <ZoneSelect
             refTo={zoneRef}
-            label={W.timeZone}
             value={typed.timeZone}
-            choices={ZONES.map((one) => [one, one])}
             error={shown.timeZone}
-            help={W.timesIn(typed.timeZone)}
             off={busy}
             onChange={(timeZone) => {
               change({ timeZone });
