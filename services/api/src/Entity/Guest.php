@@ -7,6 +7,7 @@ namespace App\Entity;
 use App\Doctrine\Traits\Timestampable;
 use App\Enum\GuestReply;
 use App\Enum\GuestReplySource;
+use App\Enum\NeedKind;
 use DateTimeImmutable;
 use Doctrine\DBAL\Types\Types;
 use Doctrine\ORM\Mapping as ORM;
@@ -89,6 +90,20 @@ class Guest
     /** What the guest picked on their own page, which outranks the host's Language. */
     #[ORM\Column(type: Types::STRING, length: 8, nullable: true)]
     private ?string $chosenLanguage = null;
+
+    /** The words of each ticked Other (sc-3777), keyed by NeedKind::otherField(); its code is a GuestNeed. */
+    #[ORM\Column(type: Types::STRING, length: 100, nullable: true)]
+    private ?string $otherAllergy = null;
+
+    #[ORM\Column(type: Types::STRING, length: 100, nullable: true)]
+    private ?string $otherDiet = null;
+
+    #[ORM\Column(type: Types::STRING, length: 100, nullable: true)]
+    private ?string $otherAccess = null;
+
+    /** For those who manage guests only: never the kitchen, the floor or the guest. */
+    #[ORM\Column(type: Types::TEXT, nullable: true)]
+    private ?string $needsNote = null;
 
     private function __construct(Event $event, ?Guest $host, ?string $fullName, ?string $nameKey, ?string $email, ?string $mobile, ?GuestReply $reply, int $position, ?User $addedBy, #[SensitiveParameter] ?string $linkToken)
     {
@@ -223,6 +238,34 @@ class Guest
     public function choseLanguage(string $language): void
     {
         $this->chosenLanguage = $language;
+    }
+
+    public function getOther(NeedKind $kind): ?string
+    {
+        return match ($kind) {
+            NeedKind::Allergen => $this->otherAllergy,
+            NeedKind::Diet => $this->otherDiet,
+            NeedKind::Access => $this->otherAccess,
+        };
+    }
+
+    public function setOther(NeedKind $kind, ?string $words): void
+    {
+        match ($kind) {
+            NeedKind::Allergen => $this->otherAllergy = $words,
+            NeedKind::Diet => $this->otherDiet = $words,
+            NeedKind::Access => $this->otherAccess = $words,
+        };
+    }
+
+    public function getNeedsNote(): ?string
+    {
+        return $this->needsNote;
+    }
+
+    public function setNeedsNote(?string $note): void
+    {
+        $this->needsNote = $note;
     }
 
     public function setPosition(int $position): void

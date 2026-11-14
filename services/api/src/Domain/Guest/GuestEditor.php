@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\Domain\Guest;
 
 use App\Audit\Auditor;
+use App\Domain\Guest\Model\GuestNeeds;
 use App\Domain\Guest\Model\NewGuest;
 use App\Entity\Guest;
 use App\Entity\User;
@@ -33,6 +34,7 @@ final readonly class GuestEditor
         private Auditor $auditor,
         private GuestListPublisher $guestListPublisher,
         private TranslatorInterface $translator,
+        private GuestNeedsRecord $guestNeedsRecord,
     ) {
     }
 
@@ -55,8 +57,10 @@ final readonly class GuestEditor
             $companions = $this->guestRepository->findCompanionsOf($guest);
             $kept = $this->kept($companions, $companionIds);
             $fields = self::changed($guest, $companions, $new, $companionIds);
+            $needsBefore = $this->guestNeedsRecord->of([$guest, ...$companions]);
+            $needsChanged = self::needsChanged($needsBefore, $guest, $new, $companionIds);
 
-            if ([] === $fields) {
+            if ([] === $fields && !$needsChanged) {
                 return false;
             }
 
@@ -78,29 +82,43 @@ final readonly class GuestEditor
                 }
             }
 
+            if (null !== $new->needs) {
+                $this->guestNeedsRecord->write($guest, $new->needs, $by);
+            }
+
             foreach ($new->companions as $index => $name) {
                 $id = $companionIds[$index] ?? null;
                 $nameKey = null === $name ? null : NameNormaliser::key($name);
+                $needs = $new->companionNeeds[$index] ?? null;
 
                 if (null === $id) {
-                    $this->entityManager->persist(Guest::companionOf($guest, $name, $nameKey, $index + 1, $by));
+                    $companion = Guest::companionOf($guest, $name, $nameKey, $index + 1, $by);
+                    $this->entityManager->persist($companion);
+                    $this->guestNeedsRecord->write($companion, $needs ?? GuestNeeds::none(), $by);
                     continue;
                 }
 
                 $companion = $kept[$id];
                 $companion->setFullName($name, $nameKey);
                 $companion->setPosition($index + 1);
+
+                if (null !== $needs) {
+                    $this->guestNeedsRecord->write($companion, $needs, $by);
+                }
             }
 
-            $this->auditor->record(
-                self::UPDATED,
-                'Guest',
-                $guest->getId(),
-                Actor::User,
-                $by->getId(),
-                $by->getName(),
-                Dict\from_keys($fields, static fn (string $_): array => [null, null]),
-            );
+            if ([] !== $fields) {
+                $this->auditor->record(
+                    self::UPDATED,
+                    'Guest',
+                    $guest->getId(),
+                    Actor::User,
+                    $by->getId(),
+                    $by->getName(),
+                    Dict\from_keys($fields, static fn (string $_): array => [null, null]),
+                );
+            }
+
             $this->entityManager->flush();
 
             return true;
@@ -147,6 +165,20 @@ final readonly class GuestEditor
         }
 
         return $kept;
+    }
+
+    /**
+     * @param array<string, GuestNeeds> $before by the person's id
+     * @param list<?string>             $ids
+     */
+    private static function needsChanged(array $before, Guest $guest, NewGuest $new, array $ids): bool
+    {
+        $differs = static fn (?string $id, ?GuestNeeds $needs): bool => null === $id
+            ? null !== $needs && !$needs->equals(GuestNeeds::none())
+            : null !== $needs && !($before[$id] ?? GuestNeeds::none())->equals($needs);
+
+        return $differs($guest->getId()->toRfc4122(), $new->needs)
+            || Iter\any(Vec\keys($new->companions), static fn (int $index): bool => $differs($ids[$index] ?? null, $new->companionNeeds[$index] ?? null));
     }
 
     /**

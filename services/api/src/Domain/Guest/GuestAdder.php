@@ -6,6 +6,7 @@ namespace App\Domain\Guest;
 
 use App\Audit\Auditor;
 use App\Domain\Guest\Link\InvitationLinks;
+use App\Domain\Guest\Model\GuestNeeds;
 use App\Domain\Guest\Model\NewGuest;
 use App\Entity\Event;
 use App\Entity\Guest;
@@ -28,6 +29,7 @@ final readonly class GuestAdder
         private EntityManagerInterface $entityManager,
         private Auditor $auditor,
         private GuestListPublisher $guestListPublisher,
+        private GuestNeedsRecord $guestNeedsRecord,
     ) {
     }
 
@@ -45,11 +47,13 @@ final readonly class GuestAdder
             $guest->setLanguage($new->language);
             $this->entityManager->persist($guest);
             self::recordAdded($this->auditor, $guest, $by);
+            $this->guestNeedsRecord->write($guest, $new->needs ?? GuestNeeds::none(), $by);
 
             foreach ($new->companions as $index => $name) {
                 $companion = Guest::companionOf($guest, $name, null === $name ? null : NameNormaliser::key($name), $index + 1, $by);
                 $this->entityManager->persist($companion);
                 self::recordAdded($this->auditor, $companion, $by);
+                $this->guestNeedsRecord->write($companion, $new->companionNeeds[$index] ?? GuestNeeds::none(), $by);
             }
 
             $this->entityManager->flush();
