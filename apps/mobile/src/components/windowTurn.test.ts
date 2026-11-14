@@ -278,7 +278,7 @@ describe('a window that opens through a Modal of its own (sc-42690)', () => {
     );
   });
 
-  it('on the phone, hides Create an organisation’s field from TalkBack until its keys are up, then moves TalkBack’s focus onto it (qa4 #48525, #48921)', () => {
+  it('on the phone, hides and unnames Create an organisation’s field until its keys are up, and leaves TalkBack to move its own focus onto it (qa4 #48525, #48921, qa2 #49329)', () => {
     const walk = read('CreateWalkWindow.tsx');
     const steps = read('CreateWalkSteps.tsx');
 
@@ -289,12 +289,12 @@ describe('a window that opens through a Modal of its own (sc-42690)', () => {
     expect(walk).toContain("quiet={live && quiet && opening.focus === 'search'}");
     expect(walk).not.toContain('voice()');
     expect(steps).not.toContain('onTaken');
+    expect(walk).not.toContain('voicing');
     expect(walk).toMatch(
-      /if \(input\?\.isFocused\(\)\) moveScreenReaderFocus\(input\);\s+\}, \[voiced, opening\]\);/,
+      /if \(!quiet \|\| !onScreen \|\| unnamed\) return;\s+const input = opening\.focus === 'search' \? search\.current : field\.current;\s+const up = Keyboard\.addListener\('keyboardDidShow', \(\) => \{\s+if \(input\?\.isFocused\(\)\) setVoiced\(true\);\s+\}\);\s+const reachable = setTimeout\(\(\) => setVoiced\(true\), KEYS_AWAITED_MS\);/,
     );
-    expect(walk).toMatch(
-      /if \(!quiet \|\| !onScreen \|\| unnamed\) return;\s+const input = opening\.focus === 'search' \? search\.current : field\.current;\s+const up = Keyboard\.addListener\('keyboardDidShow', \(\) => \{\s+if \(!input\?\.isFocused\(\)\) return;\s+voicing\.current = true;\s+setVoiced\(true\);\s+\}\);\s+const reachable = setTimeout\(\(\) => setVoiced\(true\), KEYS_AWAITED_MS\);/,
-    );
+    expect(steps).toContain("accessibilityLabel={quiet ? '' : t('createOrganisation.name')}");
+    expect(steps).toContain('accessibilityHint={quiet ? undefined : (refusal ?? help)}');
     expect(steps.match(/importantForAccessibility=\{quiet \? 'no' : 'auto'\}/g)).toHaveLength(2);
   });
 

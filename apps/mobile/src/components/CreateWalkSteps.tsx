@@ -186,7 +186,7 @@ export function NameStep({
   field: RefObject<TextInputInstance | null>;
   onTyped: (name: string) => void;
   onContinue: () => void;
-  /** Hidden from the screen reader, so taking input focus says nothing. */
+  /** Hidden from the screen reader and unnamed, so taking input focus says nothing: TalkBack voiced a hidden field's name as it took focus (qa2 #49329). */
   quiet?: boolean;
   onLeft?: (() => void) | undefined;
 }) {
@@ -263,8 +263,8 @@ export function NameStep({
             autoCorrect={false}
             spellCheck={false}
             returnKeyType="next"
-            accessibilityLabel={t('createOrganisation.name')}
-            accessibilityHint={refusal ?? help}
+            accessibilityLabel={quiet ? '' : t('createOrganisation.name')}
+            accessibilityHint={quiet ? undefined : (refusal ?? help)}
             style={[
               styles.name,
               {
