@@ -1,0 +1,41 @@
+# Signs in as an account with no profile (lands on Your organisation), then runs sc-30447's sign-up checks: Country on Your organisation, Code on Your mobile number and on Change your mobile number.
+#
+#   node .qa/bin/qa-env.mjs maestro sc30447-incomplete --android EMAIL=… PASSWORD=…
+#
+# ORG=yes also runs the Your organisation Country check; leave it off once the account has an organisation.
+appId: host.exp.Exponent
+---
+- launchApp:
+    appId: host.exp.Exponent
+    stopApp: true
+- openLink: ${METRO_URL}/--/sign-in
+- extendedWaitUntil:
+    visible:
+      id: 'signIn.email'
+    timeout: 60000
+- runFlow:
+    when:
+      visible: 'Dismiss'
+    commands:
+      - tapOn: 'Dismiss'
+- tapOn:
+    id: 'signIn.email'
+- eraseText: 120
+- inputText: ${EMAIL}
+- tapOn:
+    id: 'signIn.password'
+- eraseText: 120
+- inputText: ${PASSWORD}
+- hideKeyboard
+- tapOn:
+    id: 'signIn.submit'
+- extendedWaitUntil:
+    visible:
+      id: 'completeProfile.organisation'
+    timeout: 30000
+- runFlow:
+    when:
+      true: ${ORG == "yes"}
+    file: checks/sc30447-org-country.yaml
+- runFlow: checks/sc30447-mobile-code.yaml
+- runFlow: checks/sc30447-change-code.yaml

@@ -1,0 +1,28 @@
+# sc-37577: the events menu opened at ${FROM}, the tablet turned to ${TO} with it open: shots straight after the turn and once settled.
+appId: host.exp.Exponent
+---
+- setOrientation: ${FROM}
+- waitForAnimationToEnd:
+    timeout: 3000
+- openLink: ${METRO_URL}/--/events
+- extendedWaitUntil:
+    visible:
+      id: 'events.filter'
+    timeout: 30000
+- waitForAnimationToEnd:
+    timeout: 3000
+- tapOn:
+    id: 'events.filter'
+- extendedWaitUntil:
+    visible:
+      id: 'events.filter.menu'
+    timeout: 10000
+- waitForAnimationToEnd:
+    timeout: 3000
+- takeScreenshot: before-turn
+- setOrientation: ${TO}
+- takeScreenshot: just-turned
+- takeScreenshot: just-turned-2
+- waitForAnimationToEnd:
+    timeout: 3000
+- takeScreenshot: settled

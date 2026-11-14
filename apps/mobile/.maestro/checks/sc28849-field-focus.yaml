@@ -1,0 +1,24 @@
+# Name on Account focused (green edge), then emptied and saved so it errors (red edge). sc-28849.
+# The Name row opens Name with Full name focused (autoFocus), and Android's hideKeyboard leaves it focused: no at-rest shot.
+# A blank save focuses the field (focusChecked), so the wrong state is shot focused only: no wrong-at-rest shot.
+# Android only: the unconditional hideKeyboard stops the flow on an iPhone.
+appId: host.exp.Exponent
+---
+- openLink: ${METRO_URL}/--/settings/account
+- extendedWaitUntil:
+    visible: '{{t:account.title}}'
+    timeout: 30000
+- scrollUntilVisible:
+    element:
+      id: 'account.name'
+    timeout: 30000
+- tapOn:
+    id: 'account.name'
+- hideKeyboard
+- tapOn:
+    id: 'account.name.field'
+- takeScreenshot: name-focused
+- eraseText: 80
+- tapOn:
+    id: 'account.name.save'
+- takeScreenshot: name-wrong-focused

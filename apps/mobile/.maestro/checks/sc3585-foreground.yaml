@@ -1,0 +1,24 @@
+# sc-3585: ${EV_FG}, Live and starting within a minute or two: the app goes to the background before the start and comes back after it; the page shows Happening now at once, not on its next tick.
+appId: host.exp.Exponent
+---
+- openLink: ${METRO_URL}/--/events/${EV_FG}
+- extendedWaitUntil:
+    visible:
+      id: 'events.phase.live'
+    timeout: 30000
+- takeScreenshot: before-background
+- pressKey: home
+- extendedWaitUntil:
+    visible:
+      text: 'NEVER_ON_SCREEN'
+    timeout: ${WAIT_MS}
+    optional: true
+- launchApp:
+    appId: host.exp.Exponent
+    stopApp: false
+- takeScreenshot: on-foreground
+- extendedWaitUntil:
+    visible:
+      id: 'events.phase.happening_now'
+    timeout: 3000
+- takeScreenshot: after-foreground

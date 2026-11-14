@@ -1,0 +1,21 @@
+# sc-3785 on a tablet on its side: ${GUEST_ID}'s details open beside ${EVENT_ID}'s Guests list, with no Back to Guests, and the list stays in reach.
+appId: host.exp.Exponent
+---
+- setOrientation: LANDSCAPE_LEFT
+- openLink: ${METRO_URL}/--/events/${EVENT_ID}?area=guests
+- extendedWaitUntil:
+    visible:
+      id: 'guests.row.${GUEST_ID}'
+    timeout: 30000
+- tapOn:
+    id: 'guests.row.${GUEST_ID}'
+- extendedWaitUntil:
+    visible:
+      id: 'guest.${GUEST_ID}'
+    timeout: 20000
+- assertVisible:
+    id: 'guests.search'
+- assertNotVisible:
+    id: 'guest.back'
+- takeScreenshot: guest-beside
+- setOrientation: PORTRAIT
