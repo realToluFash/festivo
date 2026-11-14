@@ -16,6 +16,7 @@ import en from '../i18n/locales/en.json';
 import { SAMPLE } from './rules.ts';
 import { type SettingsSay, type Viewer, VIEWERS } from './settings.ts';
 import { fold } from '../components/orgMenu.ts';
+import { crowdName } from './sampleNames.ts';
 
 export const ORGANISATION = SAMPLE.organisation;
 export const DOMAIN = 'ire.events';
@@ -140,99 +141,15 @@ export function morePeople(): Person[] {
   }));
 }
 
-const FIRST = [
-  'Ada',
-  'Bruno',
-  'Camille',
-  'Dayo',
-  'Elena',
-  'Femi',
-  'Gabriel',
-  'Hugo',
-  'Inès',
-  'Jade',
-  'Kemi',
-  'Léa',
-  'Malik',
-  'Nadia',
-  'Omar',
-  'Paula',
-  'Quentin',
-  'Rosa',
-  'Sade',
-  'Tiago',
-  'Uche',
-  'Vera',
-  'Wale',
-  'Xavier',
-  'Yara',
-  'Zoé',
-  'Adaeze',
-  'Beatriz',
-  'Chidi',
-  'Diego',
-  'Emeka',
-  'Flor',
-  'Gil',
-  'Helena',
-  'Ifeoma',
-  'Javier',
-  'Kai',
-  'Lina',
-] as const;
-
-const LAST = [
-  'Adeyemi',
-  'Bianchi',
-  'Costa',
-  'Dubois',
-  'Eze',
-  'Fontaine',
-  'García',
-  'Haddad',
-  'Ibekwe',
-  'Jansen',
-  'Kowalski',
-  'López',
-  'Martin',
-  'Nwosu',
-  'Oliveira',
-  'Petit',
-  'Ramos',
-  'Santos',
-  'Torres',
-  'Uzor',
-  'Vidal',
-  'Wright',
-  'Yusuf',
-  'Zanetti',
-  'Alves',
-  'Bernard',
-  'Cruz',
-  'Diallo',
-  'Eriksen',
-  'Faure',
-  'Gomes',
-  'Hall',
-  'Ito',
-  'Jiménez',
-  'Klein',
-  'Lima',
-] as const;
-
 /** Ire Events grown to `total` on All, so the card's chip has more beyond its five faces than its circle holds (sc-48825). */
 export function crowdOf(people: readonly Person[], total: number): Person[] {
   const shown = people.filter((one) => isShown(one.status, 'all')).length;
-  const extra = Array.from({ length: Math.max(0, total - shown) }, (_, index) => {
-    const name = `${FIRST[index % FIRST.length]} ${LAST[Math.floor(index / FIRST.length) % LAST.length]}`;
-
-    return {
-      ...person(`crowd-${index + 1}@ire.events`, name, 'Member', [
-        { what: 'Joined with a company email address', when: '2026-10-05' },
-      ]),
-      tone: people.length + index,
-    };
-  });
+  const extra = Array.from({ length: Math.max(0, total - shown) }, (_, index) => ({
+    ...person(`crowd-${index + 1}@ire.events`, crowdName(index), 'Member', [
+      { what: 'Joined with a company email address', when: '2026-10-05' },
+    ]),
+    tone: people.length + index,
+  }));
 
   return [...people, ...extra];
 }

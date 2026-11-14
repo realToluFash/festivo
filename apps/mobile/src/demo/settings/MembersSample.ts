@@ -1,6 +1,7 @@
 import { memberStanding, type MemberStanding } from '@soirely/domain';
 
 import { writtenTime } from '../clock.ts';
+import { crowdName } from '../sampleNames.ts';
 
 import { handedLines, HANDOVER_WORDS } from './MembersHandoverWords.ts';
 import {
@@ -753,86 +754,6 @@ const MORE_PEOPLE: readonly (readonly [string, string, string])[] = [
   ['Pierre Lambert', 'PL', 'pierre.lambert'],
 ];
 
-const FIRST = [
-  'Ada',
-  'Bruno',
-  'Camille',
-  'Dayo',
-  'Elena',
-  'Femi',
-  'Gabriel',
-  'Hugo',
-  'Inès',
-  'Jade',
-  'Kemi',
-  'Léa',
-  'Malik',
-  'Nadia',
-  'Omar',
-  'Paula',
-  'Quentin',
-  'Rosa',
-  'Sade',
-  'Tiago',
-  'Uche',
-  'Vera',
-  'Wale',
-  'Xavier',
-  'Yara',
-  'Zoé',
-  'Adaeze',
-  'Beatriz',
-  'Chidi',
-  'Diego',
-  'Emeka',
-  'Flor',
-  'Gil',
-  'Helena',
-  'Ifeoma',
-  'Javier',
-  'Kai',
-  'Lina',
-] as const;
-
-const LAST = [
-  'Adeyemi',
-  'Bianchi',
-  'Costa',
-  'Dubois',
-  'Eze',
-  'Fontaine',
-  'García',
-  'Haddad',
-  'Ibekwe',
-  'Jansen',
-  'Kowalski',
-  'López',
-  'Martin',
-  'Nwosu',
-  'Oliveira',
-  'Petit',
-  'Ramos',
-  'Santos',
-  'Torres',
-  'Uzor',
-  'Vidal',
-  'Wright',
-  'Yusuf',
-  'Zanetti',
-  'Alves',
-  'Bernard',
-  'Cruz',
-  'Diallo',
-  'Eriksen',
-  'Faure',
-  'Gomes',
-  'Hall',
-  'Ito',
-  'Jiménez',
-  'Klein',
-  'Lima',
-] as const;
-
 /** All at 104 shows +99 beside the faces, the chip's widest figure; at 1,326 it shows 99+ (sc-48825). */
 export const CROWDS = { ninetyNine: 104, crowd: 1326 } as const;
 
@@ -840,13 +761,15 @@ export const CROWDS = { ninetyNine: 104, crowd: 1326 } as const;
 export function crowdOf(people: readonly Person[], total: number): Person[] {
   const shown = people.filter((one) => isShown(one.status, 'all')).length;
   const extra = Array.from({ length: Math.max(0, total - shown) }, (_, index) => {
-    const first = FIRST[index % FIRST.length] ?? '';
-    const last = LAST[Math.floor(index / FIRST.length) % LAST.length] ?? '';
+    const name = crowdName(index);
     const id = `crowd-${index + 1}@${DOMAIN}`;
 
     return {
-      name: `${first} ${last}`,
-      initials: `${first[0] ?? ''}${last[0] ?? ''}`,
+      name,
+      initials: name
+        .split(' ')
+        .map((part) => part[0] ?? '')
+        .join(''),
       email: id,
       id,
       role: 'Member',
