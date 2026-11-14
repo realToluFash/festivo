@@ -318,6 +318,7 @@ export function GuestsScreen({
               layout={layout}
               onStep={onStep}
               stepLabel={words.step == null ? null : stepLabel[words.step]}
+              also={words.also == null ? null : { label: W.makeLive, onPress: onMakeLive }}
             />
           )}
           {!empty && (

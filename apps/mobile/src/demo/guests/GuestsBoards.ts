@@ -25,6 +25,13 @@ const GUESTS: Record<GuestsState, Board> = {
   viewer: ['Can view', 'No step, no plus, no contact details; the group, and no Allergy'],
   draft: ['a Draft', 'Nobody can be invited yet, with Make live'],
   paused: ['a Paused event', 'The card says why nobody new can be invited'],
+  emptyDraft: ['first time on a Draft', 'Draft, No guests yet, the line, Add guest and Make live'],
+  emptyDraftViewer: ['first time on a Draft, Can view', 'Draft, No guests yet and the line alone'],
+  emptyPaused: ['first time on a Paused event', 'Paused, No guests yet, the line and Add guest'],
+  emptyFinished: [
+    'first time on a Finished event',
+    'Finished, No guests yet, the line and Add guest',
+  ],
   onTheDay: ['on the day', '41 of 98 arrived, Open check-in, a walk-in'],
   secondDay: ['the second day', 'Day 2 of 3: 87 of 99 arrived, Open check-in'],
   staffBefore: ['door staff, before the day', 'Read-only: no step, no plus'],
