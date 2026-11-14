@@ -1,6 +1,6 @@
 import type { Guest } from '@soirely/api-client';
 import { type Translate } from './eventWords.ts';
-import { type ReplyWord, blank, shownReply } from './guestForm.ts';
+import { type ReplyWord, blank, namedCount, shownReply } from './guestForm.ts';
 import { type Person } from './guestView.ts';
 import { formatPhone } from './phone.ts';
 
@@ -43,13 +43,14 @@ export function contactOf(t: Translate, guest: Guest): string | null {
     : (guest.email ?? mobile);
 }
 
-/** A row's name and the line under it: a guest's reply and when, then their contact; a companion's own standing. */
+/** A row's name and the line under it: a guest's reply and when, their places when shown, then their contact; a companion's own standing. */
 export function rowWords(
   t: Translate,
   { guest, companion, at }: Person,
   indent: boolean,
   timeZone: string,
   locale: string,
+  placesShown: boolean,
 ): { name: string; line: string } {
   if (companion == null) {
     const word = t(REPLY_KEY[shownReply(guest)]);
@@ -60,11 +61,22 @@ export function rowWords(
             reply: word,
             date: replyDate(guest.repliedAt, timeZone, locale),
           });
+    const places = guest.companions.length;
+    const line =
+      places === 0 || !placesShown
+        ? reply
+        : t('guestList.withPlaces', {
+            reply,
+            places: t('guestList.companionsNamed', {
+              count: places,
+              named: namedCount(guest.companions.map((one) => one.fullName)),
+            }),
+          });
     const contact = contactOf(t, guest);
 
     return {
       name: guest.fullName,
-      line: contact == null ? reply : t('guestList.line', { reply, contact }),
+      line: contact == null ? line : t('guestList.line', { reply: line, contact }),
     };
   }
 

@@ -154,6 +154,21 @@ class Checked(unittest.TestCase):
         refused = machine.check(config(self.root, roles={"lead": {}}))[1]
         self.assertEqual(refused["lead"], f"no checkout at {self.root / 'soirely-lead'}")
 
+    def test_a_tester_emulator_host_is_checked_and_refuses_only_that_role(self):
+        (self.root / "soirely-qa4").mkdir()
+        good = {"ops": {}, "qa4": {"emulatorHost": "me@laptop"}}
+        self.assertIn("qa4", machine.check(config(self.root, roles=good))[2])
+        named = {"ops": {}, "qa4": {"emulatorHost": {"ssh": "me@laptop", "name": "laptop"}}}
+        self.assertIn("qa4", machine.check(config(self.root, roles=named))[2])
+        for value, said in ((5, "an ssh destination"), ({"name": "x"}, "an ssh destination"),
+                            ({"ssh": "me@l", "port": 1}, "has port")):
+            roles = {"ops": {}, "qa4": {"emulatorHost": value}}
+            errors, refused, ready = machine.check(config(self.root, roles=roles))
+            self.assertIn(said, refused["qa4"])
+            self.assertIn("ops", ready)
+        on_ops = machine.check(config(self.root, roles={"ops": {"emulatorHost": "me@l"}}))[1]
+        self.assertIn("runs no emulator", on_ops["ops"])
+
     def test_developer_1_works_in_the_main_checkout(self):
         self.assertEqual(machine.checkout(config(self.root), "dev"), self.root / "festivo")
         own = config(self.root, roles={"ux": {"checkout": "~/design/ux"}})

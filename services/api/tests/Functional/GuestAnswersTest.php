@@ -76,7 +76,13 @@ final class GuestAnswersTest extends ApiTestCase
         $this->open($token);
 
         self::assertSame(200, $this->statusCode());
-        self::assertSame(['fullName' => self::ADAEZE, 'reply' => null, 'companions' => 1], $page['guest'] ?? null);
+        $obi = $this->companionsOn($token)[0]['id'] ?? self::fail('no companion');
+        self::assertSame([
+            'fullName' => self::ADAEZE,
+            'reply' => null,
+            'places' => 1,
+            'companions' => [['id' => $obi, 'fullName' => 'Obi Okonkwo', 'coming' => true, 'namedByGuest' => false]],
+        ], $page['guest'] ?? null);
         self::assertSame(true, $page['answersOpen'] ?? null);
         self::assertSame($list, $this->as($this->owner, 'GET', $this->guests()));
         self::assertSame($published, Iter\count(self::service(RecordingHub::class)->published));
@@ -381,12 +387,182 @@ final class GuestAnswersTest extends ApiTestCase
         self::assertStringNotContainsString('coming', Type\string()->coerce($changes[0]));
     }
 
-    /** @param list<string> $companions */
+    #[Test]
+    public function thePageListsTheNamedCompanionsAndCountsEveryPlace(): void
+    {
+        $token = $this->token($this->add(self::ADAEZE, ['Chidi Okonkwo-Williams', null]));
+
+        $guest = Type\shape(['places' => Type\int(), 'companions' => Type\vec(Type\dict(Type\string(), Type\mixed()))], true)->coerce($this->open($token)['guest'] ?? null);
+
+        self::assertSame(2, $guest['places']);
+        self::assertCount(1, $guest['companions']);
+        self::assertSame(['Chidi Okonkwo-Williams', true, false], [$guest['companions'][0]['fullName'] ?? null, $guest['companions'][0]['coming'] ?? null, $guest['companions'][0]['namedByGuest'] ?? null]);
+    }
+
+    /** @return iterable<string, array{string, bool, string, array<string, int>}> */
+    public static function companionChoices(): iterable
+    {
+        yield 'Coming, companion left Coming' => ['coming', true, 'coming', ['accepted' => 2, 'held' => 0, 'declined' => 0]];
+        yield 'Coming, companion marked Not coming' => ['coming', false, 'notComing', ['accepted' => 1, 'held' => 0, 'declined' => 1]];
+        yield 'Not sure yet, companion left Coming' => ['maybe', true, 'held', ['accepted' => 0, 'held' => 1, 'declined' => 0]];
+        yield 'Not sure yet, companion marked Not coming' => ['maybe', false, 'held', ['accepted' => 0, 'held' => 1, 'declined' => 0]];
+        yield 'Not coming, companion left Coming' => ['notComing', true, 'held', ['accepted' => 0, 'held' => 1, 'declined' => 1]];
+        yield 'Not coming, companion marked Not coming' => ['notComing', false, 'held', ['accepted' => 0, 'held' => 1, 'declined' => 1]];
+    }
+
+    /** @param array<string, int> $headcount */
+    #[Test]
+    #[DataProvider('companionChoices')]
+    public function aCompanionIsNotComingOnlyWhenTheGuestIsComingAndUntickedThemAndTheCountsMoveWithIt(string $answer, bool $coming, string $state, array $headcount): void
+    {
+        $guest = $this->add(self::ADAEZE, ['Chidi Okonkwo-Williams']);
+        $token = $this->token($guest);
+        $chidi = $this->companionsOn($token)[0]['id'] ?? self::fail('no companion');
+
+        $this->answerWith($token, $answer, [['id' => $chidi, 'fullName' => 'Chidi Okonkwo-Williams', 'coming' => $coming]]);
+
+        self::assertSame(200, $this->statusCode(), Json\encode($this->last()));
+        self::assertSame([$state], $this->states($guest));
+        $counts = Type\dict(Type\string(), Type\mixed())->coerce($this->as($this->owner, 'GET', '/api/events/' . $this->eventId . '/headcount')['headcount']['counts'] ?? null);
+        self::assertSame($headcount, Dict\select_keys($counts, Vec\keys($headcount)));
+    }
+
+    #[Test]
+    public function backToComingEachCompanionIsAsTheGuestLastChose(): void
+    {
+        $guest = $this->add(self::ADAEZE, ['Chidi Okonkwo-Williams', 'Nneka Okonkwo-Williams']);
+        $token = $this->token($guest);
+        [$chidi, $nneka] = Vec\map($this->companionsOn($token), static fn (array $one): mixed => $one['id']);
+        $this->answerWith($token, 'coming', [
+            ['id' => $chidi, 'fullName' => 'Chidi Okonkwo-Williams', 'coming' => true],
+            ['id' => $nneka, 'fullName' => 'Nneka Okonkwo-Williams', 'coming' => false],
+        ]);
+
+        $this->reply($token, 'maybe');
+        self::assertSame(['held', 'held'], $this->states($guest));
+
+        $this->reply($token, 'coming');
+        self::assertSame(['coming', 'notComing'], $this->states($guest));
+    }
+
+    #[Test]
+    public function aNameTheGuestAddsFillsAnUnnamedPlaceAndOneBeyondThePlacesIsRefused422(): void
+    {
+        $guest = $this->add(self::ADAEZE, ['Chidi Okonkwo-Williams', null]);
+        $token = $this->token($guest);
+
+        $this->answerWith($token, 'coming', [['fullName' => 'Nneka Okonkwo-Williams', 'coming' => true], ['fullName' => 'Ike Okonkwo-Williams', 'coming' => true]]);
+
+        self::assertSame(422, $this->statusCode());
+        self::assertSame('companions', $this->last()['violations'][0]['propertyPath'] ?? null);
+        $unnamed = Type\dict(Type\string(), Type\mixed())->coerce($this->row($guest)['companions'][1] ?? null);
+        self::assertArrayHasKey('fullName', $unnamed);
+        self::assertNull($unnamed['fullName']);
+        self::assertSame('noReply', $this->row($guest)['reply']);
+
+        $this->answerWith($token, 'coming', [['fullName' => '  Nneka Okonkwo-Williams ', 'coming' => true]]);
+
+        self::assertSame(200, $this->statusCode(), Json\encode($this->last()));
+        self::assertSame(['Chidi Okonkwo-Williams', 'Nneka Okonkwo-Williams'], Vec\map($this->companionsOn($token), static fn (array $one): mixed => $one['fullName']));
+        self::assertSame(2, Type\shape(['places' => Type\int()], true)->coerce($this->open($token)['guest'] ?? null)['places']);
+    }
+
+    #[Test]
+    public function aBlankNameAndACompanionOfAnotherGuestAreRefused422(): void
+    {
+        $token = $this->token($this->add(self::ADAEZE, [null]));
+        $other = $this->token($this->add('Bisi Adewale', ['Tunde Adewale']));
+        $tunde = $this->companionsOn($other)[0]['id'] ?? self::fail('no companion');
+
+        $this->answerWith($token, 'coming', [['fullName' => '   ', 'coming' => true]]);
+        self::assertSame([422, 'companions[0].fullName'], [$this->statusCode(), $this->last()['violations'][0]['propertyPath'] ?? null]);
+
+        $this->answerWith($token, 'coming', [['id' => $tunde, 'fullName' => 'Mine now', 'coming' => true]]);
+        self::assertSame([422, 'companions[0].id'], [$this->statusCode(), $this->last()['violations'][0]['propertyPath'] ?? null]);
+    }
+
+    #[Test]
+    public function aGuestsRenameIsNamedByTheGuestUntilTheHostChangesTheName(): void
+    {
+        $guest = $this->add(self::ADAEZE, ['Chidi Okonkwo Wiliams']);
+        $token = $this->token($guest);
+        $chidi = $this->companionsOn($token)[0]['id'] ?? self::fail('no companion');
+
+        $this->answerWith($token, 'coming', [['id' => $chidi, 'fullName' => 'Chidi Okonkwo-Williams', 'coming' => true]]);
+
+        $companion = $this->row($guest)['companions'][0] ?? self::fail('no companion');
+        self::assertSame(['Chidi Okonkwo-Williams', true], [$companion['fullName'] ?? null, $companion['namedByGuest'] ?? null]);
+        self::assertTrue($this->companionsOn($token)[0]['namedByGuest'] ?? null);
+
+        $this->as($this->owner, 'PUT', $this->guests() . '/' . $guest, ['fullName' => self::ADAEZE, 'companions' => [['id' => $chidi, 'fullName' => 'Chidi Okonkwo-Williams']]], '"2"');
+        self::assertTrue($this->row($guest)['companions'][0]['namedByGuest'] ?? null, 'the host saving the same name keeps whose it is');
+
+        $this->as($this->owner, 'PUT', $this->guests() . '/' . $guest, ['fullName' => self::ADAEZE, 'companions' => [['id' => $chidi, 'fullName' => 'Chief Chidi Okonkwo-Williams']]], '"2"');
+        self::assertSame(200, $this->statusCode(), Json\encode($this->last()));
+        self::assertFalse($this->row($guest)['companions'][0]['namedByGuest'] ?? null);
+    }
+
+    #[Test]
+    public function namesTheGuestGivesRaiseTheVersionSoTheHostsOpenFormCannotOverwriteThem412(): void
+    {
+        $guest = $this->add(self::ADAEZE, ['Chidi', null]);
+        $token = $this->token($guest);
+        $chidi = $this->companionsOn($token)[0]['id'] ?? self::fail('no companion');
+        $place = $this->row($guest)['companions'][1]['id'] ?? self::fail('no place');
+
+        $this->answerWith($token, 'coming', [['id' => $chidi, 'fullName' => 'Chidi Okonkwo-Williams', 'coming' => true], ['fullName' => 'Nneka', 'coming' => true]]);
+        self::assertSame(200, $this->statusCode(), Json\encode($this->last()));
+
+        $this->as($this->owner, 'PUT', $this->guests() . '/' . $guest, [
+            'fullName' => self::ADAEZE,
+            'email' => 'adaeze@example.com',
+            'companions' => [['id' => $chidi, 'fullName' => 'Chidi'], ['id' => $place, 'fullName' => null]],
+        ], '"1"');
+
+        self::assertSame([412, ErrorCode::PreconditionFailed->type()], [$this->statusCode(), $this->last()['type'] ?? null], Json\encode($this->last()));
+        self::assertSame(['Chidi Okonkwo-Williams', 'Nneka'], Vec\map($this->companionsOn($token), static fn (array $one): mixed => $one['fullName']));
+    }
+
+    #[Test]
+    public function aGuestWithNoPlacesRepliesAsBeforeAndTheHostsNamesStayUnlessTheGuestChangesThem(): void
+    {
+        $alone = $this->token($this->add('Bisi Adewale'));
+        $this->reply($alone, 'coming');
+        self::assertSame(200, $this->statusCode(), Json\encode($this->last()));
+
+        $guest = $this->add(self::ADAEZE, ['Chidi Okonkwo-Williams']);
+        $this->reply($this->token($guest), 'coming');
+        self::assertSame(['Chidi Okonkwo-Williams', false], [$this->row($guest)['companions'][0]['fullName'] ?? null, $this->row($guest)['companions'][0]['namedByGuest'] ?? null]);
+    }
+
+    /** @return list<array<string, mixed>> */
+    private function companionsOn(#[SensitiveParameter] string $token): array
+    {
+        return Type\vec(Type\dict(Type\string(), Type\mixed()))->coerce($this->open($token)['guest']['companions'] ?? null);
+    }
+
+    /** @return list<mixed> */
+    private function states(string $guest): array
+    {
+        return Vec\map(Type\vec(Type\dict(Type\string(), Type\mixed()))->coerce($this->row($guest)['companions']), static fn (array $one): mixed => $one['state']);
+    }
+
+    /**
+     * @param list<array<string, mixed>> $companions
+     *
+     * @return array<string, mixed>
+     */
+    private function answerWith(#[SensitiveParameter] string $token, string $answer, array $companions): array
+    {
+        return $this->anonymous('/api/guest-links/reply', ['token' => $token, 'answer' => $answer, 'companions' => $companions]);
+    }
+
+    /** @param list<?string> $companions */
     private function add(string $name, array $companions = []): string
     {
         $body = $this->as($this->owner, 'POST', $this->guests(), [
             'fullName' => $name,
-            'companions' => Vec\map($companions, static fn (string $companion): array => ['fullName' => $companion]),
+            'companions' => Vec\map($companions, static fn (?string $companion): array => ['fullName' => $companion]),
         ]);
         self::assertSame(201, $this->statusCode(), Json\encode($body));
 
@@ -422,7 +598,7 @@ final class GuestAnswersTest extends ApiTestCase
     }
 
     /**
-     * @param array<string, string> $body
+     * @param array<string, mixed> $body
      *
      * @return array<string, mixed>
      */
@@ -495,13 +671,14 @@ final class GuestAnswersTest extends ApiTestCase
      *
      * @return array<string, mixed>
      */
-    private function as(User $user, string $method, string $path, ?array $body = null): array
+    private function as(User $user, string $method, string $path, ?array $body = null, ?string $ifMatch = null): array
     {
         $who = self::em()->find(User::class, $user->getId()) ?? self::fail('no user');
         $this->client->request($method, $path, server: [
             'CONTENT_TYPE' => 'application/json',
             'HTTP_AUTHORIZATION' => 'Bearer ' . self::service(JWTTokenManagerInterface::class)->create($who),
             'HTTP_ACCEPT_LANGUAGE' => 'en',
+            ...null === $ifMatch ? [] : ['HTTP_IF_MATCH' => $ifMatch],
         ], content: null === $body ? null : Json\encode($body));
 
         return $this->last();

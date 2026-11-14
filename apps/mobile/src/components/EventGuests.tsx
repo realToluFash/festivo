@@ -379,7 +379,7 @@ function GuestRows({
           invitedWords: t('guestList.countInvited', { count: counts.invited }),
         });
   const row = (person: Person, indent: boolean) => {
-    const { name, line } = rowWords(t, person, indent, timeZone, locale);
+    const { name, line } = rowWords(t, person, indent, timeZone, locale, false);
     const selected = open === person.guest.id && person.companion == null;
     const item = (
       <Row

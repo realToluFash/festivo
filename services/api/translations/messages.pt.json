@@ -126,6 +126,7 @@
     "validation.guest_companion_unknown": "Esse acompanhante não está associado a este convidado. Volte a abrir os dados do convidado.",
     "validation.guest_name_too_long": "Encurte o nome para {max} caracteres, no máximo.",
     "validation.guest_companions_too_many": "Um convidado pode trazer no máximo 10 acompanhantes.",
+    "validation.guest_places_full": "Todos os lugares reservados já têm nome. Se precisar de outro, contacte quem organiza o evento.",
     "guest.already_listed": "{name} já está na lista",
     "guest.version_required": "Envie a versão que está a alterar, no cabeçalho If-Match.",
     "guest.changed_since": "Outra pessoa alterou os dados deste convidado desde que os abriu. A sua alteração não foi guardada.",

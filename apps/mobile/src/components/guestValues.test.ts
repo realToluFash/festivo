@@ -37,8 +37,8 @@ describe('an edited guest as the app saves them', () => {
     const opened = valuesOf(
       details({
         companions: [
-          { id: 'c1', fullName: 'Bo', state: 'held' },
-          { id: 'c2', fullName: null, state: 'held' },
+          { id: 'c1', fullName: 'Bo', state: 'held', namedByGuest: false },
+          { id: 'c2', fullName: null, state: 'held', namedByGuest: false },
         ],
       }),
       'GB',

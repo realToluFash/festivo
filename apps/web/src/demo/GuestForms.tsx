@@ -40,6 +40,8 @@ import { GW, HOW_TOLD, type HowTold, REPLY_WORDS } from './guestsWords.ts';
 import { NEEDS_FIELDS, NO_NEEDS, NW } from './guestNeeds.ts';
 import { NeedsSection } from './GuestNeeds.tsx';
 import { useLater } from '../useLater.ts';
+import { GroupField } from './GuestGroups.tsx';
+import type { GuestGroup } from './guestGroups.ts';
 
 const SAVE_MS = 900;
 const SHOWN_COMPANIONS = 3;
@@ -50,6 +52,7 @@ function firstFailing(lines: Lines): string | null {
   if (lines.greetAs != null) return 'greet-as';
   if (lines.email != null) return 'email';
   if (lines.number != null) return 'number';
+  if (lines.group != null) return 'group';
   for (const [who, found] of Object.entries(lines.needs ?? {})) {
     const field = NEEDS_FIELDS.find((one) => found[one] != null);
 
@@ -392,6 +395,7 @@ function GreetAsField({
 export function EditForm({
   guest,
   list,
+  groups = [],
   start,
   focus,
   onDirty,
@@ -400,6 +404,7 @@ export function EditForm({
 }: {
   guest: Guest;
   list: readonly Guest[];
+  groups?: readonly GuestGroup[];
   start: EditStart;
   focus: (...keys: string[]) => void;
   onDirty: (dirty: boolean) => void;
@@ -430,7 +435,7 @@ export function EditForm({
   const asking = removing?.asks[0];
   const [busy, setBusy] = useState(false);
   const opened = useNeedsOpen(start.needs);
-  const lines = tried ? linesOf(values) : {};
+  const lines = tried ? linesOf(values, groups) : {};
   const dirty = JSON.stringify(values) !== JSON.stringify(base) || start.removed != null;
 
   useEffect(() => onDirty(dirty), [dirty, onDirty]);
@@ -442,7 +447,7 @@ export function EditForm({
 
   function save(): void {
     if (busy || conflict) return;
-    const found = linesOf(values);
+    const found = linesOf(values, groups);
     const first = firstFailing(found);
 
     if (first != null) {
@@ -556,6 +561,13 @@ export function EditForm({
           value={values.language}
           chose={guest.chose}
           onChange={(language) => change({ language })}
+        />
+        <GroupField
+          groups={groups}
+          value={values.group}
+          error={lines.group}
+          start={start.group}
+          onChange={(group) => change({ group })}
         />
         <NeedsSection
           title={NW.needs}
@@ -796,12 +808,14 @@ export function RecordForm({
 /** Add guest (sc-1468), in place: it stays open after each guest, the form cleared and focus back on Full name. */
 export function AddForm({
   list,
+  groups = [],
   start,
   focus,
   onDone,
   onAdd,
 }: {
   list: readonly Guest[];
+  groups?: readonly GuestGroup[];
   start: AddStart;
   focus: (...keys: string[]) => void;
   onDone: () => void;
@@ -816,7 +830,8 @@ export function AddForm({
   );
   const [companionSaid, setCompanionSaid] = useState<string | null>(null);
   const opened = useNeedsOpen(start.needs);
-  const lines = tried ? linesOf(values) : {};
+  const [round, setRound] = useState(0);
+  const lines = tried ? linesOf(values, groups) : {};
 
   function change(next: Partial<Values>): void {
     setValues((was) => ({ ...was, ...next }));
@@ -824,7 +839,7 @@ export function AddForm({
   }
 
   function add(kept = false): void {
-    const found = linesOf(values);
+    const found = linesOf(values, groups);
     const first = firstFailing(found);
 
     if (first != null) {
@@ -845,6 +860,7 @@ export function AddForm({
     setDuplicate(false);
     setFailed(false);
     setCompanionSaid(null);
+    setRound((was) => was + 1);
     opened.closeAll();
     focus('name');
   }
@@ -882,6 +898,14 @@ export function AddForm({
           value={values.language}
           chose={null}
           onChange={(language) => change({ language })}
+        />
+        <GroupField
+          key={round}
+          groups={groups}
+          value={values.group}
+          error={lines.group}
+          start={round === 0 ? start.group : undefined}
+          onChange={(group) => change({ group })}
         />
         <NeedsSection
           title={NW.needs}
