@@ -2416,6 +2416,8 @@
     "openList": "Open the guest list",
     "lead_one": "{{count, number}} coming of {{invited, number}} invited. Each number opens the guests it counts.",
     "lead_other": "{{count, number}} coming of {{invited, number}} invited. Each number opens the guests it counts.",
+    "invitedPeople_one": "{{count, number}} invited",
+    "invitedPeople_other": "{{count, number}} invited",
     "loading": "Loading…",
     "failed": "Guest numbers did not load.",
     "retry": "Try again",
