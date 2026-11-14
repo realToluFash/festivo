@@ -73,6 +73,21 @@ describe('the app guest rows', () => {
     );
   });
 
+  it('says how a guest was invited in place of the reply when the places are not shown, and the reply when there is no such line', () => {
+    const [person] = peopleOf([guest()]);
+    const invited = 'Invited by Folake Adeyemi, WhatsApp, Oct 9';
+
+    expect(rowWords(t, person!, false, 'Europe/London', 'en-GB', false, invited).line).toBe(
+      invited,
+    );
+    expect(rowWords(t, person!, false, 'Europe/London', 'en-GB', false, null).line).toBe(
+      'guestList.reply.noReply',
+    );
+    expect(rowWords(t, person!, false, 'Europe/London', 'en-GB', true, invited).line).toBe(
+      'guestList.reply.noReply',
+    );
+  });
+
   it('says a held companion is held, under their host', () => {
     const people = peopleOf([
       guest({ companions: [{ id: 'c1', fullName: null, state: 'held', namedByGuest: false }] }),
