@@ -1,4 +1,4 @@
-import type { EventCover, OrganisationEvent } from '@soirely/api-client';
+import type { EventCover, EventGuestFigures, OrganisationEvent } from '@soirely/api-client';
 import {
   calledOffDay,
   type CardStepAction,
@@ -48,6 +48,8 @@ export interface ListEvent {
   photo: CardPhoto | null;
   /** Null while they are still being read: an event's page reads them apart from the event. */
   milestones: readonly Milestone[] | null;
+  /** Its guest line's figures on Events (sc-3786); absent where nothing read them. */
+  guests?: EventGuestFigures | null | undefined;
 }
 
 export interface Shown extends ListEvent {

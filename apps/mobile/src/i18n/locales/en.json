@@ -1532,7 +1532,9 @@
     "nextChangeDates": "This event’s end has passed, so it cannot be made live. Change its dates first.",
     "nextResume": "Paused. Guests can’t reply or change anything until you resume it.",
     "footer_one": "{{count, number}} event · Sorted by date",
-    "footer_other": "{{count, number}} events · Sorted by date"
+    "footer_other": "{{count, number}} events · Sorted by date",
+    "comingOpens": "{{figure}}, opens the guests coming to {{event}}",
+    "notRepliedOpens": "{{figure}}, opens the guests of {{event}} with no reply"
   },
   "eventsSearch": {
     "label": "Search events",
@@ -2349,6 +2351,7 @@
     "keepEditing": "Keep editing",
     "discard": "Discard changes",
     "all": "All",
+    "invited": "Invited",
     "comingOf": "{{comingWords}} of {{invitedWords}}",
     "countComing_one": "{{count, number}} coming",
     "countComing_other": "{{count, number}} coming",
@@ -2375,5 +2378,22 @@
     "heldAway": "{{guestOf}} · {{held}}",
     "offlineRefused": "You are offline. Nothing was saved.",
     "offlineRefusedLine": "Your changes stay in this form. Save again once you are connected."
+  },
+  "guestNumbers": {
+    "title": "Guests",
+    "openList": "Open the guest list",
+    "lead": "{{says}}. Each number opens the guests it counts.",
+    "loading": "Loading…",
+    "failed": "Guest numbers didn’t load.",
+    "retry": "Try again",
+    "noneInvited": "No guests invited yet",
+    "heldLine": "Companions waiting on their guest’s answer",
+    "opens": "{{figure}} {{word}}, opens {{word}}",
+    "invitedOpens_one": "{{count, number}} invited, opens the guest list showing invited guests",
+    "invitedOpens_other": "{{count, number}} invited, opens the guest list showing invited guests",
+    "notYetInvited_one": "{{count, number}} not yet invited",
+    "notYetInvited_other": "{{count, number}} not yet invited",
+    "notYetInvitedOpens_one": "{{count, number}} not yet invited, opens the guest list showing guests not yet invited",
+    "notYetInvitedOpens_other": "{{count, number}} not yet invited, opens the guest list showing guests not yet invited"
   }
 }

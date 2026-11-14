@@ -1,5 +1,5 @@
 import type { OrganisationEvent } from '@soirely/api-client';
-import { changedWords } from '@soirely/domain';
+import { type Choice, changedWords } from '@soirely/domain';
 import { router } from 'expo-router';
 import type { TFunction } from 'i18next';
 import { type Ref, useEffect, useRef } from 'react';
@@ -27,6 +27,7 @@ import { tokens } from '../theme/tokens.ts';
 import { AlertLine } from './AlertLine.tsx';
 import { useDeleteEvent } from './DeleteEvent.tsx';
 import { EventCard } from './EventCard.tsx';
+import { EventGuestNumbers } from './EventGuestNumbers.tsx';
 import { EventThumb } from './EventThumb.tsx';
 import { useManageAsks } from './EventManageAsks.tsx';
 import {
@@ -68,9 +69,12 @@ export function EventPage({
   onEdit,
   onDuplicate,
   onDeleted,
+  onGuests,
 }: {
   kind: LayoutKind;
   event: OrganisationEvent;
+  /** Guests, on the choice a count on the Guests card opens (sc-3786). */
+  onGuests: (choice: Choice) => void;
   /** The card's name, where it is the page's only title. */
   nameRef?: Ref<TextHandle> | undefined;
   manages: boolean;
@@ -220,6 +224,7 @@ export function EventPage({
       ]}
     />
   );
+  const numbers = <EventGuestNumbers event={event} onOpen={onGuests} />;
   const forYou = (
     <JustForYou
       words={{
@@ -281,12 +286,14 @@ export function EventPage({
         }
         right={
           <>
+            {numbers}
             {forYou}
             {manage}
           </>
         }
         stacked={
           <>
+            {numbers}
             {details}
             {comingUp}
             {nameCover}

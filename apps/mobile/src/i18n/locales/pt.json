@@ -1582,7 +1582,9 @@
     "nextResume": "Em pausa. Os convidados não podem responder nem alterar nada até retomar o evento.",
     "footer_one": "{{count, number}} evento · Ordenado por data",
     "footer_other": "{{count, number}} eventos · Ordenados por data",
-    "footer_many": "{{count, number}} eventos · Ordenados por data"
+    "footer_many": "{{count, number}} eventos · Ordenados por data",
+    "comingOpens": "{{figure}}, opens the guests coming to {{event}}",
+    "notRepliedOpens": "{{figure}}, opens the guests of {{event}} with no reply"
   },
   "eventsSearch": {
     "label": "Pesquisar eventos",
@@ -2425,6 +2427,7 @@
     "keepEditing": "Continuar a editar",
     "discard": "Descartar alterações",
     "all": "Todos",
+    "invited": "Invited",
     "comingOf": "{{comingWords}} de {{invitedWords}}",
     "countComing_one": "Vem {{count, number}}",
     "countComing_other": "Vêm {{count, number}}",
@@ -2457,5 +2460,25 @@
     "heldAway": "{{guestOf}} · {{held}}",
     "offlineRefused": "Está sem ligação à Internet. Nada foi guardado.",
     "offlineRefusedLine": "As suas alterações continuam neste formulário. Guarde novamente quando voltar a ter Internet."
+  },
+  "guestNumbers": {
+    "title": "Guests",
+    "openList": "Open the guest list",
+    "lead": "{{says}}. Each number opens the guests it counts.",
+    "loading": "Loading…",
+    "failed": "Guest numbers didn’t load.",
+    "retry": "Try again",
+    "noneInvited": "No guests invited yet",
+    "heldLine": "Companions waiting on their guest’s answer",
+    "opens": "{{figure}} {{word}}, opens {{word}}",
+    "invitedOpens_one": "{{count, number}} invited, opens the guest list showing invited guests",
+    "invitedOpens_other": "{{count, number}} invited, opens the guest list showing invited guests",
+    "invitedOpens_many": "{{count, number}} invited, opens the guest list showing invited guests",
+    "notYetInvited_one": "{{count, number}} not yet invited",
+    "notYetInvited_other": "{{count, number}} not yet invited",
+    "notYetInvited_many": "{{count, number}} not yet invited",
+    "notYetInvitedOpens_one": "{{count, number}} not yet invited, opens the guest list showing guests not yet invited",
+    "notYetInvitedOpens_other": "{{count, number}} not yet invited, opens the guest list showing guests not yet invited",
+    "notYetInvitedOpens_many": "{{count, number}} not yet invited, opens the guest list showing guests not yet invited"
   }
 }

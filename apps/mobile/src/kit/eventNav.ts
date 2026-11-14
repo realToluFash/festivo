@@ -14,6 +14,9 @@ export const MORE_PLACES: readonly EventPlace[] = EVENT_PLACES.filter(
 /** The route param an event's screen reads its area from, so choosing one replaces it and adds nothing to Back. */
 export const EVENT_AREA = 'area';
 
+/** The route param Guests opens its filter menu's choice from (sc-3786). */
+export const GUESTS_FILTER = 'filter';
+
 /** The route param saying the event was opened from Happening now, so Back keeps the tab that was showing. */
 export const FROM_HAPPENING_NOW = 'now';
 
@@ -39,4 +42,9 @@ export function eventHref(eventId: string, fromHappeningNow = false): `/events/$
   const page = `/events/${encodeURIComponent(eventId)}` as const;
 
   return fromHappeningNow ? `${page}?${FROM_HAPPENING_NOW}=1` : page;
+}
+
+/** An event's Guests with a choice in its filter menu, as a figure on Events opens it (sc-3786). */
+export function guestsHref(eventId: string, filter: string): `/events/${string}` {
+  return `/events/${encodeURIComponent(eventId)}?${EVENT_AREA}=guests&${GUESTS_FILTER}=${encodeURIComponent(filter)}`;
 }
