@@ -37,7 +37,7 @@ import {
   newGuestOf,
   problemsOf,
   violationProblems,
-} from './guestRows.ts';
+} from '@soirely/domain';
 
 const SHOWN_COMPANIONS = 3;
 const PIECES = [1, 2, 3, 4, 5, 6];

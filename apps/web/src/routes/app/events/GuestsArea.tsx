@@ -63,7 +63,7 @@ import {
   problemsOf,
   violationProblems,
   withGuest as listedWith,
-} from './guestRows.ts';
+} from '@soirely/domain';
 import {
   GuestColumn,
   REPLY_KEY,
@@ -81,7 +81,7 @@ import {
   type ViewRow,
   countsOf,
   viewOf,
-} from './guestView.ts';
+} from '@soirely/domain';
 import { useGuestsAddress } from './useGuestsAddress.ts';
 import '../../../components/desk.css';
 import '../../../components/SettingsParts.css';

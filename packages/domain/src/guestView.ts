@@ -1,5 +1,7 @@
 import type { Companion, Guest, HeadcountCounts } from '@soirely/api-client';
-import { compareGuestNames, nameKey, phoneMatches } from '@soirely/domain';
+import { compareGuestNames } from './guestName.ts';
+import { nameKey } from './nameKey.ts';
+import { phoneMatches } from './phone.ts';
 
 /** Where a person stands, in the host's words: a companion is Held until their guest is Coming. */
 export type Standing = 'coming' | 'maybe' | 'noReply' | 'held' | 'notComing';
