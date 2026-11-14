@@ -2,9 +2,9 @@ import type { Ref } from 'react';
 import { StyleSheet, View } from 'react-native';
 
 import type { LayoutKind } from '../layout/useLayout.ts';
-import type { Shown } from '../kit/eventsList.ts';
+import type { CardTag, Shown } from '../kit/eventsList.ts';
 import { tokens } from '../theme/tokens.ts';
-import { CardBackdrop } from './EventCard.tsx';
+import { CardBackdrop, PhaseShape } from './EventCard.tsx';
 import { eventColour } from './EventMesh.tsx';
 import { type MarkKind, ReplyMark } from './ReplyMark.tsx';
 import {
@@ -29,10 +29,11 @@ const LIST_HEIGHT: Record<LayoutKind, number> = {
   tabletLandscape: 140,
 };
 
-/** Guests' card as the demo draws it (sc-31780): the count line in the event's colours, the line under it, and on an empty list Add guest. */
+/** Guests' card as the demo draws it (sc-31780): a Draft, Paused or Finished event's chip, the count line in the event's colours, the line under it, and its one step. */
 export function GuestsCard({
   kind,
   event,
+  tags = [],
   says,
   line,
   step,
@@ -40,6 +41,7 @@ export function GuestsCard({
 }: {
   kind: LayoutKind;
   event: Shown | null;
+  tags?: readonly CardTag[];
   says: string;
   /** The empty list's "No guests yet" heads the area. */
   heading?: boolean;
@@ -53,6 +55,17 @@ export function GuestsCard({
       backdrop={event == null ? undefined : <CardBackdrop event={event} />}
       testID="guests.card"
     >
+      {tags.length > 0 && (
+        <View style={styles.tags}>
+          {tags.map((tag) => (
+            <GlassTag
+              key={tag.word}
+              word={tag.word}
+              shape={tag.mark == null ? undefined : <PhaseShape mark={tag.mark} />}
+            />
+          ))}
+        </View>
+      )}
       <CardSays text={says} heading={heading} />
       {line != null && <OnCard text={line} />}
       {step != null && (
