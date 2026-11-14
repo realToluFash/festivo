@@ -1,0 +1,7 @@
+.mg-notice-bubble.is-wa.mi-wa span {
+  gap: var(--spaceSm);
+}
+
+.mg-notice-bubble.is-wa.mi-wa span svg {
+  flex: none;
+}

@@ -1,0 +1,24 @@
+# A long search that matches nothing shows No organisation matches with Clear search. sc-36382.
+appId: host.exp.Exponent
+---
+- openLink: ${METRO_URL}/--/
+- tapOn:
+    id: 'tab-today|frame.home'
+    optional: true
+- tapOn:
+    id: 'frame.organisation|home.switchOrganisation'
+- extendedWaitUntil:
+    visible:
+      id: 'switcher.heading'
+    timeout: 10000
+- waitForAnimationToEnd:
+    timeout: 5000
+- tapOn:
+    id: 'switcher.search'
+- inputText: 'Maison des Fetes du Grand Ouest et de la Cote Pacifique'
+- waitForAnimationToEnd:
+    timeout: 3000
+- hideKeyboard
+- assertVisible:
+    id: 'switcher.search.clearAll'
+- takeScreenshot: none

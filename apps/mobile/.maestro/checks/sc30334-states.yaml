@@ -1,0 +1,60 @@
+# sc-30334: every Create an organisation state the demo opens by ?create=, one screenshot each.
+appId: host.exp.Exponent
+---
+- openLink: ${METRO_URL}/--/demo/today?create=name
+- waitForAnimationToEnd: { timeout: 8000 }
+- takeScreenshot: create-name
+- openLink: ${METRO_URL}/--/demo/today?create=typing
+- waitForAnimationToEnd: { timeout: 8000 }
+- takeScreenshot: create-typing
+- openLink: ${METRO_URL}/--/demo/today?create=name-blank
+- waitForAnimationToEnd: { timeout: 8000 }
+- takeScreenshot: create-name-blank
+- openLink: ${METRO_URL}/--/demo/today?create=name-long
+- waitForAnimationToEnd: { timeout: 8000 }
+- takeScreenshot: create-name-long
+- openLink: ${METRO_URL}/--/demo/today?create=name-refused
+- waitForAnimationToEnd: { timeout: 8000 }
+- takeScreenshot: create-name-refused
+- openLink: ${METRO_URL}/--/demo/today?create=country
+- waitForAnimationToEnd: { timeout: 8000 }
+- takeScreenshot: create-country
+- openLink: ${METRO_URL}/--/demo/today?create=country-list
+- waitForAnimationToEnd: { timeout: 8000 }
+- takeScreenshot: create-country-list
+- openLink: ${METRO_URL}/--/demo/today?create=country-search
+- waitForAnimationToEnd: { timeout: 8000 }
+- takeScreenshot: create-country-search
+- openLink: ${METRO_URL}/--/demo/today?create=country-picked
+- waitForAnimationToEnd: { timeout: 8000 }
+- takeScreenshot: create-country-picked
+- openLink: ${METRO_URL}/--/demo/today?create=country-none
+- waitForAnimationToEnd: { timeout: 8000 }
+- takeScreenshot: create-country-none
+- openLink: ${METRO_URL}/--/demo/today?create=ready
+- waitForAnimationToEnd: { timeout: 8000 }
+- takeScreenshot: create-ready
+- openLink: ${METRO_URL}/--/demo/today?create=creating
+- waitForAnimationToEnd: { timeout: 8000 }
+- takeScreenshot: create-creating
+- openLink: ${METRO_URL}/--/demo/today?create=limited
+- waitForAnimationToEnd: { timeout: 8000 }
+- takeScreenshot: create-limited
+- openLink: ${METRO_URL}/--/demo/today?create=failed
+- waitForAnimationToEnd: { timeout: 8000 }
+- takeScreenshot: create-failed
+- openLink: ${METRO_URL}/--/demo/today?create=created
+- waitForAnimationToEnd: { timeout: 8000 }
+- takeScreenshot: create-created
+- openLink: ${METRO_URL}/--/demo/today?create=back-name
+- waitForAnimationToEnd: { timeout: 8000 }
+- takeScreenshot: create-back-name
+- openLink: ${METRO_URL}/--/demo/today?create=back-country
+- waitForAnimationToEnd: { timeout: 8000 }
+- takeScreenshot: create-back-country
+- openLink: ${METRO_URL}/--/demo/today?create=discard
+- waitForAnimationToEnd: { timeout: 8000 }
+- takeScreenshot: create-discard
+- openLink: ${METRO_URL}/--/demo/today?orgs=none
+- waitForAnimationToEnd: { timeout: 8000 }
+- takeScreenshot: create-orgs-none

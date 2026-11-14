@@ -1,0 +1,57 @@
+# Release build: launches the app and leaves it on Home signed in as EMAIL with PASSWORD, signing in only if it opens signed out. sc-21936.
+appId: com.soirely.app
+---
+- launchApp:
+    appId: com.soirely.app
+- runFlow:
+    when:
+      visible: 'Open in .*Soirely.*'
+      platform: iOS
+    commands:
+      - tapOn: 'Cancel'
+- extendedWaitUntil:
+    visible:
+      id: '(welcome\.email|signIn\.email|home\.openSettings)'
+    timeout: 60000
+- runFlow:
+    when:
+      visible:
+        id: 'welcome.email'
+    commands:
+      - tapOn:
+          id: 'welcome.email'
+          optional: true
+- extendedWaitUntil:
+    visible:
+      id: '(signIn\.email|home\.openSettings)'
+    timeout: 30000
+- runFlow:
+    when:
+      visible:
+        id: 'signIn.email'
+    commands:
+      - tapOn:
+          id: 'signIn.email'
+      - inputText: ${EMAIL}
+      - scrollUntilVisible:
+          element:
+            id: 'signIn.password'
+          direction: DOWN
+          centerElement: true
+      - tapOn:
+          id: 'signIn.password'
+      - inputText: ${PASSWORD}
+      - pressKey: Enter
+      - runFlow:
+          when:
+            visible:
+              id: 'signIn.submit'
+            platform: Android
+          commands:
+            - hideKeyboard
+            - tapOn:
+                id: 'signIn.submit'
+- extendedWaitUntil:
+    visible:
+      id: 'home.openSettings'
+    timeout: 60000

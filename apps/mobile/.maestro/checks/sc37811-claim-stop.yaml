@@ -1,0 +1,54 @@
+# sc-37811: another admin's claim: Stop asked while the claimant withdraws (the claim has changed), then a new claim stopped, then closed. Needs ${METRO_URL}, ${API_URL}, ${WEB_URL}, ORG, CLAIMANT_EMAIL, CLAIMANT_PASSWORD; an open claim of CLAIMANT's.
+appId: host.exp.Exponent
+---
+- openLink: ${METRO_URL}/--/settings/members
+- extendedWaitUntil:
+    visible:
+      id: 'members.card'
+    timeout: 30000
+- waitForAnimationToEnd:
+    timeout: 8000
+- scrollUntilVisible:
+    element:
+      id: 'ownerClaim.stop'
+- tapOn:
+    id: 'ownerClaim.stop'
+- waitForAnimationToEnd
+- takeScreenshot: stop-ask
+- runScript:
+    file: ../scripts/sc37811-claimant.js
+    env:
+      ASK: withdraw
+- tapOn:
+    id: 'ownerClaim.stopYes'
+- waitForAnimationToEnd:
+    timeout: 8000
+- takeScreenshot: ended
+- runScript:
+    file: ../scripts/sc37811-claimant.js
+    env:
+      ASK: claim
+- tapOn:
+    id: 'ownerClaim.reload'
+- waitForAnimationToEnd:
+    timeout: 8000
+- takeScreenshot: reloaded
+- scrollUntilVisible:
+    element:
+      id: 'ownerClaim.stop'
+- tapOn:
+    id: 'ownerClaim.stop'
+- waitForAnimationToEnd
+- tapOn:
+    id: 'ownerClaim.stopYes'
+- waitForAnimationToEnd:
+    timeout: 8000
+- scrollUntilVisible:
+    element:
+      id: 'members.card'
+    direction: UP
+- takeScreenshot: stopped
+- openLink: ${METRO_URL}/--/settings/members
+- waitForAnimationToEnd:
+    timeout: 8000
+- takeScreenshot: closed

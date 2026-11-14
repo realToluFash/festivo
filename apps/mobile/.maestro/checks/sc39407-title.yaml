@@ -1,0 +1,69 @@
+# sc-39407: the phone Calendar's month title whole, in Month and Agenda: November 2026, back to August and September 2026 (mid-fade too), and the stepper's place across the turn. Needs an account whose organisation has an event in each of Aug to Dec 2026.
+appId: host.exp.Exponent
+---
+- openLink: ${METRO_URL}/--/calendar
+- extendedWaitUntil:
+    visible:
+      id: calendar.view.month
+    timeout: 30000
+- tapOn:
+    id: calendar.view.month
+- tapOn:
+    id: calendar.today
+- waitForAnimationToEnd:
+    timeout: 4000
+- takeScreenshot: month-nov
+- tapOn:
+    id: calendar.previous
+- waitForAnimationToEnd:
+    timeout: 4000
+- tapOn:
+    id: calendar.previous
+- waitForAnimationToEnd:
+    timeout: 4000
+- tapOn:
+    id: calendar.previous
+- waitForAnimationToEnd:
+    timeout: 4000
+- takeScreenshot: month-aug
+- tapOn:
+    id: calendar.next
+- takeScreenshot: month-aug-to-sep-midfade
+- waitForAnimationToEnd:
+    timeout: 4000
+- takeScreenshot: month-sep
+- tapOn:
+    id: calendar.previous
+- takeScreenshot: month-sep-to-aug-midfade
+- waitForAnimationToEnd:
+    timeout: 4000
+- takeScreenshot: month-aug-again
+- tapOn:
+    id: calendar.next
+- waitForAnimationToEnd:
+    timeout: 4000
+- tapOn:
+    id: calendar.view.agenda
+- extendedWaitUntil:
+    visible:
+      id: calendar.agenda
+    timeout: 20000
+- waitForAnimationToEnd:
+    timeout: 4000
+- takeScreenshot: agenda-sep
+- tapOn:
+    id: calendar.today
+- waitForAnimationToEnd:
+    timeout: 4000
+- waitForAnimationToEnd:
+    timeout: 4000
+- takeScreenshot: agenda-nov
+- tapOn:
+    id: calendar.next
+- waitForAnimationToEnd:
+    timeout: 4000
+- takeScreenshot: agenda-next
+- tapOn:
+    id: calendar.view.month
+- waitForAnimationToEnd:
+    timeout: 4000

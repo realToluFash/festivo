@@ -1,0 +1,41 @@
+# sc-36126: Transfer ownership's verb, then the transferred toast and its line. MEMBER is a membership id, PASSWORD the owner's.
+appId: host.exp.Exponent
+---
+- openLink: ${METRO_URL}/--/settings/organisation
+- extendedWaitUntil:
+    visible:
+      id: organisation.card
+    timeout: 30000
+- scrollUntilVisible:
+    element:
+      id: organisation.ownership.transfer
+- tapOn:
+    id: organisation.ownership.transfer
+- scrollUntilVisible:
+    element:
+      id: organisation.transfer.${MEMBER}
+    centerElement: true
+- tapOn:
+    id: organisation.transfer.${MEMBER}
+- scrollUntilVisible:
+    element:
+      id: organisation.transfer.password
+    centerElement: true
+- tapOn:
+    id: organisation.transfer.password
+- inputText: ${PASSWORD}
+- hideKeyboard
+- waitForAnimationToEnd
+- takeScreenshot: transfer-sheet
+- tapOn:
+    id: organisation.transfer.send
+- extendedWaitUntil:
+    notVisible:
+      id: organisation.transfer
+    timeout: 30000
+- scrollUntilVisible:
+    element: '.*{{t:ownership.transferredLine}}.*'
+    direction: UP
+    timeout: 20000
+- waitForAnimationToEnd
+- takeScreenshot: transferred
