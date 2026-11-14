@@ -193,6 +193,7 @@ describe('Remove from the list (sc-3774)', () => {
     expect(dialog.textContent).toContain(
       'Kwame Mensah has just arrived, so they stay on the list.',
     );
+    expect(dialog.querySelector('.gr-ask')).not.toBeNull();
     fireEvent.click(within(dialog).getByRole('button', { name: 'Back to their details' }));
 
     expect(screen.queryByRole('alertdialog')).toBeNull();
@@ -207,6 +208,7 @@ describe('Remove from the list (sc-3774)', () => {
 
     fireEvent.click(within(dialog).getByRole('button', { name: 'Remove' }));
     expect(dialog.textContent).toContain('Tomás Ferreira was already removed by someone else.');
+    expect(dialog.querySelector('.gr-ask')).not.toBeNull();
     fireEvent.click(within(dialog).getByRole('button', { name: 'Back to guests' }));
 
     expect(screen.queryByRole('alertdialog')).toBeNull();

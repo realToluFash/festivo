@@ -34,7 +34,9 @@ export function RemoveAsk({
         }
         keep={removing.refused === 'arrived' ? RMW.backToDetails : RMW.backToGuests}
         onKeep={onBack}
-      />
+      >
+        <span className="gr-ask" hidden />
+      </Ask>
     );
 
   return (
@@ -48,7 +50,7 @@ export function RemoveAsk({
       onKeep={onKeep}
       onGo={onRemove}
     >
-      <ul id={`${id}-goes`} className="desk-rows gs-rows gr-goes">
+      <ul id={`${id}-goes`} className="desk-rows gs-rows gr-goes gr-ask">
         {goesWith(guest).map((row) => (
           <li key={row.key} className="desk-row">
             <MarkLead reply={row.reply} />
