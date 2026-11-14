@@ -14,7 +14,7 @@ import { createStateOf } from '../../src/demo/createOrg/CreateWalk.ts';
 import { NoOrganisation } from '../../src/demo/createOrg/NoOrganisation.tsx';
 import { OrgSwitcherProvider, useCurrentPlace } from '../../src/demo/OrgSwitcher.tsx';
 import { switcherStateOf } from '../../src/demo/OrgSwitcherModel.ts';
-import { INVITES_NOT_SENT, isNeedsState, MOMENTS, momentOf, sayIn } from '../../src/demo/today.ts';
+import { isNeedsState, MOMENTS, momentOf, planGuests, sayIn } from '../../src/demo/today.ts';
 import { ArrivedTodayScreen } from '../../src/demo/today/ArrivedToday.tsx';
 import {
   ARRIVED_AT,
@@ -91,6 +91,7 @@ function DemoTodayScreen() {
     arrived?: string;
     numbers?: string;
     invites?: string;
+    figures?: string;
     needs?: string;
     starts?: string;
   }>();
@@ -103,7 +104,7 @@ function DemoTodayScreen() {
   const arrivedState = isArrivedState(params.arrived) ? params.arrived : null;
   // Nobody arrived and arrivals coming in are day 1, at Guests A's door; the rest are day 2.
   const at = name === 'dayNow' && arrivedState != null ? ARRIVED_AT[arrivedState] : undefined;
-  const guests = name === 'plan' && params.invites === 'none' ? INVITES_NOT_SENT : undefined;
+  const guests = name === 'plan' ? planGuests(params.invites, params.figures) : undefined;
   const needing = name === 'plan' && isNeedsState(params.needs) ? params.needs : undefined;
   const later = name === 'plan' && params.starts === 'later';
   const moment = useMemo(

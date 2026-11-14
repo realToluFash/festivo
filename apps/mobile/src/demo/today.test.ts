@@ -3,7 +3,15 @@ import { describe, expect, it } from 'vitest';
 
 import en from '../i18n/locales/en.json';
 import { ARRIVED_AT } from './today/arrived.ts';
-import { INVITES_NOT_SENT, momentOf, railAt, repliesOf, sayIn, sharePercent } from './today.ts';
+import {
+  INVITES_NOT_SENT,
+  momentOf,
+  planGuests,
+  railAt,
+  repliesOf,
+  sayIn,
+  sharePercent,
+} from './today.ts';
 
 const i18n = createInstance();
 void i18n.init({
@@ -166,6 +174,36 @@ describe('the planning day before the party’s invitations go out (?invites=non
 
   it('changes only the party’s line: Needs you is the timeline’s, whoever has been invited', () => {
     expect(notSent.needs).toEqual(momentOf('plan', us, t).needs);
+  });
+});
+
+describe('the planning day with the party invited and nobody replied (?invites=unanswered)', () => {
+  const unanswered = momentOf('plan', us, t, { guests: planGuests('unanswered', undefined) });
+
+  it('reads 0 coming · 0% replied on the party, and the others as before', () => {
+    expect(unanswered.events.map(({ ready }) => ready)).toEqual([
+      { words: '96 coming · 82% replied', percent: 82 },
+      { words: '31 coming · 63% replied', percent: 63 },
+      { words: '0 coming · 0% replied', percent: 0 },
+      null,
+    ]);
+  });
+});
+
+describe('no guests.read, and figures that fail to load (?figures=hidden, ?figures=failed)', () => {
+  it.each(['hidden', 'failed'])('shows no line and no bar on any card (%s)', (figures) => {
+    const shown = momentOf('plan', us, t);
+    const none = momentOf('plan', us, t, { guests: planGuests(undefined, figures) });
+
+    expect(none.events.map(({ ready }) => ready)).toEqual([null, null, null, null]);
+    expect(none.events.map(({ name, dates, count }) => [name, dates, count])).toEqual(
+      shown.events.map(({ name, dates, count }) => [name, dates, count]),
+    );
+    expect(none.needs).toEqual(shown.needs);
+  });
+
+  it('wins over ?invites, since no figure reaches the device', () => {
+    expect(planGuests('none', 'hidden')).toEqual({});
   });
 });
 

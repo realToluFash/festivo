@@ -193,6 +193,26 @@ export const INVITES_NOT_SENT: GuestsOf = {
   [IDS.party]: { invited: 0, coming: 0, replied: 0 },
 };
 
+/** `?invites=unanswered`: the party's invitations are out and nobody has replied yet. */
+export const NO_REPLIES_YET: GuestsOf = {
+  ...SAMPLE_GUESTS,
+  [IDS.party]: { invited: SAMPLE_GUESTS[IDS.party]?.invited ?? 0, coming: 0, replied: 0 },
+};
+
+/** `?figures=hidden` (no guests.read) and `?figures=failed`: no guest number reaches the device. */
+export const NO_FIGURES: GuestsOf = {};
+
+export function planGuests(
+  invites: string | undefined,
+  figures: string | undefined,
+): GuestsOf | undefined {
+  if (figures === 'hidden' || figures === 'failed') return NO_FIGURES;
+  if (invites === 'none') return INVITES_NOT_SENT;
+  if (invites === 'unanswered') return NO_REPLIES_YET;
+
+  return undefined;
+}
+
 /** sc-29881's line, from the guests Events' tiles count (sc-23284), so Today and Events agree. */
 export function repliesOf(key: EventKey, sample: GuestsOf = SAMPLE_GUESTS): EventCard['ready'] {
   const guests = sample[IDS[key]];
