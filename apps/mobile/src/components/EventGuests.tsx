@@ -47,7 +47,7 @@ import { useTranslation } from 'react-i18next';
 import { api } from '../api.ts';
 import { followReadingAgain } from '../followTopic.ts';
 import { dateLocale } from '../i18n/index.ts';
-import type { Shown } from '../kit/eventsList.ts';
+import { type CardTag, type Shown, cardTags } from '../kit/eventsList.ts';
 import { sidebarCardOf } from '../kit/eventTop.ts';
 import { filterChoices, markOf } from '../kit/guestRows.ts';
 import { type ScreenOffline, useHandOffline, useOffline } from '../offline.ts';
@@ -59,14 +59,15 @@ import { GuestDetails, type GuestNotice, type GuestPane } from './GuestDetails.t
 import { GuestForm, type GuestFormMode } from './GuestForm.tsx';
 import { GuestsCard } from './GuestsCard.tsx';
 import { type MarkRefusal, MarkInvited } from './GuestInvitation.tsx';
-import { DraftRow } from './MakeLive.tsx';
+import { draftRowOf } from '../kit/makeLive.ts';
+import { DraftRow, useMakeLive } from './MakeLive.tsx';
 import type { ScreenReaderTarget } from './screenReaderFocus.ts';
 import type { LayoutKind } from '../layout/useLayout.ts';
 import { type ListAndPageSpacing, ListAndPage, useListAndPageLayout } from './ListAndPage.tsx';
 import { LIST_EDGES } from './listFrame.ts';
 import { useReadOut } from './ReadOut.tsx';
 import { MarkSlot } from './ReplyMark.tsx';
-import { FailedBlock } from './Summary.tsx';
+import { FailedBlock, type StepProps } from './Summary.tsx';
 import { type Anchor, AnchoredMenu, anchorUnder } from './SummaryOverlays.tsx';
 import { Row, RowList, TextAction } from './SummaryRows.tsx';
 import { Text, type TextHandle } from './Text.tsx';
@@ -150,6 +151,8 @@ export function EventGuests({
   const editButton = useRef<ViewInstance>(null);
   const markButton = useRef<ViewInstance>(null);
   const unmarkButton = useRef<ViewInstance>(null);
+  const liveOpener = useRef<ViewInstance>(null);
+  const makeLive = useMakeLive({ event, onChange: onEventChange, opener: liveOpener });
   const unmarking = useRef(false);
   const markOpener = useRef<ScreenReaderTarget | null>(null);
   const searchField = useRef<TextInputInstance>(null);
@@ -336,10 +339,17 @@ export function EventGuests({
   const timeZone = event.timeZone;
   const locale = dateLocale();
 
+  const onCard = loaded && !empty;
   const phaseLine =
-    phase == null ? null : (
+    phase == null || onCard ? null : (
       <PhaseLine event={event} phase={phase} now={now} onChange={onEventChange} />
     );
+  const phaseCard = phaseCardOf(t, event, shown, phase, now, {
+    label: t('eventLive.makeLive'),
+    ref: liveOpener,
+    onPress: makeLive.start,
+    testID: 'events.makeLive',
+  });
   const rows =
     load.kind === 'loading' ? (
       <GuestsLoading />
@@ -389,6 +399,7 @@ export function EventGuests({
         onOpen={openGuest}
         added={added}
         card={shown}
+        phaseCard={phaseCard}
         kind={kind}
         searchRef={searchField}
         timeZone={timeZone}
@@ -399,6 +410,7 @@ export function EventGuests({
     <>
       {phaseLine}
       {rows}
+      {onCard && makeLive.sheet}
     </>
   );
 
@@ -504,6 +516,7 @@ function GuestRows({
   onOpen,
   added,
   card,
+  phaseCard,
   kind,
   searchRef,
   timeZone,
@@ -521,6 +534,7 @@ function GuestRows({
   onOpen: (guestId: string) => void;
   added: string | null;
   card: Shown | null;
+  phaseCard: PhaseCard | null;
   kind: LayoutKind;
   searchRef: React.RefObject<TextInputInstance | null>;
   timeZone: string;
@@ -535,7 +549,7 @@ function GuestRows({
     onChoice('all');
   };
   const says =
-    counts.invited === 0
+    counts.invited === 0 || phaseCard?.onList === true
       ? t('guestList.onTheList', { count: counts.all })
       : t('guestList.comingOf', {
           comingWords: t('guestList.countComing', { count: counts.coming }),
@@ -580,9 +594,10 @@ function GuestRows({
         <GuestsCard
           kind={kind}
           event={card}
+          tags={phaseCard?.tags ?? []}
           says={says}
-          line={counts.invited > 0 ? haventLine(t, counts) : null}
-          step={null}
+          line={phaseCard?.line ?? (counts.invited > 0 ? haventLine(t, counts) : null)}
+          step={phaseCard?.step ?? null}
         />
       )}
       <View style={styles.searchRow}>
@@ -745,7 +760,49 @@ function FilterChoice({
   );
 }
 
-/** Why nobody can be invited, at the top before anything is pressed: a Draft's line with Make live, a Paused or Finished event's line alone (sc-46879). */
+interface PhaseCard {
+  tags: CardTag[];
+  /** A Draft counts who is on the list, since nobody is invited yet. */
+  onList: boolean;
+  line: string;
+  step: StepProps | null;
+}
+
+/** Why nobody can be invited, on the card as the demo's draft, paused and finished draw it: the phase's chip, its line, and on a Draft Make live for someone with events.manage (sc-46879). */
+function phaseCardOf(
+  t: TFunction,
+  event: OrganisationEvent,
+  shown: Shown | null,
+  phase: EventPhase | null,
+  now: Date,
+  makeLive: StepProps,
+): PhaseCard | null {
+  if (shown == null) return null;
+  const tags = cardTags(shown, now, t).filter((tag) => tag.mark != null);
+
+  if (phase === 'draft') {
+    const row = draftRowOf(event, now, roleHolds(event, 'events.manage'));
+
+    return row == null
+      ? null
+      : {
+          tags,
+          onList: true,
+          line: row.line === 'endPassed' ? t('eventLive.endPassed') : t('eventLive.guestsBlocked'),
+          step: row.offersMakeLive ? makeLive : null,
+        };
+  }
+  if (phase !== 'paused' && phase !== 'finished') return null;
+
+  return {
+    tags,
+    onList: false,
+    line: t(phase === 'paused' ? 'guestList.pausedLine' : 'guestList.finishedLine'),
+    step: null,
+  };
+}
+
+/** Before the list is read, or on an empty one, the phase's line stands above it: a Draft's with Make live, a Paused or Finished event's alone (sc-46879). */
 function PhaseLine({
   event,
   phase,
