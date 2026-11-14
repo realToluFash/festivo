@@ -8,6 +8,7 @@ import {
   useRef,
   useState,
 } from 'react';
+import { numberFormat } from '@soirely/domain';
 import { createPortal } from 'react-dom';
 import { useTranslation } from 'react-i18next';
 
@@ -763,7 +764,7 @@ export function Menu({
   onPick: (key: string) => void;
 }) {
   const { i18n } = useTranslation();
-  const figure = new Intl.NumberFormat(i18n.language);
+  const figure = numberFormat(i18n.language);
   const id = useId();
   const button = useRef<HTMLButtonElement>(null);
   const menu = useRef<HTMLUListElement>(null);
