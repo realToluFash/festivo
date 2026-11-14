@@ -2484,6 +2484,7 @@
     },
     "markNotInvited": "Anular registro",
     "unmarked": "Registro anulado. Vuelve a estar en «Sin invitar».",
+    "unmarkNotSaved": "Not saved. They are still invited. Try again.",
     "unmarkRefused": "No se ha cambiado. {{name}} respondió «{{reply}}» el {{date}}, así que la invitación se mantiene.",
     "readOnlyInvited": "Puede ver los nombres, las respuestas y a quién se ha invitado. Para registrar invitaciones hace falta el rol Responsable o Puede editar.",
     "pausedLine": "No se puede invitar a nadie mientras este evento esté en pausa.",

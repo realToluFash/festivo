@@ -2402,6 +2402,7 @@
     },
     "markNotInvited": "Mark as not invited",
     "unmarked": "Marked as not invited.",
+    "unmarkNotSaved": "Not saved. They are still invited. Try again.",
     "unmarkRefused": "Not changed. {{name}} replied {{reply}} on {{date}}, so they stay invited.",
     "readOnlyInvited": "You can see names, replies and who is invited. Marking guests as invited needs the Lead or Can edit role.",
     "pausedLine": "Guests can’t be invited while this event is paused.",
