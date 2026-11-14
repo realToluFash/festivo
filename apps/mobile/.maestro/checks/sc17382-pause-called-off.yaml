@@ -1,0 +1,22 @@
+# sc-17382: A has the event open, B calls it off, A's pause is refused: the amber row says it was called off, never that it is over. Pass API, B_TOKEN (B's bearer) and PAUSE_EVENT.
+appId: host.exp.Exponent
+---
+- openLink: ${METRO_URL}/--/events/${PAUSE_EVENT}
+- extendedWaitUntil:
+    visible:
+      id: 'events.pause'
+    timeout: 30000
+- takeScreenshot: open
+- evalScript: "${output.calledOff = http.request(API + '/api/events/' + PAUSE_EVENT + '/end', {method: 'POST', headers: {Authorization: 'Bearer ' + B_TOKEN, 'Content-Type': 'application/json'}, body: '{}'}).status}"
+- assertTrue: ${output.calledOff == 200}
+- tapOn:
+    id: 'events.pause'
+- tapOn:
+    id: 'events.pauseYes'
+- extendedWaitUntil:
+    visible: 'Somebody else changed this event while you had it open.'
+    timeout: 15000
+- assertVisible: "It's been called off. The page shows what it is now."
+- assertNotVisible: 'This event is already over.'
+- assertNotVisible: "It's finished now.*"
+- takeScreenshot: refused

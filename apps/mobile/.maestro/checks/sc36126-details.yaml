@@ -1,0 +1,89 @@
+# sc-36126: Organisation's Details card, Edit details sheet, Country and Currency pickers, the discard ask at 1 change and at 2, and Saved. NEW_NAME is the name saved.
+appId: host.exp.Exponent
+---
+- openLink: ${METRO_URL}/--/settings/organisation
+- extendedWaitUntil:
+    visible:
+      id: organisation.edit
+    timeout: 30000
+- waitForAnimationToEnd
+- takeScreenshot: details-card
+- tapOn:
+    id: organisation.edit
+- extendedWaitUntil:
+    visible:
+      id: organisation.name
+    timeout: 30000
+- waitForAnimationToEnd
+- takeScreenshot: edit-sheet
+- tapOn:
+    id: organisation.country
+- extendedWaitUntil:
+    visible:
+      id: organisation.country.back
+    timeout: 15000
+- waitForAnimationToEnd
+- takeScreenshot: country-picker
+- tapOn:
+    id: organisation.country.back
+- tapOn:
+    id: organisation.currency
+- extendedWaitUntil:
+    visible:
+      id: organisation.currency.back
+    timeout: 15000
+- waitForAnimationToEnd
+- takeScreenshot: currency-picker
+- tapOn:
+    id: organisation.currency.back
+- tapOn:
+    id: organisation.name
+- eraseText: 120
+- inputText: Fundacion Olorun
+- hideKeyboard
+- tapOn:
+    id: organisation.details.cancel
+- extendedWaitUntil:
+    visible:
+      id: organisation.details.keep
+    timeout: 15000
+- waitForAnimationToEnd
+- takeScreenshot: discard-one
+- tapOn:
+    id: organisation.details.keep
+- tapOn:
+    id: organisation.contact
+- eraseText: 120
+- inputText: hola@example.com
+- hideKeyboard
+- tapOn:
+    id: organisation.details.cancel
+- extendedWaitUntil:
+    visible:
+      id: organisation.details.keep
+    timeout: 15000
+- waitForAnimationToEnd
+- takeScreenshot: discard-two
+- tapOn:
+    id: organisation.details.discard
+- extendedWaitUntil:
+    visible:
+      id: organisation.edit
+    timeout: 15000
+- tapOn:
+    id: organisation.edit
+- extendedWaitUntil:
+    visible:
+      id: organisation.name
+    timeout: 30000
+- tapOn:
+    id: organisation.name
+- eraseText: 120
+- inputText: ${NEW_NAME}
+- hideKeyboard
+- tapOn:
+    id: organisation.details.save
+- extendedWaitUntil:
+    visible: '.*{{t:orgGeneral.savedSays}}.*'
+    timeout: 30000
+- takeScreenshot: saved

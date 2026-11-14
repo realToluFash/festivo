@@ -1,0 +1,8 @@
+# From Cannot reach Soirely, the app moves on by itself once the API answers again. Needs nothing; starts on Cannot reach Soirely. sc-29076.
+appId: host.exp.Exponent
+---
+- extendedWaitUntil:
+    visible:
+      id: 'welcome.email'
+    timeout: 120000
+- takeScreenshot: qa-came-back

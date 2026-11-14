@@ -1,0 +1,12 @@
+# sc-31904: an account from `account --no-organisation` lands on No organisation, never Complete your profile or Today.
+appId: host.exp.Exponent
+---
+- extendedWaitUntil:
+    visible:
+      id: 'noOrganisation'
+    timeout: 30000
+- assertNotVisible:
+    id: 'completeProfile.*'
+- assertNotVisible:
+    id: 'home.switchOrganisation'
+- takeScreenshot: no-organisation

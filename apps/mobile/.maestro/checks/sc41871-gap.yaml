@@ -1,0 +1,105 @@
+# Needs an organisation with events hosted by Adaeze Obi and Tunde Bakare, Chidi Okafor, Funmilayo Adéṣínà-Ọláolúwa and The Mensah family.
+# sc-41871: a cut first pick and "+N more" on Filter and the menu's rows, for the one-space gap on Android.
+appId: host.exp.Exponent
+---
+- openLink: ${METRO_URL}/--/events
+- extendedWaitUntil:
+    visible:
+      id: 'events.filter'
+    timeout: 30000
+- waitForAnimationToEnd
+- takeScreenshot: nothing
+- tapOn:
+    id: 'events.filter'
+- waitForAnimationToEnd
+- runFlow:
+    when:
+      notVisible:
+        id: 'events.filter.menu'
+    commands:
+      - tapOn:
+          id: 'events.filter'
+- extendedWaitUntil:
+    visible:
+      id: 'events.filter.menu'
+    timeout: 10000
+- tapOn:
+    id: 'events.filter.hosts'
+- tapOn:
+    id: 'events.filter.host.Adaeze Obi'
+- tapOn:
+    id: 'events.filter.host.Tunde Bakare'
+- tapOn:
+    id: 'events.filter.back'
+- waitForAnimationToEnd
+- takeScreenshot: adaeze-menu
+- tapOn:
+    point: '50%,85%'
+- waitForAnimationToEnd
+- takeScreenshot: adaeze
+- tapOn:
+    id: 'events.filter'
+- tapOn:
+    id: 'events.filter.hosts'
+- tapOn:
+    id: 'events.filter.host.Adaeze Obi'
+- tapOn:
+    id: 'events.filter.host.Tunde Bakare'
+- tapOn:
+    id: 'events.filter.host.Funmilayo Adéṣínà-Ọláolúwa'
+- tapOn:
+    id: 'events.filter.back'
+- waitForAnimationToEnd
+- takeScreenshot: funmi-alone-menu
+- tapOn:
+    point: '50%,85%'
+- waitForAnimationToEnd
+- takeScreenshot: funmi-alone
+- tapOn:
+    id: 'events.filter'
+- tapOn:
+    id: 'events.filter.hosts'
+- tapOn:
+    id: 'events.filter.host.The Mensah family'
+- tapOn:
+    id: 'events.filter.back'
+- waitForAnimationToEnd
+- takeScreenshot: funmi-mensah-menu
+- tapOn:
+    point: '50%,85%'
+- waitForAnimationToEnd
+- takeScreenshot: funmi-mensah
+- tapOn:
+    id: 'events.filter'
+- tapOn:
+    id: 'events.filter.hosts'
+- tapOn:
+    id: 'events.filter.host.Funmilayo Adéṣínà-Ọláolúwa'
+- tapOn:
+    id: 'events.filter.host.The Mensah family'
+- tapOn:
+    id: 'events.filter.back'
+- tapOn:
+    id: 'events.filter.type'
+- tapOn:
+    id: 'events.filter.type.anniversary'
+- tapOn:
+    id: 'events.filter.type.engagement'
+- tapOn:
+    id: 'events.filter.back'
+- waitForAnimationToEnd
+- takeScreenshot: types-two-menu
+- tapOn:
+    id: 'events.filter.type'
+- tapOn:
+    id: 'events.filter.type.baby_shower'
+- tapOn:
+    id: 'events.filter.type.graduation'
+- tapOn:
+    id: 'events.filter.back'
+- waitForAnimationToEnd
+- takeScreenshot: types-four-menu
+- tapOn:
+    point: '50%,85%'
+- waitForAnimationToEnd
+- takeScreenshot: types-four
