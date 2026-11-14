@@ -2,7 +2,7 @@ import { type FocusEvent, useEffect, useId, useReducer, useRef, useState } from 
 import { Link, useSearchParams } from 'react-router';
 
 import { Glyph, type GlyphName } from '../components/Glyph.tsx';
-import { Ask, Dialog, RowWords, type Tell, TextAction } from '../components/SettingsParts.tsx';
+import { Ask, Dialog, type Tell, TextAction } from '../components/SettingsParts.tsx';
 import { focusWhenFree } from '../layers.ts';
 import { DemoBell } from './DemoBell.tsx';
 import { EventsShell } from './EventParts.tsx';
@@ -10,7 +10,7 @@ import { EventSidebar } from './EventSidebar.tsx';
 import { CLOCKS, type SampleEvent, sampleEvent } from './events.ts';
 import { GroupChips } from './GuestGroups.tsx';
 import { SearchRow } from './Guests.tsx';
-import { MarkLead } from './GuestsParts.tsx';
+import { SelectBar, SelectRows, SelectedSaid } from './GuestsParts.tsx';
 import { RMW, type Removed, UNDO_SECONDS, nextCount } from './guestRemove.ts';
 import {
   GGW,
@@ -19,7 +19,6 @@ import {
   groupCounts,
   groupLine,
   groupNameLength,
-  groupNameOf,
   groupProblem,
   makeGroup,
   sortedGroups,
@@ -27,10 +26,10 @@ import {
 import {
   type Filter,
   type Guest,
-  type ListRow,
   type Reply,
   WEDDING,
   countsOf,
+  invitesOn,
   replyByOf,
   viewOf,
 } from './guests.ts';
@@ -149,6 +148,7 @@ function ManyPage({ event, start, tell }: { event: SampleEvent; start: ManyStart
   const count = pretend ?? selected.size;
   const undoing = line?.kind === 'removed' && undo != null;
   const looking = choice !== 'all' || q.trim() !== '' || groupFilter != null;
+  const marks = invitesOn(event, CLOCKS.rest);
 
   function focus(key: string): void {
     pending.current = key;
@@ -258,7 +258,7 @@ function ManyPage({ event, start, tell }: { event: SampleEvent; start: ManyStart
   }
 
   const asked = asking ? removeQuestion(list, selected) : null;
-  const bar = manages && line == null && selected.size > 0;
+  const bar = manages && selected.size > 0 && (line == null || line.kind === 'undone');
 
   return (
     <div ref={root} className="desk-page ev-page gs gb">
@@ -331,12 +331,7 @@ function ManyPage({ event, start, tell }: { event: SampleEvent; start: ManyStart
               </div>
             )}
           </div>
-          <p className="visually-hidden" role="status">
-            {bar &&
-              [MW.selected(count), companions > 0 ? MW.withCompanions(companions) : '']
-                .filter((words) => words !== '')
-                .join(', ')}
-          </p>
+          <SelectedSaid count={bar ? count : null} companions={companions} />
           {!manages && <p className="desk-note gb-note">{MMW.viewOnly}</p>}
           {manages && ids.length > 0 && (
             <label className="gs-tick gm-all">
@@ -368,39 +363,18 @@ function ManyPage({ event, start, tell }: { event: SampleEvent; start: ManyStart
               )}
             </div>
             {bar && (
-              <section className="gm-bar" aria-label={MW.bar}>
-                <p className="gm-count">
-                  <strong>{MW.selected(count)}</strong>
-                  {companions > 0 && <span>{MW.withCompanions(companions)}</span>}
-                </p>
-                {over(count) && <p className="desk-line gm-narrow">{MW.narrowing}</p>}
-                {pretend != null && <p className="desk-note gm-pretend">{MW.pretend(pretend)}</p>}
-                <div className="gm-actions">
-                  <button
-                    type="button"
-                    className="gs-pill is-secondary"
-                    data-focus="add"
-                    onClick={pressAdd}
-                  >
-                    {MW.addToGroup}
-                  </button>
-                  <button
-                    type="button"
-                    className="gs-pill is-secondary"
-                    data-focus="remove"
-                    onClick={pressRemove}
-                  >
-                    {MW.remove}
-                  </button>
-                  <TextAction
-                    label={MW.clear}
-                    onClick={() => {
-                      select(NONE);
-                      focus('all');
-                    }}
-                  />
-                </div>
-              </section>
+              <SelectBar
+                count={count}
+                companions={companions}
+                pretend={pretend}
+                onMark={marks ? () => tell(MMW.markTheirOwn) : null}
+                onAdd={pressAdd}
+                onRemove={pressRemove}
+                onClear={() => {
+                  select(NONE);
+                  focus('all');
+                }}
+              />
             )}
           </div>
           {shown === 0 ? (
@@ -415,7 +389,7 @@ function ManyPage({ event, start, tell }: { event: SampleEvent; start: ManyStart
                   {REPLY_WORDS[group.reply]}
                   <span className="gs-group-count"> · {figure(group.count)}</span>
                 </h2>
-                <Rows
+                <SelectRows
                   rows={group.rows}
                   groups={groups}
                   manages={manages}
@@ -425,7 +399,7 @@ function ManyPage({ event, start, tell }: { event: SampleEvent; start: ManyStart
               </section>
             ))
           ) : (
-            <Rows
+            <SelectRows
               rows={view.rows}
               groups={groups}
               manages={manages}
@@ -459,62 +433,6 @@ function ManyPage({ event, start, tell }: { event: SampleEvent; start: ManyStart
         />
       )}
     </div>
-  );
-}
-
-/** A guest's row has a box; a companion's has none, since they follow their guest. Without guests.manage, no row has one. */
-function Rows({
-  rows,
-  groups,
-  manages,
-  selected,
-  onToggle,
-}: {
-  rows: readonly ListRow[];
-  groups: readonly GuestGroup[];
-  manages: boolean;
-  selected: ReadonlySet<string>;
-  onToggle: (id: string) => void;
-}) {
-  return (
-    <ul className="desk-rows gs-rows">
-      {rows.map((row) => {
-        const group = row.indent ? null : groupNameOf(groups, row.person.guest.group);
-        const words = (
-          <>
-            <MarkLead reply={row.person.reply} />
-            <RowWords title={row.person.name} lines={[row.line]} />
-            {group != null && (
-              <span className="gs-row-tags" aria-hidden="true">
-                <span className="gs-tag gg-tag">{group}</span>
-              </span>
-            )}
-          </>
-        );
-        const label = group == null ? row.label : `${row.label}, ${GGW.inGroup(group)}`;
-
-        return manages && row.person.companion == null ? (
-          <li key={row.person.id}>
-            <label className="desk-row gs-row gm-row">
-              <input
-                type="checkbox"
-                className="gs-box"
-                aria-label={label}
-                checked={selected.has(row.person.id)}
-                onChange={() => onToggle(row.person.id)}
-              />
-              {words}
-            </label>
-          </li>
-        ) : (
-          <li key={row.person.id} className={row.indent ? 'is-companion' : undefined}>
-            <div className="desk-row gs-row gm-row is-companion" aria-label={label}>
-              {words}
-            </div>
-          </li>
-        );
-      })}
-    </ul>
   );
 }
 

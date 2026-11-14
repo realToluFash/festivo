@@ -26,6 +26,7 @@ const haveArrived = (names: readonly string[]) =>
 /** sc-3776's English, kept in the demo; [en] owns the words and the developer puts them in the four locales. */
 export const MMW = {
   heldNote: 'Companions are selected with their guest, on the All tab.',
+  markTheirOwn: 'Mark as invited is sc-46880’s, in its own demo at /demo/guests/select.',
   cleared: 'Selection cleared.',
   clearedWhy: 'The list changed, so nothing hidden stays selected.',
   groupTitle: (count: number) =>

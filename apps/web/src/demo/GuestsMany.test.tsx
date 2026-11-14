@@ -33,14 +33,14 @@ beforeEach(() => {
 });
 
 describe('select many guests (sc-3776)', () => {
-  it('shows the bar with its two actions and Clear, companions counted', SLOW, async () => {
+  it('shows the one bar sc-46880 shares, companions counted', SLOW, async () => {
     await open('some');
 
     const names = within(bar())
       .getAllByRole('button')
       .map((one) => one.textContent);
 
-    expect(names).toEqual(['Add to group', 'Remove from the list', 'Clear']);
+    expect(names).toEqual(['Mark as invited', 'Add to group', 'Remove from the list', 'Clear']);
     expect(bar().textContent).toContain('4 selected');
     expect(bar().textContent).toContain('and 1 companion with them');
   });
@@ -53,6 +53,9 @@ describe('select many guests (sc-3776)', () => {
 
     await waitFor(() => expect(page()).toContain('Selection cleared.'));
     expect(screen.queryByRole('region', { name: 'Selected guests' })).toBeNull();
+    expect(screen.getAllByRole<HTMLInputElement>('checkbox').every((box) => !box.checked)).toBe(
+      true,
+    );
   });
 
   it('moves the selected guests to a group, and the line takes the bar’s place', SLOW, async () => {
@@ -100,6 +103,15 @@ describe('select many guests (sc-3776)', () => {
     expect(page()).toContain('1 not changed: Kwame Mensah has arrived.');
     fireEvent.click(screen.getByRole('button', { name: 'Undo' }));
     await waitFor(() => expect(page()).toContain('3 guests are back on the list, as they were.'));
+  });
+
+  it('brings the bar back when Undo is pressed over boxes ticked meanwhile', SLOW, async () => {
+    await open('removed');
+    fireEvent.click(screen.getByRole('checkbox', { name: /^Amaka Eze/u }));
+    fireEvent.click(screen.getByRole('button', { name: 'Undo' }));
+
+    await waitFor(() => expect(page()).toContain('back on the list, as they were.'));
+    expect(bar().textContent).toContain('1 selected');
   });
 
   it('keeps the selection when nothing changed, and Try again acts on it', SLOW, async () => {
