@@ -1,6 +1,7 @@
 import { act, cleanup, fireEvent, render, screen, waitFor, within } from '@testing-library/react';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { RouterProvider, createMemoryRouter } from 'react-router';
+import i18next from 'i18next';
 
 import { __setConfig, config } from '../../../config.ts';
 import { __setSessionState, type Session } from '../../../session.ts';
@@ -2630,6 +2631,24 @@ describe('The host’s Language for a guest (sc-3790)', () => {
       ['Português', 'pt'],
     ]);
     expect(screen.getByText(HINT)).toBeDefined();
+  });
+
+  it('names the organisation’s language mid-sentence, lower-cased, in Spanish', async () => {
+    await i18next.changeLanguage('es');
+    try {
+      await openNgozi({
+        'GET /api/events/ev_1/guests/g_1': () =>
+          tagged({ ...DETAILS, language: null, organisationLanguage: 'en' }, '"1"'),
+      });
+
+      expect(
+        within(column()).getByText(
+          'Sin definir · el idioma del navegador o, si Soirely no lo ofrece, el de la organización: inglés',
+        ),
+      ).toBeDefined();
+    } finally {
+      await i18next.changeLanguage('en');
+    }
   });
 
   it('saves the Language chosen, and only it when nothing else changed', async () => {

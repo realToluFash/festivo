@@ -42,6 +42,7 @@ import { COMING, GUESTS_N, NOT_REPLIED, countOf } from './messages.ts';
 import { GROUPS } from './messagesTo.ts';
 
 const NONE = new Set<never>();
+const DAY = '2026-11-03';
 
 describe('the wedding counts as Messaging B counts it (pm, 7 Nov)', () => {
   const counts = countsOf(sampleGuests(WEDDING));
@@ -494,11 +495,16 @@ describe('places for companions, the host’s side (sc-3779)', () => {
     expect(namedOf(sophie)).toBe(1);
     expect(sophie.companions[0]?.namedBy).toBe('guest');
 
-    const kept = saveGuest(list, 'sophie', { ...valuesOf(sophie), email: 'sophie@orange.fr' });
-    const renamed = saveGuest(list, 'sophie', {
-      ...valuesOf(sophie),
-      companions: [{ id: 'sophie-c1', name: 'Marc-Antoine Laurent' }],
-    });
+    const kept = saveGuest(list, 'sophie', { ...valuesOf(sophie), email: 'sophie@orange.fr' }, DAY);
+    const renamed = saveGuest(
+      list,
+      'sophie',
+      {
+        ...valuesOf(sophie),
+        companions: [{ id: 'sophie-c1', name: 'Marc-Antoine Laurent' }],
+      },
+      DAY,
+    );
 
     expect(kept.find((one) => one.id === 'sophie')?.companions[0]?.namedBy).toBe('guest');
     expect(renamed.find((one) => one.id === 'sophie')?.companions[0]).not.toHaveProperty('namedBy');
@@ -524,13 +530,31 @@ describe('a companion with a seat and a meal (sc-3773)', () => {
   });
 
   it('keeps the seat on a companion who stays when the guest is saved', () => {
-    const saved = saveGuest(list, 'ines', { ...valuesOf(ines ?? null), email: 'ines@sapo.pt' });
+    const saved = saveGuest(
+      list,
+      'ines',
+      { ...valuesOf(ines ?? null), email: 'ines@sapo.pt' },
+      DAY,
+    );
 
     expect(saved.find((one) => one.id === 'ines')?.companions[0]).toMatchObject({
       name: 'Rui Duarte',
       table: 'Table 4',
       meal: true,
     });
+  });
+
+  it('keeps the guest as the last to change needs when a host saves without changing them (sc-3778)', () => {
+    const saved = saveGuest(
+      list,
+      'ines',
+      { ...valuesOf(ines ?? null), email: 'ines@sapo.pt' },
+      DAY,
+    );
+    const after = saved.find((one) => one.id === 'ines');
+
+    expect(after?.needs.changed).toEqual({ by: 'guest', on: '2026-10-13' });
+    expect(after?.companions[0]?.needs?.changed).toEqual({ by: 'guest', on: '2026-10-13' });
   });
 });
 
