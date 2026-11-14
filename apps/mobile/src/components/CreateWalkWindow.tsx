@@ -242,9 +242,9 @@ export function CreateWalkWindow<Made>({
     }
     // A hover and then the focus command on an unfocused field read it twice (qa3 #45182): the command alone moves TalkBack's focus with it and reads it once.
     if (input.isFocused()) moveScreenReaderFocus(input);
-    holding.current = input;
+    if (phone) holding.current = input;
     raiseKeysOn(input);
-  }, [talkBack, onScreen, unnamed, opening]);
+  }, [talkBack, onScreen, unnamed, opening, phone]);
 
   useEffect(() => {
     const up = Keyboard.addListener('keyboardDidShow', () => {
