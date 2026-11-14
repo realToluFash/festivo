@@ -40,6 +40,20 @@ const BOARDS: Record<MessagesState, readonly [string, string]> = {
   sendNow: ['send now', 'The check set to now, or Keep it scheduled'],
   cancelAsk: ['cancel…, asked', 'Keep it first; Cancel message'],
   scheduledCancelled: ['cancelled, scheduled', 'Greyed; its row in Done reads Cancelled'],
+  scheduledPaused: [
+    'scheduled, the event paused',
+    'The paused line where Goes… was; Edit, Send now, Cancel… stay',
+  ],
+  scheduledPausedLate: [
+    'paused past its time',
+    'Set for 08:00 today, still paused: the same line, no Goes…',
+  ],
+  scheduledPausedEdit: ['editing while paused', 'Editing., with no time'],
+  scheduledFinished: [
+    'cancelled by Soirely',
+    'The event finished before this message was due; in Done',
+  ],
+  scheduledTooLate: ['not sent: too late', 'Not resumed or restored within 48 hours; in Done'],
   fixed: ['after a fix', 'Bounced kept; Updated · not sent yet, and Send to Tomás Ferreira again'],
   sentAgain: ['sent again', 'Sent to Tomás Ferreira; Resend to the 10 not reached'],
   checkAll: ['the check, all guests', 'Sending to 142 people; 9 can’t be told'],
@@ -167,6 +181,48 @@ const BOARDS: Record<MessagesState, readonly [string, string]> = {
   readOnly: [
     'a Read-only member',
     'Kofi Mensah, Read-only: Only someone who can change Messages can send; Who it reached without actions',
+  ],
+  tapNotComing: [
+    'A tap: Not coming, with companions',
+    'Kwame Mensah answered Not coming by WhatsApp. · 08:20; WhatsApp · Read; in Done',
+  ],
+  tapNotSure: [
+    'A tap: Not sure yet',
+    'Kwame Mensah answered Not sure yet by WhatsApp. · 08:20; WhatsApp · Delivered',
+  ],
+  tapNeedsYou: [
+    'A tap under a question that waits',
+    'Lucía Ortega answered Not sure yet; the message in Spanish; still in Needs you',
+  ],
+  tapFailed: ['A tap: the message failed', 'Kwame Mensah answered Not coming; WhatsApp · Failed'],
+  tapNoCredits: [
+    'A tap: not enough credits',
+    'Kwame Mensah answered Not coming; Not sent · Not enough credits',
+  ],
+  tapStopped: [
+    'A tap after stopping WhatsApp',
+    'Lucía Ortega answered Not coming; Not sent · Stopped WhatsApp',
+  ],
+  tapComing: [
+    'A Coming guest’s tap',
+    'Kwame Mensah tapped Not coming in WhatsApp. Nothing changed.; WhatsApp · Read',
+  ],
+  tapComingNotSent: [
+    'A Coming guest’s tap, not enough credits',
+    'Kwame Mensah tapped Not coming; Not sent · Not enough credits',
+  ],
+  tapRepeat: [
+    'A repeat tap, the first in 24 hours',
+    'Not sure yet at 08:20, then tapped again at 08:31; WhatsApp · Delivered',
+  ],
+  tapRepeatAgain: ['A further repeat: no line', 'The conversation as the first repeat left it'],
+  tapClosed: [
+    'A tap after answers closed',
+    'Kwame Mensah tapped Not sure yet; Answers closed on 2 November 2026.',
+  ],
+  tapFirst: [
+    'A tap from a guest with no conversation: one starts in Done',
+    'Valentina Restrepo answered Not coming by WhatsApp. · 08:20, under the invitation; first in Done, not unread, not counted',
   ],
   stopAction: [
     'the conversation’s actions, open',

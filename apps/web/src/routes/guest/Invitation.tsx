@@ -19,6 +19,7 @@ import { meshFor } from '../../mesh.ts';
 import { offButton } from '../../offButton.ts';
 import { useWideWidth } from '../../phoneWidth.ts';
 import { InvalidInvitation } from './InvalidInvitation.tsx';
+import { openIn, saveAgain, useGuestLanguage } from './guestLanguage.ts';
 import { forgetStarted, markStarted, wasStarted } from './started.ts';
 
 type Load =
@@ -100,7 +101,11 @@ export function Invitation() {
     let current = true;
 
     api.guestPage(token).then(
-      (page) => current && setLoad({ kind: 'loaded', page }),
+      async (page) => {
+        if (!current) return;
+        await openIn(page.language);
+        if (current) setLoad({ kind: 'loaded', page });
+      },
       (error: unknown) => {
         if (!current) return;
         setRetrying(false);
@@ -388,6 +393,7 @@ function Card({ token, first }: { token: string; first: GuestPage }) {
   return (
     <div ref={columns} className="gp-columns">
       <PhaseNotice phase={page.phase} />
+      <LanguageUnsaved token={token} />
       <Cover page={page} tagged={tagged && !ended(page.phase)} />
       <div className="gp-under">
         {tell.kind === 'card' && (
@@ -849,6 +855,26 @@ function PhaseWords({ phase }: { phase: Exclude<GuestPagePhase, 'live'> }) {
         {chip}
       </span>
       <p>{sentence}</p>
+    </div>
+  );
+}
+
+/** The page switched, but the guest's record did not take the choice: said in the new language, as an alert, with Try again (sc-3790). */
+function LanguageUnsaved({ token }: { token: string }) {
+  const { t } = useTranslation();
+  const { unsaved, saving } = useGuestLanguage();
+
+  if (unsaved == null) return null;
+
+  return (
+    <div className="gp-notice is-attention gp-unsaved" role="alert">
+      <span className="gp-notice-mark" aria-hidden="true" />
+      <div className="gp-unsaved-words">
+        <p>{t('guest.languageNotSaved')}</p>
+        <TextAction off={saving} focus="saveAgain" onClick={() => void saveAgain(token)}>
+          {saving ? t('session.retrying') : t('error.retry')}
+        </TextAction>
+      </div>
     </div>
   );
 }

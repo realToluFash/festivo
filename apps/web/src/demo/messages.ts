@@ -26,7 +26,16 @@ import {
   STOP_STATES,
   isStopState,
 } from './messagesStop.ts';
-import { WA_INVITE_GROUP, WA_INVITE_STATES } from './messagesInviteWords.ts';
+import { WA_ANSWER_STATES, WA_INVITE_GROUP, WA_INVITE_STATES } from './messagesInviteWords.ts';
+import {
+  type TapCase,
+  DONE_AT,
+  TAP_GROUP,
+  TAP_STATES,
+  isTapState,
+  tapCaseOf,
+  tapRow,
+} from './messagesTap.ts';
 import {
   type InviteDraft,
   type InviteOut,
@@ -107,6 +116,11 @@ export const MESSAGE_STATES = [
   { key: 'sendNow', name: 'Send now' },
   { key: 'cancelAsk', name: 'Cancel…, asked' },
   { key: 'scheduledCancelled', name: 'Cancelled, scheduled' },
+  { key: 'scheduledPaused', name: 'Scheduled, the event paused' },
+  { key: 'scheduledPausedLate', name: 'Scheduled, paused past its time' },
+  { key: 'scheduledPausedEdit', name: 'Editing while the event is paused' },
+  { key: 'scheduledFinished', name: 'Cancelled by Soirely, the event finished' },
+  { key: 'scheduledTooLate', name: 'Not sent: too late' },
   { key: 'fixed', name: 'After a fix' },
   { key: 'sentAgain', name: 'Sent again' },
   { key: 'added', name: 'After Add an email address' },
@@ -187,6 +201,8 @@ export const MESSAGE_STATES = [
   ...WA_INVITE_STATES,
   ...STOP_STATES,
   ...TELL_STATES,
+  ...WA_ANSWER_STATES,
+  ...TAP_STATES,
 ] as const;
 
 export type MessagesState = (typeof MESSAGE_STATES)[number]['key'];
@@ -219,7 +235,8 @@ export const MESSAGES_PAGES: readonly { name: string; states: readonly DemoLink[
         !isStopState(one.key) &&
         !isInviteState(one.key) &&
         !isSmsState(one.key) &&
-        !isTellState(one.key),
+        !isTellState(one.key) &&
+        !isTapState(one.key),
     ).map((one) => ({ to: `${MESSAGES_AT}?state=${one.key}`, name: one.name })),
   },
   {
@@ -245,11 +262,19 @@ export const MESSAGES_PAGES: readonly { name: string; states: readonly DemoLink[
     name: TELL_GROUP,
     states: TELL_STATES.map((one) => ({ to: `${MESSAGES_AT}?state=${one.key}`, name: one.name })),
   },
+  {
+    name: TAP_GROUP,
+    states: [...WA_ANSWER_STATES, ...TAP_STATES].map((one) => ({
+      to: `${MESSAGES_AT}?state=${one.key}`,
+      name: one.name,
+    })),
+  },
 ];
 
 export const READER = 'Folake Adeyemi';
 export const NOW = '09:41';
-export const HOSTS = 'Adaeze Obi and Tunde Bakare';
+export const HOST_NAMES: readonly string[] = ['Adaeze Obi', 'Tunde Bakare'];
+export const HOSTS = new Intl.ListFormat('en', { type: 'conjunction' }).format(HOST_NAMES);
 export const EVENT_NAME = 'Adaeze & Tunde’s wedding';
 export const ORGANISATION = 'Ire Events';
 export const GUESTS_N = 142;
@@ -942,6 +967,7 @@ export function toldWords(ticks: Ticks): string {
 }
 
 export type Delivery =
+  | 'scheduled'
   | 'delivered'
   | 'sent'
   | 'sending'
@@ -2220,6 +2246,10 @@ export interface Sched {
   cancelledAt: string | null;
   cancelledBy?: string;
   outcome?: 'sent' | 'tooLate';
+  /** sc-3963: its event is paused, so it waits whichever side of its time it is. */
+  paused?: boolean;
+  /** sc-3963: Soirely cancelled it because its event finished first. */
+  finished?: boolean;
 }
 
 export interface Answer {
@@ -2283,6 +2313,8 @@ export interface Inbox {
   smsFailed?: boolean;
   /** sc-3976: the open state's facts about one guest's notice and conversation. */
   notice?: NoticeCase;
+  /** sc-46343: one guest's taps on the WhatsApp invitation's answer buttons. */
+  tap?: TapCase;
   /** Parking told by Email only, with every reason sc-3942 words (sc-3966's `reasons`). */
   reasons?: boolean;
   texted?: Readonly<Record<string, Texted>>;
@@ -2314,6 +2346,27 @@ export const SCHEDULED: Sched = {
   time: '09:00',
   cancelledAt: null,
 };
+
+/** sc-3963's waits and endings, as Messaging-B-Phone-More-2 draws them: paused before its time and after it, cancelled when the event finished, and too late 48 hours on. */
+export function schedOf(
+  state:
+    | 'scheduledPaused'
+    | 'scheduledPausedEdit'
+    | 'scheduledPausedLate'
+    | 'scheduledFinished'
+    | 'scheduledTooLate',
+): Sched {
+  switch (state) {
+    case 'scheduledPausedLate':
+      return { ...SCHEDULED, paused: true, day: '2026-11-03', time: '08:00' };
+    case 'scheduledFinished':
+      return { ...SCHEDULED, cancelledAt: '09:30', cancelledBy: 'Soirely', finished: true };
+    case 'scheduledTooLate':
+      return { ...SCHEDULED, day: '2026-10-31', outcome: 'tooLate' };
+    default:
+      return { ...SCHEDULED, paused: true };
+  }
+}
 
 export function isNew(id: ConvoId): boolean {
   return id.startsWith('new');
@@ -2829,6 +2882,12 @@ export function seedOf(state: MessagesState | null): Inbox {
         pane: open('sched'),
         scheds: [{ ...SCHEDULED, cancelledAt: '09:46' }],
       };
+    case 'scheduledPaused':
+    case 'scheduledPausedEdit':
+    case 'scheduledPausedLate':
+    case 'scheduledFinished':
+    case 'scheduledTooLate':
+      return { ...base, pane: open('sched'), scheds: [schedOf(state)] };
     case 'insert':
     case 'previewAs':
     case 'previewGreetAs':
@@ -2856,6 +2915,10 @@ export function seedOf(state: MessagesState | null): Inbox {
       const notice = noticeCaseOf(state);
 
       if (notice != null) return noticeSeed(base, notice);
+
+      const tap = tapCaseOf(state);
+
+      if (tap != null) return tapSeed(base, tap);
 
       const invite = inviteSeedOf(state);
 
@@ -2936,6 +2999,27 @@ function noticeSeed(base: Inbox, notice: NoticeCase): Inbox {
   return seeded;
 }
 
+function tapSeed(base: Inbox, tap: TapCase): Inbox {
+  const seeded: Inbox = {
+    ...base,
+    tap,
+    notice: {
+      id: tap.id,
+      turn: tap.turn,
+      ...(tap.extras == null ? {} : { extras: tap.extras }),
+      ...(tap.blocks == null ? {} : { blocks: tap.blocks }),
+    },
+    pane: { kind: 'convo', id: tap.id },
+  };
+
+  if (tap.first === true)
+    return { ...seeded, present: [...base.present, tap.id], done: [tap.id, ...base.done] };
+
+  return tap.done
+    ? { ...seeded, done: [...base.done, tap.id], doneAt: { ...base.doneAt, [tap.id]: DONE_AT } }
+    : seeded;
+}
+
 export type Lead =
   { kind: 'guest'; initials: string; unread: boolean } | { kind: 'unknown' } | { kind: 'many' };
 
@@ -2983,12 +3067,13 @@ function guestRow(inbox: Inbox, id: GuestId): Row {
     said,
     ...(done && answer == null ? [filled(MW.doneByShort, { name: READER })] : []),
   ].join(' · ');
+  const tapped = inbox.tap?.id === id ? tapRow(inbox.tap, guest.name) : null;
 
   return {
     id,
     title: guest.name,
-    line,
-    when: fresh ? MW.now : (answer?.at ?? (arrived ? NOW : guest.row)),
+    line: tapped?.line ?? line,
+    when: tapped?.when ?? (fresh ? MW.now : (answer?.at ?? (arrived ? NOW : guest.row))),
     lead: { kind: 'guest', initials: guest.initials, unread: !done },
     tag: null,
     fresh,

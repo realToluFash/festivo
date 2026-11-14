@@ -7,6 +7,7 @@ import { CLOCKS, sampleEvent } from './events.ts';
 import { SAMPLE_GUESTS } from './guestCounts.ts';
 import {
   DRAFT,
+  DRAFT_PAST,
   GUESTS_STATES,
   PARTY,
   WALK_IN,
@@ -344,6 +345,25 @@ describe('the card (spec §4)', () => {
     expect(
       guestsCardOf(wedding, sampleGuests(WEDDING), 'live', CLOCKS.rest, false).step,
     ).toBeNull();
+  });
+
+  it('sends a Draft whose end has passed to its dates, not to Make live (sc-3772)', () => {
+    const draft = sampleEvent(DRAFT);
+    const passed = sampleEvent(DRAFT_PAST);
+    if (draft == null || passed == null) throw new Error('drafts');
+    const list = sampleGuests(DRAFT);
+
+    expect(guestsCardOf(draft, list, 'live', CLOCKS.rest, true)).toMatchObject({
+      line: 'Guests can’t be invited until this event is live.',
+      step: 'makeLive',
+    });
+    expect(guestsCardOf(passed, list, 'live', CLOCKS.rest, true)).toMatchObject({
+      tags: [{ kind: 'draft', word: 'Draft' }],
+      says: '12 on the list',
+      line: 'This event’s end has passed, so it cannot be made live. Change its dates first.',
+      step: 'changeDates',
+    });
+    expect(guestsCardOf(passed, list, 'live', CLOCKS.rest, false).step).toBeNull();
   });
 
   it('counts a recorded reply straight away (sc-3787)', () => {

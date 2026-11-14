@@ -98,7 +98,8 @@ class Run(unittest.TestCase):
                       mock.patch("soirely_queue.cli.refresh_work"),
                       mock.patch("soirely_queue.update.check", return_value=False),
                       mock.patch("soirely_queue.machine.free_gb", return_value=100.0),
-                      mock.patch("soirely_queue.local.build_cache_gb", return_value=1.0)):
+                      mock.patch("soirely_queue.local.build_cache_gb", return_value=1.0),
+                      mock.patch("soirely_queue.local.open_docker")):
             patch.start()
             self.addCleanup(patch.stop)
         runner.set_started(self.db, ["ops", "dev2", "lead"], True)
@@ -262,6 +263,21 @@ class Run(unittest.TestCase):
         self.assertEqual(self.platform.launched, [])
         self.assertEqual(self.platform.installed, 0)
         self.assertFalse(store.held_by(self.db, "ops", ON_ZERO))
+
+    def test_a_tick_wakes_docker_and_a_dry_run_or_a_pause_does_not(self):
+        with mock.patch("soirely_queue.local.wake_docker") as woke:
+            self.run_once(dry_run=True)
+            woke.assert_not_called()
+            self.run_once()
+            woke.assert_called_once()
+            woke.reset_mock()
+            store.set_meta(self.db, "paused", "now")
+            self.run_once(ON_ZERO + MINUTE)
+            woke.assert_not_called()
+            store.set_meta(self.db, "paused", "")
+            shared.pause_everywhere(self.remote, "tolu-mac", ON_ZERO)
+            self.run_once(ON_ZERO + 2 * MINUTE)
+            woke.assert_not_called()
 
     def test_a_drifted_claude_warns_every_run_and_notifies_once(self):
         self.config["claudeVersion"] = "2.1.300"

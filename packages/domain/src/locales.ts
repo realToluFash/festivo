@@ -21,6 +21,11 @@ export const LOCALES: readonly Locale[] = declaration.supported as Locale[];
 export const DEFAULT_LOCALE: LocaleCode = declaration.default;
 export const LOCALE_CODES: readonly LocaleCode[] = LOCALES.map((l) => l.code);
 
+/** A language in its own name, as the guest page's menu names it; null for a code Soirely does not offer. */
+export function ownLanguageName(code: string | null): string | null {
+  return LOCALES.find((one) => one.code === code)?.nativeName ?? null;
+}
+
 export function isSupported(locale: string | null | undefined): boolean {
   return locale != null && LOCALE_CODES.includes(language(locale));
 }

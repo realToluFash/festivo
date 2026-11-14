@@ -39,6 +39,8 @@ export interface Typed {
   country: string;
   number: string;
   companions: readonly string[];
+  /** The host's Language for them, null for Not set (sc-3790). */
+  language: string | null;
 }
 
 export type Problem =
@@ -118,6 +120,7 @@ export function newGuestOf(typed: Typed, allowDuplicate: boolean): NewGuest {
     companions: typed.companions.map((name) => ({
       fullName: name.trim() === '' ? null : name.trim(),
     })),
+    language: typed.language,
     ...(allowDuplicate ? { allowDuplicate: true } : {}),
   };
 }

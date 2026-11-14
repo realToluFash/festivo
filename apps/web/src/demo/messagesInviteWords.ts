@@ -90,4 +90,55 @@ export const WA_INVITATION = {
   },
 } as const;
 
+/** The composer's preview of the invitation with answers (sc-46343): three buttons where it is approved in the guest's language, else sc-45251's one. */
+export const WA_ANSWER_STATES = [
+  { key: 'invitePreviewAnswers', name: 'The invitation with answers, in English' },
+  { key: 'invitePreviewAnswersNoDate', name: 'The invitation with answers, no reply-by date' },
+  { key: 'invitePreviewAnswersEs', name: 'The invitation with answers, in Spanish' },
+  { key: 'invitePreviewAnswersFr', name: 'The invitation with answers, in French' },
+  { key: 'invitePreviewAnswersPt', name: 'The invitation with answers, in Portuguese' },
+  { key: 'invitePreviewAnswersMixed', name: 'With answers where approved: not in Portuguese' },
+  { key: 'invitePreviewAnswersPaused', name: 'The invitation with answers paused by Meta' },
+] as const;
+
+/** The invitation with answers (sc-46343, l10n's (1) and sc-1439's answers): sc-45251's body with the button line changed, and three buttons. */
+export const WA_ANSWERS = {
+  en: {
+    replyBy:
+      'Please reply by {{replyBy}}. You can answer with one of the buttons below. If you are coming, your own page opens so you can finish your answer. The page is yours alone, so please do not forward this message.',
+    noDate:
+      'Please reply when you can. You can answer with one of the buttons below. If you are coming, your own page opens so you can finish your answer. The page is yours alone, so please do not forward this message.',
+    yes: 'Yes, I’ll be there',
+    no: 'Sorry, I can’t',
+    maybe: 'I’m not sure yet',
+  },
+  es: {
+    replyBy:
+      'Le rogamos que responda como muy tarde el {{replyBy}}. Puede hacerlo con uno de los botones de abajo. Si viene, se abrirá su página personal, donde podrá completar su respuesta. La página es solo suya, así que no reenvíe este mensaje, por favor.',
+    noDate:
+      'Le rogamos que responda cuando pueda. Puede hacerlo con uno de los botones de abajo. Si viene, se abrirá su página personal, donde podrá completar su respuesta. La página es solo suya, así que no reenvíe este mensaje, por favor.',
+    yes: 'Sí, allí estaré',
+    no: 'Lo siento, no puedo',
+    maybe: 'Aún no lo sé',
+  },
+  fr: {
+    replyBy:
+      'Merci de répondre au plus tard le {{replyBy}}. Vous pouvez le faire avec l’un des boutons ci-dessous. Si vous venez, votre page personnelle s’ouvrira pour que vous puissiez compléter votre réponse. Cette page n’est qu’à vous, merci donc de ne pas transférer ce message.',
+    noDate:
+      'Merci de répondre dès que vous le pourrez. Vous pouvez le faire avec l’un des boutons ci-dessous. Si vous venez, votre page personnelle s’ouvrira pour que vous puissiez compléter votre réponse. Cette page n’est qu’à vous, merci donc de ne pas transférer ce message.',
+    yes: 'Oui, je serai là',
+    no: 'Hélas, je ne pourrai pas',
+    maybe: 'Je ne sais pas encore',
+  },
+  pt: {
+    replyBy:
+      'Pedimos-lhe que responda até {{replyBy}}. Pode fazê-lo com um dos botões abaixo. Se vier, abre-se a sua página pessoal, onde pode completar a sua resposta. A página é só sua, por isso, por favor, não reencaminhe esta mensagem.',
+    noDate:
+      'Pedimos-lhe que responda quando puder. Pode fazê-lo com um dos botões abaixo. Se vier, abre-se a sua página pessoal, onde pode completar a sua resposta. A página é só sua, por isso, por favor, não reencaminhe esta mensagem.',
+    yes: 'Sim, lá estarei',
+    no: 'Lamento, não posso',
+    maybe: 'Ainda não sei',
+  },
+} as const;
+
 export const WA_INVITE_GROUP = 'The invitation by WhatsApp (sc-45251)';

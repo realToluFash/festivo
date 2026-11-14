@@ -251,6 +251,8 @@ def tick(db, home, platform, sq, python, now, dry_run, say, remote, config, read
         skip = view.taken_elsewhere()
     else:
         view, mine, elsewhere, skip = None, set(), {}, set()
+    if not dry_run:
+        local.wake_docker(db, now, say)
     phases.mark("update and lease")
     minute = int(now // 60)
     # A dry run previews every ready role, started or not, whatever the minute.

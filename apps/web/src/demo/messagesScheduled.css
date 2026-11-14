@@ -34,3 +34,35 @@
 .mg-refused-head {
   font-weight: 700;
 }
+
+.mg-paused {
+  display: flex;
+  align-self: stretch;
+  align-items: flex-start;
+  gap: var(--spaceSm);
+  color: var(--colorInkSecondary);
+  font: 500 13.5px/1.45 var(--fontFamily);
+  text-align: left;
+}
+
+.mg-paused-mark {
+  display: flex;
+  flex: none;
+  align-items: center;
+  justify-content: center;
+  gap: 2px;
+  width: 15px;
+  height: 15px;
+  margin-top: var(--spaceHair);
+}
+
+.mg-paused-mark span {
+  width: 3px;
+  height: 10px;
+  border-radius: 1px;
+  background: currentcolor;
+}
+
+.mg-system-why {
+  display: block;
+}
