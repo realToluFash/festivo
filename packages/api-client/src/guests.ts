@@ -38,6 +38,66 @@ export interface GuestInvitation {
   by: string | null;
 }
 
+/** sc-3777's codes, each list in its order: the 14 allergens of EU 1169/2011 Annex II, then Other. Every client words them. */
+export const ALLERGENS = [
+  'gluten',
+  'crustaceans',
+  'eggs',
+  'fish',
+  'peanuts',
+  'soybeans',
+  'milk',
+  'tree_nuts',
+  'celery',
+  'mustard',
+  'sesame',
+  'sulphites',
+  'lupin',
+  'molluscs',
+  'other',
+] as const;
+export type Allergen = (typeof ALLERGENS)[number];
+
+export const DIETS = [
+  'vegetarian',
+  'vegan',
+  'pescatarian',
+  'halal',
+  'kosher',
+  'no_pork',
+  'no_beef',
+  'no_alcohol',
+  'other',
+] as const;
+export type Diet = (typeof DIETS)[number];
+
+export const ACCESS_NEEDS = [
+  'step_free',
+  'near_exit',
+  'hearing_loop',
+  'sign_language',
+  'wheelchair_space',
+  'other',
+] as const;
+export type AccessNeed = (typeof ACCESS_NEEDS)[number];
+
+export type NeedKind = 'allergen' | 'diet' | 'access';
+
+/** A guest's or a companion's needs: codes with Other among them, each ticked Other's words, and the hosts' private note. */
+export interface GuestNeeds {
+  allergies: Allergen[];
+  diet: Diet[];
+  access: AccessNeed[];
+  otherAllergy: string | null;
+  otherDiet: string | null;
+  otherAccess: string | null;
+  note: string | null;
+}
+
+/** The API's limits on an Other's words and on the note, counted after trimming. */
+export const NEED_OTHER_MAXIMUM = 100;
+export const NEED_NOTE_MAXIMUM = 500;
+
 /** One place the host saved (sc-3779): a companion, named or not. */
 export interface Companion {
   id: string;
@@ -46,6 +106,8 @@ export interface Companion {
   state: CompanionState;
   /** The guest gave this name on their own page; the host changing it clears it. */
   namedByGuest: boolean;
+  /** Sent only with guests.manage; null for anyone else. */
+  needs?: GuestNeeds | null;
 }
 
 /** A named companion as the guest's own page shows them, with what the guest last chose for them. */
@@ -81,6 +143,8 @@ export interface Guest {
   repliedAt: string | null;
   /** Null while Not yet invited (sc-3788). */
   invitation: GuestInvitation | null;
+  /** Sent only with guests.manage (sc-3777); null for anyone else, and on the list the live topic publishes. */
+  needs?: GuestNeeds | null;
   companions: Companion[];
 }
 
@@ -110,9 +174,11 @@ export interface NewGuest {
   email?: string | null;
   /** As the account's Mobile number field sends it: the country picked and the number typed. Answered as E.164. */
   mobile?: { countryCode: string; number: string } | null;
-  companions?: { fullName?: string | null }[];
+  companions?: { fullName?: string | null; needs?: NeedsInput }[];
   /** The host's Language for them, null for Not set. Left out of an edit, it stays as it was. */
   language?: string | null;
+  /** Left out of an edit, they stay as they were; so does a kept companion's. */
+  needs?: NeedsInput;
   /** Sent once the host pressed Add anyway on "<name> is already on the list". */
   allowDuplicate?: boolean;
 }
@@ -126,8 +192,10 @@ export interface GuestDetails extends Guest {
 
 /** The whole guest as Edit saves it: each companion kept by `id`, one with no id added, one left out removed. */
 export interface GuestEdit extends Omit<NewGuest, 'companions'> {
-  companions: { id?: string | null; fullName?: string | null }[];
+  companions: { id?: string | null; fullName?: string | null; needs?: NeedsInput }[];
 }
+
+export type NeedsInput = Partial<GuestNeeds>;
 
 /** A guest with the `ETag` an edit sends back as `If-Match`. */
 export interface TaggedGuest {
@@ -217,7 +285,13 @@ function asCompanion(value: unknown): Companion | null {
   const state = COMPANION_STATES.find((known) => known === row.state);
   if (id == null || state == null) return null;
 
-  return { id, fullName: text(row.fullName), state, namedByGuest: row.namedByGuest === true };
+  return {
+    id,
+    fullName: text(row.fullName),
+    state,
+    namedByGuest: row.namedByGuest === true,
+    needs: asNeeds(row.needs),
+  };
 }
 
 export function asGuestPageCompanion(value: unknown): GuestPageCompanion | null {
@@ -228,6 +302,25 @@ export function asGuestPageCompanion(value: unknown): GuestPageCompanion | null 
   if (id == null || fullName == null || typeof row.coming !== 'boolean') return null;
 
   return { id, fullName, coming: row.coming, namedByGuest: row.namedByGuest === true };
+}
+
+function codes<T extends string>(value: unknown, known: readonly T[]): T[] {
+  return Array.isArray(value) ? known.filter((code) => value.includes(code)) : [];
+}
+
+export function asNeeds(value: unknown): GuestNeeds | null {
+  if (typeof value !== 'object' || value == null) return null;
+  const needs = value as Record<string, unknown>;
+
+  return {
+    allergies: codes(needs.allergies, ALLERGENS),
+    diet: codes(needs.diet, DIETS),
+    access: codes(needs.access, ACCESS_NEEDS),
+    otherAllergy: text(needs.otherAllergy),
+    otherDiet: text(needs.otherDiet),
+    otherAccess: text(needs.otherAccess),
+    note: text(needs.note),
+  };
 }
 
 export function asGuest(value: unknown): Guest | null {
@@ -254,6 +347,7 @@ export function asGuest(value: unknown): Guest | null {
     reply,
     repliedAt: reply === 'noReply' ? null : text(row.repliedAt),
     invitation,
+    needs: asNeeds(row.needs),
     companions: companions as Companion[],
   };
 }
@@ -295,13 +389,19 @@ export type HeadcountCounts = Record<(typeof HEADCOUNT_COUNTS)[number], number> 
   heldBy: { hostNoReply: number; hostMaybe: number; hostNotComing: number };
 };
 
+export interface NeedCount {
+  kind: NeedKind;
+  code: string;
+  people: number;
+}
+
 /** The one answer to how many are coming: read it, never count the list. Published on the `EventHeadcount` topic. */
 export interface Headcount {
   counts: HeadcountCounts;
   /** `group` is null for No group; the rows add up to `counts`. */
   byGroup: { group: string | null; counts: HeadcountCounts }[];
-  /** A person counts under each need they have, so these rows do not add up. */
-  byDietaryNeed: { addsUp: false; needs: { need: string; people: number }[] };
+  /** Each code (sc-3777), allergens first: a person counts under each they have, so these rows do not add up. */
+  byDietaryNeed: { addsUp: false; needs: NeedCount[] };
 }
 
 function asHeadcountCounts(value: unknown): HeadcountCounts | null {
@@ -338,8 +438,12 @@ export function asHeadcount(value: unknown): Headcount | null {
   if (
     !Array.isArray(needs.needs) ||
     needs.needs.some((row: unknown) => {
-      const need = row as { need?: unknown; people?: unknown } | null;
-      return typeof need?.need !== 'string' || typeof need.people !== 'number';
+      const need = row as { kind?: unknown; code?: unknown; people?: unknown } | null;
+      return (
+        (need?.kind !== 'allergen' && need?.kind !== 'diet' && need?.kind !== 'access') ||
+        typeof need.code !== 'string' ||
+        typeof need.people !== 'number'
+      );
     })
   ) {
     return null;
