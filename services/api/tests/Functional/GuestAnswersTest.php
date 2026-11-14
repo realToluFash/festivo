@@ -85,6 +85,7 @@ final class GuestAnswersTest extends ApiTestCase
             'needs' => self::NO_NEEDS,
             'places' => 1,
             'companions' => [['id' => $obi, 'fullName' => 'Obi Okonkwo', 'coming' => true, 'namedByGuest' => false, 'needs' => self::NO_NEEDS]],
+            'unnamed' => [],
         ], $page['guest'] ?? null);
         self::assertSame(true, $page['answersOpen'] ?? null);
         self::assertSame($list, $this->as($this->owner, 'GET', $this->guests()));
