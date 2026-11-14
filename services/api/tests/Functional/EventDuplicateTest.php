@@ -382,7 +382,7 @@ final class EventDuplicateTest extends ApiTestCase
         self::assertSame(201, $this->statusCode(), Json\encode($body));
         self::assertArrayNotHasKey('guestsCopied', $body);
         $copy = Type\shape(['id' => Type\string()], true)->coerce($body['event'] ?? null)['id'];
-        self::assertSame(['guests' => [], 'counts' => ['people' => 0, 'guests' => 0, 'companions' => 0]], $this->guestList($copy));
+        self::assertSame(['guests' => [], 'counts' => ['people' => 0, 'guests' => 0, 'companions' => 0], 'groups' => [], 'ungrouped' => ['people' => 0, 'guests' => 0, 'companions' => 0]], $this->guestList($copy));
     }
 
     #[Test]

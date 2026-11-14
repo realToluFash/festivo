@@ -2456,6 +2456,37 @@
     "heldLine": "En espera · solo viene si se acepta la invitación",
     "heldAway": "{{guestOf}} · {{held}}",
     "offlineRefused": "No tiene conexión. No se ha guardado nada.",
-    "offlineRefusedLine": "Sus cambios siguen en este formulario. Vuelva a guardar cuando tenga conexión."
+    "offlineRefusedLine": "Sus cambios siguen en este formulario. Vuelva a guardar cuando tenga conexión.",
+    "invitation": "Invitación",
+    "invitedBy": "Invitación de {{name}} {{how}} el {{date}}",
+    "invitedHow": "Invitación {{how}} el {{date}}",
+    "invitedByMessage": "Invitación por mensaje de Soirely el {{date}}",
+    "invitedWhenReplied": "Invitación registrada al responder, el {{date}}",
+    "copyFirst": "Copiar el enlace no cuenta como invitación. Regístrela cuando lo haya enviado.",
+    "markAsInvited": "Registrar invitación",
+    "markLine": "Cómo hizo la invitación, para que cuente",
+    "howInvited": "¿Cómo hizo la invitación?",
+    "howInvitedBlank": "Elija cómo hizo la invitación.",
+    "markNotSaved": "No se ha guardado. Sigue en «Sin invitar». Inténtelo de nuevo.",
+    "how": {
+      "whatsapp": "WhatsApp",
+      "textMessage": "SMS",
+      "email": "Correo electrónico",
+      "inPerson": "En persona",
+      "other": "Otra vía"
+    },
+    "howMid": {
+      "whatsapp": "por WhatsApp",
+      "textMessage": "por SMS",
+      "email": "por correo electrónico",
+      "inPerson": "en persona",
+      "other": "por otra vía"
+    },
+    "markNotInvited": "Anular registro",
+    "unmarked": "Registro anulado. Vuelve a estar en «Sin invitar».",
+    "unmarkRefused": "No se ha cambiado. {{name}} respondió «{{reply}}» el {{date}}, así que la invitación se mantiene.",
+    "readOnlyInvited": "Puede ver los nombres, las respuestas y a quién se ha invitado. Para registrar invitaciones hace falta el rol Responsable o Puede editar.",
+    "pausedLine": "No se puede invitar a nadie mientras este evento esté en pausa.",
+    "finishedLine": "Este evento ha terminado, así que ya no se puede invitar a nadie."
   }
 }
