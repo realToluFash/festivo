@@ -8,7 +8,15 @@ import {
 } from '@soirely/domain';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { router, useFocusEffect, useNavigation } from 'expo-router';
-import { type ReactNode, type RefObject, useCallback, useEffect, useRef, useState } from 'react';
+import {
+  type ReactNode,
+  type RefObject,
+  createRef,
+  useCallback,
+  useEffect,
+  useRef,
+  useState,
+} from 'react';
 import { StyleSheet, View, type ViewInstance } from 'react-native';
 import { useTranslation } from 'react-i18next';
 
@@ -25,13 +33,13 @@ import { offersDelete } from '../kit/eventDelete.ts';
 import { offersEdit } from '../kit/eventEdit.ts';
 import { DUPLICATING, backToOriginal } from '../kit/eventDuplicate.ts';
 import {
-  type EditAt,
+  type EditPart,
   EVENT_AREA,
   type EventPlace,
   GUESTS_FILTER,
   areaBack,
 } from '../kit/eventNav.ts';
-import { markDeleted, takeCoverRefused, takeSaved } from '../kit/eventSaved.ts';
+import { markDeleted, takeCoverRefused } from '../kit/eventSaved.ts';
 import { type Opened, openedOf, openedWithoutAsking } from '../kit/eventsOpen.ts';
 import { SHOWN_EVENT, goUpToEvent } from '../kit/upToEvent.ts';
 import { useServerNow } from '../kit/serverNow.ts';
@@ -44,13 +52,14 @@ import { SecondaryButton } from './Buttons.tsx';
 import { cardFrame } from './cardFrame.ts';
 import { DuplicateEvent } from './DuplicateEvent.tsx';
 import { EventPage } from './EventPage.tsx';
+import { EDIT_PARTS } from './EventEdits.tsx';
+import { EventEditScreen } from './EventPartEdits.tsx';
 import { EventGuests, type GuestsTop } from './EventGuests.tsx';
 import { EventPeople } from './EventPeople.tsx';
 import { EventNotFound, EventTop, EventsFailed, usePhaseOf } from './Events.tsx';
 import { Notice } from './Notice.tsx';
-import { ReadOut } from './ReadOut.tsx';
 import { Refreshing } from './Refreshing.tsx';
-import { Screen, useScrolledToTop } from './Screen.tsx';
+import { Screen } from './Screen.tsx';
 import { LoadingBlock, PageToast } from './Summary.tsx';
 import { Arrived } from './Skeleton.tsx';
 import { type ScreenReaderTarget, moveScreenReaderFocus } from './screenReaderFocus.ts';
@@ -70,6 +79,7 @@ export function EventScreen({
   filter = 'all',
   copiedFrom,
   opensDuplicate = false,
+  opensEdit,
   keepsTab,
 }: {
   eventId: string;
@@ -80,6 +90,8 @@ export function EventScreen({
   copiedFrom?: string | undefined;
   /** Opened by an Events card's Duplicate, so Duplicate is over the page as it opens. */
   opensDuplicate?: boolean;
+  /** Opened by a link to the part's edit, an Events card's Change dates among them (sc-48600): Cancel goes back to whatever opened it. */
+  opensEdit?: EditPart | undefined;
   /** Opened from Happening now, so Back returns to the tab that was showing. */
   keepsTab: boolean;
 }) {
@@ -97,7 +109,21 @@ export function EventScreen({
     }): void;
     getState(): { routes: readonly { params?: unknown }[]; index: number } | undefined;
   }>();
-  const [savedEvent, setSavedEvent] = useState<string | null>(null);
+  const [editing, setEditing] = useState<{
+    part: EditPart;
+    count: number;
+    open: boolean;
+    leaves: boolean;
+    opener: RefObject<ScreenReaderTarget | null>;
+  } | null>(null);
+  const [partRows] = useState(
+    () =>
+      Object.fromEntries(EDIT_PARTS.map((part) => [part, createRef<ViewInstance>()])) as Record<
+        EditPart,
+        RefObject<ViewInstance | null>
+      >,
+  );
+  const coverNotice = useRef<ViewInstance>(null);
   const [guestsOffline, setGuestsOffline] = useState<ScreenOffline>(NOT_OFFLINE);
   const [guestsTop, setGuestsTop] = useState<GuestsTop>({ add: null, back: null });
   const guestsAdd = useRef<ViewInstance>(null);
@@ -144,16 +170,9 @@ export function EventScreen({
 
   useFocusEffect(
     useCallback(() => {
-      const saved = takeSaved();
-      setSavedEvent(saved);
       setCoverRefused(takeCoverRefused());
-      // A load already out may have left before the save, so it cannot be joined.
-      if (saved != null) reload();
-      else freshen();
-
-      // Gone while the page is covered, so the next save mounts Saved afresh and scrolls up to it.
-      return () => setSavedEvent(null);
-    }, [reload, freshen]),
+      freshen();
+    }, [freshen]),
   );
 
   const guestsClear = area === 'guests' && guestsOffline.stale == null;
@@ -182,10 +201,27 @@ export function EventScreen({
   useSystemBack(true, back);
   useEdgeSwipeBack(area !== 'overview', back);
 
-  const onEdit = manages
-    ? (at?: EditAt) =>
-        router.push(`/events/${encodeURIComponent(eventId)}/edit${at == null ? '' : `?at=${at}`}`)
-    : undefined;
+  const partRef = (part: EditPart): RefObject<ViewInstance | null> => partRows[part];
+  const openEdit = (
+    part: EditPart,
+    opener: RefObject<ScreenReaderTarget | null>,
+    leaves = false,
+  ) => {
+    setEditing((was) => ({ part, count: (was?.count ?? 0) + 1, open: true, leaves, opener }));
+  };
+  const closeEdit = (opener?: RefObject<ScreenReaderTarget | null>) =>
+    setEditing((was) =>
+      was == null ? was : { ...was, open: false, ...(opener == null ? {} : { opener }) },
+    );
+  const onEdit = manages ? openEdit : undefined;
+  const fromLink = useRef(opensEdit);
+
+  useEffect(() => {
+    const part = fromLink.current;
+    if (part == null || event == null) return;
+    fromLink.current = undefined;
+    if (manages) openEdit(part, partRef(part), true);
+  });
   const onDuplicate = creates
     ? (opener: RefObject<ScreenReaderTarget | null>) =>
         setDuplicating((now) => ({ opener, count: (now?.count ?? 0) + 1, open: true }))
@@ -209,7 +245,6 @@ export function EventScreen({
     event != null ? (
       area === 'overview' ? (
         <Arrived style={styles.stack}>
-          {savedEvent === eventId && <Saved />}
           <EventPage
             kind={kind}
             event={event}
@@ -219,6 +254,7 @@ export function EventScreen({
             takes={(action) => takesCardStep(event, action)}
             onChange={change}
             onEdit={onEdit}
+            partRef={partRef}
             onDuplicate={onDuplicate}
             onDeleted={onDeleted}
             tell={(words) => setToast({ eventId, area, words })}
@@ -233,8 +269,9 @@ export function EventScreen({
               />
               {onEdit != null && (
                 <SecondaryButton
+                  ref={coverNotice}
                   label={t('eventEdit.open')}
-                  onPress={() => onEdit()}
+                  onPress={() => onEdit('cover', coverNotice)}
                   testID="events.page.coverRefused.edit"
                 />
               )}
@@ -256,7 +293,7 @@ export function EventScreen({
             manages={manages}
             now={now}
             onChange={change}
-            onEdit={onEdit}
+            onEdit={onEdit == null ? undefined : (part) => onEdit(part, partRef(part))}
             onDuplicate={onDuplicate}
           />
         </PlaceholderArea>
@@ -401,6 +438,29 @@ export function EventScreen({
           onClose={() => setDuplicating((now) => (now == null ? now : { ...now, open: false }))}
         />
       )}
+      {event != null && editing != null && (
+        <EventEditScreen
+          key={editing.count}
+          part={editing.part}
+          open={editing.open}
+          event={event}
+          opener={editing.opener}
+          onClose={() => {
+            if (editing.leaves && router.canGoBack()) router.back();
+            else closeEdit();
+          }}
+          onSaved={(saved) => {
+            change(saved);
+            if (editing.part === 'cover') setCoverRefused(null);
+            closeEdit(partRef(editing.part));
+            setToast({ eventId, area, words: t('eventEdit.saved') });
+          }}
+          onLatest={(latest) => {
+            change(latest);
+            setEditing((was) => (was == null ? was : { ...was, count: was.count + 1 }));
+          }}
+        />
+      )}
       {toast?.eventId === eventId && toast.area === area && (
         <PageToast
           words={toast.words}
@@ -439,19 +499,6 @@ function PlaceholderArea({
 }
 
 /** A save goes back to the page where it was scrolled, so Saved brings itself into sight (sc-21336). */
-function Saved() {
-  const { t } = useTranslation();
-  const top = useScrolledToTop();
-
-  return (
-    <View ref={top} collapsable={false}>
-      <ReadOut words={t('eventEdit.saved')}>
-        <Notice tone="done" mark={tokens.marks.done.glyph} body={t('eventEdit.saved')} />
-      </ReadOut>
-    </View>
-  );
-}
-
 /** The event is read on its own, so a link, a push and Calendar open it as Events does. */
 function useOpened(
   eventId: string,

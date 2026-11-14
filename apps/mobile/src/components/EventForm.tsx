@@ -1,8 +1,4 @@
-import {
-  type EventCover as EventCoverPhoto,
-  type Membership,
-  type TaggedEvent,
-} from '@soirely/api-client';
+import { type EventCover as EventCoverPhoto, type Membership } from '@soirely/api-client';
 import {
   EVENT_NAME_MAXIMUM,
   EVENT_TYPES,
@@ -23,8 +19,6 @@ import {
   formatWallClock,
   formatWallDay,
   isEventType,
-  scheduleKept,
-  shownPhase,
   skippedLine,
   timezoneLabel,
   withCurrent,
@@ -56,23 +50,20 @@ import {
   type EventErrors,
   type EventTyped,
   blankEvent,
-  changesOf,
   isDirty,
   newEventOf,
   pickedInto,
   pickerValue,
   sendOutcome,
-  typedOf,
 } from '../kit/eventForm.ts';
 import { coverRefusalOf } from '../kit/coverUpload.ts';
 import { refusedHint } from '../kit/fields.ts';
 import { keysGoDownFor, typedIn } from './refusedField.ts';
 import { markCoverRefused } from '../kit/eventSaved.ts';
-import { useLoadedAt, useServerNow } from '../kit/serverNow.ts';
 import { type LayoutKind } from '../layout/useLayout.ts';
 import { holdLeaving } from '../leaveHeld.ts';
 import { tokens } from '../theme/tokens.ts';
-import { DestructiveButton, PrimaryButton, QuietButton, SecondaryButton } from './Buttons.tsx';
+import { DestructiveButton, PrimaryButton, QuietButton } from './Buttons.tsx';
 import { cardFrame } from './cardFrame.ts';
 import { type CoverUse, CoverField, discardCoverUpload } from './CoverField.tsx';
 import { focusPicker } from './CountryPicker.tsx';
@@ -96,41 +87,25 @@ import { useScreenReaderOn } from './screenReaderFocus.ts';
 import { Sheet } from './Sheet.tsx';
 import { Text } from './Text.tsx';
 import { VenueFields } from './VenueFields.tsx';
-import type { EditAt } from '../kit/eventNav.ts';
-
-type Status = 'editing' | 'sending' | 'failed' | 'changedElsewhere' | 'created';
-
-type Asking = 'leave' | 'latest' | null;
+type Status = 'editing' | 'sending' | 'failed' | 'created';
 
 const NO_HOSTS = { status: 'draft', hosts: [] } as const;
 
+/** New event (sc-3595): each part of an event that exists edits on its own screen (sc-48600). */
 export function EventForm({
   kind,
   organisation,
-  opened,
-  arriveAt,
   onCreated,
-  onSaved,
-  onLatest,
 }: {
   kind: LayoutKind;
   organisation: Membership;
-  opened?: TaggedEvent | undefined;
-  /** The field it opens with focus on. */
-  arriveAt?: EditAt | undefined;
   onCreated: (eventId: string) => void;
-  onSaved: (outcome: 'saved' | 'unchanged') => void;
-  /** Show the latest: the event is read again and the form starts over from it. */
-  onLatest: (latest: TaggedEvent) => void;
 }) {
   const { t } = useTranslation();
   const locale = currentLocale();
-  const editing = opened != null;
-  const [from] = useState<EventTyped>(() =>
-    opened == null ? blankEvent(organisation) : typedOf(opened.event),
-  );
-  const [entered, setTyped] = useState(from);
-  const [endChosen, setEndChosen] = useState(editing);
+  const [from] = useState<EventTyped>(() => blankEvent(organisation));
+  const [typed, setTyped] = useState(from);
+  const [endChosen, setEndChosen] = useState(false);
   const [errors, setErrors] = useState<EventErrors>({});
   const [hostErrors, setHostErrors] = useState<HostErrors>({});
   const [hostsChecked, setHostsChecked] = useState(false);
@@ -146,23 +121,15 @@ export function EventForm({
     const later = setTimeout(() => setLinesInSummary(false));
     return () => clearTimeout(later);
   }, [linesInSummary]);
-  const [asking, setAsking] = useState<Asking>(null);
-  const [fetchingLatest, setFetchingLatest] = useState(false);
+  const [asking, setAsking] = useState<'leave' | null>(null);
   const [leaving, setLeaving] = useState(false);
   const leaveAction = useRef<(() => void) | null>(null);
-  const [cover, setCover] = useState<EventCoverPhoto | null>(opened?.event.cover ?? null);
+  const [cover, setCover] = useState<EventCoverPhoto | null>(null);
   const staged = useRef<string | null>(null);
   const busy = status === 'sending';
-  const now = useServerNow();
-  const loadedAt = useLoadedAt(opened?.event ?? from);
-  const over = opened != null && shownPhase(opened.event, loadedAt, now) === 'finished';
-  const typed = useMemo(
-    () => (over ? scheduleKept(entered, from) : entered),
-    [over, entered, from],
-  );
   const { draft, venue, timeZone, currency, hosts } = typed;
-  const checkedOf = (rows: readonly HostRow[]) => (editing ? rows : newEventHosts(rows));
-  const dirty = isDirty(typed, from) || (!editing && cover != null);
+  const checkedOf = (rows: readonly HostRow[]) => newEventHosts(rows);
+  const dirty = isDirty(typed, from) || cover != null;
 
   const nameInput = useRef<TextInputInstance>(null);
   const venueNameInput = useRef<TextInputInstance>(null);
@@ -181,9 +148,7 @@ export function EventForm({
   const [focusOn, setFocusOn] = useState<{
     field: EventFormField;
     saidFirst?: string | undefined;
-  } | null>(() =>
-    arriveAt == null || arriveAt === 'hosts' ? null : { field: ARRIVE_AT[arriveAt] },
-  );
+  } | null>(null);
 
   useEffect(() => {
     if (focusOn == null) return;
@@ -240,18 +205,8 @@ export function EventForm({
     [organisation.id],
   );
 
-  /** New event keeps the photo until the event exists; Edit details saves it at once, as the web's forms do. */
+  /** New event keeps the photo until the event exists. */
   async function keepCover({ upload, position, description }: CoverUse): Promise<void> {
-    if (opened != null) {
-      const updated = await api.setEventCover(opened.event.id, {
-        ...(upload == null ? {} : { uploadKey: upload.key }),
-        position,
-        description,
-      });
-      setCover(updated.cover);
-      return;
-    }
-
     if (upload != null && staged.current != null && staged.current !== upload.key)
       discardCoverUpload(organisation.id, staged.current);
     if (upload != null) staged.current = upload.key;
@@ -263,11 +218,6 @@ export function EventForm({
   }
 
   async function removeCover(): Promise<void> {
-    if (opened != null) {
-      setCover((await api.removeEventCover(opened.event.id)).cover);
-      return;
-    }
-
     if (staged.current != null) discardCoverUpload(organisation.id, staged.current);
     staged.current = null;
     setCover(null);
@@ -298,11 +248,8 @@ export function EventForm({
     [from.timeZone],
   );
   const currencies = useMemo(
-    () =>
-      currencyChoices(opened?.event.currency ?? '', locale, (code) =>
-        t('orgGeneral.currencyRetired', { code }),
-      ),
-    [opened?.event.currency, locale, t],
+    () => currencyChoices('', locale, (code) => t('orgGeneral.currencyRetired', { code })),
+    [locale, t],
   );
 
   function change(field: EventFormField, next: Partial<EventTyped>): void {
@@ -389,18 +336,13 @@ export function EventForm({
 
     setUnsent(null);
 
-    if (opened != null && !dirty) {
-      onSaved('unchanged');
-      return;
-    }
-
-    const body = opened == null ? newEventOf(typed) : null;
-    if (opened == null && body == null) return;
+    const body = newEventOf(typed);
+    if (body == null) return;
 
     setStatus('sending');
 
     try {
-      if (body != null) {
+      {
         const created = await api.createEvent(organisation.id, body);
         const uploadKey = staged.current;
         staged.current = null;
@@ -417,9 +359,6 @@ export function EventForm({
 
         setStatus('created');
         leave(() => onCreated(created.id));
-      } else if (opened != null) {
-        await api.updateEvent(opened.event.id, changesOf(opened.event, typed), opened.tag);
-        leave(() => onSaved('saved'));
       }
     } catch (error) {
       const outcome = sendOutcome(error, t, checkedOf(hosts));
@@ -430,25 +369,11 @@ export function EventForm({
         return;
       }
 
-      setStatus(outcome.kind);
-    }
-  }
-
-  async function showLatest(): Promise<void> {
-    if (opened == null) return;
-    setFetchingLatest(true);
-
-    try {
-      const latest = await api.taggedEvent(opened.event.id);
-      onLatest(latest);
-    } catch {
-      setFetchingLatest(false);
-      setAsking(null);
       setStatus('failed');
     }
   }
 
-  const failed = editing ? t('eventEdit.notSaved') : t('eventForm.notCreated');
+  const failed = t('eventForm.notCreated');
   const problems = unsent == null ? null : t('eventForm.problems', { count: unsent.count });
 
   return (
@@ -462,29 +387,6 @@ export function EventForm({
         <InSight>
           <ReadOut words={failed} interrupts accessibilityRole="alert">
             <Notice tone="broken" mark={tokens.marks.broken.glyph} body={failed} />
-          </ReadOut>
-        </InSight>
-      )}
-      {status === 'changedElsewhere' && (
-        <InSight>
-          <ReadOut words={t('eventEdit.changedElsewhere')} interrupts accessibilityRole="alert">
-            <Notice
-              tone="broken"
-              mark={tokens.marks.broken.glyph}
-              body={t('eventEdit.changedElsewhere')}
-            />
-            <View style={styles.actions}>
-              <SecondaryButton
-                label={t('eventEdit.showLatest')}
-                onPress={() => setAsking('latest')}
-                testID="eventForm.showLatest"
-              />
-              <SecondaryButton
-                label={t('eventEdit.cancel')}
-                onPress={() => setStatus('editing')}
-                testID="eventForm.keepMine"
-              />
-            </View>
           </ReadOut>
         </InSight>
       )}
@@ -534,9 +436,9 @@ export function EventForm({
           kind={kind}
           rows={hosts}
           errors={hostErrors}
-          saved={opened?.event ?? NO_HOSTS}
+          saved={NO_HOSTS}
           busy={busy}
-          arrive={arriveAt === 'hosts'}
+          arrive={false}
           focusHost={focusHost}
           onRows={editHosts}
           onLeave={leaveHost}
@@ -551,12 +453,6 @@ export function EventForm({
           onRemove={removeCover}
         />
 
-        {over && (
-          <Text size={tokens.typeBody.size} muted testID="eventForm.scheduleOver">
-            {t('eventEdit.scheduleLocked')}
-          </Text>
-        )}
-
         <Moment
           label={t('eventForm.starts')}
           date={draft.startDate}
@@ -564,7 +460,6 @@ export function EventForm({
           timeZone={timeZone}
           error={errors.startsAt}
           disabled={busy}
-          readOnly={over}
           pickerRef={startPicker}
           fieldRef={startField}
           testID="eventForm.start"
@@ -579,7 +474,6 @@ export function EventForm({
           timeZone={timeZone}
           error={errors.endsAt}
           disabled={busy}
-          readOnly={over}
           pickerRef={endPicker}
           fieldRef={endField}
           testID="eventForm.end"
@@ -598,7 +492,7 @@ export function EventForm({
           addressInput={venueAddressInput}
           noteInput={arrivalNoteInput}
           onVenue={changeVenue}
-          {...(over ? {} : { onUseZone: (zone: string) => change('timeZone', { timeZone: zone }) })}
+          onUseZone={(zone: string) => change('timeZone', { timeZone: zone })}
         />
 
         <Field ref={zoneField} label={t('eventForm.timeZone')} error={errors.timeZone}>
@@ -609,7 +503,6 @@ export function EventForm({
             value={timeZone}
             onChange={(zone) => change('timeZone', { timeZone: zone })}
             disabled={busy}
-            readOnly={over}
             wrong={errors.timeZone != null}
             pickerRef={zonePicker}
             testID="eventForm.timeZone"
@@ -620,7 +513,7 @@ export function EventForm({
           ref={currencyField}
           label={t('eventForm.currency')}
           error={errors.currency}
-          help={editing ? undefined : t('eventForm.defaultsHint', { name: organisation.name })}
+          help={t('eventForm.defaultsHint', { name: organisation.name })}
         >
           <ListPicker
             label={t('eventForm.currency')}
@@ -638,15 +531,7 @@ export function EventForm({
 
         <PrimaryButton
           ref={sendButton}
-          label={
-            editing
-              ? busy
-                ? t('eventEdit.saving')
-                : t('eventEdit.save')
-              : busy
-                ? t('eventForm.creating')
-                : t('eventForm.create')
-          }
+          label={busy ? t('eventForm.creating') : t('eventForm.create')}
           onPress={() => void send()}
           busy={busy || status === 'created'}
           testID="eventForm.send"
@@ -666,27 +551,9 @@ export function EventForm({
         onKeep={() => setAsking(null)}
         testID="eventForm.leave"
       />
-      <Ask
-        open={asking === 'latest'}
-        title={t('eventEdit.showLatestTitle')}
-        body={t('eventEdit.showLatestBody')}
-        go={t('eventEdit.showLatest')}
-        pending={fetchingLatest}
-        onGo={() => void showLatest()}
-        onKeep={() => setAsking(null)}
-        testID="eventForm.latest"
-      />
     </LinesInSummary.Provider>
   );
 }
-
-const ARRIVE_AT: Record<Exclude<EditAt, 'hosts'>, EventFormField> = {
-  starts: 'startsAt',
-  venue: 'venueName',
-  name: 'name',
-  type: 'type',
-  currency: 'currency',
-};
 
 /** The answer to a press at the foot of the form shows at its top, so it scrolls there; ReadOut already says it, so focus stays. */
 export function InSight({ children }: { children: ReactNode }) {
@@ -747,7 +614,6 @@ export function Moment({
   timeZone,
   error,
   disabled,
-  readOnly,
   pickerRef,
   timePickerRef,
   fieldRef,
@@ -763,7 +629,6 @@ export function Moment({
   timeZone: string;
   error: string | undefined;
   disabled: boolean;
-  readOnly: boolean;
   pickerRef: RefObject<ViewInstance | null>;
   timePickerRef?: RefObject<ViewInstance | null>;
   fieldRef: RefObject<ViewInstance | null>;
@@ -833,16 +698,12 @@ export function Moment({
           <Field label={t('eventForm.date')}>
             <Pressable
               ref={pickerRef}
-              style={[
-                styles.pick,
-                readOnly && styles.pickReadOnly,
-                error != null && styles.pickWrong,
-              ]}
+              style={[styles.pick, error != null && styles.pickWrong]}
               onPress={() => open('date')}
               {...dateEdge.edging}
-              disabled={disabled || readOnly}
-              accessibilityRole={readOnly ? undefined : 'button'}
-              accessibilityState={{ disabled: disabled || readOnly }}
+              disabled={disabled}
+              accessibilityRole="button"
+              accessibilityState={{ disabled: disabled }}
               accessibilityLabel={t('eventForm.date')}
               accessibilityHint={refusedHint(refused, hint)}
               accessibilityValue={{
@@ -862,16 +723,12 @@ export function Moment({
         <Field label={t('eventForm.time')}>
           <Pressable
             ref={timePicker}
-            style={[
-              styles.pick,
-              readOnly && styles.pickReadOnly,
-              error != null && styles.pickWrong,
-            ]}
+            style={[styles.pick, error != null && styles.pickWrong]}
             onPress={() => open('time')}
             {...timeEdge.edging}
-            disabled={disabled || readOnly}
-            accessibilityRole={readOnly ? undefined : 'button'}
-            accessibilityState={{ disabled: disabled || readOnly }}
+            disabled={disabled}
+            accessibilityRole="button"
+            accessibilityState={{ disabled: disabled }}
             accessibilityLabel={t('eventForm.time')}
             accessibilityHint={refusedHint(refused, hint)}
             accessibilityValue={{
@@ -953,7 +810,6 @@ const styles = StyleSheet.create({
     backgroundColor: tokens.colorCard,
   },
   pickDate: { flex: 1 },
-  pickReadOnly: { backgroundColor: tokens.colorNeutralFill },
   pickWrong: { borderColor: tokens.colorBroken },
   placeholder: { color: tokens.colorInkSecondary },
 });

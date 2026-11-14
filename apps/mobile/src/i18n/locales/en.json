@@ -1590,7 +1590,8 @@
     "yourPhoto": "Your photo",
     "pauseLine": "Guests can't reply or change anything until you resume it. Nothing is lost. Check-in and service keep working.",
     "callOffLine": "It won't go ahead. Guests following their link will be told. You can't undo this.",
-    "endLine": "It will be over for everybody. You can't undo this."
+    "endLine": "It will be over for everybody. You can't undo this.",
+    "dates": "Dates"
   },
   "eventForm": {
     "title": "New event",
@@ -1660,7 +1661,11 @@
     "leave": "Leave without saving",
     "saved": "Saved",
     "scheduleConcluded": "This event is over, so its start, end and time zone cannot be changed.",
-    "scheduleLocked": "This event is over, so its start, end and time zone can't be changed."
+    "scheduleLocked": "This event is over, so its start, end and time zone can't be changed.",
+    "savePart": "Save",
+    "discardTitle": "Discard your change?",
+    "discardLine": "What you changed here is not saved.",
+    "discard": "Discard"
   },
   "eventCover": {
     "heading": "Cover",
@@ -1691,7 +1696,9 @@
     "remove": "Remove photo",
     "cancel": "Cancel",
     "use": "Use this photo",
-    "saving": "Saving…"
+    "saving": "Saving…",
+    "meshLine": "Soirely’s cover, in this event’s own colours. Add your own photo if you like.",
+    "removeLine": "The default cover comes back."
   },
   "eventLive": {
     "guestsBlocked": "Guests can't be invited until this event is live.",

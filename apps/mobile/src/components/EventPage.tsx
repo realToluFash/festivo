@@ -8,7 +8,7 @@ import { useTranslation } from 'react-i18next';
 
 import { dateLocale } from '../i18n/index.ts';
 import { SECTION_HREF } from '../kit/appNav.ts';
-import type { EditAt } from '../kit/eventNav.ts';
+import type { EditPart } from '../kit/eventNav.ts';
 import {
   type ManageKey,
   coverRow,
@@ -50,17 +50,6 @@ import type { TextHandle } from './Text.tsx';
 import { TextAction } from './Summary.tsx';
 import { ComingUp, useTimeline } from './Timeline.tsx';
 
-const EDIT_AT: Record<EventPart, EditAt | undefined> = {
-  dates: 'starts',
-  replyBy: undefined,
-  venue: 'venue',
-  hosts: 'hosts',
-  type: 'type',
-  currency: 'currency',
-  name: 'name',
-  cover: undefined,
-};
-
 /** An event's Overview as the design demo draws it (sc-30413): its card, then Details, Coming up, Name and cover, Just for you and Manage. */
 export function EventPage({
   kind,
@@ -70,6 +59,7 @@ export function EventPage({
   takes,
   onChange,
   onEdit,
+  partRef,
   onDuplicate,
   onDeleted,
   onGuests,
@@ -85,8 +75,10 @@ export function EventPage({
   /** Whether the viewer's role can take the card's step. */
   takes: (action: StepAction) => boolean;
   onChange: (event: OrganisationEvent) => void;
-  /** Absent for a role without events.manage (sc-3595); `at` is the field it opens with focus on. */
-  onEdit?: ((at?: EditAt) => void) | undefined;
+  /** Absent for a role without events.manage (sc-3595): opens the part's own edit over the page (sc-48600), focus going back to `opener` when it closes. */
+  onEdit?: ((part: EditPart, opener: RefObject<ScreenReaderTarget | null>) => void) | undefined;
+  /** Each part's row, which its edit returns focus to. */
+  partRef: (part: EditPart) => RefObject<ViewInstance | null>;
   /** Absent for a role without events.create (sc-22145); opens Duplicate over the page, focus going back to `opener`. */
   onDuplicate?: ((opener: RefObject<ScreenReaderTarget | null>) => void) | undefined;
   /** Absent for a role without events.create (sc-3592). */
@@ -110,7 +102,7 @@ export function EventPage({
   const makeLive = useMakeLive({
     event,
     onChange,
-    onEdit,
+    onEdit: onEdit == null ? undefined : (part) => onEdit(part, cardOpener),
     onLive: tell,
     opener: cardOpener,
   });
@@ -139,10 +131,16 @@ export function EventPage({
     said.current = { id: event.id, phase };
   }, [event.id, phase, t]);
 
-  const edit = onEdit == null ? null : (part: EventPart) => onEdit(EDIT_AT[part]);
+  const edit =
+    onEdit == null
+      ? null
+      : (part: EventPart) => {
+          if (part !== 'replyBy') onEdit(part, partRef(part));
+        };
+  const rowRef: RefFor = (part) => (part === 'replyBy' ? undefined : partRef(part as EditPart));
   const onStep = (step: Extract<CardStep, { kind: 'button' }>) => {
     if (step.action === 'makeLive') makeLive.start();
-    else if (step.action === 'changeDates') onEdit?.('starts');
+    else if (step.action === 'changeDates') onEdit?.('dates', cardOpener);
     else if (step.action === 'resume') resume.resume();
     else onDuplicate?.(cardOpener);
   };
@@ -196,6 +194,7 @@ export function EventPage({
     <PartsSection
       title={t('eventPage.details')}
       rowIDs="events.details"
+      refFor={rowRef}
       onEdit={(part) => edit?.(part)}
       rows={[
         {
@@ -248,6 +247,7 @@ export function EventPage({
     <PartsSection
       title={t('eventPage.nameAndCover')}
       rowIDs="events.details"
+      refFor={rowRef}
       onEdit={(part) => edit?.(part)}
       rows={[
         { part: 'name', title: event.name, line: t('eventPage.eventName'), opens: edit != null },

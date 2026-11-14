@@ -1642,7 +1642,8 @@
     "yourPhoto": "A sua fotografia",
     "pauseLine": "Os convidados não vão poder responder nem alterar nada até retomar o evento. Não se perde nada. O registo de entradas e o serviço continuam a funcionar.",
     "callOffLine": "O evento não se vai realizar. Os convidados que abrirem a sua ligação serão avisados. Esta ação não pode ser anulada.",
-    "endLine": "O evento vai terminar para todos. Esta ação não pode ser anulada."
+    "endLine": "O evento vai terminar para todos. Esta ação não pode ser anulada.",
+    "dates": "Dates"
   },
   "eventForm": {
     "title": "Novo evento",
@@ -1714,7 +1715,11 @@
     "leave": "Sair sem guardar",
     "saved": "Alterações guardadas",
     "scheduleConcluded": "Este evento terminou, por isso o início, o fim e o fuso horário já não podem ser alterados.",
-    "scheduleLocked": "Este evento terminou, por isso o início, o fim e o fuso horário já não podem ser alterados."
+    "scheduleLocked": "Este evento terminou, por isso o início, o fim e o fuso horário já não podem ser alterados.",
+    "savePart": "Save",
+    "discardTitle": "Discard your change?",
+    "discardLine": "What you changed here is not saved.",
+    "discard": "Discard"
   },
   "eventCover": {
     "heading": "Capa",
@@ -1745,7 +1750,9 @@
     "remove": "Remover fotografia",
     "cancel": "Cancelar",
     "use": "Usar esta fotografia",
-    "saving": "A guardar…"
+    "saving": "A guardar…",
+    "meshLine": "Soirely’s cover, in this event’s own colours. Add your own photo if you like.",
+    "removeLine": "The default cover comes back."
   },
   "eventLive": {
     "guestsBlocked": "Só é possível convidar pessoas depois de este evento ser publicado.",
