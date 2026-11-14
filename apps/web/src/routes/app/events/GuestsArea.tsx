@@ -19,10 +19,12 @@ import {
 import {
   type ReactNode,
   type RefObject,
+  memo,
   useCallback,
   useEffect,
   useEffectEvent,
   useId,
+  useMemo,
   useReducer,
   useRef,
   useState,
@@ -245,6 +247,8 @@ export function GuestsGone({ heading }: { heading: RefObject<HTMLHeadingElement 
   );
 }
 
+const NO_GUESTS: GuestList['guests'] = [];
+
 export function GuestsArea({
   event,
   tag,
@@ -448,7 +452,7 @@ export function GuestsArea({
     throw error;
   }
 
-  const guests = load.kind === 'loaded' ? load.list.guests : [];
+  const guests = load.kind === 'loaded' ? load.list.guests : NO_GUESTS;
   const shows =
     load.kind === 'failed' || counted === 'failed'
       ? 'failed'
@@ -456,10 +460,13 @@ export function GuestsArea({
         ? 'loading'
         : 'loaded';
   const counts = typeof counted === 'object' ? counted : null;
-  const { view, shown } =
-    counts == null
-      ? { view: { kind: 'rows' as const, rows: [] }, shown: 0 }
-      : viewOf(guests, counts, choice, q, expanded);
+  const { view, shown } = useMemo(
+    () =>
+      counts == null
+        ? { view: { kind: 'rows' as const, rows: [] }, shown: 0 }
+        : viewOf(guests, counts, choice, q, expanded),
+    [guests, counts, choice, q, expanded],
+  );
   const looking = choice !== 'all' || q.trim() !== '';
 
   /** The card as `/demo/guests` draws it: a Draft, Paused or Finished event says so on the card, in place of its counts' step. */
@@ -609,6 +616,7 @@ export function GuestsArea({
                         ) : view.kind === 'rows' ? (
                           <Rows
                             rows={view.rows}
+                            look={`${choice} ${q}`}
                             choice={choice}
                             eventId={event.id}
                             timeZone={event.timeZone}
@@ -629,6 +637,7 @@ export function GuestsArea({
                             >
                               <Rows
                                 rows={group.rows}
+                                look={`${choice} ${q}`}
                                 choice={choice}
                                 eventId={event.id}
                                 timeZone={event.timeZone}
@@ -918,9 +927,55 @@ function Group({
   );
 }
 
+/** Rows drawn in one frame: a search matching most of 2,000 guests draws its first rows, then the rest a frame at a time, so the list changes in under 100 ms. */
+const ROWS_PER_FRAME = 100;
+
+const RowsPart = memo(RowsFrom);
+
 /** Each row is a link to its guest's address; a companion's opens their guest. */
 function Rows({
   rows,
+  look,
+  ...rest
+}: {
+  rows: readonly ViewRow[];
+  /** The choice and search: a new one starts again from the first rows. */
+  look: string;
+  choice: Choice;
+  eventId: string;
+  timeZone: string;
+  open: string | null;
+  onOpen: (id: string) => void;
+}) {
+  const [drawn, setDrawn] = useState({ look, upTo: ROWS_PER_FRAME });
+  const upTo = drawn.look === look ? drawn.upTo : ROWS_PER_FRAME;
+
+  if (drawn.look !== look) setDrawn({ look, upTo });
+
+  useEffect(() => {
+    if (upTo >= rows.length) return;
+
+    const frame = requestAnimationFrame(() =>
+      setDrawn((was) => (was.look === look ? { look, upTo: was.upTo + ROWS_PER_FRAME } : was)),
+    );
+
+    return () => cancelAnimationFrame(frame);
+  }, [look, upTo, rows.length]);
+
+  const parts = [];
+
+  for (let from = 0; from < Math.min(upTo, rows.length); from += ROWS_PER_FRAME)
+    parts.push(
+      <RowsPart key={from} rows={rows} from={from} to={from + ROWS_PER_FRAME} {...rest} />,
+    );
+
+  return <ul className="desk-rows gs-rows">{parts}</ul>;
+}
+
+function RowsFrom({
+  rows,
+  from,
+  to,
   choice,
   eventId,
   timeZone,
@@ -928,6 +983,8 @@ function Rows({
   onOpen,
 }: {
   rows: readonly ViewRow[];
+  from: number;
+  to: number;
   choice: Choice;
   eventId: string;
   /** The event's: a reply's date is the day it was in the event's zone. */
@@ -938,8 +995,8 @@ function Rows({
   const { t } = useTranslation();
 
   return (
-    <ul className="desk-rows gs-rows">
-      {rows.map(({ person, indent }) => {
+    <>
+      {rows.slice(from, to).map(({ person, indent }) => {
         const { guest, companion } = person;
 
         if (companion == null) {
@@ -1023,7 +1080,7 @@ function Rows({
           </li>
         );
       })}
-    </ul>
+    </>
   );
 }
 
