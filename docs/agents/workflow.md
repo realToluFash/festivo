@@ -80,7 +80,7 @@ life, across separate workers: build, review fixes, merge, Failed QA fixes. That
 checkout holds the branch, so the label routes every step to the right one. Ready For Dev is
 shared: whichever developer claims a story first labels it.
 
-**Testers: `qa1`, `qa2`, `qa3` and `qa4`, as a record, not a routing rule.**
+**Testers: `qa1`, `qa2`, `qa3`, `qa4` and `qa5`, as a record, not a routing rule.**
 
 - When a tester moves a story to In QA, `sq` adds that tester's label, so anyone can see who
   to tag (`[qa2]`) with a question about the result.
