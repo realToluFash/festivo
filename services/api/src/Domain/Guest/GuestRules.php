@@ -5,20 +5,32 @@ declare(strict_types=1);
 namespace App\Domain\Guest;
 
 use App\Domain\Guest\Model\CompanionChoice;
+use App\Domain\Guest\Model\GuestNeeds;
 use App\Domain\Guest\Model\NewGuest;
 use App\Domain\User\Phone\PhoneNumberParser;
 use App\Entity\Guest;
 use App\Enum\ErrorCode;
+use App\Enum\NeedKind;
 use App\Http\Exception\ApiException;
 use App\Locale\NameNormaliser;
 use App\Locale\SupportedLocales;
 use Psl\Iter;
 use Psl\Str;
+use Psl\Vec;
 use Symfony\Contracts\Translation\TranslatorInterface;
 
-/** What a guest added to a list may be (sc-1468). The web form checks the same before sending; this is the one that holds, every problem at once. */
+/**
+ * What a guest added to a list may be (sc-1468). The web form checks the same before sending; this is the one that holds, every problem at once.
+ *
+ * @phpstan-type NeedsInput array{allergies?: list<string>, diet?: list<string>, access?: list<string>, otherAllergy?: ?string, otherDiet?: ?string, otherAccess?: ?string, note?: ?string}
+ */
 final readonly class GuestRules
 {
+    /** Each Other's words, counted after trimming (sc-3777, PM #5004): longer detail belongs in the note. */
+    public const int OTHER_MAXIMUM = 100;
+
+    public const int NOTE_MAXIMUM = 500;
+
     public function __construct(
         private TranslatorInterface $translator,
         private PhoneNumberParser $phoneNumberParser,
@@ -27,10 +39,12 @@ final readonly class GuestRules
 
     /**
      * @param ?array{countryCode: string, number: string} $mobile
-     * @param list<?string>                               $companions each companion's name as typed, blank for none
-     * @param ?string                                     $language   the host's Language, null for Not set
+     * @param list<?string>                               $companions     each companion's name as typed, blank for none
+     * @param ?string                                     $language       the host's Language, null for Not set
+     * @param ?NeedsInput                                 $needs          null leaves them as they are
+     * @param list<?NeedsInput>                           $companionNeeds beside `$companions`
      */
-    public function guest(string $fullName, ?string $email, ?array $mobile, array $companions, ?string $language = null): NewGuest
+    public function guest(string $fullName, ?string $email, ?array $mobile, array $companions, ?string $language = null, ?array $needs = null, array $companionNeeds = []): NewGuest
     {
         $violations = [];
         $name = Str\trim($fullName);
@@ -77,11 +91,62 @@ final readonly class GuestRules
             $violations[] = $this->violation('language', 'validation.guest_language_unknown');
         }
 
+        $hostNeeds = null === $needs ? null : $this->needs($needs, 'needs', $violations);
+        $theirNeeds = [];
+
+        foreach ($companions as $index => $_) {
+            $typed = $companionNeeds[$index] ?? null;
+            $theirNeeds[] = null === $typed ? null : $this->needs($typed, "companions[{$index}].needs", $violations);
+        }
+
         if ([] !== $violations) {
             throw ApiException::validation($violations);
         }
 
-        return new NewGuest($name, NameNormaliser::key($name), '' === $email ? null : $email, $e164, $named, $language);
+        return new NewGuest($name, NameNormaliser::key($name), '' === $email ? null : $email, $e164, $named, $language, $hostNeeds, $theirNeeds);
+    }
+
+    /**
+     * @param NeedsInput                                                                                           $typed
+     * @param list<array{propertyPath: string, message: string, code: string, parameters?: array<string, string>}> $violations
+     */
+    private function needs(array $typed, string $path, array &$violations): GuestNeeds
+    {
+        $codes = [];
+        $others = [];
+
+        foreach (NeedKind::cases() as $kind) {
+            [$picked, $typedWords] = match ($kind) {
+                NeedKind::Allergen => [$typed['allergies'] ?? [], $typed['otherAllergy'] ?? null],
+                NeedKind::Diet => [$typed['diet'] ?? [], $typed['otherDiet'] ?? null],
+                NeedKind::Access => [$typed['access'] ?? [], $typed['otherAccess'] ?? null],
+            };
+            $known = $kind->codes();
+
+            if (!Iter\all($picked, static fn (string $code): bool => Iter\contains($known, $code))) {
+                $violations[] = $this->violation("{$path}.{$kind->field()}", 'validation.guest_need_unknown');
+            }
+
+            $codes[$kind->value] = Vec\filter($known, static fn (string $code): bool => Iter\contains($picked, $code));
+            $words = Str\trim($typedWords ?? '');
+            $ticked = Iter\contains($picked, NeedKind::OTHER);
+
+            if ($ticked && '' === $words) {
+                $violations[] = $this->violation("{$path}.{$kind->otherField()}", 'validation.guest_need_other_required');
+            } elseif ($ticked && Str\length($words) > self::OTHER_MAXIMUM) {
+                $violations[] = $this->violation("{$path}.{$kind->otherField()}", 'validation.guest_need_other_too_long');
+            }
+
+            $others[$kind->value] = $ticked ? $words : null;
+        }
+
+        $note = Str\trim($typed['note'] ?? '');
+
+        if (Str\length($note) > self::NOTE_MAXIMUM) {
+            $violations[] = $this->violation("{$path}.note", 'validation.guest_need_note_too_long');
+        }
+
+        return new GuestNeeds($codes, $others, '' === $note ? null : $note);
     }
 
     /**
@@ -128,7 +193,12 @@ final readonly class GuestRules
     {
         return [
             'propertyPath' => $path,
-            'message' => $this->translator->trans($key, ['{count}' => (string) Guest::COMPANIONS_MAXIMUM, '{max}' => (string) Guest::NAME_MAXIMUM]),
+            'message' => $this->translator->trans($key, [
+                '{count}' => (string) Guest::COMPANIONS_MAXIMUM,
+                '{max}' => (string) Guest::NAME_MAXIMUM,
+                '{otherMax}' => (string) self::OTHER_MAXIMUM,
+                '{noteMax}' => (string) self::NOTE_MAXIMUM,
+            ]),
             'code' => ErrorCode::ValidationFailed->value,
         ];
     }
