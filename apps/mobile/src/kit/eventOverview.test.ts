@@ -7,6 +7,7 @@ import {
   datesRow,
   hostsRow,
   manageOf,
+  partLocked,
   scheduleLocked,
   venueRow,
 } from './eventOverview.ts';
@@ -53,6 +54,12 @@ describe('datesRow', () => {
     expect(scheduleLocked('finished')).toBe(true);
     expect(scheduleLocked('live')).toBe(false);
     expect(datesRow(EVENT, 'finished', 'en', t).line).toBe('eventPage.datesLocked');
+  });
+
+  it('keeps a link from opening Dates once the event is over, and nothing else (sc-48600)', () => {
+    expect(partLocked('dates', 'finished')).toBe(true);
+    expect(partLocked('dates', 'live')).toBe(false);
+    expect(partLocked('venue', 'finished')).toBe(false);
   });
 });
 

@@ -2,7 +2,6 @@ import {
   type EventChanges,
   type EventCover as Cover,
   type OrganisationEvent,
-  type TaggedEvent,
 } from '@soirely/api-client';
 import {
   COVER_DESCRIPTION_MAXIMUM,
@@ -21,7 +20,7 @@ import {
   eventChanges,
   eventFormErrors,
   eventNameLength,
-  eventSaveRefusal,
+  type EventSaveRefusal,
   hostErrorsOf,
   hostsChanged,
   keepsLastHost,
@@ -41,6 +40,7 @@ import { currentLocale, dateLocale } from '../i18n/index.ts';
 import { coverRefusalOf, pickedFile, pickedRefusal } from '../kit/coverUpload.ts';
 import { changesOf, typedOf } from '../kit/eventForm.ts';
 import type { EditPart } from '../kit/eventNav.ts';
+import { type SavedPart, heldRead, sendPart } from '../kit/partSave.ts';
 import { discardCoverUpload } from './CoverField.tsx';
 import { EventCover } from './EventCover.tsx';
 import { EventNotice } from './EventNotice.tsx';
@@ -111,66 +111,33 @@ function only(errors: Errors, fields: readonly EventFormField[]): Errors {
   );
 }
 
-/** The event as it is now, with the tag a save sends back as If-Match, read once as the screen opens. */
-function useTagged(eventId: string): () => Promise<TaggedEvent> {
-  const read = useRef<Promise<TaggedEvent> | null>(null);
-
-  useEffect(() => {
-    const reading = api.taggedEvent(eventId);
-    reading.catch(() => undefined);
-    read.current = reading;
-  }, [eventId]);
-
-  return () => {
-    const held = read.current;
-    if (held != null) return held.catch(() => (read.current = api.taggedEvent(eventId)));
-
-    return (read.current = api.taggedEvent(eventId));
-  };
-}
-
-function sameEvent(a: OrganisationEvent, b: OrganisationEvent): boolean {
-  return JSON.stringify(a) === JSON.stringify(b);
-}
-
 /** One part's save, as Edit details saved the whole form: only what changed, under the version the screen opened on, the API's refusals mapped back. */
-function usePartSave({ event, onSaved, onLatest }: PartEditProps) {
+function usePartSave(part: SavedPart, { event, onSaved, onLatest }: PartEditProps) {
   const { t } = useTranslation();
-  const tagged = useTagged(event.id);
+  const [read] = useState(() => heldRead(() => api.taggedEvent(event.id)));
   const [busy, setBusy] = useState(false);
   const [outcome, setOutcome] = useState<Outcome>(null);
   const [fetching, setFetching] = useState(false);
 
+  useEffect(() => void read(), [read]);
+
   async function save(
     changes: EventChanges,
     rows: readonly HostRow[] = [],
-  ): Promise<ReturnType<typeof eventSaveRefusal> | null> {
+  ): Promise<EventSaveRefusal | null> {
     if (busy) return null;
-    if (Object.keys(changes).length === 0) {
-      onSaved(event);
-      return null;
-    }
 
     setBusy(true);
     setOutcome(null);
+    const sent = await sendPart({ api, part, shown: event, changes, read }, t, rows);
+    setBusy(false);
 
-    try {
-      const opened = await tagged();
-      if (!sameEvent(opened.event, event)) {
-        setBusy(false);
-        setOutcome('changed');
-        return { kind: 'changed' };
-      }
-      const saved = await api.updateEvent(event.id, changes, opened.tag);
-      setBusy(false);
-      onSaved(saved.event);
-      return null;
-    } catch (error) {
-      setBusy(false);
-      const refusal = eventSaveRefusal(error, rows, t);
-      setOutcome(refusal.kind === 'changed' || refusal.kind === 'failed' ? refusal.kind : null);
-      return refusal;
-    }
+    if (sent.kind === 'unchanged') onSaved(event);
+    if (sent.kind === 'saved') onSaved(sent.event);
+    if (sent.kind === 'unchanged' || sent.kind === 'saved') return null;
+
+    setOutcome(sent.kind === 'refused' ? null : sent.kind);
+    return sent;
   }
 
   const elsewhere =
@@ -211,7 +178,7 @@ function NameEdit(props: PartEditProps) {
   const [name, setName] = useState(event.name);
   const [refused, setRefused] = useState<string | null>(null);
   const field = useRef<TextInputInstance>(null);
-  const { busy, save, elsewhere, failed } = usePartSave(props);
+  const { busy, save, elsewhere, failed } = usePartSave('name', props);
   const typed = { ...typedOf(event), draft: { ...draftOf(event), name } };
   const error = only(eventFormErrors(typed, t), ['name']).name ?? refused;
 
@@ -252,7 +219,7 @@ function NameEdit(props: PartEditProps) {
 function TypeEdit(props: PartEditProps) {
   const { event } = props;
   const [type, setType] = useState<EventType>(event.type);
-  const { busy, save, elsewhere, failed } = usePartSave(props);
+  const { busy, save, elsewhere, failed } = usePartSave('type', props);
 
   return (
     <EditShell
@@ -276,7 +243,7 @@ function CurrencyEdit(props: PartEditProps) {
   const locale = currentLocale();
   const [code, setCode] = useState(event.currency);
   const [inUse, setInUse] = useState(false);
-  const { busy, save, elsewhere, failed } = usePartSave(props);
+  const { busy, save, elsewhere, failed } = usePartSave('currency', props);
   const choices = useMemo(
     () =>
       currencyChoices(event.currency, locale, (held) =>
@@ -322,7 +289,7 @@ function DatesEdit(props: PartEditProps) {
   const [refused, setRefused] = useState<Errors>({});
   const [zonesOpen, setZonesOpen] = useState(false);
   const [picking, setPicking] = useState<Picking | null>(null);
-  const { busy, save, elsewhere, failed } = usePartSave(props);
+  const { busy, save, elsewhere, failed } = usePartSave('dates', props);
   const zones = useMemo(
     () => withCurrent(Intl.supportedValuesOf('timeZone'), event.timeZone),
     [event.timeZone],
@@ -427,7 +394,7 @@ function VenueEdit(props: PartEditProps) {
   const nameInput = useRef<TextInputInstance>(null);
   const addressInput = useRef<TextInputInstance>(null);
   const noteInput = useRef<TextInputInstance>(null);
-  const { busy, save, elsewhere, failed } = usePartSave(props);
+  const { busy, save, elsewhere, failed } = usePartSave('venue', props);
   const [lookup] = useState(() =>
     addressLookup({
       suggest: (query) => api.addressSuggestions(query),
@@ -538,7 +505,7 @@ function HostsEdit(props: PartEditProps) {
   const [tried, setTried] = useState(false);
   const [refused, setRefused] = useState<Partial<Record<number, string>>>({});
   const [said, setSaid] = useState<string | null>(null);
-  const { busy, save, elsewhere, failed } = usePartSave(props);
+  const { busy, save, elsewhere, failed } = usePartSave('hosts', props);
   const names = hosts.map((host) => host.name);
   const found = hostErrorsOf(hosts, t);
   const errors = hosts.map(

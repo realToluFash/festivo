@@ -31,6 +31,7 @@ import {
 import { DESTINATION_HREF } from '../kit/appNav.ts';
 import { offersDelete } from '../kit/eventDelete.ts';
 import { offersEdit } from '../kit/eventEdit.ts';
+import { partLocked } from '../kit/eventOverview.ts';
 import { DUPLICATING, backToOriginal } from '../kit/eventDuplicate.ts';
 import {
   type EditPart,
@@ -220,7 +221,7 @@ export function EventScreen({
     const part = fromLink.current;
     if (part == null || event == null) return;
     fromLink.current = undefined;
-    if (manages) openEdit(part, partRef(part), true);
+    if (manages && !partLocked(part, phase ?? event.phase)) openEdit(part, partRef(part), true);
   });
   const onDuplicate = creates
     ? (opener: RefObject<ScreenReaderTarget | null>) =>
@@ -498,7 +499,6 @@ function PlaceholderArea({
   );
 }
 
-/** A save goes back to the page where it was scrolled, so Saved brings itself into sight (sc-21336). */
 /** The event is read on its own, so a link, a push and Calendar open it as Events does. */
 function useOpened(
   eventId: string,
