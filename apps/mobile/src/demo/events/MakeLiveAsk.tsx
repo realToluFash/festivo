@@ -171,6 +171,7 @@ export function MakeLiveAsk({
   live,
   reach,
   name,
+  hosts,
   opener,
   onKeep,
   onConfirm,
@@ -181,6 +182,7 @@ export function MakeLiveAsk({
   live: MakeLive;
   reach: Reach;
   name: string;
+  hosts: readonly string[];
   opener: RefObject<ScreenReaderTarget | null>;
   onKeep: () => void;
   onConfirm: (typed: string) => void;
@@ -189,10 +191,12 @@ export function MakeLiveAsk({
   onChangeDates: () => void;
 }) {
   const reduced = useReducedMotion();
-  const alert = liveAlertOf(live.turn, reach, name);
+  const alert = liveAlertOf(live.turn, reach, name, hosts);
   const open = alert != null;
   const { shown, gone } = useWindowTurn(useModalOpen(open));
-  const [typed, setTyped] = useState('');
+  const [typed, setTyped] = useState(() =>
+    live.turn.at === 'question' ? (live.turn.host?.kept ?? '') : '',
+  );
   const host = alert?.host ?? null;
   const making = live.turn.at === 'question' && live.turn.making;
   const top = useKeysLift(host != null);
@@ -205,7 +209,22 @@ export function MakeLiveAsk({
     else onConfirm(typed);
   };
   const credits = alert?.credits;
+  const hostsNow = alert?.hostsNow ?? null;
   const parts = [
+    hostsNow != null && (
+      <View key="hostsNow" style={styles.lines} testID="event.makeLive.hostsNow">
+        <Text size={15} weight="medium" style={[styles.secondary, styles.later]}>
+          {LIVE.hostsNow}
+        </Text>
+        <View role="list">
+          {hostsNow.map((one) => (
+            <Text key={one} role="listitem" size={15} weight="semibold" style={styles.later}>
+              {`• ${one}`}
+            </Text>
+          ))}
+        </View>
+      </View>
+    ),
     host != null && (
       <EventField key="host" label={LIVE.hostLabel} error={host.error} help={LIVE.hostExplainer}>
         <BoxField
