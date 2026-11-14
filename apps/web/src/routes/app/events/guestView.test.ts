@@ -23,10 +23,10 @@ const ADAEZE = guest('g_1', 'Chief Mrs Adaeze Okonkwo-Williams', {
   email: 'adaeze@example.com',
   mobile: '+2348031234567',
   reply: 'coming',
-  companions: [{ id: 'c_1', fullName: 'Obi Okonkwo', state: 'coming' }],
+  companions: [{ id: 'c_1', fullName: 'Obi Okonkwo', state: 'coming', namedByGuest: false }],
 });
 const JOSE = guest('g_2', 'José Ávila', {
-  companions: [{ id: 'c_2', fullName: null, state: 'held' }],
+  companions: [{ id: 'c_2', fullName: null, state: 'held', namedByGuest: false }],
 });
 const BEN = guest('g_3', 'Ben Cole', { reply: 'notComing' });
 const CLEO = guest('g_4', 'Cleo Dunn');

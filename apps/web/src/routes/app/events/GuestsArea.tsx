@@ -72,7 +72,13 @@ import {
   guestAddress,
   replyDate,
 } from './GuestColumn.tsx';
-import { CompanionField, GuestField, LanguageField, PhoneField } from './GuestFields.tsx';
+import {
+  CompanionField,
+  GuestField,
+  LanguageField,
+  PhoneField,
+  PlacesStepper,
+} from './GuestFields.tsx';
 import {
   CHOICES,
   type Choice,
@@ -1281,11 +1287,16 @@ function CompanionFields({
   return (
     <fieldset className="gs-fieldset gs-companions">
       <legend className="gs-legend">{t('guestList.companionsTitle')}</legend>
-      <p className="gs-count">
-        {count === 0
-          ? t('guestList.noneYet', { most: MOST_COMPANIONS })
-          : t('guestList.ofMost', { n: count, most: MOST_COMPANIONS })}
-      </p>
+      <PlacesStepper
+        host={host}
+        names={companions}
+        onStep={(kept, added) =>
+          onChange([
+            ...kept.map((at) => companions[at] ?? ''),
+            ...Array.from({ length: added }, () => ''),
+          ])
+        }
+      />
       {companions.map((name, at) => {
         const placeholder =
           host === ''
@@ -1310,25 +1321,12 @@ function CompanionFields({
             }
             onRemove={() => {
               onChange(companions.filter((_, index) => index !== at));
-              focus(`companion-${at + 1 < count ? at : at - 1}`, 'add-companion');
+              focus(`companion-${at + 1 < count ? at : at - 1}`, 'places');
             }}
           />
         );
       })}
-      {count < MOST_COMPANIONS ? (
-        <button
-          type="button"
-          className="desk-text"
-          data-focus="add-companion"
-          onClick={() => {
-            onChange([...companions, '']);
-            focus(`companion-${count}`);
-          }}
-        >
-          <Glyph name="plus" size={17} weight={2.3} />
-          {t('guestList.addCompanion')}
-        </button>
-      ) : (
+      {count >= MOST_COMPANIONS && (
         <p className="gs-most">{t('guestList.mostCompanions', { most: MOST_COMPANIONS })}</p>
       )}
     </fieldset>

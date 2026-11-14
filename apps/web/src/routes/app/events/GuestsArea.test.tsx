@@ -59,9 +59,9 @@ const NGOZI = guest('g_1', 'Ngozi Eze', {
   mobile: '+2348035550142',
   reply: 'coming',
   companions: [
-    { id: 'c_1', fullName: 'Obi Eze', state: 'coming' },
-    { id: 'c_2', fullName: null, state: 'coming' },
-    { id: 'c_3', fullName: null, state: 'coming' },
+    { id: 'c_1', fullName: 'Obi Eze', state: 'coming', namedByGuest: false },
+    { id: 'c_2', fullName: null, state: 'coming', namedByGuest: false },
+    { id: 'c_3', fullName: null, state: 'coming', namedByGuest: false },
   ],
 });
 const AMAKA = guest('g_2', 'Chief Amaka Obi', { reply: 'maybe' });
@@ -332,7 +332,7 @@ describe('Guests (sc-1468)', () => {
                 ? [
                     NGOZI,
                     guest('g_9', 'Bimpe', {
-                      companions: [{ id: 'c_9', fullName: null, state: 'held' }],
+                      companions: [{ id: 'c_9', fullName: null, state: 'held', namedByGuest: false }],
                     }),
                   ]
                 : [NGOZI],
@@ -347,7 +347,7 @@ describe('Guests (sc-1468)', () => {
             guest: guest('g_9', 'Bimpe Adeyemi', {
               email: 'bimpe@example.com',
               mobile: '+447700900123',
-              companions: [{ id: 'c_9', fullName: null, state: 'held' }],
+              companions: [{ id: 'c_9', fullName: null, state: 'held', namedByGuest: false }],
             }),
           },
           201,
@@ -363,7 +363,7 @@ describe('Guests (sc-1468)', () => {
     fireEvent.change(screen.getByRole('textbox', { name: /^Mobile number/u }), {
       target: { value: '07700 900123' },
     });
-    fireEvent.click(within(form()).getByRole('button', { name: 'Add a companion' }));
+    fireEvent.click(within(form()).getByRole('button', { name: 'More places' }));
     fireEvent.click(addButton());
 
     expect(await within(form()).findByText('Bimpe Adeyemi added.')).toBeDefined();
@@ -375,7 +375,7 @@ describe('Guests (sc-1468)', () => {
       language: null,
     });
     expect(field('Full name').value).toBe('');
-    expect(within(form()).getByText('None yet · 0 of 10')).toBeDefined();
+    expect(within(form()).getByText('0 of 0 named')).toBeDefined();
     await waitFor(() => expect(document.activeElement).toBe(field('Full name')));
     expect(await screen.findByText('4 coming of 6 invited')).toBeDefined();
     expect(screen.getByText('2 haven’t replied (1 guest and 1 companion).')).toBeDefined();
@@ -579,14 +579,14 @@ describe('Guests (sc-1468)', () => {
   it('names each Remove by the companion, or as the host’s guest while it has no name (sc-43267)', async () => {
     await opened({});
 
-    fireEvent.click(within(form()).getByRole('button', { name: 'Add a companion' }));
+    fireEvent.click(within(form()).getByRole('button', { name: 'More places' }));
     expect(
       within(form()).getByRole('button', { name: 'Remove Companion’s full name, 1 of 1' }),
     ).toBeDefined();
 
     type('Full name', 'Ifeoluwa Bankole');
-    fireEvent.click(within(form()).getByRole('button', { name: 'Add a companion' }));
-    fireEvent.click(within(form()).getByRole('button', { name: 'Add a companion' }));
+    fireEvent.click(within(form()).getByRole('button', { name: 'More places' }));
+    fireEvent.click(within(form()).getByRole('button', { name: 'More places' }));
     type('Companion’s full name, 3 of 3', 'Tolu Bankole');
 
     expect(
@@ -604,13 +604,47 @@ describe('Guests (sc-1468)', () => {
     await opened({});
 
     for (let at = 0; at < 10; at += 1)
-      fireEvent.click(within(form()).getByRole('button', { name: 'Add a companion' }));
+      fireEvent.click(within(form()).getByRole('button', { name: 'More places' }));
 
-    expect(within(form()).queryByRole('button', { name: 'Add a companion' })).toBeNull();
+    expect(
+      within(form()).getByRole('button', { name: 'More places' }).getAttribute('aria-disabled'),
+    ).toBe('true');
     expect(
       within(form()).getByText('10 companions is the most one guest can bring.'),
     ).toBeDefined();
-    expect(within(form()).getByText('10 of 10')).toBeDefined();
+    expect(within(form()).getByText('0 of 10 named')).toBeDefined();
+  });
+
+  it('takes unnamed places only, from the end, and refuses fewer places than are named (sc-3779)', async () => {
+    await opened({});
+
+    type('Full name', 'Chief Mrs Adaeze Okonkwo-Williams');
+    for (let at = 0; at < 3; at += 1)
+      fireEvent.click(within(form()).getByRole('button', { name: 'More places' }));
+    type('Companion’s full name, 1 of 3', 'Chidi Okonkwo-Williams');
+    type('Companion’s full name, 3 of 3', 'Nneka Okonkwo-Williams');
+    expect(within(form()).getByText('2 of 3 named')).toBeDefined();
+
+    fireEvent.click(within(form()).getByRole('button', { name: 'Fewer places' }));
+
+    expect(within(form()).getByText('2 of 2 named')).toBeDefined();
+    expect(field('Companion’s full name, 2 of 2').value).toBe('Nneka Okonkwo-Williams');
+
+    fireEvent.click(within(form()).getByRole('button', { name: 'Fewer places' }));
+
+    const places = within(form()).getByRole('spinbutton', { name: 'Places for companions' });
+    expect(
+      within(form()).getByText(
+        'Chief Mrs Adaeze Okonkwo-Williams already has 2 named. Remove some first.',
+      ),
+    ).toBeDefined();
+    expect(places.getAttribute('aria-invalid')).toBe('true');
+    expect(document.activeElement).toBe(places);
+    expect(within(form()).getByText('2 of 2 named')).toBeDefined();
+
+    type('Companion’s full name, 2 of 2', 'Nneka Okonkwo');
+
+    expect(within(form()).queryByText(/Remove some first/u)).toBeNull();
   });
 });
 
@@ -643,7 +677,7 @@ describe('Finding a guest (sc-3772)', () => {
   const WAITING = [
     guest('g_3', 'Bola Ade'),
     guest('g_4', 'José Ávila', {
-      companions: [{ id: 'c_4', fullName: 'Rui Ávila', state: 'held' }],
+      companions: [{ id: 'c_4', fullName: 'Rui Ávila', state: 'held', namedByGuest: false }],
     }),
     guest('g_5', 'Dayo Kalu', { mobile: '+2348031234567' }),
   ];
@@ -898,7 +932,7 @@ function tagged(body: unknown, tag: string, status = 200): Response {
 
 const DETAILS = {
   ...NGOZI,
-  companions: [{ id: 'c_1', fullName: 'Obi Eze', state: 'coming' }],
+  companions: [{ id: 'c_1', fullName: 'Obi Eze', state: 'coming', namedByGuest: false }],
   added: { at: '2026-09-14T10:00:00+00:00', by: 'Kemi Bankole' },
 };
 
@@ -955,6 +989,28 @@ describe('A guest’s details, and correcting them (sc-3773)', () => {
     expect(details.getByText('Companion · Coming')).toBeDefined();
     expect(details.getByText('Sep 14 by Kemi Bankole')).toBeDefined();
     expect(details.getByRole('button', { name: 'Edit' })).toBeDefined();
+  });
+
+  it('counts the places named, marks a name the guest gave, and shows a companion they untick as Not coming (sc-3779)', async () => {
+    await openNgozi({
+      'GET /api/events/ev_1/guests/g_1': () =>
+        tagged(
+          {
+            ...DETAILS,
+            companions: [
+              { id: 'c_1', fullName: 'Obi Eze', state: 'notComing', namedByGuest: true },
+              { id: 'c_2', fullName: null, state: 'coming', namedByGuest: false },
+            ],
+          },
+          '"1"',
+        ),
+    });
+
+    const details = within(column());
+    expect(details.getByText('2 companions · 1 of 2 named')).toBeDefined();
+    expect(details.getByText('Places for companions')).toBeDefined();
+    expect(details.getByText('Named by the guest')).toBeDefined();
+    expect(details.getByText('Companion · Not coming')).toBeDefined();
   });
 
   it('writes the Added date in the browser’s date order, as the reply’s (sc-3773, #44910)', async () => {
@@ -1276,8 +1332,8 @@ describe('A guest’s details, and correcting them (sc-3773)', () => {
               {
                 ...theirs,
                 companions: [
-                  { id: 'c_2', fullName: 'Obi Eze', state: 'coming' },
-                  { id: 'c_3', fullName: 'Tolu Bankole', state: 'coming' },
+                  { id: 'c_2', fullName: 'Obi Eze', state: 'coming', namedByGuest: false },
+                  { id: 'c_3', fullName: 'Tolu Bankole', state: 'coming', namedByGuest: false },
                 ],
               },
               '"3"',
@@ -1285,7 +1341,7 @@ describe('A guest’s details, and correcting them (sc-3773)', () => {
       },
     });
 
-    fireEvent.click(screen.getByRole('button', { name: 'Add a companion' }));
+    fireEvent.click(screen.getByRole('button', { name: 'More places' }));
     type('Companion’s full name, 2 of 2', 'Tolu Bankole');
     fireEvent.click(screen.getByRole('button', { name: 'Save' }));
     const panel = await screen.findByRole('alert');
@@ -1469,13 +1525,13 @@ describe('A guest’s details, and correcting them (sc-3773)', () => {
     fireEvent.click(screen.getByRole('button', { name: 'Remove Obi Eze' }));
 
     expect(await screen.findByText('Obi Eze removed. Save to keep the change.')).toBeDefined();
-    expect(screen.getByText('None yet · 0 of 10')).toBeDefined();
+    expect(screen.getByText('0 of 0 named')).toBeDefined();
   });
 
   it('names an unnamed companion’s Remove as the guest’s guest, as the add form does (sc-43267)', async () => {
     await editNgozi({
       'GET /api/events/ev_1/guests/g_1': () =>
-        tagged({ ...DETAILS, companions: [{ id: 'c_1', fullName: null, state: 'coming' }] }, '"1"'),
+        tagged({ ...DETAILS, companions: [{ id: 'c_1', fullName: null, state: 'coming', namedByGuest: false }] }, '"1"'),
     });
 
     expect(screen.getByRole('button', { name: 'Remove Ngozi Eze’s guest' })).toBeDefined();

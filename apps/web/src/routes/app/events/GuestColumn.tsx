@@ -24,6 +24,7 @@ import {
   GuestField,
   LanguageField,
   PhoneField,
+  PlacesStepper,
 } from './GuestFields.tsx';
 import {
   MOST_COMPANIONS,
@@ -34,6 +35,7 @@ import {
   blank,
   firstProblem,
   isListed,
+  namedCount,
   newGuestOf,
   problemsOf,
   violationProblems,
@@ -489,17 +491,34 @@ function GuestView({
                 </li>
               </>
             )}
+            {guest.companions.length > 0 && (
+              <li className="desk-row">
+                <IconLead name="users" />
+                <RowWords
+                  title={t('guestList.companionsNamed', {
+                    count: guest.companions.length,
+                    named: namedCount(names),
+                  })}
+                  lines={[t('guestList.placesFor')]}
+                />
+              </li>
+            )}
             {guest.companions.map((companion, at) => (
               <li key={companion.id} className="desk-row">
                 <MarkLead reply={companion.state} />
-                <RowWords
-                  title={companionShown(t, guest.fullName, names, at)}
-                  lines={[
-                    companion.state === 'held'
-                      ? t('guestList.heldCompanion')
-                      : t('guestList.companionLine', { reply: t(REPLY_KEY[companion.state]) }),
-                  ]}
-                />
+                <div className="gs-row-words">
+                  <RowWords
+                    title={companionShown(t, guest.fullName, names, at)}
+                    lines={[
+                      companion.state === 'held'
+                        ? t('guestList.heldCompanion')
+                        : t('guestList.companionLine', { reply: t(REPLY_KEY[companion.state]) }),
+                    ]}
+                  />
+                  {companion.namedByGuest && (
+                    <span className="gs-named-by">{t('guestList.namedByGuest')}</span>
+                  )}
+                </div>
               </li>
             ))}
             {manages && (
@@ -1167,11 +1186,16 @@ function EditCompanions({
   return (
     <fieldset className="gs-fieldset gs-companions">
       <legend className="gs-legend">{t('guestList.companionsTitle')}</legend>
-      <p className="gs-count">
-        {count === 0
-          ? t('guestList.noneYet', { most: MOST_COMPANIONS })
-          : t('guestList.ofMost', { n: count, most: MOST_COMPANIONS })}
-      </p>
+      <PlacesStepper
+        host={host}
+        names={companions.map((one) => one.name)}
+        onStep={(kept, added) =>
+          onChange([
+            ...kept.flatMap((at) => companions[at] ?? []),
+            ...Array.from({ length: added }, () => ({ id: null, name: '' })),
+          ])
+        }
+      />
       {companions.map((companion, at) => {
         if (!seen(at)) return null;
         const label = t('guestList.companionName', { nth: at + 1, total: count });
@@ -1192,7 +1216,7 @@ function EditCompanions({
             onRemove={() => {
               onChange(companions.filter((_, index) => index !== at));
               onSaid(t('guestList.removed', { name: shown }));
-              focus(`companion-${at + 1 < count ? at : at - 1}`, 'add-companion');
+              focus(`companion-${at + 1 < count ? at : at - 1}`, 'places');
             }}
           />
         );
@@ -1217,20 +1241,7 @@ function EditCompanions({
           {said}
         </p>
       )}
-      {count < MOST_COMPANIONS ? (
-        <button
-          type="button"
-          className="desk-text"
-          data-focus="add-companion"
-          onClick={() => {
-            onChange([...companions, { id: null, name: '' }]);
-            focus(`companion-${count}`);
-          }}
-        >
-          <Glyph name="plus" size={17} weight={2.3} />
-          {t('guestList.addCompanion')}
-        </button>
-      ) : (
+      {count >= MOST_COMPANIONS && (
         <p className="gs-most">{t('guestList.mostCompanions', { most: MOST_COMPANIONS })}</p>
       )}
     </fieldset>
