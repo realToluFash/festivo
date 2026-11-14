@@ -19,6 +19,7 @@ use Symfony\Component\Uid\Uuid;
 #[ORM\Entity]
 #[ORM\HasLifecycleCallbacks]
 #[ORM\Table(name: 'guests')]
+#[ORM\Index(name: 'idx_guests_removal', columns: ['removal_id'])]
 class Guest
 {
     use Timestampable;
@@ -145,6 +146,10 @@ class Guest
     #[ORM\ManyToOne(targetEntity: User::class)]
     #[ORM\JoinColumn(nullable: true, onDelete: 'SET NULL')]
     private ?User $removedBy = null;
+
+    /** The many-guest removal they went in (sc-3776), so its one Undo and its one erasure take them all; null for one removed alone. A companion carries none. */
+    #[ORM\Column(type: 'uuid', nullable: true)]
+    private ?Uuid $removalId = null;
 
     private function __construct(Event $event, ?Guest $host, ?string $fullName, ?string $nameKey, ?string $email, ?string $mobile, ?GuestReply $reply, int $position, ?User $addedBy, #[SensitiveParameter] ?string $linkToken)
     {
@@ -470,15 +475,22 @@ class Guest
         return $this->removedBy;
     }
 
-    public function remove(DateTimeImmutable $at, ?User $by): void
+    public function getRemovalId(): ?Uuid
+    {
+        return $this->removalId;
+    }
+
+    public function remove(DateTimeImmutable $at, ?User $by, ?Uuid $removalId = null): void
     {
         $this->removedAt = $at;
         $this->removedBy = $by;
+        $this->removalId = $removalId;
     }
 
     public function undoRemoval(): void
     {
         $this->removedAt = null;
         $this->removedBy = null;
+        $this->removalId = null;
     }
 }

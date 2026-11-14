@@ -12,8 +12,10 @@ use App\Enum\EventStatus;
 use App\Http\Access\Interfaces\EventScopedRepositoryInterface;
 use DateTimeImmutable;
 use Doctrine\Bundle\DoctrineBundle\Repository\ServiceEntityRepository;
+use Doctrine\DBAL\LockMode;
 use Doctrine\Persistence\ManagerRegistry;
 use Psl\Type;
+use Psl\Vec;
 use SensitiveParameter;
 use Symfony\Component\Uid\Uuid;
 
@@ -159,6 +161,58 @@ final class GuestRepository extends ServiceEntityRepository implements EventScop
             ->andWhere('g.removedAt <= :cutoff')
             ->setParameter('cutoff', $cutoff, 'datetime_immutable')
             ->getQuery()
+            ->getResult();
+    }
+
+    /**
+     * Hosts on the list among these ids, locked for the action that acts on them; any other id is not a guest it can act on (sc-3776).
+     *
+     * @param list<string> $ids
+     *
+     * @return list<Guest>
+     */
+    public function lockHostsOn(Event $event, array $ids): array
+    {
+        $valid = Vec\filter($ids, Uuid::isValid(...));
+
+        if ([] === $valid) {
+            return [];
+        }
+
+        /** @var list<Guest> */
+        return $this->createQueryBuilder('g')
+            ->where('g.event = :event')
+            ->andWhere('g.host IS NULL')
+            ->andWhere('g.removedAt IS NULL')
+            ->andWhere('g.id IN (:ids)')
+            ->setParameter('event', $event->getId(), 'uuid')
+            ->setParameter('ids', Vec\map($valid, static fn (string $id): string => Uuid::fromString($id)->toRfc4122()))
+            ->orderBy('g.position', 'ASC')
+            ->addOrderBy('g.id', 'ASC')
+            ->getQuery()
+            ->setLockMode(LockMode::PESSIMISTIC_WRITE)
+            ->getResult();
+    }
+
+    /** @return list<Guest> the hosts one many-guest removal took, locked, in their places */
+    public function lockRemovedTogether(Event $event, string $removalId): array
+    {
+        if (!Uuid::isValid($removalId)) {
+            return [];
+        }
+
+        /** @var list<Guest> */
+        return $this->createQueryBuilder('g')
+            ->where('g.event = :event')
+            ->andWhere('g.host IS NULL')
+            ->andWhere('g.removalId = :removal')
+            ->andWhere('g.removedAt IS NOT NULL')
+            ->setParameter('event', $event->getId(), 'uuid')
+            ->setParameter('removal', Uuid::fromString($removalId), 'uuid')
+            ->orderBy('g.position', 'ASC')
+            ->addOrderBy('g.id', 'ASC')
+            ->getQuery()
+            ->setLockMode(LockMode::PESSIMISTIC_WRITE)
             ->getResult();
     }
 
