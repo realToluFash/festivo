@@ -146,6 +146,7 @@
     "event.state_invalid": "O estado atual deste evento não o permite.",
     "event.concluded": "Este evento já terminou, por isso não pode ser publicado. Altere primeiro as datas.",
     "event.host_required": "Indique os anfitriões antes de convidar alguém.",
+    "event.call_off_first": "Já foram convidadas pessoas ou informada a equipa. Cancele-o ou termine-o primeiro.",
     "event.last_host": "Os convidados podem ver este evento, por isso não é possível remover o último anfitrião.",
     "event.already_over": "Este evento já terminou, por isso não é possível terminá-lo.",
     "event.schedule_concluded": "Este evento terminou, por isso o início, o fim e o fuso horário já não podem ser alterados.",

@@ -146,6 +146,7 @@
     "event.state_invalid": "L’état actuel de cet événement ne le permet pas.",
     "event.concluded": "Cet événement est déjà terminé, il ne peut donc pas être publié. Modifiez d’abord ses dates.",
     "event.host_required": "Indiquez les hôtes avant d’inviter qui que ce soit.",
+    "event.call_off_first": "Des invitations ont été envoyées ou le personnel a été briefé pour cet événement. Annulez-le ou mettez-y fin d’abord.",
     "event.last_host": "Les invités peuvent voir cet événement, il est donc impossible de retirer son dernier hôte.",
     "event.already_over": "Cet événement est déjà terminé, il n’est donc plus possible d’y mettre fin.",
     "event.schedule_concluded": "Cet événement est terminé, son début, sa fin et son fuseau horaire ne peuvent donc plus être modifiés.",

@@ -57,6 +57,35 @@ final class GuestRepository extends ServiceEntityRepository implements EventScop
             ->getSingleScalarResult());
     }
 
+    /**
+     * Of these events, the ids of those with at least one guest on the list Invited now (sc-3788): a companion is invited with their host, so hosts alone are counted.
+     *
+     * @param list<Event> $events
+     *
+     * @return array<string, true> keyed by the event's id
+     */
+    public function eventsWithInvited(array $events): array
+    {
+        if ([] === $events) {
+            return [];
+        }
+
+        $ids = $this->createQueryBuilder('g')
+            ->select('DISTINCT IDENTITY(g.event) AS event')
+            ->where('g.event IN (:events)')
+            ->andWhere('g.invitedAt IS NOT NULL')
+            ->setParameter('events', $events)
+            ->getQuery()
+            ->getSingleColumnResult();
+
+        $found = [];
+        foreach ($ids as $id) {
+            $found[Uuid::fromString(Type\string()->coerce($id))->toRfc4122()] = true;
+        }
+
+        return $found;
+    }
+
     /** Guests and companions on every event the organisation still has. */
     public function countInOrganisation(Organisation $organisation): int
     {

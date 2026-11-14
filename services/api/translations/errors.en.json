@@ -24,6 +24,7 @@
     "event_concluded": "The event has ended or been called off.",
     "event_paused": "The event is paused.",
     "event_host_required": "The event needs at least one host.",
+    "event_call_off_first": "This event cannot be deleted until it is finished.",
     "plan_limit": "The plan's limit has been reached.",
     "seating_plan_exists": "This event already has a seating plan.",
     "seating_section_limit": "A plan can have up to 30 sections. Delete one to add another.",

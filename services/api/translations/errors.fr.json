@@ -24,6 +24,7 @@
     "event_concluded": "L’événement est terminé ou a été annulé.",
     "event_paused": "L’événement est en pause.",
     "event_host_required": "L’événement doit avoir au moins un hôte.",
+    "event_call_off_first": "Cet événement ne peut pas être supprimé avant d’être terminé.",
     "plan_limit": "La limite du forfait est atteinte.",
     "seating_plan_exists": "Cet événement a déjà un plan de table.",
     "seating_section_limit": "Un plan peut comporter jusqu’à 30 zones. Supprimez-en une pour en ajouter une autre.",

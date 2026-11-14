@@ -74,7 +74,7 @@ final class EventDeletionTest extends ApiTestCase
 
         $preview = $this->as($this->owner, 'GET', '/api/events/' . $id . '/deletion');
         self::assertSame(200, $this->statusCode(), Json\encode($preview));
-        self::assertSame(['needsName' => false, 'people' => 0, 'restoreClosesAt' => '2026-11-16T13:20:00+00:00', 'restoreCloses' => 'Monday 16 Nov at 14:20 WAT'], $preview);
+        self::assertSame(['needsName' => false, 'people' => 0, 'deleteRefusedBecause' => null, 'restoreClosesAt' => '2026-11-16T13:20:00+00:00', 'restoreCloses' => 'Monday 16 Nov at 14:20 WAT'], $preview);
 
         $body = $this->as($this->owner, 'DELETE', '/api/events/' . $id);
 
@@ -383,6 +383,137 @@ final class EventDeletionTest extends ApiTestCase
         }
     }
 
+    #[Test]
+    public function anEventWithAGuestInvitedIsRefusedBeforeItsNameIsRead(): void
+    {
+        $id = $this->live(self::NAME);
+        $this->invited($id, 'Bisi Adeyemi');
+
+        self::assertSame('guestsInvited', $this->as($this->owner, 'GET', '/api/events/' . $id . '/deletion')['deleteRefusedBecause'] ?? null);
+        self::assertSame('guestsInvited', $this->eventOf($id)['deleteRefusedBecause'] ?? null);
+
+        foreach ([self::NAME, 'not its name'] as $typed) {
+            $this->delete($id, $typed);
+            self::assertSame(409, $this->statusCode(), Json\encode($this->last()));
+            self::assertSame(
+                [ErrorCode::EventCallOffFirst->type(), 'This event cannot be deleted until it is finished.', 'Guests have been invited to it, or staff briefed for it. Call it off or end it first.'],
+                [$this->last()['type'] ?? null, $this->last()['title'] ?? null, $this->last()['detail'] ?? null],
+            );
+        }
+
+        self::assertNull($this->deletedAtOf($id));
+    }
+
+    #[Test]
+    public function aRefusedDeleteFromSomebodyWithoutCreateEventsIsAnswered403(): void
+    {
+        $id = $this->live(self::NAME);
+        $this->invited($id, 'Bisi Adeyemi');
+        $lead = $this->member('lead@ire.events', SeededRole::Member, $id, EventRole::Lead);
+
+        $this->as($lead, 'DELETE', '/api/events/' . $id, ['name' => 'not its name']);
+
+        self::assertSame(403, $this->statusCode());
+        self::assertSame(ErrorCode::PermissionRequired->type(), $this->last()['type'] ?? null);
+    }
+
+    /** @return iterable<string, array{string}> */
+    public static function unfinished(): iterable
+    {
+        yield 'before the start' => ['2026-10-17T13:20:00+00:00'];
+        yield 'from the start' => ['2030-11-14T15:00:00+00:00'];
+        yield 'a second before the end' => ['2030-11-15T00:59:59+00:00'];
+    }
+
+    #[Test]
+    #[DataProvider('unfinished')]
+    public function aLiveEventIsRefusedUntilItsEnd(string $at): void
+    {
+        $id = $this->live(self::NAME);
+        $this->invited($id, 'Bisi Adeyemi');
+        self::mockTime(new DateTimeImmutable($at));
+
+        $this->delete($id, self::NAME);
+
+        self::assertSame(409, $this->statusCode(), Json\encode($this->last()));
+    }
+
+    #[Test]
+    public function aPausedEventIsRefusedAsALiveOneIs(): void
+    {
+        $id = $this->live(self::NAME);
+        $this->invited($id, 'Bisi Adeyemi');
+        $this->as($this->owner, 'POST', '/api/events/' . $id . '/pause');
+        self::assertSame(200, $this->statusCode(), Json\encode($this->last()));
+
+        self::assertSame('guestsInvited', $this->eventOf($id)['deleteRefusedBecause'] ?? null);
+        $this->delete($id, self::NAME);
+        self::assertSame(409, $this->statusCode());
+    }
+
+    /** @return iterable<string, array{bool}> */
+    public static function finishings(): iterable
+    {
+        yield 'its end passed' => [false];
+        yield 'called off' => [true];
+    }
+
+    #[Test]
+    #[DataProvider('finishings')]
+    public function onceFinishedItIsDeletedAsBefore(bool $calledOff): void
+    {
+        $id = $this->live(self::NAME);
+        $this->invited($id, 'Bisi Adeyemi');
+
+        if ($calledOff) {
+            $this->as($this->owner, 'POST', '/api/events/' . $id . '/end');
+            self::assertSame(200, $this->statusCode(), Json\encode($this->last()));
+        } else {
+            self::mockTime(new DateTimeImmutable('2030-11-15T01:00:00+00:00'));
+        }
+
+        $event = $this->eventOf($id);
+        self::assertArrayHasKey('deleteRefusedBecause', $event);
+        self::assertNull($event['deleteRefusedBecause']);
+        $this->delete($id, self::NAME);
+        self::assertSame(200, $this->statusCode(), Json\encode($this->last()));
+    }
+
+    #[Test]
+    public function aGuestWhoseMarkWasUndoneDoesNotCount(): void
+    {
+        $id = $this->live(self::NAME);
+        $guest = $this->invited($id, 'Bisi Adeyemi');
+        $this->as($this->owner, 'DELETE', '/api/events/' . $id . '/guests/' . $guest . '/invitation');
+        self::assertSame(200, $this->statusCode(), Json\encode($this->last()));
+
+        $event = $this->eventOf($id);
+        self::assertArrayHasKey('deleteRefusedBecause', $event);
+        self::assertNull($event['deleteRefusedBecause']);
+        $this->delete($id, self::NAME);
+        self::assertSame(200, $this->statusCode(), Json\encode($this->last()));
+    }
+
+    #[Test]
+    public function aGuestNotYetInvitedRefusesNothingAndTheListSaysWhichIsRefused(): void
+    {
+        $open = $this->live(self::NAME);
+        $this->guest($open, 'Tunde Bello', []);
+        $refused = $this->live('Kemi at 40');
+        $this->invited($refused, 'Bisi Adeyemi');
+        $draft = $this->draft('A draft');
+
+        $body = $this->as($this->owner, 'GET', $this->path('/events'));
+        $refusals = [];
+        foreach (Type\vec(Type\shape(['id' => Type\string(), 'deleteRefusedBecause' => Type\nullable(Type\string())], true))->coerce($body['events'] ?? null) as $event) {
+            $refusals[$event['id']] = $event['deleteRefusedBecause'];
+        }
+        self::assertSame([$open => null, $refused => 'guestsInvited', $draft => null], [$open => $refusals[$open], $refused => $refusals[$refused], $draft => $refusals[$draft]]);
+
+        $this->delete($open, self::NAME);
+        self::assertSame(200, $this->statusCode(), Json\encode($this->last()));
+    }
+
     private function draft(string $name): string
     {
         $body = $this->as($this->owner, 'POST', $this->path('/events'), ['name' => $name, 'type' => 'wedding', 'startsAt' => '2030-11-14T16:00', 'endsAt' => '2030-11-15T02:00', 'timeZone' => 'Africa/Lagos', 'currency' => 'NGN']);
@@ -454,6 +585,27 @@ final class EventDeletionTest extends ApiTestCase
             'companions' => Vec\map($companions, static fn (?string $companion): array => ['fullName' => $companion]),
         ]);
         self::assertSame(201, $this->statusCode(), Json\encode($body));
+    }
+
+    /** A guest on the list, marked Invited by hand (sc-3788); their id. */
+    private function invited(string $eventId, string $name): string
+    {
+        $body = $this->as($this->owner, 'POST', '/api/events/' . $eventId . '/guests', ['fullName' => $name, 'companions' => []]);
+        self::assertSame(201, $this->statusCode(), Json\encode($body));
+        $guest = Type\shape(['guest' => Type\shape(['id' => Type\string()], true)], true)->coerce($body)['guest']['id'];
+        $this->as($this->owner, 'PUT', '/api/events/' . $eventId . '/guests/' . $guest . '/invitation', ['how' => 'whatsapp']);
+        self::assertSame(200, $this->statusCode(), Json\encode($this->last()));
+
+        return $guest;
+    }
+
+    /** @return array<string, mixed> */
+    private function eventOf(string $id): array
+    {
+        $body = $this->as($this->owner, 'GET', '/api/events/' . $id);
+        self::assertSame(200, $this->statusCode(), Json\encode($body));
+
+        return Type\dict(Type\string(), Type\mixed())->coerce($body['event'] ?? null);
     }
 
     private function guestRows(string $eventId): int
