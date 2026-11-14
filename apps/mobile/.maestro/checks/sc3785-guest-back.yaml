@@ -17,7 +17,7 @@ appId: host.exp.Exponent
     id: 'guests.search'
 - takeScreenshot: guest-open
 - tapOn:
-    id: 'guest.back'
+    id: 'frame.back'
 - extendedWaitUntil:
     visible:
       id: 'guests.row.${GUEST_ID}'
