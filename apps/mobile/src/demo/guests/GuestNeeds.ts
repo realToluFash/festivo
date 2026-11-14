@@ -199,6 +199,18 @@ function named(words: string[]): string[] {
   return words.filter((word) => word !== '');
 }
 
+/** The first failing needs field across people in form order: each person's fields in turn. */
+export function firstFailing(
+  people: readonly Partial<Record<NeedsField, string>>[],
+): { at: number; field: NeedsField } | null {
+  for (const [at, lines] of people.entries()) {
+    const field = NEEDS_FIELDS.find((one) => lines[one] != null);
+    if (field != null) return { at, field };
+  }
+
+  return null;
+}
+
 export function allergyNames(needs: Needs): string[] {
   return named(
     needs.allergies.map((code) =>

@@ -6,6 +6,7 @@ import {
   NO_NEEDS,
   type Needs,
   WEDDING_GROUPS,
+  foldedName,
   fullGroups,
   needsOf,
   sameGroup,
@@ -47,11 +48,33 @@ export function pickOf(groups: readonly GuestGroup[], name: string | null | unde
   return found == null ? { name } : { id: found.id };
 }
 
+/** The wedding's groups and any a save has made, as the API keeps a group once a guest is saved into it. */
+export function eventGroups(guests: readonly SampleGuest[]): GuestGroup[] {
+  const made = new Map<string, GuestGroup>();
+  for (const one of guests) {
+    if (one.group == null || sameGroup(WEDDING_GROUPS, one.group) != null) continue;
+    const key = foldedName(one.group);
+    const was = made.get(key);
+    made.set(key, {
+      id: was?.id ?? `g-made-${key}`,
+      name: was?.name ?? one.group,
+      people: (was?.people ?? 0) + 1 + one.companions.length,
+    });
+  }
+
+  return [...WEDDING_GROUPS, ...made.values()];
+}
+
 /** Each Edit state's group and needs as the board draws it, on the guest guestOf opens. */
-export function groupNeedsStart(state: EditState | null, g: SampleGuest): GroupNeedsStart {
+export function groupNeedsStart(
+  state: EditState | null,
+  g: SampleGuest,
+  guests: readonly SampleGuest[],
+): GroupNeedsStart {
+  const groups = eventGroups(guests);
   const base: GroupNeedsStart = {
-    groups: [...WEDDING_GROUPS],
-    pick: pickOf(WEDDING_GROUPS, g.group),
+    groups,
+    pick: pickOf(groups, g.group),
     picking: false,
     typed: '',
     returned: null,
@@ -75,7 +98,7 @@ export function groupNeedsStart(state: EditState | null, g: SampleGuest): GroupN
     case 'groupTaken':
       return {
         ...base,
-        groups: [...WEDDING_GROUPS, THEIR_GROUP],
+        groups: sameGroup(groups, THEIR_GROUP.name) == null ? [...groups, THEIR_GROUP] : groups,
         pick: { name: NEW_GROUP },
         taken: THEIR_GROUP.name,
       };
@@ -119,9 +142,12 @@ export function shownProblem(
 }
 
 /** Add guest's group and needs: empty, or Work with an allergy and a diet in addGroupNeeds. */
-export function addNeedsStart(state: AddState | null): GroupNeedsStart {
+export function addNeedsStart(
+  state: AddState | null,
+  guests: readonly SampleGuest[],
+): GroupNeedsStart {
   const empty: GroupNeedsStart = {
-    groups: [...WEDDING_GROUPS],
+    groups: eventGroups(guests),
     pick: null,
     picking: false,
     typed: '',

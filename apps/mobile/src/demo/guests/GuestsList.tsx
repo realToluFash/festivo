@@ -142,10 +142,9 @@ function personRow(
   refFor: (key: string) => Ref<ViewInstance>,
   lit: string | null,
   wide: boolean,
-  manage: boolean,
 ) {
   const selected = lit === p.key;
-  const allergy = manage && p.allergy === true;
+  const allergy = p.allergy === true;
   const row = (
     <Row
       ref={refFor(p.key)}
@@ -194,8 +193,6 @@ export interface ListProps {
   onOpen: (guest: string, from: string) => void;
   refFor: (key: string) => Ref<ViewInstance>;
   fieldRef: RefObject<TextInputInstance | null>;
-  /** sc-5519: guests.manage, the only role that sees the allergy mark. */
-  manage: boolean;
 }
 
 /** Find a guest and the filter as one row, then the groups by reply, or the rows a filter or search leaves. */
@@ -220,7 +217,6 @@ export function GuestsRows({
   onOpen,
   refFor,
   fieldRef,
-  manage,
 }: ListProps) {
   const looking = filter !== 'all' || searched.trim() !== '';
   const wide = layout === 'landscape';
@@ -272,7 +268,7 @@ export function GuestsRows({
           ) : (
             <View style={wide && styles.reach}>
               <RowList
-                items={rows.map((p) => personRow(p, onOpen, refFor, lit, wide, manage))}
+                items={rows.map((p) => personRow(p, onOpen, refFor, lit, wide))}
                 gutter={wide ? 10 : 0}
               />
             </View>
@@ -289,7 +285,7 @@ export function GuestsRows({
                 <GroupHead word={REPLY_WORD[group]} count={count} />
                 <View style={wide && styles.reach}>
                   <RowList
-                    items={shown.map((p) => personRow(p, onOpen, refFor, lit, wide, manage))}
+                    items={shown.map((p) => personRow(p, onOpen, refFor, lit, wide))}
                     gutter={wide ? 10 : 0}
                   />
                 </View>
@@ -309,7 +305,7 @@ export function GuestsRows({
               <GroupHead word={W.walkIn} count={counts.walkin} />
               <View style={wide && styles.reach}>
                 <RowList
-                  items={walkIns.map((p) => personRow(p, onOpen, refFor, lit, wide, manage))}
+                  items={walkIns.map((p) => personRow(p, onOpen, refFor, lit, wide))}
                   gutter={wide ? 10 : 0}
                 />
               </View>

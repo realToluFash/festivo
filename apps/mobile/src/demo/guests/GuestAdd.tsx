@@ -1,6 +1,11 @@
 import { type ReactNode, type RefObject, useEffect, useRef, useState } from 'react';
-import { NO_NEEDS, NW, type Needs, NEEDS_FIELDS, needsLines, savedNeeds } from './GuestNeeds.ts';
-import { NeedsSection, useGroupChoice, useNeedsRefs } from './GuestNeedsParts.tsx';
+import { NO_NEEDS, NW, type Needs, firstFailing, needsLines, savedNeeds } from './GuestNeeds.ts';
+import {
+  NeedsSection,
+  useCompanionNeedsRefs,
+  useGroupChoice,
+  useNeedsRefs,
+} from './GuestNeedsParts.tsx';
 import { addNeedsStart } from './GuestNeedsStart.ts';
 import {
   Pressable,
@@ -222,7 +227,7 @@ export function AddGuest({
     start === 'addNotAdded' ? 'notAdded' : start === 'addOffline' ? 'offline' : null,
   );
   const [added, setAdded] = useState<string | null>(start === 'added' ? BIMPE.name : null);
-  const [gn] = useState(() => addNeedsStart(start));
+  const [gn] = useState(() => addNeedsStart(start, guests));
   const group = useGroupChoice(gn, name.trim() === '' ? null : name.trim(), 'guests.add.group');
   const [needs, setNeeds] = useState<Needs>(gn.needs);
   const [needsOpen, setNeedsOpen] = useState(gn.open);
@@ -230,6 +235,7 @@ export function AddGuest({
   const [companionNeeds, setCompanionNeeds] = useState<Needs[]>([]);
   const [companionOpen, setCompanionOpen] = useState<number[]>([]);
   const needsRefs = useNeedsRefs();
+  const companionRefs = useCompanionNeedsRefs();
   const lines = needsChecked ? needsLines(needs) : {};
   const refused = start === 'androidRefused';
   const nameRef = useRef<TextInputInstance>(null);
@@ -264,12 +270,17 @@ export function AddGuest({
     if (greetAsProblem(greetAs) != null) return focusChecked(greetAsRef);
     if (emailCheck(email) != null) return focusChecked(emailRef);
     if (phoneCheck(number, country) != null) return focusChecked(numberRef);
-    const first = NEEDS_FIELDS.find((field) => guestLines[field] != null);
+    const first = firstFailing([guestLines, ...theirLines]);
     if (first != null) {
-      setTimeout(() => focusChecked(needsRefs[first]), 300);
+      setTimeout(
+        () =>
+          focusChecked(
+            first.at === 0 ? needsRefs[first.field] : companionRefs(first.at - 1)[first.field],
+          ),
+        300,
+      );
       return;
     }
-    if (theirs.length > 0) return;
     if (group.refusedOnSave()) return;
     if (!anyway && sameNameAs(guests, name, null) != null) {
       setSame(true);
@@ -439,6 +450,7 @@ export function AddGuest({
                   )
                 }
                 lines={needsChecked ? needsLines(companionNeeds[index] ?? NO_NEEDS) : {}}
+                refs={companionRefs(index)}
                 testID={`guests.add.companion.${index}.needs`}
               />
             </View>

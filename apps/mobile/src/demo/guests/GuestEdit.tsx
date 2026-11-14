@@ -48,8 +48,13 @@ import {
 import { HOW_INVITED, HOW_TOLD, REPLY_WORD, W, say } from './GuestsWords.ts';
 import { ReplyMark } from '../../components/ReplyMark.tsx';
 import { readOut } from '../../components/ReadOut.tsx';
-import { NO_NEEDS, NW, type Needs, NEEDS_FIELDS, needsLines, savedNeeds } from './GuestNeeds.ts';
-import { NeedsSection, useGroupChoice, useNeedsRefs } from './GuestNeedsParts.tsx';
+import { NO_NEEDS, NW, type Needs, firstFailing, needsLines, savedNeeds } from './GuestNeeds.ts';
+import {
+  NeedsSection,
+  useCompanionNeedsRefs,
+  useGroupChoice,
+  useNeedsRefs,
+} from './GuestNeedsParts.tsx';
 import { groupNeedsStart } from './GuestNeedsStart.ts';
 
 type Opener = RefObject<ScreenReaderTarget | null>;
@@ -279,7 +284,7 @@ export function EditGuest({
   const [discarding, setDiscarding] = useState(start === 'editDiscard');
   const [language, setLanguage] = useState<GuestLanguage | null>(g.language ?? null);
   const [choosing, setChoosing] = useState(false);
-  const [gn] = useState(() => groupNeedsStart(start, g));
+  const [gn] = useState(() => groupNeedsStart(start, g, guests));
   const [needs, setNeeds] = useState<Needs>(gn.needs);
   const [needsOpen, setNeedsOpen] = useState(gn.open);
   const [needsChecked, setNeedsChecked] = useState(gn.checked);
@@ -289,6 +294,7 @@ export function EditGuest({
   const [companionOpen, setCompanionOpen] = useState<number[]>(gn.companionOpen);
   const group = useGroupChoice(gn, name.trim() === '' ? g.name : name.trim(), 'guest.edit.group');
   const needsRefs = useNeedsRefs();
+  const companionRefs = useCompanionNeedsRefs();
   const nameRef = useRef<TextInputInstance>(null);
   const greetAsRef = useRef<TextInputInstance>(null);
   const emailRef = useRef<TextInputInstance>(null);
@@ -348,12 +354,18 @@ export function EditGuest({
     if (problems.greetAs != null) return focusChecked(greetAsRef);
     if (problems.email != null) return focusChecked(emailRef);
     if (problems.phone != null) return focusChecked(numberRef);
-    const first = NEEDS_FIELDS.find((field) => guestLines[field] != null);
+    const first = firstFailing([guestLines, ...theirLines]);
     if (first != null) {
-      setTimeout(() => focusChecked(needsRefs[first]), 300);
+      if (first.at > 3) setShownAll(true);
+      setTimeout(
+        () =>
+          focusChecked(
+            first.at === 0 ? needsRefs[first.field] : companionRefs(first.at - 1)[first.field],
+          ),
+        300,
+      );
       return;
     }
-    if (theirs.length > 0) return;
     if (group.refusedOnSave()) return;
     if (!anyway && name.trim() !== g.name && sameNameAs(guests, name, g.key) != null) {
       setSame(true);
@@ -584,6 +596,7 @@ export function EditGuest({
                 )
               }
               lines={companionLines[index] ?? {}}
+              refs={companionRefs(index)}
               testID={`guest.edit.companion.${index}.needs`}
             />
           </View>

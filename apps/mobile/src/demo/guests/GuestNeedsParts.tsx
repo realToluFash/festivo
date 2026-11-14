@@ -667,15 +667,29 @@ function PersonNeeds({
   );
 }
 
-export function useNeedsRefs(): NeedsRefs {
-  const [refs] = useState<NeedsRefs>(() => ({
+function emptyRefs(): NeedsRefs {
+  return {
     otherAllergy: { current: null },
     otherDiet: { current: null },
     otherAccess: { current: null },
     note: { current: null },
-  }));
+  };
+}
+
+export function useNeedsRefs(): NeedsRefs {
+  const [refs] = useState<NeedsRefs>(emptyRefs);
 
   return refs;
+}
+
+/** Each companion's needs fields by place, so Save can focus a companion's failing one. */
+export function useCompanionNeedsRefs(): (at: number) => NeedsRefs {
+  const sets = useRef<NeedsRefs[]>([]);
+
+  return (at) => {
+    sets.current[at] ??= emptyRefs();
+    return sets.current[at];
+  };
 }
 
 const styles = StyleSheet.create({

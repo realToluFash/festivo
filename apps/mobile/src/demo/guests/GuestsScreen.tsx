@@ -232,7 +232,7 @@ export function GuestsScreen({
     filter === 'changed'
       ? changedRows(guests, listed, searched, now, locale, contacts)
       : looking
-        ? rowsOf(guests, filter, searched, locale, replyBy, contacts)
+        ? rowsOf(guests, filter, searched, locale, replyBy, contacts, owner)
         : [];
   const groups: Partial<Record<GroupKey, Person[]>> = {};
   if (!looking)
@@ -243,10 +243,13 @@ export function GuestsScreen({
         locale,
         replyBy,
         event.id !== WEDDING || expanded.includes(group),
+        owner,
       );
   const showAll = (group: GroupKey) => {
     const before = new Set((groups[group] ?? []).map((p) => p.key));
-    const next = groupRows(guests, group, locale, replyBy, true).find((p) => !before.has(p.key));
+    const next = groupRows(guests, group, locale, replyBy, true, owner).find(
+      (p) => !before.has(p.key),
+    );
     setExpanded((was) => [...was, group]);
     if (next != null)
       setTimeout(() => moveScreenReaderFocus(refs.current[next.key] ?? null), FOCUS_AFTER_MS);
@@ -335,14 +338,15 @@ export function GuestsScreen({
               menu={start.menu}
               rows={rows}
               groups={groups}
-              walkIns={looking ? [] : rowsOf(guests, 'walkin', '', locale, replyBy)}
+              walkIns={
+                looking ? [] : rowsOf(guests, 'walkin', '', locale, replyBy, contacts, owner)
+              }
               expanded={expanded}
               onShowAll={showAll}
               lit={layout === 'landscape' ? open : null}
               onOpen={openGuest}
               refFor={refFor}
               fieldRef={fieldRef}
-              manage={owner}
             />
           )}
         </>

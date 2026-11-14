@@ -6,6 +6,7 @@ import {
   NO_NEEDS,
   NW,
   WEDDING_GROUPS,
+  firstFailing,
   fullGroups,
   groupOptions,
   hasAllergy,
@@ -19,9 +20,9 @@ import {
   savedNeeds,
   typedProblem,
 } from './GuestNeeds.ts';
-import { groupNeedsStart, shownProblem, THEIR_GROUP } from './GuestNeedsStart.ts';
+import { eventGroups, groupNeedsStart, shownProblem, THEIR_GROUP } from './GuestNeedsStart.ts';
 import { GUESTS } from './GuestsSample.ts';
-import { rowsOf } from './GuestsModel.ts';
+import { GROUPS, groupRows, rowsOf } from './GuestsModel.ts';
 
 const kwame = GUESTS.find((g) => g.key === 'kwame');
 if (kwame == null) throw new Error('Kwame is in the sample');
@@ -81,10 +82,20 @@ describe('the Group picker (sc-3775 on the app)', () => {
   });
 
   it('groupTaken opens with their group listed and the refusal under Group', () => {
-    const start = groupNeedsStart('groupTaken', kwame);
+    const start = groupNeedsStart('groupTaken', kwame, GUESTS);
     expect(start.groups).toContainEqual(THEIR_GROUP);
     expect(start.taken).toBe('Family');
     expect(GW.taken('Family')).toBe('There’s already a group called Family.');
+  });
+
+  it('carries a group a save made into the next form, picked and listed once', () => {
+    const saved = GUESTS.map((g) => (g.key === 'kwame' ? { ...g, group: 'Family' } : g));
+    const again = groupNeedsStart(null, { ...kwame, group: 'Family' }, saved);
+    const family = again.groups.filter((one) => one.name === 'Family');
+    expect(family).toHaveLength(1);
+    expect(again.pick).toEqual({ id: family[0]?.id });
+    expect(groupNeedsStart('groupNew', kwame, GUESTS).pick).toEqual({ name: 'Family' });
+    expect(eventGroups(saved).slice(0, WEDDING_GROUPS.length)).toEqual(WEDDING_GROUPS);
   });
 });
 
@@ -95,6 +106,14 @@ describe('Needs (sc-3777 on the app)', () => {
       otherDiet: 'Shorten it to 100 characters or fewer.',
     });
     expect(needsLines(needsOf({ access: ['other'], otherAccess: 'A ramp' }))).toEqual({});
+  });
+
+  it('finds the first failing field in form order, the guest’s before a companion’s', () => {
+    const blank = needsLines(needsOf({ allergies: ['other'] }));
+    const long = needsLines(needsOf({ note: 'x'.repeat(501) }));
+    expect(firstFailing([{}, {}, blank])).toEqual({ at: 2, field: 'otherAllergy' });
+    expect(firstFailing([long, blank])).toEqual({ at: 0, field: 'note' });
+    expect(firstFailing([{}, {}])).toBeNull();
   });
 
   it('refuses a note over 500 and counts it trimmed', () => {
@@ -136,7 +155,7 @@ describe('Needs (sc-3777 on the app)', () => {
 });
 
 describe('the Guests row (sc-5519, amended 14 Nov)', () => {
-  const rows = rowsOf(GUESTS, 'all', '', 'en', null);
+  const rows = rowsOf(GUESTS, 'all', '', 'en', null, true, true);
 
   it('puts the group after the reply, on a companion’s row too', () => {
     expect(rows.find((p) => p.key === 'musa')?.line).toContain('Bride’s side · 1 companion');
@@ -147,6 +166,18 @@ describe('the Guests row (sc-5519, amended 14 Nov)', () => {
     expect(rows.find((p) => p.key === 'emeka')?.allergy).toBe(true);
     expect(rows.find((p) => p.key === 'ines.0')?.allergy).toBe(true);
     expect(rows.find((p) => p.key === 'ines')?.allergy).toBe(false);
+  });
+
+  it('marks no allergy for anyone without guests.manage, in every list the screen draws', () => {
+    const viewer = [
+      ...rowsOf(GUESTS, 'all', '', 'en', null, false, false),
+      ...rowsOf(GUESTS, 'all', '', 'en', null),
+      ...GROUPS.flatMap((group) => groupRows(GUESTS, group, 'en', null, true)),
+    ];
+    expect(viewer.length).toBeGreaterThan(0);
+    expect(viewer.filter((p) => p.allergy === true)).toEqual([]);
+    const host = GROUPS.flatMap((group) => groupRows(GUESTS, group, 'en', null, true, true));
+    expect(host.some((p) => p.allergy === true)).toBe(true);
   });
 
   it('draws no group for a guest with none', () => {
