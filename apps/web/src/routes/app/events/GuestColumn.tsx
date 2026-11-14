@@ -650,6 +650,7 @@ function GuestView({
           guest={guest}
           heading={heading}
           nameOf={(at) => companionShown(t, guest.fullName, names, at)}
+          timeZone={timeZone}
         />
       )}
       {manages || !draft ? (

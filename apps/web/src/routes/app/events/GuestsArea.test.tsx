@@ -2541,6 +2541,41 @@ describe('A guest’s needs (sc-3777)', () => {
     expect(within(block).getByText('Vegan')).toBeDefined();
   });
 
+  it('says under each person’s needs when the guest last changed them, and nothing when the hosts did (sc-3778)', async () => {
+    const byGuest = { by: 'guest', at: '2026-10-13T23:30:00+01:00' };
+    await openNgozi({
+      'GET /api/events/ev_1/guests/g_1': () =>
+        tagged(
+          {
+            ...DETAILS,
+            needs: needs({ allergies: ['peanuts'], changed: byGuest }),
+            companions: [
+              { ...DETAILS.companions[0], needs: needs({ changed: byGuest }) },
+              {
+                id: 'c_2',
+                fullName: 'Ada Eze',
+                state: 'coming',
+                namedByGuest: false,
+                needs: needs({
+                  diet: ['vegan'],
+                  changed: { by: 'hosts', at: '2026-10-14T09:00:00+01:00' },
+                }),
+              },
+            ],
+          },
+          '"1"',
+        ),
+    });
+    const block = within(column()).getByRole('region', { name: 'Needs' });
+    const obi = within(block).getByRole('heading', { level: 4, name: 'Obi Eze' });
+    const ada = within(block).getByRole('heading', { level: 4, name: 'Ada Eze' });
+
+    expect(within(block).getAllByText('Last changed by the guest on Oct 13.')).toHaveLength(2);
+    expect(obi.parentElement?.textContent).toContain('No dietary notes.');
+    expect(obi.parentElement?.textContent).toContain('Last changed by the guest on Oct 13.');
+    expect(ada.parentElement?.textContent).not.toContain('Last changed');
+  });
+
   it('says No dietary notes when nobody has any', async () => {
     await openNgozi({
       'GET /api/events/ev_1/guests/g_1': () => tagged({ ...DETAILS, needs: NONE }, '"1"'),

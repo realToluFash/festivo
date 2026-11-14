@@ -2905,6 +2905,7 @@
     "allergy": "Allergy",
     "allergyWith": "Allergy · {{names}}",
     "noDietary": "No dietary notes.",
+    "changedByGuest": "Last changed by the guest on {{date}}.",
     "dietaryNotes": "Dietary notes",
     "allergen": {
       "gluten": "Cereals containing gluten",

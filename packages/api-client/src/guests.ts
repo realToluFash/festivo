@@ -92,10 +92,12 @@ export interface GuestNeeds {
   otherDiet: string | null;
   otherAccess: string | null;
   note: string | null;
+  /** Who last changed this record (sc-3778), as the API reads it back; never sent. */
+  changed?: NeedsChange | null;
 }
 
 /** What the guest's own page sends and reads (sc-3778): the record without the hosts' private note. */
-export type PageNeeds = Omit<GuestNeeds, 'note'>;
+export type PageNeeds = Omit<GuestNeeds, 'note' | 'changed'>;
 
 /** Who last changed a person's needs, and when, in the event's zone; null until anyone recorded one. */
 export interface NeedsChange {
@@ -222,7 +224,7 @@ export interface GuestEdit extends Omit<NewGuest, 'companions'> {
   companions: { id?: string | null; fullName?: string | null; needs?: NeedsInput }[];
 }
 
-export type NeedsInput = Partial<GuestNeeds>;
+export type NeedsInput = Partial<Omit<GuestNeeds, 'changed'>>;
 
 /** A guest with the `ETag` an edit sends back as `If-Match`. */
 export interface TaggedGuest {
@@ -348,13 +350,15 @@ export function asPageNeeds(value: unknown): GuestPageNeeds | null {
   const needs = asNeeds(value);
   if (needs == null) return null;
   const { note: _note, ...shown } = needs;
-  const changed = (value as Record<string, unknown>).changed as Record<string, unknown> | null;
+
+  return { ...shown, changed: needs.changed ?? null };
+}
+
+function asChange(value: unknown): NeedsChange | null {
+  const changed = value as Record<string, unknown> | null | undefined;
   const by = changed?.by === 'guest' || changed?.by === 'hosts' ? changed.by : null;
 
-  return {
-    ...shown,
-    changed: by == null || typeof changed?.at !== 'string' ? null : { by, at: changed.at },
-  };
+  return by == null || typeof changed?.at !== 'string' ? null : { by, at: changed.at };
 }
 
 function codes<T extends string>(value: unknown, known: readonly T[]): T[] {
@@ -373,6 +377,7 @@ export function asNeeds(value: unknown): GuestNeeds | null {
     otherDiet: text(needs.otherDiet),
     otherAccess: text(needs.otherAccess),
     note: text(needs.note),
+    changed: asChange(needs.changed),
   };
 }
 

@@ -9,10 +9,12 @@ import {
   type GuestNeeds,
   NEED_NOTE_MAXIMUM,
 } from '@soirely/api-client';
+import { replyDate } from '@soirely/domain';
 import { useId } from 'react';
 import { useTranslation } from 'react-i18next';
 
 import { Glyph } from '../../../components/Glyph.tsx';
+import { dateLocale } from '../../../i18n/index.ts';
 import { Head, RowWords } from '../../../components/SettingsParts.tsx';
 import { FieldWrong } from './GuestFields.tsx';
 import { IconLead } from './GuestInvitation.tsx';
@@ -375,21 +377,55 @@ function NeedsRows({ needs }: { needs: GuestNeeds }) {
   ));
 }
 
-/** sc-3777: allergies, diet and access under their own headings, the guest's then each companion's; for people who manage guests only. */
+function byGuest(needs: GuestNeeds | null | undefined): needs is GuestNeeds {
+  return needs?.changed?.by === 'guest';
+}
+
+function shown(needs: GuestNeeds | null | undefined): needs is GuestNeeds {
+  return byGuest(needs) || recorded(needs);
+}
+
+/** A record the guest cleared still says who cleared it. */
+function PersonNeeds({ needs, timeZone }: { needs: GuestNeeds; timeZone: string }) {
+  const { t } = useTranslation();
+
+  return (
+    <>
+      {recorded(needs) ? (
+        <ul className="desk-rows gs-rows">
+          <NeedsRows needs={needs} />
+        </ul>
+      ) : (
+        <p className="desk-line">{t('guestNeeds.noDietary')}</p>
+      )}
+      {byGuest(needs) && needs.changed != null && (
+        <p className="desk-help">
+          {t('guestNeeds.changedByGuest', {
+            date: replyDate(needs.changed.at, timeZone, dateLocale()),
+          })}
+        </p>
+      )}
+    </>
+  );
+}
+
+/** sc-3777: allergies, diet and access under their own headings, the guest's then each companion's; for people who manage guests only. sc-3778: under each person's, the day the guest last changed them on their own page; nothing when the hosts did. */
 export function NeedsBlock({
   guest,
   heading,
   nameOf,
+  timeZone,
 }: {
   guest: GuestDetails;
   heading: string;
   nameOf: (at: number) => string;
+  timeZone: string;
 }) {
   const { t } = useTranslation();
   const companions = guest.companions.flatMap((one, at) =>
-    recorded(one.needs) ? [{ id: one.id, at, needs: one.needs }] : [],
+    shown(one.needs) ? [{ id: one.id, at, needs: one.needs }] : [],
   );
-  const none = !recorded(guest.needs) && companions.length === 0;
+  const none = !shown(guest.needs) && companions.length === 0;
 
   return (
     <section className="desk-block" aria-labelledby={`${heading}-needs`}>
@@ -398,17 +434,11 @@ export function NeedsBlock({
         <p className="desk-line">{t('guestNeeds.noDietary')}</p>
       ) : (
         <>
-          {recorded(guest.needs) && (
-            <ul className="desk-rows gs-rows">
-              <NeedsRows needs={guest.needs} />
-            </ul>
-          )}
+          {shown(guest.needs) && <PersonNeeds needs={guest.needs} timeZone={timeZone} />}
           {companions.map(({ id, at, needs }) => (
             <div key={id} className="gs-their-needs">
               <h4 className="gs-their-head">{nameOf(at)}</h4>
-              <ul className="desk-rows gs-rows">
-                <NeedsRows needs={needs} />
-              </ul>
+              <PersonNeeds needs={needs} timeZone={timeZone} />
             </div>
           ))}
         </>
