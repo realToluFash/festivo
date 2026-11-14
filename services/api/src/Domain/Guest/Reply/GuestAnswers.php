@@ -168,8 +168,6 @@ final readonly class GuestAnswers
     }
 
     /**
-     * The places this reply leaves unnamed, by id.
-     *
      * @param list<Guest>                         $places
      * @param list<array{Guest, CompanionChoice}> $placed
      *
@@ -186,8 +184,6 @@ final readonly class GuestAnswers
     }
 
     /**
-     * An unnamed place's needs go by its id, refused 422 for a place this reply names or the guest does not have.
-     *
      * @param list<array{Guest, CompanionChoice}> $placed
      * @param array<string, Guest>                $left
      *

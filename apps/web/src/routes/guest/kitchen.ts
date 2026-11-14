@@ -92,7 +92,6 @@ function recordedPeople(page: GuestPage): Person[] {
   ];
 }
 
-/** Each companion coming, then each place the names the guest added leave unnamed: a new name fills the first unnamed place (sc-3779). */
 function comingPeople(page: GuestPage, party: Party): { key: string; name: string | null }[] {
   const added = party.people.filter((one) => one.id == null).length;
 
@@ -175,7 +174,6 @@ export function needsOf(one: Person): PageNeeds {
   };
 }
 
-/** The cards for places nobody named, sent by the place's id. */
 export function unnamedNeeds(kitchen: Kitchen): PlaceNeeds[] {
   return kitchen.people
     .filter((one) => one.key.startsWith(PLACE))
@@ -188,7 +186,6 @@ export interface WhoWords {
   yourGuestN: (n: number) => string;
 }
 
-/** "You", a companion's name, or for a place nobody named "Your guest", or "Your guest 1", "Your guest 2" … among the companions when there are more (ux, 8 Nov). */
 export function whoOf(one: Person, people: readonly Person[], words: WhoWords): string {
   if (one.key === YOU) return words.you;
   if (one.name != null) return one.name;
