@@ -26,6 +26,7 @@ export const W = {
   finishedLine: 'This event has finished, so guests can’t be invited.',
   markNotInvited: 'Mark as not invited',
   unmarked: 'Marked as not invited.',
+  unmarkNotSaved: 'Not saved. They are still invited. Try again.',
   readOnlyInvited:
     'You can see names, replies and who is invited. Marking guests as invited needs the Lead or Can edit role.',
   makeLive: 'Make live',

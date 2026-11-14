@@ -550,6 +550,25 @@
   background: var(--colorAccentTint);
 }
 
+/* The list loading (sc-44950): the cover card's place, the search field's, then five guest rows. */
+.gs-bone-card {
+  height: 150px;
+  border-radius: var(--deskCard);
+}
+
+.gs-bone-field {
+  height: 48px;
+  border-radius: var(--radiusInset);
+}
+
+.gs-bone-mark {
+  flex: none;
+  width: 22px;
+  height: 22px;
+  margin: 0 3px;
+  border-radius: 50%;
+}
+
 /* A guest's column loading (sc-3773): the cover card's place, then three detail rows. */
 .gs-bone-guest {
   height: 170px;
@@ -1060,15 +1079,6 @@
 .gs-need {
   min-height: var(--sizeHit);
   font-size: 14.5px;
-}
-
-.gs-note {
-  width: 100%;
-  min-height: 72px;
-  border: 0;
-  background: none;
-  font: inherit;
-  resize: vertical;
 }
 
 .gs-companion-block {

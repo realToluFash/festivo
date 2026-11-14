@@ -627,6 +627,10 @@ export const EVENT_WORDS = {
   accepted: 'JPEG, PNG, WebP or HEIC, up to 15 MB, at least 1200 × 675 pixels.',
   refusedDimensions:
     'That photo is smaller than 1200 × 675 pixels, so it would look blurred. Choose a larger one.',
+  refusedType: 'That file is not a photo we can use. Choose a JPEG, PNG, WebP or HEIC.',
+  refusedSize: 'That photo is over 15 MB. Choose a smaller one.',
+  uploadFailed: 'The photo did not upload. Try again.',
+  uploading: 'Uploading…',
   changePhoto: 'Change photo',
   position: 'Photo position',
   top: 'Top',
@@ -1185,6 +1189,10 @@ export type EditState =
   | 'cover'
   | 'coverRefused'
   | 'coverPhoto'
+  | 'coverUploading'
+  | 'coverPhotoUploading'
+  | 'coverChangeRefused'
+  | 'coverSaveRefused'
   | 'replyBy'
   | 'replyByEmpty'
   | 'replyByError'
@@ -1270,6 +1278,10 @@ export const EVENT_STATES: Record<EventStateName, string> = {
   cover: 'evt-wed-4',
   coverRefused: 'evt-wed-4',
   coverPhoto: 'evt-wed-4',
+  coverUploading: 'evt-wed-4',
+  coverPhotoUploading: 'evt-wed-4',
+  coverChangeRefused: 'evt-wed-4',
+  coverSaveRefused: 'evt-wed-4',
   replyBy: 'evt-wed-4',
   replyByEmpty: 'evt-draft-4',
   replyByError: 'evt-wed-4',
@@ -1389,6 +1401,10 @@ export function partOf(state: EventStateName | null): Part | null {
     case 'cover':
     case 'coverRefused':
     case 'coverPhoto':
+    case 'coverUploading':
+    case 'coverPhotoUploading':
+    case 'coverChangeRefused':
+    case 'coverSaveRefused':
       return 'cover';
     case 'replyBy':
     case 'replyByEmpty':
@@ -1607,6 +1623,10 @@ export const EVENTS_PAGES: readonly { name: string; states: readonly DemoLink[] 
       on('cover', 'Cover, the default'),
       on('coverRefused', 'Cover, a photo refused'),
       on('coverPhoto', 'Cover, a photo'),
+      on('coverUploading', 'Cover, a photo uploading onto the default cover'),
+      on('coverPhotoUploading', 'Cover, a new photo uploading over the photo'),
+      on('coverChangeRefused', 'Cover, Change photo refused: the photo stays'),
+      on('coverSaveRefused', 'Cover, the save refused by the server'),
     ],
   },
   {

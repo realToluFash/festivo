@@ -80,6 +80,7 @@ export const GUEST_STATES = [
   'invitedWhenReplied',
   'unmarked',
   'unmarkRefused',
+  'unmarkNotSaved',
   'finished',
   'languageNotSet',
   'languageSet',
@@ -1166,8 +1167,8 @@ export interface AreaStart {
   replaced: boolean;
   notReplaced: boolean;
   recorded: boolean;
-  /** sc-3788: Mark as not invited landed, or was refused because the guest replied first (409). */
-  unmarked: 'done' | 'refused' | null;
+  /** sc-3788: Mark as not invited landed, was refused because the guest replied first (409), or failed on a server error. */
+  unmarked: 'done' | 'refused' | 'notSaved' | null;
   marked: boolean;
   added: number;
   walkIn: boolean;
@@ -1213,6 +1214,7 @@ export function guestOf(state: GuestsState | null): string | null {
     case 'invitedWhenReplied':
       return 'ngozi';
     case 'unmarked':
+    case 'unmarkNotSaved':
       return 'emeka';
     case 'unmarkRefused':
       return 'seun';
@@ -1344,6 +1346,8 @@ export function areaStart(state: GuestsState | null): AreaStart {
       return { ...base, unmarked: 'done' };
     case 'unmarkRefused':
       return { ...base, unmarked: 'refused' };
+    case 'unmarkNotSaved':
+      return { ...base, unmarked: 'notSaved' };
     default:
       return base;
   }

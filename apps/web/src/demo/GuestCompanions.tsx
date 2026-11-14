@@ -3,12 +3,10 @@ import { useId } from 'react';
 import { Glyph } from '../components/Glyph.tsx';
 import { GUEST, type Visit, type Words } from './guest.ts';
 import {
-  added,
   hasStep,
-  opened,
+  labelOf,
   partyLine,
   partyWords,
-  placesLeft,
   renamed,
   renaming,
   toggled,
@@ -29,7 +27,6 @@ export function WithYou({
   const id = useId();
   const { party } = visit;
   const P = partyWords(visit.lang);
-  const left = placesLeft(party);
   const busyName = party.tried ? P.typeTheirName : null;
 
   return (
@@ -49,100 +46,71 @@ export function WithYou({
           </span>
           <span className="gp-with-tag">{P.coming}</span>
         </li>
-        {party.people.map((one) => (
-          <li key={one.key} className={one.coming ? 'gp-with-row is-on' : 'gp-with-row'}>
-            <span className="gp-with-words">
-              {party.renaming === one.key ? (
-                <span className="gp-with-edit">
-                  <label htmlFor={`${id}-rename`} className="gp-with-label">
-                    {P.theirName}
-                  </label>
-                  <input
-                    id={`${id}-rename`}
-                    className="gp-with-input"
-                    type="text"
-                    value={party.draft}
-                    autoComplete="off"
-                    data-focus="renameField"
-                    aria-invalid={party.tried}
-                    onChange={(event) =>
-                      actions.change((was) => ({ ...was, draft: event.target.value, tried: false }))
-                    }
-                  />
+        {party.people.map((one) => {
+          const label = labelOf(party, one, visit.lang);
+
+          return (
+            <li key={one.key} className={one.coming ? 'gp-with-row is-on' : 'gp-with-row'}>
+              <span className="gp-with-words">
+                {party.renaming === one.key ? (
+                  <span className="gp-with-edit">
+                    <label htmlFor={`${id}-rename`} className="gp-with-label">
+                      {P.theirName}
+                    </label>
+                    <input
+                      id={`${id}-rename`}
+                      className="gp-with-input"
+                      type="text"
+                      value={party.draft}
+                      autoComplete="off"
+                      data-focus="renameField"
+                      aria-invalid={party.tried}
+                      onChange={(event) =>
+                        actions.change((was) => ({
+                          ...was,
+                          draft: event.target.value,
+                          tried: false,
+                        }))
+                      }
+                    />
+                    <button
+                      type="button"
+                      className="gp-outlined gp-with-small"
+                      onClick={() => actions.change(renamed, `rename-${one.key}`)}
+                    >
+                      {party.tried ? P.typeTheirName : P.done}
+                    </button>
+                  </span>
+                ) : (
                   <button
                     type="button"
-                    className="gp-outlined gp-with-small"
-                    onClick={() => actions.change(renamed, `rename-${one.key}`)}
+                    className="gp-with-name is-button"
+                    aria-label={one.name == null ? P.name(label) : P.rename(label)}
+                    data-focus={`rename-${one.key}`}
+                    onClick={() => actions.change((was) => renaming(was, one.key), 'renameField')}
                   >
-                    {party.tried ? P.typeTheirName : P.done}
+                    <span>{label}</span>
+                    <Line name="pencil" size={15} weight={2.2} />
                   </button>
+                )}
+                <span className="gp-with-sub">
+                  {one.by == null ? P.unnamed : one.by === 'invitation' ? P.invitation : P.byYou}
                 </span>
-              ) : (
-                <button
-                  type="button"
-                  className="gp-with-name is-button"
-                  aria-label={P.rename(one.name)}
-                  data-focus={`rename-${one.key}`}
-                  onClick={() => actions.change((was) => renaming(was, one.key), 'renameField')}
-                >
-                  <span>{one.name}</span>
-                  <Line name="pencil" size={15} weight={2.2} />
-                </button>
-              )}
-              <span className="gp-with-sub">
-                {one.by === 'invitation' ? P.invitation : P.byYou}
               </span>
-            </span>
-            <button
-              type="button"
-              className={one.coming ? 'gp-with-toggle is-on' : 'gp-with-toggle'}
-              aria-pressed={one.coming}
-              aria-label={P.isComing(one.name)}
-              onClick={() => actions.change((was) => toggled(was, one.key))}
-            >
-              {one.coming && <Glyph name="tick" size={16} weight={2.6} />}
-              <span>{one.coming ? P.coming : P.notComing}</span>
-            </button>
-          </li>
-        ))}
+              <button
+                type="button"
+                className={one.coming ? 'gp-with-toggle is-on' : 'gp-with-toggle'}
+                aria-pressed={one.coming}
+                aria-label={P.isComing(label)}
+                onClick={() => actions.change((was) => toggled(was, one.key))}
+              >
+                {one.coming && <Glyph name="tick" size={16} weight={2.6} />}
+                <span>{one.coming ? P.coming : P.notComing}</span>
+              </button>
+            </li>
+          );
+        })}
       </ul>
-      {left > 0 && party.adding == null && (
-        <button
-          type="button"
-          className="gp-outlined"
-          data-focus="add"
-          onClick={() => actions.change(opened, 'newName')}
-        >
-          {P.add(left)}
-        </button>
-      )}
-      {left > 0 && party.adding != null && (
-        <div className="gp-with-edit is-new">
-          <label htmlFor={`${id}-new`} className="gp-with-label">
-            {P.theirName}
-          </label>
-          <input
-            id={`${id}-new`}
-            className="gp-with-input"
-            type="text"
-            value={party.adding}
-            autoComplete="off"
-            data-focus="newName"
-            aria-invalid={party.tried}
-            onChange={(event) =>
-              actions.change((was) => ({ ...was, adding: event.target.value, tried: false }))
-            }
-          />
-          <button
-            type="button"
-            className="gp-outlined"
-            data-focus="addNamed"
-            onClick={() => actions.change(added, 'add')}
-          >
-            {party.tried ? P.typeTheirName : P.add(left)}
-          </button>
-        </div>
-      )}
       <p className="visually-hidden" role="status">
         {busyName}
       </p>

@@ -85,7 +85,7 @@ describe('the states, as guests-a-spec §15 names them', () => {
     expect(
       GUESTS_STATES.filter((state) => (DOOR_STATES as readonly string[]).includes(state)),
     ).toEqual([]);
-    expect(GUESTS_STATES).toHaveLength(131);
+    expect(GUESTS_STATES).toHaveLength(132);
     expect(DOOR_STATES).toHaveLength(13);
   });
 
@@ -271,6 +271,8 @@ describe('invited is a fact with a date and a way (sc-3788)', () => {
     expect(guestOf('invitedWhenReplied')).toBe('ngozi');
     expect(areaStart('unmarked')).toMatchObject({ open: 'emeka', unmarked: 'done' });
     expect(areaStart('unmarkRefused')).toMatchObject({ open: 'seun', unmarked: 'refused' });
+    expect(areaStart('unmarkNotSaved')).toMatchObject({ open: 'emeka', unmarked: 'notSaved' });
+    expect(handMarked(guestsAt('unmarkNotSaved').find((g) => g.key === 'emeka')!)).toBe(true);
     expect(say.unmarkRefused('Oluwaseun Ajayi', 'Coming', 'Nov 3')).toBe(
       'Not changed. Oluwaseun Ajayi replied Coming on Nov 3, so they stay invited.',
     );

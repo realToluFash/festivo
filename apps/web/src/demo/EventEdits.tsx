@@ -1,5 +1,10 @@
 import {
   COVER_DESCRIPTION_MAXIMUM,
+  COVER_MIDDLE,
+  COVER_TYPES,
+  type CoverRefusal,
+  coverDimensionsRefusal,
+  coverFileRefusal,
   EVENT_NAME_MAXIMUM,
   EVENT_TYPES,
   HOSTS_MAXIMUM,
@@ -15,7 +20,7 @@ import {
   startMoved,
   formatWallDay,
 } from '@soirely/domain';
-import { type RefObject, useEffect, useId, useRef, useState } from 'react';
+import { type Ref, type RefObject, useEffect, useId, useRef, useState } from 'react';
 
 import {
   type Currency,
@@ -990,23 +995,21 @@ export function CoverPreview({
 
 /** With no photo yet: what the cover is, Upload (gone while held), and what is accepted. */
 export function CoverUpload({
-  refused = false,
+  refusal = null,
   off = false,
+  buttonRef,
   onUpload,
 }: {
-  refused?: boolean;
+  refusal?: string | null;
   off?: boolean;
+  buttonRef?: Ref<HTMLButtonElement>;
   onUpload: () => void;
 }) {
   return (
     <>
-      {refused ? (
-        <Broken>{W.refusedDimensions}</Broken>
-      ) : (
-        <p className="desk-line">{W.coverLine}</p>
-      )}
+      {refusal != null ? <Broken>{refusal}</Broken> : <p className="desk-line">{W.coverLine}</p>}
       {!off && (
-        <button type="button" className="ev-upload" onClick={onUpload}>
+        <button ref={buttonRef} type="button" className="ev-upload" onClick={onUpload}>
           <Glyph name="photo" size={19} weight={2.2} />
           {W.upload}
         </button>
@@ -1016,30 +1019,121 @@ export function CoverUpload({
   );
 }
 
+const COVER_ACCEPT = [...COVER_TYPES, '.heic', '.heif'].join(',');
+const UPLOAD_MS = 1500;
+
+const PICK_REFUSED: Record<CoverRefusal, string> = {
+  type: W.refusedType,
+  size: W.refusedSize,
+  dimensions: W.refusedDimensions,
+};
+
+function sizeOf(file: File): Promise<{ width: number; height: number } | null> {
+  return new Promise((resolve) => {
+    const url = URL.createObjectURL(file);
+    const image = new Image();
+    const done = (size: { width: number; height: number } | null) => {
+      URL.revokeObjectURL(url);
+      resolve(size);
+    };
+
+    image.onload = () => done({ width: image.naturalWidth, height: image.naturalHeight });
+    image.onerror = () => done(null);
+    image.src = url;
+  });
+}
+
 /** Cover: Soirely's cover in the event's own colours, or a photo, its position and what a screen reader says for it. */
 export function CoverPart({ event, state, onDirty, onClose, onSave }: PartProps) {
-  const [photo, setPhoto] = useState(state === 'coverPhoto' ? true : event.photo);
-  const [position, setPosition] = useState(50);
+  const [photo, setPhoto] = useState(state === 'coverSaveRefused' ? true : event.photo);
+  const [picked, setPicked] = useState(false);
+  const [uploading, setUploading] = useState(
+    state === 'coverUploading' || state === 'coverPhotoUploading',
+  );
+  const [position, setPosition] = useState(COVER_MIDDLE);
   const [described, setDescribed] = useState(PHOTO_DESCRIPTION);
-  const refused = state === 'coverRefused';
+  const [pickRefused, setPickRefused] = useState<string | null>(
+    state === 'coverRefused'
+      ? W.refusedDimensions
+      : state === 'coverChangeRefused'
+        ? W.refusedType
+        : null,
+  );
+  const [saveRefused, setSaveRefused] = useState(state === 'coverSaveRefused');
+  const [asking, setAsking] = useState(false);
+  const file = useRef<HTMLInputElement>(null);
+  const picker = useRef<HTMLButtonElement>(null);
+  const timer = useRef<number | undefined>(undefined);
   const part = positionPart(position);
-  const changed = photo !== event.photo || (photo && position !== 50);
+  const changed =
+    photo !== event.photo ||
+    picked ||
+    (photo && (position !== COVER_MIDDLE || described !== PHOTO_DESCRIPTION));
   const id = useId();
 
-  useDirty(changed, onDirty);
+  useDirty(changed || uploading, onDirty);
+  useEffect(() => {
+    picker.current?.focus();
+
+    return () => window.clearTimeout(timer.current);
+  }, []);
+
+  const pick = () => file.current?.click();
+
+  const chosen = async (files: FileList | null) => {
+    const one = files?.[0];
+    if (file.current != null) file.current.value = '';
+    if (one == null) return;
+
+    const refusal = coverFileRefusal(one) ?? coverDimensionsRefusal(await sizeOf(one));
+    if (refusal != null) return setPickRefused(PICK_REFUSED[refusal]);
+
+    setPickRefused(null);
+    setUploading(true);
+    window.clearTimeout(timer.current);
+    timer.current = window.setTimeout(() => {
+      setUploading(false);
+      setPhoto(true);
+      setPicked(true);
+      setPosition(COVER_MIDDLE);
+    }, UPLOAD_MS);
+  };
 
   return (
     <Opened
       label={W.cover}
-      changed={changed}
+      changed={changed && !uploading}
       verb={photo && !event.photo ? W.usePhoto : W.save}
-      onCancel={onClose}
-      onSave={() => onSave({ ...event, photo })}
+      onCancel={() => (uploading ? setAsking(true) : onClose())}
+      onSave={() => {
+        if (state === 'coverSaveRefused') setSaveRefused(true);
+        else onSave({ ...event, photo });
+      }}
     >
-      <CoverPreview photo={photo} mesh={event.mesh} />
+      {saveRefused && <Broken>{W.uploadFailed}</Broken>}
+      <input
+        ref={file}
+        type="file"
+        className="desk-unseen"
+        accept={COVER_ACCEPT}
+        tabIndex={-1}
+        aria-hidden="true"
+        onChange={(change) => void chosen(change.target.files)}
+      />
+      <div className="ev-cover-frame">
+        <CoverPreview photo={photo} mesh={event.mesh} />
+        {uploading && (
+          <p className="ev-cover-uploading" role="status">
+            {W.uploading}
+          </p>
+        )}
+      </div>
       {photo ? (
         <>
-          <TextAction label={W.changePhoto} onClick={() => setPosition(50)} />
+          {pickRefused != null && <Broken>{pickRefused}</Broken>}
+          <button ref={picker} type="button" className="desk-text" onClick={pick}>
+            {W.changePhoto}
+          </button>
           <div className="desk-field">
             <label htmlFor={`${id}-position`} className="desk-label">
               {W.position}
@@ -1071,11 +1165,30 @@ export function CoverPart({ event, state, onDirty, onClose, onSave }: PartProps)
           <RedAction
             label={W.removePhoto}
             line={W.removePhotoLine}
-            onClick={() => setPhoto(false)}
+            onClick={() => {
+              window.clearTimeout(timer.current);
+              setUploading(false);
+              setPhoto(false);
+              setPicked(false);
+              setPickRefused(null);
+            }}
           />
         </>
       ) : (
-        <CoverUpload refused={refused} onUpload={() => setPhoto(true)} />
+        <CoverUpload refusal={pickRefused} buttonRef={picker} onUpload={pick} />
+      )}
+      {asking && (
+        <Ask
+          title={W.discardTitle}
+          line={W.discardLine}
+          keep={W.keepEditing}
+          go={W.discard}
+          onKeep={() => setAsking(false)}
+          onGo={() => {
+            setAsking(false);
+            onClose();
+          }}
+        />
       )}
     </Opened>
   );
