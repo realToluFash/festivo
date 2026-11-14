@@ -25,7 +25,7 @@ import { clockOf, countAfter, replyLine } from './GuestsModel.ts';
 import { GuestsCard } from './GuestsParts.tsx';
 import { ARRIVALS, GUESTS, READER, WEDDING, replyByOf } from './GuestsSample.ts';
 import { REPLY_WORD, W, say } from './GuestsWords.ts';
-import { DoorGlyph, MarkSlot } from './ReplyMark.tsx';
+import { DoorGlyph, MarkSlot } from '../../components/ReplyMark.tsx';
 import {
   NOW_AT,
   OFFLINE_SINCE,

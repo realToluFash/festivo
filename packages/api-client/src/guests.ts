@@ -250,9 +250,7 @@ export interface GuestPage {
 export const GUEST_PAGE_PHASES = ['live', 'paused', 'calledOff', 'finished'] as const;
 export type GuestPagePhase = (typeof GUEST_PAGE_PHASES)[number];
 
-/** The API's Guest limits, which the form checks before sending. */
-export const GUEST_NAME_MAXIMUM = 200;
-export const COMPANIONS_MAXIMUM = 10;
+export { COMPANIONS_MAXIMUM, GUEST_NAME_MAXIMUM } from '@soirely/domain';
 
 const REPLIES: readonly GuestReply[] = ['noReply', 'coming', 'maybe', 'notComing'];
 
