@@ -58,7 +58,6 @@ import { config } from '../../../config.ts';
 import { GlassMark } from '../../../components/EventCard.tsx';
 import { Glyph } from '../../../components/Glyph.tsx';
 import { SearchField } from '../../../components/SearchField.tsx';
-import { Skeleton } from '../../../components/Skeleton.tsx';
 import {
   Ask,
   CardStep,
@@ -622,7 +621,21 @@ export function GuestsArea({
             )}
           </header>
           {shows === 'loading' && (
-            <Skeleton words={t('pending.loading')} shape="rows" rowHeight={64} field />
+            <div className="desk-loading gs-bones" role="status" aria-busy="true">
+              <span className="desk-unseen">{t('pending.loading')}</span>
+              <span className="desk-sunk gs-bone-card" aria-hidden="true" />
+              <ul className="desk-rows gs-rows" aria-hidden="true">
+                {[1, 2, 3, 4, 1].map((bone, index) => (
+                  <li key={index} className="desk-row is-bones">
+                    <span className="desk-sunk gs-bone-mark" />
+                    <span className="desk-row-words">
+                      <span className={`desk-sunk is-title b${bone}`} />
+                      <span className={`desk-sunk is-line b${bone}`} />
+                    </span>
+                  </li>
+                ))}
+              </ul>
+            </div>
           )}
           {shows === 'failed' && (
             <div className="desk-failed gs-failed" role="alert">
