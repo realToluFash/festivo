@@ -337,6 +337,56 @@ export function asGuestGroup(value: unknown): GuestGroup | null {
   return id == null || name == null ? null : { id, name };
 }
 
+/** The most guests one action on a selection takes (sc-3776), as GuestsTogetherController::MOST_AT_ONCE. */
+export const GUESTS_TOGETHER_MOST = 2000;
+
+/** What Add to group did to each selected guest (sc-3776): `already` were in it, `gone` were not on the list to move. */
+export interface MovedTogether {
+  group: GuestGroup;
+  moved: number;
+  already: number;
+  gone: number;
+}
+
+/** What Remove from the list did (sc-3776): `removal` is what its one Undo and its erasure name, null when nobody was removed. */
+export interface RemovedTogether {
+  removal: string | null;
+  guests: number;
+  companions: number;
+  gone: number;
+}
+
+function whole(value: unknown): number | null {
+  return typeof value === 'number' && Number.isInteger(value) && value >= 0 ? value : null;
+}
+
+export function asMovedTogether(value: unknown): MovedTogether | null {
+  if (typeof value !== 'object' || value == null) return null;
+  const body = value as Record<string, unknown>;
+  const group = asGuestGroup(body.group);
+  const moved = whole(body.moved);
+  const already = whole(body.already);
+  const gone = whole(body.gone);
+
+  return group == null || moved == null || already == null || gone == null
+    ? null
+    : { group, moved, already, gone };
+}
+
+export function asRemovedTogether(value: unknown): RemovedTogether | null {
+  if (typeof value !== 'object' || value == null) return null;
+  const body = value as Record<string, unknown>;
+  const removal = text(body.removal);
+  const guests = whole(body.guests);
+  const companions = whole(body.companions);
+  const gone = whole(body.gone);
+
+  if (guests == null || companions == null || gone == null) return null;
+  if (removal == null && body.removal !== null) return null;
+
+  return { removal, guests, companions, gone };
+}
+
 function asCounts(value: unknown): GuestCounts | null {
   if (typeof value !== 'object' || value == null) return null;
   const counts = value as Record<string, unknown>;

@@ -19,6 +19,7 @@ const NONE = {
   note: null,
 };
 const GUESTS_CSS = stylesheet(import.meta.dirname, 'guests.css');
+const SELECT_CSS = stylesheet(import.meta.dirname, 'guestSelect.css');
 const SETTINGS_CSS = stylesheet(import.meta.dirname, '../../../components/SettingsParts.css');
 const IRE = membership({ id: 'org_1', name: 'Ìrè Events' });
 
@@ -3599,5 +3600,286 @@ describe('Remove from the list, with a short undo (sc-3774)', () => {
     );
 
     expect(within(column()).queryByRole('button', { name: 'Remove from the list' })).toBeNull();
+  });
+});
+
+describe('Select many guests, then Add to group or Remove from the list (sc-3776)', () => {
+  const BRIDE = {
+    id: 'gr_1',
+    name: 'Bride’s side',
+    counts: { people: 2, guests: 1, companions: 1 },
+  };
+  const KEMI = guest('g_3', 'Kemi Bello', { reply: 'notComing', invitation: INVITED });
+
+  function grouped() {
+    return { ...listOf([NGOZI, AMAKA, KEMI]), groups: [BRIDE] };
+  }
+
+  async function selecting(answers: Record<string, Answer> = {}, permissions?: string[]) {
+    signedIn();
+    const sent = await onGuests(
+      { 'GET /api/events/ev_1/guests': () => json(grouped()), ...answers },
+      permissions,
+    );
+    await screen.findByRole('heading', { level: 1, name: 'Guests' });
+    await screen.findByText('Ngozi Eze');
+
+    return sent;
+  }
+
+  function box(name: string): HTMLInputElement {
+    return screen.getByRole('checkbox', { name }) as HTMLInputElement;
+  }
+
+  function bar(): HTMLElement {
+    return screen.getByRole('region', { name: 'Selected guests' });
+  }
+
+  function said(): string[] {
+    return [...document.querySelectorAll('.gm-said .gm-line p > span:not(.visually-hidden)')].map(
+      (one) => one.textContent ?? '',
+    );
+  }
+
+  it('gives each guest’s row a box, none to a companion’s, and counts only those shown in Select all', async () => {
+    await selecting();
+
+    expect(
+      screen
+        .getAllByRole('checkbox')
+        .map((one) => one.getAttribute('aria-label') ?? one.parentElement?.textContent),
+    ).toEqual([
+      'Select all 3 shown',
+      'Select Ngozi Eze',
+      'Select Chief Amaka Obi',
+      'Select Kemi Bello',
+    ]);
+    expect(cssRule('.gs-box', GUESTS_CSS)).toContain('height: 24px;');
+    expect(cssRule('.gm-box', SELECT_CSS)).toContain('width: 36px;');
+    expect(box('Select Ngozi Eze').closest('a')).toBeNull();
+  });
+
+  it('selects a guest’s companions with them, and says the count', async () => {
+    await selecting();
+
+    fireEvent.click(box('Select Ngozi Eze'));
+
+    expect(within(bar()).getByText('1 selected')).toBeDefined();
+    expect(within(bar()).getByText('and 3 companions with them')).toBeDefined();
+    expect(
+      screen
+        .getAllByRole('status')
+        .some((one) => one.textContent === '1 selected, and 3 companions with them'),
+    ).toBe(true);
+  });
+
+  it('clears the selection when the search changes, and says so until something is selected again', async () => {
+    await selecting();
+    fireEvent.click(box('Select all 3 shown'));
+
+    fireEvent.change(screen.getByRole('searchbox', { name: 'Find a guest' }), {
+      target: { value: 'Amaka' },
+    });
+
+    expect(await screen.findByText('Selection cleared.')).toBeDefined();
+    expect(screen.queryByRole('region', { name: 'Selected guests' })).toBeNull();
+    expect(box('Select all 1 shown').checked).toBe(false);
+    fireEvent.click(box('Select Chief Amaka Obi'));
+    expect(screen.queryByText('Selection cleared.')).toBeNull();
+  });
+
+  it('moves only the guests the search shows into the group, and says what happened to each', async () => {
+    const sent = await selecting({
+      'POST /api/events/ev_1/guests/group-moves': () =>
+        json({ group: { id: 'gr_1', name: 'Bride’s side' }, moved: 1, already: 0, gone: 0 }),
+    });
+    fireEvent.change(screen.getByRole('searchbox', { name: 'Find a guest' }), {
+      target: { value: 'Amaka' },
+    });
+    fireEvent.click(await screen.findByRole('checkbox', { name: 'Select all 1 shown' }));
+
+    fireEvent.click(within(bar()).getByRole('button', { name: 'Add to group' }));
+    const sheet = await screen.findByRole('dialog', { name: 'Add 1 guest to a group' });
+    fireEvent.click(within(sheet).getByRole('radio', { name: /Bride’s side/u }));
+    fireEvent.click(within(sheet).getByRole('button', { name: 'Add to group' }));
+
+    await waitFor(() => expect(said()).toEqual(['1 moved to Bride’s side.']));
+    expect(
+      sent.find((one) => one.line === 'POST /api/events/ev_1/guests/group-moves')?.body,
+    ).toEqual({
+      guestIds: ['g_2'],
+      group: { id: 'gr_1' },
+    });
+  });
+
+  it('counts those already in the group and those someone else removed, skipping nobody silently', async () => {
+    await selecting({
+      'POST /api/events/ev_1/guests/group-moves': () =>
+        json({ group: { id: 'gr_1', name: 'Bride’s side' }, moved: 1, already: 1, gone: 1 }),
+    });
+    fireEvent.click(box('Select all 3 shown'));
+    fireEvent.click(within(bar()).getByRole('button', { name: 'Add to group' }));
+    const sheet = await screen.findByRole('dialog', { name: 'Add 3 guests to a group' });
+    fireEvent.click(within(sheet).getByRole('radio', { name: /Bride’s side/u }));
+    fireEvent.click(within(sheet).getByRole('button', { name: 'Add to group' }));
+
+    await waitFor(() =>
+      expect(said()).toEqual([
+        '1 moved to Bride’s side.',
+        '1 was already in Bride’s side.',
+        '1 not changed: someone else removed them.',
+      ]),
+    );
+  });
+
+  it('sends nothing for a New group left blank, or for no group chosen', async () => {
+    const sent = await selecting();
+    fireEvent.click(box('Select Kemi Bello'));
+    fireEvent.click(within(bar()).getByRole('button', { name: 'Add to group' }));
+    const sheet = await screen.findByRole('dialog', { name: 'Add 1 guest to a group' });
+
+    fireEvent.click(within(sheet).getByRole('button', { name: 'Add to group' }));
+    expect(within(sheet).getByText('Choose a group, or make a new one.')).toBeDefined();
+    fireEvent.click(within(sheet).getByRole('radio', { name: 'New group' }));
+    fireEvent.click(within(sheet).getByRole('button', { name: 'Add to group' }));
+
+    expect(within(sheet).getByText('Enter a name for the group.')).toBeDefined();
+    expect(sent.some((one) => one.line.endsWith('/group-moves'))).toBe(false);
+  });
+
+  it('asks before removing, takes them off as one action, and one Undo puts them all back', async () => {
+    let listed = grouped();
+    const sent = await selecting({
+      'GET /api/events/ev_1/guests': () => json(listed),
+      'POST /api/events/ev_1/guests/removals': () => {
+        listed = { ...listOf([KEMI]), groups: [BRIDE] };
+
+        return json({ removal: 'rm_1', guests: 2, companions: 3, gone: 0 });
+      },
+      'DELETE /api/events/ev_1/guests/removals/rm_1': () => {
+        listed = grouped();
+
+        return json({ guests: 2 });
+      },
+    });
+    fireEvent.click(box('Select Ngozi Eze'));
+    fireEvent.click(box('Select Chief Amaka Obi'));
+
+    fireEvent.click(within(bar()).getByRole('button', { name: 'Remove from the list' }));
+    const ask = await screen.findByRole('alertdialog', {
+      name: 'Remove 2 guests and their 3 companions?',
+    });
+    expect(
+      within(ask)
+        .getAllByRole('listitem')
+        .map((one) => one.textContent),
+    ).toEqual([
+      '2 of them have replied. Their replies go too.',
+      '3 companions go with them.',
+      'Nothing is sent to them.',
+    ]);
+    fireEvent.click(within(ask).getByRole('button', { name: 'Remove 2' }));
+
+    await waitFor(() =>
+      expect(said()).toEqual([
+        '2 guests and 3 companions removed.',
+        'Undo puts them all back as they were.',
+      ]),
+    );
+    expect(screen.queryByText('Ngozi Eze')).toBeNull();
+    expect(sent.find((one) => one.line === 'POST /api/events/ev_1/guests/removals')?.body).toEqual({
+      guestIds: ['g_1', 'g_2'],
+    });
+
+    fireEvent.click(screen.getByRole('button', { name: 'Undo' }));
+
+    await waitFor(() => expect(said()).toEqual(['2 guests are back on the list, as they were.']));
+    expect(await screen.findByText('Ngozi Eze')).toBeDefined();
+    expect(sent.some((one) => one.line.endsWith('/erasure'))).toBe(false);
+  });
+
+  it('drops the companions clause from the question when there are none', async () => {
+    await selecting();
+    fireEvent.click(box('Select Kemi Bello'));
+
+    fireEvent.click(within(bar()).getByRole('button', { name: 'Remove from the list' }));
+
+    expect(await screen.findByRole('alertdialog', { name: 'Remove 1 guest?' })).toBeDefined();
+  });
+
+  it('erases the removal once its Undo runs out', async () => {
+    vi.useFakeTimers({ shouldAdvanceTime: true });
+    try {
+      const sent = await selecting({
+        'POST /api/events/ev_1/guests/removals': () =>
+          json({ removal: 'rm_1', guests: 1, companions: 0, gone: 0 }),
+        'POST /api/events/ev_1/guests/removals/rm_1/erasure': () =>
+          new Response(null, { status: 204 }),
+      });
+      fireEvent.click(box('Select Kemi Bello'));
+      fireEvent.click(within(bar()).getByRole('button', { name: 'Remove from the list' }));
+      fireEvent.click(
+        within(await screen.findByRole('alertdialog')).getByRole('button', { name: 'Remove 1' }),
+      );
+      await waitFor(() => expect(said()[0]).toBe('1 guest removed.'));
+      (document.activeElement as HTMLElement | null)?.blur();
+
+      await act(async () => {
+        await vi.advanceTimersByTimeAsync(11_000);
+      });
+
+      expect(
+        sent.some((one) => one.line === 'POST /api/events/ev_1/guests/removals/rm_1/erasure'),
+      ).toBe(true);
+    } finally {
+      vi.useRealTimers();
+    }
+  });
+
+  it('keeps the selection when nothing could be sent, and Try again sends it again', async () => {
+    let tries = 0;
+    await selecting({
+      'POST /api/events/ev_1/guests/removals': () => {
+        tries += 1;
+
+        return tries === 1
+          ? problem('internal_error', 500)
+          : json({ removal: 'rm_1', guests: 1, companions: 0, gone: 0 });
+      },
+    });
+    fireEvent.click(box('Select Kemi Bello'));
+    fireEvent.click(within(bar()).getByRole('button', { name: 'Remove from the list' }));
+    fireEvent.click(
+      within(await screen.findByRole('alertdialog')).getByRole('button', { name: 'Remove 1' }),
+    );
+
+    await waitFor(() => expect(said()).toEqual(['Nothing changed. We could not reach Soirely.']));
+    expect(box('Select Kemi Bello').checked).toBe(true);
+    fireEvent.click(screen.getByRole('button', { name: 'Try again' }));
+
+    await waitFor(() => expect(said()[0]).toBe('1 guest removed.'));
+  });
+
+  it('shows no boxes and no bar without guests.manage', async () => {
+    await selecting(
+      {},
+      OWNER_PERMISSIONS.filter((one) => one !== 'guests.manage'),
+    );
+
+    expect(screen.queryAllByRole('checkbox')).toEqual([]);
+    expect(
+      screen.getByText('You can see the list. Selecting guests is for people who manage guests.'),
+    ).toBeDefined();
+  });
+
+  it('still opens a guest from their row (sc-3773)', async () => {
+    await selecting({
+      'GET /api/events/ev_1/guests/g_2': () => tagged({ ...DETAILS, ...AMAKA }, '"1"'),
+    });
+
+    fireEvent.click(screen.getByRole('link', { name: /Chief Amaka Obi/u }));
+
+    expect(await screen.findByRole('region', { name: 'Chief Amaka Obi' })).toBeDefined();
+    expect(box('Select Chief Amaka Obi').checked).toBe(false);
   });
 });

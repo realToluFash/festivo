@@ -29,6 +29,8 @@ import {
   asGuestPagePlace,
   asPageNeeds,
   asHeadcount,
+  asMovedTogether,
+  asRemovedTogether,
   type CompanionChoice,
   type Guest,
   type GuestEdit,
@@ -38,6 +40,8 @@ import {
   type GuestList,
   type GuestPage,
   type Headcount,
+  type MovedTogether,
+  type RemovedTogether,
   GUEST_ANSWERS,
   GUEST_PAGE_PHASES,
   type NewGuest,
@@ -2172,6 +2176,43 @@ export class ApiClient {
     await this.post<undefined>(`${this.guestPath(eventId, guestId)}/erasure`, undefined, {
       keepalive: true,
     });
+  }
+
+  /** Many guests into one group, chosen by `id` or made from `name` (sc-3776); refused `validation_failed` on `guestIds` over 2,000, or on the name as makeGuestGroup. */
+  async moveGuestsToGroup(
+    eventId: string,
+    guestIds: readonly string[],
+    group: { id: string } | { name: string },
+  ): Promise<MovedTogether> {
+    const body = await this.post<unknown>(`${this.guestsPath(eventId)}/group-moves`, {
+      guestIds,
+      group,
+    });
+
+    return asMovedTogether(body) ?? together();
+  }
+
+  /** Many guests and their companions off the list as one action with one Undo (sc-3776); one not on the list is counted in `gone`. */
+  async removeGuests(eventId: string, guestIds: readonly string[]): Promise<RemovedTogether> {
+    const body = await this.post<unknown>(`${this.guestsPath(eventId)}/removals`, { guestIds });
+
+    return asRemovedTogether(body) ?? together();
+  }
+
+  /** Every guest the removal took, back as they were; refused 404 once erased. */
+  async undoGuestsRemoval(eventId: string, removal: string): Promise<void> {
+    await this.delete<unknown>(
+      `${this.guestsPath(eventId)}/removals/${encodeURIComponent(removal)}`,
+    );
+  }
+
+  /** Once the undo has run out, or as the page goes. */
+  async eraseGuestsRemoval(eventId: string, removal: string): Promise<void> {
+    await this.post<undefined>(
+      `${this.guestsPath(eventId)}/removals/${encodeURIComponent(removal)}/erasure`,
+      undefined,
+      { keepalive: true },
+    );
   }
 
   /** Refused `validation_failed` on `name`: blank, over 60 characters, a name already used, or 50 groups (sc-3775). */
@@ -4785,4 +4826,10 @@ function linkedOrThrow<T>(linked: T | null): T {
   }
 
   return linked;
+}
+
+function together(): never {
+  throw new Error(
+    'The API answered an action on many guests in a shape this client does not know. Check GuestsTogetherController in services/api.',
+  );
 }
