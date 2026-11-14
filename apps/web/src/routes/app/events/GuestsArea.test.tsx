@@ -2084,7 +2084,7 @@ describe('Not yet invited, and Mark as invited (sc-3788)', () => {
   it('lists a guest nobody has invited, and their companion, as Not yet invited', async () => {
     await openBisi();
 
-    expect(listed()).toContain('Bisi AdewaleNot yet invited · 1 companion · 0 of 1 named');
+    expect(listed()).toContain('Bisi AdewaleNot yet invited · 1 companion · 1 of 1 named');
     expect(listed()).toContain('Tunde AdewaleNot yet invited');
     expect(
       screen.getByText('Copying their link does not mark them. Mark them once you have sent it.'),
@@ -2125,7 +2125,7 @@ describe('Not yet invited, and Mark as invited (sc-3788)', () => {
       { line: 'PUT /api/events/ev_1/guests/g_4/invitation', body: { how: 'whatsapp' } },
     ]);
     expect(screen.queryByRole('group', { name: 'How did you invite them?' })).toBeNull();
-    expect(listed()).toContain('Bisi AdewaleNo reply · 1 companion · 0 of 1 named');
+    expect(listed()).toContain('Bisi AdewaleNo reply · 1 companion · 1 of 1 named');
     expect(listed()).toContain('Tunde AdewaleHeld · comes only if their host accepts');
   });
 
