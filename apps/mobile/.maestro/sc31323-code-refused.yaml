@@ -1,0 +1,17 @@
+# Sign up, then a wrong code on Check your email: the code boxes are refused. Leaves them on screen for a screen-reader pass. NAME, EMAIL (fresh), PASSWORD, and LANGUAGE as register-check-email.yaml takes it. sc-31323.
+appId: host.exp.Exponent
+---
+- runFlow: register-check-email.yaml
+- tapOn:
+    id: 'verifyEmail.code'
+- eraseText: 20
+- inputText: '000000'
+- extendedWaitUntil:
+    visible: '{{t:any:verifyEmail.wrong}}'
+    timeout: 15000
+- runFlow:
+    when:
+      platform: Android
+    commands:
+      - hideKeyboard
+- takeScreenshot: code-refused

@@ -1,0 +1,22 @@
+# sc-3594: in ${ORG}, an organisation with no events, a role with Create events reads the first run as drawn, and Create an event opens the new-event form.
+appId: host.exp.Exponent
+---
+- runFlow:
+    file: ../switch-organisation.yaml
+    env:
+      ORG: ${ORG}
+- openLink: ${METRO_URL}/--/events
+- extendedWaitUntil:
+    visible:
+      id: 'events.firstRun'
+    timeout: 30000
+- assertVisible:
+    id: 'events.none.new'
+- takeScreenshot: first-run
+- tapOn:
+    id: 'events.none.new'
+- extendedWaitUntil:
+    visible:
+      id: 'eventForm.name'
+    timeout: 20000
+- takeScreenshot: form

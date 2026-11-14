@@ -1,0 +1,14 @@
+# sc-3585: ${EV_FLIP}, Live and starting within two minutes: the open page turns Happening now and its button End now, with nobody acting.
+appId: host.exp.Exponent
+---
+- openLink: ${METRO_URL}/--/events/${EV_FLIP}
+- extendedWaitUntil:
+    visible:
+      id: 'events.phase.live'
+    timeout: 30000
+- takeScreenshot: before-start
+- extendedWaitUntil:
+    visible:
+      id: 'events.phase.happening_now'
+    timeout: 180000
+- takeScreenshot: after-start

@@ -1,0 +1,44 @@
+# sc-39407: the phone Calendar's month title at the device's largest text, stepped back to September 2026, in Month and Agenda, with the stepper under it; then August and back.
+appId: host.exp.Exponent
+---
+- openLink: ${METRO_URL}/--/calendar
+- extendedWaitUntil:
+    visible:
+      id: calendar.view.month
+    timeout: 30000
+- tapOn:
+    id: calendar.view.month
+- tapOn:
+    id: calendar.today
+- waitForAnimationToEnd:
+    timeout: 4000
+- repeat:
+    times: 6
+    while:
+      notVisible:
+        id: calendar.day.2026-09-15
+    commands:
+      - tapOn:
+          id: calendar.previous
+      - waitForAnimationToEnd:
+          timeout: 4000
+- assertVisible:
+    id: calendar.day.2026-09-15
+- takeScreenshot: big-month-sep
+- tapOn:
+    id: calendar.previous
+- waitForAnimationToEnd:
+    timeout: 4000
+- takeScreenshot: big-month-aug
+- tapOn:
+    id: calendar.next
+- waitForAnimationToEnd:
+    timeout: 4000
+- takeScreenshot: big-month-sep-again
+- tapOn:
+    id: calendar.view.agenda
+- waitForAnimationToEnd:
+    timeout: 6000
+- takeScreenshot: big-agenda
+- tapOn:
+    id: calendar.view.month

@@ -1,0 +1,24 @@
+# sc-41673 unchanged, Android tablet: Create an organisation's name step upright and on its side, keys up after a name is typed, then keys down with Continue pinned.
+appId: host.exp.Exponent
+---
+- setOrientation: PORTRAIT
+- waitForAnimationToEnd
+- runFlow: ../open-create-organisation.yaml
+- inputText: 'Ibadan Supper Club'
+- extendedWaitUntil: { visible: { id: 'never.there' }, timeout: 1000, optional: true }
+- takeScreenshot: t1-up-typed
+- hideKeyboard: { optional: true }
+- extendedWaitUntil: { visible: { id: 'never.there' }, timeout: 1000, optional: true }
+- takeScreenshot: t2-up-keys-down
+- tapOn: { id: 'createWalk.cancel', optional: true }
+- setOrientation: LANDSCAPE_LEFT
+- waitForAnimationToEnd
+- runFlow: ../open-create-organisation.yaml
+- inputText: 'Ibadan Supper Club'
+- extendedWaitUntil: { visible: { id: 'never.there' }, timeout: 1000, optional: true }
+- takeScreenshot: t3-side-typed
+- hideKeyboard: { optional: true }
+- extendedWaitUntil: { visible: { id: 'never.there' }, timeout: 1000, optional: true }
+- takeScreenshot: t4-side-keys-down
+- tapOn: { id: 'createWalk.cancel', optional: true }
+- setOrientation: PORTRAIT

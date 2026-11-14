@@ -1,0 +1,18 @@
+# sc-40584 unchanged (sc-20721): signs an account with no profile in, onto A few details, then runs checks/sc40584-few-details.yaml.
+#   node .qa/bin/qa-env.mjs maestro sc40584-few-details-signed-in --android EMAIL=… PASSWORD=…
+appId: host.exp.Exponent
+---
+- launchApp:
+    appId: host.exp.Exponent
+    stopApp: true
+- openLink: ${METRO_URL}/--/sign-in
+- extendedWaitUntil: { visible: { id: 'signIn.email' }, timeout: 90000 }
+- tapOn: { id: 'signIn.email' }
+- eraseText: 120
+- inputText: ${EMAIL}
+- tapOn: { id: 'signIn.password' }
+- eraseText: 120
+- inputText: ${PASSWORD}
+- hideKeyboard
+- tapOn: { id: 'signIn.submit' }
+- runFlow: checks/sc40584-few-details.yaml

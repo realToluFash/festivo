@@ -1,0 +1,105 @@
+# sc-3590: the cover on each row of Events and across the top of the event's page, at its saved position (${TOP} at 0, ${MIDDLE} at 50, ${BOTTOM} at 100) or its type's default (${NONE}), at the orientation given. TOP_NAME, MIDDLE_NAME, BOTTOM_NAME and NONE_NAME are those events' names in the test data.
+appId: host.exp.Exponent
+---
+- setOrientation: ${ORIENT}
+- openLink: ${METRO_URL}/--/events
+- extendedWaitUntil:
+    visible:
+      id: 'frame.events'
+    timeout: 30000
+- scrollUntilVisible:
+    element:
+      id: 'events.row.${TOP}'
+    direction: DOWN
+    timeout: 30000
+- takeScreenshot: list
+- openLink: ${METRO_URL}/--/events
+- scrollUntilVisible:
+    element:
+      id: 'events.row.${TOP}'
+    direction: DOWN
+    timeout: 30000
+- tapOn:
+    id: 'events.row.${TOP}'
+- scrollUntilVisible:
+    element:
+      text: '${TOP_NAME}'
+      childOf:
+        id: 'events.page'
+    direction: DOWN
+    timeout: 20000
+    centerElement: true
+- scrollUntilVisible:
+    element:
+      id: 'events.page.cover'
+    direction: UP
+    timeout: 10000
+- takeScreenshot: page-top
+- openLink: ${METRO_URL}/--/events
+- scrollUntilVisible:
+    element:
+      id: 'events.row.${MIDDLE}'
+    direction: DOWN
+    timeout: 30000
+- tapOn:
+    id: 'events.row.${MIDDLE}'
+- scrollUntilVisible:
+    element:
+      text: '${MIDDLE_NAME}'
+      childOf:
+        id: 'events.page'
+    direction: DOWN
+    timeout: 20000
+    centerElement: true
+- scrollUntilVisible:
+    element:
+      id: 'events.page.cover'
+    direction: UP
+    timeout: 10000
+- takeScreenshot: page-middle
+- openLink: ${METRO_URL}/--/events
+- scrollUntilVisible:
+    element:
+      id: 'events.row.${BOTTOM}'
+    direction: DOWN
+    timeout: 30000
+- tapOn:
+    id: 'events.row.${BOTTOM}'
+- scrollUntilVisible:
+    element:
+      text: '${BOTTOM_NAME}'
+      childOf:
+        id: 'events.page'
+    direction: DOWN
+    timeout: 20000
+    centerElement: true
+- scrollUntilVisible:
+    element:
+      id: 'events.page.cover'
+    direction: UP
+    timeout: 10000
+- takeScreenshot: page-bottom
+- openLink: ${METRO_URL}/--/events
+- scrollUntilVisible:
+    element:
+      id: 'events.row.${NONE}'
+    direction: DOWN
+    timeout: 30000
+- tapOn:
+    id: 'events.row.${NONE}'
+- scrollUntilVisible:
+    element:
+      text: '${NONE_NAME}'
+      childOf:
+        id: 'events.page'
+    direction: DOWN
+    timeout: 20000
+    centerElement: true
+- scrollUntilVisible:
+    element:
+      id: 'cover-default-graduation'
+      childOf:
+        id: 'events.page.cover'
+    direction: UP
+    timeout: 10000
+- takeScreenshot: page-default

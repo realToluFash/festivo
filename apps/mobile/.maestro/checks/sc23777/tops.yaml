@@ -1,0 +1,49 @@
+# sc-23777: the swipe on Home, on Events (Upcoming, Drafts, Past) and on the Settings list does nothing.
+appId: host.exp.Exponent
+---
+- runFlow: ../../return-home.yaml
+- tapOn:
+    id: 'frame.events'
+- extendedWaitUntil:
+    visible:
+      id: 'events.tab.upcoming'
+    timeout: 30000
+- tapOn:
+    id: 'frame.home'
+- extendedWaitUntil:
+    visible:
+      id: 'home.openSettings'
+    timeout: 30000
+- takeScreenshot: home-before
+- runFlow: swipe.yaml
+- assertVisible:
+    id: 'home.openSettings'
+- assertNotVisible:
+    id: 'events.tab.upcoming'
+- takeScreenshot: home-after
+- runFlow:
+    file: events-tab.yaml
+    env:
+      TAB: upcoming
+- runFlow:
+    file: events-tab.yaml
+    env:
+      TAB: drafts
+- runFlow:
+    file: events-tab.yaml
+    env:
+      TAB: past
+- runFlow: ../../return-home.yaml
+- tapOn:
+    id: 'frame.settings'
+- extendedWaitUntil:
+    visible:
+      id: 'settings.account'
+    timeout: 30000
+- takeScreenshot: settings-before
+- runFlow: swipe.yaml
+- assertVisible:
+    id: 'settings.account'
+- assertNotVisible:
+    id: 'home.openSettings'
+- takeScreenshot: settings-after

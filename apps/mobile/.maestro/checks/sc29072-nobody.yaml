@@ -1,0 +1,10 @@
+# sc-29072: an account whose organisations have no other owner or admin: Lost the authenticator ends on Contact Soirely support, no mark. P prefixes the screenshot.
+appId: host.exp.Exponent
+---
+- runFlow: ../sc29072-to-code.yaml
+- runFlow: ../sc29072-close-code-pad.yaml
+- tapOn: { id: 'twoFactor.lostBoth' }
+- extendedWaitUntil: { visible: { id: 'lostTwoFactor\.(support|send)' }, timeout: 30000 }
+- waitForAnimationToEnd
+- takeScreenshot: ${P}-nobody
+- assertVisible: { id: 'lostTwoFactor.support' }

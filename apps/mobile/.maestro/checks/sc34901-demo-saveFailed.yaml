@@ -1,0 +1,12 @@
+# sc-34901: the design demo's Notification settings at saveFailed, the same parts the app draws.
+appId: host.exp.Exponent
+---
+- openLink: ${METRO_URL}/--/demo/settings/notifications?state=saveFailed
+- waitForAnimationToEnd:
+    timeout: 8000
+- runFlow: ../developer-menu-close.yaml
+- extendedWaitUntil:
+    visible:
+      text: '.*'
+    timeout: 20000
+- takeScreenshot: demo-saveFailed

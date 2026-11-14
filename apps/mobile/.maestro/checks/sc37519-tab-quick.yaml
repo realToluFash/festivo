@@ -1,0 +1,17 @@
+# Tab on a hardware keyboard closes Password changed within 2 seconds, well inside its 10-second timer. sc-37519.
+appId: host.exp.Exponent
+---
+- runFlow: ../sign-out.yaml
+- openLink: ${METRO_URL}/--/reset-password?token=${TOKEN_STEP}
+- extendedWaitUntil: { visible: { id: 'recovery.password' }, timeout: 30000 }
+- tapOn: { id: 'recovery.password' }
+- inputText: 'a-brand-new-password-37519'
+- tapOn: { id: 'recovery.save' }
+- extendedWaitUntil: { visible: { id: 'completeProfile.organisation' }, timeout: 30000 }
+- assertVisible: '{{t:any:recovery.changed}}'
+- extendedWaitUntil: { visible: { id: 'never.there' }, timeout: 1500, optional: true }
+- takeScreenshot: tabq-01-landed
+- pressKey: Tab
+- extendedWaitUntil: { notVisible: '{{t:any:recovery.changed}}', timeout: 2000 }
+- takeScreenshot: tabq-02-after-tab
+- runFlow: ../sign-out-from-complete-profile.yaml

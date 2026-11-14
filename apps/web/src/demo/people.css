@@ -1,0 +1,51 @@
+/* The event's sidebar in the People demo (Web-People.dc.html, page 28). The page itself is the product's, in routes/app/events/people.css. */
+
+.people-event {
+  display: flex;
+  flex-direction: column;
+  gap: var(--spaceXs);
+  padding-top: var(--spaceXs);
+}
+
+.people-side > * {
+  flex-shrink: 0;
+}
+
+.people-side .today-place.is-on {
+  color: var(--colorAccent);
+}
+
+.people-back {
+  gap: var(--spaceSm);
+  font: 600 14px/1 var(--fontFamily);
+}
+
+.people-event-card {
+  display: flex;
+  align-items: center;
+  gap: var(--spaceLg);
+  padding: var(--spaceMd);
+  border-radius: var(--radiusCardDesktop);
+  background: var(--colorCard);
+}
+
+.people-event-cover {
+  width: var(--space6xl);
+  height: var(--space6xl);
+  border-radius: var(--radiusRow);
+}
+
+.people-event-name,
+.people-event-when {
+  display: block;
+}
+
+.people-event-name {
+  font: 700 14px/1.25 var(--fontFamily);
+}
+
+.people-event-when {
+  margin-top: var(--spaceHair);
+  color: var(--colorInkSecondary);
+  font: 500 12.5px/1.35 var(--fontFamily);
+}

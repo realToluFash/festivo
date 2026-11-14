@@ -1,0 +1,10 @@
+# sc-30138: Settings > General as a Member shows the read-only line naming the role.
+appId: host.exp.Exponent
+---
+- runFlow: ../open-settings.yaml
+- tapOn:
+    id: 'settings.organisation'
+- extendedWaitUntil:
+    visible: '.*(Su rol|Your role|Votre rôle|A sua função).*'
+    timeout: 30000
+- takeScreenshot: general

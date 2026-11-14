@@ -1,0 +1,15 @@
+# sc-44949: the app's design demo, Your account ?state=undeliverableUnverified, scrolled to its delivery lines.
+appId: host.exp.Exponent
+---
+- openLink: ${METRO_URL}/--/demo/settings/account?state=undeliverableUnverified
+- extendedWaitUntil:
+    visible:
+      id: 'account.card'
+    timeout: 30000
+- scrollUntilVisible:
+    element:
+      text: '.*deliver email to.*'
+    direction: DOWN
+    centerElement: true
+- waitForAnimationToEnd
+- takeScreenshot: demo
