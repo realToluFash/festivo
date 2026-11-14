@@ -7,7 +7,7 @@ import { describe, expect, it } from 'vitest';
 
 import type { WaitingInvitations } from '../invitations.ts';
 import type { DomainOffer } from '../joinOffers.ts';
-import { switcherSession, tilesOf } from './orgSwitcher.ts';
+import { openerAfterTurn, switcherSession, tilesOf } from './orgSwitcher.ts';
 
 const membership = (id: string, name: string): Membership =>
   ({ id, name, role: 'member' }) as unknown as Membership;
@@ -135,5 +135,24 @@ describe('Today’s openers', () => {
   it('leave the iPad sidebar’s switcher out for someone in no organisation', () => {
     expect(read('components', 'TodaySidebar.tsx')).toMatch(/\{org && <SidebarOrg \/>\}/u);
     expect(read('demo', 'settings', 'Frame.tsx')).toMatch(/org=\{shell\.viewer !== 'noOrg'\}/u);
+  });
+});
+
+describe('openerAfterTurn', () => {
+  const drawn = { current: 'upright pill' };
+  const gone = { current: null };
+
+  it('keeps the opener that opened it while it is still drawn', () => {
+    const sidebar = { current: 'sidebar head' };
+
+    expect(openerAfterTurn(sidebar, [drawn])).toBe(sidebar);
+  });
+
+  it('hangs from the opener drawn in its place once the turn took its opener away', () => {
+    expect(openerAfterTurn(gone, [{ current: null }, drawn])).toBe(drawn);
+  });
+
+  it('keeps the opener when nothing is drawn in its place', () => {
+    expect(openerAfterTurn(gone, [{ current: null }])).toBe(gone);
   });
 });
