@@ -5,11 +5,14 @@ import Svg, { Path } from 'react-native-svg';
 import { AlertLine } from '../../components/AlertLine.tsx';
 import { Glyph } from '../../components/Glyph.tsx';
 import { RadioMark } from '../../components/RadioMark.tsx';
-import type { ScreenReaderTarget } from '../../components/screenReaderFocus.ts';
+import {
+  moveScreenReaderFocus,
+  type ScreenReaderTarget,
+} from '../../components/screenReaderFocus.ts';
 import { Pill } from '../../components/SettingsParts.tsx';
 import { Sheet } from '../../components/Sheet.tsx';
 import { TextAction } from '../../components/Summary.tsx';
-import { Text } from '../../components/Text.tsx';
+import { Text, type TextHandle } from '../../components/Text.tsx';
 import { tokens } from '../../theme/tokens.ts';
 import { DemoOnly } from '../../steps/Lines.tsx';
 import {
@@ -23,6 +26,7 @@ import {
 import type { Layout } from './GuestsParts.tsx';
 
 const MAKING_MS = 900;
+const SETTLED_MS = 450;
 
 /** Export in the Guests header: a secondary pill, or offline the words and the no-signal mark in its place. */
 export function ExportButton({
@@ -218,11 +222,17 @@ export function ExportSheet({
 /** On a tablet in landscape the dialog docks beside the list, not modal: the list stays usable and This view follows it. */
 export function ExportPanel(props: ExportProps) {
   const { body, foot, held } = useExport(props);
+  const title = useRef<TextHandle>(null);
+
+  useEffect(() => {
+    const wait = setTimeout(() => moveScreenReaderFocus(title.current), SETTLED_MS);
+    return () => clearTimeout(wait);
+  }, []);
 
   return (
     <View style={styles.panel} testID="guests.export.panel">
       <View style={styles.panelHead}>
-        <Head onClose={props.onClose} off={held} />
+        <Head onClose={props.onClose} off={held} titleRef={title} />
       </View>
       <ScrollView style={styles.scroll} contentContainerStyle={styles.panelBody}>
         {body}
@@ -232,10 +242,18 @@ export function ExportPanel(props: ExportProps) {
   );
 }
 
-function Head({ onClose, off }: { onClose: () => void; off: boolean }) {
+function Head({
+  onClose,
+  off,
+  titleRef,
+}: {
+  onClose: () => void;
+  off: boolean;
+  titleRef?: Ref<TextHandle>;
+}) {
   return (
     <View style={styles.head}>
-      <Text size={20} weight="bold" accessibilityRole="header" style={styles.grow}>
+      <Text size={20} weight="bold" accessibilityRole="header" style={styles.grow} ref={titleRef}>
         {XW.title}
       </Text>
       <TextAction label={XW.close} off={off} onPress={onClose} testID="guests.export.close" />

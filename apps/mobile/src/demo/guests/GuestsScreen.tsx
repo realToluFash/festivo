@@ -273,7 +273,11 @@ export function GuestsScreen({
     format: exported.format,
     making: exportRound === 0 ? exported.making : ('ready' as const),
     refused: exportRound === 0 && exported.dropped,
-    onClose: () => setExporting(false),
+    onClose: () => {
+      setExporting(false);
+      if (layout === 'landscape')
+        setTimeout(() => moveScreenReaderFocus(refs.current.export ?? null), FOCUS_AFTER_MS);
+    },
     onShare: (file: string) => {
       setExporting(false);
       setSharing(file);
