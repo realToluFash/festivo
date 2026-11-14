@@ -36,7 +36,7 @@ export const GGW = {
   options: (count: number) => plural(count, 'group to choose', 'groups to choose'),
   blank: 'Enter a name for the group.',
   tooLong: `A group name can be up to ${figure(GROUP_NAME_MOST)} characters.`,
-  taken: (name: string) => `There’s already a group called ${name}.`,
+  taken: (name: string) => `There is already a group called ${name}.`,
   limit: `This event has ${figure(GROUPS_MOST)} groups, the most it can have. Delete one to make another.`,
   limitForm: `This event has ${figure(GROUPS_MOST)} groups, the most it can have. Choose one of them, or delete one in Groups to make another.`,
   ofMost: (count: number) => `${figure(count)} of ${figure(GROUP_NAME_MOST)} characters`,
