@@ -1,0 +1,39 @@
+# The app's frame: each of the four tabs opens, with the switcher's pill at the top of each. sc-30410.
+appId: host.exp.Exponent
+---
+- openLink: ${METRO_URL}/--/
+- tapOn:
+    id: 'tab-today|frame.home'
+- waitForAnimationToEnd:
+    timeout: 5000
+- assertVisible:
+    id: 'frame.organisation|home.switchOrganisation'
+- takeScreenshot: tab-today
+- tapOn:
+    id: 'tab-events|frame.events'
+- waitForAnimationToEnd:
+    timeout: 5000
+- assertVisible:
+    id: 'frame.organisation|home.switchOrganisation'
+- takeScreenshot: tab-events
+- tapOn:
+    id: 'tab-calendar|frame.calendar'
+- waitForAnimationToEnd:
+    timeout: 5000
+- assertVisible:
+    id: 'frame.organisation|home.switchOrganisation'
+- takeScreenshot: tab-calendar
+- tapOn:
+    id: 'tab-settings|frame.settings'
+- waitForAnimationToEnd:
+    timeout: 5000
+- assertVisible:
+    id: 'frame.organisation|home.switchOrganisation'
+- takeScreenshot: tab-settings
+- tapOn:
+    id: 'tab-today|frame.home'
+- waitForAnimationToEnd:
+    timeout: 5000
+- assertVisible:
+    id: 'frame.organisation|home.switchOrganisation'
+- takeScreenshot: tab-today

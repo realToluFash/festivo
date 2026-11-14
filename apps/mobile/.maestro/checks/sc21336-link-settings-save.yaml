@@ -1,0 +1,83 @@
+# sc-21336: from Settings, ${EVENT_ID}'s Edit details link; ' Gold' typed, Save changes lands on the event's page with the new name and Saved within 3 seconds; back twice never shows Edit details; Events then the same event shows no Saved.
+appId: host.exp.Exponent
+---
+- runFlow: ../return-home.yaml
+- runFlow: ../open-settings.yaml
+- takeScreenshot: before
+- openLink: ${METRO_URL}/--/events/${EVENT_ID}/edit
+- extendedWaitUntil:
+    visible:
+      id: 'eventForm.name'
+    timeout: 30000
+- tapOn:
+    id: 'eventForm.name'
+- inputText: ' Gold'
+- hideKeyboard
+- scrollUntilVisible:
+    element:
+      id: 'eventForm.send'
+    direction: DOWN
+- tapOn:
+    id: 'eventForm.send'
+- extendedWaitUntil:
+    visible:
+      id: 'events.page'
+    timeout: 3000
+- assertNotVisible:
+    id: 'eventForm.name'
+- assertVisible: '{{t:eventEdit.saved}}'
+- assertVisible: '.*Gold.*'
+- takeScreenshot: landed
+- runFlow:
+    when:
+      platform: Android
+    commands:
+      - back
+- runFlow:
+    when:
+      platform: iOS
+    commands:
+      - tapOn:
+          id: 'frame.back'
+- waitForAnimationToEnd
+- assertNotVisible:
+    id: 'eventForm.name'
+- takeScreenshot: back1
+- runFlow:
+    when:
+      visible:
+        id: 'frame.back'
+    commands:
+      - tapOn:
+          id: 'frame.back'
+- runFlow:
+    when:
+      platform: Android
+      notVisible:
+        id: 'home.openSettings'
+    commands:
+      - back
+- waitForAnimationToEnd
+- assertNotVisible:
+    id: 'eventForm.name'
+- takeScreenshot: back2
+- tapOn:
+    id: 'frame.events'
+- extendedWaitUntil:
+    visible:
+      id: 'events.tab.drafts'
+    timeout: 15000
+- tapOn:
+    id: 'events.tab.drafts'
+- scrollUntilVisible:
+    element:
+      id: 'events.row.${EVENT_ID}'
+    direction: DOWN
+- tapOn:
+    id: 'events.row.${EVENT_ID}'
+- extendedWaitUntil:
+    visible:
+      id: 'events.page'
+    timeout: 15000
+- assertNotVisible: '{{t:eventEdit.saved}}'
+- takeScreenshot: reopened

@@ -1,0 +1,26 @@
+# sc-40661: zzz shows the no-match line in the list's place; a blank search shows the full list again.
+appId: host.exp.Exponent
+---
+- runFlow: ../sc40661-to-country-search.yaml
+- eraseText: 80
+- inputText: 'zzz'
+- extendedWaitUntil: { visible: { id: 'never.there' }, timeout: 1500, optional: true }
+- takeScreenshot: s40661-zzz-keys
+- assertVisible: { id: 'createWalk.countries.noMatch' }
+- hideKeyboard: { optional: true }
+- takeScreenshot: s40661-zzz-nokeys
+- tapOn: { id: 'createWalk.search' }
+- eraseText: 80
+- extendedWaitUntil: { visible: { id: 'never.there' }, timeout: 1500, optional: true }
+- takeScreenshot: s40661-blank
+- assertNotVisible: { id: 'createWalk.countries.noMatch' }
+- eraseText: 80
+- inputText: 'zzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzz'
+- extendedWaitUntil: { visible: { id: 'never.there' }, timeout: 1500, optional: true }
+- takeScreenshot: s40661-long
+- assertVisible: { id: 'createWalk.countries.noMatch' }
+- eraseText: 80
+- inputText: '   '
+- extendedWaitUntil: { visible: { id: 'never.there' }, timeout: 1500, optional: true }
+- takeScreenshot: s40661-spaces
+- assertNotVisible: { id: 'createWalk.countries.noMatch' }
