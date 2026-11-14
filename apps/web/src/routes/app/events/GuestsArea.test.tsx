@@ -3515,6 +3515,8 @@ describe('Remove from the list, with a short undo (sc-3774)', () => {
     expect(screen.queryByRole('alertdialog')).toBeNull();
     expect(rows().some((row) => row.startsWith('Ngozi Eze'))).toBe(false);
     expect(screen.queryByRole('button', { name: 'Undo' })).toBeNull();
+    const title = screen.getByRole('heading', { level: 1 });
+    await waitFor(() => expect(document.activeElement).toBe(title));
   });
 
   it('turns the open question into already removed when another host’s removal arrives live (#49283)', async () => {
@@ -3549,6 +3551,8 @@ describe('Remove from the list, with a short undo (sc-3774)', () => {
       expect(screen.queryByRole('alertdialog')).toBeNull();
       expect(rows().some((row) => row.startsWith('Ngozi Eze'))).toBe(false);
       expect(sent.some((one) => one.line === 'DELETE /api/events/ev_1/guests/g_1')).toBe(false);
+      const title = screen.getByRole('heading', { level: 1 });
+      await waitFor(() => expect(document.activeElement).toBe(title));
     } finally {
       __setConfig(before);
       vi.unstubAllGlobals();

@@ -74,6 +74,7 @@ describe('the card’s line', () => {
     expect(readyOf(COUNTS.none, english)).toEqual({
       words: '96 coming · 82% replied',
       percent: 82,
+      track: true,
     });
   });
 
