@@ -19,6 +19,7 @@ const NONE = {
   note: null,
 };
 const GUESTS_CSS = stylesheet(import.meta.dirname, 'guests.css');
+const SETTINGS_CSS = stylesheet(import.meta.dirname, '../../../components/SettingsParts.css');
 const IRE = membership({ id: 'org_1', name: 'Ìrè Events' });
 
 const EVENT = {
@@ -2810,6 +2811,41 @@ describe('A guest’s needs (sc-3777)', () => {
       needs: needs({ allergies: ['peanuts'], diet: ['halal'] }),
       companions: [{ fullName: null, needs: needs({ access: ['step_free'] }) }],
     });
+  });
+
+  it('draws each Private note in a box that grows round its text, and rings the box when refused (sc-48356)', async () => {
+    await opened({});
+    type('Full name', 'Bimpe');
+    openNeeds(form());
+    fireEvent.click(within(form()).getByRole('button', { name: 'More places' }));
+    openNeeds(form(), 'Their needs');
+    const notes = within(form()).getAllByRole('textbox', { name: /^Private note/u });
+
+    expect(notes).toHaveLength(2);
+    for (const note of notes) {
+      expect(note.parentElement?.className).toBe('desk-box is-area');
+    }
+    expect(
+      within(form()).getByRole('textbox', { name: 'Full name' }).parentElement?.className,
+    ).toBe('desk-box');
+
+    fireEvent.change(notes[0]!, { target: { value: 'n'.repeat(501) } });
+    fireEvent.click(addButton());
+    expect(
+      await within(form()).findByText('Shorten the note to 500 characters or fewer.'),
+    ).toBeDefined();
+    expect(notes[0]!.parentElement?.className).toBe('desk-box is-area is-wrong');
+
+    const area = cssRule('.desk-box.is-area', SETTINGS_CSS);
+    expect(area).toContain('height: auto;');
+    expect(area).toContain('padding-block: var(--spaceMd);');
+    const text = cssRule('.desk .desk-box.is-area textarea', SETTINGS_CSS);
+    expect(text).toContain('outline: none;');
+    expect(text).toContain('padding: 0;');
+    expect(text).toContain('border: 0;');
+    expect(text).toContain('font: 500 16px/1.45 var(--fontFamily);');
+    expect(text).toContain('resize: vertical;');
+    expect(text).toContain('min-height: 72px;');
   });
 
   it('refuses an Other with no words, or more than 100, beside it, and sends nothing', async () => {
