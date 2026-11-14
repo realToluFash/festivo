@@ -82,3 +82,47 @@ export function groupChanged(
 
   return !('id' in choice) || choice.id !== current?.id;
 }
+
+export type GroupPick = { id: string } | { name: string } | null;
+
+export type PickProblem = 'blank' | 'tooLong' | 'limit';
+
+/** What Return, or Create, would meet: a name that matches a group is a pick, not a problem; then blank, over 60, and 50 groups. */
+export function typedProblem(groups: readonly GuestGroup[], typed: string): PickProblem | null {
+  if (typed.trim() === '') return 'blank';
+  if (sameGroup(groups, typed) != null) return null;
+  if (groupNameLength(typed) > GUEST_GROUP_NAME_MAXIMUM) return 'tooLong';
+
+  return groups.length >= GUEST_GROUPS_MOST ? 'limit' : null;
+}
+
+/** Return in the picker's field: the group the name matches, case and accents aside, or the name to make; otherwise its problem. */
+export function returnPick(
+  groups: readonly GuestGroup[],
+  typed: string,
+): { pick: GroupPick } | { problem: PickProblem } {
+  const found = sameGroup(groups, typed);
+  if (found != null) return { pick: { id: found.id } };
+  const problem = typedProblem(groups, typed);
+
+  return problem == null ? { pick: { name: typed.trim().replaceAll(/\s+/gu, ' ') } } : { problem };
+}
+
+/** Over 60 and 50 groups show as typed; blank only once Return was pressed. */
+export function shownProblem(
+  groups: readonly GuestGroup[],
+  typed: string,
+  returned: PickProblem | null,
+): PickProblem | null {
+  if (typed.trim() === '') return returned;
+  const problem = typedProblem(groups, typed);
+
+  return problem === 'blank' ? null : problem;
+}
+
+export function pickName(groups: readonly GuestGroup[], pick: GroupPick): string | null {
+  if (pick == null) return null;
+  if ('name' in pick) return pick.name;
+
+  return groups.find((one) => one.id === pick.id)?.name ?? null;
+}

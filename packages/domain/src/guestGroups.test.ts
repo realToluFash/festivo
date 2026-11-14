@@ -7,7 +7,10 @@ import {
   groupNameLength,
   groupOptions,
   groupProblem,
+  returnPick,
+  shownProblem,
   sortedGroups,
+  typedProblem,
 } from './guestGroups.ts';
 
 const GROUPS = [
@@ -70,5 +73,37 @@ describe('the Group field (sc-3775)', () => {
     expect(groupChanged({ id: 'gr_work' }, null)).toBe(true);
     expect(groupChanged(null, null)).toBe(false);
     expect(groupChanged(null, { name: 'Cousins' })).toBe(true);
+  });
+});
+
+describe("the app's Group picker (sc-5519)", () => {
+  it('picks the group a name matches, case, accents and apostrophes aside', () => {
+    expect(returnPick(GROUPS, 'BRIDE’S SIDE')).toEqual({ pick: { id: 'gr_bride' } });
+    expect(returnPick(GROUPS, "bride's side")).toEqual({ pick: { id: 'gr_bride' } });
+    expect(returnPick(GROUPS, 'familia')).toEqual({ pick: { id: 'gr_family' } });
+  });
+
+  it('makes a new name trimmed, its spaces run together', () => {
+    expect(returnPick(GROUPS, '  Old   friends ')).toEqual({ pick: { name: 'Old friends' } });
+  });
+
+  it('refuses a blank, and shows it only once Return was pressed', () => {
+    expect(returnPick(GROUPS, '   ')).toEqual({ problem: 'blank' });
+    expect(shownProblem(GROUPS, '   ', null)).toBeNull();
+    expect(shownProblem(GROUPS, '   ', 'blank')).toBe('blank');
+  });
+
+  it('shows a name over 60 as it is typed', () => {
+    expect(shownProblem(GROUPS, 'x'.repeat(61), null)).toBe('tooLong');
+    expect(shownProblem(GROUPS, 'x'.repeat(60), null)).toBeNull();
+    expect(returnPick(GROUPS, 'x'.repeat(61))).toEqual({ problem: 'tooLong' });
+  });
+
+  it('refuses a new name at 50 groups, but still picks one that exists', () => {
+    expect(typedProblem(FULL, 'Cousins')).toBe('limit');
+    expect(shownProblem(FULL, 'Cousins', null)).toBe('limit');
+    expect(returnPick(FULL, 'Cousins')).toEqual({ problem: 'limit' });
+    expect(typedProblem(FULL, 'table 7')).toBeNull();
+    expect(returnPick(FULL, 'TABLE 7')).toEqual({ pick: { id: 'gr_7' } });
   });
 });

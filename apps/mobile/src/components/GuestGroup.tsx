@@ -1,5 +1,5 @@
 import { GUEST_GROUPS_MOST, GUEST_GROUP_NAME_MAXIMUM, type GuestGroup } from '@soirely/api-client';
-import { groupNameLength, groupOptions, sameGroup } from '@soirely/domain';
+import { type GroupPick, type PickProblem, groupOptions, typedProblem } from '@soirely/domain';
 import type { TFunction } from 'i18next';
 import type { ReactNode, RefObject } from 'react';
 import { Pressable, ScrollView, StyleSheet, View, type ViewInstance } from 'react-native';
@@ -14,51 +14,7 @@ import { Text } from './Text.tsx';
 
 export type CountedGroup = GuestGroup & { people: number };
 
-export type GroupPick = { id: string } | { name: string } | null;
-
-export type PickProblem = 'blank' | 'tooLong' | 'limit';
-
-/** What Return, or Create, would meet: a name that matches a group is a pick, not a problem; then blank, over 60, and 50 groups. */
-export function typedProblem(groups: readonly GuestGroup[], typed: string): PickProblem | null {
-  if (typed.trim() === '') return 'blank';
-  if (sameGroup(groups, typed) != null) return null;
-  if (groupNameLength(typed) > GUEST_GROUP_NAME_MAXIMUM) return 'tooLong';
-
-  return groups.length >= GUEST_GROUPS_MOST ? 'limit' : null;
-}
-
-/** Return in the picker's field: the group the name matches, case and accents aside, or the name to make; otherwise its problem. */
-export function returnPick(
-  groups: readonly GuestGroup[],
-  typed: string,
-): { pick: GroupPick } | { problem: PickProblem } {
-  const found = sameGroup(groups, typed);
-  if (found != null) return { pick: { id: found.id } };
-  const problem = typedProblem(groups, typed);
-
-  return problem == null ? { pick: { name: typed.trim().replaceAll(/\s+/gu, ' ') } } : { problem };
-}
-
-/** Over 60 and 50 groups show as typed; blank only once Return was pressed. */
-export function shownProblem(
-  groups: readonly GuestGroup[],
-  typed: string,
-  returned: PickProblem | null,
-): PickProblem | null {
-  if (typed.trim() === '') return returned;
-  const problem = typedProblem(groups, typed);
-
-  return problem === 'blank' ? null : problem;
-}
-
-export function pickName(groups: readonly GuestGroup[], pick: GroupPick): string | null {
-  if (pick == null) return null;
-  if ('name' in pick) return pick.name;
-
-  return groups.find((one) => one.id === pick.id)?.name ?? null;
-}
-
-function problemLine(t: TFunction, problem: PickProblem): string {
+export function pickProblemLine(t: TFunction, problem: PickProblem): string {
   if (problem === 'blank') return t('guestGroups.blank');
   if (problem === 'tooLong') return t('guestGroups.tooLong', { most: GUEST_GROUP_NAME_MAXIMUM });
 
@@ -186,7 +142,7 @@ export function GroupPicker({
   const options = groupOptions(groups, typed);
   const create =
     options.create != null && typedProblem(groups, typed) == null ? options.create : null;
-  const line = problem == null ? null : problemLine(t, problem);
+  const line = problem == null ? null : pickProblemLine(t, problem);
   const chosen = pick == null ? null : 'id' in pick ? pick.id : 'new';
 
   return (

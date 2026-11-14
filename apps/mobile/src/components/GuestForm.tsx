@@ -20,7 +20,12 @@ import {
   needsViolations,
   problemsByWho,
   problemsOf,
+  type PickProblem,
+  pickName,
+  returnPick,
   sameGroup,
+  shownProblem,
+  typedProblem,
   violationProblems,
 } from '@soirely/domain';
 import { type RefObject, useRef, useState } from 'react';
@@ -35,15 +40,7 @@ import { AlertLine } from './AlertLine.tsx';
 import { Field, TextField, focusRefused } from './Field.tsx';
 import { LanguageField, languageOver } from './GuestLanguage.tsx';
 import { PhoneEntry } from './PhoneEntry.tsx';
-import {
-  type CountedGroup,
-  GroupField,
-  type PickProblem,
-  GroupPicker,
-  pickName,
-  returnPick,
-  shownProblem,
-} from './GuestGroup.tsx';
+import { type CountedGroup, GroupField, GroupPicker, pickProblemLine } from './GuestGroup.tsx';
 import { NeedsSection, useNeedsRefs } from './GuestNeeds.tsx';
 import { readOut } from './ReadOut.tsx';
 import { moveScreenReaderFocus } from './screenReaderFocus.ts';
@@ -307,6 +304,8 @@ export function GuestForm({
   }
 
   const clash = groupRefusal?.made == null ? null : sameGroup(groups, groupRefusal.made);
+  const madeProblem =
+    groupRefusal?.made == null || clash != null ? null : typedProblem(groups, groupRefusal.made);
   const cancel = () => (changed ? setAsk('discard') : onClose());
   const adding = editing == null;
 
@@ -452,9 +451,11 @@ export function GuestForm({
         error={
           groupRefusal == null
             ? undefined
-            : clash == null
-              ? groupRefusal.line
-              : t('guestGroups.taken', { name: clash.name })
+            : clash != null
+              ? t('guestGroups.taken', { name: clash.name })
+              : madeProblem != null
+                ? pickProblemLine(t, madeProblem)
+                : groupRefusal.line
         }
         onOpen={() => setPicking(true)}
         fieldRef={groupField}

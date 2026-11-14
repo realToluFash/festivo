@@ -1,5 +1,6 @@
 import type { GroupChoice, GuestDetails, GuestEdit, NewGuest } from '@soirely/api-client';
 import {
+  type GroupPick,
   type NeedsTyped,
   type Typed,
   groupChanged,
@@ -8,8 +9,6 @@ import {
   newGuestOf,
   phoneFields,
 } from '@soirely/domain';
-
-import type { GroupPick } from './GuestGroup.tsx';
 
 interface Companion {
   id: string | null;
