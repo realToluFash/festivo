@@ -78,38 +78,35 @@ export function contactOf(t: Translate, guest: Guest): string | null {
     : (guest.email ?? mobile);
 }
 
-/** A row's name and the line under it: a guest's reply and when, their places when shown or else how they were invited, then their contact; a companion's own standing. */
+/** How a guest's row says them: their companions named as the web says them, counted alone as the app's demo draws them, or not at all; with or without their contact. */
+export interface RowLine {
+  places: 'named' | 'counted' | null;
+  contact: boolean;
+  /** In place of the reply, as the No reply filter says how each guest was invited. */
+  invitation?: string | null;
+}
+
+/** A row's name and the line under it: a guest's reply and when, or how they were invited, then their places and their contact as `shown` asks; a companion's own standing. */
 export function rowWords(
   t: Translate,
   { guest, companion, at }: Person,
   indent: boolean,
   timeZone: string,
   locale: string,
-  placesShown: boolean,
-  invitation: string | null = null,
+  shown: RowLine,
 ): { name: string; line: string } {
   if (companion == null) {
     const word = t(REPLY_KEY[shownReply(guest)]);
     const reply =
-      guest.repliedAt == null
+      shown.invitation ??
+      (guest.repliedAt == null
         ? word
         : t('guestList.replied', {
             reply: word,
             date: replyDate(guest.repliedAt, timeZone, locale),
-          });
-    const places = guest.companions.length;
-    const line = !placesShown
-      ? (invitation ?? reply)
-      : places === 0
-        ? reply
-        : t('guestList.withPlaces', {
-            reply,
-            places: t('guestList.companionsNamed', {
-              count: places,
-              named: namedCount(guest.companions.map((one) => one.fullName)),
-            }),
-          });
-    const contact = contactOf(t, guest);
+          }));
+    const line = withPlaces(t, reply, guest, shown.places);
+    const contact = shown.contact ? contactOf(t, guest) : null;
 
     return {
       name: guest.fullName,
@@ -135,4 +132,20 @@ export function rowWords(
         : t(REPLY_KEY[companion.state]);
 
   return { name, line };
+}
+
+function withPlaces(t: Translate, reply: string, guest: Guest, places: RowLine['places']): string {
+  const count = guest.companions.length;
+  if (places == null || count === 0) return reply;
+
+  return t('guestList.withPlaces', {
+    reply,
+    places:
+      places === 'counted'
+        ? t('guestList.countCompanions', { count })
+        : t('guestList.companionsNamed', {
+            count,
+            named: namedCount(guest.companions.map((one) => one.fullName)),
+          }),
+  });
 }

@@ -9,7 +9,7 @@ import {
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { router, useFocusEffect, useNavigation } from 'expo-router';
 import { type ReactNode, type RefObject, useCallback, useEffect, useRef, useState } from 'react';
-import { StyleSheet, View } from 'react-native';
+import { StyleSheet, View, type ViewInstance } from 'react-native';
 import { useTranslation } from 'react-i18next';
 
 import { api } from '../api.ts';
@@ -44,7 +44,7 @@ import { SecondaryButton } from './Buttons.tsx';
 import { cardFrame } from './cardFrame.ts';
 import { DuplicateEvent } from './DuplicateEvent.tsx';
 import { EventPage } from './EventPage.tsx';
-import { EventGuests } from './EventGuests.tsx';
+import { EventGuests, type GuestsTop } from './EventGuests.tsx';
 import { EventPeople } from './EventPeople.tsx';
 import { EventNotFound, EventTop, EventsFailed, usePhaseOf } from './Events.tsx';
 import { Notice } from './Notice.tsx';
@@ -56,6 +56,7 @@ import { Arrived } from './Skeleton.tsx';
 import { type ScreenReaderTarget, moveScreenReaderFocus } from './screenReaderFocus.ts';
 import { Text, type TextHandle } from './Text.tsx';
 import { Title } from './Title.tsx';
+import { TopPrimary } from './TopPrimary.tsx';
 import { PAGE_TITLE, pageTitle } from './topTitle.ts';
 import { useSidebarCard } from './sidebarCard.ts';
 import { eventTop } from '../kit/eventTop.ts';
@@ -98,6 +99,8 @@ export function EventScreen({
   }>();
   const [savedEvent, setSavedEvent] = useState<string | null>(null);
   const [guestsOffline, setGuestsOffline] = useState<ScreenOffline>(NOT_OFFLINE);
+  const [guestsTop, setGuestsTop] = useState<GuestsTop>({ add: null, back: null });
+  const guestsAdd = useRef<ViewInstance>(null);
   const [toast, setToast] = useState<{
     eventId: string;
     area: EventPlace;
@@ -269,25 +272,47 @@ export function EventScreen({
         {event.name}
       </Text>
     ) : undefined;
+  const addGuest =
+    guests && guestsTop.add != null ? (
+      <TopPrimary
+        ref={guestsAdd}
+        label={t('guestList.addGuest')}
+        onPress={guestsTop.add}
+        wide={!phone}
+        testID="guests.add"
+      />
+    ) : null;
+  const guestBack = guests ? guestsTop.back : null;
   const frameBack =
-    top.frameBack === 'area'
-      ? { label: backLabel, onPress: back }
-      : top.frameBack === 'events'
-        ? {
-            label: original != null ? t('timeline.backToEvent') : t('eventsScreen.title'),
-            onPress: leave,
-          }
-        : undefined;
+    guestBack != null
+      ? { label: t('eventNav.guests'), onPress: guestBack }
+      : top.frameBack === 'area'
+        ? { label: backLabel, onPress: back }
+        : top.frameBack === 'events'
+          ? {
+              label: original != null ? t('timeline.backToEvent') : t('eventsScreen.title'),
+              onPress: leave,
+            }
+          : undefined;
 
   return (
     <AppFrame
       current="events"
       title={t(`eventNav.${area}`)}
       titleRef={title}
-      untitled={cardNamed || areaTitled}
+      untitled={cardNamed || areaTitled || guestBack != null}
       offline={guests ? (guestsOffline.stale ?? opened.stale) : opened.stale}
       besideBack={phone || cardNamed ? refreshing : undefined}
-      besideTitle={phone || areaTitled ? undefined : refreshing}
+      besideTitle={
+        phone ? (
+          addGuest
+        ) : areaTitled ? undefined : (
+          <>
+            {refreshing}
+            {addGuest}
+          </>
+        )
+      }
       back={frameBack}
       backInBody={top.frameBack == null}
       inEvent={
@@ -312,6 +337,8 @@ export function EventScreen({
           now={now}
           onEventChange={change}
           onEventStale={reload}
+          addRef={guestsAdd}
+          onTop={setGuestsTop}
           heading={
             <>
               {kind === 'tabletLandscape' && !cardNamed && (
@@ -331,6 +358,7 @@ export function EventScreen({
                       </Title>
                     </View>
                     {refreshing}
+                    {addGuest}
                   </View>
                   {underTitle}
                 </View>

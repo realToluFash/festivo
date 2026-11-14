@@ -3,6 +3,7 @@ import {
   REPLY_KEY,
   companionShown,
   formatPhone,
+  invitationLine,
   ownLanguageName,
   replyDate,
 } from '@soirely/domain';
@@ -11,10 +12,13 @@ import { StyleSheet, View, type ViewInstance } from 'react-native';
 import { useTranslation } from 'react-i18next';
 
 import { dateLocale } from '../i18n/index.ts';
+import type { Shown } from '../kit/eventsList.ts';
 import { markOf } from '../kit/guestRows.ts';
+import type { LayoutKind } from '../layout/useLayout.ts';
 import { tokens } from '../theme/tokens.ts';
 import { LineIcon } from './AccountCard.tsx';
 import { ChoseNote } from './GuestLanguage.tsx';
+import { GuestCover } from './GuestsCard.tsx';
 import { type InvitationOffer, InvitationBlock } from './GuestInvitation.tsx';
 import { AlertLine } from './AlertLine.tsx';
 import { MarkSlot } from './ReplyMark.tsx';
@@ -22,7 +26,6 @@ import { Row, RowList, TextAction } from './SummaryRows.tsx';
 import { FailedBlock } from './Summary.tsx';
 import { useReadOut } from './ReadOut.tsx';
 import { Text, type TextHandle } from './Text.tsx';
-import { Title } from './Title.tsx';
 
 export type GuestPane =
   | { kind: 'loading' }
@@ -38,8 +41,10 @@ export type GuestNotice =
   | { kind: 'failed' }
   | null;
 
-/** A guest's details (sc-3773's content and order): their name, Reply, Details with Edit, then Invitation; contact and Language only for those who can edit guests. */
+/** A guest's details (sc-3773's content and order): their reply card with their name, Reply, Details with Edit, then Invitation; contact and Language only for those who can edit guests. */
 export function GuestDetails({
+  kind,
+  event,
   pane,
   manages,
   timeZone,
@@ -56,6 +61,9 @@ export function GuestDetails({
   onBack,
   onRetry,
 }: {
+  kind: LayoutKind;
+  /** The event's colours under the card, once its phase is read. */
+  event: Shown | null;
   pane: GuestPane;
   manages: boolean;
   timeZone: string;
@@ -182,9 +190,22 @@ export function GuestDetails({
     <View style={styles.blocks} testID={`guest.${guest.id}`}>
       {saved && <SavedLine />}
       {notice?.kind === 'unmarked' && <SavedLine words={t('guestList.unmarked')} />}
-      <Title size={26} accessibilityRole="header" ref={nameRef}>
-        {guest.fullName}
-      </Title>
+      <GuestCover
+        kind={kind}
+        event={event}
+        mark={markOf(guest.reply)}
+        word={word}
+        name={guest.fullName}
+        line={
+          guest.repliedAt != null
+            ? t('guestList.replied', {
+                reply: word,
+                date: replyDate(guest.repliedAt, timeZone, locale),
+              })
+            : invitationLine(t, guest, timeZone, locale)
+        }
+        nameRef={nameRef}
+      />
       {notice?.kind === 'refused' && <AlertLine text={notice.line} />}
       {notice?.kind === 'offline' && <AlertLine text={t('guestList.offlineRefused')} />}
       {notice?.kind === 'failed' && <AlertLine text={t('guestList.unmarkNotSaved')} />}
