@@ -3244,6 +3244,9 @@ describe('the flows a batch runs', () => {
       const signInForm = readFileSync(join(target, 'batch/sign-in-form.yaml'), 'utf8');
       expect(signInForm).toContain('- runFlow: sign-in-typed.yaml');
       expect(readFileSync(join(target, 'batch/sign-in-typed.yaml'), 'utf8')).toMatch(
+        /platform: Android\s+commands:\s+- retry:[\s\S]*?inputText: \$\{EMAIL\}\s+- copyTextFrom:\s+id: 'signIn\.email'\s+- assertTrue: \$\{maestro\.copiedText == EMAIL\}/,
+      );
+      expect(readFileSync(join(target, 'batch/sign-in-typed.yaml'), 'utf8')).toMatch(
         /tapOn:\s+id: 'signIn\.password\.reveal'\s+- retry:[\s\S]*?inputText: \$\{PASSWORD\}\s+- copyTextFrom:\s+id: 'signIn\.password'\s+- assertTrue: \$\{maestro\.copiedText == PASSWORD\}/,
       );
       const landed = new RegExp(

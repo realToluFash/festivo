@@ -844,6 +844,15 @@
   margin-inline: 0;
 }
 
+.gs-asked:focus {
+  outline: none;
+  box-shadow: var(--deskRing);
+}
+
+.gs-asked .gs-inset-foot {
+  flex-wrap: wrap;
+}
+
 /* sc-3772: Find a guest with the filter menu beside it, the groups on All, and the line a search or a choice brings. */
 .gs-search-row {
   align-items: center;

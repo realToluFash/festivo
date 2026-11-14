@@ -7,12 +7,32 @@ appId: host.exp.Exponent
     visible:
       id: 'signIn.email'
     timeout: 60000
-- tapOn:
-    id: 'signIn.email'
 # 120 rather than the default 50: an address is longer than that, and a partial
 # erase leaves a fragment that the new text is typed on top of.
-- eraseText: 120
-- inputText: ${EMAIL}
+- runFlow:
+    when:
+      platform: iOS
+    commands:
+      - tapOn:
+          id: 'signIn.email'
+      - eraseText: 120
+      - inputText: ${EMAIL}
+# On a remote Android emulator the keyboard typed part of the address twice (sc-3785),
+# so it is read back and typed again if it is not the address.
+- runFlow:
+    when:
+      platform: Android
+    commands:
+      - retry:
+          maxRetries: 2
+          commands:
+            - tapOn:
+                id: 'signIn.email'
+            - eraseText: 120
+            - inputText: ${EMAIL}
+            - copyTextFrom:
+                id: 'signIn.email'
+            - assertTrue: ${maestro.copiedText == EMAIL}
 # Scrolled to: the You were signed out notice pushes Password under the keyboard. sc-20997.
 # On Android the keys are put away first: with them up the scroll stopped short of Password (sc-28596).
 - runFlow:
