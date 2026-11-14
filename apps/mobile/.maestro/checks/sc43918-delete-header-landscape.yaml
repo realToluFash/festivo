@@ -1,0 +1,25 @@
+# sc-43918, a tablet on its side (ORIENT: PORTRAIT on a landscape-native tablet, LANDSCAPE_LEFT otherwise): the typed-name Delete event screen's header reads eventDelete.screen in the account's language. Needs ${METRO_URL} and ${EVENT_ID}.
+appId: host.exp.Exponent
+---
+- setOrientation: ${ORIENT}
+- openLink: ${METRO_URL}/--/events/${EVENT_ID}
+- extendedWaitUntil:
+    visible:
+      id: 'events.page'
+    timeout: 30000
+- scrollUntilVisible:
+    element:
+      id: 'events.delete'
+    centerElement: true
+    timeout: 30000
+- takeScreenshot: row
+- tapOn:
+    id: 'events.delete'
+- extendedWaitUntil:
+    visible:
+      id: 'events.deleteName'
+    timeout: 15000
+- assertVisible: '{{t:eventDelete.screen}}'
+- takeScreenshot: header
+- tapOn:
+    id: 'events.deleteKeep'

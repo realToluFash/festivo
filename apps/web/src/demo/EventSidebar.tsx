@@ -1,0 +1,128 @@
+import { Link } from 'react-router';
+
+import { Brand } from '../components/Brand.tsx';
+import { AREAS, type Area, type Card, type SampleEvent, cardOf } from './events.ts';
+import { EventSideCard } from '../components/EventSideCard.tsx';
+import { Glyph } from '../components/Glyph.tsx';
+import { SIDE_AREA_GLYPHS } from '../components/eventSideAreas.ts';
+import { guestsAt, hasGuests } from './guests.ts';
+import { OrgSwitcher } from './OrgSwitcher.tsx';
+import { SAMPLE } from './rules.ts';
+import { STATIONS_EVENT } from './stations.ts';
+import type { Tell } from '../components/SettingsParts.tsx';
+import { SearchRow } from './Search.tsx';
+
+interface Reader {
+  name: string;
+  initials: string;
+  role: string;
+}
+
+const OWNER: Reader = { name: SAMPLE.name, initials: 'FA', role: 'Owner' };
+
+function whenOf(card: Card): string {
+  return card.tags.map((tag) => tag.word).join(' · ');
+}
+
+/** Inside an event the sidebar is the event's, as on the web's People branch (sc-29915): ‹ Events and the event, its areas, Settings and you. The lit area is Ink, as the shell's. */
+export function EventSidebar({
+  event,
+  area,
+  now,
+  tell,
+  inert,
+  waiting = null,
+  without = [],
+  reader = OWNER,
+}: {
+  event: SampleEvent;
+  area: Area;
+  now: Date;
+  tell: Tell;
+  inert: boolean;
+  waiting?: { line: string; name: string } | null;
+  without?: readonly Area[];
+  reader?: Reader | undefined;
+}) {
+  return (
+    <nav className="today-side ev-side" aria-label={event.name} inert={inert}>
+      <div className="today-logo">
+        <Brand lockup />
+      </div>
+      <OrgSwitcher tell={tell} toast />
+      <SearchRow />
+      <div className="ev-side-event">
+        <Link className="today-place ev-side-back" to="/demo/events">
+          <Glyph name="back" size={17} weight={2.4} />
+          Events
+        </Link>
+        <EventSideCard
+          event={{ name: event.name, mesh: event.mesh, photo: event.photo ? 'standIn' : null }}
+          when={whenOf(cardOf(event, now))}
+        />
+      </div>
+      <ul className="today-places">
+        {AREAS.filter((one) => !without.includes(one.area)).map((one) => (
+          <li key={one.area}>
+            <Link
+              className={[
+                'today-place',
+                one.area === area && 'is-on',
+                one.area === 'messages' && waiting != null && 'has-line',
+              ]
+                .filter(Boolean)
+                .join(' ')}
+              to={
+                one.area === 'people'
+                  ? '/demo/people'
+                  : one.area === 'overview'
+                    ? `/demo/events/${event.id}`
+                    : one.area === 'messages' ||
+                        one.area === 'seating' ||
+                        (one.area === 'staff' && event.id === STATIONS_EVENT)
+                      ? `/demo/events/${event.id}/${one.area}`
+                      : one.area === 'guests' && hasGuests(event.id)
+                        ? guestsAt(event.id)
+                        : `/demo/events/${event.id}?area=${one.area}`
+              }
+              aria-current={one.area === area ? 'page' : undefined}
+              aria-label={one.area === 'messages' && waiting != null ? waiting.name : undefined}
+            >
+              <Glyph name={SIDE_AREA_GLYPHS[one.area]} />
+              {one.area === 'messages' && waiting != null ? (
+                <span className="ev-side-two">
+                  <span>{one.name}</span>
+                  <span className="ev-side-sub">{waiting.line}</span>
+                </span>
+              ) : (
+                one.name
+              )}
+            </Link>
+          </li>
+        ))}
+      </ul>
+      <div className="today-grow" />
+      <div className="today-places">
+        <Link className="today-place" to="/demo/settings">
+          <Glyph name="settings" />
+          Settings
+        </Link>
+        <button
+          type="button"
+          className="today-person"
+          aria-label={`${reader.name}, ${reader.role}`}
+          onClick={() => tell('Your account has its own design.')}
+        >
+          <span className="today-avatar today-cover is-draft" aria-hidden="true">
+            {reader.initials}
+          </span>
+          <span className="today-grow today-person-words" aria-hidden="true">
+            <span className="today-person-name">{reader.name}</span>
+            <span className="today-person-role">{reader.role}</span>
+          </span>
+          <Glyph name="updown" size={15} />
+        </button>
+      </div>
+    </nav>
+  );
+}

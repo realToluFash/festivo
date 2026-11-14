@@ -1,0 +1,28 @@
+# sc-23301: Security's in-row destructive buttons, Turn off… on Two-factor and Sign out… and Sign out everywhere else on Devices, on the shared inRow pill. iPhone only: on a tablet the wait can end on the settings list and the page-wide scrolls do not move the detail pane. Needs an account with two-factor on and another session signed in.
+appId: host.exp.Exponent
+---
+- openLink: ${METRO_URL}/--/settings/security
+- extendedWaitUntil:
+    visible: '{{t:security.title}}'
+    timeout: 30000
+- scrollUntilVisible:
+    element:
+      id: 'twoFactor.turnOff'
+    direction: DOWN
+    timeout: 30000
+    centerElement: true
+- takeScreenshot: two-factor-turn-off
+- scrollUntilVisible:
+    element:
+      id: 'devices\.row\..*\.signOut'
+    direction: DOWN
+    timeout: 30000
+    centerElement: true
+- takeScreenshot: devices-row-sign-out
+- scrollUntilVisible:
+    element:
+      id: 'devices.everywhere'
+    direction: DOWN
+    timeout: 30000
+    centerElement: true
+- takeScreenshot: devices-everywhere

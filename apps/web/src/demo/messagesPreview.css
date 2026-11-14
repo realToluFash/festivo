@@ -1,0 +1,189 @@
+/* sc-3960 at a desk: Insert's rows with their lines, Preview as, the preview filling in, and Preview with nobody in To. */
+
+.mg-insert-list.mg-pop {
+  width: 344px;
+}
+
+.mg-insert-list .mg-insert-row {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: var(--spaceXs);
+  padding: var(--spaceSm) var(--spaceMd);
+  font: 500 13.5px/1.4 var(--fontFamily);
+}
+
+.mg-insert-line {
+  color: var(--colorInkSecondary);
+}
+
+.mg-preview-tool[data-off] {
+  color: var(--colorInkSecondary);
+  cursor: default;
+}
+
+.mg-preview-tool[data-off]:hover {
+  text-decoration: none;
+}
+
+.mg-preview-top {
+  display: flex;
+  flex-direction: column;
+  gap: var(--spaceMd);
+}
+
+.mg-preview-heading {
+  font: 700 20px/1.2 var(--fontFamily);
+  letter-spacing: -0.02em;
+}
+
+.mg-preview-pick {
+  display: flex;
+  flex-direction: column;
+  align-self: flex-start;
+  gap: var(--spaceXs);
+}
+
+.mg-preview-as-at {
+  position: relative;
+}
+
+.mg-preview-as-button {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--spaceSm);
+  box-sizing: border-box;
+  min-width: 280px;
+  height: var(--sizeHit);
+  padding: 0 var(--spaceMd) 0 var(--spaceLg);
+  border-radius: var(--radiusInset);
+  background: var(--colorCard);
+  box-shadow: inset 0 0 0 1.5px var(--colorFieldBorder);
+  color: var(--colorInk);
+  font: 500 15px/1.2 var(--fontFamily);
+}
+
+.mg-preview-as-button[aria-expanded='true'] {
+  box-shadow: inset 0 0 0 2px var(--colorAccent);
+}
+
+.mg-preview-as-words {
+  flex: 1;
+  text-align: left;
+}
+
+.mg-preview-as-button > svg {
+  color: var(--colorInkSecondary);
+}
+
+.mg-preview-as-list {
+  position: absolute;
+  top: calc(100% + var(--spaceXs));
+  left: 0;
+  min-width: 100%;
+  padding: var(--spaceXs);
+  border-radius: var(--radiusInset);
+}
+
+.mg-preview-as-option {
+  display: flex;
+  align-items: center;
+  gap: var(--spaceSm);
+  min-height: var(--sizeHit);
+  padding: 0 var(--spaceMd);
+  border-radius: var(--radiusNav);
+  font: 500 15px/1.2 var(--fontFamily);
+  white-space: nowrap;
+  cursor: pointer;
+}
+
+.mg-preview-as-option:hover {
+  background: var(--colorNeutralFill);
+}
+
+.mg-insert-list .mg-insert-row:focus-visible,
+.mg-preview-as-option:focus-visible {
+  outline: none;
+  background: var(--colorNeutralFill);
+  box-shadow: inset 0 0 0 2px var(--colorAccent);
+}
+
+.mg-preview-as-option[aria-selected='true'] {
+  font-weight: 600;
+}
+
+.mg-preview-as-tick {
+  display: inline-flex;
+  flex: none;
+  width: 16px;
+  color: var(--colorAccent);
+}
+
+.mg-notice-words {
+  display: flex;
+  flex-direction: column;
+  gap: var(--spaceXs);
+}
+
+.mg-preview-bones {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+}
+
+.mg-preview-filling {
+  color: var(--colorInkSecondary);
+  font: 600 14px/1.4 var(--fontFamily);
+}
+
+.mg-bone-page {
+  display: flex;
+  flex-direction: column;
+  gap: var(--spaceMd);
+  padding-bottom: 18px;
+  overflow: hidden;
+  border-radius: 22px;
+  box-shadow: inset 0 0 0 1px var(--colorBorder);
+}
+
+.mg-bone-cover {
+  height: 112px;
+  background: var(--mgSunk);
+}
+
+.mg-bone-text {
+  display: block;
+  width: 70%;
+  height: 14px;
+  border-radius: 7px;
+  background: var(--mgSunk);
+}
+
+.mg-bone-page .mg-bone-text {
+  margin-inline: var(--spaceXxl);
+}
+
+.mg-bone-text.is-long {
+  width: 86%;
+}
+
+.mg-bone-text.is-short {
+  width: 45%;
+}
+
+.mg-bone-sends {
+  display: flex;
+  flex-direction: column;
+  gap: var(--spaceMd);
+}
+
+.mg-bone-notice {
+  display: block;
+  height: 132px;
+  border-radius: var(--spaceXl);
+  background: var(--mgSunk);
+}
+
+.mg-bone-notice.is-short {
+  height: 64px;
+}

@@ -1,0 +1,380 @@
+import type { ReplyKind } from '../../components/ReplyMark.tsx';
+
+/** Guests A's English, as the boards and guests-a-spec.md §16 give it; main's words where they exist. */
+export const W = {
+  guests: 'Guests',
+  firstTitle: 'No guests yet',
+  addGuest: 'Add guest',
+  findGuest: 'Find a guest',
+  noMatch: 'No guests match',
+  changedSince: 'Changed since you looked',
+  nothingChanged: 'Nothing has changed since you last looked.',
+  showAllGuests: 'Show all guests',
+  updatedNeeds: 'Updated dietary needs',
+  linkWrongPerson: 'Link may have reached the wrong person',
+  newQuestion: 'New question',
+  noMatchLine: 'Try a different name, or clear the filters.',
+  clear: 'Clear',
+  clearSearch: 'Clear the search',
+  writeToThem: 'Write to them',
+  loadFailed: 'We could not load the guests.',
+  loadFailedLine: 'Check your connection and try again.',
+  tryAgain: 'Try again',
+  loading: 'Loading…',
+  draftLine: 'Guests can’t be invited until this event is live.',
+  pausedLine: 'Guests can’t be invited while this event is paused.',
+  finishedLine: 'This event has finished, so guests can’t be invited.',
+  markNotInvited: 'Mark as not invited',
+  unmarked: 'Marked as not invited.',
+  readOnlyInvited:
+    'You can see names, replies and who is invited. Marking guests as invited needs the Lead or Can edit role.',
+  makeLive: 'Make live',
+  openCheckIn: 'Open check-in',
+  arrived: 'arrived',
+  filter: 'Filter',
+  walkIn: 'Walk-in',
+  // a guest
+  reply: 'Reply',
+  details: 'Details',
+  edit: 'Edit',
+  invitation: 'Invitation',
+  theirConversation: 'Their conversation',
+  emailAddress: 'Email address',
+  mobileNumber: 'Mobile number',
+  none: 'None',
+  language: 'Language',
+  notSet: 'Not set',
+  languageHint:
+    'Their page opens in their browser’s language when Soirely offers it, otherwise in this language. Messages use this language. When this is Not set, both use your organisation’s language.',
+  added: 'Added',
+  companion: 'Companion',
+  heldLine: 'Held · comes only if their host accepts',
+  copyLink: 'Copy invitation link',
+  copyLinkLine: 'Their own page, where they reply',
+  replaceLink: 'Replace link…',
+  replaceLinkLine: 'The old link stops working straight away',
+  markAsInvited: 'Mark as invited',
+  markLine: 'How you invited them, so they count as invited',
+  linkReplacedLine: 'They still hold the old one until you send the new link.',
+  conversationTitle: '2 messages',
+  conversationLine: 'Parking at The Landmark · SMS · Delivered',
+  recordReply: 'Record a reply',
+  letThemChange: 'Let them change their reply',
+  copyFirst: 'Copying their link does not mark them. Mark them once you have sent it.',
+  notFound: 'This guest is not on this list',
+  notFoundLine: 'They may have been removed from the list since you opened it.',
+  backToGuests: 'Back to guests',
+  linkCopied: 'Link copied',
+  replaceKeep: 'Keep it',
+  replaceDo: 'Replace link',
+  replaceLine: 'The old link will stop working straight away.',
+  notReplaced: 'Not replaced. The old link still works. Try again.',
+  howInvited: 'How did you invite them?',
+  howInvitedBlank: 'Choose how you invited them.',
+  markNotSaved: 'Not saved. They are still Not yet invited. Try again.',
+  cancel: 'Cancel',
+  close: 'Close',
+  recorded: 'Reply recorded. It counts like any other reply.',
+  // Edit
+  editGuest: 'Edit guest',
+  save: 'Save',
+  saved: 'Saved',
+  fullName: 'Full name',
+  optional: 'Optional',
+  companions: 'Companions',
+  addCompanion: 'Add a companion',
+  remove: 'Remove',
+  companionName: 'Companion’s full name',
+  contactKept: 'Changing the email address or mobile number keeps their invitation link as it is.',
+  nameBlank: 'Enter their full name.',
+  nameLong: 'Shorten the name to 200 characters or fewer.',
+  emailShape: 'That does not look like an email address. Check it has an @ and a domain.',
+  companionsMax: '10 companions is the most one guest can bring.',
+  sameName: 'Two guests can share a name. Save them both, or change this one.',
+  saveAnyway: 'Save anyway',
+  changeName: 'Change the name',
+  conflict: 'Someone else changed this guest. Here is their version.',
+  conflictLine:
+    'Use theirs fills the form with their version and drops your changes. Keep mine saves your changes over theirs.',
+  theirs: 'Theirs',
+  yours: 'Yours',
+  useTheirs: 'Use theirs',
+  keepMine: 'Keep mine',
+  discardTitle: 'Discard your changes?',
+  keepEditing: 'Keep editing',
+  discardChanges: 'Discard changes',
+  notSaved: 'Not saved. Nothing was changed. Try again.',
+  offline: 'You’re offline. Nothing was saved.',
+  offlineLine: 'Your changes stay in this form. Save again once you’re connected.',
+  // Record a reply
+  theirReply: 'Their reply',
+  howTold: 'How did they tell you?',
+  whoComing: 'Who’s coming with them',
+  whoComingLine: '1 place · 1 coming. Untick anyone who isn’t coming. Places change with Edit.',
+  replyBlank: 'Choose their reply.',
+  howBlank: 'Choose how they told you.',
+  replaceTheirs: 'Replace their reply',
+  keepTheirs: 'Keep their reply',
+  replaceTheirsLine:
+    'Your answer takes the place of theirs, marked as recorded by you. They can still change it from their link.',
+  // WhatsApp (sc-3950)
+  whatsApp: 'WhatsApp',
+  notAgreed: 'Has not agreed to WhatsApp',
+  guestAgreed: 'The guest agreed to WhatsApp',
+  agreedToWhatsApp: 'Agreed to WhatsApp',
+  howAgreed: 'How?',
+  howAgreedBlank: 'Choose how they agreed.',
+  // Add guest and From contacts
+  fromContacts: 'From contacts',
+  fromContactsLine:
+    'Pick one person or many. Soirely takes only their name, one number and one email.',
+  orType: 'or type their details',
+  notAdded: 'Not added. Nothing was saved. Try again.',
+  addAnyway: 'Add anyway',
+  choosePeople: 'Choose people',
+  searchContacts: 'Search contacts',
+  onlyTicked: 'Only the people you tick are sent to Soirely.',
+  tickOne: 'Tick at least one person.',
+  refusedContacts:
+    'Without access to your contacts, you pick one person at a time. Soirely does not ask again; you can allow it in your phone’s settings.',
+  chooseAnother: 'Choose another number',
+  chooseNumber: 'Choose a number',
+  onlyChosen: 'Only the number you choose is kept.',
+  useThisNumber: 'Use this number',
+  clearNumber: 'Clear the number',
+  toFix: 'To fix',
+  onList: 'Already on the list',
+  places: 'Places for companions',
+  fewer: 'Fewer places',
+  more: 'More places',
+  everyoneKept: 'Everyone stays on this list as you left it.',
+  offlineKept: 'Everyone stays on this list. Add them again once you’re connected.',
+  keepReviewing: 'Keep reviewing',
+  discard: 'Discard',
+  discardPickedLine: 'Nobody has been added yet. They stay in your phone’s contacts.',
+  allRemoved: 'Everyone you picked has been removed. Nobody was added.',
+  pickFromContacts: 'Pick from contacts',
+  only250: 'Only 250 can be added at a time. Add these, then pick the rest.',
+  planAllows: 'Your plan allows 100 people per event',
+  removeRows: 'Remove rows or places for companions here.',
+  removeOnWeb: 'Remove a guest from the list, on the web.',
+  /** sc-3930 in the app, for billing.manage (pm, 8 Nov): no app copy says where plans are changed. */
+  planInApp: 'The plan cannot be changed in the app.',
+  /** sc-3930: for someone who can't change the plan; one owner in the sample, so the one-owner line. */
+  askOwner: 'Ask an owner',
+  ownerAsked: 'The owner has been sent the link to Compare plans.',
+  listKept: 'The list is kept as you left it.',
+  backToList: 'Back to the list',
+  notAddedTitle: 'Not added',
+  // the door
+  checkIn: 'Check-in',
+  searchByName: 'Search by name',
+  arrivedButton: 'Arrived',
+  undoArrival: 'Undo arrival',
+  arrivalUndone: 'Arrival undone',
+  addWalkIn: 'Add walk-in',
+  addAndArrive: 'Add and mark arrived',
+  markThemArrived: 'Mark them arrived',
+  addSomeoneNew: 'Add as someone new',
+  notRecorded: 'Not recorded. Try again.',
+  doorOpenedLine:
+    'Check-in opened at 16:00. Anyone on the list can be marked arrived, whatever their reply.',
+  searchWorksNow: 'Search works now. Arrivals and walk-ins can be recorded from 16:00.',
+  ended: 'This event has ended.',
+  nobodyYet: 'Nobody is on the list yet',
+  nobodyYetLine: 'Anyone who arrives can be added as a walk-in.',
+  doorOpened: 'Check-in opened at 16:00.',
+  // the door code, scanned (sc-1301; [l10n] #5334, #5854)
+  scanCode: 'Scan a code',
+  pointAtCode: 'Point at the code',
+  scanNext: 'Scan the next code',
+  companionHeld: 'Held · until their host is coming',
+  nothingNew: 'Nothing new was recorded. You decide what happens next.',
+  notOnList: 'This code is not on this event’s guest list. Search by name instead.',
+  noListTitle: 'Connect once to scan codes',
+  noListBody:
+    'This device needs the guest list before it can check codes. It downloads as soon as the device is back online, and the scanner opens by itself.',
+  cameraOffTitle: 'Soirely can’t use the camera',
+  cameraOffBody:
+    'Allow the camera for Soirely in Settings to scan codes. Searching by name works without it.',
+  openSettings: 'Open Settings',
+  // the numbers
+  openGuestList: 'Open the guest list',
+  numbersFailed: 'Guest numbers didn’t load.',
+  noneInvited: 'No guests invited yet',
+  heldCounts: 'Companions waiting on their guest’s answer',
+  invited: 'Invited',
+  guestsInvited: 'Guests invited',
+  repliesIn: 'Replies in',
+  pickAGuest: 'Pick a guest to see their details, or add one.',
+  // Greet as (sc-3960's 'English copy (l10n)')
+  greetAs: 'Greet as',
+  greetAsHint:
+    'How messages greet them, such as Auntie Bisi or Dr. Okafor. Leave it blank to use their full name.',
+  greetedByName: 'Messages greet them by their full name.',
+} as const;
+
+export type { ReplyKind };
+
+/** One word for one state, on the row, the group, the filter, the tag and the counts: the guest's own (pm, 7 Nov). */
+export const REPLY_WORD: Record<ReplyKind | 'walkin', string> = {
+  coming: 'Coming',
+  maybe: 'Not sure yet',
+  notcoming: 'Not coming',
+  held: 'Held',
+  noreply: 'No reply',
+  notyet: 'Not yet invited',
+  walkin: 'Walk-in',
+};
+
+export const HOW_TOLD = ['By phone', 'In person', 'By message', 'Other'] as const;
+export const HOW_INVITED = ['WhatsApp', 'Text message', 'Email', 'In person', 'Other'] as const;
+
+/** A How did you invite them? answer inside a sentence, as the web's demo words it: "text message", "another way", "WhatsApp". */
+export function midSentence(how: string): string {
+  if (how === 'Other') return 'another way';
+  if (how === 'WhatsApp') return how;
+  return how.charAt(0).toLowerCase() + how.slice(1);
+}
+export const HOW_AGREED = ['In person', 'By phone', 'In writing'] as const;
+
+export const say = {
+  notSetLine: (organisation: string) =>
+    `Not set · their browser’s language, or ${organisation} when Soirely does not offer it`,
+  theyChose: (language: string) => `They chose ${language} on their page, and that wins.`,
+  shown: (shown: number, total: number) => `${shown} of ${total} shown`,
+  says: (coming: number, invited: number) => `${coming} coming of ${invited} invited`,
+  havent: (all: number, guests: number, companions: number) =>
+    companions === 0
+      ? `${say.havenShort(all)}.`
+      : `${say.havenShort(all)} (${guests === 1 ? '1 guest' : `${guests} guests`} and ${companions === 1 ? '1 of their companions' : `${companions} of their companions`}).`,
+  closesTomorrow: (date: string) => `Replies close tomorrow, ${date}.`,
+  closesOn: (date: string) => `Replies close on ${date}.`,
+  onList: (count: number) => `${count} on the list`,
+  arrivedOf: (arrived: number, expected: number) => `${arrived} of ${expected}`,
+  arrivedSaid: (arrived: number, expected: number) => `${arrived} of ${expected} arrived`,
+  noneArrived: '0 arrived',
+  dayOpened: (says: string) => `${says}. Check-in opened at 16:00.`,
+  allDay: (says: string) => `${says}. Check-in is open all day.`,
+  opensAt: (time: string) => `Check-in opens at ${time}`,
+  showAll: (count: number, words: string) => `Show all ${count} ${words}`,
+  filterLabel: (word: string, count: number) => `Filter: ${word}, ${count}`,
+  menuItem: (word: string, count: number) => `${word} · ${count}`,
+  repliedAt: (time: string) => `Replied at ${time}`,
+  repliedDay: (date: string) => `Replied ${date}`,
+  changedAt: (time: string) => `Changed at ${time}`,
+  changedDay: (date: string) => `Changed ${date}`,
+  group: (word: string, count: number) => `${word} · ${count}`,
+  repliedOn: (when: string) => `replied ${when}`,
+  askedBy: (date: string) => `asked to decide by ${date}`,
+  willBeAskedAgain: (date: string) => `will be asked again ${date}`,
+  askedAgain: (date: string) => `asked again ${date}`,
+  wontBeAskedAgain: 'won’t be asked again',
+  guestOf: (host: string) => `Guest of ${host}`,
+  companions: (count: number) => (count === 1 ? '1 companion' : `${count} companions`),
+  companionOf: (word: string) => `${W.companion} · ${word}`,
+  ofTen: (count: number) => `${count} of 10`,
+  noneYet: (count: number) => `None yet · ${count} of 10`,
+  moreCompanions: (count: number) => `${count} more companions`,
+  removed: (name: string) => `${name} removed. Save to keep the change.`,
+  removeTitle: (name: string) => `Remove ${name}?`,
+  /** The AC's line (sc-3773, 21 Oct): full name, what goes, no pronoun; a seat or a meal alone is a proposal for [en]. */
+  seatedLine: (name: string, table: string | null, meal: boolean) =>
+    table != null && meal
+      ? `${name} has a seat at ${table} and a meal chosen. Removing this companion frees the seat and drops the meal.`
+      : table != null
+        ? `${name} has a seat at ${table}. Removing this companion frees the seat.`
+        : `${name} has a meal chosen. Removing this companion drops the meal.`,
+  sameName: (name: string) => `${name} is already on the list`,
+  discardLine: (name: string) => `Your changes to ${name} have not been saved.`,
+  forName: (name: string) => `For ${name}. It counts as their reply, marked as recorded by you.`,
+  recordFoot: (name: string) =>
+    `It counts in the numbers straight away and goes in the activity log. ${name} can still change it from their link.`,
+  replacedThemselves: (name: string, reply: string, date: string) =>
+    `${name} replied ${reply} themselves on ${date}. Replace it?`,
+  recordedBy: (who: string, how: string, date: string) =>
+    `recorded by ${who}, ${how.toLowerCase()}, ${date}`,
+  invitedBy: (who: string, how: string, date: string) =>
+    `Invited by ${who}, ${midSentence(how)}, ${date}`,
+  invitedWhenReplied: (date: string) => `Invited when they replied, ${date}`,
+  unmarkRefused: (name: string, reply: string, date: string) =>
+    `Not changed. ${name} replied ${reply} on ${date}, so they stay invited.`,
+  agreedOn: (date: string) => `Agreed to WhatsApp on ${date}`,
+  /** Three whole keys, one per How? answer (pm #36836): never built from pieces. */
+  agreedHost: {
+    'In person': (name: string, date: string) =>
+      `Agreed to WhatsApp in person, recorded by ${name} on ${date}`,
+    'By phone': (name: string, date: string) =>
+      `Agreed to WhatsApp by phone, recorded by ${name} on ${date}`,
+    'In writing': (name: string, date: string) =>
+      `Agreed to WhatsApp in writing, recorded by ${name} on ${date}`,
+  },
+  optedOut: (date: string) => `Unsubscribed from WhatsApp on ${date}`,
+  optedOutEmail: (date: string) => `Unsubscribed from email on ${date}`,
+  optedOutTexts: (date: string) => `Unsubscribed from texts on ${date}`,
+  onlyTheGuest: 'Only the guest can change this.',
+  forAgreed: (name: string, mobile: string) =>
+    `For ${name}, on ${mobile}. It will show as recorded by you.`,
+  closedOn: (date: string) => `Replies closed on ${date}.`,
+  closed: (date: string) =>
+    `Replies closed on ${date}. Record a reply opens again if you let them change their reply.`,
+  reopened: (who: string, date: string) =>
+    `Reply reopened by ${who}, ${date}. They can answer until the event starts.`,
+  linkReplaced: (date: string) => `Link replaced ${date}`,
+  replaceTitle: (name: string) => `Replace ${name}’s link?`,
+  added: (name: string) => `${name} added.`,
+  tooShort: (country: string) =>
+    `That number looks too short for ${country}. Check it and try again.`,
+  tooLong: (country: string) =>
+    `That number looks too long for ${country}. Check it and try again.`,
+  picked: (count: number) => `${count} picked`,
+  review: (count: number) => `Review ${count} people`,
+  fromYourContacts: (count: number) =>
+    `${count} people from your contacts. Nothing is added until you press Add ${count} guests.`,
+  addMany: (count: number) => `Add ${count} guests`,
+  adding: (count: number) => `Adding ${count} guests`,
+  manyAdded: (count: number) => `${count} guests added`,
+  ofPicked: (index: number, count: number) => `${index} of ${count}`,
+  problems: (fix: number, listed: number) =>
+    [fix > 0 ? `${fix} to fix` : null, listed > 0 ? `${listed} already on the list` : null]
+      .filter(Boolean)
+      .join(' · '),
+  fixRows: (count: number) => `Fix or remove ${count} ${count === 1 ? 'row' : 'rows'} to continue.`,
+  savedAs: (e164: string) => `Saved as ${e164}`,
+  numberOf: (label: string, index: number, count: number) =>
+    `${label} · ${index} of ${count} numbers on this contact`,
+  unreadable: (country: string) => `This number can’t be read for ${country}.`,
+  stillAdded: (name: string) =>
+    `${name} is already on the list. It is still added unless you remove this row.`,
+  roomFor: (count: number) => `Room for ${count} more on your plan`,
+  peopleOf: (count: number) =>
+    `${count} of 100 people · a companion counts as one person · Free plan`,
+  makeRoom: (listed: number, more: number) =>
+    `Ireti at 40 has ${listed} on its list. Make room for ${more} more to add these:`,
+  notAddedLine: (people: number, companions: number, listed: number) =>
+    `${people} people and ${companions} companions were not added. Ireti at 40 has ${listed} people on its list.`,
+  discardPicked: (count: number) => `Discard ${count} picked people?`,
+  firstOf: (picked: number) => `${picked} were picked; the first 250 are here.`,
+  matches: (count: number) => `${count} match`,
+  noOne: (typed: string) => `Nobody on the list matches “${typed}”.`,
+  arrivedAt: (time: string, who: string) => `Arrived at ${time} · ${who}`,
+  arrivedName: (name: string) => `${name} arrived`,
+  arrivedButton: (name: string) => `${name} arrived`,
+  arrivedTime: (time: string) => `Arrived ${time}`,
+  offlineSince: (time: string, waiting: number) =>
+    waiting === 0
+      ? `Offline since ${time}`
+      : waiting === 1
+        ? `Offline since ${time} · 1 arrival waiting to sync`
+        : `Offline since ${time} · ${waiting} arrivals waiting to sync`,
+  numbersLead: (says: string) => `${says}. Each number opens the guests it counts.`,
+  notYetInvited: (count: number) => `${count} not yet invited`,
+  opens: (word: string) => `opens ${word}`,
+  coming: (count: number) => `${count} coming`,
+  havenShort: (count: number) => (count === 1 ? '1 hasn’t replied' : `${count} haven’t replied`),
+  eventGuests: (coming: number, havent: number) => `${coming} coming · ${say.havenShort(havent)}`,
+  ownDesign: (what: string) => `${what} has its own design.`,
+  greetsAs: (greetAs: string) => `Messages greet them as “${greetAs}”.`,
+  ofMax: (count: number, max: number) => `${count} of ${max}`,
+  greetAsLong: (count: number) => `Shorten Greet as to ${count} characters or fewer.`,
+} as const;

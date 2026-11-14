@@ -1,0 +1,72 @@
+# sc-29072: Lost the authenticator from Enter your code: start (step 1 of 3), the codes (step 2), Waiting (step 3), then the approver (BTOKEN) answers with ANSWER and the ending follows by itself. P prefixes the screenshots.
+appId: host.exp.Exponent
+---
+- runFlow: ../sc29072-to-code.yaml
+- runFlow: ../sc29072-close-code-pad.yaml
+- tapOn: { id: 'twoFactor.lostBoth' }
+- extendedWaitUntil: { visible: { id: 'lostTwoFactor.send' }, timeout: 30000 }
+- waitForAnimationToEnd
+- takeScreenshot: ${P}-start
+- tapOn: { id: 'lostTwoFactor.send' }
+- extendedWaitUntil: { visible: { id: 'lostTwoFactor.emailCode' }, timeout: 60000 }
+- waitForAnimationToEnd
+- takeScreenshot: ${P}-codes
+- evalScript: "${output.mails = json(http.get(MAILPIT_URL + '/api/v1/search?limit=1&query=' + encodeURIComponent('to:' + EMAIL)).body)}"
+- evalScript: "${output.ecode = json(http.get(MAILPIT_URL + '/api/v1/message/' + output.mails.messages[0].ID).body).Text.match(/\\b\\d{6}\\b/)[0]}"
+- tapOn: { id: 'lostTwoFactor.emailCode' }
+- inputText: ${output.ecode}
+- runFlow:
+    when: { visible: { id: 'lostTwoFactor.phoneCode' } }
+    commands:
+      - runScript: ../scripts/latest-sms-code.js
+      - tapOn: { id: 'lostTwoFactor.phoneCode' }
+      - inputText: ${output.code}
+- takeScreenshot: ${P}-codes-typed
+- runFlow: ../sc29072-close-codes-pad.yaml
+- tapOn: { id: 'lostTwoFactor.ask' }
+- extendedWaitUntil: { visible: { id: 'lostTwoFactor.cancel' }, timeout: 30000 }
+- waitForAnimationToEnd
+- takeScreenshot: ${P}-waiting
+- assertNotVisible: { id: 'lostTwoFactor.back' }
+- runFlow:
+    when: { true: "${ANSWER == 'cancel'}" }
+    commands:
+      - scrollUntilVisible: { element: { id: 'lostTwoFactor.cancel' } }
+      - tapOn: { id: 'lostTwoFactor.cancel' }
+      - extendedWaitUntil: { visible: { id: 'lostTwoFactor.cancelYes' }, timeout: 10000 }
+      - takeScreenshot: ${P}-cancel-sheet
+      - tapOn: { id: 'lostTwoFactor.cancelYes' }
+- runFlow:
+    when: { true: "${ANSWER == 'approve' || ANSWER == 'turn-down'}" }
+    commands:
+      - runScript:
+          file: ../scripts/answer-recovery-request.js
+          env:
+            { API_URL: '${API_URL}', BTOKEN: '${BTOKEN}', EMAIL: '${EMAIL}', ANSWER: '${ANSWER}' }
+- extendedWaitUntil: { notVisible: { id: 'lostTwoFactor.cancel' }, timeout: 60000 }
+- waitForAnimationToEnd
+- takeScreenshot: ${P}-ending
+- runFlow:
+    when: { true: "${ANSWER == 'approve'}" }
+    commands:
+      - tapOn: { id: 'lostTwoFactor.signIn' }
+      - extendedWaitUntil: { visible: { id: 'signIn.password' }, timeout: 30000 }
+      - waitForAnimationToEnd
+      - takeScreenshot: ${P}-signin-email-kept
+      - tapOn: { id: 'signIn.password' }
+      - inputText: ${PASSWORD}
+      - runFlow:
+          when: { platform: iOS }
+          commands:
+            - pressKey: Enter
+      - runFlow:
+          when: { platform: Android }
+          commands:
+            - hideKeyboard
+            - tapOn: { id: 'signIn.submit' }
+      - extendedWaitUntil: { visible: { id: 'twoFactorAgain.notNow' }, timeout: 30000 }
+      - waitForAnimationToEnd
+      - takeScreenshot: ${P}-again
+      - tapOn: { id: 'twoFactorAgain.notNow' }
+      - waitForAnimationToEnd
+      - takeScreenshot: ${P}-after-not-now

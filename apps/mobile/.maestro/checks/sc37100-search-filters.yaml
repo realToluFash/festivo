@@ -1,0 +1,80 @@
+# Needs an organisation with events this week, typed wedding and birthday, one hosted by Chidi Okafor.
+# sc-37100: Events search and the Filter menu in the batch's language: the row, each submenu, Between dates, several filters chosen, and no match with a search and filters.
+appId: host.exp.Exponent
+---
+- openLink: ${METRO_URL}/--/events
+- extendedWaitUntil:
+    visible:
+      id: 'events.filter'
+    timeout: 30000
+- waitForAnimationToEnd
+- takeScreenshot: row
+- tapOn:
+    id: 'events.search'
+- inputText: 'Tayo'
+- hideKeyboard
+- extendedWaitUntil:
+    visible:
+      id: 'events.count'
+    timeout: 15000
+- waitForAnimationToEnd
+- takeScreenshot: count-one
+- tapOn:
+    id: 'events.search.clear'
+- tapOn:
+    id: 'events.filter'
+- extendedWaitUntil:
+    visible:
+      id: 'events.filter.menu'
+    timeout: 10000
+- waitForAnimationToEnd
+- takeScreenshot: menu-top
+- tapOn:
+    id: 'events.filter.when'
+- waitForAnimationToEnd
+- tapOn:
+    id: 'events.filter.when.between'
+- waitForAnimationToEnd
+- takeScreenshot: menu-between
+- tapOn:
+    id: 'events.filter.when.week'
+- waitForAnimationToEnd
+- takeScreenshot: menu-when
+- tapOn:
+    id: 'events.filter.back'
+- tapOn:
+    point: '50%,20%'
+- waitForAnimationToEnd
+- takeScreenshot: count-two
+- tapOn:
+    id: 'events.filter'
+- tapOn:
+    id: 'events.filter.type'
+- waitForAnimationToEnd
+- takeScreenshot: menu-type
+- tapOn:
+    id: 'events.filter.type.wedding'
+- tapOn:
+    id: 'events.filter.type.birthday'
+- tapOn:
+    id: 'events.filter.back'
+- tapOn:
+    id: 'events.filter.hosts'
+- waitForAnimationToEnd
+- takeScreenshot: menu-hosts
+- tapOn:
+    id: 'events.filter.host.Chidi Okafor'
+- tapOn:
+    id: 'events.filter.back'
+- waitForAnimationToEnd
+- takeScreenshot: menu-top-chosen
+- tapOn:
+    point: '50%,20%'
+- waitForAnimationToEnd
+- takeScreenshot: filtered-none
+- tapOn:
+    id: 'events.search'
+- inputText: 'zzqq'
+- hideKeyboard
+- waitForAnimationToEnd
+- takeScreenshot: searched-filtered-none

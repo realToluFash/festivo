@@ -1,0 +1,50 @@
+# sc-26732, tablet: Events, drafts, and an event's rail or pills with an area panel, in the account's language.
+appId: host.exp.Exponent
+---
+- openLink: ${METRO_URL}/--/
+- extendedWaitUntil:
+    visible:
+      id: 'frame.events'
+    timeout: 30000
+- tapOn:
+    id: 'frame.events'
+- extendedWaitUntil:
+    visible:
+      id: 'events.summary'
+    timeout: 30000
+- takeScreenshot: events-top
+- scrollUntilVisible:
+    element:
+      id: 'events.footer'
+    centerElement: true
+    timeout: 20000
+- takeScreenshot: events-footer
+- scrollUntilVisible:
+    element:
+      id: 'events.tab.drafts'
+    centerElement: true
+    direction: UP
+    timeout: 20000
+- tapOn:
+    id: 'events.tab.drafts'
+- waitForAnimationToEnd
+- takeScreenshot: drafts
+- scrollUntilVisible:
+    element:
+      id: 'events.footer'
+    centerElement: true
+    timeout: 20000
+- takeScreenshot: drafts-footer
+- openLink: ${METRO_URL}/--/events/${EVENT}
+- extendedWaitUntil:
+    visible:
+      id: 'events.page'
+    timeout: 30000
+- takeScreenshot: event-overview
+- tapOn:
+    id: event.nav.seating
+- extendedWaitUntil:
+    visible:
+      id: 'events.area.seating'
+    timeout: 15000
+- takeScreenshot: seating-coming

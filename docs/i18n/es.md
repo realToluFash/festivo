@@ -1,0 +1,809 @@
+# Spanish at Soirely
+
+Kept by `/soirely-linguist`. Read it before writing a string in Spanish, and add to it
+whenever you decide something a second string will need.
+
+## Variant and register
+
+Spain Spanish (es-ES). Formal: _usted_, consistent across every surface. Spain vocabulary:
+_ordenador_, _móvil_, _correo electrónico_.
+
+The rules every locale shares are in `.claude/skills/locale-parity`.
+
+## Glossary
+
+One way to say each recurring thing, everywhere. Seeded from the catalogues as they stood on
+17 October 2026; the linguist reviews each row and marks it settled in Notes.
+
+| English                                | Spanish                               | Notes                                                                                                     |
+| -------------------------------------- | ------------------------------------- | --------------------------------------------------------------------------------------------------------- |
+| Settings                               | Configuración                         | Web only. The app says «Ajustes»: tab, title, ‹ control (sc-34869)                                        |
+| Organisation                           | Organización                          |                                                                                                           |
+| Sign in                                | Iniciar sesión                        |                                                                                                           |
+| Sign out                               | Cerrar sesión                         |                                                                                                           |
+| Email                                  | Correo electrónico                    |                                                                                                           |
+| Password                               | Contraseña                            |                                                                                                           |
+| Continue                               | Continuar                             |                                                                                                           |
+| Cancel                                 | Cancelar                              |                                                                                                           |
+| Two-factor authentication              | Verificación en dos pasos             |                                                                                                           |
+| Recovery code                          | Código de recuperación                |                                                                                                           |
+| Home (tab)                             | Inicio                                | Settled, sc-1420                                                                                          |
+| Account (Settings row)                 | Cuenta                                | Settled, sc-1420; the screen title stays «Su cuenta»                                                      |
+| Security                               | Seguridad                             | Settled, sc-1420                                                                                          |
+| Signed-in devices                      | Dispositivos con sesión abierta       | Settled, sc-1420                                                                                          |
+| Switch organisation                    | Cambiar de organización               | Settled, sc-1420                                                                                          |
+| Your role                              | Su función                            | Settled, web switcher                                                                                     |
+| Owner / Admin / Member                 | Propietario / Administrador / Miembro | Settled 5 Nov 2026, sc-29914: English "Admin" stays «Administrador»; in a sentence «el rol Administrador» |
+| Currency                               | Moneda                                | Settled, sc-1585                                                                                          |
+| Time zone                              | Zona horaria                          | Settled, sc-1585                                                                                          |
+| Contact address                        | Dirección de contacto                 | Settled, sc-1585                                                                                          |
+| Role (Settings > Roles), built-in role | Rol, rol predefinido                  | Settled, sc-2150; the switcher's «Su función» is not                                                      |
+| Try again (button)                     | Reintentar                            | Settled, sc-26974; never «Inténtelo de nuevo»                                                             |
+
+## Never translated
+
+- Soirely
+- iPhone, iPad, Android
+- A person's name or title: Chief, Alhaji, Dr., Mrs.
+
+## Decided phrasings
+
+Dated, newest first: the wording, where it is used, and why it won over the alternative.
+
+- **14 nov. 2026. Guardar un invitado sin conexión en la app** (sc-47376 para sc-3785, `mobile:guestList.offlineRefused|offlineRefusedLine`). «No tiene conexión. No se ha guardado nada.», como `notSavedOffline`, y «Sus cambios siguen en este formulario. Vuelva a guardar cuando tenga conexión.». Nunca «cuando esté conectado», que concuerda con el anfitrión; la conexión es del dispositivo.
+- **14 nov. 2026. Las alergias, la dieta y la accesibilidad de un invitado** (sc-47679 para sc-3777, `web:guestNeeds.*`, `validation.guest_need_*` de la API). La sección es «Necesidades», en femenino: «Ninguna anotada», «2 anotadas». La de un acompañante es «Necesidades del acompañante», no «Sus necesidades», que con el usted se leería como las del anfitrión. «Shown first» solo va en Alergias: «Siempre aparecen primero». Las dietas concuerdan con «dieta»: Vegetariana, Vegana, Pescetariana, Otra; «No beef» es «Sin vacuno». Halal y Kosher quedan como en inglés (`same-as-english.json`). Los alérgenos son los catorce del Reglamento (UE) 1169/2011 en su forma española, un nombre para cada uno en todas partes, también en el menú de sc-4042: Cereales que contienen gluten, Crustáceos, Huevos, Pescado, Cacahuetes, Soja, Leche, Frutos de cáscara, Apio, Mostaza, Sésamo, Dióxido de azufre y sulfitos, Altramuces, Moluscos. El bucle de inducción es «bucle magnético»; la lengua, «Lengua de signos». La sala es el personal de sala; «Dietary notes» es «Notas sobre alimentación», como el 1 nov.
+- **14 nov. 2026. ¿Quién viene con usted? y Plazas para acompañantes** (sc-47095 para sc-3779, `web:guest.withYou*`, `web:guestList.placesFor|fewerPlaces|morePlaces|namedOf|placesRefused|thisGuest|namedByGuest|companionsNamed_*`, `validation.guest_places_full` de la API). `withYouPlaces` no recibe cuántos anfitriones hay, así que nada concuerda con ellos: «Por invitación de {{hosts}}, puede venir con hasta 2 acompañantes.». "Places" son «plazas», y una plaza con nombre es «con nombre»: «1 de 2 con nombre». Quién puso el nombre concuerda con «nombre», no con la persona: «Nombre de su invitación», «Nombre dado por usted», «Nombre dado por el invitado». "This guest" es «Esta persona». La etiqueta del paso de revisión es «Quién viene», que vale para una persona o varias, y la lista empieza por «Usted»: «Usted y Chidi Okonkwo · 2 personas». "Done" es «Listo», como en el resto de la web. La etiqueta de la fila del propio invitado, `withYouSelfComing` (#2192), es «Viene», junto a «Es usted»: con _usted_ el verbo en tercera persona es el suyo, como «Viene» en sc-43807. `withYouPlacesByOne`, para un solo anfitrión, repite `withYouPlaces`, que ya no concuerda con nadie.
+- **14 nov. 2026. Sin invitar, Registrar invitación y la línea de Invitación** (sc-46819 para sc-3788, `web:guestList.reply.notYetInvited|invited*|copyFirst|markAsInvited|markLine|howInvited*|markNotSaved|how.*|howMid.*|markNotInvited|unmarked|unmarkRefused|readOnlyInvited` y los `guest.replied`, `guest.not_marked_by_hand`, `validation.guest_invitation_how_required`, `errors:guest_replied|guest_not_marked_by_hand` de la API). Nada concuerda con el género del invitado: el estado es «Sin invitar», como «Sin respuesta», y la línea habla de la invitación, no de la persona: «Invitación de {{name}} por WhatsApp el 9 oct», «Invitación en persona el 9 oct». `howMid` solo aparece en esa línea, así que lleva su preposición («por WhatsApp», «por SMS», «por correo electrónico», «en persona», «por otra vía»). Marcar a mano es «Registrar invitación», y deshacerlo «Anular registro», porque «Marcar como invitado» marcaría género. «Text message» es «SMS», como se dice en España. «Ya ha respondido» se leería como usted, así que la API dice «Esta persona ya ha respondido». La respuesta citada va entre comillas, como en sc-43807. Los roles son los del evento: «Responsable o Puede editar».
+- **14 nov. 2026. Una invitación que no llegó, en Miembros** (sc-47041 para sc-46109, `web:membersScreen.notDelivered.*`). «No entregada» concuerda con la invitación, como «Enviada» en `membersScreen.dates.*`, y sigue el «entregar correos» de Su cuenta; el resto de la línea es el de `dates`: «No entregada · caduca el {{ended}}».
+- **14 nov. 2026. Una dirección a la que no llega el correo, en Su cuenta** (sc-47208 para sc-44949, `web:account.undeliverable|changeEmail|changeEmailFor`, igual en `mobile:`). Se queda como se construyó: «No hemos podido entregar correos a {{address}}.» y «Cambiar correo», sin artículo, como «Añadir correo» (9 nov.). El nombre accesible empieza por las palabras visibles: «Cambiar correo, en lugar de {{address}}».
+- **14 nov. 2026. El idioma de un invitado, en su página y en el formulario del anfitrión** (sc-45625 para sc-3790, `web:guest.languageSwitched|languageNotSaved`, `web:guestList.languageNotSet|languageHint|languageNotSetLine|languageChose`, `validation.guest_language_unknown` de la API). "Not set" es «Sin definir», distinto de `guestList.none`, «Sin indicar», porque sin definir algo decide igualmente. `{{language}}` va siempre tras dos puntos, «… el de la organización: {{language}}», porque llega con mayúscula («Inglés», o el nombre propio «Português») y en mitad de frase no se escribe así. En la ayuda, el navegador es «del navegador», no «su navegador», para que «su organización» sea sin duda la del anfitrión. La negativa nombra los cuatro idiomas como los muestra el selector, cada uno en su lengua.
+- **14 nov. 2026. Buscar un invitado y los recuentos sobre la lista** (sc-46741 para sc-3772, `web:guestList.all|comingOf|countComing_*|countInvited_*|havent_*|haventWho|countGuests_*|countCompanions_*|everyoneReplied|find|clearSearch|shown|clear|noMatch|noMatchLine|showAll_*|heldLine`). La primera línea de la tarjeta son dos plurales unidos por `comingOf`; el verbo va delante, «Vienen 4 de 9 invitados», «Viene 1 de 9 invitados», porque «4 vienen de 9 invitados» se lee como procedencia. Lo demás sigue el 8 nov.: «Faltan 25 por responder (21 invitados y 4 acompañantes).», «Ya han respondido todos.», «Mostrar los {{count}}»; con un solo invitado, que nunca se pliega, «Mostrar {{count}}» (el número es obligatorio). Con un millón, «de»: «1 000 000 de invitados». El buscador sigue la regla, «Buscar invitados»: la página solo existe en la web de escritorio, de 1280 a 1440 px, donde cabe junto a cualquier filtro de respuesta (pm, «Decided, 14 Nov»); el «Buscar» suelto de #2179 respondía a un ancho de 320 px que la página no tiene; sin resultados, «Ningún invitado coincide», como `eventsSearch`, y «Borrar» y «Borrar la búsqueda». La línea de la búsqueda es «Mostrando 4 de 9», sin participio que concuerde. La pestaña es «Todos». `heldLine` es `heldCompanion` sin «Acompañante · ».
+- **13 nov. 2026. El rechazo de un evento cancelado o terminado** (sc-44798, `errors:event_concluded`). «El evento ha terminado o se ha cancelado.»: el título vale para todos los casos, también la respuesta de un invitado a un evento cancelado antes de empezar, así que no dice que el evento ya ha terminado sin más. «Cancelado», como la etiqueta de fase; pasiva refleja, sin agente.
+- **13 nov. 2026. Los datos de un invitado, editarlos y el cambio de otra persona** (sc-43485 para sc-3773, `web:guestList.pick|details|edit|none|…|discard*|replyHeading|repliedOn`, `validation.guest_companion_unknown`, `guest.version_required|changed_since` de la API). La sección es «Datos», como la tarjeta de la organización. Un campo vacío es «Sin indicar», que no concuerda con correo ni número. "Added" es una etiqueta, «Fecha de alta», bajo «{{date}}, por {{name}}»: «Añadido» concordaría con el invitado. Lo que no se encuentra es «Esta persona no está en esta lista», y «alguien la ha quitado», sin género. El acompañante en espera «solo viene si se acepta la invitación», sin nombrar a quien lo trae. El 412 es el del 8 nov., con «La otra · Su versión» desde QA: la columna de la etiqueta mide 52 px y partía «Versión guardada» y luego «Guardada»; cada palabra cabe si no pasa de seis letras, «Usar la guardada», «Mantener la mía». El enlace «sigue siendo el mismo», sin «su», que se leería como usted. `repliedOn` va en minúscula, como el inglés, tras la respuesta. `version_required` repite `seating.`, con «la cabecera If-Match».
+- **13 nov. 2026. El enlace propio de cada invitado y el aviso de que llegó a otra persona** (sc-43781 para sc-1526, `web:guest.closing|tell*|goBack`, `web:guestList.copyLink*|replace*|linkCopied|invitationLink|clipboardRefused|keepIt|notReplaced|linkReplaced|flagged*|pausedLine|finishedLine`). Nada concuerda con quien abrió el enlace: «le ha llegado por error», «Quien abrió el enlace de {{name}} nos ha avisado de que le llegó por error». Con un anfitrión, «Quien organiza el evento verá…», porque «Verá» solo se leería como usted; con varios, «Los anfitriones verán…». Tras {{hosts}}, una relativa sin género: «Hemos avisado a {{hosts}}, que lo revisará(n).». El botón es «Enviar aviso», que no concuerda con el número. Sustituir sigue a `requestLink`: «Sustituir enlace…», «Conservarlo», y «al momento» por "straight away". `copyLinkLine` es «La página donde responde el invitado», sin «su», que se leería como usted. Los bloqueos siguen a `eventLive.guestsBlocked`: «No se puede invitar a nadie mientras…».
+- **11 nov. 2026. El número y su espera, en una línea** (QA, sc-38929, `web:membersScreen.card.waiting_*`, `mobile:membersScreen.card.waiting_*`). «2 en espera» lleva dos espacios de no separación: a 320 px la línea se cortaba entre «2 en» y «espera». Un número seguido de una locución corta que lo califica no se separa de ella.
+- **11 nov. 2026. Miembros en la web de escritorio, primero el resumen** (sc-38929 para sc-34200 y sc-30189, `web:membersScreen.card.*|waiting*|request*|role*|remove*|…`, `web:ownerClaim.copyPart|partCopied`). Donde el inglés es el de la app, la web repite `mobile:membersScreen.*` y `mobile:ownerClaim.*`. Nuevas: el título del diálogo de rol es «Rol de {{name}}»; «¿Quitar a {{name}} de {{organisation}}?» con «Quitar» como botón; al descartar una invitación, «No se enviará ninguna invitación.», que no concuerda con nadie; «Solicitud de {{name}}»; «Ir a General», sin «›».
+- **11 nov. 2026. Los días ocultos de la tarjeta de un evento** (sc-38573 para sc-30413, `web:events.moreDays_*`, `mobile:eventsScreen.moreDays_*`). La casilla «+N», solo para el lector de pantalla, dice «{{count, number}} días más», tras «Días del evento»; `_many` lleva «de», «1 000 000 de días más». La web y la app dicen lo mismo.
+- **11 nov. 2026. Responder a una solicitud para volver a entrar en la app** (sc-38005 para sc-30894, `mobile:membersScreen.card.toGetBackIn_*|toJoin_*`, `mobile:recoveryRequests.*`). `recoveryRequests.*` repite `web:recoveryRequests.*`. La segunda línea de la tarjeta cuenta personas con un verbo que concuerda: «2 piden volver a entrar · 1 pide unirse», con «pedir» para las dos, como el título «Pide desactivar…», y más corto que «solicitar» en el teléfono; `_many` sin «de», porque no hay sustantivo. «Cerrar» y «Enviando la respuesta…».
+- **11 nov. 2026. Miembros en la app, primero el resumen** (sc-37811 para sc-37693, `mobile:membersScreen.card.*|waiting*|whenWord.*|request.*|role*|makeOwner*|remove*`, `mobile:ownerClaim.*`). "Waiting" es «En espera», también en el recuento, «3 personas · 1 en espera», invariable; `_many` lleva «de» solo ante el nombre, «1 000 000 de personas», no ante «en espera». "Former" es «Antiguos», el filtro: «Aparece en Antiguos.». Un cambio de rol «se aplica en cuanto vuelva a usar Soirely», como `removeBody`, y "Nobody is signed out" es «No se cierra la sesión de nadie.». "Make owner" es «Dar el rol Propietario». `whenWord.*` va bajo la fecha, así que es una etiqueta: «Fecha de la solicitud», «Fecha de salida». `copyNamed` es «Copiar el campo {{label}}», que no concuerda con Tipo, Nombre ni Valor. `stopAskBody` repite `stopBody`, y `theirsUnfound`, `pausedUnfound`.
+- **10 nov. 2026. Ninguna hora del cliente lleva artículo** (sc-37178, web y app: `offline.asOf*`, los bloqueos `*.limitedBody`, `recovery.limitedLine`, `requestToJoin.limited*`, `signIn.locked*`, `twoFactor.pausedBody|tryAgainAt`, `passwordCard.pausedBody`, `devices.dayAtTime|everywhere*`, `domainJoining.asked`). Los clientes solo pasan `{{time}}`, sin `{{hour}}`, y «a las 01:30» falla a la 1:00. Una frase dice «Inténtelo de nuevo a partir de esta hora: {{time}}.», con «a partir de», que es lo que significa el límite; con día, «a partir de esta fecha y hora: {{day}}, {{time}}». Un botón desactivado es «Reintentar · {{time}}», y una pausa, «en pausa hasta esta hora: {{time}}». Una fecha y su hora se unen con coma: «{{day}}, {{time}}», «actualizado: {{time}}». Rechazado «a la hora {{time}}», que no se dice. Lo que llega del API con `{hour}` sigue con el artículo concordado (25 Oct).
+- **10 Nov 2026. El Calendario en la web de escritorio** (sc-36920 para sc-30413, `web:calendar.moreItems_*|chosen|barStatus|barLabel|markLabel`). La pastilla de la casilla del día es «+{{count, number}} más», invariable y sin «de» en `_many`, porque no lleva sustantivo. `chosen`, `barStatus`, `barLabel` y `markLabel` son solo puntuación y huecos, y quedan como en inglés. En la app, `mobile:calendar.moreItems_*` dice lo mismo y `retry` es «Reintentar».
+- **10 nov. 2026. La tarjeta de un evento y su página en la web** (sc-36898 para sc-30413, `web:events.calledOff|today|itsDays|dayOf|nextUp`, `web:eventPage.*`). La etiqueta de fase es «Cancelado», en masculino con «evento»; «Lo próximo: {{title}}» como `timeline.nextUp`. El nombre de las casillas de días para el lector de pantalla es «Días del evento», no «Sus días», que con _usted_ se leería como los días de la persona. La miga es «Ruta de navegación», como `seating.crumb`; «Horas en {{timeZone}}», como `eventDuplicate`. Los rótulos de la página toman las palabras de la app (sc-36555).
+- **10 nov. 2026. Crear una organización en la web de escritorio** (sc-37138 para sc-30412, `web:createOrganisation.*`). Las preguntas, «De este dispositivo», «Todos los países», «Ninguna por ahora» y la hoja de descartar son las de la app (sc-36766). Los botones son «Atrás» / «Continuar», como `web:onboarding`, y la búsqueda «Buscar países», como `generalDesk`. Lo que oye el lector de pantalla al elegir un país sigue el patrón de la tarjeta, etiqueta y valor con coma: «Moneda, {{currency}}. Zona horaria, de este dispositivo, {{zone}}.»
+- **10 nov. 2026. Crear una organización en la app, los tres pasos** (sc-36766 para sc-30412, `mobile:createOrganisation.whatTitle|whereTitle|readyTitle|fromDevice|allCountries|noneYet|discard*`). Cada paso es una pregunta corta sobre la organización, sin dirigirse a la persona: «¿Cómo se llama?», «¿Dónde tiene su sede?», «¿Todo listo para crearla?». «De este dispositivo» no concuerda con nada, porque también lo lee el lector de pantalla tras «Zona horaria». «Ninguna por ahora» concuerda con la moneda. La hoja al salir es «¿Descartar esta organización?» / «Descartar», como `orgGeneral`.
+- **10 Nov 2026. La página de un evento en la app** (sc-36555 para sc-30413, `mobile:eventPage.datesLine*|datesLocked|venueLine|noHosts*|type|currency*|nameAndCover|eventName|cover*|defaultCover|yourPhoto|pauseLine|callOffLine|endLine`). Cada línea bajo un título es «Etiqueta · detalle», con la etiqueta de la web: «Fechas», «Lugar», «Anfitriones», «Portada». `datesLocked` es `web:eventEdit.scheduleLocked` tras «Fechas · », y `noHostsLine` es `eventHosts.none` sin su primera frase. `pauseLine`, `callOffLine` y `endLine` reúnen en una sola línea lo que decían `eventPause.body|nothingLost` y `eventEnd.callOffBody|endBody|final`, con las mismas palabras. `_many` lleva «de», «{{count, number}} de días».
+- **10 Nov 2026. Hoy en la web de escritorio** (sc-36532 para sc-30413, `web:today.*`, `mobile:todayScreen.startsTodayAt`). Las claves de `web:today.*` dicen lo mismo que `mobile:todayScreen.*`, palabra por palabra; si cambia una, cambia la otra. La línea del evento que empieza más tarde hoy es «{{name}} empieza hoy · {{time}}.», con la hora tras «·», sin «a las». La etiqueta del anillo de llegadas, solo para el lector de pantalla, es «Llegadas: {{arrived}} de {{expected}}», un sustantivo que no concuerda en número con la cifra.
+- **10 Nov 2026. El selector de organizaciones de la app** (sc-36382 para sc-30412, `mobile:switcher.asks|canAsk|search|clearSearch|noMatch|matches_*`, `invitations.joining|declining`). La pregunta es «¿Dónde trabaja?», corta para el título del teléfono. Pedir unirse es «Puede solicitar unirse», el «solicitar unirse» de domain joining. La búsqueda sigue la regla «Buscar» y el plural, «Buscar organizaciones»; sin resultados, «Ninguna organización coincide con «{{text}}».», como `timeZone.noneMatch`. Mientras se envía la respuesta, «Uniéndose…», como `web:join.joining`, y «Rechazando…».
+- **10 nov. 2026. Buscar y filtrar Eventos** (sc-37100 para sc-30302, `web:eventsSearch.*`, `mobile:eventsSearch.*`). Filter es el sustantivo «Filtros», no «Filtrar», porque también nombra el menú: «Volver a Filtros», «Filtros: Todos». Host es «Anfitriones»; "Anyone" y "All" son «Todos». La búsqueda es «Buscar eventos»; sin resultados, «Ningún evento coincide», y la línea «Ha buscado «{{q}}» y ha filtrado por {{filters}}.». Las fechas: «Desde» y «Hasta», «Entre fechas…».
+- **10 Nov 2026. El selector de organizaciones de la web** (sc-36903 para sc-30412, `web:switcher.*`). La web repite palabra por palabra `mobile:switcher.*`: quien es miembro lee un solo selector en los dos. La fila actual, para el lector de pantalla, termina en «Actual», como `switcher.current`.
+- **10 Nov 2026. El interruptor del enlace de solicitud** (sc-36700, `web:requestLink.on|off`). En General, el interruptor está en la fila «Enlace de solicitud» y enciende y apaga el enlace, así que concuerda con él: «Activado» / «Desactivado». Sustituye a «Activadas» / «Desactivadas» del 21 Oct, que concordaba con «Solicitudes».
+- **9 Nov 2026. La página Organización de la app** (sc-36126 para sc-30412, `mobile:orgGeneral.*`, `ownership.*`, `companyDomains.*`, `requestLink.lead`). La tarjeta es «Datos», su enlace «Editar datos» y la hoja «Datos», como la tarjeta, que también es la etiqueta de volver de sus selectores («Datos de la organización» se cortaba en el teléfono, QA 10 nov.). La hoja de transferir es «Ceder la propiedad» y su botón «Ceder», porque «Transferir la propiedad» se cortaba; la web, con sitio, puede seguir con «Transferir». Un solo verbo por hoja (QA, 12 nov.): en la app, «Ceder a» y «Elija a quién ceder la propiedad»; en la web, `passwordWhy` dice «transferir». «Defaults for new events» es «Valores para eventos nuevos». Lo que se anuncia tras transferir no concuerda con nadie: «{{name}} tiene ahora el rol Propietario» y «Ahora usted tiene el rol Administrador», «a las dos cuentas», nunca «a ambos». El dominio también verificado por sc-560 lleva «Verificado».
+- **9 Nov 2026. Las normas de inicio de sesión en la app: su situación y qué ha cambiado** (`mobile:signInRules.stand.*`, `readIntro`, `settings.personLabel*`, sc-34925 para sc-30412). La app repite `web:signInRules.*` palabra por palabra; si cambia una, cambia la otra. Las áreas en espera (`stand.area.*`) van sin artículo, «miembros», «facturación», «seguridad», tras «Los cambios en {{areas}}», como en la web, y se unen con «y». La tarjeta de Ajustes, para el lector de pantalla, es «Su cuenta. {{name}}, {{email}}, {{role}} en {{organisation}}».
+- **9 Nov 2026. Las notificaciones en la web de escritorio** (sc-35791 para sc-30411, `web:notificationSettings.*`). Las claves compartidas dicen lo mismo que `mobile:notificationSettings.*`; donde la app dice «dispositivo», la web dice «navegador»: «Bloqueadas en este navegador». La hoja `allow.*` cita las etiquetas de Chrome en España entre «»: «Notificaciones», «Permitir»; la pestaña es «pestaña» y Done, «Listo».
+- **9 Nov 2026. La página Configuración de notificaciones de la app** (sc-34901 para
+  sc-30411, `mobile:notificationSettings.*`). La cabecera lleva verbo, «Recibe notificaciones
+  push y por correo», «Solo recibe notificaciones push»; las filas no: «Push y correo», «Solo
+  push», «Desactivado», como `off`. «Por correo», como en el resto de la app, para que quepa la
+  línea de cuentas, «3 de 6 por push · 6 de 6 por correo». El dispositivo tiene «ajustes», la
+  palabra del iPhone y de Android en España: «Abrir los ajustes del dispositivo». «Bloqueadas
+  en este dispositivo» concuerda con las notificaciones push del interruptor. La nota de Cuenta
+  y seguridad pierde «El correo electrónico no se puede desactivar.», que ahora es
+  `locked.email`, bajo el interruptor.
+- **9 Nov 2026. La página Seguridad en la web de escritorio** (sc-35456 para sc-30411, `web:security.*`). Las claves compartidas dicen lo mismo que `mobile:security.*`. `setupTitle` es «Activar la verificación en dos pasos» aunque el inglés diga aún "Set up", como el 21 Oct. `sendAgain` es «Enviarlo de nuevo», como `mobile:recovery.sendAgain`, y `setupKey`, solo para el lector de pantalla, «Clave de configuración», la «clave» de `twoFactorCard.cantScan`.
+- **9 Nov 2026. La página Seguridad de la app** (sc-34792 para sc-30411, `mobile:security.*`). Sigue los términos de la web: «Vinculada · {{address}}», «Cerrar las demás sesiones», «Listo» para Done, como `countryPicker.close`. `expires` es «Caduca el {{day}}», que vale para todos los días de la semana. `_many` lleva «de», como el 25 Oct.
+- **9 Nov 2026. «Support» es siempre «el servicio de asistencia de Soirely», nunca «el soporte»** (sc-33828, de qa2; `lostTwoFactor.nobodyTitle`, `nobodyIntro`, `twoFactor.turnedDownIntro`, `recovery.nobody_to_approve`, en la app, la web y la API). El título y la introducción decían «el soporte de Soirely» y el botón `emailSoirely`, «servicio de asistencia»: ahora la pantalla nombra el servicio con una sola palabra, y el botón sigue sin «de Soirely» porque el título ya lo nombra.
+- **9 Nov 2026. La página de enlace enviado en la web y la línea de quien lo ha perdido todo** (sc-33788 para sc-29067, `web:recovery.nothingThere`, `sentAgain`, `lostBothIntro`). `nothingThere` sigue a la app, «¿No le ha llegado nada?…», y el enlace es «envíelo de nuevo». `sentAgain` es «Se lo hemos enviado de nuevo.», sin la segunda frase de la app: la página ya la explica. En `lostBothIntro`, «después de que inicie sesión», sin concordar con la persona, y «el servicio de asistencia de Soirely», del glosario.
+- **9 Nov 2026. The app names Settings one way** (sc-34869, from qa2 on #34621). In the app,
+  the Settings section is «Ajustes» everywhere: the tab, the hub title (`settings.title`, also
+  the ‹ control's label on every settings page), «Abrir Ajustes» on Home and the path «Ajustes >
+  General». A settings page that said «‹ Configuración» above a tab bar saying «Ajustes» named
+  one place two ways. The web keeps «Configuración», where the sidebar has room, and named
+  sub-screens stay «Configuración de la cuenta», «Configuración de notificaciones».
+- **8 Nov 2026. Su cuenta en la app** (sc-34175 para sc-30411, `mobile:account.*`,
+  `contacts.promoting`, `removing`). La sección es «Sobre usted». Las líneas de cada fila no
+  tienen sujeto, así que nada concuerda con dirección (f.) ni número (m.): «Principal · para
+  iniciar sesión», «Para contactar con usted, no para iniciar sesión», nunca «contactarle».
+  Lo que falta verificar abre con el verbo, «Falta verificar {{shown}}.», porque {{shown}}
+  puede ser una dirección o un número. La pregunta al salir es «¿Descartar el cambio?», con
+  «Seguir editando» / «Descartar», como `eventEdit` y `web:eventPeople`; debajo, «Su nombre
+  sigue siendo {{name}}.», «Su zona horaria sigue sin definir.», «No se añadirá nada.». Los
+  confirmes en curso son «Haciendo principal…», sin pronombre que concuerde, y «Quitando…».
+- **8 Nov 2026. El doble factor al iniciar sesión en la app** (sc-33828 para sc-29072,
+  `mobile:twoFactor.signedIn`, `recoveryShape`, `lost`, `lostTwoFactor.waitingFor`,
+  `stayOut`, `emailSoirely`). «Sesión iniciada», un estado, como `waysCard.signedInWith`. La
+  forma del código: «En mayúsculas o minúsculas; el guion se añade solo.». El título de espera
+  es «A la espera de {{organisations}}». `stayOut` dice «No podrá iniciar sesión hasta que…»,
+  nunca «su sesión sigue cerrada»: la persona aún no ha entrado. El botón es «Escribir al
+  servicio de asistencia», sin «de Soirely», que no cabe en un botón de teléfono en una línea;
+  el título y la introducción de la pantalla ya nombran a Soirely.
+- **8 Nov 2026. La pantalla de enlace enviado en la app y su aviso** (sc-33809 para sc-29071,
+  `mobile:recovery.*`). El botón es «Abrir el correo», no «Abrir Mail»: en Android abre la
+  aplicación de correo que tenga la persona. `spam` termina en «envíelo de nuevo», como el botón
+  «Enviarlo de nuevo» que tiene debajo, y `sentAgain` es «Se lo hemos enviado de nuevo. Use el
+  correo más reciente.», como `expiredBody`. El aviso `changed` dice «Contraseña cambiada. Se ha
+  cerrado la sesión en sus otros dispositivos.», con «cerrar sesión» del glosario.
+- **8 Nov 2026. La pantalla Hoy, a 360 de ancho** (sc-31788, tras #32963). La pestaña
+  Settings del teléfono es «Ajustes», la palabra del iPhone y de Android en España, porque
+  «Configuración» no cabe en un cuarto de 360. Desde el 9 Nov (sc-34869) el título y el control ‹
+  también son «Ajustes». La etiqueta de cuenta atrás de las tarjetas es «En 2 días»
+  (`todayScreen.inDaysCapital`), para que quepa junto a «Última semana»; dentro de una frase
+  sigue «dentro de 2 días». «Todo el día» no cabe en la columna de la hora: pedidas al dev dos
+  líneas, nunca «Todo el d…».
+
+- **8 Nov 2026. Un inicio de sesión con doble factor que ha caducado** (sc-29979,
+  `signIn.codeTimedOutTitle`, web y app). «El inicio de sesión ha caducado», y después
+  `endedBody` «Inicie sesión de nuevo para continuar.». «Caducar», como las solicitudes; no
+  «se ha agotado el tiempo», que alarga el título sin decir más. No «su sesión»: la persona
+  aún no había entrado. La app une los dos en una línea con punto, así que el título no lo lleva.
+- **8 Nov 2026. Un registro que ha caducado** (sc-32449 para sc-29923, `register.timedOut`,
+  web y app). «Su registro ha caducado, así que no hemos guardado la contraseña. Vuelva a
+  introducirla para recibir un código nuevo.». "Sign-up" es «registro», como `limitedTitle`;
+  «caducar», como el inicio de sesión; «un código nuevo», como `resend`.
+- **8 Nov 2026. Invitados A: la respuesta, los dos recuentos y el 412** (sc-3773, #32403).
+  "Not sure yet" es «Por confirmar», en la página del invitado y en la del anfitrión: no
+  marca género, como sí harían «indeciso» o «no está seguro». «Por confirmar · plazo hasta el
+  {{date}}», «Por confirmar · respondió el {{date}}». "Haven't replied" es «por responder»
+  («Faltan {{count}} por responder»); "No reply" es «Sin respuesta»; nunca se cruzan.
+  "Companions" es «acompañantes». «{{coming}} de {{invited}} invitados vienen». "Write to them"
+  es «Escribirles»; "Open check-in", «Abrir registro de llegada». "Show all {{count}}" es
+  «Mostrar los {{count}}». "Their conversation" es «Conversación», sin posesivo: «su» se lee
+  como usted. Por lo mismo, en el 412 "Theirs · Yours" es «La otra · Su versión» (palabras de seis letras o menos: la columna mide 52 px, sc-43485), y los
+  botones «Usar la guardada» y «Mantener la mía».
+  El cierre (#32762): «El plazo para responder termina hoy.», «… termina mañana, {{date}}.»,
+  «… termina el {{date}}.», «El plazo para responder terminó el {{date}}.». Sin nadie por
+  responder: «Ya han respondido todos.».
+
+- **7 Nov 2026. La pantalla Hoy de la app** (`mobile:todayScreen.*`, sc-31788 para sc-29090).
+  "Live now" y "Live · …" son «En curso», como `eventsScreen.happeningNow`, nunca «Publicado»,
+  que es el estado. La agenda pone una etiqueta y dos puntos, «Inicio: {{name}}», «Fin:
+  {{name}}», «Continúa: {{name}}», para que el nombre del evento no necesite artículo. Una hora
+  va tras «·», sin «a las», que falla a la 1:00: «Termina hoy · {{time}}», «Termina mañana,
+  {{date}} · {{time}}». "Welcome" es «Hola», que no concuerda con el género de quien lee y cabe
+  en la portada a 44 pt; «Le damos la bienvenida, {{name}}» ocupaba tres líneas. "Good evening"
+  es «Buenas noches» desde las 18:00 (`greetingAt`). "Next up" es «Próximo evento», porque
+  nombra un evento; el "Next" del bloque Ahora es «A continuación». "Needs you" sigue a
+  `eventPage.needsYou`, «Pendiente de usted», y su vacío es «Nada pendiente». Run of show sigue
+  siendo «programa», como `rolesScreen.area.run_of_show`, aunque coincide con Schedule; si se
+  separan, «escaleta» es el término del oficio.
+
+- **7 Nov 2026. Las Personas de un evento, y «Admin» en cada mensaje** (`web:eventPeople.*`, `eventNav.people`, `membersScreen.eventsFromPeople`, `ownerMakesOwner`, sc-30138 para sc-29915). La página es «Personas». Los roles del evento son «Responsable», «Puede editar», «Puede ver» y «Puede registrar llegadas» («el registro de llegada», como `eventPause`). Lo que se anuncia empieza por «Ahora», «Ahora {{name}} es responsable de este evento.», con «responsable», que no marca género. La línea de quienes ya ven todo nombra el rol como etiqueta tras dos puntos, «ve todos los eventos por el rol que tiene en {{organisation}}: Propietario y Administrador», así que `managerRole.*` es el nombre del rol en todas las formas y nada concuerda con un género. Un rol dentro de una frase de error va entre comillas, «sigue siendo «Puede ver»». El inglés "owners and admins" es «quienes tienen el rol Propietario o Administrador», y en un título «los roles Propietario y Administrador»; "an admin of" sigue siendo «quien administre». Quien sale del evento es «Esta persona», nunca un «Perderá» que se lee como usted.
+- **10 nov. 2026. «rol» también en `orgGeneral.readOnly`** (web y app, QA de sc-30138). La frase decía «la función Propietario o Administrador»; ahora es «Su rol, {{role}}, …» y «quienes tienen el rol Propietario o Administrador», como el resto. «Su función» queda solo como etiqueta del selector de organización, nunca dentro de una frase que también nombra un rol.
+- **7 Nov 2026. Lo que puede hacer cada rol, en Miembros** (`web:membersScreen.roleMeans.*`, sc-30138). Las frases no tienen sujeto, como `owner`. Los eventos de un Miembro son «los eventos que se le asignan», con «le», que no marca género; nunca «a los que se le añade» ni «invitado». El mismo giro sirve para la app.
+- **10 Nov 2026. Las Personas de un evento en la app** (`mobile:eventPeople.failed*|discard*|addFailed*`, sc-30138 para sc-29914). Miembros, Reglas de inicio de sesión y `discardTitle|discard` toman el texto de la web. El error de carga es el `failed` de la web partido en título y línea. Lo que sigue marcado es «cuya casilla sigue marcada», que no marca género con un nombre; con varias, «las personas que siguen marcadas». El botón es «Añadir», y se «vuelve a pulsar». Descartar sigue a `keepEditing`: «Seguir editando», y «No se añadirá a nadie a este evento.»
+- **7 Nov 2026. Las otras formas de entrar en la app** (`mobile:steps.invited*`, `join`,
+  `startOwnInstead`, `mobile:requestToJoin.messageOptional`, `signedOutLine`, sc-30119). "You’re
+  invited" es «Tiene una invitación», para que nada concuerde con el género de quien lee.
+  `startOwnInstead` repite `domainJoining.startOwnInstead`, «Prefiero crear mi propia
+  organización», porque también aparece bajo una oferta de dominio. El botón es «Unirse a
+  {{organisation}}», como `invitations.acceptLabel`.
+
+- **7 Nov 2026. «El día del evento», nunca «la noche»** (sc-29384). Un evento puede ser a
+  cualquier hora: `verifyPhone.doneBody`, `steps.mobileIntro` y `completeProfile.mobileHelp`
+  dicen «el día del evento». El eslogan de la web es el de la app, «Organice el evento. Dirija el
+  día.», y `public.body` cierra con «menús y el programa», no «el orden de la velada».
+  `eventForm.clocksSkip` conserva «esa noche se adelantan los relojes»: habla del cambio de hora.
+- **5 Nov 2026. An event's People refusals** (`messages:people.*`, sc-30009). Who can act is
+  «alguien con el rol Propietario o Administrador, o la persona responsable del evento», never
+  «un administrador», which assumes a man. The event role Lead in a sentence is «la persona
+  responsable del evento». `already_on_event` opens on «Esta persona», since «Ya tiene» reads as
+  the reader. The job label is «el nombre del puesto».
+- **4 Nov 2026. Las líneas bajo cada rechazo de una invitación en la web de escritorio**
+  (`web:join.refused.*.line`, `web:requestToJoin.deadLine`, sc-29487 para sc-29066). Cada línea
+  no repite su título: la de una organización eliminada es «Ya no se puede aceptar la invitación
+  a {{organisation}}». Ya aceptada dice «Ya forma parte de {{organisation}}», como
+  `requestToJoin.member`; quien la envió es «quien le invitó», como en sc-2922.
+- **4 Nov 2026. Los pasos de una cuenta nueva en la app** (`mobile:steps.*`, sc-29126 para
+  sc-29069). La barra dice «Paso {{step}} de {{steps}}»; Skip es «Omitir», nunca «Saltar»; Check
+  WhatsApp es «Revise WhatsApp», como «Revise su correo». "On the day" es «el día del
+  evento» (sc-29384); nunca «la noche», ni «esa noche», ni «la velada».
+- **1 Nov 2026. Eventos y la navegación propia de un evento** (sc-26732 para sc-22103,
+  `web:events.*`, `mobile:eventsScreen.*`, `eventNav.*` web y app). Las áreas: «Resumen»,
+  «Invitados», «Menú», «Mesas», «Mensajes», «Programa», «Personal», «Presupuesto» e «Informes».
+  «Mesas», no «Distribución de mesas» como en Roles, porque en la barra y en las pastillas de la
+  tableta solo cabe la palabra; el panel sí dice «La distribución de mesas…». Un área por llegar:
+  «… de este evento llegará pronto.», como `eventPage.guestsComing`; el personal es «La
+  organización del personal…», porque «El personal llegará» lee como gente en camino. Una cifra
+  que aún no existe es «Próximamente». El resumen va sin verbo: «2 en curso · 3 próximos · 1
+  borrador». Los días, «Del {{first}} al {{last}}», como `calendar.range`; el pie concuerda:
+  «1 evento · Ordenado por fecha», «3 eventos · Ordenados por fecha». Las líneas de En pausa
+  y de fin pasado repiten `eventPause.notice` y `eventLive.endPassed`.
+
+- **1 Nov 2026. Cuándo termina un evento y los títulos de las tarjetas de Resumen** (sc-26608
+  para sc-25008). «Termina {{time}}», con la frase entera de `Intl` detrás: «Termina dentro de
+  3 horas», «Termina mañana», «Termina este minuto»; el verbo delante, como «Termina {name}».
+  Las tarjetas: «Según lo previsto» (no «En camino», que suena a trayecto), «Respuestas»,
+  «Pendiente de usted» (no «Le necesita», que lee como una persona) y «Equipo del evento»,
+  nunca «su equipo», que se confunde con el de la organización.
+
+- **01 Nov 2026. Lo que dice un botón mientras envía, en un evento** (sc-22578 para sc-22103,
+  `eventLive.making`, `eventPause.pausing`, `.resuming`, `eventEnd.callingOff`, `.ending`,
+  `eventDelete.deleting`, `eventEnd.callOffFailed`, web y app). El gerundio del verbo del botón
+  con puntos suspensivos, como «Guardando…»: «Publicando…», «Pausando…», «Reanudando…»,
+  «Cancelando…», «Finalizando…», «Eliminando…». Cancelar tiene su propio fallo, «No se ha
+  cancelado. Vuelva a intentarlo en un momento.», nunca el de finalizar.
+- **30 Oct 2026. Una versión nueva con la pestaña abierta** (sc-22881 para sc-22622, `release.*`,
+  web). «Soirely se ha actualizado.»; el botón, «Recargar», el verbo del navegador. Sin artículo
+  ni género, como en «Actualice Soirely».
+- **30 Oct 2026. Una versión demasiado antigua** (sc-22881 para sc-22620, `updateRequired.*`,
+  app). «Actualice Soirely para continuar»; el cuerpo, «Esta versión de Soirely ya no funciona.
+  Al actualizarla, conservará todo lo que haya guardado.»; el botón, «Actualizar». Nunca
+  «obsoleta» ni «no compatible», que culpan a la persona.
+- **30 Oct 2026. El fin que se mueve con el inicio** (sc-22161 para sc-22144,
+  `eventForm.endMoved`, web y app). Solo se oye, con el lector de pantalla: «El fin se ha movido
+  con el inicio: {{day}}, {{time}}.» «Fin» e «Inicio» como las leyendas del formulario. El día y
+  la hora van tras dos puntos, sin artículo, porque «a las» falla a la 1:00 y «al dom, 18 jul»
+  no se dice.
+- **29 Oct 2026. El aviso de que un evento ha cambiado** (sc-21005 para sc-13214,
+  `messages+intl-icu:eventChanges.*`: la campana, el push y el correo). El título es el acto en
+  pretérito perfecto con el nombre completo, «{name} ha pausado el evento», y nada concuerda con
+  el nombre; "changed" es «ha modificado», porque «ha cambiado el evento» se lee como cambiar un
+  evento por otro. Cada línea abre con lo nuevo, «Nueva fecha: {new} (antes: {old}).», sin
+  artículo ante una hora; un lugar que aparece es «Lugar confirmado», y uno que se quita, «Lugar
+  por confirmar», como la página del evento. El asunto es el estado en masculino, por «evento»:
+  «En pausa: {event}», «Reanudado: {event}». «Support» se nombra entero, «el servicio de
+  asistencia de Soirely». Los demás: «También lo ha modificado {name}.», con «de personas más»
+  en `many`. El pie dice «forma parte de {event}» y cita «Cambios en eventos».
+- **29 Oct 2026. Las notificaciones: la campana, Silenciar este evento y la configuración**
+  (sc-14815 para sc-3980, `notifications.*`, `eventMute.*`, `notificationSettings.*` web y app,
+  `messages:notifications.*`). El canal es «Push» en la columna y «notificaciones push» en una
+  frase; nunca «avisos». Mute es «Silenciar este evento», y la marca de una notificación,
+  «Silenciada», como «No leída», porque concuerda con notificación. Las categorías son nombres
+  propios: «Respuestas de los invitados», «Mensajes», «Día del evento», «Cambios en eventos»,
+  «Facturación» (Money: pagos, uso y facturas, donde «Dinero» suena a cartera) y «Cuenta y
+  seguridad»; citadas en una frase van entre comillas. Una hora sola se escribe sin artículo
+  («hoy, {{time}}», «De {{start}} a {{end}}»), porque «a las» falla a la 1:00. Los fallos dicen
+  ya el sentido que fijó el inglés del 29 Oct, aunque cuatro líneas inglesas esperan a [dev].
+- **28 Oct 2026. El evento que empezó otro día** (sc-17870 para sc-17853, `events.startedOn` web y
+  `eventsScreen.startedOn` app). «Empezó el {{date}} · {{time}} {{timeZone}}», en pareja con
+  `startedToday` («Hoy · empezó a las…»). `{{date}}` abre con el día de la semana («martes, 27 oct»),
+  así que lleva «el», como «desde el {{date}}».
+- **27 Oct 2026. Duplicar un evento** (sc-15883 para sc-3593, `web:eventDuplicate.*`). «Duplicar»
+  y «Crear borrador»; el evento nuevo es «la copia» hasta que existe. El panel dice «Lo que se
+  copia» / «Lo que no se copia», porque un participio solo tendría que concordar con cada fila.
+  Length es «Duración». Una negativa empieza «No se ha creado.», como «No se ha publicado.». Las
+  horas y los minutos se unen con «y» en `hoursAndMinutes` («2 horas y 20 minutos»); la fecha
+  lleva «el {{end}}», y las horas, «Horas en {{timeZone}}», como el formulario. La app
+  (`mobile:eventDuplicate.*`, sc-22570 para sc-22145) dice lo mismo, clave por clave.
+- **27 Oct 2026. Los anfitriones de un evento** (sc-15427 para sc-6713, `web:eventHosts.*`,
+  `eventLive.needsHost*|addHosts` web y app, `messages:validation.event_host*`,
+  `messages:event.host_required|last_host`). Host es «anfitrión», como ya decía
+  `errors:event_host_required`; la sección es «Anfitriones» y cada fila «Anfitrión {{position}}».
+  "Add who is hosting" es «Indicar los anfitriones» («Indique los anfitriones antes de invitar a
+  nadie»). Un anfitrión es un nombre tal como lo leen los invitados, a veces una pareja en una
+  fila, así que ninguna frase concuerda con {{name}}: «{{name}} ya figura entre los
+  anfitriones», «… ya no figura entre los anfitriones», «{{name}}: posición {{position}} de
+  {{count}}». Quitar es «Quitar», como una foto o una dirección. El límite es la misma frase en
+  pantalla y en la API, «Un evento puede tener {{most}} anfitriones como máximo.». El último
+  anfitrión se explica desde el invitado: «Los invitados pueden ver este evento, así que …».
+- **26 Oct 2026. Eliminar un evento** (sc-14417 para sc-3592, `eventDelete.*` web y app,
+  `messages:event.delete_name_mismatch`). Sigue a eliminar una organización: «Eliminar el
+  evento», con el artículo, como «Cancelar el evento»; el diálogo «¿Eliminar {{event}}?» y la
+  salida «Conservarlo», porque «evento» es masculino. `mismatch` y la API son la misma frase. El
+  equipo es «todo el equipo», nunca «su equipo», que se confunde con el del evento. «Support» se
+  nombra entero, «el servicio de asistencia de Soirely», como `ownership.deleteWindow`; la
+  fecha lleva «hasta el {{deadline}}». El aviso final abre con el verbo, «Se ha eliminado
+  {{event}}.», para que nada concuerde con el nombre. Las mayúsculas cuentan: «con las
+  mayúsculas»; el apóstrofo es «recto» o «curvo». `failed` repite `ownership.failed`.
+- **26 Oct 2026. El formulario de evento en la app** (sc-14367 para sc-3595,
+  `eventsScreen.newEvent|noneCreate`, `eventForm.searchType|timesIn|pickerDone|created|leaveBody`,
+  `eventForm.venueSuggestionsBelow_*`). El botón que confirma un selector de fecha u hora es
+  «Listo», nunca «Hecho», que es un calco, ni «Finalizado», que es el estado de un evento. El
+  título de la hoja es «Horas en {{zone}}». La búsqueda sigue la regla «Buscar» y el sustantivo
+  en plural: «Buscar tipos de evento».
+- **26 Oct 2026. En curso, finalizar o cancelar un evento** (sc-14189 para sc-3585,
+  `events.happeningNow`, `eventsScreen.happeningNow`, `eventEnd.*` web y app,
+  `eventEdit.schedule*`, `messages:event.already_over|schedule_concluded`). «En curso» en la
+  píldora. "End now" es «Finalizar ahora», como el estado «Finalizado»; "Call off" es
+  «Cancelar el evento», con el sustantivo, porque un «Cancelar» solo se lee como el botón que
+  cierra el diálogo. La salida es «Mantenerlo» en los dos diálogos, nunca «Cancelar». Una
+  negativa empieza «No se ha finalizado.». Los invitados son «los invitados que abran su
+  enlace». La fecha lleva «el {{date}}», como «desde el {{date}}». `scheduleLocked` y
+  `scheduleConcluded` son la misma frase: el español no tiene la contracción que las distingue.
+- **27 Oct 2026. Pausar y reanudar un evento** (sc-15439 para sc-3586, `eventPause.*` web y
+  app). «Pausar», como el permiso; «Reanudar»; la salida es «Mantenerlo publicado». Las
+  negativas, «No se ha pausado.» y «No se ha reanudado.». "Check-in" es «el registro de
+  llegada» de los invitados, nunca «la recepción», que es la fiesta. El resultado concuerda con
+  «evento», nunca con el nombre: «El evento {{name}} vuelve a estar publicado».
+- **26 Oct 2026. Publicar un borrador y los estados del evento** (sc-13956, sc-3584,
+  `eventLive.*` web y app, `events.*`, `eventsScreen.*`, `messages:event.*`,
+  `event.plan_limit`). "Make live" es «Publicar», como ya dice el permiso «Crear, publicar,
+  pausar y concluir eventos». Los estados concuerdan con «evento»: «Borrador», «Publicado»,
+  «En pausa», «Finalizado». Una negativa empieza «No se ha publicado.», como «No se ha
+  guardado.»; el colega es «otra persona». El límite del plan dice «Su plan {{plan}} permite
+  tener {{count}} evento publicado o en pausa a la vez», con «de eventos» en `many`, y es la
+  misma frase en pantalla y en la API. «Call off» es «cancelar».
+- **26 Oct 2026. El lugar del evento y la lista de eventos en la app** (`web:eventForm.venue*`,
+  `web:eventPage.venue*`, `addVenue`, `openInMaps`, `messages:validation.event_venue_*`,
+  `mobile:eventsScreen.*`, sc-3589 y sc-1593 via sc-13205). Venue es «Lugar» («Nombre del
+  lugar», «Lugar por confirmar», «Añadir el lugar»), no «recinto» ni «local», que suenan a
+  edificio o a bar. El límite de longitud dice lo mismo en pantalla y en la API, «Acorte el
+  nombre del lugar a {count} caracteres como máximo.». La oferta de zona horaria pregunta
+  «¿Quiere usar esa zona horaria?», con botones «Usar {{zone}}» / «Mantener {{zone}}». La app
+  repite las palabras de la web: «Cargando eventos…», «Borrador», «Este evento no está
+  disponible»; su botón de reintento es «Inténtelo de nuevo», como el resto de la app.
+- **26 Oct 2026. La portada de un evento** (sc-13587, `web:eventCover.*`,
+  `messages:validation.cover_*`). «Portada» para la sección y «Foto de portada» para el diálogo,
+  como en las redes que el anfitrión ya conoce; «foto» para la imagen propia, e «imagen» solo en
+  «Describa la imagen», que es lo que oye el lector de pantalla. Subir es «Subir una foto»;
+  quitar, «Quitar la foto», no «Eliminar», porque el archivo no se borra de ningún sitio del
+  usuario. Fuera de límite, «más ligera» para el tamaño en MB y «más grande» para los píxeles.
+  La línea del evento creado, «El evento se ha guardado sin su foto. {{reason}}», se lee con
+  cualquiera de las negativas detrás.
+  Tras una negativa, los botones del diálogo son «Elegir otra foto» y, con el marco vacío,
+  «Elegir una foto» (sc-16573): infinitivo, como «Subir una foto» y «Usar esta foto», mientras
+  que la negativa misma pide en imperativo, «Elija una más grande».
+- **26 Oct 2026. El tipo de evento** (`web:eventForm.type*`, `web:eventTypes.*`,
+  `messages:validation.event_type_required`, sc-3588 via sc-13205). «Tipo», «Elija el tipo de
+  evento», y el rechazo, igual en pantalla y en la API, «Elija qué tipo de evento es.». Las
+  etiquetas: «Pedida de mano» para engagement (lo que se celebra en España, no «Compromiso»);
+  «Congreso» para conference (una «conferencia» es una charla); «Homenaje póstumo» para
+  memorial; «Gala o evento benéfico»; «Evento de empresa». «Baby shower» se queda en inglés, como
+  se dice en España (está en `same-as-english.json`).
+
+- **25 Oct 2026. A count of a round million, `_many`** (every web and app count family,
+  sc-8529, now that the key-parity guard allows it, PR #324). At 1 000 000 and every exact
+  million, i18next picks `_many`. It is `_other` with «de» between the count and the noun it
+  counts, «1 000 000 de personas», «las {{count}} de sesiones», as the waiting email already
+  does. Where no noun follows the count («y {{count}} más», «en los {{count}}», «Puede añadir
+  {{count}} más»), `_many` is `_other` as it stands. Every count family gets its `_many`,
+  the proof window's lines (`waysCard.proveLink_*`, `proveUnlink_*`, `codeKeepsSignIn_*`)
+  included since sc-3980: «durante {{count, number}} de minutos», «en {{count, number}} de minutos» (sc-20444).
+- **25 Oct 2026. Settings > Members on the web, the invitation link and the invitation email**
+  (`web:membersScreen.*`, `web:join.*`, `invitations.*` web and app, `emails:invitation.*`,
+  `messages:invitations.*`, sc-2922). The web twins of the app's Members keys are the app's
+  words. An invitation is feminine and its states agree with it: «Pendiente», «Caducada»,
+  «Retirada» (revoked and withdrawn alike), «Rechazada», «Aceptada», «Eliminada»; "Revoke" is
+  «Retirar». "Works until" is «Válida hasta el {{date}}» (as a sentence, «Esta invitación es válida hasta el {{date}}»), never «funciona hasta», which reads as a machine working (QA, 26 Oct). Who sent it is «invitación enviada por {{inviter}}», and the reader as sender is «usted», «enviada por usted». An invited
+  person is «con invitación» in the subtitle and the chip, so no count agrees with anyone. The
+  history lines name what was acted on, as «Solicitud rechazada por {{by}}»: «Invitación
+  enviada por», «Solicitud aprobada por», «Acceso suspendido / restablecido / retirado por»;
+  the joins are past simple, «Aceptó la invitación», «Se unió con …», as «Creó». A role given
+  is «con el rol {{role}}». "Declining tells … you said no" is «Si la rechaza, {{inviter}} sabrá
+  que ha dicho que no». The invitee is «le» (cortesía), «quien le invitó».
+- **25 Oct 2026. Deleting an organisation** (`errors:owner_required`,
+  `messages:organisation.owner_required`, `delete_name_mismatch`, `emails:organisationDeleted.*`,
+  sc-3215). The refusals name the role, «Solo alguien con el rol Propietario…», as
+  `transfer_owner_required`. `delete_name_mismatch` is `ownership.deleteMismatch` word for
+  word, and `restore` is the second sentence of `ownership.deleteWindow`. The subject opens on
+  the verb, «Se ha eliminado {organisation}», so nothing agrees with the name. The footer says
+  «era miembro», as the organisation is gone when it is read.
+- **25 Oct 2026. The API's refusals** (`messages:*`, sc-10809). An HTTP request is «la
+  petición», never «la solicitud», which is a request to join or a recovery request; an API
+  path is «esta URL», since «dirección» is a postal or email address here. An id is «ese
+  identificador». Field names an integrator sends (`idToken`, `code`, `recoveryCode`,
+  `If-Match`, `context`, the assistant's roles) stay as written, in straight quotes where the
+  English quotes them; "system prompt" stays English. Where a screen says the same sentence
+  (`lostTwoFactor.*`, `signIn.timedOutBody_*`, `createOrganisation.limitedTitle`, the
+  lock-outs' «Inténtelo de nuevo a las {time}»), the refusal says it too.
+- **25 Oct 2026. The article before an API time** (sc-11332). The 01 hour is «la una», so the
+  lock-outs (`messages+intl-icu:limits.*`) and `emails+intl-icu:time.dateAt` choose the article
+  from `{hour}` (0–23): `{hour, plural, =1 {a la {time}} other {a las {time}}}`, «a la 01:05», «a las
+  00:05», «a las 13:05». Any new string that puts an article before a clock time takes the same
+  form, or «la hora {time}» where no `{hour}` reaches it.
+- **25 Oct 2026. A time the clocks skip** (`eventForm.clocksSkip`, `clocksSkipNextDay`,
+  sc-10675, reworded in sc-11163). «En {{zone}}, la hora {{time}} del {{day}} no existe: esa noche
+  se adelantan los relojes. Se guardará como {{savedAs}}.»; the next-day line ends «Se guardará
+  el {{savedDay}}, como {{savedAs}}.». The short date («sáb, 27 mar») sits inside the clause,
+  never before the colon or at the full stop, where it read heavily (qa3, at 320 px). «La hora {{time}}», never «las {{time}}», which would need «la» at 01:30. «Se
+  adelantan los relojes» says what the reader sees happen, half-hour gap included; rejected
+  «cambio al horario de verano», which names the rule rather than the missing hour.
+- **25 Oct 2026. Editing an event's details (sc-9704, `eventEdit.*`).** «Editar detalles» opens
+  and heads the form, «Guardar cambios» saves it. A refused save starts «No se ha guardado.»; the
+  colleague is «otra persona», as `errors:precondition_failed`. "Show the latest" is «Ver la
+  última versión», a whole noun, as the dialog asks. «Cambios guardados» is announced after a
+  save. The currency refusal is one sentence in `web` and `errors`, «… en este evento».
+- **24 Oct 2026. Suspending a member by hand and restoring them** (`membersScreen.suspend*`,
+  `restore*`, `seats*`, `emails:memberSuspended.*`, `memberRestored.*`, `messages:members.*`,
+  sc-8735). Suspending is «suspender a {{name}}», restoring «restablecer el acceso». What is
+  suspended or restored is «el acceso», so «Se ha suspendido el acceso de {{name}}» agrees with
+  no one; the admins read «Esta persona» before any «su». A team seat is «plaza de equipo» of
+  «el plan», as `errors:team_seats_in_use`. "An administrator of" in the email is «quien
+  administre {organisation}», which also covers owners. The email facts read «Fecha de
+  suspensión» and «Fecha de restablecimiento». The screen's `ownerNoSuspend` and
+  `members.suspend_owner` open on the same sentence.
+- **24 Oct 2026. The claim that lapsed** (`emails:ownerClaim.lapsed.*`, sc-9219). "Lapse" is
+  «caducar», as the web. The subject leads with the outcome, «Solicitud caducada: {organisation}», as
+  sc-14100: the long sentence ran past one row of a 360dp inbox and lost «caducado» (QA, 26 Oct);
+  the heading still names {claimant}, «{claimant} no ha obtenido la propiedad de
+  {organisation}. La solicitud ha caducado», never «la solicitud de {claimant}» with a bare address. Each reason ends «así que la propiedad no se ha transferido»; the date
+  «Caducada el {deadline}», as «Retirada el».
+- **24 Oct 2026. The rest of a role's holders** (`rolesScreen.moreHolders_*`, web and app,
+  sc-9068). «y {{count}} más», after the five names it continues; nothing agrees with the
+  people, so one form serves every count. `_many` as the 25 Oct entry says.
+- **24 Oct 2026. A request refused for its shape** (`messages:validation.invalid_shape`,
+  `validation.request_shape`, sc-8716). The field «no admite ese valor», which also reads right
+  for a required field left out; «Revíselo y vuelva a intentarlo». The 422 `detail` speaks of «los
+  datos enviados», never «la solicitud», which here is a request to join.
+- **24 Oct 2026. Withdrawing your own claim** (`ownerClaim.withdraw*`, `youWithdrew*`,
+  `emails:ownerClaim.withdrawn.*`, `messages:owner_claims.not_claimant`, sc-8556). The claimant
+  «retira» su solicitud; anybody else «detiene» una. Button «Retirar mi solicitud», confirm
+  «¿Retirar su solicitud?» with «Retirar» / «Mantener mi solicitud». "You included" is «también
+  usted», as «usted incluido» assumes a man. The email puts the claim as «la solicitud», not «su
+  solicitud», which reads as the reader's; the date «Retirada el {deadline}», as «Detenida el».
+- **24 Oct 2026. Getting an owner back** (`ownerClaim.*`, web and app, `emails:ownerClaim.*`,
+  `messages:owner_claims.*`, `errors:owner_claim_*`, sc-8216). "Become the owner" is «obtener la
+  propiedad», never «convertirse en propietario», which assumes a man; the claim is «la
+  solicitud» and the claimant «ha solicitado la propiedad», which holds before and after the
+  record is found. Ownership «se transfiere»; a person with it «tiene el rol Propietario».
+  The claimant's record is «el registro DNS de esta persona», as «su» reads as the reader's.
+  "Soirely support" is «el servicio de asistencia de Soirely», as `ownership.deleteWindow`;
+  restoring is «restablecer». Dates take «el {{when}}» and «hasta el {{when}}».
+- **24 Oct 2026. The only owner left suspended** (`accessPaused.stillOnlyOwner`,
+  `membersScreen.suspendedOnlyOwner`, `onlyOwnerNotRemovable`, `onlyOwnerRestoreNeedsAddress`,
+  `history.suspendedAddressGone`, sc-7831). As `emails:domainSuspended.keptOnlyOwner`: «la única
+  persona con el rol Propietario en {{organisation}}» and «no sale de la organización», never
+  «no se le quita». The refusal is «no se puede quitar a esta persona de la organización».
+  Restoring needs «la dirección principal de esta persona», since «su dirección» could read as
+  the admin's. The history line is «Acceso suspendido: …», a state that agrees with no one.
+- **23 Oct 2026. Ownership and leaving** (`ownership.*`, web and app,
+  `messages:organisation.transfer_owner_required`, `emails:ownershipTransferred.*`, sc-7715).
+  The act is «transferir la propiedad», and the organisation is «cedida»; the people are
+  «alguien con el rol Propietario» and «el rol Administrador», never «el nuevo propietario»,
+  which assumes a man: "the new owner" is «la persona elegida», the legend «Transferir a», the
+  email subject «Cambio de propietario en {organisation}». Both people are named, «Usted y
+  {{name}} recibirán…», never «los dos». "Stay" is «No salir», the refusal of the act, since a
+  bare «Quedarse» reads oddly on a button. Deleting is «eliminar», as for a role; the counts
+  come before nothing that agrees, «Con ella se eliminan {{events}}, …». `_many` as the
+  25 Oct entry says. A slot appears once per key (the parity guard counts them), so `transferred`
+  closes «… a las dos cuentas», not a second {{name}}.
+
+- **21 Oct 2026. Approving or turning down a request to join** (`membersScreen.awaiting.*`,
+  `membersScreen.history.turnedDown`, `requestExpired`, `emails:joinRequest.*`,
+  `messages:members.request_answered`, sc-7217). "Approve" is «Aprobar», "turn down" is
+  «Rechazar», and what is turned down is «la solicitud», never the person: «¿Rechazar la
+  solicitud de {{name}}?», «Rechazar la solicitud de {{name}}», «Solicitud rechazada por {{by}}». A
+  request nobody answered «se retira», as a member is «quitado». The card's title is the state,
+  «Pendiente de aprobación». A role given on approval is «con el rol {{role}}», so nothing
+  agrees with the person («Aprobar con el rol {{role}}»). The waiting email's count takes
+  `many`, «1 000 000 de personas».
+
+- **24 Oct 2026. Who did it, in a history line** (`membersScreen.byYou`, `membersScreen.someone`,
+  sc-7217, from QA). Both fill `{{by}}` after «por»: the reader is «usted» («Solicitud rechazada por
+  usted»), and a person who has since left is «alguien que ya no es miembro».
+
+- **21 Oct 2026. A domain member paused** (`accessPaused.*`, `membersScreen.suspended*`,
+  `restore*`, `emails:domainSuspended.*`, sc-6703). The person reads «En pausa», the admins
+  «Acceso suspendido», as the English keeps them apart. Restoring is «restablecer». In the
+  admins' lines the member is «esta persona», so «se quitará a esta persona», «quítela» and
+  «dejará de formar parte» agree with no one; «su acceso» alone would read as the reader's.
+  "Account settings" is «Configuración de la cuenta», button and sentence alike. The footer
+  says «propietario o administrador», as `twoFactorRecovery.approver.footer`.
+  24 Oct (qa2, #8038): the email subject opens on what happened, «Acceso en pausa: {name} en
+  {organisation}», so a phone inbox shows it before the names. The admins' label is «Acceso
+  suspendido: dominio de empresa», as the setting, for all three reasons. "… first" is
+  «necesita primero», never an opening «Antes,». The member's history line
+  (`history.suspendedAddressGone`, sc-8868) is the label's words, whatever the reason.
+- **21 Oct 2026. Request link** (`requestLink.*`, `requestToJoin.*`,
+  `messages:request_link.*`, `errors:request_link_dead`, `join_request_*`, sc-6460). The act
+  is «solicitar unirse», as domain joining; the setting «Solicitudes para unirse», so its state
+  agrees in the feminine plural, «Activadas» / «Desactivadas». The link is «el enlace de
+  solicitud» and «el enlace» is masculine: «Conservarlo», «lo sustituya». What waits is «su
+  solicitud … pendiente de respuesta». A cooling-off date is «a partir del {{date}}», as the
+  day starts with its weekday. dev2's drafts of the three `errors:` codes used «tú»; they now
+  say «usted».
+
+- **21 Oct 2026. Creating an event** (`events.*`, `eventForm.*`, `eventPage.*`,
+  `rolesScreen.createEvents*`, `messages:validation.event_*`, sc-6302). A draft is «Borrador»;
+  the form's legends are «Inicio» and «Fin». An end before the start is «El evento termina
+  antes de empezar», so nothing names «el fin» twice. The organisation's defaults are «Valores
+  tomados de la configuración de {{name}}», so nothing agrees with zona and moneda. An owner
+  is «alguien con el rol Propietario», as in Members. The permission's states are «Permitido»
+  / «No permitido». A refused send closes «así que no se ha enviado nada», as en's wanted
+  shape.
+
+- **21 Oct 2026. Two-factor for everyone** (`signInRules.everyone*`, `due*`, `overdue*`,
+  `twoFactorCard.keptByRule`, `emails:signInRules.twoFactorDue.*`, sc-5702). "Require" is
+  «exigir», as the server's errors; "for everyone" is «para todos». The date is «a partir del
+  {{deadline}}» and «hasta el {{deadline}}», as `limitedBody` and `endsBy`. "Set it up" is
+  «activarla», never «configurarla», as "turn on" in en. The overdue screen's body says why,
+  «… y el plazo para activarla ha terminado», since the title already says «para continuar».
+  "Single-event access" is «su acceso a eventos concretos». The card and the server's refusal
+  say the same sentence, «… así que no puede desactivarla».
+
+- **26 Oct 2026. Two-factor for everyone, the artboard's lines** (sc-13182,
+  `signInRules.everyoneOn`, `everyoneOff`, `everyoneWithoutBody_*`, `everyoneStillWithout_*`,
+  `emails:signInRules.twoFactorDue.*`). A banner is «un aviso». A person who must act is
+  «cada una» after the count's «personas», with the verb in the singular. Their deadline is
+  «su fecha límite», and the email's facts label it «Fecha límite», since «Obligatoria a partir
+  del:» cannot stand before a colon. "Turns it on once" is «Se activa una sola vez».
+
+- **21 Oct 2026. Company domain joining** (`domainJoining.*`, `companyDomains.*`,
+  `messages:domain_joining.*`, sc-4434). The act is «solicitar unirse», the button «Solicitar
+  unirse», and the wait «Pendiente de aprobación», as the Members state. The approver is
+  «alguien de la organización», never «de allí»; what waits is «su solicitud», so nothing
+  needs «le» to agree. "… instead" buttons are «Prefiero …». The setting is «Unirse por
+  dominio de empresa»; a working domain «Admite solicitudes», a stopped one «Sin efecto».
+  A domain is masculine: «Conservarlo», «Se ha quitado {{domain}}». Dev's draft of
+  `errors:join_offer_unavailable` used «tú»; it now says «usted», as everything else.
+
+- **21 Oct 2026. Members in the app** (`mobile:membersScreen.*`, sc-4259). A member is
+  «miembro»; the screen is «Miembros», and a role here is «rol», as «Miembros y roles» on the
+  Roles screen. A person's state never agrees with them: «Con acceso», «Pendiente de
+  aprobación», «Acceso suspendido», «Ha salido», «Acceso retirado», and in the row line «en
+  suspenso desde el {{date}}», «salió el {{date}}». Groups on the chips take the plural,
+  «Todos», «Suspendidos», «Antiguos». Removing a member is «quitar a {{name}}», while a role is
+  «eliminado» on the Roles screen. "On their next request" is «en cuanto vuelva a usar Soirely», since «solicitud»
+  reads as a request to join. An owner named in a sentence is «alguien con el rol
+  Propietario», as «la función Propietario» in sc-3490 avoids «el propietario».
+- **21 Oct 2026. Invitations waiting on Complete your profile** (`completeProfile.*`, web and
+  app, sc-4188). Waiting is «pendiente». With several, "join that organisation" is «unirse a la
+  organización que le invita», since «esa» after «una» reads as nobody's. A button named in a
+  sentence goes in «», with the verb: "Pulse «Guardar y continuar» para entrar en ella". "Nothing
+  is waiting" says what is gone, «No queda ninguna invitación pendiente». "Accept an invitation above" is «acepte una invitación
+  pendiente», the word the intro uses, not «acepte arriba», which reads stiffly. `_many` as the
+  25 Oct entry says.
+
+- **21 Oct 2026. Starting your own organisation** (`noOrganisation.start*`, web, and the app
+  once sc-5932 adds it, sc-6897). "Start" is «crear», since «iniciar una organización» is not
+  Spanish: the heading is «Cree su propia organización», the button «Crear organización», as
+  `createOrganisation.create`. The help and the derived-settings line are `createOrganisation`'s
+  words, so both screens say the same.
+
+- **21 Oct 2026. Creating another organisation** (`createOrganisation.*`, web and app, sc-3490).
+  "You will be its owner" is «Usted tendrá la función Propietario», the role and not
+  «su propietario», which assumes a man. The rate limit says what happened, «Por ahora no se
+  pueden crear más organizaciones», not «Demasiadas organizaciones nuevas», which reads as a
+  fragment. A path in Settings is «Configuración > General» on the web and «Ajustes > General» in the app (sc-34869); «cambiarlas» agrees with moneda,
+  zona horaria and dirección, all feminine.
+
+- **21 Oct 2026. The organisation's language (sc-3311, `orgGeneral.language*`, web and app).**
+  The label is «Idioma», as the English "Language"; if English lengthens it to "Language for
+  invitations", it becomes «Idioma de las invitaciones». "Invitation emails" are «los correos de invitación»,
+  and the people are «quienes no tienen cuenta de Soirely». Language names are «Inglés,
+  Español, Francés, Portugués» as options and lower case in a sentence («se envían en
+  francés»). A refused save is «No se ha guardado nada.» and the server's
+  `permission_required` words unchanged.
+- **21 Oct 2026. The re-proof's step two after a provider sign-in** (`waysCard.signedInWith`,
+  `codeKeepsSignIn_*`, sc-2908). The status box is «Sesión iniciada con {{provider}}», a state
+  rather than «Ha iniciado sesión», with no full stop. Under the code field: «Si se equivoca de
+  código, no tendrá que volver a {{provider}}. Su inicio de sesión con {{provider}} es válido
+  durante {{count}} minutos.» A condition about the person, not «un código incorrecto no le
+  hace volver», which is literal and needs «le». A window is «es válido durante», not «dura».
+- **19 Oct 2026. Sign-in rules are «Normas de inicio de sesión»** (`signInRules.*`, web and
+  app, and `emails:signInRules.*`, sc-3030). «Normas», not «reglas», because they are set by
+  an organisation for its members. A member held back by one «podrá consultar, pero no cambiar
+  nada», the same words on the banner, the owner's preview and the email. Where a list of
+  names is the subject (`effectStranded`'s `{{names}}`, one name or several), the sentence is
+  impersonal, «Afecta a {{names}}: … se puede consultar…», so no verb has to agree with a count
+  the string does not have. "Turn on two-factor" is «Activar la verificación en dos pasos», as
+  `twoFactorCard.turnOn`, and a sentence says «la active». "The shortest of your organisations"
+  is «la más estricta», since the shortest limit is the strictest rule and «la más corta» reads
+  as a short rule. People who can manage are «quienes puedan gestionar»; roles are «roles»,
+  as on the Roles screen.
+
+- **18 Oct 2026. The contact cap says the refusal's words.** Under each Account card:
+  «Puede añadir una más» / «uno más», then «Una cuenta admite hasta {{most}} direcciones de
+  correo electrónico, incluida la principal» / «… números de teléfono, incluido el
+  principal»; when full, «Tiene {{most}}, el máximo que admite una cuenta. Quite una para
+  añadir otra.» / «Quite uno para añadir otro.» «Admite» and «Quite una…» as the server's
+  `contacts.limit_*` and the card's `limit*` already say it, so the line and the refusal
+  read alike. The number before the noun is left to the card title, as the English does;
+  the gender of «una», «incluida» and «otra» is why each card has its own key
+  (`contacts.cap*`, sc-2149).
+
+- **18 Oct 2026. An alternative address or number, verified from Account.** "Alternative"
+  is «alternativa» / «alternativo», a plain Spanish adjective here, never «secundaria», which
+  ranks it. The verified line agrees with the noun: «{{address}} está verificada», because
+  the sentence goes on «una dirección alternativa… hasta que la haga principal», and
+  «{{number}} está verificado». "It stays" is «Seguirá siendo», since it was alternative
+  before it was verified. A section is its bare label after «a» and «en», as «volver a
+  Seguridad» already says it: «Volver a Cuenta», «en Cuenta». "Remove it in Account" after
+  the question is the infinitive, «Quitarla en Cuenta» / «Quitarlo en Cuenta», the shape of
+  «¿Número equivocado? Cambiarlo» (`verifyEmail.doneBodyAlternative`,
+  `verifyPhone.doneBodyAlternative`, `contacts.verifiedDone*`, `contacts.backToAccount`,
+  `contacts.removeInAccount*`, sc-2594).
+
+- **18 Oct 2026. Who decides, for someone who cannot.** A line shown to a viewer without the
+  power names who has it with `lockedLine`'s words, «alguien que pueda cambiar {{area}}»,
+  and never «Usted»: «Lo que incluye lo decide alguien que pueda cambiar {{area}}» is the
+  twin of «Usted decide lo que incluye». A read-only twin keeps its editable line's first
+  sentence word for word and drops what the viewer cannot do («Creado por {{name}}.»).
+  Rejected «Quien pueda cambiar…», shorter but a second wording for the same power
+  (`rolesScreen.describeSeededReadOnly`, `describeCustomReadOnly`, sc-2472).
+
+- **18 Oct 2026. The Roles refusals speak the Roles screen's words.** «Rol», «predefinido»
+  and «eliminar» for a role, because the screen already says «Eliminar rol» and
+  «Predefinido»; a server refusal and the screen's own check say the same sentence
+  (`roles.name_required` = `rolesScreen.nameBlank`, `roles.name_too_long` =
+  `rolesScreen.nameTooLong`). A length limit is «Acorte el nombre a {count} caracteres como
+  máximo», where the plural always reads right, since a limit is never 1. «General» and «Roles» are the Spanish words, so they are in
+  `same-as-english.json` (sc-2150).
+
+- **18 Oct 2026. A phone number is «número de teléfono»; the one we text is «de móvil».**
+  The Account card and its lists, limits and refusals say «Números de teléfono», because an
+  alternative may be a landline; the field we send an SMS code to keeps «Nuevo número de
+  móvil», as the phone screens' «Número de móvil» does. The rule against «teléfono» is for a
+  phone as a device (`devices.app*`), not for a number. "Make primary" is «Hacer
+  principal», short enough for the row button; "Make another one primary first" puts
+  «Antes» first and names the noun, «Antes, haga principal otra dirección» / «… otro
+  número». A key shared by addresses and numbers takes no gender: «Quitar», «Conservar»,
+  «Sin verificar», «Este dato ya está vinculado…». Since the number card has its own
+  `verifiedPhone`, «Verificado», the address card's `verified` agrees with «dirección»:
+  «Verificada». "Remove" is «Quitar», never «Eliminar», because the address still exists (sc-2149).
+
+- **18 Oct 2026. The new-device email.** The subject is «Nuevo inicio de sesión en
+  Soirely», a noun phrase that fits a phone inbox. The body puts the device first, «Un
+  dispositivo que nunca había iniciado sesión en su cuenta de Soirely acaba de hacerlo.»,
+  because «acaba de» says "just" without a time adverb. "Network address" is «Dirección de
+  red», not «Dirección IP», as the English chose the plain word. Its facts reuse
+  `twoFactorRecovery.fact.*` («Cuándo:», «Dispositivo:»). "Sign out … from Security" is
+  «vaya a Seguridad y cierre la sesión en …», because «desde Seguridad» at the end reads as
+  if the devices were not recognised from there. «Si no fue usted» as in the provider emails
+  (sc-1283).
+
+- **18 Oct 2026. The app as a device is «Aplicación de Soirely en …».** «Aplicación de
+  Soirely en iPhone», «… en iPad», «… en un móvil Android», «… en una tableta Android»
+  (`devices.app*`, `password.device.app*`). «Aplicación» rather than «app» for the formal
+  register; the article before «móvil» and «tableta» because they name a kind of device,
+  where iPhone and iPad are names. «Móvil», never «teléfono» or «celular» (sc-1283).
+
+- **18 Oct 2026. "Sign out everywhere else" is «Cerrar las demás sesiones».** Shorter than
+  «Cerrar sesión en los demás dispositivos», so it fits the phone button, and it is how
+  Spanish interfaces already say it. The confirm buttons follow `devices.end`: «Cerrar su
+  sesión» / «Cerrar sus sesiones», and «Cerrar las {{count}} sesiones» when this device is
+  among them; "Keep it/them signed in" is «Mantener la sesión» / «Mantener las sesiones».
+  "Nothing was signed out" is «No se ha cerrado ninguna sesión», the perfect because it has
+  just happened; the result lines keep the preterite of `passwordCard.done_*`. A disabled
+  "Try again at {{time}}" button is «Reintentar · {{time}}» (since sc-37178), short where a sentence would
+  say «Inténtelo de nuevo» (sc-1193).
+
+- **17 Oct 2026. A picker's search field is «Buscar» and the plural noun.** «Buscar
+  monedas», «Buscar zonas horarias», as the country picker's «Buscar países» already says
+  (`orgGeneral.searchCurrency`, `orgGeneral.searchTimezone`). The Settings row line follows
+  its siblings: lower case after the «·», «nombre, dirección de contacto, moneda, zona
+  horaria»; the tablet pane's line names each section as «X reúne…», so Organisation is
+  «Organización reúne la configuración de {{name}}», where «de» needs no agreement with the
+  name (sc-1585). The email-address refusal was already formal without a contraction, so
+  it stays as it is.
+
+- **17 Oct 2026. A minute count in the API catalogue takes no agreement.** The API's
+  catalogues have no ICU plural, so `{minutes}` sits where the plural reads right at 5:
+  «en los últimos {minutes} minutos» (`messages:proof.required`). "Continue with {provider}
+  again" is «Vuelva a iniciar sesión con {{provider}}», which names what happens rather than
+  quoting the button (`waysCard.proofExpired_*`). The provider emails' "If this wasn't you"
+  stays «Si no fue usted», as their `notYou` siblings say it (sc-1315).
+
+- **17 Oct 2026. "You're signed in" is «Ha iniciado sesión».** On the app's Home
+  (`home.signedIn`, `home.signedInTo`: «Ha iniciado sesión en {{name}}»). The English
+  contraction is warmth; Spanish carries it in the plain perfect, still _usted_, and «en»
+  needs no agreement with the organisation's name. "Open Settings" is «Abrir
+  Ajustes» (sc-34869; was «Abrir Configuración», sc-1420), with the capital because it names the tab.
+
+- **17 Oct 2026. A device's state, not its timing.** Signed-out devices are described as
+  done: «Se cerró la sesión en sus otros dispositivos.» with no delay or "hasta 15 minutos",
+  matching the English (sc-117). When the subject is a device that must sign in again, use
+  the impersonal «En ese dispositivo habrá que volver a iniciar sesión», never «tendrá que»,
+  which reads as if _usted_ had to (`devices.signInAgain`).
+- **17 Oct 2026. One sentence for "every other device has been signed out".** In an email
+  it is «Se ha cerrado la sesión en todos los demás dispositivos.», the perfect tense for a
+  report that has just happened, and identical in the password-changed and recovery emails
+  (`password.changed.devices`, `recovery.changed.body`). On screen, where the person has
+  just pressed Save, the preterite «Se cerró la sesión en sus otros dispositivos» stays
+  (`passwordCard.done_*`).
+- **17 Oct 2026. A replaced request.** The mark is «Sustituida», feminine like «Cancelada»
+  and «Rechazada» because it agrees with «solicitud», and the verb matches `resendNote`
+  («sustituyen»). "Start again" is «Empezar de nuevo» on the button and «Empiece de nuevo» in
+  a sentence. A request started elsewhere is reported in the perfect, «Se ha iniciado…», on
+  screen and in `errors:recovery_request_replaced` alike. The daily limit is worded as
+  `limitedBody` words it: «una de las 3 veces al día que puede pedirlo» (sc-1457).
+- **25 Oct 2026. Moving the people off a removed role** is worded so it reads for one person
+  or many, because the button and the refusal get no {{count}}: «Reasignar y eliminar {{role}}»,
+  and «Elija el rol de sustitución», the same noun as the legend «Rol de sustitución». Not
+  «Pasarlas…» or «estas personas» after «1 persona tiene este rol» (sc-13017).
+  The line under the chosen role, `rolesScreen.removeAfter`, takes the role as subject and an
+  infinitive: «El rol {{role}} se aplica al volver a usar Soirely», not «Pasan a ser…» (sc-14755).
+- **26 Oct 2026. The beyond-grant line names access** (`membersScreen.beyondGrant`, sc-13089). «… así que no puede cambiarle el rol ni el acceso»: the «le» points at the member, so neither noun takes «su», which would read as the reader's.
+- **26 Oct 2026. A security email's subject opens on the feature, then its state**
+  (`emails:twoFactor.on.subject`, `twoFactor.off.subject`, sc-14100): «Verificación en dos pasos
+  activada» / «desactivada», a pair that differs only in its last word. «Se ha desactivado la
+  verificación en dos pasos» ran past one line of a 360dp inbox row and hid the state.
+- **27 Oct 2026. An event's dates are «el calendario», never «el programa»** (`timeline.*`,
+  sc-15756). «Programa» is the organiser's Schedule (epic 33); the list of an event's dates is
+  «Todas las fechas» (sc-19010, after the English became All dates; «calendario» alone is the organisation's Calendar), its panel «Próximas fechas»; «Cargando las fechas…», «No se han podido cargar las fechas.» The owner pill «You» is «A su cargo»,
+  because a bare «Usted» reads as a form field. Distances follow the date: «hoy», «dentro de
+  3 días», «hace 2 días». The API titles put the verb first: «Empieza {name}», «Termina {name}».
+- **27 Oct 2026. Las pestañas de Eventos y sus estados vacíos** (sc-15981 para sc-3594,
+  `events.*`, `eventsScreen.*`). Las pestañas son «Próximos», «Borradores» y «Pasados», en
+  masculino con «eventos». "Make live" sigue siendo «publicar»; "Called off on" es «Cancelado el
+  {{date}}». "Next up" es «Lo próximo», como `timeline.nextUp`. El botón mientras carga dice
+  «Cargando más…», no «Mostrando más…». `moreFailed` repite la segunda frase del fallo de carga
+  de su propia pantalla, como en inglés.
+- **28 Oct 2026. The two-factor-due subject opens on the deadline**
+  (`emails:signInRules.twoFactorDue.subject`, sc-15219): «Antes del {deadline}: verificación en
+  dos pasos en {organisation}». «Verificación en dos pasos» before the date took 36 characters
+  and a 390 px inbox cut inside the weekday (qa2, #18836); «Antes del» takes 10, so the date and
+  time show at 360 px. A subject whose news is a deadline opens on it; the rest keep the feature
+  first (sc-14100).
+- **27 Oct 2026. La página de datos nombra la regla, no la función** (sc-16443 para sc-16265,
+  `orgGeneral.readOnlyUntil*`, `refusedByRule`). Cada línea abre con la regla en las palabras
+  del aviso (`signInRules.unlinkedBody`, `gateBody`, sin «ahora») y cierra con las de
+  `orgGeneral.readOnly`: «puede ver estos datos pero no cambiarlos». Un guardado que la regla
+  rechaza dice solo «No se ha guardado nada.», como el comienzo de `refused`.
+- **27 Oct 2026. El hito de un evento cancelado** (sc-16725 para sc-16709,
+  `messages:timeline.event_called_off`). «Se cancela {name}», con el verbo delante como
+  «Empieza {name}» y «Termina {name}», y sin concordar con un nombre cuyo género no conocemos.
+- **27 Oct 2026. Un recuento de borrado que falla** (`ownership.deleteUncounted`,
+  `ownership.deleteRetry`, web y app, sc-16928 para sc-16866). «No se ha podido calcular lo que
+  contiene», con el verbo de `deleteLoading`. Restaurar es «restaurarla», como `deleteWindow`,
+  y el plazo fijo «durante 30 días». El botón es «Reintentar», como el de la pantalla Eventos.
+- **29 Oct 2026. Una dirección de correo mal escrita se rechaza con una sola frase**
+  (`forms.emailShape`, `orgGeneral.contactInvalid`, `membersScreen.emailShape`, web y app, y
+  `validation.email_invalid`, `validation.contact_address_invalid`,
+  `validation.invite_email_invalid`, sc-20577): «Eso no parece una dirección de correo
+  electrónico. Compruebe que tiene una @ y un dominio.» El inglés de todas es el mismo, así que
+  el español también; se descartaron «un correo electrónico» (es un mensaje, no una dirección) y
+  «una dirección de correo» (el glosario dice _correo electrónico_).
+- **31 Oct 2026. El aviso y su «Guardado»** (`toast.undo`, `toast.close`, `saveLabel.saved`,
+  web y app, sc-24571 para sc-22092). La acción del aviso es «Deshacer» y su botón de cierre se
+  anuncia «Cerrar». El botón de guardar pasa a «✓ Guardado», en masculino invariable, porque
+  el botón no sabe qué se guarda; se descartó «Cambios guardados», demasiado largo para el
+  botón del teléfono.
+- **1 nov 2026. El Calendario de la organización** (`calendar.*`, `nav.calendar`,
+  `frame.calendar`, web y app, sc-25787 para sc-3625). «Calendario» a secas es el de la
+  organización; las fechas de un evento siguen siendo «Todas las fechas». Las vistas son «Mes» y
+  «Agenda» (igual que en inglés, en `same-as-english.json`), con el grupo «Vista». El filtro dice
+  «Eventos e hitos» | «Solo eventos», «hito» como `timeline.*` («e» ante «hi»). Un
+  intervalo es «Del {{from}} al {{to}}»; la celda llena dice «+{{count}}», sin más: «+43 más»
+  se cortaba en «+43 m…» en el iPhone SE (celda de unos 50 px) y pasaba a dos líneas en la web a
+  390 px (QA, 1 nov., como en francés). Bajo las barras, «+3» se entiende solo; el lector de
+  pantalla lee el nombre del día, que da el número de elementos. El mes vacío abre con el mes, «En {{month}} no hay nada en
+  el calendario.», para no repetir «en el calendario en». «Elemento» cuenta eventos y fechas a la
+  vez en el nombre del día para el lector de pantalla.
+- **1 nov 2026. Suscribirse al Calendario** (sc-25960 para sc-3626, `calendarFeed.*`, web y app;
+  `messages:calendar_feed.*`; `messages+intl-icu:limits.calendar_feed`). «Suscribirse en su
+  aplicación de calendario»; en la cabecera del teléfono, «Suscribirse». El enlace es «su enlace
+  privado», masculino («Cópielo», «Conservar este enlace»), y se «restablece», como la
+  contraseña. Las aplicaciones se nombran como las ve el usuario: «Google Calendar, Calendario de
+  Apple u Outlook»; la tecla del Mac es «Comando». Los estados del calendario suscrito son los de
+  la lista de eventos, en masculino con «evento»: Borrador, Publicado, En pausa, Finalizado,
+  Cancelado, Eliminado. "Dietary notes" es «Las notas sobre alimentación». El límite concuerda el
+  artículo con la hora, como `limits.tries`.
+- **13 nov 2026. Añadir al calendario en la página del invitado** (sc-45546 para sc-3627,
+  `web:guest.calendar*`). El título es «Añadir a su calendario», con «su» para que no se lea como
+  el Calendario de la organización. La línea empieza por la condición, «Si cambian la fecha, la
+  hora o el lugar, su calendario se actualiza automáticamente.»: «se actualiza solo si…» se lee
+  como «únicamente si». Los botones nombran las aplicaciones, «Apple / Outlook» y
+  «Google Calendar», iguales al inglés (`same-as-english.json`).
+- **La banda sin conexión** (sc-22586, sin artículo desde sc-37178): «Sin conexión · actualizado: {{time}}», y «…
+  actualizado: {{day}}, {{time}}» cuando la carga fue otro día. «Actualizado» dice de cuándo es lo que se ve, en
+  vez de calcar «as of». Mientras se reintenta, «Actualizando…», como en la app.
+- **El marco de las páginas sin sesión** (sc-29037): "New to Soirely?" es «¿Aún no tiene cuenta?»,
+  antes de «Crear una cuenta»; «¿Es nuevo…?» concuerda con un género. «© {{year}} Soirely» queda
+  igual que en inglés. El botón de idioma se lee «Idioma: {{language}}».
+- **Cancelar una solicitud para volver a entrar** (sc-29979): «¿Cancelar su solicitud?»; la salida es «Seguir esperando», nunca «Cancelar», y la confirmación reutiliza «Cancelar la solicitud».
+- **El estado de un control rechazado, solo para el lector de pantalla** (`mobile:forms.invalid`, sc-31909): «Datos no válidos», tras el nombre del control («País, Datos no válidos»). Es lo que VoiceOver dice en la web; no concuerda con el género del nombre, que puede ser masculino o femenino.
+- **El plano de mesas** (sc-33304 para sc-3998, `seating.*`, `messages:seating.*`): el área es «Mesas» y lo que se dibuja, «el plano de mesas» («el plano» dentro del área); "Floor plan" es «Plano». Una "section" es una **zona**, nunca «sección», que en Soirely es una parte de la configuración: «Añadir una zona», «Sin zona», «Conservarla». Ancho y largo de la sala, como sustantivos. El lugar abre la línea de unidades como etiqueta, «Lugar: {{venue}}.», para que ninguna preposición tenga que concordar con el nombre. "Seated" no concuerda con el género del invitado: «invitados con asiento pasan a Sin asiento». «Esto también elimina {{counts}}.» no concuerda en número con la lista. Los colores: Azul, Morado, Ciruela, Vino, Rosa, Marrón, Verde oliva, Verde petróleo. La pista de pies usa la coma decimal y las abreviaturas de CLDR: «12 ft 4 in, 12,5 ft».
+- **9 nov. 2026. Personalización** (sc-34920 para sc-30441, `web:personalisation.*`,
+  `mobile:personalisation.*`, `mobile:settings.personalisation*`,
+  `messages:validation.colour_scheme_unknown`). La elección es «sus colores», en plural, para
+  que nada concuerde con el nombre de la combinación: «Los ha elegido usted. Los de Soirely son
+  {{own}}.», «No se ha guardado {{picked}}. Sus colores siguen siendo {{kept}}.». Solo la
+  negativa de la API dice «combinaciones de colores». Los ocho nombres: Violeta, Cobalto, Jardín,
+  Cítricos, Frutos rojos, Gala (Black tie, el código de vestimenta; «Etiqueta» se leería como
+  rótulo), Sorbete y Terracota. Sin conexión es «porque no tiene conexión», como la banda.
+- **9 Nov 2026. Los títulos de las hojas de añadir en la app** (sc-35661, `mobile:contacts.addEmail`,
+  `addPhone`). La misma clave es el enlace junto al título de la sección y el título de la hoja:
+  «Añadir correo» y «Añadir número», sin artículo, como en los ajustes de Android; la sección ya
+  dice de qué. Rechazado «Añadir una dirección de correo electrónico», que se cortaba en un móvil.
+- **10 Nov 2026. El título de la hoja de verificar el número en la app** (sc-35661,
+  `mobile:verifyPhone.title`). «Revise su móvil», como «Revise su correo»: el mismo título sirve
+  al SMS y a WhatsApp, así que no nombra ninguno. Caben unos 16 caracteres entre Cancelar y
+  Verificar en un Android de 360 dp; «Revise sus mensajes» se cortaba.
+- **10 Nov 2026. El título de la hoja de activar la verificación en dos pasos en la app** (sc-34792,
+  `mobile:security.setupTitle`). «Doble factor», el nombre corto que se usa en España, y el botón de
+  la derecha ya dice «Activar». Caben unos 16 caracteres entre Cancelar y Activar en un Android de
+  360 dp: «Verificación en 2 pasos» (9 Nov) se cortaba en «Verificación en 2 p…», y antes «Activar la
+  verificación en dos pasos». Solo en esta cabecera; el texto corrido sigue diciendo «verificación
+  en dos pasos». `web:security.setupTitle` sigue
+  completo, porque el escritorio tiene sitio.
+- **11 Nov 2026. «Otros» va antes del número** (sc-35456, `everywhereLine_*`, `everywhereBody_*`,
+  `everywhereDone_*`, `password.done_*`, web y app). «sus otros {{count}} dispositivos», como
+  «mis otros dos hermanos»; «sus 2 otros dispositivos» suena traducido (QA, 11 Nov). `_many`:
+  «sus otros {{count}} de dispositivos». Vale para cualquier cuenta con «otros».
+- **11 Nov 2026. «Añadir a mi aplicación de autenticación»** (sc-40162, `mobile:twoFactorCard.addToApp`).
+  El botón habla como el miembro, «mi», igual que «He guardado estos códigos…»; el resto del paso
+  dice «su aplicación de autenticación». «Añadir», como `phoneSetupTitle`, nunca «Agregar». En el
+  teléfono puede ocupar dos líneas centradas; en el iPad, una.
+- **13 Nov 2026. La lista de invitados del anfitrión y Añadir invitado** (sc-43267 para sc-1468, `web:guestList.*`, `eventDelete.removesGuests_*`, los `validation.guest_*`, `guest.already_listed` y `errors:guest_already_listed` de la API). Un acompañante sin nombre es «Acompaña a {{host}}», y «Acompaña a {{host}} · {{nth}}» desde el segundo: el verbo no marca género, como sí haría «Invitado de». Lo mismo en «Se ha añadido a {{name}}.» y «No se ha añadido.». Las respuestas: «Viene», «Por confirmar», «No viene», «Sin respuesta», «En espera». Un límite es la misma frase en pantalla y desde la API. `eventPeople.done` pasa de «Hecho» a «Listo», como manda el 26 Oct.
+- **13 Nov 2026. Quitar a un acompañante sin nombre** (sc-43267, `web:guestList.removeCompanionOf(+Nth)`, solo para el lector de pantalla). «Quitar a quien acompaña a {{host}}»: sin «Quitar a Acompaña a», y sin «al acompañante», que marcaría género.
+- **13 Nov 2026. El invitado responde en su página y la cambia** (sc-43807 para sc-1439, `web:guest.*`, `web:guestList.replied`, `guest.replies_closed` y `validation.guest_answer_unknown` de la API). La palabra de la respuesta es la del anfitrión, «Viene», «No viene», «Por confirmar», que con _usted_ se lee también como la del invitado; dentro de una frase va entre comillas: «Respondió «Viene» el {{date}}.», «Su respuesta ya era «{{answer}}».». Los botones hablan en primera persona: «Sí, allí estaré», «Lo siento, no puedo», «Aún no lo sé». "Contact your host" es «contacte con quien organiza el evento»: «el anfitrión» marcaría género y número. «Le echaremos de menos» y «No llegó a responder» no concuerdan con nadie. La marca de la fila elegida es «Respuesta actual», sin «Su», para que quepa junto a «Lo siento, no puedo» en el móvil.

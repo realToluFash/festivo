@@ -1,0 +1,40 @@
+# From welcome, Create an account opens Create your account with no Google or Apple; blank, then a new account, keys up, then the step after. Needs NEWEMAIL, ${METRO_URL}. sc-29076.
+#
+#   node .qa/bin/qa-env.mjs maestro sc29076-qa-register --android NEWEMAIL=…
+appId: host.exp.Exponent
+---
+- runFlow: welcome-signed-out.yaml
+- tapOn:
+    id: 'welcome.register'
+- extendedWaitUntil:
+    visible:
+      id: 'register.name'
+    timeout: 30000
+- assertNotVisible: '.*Google.*'
+- assertNotVisible: '.*Apple.*'
+- takeScreenshot: qa-register-arrival
+- tapOn:
+    id: 'register.submit'
+- takeScreenshot: qa-register-blank
+- tapOn:
+    id: 'register.name'
+- eraseText: 120
+- inputText: 'Adébáyọ̀ Ọlábísí QA'
+- tapOn:
+    id: 'register.email'
+- eraseText: 120
+- inputText: ${NEWEMAIL}
+- tapOn:
+    id: 'register.password'
+- eraseText: 120
+- inputText: 'qa-register-password-29076'
+- takeScreenshot: qa-register-keys-up
+- tapOn:
+    id: 'register.submit'
+- waitForAnimationToEnd:
+    timeout: 8000
+- takeScreenshot: qa-register-after
+- back
+- waitForAnimationToEnd:
+    timeout: 5000
+- takeScreenshot: qa-register-after-back

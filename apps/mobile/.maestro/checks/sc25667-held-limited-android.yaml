@@ -1,0 +1,57 @@
+# Android only. sc-25667: on an account at its limit, Cancel and Back are gone and Android back does nothing while it sends; once Too many new organisations for now. shows, Cancel is live and leaves the walk by its Discard, and nothing named Held Limited is in the switcher.
+appId: host.exp.Exponent
+onFlowComplete:
+  - runScript:
+      file: ../batch/helper.js
+      env:
+        ASK: /api?to=up
+---
+- runFlow: ../open-create-organisation.yaml
+- runFlow:
+    file: ../walk-to-ready.yaml
+    env:
+      NAME: 'Held Limited'
+- runScript:
+    file: ../batch/helper.js
+    env:
+      ASK: /api?to=paused
+- tapOn:
+    id: 'createWalk.primary'
+- assertNotVisible:
+    id: 'createWalk.cancel'
+- assertNotVisible:
+    id: 'createWalk.back'
+- back
+- waitForAnimationToEnd:
+    timeout: 3000
+- assertVisible:
+    id: 'createWalk'
+- takeScreenshot: limited-held
+- runScript:
+    file: ../batch/helper.js
+    env:
+      ASK: /api?to=up
+- extendedWaitUntil:
+    visible: '{{t:createOrganisation.limitedTitle}}'
+    timeout: 30000
+- takeScreenshot: limited-answer
+- assertVisible:
+    id: 'createWalk.cancel'
+    enabled: true
+- tapOn:
+    id: 'createWalk.cancel'
+- tapOn:
+    id: 'createWalk.discard'
+- extendedWaitUntil:
+    notVisible:
+      id: 'createWalk'
+    timeout: 10000
+- tapOn:
+    id: 'home.switchOrganisation'
+- extendedWaitUntil:
+    visible:
+      id: 'switcher.heading'
+    timeout: 20000
+- waitForAnimationToEnd
+- assertNotVisible: '.*Held Limited.*'
+- takeScreenshot: limited-switcher
