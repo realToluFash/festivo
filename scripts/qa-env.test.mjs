@@ -119,6 +119,8 @@ import {
   runHeld,
   maestroTarget,
   missingCmdlineTools,
+  setupAgain,
+  unauthorizedWarning,
   withAvdRam,
   parseTarget,
   hardwareKeyboardOff,
@@ -1783,6 +1785,31 @@ describe('an emulator on another computer', () => {
     expect(said).toContain('laptop (me@laptop) has no Android SDK Command-line Tools');
     expect(said).toContain('Android SDK Command-line Tools (latest)');
     expect(said).toContain('Google Play');
+  });
+
+  it('names the tester when it says to run setup again', () => {
+    const host = { name: 'laptop', ssh: 'me@laptop', sdk: 'C:\\Sdk' };
+    expect(missingRemoteTools(host, 'Android Emulator', 4)).toContain(
+      '`node scripts/qa-env.mjs setup --tester 4` again',
+    );
+    expect(setupAgain(1)).toBe('`node scripts/qa-env.mjs setup` again');
+  });
+});
+
+describe('an unauthorized device on the shared adb server', () => {
+  it('names it, since maestro then calls our own emulator not connected', () => {
+    const devices =
+      'List of devices attached\nemulator-5578\tdevice\nemulator-5580\tunauthorized\n';
+    const said = unauthorizedWarning(devices, 'emulator-5578');
+    expect(said).toContain('emulator-5580 as unauthorized');
+    expect(said).toContain('emulator-5578 as not connected');
+    expect(said).toContain('step 2');
+  });
+
+  it('says nothing when every device is authorized', () => {
+    expect(
+      unauthorizedWarning('List of devices attached\nemulator-5578\tdevice\n', 'emulator-5578'),
+    ).toBeNull();
   });
 });
 
