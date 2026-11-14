@@ -212,11 +212,7 @@ final readonly class GuestRemovals
         return $erased;
     }
 
-    /**
-     * Their companions and needs go by the foreign keys' cascade. One audit entry for them all; removed together, it carries the counts.
-     *
-     * @param list<Guest> $hosts
-     */
+    /** @param list<Guest> $hosts their companions and needs go by the cascade; one audit entry, with the counts when removed together */
     private function eraseNow(array $hosts, string $action): void
     {
         if ([] === $hosts) {
