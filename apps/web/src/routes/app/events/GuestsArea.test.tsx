@@ -66,6 +66,7 @@ const NGOZI = guest('g_1', 'Ngozi Eze', {
   ],
 });
 const AMAKA = guest('g_2', 'Chief Amaka Obi', { reply: 'maybe' });
+const INVITED = { at: '2026-11-01T10:00:00+01:00', how: 'whatsapp', by: 'Folake Adeyemi' };
 
 function signedIn(): void {
   const session: Session = {
@@ -106,19 +107,21 @@ type Answer = (body: unknown) => Response | Promise<Response>;
 
 type Listed = ReturnType<typeof listOf>;
 
-/** sc-99's headcount for a list, as HeadcountCalculator counts it. */
+/** sc-99's headcount for a list, as HeadcountCalculator counts it: nobody waits on a reply until invited (sc-3788). */
 function headcountOf({ guests }: Listed) {
-  const companions = guests.flatMap((one) => one.companions.map(() => one.reply));
-  const count = (reply: string) => guests.filter((one) => one.reply === reply).length;
+  const asked = guests.filter((one) => one.invitation != null || one.reply !== 'noReply');
+  const companions = asked.flatMap((one) => one.companions.map(() => one.reply));
+  const count = (reply: string) => asked.filter((one) => one.reply === reply).length;
   const held = (reply: string) => companions.filter((host) => host === reply).length;
-  const onList = guests.length + companions.length;
+  const onList = guests.reduce((sum, one) => sum + 1 + one.companions.length, 0);
+  const invited = asked.length + companions.length;
 
   return {
     headcount: {
       counts: {
         onList,
-        notYetInvited: 0,
-        invited: onList,
+        notYetInvited: onList - invited,
+        invited,
         accepted: count('coming') + held('coming'),
         maybe: count('maybe'),
         awaitingReply: count('noReply'),
@@ -333,7 +336,7 @@ describe('Guests (sc-1468)', () => {
                 ? [
                     NGOZI,
                     guest('g_9', 'Bimpe', {
-                      companions: [{ id: 'c_9', fullName: null, state: 'held' }],
+                      companions: [{ id: 'c_9', fullName: null, state: 'notYetInvited' }],
                     }),
                   ]
                 : [NGOZI],
@@ -378,8 +381,9 @@ describe('Guests (sc-1468)', () => {
     expect(field('Full name').value).toBe('');
     expect(within(form()).getByText('None yet · 0 of 10')).toBeDefined();
     await waitFor(() => expect(document.activeElement).toBe(field('Full name')));
-    expect(await screen.findByText('4 coming of 6 invited')).toBeDefined();
-    expect(screen.getByText('2 haven’t replied (1 guest and 1 companion).')).toBeDefined();
+    expect(await screen.findByRole('button', { name: 'All · 6' })).toBeDefined();
+    expect(screen.getByText('4 coming of 4 invited')).toBeDefined();
+    expect(screen.getByText('Everyone has replied.')).toBeDefined();
     expect(screen.getByText('Bimpe Adeyemi')).toBeDefined();
     expect(screen.getByText('Not yet invited · bimpe@example.com · +44 7700 900123')).toBeDefined();
     expect(
@@ -832,6 +836,7 @@ describe('Finding a guest (sc-3772)', () => {
           json(
             listOf([
               guest('g_6', 'Kemi Bello', {
+                invitation: INVITED,
                 companions: [{ id: 'c_6', fullName: null, state: 'held' }],
               }),
             ]),
@@ -852,6 +857,7 @@ describe('Finding a guest (sc-3772)', () => {
         json(
           listOf([
             guest('g_6', 'Kemi Bello', {
+              invitation: INVITED,
               companions: [{ id: 'c_6', fullName: 'Tunde Bello', state: 'held' }],
             }),
           ]),
@@ -977,7 +983,7 @@ describe('Guests, live (sc-1468)', () => {
     );
 
     expect(source.url).toContain('topic=events%2Fev_1%2Fguests');
-    listed = listOf([AMAKA, guest('g_3', 'Tomás Ferreira')]);
+    listed = listOf([AMAKA, guest('g_3', 'Tomás Ferreira', { invitation: INVITED })]);
     source.publish(listed);
 
     expect(await screen.findByText('Tomás Ferreira')).toBeDefined();
