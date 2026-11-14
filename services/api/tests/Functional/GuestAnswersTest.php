@@ -76,7 +76,13 @@ final class GuestAnswersTest extends ApiTestCase
         $this->open($token);
 
         self::assertSame(200, $this->statusCode());
-        self::assertSame(['fullName' => self::ADAEZE, 'reply' => null, 'companions' => 1], $page['guest'] ?? null);
+        $obi = $this->companionsOn($token)[0]['id'] ?? self::fail('no companion');
+        self::assertSame([
+            'fullName' => self::ADAEZE,
+            'reply' => null,
+            'places' => 1,
+            'companions' => [['id' => $obi, 'fullName' => 'Obi Okonkwo', 'coming' => true, 'namedByGuest' => false]],
+        ], $page['guest'] ?? null);
         self::assertSame(true, $page['answersOpen'] ?? null);
         self::assertSame($list, $this->as($this->owner, 'GET', $this->guests()));
         self::assertSame($published, Iter\count(self::service(RecordingHub::class)->published));
@@ -449,7 +455,9 @@ final class GuestAnswersTest extends ApiTestCase
 
         self::assertSame(422, $this->statusCode());
         self::assertSame('companions', $this->last()['violations'][0]['propertyPath'] ?? null);
-        self::assertNull($this->row($guest)['companions'][1]['fullName'] ?? 'named');
+        $unnamed = Type\dict(Type\string(), Type\mixed())->coerce($this->row($guest)['companions'][1] ?? null);
+        self::assertArrayHasKey('fullName', $unnamed);
+        self::assertNull($unnamed['fullName']);
         self::assertSame('noReply', $this->row($guest)['reply']);
 
         $this->answerWith($token, 'coming', [['fullName' => '  Nneka Okonkwo-Williams ', 'coming' => true]]);
@@ -642,13 +650,14 @@ final class GuestAnswersTest extends ApiTestCase
      *
      * @return array<string, mixed>
      */
-    private function as(User $user, string $method, string $path, ?array $body = null): array
+    private function as(User $user, string $method, string $path, ?array $body = null, ?string $ifMatch = null): array
     {
         $who = self::em()->find(User::class, $user->getId()) ?? self::fail('no user');
         $this->client->request($method, $path, server: [
             'CONTENT_TYPE' => 'application/json',
             'HTTP_AUTHORIZATION' => 'Bearer ' . self::service(JWTTokenManagerInterface::class)->create($who),
             'HTTP_ACCEPT_LANGUAGE' => 'en',
+            ...null === $ifMatch ? [] : ['HTTP_IF_MATCH' => $ifMatch],
         ], content: null === $body ? null : Json\encode($body));
 
         return $this->last();
