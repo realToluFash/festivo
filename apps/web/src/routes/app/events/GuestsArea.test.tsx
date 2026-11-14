@@ -332,7 +332,9 @@ describe('Guests (sc-1468)', () => {
                 ? [
                     NGOZI,
                     guest('g_9', 'Bimpe', {
-                      companions: [{ id: 'c_9', fullName: null, state: 'held', namedByGuest: false }],
+                      companions: [
+                        { id: 'c_9', fullName: null, state: 'held', namedByGuest: false },
+                      ],
                     }),
                   ]
                 : [NGOZI],
@@ -1531,7 +1533,13 @@ describe('A guest’s details, and correcting them (sc-3773)', () => {
   it('names an unnamed companion’s Remove as the guest’s guest, as the add form does (sc-43267)', async () => {
     await editNgozi({
       'GET /api/events/ev_1/guests/g_1': () =>
-        tagged({ ...DETAILS, companions: [{ id: 'c_1', fullName: null, state: 'coming', namedByGuest: false }] }, '"1"'),
+        tagged(
+          {
+            ...DETAILS,
+            companions: [{ id: 'c_1', fullName: null, state: 'coming', namedByGuest: false }],
+          },
+          '"1"',
+        ),
     });
 
     expect(screen.getByRole('button', { name: 'Remove Ngozi Eze’s guest' })).toBeDefined();

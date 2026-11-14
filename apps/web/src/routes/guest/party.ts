@@ -66,7 +66,13 @@ export function added(party: Party): Party {
     ...party,
     people: [
       ...party.people,
-      { key: `new-${String(party.people.length + 1)}`, id: null, name, byGuest: true, coming: true },
+      {
+        key: `new-${String(party.people.length + 1)}`,
+        id: null,
+        name,
+        byGuest: true,
+        coming: true,
+      },
     ],
     adding: null,
     tried: false,
