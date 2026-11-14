@@ -2404,6 +2404,7 @@ async function resetForBatch(onAndroid, device) {
 }
 
 async function android(args) {
+  if (!CONFIG.simulated) throw new Error('the lan stack runs no emulator: use a tester stack');
   const tools = androidTools();
   const host = remoteHost();
   if (!existsSync(host ? tools.adb : tools.emulator)) {

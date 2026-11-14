@@ -387,8 +387,8 @@ through its own server, so the browser holds one token and talks to one address.
 ## An emulator on another computer
 
 A tester's stack, bundler and worker stay on this machine; with `emulatorHost` set on its role,
-only its emulator runs elsewhere. qa4's is the Windows laptop `tolufash-laptop`
-(192.168.132.114). `android` starts it there in one systemd user unit,
+only its emulator runs elsewhere. qa4's is the owner's Windows laptop, named in its
+`emulatorHost`. `android` starts it there in one systemd user unit,
 `soirely-qa<n>-emulator`, holding an ssh session that runs the emulator and carries its
 console and adb ports (5578 and 5579 for qa4) back here, so adb, `adb reverse`, screenshots
 and Maestro see `emulator-5578` as if it were local. `android --stop` ends the emulator, the
@@ -422,10 +422,13 @@ Two steps by hand, since they hold keys:
    `scp ~/.emulator_console_auth_token <host>:.emulator_console_auth_token`. `setup` says
    whether the two match.
 2. **This machine's adb key.** A Play image accepts only the keys it was given, and the host's
-   emulator hands it the host's. Boot the phone once with `android`, then on the device
-   accept this computer with **Always allow from this computer** (`adb -s emulator-5578
-exec-out screencap` shows the prompt; tap it with `adb shell input tap`). It lasts until the
-   AVD's data is wiped. Do the same once on the tablet.
+   emulator hands it the host's. Boot the phone once with `android`; until the device accepts
+   this machine's key, adb here sees it as `unauthorized` and refuses `shell` and
+   `exec-out`, so look and tap with the host's own adb, which the host's key already
+   authorizes: `ssh <host> %LOCALAPPDATA%\Android\Sdk\platform-tools\adb -s emulator-5578
+exec-out screencap -p > prompt.png` shows the prompt, and the same with
+   `shell input tap <x> <y>` ticks **Always allow from this computer** and taps **Allow**.
+   It lasts until the AVD's data is wiped. Do the same once on the tablet.
 
 After `adb kill-server` the next harness command announces the emulator to the new server
 itself (`host:emulator:<port>`), since adb only scans for emulators as it starts.
