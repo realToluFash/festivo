@@ -188,6 +188,8 @@ export const SETTINGS_PAGES: readonly { name: string; states: readonly DemoLink[
       members('menu', 'The filter menu open'),
       members('nobodySuspended', 'Nobody is suspended'),
       members('nobodyLeft', 'Nobody has left'),
+      members('ninetyNine', '104 people, +99 beside the faces'),
+      members('crowd', '1,326 people, 99+ beside the faces'),
       members('invited', 'Invited'),
       members('revoked', 'After Revoke'),
       members('loading', 'Loading'),

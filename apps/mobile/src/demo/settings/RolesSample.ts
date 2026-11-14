@@ -272,7 +272,7 @@ export function suspendedHolder(name: string): boolean {
 }
 
 export function people(count: number): string {
-  return count === 1 ? '1 person' : `${count} people`;
+  return count === 1 ? '1 person' : `${count.toLocaleString('en')} people`;
 }
 
 export function describeRole(role: Pick<DemoRole, 'owner' | 'builtIn'> | null): string {
