@@ -2899,7 +2899,7 @@
     "countCompanions_other": "{{count, number}} acompañantes",
     "countCompanions_many": "{{count, number}} de acompañantes",
     "everyoneReplied": "Ya han respondido todos.",
-    "find": "Buscar",
+    "find": "Buscar invitados",
     "clearSearch": "Borrar la búsqueda",
     "shown": "Mostrando {{shown, number}} de {{total, number}}",
     "clear": "Borrar",
