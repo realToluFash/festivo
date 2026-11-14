@@ -38,7 +38,7 @@ export type GuestNotice =
   | { kind: 'failed' }
   | null;
 
-/** A guest's details (sc-3773's content and order): their name, Reply, then Details with Edit; contact and Language only for those who can edit guests. */
+/** A guest's details (sc-3773's content and order): their name, Reply, Details with Edit, then Invitation; contact and Language only for those who can edit guests. */
 export function GuestDetails({
   pane,
   manages,
@@ -188,23 +188,6 @@ export function GuestDetails({
       {notice?.kind === 'refused' && <AlertLine text={notice.line} />}
       {notice?.kind === 'offline' && <AlertLine text={t('guestList.offlineRefused')} />}
       {notice?.kind === 'failed' && <AlertLine text={t('guestList.loadFailedLine')} />}
-      {invitation != null ? (
-        <InvitationBlock
-          guest={guest}
-          timeZone={timeZone}
-          offer={invitation}
-          markRef={markRef}
-          unmarkRef={unmarkRef}
-          onMark={onMark}
-          onUnmark={onUnmark}
-        />
-      ) : (
-        !manages && (
-          <Text size={15} weight="medium" style={styles.secondary} testID="guest.readOnly">
-            {t('guestList.readOnlyInvited')}
-          </Text>
-        )
-      )}
       <View>
         <BlockHead title={t('guestList.replyHeading')} />
         <Row
@@ -234,6 +217,23 @@ export function GuestDetails({
         />
         {rows.length > 0 && <RowList items={rows} />}
       </View>
+      {invitation != null ? (
+        <InvitationBlock
+          guest={guest}
+          timeZone={timeZone}
+          offer={invitation}
+          markRef={markRef}
+          unmarkRef={unmarkRef}
+          onMark={onMark}
+          onUnmark={onUnmark}
+        />
+      ) : (
+        !manages && (
+          <Text size={15} weight="medium" style={styles.secondary} testID="guest.readOnly">
+            {t('guestList.readOnlyInvited')}
+          </Text>
+        )
+      )}
     </View>
   );
 }
