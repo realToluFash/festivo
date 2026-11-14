@@ -1677,6 +1677,7 @@
     "venueAddressTooLong": "Encurte a morada para um máximo de {{most, number}} caracteres.",
     "searchType": "Pesquisar tipos de evento",
     "timesIn": "Horas no fuso horário {{zone}}",
+    "notChosen": "Not chosen",
     "pickerDone": "OK",
     "created": "O evento foi criado. A abrir o evento.",
     "leaveBody": "O que escreveu para este evento vai perder-se.",

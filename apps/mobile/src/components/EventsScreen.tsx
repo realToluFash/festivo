@@ -23,6 +23,7 @@ import { api } from '../api.ts';
 import { dateLocale } from '../i18n/index.ts';
 import { DESTINATION_HREF } from '../kit/appNav.ts';
 import { eventHref } from '../kit/eventNav.ts';
+import { DUPLICATING } from '../kit/eventDuplicate.ts';
 import { takeDeleted } from '../kit/eventSaved.ts';
 import { hasNoEvents } from '../kit/eventsOpen.ts';
 import { useServerNow } from '../kit/serverNow.ts';
@@ -394,7 +395,7 @@ export function EventsScreen() {
                 router.push(`/events/${id}/edit?at=starts`);
               } else if (step.action === 'duplicate') {
                 setDeleted(null);
-                router.push(`/events/${id}/duplicate`);
+                router.push(`/events/${id}?${DUPLICATING}=1`);
               } else {
                 openEvent(event.id, event.phase === 'happening_now');
               }

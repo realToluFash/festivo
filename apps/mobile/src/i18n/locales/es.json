@@ -1677,6 +1677,7 @@
     "venueAddressTooLong": "Acorte la dirección a {{most, number}} caracteres como máximo.",
     "searchType": "Buscar tipos de evento",
     "timesIn": "Horas en {{zone}}",
+    "notChosen": "Not chosen",
     "pickerDone": "Listo",
     "created": "Se ha creado el evento. Abriéndolo.",
     "leaveBody": "Se perderá lo que ha escrito para este evento.",

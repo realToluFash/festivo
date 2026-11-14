@@ -1677,6 +1677,7 @@
     "venueAddressTooLong": "Raccourcissez l’adresse à {{most, number}} caractères maximum.",
     "searchType": "Rechercher un type d’événement",
     "timesIn": "Heures dans le fuseau {{zone}}",
+    "notChosen": "Not chosen",
     "pickerDone": "OK",
     "created": "L’événement a été créé. Ouverture en cours.",
     "leaveBody": "Ce que vous avez saisi pour cet événement sera perdu.",

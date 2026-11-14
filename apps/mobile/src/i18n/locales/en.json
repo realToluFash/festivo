@@ -1624,6 +1624,7 @@
     "venueAddressTooLong": "Shorten the address to {{most, number}} characters or fewer.",
     "searchType": "Search types",
     "timesIn": "Times in {{zone}}",
+    "notChosen": "Not chosen",
     "pickerDone": "Done",
     "created": "Created. Opening the event.",
     "leaveBody": "What you typed for this event will be lost.",
