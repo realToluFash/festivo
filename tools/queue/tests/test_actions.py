@@ -1841,6 +1841,25 @@ class OpsOwnsItsTickets(Base):
                                                         draft=False))
         self.assertEqual(created.call_count, 2)
 
+    def test_only_its_own_story_is_left_for_shortcut_to_link(self):
+        body = BODY.replace("sc-1\n", "sc-1, [sc-28982], SC-7's footer, sc-10 and sc-12\n")
+        with mock.patch("soirely_queue.github.create_pr", return_value="u") as created:
+            said = actions.pr_create(self.as_("dev"), args(
+                head="feature/sc-12/x", title="Terms after sc-7 (sc-12)", text=body,
+                draft=False))
+        _, title, sent = created.call_args.args
+        self.assertEqual(title, "Terms after sc\u20117 (sc-12)")
+        self.assertIn("sc\u20111, [sc\u201128982], sc\u20117's footer, sc\u201110 and "
+                      "sc-12\n", sent)
+        self.assertIn("5 mentions of other stories", said)
+
+    def test_a_body_naming_only_its_own_story_goes_as_written(self):
+        with mock.patch("soirely_queue.github.create_pr", return_value="u") as created:
+            said = actions.pr_create(self.as_("dev"), args(head="feature/sc-1/x", title="t",
+                                                           text=BODY, draft=False))
+        self.assertEqual(created.call_args.args[2], BODY)
+        self.assertNotIn("mention", said)
+
     def test_an_ops_story_wakes_ops_and_no_one_else(self):
         self.fake.add(1, "To Do", ["ops"])
         self.as_("ops").story("sc-1")
@@ -1931,6 +1950,13 @@ class EditingABody(Base):
         with self.assertRaisesRegex(actions.Refused, why):
             self.edit(role, **kw)
         self.edited.assert_not_called()
+
+    def test_a_new_section_names_other_stories_unlinked(self):
+        self.fake.add(1, "In Review", ["dev2"])
+        said = self.edit("dev2", text="- sc-1 and sc-28982")
+        self.edited.assert_called_once_with(
+            9, BODY.replace("- the old one", "- sc-1 and sc\u201128982"))
+        self.assertIn("1 mention of other stories", said)
 
     def test_one_section_changes_and_reads_back_at_once(self):
         self.fake.add(1, "In Review", ["dev2"])
