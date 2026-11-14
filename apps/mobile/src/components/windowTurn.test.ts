@@ -255,7 +255,7 @@ describe('a window that opens through a Modal of its own (sc-42690)', () => {
     expect(read('TodayCover.tsx')).toContain('...quietTap(org.onPress, org.expanded),');
   });
 
-  it('has Create an organisation take the keys while hidden, then TalkBack’s focus on its field (qa2 #44464)', () => {
+  it('has Create an organisation take the keys while hidden on the tablet, then TalkBack’s focus on its field (qa2 #44464)', () => {
     const walk = read('CreateWalkWindow.tsx');
 
     expect(walk).toContain("const talkBack = Platform.OS === 'android' && readerOn;");
@@ -265,7 +265,7 @@ describe('a window that opens through a Modal of its own (sc-42690)', () => {
     expect(walk).toContain('onShow={() => setOnScreen(true)}');
     expect(walk).toMatch(/const behind = walk\.asking \|\| unnamed \?/);
     expect(walk).toMatch(
-      /!talkBack \|\| !onScreen \|\| !unnamed \|\| opening\.walk\.asking\) return;\s+const keys = setTimeout/,
+      /!talkBack \|\| phone \|\| !onScreen \|\| !unnamed \|\| opening\.walk\.asking\) return;\s+const keys = setTimeout/,
     );
     expect(walk).toMatch(
       /!talkBack \|\| !onScreen \|\| unnamed \|\| opening\.walk\.asking\) return;\s+const input =\s+opening\.focus === 'search' \? search\.current : opening\.focus === 'name' \? field\.current : null;/,
@@ -274,8 +274,23 @@ describe('a window that opens through a Modal of its own (sc-42690)', () => {
 
   it('raises the keys on Create an organisation’s field once shown, moving TalkBack’s focus only onto a field still focused (qa3 #45182)', () => {
     expect(read('CreateWalkWindow.tsx')).toMatch(
-      /\/\/ .*\s+if \(input\.isFocused\(\)\) moveScreenReaderFocus\(input\);\s+raiseKeysOn\(input\);\s+\}, \[talkBack, onScreen, unnamed, opening\]\);/,
+      /\/\/ .*\s+if \(input\.isFocused\(\)\) moveScreenReaderFocus\(input\);\s+holding\.current = input;\s+raiseKeysOn\(input\);\s+\}, \[talkBack, onScreen, unnamed, opening\]\);/,
     );
+  });
+
+  it('raises the keys once more on a field that gives up focus before the keys it was raised with come up (qa3 #47084)', () => {
+    const walk = read('CreateWalkWindow.tsx');
+
+    expect(walk).toMatch(
+      /Keyboard\.addListener\('keyboardDidShow', \(\) => \{\s+holding\.current = null;/,
+    );
+    expect(walk).toMatch(
+      /const keysLost = \(\) => \{\s+const input = holding\.current;\s+holding\.current = null;\s+if \(input != null\) raiseKeysOn\(input\);/,
+    );
+    expect(walk).toContain('onLeft={live ? keysLost : undefined}');
+    expect(walk).toContain('if (!focused && live) keysLost();');
+    expect(walk.match(/^ {4}holding\.current = null;$/gm)).toHaveLength(4);
+    expect(read('CreateWalkSteps.tsx')).toMatch(/setFocused\(false\);\s+onLeft\?\.\(\);/);
   });
 
   it('with TalkBack on, gives Create an organisation’s buttons and the tablet’s scrim no input focus to take from its field as it is revealed (qa2 #46600)', () => {

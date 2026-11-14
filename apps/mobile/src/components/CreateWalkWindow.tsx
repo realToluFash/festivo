@@ -176,6 +176,7 @@ export function CreateWalkWindow<Made>({
   const question = useRef<TextHandle>(null);
   const nobody = useRef<ScreenReaderTarget>(null);
   const focusing = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const holding = useRef<TextInputInstance | null>(null);
   const creating = walk.sent === 'creating';
   const searching = walk.query.trim() !== '';
 
@@ -220,16 +221,16 @@ export function CreateWalkWindow<Made>({
     return () => clearTimeout(wait);
   }, [talkBack, shown, opening]);
 
-  // The field takes the keys while the window is still hidden, so TalkBack says nothing as it does; once shown, its focus reads the field once (sc-42690).
+  // The tablet's field takes the keys while the window is still hidden, so TalkBack says nothing as it does; once shown, its focus reads the field once (sc-42690). On the phone a field focused while hidden lost its keys as the window was shown (qa3 #47084), so it takes them once, as it is shown.
   useEffect(() => {
-    if (!talkBack || !onScreen || !unnamed || opening.walk.asking) return;
+    if (!talkBack || phone || !onScreen || !unnamed || opening.walk.asking) return;
     const keys = setTimeout(() => {
       if (opening.focus === 'search') search.current?.focus();
       else if (opening.focus === 'name') field.current?.focus();
     }, arriving);
 
     return () => clearTimeout(keys);
-  }, [talkBack, onScreen, unnamed, arriving, opening]);
+  }, [talkBack, phone, onScreen, unnamed, arriving, opening]);
 
   useEffect(() => {
     if (!talkBack || !onScreen || unnamed || opening.walk.asking) return;
@@ -239,10 +240,25 @@ export function CreateWalkWindow<Made>({
       moveScreenReaderFocus(question.current);
       return;
     }
-    // On the phone the field gives up the focus it took while hidden as the window is shown, and taking it back after a hover reads it twice (qa3 #45182): taken back alone, TalkBack's focus follows it and reads it once.
+    // A hover and then the focus command on an unfocused field read it twice (qa3 #45182): the command alone moves TalkBack's focus with it and reads it once.
     if (input.isFocused()) moveScreenReaderFocus(input);
+    holding.current = input;
     raiseKeysOn(input);
   }, [talkBack, onScreen, unnamed, opening]);
+
+  useEffect(() => {
+    const up = Keyboard.addListener('keyboardDidShow', () => {
+      holding.current = null;
+    });
+
+    return () => up.remove();
+  }, []);
+  // A field that gives up focus after the window raised its keys and before they came up gets them once more (qa3 #47084).
+  const keysLost = () => {
+    const input = holding.current;
+    holding.current = null;
+    if (input != null) raiseKeysOn(input);
+  };
 
   useEffect(
     () => () => {
@@ -264,6 +280,7 @@ export function CreateWalkWindow<Made>({
       setWalk(() => next);
       return;
     }
+    holding.current = null;
     Keyboard.dismiss();
     if (!phone && !reduced)
       LayoutAnimation.configureNext({
@@ -313,6 +330,7 @@ export function CreateWalkWindow<Made>({
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [creating]);
   const cancel = () => {
+    holding.current = null;
     if (creating) return;
     if (newOrganisationEntered(walk)) setWalk((now) => ({ ...now, asking: true }));
     else onCancel();
@@ -332,6 +350,7 @@ export function CreateWalkWindow<Made>({
     else goBack();
   };
   const onPrimary = () => {
+    holding.current = null;
     if (creating) return;
     if (walk.step === 3) {
       setWalk((now) => ({ ...now, sent: 'creating' }));
@@ -408,6 +427,7 @@ export function CreateWalkWindow<Made>({
           field={live ? field : spare}
           onTyped={(name) => setWalk((now) => typed(now, name))}
           onContinue={onPrimary}
+          onLeft={live ? keysLost : undefined}
         />
       );
     if (shownWalk.step === 2)
@@ -418,7 +438,10 @@ export function CreateWalkWindow<Made>({
           toPick={shownWalk.cameBack || opening.toPick}
           onQuery={(query) => setWalk((now) => ({ ...now, query }))}
           onPick={(code) => setWalk((now) => picked(now, code))}
-          onSearchFocused={setSearchFocused}
+          onSearchFocused={(focused) => {
+            setSearchFocused(focused);
+            if (!focused && live) keysLost();
+          }}
         />
       );
 
