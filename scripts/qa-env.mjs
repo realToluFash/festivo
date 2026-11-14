@@ -42,10 +42,13 @@ export const DEVELOPMENT_PORTS = {
   AGENT_GATEWAY_PORT: 8095,
 };
 
-export const TESTERS = [1, 2, 3, 4];
+export const TESTERS = [1, 2, 3, 4, 5];
+
+// At 5000, Mercure's 8000 was another project's on this machine.
+const OFFSETS = { 4: 5100, 5: 5200 };
 
 export function testerOffset(tester) {
-  return tester === 4 ? 5100 : tester * 10000;
+  return OFFSETS[tester] ?? tester * 10000;
 }
 
 // The stack a person on the QA team tests on, from their own phone and laptop: soirely-qa-lan,
@@ -140,7 +143,7 @@ export function qaConfig(tester = 1, address = undefined) {
   );
   // The person brings the phone: setup makes none of its simulators or emulators.
   // The lan stack kept slot 4 when tester 4 came.
-  const slot = lan ? 4 : tester === 4 ? 5 : tester;
+  const slot = lan ? 4 : tester >= 4 ? tester + 1 : tester;
   // Expo names this address in the QR code, so the person's phone reaches Metro.
   if (lan) app.REACT_NATIVE_PACKAGER_HOSTNAME = new URL(urls.api).hostname;
   if (lan) overrides.COMPOSE_FILE = `compose.yaml:${LAN_PROXY_COMPOSE}`;
@@ -493,7 +496,9 @@ export function emulatorHostOf(agents, tester) {
   };
 }
 
-export const SSH_OPTIONS = ['-o', 'BatchMode=yes', '-o', 'ConnectTimeout=10'];
+// ConnectTimeout covers the handshake too, and a host on Wi-Fi can take over 10 s for it.
+export const SSH_OPTIONS = ['-o', 'BatchMode=yes', '-o', 'ConnectTimeout=30'];
+export const REACH_TIMEOUT_MS = 45000;
 
 // Windows' OpenSSH ends the emulator with the session, so stopping the unit stops all three.
 export function remoteEmulatorCommand(host, port, args) {
@@ -551,6 +556,26 @@ export function missingRemoteTools(host, what) {
     '    - Android Studio > Settings > Languages & Frameworks > Android SDK > SDK Tools:',
     '      tick "Android SDK Command-line Tools (latest)" and "Android Emulator", and apply',
     '    - SDK Platforms, Show Package Details: tick a "Google Play" x86_64 system image',
+    '  docs/agents/machines.md, An emulator on another computer, lists the rest it needs.',
+  ].join('\n');
+}
+
+// avdmanager is a Java program: a host without Android Studio has no JDK for it either.
+export function missingAvdTools(host, { tools, jdk }, avds) {
+  const lacks = [
+    !tools && 'the Android SDK Command-line Tools',
+    !jdk && 'a JDK (17 or later)',
+  ].filter(Boolean);
+  return [
+    `  ${avds.join(' and ')}: not made on ${host.name} (${host.ssh}), which lacks ${lacks.join(' and ')}`,
+    `  install ${lacks.length > 1 ? 'them' : 'it'} there, then run \`node scripts/qa-env.mjs setup\` again:`,
+    ...(tools
+      ? []
+      : [
+          '    - the Command-line Tools zip from developer.android.com/studio, unpacked so that',
+          `      ${host.sdk}\\cmdline-tools\\latest\\bin\\avdmanager.bat exists`,
+        ]),
+    ...(jdk ? [] : ['    - a JDK, such as Eclipse Temurin 17, with java on PATH or JAVA_HOME set']),
     '  docs/agents/machines.md, An emulator on another computer, lists the rest it needs.',
   ].join('\n');
 }
@@ -1140,8 +1165,19 @@ function createRemoteEmulators(host) {
   if (missing.length) {
     const avdmanager = `${host.sdk}\\cmdline-tools\\latest\\bin\\avdmanager.bat`;
     const has = onHost(host, `if exist ${avdmanager} (echo found) else (echo missing)`);
-    if (has.stdout?.trim() !== 'found') {
-      console.log(missingRemoteTools(host, 'Android SDK Command-line Tools'));
+    const java = onHost(
+      host,
+      'if defined JAVA_HOME (if exist "%JAVA_HOME%\\bin\\java.exe" (echo found) else (echo missing)) else (where java >nul 2>nul && echo found || echo missing)',
+    );
+    const found = { tools: has.stdout?.trim() === 'found', jdk: java.stdout?.trim() === 'found' };
+    if (!found.tools || !found.jdk) {
+      console.log(
+        missingAvdTools(
+          host,
+          found,
+          missing.map((avd) => avd.name),
+        ),
+      );
     } else {
       const images = onHost(
         host,
@@ -1933,11 +1969,13 @@ function reachHost(host) {
   const exe = `${host.sdk}\\emulator\\emulator.exe`;
   const tried = `ssh ${SSH_OPTIONS.join(' ')} ${host.ssh} "if exist ${exe} echo found"`;
   const answer = onHost(host, `if exist ${exe} (echo found) else (echo missing)`, {
-    timeout: 30000,
+    timeout: REACH_TIMEOUT_MS,
   });
   if (answer.error || answer.status !== 0) {
     const why =
-      answer.error?.code === 'ETIMEDOUT' ? 'no answer in 30 s' : (answer.stderr || '').trim();
+      answer.error?.code === 'ETIMEDOUT'
+        ? `no answer in ${REACH_TIMEOUT_MS / 1000} s`
+        : (answer.stderr || '').trim();
     throw new Error(
       `the emulator host ${host.name} (${host.ssh}) could not be reached: ${why || `ssh exited ${answer.status}`}\n` +
         `  tried: ${tried}\n` +

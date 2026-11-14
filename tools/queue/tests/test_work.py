@@ -414,14 +414,14 @@ class Queue(unittest.TestCase):
 
     def test_ready_for_qa_is_one_item_for_every_tester(self):
         items = work.queue_items([story(state="Ready For QA")])
-        self.assertEqual([sorted(i["roles"]) for i in items], [["qa", "qa2", "qa3", "qa4"]])
+        self.assertEqual([sorted(i["roles"]) for i in items], [["qa", "qa2", "qa3", "qa4", "qa5"]])
 
     def test_a_story_that_needs_ios_is_no_tester_s_without_xcode(self):
         labelled = story(1, state="Ready For QA", labels=["needs ios"])
         named = {**story(2, state="Ready For QA"), "name": "On an iPhone and an iPad, it reads"}
         self.assertEqual(work.queue_items([labelled, named], ios=False), [])
         items = work.queue_items([labelled, named], ios=True)
-        self.assertEqual([sorted(i["roles"]) for i in items], [["qa", "qa2", "qa3", "qa4"]] * 2)
+        self.assertEqual([sorted(i["roles"]) for i in items], [["qa", "qa2", "qa3", "qa4", "qa5"]] * 2)
 
     def test_a_story_naming_an_iphone_later_is_still_offered_without_xcode(self):
         later = {**story(state="Ready For QA"), "name": "Cancel is off on an iPhone and Android"}
@@ -447,7 +447,7 @@ class Queue(unittest.TestCase):
     def test_needs_xcode_holds_back_no_tester(self):
         ready = story(state="Ready For QA", labels=["needs xcode"])
         items = work.queue_items([ready], ios=False)
-        self.assertEqual([sorted(i["roles"]) for i in items], [["qa", "qa2", "qa3", "qa4"]])
+        self.assertEqual([sorted(i["roles"]) for i in items], [["qa", "qa2", "qa3", "qa4", "qa5"]])
 
     def test_a_translation_ticket_is_only_the_linguists(self):
         for state in ("To Do", "Ready For Dev", "In Progress", "Failed QA"):
@@ -494,7 +494,7 @@ class Queue(unittest.TestCase):
         soon = work.queue_items([back], now=at + 10 * 60)
         self.assertEqual([i["roles"] for i in soon], [["qa2"]])
         later = work.queue_items([back], now=at + (roles.RETEST_MINUTES + 1) * 60)
-        self.assertEqual([sorted(i["roles"]) for i in later], [["qa", "qa2", "qa3", "qa4"]])
+        self.assertEqual([sorted(i["roles"]) for i in later], [["qa", "qa2", "qa3", "qa4", "qa5"]])
 
     def test_a_story_never_failed_is_for_any_tester(self):
         fresh = story(state="Ready For QA", comments=[comment(1, "QA claim: qa2")])
@@ -579,7 +579,7 @@ class EveryWakeStillHappens(unittest.TestCase):
         found = self.woken([waiting], moves={(1, "Ready For QA", "t1"): "dev2"}, last_runs={})
         for role in ("pm", "ux", "bm", "ops", "l10n", "cd"):
             self.assertIn(("sweep", role), found)
-        for role in ("qa", "qa2", "qa3", "qa4"):
+        for role in ("qa", "qa2", "qa3", "qa4", "qa5"):
             self.assertIn(("pick", role), found)
 
     def test_a_developer_s_heartbeat_after_moving_its_own_story(self):

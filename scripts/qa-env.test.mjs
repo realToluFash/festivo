@@ -102,6 +102,8 @@ import {
   pickPlayImage,
   missingRemoteTools,
   SSH_OPTIONS,
+  REACH_TIMEOUT_MS,
+  missingAvdTools,
   expoGoApk,
   expoGoFits,
   expoGoIosClient,
@@ -607,7 +609,7 @@ describe('the device a maestro run drives', () => {
       '--device',
       'UDID',
       '--driver-host-port',
-      String(22087 + (tester === 4 ? 5 : tester)),
+      String(22087 + (tester >= 4 ? tester + 1 : tester)),
     ]);
   });
 
@@ -1574,7 +1576,7 @@ describe('the branch for a story', () => {
   });
 });
 
-// Four testers run at once. A port two stacks share is one tester's stack failing to
+// Five testers run at once. A port two stacks share is one tester's stack failing to
 // start, and a shared project name is one tester's reset dropping another's database.
 describe('the QA testers', () => {
   const configs = TESTERS.map((tester) => qaConfig(tester));
@@ -1636,8 +1638,8 @@ describe('the QA testers', () => {
     expect(testerOf('/Users/x/Projects/soirely')).toBeNull();
   });
 
-  it('stop at four', () => {
-    expect(() => qaConfig(5)).toThrow(/no QA tester 5/);
+  it('stop at five', () => {
+    expect(() => qaConfig(6)).toThrow(/no QA tester 6/);
   });
 
   it('keep testers 1 to 3 and the lan stack where they were when tester 4 came', () => {
@@ -1670,6 +1672,24 @@ describe('the QA testers', () => {
     expect([c.chromePort, c.driverPort, c.helperPort]).toEqual([9226, 22092, 22195]);
     expect(c.emulators.tablet).toMatchObject({ name: 'Soirely_QA4_Tablet', ramMb: 4096 });
     expect(testerOf('/Users/x/Projects/soirely-qa4')).toBe(4);
+  });
+
+  it('give tester 5 the 5200 block, console 5580 and the slot after tester 4', () => {
+    const c = qaConfig(5);
+    expect(testerOffset(5)).toBe(5200);
+    expect([c.project, c.ports.API_PORT, c.ports.MERCURE_PORT, c.emulatorPort]).toEqual([
+      'soirely-qa5',
+      13280,
+      8200,
+      5580,
+    ]);
+    expect([c.chromePort, c.driverPort, c.helperPort]).toEqual([9227, 22093, 22196]);
+    expect(c.emulators).toMatchObject({
+      phone: { name: 'Soirely_QA5_Phone' },
+      tablet: { name: 'Soirely_QA5_Tablet', ramMb: 4096 },
+    });
+    expect(testerOf('/Users/x/Projects/soirely-qa5')).toBe(5);
+    expect(testerRole(5)).toBe('qa5');
   });
 });
 
@@ -1713,7 +1733,20 @@ describe('an emulator on another computer', () => {
     expect(command.join(' ')).toContain('-L 5578:127.0.0.1:5578 -L 5579:127.0.0.1:5579');
     expect(command.at(-2)).toBe('me@laptop');
     expect(command.at(-1)).toBe('C:\\Sdk\\emulator\\emulator.exe -avd A -port 5578');
-    expect(SSH_OPTIONS).toContain('ConnectTimeout=10');
+    expect(SSH_OPTIONS).toContain('ConnectTimeout=30');
+    expect(REACH_TIMEOUT_MS).toBeGreaterThan(30000);
+    expect(REACH_TIMEOUT_MS).toBeLessThan(60000);
+  });
+
+  it('names the Command-line Tools and a JDK when a host without Android Studio cannot make an AVD', () => {
+    const host = { ssh: 'hp@192.168.1.228', name: 'princess-shalew', sdk: 'C:\\Sdk' };
+    const both = missingAvdTools(host, { tools: false, jdk: false }, ['Soirely_QA5_Tablet']);
+    expect(both).toContain('Soirely_QA5_Tablet: not made on princess-shalew (hp@192.168.1.228)');
+    expect(both).toContain('lacks the Android SDK Command-line Tools and a JDK (17 or later)');
+    expect(both).toContain('C:\\Sdk\\cmdline-tools\\latest\\bin\\avdmanager.bat');
+    const jdk = missingAvdTools(host, { tools: true, jdk: false }, ['A']);
+    expect(jdk).toContain('which lacks a JDK (17 or later)');
+    expect(jdk).not.toContain('avdmanager.bat');
   });
 
   it('is announced to adb as the server protocol frames it', () => {
