@@ -21,7 +21,10 @@
     "web:guest.calendarGoogle",
     "web:guestList.how.whatsapp",
     "web:guestNeeds.dietName.halal",
-    "web:guestNeeds.dietName.kosher"
+    "web:guestNeeds.dietName.kosher",
+    "mobile:guestList.how.whatsapp",
+    "mobile:guestNeeds.dietName.halal",
+    "mobile:guestNeeds.dietName.kosher"
   ],
   "fr": [
     "web:nav.menu",
@@ -114,7 +117,12 @@
     "web:guestNeeds.dietName.halal",
     "web:guestNeeds.allergen.lupin",
     "web:guestNeeds.allergies",
-    "web:guestKitchen.allergies"
+    "web:guestKitchen.allergies",
+    "mobile:guestList.invitation",
+    "mobile:guestList.how.whatsapp",
+    "mobile:guestNeeds.allergies",
+    "mobile:guestNeeds.allergen.lupin",
+    "mobile:guestNeeds.dietName.halal"
   ],
   "pt": [
     "web:nav.menu",
@@ -135,6 +143,9 @@
     "web:guest.calendarGoogle",
     "web:guestList.how.whatsapp",
     "web:guestNeeds.dietName.halal",
-    "web:guestNeeds.dietName.kosher"
+    "web:guestNeeds.dietName.kosher",
+    "mobile:guestList.how.whatsapp",
+    "mobile:guestNeeds.dietName.halal",
+    "mobile:guestNeeds.dietName.kosher"
   ]
 }
