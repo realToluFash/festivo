@@ -53,10 +53,11 @@ import {
   changedRows,
   filterCount,
   filterWord,
+  inViewOf,
 } from './GuestsModel.ts';
 import { changesSince, lastLooked, takeLook } from './ChangedSince.ts';
 import { ExportButton, ExportPanel, ExportSheet, ShareStandIn } from './GuestExport.tsx';
-import { exportDay, exportStart, fileName, inViewOf, narrowing } from './GuestExportModel.ts';
+import { exportDay, exportStart, fileName, narrowing } from './GuestExportModel.ts';
 import { GuestsFailed, GuestsLoading, GuestsRows } from './GuestsList.tsx';
 import { GuestToast, GuestsCard, GuestsTitle, type Layout } from './GuestsParts.tsx';
 import { type SampleGuest, TODAY, WEDDING } from './GuestsSample.ts';

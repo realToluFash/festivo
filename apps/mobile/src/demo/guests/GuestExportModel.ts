@@ -1,5 +1,3 @@
-import type { ListFilter } from './GuestsModel.ts';
-
 /** sc-3784's Export in the app: the dialog's choices, the file it names, and what it says while the file is made. */
 export type Scope = 'view' | 'all';
 export type Format = 'xlsx' | 'csv';
@@ -105,26 +103,6 @@ export function fileName(event: string, day: string, format: Format): string {
 /** An empty view can't be exported, so All guests is chosen whatever was asked. */
 export function scopeFor(asked: Scope, inView: number): Scope {
   return inView === 0 ? 'all' : asked;
-}
-
-/** The people This view holds, and the "{n} of {total} shown" line the list draws above it. */
-export function inViewOf({
-  filter,
-  searched,
-  rows,
-  filtered,
-  total,
-}: {
-  filter: ListFilter;
-  searched: string;
-  rows: number;
-  filtered: number;
-  total: number;
-}): number {
-  const looking = filter !== 'all' || searched.trim() !== '';
-  if (!looking) return total;
-  if (rows === 0) return 0;
-  return searched.trim() === '' && filter !== 'changed' ? filtered : rows;
 }
 
 /** What narrows This view, as whole lines with slots: the menu's choice, then the search. */
