@@ -66,6 +66,7 @@ import {
 } from '../kit/eventForm.ts';
 import { coverRefusalOf } from '../kit/coverUpload.ts';
 import { refusedHint } from '../kit/fields.ts';
+import { keysGoDownFor, typedIn } from './refusedField.ts';
 import { markCoverRefused } from '../kit/eventSaved.ts';
 import { useLoadedAt, useServerNow } from '../kit/serverNow.ts';
 import { type LayoutKind } from '../layout/useLayout.ts';
@@ -134,7 +135,7 @@ export function EventForm({
   const [hostErrors, setHostErrors] = useState<HostErrors>({});
   const [hostsChecked, setHostsChecked] = useState(false);
   const [focusHost, setFocusHost] = useState<{ key: number } | null>(null);
-  const [unsent, setUnsent] = useState<{ count: number } | null>(null);
+  const [unsent, setUnsent] = useState<{ count: number; keysGoDown: boolean } | null>(null);
   const [status, setStatus] = useState<Status>('editing');
   const readerOn = useScreenReaderOn();
   const [linesInSummary, setLinesInSummary] = useState(false);
@@ -335,16 +336,17 @@ export function EventForm({
     if (line != null) readOut(line);
   }
 
-  function refuse(found: EventErrors, hostFound: HostErrors = {}, saidFirst?: string): void {
+  /** Returns whether the keys go down for the field it focuses: only a field not typed in puts them down. */
+  function refuse(found: EventErrors, hostFound: HostErrors = {}, saidFirst?: string): boolean {
     setErrors(found);
     setHostErrors(hostFound);
     const first = firstRefusedOf(found, hostFound, hosts);
     const onField = first != null && 'field' in first ? first.field : null;
-    setLinesInSummary(
-      Platform.OS === 'android' && saidFirst != null && onField != null && !typedIn(onField),
-    );
+    setLinesInSummary(Platform.OS === 'android' && saidFirst != null && keysGoDownFor(onField));
     setFocusOn(onField != null ? { field: onField, saidFirst } : null);
     setFocusHost(first != null && 'host' in first ? { key: first.host } : null);
+
+    return keysGoDownFor(onField);
   }
 
   function editHosts(rows: HostRow[], touched: number | null): void {
@@ -373,11 +375,15 @@ export function EventForm({
     setHostsChecked(true);
 
     if (count > 0) {
-      setUnsent({ count });
       setStatus('editing');
       const summary = t('eventForm.problems', { count });
       if (Platform.OS === 'android' && readerOn) setRefusedUnderReader({});
-      refuse(found, hostFound, Platform.OS !== 'android' || readerOn ? summary : undefined);
+      const keysGoDown = refuse(
+        found,
+        hostFound,
+        Platform.OS !== 'android' || readerOn ? summary : undefined,
+      );
+      setUnsent({ count, keysGoDown });
       return;
     }
 
@@ -482,7 +488,9 @@ export function EventForm({
           </ReadOut>
         </InSight>
       )}
-      {problems != null && <ReadOut words={problems} answer={unsent} />}
+      {problems != null && (
+        <ReadOut words={problems} answer={unsent} afterKeysDown={unsent?.keysGoDown} />
+      )}
 
       <View style={cardFrame(kind)}>
         <Field
@@ -670,13 +678,6 @@ export function EventForm({
       />
     </LinesInSummary.Provider>
   );
-}
-
-const TYPED_IN = ['name', 'venueName', 'venueAddress', 'arrivalNote'] as const;
-
-/** A field typed in, which takes input focus, where the rest are pickers the screen reader is moved to. */
-function typedIn(field: EventFormField): field is (typeof TYPED_IN)[number] {
-  return (TYPED_IN as readonly string[]).includes(field);
 }
 
 const ARRIVE_AT: Record<Exclude<EditAt, 'hosts'>, EventFormField> = {

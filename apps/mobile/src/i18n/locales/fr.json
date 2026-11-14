@@ -2500,7 +2500,7 @@
       "other": "d’une autre façon"
     },
     "markNotInvited": "Annuler l’enregistrement",
-    "unmarkNotSaved": "Not saved. They are still invited. Try again.",
+    "unmarkNotSaved": "Non enregistré. L’invitation est maintenue. Réessayez.",
     "unmarked": "Enregistrement annulé. Le statut est de nouveau « Sans invitation ».",
     "unmarkRefused": "Aucun changement. {{name}} a répondu « {{reply}} » le {{date}}, l’invitation est donc maintenue.",
     "readOnlyInvited": "Vous pouvez voir les noms, les réponses et les invitations. Pour enregistrer une invitation, il faut le rôle Responsable ou Peut modifier.",

@@ -49,6 +49,10 @@ export const LIST_STATES = [
   'viewer',
   'draft',
   'paused',
+  'emptyDraft',
+  'emptyDraftViewer',
+  'emptyPaused',
+  'emptyFinished',
   'onTheDay',
   'secondDay',
   'staffBefore',
@@ -267,6 +271,7 @@ export type Role = 'owner' | 'viewer' | 'staff';
 export function roleOf(state: GuestsState | null): Role {
   if (
     state === 'viewer' ||
+    state === 'emptyDraftViewer' ||
     state === 'guestViewer' ||
     state === 'guestNeedsViewer' ||
     state === 'repliesClosedViewer' ||
@@ -290,8 +295,38 @@ function ownStateOf(event: string): OwnState | null {
   return (Object.keys(OWN_SAMPLE) as OwnState[]).find((key) => OWN_SAMPLE[key] === event) ?? null;
 }
 
+/** sc-46879: an empty list on a Draft, a Paused and a Finished event, each on an event of that phase. */
+export const EMPTY_PHASE_STATES = [
+  'emptyDraft',
+  'emptyDraftViewer',
+  'emptyPaused',
+  'emptyFinished',
+] as const;
+type EmptyPhaseState = (typeof EMPTY_PHASE_STATES)[number];
+type Phase = 'draft' | 'paused' | 'finished';
+
+const EMPTY_PHASE: Record<EmptyPhaseState, { phase: Phase; event: string }> = {
+  emptyDraft: { phase: 'draft', event: 'evt-cena-4' },
+  emptyDraftViewer: { phase: 'draft', event: 'evt-cena-4' },
+  emptyPaused: { phase: 'paused', event: 'evt-party-2' },
+  emptyFinished: { phase: 'finished', event: 'evt-off' },
+};
+
+const PHASE_TAG: Record<Phase, { word: string; mark: CardTag }> = {
+  draft: { word: 'Draft', mark: 'draft' },
+  paused: { word: 'Paused', mark: 'paused' },
+  finished: { word: 'Finished', mark: 'finished' },
+};
+
+const PHASE_LINE: Record<Phase, string> = {
+  draft: W.draftLine,
+  paused: W.pausedLine,
+  finished: W.finishedLine,
+};
+
 export function eventOf(state: GuestsState | null): string {
   if (state === 'draft' || state === 'paused') return OWN_SAMPLE[state];
+  if (isIn(EMPTY_PHASE_STATES, state)) return EMPTY_PHASE[state].event;
   if (isIn(PLAN_STATES, state)) return PLAN.ireti;
   return WEDDING;
 }
@@ -465,18 +500,6 @@ export function filterCount(key: FilterKey, counts: Counts): number {
 
 export const GROUPS = ['coming', 'maybe', 'noreply', 'notcoming', 'notyet'] as const;
 export type GroupKey = (typeof GROUPS)[number];
-
-const SHOW_ALL_WORDS: Record<GroupKey, string> = {
-  coming: 'coming',
-  maybe: 'not sure yet',
-  noreply: 'with no reply',
-  notcoming: 'not coming',
-  notyet: 'not yet invited',
-};
-
-export function showAllWords(group: GroupKey, count: number): string {
-  return say.showAll(count, SHOW_ALL_WORDS[group]);
-}
 
 export interface Person {
   key: string;
@@ -745,6 +768,28 @@ export interface GuestsCardWords {
   count: { arrived: number; expected: number } | null;
   line: string | null;
   step: 'addGuest' | 'write' | 'makeLive' | 'openCheckIn' | null;
+  /** sc-46879: a second, quieter step beside the first, on an empty Draft for someone with events.manage. */
+  also?: 'makeLive';
+}
+
+/** sc-46879: the empty card keeps its first-time title and step, and a Draft, Paused or Finished event adds its chip and line, as a populated card does. */
+function emptyCard(state: GuestsState | null, owner: boolean): GuestsCardWords {
+  const first: GuestsCardWords = {
+    tags: [],
+    says: W.firstTitle,
+    count: null,
+    line: null,
+    step: 'addGuest',
+  };
+  if (!isIn(EMPTY_PHASE_STATES, state)) return first;
+  const { phase } = EMPTY_PHASE[state];
+  const card: GuestsCardWords = {
+    ...first,
+    tags: [PHASE_TAG[phase]],
+    line: PHASE_LINE[phase],
+    step: owner ? 'addGuest' : null,
+  };
+  return owner && phase === 'draft' ? { ...card, also: 'makeLive' } : card;
 }
 
 export function cardWords(
@@ -768,30 +813,30 @@ export function cardWords(
     .join(' ');
   const owner = role === 'owner';
 
-  if (empty) return { tags: [], says: W.firstTitle, count: null, line: null, step: 'addGuest' };
+  if (empty) return emptyCard(state, owner);
   switch (state) {
     case 'draft':
       return {
-        tags: [{ word: 'Draft', mark: 'draft' }],
+        tags: [PHASE_TAG.draft],
         says: say.onList(DRAFT_COUNTS.list),
         count: null,
-        line: W.draftLine,
+        line: PHASE_LINE.draft,
         step: 'makeLive',
       };
     case 'paused':
       return {
-        tags: [{ word: 'Paused', mark: 'paused' }],
+        tags: [PHASE_TAG.paused],
         says: say.says(PAUSED_COUNTS.coming, PAUSED_COUNTS.invited),
         count: null,
-        line: W.pausedLine,
+        line: PHASE_LINE.paused,
         step: null,
       };
     case 'finished':
       return {
-        tags: [{ word: 'Finished', mark: 'finished' }],
+        tags: [PHASE_TAG.finished],
         says,
         count: null,
-        line: W.finishedLine,
+        line: PHASE_LINE.finished,
         step: null,
       };
     case 'onTheDay':
@@ -1107,6 +1152,7 @@ export const KWAME_SAVED = needsOf({
 export function guestsAt(state: GuestsState | null): SampleGuest[] {
   const swap = (key: string, change: (g: SampleGuest) => SampleGuest) =>
     GUESTS.map((g) => (g.key === key ? change(g) : g));
+  if (isIn(EMPTY_PHASE_STATES, state)) return [];
   switch (state) {
     case 'first':
       return [];
@@ -1161,6 +1207,7 @@ export function countsAt(
   guests: readonly SampleGuest[],
   added: number,
 ): Counts {
+  if (isIn(EMPTY_PHASE_STATES, state)) return countsFrom(guests);
   const own = ownStateOf(event);
   if (own != null) return own === 'draft' ? DRAFT : PAUSED;
   return state === 'first' ? countsFrom(guests) : countsOf(guests, added);
@@ -1324,6 +1371,7 @@ export function areaStart(state: GuestsState | null): AreaStart {
   if (state != null && isIn(ADD_STATES, state)) return { ...base, overlay: 'add' };
   if (state != null && isIn(REVIEW_STATES, state)) return { ...base, overlay: 'review' };
 
+  if (isIn(EMPTY_PHASE_STATES, state)) return { ...base, empty: true };
   switch (state) {
     case 'first':
       return { ...base, empty: true };

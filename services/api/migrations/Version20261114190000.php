@@ -11,16 +11,18 @@ final class Version20261114190000 extends AbstractMigration
 {
     public function getDescription(): string
     {
-        return 'The host\'s arrival note, which every guest reads under the address (sc-24385). An event made before it has none, so nothing is backfilled.';
+        return 'The many-guest removal a removed guest went in (sc-3776), so one Undo and one erasure take the whole action. Every guest removed so far went alone, so nothing is backfilled.';
     }
 
     public function up(Schema $schema): void
     {
-        $this->addSql('ALTER TABLE events ADD arrival_note TEXT DEFAULT NULL');
+        $this->addSql('ALTER TABLE guests ADD removal_id UUID DEFAULT NULL');
+        $this->addSql('CREATE INDEX idx_guests_removal ON guests (removal_id)');
     }
 
     public function down(Schema $schema): void
     {
-        $this->addSql('ALTER TABLE events DROP arrival_note');
+        $this->addSql('DROP INDEX idx_guests_removal');
+        $this->addSql('ALTER TABLE guests DROP removal_id');
     }
 }

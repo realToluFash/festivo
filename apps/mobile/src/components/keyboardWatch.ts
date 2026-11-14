@@ -106,13 +106,24 @@ export function putKeysDownThen(
     {
       up: () => Keyboard.isVisible(),
       hide: () => (field == null ? Keyboard.dismiss() : textInput.blur(field)),
-      onHidden: (hidden) => {
-        const listener = Keyboard.addListener('keyboardDidHide', hidden);
-
-        return () => listener.remove();
-      },
+      onHidden: onKeysHidden,
     },
     then,
     settledMs,
   );
+}
+
+/** Calls `then` once keys something else is putting down have gone and `settledMs` has passed since, as `keysDownThen`, but asks nothing of them: TalkBack's focus moves as the window grows under keys that close late, and what was timed from the tap lands before that (sc-43907). Returns what cancels the call still to come. */
+export function onceKeysDownThen(then: () => void, settledMs: number): () => void {
+  return keysDownThen(
+    { up: () => Keyboard.isVisible(), hide: () => {}, onHidden: onKeysHidden },
+    then,
+    settledMs,
+  );
+}
+
+function onKeysHidden(hidden: () => void): () => void {
+  const listener = Keyboard.addListener('keyboardDidHide', hidden);
+
+  return () => listener.remove();
 }

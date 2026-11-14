@@ -6,6 +6,7 @@ namespace App\Domain\Guest\Removal;
 
 use App\Audit\Auditor;
 use App\Domain\Guest\GuestListPublisher;
+use App\Domain\Guest\Model\RemovedTogether;
 use App\Entity\Event;
 use App\Entity\Guest;
 use App\Entity\User;
@@ -14,16 +15,21 @@ use App\Http\Exception\ApiException;
 use App\Repository\GuestRepository;
 use DateInterval;
 use DateTimeImmutable;
+use Doctrine\DBAL\ArrayParameterType;
 use Doctrine\DBAL\Connection;
 use Doctrine\DBAL\LockMode;
 use Doctrine\ORM\EntityManagerInterface;
+use Psl\Iter;
 use Psl\Vec;
 use Psr\Clock\ClockInterface;
+use Symfony\Component\Uid\Uuid;
 
 /** Remove from the list (sc-3774): their link works until the erasure; the audit entry is on the event, so nothing of theirs outlives it. */
 final readonly class GuestRemovals
 {
     public const string REMOVED = 'guest.removed';
+
+    public const string REMOVED_TOGETHER = 'guests.removed_together';
 
     public const string LAPSE = 'PT15M';
 
@@ -57,6 +63,85 @@ final readonly class GuestRemovals
         });
 
         $this->guestListPublisher->publish($event);
+    }
+
+    /**
+     * One action for many guests and their companions, all or nothing, with one Undo (sc-3776). An id not on the list is counted in `gone`, never refused.
+     *
+     * @param list<string> $guestIds
+     */
+    public function removeTogether(Event $event, array $guestIds, User $by): RemovedTogether
+    {
+        $removed = $this->entityManager->wrapInTransaction(function () use ($event, $guestIds, $by): RemovedTogether {
+            $hosts = $this->guestRepository->lockHostsOn($event, $guestIds);
+
+            if ([] === $hosts) {
+                return new RemovedTogether(null, 0, 0, Iter\count(Vec\unique($guestIds)));
+            }
+
+            $at = $this->clock->now();
+            $removal = Uuid::v7();
+            $companions = 0;
+
+            foreach ($hosts as $host) {
+                $host->remove($at, $by, $removal);
+
+                foreach ($this->guestRepository->findCompanionsOf($host) as $companion) {
+                    $companion->remove($at, $by);
+                    ++$companions;
+                }
+            }
+
+            $this->entityManager->flush();
+
+            return new RemovedTogether($removal->toRfc4122(), Iter\count($hosts), $companions, Iter\count(Vec\unique($guestIds)) - Iter\count($hosts));
+        });
+
+        if (null !== $removed->removalId) {
+            $this->guestListPublisher->publish($event);
+        }
+
+        return $removed;
+    }
+
+    /** Refused 404 once erased. */
+    public function undoTogether(Event $event, string $removalId): int
+    {
+        $undone = $this->entityManager->wrapInTransaction(function () use ($event, $removalId): int {
+            $hosts = $this->guestRepository->lockRemovedTogether($event, $removalId);
+
+            if ([] === $hosts) {
+                throw ApiException::notFound('access.not_found');
+            }
+
+            foreach ($hosts as $host) {
+                foreach ($this->party($host) as $person) {
+                    $person->undoRemoval();
+                }
+            }
+
+            $this->entityManager->flush();
+
+            return Iter\count($hosts);
+        });
+
+        $this->guestListPublisher->publish($event);
+
+        return $undone;
+    }
+
+    /** Refused 404 once undone or erased. */
+    public function eraseTogether(Event $event, string $removalId): void
+    {
+        $this->entityManager->wrapInTransaction(function () use ($event, $removalId): void {
+            $hosts = $this->guestRepository->lockRemovedTogether($event, $removalId);
+
+            if ([] === $hosts) {
+                throw ApiException::notFound('access.not_found');
+            }
+
+            $this->eraseNow($hosts, self::REMOVED_TOGETHER);
+        });
     }
 
     /** Back in their place as they were; refused 404 once erased. */
@@ -93,7 +178,7 @@ final readonly class GuestRemovals
                 throw ApiException::notFound('access.not_found');
             }
 
-            $this->eraseNow($guest);
+            $this->eraseNow([$guest], self::REMOVED);
         });
     }
 
@@ -109,25 +194,43 @@ final readonly class GuestRemovals
                     return 0;
                 }
 
-                $this->eraseNow($guest);
+                $removal = $guest->getRemovalId();
 
-                return 1;
+                if (null === $removal) {
+                    $this->eraseNow([$guest], self::REMOVED);
+
+                    return 1;
+                }
+
+                $together = $this->guestRepository->lockRemovedTogether($guest->getEvent(), $removal->toRfc4122());
+                $this->eraseNow($together, self::REMOVED_TOGETHER);
+
+                return Iter\count($together);
             });
         }
 
         return $erased;
     }
 
-    /** Their companions and needs go by the foreign keys' cascade. */
-    private function eraseNow(Guest $guest): void
+    /** @param list<Guest> $hosts their companions and needs go by the cascade; one audit entry, with the counts when removed together */
+    private function eraseNow(array $hosts, string $action): void
     {
-        $by = $guest->getRemovedBy();
-        $party = $this->party($guest);
-        $this->auditor->record(self::REMOVED, 'Event', $guest->getEvent()->getId(), null === $by ? Actor::System : Actor::User, $by?->getId(), $by?->getName(), occurredAt: $guest->getRemovedAt());
-        $this->entityManager->flush();
-        $this->connection->executeStatement('DELETE FROM guests WHERE id = :id', ['id' => $guest->getId()->toRfc4122()]);
+        if ([] === $hosts) {
+            return;
+        }
 
-        foreach ($party as $person) {
+        $first = $hosts[0];
+        $by = $first->getRemovedBy();
+        $parties = Vec\map($hosts, $this->party(...));
+        $changes = self::REMOVED_TOGETHER === $action ? [
+            'guests' => [null, Iter\count($hosts)],
+            'companions' => [null, Iter\count(Vec\flatten($parties)) - Iter\count($hosts)],
+        ] : [];
+        $this->auditor->record($action, 'Event', $first->getEvent()->getId(), null === $by ? Actor::System : Actor::User, $by?->getId(), $by?->getName(), changes: $changes, occurredAt: $first->getRemovedAt());
+        $this->entityManager->flush();
+        $this->connection->executeStatement('DELETE FROM guests WHERE id IN (:ids)', ['ids' => Vec\map($hosts, static fn (Guest $host): string => $host->getId()->toRfc4122())], ['ids' => ArrayParameterType::STRING]);
+
+        foreach (Vec\flatten($parties) as $person) {
             $this->entityManager->detach($person);
         }
     }

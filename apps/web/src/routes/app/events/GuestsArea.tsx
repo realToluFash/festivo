@@ -7,6 +7,7 @@ import {
   type GuestGroup,
   type GuestList,
   type OrganisationEvent,
+  GUESTS_TOGETHER_MOST,
   asGuestList,
   realtimeTopic,
 } from '@soirely/api-client';
@@ -91,7 +92,16 @@ import { useLoadedAt, useServerNow } from '../../../serverNow.ts';
 import { canOn, useSession } from '../../../session.ts';
 import { useMakeLive } from './MakeLive.tsx';
 import { GroupChips, GroupField, GroupTag, GroupsColumn } from './GuestGroups.tsx';
-import { choiceLine, groupRefusal, listOpen } from './guestGroups.ts';
+import { GroupSheet, RemoveMany, ResultLine, SelectBar, SelectedSaid } from './GuestSelect.tsx';
+import {
+  type Action,
+  type Line,
+  companionsWith,
+  onlyCompanions,
+  removeQuestion,
+  shownGuests,
+} from './guestSelect.ts';
+import { choiceLine, groupRefusal, listOpen, refusedLine } from './guestGroups.ts';
 import { GuestColumn, ReplyMark, guestAddress } from './GuestColumn.tsx';
 import {
   CompanionField,
@@ -221,6 +231,8 @@ export function GuestsGone({ heading }: { heading: RefObject<HTMLHeadingElement 
 
 const NO_GUESTS: GuestList['guests'] = [];
 
+const NONE: ReadonlySet<string> = new Set();
+
 export function GuestsArea({
   event,
   tag,
@@ -260,6 +272,12 @@ export function GuestsArea({
   const [saved, setSaved] = useState(false);
   const [removed, setRemoved] = useState<{ guest: Guest; at: number } | null>(null);
   const [backOnList, setBackOnList] = useState<string | null>(null);
+  const [selected, setSelected] = useState<ReadonlySet<string>>(NONE);
+  const [selectionCleared, setSelectionCleared] = useState(false);
+  const [sheet, setSheet] = useState<{ refused: string | null } | null>(null);
+  const [removing, setRemoving] = useState<{ busy: boolean } | null>(null);
+  const [line, setLine] = useState<Line | null>(null);
+  const [removal, setRemoval] = useState<string | null>(null);
   const [asked, setAsked] = useState<ReadonlySet<string>>(() =>
     invites ? keptAsked(event.id) : new Set(),
   );
@@ -309,20 +327,32 @@ export function GuestsArea({
     return () => window.removeEventListener('pagehide', erase);
   }, [event.id, erasing]);
 
-  const unmounting = useRef<{ eventId: string; id: string | null }>({
+  // The same for many guests' one Undo (sc-3776).
+  useEffect(() => {
+    if (removal == null) return;
+    const erase = (): void => void api.eraseGuestsRemoval(event.id, removal).catch(() => undefined);
+
+    window.addEventListener('pagehide', erase);
+
+    return () => window.removeEventListener('pagehide', erase);
+  }, [event.id, removal]);
+
+  const unmounting = useRef<{ eventId: string; id: string | null; removal: string | null }>({
     eventId: event.id,
     id: null,
+    removal: null,
   });
 
   useEffect(() => {
-    unmounting.current = { eventId: event.id, id: erasing };
+    unmounting.current = { eventId: event.id, id: erasing, removal };
   });
 
   useEffect(
     () => () => {
-      const { eventId, id } = unmounting.current;
+      const { eventId, id, removal: many } = unmounting.current;
 
       if (id != null) void api.eraseGuest(eventId, id).catch(() => undefined);
+      if (many != null) void api.eraseGuestsRemoval(eventId, many).catch(() => undefined);
     },
     [],
   );
@@ -621,6 +651,142 @@ export function GuestsArea({
     [guests, counts, choice, q, expanded, dietaryOn, groupFilter],
   );
   const looking = choice !== 'all' || q.trim() !== '' || dietaryOn || groupFilter != null;
+  const listLook = `${choice}\n${q}\n${dietaryOn}\n${groupFilter ?? ''}`;
+  const [lookedAt, setLookedAt] = useState(listLook);
+
+  // A tab, a search or a filter changes what is shown, so nothing hidden stays selected (PM #5003).
+  if (lookedAt !== listLook) {
+    setLookedAt(listLook);
+    if (selected.size > 0) {
+      setSelected(NONE);
+      setSelectionCleared(true);
+    }
+  }
+
+  const shownIds = useMemo(() => (manages ? shownGuests(view) : []), [manages, view]);
+  // Only guests the person can see selected are acted on: one removed meanwhile drops out of the count.
+  const picked = useMemo(() => {
+    const shownSet = new Set(shownIds);
+
+    return new Set([...selected].filter((id) => shownSet.has(id)));
+  }, [selected, shownIds]);
+  const everyone = shownIds.length > 0 && shownIds.every((id) => picked.has(id));
+  const companionsPicked = companionsWith(guests, picked);
+  const undoing = line?.kind === 'removed' && removal != null;
+  const bar = manages && picked.size > 0 && (line == null || line.kind === 'undone');
+
+  function select(next: ReadonlySet<string>): void {
+    setSelected(next);
+    setSelectionCleared(false);
+    if (!undoing) setLine(null);
+  }
+
+  function toggle(id: string): void {
+    const next = new Set(picked);
+
+    if (next.has(id)) next.delete(id);
+    else next.add(id);
+    select(next);
+  }
+
+  function ended(next: Line): void {
+    setLine(next);
+    setSheet(null);
+    setRemoving(null);
+    focus('many-line');
+  }
+
+  /** A removal still inside its Undo is erased once another action ends it, since one line shows at a time. */
+  function endUndo(): void {
+    if (removal != null) void api.eraseGuestsRemoval(event.id, removal).catch(() => undefined);
+    setRemoval(null);
+  }
+
+  function move(to: { id: string } | { name: string }, ids: readonly string[] = [...picked]): void {
+    api.moveGuestsToGroup(event.id, ids, to).then(
+      (moved) => {
+        endUndo();
+        setSelected(NONE);
+        setRecount((n) => n + 1);
+        setAttempt((n) => n + 1);
+        ended({ kind: 'moved', moved });
+      },
+      (error: unknown) => {
+        const refused = refusedLine(error, 'group.name', 'group.id');
+
+        if (refused != null && sheet != null) {
+          setSheet({ refused });
+          return;
+        }
+        ended({ kind: 'failed', action: { kind: 'move', to } });
+      },
+    );
+  }
+
+  function removeMany(ids: readonly string[] = [...picked]): void {
+    setRemoving({ busy: true });
+    api.removeGuests(event.id, ids).then(
+      (removed) => {
+        endUndo();
+        const gone = new Set(ids);
+
+        setLoad((was) =>
+          was.kind === 'loaded'
+            ? {
+                kind: 'loaded',
+                list: [...gone].reduce((list, id) => withoutGuest(list, id).list, was.list),
+              }
+            : was,
+        );
+        setSelected(NONE);
+        setRecount((n) => n + 1);
+        setRemoval(removed.removal);
+        if (open != null && gone.has(open)) setParams(withGuest(null));
+        ended({ kind: 'removed', removed });
+      },
+      () => ended({ kind: 'failed', action: { kind: 'remove' } }),
+    );
+  }
+
+  function retry(action: Action): void {
+    if (action.kind === 'move') move(action.to);
+    else removeMany();
+  }
+
+  function pressAdd(): void {
+    if (picked.size > GUESTS_TOGETHER_MOST) return;
+    setSheet({ refused: null });
+  }
+
+  function pressRemove(): void {
+    if (picked.size > GUESTS_TOGETHER_MOST) return;
+    setRemoving({ busy: false });
+  }
+
+  function undoMany(): void {
+    if (removal == null) return;
+    const undone = removal;
+
+    setRemoval(null);
+    api.undoGuestsRemoval(event.id, undone).then(
+      () => {
+        const back = line?.kind === 'removed' ? line.removed.guests : 0;
+
+        setAttempt((n) => n + 1);
+        setRecount((n) => n + 1);
+        ended({ kind: 'undone', guests: back });
+      },
+      () => {
+        setLine(null);
+        setAttempt((n) => n + 1);
+      },
+    );
+  }
+
+  function lineGone(): void {
+    endUndo();
+    setLine(null);
+  }
 
   /** The card as `/demo/guests` draws it: a Draft, Paused or Finished event says so on the card, in place of its counts' step. */
   function cover(counts: Counts): Cover {
@@ -807,6 +973,77 @@ export function GuestsArea({
                             <TextAction label={t('guestList.clear')} onClick={clearView} />
                           )}
                         </div>
+                        <div role="status" className="gb-cleared">
+                          {selectionCleared && (
+                            <div className="gm-line is-quiet">
+                              <Glyph name="info" size={18} weight={2.4} />
+                              <p>
+                                <span>{t('guestSelect.cleared')}</span>
+                                <span className="gb-why">{t('guestSelect.clearedWhy')}</span>
+                              </p>
+                            </div>
+                          )}
+                        </div>
+                        <SelectedSaid
+                          count={bar ? picked.size : null}
+                          companions={companionsPicked}
+                        />
+                        {!manages && (
+                          <p className="desk-note gb-note">{t('guestSelect.viewOnly')}</p>
+                        )}
+                        {manages && shownIds.length > 0 && (
+                          <label className="gs-tick gm-all">
+                            <input
+                              type="checkbox"
+                              className="gs-box"
+                              checked={everyone}
+                              data-focus="many-all"
+                              ref={(box) => {
+                                if (box != null)
+                                  box.indeterminate =
+                                    !everyone && shownIds.some((id) => picked.has(id));
+                              }}
+                              onChange={() => select(everyone ? NONE : new Set(shownIds))}
+                            />
+                            {t('guestSelect.selectAll', { count: shownIds.length })}
+                          </label>
+                        )}
+                        {manages && onlyCompanions(view) && (
+                          <p className="desk-note gb-note">{t('guestSelect.heldNote')}</p>
+                        )}
+                        {manages && (
+                          <div className="gm-dock">
+                            <div
+                              className="gm-said"
+                              data-focus="many-line"
+                              tabIndex={-1}
+                              role="status"
+                            >
+                              {line != null && (
+                                <ResultLine
+                                  key={line.kind === 'removed' ? line.removed.removal : line.kind}
+                                  line={line}
+                                  undo={undoing}
+                                  onUndo={undoMany}
+                                  onGone={lineGone}
+                                  onRetry={retry}
+                                />
+                              )}
+                            </div>
+                            {bar && (
+                              <SelectBar
+                                count={picked.size}
+                                companions={companionsPicked}
+                                onAdd={pressAdd}
+                                onRemove={pressRemove}
+                                onClear={() => {
+                                  select(NONE);
+                                  focus('many-all');
+                                }}
+                              />
+                            )}
+                          </div>
+                        )}
                         {shown === 0 ? (
                           <div className="gs-none">
                             <h2 tabIndex={-1} data-focus="none-heading">
@@ -824,6 +1061,8 @@ export function GuestsArea({
                             timeZone={event.timeZone}
                             open={open}
                             onOpen={openGuest}
+                            picked={manages ? picked : null}
+                            onPick={toggle}
                           />
                         ) : (
                           view.groups.map((group) => (
@@ -845,6 +1084,8 @@ export function GuestsArea({
                                 timeZone={event.timeZone}
                                 open={open}
                                 onOpen={openGuest}
+                                picked={manages ? picked : null}
+                                onPick={toggle}
                               />
                             </Group>
                           ))
@@ -990,6 +1231,29 @@ export function GuestsArea({
                 showGroups();
               }
             }}
+          />
+        )}
+        {sheet != null && load.kind === 'loaded' && (
+          <GroupSheet
+            count={picked.size}
+            list={load.list}
+            refused={sheet.refused}
+            onCancel={() => {
+              setSheet(null);
+              focus('many-add');
+            }}
+            onMove={(to) => move(to)}
+          />
+        )}
+        {removing != null && picked.size > 0 && (
+          <RemoveMany
+            asked={removeQuestion(guests, picked)}
+            busy={removing.busy}
+            onKeep={() => {
+              setRemoving(null);
+              focus('many-remove');
+            }}
+            onRemove={() => removeMany()}
           />
         )}
         {makeLive.dialogs}
@@ -1197,6 +1461,9 @@ function Rows({
   timeZone: string;
   open: string | null;
   onOpen: (id: string) => void;
+  /** The guests selected, or null without guests.manage, when no row has a box (sc-3776). */
+  picked: ReadonlySet<string> | null;
+  onPick: (id: string) => void;
 }) {
   const [drawn, setDrawn] = useState({ look, upTo: ROWS_PER_FRAME });
   const upTo = drawn.look === look ? drawn.upTo : ROWS_PER_FRAME;
@@ -1232,6 +1499,8 @@ function RowsFrom({
   timeZone,
   open,
   onOpen,
+  picked,
+  onPick,
 }: {
   rows: readonly ViewRow[];
   from: number;
@@ -1242,6 +1511,8 @@ function RowsFrom({
   timeZone: string;
   open: string | null;
   onOpen: (id: string) => void;
+  picked: ReadonlySet<string> | null;
+  onPick: (id: string) => void;
 }) {
   const { t } = useTranslation();
 
@@ -1259,7 +1530,18 @@ function RowsFrom({
 
         if (companion == null)
           return (
-            <li key={guest.id}>
+            <li key={guest.id} className={picked == null ? undefined : 'gm-pick'}>
+              {picked != null && (
+                <label className="gm-box">
+                  <input
+                    type="checkbox"
+                    className="gs-box"
+                    aria-label={t('guestSelect.select', { name: guest.fullName })}
+                    checked={picked.has(guest.id)}
+                    onChange={() => onPick(guest.id)}
+                  />
+                </label>
+              )}
               <RowLink
                 eventId={eventId}
                 guestId={guest.id}

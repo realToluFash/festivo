@@ -138,6 +138,7 @@
     "validation.guest_invitation_how_required": "Choose how you invited them.",
     "validation.guest_answer_unknown": "Choose Coming, Not coming or Not sure yet.",
     "validation.guest_language_unknown": "Choose English, Español, Français or Português, or leave it as Not set.",
+    "validation.guests_too_many": "You can act on up to 2,000 guests at once. Narrow the list with a tab, a search or a filter, then select again.",
     "validation.guest_group_name_required": "Enter a name for the group.",
     "validation.guest_group_name_too_long": "A group name can be up to {groupMax} characters.",
     "validation.guest_group_name_taken": "There is already a group called {name}.",
