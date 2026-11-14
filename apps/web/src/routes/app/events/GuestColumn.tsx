@@ -30,6 +30,7 @@ import {
   PlacesStepper,
 } from './GuestFields.tsx';
 import { type Copy, IconLead, Invitation, invitationLine } from './GuestInvitation.tsx';
+import { languageNameInSentence } from '../settings/organisationDetails.ts';
 import {
   type CompanionNeeds,
   CompanionNeedsSection,
@@ -588,7 +589,7 @@ function GuestView({
                       title={
                         ownLanguageName(guest.language) ??
                         t('guestList.languageNotSetLine', {
-                          language: t(`languageNames.${guest.organisationLanguage ?? 'en'}`),
+                          language: languageNameInSentence(t, guest.organisationLanguage ?? 'en'),
                         })
                       }
                       lines={[t('language.label')]}
