@@ -51,6 +51,7 @@ const GUESTS: Record<GuestsState, Board> = {
   invitedWhenReplied: ['invited when they replied', 'Ngozi Eze: no Mark as not invited'],
   unmarked: ['marked as not invited', 'Dr Emeka Nwosu back to Not yet invited'],
   unmarkRefused: ['Mark as not invited refused', 'They replied first, so they stay invited'],
+  unmarkNotSaved: ['Mark as not invited failed', 'Still invited, try again'],
   finished: ['a Finished event', 'Nobody can be invited: no mark, no link'],
   languageNotSet: ['Language not set', 'Details: what the page and messages fall back to'],
   languageSet: ['Language set', 'Details: Sophie Laurent, Français'],
