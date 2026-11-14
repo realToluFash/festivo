@@ -30,7 +30,7 @@
     "guest_already_listed": "Esse nome já está na lista.",
     "replies_closed": "O prazo de resposta terminou.",
     "guest_replied": "Esta pessoa já respondeu, por isso o convite mantém-se.",
-    "guest_not_marked_by_hand": "Só é possível anular um convite marcado manualmente.",
+    "guest_not_marked_by_hand": "Só é possível anular um convite registado manualmente.",
     "unauthenticated": "Inicie sessão para continuar.",
     "invalid_credentials": "Esse endereço de correio electrónico e essa palavra-passe não correspondem.",
     "invalid_refresh_token": "A sua sessão foi encerrada. Inicie sessão novamente.",

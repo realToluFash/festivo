@@ -18,7 +18,8 @@
     "mobile:calendar.agenda",
     "web:auth.copyright",
     "web:guest.calendarApple",
-    "web:guest.calendarGoogle"
+    "web:guest.calendarGoogle",
+    "web:guestList.how.whatsapp"
   ],
   "fr": [
     "web:nav.menu",
@@ -106,7 +107,8 @@
     "web:eventsSearch.type",
     "mobile:eventsSearch.type",
     "web:guestList.invitation",
-    "web:guest.calendarApple"
+    "web:guest.calendarApple",
+    "web:guestList.how.whatsapp"
   ],
   "pt": [
     "web:nav.menu",
@@ -124,6 +126,7 @@
     "mobile:eventNav.menu",
     "web:auth.copyright",
     "web:guest.calendarApple",
-    "web:guest.calendarGoogle"
+    "web:guest.calendarGoogle",
+    "web:guestList.how.whatsapp"
   ]
 }
