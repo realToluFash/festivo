@@ -156,13 +156,13 @@ export function EventScreen({
     }, [reload, freshen]),
   );
 
-  const guestsAnswered = area === 'guests' && guestsOffline.stale == null;
+  const guestsClear = area === 'guests' && guestsOffline.stale == null;
   const eventStale = opened.stale != null;
 
-  // Each answer after a return is the guests' load's, which the event's watch leaves alone (sc-27096), so without this the event's band never clears.
+  // Each answer after a return is the guests' load's, which the event's watch leaves alone (sc-27096), so without this the event's band never clears. It also fires on entering Guests, before their first read answers.
   useEffect(() => {
-    if (guestsAnswered && eventStale) freshen();
-  }, [guestsAnswered, eventStale, freshen]);
+    if (guestsClear && eventStale) freshen();
+  }, [guestsClear, eventStale, freshen]);
 
   const chooseArea = (next: EventPlace, choice?: Choice) =>
     navigation.setParams({ [EVENT_AREA]: next, [GUESTS_FILTER]: choice });
