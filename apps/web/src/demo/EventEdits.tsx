@@ -1,10 +1,6 @@
 import {
   COVER_DESCRIPTION_MAXIMUM,
   COVER_MIDDLE,
-  COVER_TYPES,
-  type CoverRefusal,
-  coverDimensionsRefusal,
-  coverFileRefusal,
   EVENT_NAME_MAXIMUM,
   EVENT_TYPES,
   HOSTS_MAXIMUM,
@@ -28,7 +24,7 @@ import {
   type SampleEvent,
   type SampleVenue,
   type Wall,
-  CURRENCIES,
+  CURRENCY_CHOICES,
   EVENT_WORDS as W,
   clockOf,
   PHOTO_DESCRIPTION,
@@ -51,6 +47,7 @@ import {
   replyByAfterStart,
 } from './replyBy.ts';
 import { NotBuilt } from './EventParts.tsx';
+import { useCoverPick } from './useCoverPick.tsx';
 import {
   Alert,
   Broken,
@@ -283,13 +280,52 @@ export function ZoneSelect({
   refTo?: RefObject<HTMLDivElement | null>;
   onChange: (zone: string) => void;
 }) {
+  return (
+    <Select
+      refTo={refTo}
+      label={W.timeZone}
+      value={value}
+      choices={ZONE_CHOICES}
+      error={error}
+      help={W.timesIn(value)}
+      off={off}
+      onChange={onChange}
+    />
+  );
+}
+
+const ZONE_CHOICES = ZONES.map((one) => [one, one] as const);
+
+export function Select({
+  refTo,
+  label,
+  value,
+  placeholder,
+  choices,
+  error,
+  help,
+  off = false,
+  onChange,
+}: {
+  refTo?: RefObject<HTMLDivElement | null> | undefined;
+  label: string;
+  value: string;
+  placeholder?: string;
+  choices: readonly (readonly [string, string])[];
+  error?: string | undefined;
+  help?: string;
+  off?: boolean;
+  onChange: (value: string) => void;
+}) {
   const id = useId();
-  const told = error == null ? `${id}-help` : `${id}-error ${id}-help`;
+  const told = [error == null ? null : `${id}-error`, help == null ? null : `${id}-help`]
+    .filter(Boolean)
+    .join(' ');
 
   return (
     <div ref={refTo} className="desk-field">
       <label htmlFor={id} className="desk-label">
-        {W.timeZone}
+        {label}
       </label>
       <div className={error == null ? 'desk-box ev-select' : 'desk-box ev-select is-wrong'}>
         <select
@@ -297,12 +333,18 @@ export function ZoneSelect({
           value={value}
           disabled={off}
           aria-invalid={error != null}
-          aria-describedby={told}
+          aria-describedby={told === '' ? undefined : told}
+          className={value === '' ? 'is-empty' : undefined}
           onChange={(change) => onChange(change.target.value)}
         >
-          {ZONES.map((one) => (
+          {placeholder != null && (
+            <option value="" disabled>
+              {placeholder}
+            </option>
+          )}
+          {choices.map(([one, words]) => (
             <option key={one} value={one}>
-              {one}
+              {words}
             </option>
           ))}
         </select>
@@ -314,9 +356,11 @@ export function ZoneSelect({
           {error}
         </p>
       )}
-      <p id={`${id}-help`} className="desk-help">
-        {W.timesIn(value)}
-      </p>
+      {help != null && (
+        <p id={`${id}-help`} className="desk-help">
+          {help}
+        </p>
+      )}
     </div>
   );
 }
@@ -894,8 +938,6 @@ export function TypePart({ event, onDirty, onClose, onSave }: PartProps) {
   );
 }
 
-const CURRENCY_CODES = Object.keys(CURRENCIES) as Currency[];
-
 /** Currency: refused once amounts are recorded against the event. */
 export function CurrencyPart({ event, state, onDirty, onClose, onSave }: PartProps) {
   const refusing = state === 'currencyRefused';
@@ -916,12 +958,7 @@ export function CurrencyPart({ event, state, onDirty, onClose, onSave }: PartPro
       }}
     >
       {refused && <Broken>{W.currencyInUse}</Broken>}
-      <Radios
-        legend={W.currency}
-        choices={CURRENCY_CODES.map((code) => [code, `${code} · ${CURRENCIES[code]}`])}
-        picked={picked}
-        onPick={setPicked}
-      />
+      <Radios legend={W.currency} choices={CURRENCY_CHOICES} picked={picked} onPick={setPicked} />
     </Opened>
   );
 }
@@ -1019,29 +1056,7 @@ export function CoverUpload({
   );
 }
 
-const COVER_ACCEPT = [...COVER_TYPES, '.heic', '.heif'].join(',');
 const UPLOAD_MS = 1500;
-
-const PICK_REFUSED: Record<CoverRefusal, string> = {
-  type: W.refusedType,
-  size: W.refusedSize,
-  dimensions: W.refusedDimensions,
-};
-
-function sizeOf(file: File): Promise<{ width: number; height: number } | null> {
-  return new Promise((resolve) => {
-    const url = URL.createObjectURL(file);
-    const image = new Image();
-    const done = (size: { width: number; height: number } | null) => {
-      URL.revokeObjectURL(url);
-      resolve(size);
-    };
-
-    image.onload = () => done({ width: image.naturalWidth, height: image.naturalHeight });
-    image.onerror = () => done(null);
-    image.src = url;
-  });
-}
 
 /** Cover: Soirely's cover in the event's own colours, or a photo, its position and what a screen reader says for it. */
 export function CoverPart({ event, state, onDirty, onClose, onSave }: PartProps) {
@@ -1052,18 +1067,27 @@ export function CoverPart({ event, state, onDirty, onClose, onSave }: PartProps)
   );
   const [position, setPosition] = useState(COVER_MIDDLE);
   const [described, setDescribed] = useState(PHOTO_DESCRIPTION);
-  const [pickRefused, setPickRefused] = useState<string | null>(
+  const [saveRefused, setSaveRefused] = useState(state === 'coverSaveRefused');
+  const [asking, setAsking] = useState(false);
+  const picker = useRef<HTMLButtonElement>(null);
+  const timer = useRef<number | undefined>(undefined);
+  const cover = useCoverPick(
+    () => {
+      setUploading(true);
+      window.clearTimeout(timer.current);
+      timer.current = window.setTimeout(() => {
+        setUploading(false);
+        setPhoto(true);
+        setPicked(true);
+        setPosition(COVER_MIDDLE);
+      }, UPLOAD_MS);
+    },
     state === 'coverRefused'
       ? W.refusedDimensions
       : state === 'coverChangeRefused'
         ? W.refusedType
         : null,
   );
-  const [saveRefused, setSaveRefused] = useState(state === 'coverSaveRefused');
-  const [asking, setAsking] = useState(false);
-  const file = useRef<HTMLInputElement>(null);
-  const picker = useRef<HTMLButtonElement>(null);
-  const timer = useRef<number | undefined>(undefined);
   const part = positionPart(position);
   const changed =
     photo !== event.photo ||
@@ -1078,27 +1102,6 @@ export function CoverPart({ event, state, onDirty, onClose, onSave }: PartProps)
     return () => window.clearTimeout(timer.current);
   }, []);
 
-  const pick = () => file.current?.click();
-
-  const chosen = async (files: FileList | null) => {
-    const one = files?.[0];
-    if (file.current != null) file.current.value = '';
-    if (one == null) return;
-
-    const refusal = coverFileRefusal(one) ?? coverDimensionsRefusal(await sizeOf(one));
-    if (refusal != null) return setPickRefused(PICK_REFUSED[refusal]);
-
-    setPickRefused(null);
-    setUploading(true);
-    window.clearTimeout(timer.current);
-    timer.current = window.setTimeout(() => {
-      setUploading(false);
-      setPhoto(true);
-      setPicked(true);
-      setPosition(COVER_MIDDLE);
-    }, UPLOAD_MS);
-  };
-
   return (
     <Opened
       label={W.cover}
@@ -1111,15 +1114,7 @@ export function CoverPart({ event, state, onDirty, onClose, onSave }: PartProps)
       }}
     >
       {saveRefused && <Broken>{W.uploadFailed}</Broken>}
-      <input
-        ref={file}
-        type="file"
-        className="desk-unseen"
-        accept={COVER_ACCEPT}
-        tabIndex={-1}
-        aria-hidden="true"
-        onChange={(change) => void chosen(change.target.files)}
-      />
+      {cover.input}
       <div className="ev-cover-frame">
         <CoverPreview photo={photo} mesh={event.mesh} />
         {uploading && (
@@ -1130,8 +1125,8 @@ export function CoverPart({ event, state, onDirty, onClose, onSave }: PartProps)
       </div>
       {photo ? (
         <>
-          {pickRefused != null && <Broken>{pickRefused}</Broken>}
-          <button ref={picker} type="button" className="desk-text" onClick={pick}>
+          {cover.refusal != null && <Broken>{cover.refusal}</Broken>}
+          <button ref={picker} type="button" className="desk-text" onClick={cover.pick}>
             {W.changePhoto}
           </button>
           <div className="desk-field">
@@ -1170,12 +1165,12 @@ export function CoverPart({ event, state, onDirty, onClose, onSave }: PartProps)
               setUploading(false);
               setPhoto(false);
               setPicked(false);
-              setPickRefused(null);
+              cover.setRefusal(null);
             }}
           />
         </>
       ) : (
-        <CoverUpload refusal={pickRefused} buttonRef={picker} onUpload={pick} />
+        <CoverUpload refusal={cover.refusal} buttonRef={picker} onUpload={cover.pick} />
       )}
       {asking && (
         <Ask

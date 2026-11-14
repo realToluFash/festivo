@@ -69,6 +69,12 @@ export const CURRENCIES: Record<Currency, string> = {
   MXN: 'Mexican peso',
 };
 
+export const currencyLabel = (code: Currency): string => `${code} · ${CURRENCIES[code]}`;
+
+export const CURRENCY_CHOICES: readonly (readonly [Currency, string])[] = (
+  Object.keys(CURRENCIES) as Currency[]
+).map((code) => [code, currencyLabel(code)]);
+
 export const TYPE_WORDS: Record<EventType, string> = {
   wedding: 'Wedding',
   birthday: 'Birthday',

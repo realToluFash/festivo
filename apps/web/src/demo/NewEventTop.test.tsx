@@ -4,6 +4,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
 import { __setConfig, config } from '../config.ts';
 import { routes } from '../routes/index.tsx';
+import { EVENT_WORDS as W } from './events.ts';
 
 const tested = config();
 
@@ -113,5 +114,64 @@ describe('New event’s form at a desk (sc-48607)', () => {
     open('leave');
 
     expect(await screen.findByText('What you typed for this event will be lost.')).toBeDefined();
+  });
+
+  describe('its cover picks a photo the way the event’s Cover edit does', () => {
+    const cover = () => screen.getByRole('region', { name: W.coverPhoto });
+
+    function choose(file: File) {
+      const input = cover().querySelector<HTMLInputElement>('input[type="file"]');
+      if (input == null) throw new Error('no file input');
+      fireEvent.change(input, { target: { files: [file] } });
+    }
+
+    afterEach(() => vi.unstubAllGlobals());
+
+    it('opens the file chooser from Upload a photo', async () => {
+      open();
+      await screen.findByRole('textbox', { name: /Event name/ });
+      const input = cover().querySelector<HTMLInputElement>('input[type="file"]');
+      const clicked = vi.fn();
+      input?.addEventListener('click', clicked);
+
+      fireEvent.click(within(cover()).getByRole('button', { name: W.upload }));
+
+      expect(clicked).toHaveBeenCalledOnce();
+    });
+
+    it('refuses a file that is not a photo and keeps Upload', async () => {
+      open();
+      await screen.findByRole('textbox', { name: /Event name/ });
+
+      choose(new File(['x'], 'notes.txt', { type: 'text/plain' }));
+
+      expect(await within(cover()).findByText(W.refusedType)).toBeDefined();
+      expect(within(cover()).getByRole('button', { name: W.upload })).toBeDefined();
+    });
+
+    it('takes a photo that passes, with Remove photo under it', async () => {
+      vi.stubGlobal(
+        'URL',
+        Object.assign(URL, { createObjectURL: () => 'blob:x', revokeObjectURL() {} }),
+      );
+      vi.stubGlobal(
+        'Image',
+        class {
+          naturalWidth = 2400;
+          naturalHeight = 1350;
+          onload: (() => void) | null = null;
+          set src(_: string) {
+            queueMicrotask(() => this.onload?.());
+          }
+        },
+      );
+      open();
+      await screen.findByRole('textbox', { name: /Event name/ });
+
+      choose(new File(['x'], 'arch.jpg', { type: 'image/jpeg' }));
+
+      expect(await within(cover()).findByRole('button', { name: W.removePhoto })).toBeDefined();
+      expect(within(cover()).queryByText(W.refusedType)).toBeNull();
+    });
   });
 });
