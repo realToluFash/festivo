@@ -1221,13 +1221,26 @@
   font-size: 14.5px;
 }
 
+.desk-box.gs-note-box {
+  height: auto;
+  padding-block: var(--spaceMd);
+}
+
 .gs-note {
-  width: 100%;
+  flex: 1;
+  min-width: 0;
   min-height: 72px;
+  padding: 0;
   border: 0;
+  outline: none;
   background: none;
-  font: inherit;
+  color: var(--colorInk);
+  font: 500 16px/1.45 var(--fontFamily);
   resize: vertical;
+}
+
+.desk .gs-note:focus-visible {
+  box-shadow: none;
 }
 
 .gs-companion-block {
