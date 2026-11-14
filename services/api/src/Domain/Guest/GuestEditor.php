@@ -21,7 +21,6 @@ use Psl\Dict;
 use Psl\Iter;
 use Psl\Str;
 use Psl\Vec;
-use Symfony\Contracts\Translation\TranslatorInterface;
 
 /** The audit names the fields changed and holds none of their values: no name or contact may outlive the purge (sc-1468). */
 final readonly class GuestEditor
@@ -33,8 +32,8 @@ final readonly class GuestEditor
         private EntityManagerInterface $entityManager,
         private Auditor $auditor,
         private GuestListPublisher $guestListPublisher,
-        private TranslatorInterface $translator,
         private GuestNeedsRecord $guestNeedsRecord,
+        private GuestRules $guestRules,
     ) {
     }
 
@@ -149,11 +148,7 @@ final readonly class GuestEditor
             }
 
             if (!Iter\contains_key($theirs, $id) || Iter\contains_key($kept, $id)) {
-                $violations[] = [
-                    'propertyPath' => "companions[{$index}].id",
-                    'message' => $this->translator->trans('validation.guest_companion_unknown'),
-                    'code' => ErrorCode::ValidationFailed->value,
-                ];
+                $violations[] = $this->guestRules->violation("companions[{$index}].id", 'validation.guest_companion_unknown');
                 continue;
             }
 

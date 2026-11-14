@@ -33,6 +33,21 @@ import { type HowAgreed, NO_CONSENT, type WhatsAppConsent, hostAgreed } from './
 import type { DemoLink } from './settings.ts';
 import { type ExportStart, XW, exportDay, fileName } from './guestExport.ts';
 import { type Change, changeLabel, changeWhen } from './changedSince.ts';
+import {
+  type GroupFieldStart,
+  type GroupFilter,
+  type GroupPick,
+  type GroupsStart,
+  type GuestGroup,
+  NO_GROUP,
+  WEDDING_GROUPS,
+  fullGroups,
+  groupLine,
+  groupProblem,
+  groupedWedding,
+  inGroupFilter,
+  withGroup,
+} from './guestGroups.ts';
 
 /** Guests in A · Summary first (page e30, board/guests-a-spec.md): the sample, its counts and the states; the words are in guestsWords.ts. */
 export { GW };
@@ -129,6 +144,8 @@ export interface Guest {
   optOuts: OptOuts;
   askAgain: AskAgain | null;
   needs: Needs;
+  /** sc-3775: the one group they are in, by id; their companions follow them. Absent is No group. */
+  group?: string;
 }
 
 /** sc-1363: when a guest who answered Not sure yet will be, or was, asked again; Not sent: too late reads as nothing chosen. */
@@ -951,17 +968,19 @@ export function viewOf(
   replyBy: string | null,
   contacts = true,
   dietaryOnly = false,
+  groupFilter: GroupFilter | null = null,
 ): { view: ListView; shown: number } {
   const people = peopleOf(list);
   const searched = q.trim() !== '';
   const needed = dietaryOnly && contacts;
 
-  if (searched || needed || (choice !== 'all' && choice !== 'invited')) {
+  if (searched || needed || groupFilter != null || (choice !== 'all' && choice !== 'invited')) {
     const found = people.filter(
       (one) =>
         inChoice(one.reply, choice) &&
         matches(one, q, contacts) &&
-        (!needed || dietary(needsOfPerson(one))),
+        (!needed || dietary(needsOfPerson(one))) &&
+        inGroupFilter(one.guest, groupFilter),
     );
 
     return {
@@ -1051,6 +1070,8 @@ export interface Values {
   greetAs: string;
   needs: Needs;
   companions: readonly { id: string | null; name: string; needs?: Needs }[];
+  /** sc-3775's Group field: a group chosen, or a new name made on save. */
+  group?: GroupPick;
 }
 
 export function valuesOf(one: Guest | null): Values {
@@ -1068,6 +1089,7 @@ export function valuesOf(one: Guest | null): Values {
         name: companion.name ?? '',
         needs: companion.needs ?? NO_NEEDS,
       })) ?? [],
+    group: one?.group == null ? null : { id: one.group },
   };
 }
 
@@ -1078,6 +1100,8 @@ export interface Lines {
   number?: string;
   /** sc-3777: each person's Needs refusals, `guest` or `c{n}` for a companion. */
   needs?: Record<string, NeedsLines>;
+  /** sc-3775: a new group's name refused (over 60, or the event's 50 groups). */
+  group?: string;
 }
 
 /** sc-3960: Greet as is counted in code points after trimming, as the API counts it. */
@@ -1092,7 +1116,7 @@ function greetAsOf(values: Values): string | null {
   return values.greetAs.trim() === '' ? null : values.greetAs.trim();
 }
 
-export function linesOf(values: Values): Lines {
+export function linesOf(values: Values, groups: readonly GuestGroup[] = []): Lines {
   const lines: Lines = {};
   const name = values.name.trim();
 
@@ -1111,8 +1135,20 @@ export function linesOf(values: Values): Lines {
     ].filter(([, found]) => Object.keys(found).length > 0),
   );
   if (Object.keys(needs).length > 0) lines.needs = needs;
+  if (values.group != null && 'name' in values.group) {
+    const problem = groupProblem(groups, values.group.name);
+
+    if (problem != null) lines.group = groupLine(groups, values.group.name, problem, 'form');
+  }
 
   return lines;
+}
+
+/** A pick already settled to an id (settleGroup) or none; undefined leaves the guest's group as it was. */
+function groupOfPick(one: Guest, pick: GroupPick | undefined): Guest {
+  if (pick === undefined) return one;
+
+  return withGroup(one, pick != null && 'id' in pick ? pick.id : null);
 }
 
 export function namedOf(one: Guest): number {
@@ -1204,19 +1240,22 @@ export function saveGuest(list: readonly Guest[], id: string, values: Values): G
       };
     });
 
-    return {
-      ...one,
-      name: values.name.trim(),
-      email: values.email.trim() === '' ? null : values.email.trim(),
-      phone:
-        values.number.trim() === ''
-          ? null
-          : { country: values.country, number: values.number.trim() },
-      language: values.language,
-      greetAs: greetAsOf(values),
-      needs: savedNeeds(values.needs),
-      companions: kept,
-    };
+    return groupOfPick(
+      {
+        ...one,
+        name: values.name.trim(),
+        email: values.email.trim() === '' ? null : values.email.trim(),
+        phone:
+          values.number.trim() === ''
+            ? null
+            : { country: values.country, number: values.number.trim() },
+        language: values.language,
+        greetAs: greetAsOf(values),
+        needs: savedNeeds(values.needs),
+        companions: kept,
+      },
+      values.group,
+    );
   });
 }
 
@@ -1239,15 +1278,18 @@ export function addGuest(list: readonly Guest[], values: Values, on: string): Gu
 
   return [
     ...list,
-    {
-      ...fresh,
-      companions: values.companions.map((companion, index) => ({
-        id: `${id}-c${index + 1}`,
-        name: companion.name.trim() === '' ? null : companion.name.trim(),
-        reply: 'notYet' as const,
-        needs: savedNeeds(companion.needs ?? NO_NEEDS),
-      })),
-    },
+    groupOfPick(
+      {
+        ...fresh,
+        companions: values.companions.map((companion, index) => ({
+          id: `${id}-c${index + 1}`,
+          name: companion.name.trim() === '' ? null : companion.name.trim(),
+          reply: 'notYet' as const,
+          needs: savedNeeds(companion.needs ?? NO_NEEDS),
+        })),
+      },
+      values.group,
+    ),
   ];
 }
 
@@ -1499,6 +1541,8 @@ export interface EditStart {
   placesRefused?: boolean;
   /** sc-3777: the Needs sections open, `guest` or `c{n}`. */
   needs?: string[];
+  /** sc-3775: the Group field as it opens. */
+  group?: GroupFieldStart;
 }
 
 export interface RecordStart {
@@ -1524,6 +1568,7 @@ export interface AddStart {
   at?: string;
   placesRefused?: boolean;
   needs?: string[];
+  group?: GroupFieldStart;
 }
 
 export type Pane =
@@ -1534,7 +1579,8 @@ export type Pane =
   | { kind: 'edit'; id: string; start: EditStart }
   | { kind: 'record'; id: string; start: RecordStart }
   | { kind: 'whatsApp'; id: string; start: AgreeStart }
-  | { kind: 'add'; start: AddStart };
+  | { kind: 'add'; start: AddStart }
+  | { kind: 'groups'; start: GroupsStart };
 
 export interface GuestsStart {
   event: string;
@@ -1561,6 +1607,9 @@ export interface GuestsStart {
   askFailed: boolean;
   markEnds: 'saved' | 'fails' | 'refused';
   paused: boolean;
+  /** sc-3775: the event's groups, and the chip pressed. */
+  groups: GuestGroup[];
+  groupFilter: GroupFilter | null;
 }
 
 export const THEIRS = { email: 'kwame.mensha@outlook.com', number: '7700 900518' } as const;
@@ -1793,6 +1842,32 @@ export const GUESTS_STATES = [
   { key: 'inviteGuestMobile', name: 'Send invitation beside Send on WhatsApp' },
   { key: 'inviteGuestInvited', name: 'Send invitation on a guest already invited' },
   { key: 'inviteNoneLeft', name: 'After the send, nobody left to invite' },
+  { key: 'groups', name: 'Each guest’s group on their row, a chip per group and No group' },
+  { key: 'groupsChip', name: 'The Bride’s side chip pressed' },
+  { key: 'groupsNoGroup', name: 'The No group chip pressed' },
+  { key: 'groupsGuest', name: 'Dr Emeka Nwosu: his group beside his name' },
+  { key: 'groupsGuestNone', name: 'Bisi Adewale, in no group: nothing in its place' },
+  { key: 'groupsViewerList', name: 'Can view: the groups seen on the rows and chips' },
+  { key: 'groupField', name: 'Edit guest: the Group field, Bride’s side chosen' },
+  { key: 'groupFieldOpen', name: 'Edit guest: the Group list open on “s”' },
+  { key: 'groupFieldCreate', name: 'Edit guest: “Cousins” typed, Create “Cousins” offered' },
+  { key: 'groupFieldLong', name: 'Edit guest: a new group over 60 characters, refused' },
+  { key: 'groupFieldLimit', name: 'Edit guest: 50 groups, a new one refused' },
+  { key: 'groupFieldAdd', name: 'Add guest: the Group field, empty' },
+  { key: 'groupsPane', name: 'Groups: each group and its count, Rename and Delete' },
+  { key: 'groupsFirst', name: 'Groups: none yet, the first time' },
+  { key: 'groupsNoGuests', name: 'Groups on a new event: no guests, no groups yet' },
+  { key: 'groupsNewBlank', name: 'New group: Create group pressed with no name' },
+  { key: 'groupsNewLong', name: 'New group: a name over 60 characters' },
+  { key: 'groupsNewTaken', name: 'New group: “work”, already Work' },
+  { key: 'groupsNewLimit', name: 'New group: the event has 50 groups' },
+  { key: 'groupsCreated', name: 'New group: Cousins created, 0 people' },
+  { key: 'groupsRename', name: 'Rename Work, in place' },
+  { key: 'groupsRenameTaken', name: 'Rename Work to “bride’s side”: taken' },
+  { key: 'groupsDelete', name: 'Delete Work? Three guests in it' },
+  { key: 'groupsDeleteEmpty', name: 'Delete Cousins? No one in it' },
+  { key: 'groupsViewer', name: 'Groups without guests.manage: seen, not changed' },
+  { key: 'groupsViewerFirst', name: 'Groups without guests.manage, none yet' },
 ] as const;
 
 export type GuestsState = (typeof GUESTS_STATES)[number]['key'];
@@ -1838,6 +1913,8 @@ export function guestsStart(state: GuestsState | null, params: URLSearchParams):
     askFailed: false,
     markEnds: 'saved',
     paused: false,
+    groups: [],
+    groupFilter: null,
   };
   const column = (pane: Pane, more: Partial<GuestsStart> = {}): GuestsStart => ({
     ...start,
@@ -1869,6 +1946,23 @@ export function guestsStart(state: GuestsState | null, params: URLSearchParams):
   });
   const closed = { clock: CLOCK_DOOR, card: 'beforeDoor' as const };
   const picked = applyParams(start, params);
+  const grouped: GuestsStart = {
+    ...start,
+    list: groupedWedding(start.list),
+    groups: [...WEDDING_GROUPS],
+  };
+  const cousins: GuestGroup = { id: 'g-cousins', name: 'Cousins' };
+  const groupsPane = (from: GroupsStart = {}, more: Partial<GuestsStart> = {}): GuestsStart => ({
+    ...grouped,
+    pane: { kind: 'groups', start: from },
+    ...more,
+  });
+  const groupEdit = (from: EditStart = {}, more: Partial<GuestsStart> = {}): GuestsStart => ({
+    ...grouped,
+    choice: 'noReply',
+    pane: { kind: 'edit', id: 'emeka', start: from },
+    ...more,
+  });
 
   switch (state) {
     case null:
@@ -2291,8 +2385,79 @@ export function guestsStart(state: GuestsState | null, params: URLSearchParams):
       };
     case 'exportGrantView':
       return { ...start, role: 'viewer' };
+    case 'groups':
+      return grouped;
+    case 'groupsChip':
+      return { ...grouped, groupFilter: 'g-bride' };
+    case 'groupsNoGroup':
+      return { ...grouped, groupFilter: NO_GROUP };
+    case 'groupsGuest':
+      return { ...grouped, pane: guestPane('emeka') };
+    case 'groupsGuestNone':
+      return { ...grouped, pane: guestPane('bisi') };
+    case 'groupsViewerList':
+      return { ...grouped, role: 'viewer' };
+    case 'groupField':
+      return groupEdit({ at: 'group' });
+    case 'groupFieldOpen':
+      return groupEdit({ at: 'group', group: { typed: 's', open: true } });
+    case 'groupFieldCreate':
+      return groupEdit({
+        at: 'group',
+        values: { group: { name: 'Cousins' } },
+        group: { typed: 'Cousins', open: true },
+      });
+    case 'groupFieldLong':
+      return groupEdit({
+        at: 'group',
+        tried: true,
+        values: { group: { name: GROUP_TOO_LONG } },
+        group: { typed: GROUP_TOO_LONG },
+      });
+    case 'groupFieldLimit':
+      return groupEdit(
+        {
+          at: 'group',
+          tried: true,
+          values: { group: { name: 'Cousins' } },
+          group: { typed: 'Cousins' },
+        },
+        { groups: fullGroups() },
+      );
+    case 'groupFieldAdd':
+      return { ...grouped, choice: 'noReply', pane: { kind: 'add', start: { at: 'group' } } };
+    case 'groupsPane':
+      return groupsPane();
+    case 'groupsFirst':
+      return groupsPane({}, { groups: [], list: start.list });
+    case 'groupsNoGuests':
+      return groupsPane({}, { groups: [], list: [] });
+    case 'groupsNewBlank':
+      return groupsPane({ typed: '', tried: true });
+    case 'groupsNewLong':
+      return groupsPane({ typed: GROUP_TOO_LONG, tried: true });
+    case 'groupsNewTaken':
+      return groupsPane({ typed: 'work', tried: true });
+    case 'groupsNewLimit':
+      return groupsPane({ typed: 'Cousins', tried: true }, { groups: fullGroups() });
+    case 'groupsCreated':
+      return groupsPane({ said: 'Cousins created.' }, { groups: [...WEDDING_GROUPS, cousins] });
+    case 'groupsRename':
+      return groupsPane({ renaming: { id: 'g-work', typed: 'Work' } });
+    case 'groupsRenameTaken':
+      return groupsPane({ renaming: { id: 'g-work', typed: 'bride’s side', tried: true } });
+    case 'groupsDelete':
+      return groupsPane({ deleting: 'g-work' });
+    case 'groupsDeleteEmpty':
+      return groupsPane({ deleting: 'g-cousins' }, { groups: [...WEDDING_GROUPS, cousins] });
+    case 'groupsViewer':
+      return groupsPane({}, { role: 'viewer' });
+    case 'groupsViewerFirst':
+      return groupsPane({}, { role: 'viewer', groups: [], list: start.list });
   }
 }
+
+const GROUP_TOO_LONG = 'Everyone from the choir, the drama society and the Thursday netball team';
 
 /** With no state, `?guest=` opens a guest, as Overview's numbers do; `?filter=` and `?q=` are read by `useGuestsAddress`. */
 function applyParams(start: GuestsStart, params: URLSearchParams): GuestsStart {
@@ -2473,6 +2638,38 @@ export const GUESTS_PAGES: readonly { name: string; states: readonly DemoLink[] 
     'exportFailed',
     'exportReady',
     'exportGrantView',
+  ]),
+  group('Groups on the list and the guest (sc-3775)', [
+    'groups',
+    'groupsChip',
+    'groupsNoGroup',
+    'groupsGuest',
+    'groupsGuestNone',
+    'groupsViewerList',
+  ]),
+  group('The Group field on Edit and Add guest (sc-3775)', [
+    'groupField',
+    'groupFieldOpen',
+    'groupFieldCreate',
+    'groupFieldLong',
+    'groupFieldLimit',
+    'groupFieldAdd',
+  ]),
+  group('Groups: make, rename, delete (sc-3775)', [
+    'groupsPane',
+    'groupsFirst',
+    'groupsNoGuests',
+    'groupsNewBlank',
+    'groupsNewLong',
+    'groupsNewTaken',
+    'groupsNewLimit',
+    'groupsCreated',
+    'groupsRename',
+    'groupsRenameTaken',
+    'groupsDelete',
+    'groupsDeleteEmpty',
+    'groupsViewer',
+    'groupsViewerFirst',
   ]),
   group('Send invitations (sc-3971)', [
     'inviteList',

@@ -60,6 +60,7 @@ import {
   type Typed,
   firstProblem,
   isListed,
+  namedCount,
   newGuestOf,
   problemsOf,
   shownReply,
@@ -68,7 +69,13 @@ import {
 } from './guestRows.ts';
 import { GuestColumn, REPLY_KEY, ReplyMark, companionShown, guestAddress } from './GuestColumn.tsx';
 import { replyDate } from './guestDates.ts';
-import { CompanionField, GuestField, LanguageField, PhoneField } from './GuestFields.tsx';
+import {
+  CompanionField,
+  GuestField,
+  LanguageField,
+  PhoneField,
+  PlacesStepper,
+} from './GuestFields.tsx';
 import {
   AllergyMark,
   type CompanionNeeds,
@@ -638,6 +645,7 @@ export function GuestsArea({
                         ) : view.kind === 'rows' ? (
                           <Rows
                             rows={view.rows}
+                            choice={choice}
                             eventId={event.id}
                             timeZone={event.timeZone}
                             open={open}
@@ -657,6 +665,7 @@ export function GuestsArea({
                             >
                               <Rows
                                 rows={group.rows}
+                                choice={choice}
                                 eventId={event.id}
                                 timeZone={event.timeZone}
                                 open={open}
@@ -948,12 +957,14 @@ function Group({
 /** Each row is a link to its guest's address; a companion's opens their guest. */
 function Rows({
   rows,
+  choice,
   eventId,
   timeZone,
   open,
   onOpen,
 }: {
   rows: readonly ViewRow[];
+  choice: Choice;
   eventId: string;
   /** The event's: a reply's date is the day it was in the event's zone. */
   timeZone: string;
@@ -977,6 +988,17 @@ function Rows({
                   reply: word,
                   date: replyDate(guest.repliedAt, timeZone),
                 });
+          const places = guest.companions.length;
+          const line =
+            places === 0 || choice === 'noReply'
+              ? reply
+              : t('guestList.withPlaces', {
+                  reply,
+                  places: t('guestList.companionsNamed', {
+                    count: places,
+                    named: namedCount(guest.companions.map((one) => one.fullName)),
+                  }),
+                });
           const mobile = guest.mobile == null ? null : formatPhone(guest.mobile);
           const contact =
             guest.email != null && mobile != null
@@ -997,7 +1019,7 @@ function Rows({
                 </span>
                 <RowWords
                   title={guest.fullName}
-                  lines={[contact == null ? reply : t('guestList.line', { reply, contact })]}
+                  lines={[contact == null ? line : t('guestList.line', { reply: line, contact })]}
                 />
                 <NeedsTags needs={guest.needs} />
               </RowLink>
@@ -1405,11 +1427,16 @@ function CompanionFields({
   return (
     <fieldset className="gs-fieldset gs-companions">
       <legend className="gs-legend">{t('guestList.companionsTitle')}</legend>
-      <p className="gs-count">
-        {count === 0
-          ? t('guestList.noneYet', { most: MOST_COMPANIONS })
-          : t('guestList.ofMost', { n: count, most: MOST_COMPANIONS })}
-      </p>
+      <PlacesStepper
+        host={host}
+        names={companions.map((one) => one.name)}
+        onStep={(kept, added) =>
+          onChange([
+            ...kept.flatMap((at) => companions[at] ?? []),
+            ...Array.from({ length: added }, () => ({ name: '', needs: NO_NEEDS })),
+          ])
+        }
+      />
       {companions.map(({ name, needs: theirs }, at) => {
         const placeholder =
           host === ''
@@ -1436,7 +1463,7 @@ function CompanionFields({
               }
               onRemove={() => {
                 onChange(companions.filter((_, index) => index !== at));
-                focus(`companion-${at + 1 < count ? at : at - 1}`, 'add-companion');
+                focus(`companion-${at + 1 < count ? at : at - 1}`, 'places');
               }}
             />
             <CompanionNeedsSection
@@ -1452,20 +1479,7 @@ function CompanionFields({
           </div>
         );
       })}
-      {count < MOST_COMPANIONS ? (
-        <button
-          type="button"
-          className="desk-text"
-          data-focus="add-companion"
-          onClick={() => {
-            onChange([...companions, { name: '', needs: NO_NEEDS }]);
-            focus(`companion-${count}`);
-          }}
-        >
-          <Glyph name="plus" size={17} weight={2.3} />
-          {t('guestList.addCompanion')}
-        </button>
-      ) : (
+      {count >= MOST_COMPANIONS && (
         <p className="gs-most">{t('guestList.mostCompanions', { most: MOST_COMPANIONS })}</p>
       )}
     </fieldset>
