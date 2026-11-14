@@ -764,9 +764,10 @@ class NewStories(Base):
                                                        state=None, label=None, epic=22091,
                                                        estimate=None))
 
-    def ideas(self, *states):
+    def ideas(self, *states, accepted=()):
         for number, state in enumerate(states, start=1):
-            self.fake.add(number, state, ["idea"])
+            self.fake.add(number, state, ["idea", "idea accepted"] if number in accepted
+                          else ["idea"])
             self.as_("cd").story(number)
 
     def test_three_ideas_in_backlog_refuse_a_fourth_and_are_named(self):
@@ -782,6 +783,32 @@ class NewStories(Base):
         self.assertEqual(self.state(50), "Backlog")
         self.assertEqual(self.labels(50), {"idea"})
         self.assertEqual(self.labels(1), {"idea"})
+
+    def test_accepted_ideas_waiting_in_backlog_leave_the_count(self):
+        self.ideas("Backlog", "Backlog", "Backlog", accepted=(1, 2))
+        self.assertIn("created sc-50 in Backlog", self.idea())
+        self.assertEqual(self.labels(50), {"idea"})
+        self.assertEqual(self.labels(1), {"idea", "idea accepted"})
+
+    def test_a_parked_idea_still_counts(self):
+        self.ideas("Backlog", "Backlog", "Backlog", "Backlog", accepted=(4,))
+        self.fake.comment(3, "[cd] (from pm) Parked: not now, when Enquiries starts.")
+        self.as_("cd").story(3)
+        with self.assertRaisesRegex(actions.Refused, r"^3 ideas are open already "
+                                                     r"\(sc-1, sc-2, sc-3\); at most 3$"):
+            self.idea()
+
+    def test_an_accepted_idea_in_any_other_state_still_does_not_count(self):
+        self.ideas("To Do", "Done", "Backlog", "Backlog", accepted=(1, 2))
+        self.assertIn("created sc-50 in Backlog", self.idea())
+
+    def test_only_the_product_manager_marks_an_idea_accepted(self):
+        self.fake.add(1, "Backlog", ["idea"])
+        with self.assertRaisesRegex(actions.Refused, "only touch"):
+            actions.label(self.as_("cd"), args(story="sc-1", add=["idea accepted"],
+                                               remove=None))
+        actions.label(self.as_("pm"), args(story="sc-1", add=["idea accepted"], remove=None))
+        self.assertEqual(self.labels(1), {"idea", "idea accepted"})
 
     def test_an_idea_still_needs_an_epic(self):
         with self.assertRaisesRegex(actions.Refused, "belongs to an epic"):

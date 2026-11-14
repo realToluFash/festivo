@@ -84,6 +84,8 @@ export interface RowLine {
   contact: boolean;
   /** In place of the reply, as the No reply filter says how each guest was invited. */
   invitation?: string | null;
+  /** The app's row says the group after the reply, a companion's being their host's (sc-5519); the web shows it as a tag. */
+  group?: boolean;
 }
 
 /** A row's name and the line under it: a guest's reply and when, or how they were invited, then their places and their contact as `shown` asks; a companion's own standing. */
@@ -105,7 +107,7 @@ export function rowWords(
             reply: word,
             date: replyDate(guest.repliedAt, timeZone, locale),
           }));
-    const line = withPlaces(t, reply, guest, shown.places);
+    const line = withPlaces(t, withGroup(t, reply, guest, shown), guest, shown.places);
     const contact = shown.contact ? contactOf(t, guest) : null;
 
     return {
@@ -131,7 +133,13 @@ export function rowWords(
         ? hostShown
         : t(REPLY_KEY[companion.state]);
 
-  return { name, line };
+  return { name, line: withGroup(t, line, guest, shown) };
+}
+
+function withGroup(t: Translate, reply: string, guest: Guest, shown: RowLine): string {
+  return shown.group === true && guest.group != null
+    ? t('guestList.withGroup', { reply, group: guest.group.name })
+    : reply;
 }
 
 function withPlaces(t: Translate, reply: string, guest: Guest, places: RowLine['places']): string {

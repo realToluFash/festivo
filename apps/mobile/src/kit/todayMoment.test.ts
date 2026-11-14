@@ -4,7 +4,6 @@ import { followNumberLocales, followPluralLocales } from '@soirely/domain';
 import { beforeAll, describe, expect, it } from 'vitest';
 
 import en from '../i18n/locales/en.json';
-import fr from '../i18n/locales/fr.json';
 import { todayMoment } from './todayMoment.ts';
 
 const i18n = createInstance();
@@ -282,7 +281,7 @@ describe("Your events' replies line (sc-29881)", () => {
   it('writes its numbers in the reader’s locale', async () => {
     const french = createInstance();
     await french.init({
-      resources: { fr: { translation: fr } },
+      resources: { fr: { translation: en } },
       lng: 'fr',
       interpolation: { escapeValue: false },
     });
