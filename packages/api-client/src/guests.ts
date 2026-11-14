@@ -360,6 +360,23 @@ function whole(value: unknown): number | null {
   return typeof value === 'number' && Number.isInteger(value) && value >= 0 ? value : null;
 }
 
+/** What Mark as invited did to the selected guests (sc-46880): `already` were invited before, by a mark or a reply, `gone` were not on the list to mark. */
+export interface MarkedTogether {
+  marked: number;
+  already: number;
+  gone: number;
+}
+
+export function asMarkedTogether(value: unknown): MarkedTogether | null {
+  if (typeof value !== 'object' || value == null) return null;
+  const body = value as Record<string, unknown>;
+  const marked = whole(body.marked);
+  const already = whole(body.already);
+  const gone = whole(body.gone);
+
+  return marked == null || already == null || gone == null ? null : { marked, already, gone };
+}
+
 export function asMovedTogether(value: unknown): MovedTogether | null {
   if (typeof value !== 'object' || value == null) return null;
   const body = value as Record<string, unknown>;

@@ -1,6 +1,8 @@
 import {
   GUEST_GROUP_NAME_MAXIMUM,
+  GUEST_INVITATION_HOWS,
   GUESTS_TOGETHER_MOST,
+  type GuestInvitationHow,
   type GuestList,
 } from '@soirely/api-client';
 import { groupNameLength, groupProblem, sortedGroups } from '@soirely/domain';
@@ -14,7 +16,9 @@ import { problemLine } from './guestGroups.ts';
 import {
   type Action,
   type Line,
+  type MarkQuestion,
   type RemoveQuestion,
+  alreadyLine,
   lineWords,
   removeTitle,
 } from './guestSelect.ts';
@@ -23,22 +27,37 @@ import './guestSelect.css';
 const NEW_GROUP = 'new';
 
 const LINE_GLYPH: Record<Line['kind'], GlyphName> = {
+  marked: 'tick',
+  nothing: 'info',
+  notLive: 'alert',
   moved: 'tick',
   removed: 'tick',
   undone: 'tick',
   failed: 'alert',
 };
 
-/** The bar sc-3776 builds and later epics add to: the count with its companions, Add to group, Remove from the list, Clear. */
+const LINE_TONE: Record<Line['kind'], 'done' | 'quiet' | 'held'> = {
+  marked: 'done',
+  nothing: 'quiet',
+  notLive: 'held',
+  moved: 'done',
+  removed: 'done',
+  undone: 'done',
+  failed: 'held',
+};
+
+/** The bar sc-3776 builds and later epics add to: the count with its companions, Mark as invited while the phase invites (sc-46880), Add to group, Remove from the list, Clear. */
 export function SelectBar({
   count,
   companions,
+  onMark,
   onAdd,
   onRemove,
   onClear,
 }: {
   count: number;
   companions: number;
+  onMark: (() => void) | null;
   onAdd: () => void;
   onRemove: () => void;
   onClear: () => void;
@@ -57,6 +76,16 @@ export function SelectBar({
         </p>
       )}
       <div className="gm-actions">
+        {onMark != null && (
+          <button
+            type="button"
+            className="gs-pill is-primary"
+            data-focus="many-mark"
+            onClick={onMark}
+          >
+            {t('guestSelect.markAsInvited')}
+          </button>
+        )}
         <button
           type="button"
           className="gs-pill is-secondary"
@@ -144,7 +173,7 @@ export function ResultLine({
 
   return (
     <div
-      className={`gm-line is-${line.kind === 'failed' ? 'held' : 'done'}`}
+      className={`gm-line is-${LINE_TONE[line.kind]}`}
       onPointerEnter={() => {
         pointed.current = true;
       }}
@@ -315,6 +344,71 @@ export function GroupSheet({
         <p id={`${name}-error`} className="desk-error">
           <Glyph name="alert" size={15} weight={2.2} />
           {wrong}
+        </p>
+      )}
+    </Dialog>
+  );
+}
+
+/** Mark {n} guests as invited: the already invited named above How did you invite them?, nothing chosen; a blank press sends nothing and says so (WCAG 2.2 §3.3.1). */
+export function MarkMany({
+  asked,
+  onCancel,
+  onMark,
+}: {
+  asked: MarkQuestion;
+  onCancel: () => void;
+  onMark: (how: GuestInvitationHow) => void;
+}) {
+  const { t } = useTranslation();
+  const name = useId();
+  const [picked, setPicked] = useState<GuestInvitationHow | null>(null);
+  const [tried, setTried] = useState(false);
+  const first = useRef<HTMLInputElement>(null);
+  const wrong = tried && picked == null;
+
+  function confirm(): void {
+    if (picked == null) {
+      setTried(true);
+      first.current?.focus();
+      return;
+    }
+    onMark(picked);
+  }
+
+  return (
+    <Dialog
+      title={t('guestSelect.markTitle', { count: asked.marks })}
+      verb={t('guestSelect.markAsInvited')}
+      first={first}
+      onDismiss={onCancel}
+      onConfirm={confirm}
+    >
+      {asked.already.length > 0 && (
+        <p className="desk-line gm-already">{alreadyLine(t, asked.already)}</p>
+      )}
+      <fieldset className="gs-fieldset" aria-describedby={wrong ? `${name}-error` : undefined}>
+        <legend className="gs-inset-title">{t('guestList.howInvited')}</legend>
+        <div className="gs-ways">
+          {GUEST_INVITATION_HOWS.map((how, index) => (
+            <label key={how} className={wrong ? 'gs-way is-wrong' : 'gs-way'}>
+              <input
+                ref={index === 0 ? first : undefined}
+                type="radio"
+                className="desk-radio"
+                name={name}
+                checked={picked === how}
+                onChange={() => setPicked(how)}
+              />
+              {t(`guestList.how.${how}`)}
+            </label>
+          ))}
+        </div>
+      </fieldset>
+      {wrong && (
+        <p id={`${name}-error`} className="desk-error">
+          <Glyph name="alert" size={15} weight={2.2} />
+          {t('guestList.howInvitedBlank')}
         </p>
       )}
     </Dialog>

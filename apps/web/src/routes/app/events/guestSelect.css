@@ -132,7 +132,8 @@
   font-variant-numeric: tabular-nums;
 }
 
-.gb-sheet-line {
+.gb-sheet-line,
+.gm-already {
   margin-bottom: var(--spaceMd);
 }
 
