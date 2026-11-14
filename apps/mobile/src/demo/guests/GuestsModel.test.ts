@@ -272,7 +272,7 @@ describe('invited is a fact with a date and a way (sc-3788)', () => {
     expect(areaStart('unmarked')).toMatchObject({ open: 'emeka', unmarked: 'done' });
     expect(areaStart('unmarkRefused')).toMatchObject({ open: 'seun', unmarked: 'refused' });
     expect(areaStart('unmarkNotSaved')).toMatchObject({ open: 'emeka', unmarked: 'notSaved' });
-    expect(guestsAt('unmarkNotSaved').find((g) => g.key === 'emeka')?.kind).not.toBe('notyet');
+    expect(handMarked(guestsAt('unmarkNotSaved').find((g) => g.key === 'emeka')!)).toBe(true);
     expect(say.unmarkRefused('Oluwaseun Ajayi', 'Coming', 'Nov 3')).toBe(
       'Not changed. Oluwaseun Ajayi replied Coming on Nov 3, so they stay invited.',
     );
