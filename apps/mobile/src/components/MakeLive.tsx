@@ -6,41 +6,29 @@ import {
   needsHost,
   rereadOf,
 } from '@soirely/domain';
-import { type RefObject, useEffect, useRef, useState } from 'react';
+import { type RefObject, useRef, useState } from 'react';
 import { StyleSheet, type TextInputInstance, View, type ViewInstance } from 'react-native';
 import { useTranslation } from 'react-i18next';
 
 import { api } from '../api.ts';
 import { type EditAt } from '../kit/eventNav.ts';
-import { changedSinceOpening, draftRowOf, refusalOf } from '../kit/makeLive.ts';
+import {
+  type LiveAsking,
+  type LiveQuestion,
+  changedSinceOpening,
+  draftRowOf,
+  liveAlertOf,
+  refusalOf,
+  toldOf,
+} from '../kit/makeLive.ts';
 import { type LayoutKind } from '../layout/useLayout.ts';
 import { tokens } from '../theme/tokens.ts';
 import { PrimaryButton } from './Buttons.tsx';
-import { Field, TextField } from './Field.tsx';
-import { LifecycleSheet } from './LifecycleSheet.tsx';
-import { Notice } from './Notice.tsx';
+import { MakeLiveAlert } from './MakeLiveAlert.tsx';
 import { readOut } from './ReadOut.tsx';
-import { type ScreenReaderTarget, moveScreenReaderFocus } from './screenReaderFocus.ts';
+import { type ScreenReaderTarget } from './screenReaderFocus.ts';
 import { GlyphMark } from './StatusMark.tsx';
-import { Text, type TextHandle } from './Text.tsx';
-
-/** `askHost` while the draft had no host when it opened; `notice` is what a reread found (sc-22143). */
-interface Confirming {
-  kind: 'confirm';
-  askHost: boolean;
-  typed: string;
-  error: string | null;
-  notice: 'stillNoHost' | 'nowHosted' | null;
-  pending: boolean;
-  failed: boolean;
-}
-
-interface Told {
-  kind: 'told';
-  title: string;
-  lines: string[];
-  changeDates?: boolean;
-}
+import { Text } from './Text.tsx';
 
 /** `EventView-*` (tweak: Draft) and `Lifecycle-*` (sc-3584): the Draft's row, and Make live's confirmation. */
 export function DraftRow({
@@ -63,7 +51,7 @@ export function DraftRow({
   const makeLive = useMakeLive({ kind, event, onChange, onEdit, opener });
   const row = draftRowOf(event, now, manages);
 
-  // A refusal reloads the event, which may then be no Draft: its sheet stays to say so.
+  // A refusal reloads the event, which may then be no Draft: its alert stays to say so.
   if (row == null && !makeLive.open) return null;
 
   return (
@@ -87,38 +75,33 @@ export function DraftRow({
   );
 }
 
-/** Make live's confirmation, from the Draft's row or the event's card; with no host it asks for one in Host 1 (sc-22143). */
+/** Make live's alert, from the Draft's row or the event's card; with no host it asks for one in Host 1 (sc-22143). */
 export function useMakeLive({
-  kind,
   event,
   onChange,
   onEdit,
+  onLive,
   opener,
 }: {
-  kind: LayoutKind;
+  kind?: LayoutKind;
   event: OrganisationEvent;
   onChange: (event: OrganisationEvent) => void;
   onEdit?: ((at?: EditAt) => void) | undefined;
+  /** Says ✓ Live where the page shows its toasts; without it, it is only read out. */
+  onLive?: ((words: string) => void) | undefined;
   opener: RefObject<ScreenReaderTarget | null>;
 }) {
   const { t } = useTranslation();
   const host = useRef<TextInputInstance>(null);
-  const hostsNow = useRef<TextHandle>(null);
   const read = useRef<Promise<TaggedEvent> | null>(null);
-  const [asking, setAsking] = useState<Confirming | Told | null>(null);
-  const notice = asking?.kind === 'confirm' ? asking.notice : null;
-
-  useEffect(() => {
-    if (notice === 'nowHosted') moveScreenReaderFocus(hostsNow.current);
-  }, [notice]);
-
+  const [asking, setAsking] = useState<LiveAsking | null>(null);
   const pending = asking?.kind === 'confirm' && asking.pending;
 
   function close(): void {
     if (!pending) setAsking(null);
   }
 
-  /** The version the save sends: read as the sheet opens, since the page may have come from the list. */
+  /** The version the save sends: read as the alert opens, since the page may have come from the list. */
   function opened(): Promise<TaggedEvent> {
     read.current ??= api.taggedEvent(event.id);
 
@@ -130,7 +113,7 @@ export function useMakeLive({
     onChange(latest.event);
   }
 
-  function found(latest: TaggedEvent, current: Confirming): void {
+  function found(latest: TaggedEvent, current: LiveQuestion): void {
     changed(latest);
     const what = rereadOf(latest.event);
     const settled = { ...current, error: null, pending: false };
@@ -140,21 +123,22 @@ export function useMakeLive({
       setAsking({ ...settled, askHost: false, typed: '', notice: 'nowHosted' });
     else {
       const [title, line] = changedWords(latest.event);
-      setAsking({ kind: 'told', title: t(title), lines: [t(line)] });
+      setAsking({ kind: 'told', title: t(title), line: t(line), changeDates: false });
     }
   }
 
-  async function go(current: Confirming): Promise<void> {
+  async function go(current: LiveQuestion): Promise<void> {
     const error = current.askHost && needsHost(event) ? makeLiveHostError(current.typed, t) : null;
 
     if (error != null) {
-      setAsking({ ...current, error, failed: false });
+      setAsking({ ...current, error, failed: false, notice: null });
       host.current?.focus();
       return;
     }
 
-    setAsking({ ...current, error: null, pending: true, failed: false });
-    const settled = { ...current, error: null, pending: false };
+    // Make live again drops what the last answer said.
+    setAsking({ ...current, error: null, pending: true, failed: false, notice: null });
+    const settled = { ...current, error: null, pending: false, notice: null };
     let base: TaggedEvent;
 
     try {
@@ -175,7 +159,8 @@ export function useMakeLive({
     if (step.kind === 'live') {
       setAsking(null);
       changed(step.tagged);
-      readOut(t('eventLive.madeLive'));
+      if (onLive == null) readOut(t('eventLive.madeLive'));
+      else onLive(t('eventLive.madeLive'));
       return;
     }
 
@@ -197,38 +182,19 @@ export function useMakeLive({
     if (step.saved != null) changed(step.saved);
 
     const refusal = refusalOf(step.error);
+    const told = toldOf(refusal, t);
 
-    if (refusal.kind === 'planLimit') {
-      setAsking({
-        kind: 'told',
-        title: t('eventLive.planLimit', { plan: refusal.plan, count: refusal.limit }),
-        lines: [t('eventLive.planLimitStays')],
-      });
-    } else if (refusal.kind === 'concluded') {
+    if (refusal.kind === 'concluded')
       await api.taggedEvent(event.id).then(changed, () => undefined);
-      setAsking({
-        kind: 'told',
-        title: t('eventLive.notMadeLive'),
-        lines: [t('eventLive.endPassed')],
-        changeDates: true,
-      });
-    } else {
-      setAsking({
+
+    setAsking(
+      told ?? {
         ...settled,
         ...(step.saved != null && { askHost: false, typed: '' }),
         failed: true,
-      });
-    }
+      },
+    );
   }
-
-  const confirming = asking?.kind === 'confirm' ? asking : null;
-  const [title, lines] =
-    asking?.kind === 'told'
-      ? [asking.title, asking.lines]
-      : [
-          t('eventLive.confirmTitle', { name: event.name }),
-          [t('eventLive.confirmGuests'), t('eventLive.confirmFinal')],
-        ];
 
   const start = () => {
     const askHost = needsHost(event);
@@ -245,108 +211,28 @@ export function useMakeLive({
     });
   };
 
+  const confirm = () => {
+    if (asking?.kind === 'confirm') {
+      if (!asking.pending) void go(asking);
+    } else if (asking?.kind === 'told' && asking.changeDates && onEdit != null) {
+      setAsking(null);
+      onEdit('starts');
+    }
+  };
+
   const sheet = (
-    <LifecycleSheet
-      phone={kind === 'phone'}
-      open={asking != null}
+    <MakeLiveAlert
+      alert={liveAlertOf(asking, event, t, onEdit != null)}
+      typed={asking?.kind === 'confirm' ? asking.typed : ''}
+      hostRef={host}
       opener={opener}
+      onTyped={(typed) => {
+        if (asking?.kind === 'confirm') setAsking({ ...asking, typed, error: null });
+      }}
+      onKeep={close}
+      onConfirm={confirm}
       testID="events.makeLive"
-      title={title}
-      lines={lines}
-      confirm={
-        confirming != null
-          ? {
-              label: t('eventLive.makeLive'),
-              sending: t('eventLive.making'),
-              keep: t('eventLive.notYet'),
-              pending: confirming.pending,
-              onGo: () => void go(confirming),
-            }
-          : null
-      }
-      retold={asking?.kind === 'told' ? asking : undefined}
-      onward={
-        asking?.kind === 'told' && asking.changeDates === true && onEdit != null
-          ? {
-              label: t('eventLive.changeDates'),
-              onPress: () => {
-                setAsking(null);
-                onEdit('starts');
-              },
-            }
-          : null
-      }
-      onClose={close}
-    >
-      {confirming?.notice === 'nowHosted' && (
-        <View style={styles.hostsNow} testID="events.makeLiveHostsNow">
-          <Text ref={hostsNow} size={tokens.typeBodyPhone.size} weight="bold">
-            {t('eventLive.notSavedChanged')}
-          </Text>
-          <Text size={tokens.typeBodyPhone.size}>{t('eventLive.hostsNow')}</Text>
-          <View role="list">
-            {event.hosts.map((name) => (
-              <View key={name} role="listitem" style={styles.hostLine}>
-                <Text size={tokens.typeBodyPhone.size} aria-hidden>
-                  •
-                </Text>
-                <Text size={tokens.typeBodyPhone.size} style={styles.hostName}>
-                  {name}
-                </Text>
-              </View>
-            ))}
-          </View>
-        </View>
-      )}
-      {confirming?.askHost === true && (
-        <>
-          {confirming.notice === 'stillNoHost' && (
-            <Notice
-              tone="broken"
-              mark={tokens.marks.broken.glyph}
-              body={t('eventEdit.changedElsewhere')}
-              announce
-            />
-          )}
-          <Field
-            label={t('eventHosts.label', { position: 1 })}
-            error={confirming.error}
-            help={t('eventLive.hostExplainer')}
-          >
-            <TextField
-              ref={host}
-              value={confirming.typed}
-              onChangeText={(typed) =>
-                setAsking({ ...confirming, typed: typed.replace(/[\r\n]+/g, ' '), error: null })
-              }
-              autoFocus
-              multiline
-              scrollEnabled={false}
-              returnKeyType="go"
-              enterKeyHint="go"
-              submitBehavior="submit"
-              onSubmitEditing={() => {
-                if (!confirming.pending) void go(confirming);
-              }}
-              wrong={confirming.error != null}
-              submitting={confirming.pending}
-              style={styles.name}
-              accessibilityLabel={t('eventHosts.label', { position: 1 })}
-              accessibilityHint={t('eventLive.hostExplainer')}
-              testID="events.makeLiveHost"
-            />
-          </Field>
-        </>
-      )}
-      {confirming?.failed === true && (
-        <Notice
-          tone="broken"
-          mark={tokens.marks.broken.glyph}
-          body={t('eventLive.failed')}
-          announce
-        />
-      )}
-    </LifecycleSheet>
+    />
   );
 
   return { open: asking != null, start, sheet };
@@ -366,12 +252,4 @@ const styles = StyleSheet.create({
     backgroundColor: tokens.colorInset,
   },
   line: { flexGrow: 1, flexShrink: 1, flexBasis: 180 },
-  hostsNow: { gap: tokens.spaceSm },
-  hostLine: { flexDirection: 'row', gap: tokens.spaceSm },
-  hostName: { flexShrink: 1 },
-  name: {
-    minHeight: tokens.sizeHitPhonePrimary,
-    paddingTop: tokens.spaceMd,
-    paddingBottom: tokens.spaceMd,
-  },
 });

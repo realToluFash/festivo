@@ -9,7 +9,14 @@ import {
   keepsLastHost,
   startMoved,
 } from '@soirely/domain';
-import { type ReactNode, type RefObject, useEffect, useRef, useState } from 'react';
+import {
+  type ComponentProps,
+  type ReactNode,
+  type RefObject,
+  useEffect,
+  useRef,
+  useState,
+} from 'react';
 import {
   Pressable,
   StyleSheet,
@@ -18,7 +25,6 @@ import {
   type ViewInstance,
 } from 'react-native';
 
-import { fieldFocused, fieldLeft } from '../../components/focusedField.ts';
 import { RadioMark } from '../../components/RadioMark.tsx';
 import { useReadOut } from '../../components/ReadOut.tsx';
 import {
@@ -32,6 +38,7 @@ import { Glyph } from '../../components/Glyph.tsx';
 import { AlertLine } from '../../components/AlertLine.tsx';
 import { LineIcon } from '../../components/AccountCard.tsx';
 import { PhotoFill } from '../../components/EventThumb.tsx';
+import { EventField as ProductField } from '../../components/EventField.tsx';
 import { EventNotice } from '../../components/EventNotice.tsx';
 import { type EditPart, type EventDemoState, folded, instantOf, wallOf } from './EventsModel.ts';
 import { ARRIVAL_NOTE, LONG_NOTE, NOTE_WORDS, noteTooLong, savedNote } from './ArrivalNote.ts';
@@ -68,7 +75,7 @@ import {
   ZONES,
 } from './EventsSample.ts';
 import { meshFor } from '../../kit/today.ts';
-import { FieldError, TextField, type TextFieldProps } from '../../components/Field.tsx';
+import { TextField, type TextFieldProps } from '../../components/Field.tsx';
 import { weight } from '../../theme/fonts.ts';
 import { W, say, t } from './EventsWords.ts';
 import { useShell } from '../../components/settingsShell.ts';
@@ -193,60 +200,12 @@ function EditShell({
   );
 }
 
-/** A typed field as the boards draw it: the label and any Optional, the box, then its error or its help. */
+/** The product's field, with the demo's Optional. */
 export function EventField({
-  label,
   optional = false,
-  error = null,
-  help,
-  children,
-}: {
-  label: string;
-  optional?: boolean;
-  error?: string | null;
-  help?: string | undefined;
-  children: ReactNode;
-}) {
-  const field = useRef<ViewInstance>(null);
-  useEffect(() => {
-    const mounted = field.current;
-
-    return () => fieldLeft(mounted);
-  }, []);
-
-  return (
-    <View
-      ref={field}
-      onFocus={() => fieldFocused(field.current)}
-      onBlur={() => fieldLeft(field.current)}
-      style={styles.labelled}
-    >
-      <View
-        style={styles.fieldHead}
-        accessible
-        accessibilityLabel={optional ? `${label}, ${W.optional}` : label}
-      >
-        <Text size={14} weight="semibold" style={styles.label}>
-          {label}
-        </Text>
-        {optional && (
-          <Text size={14} weight="medium" style={[styles.secondary, styles.label]}>
-            {` · ${W.optional}`}
-          </Text>
-        )}
-      </View>
-      {children}
-      {error != null ? (
-        <FieldError message={error} />
-      ) : (
-        help != null && (
-          <Text size={13.5} weight="medium" style={[styles.secondary, styles.hint]}>
-            {help}
-          </Text>
-        )
-      )}
-    </View>
-  );
+  ...rest
+}: Omit<ComponentProps<typeof ProductField>, 'optional'> & { optional?: boolean }) {
+  return <ProductField {...rest} optional={optional ? W.optional : undefined} />;
 }
 
 export function AcPill({ words }: { words: string }) {
@@ -1360,7 +1319,6 @@ const styles = StyleSheet.create({
   searchRow: { flexDirection: 'row' },
   secondary: { color: tokens.colorInkSecondary },
   pressed: { opacity: tokens.opacityPressed },
-  fieldHead: { flexDirection: 'row', flexWrap: 'wrap' },
   figures: { fontVariant: ['tabular-nums'] },
   noteBox: {
     minHeight: NOTE_LINE * 4 + tokens.spaceSm * 2,
