@@ -19,6 +19,7 @@ import { tokens } from '../theme/tokens.ts';
 import { LineIcon } from './AccountCard.tsx';
 import { ChoseNote } from './GuestLanguage.tsx';
 import { GuestCover } from './GuestsCard.tsx';
+import { NeedsRows } from './GuestNeeds.tsx';
 import { type InvitationOffer, InvitationBlock } from './GuestInvitation.tsx';
 import { AlertLine } from './AlertLine.tsx';
 import { MarkSlot } from './ReplyMark.tsx';
@@ -41,7 +42,7 @@ export type GuestNotice =
   | { kind: 'failed' }
   | null;
 
-/** A guest's details (sc-3773's content and order): their reply card with their name, Reply, Details with Edit, then Invitation; contact and Language only for those who can edit guests. */
+/** A guest's details (sc-3773's content and order): their reply card with their name, Reply, Details with Edit, then Invitation; the group for every reader, and contact, Language and Needs only for those who can edit guests (sc-5519). */
 export function GuestDetails({
   kind,
   event,
@@ -104,7 +105,24 @@ export function GuestDetails({
   const language = ownLanguageName(guest.language);
   const fallback = ownLanguageName(guest.organisationLanguage) ?? guest.organisationLanguage ?? '';
   const added = replyDate(guest.added.at, timeZone, locale);
+  const group = guest.group?.name ?? null;
+  const groupWords = group ?? t('guestGroups.noGroup');
   const rows: { key: string; inset: number; row: ReactNode }[] = [
+    {
+      key: 'group',
+      inset: 40,
+      row: (
+        <Row
+          title={groupWords}
+          line={t('guestGroups.group')}
+          lead={<LineIcon name="users" />}
+          weight={group == null ? 'medium' : 'semibold'}
+          off={group == null}
+          accessibilityLabel={`${t('guestGroups.group')}, ${groupWords}`}
+          testID="guest.group"
+        />
+      ),
+    },
     ...(manages
       ? [
           {
@@ -236,8 +254,23 @@ export function GuestDetails({
             ) : null
           }
         />
-        {rows.length > 0 && <RowList items={rows} />}
+        <RowList items={rows} />
       </View>
+      {manages && (
+        <View testID="guest.needs">
+          <BlockHead title={t('guestNeeds.needs')} />
+          <NeedsRows
+            people={[
+              { name: guest.fullName, needs: guest.needs, guest: true },
+              ...guest.companions.map((one, at) => ({
+                name: companionShown(t, guest.fullName, names, at),
+                needs: one.needs,
+                guest: false,
+              })),
+            ]}
+          />
+        </View>
+      )}
       {invitation != null ? (
         <InvitationBlock
           guest={guest}
