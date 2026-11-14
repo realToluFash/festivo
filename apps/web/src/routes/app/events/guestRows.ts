@@ -7,28 +7,9 @@ import {
   type NewGuest,
   type Violation,
 } from '@soirely/api-client';
-import { compareGuestNames, emailProblem, nameKey, phoneLengthProblem } from '@soirely/domain';
+import { emailProblem, nameKey, phoneLengthProblem } from '@soirely/domain';
 
 export type ReplyWord = Guest['reply'] | Companion['state'];
-
-export type ListRow =
-  | { kind: 'guest'; guest: Guest }
-  | { kind: 'companion'; host: Guest; companion: Companion; at: number };
-
-/** Guests by their whole name, each with their companions straight under them in the API's order. */
-export function rowsOf(guests: readonly Guest[]): ListRow[] {
-  return [...guests]
-    .sort((a, b) => compareGuestNames({ name: a.fullName }, { name: b.fullName }))
-    .flatMap((guest) => [
-      { kind: 'guest' as const, guest },
-      ...guest.companions.map((companion, at) => ({
-        kind: 'companion' as const,
-        host: guest,
-        companion,
-        at,
-      })),
-    ]);
-}
 
 export function blank(name: string | null): boolean {
   return name == null || name.trim() === '';
@@ -58,6 +39,8 @@ export interface Typed {
   country: string;
   number: string;
   companions: readonly string[];
+  /** The host's Language for them, null for Not set (sc-3790). */
+  language: string | null;
 }
 
 export type Problem =
@@ -137,6 +120,7 @@ export function newGuestOf(typed: Typed, allowDuplicate: boolean): NewGuest {
     companions: typed.companions.map((name) => ({
       fullName: name.trim() === '' ? null : name.trim(),
     })),
+    language: typed.language,
     ...(allowDuplicate ? { allowDuplicate: true } : {}),
   };
 }

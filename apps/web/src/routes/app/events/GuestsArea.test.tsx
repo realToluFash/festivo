@@ -103,9 +103,44 @@ function problem(code: string, status: number, more: Record<string, unknown> = {
 
 type Answer = (body: unknown) => Response | Promise<Response>;
 
+type Listed = ReturnType<typeof listOf>;
+
+/** sc-99's headcount for a list, as HeadcountCalculator counts it. */
+function headcountOf({ guests }: Listed) {
+  const companions = guests.flatMap((one) => one.companions.map(() => one.reply));
+  const count = (reply: string) => guests.filter((one) => one.reply === reply).length;
+  const held = (reply: string) => companions.filter((host) => host === reply).length;
+  const onList = guests.length + companions.length;
+
+  return {
+    headcount: {
+      counts: {
+        onList,
+        notYetInvited: 0,
+        invited: onList,
+        accepted: count('coming') + held('coming'),
+        maybe: count('maybe'),
+        awaitingReply: count('noReply'),
+        held: held('noReply') + held('maybe') + held('notComing'),
+        heldBy: {
+          hostNoReply: held('noReply'),
+          hostMaybe: held('maybe'),
+          hostNotComing: held('notComing'),
+        },
+        declined: count('notComing'),
+      },
+      byGroup: [],
+      byDietaryNeed: { addsUp: false, needs: [] },
+    },
+  };
+}
+
+let shownRouter: ReturnType<typeof createMemoryRouter> | null = null;
+
 async function onGuests(
   answers: Record<string, Answer>,
   permissions: string[] = OWNER_PERMISSIONS,
+  at = '',
 ): Promise<{ line: string; body: unknown }[]> {
   const sent: { line: string; body: unknown }[] = [];
 
@@ -117,14 +152,17 @@ async function onGuests(
     const answer = answers[line];
     if (answer != null) return answer(body);
     if (line === 'GET /api/events/ev_1') return json({ event: { ...EVENT, permissions } });
+    const listed = answers['GET /api/events/ev_1/guests'];
+    if (line === 'GET /api/events/ev_1/headcount' && listed != null) {
+      const list = (await (await listed(null)).json()) as Listed;
+
+      return json(headcountOf(list));
+    }
 
     return json({});
   });
-  render(
-    <RouterProvider
-      router={createMemoryRouter(routes, { initialEntries: ['/app/events/ev_1/guests'] })}
-    />,
-  );
+  shownRouter = createMemoryRouter(routes, { initialEntries: [`/app/events/ev_1/guests${at}`] });
+  render(<RouterProvider router={shownRouter} />);
 
   return sent;
 }
@@ -169,17 +207,24 @@ describe('Guests (sc-1468)', () => {
     await onGuests({ 'GET /api/events/ev_1/guests': () => json(listOf([NGOZI, AMAKA])) });
 
     expect(await screen.findByRole('heading', { level: 1, name: 'Guests' })).toBeDefined();
-    expect(await screen.findByText('5 on the list')).toBeDefined();
-    const rows = within(screen.getByRole('region', { name: 'Guests' })).getAllByRole('listitem');
+    expect(await screen.findByText('4 coming of 5 invited')).toBeDefined();
+    expect(screen.getByText('Everyone has replied.')).toBeDefined();
+    const list = screen.getByRole('region', { name: 'Guests' });
+    const rows = within(list).getAllByRole('listitem');
 
+    expect(
+      within(list)
+        .getAllByRole('heading', { level: 2 })
+        .map((head) => head.textContent),
+    ).toEqual(['Coming · 4', 'Not sure yet · 1']);
     expect(rows.map((row) => row.textContent)).toEqual([
-      'Chief Amaka ObiNot sure yet',
       'Ngozi EzeComing · ngozi@example.com · +234 803 555 0142',
       'Obi EzeComing',
       'Guest of Ngozi EzeComing',
       'Guest of Ngozi Eze · 2Coming',
+      'Chief Amaka ObiNot sure yet',
     ]);
-    expect(rows[2]?.className).toBe('is-companion');
+    expect(rows[1]?.className).toBe('is-companion');
   });
 
   it('dates a reply by the event’s day, not the browser’s (sc-1439)', async () => {
@@ -277,9 +322,27 @@ describe('Guests (sc-1468)', () => {
   });
 
   it('adds a guest with a companion, clears the form and lists them at once', async () => {
+    let added = false;
     const sent = await opened({
-      'POST /api/events/ev_1/guests': () =>
+      'GET /api/events/ev_1/headcount': () =>
         json(
+          headcountOf(
+            listOf(
+              added
+                ? [
+                    NGOZI,
+                    guest('g_9', 'Bimpe', {
+                      companions: [{ id: 'c_9', fullName: null, state: 'held' }],
+                    }),
+                  ]
+                : [NGOZI],
+            ),
+          ),
+        ),
+      'POST /api/events/ev_1/guests': () => {
+        added = true;
+
+        return json(
           {
             guest: guest('g_9', 'Bimpe Adeyemi', {
               email: 'bimpe@example.com',
@@ -288,7 +351,8 @@ describe('Guests (sc-1468)', () => {
             }),
           },
           201,
-        ),
+        );
+      },
     });
 
     type('Full name', '  Bimpe Adeyemi ');
@@ -308,11 +372,13 @@ describe('Guests (sc-1468)', () => {
       email: 'bimpe@example.com',
       mobile: { countryCode: 'GB', number: '07700 900123' },
       companions: [{ fullName: null }],
+      language: null,
     });
     expect(field('Full name').value).toBe('');
     expect(within(form()).getByText('None yet · 0 of 10')).toBeDefined();
     await waitFor(() => expect(document.activeElement).toBe(field('Full name')));
-    expect(screen.getByText('6 on the list')).toBeDefined();
+    expect(await screen.findByText('4 coming of 6 invited')).toBeDefined();
+    expect(screen.getByText('2 haven’t replied (1 guest and 1 companion).')).toBeDefined();
     expect(screen.getByText('Bimpe Adeyemi')).toBeDefined();
     expect(screen.getByText('No reply · bimpe@example.com · +44 7700 900123')).toBeDefined();
     expect(
@@ -573,6 +639,192 @@ class StubSource {
   }
 }
 
+describe('Finding a guest (sc-3772)', () => {
+  const WAITING = [
+    guest('g_3', 'Bola Ade'),
+    guest('g_4', 'José Ávila', {
+      companions: [{ id: 'c_4', fullName: 'Rui Ávila', state: 'held' }],
+    }),
+    guest('g_5', 'Dayo Kalu', { mobile: '+2348031234567' }),
+  ];
+  const EVERYONE = [NGOZI, AMAKA, ...WAITING];
+
+  async function shown(at = '') {
+    signedIn();
+    await onGuests({ 'GET /api/events/ev_1/guests': () => json(listOf(EVERYONE)) }, undefined, at);
+    await screen.findByText('4 coming of 9 invited');
+  }
+
+  function names(): string[] {
+    return within(screen.getByRole('region', { name: 'Guests' }))
+      .getAllByRole('listitem')
+      .map((row) => row.querySelector('.desk-row-name')?.textContent ?? '');
+  }
+
+  it('says who hasn’t replied, companions held behind them in the bracket', async () => {
+    await shown();
+
+    expect(screen.getByText('4 haven’t replied (3 guests and 1 companion).')).toBeDefined();
+  });
+
+  async function cardOn(event: Record<string, unknown>): Promise<HTMLElement> {
+    signedIn();
+    await onGuests({
+      'GET /api/events/ev_1/guests': () => json(listOf(EVERYONE)),
+      'GET /api/events/ev_1': () =>
+        json({ event: { ...EVENT, ...event, permissions: OWNER_PERMISSIONS } }),
+    });
+
+    return (await screen.findByText(/^(4 coming of 9 invited|\d+ on the list)$/u)).closest(
+      'section',
+    )!;
+  }
+
+  it('says Paused on the card, with its line and no step, as the demo draws it', async () => {
+    const card = await cardOn({
+      status: 'paused',
+      phase: 'paused',
+      pausedAt: '2026-11-01T10:00:00+00:00',
+    });
+
+    expect(within(card).getByText('Paused')).toBeDefined();
+    expect(
+      within(card).getByText('Guests can’t be invited while this event is paused.'),
+    ).toBeDefined();
+    expect(within(card).queryByRole('button')).toBeNull();
+  });
+
+  it('says Draft on the card, with its line and Make live as its step', async () => {
+    const card = await cardOn({ status: 'draft', phase: 'draft', madeLiveAt: null });
+
+    expect(within(card).getByText('Draft')).toBeDefined();
+    expect(
+      within(card).getByText("Guests can't be invited until this event is live."),
+    ).toBeDefined();
+    fireEvent.click(within(card).getByRole('button', { name: 'Make live' }));
+
+    expect(await screen.findByRole('dialog')).toBeDefined();
+  });
+
+  it('says a Draft whose end has passed cannot be made live, with Change dates as its step', async () => {
+    const card = await cardOn({
+      status: 'draft',
+      phase: 'draft',
+      madeLiveAt: null,
+      startsAt: '2026-10-24T12:00:00+01:00',
+      endsAt: '2026-10-24T18:00:00+01:00',
+    });
+
+    expect(within(card).getByText('Draft')).toBeDefined();
+    expect(
+      within(card).getByText(
+        "This event's end has passed, so it cannot be made live. Change its dates first.",
+      ),
+    ).toBeDefined();
+    expect(within(card).queryByRole('button', { name: 'Make live' })).toBeNull();
+    fireEvent.click(within(card).getByRole('button', { name: 'Change dates' }));
+
+    await waitFor(() => expect(shownRouter?.state.location.pathname).toBe('/app/events/ev_1/edit'));
+  });
+
+  it('says Finished on the card, with its line, its counts and no step', async () => {
+    const card = await cardOn({ status: 'live', phase: 'finished' });
+
+    expect(within(card).getByText('Finished')).toBeDefined();
+    expect(within(card).getByText('4 coming of 9 invited')).toBeDefined();
+    expect(
+      within(card).getByText('This event has finished, so guests can’t be invited.'),
+    ).toBeDefined();
+    expect(within(card).queryByRole('button')).toBeNull();
+  });
+
+  it('groups All by reply, each with its first rows and Show all', async () => {
+    await shown();
+
+    expect(screen.getByRole('heading', { level: 2, name: 'No reply · 3' })).toBeDefined();
+    expect(names()).not.toContain('José Ávila');
+    fireEvent.click(screen.getByRole('button', { name: 'Show all 3' }));
+
+    expect(names()).toContain('Rui Ávila');
+    await waitFor(() => expect(document.activeElement?.textContent).toContain('José Ávila'));
+  });
+
+  it('chooses from the filter menu with each count, kept in the address', async () => {
+    await shown();
+    fireEvent.click(screen.getByRole('button', { name: 'All · 9' }));
+    const menu = screen.getByRole('menu');
+
+    expect(
+      within(menu)
+        .getAllByRole('menuitemradio')
+        .map((item) => item.textContent),
+    ).toEqual(['All9', 'Coming4', 'Not sure yet1', 'No reply3', 'Held1', 'Not coming0']);
+    fireEvent.click(within(menu).getByRole('menuitemradio', { name: /^Held/u }));
+
+    expect(names()).toEqual(['Rui Ávila']);
+    expect(screen.getByText('Held · comes only if their host accepts')).toBeDefined();
+    expect(screen.getByText('1 of 9 shown')).toBeDefined();
+    expect(shownRouter?.state.location.search).toBe('?filter=held');
+  });
+
+  it('steps Back through each change, the search once typing settles, then the choice', async () => {
+    await shown();
+    fireEvent.click(screen.getByRole('button', { name: 'All · 9' }));
+    fireEvent.click(
+      within(screen.getByRole('menu')).getByRole('menuitemradio', { name: /^Held/u }),
+    );
+    fireEvent.change(screen.getByRole('searchbox', { name: 'Find a guest' }), {
+      target: { value: 'zz' },
+    });
+    await waitFor(() => expect(shownRouter?.state.location.search).toBe('?filter=held&q=zz'));
+    expect(screen.getByRole('heading', { name: 'No guests match' })).toBeDefined();
+
+    await act(() => shownRouter?.navigate(-1));
+
+    expect(shownRouter?.state.location.search).toBe('?filter=held');
+    expect(screen.getByRole<HTMLInputElement>('searchbox', { name: 'Find a guest' }).value).toBe(
+      '',
+    );
+    expect(names()).toEqual(['Rui Ávila']);
+
+    await act(() => shownRouter?.navigate(-1));
+
+    expect(shownRouter?.state.location.pathname).toBe('/app/events/ev_1/guests');
+    expect(shownRouter?.state.location.search).toBe('');
+    expect(screen.getByRole('button', { name: 'All · 9' })).toBeDefined();
+    expect(screen.getByRole('heading', { level: 2, name: 'Coming · 4' })).toBeDefined();
+  });
+
+  it('finds a name ignoring accents, and a number typed the national way, then keeps the search', async () => {
+    await shown();
+    fireEvent.change(screen.getByRole('searchbox', { name: 'Find a guest' }), {
+      target: { value: 'jose' },
+    });
+
+    expect(names()).toEqual(['José Ávila']);
+    await waitFor(() => expect(shownRouter?.state.location.search).toBe('?q=jose'));
+    fireEvent.change(screen.getByRole('searchbox', { name: 'Find a guest' }), {
+      target: { value: '0803 123' },
+    });
+
+    expect(names()).toEqual(['Dayo Kalu']);
+  });
+
+  it('says No guests match with Clear, never an empty list, and Clear brings everyone back', async () => {
+    await shown('?filter=maybe&q=ngozi');
+
+    expect(screen.getByRole('heading', { name: 'No guests match' })).toBeDefined();
+    expect(screen.getByText('0 of 9 shown')).toBeDefined();
+    fireEvent.click(screen.getAllByRole('button', { name: 'Clear' }).at(-1)!);
+
+    await waitFor(() => expect(shownRouter?.state.location.search).toBe(''));
+    expect(screen.getByRole('heading', { level: 2, name: 'Coming · 4' })).toBeDefined();
+    await waitFor(() =>
+      expect(document.activeElement).toBe(screen.getByRole('searchbox', { name: 'Find a guest' })),
+    );
+  });
+});
+
 describe('Guests, live (sc-1468)', () => {
   const before = config();
 
@@ -608,16 +860,19 @@ describe('Guests, live (sc-1468)', () => {
   }
 
   it('shows a guest another session added, from the list published on the event’s topic', async () => {
+    let listed = listOf([AMAKA]);
     const { source } = await live(
-      () => listOf([AMAKA]),
+      () => listed,
       OWNER_PERMISSIONS.filter((one) => one !== 'guests.manage'),
     );
 
     expect(source.url).toContain('topic=events%2Fev_1%2Fguests');
-    source.publish(listOf([AMAKA, guest('g_3', 'Tomás Ferreira')]));
+    listed = listOf([AMAKA, guest('g_3', 'Tomás Ferreira')]);
+    source.publish(listed);
 
     expect(await screen.findByText('Tomás Ferreira')).toBeDefined();
-    expect(screen.getByText('2 on the list')).toBeDefined();
+    expect(await screen.findByText('0 coming of 2 invited')).toBeDefined();
+    expect(screen.getByText('1 hasn’t replied.')).toBeDefined();
   });
 
   it('reads the list again for someone who manages guests, since the published one has no contacts (sc-3773)', async () => {
@@ -840,6 +1095,7 @@ describe('A guest’s details, and correcting them (sc-3773)', () => {
       email: 'ngozi@example.com',
       mobile: { countryCode: 'NG', number: '0803 555 0142' },
       companions: [{ id: 'c_1', fullName: 'Obi Eze' }],
+      language: null,
     });
     expect(screen.getByRole('heading', { level: 2, name: 'Ngozi Eze-Okafor' })).toBeDefined();
   });
@@ -1546,5 +1802,108 @@ describe('the Guests top at 320 (sc-3773, ux #44604)', () => {
 
     expect(name).toContain('text-overflow: ellipsis;');
     expect(name).toContain('white-space: nowrap;');
+  });
+});
+
+describe('The host’s Language for a guest (sc-3790)', () => {
+  const HINT =
+    'Their page opens in their browser’s language when Soirely offers it, otherwise in this language. Messages use this language. When this is Not set, both use your organisation’s language.';
+
+  function language(): HTMLSelectElement {
+    return within(document.querySelector<HTMLElement>('.gs-form, .gs-column')!).getByRole(
+      'combobox',
+      { name: /^Language/u },
+    ) as HTMLSelectElement;
+  }
+
+  it('reads Not set with the organisation’s language in the details, and Edit opens on Not set with the hint', async () => {
+    await openNgozi({
+      'GET /api/events/ev_1/guests/g_1': () =>
+        tagged({ ...DETAILS, language: null, organisationLanguage: 'en' }, '"1"'),
+    });
+
+    expect(
+      within(column()).getByText(
+        'Not set · their browser’s language, or English when Soirely does not offer it',
+      ),
+    ).toBeDefined();
+
+    fireEvent.click(within(column()).getByRole('button', { name: 'Edit' }));
+    await waitFor(() => expect(document.activeElement).toBe(field('Full name')));
+
+    expect(language().value).toBe('');
+    expect([...language().options].map((one) => [one.textContent, one.lang])).toEqual([
+      ['Not set', ''],
+      ['English', 'en'],
+      ['Español', 'es'],
+      ['Français', 'fr'],
+      ['Português', 'pt'],
+    ]);
+    expect(screen.getByText(HINT)).toBeDefined();
+  });
+
+  it('saves the Language chosen, and only it when nothing else changed', async () => {
+    const sent = await editNgozi({
+      'PUT /api/events/ev_1/guests/g_1': () => tagged({ ...DETAILS, language: 'pt' }, '"2"'),
+    });
+
+    fireEvent.change(language(), { target: { value: 'pt' } });
+    fireEvent.click(screen.getByRole('button', { name: 'Save' }));
+
+    expect(await screen.findByText('Saved')).toBeDefined();
+    expect((puts(sent)[0]?.body as { language?: unknown }).language).toBe('pt');
+    expect(within(column()).getByText('Português')).toBeDefined();
+  });
+
+  it('says the guest’s own choice wins, under the field and in the details, and keeps the host’s set', async () => {
+    await openNgozi({
+      'GET /api/events/ev_1/guests/g_1': () =>
+        tagged({ ...DETAILS, language: 'es', chosenLanguage: 'pt' }, '"1"'),
+    });
+
+    expect(
+      within(column()).getByText('They chose Português on their page, and that wins.'),
+    ).toBeDefined();
+
+    fireEvent.click(within(column()).getByRole('button', { name: 'Edit' }));
+    await waitFor(() => expect(document.activeElement).toBe(field('Full name')));
+
+    expect(language().value).toBe('es');
+    expect(language().disabled).toBe(false);
+    const note = screen.getByText('They chose Português on their page, and that wins.');
+    expect(language().getAttribute('aria-describedby')).toContain(note.parentElement!.id);
+  });
+
+  it('is on Add guest after the mobile number, and sent with the guest', async () => {
+    const sent = await opened({
+      'POST /api/events/ev_1/guests': () =>
+        json({ guest: guest('g_9', 'Lucas Martin', { language: 'fr' }) }, 201),
+    });
+
+    type('Full name', 'Lucas Martin');
+    fireEvent.change(language(), { target: { value: 'fr' } });
+    fireEvent.click(addButton());
+
+    expect(await within(form()).findByText('Lucas Martin added.')).toBeDefined();
+    expect(
+      (
+        sent.find((one) => one.line === 'POST /api/events/ev_1/guests')?.body as {
+          language?: unknown;
+        }
+      ).language,
+    ).toBe('fr');
+  });
+
+  it('shows neither the field’s row nor the guest’s choice to somebody who only views guests', async () => {
+    await openNgozi(
+      {
+        'GET /api/events/ev_1/guests/g_1': () =>
+          tagged({ ...DETAILS, email: null, mobile: null, companions: DETAILS.companions }, '"1"'),
+      },
+      OWNER_PERMISSIONS.filter((one) => one !== 'guests.manage'),
+    );
+
+    expect(within(column()).queryByText(/^Not set ·/u)).toBeNull();
+    expect(within(column()).queryByText(/They chose/u)).toBeNull();
   });
 });

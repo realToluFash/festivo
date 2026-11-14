@@ -16,8 +16,11 @@ use App\Enum\GuestReply;
 use App\Http\Access\Policy\PublicAccess;
 use App\Http\Exception\ApiException;
 use App\Http\Input;
+use App\Locale\SupportedLocales;
 use App\Repository\GuestRepository;
 use DateTimeZone;
+use Doctrine\ORM\EntityManagerInterface;
+use Psl\Iter;
 use Psl\Type;
 use Symfony\Component\HttpFoundation\JsonResponse;
 use Symfony\Component\HttpFoundation\Request;
@@ -36,6 +39,7 @@ final readonly class GuestPageController
         private GuestAnswers $guestAnswers,
         private GuestRepository $guestRepository,
         private TranslatorInterface $translator,
+        private EntityManagerInterface $entityManager,
     ) {
     }
 
@@ -86,6 +90,11 @@ final readonly class GuestPageController
                 ],
                 'companions' => $this->guestRepository->countCompanions($guest),
             ],
+            'language' => [
+                'chosen' => $guest->getChosenLanguage(),
+                'host' => $guest->getLanguage(),
+                'organisation' => SupportedLocales::narrow($event->getOrganisation()->getLocale()),
+            ],
             'event' => [
                 'id' => $event->getId()->toRfc4122(),
                 'name' => $event->getName(),
@@ -101,6 +110,28 @@ final readonly class GuestPageController
             'answersOpen' => $this->guestAnswers->open($guest),
             'calendarFeed' => $this->calendarFeed($guest),
         ], headers: ['Cache-Control' => 'no-store']);
+    }
+
+    /** The guest's own language menu (sc-3790): kept on the guest, so the link opens in it on any device, and never on an account. Refused 422 for a language Soirely does not offer. */
+    #[Route('/api/guest-links/language', name: 'guest_links_language', methods: ['POST'])]
+    #[PublicAccess]
+    public function language(Request $request): Response
+    {
+        $body = Input::body($request, Type\shape(['token' => Type\string(), 'language' => Type\string()]));
+        $guest = $this->invitationLinks->guestFor($body['token']) ?? throw ApiException::notFound('access.not_found');
+
+        if (!Iter\contains(SupportedLocales::ALL, $body['language'])) {
+            throw ApiException::validation([[
+                'propertyPath' => 'language',
+                'message' => $this->translator->trans('validation.guest_language_unknown'),
+                'code' => ErrorCode::ValidationFailed->value,
+            ]]);
+        }
+
+        $guest->choseLanguage($body['language']);
+        $this->entityManager->flush();
+
+        return new Response(status: Response::HTTP_NO_CONTENT);
     }
 
     /** Add to calendar's feed, the path on this API, as each client puts its own API address in front: only for Coming while the event is Live (sc-3627). */

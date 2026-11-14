@@ -45,10 +45,13 @@ import type { OneGuest } from './messagesTo.ts';
 import { chipWords } from './messagesTo.ts';
 import { OnEscape, TickChip } from './MessagesCompose.tsx';
 import { WhatsAppReach, WhereGlyph } from './MessagesParts.tsx';
+import { counterOf, firstTextLine } from './messagesSms.ts';
+import './messagesSms.css';
 import { FILL_MS, PreviewAs, PreviewBones } from './MessagesPreview.tsx';
 import { PW } from './messagesPreviewWords.ts';
 import { ToPopover } from './MessagesTo.tsx';
 import { WaitBlock } from './MessagesWaits.tsx';
+import { WaAnswers } from './MessagesTap.tsx';
 import { demoWords } from './demoWords.ts';
 import './messagesInvite.css';
 
@@ -629,8 +632,10 @@ function InvitePreview({ draft, invite }: { draft: Draft; invite: InviteDraft })
   const words = invitationLines(person);
   const email = draft.ticks.email && person.email;
   const sms = goesBySms(person, draft.ticks, invite.wa);
+  const firstText = person.invited == null;
+  const text = inviteSmsOf(person, weddingAbout(), firstText);
   const shownWa = goesByWhatsApp(person, draft.ticks, invite.wa);
-  const wa = whatsAppInvitationOf(person, invite.noReplyBy === true);
+  const wa = whatsAppInvitationOf(person, invite.noReplyBy === true, invite.answers);
 
   function pick(id: string): void {
     setWho(id);
@@ -713,11 +718,10 @@ function InvitePreview({ draft, invite }: { draft: Draft; invite: InviteDraft })
                   <div className="mg-notice">
                     <p className="mg-notice-head">
                       <WhereGlyph where="sms" />
-                      {many('smsParts', inviteSmsOf(person, weddingAbout()).parts)}
+                      {counterOf(text)}
                     </p>
-                    <p className="mg-notice-bubble mgi-sms">
-                      {inviteSmsOf(person, weddingAbout()).text}
-                    </p>
+                    <p className="mg-notice-bubble mgi-sms">{text.text}</p>
+                    {firstText && <p className="mg-sms-first">{firstTextLine(ORGANISATION)}</p>}
                   </div>
                 )}
                 {shownWa && (
@@ -733,7 +737,11 @@ function InvitePreview({ draft, invite }: { draft: Draft; invite: InviteDraft })
                       {wa.lines.map((line) => (
                         <p key={line}>{line}</p>
                       ))}
-                      <span>{wa.button}</span>
+                      {wa.answers == null ? (
+                        <span>{wa.button}</span>
+                      ) : (
+                        <WaAnswers answers={wa.answers} />
+                      )}
                     </div>
                   </div>
                 )}

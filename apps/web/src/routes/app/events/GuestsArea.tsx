@@ -11,6 +11,7 @@ import {
   deviceCountry,
   formatPhone,
   eventAllows,
+  makeLiveRow,
   phoneScreenCountry,
   shownPhase,
 } from '@soirely/domain';
@@ -20,21 +21,26 @@ import {
   useCallback,
   useEffect,
   useEffectEvent,
+  useId,
   useReducer,
   useRef,
   useState,
 } from 'react';
+import { type TFunction } from 'i18next';
 import { useTranslation } from 'react-i18next';
-import { Link, useBlocker, useSearchParams } from 'react-router';
+import { Link, useBlocker, useNavigate, useSearchParams } from 'react-router';
 
 import { api } from '../../../api.ts';
 import { config } from '../../../config.ts';
+import { GlassMark } from '../../../components/EventCard.tsx';
 import { Glyph } from '../../../components/Glyph.tsx';
+import { SearchField } from '../../../components/SearchField.tsx';
 import { Skeleton } from '../../../components/Skeleton.tsx';
 import {
   Ask,
   CardStep,
   Chevron,
+  Menu,
   RowWords,
   TextAction,
 } from '../../../components/SettingsParts.tsx';
@@ -45,9 +51,8 @@ import { pageTitle, usePageTitle } from '../../../pageTitle.ts';
 import { phoneProblemMessage } from '../../../phoneProblem.ts';
 import { useLoadedAt, useServerNow } from '../../../serverNow.ts';
 import { canOn, useSession } from '../../../session.ts';
-import { DraftRow } from './MakeLive.tsx';
+import { useMakeLive } from './MakeLive.tsx';
 import {
-  type ListRow,
   MOST_COMPANIONS,
   type Problem,
   type Problems,
@@ -56,9 +61,8 @@ import {
   isListed,
   newGuestOf,
   problemsOf,
-  rowsOf,
   violationProblems,
-  withGuest,
+  withGuest as listedWith,
 } from './guestRows.ts';
 import {
   GuestColumn,
@@ -68,9 +72,20 @@ import {
   guestAddress,
   replyDate,
 } from './GuestColumn.tsx';
-import { CompanionField, GuestField, PhoneField } from './GuestFields.tsx';
+import { CompanionField, GuestField, LanguageField, PhoneField } from './GuestFields.tsx';
+import {
+  CHOICES,
+  type Choice,
+  type Counts,
+  type Standing,
+  type ViewRow,
+  countsOf,
+  viewOf,
+} from './guestView.ts';
+import { useGuestsAddress } from './useGuestsAddress.ts';
 import '../../../components/desk.css';
 import '../../../components/SettingsParts.css';
+import '../../../components/EventsSearch.css';
 import '../../../components/eventsDesk.css';
 import '../../../components/EventsList.css';
 import '../../../components/eventPage.css';
@@ -176,6 +191,7 @@ function useStartingCountry(asks: boolean): string {
 /** Focus asked for by `data-focus` key, given once the next render has drawn it. */
 function useFocusKeys(root: RefObject<HTMLElement | null>) {
   const pending = useRef<string[]>([]);
+  const latest = useRef(0);
   const [, rerender] = useReducer((count: number) => count + 1, 0);
 
   useEffect(() => {
@@ -183,7 +199,11 @@ function useFocusKeys(root: RefObject<HTMLElement | null>) {
 
     if (keys.length === 0) return;
     pending.current = [];
+    const turn = ++latest.current;
+
+    // A request still retrying for its target must not take the focus from a later one.
     focusWhenFree(() => {
+      if (turn !== latest.current) return null;
       for (const key of keys) {
         const at = root.current?.querySelector<HTMLElement>(`[data-focus="${key}"]`);
 
@@ -247,6 +267,11 @@ export function GuestsArea({
   const [adding, setAdding] = useState(false);
   const [params, setParams] = useSearchParams();
   const open = adding ? null : params.get('guest');
+  const [counted, setCounted] = useState<Counts | 'failed' | null>(null);
+  const [recount, setRecount] = useState(0);
+  const { choice, q, setChoice, setQ, clear } = useGuestsAddress();
+  const [menu, setMenu] = useState(false);
+  const [expanded, setExpanded] = useState<ReadonlySet<Standing>>(new Set());
   const [stamp, setStamp] = useState(0);
   const [dirty, setDirty] = useState(false);
   const [asking, setAsking] = useState<(() => void) | null>(null);
@@ -258,6 +283,16 @@ export function GuestsArea({
   const manages = canOn(event, 'guests.manage');
   const country = useStartingCountry(manages);
   const away = useBlocker(dirty);
+  const navigate = useNavigate();
+  const opener = useRef<HTMLButtonElement>(null);
+  const makeLive = useMakeLive({
+    event,
+    tag,
+    heading,
+    opener,
+    onChange,
+    onMadeLive: () => undefined,
+  });
 
   useEffect(() => {
     if (!dirty) return;
@@ -290,6 +325,19 @@ export function GuestsArea({
   useEffect(() => {
     let current = true;
 
+    api.headcount(event.id).then(
+      (headcount) => current && setCounted(countsOf(headcount.counts)),
+      () => current && setCounted((was) => (was == null ? 'failed' : was)),
+    );
+
+    return () => {
+      current = false;
+    };
+  }, [event.id, attempt, recount]);
+
+  useEffect(() => {
+    let current = true;
+
     if (manages) {
       api.flaggedGuests(event.id).then(
         (ids) => current && setFlagged(new Set(ids)),
@@ -307,19 +355,31 @@ export function GuestsArea({
     (list) => {
       setStamp((n) => n + 1);
       setHeard((n) => n + 1);
+      setRecount((n) => n + 1);
       if (manages) setAttempt((n) => n + 1);
       else setLoad({ kind: 'loaded', list });
     },
     () => setAttempt((n) => n + 1),
   );
 
+  function withGuest(id: string | null) {
+    return (was: URLSearchParams) => {
+      const at = new URLSearchParams(was);
+
+      if (id == null) at.delete('guest');
+      else at.set('guest', id);
+
+      return at;
+    };
+  }
+
   function startAdd(): void {
     if (dirty) {
       addAfter.current = true;
-      setParams({}, { replace: true });
+      setParams(withGuest(null), { replace: true });
       return;
     }
-    if (open != null) setParams({}, { replace: true });
+    if (open != null) setParams(withGuest(null), { replace: true });
     showAdd();
   }
 
@@ -330,13 +390,13 @@ export function GuestsArea({
 
   function openGuest(id: string): void {
     setAdding(false);
-    setParams({ guest: id });
+    setParams(withGuest(id));
     headingOwed.current = id !== open;
     focus('guest-heading');
   }
 
   function close(): void {
-    setParams({});
+    setParams(withGuest(null));
     focus(`row:${lastRow.current ?? ''}`, 'title');
   }
 
@@ -356,7 +416,68 @@ export function GuestsArea({
   });
 
   const guests = load.kind === 'loaded' ? load.list.guests : [];
-  const counts = load.kind === 'loaded' ? load.list.counts : null;
+  const shows =
+    load.kind === 'failed' || counted === 'failed'
+      ? 'failed'
+      : load.kind === 'loading' || counted == null
+        ? 'loading'
+        : 'loaded';
+  const counts = typeof counted === 'object' ? counted : null;
+  const { view, shown } =
+    counts == null
+      ? { view: { kind: 'rows' as const, rows: [] }, shown: 0 }
+      : viewOf(guests, counts, choice, q, expanded);
+  const looking = choice !== 'all' || q.trim() !== '';
+
+  /** The card as `/demo/guests` draws it: a Draft, Paused or Finished event says so on the card, in place of its counts' step. */
+  function cover(counts: Counts): Cover {
+    const comingOf =
+      counts.invited === 0
+        ? t('guestList.onTheList', { count: counts.all })
+        : t('guestList.comingOf', {
+            comingWords: t('guestList.countComing', { count: counts.coming }),
+            invitedWords: t('guestList.countInvited', { count: counts.invited }),
+          });
+    const draft = phase === 'draft' ? makeLiveRow(event, now) : null;
+
+    if (draft != null) {
+      const changes = canOn(event, 'events.manage');
+
+      return {
+        tag: { mark: 'draft', word: t('events.draft') },
+        says: t('guestList.onTheList', { count: counts.all }),
+        line: t(`eventLive.${draft.line}`),
+        step: !changes ? null : draft.makeLive ? 'makeLive' : 'changeDates',
+      };
+    }
+    if (phase === 'paused' || phase === 'finished')
+      return {
+        tag:
+          phase === 'paused'
+            ? { mark: 'paused', word: t('events.paused') }
+            : { mark: null, word: t('events.finished') },
+        says: comingOf,
+        line: t(phase === 'paused' ? 'guestList.pausedLine' : 'guestList.finishedLine'),
+      };
+    if (guests.length === 0)
+      return {
+        says: t('guestList.noGuests'),
+        step: manages ? 'add' : null,
+      };
+
+    return { says: comingOf, line: counts.invited === 0 ? null : haventLine(t, counts) };
+  }
+
+  function onStep(step: CoverStep): void {
+    if (step === 'add') startAdd();
+    else if (step === 'makeLive') makeLive.start();
+    else void navigate(`/app/events/${encodeURIComponent(event.id)}/edit#starts`);
+  }
+
+  function clearView(): void {
+    clear();
+    focus('find');
+  }
 
   return (
     <LayersContext value={layers}>
@@ -395,24 +516,10 @@ export function GuestsArea({
               </button>
             )}
           </header>
-          <DraftRow
-            event={event}
-            tag={tag}
-            now={now}
-            manages={canOn(event, 'events.manage')}
-            heading={heading}
-            onChange={onChange}
-            onMadeLive={() => undefined}
-          />
-          {(phase === 'paused' || phase === 'finished') && (
-            <p className="desk-line gs-blocked">
-              {t(phase === 'paused' ? 'guestList.pausedLine' : 'guestList.finishedLine')}
-            </p>
+          {shows === 'loading' && (
+            <Skeleton words={t('pending.loading')} shape="rows" rowHeight={64} field />
           )}
-          {load.kind === 'loading' && (
-            <Skeleton words={t('pending.loading')} shape="rows" rowHeight={64} />
-          )}
-          {load.kind === 'failed' && (
+          {shows === 'failed' && (
             <div className="desk-failed gs-failed" role="alert">
               <h2>{t('guestList.loadFailed')}</h2>
               <p className="desk-line">{t('guestList.loadFailedLine')}</p>
@@ -420,37 +527,83 @@ export function GuestsArea({
                 label={t('events.retry')}
                 onClick={() => {
                   setLoad({ kind: 'loading' });
+                  setCounted(null);
                   setAttempt((n) => n + 1);
                 }}
               />
             </div>
           )}
-          {load.kind === 'loaded' && (
+          {shows === 'loaded' && (
             <>
-              {guests.length === 0 && (
+              {counts != null && (
                 <GuestsCover
                   mesh={meshFor(event.id)}
-                  says={t('guestList.noGuests')}
-                  step={manages ? { label: t('guestList.addGuest'), onClick: startAdd } : null}
-                />
-              )}
-              {counts != null && guests.length > 0 && (
-                <GuestsCover
-                  mesh={meshFor(event.id)}
-                  says={t('guestList.onTheList', { count: counts.people })}
+                  cover={cover(counts)}
+                  stepRef={opener}
+                  onStep={onStep}
                 />
               )}
               {(guests.length > 0 || adding) && (
                 <div className="gs-cols">
                   <section className="gs-list" aria-label={t('eventPage.guests')}>
-                    {guests.length > 0 && (
-                      <Rows
-                        rows={rowsOf(guests)}
-                        eventId={event.id}
-                        timeZone={event.timeZone}
-                        open={open}
-                        onOpen={openGuest}
-                      />
+                    {guests.length > 0 && counts != null && (
+                      <>
+                        <SearchRow
+                          q={q}
+                          choice={choice}
+                          counts={counts}
+                          menu={menu}
+                          onQ={setQ}
+                          onChoice={setChoice}
+                          onMenu={setMenu}
+                        />
+                        <div className={looking ? 'gs-shown' : 'visually-hidden'}>
+                          <p role="status">
+                            {looking ? t('guestList.shown', { shown, total: counts.all }) : ''}
+                          </p>
+                          {looking && (
+                            <TextAction label={t('guestList.clear')} onClick={clearView} />
+                          )}
+                        </div>
+                        {shown === 0 ? (
+                          <div className="gs-none">
+                            <h2 tabIndex={-1} data-focus="none-heading">
+                              {t('guestList.noMatch')}
+                            </h2>
+                            <p className="desk-line">{t('guestList.noMatchLine')}</p>
+                            <TextAction label={t('guestList.clear')} onClick={clearView} />
+                          </div>
+                        ) : view.kind === 'rows' ? (
+                          <Rows
+                            rows={view.rows}
+                            eventId={event.id}
+                            timeZone={event.timeZone}
+                            open={open}
+                            onOpen={openGuest}
+                          />
+                        ) : (
+                          view.groups.map((group) => (
+                            <Group
+                              key={group.standing}
+                              standing={group.standing}
+                              count={group.count}
+                              collapsed={group.collapsed}
+                              onAll={() => {
+                                setExpanded((was) => new Set([...was, group.standing]));
+                                focus(`row:${group.next ?? ''}`);
+                              }}
+                            >
+                              <Rows
+                                rows={group.rows}
+                                eventId={event.id}
+                                timeZone={event.timeZone}
+                                open={open}
+                                onOpen={openGuest}
+                              />
+                            </Group>
+                          ))
+                        )}
+                      </>
                     )}
                   </section>
                   {!adding && (
@@ -507,6 +660,7 @@ export function GuestsArea({
                           }}
                           onSaved={(guest) => {
                             setSaved(true);
+                            setRecount((n) => n + 1);
                             setLoad((was) =>
                               was.kind === 'loaded'
                                 ? {
@@ -532,13 +686,14 @@ export function GuestsArea({
                         guests={guests}
                         country={country}
                         focus={focus}
-                        onAdded={(guest) =>
+                        onAdded={(guest) => {
+                          setRecount((n) => n + 1);
                           setLoad((was) =>
                             was.kind === 'loaded'
-                              ? { kind: 'loaded', list: withGuest(was.list, guest) }
+                              ? { kind: 'loaded', list: listedWith(was.list, guest) }
                               : was,
-                          )
-                        }
+                          );
+                        }}
                         onDone={() => {
                           setAdding(false);
                           focus('add', 'title');
@@ -578,6 +733,7 @@ export function GuestsArea({
             }}
           />
         )}
+        {makeLive.dialogs}
         {saved && <Toast words={t('guestList.saved')} onClose={() => setSaved(false)} />}
         <div ref={setHost} className="desk-layers" />
       </div>
@@ -587,16 +743,49 @@ export function GuestsArea({
 
 const PIECES = [1, 2, 3, 4, 5, 6];
 
-/** The summary card in the two states this story reaches, no guests yet and nobody invited yet; sc-3772 brings its other lines and steps. */
+/** "25 haven’t replied (21 guests and 4 companions).", the bracket only with a companion among them, and "Everyone has replied." at 0. */
+function haventLine(t: TFunction, counts: Counts): string {
+  if (counts.havent === 0) return t('guestList.everyoneReplied');
+  const havent = t('guestList.havent', { count: counts.havent });
+
+  return counts.haventCompanions === 0
+    ? t('guestList.haventLine', { havent })
+    : t('guestList.haventWho', {
+        havent,
+        guests: t('guestList.countGuests', { count: counts.haventGuests }),
+        companions: t('guestList.countCompanions', { count: counts.haventCompanions }),
+      });
+}
+
+type CoverStep = 'add' | 'makeLive' | 'changeDates';
+
+interface Cover {
+  tag?: { mark: 'draft' | 'paused' | null; word: string } | null;
+  says: string;
+  line?: string | null;
+  step?: CoverStep | null;
+}
+
+const STEP_KEY: Record<CoverStep, string> = {
+  add: 'guestList.addGuest',
+  makeLive: 'eventLive.makeLive',
+  changeDates: 'eventLive.changeDates',
+};
+
+/** How the room stands, in the event's colours, with the one step this page can take. */
 function GuestsCover({
   mesh,
-  says,
-  step = null,
+  cover: { tag = null, says, line = null, step = null },
+  stepRef,
+  onStep,
 }: {
   mesh: Mesh;
-  says: string;
-  step?: { label: string; onClick: () => void } | null;
+  cover: Cover;
+  stepRef: RefObject<HTMLButtonElement | null>;
+  onStep: (step: CoverStep) => void;
 }) {
+  const { t } = useTranslation();
+
   return (
     <section className={`ev-card today-cover is-${mesh} gs-card is-page`}>
       <span className="ev-scrim" aria-hidden="true" />
@@ -604,13 +793,110 @@ function GuestsCover({
         <span key={piece} className={`desk-piece p${piece}`} aria-hidden="true" />
       ))}
       <div className="ev-card-inner gs-card-inner">
+        {tag != null && (
+          <ul className="desk-glass-tags">
+            <li className="desk-glass">
+              {tag.mark != null && <GlassMark mark={tag.mark} />}
+              {tag.word}
+            </li>
+          </ul>
+        )}
         <p className="gs-says">{says}</p>
+        {line != null && <p className="desk-on-card">{line}</p>}
         {step != null && (
           <div className="ev-card-foot">
-            <CardStep label={step.label} onClick={step.onClick} />
+            <CardStep ref={stepRef} label={t(STEP_KEY[step])} onClick={() => onStep(step)} />
           </div>
         )}
       </div>
+    </section>
+  );
+}
+
+const CHOICE_KEY: Record<Choice, string> = {
+  all: 'guestList.all',
+  coming: REPLY_KEY.coming,
+  maybe: REPLY_KEY.maybe,
+  noReply: REPLY_KEY.noReply,
+  held: REPLY_KEY.held,
+  notComing: REPLY_KEY.notComing,
+};
+
+/** Find a guest, and the house filter menu beside it reading "{choice} · {n}". */
+function SearchRow({
+  q,
+  choice,
+  counts,
+  menu,
+  onQ,
+  onChoice,
+  onMenu,
+}: {
+  q: string;
+  choice: Choice;
+  counts: Counts;
+  menu: boolean;
+  onQ: (q: string) => void;
+  onChoice: (choice: Choice) => void;
+  onMenu: (open: boolean) => void;
+}) {
+  const { t } = useTranslation();
+  const onClose = useCallback(() => onMenu(false), [onMenu]);
+
+  return (
+    <div className="ev-search-row gs-search-row">
+      <div className="ev-search" role="search">
+        <SearchField
+          label={t('guestList.find')}
+          clearLabel={t('guestList.clearSearch')}
+          value={q}
+          focusKey="find"
+          onChange={onQ}
+          onClear={() => onQ('')}
+        />
+      </div>
+      <div className="gs-menu">
+        <Menu
+          items={CHOICES.map((key) => ({ key, word: t(CHOICE_KEY[key]), count: counts[key] }))}
+          picked={choice}
+          open={menu}
+          onOpen={() => onMenu(true)}
+          onClose={onClose}
+          onPick={(key) => onChoice(key as Choice)}
+        />
+      </div>
+    </div>
+  );
+}
+
+/** A reply's group on All: its word and count, its first rows, then Show all {n}. */
+function Group({
+  standing,
+  count,
+  collapsed,
+  onAll,
+  children,
+}: {
+  standing: Standing;
+  count: number;
+  collapsed: boolean;
+  onAll: () => void;
+  children: ReactNode;
+}) {
+  const { t } = useTranslation();
+  const id = useId();
+
+  return (
+    <section className="gs-group" aria-labelledby={id}>
+      <h2 id={id} className="gs-group-head">
+        {t(REPLY_KEY[standing])}
+        <span className="gs-group-count">
+          {' · '}
+          {t('guestList.figure', { count })}
+        </span>
+      </h2>
+      {children}
+      {collapsed && <TextAction label={t('guestList.showAll', { count })} onClick={onAll} />}
     </section>
   );
 }
@@ -623,7 +909,7 @@ function Rows({
   open,
   onOpen,
 }: {
-  rows: readonly ListRow[];
+  rows: readonly ViewRow[];
   eventId: string;
   /** The event's: a reply's date is the day it was in the event's zone. */
   timeZone: string;
@@ -634,9 +920,10 @@ function Rows({
 
   return (
     <ul className="desk-rows gs-rows">
-      {rows.map((row) => {
-        if (row.kind === 'guest') {
-          const { guest } = row;
+      {rows.map(({ person, indent }) => {
+        const { guest, companion } = person;
+
+        if (companion == null) {
           const word = t(REPLY_KEY[guest.reply]);
           const reply =
             guest.repliedAt == null
@@ -672,19 +959,24 @@ function Rows({
           );
         }
 
-        const { host, companion, at } = row;
         const name = companionShown(
           t,
-          host.fullName,
-          host.companions.map((one) => one.fullName),
-          at,
+          guest.fullName,
+          guest.companions.map((one) => one.fullName),
+          person.at,
         );
+        const line =
+          indent || companion.fullName == null
+            ? t(REPLY_KEY[companion.state])
+            : companion.state === 'held'
+              ? t('guestList.heldLine')
+              : t('guestList.guestOf', { host: guest.fullName });
 
         return (
-          <li key={companion.id} className="is-companion">
+          <li key={companion.id} className={indent ? 'is-companion' : undefined}>
             <RowLink
               eventId={eventId}
-              guestId={host.id}
+              guestId={guest.id}
               rowId={companion.id}
               open={null}
               onOpen={onOpen}
@@ -692,7 +984,7 @@ function Rows({
               <span className="gs-lead">
                 <ReplyMark reply={companion.state} />
               </span>
-              <RowWords title={name} lines={[t(REPLY_KEY[companion.state])]} />
+              <RowWords title={name} lines={[line]} />
             </RowLink>
           </li>
         );
@@ -740,7 +1032,13 @@ function fieldOf(key: string, problems: Problems): string {
   return key === 'mobile' && problems.mobile === 'noCountry' ? 'country' : key;
 }
 
-const EMPTY: Omit<Typed, 'country'> = { fullName: '', email: '', number: '', companions: [] };
+const EMPTY: Omit<Typed, 'country'> = {
+  fullName: '',
+  email: '',
+  number: '',
+  companions: [],
+  language: null,
+};
 
 /** Add guest in place beside the list: it stays open after each guest, cleared, focus back on Full name. */
 function AddForm({
@@ -910,6 +1208,11 @@ function AddForm({
             setRefused({});
           }}
           onNumber={(number) => change({ number })}
+        />
+        <LanguageField
+          value={typed.language}
+          chose={null}
+          onChange={(language) => change({ language })}
         />
         {duplicate && (
           <div className="gs-amber" role="alert">

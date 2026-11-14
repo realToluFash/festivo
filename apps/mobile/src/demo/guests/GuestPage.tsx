@@ -32,6 +32,8 @@ import {
   languageName,
 } from './GuestsSample.ts';
 import { REPLY_WORD, W, say } from './GuestsWords.ts';
+import { MessageGlyph } from '../messages/MessageMarks.tsx';
+import { type OptOutRow, optOutRowsOf } from './OptOuts.ts';
 import { MarkSlot } from './ReplyMark.tsx';
 import { type WhatsAppRow, whatsAppRowOf } from './WhatsAppConsent.ts';
 
@@ -143,6 +145,7 @@ export function GuestPage({
   const whatsApp = whatsAppRowOf(g.whatsApp, { mobile: g.phone != null, edits: owner }, (day) =>
     dayWords(day, locale),
   );
+  const optOuts = optOutRowsOf(g, { edits: owner }, (day) => dayWords(day, locale));
 
   return (
     <View style={styles.blocks} testID={`guest.${g.key}`}>
@@ -205,11 +208,29 @@ export function GuestPage({
                     inset: 40,
                     row: <ValueRow value={g.email} label={W.emailAddress} icon="mail" />,
                   },
+                  ...(optOuts.email != null
+                    ? [
+                        {
+                          key: 'optOutEmail',
+                          inset: 40,
+                          row: <OptOutLine row={optOuts.email} testID="guest.optOut.email" />,
+                        },
+                      ]
+                    : []),
                   {
                     key: 'phone',
                     inset: 40,
                     row: <ValueRow value={g.phone} label={W.mobileNumber} icon="phone" />,
                   },
+                  ...(optOuts.texts != null
+                    ? [
+                        {
+                          key: 'optOutTexts',
+                          inset: 40,
+                          row: <OptOutLine row={optOuts.texts} testID="guest.optOut.texts" />,
+                        },
+                      ]
+                    : []),
                   ...(whatsApp != null
                     ? [
                         {
@@ -409,6 +430,23 @@ function ValueRow({
   );
 }
 
+/** sc-3969: a channel the guest unsubscribed from; not a control, read as one item. */
+function OptOutLine({ row, testID }: { row: OptOutRow; testID: string }) {
+  return (
+    <Row
+      title={row.title}
+      line={row.note ?? undefined}
+      lead={
+        <View style={styles.optOutMark}>
+          <MessageGlyph name="slash" size={22} ink={tokens.colorInkSecondary} weight={2} />
+        </View>
+      }
+      accessibilityLabel={[row.title, row.note].filter(Boolean).join(', ')}
+      testID={testID}
+    />
+  );
+}
+
 /** sc-3950: the consent as the value, WhatsApp as the label; while nothing is in force, the host's way to record it under it. */
 function WhatsAppRows({
   row,
@@ -517,6 +555,7 @@ function NotFound({ onBack }: { onBack: () => void }) {
 const styles = StyleSheet.create({
   blocks: { gap: 18 },
   chose: { paddingLeft: 40, paddingBottom: 12 },
+  optOutMark: { width: 28, height: 28, alignItems: 'center', justifyContent: 'center' },
   agree: { paddingLeft: 40, paddingBottom: tokens.spaceXs, alignItems: 'flex-start' },
   readOnly: {
     paddingVertical: 14,

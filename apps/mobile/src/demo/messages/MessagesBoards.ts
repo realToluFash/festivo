@@ -40,6 +40,20 @@ const BOARDS: Record<MessagesState, readonly [string, string]> = {
   sendNow: ['send now', 'The check set to now, or Keep it scheduled'],
   cancelAsk: ['cancel…, asked', 'Keep it first; Cancel message'],
   scheduledCancelled: ['cancelled, scheduled', 'Greyed; its row in Done reads Cancelled'],
+  scheduledPaused: [
+    'scheduled, the event paused',
+    'The paused line where Goes… was; Edit, Send now, Cancel… stay',
+  ],
+  scheduledPausedLate: [
+    'paused past its time',
+    'Set for 08:00 today, still paused: the same line, no Goes…',
+  ],
+  scheduledPausedEdit: ['editing while paused', 'Editing., with no time'],
+  scheduledFinished: [
+    'cancelled by Soirely',
+    'The event finished before this message was due; in Done',
+  ],
+  scheduledTooLate: ['not sent: too late', 'Not resumed or restored within 48 hours; in Done'],
   fixed: ['after a fix', 'Bounced kept; Updated · not sent yet, and Send to Tomás Ferreira again'],
   sentAgain: ['sent again', 'Sent to Tomás Ferreira; Resend to the 10 not reached'],
   checkAll: ['the check, all guests', 'Sending to 142 people; 9 can’t be told'],
@@ -67,6 +81,15 @@ const BOARDS: Record<MessagesState, readonly [string, string]> = {
   longMessage: ['a message too long', 'Shorten the message to 10,000 characters or fewer'],
   closedDraft: ['new unavailable, a draft', 'This event is a draft; New is off'],
   closedEnded: ['new unavailable, long finished', 'Finished more than 30 days ago; New is off'],
+  noManage: [
+    'reading without sending',
+    'Kofi Mensah, Read-only: no New, no To; Only someone who can change Messages can send.',
+  ],
+  noManageDraft: ['reading without sending, a draft', 'The line alone, not the draft’s reason'],
+  noManageEnded: [
+    'reading without sending, long finished',
+    'The line alone, not the finished event’s reason',
+  ],
   forbidden: ['no access', 'Without messages.read: the refusal, no list, no count'],
   insert: ['Insert', 'A menu on the iPad, a sheet on the phone: four tokens, each with its line'],
   previewAs: ['Preview as', 'Open on the five people in To, A to Z'],
@@ -157,7 +180,49 @@ const BOARDS: Record<MessagesState, readonly [string, string]> = {
   sharedNumber: ['a number two guests share', '+44 7700 900412 · shared by 2 guests; Change guest'],
   readOnly: [
     'a Read-only member',
-    'Kofi Mensah, Read-only: Only someone who can change Messages can send.',
+    'Kofi Mensah, Read-only: Only someone who can change Messages can send; Who it reached without actions',
+  ],
+  tapNotComing: [
+    'A tap: Not coming, with companions',
+    'Kwame Mensah answered Not coming by WhatsApp. · 08:20; WhatsApp · Read; in Done',
+  ],
+  tapNotSure: [
+    'A tap: Not sure yet',
+    'Kwame Mensah answered Not sure yet by WhatsApp. · 08:20; WhatsApp · Delivered',
+  ],
+  tapNeedsYou: [
+    'A tap under a question that waits',
+    'Lucía Ortega answered Not sure yet; the message in Spanish; still in Needs you',
+  ],
+  tapFailed: ['A tap: the message failed', 'Kwame Mensah answered Not coming; WhatsApp · Failed'],
+  tapNoCredits: [
+    'A tap: not enough credits',
+    'Kwame Mensah answered Not coming; Not sent · Not enough credits',
+  ],
+  tapStopped: [
+    'A tap after stopping WhatsApp',
+    'Lucía Ortega answered Not coming; Not sent · Stopped WhatsApp',
+  ],
+  tapComing: [
+    'A Coming guest’s tap',
+    'Kwame Mensah tapped Not coming in WhatsApp. Nothing changed.; WhatsApp · Read',
+  ],
+  tapComingNotSent: [
+    'A Coming guest’s tap, not enough credits',
+    'Kwame Mensah tapped Not coming; Not sent · Not enough credits',
+  ],
+  tapRepeat: [
+    'A repeat tap, the first in 24 hours',
+    'Not sure yet at 08:20, then tapped again at 08:31; WhatsApp · Delivered',
+  ],
+  tapRepeatAgain: ['A further repeat: no line', 'The conversation as the first repeat left it'],
+  tapClosed: [
+    'A tap after answers closed',
+    'Kwame Mensah tapped Not sure yet; Answers closed on 2 November 2026.',
+  ],
+  tapFirst: [
+    'A tap from a guest with no conversation: one starts in Done',
+    'Valentina Restrepo answered Not coming by WhatsApp. · 08:20, under the invitation; first in Done, not unread, not counted',
   ],
   stopAction: [
     'the conversation’s actions, open',
@@ -173,6 +238,52 @@ const BOARDS: Record<MessagesState, readonly [string, string]> = {
   stoppedNoManage: [
     'stopped, without messages.manage',
     'No More actions; the inset without Let them write again',
+  ],
+  reasons: [
+    'every reason',
+    'Parking by Email only: Bounced, Failed, Opted out, Skipped; Try SMS instead by the person',
+  ],
+  trySms: ['try SMS instead', 'Olumide Bello: SMS · 1 part · GSM-7; 62 credits, 1,438 after'],
+  trySmsQuiet: [
+    'try SMS instead, at night for them',
+    'Rafael Costa at 06:41: This text waits until 09:00, their time.',
+  ],
+  trySmsShort: [
+    'try SMS instead, too few credits',
+    'Yuki Tanaka: 1 SMS message will wait for credits.',
+  ],
+  trySmsSent: ['then send by SMS', 'Sent to Olumide Bello; Bounced · 1, Resend to the 8'],
+  closedReached: [
+    'who it reached, the sends off',
+    'Finished more than 30 days ago: Try SMS instead, Send again and Resend off',
+  ],
+  reachedQuiet: [
+    'a text waiting for the morning',
+    'Valentina Restrepo: SMS · Waiting until 09:00, their time; In progress',
+  ],
+  smsLine: [
+    'SMS ticked: who it reaches',
+    'To All guests · 142: SMS reaches 39 of 142, under the chips',
+  ],
+  checkQuiet: [
+    'the check, texts waiting for morning',
+    'Coming · 96 by email and SMS: Texts to 4 people wait until 09:00, their time',
+  ],
+  checkQuietBoth: [
+    'the check, texts and WhatsApp waiting',
+    'Email · 92, SMS · 28, WhatsApp · 3; texts and WhatsApp messages to 4 people wait',
+  ],
+  checkNow: [
+    'happening now at 23:00: nothing waits',
+    'Thu, Nov 5 at 23:00 while the wedding is on: no wait line',
+  ],
+  reachedSmsFailed: [
+    'who it reached, texts that failed',
+    'Six reached by email whose text failed, each with its reason',
+  ],
+  previewFirstText: [
+    'preview: a first text',
+    'Amaka Eze: SMS · 2 parts · GSM-7 · 177 characters, ending Reply STOP to opt out.',
   ],
   tellDates: [
     'tell guests, the dates',

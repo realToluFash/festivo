@@ -82,6 +82,14 @@ class Guest
     #[ORM\Column(type: Types::BOOLEAN, options: ['default' => false])]
     private bool $linkFlagged = false;
 
+    /** The host's Language for them (sc-3790): one of SupportedLocales::ALL, or null for Not set. */
+    #[ORM\Column(type: Types::STRING, length: 8, nullable: true)]
+    private ?string $language = null;
+
+    /** What the guest picked on their own page, which outranks the host's Language. */
+    #[ORM\Column(type: Types::STRING, length: 8, nullable: true)]
+    private ?string $chosenLanguage = null;
+
     private function __construct(Event $event, ?Guest $host, ?string $fullName, ?string $nameKey, ?string $email, ?string $mobile, ?GuestReply $reply, int $position, ?User $addedBy, #[SensitiveParameter] ?string $linkToken)
     {
         $this->id = Uuid::v7();
@@ -195,6 +203,26 @@ class Guest
     public function setMobile(?string $mobile): void
     {
         $this->mobile = $mobile;
+    }
+
+    public function getLanguage(): ?string
+    {
+        return $this->language;
+    }
+
+    public function setLanguage(?string $language): void
+    {
+        $this->language = $language;
+    }
+
+    public function getChosenLanguage(): ?string
+    {
+        return $this->chosenLanguage;
+    }
+
+    public function choseLanguage(string $language): void
+    {
+        $this->chosenLanguage = $language;
     }
 
     public function setPosition(int $position): void

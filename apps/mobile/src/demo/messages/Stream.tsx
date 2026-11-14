@@ -4,6 +4,7 @@ import Svg, { Circle } from 'react-native-svg';
 
 import { Glyph, type GlyphName } from '../../components/Glyph.tsx';
 import { ReadOut } from '../../components/ReadOut.tsx';
+import { ShapeMark } from '../../components/StatusMark.tsx';
 import { Text } from '../../components/Text.tsx';
 import { useReducedMotion } from '../../reducedMotion.ts';
 import { tokens } from '../../theme/tokens.ts';
@@ -24,6 +25,8 @@ const AnimatedCircle = Animated.createAnimatedComponent(Circle);
 export interface Bit {
   word: string;
   mark?: MarkKey;
+  /** sc-3963: Scheduled's ring, kept under the bubble while the event is paused. */
+  ring?: boolean;
   where?: Where;
   clip?: boolean;
 }
@@ -45,6 +48,7 @@ export function MetaLine({ bits, end = false }: { bits: readonly Bit[]; end?: bo
           )}
           {bit.where != null && <WhereMark where={bit.where} ink={INK2} />}
           {bit.mark != null && <DeliveryMark mark={bit.mark} side={13} />}
+          {bit.ring === true && <ShapeMark kind="notyet" side={12} ink={INK2} />}
           {bit.clip === true && <MessageGlyph name="clip" size={13} ink={INK2} />}
           <Text
             size={13}
@@ -163,7 +167,7 @@ export function Stub({
   bits,
 }: {
   title: string;
-  mark: 'mail' | 'group';
+  mark: 'mail' | 'group' | 'wa';
   bits: readonly Bit[];
 }) {
   return (
@@ -172,7 +176,7 @@ export function Stub({
         {mark === 'mail' ? (
           <Glyph name="mail" size={16} ink={INK2} />
         ) : (
-          <MessageGlyph name="group" size={16} ink={INK2} />
+          <MessageGlyph name={mark} size={16} ink={INK2} />
         )}
         <View style={styles.grow}>
           <Text size={14} weight="semibold" style={styles.stubTitle}>
@@ -188,10 +192,12 @@ export function Stub({
 /** One of Soirely's own fixed messages, outlined and never Violet, so it never reads as the hosts' words. */
 export function SoirelyCard({
   title,
+  mark,
   lines,
   bits,
 }: {
-  title: string;
+  title?: string;
+  mark?: MarkName;
   lines: readonly string[];
   bits: readonly Bit[];
 }) {
@@ -199,12 +205,18 @@ export function SoirelyCard({
     <View style={styles.right}>
       <View style={[styles.hostAt, styles.soirely]}>
         <View style={styles.markTop}>
-          <Glyph name="mail" size={16} ink={INK2} />
+          {mark == null ? (
+            <Glyph name="mail" size={16} ink={INK2} />
+          ) : (
+            <MessageGlyph name={mark} size={16} ink={INK2} />
+          )}
         </View>
         <View style={[styles.grow, styles.soirelyWords]}>
-          <Text size={15} weight="semibold" style={styles.soirelyTitle}>
-            {title}
-          </Text>
+          {title != null && title !== '' && (
+            <Text size={15} weight="semibold" style={styles.soirelyTitle}>
+              {title}
+            </Text>
+          )}
           {lines.map((line) => (
             <Text key={line} size={14} weight="medium" style={[styles.secondary, styles.body14]}>
               {line}
@@ -219,10 +231,12 @@ export function SoirelyCard({
 
 export function SystemLine({
   text,
+  more,
   glyph,
   mark,
 }: {
   text: string;
+  more?: string;
   glyph?: GlyphName;
   mark?: MarkName;
 }) {
@@ -234,6 +248,27 @@ export function SystemLine({
         ) : (
           <Glyph name={glyph ?? 'info'} size={15} ink={INK2} weight={2.1} />
         )}
+      </View>
+      <View style={styles.grow}>
+        <Text size={13.5} weight="medium" style={[styles.secondary, styles.body135]}>
+          {text}
+        </Text>
+        {more != null && (
+          <Text size={13.5} weight="medium" style={[styles.secondary, styles.body135]}>
+            {more}
+          </Text>
+        )}
+      </View>
+    </View>
+  );
+}
+
+/** sc-3963: where "Goes …" was while the event is paused, two bars with the words, the same line before its time and after it. */
+export function PausedLine({ text }: { text: string }) {
+  return (
+    <View style={styles.system}>
+      <View style={styles.markTop}>
+        <ShapeMark kind="paused" side={15} ink={INK2} />
       </View>
       <Text size={13.5} weight="medium" style={[styles.grow, styles.secondary, styles.body135]}>
         {text}

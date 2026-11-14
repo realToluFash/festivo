@@ -26,7 +26,16 @@ import {
   STOP_STATES,
   isStopState,
 } from './messagesStop.ts';
-import { WA_INVITE_GROUP, WA_INVITE_STATES } from './messagesInviteWords.ts';
+import { WA_ANSWER_STATES, WA_INVITE_GROUP, WA_INVITE_STATES } from './messagesInviteWords.ts';
+import {
+  type TapCase,
+  DONE_AT,
+  TAP_GROUP,
+  TAP_STATES,
+  isTapState,
+  tapCaseOf,
+  tapRow,
+} from './messagesTap.ts';
 import {
   type InviteDraft,
   type InviteOut,
@@ -40,15 +49,26 @@ import {
   isInviteState,
 } from './messagesInvite.ts';
 import {
+  type Hour,
+  SMS_GROUP,
+  SMS_STATES,
+  failedWhy,
+  isSmsState,
+  smsReachLine,
+  waitLine,
+} from './messagesSms.ts';
+import {
   type Extra,
   type NoticeCase,
   NOTICE_STATES,
+  QUIET_UNTIL,
   noticeCaseOf,
   noticeCredits,
   noticeSmsOf,
   stampOf,
 } from './messagesNotice.ts';
 import { NW } from './messagesNoticeWords.ts';
+import { smsEncoding } from './inviteSms.ts';
 import type { DemoLink } from './settings.ts';
 import type { Field, TellKind } from './messagesTell.ts';
 import { TELL_GROUP, TELL_STATES, isTellState } from './messagesTellStates.ts';
@@ -96,6 +116,11 @@ export const MESSAGE_STATES = [
   { key: 'sendNow', name: 'Send now' },
   { key: 'cancelAsk', name: 'Cancel…, asked' },
   { key: 'scheduledCancelled', name: 'Cancelled, scheduled' },
+  { key: 'scheduledPaused', name: 'Scheduled, the event paused' },
+  { key: 'scheduledPausedLate', name: 'Scheduled, paused past its time' },
+  { key: 'scheduledPausedEdit', name: 'Editing while the event is paused' },
+  { key: 'scheduledFinished', name: 'Cancelled by Soirely, the event finished' },
+  { key: 'scheduledTooLate', name: 'Not sent: too late' },
   { key: 'fixed', name: 'After a fix' },
   { key: 'sentAgain', name: 'Sent again' },
   { key: 'added', name: 'After Add an email address' },
@@ -162,12 +187,22 @@ export const MESSAGE_STATES = [
   { key: 'channelsSeeAll', name: 'See all, open' },
   { key: 'channelsMany', name: 'See all, 93 names' },
   { key: 'channelsNone', name: 'Nothing ticked' },
+  { key: 'reasons', name: 'Who it reached, every reason' },
+  { key: 'trySms', name: 'Try SMS instead' },
+  { key: 'trySmsQuiet', name: 'Try SMS instead, at night for them' },
+  { key: 'trySmsShort', name: 'Try SMS instead, too few credits' },
+  { key: 'trySmsSent', name: 'Then Send by SMS' },
+  { key: 'closedReached', name: 'Who it reached, the sends off' },
+  { key: 'reachedQuiet', name: 'A text waiting for the morning' },
   ...WAITS_STATES,
   ...NOTICE_STATES,
   ...INVITE_STATES,
+  ...SMS_STATES,
   ...WA_INVITE_STATES,
   ...STOP_STATES,
   ...TELL_STATES,
+  ...WA_ANSWER_STATES,
+  ...TAP_STATES,
 ] as const;
 
 export type MessagesState = (typeof MESSAGE_STATES)[number]['key'];
@@ -178,6 +213,7 @@ export function closedOf(state: MessagesState | null): string | null {
     case 'closedDraft':
       return MW.closedDraft;
     case 'closedEnded':
+    case 'closedReached':
       return MW.closedEnded;
     default:
       return null;
@@ -195,12 +231,21 @@ export const MESSAGES_PAGES: readonly { name: string; states: readonly DemoLink[
   {
     name: 'Messages',
     states: MESSAGE_STATES.filter(
-      (one) => !isStopState(one.key) && !isInviteState(one.key) && !isTellState(one.key),
+      (one) =>
+        !isStopState(one.key) &&
+        !isInviteState(one.key) &&
+        !isSmsState(one.key) &&
+        !isTellState(one.key) &&
+        !isTapState(one.key),
     ).map((one) => ({ to: `${MESSAGES_AT}?state=${one.key}`, name: one.name })),
   },
   {
     name: INVITE_GROUP,
     states: INVITE_STATES.map((one) => ({ to: `${MESSAGES_AT}?state=${one.key}`, name: one.name })),
+  },
+  {
+    name: SMS_GROUP,
+    states: SMS_STATES.map((one) => ({ to: `${MESSAGES_AT}?state=${one.key}`, name: one.name })),
   },
   {
     name: WA_INVITE_GROUP,
@@ -217,11 +262,19 @@ export const MESSAGES_PAGES: readonly { name: string; states: readonly DemoLink[
     name: TELL_GROUP,
     states: TELL_STATES.map((one) => ({ to: `${MESSAGES_AT}?state=${one.key}`, name: one.name })),
   },
+  {
+    name: TAP_GROUP,
+    states: [...WA_ANSWER_STATES, ...TAP_STATES].map((one) => ({
+      to: `${MESSAGES_AT}?state=${one.key}`,
+      name: one.name,
+    })),
+  },
 ];
 
 export const READER = 'Folake Adeyemi';
 export const NOW = '09:41';
-export const HOSTS = 'Adaeze Obi and Tunde Bakare';
+export const HOST_NAMES: readonly string[] = ['Adaeze Obi', 'Tunde Bakare'];
+export const HOSTS = new Intl.ListFormat('en', { type: 'conjunction' }).format(HOST_NAMES);
 export const EVENT_NAME = 'Adaeze & Tunde’s wedding';
 export const ORGANISATION = 'Ire Events';
 export const GUESTS_N = 142;
@@ -549,7 +602,7 @@ const NAMED: Record<Sample, readonly Reasons[]> = {
     {
       name: 'Sophie Laurent',
       email: MW.unsubscribed,
-      sms: MW.textedStop,
+      sms: MW.stoppedTexts,
       whatsApp: MW.hasNotAgreedWhatsApp,
     },
     { name: 'Yuki Tanaka', email: MW.addressBouncing, sms: MW.noPhone, whatsApp: MW.noPhone },
@@ -558,13 +611,13 @@ const NAMED: Record<Sample, readonly Reasons[]> = {
     {
       name: 'Fatima Zahra El Idrissi',
       email: MW.noEmail,
-      sms: MW.textedStop,
+      sms: MW.stoppedTexts,
       whatsApp: MW.hasNotAgreedWhatsApp,
     },
     {
       name: 'Diego Herrera',
       email: MW.unsubscribed,
-      sms: MW.textedStop,
+      sms: MW.stoppedTexts,
       whatsApp: MW.hasNotAgreedWhatsApp,
     },
     JOAQUIN,
@@ -688,7 +741,7 @@ export function byName(people: readonly Untellable[], locale: string): Untellabl
 }
 
 /** Which of the boards' three samples an audience counts as: All guests, Hasn't replied alone, or Coming (every other). */
-function sampleOf(audience: Audience): Sample {
+export function sampleOf(audience: Audience): Sample {
   if (audience.kind !== 'who') return 'all';
 
   return audience.conditions[0] === 'notReplied' && audience.conditions.length === 1
@@ -860,12 +913,19 @@ export interface Check {
   cant: readonly Untellable[];
   untold: readonly Untellable[];
   credits: string | null;
+  sms: string | null;
   whatsApp: string | null;
   instead: string | null;
+  wait: string | null;
 }
 
 /** The check before it goes (sc-3942, sc-3963): who is told and how, who cannot be, and the credits. */
-export function checkOf(audience: Audience, ticks: Ticks, groups: readonly Group[]): Check {
+export function checkOf(
+  audience: Audience,
+  ticks: Ticks,
+  groups: readonly Group[],
+  hour?: Hour,
+): Check {
   const count = countOf(audience, groups) ?? 0;
   const { counts, cantTell, names, smsOff } = figuresOf(audience, ticks);
   const on = CHANNELS.filter((channel) => ticks[channel]);
@@ -890,8 +950,10 @@ export function checkOf(audience: Audience, ticks: Ticks, groups: readonly Group
         : credits === 0
           ? MW.emailNoCredits
           : `${ticks.whatsApp ? many('textsAndWhatsAppUse', credits) : many('textsUse', credits)} ${after}`,
+    sms: ticks.sms ? smsReachLine(sampleOf(audience)) : null,
     whatsApp: ticks.whatsApp ? whatsAppLine(audience) : null,
     instead: insteadOf(audience, ticks),
+    wait: waitLine(ticks, hour),
   };
 }
 
@@ -905,6 +967,7 @@ export function toldWords(ticks: Ticks): string {
 }
 
 export type Delivery =
+  | 'scheduled'
   | 'delivered'
   | 'sent'
   | 'sending'
@@ -915,7 +978,16 @@ export type Delivery =
   | 'optout'
   | 'none';
 export type Kind =
-  'inProgress' | 'bounced' | 'failed' | 'notSent' | 'notConfirmed' | 'optedOut' | 'none' | 'cant';
+  | 'inProgress'
+  | 'held'
+  | 'bounced'
+  | 'failed'
+  | 'notSent'
+  | 'notConfirmed'
+  | 'optedOut'
+  | 'skipped'
+  | 'none'
+  | 'cant';
 export type AddressFix = 'fixEmail' | 'addEmail' | 'addPhone';
 export type Fix = AddressFix | 'toldInPerson' | 'copyLink' | 'trySms';
 
@@ -935,7 +1007,17 @@ export interface Unreached {
   address?: string;
   updated?: readonly string[];
   offer?: boolean;
+  phone?: Phone;
 }
+
+/** A mobile number Try SMS instead could text: its country's credits a part, the guest's own time now, and whether they stopped texts. */
+export interface Phone {
+  perPart: number;
+  theirTime: string;
+  stopped?: boolean;
+}
+
+export type Texted = 'sent' | 'waiting' | 'held';
 
 /** An address saved in Who it reached, the guest's own, so every message sees it; Send again and Not now are per message. */
 export interface Update {
@@ -985,6 +1067,10 @@ function person(
   return { id, initials, name, kind, lines: [...lines, last], fixes };
 }
 
+export function emailBounced(one: Unreached): boolean {
+  return one.lines.some((line) => line.word === `${MW.email} · ${MW.bounced}`);
+}
+
 const bounced = (why: string): Line => ({
   mark: 'bounced',
   word: `${MW.email} · ${MW.bounced}`,
@@ -998,7 +1084,7 @@ const unconfirmed: Line = {
 const optedOut = (channel: 'email' | 'sms'): Line => ({
   mark: 'optout',
   word: `${channel === 'email' ? MW.email : MW.sms} · ${MW.notSent}`,
-  why: channel === 'email' ? MW.unsubscribed : MW.textedStop,
+  why: channel === 'email' ? MW.unsubscribed : MW.stoppedTexts,
 });
 
 export const OLD_ADDRESS = 'tomas.ferreira@gmial.com';
@@ -1071,6 +1157,198 @@ export const PARKING_UNREACHED: readonly Unreached[] = [
   person('mei', 'Mei Lin Chen', 'none', NOTHING, ['addEmail', 'addPhone', 'toldInPerson']),
 ];
 
+/** Parking told by Email only (Messaging-B-Phone-More-2, 4): every reason sc-3942 words, and who Try SMS instead can reach. */
+const emailFailed = (why: string): Line => ({
+  mark: 'bounced',
+  word: `${MW.email} · ${MW.failedReceipt}`,
+  why,
+});
+const emailSkipped = (why: string): Line => ({
+  mark: 'notsent',
+  word: `${MW.email} · ${MW.notSent}`,
+  why,
+});
+const withPhone = (one: Unreached, phone: Phone): Unreached => ({ ...one, phone });
+
+export const REASONS_UNREACHED: readonly Unreached[] = [
+  {
+    ...person(
+      'tomas',
+      'Tomás Ferreira',
+      'bounced',
+      [bounced(`${MW.doesntExist} (5.1.1)`)],
+      ['fixEmail', 'toldInPerson'],
+    ),
+    address: OLD_ADDRESS,
+  },
+  {
+    ...withPhone(
+      person(
+        'olumide',
+        'Olumide Bello',
+        'bounced',
+        [bounced(`${MW.inboxFull} (4.2.2)`)],
+        ['fixEmail', 'toldInPerson'],
+      ),
+      { perPart: 62, theirTime: '10:41' },
+    ),
+    address: 'olumide.bello@outlook.com',
+  },
+  {
+    ...withPhone(
+      person(
+        'chidi',
+        'Chidi Okeke',
+        'failed',
+        [emailFailed(MW.couldNotSendEmail)],
+        ['fixEmail', 'toldInPerson'],
+      ),
+      { perPart: 62, theirTime: '10:41' },
+    ),
+    address: 'chidi.okeke@gmail.com',
+  },
+  {
+    ...withPhone(
+      person(
+        'rafael',
+        'Rafael Costa',
+        'failed',
+        [emailFailed(MW.cannotEmailAddress)],
+        ['fixEmail', 'toldInPerson'],
+      ),
+      { perPart: 10, theirTime: '06:41' },
+    ),
+    address: 'rafael.costa@uol.com.br',
+  },
+  withPhone(person('sophie', 'Sophie Laurent', 'optedOut', [optedOut('email')], ['toldInPerson']), {
+    perPart: 8,
+    theirTime: '10:41',
+  }),
+  {
+    ...withPhone(
+      person(
+        'yuki',
+        'Yuki Tanaka',
+        'skipped',
+        [emailSkipped(MW.addressBouncing)],
+        ['fixEmail', 'toldInPerson'],
+      ),
+      { perPart: 9, theirTime: '09:41' },
+    ),
+    address: 'yuki.tanaka@icloud.com',
+  },
+  withPhone(
+    person('diego', 'Diego Herrera', 'skipped', [emailSkipped(NW.reportedSpam)], ['toldInPerson']),
+    { perPart: 8, theirTime: '10:41', stopped: true },
+  ),
+  person('joaquin', 'Joaquín Ruiz', 'none', NOTHING, ['addEmail', 'addPhone', 'toldInPerson']),
+  person('mei', 'Mei Lin Chen', 'none', NOTHING, ['addEmail', 'addPhone', 'toldInPerson']),
+];
+
+const REASONS_REACHED: readonly Unreached[] = [
+  person(
+    'kemi',
+    'Kemi Bankole',
+    'none',
+    [{ mark: 'delivered', word: `${MW.email} · ${NW.reportedAsSpam}`, why: 'Mon, Nov 2, 18:42' }],
+    [],
+  ),
+  person(
+    'ines',
+    'Inês Duarte',
+    'none',
+    [{ mark: 'delivered', word: `${MW.email} · ${MW.delivered}`, why: '18:21' }],
+    [],
+    { mark: 'delivered', word: MW.theirPage, why: filled(MW.seen, { time: '19:02' }) },
+  ),
+  person(
+    'kwame',
+    'Kwame Mensah',
+    'none',
+    [{ mark: 'delivered', word: `${MW.email} · ${MW.delivered}`, why: '18:21' }],
+    [],
+  ),
+];
+
+const QUIET_FROM = '20:00';
+
+/** Quiet hours (sc-3946): a text waits while it is before 09:00 or from 20:00 in the guest's own time. */
+export function isQuiet(theirTime: string): boolean {
+  return theirTime < QUIET_UNTIL || theirTime >= QUIET_FROM;
+}
+
+/** Who Try SMS instead is offered to (sc-3966, Decided 13 Nov, point 1): a person not reached and not told, with nothing in progress, held or too late, a mobile that has not stopped texts, and no text for this message; whatever their email line reads. */
+export function trySmsOffered(one: Unreached): boolean {
+  return (
+    one.phone != null &&
+    one.phone.stopped !== true &&
+    one.kind !== 'inProgress' &&
+    one.kind !== 'held' &&
+    !one.lines.some(
+      (line) =>
+        line.word.startsWith(MW.sms) ||
+        line.mark === 'held' ||
+        line.word.endsWith(MW.notSentTooLate),
+    )
+  );
+}
+
+export interface TrySms {
+  credits: number;
+  count: string;
+  uses: string;
+  after: string | null;
+  waits: string | null;
+  quiet: string | null;
+}
+
+/** Try SMS instead, pressed: the guest's own text counted (sc-3946), its credits (sc-3929's preview), and either wait (sc-3976, sc-3963). */
+export function trySmsOf(phone: Phone, balance: number): TrySms {
+  const sms = noticeSmsOf(HOSTS, EVENT_NAME);
+  const credits = noticeCredits('sms', phone.perPart, sms.parts);
+  const short = credits > balance;
+
+  return {
+    credits,
+    count: many('smsCount', sms.parts, { encoding: smsEncoding(sms.text), chars: sms.chars }),
+    uses: many('noticeTextUses', credits),
+    after: short ? null : filled(MW.creditsAfter, { count: balance - credits }),
+    waits: short ? many('smsWaits', 1) : null,
+    quiet: isQuiet(phone.theirTime) ? filled(NW.textWaitsUntil, { time: QUIET_UNTIL }) : null,
+  };
+}
+
+export function textedOf(phone: Phone, balance: number): Texted {
+  const cost = trySmsOf(phone, balance);
+
+  if (cost.waits != null) return 'held';
+
+  return cost.quiet == null ? 'sent' : 'waiting';
+}
+
+const TEXTED_LINE: Record<Texted, Line> = {
+  sent: { mark: 'sent', word: `${MW.sms} · ${MW.sent}`, why: NOW },
+  waiting: { mark: 'held', word: MW.sms, why: filled(NW.waitingUntil, { time: QUIET_UNTIL }) },
+  held: { mark: 'held', word: `${MW.sms} · ${MW.held}` },
+};
+
+export function textedPerson(one: Unreached, texted: Texted | undefined): Unreached {
+  if (texted == null) return one;
+
+  return {
+    ...one,
+    kind: texted === 'held' ? 'held' : 'inProgress',
+    lines: [...one.lines.slice(0, -1), TEXTED_LINE[texted], ...one.lines.slice(-1)],
+    fixes: ['toldInPerson'],
+  };
+}
+
+function offeredSms(one: Unreached): Unreached {
+  if (!trySmsOffered(one)) return { ...one, fixes: one.fixes.filter((fix) => fix !== 'trySms') };
+
+  return one.fixes.includes('trySms') ? one : { ...one, fixes: ['trySms', ...one.fixes] };
+}
+
 const NOT_INVITED: Line = { mark: 'none', word: MW.theirInvitation, why: MW.notYetInvited };
 
 export const INVITE_UNREACHED: readonly Unreached[] = [
@@ -1083,6 +1361,31 @@ export const INVITE_UNREACHED: readonly Unreached[] = [
     NOT_INVITED,
   ),
   person('mei', 'Mei Lin Chen', 'none', NOTHING, ['addEmail', 'addPhone', 'copyLink'], NOT_INVITED),
+];
+
+const smsFailed = (id: string, name: string, why: string, seenAt?: string): Unreached =>
+  person(
+    id,
+    name,
+    'none',
+    [
+      { mark: 'delivered', word: `${MW.email} · ${MW.delivered}`, why: NOW },
+      { mark: 'bounced', word: `${MW.sms} · ${MW.failedReceipt}`, why },
+    ],
+    [],
+    seenAt == null
+      ? undefined
+      : { mark: 'delivered', word: MW.theirPage, why: filled(MW.seen, { time: seenAt }) },
+  );
+
+/** `reachedSmsFailed`: reached by email, their text failed, one of each provider reason (sc-3946, l10n #45569). */
+export const SMS_FAILED: readonly Unreached[] = [
+  smsFailed('chidi', 'Chidi Okonkwo', failedWhy('30005'), '09:42'),
+  smsFailed('ana', 'Ana Pereira', failedWhy('30006')),
+  smsFailed('hana', 'Hana Sato', failedWhy('30003')),
+  smsFailed('mateo', 'Mateo García', failedWhy('30007')),
+  smsFailed('lea', 'Léa Martin', failedWhy('other', '30008')),
+  smsFailed('joao', 'João Santos', failedWhy('none')),
 ];
 
 /** Who a message just sent reached so far (sentReached): two in progress drawn, the rest counted. */
@@ -1204,11 +1507,13 @@ export interface Reach {
 
 export const KIND_ORDER: readonly Kind[] = [
   'inProgress',
+  'held',
   'bounced',
   'failed',
   'notSent',
   'notConfirmed',
   'optedOut',
+  'skipped',
   'none',
   'cant',
 ];
@@ -1233,6 +1538,10 @@ export function legendWord(kind: 'reached' | Kind): string {
       return MW.legendReached;
     case 'inProgress':
       return MW.legendInProgress;
+    case 'held':
+      return MW.legendHeld;
+    case 'skipped':
+      return MW.legendSkipped;
     case 'bounced':
       return MW.legendBounced;
     case 'failed':
@@ -1258,6 +1567,10 @@ export function reachLine(
     switch (part.kind) {
       case 'inProgress':
         return [many('inProgressCount', part.count)];
+      case 'held':
+        return [many('heldCount', part.count)];
+      case 'skipped':
+        return [many('skippedCount', part.count)];
       case 'bounced':
         return [many('bouncedCount', part.count)];
       case 'failed':
@@ -1284,7 +1597,9 @@ export const PARKING_OF = GUESTS_N;
 export const PARKING_SEEN = 87;
 export const INVITE_REACH = { reached: 140, of: GUESTS_N, seen: 121 };
 
-export function reachedOfThread(thread: ConvoId): ReachedOf {
+export function reachedOfThread(thread: ConvoId, inbox?: Pick<Inbox, 'reasons'>): ReachedOf {
+  if (thread === 'parking' && inbox?.reasons === true) return 'reasons';
+
   return thread === 'parking' || thread === 'invite' || thread === 'receipts' ? thread : 'new';
 }
 
@@ -1601,7 +1916,28 @@ export interface Who {
 }
 
 function baseOf(of: ReachedOf): readonly Unreached[] {
-  return of === 'parking' ? PARKING_UNREACHED : of === 'invite' ? INVITE_UNREACHED : SO_FAR.cant;
+  switch (of) {
+    case 'parking':
+      return PARKING_UNREACHED;
+    case 'reasons':
+      return REASONS_UNREACHED;
+    case 'invite':
+      return INVITE_UNREACHED;
+    default:
+      return SO_FAR.cant;
+  }
+}
+
+const VALENTINA = person(
+  'valentina',
+  'Valentina Restrepo',
+  'inProgress',
+  [{ mark: 'held', word: MW.sms, why: filled(NW.waitingUntil, { time: QUIET_UNTIL }) }, NO_EMAIL],
+  ['toldInPerson'],
+);
+
+function progressOf(inbox: Pick<Inbox, 'quietText'>): readonly Unreached[] {
+  return inbox.quietText === true ? [VALENTINA, ...SO_FAR.progress] : SO_FAR.progress;
 }
 
 /** Who it reached for one message: its summary, its groups in Everyone's order, and who a resend is for; `groups` are the event's own. */
@@ -1611,7 +1947,11 @@ export function whoOf(inbox: Inbox, of: ReachedOf, thread: ConvoId, groups: read
     return whatsAppInviteWho(of === 'whatsAppInvite');
 
   const marks = inbox.marked[thread] ?? [];
-  const mine = (one: Unreached) => updatedPerson(one, savedOn(inbox, one.id, thread));
+  const mine = (one: Unreached) =>
+    offeredSms(
+      textedPerson(updatedPerson(one, savedOn(inbox, one.id, thread)), inbox.texted?.[one.id]),
+    );
+  const drawnProgress = progressOf(inbox);
   const people = baseOf(of)
     .filter((one) => !marks.includes(one.id))
     .map(mine);
@@ -1620,7 +1960,7 @@ export function whoOf(inbox: Inbox, of: ReachedOf, thread: ConvoId, groups: read
     word: MW.toldInPersonLine,
     why: filled(MW.markedBy, { name: READER, time: SENT_AGAIN_AT }),
   };
-  const markable = of === 'new' ? [...SO_FAR.progress, ...baseOf(of)] : baseOf(of);
+  const markable = of === 'new' ? [...drawnProgress, ...baseOf(of)] : baseOf(of);
   const marked = marks
     .flatMap((id) => markable.filter((one) => one.id === id))
     .map(mine)
@@ -1636,13 +1976,14 @@ export function whoOf(inbox: Inbox, of: ReachedOf, thread: ConvoId, groups: read
     count: marked.length,
     more: 0,
   };
-  const waiting = people.filter((one) => one.kind !== 'inProgress');
+  const waiting = people.filter((one) => one.kind !== 'inProgress' && one.kind !== 'held');
 
   if (of === 'new') {
+    const reachedDone = inbox.smsFailed === true ? [...SMS_FAILED, ...SO_FAR.done] : SO_FAR.done;
     const sent = people.filter((one) => one.kind === 'inProgress');
-    const left = SO_FAR.progress.filter((one) => !marks.includes(one.id));
+    const left = drawnProgress.filter((one) => !marks.includes(one.id));
     const progress = [...left, ...sent];
-    const inProgress = SO_FAR.inProgress - (SO_FAR.progress.length - left.length) + sent.length;
+    const inProgress = SO_FAR.inProgress - (drawnProgress.length - left.length) + sent.length;
     const reached = SO_FAR.reached + marked.length;
     const reach: Reach = {
       reached,
@@ -1675,9 +2016,9 @@ export function whoOf(inbox: Inbox, of: ReachedOf, thread: ConvoId, groups: read
         {
           key: 'reached',
           name: MW.legendReached,
-          people: SO_FAR.done,
+          people: reachedDone,
           count: SO_FAR.reached,
-          more: SO_FAR.reached - SO_FAR.done.length,
+          more: SO_FAR.reached - reachedDone.length,
         },
       ],
       waiting,
@@ -1685,11 +2026,12 @@ export function whoOf(inbox: Inbox, of: ReachedOf, thread: ConvoId, groups: read
   }
 
   const reach =
-    of === 'parking'
-      ? reachFrom(PARKING_OF, PARKING_SEEN, people)
-      : reachFrom(INVITE_REACH.of, INVITE_REACH.seen, people);
+    of === 'invite'
+      ? reachFrom(INVITE_REACH.of, INVITE_REACH.seen, people)
+      : reachFrom(PARKING_OF, PARKING_SEEN, people);
   const delivered = reach.reached - marked.length;
-  const drawn = of === 'parking' ? PARKING_REACHED : INVITE_REACHED;
+  const drawn =
+    of === 'invite' ? INVITE_REACHED : of === 'reasons' ? REASONS_REACHED : PARKING_REACHED;
 
   return {
     reach,
@@ -1815,11 +2157,14 @@ export function resendOf(
   ticks: Ticks,
   groups: readonly Group[],
 ): ResendCheck {
-  const of = reachedOfThread(thread);
+  const of = reachedOfThread(thread, inbox);
   const { waiting } = whoOf(inbox, of, thread, groups);
   const unsent = (id: string) => savedOn(inbox, id, thread).filter((one) => !one.sent);
   const tellable = waiting.filter(
-    (one) => (of === 'parking' && TELLABLE_NOW.includes(one.id)) || unsent(one.id).length > 0,
+    (one) =>
+      (of === 'parking' && TELLABLE_NOW.includes(one.id)) ||
+      (of === 'reasons' && one.phone != null && one.phone.stopped !== true) ||
+      unsent(one.id).length > 0,
   );
   const still = waiting.filter((one) => !tellable.includes(one));
   const shown =
@@ -1886,6 +2231,7 @@ export interface Draft {
   opens?: 'insert' | 'previewAs' | 'filling' | undefined;
   previewAs?: PersonId;
   seeAll?: boolean;
+  hour?: Hour;
   invite?: InviteDraft;
 }
 
@@ -1900,6 +2246,10 @@ export interface Sched {
   cancelledAt: string | null;
   cancelledBy?: string;
   outcome?: 'sent' | 'tooLate';
+  /** sc-3963: its event is paused, so it waits whichever side of its time it is. */
+  paused?: boolean;
+  /** sc-3963: Soirely cancelled it because its event finished first. */
+  finished?: boolean;
 }
 
 export interface Answer {
@@ -1916,7 +2266,7 @@ export interface Answer {
   waits?: string;
 }
 
-export type ReachedOf = 'parking' | 'invite' | 'receipts' | 'new' | WhatsAppInviteOf;
+export type ReachedOf = 'parking' | 'reasons' | 'invite' | 'receipts' | 'new' | WhatsAppInviteOf;
 
 export type Pane =
   | { kind: 'idle' }
@@ -1959,8 +2309,16 @@ export interface Inbox {
   toldAs?: SampleEvent | null;
   /** sc-3978: who stopped each guest writing from their page, and when. */
   stopped?: Partial<Record<GuestId, Stop>>;
+  /** `reachedSmsFailed`: the just-sent message's texts that failed, each with its provider's reason (sc-3946). */
+  smsFailed?: boolean;
   /** sc-3976: the open state's facts about one guest's notice and conversation. */
   notice?: NoticeCase;
+  /** sc-46343: one guest's taps on the WhatsApp invitation's answer buttons. */
+  tap?: TapCase;
+  /** Parking told by Email only, with every reason sc-3942 words (sc-3966's `reasons`). */
+  reasons?: boolean;
+  texted?: Readonly<Record<string, Texted>>;
+  quietText?: boolean;
 }
 
 export const TICKS: Ticks = { email: true, sms: true, whatsApp: false };
@@ -1988,6 +2346,27 @@ export const SCHEDULED: Sched = {
   time: '09:00',
   cancelledAt: null,
 };
+
+/** sc-3963's waits and endings, as Messaging-B-Phone-More-2 draws them: paused before its time and after it, cancelled when the event finished, and too late 48 hours on. */
+export function schedOf(
+  state:
+    | 'scheduledPaused'
+    | 'scheduledPausedEdit'
+    | 'scheduledPausedLate'
+    | 'scheduledFinished'
+    | 'scheduledTooLate',
+): Sched {
+  switch (state) {
+    case 'scheduledPausedLate':
+      return { ...SCHEDULED, paused: true, day: '2026-11-03', time: '08:00' };
+    case 'scheduledFinished':
+      return { ...SCHEDULED, cancelledAt: '09:30', cancelledBy: 'Soirely', finished: true };
+    case 'scheduledTooLate':
+      return { ...SCHEDULED, day: '2026-10-31', outcome: 'tooLate' };
+    default:
+      return { ...SCHEDULED, paused: true };
+  }
+}
 
 export function isNew(id: ConvoId): boolean {
   return id.startsWith('new');
@@ -2264,6 +2643,12 @@ export function seedOf(state: MessagesState | null): Inbox {
   });
 
   const allTicked: Ticks = { email: true, sms: true, whatsApp: true };
+  const reasons: Inbox = {
+    ...base,
+    reasons: true,
+    unreached: REASONS_UNREACHED,
+    pane: { kind: 'reached', of: 'reasons', thread: 'parking' },
+  };
 
   const seeAll = (inbox: Inbox): Inbox =>
     inbox.draft == null ? inbox : { ...inbox, draft: { ...inbox.draft, seeAll: true } };
@@ -2284,6 +2669,30 @@ export function seedOf(state: MessagesState | null): Inbox {
       return compose(base, COMING, 'check', none);
     case 'whatsAppLine':
       return compose(base, { kind: 'all' }, 'write', allTicked);
+    case 'smsLine':
+      return compose(base, { kind: 'all' }, 'write');
+    case 'checkQuiet':
+    case 'checkQuietBoth':
+    case 'checkNow': {
+      const at = compose(base, COMING, 'check', state === 'checkQuietBoth' ? allTicked : TICKS);
+
+      return at.draft == null
+        ? at
+        : { ...at, draft: { ...at.draft, hour: state === 'checkNow' ? 'live' : 'quiet' } };
+    }
+    case 'reachedSmsFailed':
+      return {
+        ...base,
+        pane: { kind: 'reached', of: 'new', thread: 'new' },
+        outs: [outOf('sent')],
+        smsFailed: true,
+      };
+    case 'previewFirstText':
+      return {
+        ...base,
+        pane: { kind: 'compose' },
+        draft: { ...draftOf(COMING), step: 'preview', previewAs: 'amaka' },
+      };
     case 'checkWhatsApp':
       return compose(base, { kind: 'all' }, 'check', allTicked);
     case 'whatsAppRead':
@@ -2379,6 +2788,28 @@ export function seedOf(state: MessagesState | null): Inbox {
     case 'reached':
     case 'fix':
       return { ...base, pane: parkingReached };
+    case 'reasons':
+    case 'trySms':
+    case 'trySmsQuiet':
+      return reasons;
+    case 'trySmsShort':
+      return { ...reasons, balance: 0 };
+    case 'trySmsSent':
+      return changed(reasons, { kind: 'textSms', id: 'olumide' });
+    case 'closedReached':
+      return {
+        ...reasons,
+        present: ALL.filter((id) => id !== 'sched'),
+        scheds: [],
+        updates: { tomas: [{ fix: 'fixEmail', address: NEW_ADDRESS, sentOn: [], laterOn: [] }] },
+      };
+    case 'reachedQuiet':
+      return {
+        ...base,
+        quietText: true,
+        pane: { kind: 'reached', of: 'new', thread: 'new' },
+        outs: [outOf('sent')],
+      };
     case 'filterMenu':
     case 'filtered':
       return { ...base, pane: parkingReached };
@@ -2451,6 +2882,12 @@ export function seedOf(state: MessagesState | null): Inbox {
         pane: open('sched'),
         scheds: [{ ...SCHEDULED, cancelledAt: '09:46' }],
       };
+    case 'scheduledPaused':
+    case 'scheduledPausedEdit':
+    case 'scheduledPausedLate':
+    case 'scheduledFinished':
+    case 'scheduledTooLate':
+      return { ...base, pane: open('sched'), scheds: [schedOf(state)] };
     case 'insert':
     case 'previewAs':
     case 'previewGreetAs':
@@ -2478,6 +2915,10 @@ export function seedOf(state: MessagesState | null): Inbox {
       const notice = noticeCaseOf(state);
 
       if (notice != null) return noticeSeed(base, notice);
+
+      const tap = tapCaseOf(state);
+
+      if (tap != null) return tapSeed(base, tap);
 
       const invite = inviteSeedOf(state);
 
@@ -2558,6 +2999,27 @@ function noticeSeed(base: Inbox, notice: NoticeCase): Inbox {
   return seeded;
 }
 
+function tapSeed(base: Inbox, tap: TapCase): Inbox {
+  const seeded: Inbox = {
+    ...base,
+    tap,
+    notice: {
+      id: tap.id,
+      turn: tap.turn,
+      ...(tap.extras == null ? {} : { extras: tap.extras }),
+      ...(tap.blocks == null ? {} : { blocks: tap.blocks }),
+    },
+    pane: { kind: 'convo', id: tap.id },
+  };
+
+  if (tap.first === true)
+    return { ...seeded, present: [...base.present, tap.id], done: [tap.id, ...base.done] };
+
+  return tap.done
+    ? { ...seeded, done: [...base.done, tap.id], doneAt: { ...base.doneAt, [tap.id]: DONE_AT } }
+    : seeded;
+}
+
 export type Lead =
   { kind: 'guest'; initials: string; unread: boolean } | { kind: 'unknown' } | { kind: 'many' };
 
@@ -2605,12 +3067,13 @@ function guestRow(inbox: Inbox, id: GuestId): Row {
     said,
     ...(done && answer == null ? [filled(MW.doneByShort, { name: READER })] : []),
   ].join(' · ');
+  const tapped = inbox.tap?.id === id ? tapRow(inbox.tap, guest.name) : null;
 
   return {
     id,
     title: guest.name,
-    line,
-    when: fresh ? MW.now : (answer?.at ?? (arrived ? NOW : guest.row)),
+    line: tapped?.line ?? line,
+    when: tapped?.when ?? (fresh ? MW.now : (answer?.at ?? (arrived ? NOW : guest.row))),
     lead: { kind: 'guest', initials: guest.initials, unread: !done },
     tag: null,
     fresh,
@@ -3008,6 +3471,7 @@ export type Change =
   | { kind: 'fixed'; id: string; thread: ConvoId; fix: AddressFix; address: string }
   | { kind: 'notNow'; id: string; thread: ConvoId }
   | { kind: 'sendAgain'; id: string; thread: ConvoId }
+  | { kind: 'textSms'; id: string }
   | { kind: 'resend'; resend: Ticks | null }
   | { kind: 'untold'; untold: readonly Told[] }
   | { kind: 'tellSent'; untold: readonly Told[]; out: Out | null }
@@ -3231,7 +3695,9 @@ export function changed(inbox: Inbox, change: Change): Inbox {
         ...inbox,
         unreached:
           change.thread === 'parking'
-            ? PARKING_UNREACHED.filter((one) => kept.has(one.id))
+            ? (inbox.reasons === true ? REASONS_UNREACHED : PARKING_UNREACHED).filter((one) =>
+                kept.has(one.id),
+              )
             : inbox.unreached,
         marked: {
           ...inbox.marked,
@@ -3256,6 +3722,20 @@ export function changed(inbox: Inbox, change: Change): Inbox {
             );
 
       return { ...inbox, updates: { ...inbox.updates, [id]: next } };
+    }
+    case 'textSms': {
+      const phone = REASONS_UNREACHED.find((one) => one.id === change.id)?.phone;
+
+      if (phone == null) return inbox;
+
+      const texted = textedOf(phone, inbox.balance);
+      const { credits } = trySmsOf(phone, inbox.balance);
+
+      return {
+        ...inbox,
+        balance: texted === 'held' ? inbox.balance : inbox.balance - credits,
+        texted: { ...inbox.texted, [change.id]: texted },
+      };
     }
     case 'resend':
       return {

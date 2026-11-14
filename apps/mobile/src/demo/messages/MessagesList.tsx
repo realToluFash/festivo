@@ -33,7 +33,6 @@ import {
 import {
   NOW,
   PARKING,
-  PARKING_REACH,
   READER,
   SAMPLE_EVENT_ID,
   DAYS,
@@ -41,8 +40,10 @@ import {
   RECEIPTS,
 } from './MessagesSample.ts';
 import { CHANNEL_WORD, W, say } from './MessagesWords.ts';
-import { caseFor, guestOf } from './NoticeStates.ts';
+import { parkingReachOf } from './ReasonsSample.ts';
+import { caseFor, guestOf, readsOnly } from './NoticeStates.ts';
 import { NW } from './NoticeWords.ts';
+import { tapRowOf } from './TapStates.ts';
 
 export type { RowId };
 
@@ -117,7 +118,8 @@ function shownRow(m: Messages, id: RowId, locale: string): Shown {
       title: own == null ? W.newMessage : draftTitle(own.draft, own.thread),
       titleLines: 1,
       line: own == null ? '' : draftLine(own.draft, own.thread, locale),
-      time: draft == null || isScheduled(draft) ? '' : draft.time || NOW,
+      time:
+        draft == null || isScheduled(draft) || draft.outcome === 'tooLate' ? '' : draft.time || NOW,
       lead: <GroupTile />,
       tag,
     };
@@ -138,10 +140,10 @@ function shownRow(m: Messages, id: RowId, locale: string): Shown {
     if (id.key === 'parking')
       return {
         title: PARKING,
-        line: `${W.toAllGuests} · ${say.didntGetIt(PARKING_REACH.notReached)}`,
+        line: `${W.toAllGuests} · ${say.didntGetIt(parkingReachOf(m.sample).notReached)}`,
         time: rowDay(DAYS.parking, '', locale),
         lead: <GroupTile />,
-        tag: { kind: 'waiting', word: say.notReached(PARKING_REACH.notReached) },
+        tag: { kind: 'waiting', word: say.notReached(parkingReachOf(m.sample).notReached) },
       };
     if (id.key === 'receipts')
       return {
@@ -161,6 +163,7 @@ function shownRow(m: Messages, id: RowId, locale: string): Shown {
   const guest = guestOf(m, id.key);
   const later = caseFor(m, id.key)?.extras?.find((one) => one.kind === 'later');
   const answer = m.answers[id.key];
+  const tap = tapRowOf(m, id.key);
   const done = m.done.includes(id.key) || id.key === 'marta';
   const where = guest.asked.where === 'page' ? W.onTheirPage : CHANNEL_WORD[guest.asked.where];
   const asked =
@@ -174,7 +177,7 @@ function shownRow(m: Messages, id: RowId, locale: string): Shown {
   const name =
     id.key === 'unknown' && m.matched != null
       ? m.matched
-      : unmatched && m.notice?.hidden === true
+      : unmatched && readsOnly(m)
         ? NW.unknownSender
         : guest.name;
   const initials =
@@ -187,9 +190,13 @@ function shownRow(m: Messages, id: RowId, locale: string): Shown {
 
   return {
     title: name,
-    line: answer == null ? say.where(where, asked) : say.where(W.onTheirPage, say.you(answer.text)),
+    line:
+      answer != null
+        ? say.where(W.onTheirPage, say.you(answer.text))
+        : (tap?.line ?? say.where(where, asked)),
     time:
       answer?.time ??
+      tap?.time ??
       (later?.kind === 'later'
         ? later.time
         : id.key === 'lucia' && m.arrived
@@ -365,7 +372,7 @@ export function MessagesList({
         >
           {W.messages}
         </Text>
-        {wide && m.phase !== 'loading' && m.notice?.hidden !== true && (
+        {wide && m.phase !== 'loading' && !readsOnly(m) && (
           <Pill
             label={W.newButton}
             glyph="plus"

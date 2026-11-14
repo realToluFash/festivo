@@ -2,6 +2,7 @@ import type { ReactNode, Ref, RefObject } from 'react';
 import { StyleSheet, type TextInputInstance, View, type ViewInstance } from 'react-native';
 
 import { moveScreenReaderFocus } from '../../components/screenReaderFocus.ts';
+import { DemoOnly } from '../../steps/Lines.tsx';
 import { Text, type TextHandle } from '../../components/Text.tsx';
 import { tokens } from '../../theme/tokens.ts';
 import { Avatar } from '../../components/SettingsParts.tsx';
@@ -31,6 +32,7 @@ import {
   toChip,
 } from './MessagesModel.ts';
 import { resendOf } from './Reach.ts';
+import { parkingReachOf } from './ReasonsSample.ts';
 import {
   GUESTS,
   type GuestKey,
@@ -38,7 +40,6 @@ import {
   type ManyKey,
   PARKING,
   PARKING_BODY,
-  PARKING_REACH,
   READER,
   SCHEDULE_AT,
   DAYS,
@@ -57,7 +58,9 @@ import { CHANNEL_IN_LINE, CHANNEL_WORD, type ChannelKey, W, say } from './Messag
 import { Preview } from './Preview.tsx';
 import { previewOf } from './PreviewModel.ts';
 import { RefusedSave } from './RefusedSave.tsx';
-import { SW } from './ScheduledSave.ts';
+import { SW, pausedWaits } from './ScheduledSave.ts';
+import { clockNote } from './Sms.ts';
+import { SMSW } from './SmsWords.ts';
 import { type Stopping, headOf, stoppedLine } from './StopWriting.ts';
 import {
   NoManageCard,
@@ -73,9 +76,12 @@ import {
   headLineOf,
   languageOf,
   quietLine,
+  readsOnly,
   refusalOf as noticeRefusal,
 } from './NoticeStates.ts';
 import { NW } from './NoticeWords.ts';
+import { tapParts } from './TapParts.tsx';
+import { tapFor, tapItemsOf } from './TapStates.ts';
 import { MoreActions, StoppedInset } from './StopWritingParts.tsx';
 import {
   type Bit,
@@ -84,6 +90,7 @@ import {
   FailedLine,
   GuestBubble,
   HostBubble,
+  PausedLine,
   Receipt,
   SendingLine,
   SoirelyCard,
@@ -153,6 +160,7 @@ export interface Parts {
 
 const SAMPLE_CHANNELS: readonly ChannelKey[] = ['email', 'sms'];
 const HELD_CHANNELS: readonly ChannelKey[] = ['email', 'wa'];
+const EMAIL_ONLY: readonly ChannelKey[] = ['email'];
 
 function many(locale: string, channels = SAMPLE_CHANNELS): string {
   return say.onPageTold(channelsWords(channels, locale));
@@ -197,7 +205,7 @@ function unknownParts(talk: Talk): Parts {
   const matched = m.matched;
   const answer = m.answers.unknown;
   const kase = caseFor(m, 'unknown');
-  const hidden = m.notice?.hidden === true;
+  const hidden = readsOnly(m);
   const reader = m.reader ?? READER;
   const doneOrWaiting = m.done.includes('unknown') ? (
     <TextAction
@@ -370,7 +378,19 @@ function guestParts(talk: Talk, key: GuestKey): Parts {
         ]}
       />,
     );
-  if (key === 'lucia' || key === 'valentina')
+  const tap = tapFor(m, key);
+
+  if (tap?.first === true)
+    history.push(
+      <DayRule key="d1" text={dayWords(DAYS.invite, talk.locale)} />,
+      <Stub
+        key="inv"
+        title={W.invitation}
+        mark="wa"
+        bits={[{ word: say.where(CHANNEL_WORD.wa, W.read), mark: 'delivered' }]}
+      />,
+    );
+  else if (key === 'lucia' || key === 'valentina')
     history.push(
       <DayRule
         key="d1"
@@ -379,12 +399,15 @@ function guestParts(talk: Talk, key: GuestKey): Parts {
     );
   if (key === 'marta') history.push(<DayRule key="d1" text={dayWords(DAYS.marta, talk.locale)} />);
 
+  const doneLine = m.done.includes(key) && at != null;
+  const taps = tap == null ? null : tapParts(tapItemsOf(tap));
   const stream = (
     <>
       {history}
-      {kase?.askedFirst !== true && asked}
+      {kase?.askedFirst !== true && tap?.first !== true && asked}
       {key === 'kwame' && kase == null && <SystemLine text={W.cameBySms} mark="sms" />}
       {kase?.extras != null && noticeExtras(kase.extras, guest.name)}
+      {!doneLine && taps}
       {answer != null && (
         <HostBubble
           text={answer.text}
@@ -397,9 +420,8 @@ function guestParts(talk: Talk, key: GuestKey): Parts {
           ]}
         />
       )}
-      {m.done.includes(key) && at != null && (
-        <SystemLine text={say.doneBy(reader, at)} glyph="tick" />
-      )}
+      {doneLine && at != null && <SystemLine text={say.doneBy(reader, at)} glyph="tick" />}
+      {doneLine && taps}
     </>
   );
   const doneOrWaiting = done ? (
@@ -686,6 +708,7 @@ function ownParts(talk: Talk, followUp: string): Own {
       ),
       writing: true,
     };
+  const note = clockNote(m.clock);
   if (draft.step === 'check')
     return {
       head: talk.wide ? head : undefined,
@@ -706,10 +729,18 @@ function ownParts(talk: Talk, followUp: string): Own {
             onSeeAll={(count) => talk.ownDesign(say.seeAll(count))}
             balance={m.balance}
             waits={m.waits}
+            clock={m.clock}
             onWithout={(drops) => {
               for (const action of sendWithout(drops)) dispatch(action);
             }}
           />
+          {note != null && (
+            <DemoOnly title={SMSW.demoTitle}>
+              <Text size={13.5} weight="medium" style={styles.note}>
+                {note}
+              </Text>
+            </DemoOnly>
+          )}
         </>
       ),
       align: 'end',
@@ -748,11 +779,14 @@ function scheduledWord(draft: Draft, locale: string): string {
   return draft.outcome === 'tooLate' ? W.tooLate : W.scheduled;
 }
 
-function endBits(draft: Draft): Bit[] {
+function endBits(draft: Draft, when: string): Bit[] {
   if (draft.outcome === 'sent')
     return [{ word: W.onTheirPage, where: 'page' }, { word: say.byAt(READER, draft.time) }];
+  if (draft.outcome === 'tooLate') return [{ word: W.tooLate, mark: 'notsent' }];
 
-  return draft.outcome === 'tooLate' ? [{ word: W.tooLate, mark: 'notsent' }] : [];
+  return draft.paused === true && draft.step === 'scheduled'
+    ? [{ word: W.scheduled, ring: true }, { word: when }]
+    : [];
 }
 
 /** A scheduled message (sc-3963): dashed until it goes, with Edit, Send now and Cancel…, each drawn on Messaging-B-Phone-3. */
@@ -761,13 +795,14 @@ function scheduledParts(talk: Talk, draft: Draft): Parts {
   const at = draft.at ?? SCHEDULE_AT;
   const day = dayWords(at.date, talk.locale);
   const cancelled = draft.step === 'cancelled';
+  const paused = draft.paused === true && !cancelled && draft.outcome == null;
   const refused = talk.m.refusedSave;
   const shown = draft.was ?? { subject: draft.subject, body: draft.body };
   const bubble = (
     <HostBubble
       subject={shown.subject}
       text={shown.body}
-      bits={endBits(draft)}
+      bits={endBits(draft, say.inZone(day, at.time, W.londonTime))}
       dashed={!cancelled && draft.outcome == null}
       greyed={cancelled || draft.outcome === 'tooLate'}
       faded={draft.was != null}
@@ -780,6 +815,7 @@ function scheduledParts(talk: Talk, draft: Draft): Parts {
     rest = (
       <SystemLine
         text={say.cancelledBy(draft.cancelledBy ?? READER, draft.cancelledAt ?? '')}
+        {...(draft.finished === true ? { more: SW.finishedWhy } : {})}
         glyph="x"
       />
     );
@@ -788,9 +824,12 @@ function scheduledParts(talk: Talk, draft: Draft): Parts {
   else if (draft.was != null) {
     rest =
       refused == null ? (
-        <Text size={13.5} weight="medium" style={styles.goes}>
-          {say.editing(day, at.time)}
-        </Text>
+        <>
+          {paused && talk.wide && <PausedLine text={pausedWaits()} />}
+          <Text size={13.5} weight="medium" style={styles.goes}>
+            {paused ? SW.editingPaused : say.editing(day, at.time)}
+          </Text>
+        </>
       ) : (
         <RefusedSave
           refusal={refused}
@@ -837,12 +876,24 @@ function scheduledParts(talk: Talk, draft: Draft): Parts {
         onCancel={talk.onCancelScheduled}
       />
     );
+  else if (readsOnly(talk.m))
+    rest = paused ? (
+      <PausedLine text={pausedWaits()} />
+    ) : (
+      <Text size={13.5} weight="medium" style={styles.goes}>
+        {say.goesAt(say.inZone(day, at.time, W.londonTime))}
+      </Text>
+    );
   else
     rest = (
       <>
-        <Text size={13.5} weight="medium" style={styles.goes}>
-          {say.goesAt(say.inZone(day, at.time, W.londonTime))}
-        </Text>
+        {paused ? (
+          <PausedLine text={pausedWaits()} />
+        ) : (
+          <Text size={13.5} weight="medium" style={styles.goes}>
+            {say.goesAt(say.inZone(day, at.time, W.londonTime))}
+          </Text>
+        )}
         <View style={styles.scheduledActions}>
           <TextAction
             ref={talk.refFor('schedEdit')}
@@ -876,7 +927,7 @@ function scheduledParts(talk: Talk, draft: Draft): Parts {
     lead: <GroupTile side={44} />,
     stream: (
       <>
-        <DayRule text={day} />
+        <DayRule text={at.date === DAYS.today ? W.today : day} />
         {bubble}
         {rest}
       </>
@@ -933,7 +984,8 @@ function manyParts(talk: Talk, key: ManyKey): Parts {
 
   if (key === 'parking' || key === 'receipts') {
     const held = key === 'receipts';
-    const reach = held ? RECEIPTS : PARKING_REACH;
+    const reach = held ? RECEIPTS : parkingReachOf(m.sample);
+    const told = held ? HELD_CHANNELS : m.sample === 'reasons' ? EMAIL_ONLY : undefined;
 
     return {
       title: PARKING,
@@ -943,7 +995,7 @@ function manyParts(talk: Talk, key: ManyKey): Parts {
           ? undefined
           : m.resending && !talk.wide
             ? `${W.toAllGuests} · ${ALL} · ${dayWords(DAYS.parking, talk.locale)}`
-            : `${W.toAllGuests} · ${ALL} · ${many(talk.locale, held ? HELD_CHANNELS : undefined)}`,
+            : `${W.toAllGuests} · ${ALL} · ${many(talk.locale, told)}`,
       lead: <GroupTile side={44} />,
       head: own?.writing === true ? own.head : undefined,
       bare: own?.bare,
@@ -971,7 +1023,7 @@ function manyParts(talk: Talk, key: ManyKey): Parts {
           </>
         ),
       align: own?.align ?? 'end',
-      foot: m.resending ? undefined : followUp(W.writeAFollowUp),
+      foot: m.resending || readsOnly(m) ? undefined : followUp(W.writeAFollowUp),
     };
   }
   if (key === 'change') {
@@ -1016,7 +1068,7 @@ function manyParts(talk: Talk, key: ManyKey): Parts {
           </>
         ),
       align: own?.align ?? 'end',
-      foot: followUp(W.writeToThem),
+      foot: readsOnly(m) ? undefined : followUp(W.writeToThem),
     };
   }
   if (key === 'invite')
@@ -1057,7 +1109,7 @@ function manyParts(talk: Talk, key: ManyKey): Parts {
           </>
         ),
       align: own?.align ?? 'end',
-      foot: m.resending ? undefined : followUp(W.writeToThem),
+      foot: m.resending || readsOnly(m) ? undefined : followUp(W.writeToThem),
     };
   return { title: W.invitation, stream: null, align: 'end' };
 }
@@ -1078,6 +1130,7 @@ const styles = StyleSheet.create({
     lineHeight: 13.5 * 1.45,
   },
   withMore: { flexDirection: 'row', alignItems: 'center', gap: tokens.spaceXs },
+  note: { lineHeight: 13.5 * 1.45 },
   rights: {
     flexDirection: 'row',
     flexWrap: 'wrap',

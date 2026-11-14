@@ -21,11 +21,11 @@ import {
   PAGE_WHEN,
   THEIR_LINK,
   filled,
-  many,
 } from './messages.ts';
 import { useInbox } from './messagesContext.ts';
-import { asBuilt } from './messagesNotice.ts';
 import { WhereGlyph } from './MessagesParts.tsx';
+import { asSent } from './inviteSms.ts';
+import { counterOf, firstTextLine } from './messagesSms.ts';
 import {
   type Language,
   type Person,
@@ -163,6 +163,7 @@ export function Preview({ draft }: { draft: Draft }) {
   const notice = noticeFor(person);
   const lang = person.language === 'en' ? undefined : person.language;
   const shown = CHANNELS.filter((channel) => draft.ticks[channel] && person.has.includes(channel));
+  const sms = asSent(notice.sms, person.firstText === true);
   const sendsId = useId();
   const seen = useEffectEvent(() => {
     if (draft.opens != null) act({ kind: 'draft', draft: { opens: undefined } });
@@ -237,11 +238,14 @@ export function Preview({ draft }: { draft: Draft }) {
                   <div className="mg-notice">
                     <p className="mg-notice-head">
                       <WhereGlyph where="sms" />
-                      {many('smsParts', asBuilt(notice.sms).parts)}
+                      {counterOf(sms)}
                     </p>
-                    <p className="mg-notice-bubble" lang={lang}>
-                      {notice.sms}
+                    <p className="mg-notice-bubble mg-sms-bubble" lang={lang}>
+                      {sms.text}
                     </p>
+                    {person.firstText === true && (
+                      <p className="mg-sms-first">{firstTextLine(ORGANISATION)}</p>
+                    )}
                   </div>
                 )}
                 {shown.includes('whatsApp') && (

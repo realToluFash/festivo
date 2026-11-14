@@ -1,18 +1,11 @@
 import type { Ref } from 'react';
-import {
-  type AccessibilityActionEvent,
-  type AccessibilityActionInfo,
-  Platform,
-  Pressable,
-  StyleSheet,
-  View,
-  type ViewInstance,
-} from 'react-native';
+import { Platform, Pressable, StyleSheet, View, type ViewInstance } from 'react-native';
 
 import { tokens } from '../theme/tokens.ts';
 import { Glyph } from './Glyph.tsx';
 import { OrgMark } from './OrgMark.tsx';
 import { Text } from './Text.tsx';
+import { pressOnDoubleTap } from './screenReaderFocus.ts';
 
 export const OPENER = { rest: tokens.sizeHit, waiting: 56 } as const;
 
@@ -149,18 +142,11 @@ export function OrgPill({
   );
 }
 
-const ACTIVATE: AccessibilityActionInfo[] = [{ name: 'activate' }];
-
 /** On Android, TalkBack's double tap opens the switcher without the click that had TalkBack say the opener's state, "collapsed", before the switcher's title (sc-42690). Every switcher opener takes it. */
 export function quietTap(onPress: (() => void) | undefined, expanded: boolean | undefined) {
-  if (Platform.OS !== 'android' || onPress == null || expanded == null) return {};
+  if (Platform.OS !== 'android' || expanded == null) return {};
 
-  return {
-    accessibilityActions: ACTIVATE,
-    onAccessibilityAction: (event: AccessibilityActionEvent) => {
-      if (event.nativeEvent.actionName === 'activate') onPress();
-    },
-  };
+  return pressOnDoubleTap(onPress);
 }
 
 const styles = StyleSheet.create({

@@ -187,17 +187,21 @@ export function SoirelyCard({
   title,
   lines,
   bits,
+  glyph = 'mail',
+  lang,
 }: {
-  title: string;
+  title?: string;
   lines: readonly string[];
   bits: readonly Bit[];
+  glyph?: GlyphName;
+  lang?: string;
 }) {
   return (
     <li className="mg-said is-host">
-      <div className="mg-soirely">
-        <Glyph name="mail" size={16} />
+      <div className="mg-soirely" lang={lang}>
+        <Glyph name={glyph} size={16} />
         <div className="mg-soirely-words">
-          <p className="mg-soirely-title">{title}</p>
+          {title != null && <p className="mg-soirely-title">{title}</p>}
           {lines.map((line) => (
             <p key={line}>{line}</p>
           ))}
@@ -275,6 +279,8 @@ export function ReachBar({ reach, size = 'small' }: { reach: Reach; size?: 'smal
 const BAR: Record<'reached' | Kind, string> = {
   reached: 'reached',
   inProgress: 'in-progress',
+  held: 'in-progress',
+  skipped: 'not-sent',
   bounced: 'bounced',
   failed: 'bounced',
   notSent: 'not-sent',
@@ -287,6 +293,8 @@ const BAR: Record<'reached' | Kind, string> = {
 const LEGEND_MARK: Record<'reached' | Kind, Delivery> = {
   reached: 'delivered',
   inProgress: 'sending',
+  held: 'held',
+  skipped: 'notsent',
   bounced: 'bounced',
   failed: 'bounced',
   notSent: 'notsent',

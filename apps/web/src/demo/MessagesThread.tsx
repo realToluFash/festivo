@@ -21,6 +21,7 @@ import {
   READER,
   TICKS,
   UNKNOWN,
+  CLOCK,
   ZONE_SHORT,
   checkOf,
   changeTitle,
@@ -75,10 +76,12 @@ import {
   WhereGlyph,
 } from './MessagesParts.tsx';
 import { ReachedView } from './MessagesReached.tsx';
-import { RefusedSave } from './MessagesScheduled.tsx';
+import { PausedLine, RefusedSave } from './MessagesScheduled.tsx';
 import {
+  SW,
   endBits,
   endLine,
+  endWhy,
   endedOf,
   refusalOf,
   reloaded,
@@ -87,6 +90,7 @@ import {
 } from './messagesScheduled.ts';
 import { useStopWriting } from './MessagesStop.tsx';
 import { StreamItems } from './MessagesStream.tsx';
+import { TapLines } from './MessagesTap.tsx';
 import { MessagesBell } from './MessagesTell.tsx';
 import { AskOwner } from './MessagesWaits.tsx';
 
@@ -486,7 +490,7 @@ function GuestThread({
                 />
               </>
             )}
-            {kase?.askedFirst !== true && (
+            {kase?.askedFirst !== true && inbox.tap?.first !== true && (
               <>
                 {(id !== 'kwame' || guest.day !== PARKING.day) && <DayRule>{guest.day}</DayRule>}
                 <GuestBubble
@@ -512,6 +516,9 @@ function GuestThread({
         ))}
         {done && doneAt != null && (
           <SystemLine glyph="tick">{filled(MW.doneBy, { name: reader, time: doneAt })}</SystemLine>
+        )}
+        {inbox.tap?.id === id && (
+          <TapLines kase={inbox.tap} name={name} ruled={guest?.day !== 'Today'} />
         )}
       </ol>
       {(guest != null || match != null) && (
@@ -787,6 +794,7 @@ type SchedMode = 'waiting' | 'edit' | 'sendNow' | 'cancelAsk';
 function modeOf(state: MessagesState | null): SchedMode {
   switch (state) {
     case 'scheduledEdit':
+    case 'scheduledPausedEdit':
       return 'edit';
     case 'sendNow':
       return 'sendNow';
@@ -810,6 +818,8 @@ function ScheduledThread({ sched, state }: { sched: Sched; state: MessagesState 
   const [later, setLater] = useState(false);
   const ended = endedOf(sched);
   const ending = endLine(sched);
+  const why = endWhy(sched);
+  const paused = sched.paused === true && !ended;
   const title = outTitle(sched);
   const when = { date: dayWords(sched.day), time: sched.time };
   const count = countOf(sched.to, event.book.groups) ?? 0;
@@ -828,11 +838,11 @@ function ScheduledThread({ sched, state }: { sched: Sched; state: MessagesState 
         line={[toLine(sched.to, event.book.groups), count, statusWord(sched)].join(' · ')}
       />
       <ol className="mg-stream" role="log" aria-label={title}>
-        <DayRule>{when.date}</DayRule>
+        <DayRule>{sched.day === CLOCK.slice(0, 10) ? NW.today : when.date}</DayRule>
         <HostBubble
           subject={sched.subject}
           body={<Words body={sched.body} />}
-          bits={endBits(sched)}
+          bits={mode === 'edit' ? [] : endBits(sched)}
           look={
             sched.outcome === 'sent'
               ? 'sent'
@@ -843,13 +853,18 @@ function ScheduledThread({ sched, state }: { sched: Sched; state: MessagesState 
                   : 'dashed'
           }
         >
+          {paused && (mode === 'edit' || mode === 'waiting') && <PausedLine />}
           {ended ? null : mode === 'edit' ? (
-            refused == null && <p className="mg-goes">{filled(MW.editing, when)}</p>
+            refused == null && (
+              <p className="mg-goes">{paused ? SW.editingPaused : filled(MW.editing, when)}</p>
+            )
           ) : mode === 'waiting' ? (
             <>
-              <p className="mg-goes">
-                {filled(MW.goesAt, { when: `${when.date}, ${when.time} ${ZONE_SHORT}` })}
-              </p>
+              {!paused && (
+                <p className="mg-goes">
+                  {filled(MW.goesAt, { when: `${when.date}, ${when.time} ${ZONE_SHORT}` })}
+                </p>
+              )}
               {event.manage && (
                 <div className="mg-acts is-end">
                   <button
@@ -882,7 +897,10 @@ function ScheduledThread({ sched, state }: { sched: Sched; state: MessagesState 
           ) : null}
         </HostBubble>
         {ending != null && (
-          <SystemLine glyph={sched.cancelledAt != null ? 'clear' : 'clock'}>{ending}</SystemLine>
+          <SystemLine glyph={sched.cancelledAt != null ? 'clear' : 'clock'}>
+            {ending}
+            {why != null && <span className="mg-system-why">{why}</span>}
+          </SystemLine>
         )}
         {mode === 'sendNow' && !ended && (
           <li className="mg-said is-host">

@@ -70,13 +70,13 @@ describe('Messages in B · Conversations at a desk (sc-31371)', () => {
       .parentElement as HTMLElement;
     const links = within(group).getAllByRole('link');
 
-    expect(links).toHaveLength(130);
+    expect(links).toHaveLength(142);
     expect(links[0]?.getAttribute('href')).toBe(`${AT}?state=first`);
     expect(links[7]?.getAttribute('href')).toBe(`${AT}?state=noticeCost`);
     expect(links[26]?.getAttribute('href')).toBe(`${AT}?state=bell`);
-    expect(links[52]?.getAttribute('href')).toBe(`${AT}?state=tellPlace`);
-    expect(links[54]?.getAttribute('href')).toBe(`${AT}?state=closedEnded`);
-    expect(links[79]?.getAttribute('href')).toBe(`${AT}?state=nobodyDue`);
+    expect(links[57]?.getAttribute('href')).toBe(`${AT}?state=tellPlace`);
+    expect(links[59]?.getAttribute('href')).toBe(`${AT}?state=closedEnded`);
+    expect(links[84]?.getAttribute('href')).toBe(`${AT}?state=nobodyDue`);
   });
 
   it('is the event’s own Messages entry, with the count under it', SLOW, async () => {
@@ -606,7 +606,9 @@ describe('Messages in B · Conversations at a desk (sc-31371)', () => {
       expect(
         within(check).getByText('9 can’t be told · it is on their page if they open it'),
       ).toBeDefined();
-      expect(within(check).getByText('Sophie Laurent · Unsubscribed · Texted STOP')).toBeDefined();
+      expect(
+        within(check).getByText('Sophie Laurent · Unsubscribed · Stopped texts'),
+      ).toBeDefined();
       expect(within(check).getByRole('button', { name: 'See all 9' })).toBeDefined();
       expect(
         within(check).getByText('Texts use 39 credits. Credits after sending: 1,461.'),

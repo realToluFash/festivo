@@ -19,6 +19,7 @@ import {
   type ConvoId,
   type Fix,
   type MessagesState,
+  type Phone,
   type ReachedOf,
   type Show,
   type ShowItem,
@@ -28,6 +29,8 @@ import {
   PARKING,
   TICKS,
   changed,
+  closedOf,
+  emailBounced,
   filled,
   fixWord,
   many,
@@ -37,10 +40,11 @@ import {
   showAfter,
   showItems,
   shownOf,
+  trySmsOf,
   whoOf,
 } from './messages.ts';
 import { useInbox } from './messagesContext.ts';
-import { DeliveryMark, Legend, ReachBar } from './MessagesParts.tsx';
+import { DeliveryMark, Legend, ReachBar, WhyNot } from './MessagesParts.tsx';
 import { MessagesBell } from './MessagesTell.tsx';
 import { Field } from '../components/SettingsParts.tsx';
 
@@ -50,13 +54,31 @@ interface Fixing {
   typed: string;
 }
 
+const TRYING: Partial<Record<MessagesState, string>> = {
+  trySms: 'olumide',
+  trySmsQuiet: 'rafael',
+  trySmsShort: 'yuki',
+};
+
 function showFirst(state: MessagesState | null, of: ReachedOf): Show {
+  switch (state) {
+    case 'trySms':
+    case 'trySmsSent':
+    case 'closedReached':
+      return 'bounced';
+    case 'trySmsQuiet':
+      return 'failed';
+    case 'trySmsShort':
+      return 'skipped';
+    default:
+      break;
+  }
   if (state === 'filtered') return 'bounced';
   if (state === 'told') return 'told';
   if (state === 'added') return 'none';
   if (state === 'addedPhone') return 'optedOut';
 
-  return of === 'new' || of === 'receipts' || of.startsWith('whatsAppInvite')
+  return of === 'new' || of === 'receipts' || of === 'reasons' || of.startsWith('whatsAppInvite')
     ? 'everyone'
     : 'notReached';
 }
@@ -77,10 +99,17 @@ export function ReachedView({
       ? { id: 'tomas', fix: 'fixEmail', typed: NEW_ADDRESS }
       : null,
   );
+  const [trying, setTrying] = useState<string | null>(
+    of === 'reasons' && state != null ? (TRYING[state] ?? null) : null,
+  );
   const [show, setShow] = useState<Show>(showFirst(state, of));
   const [menu, setMenu] = useState(state === 'filterMenu' && of === 'parking');
   const [status, setStatus] = useState<string | null>(
-    state === 'sentAgain' ? filled(MW.sentToSaid, { name: 'Tomás Ferreira' }) : null,
+    state === 'sentAgain'
+      ? filled(MW.sentToSaid, { name: 'Tomás Ferreira' })
+      : state === 'trySmsSent'
+        ? filled(MW.sentToSaid, { name: 'Olumide Bello' })
+        : null,
   );
   const headId = useId();
   const who = whoOf(inbox, of, thread, to.book.groups);
@@ -88,7 +117,7 @@ export function ReachedView({
   const shown = shownOf(who, show);
   const first = outsIn(inbox, thread)[0];
   const back =
-    of === 'parking' || of === 'receipts'
+    of === 'parking' || of === 'reasons' || of === 'receipts'
       ? PARKING.subject
       : of === 'invite' || of.startsWith('whatsAppInvite')
         ? MW.invitation
@@ -96,6 +125,7 @@ export function ReachedView({
           ? MW.newMessage
           : outTitle(first);
   const resend = who.waiting.length;
+  const closed = closedOf(state);
 
   /** The host's own action: the Filter stays unless the group shown is left with nobody, the status says what was done, and focus goes to the list's heading. */
   function hostDid(change: Change, said: string): void {
@@ -106,7 +136,10 @@ export function ReachedView({
   }
 
   function onFix(person: Unreached, fix: Fix): void {
-    if (fix === 'copyLink' || fix === 'trySms') tell(`${fixWord(fix)} has its own design.`);
+    if (fix === 'trySms' && person.phone != null) {
+      setTrying(person.id);
+      focus('sms-send');
+    } else if (fix === 'copyLink' || fix === 'trySms') tell(`${fixWord(fix)} has its own design.`);
     else if (fix === 'toldInPerson')
       hostDid(
         { kind: 'toldInPerson', id: person.id, thread },
@@ -201,6 +234,7 @@ export function ReachedView({
                     key={person.id}
                     person={person}
                     fixing={fixing?.id === person.id ? fixing : null}
+                    trying={trying === person.id}
                     marked={group.key === 'told'}
                     onFix={(fix) => onFix(person, fix)}
                     onSave={(address) => {
@@ -229,6 +263,15 @@ export function ReachedView({
                         filled(MW.unmarkedSaid, { name: person.name }),
                       )
                     }
+                    onSms={(send) => {
+                      setTrying(null);
+                      if (send)
+                        hostDid(
+                          { kind: 'textSms', id: person.id },
+                          filled(MW.sentToSaid, { name: person.name }),
+                        );
+                      else focus(`fix:${person.id}`);
+                    }}
                   />
                 ))}
               </ul>
@@ -236,6 +279,7 @@ export function ReachedView({
             </section>
           ))}
       </div>
+      {resend > 0 && to.manage && closed != null && <WhyNot words={closed} />}
       {resend > 0 && to.manage && (
         <button
           type="button"
@@ -372,6 +416,7 @@ function ShowMenu({
 function Person({
   person,
   fixing,
+  trying,
   marked,
   onFix,
   onSave,
@@ -379,9 +424,11 @@ function Person({
   onNotNow,
   onAgain,
   onUndo,
+  onSms,
 }: {
   person: Unreached;
   fixing: Fixing | null;
+  trying: boolean;
   marked: boolean;
   onFix: (fix: Fix) => void;
   onSave: (address: string) => void;
@@ -389,6 +436,7 @@ function Person({
   onNotNow: () => void;
   onAgain: () => void;
   onUndo: () => void;
+  onSms: (send: boolean) => void;
 }) {
   const { whyOff, to } = useInbox();
   const lines = fixing?.fix === 'fixEmail' ? person.lines.slice(0, 1) : person.lines;
@@ -426,7 +474,13 @@ function Person({
         )}
         {fixing != null ? (
           <FixForm person={person} fixing={fixing} onSave={onSave} onCancel={onCancel} />
-        ) : !to.manage ? null : person.offer === true ? (
+        ) : !to.manage ? null : trying && person.phone != null ? (
+          <TrySmsCard
+            phone={person.phone}
+            onSend={() => onSms(true)}
+            onCancel={() => onSms(false)}
+          />
+        ) : person.offer === true ? (
           <>
             <button
               type="button"
@@ -460,6 +514,9 @@ function Person({
                 className="desk-text"
                 data-focus={`fix:${person.id}`}
                 onClick={() => onFix(fix)}
+                {...(fix === 'trySms' && whyOff != null
+                  ? { 'aria-describedby': whyOff, ...offButton(true) }
+                  : {})}
               >
                 {fixWord(fix)}
               </button>
@@ -468,6 +525,69 @@ function Person({
         )}
       </div>
     </li>
+  );
+}
+
+/** Try SMS instead, pressed: nothing goes until Send by SMS; the text's count, its credits and either wait come first. */
+function TrySmsCard({
+  phone,
+  onSend,
+  onCancel,
+}: {
+  phone: Phone;
+  onSend: () => void;
+  onCancel: () => void;
+}) {
+  const { inbox, tell, whyOff } = useInbox();
+  const cost = trySmsOf(phone, inbox.balance);
+
+  return (
+    <div className="mg-try-sms">
+      <p className="mg-person-updated">
+        <DeliveryMark kind="none" />
+        <span className="mg-person-updated-words">
+          <strong>{cost.count}</strong>
+          <span>{cost.after == null ? cost.uses : `${cost.uses} ${cost.after}`}</span>
+        </span>
+      </p>
+      {cost.quiet != null && (
+        <p className="mg-try-sms-wait">
+          <Glyph name="clock" size={15} weight={2.2} />
+          {cost.quiet}
+        </p>
+      )}
+      {cost.waits != null && (
+        <div className="mg-answer-wait">
+          <p className="mg-answer-waits">
+            <Glyph name="clock" size={15} weight={2.2} />
+            {cost.waits}
+          </p>
+          <button
+            type="button"
+            className="desk-text"
+            onClick={() => tell(`${MW.addCredits} has its own design.`)}
+          >
+            {MW.addCredits}
+          </button>
+        </div>
+      )}
+      <div className="mg-acts">
+        <button
+          type="button"
+          className="button button-primary mg-again is-inline"
+          data-focus="sms-send"
+          aria-describedby={whyOff}
+          onClick={onSend}
+          {...offButton(whyOff != null)}
+        >
+          <Glyph name="send" size={17} weight={2.4} />
+          {MW.sendBySms}
+        </button>
+        <button type="button" className="desk-text" onClick={onCancel}>
+          {MW.cancel}
+        </button>
+      </div>
+    </div>
   );
 }
 
@@ -525,7 +645,11 @@ function FixForm({
           inputMode="email"
           autoComplete="off"
           {...(fixing.fix === 'fixEmail'
-            ? { help: filled(MW.wasAddress, { address: person.address ?? '' }) }
+            ? {
+                help: filled(emailBounced(person) ? MW.wasBounced : MW.wasAddress, {
+                  address: person.address ?? '',
+                }),
+              }
             : {})}
           error={wrong}
         />

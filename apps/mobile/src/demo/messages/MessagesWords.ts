@@ -67,7 +67,7 @@ export const W = {
   doesntExist: 'This address doesn’t exist (5.1.1)',
   notConfirmed: 'Delivery not confirmed',
   unsubscribed: 'Unsubscribed',
-  textedStop: 'Texted STOP',
+  stoppedTexts: 'Stopped texts',
   fixEmail: 'Fix email address',
   addEmail: 'Add an email address',
   addPhone: 'Add a phone number',
@@ -203,6 +203,12 @@ export const W = {
   stoppedWhatsApp: 'Stopped WhatsApp',
   read: 'Read',
   failedReceipt: 'Failed',
+  trySmsInstead: 'Try SMS instead',
+  sendBySms: 'Send by SMS',
+  couldNotSendEmail: 'We could not send this email',
+  cannotEmailAddress: 'Soirely cannot email this address',
+  held: 'Held',
+  skipped: 'Skipped',
   forbiddenTitle: 'You do not have access to this',
   forbiddenBody:
     'Your account does not have permission for this page. If you believe it should, ask an admin of this organisation.',
@@ -292,7 +298,6 @@ export const say = {
   noticeSms: (hosts: string, event: string, link: string) =>
     `${hosts}: a new message about ${event}. Read it here: ${link}`,
   emailFrom: (org: string) => `Email · from ${org} via Soirely`,
-  smsParts: (parts: number) => (parts === 1 ? 'SMS · 1 part' : `SMS · ${parts} parts`),
   whatsAppTemplate: 'WhatsApp · the approved template',
   stopEmails: (org: string) => `Stop emails from ${org}`,
   cannotUndo: (count: number) =>
@@ -312,7 +317,8 @@ export const say = {
   seenBy: (count: number) => `seen by ${count} on their page`,
   seenByStart: (count: number) => `Seen by ${count} on their page`,
   resend: (count: number) => `Resend to the ${count} not reached`,
-  wasBounced: (address: string) => `Was ${address}, which bounced.`,
+  wasAddress: (address: string, bounced: boolean) =>
+    bounced ? `Was ${address}, which bounced.` : `Was ${address}.`,
   includesUnconfirmed: (count: number) =>
     count === 1
       ? 'Includes one guest whose delivery was not confirmed. They may already have this message.'
@@ -409,6 +415,13 @@ export const say = {
   optedOutCount: (count: number) => `${count} opted out`,
   noEmailOrPhoneCount: (count: number) => `${count} no email or phone`,
   cantBeToldCount: (count: number) => `${count} can’t be told`,
+  failedCount: (count: number) => `${count} failed`,
+  skippedCount: (count: number) => `${count} skipped`,
+  heldCount: (count: number) => `${count} held`,
+  smsCount: (parts: number, encoding: string, chars: number) =>
+    `SMS · ${parts} ${parts === 1 ? 'part' : 'parts'} · ${encoding} · ${chars.toLocaleString('en-US')} characters`,
+  textUses: (credits: number) =>
+    `This text uses ${credits.toLocaleString('en-US')} ${credits === 1 ? 'credit' : 'credits'}.`,
   whatsAppReaches: (count: number, of: number) => `WhatsApp reaches ${count} of ${of}`,
   stoppedWhatsApp: (count: number) =>
     count === 1 ? '1 stopped WhatsApp' : `${count} stopped WhatsApp`,
@@ -416,6 +429,9 @@ export const say = {
     count === 1 ? '1 hasn’t agreed to WhatsApp' : `${count} haven’t agreed to WhatsApp`,
   noMobile: (count: number) =>
     count === 1 ? '1 has no mobile number' : `${count} have no mobile number`,
+  smsReaches: (count: number, of: number) => `SMS reaches ${count} of ${of}`,
+  stoppedTexts: (count: number) => `${count} stopped texts`,
+  insteadOfSms: (count: number) => `${count} by WhatsApp instead of SMS`,
   inZone: (day: string, time: string, zone: string) => `${day}, ${time} ${zone}`,
   dayTime: (day: string, time: string) => `${day}, ${time}`,
   subjectTooLong: (most: string) => `Shorten the subject to ${most} characters or fewer.`,

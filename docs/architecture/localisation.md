@@ -39,11 +39,16 @@ inside a sentence in the new one. The stored preference answers only a request t
 none of the four. `AccountLanguage::shown()` is the one place this order lives; a new
 field the server writes for the reader goes through it, not through `of()`.
 
-### Anything sent to a person — the recipient locale
+### Anything sent to a guest — the guest's language
 
-1. The recipient's own stored preference
-2. The event's default language
-3. English
+1. The guest's own choice, made on their page
+2. The host's Language for that guest
+3. The organisation's language
+4. English
+
+`GuestLanguage::messageLanguage()` is the one place this order lives, and its page twin adds
+the browser's languages after the guest's choice. `/guest-language.json` holds the cases, and
+the API's `GuestLanguage` and packages/domain's `guestLanguage` are both tested against them.
 
 **Never the sender's.** Resolving outbound language from the request would send every guest
 the language of whoever happened to press the button.
