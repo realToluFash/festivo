@@ -25,6 +25,7 @@ import { useServerNow } from '../kit/serverNow.ts';
 import type { LayoutKind } from '../layout/useLayout.ts';
 import { tokens } from '../theme/tokens.ts';
 import { AlertLine } from './AlertLine.tsx';
+import { ArrivalNoteInset } from './ArrivalNoteInset.tsx';
 import { useDeleteEvent } from './DeleteEvent.tsx';
 import { EventCard } from './EventCard.tsx';
 import { EventGuestNumbers } from './EventGuestNumbers.tsx';
@@ -46,6 +47,7 @@ import { useResume } from './PauseEvent.tsx';
 import { readOut } from './ReadOut.tsx';
 import type { ScreenReaderTarget } from './screenReaderFocus.ts';
 import type { TextHandle } from './Text.tsx';
+import { TextAction } from './Summary.tsx';
 import { ComingUp, useTimeline } from './Timeline.tsx';
 
 const EDIT_AT: Record<EventPart, EditAt | undefined> = {
@@ -201,7 +203,24 @@ export function EventPage({
           ...datesRow(event, phase, locale, t),
           opens: edit != null && !scheduleLocked(phase),
         },
-        { part: 'venue', ...venueRow(event.venue, t), opens: edit != null },
+        {
+          part: 'venue',
+          ...venueRow(event.venue, t),
+          opens: edit != null && (event.venue != null || event.arrivalNote == null),
+          after:
+            event.arrivalNote == null ? undefined : (
+              <>
+                <ArrivalNoteInset note={event.arrivalNote} />
+                {event.venue == null && edit != null && (
+                  <TextAction
+                    label={t('eventPage.addVenue')}
+                    onPress={() => edit('venue')}
+                    testID="events.addVenue"
+                  />
+                )}
+              </>
+            ),
+        },
         { part: 'hosts', ...hostsRow(event.hosts, locale, t), opens: edit != null },
         {
           part: 'type',

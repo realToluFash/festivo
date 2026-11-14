@@ -11,6 +11,7 @@ import {
   type HostErrors,
   type HostRow,
   type VenueDraft,
+  arrivalNoteTooLong,
   currencyChoices,
   eventFormErrors,
   eventNameLength,
@@ -166,6 +167,7 @@ export function EventForm({
   const nameInput = useRef<TextInputInstance>(null);
   const venueNameInput = useRef<TextInputInstance>(null);
   const venueAddressInput = useRef<TextInputInstance>(null);
+  const arrivalNoteInput = useRef<TextInputInstance>(null);
   const typePicker = useRef<ViewInstance>(null);
   const startPicker = useRef<ViewInstance>(null);
   const endPicker = useRef<ViewInstance>(null);
@@ -190,6 +192,7 @@ export function EventForm({
       name: nameInput,
       venueName: venueNameInput,
       venueAddress: venueAddressInput,
+      arrivalNote: arrivalNoteInput,
     };
 
     if (typedIn(field)) {
@@ -314,6 +317,7 @@ export function EventForm({
       const left = { ...previous };
       if ('name' in next) delete left.venueName;
       if ('address' in next) delete left.venueAddress;
+      if (next.note != null && !arrivalNoteTooLong(next.note)) delete left.arrivalNote;
 
       return left;
     });
@@ -592,6 +596,7 @@ export function EventForm({
           timeZone={timeZone}
           nameInput={venueNameInput}
           addressInput={venueAddressInput}
+          noteInput={arrivalNoteInput}
           onVenue={changeVenue}
           {...(over ? {} : { onUseZone: (zone: string) => change('timeZone', { timeZone: zone }) })}
         />

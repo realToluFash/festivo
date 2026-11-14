@@ -143,6 +143,7 @@ export function NewEventForm({ state }: { state: NewEventState | null }) {
       endsAt: endRef,
       venueName: venueNameRef,
       venueAddress: addressRef,
+      arrivalNote: addressRef,
       timeZone: zoneRef,
       currency: currencyRef,
     };

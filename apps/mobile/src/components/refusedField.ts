@@ -1,6 +1,6 @@
 import type { EventFormField } from '@soirely/domain';
 
-const TYPED_IN = ['name', 'venueName', 'venueAddress'] as const;
+const TYPED_IN = ['name', 'venueName', 'venueAddress', 'arrivalNote'] as const;
 
 /** A field typed in, which takes input focus, where the rest are pickers the screen reader is moved to. */
 export function typedIn(field: EventFormField): field is (typeof TYPED_IN)[number] {

@@ -288,6 +288,8 @@ export interface GuestPage {
     timeZone: string;
     /** The address as the host entered it. */
     venue: { name: string | null; address: string | null } | null;
+    /** Shown as the host wrote it, with its line breaks, whether or not there is a venue (sc-24385). */
+    arrivalNote: string | null;
   };
   /** As the guest reads it (sc-3591): Paused, Called off and Finished each close answers with a notice. */
   phase: GuestPagePhase;

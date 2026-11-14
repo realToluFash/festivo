@@ -36,6 +36,7 @@ const EVENT = {
   currency: 'NGN',
   cover: null,
   venue: null,
+  arrivalNote: null,
   hosts: [],
   madeLiveAt: '2026-10-26T15:00:00+00:00',
   pausedAt: null,

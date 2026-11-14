@@ -34,6 +34,7 @@ function event(overrides: Record<string, unknown> = {}) {
     currency: 'NGN',
     cover: null,
     venue: null,
+    arrivalNote: null,
     hosts: ['Funmi Adeyemi'],
     madeLiveAt: null,
     pausedAt: null,
@@ -3023,6 +3024,56 @@ describe("An event's venue (sc-3589)", () => {
     const readOnly = await screen.findByRole('region', { name: 'Details' });
     expect(within(readOnly).getByText('Venue to be confirmed')).toBeDefined();
     expect(within(readOnly).queryByRole('button', { name: /Venue to be confirmed/ })).toBeNull();
+  });
+
+  it('refuses an arrival note past 500 characters beside it in Edit details, and sends nothing', async () => {
+    signedIn();
+    const sent = serving({});
+    await editing();
+
+    fireEvent.change(screen.getByLabelText(/Arrival note/u), {
+      target: { value: 'a'.repeat(501) },
+    });
+    fireEvent.click(screen.getByRole('button', { name: 'Save changes' }));
+
+    expect(
+      await screen.findByText('Shorten the arrival note to 500 characters or fewer.'),
+    ).toBeDefined();
+    await waitFor(() => expect(document.activeElement?.id).toBe('event-arrival-note'));
+    expect(patched(sent)).toBeUndefined();
+  });
+
+  it('refuses an arrival note past 500 characters in the venue edited in place, and sends nothing', async () => {
+    signedIn();
+    const sent = serving({});
+    at('/app/events/ev_1');
+    const details = await screen.findByRole('region', { name: 'Details' });
+
+    fireEvent.click(within(details).getByRole('button', { name: /Venue to be confirmed/ }));
+    fireEvent.change(await within(details).findByLabelText(/Arrival note/u), {
+      target: { value: 'a'.repeat(501) },
+    });
+    fireEvent.click(within(details).getByRole('button', { name: 'Save' }));
+
+    expect(
+      await within(details).findByText('Shorten the arrival note to 500 characters or fewer.'),
+    ).toBeDefined();
+    await waitFor(() =>
+      expect(document.activeElement).toBe(within(details).getByLabelText(/Arrival note/u)),
+    );
+    expect(patched(sent)).toBeUndefined();
+  });
+
+  it('shows the arrival note with its line breaks under Venue to be confirmed', async () => {
+    signedIn();
+    serving({}, event({ arrivalNote: 'Side gate on Marylebone Road.\n\nDoors at 17:30.' }));
+    at('/app/events/ev_1');
+    const details = await screen.findByRole('region', { name: 'Details' });
+
+    const row = within(details).getByText('Venue to be confirmed').closest('.ev-part')!;
+    expect(row.querySelector('.ev-note')?.textContent).toBe(
+      'Side gate on Marylebone Road.\n\nDoors at 17:30.',
+    );
   });
 });
 

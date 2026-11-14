@@ -362,6 +362,39 @@ describe('answering', () => {
     expect(screen.queryByRole('link', { name: 'Open in maps' })).toBeNull();
   });
 
+  it("shows the host's arrival note under the address as typed, alone with no venue, and not on a paused page (sc-24385)", async () => {
+    const note = 'Use the side gate.\nDoors open at 17:30.';
+    const markup = '<b>Gate 2</b> <script>alert(1)</script>';
+    api({
+      '/api/guest-links/page': [
+        { status: 200, body: { ...PAGE, event: { ...PAGE.event, arrivalNote: note } } },
+        {
+          status: 200,
+          body: { ...PAGE, event: { ...PAGE.event, venue: null, arrivalNote: markup } },
+        },
+        {
+          status: 200,
+          body: { ...PAGE, phase: 'paused', event: { ...PAGE.event, arrivalNote: note } },
+        },
+      ],
+    });
+    const first = open();
+    const shown = await screen.findByText(/Use the side gate\./);
+    expect(shown.textContent).toBe(note);
+    expect(shown.closest('.gp-where')?.textContent).toContain('The Civic Centre');
+    first.unmount();
+
+    const second = open();
+    const alone = await screen.findByText(markup);
+    expect(alone.querySelector('b, script')).toBeNull();
+    expect(screen.queryByRole('link', { name: 'Open in maps' })).toBeNull();
+    second.unmount();
+
+    open();
+    await screen.findByText(ADAEZE);
+    expect(screen.queryByText(/Use the side gate\./)).toBeNull();
+  });
+
   it('records Sorry, I can’t in one tap and greets the guest by their full name', async () => {
     const { sent } = api({
       '/api/guest-links/page': [{ status: 200, body: PAGE }],

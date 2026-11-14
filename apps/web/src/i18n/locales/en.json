@@ -231,7 +231,10 @@
     "venueZoneKeep": "Keep {{zone}}",
     "venueZoneSet": "Time zone set to {{zone}}.",
     "venueNameTooLong": "Shorten the venue name to {{most, number}} characters or fewer.",
-    "venueAddressTooLong": "Shorten the address to {{most, number}} characters or fewer."
+    "venueAddressTooLong": "Shorten the address to {{most, number}} characters or fewer.",
+    "arrivalNote": "Arrival note",
+    "arrivalNoteHint": "How to find the entrance, where to park, when the doors open. Every guest sees this on their page.",
+    "arrivalNoteTooLong": "Shorten the arrival note to {{most, number}} characters or fewer."
   },
   "eventTypes": {
     "wedding": "Wedding",

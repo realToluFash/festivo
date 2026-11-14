@@ -389,6 +389,7 @@ function Details({
   const maps = mapsLink(event);
   const venue = event.venue;
   const address = venue?.address?.formatted ?? null;
+  const note = event.arrivalNote;
   const cover = event.cover;
 
   const editor = (one: Part): ReactNode => {
@@ -421,14 +422,21 @@ function Details({
   const editing = (one: Part): ReactNode =>
     part === one ? <Fragment key={shown}>{editor(one)}</Fragment> : null;
 
-  const row = (one: Part, lead: ReactNode, title: string, line: string, after?: ReactNode) => (
+  const row = (
+    one: Part,
+    lead: ReactNode,
+    title: string,
+    line: string,
+    after?: ReactNode,
+    plain = false,
+  ) => (
     <PartRow
       key={one}
       lead={lead}
       title={title}
       line={line}
       open={part === one}
-      locked={!manages || (one === 'dates' && finished)}
+      locked={!manages || (one === 'dates' && finished) || plain}
       after={after}
       onOpen={() => onOpen(one)}
     >
@@ -460,17 +468,28 @@ function Details({
             venue?.name != null && address != null
               ? `${t('eventPage.venue')} · ${address}`
               : t('eventPage.venue'),
-            maps == null ? undefined : (
-              <a
-                className="desk-text ev-maps"
-                href={maps}
-                target="_blank"
-                rel="noopener noreferrer"
-              >
-                <Glyph name="globe" size={17} weight={2.3} />
-                {t('eventPage.openInMaps')}
-              </a>
+            maps == null && note == null ? undefined : (
+              <>
+                {note != null && <p className="ev-note">{note}</p>}
+                {maps != null && (
+                  <a
+                    className="desk-text ev-maps"
+                    href={maps}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                  >
+                    <Glyph name="globe" size={17} weight={2.3} />
+                    {t('eventPage.openInMaps')}
+                  </a>
+                )}
+                {venue == null && manages && (
+                  <button type="button" className="desk-text" onClick={() => onOpen('venue')}>
+                    {t('eventPage.addVenue')}
+                  </button>
+                )}
+              </>
             ),
+            venue == null && note != null,
           )}
           {row(
             'hosts',

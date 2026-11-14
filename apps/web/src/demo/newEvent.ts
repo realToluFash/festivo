@@ -181,7 +181,7 @@ export function refusalsOf(typed: NewTyped): Refusals {
   const found: Refusals = {};
   for (const one of eventFormProblems({
     draft: draftOf(typed),
-    venue: { name: typed.venueName, address: typed.venueAddress, addressId: null },
+    venue: { name: typed.venueName, address: typed.venueAddress, addressId: null, note: '' },
     timeZone: typed.timeZone,
     currency: typed.currency,
   }))

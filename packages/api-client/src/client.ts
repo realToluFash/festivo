@@ -453,6 +453,8 @@ export interface OrganisationEvent {
   cover: EventCover | null;
   /** Null until a venue is added: the page says "Venue to be confirmed" (sc-3589). */
   venue: EventVenue | null;
+  /** The host's words on finding the way in, shown under the address and never translated; null when there are none (sc-24385). */
+  arrivalNote: string | null;
   /** The names guests read, in order; none until somebody adds one, and Make live waits for one (sc-6713). */
   hosts: string[];
   /** Null while it is a Draft. */
@@ -550,6 +552,8 @@ export interface NewEvent {
   timeZone: string;
   currency: string;
   venue?: VenueInput | null;
+  /** Saved trimmed; null or blank removes it. Apart from `venue`, so a note can stand without one (sc-24385). */
+  arrivalNote?: string | null;
   hosts?: string[];
 }
 
@@ -3785,6 +3789,7 @@ function asOrganisationEvent(raw: unknown): OrganisationEvent | null {
   const dayCount = candidate.dayCount;
   const cover = candidate.cover === null ? null : asEventCover(candidate.cover);
   const venue = candidate.venue === null ? null : asEventVenue(candidate.venue);
+  const arrivalNote = candidate.arrivalNote;
   const hosts = candidate.hosts;
   const madeLiveAt = candidate.madeLiveAt;
   const pausedAt = candidate.pausedAt;
@@ -3804,6 +3809,7 @@ function asOrganisationEvent(raw: unknown): OrganisationEvent | null {
     type == null ||
     cover === undefined ||
     venue === undefined ||
+    !isStringOrNull(arrivalNote) ||
     !Array.isArray(hosts) ||
     hosts.some((host) => typeof host !== 'string') ||
     fields.some((field) => typeof candidate[field] !== 'string') ||
@@ -3826,6 +3832,7 @@ function asOrganisationEvent(raw: unknown): OrganisationEvent | null {
     currency: candidate.currency as string,
     cover,
     venue,
+    arrivalNote,
     hosts: hosts as string[],
     madeLiveAt,
     pausedAt,
@@ -3936,6 +3943,7 @@ function asGuestPage(raw: unknown): GuestPage | null {
               name: typeof venue.name === 'string' ? venue.name : null,
               address: typeof venue.address === 'string' ? venue.address : null,
             },
+      arrivalNote: typeof what.arrivalNote === 'string' ? what.arrivalNote : null,
     },
     phase: shown,
     started,
