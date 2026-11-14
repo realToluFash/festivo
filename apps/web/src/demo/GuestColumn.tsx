@@ -44,6 +44,7 @@ import { type OptOutRow, optOutRowsOf } from './optOuts.ts';
 import { whatsAppRowOf } from './whatsAppConsent.ts';
 import { sendOffered, whatsAppHref } from './whatsAppSend.ts';
 import { useLater } from '../useLater.ts';
+import { GGW } from './guestGroups.ts';
 import { CardStep, Chevron, Head, RowWords, TextAction } from '../components/SettingsParts.tsx';
 
 export interface GuestActions {
@@ -70,6 +71,7 @@ const SAVE_MS = 900;
 /** A guest beside the list (sc-3773): the cover card the guest sees, their reply, Details, Invitation and their conversation. */
 export function GuestView({
   guest,
+  group = null,
   event,
   clock,
   manages,
@@ -83,6 +85,8 @@ export function GuestView({
   askFailed = false,
 }: {
   guest: Guest;
+  /** sc-3775: their group's name, beside their name; none shows nothing. */
+  group?: string | null;
   event: SampleEvent;
   clock: Date;
   manages: boolean;
@@ -131,6 +135,12 @@ export function GuestView({
             <ReplyMark reply={guest.reply} size={16} cover />
             {REPLY_WORDS[guest.reply]}
           </li>
+          {group != null && (
+            <li className="desk-glass gg-pill">
+              <span className="visually-hidden">{GGW.group}: </span>
+              {group}
+            </li>
+          )}
         </ul>
         <h2 id={heading} className="gs-name" tabIndex={-1} data-focus="guest-heading">
           {guest.name}
