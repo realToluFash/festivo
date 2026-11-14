@@ -3531,6 +3531,39 @@ describe('Remove from the list, with a short undo (sc-3774)', () => {
     }
   });
 
+  it('moves focus to the heading when a live removal lands with no question open', async () => {
+    const before = config();
+    __setConfig({ ...before, mercureUrl: 'http://hub.test/.well-known/mercure' });
+    StubSource.made = [];
+    vi.stubGlobal('EventSource', StubSource);
+    const hub = () =>
+      json({ token: 'tok', expiresAt: new Date(Date.now() + 3_600_000).toISOString() });
+    let there = true;
+
+    try {
+      await openNgozi({
+        'GET /api/events/ev_1/guests': () => json(listOf(there ? [NGOZI_ROW, AMAKA] : [AMAKA])),
+        'GET /api/events/ev_1/guests/g_1': () =>
+          there ? tagged(NGOZI_TWO, '"1"') : problem('not_found', 404),
+        'POST /api/events/ev_1/guests/subscriptions': hub,
+        'POST /api/realtime/subscriptions': hub,
+      });
+      const remove = within(column()).getByRole('button', { name: 'Remove from the list' });
+      act(() => remove.focus());
+      const source = StubSource.made.find((one) => one.url.includes('guests'))!;
+      there = false;
+      source.publish(listOf([AMAKA]));
+
+      const heading = await screen.findByRole('heading', {
+        name: 'This guest is not on this list',
+      });
+      await waitFor(() => expect(document.activeElement).toBe(heading));
+    } finally {
+      __setConfig(before);
+      vi.unstubAllGlobals();
+    }
+  });
+
   it('offers no Remove without guests.manage', async () => {
     await openNgozi(
       {},

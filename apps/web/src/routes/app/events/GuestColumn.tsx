@@ -396,7 +396,10 @@ export function GuestColumn({
       onRemove={onRemove}
       onRemovedAlready={onRemovedAlready}
       gone={pane.gone === true}
-      onNotFound={() => setPane({ kind: 'notFound' })}
+      onNotFound={() => {
+        setPane({ kind: 'notFound' });
+        focus('guest-heading');
+      }}
     />
   );
 }
@@ -458,9 +461,9 @@ function GuestView({
   const [marking, setMarking] = useState(false);
   const [markFailed, setMarkFailed] = useState(false);
   const [unmark, setUnmark] = useState<Unmark>({ kind: 'none' });
-  const [question, setRemoving] = useState<Removing | null>(null);
-  const removing: Removing | null =
-    gone && question?.kind === 'asking' && !question.busy ? { kind: 'gone' } : question;
+  const [removing, setRemoving] = useState<Removing | null>(null);
+  const shown: Removing | null =
+    gone && removing?.kind === 'asking' && !removing.busy ? { kind: 'gone' } : removing;
   const notFound = useEffectEvent(onNotFound);
   const replaceButton = useRef<HTMLButtonElement>(null);
   const [link, setLink] = useState<string | null>(null);
@@ -473,8 +476,8 @@ function GuestView({
   }, [replace.kind]);
 
   useEffect(() => {
-    if (gone && question == null) notFound();
-  }, [gone, question]);
+    if (gone && removing == null) notFound();
+  }, [gone, removing]);
 
   // The address has to be whole before the press, so the link is read with the guest rather than on it.
   useEffect(() => {
@@ -833,10 +836,10 @@ function GuestView({
       ) : (
         <p className="gs-inset gs-read-only">{t('guestList.readOnlyInvited')}</p>
       )}
-      {removing != null && (
+      {shown != null && (
         <RemoveAsk
           guest={guest}
-          removing={removing}
+          removing={shown}
           onKeep={() => {
             setRemoving(null);
             focus('remove');
