@@ -268,6 +268,22 @@ describe('Groups: make, rename, delete (sc-3775)', () => {
     await waitFor(() => expect(groupRows()).toContain('Bride’s side'), WAIT);
   });
 
+  it('asks before Groups drops a changed Edit guest, and Keep editing keeps it', SLOW, async () => {
+    await guests('groupField');
+    fireEvent.change(within(column()).getByLabelText('Full name'), {
+      target: { value: 'Alhaji Musa' },
+    });
+    fireEvent.click(screen.getByRole('button', { name: 'Groups' }));
+
+    expect(screen.getByRole('alertdialog', { name: 'Discard your changes?' })).toBeDefined();
+    expect(within(column()).queryByRole('textbox', { name: 'New group' })).toBeNull();
+    fireEvent.click(screen.getByRole('button', { name: 'Keep editing' }));
+    expect(within(column()).getByLabelText('Full name')).toHaveProperty('value', 'Alhaji Musa');
+    fireEvent.click(screen.getByRole('button', { name: 'Groups' }));
+    fireEvent.click(screen.getByRole('button', { name: 'Discard changes' }));
+    expect(newGroup()).toBeDefined();
+  });
+
   it('the state for a new event shows New group above No groups yet', SLOW, async () => {
     await guests('groupsNoGuests');
 

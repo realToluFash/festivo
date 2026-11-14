@@ -223,7 +223,8 @@ function EventGone({ id }: { id: string }) {
   );
 }
 
-type Leaving = { then: 'back' } | { then: 'open'; id: string } | { then: 'add' } | null;
+type Leaving =
+  { then: 'back' } | { then: 'open'; id: string } | { then: 'add' } | { then: 'groups' } | null;
 
 function GuestsPage({
   event: sample,
@@ -328,6 +329,7 @@ function GuestsPage({
     setDirty(false);
     if (next.then === 'open') openGuest(next.id, true);
     else if (next.then === 'add') startAdd(true);
+    else if (next.then === 'groups') openGroups(true);
     else back();
   }
 
@@ -361,7 +363,8 @@ function GuestsPage({
     return { ...values, group: id == null ? null : { id } };
   }
 
-  function openGroups(): void {
+  function openGroups(sure = false): void {
+    if (!sure) return guarded({ then: 'groups' });
     setPane({ kind: 'groups', start: {} });
     focus('form-heading');
   }
@@ -601,7 +604,7 @@ function GuestsPage({
               className="gs-pill is-secondary"
               aria-pressed={pane.kind === 'groups'}
               data-focus="groups"
-              onClick={openGroups}
+              onClick={() => openGroups()}
             >
               {GGW.groups}
             </button>
