@@ -274,7 +274,7 @@ describe('a window that opens through a Modal of its own (sc-42690)', () => {
 
   it('raises the keys on Create an organisation’s field once shown, moving TalkBack’s focus only onto a field still focused (qa3 #45182)', () => {
     expect(read('CreateWalkWindow.tsx')).toMatch(
-      /\/\/ .*\s+if \(input\.isFocused\(\)\) moveScreenReaderFocus\(input\);\s+holding\.current = input;\s+raiseKeysOn\(input\);\s+\}, \[talkBack, onScreen, unnamed, opening\]\);/,
+      /\/\/ .*\s+if \(input\.isFocused\(\)\) moveScreenReaderFocus\(input\);\s+if \(phone\) holding\.current = input;\s+raiseKeysOn\(input\);\s+\}, \[talkBack, onScreen, unnamed, opening, phone\]\);/,
     );
   });
 
