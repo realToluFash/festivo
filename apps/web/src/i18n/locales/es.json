@@ -1548,6 +1548,12 @@
       "declined": "Enviada el {{sent}} · rechazada el {{ended}}",
       "accepted": "Enviada el {{sent}}"
     },
+    "notDelivered": {
+      "pending": "<word>No entregada</word> · caduca el {{ended}}",
+      "expired": "<word>No entregada</word> · caducó el {{ended}}",
+      "revoked": "<word>No entregada</word> · retirada el {{ended}}",
+      "declined": "<word>No entregada</word> · rechazada el {{ended}}"
+    },
     "invitationState": {
       "pending": "Pendiente",
       "expired": "Caducada",
@@ -2787,7 +2793,8 @@
       "maybe": "Por confirmar",
       "notComing": "No viene",
       "noReply": "Sin respuesta",
-      "held": "En espera"
+      "held": "En espera",
+      "notYetInvited": "Not yet invited"
     },
     "replied": "{{reply}} · respondió el {{date}}",
     "repliedOn": "respondió el {{date}}",
@@ -2873,6 +2880,34 @@
     "linkReplaced": "Enlace sustituido. El enlace anterior de {{name}} ya no funciona. Copie el nuevo y envíeselo.",
     "flaggedTitle": "Puede que el enlace haya llegado a otra persona",
     "flaggedLine": "Quien abrió el enlace de {{name}} nos ha avisado de que le llegó por error. La respuesta no ha cambiado. Sustituya el enlace para que el anterior deje de funcionar y envíe el nuevo a {{name}}.",
+    "invitedBy": "Invited by {{name}}, {{how}}, {{date}}",
+    "invitedHow": "Invited {{how}}, {{date}}",
+    "invitedByMessage": "Invited by Soirely’s message, {{date}}",
+    "invitedWhenReplied": "Invited when they replied, {{date}}",
+    "copyFirst": "Copying their link does not mark them. Mark them once you have sent it.",
+    "markAsInvited": "Mark as invited",
+    "markLine": "How you invited them, so they count as invited",
+    "howInvited": "How did you invite them?",
+    "howInvitedBlank": "Choose how you invited them.",
+    "markNotSaved": "Not saved. They are still Not yet invited. Try again.",
+    "how": {
+      "whatsapp": "WhatsApp",
+      "textMessage": "Text message",
+      "email": "Email",
+      "inPerson": "In person",
+      "other": "Other"
+    },
+    "howMid": {
+      "whatsapp": "WhatsApp",
+      "textMessage": "text message",
+      "email": "email",
+      "inPerson": "in person",
+      "other": "another way"
+    },
+    "markNotInvited": "Mark as not invited",
+    "unmarked": "Marked as not invited.",
+    "unmarkRefused": "Not changed. {{name}} replied {{reply}} on {{date}}, so they stay invited.",
+    "readOnlyInvited": "You can see names, replies and who is invited. Marking guests as invited needs a host or organiser role.",
     "all": "Todos",
     "comingOf": "{{comingWords}} de {{invitedWords}}",
     "countComing_one": "Viene {{count, number}}",
@@ -2893,7 +2928,7 @@
     "countCompanions_other": "{{count, number}} acompañantes",
     "countCompanions_many": "{{count, number}} de acompañantes",
     "everyoneReplied": "Ya han respondido todos.",
-    "find": "Buscar invitados",
+    "find": "Buscar",
     "clearSearch": "Borrar la búsqueda",
     "shown": "Mostrando {{shown, number}} de {{total, number}}",
     "clear": "Borrar",

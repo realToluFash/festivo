@@ -184,7 +184,7 @@ export function InvitationLine({
 }: {
   email: string;
   ended?: string | undefined;
-  lines: readonly string[];
+  lines: readonly ReactNode[];
   children?: ReactNode;
 }) {
   return (
