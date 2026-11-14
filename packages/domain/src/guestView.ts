@@ -1,8 +1,8 @@
-import type { Companion, Guest, HeadcountCounts } from '@soirely/api-client';
-import { compareGuestNames, nameKey, phoneMatches } from '@soirely/domain';
-
-import { dietary } from './guestNeeds.ts';
-import { shownReply } from './guestRows.ts';
+import type { Companion, Guest, GuestNeeds, HeadcountCounts } from '@soirely/api-client';
+import { compareGuestNames } from './guestName.ts';
+import { shownReply } from './guestForm.ts';
+import { nameKey } from './nameKey.ts';
+import { phoneMatches } from './phone.ts';
 
 /** Where a person stands, in the host's words: a companion is Not yet invited with their guest, then Held until their guest is Coming. */
 export type Standing = 'coming' | 'maybe' | 'noReply' | 'notYetInvited' | 'held' | 'notComing';
@@ -40,6 +40,11 @@ export interface Person {
   guest: Guest;
   companion: Companion | null;
   at: number;
+}
+
+/** sc-3777: an allergy or a diet recorded, what the Dietary notes filter and tag keep; access needs alone are not dietary. */
+export function dietary(needs: GuestNeeds | null | undefined): boolean {
+  return needs != null && (needs.allergies.length > 0 || needs.diet.length > 0);
 }
 
 export function peopleOf(guests: readonly Guest[]): Person[] {

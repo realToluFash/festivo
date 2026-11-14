@@ -21,7 +21,7 @@ import {
   refusedLine,
   sortedGroups,
 } from './guestGroups.ts';
-import { NO_GROUP } from './guestView.ts';
+import { NO_GROUP } from '@soirely/domain';
 import './guestGroups.css';
 
 const BLUR_MS = 120;

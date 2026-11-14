@@ -162,11 +162,6 @@ export function hasAllergy(needs: GuestNeeds | null | undefined): boolean {
   return needs != null && needs.allergies.length > 0;
 }
 
-/** The Dietary notes tag and filter: any allergy or diet, never access or a note alone. */
-export function dietary(needs: GuestNeeds | null | undefined): boolean {
-  return needs != null && (needs.allergies.length > 0 || needs.diet.length > 0);
-}
-
 export function recorded(needs: GuestNeeds | null | undefined): needs is GuestNeeds {
   return (
     needs != null &&

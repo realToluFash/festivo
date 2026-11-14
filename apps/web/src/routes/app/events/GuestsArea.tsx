@@ -11,12 +11,32 @@ import {
   realtimeTopic,
 } from '@soirely/api-client';
 import {
+  CHOICES,
+  type Choice,
+  type Counts,
+  MOST_COMPANIONS,
+  type Problem,
+  type Problems,
+  REPLY_KEY,
+  type Standing,
+  type Typed,
+  type ViewRow,
+  countsOf,
   deviceCountry,
-  formatPhone,
+  dietary,
   eventAllows,
+  firstProblem,
+  isListed,
   makeLiveRow,
+  newGuestOf,
   phoneScreenCountry,
+  problemsOf,
+  rowWords,
   shownPhase,
+  shownReply,
+  viewOf,
+  violationProblems,
+  withGuest as listedWith,
 } from '@soirely/domain';
 import {
   type ReactNode,
@@ -50,6 +70,7 @@ import {
   TextAction,
 } from '../../../components/SettingsParts.tsx';
 import { Toast } from '../../../components/Toast.tsx';
+import { dateLocale } from '../../../i18n/index.ts';
 import { LayersContext, focusWhenFree, useDeskLayers } from '../../../layers.ts';
 import { type Mesh, meshFor } from '../../../mesh.ts';
 import { pageTitle, usePageTitle } from '../../../pageTitle.ts';
@@ -57,24 +78,9 @@ import { phoneProblemMessage } from '../../../phoneProblem.ts';
 import { useLoadedAt, useServerNow } from '../../../serverNow.ts';
 import { canOn, useSession } from '../../../session.ts';
 import { useMakeLive } from './MakeLive.tsx';
-import {
-  MOST_COMPANIONS,
-  type Problem,
-  type Problems,
-  type Typed,
-  firstProblem,
-  isListed,
-  namedCount,
-  newGuestOf,
-  problemsOf,
-  shownReply,
-  violationProblems,
-  withGuest as listedWith,
-} from './guestRows.ts';
 import { GroupChips, GroupField, GroupTag, GroupsColumn } from './GuestGroups.tsx';
 import { choiceLine, groupRefusal, listOpen } from './guestGroups.ts';
-import { GuestColumn, REPLY_KEY, ReplyMark, companionShown, guestAddress } from './GuestColumn.tsx';
-import { replyDate } from './guestDates.ts';
+import { GuestColumn, ReplyMark, guestAddress } from './GuestColumn.tsx';
 import { invitationLine } from './GuestInvitation.tsx';
 import {
   CompanionField,
@@ -94,7 +100,6 @@ import {
   NO_NEEDS,
   type NeedsProblems,
   type NeedsTyped,
-  dietary,
   firstNeedsFailing,
   hasAllergy,
   needsFailingCount,
@@ -103,15 +108,6 @@ import {
   problemsByWho,
   useNeedsOpen,
 } from './guestNeeds.ts';
-import {
-  CHOICES,
-  type Choice,
-  type Counts,
-  type Standing,
-  type ViewRow,
-  countsOf,
-  viewOf,
-} from './guestView.ts';
 import { useGuestsAddress } from './useGuestsAddress.ts';
 import '../../../components/desk.css';
 import '../../../components/SettingsParts.css';
@@ -1128,36 +1124,17 @@ function RowsFrom({
     <>
       {rows.slice(from, to).map(({ person, indent }) => {
         const { guest, companion } = person;
+        const { name, line } = rowWords(
+          t,
+          person,
+          indent,
+          timeZone,
+          dateLocale(),
+          choice !== 'noReply',
+          companion == null ? invitationLine(t, guest, timeZone) : null,
+        );
 
-        if (companion == null) {
-          const shown = shownReply(guest);
-          const word = t(REPLY_KEY[shown]);
-          const reply =
-            guest.repliedAt == null
-              ? word
-              : t('guestList.replied', {
-                  reply: word,
-                  date: replyDate(guest.repliedAt, timeZone),
-                });
-          const places = guest.companions.length;
-          const line =
-            choice === 'noReply'
-              ? (invitationLine(t, guest, timeZone) ?? reply)
-              : places === 0
-                ? reply
-                : t('guestList.withPlaces', {
-                    reply,
-                    places: t('guestList.companionsNamed', {
-                      count: places,
-                      named: namedCount(guest.companions.map((one) => one.fullName)),
-                    }),
-                  });
-          const mobile = guest.mobile == null ? null : formatPhone(guest.mobile);
-          const contact =
-            guest.email != null && mobile != null
-              ? t('guestList.contacts', { email: guest.email, mobile })
-              : (guest.email ?? mobile);
-
+        if (companion == null)
           return (
             <li key={guest.id}>
               <RowLink
@@ -1168,33 +1145,13 @@ function RowsFrom({
                 onOpen={onOpen}
               >
                 <span className="gs-lead">
-                  <ReplyMark reply={shown} />
+                  <ReplyMark reply={shownReply(guest)} />
                 </span>
-                <RowWords
-                  title={guest.fullName}
-                  lines={[contact == null ? line : t('guestList.line', { reply: line, contact })]}
-                />
+                <RowWords title={name} lines={[line]} />
                 <NeedsTags needs={guest.needs} group={guest.group?.name ?? null} />
               </RowLink>
             </li>
           );
-        }
-
-        const name = companionShown(
-          t,
-          guest.fullName,
-          guest.companions.map((one) => one.fullName),
-          person.at,
-        );
-        const hostShown = t('guestList.guestOf', { host: guest.fullName });
-        const away = !indent && companion.fullName != null;
-        let line = t(REPLY_KEY[companion.state]);
-
-        if (companion.state === 'held')
-          line = away
-            ? t('guestList.heldAway', { guestOf: hostShown, held: t('guestList.heldLine') })
-            : t('guestList.heldLine');
-        else if (away) line = hostShown;
 
         return (
           <li key={companion.id} className={indent ? 'is-companion' : undefined}>

@@ -4,14 +4,14 @@ import {
   type GuestInvitationHow,
   canMarkNotInvited,
 } from '@soirely/api-client';
+import { replyDate, shownReply } from '@soirely/domain';
 import { type ReactNode, type RefObject, useEffect, useId, useRef, useState } from 'react';
 import type { TFunction } from 'i18next';
 import { useTranslation } from 'react-i18next';
 
 import { Glyph, type GlyphName } from '../../../components/Glyph.tsx';
 import { Head, RowWords, TextAction } from '../../../components/SettingsParts.tsx';
-import { replyDate } from './guestDates.ts';
-import { shownReply } from './guestRows.ts';
+import { dateLocale } from '../../../i18n/index.ts';
 
 export type Copy =
   { kind: 'none' } | { kind: 'copied' } | { kind: 'byHand'; url: string } | { kind: 'failed' };
@@ -24,7 +24,7 @@ export function invitationLine(
 ): string | null {
   const invitation = guest.invitation;
   if (invitation == null) return null;
-  const date = replyDate(invitation.at, timeZone);
+  const date = replyDate(invitation.at, timeZone, dateLocale());
 
   switch (invitation.how) {
     case 'soirelyMessage':
