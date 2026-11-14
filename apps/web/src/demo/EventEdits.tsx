@@ -863,6 +863,7 @@ export function CoverPart({ event, state, onDirty, onClose, onSave }: PartProps)
         : null,
   );
   const [saveRefused, setSaveRefused] = useState(state === 'coverSaveRefused');
+  const [asking, setAsking] = useState(false);
   const file = useRef<HTMLInputElement>(null);
   const picker = useRef<HTMLButtonElement>(null);
   const timer = useRef<number | undefined>(undefined);
@@ -873,16 +874,14 @@ export function CoverPart({ event, state, onDirty, onClose, onSave }: PartProps)
     (photo && (position !== COVER_MIDDLE || described !== PHOTO_DESCRIPTION));
   const id = useId();
 
-  useDirty(changed, onDirty);
+  useDirty(changed || uploading, onDirty);
   useEffect(() => {
     picker.current?.focus();
 
     return () => window.clearTimeout(timer.current);
   }, []);
 
-  const pick = () => {
-    if (!uploading) file.current?.click();
-  };
+  const pick = () => file.current?.click();
 
   const chosen = async (files: FileList | null) => {
     const one = files?.[0];
@@ -894,6 +893,7 @@ export function CoverPart({ event, state, onDirty, onClose, onSave }: PartProps)
 
     setPickRefused(null);
     setUploading(true);
+    window.clearTimeout(timer.current);
     timer.current = window.setTimeout(() => {
       setUploading(false);
       setPhoto(true);
@@ -905,10 +905,9 @@ export function CoverPart({ event, state, onDirty, onClose, onSave }: PartProps)
   return (
     <Opened
       label={W.cover}
-      changed={changed}
-      busy={uploading}
+      changed={changed && !uploading}
       verb={photo && !event.photo ? W.usePhoto : W.save}
-      onCancel={onClose}
+      onCancel={() => (uploading ? setAsking(true) : onClose())}
       onSave={() => {
         if (state === 'coverSaveRefused') setSaveRefused(true);
         else onSave({ ...event, photo });
@@ -947,13 +946,7 @@ export function CoverPart({ event, state, onDirty, onClose, onSave }: PartProps)
       {photo ? (
         <>
           {pickRefused != null && <Broken>{pickRefused}</Broken>}
-          <button
-            ref={picker}
-            type="button"
-            className={uploading ? 'desk-text is-off' : 'desk-text'}
-            aria-disabled={uploading}
-            onClick={pick}
-          >
+          <button ref={picker} type="button" className="desk-text" onClick={pick}>
             {W.changePhoto}
           </button>
           <div className="desk-field">
@@ -1001,18 +994,25 @@ export function CoverPart({ event, state, onDirty, onClose, onSave }: PartProps)
           ) : (
             <p className="desk-line">{W.coverLine}</p>
           )}
-          <button
-            ref={picker}
-            type="button"
-            className={uploading ? 'ev-upload is-off' : 'ev-upload'}
-            aria-disabled={uploading}
-            onClick={pick}
-          >
+          <button ref={picker} type="button" className="ev-upload" onClick={pick}>
             <Glyph name="photo" size={19} weight={2.2} />
             {W.upload}
           </button>
           <p className="desk-help">{W.accepted}</p>
         </>
+      )}
+      {asking && (
+        <Ask
+          title={W.discardTitle}
+          line={W.discardLine}
+          keep={W.keepEditing}
+          go={W.discard}
+          onKeep={() => setAsking(false)}
+          onGo={() => {
+            setAsking(false);
+            onClose();
+          }}
+        />
       )}
     </Opened>
   );

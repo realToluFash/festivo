@@ -160,12 +160,6 @@
   background: var(--colorAccentHover);
 }
 
-.ev-upload.is-off,
-.ev-upload.is-off:hover {
-  background: var(--colorInkTertiary);
-  cursor: default;
-}
-
 .ev-cover-frame {
   position: relative;
 }

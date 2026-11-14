@@ -64,21 +64,40 @@ describe('The cover edited in place, its states for sc-48606', () => {
     expect(off(W.save)).toBe(false);
   });
 
-  it('keeps the default cover while a file uploads, the save off', SLOW, async () => {
+  it('keeps the default cover while a file uploads, only the save waiting', SLOW, async () => {
     await page('coverUploading');
 
     expect(within(part()).getByRole('status').textContent).toBe(W.uploading);
     expect(part().querySelector('.ev-preview.is-photo')).toBeNull();
-    expect(off(W.upload)).toBe(true);
+    expect(off(W.upload)).toBe(false);
+    expect(off(W.cancel)).toBe(false);
     expect(off(W.save)).toBe(true);
   });
 
-  it('keeps the earlier photo while a new one uploads', SLOW, async () => {
+  it('keeps the earlier photo while a new one uploads, Change photo still on', SLOW, async () => {
     await page('coverPhotoUploading');
 
     expect(within(part()).getByRole('status').textContent).toBe(W.uploading);
     expect(part().querySelector('.ev-preview.is-photo')).not.toBeNull();
-    expect(off(W.changePhoto)).toBe(true);
+    expect(off(W.changePhoto)).toBe(false);
+    expect(off(W.save)).toBe(true);
+  });
+
+  it('asks before Cancel drops an upload, and Discard closes the edit', SLOW, async () => {
+    await page('coverUploading');
+
+    fireEvent.click(button(W.cancel));
+    const ask = screen.getByRole('alertdialog', { name: W.discardTitle });
+    fireEvent.click(within(ask).getByRole('button', { name: W.discard }));
+    expect(screen.queryByRole('group', { name: W.cover })).toBeNull();
+  });
+
+  it('keeps uploading when a file picked during the upload is refused', SLOW, async () => {
+    await page('coverUploading');
+
+    choose(new File(['x'], 'notes.txt', { type: 'text/plain' }));
+    expect((await within(part()).findByRole('alert')).textContent).toContain(W.refusedType);
+    expect(within(part()).getByRole('status').textContent).toBe(W.uploading);
   });
 
   it('keeps the photo when Change photo is refused, and says why', SLOW, async () => {
@@ -107,30 +126,36 @@ describe('The cover edited in place, its states for sc-48606', () => {
     expect(part().querySelector('.ev-preview.is-photo')).toBeNull();
   });
 
-  it('uploads a picked photo, then shows it with Use this photo on', SLOW, async () => {
-    vi.stubGlobal(
-      'URL',
-      Object.assign(URL, { createObjectURL: () => 'blob:x', revokeObjectURL() {} }),
-    );
-    vi.stubGlobal(
-      'Image',
-      class {
-        naturalWidth = 2400;
-        naturalHeight = 1350;
-        onload: (() => void) | null = null;
-        set src(_: string) {
-          queueMicrotask(() => this.onload?.());
-        }
-      },
-    );
-    await page('cover');
+  it(
+    'uploads a picked photo, a second pick replacing it, then Use this photo is on',
+    SLOW,
+    async () => {
+      vi.stubGlobal(
+        'URL',
+        Object.assign(URL, { createObjectURL: () => 'blob:x', revokeObjectURL() {} }),
+      );
+      vi.stubGlobal(
+        'Image',
+        class {
+          naturalWidth = 2400;
+          naturalHeight = 1350;
+          onload: (() => void) | null = null;
+          set src(_: string) {
+            queueMicrotask(() => this.onload?.());
+          }
+        },
+      );
+      await page('cover');
 
-    await act(async () => choose(new File(['x'], 'arch.jpg', { type: 'image/jpeg' })));
-    expect(await within(part()).findByRole('status')).toBeDefined();
-    expect(part().querySelector('.ev-preview.is-photo')).toBeNull();
-    expect(
-      await within(part()).findByRole('button', { name: W.changePhoto }, { timeout: 4000 }),
-    ).toBeDefined();
-    expect(off(W.usePhoto)).toBe(false);
-  });
+      await act(async () => choose(new File(['x'], 'arch.jpg', { type: 'image/jpeg' })));
+      expect(await within(part()).findByRole('status')).toBeDefined();
+      expect(part().querySelector('.ev-preview.is-photo')).toBeNull();
+      await act(async () => choose(new File(['x'], 'arch-again.jpg', { type: 'image/jpeg' })));
+      expect(within(part()).getByRole('status').textContent).toBe(W.uploading);
+      expect(
+        await within(part()).findByRole('button', { name: W.changePhoto }, { timeout: 4000 }),
+      ).toBeDefined();
+      expect(off(W.usePhoto)).toBe(false);
+    },
+  );
 });
