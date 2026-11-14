@@ -12,7 +12,7 @@ import {
   type PlaceNeeds,
 } from '@soirely/api-client';
 
-import { lengthOf } from '../app/events/guestNeeds.ts';
+import { needsLength } from '@soirely/domain';
 import type { Party } from './party.ts';
 
 export type Field = 'other' | 'words' | 'access';
@@ -224,7 +224,7 @@ export function whoOf(one: Person, people: readonly Person[], words: WhoWords): 
 export type Problem = 'empty' | 'long';
 
 function tooLong(text: string): boolean {
-  return lengthOf(text) > NEED_OTHER_MAXIMUM;
+  return needsLength(text) > NEED_OTHER_MAXIMUM;
 }
 
 export function problemsOf(one: Person): Record<Field, Problem | null> {

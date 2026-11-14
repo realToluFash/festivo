@@ -42,6 +42,15 @@ import {
   withoutGuest,
   companionShown,
   listFormat,
+  NO_NEEDS,
+  type NeedsProblems,
+  type NeedsTyped,
+  firstNeedsFailing,
+  hasAllergy,
+  needsFailingCount,
+  needsInputOf,
+  needsViolations,
+  problemsByWho,
 } from '@soirely/domain';
 import {
   type ReactNode,
@@ -98,18 +107,7 @@ import {
   NeedsRefused,
   NeedsSection,
 } from './GuestNeeds.tsx';
-import {
-  NO_NEEDS,
-  type NeedsProblems,
-  type NeedsTyped,
-  firstNeedsFailing,
-  hasAllergy,
-  needsFailingCount,
-  needsInputOf,
-  needsViolations,
-  problemsByWho,
-  useNeedsOpen,
-} from './guestNeeds.ts';
+import { useNeedsOpen } from './guestNeeds.ts';
 import { useGuestsAddress } from './useGuestsAddress.ts';
 import { useHubTopics } from './useHubTopics.ts';
 import { keepAsked, keptAsked } from './whatsAppSend.ts';

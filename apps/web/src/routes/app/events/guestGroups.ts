@@ -8,18 +8,6 @@ import {
 import { type GroupProblem, groupProblem, sameGroup } from '@soirely/domain';
 import { type TFunction } from 'i18next';
 
-export {
-  type GroupProblem,
-  foldedName,
-  groupChanged,
-  groupChoiceOf as choiceOf,
-  groupNameLength,
-  groupOptions,
-  groupProblem,
-  sameGroup,
-  sortedGroups,
-} from '@soirely/domain';
-
 /** Escape in an open Group list closes the list, not the form around it. */
 export function listOpen(key: KeyboardEvent): boolean {
   return key.target instanceof Element && key.target.getAttribute('aria-expanded') === 'true';

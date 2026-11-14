@@ -1,9 +1,9 @@
 import { describe, expect, it } from 'vitest';
 
 import {
-  choiceOf,
   foldedName,
   groupChanged,
+  groupChoiceOf,
   groupNameLength,
   groupOptions,
   groupProblem,
@@ -52,9 +52,9 @@ describe('the Group field (sc-3775)', () => {
   });
 
   it('chooses a group by its name in any case, a new name to make, or none', () => {
-    expect(choiceOf(GROUPS, ' WORK ')).toEqual({ id: 'gr_work' });
-    expect(choiceOf(GROUPS, '  Old   friends ')).toEqual({ name: 'Old friends' });
-    expect(choiceOf(GROUPS, '  ')).toBeNull();
+    expect(groupChoiceOf(GROUPS, ' WORK ')).toEqual({ id: 'gr_work' });
+    expect(groupChoiceOf(GROUPS, '  Old   friends ')).toEqual({ name: 'Old friends' });
+    expect(groupChoiceOf(GROUPS, '  ')).toBeNull();
   });
 
   it('offers Create only for a name no group has', () => {

@@ -4,17 +4,18 @@ import {
   DIETS,
   type GuestNeeds as Recorded,
   NEED_NOTE_MAXIMUM,
-  NEED_OTHER_MAXIMUM,
 } from '@soirely/api-client';
 import {
   type NeedsField,
-  type NeedsProblem,
   type NeedsProblems,
   type NeedsTyped,
-  needsInputOf,
+  accessNames,
+  allergyNames,
+  dietNames,
+  needsChips,
   needsLength,
+  needsWords,
 } from '@soirely/domain';
-import type { TFunction } from 'i18next';
 import { type RefObject, useState } from 'react';
 import { Pressable, StyleSheet, type TextInputInstance, View } from 'react-native';
 import { useTranslation } from 'react-i18next';
@@ -27,56 +28,6 @@ import { Row } from './SummaryRows.tsx';
 import { Text } from './Text.tsx';
 
 const hidden = { accessibilityElementsHidden: true, importantForAccessibility: 'no' } as const;
-
-function named(words: readonly (string | null)[]): string[] {
-  return words.filter((word): word is string => word != null && word.trim() !== '');
-}
-
-export function allergyNames(t: TFunction, needs: Recorded): string[] {
-  return named(
-    needs.allergies.map((code) =>
-      code === 'other' ? needs.otherAllergy : t(`guestNeeds.allergen.${code}`),
-    ),
-  );
-}
-
-function restNames(t: TFunction, needs: Recorded): string[] {
-  return named([
-    ...needs.diet.map((code) =>
-      code === 'other' ? needs.otherDiet : t(`guestNeeds.dietName.${code}`),
-    ),
-    ...needs.access.map((code) =>
-      code === 'other' ? needs.otherAccess : t(`guestNeeds.accessName.${code}`),
-    ),
-  ]);
-}
-
-interface Chip {
-  kind: 'allergy' | 'other' | 'note';
-  word: string;
-}
-
-/** A closed section's chips: allergies first, then diet, access and a Private note chip that never shows the note. */
-function chipsOf(t: TFunction, typed: NeedsTyped): Chip[] {
-  const needs = needsInputOf(typed);
-
-  return [
-    ...allergyNames(t, needs).map((name) => ({
-      kind: 'allergy' as const,
-      word: t('guestNeeds.allergyWith', { names: name }),
-    })),
-    ...restNames(t, needs).map((word) => ({ kind: 'other' as const, word })),
-    ...(needs.note == null ? [] : [{ kind: 'note' as const, word: t('guestNeeds.privateNote') }]),
-  ];
-}
-
-export function needsWords(t: TFunction, problem: NeedsProblem | undefined): string | undefined {
-  if (problem == null) return undefined;
-  if (problem === 'sayWhich') return t('guestNeeds.sayWhich');
-  if (problem === 'otherTooLong') return t('guestNeeds.otherTooLong', { most: NEED_OTHER_MAXIMUM });
-
-  return t('guestNeeds.noteTooLong', { most: NEED_NOTE_MAXIMUM });
-}
 
 /** sc-3777's allergy mark: the warning shape and the word Allergy, never colour alone. */
 export function AllergyMark({ testID }: { testID?: string }) {
@@ -150,7 +101,7 @@ export function NeedsSection({
   testID: string;
 }) {
   const { t } = useTranslation();
-  const chips = chipsOf(t, needs);
+  const chips = needsChips(t, needs);
   const head =
     chips.length === 0
       ? t('guestNeeds.noneRecorded')
@@ -419,7 +370,8 @@ export function NeedsRows({
     (one): one is { name: string; needs: Recorded; guest: boolean } =>
       one.needs != null &&
       (allergyNames(t, one.needs).length > 0 ||
-        restNames(t, one.needs).length > 0 ||
+        dietNames(t, one.needs).length > 0 ||
+        accessNames(t, one.needs).length > 0 ||
         one.needs.note != null),
   );
 
@@ -456,7 +408,7 @@ function PersonNeeds({
 }) {
   const { t } = useTranslation();
   const allergies = allergyNames(t, needs);
-  const rest = restNames(t, needs);
+  const rest = [...dietNames(t, needs), ...accessNames(t, needs)];
   const note = needs.note?.trim() ?? '';
   const said = [
     ...(guest ? [] : [name]),
