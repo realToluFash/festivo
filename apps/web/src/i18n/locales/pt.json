@@ -1549,10 +1549,10 @@
       "accepted": "Enviado no dia {{sent}}"
     },
     "notDelivered": {
-      "pending": "<word>Not delivered</word> · expires {{ended}}",
-      "expired": "<word>Not delivered</word> · expired {{ended}}",
-      "revoked": "<word>Not delivered</word> · revoked {{ended}}",
-      "declined": "<word>Not delivered</word> · declined {{ended}}"
+      "pending": "<word>Não entregue</word> · expira no dia {{ended}}",
+      "expired": "<word>Não entregue</word> · expirou no dia {{ended}}",
+      "revoked": "<word>Não entregue</word> · retirado no dia {{ended}}",
+      "declined": "<word>Não entregue</word> · recusado no dia {{ended}}"
     },
     "invitationState": {
       "pending": "Pendente",
