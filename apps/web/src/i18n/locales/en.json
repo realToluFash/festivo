@@ -153,7 +153,9 @@
     "nextResume": "Paused. Guests can’t reply or change anything until you resume it.",
     "nextUp": "Next up: {{title}}",
     "footer_one": "{{count, number}} event · Sorted by date",
-    "footer_other": "{{count, number}} events · Sorted by date"
+    "footer_other": "{{count, number}} events · Sorted by date",
+    "comingOpens": "{{figure}}, opens the guests coming to {{event}}",
+    "notRepliedOpens": "{{figure}}, opens the guests of {{event}} with no reply"
   },
   "eventsSearch": {
     "label": "Search events",
@@ -2874,6 +2876,23 @@
     "showAll_other": "Show all {{count, number}}",
     "heldLine": "Held · comes only if their host accepts",
     "heldAway": "{{guestOf}} · {{held}}"
+  },
+  "guestNumbers": {
+    "title": "Guests",
+    "openList": "Open the guest list",
+    "lead": "{{coming}} of {{invited}}. Each number opens the guests it counts.",
+    "invited": "Invited",
+    "heldLine": "Companions waiting on their guest’s answer",
+    "opens": "{{figure}} {{word}}, opens {{word}}",
+    "opensInvited_one": "{{count, number}} Invited, opens the guest list showing invited guests",
+    "opensInvited_other": "{{count, number}} Invited, opens the guest list showing invited guests",
+    "notYet_one": "{{count, number}} not yet invited",
+    "notYet_other": "{{count, number}} not yet invited",
+    "notYetName_one": "{{count, number}} not yet invited, opens the guest list showing guests not yet invited",
+    "notYetName_other": "{{count, number}} not yet invited, opens the guest list showing guests not yet invited",
+    "failed": "Guest numbers didn’t load.",
+    "retry": "Try again",
+    "noneInvited": "No guests invited yet"
   },
   "guestNeeds": {
     "needs": "Needs",

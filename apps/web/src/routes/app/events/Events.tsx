@@ -1,4 +1,4 @@
-import { type ListedEvent } from '@soirely/api-client';
+import { type ListedEvent, realtimeTopic } from '@soirely/api-client';
 import {
   type EventsLook,
   type EventsSearch,
@@ -8,6 +8,7 @@ import {
   eventsLookParams,
   eventsSearchOf,
   firstDayOfWeek,
+  guestLineOf,
   rememberEventsTab,
   rememberedEventsTab,
   serverClock,
@@ -37,6 +38,7 @@ import {
   EventsLoading,
   EventsTabs,
   EventsTop,
+  GuestLine,
   NewEventWords,
 } from '../../../components/EventsList.tsx';
 import {
@@ -59,8 +61,10 @@ import { useServerNow } from '../../../serverNow.ts';
 import { can, useSession } from '../../../session.ts';
 import { useFocusOnceShown } from '../../../stepFocus.ts';
 import { DuplicateDialog } from './DuplicateEvent.tsx';
+import { useHubTopics } from './useHubTopics.ts';
 
 const PAST_PAGE = 10;
+const RECOUNT_AFTER_MS = 1_000;
 
 type Load =
   | { kind: 'loading' }
@@ -213,6 +217,15 @@ function EventsOf({
       current = false;
     };
   }, [organisationId, attempt, refresh, watch]);
+
+  const counted =
+    load.kind === 'loaded'
+      ? load.unfinished.filter((event) => event.guests != null).map((event) => event.id)
+      : [];
+
+  useLiveGuestFigures(organisationId, counted, (unfinished) =>
+    setLoad((was) => (was.kind === 'loaded' ? withFigures(was, unfinished) : was)),
+  );
 
   useEffect(() => {
     let current = true;
@@ -411,6 +424,19 @@ function EventsOf({
   );
   const loadedEvent = (id: string) =>
     [...loaded.unfinished, ...loaded.past].find((event) => event.id === id) ?? null;
+  const figuresOf = (event: Shown) => {
+    const line = guestLineOf(loadedEvent(event.id)?.guests ?? null, event.phase);
+
+    return line == null ? null : (
+      <GuestLine
+        name={event.name}
+        guests={`${eventLink(event)}/guests`}
+        coming={line.coming}
+        notReplied={line.notReplied}
+      />
+    );
+  };
+  const cardFigures = card == null ? null : figuresOf(card);
 
   const showMore = () => {
     if (more === 'loading') return;
@@ -496,19 +522,22 @@ function EventsOf({
             }}
           >
             {card != null && (
-              <EventCard
-                event={card}
-                now={now}
-                locale={locale}
-                level={2}
-                to={eventLink(card)}
-                takes={(action) => {
-                  const event = loadedEvent(card.id);
+              <div className={cardFigures == null ? undefined : 'ev-card-figured'}>
+                <EventCard
+                  event={card}
+                  now={now}
+                  locale={locale}
+                  level={2}
+                  to={eventLink(card)}
+                  takes={(action) => {
+                    const event = loadedEvent(card.id);
 
-                  return event != null && takesCardStep(event, action);
-                }}
-                onStep={(step) => onStep(card, step)}
-              />
+                    return event != null && takesCardStep(event, action);
+                  }}
+                  onStep={(step) => onStep(card, step)}
+                />
+                {cardFigures}
+              </div>
             )}
             {events.length === 0 ? (
               <EventsEmptyTab tab={tab} />
@@ -521,6 +550,7 @@ function EventsOf({
                     now={now}
                     locale={locale}
                     to={eventLink(event)}
+                    figures={figuresOf(event)}
                   />
                 ))}
               </ul>
@@ -554,6 +584,54 @@ function EventsOf({
       )}
     </>,
   );
+}
+
+/** Each listed event's guest figures as sc-99 publishes their headcounts (sc-3786). A message does not say whose headcount it is, so any one reads the figures again, once the burst settles. */
+function useLiveGuestFigures(
+  organisationId: string,
+  eventIds: readonly string[],
+  onFigures: (unfinished: readonly ListedEvent[]) => void,
+) {
+  const timer = useRef<ReturnType<typeof setTimeout> | undefined>(undefined);
+  const latest = useRef(onFigures);
+
+  useEffect(() => {
+    latest.current = onFigures;
+  });
+
+  useEffect(() => () => clearTimeout(timer.current), []);
+
+  const recount = () => {
+    clearTimeout(timer.current);
+    timer.current = setTimeout(() => {
+      api.unfinishedEvents(organisationId).then(
+        (unfinished) => latest.current(unfinished),
+        () => undefined,
+      );
+    }, RECOUNT_AFTER_MS);
+  };
+
+  useHubTopics(
+    eventIds.map((id) => realtimeTopic('EventHeadcount', id)),
+    () => api.headcountsSubscription(organisationId, eventIds),
+    recount,
+    () => undefined,
+  );
+}
+
+/** The loaded events with each one's guest figures as read again; nothing else about them changes. */
+function withFigures<T extends { unfinished: ListedEvent[] }>(
+  load: T,
+  read: readonly ListedEvent[],
+): T {
+  const figures = new Map(read.map((event) => [event.id, event.guests ?? null]));
+
+  return {
+    ...load,
+    unfinished: load.unfinished.map((event) =>
+      figures.has(event.id) ? { ...event, guests: figures.get(event.id) ?? null } : event,
+    ),
+  };
 }
 
 /** The deleted notice belongs to the entry Delete event lands on, which Events replaces once to drop its state, and to no other: Back, Forward or a reload can reach an entry whose replace never landed (sc-22103). */

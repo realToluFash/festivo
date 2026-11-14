@@ -61,6 +61,7 @@ import {
 import { useMakeLive } from './MakeLive.tsx';
 import { PHASE_WORD } from './eventWords.ts';
 import { typeLabel } from './eventTypes.ts';
+import { GuestNumbers } from './GuestNumbers.tsx';
 import { MuteEvent } from './MuteEvent.tsx';
 import { OutcomeLine } from './OutcomeLine.tsx';
 import { PauseButton, useResume } from './PauseEvent.tsx';
@@ -281,6 +282,7 @@ export function Overview({
           />
         </div>
         <div className="ev-right">
+          {canOn(event, 'guests.read') && <GuestNumbers event={event} />}
           <MuteEvent eventId={event.id} />
           {(creates || manages) && (
             <ManageList title={t('eventPage.manage')}>

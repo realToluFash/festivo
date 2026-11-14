@@ -857,7 +857,15 @@ describe('Finding a guest (sc-3772)', () => {
       within(menu)
         .getAllByRole('menuitemradio')
         .map((item) => item.textContent),
-    ).toEqual(['All9', 'Coming4', 'Not sure yet1', 'No reply3', 'Held1', 'Not coming0']);
+    ).toEqual([
+      'All9',
+      'Invited9',
+      'Coming4',
+      'Not sure yet1',
+      'No reply3',
+      'Held1',
+      'Not coming0',
+    ]);
     fireEvent.click(within(menu).getByRole('menuitemradio', { name: /^Held/u }));
 
     expect(names()).toEqual(['Rui Ávila']);
@@ -902,6 +910,7 @@ describe('Finding a guest (sc-3772)', () => {
         .map((item) => item.textContent),
     ).toEqual([
       'All11',
+      'Invited9',
       'Coming4',
       'Not sure yet1',
       'No reply3',
@@ -920,6 +929,21 @@ describe('Finding a guest (sc-3772)', () => {
     expect(names()).toEqual(['Bisi Adewale', 'Tunde Adewale']);
     expect(screen.getByText('2 of 11 shown')).toBeDefined();
     expect(shownRouter?.state.location.search).toBe('?filter=notYetInvited');
+
+    fireEvent.click(screen.getByRole('button', { name: 'Not yet invited · 2' }));
+    fireEvent.click(
+      within(screen.getByRole('menu')).getByRole('menuitemradio', { name: /^Invited/u }),
+    );
+
+    expect(shownRouter?.state.location.search).toBe('?filter=invited');
+    expect(screen.getByText('9 of 11 shown')).toBeDefined();
+    expect(
+      screen
+        .getAllByRole('heading', { level: 2 })
+        .map((one) => one.textContent)
+        .filter((one) => one?.includes(' · ')),
+    ).not.toContain('Not yet invited · 2');
+    expect(names()).not.toContain('Bisi Adewale');
   });
 
   it('keeps the held line alone for an unnamed companion away from their host, already called Guest of', async () => {

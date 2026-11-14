@@ -4,6 +4,7 @@ import { RouterProvider, createMemoryRouter } from 'react-router';
 import { EVENT_TYPES, connection, forgetEventsTab, serverClock } from '@soirely/domain';
 
 import { api } from '../../../api.ts';
+import { __setConfig, config } from '../../../config.ts';
 import { __setSessionState, type Session, switchOrganisation } from '../../../session.ts';
 import { OWNER_PERMISSIONS, membership } from '../../../test-memberships.ts';
 import { SKELETON_AFTER_MS } from '../../../shownAfter.ts';
@@ -92,10 +93,33 @@ function answering(answers: Record<string, Answer>) {
     const body = typeof init?.body === 'string' ? (JSON.parse(init.body) as unknown) : null;
     sent.push({ line, body });
 
-    return (await answers[line]?.(body, url)) ?? json({});
+    return (
+      (await answers[line]?.(body, url)) ??
+      (url.pathname.endsWith('/headcount') ? json({ headcount: headcountOf() }) : json({}))
+    );
   });
 
   return sent;
+}
+
+/** sc-99's headcount, nobody on the list unless told. */
+function headcountOf(counts: Record<string, number> = {}) {
+  return {
+    counts: {
+      onList: 0,
+      notYetInvited: 0,
+      invited: 0,
+      accepted: 0,
+      maybe: 0,
+      awaitingReply: 0,
+      held: 0,
+      declined: 0,
+      heldBy: { hostNoReply: 0, hostMaybe: 0, hostNotComing: 0 },
+      ...counts,
+    },
+    byGroup: [],
+    byDietaryNeed: { addsUp: false, needs: [] },
+  };
 }
 
 /** The list's two requests: every unfinished event, and the Finished a page at a time of `pastTotal`. */
@@ -355,6 +379,115 @@ describe('Events Home (sc-3594)', () => {
 
     fireEvent.click(screen.getByRole('tab', { name: 'Past 0' }));
     expect(screen.queryByRole('region', { name: 'Tonight' })).toBeNull();
+  });
+
+  it("gives each counted event with invited guests its guest line, each figure its own link to that event's Guests (sc-3786)", async () => {
+    signedIn();
+    answering({
+      'GET /api/orgs/org_1/events': listed([
+        live('Wedding', {
+          id: 'ev_wed',
+          name: 'Adaeze & Tunde’s wedding',
+          guests: { invited: 142, coming: 96, notReplied: 25 },
+        }),
+        live('Party', {
+          startsAt: '2026-11-20T16:00:00+01:00',
+          endsAt: '2026-11-20T22:00:00+01:00',
+          guests: { invited: 3, coming: 0, notReplied: 3 },
+        }),
+        live('Nobody yet', {
+          startsAt: '2026-11-21T16:00:00+01:00',
+          endsAt: '2026-11-21T22:00:00+01:00',
+          guests: { invited: 0, coming: 0, notReplied: 0 },
+        }),
+        live('Unread', {
+          startsAt: '2026-11-22T16:00:00+01:00',
+          endsAt: '2026-11-22T22:00:00+01:00',
+          guests: null,
+        }),
+      ]),
+    });
+    at('/app/events');
+
+    const card = await screen.findByRole('region', { name: 'Adaeze & Tunde’s wedding' });
+    expect(within(card).getAllByRole('link')).toHaveLength(1);
+    const coming = screen.getByRole('link', {
+      name: '96 coming, opens the guests coming to Adaeze & Tunde’s wedding',
+    });
+    const notReplied = screen.getByRole('link', {
+      name: '25 haven’t replied, opens the guests of Adaeze & Tunde’s wedding with no reply',
+    });
+    expect(coming.getAttribute('href')).toBe('/app/events/ev_wed/guests?filter=coming');
+    expect(notReplied.getAttribute('href')).toBe('/app/events/ev_wed/guests?filter=noReply');
+    expect(card.contains(coming)).toBe(false);
+
+    const [party, nobody, unread] = listedRows();
+    expect(
+      within(party!)
+        .getAllByRole('link')
+        .map((link) => link.textContent),
+    ).toEqual([expect.stringContaining('Party'), '0 coming', '3 haven’t replied']);
+    expect(within(nobody!).getAllByRole('link')).toHaveLength(1);
+    expect(within(unread!).getAllByRole('link')).toHaveLength(1);
+  });
+
+  it("changes an event's guest line in place when a reply lands, from one token for the listed events (sc-3786)", async () => {
+    const before = config();
+    const made: { url: string; onmessage: ((message: { data: string }) => void) | null }[] = [];
+    class StubSource {
+      static readonly CLOSED = 2;
+      readyState = 0;
+      onopen: (() => void) | null = null;
+      onmessage: ((message: { data: string }) => void) | null = null;
+      onerror: (() => void) | null = null;
+      readonly url: string;
+
+      constructor(url: string | URL) {
+        this.url = String(url);
+        made.push(this);
+      }
+
+      close(): void {
+        this.readyState = StubSource.CLOSED;
+      }
+    }
+    __setConfig({ ...before, mercureUrl: 'http://hub.test/.well-known/mercure' });
+    vi.stubGlobal('EventSource', StubSource);
+    onTestFinished(() => {
+      __setConfig(before);
+      vi.unstubAllGlobals();
+    });
+    signedIn();
+    const hub = () =>
+      json({ token: 'tok', expiresAt: new Date(Date.now() + 3_600_000).toISOString() });
+    const headcounts = () => made.filter((one) => one.url.includes('headcount'));
+    let figures = { invited: 142, coming: 96, notReplied: 25 };
+    const sent = answering({
+      'GET /api/orgs/org_1/events': (body, url) =>
+        listed([
+          live('Wedding', { id: 'ev_wed', guests: figures }),
+          live('Unread', { guests: null }),
+        ])(body, url),
+      'POST /api/orgs/org_1/events/headcounts/subscriptions': hub,
+      'POST /api/realtime/subscriptions': hub,
+    });
+    at('/app/events');
+
+    await screen.findByRole('link', { name: /^96 coming,/u });
+    await waitFor(() => expect(headcounts()).toHaveLength(1));
+    expect(headcounts()[0]!.url).toContain('topic=events%2Fev_wed%2Fheadcount');
+    expect(headcounts()[0]!.url).not.toContain('Unread');
+    expect(
+      sent.find((one) => one.line === 'POST /api/orgs/org_1/events/headcounts/subscriptions')?.body,
+    ).toEqual({ events: ['ev_wed'] });
+
+    figures = { invited: 142, coming: 97, notReplied: 24 };
+    act(() => headcounts()[0]!.onmessage?.({ data: JSON.stringify({ headcount: {} }) }));
+
+    expect(
+      await screen.findByRole('link', { name: /^97 coming,/u }, { timeout: 3_000 }),
+    ).toBeDefined();
+    expect(screen.getByRole('link', { name: /^24 haven’t replied,/u })).toBeDefined();
   });
 
   it('says how soon each event starts, in days or today, and nothing once it has started, for a draft past its start or a finished event (sc-30413)', async () => {
@@ -1600,15 +1733,94 @@ describe("An event's Overview (sc-22103)", () => {
     expect(screen.queryByRole('list', { name: 'Overview' })).toBeNull();
     expect(
       screen.getAllByRole('heading', { level: 2 }).map((heading) => heading.textContent),
-    ).toEqual(['Details', 'Coming up', 'Name and cover', 'Just for you', 'Manage']);
+    ).toEqual(['Details', 'Coming up', 'Name and cover', 'Guests', 'Just for you', 'Manage']);
     for (const label of ['On track', 'Replies', 'Needs you', 'Team on this event'])
       expect(screen.queryByRole('region', { name: label })).toBeNull();
+    expect(await screen.findByText('No guests invited yet')).toBeDefined();
     expect(screen.queryByText('Invited')).toBeNull();
     expect(
       within(screen.getByRole('navigation', { name: 'Breadcrumb' }))
         .getAllByRole('listitem')
         .map((part) => part.textContent),
     ).toEqual(['Events', 'Adaeze and Tunde']);
+  });
+
+  it("counts the event's guests as rows, each opening the guests it counts, then those not yet invited (sc-3786)", async () => {
+    signedIn();
+    answering({
+      'GET /api/events/ev_1': () => json({ event: event() }),
+      'GET /api/events/ev_1/headcount': () =>
+        json({
+          headcount: headcountOf({
+            onList: 156,
+            notYetInvited: 14,
+            invited: 142,
+            accepted: 96,
+            maybe: 10,
+            awaitingReply: 21,
+            held: 6,
+            declined: 9,
+          }),
+        }),
+    });
+    at('/app/events/ev_1');
+
+    const guests = await screen.findByRole('region', { name: 'Guests' });
+    await within(guests).findByText(
+      '96 coming of 142 invited. Each number opens the guests it counts.',
+    );
+    expect(
+      within(guests)
+        .getAllByRole('link')
+        .map((link) => [
+          link.getAttribute('aria-label') ?? link.textContent,
+          link.getAttribute('href'),
+        ]),
+    ).toEqual([
+      ['Open the guest list', '/app/events/ev_1/guests'],
+      [
+        '142 Invited, opens the guest list showing invited guests',
+        '/app/events/ev_1/guests?filter=invited',
+      ],
+      ['96 Coming, opens Coming', '/app/events/ev_1/guests?filter=coming'],
+      ['9 Not coming, opens Not coming', '/app/events/ev_1/guests?filter=notComing'],
+      ['10 Not sure yet, opens Not sure yet', '/app/events/ev_1/guests?filter=maybe'],
+      ['21 No reply, opens No reply', '/app/events/ev_1/guests?filter=noReply'],
+      ['6 Held, opens Held', '/app/events/ev_1/guests?filter=held'],
+      [
+        '14 not yet invited, opens the guest list showing guests not yet invited',
+        '/app/events/ev_1/guests?filter=notYetInvited',
+      ],
+    ]);
+  });
+
+  it('shows no guest numbers without guests.read, and says when they did not load (sc-3786)', async () => {
+    signedIn();
+    answering({
+      'GET /api/events/ev_1': () =>
+        json({ event: event({ permissions: holding.filter((one) => one !== 'guests.read') }) }),
+    });
+    at('/app/events/ev_1');
+    await screen.findByRole('heading', { level: 1, name: 'Adaeze and Tunde' });
+    expect(screen.queryByRole('region', { name: 'Guests' })).toBeNull();
+
+    cleanup();
+    let reads = 0;
+    answering({
+      'GET /api/events/ev_1': () => json({ event: event() }),
+      'GET /api/events/ev_1/headcount': () =>
+        (reads += 1) === 1 ? problem(500, 'internal') : json({ headcount: headcountOf() }),
+    });
+    at('/app/events/ev_1');
+
+    const refused = await screen.findByText('Guest numbers didn’t load.');
+    expect(refused.closest('[role=alert]')).not.toBeNull();
+    fireEvent.click(
+      within(screen.getByRole('region', { name: 'Guests' })).getByRole('button', {
+        name: 'Try again',
+      }),
+    );
+    expect(await screen.findByText('No guests invited yet')).toBeDefined();
   });
 
   it('reads each part as its value over its label', async () => {

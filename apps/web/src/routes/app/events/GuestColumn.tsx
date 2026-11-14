@@ -92,7 +92,7 @@ export function ReplyMark({ reply, cover = false }: { reply: ReplyWord; cover?: 
   );
 }
 
-function MarkLead({ reply }: { reply: ReplyWord }) {
+export function MarkLead({ reply }: { reply: ReplyWord }) {
   return (
     <span className="gs-lead">
       <ReplyMark reply={reply} />
