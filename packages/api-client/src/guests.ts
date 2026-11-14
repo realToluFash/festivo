@@ -125,9 +125,21 @@ export interface CompanionChoice {
   coming: boolean;
 }
 
+/** One part of an event's list (sc-3775): a guest is in one at most, their companions with them. */
+export interface GuestGroup {
+  id: string;
+  name: string;
+}
+
+/** The API's limits on groups, which the clients check before sending. */
+export const GUEST_GROUP_NAME_MAXIMUM = 60;
+export const GUEST_GROUPS_MOST = 50;
+
 export interface Guest {
   id: string;
   fullName: string;
+  /** Null for none; a companion is in their host's. */
+  group: GuestGroup | null;
   /** Null for none, and for anyone without guests.manage, whom the API never sends it (sc-3773). */
   email: string | null;
   /** E.164; null as `email` is. */
@@ -167,7 +179,13 @@ export interface GuestCounts {
 export interface GuestList {
   guests: Guest[];
   counts: GuestCounts;
+  /** A to Z, each with its guests and their companions; with `ungrouped` they add up to `counts`. */
+  groups: (GuestGroup & { counts: GuestCounts })[];
+  ungrouped: GuestCounts;
 }
+
+/** The Group field: a group by `id`, a `name` found or made on save, or null for none. Left out of an edit, it stays as it was. */
+export type GroupChoice = { id: string } | { name: string } | null;
 
 export interface NewGuest {
   fullName: string;
@@ -179,6 +197,7 @@ export interface NewGuest {
   language?: string | null;
   /** Left out of an edit, they stay as they were; so does a kept companion's. */
   needs?: NeedsInput;
+  group?: GroupChoice;
   /** Sent once the host pressed Add anyway on "<name> is already on the list". */
   allowDuplicate?: boolean;
 }
@@ -278,6 +297,29 @@ function asInvitation(value: unknown): GuestInvitation | null | undefined {
   return { at, how, by: text(row.by) };
 }
 
+export function asGuestGroup(value: unknown): GuestGroup | null {
+  if (typeof value !== 'object' || value == null) return null;
+  const row = value as Record<string, unknown>;
+  const id = text(row.id);
+  const name = text(row.name);
+
+  return id == null || name == null ? null : { id, name };
+}
+
+function asCounts(value: unknown): GuestCounts | null {
+  if (typeof value !== 'object' || value == null) return null;
+  const counts = value as Record<string, unknown>;
+  if (
+    typeof counts.people !== 'number' ||
+    typeof counts.guests !== 'number' ||
+    typeof counts.companions !== 'number'
+  ) {
+    return null;
+  }
+
+  return { people: counts.people, guests: counts.guests, companions: counts.companions };
+}
+
 function asCompanion(value: unknown): Companion | null {
   if (typeof value !== 'object' || value == null) return null;
   const row = value as Record<string, unknown>;
@@ -335,10 +377,13 @@ export function asGuest(value: unknown): Guest | null {
   if (companions.some((companion) => companion == null)) return null;
   const invitation = asInvitation(row.invitation);
   if (invitation === undefined) return null;
+  const group = row.group == null ? null : asGuestGroup(row.group);
+  if (row.group != null && group == null) return null;
 
   return {
     id,
     fullName,
+    group,
     email: text(row.email),
     mobile: text(row.mobile),
     language: text(row.language),
@@ -355,21 +400,26 @@ export function asGuest(value: unknown): Guest | null {
 export function asGuestList(value: unknown): GuestList | null {
   if (typeof value !== 'object' || value == null) return null;
   const body = value as Record<string, unknown>;
-  const counts = body.counts as Record<string, unknown> | null | undefined;
-  if (!Array.isArray(body.guests) || typeof counts !== 'object' || counts == null) return null;
-  if (
-    typeof counts.people !== 'number' ||
-    typeof counts.guests !== 'number' ||
-    typeof counts.companions !== 'number'
-  ) {
-    return null;
-  }
+  const counts = asCounts(body.counts);
+  if (!Array.isArray(body.guests) || counts == null) return null;
+  const listed: unknown[] = body.groups === undefined ? [] : (body.groups as unknown[]);
+  const ungrouped = body.ungrouped === undefined ? counts : asCounts(body.ungrouped);
+  if (!Array.isArray(listed) || ungrouped == null) return null;
   const guests = body.guests.map(asGuest);
   if (guests.some((guest) => guest == null)) return null;
+  const groups = listed.map((row: unknown) => {
+    const group = asGuestGroup(row);
+    const theirs = asCounts((row as { counts?: unknown } | null)?.counts);
+
+    return group == null || theirs == null ? null : { ...group, counts: theirs };
+  });
+  if (groups.some((group) => group == null)) return null;
 
   return {
     guests: guests as Guest[],
-    counts: { people: counts.people, guests: counts.guests, companions: counts.companions },
+    counts,
+    groups: groups as GuestList['groups'],
+    ungrouped,
   };
 }
 
@@ -399,7 +449,7 @@ export interface NeedCount {
 export interface Headcount {
   counts: HeadcountCounts;
   /** `group` is null for No group; the rows add up to `counts`. */
-  byGroup: { group: string | null; counts: HeadcountCounts }[];
+  byGroup: { group: GuestGroup | null; counts: HeadcountCounts }[];
   /** Each code (sc-3777), allergens first: a person counts under each they have, so these rows do not add up. */
   byDietaryNeed: { addsUp: false; needs: NeedCount[] };
 }
@@ -449,10 +499,11 @@ export function asHeadcount(value: unknown): Headcount | null {
     return null;
   }
   const byGroup = body.byGroup.map((row: unknown) => {
-    const group = (row as { group?: unknown } | null)?.group;
+    const named = (row as { group?: unknown } | null)?.group;
+    const group = named === null ? null : asGuestGroup(named);
     const rowCounts = asHeadcountCounts((row as { counts?: unknown } | null)?.counts);
 
-    return rowCounts == null || (group !== null && typeof group !== 'string')
+    return rowCounts == null || (named !== null && group == null)
       ? null
       : { group, counts: rowCounts };
   });

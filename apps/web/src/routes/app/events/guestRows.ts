@@ -135,6 +135,7 @@ export function withGuest(list: GuestList, guest: Guest): GuestList {
   if (list.guests.some((one) => one.id === guest.id)) return list;
 
   return {
+    ...list,
     guests: [...list.guests, guest],
     counts: {
       people: list.counts.people + 1 + guest.companions.length,

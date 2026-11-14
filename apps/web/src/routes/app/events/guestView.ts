@@ -98,6 +98,15 @@ export function matches(person: Person, q: string): boolean {
   );
 }
 
+/** sc-3775's chips: a group's id, or No group; a companion is in their guest's. */
+export const NO_GROUP = 'none';
+
+export function inGroup(person: Person, group: string | null): boolean {
+  if (group == null) return true;
+
+  return group === NO_GROUP ? person.guest.group == null : person.guest.group?.id === group;
+}
+
 export interface ViewRow {
   person: Person;
   indent: boolean;
@@ -113,7 +122,7 @@ export interface ViewGroup {
 
 export type ListView = { kind: 'groups'; groups: ViewGroup[] } | { kind: 'rows'; rows: ViewRow[] };
 
-/** On All with no search and no Dietary notes, the groups; otherwise the flat rows the choice, the search and Dietary notes keep, a companion under their guest when both are kept. */
+/** On All with no search, no Dietary notes and no group chip, the groups; otherwise the flat rows the choice, the search and Dietary notes keep, a companion under their guest when both are kept. */
 export function viewOf(
   guests: readonly Guest[],
   counts: Counts,
@@ -121,14 +130,16 @@ export function viewOf(
   q: string,
   expanded: ReadonlySet<Standing>,
   dietaryOnly = false,
+  group: string | null = null,
 ): { view: ListView; shown: number } {
   const people = peopleOf(guests);
 
-  if (choice !== 'all' || q.trim() !== '' || dietaryOnly) {
+  if (choice !== 'all' || q.trim() !== '' || dietaryOnly || group != null) {
     const found = people.filter(
       (one) =>
         (choice === 'all' || one.standing === choice) &&
         matches(one, q) &&
+        inGroup(one, group) &&
         (!dietaryOnly || dietary(one.companion == null ? one.guest.needs : one.companion.needs)),
     );
     const hosts = new Set(found.filter((one) => one.companion == null).map((one) => one.id));

@@ -58,10 +58,9 @@ function guest(id: string, fullName: string, more: Record<string, unknown> = {})
 function listOf(guests: ReturnType<typeof guest>[]) {
   const companions = guests.reduce((sum, one) => sum + one.companions.length, 0);
 
-  return {
-    guests,
-    counts: { people: guests.length + companions, guests: guests.length, companions },
-  };
+  const counts = { people: guests.length + companions, guests: guests.length, companions };
+
+  return { guests, counts, groups: [], ungrouped: counts };
 }
 
 const NGOZI = guest('g_1', 'Ngozi Eze', {
@@ -2604,5 +2603,260 @@ describe('A guest’s needs (sc-3777)', () => {
   it('draws each checkbox 24 by 24', () => {
     expect(cssRule('.gs-box', GUESTS_CSS)).toContain('width: 24px;');
     expect(cssRule('.gs-box', GUESTS_CSS)).toContain('height: 24px;');
+  });
+});
+
+describe('Groups (sc-3775)', () => {
+  const WORK = { id: 'gr_work', name: 'Work' };
+  const BRIDE = { id: 'gr_bride', name: 'Bride’s side' };
+  const TOBI = guest('g_3', 'Tobi Bello', { reply: 'coming', group: WORK });
+  const SADE = guest('g_4', 'Sade Ojo', {
+    reply: 'coming',
+    group: BRIDE,
+    companions: [{ id: 'c_4', fullName: 'Femi Ojo', state: 'coming', namedByGuest: false }],
+  });
+
+  function grouped(
+    guests: (ReturnType<typeof guest> & { group?: { id: string } })[],
+    groups = [WORK, BRIDE],
+  ) {
+    const list = listOf(guests);
+    const countsIn = (id: string | null) => {
+      const theirs = guests.filter((one) => (one.group?.id ?? null) === id);
+      const companions = theirs.reduce((sum, one) => sum + one.companions.length, 0);
+
+      return { people: theirs.length + companions, guests: theirs.length, companions };
+    };
+
+    return {
+      ...list,
+      groups: groups.map((one) => ({ ...one, counts: countsIn(one.id) })),
+      ungrouped: countsIn(null),
+    };
+  }
+
+  function rows(): string[] {
+    return within(screen.getByRole('region', { name: 'Guests' }))
+      .getAllByRole('listitem')
+      .map((row) => row.textContent ?? '');
+  }
+
+  it('tags each guest’s row with their group, and a chip shows one group or No group', async () => {
+    signedIn();
+    await onGuests({
+      'GET /api/events/ev_1/guests': () => json(grouped([TOBI, SADE, AMAKA])),
+    });
+
+    expect(await screen.findByText('Tobi Bello')).toBeDefined();
+    const chips = screen.getByRole('group', { name: 'Groups' });
+    expect(
+      within(chips)
+        .getAllByRole('button')
+        .map((one) => one.textContent),
+    ).toEqual(['Bride’s side', 'Work', 'No group']);
+    expect(screen.getByRole('link', { name: /^Tobi Bello.*Group: Work$/u })).toBeDefined();
+
+    fireEvent.click(within(chips).getByRole('button', { name: 'Bride’s side' }));
+
+    expect(rows()).toEqual([
+      'Sade OjoComing · 1 companion · 1 of 1 namedGroup: Bride’s side',
+      'Femi OjoComing',
+    ]);
+    expect(
+      within(chips)
+        .getByRole('button', { name: /Bride’s side/u })
+        .getAttribute('aria-pressed'),
+    ).toBe('true');
+
+    fireEvent.click(within(chips).getByRole('button', { name: 'No group' }));
+
+    expect(rows()).toEqual(['Chief Amaka ObiNot sure yet']);
+    fireEvent.click(screen.getAllByRole('button', { name: 'Clear' })[0]!);
+    expect(rows()).toHaveLength(4);
+  });
+
+  it('opens Groups beside the list: each group’s count, No group last, adding up, and Done goes back', async () => {
+    signedIn();
+    await onGuests({
+      'GET /api/events/ev_1/guests': () => json(grouped([TOBI, SADE, AMAKA])),
+    });
+    const opener = await screen.findByRole('button', { name: 'Groups' });
+
+    fireEvent.click(opener);
+
+    const column = await screen.findByRole('region', { name: 'Groups' });
+    expect(within(column).getByRole('heading', { level: 2, name: 'Groups · 2' })).toBeDefined();
+    expect(opener.getAttribute('aria-pressed')).toBe('true');
+    expect(
+      within(within(column).getByRole('list', { name: 'Groups' }))
+        .getAllByRole('listitem')
+        .map((row) => row.querySelector('.desk-row-words')?.textContent),
+    ).toEqual([
+      'Bride’s side2 people · 1 guest and 1 companion',
+      'Work1 person · 1 guest and no companions',
+      'No group1 person · 1 guest and no companions',
+    ]);
+    expect(
+      within(column).getByText('The groups and No group add up to 4 people, everyone on the list.'),
+    ).toBeDefined();
+
+    fireEvent.click(within(column).getByRole('button', { name: 'Done' }));
+
+    await waitFor(() => expect(document.activeElement).toBe(opener));
+    expect(screen.queryByRole('region', { name: 'Groups' })).toBeNull();
+  });
+
+  it('makes a group, refusing a name already used before sending', async () => {
+    signedIn();
+    let groups = [WORK, BRIDE];
+    const sent = await onGuests({
+      'GET /api/events/ev_1/guests': () => json(grouped([TOBI, SADE], groups)),
+      'POST /api/events/ev_1/guest-groups': (body) => {
+        const made = { id: 'gr_new', name: (body as { name: string }).name };
+        groups = [...groups, made];
+
+        return json({ group: made }, 201);
+      },
+    });
+    fireEvent.click(await screen.findByRole('button', { name: 'Groups' }));
+    const column = await screen.findByRole('region', { name: 'Groups' });
+
+    type('New group', ' work ');
+    fireEvent.click(within(column).getByRole('button', { name: 'Create group' }));
+
+    expect(within(column).getByText('There’s already a group called Work.')).toBeDefined();
+    expect(sent.some((one) => one.line === 'POST /api/events/ev_1/guest-groups')).toBe(false);
+
+    type('New group', 'Cousins');
+    fireEvent.click(within(column).getByRole('button', { name: 'Create group' }));
+
+    expect(await within(column).findByText('Cousins created.')).toBeDefined();
+    expect(sent.find((one) => one.line === 'POST /api/events/ev_1/guest-groups')?.body).toEqual({
+      name: 'Cousins',
+    });
+    expect(await within(column).findByRole('heading', { name: 'Groups · 3' })).toBeDefined();
+  });
+
+  it('deletes a group only once asked, its guests left on the list with none', async () => {
+    signedIn();
+    const sent = await onGuests({
+      'GET /api/events/ev_1/guests': () => json(grouped([TOBI, SADE])),
+      'DELETE /api/events/ev_1/guest-groups/gr_work': () => new Response(null, { status: 204 }),
+    });
+    fireEvent.click(await screen.findByRole('button', { name: 'Groups' }));
+    const column = await screen.findByRole('region', { name: 'Groups' });
+
+    fireEvent.click(within(column).getByRole('button', { name: 'Delete Work' }));
+    const ask = await screen.findByRole('alertdialog', { name: 'Delete Work?' });
+
+    expect(
+      within(ask).getByText(
+        '1 guest is in it, with their companions. They stay on the guest list, with no group. No guest is deleted.',
+      ),
+    ).toBeDefined();
+    fireEvent.click(within(ask).getByRole('button', { name: 'Delete group' }));
+
+    expect(await within(column).findByText('Work deleted.')).toBeDefined();
+    expect(sent.some((one) => one.line === 'DELETE /api/events/ev_1/guest-groups/gr_work')).toBe(
+      true,
+    );
+  });
+
+  it('shows the groups to someone who cannot manage guests, without the means to change them', async () => {
+    signedIn();
+    await onGuests(
+      { 'GET /api/events/ev_1/guests': () => json(grouped([TOBI])) },
+      OWNER_PERMISSIONS.filter((one) => one !== 'guests.manage'),
+    );
+    fireEvent.click(await screen.findByRole('button', { name: 'Groups' }));
+    const column = await screen.findByRole('region', { name: 'Groups' });
+
+    expect(
+      within(column).getByText(
+        'You can see the groups. Making, renaming and deleting them is for people who manage guests.',
+      ),
+    ).toBeDefined();
+    expect(within(column).queryByRole('textbox')).toBeNull();
+    expect(within(column).queryByRole('button', { name: 'Rename Work' })).toBeNull();
+  });
+
+  it('adds a guest to a new group named on the form, made as they are saved', async () => {
+    const sent = await opened({
+      'GET /api/events/ev_1/guests': () => json(grouped([NGOZI])),
+      'POST /api/events/ev_1/guests': () =>
+        json(
+          { guest: guest('g_9', 'Bimpe Adeyemi', { group: { id: 'gr_new', name: 'Cousins' } }) },
+          201,
+        ),
+    });
+
+    type('Full name', 'Bimpe Adeyemi');
+    fireEvent.change(screen.getByRole('combobox', { name: /^Group/u }), {
+      target: { value: 'Cousins' },
+    });
+    expect(screen.getByText('Cousins is a new group. It’s made when you save.')).toBeDefined();
+    fireEvent.click(addButton());
+
+    expect(await within(form()).findByText('Bimpe Adeyemi added.')).toBeDefined();
+    expect(sent.find((one) => one.line === 'POST /api/events/ev_1/guests')?.body).toMatchObject({
+      fullName: 'Bimpe Adeyemi',
+      group: { name: 'Cousins' },
+    });
+    expect((screen.getByRole('combobox', { name: /^Group/u }) as HTMLInputElement).value).toBe('');
+  });
+
+  it('shows the guest’s group beside their name, and Edit takes them out of it', async () => {
+    const work = { ...DETAILS, group: WORK };
+    const sent = await editNgozi({
+      'GET /api/events/ev_1/guests': () => json(grouped([{ ...NGOZI, group: WORK }, AMAKA])),
+      'GET /api/events/ev_1/guests/g_1': () => tagged(work, '"1"'),
+      'PUT /api/events/ev_1/guests/g_1': () => tagged({ ...DETAILS, group: null }, '"2"'),
+    });
+    const combo = screen.getByRole('combobox', { name: /^Group/u }) as HTMLInputElement;
+
+    expect(combo.value).toBe('Work');
+    fireEvent.click(screen.getByRole('button', { name: 'Clear the group' }));
+    fireEvent.click(screen.getByRole('button', { name: 'Save' }));
+
+    expect(await screen.findByText('Saved')).toBeDefined();
+    expect((puts(sent)[0]?.body as { group?: unknown }).group).toBeNull();
+    expect(within(column()).queryByText('Work')).toBeNull();
+  });
+
+  it('leaves the group out of an edit that does not change it', async () => {
+    const sent = await editNgozi({
+      'GET /api/events/ev_1/guests': () => json(grouped([{ ...NGOZI, group: WORK }, AMAKA])),
+      'GET /api/events/ev_1/guests/g_1': () => tagged({ ...DETAILS, group: WORK }, '"1"'),
+      'PUT /api/events/ev_1/guests/g_1': () => tagged({ ...DETAILS, group: WORK }, '"2"'),
+    });
+
+    type('Full name', 'Ngozi Eze-Obi');
+    fireEvent.click(screen.getByRole('button', { name: 'Save' }));
+
+    expect(await screen.findByText('Saved')).toBeDefined();
+    expect(puts(sent)[0]?.body).not.toHaveProperty('group');
+  });
+
+  it('chooses a group from the list by keyboard, sent by its id', async () => {
+    const sent = await opened({
+      'GET /api/events/ev_1/guests': () => json(grouped([NGOZI])),
+      'POST /api/events/ev_1/guests': () =>
+        json({ guest: guest('g_9', 'Bimpe Adeyemi', { group: WORK }) }, 201),
+    });
+    const combo = screen.getByRole('combobox', { name: /^Group/u });
+
+    type('Full name', 'Bimpe Adeyemi');
+    fireEvent.change(combo, { target: { value: 'wo' } });
+    expect(combo.getAttribute('aria-expanded')).toBe('true');
+    fireEvent.keyDown(combo, { key: 'Enter' });
+
+    expect((combo as HTMLInputElement).value).toBe('Work');
+    expect(combo.getAttribute('aria-expanded')).toBe('false');
+    fireEvent.click(addButton());
+
+    expect(await within(form()).findByText('Bimpe Adeyemi added.')).toBeDefined();
+    expect(sent.find((one) => one.line === 'POST /api/events/ev_1/guests')?.body).toMatchObject({
+      group: { id: 'gr_work' },
+    });
   });
 });
