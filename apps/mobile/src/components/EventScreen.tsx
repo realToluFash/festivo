@@ -57,7 +57,7 @@ import { type ScreenReaderTarget, moveScreenReaderFocus } from './screenReaderFo
 import { Text, type TextHandle } from './Text.tsx';
 import { Title } from './Title.tsx';
 import { TopPrimary } from './TopPrimary.tsx';
-import { PAGE_TITLE, pageTitle } from './topTitle.ts';
+import { COLUMN_TITLE, PAGE_TITLE, columnTitle, pageTitle } from './topTitle.ts';
 import { useSidebarCard } from './sidebarCard.ts';
 import { eventTop } from '../kit/eventTop.ts';
 import { useEdgeSwipeBack } from './useEdgeSwipeBack.ts';
@@ -291,6 +291,7 @@ export function EventScreen({
       />
     ) : null;
   const guestBack = guests ? guestsTop.back : null;
+  const titledInList = areaTitled || guests;
   const frameBack =
     guestBack != null
       ? { label: t('eventNav.guests'), onPress: guestBack }
@@ -308,19 +309,10 @@ export function EventScreen({
       current="events"
       title={t(`eventNav.${area}`)}
       titleRef={title}
-      untitled={cardNamed || areaTitled || guestBack != null}
+      untitled={cardNamed || titledInList}
       offline={guests ? (guestsOffline.stale ?? opened.stale) : opened.stale}
       besideBack={phone || cardNamed ? refreshing : undefined}
-      besideTitle={
-        phone ? (
-          addGuest
-        ) : areaTitled ? undefined : (
-          <>
-            {refreshing}
-            {addGuest}
-          </>
-        )
-      }
+      besideTitle={titledInList || phone ? undefined : refreshing}
       back={frameBack}
       backInBody={top.frameBack == null}
       inEvent={
@@ -334,7 +326,7 @@ export function EventScreen({
             }
           : undefined
       }
-      underTitle={areaTitled ? undefined : underTitle}
+      underTitle={titledInList ? undefined : underTitle}
     >
       {guests ? (
         <EventGuests
@@ -348,30 +340,20 @@ export function EventScreen({
           addRef={guestsAdd}
           onTop={setGuestsTop}
           heading={
-            <>
-              {kind === 'tabletLandscape' && !cardNamed && (
-                <BackButton label={backLabel} onPress={back} testID="events.back" />
-              )}
-              {areaTitled && (
-                <View style={styles.areaTop}>
-                  <View style={styles.titleRow}>
-                    <View style={styles.fill}>
-                      <Title
-                        size={PAGE_TITLE}
-                        accessibilityRole="header"
-                        ref={title}
-                        style={pageTitle}
-                      >
-                        {t(`eventNav.${area}`)}
-                      </Title>
-                    </View>
-                    {refreshing}
-                    {addGuest}
-                  </View>
-                  {underTitle}
-                </View>
-              )}
-            </>
+            <View style={styles.titleRow}>
+              <View style={styles.fill}>
+                <Title
+                  size={kind === 'tabletLandscape' ? COLUMN_TITLE : PAGE_TITLE}
+                  accessibilityRole="header"
+                  ref={title}
+                  style={kind === 'tabletLandscape' ? columnTitle : pageTitle}
+                >
+                  {t('eventNav.guests')}
+                </Title>
+              </View>
+              {!phone && refreshing}
+              {addGuest}
+            </View>
           }
           onOffline={setGuestsOffline}
         />
