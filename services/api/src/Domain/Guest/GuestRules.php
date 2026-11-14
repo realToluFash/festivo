@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Domain\Guest;
 
+use App\Domain\Guest\Model\CompanionChoice;
 use App\Domain\Guest\Model\NewGuest;
 use App\Domain\User\Phone\PhoneNumberParser;
 use App\Entity\Guest;
@@ -83,8 +84,47 @@ final readonly class GuestRules
         return new NewGuest($name, NameNormaliser::key($name), '' === $email ? null : $email, $e164, $named, $language);
     }
 
+    /**
+     * The names a guest gave on Who's coming with you? (sc-3779): a blank name is never added, so it is refused rather than left unnamed.
+     *
+     * @param list<array{id?: ?string, fullName: string, coming: bool}> $companions
+     *
+     * @return list<CompanionChoice>
+     */
+    public function companionChoices(array $companions): array
+    {
+        $violations = [];
+        $choices = [];
+
+        if (Iter\count($companions) > Guest::COMPANIONS_MAXIMUM) {
+            $violations[] = $this->violation('companions', 'validation.guest_places_full');
+        }
+
+        foreach ($companions as $index => $companion) {
+            $name = Str\trim($companion['fullName']);
+
+            if ('' === $name) {
+                $violations[] = $this->violation("companions[{$index}].fullName", 'validation.guest_name_required');
+                continue;
+            }
+
+            if (Str\length($name) > Guest::NAME_MAXIMUM) {
+                $violations[] = $this->violation("companions[{$index}].fullName", 'validation.guest_name_too_long');
+                continue;
+            }
+
+            $choices[] = new CompanionChoice($companion['id'] ?? null, $name, NameNormaliser::key($name), $companion['coming']);
+        }
+
+        if ([] !== $violations) {
+            throw ApiException::validation($violations);
+        }
+
+        return $choices;
+    }
+
     /** @return array{propertyPath: string, message: string, code: string} */
-    private function violation(string $path, string $key): array
+    public function violation(string $path, string $key): array
     {
         return [
             'propertyPath' => $path,

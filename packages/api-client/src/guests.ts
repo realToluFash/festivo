@@ -8,8 +8,14 @@ export type GuestReply = 'noReply' | 'coming' | 'maybe' | 'notComing';
 export type GuestAnswer = Exclude<GuestReply, 'noReply'>;
 export const GUEST_ANSWERS: readonly GuestAnswer[] = ['coming', 'notComing', 'maybe'];
 
-/** Derived from the host's reply and invitation and never stored: Not yet invited with their host, then Held until the host is Coming. */
-export type CompanionState = 'notYetInvited' | 'held' | 'coming';
+/** Derived from the host's reply and invitation and never stored: Not yet invited with their host, Held until the host is Coming, then Coming unless the guest marked them Not coming (sc-3779). */
+export type CompanionState = 'notYetInvited' | 'held' | 'coming' | 'notComing';
+const COMPANION_STATES: readonly CompanionState[] = [
+  'notYetInvited',
+  'held',
+  'coming',
+  'notComing',
+];
 
 /** The five ways Mark as invited offers, in its order (sc-3788). */
 export const GUEST_INVITATION_HOWS = [
@@ -32,11 +38,29 @@ export interface GuestInvitation {
   by: string | null;
 }
 
+/** One place the host saved (sc-3779): a companion, named or not. */
 export interface Companion {
   id: string;
   /** Null when the host left it blank: shown as "Guest of <host>". */
   fullName: string | null;
   state: CompanionState;
+  /** The guest gave this name on their own page; the host changing it clears it. */
+  namedByGuest: boolean;
+}
+
+/** A named companion as the guest's own page shows them, with what the guest last chose for them. */
+export interface GuestPageCompanion {
+  id: string;
+  fullName: string;
+  coming: boolean;
+  namedByGuest: boolean;
+}
+
+/** Who fills the places, sent with Coming: a named companion by `id`, or a name for the next unnamed place with none. */
+export interface CompanionChoice {
+  id: string | null;
+  fullName: string;
+  coming: boolean;
 }
 
 export interface Guest {
@@ -123,7 +147,10 @@ export interface GuestPage {
     fullName: string;
     /** `at` is in the event's zone. */
     reply: { answer: GuestAnswer; at: string } | null;
-    companions: number;
+    /** How many companions the host saved places for, named or not (sc-3779). */
+    places: number;
+    /** The named ones; the rest of `places` are unnamed. */
+    companions: GuestPageCompanion[];
   };
   /** What the page's language is chosen from (guestLanguage, sc-3790), with the browser's own languages. */
   language: { chosen: string | null; host: string | null; organisation: string };
@@ -187,13 +214,20 @@ function asCompanion(value: unknown): Companion | null {
   if (typeof value !== 'object' || value == null) return null;
   const row = value as Record<string, unknown>;
   const id = text(row.id);
-  if (
-    id == null ||
-    (row.state !== 'held' && row.state !== 'coming' && row.state !== 'notYetInvited')
-  )
-    return null;
+  const state = COMPANION_STATES.find((known) => known === row.state);
+  if (id == null || state == null) return null;
 
-  return { id, fullName: text(row.fullName), state: row.state };
+  return { id, fullName: text(row.fullName), state, namedByGuest: row.namedByGuest === true };
+}
+
+export function asGuestPageCompanion(value: unknown): GuestPageCompanion | null {
+  if (typeof value !== 'object' || value == null) return null;
+  const row = value as Record<string, unknown>;
+  const id = text(row.id);
+  const fullName = text(row.fullName);
+  if (id == null || fullName == null || typeof row.coming !== 'boolean') return null;
+
+  return { id, fullName, coming: row.coming, namedByGuest: row.namedByGuest === true };
 }
 
 export function asGuest(value: unknown): Guest | null {

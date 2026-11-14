@@ -76,16 +76,19 @@ final readonly class GuestSerialiser
             'companions' => Vec\map($companions, static fn (Guest $companion): array => [
                 'id' => $companion->getId()->toRfc4122(),
                 'fullName' => $companion->getFullName(),
-                'state' => self::companionState(GuestStanding::of($reply, companion: true, invited: $host->isInvited())),
+                'state' => self::companionState(GuestStanding::of($reply, companion: true, invited: $host->isInvited(), notComingByGuest: $companion->isNotComingByGuest())),
+                'namedByGuest' => $companion->isNamedByGuest(),
             ]),
         ];
     }
 
-    private static function companionState(GuestStanding $standing): string
+    /** @return 'notYetInvited'|'held'|'coming'|'notComing' */
+    public static function companionState(GuestStanding $standing): string
     {
         return match (true) {
             GuestStanding::NotYetInvited === $standing => 'notYetInvited',
             $standing->isHeld() => 'held',
+            GuestStanding::Declined === $standing => 'notComing',
             default => 'coming',
         };
     }

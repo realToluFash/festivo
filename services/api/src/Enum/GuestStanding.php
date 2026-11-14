@@ -16,8 +16,8 @@ enum GuestStanding
     case Declined;
     case NotYetInvited;
 
-    /** For a companion, `reply` and `invited` are their host's: they are Coming only once the host is, and Held otherwise, never Not coming. Nobody is waiting on a reply until they are invited (sc-3788). */
-    public static function of(GuestReply $reply, bool $companion, bool $invited): self
+    /** For a companion, `reply` and `invited` are their host's: Held while the host is not Coming, then Coming unless the guest marked them Not coming (sc-3779). Nobody is waiting on a reply until they are invited (sc-3788). */
+    public static function of(GuestReply $reply, bool $companion, bool $invited, bool $notComingByGuest = false): self
     {
         if (!$invited && GuestReply::NoReply === $reply) {
             return self::NotYetInvited;
@@ -25,7 +25,7 @@ enum GuestStanding
 
         if ($companion) {
             return match ($reply) {
-                GuestReply::Coming => self::Accepted,
+                GuestReply::Coming => $notComingByGuest ? self::Declined : self::Accepted,
                 GuestReply::Maybe => self::HeldHostMaybe,
                 GuestReply::NotComing => self::HeldHostNotComing,
                 GuestReply::NoReply => self::HeldHostNoReply,

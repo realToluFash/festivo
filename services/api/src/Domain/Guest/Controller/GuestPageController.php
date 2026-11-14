@@ -7,6 +7,7 @@ namespace App\Domain\Guest\Controller;
 use App\Domain\Event\CalendarFeed\FeedLinkIssuer;
 use App\Domain\Event\EventVenue;
 use App\Domain\Event\Http\EventSerialiser;
+use App\Domain\Guest\GuestRules;
 use App\Domain\Guest\Link\InvitationLinks;
 use App\Domain\Guest\Reply\GuestAnswers;
 use App\Entity\Guest;
@@ -22,6 +23,7 @@ use DateTimeZone;
 use Doctrine\ORM\EntityManagerInterface;
 use Psl\Iter;
 use Psl\Type;
+use Psl\Vec;
 use Symfony\Component\HttpFoundation\JsonResponse;
 use Symfony\Component\HttpFoundation\Request;
 use Symfony\Component\HttpFoundation\Response;
@@ -37,6 +39,7 @@ final readonly class GuestPageController
         private EventSerialiser $eventSerialiser,
         private RateLimiterFactoryInterface $guestLinkWrongPersonLimiter,
         private GuestAnswers $guestAnswers,
+        private GuestRules $guestRules,
         private GuestRepository $guestRepository,
         private TranslatorInterface $translator,
         private EntityManagerInterface $entityManager,
@@ -51,12 +54,20 @@ final readonly class GuestPageController
         return $this->answered($this->guest($request));
     }
 
-    /** Refused 422 for an answer the page does not offer, 409 `event_paused` or `event_concluded` by the event's phase, and 409 `replies_closed` from the start; answers the page as it now stands. */
+    /** Refused 422 for an answer the page does not offer or a name beyond the places (sc-3779), 409 `event_paused` or `event_concluded` by the event's phase, and 409 `replies_closed` from the start; answers the page as it now stands. */
     #[Route('/api/guest-links/reply', name: 'guest_links_reply', methods: ['POST'])]
     #[PublicAccess]
     public function reply(Request $request): JsonResponse
     {
-        $body = Input::body($request, Type\shape(['token' => Type\string(), 'answer' => Type\string()]));
+        $body = Input::body($request, Type\shape([
+            'token' => Type\string(),
+            'answer' => Type\string(),
+            'companions' => Type\optional(Type\vec(Type\shape([
+                'id' => Type\optional(Type\nullable(Type\string())),
+                'fullName' => Type\string(),
+                'coming' => Type\bool(),
+            ]))),
+        ]));
         $guest = $this->invitationLinks->guestFor($body['token']) ?? throw ApiException::notFound('access.not_found');
         $answer = GuestReply::tryFrom($body['answer']);
 
@@ -68,7 +79,7 @@ final readonly class GuestPageController
             ]]);
         }
 
-        $this->guestAnswers->answer($guest, $answer);
+        $this->guestAnswers->answer($guest, $answer, $this->guestRules->companionChoices($body['companions'] ?? []));
 
         return $this->answered($guest);
     }
@@ -80,6 +91,7 @@ final readonly class GuestPageController
         $venue = EventVenue::of($event);
         $reply = $guest->getReply();
         $repliedAt = $guest->getRepliedAt();
+        $places = $this->guestRepository->findCompanionsOf($guest);
 
         return new JsonResponse([
             'guest' => [
@@ -88,7 +100,16 @@ final readonly class GuestPageController
                     'answer' => $reply->value,
                     'at' => $repliedAt->setTimezone($zone)->format(\DATE_ATOM),
                 ],
-                'companions' => $this->guestRepository->countCompanions($guest),
+                'places' => Iter\count($places),
+                'companions' => Vec\map(
+                    Vec\filter($places, static fn (Guest $place): bool => null !== $place->getFullName()),
+                    static fn (Guest $companion): array => [
+                        'id' => $companion->getId()->toRfc4122(),
+                        'fullName' => $companion->getFullName(),
+                        'coming' => !$companion->isNotComingByGuest(),
+                        'namedByGuest' => $companion->isNamedByGuest(),
+                    ],
+                ),
             ],
             'language' => [
                 'chosen' => $guest->getChosenLanguage(),

@@ -22,7 +22,7 @@ function json({ status, body }: Answer): Response {
 }
 
 const PAGE = {
-  guest: { fullName: ADAEZE, reply: null, companions: 0 },
+  guest: { fullName: ADAEZE, reply: null, places: 0, companions: [] as object[] },
   language: { chosen: null, host: null, organisation: 'en' },
   event: {
     id: '0193f5a8-0000-7000-8000-000000000001',
@@ -39,9 +39,23 @@ const PAGE = {
   answersOpen: true,
 };
 
-function answered(answer: string, at = '2026-10-17T14:20:00+01:00', companions = 0) {
-  return { ...PAGE, guest: { ...PAGE.guest, reply: { answer, at }, companions } };
+function answered(
+  answer: string,
+  at = '2026-10-17T14:20:00+01:00',
+  places = 0,
+  companions: readonly object[] = [],
+) {
+  return { ...PAGE, guest: { ...PAGE.guest, reply: { answer, at }, places, companions } };
 }
+
+const CHIDI = {
+  id: '0193f5a8-0000-7000-8000-0000000000c1',
+  fullName: 'Chidi Okonkwo-Williams',
+  coming: true,
+  namedByGuest: false,
+};
+
+const WITH_PLACES = { ...PAGE, guest: { ...PAGE.guest, places: 2, companions: [CHIDI] } };
 
 const CLOSED = {
   type: 'https://soirely.com/errors/replies_closed',
@@ -352,7 +366,7 @@ describe('answering', () => {
   it('tells a guest with companions that they won’t be coming either', async () => {
     api({
       '/api/guest-links/page': [
-        { status: 200, body: { ...PAGE, guest: { ...PAGE.guest, companions: 2 } } },
+        { status: 200, body: { ...PAGE, guest: { ...PAGE.guest, places: 2 } } },
       ],
       '/api/guest-links/reply': [{ status: 200, body: answered('notComing', undefined, 2) }],
     });
@@ -404,6 +418,109 @@ describe('answering', () => {
 
     fireEvent.click(await screen.findByRole('button', { name: 'Yes, I’ll be there' }));
     fireEvent.click(screen.getByRole('button', { name: 'Change' }));
+
+    expect(screen.getByRole('button', { name: 'Yes, I’ll be there' })).toBe(document.activeElement);
+  });
+
+  it('asks Who’s coming with you? after Yes for a guest with places, sending nothing yet', async () => {
+    const { sent } = api({ '/api/guest-links/page': [{ status: 200, body: WITH_PLACES }] });
+    open();
+
+    fireEvent.click(await screen.findByRole('button', { name: 'Yes, I’ll be there' }));
+
+    expect(screen.getByRole('heading', { name: 'Who’s coming with you?' })).toBe(
+      document.activeElement,
+    );
+    expect(
+      screen.getByText('Amara and Tobi have saved places for you and up to 2 others.'),
+    ).toBeDefined();
+    expect(screen.getByText('That’s you')).toBeDefined();
+    expect(screen.getByText('Named on your invitation')).toBeDefined();
+    expect(
+      screen.getByRole('button', { name: 'Chidi Okonkwo-Williams is coming' }).ariaPressed,
+    ).toBe('true');
+    expect(screen.getByRole('button', { name: 'Add someone · 1 place left' })).toBeDefined();
+    expect(sent.map(({ path }) => path)).toEqual(['/api/guest-links/page']);
+  });
+
+  it('does not add a blank name, and says why on the button', async () => {
+    api({ '/api/guest-links/page': [{ status: 200, body: WITH_PLACES }] });
+    open();
+
+    fireEvent.click(await screen.findByRole('button', { name: 'Yes, I’ll be there' }));
+    fireEvent.click(screen.getByRole('button', { name: 'Add someone · 1 place left' }));
+    fireEvent.click(screen.getByRole('button', { name: 'Add someone · 1 place left' }));
+
+    expect(screen.getByRole('button', { name: 'Type their name' })).toBeDefined();
+    expect(screen.getByLabelText('Their name').getAttribute('aria-invalid')).toBe('true');
+  });
+
+  it('sends who fills the places with Send my answer: a toggle, a rename and a name added', async () => {
+    const { sent } = api({
+      '/api/guest-links/page': [{ status: 200, body: WITH_PLACES }],
+      '/api/guest-links/reply': [
+        {
+          status: 200,
+          body: answered('coming', undefined, 2, [
+            { ...CHIDI, fullName: 'Chidi Okonkwo', coming: false, namedByGuest: true },
+            {
+              id: '0193f5a8-0000-7000-8000-0000000000c2',
+              fullName: 'Nneka Okonkwo-Williams',
+              coming: true,
+              namedByGuest: true,
+            },
+          ]),
+        },
+      ],
+    });
+    open();
+
+    fireEvent.click(await screen.findByRole('button', { name: 'Yes, I’ll be there' }));
+    fireEvent.click(screen.getByRole('button', { name: 'Change Chidi Okonkwo-Williams’s name' }));
+    fireEvent.change(screen.getByLabelText('Their name'), { target: { value: 'Chidi Okonkwo' } });
+    fireEvent.click(screen.getByRole('button', { name: 'Done' }));
+    fireEvent.click(screen.getByRole('button', { name: 'Chidi Okonkwo is coming' }));
+    fireEvent.click(screen.getByRole('button', { name: 'Add someone · 1 place left' }));
+    fireEvent.change(screen.getByLabelText('Their name'), {
+      target: { value: ' Nneka Okonkwo-Williams ' },
+    });
+    fireEvent.click(screen.getByRole('button', { name: 'Add someone · 1 place left' }));
+
+    expect(screen.queryByRole('button', { name: /Add someone/ })).toBeNull();
+    expect(screen.getAllByText('Named by you')).toHaveLength(2);
+
+    fireEvent.click(screen.getByRole('button', { name: 'Next' }));
+
+    expect(screen.getByRole('heading', { name: 'Check and send' })).toBe(document.activeElement);
+    expect(screen.getByText('You and Nneka Okonkwo-Williams · 2 people')).toBeDefined();
+
+    fireEvent.click(screen.getByRole('button', { name: 'Send my answer' }));
+
+    expect(await screen.findByRole('heading', { name: `See you there, ${ADAEZE}.` })).toBeDefined();
+    expect(sent.at(-1)?.body).toEqual({
+      token: TOKEN,
+      answer: 'coming',
+      companions: [
+        { id: CHIDI.id, fullName: 'Chidi Okonkwo', coming: false },
+        { id: null, fullName: 'Nneka Okonkwo-Williams', coming: true },
+      ],
+    });
+    expect(screen.getByText('You and Nneka Okonkwo-Williams · 2 people')).toBeDefined();
+  });
+
+  it('goes back from Check and send to Who’s coming with you?, and from there to the answers', async () => {
+    api({ '/api/guest-links/page': [{ status: 200, body: WITH_PLACES }] });
+    open();
+
+    fireEvent.click(await screen.findByRole('button', { name: 'Yes, I’ll be there' }));
+    fireEvent.click(screen.getByRole('button', { name: 'Next' }));
+    fireEvent.click(screen.getByRole('button', { name: 'Back' }));
+
+    expect(screen.getByRole('heading', { name: 'Who’s coming with you?' })).toBe(
+      document.activeElement,
+    );
+
+    fireEvent.click(screen.getByRole('button', { name: 'Back' }));
 
     expect(screen.getByRole('button', { name: 'Yes, I’ll be there' })).toBe(document.activeElement);
   });

@@ -145,3 +145,31 @@ export function withGuest(list: GuestList, guest: Guest): GuestList {
 }
 
 export const MOST_COMPANIONS = COMPANIONS_MAXIMUM;
+
+/** Which places a new count keeps, by index, and how many unnamed ones it adds; refused with the number named when it would drop a name. */
+export type PlacesStep = { kept: number[]; added: number } | { refused: number };
+
+/** sc-3779: more places adds unnamed ones at the end; fewer takes unnamed ones only, from the end. */
+export function placesTo(names: readonly string[], places: number): PlacesStep {
+  const wanted = Math.max(0, Math.min(MOST_COMPANIONS, Math.trunc(places)));
+  const all = names.map((_, at) => at);
+
+  if (wanted >= names.length) return { kept: all, added: wanted - names.length };
+  const named = names.filter((name) => !blank(name)).length;
+  if (wanted < named) return { refused: named };
+  let drop = names.length - wanted;
+  const dropped = new Set<number>();
+
+  for (let at = names.length - 1; at >= 0 && drop > 0; at -= 1) {
+    if (blank(names[at] ?? null)) {
+      dropped.add(at);
+      drop -= 1;
+    }
+  }
+
+  return { kept: all.filter((at) => !dropped.has(at)), added: 0 };
+}
+
+export function namedCount(names: readonly (string | null)[]): number {
+  return names.filter((name) => !blank(name)).length;
+}
