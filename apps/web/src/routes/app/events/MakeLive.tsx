@@ -22,6 +22,7 @@ import { describedBy } from './eventFieldOrder.ts';
 import { PHASE_WORD } from './eventWords.ts';
 import { LifecycleDialog } from './LifecycleDialog.tsx';
 import { type Refused } from './useLifecycleAction.ts';
+import { inPlace } from './openInPlace.ts';
 
 /** A word and a shape of its own, never colour alone (WCAG 2.2 §1.4.1). */
 export function StatusPill({ phase }: { phase: EventPhase }) {
@@ -151,10 +152,7 @@ export function useMakeLive({
       refused({
         title: t('eventLive.notMadeLive'),
         lines: [t('eventLive.endPassed')],
-        link: {
-          label: t('eventLive.changeDates'),
-          to: `/app/events/${encodeURIComponent(event.id)}/edit#starts`,
-        },
+        link: { label: t('eventLive.changeDates'), ...inPlace(event.id, 'dates') },
       });
     } else {
       setAsking({
@@ -193,6 +191,7 @@ export function useMakeLive({
           tone="primary"
           onGo={() => undefined}
           onClose={close}
+          onFollow={() => setAsking(null)}
         />
       )}
       {asking?.kind === 'confirm' && (
@@ -250,10 +249,7 @@ export function DraftRow({
                 {t('eventLive.makeLive')}
               </button>
             ) : (
-              <Link
-                className="button button-primary"
-                to={`/app/events/${encodeURIComponent(event.id)}/edit#starts`}
-              >
+              <Link className="button button-primary" {...inPlace(event.id, 'dates')}>
                 {t('eventLive.changeDates')}
               </Link>
             ))}

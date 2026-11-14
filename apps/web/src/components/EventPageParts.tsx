@@ -244,16 +244,25 @@ export function DateTime({
   wall,
   wrong = false,
   told,
+  focus = false,
   onChange,
 }: {
   legend: string;
   wall: Wall;
   wrong?: boolean;
   told?: string | undefined;
+  /** Its date takes focus as it opens. */
+  focus?: boolean;
   onChange: (wall: Wall) => void;
 }) {
   const { t } = useTranslation();
   const id = useId();
+  const date = useRef<HTMLInputElement>(null);
+  const [focusFirst] = useState(focus);
+
+  useEffect(() => {
+    if (focusFirst) date.current?.focus();
+  }, [focusFirst]);
 
   return (
     <fieldset className="ev-when">
@@ -263,6 +272,7 @@ export function DateTime({
           {`${legend}, ${t('eventForm.date')}`}
         </label>
         <input
+          ref={date}
           id={`${id}-date`}
           type="date"
           className={wrong ? 'ev-input is-wrong' : 'ev-input'}
