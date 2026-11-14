@@ -2368,7 +2368,7 @@ describe('Send on WhatsApp (sc-26025)', () => {
     expect(send.textContent).toMatch(/^Send on WhatsApp/u);
     expect(href.startsWith('whatsapp://send?phone=2348035550199&text=')).toBe(true);
     expect(new URL(href).searchParams.get('text')).toBe(
-      `Yusuf Ibrahim, Amara Okafor would love you to come to Adaeze and Tunde on 14 November 2030. Your own page, to reply and see the details: ${LINK}`,
+      `Hello Yusuf Ibrahim,\nAmara Okafor would love you to come to Adaeze and Tunde on 14 November 2030. Your own page, to reply and see the details: ${LINK}`,
     );
     expect(href).not.toMatch(/wa\.me|whatsapp\.com/u);
     expect(

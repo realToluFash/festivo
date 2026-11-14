@@ -26,7 +26,7 @@ afterEach(() => {
 describe('The invitation Send on WhatsApp writes (sc-26025)', () => {
   it('greets by the full name as typed, and joins the hosts and writes the date in the guest’s language', () => {
     expect(whatsAppMessage(guestIn('en'), EVENT, LINK)).toBe(
-      `Yusuf Ibrahim, Amara Okafor and Tomi Bello would love you to come to Adaeze and Tunde on 14 November 2030. Your own page, to reply and see the details: ${LINK}`,
+      `Hello Yusuf Ibrahim,\nAmara Okafor and Tomi Bello would love you to come to Adaeze and Tunde on 14 November 2030. Your own page, to reply and see the details: ${LINK}`,
     );
     expect(whatsAppMessage(guestIn('es'), EVENT, LINK)).toContain('Amara Okafor y Tomi Bello');
     expect(whatsAppMessage(guestIn('es'), EVENT, LINK)).toContain('14 de noviembre de 2030');
@@ -41,10 +41,10 @@ describe('The invitation Send on WhatsApp writes (sc-26025)', () => {
 
     for (const language of ['en', 'es', 'fr', 'pt']) {
       expect(whatsAppMessage(guestIn(language), alone, LINK)).toMatch(
-        /^Yusuf Ibrahim, Amara Okafor /u,
+        /Yusuf Ibrahim\P{L}+Amara Okafor /u,
       );
       expect(whatsAppMessage(guestIn(language), EVENT, LINK)).toMatch(
-        /^Yusuf Ibrahim, Amara Okafor /u,
+        /Yusuf Ibrahim\P{L}+Amara Okafor /u,
       );
     }
   });
