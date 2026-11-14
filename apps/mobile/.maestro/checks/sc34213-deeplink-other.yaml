@@ -1,0 +1,42 @@
+# sc-34213: after saving Oluwafolakemi Bello, an incoming deep link to Security, then back to Your account, starts again from Folake Adeyemi and FA. Needs ${METRO_URL} and ${ORIENT} (PORTRAIT on a phone).
+appId: host.exp.Exponent
+---
+- setOrientation: ${ORIENT}
+- openLink: ${METRO_URL}/--/demo/settings/account
+- extendedWaitUntil:
+    visible:
+      id: 'account.name'
+    timeout: 30000
+- waitForAnimationToEnd:
+    timeout: 8000
+- tapOn:
+    id: 'account.name'
+- extendedWaitUntil:
+    visible:
+      id: 'account.name.field'
+    timeout: 10000
+- eraseText: 120
+- inputText: 'Oluwafolakemi Bello'
+- tapOn:
+    id: 'account.name.save'
+- extendedWaitUntil:
+    notVisible:
+      id: 'account.name.screen'
+    timeout: 10000
+- waitForAnimationToEnd:
+    timeout: 8000
+- openLink: ${METRO_URL}/--/demo/settings/security
+- waitForAnimationToEnd:
+    timeout: 8000
+- takeScreenshot: deep-link-security
+- tapOn: 'Folake Adeyemi.*'
+- extendedWaitUntil:
+    visible:
+      id: 'account.name'
+    timeout: 10000
+- waitForAnimationToEnd:
+    timeout: 8000
+- takeScreenshot: account-after-deep-link-security
+- assertVisible: 'FA'
+- assertNotVisible: 'OB'
+- assertNotVisible: 'Oluwafolakemi Bello'

@@ -1,0 +1,42 @@
+# Delete organisation: a name that does not match, keys up. The check keeps focus and keys, the next key goes in. sc-9674.
+appId: host.exp.Exponent
+---
+- openLink: ${METRO_URL}/--/settings/organisation
+- extendedWaitUntil:
+    visible:
+      id: organisation.card
+    timeout: 30000
+- scrollUntilVisible:
+    element:
+      id: organisation.ownership.delete
+    centerElement: true
+- tapOn:
+    id: organisation.ownership.delete
+- extendedWaitUntil:
+    visible:
+      id: organisation.delete.name
+    timeout: 30000
+- scrollUntilVisible:
+    element:
+      id: organisation.delete.name
+    centerElement: true
+- tapOn:
+    id: organisation.delete.name
+- inputText: wrong
+- assertVisible: '(?i)(shift|delete)'
+- scrollUntilVisible:
+    element:
+      id: organisation.delete.send
+    centerElement: true
+- tapOn:
+    id: organisation.delete.send
+- extendedWaitUntil:
+    visible: '{{t:ownership.deleteMismatch}}'
+    timeout: 10000
+- waitForAnimationToEnd
+- takeScreenshot: checked
+- assertVisible: '(?i)(shift|delete)'
+- inputText: x
+- assertVisible:
+    id: organisation.delete.name
+    text: 'wrongx'

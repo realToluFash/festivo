@@ -1,0 +1,42 @@
+# iPad only: a phone's walk has no scrim. sc-25667: on an account at its limit, a tap on the scrim does nothing while it sends; once Too many new organisations for now. shows, a tap on the scrim asks to discard, and Discard leaves the walk.
+appId: host.exp.Exponent
+onFlowComplete:
+  - runScript:
+      file: ../batch/helper.js
+      env:
+        ASK: /api?to=up
+---
+- runFlow: ../open-create-organisation.yaml
+- runFlow:
+    file: ../walk-to-ready.yaml
+    env:
+      NAME: 'Held Scrim'
+- runScript:
+    file: ../batch/helper.js
+    env:
+      ASK: /api?to=paused
+- tapOn:
+    id: 'createWalk.primary'
+- tapOn:
+    point: '50%,8%'
+- waitForAnimationToEnd:
+    timeout: 3000
+- assertVisible:
+    id: 'createWalk'
+- assertVisible: '{{t:createOrganisation.creating}}'
+- runScript:
+    file: ../batch/helper.js
+    env:
+      ASK: /api?to=up
+- extendedWaitUntil:
+    visible: '{{t:createOrganisation.limitedTitle}}'
+    timeout: 30000
+- tapOn:
+    point: '50%,8%'
+- tapOn:
+    id: 'createWalk.discard'
+- extendedWaitUntil:
+    notVisible:
+      id: 'createWalk'
+    timeout: 10000
+- takeScreenshot: limited-scrim-closed

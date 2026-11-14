@@ -1,0 +1,5 @@
+# sc-29072: signs the batch's session out, then signs EMAIL and PASSWORD (two-factor on) in up to Enter your code.
+appId: host.exp.Exponent
+---
+- runFlow: sign-out.yaml
+- runFlow: sc33828-to-code-signed-out.yaml

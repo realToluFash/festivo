@@ -1,0 +1,37 @@
+# Signed out, in English or in LANGUAGE, Welcome > Create an account, then Create your account as it
+# arrives with Full name focused: a shot as the keys rise, one after they settle, and the far end of
+# the form one scroll down and back. sc-35488. Pass SHOT; LANGUAGE is optional.
+#
+#   node .qa/bin/qa-env.mjs maestro sc35488-create-from-welcome --android SHOT=… [LANGUAGE=Français]
+appId: host.exp.Exponent
+---
+- runFlow:
+    when:
+      true: ${typeof LANGUAGE === 'undefined' || LANGUAGE === 'English'}
+    file: sign-in-screen-english.yaml
+- runFlow:
+    when:
+      true: ${typeof LANGUAGE !== 'undefined' && LANGUAGE !== 'English'}
+    file: sign-in-screen-language.yaml
+- runFlow: welcome-signed-out.yaml
+- tapOn:
+    id: 'welcome.register'
+- extendedWaitUntil:
+    visible:
+      id: 'register.name'
+    timeout: 20000
+- takeScreenshot: ${SHOT}-arrival-early
+- waitForAnimationToEnd
+- takeScreenshot: ${SHOT}-arrival
+- swipe:
+    start: 50%, 38%
+    end: 50%, 8%
+    duration: 600
+- waitForAnimationToEnd
+- takeScreenshot: ${SHOT}-scrolled-down
+- swipe:
+    start: 50%, 8%
+    end: 50%, 40%
+    duration: 600
+- waitForAnimationToEnd
+- takeScreenshot: ${SHOT}-scrolled-back
