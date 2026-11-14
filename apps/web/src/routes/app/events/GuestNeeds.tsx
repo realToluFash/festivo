@@ -286,7 +286,6 @@ export function NeedsSection({
               <div className={noteError == null ? 'desk-box is-area' : 'desk-box is-area is-wrong'}>
                 <textarea
                   id={noteId}
-                  className="gs-note"
                   rows={3}
                   value={needs.note}
                   data-focus={`${focusKey}-note`}

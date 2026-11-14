@@ -1062,10 +1062,6 @@
   font-size: 14.5px;
 }
 
-.gs-note {
-  min-height: 72px;
-}
-
 .gs-companion-block {
   display: flex;
   flex-direction: column;

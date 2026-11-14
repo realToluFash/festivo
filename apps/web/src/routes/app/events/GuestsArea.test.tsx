@@ -2801,7 +2801,7 @@ describe('A guest’s needs (sc-3777)', () => {
     expect(text).toContain('border: 0;');
     expect(text).toContain('font: 500 16px/1.45 var(--fontFamily);');
     expect(text).toContain('resize: vertical;');
-    expect(cssRule('.gs-note', GUESTS_CSS)).toContain('min-height: 72px;');
+    expect(text).toContain('min-height: 72px;');
   });
 
   it('refuses an Other with no words, or more than 100, beside it, and sends nothing', async () => {
