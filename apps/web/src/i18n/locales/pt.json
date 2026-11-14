@@ -2932,9 +2932,9 @@
     "sentOnWhatsApp": "Convite enviado a {{name}} por WhatsApp?",
     "notSent": "Não enviado",
     "ifNotOpened": "Se o WhatsApp não abriu, use «Copiar ligação do convite».",
-    "whatsAppMessage_one": "Olá, {{greeting}}.\n{{hosts}} terá muito gosto em contar com a sua presença no evento {{event}}, a {{date}}. A sua página pessoal, para responder e ver os pormenores: {{link}}",
-    "whatsAppMessage_many": "Olá, {{greeting}}.\n{{hosts}} terão muito gosto em contar com a sua presença no evento {{event}}, a {{date}}. A sua página pessoal, para responder e ver os pormenores: {{link}}",
-    "whatsAppMessage_other": "Olá, {{greeting}}.\n{{hosts}} terão muito gosto em contar com a sua presença no evento {{event}}, a {{date}}. A sua página pessoal, para responder e ver os pormenores: {{link}}",
+    "whatsAppMessage_one": "{{greeting}}, {{hosts}} terá muito gosto em contar com a sua presença no evento {{event}}, a {{date}}. A sua página pessoal, para responder e ver os pormenores: {{link}}",
+    "whatsAppMessage_many": "{{greeting}}, {{hosts}} terão muito gosto em contar com a sua presença no evento {{event}}, a {{date}}. A sua página pessoal, para responder e ver os pormenores: {{link}}",
+    "whatsAppMessage_other": "{{greeting}}, {{hosts}} terão muito gosto em contar com a sua presença no evento {{event}}, a {{date}}. A sua página pessoal, para responder e ver os pormenores: {{link}}",
     "how": {
       "whatsapp": "WhatsApp",
       "textMessage": "SMS",

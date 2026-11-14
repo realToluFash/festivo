@@ -2932,9 +2932,9 @@
     "sentOnWhatsApp": "Invitation envoyée à {{name}} via WhatsApp ?",
     "notSent": "Non envoyée",
     "ifNotOpened": "Si WhatsApp ne s’est pas ouvert, utilisez plutôt « Copier le lien d’invitation ».",
-    "whatsAppMessage_one": "Bonjour {{greeting}},\n{{hosts}} a le plaisir de vous inviter à l’événement {{event}}, le {{date}}. Votre page personnelle, pour répondre et voir les détails : {{link}}",
-    "whatsAppMessage_many": "Bonjour {{greeting}},\n{{hosts}} ont le plaisir de vous inviter à l’événement {{event}}, le {{date}}. Votre page personnelle, pour répondre et voir les détails : {{link}}",
-    "whatsAppMessage_other": "Bonjour {{greeting}},\n{{hosts}} ont le plaisir de vous inviter à l’événement {{event}}, le {{date}}. Votre page personnelle, pour répondre et voir les détails : {{link}}",
+    "whatsAppMessage_one": "{{greeting}}, {{hosts}} a le plaisir de vous inviter à l’événement {{event}}, le {{date}}. Votre page personnelle, pour répondre et voir les détails : {{link}}",
+    "whatsAppMessage_many": "{{greeting}}, {{hosts}} ont le plaisir de vous inviter à l’événement {{event}}, le {{date}}. Votre page personnelle, pour répondre et voir les détails : {{link}}",
+    "whatsAppMessage_other": "{{greeting}}, {{hosts}} ont le plaisir de vous inviter à l’événement {{event}}, le {{date}}. Votre page personnelle, pour répondre et voir les détails : {{link}}",
     "how": {
       "whatsapp": "WhatsApp",
       "textMessage": "SMS",
