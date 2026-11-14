@@ -107,6 +107,7 @@ import {
   viewOf,
 } from './guestView.ts';
 import { useGuestsAddress } from './useGuestsAddress.ts';
+import { keepAsked, keptAsked } from './whatsAppSend.ts';
 import '../../../components/desk.css';
 import '../../../components/SettingsParts.css';
 import '../../../components/EventsSearch.css';
@@ -301,6 +302,9 @@ export function GuestsArea({
   const [dirty, setDirty] = useState(false);
   const [asking, setAsking] = useState<(() => void) | null>(null);
   const [saved, setSaved] = useState(false);
+  const [asked, setAsked] = useState<ReadonlySet<string>>(() =>
+    invites ? keptAsked(event.id) : new Set(),
+  );
   const lastRow = useRef<string | null>(open);
   const addAfter = useRef(false);
   const headingOwed = useRef(false);
@@ -471,6 +475,47 @@ export function GuestsArea({
   }
 
   const guests = load.kind === 'loaded' ? load.list.guests : [];
+  const stillAsked = new Set(
+    invites
+      ? [...asked].filter((id) => {
+          const guest = guests.find((one) => one.id === id);
+
+          return guest == null || shownReply(guest) === 'notYetInvited';
+        })
+      : [],
+  );
+
+  // Once the phase line shows, a question has nothing to answer it with, and none comes back if the event is Live again.
+  if (stillAsked.size !== asked.size) setAsked(stillAsked);
+
+  useEffect(() => keepAsked(event.id, asked), [event.id, asked]);
+
+  function ask(id: string, open: boolean): void {
+    setAsked((was) => {
+      const next = new Set(was);
+
+      if (open) next.add(id);
+      else next.delete(id);
+
+      return next;
+    });
+  }
+
+  /** With Not yet invited on, the guest just marked leaves the list, so focus goes to the row that took their place. */
+  function sentFrom(id: string): void {
+    const rows = view.kind === 'rows' ? view.rows : view.groups.flatMap((group) => group.rows);
+    const at = rows.findIndex((row) => row.person.guest.id === id);
+
+    if (choice !== 'notYetInvited' || at < 0) {
+      focus('guest-heading');
+      return;
+    }
+    const others = (from: readonly ViewRow[]) => from.filter((row) => row.person.guest.id !== id);
+    const next = others(rows.slice(at))[0] ?? others(rows.slice(0, at)).at(-1);
+
+    setParams(withGuest(null));
+    focus(next == null ? 'none-heading' : `row:${next.person.id}`, 'title');
+  }
   const shows =
     load.kind === 'failed' || counted === 'failed'
       ? 'failed'
@@ -692,6 +737,7 @@ export function GuestsArea({
                           eventId={event.id}
                           guestId={open}
                           timeZone={event.timeZone}
+                          event={event}
                           mesh={meshFor(event.id)}
                           manages={manages}
                           guests={guests}
@@ -701,7 +747,11 @@ export function GuestsArea({
                           draft={phase === 'draft'}
                           flagged={flagged.has(open)}
                           onCopy={() => api.guestLink(event.id, open).catch(phaseRefused)}
+                          onLink={() => api.guestLink(event.id, open)}
                           onMark={(how) => api.markInvited(event.id, open, how).catch(phaseRefused)}
+                          asked={stillAsked.has(open)}
+                          onAsked={(on) => ask(open, on)}
+                          onSentMarked={() => sentFrom(open)}
                           onUnmark={() => api.markNotInvited(event.id, open)}
                           onChanged={changed}
                           onReplace={() =>

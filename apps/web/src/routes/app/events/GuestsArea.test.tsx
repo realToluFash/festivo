@@ -1811,7 +1811,9 @@ describe('A guest’s invitation link (sc-1526)', () => {
       ),
     ).toBeDefined();
     expect(sent.filter(({ line }) => line.includes('/link'))).toEqual([
+      { line: 'GET /api/events/ev_1/guests/g_1/link', body: null },
       { line: 'POST /api/events/ev_1/guests/g_1/link/replace', body: null },
+      { line: 'GET /api/events/ev_1/guests/g_1/link', body: null },
     ]);
   });
 

@@ -2926,6 +2926,13 @@
     "howInvited": "Par quel moyen avez-vous invité cette personne ?",
     "howInvitedBlank": "Choisissez comment vous avez invité cette personne.",
     "markNotSaved": "Non enregistré. Le statut reste « Sans invitation ». Réessayez.",
+    "sendOnWhatsApp": "Send on WhatsApp",
+    "sendOnWhatsAppTo": "Send on WhatsApp to {{name}}",
+    "sendLine": "Opens WhatsApp with their invitation written, for you to send",
+    "sentOnWhatsApp": "Sent to {{name}} on WhatsApp?",
+    "notSent": "Not sent",
+    "ifNotOpened": "If WhatsApp didn’t open, use Copy invitation link instead.",
+    "whatsAppMessage": "{{greeting}}, {{hosts}} would love you to come to {{event}} on {{date}}. Your own page, to reply and see the details: {{link}}",
     "how": {
       "whatsapp": "WhatsApp",
       "textMessage": "SMS",
