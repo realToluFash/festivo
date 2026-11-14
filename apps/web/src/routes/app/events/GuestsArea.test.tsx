@@ -234,6 +234,7 @@ describe('Guests (sc-1468)', () => {
   it('says on a guest’s row how many places are named, but not on a companion’s, nor under No reply (sc-3779)', async () => {
     signedIn();
     const bisi = guest('g_3', 'Bisi Adewale', {
+      invitation: INVITED,
       companions: [{ id: 'c_9', fullName: null, state: 'held', namedByGuest: false }],
     });
     await onGuests({ 'GET /api/events/ev_1/guests': () => json(listOf([NGOZI, AMAKA, bisi])) });
@@ -257,6 +258,7 @@ describe('Guests (sc-1468)', () => {
   it('keeps a guest’s row to their reply under the No reply filter (sc-3779, sc-3788)', async () => {
     signedIn();
     const bisi = guest('g_3', 'Bisi Adewale', {
+      invitation: INVITED,
       companions: [{ id: 'c_9', fullName: null, state: 'held', namedByGuest: false }],
     });
     await onGuests(
