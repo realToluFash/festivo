@@ -16,7 +16,7 @@ async function guests(state: string) {
   });
 
   render(<RouterProvider router={router} />);
-  await screen.findByRole('heading', { level: 1, name: 'Guests' }, WAIT);
+  await screen.findByRole('heading', { level: 1, name: 'Guests' }, SLOW);
 }
 
 function column(): HTMLElement {
