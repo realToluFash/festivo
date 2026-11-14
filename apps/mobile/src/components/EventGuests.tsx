@@ -47,9 +47,9 @@ import { useTranslation } from 'react-i18next';
 import { api } from '../api.ts';
 import { followReadingAgain } from '../followTopic.ts';
 import { dateLocale } from '../i18n/index.ts';
-import { type CardTag, type Shown, cardTags } from '../kit/eventsList.ts';
+import type { Shown } from '../kit/eventsList.ts';
 import { sidebarCardOf } from '../kit/eventTop.ts';
-import { filterChoices, markOf } from '../kit/guestRows.ts';
+import { type PhaseCard, filterChoices, markOf, phaseCardOf } from '../kit/guestRows.ts';
 import { type ScreenOffline, useHandOffline, useOffline } from '../offline.ts';
 import { useSignedIn } from '../signedIn.ts';
 import { tokens } from '../theme/tokens.ts';
@@ -59,7 +59,6 @@ import { GuestDetails, type GuestNotice, type GuestPane } from './GuestDetails.t
 import { GuestForm, type GuestFormMode } from './GuestForm.tsx';
 import { GuestsCard } from './GuestsCard.tsx';
 import { type MarkRefusal, MarkInvited } from './GuestInvitation.tsx';
-import { draftRowOf } from '../kit/makeLive.ts';
 import { DraftRow, useMakeLive } from './MakeLive.tsx';
 import type { ScreenReaderTarget } from './screenReaderFocus.ts';
 import type { LayoutKind } from '../layout/useLayout.ts';
@@ -761,47 +760,6 @@ function FilterChoice({
       </AnchoredMenu>
     </>
   );
-}
-
-interface PhaseCard {
-  tags: CardTag[];
-  /** A Draft counts who is on the list, since nobody is invited yet. */
-  onList: boolean;
-  line: string;
-  offersMakeLive: boolean;
-}
-
-/** Why nobody can be invited, on the card as the demo's draft, paused and finished draw it: the phase's chip, its line, and on a Draft Make live for someone with events.manage (sc-46879). */
-function phaseCardOf(
-  t: TFunction,
-  event: OrganisationEvent,
-  shown: Shown | null,
-  phase: EventPhase | null,
-  now: Date,
-): PhaseCard | null {
-  if (shown == null) return null;
-  const tags = cardTags(shown, now, t).filter((tag) => tag.mark != null);
-
-  if (phase === 'draft') {
-    const row = draftRowOf(event, now, roleHolds(event, 'events.manage'));
-
-    return row == null
-      ? null
-      : {
-          tags,
-          onList: true,
-          line: row.line === 'endPassed' ? t('eventLive.endPassed') : t('eventLive.guestsBlocked'),
-          offersMakeLive: row.offersMakeLive,
-        };
-  }
-  if (phase !== 'paused' && phase !== 'finished') return null;
-
-  return {
-    tags,
-    onList: false,
-    line: t(phase === 'paused' ? 'guestList.pausedLine' : 'guestList.finishedLine'),
-    offersMakeLive: false,
-  };
 }
 
 /** Before the list is read, or on an empty one, the phase's line stands above it: a Draft's with Make live, a Paused or Finished event's alone (sc-46879). */
