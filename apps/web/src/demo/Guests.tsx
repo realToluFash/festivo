@@ -1088,7 +1088,7 @@ function GuestsPage({
   );
 }
 
-function SearchRow({
+export function SearchRow({
   q,
   choice,
   counts,
