@@ -3053,7 +3053,7 @@
     "noneYetViewer": "People who manage guests can make them."
   },
   "guestSelect": {
-    "selectAll_one": "Select all {{count, number}} shown",
+    "selectAll_one": "Select the {{count, number}} shown",
     "selectAll_other": "Select all {{count, number}} shown",
     "select": "Select {{name}}",
     "selected_one": "{{count, number}} selected",
