@@ -1543,6 +1543,17 @@ final class EventsTest extends ApiTestCase
     }
 
     #[Test]
+    public function aNoteOf500EndingInSpacesTheClientsTrimIsSaved(): void
+    {
+        $note = Str\repeat('a', 500);
+
+        $body = $this->as($this->owner, 'POST', $this->path('events'), [...self::valid(), 'arrivalNote' => "\u{3000}" . $note . "\u{2028}\u{202F}\u{3000}"]);
+
+        self::assertSame(201, $this->statusCode(), Json\encode($body));
+        self::assertSame($note, $this->event($body)['arrivalNote']);
+    }
+
+    #[Test]
     public function anAccentTypedAsTwoCodePointsCountsAsOne(): void
     {
         $note = Str\repeat("e\u{301}", 500);
