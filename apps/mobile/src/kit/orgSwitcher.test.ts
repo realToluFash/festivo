@@ -132,6 +132,16 @@ describe('Today’s openers', () => {
     expect(read('components', 'TodayLanding.tsx')).toMatch(/useOrgOpener: useFrameOrgOpener/u);
   });
 
+  it('register with the frame, so a turned tablet hangs the switcher from the opener drawn in its place', () => {
+    const registers =
+      /useEffect\(\(\) => register\??\.?\(ref, primary\), \[register, ref, primary\]\);/u;
+    const frame = read('components', 'AppFrame.tsx');
+
+    expect(read('demo', 'OrgSwitcher.tsx')).toMatch(registers);
+    expect(frame).toMatch(registers);
+    expect(frame).toMatch(/<RegisterOpener\.Provider value=\{registerOpener\}>/u);
+  });
+
   it('leave the iPad sidebar’s switcher out for someone in no organisation', () => {
     expect(read('components', 'TodaySidebar.tsx')).toMatch(/\{org && <SidebarOrg \/>\}/u);
     expect(read('demo', 'settings', 'Frame.tsx')).toMatch(/org=\{shell\.viewer !== 'noOrg'\}/u);
