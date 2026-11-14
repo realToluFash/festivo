@@ -180,11 +180,16 @@ export function NameStep({
   field,
   onTyped,
   onContinue,
+  quiet = false,
+  onTaken,
   onLeft,
 }: StepProps & {
   field: RefObject<TextInputInstance | null>;
   onTyped: (name: string) => void;
   onContinue: () => void;
+  /** Hidden from the screen reader, so taking input focus says nothing. */
+  quiet?: boolean;
+  onTaken?: (() => void) | undefined;
   onLeft?: (() => void) | undefined;
 }) {
   const { t } = useTranslation();
@@ -246,7 +251,10 @@ export function NameStep({
             value={walk.name}
             onChangeText={onTyped}
             onSubmitEditing={onContinue}
-            onFocus={() => setFocused(true)}
+            onFocus={() => {
+              setFocused(true);
+              onTaken?.();
+            }}
             onBlur={() => {
               setFocused(false);
               onLeft?.();
@@ -279,6 +287,7 @@ export function NameStep({
               },
               beside && styles.nameFieldBeside,
             ]}
+            importantForAccessibility={quiet ? 'no' : 'auto'}
             testID="createWalk.name"
           />
         </View>
@@ -398,11 +407,13 @@ function CountryRow({
 function CountrySearch({
   value,
   field,
+  quiet,
   onQuery,
   onFocused,
 }: {
   value: string;
   field: RefObject<TextInputInstance | null>;
+  quiet: boolean;
   onQuery: (query: string) => void;
   onFocused: (focused: boolean) => void;
 }) {
@@ -437,6 +448,7 @@ function CountrySearch({
         accessibilityRole="search"
         accessibilityLabel={words}
         style={styles.searchInput}
+        importantForAccessibility={quiet ? 'no' : 'auto'}
         testID="createWalk.search"
       />
       {Platform.OS !== 'ios' && value !== '' && (
@@ -471,11 +483,14 @@ export function CountryStep({
   onScrolled,
   field,
   toPick,
+  quiet = false,
   onQuery,
   onPick,
   onSearchFocused,
 }: Omit<StepProps, 'foot'> & {
   field: RefObject<TextInputInstance | null>;
+  /** The search, hidden from the screen reader, so taking input focus says nothing. */
+  quiet?: boolean;
   /** Reached by Back, or opened at the list: it scrolls to the pick, unless the device's own is ticked at the top. */
   toPick: boolean;
   onQuery: (query: string) => void;
@@ -523,6 +538,7 @@ export function CountryStep({
       <CountrySearch
         value={walk.query}
         field={field}
+        quiet={quiet}
         onQuery={onQuery}
         onFocused={onSearchFocused}
       />
