@@ -1,4 +1,4 @@
-import { act, fireEvent, render, screen, waitFor, within } from '@testing-library/react';
+import { act, cleanup, fireEvent, render, screen, waitFor, within } from '@testing-library/react';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { RouterProvider, createMemoryRouter } from 'react-router';
 
@@ -2542,6 +2542,44 @@ describe('Send on WhatsApp (sc-26025)', () => {
 
     expect(question()).toBeNull();
     await waitFor(() => expect(sessionStorage.getItem(KEPT)).toBeNull());
+  });
+
+  it('drops an open question when the event is paused elsewhere, so none comes back once it is Live again', async () => {
+    const PAUSED = { status: 'paused', phase: 'paused', pausedAt: '2026-11-13T10:00:00+00:00' };
+    let reads = 0;
+    let links = 0;
+    const sent = await openYusuf({
+      'GET /api/events/ev_1': () => {
+        reads += 1;
+
+        return json({
+          event: { ...EVENT, ...(reads > 1 ? PAUSED : {}), permissions: OWNER_PERMISSIONS },
+        });
+      },
+      'GET /api/events/ev_1/guests/g_4/link': () => {
+        links += 1;
+
+        return links === 1 ? json({ url: LINK }) : problem('event_state_invalid', 409);
+      },
+    });
+    await pressed();
+
+    fireEvent.click(within(invitation()).getByRole('button', { name: /^Copy invitation link/u }));
+
+    expect(
+      await screen.findByText('Guests can’t be invited while this event is paused.'),
+    ).toBeDefined();
+    expect(question()).toBeNull();
+    await waitFor(() => expect(sessionStorage.getItem(KEPT)).toBeNull());
+    expect(marks(sent)).toEqual([]);
+
+    cleanup();
+    vi.restoreAllMocks();
+    await openYusuf();
+
+    expect(await within(invitation()).findByRole('link', { name: SEND })).toBeDefined();
+    expect(question()).toBeNull();
+    expect(sessionStorage.getItem(KEPT)).toBeNull();
   });
 
   it('with Not yet invited on, moves focus to the row that took the marked guest’s place', async () => {
