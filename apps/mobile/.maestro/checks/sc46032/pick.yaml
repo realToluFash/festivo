@@ -1,0 +1,42 @@
+# sc-46032 subflow: joins Beta, made for this batch, then from FROM opens the switcher with the
+# pill and picks Beta. Leaves the app on FROM with the switcher closed.
+appId: host.exp.Exponent
+---
+- runScript:
+    file: ../../batch/helper.js
+    env:
+      ASK: /membership?change=join&org=Beta
+- evalScript: ${output.joined = output.helper.id}
+- openLink: ${METRO_URL}/--/
+- tapOn:
+    id: 'frame.home'
+    optional: true
+- waitForAnimationToEnd:
+    timeout: 5000
+- tapOn:
+    id: '${FROM}'
+- waitForAnimationToEnd:
+    timeout: 5000
+- tapOn:
+    id: 'frame.organisation'
+- extendedWaitUntil:
+    visible:
+      id: 'switcher.heading'
+    timeout: 20000
+- waitForAnimationToEnd:
+    timeout: 5000
+- runFlow:
+    when:
+      notVisible:
+        id: switcher.tile.${output.joined}
+    commands:
+      - scrollUntilVisible:
+          element:
+            id: switcher.tile.${output.joined}
+          timeout: 15000
+- tapOn:
+    id: switcher.tile.${output.joined}
+- extendedWaitUntil:
+    notVisible:
+      id: 'switcher.heading'
+    timeout: 20000
