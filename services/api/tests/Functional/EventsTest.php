@@ -1524,7 +1524,7 @@ final class EventsTest extends ApiTestCase
     #[Test]
     public function anArrivalNoteOf500CodePointsWithAccentsAndAnEmojiIsSavedAnd501IsRefused(): void
     {
-        $note = Str\repeat('a', 494) . 'éñç🚗 ' . 'b';
+        $note = Str\repeat('a', 494) . 'éñç🚗 b';
         self::assertSame(500, Str\length($note));
 
         $body = $this->as($this->owner, 'POST', $this->path('events'), [...self::valid(), 'arrivalNote' => $note . '  ']);

@@ -33,8 +33,8 @@ final readonly class EventRules
      * The venue, the arrival note and the hosts are checked only when they are in the fields, and are in what this returns only then.
      *
      * @param array{name: ?string, type: ?string, startsAt: ?string, endsAt: ?string, timeZone: string, currency: string, venue?: array{name?: ?string, address?: ?string, addressId?: ?string}|null, arrivalNote?: ?string, hosts?: list<string>} $fields
-     * @param ?string                                                                                                                                                                                                       $held      the event's currency on an edit, which may stay although no longer offered
-     * @param ?Venue                                                                                                                                                                                                        $heldVenue the event's venue on an edit, whose address keeps its parts when sent back unchanged
+     * @param ?string                                                                                                                                                                                                                              $held      the event's currency on an edit, which may stay although no longer offered
+     * @param ?Venue                                                                                                                                                                                                                               $heldVenue the event's venue on an edit, whose address keeps its parts when sent back unchanged
      *
      * @return array{name: string, type: EventType, startsAt: DateTimeImmutable, endsAt: DateTimeImmutable, currency: string, venue?: ?Venue, arrivalNote?: ?string, hosts?: list<string>}
      */
