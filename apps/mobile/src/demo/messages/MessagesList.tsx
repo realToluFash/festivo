@@ -43,6 +43,7 @@ import { CHANNEL_WORD, W, say } from './MessagesWords.ts';
 import { parkingReachOf } from './ReasonsSample.ts';
 import { caseFor, guestOf, readsOnly } from './NoticeStates.ts';
 import { NW } from './NoticeWords.ts';
+import { tapRowOf } from './TapStates.ts';
 
 export type { RowId };
 
@@ -162,6 +163,7 @@ function shownRow(m: Messages, id: RowId, locale: string): Shown {
   const guest = guestOf(m, id.key);
   const later = caseFor(m, id.key)?.extras?.find((one) => one.kind === 'later');
   const answer = m.answers[id.key];
+  const tap = tapRowOf(m, id.key);
   const done = m.done.includes(id.key) || id.key === 'marta';
   const where = guest.asked.where === 'page' ? W.onTheirPage : CHANNEL_WORD[guest.asked.where];
   const asked =
@@ -188,9 +190,13 @@ function shownRow(m: Messages, id: RowId, locale: string): Shown {
 
   return {
     title: name,
-    line: answer == null ? say.where(where, asked) : say.where(W.onTheirPage, say.you(answer.text)),
+    line:
+      answer != null
+        ? say.where(W.onTheirPage, say.you(answer.text))
+        : (tap?.line ?? say.where(where, asked)),
     time:
       answer?.time ??
+      tap?.time ??
       (later?.kind === 'later'
         ? later.time
         : id.key === 'lucia' && m.arrived

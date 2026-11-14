@@ -8,13 +8,15 @@ use App\Entity\Event;
 use App\Entity\Guest;
 use App\Enum\GuestReply;
 use App\Enum\GuestStanding;
+use App\Locale\GuestLanguage;
+use App\Locale\SupportedLocales;
 use App\Repository\GuestRepository;
 use DateTimeZone;
 use Psl\Dict;
 use Psl\Iter;
 use Psl\Vec;
 
-/** An event's guest list, each companion under their host; the clients sort it by name (sc-1468). Without `contacts` both keys are left out, not sent empty. */
+/** An event's guest list, each companion under their host; the clients sort it by name (sc-1468). Without `contacts` the contact and language keys are left out, not sent empty: Language goes with the contact details (sc-3790). */
 final readonly class GuestSerialiser
 {
     public function __construct(
@@ -56,7 +58,13 @@ final readonly class GuestSerialiser
         return [
             'id' => $host->getId()->toRfc4122(),
             'fullName' => $host->getFullName(),
-            ...$contacts ? ['email' => $host->getEmail(), 'mobile' => $host->getMobile()] : [],
+            ...$contacts ? [
+                'email' => $host->getEmail(),
+                'mobile' => $host->getMobile(),
+                'language' => $host->getLanguage(),
+                'chosenLanguage' => $host->getChosenLanguage(),
+                'messageLanguage' => GuestLanguage::forMessage($host),
+            ] : [],
             'reply' => $reply->value,
             'repliedAt' => GuestReply::NoReply === $reply ? null : $host->getRepliedAt()?->setTimezone($zone)->format(\DATE_ATOM),
             'replySource' => GuestReply::NoReply === $reply ? null : $host->getReplySource()?->value,
@@ -87,6 +95,7 @@ final readonly class GuestSerialiser
     {
         return [
             ...self::guest($host, $this->guestRepository->findCompanionsOf($host), $contacts),
+            ...$contacts ? ['organisationLanguage' => SupportedLocales::narrow($host->getEvent()->getOrganisation()->getLocale())] : [],
             'added' => [
                 'at' => $host->getCreatedAt()->format(\DATE_ATOM),
                 'by' => $host->getAddedBy()?->getName(),

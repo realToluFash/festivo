@@ -51,6 +51,7 @@ import { FILL_MS, PreviewAs, PreviewBones } from './MessagesPreview.tsx';
 import { PW } from './messagesPreviewWords.ts';
 import { ToPopover } from './MessagesTo.tsx';
 import { WaitBlock } from './MessagesWaits.tsx';
+import { WaAnswers } from './MessagesTap.tsx';
 import { demoWords } from './demoWords.ts';
 import './messagesInvite.css';
 
@@ -634,7 +635,7 @@ function InvitePreview({ draft, invite }: { draft: Draft; invite: InviteDraft })
   const firstText = person.invited == null;
   const text = inviteSmsOf(person, weddingAbout(), firstText);
   const shownWa = goesByWhatsApp(person, draft.ticks, invite.wa);
-  const wa = whatsAppInvitationOf(person, invite.noReplyBy === true);
+  const wa = whatsAppInvitationOf(person, invite.noReplyBy === true, invite.answers);
 
   function pick(id: string): void {
     setWho(id);
@@ -736,7 +737,11 @@ function InvitePreview({ draft, invite }: { draft: Draft; invite: InviteDraft })
                       {wa.lines.map((line) => (
                         <p key={line}>{line}</p>
                       ))}
-                      <span>{wa.button}</span>
+                      {wa.answers == null ? (
+                        <span>{wa.button}</span>
+                      ) : (
+                        <WaAnswers answers={wa.answers} />
+                      )}
                     </div>
                   </div>
                 )}

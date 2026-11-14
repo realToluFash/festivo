@@ -136,6 +136,7 @@
     "guest.not_marked_by_hand": "Not changed. Only an invitation marked by hand can be undone.",
     "validation.guest_invitation_how_required": "Choose how you invited them.",
     "validation.guest_answer_unknown": "Choose Coming, Not coming or Not sure yet.",
+    "validation.guest_language_unknown": "Choose English, Español, Français or Português, or leave it as Not set.",
     "event.currency_in_use": "The currency cannot change once amounts are recorded against this event.",
     "event.state_invalid": "This event cannot do that in the state it is in now.",
     "event.concluded": "This event's end has passed, so it cannot be made live. Change its dates first.",
