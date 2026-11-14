@@ -1,17 +1,10 @@
+import { sharePercent } from '@soirely/domain';
 import { createInstance } from 'i18next';
 import { describe, expect, it } from 'vitest';
 
 import en from '../i18n/locales/en.json';
 import { ARRIVED_AT } from './today/arrived.ts';
-import {
-  INVITES_NOT_SENT,
-  momentOf,
-  planGuests,
-  railAt,
-  repliesOf,
-  sayIn,
-  sharePercent,
-} from './today.ts';
+import { INVITES_NOT_SENT, momentOf, planGuests, railAt, repliesOf, sayIn } from './today.ts';
 
 const i18n = createInstance();
 void i18n.init({
@@ -140,9 +133,9 @@ describe('the event day', () => {
 describe('each event’s replies line, from the guests Events counts (sc-23284)', () => {
   it('reads coming and the share replied for each event, and nothing for a draft', () => {
     expect(momentOf('plan', us, t).events.map(({ ready }) => ready)).toEqual([
-      { words: '96 coming · 82% replied', percent: 82 },
-      { words: '31 coming · 63% replied', percent: 63 },
-      { words: '20 coming · 58% replied', percent: 58 },
+      { words: '96 coming · 82% replied', percent: 82, track: true },
+      { words: '31 coming · 63% replied', percent: 63, track: true },
+      { words: '20 coming · 58% replied', percent: 58, track: true },
       null,
     ]);
     expect(repliesOf('draft')).toBeNull();
@@ -161,8 +154,8 @@ describe('the planning day before the party’s invitations go out (?invites=non
 
   it('reads Invitations not sent on the party, with no bar, and the others as before', () => {
     expect(notSent.events.map(({ ready }) => ready)).toEqual([
-      { words: '96 coming · 82% replied', percent: 82 },
-      { words: '31 coming · 63% replied', percent: 63 },
+      { words: '96 coming · 82% replied', percent: 82, track: true },
+      { words: '31 coming · 63% replied', percent: 63, track: true },
       { words: 'Invitations not sent', percent: 0 },
       null,
     ]);
@@ -182,9 +175,9 @@ describe('the planning day with the party invited and nobody replied (?invites=u
 
   it('reads 0 coming · 0% replied on the party, and the others as before', () => {
     expect(unanswered.events.map(({ ready }) => ready)).toEqual([
-      { words: '96 coming · 82% replied', percent: 82 },
-      { words: '31 coming · 63% replied', percent: 63 },
-      { words: '0 coming · 0% replied', percent: 0 },
+      { words: '96 coming · 82% replied', percent: 82, track: true },
+      { words: '31 coming · 63% replied', percent: 63, track: true },
+      { words: '0 coming · 0% replied', percent: 0, track: true },
       null,
     ]);
   });
