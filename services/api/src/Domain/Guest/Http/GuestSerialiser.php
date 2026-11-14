@@ -59,7 +59,7 @@ final readonly class GuestSerialiser
     {
         $reply = $host->getReply() ?? GuestReply::NoReply;
         $contacts = null !== $needs;
-        $needsOf = static fn (Guest $person): array => null === $needs ? [] : ['needs' => self::needs($needs[$person->getId()->toRfc4122()] ?? GuestNeeds::none())];
+        $needsOf = static fn (Guest $person): array => null === $needs ? [] : ['needs' => self::needs($person, $needs[$person->getId()->toRfc4122()] ?? GuestNeeds::none(), note: true)];
         $zone = new DateTimeZone($host->getEvent()->getTimeZone());
         $invitedAt = $host->getInvitedAt();
 
@@ -92,13 +92,23 @@ final readonly class GuestSerialiser
         ];
     }
 
-    /** Codes, never words: each client words them in its reader's language (sc-3777). */
-    private static function needs(GuestNeeds $needs): array
+    /**
+     * Codes, never words: each client words them in its reader's language (sc-3777), with who changed them last and when, in the event's zone (sc-3778). The guest's own page never has the note.
+     *
+     * @return array<string, mixed>
+     */
+    public static function needs(Guest $person, GuestNeeds $needs, bool $note): array
     {
+        $at = $person->getNeedsChangedAt();
+
         return [
             ...Dict\from_entries(Vec\map(NeedKind::cases(), static fn (NeedKind $kind): array => [$kind->field(), $needs->codesOf($kind)])),
             ...Dict\from_entries(Vec\map(NeedKind::cases(), static fn (NeedKind $kind): array => [$kind->otherField(), $needs->otherOf($kind)])),
-            'note' => $needs->note,
+            ...$note ? ['note' => $needs->note] : [],
+            'changed' => null === $at ? null : [
+                'by' => $person->isNeedsChangedByGuest() ? 'guest' : 'hosts',
+                'at' => $at->setTimezone(new DateTimeZone($person->getEvent()->getTimeZone()))->format(\DATE_ATOM),
+            ],
         ];
     }
 

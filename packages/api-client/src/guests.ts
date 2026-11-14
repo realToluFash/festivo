@@ -92,6 +92,21 @@ export interface GuestNeeds {
   otherDiet: string | null;
   otherAccess: string | null;
   note: string | null;
+  /** Who last changed this record (sc-3778), as the API reads it back; never sent. */
+  changed?: NeedsChange | null;
+}
+
+/** What the guest's own page sends and reads (sc-3778): the record without the hosts' private note. */
+export type PageNeeds = Omit<GuestNeeds, 'note' | 'changed'>;
+
+/** Who last changed a person's needs, and when, in the event's zone; null until anyone recorded one. */
+export interface NeedsChange {
+  by: 'guest' | 'hosts';
+  at: string;
+}
+
+export interface GuestPageNeeds extends PageNeeds {
+  changed: NeedsChange | null;
 }
 
 /** The API's limits on an Other's words and on the note, counted after trimming. */
@@ -116,13 +131,27 @@ export interface GuestPageCompanion {
   fullName: string;
   coming: boolean;
   namedByGuest: boolean;
+  needs: GuestPageNeeds;
 }
 
-/** Who fills the places, sent with Coming: a named companion by `id`, or a name for the next unnamed place with none. */
+/** A place the host saved and nobody has named: the page reads it "Your guest" (sc-3778). */
+export interface GuestPagePlace {
+  id: string;
+  needs: GuestPageNeeds;
+}
+
+/** An unnamed place's needs, sent with Coming by its id; without them its record stays. */
+export interface PlaceNeeds {
+  id: string;
+  needs: PageNeeds;
+}
+
+/** Who fills the places, sent with Coming: a named companion by `id`, or a name for the next unnamed place with none, with their needs (sc-3778); without them the record stays. */
 export interface CompanionChoice {
   id: string | null;
   fullName: string;
   coming: boolean;
+  needs?: PageNeeds;
 }
 
 export interface Guest {
@@ -195,7 +224,7 @@ export interface GuestEdit extends Omit<NewGuest, 'companions'> {
   companions: { id?: string | null; fullName?: string | null; needs?: NeedsInput }[];
 }
 
-export type NeedsInput = Partial<GuestNeeds>;
+export type NeedsInput = Partial<Omit<GuestNeeds, 'changed'>>;
 
 /** A guest with the `ETag` an edit sends back as `If-Match`. */
 export interface TaggedGuest {
@@ -215,8 +244,12 @@ export interface GuestPage {
     fullName: string;
     /** `at` is in the event's zone. */
     reply: { answer: GuestAnswer; at: string } | null;
+    /** The guest's own, as the hosts and the guest last left them (sc-3778). */
+    needs: GuestPageNeeds;
     /** How many companions the host saved places for, named or not (sc-3779). */
     places: number;
+    /** The places nobody has named, in the order a new name fills them (sc-3779), each with its needs (sc-3778). */
+    unnamed: GuestPagePlace[];
     /** The named ones; the rest of `places` are unnamed. */
     companions: GuestPageCompanion[];
   };
@@ -297,9 +330,35 @@ export function asGuestPageCompanion(value: unknown): GuestPageCompanion | null 
   const row = value as Record<string, unknown>;
   const id = text(row.id);
   const fullName = text(row.fullName);
-  if (id == null || fullName == null || typeof row.coming !== 'boolean') return null;
+  const needs = asPageNeeds(row.needs);
+  if (id == null || fullName == null || typeof row.coming !== 'boolean' || needs == null)
+    return null;
 
-  return { id, fullName, coming: row.coming, namedByGuest: row.namedByGuest === true };
+  return { id, fullName, coming: row.coming, namedByGuest: row.namedByGuest === true, needs };
+}
+
+export function asGuestPagePlace(value: unknown): GuestPagePlace | null {
+  if (value == null || typeof value !== 'object') return null;
+  const row = value as Record<string, unknown>;
+  const id = text(row.id);
+  const needs = asPageNeeds(row.needs);
+
+  return id == null || needs == null ? null : { id, needs };
+}
+
+export function asPageNeeds(value: unknown): GuestPageNeeds | null {
+  const needs = asNeeds(value);
+  if (needs == null) return null;
+  const { note: _note, ...shown } = needs;
+
+  return { ...shown, changed: needs.changed ?? null };
+}
+
+function asChange(value: unknown): NeedsChange | null {
+  const changed = value as Record<string, unknown> | null | undefined;
+  const by = changed?.by === 'guest' || changed?.by === 'hosts' ? changed.by : null;
+
+  return by == null || typeof changed?.at !== 'string' ? null : { by, at: changed.at };
 }
 
 function codes<T extends string>(value: unknown, known: readonly T[]): T[] {
@@ -318,6 +377,7 @@ export function asNeeds(value: unknown): GuestNeeds | null {
     otherDiet: text(needs.otherDiet),
     otherAccess: text(needs.otherAccess),
     note: text(needs.note),
+    changed: asChange(needs.changed),
   };
 }
 

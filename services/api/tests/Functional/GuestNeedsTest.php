@@ -22,6 +22,7 @@ use DateTimeImmutable;
 use Lexik\Bundle\JWTAuthenticationBundle\Services\JWTTokenManagerInterface;
 use PHPUnit\Framework\Attributes\DataProvider;
 use PHPUnit\Framework\Attributes\Test;
+use Psl\Dict;
 use Psl\Json;
 use Psl\Str;
 use Psl\Type;
@@ -273,12 +274,13 @@ final class GuestNeedsTest extends ApiTestCase
         self::assertSame([], self::em()->getRepository(AuditEntry::class)->findBy(['action' => GuestNeedsRecord::CHANGED]));
     }
 
-    /** @return list<mixed> the host's, then each companion's */
+    /** @return list<mixed> the host's, then each companion's, without who changed them last (GuestPageNeedsTest) */
     private function needsOf(mixed $guest): array
     {
         $guest = Type\dict(Type\string(), Type\mixed())->coerce($guest);
+        $recorded = static fn (mixed $needs): mixed => null === $needs ? null : Dict\filter_keys(Type\dict(Type\string(), Type\mixed())->coerce($needs), static fn (string $key): bool => 'changed' !== $key);
 
-        return [$guest['needs'] ?? null, ...Vec\map(Type\vec(Type\dict(Type\string(), Type\mixed()))->coerce($guest['companions'] ?? []), static fn (array $companion): mixed => $companion['needs'] ?? null)];
+        return [$recorded($guest['needs'] ?? null), ...Vec\map(Type\vec(Type\dict(Type\string(), Type\mixed()))->coerce($guest['companions'] ?? []), static fn (array $companion): mixed => $recorded($companion['needs'] ?? null))];
     }
 
     /** @return array<string, mixed> */

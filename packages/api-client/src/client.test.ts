@@ -3655,7 +3655,17 @@ describe("the guest's calendar on their page (sc-3627)", () => {
     guest: {
       fullName: 'Adaeze Okonkwo',
       reply: { answer: 'coming', at: '2026-10-17T14:20:00+01:00' },
+      needs: {
+        allergies: [],
+        otherAllergy: null,
+        diet: [],
+        otherDiet: null,
+        access: [],
+        otherAccess: null,
+        changed: null,
+      },
       places: 0,
+      unnamed: [],
       companions: [],
     },
     language: { chosen: null, host: null, organisation: 'en' },
