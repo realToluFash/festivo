@@ -1,19 +1,23 @@
 import {
+  type GuestInvitationHow,
   type GuestList,
   type Headcount,
   type OrganisationEvent,
   type TaggedGuest,
   ApiError,
+  ApiUnreachableError,
   realtimeTopic,
 } from '@soirely/api-client';
 import {
-  CHOICES,
   REPLY_KEY,
   type Choice,
   type Counts,
+  type EventPhase,
   type Person,
   type Standing,
   countsOf,
+  eventAllows,
+  replyDate,
   roleHolds,
   rowWords,
   viewOf,
@@ -33,15 +37,19 @@ import { useTranslation } from 'react-i18next';
 import { api } from '../api.ts';
 import { followReadingAgain } from '../followTopic.ts';
 import { dateLocale } from '../i18n/index.ts';
-import { markOf } from '../kit/guestRows.ts';
+import { filterChoices, markOf } from '../kit/guestRows.ts';
 import { type ScreenOffline, useHandOffline, useOffline } from '../offline.ts';
 import { useSignedIn } from '../signedIn.ts';
 import { tokens } from '../theme/tokens.ts';
 import { PrimaryButton } from './Buttons.tsx';
 import { SearchField } from './EventsSearch.tsx';
 import { Glyph } from './Glyph.tsx';
-import { GuestDetails, type GuestPane } from './GuestDetails.tsx';
+import { GuestDetails, type GuestNotice, type GuestPane } from './GuestDetails.tsx';
 import { GuestForm, type GuestFormMode } from './GuestForm.tsx';
+import { type MarkRefusal, MarkInvited, replyKeyOf } from './GuestInvitation.tsx';
+import { DraftRow } from './MakeLive.tsx';
+import type { ScreenReaderTarget } from './screenReaderFocus.ts';
+import { useLayout } from '../layout/useLayout.ts';
 import { type ListAndPageSpacing, ListAndPage, useListAndPageLayout } from './ListAndPage.tsx';
 import { LIST_EDGES } from './listFrame.ts';
 import { useReadOut } from './ReadOut.tsx';
@@ -72,17 +80,27 @@ const CHOICE_KEY: Record<Choice, string> = {
 /** An event's Guests in the app (sc-3785): the list to find and read a guest, and the small edits; planning at scale stays on the web. */
 export function EventGuests({
   event,
+  phase,
+  now,
   heading,
   onOffline,
+  onEventChange,
+  onEventStale,
 }: {
   event: OrganisationEvent;
+  phase: EventPhase | null;
+  now: Date;
   heading: ReactNode;
   onOffline: (offline: ScreenOffline) => void;
+  onEventChange: (event: OrganisationEvent) => void;
+  /** A refusal said the event's phase moved on, so the event is read again for its line. */
+  onEventStale: () => void;
 }) {
   const { t } = useTranslation();
   const { account } = useSignedIn();
   const eventId = event.id;
   const manages = roleHolds(event, 'guests.manage');
+  const invites = phase != null && eventAllows(phase, 'invite');
   const { kind } = useListAndPageLayout(SPACING, 'nothing');
   const [load, setLoad] = useState<Load>({ kind: 'loading' });
   const [choice, setChoice] = useState<Choice>('all');
@@ -94,10 +112,18 @@ export function EventGuests({
   const [form, setForm] = useState<GuestFormMode | null>(null);
   const [round, setRound] = useState(0);
   const [added, setAdded] = useState<string | null>(null);
+  const [notice, setNotice] = useState<GuestNotice>(null);
+  const [marking, setMarking] = useState<{ round: number; sending: boolean; refusal: MarkRefusal }>(
+    { round: 0, sending: false, refusal: null },
+  );
+  const [markOpen, setMarkOpen] = useState(false);
   const title = useRef<TextHandle>(null);
   const guestName = useRef<TextHandle>(null);
   const addButton = useRef<ViewInstance>(null);
   const editButton = useRef<ViewInstance>(null);
+  const markButton = useRef<ViewInstance>(null);
+  const unmarkButton = useRef<ViewInstance>(null);
+  const markOpener = useRef<ScreenReaderTarget | null>(null);
   const searchField = useRef<TextInputInstance>(null);
   const opener = useRef<ViewInstance | null>(null);
   const reading = useRef<{ list: number; guest: number }>({ list: 0, guest: 0 });
@@ -177,12 +203,85 @@ export function EventGuests({
   const openGuest = (guestId: string) => {
     setSaved(false);
     setAdded(null);
+    setNotice(null);
     setOpen(guestId);
     readGuest(guestId, false);
   };
   const closeGuest = () => {
     setOpen(null);
     setSaved(false);
+    setNotice(null);
+  };
+  const showGuest = (tagged: TaggedGuest) => {
+    tags.current.set(tagged.guest.id, tagged);
+    setPane({ kind: 'guest', guest: tagged.guest });
+    readList(watch);
+  };
+  const startMark = () => {
+    markOpener.current = markButton.current;
+    setNotice(null);
+    setSaved(false);
+    setMarking((was) => ({ round: was.round + 1, sending: false, refusal: null }));
+    setMarkOpen(true);
+  };
+  const mark = (guestId: string, how: GuestInvitationHow) => {
+    setMarking((was) => ({ ...was, sending: true, refusal: null }));
+    api.markInvited(eventId, guestId, how).then(
+      (tagged) => {
+        markOpener.current = guestName.current;
+        setMarking((was) => ({ ...was, sending: false }));
+        setMarkOpen(false);
+        showGuest(tagged);
+      },
+      (error: unknown) => {
+        if (error instanceof ApiError && error.is('event_state_invalid')) {
+          markOpener.current = guestName.current;
+          setMarking((was) => ({ ...was, sending: false }));
+          setMarkOpen(false);
+          onEventStale();
+          return;
+        }
+        setMarking((was) => ({
+          ...was,
+          sending: false,
+          refusal: error instanceof ApiUnreachableError ? 'offline' : 'notSaved',
+        }));
+      },
+    );
+  };
+  const unmark = (guestId: string) => {
+    setNotice(null);
+    setSaved(false);
+    api.markNotInvited(eventId, guestId).then(
+      (tagged) => {
+        setNotice({ kind: 'unmarked' });
+        showGuest(tagged);
+        guestName.current?.focus?.();
+      },
+      (error: unknown) => {
+        if (error instanceof ApiUnreachableError) {
+          setNotice({ kind: 'offline' });
+          return;
+        }
+        const refused =
+          error instanceof ApiError && error.is('guest_replied') ? error.problem : null;
+        const reply = replyKeyOf(refused?.reply);
+        const at = typeof refused?.repliedAt === 'string' ? refused.repliedAt : null;
+        const name = pane.kind === 'guest' ? pane.guest.fullName : '';
+
+        if (reply != null && at != null) {
+          setNotice({
+            kind: 'refused',
+            line: t('guestList.unmarkRefused', {
+              name,
+              reply: t(reply),
+              date: replyDate(at, event.timeZone, dateLocale()),
+            }),
+          });
+          readGuest(guestId, true);
+        } else setNotice({ kind: 'failed' });
+      },
+    );
   };
   const openForm = (mode: GuestFormMode, from: ViewInstance | null) => {
     opener.current = from;
@@ -195,7 +294,11 @@ export function EventGuests({
   const timeZone = event.timeZone;
   const locale = dateLocale();
 
-  const list =
+  const phaseLine =
+    phase == null ? null : (
+      <PhaseLine event={event} phase={phase} now={now} onChange={onEventChange} />
+    );
+  const rows =
     load.kind === 'loading' ? (
       <GuestsLoading />
     ) : load.kind === 'failed' ? (
@@ -245,6 +348,12 @@ export function EventGuests({
         locale={locale}
       />
     );
+  const list = (
+    <>
+      {phaseLine}
+      {rows}
+    </>
+  );
 
   const page =
     open == null ? (
@@ -259,12 +368,18 @@ export function EventGuests({
         manages={manages}
         timeZone={timeZone}
         saved={saved}
+        notice={notice}
+        invitation={phase === 'draft' ? null : { manages, invites }}
         nameRef={guestName}
         editRef={editButton}
+        markRef={markButton}
+        unmarkRef={unmarkButton}
         onEdit={() => {
           const tagged = tags.current.get(open);
           if (tagged != null) openForm({ kind: 'edit', tagged }, editButton.current);
         }}
+        onMark={startMark}
+        onUnmark={() => unmark(open)}
         onBack={closeGuest}
         onRetry={() => readGuest(open, false)}
       />
@@ -288,6 +403,17 @@ export function EventGuests({
         back={{ label: t('guestList.backToGuests'), onPress: closeGuest, testID: 'guest.back' }}
         spacing={SPACING}
       />
+      {open != null && (
+        <MarkInvited
+          key={marking.round}
+          open={markOpen}
+          sending={marking.sending}
+          refusal={marking.refusal}
+          opener={markOpener}
+          onClose={() => setMarkOpen(false)}
+          onMark={(how) => mark(open, how)}
+        />
+      )}
       {form != null && (
         <GuestForm
           key={round}
@@ -527,7 +653,7 @@ function FilterChoice({
         width={230}
         testID="guests.filter.menu"
       >
-        {CHOICES.map((key) => {
+        {filterChoices(counts, choice).map((key) => {
           const on = key === choice;
           const n = t('guestList.figure', { count: counts[key] });
 
@@ -568,6 +694,40 @@ function FilterChoice({
         })}
       </AnchoredMenu>
     </>
+  );
+}
+
+/** Why nobody can be invited, at the top before anything is pressed: a Draft's line with Make live, a Paused or Finished event's line alone (sc-46879). */
+function PhaseLine({
+  event,
+  phase,
+  now,
+  onChange,
+}: {
+  event: OrganisationEvent;
+  phase: EventPhase;
+  now: Date;
+  onChange: (event: OrganisationEvent) => void;
+}) {
+  const { t } = useTranslation();
+  const { kind } = useLayout();
+
+  if (phase === 'draft')
+    return (
+      <DraftRow
+        kind={kind}
+        event={event}
+        manages={roleHolds(event, 'events.manage')}
+        now={now}
+        onChange={onChange}
+      />
+    );
+  if (phase !== 'paused' && phase !== 'finished') return null;
+
+  return (
+    <Text size={15} weight="medium" style={styles.secondary} testID="guests.phaseLine">
+      {t(phase === 'paused' ? 'guestList.pausedLine' : 'guestList.finishedLine')}
+    </Text>
   );
 }
 

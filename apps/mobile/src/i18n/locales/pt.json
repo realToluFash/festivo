@@ -2456,6 +2456,37 @@
     "heldLine": "Em espera · só vem se o convite for aceite",
     "heldAway": "{{guestOf}} · {{held}}",
     "offlineRefused": "Está sem ligação à Internet. Nada foi guardado.",
-    "offlineRefusedLine": "As suas alterações continuam neste formulário. Guarde novamente quando voltar a ter Internet."
+    "offlineRefusedLine": "As suas alterações continuam neste formulário. Guarde novamente quando voltar a ter Internet.",
+    "invitation": "Convite",
+    "invitedBy": "Convite feito por {{name}} {{how}}, no dia {{date}}",
+    "invitedHow": "Convite feito {{how}}, no dia {{date}}",
+    "invitedByMessage": "Convite enviado na mensagem da Soirely, no dia {{date}}",
+    "invitedWhenReplied": "Convite contado com a resposta, no dia {{date}}",
+    "copyFirst": "Copiar a ligação não conta como convite. Registe-o depois de enviar a ligação.",
+    "markAsInvited": "Registar convite",
+    "markLine": "Como foi feito o convite, para que conte",
+    "howInvited": "Como convidou esta pessoa?",
+    "howInvitedBlank": "Escolha como convidou esta pessoa.",
+    "markNotSaved": "Não foi guardado. O estado continua «Sem convite». Tente novamente.",
+    "how": {
+      "whatsapp": "WhatsApp",
+      "textMessage": "SMS",
+      "email": "E-mail",
+      "inPerson": "Pessoalmente",
+      "other": "Outra forma"
+    },
+    "howMid": {
+      "whatsapp": "via WhatsApp",
+      "textMessage": "via SMS",
+      "email": "via e-mail",
+      "inPerson": "pessoalmente",
+      "other": "de outra forma"
+    },
+    "markNotInvited": "Anular registo",
+    "unmarked": "Registo anulado. O estado volta a ser «Sem convite».",
+    "unmarkRefused": "Nada foi alterado. {{name}} respondeu «{{reply}}» no dia {{date}}, por isso o convite mantém-se.",
+    "readOnlyInvited": "Pode ver os nomes, as respostas e os convites. Para registar convites, é necessária a função Responsável ou Pode editar.",
+    "pausedLine": "Não é possível convidar pessoas enquanto este evento estiver em pausa.",
+    "finishedLine": "Este evento terminou, por isso já não é possível convidar pessoas."
   }
 }
