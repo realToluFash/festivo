@@ -20,6 +20,16 @@ const READ_AGAIN_MS = 10_000;
 
 const COUNTED = ['invited', 'coming', 'notComing', 'maybe', 'noReply', 'held'] as const;
 
+/** Each row's whole sentence for what it opens, so no language stitches a figure's word in twice. */
+const OPENS: Record<(typeof COUNTED)[number], string> = {
+  invited: 'guestNumbers.opensInvited',
+  coming: 'guestNumbers.opensComing',
+  notComing: 'guestNumbers.opensNotComing',
+  maybe: 'guestNumbers.opensMaybe',
+  noReply: 'guestNumbers.opensNoReply',
+  held: 'guestNumbers.opensHeld',
+};
+
 type Load = { kind: 'loading' } | { kind: 'failed' } | { kind: 'loaded'; headcount: Headcount };
 
 /** Overview's Guests (sc-3786): the six exclusive counts as rows, each opening the guests it counts, then who is not yet invited. Nothing without guests.read. */
@@ -112,12 +122,7 @@ function Numbers({ eventId, onOpen }: { eventId: string; onOpen: (choice: Choice
           <Loading />
         ) : (
           <Text size={14.5} weight="medium" style={[styles.secondary, styles.lines]}>
-            {t('guestNumbers.lead', {
-              says: t('guestList.comingOf', {
-                comingWords: t('guestList.countComing', { count: counts.coming }),
-                invitedWords: t('guestList.countInvited', { count: counts.invited }),
-              }),
-            })}
+            {t('guestNumbers.lead', { count: counts.coming, invited: counts.invited })}
           </Text>
         )}
         <CountRows counts={counts} onOpen={onOpen} />
@@ -166,16 +171,7 @@ function CountRows({
             opens
             pad={4}
             onPress={() => onOpen(key)}
-            accessibilityLabel={
-              counts == null
-                ? word(key)
-                : key === 'invited'
-                  ? t('guestNumbers.invitedOpens', { count: counts.invited })
-                  : t('guestNumbers.opens', {
-                      figure: t('guestList.figure', { count: counts[key] }),
-                      word: word(key),
-                    })
-            }
+            accessibilityLabel={counts == null ? word(key) : t(OPENS[key], { count: counts[key] })}
             testID={`overview.guests.${key}`}
           />
         ),

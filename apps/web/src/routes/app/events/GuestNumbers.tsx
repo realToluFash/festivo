@@ -28,6 +28,16 @@ const ROWS = [
   { key: 'held', count: (counts: HeadcountCounts) => counts.held },
 ] as const;
 
+/** Each row's whole sentence for what its link opens, so no language stitches a figure's word in twice. */
+const OPENS: Record<(typeof ROWS)[number]['key'], string> = {
+  invited: 'guestNumbers.opensInvited',
+  coming: 'guestNumbers.opensComing',
+  notComing: 'guestNumbers.opensNotComing',
+  maybe: 'guestNumbers.opensMaybe',
+  noReply: 'guestNumbers.opensNoReply',
+  held: 'guestNumbers.opensHeld',
+};
+
 /** Overview's guest numbers (sc-3786), sc-99's for the event: rows that each open the guests they count, then those not yet invited. */
 export function GuestNumbers({ event }: { event: OrganisationEvent }) {
   const { t, i18n } = useTranslation();
@@ -106,12 +116,7 @@ export function GuestNumbers({ event }: { event: OrganisationEvent }) {
       <Head title={title}>{openList}</Head>
       {counts != null && (
         <p className="desk-line is-small">
-          {t('guestNumbers.lead', {
-            says: t('guestList.comingOf', {
-              comingWords: t('guestList.countComing', { count: counts.accepted }),
-              invitedWords: t('guestList.countInvited', { count: counts.invited }),
-            }),
-          })}
+          {t('guestNumbers.lead', { count: counts.accepted, invited: counts.invited })}
         </p>
       )}
       <ul className="desk-rows gs-counts">
@@ -141,11 +146,7 @@ export function GuestNumbers({ event }: { event: OrganisationEvent }) {
                 <Link
                   className="desk-row gs-count"
                   to={`${guests}?filter=${key}`}
-                  aria-label={
-                    key === 'invited'
-                      ? t('guestNumbers.opensInvited', { count: count(counts) })
-                      : t('guestNumbers.opens', { figure: figure.format(count(counts)), word })
-                  }
+                  aria-label={t(OPENS[key], { count: count(counts) })}
                 >
                   {lead}
                   {words}

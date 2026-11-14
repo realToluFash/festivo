@@ -1779,7 +1779,7 @@ describe("An event's Overview (sc-22103)", () => {
     ).toEqual([
       ['Open the guest list', '/app/events/ev_1/guests'],
       [
-        '142 Invited, opens the guest list showing invited guests',
+        '142 invited, opens the guest list showing invited guests',
         '/app/events/ev_1/guests?filter=invited',
       ],
       ['96 Coming, opens Coming', '/app/events/ev_1/guests?filter=coming'],
@@ -1813,7 +1813,7 @@ describe("An event's Overview (sc-22103)", () => {
     });
     at('/app/events/ev_1');
 
-    const refused = await screen.findByText('Guest numbers didn’t load.');
+    const refused = await screen.findByText('Guest numbers did not load.');
     expect(refused.closest('[role=alert]')).not.toBeNull();
     fireEvent.click(
       within(screen.getByRole('region', { name: 'Guests' })).getByRole('button', {
