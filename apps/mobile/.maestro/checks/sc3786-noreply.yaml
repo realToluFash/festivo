@@ -1,0 +1,15 @@
+# sc-3786: "{n} haven't replied" on the wedding's line opens its Guests with No reply chosen.
+appId: host.exp.Exponent
+---
+- openLink: ${METRO_URL}/--/events
+- extendedWaitUntil:
+    visible:
+      id: 'events.line.${EVENT}.notReplied'
+    timeout: 30000
+- tapOn:
+    id: 'events.line.${EVENT}.notReplied'
+- extendedWaitUntil:
+    visible:
+      text: 'No reply · .*'
+    timeout: 30000
+- takeScreenshot: noreply
