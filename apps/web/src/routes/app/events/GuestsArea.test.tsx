@@ -2237,7 +2237,7 @@ describe('Not yet invited, and Mark as invited (sc-3788)', () => {
     expect(within(invitation()).getByText(/^Invited by Folake Adeyemi, WhatsApp/u)).toBeDefined();
     expect(
       within(invitation()).getByText(
-        'You can see names, replies and who is invited. Marking guests as invited needs a host or organiser role.',
+        'You can see names, replies and who is invited. Marking guests as invited needs the Lead or Can edit role.',
       ),
     ).toBeDefined();
     expect(screen.queryByRole('button', { name: 'Mark as not invited' })).toBeNull();
