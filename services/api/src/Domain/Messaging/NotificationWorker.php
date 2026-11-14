@@ -47,6 +47,8 @@ final class NotificationWorker
 
     public const string HOLD_RECHECK = 'PT60S';
 
+    public const string SUPPRESSED = 'address suppressed';
+
     /** @var array<string, AudienceResolverInterface> */
     private array $resolvers = [];
 
@@ -339,7 +341,7 @@ final class NotificationWorker
         $channel = NotificationChannel::from(Type\string()->coerce($row['channel']));
 
         if (NotificationChannel::Email === $channel && !$type->reachesSuppressed() && null !== $recipient->emailAddress && $this->emailSuppressions->isSuppressed($recipient->emailAddress)) {
-            $this->finishDelivery($id, NotificationDeliveryStatus::Cancelled, 'address suppressed');
+            $this->finishDelivery($id, NotificationDeliveryStatus::Cancelled, self::SUPPRESSED);
 
             return;
         }

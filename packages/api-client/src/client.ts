@@ -755,6 +755,8 @@ export interface SentInvitation {
   invitedBy: MemberPerson | null;
   status: SentInvitationStatus;
   sentAt: string | null;
+  /** Its latest send could not be delivered, never why (sc-46109). */
+  undelivered: boolean;
   expiresAt: string | null;
   acceptedAt: string | null;
   declinedAt: string | null;
@@ -3996,6 +3998,7 @@ function asSentInvitation(raw: unknown): SentInvitation | null {
     invitedBy: asPerson(invitation.invitedBy),
     status,
     sentAt: stringOrNull(invitation.sentAt),
+    undelivered: invitation.undelivered === true,
     expiresAt: stringOrNull(invitation.expiresAt),
     acceptedAt: stringOrNull(invitation.acceptedAt),
     declinedAt: stringOrNull(invitation.declinedAt),

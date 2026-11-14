@@ -1505,6 +1505,12 @@
       "declined": "Sent {{sent}} · declined {{ended}}",
       "accepted": "Sent {{sent}}"
     },
+    "notDelivered": {
+      "pending": "<word>Not delivered</word> · expires {{ended}}",
+      "expired": "<word>Not delivered</word> · expired {{ended}}",
+      "revoked": "<word>Not delivered</word> · revoked {{ended}}",
+      "declined": "<word>Not delivered</word> · declined {{ended}}"
+    },
     "invitationState": {
       "pending": "Pending",
       "expired": "Expired",
