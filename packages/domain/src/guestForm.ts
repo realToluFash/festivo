@@ -144,6 +144,37 @@ export function withGuest(list: GuestList, guest: Guest): GuestList {
   };
 }
 
+/** Off the list with their companions (sc-3774), and where they stood, for Undo to put them back. */
+export function withoutGuest(list: GuestList, id: string): { list: GuestList; at: number } {
+  const at = list.guests.findIndex((one) => one.id === id);
+  const guest = list.guests[at];
+
+  if (guest == null) return { list, at };
+
+  return {
+    list: {
+      ...list,
+      guests: list.guests.filter((one) => one.id !== id),
+      counts: {
+        people: list.counts.people - 1 - guest.companions.length,
+        guests: list.counts.guests - 1,
+        companions: list.counts.companions - guest.companions.length,
+      },
+    },
+    at,
+  };
+}
+
+export function withGuestAt(list: GuestList, guest: Guest, at: number): GuestList {
+  const added = withGuest(list, guest);
+
+  if (added === list) return list;
+  const others = list.guests;
+  const place = Math.max(0, Math.min(at, others.length));
+
+  return { ...added, guests: [...others.slice(0, place), guest, ...others.slice(place)] };
+}
+
 export const MOST_COMPANIONS = COMPANIONS_MAXIMUM;
 
 /** Which places a new count keeps, by index, and how many unnamed ones it adds; refused with the number named when it would drop a name. */
