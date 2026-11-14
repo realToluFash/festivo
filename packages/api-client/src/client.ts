@@ -25,6 +25,7 @@ import {
   asGuestDetails,
   asGuestList,
   asGuestPageCompanion,
+  asPageNeeds,
   asHeadcount,
   type CompanionChoice,
   type Guest,
@@ -37,6 +38,7 @@ import {
   GUEST_ANSWERS,
   GUEST_PAGE_PHASES,
   type NewGuest,
+  type PageNeeds,
   type TaggedGuest,
 } from './guests.ts';
 import { ApiError, ApiUnreachableError, type Problem, toProblem } from './problem.ts';
@@ -2209,16 +2211,22 @@ export class ApiClient {
     );
   }
 
-  /** Records the guest's answer, and with Coming who fills the places (sc-3779), and answers the page as it now stands (sc-1439). Refused 422 for an answer the page does not offer or a name beyond the places, 409 `event_paused` or `event_concluded` by the event's phase, 409 `replies_closed` from the start, and `not_found` as the page is. */
+  /** Records the guest's answer, and with Coming who fills the places (sc-3779) and the guest's own needs (sc-3778), and answers the page as it now stands (sc-1439). Refused 422 for an answer the page does not offer, a name beyond the places or a need the API does not know, 409 `event_paused` or `event_concluded` by the event's phase, 409 `replies_closed` from the start, and `not_found` as the page is. */
   async sendGuestAnswer(
     token: string,
     answer: GuestAnswer,
     companions: readonly CompanionChoice[] = [],
+    needs: PageNeeds | null = null,
   ): Promise<GuestPage> {
     return this.guestPageOf(
       await this.post<unknown>(
         '/api/guest-links/reply',
-        companions.length === 0 ? { token, answer } : { token, answer, companions },
+        {
+          token,
+          answer,
+          ...(companions.length === 0 ? {} : { companions }),
+          ...(needs == null ? {} : { needs }),
+        },
         { anonymous: true },
       ),
       'POST /api/guest-links/reply',
@@ -3712,11 +3720,13 @@ function asGuestPage(raw: unknown): GuestPage | null {
   const venue = what.venue as Record<string, unknown> | null | undefined;
   const languages = (language ?? {}) as Record<string, unknown>;
   const companions = Array.isArray(who.companions) ? who.companions.map(asGuestPageCompanion) : [];
+  const needs = asPageNeeds(who.needs);
 
   if (
     typeof languages.organisation !== 'string' ||
     typeof who.fullName !== 'string' ||
     typeof who.places !== 'number' ||
+    needs == null ||
     !Array.isArray(who.companions) ||
     companions.some((one) => one == null) ||
     (reply != null && (answer == null || typeof reply.at !== 'string')) ||
@@ -3735,6 +3745,7 @@ function asGuestPage(raw: unknown): GuestPage | null {
     guest: {
       fullName: who.fullName,
       reply: reply == null || answer == null ? null : { answer, at: reply.at as string },
+      needs,
       places: who.places,
       companions: companions.filter((one) => one != null),
     },
