@@ -278,6 +278,24 @@ describe('a window that opens through a Modal of its own (sc-42690)', () => {
     );
   });
 
+  it('on the phone, hides Create an organisation’s field from TalkBack until it has taken input focus, then moves TalkBack’s focus onto it (qa4 #48525)', () => {
+    const walk = read('CreateWalkWindow.tsx');
+    const steps = read('CreateWalkSteps.tsx');
+
+    expect(walk).toMatch(
+      /const quiet =\s+talkBack && phone && !voiced && opening\.focus !== 'question' && !opening\.walk\.asking;/,
+    );
+    expect(walk).toContain("quiet={live && quiet && opening.focus === 'name'}");
+    expect(walk).toContain("quiet={live && quiet && opening.focus === 'search'}");
+    expect(walk).toContain('onTaken={live ? voice : undefined}');
+    expect(walk).toContain('if (focused && live) voice();');
+    expect(walk).toMatch(
+      /if \(input\?\.isFocused\(\)\) moveScreenReaderFocus\(input\);\s+\}, \[voiced, opening\]\);/,
+    );
+    expect(steps.match(/importantForAccessibility=\{quiet \? 'no' : 'auto'\}/g)).toHaveLength(2);
+    expect(steps).toMatch(/setFocused\(true\);\s+onTaken\?\.\(\);/);
+  });
+
   it('raises the keys once more on a field that gives up focus before the keys it was raised with come up (qa3 #47084)', () => {
     const walk = read('CreateWalkWindow.tsx');
 
