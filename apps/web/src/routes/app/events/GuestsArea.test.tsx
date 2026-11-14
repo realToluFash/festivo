@@ -2105,6 +2105,18 @@ describe('a companion field (sc-43267)', () => {
   });
 });
 
+describe('the reply marks Overview draws outside .gs (sc-3786, qa #49845)', () => {
+  const TOKENS = stylesheet(import.meta.dirname, '../../../tokens.css');
+
+  it('fills Not coming, Held and Not yet from a root token, not one scoped to .gs', () => {
+    expect(cssRule(':root', TOKENS)).toContain('--replyNotComingDot:');
+    expect(cssRule('.gs-mark.is-not-coming', GUESTS_CSS)).toContain('var(--replyNotComingDot)');
+    expect(cssRule('.gs-mark.is-held', GUESTS_CSS)).toContain('var(--replyNotComingDot)');
+    expect(cssRule('.gs-mark.is-not-yet', GUESTS_CSS)).toContain('var(--replyNotComingDot)');
+    expect(GUESTS_CSS).not.toContain('var(--gsGrey)');
+  });
+});
+
 describe('a guest’s column at 320 (sc-3773)', () => {
   it('shrinks below its widest field row, so the phone row never pushes the form past the screen', () => {
     expect(cssRule('.gs-column', GUESTS_CSS)).toContain('min-width: 0;');
