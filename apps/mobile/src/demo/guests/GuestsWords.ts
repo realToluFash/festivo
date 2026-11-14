@@ -25,7 +25,7 @@ export const W = {
   markNotInvited: 'Mark as not invited',
   unmarked: 'Marked as not invited.',
   readOnlyInvited:
-    'You can see names, replies and who is invited. Marking guests as invited needs a host or organiser role.',
+    'You can see names, replies and who is invited. Marking guests as invited needs the Lead or Can edit role.',
   makeLive: 'Make live',
   openCheckIn: 'Open check-in',
   arrived: 'arrived',
