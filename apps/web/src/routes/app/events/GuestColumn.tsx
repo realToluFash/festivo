@@ -38,6 +38,7 @@ import {
   PlacesStepper,
 } from './GuestFields.tsx';
 import { GroupField } from './GuestGroups.tsx';
+import { RemoveAsk, type Removing } from './GuestRemove.tsx';
 import { choiceLine, groupChanged, groupRefusal, listOpen } from './guestGroups.ts';
 import { type Copy, IconLead, Invitation } from './GuestInvitation.tsx';
 import { languageNameInSentence } from '../settings/organisationDetails.ts';
@@ -163,6 +164,9 @@ export function GuestColumn({
   onChanged,
   onShown,
   onClose,
+  backOnList,
+  onRemove,
+  onRemovedAlready,
 }: {
   eventId: string;
   guestId: string;
@@ -203,6 +207,11 @@ export function GuestColumn({
   /** Once the guest, or why they cannot be shown, first replaces the loading bones. */
   onShown: () => void;
   onClose: () => void;
+  /** Reopened by Undo (sc-3774). */
+  backOnList: boolean;
+  /** Remove from the list; refused 404 when somebody removed them already. */
+  onRemove: (guest: GuestDetails) => Promise<void>;
+  onRemovedAlready: () => void;
 }) {
   const { t } = useTranslation();
   const [pane, setPane] = useState<Pane>({ kind: 'loading' });
@@ -381,6 +390,9 @@ export function GuestColumn({
         setPane({ kind: 'edit', tagged: pane.tagged });
         focus('fullName');
       }}
+      backOnList={backOnList}
+      onRemove={onRemove}
+      onRemovedAlready={onRemovedAlready}
     />
   );
 }
@@ -404,6 +416,9 @@ function GuestView({
   onSentMarked,
   focus,
   onEdit,
+  backOnList,
+  onRemove,
+  onRemovedAlready,
 }: {
   guest: GuestDetails;
   timeZone: string;
@@ -423,6 +438,9 @@ function GuestView({
   onSentMarked: () => void;
   focus: (...keys: string[]) => void;
   onEdit: () => void;
+  backOnList: boolean;
+  onRemove: (guest: GuestDetails) => Promise<void>;
+  onRemovedAlready: () => void;
 }) {
   const { t } = useTranslation();
   const heading = useId();
@@ -431,6 +449,7 @@ function GuestView({
   const [marking, setMarking] = useState(false);
   const [markFailed, setMarkFailed] = useState(false);
   const [unmark, setUnmark] = useState<Unmark>({ kind: 'none' });
+  const [removing, setRemoving] = useState<Removing | null>(null);
   const replaceButton = useRef<HTMLButtonElement>(null);
   const [link, setLink] = useState<string | null>(null);
   const [linkTurn, setLinkTurn] = useState(0);
@@ -525,6 +544,19 @@ function GuestView({
     );
   }
 
+  function removed(): void {
+    setRemoving({ kind: 'asking', busy: true, failed: false });
+    onRemove(guest).then(
+      () => setRemoving(null),
+      (error: unknown) =>
+        setRemoving(
+          error instanceof ApiError && error.status === 404
+            ? { kind: 'gone' }
+            : { kind: 'asking', busy: false, failed: true },
+        ),
+    );
+  }
+
   const ask = () => setReplace({ kind: 'asking', busy: false });
   const added = new Intl.DateTimeFormat(dateLocale(), {
     month: 'short',
@@ -550,6 +582,12 @@ function GuestView({
         <p className="gs-ok" role="status">
           <Glyph name="tick" size={17} weight={2.6} />
           {t('guestList.linkReplaced', { name: guest.fullName })}
+        </p>
+      )}
+      {backOnList && (
+        <p className="gs-ok" role="status">
+          <Glyph name="tick" size={17} weight={2.6} />
+          {t('guestList.backOnList')}
         </p>
       )}
       {unmark.kind === 'unmarked' && (
@@ -719,6 +757,18 @@ function GuestView({
               </li>
             )}
           </ul>
+          {manages && (
+            <div className="gr-foot">
+              <button
+                type="button"
+                className="gs-pill is-secondary"
+                data-focus="remove"
+                onClick={() => setRemoving({ kind: 'asking', busy: false, failed: false })}
+              >
+                {t('guestList.removeFromList')}
+              </button>
+            </div>
+          )}
         </section>
       )}
       {manages && (
@@ -766,6 +816,21 @@ function GuestView({
         />
       ) : (
         <p className="gs-inset gs-read-only">{t('guestList.readOnlyInvited')}</p>
+      )}
+      {removing != null && (
+        <RemoveAsk
+          guest={guest}
+          removing={removing}
+          onKeep={() => {
+            setRemoving(null);
+            focus('remove');
+          }}
+          onRemove={removed}
+          onGone={() => {
+            setRemoving(null);
+            onRemovedAlready();
+          }}
+        />
       )}
       {replace.kind === 'asking' && (
         <Ask

@@ -85,7 +85,7 @@ describe('the states, as guests-a-spec §15 names them', () => {
     expect(
       GUESTS_STATES.filter((state) => (DOOR_STATES as readonly string[]).includes(state)),
     ).toEqual([]);
-    expect(GUESTS_STATES).toHaveLength(132);
+    expect(GUESTS_STATES).toHaveLength(149);
     expect(DOOR_STATES).toHaveLength(13);
   });
 
@@ -334,9 +334,9 @@ describe('the list: groups, the filter and search (sc-3772)', () => {
       'Inês Duarte',
       'Rui Duarte',
     ]);
-    expect(coming[0]?.line).toBe('Coming · replied Oct 14 · 1 companion');
+    expect(coming[0]?.line).toBe('Coming · replied Oct 14 · Bride’s side · 1 companion');
     expect(groupRows(GUESTS, 'maybe', EN, REPLY_BY)[1]?.line).toBe(
-      'Held · comes only if their host accepts',
+      'Held · comes only if their host accepts · Bride’s side',
     );
   });
 
@@ -349,14 +349,14 @@ describe('the list: groups, the filter and search (sc-3772)', () => {
       'Oluwaseun Ajayi',
       'Tomás Ferreira',
     ]);
-    expect(rows[0]?.line).toBe('Invited by Folake Adeyemi, WhatsApp, Oct 9');
+    expect(rows[0]?.line).toBe('Invited by Folake Adeyemi, WhatsApp, Oct 9 · Bride’s side');
     expect(rowsOf(GUESTS, 'held', '', EN, REPLY_BY).map((row) => row.name)).toEqual([
       'Guest of Chief Mrs Folasade Okonkwo-Williams',
       'Adanna Nwosu',
     ]);
     expect(rowsOf(GUESTS, 'held', '', EN, REPLY_BY).map((row) => row.line)).toEqual([
-      'Held · comes only if their host accepts',
-      'Guest of Dr Emeka Nwosu · Held · comes only if their host accepts',
+      'Held · comes only if their host accepts · Bride’s side',
+      'Guest of Dr Emeka Nwosu · Held · comes only if their host accepts · Bride’s side',
     ]);
   });
 
@@ -409,7 +409,7 @@ describe('a split family (sc-3773, ux, 8 Nov): each group shows the people it co
     const notComing = groupRows(after, 'notcoming', EN, REPLY_BY);
     expect(notComing.map((row) => [row.name, row.line, row.companion])).toContainEqual([
       'Adanna Nwosu',
-      'Guest of Dr Emeka Nwosu',
+      'Guest of Dr Emeka Nwosu · Bride’s side',
       false,
     ]);
     expect(groupRows(after, 'noreply', EN, REPLY_BY).map((row) => row.name)).not.toContain(
@@ -683,11 +683,11 @@ describe('Changed since you looked (sc-4331)', () => {
     expect(
       changedRows(GUESTS, changesSince(null), '', now, 'en-US').map((p) => `${p.name}: ${p.line}`),
     ).toEqual([
-      'Lucía Ortega: Not sure yet · Changed at 09:31',
-      'Inês Duarte: Coming · Replied at 08:40',
-      'Amaka Eze: Coming · Replied at 07:52',
-      'Camille Dubois: Not coming · Replied Nov 2',
-      'Alhaji Musa Bello: Coming · Replied Nov 2',
+      'Lucía Ortega: Not sure yet · Changed at 09:31 · Old school friends',
+      'Inês Duarte: Coming · Replied at 08:40 · Work',
+      'Amaka Eze: Coming · Replied at 07:52 · Bride’s side',
+      'Camille Dubois: Not coming · Replied Nov 2 · Work',
+      'Alhaji Musa Bello: Coming · Replied Nov 2 · Bride’s side',
     ]);
   });
 
@@ -705,7 +705,7 @@ describe('Changed since you looked (sc-4331)', () => {
       now,
       'en-US',
     );
-    expect(row?.line).toBe('Updated dietary needs · Changed Nov 2');
+    expect(row?.line).toBe('Updated dietary needs · Changed Nov 2 · Groom’s side');
   });
 
   it('keeps the bell’s item and the filter on one look: bell, filter, bell', () => {

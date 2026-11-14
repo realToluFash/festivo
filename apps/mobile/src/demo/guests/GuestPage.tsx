@@ -21,6 +21,8 @@ import {
   replyParts,
 } from './GuestsModel.ts';
 import { GreetAsRow } from './GuestGreetAs.tsx';
+import { GW, NW } from './GuestNeeds.ts';
+import { NeedsRows } from './GuestNeedsParts.tsx';
 import { ChoseNote } from './GuestLanguage.tsx';
 import { BlockHead, DoneLine, GuestCover, type Layout } from './GuestsParts.tsx';
 import {
@@ -202,6 +204,7 @@ export function GuestPage({
         <RowList
           items={[
             { key: 'greetAs', inset: 40, row: <GreetAsRow g={g} /> },
+            { key: 'group', inset: 40, row: <GroupRow g={g} /> },
             ...(owner
               ? [
                   {
@@ -280,6 +283,17 @@ export function GuestPage({
           ]}
         />
       </View>
+      {owner && (
+        <View testID="guest.needs">
+          <BlockHead title={NW.needs} />
+          <NeedsRows
+            people={[
+              { name: g.name, needs: g.needs, guest: true },
+              ...g.companions.map((c) => ({ name: c.name, needs: c.needs, guest: false })),
+            ]}
+          />
+        </View>
+      )}
       {!owner && event.phase === 'draft' && readOnly}
       {event.phase !== 'draft' && (
         <View>
@@ -481,6 +495,24 @@ function WhatsAppRows({
         </View>
       )}
     </View>
+  );
+}
+
+/** sc-5519: the group read-only, for every role that reads the guest; none is No group in Ink 2, as Not set is. */
+function GroupRow({ g }: { g: SampleGuest }) {
+  const name = g.group ?? null;
+  const title = name ?? GW.noGroup;
+
+  return (
+    <Row
+      title={title}
+      line={GW.group}
+      lead={<LineIcon name="users" />}
+      weight={name == null ? 'medium' : 'semibold'}
+      off={name == null}
+      accessibilityLabel={`${GW.group}, ${title}`}
+      testID="guest.group"
+    />
   );
 }
 

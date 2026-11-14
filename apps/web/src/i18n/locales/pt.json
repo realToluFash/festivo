@@ -2600,7 +2600,10 @@
   },
   "toast": {
     "undo": "Anular",
-    "close": "Fechar"
+    "close": "Fechar",
+    "secondsLeft_one": "{{count, number}} s",
+    "secondsLeft_many": "{{count, number}} s",
+    "secondsLeft_other": "{{count, number}} s"
   },
   "eventNav": {
     "label": "Evento",
@@ -2986,7 +2989,19 @@
     "showAll_other": "Mostrar os {{count, number}}",
     "showAll_many": "Mostrar os {{count, number}}",
     "heldLine": "Em espera · só vem se o convite for aceite",
-    "heldAway": "{{guestOf}} · {{held}}"
+    "heldAway": "{{guestOf}} · {{held}}",
+    "removeFromList": "Remove from the list",
+    "removeTitle": "Remove {{name}}?",
+    "removeGoes": "These go with them:",
+    "theirReply": "Their reply",
+    "removeNothingSent": "Nothing is sent to them.",
+    "keepOnList": "Keep on the list",
+    "removeGo": "Remove",
+    "guestRemoved": "{{name}} removed.",
+    "guestRemovedWith": "{{name}} removed, with {{companions}}.",
+    "undoOpen": "Undo is open for 10 seconds.",
+    "backOnList": "Back on the list. As they were, with their link, reply and companions.",
+    "alreadyRemoved": "{{name}} was already removed by someone else."
   },
   "guestNumbers": {
     "title": "Guests",

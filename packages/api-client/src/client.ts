@@ -867,6 +867,8 @@ export interface RequestOptions {
   query?: Record<string, string | number | boolean | undefined>;
   headers?: Record<string, string>;
   signal?: AbortSignal;
+  /** Sent even as the page goes, as an erasure on leaving it is. */
+  keepalive?: boolean;
   /** Skip the Authorization header — for sign-in and guest routes. */
   anonymous?: boolean;
 }
@@ -2151,6 +2153,27 @@ export class ApiClient {
     );
   }
 
+  /** Off the list and the counts at once, with their companions; their link works until eraseGuest (sc-3774). Refused 404 when somebody removed them already. */
+  async removeGuest(eventId: string, guestId: string): Promise<void> {
+    await this.delete<undefined>(this.guestPath(eventId, guestId));
+  }
+
+  /** Back on the list as they were; refused 404 once erased. */
+  async undoGuestRemoval(eventId: string, guestId: string): Promise<TaggedGuest> {
+    return this.taggedGuest(
+      await this.exchange<{ guest?: unknown }>(`${this.guestPath(eventId, guestId)}/removal`, {
+        method: 'DELETE',
+      }),
+    );
+  }
+
+  /** Once the undo has run out, or as the page goes: they, their companions and their link are gone. */
+  async eraseGuest(eventId: string, guestId: string): Promise<void> {
+    await this.post<undefined>(`${this.guestPath(eventId, guestId)}/erasure`, undefined, {
+      keepalive: true,
+    });
+  }
+
   /** Refused `validation_failed` on `name`: blank, over 60 characters, a name already used, or 50 groups (sc-3775). */
   async makeGuestGroup(eventId: string, name: string): Promise<GuestGroup> {
     return this.guestGroup(
@@ -3165,6 +3188,7 @@ export class ApiClient {
     // accept it.
     if (init.body !== undefined) request.body = JSON.stringify(init.body);
     if (init.signal !== undefined) request.signal = init.signal;
+    if (init.keepalive === true) request.keepalive = true;
 
     try {
       const response = await doFetch(this.url(path, init.query), request);

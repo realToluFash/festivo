@@ -36,6 +36,8 @@ import {
 import { GroupHead, type Layout, ShownLine } from './GuestsParts.tsx';
 import { REPLY_WORD, W, say } from './GuestsWords.ts';
 import { MarkSlot } from '../../components/ReplyMark.tsx';
+import { NW } from './GuestNeeds.ts';
+import { AllergyMark } from './GuestNeedsParts.tsx';
 
 const MENU_AFTER_MS = 700;
 
@@ -142,18 +144,22 @@ function personRow(
   wide: boolean,
 ) {
   const selected = lit === p.key;
+  const allergy = p.allergy === true;
   const row = (
     <Row
       ref={refFor(p.key)}
       title={p.name}
       line={p.line}
+      below={allergy ? <AllergyMark testID={`guests.row.${p.key}.allergy`} /> : undefined}
       lead={<MarkSlot kind={p.kind} />}
       opens
       selected={selected}
       gutter={wide ? 10 : 0}
       pad={p.companion ? 8 : 11}
       onPress={() => onOpen(p.guest, p.key)}
-      accessibilityLabel={[p.name, p.line].join('. ')}
+      accessibilityLabel={[p.name, p.line, allergy ? NW.allergy : null]
+        .filter((part) => part != null)
+        .join('. ')}
       testID={`guests.row.${p.key}`}
     />
   );
