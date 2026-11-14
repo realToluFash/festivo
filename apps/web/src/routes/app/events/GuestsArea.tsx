@@ -823,6 +823,7 @@ const CHOICE_KEY: Record<Choice, string> = {
   noReply: REPLY_KEY.noReply,
   held: REPLY_KEY.held,
   notComing: REPLY_KEY.notComing,
+  notYetInvited: REPLY_KEY.notYetInvited,
 };
 
 /** Find a guest, and the house filter menu beside it reading "{choice} · {n}". */
@@ -860,7 +861,11 @@ function SearchRow({
       </div>
       <div className="gs-menu">
         <Menu
-          items={CHOICES.map((key) => ({ key, word: t(CHOICE_KEY[key]), count: counts[key] }))}
+          items={CHOICES.filter((key) => key !== 'notYetInvited' || counts[key] > 0).map((key) => ({
+            key,
+            word: t(CHOICE_KEY[key]),
+            count: counts[key],
+          }))}
           picked={choice}
           open={menu}
           onOpen={() => onMenu(true)}

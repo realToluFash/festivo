@@ -107,18 +107,21 @@ type Answer = (body: unknown) => Response | Promise<Response>;
 type Listed = ReturnType<typeof listOf>;
 
 /** sc-99's headcount for a list, as HeadcountCalculator counts it. */
-function headcountOf({ guests }: Listed) {
+function headcountOf({ guests: all }: Listed) {
+  const waiting = all.filter((one) => one.invitation == null && one.reply === 'noReply');
+  const notYetInvited = waiting.reduce((sum, one) => sum + 1 + one.companions.length, 0);
+  const guests = all.filter((one) => !waiting.includes(one));
   const companions = guests.flatMap((one) => one.companions.map(() => one.reply));
   const count = (reply: string) => guests.filter((one) => one.reply === reply).length;
   const held = (reply: string) => companions.filter((host) => host === reply).length;
-  const onList = guests.length + companions.length;
+  const invited = guests.length + companions.length;
 
   return {
     headcount: {
       counts: {
-        onList,
-        notYetInvited: 0,
-        invited: onList,
+        onList: invited + notYetInvited,
+        notYetInvited,
+        invited,
         accepted: count('coming') + held('coming'),
         maybe: count('maybe'),
         awaitingReply: count('noReply'),
@@ -640,12 +643,14 @@ class StubSource {
 }
 
 describe('Finding a guest (sc-3772)', () => {
+  const invitation = { at: '2026-11-01T10:00:00+01:00', how: 'whatsapp', by: 'Folake Adeyemi' };
   const WAITING = [
-    guest('g_3', 'Bola Ade'),
+    guest('g_3', 'Bola Ade', { invitation }),
     guest('g_4', 'José Ávila', {
+      invitation,
       companions: [{ id: 'c_4', fullName: 'Rui Ávila', state: 'held' }],
     }),
-    guest('g_5', 'Dayo Kalu', { mobile: '+2348031234567' }),
+    guest('g_5', 'Dayo Kalu', { invitation, mobile: '+2348031234567' }),
   ];
   const EVERYONE = [NGOZI, AMAKA, ...WAITING];
 
@@ -765,6 +770,47 @@ describe('Finding a guest (sc-3772)', () => {
     expect(screen.getByText('Held · comes only if their host accepts')).toBeDefined();
     expect(screen.getByText('1 of 9 shown')).toBeDefined();
     expect(shownRouter?.state.location.search).toBe('?filter=held');
+  });
+
+  it('lists Not yet invited last, counting companions, with its own group on All and none of them under No reply (sc-3788)', async () => {
+    signedIn();
+    const BISI = guest('g_6', 'Bisi Adewale', {
+      companions: [{ id: 'c_6', fullName: 'Tunde Adewale', state: 'notYetInvited' }],
+    });
+    await onGuests({ 'GET /api/events/ev_1/guests': () => json(listOf([...EVERYONE, BISI])) });
+    await screen.findByText('4 coming of 9 invited');
+
+    const groups = screen.getAllByRole('heading', { level: 2 }).map((one) => one.textContent);
+
+    expect(groups.slice(-2)).toEqual(['No reply · 3', 'Not yet invited · 2']);
+
+    fireEvent.click(screen.getByRole('button', { name: 'All · 11' }));
+    const menu = screen.getByRole('menu');
+
+    expect(
+      within(menu)
+        .getAllByRole('menuitemradio')
+        .map((item) => item.textContent),
+    ).toEqual([
+      'All11',
+      'Coming4',
+      'Not sure yet1',
+      'No reply3',
+      'Held1',
+      'Not coming0',
+      'Not yet invited2',
+    ]);
+    fireEvent.click(within(menu).getByRole('menuitemradio', { name: /^No reply/u }));
+
+    expect(names()).toEqual(['Bola Ade', 'José Ávila', 'Dayo Kalu']);
+    fireEvent.click(screen.getByRole('button', { name: 'No reply · 3' }));
+    fireEvent.click(
+      within(screen.getByRole('menu')).getByRole('menuitemradio', { name: /^Not yet invited/u }),
+    );
+
+    expect(names()).toEqual(['Bisi Adewale', 'Tunde Adewale']);
+    expect(screen.getByText('2 of 11 shown')).toBeDefined();
+    expect(shownRouter?.state.location.search).toBe('?filter=notYetInvited');
   });
 
   it('steps Back through each change, the search once typing settles, then the choice', async () => {
