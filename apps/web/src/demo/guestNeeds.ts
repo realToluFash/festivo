@@ -25,6 +25,13 @@ export interface Needs {
   otherDiet: string;
   otherAccess: string;
   note: string;
+  /** sc-3778: who last changed this person's record, the guest on their own page or the hosts, and on which day; none until anyone recorded one. */
+  changed?: NeedsChange;
+}
+
+export interface NeedsChange {
+  by: 'guest' | 'hosts';
+  on: string;
 }
 
 export const NO_NEEDS: Needs = {
@@ -72,6 +79,7 @@ export const NW = {
   allergy: 'Allergy',
   allergyWith: (name: string) => `Allergy · ${name}`,
   noDietary: 'No dietary notes.',
+  changedByGuest: (day: string) => `Last changed by the guest on ${day}.`,
   dietaryNotes: 'Dietary notes',
   allergen: (code: Allergen) => NAMES.allergens[code],
   dietName: (code: DietPick) => (code === 'other' ? 'Other' : NAMES.diets[code]),
@@ -185,6 +193,22 @@ export function savedNeeds(needs: Needs): Needs {
     otherAccess: needs.access.includes('other') ? needs.otherAccess.trim() : '',
     note: needs.note.trim(),
   };
+}
+
+function sameNeeds(one: Needs, other: Needs): boolean {
+  const { changed: _one, ...a } = savedNeeds(one);
+  const { changed: _other, ...b } = savedNeeds(other);
+
+  return JSON.stringify(a) === JSON.stringify(b);
+}
+
+/** sc-3778: a host's save that changes the record makes the hosts its last changer, so "Last changed by the guest" goes; one that changes nothing keeps it. */
+export function hostsSaved(was: Needs | undefined, now: Needs, on: string | undefined): Needs {
+  const saved = savedNeeds(now);
+
+  if (on == null || sameNeeds(was ?? NO_NEEDS, saved)) return saved;
+
+  return { ...saved, changed: { by: 'hosts', on } };
 }
 
 export function needsOf(partial: Partial<Needs>): Needs {
