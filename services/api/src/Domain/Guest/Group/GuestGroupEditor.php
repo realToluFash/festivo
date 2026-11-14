@@ -98,7 +98,7 @@ final readonly class GuestGroupEditor
         $this->guestListPublisher->publish($event);
     }
 
-    /** Inside the caller's transaction, under the event's lock: a blank name is no group, and a name already used is that group. */
+    /** Inside the caller's transaction, under the event's lock: a blank name is no group, and a name already used is that group, unless it was chosen as a new one. */
     public function settle(Event $event, GroupChoice $choice, User $by): ?GuestGroup
     {
         if (null !== $choice->id) {
@@ -113,6 +113,10 @@ final readonly class GuestGroupEditor
 
         $name = self::checked($choice->name, 'group.name');
         $found = $this->guestGroupRepository->findOneNamed($event, self::key($name));
+
+        if (null !== $found && $choice->create) {
+            throw ApiException::validation([self::violation('group.name', 'validation.guest_group_name_taken', ['{name}' => $found->getName()])]);
+        }
 
         if (null !== $found) {
             return $found;
