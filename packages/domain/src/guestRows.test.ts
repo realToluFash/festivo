@@ -1,8 +1,14 @@
-import type { Guest } from '@soirely/api-client';
+import { ApiError, type Guest } from '@soirely/api-client';
 import { peopleOf } from './guestView.ts';
 import { describe, expect, it } from 'vitest';
 
-import { companionShown, contactOf, invitationLine, rowWords } from './guestRows.ts';
+import {
+  companionShown,
+  contactOf,
+  invitationLine,
+  repliedRefusal,
+  rowWords,
+} from './guestRows.ts';
 
 const t = (key: string, values?: Record<string, unknown>) =>
   values == null ? key : `${key}${JSON.stringify(values)}`;
@@ -128,5 +134,36 @@ describe('the Invitation line', () => {
 
   it('is null while nobody has invited them', () => {
     expect(line(null)).toBeNull();
+  });
+});
+
+describe('repliedRefusal', () => {
+  const refused = (code: string, more: Record<string, string> = {}) => {
+    const problem = {
+      type: `https://soirely.com/errors/${code}`,
+      title: code,
+      status: 409,
+      ...more,
+    };
+    return new ApiError(problem, new Response(JSON.stringify(problem), { status: 409 }));
+  };
+
+  it('names the reply and when it came', () => {
+    expect(
+      repliedRefusal(
+        refused('guest_replied', { reply: 'maybe', repliedAt: '2026-11-02T10:00:00+01:00' }),
+      ),
+    ).toEqual({ reply: 'maybe', at: '2026-11-02T10:00:00+01:00' });
+  });
+
+  it('is nothing without a known reply and its date, or for another refusal', () => {
+    expect(
+      repliedRefusal(refused('guest_replied', { reply: 'noReply', repliedAt: '2026-11-02' })),
+    ).toBeNull();
+    expect(repliedRefusal(refused('guest_replied', { reply: 'coming' }))).toBeNull();
+    expect(
+      repliedRefusal(refused('not_found', { reply: 'coming', repliedAt: '2026-11-02' })),
+    ).toBeNull();
+    expect(repliedRefusal(new Error('offline'))).toBeNull();
   });
 });

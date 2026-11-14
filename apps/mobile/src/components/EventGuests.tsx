@@ -17,6 +17,7 @@ import {
   type Standing,
   countsOf,
   eventAllows,
+  repliedRefusal,
   replyDate,
   roleHolds,
   rowWords,
@@ -46,7 +47,7 @@ import { SearchField } from './EventsSearch.tsx';
 import { Glyph } from './Glyph.tsx';
 import { GuestDetails, type GuestNotice, type GuestPane } from './GuestDetails.tsx';
 import { GuestForm, type GuestFormMode } from './GuestForm.tsx';
-import { type MarkRefusal, MarkInvited, replyKeyOf } from './GuestInvitation.tsx';
+import { type MarkRefusal, MarkInvited } from './GuestInvitation.tsx';
 import { DraftRow } from './MakeLive.tsx';
 import type { ScreenReaderTarget } from './screenReaderFocus.ts';
 import { useLayout } from '../layout/useLayout.ts';
@@ -263,19 +264,16 @@ export function EventGuests({
           setNotice({ kind: 'offline' });
           return;
         }
-        const refused =
-          error instanceof ApiError && error.is('guest_replied') ? error.problem : null;
-        const reply = replyKeyOf(refused?.reply);
-        const at = typeof refused?.repliedAt === 'string' ? refused.repliedAt : null;
+        const refused = repliedRefusal(error);
         const name = pane.kind === 'guest' ? pane.guest.fullName : '';
 
-        if (reply != null && at != null) {
+        if (refused != null) {
           setNotice({
             kind: 'refused',
             line: t('guestList.unmarkRefused', {
               name,
-              reply: t(reply),
-              date: replyDate(at, event.timeZone, dateLocale()),
+              reply: t(REPLY_KEY[refused.reply]),
+              date: replyDate(refused.at, event.timeZone, dateLocale()),
             }),
           });
           readGuest(guestId, true);

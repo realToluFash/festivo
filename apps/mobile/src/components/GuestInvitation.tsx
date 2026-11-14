@@ -229,11 +229,6 @@ export function MarkInvited({
   );
 }
 
-/** The reply a 409 `guest_replied` names, in the words of Not changed. {name} replied {reply} on {date}. */
-export function replyKeyOf(reply: unknown): string | null {
-  return reply === 'coming' || reply === 'maybe' || reply === 'notComing' ? REPLY_KEY[reply] : null;
-}
-
 const styles = StyleSheet.create({
   grow: { flex: 1, minWidth: 0 },
   secondary: { color: tokens.colorInkSecondary },

@@ -4,9 +4,8 @@ import {
   type GuestInvitationHow,
   canMarkNotInvited,
 } from '@soirely/api-client';
-import { invitationLine as invitationWords, shownReply } from '@soirely/domain';
+import { invitationLine, shownReply } from '@soirely/domain';
 import { type ReactNode, type RefObject, useEffect, useId, useRef, useState } from 'react';
-import type { TFunction } from 'i18next';
 import { useTranslation } from 'react-i18next';
 
 import { Glyph, type GlyphName } from '../../../components/Glyph.tsx';
@@ -15,14 +14,6 @@ import { dateLocale } from '../../../i18n/index.ts';
 
 export type Copy =
   { kind: 'none' } | { kind: 'copied' } | { kind: 'byHand'; url: string } | { kind: 'failed' };
-
-export function invitationLine(
-  t: TFunction,
-  guest: Pick<GuestDetails, 'invitation'>,
-  timeZone: string,
-): string | null {
-  return invitationWords(t, guest, timeZone, dateLocale());
-}
 
 /** A guest's Invitation at a desk: the line, Copy invitation link, Replace link… and Mark as invited, which opens an inset. */
 export function Invitation({
@@ -60,7 +51,7 @@ export function Invitation({
 }) {
   const { t } = useTranslation();
   const notYet = shownReply(guest) === 'notYetInvited';
-  const line = invitationLine(t, guest, timeZone);
+  const line = invitationLine(t, guest, timeZone, dateLocale());
 
   return (
     <section className="desk-block" aria-labelledby={`${heading}-invitation`}>
