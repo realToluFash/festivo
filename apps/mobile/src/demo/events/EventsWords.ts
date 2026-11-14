@@ -198,6 +198,26 @@ export const W = {
   notCopied: 'Not copied',
   notCopiedList: ['Hosts', 'Guests', 'Replies', 'Anything that happened at the event'],
   created: 'Draft created. Opening it.',
+  aboutHeading: 'About the event',
+  whenHeading: 'When',
+  zoneHeading: 'Time zone and currency',
+  typePlaceholder: 'Choose what kind of event',
+  typeMissing: 'Choose what kind of event it is.',
+  nameTooLong: 'Shorten the name to 120 characters or fewer.',
+  startMissing: 'Choose when the event starts.',
+  endMissing: 'Choose when the event ends.',
+  venueNameTooLong: 'Shorten the venue name to 120 characters or fewer.',
+  venueAddressTooLong: 'Shorten the address to 300 characters or fewer.',
+  currencyBlank: 'Choose a currency.',
+  zoneRefused: 'Choose a time zone.',
+  create: 'Create event',
+  creatingNow: 'Creating…',
+  notCreated: 'Not created. Nothing was saved. Try again.',
+  newCreated: 'Created. Opening the event.',
+  leaveTitle: 'Leave without saving?',
+  leave: 'Leave without saving',
+  leaveBody: 'What you typed for this event will be lost.',
+  addPhotoAgain: 'Add the photo',
   pauseBody:
     'Guests can’t reply or change anything until you resume it. Nothing is lost. Check-in and service keep working.',
   callOffBody: 'It won’t go ahead. Guests following their link will be told. You can’t undo this.',
@@ -294,6 +314,13 @@ export const say = {
     `Ask someone who can change ${area} in ${organisation} to end it.`,
   duplicateTitle: (name: string) => `Duplicate ${name}`,
   ownDesign: (what: string) => `${what} has its own design.`,
+  problems: (count: number) =>
+    count === 1
+      ? '1 field needs fixing, so nothing was sent.'
+      : `${count} fields need fixing, so nothing was sent.`,
+  defaultsHint: (organisation: string) => `Filled in from ${organisation}’s settings.`,
+  zoneSet: (zone: string) => `Time zone set to ${zone}.`,
+  createdWithout: (reason: string) => `The event is saved without its photo. ${reason}`,
   repliesCloseAt: (time: string, zone: string) => `Replies close at ${time}, ${zone} time.`,
   replyByHint: (time: string, zone: string) =>
     `Replies close at the end of this day, ${time} ${zone} time. Leave it empty and replies stay open until the event starts.`,
@@ -318,6 +345,10 @@ const KEYED: Record<string, (values: Record<string, string | number>) => string>
   'eventDuplicate.endsUnchosen': (v) =>
     `It ends ${String(v.duration)} after it starts, like the original. Times in ${String(v.timeZone)}.`,
   'eventLive.hostEmpty': () => 'Enter who is hosting to make this event live.',
+  'eventForm.clocksSkip': (v) =>
+    `There is no ${String(v.time)} on ${String(v.day)} in ${String(v.zone)}: the clocks go forward that night. It will be saved as ${String(v.savedAs)}.`,
+  'eventForm.clocksSkipNextDay': (v) =>
+    `There is no ${String(v.time)} on ${String(v.day)} in ${String(v.zone)}: the clocks go forward that night. It will be saved as ${String(v.savedAs)} on ${String(v.savedDay)}.`,
   'eventHosts.tooLong': (v) =>
     `A host’s name can be at most ${String(v.most)} characters. This one has ${String(v.length)}.`,
 };

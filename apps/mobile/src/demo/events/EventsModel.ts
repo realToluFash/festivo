@@ -38,6 +38,7 @@ import { REFUSED_STATES, refusedStartOf } from './DeleteRefusal.ts';
 import { CLOCKS, READER_ZONE, type SampleEvent } from './EventsSample.ts';
 import { W, say } from './EventsWords.ts';
 import { CHANGES_STATES, FINAL_NUMBERS_STATES, kitchenOwed, othersOwed } from './FinalNumbers.ts';
+import { NEW_STATES } from './NewEventModel.ts';
 import { WRITE_STATES } from './GuestsCanWrite.ts';
 import { MAKE_LIVE_STATES } from './MakeLive.ts';
 import { CARD_STATES, END_STATES, isCardState, isEndState } from './ThankYou.ts';
@@ -333,6 +334,7 @@ export const LIST_STATES = [
   'eventsFirst',
   'eventsZero',
   'eventsOffline',
+  ...NEW_STATES,
 ] as const;
 export type ListState = (typeof LIST_STATES)[number];
 
@@ -460,6 +462,7 @@ export const EVENT_STATES = [
   'cover',
   'coverRefused',
   'coverPhoto',
+  'createdNoPhoto',
   'pause',
   'callOff',
   'endNow',

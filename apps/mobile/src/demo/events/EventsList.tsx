@@ -67,6 +67,8 @@ import {
 } from './EventsModel.ts';
 import { CLOCKS, EVENTS, OFFLINE_AS_OF, READER_ZONE } from './EventsSample.ts';
 import { W, say } from './EventsWords.ts';
+import { NewEventScreen } from './NewEvent.tsx';
+import { isNewState } from './NewEventModel.ts';
 import { kindOf, useShell } from '../../components/settingsShell.ts';
 import {
   type Anchor,
@@ -131,6 +133,13 @@ export function EventsList({
   const filterRef = useRef<ViewInstance>(null);
   const field = useRef<TextInputInstance>(null);
   const asks = state === 'firstAsk';
+  const [making, setMaking] = useState(() => (isNewState(state) ? 1 : 0));
+  const [newOpen, setNewOpen] = useState(() => isNewState(state));
+  const newOpener = useRef<ViewInstance>(null);
+  const openNew = () => {
+    setMaking((times) => times + 1);
+    setNewOpen(true);
+  };
   const loading = state === 'loading';
   const first = state === 'first' || state === 'eventsFirst' || asks;
   const wide = shell.layout !== 'phone';
@@ -225,6 +234,16 @@ export function EventsList({
   });
 
   const summary = first || loading || failed ? null : summaryLine(home);
+  const newScreen = making > 0 && (
+    <NewEventScreen
+      key={making}
+      open={newOpen}
+      start={making === 1 && isNewState(state) ? state : null}
+      locale={locale}
+      opener={newOpener}
+      onClose={() => setNewOpen(false)}
+    />
+  );
   const top = (
     <>
       <ListTop
@@ -237,7 +256,7 @@ export function EventsList({
             ? undefined
             : {
                 label: W.newEvent,
-                onPress: () => shell.tell(say.ownDesign(W.newEvent)),
+                onPress: openNew,
                 testID: 'events.new',
               }
         }
@@ -298,12 +317,9 @@ export function EventsList({
 
   if (first)
     return (
-      <ListFrame offline={null}>
+      <ListFrame offline={null} overlay={newScreen}>
         {top}
-        <EventsFirstRun
-          wide={wide}
-          onCreate={asks ? undefined : () => shell.tell(say.ownDesign(W.firstRunCreate))}
-        />
+        <EventsFirstRun wide={wide} onCreate={asks ? undefined : openNew} />
       </ListFrame>
     );
 
@@ -318,15 +334,18 @@ export function EventsList({
     <ListFrame
       offline={offline ? () => setOffline(false) : null}
       overlay={
-        <EventsFilterMenu
-          at={menuAt}
-          onClose={() => setMenuAt(null)}
-          opener={filterRef}
-          filters={filters}
-          onFilters={setFilters}
-          hosts={hosts}
-          calendar={calendar}
-        />
+        <>
+          <EventsFilterMenu
+            at={menuAt}
+            onClose={() => setMenuAt(null)}
+            opener={filterRef}
+            filters={filters}
+            onFilters={setFilters}
+            hosts={hosts}
+            calendar={calendar}
+          />
+          {newScreen}
+        </>
       }
     >
       {top}
