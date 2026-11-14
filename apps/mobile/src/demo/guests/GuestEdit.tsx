@@ -46,7 +46,7 @@ import {
   TODAY,
 } from './GuestsSample.ts';
 import { HOW_INVITED, HOW_TOLD, REPLY_WORD, W, say } from './GuestsWords.ts';
-import { ReplyMark } from './ReplyMark.tsx';
+import { ReplyMark } from '../../components/ReplyMark.tsx';
 
 type Opener = RefObject<ScreenReaderTarget | null>;
 
