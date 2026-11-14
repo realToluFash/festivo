@@ -568,3 +568,14 @@ describe('An invitation whose email never arrived (sc-46109)', () => {
     );
   });
 });
+
+describe('The card’s chip at the crowd (sc-48825)', () => {
+  beforeEach(() => __setConfig({ ...tested, environment: 'development' }));
+  afterEach(() => cleanup());
+
+  it('writes 99+ inside its circle for the 1,321 its faces leave out', async () => {
+    await members('/demo/settings/members?state=crowd');
+
+    expect(document.querySelector('.desk-more')?.textContent).toBe('99+');
+  });
+});

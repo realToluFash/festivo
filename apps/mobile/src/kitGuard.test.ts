@@ -1872,6 +1872,15 @@ function answersInView(text: string, said: string): boolean {
   return /<AnswerInView\b[^>]*>\s*$/u.test(text.slice(0, opened));
 }
 
+describe('the faces’ chip writes its count through moreChip (sc-48825)', () => {
+  it('in Faces, so 1,321 left out reads 99+ inside its circle', () => {
+    const summary = readFileSync(join(__dirname, 'components', 'Summary.tsx'), 'utf8');
+    const faces = summary.slice(summary.indexOf('export function Faces('));
+
+    expect(faces.slice(0, faces.indexOf('\n}\n'))).toContain('{moreChip(more)}');
+  });
+});
+
 describe('a screen still reading says so in words (sc-23279)', () => {
   it.each([
     ['app/lost-two-factor.tsx', "view.kind === 'loading'"],
