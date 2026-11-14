@@ -55,7 +55,6 @@ import { useTranslation } from 'react-i18next';
 import { Link, useBlocker, useNavigate, useSearchParams } from 'react-router';
 
 import { api } from '../../../api.ts';
-import { config } from '../../../config.ts';
 import { GlassMark } from '../../../components/EventCard.tsx';
 import { Glyph } from '../../../components/Glyph.tsx';
 import { SearchField } from '../../../components/SearchField.tsx';
@@ -105,6 +104,7 @@ import {
   useNeedsOpen,
 } from './guestNeeds.ts';
 import { useGuestsAddress } from './useGuestsAddress.ts';
+import { useHubTopics } from './useHubTopics.ts';
 import { keepAsked, keptAsked } from './whatsAppSend.ts';
 import '../../../components/desk.css';
 import '../../../components/SettingsParts.css';
@@ -116,72 +116,20 @@ import './guests.css';
 
 type Load = { kind: 'loading' } | { kind: 'failed' } | { kind: 'loaded'; list: GuestList };
 
-const RETRY_MS = 5_000;
-const RENEW_BEFORE_MS = 60_000;
 const FOCUSABLE = 'button, a[href], input, select, textarea, [tabindex]';
 
 /** The guest list as the API holds it, published to every page open on it. */
 function useLiveGuests(eventId: string, onList: (list: GuestList) => void, onGap: () => void) {
-  const latest = useRef({ onList, onGap });
-
-  useEffect(() => {
-    latest.current = { onList, onGap };
-  });
-
-  useEffect(() => {
-    const hub = config().mercureUrl;
-    if (hub === '') return;
-
-    let source: EventSource | null = null;
-    let timer: ReturnType<typeof setTimeout> | undefined;
-    let stopped = false;
-
-    const connect = async (): Promise<void> => {
-      let subscription;
-      try {
-        subscription = await api.guestsSubscription(eventId);
-      } catch {
-        if (!stopped) timer = setTimeout(() => void connect(), RETRY_MS);
-        return;
-      }
-      if (stopped) return;
-
-      const url = new URL(hub);
-      url.searchParams.append('topic', realtimeTopic('EventGuests', eventId));
-      url.searchParams.append('authorization', subscription.token);
-
-      source?.close();
-      source = new EventSource(url);
-      source.onopen = () => latest.current.onGap();
-      source.onmessage = (message: MessageEvent<string>) => {
-        let list: GuestList | null = null;
-        try {
-          list = asGuestList(JSON.parse(message.data));
-        } catch {
-          list = null;
-        }
-        if (list == null) latest.current.onGap();
-        else latest.current.onList(list);
-      };
-      source.onerror = () => {
-        if (source?.readyState !== EventSource.CLOSED || stopped) return;
-        clearTimeout(timer);
-        timer = setTimeout(() => void connect(), RETRY_MS);
-      };
-
-      const lapses = Date.parse(subscription.expiresAt) - Date.now() - RENEW_BEFORE_MS;
-      clearTimeout(timer);
-      timer = setTimeout(() => void connect(), Math.max(lapses, RETRY_MS));
-    };
-
-    void connect();
-
-    return () => {
-      stopped = true;
-      clearTimeout(timer);
-      source?.close();
-    };
-  }, [eventId]);
+  useHubTopics(
+    [realtimeTopic('EventGuests', eventId)],
+    () => api.guestsSubscription(eventId),
+    (data) => {
+      const list = asGuestList(data);
+      if (list == null) onGap();
+      else onList(list);
+    },
+    onGap,
+  );
 }
 
 /** The code the Mobile number starts on, as the account's own Mobile number field picks it. */

@@ -8,6 +8,7 @@ import {
   eventsLookParams,
   eventsSearchOf,
   firstDayOfWeek,
+  followedIds,
   guestLineOf,
   rememberEventsTab,
   rememberedEventsTab,
@@ -15,6 +16,7 @@ import {
   shownPhase,
   takesCardStep,
   wallDay,
+  withFiguresFrom,
   withPastPage,
 } from '@soirely/domain';
 import { type ReactNode, useEffect, useRef, useState } from 'react';
@@ -218,13 +220,14 @@ function EventsOf({
     };
   }, [organisationId, attempt, refresh, watch]);
 
-  const counted =
-    load.kind === 'loaded'
-      ? load.unfinished.filter((event) => event.guests != null).map((event) => event.id)
-      : [];
+  const counted = load.kind === 'loaded' ? followedIds(load.unfinished) : [];
 
   useLiveGuestFigures(organisationId, counted, (unfinished) =>
-    setLoad((was) => (was.kind === 'loaded' ? withFigures(was, unfinished) : was)),
+    setLoad((was) =>
+      was.kind === 'loaded'
+        ? { ...was, unfinished: withFiguresFrom(was.unfinished, unfinished) }
+        : was,
+    ),
   );
 
   useEffect(() => {
@@ -615,23 +618,8 @@ function useLiveGuestFigures(
     eventIds.map((id) => realtimeTopic('EventHeadcount', id)),
     () => api.headcountsSubscription(organisationId, eventIds),
     recount,
-    () => undefined,
+    recount,
   );
-}
-
-/** The loaded events with each one's guest figures as read again; nothing else about them changes. */
-function withFigures<T extends { unfinished: ListedEvent[] }>(
-  load: T,
-  read: readonly ListedEvent[],
-): T {
-  const figures = new Map(read.map((event) => [event.id, event.guests ?? null]));
-
-  return {
-    ...load,
-    unfinished: load.unfinished.map((event) =>
-      figures.has(event.id) ? { ...event, guests: figures.get(event.id) ?? null } : event,
-    ),
-  };
 }
 
 /** The deleted notice belongs to the entry Delete event lands on, which Events replaces once to drop its state, and to no other: Back, Forward or a reload can reach an entry whose replace never landed (sc-22103). */

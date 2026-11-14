@@ -1,26 +1,14 @@
+import type { ListedEvent } from '@soirely/api-client';
 import { describe, expect, it } from 'vitest';
 
-import { figuresOf, guestLineOf } from './guestLine.ts';
+import { followedIds, guestLineOf, withFiguresFrom } from './guestLine.ts';
 
-const WEDDING = {
-  onList: 156,
-  notYetInvited: 14,
-  invited: 142,
-  accepted: 96,
-  maybe: 10,
-  awaitingReply: 21,
-  held: 6,
-  heldBy: { hostNoReply: 4, hostMaybe: 1, hostNotComing: 1 },
-  declined: 9,
-};
+const event = (id: string, guests: ListedEvent['guests']) =>
+  ({ id, name: id, milestones: [], guests }) as unknown as ListedEvent;
 
 describe("each event's guest line on Events (sc-3786)", () => {
-  it("counts the guests who owe an answer and the companions held behind them as haven't replied", () => {
-    expect(figuresOf(WEDDING)).toEqual({ invited: 142, coming: 96, notReplied: 25 });
-  });
-
   it('shows on a live, happening or paused event with invited guests, and nowhere else', () => {
-    const figures = figuresOf(WEDDING);
+    const figures = { invited: 142, coming: 96, notReplied: 25 };
 
     expect(guestLineOf(figures, 'live')).toEqual(figures);
     expect(guestLineOf(figures, 'happening_now')).toEqual(figures);
@@ -37,5 +25,25 @@ describe("each event's guest line on Events (sc-3786)", () => {
       coming: 0,
       notReplied: 3,
     });
+  });
+
+  it('follows the events it read figures for', () => {
+    expect(
+      followedIds([event('a', { invited: 2, coming: 1, notReplied: 1 }), event('b', null)]),
+    ).toEqual(['a']);
+  });
+
+  it('takes the figures read again onto their events and leaves the rest as they were', () => {
+    const was = [
+      event('a', { invited: 142, coming: 96, notReplied: 25 }),
+      event('b', { invited: 3, coming: 0, notReplied: 3 }),
+    ];
+    const next = withFiguresFrom(was, [event('a', { invited: 142, coming: 97, notReplied: 24 })]);
+
+    expect(next.map((one) => one.guests)).toEqual([
+      { invited: 142, coming: 97, notReplied: 24 },
+      { invited: 3, coming: 0, notReplied: 3 },
+    ]);
+    expect(next[1]).toBe(was[1]);
   });
 });

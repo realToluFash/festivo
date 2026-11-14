@@ -7,12 +7,14 @@ import {
   NO_EVENTS_FILTERS,
   eventsSearchOf,
   firstDayOfWeek,
+  followedIds,
   rememberEventsTab,
   rememberedEventsTab,
   roleHolds,
   serverClock,
   takesCardStep,
   wallDay,
+  withFiguresFrom,
   withPastPage,
 } from '@soirely/domain';
 import { Redirect, router, useFocusEffect } from 'expo-router';
@@ -26,7 +28,6 @@ import { dateLocale } from '../i18n/index.ts';
 import { DESTINATION_HREF } from '../kit/appNav.ts';
 import { eventHref, guestsHref } from '../kit/eventNav.ts';
 import { followReadingAgain } from '../followTopic.ts';
-import { followedIds, withFiguresFrom } from '../kit/guestLine.ts';
 import { takeDeleted } from '../kit/eventSaved.ts';
 import { hasNoEvents } from '../kit/eventsOpen.ts';
 import { useServerNow } from '../kit/serverNow.ts';
