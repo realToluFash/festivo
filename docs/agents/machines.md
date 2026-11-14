@@ -57,6 +57,7 @@ repository because it describes the machine, not the project. The repository shi
 | `dailyBudgetUsd`                          | no new worker once today's spend reaches it. Unset until the owner picks one                                                                                                                                                                                                                                                                                                                                                                                                                                         |
 | `minFreeGb`                               | no new worker under this much free disk; 15 by default                                                                                                                                                                                                                                                                                                                                                                                                                                                               |
 | `sliceMemoryMax`                          | what every worker on the machine may use between them, the cap on systemd's `soirely.slice`; `16G` by default. Raise it before adding roles, since each worker's own `memoryMax` counts against it                                                                                                                                                                                                                                                                                                                   |
+| `emulatorHost`                            | per tester role: the computer its Android emulator runs on, `"me@laptop"` or `{"ssh": "me@192.168.1.9", "name": "my-laptop", "gpu": "host", "sdk": "%LOCALAPPDATA%\\Android\\Sdk"}`. Unset, the emulator starts on this machine as always. A malformed value refuses only that role. See [An emulator on another computer](#an-emulator-on-another-computer)                                                                                                                                                         |
 | `manualTesters`                           | people who test, by Shortcut mention name: `{"@name": {"machine": "<the machine their stack runs on>", "member": "<Shortcut member id>"}}`. Kept out of the repository, which is public. A malformed entry is a warning in `sq status`, and stops no role                                                                                                                                                                                                                                                            |
 
 - **Changes take effect within a minute.** `sq run` reads the file every minute. A removed
@@ -382,6 +383,52 @@ through its own server, so the browser holds one token and talks to one address.
   warning on `sq status`.
 - It is plain HTTP on a trusted network, as Docker's own ports here are. Over anything else,
   put it behind a tunnel.
+
+## An emulator on another computer
+
+A tester's stack, bundler and worker stay on this machine; with `emulatorHost` set on its role,
+only its emulator runs elsewhere. qa4's is the Windows laptop `tolufash-laptop`
+(192.168.132.114). `android` starts it there in one systemd user unit,
+`soirely-qa<n>-emulator`, holding an ssh session that runs the emulator and carries its
+console and adb ports (5578 and 5579 for qa4) back here, so adb, `adb reverse`, screenshots
+and Maestro see `emulator-5578` as if it were local. `android --stop` ends the emulator, the
+unit and anything left on that port over there. If the session drops, the unit ends and
+Windows ends the emulator with it; the next `android` boots it again. An unreachable host
+fails within a minute, naming it.
+
+What the other computer needs, once:
+
+- **Windows, with OpenSSH Server** running (Settings > System > Optional features), and this
+  machine's public key in its `authorized_keys` (for an administrator,
+  `C:\ProgramData\ssh\administrators_authorized_keys`). `ssh -o BatchMode=yes <host> echo ok`
+  from here must answer without a prompt.
+- **The Android SDK** at `%LOCALAPPDATA%\Android\Sdk` (or `sdk` in the setting), with the
+  Android Emulator, the Command-line Tools (latest), and a Google Play x86_64 system image.
+  `just qa-env setup --tester <n>` then makes the tester's phone and tablet AVDs there, the
+  tablet at 4096 MB, and says exactly what to install when something is missing.
+- **Hardware acceleration**: the Windows Hypervisor Platform or the Android Emulator
+  hypervisor driver. `-gpu host` (the default here) boots in about 50 s on a discrete GPU;
+  set `"gpu": "swiftshader_indirect"` where there is none, at about twice that.
+- **Memory for one emulator at a time.** The phone or the tablet, never both; the tablet's
+  4096 MB needs the rest of the computer quiet.
+- **Mains power, awake.** Turn off sleep on mains (Settings > System > Power), or the
+  session drops mid-batch.
+
+Two steps by hand, since they hold keys:
+
+1. **The console token.** `adb emu` signs in with this machine's
+   `~/.emulator_console_auth_token`, so the host must hold the same one. Keep the host's as
+   `%USERPROFILE%\.emulator_console_auth_token.bak-soirely`, then
+   `scp ~/.emulator_console_auth_token <host>:.emulator_console_auth_token`. `setup` says
+   whether the two match.
+2. **This machine's adb key.** A Play image accepts only the keys it was given, and the host's
+   emulator hands it the host's. Boot the phone once with `android`, then on the device
+   accept this computer with **Always allow from this computer** (`adb -s emulator-5578
+exec-out screencap` shows the prompt; tap it with `adb shell input tap`). It lasts until the
+   AVD's data is wiped. Do the same once on the tablet.
+
+After `adb kill-server` the next harness command announces the emulator to the new server
+itself (`host:emulator:<port>`), since adb only scans for emulators as it starts.
 
 ## Permission asks
 

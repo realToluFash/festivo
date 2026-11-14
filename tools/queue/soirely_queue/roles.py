@@ -15,7 +15,7 @@ BUILD_QUEUE = ["Failed Code Review", "Failed QA", "In Progress", "Ready For Dev"
 PARALLEL = ("pm", "ux", "bm", "cd", "lead")
 # Taken epic by epic: the build, and the stories the product manager grooms for it.
 EPIC_ORDERED = (*BUILD_QUEUE, "To Do", "Backlog")
-TESTERS_LABELS = {"qa": "qa1", "qa2": "qa2", "qa3": "qa3"}
+TESTERS_LABELS = {"qa": "qa1", "qa2": "qa2", "qa3": "qa3", "qa4": "qa4"}
 # A story failed and sent back is offered first to the tester who failed it, for this long.
 RETEST_MINUTES = 30
 
@@ -97,6 +97,9 @@ ROLES = {
     "qa3": {"skill": "soirely-qa-tester", "invoke": "/soirely-qa-tester qa3",
             "queue": ["Ready For QA"], "filter": everything, "heartbeat": 30, "offset": 2,
             "memoryMax": "8G", "background": True},
+    "qa4": {"skill": "soirely-qa-tester", "invoke": "/soirely-qa-tester qa4",
+            "queue": ["Ready For QA"], "filter": everything, "heartbeat": 30, "offset": 3,
+            "memoryMax": "8G", "background": True},
     "lead": {"skill": "soirely-tech-lead", "queue": [], "filter": everything,
              "heartbeat": 30, "reviews": True, "background": True},
     "bm": {"skill": "soirely-business-manager", "queue": ["Backlog"],
@@ -165,7 +168,7 @@ def author(text):
 
 # Every role that opens pull requests merges its own, once the lead has passed it.
 BUILDERS = DEVS + ("l10n", "ops", "ux")
-TESTERS = ("qa", "qa2", "qa3")
+TESTERS = ("qa", "qa2", "qa3", "qa4")
 LINGUISTS = ("l10n",)
 
 # The designer builds a story's boards, working, in the dev-only design demos (the app's,

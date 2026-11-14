@@ -359,6 +359,25 @@ def tester_problems(config):
     return problems
 
 
+def emulator_host_problem(config, role):
+    """`emulatorHost` puts a tester's emulator on another computer: an ssh destination, or an
+    object with `ssh` and, optionally, `name`, `sdk` and `gpu`. scripts/qa-env.mjs reads it."""
+    value = (config.get("roles", {}).get(role) or {}).get("emulatorHost")
+    if value is None:
+        return None
+    if role not in roles.TESTERS:
+        return f"emulatorHost is set on {role}, which runs no emulator; only a tester's is read"
+    entry = {"ssh": value} if isinstance(value, str) else value
+    if not isinstance(entry, dict) or not isinstance(entry.get("ssh"), str) \
+            or not entry["ssh"].strip():
+        return (f"emulatorHost of {role} is {value!r}: an ssh destination such as "
+                '"me@laptop", or {"ssh": "me@laptop", "name": "laptop"}')
+    unknown = sorted(set(entry) - {"ssh", "name", "sdk", "gpu"})
+    if unknown:
+        return f"emulatorHost of {role} has {', '.join(unknown)}: only ssh, name, sdk and gpu"
+    return None
+
+
 def check(config, known=None, logged_in=account):
     """`(errors, refused, ready)`: errors stop every role, refused names each role that
     cannot run and why, ready holds each runnable role's merged settings."""
@@ -406,6 +425,10 @@ def check(config, known=None, logged_in=account):
         if (values.get("workers") or 1) > 1 and role not in roles.PARALLEL:
             refused[role] = (f"workers is {values['workers']}, but {role} keeps one stack, so "
                              f"runs one worker; only {', '.join(roles.PARALLEL)} run more")
+            continue
+        host = emulator_host_problem(config, role)
+        if host:
+            refused[role] = host
             continue
         place = checkout(config, role)
         if place and not place.exists():
