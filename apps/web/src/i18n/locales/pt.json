@@ -586,7 +586,7 @@
     "withYouPlacesByOne_many": "Lugares reservados por {{hosts}}: para si e até {{count, number}} de acompanhantes.",
     "withYouPlacesByOne_other": "Lugares reservados por {{hosts}}: para si e até {{count, number}} acompanhantes.",
     "withYouThatsYou": "Sou eu",
-    "withYouSelfComing": "Coming",
+    "withYouSelfComing": "Venho",
     "withYouComing": "Vem",
     "withYouNotComing": "Não vem",
     "withYouByInvitation": "Nome indicado no seu convite",
