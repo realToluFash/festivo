@@ -20,10 +20,12 @@ export function Toast({
   counted?: { said: string };
 }) {
   const { t } = useTranslation();
-  const held = useRef(false);
+  const pointed = useRef(false);
+  const focused = useRef(false);
   const close = useRef(onClose);
   const [left, setLeft] = useState(COUNTED_SECONDS);
   const counts = counted != null;
+  const held = (): boolean => pointed.current || focused.current;
 
   useEffect(() => {
     close.current = onClose;
@@ -32,7 +34,7 @@ export function Toast({
   useEffect(() => {
     if (counts) {
       const timer = window.setInterval(
-        () => setLeft((was) => (held.current ? COUNTED_SECONDS : Math.max(was - 1, 0))),
+        () => setLeft((was) => (held() ? COUNTED_SECONDS : Math.max(was - 1, 0))),
         1000,
       );
 
@@ -42,7 +44,7 @@ export function Toast({
     let remaining = lifetime > 0 ? lifetime : 10000;
     const tick = 250;
     const timer = window.setInterval(() => {
-      if (held.current) return;
+      if (held()) return;
       remaining -= tick;
       if (remaining <= 0) close.current();
     }, tick);
@@ -54,23 +56,25 @@ export function Toast({
     if (counts && left === 0) close.current();
   }, [counts, left]);
 
-  const hold = (): void => {
-    held.current = true;
+  const hold = (by: typeof pointed): void => {
+    by.current = true;
     if (counts) setLeft(COUNTED_SECONDS);
   };
-  const release = (event?: FocusEvent<HTMLDivElement>): void => {
-    if (event != null && event.currentTarget.contains(event.relatedTarget)) return;
-    held.current = false;
+  const blur = (event: FocusEvent<HTMLDivElement>): void => {
+    if (event.currentTarget.contains(event.relatedTarget)) return;
+    focused.current = false;
   };
 
   return (
     <div
       className={counts ? 'toast is-counted' : 'toast'}
       role="status"
-      onPointerEnter={hold}
-      onPointerLeave={() => release()}
-      onFocus={hold}
-      onBlur={release}
+      onPointerEnter={() => hold(pointed)}
+      onPointerLeave={() => {
+        pointed.current = false;
+      }}
+      onFocus={() => hold(focused)}
+      onBlur={blur}
     >
       <p className="toast-words">
         {words}

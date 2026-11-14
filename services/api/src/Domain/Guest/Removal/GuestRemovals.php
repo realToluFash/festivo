@@ -13,6 +13,7 @@ use App\Enum\Actor;
 use App\Http\Exception\ApiException;
 use App\Repository\GuestRepository;
 use DateInterval;
+use DateTimeImmutable;
 use Doctrine\DBAL\Connection;
 use Doctrine\DBAL\LockMode;
 use Doctrine\ORM\EntityManagerInterface;
@@ -103,10 +104,15 @@ final readonly class GuestRemovals
         $erased = 0;
 
         foreach ($this->guestRepository->findRemovedBefore($cutoff) as $guest) {
-            $this->entityManager->wrapInTransaction(function () use ($guest): void {
+            $erased += $this->entityManager->wrapInTransaction(function () use ($guest, $cutoff): int {
+                if (!$this->stillLapsed($guest, $cutoff)) {
+                    return 0;
+                }
+
                 $this->eraseNow($guest);
+
+                return 1;
             });
-            ++$erased;
         }
 
         return $erased;
@@ -117,13 +123,26 @@ final readonly class GuestRemovals
     {
         $by = $guest->getRemovedBy();
         $party = $this->party($guest);
-        $this->auditor->record(self::REMOVED, 'Event', $guest->getEvent()->getId(), null === $by ? Actor::System : Actor::User, $by?->getId(), $by?->getName());
+        $this->auditor->record(self::REMOVED, 'Event', $guest->getEvent()->getId(), null === $by ? Actor::System : Actor::User, $by?->getId(), $by?->getName(), occurredAt: $guest->getRemovedAt());
         $this->entityManager->flush();
         $this->connection->executeStatement('DELETE FROM guests WHERE id = :id', ['id' => $guest->getId()->toRfc4122()]);
 
         foreach ($party as $person) {
             $this->entityManager->detach($person);
         }
+    }
+
+    /** Undone, erased or removed again since the cron found them, they are left alone. */
+    private function stillLapsed(Guest $guest, DateTimeImmutable $cutoff): bool
+    {
+        if (false === $this->connection->fetchOne('SELECT 1 FROM guests WHERE id = :id FOR UPDATE', ['id' => $guest->getId()->toRfc4122()])) {
+            return false;
+        }
+
+        $this->entityManager->refresh($guest);
+        $removedAt = $guest->getRemovedAt();
+
+        return null !== $removedAt && $removedAt <= $cutoff;
     }
 
     private function locked(?Guest $guest): Guest

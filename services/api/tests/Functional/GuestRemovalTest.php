@@ -22,6 +22,7 @@ use App\Tests\Double\Messaging\RecordingHub;
 use App\Tests\Traits\OnboardsAccounts;
 use App\Tests\Traits\PutsPeopleOnEvents;
 use DateTimeImmutable;
+use DateTimeInterface;
 use Doctrine\DBAL\Connection;
 use Lexik\Bundle\JWTAuthenticationBundle\Services\JWTTokenManagerInterface;
 use PHPUnit\Framework\Attributes\DataProvider;
@@ -174,6 +175,8 @@ final class GuestRemovalTest extends ApiTestCase
 
         self::em()->clear();
         self::assertSame([$fresh], Type\vec(Type\string())->coerce(self::em()->getConnection()->fetchFirstColumn('SELECT id FROM guests')));
+        $entries = self::em()->getRepository(AuditEntry::class)->findBy(['action' => GuestRemovals::REMOVED]);
+        self::assertSame(['2026-10-17T13:20:00+00:00'], Vec\map($entries, static fn (AuditEntry $entry): string => $entry->getOccurredAt()->format(DateTimeInterface::ATOM)), 'the entry says when they were removed, not when the prune ran');
     }
 
     #[Test]
