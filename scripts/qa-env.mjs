@@ -544,10 +544,14 @@ export function pickPlayImage(paths, abi) {
   return `system-images;${version};${tag};${abi}`;
 }
 
-export function missingRemoteTools(host, what) {
+export function setupAgain(tester) {
+  return `\`node scripts/qa-env.mjs setup${tester === 1 ? '' : ` --tester ${tester}`}\` again`;
+}
+
+export function missingRemoteTools(host, what, tester = CONFIG.tester) {
   return [
     `  ${host.name} (${host.ssh}) has no ${what} in ${host.sdk}`,
-    `  install it there, then run \`node scripts/qa-env.mjs setup\` again:`,
+    `  install it there, then run ${setupAgain(tester)}:`,
     '    - Android Studio > Settings > Languages & Frameworks > Android SDK > SDK Tools:',
     '      tick "Android SDK Command-line Tools (latest)" and "Android Emulator", and apply',
     '    - SDK Platforms, Show Package Details: tick a "Google Play" x86_64 system image',
@@ -1117,11 +1121,11 @@ function androidTools() {
   };
 }
 
-export function missingCmdlineTools({ sdk, avdmanager }) {
+export function missingCmdlineTools({ sdk, avdmanager }, tester = CONFIG.tester) {
   return [
     `  no Android SDK command-line tools in ${sdk}`,
     `  expected avdmanager at ${avdmanager}`,
-    '  install them either way, then run `node scripts/qa-env.mjs setup` again:',
+    `  install them either way, then run ${setupAgain(tester)}:`,
     '    - Android Studio: Settings > Languages & Frameworks > Android SDK > SDK Tools,',
     '      tick "Android SDK Command-line Tools (latest)" and apply',
     '    - or download the command-line tools zip from https://developer.android.com/studio#command-tools',
@@ -1983,6 +1987,25 @@ function emulatorOnline(tools) {
   return (capture(tools.adb, ['devices'], { env: tools.env }) ?? '').includes(
     `${emulatorSerial()}\tdevice`,
   );
+}
+
+// Maestro's adb client throws on any unauthorized device on the shared server, ours or not (sc-47688).
+export function unauthorizedWarning(devices, ours) {
+  const others = [...devices.matchAll(/^(\S+)\tunauthorized$/gm)].map((m) => m[1]);
+  if (!others.length) return null;
+  return [
+    `  adb here sees ${others.join(', ')} as unauthorized: maestro will then report ${ours} as not connected`,
+    '  authorize it (docs/agents/machines.md, An emulator on another computer, step 2), or have',
+    '  whoever forwarded it disconnect it, then run this again',
+  ].join('\n');
+}
+
+function warnUnauthorized(tools) {
+  const said = unauthorizedWarning(
+    capture(tools.adb, ['devices'], { env: tools.env }) ?? '',
+    emulatorSerial(),
+  );
+  if (said) console.warn(said);
 }
 
 function unitState(unit) {
@@ -2853,6 +2876,7 @@ async function maestro(args) {
     onAndroid,
   });
   const file = join(flows, `${flow}.yaml`);
+  if (onAndroid) warnUnauthorized(androidTools());
 
   const ok = await runAsync(
     maestroBin() ?? 'maestro',
@@ -3720,6 +3744,7 @@ async function batch(args) {
   }
 
   await clearForBatch(onAndroid, device);
+  if (onAndroid) warnUnauthorized(androidTools());
 
   const out = join(root, '.qa', name);
   rmSync(out, { recursive: true, force: true });

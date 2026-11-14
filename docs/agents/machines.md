@@ -429,6 +429,10 @@ Two steps by hand, since they hold keys:
 exec-out screencap -p > prompt.png` shows the prompt, and the same with
    `shell input tap <x> <y>` ticks **Always allow from this computer** and taps **Allow**.
    It lasts until the AVD's data is wiped. Do the same once on the tablet.
+   Until then, the unauthorized emulator breaks every Android tester on this machine, not only
+   its own: maestro's adb client throws on any unauthorized device on the shared server and
+   reports each tester's emulator as `not connected`. `maestro` and `batch` name the
+   unauthorized serial when they see one; authorize it, or disconnect it, before going on.
 
 After `adb kill-server` the next harness command announces the emulator to the new server
 itself (`host:emulator:<port>`), since adb only scans for emulators as it starts.
