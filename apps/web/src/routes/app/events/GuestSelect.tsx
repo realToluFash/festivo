@@ -1,11 +1,12 @@
 import { GUEST_GROUP_NAME_MAXIMUM, type GuestList } from '@soirely/api-client';
+import { groupNameLength, groupProblem, sortedGroups } from '@soirely/domain';
 import { type FocusEvent, useEffect, useId, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 
 import { Glyph, type GlyphName } from '../../../components/Glyph.tsx';
 import { Ask, Dialog, TextAction } from '../../../components/SettingsParts.tsx';
 import { COUNTED_SECONDS } from '../../../components/Toast.tsx';
-import { groupNameLength, groupProblem, problemLine, sortedGroups } from './guestGroups.ts';
+import { problemLine } from './guestGroups.ts';
 import {
   type Action,
   type Line,
