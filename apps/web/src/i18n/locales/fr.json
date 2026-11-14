@@ -2817,6 +2817,7 @@
     "repliedOn": "a répondu le {{date}}",
     "replyHeading": "Réponse",
     "line": "{{reply}} · {{contact}}",
+    "withPlaces": "{{reply}} · {{places}}",
     "contacts": "{{email}} · {{mobile}}",
     "guestOf": "Accompagne {{host}}",
     "guestOfNth": "Accompagne {{host}} · {{nth, number}}",

@@ -59,6 +59,7 @@ import {
   type Typed,
   firstProblem,
   isListed,
+  namedCount,
   newGuestOf,
   problemsOf,
   violationProblems,
@@ -582,6 +583,7 @@ export function GuestsArea({
                         ) : view.kind === 'rows' ? (
                           <Rows
                             rows={view.rows}
+                            choice={choice}
                             eventId={event.id}
                             timeZone={event.timeZone}
                             open={open}
@@ -601,6 +603,7 @@ export function GuestsArea({
                             >
                               <Rows
                                 rows={group.rows}
+                                choice={choice}
                                 eventId={event.id}
                                 timeZone={event.timeZone}
                                 open={open}
@@ -910,12 +913,14 @@ function Group({
 /** Each row is a link to its guest's address; a companion's opens their guest. */
 function Rows({
   rows,
+  choice,
   eventId,
   timeZone,
   open,
   onOpen,
 }: {
   rows: readonly ViewRow[];
+  choice: Choice;
   eventId: string;
   /** The event's: a reply's date is the day it was in the event's zone. */
   timeZone: string;
@@ -938,6 +943,17 @@ function Rows({
                   reply: word,
                   date: replyDate(guest.repliedAt, timeZone),
                 });
+          const places = guest.companions.length;
+          const line =
+            places === 0 || choice === 'noReply'
+              ? reply
+              : t('guestList.withPlaces', {
+                  reply,
+                  places: t('guestList.companionsNamed', {
+                    count: places,
+                    named: namedCount(guest.companions.map((one) => one.fullName)),
+                  }),
+                });
           const mobile = guest.mobile == null ? null : formatPhone(guest.mobile);
           const contact =
             guest.email != null && mobile != null
@@ -958,7 +974,7 @@ function Rows({
                 </span>
                 <RowWords
                   title={guest.fullName}
-                  lines={[contact == null ? reply : t('guestList.line', { reply, contact })]}
+                  lines={[contact == null ? line : t('guestList.line', { reply: line, contact })]}
                 />
               </RowLink>
             </li>

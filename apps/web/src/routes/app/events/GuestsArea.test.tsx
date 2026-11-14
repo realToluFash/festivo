@@ -218,13 +218,51 @@ describe('Guests (sc-1468)', () => {
         .map((head) => head.textContent),
     ).toEqual(['Coming · 4', 'Not sure yet · 1']);
     expect(rows.map((row) => row.textContent)).toEqual([
-      'Ngozi EzeComing · ngozi@example.com · +234 803 555 0142',
+      'Ngozi EzeComing · 3 companions · 1 of 3 named · ngozi@example.com · +234 803 555 0142',
       'Obi EzeComing',
       'Guest of Ngozi EzeComing',
       'Guest of Ngozi Eze · 2Coming',
       'Chief Amaka ObiNot sure yet',
     ]);
     expect(rows[1]?.className).toBe('is-companion');
+  });
+
+  it('says on a guest’s row how many places are named, but not on a companion’s, nor under No reply (sc-3779)', async () => {
+    signedIn();
+    const bisi = guest('g_3', 'Bisi Adewale', {
+      companions: [{ id: 'c_9', fullName: null, state: 'held', namedByGuest: false }],
+    });
+    await onGuests({ 'GET /api/events/ev_1/guests': () => json(listOf([NGOZI, AMAKA, bisi])) });
+
+    expect(await screen.findByText('Bisi Adewale')).toBeDefined();
+    expect(
+      within(screen.getByRole('region', { name: 'Guests' }))
+        .getAllByRole('listitem')
+        .map((row) => row.textContent),
+    ).toEqual([
+      'Ngozi EzeComing · 3 companions · 1 of 3 named · ngozi@example.com · +234 803 555 0142',
+      'Obi EzeComing',
+      'Guest of Ngozi EzeComing',
+      'Guest of Ngozi Eze · 2Coming',
+      'Chief Amaka ObiNot sure yet',
+      'Bisi AdewaleNo reply · 1 companion · 0 of 1 named',
+      'Guest of Bisi AdewaleHeld · comes only if their host accepts',
+    ]);
+  });
+
+  it('keeps a guest’s row to their reply under the No reply filter (sc-3779, sc-3788)', async () => {
+    signedIn();
+    const bisi = guest('g_3', 'Bisi Adewale', {
+      companions: [{ id: 'c_9', fullName: null, state: 'held', namedByGuest: false }],
+    });
+    await onGuests(
+      { 'GET /api/events/ev_1/guests': () => json(listOf([bisi])) },
+      undefined,
+      '?filter=noReply',
+    );
+
+    expect(await screen.findByText('No reply')).toBeDefined();
+    expect(screen.queryByText(/of 1 named/u)).toBeNull();
   });
 
   it('dates a reply by the event’s day, not the browser’s (sc-1439)', async () => {
@@ -382,7 +420,11 @@ describe('Guests (sc-1468)', () => {
     expect(await screen.findByText('4 coming of 6 invited')).toBeDefined();
     expect(screen.getByText('2 haven’t replied (1 guest and 1 companion).')).toBeDefined();
     expect(screen.getByText('Bimpe Adeyemi')).toBeDefined();
-    expect(screen.getByText('No reply · bimpe@example.com · +44 7700 900123')).toBeDefined();
+    expect(
+      screen.getByText(
+        'No reply · 1 companion · 0 of 1 named · bimpe@example.com · +44 7700 900123',
+      ),
+    ).toBeDefined();
     expect(
       within(screen.getByRole('region', { name: 'Guests' }))
         .getAllByRole('listitem')

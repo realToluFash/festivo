@@ -2724,6 +2724,7 @@
     "repliedOn": "replied {{date}}",
     "replyHeading": "Reply",
     "line": "{{reply}} · {{contact}}",
+    "withPlaces": "{{reply}} · {{places}}",
     "contacts": "{{email}} · {{mobile}}",
     "guestOf": "Guest of {{host}}",
     "guestOfNth": "Guest of {{host}} · {{nth, number}}",
