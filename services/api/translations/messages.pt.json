@@ -138,7 +138,7 @@
     "validation.guest_invitation_how_required": "Escolha como convidou esta pessoa.",
     "validation.guest_answer_unknown": "Escolha «Vem», «Não vem» ou «Por confirmar».",
     "validation.guest_language_unknown": "Escolha English, Español, Français ou Português, ou deixe «Não definido».",
-    "validation.guests_too_many": "You can act on up to {most} guests at once. Narrow the list with a tab, a search or a filter, then select again.",
+    "validation.guests_too_many": "You can act on up to 2,000 guests at once. Narrow the list with a tab, a search or a filter, then select again.",
     "validation.guest_group_name_required": "Introduza um nome para o grupo.",
     "validation.guest_group_name_too_long": "O nome de um grupo pode ter até {groupMax} caracteres.",
     "validation.guest_group_name_taken": "Já existe um grupo chamado {name}.",
