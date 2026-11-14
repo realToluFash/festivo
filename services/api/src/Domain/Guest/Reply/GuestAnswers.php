@@ -79,7 +79,7 @@ final readonly class GuestAnswers
 
             $places = $this->guestRepository->findCompanionsOf($guest);
             $placed = $this->placed($places, $page->companions);
-            $needs = GuestReply::Coming === $reply ? $this->needs($guest, $page->needs, $placed) : [];
+            $needs = GuestReply::Coming === $reply ? $this->needs($guest, $page, $placed, self::left($places, $placed)) : [];
 
             $replied = $guest->reply($reply, $this->clock->now(), GuestReplySource::GuestPage);
             $chose = false;
@@ -168,13 +168,36 @@ final readonly class GuestAnswers
     }
 
     /**
+     * The places this reply leaves unnamed, by id.
+     *
+     * @param list<Guest>                         $places
      * @param list<array{Guest, CompanionChoice}> $placed
+     *
+     * @return array<string, Guest>
+     */
+    private static function left(array $places, array $placed): array
+    {
+        $filled = Vec\map($placed, static fn (array $one): string => $one[0]->getId()->toRfc4122());
+
+        return Dict\from_entries(Vec\map(
+            Vec\filter($places, static fn (Guest $place): bool => null === $place->getFullName() && !Iter\contains($filled, $place->getId()->toRfc4122())),
+            static fn (Guest $place): array => [$place->getId()->toRfc4122(), $place],
+        ));
+    }
+
+    /**
+     * An unnamed place's needs go by its id, refused 422 for a place this reply names or the guest does not have.
+     *
+     * @param list<array{Guest, CompanionChoice}> $placed
+     * @param array<string, Guest>                $left
      *
      * @return list<array{Guest, GuestNeeds}>
      */
-    private function needs(Guest $guest, ?GuestNeeds $own, array $placed): array
+    private function needs(Guest $guest, PageReply $page, array $placed, array $left): array
     {
-        $sent = null === $own ? [] : [['needs', $guest, $own]];
+        $sent = null === $page->needs ? [] : [['needs', $guest, $page->needs]];
+        $violations = [];
+        $seen = [];
 
         foreach ($placed as $index => [$place, $choice]) {
             if (null !== $choice->needs) {
@@ -182,8 +205,17 @@ final readonly class GuestAnswers
             }
         }
 
+        foreach ($page->unnamed as $index => $one) {
+            if (!Iter\contains_key($left, $one->id) || Iter\contains_key($seen, $one->id)) {
+                $violations[] = $this->guestRules->violation("unnamed[{$index}].id", 'validation.guest_companion_unknown');
+                continue;
+            }
+
+            $seen[$one->id] = true;
+            $sent[] = ["unnamed[{$index}].needs", $left[$one->id], $one->needs];
+        }
+
         $records = $this->guestNeedsRecord->of(Vec\map($sent, static fn (array $one): Guest => $one[1]));
-        $violations = [];
         $needs = [];
 
         foreach ($sent as [$path, $person, $typed]) {

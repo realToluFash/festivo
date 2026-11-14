@@ -41,6 +41,7 @@ import {
   YOU,
   firstProblem,
   kitchenOf,
+  unnamedNeeds,
   needsOf,
   skipped,
 } from './kitchen.ts';
@@ -333,7 +334,8 @@ function Card({ token, first }: { token: string; first: GuestPage }) {
     const companions = coming && hasStep(party) ? sentParty(party, kitchen) : [];
     const me =
       coming && kitchen?.left === false ? kitchen.people.find((one) => one.key === YOU) : undefined;
-    api.sendGuestAnswer(token, answer, companions, me == null ? null : needsOf(me)).then(
+    const unnamed = coming && me != null && kitchen != null ? unnamedNeeds(kitchen) : [];
+    api.sendGuestAnswer(token, answer, companions, me == null ? null : needsOf(me), unnamed).then(
       (next) => {
         forgetStarted(token);
         const same =

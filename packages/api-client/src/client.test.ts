@@ -3665,6 +3665,7 @@ describe("the guest's calendar on their page (sc-3627)", () => {
         changed: null,
       },
       places: 0,
+      unnamed: [],
       companions: [],
     },
     language: { chosen: null, host: null, organisation: 'en' },

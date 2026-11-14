@@ -172,6 +172,48 @@ final class GuestPageNeedsTest extends ApiTestCase
     }
 
     #[Test]
+    public function aPlaceNobodyNamedTakesItsOwnNeedsByItsId(): void
+    {
+        $guest = $this->add(['companions' => [['fullName' => null], ['fullName' => null]]]);
+        $token = $this->token($guest);
+        $places = $this->unnamedIds($this->open($token));
+        self::assertCount(2, $places);
+        self::mockTime(new DateTimeImmutable('2026-10-05T18:30:00+00:00'));
+
+        $page = $this->reply($token, 'coming', [
+            'companions' => [['fullName' => 'Kemi Adewale', 'coming' => true]],
+            'unnamed' => [['id' => $places[1], 'needs' => ['allergies' => ['peanuts']]]],
+        ]);
+
+        self::assertSame(200, $this->statusCode(), Json\encode($page));
+        self::assertSame([$places[1]], $this->unnamedIds($page), 'the new name took the first unnamed place');
+        $guestOf = Type\dict(Type\string(), Type\mixed())->coerce(Type\dict(Type\string(), Type\mixed())->coerce($page)['guest'] ?? null);
+        self::assertSame(
+            [...self::NONE, 'allergies' => ['peanuts'], 'changed' => ['by' => 'guest', 'at' => '2026-10-05T19:30:00+01:00']],
+            Type\shape(['needs' => Type\dict(Type\string(), Type\mixed())], true)->coerce(Type\vec(Type\mixed())->coerce($guestOf['unnamed'] ?? [])[0] ?? null)['needs'],
+        );
+        self::assertSame(['peanuts'], $this->details($guest)['companions'][1]['needs']['allergies'] ?? null);
+    }
+
+    #[Test]
+    public function needsForAPlaceTheReplyNamesOrTheGuestDoesNotHaveAreRefused(): void
+    {
+        $guest = $this->add(['companions' => [['fullName' => null]]]);
+        $token = $this->token($guest);
+        $place = $this->unnamedIds($this->open($token))[0];
+
+        $this->reply($token, 'coming', [
+            'companions' => [['fullName' => 'Kemi Adewale', 'coming' => true]],
+            'unnamed' => [['id' => $place, 'needs' => ['allergies' => ['peanuts']]], ['id' => '0195f1c2-0000-7000-8000-000000000000', 'needs' => []]],
+        ]);
+
+        self::assertSame(422, $this->statusCode(), Json\encode($this->last()));
+        self::assertSame(['unnamed[0].id', 'unnamed[1].id'], Vec\keys($this->violations()));
+        self::assertSame([$place], $this->unnamedIds($this->open($token)));
+        self::assertSame([], self::em()->getRepository(AuditEntry::class)->findBy(['action' => GuestNeedsRecord::CHANGED]));
+    }
+
+    #[Test]
     public function aReplyWithoutNeedsAndNotComingLeaveTheRecordAsItIs(): void
     {
         $guest = $this->add(['needs' => ['allergies' => ['fish']]]);
@@ -235,6 +277,14 @@ final class GuestPageNeedsTest extends ApiTestCase
         $guest = Type\dict(Type\string(), Type\mixed())->coerce(Type\dict(Type\string(), Type\mixed())->coerce($page)['guest'] ?? null);
 
         return Vec\map(Type\vec(Type\shape(['id' => Type\string()], true))->coerce($guest['companions'] ?? []), static fn (array $one): string => $one['id']);
+    }
+
+    /** @return list<string> */
+    private function unnamedIds(mixed $page): array
+    {
+        $guest = Type\dict(Type\string(), Type\mixed())->coerce(Type\dict(Type\string(), Type\mixed())->coerce($page)['guest'] ?? null);
+
+        return Vec\map(Type\vec(Type\shape(['id' => Type\string()], true))->coerce($guest['unnamed'] ?? []), static fn (array $one): string => $one['id']);
     }
 
     /** @param array<string, mixed> $guest */

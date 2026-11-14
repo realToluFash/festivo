@@ -2949,6 +2949,8 @@
     "introAlone": "Choose anything that applies to you.",
     "consent": "Only {{hosts}} and the people who cook and serve your meal will see this.",
     "you": "You",
+    "yourGuest": "Your guest",
+    "yourGuestN": "Your guest {{n}}",
     "allergies": "Allergies",
     "diet": "Diet",
     "allergyWord": "Allergy",

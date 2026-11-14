@@ -37,6 +37,7 @@ const PAGE = {
     reply: null,
     needs: NO_NEEDS,
     places: 0,
+    unnamed: [] as object[],
     companions: [] as object[],
   },
   language: { chosen: null, host: null, organisation: 'en' },
@@ -1545,6 +1546,98 @@ describe('Anything the kitchen must know? (sc-3778)', () => {
       answer: 'coming',
       companions: [{ id: CHIDI.id, fullName: CHIDI.fullName, coming: true }],
     });
+  });
+
+  const PLACE_1 = '0193f5a8-0000-7000-8000-0000000000d1';
+  const PLACE_2 = '0193f5a8-0000-7000-8000-0000000000d2';
+  const unnamed = (...ids: string[]) => ({
+    ...PAGE,
+    guest: {
+      ...PAGE.guest,
+      places: ids.length,
+      unnamed: ids.map((id) => ({ id, needs: NO_NEEDS })),
+    },
+  });
+
+  it('gives a place nobody named its own card, “Your guest”, and sends its needs by the place', async () => {
+    const { sent } = api({
+      '/api/guest-links/page': [{ status: 200, body: unnamed(PLACE_1) }],
+      '/api/guest-links/reply': [{ status: 200, body: answered('coming', undefined, 1) }],
+    });
+    open();
+    fireEvent.click(await screen.findByRole('button', { name: 'Yes, I’ll be there' }));
+    fireEvent.click(screen.getByRole('button', { name: 'Next' }));
+
+    const guest = screen.getByRole('group', { name: 'Your guest' });
+    expect(screen.queryByRole('group', { name: 'Your guest 1' })).toBeNull();
+    fireEvent.click(within(guest).getByRole('button', { name: 'Peanuts' }));
+    fireEvent.click(screen.getByRole('button', { name: 'Next' }));
+    expect(screen.getByText('Allergy: peanuts')).toBeDefined();
+    fireEvent.click(screen.getByRole('button', { name: 'Send my answer' }));
+
+    expect(await screen.findByRole('heading', { name: `See you there, ${ADAEZE}.` })).toBeDefined();
+    const body = sent.at(-1)?.body as { unnamed: { id: string; needs: { allergies: string[] } }[] };
+    expect(body.unnamed).toEqual([
+      {
+        id: PLACE_1,
+        needs: {
+          allergies: ['peanuts'],
+          otherAllergy: null,
+          diet: [],
+          otherDiet: null,
+          access: [],
+          otherAccess: null,
+        },
+      },
+    ]);
+  });
+
+  it('numbers the companions when there are more, and a name added takes the first unnamed place', async () => {
+    const { sent } = api({
+      '/api/guest-links/page': [{ status: 200, body: unnamed(PLACE_1, PLACE_2) }],
+      '/api/guest-links/reply': [{ status: 200, body: answered('coming', undefined, 2) }],
+    });
+    open();
+    fireEvent.click(await screen.findByRole('button', { name: 'Yes, I’ll be there' }));
+    fireEvent.click(screen.getByRole('button', { name: 'Add someone · 2 places left' }));
+    fireEvent.change(screen.getByLabelText('Their name'), { target: { value: 'Kemi Adewale' } });
+    fireEvent.click(screen.getByRole('button', { name: 'Add someone · 2 places left' }));
+    fireEvent.click(screen.getByRole('button', { name: 'Next' }));
+
+    expect(screen.getByRole('group', { name: 'Kemi Adewale' })).toBeDefined();
+    const second = screen.getByRole('group', { name: 'Your guest 2' });
+    fireEvent.click(within(second).getByRole('button', { name: 'Vegan' }));
+    fireEvent.click(screen.getByRole('button', { name: 'Next' }));
+    fireEvent.click(screen.getByRole('button', { name: 'Send my answer' }));
+
+    await waitFor(() => expect(sent.at(-1)?.path).toBe('/api/guest-links/reply'));
+    const body = sent.at(-1)?.body as { unnamed: { id: string; needs: { diet: string[] } }[] };
+    expect(body.unnamed.map((one) => [one.id, one.needs.diet])).toEqual([[PLACE_2, ['vegan']]]);
+  });
+
+  it.each([
+    ['the Other allergy', 'Which allergy?'],
+    ['Anything else', /Anything else, in your own words/],
+    ['the access line', /Anything that would make it easier to get in or around/],
+  ])('refuses %s over 100 characters, and passes at 100', async (_, label) => {
+    const { sent } = api({ '/api/guest-links/page': [{ status: 200, body: PAGE }] });
+    open();
+    fireEvent.click(await screen.findByRole('button', { name: 'Yes, I’ll be there' }));
+    if (label === 'Which allergy?') {
+      fireEvent.click(screen.getByRole('button', { name: 'Other allergy' }));
+    }
+    const field = screen.getByLabelText(label);
+    fireEvent.change(field, { target: { value: 'k'.repeat(101) } });
+    fireEvent.click(screen.getByRole('button', { name: 'Next' }));
+
+    expect(screen.getByText('Shorten it to 100 characters or fewer.')).toBeDefined();
+    expect(field.getAttribute('aria-invalid')).toBe('true');
+    expect(screen.queryByRole('heading', { name: 'Check and send' })).toBeNull();
+
+    fireEvent.change(field, { target: { value: 'k'.repeat(100) } });
+    fireEvent.click(screen.getByRole('button', { name: 'Next' }));
+    expect(screen.getByRole('heading', { name: 'Check and send' })).toBeDefined();
+    expect(sent.map((one) => one.path)).not.toContain('/api/guest-links/reply');
   });
 
   it('keeps what was chosen on screen when the API refuses it 422, and says so', async () => {

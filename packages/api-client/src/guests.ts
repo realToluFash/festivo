@@ -132,6 +132,18 @@ export interface GuestPageCompanion {
   needs: GuestPageNeeds;
 }
 
+/** A place the host saved and nobody has named: the page reads it "Your guest" (sc-3778). */
+export interface GuestPagePlace {
+  id: string;
+  needs: GuestPageNeeds;
+}
+
+/** An unnamed place's needs, sent with Coming by its id; without them its record stays. */
+export interface PlaceNeeds {
+  id: string;
+  needs: PageNeeds;
+}
+
 /** Who fills the places, sent with Coming: a named companion by `id`, or a name for the next unnamed place with none, with their needs (sc-3778); without them the record stays. */
 export interface CompanionChoice {
   id: string | null;
@@ -234,6 +246,8 @@ export interface GuestPage {
     needs: GuestPageNeeds;
     /** How many companions the host saved places for, named or not (sc-3779). */
     places: number;
+    /** The places nobody has named, in the order a new name fills them (sc-3779), each with its needs (sc-3778). */
+    unnamed: GuestPagePlace[];
     /** The named ones; the rest of `places` are unnamed. */
     companions: GuestPageCompanion[];
   };
@@ -319,6 +333,15 @@ export function asGuestPageCompanion(value: unknown): GuestPageCompanion | null 
     return null;
 
   return { id, fullName, coming: row.coming, namedByGuest: row.namedByGuest === true, needs };
+}
+
+export function asGuestPagePlace(value: unknown): GuestPagePlace | null {
+  if (value == null || typeof value !== 'object') return null;
+  const row = value as Record<string, unknown>;
+  const id = text(row.id);
+  const needs = asPageNeeds(row.needs);
+
+  return id == null || needs == null ? null : { id, needs };
 }
 
 export function asPageNeeds(value: unknown): GuestPageNeeds | null {

@@ -8,6 +8,7 @@ use App\Domain\Guest\Model\CompanionChoice;
 use App\Domain\Guest\Model\GuestNeeds;
 use App\Domain\Guest\Model\NewGuest;
 use App\Domain\Guest\Model\PageReply;
+use App\Domain\Guest\Model\PlaceNeeds;
 use App\Domain\User\Phone\PhoneNumberParser;
 use App\Entity\Guest;
 use App\Enum\ErrorCode;
@@ -155,8 +156,9 @@ final readonly class GuestRules
      *
      * @param list<array{id?: ?string, fullName: string, coming: bool, needs?: ?NeedsInput}> $companions
      * @param ?NeedsInput                                                                    $needs      the guest's own; null leaves them as they are
+     * @param list<array{id: string, needs: NeedsInput}>                                     $unnamed    a place nobody named, by its id
      */
-    public function pageReply(array $companions, ?array $needs): PageReply
+    public function pageReply(array $companions, ?array $needs, array $unnamed = []): PageReply
     {
         $violations = [];
         $choices = [];
@@ -166,6 +168,11 @@ final readonly class GuestRules
         }
 
         $own = null === $needs ? null : $this->needs($needs, 'needs', $violations);
+        $places = [];
+
+        foreach ($unnamed as $index => $place) {
+            $places[] = new PlaceNeeds($place['id'], $this->needs($place['needs'], "unnamed[{$index}].needs", $violations));
+        }
 
         foreach ($companions as $index => $companion) {
             $name = Str\trim($companion['fullName']);
@@ -189,7 +196,7 @@ final readonly class GuestRules
             throw ApiException::validation($violations);
         }
 
-        return new PageReply($choices, $own);
+        return new PageReply($choices, $own, $places);
     }
 
     /** @return array{propertyPath: string, message: string, code: string} */

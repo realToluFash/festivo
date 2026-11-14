@@ -9,6 +9,7 @@ import {
   NEED_OTHER_MAXIMUM,
   type NeedsChange,
   type PageNeeds,
+  type PlaceNeeds,
 } from '@soirely/api-client';
 
 import { lengthOf } from '../app/events/guestNeeds.ts';
@@ -18,8 +19,13 @@ export type Field = 'other' | 'words' | 'access';
 export const FIELDS: readonly Field[] = ['other', 'words', 'access'];
 
 export const YOU = 'me';
+const PLACE = 'place-';
 
-/** One card on Anything the kitchen must know? (sc-3778): the guest ("You", no name) or a companion coming. `words` is Diet · Other and `access` is Access · Other; `host` are the access codes the hosts picked, which the guest may only remove. */
+function placeKey(id: string): string {
+  return `${PLACE}${id}`;
+}
+
+/** One card on Anything the kitchen must know? (sc-3778): the guest ("You"), a companion coming, or a place nobody named (no name, "Your guest"). `words` is Diet · Other and `access` is Access · Other; `host` are the access codes the hosts picked, which the guest may only remove. */
 export interface Person {
   key: string;
   name: string | null;
@@ -82,11 +88,18 @@ function recordedPeople(page: GuestPage): Person[] {
   return [
     personOf(YOU, null, page.guest.needs),
     ...page.guest.companions.map((one) => personOf(one.id, one.fullName, one.needs)),
+    ...page.guest.unnamed.map((one) => personOf(placeKey(one.id), null, one.needs)),
   ];
 }
 
-function comingPeople(party: Party): { key: string; name: string }[] {
-  return party.people.filter((one) => one.coming).map((one) => ({ key: one.key, name: one.name }));
+/** Each companion coming, then each place the names the guest added leave unnamed: a new name fills the first unnamed place (sc-3779). */
+function comingPeople(page: GuestPage, party: Party): { key: string; name: string | null }[] {
+  const added = party.people.filter((one) => one.id == null).length;
+
+  return [
+    ...party.people.filter((one) => one.coming).map((one) => ({ key: one.key, name: one.name })),
+    ...page.guest.unnamed.slice(added).map((one) => ({ key: placeKey(one.id), name: null })),
+  ];
 }
 
 /** The guest and each companion coming, keeping what was chosen on the step so far, then the record, then nothing. */
@@ -98,11 +111,18 @@ export function kitchenOf(page: GuestPage, party: Party, was: Kitchen | null): K
 
     return one == null ? blank(key, name) : { ...one, name };
   };
-  const people = [kept(YOU, null), ...comingPeople(party).map((one) => kept(one.key, one.name))];
+  const people = [
+    kept(YOU, null),
+    ...comingPeople(page, party).map((one) => kept(one.key, one.name)),
+  ];
 
   return {
     people,
-    record: [page.guest.needs, ...page.guest.companions.map((one) => one.needs)].some(hasAny),
+    record: [
+      page.guest.needs,
+      ...page.guest.companions.map((one) => one.needs),
+      ...page.guest.unnamed.map((one) => one.needs),
+    ].some(hasAny),
     tried: false,
     left: false,
   };
@@ -153,6 +173,28 @@ export function needsOf(one: Person): PageNeeds {
     access: sent.access === '' ? access : [...access, 'other'],
     otherAccess: sent.access === '' ? null : sent.access,
   };
+}
+
+/** The cards for places nobody named, sent by the place's id. */
+export function unnamedNeeds(kitchen: Kitchen): PlaceNeeds[] {
+  return kitchen.people
+    .filter((one) => one.key.startsWith(PLACE))
+    .map((one) => ({ id: one.key.slice(PLACE.length), needs: needsOf(one) }));
+}
+
+export interface WhoWords {
+  you: string;
+  yourGuest: string;
+  yourGuestN: (n: number) => string;
+}
+
+/** "You", a companion's name, or for a place nobody named "Your guest", or "Your guest 1", "Your guest 2" … among the companions when there are more (ux, 8 Nov). */
+export function whoOf(one: Person, people: readonly Person[], words: WhoWords): string {
+  if (one.key === YOU) return words.you;
+  if (one.name != null) return one.name;
+  const companions = people.filter((each) => each.key !== YOU);
+
+  return companions.length === 1 ? words.yourGuest : words.yourGuestN(companions.indexOf(one) + 1);
 }
 
 export type Problem = 'empty' | 'long';

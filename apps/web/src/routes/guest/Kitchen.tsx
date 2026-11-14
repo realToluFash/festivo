@@ -14,12 +14,12 @@ import {
   type Kitchen,
   type KitchenWords,
   type Person,
-  YOU,
   allergyNames,
   fieldId,
   kitchenLines,
   problemsOf,
   toggled,
+  whoOf,
 } from './kitchen.ts';
 import './kitchen.css';
 
@@ -48,8 +48,12 @@ function useWords(): { t: Translate; words: KitchenWords } {
   return { t, words };
 }
 
-function whoOf(one: Person, t: Translate): string {
-  return one.key === YOU || one.name == null ? t('guestKitchen.you') : one.name;
+function who(one: Person, kitchen: Kitchen, t: Translate): string {
+  return whoOf(one, kitchen.people, {
+    you: t('guestKitchen.you'),
+    yourGuest: t('guestKitchen.yourGuest'),
+    yourGuestN: (n) => t('guestKitchen.yourGuestN', { n }),
+  });
 }
 
 function Ring({ kind }: { kind: 'allergy' | 'broken' | 'removed' | 'diet' }) {
@@ -256,7 +260,7 @@ function Card({
 
   return (
     <fieldset className="gk-card">
-      <legend className="gk-who">{whoOf(one, t)}</legend>
+      <legend className="gk-who">{who(one, kitchen, t)}</legend>
       <div className="gk-card-body">
         {changed != null && (
           <p className="gk-text is-quiet">
@@ -507,7 +511,7 @@ export function KitchenCheck({
         <div className="gk-row">
           <div className="gk-row-words">
             <p className="gk-label">{t('guestKitchen.row')}</p>
-            {kitchenLines(kitchen, (one) => whoOf(one, t), words).map(({ who, lines }) => (
+            {kitchenLines(kitchen, (one) => who(one, kitchen, t), words).map(({ who, lines }) => (
               <div key={who ?? 'nobody'} className="gk-person">
                 {who != null && <p className="gk-value">{who}</p>}
                 {lines.map((line, at) => (

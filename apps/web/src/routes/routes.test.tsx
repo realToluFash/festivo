@@ -825,6 +825,7 @@ describe('the guest tree', () => {
               changed: null,
             },
             places: 0,
+            unnamed: [],
             companions: [],
           },
           language: { chosen: null, host: null, organisation: 'en' },
