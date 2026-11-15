@@ -21,6 +21,7 @@ use App\Entity\User;
 use App\Enum\ErrorCode;
 use App\Enum\IdentityProvider;
 use App\Enum\MembershipStatus;
+use App\Enum\NotificationPriority;
 use App\Enum\Permission;
 use App\Enum\SeededRole;
 use App\Tests\ApiTestCase;
@@ -462,6 +463,11 @@ final class SignInRulesTest extends ApiTestCase
 
         self::assertSame(200, $this->statusCode());
         self::assertSame(0, $this->deliveriesOf(SignInRulesNotice::NAME), 'the save writes one row for the worker, never one per member');
+        self::assertSame(
+            [NotificationPriority::Info->value],
+            Vec\map(self::service(Connection::class)->fetchFirstColumn('SELECT priority FROM scheduled_notifications WHERE type = :type', ['type' => SignInRulesNotice::NAME]), static fn (mixed $priority): int => Type\int()->coerce($priority)),
+            'a verification code somebody asks for goes out ahead of every rule-change email',
+        );
         self::assertSame(['bisi@ire.events', 'chidi@ire.events', 'folake@ire.events'], Vec\sort(Vec\map($this->mails(), static fn (Email $mail): string => $mail->getTo()[0]->getAddress())));
         self::assertSame(3, $this->deliveriesOf(SignInRulesNotice::NAME));
     }
