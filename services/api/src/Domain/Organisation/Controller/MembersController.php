@@ -113,9 +113,11 @@ final readonly class MembersController
         $after = null === ($query['after'] ?? null) ? null : $this->listedMember($organisation, $query['after'], $decides);
         $page = $this->membershipRepository->findListedPage($organisation, $statuses, $decides, $after, $limit);
         $counts = $this->membershipRepository->countListedByStatus($organisation, $decides);
-        $invitations = $this->invitationRepository->findForOrganisation($organisation);
-        $rows = $this->memberRows($caller, $invitations);
+        $rows = $this->memberRows($organisation, $caller);
         $last = Iter\last($page);
+        $whole = null === $after
+            ? ['invitations' => $this->invitationRows($this->invitationRepository->findForOrganisation($organisation))]
+            : [];
 
         return new JsonResponse([
             'members' => $rows($page),
@@ -129,8 +131,25 @@ final readonly class MembersController
             'waiting' => $decides
                 ? $rows($this->membershipRepository->findListedPage($organisation, self::SHOWN['waiting'], true, null, null))
                 : [],
-            'invitations' => $this->invitationRows($invitations),
+            ...$whole,
         ]);
+    }
+
+    /** One person's row as it now is, for a change to somebody past the rows a read again brings (sc-49170). */
+    #[Route('/api/orgs/{organisationId}/members/{membershipId}', name: 'orgs_members_one', methods: ['GET'])]
+    #[InOrganisation(Permission::MembersRead)]
+    public function one(string $organisationId, string $membershipId): JsonResponse
+    {
+        $organisation = $this->organisation($organisationId);
+        $caller = $this->user();
+        $decides = true === $this->membershipDirectory->grantsIn($caller, $organisation->getId())?->holds(Permission::MembersManage);
+        $membership = Uuid::isValid($membershipId) ? $this->membershipRepository->findOneBy(['id' => $membershipId, 'organisation' => $organisation]) : null;
+
+        if (null === $membership || !$membership->isListedTo($decides)) {
+            throw ApiException::notFound('access.not_found');
+        }
+
+        return new JsonResponse(['member' => $this->memberRows($organisation, $caller)([$membership])[0]]);
     }
 
     /** Sending to an address with one pending re-sends it: a new link, and the old one stops working. Into Owner, `proof` comes from /api/auth/proof. */
@@ -262,22 +281,20 @@ final readonly class MembersController
         return new Response(null, Response::HTTP_NO_CONTENT);
     }
 
-    /**
-     * @param list<Invitation> $invitations the organisation's, for who invited each member
-     *
-     * @return Closure(list<Membership>): list<array<string, mixed>>
-     */
-    private function memberRows(User $caller, array $invitations): Closure
+    /** @return Closure(list<Membership>): list<array<string, mixed>> */
+    private function memberRows(Organisation $organisation, User $caller): Closure
     {
-        $accepted = Dict\group_by(
-            Vec\filter($invitations, static fn (Invitation $invitation): bool => null !== $invitation->getAcceptedBy()),
-            static fn (Invitation $invitation): string => $invitation->getAcceptedBy()?->getId()->toRfc4122() ?? '',
-        );
-        $sentAt = $this->invitationDeliveries->sentAt($invitations);
         $locale = $this->userMailer->shownLocaleFor($caller);
         $written = fn (DateTimeImmutable $at): string => $this->userMailer->deadline($at, $caller, $locale);
 
-        return /** @param list<Membership> $memberships */ function (array $memberships) use ($accepted, $sentAt, $caller, $written): array {
+        return /** @param list<Membership> $memberships */ function (array $memberships) use ($organisation, $caller, $written): array {
+            // Who invited each of these, from their invitations only: an organisation grown by invitation has one per member.
+            $invitations = $this->invitationRepository->findAcceptedBy($organisation, Vec\map($memberships, static fn (Membership $membership): User => $membership->getUser()));
+            $accepted = Dict\group_by(
+                $invitations,
+                static fn (Invitation $invitation): string => $invitation->getAcceptedBy()?->getId()->toRfc4122() ?? '',
+            );
+            $sentAt = $this->invitationDeliveries->sentAt($invitations);
             $history = Dict\group_by(
                 $this->membershipTransitionRepository->findForMemberships($memberships),
                 static fn (MembershipTransition $step): string => $step->getMembership()->getId()->toRfc4122(),

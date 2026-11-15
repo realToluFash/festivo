@@ -15,11 +15,13 @@ use App\Enum\MembershipChannel;
 use App\Enum\MembershipStatus;
 use App\Enum\SeededRole;
 use App\Enum\Suspension;
+use App\Repository\MembershipRepository;
 use App\Tests\ApiTestCase;
 use App\Tests\Traits\OnboardsAccounts;
 use DateTimeImmutable;
 use Lexik\Bundle\JWTAuthenticationBundle\Services\JWTTokenManagerInterface;
 use PHPUnit\Framework\Attributes\Test;
+use Psl\Dict;
 use Psl\Json;
 use Psl\Str;
 use Psl\Type;
@@ -107,10 +109,51 @@ final class MembersPagingTest extends ApiTestCase
         }
     }
 
-    /** @return array<string, mixed> */
-    private function list(string $query = '', int $status = 200): array
+    #[Test]
+    public function whatIsListedToSomebodyWhoCannotDecideIsWhatTheMembershipSays(): void
     {
-        $who = self::em()->find(User::class, $this->owner->getId()) ?? self::fail('no owner');
+        $this->moved($this->member('jide', MembershipStatus::PendingApproval), MembershipStatus::LeftOrRemoved);
+        $organisation = self::em()->find(Organisation::class, $this->organisation->getId()) ?? self::fail('no organisation');
+        $repository = self::service(MembershipRepository::class);
+        $everybody = $repository->findBy(['organisation' => $organisation], ['createdAt' => 'ASC', 'id' => 'ASC']);
+        $statuses = MembershipStatus::cases();
+
+        foreach ([true, false] as $decides) {
+            $listed = Vec\filter($everybody, static fn (Membership $membership): bool => $membership->isListedTo($decides));
+            $counted = Dict\count_values(Vec\map($listed, static fn (Membership $membership): string => $membership->getStatus()->value));
+
+            self::assertSame($listed, $repository->findListedPage($organisation, $statuses, $decides, null, null));
+            self::assertEquals($counted, $repository->countListedByStatus($organisation, $decides));
+        }
+
+        self::assertCount(11, $everybody);
+        self::assertCount(9, $repository->findListedPage($organisation, $statuses, false, null, null), 'neither Ife waiting nor Jide, turned down, to somebody who cannot decide');
+    }
+
+    #[Test]
+    public function aMemberWithoutMembersReadIsRefusedTheList(): void
+    {
+        $member = $this->member('kemi', MembershipStatus::Active)->getUser();
+
+        $this->list('', 403, $member);
+    }
+
+    #[Test]
+    public function onePersonReadsAsTheirRowInAPage(): void
+    {
+        $page = $this->list('?show=former');
+        $former = Type\vec(Type\dict(Type\string(), Type\mixed()))->coerce($page['members'])[0] ?? self::fail('nobody former');
+        $one = $this->list('/' . Type\string()->coerce($former['id']));
+
+        self::assertSame($former, $one['member']);
+        self::assertArrayHasKey('invitations', $page);
+        self::assertArrayNotHasKey('invitations', $this->list('?limit=2&after=' . Type\string()->coerce($former['id'])), 'only a first page carries the invitations');
+    }
+
+    /** @return array<string, mixed> */
+    private function list(string $query = '', int $status = 200, ?User $as = null): array
+    {
+        $who = self::em()->find(User::class, ($as ?? $this->owner)->getId()) ?? self::fail('no caller');
         $this->client->request('GET', Str\format('/api/orgs/%s/members%s', $this->organisation->getId()->toRfc4122(), $query), server: [
             'HTTP_AUTHORIZATION' => 'Bearer ' . self::service(JWTTokenManagerInterface::class)->create($who),
         ]);
