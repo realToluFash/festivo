@@ -7,6 +7,7 @@ import { SecondaryButton } from '../../components/Buttons.tsx';
 import { useReadOut } from '../../components/ReadOut.tsx';
 import { Text } from '../../components/Text.tsx';
 import { useLayout } from '../../layout/useLayout.ts';
+import { useModalOpen } from '../../updateRequired.ts';
 import { DemoOnly } from '../../steps/Lines.tsx';
 import { tokens } from '../../theme/tokens.ts';
 import { goBack } from '../DemoScreen.tsx';
@@ -75,6 +76,7 @@ function NightBody({ first, locale }: { first: NightStart; locale: string }) {
   const track = tracks.find((one) => one.id === trackId) ?? tracks[0];
   const view = track == null ? null : trackView(night, track, locale);
   const chosenRow = view?.later.find((row) => row.item.id === chosen) ?? null;
+  const sheetShown = useModalOpen(kind !== 'tabletLandscape' && chosenRow != null);
 
   useReadOut(night.said === '' ? null : night.said, { quietAtMount: true, answer: night.clock });
 
@@ -226,7 +228,7 @@ function NightBody({ first, locale }: { first: NightStart; locale: string }) {
       {kind !== 'tabletLandscape' && (
         <Modal
           transparent
-          visible={chosenRow != null}
+          visible={sheetShown}
           animationType={phone ? 'slide' : 'fade'}
           statusBarTranslucent
           navigationBarTranslucent
