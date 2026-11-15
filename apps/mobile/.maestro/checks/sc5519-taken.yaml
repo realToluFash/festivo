@@ -1,0 +1,35 @@
+# sc-5519: Create "Cousins Table" in Edit ${GUEST_ID}; someone else makes "cousins TÁBLE" first (API, TOKEN); Save is refused under Group, nothing typed lost, picker lists theirs.
+appId: host.exp.Exponent
+---
+- setOrientation: ${ORIENT}
+- openLink: ${METRO_URL}/--/events/${EVENT_ID}?area=guests
+- extendedWaitUntil: { visible: { id: 'guests.search' }, timeout: 30000 }
+- tapOn: { id: 'guests.search' }
+- inputText: ${NAME}
+- hideKeyboard
+- extendedWaitUntil: { visible: { id: 'guests.row.${GUEST_ID}' }, timeout: 15000 }
+- tapOn: { id: 'guests.row.${GUEST_ID}' }
+- extendedWaitUntil: { visible: { id: 'guest.edit' }, timeout: 20000 }
+- tapOn: { id: 'guest.edit' }
+- extendedWaitUntil: { visible: { id: 'guest.form.fullName' }, timeout: 20000 }
+- tapOn: { id: 'guest.form.fullName' }
+- inputText: ' Jr'
+- tapOn: { id: 'guest.form.group' }
+- extendedWaitUntil: { visible: { id: 'guest.groupPicker.field' }, timeout: 10000 }
+- tapOn: { id: 'guest.groupPicker.field' }
+- inputText: 'Cousins Table'
+- extendedWaitUntil: { visible: { id: 'guest.groupPicker.create' }, timeout: 5000 }
+- tapOn: { id: 'guest.groupPicker.create' }
+- extendedWaitUntil: { visible: { id: 'never.there' }, timeout: 1000, optional: true }
+- takeScreenshot: taken-chosen
+- evalScript: >-
+    ${output.made = http.post('http://127.0.0.1:38080/api/events/' + EVENT_ID + '/guest-groups', {headers: {'Content-Type': 'application/json', 'Authorization': 'Bearer ' + TOKEN, 'Origin': 'http://127.0.0.1:35173'}, body: '{"name":"cousins TÁBLE"}'}).status}
+- assertTrue: ${output.made == 201}
+- tapOn: { id: 'guest.form.save' }
+- extendedWaitUntil: { visible: { id: 'never.there' }, timeout: 3000, optional: true }
+- takeScreenshot: taken-refused
+- assertVisible: { id: 'guest.form' }
+- tapOn: { id: 'guest.form.group' }
+- extendedWaitUntil: { visible: { id: 'guest.groupPicker.field' }, timeout: 10000 }
+- extendedWaitUntil: { visible: { id: 'never.there' }, timeout: 1000, optional: true }
+- takeScreenshot: taken-picker

@@ -1,0 +1,57 @@
+# sc-5519: Edit ${GUEST_ID}: a new group and a tick, then the API stops (stopped from outside); Save is refused offline and the group and tick stay.
+appId: host.exp.Exponent
+---
+- setOrientation: ${ORIENT}
+- openLink: ${METRO_URL}/--/events/${EVENT_ID}?area=guests
+- extendedWaitUntil: { visible: { id: 'guests.search' }, timeout: 30000 }
+- tapOn: { id: 'guests.search' }
+- inputText: ${NAME}
+- hideKeyboard
+- extendedWaitUntil: { visible: { id: 'guests.row.${GUEST_ID}' }, timeout: 15000 }
+- tapOn: { id: 'guests.row.${GUEST_ID}' }
+- extendedWaitUntil: { visible: { id: 'guest.edit' }, timeout: 20000 }
+- tapOn: { id: 'guest.edit' }
+- extendedWaitUntil: { visible: { id: 'guest.form.group' }, timeout: 20000 }
+- tapOn: { id: 'guest.form.group' }
+- extendedWaitUntil: { visible: { id: 'guest.groupPicker.field' }, timeout: 10000 }
+- tapOn: { id: 'guest.groupPicker.field' }
+- inputText: 'Late table'
+- tapOn: { id: 'guest.groupPicker.create' }
+- scrollUntilVisible:
+    {
+      element: { id: 'guest.form.needs.toggle' },
+      direction: DOWN,
+      timeout: 15000,
+      centerElement: true,
+    }
+- tapOn: { id: 'guest.form.needs.toggle' }
+- scrollUntilVisible:
+    {
+      element: { id: 'guest.form.needs.allergies.sesame' },
+      direction: DOWN,
+      timeout: 15000,
+      centerElement: true,
+    }
+- tapOn: { id: 'guest.form.needs.allergies.sesame' }
+- takeScreenshot: off-filled
+- repeat:
+    times: 120
+    while:
+      true: ${(function(){try{return http.get('http://127.0.0.1:38080/api/health').ok}catch(e){return false}})()}
+    commands:
+      - extendedWaitUntil: { visible: { id: 'never.there' }, timeout: 2000, optional: true }
+- tapOn: { id: 'guest.form.save' }
+- extendedWaitUntil: { visible: { id: 'never.there' }, timeout: 4000, optional: true }
+- scrollUntilVisible: { element: { id: 'guest.form.offline' }, direction: UP, timeout: 20000 }
+- takeScreenshot: off-refused
+- scrollUntilVisible:
+    {
+      element: { id: 'guest.form.needs.allergies.sesame' },
+      direction: DOWN,
+      timeout: 15000,
+      centerElement: true,
+    }
+- takeScreenshot: off-tick-kept
+- scrollUntilVisible:
+    { element: { id: 'guest.form.group' }, direction: UP, timeout: 15000, centerElement: true }
+- takeScreenshot: off-group-kept
