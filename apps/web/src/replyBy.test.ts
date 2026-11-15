@@ -1,7 +1,6 @@
-import { type OrganisationEvent } from '@soirely/api-client';
 import { describe, expect, it } from 'vitest';
 
-import { repliesClosed, replyByCheck, showsPreview } from './replyBy.ts';
+import { replyByCheck, showsPreview } from './replyBy.ts';
 
 const STARTS = '2026-11-05T18:00:00Z';
 const NOW = new Date('2026-11-03T09:41:00Z');
@@ -31,18 +30,5 @@ describe('Reply by’s rules (sc-3780)', () => {
     expect(showsPreview('2026-11-04', 'save', '2026-11-03')).toBe(true);
     expect(showsPreview('2026-11-02', 'now', '2026-11-03')).toBe(false);
     expect(showsPreview('2026-11-05', 'tooLate', '2026-11-03')).toBe(false);
-  });
-
-  it('closes on the server’s word, or once the clock passes the instant it gave', () => {
-    const open = {
-      replyBy: '2026-11-04',
-      repliesCloseAt: '2026-11-04T23:59:59+00:00',
-      repliesClosedOn: null,
-    } as OrganisationEvent;
-
-    expect(repliesClosed(open, new Date('2026-11-04T23:59:59Z'))).toBe(false);
-    expect(repliesClosed(open, new Date('2026-11-05T00:00:00Z'))).toBe(true);
-    expect(repliesClosed({ ...open, repliesClosedOn: '2026-11-02' }, NOW)).toBe(true);
-    expect(repliesClosed({ ...open, replyBy: null, repliesCloseAt: null }, NOW)).toBe(false);
   });
 });

@@ -2,9 +2,14 @@ import type { Guest, OrganisationEvent } from '@soirely/api-client';
 import {
   type Counts,
   REPLY_KEY,
+  type ReplyByAsk,
+  type ReplyDated,
   type ReplyWord,
+  closedOn,
   formatWallClock,
   formatWallDay,
+  haventLine,
+  repliesClosed,
   replyDate,
   wallDay,
 } from '@soirely/domain';
@@ -12,56 +17,8 @@ import type { TFunction } from 'i18next';
 
 export const CLOSES_AT = '23:59';
 
-export type ReplyByAsk = 'sooner' | 'now';
-
-type ReplyDated = Pick<OrganisationEvent, 'replyBy' | 'repliesCloseAt' | 'repliesClosedOn'>;
-
 export function todayIn(now: Date, timeZone: string): string {
   return wallDay(now, timeZone);
-}
-
-export function dayBefore(date: string): string {
-  const day = new Date(`${date}T00:00:00Z`);
-  day.setUTCDate(day.getUTCDate() - 1);
-
-  return day.toISOString().slice(0, 10);
-}
-
-export function replyByWrong(date: string | null, startDate: string): boolean {
-  return date != null && date >= startDate;
-}
-
-export function replyByAfterStart(replyBy: string | null, startDate: string): string | null {
-  return replyBy != null && startDate <= replyBy ? dayBefore(startDate) : null;
-}
-
-/** Closing replies sooner asks first, and only while somebody has still to reply: a past day closes them now. */
-export function replyByAsk(
-  saved: string | null,
-  next: string | null,
-  today: string,
-  havent: number,
-): ReplyByAsk | null {
-  if (next == null || havent === 0) return null;
-  if (next < today) return 'now';
-  if (saved != null && next < saved) return 'sooner';
-
-  return null;
-}
-
-/** The one rule of 8 Nov: closed from 23:59:59 on the Reply by day, at once after Close replies now. */
-export function repliesClosed(event: ReplyDated, now: Date): boolean {
-  if (event.repliesClosedOn != null) return true;
-  if (event.repliesCloseAt == null) return false;
-
-  return now.getTime() >= Date.parse(event.repliesCloseAt);
-}
-
-/** The day replies closed: the save's when a save closed them, else the Reply by day itself. */
-export function closedOn(event: ReplyDated, now: Date): string | null {
-  if (!repliesClosed(event, now)) return null;
-
-  return event.repliesClosedOn ?? event.replyBy ?? null;
 }
 
 function shortDay(date: string, locale: string): string {
@@ -143,20 +100,6 @@ export function replyByMoves(replyBy: string, moved: string, locale: string, t: 
     old: formatWallDay(replyBy, locale),
     next: formatWallDay(moved, locale),
   });
-}
-
-/** Guests' card's own count sentence (l10n, #33419), never a copy of it. */
-export function haventLine(t: TFunction, counts: Counts): string {
-  if (counts.havent === 0) return t('guestList.everyoneReplied');
-  const havent = t('guestList.havent', { count: counts.havent });
-
-  return counts.haventCompanions === 0
-    ? t('guestList.haventLine', { havent })
-    : t('guestList.haventWho', {
-        havent,
-        guests: t('guestList.countGuests', { count: counts.haventGuests }),
-        companions: t('guestList.countCompanions', { count: counts.haventCompanions }),
-      });
 }
 
 export function replyByAskWords(

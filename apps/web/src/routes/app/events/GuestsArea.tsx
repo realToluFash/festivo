@@ -49,6 +49,7 @@ import {
   type NeedsTyped,
   firstNeedsFailing,
   hasAllergy,
+  haventLine,
   needsFailingCount,
   needsInputOf,
   needsViolations,
@@ -113,7 +114,6 @@ import {
 import { choiceLine, groupRefusal, listOpen, refusedLine } from './guestGroups.ts';
 import { GuestColumn, ReplyMark, guestAddress } from './GuestColumn.tsx';
 import { decideRow, repliesOf } from './guestReplyBy.ts';
-import { haventLine } from './havent.ts';
 import {
   CompanionField,
   GuestField,

@@ -7,6 +7,7 @@ import {
   hostsLine,
   positionPart,
   rememberTabHolding,
+  repliesClosed,
   shownPhase,
   stepAwaitsMilestones,
   takesCardStep,
@@ -51,7 +52,7 @@ import {
 } from './EventPartEdits.tsx';
 import { useMakeLive } from './MakeLive.tsx';
 import { ReplyByPart } from './ReplyByPart.tsx';
-import { closesAtClock, repliesClosed } from '../../../replyBy.ts';
+import { closesAtClock } from '../../../replyBy.ts';
 import { arrivingPart } from './openInPlace.ts';
 import { PHASE_WORD } from './eventWords.ts';
 import { typeLabel } from './eventTypes.ts';

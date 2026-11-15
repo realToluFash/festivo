@@ -4,17 +4,12 @@ import { describe, expect, it } from 'vitest';
 
 import en from '../i18n/locales/en.json';
 import {
-  closedOn,
   guestRepliesOf,
   guestReplyBy,
-  replyByAfterStart,
-  replyByAsk,
   replyByAskWords,
   replyByPreview,
   replyByRow,
   replyBySaved,
-  replyByWrong,
-  repliesClosed,
   todayIn,
 } from './replyBy.ts';
 
@@ -39,23 +34,7 @@ const COUNTS = {
   haventCompanions: 4,
 } as Counts;
 
-describe('Reply by closes at 23:59:59 on its day, in the event’s zone', () => {
-  it('stays open to the last second across the clocks going back, and closes on it', () => {
-    expect(repliesClosed(EVENT, new Date('2026-10-25T23:59:58Z'))).toBe(false);
-    expect(repliesClosed(EVENT, new Date('2026-10-25T23:59:59Z'))).toBe(true);
-  });
-
-  it('is closed at once after Close replies now, and names the day of that save', () => {
-    const saved = { ...EVENT, replyBy: '2026-11-05', repliesClosedOn: '2026-11-08' };
-    expect(repliesClosed(saved, new Date('2026-11-08T10:00:00Z'))).toBe(true);
-    expect(closedOn(saved, new Date('2026-11-08T10:00:00Z'))).toBe('2026-11-08');
-  });
-
-  it('names the Reply by day when replies closed at its end, and nothing while open', () => {
-    expect(closedOn(EVENT, new Date('2026-10-27T10:00:00Z'))).toBe('2026-10-25');
-    expect(closedOn(EVENT, new Date('2026-10-20T10:00:00Z'))).toBeNull();
-  });
-
+describe('today in the event’s zone', () => {
   it('reads today in the event’s zone, not the reader’s', () => {
     expect(todayIn(new Date('2026-11-03T23:30:00Z'), 'Africa/Lagos')).toBe('2026-11-04');
     expect(todayIn(new Date('2026-11-03T23:30:00Z'), LONDON)).toBe('2026-11-03');
@@ -83,20 +62,6 @@ describe('the Reply by row', () => {
 });
 
 describe('the Reply by part', () => {
-  it('refuses a day on or after the start’s', () => {
-    expect(replyByWrong('2026-11-05', '2026-11-05')).toBe(true);
-    expect(replyByWrong('2026-11-04', '2026-11-05')).toBe(false);
-    expect(replyByWrong(null, '2026-11-05')).toBe(false);
-  });
-
-  it('asks before an earlier day or a past one, never with nobody left to reply', () => {
-    expect(replyByAsk('2026-11-04', '2026-11-03', '2026-11-01', 25)).toBe('sooner');
-    expect(replyByAsk('2026-11-04', '2026-10-30', '2026-11-01', 25)).toBe('now');
-    expect(replyByAsk('2026-11-03', '2026-11-04', '2026-11-01', 25)).toBeNull();
-    expect(replyByAsk(null, '2026-11-04', '2026-11-01', 25)).toBeNull();
-    expect(replyByAsk('2026-11-04', '2026-10-30', '2026-11-01', 0)).toBeNull();
-  });
-
   it('asks with Guests’ card’s own count sentence', () => {
     expect(replyByAskWords('sooner', '2026-11-03', COUNTS, 'en-GB', t)).toEqual({
       title: 'Close replies sooner, on Tue 3 Nov?',
@@ -126,13 +91,6 @@ describe('the Reply by part', () => {
     expect(replyBySaved(null, LONDON, 'en-GB', now, t)).toBe(
       'Saved. Replies stay open until the event starts.',
     );
-  });
-
-  it('moves Reply by to the day before a start moved onto it, tomorrow or today', () => {
-    expect(replyByAfterStart('2026-11-04', '2026-11-02')).toBe('2026-11-01');
-    expect(replyByAfterStart('2026-11-04', '2026-11-04')).toBe('2026-11-03');
-    expect(replyByAfterStart('2026-11-04', '2026-11-10')).toBeNull();
-    expect(replyByAfterStart(null, '2026-11-02')).toBeNull();
   });
 });
 

@@ -1,5 +1,5 @@
 import { ApiError, type OrganisationEvent, type TaggedEvent } from '@soirely/api-client';
-import { formatWallDay, wallDay } from '@soirely/domain';
+import { type ReplyByCheck, formatWallDay, replyByCheck, wallDay } from '@soirely/domain';
 import { useEffect, useId, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 
@@ -8,7 +8,7 @@ import { Broken, Opened } from '../../../components/EventPageParts.tsx';
 import { Glyph } from '../../../components/Glyph.tsx';
 import { Ask, TextAction } from '../../../components/SettingsParts.tsx';
 import { dateLocale } from '../../../i18n/index.ts';
-import { type ReplyByCheck, closesAtClock, replyByCheck, showsPreview } from '../../../replyBy.ts';
+import { closesAtClock, showsPreview } from '../../../replyBy.ts';
 import { type Havent, replyBySaid, useHavent } from './replyByHavent.ts';
 
 /** Close replies sooner or now: never red, since nothing is thrown away. */
@@ -78,13 +78,13 @@ export function ReplyByPart({
   const field = useRef<HTMLInputElement>(null);
   const id = useId();
   const next = typed === '' ? null : typed;
+  const today = wallDay(now, event.timeZone);
   const check = replyByCheck({
     next,
-    was,
-    startsAt: event.startsAt,
-    now,
-    timeZone: event.timeZone,
-    noReply: havent?.count ?? 1,
+    saved: was,
+    startDay: wallDay(event.startsAt, event.timeZone),
+    today,
+    havent: havent?.count ?? 1,
   });
   const wrong = (tried && check === 'tooLate') || refusedHere;
   const changed = next !== was;
@@ -189,7 +189,7 @@ export function ReplyByPart({
           />
         )}
       </div>
-      {next != null && showsPreview(next, check, wallDay(now, event.timeZone)) && (
+      {next != null && showsPreview(next, check, today) && (
         <p className="ev-reply-preview">
           {t('eventReplyBy.preview', {
             sentence: t('guest.replyBy', {

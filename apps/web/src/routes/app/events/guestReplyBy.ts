@@ -1,8 +1,6 @@
 import { type Guest, type OrganisationEvent } from '@soirely/api-client';
-import { REPLY_KEY, formatWallDay, replyDate } from '@soirely/domain';
+import { REPLY_KEY, closedOn, formatWallDay, replyDate } from '@soirely/domain';
 import { type TFunction } from 'i18next';
-
-import { repliesClosed } from '../../../replyBy.ts';
 
 /** Reply by as Guests reads it (sc-3780); `closedOn` is the day replies closed, null while they are open. */
 export interface Replies {
@@ -11,12 +9,7 @@ export interface Replies {
 }
 
 export function repliesOf(event: OrganisationEvent, now: Date): Replies {
-  const replyBy = event.replyBy ?? null;
-
-  return {
-    replyBy,
-    closedOn: repliesClosed(event, now) ? (event.repliesClosedOn ?? replyBy) : null,
-  };
+  return { replyBy: event.replyBy ?? null, closedOn: closedOn(event, now) };
 }
 
 /** "asked to decide by Nov 4", for Not sure yet once there is a Reply by. */

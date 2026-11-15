@@ -18,6 +18,7 @@ import {
   countsOf,
   eventAllows,
   hasAllergy,
+  haventLine,
   invitationLine,
   repliedRefusal,
   replyDate,
@@ -51,7 +52,7 @@ import { dateLocale } from '../i18n/index.ts';
 import type { Shown } from '../kit/eventsList.ts';
 import { sidebarCardOf } from '../kit/eventTop.ts';
 import { type PhaseCard, filterChoices, markOf, phaseCardOf } from '../kit/guestRows.ts';
-import { type GuestReplies, guestRepliesOf, guestReplyBy, haventLine } from '../kit/replyBy.ts';
+import { type GuestReplies, guestRepliesOf, guestReplyBy } from '../kit/replyBy.ts';
 import { type ScreenOffline, useHandOffline, useOffline } from '../offline.ts';
 import { useSignedIn } from '../signedIn.ts';
 import { tokens } from '../theme/tokens.ts';

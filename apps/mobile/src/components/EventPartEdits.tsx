@@ -29,6 +29,10 @@ import {
   hostsChanged,
   keepsLastHost,
   positionPart,
+  type ReplyByAsk,
+  replyByAfterStart,
+  replyByAsk,
+  replyByCheck,
   skippedLine,
   startMoved,
   venueDraftOf,
@@ -58,15 +62,11 @@ import type { EditPart } from '../kit/eventNav.ts';
 import { type SavedPart, heldRead, sendPart } from '../kit/partSave.ts';
 import {
   CLOSES_AT,
-  type ReplyByAsk,
-  replyByAfterStart,
-  replyByAsk,
   replyByAskWords,
   replyByHint,
   replyByMoves,
   replyByPreview,
   replyBySaved,
-  replyByWrong,
   todayIn,
 } from '../kit/replyBy.ts';
 import { useServerNow } from '../kit/serverNow.ts';
@@ -515,7 +515,14 @@ function ReplyByEdit(props: PartEditProps) {
     replyBySaved(shown.replyBy ?? null, shown.timeZone, locale, now, t),
   );
   const today = todayIn(now, event.timeZone);
-  const wrong = replyByWrong(value, draftOf(event).startDate);
+  const check = replyByCheck({
+    next: value,
+    saved,
+    startDay: draftOf(event).startDate,
+    today,
+    havent: counts?.havent ?? 1,
+  });
+  const wrong = check === 'tooLate';
   const error = (tried && wrong) || refused ? t('replyBy.notBefore') : null;
   const preview = wrong ? null : replyByPreview(value, today, locale, t);
 
@@ -533,14 +540,13 @@ function ReplyByEdit(props: PartEditProps) {
   }
 
   function ask(): void {
-    if (wrong) {
+    if (check === 'tooLate') {
       setTried(true);
       setAim((count) => count + 1);
       return;
     }
-    const closes = replyByAsk(saved, value, today, counts?.havent ?? 1);
-    if (closes == null) void send();
-    else setAsking(closes);
+    if (check === 'save') void send();
+    else setAsking(check);
   }
 
   const choose = () =>

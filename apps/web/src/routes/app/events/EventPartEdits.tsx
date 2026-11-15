@@ -26,8 +26,11 @@ import {
   keepsLastHost,
   movedHost,
   removedHost,
+  replyByAfterStart,
+  replyByAsk,
   skippedLine,
   venueDraftOf,
+  wallDay,
 } from '@soirely/domain';
 import { useEffect, useId, useLayoutEffect, useMemo, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
@@ -55,7 +58,6 @@ import { typeChoices } from './eventTypes.ts';
 import { useStartCarriesEnd } from './useStartCarriesEnd.ts';
 import { ReplyByAsk } from './ReplyByPart.tsx';
 import { replyBySaid, useHavent } from './replyByHavent.ts';
-import { datesAsk, replyByAfterStart } from '../../../replyBy.ts';
 
 export type Part = 'name' | 'dates' | 'replyBy' | 'venue' | 'hosts' | 'type' | 'currency' | 'cover';
 
@@ -369,16 +371,8 @@ export function DatesPart({
   const endSkipped = skippedLine(draft.endDate, draft.endTime, zone, dateLocale(), t);
   const endWrong = errors.endsAt ?? null;
   const startWrong = errors.startsAt ?? null;
-  const startDay = `${draft.startDate}T12:00:00Z`;
-  const replyMoved = draft.startDate === '' ? null : replyByAfterStart(replyBy, startDay, 'UTC');
-  const ask = datesAsk({
-    moved: replyMoved,
-    was: replyBy,
-    startsAt: startDay,
-    now,
-    timeZone: zone,
-    noReply: havent?.count ?? 1,
-  });
+  const replyMoved = draft.startDate === '' ? null : replyByAfterStart(replyBy, draft.startDate);
+  const ask = replyByAsk(replyBy, replyMoved, wallDay(now, zone), havent?.count ?? 1);
 
   useDirty(changed, onDirty);
 

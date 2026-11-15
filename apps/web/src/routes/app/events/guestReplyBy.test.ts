@@ -18,12 +18,12 @@ function event(fields: Partial<OrganisationEvent>): OrganisationEvent {
 }
 
 describe('Guests once there is a Reply by (sc-3780)', () => {
-  it('closes by the server’s day, or by the clock past the instant it gave', () => {
-    expect(repliesOf(event({}), new Date('2026-11-04T23:59:59Z'))).toEqual({
+  it('closes by the server’s day, or by the clock at the instant it gave, as the app and the API do', () => {
+    expect(repliesOf(event({}), new Date('2026-11-04T23:59:58Z'))).toEqual({
       replyBy: '2026-11-04',
       closedOn: null,
     });
-    expect(repliesOf(event({}), new Date('2026-11-05T00:00:00Z')).closedOn).toBe('2026-11-04');
+    expect(repliesOf(event({}), new Date('2026-11-04T23:59:59Z')).closedOn).toBe('2026-11-04');
     expect(
       repliesOf(event({ repliesClosedOn: '2026-11-02' }), new Date('2026-11-02T10:00:00Z'))
         .closedOn,

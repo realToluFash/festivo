@@ -1,5 +1,5 @@
 import { type OrganisationEvent } from '@soirely/api-client';
-import { countsOf, formatWallDay, wallDay } from '@soirely/domain';
+import { countsOf, formatWallDay, haventLine, wallDay } from '@soirely/domain';
 import { type TFunction } from 'i18next';
 import { useEffect, useState } from 'react';
 import { useTranslation } from 'react-i18next';
@@ -8,7 +8,6 @@ import { api } from '../../../api.ts';
 import { dateLocale } from '../../../i18n/index.ts';
 import { closesAtClock } from '../../../replyBy.ts';
 import { canOn } from '../../../session.ts';
-import { haventLine } from './havent.ts';
 
 /** Who hasn't replied, as Guests' card counts them; null until read, or for a reader the headcount is not for. */
 export interface Havent {
