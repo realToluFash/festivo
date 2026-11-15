@@ -152,7 +152,7 @@ export const say = {
   startLine: (venue: string, town: string, org: string) =>
     `At ${venue}, ${town}. Sizes are in metres, the units used where ${org} is based.`,
   outside: (n: number, w: string, l: string) =>
-    `${plural(n, 'item sits', 'items sit')} outside ${w} × ${l}. Move them first.`,
+    `${plural(n, 'item sits', 'items sit')} outside ${w} × ${l}. Move ${n === 1 ? 'it' : 'them'} first.`,
   deletePlanBody: (counts: string, seated: number) => {
     const guests =
       seated === 0
