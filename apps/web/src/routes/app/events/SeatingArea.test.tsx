@@ -821,9 +821,10 @@ describe('Tables at a desk (sc-4000)', () => {
     expect(screen.getByRole('heading', { level: 2, name: 'Room settings' })).toBeDefined();
     expect(document.querySelector('[data-table="t1"] .st-overlap')).not.toBeNull();
     expect(document.querySelector('.st-new-wall')).not.toBeNull();
+    expect(screen.getByLabelText<HTMLInputElement>('Width').value).toBe('24');
   });
 
-  it('offers no Add table, Duplicate or Delete without seating.manage', async () => {
+  it('shows a table as facts, with nothing to change, without seating.manage', async () => {
     signedIn();
     await onSeating(
       { 'GET /api/events/ev_1/seating-plan': () => seating(withTables(table())) },
@@ -833,6 +834,11 @@ describe('Tables at a desk (sc-4000)', () => {
     await chooseTable('Table 1, round, 0 of 10 seats taken');
     expect(screen.queryByRole('button', { name: 'Add table' })).toBeNull();
     expect(screen.queryByRole('button', { name: 'Duplicate' })).toBeNull();
-    expect(screen.getByLabelText('Seats').matches(':disabled')).toBe(true);
+    expect(screen.queryByRole('button', { name: 'Delete table' })).toBeNull();
+    expect(screen.queryByLabelText('Seats')).toBeNull();
+    const facts = [...document.querySelectorAll('.st-facts div')].map((row) => row.textContent);
+
+    expect(facts).toEqual(['SectionNo section', 'ShapeRound table', 'Seats10', 'Diameter180 cm']);
+    expect(screen.getByText('You can view and print this plan, but not change it.')).toBeDefined();
   });
 });

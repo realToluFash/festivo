@@ -66,6 +66,18 @@ export function tableLengthWords(
     : unit(locale, 'centimeter', cm, 'short', grouping);
 }
 
+/** One side of a table in whole centimetres, "200 cm" rather than "2 m", or feet and inches. */
+export function tableSideWords(
+  t: TFunction,
+  locale: string,
+  cm: number,
+  system: MeasurementSystem,
+): string {
+  return system === 'us'
+    ? lengthWords(t, locale, cm, system)
+    : unit(locale, 'centimeter', cm, 'short', true);
+}
+
 /** "180 cm" round, "180 × 76 cm" long: in metric the unit is said once, after the length. */
 export function tableSizeWords(
   t: TFunction,
@@ -73,10 +85,7 @@ export function tableSizeWords(
   table: { shape: string; widthCm: number; lengthCm: number },
   system: MeasurementSystem,
 ): string {
-  const length = (cm: number) =>
-    system === 'us'
-      ? lengthWords(t, locale, cm, system)
-      : unit(locale, 'centimeter', cm, 'short', true);
+  const length = (cm: number) => tableSideWords(t, locale, cm, system);
 
   if (table.shape === 'round' || table.shape === 'cocktail') return length(table.widthCm);
   return t('seating.tableSize', {

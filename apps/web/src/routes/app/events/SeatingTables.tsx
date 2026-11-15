@@ -12,7 +12,7 @@ import {
   chairsOf,
   isRoundShape,
   readTableSide,
-  sectionHoldingName,
+  holdingName,
   sidesOf,
   squeezed,
   tableExtent,
@@ -30,6 +30,7 @@ import { Added, BackHead, Field, Line, type PlanApi, Said, Select } from './Seat
 import {
   centimetreUnit,
   tableLengthWords,
+  tableSideWords,
   tableSizeField,
   tableSizeWords,
 } from './seatingUnits.ts';
@@ -487,11 +488,13 @@ export function TablePanel({
     if (typed === '') return t('seating.tableBlank');
     if (typed.length > SEATING_LIMITS.tableNameMaximum)
       return t('seating.tableLong', { max: SEATING_LIMITS.tableNameMaximum });
-    const holder = sectionHoldingName(plan.tables, typed, table.id);
+    const holder = holdingName(plan.tables, typed, table.id);
 
     if (holder != null) return t('seating.tableTaken', { name: holder.name });
     return change({ name: typed }, 'name');
   }
+
+  if (ctx.readOnly) return <TableFacts ctx={ctx} plan={plan} table={table} />;
 
   return (
     <div className="st-stack is-tight">
@@ -511,8 +514,7 @@ export function TablePanel({
           })}
         </Said>
       )}
-      {ctx.readOnly && <Line>{t('seating.readOnly')}</Line>}
-      <fieldset className="st-fields" disabled={ctx.readOnly}>
+      <div className="st-fields">
         <Field
           fieldKey="name"
           label={t('seating.name')}
@@ -630,31 +632,70 @@ export function TablePanel({
             onPick={(value) => void change({ rotation: Number(value) })}
           />
         )}
-      </fieldset>
-      {!ctx.readOnly && (
-        <div className="st-acts">
-          <TextAction
-            label={t('seating.duplicate')}
-            onClick={() => {
-              void ctx
-                .place(() => api.duplicateSeatingTable(ctx.event.id, table.id, table.version))
-                .then((copy) => {
-                  if (copy == null) return;
-                  ctx.open({
-                    kind: 'table',
-                    id: copy.id,
-                    said: t('seating.duplicated', { name: copy.name, of: table.name }),
-                  });
+      </div>
+      <div className="st-acts">
+        <TextAction
+          label={t('seating.duplicate')}
+          onClick={() => {
+            void ctx
+              .place(() => api.duplicateSeatingTable(ctx.event.id, table.id, table.version))
+              .then((copy) => {
+                if (copy == null) return;
+                ctx.open({
+                  kind: 'table',
+                  id: copy.id,
+                  said: t('seating.duplicated', { name: copy.name, of: table.name }),
                 });
-            }}
-          />
-          <TextAction
-            label={t('seating.deleteTable')}
-            red
-            onClick={() => ctx.ask({ kind: 'deleteTable', id: table.id })}
-          />
-        </div>
-      )}
+              });
+          }}
+        />
+        <TextAction
+          label={t('seating.deleteTable')}
+          red
+          onClick={() => ctx.ask({ kind: 'deleteTable', id: table.id })}
+        />
+      </div>
+    </div>
+  );
+}
+
+function TableFacts({
+  ctx,
+  plan,
+  table,
+}: {
+  ctx: PlanApi;
+  plan: SeatingPlan;
+  table: SeatingTable;
+}) {
+  const { t } = useTranslation();
+  const locale = currentLocale();
+  const facts: [string, string][] = [
+    [t('seating.section'), sectionOf(plan, table)?.name ?? t('seating.noSection')],
+    [t('seating.shape'), t(SHAPE_WORDS[table.shape].whole)],
+    [t(table.shape === 'cocktail' ? 'seating.places' : 'seating.seats'), String(table.seats)],
+    [
+      t(isRoundShape(table.shape) ? 'seating.diameter' : 'seating.width'),
+      tableSideWords(t, locale, table.widthCm, ctx.system),
+    ],
+  ];
+
+  return (
+    <div className="st-stack">
+      <BackHead
+        title={table.name}
+        line={tableLine(t, plan, table)}
+        onClose={() => ctx.open(null)}
+      />
+      <dl className="st-facts">
+        {facts.map(([key, value]) => (
+          <div key={key}>
+            <dt>{key}</dt>
+            <dd>{value}</dd>
+          </div>
+        ))}
+      </dl>
+      <Line>{t('seating.readOnly')}</Line>
     </div>
   );
 }

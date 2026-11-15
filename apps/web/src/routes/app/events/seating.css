@@ -910,6 +910,29 @@
   font: 600 14px/1.4 var(--fontFamily);
 }
 
+.st-facts {
+  margin: 0;
+}
+
+.st-facts div {
+  display: flex;
+  align-items: center;
+  min-height: 40px;
+  border-top: 1px solid var(--colorBorder);
+}
+
+.st-facts dt {
+  flex: 1;
+  color: var(--colorInkSecondary);
+  font: 500 14.5px/1.3 var(--fontFamily);
+}
+
+.st-facts dd {
+  margin: 0;
+  color: var(--colorInk);
+  font: 600 15px/1.3 var(--fontFamily);
+}
+
 .st-fields {
   display: flex;
   flex-direction: column;
