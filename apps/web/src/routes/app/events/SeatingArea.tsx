@@ -706,7 +706,6 @@ function Plan({
   );
 }
 
-/** A panel's buttons are drawn again as it closes, so the one that opened it is found again by its name. */
 /** Who changed it first, said of what the panel shows. */
 function changedKey(panel: Panel | null): string {
   if (panel?.kind === 'table' || panel?.kind === 'chair') return 'seating.changedTable';
@@ -733,6 +732,7 @@ function placedIn(answer: Placed): { id: string; name: string; seats: number } |
   return seat == null ? null : { id: seat.id, name: seat.name, seats: 1 };
 }
 
+/** A panel's buttons are drawn again as it closes, so the one that opened it is found again by its name. */
 function nameOf(element: Element): string {
   return element.getAttribute('aria-label') ?? element.textContent ?? '';
 }
