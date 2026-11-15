@@ -1,10 +1,11 @@
 # sc-24385, the tablet on its side: the event's page, Details' Venue row with the arrival note under the address. Needs ${METRO_URL}, ${PLAIN}.
 appId: host.exp.Exponent
 ---
+- setOrientation: LANDSCAPE_LEFT
 - runScript:
     file: ../batch/helper.js
     env:
-      ASK: /landscape # Maestro's LANDSCAPE leaves this portrait-native tablet portrait (sc-50565)
+      ASK: /landscape # the harness turns it (sc-50565)
 - waitForAnimationToEnd
 - openLink: ${METRO_URL}/--/events/${PLAIN}
 - extendedWaitUntil:
