@@ -123,7 +123,9 @@
     "mobile:guestList.how.whatsapp",
     "mobile:guestNeeds.allergies",
     "mobile:guestNeeds.allergen.lupin",
-    "mobile:guestNeeds.dietName.halal"
+    "mobile:guestNeeds.dietName.halal",
+    "web:seating.rotation",
+    "messagesCounts:seating.table_default_name"
   ],
   "pt": [
     "web:nav.menu",
