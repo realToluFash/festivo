@@ -1,0 +1,36 @@
+# sc-46879: ${HASSAN}, invited by Soirely's message, beside the demo's invitedByMessage.
+appId: host.exp.Exponent
+---
+- setOrientation: ${ORIENT}
+- openLink: ${METRO_URL}/--/events/${LIVE}?area=guests
+- extendedWaitUntil:
+    visible:
+      id: 'guests.card'
+    timeout: 30000
+- waitForAnimationToEnd:
+    timeout: 4000
+- tapOn:
+    id: 'guests.search'
+- inputText: 'Hassan'
+- hideKeyboard
+- extendedWaitUntil:
+    visible:
+      id: 'guests.row.${HASSAN}'
+    timeout: 10000
+- tapOn:
+    id: 'guests.row.${HASSAN}'
+- extendedWaitUntil:
+    visible:
+      id: 'guest.${HASSAN}'
+    timeout: 20000
+- waitForAnimationToEnd:
+    timeout: 3000
+- takeScreenshot: invitedByMessage
+- scroll
+- takeScreenshot: invitedByMessage-scrolled
+- openLink: ${METRO_URL}/--/demo/guests?state=invitedByMessage
+- waitForAnimationToEnd:
+    timeout: 8000
+- takeScreenshot: demo-invitedByMessage
+- scroll
+- takeScreenshot: demo-invitedByMessage-scrolled

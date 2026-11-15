@@ -1,0 +1,44 @@
+# sc-46879: the finished event's Guests (${FINISHED}) and ${NGOZI}'s page there, beside the demo's finished.
+appId: host.exp.Exponent
+---
+- setOrientation: ${ORIENT}
+- openLink: ${METRO_URL}/--/events/${FINISHED}?area=guests
+- extendedWaitUntil:
+    visible:
+      id: 'guests.card'
+    timeout: 30000
+- waitForAnimationToEnd:
+    timeout: 4000
+- takeScreenshot: finished-list
+- openLink: ${METRO_URL}/--/events/${FINISHED}?area=guests
+- extendedWaitUntil:
+    visible:
+      id: 'guests.card'
+    timeout: 30000
+- waitForAnimationToEnd:
+    timeout: 4000
+- tapOn:
+    id: 'guests.search'
+- inputText: 'Ngozi'
+- hideKeyboard
+- extendedWaitUntil:
+    visible:
+      id: 'guests.row.${NGOZI}'
+    timeout: 10000
+- tapOn:
+    id: 'guests.row.${NGOZI}'
+- extendedWaitUntil:
+    visible:
+      id: 'guest.${NGOZI}'
+    timeout: 20000
+- waitForAnimationToEnd:
+    timeout: 3000
+- takeScreenshot: finished
+- scroll
+- takeScreenshot: finished-scrolled
+- openLink: ${METRO_URL}/--/demo/guests?state=finished
+- waitForAnimationToEnd:
+    timeout: 8000
+- takeScreenshot: demo-finished
+- scroll
+- takeScreenshot: demo-finished-scrolled
