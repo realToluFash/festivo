@@ -71,6 +71,14 @@ export function readTableSide(text: string, units: RoomUnits, locale: string): R
 export const TABLE_MINIMUM_CM = 40;
 export const TABLE_MAXIMUM_CM = 1000;
 
+/** A row's spacing, centre to centre (sc-4003). */
+export function readRowSpacing(text: string, units: RoomUnits, locale: string): RoomSideReading {
+  return readLength(text, units, locale, 1, [ROW_SPACING_MINIMUM_CM, ROW_SPACING_MAXIMUM_CM]);
+}
+
+export const ROW_SPACING_MINIMUM_CM = 40;
+export const ROW_SPACING_MAXIMUM_CM = 100;
+
 function readLength(
   text: string,
   units: RoomUnits,
