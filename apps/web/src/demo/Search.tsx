@@ -189,6 +189,12 @@ export function SearchPalette({
     field.current?.focus();
   }
 
+  function retry(): void {
+    setPhase(phaseOf(term));
+    setLit(0);
+    field.current?.focus();
+  }
+
   function keys(event: KeyboardEvent<HTMLInputElement>): void {
     const to = moved(litAt, event.key, stops.length);
     if (to != null) {
@@ -202,7 +208,14 @@ export function SearchPalette({
     }
   }
 
-  const said = phase === 'loading' ? W.searching : phase === 'found' ? saidOf(term, groups) : '';
+  const said =
+    phase === 'loading'
+      ? W.searching
+      : phase === 'found'
+        ? saidOf(term, groups)
+        : phase === 'failed'
+          ? W.failed
+          : '';
 
   return (
     <>
@@ -256,6 +269,14 @@ export function SearchPalette({
             </div>
           )}
           {phase === 'offline' && <p className="search-said search-nothing">{W.offline}</p>}
+          {phase === 'failed' && (
+            <div className="search-said">
+              <p className="search-nothing" aria-hidden="true">
+                {W.failed}
+              </p>
+              <TextAction label={W.tryAgain} onClick={retry} />
+            </div>
+          )}
           {phase === 'found' && groups.length === 0 && (
             <div className="search-said">
               <p className="search-nothing" aria-hidden="true">
