@@ -3818,6 +3818,34 @@ describe('Select many guests, then Add to group or Remove from the list (sc-3776
     expect(sent.some((one) => one.line.endsWith('/erasure'))).toBe(false);
   });
 
+  it('keeps the result line and its Undo when everyone on the list is removed', async () => {
+    let listed = grouped();
+    await selecting({
+      'GET /api/events/ev_1/guests': () => json(listed),
+      'POST /api/events/ev_1/guests/removals': () => {
+        listed = { ...listOf([]), groups: [BRIDE] };
+
+        return json({ removal: 'rm_1', guests: 3, companions: 3, gone: 0 });
+      },
+      'DELETE /api/events/ev_1/guests/removals/rm_1': () => {
+        listed = grouped();
+
+        return json({ guests: 3 });
+      },
+    });
+    fireEvent.click(box('Select all 3 shown'));
+    fireEvent.click(within(bar()).getByRole('button', { name: 'Remove from the list' }));
+    fireEvent.click(
+      within(await screen.findByRole('alertdialog')).getByRole('button', { name: 'Remove 3' }),
+    );
+
+    await waitFor(() => expect(said()[0]).toBe('3 guests and 3 companions removed.'));
+    expect(screen.queryByText('Ngozi Eze')).toBeNull();
+    fireEvent.click(screen.getByRole('button', { name: 'Undo' }));
+
+    expect(await screen.findByText('Ngozi Eze')).toBeDefined();
+  });
+
   it('drops the companions clause from the question when there are none', async () => {
     await selecting();
     fireEvent.click(box('Select Kemi Bello'));
