@@ -9,10 +9,12 @@ use App\Domain\Seating\SeatingPlanEditor;
 use App\Entity\Event;
 use App\Entity\SeatingPlan;
 use App\Entity\SeatingSection;
+use App\Entity\SeatingTable;
 use App\Entity\User;
 use App\Enum\ErrorCode;
 use App\Enum\Permission;
 use App\Enum\SectionColour;
+use App\Enum\TableShape;
 use App\Http\Access\InThisEvent;
 use App\Http\Access\Policy\InEvent;
 use App\Http\EntityTag;
@@ -28,7 +30,7 @@ use Symfony\Component\HttpFoundation\Request;
 use Symfony\Component\HttpFoundation\Response;
 use Symfony\Component\Routing\Attribute\Route;
 
-/** An event's seating plan: its room and its sections (sc-3998). The room's ETag is the plan's; each section carries its own `version`. */
+/** An event's seating plan: its room, its sections (sc-3998) and its tables (sc-4000). The room's ETag is the plan's; each section and table carries its own `version`. */
 final readonly class SeatingPlanController
 {
     public function __construct(
@@ -68,7 +70,7 @@ final readonly class SeatingPlanController
         return $this->seating($event, $plan, Response::HTTP_CREATED);
     }
 
-    /** Any of the three; needs If-Match with the ETag it read, and a colleague's change since is 412 naming them in `changedBy`. */
+    /** Any of the three; needs If-Match. A size that would leave a table outside is refused 409 `seating_items_outside`, its ids in `outside`. Needs If-Match with the ETag it read, and a colleague's change since is 412 naming them in `changedBy`. */
     #[Route('/api/events/{eventId}/seating-plan', name: 'seating_plan_change', methods: ['PATCH'])]
     #[InEvent(Permission::SeatingManage)]
     public function change(Request $request, string $eventId): JsonResponse
@@ -138,6 +140,67 @@ final readonly class SeatingPlanController
         return $this->seating($event, $plan);
     }
 
+    /** Of `shape`'s default size and seats, named "Table {n}", at the room's centre or the nearest free floor. */
+    #[Route('/api/events/{eventId}/seating-plan/tables', name: 'seating_tables_add', methods: ['POST'])]
+    #[InEvent(Permission::SeatingManage)]
+    public function addTable(Request $request, string $eventId): JsonResponse
+    {
+        $event = $this->event($eventId);
+        $body = Input::body($request, Type\shape([
+            'shape' => Type\backed_enum(TableShape::class),
+        ]));
+
+        $table = $this->seatingPlanEditor->addTable($event, $this->plan($event), $this->user(), $body['shape']);
+
+        return $this->seating($event, $table->getPlan(), Response::HTTP_CREATED, $table);
+    }
+
+    /** Any of the fields; needs If-Match with the table's `version` as an ETag. A round or cocktail table's diameter is `widthCm`. */
+    #[Route('/api/events/{eventId}/seating-plan/tables/{tableId}', name: 'seating_tables_change', methods: ['PATCH'])]
+    #[InEvent(Permission::SeatingManage)]
+    public function changeTable(Request $request, string $eventId, #[InThisEvent('tableId')] SeatingTable $table): JsonResponse
+    {
+        $event = $this->event($eventId);
+        $body = Input::body($request, Type\shape([
+            'name' => Type\optional(Type\string()),
+            'sectionId' => Type\optional(Type\nullable(Type\string())),
+            'shape' => Type\optional(Type\backed_enum(TableShape::class)),
+            'seats' => Type\optional(Type\int()),
+            'widthCm' => Type\optional(Type\int()),
+            'lengthCm' => Type\optional(Type\int()),
+            'endSeats' => Type\optional(Type\int()),
+            'rotation' => Type\optional(Type\int()),
+            'unusableSeats' => Type\optional(Type\vec(Type\int())),
+        ]));
+
+        $this->seatingPlanEditor->changeTable($event, $table, $request->headers->get('If-Match'), $this->user(), $body);
+
+        return $this->seating($event, $table->getPlan(), Response::HTTP_OK, $table);
+    }
+
+    /** The copy, with nobody seated; needs If-Match with the original's `version`. */
+    #[Route('/api/events/{eventId}/seating-plan/tables/{tableId}/duplicate', name: 'seating_tables_duplicate', methods: ['POST'])]
+    #[InEvent(Permission::SeatingManage)]
+    public function duplicateTable(Request $request, string $eventId, #[InThisEvent('tableId')] SeatingTable $table): JsonResponse
+    {
+        $event = $this->event($eventId);
+        $copy = $this->seatingPlanEditor->duplicateTable($event, $table, $request->headers->get('If-Match'), $this->user());
+
+        return $this->seating($event, $copy->getPlan(), Response::HTTP_CREATED, $copy);
+    }
+
+    /** Needs If-Match with the table's `version`. */
+    #[Route('/api/events/{eventId}/seating-plan/tables/{tableId}', name: 'seating_tables_delete', methods: ['DELETE'])]
+    #[InEvent(Permission::SeatingManage)]
+    public function deleteTable(Request $request, string $eventId, #[InThisEvent('tableId')] SeatingTable $table): JsonResponse
+    {
+        $event = $this->event($eventId);
+        $plan = $table->getPlan();
+        $this->seatingPlanEditor->deleteTable($event, $table, $request->headers->get('If-Match'), $this->user());
+
+        return $this->seating($event, $plan);
+    }
+
     /** A hub token for this event's seating alone; every change to the plan is published there whole. */
     #[Route('/api/events/{eventId}/seating-plan/subscriptions', name: 'seating_plan_subscribe', methods: ['POST'])]
     #[InEvent(Permission::SeatingRead)]
@@ -151,10 +214,11 @@ final readonly class SeatingPlanController
         ]);
     }
 
-    private function seating(Event $event, ?SeatingPlan $plan, int $status = Response::HTTP_OK): JsonResponse
+    /** A table answer carries the plan whole, and that table's id as `tableId`, so a client opens the one it added. */
+    private function seating(Event $event, ?SeatingPlan $plan, int $status = Response::HTTP_OK, ?SeatingTable $table = null): JsonResponse
     {
         return new JsonResponse(
-            ['seating' => $this->seatingSerialiser->seating($event, $plan)],
+            ['seating' => $this->seatingSerialiser->seating($event, $plan)] + (null === $table ? [] : ['tableId' => $table->getId()->toRfc4122()]),
             $status,
             null === $plan ? [] : ['ETag' => EntityTag::of($plan->getVersion())],
         );

@@ -30,7 +30,33 @@ enum MeasurementSystem: string
             return self::unit($locale, 'meter', $centimetres / 100);
         }
 
-        $inches = (int) Math\round($centimetres / 2.54);
+        return self::feetAndInches((int) Math\round($centimetres / 2.54), $locale);
+    }
+
+    /**
+     * A range's two ends, each the nearest whole unit inside it (sc-4000): "40 cm" and "10 m", or "1 ft 4 in" and "32 ft 9 in".
+     *
+     * @return array{0: string, 1: string}
+     */
+    public function writtenWithin(int $lowestCm, int $highestCm, string $locale): array
+    {
+        if (self::Metric === $this) {
+            return [self::metricSize($lowestCm, $locale), self::metricSize($highestCm, $locale)];
+        }
+
+        return [
+            self::feetAndInches((int) Math\ceil($lowestCm / 2.54), $locale),
+            self::feetAndInches((int) Math\floor($highestCm / 2.54), $locale),
+        ];
+    }
+
+    private static function metricSize(int $centimetres, string $locale): string
+    {
+        return 0 === $centimetres % 100 ? self::unit($locale, 'meter', Math\div($centimetres, 100)) : self::unit($locale, 'centimeter', $centimetres);
+    }
+
+    private static function feetAndInches(int $inches, string $locale): string
+    {
         $feet = self::unit($locale, 'foot', Math\div($inches, 12));
         $left = $inches % 12;
 
