@@ -600,6 +600,11 @@ function lowerFirst(text: string): string {
   return text.charAt(0).toLowerCase() + text.slice(1);
 }
 
+/** sc-3787: the list's reply is the same word as any other; who recorded it shows only in the details. */
+function asOwnReply(g: SampleGuest): SampleGuest {
+  return g.recorded == null ? g : { ...g, recorded: null, when: g.recorded.day };
+}
+
 function rowLine(
   g: SampleGuest,
   locale: string,
@@ -612,7 +617,7 @@ function rowLine(
   const short = g.kind === 'noreply' || g.kind === 'notyet';
   const count = g.companions.length;
   return joined([
-    replyLine(g, locale, replyBy, short),
+    replyLine(asOwnReply(g), locale, replyBy, short),
     group,
     count > 0 ? say.companions(count) : null,
   ]);
