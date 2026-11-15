@@ -889,6 +889,8 @@ describe('a reader who cannot change the event (sc-50996)', () => {
       expect(within(card).getByText(PAST_READ)).toBeDefined();
       expect(within(card).queryByText(PAST)).toBeNull();
       expect(within(card).queryByRole('button')).toBeNull();
+      expect(screen.getByLabelText('Ana Souza, Member')).toBeDefined();
+      expect(screen.queryByRole('button', { name: 'New event' })).toBeNull();
 
       cleanup();
       await list('/demo/events?state=drafts');

@@ -14,7 +14,15 @@ import { Link, useNavigate, useSearchParams } from 'react-router';
 
 import { EventsShell } from './EventParts.tsx';
 import { EventSidebar } from './EventSidebar.tsx';
-import { EVENT_WORDS, type SampleEvent, TODAY_IDS, localDay, sampleEvent } from './events.ts';
+import {
+  EVENT_WORDS,
+  type SampleEvent,
+  TODAY_IDS,
+  eventStateOf,
+  localDay,
+  readsOnly,
+  sampleEvent,
+} from './events.ts';
 import { TodaySidebar } from './TodaySidebar.tsx';
 import { Glyph } from '../components/Glyph.tsx';
 import { AddForm, EditForm, RecordForm } from './GuestForms.tsx';
@@ -77,7 +85,7 @@ import {
   theirViewerKey,
 } from './guestRequest.ts';
 import { zoneFor } from './dataControl.ts';
-import { SIDEBAR_EVENTS, type Viewer, viewerOf } from './settings.ts';
+import { SIDEBAR_EVENTS, VIEWERS, type Viewer, viewerOf } from './settings.ts';
 import { TheirData } from './TheirData.tsx';
 import { GW, REPLY_WORDS, figure } from './guestsWords.ts';
 import { LayersContext, focusWhenFree } from '../layers.ts';
@@ -186,7 +194,14 @@ function GuestsAt({ params }: { params: URLSearchParams }) {
     <EventsShell
       told={start.told}
       renderSide={(tell, covered) => (
-        <EventSidebar event={event} area="guests" now={start.clock} tell={tell} inert={covered} />
+        <EventSidebar
+          event={event}
+          area="guests"
+          now={start.clock}
+          tell={tell}
+          inert={covered}
+          {...(readsOnly(eventStateOf(params.get('state'))) ? { reader: VIEWERS.ana } : {})}
+        />
       )}
     >
       {(tell) => (
