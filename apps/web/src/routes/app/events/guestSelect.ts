@@ -88,13 +88,13 @@ export function alreadyLine(t: TFunction, already: readonly string[]): string {
 }
 
 export type Action =
-  | { kind: 'mark'; how: GuestInvitationHow }
+  | { kind: 'mark'; how: GuestInvitationHow; ids: readonly string[] }
   | { kind: 'move'; to: { id: string } | { name: string } }
   | { kind: 'remove' };
 
 export type Line =
   | { kind: 'marked'; marked: MarkedTogether; how: GuestInvitationHow }
-  | { kind: 'nothing'; already: number }
+  | { kind: 'nothing'; already: number; gone: number }
   | { kind: 'notLive' }
   | { kind: 'moved'; moved: MovedTogether }
   | { kind: 'removed'; removed: RemovedTogether }
@@ -126,7 +126,12 @@ export function lineWords(t: TFunction, line: Line): string[] {
       ];
     }
     case 'nothing':
-      return [t('guestSelect.nothingToMark', { count: line.already })];
+      return [
+        ...(line.already > 0 || line.gone === 0
+          ? [t('guestSelect.nothingToMark', { count: line.already })]
+          : []),
+        ...(line.gone > 0 ? [t('guestSelect.removedMeanwhile', { count: line.gone })] : []),
+      ];
     case 'notLive':
       return [t('guestSelect.notLive')];
     case 'moved': {

@@ -4114,6 +4114,79 @@ describe('Mark many guests as invited from the selection bar (sc-46880)', () => 
     expect(marks(sent)).toEqual([]);
   });
 
+  it('still sends a guest someone else removed while the dialog was open, and the line counts them (qa #50559)', async () => {
+    const before = config();
+    __setConfig({ ...before, mercureUrl: 'http://hub.test/.well-known/mercure' });
+    StubSource.made = [];
+    vi.stubGlobal('EventSource', StubSource);
+    const hub = () =>
+      json({ token: 'tok', expiresAt: new Date(Date.now() + 3_600_000).toISOString() });
+    let there = true;
+
+    try {
+      const sent = await selecting(
+        {
+          'GET /api/events/ev_1/guests': () => json(listOf(there ? [BISI, TOMI] : [TOMI])),
+          'POST /api/events/ev_1/guests/subscriptions': hub,
+          'POST /api/realtime/subscriptions': hub,
+          'POST /api/events/ev_1/guests/invitations': () =>
+            json({ marked: 1, already: 0, gone: 1 }),
+        },
+        [BISI, TOMI],
+      );
+      const dialog = await asked('Mark 2 guests as invited');
+      const source = StubSource.made.find((one) => one.url.includes('guests'))!;
+      there = false;
+      source.publish(listOf([TOMI]));
+      await waitFor(() => expect(screen.queryByText('Bisi Adewale')).toBeNull());
+
+      expect(screen.getByRole('dialog', { name: 'Mark 2 guests as invited' })).toBe(dialog);
+      fireEvent.click(within(dialog).getByRole('radio', { name: 'WhatsApp' }));
+      fireEvent.click(within(dialog).getByRole('button', { name: 'Mark as invited' }));
+
+      await waitFor(() =>
+        expect(said()).toEqual([
+          '1 marked as invited, WhatsApp.',
+          '1 not changed: someone else removed them.',
+        ]),
+      );
+      expect(marks(sent).map((one) => one.body)).toEqual([
+        { guestIds: ['g_4', 'g_5'], how: 'whatsapp' },
+      ]);
+    } finally {
+      __setConfig(before);
+      vi.unstubAllGlobals();
+    }
+  });
+
+  it('says Nothing to mark when everyone it was to mark became invited meanwhile', async () => {
+    await selecting(
+      {
+        'POST /api/events/ev_1/guests/invitations': () => json({ marked: 0, already: 2, gone: 0 }),
+      },
+      [BISI, TOMI],
+    );
+    const dialog = await asked('Mark 2 guests as invited');
+    fireEvent.click(within(dialog).getByRole('radio', { name: 'Email' }));
+    fireEvent.click(within(dialog).getByRole('button', { name: 'Mark as invited' }));
+
+    await waitFor(() => expect(said()).toEqual(['2 already invited. Nothing to mark.']));
+  });
+
+  it('says only who was removed when everyone it was to mark was removed meanwhile', async () => {
+    await selecting(
+      {
+        'POST /api/events/ev_1/guests/invitations': () => json({ marked: 0, already: 0, gone: 2 }),
+      },
+      [BISI, TOMI],
+    );
+    const dialog = await asked('Mark 2 guests as invited');
+    fireEvent.click(within(dialog).getByRole('radio', { name: 'Email' }));
+    fireEvent.click(within(dialog).getByRole('button', { name: 'Mark as invited' }));
+
+    await waitFor(() => expect(said()).toEqual(['2 not changed: someone else removed them.']));
+  });
+
   it('keeps the selection when nothing could be sent, and Try again sends the same mark', async () => {
     let tries = 0;
     const sent = await selecting({
@@ -4154,11 +4227,7 @@ describe('Mark many guests as invited from the selection bar (sc-46880)', () => 
     fireEvent.click(within(dialog).getByRole('radio', { name: 'WhatsApp' }));
     fireEvent.click(within(dialog).getByRole('button', { name: 'Mark as invited' }));
 
-    await waitFor(() =>
-      expect(said()).toEqual([
-        'Nothing changed. This event is no longer live, so guests can’t be marked as invited.',
-      ]),
-    );
+    await waitFor(() => expect(said()).toEqual([i18next.t('guestSelect.notLive')]));
     expect(box(/^Select all/u).checked).toBe(true);
     fireEvent.click(box('Select Bisi Adewale'));
 
