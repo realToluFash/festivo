@@ -59,7 +59,7 @@ export const W = {
   colour: 'Colour',
   deleteSectionOpener: 'Delete section…',
   deleteSection: 'Delete section',
-  sectionStays: 'Its tables stay where they are, with no section.',
+  sectionStays: 'Its tables, rows and seats stay where they are, with no section.',
   keepIt: 'Keep it',
   enterSectionName: 'Enter a name for the section.',
   sectionLimit: 'A plan can have up to 30 sections. Delete one to add another.',
@@ -165,12 +165,12 @@ export const say = {
     `${colour} · ${plural(tables, 'table', 'tables')} · ${plural(seats, 'seat', 'seats')}`,
   sectionTaken: (name: string) => `This plan already has a section called ${name}.`,
   deleteAsk: (name: string) => `Delete ${name}?`,
-  sectionDeleteBody: (n: number) =>
-    n === 0
+  sectionDeleteBody: (counts: string, total: number) =>
+    total === 0
       ? ''
-      : n === 1
-        ? 'Its 1 table stays where it is, with no section.'
-        : `Its ${n} tables stay where they are, with no section.`,
+      : total === 1
+        ? `Its ${counts} stays where it is, with no section.`
+        : `Its ${counts} stay where they are, with no section.`,
   sectionsCount: (n: number) => `Sections · ${n}`,
   placeBar: (shape: string) =>
     `Tap the floor to place a ${shape.toLowerCase()}. It snaps to the grid.`,

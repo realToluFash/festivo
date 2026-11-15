@@ -276,11 +276,23 @@ function tablet(state: SeatingState, b: Seating): Seating {
         {
           ...b,
           sections: [...b.sections, { key: 'quiet', name: 'Quiet corner', colour: 'Blue' }],
-          items: b.items.map((it) => (it.kind === 'row' ? { ...it, sec: 'quiet' } : it)),
         },
         { type: 'arrange', shows: 'sectionEdit', key: 'quiet' },
       );
       return { ...quiet, ask: { kind: 'deleteSection', key: 'quiet' } };
+    }
+    case 'sectionDeleteRows': {
+      const ceremony = run(
+        {
+          ...b,
+          sections: [...b.sections, { key: 'ceremony', name: 'Ceremony', colour: 'Blue' }],
+          items: b.items.map((it) =>
+            it.kind === 'row' || it.kind === 'single' ? { ...it, sec: 'ceremony' } : it,
+          ),
+        },
+        { type: 'arrange', shows: 'sectionEdit', key: 'ceremony' },
+      );
+      return { ...ceremony, ask: { kind: 'deleteSection', key: 'ceremony' } };
     }
     case 'sparse':
       return {

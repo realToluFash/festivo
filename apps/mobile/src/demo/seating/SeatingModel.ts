@@ -1,3 +1,4 @@
+import { listFormat } from '@soirely/domain';
 import {
   type Pad,
   type Point,
@@ -46,6 +47,7 @@ export const SEATING_STATES = [
   'sectionEdit',
   'sectionDelete',
   'sectionDeleteEmpty',
+  'sectionDeleteRows',
   'sparse',
   'addMenu',
   'placing',
@@ -410,6 +412,22 @@ export function leastUsed(sections: readonly Section[]): ColourName {
 export function sameName(a: string, b: string): boolean {
   const plain = (s: string) => s.normalize('NFD').replace(/\p{M}/gu, '').trim().toLocaleLowerCase();
   return plain(a) === plain(b);
+}
+
+/** Deleting a section's ask (pm, sc-54060): "Its 2 tables, 1 row and 1 single seat stay…", zeros left out, the verb from the total; "" for an empty section. */
+export function sectionDeleteLine(m: Seating, key: string): string {
+  const its = m.items.filter((it) => it.sec === key);
+  const tables = its.filter(isTable).length;
+  const rows = its.filter((it) => it.kind === 'row').length;
+  const singles = its.filter((it) => it.kind === 'single').length;
+  const count = (n: number, one: string, many: string) =>
+    n === 0 ? [] : [`${n} ${n === 1 ? one : many}`];
+  const counts = listFormat('en', { type: 'conjunction', style: 'long' }).format([
+    ...count(tables, 'table', 'tables'),
+    ...count(rows, 'row', 'rows'),
+    ...count(singles, 'single seat', 'single seats'),
+  ]);
+  return say.sectionDeleteBody(counts, tables + rows + singles);
 }
 
 /** "3 sections, 13 tables, 1 row and 2 single seats", what Delete the plan deletes (pm, 8 Nov 2026); "" when there is nothing. */
