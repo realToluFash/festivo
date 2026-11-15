@@ -1689,7 +1689,7 @@ describe("Inside an event, the navigation menu is the event's (sc-22103)", () =>
     fireEvent.click(eventNav().getByRole('link', { name: 'Menu' }));
     await screen.findByRole('heading', { level: 2, name: 'Menu' });
     fireEvent.click(eventNav().getByRole('link', { name: 'Staff' }));
-    await screen.findByRole('heading', { level: 2, name: 'Staff' });
+    await screen.findByRole('heading', { level: 1, name: 'Staff' });
     fireEvent.click(eventNav().getByRole('link', { name: 'Reports' }));
     await screen.findByRole('heading', { level: 2, name: 'Reports' });
 
