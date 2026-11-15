@@ -1,5 +1,12 @@
 import type { ReactNode, Ref } from 'react';
-import { ScrollView, type ScrollViewInstance, StyleSheet, View } from 'react-native';
+import {
+  type NativeScrollEvent,
+  type NativeSyntheticEvent,
+  ScrollView,
+  type ScrollViewInstance,
+  StyleSheet,
+  View,
+} from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { Back } from '../../components/SettingsParts.tsx';
@@ -17,6 +24,7 @@ export function SummaryPage({
   back,
   column,
   scrollRef,
+  onScroll,
   toast,
   children,
 }: {
@@ -24,6 +32,7 @@ export function SummaryPage({
   back?: { label?: string; onPress: () => void } | null;
   column?: ReactNode;
   scrollRef?: Ref<ScrollViewInstance>;
+  onScroll?: (event: NativeSyntheticEvent<NativeScrollEvent>) => void;
   toast?: PageToastProps | null | undefined;
   children: ReactNode;
 }) {
@@ -36,6 +45,8 @@ export function SummaryPage({
       <Landscape column={column ?? shell.listColumn}>
         <ScrollView
           ref={scrollRef}
+          onScroll={onScroll}
+          scrollEventThrottle={64}
           style={styles.grow}
           contentContainerStyle={styles.pane}
           keyboardShouldPersistTaps="handled"
@@ -56,6 +67,8 @@ export function SummaryPage({
       {!phone && <PortraitTop />}
       <ScrollView
         ref={scrollRef}
+        onScroll={onScroll}
+        scrollEventThrottle={64}
         style={styles.grow}
         contentContainerStyle={
           phone
