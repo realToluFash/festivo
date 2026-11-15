@@ -956,9 +956,11 @@ export function sameNameAs(
 
 export type Answer = 'coming' | 'notcoming' | 'maybe';
 
-/** sc-3787: Record a reply's ticks start from each companion's current reply; a Held one starts Coming, as sc-3779's toggle does. */
+/** sc-3787: Record a reply's ticks start from each companion as they are; one held behind a reply that isn't Coming starts at their last choice (sc-3779). */
 export function startTicks(g: SampleGuest): boolean[] {
-  return g.companions.map((c) => g.kind !== 'coming' || c.kind !== 'notcoming');
+  return g.companions.map((c) =>
+    g.kind === 'coming' ? c.kind !== 'notcoming' : c.chose !== 'notcoming',
+  );
 }
 
 export function recorded(
@@ -974,6 +976,9 @@ export function recorded(
     when: today,
     companions: g.companions.map((c, index) => ({
       ...c,
+      ...(answer === 'coming'
+        ? { chose: ticked[index] === false ? ('notcoming' as const) : ('coming' as const) }
+        : {}),
       kind:
         answer === 'coming'
           ? ticked[index] === false

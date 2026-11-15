@@ -470,9 +470,18 @@ describe('a split family (sc-3773, ux, 8 Nov): each group shows the people it co
     const again = walk().find((g) => g.key === 'emeka');
     if (again == null) throw new Error('emeka');
     expect(startTicks(again)).toEqual([false]);
-    expect(startTicks(recorded(again, 'notcoming', 'By phone', [false], '2026-11-03'))).toEqual([
-      true,
+    expect(startTicks(recorded(again, 'notcoming', 'By phone', [true], '2026-11-03'))).toEqual([
+      false,
     ]);
+  });
+
+  it('keeps Adanna unticked while Not sure yet holds her, her last choice (sc-3779)', () => {
+    const again = walk().find((g) => g.key === 'emeka');
+    if (again == null) throw new Error('emeka');
+    const held = recorded(again, 'maybe', 'By phone', [true], '2026-11-03');
+    expect(held.companions[0]?.kind).toBe('held');
+    expect(startTicks(held)).toEqual([false]);
+    expect(startTicks(recorded(held, 'coming', 'By phone', [true], '2026-11-03'))).toEqual([true]);
   });
 
   it('Record a reply for Dr Emeka Nwosu, Coming, Adanna unticked: Coming gains Emeka only', () => {
