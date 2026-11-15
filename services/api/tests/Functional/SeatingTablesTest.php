@@ -318,7 +318,7 @@ final class SeatingTablesTest extends ApiTestCase
 
         self::assertSame(409, $this->statusCode());
         self::assertSame('https://soirely.com/errors/seating_items_outside', $this->last()['type'] ?? null);
-        self::assertSame('1 item sits outside 13 m × 18 m. Move them first.', $this->last()['detail'] ?? null);
+        self::assertSame('1 item sits outside 13 m × 18 m. Move it first.', $this->last()['detail'] ?? null);
         self::assertSame([$table['id']], $this->last()['outside'] ?? null);
         self::assertSame(2400, $this->planNow()['widthCm']);
 
