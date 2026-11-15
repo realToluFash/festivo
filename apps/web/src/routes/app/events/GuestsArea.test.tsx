@@ -4242,3 +4242,226 @@ describe('Mark many guests as invited from the selection bar (sc-46880)', () => 
     expect(within(bar()).queryByRole('button', { name: 'Mark as invited' })).toBeNull();
   });
 });
+
+describe('Nobody on the list yet, in each phase (sc-50409)', () => {
+  const DRAFT = { status: 'draft', phase: 'draft', madeLiveAt: null };
+  const PAST = {
+    ...DRAFT,
+    startsAt: '2026-10-24T12:00:00+01:00',
+    endsAt: '2026-10-24T18:00:00+01:00',
+  };
+
+  async function emptyOn(
+    event: Record<string, unknown>,
+    permissions: string[] = OWNER_PERMISSIONS,
+    answers: Record<string, Answer> = {},
+  ) {
+    signedIn();
+    await onGuests(
+      {
+        'GET /api/events/ev_1/guests': () => json(listOf([])),
+        'GET /api/events/ev_1': () => json({ event: { ...EVENT, ...event, permissions } }),
+        ...answers,
+      },
+      permissions,
+    );
+
+    return (await screen.findByText('No guests yet')).closest('section') as HTMLElement;
+  }
+
+  function adds(): HTMLElement[] {
+    return screen
+      .queryAllByRole('button', { name: 'Add guest' })
+      .filter((one) => one.closest('.gs-column') == null);
+  }
+
+  function header(): HTMLElement {
+    return document.querySelector<HTMLElement>('.gs-top')!;
+  }
+
+  function steps(card: HTMLElement): (string | null)[] {
+    return within(card.querySelector('.ev-card-foot') as HTMLElement)
+      .getAllByRole('button')
+      .map((one) => one.textContent);
+  }
+
+  it('offers Add guest and Make live on an empty Draft’s card, and none in the header', async () => {
+    const card = await emptyOn(DRAFT);
+
+    expect(within(card).getByText('Draft')).toBeDefined();
+    expect(screen.queryByText(/on the list/u)).toBeNull();
+    expect(
+      within(card).getByText('Guests can’t be invited until this event is live.'),
+    ).toBeDefined();
+    expect(steps(card)).toEqual(['Add guest', 'Make live']);
+    expect(card.querySelector('.ev-card-foot')?.className).toBe('ev-card-foot gs-card-steps');
+    expect(adds()).toHaveLength(1);
+    expect(within(header()).queryByRole('button', { name: 'Add guest' })).toBeNull();
+
+    fireEvent.click(within(card).getByRole('button', { name: 'Make live' }));
+    expect(await screen.findByRole('dialog')).toBeDefined();
+  });
+
+  it('draws Make live on glass beside Add guest, wrapping rather than truncating', () => {
+    expect(cssRule('.ev-card-foot.gs-card-steps', GUESTS_CSS)).toContain('flex-flow: row wrap;');
+    expect(cssRule('.gs-card-also', GUESTS_CSS)).toContain('background: var(--deskGlass);');
+    expect(cssRule('.gs-card-also', GUESTS_CSS)).toContain('white-space: nowrap;');
+  });
+
+  it('adds the first guest: the list beside the form, the card reads 1 on the list with Make live', async () => {
+    let listed: ReturnType<typeof guest>[] = [];
+    const card = await emptyOn(DRAFT, OWNER_PERMISSIONS, {
+      'GET /api/events/ev_1/guests': () => json(listOf(listed)),
+      'POST /api/events/ev_1/guests': () => {
+        listed = [guest('g_9', 'Bimpe Adeyemi')];
+
+        return json({ guest: listed[0] }, 201);
+      },
+    });
+
+    fireEvent.click(within(card).getByRole('button', { name: 'Add guest' }));
+    await waitFor(() => expect(document.activeElement).toBe(field('Full name')));
+    type('Full name', 'Bimpe Adeyemi');
+    fireEvent.click(addButton());
+
+    expect(await within(form()).findByText('Bimpe Adeyemi added.')).toBeDefined();
+    expect(field('Full name').value).toBe('');
+    const after = (await screen.findByText('1 on the list')).closest('section') as HTMLElement;
+    expect(within(after).getByText('Draft')).toBeDefined();
+    expect(
+      within(after).getByText('Guests can’t be invited until this event is live.'),
+    ).toBeDefined();
+    expect(steps(after)).toEqual(['Make live']);
+    expect(
+      within(screen.getByRole('region', { name: 'Guests' })).getByText('Bimpe Adeyemi'),
+    ).toBeDefined();
+    expect(within(header()).getByRole('button', { name: 'Add guest' })).toBeDefined();
+    expect(adds()).toHaveLength(1);
+  });
+
+  it('puts Change dates beside Add guest on an empty Draft whose end has passed', async () => {
+    const card = await emptyOn(PAST);
+
+    expect(
+      within(card).getByText(
+        "This event's end has passed, so it cannot be made live. Change its dates first.",
+      ),
+    ).toBeDefined();
+    expect(steps(card)).toEqual(['Add guest', 'Change dates']);
+    expect(adds()).toHaveLength(1);
+    fireEvent.click(within(card).getByRole('button', { name: 'Change dates' }));
+
+    await screen.findByRole('group', { name: 'Starts' });
+    expect(shownRouter?.state.location.pathname).toBe('/app/events/ev_1');
+  });
+
+  it('gives Add guest alone without events.manage', async () => {
+    const card = await emptyOn(
+      DRAFT,
+      OWNER_PERMISSIONS.filter((one) => one !== 'events.manage'),
+    );
+
+    expect(within(card).getByText('Draft')).toBeDefined();
+    expect(steps(card)).toEqual(['Add guest']);
+    expect(adds()).toHaveLength(1);
+  });
+
+  it('gives Make live alone without guests.manage, and no step with neither', async () => {
+    const card = await emptyOn(
+      DRAFT,
+      OWNER_PERMISSIONS.filter((one) => one !== 'guests.manage'),
+    );
+
+    expect(within(card).getByText('Draft')).toBeDefined();
+    expect(
+      within(card).getByText('Guests can’t be invited until this event is live.'),
+    ).toBeDefined();
+    expect(steps(card)).toEqual(['Make live']);
+    expect(adds()).toHaveLength(0);
+
+    cleanup();
+    const neither = await emptyOn(
+      DRAFT,
+      OWNER_PERMISSIONS.filter((one) => one !== 'guests.manage' && one !== 'events.manage'),
+    );
+
+    expect(within(neither).getByText('Draft')).toBeDefined();
+    expect(neither.querySelector('.ev-card-foot')).toBeNull();
+    expect(adds()).toHaveLength(0);
+  });
+
+  it.each([
+    [
+      'Paused',
+      { status: 'paused', phase: 'paused', pausedAt: '2026-11-01T10:00:00+00:00' },
+      'Guests can’t be invited while this event is paused.',
+    ],
+    [
+      'Finished',
+      { status: 'live', phase: 'finished' },
+      'This event has finished, so guests can’t be invited.',
+    ],
+  ])(
+    'keeps a %s event’s tag and line, says No guests yet, and offers Add guest in the header',
+    async (tag, event, line) => {
+      const card = await emptyOn(event);
+
+      expect(within(card).getByText(tag)).toBeDefined();
+      expect(within(card).getByText(line)).toBeDefined();
+      expect(screen.queryByText(/coming of/u)).toBeNull();
+      expect(card.querySelector('.ev-card-foot')).toBeNull();
+      expect(adds()).toHaveLength(1);
+      fireEvent.click(within(header()).getByRole('button', { name: 'Add guest' }));
+
+      await waitFor(() => expect(document.activeElement).toBe(field('Full name')));
+    },
+  );
+
+  it('keeps a Live event’s No guests yet with Add guest alone on its card', async () => {
+    const card = await emptyOn({});
+
+    expect(steps(card)).toEqual(['Add guest']);
+    expect(adds()).toHaveLength(1);
+  });
+
+  it('reads as an empty Draft once the last guest is removed and Undo has gone', async () => {
+    vi.useFakeTimers({ shouldAdvanceTime: true });
+    try {
+      let listed = [NGOZI];
+      signedIn();
+      await onGuests({
+        'GET /api/events/ev_1': () =>
+          json({ event: { ...EVENT, ...DRAFT, permissions: OWNER_PERMISSIONS } }),
+        'GET /api/events/ev_1/guests': () => json(listOf(listed)),
+        'GET /api/events/ev_1/guests/g_1': () => tagged(DETAILS, '"1"'),
+        'DELETE /api/events/ev_1/guests/g_1': () => {
+          listed = [];
+
+          return new Response(null, { status: 204 });
+        },
+        'POST /api/events/ev_1/guests/g_1/erasure': () => new Response(null, { status: 204 }),
+      });
+      fireEvent.click(await screen.findByRole('link', { name: /^Ngozi Eze/u }));
+      expect(adds()).toHaveLength(1);
+      expect(within(header()).getByRole('button', { name: 'Add guest' })).toBeDefined();
+
+      fireEvent.click(await screen.findByRole('button', { name: 'Remove from the list' }));
+      fireEvent.click(
+        within(await screen.findByRole('alertdialog')).getByRole('button', { name: 'Remove' }),
+      );
+      const undo = await screen.findByRole('button', { name: 'Undo' });
+      await waitFor(() => expect(document.activeElement).toBe(undo));
+      act(() => undo.blur());
+      act(() => vi.advanceTimersByTime(11000));
+      await waitFor(() => expect(screen.queryByRole('button', { name: 'Undo' })).toBeNull());
+
+      const card = (await screen.findByText('No guests yet')).closest('section') as HTMLElement;
+      expect(within(card).getByText('Draft')).toBeDefined();
+      expect(within(card).getByRole('button', { name: 'Add guest' })).toBeDefined();
+      expect(within(header()).queryByRole('button', { name: 'Add guest' })).toBeNull();
+      expect(adds()).toHaveLength(1);
+    } finally {
+      vi.useRealTimers();
+    }
+  });
+});
