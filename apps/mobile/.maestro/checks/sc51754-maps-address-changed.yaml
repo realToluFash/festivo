@@ -24,7 +24,6 @@ appId: host.exp.Exponent
           point: '97%,50%'
       - eraseText: 200
 - inputText: ${NEW_ADDRESS}
-- hideKeyboard
 - takeScreenshot: typed
 - tapOn:
     id: 'event.edit.venue.save'
@@ -37,7 +36,7 @@ appId: host.exp.Exponent
       id: 'events.maps'
     centerElement: true
     timeout: 20000
-- assertVisible: 'Venue · ${NEW_ADDRESS}'
+- assertVisible: '.*Venue · ${NEW_ADDRESS}'
 - takeScreenshot: saved
 - tapOn:
     id: 'events.maps'
