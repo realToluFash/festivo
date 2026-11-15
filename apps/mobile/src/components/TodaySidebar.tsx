@@ -106,7 +106,15 @@ function SidebarOrg() {
   );
 }
 
-export function SidebarHead({ search, org = true }: { search?: boolean; org?: boolean }) {
+export function SidebarHead({
+  search,
+  org = true,
+  children,
+}: {
+  search?: boolean;
+  org?: boolean;
+  children?: ReactNode;
+}) {
   const { t } = useTranslation();
   const shell = useTodayShell();
   const { open } = shell;
@@ -116,7 +124,7 @@ export function SidebarHead({ search, org = true }: { search?: boolean; org?: bo
       <View style={styles.logo}>
         <Brand lockup height={24} />
       </View>
-      {org && <SidebarOrg />}
+      {org && (children ?? <SidebarOrg />)}
       {(search ?? shell.search) && (
         <Pressable
           onPress={() => open({ to: 'search' })}
