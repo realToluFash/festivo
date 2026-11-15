@@ -1,0 +1,62 @@
+# sc-5519, Android only (the date-picker steps are Android's OK dialog; an iPad's sheet closes with Done): in the raised over layer on a tablet, the guest form's Language list and Discard ask, the Duplicate's date picker and Delete event's typed-name ask open, take taps and close.
+appId: host.exp.Exponent
+---
+- setOrientation: ${ORIENT}
+- openLink: ${METRO_URL}/--/events/${EVENT_ID}?area=guests
+- extendedWaitUntil: { visible: { id: 'guests.search' }, timeout: 30000 }
+- tapOn: { id: 'guests.search' }
+- inputText: ${NAME}
+- hideKeyboard
+- extendedWaitUntil: { visible: { id: 'guests.row.${GUEST_ID}' }, timeout: 15000 }
+- tapOn: { id: 'guests.row.${GUEST_ID}' }
+- extendedWaitUntil: { visible: { id: 'guest.edit' }, timeout: 20000 }
+- tapOn: { id: 'guest.edit' }
+- extendedWaitUntil: { visible: { id: 'guest.form.language' }, timeout: 20000 }
+- tapOn: { id: 'guest.form.language' }
+- extendedWaitUntil: { visible: { id: 'guest.language.fr' }, timeout: 10000 }
+- takeScreenshot: language-open
+- tapOn: { id: 'guest.language.fr' }
+- extendedWaitUntil: { notVisible: { id: 'guest.language.fr' }, timeout: 10000 }
+- takeScreenshot: language-picked
+- tapOn: { id: 'guest.form.language' }
+- extendedWaitUntil: { visible: { id: 'guest.language.close' }, timeout: 10000 }
+- tapOn: { id: 'guest.language.close' }
+- extendedWaitUntil: { notVisible: { id: 'guest.language.close' }, timeout: 10000 }
+- tapOn: { id: 'guest.form.cancel' }
+- extendedWaitUntil: { visible: { id: 'guest.form.keepEditing' }, timeout: 10000 }
+- takeScreenshot: discard-ask
+- tapOn: { id: 'guest.form.keepEditing' }
+- extendedWaitUntil: { notVisible: { id: 'guest.form.keepEditing' }, timeout: 10000 }
+- assertVisible: { id: 'guest.form.save' }
+- tapOn: { id: 'guest.form.cancel' }
+- extendedWaitUntil: { visible: { id: 'guest.form.discard' }, timeout: 10000 }
+- tapOn: { id: 'guest.form.discard' }
+- extendedWaitUntil: { visible: { id: 'guest.edit' }, timeout: 10000 }
+- takeScreenshot: discarded
+- openLink: ${METRO_URL}/--/events/${EVENT_ID}
+- extendedWaitUntil: { visible: { id: 'events.page' }, timeout: 30000 }
+- scrollUntilVisible:
+    { element: { id: 'events.page.duplicate' }, centerElement: true, timeout: 30000 }
+- tapOn: { id: 'events.page.duplicate' }
+- scrollUntilVisible: { element: { id: 'eventDuplicate.date' }, timeout: 15000 }
+- tapOn: { id: 'eventDuplicate.date' }
+- extendedWaitUntil: { visible: 'OK', timeout: 10000 }
+- tapOn: '25'
+- takeScreenshot: date-picker-open
+- tapOn: 'OK'
+- extendedWaitUntil: { notVisible: 'OK', timeout: 10000 }
+- takeScreenshot: date-picker-closed
+- tapOn: { id: 'eventDuplicate.cancel' }
+- openLink: ${METRO_URL}/--/events/${EVENT_ID}
+- extendedWaitUntil: { visible: { id: 'events.page' }, timeout: 30000 }
+- scrollUntilVisible: { element: { id: 'events.delete' }, centerElement: true, timeout: 30000 }
+- tapOn: { id: 'events.delete' }
+- extendedWaitUntil: { visible: { id: 'events.deleteName' }, timeout: 15000 }
+- tapOn: { id: 'events.deleteName' }
+- inputText: 'Typed here'
+- extendedWaitUntil: { visible: { id: 'never.there' }, timeout: 1500, optional: true }
+- takeScreenshot: delete-typed
+- hideKeyboard
+- tapOn: { id: 'events.deleteKeep' }
+- extendedWaitUntil: { notVisible: { id: 'events.deleteName' }, timeout: 10000 }
+- takeScreenshot: delete-kept
