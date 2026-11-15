@@ -46,6 +46,8 @@ import { MANY_PAGES } from './guestsMany.ts';
 import { KitchenPage } from './Kitchen.tsx';
 import { MenuPage } from './MenuServed.tsx';
 import { MENU_PAGES } from './menuServed.ts';
+import { MenuLibraryPage } from './MenuLibrary.tsx';
+import { LIBRARY_PAGES } from './menuLibrary.ts';
 import { CHANGES_PAGES, KITCHEN_PAGES, PARTS_PAGES } from './kitchen.ts';
 import { LegalPage } from './Legal.tsx';
 import { LEGAL_PAGES } from './legal.ts';
@@ -210,6 +212,7 @@ export default function Demo() {
       <Route path="events/:id/menu" element={<MenuPage />} />
       <Route path="events/:id/staff" element={<StationsPage />} />
       <Route path="calendar" element={<Calendar />} />
+      <Route path="menu-library" element={<MenuLibraryPage />} />
       <Route path="settings" element={<Settings />} />
       <Route path="settings/members" element={<Settings />} />
       <Route path="settings/account" element={<Settings open="account" />} />
@@ -353,6 +356,11 @@ function DemoHome({ from }: { from: string }) {
         <h2 id="demo-page-32">32 · Menu</h2>
         <h3>How a course is served, and a dish’s parts · sc-34230 · desktop</h3>
         <BoardPages pages={MENU_PAGES} />
+      </section>
+      <section className="demo-home-page" aria-labelledby="demo-page-32-library">
+        <h2 id="demo-page-32-library">32 · Menu · the Menu library</h2>
+        <h3>The organisation’s dishes and what each contains · sc-3901 · desktop</h3>
+        <BoardPages pages={LIBRARY_PAGES} />
       </section>
       <section className="demo-home-page" aria-labelledby="demo-page-32-kitchen">
         <h2 id="demo-page-32-kitchen">32 · Menu · the kitchen sheet’s parts</h2>
