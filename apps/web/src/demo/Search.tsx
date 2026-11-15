@@ -253,7 +253,7 @@ export function SearchPalette({
             type="text"
             role="combobox"
             aria-label={W.search}
-            placeholder={W.placeholder(start.reach)}
+            placeholder={W.search}
             value={typed}
             autoComplete="off"
             spellCheck={false}
