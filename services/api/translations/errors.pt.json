@@ -101,7 +101,7 @@
     "team_seats_in_use": "Todos os lugares de equipa do plano desta organização estão ocupados.",
     "seating_items_outside": "Algo na sala ficaria fora dela.",
     "schedule_item_limit": "Este programa tem {max} itens, o máximo que um evento pode ter. Elimine um para adicionar outro.",
-    "item_started": "This item has already started.",
-    "item_not_started": "This item has not started yet, so it cannot be done.",
-    "item_finished": "This item is already done."
+    "item_started": "Este item já começou.",
+    "item_not_started": "Este item ainda não começou, por isso não pode ser concluído.",
+    "item_finished": "Este item já foi concluído."
 }
