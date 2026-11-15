@@ -100,7 +100,7 @@ export function BackHead({
 }: {
   title: string;
   line?: string;
-  onClose: () => void;
+  onClose?: () => void;
 }) {
   const { t } = useTranslation();
 
@@ -110,14 +110,16 @@ export function BackHead({
         <h2 data-focus="title" tabIndex={-1}>
           {title}
         </h2>
-        <button
-          type="button"
-          className="st-icon-button"
-          aria-label={t('seating.close')}
-          onClick={onClose}
-        >
-          <Glyph name="clear" size={19} weight={2.2} />
-        </button>
+        {onClose != null && (
+          <button
+            type="button"
+            className="st-icon-button"
+            aria-label={t('seating.close')}
+            onClick={onClose}
+          >
+            <Glyph name="clear" size={19} weight={2.2} />
+          </button>
+        )}
       </div>
       {line != null && <p className="st-line">{line}</p>}
     </div>
