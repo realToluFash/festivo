@@ -1,5 +1,6 @@
 import { type ReactNode, useCallback, useMemo, useState } from 'react';
-import { useTranslation } from 'react-i18next';
+import i18next, { type TFunction } from 'i18next';
+import { I18nextProvider, useTranslation } from 'react-i18next';
 import { Link } from 'react-router';
 
 import { type CardStepAction, type Milestone, eventPhase } from '@soirely/domain';
@@ -14,6 +15,7 @@ import {
   type SampleEvent,
   type Shown as DemoShown,
   type Tab,
+  EVENT_WORDS,
   phaseWord,
   tagKind,
 } from './events.ts';
@@ -111,12 +113,30 @@ export function Thumb({ event, size }: { event: SampleEvent; size: 28 | 40 | 48 
   );
 }
 
-/** The product's cover card on a sample event, every step offered, as the owner it is shown to. */
+/** sc-50996: a reader without events.manage reads the fact and who can act, under the product's own keys. */
+const READER_LINES: Readonly<Record<string, string>> = {
+  'events.nextChangeDates': EVENT_WORDS.endPassedReader,
+  'events.nextResume': EVENT_WORDS.nextResumeReader,
+};
+
+function readerWords() {
+  const local = i18next.cloneInstance();
+  const t = local.t.bind(local) as unknown as (...args: unknown[]) => string;
+  const read = (...args: unknown[]) =>
+    (typeof args[0] === 'string' ? READER_LINES[args[0]] : undefined) ?? t(...args);
+
+  local.t = read as unknown as TFunction;
+
+  return local;
+}
+
+/** The product's cover card on a sample event, every step offered to the owner it is shown to and none to a reader (sc-50996). */
 export function EventCard({
   event,
   now,
   level,
   milestone = null,
+  reads = false,
   onStep,
 }: {
   event: SampleEvent;
@@ -124,9 +144,11 @@ export function EventCard({
   level: 1 | 2;
   /** Next up when it is a You milestone with an action, which becomes the card's one step (sc-30812). */
   milestone?: CardMilestone | null;
+  reads?: boolean;
   onStep: (does: CardStepAction) => void;
 }) {
-  return (
+  const words = useMemo(() => (reads ? readerWords() : null), [reads]);
+  const card = (
     <ProductCard
       event={shownSample(event, now)}
       now={now}
@@ -134,10 +156,12 @@ export function EventCard({
       level={level}
       {...(level === 2 && { to: `/demo/events/${event.id}` })}
       nextUp={milestone == null ? null : <MilestoneStep milestone={milestone} />}
-      takes={() => true}
+      takes={() => !reads}
       onStep={(step) => onStep(step.action)}
     />
   );
+
+  return words == null ? card : <I18nextProvider i18n={words}>{card}</I18nextProvider>;
 }
 
 function MilestoneStep({ milestone }: { milestone: CardMilestone }) {

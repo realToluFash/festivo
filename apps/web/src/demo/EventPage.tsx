@@ -25,6 +25,7 @@ import {
   manageOf,
   needsName,
   partOf,
+  readsOnly,
   resetSample,
   sampleEvent,
   shownOf,
@@ -414,7 +415,8 @@ function EventView({
   const [asking, setAsking] = useState<Asking | null>(askingOf(state));
   const [ending, setEnding] = useState(0);
   const refusedStart = refusedStartOf(state);
-  const canChange = refusedStart?.canChange ?? true;
+  const reads = readsOnly(state);
+  const canChange = (refusedStart?.canChange ?? true) && !reads;
   const [pressed, setPressed] = useState(false);
   const [turned, setTurned] = useState(false);
   const refusal = refusalOf(
@@ -483,7 +485,11 @@ function EventView({
           tell={tell}
           inert={covered}
           waiting={event.id === SAMPLE_EVENT ? waitingLine(keptInbox()) : null}
-          {...(canChange && maySend(live) ? {} : { reader: AT_READ })}
+          {...(reads
+            ? { reader: { ...AT_READ, role: 'Member' } }
+            : canChange && maySend(live)
+              ? {}
+              : { reader: AT_READ })}
         />
       )}
     >
@@ -502,6 +508,7 @@ function EventView({
                   now={now}
                   level={1}
                   milestone={cardMilestone(event, now)}
+                  reads={reads}
                   onStep={(does: CardDoes) => {
                     if (does === 'makeLive') setMaking(ASK);
                     else if (does === 'changeDates') {

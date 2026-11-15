@@ -855,6 +855,64 @@ describe('Delete refused while a guest is Invited (sc-14445)', () => {
   });
 });
 
+describe('a reader who cannot change the event (sc-50996)', () => {
+  const PAST = 'This event’s end has passed, so it cannot be made live. Change its dates first.';
+  const PAST_READ =
+    'This event’s end has passed, so it cannot be made live. Someone who can edit this event can change its dates.';
+  const PAUSED = 'Paused. Guests can’t reply or change anything until you resume it.';
+  const PAUSED_READ = 'Paused. Guests can’t reply or change anything until it is resumed.';
+  const SHOWER = 'Kemi’s baby shower';
+  const PARTY = 'Ire Events end-of-year party';
+
+  beforeEach(() => {
+    __setConfig({ ...tested, environment: 'development' });
+    resetSample();
+  });
+
+  it(
+    'tells a reader on the Drafts card who can change the dates, with no button',
+    SLOW,
+    async () => {
+      await list('/demo/events?state=draftsReader');
+      const card = screen.getByRole('region', { name: SHOWER });
+
+      expect(within(card).getByText(PAST_READ)).toBeDefined();
+      expect(within(card).queryByText(PAST)).toBeNull();
+      expect(within(card).queryByRole('button')).toBeNull();
+
+      cleanup();
+      await list('/demo/events?state=drafts');
+      const managers = screen.getByRole('region', { name: SHOWER });
+
+      expect(within(managers).getByText(PAST)).toBeDefined();
+      expect(within(managers).getByRole('button', { name: 'Change dates' })).toBeDefined();
+    },
+  );
+
+  it('gives a reader the fact on the event’s page, with no Change dates', SLOW, async () => {
+    await page('/demo/events/evt-shower-2?state=draftPastReader', SHOWER);
+
+    expect(within(main()).getByText(PAST_READ)).toBeDefined();
+    expect(within(main()).queryByText(PAST)).toBeNull();
+    expect(within(main()).queryByRole('button', { name: 'Change dates' })).toBeNull();
+    expect(screen.getByLabelText('Ana Souza, Member')).toBeDefined();
+  });
+
+  it('gives a reader the Paused line without you, and no Resume or Pause', SLOW, async () => {
+    await page('/demo/events/evt-party-2?state=pausedReader', PARTY);
+
+    expect(within(main()).getByText(PAUSED_READ)).toBeDefined();
+    expect(within(main()).queryByText(PAUSED)).toBeNull();
+    expect(within(main()).queryByRole('button', { name: 'Resume' })).toBeNull();
+
+    cleanup();
+    await page('/demo/events/evt-party-2?state=paused', PARTY);
+
+    expect(within(main()).getByText(PAUSED)).toBeDefined();
+    expect(within(main()).getByRole('button', { name: 'Resume' })).toBeDefined();
+  });
+});
+
 describe('the guest counts on Events (sc-23284)', () => {
   beforeEach(() => {
     __setConfig({ ...tested, environment: 'development' });

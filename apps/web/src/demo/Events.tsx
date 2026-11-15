@@ -344,6 +344,7 @@ function EventsList({ start, tell }: { start: ReturnType<typeof listStart>; tell
                     event={byTab[tab][0]}
                     now={now}
                     level={2}
+                    reads={start.reads}
                     onStep={stepOn(byTab[tab][0])}
                   />
                   {figuresOf(byTab[tab][0])}
