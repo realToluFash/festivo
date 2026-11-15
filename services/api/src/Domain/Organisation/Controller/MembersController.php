@@ -87,7 +87,7 @@ final readonly class MembersController
     ) {
     }
 
-    /** The counts, the card's faces, Waiting and the invitations are the whole organisation's on every page (sc-49170). */
+    /** The counts, the card's faces and Waiting are the whole organisation's on every page, the invitations only on a first page (sc-49170). */
     #[Route('/api/orgs/{organisationId}/members', name: 'orgs_members', methods: ['GET'])]
     #[InOrganisation(Permission::MembersRead)]
     public function list(Request $request, string $organisationId): JsonResponse
