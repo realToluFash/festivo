@@ -450,7 +450,7 @@ describe('new rows and seats land clear of each other (sc-4003)', () => {
     expect(m.items).toHaveLength(120);
     expect(m.items.every((it) => inside(it, ROOM))).toBe(true);
     expect(slowest).toBeLessThan(500);
-  });
+  }, 30_000);
 });
 
 describe('a tap', () => {

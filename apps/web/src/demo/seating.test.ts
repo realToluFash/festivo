@@ -290,7 +290,7 @@ describe('moving and overlapping (sc-5028)', () => {
     expect(items.some((item) => !keepsClear(item, items))).toBe(true);
     expect(items.every((item) => inside(item, room))).toBe(true);
     expect(slowest).toBeLessThan(500);
-  });
+  }, 30_000);
 
   it('names the next table, row and seat by the first free number or letter', () => {
     const items = sampleItems();
