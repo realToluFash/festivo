@@ -226,7 +226,8 @@ export function Overview({
     onSaved: saved,
     onLatest: (latest) => {
       onChange(latest.event, latest.tag);
-      setShown((n) => n + 1);
+      if (part === 'dates' && latest.event.phase === 'finished') close();
+      else setShown((n) => n + 1);
     },
   };
 

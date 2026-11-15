@@ -1253,6 +1253,20 @@ final class EventsTest extends ApiTestCase
         self::assertSame($ended, $this->event($this->as($this->owner, 'GET', '/api/events/' . $event['id'])));
     }
 
+    #[Test]
+    public function aScheduleSavedFromBeforeTheCallOffIsStale(): void
+    {
+        $event = $this->live(self::AHEAD, '2030-11-15T02:00');
+        $read = $this->tagOf($event['id']);
+        $this->as($this->owner, 'POST', '/api/events/' . $event['id'] . '/end');
+        $ended = $this->event($this->as($this->owner, 'GET', '/api/events/' . $event['id']));
+
+        $this->edit($event['id'], ['startsAt' => '2030-11-14T17:00'], $read);
+
+        self::assertSame(412, $this->statusCode());
+        self::assertSame($ended, $this->event($this->as($this->owner, 'GET', '/api/events/' . $event['id'])));
+    }
+
     /** @return iterable<string, array{string, ?string, string}> */
     public static function calledOffLanguages(): iterable
     {

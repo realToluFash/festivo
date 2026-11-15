@@ -2614,6 +2614,65 @@ describe('Change dates opens Dates in place, and Edit details is gone (sc-48602)
     );
   }
 
+  describe('Show the latest after a 412 in Dates (sc-45141)', () => {
+    const ahead = { startsAt: '2030-11-14T16:00:00+01:00', endsAt: '2030-11-15T02:00:00+01:00' };
+
+    async function staleSave(latest: ReturnType<typeof event>): Promise<HTMLElement> {
+      let served = event({ ...ahead, status: 'live', phase: 'live' });
+      signedIn();
+      answering({
+        'GET /api/events/ev_1': () => json({ event: served }),
+        'PATCH /api/events/ev_1': () => {
+          served = latest;
+
+          return problem(412, 'precondition_failed');
+        },
+      });
+      from('/app/events/ev_1');
+      const details = await screen.findByRole('region', { name: 'Details' });
+      fireEvent.click(within(details).getByRole('button', { name: /^.*Dates/u }));
+      const starts = await screen.findByRole('group', { name: 'Starts' });
+      fireEvent.change(within(starts).getByLabelText('Starts, Date'), {
+        target: { value: '2030-11-13' },
+      });
+      fireEvent.click(within(details).getByRole('button', { name: 'Save' }));
+      fireEvent.click(await within(details).findByRole('button', { name: 'Show the latest' }));
+      const ask = await screen.findByRole('alertdialog', { name: 'Show the latest version?' });
+      fireEvent.click(within(ask).getByRole('button', { name: 'Show the latest' }));
+
+      return details;
+    }
+
+    it('closes Dates on an event called off meanwhile, and the row says so', async () => {
+      const details = await staleSave(
+        event({
+          ...ahead,
+          status: 'ended',
+          phase: 'finished',
+          concludedAt: '2030-11-01T09:00:00+00:00',
+        }),
+      );
+
+      expect(
+        await within(details).findByText(
+          "Dates · This event was called off, so its start, end and time zone can't be changed.",
+        ),
+      ).toBeDefined();
+      expect(within(details).queryByRole('group', { name: 'Starts' })).toBeNull();
+    });
+
+    it('loads the latest into Dates, still open, on an event still Live', async () => {
+      const details = await staleSave(
+        event({ ...ahead, status: 'live', phase: 'live', name: 'Gala' }),
+      );
+
+      await waitFor(() =>
+        expect(screen.queryByRole('alertdialog', { name: 'Show the latest version?' })).toBeNull(),
+      );
+      expect(await within(details).findByRole('group', { name: 'Starts' })).toBeDefined();
+    });
+  });
+
   it("opens from an Events card's step, and Back returns to Events", async () => {
     signedIn();
     answering({
