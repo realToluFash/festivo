@@ -69,7 +69,7 @@ final readonly class ScheduleRules
         return $event->getStartsAt()->modify('-' . self::SET_UP_HOURS . ' hours');
     }
 
-    /** @param list<array{propertyPath: string, message: string, code: string}> $violations */
+    /** @param list<array{propertyPath: string, message: string, code: string, parameters: array<string, int|string>}> $violations */
     private function start(Event $event, ?string $typed, array &$violations): ?DateTimeImmutable
     {
         $typed = Str\trim($typed ?? '');
@@ -113,7 +113,7 @@ final readonly class ScheduleRules
         return $formatter?->format($at) ?: $at->setTimezone($zone)->format('D j M H:i');
     }
 
-    /** @param list<array{propertyPath: string, message: string, code: string}> $violations */
+    /** @param list<array{propertyPath: string, message: string, code: string, parameters: array<string, int|string>}> $violations */
     private function optional(?string $typed, string $path, int $maximum, string $tooLong, array &$violations): ?string
     {
         $value = Str\trim($typed ?? '');
@@ -132,14 +132,15 @@ final readonly class ScheduleRules
     /**
      * @param array<string, int|string> $parameters
      *
-     * @return array{propertyPath: string, message: string, code: string}
+     * @return array{propertyPath: string, message: string, code: string, parameters: array<string, int|string>}
      */
     private function violation(string $path, string $key, array $parameters = []): array
     {
         return [
             'propertyPath' => $path,
-            'message' => $this->translator->trans($key, $parameters),
+            'message' => $key,
             'code' => ErrorCode::ValidationFailed->value,
+            'parameters' => $parameters,
         ];
     }
 }
