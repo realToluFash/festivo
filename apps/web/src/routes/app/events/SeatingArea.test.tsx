@@ -776,6 +776,20 @@ describe('Tables at a desk (sc-4000)', () => {
     expect(patch?.ifMatch).toBe('"1"');
   });
 
+  it('refuses a table size in feet, naming the largest it can take, rounded down', async () => {
+    signedIn();
+    const sent = await onSeating({
+      'GET /api/events/ev_1/seating-plan': () =>
+        json({ seating: { measurementSystem: 'us', plan: withTables(table()) } }),
+    });
+
+    await chooseTable('Table 1, round, 0 of 10 seats taken');
+    leave('Diameter', '33 ft');
+
+    expect(await screen.findByText('Enter a size from 1 ft 4 in to 32 ft 9 in.')).toBeDefined();
+    expect(sent.some((one) => one.line.startsWith('PATCH'))).toBe(false);
+  });
+
   it('says a new shape’s size was reset, and warns of a squeeze without refusing it', async () => {
     signedIn();
     const sent = await onSeating({
