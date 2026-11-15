@@ -1,5 +1,5 @@
 import type { MarkKind } from '../components/SettingsParts.tsx';
-import { emailProblem, type MemberStanding, memberStanding } from '@soirely/domain';
+import { activeOwners, emailProblem, type MemberStanding, memberStanding } from '@soirely/domain';
 
 import {
   type AskWords,
@@ -513,7 +513,7 @@ export function standingOf(
   });
   const withheld = ROLE_NAMES.filter((role) => !grantable(viewer).includes(role));
 
-  return memberStanding(shaped(person), people.map(shaped), {
+  return memberStanding(shaped(person), activeOwners(people.map(shaped)), {
     owns: viewer.owns,
     manages: viewer.manages,
     withholds: withheld.map((id) => ({ id })),

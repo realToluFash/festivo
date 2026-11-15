@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest';
 
 import {
+  activeOwners,
   approvalRoles,
   historyLine,
   memberChannelWords,
@@ -129,15 +130,17 @@ describe("what a member's page offers", () => {
   const anOwner = { owns: true, manages: true, withholds: [] };
 
   it('offers nothing on your own page', () => {
-    expect(memberStanding(you, [owner, you], admin)).toBe('self');
-    expect(memberStanding(member('members desk', 'active', true), [owner], admin)).toBe('self');
+    expect(memberStanding(you, activeOwners([owner, you]), admin)).toBe('self');
+    expect(
+      memberStanding(member('members desk', 'active', true), activeOwners([owner]), admin),
+    ).toBe('self');
   });
 
   it("tells an owner's own page from anybody else's", () => {
     const yourself = member('owner', 'active', true);
 
-    expect(memberStanding(yourself, [owner, yourself], anOwner)).toBe('selfOwner');
-    expect(memberStanding(yourself, [yourself], anOwner)).toBe('selfOwner');
+    expect(memberStanding(yourself, activeOwners([owner, yourself]), anOwner)).toBe('selfOwner');
+    expect(memberStanding(yourself, activeOwners([yourself]), anOwner)).toBe('selfOwner');
   });
 
   it('tells a non-owner an owner can change their role, and points only an owner on', () => {
@@ -146,75 +149,110 @@ describe("what a member's page offers", () => {
   });
 
   it('keeps the only active owner as they are, whoever looks', () => {
-    expect(memberStanding(owner, [owner, you, coordinator], anOwner)).toBe('onlyOwner');
-    expect(memberStanding(owner, [owner, member('owner', 'suspended')], anOwner)).toBe('onlyOwner');
+    expect(memberStanding(owner, activeOwners([owner, you, coordinator]), anOwner)).toBe(
+      'onlyOwner',
+    );
+    expect(
+      memberStanding(owner, activeOwners([owner, member('owner', 'suspended')]), anOwner),
+    ).toBe('onlyOwner');
   });
 
   it('lets anyone who manages members restore or remove the suspended only owner', () => {
     const suspended = { ...member('owner', 'suspended'), suspension: { onlyOwner: true } };
 
-    expect(memberStanding(suspended, [suspended, you], admin)).toBe('suspendedOnlyOwner');
-    expect(memberStanding(suspended, [suspended, you], anOwner)).toBe('suspendedOnlyOwner');
+    expect(memberStanding(suspended, activeOwners([suspended, you]), admin)).toBe(
+      'suspendedOnlyOwner',
+    );
+    expect(memberStanding(suspended, activeOwners([suspended, you]), anOwner)).toBe(
+      'suspendedOnlyOwner',
+    );
     expect(
-      memberStanding(suspended, [suspended, you], { owns: false, manages: false, withholds: [] }),
+      memberStanding(suspended, activeOwners([suspended, you]), {
+        owns: false,
+        manages: false,
+        withholds: [],
+      }),
     ).toBe('readOnly');
     expect(
-      memberStanding({ ...suspended, suspension: { onlyOwner: false } }, [suspended, owner], admin),
+      memberStanding(
+        { ...suspended, suspension: { onlyOwner: false } },
+        activeOwners([suspended, owner]),
+        admin,
+      ),
     ).toBe('ownerOnly');
   });
 
   it('lets an owner change or remove a second owner, and nobody else', () => {
-    expect(memberStanding(secondOwner, [owner, secondOwner], anOwner)).toBe('manageable');
-    expect(memberStanding(secondOwner, [owner, secondOwner], admin)).toBe('ownerOnly');
+    expect(memberStanding(secondOwner, activeOwners([owner, secondOwner]), anOwner)).toBe(
+      'manageable',
+    );
+    expect(memberStanding(secondOwner, activeOwners([owner, secondOwner]), admin)).toBe(
+      'ownerOnly',
+    );
   });
 
   it('shows the role only to somebody without members.manage', () => {
     const reader = { owns: false, manages: false, withholds: [] };
 
-    expect(memberStanding(coordinator, [owner, coordinator], reader)).toBe('readOnly');
-    expect(memberStanding(secondOwner, [owner, secondOwner], reader)).toBe('readOnly');
+    expect(memberStanding(coordinator, activeOwners([owner, coordinator]), reader)).toBe(
+      'readOnly',
+    );
+    expect(memberStanding(secondOwner, activeOwners([owner, secondOwner]), reader)).toBe(
+      'readOnly',
+    );
   });
 
   it('shows a former member read-only, even to an owner', () => {
     const former = member('coordinator', 'left_or_removed');
 
-    expect(memberStanding(former, [owner, former], anOwner)).toBe('readOnly');
-    expect(memberStanding(former, [owner, former], admin)).toBe('readOnly');
-    expect(memberStanding(member('finance', 'left_or_removed'), [owner], admin)).toBe('readOnly');
+    expect(memberStanding(former, activeOwners([owner, former]), anOwner)).toBe('readOnly');
+    expect(memberStanding(former, activeOwners([owner, former]), admin)).toBe('readOnly');
+    expect(memberStanding(member('finance', 'left_or_removed'), activeOwners([owner]), admin)).toBe(
+      'readOnly',
+    );
   });
 
   it('fixes the role of a member whose role holds a permission the viewer lacks', () => {
     const finance = member('finance');
     const suspended = { ...member('finance', 'suspended'), suspension: { onlyOwner: false } };
 
-    expect(memberStanding(finance, [owner, finance], admin)).toBe('beyondGrant');
-    expect(memberStanding(suspended, [owner, suspended], admin)).toBe('beyondGrant');
-    expect(memberStanding(finance, [owner, finance], anOwner)).toBe('manageable');
+    expect(memberStanding(finance, activeOwners([owner, finance]), admin)).toBe('beyondGrant');
+    expect(memberStanding(suspended, activeOwners([owner, suspended]), admin)).toBe('beyondGrant');
+    expect(memberStanding(finance, activeOwners([owner, finance]), anOwner)).toBe('manageable');
     expect(
-      memberStanding(finance, [owner, finance], { ...anOwner, withholds: [{ id: 'finance' }] }),
+      memberStanding(finance, activeOwners([owner, finance]), {
+        ...anOwner,
+        withholds: [{ id: 'finance' }],
+      }),
     ).toBe('manageable');
-    expect(memberStanding(finance, [owner, finance], { ...admin, manages: false })).toBe(
-      'readOnly',
-    );
+    expect(
+      memberStanding(finance, activeOwners([owner, finance]), { ...admin, manages: false }),
+    ).toBe('readOnly');
   });
 
   it('leaves a role the loaded catalogue lacks to the picker and the API', () => {
-    expect(memberStanding(member('door team'), [owner], admin)).toBe('manageable');
+    expect(memberStanding(member('door team'), activeOwners([owner]), admin)).toBe('manageable');
   });
 
   it('keeps the owner line ahead of the grant line', () => {
-    expect(memberStanding(secondOwner, [owner, secondOwner], admin)).toBe('ownerOnly');
+    expect(memberStanding(secondOwner, activeOwners([owner, secondOwner]), admin)).toBe(
+      'ownerOnly',
+    );
   });
 
   it('leaves somebody awaiting approval to be answered, whatever role they hold for now', () => {
     const waiting = { ...member('finance'), status: 'pending_approval' as const };
 
-    expect(memberStanding(waiting, [owner, waiting], admin)).toBe('manageable');
+    expect(memberStanding(waiting, activeOwners([owner, waiting]), admin)).toBe('manageable');
   });
 
   it('offers a role change and removal for everybody else', () => {
-    expect(memberStanding(coordinator, [owner, coordinator], admin)).toBe('manageable');
-    expect(memberStanding(member('administrator'), [owner, you], admin)).toBe('manageable');
+    expect(memberStanding(coordinator, activeOwners([owner, coordinator]), admin)).toBe(
+      'manageable',
+    );
+    expect(memberStanding(member('administrator'), activeOwners([owner, you]), admin)).toBe(
+      'manageable',
+    );
   });
 });
 

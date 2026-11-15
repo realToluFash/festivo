@@ -24,7 +24,7 @@ import { LIST_EDGES, SETTINGS_COLUMN } from './listFrame.ts';
 import { COLUMN } from './Summary.tsx';
 import { bodyEdges } from './bodyEdges.ts';
 import { QuietButton } from './Buttons.tsx';
-import { Screen, ScrollColumn } from './Screen.tsx';
+import { type ColumnRows, Screen, ScrollColumn } from './Screen.tsx';
 import { useEdgeSwipeBack } from './useEdgeSwipeBack.ts';
 import { useSystemBack } from './useSystemBack.ts';
 
@@ -41,13 +41,15 @@ export interface ListAndPageSpacing {
   ruled?: { list: StyleProp<ViewStyle>; page: StyleProp<ViewStyle> };
 }
 
-export interface ListAndPageProps {
+export interface ListAndPageProps<Item = never> {
   heading?: ReactNode;
   /** Beside the heading on a tablet on its side, and nowhere otherwise. */
   besideHeading?: ReactNode;
   list: ReactNode;
   /** Pulling the list down. */
   listRefresh?: ReactElement<RefreshControlProps> | undefined;
+  /** Rows under the list, mounted only near the screen, for a list as long as an organisation (sc-49170). */
+  listRows?: ColumnRows<Item> | undefined;
   page: ReactNode;
   /** Changes with the page, so a page opened after a longer one shows from its top. */
   pageKey: string;
@@ -90,11 +92,12 @@ export function useListAndPageLayout(
 }
 
 // The half behind is out of the layout, so neither touch, TalkBack nor Tab reaches it; during iOS's swipe back it shows under the page, still hidden from screen readers.
-export function ListAndPage({
+export function ListAndPage<Item = never>({
   heading,
   besideHeading,
   list,
   listRefresh,
+  listRows,
   page,
   pageKey,
   pageInFront,
@@ -105,7 +108,7 @@ export function ListAndPage({
   kind,
   settingsColumn = false,
   headingInList = false,
-}: ListAndPageProps) {
+}: ListAndPageProps<Item>) {
   const { kind: frame } = useLayout();
   const listWidth = useSideListWidth(spacing.listWidth);
   const landscape = kind === 'tabletLandscape';
@@ -150,6 +153,7 @@ export function ListAndPage({
             contentContainerStyle={inColumn ? COLUMN : (ruled?.list ?? column)}
             refreshControl={listRefresh}
             away={!landscape && pageInFront}
+            rows={listRows}
           >
             {(landscape ? pageless : !pageInFront) && <FrameTop />}
             {!headingAbove && heading}

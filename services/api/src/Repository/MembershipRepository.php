@@ -17,6 +17,9 @@ use Doctrine\Bundle\DoctrineBundle\Repository\ServiceEntityRepository;
 use Doctrine\DBAL\Types\Types;
 use Doctrine\ORM\QueryBuilder;
 use Doctrine\Persistence\ManagerRegistry;
+use Psl\Dict;
+use Psl\Type;
+use Psl\Vec;
 use Symfony\Component\Uid\Uuid;
 
 /** @extends ServiceEntityRepository<Membership> */
@@ -61,6 +64,60 @@ final class MembershipRepository extends ServiceEntityRepository
     public function findInOrganisation(Organisation $organisation): array
     {
         return $this->findBy(['organisation' => $organisation], ['createdAt' => 'ASC', 'id' => 'ASC']);
+    }
+
+    /**
+     * A page of Settings › Members (sc-49170), oldest first: those in `$statuses` the caller is shown, after `$after`.
+     *
+     * @param list<MembershipStatus> $statuses
+     *
+     * @return list<Membership>
+     */
+    public function findListedPage(Organisation $organisation, array $statuses, bool $decides, ?Membership $after, ?int $limit): array
+    {
+        $query = $this->listed($organisation, $decides)
+            ->andWhere('m.status IN (:statuses)')
+            ->setParameter('statuses', Vec\map($statuses, static fn (MembershipStatus $status): string => $status->value))
+            ->orderBy('m.createdAt', 'ASC')
+            ->addOrderBy('m.id', 'ASC')
+            ->setMaxResults($limit);
+
+        if (null !== $after) {
+            $query->andWhere('m.createdAt > :afterAt OR (m.createdAt = :afterAt AND m.id > :afterId)')
+                ->setParameter('afterAt', $after->getCreatedAt(), Types::DATETIME_IMMUTABLE)
+                ->setParameter('afterId', $after->getId(), 'uuid');
+        }
+
+        return Type\vec(Type\instance_of(Membership::class))->coerce($query->getQuery()->getResult());
+    }
+
+    /** @return array<string, int> how many of each status Settings › Members shows the caller, by status value */
+    public function countListedByStatus(Organisation $organisation, bool $decides): array
+    {
+        $rows = $this->listed($organisation, $decides)
+            ->select('m.status AS status', 'COUNT(m.id) AS people')
+            ->groupBy('m.status')
+            ->getQuery()
+            ->getArrayResult();
+
+        return Dict\pull(
+            $rows,
+            static fn (array $row): int => Type\int()->coerce($row['people']),
+            static fn (array $row): string => $row['status'] instanceof MembershipStatus ? $row['status']->value : Type\string()->coerce($row['status']),
+        );
+    }
+
+    public function countActiveOwnersIn(Organisation $organisation): int
+    {
+        return Type\int()->coerce($this->active()
+            ->select('COUNT(m.id)')
+            ->innerJoin('m.role', 'r')
+            ->andWhere('m.organisation = :organisation')
+            ->andWhere('r.seededAs = :owner')
+            ->setParameter('organisation', $organisation)
+            ->setParameter('owner', SeededRole::Owner->value)
+            ->getQuery()
+            ->getSingleScalarResult());
     }
 
     /** Through a verified address only, as accepting counts: an unverified one proves nobody is that person. */
@@ -348,5 +405,18 @@ final class MembershipRepository extends ServiceEntityRepository
             ->addOrderBy('m.id', 'ASC')
             ->getQuery()
             ->getResult();
+    }
+
+    /** Membership::isListedTo() as a query: somebody waiting on approval, or never let in, only to those who decide on them. */
+    private function listed(Organisation $organisation, bool $decides): QueryBuilder
+    {
+        $query = $this->createQueryBuilder('m')
+            ->andWhere('m.organisation = :organisation')
+            ->setParameter('organisation', $organisation);
+
+        return $decides ? $query : $query
+            ->andWhere('m.status <> :pending')
+            ->andWhere('m.joinedAt IS NOT NULL')
+            ->setParameter('pending', MembershipStatus::PendingApproval->value);
     }
 }

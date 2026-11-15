@@ -36,6 +36,7 @@ export * from './organisations.ts';
 export * from './newOrganisation.ts';
 export * from './roles.ts';
 export * from './members.ts';
+export * from './membersPaging.ts';
 export * from './invitations.ts';
 export * from './companyDomains.ts';
 export * from './twoFactorDue.ts';

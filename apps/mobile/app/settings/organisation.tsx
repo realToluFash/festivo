@@ -80,8 +80,8 @@ export default function Organisation() {
     if (organisationId == null || !owner) return;
     let live = true;
 
-    api.members(organisationId).then(
-      (found) => live && setMembers({ id: organisationId, list: found.members }),
+    api.everyMember(organisationId, 'active').then(
+      (active) => live && setMembers({ id: organisationId, list: active }),
       () => live && setMembers(null),
     );
 
