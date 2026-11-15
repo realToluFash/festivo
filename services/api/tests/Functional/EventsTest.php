@@ -38,6 +38,7 @@ use Psl\SecureRandom;
 use Psl\Str;
 use Psl\Type;
 use Psl\Vec;
+use Symfony\Contracts\Translation\TranslatorInterface;
 
 final class EventsTest extends ApiTestCase
 {
@@ -1252,18 +1253,18 @@ final class EventsTest extends ApiTestCase
         self::assertSame($ended, $this->event($this->as($this->owner, 'GET', '/api/events/' . $event['id'])));
     }
 
-    /** @return iterable<string, array{string, ?string}> */
+    /** @return iterable<string, array{string, ?string, string}> */
     public static function calledOffLanguages(): iterable
     {
-        yield 'en by Accept-Language' => ['', 'en'];
-        yield 'es by ?locale=' => ['?locale=es', null];
-        yield 'fr by Accept-Language' => ['', 'fr'];
-        yield 'pt by ?locale=' => ['?locale=pt', null];
+        yield 'en by Accept-Language' => ['', 'en', 'en'];
+        yield 'es by ?locale=' => ['?locale=es', null, 'es'];
+        yield 'fr by Accept-Language' => ['', 'fr', 'fr'];
+        yield 'pt by ?locale=' => ['?locale=pt', null, 'pt'];
     }
 
     #[Test]
     #[DataProvider('calledOffLanguages')]
-    public function aCalledOffEventsScheduleSaysItWasCalledOffInEachLanguage(string $query, ?string $language): void
+    public function aCalledOffEventsScheduleSaysItWasCalledOffInEachLanguage(string $query, ?string $language, string $locale): void
     {
         $event = $this->live(self::AHEAD, '2030-11-15T02:00');
         $this->as($this->owner, 'POST', '/api/events/' . $event['id'] . '/end');
@@ -1271,7 +1272,7 @@ final class EventsTest extends ApiTestCase
         $this->as($this->owner, 'PATCH', '/api/events/' . $event['id'] . $query, ['timeZone' => 'Europe/London'], $this->tagOf($event['id']), $language);
 
         self::assertSame(409, $this->statusCode());
-        self::assertSame('This event was called off, so its start, end and time zone cannot be changed.', $this->last()['detail'] ?? null);
+        self::assertSame(self::service(TranslatorInterface::class)->trans('event.schedule_called_off', [], null, $locale), $this->last()['detail'] ?? null);
     }
 
     #[Test]
