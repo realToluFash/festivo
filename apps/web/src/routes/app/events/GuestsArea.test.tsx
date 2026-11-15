@@ -3818,7 +3818,14 @@ describe('Select many guests, then Add to group or Remove from the list (sc-3776
     expect(sent.some((one) => one.line.endsWith('/erasure'))).toBe(false);
   });
 
-  async function removingEveryone(search = '', more: Record<string, Answer> = {}) {
+  function searching(search: string): () => void {
+    return () =>
+      fireEvent.change(screen.getByRole('searchbox', { name: 'Find a guest' }), {
+        target: { value: search },
+      });
+  }
+
+  async function removingEveryone(narrow = () => {}, more: Record<string, Answer> = {}) {
     let listed = grouped();
     const sent = await selecting({
       'GET /api/events/ev_1/guests': () => json(listed),
@@ -3839,11 +3846,7 @@ describe('Select many guests, then Add to group or Remove from the list (sc-3776
       },
       ...more,
     });
-    if (search !== '') {
-      fireEvent.change(screen.getByRole('searchbox', { name: 'Find a guest' }), {
-        target: { value: search },
-      });
-    }
+    narrow();
     fireEvent.click(await screen.findByRole('checkbox', { name: 'Select all 3 shown' }));
     fireEvent.click(within(bar()).getByRole('button', { name: 'Remove from the list' }));
     fireEvent.click(
@@ -3880,7 +3883,7 @@ describe('Select many guests, then Add to group or Remove from the list (sc-3776
   });
 
   it('reads as the empty event when a search showed everyone, and Undo turns the search back on (sc-50772)', async () => {
-    await removingEveryone('e');
+    await removingEveryone(searching('e'));
 
     readsEmpty();
     fireEvent.click(screen.getByRole('button', { name: 'Undo' }));
@@ -3889,6 +3892,47 @@ describe('Select many guests, then Add to group or Remove from the list (sc-3776
     expect(
       (screen.getByRole('searchbox', { name: 'Find a guest' }) as HTMLInputElement).value,
     ).toBe('e');
+  });
+
+  it('reads as the empty event when a group filter showed everyone, and Undo turns the filter back on (sc-50772)', async () => {
+    const noGroup = () =>
+      within(screen.getByRole('group', { name: 'Groups' })).getByRole('button', {
+        name: 'No group',
+      });
+    await removingEveryone(() => fireEvent.click(noGroup()));
+
+    readsEmpty();
+    fireEvent.click(screen.getByRole('button', { name: 'Undo' }));
+
+    expect(await screen.findByText('Ngozi Eze')).toBeDefined();
+    expect(noGroup().getAttribute('aria-pressed')).toBe('true');
+  });
+
+  it('moves focus to the page title on Done once the line has gone after a save (sc-50772)', async () => {
+    vi.useFakeTimers({ shouldAdvanceTime: true });
+    try {
+      await removingEveryone(undefined, {
+        'POST /api/events/ev_1/guests/removals/rm_1/erasure': () =>
+          new Response(null, { status: 204 }),
+      });
+      fireEvent.click(screen.getByRole('button', { name: 'Add guest' }));
+      await waitFor(() => expect(document.activeElement).toBe(field('Full name')));
+      type('Full name', 'Bimpe Adeyemi');
+      fireEvent.click(addButton());
+      expect(await screen.findByText('Bimpe Adeyemi')).toBeDefined();
+
+      await act(async () => {
+        await vi.advanceTimersByTimeAsync(11_000);
+      });
+      expect(said()).toEqual([]);
+      fireEvent.click(within(form()).getByRole('button', { name: 'Done' }));
+
+      await waitFor(() =>
+        expect(document.activeElement).toBe(screen.getByRole('heading', { level: 1 })),
+      );
+    } finally {
+      vi.useRealTimers();
+    }
   });
 
   it('still says No guests match with Clear when the search removed everyone it showed and others remain (sc-50772)', async () => {
@@ -3913,7 +3957,7 @@ describe('Select many guests, then Add to group or Remove from the list (sc-3776
   });
 
   it('ends the empty page with a guest saved during the Undo, the search cleared, and Done focuses the line (sc-50772)', async () => {
-    await removingEveryone('e');
+    await removingEveryone(searching('e'));
     fireEvent.click(screen.getByRole('button', { name: 'Add guest' }));
     await waitFor(() => expect(document.activeElement).toBe(field('Full name')));
 

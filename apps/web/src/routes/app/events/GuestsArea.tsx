@@ -293,6 +293,7 @@ export function GuestsArea({
   const [line, setLine] = useState<Line | null>(null);
   const [removal, setRemoval] = useState<string | null>(null);
   const [emptied, setEmptied] = useState(false);
+  const addingOnEmptied = useRef(false);
   const [asked, setAsked] = useState<ReadonlySet<string>>(() =>
     invites ? keptAsked(event.id) : new Set(),
   );
@@ -449,6 +450,7 @@ export function GuestsArea({
   function showAdd(): void {
     setGrouping(false);
     setAdding(true);
+    addingOnEmptied.current = emptied;
     focus('fullName');
   }
 
@@ -1270,7 +1272,8 @@ export function GuestsArea({
                         }}
                         onDone={() => {
                           setAdding(false);
-                          focus(emptied ? 'many-line' : 'add', 'title');
+                          if (!addingOnEmptied.current) focus('add', 'title');
+                          else focus(line != null ? 'many-line' : 'title');
                         }}
                       />
                     </section>
