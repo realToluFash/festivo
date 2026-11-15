@@ -1,0 +1,41 @@
+# sc-51754: ${EVENT_ID}'s Venue address replaced by ${NEW_ADDRESS}, typed and saved, then Open in maps tapped on the same page. Needs ${METRO_URL}, ${EVENT_ID}, ${NEW_ADDRESS}.
+appId: host.exp.Exponent
+---
+- openLink: ${METRO_URL}/--/events/${EVENT_ID}
+- extendedWaitUntil:
+    visible:
+      id: 'events.page'
+    timeout: 60000
+- scrollUntilVisible:
+    element:
+      id: 'events.details.venue'
+    centerElement: true
+    timeout: 20000
+- tapOn:
+    id: 'events.details.venue'
+- extendedWaitUntil:
+    visible: 'Address.*'
+    timeout: 20000
+- tapOn:
+    id: 'event.edit.venue.address'
+- eraseText: 200
+- inputText: ${NEW_ADDRESS}
+- hideKeyboard
+- takeScreenshot: typed
+- tapOn:
+    id: 'event.edit.venue.save'
+- extendedWaitUntil:
+    visible:
+      id: 'events.page'
+    timeout: 20000
+- scrollUntilVisible:
+    element:
+      id: 'events.maps'
+    centerElement: true
+    timeout: 20000
+- takeScreenshot: saved
+- tapOn:
+    id: 'events.maps'
+- waitForAnimationToEnd:
+    timeout: 8000
+- takeScreenshot: opened
