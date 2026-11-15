@@ -1423,12 +1423,12 @@ export function partOf(state: EventStateName | null): Part | null {
   }
 }
 
-/** A state drawn on another event, or one its phase does not allow, opens the page with no state. */
 /** The states drawn on a second event as well: Dates on the draft whose end has passed, where Change dates lands (sc-48602). */
 export const ALSO_DRAWN_ON: Partial<Record<EventStateName, readonly string[]>> = {
   dates: ['evt-shower-2'],
 };
 
+/** A state drawn on another event, or one its phase does not allow, opens the page with no state. */
 export function stateFits(state: EventStateName, event: SampleEvent): boolean {
   if (EVENT_STATES[state] !== event.id && !(ALSO_DRAWN_ON[state]?.includes(event.id) ?? false))
     return false;
