@@ -92,11 +92,20 @@ const MARK: Record<ReplyWord, string> = {
   notYetInvited: 'is-not-yet',
 };
 
-export function ReplyMark({ reply, cover = false }: { reply: ReplyWord; cover?: boolean }) {
-  const size = cover ? 16 : 22;
-
+export function ReplyMark({
+  reply,
+  cover = false,
+  size = cover ? 16 : 22,
+}: {
+  reply: ReplyWord;
+  cover?: boolean;
+  size?: 16 | 22;
+}) {
   return (
-    <span className={`gs-mark ${MARK[reply]}${cover ? ' is-16 on-cover' : ''}`} aria-hidden="true">
+    <span
+      className={`gs-mark ${MARK[reply]}${size === 16 ? ' is-16' : ''}${cover ? ' on-cover' : ''}`}
+      aria-hidden="true"
+    >
       {reply === 'coming' && <Glyph name="tick" size={Math.round(size * 0.68)} weight={3.2} />}
       {reply === 'notComing' && <span className="gs-bar" />}
       {reply === 'maybe' && <Glyph name="question" size={Math.round(size * 0.8)} weight={2.8} />}
