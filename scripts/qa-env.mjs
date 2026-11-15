@@ -1749,8 +1749,10 @@ function capped(memory, command, args) {
 }
 
 // CI=1 turns off Metro's file watcher, which runs out of inotify watches beside an IDE.
+// QA_API_URL puts a proxy in front of the API, to rewrite a response no account can produce.
 export function bundlerEnv(env, app) {
-  return { ...env, ...app, EXPO_PUBLIC_ENVIRONMENT: 'qa', CI: '1' };
+  const api = env.QA_API_URL ? { EXPO_PUBLIC_API_URL: env.QA_API_URL } : {};
+  return { ...env, ...app, ...api, EXPO_PUBLIC_ENVIRONMENT: 'qa', CI: '1' };
 }
 
 // --clear: Metro's cache keeps the EXPO_PUBLIC_ values of the build before.

@@ -541,6 +541,12 @@ describe('the bundler environment', () => {
       CI: '1',
     });
   });
+
+  it('points the app at QA_API_URL when it is set, for a proxy in front of the API', () => {
+    const env = bundlerEnv({ QA_API_URL: 'http://proxy' }, { EXPO_PUBLIC_API_URL: 'http://api' });
+
+    expect(env.EXPO_PUBLIC_API_URL).toBe('http://proxy');
+  });
 });
 
 describe('what checkout was asked for', () => {
