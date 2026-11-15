@@ -3023,6 +3023,78 @@ describe('events (sc-1486)', () => {
     await expect(odd.eventHosts('org_1')).rejects.toThrow('/events/hosts');
   });
 
+  test('Search reads each kind, null where the caller may not find it, and refuses a shape it does not know (sc-39534)', async () => {
+    const guest = {
+      id: 'g1',
+      name: 'Inês Duarte',
+      event: {
+        id: 'e1',
+        name: 'Gala',
+        startsAt: '2026-11-14T16:00:00+01:00',
+        timeZone: 'Africa/Lagos',
+      },
+    };
+    const invited = {
+      id: 'i1',
+      kind: 'invitation',
+      name: null,
+      email: 'ines@example.com',
+      role: { id: 'r1', seededAs: 'member' },
+      status: 'invited',
+    };
+    const urls: string[] = [];
+    const api = new ApiClient({
+      baseUrl: () => 'http://api.test',
+      tokens: store('live', null),
+      refreshTokenIn: 'cookie',
+      fetch: async (url) => {
+        urls.push(String(url).replace('http://api.test', ''));
+
+        return json({
+          events: { total: 7, matches: [EVENT] },
+          guests: { total: 1, matches: [guest] },
+          members: null,
+        });
+      },
+    });
+
+    expect(await api.search('org_1', 'inês')).toEqual({
+      events: { total: 7, matches: [expect.objectContaining({ id: EVENT.id })] },
+      guests: { total: 1, matches: [guest] },
+      members: null,
+    });
+    expect(urls).toEqual(['/api/orgs/org_1/search?q=in%C3%AAs']);
+
+    const { api: members } = client(() =>
+      json({ events: null, guests: null, members: { total: 1, matches: [invited] } }),
+    );
+
+    expect((await members.search('org_1', 'ines')).members?.matches).toEqual([
+      { ...invited, role: { id: 'r1', seededAs: 'member', name: null } },
+    ]);
+
+    const { api: odd } = client(() =>
+      json({
+        events: null,
+        guests: { total: 1, matches: [{ ...guest, event: null }] },
+        members: null,
+      }),
+    );
+
+    await expect(odd.search('org_1', 'ines')).rejects.toThrow('/search');
+  });
+
+  test('what Search may find is read, and a shape it does not know is refused (sc-39534)', async () => {
+    const { api, sent } = client(() => json({ events: true, guests: true, members: false }));
+
+    expect(await api.searchReach('org_1')).toEqual({ events: true, guests: true, members: false });
+    expect(sent).toEqual([{ line: 'GET /api/orgs/org_1/search/reach', body: null }]);
+
+    const { api: odd } = client(() => json({ events: true }));
+
+    await expect(odd.searchReach('org_1')).rejects.toThrow('/search/reach');
+  });
+
   test('an event is created with local times and its zone, and read by its id', async () => {
     const { api, sent } = client(() => json({ event: EVENT }, 201));
     const body = {
