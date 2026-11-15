@@ -863,7 +863,7 @@ describe('Finding a guest (sc-3772)', () => {
     [
       'someone with events.manage',
       OWNER_PERMISSIONS,
-      "This event's end has passed, so it cannot be made live. Change its dates first.",
+      'This event’s end has passed, so it cannot be made live. Change its dates first.',
     ],
   ])('words a passed Draft’s card for %s (sc-50996)', async (_, permissions, line) => {
     const card = await cardOn(
@@ -920,7 +920,7 @@ describe('Finding a guest (sc-3772)', () => {
     expect(within(card).getByText('Draft')).toBeDefined();
     expect(
       within(card).getByText(
-        "This event's end has passed, so it cannot be made live. Change its dates first.",
+        'This event’s end has passed, so it cannot be made live. Change its dates first.',
       ),
     ).toBeDefined();
     expect(within(card).queryByRole('button', { name: 'Make live' })).toBeNull();
@@ -4695,7 +4695,7 @@ describe('Nobody on the list yet, in each phase (sc-50409)', () => {
 
     expect(
       within(card).getByText(
-        "This event's end has passed, so it cannot be made live. Change its dates first.",
+        'This event’s end has passed, so it cannot be made live. Change its dates first.',
       ),
     ).toBeDefined();
     expect(steps(card)).toEqual(['Add guest', 'Change dates']);
