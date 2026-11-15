@@ -13,6 +13,7 @@ import {
   keepsLastHost,
   startMoved,
   formatWallDay,
+  timezoneLabel,
 } from '@soirely/domain';
 import { type Ref, type RefObject, useEffect, useId, useRef, useState } from 'react';
 
@@ -292,7 +293,7 @@ export function ZoneSelect({
   );
 }
 
-const ZONE_CHOICES = ZONES.map((one) => [one, one] as const);
+const ZONE_CHOICES = ZONES.map((one) => [one, timezoneLabel(one)] as const);
 
 export function Select({
   refTo,
