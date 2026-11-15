@@ -38,6 +38,11 @@ final class Version20261116120000 extends AbstractMigration
         $this->addSql('ALTER TABLE schedule_items ALTER owner_name TYPE VARCHAR(480)');
         $this->addSql('ALTER TABLE schedule_items ALTER owner_role TYPE VARCHAR(160)');
         $this->addSql('ALTER TABLE schedule_items ALTER note TYPE VARCHAR(2000)');
+        $this->addSql('ALTER TABLE audit_entries ALTER actor_label TYPE VARCHAR(720)');
+        $this->addSql('ALTER TABLE assistant_interactions ALTER actor_label TYPE VARCHAR(720)');
+        $this->addSql('ALTER TABLE memberships ALTER request_message TYPE VARCHAR(2000)');
+        $this->addSql('ALTER TABLE invitations ALTER organisation_name TYPE VARCHAR(400)');
+        $this->addSql('ALTER TABLE pending_registrations ALTER name TYPE VARCHAR(720)');
     }
 
     public function down(Schema $schema): void
@@ -64,5 +69,10 @@ final class Version20261116120000 extends AbstractMigration
         $this->addSql('ALTER TABLE schedule_items ALTER owner_name TYPE VARCHAR(120)');
         $this->addSql('ALTER TABLE schedule_items ALTER owner_role TYPE VARCHAR(40)');
         $this->addSql('ALTER TABLE schedule_items ALTER note TYPE VARCHAR(500)');
+        $this->addSql('ALTER TABLE audit_entries ALTER actor_label TYPE VARCHAR(180)');
+        $this->addSql('ALTER TABLE assistant_interactions ALTER actor_label TYPE VARCHAR(180)');
+        $this->addSql('ALTER TABLE memberships ALTER request_message TYPE VARCHAR(500)');
+        $this->addSql('ALTER TABLE invitations ALTER organisation_name TYPE VARCHAR(100)');
+        $this->addSql('ALTER TABLE pending_registrations ALTER name TYPE VARCHAR(255)');
     }
 }
