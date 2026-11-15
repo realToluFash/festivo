@@ -477,6 +477,21 @@ describe('tables, rows and seats (sc-4000, sc-4003)', () => {
   );
 
   it(
+    'gives Section and Shape a full row each, so a long name is never clipped (qa5 #54266)',
+    SLOW,
+    async () => {
+      await seating('placed');
+      for (const label of ['Section', 'Shape']) {
+        expect(within(panel()).getByLabelText(label).closest('.st-two')).toBeNull();
+      }
+      await seating('rowAdded');
+      for (const label of ['Label', 'Section']) {
+        expect(within(panel()).getByLabelText(label).closest('.st-two')).toBeNull();
+      }
+    },
+  );
+
+  it(
     'refuses a used name and fewer seats than guests beside the field, nothing saved',
     SLOW,
     async () => {
