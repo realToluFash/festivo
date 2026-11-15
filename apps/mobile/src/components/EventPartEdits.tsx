@@ -897,7 +897,6 @@ function CoverEdit(props: PartEditProps) {
       if (staged.current != null) discardCoverUpload(event.organisationId, staged.current);
       staged.current = signed.key;
       setPhoto({ kind: 'ready', uri: chosen.uri, width: chosen.width, key: signed.key });
-      setFailed(null);
     } catch (error) {
       setPhoto(saved == null ? { kind: 'none' } : { kind: 'saved', cover: saved });
       setRefused(coverRefusalOf(error, t));
