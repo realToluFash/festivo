@@ -25,7 +25,9 @@
     "mobile:guestList.how.whatsapp",
     "mobile:guestNeeds.dietName.halal",
     "mobile:guestNeeds.dietName.kosher",
-    "web:seating.kindRectangular"
+    "web:seating.kindRectangular",
+    "web:schedule.minutes_one",
+    "web:schedule.minutes_other"
   ],
   "fr": [
     "web:nav.menu",
@@ -125,7 +127,10 @@
     "mobile:guestNeeds.allergen.lupin",
     "mobile:guestNeeds.dietName.halal",
     "web:seating.rotation",
-    "messagesCounts:seating.table_default_name"
+    "messagesCounts:seating.table_default_name",
+    "web:schedule.minutes_one",
+    "web:schedule.minutes_other",
+    "web:schedule.date"
   ],
   "pt": [
     "web:nav.menu",
@@ -149,6 +154,10 @@
     "web:guestNeeds.dietName.kosher",
     "mobile:guestList.how.whatsapp",
     "mobile:guestNeeds.dietName.halal",
-    "mobile:guestNeeds.dietName.kosher"
+    "mobile:guestNeeds.dietName.kosher",
+    "web:schedule.minutes_one",
+    "web:schedule.minutes_other",
+    "web:schedule.items_one",
+    "web:schedule.item"
   ]
 }

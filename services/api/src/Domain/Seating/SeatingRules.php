@@ -17,6 +17,7 @@ use App\Locale\NameNormaliser;
 use Psl\Iter;
 use Psl\Math;
 use Psl\Str;
+use Psl\Str\Grapheme;
 use Psl\Vec;
 use Symfony\Contracts\Translation\TranslatorInterface;
 
@@ -97,7 +98,7 @@ final readonly class SeatingRules
             throw ApiException::validation([$this->violation('name', 'validation.seating_table_name_required')]);
         }
 
-        if (Str\length($name) > SeatingTable::NAME_MAXIMUM) {
+        if (Grapheme\length($name) > SeatingTable::NAME_MAXIMUM || Str\length($name) > SeatingTable::NAME_CODE_POINTS || Str\length($key) > SeatingTable::NAME_CODE_POINTS) {
             throw ApiException::validation([$this->violation('name', 'validation.seating_table_name_too_long', ['{count}' => (string) SeatingTable::NAME_MAXIMUM])]);
         }
 

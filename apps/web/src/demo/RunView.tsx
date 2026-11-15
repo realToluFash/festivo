@@ -24,6 +24,7 @@ import {
   startItem,
   trackView,
 } from './runView.ts';
+import { RW as SCHEDULE_WORDS, scheduleAt } from './schedule.ts';
 import { useSwitcherStart } from './switcher.ts';
 import './guests.css';
 import './menu.css';
@@ -34,12 +35,21 @@ export function RunViewPage() {
   const { id } = useParams();
   const [params] = useSearchParams();
   const raw = params.get('state');
+  const manage = params.get('as') !== 'reader';
   useSwitcherStart();
 
-  return <RunViewAt key={`${id ?? ''}|${raw ?? ''}`} id={id} raw={raw} />;
+  return <RunViewAt key={`${id ?? ''}|${raw ?? ''}|${manage}`} id={id} raw={raw} manage={manage} />;
 }
 
-function RunViewAt({ id, raw }: { id: string | undefined; raw: string | null }) {
+function RunViewAt({
+  id,
+  raw,
+  manage,
+}: {
+  id: string | undefined;
+  raw: string | null;
+  manage: boolean;
+}) {
   const [event] = useState(() => sampleEvent(id));
   const [first] = useState(() => runAt(raw));
 
@@ -60,7 +70,15 @@ function RunViewAt({ id, raw }: { id: string | undefined; raw: string | null }) 
         />
       )}
     >
-      {(tell) => <RunViewBody first={first} eventId={event.id} name={event.name} tell={tell} />}
+      {(tell) => (
+        <RunViewBody
+          first={first}
+          eventId={event.id}
+          name={event.name}
+          manage={manage}
+          tell={tell}
+        />
+      )}
     </EventsShell>
   );
 }
@@ -69,11 +87,13 @@ function RunViewBody({
   first,
   eventId,
   name,
+  manage,
   tell,
 }: {
   first: Run;
   eventId: string;
   name: string;
+  manage: boolean;
   tell: (words: string) => void;
 }) {
   const [run, setRun] = useState(first);
@@ -92,6 +112,12 @@ function RunViewBody({
                 <Glyph name="chevron" size={15} weight={2.4} className="desk-chevron" />
                 <Link className="ev-crumb-name" to={`/demo/events/${eventId}`}>
                   {name}
+                </Link>
+              </li>
+              <li className="ev-crumb-part">
+                <Glyph name="chevron" size={15} weight={2.4} className="desk-chevron" />
+                <Link className="ev-crumb-name" to={scheduleAt(manage ? undefined : 'readOnly')}>
+                  {SCHEDULE_WORDS.title}
                 </Link>
               </li>
               <li className="ev-crumb-part" aria-current="page">
@@ -114,6 +140,12 @@ function RunViewBody({
             </span>
           </p>
         </header>
+        {!manage && (
+          <p className="mn-lock">
+            <Glyph name="lock" size={16} weight={2.2} />
+            {RW.lock}
+          </p>
+        )}
         <div className="rv-demo-only">
           <p>{RW.demoOnly}</p>
           <button type="button" className="rv-act" onClick={() => setRun(later(run, 5))}>
@@ -124,6 +156,7 @@ function RunViewBody({
           <TrackTable
             key={view.track.id}
             view={view}
+            manage={manage}
             onStart={(itemId) => setRun(startItem(run, view.track.id, itemId))}
             onFinish={(itemId) => setRun(finishItem(run, view.track.id, itemId))}
           />
@@ -156,10 +189,12 @@ export function FigureMark({ figure, name }: { figure: Figure; name: string }) {
 
 function TrackTable({
   view,
+  manage,
   onStart,
   onFinish,
 }: {
   view: TrackView;
+  manage: boolean;
   onStart: (id: string) => void;
   onFinish: (id: string) => void;
 }) {
@@ -180,30 +215,40 @@ function TrackTable({
       <table className="rv-table" aria-labelledby={headingId}>
         <thead>
           <tr>
-            {RW.columns.map((column, index) => (
-              <th key={column || index} scope="col" className={column === '' ? 'rv-act-col' : ''}>
-                {column === '' ? <span className="visually-hidden">Mark</span> : column}
-              </th>
-            ))}
+            {(manage ? RW.columns : RW.columns.filter((column) => column !== '')).map(
+              (column, index) => (
+                <th key={column || index} scope="col" className={column === '' ? 'rv-act-col' : ''}>
+                  {column === '' ? <span className="visually-hidden">Mark</span> : column}
+                </th>
+              ),
+            )}
           </tr>
         </thead>
         <tbody>
           {view.rows.map((row) => (
-            <RunRow key={row.item.id} row={row} onStart={onStart} onFinish={onFinish} />
+            <RunRow
+              key={row.item.id}
+              row={row}
+              manage={manage}
+              onStart={onStart}
+              onFinish={onFinish}
+            />
           ))}
         </tbody>
       </table>
-      <p className="rv-next">{nextLine(view)}</p>
+      <p className="rv-next">{nextLine(view, manage)}</p>
     </section>
   );
 }
 
 function RunRow({
   row,
+  manage,
   onStart,
   onFinish,
 }: {
   row: Row;
+  manage: boolean;
   onStart: (id: string) => void;
   onFinish: (id: string) => void;
 }) {
@@ -236,27 +281,29 @@ function RunRow({
       <td className={item.owner == null ? 'rv-owner is-none' : 'rv-owner'}>
         {item.owner ?? RW.noOwner}
       </td>
-      <td className="rv-act-col">
-        {item.phase === 'waiting' ? (
-          <button
-            type="button"
-            className="rv-act"
-            aria-label={`${RW.start} ${item.title}`}
-            onClick={() => onStart(item.id)}
-          >
-            {RW.start}
-          </button>
-        ) : item.phase === 'now' ? (
-          <button
-            type="button"
-            className="rv-act is-primary"
-            aria-label={`${RW.finish} ${item.title}`}
-            onClick={() => onFinish(item.id)}
-          >
-            {RW.finish}
-          </button>
-        ) : null}
-      </td>
+      {manage && (
+        <td className="rv-act-col">
+          {item.phase === 'waiting' ? (
+            <button
+              type="button"
+              className="rv-act"
+              aria-label={`${RW.start} ${item.title}`}
+              onClick={() => onStart(item.id)}
+            >
+              {RW.start}
+            </button>
+          ) : item.phase === 'now' ? (
+            <button
+              type="button"
+              className="rv-act is-primary"
+              aria-label={`${RW.finish} ${item.title}`}
+              onClick={() => onFinish(item.id)}
+            >
+              {RW.finish}
+            </button>
+          ) : null}
+        </td>
+      )}
     </tr>
   );
 }

@@ -19,7 +19,11 @@ class SeatingTable
 {
     use Timestampable;
 
+    /** Counted as a reader sees them, in grapheme clusters (pm, 15 Nov 2026), so "Ẹ̀gbẹ́" is five. */
     public const int NAME_MAXIMUM = 30;
+
+    /** What the column holds: 30 letters with a dot and a tone each, decomposed, take 90. */
+    public const int NAME_CODE_POINTS = 120;
 
     public const int SEATS_MINIMUM = 1;
 
@@ -43,7 +47,7 @@ class SeatingTable
     #[ORM\JoinColumn(nullable: true, onDelete: 'SET NULL')]
     private ?SeatingSection $section;
 
-    #[ORM\Column(type: Types::STRING, length: 30)]
+    #[ORM\Column(type: Types::STRING, length: 120)]
     private string $name;
 
     /** The name without case or accents, so "Table 1" and "table 1" are one table. */

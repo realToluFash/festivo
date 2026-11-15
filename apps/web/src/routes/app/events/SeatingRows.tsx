@@ -412,22 +412,20 @@ export function RowPanel({
       <SeatStrip t={t} row={row} chosen={seat} onPick={pick} />
       {seat != null && <ChosenSeat ctx={ctx} row={row} seat={seat} />}
       <div className="st-fields">
-        <div className="st-two">
-          <Field
-            fieldKey="label"
-            label={t('seating.label')}
-            value={row.label}
-            maxLength={SEATING_LIMITS.rowLabelMaximum}
-            onCommit={label}
-          />
-          <Select
-            fieldKey="section"
-            label={t('seating.section')}
-            value={row.sectionId ?? ''}
-            options={sectionOptions(t, plan)}
-            onPick={(value) => void change({ sectionId: value === '' ? null : value })}
-          />
-        </div>
+        <Field
+          fieldKey="label"
+          label={t('seating.label')}
+          value={row.label}
+          maxLength={SEATING_LIMITS.rowLabelMaximum}
+          onCommit={label}
+        />
+        <Select
+          fieldKey="section"
+          label={t('seating.section')}
+          value={row.sectionId ?? ''}
+          options={sectionOptions(t, plan)}
+          onPick={(value) => void change({ sectionId: value === '' ? null : value })}
+        />
         <div className="st-two">
           <Field
             fieldKey="seats"

@@ -297,14 +297,19 @@ function Plan({
     shownPanel?.kind === 'seat'
       ? shownPanel.id
       : null;
+  const tableChosen = shownPanel?.kind === 'table' || shownPanel?.kind === 'chair';
 
   const open = (next: Panel | null) => {
     if (next == null) {
       const back = opener.current;
+      const table = tableChosen ? shownPanel.id : null;
 
       opener.current = null;
       focusWhenFree(
         () =>
+          (table == null
+            ? null
+            : document.querySelector<SVGElement>(`.st-room [data-table="${table}"]`)) ??
           [
             ...document.querySelectorAll<HTMLElement | SVGElement>(
               '.st-panel button, .st-room [role="button"]',
@@ -324,6 +329,17 @@ function Plan({
     setSectionsRefused(false);
     setOutside(null);
   };
+
+  useEffect(() => {
+    const keys = (event: KeyboardEvent) => {
+      if (event.key !== 'Escape' || !tableChosen || covered) return;
+      event.preventDefault();
+      open(null);
+    };
+
+    window.addEventListener('keydown', keys);
+    return () => window.removeEventListener('keydown', keys);
+  });
 
   const attempt = async <A,>(
     change: () => Promise<A>,
@@ -464,7 +480,16 @@ function Plan({
                 })
           }
         >
-          <rect className="st-floor" x={ox} y={oy} width={rw} height={rl} />
+          <rect
+            className="st-floor"
+            x={ox}
+            y={oy}
+            width={rw}
+            height={rl}
+            onClick={() => {
+              if (tableChosen) open(null);
+            }}
+          />
           {lines}
           <rect className="st-walls" x={ox} y={oy} width={rw} height={rl} />
           {outside != null &&
@@ -761,8 +786,8 @@ function useRoomSide(system: MeasurementSystem) {
       return { refused: t(side === 'width' ? 'seating.enterWidth' : 'seating.enterLength') };
     return {
       refused: t('seating.roomRange', {
-        min: lengthWords(t, locale, ROOM_MINIMUM_CM, system, { grouping: false }),
-        max: lengthWords(t, locale, ROOM_MAXIMUM_CM, system, { grouping: false }),
+        min: lengthWords(t, locale, ROOM_MINIMUM_CM, system, { grouping: false, rounding: 'up' }),
+        max: lengthWords(t, locale, ROOM_MAXIMUM_CM, system, { grouping: false, rounding: 'down' }),
       }),
     };
   };

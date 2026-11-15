@@ -903,26 +903,24 @@ function TableFields({ item }: { item: Item }) {
           return refused;
         }}
       />
-      <Two>
-        <Select
-          fieldKey="section"
-          label={SW.section}
-          value={item.sec ?? ''}
-          options={sectionOptions(plan)}
-          onPick={(value) => edit(item.id, { sec: value === '' ? null : value })}
-        />
-        <Select
-          fieldKey="shape"
-          label={SW.shape}
-          value={item.kind}
-          options={SHAPES.map((kind) => ({ value: kind, word: shapeShort(kind) }))}
-          onPick={(value) => {
-            const { item: next, note } = reshaped(item, value as (typeof SHAPES)[number]);
+      <Select
+        fieldKey="section"
+        label={SW.section}
+        value={item.sec ?? ''}
+        options={sectionOptions(plan)}
+        onPick={(value) => edit(item.id, { sec: value === '' ? null : value })}
+      />
+      <Select
+        fieldKey="shape"
+        label={SW.shape}
+        value={item.kind}
+        options={SHAPES.map((kind) => ({ value: kind, word: shapeShort(kind) }))}
+        onPick={(value) => {
+          const { item: next, note } = reshaped(item, value as (typeof SHAPES)[number]);
 
-            edit(item.id, next, { note });
-          }}
-        />
-      </Two>
+          edit(item.id, next, { note });
+        }}
+      />
       {round ? (
         <Two>
           <Field
@@ -1054,37 +1052,33 @@ function RowFields({ item }: { item: Item }) {
         onPick={(i) => set((now) => ({ ...now, chair: i === chosen ? null : { id: item.id, i } }))}
       />
       {chosen != null && <ChosenSeat item={item} index={chosen} />}
-      <Two>
-        <Field
-          fieldKey="label"
-          label={SW.label}
-          value={item.label ?? ''}
-          onCommit={(text) => {
-            const label = text.trim().toUpperCase();
+      <Field
+        fieldKey="label"
+        label={SW.label}
+        value={item.label ?? ''}
+        onCommit={(text) => {
+          const label = text.trim().toUpperCase();
 
-            if (label === '') return SW.rowBlank;
-            if (label.length > LABEL_MAX) return SW.labelLong;
-            if (
-              plan.items.some(
-                (other) =>
-                  other.id !== item.id &&
-                  other.kind === 'row' &&
-                  sameName(other.label ?? '', label),
-              )
+          if (label === '') return SW.rowBlank;
+          if (label.length > LABEL_MAX) return SW.labelLong;
+          if (
+            plan.items.some(
+              (other) =>
+                other.id !== item.id && other.kind === 'row' && sameName(other.label ?? '', label),
             )
-              return say(SW.rowTaken, { label });
-            edit(item.id, { label, name: `Row ${label}` });
-            return null;
-          }}
-        />
-        <Select
-          fieldKey="section"
-          label={SW.section}
-          value={item.sec ?? ''}
-          options={sectionOptions(plan)}
-          onPick={(value) => edit(item.id, { sec: value === '' ? null : value })}
-        />
-      </Two>
+          )
+            return say(SW.rowTaken, { label });
+          edit(item.id, { label, name: `Row ${label}` });
+          return null;
+        }}
+      />
+      <Select
+        fieldKey="section"
+        label={SW.section}
+        value={item.sec ?? ''}
+        options={sectionOptions(plan)}
+        onPick={(value) => edit(item.id, { sec: value === '' ? null : value })}
+      />
       <Two>
         <Field
           fieldKey="seats"
