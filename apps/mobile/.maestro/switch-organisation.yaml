@@ -1,0 +1,23 @@
+# Switches to the organisation ORG from Home's Switch organisation, and waits for the list to close.
+#
+#   node .qa/bin/qa-env.mjs maestro switch-organisation ORG=…
+appId: host.exp.Exponent
+---
+- runFlow: return-home.yaml
+- tapOn:
+    id: 'home.switchOrganisation'
+- runFlow:
+    when:
+      notVisible:
+        id: switcher.tile.${ORG}
+    commands:
+      - scrollUntilVisible:
+          element:
+            id: switcher.tile.${ORG}
+          timeout: 15000
+- tapOn:
+    id: switcher.tile.${ORG}
+- extendedWaitUntil:
+    notVisible:
+      id: 'switcher\..+'
+    timeout: 20000

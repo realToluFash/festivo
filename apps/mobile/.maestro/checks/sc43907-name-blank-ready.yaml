@@ -1,0 +1,13 @@
+# sc-43907: New event with everything as it opens (Event name blank), scrolled so Create event shows; the run then turns TalkBack on and taps Create event.
+appId: host.exp.Exponent
+---
+- openLink: ${METRO_URL}/--/events/new
+- extendedWaitUntil:
+    visible:
+      id: 'eventForm.name'
+    timeout: 30000
+- scrollUntilVisible:
+    element:
+      id: 'eventForm.send'
+    direction: DOWN
+- takeScreenshot: ready

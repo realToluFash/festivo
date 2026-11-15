@@ -1,0 +1,36 @@
+# sc-48600: an edit ?at=name opened from outside the app closes, on Discard after a change, onto the event's page with nothing saved (pm, 15 Nov). Needs ${METRO_URL}, ${EVENT_ID}.
+appId: host.exp.Exponent
+---
+- openLink: ${METRO_URL}/--/
+- extendedWaitUntil:
+    visible: '{{t:todayScreen.tab.today}}'
+    timeout: 30000
+- scrollUntilVisible:
+    element: '{{t:todayScreen.allEvents}}'
+    direction: DOWN
+    centerElement: true
+    timeout: 20000
+- openLink: ${METRO_URL}/--/events/${EVENT_ID}/edit?at=name
+- extendedWaitUntil:
+    visible:
+      id: 'event.edit.name.field'
+    timeout: 30000
+- tapOn:
+    id: 'event.edit.name.field'
+- inputText: ' Zed'
+- hideKeyboard
+- tapOn:
+    id: 'event.edit.name.cancel'
+- extendedWaitUntil:
+    visible:
+      id: 'event.edit.name.discard'
+    timeout: 10000
+- takeScreenshot: at-name-discard-ask
+- tapOn:
+    id: 'event.edit.name.discard'
+- extendedWaitUntil:
+    visible:
+      id: 'events.page'
+    timeout: 10000
+- assertNotVisible: '.*Zed.*'
+- takeScreenshot: at-name-discard-lands-page

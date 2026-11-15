@@ -1,0 +1,26 @@
+# sc-38005: the Approve and Turn down confirms for a request to get back in, each kept. Needs ${METRO_URL}; request 22222222-2222-4222-8222-222222222221 waiting.
+appId: host.exp.Exponent
+---
+- openLink: ${METRO_URL}/--/settings/members
+- extendedWaitUntil:
+    visible:
+      id: 'members.card'
+    timeout: 30000
+- scrollUntilVisible:
+    element:
+      id: 'members.recovery.22222222-2222-4222-8222-222222222221.approve'
+    centerElement: true
+- tapOn:
+    id: 'members.recovery.22222222-2222-4222-8222-222222222221.approve'
+- waitForAnimationToEnd
+- takeScreenshot: approve
+- tapOn:
+    id: 'members.recovery.cancel'
+- waitForAnimationToEnd
+- tapOn:
+    id: 'members.recovery.22222222-2222-4222-8222-222222222221.turnDown'
+- waitForAnimationToEnd
+- takeScreenshot: turn-down
+- tapOn:
+    id: 'members.recovery.keep'
+- waitForAnimationToEnd

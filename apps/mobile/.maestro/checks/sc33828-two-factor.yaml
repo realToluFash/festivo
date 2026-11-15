@@ -1,0 +1,71 @@
+# sc-33828: the two-factor sign-in's strings in the batch's language. The code step with Lost your
+# authenticator?, the recovery code's shape and short refusal, Lost with nobody to ask (Email Soirely
+# support), then joined to Ire Events: Waiting for Ire Events with the stay-signed-out line, and a
+# right code's Signed in. EMAIL, PASSWORD and TOTP_SECRET of a two-factor account owning one organisation.
+appId: host.exp.Exponent
+---
+- runFlow: ../sc29072-to-code.yaml
+- runFlow: ../keys-away.yaml
+- waitForAnimationToEnd
+- assertNotVisible: { id: 'twoFactor.verify' }
+- takeScreenshot: tf-code-step
+- tapOn: { id: 'twoFactor.switch' }
+- extendedWaitUntil: { visible: '{{t:twoFactor.recoveryShape}}', timeout: 10000 }
+- waitForAnimationToEnd
+- takeScreenshot: tf-recovery-shape
+- tapOn: { id: 'twoFactor.code' }
+- inputText: 'AB1'
+- runFlow: ../keys-away.yaml
+- tapOn: { id: 'twoFactor.verify' }
+- extendedWaitUntil: { visible: '{{t:twoFactor.recoveryShort}}', timeout: 5000 }
+- takeScreenshot: tf-recovery-short
+- tapOn: { id: 'twoFactor.switch' }
+- extendedWaitUntil: { visible: { id: 'twoFactor.lostBoth' }, timeout: 10000 }
+- tapOn: { id: 'twoFactor.lostBoth' }
+- extendedWaitUntil: { visible: { id: 'lostTwoFactor\.(support|send)' }, timeout: 30000 }
+- waitForAnimationToEnd
+- assertVisible: { id: 'lostTwoFactor.support' }
+- assertVisible: '{{t:lostTwoFactor.emailSoirely}}'
+- takeScreenshot: tf-lost-nobody
+- runScript:
+    file: ../batch/helper.js
+    env:
+      ASK: /membership?change=join&org=Ire Events
+- runFlow: ../sc33828-to-code-signed-out.yaml
+- runFlow: ../keys-away.yaml
+- tapOn: { id: 'twoFactor.lostBoth' }
+- extendedWaitUntil: { visible: { id: 'lostTwoFactor.send' }, timeout: 30000 }
+- waitForAnimationToEnd
+- takeScreenshot: tf-lost-start
+- tapOn: { id: 'lostTwoFactor.send' }
+- extendedWaitUntil: { visible: { id: 'lostTwoFactor.emailCode' }, timeout: 60000 }
+- runScript: ../scripts/latest-code.js
+- tapOn: { id: 'lostTwoFactor.emailCode' }
+- inputText: ${output.code}
+- runFlow:
+    when: { visible: { id: 'lostTwoFactor.phoneCode' } }
+    commands:
+      - runScript: ../scripts/latest-sms-code.js
+      - tapOn: { id: 'lostTwoFactor.phoneCode' }
+      - inputText: ${output.code}
+- runFlow: ../keys-away.yaml
+- tapOn: { id: 'lostTwoFactor.ask' }
+- extendedWaitUntil: { visible: { id: 'lostTwoFactor.cancel' }, timeout: 30000 }
+- waitForAnimationToEnd
+- takeScreenshot: tf-waiting
+- scrollUntilVisible: { element: { id: 'lostTwoFactor.cancel' } }
+- takeScreenshot: tf-waiting-foot
+- tapOn: { id: 'lostTwoFactor.cancel' }
+- extendedWaitUntil: { visible: { id: 'lostTwoFactor.cancelYes' }, timeout: 10000 }
+- tapOn: { id: 'lostTwoFactor.cancelYes' }
+- waitForAnimationToEnd
+- runFlow: ../sc33828-to-code-signed-out.yaml
+- runFlow: ../keys-away.yaml
+- runScript:
+    file: ../batch/helper.js
+    env:
+      ASK: /code
+- tapOn: { id: 'twoFactor.code' }
+- inputText: ${output.helper.code}
+- takeScreenshot: tf-signed-in
+- extendedWaitUntil: { notVisible: { id: 'twoFactor.code' }, timeout: 30000 }
