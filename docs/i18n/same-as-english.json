@@ -28,7 +28,9 @@
     "web:seating.kindRectangular",
     "web:seating.shapeRectangularShort",
     "web:schedule.minutes_one",
-    "web:schedule.minutes_other"
+    "web:schedule.minutes_other",
+    "mobile:runView.minutes_one",
+    "mobile:runView.minutes_other"
   ],
   "fr": [
     "web:nav.menu",
