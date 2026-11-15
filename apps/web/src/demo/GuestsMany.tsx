@@ -158,8 +158,8 @@ function ManyPage({ event, start, tell }: { event: SampleEvent; start: ManyStart
   const looking = choice !== 'all' || q.trim() !== '' || groupFilter != null;
   const marks = invitesOn(event, CLOCKS.rest);
   const empty = list.length === 0;
-  /** sc-50772: once a removal empties the list, the card stays until Undo or its 10 seconds end; a save there clears any filter so the saved guest shows. */
-  const carded = empty || adding || emptied;
+  /** sc-50772: once a removal empties the list, the line sits above the card until Undo or its 10 seconds end; a save there clears any filter so the saved guest shows. */
+  const lineOnTop = empty || adding || emptied;
   const card = guestsCardOf(event, list, 'live', CLOCKS.rest, manages);
 
   function focus(...keys: string[]): void {
@@ -345,15 +345,13 @@ function ManyPage({ event, start, tell }: { event: SampleEvent; start: ManyStart
             {GW.title}
           </h1>
         </header>
-        {carded && <div className="gm-dock">{said}</div>}
-        {carded && (
-          <GuestsCardView
-            card={card}
-            mesh={event.mesh}
-            step={card.step === 'add' ? GW.addGuest : null}
-            onStep={startAdd}
-          />
-        )}
+        {lineOnTop && <div className="gm-dock">{said}</div>}
+        <GuestsCardView
+          card={card}
+          mesh={event.mesh}
+          step={card.step === 'add' ? GW.addGuest : null}
+          onStep={startAdd}
+        />
         <div className={adding ? 'gs-cols' : undefined}>
           <section className="gs-list gm-list" aria-label={GW.title}>
             {!empty && (
@@ -422,7 +420,7 @@ function ManyPage({ event, start, tell }: { event: SampleEvent; start: ManyStart
                   <p className="desk-note gb-note">{MMW.heldNote}</p>
                 )}
                 <div className="gm-dock gb-dock">
-                  {!carded && said}
+                  {!lineOnTop && said}
                   {bar && (
                     <SelectBar
                       count={count}
@@ -486,7 +484,7 @@ function ManyPage({ event, start, tell }: { event: SampleEvent; start: ManyStart
                 focus={focus}
                 onDone={() => {
                   setAdding(false);
-                  focus('line', 'title');
+                  focus(line != null ? 'line' : 'title');
                 }}
                 onAdd={added}
               />

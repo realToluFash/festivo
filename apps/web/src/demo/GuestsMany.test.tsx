@@ -1,6 +1,6 @@
-import { fireEvent, render, screen, waitFor, within } from '@testing-library/react';
+import { act, fireEvent, render, screen, waitFor, within } from '@testing-library/react';
 import { RouterProvider, createMemoryRouter } from 'react-router';
-import { beforeEach, describe, expect, it } from 'vitest';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
 import { __setConfig, config } from '../config.ts';
 import { routes } from '../routes/index.tsx';
@@ -23,6 +23,10 @@ function bar(): HTMLElement {
   return screen.getByRole('region', { name: 'Selected guests' });
 }
 
+function cardSays(): string | null {
+  return document.querySelector('.gs-says')?.textContent ?? null;
+}
+
 function page(): string {
   return document.body.textContent ?? '';
 }
@@ -30,6 +34,10 @@ function page(): string {
 beforeEach(() => {
   __setConfig({ ...tested, environment: 'development' });
   resetSample();
+});
+
+afterEach(() => {
+  vi.useRealTimers();
 });
 
 describe('select many guests (sc-3776)', () => {
@@ -161,8 +169,34 @@ describe('select many guests (sc-3776)', () => {
     fireEvent.click(screen.getByRole('button', { name: 'Undo' }));
 
     await waitFor(() => expect(page()).toContain('back on the list, as they were.'));
-    expect(page()).not.toContain('No guests yet');
+    expect(cardSays()).toMatch(/\d/u);
+    expect(cardSays()).not.toBe('No guests yet');
     expect(screen.getByRole('checkbox', { name: /^Select all \d+ shown$/u })).toBeTruthy();
+  });
+
+  it('moves focus to the title on Done once the Undo has run out (sc-50772)', SLOW, async () => {
+    vi.useFakeTimers({ shouldAdvanceTime: true });
+    await open('removedAll');
+    fireEvent.click(screen.getByRole('button', { name: 'Add guest' }));
+    const name = await screen.findByRole('textbox', { name: 'Full name' });
+
+    await waitFor(() => expect(document.activeElement).toBe(name));
+    act(() => {
+      vi.advanceTimersByTime(11000);
+    });
+    expect(screen.queryByRole('button', { name: 'Undo' })).toBeNull();
+    fireEvent.click(
+      within(screen.getByRole('region', { name: 'Add guest' })).getByRole('button', {
+        name: 'Done',
+      }),
+    );
+
+    await waitFor(() =>
+      expect(document.activeElement).toBe(
+        screen.getByRole('heading', { level: 1, name: 'Guests' }),
+      ),
+    );
+    expect(cardSays()).toBe('No guests yet');
   });
 
   it(
