@@ -3,6 +3,7 @@ import { feetAndInchesOf, numberFormat } from '@soirely/domain';
 import { type TFunction } from 'i18next';
 
 type Display = 'short' | 'long';
+type Rounding = 'nearest' | 'up' | 'down';
 
 function unit(
   locale: string,
@@ -26,10 +27,14 @@ export function lengthWords(
   locale: string,
   cm: number,
   system: MeasurementSystem,
-  { display = 'short', grouping = true }: { display?: Display; grouping?: boolean } = {},
+  {
+    display = 'short',
+    grouping = true,
+    rounding = 'nearest',
+  }: { display?: Display; grouping?: boolean; rounding?: Rounding } = {},
 ): string {
   if (system === 'metric') return unit(locale, 'meter', cm / 100, display, grouping);
-  const { feet, inches } = feetAndInchesOf(cm);
+  const { feet, inches } = feetAndInchesOf(cm, rounding);
   const shownFeet = unit(locale, 'foot', feet, display, grouping);
 
   return inches === 0
@@ -58,9 +63,9 @@ export function tableLengthWords(
   locale: string,
   cm: number,
   system: MeasurementSystem,
-  { grouping = true }: { grouping?: boolean } = {},
+  { grouping = true, rounding = 'nearest' }: { grouping?: boolean; rounding?: Rounding } = {},
 ): string {
-  if (system === 'us') return lengthWords(t, locale, cm, system, { grouping });
+  if (system === 'us') return lengthWords(t, locale, cm, system, { grouping, rounding });
   return cm >= 100 && cm % 100 === 0
     ? unit(locale, 'meter', cm / 100, 'short', grouping)
     : unit(locale, 'centimeter', cm, 'short', grouping);

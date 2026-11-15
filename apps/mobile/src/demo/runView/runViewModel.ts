@@ -1,4 +1,5 @@
 /** The run view (sc-1404, RunOfShow.dc.html on page e33): each track's planned and expected times, how far behind it runs, fixed times and their collisions. */
+export const RUN_EVENT = 'evt-wed-4';
 export const RUN_EVENT_NAME = 'Adaeze & Tunde’s wedding';
 
 export type Phase = 'waiting' | 'now' | 'done';
@@ -64,6 +65,8 @@ export const RW = {
   nothingThen: 'Nothing after this.',
   allDone: 'Every item on this track is done.',
   nextStep: 'Next step: start it when it begins.',
+  lock: 'You can see this schedule. Ask whoever runs the event to change it.',
+  openRun: 'Run view',
   later: 'Move the clock on 5 min',
   demoOnly: 'Demo only: the clock stands still here, so this moves it on to show times recompute.',
 } as const;
@@ -180,13 +183,14 @@ export function lastsOf(item: RunItem): string {
 }
 
 /** The line under a track's table: "Next: Welcome speech at about 19:40. Next step: start it when it begins." */
-export function nextLine(view: TrackView): string {
+export function nextLine(view: TrackView, manage = true): string {
   if (view.figure.kind === 'done') return RW.allDone;
   if (view.next == null) return RW.nothingThen;
 
   const { item, expected: at } = view.next;
+  const next = `Next: ${item.title} at ${at === item.planned ? at : `about ${at}`}.`;
 
-  return `Next: ${item.title} at ${at === item.planned ? at : `about ${at}`}. ${RW.nextStep}`;
+  return manage ? `${next} ${RW.nextStep}` : next;
 }
 
 export function trackView(track: Track, clock: string): TrackView {
@@ -391,4 +395,11 @@ export const RUN_BOARDS = (Object.keys(RUN_STATES) as RunStateName[]).map((state
   title: `Run view · ${RUN_STATES[state].name}`,
   what: 'Tablet: one table per track. Phone: Now, Next, Then, one track at a time',
   href: `/demo/run-view?state=${state}`,
+}));
+
+/** Opened by someone with run_of_show.read and not run_of_show.manage: no Start or Finish, and the Schedule's lock line. */
+export const RUN_READ_BOARDS = (['behind', 'outOfOrder', 'last'] as const).map((state) => ({
+  title: `Run view · read only · ${RUN_STATES[state].name}`,
+  what: 'Without run_of_show.manage: the same times and figures, no Start or Finish',
+  href: `/demo/run-view?state=${state}&as=reader`,
 }));

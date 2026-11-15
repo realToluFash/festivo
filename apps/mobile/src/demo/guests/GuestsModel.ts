@@ -209,6 +209,24 @@ export const OVER_LIMIT_STATES = [
 /** Someone who can't change the plan: Ask an owner in the plan line's place. */
 export const ASK_OWNER_STATES = ['overLimitAsk', 'ownerAsked'] as const;
 
+/** sc-54450: Paste a reply on Guests, Whose reply is this?, and Record a reply from the copied message. */
+export const PASTE_STATES = [
+  'paste',
+  'pasteNothing',
+  'pasteClosed',
+  'whose',
+  'whoseLong',
+  'whoseAll',
+  'whoseSearch',
+  'whoseNone',
+  'whoseEveryone',
+  'whoseOffline',
+  'fromMessage',
+  'fromMessageBlank',
+  'fromMessageOffline',
+  'fromMessageSaved',
+] as const;
+
 export const OVERVIEW_STATES = [
   'overview',
   'overviewLoading',
@@ -227,6 +245,7 @@ export const GUESTS_STATES = [
   ...REVIEW_STATES,
   ...OVERVIEW_STATES,
   ...EXPORT_STATES,
+  ...PASTE_STATES,
 ] as const;
 
 export type GuestsState = (typeof GUESTS_STATES)[number];
@@ -237,6 +256,7 @@ export type RecordState = (typeof RECORD_STATES)[number];
 export type AgreeState = (typeof AGREE_STATES)[number];
 export type AddState = (typeof ADD_STATES)[number];
 export type ReviewState = (typeof REVIEW_STATES)[number];
+export type PasteState = (typeof PASTE_STATES)[number];
 
 export const DOOR_STATES = [
   'door',
@@ -1180,6 +1200,10 @@ export function guestsAt(state: GuestsState | null): SampleGuest[] {
       return [...GUESTS, ...FROM_CONTACTS_ADDED].sort((a, b) => a.name.localeCompare(b.name));
     case 'recorded':
       return swap('emeka', (g) => recorded(g, 'coming', 'By phone', [true], TODAY));
+    case 'fromMessageSaved':
+      return swap('emeka', (g) => recorded(g, 'coming', 'By message', [true], TODAY));
+    case 'whoseEveryone':
+      return GUESTS.map((g) => (g.kind === 'noreply' ? { ...g, kind: 'coming', when: TODAY } : g));
     case 'marked':
       return swap('bisi', (g) => markedInvited(g, 'WhatsApp', TODAY));
     case 'unmarked':
@@ -1414,6 +1438,8 @@ export function areaStart(state: GuestsState | null): AreaStart {
     case 'failed':
       return { ...base, phase: 'failed' };
     case 'offline':
+    case 'whoseOffline':
+    case 'fromMessageOffline':
     case 'exportOffline':
     case 'exportDropped':
       return { ...base, offline: true };
@@ -1434,6 +1460,7 @@ export function areaStart(state: GuestsState | null): AreaStart {
       return { ...base, recorded: true };
     case 'repliesClosed':
     case 'repliesClosedViewer':
+    case 'pasteClosed':
       return { ...base, replies: 'closed' };
     case 'reopened':
       return { ...base, replies: 'reopened' };

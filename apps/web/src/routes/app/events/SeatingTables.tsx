@@ -47,19 +47,34 @@ import {
 type T = ReturnType<typeof useTranslation>['t'];
 
 const SHAPE_WORDS = {
-  round: { whole: 'seating.shapeRound', kind: 'seating.kindRound', menu: 'seating.menuRound' },
+  round: {
+    whole: 'seating.shapeRound',
+    short: 'seating.shapeRoundShort',
+    kind: 'seating.kindRound',
+    menu: 'seating.menuRound',
+  },
   rectangular: {
     whole: 'seating.shapeRectangular',
+    short: 'seating.shapeRectangularShort',
     kind: 'seating.kindRectangular',
     menu: 'seating.menuRectangular',
   },
-  head: { whole: 'seating.shapeHead', kind: 'seating.kindHead', menu: 'seating.menuHead' },
+  head: {
+    whole: 'seating.shapeHead',
+    short: 'seating.shapeHeadShort',
+    kind: 'seating.kindHead',
+    menu: 'seating.menuHead',
+  },
   cocktail: {
     whole: 'seating.shapeCocktail',
+    short: 'seating.shapeCocktailShort',
     kind: 'seating.kindCocktail',
     menu: 'seating.menuCocktail',
   },
-} as const satisfies Record<TableShape, { whole: string; kind: string; menu: string }>;
+} as const satisfies Record<
+  TableShape,
+  { whole: string; short: string; kind: string; menu: string }
+>;
 
 const SIZE_RESET = {
   round: 'seating.sizeResetRound',
@@ -417,8 +432,14 @@ function readSize(
   if (read.kind === 'unreadable' && system === 'us') return { refused: t('seating.usHint') };
   return {
     refused: t('seating.tableSizeRange', {
-      min: tableLengthWords(t, locale, TABLE_MINIMUM_CM, system, { grouping: false }),
-      max: tableLengthWords(t, locale, TABLE_MAXIMUM_CM, system, { grouping: false }),
+      min: tableLengthWords(t, locale, TABLE_MINIMUM_CM, system, {
+        grouping: false,
+        rounding: 'up',
+      }),
+      max: tableLengthWords(t, locale, TABLE_MAXIMUM_CM, system, {
+        grouping: false,
+        rounding: 'down',
+      }),
     }),
   };
 }
@@ -466,7 +487,10 @@ export function TablePanel({
     const typed = text.trim();
 
     if (typed === '') return t('seating.tableBlank');
-    if (typed.length > SEATING_LIMITS.tableNameMaximum)
+    if (
+      [...new Intl.Segmenter().segment(typed)].length > SEATING_LIMITS.tableNameMaximum ||
+      [...typed].length > SEATING_LIMITS.tableNameCodePoints
+    )
       return t('seating.tableLong', { max: SEATING_LIMITS.tableNameMaximum });
     const holder = holdingName(plan.tables, typed, table.id);
 
@@ -478,11 +502,7 @@ export function TablePanel({
 
   return (
     <div className="st-stack is-tight">
-      <BackHead
-        title={table.name}
-        line={tableLine(t, plan, table)}
-        onClose={() => ctx.open(null)}
-      />
+      <BackHead title={table.name} line={tableLine(t, plan, table)} />
       {said != null && <Added>{said}</Added>}
       {ctx.notice != null && <Said>{ctx.notice}</Said>}
       {note != null && <Line>{note}</Line>}
@@ -495,53 +515,40 @@ export function TablePanel({
         </Said>
       )}
       <div className="st-fields">
-        <Field
-          fieldKey="name"
-          label={t('seating.name')}
-          value={table.name}
-          maxLength={SEATING_LIMITS.tableNameMaximum}
-          onCommit={name}
+        <Field fieldKey="name" label={t('seating.name')} value={table.name} onCommit={name} />
+        <Select
+          fieldKey="section"
+          label={t('seating.section')}
+          value={table.sectionId ?? ''}
+          options={[
+            { value: '', word: t('seating.noSection') },
+            ...plan.sections.map((one) => ({ value: one.id, word: one.name })),
+          ]}
+          onPick={(value) => void change({ sectionId: value === '' ? null : value })}
         />
-        <div className="st-two">
-          <Select
-            fieldKey="section"
-            label={t('seating.section')}
-            value={table.sectionId ?? ''}
-            options={[
-              { value: '', word: t('seating.noSection') },
-              ...plan.sections.map((one) => ({ value: one.id, word: one.name })),
-            ]}
-            onPick={(value) => void change({ sectionId: value === '' ? null : value })}
-          />
-          <Select
-            fieldKey="shape"
-            label={t('seating.shape')}
-            value={table.shape}
-            options={TABLE_SHAPES.map((shape) => ({
-              value: shape,
-              word: t(SHAPE_WORDS[shape].whole),
-            }))}
-            onPick={(value) => {
-              const shape = TABLE_SHAPES.find((one) => one === value);
+        <Select
+          fieldKey="shape"
+          label={t('seating.shape')}
+          value={table.shape}
+          options={TABLE_SHAPES.map((shape) => ({
+            value: shape,
+            word: t(SHAPE_WORDS[shape].short),
+          }))}
+          onPick={(value) => {
+            const shape = TABLE_SHAPES.find((one) => one === value);
 
-              if (shape == null) return;
-              void change({ shape }).then((refused) => {
-                if (refused != null) return;
-                setNote(
-                  t(SIZE_RESET[shape], {
-                    size: tableSizeWords(
-                      t,
-                      locale,
-                      { shape, ...TABLE_DEFAULTS[shape] },
-                      ctx.system,
-                    ),
-                    count: table.seats,
-                  }),
-                );
-              });
-            }}
-          />
-        </div>
+            if (shape == null) return;
+            void change({ shape }).then((refused) => {
+              if (refused != null) return;
+              setNote(
+                t(SIZE_RESET[shape], {
+                  size: tableSizeWords(t, locale, { shape, ...TABLE_DEFAULTS[shape] }, ctx.system),
+                  count: table.seats,
+                }),
+              );
+            });
+          }}
+        />
         {round ? (
           <div className="st-two">
             <Field
@@ -662,11 +669,7 @@ function TableFacts({
 
   return (
     <div className="st-stack">
-      <BackHead
-        title={table.name}
-        line={tableLine(t, plan, table)}
-        onClose={() => ctx.open(null)}
-      />
+      <BackHead title={table.name} line={tableLine(t, plan, table)} />
       <dl className="st-facts">
         {facts.map(([key, value]) => (
           <div key={key}>
@@ -699,7 +702,6 @@ export function ChairPanel({
       <BackHead
         title={t('seating.chairTitle', { table: table.name, seat })}
         line={`${t(SHAPE_WORDS[table.shape].whole)} · ${sectionOf(plan, table)?.name ?? t('seating.noSection')}`}
-        onClose={() => ctx.open({ kind: 'table', id: table.id })}
       />
       <p className="st-state-line is-big">
         <StateMark unusable={unusable} square={table.shape === 'cocktail'} />

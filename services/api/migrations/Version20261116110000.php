@@ -11,24 +11,16 @@ final class Version20261116110000 extends AbstractMigration
 {
     public function getDescription(): string
     {
-        return 'When a schedule item was marked started and done, in UTC, beside its planned start, which they never change (sc-1404).';
+        return 'A table name holds 30 letters as a reader counts them, up to 120 code points (sc-4000, pm 15 Nov 2026).';
     }
 
     public function up(Schema $schema): void
     {
-        $this->addSql(<<<'SQL'
-            ALTER TABLE schedule_items
-                ADD started_at  TIMESTAMP(0) WITHOUT TIME ZONE DEFAULT NULL,
-                ADD ended_at    TIMESTAMP(0) WITHOUT TIME ZONE DEFAULT NULL
-            SQL);
+        $this->addSql('ALTER TABLE seating_tables ALTER name TYPE VARCHAR(120)');
     }
 
     public function down(Schema $schema): void
     {
-        $this->addSql(<<<'SQL'
-            ALTER TABLE schedule_items
-                DROP started_at,
-                DROP ended_at
-            SQL);
+        $this->addSql('ALTER TABLE seating_tables ALTER name TYPE VARCHAR(30)');
     }
 }

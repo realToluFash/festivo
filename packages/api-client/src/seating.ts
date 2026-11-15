@@ -175,6 +175,7 @@ export const SEATING_LIMITS = {
   sectionNameMaximum: SECTION_NAME_MAXIMUM,
   sectionsMaximum: SECTIONS_MAXIMUM,
   tableNameMaximum: 30,
+  tableNameCodePoints: 120,
   tableSeatsMinimum: 1,
   tableSeatsMaximum: 30,
   tableSizeMinimumCm: 40,
