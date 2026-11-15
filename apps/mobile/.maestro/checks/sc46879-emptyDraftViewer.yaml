@@ -1,0 +1,16 @@
+# sc-46879: an empty list (${EDRAFT}) beside the demo's emptyDraftViewer.
+appId: host.exp.Exponent
+---
+- setOrientation: ${ORIENT}
+- openLink: ${METRO_URL}/--/events/${EDRAFT}?area=guests
+- extendedWaitUntil:
+    visible:
+      id: 'guests.card'
+    timeout: 30000
+- waitForAnimationToEnd:
+    timeout: 4000
+- takeScreenshot: emptyDraftViewer
+- openLink: ${METRO_URL}/--/demo/guests?state=emptyDraftViewer
+- waitForAnimationToEnd:
+    timeout: 8000
+- takeScreenshot: demo-emptyDraftViewer

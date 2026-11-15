@@ -1,0 +1,46 @@
+# sc-46879: a mark of ${ADAEZE} failing on a server error (a trigger on the QA stack), beside the demo's markNotSaved.
+appId: host.exp.Exponent
+---
+- setOrientation: ${ORIENT}
+- openLink: ${METRO_URL}/--/events/${LIVE}?area=guests
+- extendedWaitUntil:
+    visible:
+      id: 'guests.card'
+    timeout: 30000
+- waitForAnimationToEnd:
+    timeout: 4000
+- tapOn:
+    id: 'guests.search'
+- inputText: 'Adaeze'
+- hideKeyboard
+- extendedWaitUntil:
+    visible:
+      id: 'guests.row.${ADAEZE}'
+    timeout: 10000
+- tapOn:
+    id: 'guests.row.${ADAEZE}'
+- extendedWaitUntil:
+    visible:
+      id: 'guest.${ADAEZE}'
+    timeout: 20000
+- waitForAnimationToEnd:
+    timeout: 3000
+- scrollUntilVisible:
+    element:
+      id: 'guest.mark'
+    direction: DOWN
+- tapOn:
+    id: 'guest.mark'
+- waitForAnimationToEnd:
+    timeout: 4000
+- tapOn:
+    id: 'guest.markSheet.email'
+- tapOn:
+    id: 'guest.markSheet.do'
+- waitForAnimationToEnd:
+    timeout: 6000
+- takeScreenshot: markNotSaved
+- openLink: ${METRO_URL}/--/demo/guests?state=markNotSaved
+- waitForAnimationToEnd:
+    timeout: 8000
+- takeScreenshot: demo-markNotSaved

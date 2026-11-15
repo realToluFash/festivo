@@ -1,0 +1,16 @@
+# sc-46879: the Live list (${LIVE}) top and scrolled, with Not yet invited rows and group.
+appId: host.exp.Exponent
+---
+- setOrientation: ${ORIENT}
+- openLink: ${METRO_URL}/--/events/${LIVE}?area=guests
+- extendedWaitUntil:
+    visible:
+      id: 'guests.card'
+    timeout: 30000
+- waitForAnimationToEnd:
+    timeout: 4000
+- takeScreenshot: list
+- scroll
+- takeScreenshot: list-scrolled
+- scroll
+- takeScreenshot: list-scrolled2

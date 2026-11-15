@@ -1,0 +1,36 @@
+# sc-46879: ${EDE}, invited when they replied, beside the demo's invitedWhenReplied.
+appId: host.exp.Exponent
+---
+- setOrientation: ${ORIENT}
+- openLink: ${METRO_URL}/--/events/${LIVE}?area=guests
+- extendedWaitUntil:
+    visible:
+      id: 'guests.card'
+    timeout: 30000
+- waitForAnimationToEnd:
+    timeout: 4000
+- tapOn:
+    id: 'guests.search'
+- inputText: 'Ede'
+- hideKeyboard
+- extendedWaitUntil:
+    visible:
+      id: 'guests.row.${EDE}'
+    timeout: 10000
+- tapOn:
+    id: 'guests.row.${EDE}'
+- extendedWaitUntil:
+    visible:
+      id: 'guest.${EDE}'
+    timeout: 20000
+- waitForAnimationToEnd:
+    timeout: 3000
+- takeScreenshot: invitedWhenReplied
+- scroll
+- takeScreenshot: invitedWhenReplied-scrolled
+- openLink: ${METRO_URL}/--/demo/guests?state=invitedWhenReplied
+- waitForAnimationToEnd:
+    timeout: 8000
+- takeScreenshot: demo-invitedWhenReplied
+- scroll
+- takeScreenshot: demo-invitedWhenReplied-scrolled

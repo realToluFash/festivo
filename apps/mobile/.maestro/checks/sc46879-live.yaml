@@ -1,0 +1,40 @@
+# sc-46879: ${OLA}'s page open on the ${LIVE} event; a mark made elsewhere (the web's PUT at ${API_URL} from ${WEB_URL}, signed in as ${EMAIL} / ${PASSWORD}) shows on the page within 10 seconds, then is undone. ${ORIENT}.
+appId: host.exp.Exponent
+---
+- setOrientation: ${ORIENT}
+- openLink: ${METRO_URL}/--/events/${LIVE}?area=guests
+- extendedWaitUntil:
+    visible:
+      id: 'guests.card'
+    timeout: 30000
+- tapOn:
+    id: 'guests.search'
+- inputText: 'Temit'
+- hideKeyboard
+- extendedWaitUntil:
+    visible:
+      id: 'guests.row.${OLA}'
+    timeout: 10000
+- tapOn:
+    id: 'guests.row.${OLA}'
+- extendedWaitUntil:
+    visible:
+      id: 'guest.${OLA}'
+    timeout: 20000
+- waitForAnimationToEnd:
+    timeout: 3000
+- scrollUntilVisible:
+    element:
+      id: 'guest.mark'
+    direction: DOWN
+    timeout: 10000
+- takeScreenshot: live-before
+- evalScript: "${output.t = json(http.post(API_URL + '/api/auth/login', {headers: {'Content-Type': 'application/json', 'Origin': WEB_URL}, body: JSON.stringify({email: EMAIL, password: PASSWORD})}).body).accessToken}"
+- evalScript: "${http.put(API_URL + '/api/events/' + LIVE + '/guests/' + OLA + '/invitation', {headers: {'Content-Type': 'application/json', 'Origin': WEB_URL, 'Authorization': 'Bearer ' + output.t}, body: JSON.stringify({how: 'inPerson'})}).status}"
+- scrollUntilVisible:
+    element:
+      id: 'guest.invited'
+    direction: DOWN
+    timeout: 10000
+- takeScreenshot: live-after
+- evalScript: "${http.request(API_URL + '/api/events/' + LIVE + '/guests/' + OLA + '/invitation', {method: 'DELETE', headers: {'Origin': WEB_URL, 'Authorization': 'Bearer ' + output.t}}).status}"

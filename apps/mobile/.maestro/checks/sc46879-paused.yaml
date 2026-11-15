@@ -1,0 +1,16 @@
+# sc-46879: the paused event's Guests (${PAUSED}) beside the demo's paused.
+appId: host.exp.Exponent
+---
+- setOrientation: ${ORIENT}
+- openLink: ${METRO_URL}/--/events/${PAUSED}?area=guests
+- extendedWaitUntil:
+    visible:
+      id: 'guests.card'
+    timeout: 30000
+- waitForAnimationToEnd:
+    timeout: 4000
+- takeScreenshot: paused
+- openLink: ${METRO_URL}/--/demo/guests?state=paused
+- waitForAnimationToEnd:
+    timeout: 8000
+- takeScreenshot: demo-paused
