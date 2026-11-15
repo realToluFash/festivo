@@ -75,7 +75,7 @@ final class SeatingRowsTest extends ApiTestCase
     {
         $first = $this->addRow();
         $second = $this->addRow();
-        $this->changeRow($first, ['label' => 'Front']);
+        $this->change($first, ['label' => 'Front']);
         $third = $this->addRow();
 
         self::assertSame('B', $second['label']);
@@ -165,10 +165,10 @@ final class SeatingRowsTest extends ApiTestCase
     #[Test]
     public function fewerSeatsComeOffTheRightHandEndWithTheirUnusableMarks(): void
     {
-        $row = $this->changeRow($this->addRow(), ['unusableSeats' => [9, 2]]);
+        $row = $this->change($this->addRow(), ['unusableSeats' => [9, 2]]);
         self::assertSame([2, 9], $row['unusableSeats']);
 
-        $row = $this->changeRow($row, ['seats' => 8]);
+        $row = $this->change($row, ['seats' => 8]);
 
         self::assertSame(8, $row['seats']);
         self::assertSame([2], $row['unusableSeats']);
@@ -177,22 +177,22 @@ final class SeatingRowsTest extends ApiTestCase
     #[Test]
     public function aRowsSeatAndASingleSeatAreMarkedUnusableAndUsableAgain(): void
     {
-        $row = $this->changeRow($this->addRow(), ['unusableSeats' => [4]]);
-        $seat = $this->changeSeat($this->addSeat(), ['unusable' => true]);
+        $row = $this->change($this->addRow(), ['unusableSeats' => [4]]);
+        $seat = $this->change($this->addSeat(), ['unusable' => true]);
 
         self::assertSame([4], $row['unusableSeats']);
         self::assertTrue($seat['unusable']);
 
-        self::assertSame([], $this->changeRow($row, ['unusableSeats' => []])['unusableSeats']);
-        self::assertFalse($this->changeSeat($seat, ['unusable' => false])['unusable']);
+        self::assertSame([], $this->change($row, ['unusableSeats' => []])['unusableSeats']);
+        self::assertFalse($this->change($seat, ['unusable' => false])['unusable']);
     }
 
     #[Test]
     public function aTurnedRowKeepsItsSeatsAndNumbers(): void
     {
-        $row = $this->changeRow($this->addRow(), ['unusableSeats' => [1]]);
+        $row = $this->change($this->addRow(), ['unusableSeats' => [1]]);
 
-        $row = $this->changeRow($row, ['rotation' => 90]);
+        $row = $this->change($row, ['rotation' => 90]);
 
         self::assertSame([90, 10, [1]], [$row['rotation'], $row['seats'], $row['unusableSeats']]);
     }
@@ -201,7 +201,7 @@ final class SeatingRowsTest extends ApiTestCase
     public function duplicateCopiesTheRowWithTheNextFreeLabelSomewhereFree(): void
     {
         $section = $this->addSection('Ceremony');
-        $original = $this->changeRow($this->addRow(), ['seats' => 12, 'spacingCm' => 60, 'rotation' => 15, 'unusableSeats' => [3], 'sectionId' => $section]);
+        $original = $this->change($this->addRow(), ['seats' => 12, 'spacingCm' => 60, 'rotation' => 15, 'unusableSeats' => [3], 'sectionId' => $section]);
 
         $copy = $this->rowOf($this->as($this->owner, 'POST', $this->rows() . '/' . $original['id'] . '/duplicate', null, '"' . $original['version'] . '"'));
 
@@ -235,7 +235,7 @@ final class SeatingRowsTest extends ApiTestCase
     {
         $first = $this->addSeat();
         $second = $this->addSeat();
-        $this->changeSeat($first, ['name' => 'By the door']);
+        $this->change($first, ['name' => 'By the door']);
         $third = $this->addSeat();
 
         self::assertSame(201, $this->statusCode());
@@ -247,7 +247,7 @@ final class SeatingRowsTest extends ApiTestCase
     #[Test]
     public function aSeatsNameIsStoredAsTyped(): void
     {
-        $seat = $this->changeSeat($this->addSeat(), ['name' => '  Intérprete  ']);
+        $seat = $this->change($this->addSeat(), ['name' => '  Intérprete  ']);
 
         self::assertSame('Intérprete', $seat['name']);
         self::assertSame('Intérprete', $this->seatsNow()[0]['name']);
@@ -314,8 +314,8 @@ final class SeatingRowsTest extends ApiTestCase
     {
         $section = $this->addSection('Ceremony');
         $this->as($this->owner, 'POST', $this->plan() . '/tables', ['shape' => 'round']);
-        $this->changeRow($this->addRow(), ['sectionId' => $section]);
-        $this->changeSeat($this->addSeat(), ['sectionId' => $section]);
+        $this->change($this->addRow(), ['sectionId' => $section]);
+        $this->change($this->addSeat(), ['sectionId' => $section]);
 
         $plan = $this->planNow();
 
@@ -328,8 +328,8 @@ final class SeatingRowsTest extends ApiTestCase
     public function deletingASectionLeavesItsRowsAndSeatsWhereTheyAreWithNoSection(): void
     {
         $section = $this->addSection('Ceremony');
-        $row = $this->changeRow($this->addRow(), ['sectionId' => $section]);
-        $this->changeSeat($this->addSeat(), ['sectionId' => $section]);
+        $row = $this->change($this->addRow(), ['sectionId' => $section]);
+        $this->change($this->addSeat(), ['sectionId' => $section]);
 
         $this->as($this->owner, 'DELETE', $this->plan() . '/sections/' . $section);
 
@@ -343,8 +343,8 @@ final class SeatingRowsTest extends ApiTestCase
     public function aDuplicatedEventCopiesItsRowsAndSingleSeats(): void
     {
         $section = $this->addSection('Ceremony');
-        $row = $this->changeRow($this->addRow(), ['seats' => 14, 'unusableSeats' => [2], 'sectionId' => $section]);
-        $seat = $this->changeSeat($this->addSeat(), ['name' => 'By the door', 'unusable' => true]);
+        $row = $this->change($this->addRow(), ['seats' => 14, 'unusableSeats' => [2], 'sectionId' => $section]);
+        $seat = $this->change($this->addSeat(), ['name' => 'By the door', 'unusable' => true]);
 
         $copy = Type\shape(['id' => Type\string()], true)->coerce($this->as($this->owner, 'POST', '/api/events/' . $this->eventId . '/duplicate', ['startsAt' => '2026-12-14T16:00'])['event'] ?? null)['id'];
         self::assertSame(201, $this->statusCode());
@@ -378,9 +378,9 @@ final class SeatingRowsTest extends ApiTestCase
     public function aStaleVersionIs412NamingWhoChangedItAndNoVersionIs428(): void
     {
         $row = $this->addRow();
-        $this->changeRow($row, ['seats' => 8]);
+        $this->change($row, ['seats' => 8]);
         $seat = $this->addSeat();
-        $this->changeSeat($seat, ['name' => 'By the door']);
+        $this->change($seat, ['name' => 'By the door']);
 
         foreach ([
             ['PATCH', $this->rows() . '/' . $row['id'], ['seats' => 6]],
@@ -467,31 +467,19 @@ final class SeatingRowsTest extends ApiTestCase
     }
 
     /**
-     * @param array<string, mixed> $row
+     * @param array<string, mixed> $item
      * @param array<string, mixed> $fields
      *
      * @return array<string, mixed>
      */
-    private function changeRow(array $row, array $fields): array
+    private function change(array $item, array $fields): array
     {
-        $changed = $this->rowOf($this->as($this->owner, 'PATCH', $this->rows() . '/' . Type\string()->coerce($row['id']), $fields, '"' . Type\int()->coerce($row['version']) . '"'));
+        $row = Iter\contains_key($item, 'label');
+        $path = ($row ? $this->rows() : $this->seats()) . '/' . Type\string()->coerce($item['id']);
+        $body = $this->as($this->owner, 'PATCH', $path, $fields, '"' . Type\int()->coerce($item['version']) . '"');
         self::assertSame(200, $this->statusCode(), Json\encode($this->last()));
 
-        return $changed;
-    }
-
-    /**
-     * @param array<string, mixed> $seat
-     * @param array<string, mixed> $fields
-     *
-     * @return array<string, mixed>
-     */
-    private function changeSeat(array $seat, array $fields): array
-    {
-        $changed = $this->seatOf($this->as($this->owner, 'PATCH', $this->seats() . '/' . Type\string()->coerce($seat['id']), $fields, '"' . Type\int()->coerce($seat['version']) . '"'));
-        self::assertSame(200, $this->statusCode(), Json\encode($this->last()));
-
-        return $changed;
+        return $row ? $this->rowOf($body) : $this->seatOf($body);
     }
 
     /** @return array<string, mixed> */
