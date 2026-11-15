@@ -43,6 +43,9 @@ const EDIT_AT: Readonly<Record<string, EditPart>> = {
   currency: 'currency',
 };
 
+/** Marks a link to /events/<id>/edit as opened from a screen in the app, so Cancel goes back to it (sc-48600). */
+export const EDIT_LEAVES = 'back';
+
 export function editPartOf(param: string | undefined): EditPart | undefined {
   return param != null && Object.hasOwn(EDIT_AT, param) ? EDIT_AT[param] : undefined;
 }
@@ -56,4 +59,9 @@ export function eventHref(eventId: string, fromHappeningNow = false): `/events/$
 /** An event's Guests with a choice in its filter menu, as a figure on Events opens it (sc-3786). */
 export function guestsHref(eventId: string, filter: string): `/events/${string}` {
   return `/events/${encodeURIComponent(eventId)}?${EVENT_AREA}=guests&${GUESTS_FILTER}=${encodeURIComponent(filter)}`;
+}
+
+/** A card's Change dates opens the event's Dates and Cancel goes back to Events (sc-48600). */
+export function changeDatesHref(eventId: string): `/events/${string}` {
+  return `/events/${encodeURIComponent(eventId)}/edit?at=starts&${EDIT_LEAVES}=1`;
 }
