@@ -402,17 +402,34 @@ describe('Room settings and sections (sc-3998)', () => {
     ).toBeDefined();
   });
 
+  it('asks only "Delete {name}?" for a section with nothing in it (pm, 9 Nov)', SLOW, async () => {
+    await seating('sectionDeleteEmpty');
+    const ask = screen.getByRole('alertdialog', { name: 'Delete Quiet corner?' });
+
+    expect(ask.textContent).not.toContain('with no section');
+    expect(ask.querySelector('p')?.textContent).toBe('');
+    fireEvent.click(within(ask).getByRole('button', { name: 'Delete section' }));
+    expect(screen.queryByRole('alertdialog')).toBeNull();
+  });
+
   it(
-    'asks only "Delete {name}?" for a section with a row but no tables (pm, 9 Nov)',
+    'names the rows and single seats a section leaves with no section (sc-54060)',
     SLOW,
     async () => {
-      await seating('sectionDeleteEmpty');
-      const ask = screen.getByRole('alertdialog', { name: 'Delete Quiet corner?' });
+      await seating('sectionDeleteRows');
+      expect(
+        within(panel()).getByText(
+          'Its tables, rows and seats stay where they are, with no section.',
+        ),
+      ).toBeDefined();
+      const ask = screen.getByRole('alertdialog', { name: 'Delete Ceremony?' });
 
-      expect(ask.textContent).not.toContain('stay where they are');
-      expect(ask.querySelector('p')?.textContent).toBe('');
+      expect(ask.textContent).toContain(
+        'Its 1 row and 2 single seats stay where they are, with no section.',
+      );
       fireEvent.click(within(ask).getByRole('button', { name: 'Delete section' }));
       expect(screen.queryByRole('alertdialog')).toBeNull();
+      expect(await screen.findByText('1 table · 1 row · 2 single seats · 16 seats')).toBeDefined();
     },
   );
 });

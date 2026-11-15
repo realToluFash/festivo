@@ -400,10 +400,22 @@ export function seedOf(state: SeatingState | null): Ui {
         plan: {
           ...plan,
           sections: [...plan.sections, { id: 'quiet', name: 'Quiet corner', colour: 'Blue' }],
-          items: plan.items.map((item) => (item.id === 'rowA' ? { ...item, sec: 'quiet' } : item)),
         },
         panel: { kind: 'sectionEdit', id: 'quiet' },
         asking: { kind: 'deleteSection', id: 'quiet' },
+      };
+    case 'sectionDeleteRows':
+      return {
+        ...ui,
+        plan: {
+          ...plan,
+          sections: [...plan.sections, { id: 'ceremony', name: 'Ceremony', colour: 'Blue' }],
+          items: plan.items.map((item) =>
+            item.kind === 'row' || item.kind === 'single' ? { ...item, sec: 'ceremony' } : item,
+          ),
+        },
+        panel: { kind: 'sectionEdit', id: 'ceremony' },
+        asking: { kind: 'deleteSection', id: 'ceremony' },
       };
     case 'addMenu':
       return { ...ui, menu: true };

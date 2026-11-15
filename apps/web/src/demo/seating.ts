@@ -1124,6 +1124,26 @@ export function planCounts(plan: Plan): string {
   );
 }
 
+/** Deleting a section's ask (pm, sc-54060): what loses the section, each kind counted, zeros left out, the verb taken from the total; an empty section gets no line. */
+export function sectionDeleteWords(plan: Plan, id: string): string {
+  const inside = plan.items.filter((item) => item.sec === id);
+  const tables = inside.filter(isTable).length;
+  const rows = inside.filter((item) => item.kind === 'row').length;
+  const singles = inside.filter((item) => item.kind === 'single').length;
+  const total = tables + rows + singles;
+
+  if (total === 0) return '';
+  const counts = listed(
+    [
+      tables > 0 ? many('tables', tables) : null,
+      rows > 0 ? many('rows', rows) : null,
+      singles > 0 ? many('singles', singles) : null,
+    ].filter((part): part is string => part != null),
+  );
+
+  return many('sectionDeleteBody', total, { counts });
+}
+
 /** Delete the plan's ask (pm, 8 Nov 2026): what it deletes, sections counted, then who loses a seat, held chairs too; a sentence with nothing to say is left out. */
 export function deletePlanWords(plan: Plan): string {
   const counts = planCounts(plan);
@@ -1215,7 +1235,12 @@ export const SEATING_STATES = [
   { key: 'sectionDelete', name: 'Delete a section', group: 'The room and its sections' },
   {
     key: 'sectionDeleteEmpty',
-    name: 'Delete a section with no tables',
+    name: 'Delete a section with nothing in it',
+    group: 'The room and its sections',
+  },
+  {
+    key: 'sectionDeleteRows',
+    name: 'Delete a section of rows and single seats',
     group: 'The room and its sections',
   },
   { key: 'addMenu', name: 'Add table, the four shapes', group: 'Tables, rows and seats' },

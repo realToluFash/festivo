@@ -38,6 +38,7 @@ import {
   sampleItems,
   samplePlan,
   sampleTray,
+  sectionDeleteWords,
   unsureLeft,
   peopleIn,
   sectionLine,
@@ -116,6 +117,68 @@ describe('the sample (seating-a-spec §8)', () => {
     expect(planCounts(plan)).toBe('3 sections, 13 tables, 1 row and 2 single seats');
     expect(readRoom('5', 'width', 'us')).toEqual({ refused: 'Use 7 to 1,640 ft.' });
     expect(readRoom('80 ft', 'width', 'us')).toEqual({ cm: 2438 });
+  });
+});
+
+describe('deleting a section names what loses it (sc-54060)', () => {
+  type Furniture = 'table' | 'row' | 'single';
+
+  /** The sample plan with a Ceremony section holding the first free tables, rows and single seats asked for. */
+  function planWith(kinds: readonly Furniture[]) {
+    const plan = samplePlan();
+    const kindOf = (item: Item): Furniture =>
+      item.kind === 'row' || item.kind === 'single' ? item.kind : 'table';
+    const ids = new Set<string>();
+
+    for (const kind of kinds) {
+      const next = plan.items.find((item) => kindOf(item) === kind && !ids.has(item.id));
+
+      if (next == null) throw new Error(`the sample has no more ${kind}s`);
+      ids.add(next.id);
+    }
+
+    return {
+      ...plan,
+      sections: [...plan.sections, { id: 'here', name: 'Ceremony', colour: 'Blue' as const }],
+      items: plan.items.map((item) => (ids.has(item.id) ? { ...item, sec: 'here' } : item)),
+    };
+  }
+
+  it('counts each kind alone, with its verb from the total', () => {
+    expect(sectionDeleteWords(samplePlan(), 'stage')).toBe(
+      'Its 5 tables stay where they are, with no section.',
+    );
+    expect(sectionDeleteWords(planWith(['table']), 'here')).toBe(
+      'Its 1 table stays where it is, with no section.',
+    );
+    expect(sectionDeleteWords(planWith(['row']), 'here')).toBe(
+      'Its 1 row stays where it is, with no section.',
+    );
+    expect(sectionDeleteWords(planWith(['single']), 'here')).toBe(
+      'Its 1 single seat stays where it is, with no section.',
+    );
+    expect(sectionDeleteWords(planWith(['single', 'single']), 'here')).toBe(
+      'Its 2 single seats stay where they are, with no section.',
+    );
+  });
+
+  it('joins the kinds it has, zeros left out, a row counted once', () => {
+    expect(sectionDeleteWords(planWith(['table', 'table', 'row', 'single']), 'here')).toBe(
+      'Its 2 tables, 1 row and 1 single seat stay where they are, with no section.',
+    );
+    expect(sectionDeleteWords(planWith(['table', 'row']), 'here')).toBe(
+      'Its 1 table and 1 row stay where they are, with no section.',
+    );
+    expect(sectionDeleteWords(planWith(['row', 'single', 'single']), 'here')).toBe(
+      'Its 1 row and 2 single seats stay where they are, with no section.',
+    );
+  });
+
+  it('says nothing for an empty section, and the standing line names all three', () => {
+    expect(sectionDeleteWords(planWith([]), 'here')).toBe('');
+    expect(SW.sectionStays).toBe(
+      'Its tables, rows and seats stay where they are, with no section.',
+    );
   });
 });
 
