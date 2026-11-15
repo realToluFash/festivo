@@ -849,6 +849,7 @@ function CoverEdit(props: PartEditProps) {
   const [position, setPosition] = useState<Position>(savedPosition);
   const [described, setDescribed] = useState(saved?.description ?? '');
   const [refused, setRefused] = useState<string | null>(null);
+  const [failed, setFailed] = useState<string | null>(null);
   const [describeError, setDescribeError] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
   const describe = useRef<TextInputInstance>(null);
@@ -896,6 +897,7 @@ function CoverEdit(props: PartEditProps) {
       if (staged.current != null) discardCoverUpload(event.organisationId, staged.current);
       staged.current = signed.key;
       setPhoto({ kind: 'ready', uri: chosen.uri, width: chosen.width, key: signed.key });
+      setFailed(null);
     } catch (error) {
       setPhoto(saved == null ? { kind: 'none' } : { kind: 'saved', cover: saved });
       setRefused(coverRefusalOf(error, t));
@@ -912,7 +914,7 @@ function CoverEdit(props: PartEditProps) {
 
     const trimmed = described.trim();
     setBusy(true);
-    setRefused(null);
+    setFailed(null);
 
     try {
       const updated =
@@ -931,7 +933,7 @@ function CoverEdit(props: PartEditProps) {
       onSaved(updated);
     } catch (error) {
       setBusy(false);
-      setRefused(coverSaveRefusalOf(error, t));
+      setFailed(coverSaveRefusalOf(error, t));
     }
   }
 
@@ -952,6 +954,7 @@ function CoverEdit(props: PartEditProps) {
       verb={t('eventCover.use')}
       changed={changed && photo.kind !== 'uploading'}
       busy={busy}
+      failed={failed}
       onSave={() => void use()}
     >
       <CoverPreview
