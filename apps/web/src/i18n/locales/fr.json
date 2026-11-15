@@ -2871,6 +2871,7 @@
     "whoComing": "Who’s coming with them",
     "recordPlaces_one": "{{count, number}} place · {{coming, number}} coming. Untick anyone who isn’t coming. Places change with Edit.",
     "recordPlaces_other": "{{count, number}} places · {{coming, number}} coming. Untick anyone who isn’t coming. Places change with Edit.",
+    "recordPlaces_many": "{{count, number}} places · {{coming, number}} coming. Untick anyone who isn’t coming. Places change with Edit.",
     "recordFoot": "It counts in the numbers straight away and goes in the activity log. {{name}} can still change it from their link.",
     "chooseReply": "Choose their reply.",
     "chooseHow": "Choose how they told you.",

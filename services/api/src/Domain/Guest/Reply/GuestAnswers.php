@@ -74,11 +74,7 @@ final readonly class GuestAnswers
         return $this->clock->now() >= $guest->getEvent()->getStartsAt();
     }
 
-    /**
-     * Refused 409 `event_paused` while paused, `event_concluded` once over, `replies_closed` from the start or after Reply by; the same answer again keeps its date. Needs go only with Coming (sc-3778), keep the hosts' note, and may drop a host's access need but never add one (422, nothing saved).
-     *
-     * A host's recording (sc-3787) is the guest's reply marked as theirs, under the same rules; it replaces the guest's own answer only once confirmed, 409 `reply_is_theirs` before.
-     */
+    /** Refused 409 `event_paused` while paused, `event_concluded` once over, `replies_closed` from the start or after Reply by; the same answer again keeps its date. Needs go only with Coming (sc-3778), keep the hosts' note, and may drop a host's access need but never add one (422, nothing saved). */
     public function answer(Guest $guest, GuestReply $reply, ?PageReply $page = null, ?RecordedReply $recorded = null): void
     {
         $page ??= new PageReply([], null);
