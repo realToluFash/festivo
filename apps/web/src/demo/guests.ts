@@ -1539,7 +1539,7 @@ function nextDay(iso: string): string {
 }
 
 /** member: a member without guests.manage (sc-3784), who exports without the needs columns. host: guests.manage without events.manage (sc-50409), so no Make live. */
-export type Role = 'owner' | 'host' | 'member' | 'viewer' | 'staff';
+export type Role = 'owner' | 'host' | 'planner' | 'member' | 'viewer' | 'staff';
 export type GuestNote =
   'recorded' | 'notReplaced' | 'linkReplaced' | 'unmarked' | 'unmarkRefused' | 'backOnList';
 export type Invite = 'copied' | 'refused' | 'mark' | 'markRefused' | 'markNotSaved';
@@ -1727,6 +1727,14 @@ export const GUESTS_STATES = [
   },
   { key: 'draftEmptyHost', name: 'An empty Draft without events.manage: Add guest alone' },
   { key: 'draftEmptyViewer', name: 'An empty Draft without guests.manage: no Add guest' },
+  {
+    key: 'draftEmptyEvents',
+    name: 'An empty Draft with events.manage but not guests.manage: Make live alone',
+  },
+  {
+    key: 'draftOneLeft',
+    name: 'A Draft with one guest left, their details open: Remove, then Add guest on the card',
+  },
   { key: 'pausedEmpty', name: 'A Paused event with nobody on its list: Add guest in the header' },
   {
     key: 'finishedEmpty',
@@ -1955,7 +1963,9 @@ export function guestsStart(state: GuestsState | null, params: URLSearchParams):
     state === 'draftGuest' ||
     state === 'draftEmpty' ||
     state === 'draftEmptyHost' ||
-    state === 'draftEmptyViewer'
+    state === 'draftEmptyViewer' ||
+    state === 'draftEmptyEvents' ||
+    state === 'draftOneLeft'
       ? DRAFT
       : state === 'draftPast' || state === 'draftEmptyPast'
         ? DRAFT_PAST
@@ -2057,6 +2067,13 @@ export function guestsStart(state: GuestsState | null, params: URLSearchParams):
       return { ...start, list: [], role: 'host' };
     case 'draftEmptyViewer':
       return { ...start, list: [], role: 'viewer' };
+    case 'draftEmptyEvents':
+      return { ...start, list: [], role: 'planner' };
+    case 'draftOneLeft':
+      return column(guestPane('leila'), {
+        choice: 'all',
+        list: start.list.filter((one) => one.id === 'leila'),
+      });
     case 'finishedEmpty':
       return { ...start, list: [], clock: CLOCKS.finished };
     case 'filterOpen':
@@ -2723,6 +2740,8 @@ export const GUESTS_PAGES: readonly { name: string; states: readonly DemoLink[] 
     'draftEmptyPast',
     'draftEmptyHost',
     'draftEmptyViewer',
+    'draftEmptyEvents',
+    'draftOneLeft',
     'pausedEmpty',
     'finishedEmpty',
   ]),

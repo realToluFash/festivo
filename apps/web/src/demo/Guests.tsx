@@ -296,7 +296,8 @@ function GuestsPage({
   const manages = start.role === 'owner' || start.role === 'host';
   const today = todayOf(start.clock);
   const counts = countsOf(list);
-  const card = guestsCardOf(event, list, start.card, start.clock, manages, start.role === 'owner');
+  const plans = start.role === 'owner' || start.role === 'planner';
+  const card = guestsCardOf(event, list, start.card, start.clock, manages, plans);
   const changes = sample.id === CHANGES_EVENT;
   const listed = changes ? changesSince(since) : [];
   const unseen = changes ? changesSince(looked).length : 0;

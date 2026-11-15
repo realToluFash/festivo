@@ -1944,6 +1944,43 @@ describe('Guests, nobody on the list in each phase (sc-50409)', () => {
     },
   );
 
+  it('gives Make live alone with events.manage and without guests.manage', SLOW, async () => {
+    await guests('draftEmptyEvents');
+
+    expect(screen.getByText('No guests yet')).toBeDefined();
+    expect(screen.getByText('Guests can’t be invited until this event is live.')).toBeDefined();
+    expect(adds()).toHaveLength(0);
+    expect(within(card()).getByRole('button', { name: 'Make live' })).toBeDefined();
+  });
+
+  it('reads as an empty Draft once the last guest is removed and Undo has gone', SLOW, async () => {
+    vi.useFakeTimers({ shouldAdvanceTime: true });
+    try {
+      await guests('draftOneLeft');
+      expect(adds()).toHaveLength(1);
+      expect(within(card()).queryByRole('button', { name: 'Add guest' })).toBeNull();
+
+      fireEvent.click(within(column()).getByRole('button', { name: 'Remove from the list' }));
+      const ask = await screen.findByRole('alertdialog', { name: 'Remove Leila Mansour?' }, WAIT);
+      fireEvent.click(within(ask).getByRole('button', { name: 'Remove' }));
+      const undo = await screen.findByRole('button', { name: 'Undo' }, WAIT);
+
+      act(() => {
+        undo.blur();
+        fireEvent.blur(undo);
+        vi.advanceTimersByTime(11000);
+      });
+      await waitFor(() => expect(screen.queryByRole('button', { name: 'Undo' })).toBeNull(), WAIT);
+
+      expect(screen.getByText('No guests yet')).toBeDefined();
+      expect(adds()).toHaveLength(1);
+      expect(within(card()).getByRole('button', { name: 'Add guest' })).toBeDefined();
+      expect(main().querySelector('.gs-top [data-focus="add"]')).toBeNull();
+    } finally {
+      vi.useRealTimers();
+    }
+  });
+
   it.each([
     ['pausedEmpty', 'Guests can’t be invited while this event is paused.'],
     ['finishedEmpty', 'This event has finished, so guests can’t be invited.'],
