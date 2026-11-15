@@ -31,6 +31,10 @@ appId: host.exp.Exponent
     id: 'guest.record.how.${HOW}'
 - tapOn:
     id: 'guest.record.save'
+- extendedWaitUntil:
+    visible:
+      id: 'guest.saved'
+    timeout: 10000
 - takeScreenshot: saved
 - extendedWaitUntil:
     visible:
