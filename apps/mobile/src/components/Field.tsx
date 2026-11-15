@@ -110,6 +110,7 @@ export function Field({
   help,
   helpAnswer,
   helpInHint = false,
+  linesQuiet = false,
   children,
   ref,
 }: {
@@ -125,6 +126,8 @@ export function Field({
   helpAnswer?: unknown;
   /** The control says the help as its hint, so the lines are not a stop of their own. */
   helpInHint?: boolean;
+  /** The error and help lines are out of TalkBack's reach, so the control is the last view of the Field it can land on. */
+  linesQuiet?: boolean;
   children: ReactNode;
   /** The whole Field, which a client check failing on its picker brings into view. */
   ref?: RefObject<ViewInstance | null> | undefined;
@@ -135,6 +138,7 @@ export function Field({
   const invalidNameID = useId();
   const { t } = useTranslation();
   const { read: helpRead } = useFocusOnAnswer<TextHandle>(helpAnswer);
+  const helpLines = typeof help === 'string' ? [help] : (help ?? []);
   useEffect(() => {
     const mounted = field.current;
 
@@ -177,19 +181,28 @@ export function Field({
         {error == null ? label : withInvalid(label, t('forms.invalid'))}
       </UnseenName>
       <FieldLabel value={{ labelID, line: error, invalidNameID }}>{children}</FieldLabel>
-      {error != null && <FieldError message={error} actions={errorActions} answer={errorAnswer} />}
-      {(typeof help === 'string' ? [help] : (help ?? [])).map((line, index) => (
-        <Text
-          key={line}
-          ref={index === 0 ? helpRead : undefined}
-          size={tokens.typeSmall.size}
-          style={styles.secondary}
-          accessible={helpInHint ? false : undefined}
-          importantForAccessibility={helpInHint ? 'no' : undefined}
+      {(error != null || helpLines.length > 0) && (
+        <View
+          style={styles.field}
+          importantForAccessibility={linesQuiet ? 'no-hide-descendants' : 'auto'}
         >
-          {line}
-        </Text>
-      ))}
+          {error != null && (
+            <FieldError message={error} actions={errorActions} answer={errorAnswer} />
+          )}
+          {helpLines.map((line, index) => (
+            <Text
+              key={line}
+              ref={index === 0 ? helpRead : undefined}
+              size={tokens.typeSmall.size}
+              style={styles.secondary}
+              accessible={helpInHint ? false : undefined}
+              importantForAccessibility={helpInHint ? 'no' : undefined}
+            >
+              {line}
+            </Text>
+          ))}
+        </View>
+      )}
     </View>
   );
 }

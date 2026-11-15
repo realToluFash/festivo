@@ -103,4 +103,19 @@ describe('a refused picker on Android waits for the summary to be said (sc-43907
     expect(native.fieldChecked).toHaveBeenCalledOnce();
     cancel();
   });
+
+  it('says once that its moves are over, so New event gives TalkBack the rest of the form back', () => {
+    native.keyboard.isVisible.mockReturnValue(false);
+    const ended = vi.fn();
+    const cancel = focusPicker(picker, field, summary, ended);
+
+    vi.advanceTimersByTime(saidInFullMs('android', summary));
+    expect(ended).not.toHaveBeenCalled();
+    const [, , inView] = native.fieldChecked.mock.calls[0] as [boolean, null, () => void];
+    inView();
+    vi.advanceTimersByTime(250 + 450 + 600);
+    expect(ended).toHaveBeenCalledOnce();
+    cancel();
+    expect(ended).toHaveBeenCalledOnce();
+  });
 });
