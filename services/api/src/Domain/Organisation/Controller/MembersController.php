@@ -52,7 +52,6 @@ use Symfony\Contracts\Translation\TranslatorInterface;
 /** Settings > Organisation > Members (sc-67): its memberships a page at a time (sc-49170), the invitations, and the moves on them (sc-68). */
 final readonly class MembersController
 {
-    /** Each option under Show and the states it lists, as `memberIsShown` in packages/domain has them. */
     private const array SHOWN = [
         'all' => [MembershipStatus::Active, MembershipStatus::Suspended],
         'active' => [MembershipStatus::Active],
@@ -61,7 +60,6 @@ final readonly class MembersController
         'former' => [MembershipStatus::LeftOrRemoved],
     ];
 
-    /** The web shows People 50 at a time (sc-49170, Paging settled 15 Nov). */
     private const int PAGE = 50;
 
     private const int MOST = 500;
@@ -89,10 +87,7 @@ final readonly class MembersController
     ) {
     }
 
-    /**
-     * A page of People under `show` (sc-49170), oldest first: `after` is the previous page's `next`, the id of its last row, and `next` is null on the last page.
-     * The counts, the card's faces, Waiting and the invitations are the whole organisation's on every page.
-     */
+    /** The counts, the card's faces, Waiting and the invitations are the whole organisation's on every page (sc-49170). */
     #[Route('/api/orgs/{organisationId}/members', name: 'orgs_members', methods: ['GET'])]
     #[InOrganisation(Permission::MembersRead)]
     public function list(Request $request, string $organisationId): JsonResponse
@@ -319,7 +314,6 @@ final readonly class MembersController
         ));
     }
 
-    /** The row the previous page ended on; one the caller is not shown is refused, as a made-up id is. */
     private function listedMember(Organisation $organisation, string $id, bool $decides): Membership
     {
         $membership = Uuid::isValid($id) ? $this->membershipRepository->findOneBy(['id' => $id, 'organisation' => $organisation]) : null;

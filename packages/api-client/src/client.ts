@@ -852,15 +852,11 @@ export const MEMBERS_SHOWN: readonly MembersShow[] = [
 
 /** Settings › Members (sc-49170): People under one option a page at a time, and everything else whole. */
 export interface MembersList {
-  /** The rows read so far under the option, oldest first. */
   members: OrganisationMember[];
   /** What the next page is read after; null once every person under the option is here. */
   next: string | null;
-  /** Everybody each option lists, across the whole organisation. */
   counts: Record<MembersShow, number>;
-  /** The active owners, across the whole organisation. */
   owners: number;
-  /** The first five under All, for the card. */
   faces: OrganisationMember[];
   /** Everybody waiting for approval, only to those who decide on them. */
   waiting: OrganisationMember[];
