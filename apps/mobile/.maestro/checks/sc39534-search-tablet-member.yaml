@@ -1,0 +1,24 @@
+# sc-39534: on the upright tablet, a member match found by email opens Settings › Members with that row in view.
+appId: host.exp.Exponent
+---
+- setOrientation: LANDSCAPE_LEFT
+- waitForAnimationToEnd
+- openLink: ${METRO_URL}/--/calendar
+- extendedWaitUntil:
+    visible:
+      id: 'frame.search'
+    timeout: 30000
+- tapOn:
+    id: 'frame.search'
+- extendedWaitUntil:
+    visible:
+      id: 'search.field'
+    timeout: 15000
+- inputText: 'qa-17947713644'
+- extendedWaitUntil:
+    visible: 'QA Tester'
+    timeout: 15000
+- hideKeyboard
+- tapOn: 'QA Tester'
+- waitForAnimationToEnd
+- takeScreenshot: member-opened

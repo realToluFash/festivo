@@ -1,0 +1,51 @@
+# sc-39534: the app demo's Search states and header, for side-by-side pairs.
+appId: host.exp.Exponent
+---
+- openLink: ${METRO_URL}/--/demo/search?state=idle
+- waitForAnimationToEnd
+- extendedWaitUntil:
+    visible: '.*'
+    timeout: 5000
+- takeScreenshot: demo-idle
+- openLink: ${METRO_URL}/--/demo/search?state=short
+- waitForAnimationToEnd
+- extendedWaitUntil:
+    visible: '.*'
+    timeout: 5000
+- takeScreenshot: demo-short
+- openLink: ${METRO_URL}/--/demo/search?state=mixed
+- waitForAnimationToEnd
+- extendedWaitUntil:
+    visible: '.*'
+    timeout: 5000
+- takeScreenshot: demo-mixed
+- openLink: ${METRO_URL}/--/demo/search?state=long
+- waitForAnimationToEnd
+- extendedWaitUntil:
+    visible: '.*'
+    timeout: 5000
+- takeScreenshot: demo-long
+- openLink: ${METRO_URL}/--/demo/search?state=none
+- waitForAnimationToEnd
+- extendedWaitUntil:
+    visible: '.*'
+    timeout: 5000
+- takeScreenshot: demo-none
+- openLink: ${METRO_URL}/--/demo/search?state=failed
+- waitForAnimationToEnd
+- extendedWaitUntil:
+    visible: '.*'
+    timeout: 5000
+- takeScreenshot: demo-failed
+- openLink: ${METRO_URL}/--/demo/search?state=offline
+- waitForAnimationToEnd
+- extendedWaitUntil:
+    visible: '.*'
+    timeout: 5000
+- takeScreenshot: demo-offline
+- openLink: ${METRO_URL}/--/demo/search-header
+- waitForAnimationToEnd
+- takeScreenshot: demo-header
+- openLink: ${METRO_URL}/--/demo/search-header?on=today
+- waitForAnimationToEnd
+- takeScreenshot: demo-header-today
