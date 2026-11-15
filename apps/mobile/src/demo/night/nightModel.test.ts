@@ -34,8 +34,8 @@ describe('the event day', () => {
     expect(at('04:59')).toBeLessThan(at('05:00', 1));
   });
 
-  it('formats times in the reader’s locale and hour cycle', () => {
-    expect(timeIn('en-US', at('21:50'))).toBe('9:50 PM');
+  it('writes every time on the 24-hour clock, in every locale', () => {
+    expect(timeIn('en-US', at('21:50'))).toBe('21:50');
     expect(timeIn('en-GB', at('21:50'))).toBe('21:50');
     expect(timeIn('fr-FR', at('21:50'))).toBe('21:50');
     expect(weekdayIn('en-US', 0)).toBe('Friday');
@@ -77,7 +77,7 @@ describe('Now, Next and Later', () => {
     const view = hall('behind');
 
     expect(view.header).toEqual({ kind: 'behind', minutes: 12 });
-    expect(view.next?.expected).toBe('8:42 PM');
+    expect(view.next?.expected).toBe('20:42');
     expect(hall('behind', 'en-GB').next?.expected).toBe('20:42');
   });
 
@@ -112,8 +112,8 @@ describe('Now, Next and Later', () => {
     const view = hall('later_started_done');
 
     expect(view.now).toBeNull();
-    expect(view.lastFinished).toBe('Cake cutting finished at 8:51 PM.');
-    expect(view.later[0]).toMatchObject({ mark: 'done', time: 'started 8:31 PM' });
+    expect(view.lastFinished).toBe('Cake cutting finished at 20:51.');
+    expect(view.later[0]).toMatchObject({ mark: 'done', time: 'started 20:31' });
   });
 
   it('gives a skipped item no time, and the items after it continue from the one before', () => {
@@ -171,7 +171,7 @@ describe('the end of the night', () => {
     expect(hall('end_ahead').finished?.sentence).toBe('Finished 6 min ahead of plan.');
     expect(hall('end_on_plan').finished?.sentence).toBe('Finished on plan.');
     expect(hall('end_behind').finished?.workedOut).toBe(
-      'Last item finished at 12:42 AM, planned to finish at 12:30 AM.',
+      'Last item finished at 00:42, planned to finish at 00:30.',
     );
   });
 

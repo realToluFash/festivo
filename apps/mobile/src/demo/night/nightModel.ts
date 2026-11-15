@@ -1,3 +1,5 @@
+import { writtenTime } from '../clock.ts';
+
 /** The night screen (sc-3895, RunOfShow.dc.html's night frames on page e33): Now, Next and Later for one track, the presses, and every state the board's Tweak draws. Times are minutes from 05:00 on the event's first day. */
 export const NIGHT_EVENT_NAME = 'Adaeze & Tunde’s wedding';
 
@@ -103,13 +105,9 @@ function wallOf(minutes: number): { day: number; hour: number; minute: number } 
 }
 
 export function timeIn(locale: string, minutes: number): string {
-  const { day, hour, minute } = wallOf(minutes);
+  const { hour, minute } = wallOf(minutes);
 
-  return new Intl.DateTimeFormat(locale, {
-    hour: 'numeric',
-    minute: '2-digit',
-    timeZone: 'UTC',
-  }).format(Date.UTC(2026, 10, 20 + day, hour, minute));
+  return writtenTime(`${String(hour).padStart(2, '0')}:${String(minute).padStart(2, '0')}`, locale);
 }
 
 export function weekdayIn(locale: string, day: number): string {
@@ -515,7 +513,7 @@ const GAP: Marks = { ...DINED, speeches: ['19:50', '20:28'] };
 export const NIGHT_STATES = {
   populated: { name: 'Speeches on, First dance next on plan', clock: '20:02', hall: SPEAKING },
   behind: {
-    name: '12 min behind: First dance “about 8:42 PM”',
+    name: '12 min behind: First dance “about 20:42”',
     clock: '20:20',
     hall: { ...DINED, speeches: ['20:02'] },
   },
@@ -600,7 +598,7 @@ export const NIGHT_STATES = {
     foyer: { ...FOYER_RUN, carriages: ['00:31'] },
   },
   picker_earlier_day: {
-    name: 'Saturday 9:10 AM: Friday’s Foyer still Now, “Foyer · Friday” in the picker',
+    name: 'Saturday 09:10: Friday’s Foyer still Now, “Foyer · Friday” in the picker',
     clock: '09:10',
     hall: {},
     foyer: { ...FOYER_RUN, bar: ['23:30'] },
@@ -703,9 +701,9 @@ export const NIGHT_BOARDS = [
     href: '/demo/night?state=populated&tracks=one',
   },
   {
-    title: 'The night · en-GB times · 21:50',
-    what: 'The reader’s locale and its hour cycle',
-    href: '/demo/night?state=behind&locale=en-GB',
+    title: 'The night · fr-FR · “Foyer · vendredi” in the picker',
+    what: 'The weekday in the reader’s locale; times stay on the 24-hour clock',
+    href: '/demo/night?state=picker_earlier_day&locale=fr-FR',
   },
   {
     title: 'The night · end_behind without events.manage',
