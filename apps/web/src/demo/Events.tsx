@@ -99,7 +99,7 @@ export function Events() {
           events={start.first || fresh ? [] : sidebarEvents(start.emptied)}
           tell={tell}
           listing
-          person={start.asks ? VIEWERS.ana : VIEWERS.folake}
+          person={start.asks || start.reads ? VIEWERS.ana : VIEWERS.folake}
           inert={covered}
         />
       )}
@@ -279,7 +279,7 @@ function EventsList({ start, tell }: { start: ReturnType<typeof listStart>; tell
       <div className="ev-column">
         {offline && <OfflineBox onRetry={() => setOffline(false)} />}
         <div>
-          <ListTop tell={tell} />
+          <ListTop tell={tell} creates={!start.reads} />
           {summary != null && <p className="desk-line">{summary}</p>}
         </div>
         {start.readsGuests && (

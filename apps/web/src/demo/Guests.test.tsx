@@ -255,6 +255,7 @@ describe('Guests, the list (sc-31781)', () => {
     expect(screen.queryByText(/Change its dates first/u)).toBeNull();
     expect(screen.queryByRole('button', { name: 'Change dates' })).toBeNull();
     expect(screen.queryByRole('button', { name: 'Make live' })).toBeNull();
+    expect(screen.getByLabelText('Ana Souza, Member')).toBeDefined();
   });
 
   it(
@@ -266,6 +267,7 @@ describe('Guests, the list (sc-31781)', () => {
       expect(screen.getByText('Guests can’t be invited while this event is paused.')).toBeDefined();
       expect(screen.queryByRole('button', { name: 'Resume' })).toBeNull();
       expect(screen.queryByRole('button', { name: 'Add guest' })).toBeNull();
+      expect(screen.getByLabelText('Ana Souza, Member')).toBeDefined();
     },
   );
 
