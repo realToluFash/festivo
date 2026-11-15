@@ -15,9 +15,11 @@ use App\Entity\Role;
 use App\Entity\User;
 use App\Enum\EventRole;
 use App\Enum\MembershipStatus;
+use App\Enum\Permission;
 use App\Enum\SeededRole;
 use App\Locale\NameNormaliser;
 use App\Tests\ApiTestCase;
+use App\Tests\Double\WithholdingMembershipDirectory;
 use App\Tests\Traits\OnboardsAccounts;
 use App\Tests\Traits\PutsPeopleOnEvents;
 use DateTimeImmutable;
@@ -173,6 +175,27 @@ final class SearchTest extends ApiTestCase
 
         self::assertSame(['Inês Rocha'], self::names($this->found($this->owner, 'rocha')['members'])['names']);
         self::assertSame(['Inês Rocha'], self::names($this->found($admin, 'rocha')['members'])['names']);
+
+        self::service(WithholdingMembershipDirectory::class)->withhold(Permission::MembersManage);
+
+        self::assertSame(['total' => 0, 'matches' => []], $this->found($admin, 'rocha')['members']);
+        self::assertSame(['Julien Moreau'], self::names($this->found($admin, 'julien')['members'])['names']);
+    }
+
+    #[Test]
+    public function somebodyWhoMayOpenAnEventButNotItsGuestsFindsTheEventAndNoGuests(): void
+    {
+        $gala = $this->create('Gala Lucía', '2026-11-14T16:00');
+        $this->guest($gala, 'Lucía Ortega');
+        $member = $this->member('kemi@ire.events', 'Kemi Adebayo', SeededRole::Member);
+        self::onEvent($member, $gala, EventRole::CanView);
+        self::service(WithholdingMembershipDirectory::class)->withhold(Permission::GuestsRead);
+
+        $found = $this->found($member, 'lucia');
+
+        self::assertSame(['total' => 1, 'names' => ['Gala Lucía']], self::names($found['events']));
+        self::assertNull($found['guests']);
+        self::assertSame(['events' => true, 'guests' => false, 'members' => false], $this->reach($member));
     }
 
     #[Test]
