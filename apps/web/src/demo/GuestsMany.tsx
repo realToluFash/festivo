@@ -9,7 +9,7 @@ import { EventsShell } from './EventParts.tsx';
 import { EventSidebar } from './EventSidebar.tsx';
 import { CLOCKS, type SampleEvent, sampleEvent } from './events.ts';
 import { AddForm } from './GuestForms.tsx';
-import { GroupChips } from './GuestGroups.tsx';
+import { GroupChips, GroupsColumn } from './GuestGroups.tsx';
 import { SearchRow } from './Guests.tsx';
 import { GuestsCardView, SelectBar, SelectRows, SelectedSaid } from './GuestsParts.tsx';
 import { RMW, type Removed, UNDO_SECONDS, nextCount } from './guestRemove.ts';
@@ -17,11 +17,13 @@ import {
   GGW,
   type GroupFilter,
   type GuestGroup,
+  deleteGroup,
   groupCounts,
   groupLine,
   groupNameLength,
   groupProblem,
   makeGroup,
+  renameGroup,
   settleGroup,
   sortedGroups,
 } from './guestGroups.ts';
@@ -137,6 +139,7 @@ function ManyPage({ event, start, tell }: { event: SampleEvent; start: ManyStart
   const [line, setLine] = useState<Line | null>(start.line);
   const [undo, setUndo] = useState<Removed[] | null>(start.undo);
   const [adding, setAdding] = useState(false);
+  const [grouping, setGrouping] = useState(false);
   const [emptied, setEmptied] = useState(start.list.length === 0);
   const manages = start.manages;
   const counts = countsOf(list);
@@ -159,7 +162,7 @@ function ManyPage({ event, start, tell }: { event: SampleEvent; start: ManyStart
   const marks = invitesOn(event, CLOCKS.rest);
   const empty = list.length === 0;
   /** sc-50772: once a removal empties the list, the line sits above the card until Undo or its 10 seconds end; a save there clears any filter so the saved guest shows. */
-  const lineOnTop = empty || adding || emptied;
+  const lineOnTop = empty || adding || grouping || emptied;
   const card = guestsCardOf(event, list, 'live', CLOCKS.rest, manages);
 
   function focus(...keys: string[]): void {
@@ -281,8 +284,15 @@ function ManyPage({ event, start, tell }: { event: SampleEvent; start: ManyStart
   }
 
   function startAdd(): void {
+    setGrouping(false);
     setAdding(true);
     focus('name');
+  }
+
+  function openGroups(): void {
+    setAdding(false);
+    setGrouping(true);
+    focus('form-heading');
   }
 
   function added(values: Values): void {
@@ -344,6 +354,15 @@ function ManyPage({ event, start, tell }: { event: SampleEvent; start: ManyStart
           <h1 className="gs-title" tabIndex={-1} data-focus="title">
             {GW.title}
           </h1>
+          <button
+            type="button"
+            className="gs-pill is-secondary"
+            aria-pressed={grouping}
+            data-focus="groups"
+            onClick={openGroups}
+          >
+            {GGW.groups}
+          </button>
         </header>
         {lineOnTop && <div className="gm-dock">{said}</div>}
         <GuestsCardView
@@ -352,7 +371,7 @@ function ManyPage({ event, start, tell }: { event: SampleEvent; start: ManyStart
           step={card.step === 'add' ? GW.addGuest : null}
           onStep={startAdd}
         />
-        <div className={adding ? 'gs-cols' : undefined}>
+        <div className={adding || grouping ? 'gs-cols' : undefined}>
           <section className="gs-list gm-list" aria-label={GW.title}>
             {!empty && (
               <>
@@ -487,6 +506,30 @@ function ManyPage({ event, start, tell }: { event: SampleEvent; start: ManyStart
                   focus(line != null ? 'line' : 'title');
                 }}
                 onAdd={added}
+              />
+            </section>
+          )}
+          {grouping && (
+            <section className="gs-column" aria-label={GGW.groups}>
+              <GroupsColumn
+                groups={groups}
+                list={list}
+                manages={manages}
+                start={{}}
+                focus={focus}
+                onMake={(name) => setGroups((was) => makeGroup(was, name).groups)}
+                onRename={(id, name) => setGroups((was) => renameGroup(was, id, name))}
+                onDelete={(id) => {
+                  const after = deleteGroup(groups, list, id);
+
+                  setGroups(after.groups);
+                  setList(after.list);
+                  if (groupFilter === id) setGroupFilter(null);
+                }}
+                onDone={() => {
+                  setGrouping(false);
+                  focus('groups');
+                }}
               />
             </section>
           )}
