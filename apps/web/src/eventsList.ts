@@ -61,7 +61,7 @@ export function daysWords(
   t: TFunction,
   keepDays = false,
 ): string {
-  const days = eventDayWords(event, now, locale, keepDays);
+  const days = eventDayWords(event, now, locale, { keepDays });
 
   switch (days.kind) {
     case 'calledOffOn':

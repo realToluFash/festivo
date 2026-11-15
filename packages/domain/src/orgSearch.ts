@@ -1,4 +1,4 @@
-import { formatEventWeekday } from './datetime.ts';
+import { formatEventDate } from './datetime.ts';
 import type { EventState } from './eventStates.ts';
 import { eventDayWords, notThisYear } from './eventsHome.ts';
 import { roleName } from './organisations.ts';
@@ -122,7 +122,7 @@ export function searchGroups(
         name: guest.name,
         line: word('search.line.guest', {
           event: guest.event.name,
-          day: formatEventWeekday(
+          day: formatEventDate(
             guest.event.startsAt,
             guest.event.timeZone,
             locale,
@@ -153,7 +153,7 @@ export function searchTotal(groups: readonly SearchGroup[]): number {
 }
 
 function eventLine(event: FoundEvent, word: Word, now: Date, locale: string): string {
-  const days = eventDayWords(event, now, locale);
+  const days = eventDayWords(event, now, locale, { day: formatEventDate });
   const dates =
     days.kind === 'oneDay'
       ? days.day

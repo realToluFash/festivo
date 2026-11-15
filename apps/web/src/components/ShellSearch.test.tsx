@@ -5,6 +5,7 @@ import { afterEach, describe, expect, it, vi } from 'vitest';
 
 import { api } from '../api.ts';
 import { keyHint } from '../searchLinks.ts';
+import { cssRule, stylesheet } from '../test-styles.ts';
 import { SearchRow, ShellSearch } from './ShellSearch.tsx';
 
 function guest(id: string, name: string) {
@@ -199,6 +200,24 @@ describe('Search (sc-39534)', () => {
     expect(await screen.findAllByText('Nothing matches “ines”.')).toHaveLength(2);
     expect(screen.getByRole('button', { name: 'Clear search' })).toBeTruthy();
     expect(screen.queryByText('Search did not work. Try again in a moment.')).toBeNull();
+  });
+
+  it('sets Clear search as a text action and the row’s label beside its icon, on any page', async () => {
+    reaching();
+    vi.spyOn(api, 'search').mockResolvedValue({ events: null, guests: null, members: null });
+    shell();
+    fireEvent.click(screen.getByRole('button', { name: 'Search' }));
+    fireEvent.change(screen.getByRole('combobox'), { target: { value: 'zzqx' } });
+
+    await screen.findByRole('button', { name: 'Clear search' });
+
+    expect(screen.getByRole('dialog').classList).toContain('desk');
+    expect(
+      cssRule(':where(.desk) button', stylesheet(import.meta.dirname, 'SettingsParts.css')),
+    ).toContain('background: none');
+    expect(cssRule('.today-search', stylesheet(import.meta.dirname, 'today.css'))).toContain(
+      'text-align: start',
+    );
   });
 
   it('writes the key hint the reader’s keyboard has', () => {
