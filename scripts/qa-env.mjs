@@ -1025,7 +1025,10 @@ export function testerOf(worktree) {
   return match[1] === '-lan' ? LAN : Number(match[1] || 1);
 }
 
-let CONFIG = qaConfig(INSTALLED ? (testerOf(resolve(HERE, '../..')) ?? 1) : 1);
+// Run from a QA worktree, installed or not, the harness is that worktree's tester.
+const OWN_TESTER = testerOf(resolve(HERE, INSTALLED ? '../..' : '..'));
+
+let CONFIG = qaConfig(OWN_TESTER ?? 1);
 
 function git(args, cwd) {
   const result = spawnSync('git', args, { cwd, encoding: 'utf8' });
@@ -4277,7 +4280,7 @@ if (process.argv[1] && resolve(process.argv[1]) === fileURLToPath(import.meta.ur
   const flag = argv.indexOf('--tester');
   if (flag !== -1) {
     const asked = argv[flag + 1] === LAN ? LAN : Number(argv[flag + 1]);
-    if (INSTALLED && asked !== CONFIG.tester) {
+    if (OWN_TESTER !== null && asked !== LAN && asked !== OWN_TESTER) {
       console.error(`this harness belongs to tester ${CONFIG.tester}, not ${argv[flag + 1]}`);
       process.exit(2);
     }
