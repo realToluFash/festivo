@@ -1,0 +1,21 @@
+# New event with a name typed and its cursor left in Event name, scrolled to Type and left at rest, for a TalkBack pass. sc-43908. Needs ${METRO_URL}.
+appId: host.exp.Exponent
+---
+- openLink: ${METRO_URL}/--/events/new
+- extendedWaitUntil:
+    visible:
+      id: 'eventForm.name'
+    timeout: 30000
+- tapOn:
+    id: 'eventForm.name'
+- inputText: 'Held focus party'
+- hideKeyboard
+- scrollUntilVisible:
+    element:
+      id: 'eventForm.type'
+    direction: DOWN
+    centerElement: true
+- waitForAnimationToEnd
+- assertVisible:
+    id: 'eventForm.type'
+- takeScreenshot: name-held

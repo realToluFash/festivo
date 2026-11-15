@@ -1,0 +1,39 @@
+# sc-45141: the Dates row of a called-off event (${CALLED}), one ended after its start (${ENDED}) and one past its end (${PAST}). Needs ${METRO_URL}.
+appId: host.exp.Exponent
+---
+- openLink: ${METRO_URL}/--/events/${CALLED}
+- extendedWaitUntil:
+    visible:
+      id: 'events.page'
+    timeout: 90000
+- takeScreenshot: calledoff-top
+- scrollUntilVisible:
+    element:
+      text: '(Dates|Fechas|Datas) · .*'
+    centerElement: true
+    timeout: 20000
+- takeScreenshot: calledoff-dates
+- openLink: ${METRO_URL}/--/events/${ENDED}
+- extendedWaitUntil:
+    visible:
+      id: 'events.page'
+    timeout: 90000
+- takeScreenshot: ended-top
+- scrollUntilVisible:
+    element:
+      text: '(Dates|Fechas|Datas) · .*'
+    centerElement: true
+    timeout: 20000
+- takeScreenshot: ended-dates
+- openLink: ${METRO_URL}/--/events/${PAST}
+- extendedWaitUntil:
+    visible:
+      id: 'events.page'
+    timeout: 90000
+- takeScreenshot: pastend-top
+- scrollUntilVisible:
+    element:
+      text: '(Dates|Fechas|Datas) · .*'
+    centerElement: true
+    timeout: 20000
+- takeScreenshot: pastend-dates

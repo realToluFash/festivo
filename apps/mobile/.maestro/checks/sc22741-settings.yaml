@@ -1,0 +1,11 @@
+# sc-22741: Settings, the Account row's line and, on an iPad, the Choose a section pane.
+appId: host.exp.Exponent
+---
+- openLink: ${METRO_URL}/--/settings
+- extendedWaitUntil:
+    visible:
+      id: 'settings.account'
+    timeout: 30000
+- waitForAnimationToEnd:
+    timeout: 3000
+- takeScreenshot: settings

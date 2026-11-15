@@ -1,0 +1,53 @@
+# sc-28178: Alpha is the member's only organisation, and they are suspended, removed or it is
+# deleted with the app open; the next move opens You are not in an organisation. Each change
+# once, the member made again before each, as sc28178-gone-moves-on joins Alpha before each.
+appId: host.exp.Exponent
+---
+- runFlow:
+    file: ../checks/sc28178/alone.yaml
+    env:
+      ORG: Alpha
+- runFlow:
+    file: ../checks/sc28178/changed.yaml
+    env:
+      ORG: Alpha
+      FROM: tab-events
+      CHANGE: suspend
+      MOVE: frame.calendar
+- extendedWaitUntil:
+    visible:
+      id: 'noOrganisation'
+    timeout: 20000
+- takeScreenshot: suspended-none
+- runFlow:
+    file: ../checks/sc28178/alone.yaml
+    env:
+      ORG: Alpha
+- runFlow:
+    file: ../checks/sc28178/changed.yaml
+    env:
+      ORG: Alpha
+      FROM: tab-events
+      CHANGE: remove
+      MOVE: frame.home
+- extendedWaitUntil:
+    visible:
+      id: 'noOrganisation'
+    timeout: 20000
+- takeScreenshot: removed-none
+- runFlow:
+    file: ../checks/sc28178/alone.yaml
+    env:
+      ORG: Alpha
+- runFlow:
+    file: ../checks/sc28178/changed.yaml
+    env:
+      ORG: Alpha
+      FROM: tab-events
+      CHANGE: delete
+      MOVE: frame.home
+- extendedWaitUntil:
+    visible:
+      id: 'noOrganisation'
+    timeout: 20000
+- takeScreenshot: deleted-none

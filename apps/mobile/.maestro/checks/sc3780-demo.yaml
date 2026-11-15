@@ -1,0 +1,27 @@
+# sc-3780: the app demo's Reply by states, for side-by-side pairs.
+appId: host.exp.Exponent
+---
+- openLink: ${METRO_URL}/--/demo/events/evt-wed-4?state=replyBy
+- waitForAnimationToEnd:
+    timeout: 8000
+- takeScreenshot: demo-replyBy
+- openLink: ${METRO_URL}/--/demo/events/evt-wed-4?state=replyByError
+- waitForAnimationToEnd:
+    timeout: 8000
+- takeScreenshot: demo-replyByError
+- openLink: ${METRO_URL}/--/demo/events/evt-wed-4?state=replyBySooner
+- waitForAnimationToEnd:
+    timeout: 8000
+- takeScreenshot: demo-replyBySooner
+- openLink: ${METRO_URL}/--/demo/events/evt-wed-4?state=replyByNow
+- waitForAnimationToEnd:
+    timeout: 8000
+- takeScreenshot: demo-replyByNow
+- openLink: ${METRO_URL}/--/demo/events/evt-wed-4?state=replyBySaved
+- waitForAnimationToEnd:
+    timeout: 3000
+- takeScreenshot: demo-replyBySaved
+- openLink: ${METRO_URL}/--/demo/guests?state=repliesClosed
+- waitForAnimationToEnd:
+    timeout: 8000
+- takeScreenshot: demo-repliesClosed

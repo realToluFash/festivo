@@ -1,0 +1,56 @@
+framework:
+    cache:
+        # Unique name of your app: used to compute stable namespaces for cache keys.
+        #prefix_seed: your_vendor_name/app_name
+
+        # The "app" cache stores to the filesystem by default.
+        # The data in this cache should persist between deploys.
+        # Other options include:
+
+        # Redis
+        #app: cache.adapter.redis
+        #default_redis_provider: redis://localhost
+
+        # APCu (not recommended with heavy random-write workloads as memory fragmentation can cause perf issues)
+        #app: cache.adapter.apcu
+
+        # Namespaced pools use the above "app" backend by default
+        #pools:
+        #my.dedicated.cache: null
+
+        pools:
+            # Every API container has to count against one budget, or "five per
+            # address" is five per address per container.
+            cache.rate_limiter:
+                adapter: cache.adapter.redis
+                provider: Redis
+            # The pick and the save can reach different containers, and the save
+            # reads only what the pick cached.
+            cache.address:
+                adapter: cache.adapter.redis
+                provider: Redis
+
+when@test:
+    framework:
+        cache:
+            pools:
+                # Rate-limit budgets in memory, so each kernel boot starts with a
+                # full one.
+                #
+                # On the filesystem they survive both the test and the run: a
+                # suite that exercises a limited endpoint enough times exhausts
+                # the budget partway through and every later test gets a 429 —
+                # which looks like whatever those tests were actually asserting,
+                # and gets worse as tests are added rather than failing cleanly
+                # once.
+                #
+                # Still a real limiter, so the limit itself is still tested; see
+                # AssistantTest.
+                cache.rate_limiter:
+                    adapter: cache.adapter.array
+                    provider: ~
+                # On the filesystem, so a pick survives the kernel reboot
+                # between a test's requests, as it does between containers.
+                cache.address:
+                    adapter: cache.adapter.filesystem
+                    provider: ~

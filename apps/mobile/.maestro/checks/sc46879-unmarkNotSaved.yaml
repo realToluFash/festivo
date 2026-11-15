@@ -1,0 +1,53 @@
+# sc-46879: an un-mark of ${KEMI} failing on a server error (a trigger on the QA stack), beside the demo's unmarkNotSaved.
+appId: host.exp.Exponent
+---
+- setOrientation: ${ORIENT}
+- openLink: ${METRO_URL}/--/events/${LIVE}?area=guests
+- extendedWaitUntil:
+    visible:
+      id: 'guests.card'
+    timeout: 30000
+- waitForAnimationToEnd:
+    timeout: 4000
+- tapOn:
+    id: 'guests.search'
+- inputText: 'Kemi'
+- hideKeyboard
+- extendedWaitUntil:
+    visible:
+      id: 'guests.row.${KEMI}'
+    timeout: 10000
+- tapOn:
+    id: 'guests.row.${KEMI}'
+- extendedWaitUntil:
+    visible:
+      id: 'guest.${KEMI}'
+    timeout: 20000
+- waitForAnimationToEnd:
+    timeout: 3000
+- scrollUntilVisible:
+    element:
+      id: 'guest.unmark'
+    direction: DOWN
+- tapOn:
+    id: 'guest.unmark'
+- waitForAnimationToEnd:
+    timeout: 6000
+- takeScreenshot: unmarkNotSaved
+- swipe:
+    direction: DOWN
+- swipe:
+    direction: DOWN
+- swipe:
+    direction: DOWN
+- waitForAnimationToEnd:
+    timeout: 2000
+- takeScreenshot: unmarkNotSaved-top
+- scroll
+- takeScreenshot: unmarkNotSaved-scrolled
+- openLink: ${METRO_URL}/--/demo/guests?state=unmarkNotSaved
+- waitForAnimationToEnd:
+    timeout: 8000
+- takeScreenshot: demo-unmarkNotSaved
+- scroll
+- takeScreenshot: demo-unmarkNotSaved-scrolled
