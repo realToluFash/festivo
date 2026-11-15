@@ -1,0 +1,15 @@
+# sc-29881: the Today demo's end-of-year party card on a phone at ?${QS}, swiped to in the carousel, for the side-by-side pair.
+appId: host.exp.Exponent
+---
+- runFlow: sc29881-demo.yaml
+- swipe:
+    start: 85%, 70%
+    end: 25%, 70%
+    duration: 700
+- waitForAnimationToEnd
+- swipe:
+    start: 85%, 70%
+    end: 25%, 70%
+    duration: 700
+- waitForAnimationToEnd
+- takeScreenshot: party
