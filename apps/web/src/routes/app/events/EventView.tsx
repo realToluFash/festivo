@@ -8,7 +8,7 @@ import {
 } from '@soirely/domain';
 import { type ReactNode, type RefObject, useEffect, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { useParams } from 'react-router';
+import { Navigate, useParams } from 'react-router';
 
 import { BackControl } from '../../../components/BackControl.tsx';
 import { api } from '../../../api.ts';
@@ -58,6 +58,17 @@ export function EventDates() {
 
 export function EventPeoplePage() {
   return <ForEvent page="people" />;
+}
+
+export function EventRoster() {
+  return <ForEvent page="staff" />;
+}
+
+/** Staff opens its first tab, the Roster (sc-3906). */
+export function EventStaff() {
+  const { eventId = '' } = useParams();
+
+  return <Navigate replace to={`/app/events/${encodeURIComponent(eventId)}/staff/roster`} />;
 }
 
 /** One of the areas not built yet: its panel says it is coming (sc-22103). */

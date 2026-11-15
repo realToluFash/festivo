@@ -116,7 +116,7 @@ async function onRoster(
   });
   render(
     <RouterProvider
-      router={createMemoryRouter(routes, { initialEntries: ['/app/events/ev_1/staff'] })}
+      router={createMemoryRouter(routes, { initialEntries: ['/app/events/ev_1/staff/roster'] })}
     />,
   );
   await screen.findByRole('heading', { level: 1, name: 'Staff' });
@@ -129,6 +129,22 @@ afterEach(() => {
 });
 
 describe('The Roster on the Staff page (sc-3906)', () => {
+  it('opens from Staff at its own address, with no tab bar while it is the only tab', async () => {
+    signedIn();
+    vi.spyOn(globalThis, 'fetch').mockImplementation(async (input) =>
+      new URL(String(input)).pathname === '/api/events/ev_1'
+        ? json({ event: { ...EVENT, permissions: OWNER_PERMISSIONS, phase: 'live' } })
+        : json({ staff: [] }),
+    );
+    const router = createMemoryRouter(routes, { initialEntries: ['/app/events/ev_1/staff'] });
+    render(<RouterProvider router={router} />);
+
+    expect(await screen.findByText('Nobody on the staff yet')).toBeDefined();
+    expect(router.state.location.pathname).toBe('/app/events/ev_1/staff/roster');
+    expect(router.state.historyAction).toBe('REPLACE');
+    expect(screen.queryByRole('navigation', { name: 'Staff' })).toBeNull();
+  });
+
   it('adds a person by name alone, refusing a blank name beside its field', async () => {
     signedIn();
     const sent = await onRoster({

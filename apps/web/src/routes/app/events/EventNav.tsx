@@ -100,7 +100,7 @@ export function useInsideEvent(): InsideEvent | null {
 
 function useRoutedEvent(): InsideEvent | null {
   const page = useMatch('/app/events/:eventId');
-  const part = useMatch('/app/events/:eventId/:part');
+  const part = useMatch('/app/events/:eventId/:part/*');
 
   if (page?.params.eventId != null && page.params.eventId !== 'new') {
     return { eventId: page.params.eventId, area: 'overview', onPage: true };

@@ -143,11 +143,6 @@ export function RosterArea({ event }: { event: OrganisationEvent }) {
             <p className="mn-sub">{t('roster.sub')}</p>
           </div>
         </header>
-        <nav className="sn-tabs" aria-label={t('roster.tabs')}>
-          <span className="sn-tab" aria-current="page">
-            {t('roster.roster')}
-          </span>
-        </nav>
         {load.kind === 'loading' && (
           <Skeleton words={t('roster.loading')} shape="rows" rowHeight={56} />
         )}

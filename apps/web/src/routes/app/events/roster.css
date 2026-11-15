@@ -145,37 +145,6 @@
   outline: none;
 }
 
-.rs .sn-tabs {
-  display: flex;
-  gap: var(--spaceHair);
-  align-self: flex-start;
-  padding: var(--spaceHair);
-  border-radius: var(--radiusPill);
-  background: var(--colorInset);
-}
-
-.rs .sn-tab {
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  min-height: var(--sizeHit);
-  padding: 0 var(--spaceLg);
-  border-radius: var(--radiusPill);
-  color: var(--colorInkSecondary);
-  font: var(--typeSmallStrong);
-}
-
-.rs .sn-tab[aria-current] {
-  background: var(--colorCard);
-  box-shadow: var(--shadowKnob);
-  color: var(--colorAccentText);
-}
-
-.rs button.sn-tab:hover,
-.rs a.sn-tab:hover {
-  color: var(--colorInk);
-}
-
 .rs .sn-card {
   display: flex;
   flex-direction: column;
