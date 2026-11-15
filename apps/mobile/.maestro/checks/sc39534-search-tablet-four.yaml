@@ -4,12 +4,24 @@ appId: host.exp.Exponent
 - setOrientation: ${WIDE}
 - waitForAnimationToEnd
 - openLink: ${METRO_URL}/--/
+- extendedWaitUntil:
+    visible:
+      id: 'home.switchOrganisation'
+    timeout: 30000
 - waitForAnimationToEnd
 - takeScreenshot: wide-today
 - openLink: ${METRO_URL}/--/events
+- extendedWaitUntil:
+    visible:
+      id: 'events.count'
+    timeout: 30000
 - waitForAnimationToEnd
 - takeScreenshot: wide-events
 - openLink: ${METRO_URL}/--/calendar
+- extendedWaitUntil:
+    visible:
+      id: 'calendar.grid'
+    timeout: 30000
 - waitForAnimationToEnd
 - takeScreenshot: wide-calendar
 - openLink: ${METRO_URL}/--/settings
@@ -35,11 +47,23 @@ appId: host.exp.Exponent
 - setOrientation: ${UPRIGHT}
 - waitForAnimationToEnd
 - openLink: ${METRO_URL}/--/
+- extendedWaitUntil:
+    visible:
+      id: 'today.search'
+    timeout: 30000
 - waitForAnimationToEnd
 - takeScreenshot: upright-today
 - openLink: ${METRO_URL}/--/settings
+- extendedWaitUntil:
+    visible:
+      id: 'frame.search'
+    timeout: 30000
 - waitForAnimationToEnd
 - takeScreenshot: upright-settings
 - openLink: ${METRO_URL}/--/calendar
+- extendedWaitUntil:
+    visible:
+      id: 'calendar.grid'
+    timeout: 30000
 - waitForAnimationToEnd
 - takeScreenshot: upright-calendar
