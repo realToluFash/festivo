@@ -143,7 +143,7 @@ export const QUOTE_LINES = 6;
 export const SAMPLE_QUOTE = 'Yes, we’ll be there, the two of us. Thank you for having us!';
 export const LONG_QUOTE = [
   'Hello Folake! So sorry for the slow reply, it has been a mad few weeks at the hospital.',
-  'Yes, we will be there, the two of us. Adanna is coming with me, she says she would not miss it for anything.',
+  'Yes, we will be there, the two of us. Adanna is coming with me and would not miss it for anything.',
   'One thing: Adanna has a nut allergy, a bad one, so please could the kitchen know? Peanuts and tree nuts both.',
   'We land on the Friday and are staying near the venue, so the 18:00 start is fine for us.',
   'Do we need to bring anything, or wear anything in particular? Adanna wants to know about colours.',
