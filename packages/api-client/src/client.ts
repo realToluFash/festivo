@@ -58,9 +58,17 @@ import {
   asSeating,
   type Seating,
   type SeatingRoom,
+  type SeatingTableChanges,
   type SectionColour,
+  type TableShape,
   versionTag,
 } from './seating.ts';
+
+/** A table call's answer: the plan whole, and the table it added or changed. */
+export interface SeatingWithTable {
+  seating: Seating;
+  tableId: string;
+}
 
 /** See docs/architecture/sessions.md. */
 export type RefreshTokenDelivery = 'body' | 'cookie';
@@ -2170,6 +2178,55 @@ export class ApiClient {
     );
   }
 
+  /** Of the shape's default size and seats, named "Table {n}"; `tableId` is the one added. Refused 422 on a shape outside the four. */
+  async addSeatingTable(eventId: string, shape: TableShape): Promise<SeatingWithTable> {
+    return this.seatingWithTable(
+      await this.post<{ seating?: unknown; tableId?: unknown }>(this.tablesPath(eventId), {
+        shape,
+      }),
+    );
+  }
+
+  /** Refused `validation_failed` beside each field, and 412 with `changedBy` when a colleague changed it since `version`. */
+  async changeSeatingTable(
+    eventId: string,
+    tableId: string,
+    changes: SeatingTableChanges,
+    version: number,
+  ): Promise<SeatingWithTable> {
+    return this.seatingWithTable(
+      await this.patch<{ seating?: unknown; tableId?: unknown }>(
+        `${this.tablesPath(eventId)}/${encodeURIComponent(tableId)}`,
+        changes,
+        { headers: { 'If-Match': versionTag(version) } },
+      ),
+    );
+  }
+
+  /** The copy, with nobody seated, as `tableId`. */
+  async duplicateSeatingTable(
+    eventId: string,
+    tableId: string,
+    version: number,
+  ): Promise<SeatingWithTable> {
+    return this.seatingWithTable(
+      await this.post<{ seating?: unknown; tableId?: unknown }>(
+        `${this.tablesPath(eventId)}/${encodeURIComponent(tableId)}/duplicate`,
+        undefined,
+        { headers: { 'If-Match': versionTag(version) } },
+      ),
+    );
+  }
+
+  async deleteSeatingTable(eventId: string, tableId: string, version: number): Promise<Seating> {
+    return this.seatingOf(
+      await this.delete<{ seating?: unknown }>(
+        `${this.tablesPath(eventId)}/${encodeURIComponent(tableId)}`,
+        { headers: { 'If-Match': versionTag(version) } },
+      ),
+    );
+  }
+
   /** A hub token for this event's seating topic alone. */
   async seatingSubscription(eventId: string): Promise<RealtimeSubscription> {
     const body = await this.post<{ token?: unknown; expiresAt?: unknown }>(
@@ -2590,6 +2647,19 @@ export class ApiClient {
 
   private seatingPath(eventId: string): string {
     return `/api/events/${encodeURIComponent(eventId)}/seating-plan`;
+  }
+
+  private tablesPath(eventId: string): string {
+    return `${this.seatingPath(eventId)}/tables`;
+  }
+
+  private seatingWithTable(
+    body: { seating?: unknown; tableId?: unknown } | null | undefined,
+  ): SeatingWithTable {
+    const seating = this.seatingOf(body);
+    const tableId = typeof body?.tableId === 'string' ? body.tableId : '';
+
+    return { seating, tableId };
   }
 
   private seatingOf(body: { seating?: unknown } | null | undefined): Seating {

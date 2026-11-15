@@ -67,6 +67,7 @@ export * from './statusLook.ts';
 export * from './roomSize.ts';
 export * from './nameKey.ts';
 export * from './seatingSections.ts';
+export * from './seatingTables.ts';
 export * from './titleLines.ts';
 export * from './moreChip.ts';
 export * from './replyBy.ts';
