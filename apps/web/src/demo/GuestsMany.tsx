@@ -158,7 +158,7 @@ function ManyPage({ event, start, tell }: { event: SampleEvent; start: ManyStart
   const looking = choice !== 'all' || q.trim() !== '' || groupFilter != null;
   const marks = invitesOn(event, CLOCKS.rest);
   const empty = list.length === 0;
-  /** sc-50772: once a removal empties the list, the page is sc-50409's empty event until Undo or its 10 seconds end, even after Add guest saves one. */
+  /** sc-50772: once a removal empties the list, the card stays until Undo or its 10 seconds end; a save there clears any filter so the saved guest shows. */
   const carded = empty || adding || emptied;
   const card = guestsCardOf(event, list, 'live', CLOCKS.rest, manages);
 
@@ -295,6 +295,10 @@ function ManyPage({ event, start, tell }: { event: SampleEvent; start: ManyStart
       saved = { ...values, group: settled.id == null ? null : { id: settled.id } };
     }
     setList((was) => addGuest(was, saved, todayOf(CLOCKS.rest)));
+    if (!emptied) return;
+    setQ('');
+    setChoice('all');
+    setGroupFilter(null);
   }
 
   const asked = asking ? removeQuestion(list, selected) : null;
