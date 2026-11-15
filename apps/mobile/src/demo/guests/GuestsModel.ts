@@ -69,6 +69,7 @@ export const GUEST_STATES = [
   'needsSaved',
   'guestComing',
   'recorded',
+  'recordedNotYet',
   'notYetInvited',
   'guestViewer',
   'guestLoading',
@@ -149,6 +150,7 @@ export const RECORD_STATES = [
   'recordComing',
   'recordReplace',
   'recordNotSaved',
+  'recordNotYet',
 ] as const;
 
 /** sc-3950: the change that records the guest agreed to WhatsApp, open. */
@@ -1167,6 +1169,8 @@ export function guestsAt(state: GuestsState | null): SampleGuest[] {
       return swap('emeka', (g) => recorded(g, 'coming', 'By phone', [true], TODAY));
     case 'marked':
       return swap('bisi', (g) => markedInvited(g, 'WhatsApp', TODAY));
+    case 'recordedNotYet':
+      return swap('bisi', (g) => recorded(g, 'coming', 'By phone', [], TODAY));
     case 'unmarked':
       return swap('emeka', markedNotInvited);
     case 'unmarkRefused':
@@ -1316,6 +1320,8 @@ export function guestOf(state: GuestsState | null): string | null {
     case 'finished':
       return 'bisi';
     case 'notYetInvited':
+    case 'recordNotYet':
+    case 'recordedNotYet':
     case 'linkCopied':
     case 'markAsInvited':
     case 'markRefused':
@@ -1416,6 +1422,7 @@ export function areaStart(state: GuestsState | null): AreaStart {
     case 'notFound':
       return { ...base, guestPhase: 'notFound' };
     case 'recorded':
+    case 'recordedNotYet':
       return { ...base, recorded: true };
     case 'repliesClosed':
     case 'repliesClosedViewer':

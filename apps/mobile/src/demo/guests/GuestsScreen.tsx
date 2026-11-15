@@ -379,7 +379,7 @@ export function GuestsScreen({
         nameRef={nameRef}
         refFor={refFor}
         actions={{
-          onRecord: () => show('record', 'record'),
+          onRecord: () => show('record', guest?.kind === 'notyet' ? 'recordNotYet' : 'record'),
           onEdit: () => show('edit', 'edit'),
           onCopy: () => {
             from.current = 'copy';
@@ -457,6 +457,7 @@ export function GuestsScreen({
             onClose={close}
             onSaved={(next) => {
               replace(next);
+              from.current = 'record';
               close();
               setReplies(null);
               setStatus(W.recorded);

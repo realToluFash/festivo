@@ -85,7 +85,7 @@ describe('the states, as guests-a-spec §15 names them', () => {
     expect(
       GUESTS_STATES.filter((state) => (DOOR_STATES as readonly string[]).includes(state)),
     ).toEqual([]);
-    expect(GUESTS_STATES).toHaveLength(154);
+    expect(GUESTS_STATES).toHaveLength(156);
     expect(DOOR_STATES).toHaveLength(13);
   });
 
@@ -803,5 +803,28 @@ describe('Changed since you looked (sc-4331)', () => {
     expect(areaStart('changedRow')).toMatchObject({ filter: 'all', menu: true, looked: null });
     expect(areaStart('changedNone')).toMatchObject({ filter: 'changed', since: CLOCKS.reader });
     expect(filterWord('changed')).toBe('Changed since you looked');
+  });
+});
+
+describe('a reply from a guest nobody invited yet (sc-52829)', () => {
+  it('invites them when it is recorded, counts them straight away, and offers no undo', () => {
+    const bisi = recorded(byKey('bisi'), 'coming', 'By phone', [], '2026-11-03');
+    const after = GUESTS.map((g) => (g.key === 'bisi' ? bisi : g));
+    const was = countsOf(GUESTS);
+
+    expect(invitationWords(bisi, EN)).toBe('Invited when they replied, Nov 3');
+    expect(handMarked(bisi)).toBe(false);
+    expect(countsOf(after)).toMatchObject({
+      invited: was.invited + 1,
+      coming: was.coming + 1,
+      notyet: was.notyet - 1,
+    });
+  });
+
+  it('opens its states on Bisi Adewale: the form, then the guest after saving', () => {
+    expect(guestOf('recordNotYet')).toBe('bisi');
+    expect(areaStart('recordNotYet')).toMatchObject({ open: 'bisi', overlay: 'record' });
+    expect(areaStart('recordedNotYet')).toMatchObject({ open: 'bisi', recorded: true });
+    expect(guestsAt('recordedNotYet').find((g) => g.key === 'bisi')?.kind).toBe('coming');
   });
 });
