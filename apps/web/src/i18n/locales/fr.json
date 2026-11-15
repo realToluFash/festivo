@@ -2998,7 +2998,7 @@
     "removeTitle": "Retirer {{name}} ?",
     "removeGoes": "Ce qui part avec cette personne :",
     "theirReply": "Sa réponse",
-    "removeNothingSent": "Aucun message ne lui est envoyé.",
+    "removeNothingSent": "Aucun message n’est envoyé.",
     "keepOnList": "Garder sur la liste",
     "removeGo": "Retirer",
     "guestRemoved": "Vous avez retiré {{name}} de la liste.",
