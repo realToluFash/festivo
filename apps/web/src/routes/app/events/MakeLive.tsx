@@ -228,7 +228,7 @@ export function DraftRow({
   onMadeLive: () => void;
 }) {
   const { t } = useTranslation();
-  const row = makeLiveRow(event, now);
+  const row = makeLiveRow(event, now, manages);
   const opener = useRef<HTMLButtonElement>(null);
   const makeLive = useMakeLive({ event, tag, heading, opener, onChange, onMadeLive });
 
@@ -237,9 +237,7 @@ export function DraftRow({
       {row != null && (
         <div className="event-draft-row">
           <span className="mark mark-off" aria-hidden="true" />
-          <p className="event-draft-line">
-            {t(`eventLive.${row.line === 'endPassed' && !manages ? 'endPassedReader' : row.line}`)}
-          </p>
+          <p className="event-draft-line">{t(`eventLive.${row.line}`)}</p>
           {manages &&
             (row.makeLive ? (
               <button

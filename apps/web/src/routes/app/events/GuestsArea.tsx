@@ -858,19 +858,17 @@ export function GuestsArea({
             comingWords: t('guestList.countComing', { count: counts.coming }),
             invitedWords: t('guestList.countInvited', { count: counts.invited }),
           });
-    const draft = phase === 'draft' ? makeLiveRow(event, now) : null;
+    const changes = canOn(event, 'events.manage');
+    const draft = phase === 'draft' ? makeLiveRow(event, now, changes) : null;
 
     if (draft != null) {
-      const changes = canOn(event, 'events.manage');
       const live = !changes ? null : draft.makeLive ? 'makeLive' : 'changeDates';
       const add = empty && manages;
 
       return {
         tag: { mark: 'draft', word: t('events.draft') },
         says: empty ? t('guestList.noGuests') : t('guestList.onTheList', { count: counts.all }),
-        line: t(
-          `eventLive.${draft.line === 'endPassed' && !changes ? 'endPassedReader' : draft.line}`,
-        ),
+        line: t(`eventLive.${draft.line}`),
         step: add ? 'add' : live,
         also: add ? live : null,
       };
