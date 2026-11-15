@@ -187,6 +187,12 @@ describe('/demo/events/evt-wed-4/schedule (sc-3893)', () => {
     expect(document.activeElement).toBe(line);
     expect(button('Undo')).toBeNull();
     expect(screen.queryByRole('button', { name: 'Speeches' })).toBeNull();
+    fireEvent.click(button('Add item') as HTMLElement);
+    expect(button('Undo')).toBeNull();
+    expect(screen.queryByText('Speeches deleted.')).toBeNull();
+    expect(
+      screen.getByText('Speeches was not brought back. Add it again with Add item.'),
+    ).toBeTruthy();
   });
 
   it('offers Add it again when someone else deleted the item', SLOW, async () => {
@@ -194,6 +200,12 @@ describe('/demo/events/evt-wed-4/schedule (sc-3893)', () => {
     expect(screen.getByRole('heading', { name: 'Edit item' })).toBeTruthy();
     expect(document.activeElement?.textContent).toContain('Someone else deleted this item');
     expect(button('Delete item…')).toBeNull();
+    fireEvent.click(button('Cancel') as HTMLElement);
+    expect(document.activeElement?.id).toBe('ro-add');
+  });
+
+  it('adds the item again when someone else deleted it', SLOW, async () => {
+    await open('gone');
     fireEvent.click(button('Add it again') as HTMLElement);
     expect(said()?.textContent).toBe('Speeches and toasts added.');
     expect(screen.getByRole('button', { name: 'Speeches and toasts' })).toBeTruthy();

@@ -146,6 +146,7 @@ function ScheduleView({
   const [stale, setStale] = useState(first.conflict != null);
   const [asking, setAsking] = useState(first.asking);
   const [deleted, setDeleted] = useState<Item | null>(first.deleted);
+  const [unrestored, setUnrestored] = useState(first.unrestored);
   const [picking, setPicking] = useState(first.picking);
   const [failed, setFailed] = useState(first.failed);
   const [picked, setPicked] = useState<string | null>(null);
@@ -211,7 +212,8 @@ function ScheduleView({
     setPanel(null);
     setForm(null);
     reset();
-    focusAfter.current = back ?? (was?.kind === 'edit' ? `ro-open-${was.id}` : 'ro-add');
+    const there = was?.kind === 'edit' && items.some((one) => one.id === was.id);
+    focusAfter.current = back ?? (there ? `ro-open-${was.id}` : 'ro-add');
   }
 
   function keep(saved: Item, words: string) {
@@ -219,6 +221,7 @@ function ScheduleView({
     setDay(dayOf(saved.starts));
     setPicked(placeOf(saved));
     setSaid(words);
+    setUnrestored(null);
     close(`ro-open-${saved.id}`);
   }
 
@@ -273,6 +276,7 @@ function ScheduleView({
     if (editing == null) return;
     setItems((was) => was.filter((one) => one.id !== editing.id));
     setDeleted(editing);
+    setUnrestored(null);
     setSaid('');
     close('ro-add');
   }
@@ -383,10 +387,10 @@ function ScheduleView({
             </>
           )}
         </p>
-        {failed === 'undo' && deleted != null && (
+        {unrestored != null && (
           <p id="ro-unsaid" className="ro-limit ro-unsaid ro-chrome" role="alert" tabIndex={-1}>
             <Broken />
-            {RW.notRestored(deleted.title)}
+            {RW.notRestored(unrestored)}
           </p>
         )}
         <div className="mn-split">
@@ -466,7 +470,7 @@ function ScheduleView({
           )}
         </div>
       </div>
-      {deleted != null && failed !== 'undo' && (
+      {deleted != null && (
         <Toast
           key={deleted.id}
           words={RW.deleted(deleted.title)}

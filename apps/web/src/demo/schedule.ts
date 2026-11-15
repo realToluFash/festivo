@@ -514,6 +514,7 @@ export interface ScheduleStart {
   conflict: Item | null;
   asking: boolean;
   deleted: Item | null;
+  unrestored: string | null;
   picking: boolean;
   failed: Failure | null;
   focus: Field | 'limit' | 'conflict' | 'ask' | 'failed' | null;
@@ -533,6 +534,7 @@ function start(over: Partial<ScheduleStart> & { name: string }): ScheduleStart {
     conflict: null,
     asking: false,
     deleted: null,
+    unrestored: null,
     picking: false,
     failed: null,
     focus: null,
@@ -646,7 +648,7 @@ const STATES = {
     start({
       name: 'Undo failed, the item stays deleted',
       items: sampleItems().filter((one) => one.id !== 'speeches'),
-      deleted: speeches(),
+      unrestored: speeches().title,
       failed: 'undo',
       focus: 'failed',
     }),
