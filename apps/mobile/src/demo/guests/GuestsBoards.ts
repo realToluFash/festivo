@@ -10,6 +10,10 @@ const GUESTS: Record<GuestsState, Board> = {
     'in use',
     'The card, Find a guest with All · 156, the replies; each row with its group and Allergy',
   ],
+  titlePt: [
+    'the title in Portuguese',
+    'sc-51444: Convidados whole; Adicionar convidado gives way to the round + where both do not fit',
+  ],
   filterOpen: ['the filter menu', 'All, Invited, the five replies and Not yet invited'],
   filtered: ['after a filter', 'No reply · 21: 21 of 156 shown, and Clear'],
   search: ['a search', '“okon”: 2 of 156 shown, the card aside'],
