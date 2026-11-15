@@ -17,8 +17,7 @@ appId: host.exp.Exponent
     visible: 'Address.*'
     timeout: 20000
 - tapOn:
-    point: '92%,37%'
-- eraseText: 200
+    id: 'event.edit.venue.address'
 - eraseText: 200
 - inputText: ${NEW_ADDRESS}
 - hideKeyboard
