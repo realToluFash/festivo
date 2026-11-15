@@ -394,6 +394,18 @@ function tablet(state: SeatingState, b: Seating): Seating {
         rings: { t7: PRIYA },
         fields: { ...NO_FIELDS, changedBy: say.tableChanged(PRIYA.name) },
       });
+    case 'rowChanged':
+      return chosen(b, 'rowA', {
+        people: BOTH,
+        rings: { rowA: PRIYA },
+        fields: { ...NO_FIELDS, changedBy: say.rowChanged(PRIYA.name) },
+      });
+    case 'seatChanged':
+      return chosen(b, 'door', {
+        people: BOTH,
+        rings: { door: PRIYA },
+        fields: { ...NO_FIELDS, changedBy: say.seatChanged(PRIYA.name) },
+      });
     case 'rowAdded':
       return chosen(rowB, 'rowB', { fields: { ...NO_FIELDS, added: say.rowAdded('B', 10) } });
     case 'rowTurned':

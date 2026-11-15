@@ -1260,6 +1260,16 @@ export const SEATING_STATES = [
   { key: 'deleteRow', name: 'Delete a row', group: 'Tables, rows and seats' },
   { key: 'seatAdded', name: 'Add seat', group: 'Tables, rows and seats' },
   { key: 'seatNameTaken', name: 'A seat name already used', group: 'Tables, rows and seats' },
+  {
+    key: 'rowChanged',
+    name: 'A colleague changed the row (412)',
+    group: 'Tables, rows and seats',
+  },
+  {
+    key: 'seatChanged',
+    name: 'A colleague changed the seat (412)',
+    group: 'Tables, rows and seats',
+  },
   { key: 'drag', name: 'Dragging Table 10', group: 'Moving and the keyboard' },
   { key: 'resize', name: 'Resizing Table 9', group: 'Moving and the keyboard' },
   { key: 'turn', name: 'R turns Table 9', group: 'Moving and the keyboard' },

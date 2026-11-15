@@ -665,6 +665,19 @@ describe('tables, rows and seats (sc-4000, sc-4003)', () => {
       item(/^Table 7, round, 8 of 10 seats taken, Garden side, chosen by Priya Shah$/u),
     ).toBeDefined();
   });
+
+  it('says a colleague changed the row or the seat first (412)', SLOW, async () => {
+    await seating('rowChanged');
+    expect(
+      within(panel()).getByText('Priya Shah just changed this row. Your change was not saved.'),
+    ).toBeDefined();
+    expect(item(/^Row A,.*chosen by Priya Shah$/u)).toBeDefined();
+    await seating('seatChanged');
+    expect(
+      within(panel()).getByText('Priya Shah just changed this seat. Your change was not saved.'),
+    ).toBeDefined();
+    expect(item(/^By the door,.*chosen by Priya Shah$/u)).toBeDefined();
+  });
 });
 
 describe('moving without dragging, and the save line (sc-5028, WCAG 2.2 SC 2.5.7)', () => {

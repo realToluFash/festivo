@@ -540,6 +540,19 @@ export function seedOf(state: SeatingState | null): Ui {
         people: [PRIYA, SADE],
         notice: { tone: 'amber', words: say(SW.tableChanged, { name: PRIYA.name }) },
       };
+    case 'rowChanged':
+    case 'seatChanged': {
+      const id = state === 'rowChanged' ? 'rowA' : 'door';
+      const words = state === 'rowChanged' ? SW.rowChanged : SW.seatChanged;
+
+      return {
+        ...ui,
+        chosen: [id],
+        rings: { [id]: PRIYA },
+        people: [PRIYA, SADE],
+        notice: { tone: 'amber', words: say(words, { name: PRIYA.name }) },
+      };
+    }
     case 'rowAdded':
     case 'rowLabelTaken': {
       const row = newAt(plan, 'row', [1590, 1440], 'rowB');

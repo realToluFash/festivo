@@ -79,7 +79,7 @@ const item = (m: Seating, id: string) => {
 
 describe('the states', () => {
   it('are seating-a-spec §6’s, by the names both demos use', () => {
-    expect(SEATING_STATES).toHaveLength(107);
+    expect(SEATING_STATES).toHaveLength(109);
     expect(new Set(SEATING_STATES).size).toBe(SEATING_STATES.length);
     expect(SEATING_STATES.slice(0, 5)).toEqual([
       'plan',
@@ -629,6 +629,19 @@ describe('a table’s fields apply as each is entered', () => {
     expect(startOf('seatNameTaken', 'landscape').fields.errors.Name).toBe(
       'This plan already has a seat called By the door.',
     );
+  });
+
+  it('say a colleague changed the row or the seat first (412)', () => {
+    const row = startOf('rowChanged', 'landscape');
+    expect(row.fields.changedBy).toBe(
+      'Priya Shah just changed this row. Your change was not saved.',
+    );
+    expect(row.rings.rowA?.name).toBe('Priya Shah');
+    const seat = startOf('seatChanged', 'portrait');
+    expect(seat.fields.changedBy).toBe(
+      'Priya Shah just changed this seat. Your change was not saved.',
+    );
+    expect(seat.rings.door?.name).toBe('Priya Shah');
   });
 
   it('take sizes in feet and inches where the organisation is US customary', () => {
