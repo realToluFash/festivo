@@ -96,6 +96,11 @@ export function raiseKeysOn(field: HostInstance): void {
   textInput.focus(field);
 }
 
+/** Gives up a field's input focus natively. TextInput's blur() skips a field JS no longer counts as focused, as one left behind a menu's own search field is (sc-44356). */
+export function blurNatively(field: HostInstance): void {
+  textInput.blur(field);
+}
+
 /** Puts the keys down and calls `then` once they are and the scroll they move has landed after `settledMs`, as `keysDownThen`. With `field`, the one that raised them, they go down without moving input focus: once the field has given focus up, its blur only hides the keys, where Keyboard.dismiss no longer counts it as focused (sc-18587). Returns what cancels the call still to come. */
 export function putKeysDownThen(
   then: () => void,

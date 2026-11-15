@@ -218,7 +218,7 @@ describe('a window that opens through a Modal of its own (sc-42690)', () => {
 
     it('hands TalkBack back to the picker however the menu closes, on Android only (sc-43908)', () => {
       expect(picker).toMatch(
-        /const close = \(\) => \{\s*if \(Platform\.OS === 'android'\) setClosed\(\{\}\);\s*setOpen\(false\);\s*\};/,
+        /const close = \(\) => \{\s*if \(Platform\.OS === 'android'\) setClosed\(\{\}\);[^}]*setOpen\(false\);\s*\};/,
       );
       expect(picker.match(/setOpen\(false\)/g)).toHaveLength(1);
       expect(picker.match(/setClosed\(\{\}\)/g)).toHaveLength(1);
@@ -232,9 +232,28 @@ describe('a window that opens through a Modal of its own (sc-42690)', () => {
 
     it('leaves no field holding input focus for Android to hand TalkBack to as it closes, under TalkBack only (sc-44356)', () => {
       expect(picker).toMatch(
-        /onPress=\{\(\) => \{\s*controlTaken\(\);[^}]*if \(Platform\.OS === 'android' && readerOn\)\s*TextInput\.State\.currentlyFocusedInput\(\)\?\.blur\(\);\s*setClosed\(undefined\);\s*setOpen\(true\);/,
+        /onPress=\{\(\) => \{\s*controlTaken\(\);\s*if \(Platform\.OS === 'android' && readerOn\)\s*heldBehind\.current = TextInput\.State\.currentlyFocusedInput\(\);\s*setClosed\(undefined\);\s*setOpen\(true\);/,
       );
-      expect(picker.match(/\.blur\(\)/g)).toHaveLength(1);
+      expect(picker).toMatch(
+        /const close = \(\) => \{\s*if \(Platform\.OS === 'android'\) setClosed\(\{\}\);[^}]*if \(heldBehind\.current != null\) blurNatively\(heldBehind\.current\);\s*heldBehind\.current = null;\s*setOpen\(false\);\s*\};/,
+      );
+    });
+
+    it("blurs the field it found natively, which TextInput skips once the menu's search has taken focus (sc-44356, lead on #2327)", () => {
+      expect(picker).not.toMatch(/\.blur\(\)/);
+      const watch = readFileSync(join(import.meta.dirname, 'keyboardWatch.ts'), 'utf8');
+      expect(watch).toMatch(
+        /export function blurNatively\(field: HostInstance\): void \{\s*textInput\.blur\(field\);\s*\}/,
+      );
+      expect(watch).toMatch(/const textInput = codegenNativeCommands</);
+    });
+
+    it('blurs nothing at the tap, where hiding the keyboard behind the opening menu made TalkBack say "keyboard hidden" (qa #50794)', () => {
+      const press = picker.slice(
+        picker.indexOf('onPress={() => {'),
+        picker.indexOf('setOpen(true);'),
+      );
+      expect(press).not.toContain('blur');
     });
 
     it('draws only the rows in sight until its title has taken focus, under TalkBack on Android (qa2 #43597)', () => {
