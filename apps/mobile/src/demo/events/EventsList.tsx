@@ -486,7 +486,7 @@ export function ListFrame({
       {phone ? <View style={{ height: insets.top }} /> : <PortraitTop at="Events" />}
       {band}
       <ScrollView
-        style={styles.grow}
+        style={[styles.grow, phone && { marginLeft: insets.left, marginRight: insets.right }]}
         contentContainerStyle={[
           styles.blocks,
           phone
