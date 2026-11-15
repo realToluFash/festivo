@@ -2397,7 +2397,7 @@
       "theirMessage": "Their message",
       "showAll": "Show all",
       "everyone": "Everyone you invited has replied. Find a guest to change their reply.",
-      "rowLine": "{{reply}} · {{invited}}"
+      "rowLine": "{{reply}} · {{invitation}}"
     },
     "addGuest": "Añadir invitado",
     "replied": "{{reply}} · respondió el {{date}}",

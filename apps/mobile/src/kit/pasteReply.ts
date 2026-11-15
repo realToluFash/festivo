@@ -52,7 +52,7 @@ export function whoseRows(
       guest,
       line: t('guestList.paste.rowLine', {
         reply: t(REPLY_KEY[shownReply(guest)]),
-        invited:
+        invitation:
           invitationLine(
             t,
             { invitation: guest.invitation && { ...guest.invitation, by: null } },
