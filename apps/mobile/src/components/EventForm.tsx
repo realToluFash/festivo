@@ -58,7 +58,7 @@ import {
 } from '../kit/eventForm.ts';
 import { coverRefusalOf } from '../kit/coverUpload.ts';
 import { refusedHint } from '../kit/fields.ts';
-import { keysGoDownFor, typedIn } from './refusedField.ts';
+import { type FormSection, keysGoDownFor, sectionQuiet, typedIn } from './refusedField.ts';
 import { markCoverRefused } from '../kit/eventSaved.ts';
 import { type LayoutKind } from '../layout/useLayout.ts';
 import { holdLeaving } from '../leaveHeld.ts';
@@ -289,14 +289,11 @@ export function EventForm({
     setHostErrors(hostFound);
     const first = firstRefusedOf(found, hostFound, hosts);
     const onField = first != null && 'field' in first ? first.field : null;
-    setLinesInSummary(Platform.OS === 'android' && saidFirst != null && keysGoDownFor(onField));
+    const quiet = Platform.OS === 'android' && saidFirst != null && keysGoDownFor(onField);
+    setLinesInSummary(quiet);
     const on = onField != null ? { field: onField, saidFirst } : null;
     setFocusOn(on);
-    setQuietOn(
-      Platform.OS === 'android' && saidFirst != null && on != null && !typedIn(on.field)
-        ? on
-        : null,
-    );
+    setQuietOn(quiet ? on : null);
     setFocusHost(first != null && 'host' in first ? { key: first.host } : null);
 
     return keysGoDownFor(onField);
@@ -478,6 +475,7 @@ export function EventForm({
             disabled={busy}
             pickerRef={startPicker}
             fieldRef={startField}
+            linesQuiet={quietAfter === 'startsAt'}
             testID="eventForm.start"
             onPick={(date, time) => moveStart(date, time)}
           />
@@ -494,6 +492,7 @@ export function EventForm({
             disabled={busy}
             pickerRef={endPicker}
             fieldRef={endField}
+            linesQuiet={quietAfter === 'endsAt'}
             testID="eventForm.end"
             onPick={(date, time) => {
               if (date !== draft.endDate) setEndChosen(true);
@@ -591,17 +590,6 @@ interface FocusOn {
   saidFirst?: string | undefined;
 }
 
-const FORM_ORDER = [
-  'type',
-  'hosts',
-  'cover',
-  'startsAt',
-  'endsAt',
-  'venueName',
-  'timeZone',
-  'currency',
-] as const;
-
 /** Under TalkBack, a section after the refused picker is out of its reach while focus moves there: a scroll up away from TalkBack's focus moves it onto the last view in sight, which has to be the picker (sc-43907). */
 function QuietAfter({
   refused,
@@ -609,11 +597,10 @@ function QuietAfter({
   children,
 }: {
   refused: EventFormField | null;
-  section: (typeof FORM_ORDER)[number];
+  section: FormSection;
   children: ReactNode;
 }) {
-  const order: readonly string[] = FORM_ORDER;
-  const quiet = refused != null && order.indexOf(section) > order.indexOf(refused);
+  const quiet = sectionQuiet(refused, section);
 
   return (
     <View style={styles.section} importantForAccessibility={quiet ? 'no-hide-descendants' : 'auto'}>
@@ -684,6 +671,7 @@ export function Moment({
   pickerRef,
   timePickerRef,
   fieldRef,
+  linesQuiet = false,
   testID,
   onPick,
 }: {
@@ -699,6 +687,8 @@ export function Moment({
   pickerRef: RefObject<ViewInstance | null>;
   timePickerRef?: RefObject<ViewInstance | null>;
   fieldRef: RefObject<ViewInstance | null>;
+  /** The error and help lines are out of TalkBack's reach, as Field's are. */
+  linesQuiet?: boolean;
   testID: string;
   onPick: (date: string, time: string) => void;
 }) {
@@ -812,12 +802,19 @@ export function Moment({
           </Pressable>
         </Field>
       </View>
-      {error != null && <FieldError message={error} />}
-      {helpLines.map((line) => (
-        <Text key={line} size={tokens.typeSmall.size} style={styles.secondary}>
-          {line}
-        </Text>
-      ))}
+      {(error != null || helpLines.length > 0) && (
+        <View
+          style={styles.momentGroup}
+          importantForAccessibility={linesQuiet ? 'no-hide-descendants' : 'auto'}
+        >
+          {error != null && <FieldError message={error} />}
+          {helpLines.map((line) => (
+            <Text key={line} size={tokens.typeSmall.size} style={styles.secondary}>
+              {line}
+            </Text>
+          ))}
+        </View>
+      )}
 
       {Platform.OS === 'ios' && (
         <Sheet
