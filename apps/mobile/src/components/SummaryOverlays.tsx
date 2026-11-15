@@ -454,6 +454,8 @@ export function MenuLayer({
   const origin = useWindowOrigin();
   const [seen, setSeen] = useState({ head: 0, panel: 0, content: 0, offset: 0 });
   const [held, setHeld] = useState<HeldSide | null>(null);
+  // Not the window's height: on Android with gesture navigation it already ends above the bar the insets take off again.
+  const [layer, setLayer] = useState<number | null>(null);
   const button = menuButton(at);
   const side = menuSide({
     under: at?.y ?? 0,
@@ -462,19 +464,20 @@ export function MenuLayer({
     floor,
     origin,
     ceiling: insets.top,
-    foot: frame.height - Math.max(insets.bottom, tokens.spaceLg),
-    tall: menuTall(seen, MENU_EDGE),
+    foot: (layer ?? frame.height) - Math.max(insets.bottom, tokens.spaceLg),
+    tall: layer == null ? null : menuTall(seen, MENU_EDGE),
     above: keptSide(held, button),
   });
   const more = seen.content - seen.offset - seen.panel > 1;
 
-  const hold = nextHeld(held, button, side, seen.content > 0);
+  const hold = nextHeld(held, button, side, layer != null && seen.content > 0);
   if (hold !== held) setHeld(hold);
 
   return (
     <>
       <Pressable
         style={StyleSheet.absoluteFill}
+        onLayout={(event) => setLayer(event.nativeEvent.layout.height)}
         onPress={onClose}
         accessibilityRole="button"
         accessibilityLabel={t('frame.closeMenu')}
