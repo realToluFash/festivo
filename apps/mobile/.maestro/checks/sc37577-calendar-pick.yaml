@@ -1,0 +1,44 @@
+# sc-37577: Calendar, Show opened, Only events chosen, the menu closes and the button says it; then back to all.
+appId: host.exp.Exponent
+---
+- openLink: ${METRO_URL}/--/calendar
+- extendedWaitUntil:
+    visible:
+      id: 'calendar.show'
+    timeout: 30000
+- tapOn:
+    id: 'calendar.show'
+- extendedWaitUntil:
+    visible:
+      id: 'calendar.showMenu'
+    timeout: 10000
+- tapOn:
+    id: 'calendar.show.events'
+- extendedWaitUntil:
+    notVisible:
+      id: 'calendar.showMenu'
+    timeout: 10000
+- waitForAnimationToEnd
+- takeScreenshot: picked-events
+- tapOn:
+    id: 'calendar.show'
+- extendedWaitUntil:
+    visible:
+      id: 'calendar.showMenu'
+    timeout: 10000
+- tapOn:
+    point: '20%,90%'
+    label: 'outside the menu'
+- extendedWaitUntil:
+    notVisible:
+      id: 'calendar.showMenu'
+    timeout: 10000
+- takeScreenshot: closed-outside
+- tapOn:
+    id: 'calendar.show'
+- tapOn:
+    id: 'calendar.show.all'
+- extendedWaitUntil:
+    notVisible:
+      id: 'calendar.showMenu'
+    timeout: 10000

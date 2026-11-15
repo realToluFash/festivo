@@ -1,0 +1,24 @@
+# sc-49591: Today's Your events replies line on a tablet's rows, in the account's language.
+appId: host.exp.Exponent
+---
+- openLink: ${METRO_URL}/--/
+- extendedWaitUntil:
+    visible: '{{t:todayScreen.tab.today}}'
+    timeout: 30000
+- scrollUntilVisible:
+    element: '{{t:todayScreen.yourEvents}}'
+    direction: DOWN
+- waitForAnimationToEnd
+- takeScreenshot: r1
+- swipe:
+    start: 50%, 75%
+    end: 50%, 40%
+    duration: 600
+- waitForAnimationToEnd
+- takeScreenshot: r2
+- swipe:
+    start: 50%, 75%
+    end: 50%, 40%
+    duration: 600
+- waitForAnimationToEnd
+- takeScreenshot: r3

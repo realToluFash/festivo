@@ -1,0 +1,192 @@
+/* Final numbers due and the kitchen's copies (sc-30812), and All dates, in Guests A's language at a desk. */
+.kitchen-acts {
+  display: flex;
+  align-items: center;
+  gap: 22px;
+}
+
+.kitchen-mark {
+  width: 17px;
+  height: 17px;
+  flex: none;
+  fill: none;
+  stroke: currentcolor;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+  stroke-width: 2.3;
+}
+
+.kitchen-said:empty {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+  clip-path: inset(50%);
+}
+
+.kitchen-none .desk-row-name {
+  color: var(--colorInkSecondary);
+}
+
+.kitchen-picks {
+  display: flex;
+  align-items: flex-start;
+  gap: 6px;
+  margin: -4px 0 var(--spaceSm) 40px;
+  color: var(--colorInkSecondary);
+  font: 500 14px/1.45 var(--fontFamily);
+}
+
+.kitchen-picks svg {
+  flex: none;
+  margin-top: 2px;
+}
+
+.kitchen-label {
+  display: flex;
+  align-items: center;
+  gap: var(--spaceSm);
+}
+
+.kitchen-clear {
+  display: flex;
+  flex: none;
+  align-items: center;
+  justify-content: center;
+  width: var(--sizeHit);
+  height: var(--sizeHit);
+  margin-right: calc(-1 * var(--spaceMd));
+  padding: 0;
+  border: 0;
+  background: none;
+  color: var(--colorCard);
+  cursor: pointer;
+}
+
+.kitchen-clear svg {
+  box-sizing: content-box;
+  padding: 5px;
+  border-radius: 50%;
+  background: var(--colorInkTertiary);
+}
+
+.kitchen-count {
+  color: var(--colorInkSecondary);
+  font-weight: 600;
+  font-variant-numeric: tabular-nums;
+}
+
+.kitchen-figure {
+  margin-left: auto;
+  color: var(--colorInk);
+  font: 600 15px/1.3 var(--fontFamily);
+  font-variant-numeric: tabular-nums;
+}
+
+/* All dates: one column of 640, the owner as the lead and the line, a tag only off the rule, the action under its row. */
+.dates {
+  display: flex;
+  flex-direction: column;
+  gap: 18px;
+  max-width: 640px;
+}
+
+.dates-intro {
+  color: var(--colorInkSecondary);
+  font: 500 15px/1.45 var(--fontFamily);
+}
+
+.dates-row {
+  display: flex;
+  align-items: center;
+  gap: var(--spaceMd);
+}
+
+.dates-tags {
+  display: flex;
+  flex: none;
+  gap: var(--spaceSm);
+  margin-left: auto;
+}
+
+.dates-tag {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  box-sizing: border-box;
+  height: 24px;
+  padding: 0 9px;
+  border-radius: 12px;
+  background: var(--colorAccentTint);
+  color: var(--colorAccentText);
+  font: 600 12.5px/1 var(--fontFamily);
+  white-space: nowrap;
+}
+
+.dates-tag.is-overdue {
+  padding-left: 7px;
+  background: var(--colorAttentionTint);
+  color: var(--colorAttentionText);
+}
+
+.dates-tag.is-passed {
+  background: var(--colorInset);
+  color: var(--colorInkSecondary);
+}
+
+.dates .ev-maps {
+  margin-left: 40px;
+}
+
+.dates-key {
+  display: flex;
+  flex-direction: column;
+  margin: 0;
+}
+
+.dates-key-row {
+  display: grid;
+  grid-template-columns: 28px minmax(0, 1fr);
+  column-gap: var(--spaceMd);
+  align-items: center;
+  padding: var(--spaceXs) 0;
+}
+
+.dates-key-row .ev-lead {
+  grid-row: span 2;
+}
+
+.dates-key dt {
+  color: var(--colorInk);
+  font: 600 16px/1.3 var(--fontFamily);
+}
+
+.dates-key dd {
+  margin: 0;
+  color: var(--colorInkSecondary);
+  font: 500 14px/1.45 var(--fontFamily);
+}
+
+.ev-card-foot a.desk-step,
+.dates a.ev-maps {
+  text-decoration: none;
+}
+
+/* The Overview card's You and Overdue, on its glass beside Next up. */
+.kitchen-glass {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--spaceSm);
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+/* sc-30692: a dish name runs to 120 characters; both names stay whole, so a line breaks anywhere rather than overflows. */
+.kitchen-changes .desk-row-name {
+  overflow-wrap: anywhere;
+}
+
+.kitchen-changes > .desk-text {
+  margin-top: var(--spaceSm);
+}

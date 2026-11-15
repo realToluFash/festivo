@@ -1,0 +1,15 @@
+# The signed-out welcome on B Confetti's cover, relaunched and photographed as SHOT. sc-29078.
+#
+#   node .qa/bin/qa-env.mjs maestro sc29078-confetti-welcome SHOT=… [--android [--tablet]]
+appId: host.exp.Exponent
+---
+- launchApp:
+    appId: host.exp.Exponent
+    stopApp: true
+- openLink: ${METRO_URL}/--/welcome
+- extendedWaitUntil:
+    visible:
+      id: 'welcome.email'
+    timeout: 90000
+- waitForAnimationToEnd
+- takeScreenshot: ${SHOT}

@@ -1,0 +1,53 @@
+# sc-49591: Today's Your events replies line, card by card, in the account's language.
+appId: host.exp.Exponent
+---
+- openLink: ${METRO_URL}/--/
+- extendedWaitUntil:
+    visible: '{{t:todayScreen.tab.today}}'
+    timeout: 30000
+- scrollUntilVisible:
+    element: '{{t:todayScreen.yourEvents}}'
+    direction: DOWN
+    centerElement: true
+- swipe:
+    start: 50%, 75%
+    end: 50%, 35%
+    duration: 600
+- waitForAnimationToEnd
+- takeScreenshot: c1
+- swipe:
+    start: 85%, 62%
+    end: 15%, 62%
+    duration: 400
+- waitForAnimationToEnd
+- takeScreenshot: c2
+- swipe:
+    start: 85%, 62%
+    end: 15%, 62%
+    duration: 400
+- waitForAnimationToEnd
+- takeScreenshot: c3
+- swipe:
+    start: 85%, 62%
+    end: 15%, 62%
+    duration: 400
+- waitForAnimationToEnd
+- takeScreenshot: c4
+- swipe:
+    start: 85%, 62%
+    end: 15%, 62%
+    duration: 400
+- waitForAnimationToEnd
+- takeScreenshot: c5
+- swipe:
+    start: 85%, 62%
+    end: 15%, 62%
+    duration: 400
+- waitForAnimationToEnd
+- takeScreenshot: c6
+- swipe:
+    start: 85%, 62%
+    end: 15%, 62%
+    duration: 400
+- waitForAnimationToEnd
+- takeScreenshot: c7

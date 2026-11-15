@@ -1,0 +1,15 @@
+# sc-30413: the long-run event's page in the product, then the app demo's happening-now state, for the pair.
+appId: host.exp.Exponent
+---
+- openLink: ${METRO_URL}/--/events/${EVENT_ID}
+- waitForAnimationToEnd: { timeout: 8000 }
+- takeScreenshot: event-now-product
+- swipe:
+    start: 50%, 75%
+    end: 50%, 30%
+    duration: 800
+- waitForAnimationToEnd: { timeout: 3000 }
+- takeScreenshot: event-now-product-scrolled
+- openLink: ${METRO_URL}/--/demo/events/evt-wed-4?state=now
+- waitForAnimationToEnd: { timeout: 8000 }
+- takeScreenshot: event-now-demo

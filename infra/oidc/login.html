@@ -1,0 +1,25 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>QA sign-in</title>
+  </head>
+  <body>
+    <form method="post">
+      <label>
+        Each name is its own account, signed in as name@example.com
+        <input required type="text" name="username" placeholder="owner-a" autofocus />
+      </label>
+      <input type="hidden" name="claims" />
+      <input type="submit" value="Sign in" />
+    </form>
+    <script>
+      document.querySelector('form').addEventListener('submit', (event) => {
+        const name = event.target.username.value.trim().replace(/\s+/g, '-');
+        const email = name.includes('@') ? name : `${name}@example.com`;
+        event.target.claims.value = JSON.stringify({ email, email_verified: true });
+      });
+    </script>
+  </body>
+</html>

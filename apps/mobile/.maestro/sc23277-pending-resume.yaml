@@ -1,0 +1,19 @@
+# sc-927 under sc-23277: a sign-up held on Check your email resumes there after the app is quit and reopened.
+# EMAIL must be fresh.
+#
+#   node .qa/bin/qa-env.mjs maestro sc23277-pending-resume NAME=… EMAIL=… PASSWORD=…
+appId: host.exp.Exponent
+---
+- runFlow: register-check-email.yaml
+- takeScreenshot: pending-before-quit
+- launchApp:
+    appId: host.exp.Exponent
+    stopApp: true
+- openLink: ${METRO_URL}
+- extendedWaitUntil:
+    visible:
+      id: 'verifyEmail.code'
+    timeout: 60000
+- assertVisible: 'We sent a code to .*'
+- waitForAnimationToEnd
+- takeScreenshot: pending-resumed

@@ -1,0 +1,7 @@
+# The pill-fit demo in ${DEMO_LANG}, at rest, for its organisation pill. sc-38149.
+appId: host.exp.Exponent
+---
+- openLink: ${METRO_URL}/--/demo/pill-fit?lang=${DEMO_LANG}
+- waitForAnimationToEnd:
+    timeout: 5000
+- takeScreenshot: demo-pill-fit-${DEMO_LANG}

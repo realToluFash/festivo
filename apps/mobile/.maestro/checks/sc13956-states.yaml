@@ -1,0 +1,17 @@
+# sc-13956: the Events tab with draft, live, paused and finished events, then ${EV_PAUSED} and ${EV_FINISHED}.
+appId: host.exp.Exponent
+---
+- openLink: ${METRO_URL}/--/events
+- extendedWaitUntil:
+    visible:
+      id: 'events\..+'
+    timeout: 30000
+- takeScreenshot: list
+- scroll
+- takeScreenshot: list-scrolled
+- openLink: ${METRO_URL}/--/events/${EV_PAUSED}
+- waitForAnimationToEnd
+- takeScreenshot: paused
+- openLink: ${METRO_URL}/--/events/${EV_FINISHED}
+- waitForAnimationToEnd
+- takeScreenshot: finished

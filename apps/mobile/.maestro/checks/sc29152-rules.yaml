@@ -1,0 +1,16 @@
+# sc-29152: the design demo's Settings in B Confetti, /sign-in-rules. Needs ${METRO_URL}; run under EXPO_PUBLIC_SCHEME=violet.
+appId: host.exp.Exponent
+---
+- openLink: ${METRO_URL}/--/demo/settings/sign-in-rules
+- extendedWaitUntil:
+    visible:
+      text: 'The rules in force'
+    timeout: 30000
+- waitForAnimationToEnd:
+    timeout: 8000
+- takeScreenshot: rules
+- swipe:
+    start: 85%, 80%
+    end: 85%, 30%
+- waitForAnimationToEnd
+- takeScreenshot: rules-scrolled

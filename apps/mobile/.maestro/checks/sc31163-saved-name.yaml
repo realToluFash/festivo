@@ -1,0 +1,49 @@
+# sc-31163: after saving Oluwafolakemi Bello the card's disc says OB, then after Cher it says C. Needs ${METRO_URL}.
+appId: host.exp.Exponent
+---
+- openLink: ${METRO_URL}/--/demo/settings/account
+- extendedWaitUntil:
+    visible:
+      id: 'account.name'
+    timeout: 30000
+- waitForAnimationToEnd:
+    timeout: 8000
+- takeScreenshot: before
+- tapOn:
+    id: 'account.name'
+- extendedWaitUntil:
+    visible:
+      id: 'account.name.field'
+    timeout: 10000
+- eraseText: 120
+- inputText: 'Oluwafolakemi Bello'
+- tapOn:
+    id: 'account.name.save'
+- extendedWaitUntil:
+    notVisible:
+      id: 'account.name.screen'
+    timeout: 10000
+- waitForAnimationToEnd:
+    timeout: 8000
+- assertVisible: 'Oluwafolakemi Bello'
+- assertVisible: 'OB'
+- takeScreenshot: saved-ob
+- tapOn:
+    id: 'account.name'
+- extendedWaitUntil:
+    visible:
+      id: 'account.name.field'
+    timeout: 10000
+- eraseText: 120
+- inputText: 'Cher'
+- tapOn:
+    id: 'account.name.save'
+- extendedWaitUntil:
+    notVisible:
+      id: 'account.name.screen'
+    timeout: 10000
+- waitForAnimationToEnd:
+    timeout: 8000
+- assertVisible: 'Cher'
+- assertVisible: 'C'
+- takeScreenshot: saved-c

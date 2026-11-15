@@ -1,0 +1,15 @@
+# sc-23252: Home with every rule notice showing, in today's order, top and bottom of the stack. Needs an account whose organisation has the due banner, read-only, the two-factor prompt and rules changed.
+appId: host.exp.Exponent
+---
+- openLink: ${METRO_URL}/--/
+- extendedWaitUntil:
+    visible:
+      id: 'signInRules.dueSetUp'
+    timeout: 30000
+- takeScreenshot: notices-top
+- scrollUntilVisible:
+    element:
+      id: 'signInRules.close'
+    direction: DOWN
+    timeout: 20000
+- takeScreenshot: notices-bottom

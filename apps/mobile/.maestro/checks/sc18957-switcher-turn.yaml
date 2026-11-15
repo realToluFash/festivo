@@ -1,0 +1,36 @@
+# Your organisations, opened upright and turned to each side and back while open. sc-18957.
+appId: host.exp.Exponent
+---
+- tapOn:
+    id: 'frame.organisation'
+- extendedWaitUntil:
+    visible:
+      id: 'switcher.heading'
+    timeout: 30000
+- waitForAnimationToEnd:
+    timeout: 5000
+- takeScreenshot: upright
+- setOrientation: LANDSCAPE_LEFT
+- waitForAnimationToEnd:
+    timeout: 5000
+- assertVisible:
+    id: 'switcher.heading'
+- takeScreenshot: left
+- setOrientation: PORTRAIT
+- waitForAnimationToEnd:
+    timeout: 5000
+- assertVisible:
+    id: 'switcher.heading'
+- takeScreenshot: upright-again
+- setOrientation: LANDSCAPE_RIGHT
+- waitForAnimationToEnd:
+    timeout: 5000
+- assertVisible:
+    id: 'switcher.heading'
+- takeScreenshot: right
+- setOrientation: PORTRAIT
+- waitForAnimationToEnd:
+    timeout: 5000
+- assertVisible:
+    id: 'switcher.heading'
+- takeScreenshot: upright-last

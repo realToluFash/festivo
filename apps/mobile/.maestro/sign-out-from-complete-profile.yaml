@@ -1,0 +1,9 @@
+# Signs out from Your organisation, which the batch's sign-out.yaml does not reach. sc-18648.
+appId: host.exp.Exponent
+---
+- tapOn:
+    id: 'completeProfile.left'
+- extendedWaitUntil:
+    visible:
+      id: 'welcome.email'
+    timeout: 30000

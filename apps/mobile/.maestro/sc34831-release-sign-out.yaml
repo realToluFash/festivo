@@ -1,0 +1,18 @@
+# Release build: from Home, signs out through Settings and waits for the welcome screen. sc-34831.
+# Deliberately does not start with release-sign-in: signing in first would hide the session
+# loss sc-34831 checks for. A phone that opens signed out fails on the wait for Home.
+appId: com.soirely.app
+---
+- launchApp:
+    appId: com.soirely.app
+- extendedWaitUntil:
+    visible:
+      id: 'home.openSettings'
+    timeout: 60000
+- tapOn:
+    id: 'home.openSettings'
+- runFlow: settings-sign-out-tap.yaml
+- extendedWaitUntil:
+    visible:
+      id: 'welcome.email'
+    timeout: 30000

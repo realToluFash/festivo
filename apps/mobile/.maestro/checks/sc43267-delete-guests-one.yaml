@@ -1,0 +1,16 @@
+# sc-43267: an event's Delete sheet, on an event with one on its guest list: the guest-list line, read in the account's language. Needs ${METRO_URL}, ${EV_ONE}.
+appId: host.exp.Exponent
+---
+- openLink: ${METRO_URL}/--/events/${EV_ONE}
+- scrollUntilVisible:
+    element:
+      id: 'events.delete'
+    timeout: 30000
+- tapOn:
+    id: 'events.delete'
+- extendedWaitUntil:
+    visible:
+      id: 'event.delete.guests'
+    timeout: 15000
+- waitForAnimationToEnd
+- takeScreenshot: sc43267-delete-guests-one

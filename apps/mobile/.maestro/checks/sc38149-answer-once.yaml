@@ -1,0 +1,16 @@
+# One tap on the invitation answer ${ANSWER_ID} (a testID regex) on the screen the app opens on, then what it leads to. sc-38149.
+appId: host.exp.Exponent
+---
+- openLink: ${METRO_URL}/--/
+- extendedWaitUntil:
+    visible:
+      id: '${ANSWER_ID}'
+    timeout: 30000
+- waitForAnimationToEnd:
+    timeout: 3000
+- takeScreenshot: before
+- tapOn:
+    id: '${ANSWER_ID}'
+- waitForAnimationToEnd:
+    timeout: 8000
+- takeScreenshot: after

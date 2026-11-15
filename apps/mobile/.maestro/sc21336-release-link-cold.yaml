@@ -1,0 +1,51 @@
+# sc-21336, release build (sc-21802: iOS's Open in "Soirely"? prompt answered): signed in as EMAIL, the app stopped, then opened by ${EVENT_ID}'s Edit details link (soirely://events/<id>/edit); ' Cold' typed, Save changes opens the event's page with the new name and Saved; back does not show Edit details.
+appId: com.soirely.app
+---
+- runFlow: release-sign-in.yaml
+- stopApp: com.soirely.app
+- openLink: soirely://events/${EVENT_ID}/edit
+- runFlow:
+    when:
+      visible: 'Open in .*Soirely.*'
+      platform: iOS
+    commands:
+      - tapOn: 'Open'
+- extendedWaitUntil:
+    visible:
+      id: 'eventForm.name'
+    timeout: 60000
+- takeScreenshot: release-cold-opened
+- tapOn:
+    id: 'eventForm.name'
+- inputText: ' Cold'
+- tapOn: 'Event name'
+- scrollUntilVisible:
+    element:
+      id: 'eventForm.send'
+    direction: DOWN
+- tapOn:
+    id: 'eventForm.send'
+- extendedWaitUntil:
+    visible:
+      id: 'events.page'
+    timeout: 3000
+- assertNotVisible:
+    id: 'eventForm.name'
+- takeScreenshot: release-cold-saved
+- assertVisible: '(Saved|Modifications enregistrées)'
+- assertVisible: '.*Cold.*'
+- runFlow:
+    when:
+      platform: Android
+    commands:
+      - back
+- runFlow:
+    when:
+      platform: iOS
+    commands:
+      - tapOn:
+          id: 'frame.back'
+- waitForAnimationToEnd
+- takeScreenshot: release-cold-back
+- assertNotVisible:
+    id: 'eventForm.name'

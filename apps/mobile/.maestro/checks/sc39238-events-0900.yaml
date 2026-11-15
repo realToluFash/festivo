@@ -1,0 +1,18 @@
+# sc-39238: on Events, an event ${EVENT} that starts at 09:00 in its own zone reads 09:00, with its leading zero, in the top card.
+appId: host.exp.Exponent
+---
+- openLink: ${METRO_URL}/--/events
+- extendedWaitUntil:
+    visible:
+      id: 'events.row.${EVENT}'
+    timeout: 30000
+- waitForAnimationToEnd
+- assertVisible:
+    id: 'events.row.${EVENT}'
+    childOf:
+      id: 'events.card'
+- assertVisible:
+    text: '.*09:00.*'
+    childOf:
+      id: 'events.card'
+- takeScreenshot: events-0900

@@ -1,0 +1,13 @@
+# Release build, on Colours with a scheme picked: taps Save twice and waits to land back on Personalisation in it. sc-30441.
+appId: com.soirely.app
+---
+- tapOn:
+    id: 'personalisation.save'
+- tapOn:
+    id: 'personalisation.save'
+    optional: true
+- extendedWaitUntil:
+    visible:
+      id: 'personalisation.choose'
+    timeout: 20000
+- takeScreenshot: personalisation-after-save

@@ -1,0 +1,48 @@
+# sc-22145: a copy opened any other way is an ordinary event page, whose back (the header's on a phone, ‹ Events on a tablet in portrait) goes to the list.
+appId: host.exp.Exponent
+---
+- openLink: ${METRO_URL}/--/events
+- extendedWaitUntil:
+    visible:
+      id: 'events.tab.drafts'
+    timeout: 30000
+- takeScreenshot: list
+- waitForAnimationToEnd
+- tapOn:
+    id: 'events.tab.drafts'
+- waitForAnimationToEnd
+- assertVisible:
+    id: 'events.tab.drafts'
+    selected: true
+- scrollUntilVisible:
+    element:
+      id: 'events.row.${COPY}'
+    timeout: 15000
+- tapOn:
+    id: 'events.row.${COPY}'
+- waitForAnimationToEnd
+- takeScreenshot: copy-from-list
+- runFlow:
+    when:
+      visible:
+        id: 'frame.back'
+    commands:
+      - tapOn:
+          id: 'frame.back'
+- runFlow:
+    when:
+      visible:
+        id: 'events.back'
+    commands:
+      - tapOn:
+          id: 'events.back'
+- waitForAnimationToEnd
+- scrollUntilVisible:
+    element:
+      id: 'events.tab.drafts'
+    direction: UP
+    timeout: 15000
+- assertVisible:
+    id: 'events.tab.drafts'
+    selected: true
+- takeScreenshot: after-back

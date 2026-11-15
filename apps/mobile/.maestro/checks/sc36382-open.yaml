@@ -1,0 +1,26 @@
+# The switcher's heading, search field and a domain offer's line, in the shown language. sc-36382.
+appId: host.exp.Exponent
+---
+- openLink: ${METRO_URL}/--/
+- tapOn:
+    id: 'tab-today|frame.home'
+    optional: true
+- tapOn:
+    id: 'frame.organisation|home.switchOrganisation'
+- extendedWaitUntil:
+    visible:
+      id: 'switcher.heading'
+    timeout: 10000
+- waitForAnimationToEnd:
+    timeout: 5000
+- takeScreenshot: open
+- scrollUntilVisible:
+    element:
+      id: 'switcher.tile.01a1c821-ae10-76e0-acc0-3bb7e48b2ceb'
+    timeout: 15000
+- takeScreenshot: offer
+- scrollUntilVisible:
+    element:
+      id: 'switcher.tile.01a1c822-0a50-753a-8935-0c0cf9ad25bb'
+    timeout: 15000
+- takeScreenshot: invitation

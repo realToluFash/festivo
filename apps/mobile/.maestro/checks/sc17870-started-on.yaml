@@ -1,0 +1,10 @@
+# sc-17870: Events Home's Happening now card for ${EVENT}, live and started on an earlier day, says which day it started, in the batch's language.
+appId: host.exp.Exponent
+---
+- openLink: ${METRO_URL}/--/events
+- extendedWaitUntil:
+    visible:
+      id: 'events.row.${EVENT}'
+    timeout: 30000
+- assertVisible: '.*11:13 Africa/Lagos.*'
+- takeScreenshot: started-on

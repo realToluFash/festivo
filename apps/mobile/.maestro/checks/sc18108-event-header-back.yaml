@@ -1,0 +1,30 @@
+# Android only. sc-18108: the same trip as sc18108-event-back, left by the header's Events back, for comparison. BACK_ID is the page's own back: frame.back on a phone, members.back, roles.back or events.back held upright.
+appId: host.exp.Exponent
+---
+- runFlow: ../return-home.yaml
+- tapOn:
+    id: 'frame.events'
+- extendedWaitUntil:
+    visible:
+      id: 'events.tab.${TAB}'
+    timeout: 30000
+- tapOn:
+    id: 'events.tab.${TAB}'
+- scrollUntilVisible:
+    element:
+      id: 'events.row.${EVENT}'
+    direction: DOWN
+    timeout: 20000
+- tapOn:
+    id: 'events.row.${EVENT}'
+- extendedWaitUntil:
+    visible:
+      id: 'events.page'
+    timeout: 20000
+- tapOn:
+    id: '${BACK_ID}'
+- extendedWaitUntil:
+    visible:
+      id: 'events.row.${EVENT}'
+    timeout: 10000
+- takeScreenshot: after-header-back

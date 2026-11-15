@@ -1,0 +1,9 @@
+<manifest xmlns:android="http://schemas.android.com/apk/res/android">
+  <!-- Android 11 hides other apps unless asked: these are the ones that open an inbox. -->
+  <queries>
+    <intent>
+      <action android:name="android.intent.action.MAIN" />
+      <category android:name="android.intent.category.APP_EMAIL" />
+    </intent>
+  </queries>
+</manifest>

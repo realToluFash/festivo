@@ -1,0 +1,45 @@
+# sc-25667: Continue with the name blank, then over 100 characters, stays on the first step and leaves Cancel live; Cancel leaves the blank walk at once, and the over-100 one by its Discard.
+appId: host.exp.Exponent
+---
+- runFlow: ../open-create-organisation.yaml
+- hideKeyboard:
+    optional: true
+- tapOn:
+    id: 'createWalk.primary'
+- waitForAnimationToEnd:
+    timeout: 3000
+- takeScreenshot: local-blank
+- assertVisible: '{{t:createOrganisation.whatTitle}}'
+- assertVisible:
+    id: 'createWalk.cancel'
+    enabled: true
+- tapOn:
+    id: 'createWalk.cancel'
+- extendedWaitUntil:
+    notVisible:
+      id: 'createWalk'
+    timeout: 10000
+- runFlow: ../open-create-organisation.yaml
+- tapOn:
+    id: 'createWalk.name'
+- inputText: 'AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA'
+- hideKeyboard:
+    optional: true
+- tapOn:
+    id: 'createWalk.primary'
+- waitForAnimationToEnd:
+    timeout: 3000
+- takeScreenshot: local-over-100
+- assertVisible: '{{t:createOrganisation.whatTitle}}'
+- assertVisible:
+    id: 'createWalk.cancel'
+    enabled: true
+- tapOn:
+    id: 'createWalk.cancel'
+- tapOn:
+    id: 'createWalk.discard'
+- extendedWaitUntil:
+    notVisible:
+      id: 'createWalk'
+    timeout: 10000
+- takeScreenshot: local-closed

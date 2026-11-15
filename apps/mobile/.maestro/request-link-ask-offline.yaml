@@ -1,0 +1,15 @@
+# sc-11741: on Ask to join already open, with the API stopped, tap Ask to join: "Asking did not work" above Message, the message kept.
+appId: host.exp.Exponent
+---
+- tapOn:
+    id: 'requestToJoin.ask'
+- extendedWaitUntil:
+    visible:
+      id: 'requestToJoin.message'
+    timeout: 30000
+- waitForAnimationToEnd:
+    timeout: 5000
+- assertVisible: 'Kept while offline'
+- assertNotVisible:
+    id: 'requestToJoin.home'
+- takeScreenshot: offline-ask

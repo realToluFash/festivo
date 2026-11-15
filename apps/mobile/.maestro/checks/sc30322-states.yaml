@@ -1,0 +1,66 @@
+# sc-30322: every ?switcher= state from each opener, one screenshot each.
+appId: host.exp.Exponent
+---
+- openLink: ${METRO_URL}/--/demo/events?switcher=populated
+- extendedWaitUntil:
+    visible:
+      id: 'switcher.heading'
+    timeout: 30000
+- waitForAnimationToEnd: { timeout: 5000 }
+- takeScreenshot: events-populated
+- openLink: ${METRO_URL}/--/demo/today?switcher=populated
+- extendedWaitUntil:
+    visible:
+      id: 'switcher.heading'
+    timeout: 30000
+- waitForAnimationToEnd: { timeout: 5000 }
+- takeScreenshot: today-populated
+- openLink: ${METRO_URL}/--/demo/settings?switcher=populated
+- extendedWaitUntil:
+    visible:
+      id: 'switcher.heading'
+    timeout: 30000
+- waitForAnimationToEnd: { timeout: 5000 }
+- takeScreenshot: settings-populated
+- openLink: ${METRO_URL}/--/demo/events?switcher=one
+- extendedWaitUntil:
+    visible:
+      id: 'switcher.heading'
+    timeout: 30000
+- waitForAnimationToEnd: { timeout: 5000 }
+- takeScreenshot: events-one
+- openLink: ${METRO_URL}/--/demo/events?switcher=many
+- extendedWaitUntil:
+    visible:
+      id: 'switcher.heading'
+    timeout: 30000
+- waitForAnimationToEnd: { timeout: 5000 }
+- takeScreenshot: events-many
+- openLink: ${METRO_URL}/--/demo/events?switcher=large
+- extendedWaitUntil:
+    visible:
+      id: 'switcher.heading'
+    timeout: 30000
+- waitForAnimationToEnd: { timeout: 5000 }
+- takeScreenshot: events-large
+- openLink: ${METRO_URL}/--/demo/events?switcher=invitation
+- extendedWaitUntil:
+    visible:
+      id: 'switcher.heading'
+    timeout: 30000
+- waitForAnimationToEnd: { timeout: 5000 }
+- takeScreenshot: events-invitation
+- openLink: ${METRO_URL}/--/demo/events?switcher=offer
+- extendedWaitUntil:
+    visible:
+      id: 'switcher.heading'
+    timeout: 30000
+- waitForAnimationToEnd: { timeout: 5000 }
+- takeScreenshot: events-offer
+- openLink: ${METRO_URL}/--/demo/events?switcher=no-match
+- extendedWaitUntil:
+    visible:
+      id: 'switcher.heading'
+    timeout: 30000
+- waitForAnimationToEnd: { timeout: 5000 }
+- takeScreenshot: events-no-match

@@ -1,0 +1,28 @@
+# The Settings list beside the page on a tablet held upright, top to foot, swiped on the list itself, at whatever text size the simulator is set to. sc-13496.
+appId: host.exp.Exponent
+---
+- openLink: ${METRO_URL}/--/settings
+- extendedWaitUntil:
+    visible:
+      id: 'settings.account'
+    timeout: 30000
+- waitForAnimationToEnd:
+    timeout: 5000
+- takeScreenshot: tlist-1
+- swipe:
+    start: 18%, 85%
+    end: 18%, 35%
+    duration: 600
+- waitForAnimationToEnd:
+    timeout: 3000
+- takeScreenshot: tlist-2
+- swipe:
+    start: 18%, 85%
+    end: 18%, 35%
+    duration: 600
+- waitForAnimationToEnd:
+    timeout: 3000
+- takeScreenshot: tlist-3
+- assertVisible:
+    id: 'settings.signOut'
+- takeScreenshot: tlist-foot

@@ -1,0 +1,454 @@
+.sr-desk {
+  height: auto;
+  min-height: 800px;
+}
+
+.sr-room {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) 340px;
+  gap: var(--spaceLg);
+  align-items: start;
+}
+
+.sr-room[data-panel] {
+  grid-template-columns: minmax(0, 1fr) 400px;
+}
+
+.sr-floor {
+  display: flex;
+  flex-direction: column;
+  gap: var(--spaceLg);
+  min-width: 0;
+}
+
+.sr-sections {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(150px, 1fr));
+  gap: var(--spaceSm);
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.sr-section.hig-card {
+  flex-direction: row;
+  align-items: flex-start;
+  gap: var(--spaceSm);
+  padding: var(--spaceMd);
+}
+
+.sr-section-words {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: var(--spaceXxs);
+  min-width: 0;
+  font: var(--typeSmall);
+}
+
+.sr-zones {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: var(--spaceMd);
+}
+
+.sr-zone {
+  display: flex;
+  flex-direction: column;
+  gap: var(--spaceSm);
+  padding: var(--spaceMd);
+  border: 1px dashed var(--colorFieldBorder);
+  border-radius: var(--radiusRow);
+}
+
+.sr-tiles {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(118px, 1fr));
+  gap: var(--spaceSm);
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.sr-tile {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: var(--spaceXxs);
+  box-sizing: border-box;
+  width: 100%;
+  min-height: var(--sizeHit);
+  padding: var(--spaceSm);
+  border: var(--borderControl);
+  border-radius: var(--radiusRow);
+  background: var(--colorCard);
+  color: var(--colorInk);
+  font: var(--typeSmall);
+  text-align: left;
+  cursor: pointer;
+}
+
+.sr-tile:hover {
+  background: var(--colorInset);
+}
+
+.sr-tile[aria-expanded='true'] {
+  border-color: var(--colorAccent);
+  background: var(--colorAccentTint);
+}
+
+.sr-tile-head {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: var(--spaceXs);
+  width: 100%;
+}
+
+.sr-state,
+.sr-extra {
+  display: inline-flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--spaceXxs);
+  font: var(--typeSmallStrong);
+}
+
+.sr-state[data-word='behind'] {
+  padding: 0 var(--spaceSm);
+  border-radius: var(--radiusPill);
+  background: var(--colorNeutralFill);
+}
+
+.sr-flagged {
+  color: var(--colorBrokenText);
+}
+
+.sr-shape {
+  flex: none;
+  box-sizing: border-box;
+  width: 14px;
+  height: 14px;
+}
+
+.sr-shape[data-word='served'] {
+  border-radius: 3px;
+  background: var(--colorAccent);
+}
+
+.sr-shape[data-word='tray'] {
+  border-radius: 7px;
+  background: var(--colorAccentTintBorder);
+}
+
+.sr-shape[data-word='kitchen'] {
+  border: 1px solid var(--colorInkTertiary);
+  border-radius: 3px;
+  background: repeating-linear-gradient(
+    135deg,
+    var(--colorInkTertiary) 0 2px,
+    var(--colorCard) 2px 4px
+  );
+}
+
+.sr-shape[data-word='serve'] {
+  border: 2.5px solid var(--colorInkTertiary);
+  border-radius: 7px;
+}
+
+.sr-shape[data-word='notHere'] {
+  border: 1.5px dashed var(--colorInkTertiary);
+  border-radius: 7px;
+}
+
+.sr-shape[data-word='notFired'] {
+  border-radius: 3px;
+  background: var(--colorTrack);
+}
+
+.sr-key {
+  display: flex;
+  flex-direction: column;
+  gap: var(--spaceSm);
+  padding-top: var(--spaceMd);
+  border-top: var(--borderCard);
+}
+
+.sr-key-list {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--spaceSm) var(--spaceLg);
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.sr-no-plan {
+  align-items: flex-start;
+}
+
+.sr-table {
+  width: 100%;
+  border-collapse: collapse;
+  font: var(--typeSmall);
+}
+
+.sr-table th,
+.sr-table td {
+  padding: var(--spaceSm);
+  border-bottom: var(--borderCard);
+  text-align: left;
+  vertical-align: top;
+}
+
+.sr-table th {
+  color: var(--colorInkSecondary);
+  font: var(--typeLabel);
+}
+
+.sr-table tr[data-open] td {
+  background: var(--colorAccentTint);
+}
+
+.sr-sort,
+.sr-row-button {
+  min-height: var(--sizeHit);
+  padding: 0;
+  border: 0;
+  background: none;
+  color: var(--colorInk);
+  font: var(--typeSmallStrong);
+  text-align: left;
+  cursor: pointer;
+}
+
+.sr-row-button {
+  color: var(--colorAccentText);
+}
+
+.sr-row-button:hover,
+.sr-sort:hover {
+  text-decoration: underline;
+}
+
+.sr-number {
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+}
+
+.sr-cell {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: var(--spaceXxs);
+}
+
+.sr-side {
+  position: sticky;
+  top: 0;
+}
+
+.sr-go {
+  align-self: flex-start;
+  margin-top: var(--spaceXs);
+}
+
+.sr-panel {
+  gap: var(--spaceLg);
+}
+
+.sr-panel-head {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: var(--spaceMd);
+}
+
+.sr-panel-words {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: var(--spaceXs);
+}
+
+.sr-part {
+  display: flex;
+  flex-direction: column;
+  gap: var(--spaceSm);
+}
+
+.sr-requests {
+  display: flex;
+  flex-direction: column;
+  gap: var(--spaceSm);
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.sr-request {
+  display: flex;
+  flex-direction: column;
+  gap: var(--spaceXxs);
+  padding: var(--spaceMd);
+  border: var(--borderCard);
+  border-radius: var(--radiusRow);
+  font: var(--typeSmall);
+}
+
+.sr-request[data-closed] {
+  background: var(--colorInset);
+}
+
+.sr-notice {
+  display: flex;
+  align-items: flex-start;
+  gap: var(--spaceSm);
+  margin: 0 0 var(--spaceXs);
+  padding: var(--spaceSm) var(--spaceMd);
+  border-radius: var(--radiusSmall);
+  background: var(--colorAttentionTint);
+  color: var(--colorAttentionText);
+  font: var(--typeSmallStrong);
+}
+
+.sr-buttons {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--spaceSm);
+  margin-top: var(--spaceXs);
+}
+
+.sr-decline {
+  display: flex;
+  flex-direction: column;
+  gap: var(--spaceSm);
+  margin-top: var(--spaceXs);
+}
+
+.sr-reason {
+  min-height: 72px;
+  padding: var(--spaceSm) var(--spaceMd);
+  resize: vertical;
+}
+
+.sr-tray {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--spaceSm);
+  padding: var(--spaceSm) 0;
+  font: var(--typeSmall);
+}
+
+.sr-ring {
+  align-self: center;
+}
+
+.sr-ring-table {
+  fill: var(--colorInset);
+  stroke: var(--colorBorder);
+}
+
+.sr-ring-seat {
+  fill: var(--colorCard);
+  stroke: var(--colorFieldBorder);
+  stroke-width: 1.5;
+}
+
+.sr-ring-seat[data-word='served'] {
+  fill: var(--colorAccent);
+  stroke: var(--colorAccent);
+}
+
+.sr-ring-seat[data-word='tray'] {
+  fill: var(--colorAccentTintBorder);
+  stroke: var(--colorAccentTintBorder);
+}
+
+.sr-ring-seat[data-word='serve'] {
+  stroke: var(--colorInkTertiary);
+  stroke-width: 3;
+}
+
+.sr-ring-seat[data-word='kitchen'] {
+  fill: url('#sr-hatch');
+  stroke: var(--colorInkTertiary);
+}
+
+.sr-ring-seat[data-word='notHere'] {
+  stroke: var(--colorInkTertiary);
+  stroke-dasharray: 4 3;
+}
+
+.sr-hatch-ground {
+  fill: var(--colorCard);
+}
+
+.sr-hatch-line {
+  stroke: var(--colorInkTertiary);
+  stroke-width: 2;
+}
+
+.sr-ring-n {
+  fill: var(--colorInk);
+  font: var(--typeSmallStrong);
+}
+
+.sr-ring-n[data-word='served'] {
+  fill: var(--colorCard);
+}
+
+.sr-seat-row {
+  display: flex;
+  flex-direction: column;
+  gap: var(--spaceXxs);
+  padding: var(--spaceSm) 0;
+  font: var(--typeSmall);
+}
+
+.sr-seat-head {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--spaceSm);
+}
+
+.sr-owed {
+  padding-left: var(--spaceMd);
+  border-left: 2px solid var(--colorFieldBorder);
+  font: var(--typeSmallStrong);
+}
+
+.sr-on-it {
+  margin: 0;
+  padding-top: var(--spaceMd);
+  border-top: var(--borderCard);
+  font: var(--typeSmall);
+}
+
+.sr-spinner {
+  width: 12px;
+  height: 12px;
+  border: 2px solid var(--colorTrack);
+  border-top-color: var(--colorAccent);
+  border-radius: 50%;
+}
+
+.sr-skeleton {
+  border-radius: var(--radiusCardDesktop);
+  background: var(--colorNeutralFill);
+}
+
+.sr-skeleton-row {
+  height: 88px;
+}
+
+.sr-skeleton-plan {
+  height: 420px;
+}
+
+.sr-skeleton-side {
+  height: 520px;
+}

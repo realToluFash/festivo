@@ -1,0 +1,32 @@
+# sc-20824: New event with ${NAME} typed; the start date field opens its picker, not Leave without saving?
+appId: host.exp.Exponent
+---
+- openLink: ${METRO_URL}/--/events
+- extendedWaitUntil:
+    visible:
+      id: 'events.new'
+    timeout: 30000
+- tapOn:
+    id: 'events.new'
+- extendedWaitUntil:
+    visible:
+      id: 'eventForm.name'
+    timeout: 20000
+- tapOn:
+    id: 'eventForm.name'
+- inputText: ${NAME}
+- hideKeyboard
+- scrollUntilVisible:
+    element:
+      id: 'eventForm.start.date'
+    direction: DOWN
+    centerElement: true
+- takeScreenshot: before-tap
+- tapOn:
+    id: 'eventForm.start.date'
+- waitForAnimationToEnd
+- takeScreenshot: after-tap
+- assertNotVisible:
+    id: 'eventForm.leave.keep'
+- assertVisible:
+    id: 'eventForm.start.done'

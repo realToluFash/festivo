@@ -1,0 +1,12 @@
+# Puts the keys away without sending the field. Android hides them. On an iPhone hideKeyboard
+# hangs, and the code field's Return sends the code, so it taps blank page (phone only). sc-35231.
+appId: host.exp.Exponent
+---
+- runFlow:
+    when: { platform: Android }
+    commands:
+      - hideKeyboard
+- runFlow:
+    when: { platform: iOS }
+    commands:
+      - tapOn: { point: '2%,45%' }

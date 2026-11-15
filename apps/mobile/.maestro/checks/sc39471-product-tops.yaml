@@ -1,0 +1,59 @@
+# sc-39471: the tops of Events, the Calendar, Settings and a Settings page, at rest and scrolled once, on the product, to put beside the other.
+appId: host.exp.Exponent
+---
+- setOrientation: ${ORIENT}
+- openLink: ${METRO_URL}/--/events
+- waitForAnimationToEnd:
+    timeout: 8000
+- runFlow: ../developer-menu-close.yaml
+- waitForAnimationToEnd:
+    timeout: 3000
+- takeScreenshot: product-events-rest
+- scroll
+- waitForAnimationToEnd:
+    timeout: 2000
+- takeScreenshot: product-events-scrolled
+- openLink: ${METRO_URL}/--/calendar
+- waitForAnimationToEnd:
+    timeout: 8000
+- runFlow: ../developer-menu-close.yaml
+- waitForAnimationToEnd:
+    timeout: 3000
+- takeScreenshot: product-calendar-rest
+- scroll
+- waitForAnimationToEnd:
+    timeout: 2000
+- takeScreenshot: product-calendar-scrolled
+- openLink: ${METRO_URL}/--/settings
+- waitForAnimationToEnd:
+    timeout: 8000
+- runFlow: ../developer-menu-close.yaml
+- waitForAnimationToEnd:
+    timeout: 3000
+- takeScreenshot: product-settings-rest
+- scroll
+- waitForAnimationToEnd:
+    timeout: 2000
+- takeScreenshot: product-settings-scrolled
+- openLink: ${METRO_URL}/--/settings/account
+- waitForAnimationToEnd:
+    timeout: 8000
+- runFlow: ../developer-menu-close.yaml
+- waitForAnimationToEnd:
+    timeout: 3000
+- takeScreenshot: product-settings-account-rest
+- scroll
+- waitForAnimationToEnd:
+    timeout: 2000
+- takeScreenshot: product-settings-account-scrolled
+- openLink: ${METRO_URL}/--/settings/organisation
+- waitForAnimationToEnd:
+    timeout: 8000
+- runFlow: ../developer-menu-close.yaml
+- waitForAnimationToEnd:
+    timeout: 3000
+- takeScreenshot: product-settings-organisation-rest
+- scroll
+- waitForAnimationToEnd:
+    timeout: 2000
+- takeScreenshot: product-settings-organisation-scrolled

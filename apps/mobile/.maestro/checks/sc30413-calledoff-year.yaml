@@ -1,0 +1,26 @@
+# sc-30413: the called-off line on an event's card names its year only outside this year. Needs X2, called off today in QA Edit Org, and E7, called off in 2025 in QA Organisation.
+appId: host.exp.Exponent
+---
+- openLink: ${METRO_URL}/--/events
+- extendedWaitUntil: { visible: '{{t:eventsSearch.label}}', timeout: 30000 }
+- tapOn: '{{t:todayScreen.tab.today}}'
+- extendedWaitUntil: { visible: { id: 'home.switchOrganisation' }, timeout: 30000 }
+- runFlow: ../open-switcher.yaml
+- tapOn: 'QA Edit Org'
+- waitForAnimationToEnd: { timeout: 6000 }
+- openLink: ${METRO_URL}/--/events/${X2}
+- extendedWaitUntil: { visible: '{{t:eventsScreen.calledOffOn}}', timeout: 20000 }
+- waitForAnimationToEnd: { timeout: 4000 }
+- takeScreenshot: event-calledOff-thisyear-product
+- assertNotVisible: '{{t:eventsScreen.calledOffOn}}20\d\d.*'
+- openLink: ${METRO_URL}/--/events
+- extendedWaitUntil: { visible: '{{t:eventsSearch.label}}', timeout: 30000 }
+- tapOn: '{{t:todayScreen.tab.today}}'
+- extendedWaitUntil: { visible: { id: 'home.switchOrganisation' }, timeout: 30000 }
+- runFlow: ../open-switcher.yaml
+- tapOn: 'QA Organisation'
+- waitForAnimationToEnd: { timeout: 6000 }
+- openLink: ${METRO_URL}/--/events/${E7}
+- extendedWaitUntil: { visible: '{{t:eventsScreen.calledOffOn}}2025.*', timeout: 20000 }
+- waitForAnimationToEnd: { timeout: 4000 }
+- takeScreenshot: event-calledOff-2025-product

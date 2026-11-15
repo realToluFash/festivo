@@ -1,0 +1,38 @@
+# An upright tablet's row on Today, Events, Calendar and Settings, each opened with one tap on its tab, at whatever text size the device is set to. sc-40401.
+appId: host.exp.Exponent
+---
+- openLink: ${METRO_URL}/--/
+- tapOn:
+    id: 'tab-today|frame.home'
+    optional: true
+- extendedWaitUntil:
+    visible:
+      id: 'frame.organisation|home.switchOrganisation'
+    timeout: 30000
+- waitForAnimationToEnd:
+    timeout: 5000
+- takeScreenshot: today
+- tapOn:
+    text: '(Événements|Events|Eventos)'
+- waitForAnimationToEnd:
+    timeout: 5000
+- takeScreenshot: events
+- tapOn:
+    text: '(Calendrier|Calendar|Calendario)'
+- waitForAnimationToEnd:
+    timeout: 5000
+- takeScreenshot: calendar
+- tapOn:
+    text: '(Paramètres|Settings|Ajustes|Configuración)'
+- extendedWaitUntil:
+    visible:
+      id: 'settings.account'
+    timeout: 15000
+- waitForAnimationToEnd:
+    timeout: 5000
+- takeScreenshot: settings
+- tapOn:
+    text: '(Aujourd’hui|Today|Hoy)'
+- waitForAnimationToEnd:
+    timeout: 5000
+- takeScreenshot: today-back

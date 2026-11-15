@@ -1,0 +1,30 @@
+# sc-30009: a member's Role picker, Owner, Admin and Member with each role's line, top and foot, in the batch's language. MEMBER is the membership id of a Member.
+appId: host.exp.Exponent
+---
+- openLink: ${METRO_URL}/--/settings/members
+- extendedWaitUntil:
+    visible:
+      id: 'members.card'
+    timeout: 30000
+- scrollUntilVisible:
+    element:
+      id: 'members.row.${MEMBER}'
+    direction: DOWN
+    centerElement: true
+- tapOn:
+    id: 'members.row.${MEMBER}'
+- extendedWaitUntil:
+    visible:
+      id: 'members.changeRole'
+    timeout: 15000
+- tapOn:
+    id: 'members.changeRole'
+- extendedWaitUntil:
+    visible:
+      id: 'members\.role\.[0-9a-f-]+'
+    timeout: 15000
+- waitForAnimationToEnd
+- takeScreenshot: member-role-top
+- scroll
+- waitForAnimationToEnd
+- takeScreenshot: member-role-foot

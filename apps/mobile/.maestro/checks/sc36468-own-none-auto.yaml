@@ -1,0 +1,25 @@
+# sc-36468: own screen, none error, then the code goes to a text by auto; the error follows (or keeps its words).
+appId: host.exp.Exponent
+---
+- runScript:
+    file: ../scripts/sc36468-fresh-phone.js
+    env:
+      MODE: alt
+      FAIL: '0'
+- openLink: ${METRO_URL}/--/verify-phone?phone=${output.phoneId}
+- extendedWaitUntil:
+    visible: '{{t:verifyPhone.introWhatsApp}}'
+    timeout: 30000
+- tapOn:
+    id: 'verifyPhone.code'
+- takeScreenshot: before
+- extendedWaitUntil:
+    visible: '{{t:verifyPhone.introFallback}}'
+    timeout: 80000
+- waitForAnimationToEnd
+- assertNotVisible: '{{t:verifyPhone.codeBlank}}'
+- assertNotVisible: '{{t:verifyPhone.wrong}}'
+- assertNotVisible: '{{t:verifyPhone.codeShort}}'
+- assertNotVisible: '{{t:verifyPhone.codeBlankWhatsApp}}'
+- assertNotVisible: '{{t:verifyPhone.wrongWhatsApp}}'
+- takeScreenshot: after

@@ -1,0 +1,20 @@
+# sc-13205: Events in the navigation, and the list of ${ORG} showing ${EVENT}, with its type labels and Draft badges, in the account's language.
+appId: host.exp.Exponent
+---
+- runFlow:
+    file: ../switch-organisation.yaml
+    env:
+      ORG: ${ORG}
+- openLink: ${METRO_URL}/--/
+- extendedWaitUntil:
+    visible:
+      id: 'frame.events'
+    timeout: 30000
+- takeScreenshot: nav
+- tapOn:
+    id: 'frame.events'
+- extendedWaitUntil:
+    visible:
+      id: 'events.row.${EVENT}'
+    timeout: 30000
+- takeScreenshot: list

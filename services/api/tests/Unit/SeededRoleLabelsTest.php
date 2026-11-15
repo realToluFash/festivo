@@ -1,0 +1,77 @@
+<?php
+
+declare(strict_types=1);
+
+namespace App\Tests\Unit;
+
+use App\Domain\Organisation\Roles\SeededRoleLabels;
+use App\Enum\SeededRole;
+use App\Locale\SupportedLocales;
+use PHPUnit\Framework\Attributes\DataProvider;
+use PHPUnit\Framework\Attributes\Test;
+use PHPUnit\Framework\TestCase;
+use Psl\Dict;
+use Psl\Iter;
+use Psl\Json;
+use Psl\Str;
+use Psl\Type;
+use Psl\Vec;
+use Symfony\Component\Translation\Loader\ArrayLoader;
+use Symfony\Component\Translation\Loader\JsonFileLoader;
+use Symfony\Component\Translation\Translator;
+
+final class SeededRoleLabelsTest extends TestCase
+{
+    #[Test]
+    #[DataProvider('locales')]
+    public function everySeededRoleHasItsOwnLabelInEveryLanguage(string $locale): void
+    {
+        $labels = Vec\map(SeededRole::cases(), static fn (SeededRole $seeded): string => self::labels()->label($seeded, $locale));
+
+        self::assertSame([], Vec\filter($labels, static fn (string $label): bool => Str\starts_with($label, 'seeded_role.')), "untranslated in {$locale}");
+        self::assertCount(Iter\count(SeededRole::cases()), Dict\unique($labels), "two seeded roles read the same in {$locale}");
+    }
+
+    #[Test]
+    #[DataProvider('locales')]
+    public function noLanguageLabelsASeededRoleThatNoLongerExists(string $locale): void
+    {
+        $catalogue = Type\dict(Type\string(), Type\string())->coerce(Json\decode((string) \file_get_contents(self::catalogue($locale))));
+        // ponytail: the clients still word the retired roles, and SHARED_WORDS holds every copy to theirs; these go with sc-29914 and sc-29915.
+        $known = [...Vec\map(SeededRole::cases(), static fn (SeededRole $seeded): string => $seeded->getReadable()), 'seeded_role.event_manager', 'seeded_role.coordinator', 'seeded_role.read_only'];
+        $labelled = Vec\filter(Vec\keys($catalogue), static fn (string $key): bool => Str\starts_with($key, 'seeded_role.'));
+
+        self::assertSame([], Vec\values(Vec\filter($labelled, static fn (string $key): bool => !Iter\contains($known, $key))));
+    }
+
+    /** @return iterable<string, array{string}> */
+    public static function locales(): iterable
+    {
+        foreach (SupportedLocales::ALL as $locale) {
+            yield $locale => [$locale];
+        }
+    }
+
+    private static function labels(): SeededRoleLabels
+    {
+        return new SeededRoleLabels(self::translator());
+    }
+
+    private static function translator(): Translator
+    {
+        $translator = new Translator(SupportedLocales::DEFAULT);
+        $translator->addLoader('json', new JsonFileLoader());
+        $translator->addLoader('array', new ArrayLoader());
+
+        foreach (SupportedLocales::ALL as $locale) {
+            $translator->addResource('json', self::catalogue($locale), $locale, 'messages');
+        }
+
+        return $translator;
+    }
+
+    private static function catalogue(string $locale): string
+    {
+        return \dirname(__DIR__, 2) . "/translations/messages.{$locale}.json";
+    }
+}

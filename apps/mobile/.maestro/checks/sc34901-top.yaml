@@ -1,0 +1,12 @@
+# sc-34901: Settings › Notification settings in the app, the header's says and counts lines as the account's switches stand.
+appId: host.exp.Exponent
+---
+- openLink: ${METRO_URL}/--/settings/notifications
+- extendedWaitUntil:
+    visible:
+      id: 'notifications.guest_replies'
+    timeout: 30000
+- runFlow: ../developer-menu-close.yaml
+- waitForAnimationToEnd:
+    timeout: 5000
+- takeScreenshot: top

@@ -1,0 +1,22 @@
+# sc-49576: ${EVENT_ID}'s Guests scrolled to its rows, each line under a grouped guest's or companion's name ending in its group (guestList.withGroup); then ${GUEST_ID}'s Group picker left open for a hierarchy read of the field's accessible name.
+appId: host.exp.Exponent
+---
+- setOrientation: ${ORIENT}
+- openLink: ${METRO_URL}/--/events/${EVENT_ID}?area=guests
+- extendedWaitUntil: { visible: { id: 'guests.row.${GUEST_ID}' }, timeout: 30000 }
+- scrollUntilVisible:
+    {
+      element: { id: 'guests.row.${GUEST_ID}' },
+      direction: DOWN,
+      timeout: 10000,
+      centerElement: true,
+    }
+- extendedWaitUntil: { visible: { id: 'never.there' }, timeout: 1500, optional: true }
+- takeScreenshot: rows-scrolled
+- tapOn: { id: 'guests.row.${GUEST_ID}' }
+- extendedWaitUntil: { visible: { id: 'guest.edit' }, timeout: 20000 }
+- tapOn: { id: 'guest.edit' }
+- extendedWaitUntil: { visible: { id: 'guest.form.group' }, timeout: 15000 }
+- tapOn: { id: 'guest.form.group' }
+- extendedWaitUntil: { visible: { id: 'guest.groupPicker.field' }, timeout: 15000 }
+- extendedWaitUntil: { visible: { id: 'never.there' }, timeout: 1500, optional: true }

@@ -1,0 +1,33 @@
+# sc-31788: the Your events cards on Today, swiped across, in the account's language.
+appId: host.exp.Exponent
+---
+- openLink: ${METRO_URL}/--/
+- extendedWaitUntil:
+    visible: '{{t:todayScreen.tab.today}}'
+    timeout: 30000
+- scrollUntilVisible:
+    element:
+      text: '{{t:todayScreen.allEvents}}'
+    direction: DOWN
+    centerElement: true
+    timeout: 30000
+- waitForAnimationToEnd
+- takeScreenshot: c0
+- swipe:
+    start: 90%, 70%
+    end: 15%, 70%
+    duration: 600
+- waitForAnimationToEnd
+- takeScreenshot: c1
+- swipe:
+    start: 90%, 70%
+    end: 15%, 70%
+    duration: 600
+- waitForAnimationToEnd
+- takeScreenshot: c2
+- swipe:
+    start: 90%, 70%
+    end: 15%, 70%
+    duration: 600
+- waitForAnimationToEnd
+- takeScreenshot: c3

@@ -1,0 +1,8 @@
+# Leaves Events loaded on a signed-in app, ready for the API to be stopped (offline-band-pull).
+appId: host.exp.Exponent
+---
+- openLink: ${METRO_URL}/--/events
+- extendedWaitUntil:
+    visible:
+      id: 'events.tab.upcoming'
+    timeout: 30000

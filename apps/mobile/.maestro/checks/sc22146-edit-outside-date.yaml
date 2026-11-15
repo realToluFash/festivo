@@ -1,0 +1,41 @@
+# sc-22146: on iOS, Edit details of EVENT (starting on the 12th), Starts date sheet, DAY tapped and the sheet closed by a tap outside; Starts' date shows DAY.
+appId: host.exp.Exponent
+---
+- openLink: ${METRO_URL}/--/events/${EVENT}/edit
+- extendedWaitUntil:
+    visible:
+      id: 'eventForm.name'
+    timeout: 30000
+- scrollUntilVisible:
+    element:
+      id: 'eventForm.start.date'
+    direction: DOWN
+    centerElement: true
+- swipe:
+    start: 50%, 45%
+    end: 50%, 57%
+- waitForAnimationToEnd
+- assertVisible:
+    id: 'eventForm.start.date'
+- assertNotVisible:
+    id: 'eventForm.start.date'
+    text: '.*\b${DAY}\b.*'
+- takeScreenshot: before
+- tapOn:
+    id: 'eventForm.start.date'
+- extendedWaitUntil:
+    visible:
+      id: 'eventForm.start.done'
+    timeout: 10000
+- tapOn:
+    text: '${DAY}'
+- takeScreenshot: picked
+- tapOn:
+    point: '50%,8%'
+- waitForAnimationToEnd
+- assertNotVisible:
+    id: 'eventForm.start.done'
+- assertVisible:
+    id: 'eventForm.start.date'
+    text: '.*\b${DAY}\b.*'
+- takeScreenshot: kept

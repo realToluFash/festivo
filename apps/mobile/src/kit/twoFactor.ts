@@ -1,0 +1,58 @@
+import { ApiError } from '@soirely/api-client';
+import { codeProblem, lockLiftsAt, shapeRecovery } from '@soirely/domain';
+
+export type CodeMode = 'app' | 'recovery';
+
+/** A recovery code's letters and digits, as it is printed less its dash. */
+export const RECOVERY_LENGTH = 8;
+
+/** The message key a typed code gets before anything is sent, or null when it may go. */
+export function typedCodeProblem(mode: CodeMode, typed: string): string | null {
+  if (mode === 'recovery') {
+    const plain = shapeRecovery(typed).replace('-', '');
+
+    return plain === ''
+      ? 'twoFactor.recoveryBlank'
+      : plain.length < RECOVERY_LENGTH
+        ? 'twoFactor.recoveryShort'
+        : null;
+  }
+
+  const found = codeProblem(typed);
+
+  return found === 'blank'
+    ? 'twoFactor.codeBlank'
+    : found === 'short'
+      ? 'twoFactor.codeLength'
+      : null;
+}
+
+export type CodeRefusal =
+  | { kind: 'wrong'; message: string }
+  | { kind: 'paused'; liftsAt: Date }
+  | { kind: 'expired' }
+  | { kind: 'failed' };
+
+/** What the API's refusal of a code means for the screen. */
+export function codeRefusal(error: unknown, mode: CodeMode): CodeRefusal {
+  if (!(error instanceof ApiError)) return { kind: 'failed' };
+
+  if (error.is('two_factor_challenge_invalid')) return { kind: 'expired' };
+
+  if (error.is('too_many_attempts')) {
+    const liftsAt = lockLiftsAt(Number(error.response?.headers.get('Retry-After')));
+
+    return liftsAt == null ? { kind: 'failed' } : { kind: 'paused', liftsAt };
+  }
+
+  if (error.is('recovery_code_used')) return { kind: 'wrong', message: 'twoFactor.recoveryUsed' };
+
+  if (error.is('two_factor_code_invalid')) {
+    return {
+      kind: 'wrong',
+      message: mode === 'app' ? 'twoFactor.codeWrong' : 'twoFactor.recoveryWrong',
+    };
+  }
+
+  return { kind: 'failed' };
+}

@@ -1,0 +1,42 @@
+# sc-29072: the design demo's two-factor pages, one screenshot each, to compare with the product.
+appId: host.exp.Exponent
+---
+- openLink: ${METRO_URL}/--/demo/two-factor
+- waitForAnimationToEnd: { timeout: 8000 }
+- takeScreenshot: demo-two-factor
+- openLink: ${METRO_URL}/--/demo/recovery
+- waitForAnimationToEnd: { timeout: 8000 }
+- takeScreenshot: demo-recovery
+- openLink: ${METRO_URL}/--/demo/lost
+- waitForAnimationToEnd: { timeout: 8000 }
+- takeScreenshot: demo-lost
+- openLink: ${METRO_URL}/--/demo/lost?emailOnly=1
+- waitForAnimationToEnd: { timeout: 8000 }
+- takeScreenshot: demo-lost-emailOnly-1
+- openLink: ${METRO_URL}/--/demo/waiting
+- waitForAnimationToEnd: { timeout: 8000 }
+- takeScreenshot: demo-waiting
+- openLink: ${METRO_URL}/--/demo/waiting?state=nobody
+- waitForAnimationToEnd: { timeout: 8000 }
+- takeScreenshot: demo-waiting-state-nobody
+- openLink: ${METRO_URL}/--/demo/ending?kind=approved
+- waitForAnimationToEnd: { timeout: 8000 }
+- takeScreenshot: demo-ending-kind-approved
+- openLink: ${METRO_URL}/--/demo/ending?kind=turnedDown
+- waitForAnimationToEnd: { timeout: 8000 }
+- takeScreenshot: demo-ending-kind-turnedDown
+- openLink: ${METRO_URL}/--/demo/ending?kind=ended
+- waitForAnimationToEnd: { timeout: 8000 }
+- takeScreenshot: demo-ending-kind-ended
+- openLink: ${METRO_URL}/--/demo/ending?kind=cancelled
+- waitForAnimationToEnd: { timeout: 8000 }
+- takeScreenshot: demo-ending-kind-cancelled
+- openLink: ${METRO_URL}/--/demo/ending?kind=replaced
+- waitForAnimationToEnd: { timeout: 8000 }
+- takeScreenshot: demo-ending-kind-replaced
+- openLink: ${METRO_URL}/--/demo/ending?kind=nobody
+- waitForAnimationToEnd: { timeout: 8000 }
+- takeScreenshot: demo-ending-kind-nobody
+- openLink: ${METRO_URL}/--/demo/tfa-again
+- waitForAnimationToEnd: { timeout: 8000 }
+- takeScreenshot: demo-tfa-again

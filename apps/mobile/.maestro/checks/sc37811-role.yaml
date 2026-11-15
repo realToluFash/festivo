@@ -1,0 +1,46 @@
+# sc-37811: the role screen as the owner: its title, a change, Discard, Save, then Owner's proof sheet. Needs ${METRO_URL}; Priya must be a Member.
+appId: host.exp.Exponent
+---
+- openLink: ${METRO_URL}/--/settings/members
+- extendedWaitUntil:
+    visible:
+      id: 'members.card'
+    timeout: 30000
+- waitForAnimationToEnd:
+    timeout: 8000
+- scrollUntilVisible:
+    element:
+      id: 'members.row.811758e3-1ee4-412c-837d-ad7fb42663e0'
+- tapOn:
+    id: 'members.row.811758e3-1ee4-412c-837d-ad7fb42663e0'
+- waitForAnimationToEnd
+- tapOn:
+    id: 'members.changeRole'
+- waitForAnimationToEnd
+- takeScreenshot: role
+- tapOn:
+    id: 'members.role.01a1c84d-7a56-7702-9d1b-46b90f15a547'
+- waitForAnimationToEnd
+- takeScreenshot: role-changed
+- tapOn:
+    id: 'members.role.cancel'
+- waitForAnimationToEnd
+- takeScreenshot: discard
+- tapOn:
+    id: 'members.role.keep'
+- tapOn:
+    id: 'members.role.save'
+- extendedWaitUntil:
+    visible:
+      id: 'members.changeRole'
+    timeout: 15000
+- waitForAnimationToEnd
+- takeScreenshot: saved
+- tapOn:
+    id: 'members.changeRole'
+- tapOn:
+    id: 'members.role.01a1c84d-7a56-76ae-9d1b-46b90e2e6a2b'
+- tapOn:
+    id: 'members.role.save'
+- waitForAnimationToEnd
+- takeScreenshot: make-owner

@@ -1,0 +1,39 @@
+# Release build, signed out: Forgot your password? sends the link for CARRY, the sent screen shows Open Mail, and Open Mail leaves for the mail app. sc-33809.
+appId: com.soirely.app
+---
+- launchApp:
+    appId: com.soirely.app
+    stopApp: true
+- extendedWaitUntil:
+    visible:
+      id: 'welcome.email'
+    timeout: 60000
+- tapOn:
+    id: 'welcome.email'
+- extendedWaitUntil:
+    visible:
+      id: 'signIn.email'
+    timeout: 30000
+- tapOn:
+    id: 'signIn.email'
+- eraseText: 80
+- inputText: ${CARRY}
+- hideKeyboard
+- tapOn:
+    id: 'signIn.forgot'
+- extendedWaitUntil:
+    visible:
+      id: 'recovery.send'
+    timeout: 15000
+- takeScreenshot: open-mail-01-reset
+- tapOn:
+    id: 'recovery.send'
+- extendedWaitUntil:
+    visible:
+      id: 'recovery.openMail'
+    timeout: 15000
+- takeScreenshot: open-mail-02-sent
+- tapOn:
+    id: 'recovery.openMail'
+- waitForAnimationToEnd
+- takeScreenshot: open-mail-03-mail-app

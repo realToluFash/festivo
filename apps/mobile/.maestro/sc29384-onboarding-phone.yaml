@@ -1,0 +1,118 @@
+# A new account's mobile step and its verified screen in LANGUAGE, for sc-29384: the step's intro (INTRO)
+# and the verified line (DONE, a regex) say "on the day". Based on sc29126-steps-language.yaml. EMAIL must be fresh.
+#
+#   node .qa/bin/qa-env.mjs maestro sc29384-onboarding-phone --android LANGUAGE=Français L=fr NAME=… EMAIL=… PASSWORD=… SHOW=… HIDE=… STEP1=… STEP4=… COUNTRY='Royaume-Uni' PHONE=7400123459 INTRO='…' DONE='…'
+appId: host.exp.Exponent
+---
+- launchApp:
+    appId: host.exp.Exponent
+    stopApp: true
+- openLink: ${METRO_URL}/--/welcome
+- extendedWaitUntil:
+    visible:
+      id: 'welcome.email'
+    timeout: 90000
+- tapOn:
+    id: 'language.open'
+- tapOn:
+    id: 'language\.(en|es|fr|pt)'
+    text: '${LANGUAGE}'
+- waitForAnimationToEnd
+- takeScreenshot: ${L}-welcome
+- tapOn:
+    id: 'welcome.email'
+- extendedWaitUntil:
+    visible:
+      id: 'signIn.email'
+    timeout: 20000
+- assertVisible: '${SHOW}'
+- tapOn: '${SHOW}'
+- assertVisible: '${HIDE}'
+- takeScreenshot: ${L}-sign-in
+- tapOn:
+    id: 'signIn.back'
+- extendedWaitUntil:
+    visible:
+      id: 'welcome.register'
+    timeout: 20000
+- tapOn:
+    id: 'welcome.register'
+- extendedWaitUntil:
+    visible:
+      id: 'register.name'
+    timeout: 30000
+- assertVisible: '${STEP1}'
+- takeScreenshot: ${L}-register
+- tapOn:
+    id: 'register.name'
+- inputText: ${NAME}
+- tapOn:
+    id: 'register.email'
+- inputText: ${EMAIL}
+- tapOn:
+    id: 'register.password'
+- inputText: ${PASSWORD}
+- hideKeyboard
+- takeScreenshot: ${L}-register-filled
+- tapOn:
+    id: 'register.submit'
+- extendedWaitUntil:
+    visible:
+      id: 'verifyEmail.code'
+    timeout: 30000
+- waitForAnimationToEnd
+- takeScreenshot: ${L}-verify-email
+- runScript: scripts/latest-code.js
+- tapOn:
+    id: 'verifyEmail.code'
+- inputText: ${output.code}
+- extendedWaitUntil:
+    visible:
+      id: 'completeProfile.organisation'
+    timeout: 20000
+- waitForAnimationToEnd
+- takeScreenshot: ${L}-organisation
+- tapOn:
+    id: 'completeProfile.organisation'
+- inputText: 'QA Strings Ltd'
+- tapOn:
+    id: 'completeProfile.country'
+- tapOn:
+    id: 'completeProfile.country.search'
+- inputText: '${COUNTRY}'
+- tapOn:
+    id: 'completeProfile.country.GB'
+- tapOn:
+    id: 'completeProfile.save'
+- extendedWaitUntil:
+    visible:
+      id: 'phone.number'
+    timeout: 20000
+- waitForAnimationToEnd
+- assertVisible: '${STEP4}'
+- assertVisible: '${INTRO}'
+- hideKeyboard
+- takeScreenshot: ${L}-mobile
+- tapOn:
+    id: 'phone.number'
+- inputText: ${PHONE}
+- hideKeyboard
+- tapOn:
+    id: 'phone.send'
+- extendedWaitUntil:
+    visible:
+      id: 'verifyPhone.code'
+    timeout: 20000
+- waitForAnimationToEnd
+- takeScreenshot: ${L}-verify-phone
+- runScript: scripts/latest-sms-code.js
+- tapOn:
+    id: 'verifyPhone.code'
+- inputText: ${output.code}
+- extendedWaitUntil:
+    visible:
+      id: 'verifyPhone.continue'
+    timeout: 20000
+- waitForAnimationToEnd
+- assertVisible: '${DONE}'
+- takeScreenshot: ${L}-phone-verified

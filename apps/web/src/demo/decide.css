@@ -1,0 +1,121 @@
+/* What a decision costs (Budget-A-Ceiling, row 4): Add guest at 762, the fields at 316 and the answer at 380 beside them. */
+.dec-cols {
+  display: grid;
+  grid-template-columns: minmax(0, 316px) minmax(0, 380px);
+  gap: var(--space3xl);
+  align-items: start;
+}
+
+.dec-form {
+  display: flex;
+  flex-direction: column;
+  gap: var(--spaceXl);
+  min-width: 0;
+}
+
+.dec-companions {
+  display: flex;
+  flex-direction: column;
+  gap: var(--spaceXs);
+}
+
+.dec-companions .desk-field {
+  padding: 10px 0;
+}
+
+.dec-answer {
+  --budAmber: var(--colorAttentionText);
+
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  padding: var(--spaceXl);
+  border-radius: 16px;
+  background: var(--colorInset);
+}
+
+.dec-head {
+  color: var(--colorInkSecondary);
+  font: 600 12.5px/1.3 var(--fontFamily);
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+.dec-big {
+  display: flex;
+  align-items: center;
+  gap: var(--spaceSm);
+  color: var(--colorInk);
+  font: 700 24px/1.2 var(--fontFamily);
+  font-variant-numeric: tabular-nums;
+}
+
+.dec-up {
+  flex: none;
+}
+
+.dec-line {
+  color: var(--colorInkSecondary);
+  font: 500 14px/1.45 var(--fontFamily);
+}
+
+.dec-line.is-strong {
+  color: var(--colorInk);
+  font-weight: 600;
+}
+
+.dec-bones {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.dec-bone {
+  display: block;
+  height: 14px;
+  border-radius: 7px;
+  background: var(--colorInsetBorder);
+}
+
+.dec-bone.is-big {
+  width: 180px;
+  max-width: 100%;
+  height: 26px;
+  border-radius: 8px;
+}
+
+.dec-bone.is-short {
+  width: calc(100% - 60px);
+}
+
+.dec-ceiling {
+  display: flex;
+  align-items: flex-start;
+  gap: var(--spaceSm);
+}
+
+.dec-ceiling .bud-ring {
+  margin-top: 3px;
+}
+
+.dec-ceiling p {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.dec-ceiling-head {
+  color: var(--colorAttentionText);
+  font: 600 14px/1.45 var(--fontFamily);
+}
+
+.dec-ceiling-line {
+  color: var(--colorInk);
+  font: 500 14px/1.45 var(--fontFamily);
+}
+
+@media (width <= 720px) {
+  .dec-cols {
+    grid-template-columns: minmax(0, 1fr);
+  }
+}

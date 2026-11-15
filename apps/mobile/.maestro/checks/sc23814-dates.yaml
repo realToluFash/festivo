@@ -1,0 +1,11 @@
+# sc-23814, iPad ${ORIENT}: All dates of ${EVENT}, for its back's size and place beside Notifications'. Opens through ${METRO_URL}, the Metro address Expo Go loads from.
+appId: host.exp.Exponent
+---
+- setOrientation: ${ORIENT}
+- openLink: ${METRO_URL}/--/events/${EVENT}/dates
+- extendedWaitUntil:
+    visible:
+      id: 'timeline.allDates.back'
+    timeout: 30000
+- waitForAnimationToEnd
+- takeScreenshot: dates

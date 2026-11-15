@@ -1,0 +1,14 @@
+# sc-48825: Members' card and its faces' chip (PORTRAIT), for the product beside its demo.
+appId: host.exp.Exponent
+---
+- setOrientation: PORTRAIT
+- openLink: ${METRO_URL}/--/settings/members
+- extendedWaitUntil:
+    visible: '{{t:membersScreen.title}}'
+    timeout: 30000
+- extendedWaitUntil:
+    visible: '.*(people|personnes|personas|pessoas).*'
+    timeout: 30000
+- waitForAnimationToEnd:
+    timeout: 5000
+- takeScreenshot: members-chip

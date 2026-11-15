@@ -1,0 +1,13 @@
+# On Check your email, types CODE into the code field and leaves the app where it goes. sc-29923.
+#   node .qa/bin/qa-env.mjs maestro sc29923-type-code CODE=… SHOT=…
+appId: host.exp.Exponent
+---
+- tapOn:
+    id: 'verifyEmail.code'
+- inputText: ${CODE}
+- extendedWaitUntil:
+    visible:
+      id: 'register.password'
+    timeout: 20000
+- waitForAnimationToEnd
+- takeScreenshot: ${SHOT}

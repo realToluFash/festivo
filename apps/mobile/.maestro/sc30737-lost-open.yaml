@@ -1,0 +1,49 @@
+# Signs in with EMAIL and PASSWORD up to the code step, then opens Lost your authenticator
+# and your recovery codes? and leaves the app on the start page (or wherever an open request
+# resumes). SHOT names the screenshot. sc-30737.
+appId: host.exp.Exponent
+---
+- launchApp:
+    appId: host.exp.Exponent
+    stopApp: true
+- openLink: ${METRO_URL}/--/sign-in
+- extendedWaitUntil:
+    visible:
+      id: 'welcome\.email|signIn\.email'
+    timeout: 60000
+- runFlow:
+    when:
+      visible:
+        id: 'welcome.email'
+    commands:
+      - tapOn:
+          id: 'welcome.email'
+- extendedWaitUntil:
+    visible:
+      id: 'signIn.email'
+    timeout: 30000
+- tapOn:
+    id: 'signIn.email'
+- eraseText: 120
+- inputText: ${EMAIL}
+- tapOn:
+    id: 'signIn.password'
+- eraseText: 120
+- inputText: ${PASSWORD}
+- hideKeyboard
+- tapOn:
+    id: 'signIn.submit'
+- extendedWaitUntil:
+    visible:
+      id: 'twoFactor.lostBoth'
+    timeout: 30000
+- scrollUntilVisible:
+    element:
+      id: 'twoFactor.lostBoth'
+- tapOn:
+    id: 'twoFactor.lostBoth'
+- extendedWaitUntil:
+    visible:
+      id: 'lostTwoFactor\.(send|ask|cancel|resend)'
+    timeout: 30000
+- takeScreenshot: ${SHOT}

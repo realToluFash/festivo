@@ -1,0 +1,37 @@
+# sc-30302: the Events demo's search states, one screenshot each, to put beside the product.
+appId: host.exp.Exponent
+---
+- setOrientation: ${ORIENT}
+- openLink: ${METRO_URL}/--/demo/events?state=search
+- waitForAnimationToEnd: { timeout: 8000 }
+- takeScreenshot: demo-search
+- swipe:
+    start: 50%, 70%
+    end: 50%, 35%
+    duration: 800
+- waitForAnimationToEnd: { timeout: 3000 }
+- takeScreenshot: demo-search-scrolled
+- openLink: ${METRO_URL}/--/demo/events?state=filtered
+- waitForAnimationToEnd: { timeout: 8000 }
+- takeScreenshot: demo-filtered
+- swipe:
+    start: 50%, 70%
+    end: 50%, 35%
+    duration: 800
+- waitForAnimationToEnd: { timeout: 3000 }
+- takeScreenshot: demo-filtered-scrolled
+- openLink: ${METRO_URL}/--/demo/events?state=filterOpen
+- waitForAnimationToEnd: { timeout: 8000 }
+- takeScreenshot: demo-filterOpen
+- openLink: ${METRO_URL}/--/demo/events?state=noMatch
+- waitForAnimationToEnd: { timeout: 8000 }
+- takeScreenshot: demo-noMatch
+- swipe:
+    start: 50%, 70%
+    end: 50%, 35%
+    duration: 800
+- waitForAnimationToEnd: { timeout: 3000 }
+- takeScreenshot: demo-noMatch-scrolled
+- openLink: ${METRO_URL}/--/demo/events?state=offline
+- waitForAnimationToEnd: { timeout: 8000 }
+- takeScreenshot: demo-offline

@@ -1,0 +1,23 @@
+# Cannot reach Soirely, signed out: Try again stays; the demo switch brings the connection back and the screen goes on by itself.
+appId: host.exp.Exponent
+---
+- openLink: ${METRO_URL}/--/demo/unreachable
+- extendedWaitUntil:
+    visible:
+      id: 'demo.tryAgain'
+    timeout: 20000
+- takeScreenshot: unreachable
+- tapOn:
+    id: 'demo.tryAgain'
+- takeScreenshot: unreachable-trying
+- extendedWaitUntil:
+    visible: 'Try again'
+    timeout: 10000
+- assertVisible: 'Cannot reach Soirely'
+- tapOn:
+    id: 'demo.connectionBack'
+- extendedWaitUntil:
+    notVisible:
+      id: 'demo.tryAgain'
+    timeout: 15000
+- takeScreenshot: unreachable-back

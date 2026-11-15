@@ -1,0 +1,34 @@
+# Settings ends with a Design demo row; it opens the demo's home with the sample values, and Close returns to Settings.
+appId: host.exp.Exponent
+---
+- runFlow: ../open-settings.yaml
+- scrollUntilVisible:
+    element:
+      id: 'settings.designDemo'
+    direction: DOWN
+- takeScreenshot: settings-demo-row
+- tapOn:
+    id: 'settings.designDemo'
+- extendedWaitUntil:
+    visible: 'folake@ire.events'
+    timeout: 15000
+- assertVisible: 'correct horse battery'
+- assertVisible: '482913'
+- assertVisible: '714302'
+- assertVisible: 'vtxp-rh7y'
+- takeScreenshot: demo-home
+- scrollUntilVisible:
+    element: 'Cannot reach Soirely · signed in'
+    direction: DOWN
+- takeScreenshot: demo-home-end
+- scrollUntilVisible:
+    element:
+      id: 'demo.close'
+    direction: UP
+- tapOn:
+    id: 'demo.close'
+- extendedWaitUntil:
+    visible:
+      id: 'settings.designDemo'
+    timeout: 10000
+- takeScreenshot: settings-after-close

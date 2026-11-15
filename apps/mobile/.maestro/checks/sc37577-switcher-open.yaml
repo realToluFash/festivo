@@ -1,0 +1,16 @@
+# sc-37577: the organisation switcher opened from the header, left open for measuring its gap.
+appId: host.exp.Exponent
+---
+- setOrientation: ${ORIENT}
+- openLink: ${METRO_URL}/--/events
+- extendedWaitUntil:
+    visible:
+      id: 'frame.organisation'
+    timeout: 30000
+- waitForAnimationToEnd:
+    timeout: 3000
+- tapOn:
+    id: 'frame.organisation'
+- waitForAnimationToEnd:
+    timeout: 3000
+- takeScreenshot: switcher-open

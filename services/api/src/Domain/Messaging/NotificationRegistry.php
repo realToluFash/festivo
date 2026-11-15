@@ -1,0 +1,96 @@
+<?php
+
+declare(strict_types=1);
+
+namespace App\Domain\Messaging;
+
+use App\Domain\Messaging\Exception\UnregisteredNotificationType;
+use App\Domain\Messaging\Interfaces\ChannelSenderInterface;
+use App\Domain\Messaging\Interfaces\NotificationTypeFamilyInterface;
+use App\Domain\Messaging\Interfaces\NotificationTypeInterface;
+use LogicException;
+use Psl\Str;
+use Psl\Vec;
+use Symfony\Component\DependencyInjection\Attribute\AutowireIterator;
+
+/** Epic 36's one list: every type the product sends, and the senders that can carry them. */
+final readonly class NotificationRegistry
+{
+    /** @var array<string, NotificationTypeInterface> */
+    private array $types;
+
+    /** @var array<string, ChannelSenderInterface> */
+    private array $senders;
+
+    /**
+     * @param iterable<NotificationTypeInterface>       $types
+     * @param iterable<ChannelSenderInterface>          $senders
+     * @param iterable<NotificationTypeFamilyInterface> $families
+     */
+    public function __construct(
+        #[AutowireIterator(NotificationTypeInterface::TAG)]
+        iterable $types,
+        #[AutowireIterator(ChannelSenderInterface::TAG)]
+        iterable $senders,
+        #[AutowireIterator(NotificationTypeFamilyInterface::TAG)]
+        iterable $families = [],
+    ) {
+        $byName = [];
+        $all = [];
+
+        foreach ($types as $type) {
+            $all[] = $type;
+        }
+
+        foreach ($families as $family) {
+            foreach ($family->types() as $type) {
+                $all[] = $type;
+            }
+        }
+
+        foreach ($all as $type) {
+            if (isset($byName[$type->name()])) {
+                throw new LogicException(Str\format('Two notification types are named "%s".', $type->name()));
+            }
+
+            $byName[$type->name()] = $type;
+        }
+
+        $byChannel = [];
+
+        foreach ($senders as $sender) {
+            $byChannel[$sender->channel()->value] = $sender;
+        }
+
+        $this->types = $byName;
+        $this->senders = $byChannel;
+    }
+
+    /** @throws UnregisteredNotificationType */
+    public function type(string $name): NotificationTypeInterface
+    {
+        return $this->types[$name] ?? throw new UnregisteredNotificationType($name);
+    }
+
+    public function has(string $name): bool
+    {
+        return isset($this->types[$name]);
+    }
+
+    /** @return list<NotificationTypeInterface> */
+    public function types(): array
+    {
+        return Vec\values($this->types);
+    }
+
+    /** @return list<string> the types whose payload holds a code or a link's token, cleared once their send is over */
+    public function codeTypes(): array
+    {
+        return Vec\values(Vec\map(Vec\filter($this->types, static fn (NotificationTypeInterface $type): bool => $type->carriesCode()), static fn (NotificationTypeInterface $type): string => $type->name()));
+    }
+
+    public function sender(\App\Enum\NotificationChannel $channel): ?ChannelSenderInterface
+    {
+        return $this->senders[$channel->value] ?? null;
+    }
+}
