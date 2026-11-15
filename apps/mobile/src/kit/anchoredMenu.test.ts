@@ -1,6 +1,16 @@
 import { describe, expect, it } from 'vitest';
 
-import { inModal, menuInModal, menuMost, menuSide } from './anchoredMenu.ts';
+import {
+  inModal,
+  keptSide,
+  menuButton,
+  menuInModal,
+  menuMost,
+  menuSide,
+  menuTall,
+  nextHeld,
+  type HeldSide,
+} from './anchoredMenu.ts';
 import { keyboardInWindow } from './keyboard.ts';
 
 describe('menuInModal', () => {
@@ -96,5 +106,75 @@ describe('menuSide', () => {
 
   it('goes below until it has measured itself', () => {
     expect(menuSide({ ...sideways, under: 280, over: 240, tall: null }).above).toBe(false);
+  });
+});
+
+describe('an open menu, render by render', () => {
+  const upright = { gap: 4, floor: null, origin: 0, ceiling: 0, foot: 800 - 24 };
+  const sideways = { ...upright, foot: 360 - 24 };
+
+  function render(
+    room: typeof upright,
+    at: { x: number; top: number; y: number } | null,
+    seen: { head: number; content: number },
+    held: HeldSide | null,
+  ) {
+    const button = menuButton(at);
+    const side = menuSide({
+      ...room,
+      under: at?.y ?? 0,
+      over: at?.top ?? 0,
+      tall: menuTall(seen, 1),
+      above: keptSide(held, button),
+    });
+
+    return { side, held: nextHeld(held, button, side, seen.content > 0) };
+  }
+
+  it('counts its search field and its border, so rows that fit below with no head open above', () => {
+    const at = { x: 300, top: 160, y: 200 };
+
+    expect(render(sideways, at, { head: 0, content: 120 }, null).side.above).toBe(false);
+    expect(render(sideways, at, { head: 48, content: 120 }, null).side.above).toBe(true);
+    expect(menuTall({ head: 48, content: 120 }, 1)).toBe(170);
+  });
+
+  it('is capped at the room above, head and all, once it has gone there', () => {
+    const at = { x: 300, top: 240, y: 280 };
+    const { side } = render(sideways, at, { head: 48, content: 400 }, null);
+
+    expect(side).toEqual({ top: 0, most: 236, above: true });
+  });
+
+  it('keeps above while open at its button, though a search leaves one row', () => {
+    const at = { x: 300, top: 240, y: 280 };
+    const first = render(sideways, at, { head: 48, content: 400 }, null);
+    const searched = render(sideways, at, { head: 48, content: 40 }, first.held);
+
+    expect(searched.side.above).toBe(true);
+    expect(searched.held).toBe(first.held);
+  });
+
+  it('takes its side afresh when the phone turns upright under it, its button moved', () => {
+    const first = render(sideways, { x: 300, top: 240, y: 280 }, { head: 48, content: 400 }, null);
+    const turned = render(
+      upright,
+      { x: 140, top: 120, y: 160 },
+      { head: 48, content: 400 },
+      first.held,
+    );
+
+    expect(first.side.above).toBe(true);
+    expect(turned.side).toEqual({ top: 164, most: 612, above: false });
+    expect(turned.held).toEqual({ button: '140,120,160', above: false });
+  });
+
+  it('holds nothing until its rows are measured, and nothing once closed', () => {
+    const at = { x: 300, top: 240, y: 280 };
+
+    expect(render(sideways, at, { head: 48, content: 0 }, null).held).toBeNull();
+    expect(
+      render(sideways, null, { head: 48, content: 400 }, { button: '1,2,3', above: true }).held,
+    ).toBeNull();
   });
 });

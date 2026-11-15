@@ -72,3 +72,38 @@ export function menuSide({
 
   return { top: edge - Math.min(tall, roomAbove), most: roomAbove, above: true };
 }
+
+/** Its head, its rows and its border above and below, uncapped; unknown until its rows are measured. */
+export function menuTall(
+  { head, content }: { head: number; content: number },
+  edge: number,
+): number | null {
+  return content > 0 ? head + content + edge * 2 : null;
+}
+
+export interface HeldSide {
+  /** Where its button was: a turn of the phone moves it, and a moved button is a new opening. */
+  button: string;
+  above: boolean;
+}
+
+export function menuButton(at: { x: number; top: number; y: number } | null): string | null {
+  return at == null ? null : `${at.x},${at.top},${at.y}`;
+}
+
+export function keptSide(held: HeldSide | null, button: string | null): boolean | undefined {
+  return held != null && held.button === button ? held.above : undefined;
+}
+
+/** Nothing once closed; the side taken, once it is measured at a button it was not held at; otherwise `held` itself. */
+export function nextHeld(
+  held: HeldSide | null,
+  button: string | null,
+  side: MenuSide,
+  measured: boolean,
+): HeldSide | null {
+  if (button == null) return null;
+  if (!measured || held?.button === button) return held;
+
+  return { button, above: side.above };
+}

@@ -40,7 +40,14 @@ import { Text, type TextHandle } from './Text.tsx';
 import { Toast } from './Toast.tsx';
 import { TURNS_WITH_THE_APP } from '../layout/orientations.ts';
 import { useReducedMotion } from '../reducedMotion.ts';
-import { menuSide } from '../kit/anchoredMenu.ts';
+import {
+  keptSide,
+  menuButton,
+  menuSide,
+  menuTall,
+  nextHeld,
+  type HeldSide,
+} from '../kit/anchoredMenu.ts';
 import { tokens } from '../theme/tokens.ts';
 import { useModalOpen } from '../updateRequired.ts';
 import { Glyph } from './Glyph.tsx';
@@ -446,8 +453,8 @@ export function MenuLayer({
   const insets = useSafeAreaInsets();
   const origin = useWindowOrigin();
   const [seen, setSeen] = useState({ head: 0, panel: 0, content: 0, offset: 0 });
-  const [held, setHeld] = useState<{ button: string; above: boolean } | null>(null);
-  const button = at == null ? null : `${at.x},${at.top},${at.y}`;
+  const [held, setHeld] = useState<HeldSide | null>(null);
+  const button = menuButton(at);
   const side = menuSide({
     under: at?.y ?? 0,
     over: at?.top ?? 0,
@@ -456,13 +463,13 @@ export function MenuLayer({
     origin,
     ceiling: insets.top,
     foot: frame.height - Math.max(insets.bottom, tokens.spaceLg),
-    tall: seen.content > 0 ? seen.head + seen.content + MENU_EDGE * 2 : null,
-    above: held != null && held.button === button ? held.above : undefined,
+    tall: menuTall(seen, MENU_EDGE),
+    above: keptSide(held, button),
   });
   const more = seen.content - seen.offset - seen.panel > 1;
 
-  if (button == null ? held != null : seen.content > 0 && held?.button !== button)
-    setHeld(button == null ? null : { button, above: side.above });
+  const hold = nextHeld(held, button, side, seen.content > 0);
+  if (hold !== held) setHeld(hold);
 
   return (
     <>
