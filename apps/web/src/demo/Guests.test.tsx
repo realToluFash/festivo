@@ -625,7 +625,7 @@ describe('Guests, Record a reply in place (sc-3787)', () => {
       ).toBeDefined();
       expect(
         within(group(/^Coming/u)).getByRole('link', {
-          name: /^Dr Emeka Nwosu, Coming · recorded by Folake Adeyemi/u,
+          name: /^Dr Emeka Nwosu, Coming · replied /u,
         }),
       ).toBeDefined();
       expect(within(group(/^Coming/u)).queryByRole('link', { name: /^Adanna Nwosu/u })).toBeNull();

@@ -332,6 +332,17 @@ describe('Record a reply starts from the companions as they are (sc-3787)', () =
     expect(startTicks(notComing)).toEqual(new Set());
   });
 
+  it('lists a recorded reply as any other: the word and the day, never who recorded it', () => {
+    const list = sampleGuests(WEDDING);
+    const after = recordReply(list, 'emeka', 'coming', 'By phone', NONE, '2026-11-03');
+    const { view } = viewOf(after, 'all', 'emeka', NONE, replyByOf(WEDDING));
+
+    if (view.kind !== 'rows') throw new Error('rows');
+    const row = view.rows.find((one) => one.person.name === 'Dr Emeka Nwosu');
+    expect(row?.line).toMatch(/^Coming · replied Nov 3/u);
+    expect(row?.line).not.toContain('recorded');
+  });
+
   it('keeps a Held companion at their last choice (sc-3779)', () => {
     const emeka = sampleGuests(WEDDING).find((one) => one.id === 'emeka');
     if (emeka == null) throw new Error('emeka');

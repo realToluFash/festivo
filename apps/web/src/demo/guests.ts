@@ -865,6 +865,11 @@ export function needsOfPerson(person: Person): Needs | undefined {
   return person.companion == null ? person.guest.needs : person.companion.needs;
 }
 
+/** sc-3787: the list's reply is the same word as any other; who recorded it shows only in the details. */
+function asOwnReply(one: Guest): Guest {
+  return one.recorded == null ? one : { ...one, recorded: null, replied: one.recorded.on };
+}
+
 function rowOf(
   person: Person,
   indent: boolean,
@@ -889,7 +894,7 @@ function rowOf(
     const short =
       person.reply === 'noReply' || person.reply === 'notYet'
         ? word
-        : replyLine(person.guest, replyBy);
+        : replyLine(asOwnReply(person.guest), replyBy);
     const many = person.guest.companions.length;
 
     line =
