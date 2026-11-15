@@ -59,6 +59,14 @@ final class TableGeometry
         return $box['x0'] >= -0.5 && $box['y0'] >= -0.5 && $box['x1'] <= $widthCm + 0.5 && $box['y1'] <= $lengthCm + 0.5;
     }
 
+    /** A far wall that moves in past the table's far edge cuts it, whether the table stood inside before or was already through that wall. */
+    public static function cutByShrinking(SeatingTable $table, int $widthCm, int $lengthCm, int $toWidthCm, int $toLengthCm): bool
+    {
+        $box = self::bounds($table);
+
+        return ($toWidthCm < $widthCm && $box['x1'] > $toWidthCm + 0.5) || ($toLengthCm < $lengthCm && $box['y1'] > $toLengthCm + 0.5);
+    }
+
     /**
      * @param list<SeatingTable> $others the nearest spot to `$from`, in rings of 20 cm, inside the room and clear of them; `$from` itself when none is
      *

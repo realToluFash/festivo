@@ -398,12 +398,12 @@ final readonly class SeatingPlanEditor
         }
     }
 
-    /** A room may not shrink past anything in it, chairs included (sc-4000, 409: the size is valid, the furniture is in the way). */
+    /** A room may not shrink past anything in it, chairs included, nor further past a table already through that wall (sc-4000, 409: the size is valid, the furniture is in the way). */
     private function refuseShrinkingPast(SeatingPlan $plan, int $widthCm, int $lengthCm, MeasurementSystem $system): void
     {
         $outside = Vec\filter(
             $this->seatingTableRepository->findInPlan($plan),
-            static fn (SeatingTable $table): bool => TableGeometry::inside($table, $plan->getWidthCm(), $plan->getLengthCm()) && !TableGeometry::inside($table, $widthCm, $lengthCm),
+            static fn (SeatingTable $table): bool => TableGeometry::cutByShrinking($table, $plan->getWidthCm(), $plan->getLengthCm(), $widthCm, $lengthCm),
         );
 
         if ([] === $outside) {

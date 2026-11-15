@@ -14,6 +14,7 @@ use App\Enum\EventRole;
 use App\Enum\MembershipStatus;
 use App\Enum\SeededRole;
 use App\Tests\ApiTestCase;
+use App\Tests\Double\Messaging\RecordingHub;
 use App\Tests\Traits\OnboardsAccounts;
 use App\Tests\Traits\PutsPeopleOnEvents;
 use DateTimeImmutable;
@@ -231,6 +232,29 @@ final class SeatingTablesTest extends ApiTestCase
     }
 
     #[Test]
+    public function aDuplicatedEventCopiesItsTablesIntoTheCopiedSections(): void
+    {
+        $section = $this->addSection('Terrace');
+        $table = $this->change($this->addTable('head'), ['seats' => 8, 'endSeats' => 2, 'sectionId' => $section, 'unusableSeats' => [3]]);
+        $this->addTable('cocktail');
+
+        $copy = Type\shape(['id' => Type\string()], true)->coerce($this->as($this->owner, 'POST', '/api/events/' . $this->eventId . '/duplicate', ['startsAt' => '2026-12-14T16:00'])['event'] ?? null)['id'];
+        self::assertSame(201, $this->statusCode());
+
+        $plan = $this->planOf($this->seating($this->as($this->owner, 'GET', '/api/events/' . $copy . '/seating-plan')));
+        $copiedSection = Type\string()->coerce($plan['sections'][0]['id'] ?? null);
+        self::assertNotSame($section, $copiedSection);
+        $tables = Type\vec(Type\dict(Type\string(), Type\mixed()))->coerce($plan['tables']);
+        self::assertSame(['Table 1', 'Table 2'], Vec\map($tables, static fn (array $one): mixed => $one['name']));
+        self::assertNotSame($table['id'], $tables[0]['id']);
+        self::assertSame($copiedSection, $tables[0]['sectionId']);
+        self::assertNull($tables[1]['sectionId']);
+        foreach (['shape', 'seats', 'widthCm', 'lengthCm', 'endSeats', 'rotation', 'unusableSeats', 'xCm', 'yCm'] as $kept) {
+            self::assertSame($table[$kept], $tables[0][$kept], $kept);
+        }
+    }
+
+    #[Test]
     public function deleteTakesTheTableOutOfThePlan(): void
     {
         $table = $this->addTable('round');
@@ -300,6 +324,41 @@ final class SeatingTablesTest extends ApiTestCase
 
         $this->as($this->owner, 'PATCH', $this->plan(), ['widthCm' => 1400], '"1"');
         self::assertSame(200, $this->statusCode());
+    }
+
+    #[Test]
+    public function theRoomCannotShrinkFurtherPastATableAlreadyThroughItsWall(): void
+    {
+        $table = $this->addTable('round');
+        $this->as($this->owner, 'PATCH', $this->plan(), ['widthCm' => 1400], '"1"');
+        self::assertSame(200, $this->statusCode());
+        $table = $this->change($table, ['widthCm' => 400]);
+
+        $this->as($this->owner, 'PATCH', $this->plan(), ['widthCm' => 1300], '"2"');
+
+        self::assertSame(409, $this->statusCode(), Json\encode($this->last()));
+        self::assertSame([$table['id']], $this->last()['outside'] ?? null);
+        self::assertSame(1400, $this->planNow()['widthCm']);
+
+        $this->as($this->owner, 'PATCH', $this->plan(), ['lengthCm' => 1700], '"2"');
+        self::assertSame(200, $this->statusCode(), Json\encode($this->last()));
+    }
+
+    #[Test]
+    public function everyTableChangeIsPublishedWholeOnTheEventsSeatingTopic(): void
+    {
+        $table = $this->addTable('round');
+        self::assertSame([[$table['id'], 10]], $this->publishedTables());
+
+        $table = $this->change($table, ['seats' => 8]);
+        self::assertSame([[$table['id'], 8]], $this->publishedTables());
+
+        $copy = $this->tableOf($this->as($this->owner, 'POST', $this->tables() . '/' . $table['id'] . '/duplicate', null, '"' . $table['version'] . '"'));
+        self::assertSame([[$table['id'], 8], [$copy['id'], 8]], $this->publishedTables());
+
+        $this->as($this->owner, 'DELETE', $this->tables() . '/' . $table['id'], null, '"' . $table['version'] . '"');
+        self::assertSame(200, $this->statusCode());
+        self::assertSame([[$copy['id'], 8]], $this->publishedTables());
     }
 
     #[Test]
@@ -410,6 +469,16 @@ final class SeatingTablesTest extends ApiTestCase
         }
 
         self::fail('no table ' . $id);
+    }
+
+    /** @return list<array{0: string, 1: int}> each table's id and seats in the last update on this event's seating topic */
+    private function publishedTables(): array
+    {
+        $update = Iter\last(self::service(RecordingHub::class)->published) ?? self::fail('nothing published');
+        self::assertSame(['events/' . $this->eventId . '/seating'], $update->getTopics());
+        $published = Type\shape(['plan' => Type\shape(['tables' => Type\vec(Type\shape(['id' => Type\string(), 'seats' => Type\int()], true))], true)], true)->coerce(Json\decode($update->getData()));
+
+        return Vec\map($published['plan']['tables'], static fn (array $one): array => [$one['id'], $one['seats']]);
     }
 
     /** @return list<array<string, mixed>> */
