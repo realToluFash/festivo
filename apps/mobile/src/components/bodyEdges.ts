@@ -6,3 +6,16 @@ export function bodyEdges(kind: LayoutKind): readonly ('top' | 'bottom' | 'left'
 
   return kind === 'tabletPortrait' ? ['left', 'right', 'bottom'] : ['right'];
 }
+
+/** The side padding that insets the same edges, for a body that is not a `Screen`. */
+export function sideInsets(
+  kind: LayoutKind,
+  insets: { left: number; right: number },
+): { paddingLeft: number; paddingRight: number } {
+  const edges = bodyEdges(kind);
+
+  return {
+    paddingLeft: edges.includes('left') ? insets.left : 0,
+    paddingRight: edges.includes('right') ? insets.right : 0,
+  };
+}
