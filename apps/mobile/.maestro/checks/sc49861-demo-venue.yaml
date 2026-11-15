@@ -1,0 +1,31 @@
+# sc-49861: the design demo's venueNoteForbidden, Save pressed, at ${ORIENT}: the screen to set beside the product's Venue refusal.
+appId: host.exp.Exponent
+---
+- setOrientation: ${ORIENT}
+- openLink: ${METRO_URL}/--/demo/events/evt-wed-4?state=venueNoteForbidden
+- extendedWaitUntil:
+    visible:
+      id: 'event.edit.venue'
+    timeout: 30000
+- runFlow:
+    when:
+      notVisible:
+        id: 'event.edit.venue.save'
+    commands:
+      - scrollUntilVisible:
+          element:
+            id: 'events.details.venue'
+          direction: DOWN
+      - tapOn:
+          id: 'events.details.venue'
+- tapOn:
+    id: 'event.edit.venue.save'
+- extendedWaitUntil:
+    visible: 'Nothing was changed. Your role does not include the permission this needs.'
+    timeout: 10000
+- takeScreenshot: demo-top
+- scrollUntilVisible:
+    element: 'Nothing was changed.*'
+    direction: DOWN
+    centerElement: true
+- takeScreenshot: demo
