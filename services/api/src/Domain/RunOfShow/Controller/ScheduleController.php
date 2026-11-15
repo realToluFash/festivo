@@ -69,6 +69,27 @@ final readonly class ScheduleController
         return $this->schedule($event, Response::HTTP_OK, $item);
     }
 
+    /** Marks it started now, by the server's clock; its planned start does not move (sc-1404). */
+    #[Route('/api/events/{eventId}/schedule/items/{itemId}/start', name: 'schedule_items_start', methods: ['POST'])]
+    #[InEvent(Permission::RunOfShowManage)]
+    public function start(string $eventId, #[InThisEvent('itemId')] ScheduleItem $item): JsonResponse
+    {
+        $event = $this->event($eventId);
+        $this->scheduleEditor->start($event, $item, $this->user());
+
+        return $this->schedule($event, Response::HTTP_OK, $item);
+    }
+
+    #[Route('/api/events/{eventId}/schedule/items/{itemId}/finish', name: 'schedule_items_finish', methods: ['POST'])]
+    #[InEvent(Permission::RunOfShowManage)]
+    public function finish(string $eventId, #[InThisEvent('itemId')] ScheduleItem $item): JsonResponse
+    {
+        $event = $this->event($eventId);
+        $this->scheduleEditor->finish($event, $item, $this->user());
+
+        return $this->schedule($event, Response::HTTP_OK, $item);
+    }
+
     /** Undo on the page adds it back. */
     #[Route('/api/events/{eventId}/schedule/items/{itemId}', name: 'schedule_items_delete', methods: ['DELETE'])]
     #[InEvent(Permission::RunOfShowManage)]

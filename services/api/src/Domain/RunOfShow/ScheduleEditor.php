@@ -20,6 +20,7 @@ use App\Repository\ScheduleItemRepository;
 use Doctrine\DBAL\LockMode;
 use Doctrine\ORM\EntityManagerInterface;
 use Psl\Str;
+use Psr\Clock\ClockInterface;
 
 /** Each change runs under a lock on the event's row, so two adds sent together cannot both pass the limit, and is published whole to the event's schedule topic (sc-3893). */
 final readonly class ScheduleEditor
@@ -30,12 +31,17 @@ final readonly class ScheduleEditor
 
     public const string DELETED = 'run_of_show.item_deleted';
 
+    public const string STARTED = 'run_of_show.item_started';
+
+    public const string FINISHED = 'run_of_show.item_finished';
+
     public function __construct(
         private ScheduleItemRepository $scheduleItemRepository,
         private ScheduleSerialiser $scheduleSerialiser,
         private EntityManagerInterface $entityManager,
         private Auditor $auditor,
         private RealtimePublisher $realtimePublisher,
+        private ClockInterface $clock,
     ) {
     }
 
@@ -88,6 +94,43 @@ final readonly class ScheduleEditor
         $this->published($event);
 
         return $item;
+    }
+
+    /** Records the moment it was marked; its planned start stays as it was (sc-1404). Started again is 409 `item_started`. */
+    public function start(Event $event, ScheduleItem $item, User $by): void
+    {
+        $this->locked($event, function () use ($item, $by): void {
+            $this->entityManager->refresh($item);
+
+            if (null !== $item->getStartedAt()) {
+                throw new ApiException(ErrorCode::ItemStarted, 'run_of_show.item_started');
+            }
+
+            $item->start($this->clock->now(), $by);
+            $this->auditor->record(self::STARTED, 'ScheduleItem', $item->getId(), Actor::User, $by->getId(), $by->getName(), []);
+        });
+
+        $this->published($event);
+    }
+
+    /** Done before started is 409 `item_not_started`; done twice, 409 `item_finished`. */
+    public function finish(Event $event, ScheduleItem $item, User $by): void
+    {
+        $this->locked($event, function () use ($item, $by): void {
+            $this->entityManager->refresh($item);
+
+            if (null === $item->getStartedAt()) {
+                throw new ApiException(ErrorCode::ItemNotStarted, 'run_of_show.item_not_started');
+            }
+            if (null !== $item->getEndedAt()) {
+                throw new ApiException(ErrorCode::ItemFinished, 'run_of_show.item_finished');
+            }
+
+            $item->finish($this->clock->now(), $by);
+            $this->auditor->record(self::FINISHED, 'ScheduleItem', $item->getId(), Actor::User, $by->getId(), $by->getName(), []);
+        });
+
+        $this->published($event);
     }
 
     public function delete(Event $event, ScheduleItem $item, User $by): void

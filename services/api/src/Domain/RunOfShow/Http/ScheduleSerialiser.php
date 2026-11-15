@@ -33,7 +33,7 @@ final readonly class ScheduleSerialiser
         ];
     }
 
-    /** @return array{id: string, title: string, startsAt: string, day: string, lengthMinutes: ?int, place: ?string, ownerName: ?string, ownerRole: ?string, note: ?string, fixedTime: bool, showToGuests: bool, version: int} */
+    /** @return array{id: string, title: string, startsAt: string, startedAt: ?string, endedAt: ?string, day: string, lengthMinutes: ?int, place: ?string, ownerName: ?string, ownerRole: ?string, note: ?string, fixedTime: bool, showToGuests: bool, version: int} */
     public function item(ScheduleItem $item): array
     {
         $zone = new DateTimeZone($item->getEvent()->getTimeZone());
@@ -42,6 +42,8 @@ final readonly class ScheduleSerialiser
             'id' => $item->getId()->toRfc4122(),
             'title' => $item->getTitle(),
             'startsAt' => LocalTimeResolver::resolve($item->getStartsAt(), $zone)->format(\DATE_ATOM),
+            'startedAt' => $item->getStartedAt()?->setTimezone($zone)->format(\DATE_ATOM),
+            'endedAt' => $item->getEndedAt()?->setTimezone($zone)->format(\DATE_ATOM),
             'day' => EventDay::of($item->getStartsAt()),
             'lengthMinutes' => $item->getLengthMinutes(),
             'place' => $item->getPlace(),
