@@ -256,17 +256,14 @@ export function GuestDetails({
                 ref: reopen.ref,
                 testID: 'guest.card.step',
               }
-            : null
-        }
-        step={
-          shown === 'notYetInvited' && invitation?.manages === true && invitation.invites
-            ? {
-                label: t('guestList.markAsInvited'),
-                ref: coverMarkRef,
-                onPress: onCoverMark,
-                testID: 'guest.card.step',
-              }
-            : null
+            : shown === 'notYetInvited' && invitation?.manages === true && invitation.invites
+              ? {
+                  label: t('guestList.markAsInvited'),
+                  ref: coverMarkRef,
+                  onPress: onCoverMark,
+                  testID: 'guest.card.step',
+                }
+              : null
         }
         nameRef={nameRef}
       />
