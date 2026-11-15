@@ -21,7 +21,7 @@ export default function EventRun() {
   const { id = '' } = useLocalSearchParams<{ id?: string }>();
   const navigation = useNavigation();
   const phone = kind === 'phone';
-  const back = () => goUpToEvent(navigation, router, id);
+  const back = () => goToArea(navigation, router, id, 'schedule');
   const title = useRef<TextHandle>(null);
   const [event, setEvent] = useState<OrganisationEvent | null>(null);
   const card = useSidebarCard(event?.id === id ? event : null);
@@ -35,7 +35,10 @@ export default function EventRun() {
       backInBody
       inEvent={{
         area: 'schedule',
-        onArea: (area) => (area === 'overview' ? back() : goToArea(navigation, router, id, area)),
+        onArea: (area) =>
+          area === 'overview'
+            ? goUpToEvent(navigation, router, id)
+            : goToArea(navigation, router, id, area),
         card,
       }}
     >

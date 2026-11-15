@@ -294,7 +294,10 @@ export function EventScreen({
           tell={(words) => setToast(words == null ? null : { eventId, area, words })}
         />
       ) : (
-        <PlaceholderArea area={area}>
+        <PlaceholderArea
+          area={area}
+          action={area === 'schedule' ? <RunViewEntry event={event} /> : null}
+        >
           <EventTop
             kind={kind}
             event={event}
@@ -503,9 +506,12 @@ export function EventScreen({
 /** An area no epic has built yet: under the Top, its own name and a line saying it is coming, and nothing to press. */
 function PlaceholderArea({
   area,
+  action,
   children,
 }: {
   area: Exclude<EventArea, 'overview'>;
+  /** What the area already offers before it is built, under the line saying it is coming. */
+  action: ReactNode;
   children: ReactNode;
 }) {
   const { t } = useTranslation();
@@ -521,7 +527,42 @@ function PlaceholderArea({
         <Text size={tokens.typeBody.size} muted>
           {t(`eventNav.${area}Coming`)}
         </Text>
+        {action}
       </View>
+    </View>
+  );
+}
+
+/** The Schedule's way into the run view (sc-1404), for anyone who can read the run of show once it holds an item. */
+function RunViewEntry({ event }: { event: OrganisationEvent }) {
+  const { t } = useTranslation();
+  const reads = event.permissions.includes('run_of_show.read');
+  const [items, setItems] = useState<{ for: string; count: number } | null>(null);
+
+  useEffect(() => {
+    if (!reads) return undefined;
+    let current = true;
+
+    api.schedule(event.id).then(
+      (schedule) => current && setItems({ for: event.id, count: schedule.items.length }),
+      () => undefined,
+    );
+
+    return () => {
+      current = false;
+    };
+  }, [event.id, reads]);
+
+  if (!reads || items?.for !== event.id || items.count === 0) return null;
+
+  return (
+    <View style={styles.runEntry}>
+      <SecondaryButton
+        label={t('runView.open')}
+        link
+        onPress={() => router.push({ pathname: '/events/[id]/run', params: { id: event.id } })}
+        testID="events.schedule.run"
+      />
     </View>
   );
 }
@@ -602,6 +643,7 @@ function useOpened(
 
 const styles = StyleSheet.create({
   stack: { gap: tokens.spaceMd },
+  runEntry: { paddingTop: tokens.spaceMd, alignItems: 'flex-start' },
   secondary: { color: tokens.colorInkSecondary },
   fill: { flex: 1 },
   titleRow: { flexDirection: 'row', alignItems: 'center', gap: tokens.spaceSm },
