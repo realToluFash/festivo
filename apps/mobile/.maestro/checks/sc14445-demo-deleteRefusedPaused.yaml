@@ -1,0 +1,10 @@
+# sc-14445: the app demo's deleteRefusedPaused, for the side-by-side pair. Needs ${METRO_URL}.
+appId: host.exp.Exponent
+---
+- openLink: ${METRO_URL}/--/demo/events/evt-party-2?state=deleteRefusedPaused
+- extendedWaitUntil:
+    visible:
+      id: 'event.refused'
+    timeout: 30000
+- waitForAnimationToEnd
+- takeScreenshot: refused
