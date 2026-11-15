@@ -3696,6 +3696,7 @@
     "empty": "Nothing is on the schedule yet.",
     "clock": "Now {{time}} at the venue",
     "trackOnDay": "{{place}} · {{day}}",
+    "place": "{{place}}",
     "mark": "Mark",
     "start": "Start",
     "finish": "Finish",

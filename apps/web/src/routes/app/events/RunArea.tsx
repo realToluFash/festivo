@@ -4,7 +4,16 @@ import {
   asSchedule,
   realtimeTopic,
 } from '@soirely/api-client';
-import { type RunFigure, type RunRow, wallAt } from '@soirely/domain';
+import {
+  type RunFigure,
+  type RunRow,
+  collisionWords,
+  figureSaid,
+  figureWords,
+  formatWallClock,
+  nextWords,
+  wallAt,
+} from '@soirely/domain';
 import { useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Link } from 'react-router';
@@ -16,16 +25,7 @@ import { dateLocale } from '../../../i18n/index.ts';
 import { pageTitle, usePageTitle } from '../../../pageTitle.ts';
 import { useServerNow } from '../../../serverNow.ts';
 import { canOn } from '../../../session.ts';
-import {
-  type RunItem,
-  type RunTrackView,
-  clock,
-  collisionWords,
-  figureSaid,
-  figureWords,
-  nextLine,
-  runViews,
-} from './runArea.ts';
+import { type RunItem, type RunTrackView, runViews, said } from './runArea.ts';
 import { dayName } from './scheduleArea.ts';
 import { useHubTopics } from './useHubTopics.ts';
 import '../../../components/eventPage.css';
@@ -156,12 +156,8 @@ function RunView({
   const manage = canOn(event, 'run_of_show.manage');
   const [busy, setBusy] = useState<string | null>(null);
   const [failed, setFailed] = useState(false);
-  const views = runViews(
-    schedule.items,
-    now,
-    t('schedule.main'),
-    (day) => dayName(day, { locale, zone: schedule.timeZone }),
-    t,
+  const views = runViews(schedule.items, now, t('schedule.main'), (day) =>
+    dayName(day, { locale, zone: schedule.timeZone }),
   );
 
   async function mark(item: RunItem, how: 'start' | 'finish') {
@@ -186,7 +182,9 @@ function RunView({
         <p className="rv-clock">
           <Glyph name="clock" size={16} weight={2.2} />
           <span>
-            <span className="num">{t('runView.clock', { time: clock(now, locale) })}</span>
+            <span className="num">
+              {t('runView.clock', { time: formatWallClock(now, locale) })}
+            </span>
           </span>
         </p>
       </header>
@@ -218,7 +216,7 @@ function FigureMark({ figure, name }: { figure: RunFigure; name: string }) {
       className={`rv-figure is-${figure.kind === 'onTime' ? 'on-time' : figure.kind}`}
       role="status"
     >
-      <span className="visually-hidden">{figureSaid(name, figure, t)}</span>
+      <span className="visually-hidden">{said(t, figureSaid(name, figure))}</span>
       {figure.kind !== 'done' && (
         <span className="rv-figure-shown" aria-hidden="true">
           <Glyph
@@ -226,7 +224,7 @@ function FigureMark({ figure, name }: { figure: RunFigure; name: string }) {
             size={14}
             weight={2.6}
           />
-          <span className="num">{figureWords(figure, t)}</span>
+          <span className="num">{said(t, figureWords(figure))}</span>
         </span>
       )}
     </p>
@@ -246,18 +244,19 @@ function TrackTable({
 }) {
   const { t } = useTranslation();
   const locale = dateLocale();
+  const name = said(t, view.name);
   const headingId = `rv-track-${view.key.replace(/[^A-Za-z0-9-]/g, '-')}`;
 
   return (
     <section className="rv-track" aria-labelledby={headingId}>
       <div className="rv-track-top">
-        <h2 id={headingId}>{view.name}</h2>
-        <FigureMark figure={view.track.figure} name={view.name} />
+        <h2 id={headingId}>{name}</h2>
+        <FigureMark figure={view.track.figure} name={name} />
       </div>
       {view.track.collisions.map(({ before, fixed }) => (
         <p key={`${before.id}|${fixed.id}`} className="rv-collision">
           <Glyph name="warn" size={16} weight={2.4} />
-          <span>{collisionWords(before, fixed, locale, t)}</span>
+          <span>{said(t, collisionWords(before, fixed, locale))}</span>
         </p>
       ))}
       <table className="rv-table" aria-labelledby={headingId}>
@@ -286,7 +285,7 @@ function TrackTable({
           ))}
         </tbody>
       </table>
-      <p className="rv-next">{nextLine(view, locale, t)}</p>
+      <p className="rv-next">{said(t, nextWords(view.track, locale))}</p>
     </section>
   );
 }
@@ -309,14 +308,14 @@ function RunRowView({
   return (
     <tr className={`rv-row is-${phase}`}>
       <td className="rv-starts">
-        <span className="num">{clock(item.planned, locale)}</span>
+        <span className="num">{formatWallClock(item.planned, locale)}</span>
         {phase !== 'waiting' && item.startedAt != null ? (
           <span className="rv-second is-started num">
-            {t('runView.started', { time: clock(item.startedAt, locale) })}
+            {t('runView.started', { time: formatWallClock(item.startedAt, locale) })}
           </span>
         ) : row.expected != null ? (
           <span className="rv-second is-expected num">
-            {t('runView.about', { time: clock(row.expected, locale) })}
+            {t('runView.about', { time: formatWallClock(row.expected, locale) })}
           </span>
         ) : null}
       </td>
