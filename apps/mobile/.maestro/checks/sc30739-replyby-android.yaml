@@ -1,4 +1,4 @@
-# sc-30739: ${OP}'s Reply by in the shown language — row, part, both Asks, every toast and the refusal, by testID so it runs in any locale. Starts and ends with no Reply by.
+# sc-30739 on Android: ${OP}'s Reply by in the shown language — row, part, both Asks, every toast and the refusal, by testID so it runs in any locale. Starts and ends with no Reply by.
 appId: host.exp.Exponent
 ---
 - openLink: ${METRO_URL}/--/events/${OP}
