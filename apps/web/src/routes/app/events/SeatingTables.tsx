@@ -38,19 +38,34 @@ import {
 type T = ReturnType<typeof useTranslation>['t'];
 
 const SHAPE_WORDS = {
-  round: { whole: 'seating.shapeRound', kind: 'seating.kindRound', menu: 'seating.menuRound' },
+  round: {
+    whole: 'seating.shapeRound',
+    short: 'seating.shapeRoundShort',
+    kind: 'seating.kindRound',
+    menu: 'seating.menuRound',
+  },
   rectangular: {
     whole: 'seating.shapeRectangular',
+    short: 'seating.shapeRectangularShort',
     kind: 'seating.kindRectangular',
     menu: 'seating.menuRectangular',
   },
-  head: { whole: 'seating.shapeHead', kind: 'seating.kindHead', menu: 'seating.menuHead' },
+  head: {
+    whole: 'seating.shapeHead',
+    short: 'seating.shapeHeadShort',
+    kind: 'seating.kindHead',
+    menu: 'seating.menuHead',
+  },
   cocktail: {
     whole: 'seating.shapeCocktail',
+    short: 'seating.shapeCocktailShort',
     kind: 'seating.kindCocktail',
     menu: 'seating.menuCocktail',
   },
-} as const satisfies Record<TableShape, { whole: string; kind: string; menu: string }>;
+} as const satisfies Record<
+  TableShape,
+  { whole: string; short: string; kind: string; menu: string }
+>;
 
 const SIZE_RESET = {
   round: 'seating.sizeResetRound',
@@ -504,11 +519,7 @@ export function TablePanel({
 
   return (
     <div className="st-stack is-tight">
-      <BackHead
-        title={table.name}
-        line={tableLine(t, plan, table)}
-        onClose={() => ctx.open(null)}
-      />
+      <BackHead title={table.name} line={tableLine(t, plan, table)} />
       {said != null && <Added>{said}</Added>}
       {ctx.notice != null && <Said>{ctx.notice}</Said>}
       {note != null && <Line>{note}</Line>}
@@ -545,7 +556,7 @@ export function TablePanel({
             value={table.shape}
             options={TABLE_SHAPES.map((shape) => ({
               value: shape,
-              word: t(SHAPE_WORDS[shape].whole),
+              word: t(SHAPE_WORDS[shape].short),
             }))}
             onPick={(value) => {
               const shape = TABLE_SHAPES.find((one) => one === value);
@@ -688,11 +699,7 @@ function TableFacts({
 
   return (
     <div className="st-stack">
-      <BackHead
-        title={table.name}
-        line={tableLine(t, plan, table)}
-        onClose={() => ctx.open(null)}
-      />
+      <BackHead title={table.name} line={tableLine(t, plan, table)} />
       <dl className="st-facts">
         {facts.map(([key, value]) => (
           <div key={key}>

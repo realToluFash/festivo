@@ -310,6 +310,17 @@ function Plan({
     setOutside(null);
   };
 
+  useEffect(() => {
+    const keys = (event: KeyboardEvent) => {
+      if (event.key !== 'Escape' || chosenTable == null || covered) return;
+      event.preventDefault();
+      open(null);
+    };
+
+    window.addEventListener('keydown', keys);
+    return () => window.removeEventListener('keydown', keys);
+  });
+
   const attempt = async <A,>(
     change: () => Promise<A>,
     seatingOf: (answer: A) => Seating,
@@ -459,7 +470,16 @@ function Plan({
                 })
           }
         >
-          <rect className="st-floor" x={ox} y={oy} width={rw} height={rl} />
+          <rect
+            className="st-floor"
+            x={ox}
+            y={oy}
+            width={rw}
+            height={rl}
+            onClick={() => {
+              if (chosenTable != null) open(null);
+            }}
+          />
           {lines}
           <rect className="st-walls" x={ox} y={oy} width={rw} height={rl} />
           {outside != null &&

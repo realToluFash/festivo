@@ -835,8 +835,34 @@ describe('Tables at a desk (sc-4000)', () => {
     fireEvent.click(item);
     await waitFor(() => expect(document.activeElement?.getAttribute('data-focus')).toBe('title'));
 
-    fireEvent.click(screen.getByRole('button', { name: 'Close' }));
+    expect(screen.queryByRole('button', { name: 'Close' })).toBeNull();
+    fireEvent.keyDown(document.activeElement as HTMLElement, { key: 'Escape' });
     await waitFor(() => expect(document.activeElement).toBe(item));
+    expect(screen.queryByRole('heading', { level: 2, name: 'Table 1' })).toBeNull();
+
+    fireEvent.click(item);
+    await waitFor(() => expect(document.activeElement?.getAttribute('data-focus')).toBe('title'));
+    fireEvent.click(document.querySelector('.st-floor') as Element);
+    await waitFor(() => expect(document.activeElement).toBe(item));
+  });
+
+  it('names the shape in the panel’s select by its short word, as the demo does', async () => {
+    signedIn();
+    await onSeating({
+      'GET /api/events/ev_1/seating-plan': () => seating(withTables(table())),
+    });
+
+    fireEvent.click(
+      await screen.findByRole('button', { name: 'Table 1, round, 0 of 10 seats taken' }),
+    );
+
+    const shape = await screen.findByLabelText<HTMLSelectElement>('Shape');
+    expect([...shape.options].map((option) => option.text)).toEqual([
+      'Round',
+      'Rectangular',
+      'Head',
+      'Cocktail',
+    ]);
   });
 
   it('shows a table as facts, with nothing to change, without seating.manage', async () => {
