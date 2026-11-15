@@ -824,6 +824,21 @@ describe('Tables at a desk (sc-4000)', () => {
     expect(screen.getByLabelText<HTMLInputElement>('Width').value).toBe('13');
   });
 
+  it('gives focus back to the room’s table when the panel it opened closes', async () => {
+    signedIn();
+    await onSeating({
+      'GET /api/events/ev_1/seating-plan': () => seating(withTables(table())),
+    });
+
+    const item = await screen.findByRole('button', { name: 'Table 1, round, 0 of 10 seats taken' });
+    item.focus();
+    fireEvent.click(item);
+    await waitFor(() => expect(document.activeElement?.getAttribute('data-focus')).toBe('title'));
+
+    fireEvent.click(screen.getByRole('button', { name: 'Close' }));
+    await waitFor(() => expect(document.activeElement).toBe(item));
+  });
+
   it('shows a table as facts, with nothing to change, without seating.manage', async () => {
     signedIn();
     await onSeating(
