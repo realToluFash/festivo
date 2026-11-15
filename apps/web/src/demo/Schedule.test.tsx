@@ -160,6 +160,45 @@ describe('/demo/events/evt-wed-4/schedule (sc-3893)', () => {
     expect(said()?.textContent).toBe('Speeches is back.');
   });
 
+  it('keeps what was entered when a save fails, and Save item tries again', SLOW, async () => {
+    await open('saveFailed');
+    const notice = screen.getByRole('alert');
+    expect(notice.textContent).toBe('Not saved. What you entered is still here. Try again.');
+    expect(document.activeElement).toBe(notice);
+    expect((screen.getByLabelText('Title') as HTMLInputElement).value).toBe('Speeches and toasts');
+    fireEvent.click(button('Save item') as HTMLElement);
+    expect(said()?.textContent).toBe('Speeches and toasts saved.');
+  });
+
+  it('leaves the item in place when a delete fails', SLOW, async () => {
+    await open('deleteFailed');
+    expect(document.activeElement?.textContent).toBe(
+      'Not deleted. Nothing was changed. Try again.',
+    );
+    expect(screen.getByRole('button', { name: 'Speeches' })).toBeTruthy();
+    fireEvent.click(button('Delete item…') as HTMLElement);
+    expect(screen.queryByRole('alert')).toBeNull();
+  });
+
+  it('says when Undo fails, with no toast left to press', SLOW, async () => {
+    await open('undoFailed');
+    const line = screen.getByRole('alert');
+    expect(line.textContent).toBe('Speeches was not brought back. Add it again with Add item.');
+    expect(document.activeElement).toBe(line);
+    expect(button('Undo')).toBeNull();
+    expect(screen.queryByRole('button', { name: 'Speeches' })).toBeNull();
+  });
+
+  it('offers Add it again when someone else deleted the item', SLOW, async () => {
+    await open('gone');
+    expect(screen.getByRole('heading', { name: 'Edit item' })).toBeTruthy();
+    expect(document.activeElement?.textContent).toContain('Someone else deleted this item');
+    expect(button('Delete item…')).toBeNull();
+    fireEvent.click(button('Add it again') as HTMLElement);
+    expect(said()?.textContent).toBe('Speeches and toasts added.');
+    expect(screen.getByRole('button', { name: 'Speeches and toasts' })).toBeTruthy();
+  });
+
   it('is read only without run_of_show.manage', SLOW, async () => {
     await open('readOnly');
     expect(button('Add item')).toBeNull();
