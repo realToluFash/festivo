@@ -285,7 +285,7 @@ describe('a window that opens through a Modal of its own (sc-42690)', () => {
     );
   });
 
-  it('on the phone, hides and unnames Create an organisation’s field until it has taken input focus, names it while still hidden and shows it a moment later, unnames it again before raising its keys once more, and leaves TalkBack to move its own focus onto it (qa4 #48525, #48921, qa2 #49329, #49366, #49942)', () => {
+  it('on the phone, hides and unnames Create an organisation’s field until it has taken input focus, names it while still hidden and shows it a moment later, unnames it again before raising its keys once more only while still hidden, and leaves TalkBack to move its own focus onto it (qa4 #48525, #48921, qa2 #49329, #49366, #49942, #50682)', () => {
     const walk = read('CreateWalkWindow.tsx');
     const steps = read('CreateWalkSteps.tsx');
 
@@ -310,7 +310,9 @@ describe('a window that opens through a Modal of its own (sc-42690)', () => {
       /if \(!quiet \|\| !named\) return;\s+const settled = setTimeout\(\(\) => setVoiced\(true\), NAMED_SETTLES_MS\);/,
     );
     expect(walk).toContain("nameless={live && quiet && !named && opening.focus === 'name'}");
-    expect(walk).toMatch(/regaining\.current = input;\s+setNamed\(false\);\s+setVoiced\(false\);/);
+    expect(walk).toMatch(
+      /if \(!named \|\| voiced\) \{\s+raiseKeysOn\(input\);\s+return;\s+\}\s+regaining\.current = input;\s+setNamed\(false\);\s+setVoiced\(false\);/,
+    );
     expect(walk).toMatch(
       /if \(!quiet \|\| named \|\| input == null\) return;\s+regaining\.current = null;\s+raiseKeysOn\(input\);\s+\}, \[quiet, named\]\);/,
     );
