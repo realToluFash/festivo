@@ -948,7 +948,14 @@ export function MarkInvited({
   };
 
   return (
-    <Sheet open={open} onClose={onClose} opener={opener} scrimLabel={W.cancel} testID="guest.mark">
+    <Sheet
+      open={open}
+      onClose={onClose}
+      opener={opener}
+      scrimLabel={W.cancel}
+      docked
+      testID="guest.mark"
+    >
       <SheetBody title={W.markAsInvited} close={W.cancel} onClose={onClose}>
         {failed && <AlertLine text={W.markNotSaved} />}
         <View accessibilityRole="radiogroup" style={styles.tight}>

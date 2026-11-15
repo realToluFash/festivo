@@ -1,0 +1,54 @@
+# sc-46879: ${RITA} (${RITA_NAME}), marked by hand, replies through their link while their page is open; Mark as not invited is then refused. The reply goes to ${API_URL} from ${WEB_URL} with ${RITA_TOKEN}, on the ${LIVE} event. Beside the demo's unmarkRefused.
+appId: host.exp.Exponent
+---
+- setOrientation: ${ORIENT}
+- openLink: ${METRO_URL}/--/events/${LIVE}?area=guests
+- extendedWaitUntil:
+    visible:
+      id: 'guests.card'
+    timeout: 30000
+- waitForAnimationToEnd:
+    timeout: 4000
+- tapOn:
+    id: 'guests.search'
+- inputText: '${RITA_NAME}'
+- hideKeyboard
+- extendedWaitUntil:
+    visible:
+      id: 'guests.row.${RITA}'
+    timeout: 10000
+- tapOn:
+    id: 'guests.row.${RITA}'
+- extendedWaitUntil:
+    visible:
+      id: 'guest.${RITA}'
+    timeout: 20000
+- waitForAnimationToEnd:
+    timeout: 3000
+- scrollUntilVisible:
+    element:
+      id: 'guest.unmark'
+    direction: DOWN
+- evalScript: "${http.post(API_URL + '/api/guest-links/reply', {headers: {'Content-Type': 'application/json', 'Origin': WEB_URL}, body: JSON.stringify({token: RITA_TOKEN, answer: 'coming'})}).status}"
+- tapOn:
+    id: 'guest.unmark'
+- waitForAnimationToEnd:
+    timeout: 5000
+- takeScreenshot: unmarkRefused
+- swipe:
+    direction: DOWN
+- swipe:
+    direction: DOWN
+- swipe:
+    direction: DOWN
+- waitForAnimationToEnd:
+    timeout: 2000
+- takeScreenshot: unmarkRefused-top
+- scroll
+- takeScreenshot: unmarkRefused-scrolled
+- openLink: ${METRO_URL}/--/demo/guests?state=unmarkRefused
+- waitForAnimationToEnd:
+    timeout: 8000
+- takeScreenshot: demo-unmarkRefused
+- scroll
+- takeScreenshot: demo-unmarkRefused-scrolled

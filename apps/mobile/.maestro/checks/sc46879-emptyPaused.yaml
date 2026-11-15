@@ -1,0 +1,16 @@
+# sc-46879: an empty list (${EPAUSED}) beside the demo's emptyPaused.
+appId: host.exp.Exponent
+---
+- setOrientation: ${ORIENT}
+- openLink: ${METRO_URL}/--/events/${EPAUSED}?area=guests
+- extendedWaitUntil:
+    visible:
+      id: 'guests.card'
+    timeout: 30000
+- waitForAnimationToEnd:
+    timeout: 4000
+- takeScreenshot: emptyPaused
+- openLink: ${METRO_URL}/--/demo/guests?state=emptyPaused
+- waitForAnimationToEnd:
+    timeout: 8000
+- takeScreenshot: demo-emptyPaused

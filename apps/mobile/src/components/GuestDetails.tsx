@@ -8,7 +8,7 @@ import {
   replyDate,
   shownReply,
 } from '@soirely/domain';
-import type { ReactNode, Ref } from 'react';
+import { type ReactNode, type Ref, useContext, useEffect } from 'react';
 import { StyleSheet, View, type ViewInstance } from 'react-native';
 import { useTranslation } from 'react-i18next';
 
@@ -27,6 +27,7 @@ import { MarkSlot } from './ReplyMark.tsx';
 import { Row, RowList, TextAction } from './SummaryRows.tsx';
 import { FailedBlock } from './Summary.tsx';
 import { useReadOut } from './ReadOut.tsx';
+import { ScreenScroll } from './Screen.tsx';
 import { Text, type TextHandle } from './Text.tsx';
 
 export type GuestPane =
@@ -56,9 +57,11 @@ export function GuestDetails({
   nameRef,
   editRef,
   markRef,
+  coverMarkRef,
   unmarkRef,
   onEdit,
   onMark,
+  onCoverMark,
   onUnmark,
   onBack,
   onRetry,
@@ -76,14 +79,22 @@ export function GuestDetails({
   nameRef: Ref<TextHandle>;
   editRef: Ref<ViewInstance>;
   markRef: Ref<ViewInstance>;
+  coverMarkRef: Ref<ViewInstance>;
   unmarkRef: Ref<ViewInstance>;
   onEdit: () => void;
   onMark: () => void;
+  onCoverMark: () => void;
   onUnmark: () => void;
   onBack: () => void;
   onRetry: () => void;
 }) {
   const { t } = useTranslation();
+  const scroll = useContext(ScreenScroll);
+
+  // Mark as not invited sits at the page's foot and its outcome under the cover, so the page goes up to show it (sc-46879).
+  useEffect(() => {
+    if (notice != null) scroll?.ref.current?.scrollTo({ y: 0, animated: true });
+  }, [notice, scroll]);
 
   if (pane.kind === 'loading') return <GuestLoading />;
   if (pane.kind === 'failed')
@@ -225,6 +236,16 @@ export function GuestDetails({
             : shown === 'notYetInvited'
               ? t('guestList.copyFirst')
               : invitationLine(t, guest, timeZone, locale)
+        }
+        step={
+          shown === 'notYetInvited' && invitation?.manages === true && invitation.invites
+            ? {
+                label: t('guestList.markAsInvited'),
+                ref: coverMarkRef,
+                onPress: onCoverMark,
+                testID: 'guest.card.step',
+              }
+            : null
         }
         nameRef={nameRef}
       />

@@ -23,6 +23,7 @@ const KIT_STYLES = [
   'portraitContent',
   'landscapeContent',
 ];
+const SHELL_READERS = ['/settingsShell.ts', '/Summary.tsx'];
 const KIT_FIELDS = ['TextField', 'PasswordField', 'CodeField'];
 
 describe('nothing loads react-native whole at run time', () => {
@@ -34,6 +35,22 @@ describe('nothing loads react-native whole at run time', () => {
     expect(
       offenders,
       'Its namespace copy reads PushNotificationIOS, which throws in Expo Go: import the name statically, from a module loaded lazily if need be (src/devReload.ts).',
+    ).toEqual([]);
+  });
+});
+
+describe('a product part reads the shell only where the shell is mounted', () => {
+  it('in no component outside the Settings parts', () => {
+    const offenders = sources(['src/components'])
+      .filter(
+        ({ path, text }) =>
+          !SHELL_READERS.some((name) => path.endsWith(name)) && /\buseShell\(\)/u.test(text),
+      )
+      .map(({ path }) => path);
+
+    expect(
+      offenders,
+      'useShell() throws outside Settings (sc-48600): read useShellLayout() from src/components/settingsShell.ts.',
     ).toEqual([]);
   });
 });

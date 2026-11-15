@@ -21,7 +21,7 @@ function names(all: readonly string[]): string {
 }
 
 export const MW = {
-  selectAll: (count: number) => `Select all ${figure(count)} shown`,
+  selectAll: (count: number) => guests(count, 'Select the 1 shown', 'Select all {n} shown'),
   select: (name: string) => `Select ${name}`,
   selected: (count: number) => `${figure(count)} selected`,
   withCompanions: (count: number) =>

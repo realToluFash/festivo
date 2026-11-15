@@ -253,6 +253,14 @@ export const MANY_STATES = [
   { key: 'remove', name: 'Remove from the list: the question, an arrived guest named' },
   { key: 'removeNoCompanions', name: 'Remove from the list: no companions, the clause dropped' },
   { key: 'removed', name: 'Removed, with Undo for 10 seconds' },
+  {
+    key: 'removedAll',
+    name: 'Everyone removed: Undo above the empty event, Add guest on the card (sc-50772)',
+  },
+  {
+    key: 'removedAllFiltered',
+    name: 'Everyone removed with a group filter on: Undo turns it back on, a save clears it (sc-50772)',
+  },
   { key: 'undone', name: 'Undone: back on the list, as they were' },
   { key: 'nothingRemoved', name: 'Only arrived guests selected: nothing removed' },
   { key: 'failed', name: 'Not saved: Nothing changed, with Try again' },
@@ -354,6 +362,23 @@ export function manyStart(state: ManyState): ManyStart {
       const done = removeMany(arrived, new Set(REMOVING));
 
       return { ...start, list: done.list, line: done.line, undo: done.removed };
+    }
+    case 'removedAll': {
+      const done = removeMany(list, new Set(list.map((one) => one.id)));
+
+      return { ...start, list: done.list, line: done.line, undo: done.removed };
+    }
+    case 'removedAllFiltered': {
+      const work = list.filter((one) => one.group === 'g-work');
+      const done = removeMany(work, new Set(work.map((one) => one.id)));
+
+      return {
+        ...start,
+        list: done.list,
+        groupFilter: 'g-work',
+        line: done.line,
+        undo: done.removed,
+      };
     }
     case 'undone':
       return { ...start, list: arrived, line: { kind: 'undone', guests: REMOVING.length - 1 } };
