@@ -127,7 +127,10 @@
     "mobile:guestNeeds.allergen.lupin",
     "mobile:guestNeeds.dietName.halal",
     "web:seating.rotation",
-    "messagesCounts:seating.table_default_name"
+    "messagesCounts:seating.table_default_name",
+    "web:schedule.minutes_one",
+    "web:schedule.minutes_other",
+    "web:schedule.date"
   ],
   "pt": [
     "web:nav.menu",
