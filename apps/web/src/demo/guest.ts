@@ -22,6 +22,11 @@ import {
   isGuestDayState,
   leadsWithCode,
 } from './guestDay.ts';
+import {
+  type ProgrammeSet,
+  guestProgrammeStarts,
+  isGuestProgrammeState,
+} from './guestProgramme.ts';
 import type { DemoLink } from './settings.ts';
 import { U } from './unsubscribe.ts';
 import { type AskView, afterAnswer } from './guestAsk.ts';
@@ -264,6 +269,10 @@ export interface Visit {
   day: Day;
   where: WhereShown;
   dayOrder: boolean;
+  /** sc-3899: which items the hosts show to guests, from the Schedule demo's sample. */
+  programme: ProgrammeSet;
+  /** sc-4022: the hosts have shared the tables, so Your table's slot shows on the day. */
+  tables: boolean;
 }
 
 export const OPEN: View = { kind: 'answer', busy: null, note: null };
@@ -318,6 +327,8 @@ const BASE: Visit = {
   day: 'before',
   where: 'full',
   dayOrder: false,
+  programme: 'none',
+  tables: false,
 };
 
 const COMING = { answer: 'coming', on: TODAY } as const;
@@ -741,6 +752,7 @@ function startsOf(
   if (isGuestChangeState(value)) return guestChangeStarts(value);
   if (isGuestPartyState(value)) return guestPartyStarts(value);
   if (isGuestDayState(value)) return guestDayStarts(value);
+  if (isGuestProgrammeState(value)) return guestProgrammeStarts(value);
 
   return STATES[isGuestState(value) ? value : 'open'].starts as Partial<Visit>;
 }
