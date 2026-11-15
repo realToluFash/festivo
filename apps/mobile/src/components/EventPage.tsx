@@ -7,6 +7,7 @@ import { StyleSheet, View, type ViewInstance } from 'react-native';
 import { useTranslation } from 'react-i18next';
 
 import { dateLocale } from '../i18n/index.ts';
+import { openInMaps } from '../mapsApp.ts';
 import { SECTION_HREF } from '../kit/appNav.ts';
 import type { EditPart } from '../kit/eventNav.ts';
 import {
@@ -208,14 +209,22 @@ export function EventPage({
           ...venueRow(event.venue, t),
           opens: edit != null && (event.venue != null || event.arrivalNote == null),
           after:
-            event.arrivalNote == null ? undefined : (
+            event.arrivalNote == null && event.venue?.address == null ? undefined : (
               <>
-                <ArrivalNoteInset note={event.arrivalNote} />
+                {event.arrivalNote != null && <ArrivalNoteInset note={event.arrivalNote} />}
                 {event.venue == null && edit != null && (
                   <TextAction
                     label={t('eventPage.addVenue')}
                     onPress={() => edit('venue')}
                     testID="events.addVenue"
+                  />
+                )}
+                {event.venue?.address != null && (
+                  <TextAction
+                    label={t('eventPage.openInMaps')}
+                    glyph="globe"
+                    onPress={() => openInMaps(event.venue)}
+                    testID="events.maps"
                   />
                 )}
               </>
