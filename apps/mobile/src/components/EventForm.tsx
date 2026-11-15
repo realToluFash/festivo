@@ -58,7 +58,7 @@ import {
 } from '../kit/eventForm.ts';
 import { coverRefusalOf } from '../kit/coverUpload.ts';
 import { refusedHint } from '../kit/fields.ts';
-import { keysGoDownFor, typedIn } from './refusedField.ts';
+import { type FormSection, keysGoDownFor, sectionQuiet, typedIn } from './refusedField.ts';
 import { markCoverRefused } from '../kit/eventSaved.ts';
 import { type LayoutKind } from '../layout/useLayout.ts';
 import { holdLeaving } from '../leaveHeld.ts';
@@ -145,10 +145,9 @@ export function EventForm({
   const endField = useRef<ViewInstance>(null);
   const zoneField = useRef<ViewInstance>(null);
   const currencyField = useRef<ViewInstance>(null);
-  const [focusOn, setFocusOn] = useState<{
-    field: EventFormField;
-    saidFirst?: string | undefined;
-  } | null>(null);
+  const [focusOn, setFocusOn] = useState<FocusOn | null>(null);
+  const [quietOn, setQuietOn] = useState<FocusOn | null>(null);
+  const quietAfter = quietOn?.field ?? null;
 
   useEffect(() => {
     if (focusOn == null) return;
@@ -181,6 +180,7 @@ export function EventForm({
         currency: currencyField,
       }[field],
       focusOn.saidFirst,
+      () => setQuietOn((now) => (now === focusOn ? null : now)),
     );
   }, [focusOn]);
 
@@ -289,8 +289,11 @@ export function EventForm({
     setHostErrors(hostFound);
     const first = firstRefusedOf(found, hostFound, hosts);
     const onField = first != null && 'field' in first ? first.field : null;
-    setLinesInSummary(Platform.OS === 'android' && saidFirst != null && keysGoDownFor(onField));
-    setFocusOn(onField != null ? { field: onField, saidFirst } : null);
+    const quiet = Platform.OS === 'android' && saidFirst != null && keysGoDownFor(onField);
+    setLinesInSummary(quiet);
+    const on = onField != null ? { field: onField, saidFirst } : null;
+    setFocusOn(on);
+    setQuietOn(quiet ? on : null);
     setFocusHost(first != null && 'host' in first ? { key: first.host } : null);
 
     return keysGoDownFor(onField);
@@ -417,7 +420,12 @@ export function EventForm({
           />
         </Field>
 
-        <Field ref={typeField} label={t('eventForm.type')} error={errors.type}>
+        <Field
+          ref={typeField}
+          label={t('eventForm.type')}
+          error={errors.type}
+          linesQuiet={quietAfter === 'type'}
+        >
           <ListPicker
             label={t('eventForm.type')}
             placeholder={t('eventForm.typePlaceholder')}
@@ -432,102 +440,124 @@ export function EventForm({
           />
         </Field>
 
-        <HostsSection
-          kind={kind}
-          rows={hosts}
-          errors={hostErrors}
-          saved={NO_HOSTS}
-          busy={busy}
-          arrive={false}
-          focusHost={focusHost}
-          onRows={editHosts}
-          onLeave={leaveHost}
-        />
+        <QuietAfter refused={quietAfter} section="hosts">
+          <HostsSection
+            kind={kind}
+            rows={hosts}
+            errors={hostErrors}
+            saved={NO_HOSTS}
+            busy={busy}
+            arrive={false}
+            focusHost={focusHost}
+            onRows={editHosts}
+            onLeave={leaveHost}
+          />
+        </QuietAfter>
 
-        <CoverField
-          type={draft.type}
-          cover={cover}
-          organisationId={organisation.id}
-          busy={busy}
-          onUse={keepCover}
-          onRemove={removeCover}
-        />
+        <QuietAfter refused={quietAfter} section="cover">
+          <CoverField
+            type={draft.type}
+            cover={cover}
+            organisationId={organisation.id}
+            busy={busy}
+            onUse={keepCover}
+            onRemove={removeCover}
+          />
+        </QuietAfter>
 
-        <Moment
-          label={t('eventForm.starts')}
-          date={draft.startDate}
-          time={draft.startTime}
-          timeZone={timeZone}
-          error={errors.startsAt}
-          disabled={busy}
-          pickerRef={startPicker}
-          fieldRef={startField}
-          testID="eventForm.start"
-          onPick={(date, time) => moveStart(date, time)}
-        />
+        <QuietAfter refused={quietAfter} section="startsAt">
+          <Moment
+            label={t('eventForm.starts')}
+            date={draft.startDate}
+            time={draft.startTime}
+            timeZone={timeZone}
+            error={errors.startsAt}
+            disabled={busy}
+            pickerRef={startPicker}
+            fieldRef={startField}
+            linesQuiet={quietAfter === 'startsAt'}
+            testID="eventForm.start"
+            onPick={(date, time) => moveStart(date, time)}
+          />
+        </QuietAfter>
 
-        <Moment
-          label={t('eventForm.ends')}
-          help={t('eventForm.endsHint')}
-          date={draft.endDate}
-          time={draft.endTime}
-          timeZone={timeZone}
-          error={errors.endsAt}
-          disabled={busy}
-          pickerRef={endPicker}
-          fieldRef={endField}
-          testID="eventForm.end"
-          onPick={(date, time) => {
-            if (date !== draft.endDate) setEndChosen(true);
-            changeDraft('endsAt', { endDate: date, endTime: time });
-          }}
-        />
+        <QuietAfter refused={quietAfter} section="endsAt">
+          <Moment
+            label={t('eventForm.ends')}
+            help={t('eventForm.endsHint')}
+            date={draft.endDate}
+            time={draft.endTime}
+            timeZone={timeZone}
+            error={errors.endsAt}
+            disabled={busy}
+            pickerRef={endPicker}
+            fieldRef={endField}
+            linesQuiet={quietAfter === 'endsAt'}
+            testID="eventForm.end"
+            onPick={(date, time) => {
+              if (date !== draft.endDate) setEndChosen(true);
+              changeDraft('endsAt', { endDate: date, endTime: time });
+            }}
+          />
+        </QuietAfter>
 
-        <VenueFields
-          venue={venue}
-          errors={errors}
-          busy={busy}
-          timeZone={timeZone}
-          nameInput={venueNameInput}
-          addressInput={venueAddressInput}
-          noteInput={arrivalNoteInput}
-          onVenue={changeVenue}
-          onUseZone={(zone: string) => change('timeZone', { timeZone: zone })}
-        />
+        <QuietAfter refused={quietAfter} section="venueName">
+          <VenueFields
+            venue={venue}
+            errors={errors}
+            busy={busy}
+            timeZone={timeZone}
+            nameInput={venueNameInput}
+            addressInput={venueAddressInput}
+            noteInput={arrivalNoteInput}
+            onVenue={changeVenue}
+            onUseZone={(zone: string) => change('timeZone', { timeZone: zone })}
+          />
+        </QuietAfter>
 
-        <Field ref={zoneField} label={t('eventForm.timeZone')} error={errors.timeZone}>
-          <ListPicker
+        <QuietAfter refused={quietAfter} section="timeZone">
+          <Field
+            ref={zoneField}
             label={t('eventForm.timeZone')}
-            searchLabel={t('orgGeneral.searchTimezone')}
-            choices={zones}
-            value={timeZone}
-            onChange={(zone) => change('timeZone', { timeZone: zone })}
-            disabled={busy}
-            wrong={errors.timeZone != null}
-            pickerRef={zonePicker}
-            testID="eventForm.timeZone"
-          />
-        </Field>
+            error={errors.timeZone}
+            linesQuiet={quietAfter === 'timeZone'}
+          >
+            <ListPicker
+              label={t('eventForm.timeZone')}
+              searchLabel={t('orgGeneral.searchTimezone')}
+              choices={zones}
+              value={timeZone}
+              onChange={(zone) => change('timeZone', { timeZone: zone })}
+              disabled={busy}
+              wrong={errors.timeZone != null}
+              pickerRef={zonePicker}
+              testID="eventForm.timeZone"
+            />
+          </Field>
+        </QuietAfter>
 
-        <Field
-          ref={currencyField}
-          label={t('eventForm.currency')}
-          error={errors.currency}
-          help={t('eventForm.defaultsHint', { name: organisation.name })}
-        >
-          <ListPicker
+        <QuietAfter refused={quietAfter} section="currency">
+          <Field
+            ref={currencyField}
             label={t('eventForm.currency')}
-            placeholder={t('orgGeneral.currencyPlaceholder')}
-            searchLabel={t('orgGeneral.searchCurrency')}
-            choices={currencies}
-            value={currency}
-            onChange={(code) => change('currency', { currency: code })}
-            disabled={busy}
-            wrong={errors.currency != null}
-            pickerRef={currencyPicker}
-            testID="eventForm.currency"
-          />
-        </Field>
+            error={errors.currency}
+            linesQuiet={quietAfter === 'currency'}
+            help={t('eventForm.defaultsHint', { name: organisation.name })}
+          >
+            <ListPicker
+              label={t('eventForm.currency')}
+              placeholder={t('orgGeneral.currencyPlaceholder')}
+              searchLabel={t('orgGeneral.searchCurrency')}
+              choices={currencies}
+              value={currency}
+              onChange={(code) => change('currency', { currency: code })}
+              disabled={busy}
+              wrong={errors.currency != null}
+              pickerRef={currencyPicker}
+              testID="eventForm.currency"
+            />
+          </Field>
+        </QuietAfter>
 
         <PrimaryButton
           ref={sendButton}
@@ -552,6 +582,30 @@ export function EventForm({
         testID="eventForm.leave"
       />
     </LinesInSummary.Provider>
+  );
+}
+
+interface FocusOn {
+  field: EventFormField;
+  saidFirst?: string | undefined;
+}
+
+/** Under TalkBack, a section after the refused picker is out of its reach while focus moves there: a scroll up away from TalkBack's focus moves it onto the last view in sight, which has to be the picker (sc-43907). */
+function QuietAfter({
+  refused,
+  section,
+  children,
+}: {
+  refused: EventFormField | null;
+  section: FormSection;
+  children: ReactNode;
+}) {
+  const quiet = sectionQuiet(refused, section);
+
+  return (
+    <View style={styles.section} importantForAccessibility={quiet ? 'no-hide-descendants' : 'auto'}>
+      {children}
+    </View>
   );
 }
 
@@ -617,6 +671,7 @@ export function Moment({
   pickerRef,
   timePickerRef,
   fieldRef,
+  linesQuiet = false,
   testID,
   onPick,
 }: {
@@ -632,6 +687,8 @@ export function Moment({
   pickerRef: RefObject<ViewInstance | null>;
   timePickerRef?: RefObject<ViewInstance | null>;
   fieldRef: RefObject<ViewInstance | null>;
+  /** The error and help lines are out of TalkBack's reach, as Field's are. */
+  linesQuiet?: boolean;
   testID: string;
   onPick: (date: string, time: string) => void;
 }) {
@@ -745,12 +802,19 @@ export function Moment({
           </Pressable>
         </Field>
       </View>
-      {error != null && <FieldError message={error} />}
-      {helpLines.map((line) => (
-        <Text key={line} size={tokens.typeSmall.size} style={styles.secondary}>
-          {line}
-        </Text>
-      ))}
+      {(error != null || helpLines.length > 0) && (
+        <View
+          style={styles.momentGroup}
+          importantForAccessibility={linesQuiet ? 'no-hide-descendants' : 'auto'}
+        >
+          {error != null && <FieldError message={error} />}
+          {helpLines.map((line) => (
+            <Text key={line} size={tokens.typeSmall.size} style={styles.secondary}>
+              {line}
+            </Text>
+          ))}
+        </View>
+      )}
 
       {Platform.OS === 'ios' && (
         <Sheet
@@ -787,6 +851,7 @@ export function Moment({
 }
 
 const styles = StyleSheet.create({
+  section: { gap: tokens.spaceLg },
   actions: { flexDirection: 'row', flexWrap: 'wrap', gap: tokens.spaceSm },
   ask: { gap: tokens.spaceLg, padding: tokens.spaceXl },
   momentGroup: { gap: tokens.spaceXs },

@@ -11,3 +11,23 @@ export function typedIn(field: EventFormField): field is (typeof TYPED_IN)[numbe
 export function keysGoDownFor(field: EventFormField | null): boolean {
   return field != null && !typedIn(field);
 }
+
+const FORM_ORDER = [
+  'type',
+  'hosts',
+  'cover',
+  'startsAt',
+  'endsAt',
+  'venueName',
+  'timeZone',
+  'currency',
+] as const;
+
+export type FormSection = (typeof FORM_ORDER)[number];
+
+/** Whether `section` is out of TalkBack's reach while focus moves to the `refused` picker: every section after it is (sc-43907). */
+export function sectionQuiet(refused: EventFormField | null, section: FormSection): boolean {
+  const order: readonly string[] = FORM_ORDER;
+
+  return refused != null && order.indexOf(section) > order.indexOf(refused);
+}
