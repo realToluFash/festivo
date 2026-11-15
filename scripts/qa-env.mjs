@@ -157,7 +157,7 @@ export function qaConfig(tester = 1, address = undefined) {
   };
   const avd = label.replace(/ /g, '_');
   const emulators = {
-    phone: { name: `${avd}_Phone`, device: 'pixel_8' },
+    phone: { name: `${avd}_Phone`, device: 'pixel_8', ramMb: 4096 },
     tablet: { name: `${avd}_Tablet`, device: 'pixel_tablet', ramMb: 4096 },
   };
   // Inside 5554–5584, the only consoles adb finds, and clear of 5554, where one started by hand lands.
@@ -1276,7 +1276,8 @@ function createEmulators() {
   }
 }
 
-// At avdmanager's 2 GB the Pixel Tablet's launcher and System UI stop answering mid-batch (sc-43225).
+// At avdmanager's 2 GB the Pixel Tablet's launcher and System UI stop answering mid-batch (sc-43225),
+// and the phone with Expo Go loaded keeps stopping TalkBack (sc-52641).
 export function withAvdRam(config, mb) {
   const current = Number(/^hw\.ramSize\s*=\s*(\d+)/m.exec(config)?.[1] ?? 0);
   if (current >= mb) return config;
