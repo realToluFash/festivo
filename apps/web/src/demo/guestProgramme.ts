@@ -6,6 +6,7 @@ import type { DemoLink } from './settings.ts';
 
 /** What the guest API answers per item, and nothing else: never owner, role, note, length, fixed time or lateness. */
 export interface GuestItem {
+  id: string;
   title: string;
   startsAt: string;
   /** The event day it sits on; an event day runs from 05:00 to 05:00 (sc-3895, Decided 1 Nov). */
@@ -103,6 +104,17 @@ export function wallIn(at: string, zone: string): string {
   return `${part('year')}-${part('month')}-${part('day')}T${part('hour')}:${part('minute')}`;
 }
 
+/** A wall time in the event's zone as an instant with that zone's offset, for a `time` element's dateTime. */
+export function dateTimeOf(wall: string, zone: string): string {
+  const guess = msOf(wall);
+  const offsetAt = (ms: number) => msOf(wallIn(new Date(ms).toISOString(), zone)) - ms;
+  const offset = offsetAt(guess - offsetAt(guess)) / MINUTE;
+  const sign = offset < 0 ? '-' : '+';
+  const size = Math.abs(offset);
+
+  return `${wall}${sign}${pad2(Math.floor(size / 60))}:${pad2(size % 60)}`;
+}
+
 function wallOnDay(day: string, minutesIntoDay: number): string {
   return wallOf(msOf(`${day}T00:00`) + (DAY_TURNS_AT + minutesIntoDay) * MINUTE);
 }
@@ -164,6 +176,7 @@ export function guestProgramme(items: readonly Item[], live: Live | null): Guest
   return items
     .filter((one) => one.guests)
     .map((one) => ({
+      id: one.id,
       title: one.title,
       startsAt: starts == null ? one.starts : roundedToFive(starts.get(one.id) ?? one.starts),
       day: eventDayOf(one.starts),

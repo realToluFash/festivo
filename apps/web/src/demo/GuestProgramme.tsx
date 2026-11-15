@@ -7,6 +7,7 @@ import {
   LIVE_MARKS,
   TABLE_SLOT,
   byDay,
+  dateTimeOf,
   guestProgramme,
   headingOf,
   isHappening,
@@ -77,8 +78,8 @@ function Items({
   return (
     <ul className="gp-prog-list">
       {items.map((one) => (
-        <li key={`${one.startsAt}|${one.title}`} className="gp-prog-item">
-          <time className="gp-prog-time" dateTime={one.startsAt}>
+        <li key={one.id} className="gp-prog-item">
+          <time className="gp-prog-time" dateTime={dateTimeOf(one.startsAt, EVENT.timeZone)}>
             {timeText(one, locale)}
           </time>
           <span className="gp-prog-what" dir="auto">

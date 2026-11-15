@@ -6,6 +6,7 @@ import {
   GUEST_PROGRAMME_STATES,
   LIVE_MARKS,
   byDay,
+  dateTimeOf,
   guestProgramme,
   headingOf,
   isHappening,
@@ -34,9 +35,9 @@ describe('what the guest API returns (sc-3899)', () => {
     expect(titles('none')).toEqual([]);
   });
 
-  it('carries title, time, day and place, and nothing else', () => {
+  it('carries id, title, time, day and place, and nothing else', () => {
     for (const one of guestProgramme(scheduleOf('days'), live('2026-11-06T17:25'))) {
-      expect(Object.keys(one).sort()).toEqual(['day', 'place', 'startsAt', 'title']);
+      expect(Object.keys(one).sort()).toEqual(['day', 'id', 'place', 'startsAt', 'title']);
     }
   });
 
@@ -133,5 +134,19 @@ describe('what the section shows', () => {
     expect(GUEST_PROGRAMME_PAGES.flatMap((page) => page.states).map((one) => one.to)).toEqual(
       Object.keys(GUEST_PROGRAMME_STATES).map((state) => `/demo/guest?state=${state}`),
     );
+  });
+});
+
+describe('the time element’s dateTime', () => {
+  it('gives the wall time the event zone’s offset, summer and winter', () => {
+    expect(dateTimeOf('2026-11-06T17:20', 'Europe/London')).toBe('2026-11-06T17:20+00:00');
+    expect(dateTimeOf('2026-07-06T17:20', 'Europe/London')).toBe('2026-07-06T17:20+01:00');
+    expect(dateTimeOf('2026-11-06T17:20', 'America/Sao_Paulo')).toBe('2026-11-06T17:20-03:00');
+    expect(dateTimeOf('2026-11-06T17:20', 'Asia/Kolkata')).toBe('2026-11-06T17:20+05:30');
+  });
+
+  it('takes the offset that applies after the clocks change', () => {
+    expect(dateTimeOf('2026-10-25T03:00', 'Europe/London')).toBe('2026-10-25T03:00+00:00');
+    expect(dateTimeOf('2026-03-29T03:00', 'Europe/London')).toBe('2026-03-29T03:00+01:00');
   });
 });

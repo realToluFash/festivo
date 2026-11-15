@@ -92,6 +92,9 @@ describe('The day on the guest’s page (sc-3899)', () => {
     await guest('programmeZone');
 
     expect(within(section('Programme')).getByText('Times in Europe/London.')).toBeDefined();
+    const drinks = within(section('Programme')).getByText('18:00');
+
+    expect(drinks.closest('time')?.getAttribute('datetime')).toBe('2026-11-05T18:00+00:00');
   });
 
   it(
