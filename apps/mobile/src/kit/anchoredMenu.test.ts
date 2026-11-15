@@ -58,7 +58,7 @@ describe('menuMost', () => {
 });
 
 describe('menuSide', () => {
-  const sideways = { gap: 4, floor: null, origin: 0, ceiling: 0, foot: 360 - 24 };
+  const sideways = { gap: 4, floor: null, origin: 0, ceiling: 0, layer: 360, bar: 24 };
 
   it('stays below when its whole height fits there', () => {
     expect(menuSide({ ...sideways, under: 100, over: 60, tall: 200 })).toEqual({
@@ -85,7 +85,7 @@ describe('menuSide', () => {
   });
 
   it('stays below, capped, when the room above is no larger', () => {
-    expect(menuSide({ ...sideways, foot: 344, under: 192, over: 152, tall: 400 })).toEqual({
+    expect(menuSide({ ...sideways, layer: 368, under: 192, over: 152, tall: 400 })).toEqual({
       top: 196,
       most: 148,
       above: false,
@@ -104,14 +104,21 @@ describe('menuSide', () => {
     );
   });
 
+  it('on gesture navigation, its layer reaching under the bar, opens below when it fits there (#51333)', () => {
+    const gesture = { ...sideways, layer: 800, bar: 48, under: 600, over: 560, tall: 140 };
+
+    expect(menuSide(gesture)).toEqual({ top: 604, most: 148, above: false });
+    expect(menuSide({ ...gesture, layer: 800 - 48 }).above).toBe(true);
+  });
+
   it('goes below until it has measured itself', () => {
     expect(menuSide({ ...sideways, under: 280, over: 240, tall: null }).above).toBe(false);
   });
 });
 
 describe('an open menu, render by render', () => {
-  const upright = { gap: 4, floor: null, origin: 0, ceiling: 0, foot: 800 - 24 };
-  const sideways = { ...upright, foot: 360 - 24 };
+  const upright = { gap: 4, floor: null, origin: 0, ceiling: 0, layer: 800, bar: 24 };
+  const sideways = { ...upright, layer: 360 };
 
   function render(
     room: typeof upright,

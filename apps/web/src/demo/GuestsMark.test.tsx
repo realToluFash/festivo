@@ -161,7 +161,7 @@ describe('Mark as invited from the selection bar (sc-46880)', () => {
     await open('notLive');
 
     expect(said()).toBe(
-      'Nothing changed. This event is no longer live, so guests can’t be marked as invited.',
+      'Nothing changed. This event is no longer live, so guests cannot be marked as invited.',
     );
     fireEvent.click(screen.getAllByRole('checkbox')[1] as HTMLElement);
     expect(within(bar()).queryByRole('button', { name: 'Mark as invited' })).toBeNull();
