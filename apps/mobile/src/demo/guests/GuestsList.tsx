@@ -1,4 +1,4 @@
-import { type Ref, type RefObject, useEffect, useRef, useState } from 'react';
+import { type ReactNode, type Ref, type RefObject, useEffect, useRef, useState } from 'react';
 import {
   Pressable,
   StyleSheet,
@@ -192,6 +192,9 @@ export interface ListProps {
   onOpen: (guest: string, from: string) => void;
   refFor: (key: string) => Ref<ViewInstance>;
   fieldRef: RefObject<TextInputInstance | null>;
+  /** sc-54450: Paste a reply, in the row on an upright iPad, and under it on a phone and in the list pane. */
+  pasteInRow?: ReactNode;
+  paste?: ReactNode;
 }
 
 /** Find a guest and the filter as one row, then the groups by reply, or the rows a filter or search leaves. */
@@ -216,6 +219,8 @@ export function GuestsRows({
   onOpen,
   refFor,
   fieldRef,
+  pasteInRow = null,
+  paste = null,
 }: ListProps) {
   const looking = filter !== 'all' || searched.trim() !== '';
   const wide = layout === 'landscape';
@@ -246,7 +251,9 @@ export function GuestsRows({
           off={false}
           onChoose={onFilter}
         />
+        {pasteInRow}
       </View>
+      {paste}
       {looking ? (
         <View>
           <ShownLine

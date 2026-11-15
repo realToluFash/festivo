@@ -192,6 +192,29 @@ const GUESTS: Record<GuestsState, Board> = {
   exportOffline: ['Export offline', 'Export needs a connection in its place'],
   exportDropped: ['Export, the connection dropped', 'Share refused: Nothing was exported.'],
   exportGrantView: ['Export, Can view grant', 'No Export, no Add guest'],
+  paste: [
+    'Paste a reply',
+    'sc-54450: iOS’s Paste, or Paste a reply on Android, under Find a guest',
+  ],
+  pasteNothing: [
+    'Paste a reply, nothing to paste',
+    'Android: Nothing to paste beside it, read out; iOS greys its own Paste',
+  ],
+  pasteClosed: ['Paste a reply, replies closed', 'Replies closed on Wed, Nov 4: no Paste'],
+  whose: [
+    'Whose reply is this?',
+    'Their message, Find a guest, the 5 waiting, newest invite first',
+  ],
+  whoseLong: ['Whose reply, a long message', 'Six lines and …, then Show all'],
+  whoseAll: ['Whose reply, Show all', 'The whole message'],
+  whoseSearch: ['Whose reply, a search', '“okon” finds Folasade, who said Not sure yet'],
+  whoseNone: ['Whose reply, no guests match', '“bisi” is not yet invited, so not found'],
+  whoseEveryone: ['Whose reply, nobody waiting', 'Everyone you invited has replied'],
+  whoseOffline: ['Whose reply offline', 'The list as last loaded; Save is refused'],
+  fromMessage: ['Record a reply from a message', 'The quote above, By message chosen, no reply'],
+  fromMessageBlank: ['From a message, no reply', 'Choose their reply. on Save'],
+  fromMessageOffline: ['From a message, offline', 'Nothing was saved; choices and quote kept'],
+  fromMessageSaved: ['From a message, saved', 'Back on Guests: Reply recorded'],
 };
 
 const DOOR: Record<DoorState, Board> = {
