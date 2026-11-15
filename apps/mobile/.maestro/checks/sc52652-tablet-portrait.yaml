@@ -6,7 +6,7 @@ appId: host.exp.Exponent
     file: ../scripts/event-role-elsewhere.js
     env:
       ROLE: can_edit
-- runFlow: sc52652/open.yaml
+- runFlow: ../checks/sc52652/open.yaml
 - scrollUntilVisible:
     element:
       id: 'event.edit.cover.describe'
