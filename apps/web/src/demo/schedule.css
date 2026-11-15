@@ -104,18 +104,18 @@
 }
 
 .ro-table .ro-starts {
-  width: 96px;
+  width: 64px;
   padding-left: var(--spaceSm);
   white-space: nowrap;
 }
 
 .ro-table .ro-lasts {
-  width: 96px;
+  width: 72px;
   white-space: nowrap;
 }
 
 .ro-table .ro-owner {
-  width: 200px;
+  width: 30%;
 }
 
 .ro-item {
@@ -168,6 +168,7 @@
   background: var(--colorInset);
   color: var(--colorInk);
   font: 600 12px/1.4 var(--fontFamily);
+  white-space: nowrap;
 }
 
 .ro-owner-name {
@@ -267,13 +268,26 @@
   font-weight: 500;
 }
 
-.ro-area textarea {
-  width: 100%;
+.desk-box.ro-area {
+  height: auto;
+  padding-block: var(--spaceMd);
+}
+
+.desk .ro-area textarea {
+  flex: 1;
+  min-width: 0;
   min-height: 72px;
+  padding: 0;
   border: 0;
+  outline: none;
   background: none;
-  font: inherit;
+  color: var(--colorInk);
+  font: 500 16px/1.45 var(--fontFamily);
   resize: vertical;
+}
+
+.desk .ro-area textarea:focus-visible {
+  box-shadow: none;
 }
 
 .ro-chips {
@@ -399,12 +413,21 @@
   }
 
   .ro-top {
+    display: contents;
+  }
+
+  .ro .mn-split {
     flex-direction: column;
-    gap: var(--spaceMd);
+  }
+
+  .ro .mn-page > .mn-lock,
+  .ro .mn-page > .mn-said,
+  .ro .mn-page > .mn-split {
+    order: 2;
   }
 
   .ro-add {
-    order: 3;
+    order: 1;
     align-self: stretch;
     height: 48px;
   }
@@ -470,10 +493,6 @@
   .ro.is-form .ro-chrome,
   .ro.is-form .ro-tables {
     display: none;
-  }
-
-  .ro .mn-split {
-    flex-direction: column;
   }
 
   .ro-panel.mn-panel {
