@@ -76,6 +76,8 @@ export const SEATING_STATES = [
   'deleteRow',
   'seatAdded',
   'seatNameTaken',
+  'rowChanged',
+  'seatChanged',
   'drag',
   'resize',
   'turn',

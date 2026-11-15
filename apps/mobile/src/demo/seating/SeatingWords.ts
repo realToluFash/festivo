@@ -197,6 +197,8 @@ export const say = {
       : `${plural(n, 'guest is', 'guests are')} seated here. They go back to Without a seat.`,
   deleteVerb: (name: string) => `Delete ${name}`,
   tableChanged: (name: string) => `${name} just changed this table. Your change was not saved.`,
+  rowChanged: (name: string) => `${name} just changed this row. Your change was not saved.`,
+  seatChanged: (name: string) => `${name} just changed this seat. Your change was not saved.`,
   rowSeat: (label: string, n: number, word: string) => `Row ${label}, seat ${n} · ${word}`,
   takenBy: (name: string) => `Taken by ${name}`,
   moreRight: (n: number) => `+${n} to the right`,

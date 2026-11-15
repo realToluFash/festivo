@@ -57,6 +57,8 @@ const BOARDS: Record<SeatingState, readonly [string, string]> = {
   deleteRow: ['delete a row', '4 guests go back to Without a seat'],
   seatAdded: ['Add seat', 'Seat 1, a dashed circle'],
   seatNameTaken: ['a seat name used', 'This plan already has a seat called By the door'],
+  rowChanged: ['a colleague changed the row', 'Your change was not saved'],
+  seatChanged: ['a colleague changed the seat', 'Your change was not saved'],
   drag: ['by finger: drag', 'Table 10 down, handles at 48'],
   resize: ['by finger: resize', 'Table 9 to 300 cm'],
   turn: ['by finger: turn', 'Table 9 at 15°'],

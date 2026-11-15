@@ -149,6 +149,8 @@ export const SW = {
   nobodyHere: 'Nobody is seated here.',
   deleteName: 'Delete {{name}}',
   tableChanged: '{{name}} just changed this table. Your change was not saved.',
+  rowChanged: '{{name}} just changed this row. Your change was not saved.',
+  seatChanged: '{{name}} just changed this seat. Your change was not saved.',
   overlaps: 'Overlaps {{name}}',
   outside: '{{name}} would sit outside the room.',
   rowAdded: 'Row {{label}} added in the nearest free space, with {{n}} seats.',
