@@ -2390,6 +2390,15 @@
     "sending": "Enviando la respuesta…"
   },
   "guestList": {
+    "paste": {
+      "button": "Paste a reply",
+      "nothing": "Nothing to paste. Copy their message in your chat, then try again.",
+      "whose": "Whose reply is this?",
+      "theirMessage": "Their message",
+      "showAll": "Show all",
+      "everyone": "Everyone you invited has replied. Find a guest to change their reply.",
+      "rowLine": "{{reply}} · {{invitation}}"
+    },
     "addGuest": "Añadir invitado",
     "replied": "{{reply}} · respondió el {{date}}",
     "figure": "{{count, number}}",
