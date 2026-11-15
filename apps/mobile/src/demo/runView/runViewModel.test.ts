@@ -104,9 +104,9 @@ describe('the track’s figure', () => {
     expect(hall('behind').next).toMatchObject({ item: { id: 'speeches' }, expected: '20:13' });
   });
 
-  it('reads Last item under way, then Everything done', () => {
+  it('reads Last item under way, then that every item is done', () => {
     expect(figureWords(hall('last').figure)).toBe('Last item under way');
-    expect(figureWords(hall('allDone').figure)).toBe('Everything done');
+    expect(figureWords(hall('allDone').figure)).toBe('Every item on this track is done.');
   });
 
   it('ends the table with the next item, or says the track is done', () => {
@@ -122,6 +122,9 @@ describe('the track’s figure', () => {
       'Main hall, 1 minute behind',
     );
     expect(figureSaid('Main hall', { kind: 'onTime' })).toBe('Main hall, on time');
+    expect(figureSaid('Main hall', { kind: 'done' })).toBe(
+      'Main hall, every item on this track is done',
+    );
   });
 
   it('never goes below On time when the night runs early', () => {

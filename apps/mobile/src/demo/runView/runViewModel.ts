@@ -147,13 +147,13 @@ export function figureWords(figure: Figure): string {
       ? `${figure.minutes} min behind`
       : figure.kind === 'last'
         ? 'Last item under way'
-        : 'Everything done';
+        : RW.allDone;
 }
 
 export function figureSaid(name: string, figure: Figure): string {
   return figure.kind === 'behind'
     ? `${name}, ${figure.minutes} ${figure.minutes === 1 ? 'minute' : 'minutes'} behind`
-    : `${name}, ${figureWords(figure).toLowerCase()}`;
+    : `${name}, ${figureWords(figure).toLowerCase().replace(/\.$/, '')}`;
 }
 
 /** "Cake cutting would run into Fireworks at 22:00", for each fixed-time item the one before it would still be running at. */

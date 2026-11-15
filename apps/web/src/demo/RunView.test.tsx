@@ -58,7 +58,8 @@ describe('/demo/events/evt-wed-4/run (sc-1404)', () => {
 
   it('shows no figure on a track with every item done, and says so under its table', async () => {
     await open('allDone');
-    expect(said()).toContain('Main hall, everything done');
+    expect(said()).toContain('Main hall, every item on this track is done');
+    expect(said()).not.toContain('verything done');
     expect(screen.queryByText('Everything done')).toBeNull();
     expect(screen.getAllByText('Every item on this track is done.').length).toBeGreaterThan(0);
   });
