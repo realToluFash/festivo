@@ -932,7 +932,7 @@ function DishFields({
             </label>
           ))}
         </div>
-        <label className="gs-tick lib-tick lib-none">
+        <label className="gs-tick lib-tick lib-none-tick">
           <input
             id="lib-none"
             type="checkbox"
