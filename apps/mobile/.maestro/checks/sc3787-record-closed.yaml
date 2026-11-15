@@ -21,7 +21,7 @@ appId: host.exp.Exponent
       id: 'guest.${G_CLOSED}'
     timeout: 30000
 - takeScreenshot: closed
-- assertVisible: 'Replies closed on.*'
+- assertVisible: '{{t:guestList.repliesClosedOn}}'
 - assertNotVisible:
     id: 'guest.record'
 - back

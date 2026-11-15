@@ -45,6 +45,6 @@ appId: host.exp.Exponent
     timeout: 15000
 - takeScreenshot: recorded
 - scrollUntilVisible:
-    element: 'recorded by.*'
+    element: '{{t:guestList.recordedOn}}'
     direction: DOWN
 - takeScreenshot: recorded-line
