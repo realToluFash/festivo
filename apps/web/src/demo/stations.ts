@@ -645,7 +645,7 @@ export function stationsStart(raw: string | null): StationsStart {
 }
 
 export function stationsAt(state?: StationsStateName): string {
-  return `/demo/events/${STATIONS_EVENT}/staff${state == null ? '' : `?state=${state}`}`;
+  return `/demo/events/${STATIONS_EVENT}/staff/stations${state == null ? '' : `?state=${state}`}`;
 }
 
 function link(state: StationsStateName): DemoLink {

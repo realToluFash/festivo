@@ -12,7 +12,7 @@ afterEach(() => __setConfig(tested));
 
 async function open(state: string): Promise<void> {
   const router = createMemoryRouter(routes, {
-    initialEntries: [`/demo/events/evt-wed-4/staff?state=${state}`],
+    initialEntries: [`/demo/events/evt-wed-4/staff/stations?state=${state}`],
   });
   render(<RouterProvider router={router} />);
   await screen.findByRole('heading', { level: 1, name: 'Staff' }, { timeout: 8000 });
@@ -21,7 +21,7 @@ async function open(state: string): Promise<void> {
 const button = (name: string) => screen.queryByRole('button', { name });
 const status = () => screen.getAllByRole('status').find((one) => one.classList.contains('mn-said'));
 
-describe('/demo/events/evt-wed-4/staff (sc-3910)', () => {
+describe('/demo/events/evt-wed-4/staff/stations (sc-3910)', () => {
   it('puts the Pass first with no Rename or Remove, and names sections with their table count', async () => {
     await open('populated');
     const places = screen.getByRole('region', { name: 'Places' });
