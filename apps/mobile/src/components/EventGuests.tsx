@@ -104,6 +104,7 @@ const CHOICE_KEY: Record<Choice, string> = {
 export interface GuestsTop {
   add: (() => void) | null;
   back: (() => void) | null;
+  toSearch: boolean;
 }
 
 /** An event's Guests in the app (sc-3785): the list to find and read a guest, and the small edits; planning at scale stays on the web. */
@@ -374,9 +375,13 @@ export function EventGuests({
   const shown = sidebarCardOf(event, phase);
 
   useLayoutEffect(() => {
-    onTop({ add: adds ? add : null, back: guestInFront ? guestBack : null });
-  }, [onTop, adds, add, guestInFront, guestBack]);
-  useLayoutEffect(() => () => onTop({ add: null, back: null }), [onTop]);
+    onTop({
+      add: adds ? add : null,
+      back: guestInFront ? guestBack : null,
+      toSearch: guestInFront && leavesFromGuest,
+    });
+  }, [onTop, adds, add, guestInFront, guestBack, leavesFromGuest]);
+  useLayoutEffect(() => () => onTop({ add: null, back: null, toSearch: false }), [onTop]);
 
   const timeZone = event.timeZone;
   const locale = dateLocale();

@@ -133,7 +133,11 @@ export function EventScreen({
   );
   const coverNotice = useRef<ViewInstance>(null);
   const [guestsOffline, setGuestsOffline] = useState<ScreenOffline>(NOT_OFFLINE);
-  const [guestsTop, setGuestsTop] = useState<GuestsTop>({ add: null, back: null });
+  const [guestsTop, setGuestsTop] = useState<GuestsTop>({
+    add: null,
+    back: null,
+    toSearch: false,
+  });
   const guestsAdd = useRef<ViewInstance>(null);
   const [toast, setToast] = useState<{
     eventId: string;
@@ -352,7 +356,10 @@ export function EventScreen({
   const titledInList = areaTitled || guests;
   const frameBack =
     guestBack != null
-      ? { label: fromSearch ? t('todayScreen.search') : t('eventNav.guests'), onPress: guestBack }
+      ? {
+          label: guestsTop.toSearch ? t('todayScreen.search') : t('eventNav.guests'),
+          onPress: guestBack,
+        }
       : top.frameBack === 'area'
         ? { label: backLabel, onPress: back }
         : top.frameBack === 'events'
