@@ -1,6 +1,7 @@
 import {
   type Membership,
   type MembersList,
+  type MembersShow,
   type OrganisationMember,
   type OrganisationRole,
   type RecoveryRequest,
@@ -15,13 +16,16 @@ import {
   memberIsShown,
   recoveryEndedByRemoval,
   recoveryShownIn,
+  rereadLimit,
   roleName,
+  withNextPage,
 } from '@soirely/domain';
-import { type ReactNode, useCallback, useEffect, useRef, useState } from 'react';
+import { type ReactNode, type RefObject, useCallback, useEffect, useRef, useState } from 'react';
 import { Trans, useTranslation } from 'react-i18next';
 import { useSearchParams } from 'react-router';
 
 import { api } from '../../../api.ts';
+import { Glyph } from '../../../components/Glyph.tsx';
 import { Refreshing } from '../../../components/OfflineBand.tsx';
 import {
   BackRow,
@@ -69,9 +73,14 @@ type Load =
   | {
       kind: 'loaded';
       list: MembersList;
+      /** The option under Show whose people `list.members` holds. */
+      listed: MembersShow;
       roles: OrganisationRole[];
       recoveries: RecoveryRequest[];
     };
+
+/** The next page of People: on its way, or failed with the rows already shown kept (sc-49170). */
+type More = 'idle' | 'loading' | 'failed';
 
 type Dialog =
   | { kind: 'invite'; email: string; roleId: string | null; again: string | null }
@@ -135,6 +144,7 @@ export function Members() {
         setLoad({
           kind: 'loaded',
           list,
+          listed: 'all',
           roles: catalogue.roles,
           recoveries: recoveryShownIn(recoveries, organisationId),
         });
@@ -160,6 +170,14 @@ export function Members() {
   useEffect(() => {
     heading.current = title() as HTMLHeadingElement | null;
   });
+
+  const onChange = useCallback(
+    (list: MembersList, listed?: MembersShow) =>
+      setLoad((was) =>
+        was.kind === 'loaded' ? { ...was, list, listed: listed ?? was.listed } : was,
+      ),
+    [],
+  );
 
   if (organisation == null) return null;
   if (!can(session, 'members.read')) return <Forbidden />;
@@ -194,12 +212,11 @@ export function Members() {
               key={organisation.id}
               organisation={organisation}
               list={load.list}
+              listed={load.listed}
               roles={load.roles}
               recoveries={load.recoveries}
               manages={manages}
-              onChange={(list) =>
-                setLoad((was) => (was.kind === 'loaded' ? { ...was, list } : was))
-              }
+              onChange={onChange}
               onRecoveries={(recoveries) =>
                 setLoad((was) => (was.kind === 'loaded' ? { ...was, recoveries } : was))
               }
@@ -246,6 +263,7 @@ function Column({ children }: { children: ReactNode }) {
 function MembersLoaded({
   organisation,
   list,
+  listed,
   roles,
   recoveries,
   manages,
@@ -254,10 +272,11 @@ function MembersLoaded({
 }: {
   organisation: Membership;
   list: MembersList;
+  listed: MembersShow;
   roles: OrganisationRole[];
   recoveries: RecoveryRequest[];
   manages: boolean;
-  onChange: (list: MembersList) => void;
+  onChange: (list: MembersList, listed?: MembersShow) => void;
   onRecoveries: (recoveries: RecoveryRequest[]) => void;
 }) {
   const { t } = useTranslation();
@@ -285,12 +304,71 @@ function MembersLoaded({
   const moved = useRef(false);
   const toSays = useRef(false);
   const granted = grantableRoles(roles, organisation);
-  const person = open == null ? null : (list.members.find((one) => one.id === open) ?? null);
+  const [more, setMore] = useState<More>('idle');
+  const [switched, setSwitched] = useState(0);
+  const rows = useRef<HTMLUListElement>(null);
+  const wanted: MembersShow | null = filter === 'invited' || filter === 'waiting' ? null : filter;
+  const switching = wanted != null && wanted !== listed;
+  const held = [...list.members, ...list.waiting, ...list.faces];
+  const found = open == null ? null : (held.find((one) => one.id === open) ?? null);
+  // A change can take an open person out of the option being read; their page stays as last read.
+  const [seen, setSeen] = useState<OrganisationMember | null>(null);
+  if (found != null && found !== seen) setSeen(found);
+  const person = found ?? (seen != null && seen.id === open ? seen : null);
 
   // Removed only once committed: React may abandon a render and run the initializer again.
   useEffect(() => {
     if (returned != null) dropProviderReturn();
   }, [returned]);
+
+  // Another option under Show starts again from its own first page (sc-49170).
+  useEffect(() => {
+    if (wanted == null || !switching) return;
+    let current = true;
+
+    api.members(organisation.id, { show: wanted }).then(
+      (page) => {
+        if (!current) return;
+        setMore('idle');
+        onChange(page, wanted);
+      },
+      () => current && setMore('failed'),
+    );
+
+    return () => {
+      current = false;
+    };
+  }, [organisation.id, wanted, switching, switched, onChange]);
+
+  const reread = () => api.members(organisation.id, { show: listed, limit: rereadLimit(list) });
+
+  /** The next 50 under the rows shown; the focus goes to the first of them. A press while they load does nothing. */
+  const showMore = async () => {
+    if (more === 'loading') return;
+    if (switching) {
+      setMore('idle');
+      setSwitched((n) => n + 1);
+      return;
+    }
+
+    const first = list.members.length;
+    setMore('loading');
+
+    try {
+      const page = await api.members(organisation.id, { show: listed, after: list.next });
+      onChange(withNextPage(list, page), listed);
+      setMore('idle');
+      focusWhenFree(
+        () => rows.current?.children[first]?.querySelector<HTMLElement>('button, a') ?? null,
+      );
+    } catch {
+      setMore('failed');
+    }
+  };
+  const pick = (next: MemberFilter) => {
+    setMore('idle');
+    setFilter(next);
+  };
 
   useSearchedMember();
 
@@ -323,7 +401,7 @@ function MembersLoaded({
         return openPerson(does.member);
       case 'former':
         setNotice(null);
-        return setFilter('former');
+        return pick('former');
       case 'become':
         return claim.become();
       case 'check':
@@ -331,8 +409,7 @@ function MembersLoaded({
     }
   };
   const close = useCallback(() => setDialog(null), []);
-  const asking =
-    dialog?.kind === 'request' ? list.members.find((one) => one.id === dialog.id) : undefined;
+  const asking = dialog?.kind === 'request' ? held.find((one) => one.id === dialog.id) : undefined;
   const recovering =
     dialog?.kind === 'recovery' ? recoveries.find((one) => one.id === dialog.id) : undefined;
   const settle = (id: string) => {
@@ -359,7 +436,11 @@ function MembersLoaded({
     menu,
     picked: open,
     onMenu: setMenu,
-    onFilter: setFilter,
+    onFilter: pick,
+    switching,
+    more,
+    rowsRef: rows,
+    onMore: () => void showMore(),
     onPerson: openPerson,
     onAnswer: answer,
     onRecovery: (id: string, answer: RecoveryAnswer) => setDialog({ kind: 'recovery', id, answer }),
@@ -402,7 +483,7 @@ function MembersLoaded({
               ],
             });
             setNotice({ kind: 'sent', email: invitation.email });
-            setFilter('all');
+            pick('all');
             close();
           }}
         />
@@ -412,6 +493,7 @@ function MembersLoaded({
           organisation={organisation}
           member={asking}
           roles={granted}
+          reread={reread}
           onClose={close}
           onAnswered={(changed, answered) => {
             onChange(changed);
@@ -464,7 +546,8 @@ function MembersLoaded({
             ? returned
             : null
         }
-        onChanged={onChange}
+        reread={reread}
+        onChanged={(changed) => onChange(changed)}
         onRemoved={(changed, name) => {
           onChange(changed);
           onRecoveries(recoveryEndedByRemoval(recoveries, person.user.id));
@@ -546,6 +629,11 @@ interface BlocksProps {
   menu: boolean;
   picked: string | null;
   column: boolean;
+  /** The option picked is not yet the one whose people the list holds. */
+  switching: boolean;
+  more: More;
+  rowsRef: RefObject<HTMLUListElement | null>;
+  onMore: () => void;
   onMenu: (open: boolean) => void;
   onFilter: (filter: MemberFilter) => void;
   onPerson: (id: string) => void;
@@ -562,11 +650,17 @@ function MembersBlocks(props: BlocksProps) {
   const { t } = useTranslation();
   const waiting = waitingMembers(list, manages);
   const invitations = list.invitations.filter((one) => one.status !== 'accepted');
-  const shown = list.members.filter((one) => memberIsShown(one.status, filter));
+  const { switching, more } = props;
+  const shown =
+    filter === 'waiting'
+      ? list.waiting
+      : list.members.filter((one) => memberIsShown(one.status, filter));
   const count = (one: MemberFilter) =>
     one === 'invited'
       ? invitations.filter((invitation) => invitation.status === 'pending').length
-      : list.members.filter((member) => memberIsShown(member.status, one)).length;
+      : list.counts[one];
+  const total = count(filter);
+  const moreToShow = switching ? more === 'failed' : list.next != null && shown.length < total;
   const items = FILTERS.filter((one) => manages || one !== 'waiting').map((key) => ({
     key,
     word: t(`membersScreen.filter.${key}`),
@@ -626,10 +720,16 @@ function MembersBlocks(props: BlocksProps) {
             <InvitationRows {...props} invitations={invitations} />
             <p className="desk-foot">{t('membersScreen.invitationsNote')}</p>
           </>
-        ) : filter !== 'invited' && shown.length > 0 ? (
-          <PeopleRows {...props} shown={shown} />
+        ) : filter !== 'invited' && (shown.length > 0 || moreToShow) ? (
+          <>
+            {shown.length > 0 && <PeopleRows {...props} shown={shown} />}
+            {moreToShow && (
+              <MorePeople shown={shown.length} total={total} more={more} onMore={props.onMore} />
+            )}
+          </>
         ) : (
-          filter !== 'all' && (
+          filter !== 'all' &&
+          !switching && (
             <MembersEmpty
               title={
                 filter === 'invited'
@@ -687,17 +787,63 @@ function WaitingRow({
   );
 }
 
+/** Under the rows while more remain: their shapes while the next page comes, Show more, why it failed, and how far down the list is (sc-49170). */
+function MorePeople({
+  shown,
+  total,
+  more,
+  onMore,
+}: {
+  shown: number;
+  total: number;
+  more: More;
+  onMore: () => void;
+}) {
+  const { t } = useTranslation();
+
+  return (
+    <div className="members-more">
+      {more === 'loading' && (
+        <ul className="desk-rows has-lead" aria-hidden="true">
+          {[1, 2].map((bar) => (
+            <li key={bar} className="desk-row is-bones">
+              <span className="desk-sunk is-face" />
+              <span className="desk-row-words">
+                <span className={`desk-sunk is-title b${bar}`} />
+                <span className={`desk-sunk is-line b${bar}`} />
+              </span>
+            </li>
+          ))}
+        </ul>
+      )}
+      <TextAction label={t('membersScreen.more.showMore')} onClick={onMore} />
+      {more === 'failed' && (
+        <p className="desk-error" role="alert">
+          <Glyph name="alert" size={15} weight={2.2} />
+          {t('membersScreen.more.failed')}
+        </p>
+      )}
+      <p className="desk-note" role="status">
+        {more === 'loading'
+          ? t('membersScreen.more.loading')
+          : t('membersScreen.more.showing', { shown, total })}
+      </p>
+    </div>
+  );
+}
+
 function PeopleRows({
   shown,
   picked,
   column,
+  rowsRef,
   onPerson,
   onAnswer,
 }: BlocksProps & { shown: readonly OrganisationMember[] }) {
   const { t } = useTranslation();
 
   return (
-    <ul className="desk-rows has-lead">
+    <ul className="desk-rows has-lead" ref={rowsRef}>
       {shown.map((one, tone) => {
         const tag = one.status === 'active' ? undefined : <Tag {...memberTag(t, one)} />;
         const line = [

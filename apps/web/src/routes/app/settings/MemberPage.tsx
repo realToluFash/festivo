@@ -42,6 +42,7 @@ import {
 import { dateLocale } from '../../../i18n/index.ts';
 import { focusWhenFree } from '../../../layers.ts';
 import { type Proving, dropProof, heldProof, howToProve } from '../../../recentProof.ts';
+import { callerIn } from './membersCard.ts';
 import { memberTag, roleChoices } from './memberWords.ts';
 import { type OwnerReturn, provingOnReturn, signInOnReturn } from './ownerReturn.ts';
 
@@ -65,6 +66,7 @@ export function MemberPage({
   manages,
   level,
   returned,
+  reread,
   onChanged,
   onRemoved,
   onBack,
@@ -76,6 +78,8 @@ export function MemberPage({
   manages: boolean;
   level: 1 | 2;
   returned: OwnerReturn | null;
+  /** The rows on screen and the counts, read again once a change lands. */
+  reread: () => Promise<MembersList>;
   onChanged: (list: MembersList) => void;
   onRemoved: (list: MembersList, name: string) => void;
   onBack: () => void;
@@ -89,7 +93,7 @@ export function MemberPage({
   const [refusal, setRefusal] = useState<Refusal | null>(null);
   const said = useRef<HTMLDivElement>(null);
   const owns = organisation.role.seededAs === 'owner';
-  const standing = memberStanding(member, list.members, {
+  const standing = memberStanding(member, list.owners, {
     owns,
     manages,
     withholds: withheldRoles(roles, organisation),
@@ -111,7 +115,7 @@ export function MemberPage({
   }, [outcome]);
 
   async function reload(): Promise<void> {
-    onChanged(await api.members(organisation.id));
+    onChanged(await reread());
   }
 
   function changedElsewhere(): void {
@@ -151,7 +155,7 @@ export function MemberPage({
 
     try {
       await api.removeMember(organisation.id, member.id);
-      onRemoved(await api.members(organisation.id), name);
+      onRemoved(await reread(), name);
     } catch (error) {
       setBusy(false);
       if (asking === 'remove') setFailed(refused(error));
@@ -373,6 +377,7 @@ export function MemberPage({
           member={member}
           roles={grantableRoles(roles, organisation)}
           returned={returned}
+          reread={reread}
           onClose={() => setAsking(null)}
           onChanged={(changed, to) => {
             onChanged(changed);
@@ -436,7 +441,7 @@ function historyRows(
   list: MembersList,
   organisation: string,
 ): { what: string; at: string }[] {
-  const caller = list.members.find((one) => one.self)?.user.id ?? null;
+  const caller = callerIn(list);
   const steps = member.history.map((step) => {
     const line = historyLine({ ...step, by: step.by?.id ?? null }, member.user.id);
     const by =
@@ -469,6 +474,7 @@ function RoleDialog({
   member,
   roles,
   returned,
+  reread,
   onClose,
   onChanged,
   onChangedElsewhere,
@@ -477,6 +483,7 @@ function RoleDialog({
   member: OrganisationMember;
   roles: OrganisationRole[];
   returned: OwnerReturn | null;
+  reread: () => Promise<MembersList>;
   onClose: () => void;
   onChanged: (list: MembersList, role: string) => void;
   onChangedElsewhere: () => void;
@@ -534,7 +541,7 @@ function RoleDialog({
 
     try {
       await api.changeMemberRole(organisation.id, member.id, picked, proof ?? undefined);
-      onChanged(await api.members(organisation.id), roleName(t, role));
+      onChanged(await reread(), roleName(t, role));
     } catch (error) {
       setBusy(false);
       if (toOwner && error instanceof ApiError && error.is('proof_required')) {

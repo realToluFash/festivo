@@ -6,6 +6,7 @@ import { setLanguage } from '../../../i18n/index.ts';
 import { holdProof } from '../../../recentProof.ts';
 import { __setSessionState, type Session } from '../../../session.ts';
 import { OWNER_PERMISSIONS, membership } from '../../../test-memberships.ts';
+import { pagedMembers } from '../../../test-members.ts';
 import { routes } from '../../index.tsx';
 
 const IRE = membership({ id: 'org_1', name: 'Ìrè Events' });
@@ -215,7 +216,7 @@ function answering(answers: Record<string, () => Response | Promise<Response>>) 
     const answer = { ...NO_RECOVERIES, ...answers }[line];
     if (answer == null) throw new TypeError('Failed to fetch');
 
-    return answer();
+    return line.endsWith('/members') ? pagedMembers(await answer(), String(input)) : answer();
   });
 
   return sent;
@@ -1972,5 +1973,64 @@ describe('requests to get back in on Members (sc-30189)', () => {
     expect(await page().findByText('4 people')).toBeDefined();
     expect(page().queryByText('Requests to get back in')).toBeNull();
     expect(sent.some((one) => one.line === 'GET /api/auth/recovery-requests')).toBe(false);
+  });
+});
+
+describe('People a page at a time (sc-49170)', () => {
+  const crowd = Array.from({ length: 52 }, (_, at) =>
+    member({
+      id: `m_${at}`,
+      user: { id: `u_${at}`, name: `Guest ${String(at).padStart(2, '0')}`, email: null },
+      role: ADMIN,
+      self: false,
+    }),
+  );
+  const CROWD = { ...LIST, members: [member({}), ...crowd] };
+
+  it('shows 50, says how many of the whole, and Show more adds the rest with focus on the first added', async () => {
+    signedIn();
+    answering({ ...READS, 'GET /api/orgs/org_1/members': () => json(CROWD) });
+    open();
+
+    expect(await page().findByText('Showing 50 of 53')).toBeDefined();
+    expect(page().getByText('53 people')).toBeDefined();
+    expect(page().queryByRole('button', { name: /^Guest 49/ })).toBeNull();
+
+    fireEvent.click(page().getByRole('button', { name: 'Show more' }));
+
+    const added = await page().findByRole('button', { name: /^Guest 49/ });
+    await waitFor(() => expect(document.activeElement).toBe(added));
+    expect(page().getByRole('button', { name: /^Guest 51/ })).toBeDefined();
+    expect(page().queryByRole('button', { name: 'Show more' })).toBeNull();
+    expect(page().queryByText(/^Showing/)).toBeNull();
+  });
+
+  it('keeps the rows when a page fails, says so, and Show more tries again', async () => {
+    signedIn();
+    let reads = 0;
+    let fails = true;
+    answering({
+      ...READS,
+      'GET /api/orgs/org_1/members': () => {
+        reads += 1;
+        if (reads > 1 && fails) throw new TypeError('Failed to fetch');
+        return json(CROWD);
+      },
+    });
+    open();
+
+    fireEvent.click(await page().findByRole('button', { name: 'Show more' }));
+
+    expect((await page().findByRole('alert')).textContent).toContain(
+      'More people did not load. Check your connection and try again.',
+    );
+    expect(page().getByRole('button', { name: /^Guest 48/ })).toBeDefined();
+    expect(page().queryByText('We could not load the members.')).toBeNull();
+
+    fails = false;
+    fireEvent.click(page().getByRole('button', { name: 'Show more' }));
+
+    expect(await page().findByRole('button', { name: /^Guest 51/ })).toBeDefined();
+    expect(page().queryByRole('alert')).toBeNull();
   });
 });

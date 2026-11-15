@@ -1798,7 +1798,13 @@
     "makeOwnerTitle": "Dar a função Proprietário a {{name}}",
     "save": "Guardar",
     "roleBecomes": "{{name}} passa a ter a função {{role}} assim que voltar a usar a Soirely. Nenhuma sessão é encerrada.",
-    "roleDiscard": "{{name}} mantém a função {{role}}."
+    "roleDiscard": "{{name}} mantém a função {{role}}.",
+    "more": {
+      "showMore": "Show more",
+      "showing": "Showing {{shown, number}} of {{total, number}}",
+      "loading": "Loading more people…",
+      "failed": "More people did not load. Check your connection and try again."
+    }
   },
   "contacts": {
     "emailsTitle": "Endereços de e-mail",

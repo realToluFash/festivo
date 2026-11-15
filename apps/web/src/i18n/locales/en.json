@@ -1746,7 +1746,13 @@
     "makeOwnerTitle": "Make {{name}} an owner",
     "save": "Save",
     "roleBecomes": "{{name}} becomes {{role}} on their next request. Nobody is signed out.",
-    "roleDiscard": "{{name}} stays {{role}}."
+    "roleDiscard": "{{name}} stays {{role}}.",
+    "more": {
+      "showMore": "Show more",
+      "showing": "Showing {{shown, number}} of {{total, number}}",
+      "loading": "Loading more people…",
+      "failed": "More people did not load. Check your connection and try again."
+    }
   },
   "contacts": {
     "emailsTitle": "Email addresses",

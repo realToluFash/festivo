@@ -1798,7 +1798,13 @@
     "makeOwnerTitle": "Donner le rôle Propriétaire à {{name}}",
     "save": "Enregistrer",
     "roleBecomes": "{{name}} aura le rôle {{role}} dès sa prochaine utilisation de Soirely. Aucune session n’est fermée.",
-    "roleDiscard": "{{name}} garde le rôle {{role}}."
+    "roleDiscard": "{{name}} garde le rôle {{role}}.",
+    "more": {
+      "showMore": "Show more",
+      "showing": "Showing {{shown, number}} of {{total, number}}",
+      "loading": "Loading more people…",
+      "failed": "More people did not load. Check your connection and try again."
+    }
   },
   "contacts": {
     "emailsTitle": "Adresses e-mail",
