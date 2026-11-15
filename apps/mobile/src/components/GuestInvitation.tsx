@@ -27,7 +27,7 @@ export interface InvitationOffer {
   invites: boolean;
 }
 
-/** A guest's Invitation (sc-46879): their one line, or Not yet invited with Mark as invited under it; Mark as not invited under a mark made by hand. */
+/** A guest's Invitation (sc-46879): their one line, or Not yet invited with Mark as invited and Record a reply under it; Mark as not invited under a mark made by hand. */
 export function InvitationBlock({
   guest,
   timeZone,
@@ -36,6 +36,8 @@ export function InvitationBlock({
   unmarkRef,
   onMark,
   onUnmark,
+  recordRef,
+  onRecord,
 }: {
   guest: GuestDetails;
   timeZone: string;
@@ -44,6 +46,9 @@ export function InvitationBlock({
   unmarkRef: Ref<ViewInstance>;
   onMark: () => void;
   onUnmark: () => void;
+  /** sc-52829: Record a reply on a guest not yet invited, which invites them. */
+  recordRef: Ref<ViewInstance>;
+  onRecord: () => void;
 }) {
   const { t } = useTranslation();
   const line = invitationLine(t, guest, timeZone, dateLocale());
@@ -100,6 +105,22 @@ export function InvitationBlock({
                         weight="medium"
                         onPress={onMark}
                         testID="guest.mark"
+                      />
+                    ),
+                  },
+                  {
+                    key: 'recordNotYet',
+                    inset: 40,
+                    row: (
+                      <Row
+                        ref={recordRef}
+                        title={t('guestList.recordReply')}
+                        line={t('guestList.recordNotYetLine')}
+                        lead={<LineIcon name="chat" />}
+                        accent
+                        weight="medium"
+                        onPress={onRecord}
+                        testID="guest.recordNotYet"
                       />
                     ),
                   },

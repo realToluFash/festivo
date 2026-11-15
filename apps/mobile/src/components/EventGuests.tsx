@@ -163,6 +163,7 @@ export function EventGuests({
   const [markOpen, setMarkOpen] = useState(false);
   const [recording, setRecording] = useState<TaggedGuest | null>(null);
   const recordButton = useRef<ViewInstance>(null);
+  const recordNotYet = useRef<ViewInstance>(null);
   const title = useRef<TextHandle>(null);
   const guestName = useRef<TextHandle>(null);
   const emptyAdd = useRef<ViewInstance>(null);
@@ -515,13 +516,17 @@ export function EventGuests({
         onMark={() => startMark(markButton.current)}
         onCoverMark={() => startMark(coverMark.current)}
         recordRef={recordButton}
+        recordNotYetRef={recordNotYet}
         onUnmark={() => unmark(open)}
         onRecord={() => {
           const tagged = tags.current.get(open);
           if (tagged == null) return;
           setNotice(null);
           setSaved(false);
-          opener.current = recordButton.current;
+          opener.current =
+            shownReply(tagged.guest) === 'notYetInvited'
+              ? recordNotYet.current
+              : recordButton.current;
           setRound((was) => was + 1);
           setRecording(tagged);
         }}
@@ -580,7 +585,10 @@ export function EventGuests({
             readList(watch);
           }}
           onSaved={(tagged) => {
-            opener.current = guestName.current;
+            opener.current =
+              shownReply(recording.guest) === 'notYetInvited'
+                ? recordButton.current
+                : guestName.current;
             setRecording(null);
             setNotice({ kind: 'recorded' });
             showGuest(tagged);
