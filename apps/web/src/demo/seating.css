@@ -1575,6 +1575,11 @@
   margin-top: 2px;
 }
 
+.st-box.is-select select {
+  padding-right: 28px;
+  text-overflow: ellipsis;
+}
+
 .st-box.is-select svg {
   position: absolute;
   right: 12px;
