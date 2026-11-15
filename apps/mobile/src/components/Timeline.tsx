@@ -36,7 +36,7 @@ type Load =
       kind: 'loaded';
       timeline: EventTimeline;
       status: EventStatus;
-      event: OrganisationEvent | null;
+      event: OrganisationEvent;
       at: Date;
     };
 
@@ -70,11 +70,11 @@ export interface TimelineRead {
   retry: () => void;
 }
 
-/** Read again when the event's status moves, so a Call off or End now shows its dates without a reload; judged by a clock no older than the read, so a date it stamped is never still ahead. */
+/** Read again whenever the page's event is replaced, so a save that moves a date (Reply by, the start) or a Call off shows its dates without a reload; judged by a clock no older than the read, so a date it stamped is never still ahead. */
 export function useTimeline(
   eventId: string,
   now: Date,
-  status?: EventStatus,
+  event?: OrganisationEvent,
   watched?: Watched,
 ): TimelineRead {
   const [load, setLoad] = useState<Load>({ kind: 'loading' });
@@ -84,7 +84,7 @@ export function useTimeline(
 
   useEffect(() => {
     let live = true;
-    const read = Promise.all([api.eventTimeline(eventId), status ?? api.event(eventId)]);
+    const read = Promise.all([api.eventTimeline(eventId), event ?? api.event(eventId)]);
 
     (watch == null ? read : watch(read)).then(
       ([timeline, standing]) =>
@@ -92,8 +92,8 @@ export function useTimeline(
         setLoad({
           kind: 'loaded',
           timeline,
-          status: typeof standing === 'string' ? standing : standing.status,
-          event: typeof standing === 'string' ? null : standing,
+          status: standing.status,
+          event: standing,
           at: serverClock.now(),
         }),
       (error: unknown) =>
@@ -106,12 +106,12 @@ export function useTimeline(
     return () => {
       live = false;
     };
-  }, [eventId, status, attempt, watch, refresh]);
+  }, [eventId, event, attempt, watch, refresh]);
 
   return {
     load,
     now: load.kind === 'loaded' && load.at > now ? load.at : now,
-    ended: (status ?? (load.kind === 'loaded' ? load.status : null)) === 'ended',
+    ended: (event?.status ?? (load.kind === 'loaded' ? load.status : null)) === 'ended',
     retried: attempt > 0,
     retry: () => {
       setLoad({ kind: 'loading' });

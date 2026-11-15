@@ -1,7 +1,17 @@
+import { Glyph } from '../components/Glyph.tsx';
 import { DemoBell } from './DemoBell.tsx';
 import { DemoOffline } from './DemoOffline.tsx';
 import { formattingLocale } from '@soirely/domain';
-import { type ReactNode, useCallback, useEffect, useId, useMemo, useRef, useState } from 'react';
+import {
+  type ReactNode,
+  type RefObject,
+  useCallback,
+  useEffect,
+  useId,
+  useMemo,
+  useRef,
+  useState,
+} from 'react';
 
 import { HandoverAsk } from './Handover.tsx';
 import {
@@ -40,6 +50,8 @@ import {
   membersCard,
   type MembersDialog,
   membersStart,
+  type More,
+  MORE_WORDS,
   NOT_DELIVERED,
   organisationOf,
   at320,
@@ -47,6 +59,7 @@ import {
   ORGANISATION,
   type Person,
   type PersonEvent,
+  PEOPLE_PAGE,
   PROOF_MINUTES,
   RECOVERY_WORDS as RR,
   type Recovery,
@@ -58,6 +71,7 @@ import {
   restoredBy,
   revoked,
   rowLine,
+  showingLine,
   suspendAsk,
   suspendedBy,
   tagOf,
@@ -115,6 +129,11 @@ export function Members({ viewer, state, tell }: { viewer: Viewer; state: string
   const [proved, setProved] = useState(false);
   const [leads, setLeads] = useState(start.leads);
   const [handed, setHanded] = useState(start.handed);
+  const [paging, setPaging] = useState({ filter: start.filter, pages: 1, more: start.more });
+  const [asked, setAsked] = useState(0);
+  const rows = useRef<HTMLUListElement>(null);
+  const firstNew = useRef(0);
+  const page = paging.filter === filter ? paging : { filter, pages: 1, more: 'idle' as More };
   const split = useDeskSplit();
   const landsOnCard =
     start.dialog == null &&
@@ -136,6 +155,19 @@ export function Members({ viewer, state, tell }: { viewer: Viewer; state: string
 
     return () => clearTimeout(timer);
   }, [load]);
+
+  useEffect(() => {
+    if (asked === 0) return;
+    const timer = setTimeout(() => {
+      setPaging((now) => ({ ...now, pages: now.pages + 1, more: 'idle' }));
+      window.requestAnimationFrame(() => {
+        const row = rows.current?.children[firstNew.current];
+        row?.querySelector<HTMLElement>('button')?.focus();
+      });
+    }, RETRY_MS);
+
+    return () => clearTimeout(timer);
+  }, [asked]);
 
   useEffect(() => {
     if (!proved) return;
@@ -186,9 +218,19 @@ export function Members({ viewer, state, tell }: { viewer: Viewer; state: string
         return setDialog({ kind: 'claim', check: 'checking', copied: null, ask: false });
     }
   };
+  const showMore = () => {
+    if (page.more === 'loading') return;
+    firstNew.current = page.pages * PEOPLE_PAGE;
+    setPaging({ ...page, more: 'loading' });
+    setAsked((count) => count + 1);
+  };
   const list = {
     viewer,
     people,
+    pages: page.pages,
+    more: page.more,
+    rowsRef: rows,
+    onMore: showMore,
     recoveries,
     lit,
     invitations,
@@ -411,6 +453,10 @@ interface BlocksProps {
   say: SettingsSay;
   picked: string | null;
   column: boolean;
+  pages: number;
+  more: More;
+  rowsRef: RefObject<HTMLUListElement | null>;
+  onMore: () => void;
   onMenu: (open: boolean) => void;
   onFilter: (filter: Filter) => void;
   onPerson: (id: string) => void;
@@ -468,7 +514,17 @@ function MembersBlocks(props: BlocksProps) {
             <p className="desk-foot">{INVITATIONS_NOTE}</p>
           </>
         ) : filter !== 'invited' && shown.length > 0 ? (
-          <PeopleRows {...props} shown={shown} />
+          <>
+            <PeopleRows {...props} shown={shown.slice(0, props.pages * PEOPLE_PAGE)} />
+            {shown.length > props.pages * PEOPLE_PAGE && (
+              <MorePeople
+                shown={props.pages * PEOPLE_PAGE}
+                total={shown.length}
+                more={props.more}
+                onMore={props.onMore}
+              />
+            )}
+          </>
         ) : (
           empty != null && (
             <MembersEmpty
@@ -595,17 +651,59 @@ function WaitingRow({
   );
 }
 
+/** Under the rows while more remain: their shapes while the next page comes, Show more, why it failed, and how far down the list is. */
+function MorePeople({
+  shown,
+  total,
+  more,
+  onMore,
+}: {
+  shown: number;
+  total: number;
+  more: More;
+  onMore: () => void;
+}) {
+  return (
+    <div className="members-more">
+      {more === 'loading' && (
+        <ul className="desk-rows has-lead" aria-hidden="true">
+          {[1, 2].map((bar) => (
+            <li key={bar} className="desk-row is-bones">
+              <span className="desk-sunk is-face" />
+              <span className="desk-row-words">
+                <span className={`desk-sunk is-title b${bar}`} />
+                <span className={`desk-sunk is-line b${bar}`} />
+              </span>
+            </li>
+          ))}
+        </ul>
+      )}
+      <TextAction label={MORE_WORDS.showMore} onClick={onMore} />
+      {more === 'failed' && (
+        <p className="desk-error" role="alert">
+          <Glyph name="alert" size={15} weight={2.2} />
+          {MORE_WORDS.failed}
+        </p>
+      )}
+      <p className="desk-note" role="status">
+        {more === 'loading' ? MORE_WORDS.loading : showingLine(shown, total)}
+      </p>
+    </div>
+  );
+}
+
 function PeopleRows({
   shown,
   viewer,
   say,
   picked,
   column,
+  rowsRef,
   onPerson,
   onAnswer,
 }: BlocksProps & { shown: readonly Person[] }) {
   return (
-    <ul className="desk-rows has-lead">
+    <ul className="desk-rows has-lead" ref={rowsRef}>
       {shown.map((one) => {
         const tag = one.status === 'active' ? undefined : <Tag {...tagOf(one)} />;
         const on = column && one.id === picked;

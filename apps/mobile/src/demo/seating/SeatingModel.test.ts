@@ -79,7 +79,7 @@ const item = (m: Seating, id: string) => {
 
 describe('the states', () => {
   it('are seating-a-spec §6’s, by the names both demos use', () => {
-    expect(SEATING_STATES).toHaveLength(102);
+    expect(SEATING_STATES).toHaveLength(107);
     expect(new Set(SEATING_STATES).size).toBe(SEATING_STATES.length);
     expect(SEATING_STATES.slice(0, 5)).toEqual([
       'plan',
@@ -660,7 +660,7 @@ describe('a table’s fields apply as each is entered', () => {
     expect(feetInches(item(m, 'rowA').spacing)).toBe('2 ft 0 in');
   });
 
-  it('refuse a size it cannot read, or under 30 cm, beside the field', () => {
+  it('refuse a size it cannot read, or outside 40 cm to 10 m, beside the field', () => {
     const us = run(
       startOf('usCustomary', 'landscape'),
       { type: 'draft', key: 'Diameter', text: '6' },
@@ -674,14 +674,64 @@ describe('a table’s fields apply as each is entered', () => {
       { type: 'draft', key: 'Diameter', text: '20' },
       { type: 'apply', key: 'Diameter' },
     );
-    expect(small.fields.errors.Diameter).toBe('Use 30 cm or more.');
+    expect(small.fields.errors.Diameter).toBe('Enter a size from 40 cm to 10 m.');
     const unread = run(
       pad,
       { type: 'tapItem', id: 't4' },
       { type: 'draft', key: 'Diameter', text: 'wide' },
       { type: 'apply', key: 'Diameter' },
     );
-    expect(unread.fields.errors.Diameter).toBe('Use 30 cm or more.');
+    expect(unread.fields.errors.Diameter).toBe('Enter a size from 40 cm to 10 m.');
+    const big = run(
+      pad,
+      { type: 'tapItem', id: 't4' },
+      { type: 'draft', key: 'Diameter', text: '1001' },
+      { type: 'apply', key: 'Diameter' },
+    );
+    expect(big.fields.errors.Diameter).toBe('Enter a size from 40 cm to 10 m.');
+    expect(item(big, 't4').d).toBe(180);
+    const feet = run(
+      startOf('usCustomary', 'landscape'),
+      { type: 'draft', key: 'Diameter', text: '15 in' },
+      { type: 'apply', key: 'Diameter' },
+    );
+    expect(feet.fields.errors.Diameter).toBe('Enter a size from 1 ft 4 in to 32 ft 9 in.');
+  });
+
+  it('refuse a blank name, seats outside 1 to 30, and ends past the seats', () => {
+    const typed = (id: string, key: string, text: string) =>
+      run(pad, { type: 'tapItem', id }, { type: 'draft', key, text }, { type: 'apply', key });
+    expect(typed('t4', 'Name', ' ').fields.errors.Name).toBe('Enter a name for the table.');
+    expect(typed('t4', 'Seats', '31').fields.errors.Seats).toBe(
+      'Enter a number of seats from 1 to 30.',
+    );
+    expect(typed('t4', 'Seats', '').fields.errors.Seats).toBe(
+      'Enter a number of seats from 1 to 30.',
+    );
+    expect(typed('bar1', 'Seats', '0').fields.errors.Seats).toBe(
+      'Enter a number of places from 1 to 30.',
+    );
+    const ends = typed('t9', 'Ends', '9');
+    expect(ends.fields.errors.Ends).toBe('Enter 0 to 8, no more than the table has seats.');
+    expect(item(ends, 't9').ends).toBe(2);
+    expect(typed('t9', 'Ends', 'two').fields.errors.Ends).toBe(
+      'Enter 0 to 8, no more than the table has seats.',
+    );
+    expect(startOf('fieldBlank', 'landscape').fields.errors.Name).toBe(
+      'Enter a name for the table.',
+    );
+    expect(startOf('seatsRange', 'landscape').fields.errors.Seats).toBe(
+      'Enter a number of seats from 1 to 30.',
+    );
+    expect(startOf('sizeRange', 'landscape').fields.errors.Diameter).toBe(
+      'Enter a size from 40 cm to 10 m.',
+    );
+    expect(startOf('notNumber', 'landscape').fields.errors.Width).toBe(
+      'Enter a size from 40 cm to 10 m.',
+    );
+    expect(startOf('endsRange', 'landscape').fields.errors.Ends).toBe(
+      'Enter 0 to 8, no more than the table has seats.',
+    );
   });
 
   it('keep a table chosen when what was typed is refused on leaving, then let go on a second tap', () => {
