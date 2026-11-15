@@ -1,4 +1,4 @@
-# sc-49861: ${EVENT_ID}'s hosts part opened as Can edit, then the role is Can view: Save says the role's refusal, no Try again, what was changed stays, and a second Save says the same.
+# sc-49861: ${EVENT_ID}, which starts with no hosts: its hosts part opened as Can edit, then the role is Can view: Save says the role's refusal, no Try again, what was changed stays, and a second Save says the same.
 appId: host.exp.Exponent
 ---
 - runScript:
