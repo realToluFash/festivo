@@ -100,7 +100,7 @@ describe('Sign-in rules’ sample (sc-30064)', () => {
       '1,000,000 people can read but not change anything until they link Google or Apple. Their password still signs them in.',
     );
     expect(short('everyoneThree')).toBe(
-      'Priya Shah, Ana Souza and Tunde Bakare don’t have it yet.',
+      'Priya Shah, Ana Souza, and Tunde Bakare don’t have it yet.',
     );
     expect(short('everyoneFour')).toBe('4 people don’t have it yet.');
     expect(short('everyoneMillion')).toBe('1,000,000 people don’t have it yet.');
@@ -112,6 +112,14 @@ describe('Sign-in rules’ sample (sc-30064)', () => {
 
     expect(effectsOf(million, applied('twoFactor', 'For everyone', million), 'en-IN')[1]).toBe(
       '10,00,000 people don’t have it yet.',
+    );
+  });
+
+  it('joins the names in the page’s language', () => {
+    const three = page('everyoneThree');
+
+    expect(effectsOf(three, applied('twoFactor', 'For everyone', three), 'en-GB')[1]).toBe(
+      'Priya Shah, Ana Souza and Tunde Bakare don’t have it yet.',
     );
   });
 

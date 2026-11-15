@@ -479,7 +479,10 @@ function shortOf(people: People, locale: string): { who: string; one: boolean } 
   if (people.count > NAMED_UP_TO)
     return { who: `${number(people.count, locale)} people`, one: false };
 
-  return { who: listOf(people.names), one: people.count === 1 };
+  return {
+    who: new Intl.ListFormat(locale, { type: 'conjunction' }).format(people.names),
+    one: people.count === 1,
+  };
 }
 
 export function effectsOf(before: RulesPage, after: Rules, locale: string): string[] {

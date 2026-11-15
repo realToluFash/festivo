@@ -213,7 +213,7 @@ describe('Sign-in rules at a desk (sc-30064)', () => {
     const three = screen.getByRole('dialog', { name: 'Two-factor' });
 
     expect(
-      within(three).getByText('Priya Shah, Ana Souza and Tunde Bakare don’t have it yet.'),
+      within(three).getByText('Priya Shah, Ana Souza, and Tunde Bakare don’t have it yet.'),
     ).toBeDefined();
     cleanup();
 
