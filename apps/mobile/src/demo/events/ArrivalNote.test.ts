@@ -66,3 +66,18 @@ describe('a role refusal on Venue (sc-49861)', () => {
     expect(venue).not.toMatch(/<AlertLine text=\{NOTE_WORDS\.forbidden\}/u);
   });
 });
+
+describe('a role refusal on Cover (sc-49861)', () => {
+  const demo = readFileSync(join('src', 'demo', 'events', 'EventEdits.tsx'), 'utf8');
+  const cover = demo.slice(demo.indexOf('function CoverEdit('));
+  const coverShell = cover.slice(cover.indexOf('<Shell'), cover.indexOf('<CoverPreview'));
+
+  it('says so in the notice above the preview, as every other part does', () => {
+    expect(cover).toMatch(/start === 'coverForbidden'\) \{\s+setForbidden\(true\);/u);
+    expect(coverShell).toContain('failed={forbidden ? NOTE_WORDS.forbidden : null}');
+  });
+
+  it('is not the photo’s own refusal under the preview', () => {
+    expect(cover).not.toMatch(/refused=\{[^}]*NOTE_WORDS\.forbidden/u);
+  });
+});
