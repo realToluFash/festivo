@@ -1,6 +1,6 @@
-import { formatEventWeekday } from './datetime.ts';
+import { formatEventDate, formatEventShortDay } from './datetime.ts';
 import type { EventState } from './eventStates.ts';
-import { eventDayWords, notThisYear } from './eventsHome.ts';
+import { eventDays, notThisYear } from './eventsHome.ts';
 import { roleName } from './organisations.ts';
 
 /** The sidebar's Search (sc-39534): what both clients show of an answer, worded through the `search` keys each app carries. */
@@ -122,7 +122,7 @@ export function searchGroups(
         name: guest.name,
         line: word('search.line.guest', {
           event: guest.event.name,
-          day: formatEventWeekday(
+          day: formatEventDate(
             guest.event.startsAt,
             guest.event.timeZone,
             locale,
@@ -153,13 +153,26 @@ export function searchTotal(groups: readonly SearchGroup[]): number {
 }
 
 function eventLine(event: FoundEvent, word: Word, now: Date, locale: string): string {
-  const days = eventDayWords(event, now, locale);
+  const { timeZone } = event;
+  const days = eventDays(event);
+  const day = (moment: string, year: boolean) => formatEventDate(moment, timeZone, locale, year);
+  const year = notThisYear(timeZone, now, event.startsAt, event.endsAt);
   const dates =
     days.kind === 'oneDay'
-      ? days.day
+      ? day(days.startsAt, year)
       : days.kind === 'days'
-        ? word('search.line.days', { first: days.first, last: days.last })
-        : word('search.line.calledOffOn', { date: days.date });
+        ? word('search.line.days', {
+            first: day(days.startsAt, year),
+            last: day(days.endsAt, year),
+          })
+        : word('search.line.calledOffOn', {
+            date: formatEventShortDay(
+              days.concludedAt,
+              timeZone,
+              locale,
+              notThisYear(timeZone, now, days.concludedAt),
+            ),
+          });
   const venue = event.venue?.name ?? null;
   const city = event.venue?.address?.city ?? null;
   const place =

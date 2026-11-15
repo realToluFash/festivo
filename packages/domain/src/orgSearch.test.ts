@@ -51,6 +51,26 @@ describe('the sidebar’s Search (sc-39534)', () => {
     expect(searchTotal(groups)).toBe(7);
   });
 
+  test('an event’s dates are the short weekday the demo draws, with the year only when not this year', () => {
+    const next = {
+      ...event,
+      id: 'e2',
+      startsAt: '2027-05-22T16:00:00+01:00',
+      endsAt: '2027-05-23T01:00:00+01:00',
+    };
+    const [events] = searchGroups(
+      { events: { total: 2, matches: [event, next] }, guests: null, members: null },
+      (key, values) => (key === 'search.line.event' ? String(values?.dates) : word(key, values)),
+      now,
+      'en-US',
+    );
+
+    expect(events?.rows.map((row) => row.line)).toEqual([
+      'Sat, Nov 14',
+      'search.line.days {"first":"Sat, May 22, 2027","last":"Sun, May 23, 2027"}',
+    ]);
+  });
+
   test('a guest shows their event and its first day, never contact details', () => {
     const [guests] = searchGroups(
       {
@@ -77,7 +97,7 @@ describe('the sidebar’s Search (sc-39534)', () => {
       kind: 'guest',
       id: 'g1',
       name: 'Inês Duarte',
-      line: 'search.line.guest {"event":"Gala","day":"Saturday 14 Nov"}',
+      line: 'search.line.guest {"event":"Gala","day":"Sat 14 Nov"}',
       event: 'e1',
     });
   });
