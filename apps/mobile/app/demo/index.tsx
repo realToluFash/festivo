@@ -1674,6 +1674,11 @@ const PAGES: readonly { page: string; boards: readonly Board[] }[] = [
         href: '/demo/events/evt-wed-4?state=coverPhoto',
       },
       {
+        title: 'Cover · a role changed (403)',
+        what: 'Use this photo: nothing was changed, at the top',
+        href: '/demo/events/evt-wed-4?state=coverForbidden',
+      },
+      {
         title: 'New event',
         what: 'Empty, Time zone and Currency from the organisation',
         href: '/demo/events?state=new',

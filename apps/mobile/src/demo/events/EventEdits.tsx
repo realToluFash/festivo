@@ -827,12 +827,12 @@ const DESCRIBE_MOST = 250;
 
 function CoverEdit(edit: EditProps) {
   const { event, start } = edit;
-  const [photo, setPhoto] = useState(event.photo || start === 'coverPhoto');
+  const chosen = start === 'coverPhoto' || start === 'coverForbidden';
+  const [photo, setPhoto] = useState(event.photo || chosen);
   const [refused, setRefused] = useState(start === 'coverRefused');
+  const [forbidden, setForbidden] = useState(false);
   const [position, setPosition] = useState<Position>('middle');
-  const [described, setDescribed] = useState(
-    event.photo || start === 'coverPhoto' ? PHOTO_DESCRIPTION : '',
-  );
+  const [described, setDescribed] = useState(event.photo || chosen ? PHOTO_DESCRIPTION : '');
   const [told, setTold] = useState<string | null>(null);
   const changed =
     photo !== event.photo || position !== 'middle' || (photo && described !== PHOTO_DESCRIPTION);
@@ -842,7 +842,14 @@ function CoverEdit(edit: EditProps) {
       part="cover"
       verb={W.useThisPhoto}
       changed={changed}
-      onSave={() => edit.onSaved({ ...event, photo })}
+      failed={forbidden ? NOTE_WORDS.forbidden : null}
+      onSave={() => {
+        if (start === 'coverForbidden') {
+          setForbidden(true);
+          return;
+        }
+        edit.onSaved({ ...event, photo });
+      }}
       edit={edit}
       toast={told == null ? null : { words: told, onClose: () => setTold(null) }}
     >
