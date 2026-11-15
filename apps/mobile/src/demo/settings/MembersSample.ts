@@ -1,4 +1,4 @@
-import { memberStanding, type MemberStanding } from '@soirely/domain';
+import { activeOwners, memberStanding, type MemberStanding } from '@soirely/domain';
 
 import { writtenTime } from '../clock.ts';
 import { crowdName } from '../sampleNames.ts';
@@ -285,7 +285,7 @@ export function standingOf(
   });
   const withheld = ORG_ROLES.filter((role) => !grantable(viewer).includes(role));
 
-  return memberStanding(shaped(person), people.map(shaped), {
+  return memberStanding(shaped(person), activeOwners(people.map(shaped)), {
     owns: viewer.owns,
     manages: viewer.manages,
     withholds: withheld.map((id) => ({ id })),
