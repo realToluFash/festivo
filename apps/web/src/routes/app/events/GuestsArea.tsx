@@ -847,8 +847,10 @@ export function GuestsArea({
 
   /** The card as `/demo/guests` draws it: a Draft, Paused or Finished event says so on the card, in place of its counts' step. */
   function cover(counts: Counts): Cover {
-    const comingOf =
-      counts.invited === 0
+    const empty = guests.length === 0;
+    const comingOf = empty
+      ? t('guestList.noGuests')
+      : counts.invited === 0
         ? t('guestList.onTheList', { count: counts.all })
         : t('guestList.comingOf', {
             comingWords: t('guestList.countComing', { count: counts.coming }),
@@ -857,13 +859,19 @@ export function GuestsArea({
     const draft = phase === 'draft' ? makeLiveRow(event, now) : null;
 
     if (draft != null) {
-      const changes = canOn(event, 'events.manage');
+      const live = !canOn(event, 'events.manage')
+        ? null
+        : draft.makeLive
+          ? 'makeLive'
+          : 'changeDates';
+      const add = empty && manages;
 
       return {
         tag: { mark: 'draft', word: t('events.draft') },
-        says: t('guestList.onTheList', { count: counts.all }),
+        says: empty ? t('guestList.noGuests') : t('guestList.onTheList', { count: counts.all }),
         line: t(`eventLive.${draft.line}`),
-        step: !changes ? null : draft.makeLive ? 'makeLive' : 'changeDates',
+        step: add ? 'add' : live,
+        also: add ? live : null,
       };
     }
     if (phase === 'paused' || phase === 'finished')
@@ -875,7 +883,7 @@ export function GuestsArea({
         says: comingOf,
         line: t(phase === 'paused' ? 'guestList.pausedLine' : 'guestList.finishedLine'),
       };
-    if (guests.length === 0)
+    if (empty)
       return {
         says: t('guestList.noGuests'),
         step: manages ? 'add' : null,
@@ -899,6 +907,8 @@ export function GuestsArea({
     setGroupFilter(null);
     focus('find');
   }
+
+  const card = shows === 'loaded' && counts != null ? cover(counts) : null;
 
   return (
     <LayersContext value={layers}>
@@ -941,7 +951,7 @@ export function GuestsArea({
                 {t('guestGroups.groups')}
               </button>
             )}
-            {manages && guests.length > 0 && (
+            {manages && card != null && card.step !== 'add' && (
               <button type="button" className="ev-new" data-focus="add" onClick={startAdd}>
                 <Glyph name="plus" size={18} weight={2.4} />
                 {t('guestList.addGuest')}
@@ -982,11 +992,11 @@ export function GuestsArea({
           )}
           {shows === 'loaded' && (
             <>
-              {counts != null && (
+              {card != null && (
                 <GuestsCover
                   mesh={meshFor(event.id)}
-                  cover={cover(counts)}
-                  stepRef={opener}
+                  cover={card}
+                  makeLiveRef={opener}
                   onStep={onStep}
                 />
               )}
@@ -1370,6 +1380,8 @@ interface Cover {
   says: string;
   line?: string | null;
   step?: CoverStep | null;
+  /** sc-50409: Make live or Change dates beside an empty Draft's Add guest, quieter, as the app's card (sc-46879). */
+  also?: Exclude<CoverStep, 'add'> | null;
 }
 
 const STEP_KEY: Record<CoverStep, string> = {
@@ -1381,13 +1393,13 @@ const STEP_KEY: Record<CoverStep, string> = {
 /** How the room stands, in the event's colours, with the one step this page can take. */
 function GuestsCover({
   mesh,
-  cover: { tag = null, says, line = null, step = null },
-  stepRef,
+  cover: { tag = null, says, line = null, step = null, also = null },
+  makeLiveRef,
   onStep,
 }: {
   mesh: Mesh;
   cover: Cover;
-  stepRef: RefObject<HTMLButtonElement | null>;
+  makeLiveRef: RefObject<HTMLButtonElement | null>;
   onStep: (step: CoverStep) => void;
 }) {
   const { t } = useTranslation();
@@ -1410,8 +1422,22 @@ function GuestsCover({
         <p className="gs-says">{says}</p>
         {line != null && <p className="desk-on-card">{line}</p>}
         {step != null && (
-          <div className="ev-card-foot">
-            <CardStep ref={stepRef} label={t(STEP_KEY[step])} onClick={() => onStep(step)} />
+          <div className={also == null ? 'ev-card-foot' : 'ev-card-foot gs-card-steps'}>
+            <CardStep
+              ref={step === 'makeLive' ? makeLiveRef : undefined}
+              label={t(STEP_KEY[step])}
+              onClick={() => onStep(step)}
+            />
+            {also != null && (
+              <button
+                ref={also === 'makeLive' ? makeLiveRef : undefined}
+                type="button"
+                className="gs-card-also"
+                onClick={() => onStep(also)}
+              >
+                {t(STEP_KEY[also])}
+              </button>
+            )}
           </div>
         )}
       </div>
