@@ -13,6 +13,7 @@ use App\Domain\Guest\Http\GuestSerialiser;
 use App\Domain\Guest\Link\InvitationLinks;
 use App\Domain\Guest\Model\GuestNeeds;
 use App\Domain\Guest\Reply\GuestAnswers;
+use App\Domain\RunOfShow\GuestProgramme;
 use App\Entity\Guest;
 use App\Enum\ErrorCode;
 use App\Enum\GuestPagePhase;
@@ -47,6 +48,7 @@ final readonly class GuestPageController
         private GuestRepository $guestRepository,
         private TranslatorInterface $translator,
         private EntityManagerInterface $entityManager,
+        private GuestProgramme $guestProgramme,
     ) {
     }
 
@@ -149,6 +151,7 @@ final readonly class GuestPageController
         $unnamed = Vec\filter($places, static fn (Guest $place): bool => null === $place->getFullName());
         $needs = $this->guestNeedsRecord->of([$guest, ...$places]);
         $needsOf = static fn (Guest $person): array => GuestSerialiser::needs($person, $needs[$person->getId()->toRfc4122()] ?? GuestNeeds::none(), note: false);
+        $phase = $this->guestAnswers->phase($guest);
 
         return new JsonResponse([
             'guest' => [
@@ -196,11 +199,12 @@ final readonly class GuestPageController
                 'arrivalNote' => $event->getArrivalNote(),
                 'replyBy' => $event->getReplyBy()?->format('Y-m-d'),
             ],
-            'phase' => $this->guestAnswers->phase($guest)->value,
+            'phase' => $phase->value,
             'started' => $this->guestAnswers->started($guest),
             'answersOpen' => $this->guestAnswers->open($guest),
             'answersClosedOn' => $this->guestAnswers->closedOn($guest),
             'calendarFeed' => $this->calendarFeed($guest),
+            'programme' => $this->guestProgramme->of($event, $phase),
         ], headers: ['Cache-Control' => 'no-store']);
     }
 
