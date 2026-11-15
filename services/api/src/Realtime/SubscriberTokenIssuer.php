@@ -39,6 +39,12 @@ final readonly class SubscriberTokenIssuer
         return $this->issue([RealtimeTopic::EventSeating->for($eventId->toRfc4122())]);
     }
 
+    /** One event's roster, for someone the route has already found holds staff.read on it (sc-3906). */
+    public function issueForEventStaff(Uuid $eventId): IssuedSubscriberToken
+    {
+        return $this->issue([RealtimeTopic::EventStaff->for($eventId->toRfc4122())]);
+    }
+
     /** One event's guest list and its headcount, for someone the route has already found holds guests.read on it (sc-1468, sc-99). */
     public function issueForEventGuests(Uuid $eventId): IssuedSubscriberToken
     {

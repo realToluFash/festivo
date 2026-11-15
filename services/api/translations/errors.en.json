@@ -29,6 +29,7 @@
     "seating_plan_exists": "This event already has a seating plan.",
     "seating_section_limit": "A plan can have up to 30 sections. Delete one to add another.",
     "guest_already_listed": "That name is already on the list.",
+    "staff_number_shared": "That number is already on the roster.",
     "replies_closed": "Answers have closed.",
     "replies_open": "Replies are still open.",
     "reply_is_theirs": "They replied themselves. Confirm to replace their reply.",
