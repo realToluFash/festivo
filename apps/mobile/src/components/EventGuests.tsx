@@ -110,6 +110,7 @@ export interface GuestsTop {
 export function EventGuests({
   event,
   filter = 'all',
+  opens,
   phase,
   now,
   heading,
@@ -122,6 +123,8 @@ export function EventGuests({
   event: OrganisationEvent;
   /** The choice it opens on: a figure elsewhere opens the guests it counts (sc-3786). */
   filter?: Choice;
+  /** The guest whose details it opens on (sc-39534). */
+  opens?: string | undefined;
   phase: EventPhase | null;
   now: Date;
   heading: ReactNode;
@@ -143,7 +146,7 @@ export function EventGuests({
   const [choice, setChoice] = useState<Choice>(filter);
   const [typed, setTyped] = useState('');
   const [expanded, setExpanded] = useState<ReadonlySet<Standing>>(new Set());
-  const [open, setOpen] = useState<string | null>(null);
+  const [open, setOpen] = useState<string | null>(opens ?? null);
   const [pane, setPane] = useState<GuestPane>({ kind: 'loading' });
   const [saved, setSaved] = useState(false);
   const [form, setForm] = useState<GuestFormMode | null>(null);
@@ -200,10 +203,9 @@ export function EventGuests({
   });
   const { watch, freshen, stale, refreshing } = offline;
 
-  const readGuest = useCallback(
+  const askGuest = useCallback(
     (guestId: string, quiet: boolean) => {
       const mine = ++reading.current.guest;
-      if (!quiet) setPane({ kind: 'loading' });
 
       watch(api.guest(eventId, guestId)).then(
         (tagged) => {
@@ -219,6 +221,13 @@ export function EventGuests({
     },
     [eventId, watch],
   );
+  const readGuest = useCallback(
+    (guestId: string, quiet: boolean) => {
+      if (!quiet) setPane({ kind: 'loading' });
+      askGuest(guestId, quiet);
+    },
+    [askGuest],
+  );
   const reload = useCallback(() => {
     readList(watch);
     if (open != null && form == null && recording == null) readGuest(open, true);
@@ -233,6 +242,11 @@ export function EventGuests({
   useEffect(() => {
     readList(watch);
   }, [readList, watch]);
+
+  const [opening] = useState(opens);
+  useEffect(() => {
+    if (opening != null) askGuest(opening, false);
+  }, [opening, askGuest]);
 
   useEffect(
     () =>

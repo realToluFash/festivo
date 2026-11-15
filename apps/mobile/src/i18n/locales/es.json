@@ -2706,5 +2706,60 @@
     "savedClosedNow": "Se ha guardado. El plazo para responder ha terminado.",
     "savedRemoved": "Se ha guardado. Se puede responder hasta que empiece el evento.",
     "moves": "El plazo termina el {{old}}, que no es anterior al nuevo inicio. Al guardar, el plazo de respuesta pasará al {{next}}."
+  },
+  "search": {
+    "row": "Search",
+    "field": {
+      "egm": "Search events, guests and members",
+      "eg": "Search events and guests",
+      "em": "Search events and members",
+      "gm": "Search guests and members",
+      "e": "Search events",
+      "g": "Search guests",
+      "m": "Search members"
+    },
+    "hint": {
+      "egm": "Find an event, a guest or a member.",
+      "eg": "Find an event or a guest.",
+      "em": "Find an event or a member.",
+      "gm": "Find a guest or a member.",
+      "e": "Find an event.",
+      "g": "Find a guest.",
+      "m": "Find a member."
+    },
+    "short": "Type at least 2 characters.",
+    "searching": "Searching…",
+    "showAll": "Show all in Events",
+    "nothing": "Nothing matches “{{term}}”.",
+    "clear": "Clear search",
+    "keys": "↑ ↓ to move · Enter to open · Esc to close",
+    "results": "Results",
+    "close": "Close",
+    "cancel": "Cancel",
+    "matches_one": "{{count, number}} match",
+    "matches_many": "{{count, number}} matches",
+    "matches_other": "{{count, number}} matches",
+    "heading": {
+      "events": "Events",
+      "guests": "Guests",
+      "members": "Members"
+    },
+    "headingCount_one": "{{heading}}, {{count, number}} match",
+    "headingCount_many": "{{heading}}, {{count, number}} matches",
+    "headingCount_other": "{{heading}}, {{count, number}} matches",
+    "standing": {
+      "invited": "Invited",
+      "pending_approval": "Awaiting approval",
+      "suspended": "Suspended"
+    },
+    "line": {
+      "event": "{{dates}} · {{place}}",
+      "days": "{{first}} to {{last}}",
+      "calledOffOn": "Called off on {{date}}",
+      "venueCity": "{{venue}}, {{city}}",
+      "venueToBeConfirmed": "Venue to be confirmed",
+      "guest": "{{event}} · {{day}}",
+      "member": "{{email}} · {{role}}"
+    }
   }
 }
