@@ -28,6 +28,7 @@ import {
   numberMatches,
   placesTo,
   recordReply,
+  startTicks,
   replyByOf,
   sampleGuests,
   saveGuest,
@@ -313,6 +314,22 @@ describe('Changed since you looked (sc-4331)', () => {
     expect(view.kind === 'rows' && view.rows[0]?.line).toBe(
       'Updated dietary needs · Changed Nov 2',
     );
+  });
+});
+
+describe('Record a reply starts from the companions as they are (sc-3787)', () => {
+  it('ticks a Held companion, and leaves one recorded as not coming unticked', () => {
+    const emeka = sampleGuests(WEDDING).find((one) => one.id === 'emeka');
+    if (emeka == null) throw new Error('emeka');
+    const [adanna] = emeka.companions;
+
+    expect(startTicks(emeka)).toEqual(new Set([adanna?.id]));
+    const after = recordReply([emeka], 'emeka', 'coming', 'By phone', NONE, '2026-11-03')[0];
+    if (after == null) throw new Error('after');
+    expect(startTicks(after)).toEqual(new Set());
+    const notComing = recordReply([after], 'emeka', 'notComing', 'By phone', NONE, '2026-11-03')[0];
+    if (notComing == null) throw new Error('notComing');
+    expect(startTicks(notComing)).toEqual(new Set([adanna?.id]));
   });
 });
 

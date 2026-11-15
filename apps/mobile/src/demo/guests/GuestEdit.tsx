@@ -33,6 +33,7 @@ import {
   greetAsProblem,
   greetAsSaved,
   recorded,
+  startTicks,
   sameNameAs,
 } from './GuestsModel.ts';
 import { GreetAsField } from './GuestGreetAs.tsx';
@@ -819,7 +820,7 @@ export function RecordReply({
 }) {
   const [answer, setAnswer] = useState<Answer | null>(start === 'recordComing' ? 'coming' : null);
   const [how, setHow] = useState<string | null>(start === 'recordComing' ? HOW_TOLD[0] : null);
-  const [ticked, setTicked] = useState<boolean[]>(() => g.companions.map(() => true));
+  const [ticked, setTicked] = useState<boolean[]>(() => startTicks(g));
   const [checked, setChecked] = useState(start === 'recordRefused');
   const [asking, setAsking] = useState(start === 'recordReplace');
   const [failed, setFailed] = useState(start === 'recordNotSaved');

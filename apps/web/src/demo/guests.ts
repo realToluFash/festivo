@@ -1305,6 +1305,15 @@ export function addGuest(list: readonly Guest[], values: Values, on: string): Gu
   ];
 }
 
+/** sc-3787: Record a reply's ticks start from each companion's current reply; a Held one starts Coming, as sc-3779's toggle does. */
+export function startTicks(guest: Guest): ReadonlySet<string> {
+  return new Set(
+    guest.companions
+      .filter((companion) => guest.reply !== 'coming' || companion.reply !== 'notComing')
+      .map((companion) => companion.id),
+  );
+}
+
 export function recordReply(
   list: readonly Guest[],
   id: string,
