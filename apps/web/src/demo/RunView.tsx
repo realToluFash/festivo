@@ -19,6 +19,7 @@ import {
   figureWords,
   finishItem,
   later,
+  nextLine,
   runAt,
   startItem,
   trackView,
@@ -139,14 +140,16 @@ export function FigureMark({ figure, name }: { figure: Figure; name: string }) {
       role="status"
     >
       <span className="visually-hidden">{figureSaid(name, figure)}</span>
-      <span className="rv-figure-shown" aria-hidden="true">
-        <Glyph
-          name={figure.kind === 'behind' ? 'clock' : figure.kind === 'last' ? 'arrow' : 'tick'}
-          size={14}
-          weight={2.6}
-        />
-        <span className="num">{figureWords(figure)}</span>
-      </span>
+      {figure.kind !== 'done' && (
+        <span className="rv-figure-shown" aria-hidden="true">
+          <Glyph
+            name={figure.kind === 'behind' ? 'clock' : figure.kind === 'last' ? 'arrow' : 'tick'}
+            size={14}
+            weight={2.6}
+          />
+          <span className="num">{figureWords(figure)}</span>
+        </span>
+      )}
     </p>
   );
 }
@@ -190,6 +193,7 @@ function TrackTable({
           ))}
         </tbody>
       </table>
+      <p className="rv-next">{nextLine(view)}</p>
     </section>
   );
 }

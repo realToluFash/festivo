@@ -142,7 +142,7 @@
 }
 
 .rv-starts {
-  width: 132px;
+  width: 144px;
 }
 
 .rv-starts > .num {
@@ -154,6 +154,7 @@
 .rv-second {
   display: block;
   font: var(--typeSmallStrong);
+  white-space: nowrap;
 }
 
 .rv-second.is-expected {
@@ -268,4 +269,11 @@
 .rv-table tr:last-child td,
 .rv-table tr:last-child th {
   border-bottom: 0;
+}
+
+.rv-next {
+  margin: 0;
+  padding: var(--spaceSm) var(--spaceMd) 0;
+  color: var(--colorInkSecondary);
+  font: var(--typeSmall);
 }

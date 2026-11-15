@@ -51,15 +51,32 @@ describe('/demo/events/evt-wed-4/run (sc-1404)', () => {
     expect(within(hall()).getByText('Started before Welcome speech.')).toBeTruthy();
   });
 
-  it('reads Last item under way, and Everything done', async () => {
+  it('reads Last item under way', async () => {
     await open('last');
     expect(said()).toContain('Main hall, last item under wayLast item under way');
   });
 
+  it('shows no figure on a track with every item done, and says so under its table', async () => {
+    await open('allDone');
+    expect(said()).toContain('Main hall, everything done');
+    expect(screen.queryByText('Everything done')).toBeNull();
+    expect(screen.getAllByText('Every item on this track is done.').length).toBeGreaterThan(0);
+  });
+
+  it('ends each table with what is next', async () => {
+    await open('outOfOrder');
+    expect(
+      screen.getByText('Next: Welcome speech at about 18:55. Next step: start it when it begins.'),
+    ).toBeTruthy();
+  });
+
   it('recomputes when an item is finished', async () => {
     await open('collision');
+    const dance = () => within(hall()).getByRole('rowheader', { name: /First dance/ });
+    expect(within(dance()).queryByText('Done')).toBeNull();
     fireEvent.click(screen.getByRole('button', { name: 'Finish First dance' }));
-    expect(screen.getByText('Cake cutting would run into Fireworks at 22:00')).toBeTruthy();
+    expect(within(dance()).getByText('Done')).toBeTruthy();
+    expect(screen.queryByRole('button', { name: 'Finish First dance' })).toBeNull();
     fireEvent.click(screen.getByRole('button', { name: 'Start Cake cutting' }));
     expect(within(hall()).getByText('started 21:32')).toBeTruthy();
     expect(screen.getByText('Cake cutting would run into Fireworks at 22:00')).toBeTruthy();

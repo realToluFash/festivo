@@ -65,6 +65,7 @@ export const RW = {
   nothingNow: 'Nothing is on',
   nothingThen: 'Nothing after this.',
   allDone: 'Every item on this track is done.',
+  nextStep: 'Next step: start it when it begins.',
   later: 'Move the clock on 5 min',
   demoOnly: 'Demo only: the clock stands still here, so this moves it on to show times recompute.',
 } as const;
@@ -178,6 +179,16 @@ export function collisionsOf(items: readonly RunItem[], clock: string): string[]
 
 export function lastsOf(item: RunItem): string {
   return item.length == null ? RW.noLength : `${item.length} min`;
+}
+
+/** The line under a track's table: "Next: Welcome speech at about 19:40. Next step: start it when it begins." */
+export function nextLine(view: TrackView): string {
+  if (view.figure.kind === 'done') return RW.allDone;
+  if (view.next == null) return RW.nothingThen;
+
+  const { item, expected: at } = view.next;
+
+  return `Next: ${item.title} at ${at === item.planned ? at : `about ${at}`}. ${RW.nextStep}`;
 }
 
 export function trackView(track: Track, clock: string): TrackView {

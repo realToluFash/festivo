@@ -11,6 +11,7 @@ import {
   finishItem,
   later,
   minutesOf,
+  nextLine,
   runAt,
   startItem,
   trackView,
@@ -106,6 +107,14 @@ describe('the track’s figure', () => {
   it('reads Last item under way, then Everything done', () => {
     expect(figureWords(hall('last').figure)).toBe('Last item under way');
     expect(figureWords(hall('allDone').figure)).toBe('Everything done');
+  });
+
+  it('ends the table with the next item, or says the track is done', () => {
+    expect(nextLine(hall('behind'))).toBe(
+      'Next: Speeches at about 20:13. Next step: start it when it begins.',
+    );
+    expect(nextLine(hall('last'))).toBe('Nothing after this.');
+    expect(nextLine(hall('allDone'))).toBe('Every item on this track is done.');
   });
 
   it('is said with the track’s name, in words', () => {

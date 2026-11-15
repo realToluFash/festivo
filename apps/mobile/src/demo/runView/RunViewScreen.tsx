@@ -17,12 +17,13 @@ import {
   type Run,
   type RunItem,
   type TrackView,
-  RUN_EVENT,
+  RUN_EVENT_NAME,
   RW,
   figureSaid,
   figureWords,
   finishItem,
   lastsOf,
+  nextLine,
   later,
   runAt,
   startItem,
@@ -87,7 +88,7 @@ function RunViewBody({ first }: { first: Run }) {
               {RW.title}
             </Text>
             <Text size={15} weight="medium" style={styles.secondary}>
-              {RUN_EVENT}
+              {RUN_EVENT_NAME}
             </Text>
           </View>
           <View style={styles.clock}>
@@ -170,7 +171,7 @@ function TrackTop({ view }: { view: TrackView }) {
         <Text size={20} weight="bold" accessibilityRole="header" style={styles.grow}>
           {view.track.name}
         </Text>
-        <FigureMark figure={view.figure} />
+        {view.figure.kind !== 'done' && <FigureMark figure={view.figure} />}
       </View>
       {view.collisions.map((words) => (
         <View key={words} style={styles.collision}>
@@ -229,6 +230,9 @@ function TabletTrack({
           onFinish={onFinish}
         />
       ))}
+      <Text size={14} style={[styles.secondary, styles.nextLine]}>
+        {nextLine(view)}
+      </Text>
     </View>
   );
 }
@@ -256,7 +260,7 @@ function TableRow({
         >
           {item.planned}
         </Text>
-        {second != null && <Second second={second} />}
+        {second != null && <Second second={second} size={13} />}
       </View>
       <Text size={14} style={[styles.lastsCol, item.length == null ? styles.none : styles.num]}>
         {row.lasts}
@@ -288,10 +292,11 @@ function startsSaid({ item, second }: Row): string {
     : `Planned ${item.planned}, ${second.kind === 'expected' ? 'about' : 'started'} ${second.time}`;
 }
 
-function Second({ second }: { second: NonNullable<Row['second']> }) {
+function Second({ second, size }: { second: NonNullable<Row['second']>; size: 12 | 13 }) {
   return (
     <Text
-      size={13}
+      size={size}
+      numberOfLines={1}
       weight="semibold"
       style={[styles.num, second.kind === 'expected' ? styles.attention : styles.secondary]}
     >
@@ -482,7 +487,7 @@ function PhoneTrack({
                   <Text size={15} weight="semibold" style={styles.num}>
                     {row.item.planned}
                   </Text>
-                  {row.second != null && <Second second={row.second} />}
+                  {row.second != null && <Second second={row.second} size={12} />}
                 </View>
                 <View style={styles.grow}>
                   <ItemLine item={row.item} />
@@ -576,7 +581,7 @@ const styles = StyleSheet.create({
     borderBottomColor: tokens.colorBorder,
   },
   rowNow: { backgroundColor: tokens.colorAccentTint, borderRadius: tokens.radiusSmall },
-  startsCol: { width: 112 },
+  startsCol: { width: 144 },
   lastsCol: { width: 104 },
   ownerCol: { width: 150 },
   ownerNarrow: { width: 112 },
@@ -622,7 +627,8 @@ const styles = StyleSheet.create({
     borderTopWidth: 1,
     borderTopColor: tokens.colorBorder,
   },
-  thenTime: { width: 104 },
+  thenTime: { width: 112 },
+  nextLine: { paddingTop: tokens.spaceSm },
 });
 
 const COLUMN = [styles.startsCol, styles.lastsCol, styles.grow, styles.ownerCol];
