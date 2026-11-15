@@ -85,6 +85,7 @@
     "validation.seating_table_rotation_steps": "Choisissez une rotation par pas de 15°, de 0° à 345°.",
     "validation.seating_table_no_such_seat": "Choisissez des places de 1 à {max, number}, chacune une seule fois.",
     "validation.seating_table_section_unknown": "Choisissez l’une des zones de ce plan, ou aucune zone.",
+    "run_of_show.item_limit": "Ce programme compte {max, number, ::group-auto} éléments, le maximum pour un événement. Supprimez-en un pour en ajouter un autre. Rien n’a été enregistré.",
     "seating.seat_default_name": "Seat {n}",
     "validation.seating_row_label_required": "Enter a label for the row.",
     "validation.seating_row_label_taken": "This plan already has a row labelled {label}.",

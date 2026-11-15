@@ -157,6 +157,7 @@ domain_messaging = ["App\\Domain\\Messaging\\**"]
 domain_seating = ["App\\Domain\\Seating\\**"]
 domain_guest = ["App\\Domain\\Guest\\**"]
 domain_staff = ["App\\Domain\\Staff\\**"]
+domain_run_of_show = ["App\\Domain\\RunOfShow\\**"]
 
 # Capabilities. Each is its own layer so an edge between two of them has to be
 # declared below rather than appearing by accident.
@@ -347,6 +348,24 @@ permit = [
     "@layer:shared",
     "@layer:domain_staff",
     "@layer:domain_user",
+    "@layer:repository",
+    "@layer:audit",
+    "@layer:realtime",
+    "@layer:locale",
+]
+
+# Run of show: an event's running order, built on the Schedule page (sc-3893). Its
+# starts are wall-clock times read with the event's zone (LocalTimeResolver), and it
+# adds each day's first item and its fixed-time items to the event's timeline. Each
+# change is audited and published.
+[[guard.perimeter.rules]]
+namespace = "App\\Domain\\RunOfShow\\"
+permit = [
+    "@layer:native",
+    "@layer:external",
+    "@layer:shared",
+    "@layer:domain_run_of_show",
+    "@layer:domain_event",
     "@layer:repository",
     "@layer:audit",
     "@layer:realtime",
