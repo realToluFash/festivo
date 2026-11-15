@@ -3,9 +3,13 @@ appId: host.exp.Exponent
 ---
 - openLink: ${METRO_URL}/--/
 - extendedWaitUntil:
-    notVisible:
-      id: 'events.page'
-    timeout: 10000
+    visible: '{{t:todayScreen.tab.today}}'
+    timeout: 30000
+- scrollUntilVisible:
+    element: '{{t:todayScreen.allEvents}}'
+    direction: DOWN
+    centerElement: true
+    timeout: 20000
 - takeScreenshot: before-link
 - openLink: ${METRO_URL}/--/events/${EVENT_ID}/edit?at=venue
 - extendedWaitUntil:

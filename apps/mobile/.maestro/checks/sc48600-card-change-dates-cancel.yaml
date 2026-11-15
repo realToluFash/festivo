@@ -24,9 +24,8 @@ appId: host.exp.Exponent
 - tapOn:
     id: 'event.edit.dates.cancel'
 - extendedWaitUntil:
-    visible: '.*Past Draft Lunch.*'
+    visible: '{{t:eventsScreen.nextChangeDates}}'
     timeout: 10000
-- assertVisible: '{{t:eventsScreen.nextChangeDates}}'
 - assertNotVisible:
     id: 'events.page'
 - takeScreenshot: card-dates-cancel-back-on-events
