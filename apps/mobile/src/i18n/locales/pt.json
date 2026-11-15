@@ -2732,6 +2732,8 @@
     "showAll": "Mostrar todos em Eventos",
     "nothing": "Nenhum resultado para «{{term}}».",
     "clear": "Limpar a pesquisa",
+    "failed": "Search did not work. Try again in a moment.",
+    "tryAgain": "Try again",
     "keys": "↑ ↓ para mover · Enter para abrir · Esc para fechar",
     "results": "Resultados",
     "close": "Fechar",
