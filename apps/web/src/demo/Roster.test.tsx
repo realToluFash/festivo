@@ -26,6 +26,13 @@ const type = (label: string | RegExp, value: string) =>
   fireEvent.change(screen.getByLabelText(label), { target: { value } });
 
 describe('/demo/events/evt-wed-4/staff/roster (sc-3906)', () => {
+  it('is where the Staff page opens, its first tab', async () => {
+    const router = createMemoryRouter(routes, { initialEntries: ['/demo/events/evt-wed-4/staff'] });
+    render(<RouterProvider router={router} />);
+    await screen.findByRole('table', { name: 'Roster' }, { timeout: 8000 });
+    expect(router.state.location.pathname).toBe('/demo/events/evt-wed-4/staff/roster');
+  });
+
   it('is a real table with headers, each name a button, each link a mark with a word', async () => {
     await open('populated');
     const table = screen.getByRole('table', { name: 'Roster' });
