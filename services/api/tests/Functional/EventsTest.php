@@ -1227,6 +1227,31 @@ final class EventsTest extends ApiTestCase
         self::assertCount(1, self::em()->getRepository(AuditEntry::class)->findBy(['action' => EventEditor::UPDATED]), 'only the move into the past was recorded');
     }
 
+    /** @return iterable<string, array{array<string, string>}> */
+    public static function calledOffScheduleChanges(): iterable
+    {
+        yield 'the start' => [['startsAt' => '2030-11-14T17:00']];
+        yield 'the end' => [['endsAt' => '2030-11-15T03:00']];
+        yield 'the zone' => [['timeZone' => 'Europe/London']];
+    }
+
+    /** @param array<string, string> $change */
+    #[Test]
+    #[DataProvider('calledOffScheduleChanges')]
+    public function aCalledOffEventsScheduleSaysItWasCalledOff(array $change): void
+    {
+        $event = $this->live(self::AHEAD, '2030-11-15T02:00');
+        $this->as($this->owner, 'POST', '/api/events/' . $event['id'] . '/end');
+        $ended = $this->event($this->as($this->owner, 'GET', '/api/events/' . $event['id']));
+
+        $this->edit($event['id'], $change, $this->tagOf($event['id']));
+
+        self::assertSame(409, $this->statusCode());
+        self::assertSame(ErrorCode::EventConcluded->type(), $this->last()['type'] ?? null);
+        self::assertSame('This event was called off, so its start, end and time zone cannot be changed.', $this->last()['detail'] ?? null);
+        self::assertSame($ended, $this->event($this->as($this->owner, 'GET', '/api/events/' . $event['id'])));
+    }
+
     #[Test]
     public function aFinishedEventIsRenamedWithItsScheduleSentUnchanged(): void
     {

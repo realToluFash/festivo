@@ -450,6 +450,7 @@
     "leave": "Salir sin guardar",
     "saved": "Cambios guardados",
     "scheduleConcluded": "Este evento ha terminado, así que ya no se pueden cambiar su inicio, su fin ni su zona horaria.",
+    "scheduleCalledOff": "This event was called off, so its start, end and time zone can't be changed.",
     "scheduleLocked": "Este evento ha terminado, así que ya no se pueden cambiar su inicio, su fin ni su zona horaria."
   },
   "eventHosts": {

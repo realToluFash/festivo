@@ -1957,6 +1957,29 @@ describe("An event's Overview (sc-22103)", () => {
     ).toBeDefined();
   });
 
+  it('says a called-off event’s dates are locked because it was called off (sc-45141)', async () => {
+    signedIn();
+    answering({
+      'GET /api/events/ev_1': () =>
+        json({
+          event: event({
+            ...PAST,
+            status: 'ended',
+            phase: 'finished',
+            concludedAt: new Date(Date.parse(PAST.startsAt) - 86_400_000).toISOString(),
+          }),
+        }),
+    });
+    at('/app/events/ev_1');
+
+    const details = await screen.findByRole('region', { name: 'Details' });
+    expect(
+      within(details).getByText(
+        "Dates · This event was called off, so its start, end and time zone can't be changed.",
+      ),
+    ).toBeDefined();
+  });
+
   it('offers Change dates as the card’s step on a Draft past its end, opening Dates in place (sc-30413)', async () => {
     signedIn();
     answering({ 'GET /api/events/ev_1': () => json({ event: event(PAST) }) });
