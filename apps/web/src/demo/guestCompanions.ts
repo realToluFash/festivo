@@ -1,5 +1,6 @@
 import type { Answer, Lang, Visit } from './guest.ts';
 import { demoWords } from './demoWords.ts';
+import { type GuestKitchen, type Person, partyPeople } from './guestKitchen.ts';
 import { guestKitchenWordsFor } from './guestKitchenWords.ts';
 import type { DemoLink } from './settings.ts';
 
@@ -252,6 +253,29 @@ export function partyWords(lang: Lang) {
 
 export type PartyWords = ReturnType<typeof partyWords>;
 
+const ALONE = toggled(toggled(toggled(OBI_AND_TWO, 'obi'), 'place-2'), 'place-3');
+const UNNAMED_OFF = toggled(OBI_AND_TWO, 'place-3');
+
+/** With Coming the product always goes through the kitchen step, so Check and send carries For the kitchen, a first reply (sc-3778). */
+function firstKitchen(party: Party, picks: Record<string, Partial<Person>> = {}): GuestKitchen {
+  const coming = comingWith(party).map((one) => ({
+    key: one.key,
+    name: one.name,
+    place: one.name == null ? placeOf(party, one) : null,
+  }));
+
+  return {
+    people: partyPeople([], coming).map((one) => ({ ...one, ...picks[one.key] })),
+    record: null,
+    tried: false,
+    alert: null,
+    meals: false,
+    refuses: false,
+    from: 'answer',
+    saved: false,
+  };
+}
+
 const ANSWERED = { recorded: { answer: 'coming', on: '2026-10-27' } } as const;
 const STEP = { view: { kind: 'withYou', from: 'answer' } } as const;
 const CHECK = {
@@ -325,7 +349,7 @@ export const GUEST_PARTY_STATES = {
   },
   withYouAlone: {
     name: 'Coming alone: every place marked Not coming (sc-48740)',
-    starts: { ...STEP, party: toggled(toggled(OBI_AND_TWO, 'obi'), 'place-2') },
+    starts: { ...STEP, party: ALONE },
   },
   withYouNoPlaces: {
     name: 'No places: Coming goes straight on, with no step',
@@ -344,7 +368,8 @@ export const GUEST_PARTY_STATES = {
     name: 'Check and send counting an unnamed place, another declined (sc-48740)',
     starts: {
       view: CHECK,
-      party: toggled(OBI_AND_TWO, 'place-3'),
+      party: UNNAMED_OFF,
+      kitchen: firstKitchen(UNNAMED_OFF, { 'place-2': { diet: ['vegetarian'] } }),
       companionsComing: 2,
       want: 'checkHead',
     },
@@ -353,7 +378,8 @@ export const GUEST_PARTY_STATES = {
     name: 'Check and send, coming alone: You · 1 person (sc-48740)',
     starts: {
       view: CHECK,
-      party: toggled(toggled(toggled(OBI_AND_TWO, 'obi'), 'place-2'), 'place-3'),
+      party: ALONE,
+      kitchen: firstKitchen(ALONE),
       companionsComing: 0,
       want: 'checkHead',
     },
