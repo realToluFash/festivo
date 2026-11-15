@@ -65,6 +65,12 @@
   font: 600 15px/1.4 var(--fontFamily);
 }
 
+/* A word wider than the column moves the countdown and Undo under the words, rather than breaking in two. */
+.gm-line p,
+.gm-line p > span {
+  overflow-wrap: break-word;
+}
+
 .gm-line > svg {
   flex: none;
   align-self: flex-start;
