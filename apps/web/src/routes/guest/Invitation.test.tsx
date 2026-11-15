@@ -841,6 +841,15 @@ describe('Reply by (sc-3780)', () => {
     ).toBeDefined();
   });
 
+  it('says no day to answer by to a guest reopened after it', async () => {
+    const reopened = { ...PAGE, event: { ...PAGE.event, replyBy: '2020-11-10' } };
+    api({ '/api/guest-links/page': [{ status: 200, body: reopened }] });
+    open();
+
+    expect(await screen.findByRole('heading', { name: 'Your answer' })).toBeDefined();
+    expect(screen.queryByText(/Please answer by/)).toBeNull();
+  });
+
   it('names the day answers closed, and lets a Coming guest update the kitchen', async () => {
     const { sent } = api({
       '/api/guest-links/page': [{ status: 200, body: SHUT }],

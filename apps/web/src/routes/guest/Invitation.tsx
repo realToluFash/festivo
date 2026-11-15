@@ -7,7 +7,7 @@ import {
   type GuestPage,
   type GuestPagePhase,
 } from '@soirely/api-client';
-import { formatEventClock, hostsLine, listFormat } from '@soirely/domain';
+import { formatEventClock, hostsLine, listFormat, wallDay } from '@soirely/domain';
 import { type ReactNode, useEffect, useId, useLayoutEffect, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useOutletContext } from 'react-router';
@@ -18,6 +18,7 @@ import { currentLocale, dateLocale } from '../../i18n/index.ts';
 import { meshFor } from '../../mesh.ts';
 import { offButton } from '../../offButton.ts';
 import { useWideWidth } from '../../phoneWidth.ts';
+import { useServerNow } from '../../serverNow.ts';
 import { Filled, Notice, TextAction, dayOf, format, readerZone, wallDayOf } from './GuestParts.tsx';
 import { InvalidInvitation } from './InvalidInvitation.tsx';
 import { KITCHEN_SAVED_ID, KitchenCheck, KitchenSaved, KitchenStep } from './Kitchen.tsx';
@@ -798,9 +799,16 @@ function Shown({
   onKeep: () => void;
 }) {
   const { t } = useTranslation();
+  const now = useServerNow();
   const { reply, fullName } = page.guest;
   const day = reply == null ? '' : dayOf(reply.at, page.event.timeZone);
   const places = hasStep(party);
+  const answerBy =
+    page.answersClosedOn == null &&
+    page.event.replyBy != null &&
+    page.event.replyBy >= wallDay(now, page.event.timeZone)
+      ? page.event.replyBy
+      : null;
 
   switch (view.kind) {
     case 'answer':
@@ -809,8 +817,8 @@ function Shown({
           <h2 id="gp-answer-h" className="gp-h2">
             {t('guest.yourAnswer')}
           </h2>
-          {page.event.replyBy != null && (
-            <p className="gp-sub">{t('guest.replyBy', { date: wallDayOf(page.event.replyBy) })}</p>
+          {answerBy != null && (
+            <p className="gp-sub">{t('guest.replyBy', { date: wallDayOf(answerBy) })}</p>
           )}
           {view.note === 'unsent' && <Notice kind="attention">{t('guest.unsent')}</Notice>}
           {view.note === 'notSentTap' && <Notice kind="broken">{t('guest.notSentTap')}</Notice>}
