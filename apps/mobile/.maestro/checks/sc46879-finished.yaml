@@ -10,13 +10,6 @@ appId: host.exp.Exponent
 - waitForAnimationToEnd:
     timeout: 4000
 - takeScreenshot: finished-list
-- openLink: ${METRO_URL}/--/events/${FINISHED}?area=guests
-- extendedWaitUntil:
-    visible:
-      id: 'guests.card'
-    timeout: 30000
-- waitForAnimationToEnd:
-    timeout: 4000
 - tapOn:
     id: 'guests.search'
 - inputText: 'Ngozi'

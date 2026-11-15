@@ -1,4 +1,4 @@
-# sc-46879: ${RITA} (${RITA_NAME}), marked by hand, replies through their link while their page is open; Mark as not invited is then refused. Beside the demo's unmarkRefused.
+# sc-46879: ${RITA} (${RITA_NAME}), marked by hand, replies through their link while their page is open; Mark as not invited is then refused. The reply goes to ${API_URL} from ${WEB_URL} with ${RITA_TOKEN}, on the ${LIVE} event. Beside the demo's unmarkRefused.
 appId: host.exp.Exponent
 ---
 - setOrientation: ${ORIENT}
