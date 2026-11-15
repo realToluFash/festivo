@@ -1,6 +1,6 @@
-import { ApiError, ApiUnreachableError } from '@soirely/api-client';
+import { ApiError, ApiUnreachableError } from './problem.ts';
 
-/** What a failed search shows (sc-39534): a refusal is a search that found nothing, never an error. */
+/** What a failed search shows on either client (sc-39534): a refusal is a search that found nothing, never an error. */
 export type SearchFailure = 'refused' | 'offline' | 'failed';
 
 export function searchFailure(error: unknown): SearchFailure {

@@ -1,4 +1,4 @@
-import { ApiError, ApiUnreachableError, type SearchReach } from '@soirely/api-client';
+import { searchFailure, type SearchReach } from '@soirely/api-client';
 import {
   SEARCH_LEAST,
   type SearchGroup,
@@ -197,9 +197,10 @@ function SearchPalette({
           }),
         (error: unknown) => {
           if (stop.signal.aborted) return;
-          if (error instanceof ApiError && error.status === 403)
-            setAnswer({ kind: 'found', term: asked, groups: [] });
-          else setAnswer({ kind: error instanceof ApiUnreachableError ? 'offline' : 'failed' });
+          const failure = searchFailure(error);
+          setAnswer(
+            failure === 'refused' ? { kind: 'found', term: asked, groups: [] } : { kind: failure },
+          );
         },
       );
     }, TYPING_PAUSE_MS);

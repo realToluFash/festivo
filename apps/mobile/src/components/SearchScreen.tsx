@@ -1,4 +1,4 @@
-import type { SearchReach } from '@soirely/api-client';
+import { searchFailure, type SearchReach } from '@soirely/api-client';
 import {
   SEARCH_LEAST,
   type SearchGroup,
@@ -25,7 +25,6 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { api } from '../api.ts';
 import { dateLocale } from '../i18n/index.ts';
 import { eventsSearchHref, searchRowHref } from '../kit/searchLinks.ts';
-import { searchFailure } from '../kit/searchFailure.ts';
 import { meshFor } from '../kit/today.ts';
 import { useLayout } from '../layout/useLayout.ts';
 import { tokens } from '../theme/tokens.ts';

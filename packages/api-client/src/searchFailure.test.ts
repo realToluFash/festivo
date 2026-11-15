@@ -1,6 +1,6 @@
-import { ApiError, ApiUnreachableError } from '@soirely/api-client';
 import { describe, expect, it } from 'vitest';
 
+import { ApiError, ApiUnreachableError } from './problem.ts';
 import { searchFailure } from './searchFailure.ts';
 
 const problem = (status: number) => new ApiError({ type: 'about:blank', title: '', status });
