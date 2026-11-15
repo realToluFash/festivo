@@ -1,3 +1,4 @@
+import { writtenTime } from './clock.ts';
 import type { DemoLink } from './settings.ts';
 
 /** The event's Schedule page (sc-3893, RunOfShow.dc.html on page e33): a table per place for each event day, and the item form. */
@@ -285,19 +286,8 @@ export const HOME_READER: Reader = { locale: 'en-GB', zone: EVENT_ZONE };
 
 const asUtc = (wall: string): Date => new Date(wallMinutes(wall));
 
-/** A 24-hour locale writes 06:00, as CLDR's patterns do; Intl's numeric hour drops the zero. */
-function hourOf(locale: string): 'numeric' | '2-digit' {
-  const cycle = new Intl.DateTimeFormat(locale, { hour: 'numeric' }).resolvedOptions().hourCycle;
-
-  return cycle === 'h23' || cycle === 'h24' ? '2-digit' : 'numeric';
-}
-
 export function timeOf(wall: string, reader: Reader): string {
-  return new Intl.DateTimeFormat(reader.locale, {
-    timeZone: 'UTC',
-    hour: hourOf(reader.locale),
-    minute: '2-digit',
-  }).format(asUtc(wall));
+  return writtenTime(wall, reader.locale);
 }
 
 export function dayName(day: string, reader: Reader): string {
@@ -310,26 +300,18 @@ export function dayName(day: string, reader: Reader): string {
 }
 
 export function dayAndTime(wall: string, reader: Reader): string {
-  return new Intl.DateTimeFormat(reader.locale, {
-    timeZone: 'UTC',
-    weekday: 'short',
-    day: 'numeric',
-    month: 'short',
-    hour: hourOf(reader.locale),
-    minute: '2-digit',
-  }).format(asUtc(wall));
+  return `${dayName(wall.slice(0, 10), reader)}, ${timeOf(wall, reader)}`;
 }
 
 /** A start after midnight carries its weekday, since it sits on the tab of the day before. */
 export function startsCell(one: Item, day: string, reader: Reader): string {
   if (one.starts.slice(0, 10) === day) return timeOf(one.starts, reader);
-
-  return new Intl.DateTimeFormat(reader.locale, {
+  const weekday = new Intl.DateTimeFormat(reader.locale, {
     timeZone: 'UTC',
     weekday: 'short',
-    hour: hourOf(reader.locale),
-    minute: '2-digit',
   }).format(asUtc(one.starts));
+
+  return `${weekday} ${timeOf(one.starts, reader)}`;
 }
 
 export function zoneNamed(reader: Reader): string | null {
@@ -708,7 +690,7 @@ export const SCHEDULE_PAGES: readonly { name: string; states: readonly DemoLink[
   {
     name: 'Times in the reader’s locale and zone',
     states: [
-      { to: scheduleAt('populated', 'locale=en-US'), name: 'Read in en-US, 12-hour' },
+      { to: scheduleAt('populated', 'locale=en-US'), name: 'Read in en-US' },
       { to: scheduleAt('populated', 'locale=fr-FR'), name: 'Read in fr-FR' },
       { to: scheduleAt('populated', 'zone=away'), name: 'The reader in New York, the zone named' },
       { to: scheduleAt('addBlank', 'zone=away'), name: 'The form, the reader in New York' },

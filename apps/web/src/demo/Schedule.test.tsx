@@ -150,6 +150,6 @@ describe('/demo/events/evt-wed-4/schedule (sc-3893)', () => {
   it('writes times as the reader’s locale does, and names the zone when away', SLOW, async () => {
     await open('populated', '&locale=en-US&zone=away');
     expect(screen.getByRole('heading', { level: 1 }).textContent).toBe('Schedule · Fri, Nov 6');
-    expect(screen.getByText(/^10 items · 1:30\sPM to 1:00\sAM · 3 places · ./)).toBeTruthy();
+    expect(screen.getByText(/^10 items · 13:30 to 01:00 · 3 places · ./)).toBeTruthy();
   });
 });

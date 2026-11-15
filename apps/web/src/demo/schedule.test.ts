@@ -50,7 +50,7 @@ describe('the schedule’s rules (sc-3893)', () => {
     );
     const away = readerOf('en-US', 'away');
     expect(headingLine(sampleItems(), FRIDAY, away)).toMatch(
-      /^10 items · 1:30\sPM to 1:00\sAM · 3 places · .+/,
+      /^10 items · 13:30 to 01:00 · 3 places · .+/,
     );
     expect(headingLine(sampleItems(), DAYS[2], HOME_READER)).toBeNull();
   });
