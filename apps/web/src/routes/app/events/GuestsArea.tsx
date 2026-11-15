@@ -861,17 +861,16 @@ export function GuestsArea({
     const draft = phase === 'draft' ? makeLiveRow(event, now) : null;
 
     if (draft != null) {
-      const live = !canOn(event, 'events.manage')
-        ? null
-        : draft.makeLive
-          ? 'makeLive'
-          : 'changeDates';
+      const changes = canOn(event, 'events.manage');
+      const live = !changes ? null : draft.makeLive ? 'makeLive' : 'changeDates';
       const add = empty && manages;
 
       return {
         tag: { mark: 'draft', word: t('events.draft') },
         says: empty ? t('guestList.noGuests') : t('guestList.onTheList', { count: counts.all }),
-        line: t(`eventLive.${draft.line}`),
+        line: t(
+          `eventLive.${draft.line === 'endPassed' && !changes ? 'endPassedReader' : draft.line}`,
+        ),
         step: add ? 'add' : live,
         also: add ? live : null,
       };

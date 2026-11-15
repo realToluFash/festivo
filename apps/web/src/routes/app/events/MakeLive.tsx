@@ -237,7 +237,9 @@ export function DraftRow({
       {row != null && (
         <div className="event-draft-row">
           <span className="mark mark-off" aria-hidden="true" />
-          <p className="event-draft-line">{t(`eventLive.${row.line}`)}</p>
+          <p className="event-draft-line">
+            {t(`eventLive.${row.line === 'endPassed' && !manages ? 'endPassedReader' : row.line}`)}
+          </p>
           {manages &&
             (row.makeLive ? (
               <button
