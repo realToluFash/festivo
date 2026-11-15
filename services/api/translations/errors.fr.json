@@ -101,7 +101,7 @@
     "team_seats_in_use": "Toutes les places d’équipe du forfait de cette organisation sont occupées.",
     "seating_items_outside": "Un élément de la salle se retrouverait en dehors.",
     "schedule_item_limit": "Ce programme compte {max} éléments, le maximum pour un événement. Supprimez-en un pour en ajouter un autre.",
-    "item_started": "Cet élément a déjà commencé.",
-    "item_not_started": "Cet élément n’a pas encore commencé, il ne peut donc pas être terminé.",
-    "item_finished": "Cet élément est déjà terminé."
+    "item_started": "This item has already started.",
+    "item_not_started": "This item has not started yet, so it cannot be done.",
+    "item_finished": "This item is already done."
 }

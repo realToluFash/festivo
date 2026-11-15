@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 
-import { type RunTimesItem, runTrack, runTracks } from './runTimes.ts';
+import { type RunTimesItem, runTrack, runTracks, wallAt } from './runTimes.ts';
 
 const DAY = '2026-11-20';
 const NEXT = '2026-11-21';
@@ -113,6 +113,13 @@ describe('expected times on a track (sc-1404)', () => {
 
     expect(expectedOf(track, 'lastSong')).toBe(wall('00:20'));
     expect(track.figure).toEqual({ kind: 'behind', minutes: 5 });
+  });
+});
+
+describe('the event clock as the run view reads now (sc-1404)', () => {
+  it('reads the wall clock in the event zone, 24-hour', () => {
+    expect(wallAt(new Date('2026-11-20T23:30:59Z'), 'Africa/Lagos')).toBe('2026-11-21T00:30');
+    expect(wallAt(new Date('2026-07-01T12:05:00Z'), 'America/New_York')).toBe('2026-07-01T08:05');
   });
 });
 

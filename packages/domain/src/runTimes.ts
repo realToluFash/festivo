@@ -13,10 +13,7 @@ export interface RunTimesItem {
 export type RunPhase = 'waiting' | 'now' | 'done';
 
 export type RunFigure =
-  | { kind: 'onTime' }
-  | { kind: 'behind'; minutes: number }
-  | { kind: 'last' }
-  | { kind: 'done' };
+  { kind: 'onTime' } | { kind: 'behind'; minutes: number } | { kind: 'last' } | { kind: 'done' };
 
 export interface RunRow<I extends RunTimesItem> {
   item: I;
@@ -38,6 +35,22 @@ export interface RunTrack<I extends RunTimesItem> {
   collisions: RunCollision<I>[];
   /** The first not-started item by planned start, and when it is expected. */
   next: { item: I; expected: string } | null;
+}
+
+/** What the event's clock reads at a moment, `YYYY-MM-DDTHH:mm`, as the run view's now. */
+export function wallAt(moment: Date, timeZone: string): string {
+  const parts = new Intl.DateTimeFormat('en-CA', {
+    timeZone,
+    year: 'numeric',
+    month: '2-digit',
+    day: '2-digit',
+    hour: '2-digit',
+    minute: '2-digit',
+    hourCycle: 'h23',
+  }).formatToParts(moment);
+  const part = (type: string) => parts.find((one) => one.type === type)?.value ?? '';
+
+  return `${part('year')}-${part('month')}-${part('day')}T${part('hour')}:${part('minute')}`;
 }
 
 function minutesOf(wall: string): number {
@@ -124,7 +137,10 @@ export function runTrack<I extends RunTimesItem>(items: readonly I[], now: strin
   const next =
     nextItem == null
       ? null
-      : { item: nextItem, expected: wallOf(starts.get(nextItem.id) ?? minutesOf(nextItem.planned)) };
+      : {
+          item: nextItem,
+          expected: wallOf(starts.get(nextItem.id) ?? minutesOf(nextItem.planned)),
+        };
 
   const collisions = ordered.flatMap<RunCollision<I>>((item, index) => {
     const before = ordered[index - 1];
