@@ -2983,6 +2983,7 @@
     "copyFirst": "Copying their link does not mark them. Mark them once you have sent it.",
     "markAsInvited": "Mark as invited",
     "markLine": "How you invited them, so they count as invited",
+    "recordNotYetLine": "What they told you, so they count as invited",
     "howInvited": "How did you invite them?",
     "howInvitedBlank": "Choose how you invited them.",
     "markNotSaved": "Not saved. They are still Not yet invited. Try again.",

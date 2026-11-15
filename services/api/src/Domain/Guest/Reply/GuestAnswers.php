@@ -9,6 +9,7 @@ use App\Domain\Event\Model\ReplyDeadline;
 use App\Domain\Guest\GuestListPublisher;
 use App\Domain\Guest\GuestNeedsRecord;
 use App\Domain\Guest\GuestRules;
+use App\Domain\Guest\Invitation\GuestInvitations;
 use App\Domain\Guest\Model\CompanionChoice;
 use App\Domain\Guest\Model\GuestNeeds;
 use App\Domain\Guest\Model\PageReply;
@@ -45,6 +46,7 @@ final readonly class GuestAnswers
         private GuestRules $guestRules,
         private GuestNeedsRecord $guestNeedsRecord,
         private ClockInterface $clock,
+        private GuestInvitations $guestInvitations,
     ) {
     }
 
@@ -74,7 +76,7 @@ final readonly class GuestAnswers
         return $this->clock->now() >= $guest->getEvent()->getStartsAt();
     }
 
-    /** Refused 409 `event_paused` while paused, `event_concluded` once over, `replies_closed` from the start or after Reply by; the same answer again keeps its date. Needs go only with Coming (sc-3778), keep the hosts' note, and may drop a host's access need but never add one (422, nothing saved). */
+    /** Refused 409 `event_paused` while paused, `event_concluded` once over, `replies_closed` from the start or after Reply by, and a recorded reply, which invites a guest not yet invited, `event_state_invalid` unless the phase allows `invite` (sc-52829); the same answer again keeps its date. Needs go only with Coming (sc-3778), keep the hosts' note, and may drop a host's access need but never add one (422, nothing saved). */
     public function answer(Guest $guest, GuestReply $reply, ?PageReply $page = null, ?RecordedReply $recorded = null): void
     {
         $page ??= new PageReply([], null);
@@ -85,6 +87,10 @@ final readonly class GuestAnswers
 
             if (null !== $refusal) {
                 throw new ApiException($refusal, ErrorCode::EventPaused === $refusal ? 'guest.event_paused' : 'guest.event_concluded');
+            }
+
+            if (null !== $recorded && !$guest->isInvited()) {
+                $this->guestInvitations->assertInvitable($guest->getEvent());
             }
 
             if ($this->started($guest) || null !== $this->closedOn($guest)) {
