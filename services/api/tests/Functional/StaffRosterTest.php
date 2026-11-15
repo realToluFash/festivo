@@ -94,6 +94,8 @@ final class StaffRosterTest extends ApiTestCase
     {
         yield 'a blank name' => [['fullName' => '   '], 'fullName', 'Enter their name.'];
         yield 'a name over 200' => [['fullName' => Str\repeat('a', 201)], 'fullName', 'Shorten the name to 200 characters or fewer.'];
+        yield 'a name over 200 marked letters' => [['fullName' => Str\repeat("e\u{0323}\u{0300}", 201)], 'fullName', 'Shorten the name to 200 characters or fewer.'];
+        yield 'a name of one letter of many marks' => [['fullName' => 'a' . Str\repeat("\u{0301}", 800)], 'fullName', 'Shorten the name to 200 characters or fewer.'];
         yield 'not a mobile number' => [['fullName' => 'Kemi Ade', 'mobile' => ['countryCode' => 'NG', 'number' => '0803 111']], 'mobile', 'That is not a mobile number for Nigeria. Check it and try again.'];
         yield 'an email without a domain' => [['fullName' => 'Kemi Ade', 'email' => 'kemi.ade@'], 'email', 'That does not look like an email address. Check it has an @ and a domain.'];
     }
@@ -116,6 +118,18 @@ final class StaffRosterTest extends ApiTestCase
         $this->add(['fullName' => Str\repeat('a', 200)]);
 
         self::assertSame(201, $this->statusCode());
+    }
+
+    #[Test]
+    public function aNameOf200LettersWithADotAndAToneEachIsKeptAsTyped(): void
+    {
+        $composed = Str\repeat("\u{1EB9}\u{0300}", 200);
+        $decomposed = Str\repeat("e\u{0323}\u{0300}", 200);
+
+        $this->add(['fullName' => $composed]);
+        $this->add(['fullName' => $decomposed]);
+
+        self::assertEqualsCanonicalizing([$composed, $decomposed], $this->names());
     }
 
     #[Test]

@@ -313,13 +313,37 @@ final class EventCoverTest extends ApiTestCase
         self::assertArrayHasKey('uploadKey', $this->violations());
     }
 
-    #[Test]
-    public function aDescriptionOver250CharactersIsRefused(): void
+    /** @return iterable<string, array{string}> */
+    public static function descriptionsOver250Letters(): iterable
     {
-        $this->as($this->owner, 'PUT', $this->coverPath(), ['uploadKey' => $this->upload(self::photo(1600, 900), 'image/jpeg'), 'position' => 50, 'description' => Str\repeat('a', 251)]);
+        yield 'latin letters' => [Str\repeat('a', 251)];
+        yield 'marked letters' => [Str\repeat("e\u{0323}\u{0300}", 251)];
+        yield 'one letter of many marks' => ['a' . Str\repeat("\u{0301}", 1000)];
+    }
+
+    #[Test]
+    #[DataProvider('descriptionsOver250Letters')]
+    public function aDescriptionOver250CharactersIsRefused(string $description): void
+    {
+        $this->as($this->owner, 'PUT', $this->coverPath(), ['uploadKey' => $this->upload(self::photo(1600, 900), 'image/jpeg'), 'position' => 50, 'description' => $description]);
 
         self::assertSame(422, $this->statusCode());
-        self::assertArrayHasKey('description', $this->violations());
+        self::assertSame(['description' => 'Shorten the description to 250 characters or fewer.'], $this->violations());
+    }
+
+    #[Test]
+    public function aDescriptionOf250LettersWithADotAndAToneEachIsReadBackAsTyped(): void
+    {
+        $composed = Str\repeat("\u{1EB9}\u{0300}", 250);
+        $decomposed = Str\repeat("e\u{0323}\u{0300}", 250);
+        $this->as($this->owner, 'PUT', $this->coverPath(), ['uploadKey' => $this->upload(self::photo(1600, 900), 'image/jpeg'), 'position' => 50, 'description' => $composed]);
+        self::assertSame(200, $this->statusCode(), Json\encode($this->last()));
+
+        foreach ([$decomposed, $composed] as $description) {
+            $this->as($this->owner, 'PUT', $this->coverPath(), ['position' => 50, 'description' => $description]);
+            self::assertSame(200, $this->statusCode(), Json\encode($this->last()));
+            self::assertSame($description, $this->cover($this->as($this->owner, 'GET', '/api/events/' . $this->eventId))['description'] ?? null);
+        }
     }
 
     #[Test]
