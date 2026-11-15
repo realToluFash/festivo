@@ -81,13 +81,11 @@ final readonly class SeatingSerialiser
     }
 
     /**
-     * What sits in a section, or in none when `$section` is null; `seats` counts every chair at its tables, in its rows and its single seats.
-     *
      * @param list<SeatingTable> $tables      the plan's
      * @param list<SeatingRow>   $rows        the plan's
      * @param list<SeatingSeat>  $singleSeats the plan's
      *
-     * @return array{tables: int, rows: int, singleSeats: int, seats: int}
+     * @return array{tables: int, rows: int, singleSeats: int, seats: int} for `$section`, or for no section when it is null
      */
     private static function contents(?SeatingSection $section, array $tables, array $rows, array $singleSeats): array
     {
