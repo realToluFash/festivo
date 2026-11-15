@@ -43,6 +43,9 @@ const EDIT_AT: Readonly<Record<string, EditPart>> = {
   currency: 'currency',
 };
 
+/** Marks a link to /events/<id>/edit as opened from a screen in the app, so Cancel goes back to it (sc-48600). */
+export const EDIT_LEAVES = 'back';
+
 export function editPartOf(param: string | undefined): EditPart | undefined {
   return param != null && Object.hasOwn(EDIT_AT, param) ? EDIT_AT[param] : undefined;
 }

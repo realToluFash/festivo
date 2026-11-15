@@ -26,7 +26,7 @@ import { useTranslation } from 'react-i18next';
 import { api } from '../api.ts';
 import { dateLocale } from '../i18n/index.ts';
 import { DESTINATION_HREF } from '../kit/appNav.ts';
-import { eventHref, guestsHref } from '../kit/eventNav.ts';
+import { EDIT_LEAVES, eventHref, guestsHref } from '../kit/eventNav.ts';
 import { followReadingAgain } from '../followTopic.ts';
 import { DUPLICATING } from '../kit/eventDuplicate.ts';
 import { takeDeleted } from '../kit/eventSaved.ts';
@@ -449,7 +449,7 @@ export function EventsScreen() {
 
               if (step.action === 'changeDates') {
                 setDeleted(null);
-                router.push(`/events/${id}/edit?at=starts`);
+                router.push(`/events/${id}/edit?at=starts&${EDIT_LEAVES}=1`);
               } else if (step.action === 'duplicate') {
                 setDeleted(null);
                 router.push(`/events/${id}?${DUPLICATING}=1`);

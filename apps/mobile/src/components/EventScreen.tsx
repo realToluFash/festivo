@@ -81,6 +81,7 @@ export function EventScreen({
   copiedFrom,
   opensDuplicate = false,
   opensEdit,
+  editLeaves = false,
   keepsTab,
 }: {
   eventId: string;
@@ -91,8 +92,10 @@ export function EventScreen({
   copiedFrom?: string | undefined;
   /** Opened by an Events card's Duplicate, so Duplicate is over the page as it opens. */
   opensDuplicate?: boolean;
-  /** Opened by a link to the part's edit, an Events card's Change dates among them (sc-48600): Cancel goes back to whatever opened it. */
+  /** Opened by a link to the part's edit (sc-48600). */
   opensEdit?: EditPart | undefined;
+  /** The link came from a screen in the app, an Events card's Change dates: Cancel goes back to it. From outside the app, Cancel closes onto the event's page (Decided, 15 Nov). */
+  editLeaves?: boolean;
   /** Opened from Happening now, so Back returns to the tab that was showing. */
   keepsTab: boolean;
 }) {
@@ -221,7 +224,8 @@ export function EventScreen({
     const part = fromLink.current;
     if (part == null || event == null) return;
     fromLink.current = undefined;
-    if (manages && !partLocked(part, phase ?? event.phase)) openEdit(part, partRef(part), true);
+    if (manages && !partLocked(part, phase ?? event.phase))
+      openEdit(part, partRef(part), editLeaves);
   });
   const onDuplicate = creates
     ? (opener: RefObject<ScreenReaderTarget | null>) =>
