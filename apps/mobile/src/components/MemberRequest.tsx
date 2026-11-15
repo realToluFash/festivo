@@ -40,7 +40,8 @@ export function RequestScreen({
   organisation: Membership;
   member: OrganisationMember;
   list: MembersList;
-  reread: () => Promise<MembersList>;
+  /** The rows on screen read again after a change to `changed`, with their row as it now is wherever it is held. */
+  reread: (changed: string) => Promise<MembersList>;
   roles: readonly OrganisationRole[];
   open: boolean;
   opener: RefObject<ScreenReaderTarget | null>;
@@ -74,12 +75,15 @@ export function RequestScreen({
       setBusy(null);
       return;
     }
-    onAnswered(await membersAfterWrite(reread, list, withApproved(member.id, role)), {
-      kind: 'approved',
-      member: member.id,
-      name,
-      role: roleName(t, role),
-    });
+    onAnswered(
+      await membersAfterWrite(() => reread(member.id), list, withApproved(member.id, role)),
+      {
+        kind: 'approved',
+        member: member.id,
+        name,
+        role: roleName(t, role),
+      },
+    );
   }
 
   async function turnDown(): Promise<void> {
@@ -95,7 +99,7 @@ export function RequestScreen({
       setBusy(null);
       return;
     }
-    onAnswered(await membersAfterWrite(reread, list, withTurnedDown(member.id)), {
+    onAnswered(await membersAfterWrite(() => reread(member.id), list, withTurnedDown(member.id)), {
       kind: 'turnedDown',
       name,
     });

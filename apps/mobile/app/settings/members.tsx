@@ -7,24 +7,18 @@ import {
   type MembersMore,
   formatDay,
   grantableRoles,
-  nearsEnd,
   recoveryAnswerable,
   recoveryEndedByRemoval,
   recoveryShownIn,
   rereadLimit,
   roleHolds,
+  withChanged,
   withNextPage,
   withheldRoles,
 } from '@soirely/domain';
 import { Redirect, router, useLocalSearchParams } from 'expo-router';
 import { type Ref, type RefObject, useEffect, useMemo, useRef, useState } from 'react';
-import {
-  type NativeScrollEvent,
-  type NativeSyntheticEvent,
-  StyleSheet,
-  View,
-  type ViewInstance,
-} from 'react-native';
+import { StyleSheet, View, type ViewInstance } from 'react-native';
 import { useTranslation } from 'react-i18next';
 
 import { api } from '../../src/api.ts';
@@ -48,6 +42,7 @@ import {
   MembersCardView,
   NobodyPicked,
   People,
+  peopleRows,
   Waiting,
 } from '../../src/components/MembersSummary.tsx';
 import { Refreshing } from '../../src/components/Refreshing.tsx';
@@ -312,12 +307,16 @@ export default function MembersScreen() {
     owner.moveOn();
   }
 
-  /** Every row held, read again as it now is after a change. */
-  function reread(): Promise<Members> {
+  /** Every row held, read again as it now is after a change to `changed`, their own row included wherever it is held. */
+  function reread(changed: string): Promise<Members> {
     if (organisationId == null || load.kind !== 'loaded')
       return Promise.reject(new Error('unread'));
+    const { list, listed } = load;
 
-    return api.members(organisationId, { show: load.listed, limit: rereadLimit(load.list) });
+    return Promise.all([
+      api.members(organisationId, { show: listed, limit: rereadLimit(list) }),
+      api.member(organisationId, changed),
+    ]).then(([again, one]) => withChanged(again, list, one, listed));
   }
 
   /** The next page of People, as the list's end nears or by Try again. */
@@ -344,10 +343,6 @@ export default function MembersScreen() {
         settle((loaded) => ({ ...loaded, list: withNextPage(loaded.list, page), more: 'idle' })),
       () => settle((loaded) => ({ ...loaded, more: 'failed' })),
     );
-  }
-
-  function onListScroll({ nativeEvent }: NativeSyntheticEvent<NativeScrollEvent>): void {
-    if (load.kind === 'loaded' && more === 'idle' && nearsEnd(nativeEvent)) loadMore();
   }
 
   function openPerson(id: string | null): void {
@@ -495,6 +490,26 @@ export default function MembersScreen() {
     </View>
   );
 
+  const listed =
+    load.kind === 'loaded' && load.listed === current.filter
+      ? members
+      : membersShown(members, current.filter);
+  const people =
+    load.kind === 'loaded' && organisation != null && card != null
+      ? peopleRows({
+          t,
+          listed,
+          open: landscape ? (member?.id ?? null) : null,
+          dense: landscape,
+          manages,
+          rowRef,
+          more,
+          onOpen: (id) => openPerson(id),
+          onTryAgain: loadMore,
+          onEndNear: loadMore,
+        })
+      : undefined;
+
   const list =
     load.kind === 'loading' ? (
       <LoadingBlock words={t('membersScreen.loading')} height={landscape ? 156 : 200} />
@@ -551,26 +566,15 @@ export default function MembersScreen() {
           />
         )}
         <People
-          listed={
-            load.kind === 'loaded' && load.listed === current.filter
-              ? members
-              : membersShown(members, current.filter)
-          }
+          listed={listed}
           counts={membersCounts(load.kind === 'loaded' ? load.list : EMPTY)}
-          more={more}
-          onTryAgain={loadMore}
           filter={current.filter}
           organisation={organisation.name}
-          open={landscape ? (member?.id ?? null) : null}
-          dense={landscape}
-          manages={manages}
-          rowRef={rowRef}
           onFilter={(filter) => {
             moveOn();
             if (load.kind === 'loaded' && load.more !== 'idle') setLoad({ ...load, more: 'idle' });
             change({ filter, said: null });
           }}
-          onOpen={(id) => openPerson(id)}
         />
       </View>
     );
@@ -646,7 +650,7 @@ export default function MembersScreen() {
             settingsColumn={givesWay}
             heading={heading}
             list={list}
-            onListScroll={onListScroll}
+            listRows={people}
             page={page ?? (landscape && load.kind === 'loaded' && <NobodyPicked />)}
             pageKey={member?.id ?? ''}
             pageInFront={listBehind}

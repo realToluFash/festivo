@@ -1,6 +1,7 @@
 import {
   type ReactElement,
   type ReactNode,
+  type Ref,
   type RefCallback,
   type RefObject,
   createContext,
@@ -14,6 +15,7 @@ import {
 } from 'react';
 import {
   AccessibilityInfo,
+  FlatList,
   type HostInstance,
   Keyboard,
   type LayoutChangeEvent,
@@ -23,6 +25,7 @@ import {
   type RefreshControlProps,
   ScrollView,
   type ScrollViewInstance,
+  type ScrollViewProps,
   type StyleProp,
   StyleSheet,
   TextInput,
@@ -1037,17 +1040,29 @@ export function useScreenScrollView() {
     onContentLayout: (event: LayoutChangeEvent) => {
       contentHeight.current = event.nativeEvent.layout.height;
     },
+    contentSized: (height: number) => {
+      contentHeight.current = height;
+    },
   };
 }
 
+export interface ColumnRows<Item> {
+  data: readonly Item[];
+  keyOf: (item: Item) => string;
+  render: (item: Item, index: number) => ReactElement;
+  foot?: ReactNode;
+  /** The rows' end has come within a screen of the bottom. */
+  onEndNear?: () => void;
+}
+
 /** A scrolling column inside a Screen that does not scroll, so what it holds can bring itself into view. */
-export function ScrollColumn({
+export function ScrollColumn<Item>({
   children,
   style,
   contentContainerStyle,
   refreshControl,
   away = false,
-  onScroll,
+  rows,
 }: {
   children: ReactNode;
   style?: StyleProp<ViewStyle>;
@@ -1055,9 +1070,11 @@ export function ScrollColumn({
   refreshControl?: ReactElement<RefreshControlProps> | undefined;
   /** Out of the layout behind another column; back in, it shows where it was left. */
   away?: boolean;
-  onScroll?: ((event: NativeSyntheticEvent<NativeScrollEvent>) => void) | undefined;
+  /** Under the children, virtualised rather than every row mounted (sc-49170). */
+  rows?: ColumnRows<Item> | undefined;
 }) {
-  const { screenScroll, scrollProps, heldStyle, onContentLayout } = useScreenScrollView();
+  const { screenScroll, scrollProps, heldStyle, onContentLayout, contentSized } =
+    useScreenScrollView();
   const docked = useContext(Dock)?.docked ?? false;
   const underTabs = useUnderTabs();
   const left = useRef<number | null>(null);
@@ -1072,40 +1089,93 @@ export function ScrollColumn({
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [away]);
 
+  const { ref: held, ...scrolls } = scrollProps;
+  const shared = {
+    ...scrolls,
+    onScroll: (event: NativeSyntheticEvent<NativeScrollEvent>) => {
+      if (away) return;
+      scrollProps.onScroll(event);
+      if (left.current != null && Math.abs(event.nativeEvent.contentOffset.y - left.current) < 1) {
+        left.current = null;
+      }
+    },
+    onScrollBeginDrag: () => {
+      left.current = null;
+    },
+    style,
+    refreshControl,
+    keyboardShouldPersistTaps: 'handled' as const,
+    showsVerticalScrollIndicator: underTabs === 0,
+    ...scrollInsets(LIFT, docked),
+  };
+  const tabsGap = underTabs > 0 && <View style={{ height: underTabs }} />;
+
+  if (rows != null) {
+    // The column's gap would fall between every row, so it stays on what stands above them.
+    const { gap, rowGap, ...column } = StyleSheet.flatten(contentContainerStyle) ?? {};
+
+    return (
+      <ScreenScroll.Provider value={screenScroll}>
+        <FlatList
+          {...shared}
+          renderScrollComponent={(props) => <HeldScroll {...props} held={held} />}
+          data={rows.data}
+          keyExtractor={rows.keyOf}
+          renderItem={({ item, index }) => rows.render(item, index)}
+          onEndReached={rows.onEndNear}
+          onEndReachedThreshold={1}
+          onContentSizeChange={(_, height) => {
+            contentSized(height);
+            restore();
+          }}
+          contentContainerStyle={[styles.grow, heldStyle, column]}
+          ListHeaderComponent={<View style={{ gap, rowGap }}>{children}</View>}
+          ListFooterComponent={
+            <>
+              {rows.foot}
+              {tabsGap}
+            </>
+          }
+        />
+      </ScreenScroll.Provider>
+    );
+  }
+
   return (
     <ScreenScroll.Provider value={screenScroll}>
       <ScrollView
-        {...scrollProps}
-        onScroll={(event) => {
-          if (away) return;
-          scrollProps.onScroll(event);
-          onScroll?.(event);
-          if (
-            left.current != null &&
-            Math.abs(event.nativeEvent.contentOffset.y - left.current) < 1
-          ) {
-            left.current = null;
-          }
-        }}
-        onScrollBeginDrag={() => {
-          left.current = null;
-        }}
+        {...shared}
+        ref={held}
         onContentSizeChange={restore}
-        scrollEventThrottle={onScroll == null ? undefined : 64}
-        style={style}
         contentContainerStyle={[styles.grow, heldStyle]}
-        refreshControl={refreshControl}
-        keyboardShouldPersistTaps="handled"
-        showsVerticalScrollIndicator={underTabs === 0}
-        {...scrollInsets(LIFT, docked)}
       >
         <View onLayout={onContentLayout} style={contentContainerStyle}>
           {children}
         </View>
-        {underTabs > 0 && <View style={{ height: underTabs }} />}
+        {tabsGap}
       </ScrollView>
     </ScreenScroll.Provider>
   );
+}
+
+/** FlatList puts its own ref on the scroll it renders, and the screen's scroll needs that same view. */
+function HeldScroll({
+  held,
+  ref,
+  ...props
+}: ScrollViewProps & {
+  held: RefObject<ScrollViewInstance | null>;
+  ref?: Ref<ScrollViewInstance>;
+}) {
+  return <ScrollView {...props} ref={bothRefs(held, ref)} />;
+}
+
+function bothRefs<T>(held: RefObject<T | null>, ref: Ref<T> | undefined): RefCallback<T> {
+  return (view) => {
+    held.current = view;
+    if (typeof ref === 'function') ref(view);
+    else if (ref != null) ref.current = view;
+  };
 }
 
 /**

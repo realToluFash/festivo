@@ -61,7 +61,8 @@ export function PersonBody({
   member: OrganisationMember;
   list: MembersList;
   /** Every row the screen holds, as they now are. */
-  reread: () => Promise<MembersList>;
+  /** The rows on screen read again after a change to `changed`, with their row as it now is wherever it is held. */
+  reread: (changed: string) => Promise<MembersList>;
   roles: readonly OrganisationRole[];
   withheld: readonly OrganisationRole[];
   manages: boolean;
@@ -105,7 +106,7 @@ export function PersonBody({
   }
 
   function changedElsewhere(): void {
-    void reread()
+    void reread(member.id)
       .then(onChanged)
       .catch(() => undefined)
       .finally(() => tell([t('membersScreen.accessConflict', { name })]));
@@ -135,7 +136,7 @@ export function PersonBody({
       return;
     }
     const role = memberRole(t, member);
-    onChanged(await membersAfterWrite(reread, list, withRestored(member.id)));
+    onChanged(await membersAfterWrite(() => reread(member.id), list, withRestored(member.id)));
     setRestoring(false);
     tell(
       byHand
@@ -157,7 +158,7 @@ export function PersonBody({
       setRefused({ on: 'remove', words: refusalTitle(error, t('membersScreen.actionFailed')) });
       return;
     }
-    onRemoved(await membersAfterWrite(reread, list, withRemoved(member.id)), name);
+    onRemoved(await membersAfterWrite(() => reread(member.id), list, withRemoved(member.id)), name);
   }
 
   const step = changes
