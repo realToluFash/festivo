@@ -1,0 +1,21 @@
+# sc-52652 regression: as Can edit, Remove photo and Use this photo saves and closes Cover.
+appId: host.exp.Exponent
+---
+- runScript:
+    file: ../scripts/event-role-elsewhere.js
+    env:
+      ROLE: can_edit
+- runFlow: _sc52652-open.yaml
+- scrollUntilVisible:
+    element:
+      id: 'event.edit.cover.remove'
+    direction: DOWN
+- tapOn:
+    id: 'event.edit.cover.remove'
+- tapOn:
+    id: 'event.edit.cover.save'
+- extendedWaitUntil:
+    visible:
+      id: 'events.page'
+    timeout: 15000
+- takeScreenshot: removed-saved

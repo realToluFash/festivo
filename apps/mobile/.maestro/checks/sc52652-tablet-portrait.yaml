@@ -1,0 +1,50 @@
+# sc-52652: tablet, PORTRAIT: an event with a cover, its description changed as Can edit, then Can view: Use this photo's refusal shows in the top notice above the preview; then the demo's coverForbidden at the same orientation.
+appId: host.exp.Exponent
+---
+- setOrientation: PORTRAIT
+- runScript:
+    file: ../scripts/event-role-elsewhere.js
+    env:
+      ROLE: can_edit
+- runFlow: _sc52652-open.yaml
+- scrollUntilVisible:
+    element:
+      id: 'event.edit.cover.describe'
+    direction: DOWN
+- tapOn:
+    id: 'event.edit.cover.describe'
+- inputText: 'Adaeze and Tunde under the arch'
+- hideKeyboard
+- runScript:
+    file: ../scripts/event-role-elsewhere.js
+    env:
+      ROLE: can_view
+- tapOn:
+    id: 'event.edit.cover.save'
+- extendedWaitUntil:
+    visible: 'never.there'
+    timeout: 4000
+    optional: true
+- scrollUntilVisible:
+    element: 'Nothing was changed. Your role does not include the permission this needs.'
+    direction: UP
+- swipe:
+    direction: DOWN
+- takeScreenshot: product
+- runScript:
+    file: ../scripts/event-role-elsewhere.js
+    env:
+      ROLE: can_edit
+- openLink: ${METRO_URL}/--/demo/events/evt-wed-4?state=coverForbidden
+- extendedWaitUntil:
+    visible: 'never.there'
+    timeout: 6000
+    optional: true
+- tapOn:
+    id: 'event.edit.cover.save'
+- extendedWaitUntil:
+    visible: 'never.there'
+    timeout: 3000
+    optional: true
+- takeScreenshot: demo
+- setOrientation: PORTRAIT

@@ -1,0 +1,16 @@
+appId: host.exp.Exponent
+---
+- scrollUntilVisible:
+    element:
+      id: 'event.edit.cover.change'
+    direction: DOWN
+- tapOn:
+    id: 'event.edit.cover.change'
+- runFlow:
+    file: _sc52652-pick.yaml
+    env:
+      TILE: ${TILE}
+- swipe:
+    direction: DOWN
+- swipe:
+    direction: DOWN

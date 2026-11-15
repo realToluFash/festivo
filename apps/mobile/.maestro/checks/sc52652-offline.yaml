@@ -1,0 +1,32 @@
+# sc-52652: a photo picked and uploaded, then the API stops (from the shell, on the go-offline screenshot): Use this photo's refusal shows in the top notice.
+appId: host.exp.Exponent
+---
+- runScript:
+    file: ../scripts/event-role-elsewhere.js
+    env:
+      ROLE: can_edit
+- runFlow: _sc52652-open.yaml
+- tapOn:
+    id: 'event.edit.cover.upload'
+- runFlow:
+    file: _sc52652-pick.yaml
+    env:
+      TILE: '50%,74%'
+- extendedWaitUntil:
+    visible:
+      id: 'event.edit.cover.change'
+    timeout: 30000
+- takeScreenshot: go-offline
+- extendedWaitUntil:
+    visible: 'never.there'
+    timeout: 30000
+    optional: true
+- tapOn:
+    id: 'event.edit.cover.save'
+- extendedWaitUntil:
+    visible: 'never.there'
+    timeout: 8000
+    optional: true
+- swipe:
+    direction: DOWN
+- takeScreenshot: offline
