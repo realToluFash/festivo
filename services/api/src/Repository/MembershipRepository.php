@@ -220,38 +220,64 @@ final class MembershipRepository extends ServiceEntityRepository
             ->setParameter('active', MembershipStatus::Active);
     }
 
-    /** @return list<Membership> the members with no Google or Apple linked, by name */
-    public function findActiveWithoutProviderIn(Organisation $organisation): array
+    /** @return list<Membership> at most $limit active members other than $reader with no Google or Apple linked, by name */
+    public function findActiveWithoutProviderIn(Organisation $organisation, User $reader, int $limit): array
     {
         /** @var list<Membership> */
-        return $this->createQueryBuilder('m')
-            ->join('m.user', 'u')
-            ->where('m.organisation = :organisation')
-            ->andWhere('m.status = :active')
-            ->andWhere('NOT EXISTS (SELECT 1 FROM ' . ProviderIdentity::class . ' p WHERE p.user = u)')
-            ->setParameter('organisation', $organisation)
-            ->setParameter('active', MembershipStatus::Active)
+        return $this->withoutProvider($organisation, $reader)
             ->orderBy('u.name', 'ASC')
             ->addOrderBy('m.id', 'ASC')
+            ->setMaxResults($limit)
             ->getQuery()
             ->getResult();
     }
 
-    /** @return list<Membership> the active members with no two-factor on, by name (sc-609) */
-    public function findActiveWithoutTwoFactorIn(Organisation $organisation): array
+    public function countActiveWithoutProviderIn(Organisation $organisation, User $reader): int
+    {
+        return (int) $this->withoutProvider($organisation, $reader)->select('COUNT(m.id)')->getQuery()->getSingleScalarResult();
+    }
+
+    /** @return list<Membership> at most $limit active members other than $reader with no two-factor on, by name (sc-609) */
+    public function findActiveWithoutTwoFactorIn(Organisation $organisation, User $reader, int $limit): array
     {
         /** @var list<Membership> */
+        return $this->withoutTwoFactor($organisation, $reader)
+            ->orderBy('u.name', 'ASC')
+            ->addOrderBy('m.id', 'ASC')
+            ->setMaxResults($limit)
+            ->getQuery()
+            ->getResult();
+    }
+
+    public function countActiveWithoutTwoFactorIn(Organisation $organisation, User $reader): int
+    {
+        return (int) $this->withoutTwoFactor($organisation, $reader)->select('COUNT(m.id)')->getQuery()->getSingleScalarResult();
+    }
+
+    private function withoutProvider(Organisation $organisation, User $reader): QueryBuilder
+    {
         return $this->createQueryBuilder('m')
             ->join('m.user', 'u')
             ->where('m.organisation = :organisation')
             ->andWhere('m.status = :active')
+            ->andWhere('u <> :reader')
+            ->andWhere('NOT EXISTS (SELECT 1 FROM ' . ProviderIdentity::class . ' p WHERE p.user = u)')
+            ->setParameter('organisation', $organisation)
+            ->setParameter('active', MembershipStatus::Active)
+            ->setParameter('reader', $reader);
+    }
+
+    private function withoutTwoFactor(Organisation $organisation, User $reader): QueryBuilder
+    {
+        return $this->createQueryBuilder('m')
+            ->join('m.user', 'u')
+            ->where('m.organisation = :organisation')
+            ->andWhere('m.status = :active')
+            ->andWhere('u <> :reader')
             ->andWhere('NOT EXISTS (SELECT 1 FROM ' . TwoFactorFactor::class . ' f WHERE f.user = u AND f.activatedAt IS NOT NULL)')
             ->setParameter('organisation', $organisation)
             ->setParameter('active', MembershipStatus::Active)
-            ->orderBy('u.name', 'ASC')
-            ->addOrderBy('m.id', 'ASC')
-            ->getQuery()
-            ->getResult();
+            ->setParameter('reader', $reader);
     }
 
     /** @return list<Membership> active, past the deadline for two-factor of everyone, still without it, and not yet recorded as held back (sc-609) */
@@ -276,6 +302,7 @@ final class MembershipRepository extends ServiceEntityRepository
             ->update()
             ->set('m.twoFactorBlockedAt', 'NULL')
             ->where('m.organisation = :organisation')
+            ->andWhere('m.twoFactorBlockedAt IS NOT NULL')
             ->setParameter('organisation', $organisation)
             ->getQuery()
             ->execute();

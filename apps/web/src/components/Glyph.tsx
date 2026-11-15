@@ -239,6 +239,33 @@ const GLYPHS = {
     { d: 'M8.5 6.3A6 6 0 0 1 17.6 10H18a4 4 0 0 1 2.4 7.2' },
     { d: 'M16 18H7a5 5 0 0 1-1.6-9.7' },
   ],
+  round: [
+    { cx: 12, cy: 12, r: 5 },
+    { cx: 12, cy: 3.5, r: 1.5 },
+    { cx: 12, cy: 20.5, r: 1.5 },
+    { cx: 3.5, cy: 12, r: 1.5 },
+    { cx: 20.5, cy: 12, r: 1.5 },
+  ],
+  rect: [
+    { x: 4, y: 9, w: 16, h: 6, rx: 1.5 },
+    { cx: 8, cy: 5, r: 1.5 },
+    { cx: 16, cy: 5, r: 1.5 },
+    { cx: 8, cy: 19, r: 1.5 },
+    { cx: 16, cy: 19, r: 1.5 },
+  ],
+  head: [
+    { x: 3, y: 7, w: 18, h: 5, rx: 1.5 },
+    { cx: 7, cy: 17, r: 1.5 },
+    { cx: 12, cy: 17, r: 1.5 },
+    { cx: 17, cy: 17, r: 1.5 },
+  ],
+  cocktail: [
+    { cx: 12, cy: 12, r: 3.5 },
+    { x: 10, y: 2.5, w: 4, h: 4, rx: 1 },
+    { x: 10, y: 17.5, w: 4, h: 4, rx: 1 },
+    { x: 2.5, y: 10, w: 4, h: 4, rx: 1 },
+    { x: 17.5, y: 10, w: 4, h: 4, rx: 1 },
+  ],
 } satisfies Record<string, readonly Shape[]>;
 
 export type GlyphName = keyof typeof GLYPHS;

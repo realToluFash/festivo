@@ -70,5 +70,19 @@
     "eventChanges.email.footer": "You're getting this because you are on {event} at {organisation}. To stop these emails, turn off Event changes email in Notification settings.",
     "eventChanges.email.footerEventDay": "You're getting this because you are on {event} at {organisation}. To stop these emails, turn off Event day email in Notification settings.",
     "limits.calendar_feed": "This calendar link has been fetched too often. Try again {hour, plural, other {at {time}}}.",
-    "validation.guests_too_many": "You can act on up to {most, number, ::group-auto} guests at once. Narrow the list with a tab, a search or a filter, then select again."
+    "validation.guests_too_many": "You can act on up to {most, number, ::group-auto} guests at once. Narrow the list with a tab, a search or a filter, then select again.",
+    "seating.table_default_name": "Table {n}",
+    "seating.items_outside": "{count, plural, one {{count, number, ::group-auto} item sits} other {{count, number, ::group-auto} items sit}} outside {width} × {roomLength}. Move them first.",
+    "validation.seating_table_name_required": "Enter a name for the table.",
+    "validation.seating_table_name_too_long": "Use {count, number, ::group-auto} characters or fewer.",
+    "validation.seating_table_name_taken": "This plan already has a table called {name}.",
+    "validation.seating_table_seats_between": "Enter a number of seats from {min, number} to {max, number}.",
+    "validation.seating_table_places_between": "Enter a number of places from {min, number} to {max, number}.",
+    "validation.seating_table_size_between": "Enter a size from {min} to {max}.",
+    "validation.seating_table_ends_between": "Enter 0 to {max, number}, no more than the table has seats.",
+    "validation.seating_table_no_ends": "Only a rectangular or head table has seats on the ends.",
+    "validation.seating_table_does_not_turn": "Only a rectangular or head table turns.",
+    "validation.seating_table_rotation_steps": "Choose a rotation in 15° steps, from 0° to 345°.",
+    "validation.seating_table_no_such_seat": "Choose seats from 1 to {max, number}, each once.",
+    "validation.seating_table_section_unknown": "Choose one of this plan's sections, or no section."
 }

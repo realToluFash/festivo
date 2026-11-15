@@ -97,6 +97,11 @@ between is handled as they are then.
   each with an optional `except`, the person who acted. The fan-out reads roles; each
   delivery then asks the member's grants again, as narrowed by sign-in rules, and cancels
   when they no longer hold it.
+- **Members as of a moment**: `Audience::membersJoinedBy` leaves out whoever joined after it,
+  so a change told to every member is not told to somebody who joined under it. A change of
+  sign-in rules goes this way (`SignInRulesNotice`, sc-18317): one row per save, fanned out
+  by the worker, never one email per member written inside the request. It is not urgent,
+  so a code queued behind a million of them still goes first.
 - **Guests**: `Audience::guests($eventId, $conditions)` is accepted and stored. sc-3942
   adds its resolver with All guests and Choose guests, and sc-3957 adds the conditions to
   it; until sc-3942 merges such a row is recorded Failed.
