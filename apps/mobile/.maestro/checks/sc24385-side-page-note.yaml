@@ -1,0 +1,20 @@
+# sc-24385, the tablet on its side: the event's page, Details' Venue row with the arrival note under the address. Needs ${METRO_URL}, ${PLAIN}.
+appId: host.exp.Exponent
+---
+- runScript:
+    file: ../batch/helper.js
+    env:
+      ASK: /landscape # Maestro's LANDSCAPE leaves this portrait-native tablet portrait (sc-50565)
+- waitForAnimationToEnd
+- openLink: ${METRO_URL}/--/events/${PLAIN}
+- extendedWaitUntil:
+    visible:
+      id: 'events.page'
+    timeout: 90000
+- takeScreenshot: top
+- scrollUntilVisible:
+    element:
+      id: 'events.arrivalNote'
+    centerElement: true
+    timeout: 20000
+- takeScreenshot: venue
