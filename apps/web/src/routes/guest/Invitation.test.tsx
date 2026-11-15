@@ -821,6 +821,83 @@ describe('when answers have closed', () => {
   });
 });
 
+describe('Reply by (sc-3780)', () => {
+  const REPLY_BY = { ...PAGE, event: { ...PAGE.event, replyBy: '2030-11-10' } };
+  const SHUT = {
+    ...answered('coming'),
+    event: REPLY_BY.event,
+    answersOpen: false,
+    answersClosedOn: '2030-11-10',
+  };
+
+  it('says the day to answer by while answers are open', async () => {
+    api({ '/api/guest-links/page': [{ status: 200, body: REPLY_BY }] });
+    open();
+
+    expect(
+      await screen.findByText(
+        'Please answer by Sunday, November 10. You can change your answer any time before then.',
+      ),
+    ).toBeDefined();
+  });
+
+  it('says no day to answer by to a guest reopened after it', async () => {
+    const reopened = { ...PAGE, event: { ...PAGE.event, replyBy: '2020-11-10' } };
+    api({ '/api/guest-links/page': [{ status: 200, body: reopened }] });
+    open();
+
+    expect(await screen.findByRole('heading', { name: 'Your answer' })).toBeDefined();
+    expect(screen.queryByText(/Please answer by/)).toBeNull();
+  });
+
+  it('names the day answers closed, and lets a Coming guest update the kitchen', async () => {
+    const { sent } = api({
+      '/api/guest-links/page': [{ status: 200, body: SHUT }],
+      '/api/guest-links/needs': [{ status: 200, body: SHUT }],
+    });
+    open();
+
+    expect(
+      await screen.findByText(
+        'Answers closed on Sunday, November 10. Contact your host if something has changed.',
+      ),
+    ).toBeDefined();
+    fireEvent.click(screen.getByRole('button', { name: 'Update what the kitchen should know' }));
+    expect(
+      await screen.findByText(
+        'Your answer stays Coming, and who is coming with you stays the same.',
+      ),
+    ).toBeDefined();
+    fireEvent.click(screen.getByRole('button', { name: 'Save' }));
+
+    expect(await screen.findByText('Saved. The kitchen will see this.')).toBeDefined();
+    expect(sent.find((one) => one.path === '/api/guest-links/needs')?.body).toMatchObject({
+      token: TOKEN,
+    });
+  });
+
+  it('says a host recorded the answer, without You answered', async () => {
+    api({
+      '/api/guest-links/page': [
+        {
+          status: 200,
+          body: {
+            ...SHUT,
+            guest: {
+              ...SHUT.guest,
+              reply: { answer: 'coming', at: '2026-10-17T14:20:00+01:00', recordedBy: 'Amara' },
+            },
+          },
+        },
+      ],
+    });
+    open();
+
+    expect(await screen.findByRole('heading', { name: 'Your answer is Coming.' })).toBeDefined();
+    expect(screen.getByText(/^Amara recorded this answer for you on /u)).toBeDefined();
+  });
+});
+
 describe('when the event is paused, called off or over (sc-3591)', () => {
   const PAUSED_NOTICE =
     'This event is paused. Answers are closed. Nothing you sent has been lost, and this page will update if the event resumes.';

@@ -122,7 +122,7 @@ final class GuestAnswersTest extends ApiTestCase
         $page = $this->reply($this->token($guest), $answer);
 
         self::assertSame(200, $this->statusCode(), Json\encode($page));
-        self::assertSame(['answer' => $answer, 'at' => '2026-10-17T14:20:00+01:00'], $page['guest']['reply'] ?? null);
+        self::assertSame(['answer' => $answer, 'at' => '2026-10-17T14:20:00+01:00', 'recordedBy' => null], $page['guest']['reply'] ?? null);
         $row = $this->row($guest);
         self::assertSame([$answer, '2026-10-17T14:20:00+01:00', 'guestPage'], [$row['reply'], $row['repliedAt'], $row['replySource']]);
         self::assertSame([$companion], Vec\map(Type\vec(Type\dict(Type\string(), Type\mixed()))->coerce($row['companions']), static fn (array $one): mixed => $one['state']));
@@ -143,7 +143,7 @@ final class GuestAnswersTest extends ApiTestCase
         self::mockTime(new DateTimeImmutable('2026-10-21T09:00:00+00:00'));
         $again = $this->reply($token, 'coming');
 
-        self::assertSame(['answer' => 'coming', 'at' => '2026-10-19T10:00:00+01:00'], $again['guest']['reply'] ?? null);
+        self::assertSame(['answer' => 'coming', 'at' => '2026-10-19T10:00:00+01:00', 'recordedBy' => null], $again['guest']['reply'] ?? null);
         self::assertSame(['coming', '2026-10-19T10:00:00+01:00'], [$this->row($guest)['reply'], $this->row($guest)['repliedAt']]);
         self::assertSame($published, Iter\count(self::service(RecordingHub::class)->published));
         self::assertSame(1, Type\int()->coerce(self::em()->getConnection()->fetchOne('SELECT COUNT(*) FROM guests WHERE host_id IS NULL')));

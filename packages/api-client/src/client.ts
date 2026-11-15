@@ -49,6 +49,7 @@ import {
   type NewGuest,
   type PageNeeds,
   type PlaceChoice,
+  type PlaceNeeds,
   type TaggedGuest,
 } from './guests.ts';
 import { ApiError, ApiUnreachableError, type Problem, toProblem } from './problem.ts';
@@ -469,6 +470,12 @@ export interface OrganisationEvent {
   concludedAt: string | null;
   /** Why Delete event would be refused 409 `event_call_off_first` now, worked out by the server (sc-14445); absent reads as null. */
   deleteRefusedBecause?: DeleteRefusal | null;
+  /** The day guests answer by, in `timeZone` (sc-3780); null leaves replies open until the start, and absent reads as null. */
+  replyBy?: string | null;
+  /** 23:59:59 on `replyBy` in `timeZone`, with its offset; null with no Reply by. */
+  repliesCloseAt?: string | null;
+  /** The day replies closed in `timeZone`, the day of the save that closed them when one did; null while they are open. */
+  repliesClosedOn?: string | null;
   createdAt: string;
   /** What the caller may do on this event: a Member's follow their role on it, not the organisation's (sc-29915). */
   permissions: string[];
@@ -557,6 +564,8 @@ export interface NewEvent {
   /** Saved trimmed; null or blank removes it. Apart from `venue`, so a note can stand without one (sc-24385). */
   arrivalNote?: string | null;
   hosts?: string[];
+  /** A day before the start's, in `timeZone`; null removes it, refused 422 on `replyBy` otherwise (sc-3780). */
+  replyBy?: string | null;
 }
 
 /** One of the address lookup's suggestions (sc-53): the place's name, and the rest of its line. */
@@ -2160,6 +2169,18 @@ export class ApiClient {
     );
   }
 
+  /** Lets one guest answer again after Reply by, until the start (sc-3780); needs guests.manage, and is refused 409 `replies_open` while replies are open. */
+  async reopenGuestReplies(eventId: string, guestId: string): Promise<TaggedGuest> {
+    return this.taggedGuest(
+      await this.exchange<{ guest?: unknown }>(
+        `${this.guestPath(eventId, guestId)}/reopen-replies`,
+        {
+          method: 'POST',
+        },
+      ),
+    );
+  }
+
   /** In any phase; refused 409 `guest_replied` once they have replied, and `guest_not_marked_by_hand` for Soirely's message. */
   async markNotInvited(eventId: string, guestId: string): Promise<TaggedGuest> {
     return this.taggedGuest(
@@ -2388,6 +2409,28 @@ export class ApiClient {
         { anonymous: true },
       ),
       'POST /api/guest-links/reply',
+    );
+  }
+
+  /** After Reply by, a Coming guest's kitchen needs alone, until the start (sc-3780): the answer and who is coming stay. Refused 409 `replies_closed` from the start, and as sendGuestAnswer otherwise. */
+  async sendGuestNeeds(
+    token: string,
+    needs: PageNeeds | null,
+    companions: readonly PlaceNeeds[] = [],
+    unnamed: readonly PlaceNeeds[] = [],
+  ): Promise<GuestPage> {
+    return this.guestPageOf(
+      await this.post<unknown>(
+        '/api/guest-links/needs',
+        {
+          token,
+          ...(needs == null ? {} : { needs }),
+          ...(companions.length === 0 ? {} : { companions }),
+          ...(unnamed.length === 0 ? {} : { unnamed }),
+        },
+        { anonymous: true },
+      ),
+      'POST /api/guest-links/needs',
     );
   }
 
@@ -3813,6 +3856,9 @@ function asOrganisationEvent(raw: unknown): OrganisationEvent | null {
   const concludedAt = candidate.concludedAt;
   const deleteRefusedBecause = refusalOf(candidate.deleteRefusedBecause);
   const permissions = stringList(candidate.permissions);
+  const replyBy = candidate.replyBy ?? null;
+  const repliesCloseAt = candidate.repliesCloseAt ?? null;
+  const repliesClosedOn = candidate.repliesClosedOn ?? null;
 
   if (
     status == null ||
@@ -3826,6 +3872,9 @@ function asOrganisationEvent(raw: unknown): OrganisationEvent | null {
     cover === undefined ||
     venue === undefined ||
     !isStringOrNull(arrivalNote) ||
+    !isStringOrNull(replyBy) ||
+    !isStringOrNull(repliesCloseAt) ||
+    !isStringOrNull(repliesClosedOn) ||
     !Array.isArray(hosts) ||
     hosts.some((host) => typeof host !== 'string') ||
     fields.some((field) => typeof candidate[field] !== 'string') ||
@@ -3855,6 +3904,9 @@ function asOrganisationEvent(raw: unknown): OrganisationEvent | null {
     phase,
     concludedAt,
     deleteRefusedBecause,
+    ...(candidate.replyBy === undefined ? {} : { replyBy }),
+    ...(candidate.repliesCloseAt === undefined ? {} : { repliesCloseAt }),
+    ...(candidate.repliesClosedOn === undefined ? {} : { repliesClosedOn }),
     createdAt: candidate.createdAt as string,
     permissions,
   };
@@ -3893,7 +3945,10 @@ function asEventCover(raw: unknown): EventCover | undefined {
 
 function asGuestPage(raw: unknown): GuestPage | null {
   if (typeof raw !== 'object' || raw == null) return null;
-  const { guest, event, phase, started, answersOpen, language } = raw as Record<string, unknown>;
+  const { guest, event, phase, started, answersOpen, answersClosedOn, language } = raw as Record<
+    string,
+    unknown
+  >;
   const shown = GUEST_PAGE_PHASES.find((known) => known === phase);
   if (typeof guest !== 'object' || guest == null || typeof event !== 'object' || event == null)
     return null;
@@ -3931,7 +3986,14 @@ function asGuestPage(raw: unknown): GuestPage | null {
   return {
     guest: {
       fullName: who.fullName,
-      reply: reply == null || answer == null ? null : { answer, at: reply.at as string },
+      reply:
+        reply == null || answer == null
+          ? null
+          : {
+              answer,
+              at: reply.at as string,
+              recordedBy: typeof reply.recordedBy === 'string' ? reply.recordedBy : null,
+            },
       needs,
       places: who.places,
       unnamed: unnamed.filter((one) => one != null),
@@ -3960,7 +4022,9 @@ function asGuestPage(raw: unknown): GuestPage | null {
               address: typeof venue.address === 'string' ? venue.address : null,
             },
       arrivalNote: typeof what.arrivalNote === 'string' ? what.arrivalNote : null,
+      replyBy: typeof what.replyBy === 'string' ? what.replyBy : null,
     },
+    answersClosedOn: typeof answersClosedOn === 'string' ? answersClosedOn : null,
     phase: shown,
     started,
     answersOpen,

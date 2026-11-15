@@ -31,6 +31,7 @@ import { Text } from './Text.tsx';
 
 export const EDIT_PARTS: readonly EditPart[] = [
   'dates',
+  'replyBy',
   'venue',
   'hosts',
   'type',
@@ -41,6 +42,7 @@ export const EDIT_PARTS: readonly EditPart[] = [
 
 const TITLE_KEY: Record<EditPart, string> = {
   dates: 'eventPage.dates',
+  replyBy: 'replyBy.label',
   venue: 'eventPage.venue',
   hosts: 'eventHosts.heading',
   type: 'eventForm.type',

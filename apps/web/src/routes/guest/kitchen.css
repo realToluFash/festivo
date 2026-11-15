@@ -437,6 +437,21 @@
   font-size: 17px;
 }
 
+:where(.guest-page) .gk-saved {
+  display: flex;
+  align-items: flex-start;
+  gap: 6px;
+  margin-top: 6px;
+  font: 500 17px/1.45 var(--fontFamily);
+  animation: guest-page-drop 120ms var(--gpEase);
+}
+
+:where(.guest-page) .gk-saved svg {
+  flex: none;
+  margin-top: 2px;
+  color: var(--colorAccent);
+}
+
 @media (prefers-reduced-motion: reduce) {
   :where(.guest-page) .gp-under > .gk {
     animation: none;
@@ -447,7 +462,8 @@
   }
 
   :where(.guest-page) .gk-error,
-  :where(.guest-page) .gk-line {
+  :where(.guest-page) .gk-line,
+  :where(.guest-page) .gk-saved {
     animation-name: guest-page-fade;
   }
 

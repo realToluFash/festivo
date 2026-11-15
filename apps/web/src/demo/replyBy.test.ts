@@ -10,7 +10,7 @@ import {
   replyBySays,
   haventRepliedOf,
   replyByAfterStart,
-  replyByCheck,
+  replyByCheckAt,
   rowDay,
   showsPreview,
 } from './replyBy.ts';
@@ -76,7 +76,7 @@ describe('the date to reply by (sc-3780)', () => {
     [null, '2026-11-04', 'save'],
   ] as const)('%s over %s is %s', (next, was, verdict) => {
     expect(
-      replyByCheck({ next, was, startsAt: STARTS, now: NOW, timeZone: ZONE, noReply: 25 }),
+      replyByCheckAt({ next, was, startsAt: STARTS, now: NOW, timeZone: ZONE, noReply: 25 }),
     ).toBe(verdict);
   });
 
@@ -107,9 +107,9 @@ describe('the date to reply by (sc-3780)', () => {
     };
 
     expect(gala.noReply).toBe(0);
-    expect(replyByCheck({ ...gala, next: '2026-11-02', startsAt: STARTS })).toBe('save');
-    expect(replyByCheck({ ...gala, next: '2026-11-03', startsAt: STARTS })).toBe('save');
-    expect(replyByCheck({ ...gala, next: '2026-11-05', startsAt: STARTS })).toBe('tooLate');
+    expect(replyByCheckAt({ ...gala, next: '2026-11-02', startsAt: STARTS })).toBe('save');
+    expect(replyByCheckAt({ ...gala, next: '2026-11-03', startsAt: STARTS })).toBe('save');
+    expect(replyByCheckAt({ ...gala, next: '2026-11-05', startsAt: STARTS })).toBe('tooLate');
     expect(datesAsk({ ...gala, moved: '2026-11-02', startsAt: '2026-11-03T18:00:00Z' })).toBeNull();
     expect(datesAsk({ ...gala, moved: '2026-11-03', startsAt: '2026-11-04T18:00:00Z' })).toBeNull();
   });

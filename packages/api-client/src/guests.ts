@@ -141,6 +141,12 @@ export interface GuestPagePlace {
   needs: GuestPageNeeds;
 }
 
+/** A place's kitchen needs alone, by its id, as Update what the kitchen should know sends them after Reply by (sc-3780). */
+export interface PlaceNeeds {
+  id: string;
+  needs: PageNeeds;
+}
+
 /** A place left unnamed, sent with Coming by its id, Coming or Not coming (sc-48740); without needs its record stays. */
 export interface PlaceChoice {
   id: string;
@@ -189,6 +195,8 @@ export interface Guest {
   /** Sent only with guests.manage (sc-3777); null for anyone else, and on the list the live topic publishes. */
   needs?: GuestNeeds | null;
   companions: Companion[];
+  /** Who let them answer again after Reply by, and when, in the event's zone (sc-3780); null until then, and absent reads as null. */
+  repliesReopened?: { by: string; at: string } | null;
 }
 
 /** Mark as not invited is offered only on a mark made by hand on a guest who has not replied. */
@@ -264,7 +272,7 @@ export interface GuestPage {
   guest: {
     fullName: string;
     /** `at` is in the event's zone. */
-    reply: { answer: GuestAnswer; at: string } | null;
+    reply: { answer: GuestAnswer; at: string; recordedBy?: string | null } | null;
     /** The guest's own, as the hosts and the guest last left them (sc-3778). */
     needs: GuestPageNeeds;
     /** How many companions the host saved places for, named or not (sc-3779). */
@@ -292,7 +300,11 @@ export interface GuestPage {
     venue: { name: string | null; address: string | null } | null;
     /** Shown as the host wrote it, with its line breaks, whether or not there is a venue (sc-24385). */
     arrivalNote: string | null;
+    /** The day to answer by, in `timeZone` (sc-3780); null when answers stay open until the start. */
+    replyBy?: string | null;
   };
+  /** The day this guest's answers closed by Reply by, in the event's zone; null while they may answer (sc-3780). */
+  answersClosedOn?: string | null;
   /** As the guest reads it (sc-3591): Paused, Called off and Finished each close answers with a notice. */
   phase: GuestPagePhase;
   /** From the start, in the event's zone. */
@@ -525,7 +537,17 @@ export function asGuest(value: unknown): Guest | null {
     invitation,
     needs: asNeeds(row.needs),
     companions: companions as Companion[],
+    repliesReopened: asReopened(row.repliesReopened),
   };
+}
+
+function asReopened(value: unknown): { by: string; at: string } | null {
+  if (typeof value !== 'object' || value == null) return null;
+  const reopened = value as Record<string, unknown>;
+  const by = text(reopened.by);
+  const at = text(reopened.at);
+
+  return by == null || at == null ? null : { by, at };
 }
 
 export function asGuestList(value: unknown): GuestList | null {

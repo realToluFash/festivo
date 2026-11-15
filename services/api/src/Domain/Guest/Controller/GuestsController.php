@@ -9,6 +9,7 @@ use App\Domain\Guest\GuestEditor;
 use App\Domain\Guest\GuestRules;
 use App\Domain\Guest\Http\GuestSerialiser;
 use App\Domain\Guest\Model\GroupChoice;
+use App\Domain\Guest\Reply\GuestRepliesReopener;
 use App\Entity\Event;
 use App\Entity\Guest;
 use App\Entity\User;
@@ -44,6 +45,7 @@ final readonly class GuestsController
         private MembershipDirectoryInterface $membershipDirectory,
         private GuestSerialiser $guestSerialiser,
         private SubscriberTokenIssuer $subscriberTokenIssuer,
+        private GuestRepliesReopener $guestRepliesReopener,
     ) {
     }
 
@@ -145,6 +147,14 @@ final readonly class GuestsController
             $this->guestEditor->edit($guest, $request->headers->get('If-Match'), $new, $ids, $this->user(), $body['allowDuplicate'] ?? false),
             contacts: true,
         );
+    }
+
+    /** Let them change their reply (sc-3780): this guest may answer after Reply by, until the start; refused 409 `replies_open` while replies are open. */
+    #[Route('/api/events/{eventId}/guests/{guestId}/reopen-replies', name: 'guests_reopen_replies', methods: ['POST'])]
+    #[InEvent(Permission::GuestsManage)]
+    public function reopenReplies(string $eventId, string $guestId): JsonResponse
+    {
+        return $this->tagged($this->guestRepliesReopener->reopen($this->guest($this->event($eventId), $guestId), $this->user()), contacts: true);
     }
 
     /** A hub token for this event's guest list and its headcount; each add and edit publishes the whole list there, without contacts, so a manager reads them again. */

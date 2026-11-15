@@ -18,6 +18,7 @@ import {
   eventSaveRefusal,
   eventFormErrors,
   eventNameLength,
+  formatWallDay,
   hostCalled,
   hostErrorsOf,
   hostsChanged,
@@ -25,8 +26,11 @@ import {
   keepsLastHost,
   movedHost,
   removedHost,
+  replyByAfterStart,
+  replyByAsk,
   skippedLine,
   venueDraftOf,
+  wallDay,
 } from '@soirely/domain';
 import { useEffect, useId, useLayoutEffect, useMemo, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
@@ -52,15 +56,18 @@ import { currencyChoices, timeZoneChoices } from '../../../zoneAndCurrencyChoice
 import { discardCoverUpload, refusalOf } from './coverPhoto.ts';
 import { typeChoices } from './eventTypes.ts';
 import { useStartCarriesEnd } from './useStartCarriesEnd.ts';
+import { ReplyByAsk } from './ReplyByPart.tsx';
+import { replyBySaid, useHavent } from './replyByHavent.ts';
 
-export type Part = 'name' | 'dates' | 'venue' | 'hosts' | 'type' | 'currency' | 'cover';
+export type Part = 'name' | 'dates' | 'replyBy' | 'venue' | 'hosts' | 'type' | 'currency' | 'cover';
 
 export interface PartProps {
   event: OrganisationEvent;
   tag: string;
   onDirty: (dirty: boolean) => void;
   onClose: () => void;
-  onSaved: (saved: TaggedEvent) => void;
+  /** `said` is the toast, when it is more than Saved. */
+  onSaved: (saved: TaggedEvent, said?: string) => void;
   onLatest: (latest: TaggedEvent) => void;
 }
 
@@ -85,7 +92,11 @@ function useSave({ event, tag, onSaved }: Pick<PartProps, 'event' | 'tag' | 'onS
   const { t } = useTranslation();
   const [busy, setBusy] = useState(false);
 
-  async function save(typed: Typed, hosts: readonly HostRow[] | null): Promise<Saving> {
+  async function save(
+    typed: Typed,
+    hosts: readonly HostRow[] | null,
+    said?: (saved: TaggedEvent) => string | undefined,
+  ): Promise<Saving> {
     const changes = {
       ...eventChanges(event, typed),
       ...(hosts != null &&
@@ -104,7 +115,7 @@ function useSave({ event, tag, onSaved }: Pick<PartProps, 'event' | 'tag' | 'onS
     try {
       const saved = await api.updateEvent(event.id, changes, tag);
       setBusy(false);
-      onSaved(saved);
+      onSaved(saved, said?.(saved));
 
       return { kind: 'saved' };
     } catch (error) {
@@ -316,18 +327,22 @@ function wallOf(draft: EventDraft, end: boolean): Wall {
     : { date: draft.startDate, time: draft.startTime };
 }
 
-/** Dates: when it starts and ends in its zone; a new start carries the end with it. */
+/** Dates: when it starts and ends in its zone; a new start carries the end with it, and Reply by when the start reaches it (sc-3780). */
 export function DatesPart({
   event,
   tag,
+  now,
   onDirty,
   onClose,
   onSaved,
   onLatest,
   focusStart = 0,
-}: PartProps & { focusStart?: number }) {
+}: PartProps & { now: Date; focusStart?: number }) {
   const { t } = useTranslation();
   const id = useId();
+  const replyBy = event.replyBy ?? null;
+  const havent = useHavent(event, replyBy != null);
+  const [asking, setAsking] = useState(false);
   const saved = draftOf(event);
   const [draft, setDraft] = useState(saved);
   const [zone, setZone] = useState(event.timeZone);
@@ -356,10 +371,12 @@ export function DatesPart({
   const endSkipped = skippedLine(draft.endDate, draft.endTime, zone, dateLocale(), t);
   const endWrong = errors.endsAt ?? null;
   const startWrong = errors.startsAt ?? null;
+  const replyMoved = draft.startDate === '' ? null : replyByAfterStart(replyBy, draft.startDate);
+  const ask = replyByAsk(replyBy, replyMoved, wallDay(now, zone), havent?.count ?? 1);
 
   useDirty(changed, onDirty);
 
-  async function send(): Promise<void> {
+  async function send(asked: boolean): Promise<void> {
     const typed = {
       ...typedOf(event),
       draft: { ...draftOf(event), ...pick(draft) },
@@ -369,8 +386,13 @@ export function DatesPart({
 
     setErrors(found);
     if (Object.keys(found).length > 0) return;
+    if (ask != null && !asked) return setAsking(true);
 
-    const saving = await save(typed, null);
+    const saving = await save(typed, null, (saved) =>
+      replyMoved == null
+        ? undefined
+        : replyBySaid(saved.event.replyBy ?? replyMoved, now, saved.event.timeZone, t),
+    );
 
     outcome.took(saving);
     if (saving.kind === 'refused') setErrors(saving.errors);
@@ -384,7 +406,7 @@ export function DatesPart({
       busy={busy}
       onLatest={outcome.showLatest}
       onCancel={onClose}
-      onSave={() => void send()}
+      onSave={() => void send(false)}
     >
       {outcome.failed}
       <DateTime
@@ -409,6 +431,27 @@ export function DatesPart({
       {startSkipped != null && (
         <p id={`${id}-skip`} className="desk-help">
           {startSkipped}
+        </p>
+      )}
+      {asking && ask != null && replyMoved != null && (
+        <ReplyByAsk
+          asking={ask}
+          next={replyMoved}
+          havent={havent}
+          keep={t('eventEdit.keepEditing')}
+          onKeep={() => setAsking(false)}
+          onGo={() => {
+            setAsking(false);
+            void send(true);
+          }}
+        />
+      )}
+      {replyMoved != null && replyBy != null && (
+        <p className="ev-said" role="status">
+          {t('eventReplyBy.startMoves', {
+            old: formatWallDay(replyBy, dateLocale()),
+            next: formatWallDay(replyMoved, dateLocale()),
+          })}
         </p>
       )}
       <DateTime
