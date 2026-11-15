@@ -104,7 +104,6 @@ export function wallIn(at: string, zone: string): string {
   return `${part('year')}-${part('month')}-${part('day')}T${part('hour')}:${part('minute')}`;
 }
 
-/** A wall time in the event's zone as an instant with that zone's offset, for a `time` element's dateTime. */
 export function dateTimeOf(wall: string, zone: string): string {
   const guess = msOf(wall);
   const offsetAt = (ms: number) => msOf(wallIn(new Date(ms).toISOString(), zone)) - ms;
