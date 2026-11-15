@@ -603,13 +603,13 @@ const styles = StyleSheet.create({
   phone: {
     gap: tokens.spaceLg,
     paddingTop: tokens.spaceXl,
-    paddingHorizontal: tokens.spaceXl,
+    paddingHorizontal: tokens.spaceXxl,
     paddingBottom: tokens.space3xl,
   },
   phoneUntitled: {
     gap: tokens.spaceLg,
     paddingTop: 0,
-    paddingHorizontal: tokens.spaceXl,
+    paddingHorizontal: tokens.spaceXxl,
     paddingBottom: tokens.space3xl,
   },
   landscapeUntitled: {
@@ -621,7 +621,7 @@ const styles = StyleSheet.create({
   tablet: {
     gap: tokens.spaceLg,
     paddingTop: tokens.space3xl,
-    paddingHorizontal: tokens.space4xl,
+    paddingHorizontal: tokens.space5xl,
     paddingBottom: tokens.space6xl,
   },
 });
