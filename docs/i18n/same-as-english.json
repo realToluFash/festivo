@@ -26,6 +26,7 @@
     "mobile:guestNeeds.dietName.halal",
     "mobile:guestNeeds.dietName.kosher",
     "web:seating.kindRectangular",
+    "web:seating.shapeRectangularShort",
     "web:schedule.minutes_one",
     "web:schedule.minutes_other"
   ],
