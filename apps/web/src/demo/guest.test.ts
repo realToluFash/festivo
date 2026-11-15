@@ -3,6 +3,7 @@ import { join } from 'node:path';
 import { describe, expect, it } from 'vitest';
 
 import en from '../i18n/locales/en.json';
+import frenchWords from '../i18n/locales/fr.json';
 
 import {
   EVENT,
@@ -191,7 +192,9 @@ describe('the words and dates', () => {
     expect(wordsFor('pt').invited).toBe('Tem um convite');
     expect(fr.yourAnswer).toBe('Votre réponse');
     expect(fr.replyBy(dayOf('2026-10-30', 'fr'))).toBe(
-      '[Merci de répondre avant le vendredi 30 octobre. Vous pourrez modifier votre réponse d’ici là.]',
+      frenchWords.guest.replyBy === en.guest.replyBy
+        ? '[Merci de répondre avant le vendredi 30 octobre. Vous pourrez modifier votre réponse d’ici là.]'
+        : 'Merci de répondre au plus tard le vendredi 30 octobre. D’ici là, vous pouvez modifier votre réponse à tout moment.',
     );
     expect(fr.tell).toBe('Vous n’êtes pas Maria Fernanda Albuquerque Santos ? Prévenez-nous');
     expect(fr.hosts).toBe('Adaeze Obi et Tunde Bakare');
