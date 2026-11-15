@@ -74,6 +74,39 @@ describe('Groups on the list and the guest (sc-3775)', () => {
     );
   });
 
+  it('names a 60-character group whole in its chip and on its guests’ rows', SLOW, async () => {
+    const long = 'Thecousinsfromthebridesmotherssidewhoalltravelledinfromlagos';
+
+    await guests('groupsLongChip');
+
+    const chip = within(chips()).getByRole('button', { name: long });
+
+    expect(chip.getAttribute('aria-pressed')).toBe('true');
+    expect(chip.querySelector('svg')).not.toBeNull();
+    expect(
+      screen
+        .getAllByRole('link', { name: new RegExp(`Group: ${long}$`, 'u') })
+        .map((one) => one.querySelector('.gg-tag')?.textContent),
+    ).toEqual([long, long, long]);
+    expect(
+      within(chips()).getByRole('button', {
+        name: 'Colleagues from the Lagos office who came with a partner',
+      }),
+    ).toBeDefined();
+  });
+
+  it('keeps a one-word first name whole beside its dietary note and group', SLOW, async () => {
+    await guests('groupsLongGuest');
+
+    const row = screen.getByRole('link', { name: /^Dr Oluwatobilobaayomideoluwaseun Nwosu,/u });
+
+    expect(row.querySelector('.gs-row-mid .desk-row-name')?.textContent).toBe(
+      'Dr Oluwatobilobaayomideoluwaseun Nwosu',
+    );
+    expect(row.querySelector('.gg-tag')?.textContent).toBe('Bride’s side');
+    expect(row.querySelector('.gs-row-tags')?.textContent).toContain('Dietary notes');
+  });
+
   it('No group shows only guests without one', SLOW, async () => {
     await guests('groupsNoGroup');
 
