@@ -42,8 +42,7 @@ export const TYPING_PAUSE_MS = 250;
 
 export const SEARCH_WORDS = {
   search: 'Search',
-  placeholder: (reach: Reach) => FIELD_WORDS[kindsOf(reach)][0],
-  idle: (reach: Reach) => FIELD_WORDS[kindsOf(reach)][1],
+  idle: (reach: Reach) => HINT_WORDS[kindsOf(reach)],
   short: 'Type at least 2 characters.',
   searching: 'Searching…',
   showAll: 'Show all in Events',
@@ -61,16 +60,16 @@ export const SEARCH_WORDS = {
 
 type Kinds = '' | 'e' | 'g' | 'm' | 'eg' | 'em' | 'gm' | 'egm';
 
-/** One whole sentence for each combination of kinds, never assembled from words; nothing to find is "Search" and no hint. */
-const FIELD_WORDS: Record<Kinds, readonly [string, string | null]> = {
-  egm: ['Search events, guests and members', 'Find an event, a guest or a member.'],
-  eg: ['Search events and guests', 'Find an event or a guest.'],
-  em: ['Search events and members', 'Find an event or a member.'],
-  gm: ['Search guests and members', 'Find a guest or a member.'],
-  e: ['Search events', 'Find an event.'],
-  g: ['Search guests', 'Find a guest.'],
-  m: ['Search members', 'Find a member.'],
-  '': ['Search', null],
+/** The field reads "Search" for everyone (sc-53041); the hint names the scope, one whole sentence per combination, never assembled. */
+const HINT_WORDS: Record<Kinds, string | null> = {
+  egm: 'Find an event, a guest or a member.',
+  eg: 'Find an event or a guest.',
+  em: 'Find an event or a member.',
+  gm: 'Find a guest or a member.',
+  e: 'Find an event.',
+  g: 'Find a guest.',
+  m: 'Find a member.',
+  '': null,
 };
 
 function kindsOf(reach: Reach): Kinds {
