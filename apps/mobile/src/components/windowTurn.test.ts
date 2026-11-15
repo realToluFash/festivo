@@ -190,7 +190,7 @@ describe('a window that opens through a Modal of its own (sc-42690)', () => {
     const picker = read('ListPicker.tsx');
 
     it('hides on Android through the sheet’s own wait, from when its window is up until it has slid in', () => {
-      expect(picker).toContain('onShow={risen}');
+      expect(picker).toMatch(/onShow=\{\(\) => \{\s*letGoHeld\(\);\s*risen\(\);\s*\}\}/);
       expect(picker).toContain('const onScreen = windowUp && pickerShown;');
       expect(picker).toMatch(
         /useUnnamedWindow\(\s*Platform\.OS === 'android' && pickerShown,\s*onScreen,\s*null,\s*reduced \? 0 : WINDOW_ARRIVES_MS,?\s*\)/,
@@ -235,8 +235,16 @@ describe('a window that opens through a Modal of its own (sc-42690)', () => {
         /onPress=\{\(\) => \{\s*controlTaken\(\);\s*if \(Platform\.OS === 'android' && readerOn\)\s*heldBehind\.current = TextInput\.State\.currentlyFocusedInput\(\);\s*setClosed\(undefined\);\s*setOpen\(true\);/,
       );
       expect(picker).toMatch(
-        /const close = \(\) => \{\s*if \(Platform\.OS === 'android'\) setClosed\(\{\}\);[^}]*if \(heldBehind\.current != null\) blurNatively\(heldBehind\.current\);\s*heldBehind\.current = null;\s*setOpen\(false\);\s*\};/,
+        /const letGoHeld = \(\) => \{\s*if \(heldBehind\.current != null\) blurNatively\(heldBehind\.current\);\s*heldBehind\.current = null;\s*\};/,
       );
+      expect(picker).toMatch(
+        /const close = \(\) => \{\s*if \(Platform\.OS === 'android'\) setClosed\(\{\}\);\s*letGoHeld\(\);\s*setOpen\(false\);\s*\};/,
+      );
+    });
+
+    it("blurs the held field as the menu's window shows, so a Back straight after the tap closes with nothing held (qa #51835)", () => {
+      const shown = picker.slice(picker.indexOf('onShow={'), picker.indexOf('risen();'));
+      expect(shown).toContain('letGoHeld();');
     });
 
     it("blurs the field it found natively, which TextInput skips once the menu's search has taken focus (sc-44356, lead on #2327)", () => {
