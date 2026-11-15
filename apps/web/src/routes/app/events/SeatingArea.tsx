@@ -1325,6 +1325,24 @@ function SectionForm({ ctx, plan, id }: { ctx: PlanApi; plan: SeatingPlan; id: s
   );
 }
 
+/** Deleting a section names each kind of furniture it leaves with no section, the verb from their total; an empty section says nothing (sc-54060). */
+export function sectionDeleteWords(
+  t: ReturnType<typeof useTranslation>['t'],
+  locale: string,
+  { tables, rows, singleSeats }: SectionContents,
+): string | undefined {
+  const parts = [
+    tables > 0 ? t('seating.countTables', { count: tables }) : null,
+    rows > 0 ? t('seating.countRows', { count: rows }) : null,
+    singleSeats > 0 ? t('seating.countSingleSeats', { count: singleSeats }) : null,
+  ].filter((part): part is string => part != null);
+
+  if (parts.length === 0) return undefined;
+  const counts = listFormat(locale, { style: 'long', type: 'conjunction' }).format(parts);
+
+  return t('seating.sectionDeleteBody', { count: tables + rows + singleSeats, counts });
+}
+
 /** Delete the plan's ask (pm, 8 Nov 2026): what it deletes, sections counted, then who loses a seat; a sentence with nothing to say is left out. */
 export function deletePlanWords(
   t: ReturnType<typeof useTranslation>['t'],
@@ -1441,9 +1459,7 @@ function AskFor({
   return (
     <Ask
       title={t('seating.deleteNamed', { name: section.name })}
-      line={
-        section.tables === 0 ? undefined : t('seating.sectionDeleteBody', { count: section.tables })
-      }
+      line={sectionDeleteWords(t, currentLocale(), section)}
       keep={t('seating.keepIt')}
       go={t('seating.deleteSection')}
       busy={busy ? t('seating.deleteSection') : undefined}
