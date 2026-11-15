@@ -119,6 +119,8 @@ export interface Companion {
   /** Null when the host left it blank: shown as "Guest of <host>". */
   fullName: string | null;
   state: CompanionState;
+  /** What the guest, or a host recording for them, last chose for this place; kept while the place is held (sc-3787). */
+  coming: boolean;
   /** The guest gave this name on their own page; the host changing it clears it. */
   namedByGuest: boolean;
   /** Sent only with guests.manage; null for anyone else. */
@@ -463,12 +465,13 @@ function asCompanion(value: unknown): Companion | null {
   const row = value as Record<string, unknown>;
   const id = text(row.id);
   const state = COMPANION_STATES.find((known) => known === row.state);
-  if (id == null || state == null) return null;
+  if (id == null || state == null || typeof row.coming !== 'boolean') return null;
 
   return {
     id,
     fullName: text(row.fullName),
     state,
+    coming: row.coming,
     namedByGuest: row.namedByGuest === true,
     needs: asNeeds(row.needs),
   };

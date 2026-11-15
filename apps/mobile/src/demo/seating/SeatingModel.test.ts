@@ -891,6 +891,10 @@ describe('the room and the plan', () => {
     expect(m.outside).toEqual(['t5', 't10', 'bar2']);
   });
 
+  it('says it for one item outside the room, as the product does (sc-4000)', () => {
+    expect(say.outside(1, '20 m', '18 m')).toBe('1 item sits outside 20 m × 18 m. Move it first.');
+  });
+
   it('asks before deleting the plan with what it deletes, then who loses a seat, held chairs too (pm, 8 Nov)', () => {
     const m = startOf('deletePlan', 'landscape');
     expect(say.deletePlanBody(whatGoes(m), placedCount(m.items))).toBe(

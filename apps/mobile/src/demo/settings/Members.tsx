@@ -5,7 +5,6 @@ import { type RefObject, useEffect, useMemo, useRef, useState } from 'react';
 import {
   type NativeScrollEvent,
   type NativeSyntheticEvent,
-  ScrollView,
   type ScrollViewInstance,
   type ViewInstance,
 } from 'react-native';
@@ -63,14 +62,7 @@ import {
 import { memberLooking } from './sample.ts';
 import { useShell } from '../../components/settingsShell.ts';
 import { SummaryPage } from './SummaryPage.tsx';
-import {
-  Ask,
-  COLUMN,
-  ColumnHead,
-  FailedBlock,
-  LoadingBlock,
-  SummaryColumn,
-} from '../../components/Summary.tsx';
+import { Ask, FailedBlock, LoadingBlock, SummaryColumn } from '../../components/Summary.tsx';
 
 const MORE_MS = 1200;
 
@@ -443,17 +435,9 @@ function MembersScreen({ start }: { start: MembersStart }) {
   }
 
   const column = landscape ? (
-    <ScrollView
-      ref={listScroll}
-      onScroll={onScroll}
-      scrollEventThrottle={64}
-      contentContainerStyle={COLUMN}
-      keyboardShouldPersistTaps="handled"
-      showsVerticalScrollIndicator={false}
-    >
-      <ColumnHead title={t('settings.members')} onBack={() => shell.toSettings()} />
+    <SummaryColumn title={t('settings.members')} scrollRef={listScroll} onScroll={onScroll}>
       {list}
-    </ScrollView>
+    </SummaryColumn>
   ) : undefined;
 
   if (person != null)

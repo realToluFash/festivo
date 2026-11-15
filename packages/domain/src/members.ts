@@ -90,19 +90,22 @@ interface StandingMember {
   suspension?: { onlyOwner: boolean } | null;
 }
 
+/** The active owners among `members`, where every member is at hand; Settings › Members has the API's count (sc-49170). */
+export function activeOwners(members: readonly StandingMember[]): number {
+  return members.filter((one) => one.status === 'active' && one.role.seededAs === 'owner').length;
+}
+
+/** `owners` is the organisation's active owners, every one, not only those among the rows read. */
 export function memberStanding(
   member: StandingMember,
-  members: readonly StandingMember[],
+  owners: number,
   caller: { owns: boolean; manages: boolean; withholds: readonly { id: string }[] },
 ): MemberStanding {
   const owner = member.role.seededAs === 'owner';
-  const activeOwners = members.filter(
-    (one) => one.status === 'active' && one.role.seededAs === 'owner',
-  ).length;
 
   if (member.self) return owner ? 'selfOwner' : 'self';
   if (member.status === 'left_or_removed') return 'readOnly';
-  if (owner && member.status === 'active' && activeOwners === 1) return 'onlyOwner';
+  if (owner && member.status === 'active' && owners === 1) return 'onlyOwner';
   if (!caller.manages) return 'readOnly';
   // Decided 23 Oct (sc-564): nobody else could restore them, so members.manage may.
   if (owner && member.suspension?.onlyOwner === true) return 'suspendedOnlyOwner';

@@ -50,7 +50,7 @@ import './guests.css';
 import './menu.css';
 import './stations.css';
 
-/** /demo/events/evt-wed-4/staff (sc-3910): Stations on the event's Staff page at 1280 × 800, by ?state=. */
+/** /demo/events/evt-wed-4/staff/stations (sc-3910): Stations on the event's Staff page at 1280 × 800, by ?state=. */
 export function StationsPage() {
   const { id } = useParams();
   const [params] = useSearchParams();
@@ -816,7 +816,7 @@ function PeoplePanel({
 export function StaffTabs({ on, eventId, tell }: { on: string; eventId: string; tell: Tell }) {
   const pages: Record<string, string> = {
     Roster: `/demo/events/${eventId}/staff/roster`,
-    Stations: `/demo/events/${eventId}/staff`,
+    Stations: `/demo/events/${eventId}/staff/stations`,
   };
 
   return (

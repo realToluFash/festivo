@@ -1,4 +1,4 @@
-import { memberStanding, type MemberStanding } from '@soirely/domain';
+import { activeOwners, memberStanding, type MemberStanding } from '@soirely/domain';
 
 import { writtenTime } from '../clock.ts';
 import { crowdName } from '../sampleNames.ts';
@@ -285,7 +285,7 @@ export function standingOf(
   });
   const withheld = ORG_ROLES.filter((role) => !grantable(viewer).includes(role));
 
-  return memberStanding(shaped(person), people.map(shaped), {
+  return memberStanding(shaped(person), activeOwners(people.map(shaped)), {
     owns: viewer.owns,
     manages: viewer.manages,
     withholds: withheld.map((id) => ({ id })),
@@ -767,18 +767,7 @@ export const PEOPLE_PAGE = 50;
 /** The next page of People: on its way as the end nears, or failed with the rows already shown kept. */
 export type More = 'idle' | 'loading' | 'failed';
 
-/** The next page starts once the list's end is within one screen of the bottom of the view. */
-export function nearsEnd({
-  contentOffset,
-  contentSize,
-  layoutMeasurement,
-}: {
-  contentOffset: { y: number };
-  contentSize: { height: number };
-  layoutMeasurement: { height: number };
-}): boolean {
-  return contentOffset.y + layoutMeasurement.height * 2 >= contentSize.height;
-}
+export { nearsEnd } from '@soirely/domain';
 
 export const MORE_WORDS = {
   loading: 'Loading more people…',

@@ -214,7 +214,8 @@ export default function Demo() {
       <Route path="events/:id/seating" element={<SeatingPage />} />
       <Route path="events/:id/kitchen" element={<KitchenPage />} />
       <Route path="events/:id/menu" element={<MenuPage />} />
-      <Route path="events/:id/staff" element={<StationsPage />} />
+      <Route path="events/:id/staff" element={<Navigate to="roster" replace />} />
+      <Route path="events/:id/staff/stations" element={<StationsPage />} />
       <Route path="events/:id/staff/roster" element={<RosterPage />} />
       <Route path="events/:id/schedule" element={<SchedulePage />} />
       <Route path="events/:id/run" element={<RunViewPage />} />

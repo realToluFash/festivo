@@ -29,6 +29,7 @@ export function RoleScreen({
   organisation,
   member,
   list,
+  reread,
   roles,
   open,
   opener,
@@ -39,6 +40,8 @@ export function RoleScreen({
   organisation: Membership;
   member: OrganisationMember;
   list: MembersList;
+  /** The rows on screen read again after a change to `changed`, with their row as it now is wherever it is held. */
+  reread: (changed: string) => Promise<MembersList>;
   roles: readonly OrganisationRole[];
   open: boolean;
   opener: RefObject<ScreenReaderTarget | null>;
@@ -96,11 +99,7 @@ export function RoleScreen({
       setFailed(refusalTitle(error, t('membersScreen.actionFailed')));
       return;
     }
-    const list_ = await membersAfterWrite(
-      () => api.members(organisation.id),
-      list,
-      withRole(member.id, role),
-    );
+    const list_ = await membersAfterWrite(() => reread(member.id), list, withRole(member.id, role));
     onChanged(
       list_,
       t('membersScreen.roleNow', { name: member.user.name, role: roleName(t, role) }),

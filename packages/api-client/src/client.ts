@@ -15,6 +15,7 @@ import {
   type EventsSearch,
   isEventType,
   type Milestone,
+  MEMBERS_MOST,
   MILESTONE_OWNERS,
   type ServerClock,
   serverClock,
@@ -65,6 +66,13 @@ import {
   type TableShape,
   versionTag,
 } from './seating.ts';
+import {
+  type StaffAnswer,
+  type StaffDetails,
+  type StaffEntry,
+  asStaffEntry,
+  asStaffRoster,
+} from './staff.ts';
 
 /** A table call's answer: the plan whole, and the table it added or changed. */
 export interface SeatingWithTable {
@@ -867,9 +875,35 @@ export interface SentInvitation {
   revokedAt: string | null;
 }
 
+/** The options under Show that list memberships. Invited lists invitations, which every page carries whole. */
+export type MembersShow = 'all' | 'active' | 'waiting' | 'suspended' | 'former';
+
+export const MEMBERS_SHOWN: readonly MembersShow[] = [
+  'all',
+  'active',
+  'waiting',
+  'suspended',
+  'former',
+];
+
+/** Settings › Members (sc-49170): People under one option a page at a time, and everything else whole. */
 export interface MembersList {
   members: OrganisationMember[];
+  /** What the next page is read after; null once every person under the option is here. */
+  next: string | null;
+  counts: Record<MembersShow, number>;
+  owners: number;
+  faces: OrganisationMember[];
+  /** Everybody waiting for approval, only to those who decide on them. */
+  waiting: OrganisationMember[];
+  /** Every invitation sent, on a first page only: a later page carries none, and `withNextPage` keeps the ones held. */
   invitations: SentInvitation[];
+}
+
+export interface MembersPage {
+  show?: MembersShow;
+  after?: string | null;
+  limit?: number;
 }
 
 /** What deleting an organisation destroys, and until when support can restore it, as the reader writes it. */
@@ -2355,6 +2389,68 @@ export class ApiClient {
     };
   }
 
+  /** The event's roster in roster order; refused 403 without staff.read (sc-3906). */
+  async staff(eventId: string): Promise<StaffEntry[]> {
+    return this.staffRosterOf(await this.get<unknown>(this.staffPath(eventId)));
+  }
+
+  /** Refused `validation_failed` on each field, and 409 `staff_number_shared` naming `sharedWith` until `allowShared`. */
+  async addStaff(eventId: string, details: StaffDetails): Promise<StaffAnswer> {
+    return this.staffAnswerOf(await this.post<unknown>(this.staffPath(eventId), details));
+  }
+
+  /** As `addStaff`, asking only when the number changed; `mobile` and `email` are ignored once erased. */
+  async editStaff(eventId: string, staffId: string, details: StaffDetails): Promise<StaffAnswer> {
+    return this.staffAnswerOf(
+      await this.put<unknown>(`${this.staffPath(eventId)}/${encodeURIComponent(staffId)}`, details),
+    );
+  }
+
+  /** Refused 409 `event_concluded` once the event has finished. */
+  async removeStaff(eventId: string, staffId: string): Promise<void> {
+    await this.delete<unknown>(`${this.staffPath(eventId)}/${encodeURIComponent(staffId)}`);
+  }
+
+  async staffSubscription(eventId: string): Promise<RealtimeSubscription> {
+    const body = await this.post<{ token?: unknown; expiresAt?: unknown }>(
+      `${this.staffPath(eventId)}/subscriptions`,
+    );
+
+    return {
+      token: typeof body.token === 'string' ? body.token : '',
+      expiresAt: typeof body.expiresAt === 'string' ? body.expiresAt : '',
+    };
+  }
+
+  private staffRosterOf(body: unknown): StaffEntry[] {
+    return (
+      asStaffRoster(body) ??
+      (() => {
+        throw new Error(
+          'The API answered the roster in a shape this client does not know. Check StaffSerialiser in services/api.',
+        );
+      })()
+    );
+  }
+
+  private staffAnswerOf(body: unknown): StaffAnswer {
+    const record =
+      typeof body === 'object' && body != null ? (body as Record<string, unknown>) : {};
+    const staff = asStaffEntry(record.staff);
+
+    if (staff == null) {
+      throw new Error(
+        'The API answered a roster entry in a shape this client does not know. Check StaffSerialiser in services/api.',
+      );
+    }
+
+    return { staff, member: typeof record.member === 'string' ? record.member : null };
+  }
+
+  private staffPath(eventId: string): string {
+    return `/api/events/${encodeURIComponent(eventId)}/staff`;
+  }
+
   async guests(eventId: string): Promise<GuestList> {
     const list = asGuestList(await this.get<unknown>(this.guestsPath(eventId)));
 
@@ -2992,8 +3088,15 @@ export class ApiClient {
     return event;
   }
 
-  async members(organisationId: string): Promise<MembersList> {
-    const raw = await this.get<unknown>(`/api/orgs/${encodeURIComponent(organisationId)}/members`);
+  /** A page under `show` (All unless named), 50 people unless `limit` says, after `after`; the counts, Waiting and the invitations whole. */
+  async members(organisationId: string, page: MembersPage = {}): Promise<MembersList> {
+    const asked = Object.entries({ show: page.show, after: page.after, limit: page.limit })
+      .filter((pair): pair is [string, string | number] => pair[1] != null)
+      .map(([key, value]): [string, string] => [key, String(value)]);
+    const query = asked.length > 0 ? `?${new URLSearchParams(asked).toString()}` : '';
+    const raw = await this.get<unknown>(
+      `/api/orgs/${encodeURIComponent(organisationId)}/members${query}`,
+    );
     const list = asMembersList(raw);
 
     if (list == null) {
@@ -3003,6 +3106,40 @@ export class ApiClient {
     }
 
     return list;
+  }
+
+  /** One person's row as it now is; refused `not_found` for somebody the caller is not shown. */
+  async member(organisationId: string, membershipId: string): Promise<OrganisationMember> {
+    const body = await this.get<{ member?: unknown }>(
+      `/api/orgs/${encodeURIComponent(organisationId)}/members/${encodeURIComponent(membershipId)}`,
+    );
+    const member = asOrganisationMember(body?.member);
+
+    if (member == null) {
+      throw new Error(
+        'The API answered GET /api/orgs/{id}/members/{membershipId} in a shape this client does not know. Check MembersController in services/api.',
+      );
+    }
+
+    return member;
+  }
+
+  /** Every person under `show`, page after page, for a screen that has to choose among them all. */
+  async everyMember(organisationId: string, show: MembersShow): Promise<OrganisationMember[]> {
+    const read: OrganisationMember[] = [];
+    let after: string | null = null;
+
+    do {
+      const page: MembersList = await this.members(organisationId, {
+        show,
+        after,
+        limit: MEMBERS_MOST,
+      });
+      read.push(...page.members);
+      after = page.next;
+    } while (after != null);
+
+    return read;
   }
 
   /** Refused `already_a_member`, `grant_not_held`, `proof_required` into Owner, or a violation on `email` or `roleId`. Sending again replaces the link. */
@@ -4658,16 +4795,37 @@ function asSentInvitation(raw: unknown): SentInvitation | null {
 
 function asMembersList(raw: unknown): MembersList | null {
   const list = raw as Record<string, unknown> | null;
+  const counts = list?.counts as Record<string, unknown> | null | undefined;
 
-  if (!Array.isArray(list?.members) || !Array.isArray(list.invitations)) return null;
+  if (
+    !Array.isArray(list?.members) ||
+    !Array.isArray(list.faces) ||
+    !Array.isArray(list.waiting) ||
+    (list.invitations != null && !Array.isArray(list.invitations)) ||
+    typeof list.owners !== 'number' ||
+    (list.next != null && typeof list.next !== 'string') ||
+    MEMBERS_SHOWN.some((show) => typeof counts?.[show] !== 'number')
+  )
+    return null;
 
   const members = list.members.map(asOrganisationMember);
-  const invitations = list.invitations.map(asSentInvitation);
+  const faces = list.faces.map(asOrganisationMember);
+  const waiting = list.waiting.map(asOrganisationMember);
+  const invitations = ((list.invitations as unknown[] | undefined) ?? []).map(asSentInvitation);
 
-  if (members.some((one) => one == null) || invitations.some((one) => one == null)) return null;
+  if (
+    [...members, ...faces, ...waiting].some((one) => one == null) ||
+    invitations.some((one) => one == null)
+  )
+    return null;
 
   return {
     members: members as OrganisationMember[],
+    next: (list.next as string | null | undefined) ?? null,
+    counts: counts as Record<MembersShow, number>,
+    owners: list.owners,
+    faces: faces as OrganisationMember[],
+    waiting: waiting as OrganisationMember[],
     invitations: invitations as SentInvitation[],
   };
 }

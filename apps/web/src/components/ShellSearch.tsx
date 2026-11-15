@@ -34,6 +34,7 @@ import { meshFor } from '../mesh.ts';
 import { eventsSearchLink, keyHint, searchLink } from '../searchLinks.ts';
 import { Glyph } from './Glyph.tsx';
 import { type MarkKind, Tag, TextAction } from './SettingsParts.tsx';
+import './SettingsParts.css';
 import './search.css';
 import './today.css';
 
@@ -271,7 +272,7 @@ function SearchPalette({
       />
       <div
         ref={dialog}
-        className="search-panel"
+        className="desk search-panel"
         role="dialog"
         aria-modal="true"
         aria-label={t('search.row')}

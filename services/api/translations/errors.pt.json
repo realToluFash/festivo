@@ -29,6 +29,7 @@
     "seating_plan_exists": "Este evento já tem um plano de mesas.",
     "seating_section_limit": "Um plano pode ter até 30 zonas. Elimine uma para adicionar outra.",
     "guest_already_listed": "Esse nome já está na lista.",
+    "staff_number_shared": "Esse número já está na lista da equipa.",
     "replies_closed": "O prazo de resposta terminou.",
     "replies_open": "As respostas continuam abertas.",
     "reply_is_theirs": "Esta pessoa já respondeu por conta própria. Confirme que quer substituir a resposta.",
