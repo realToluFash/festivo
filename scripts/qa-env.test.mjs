@@ -1,4 +1,5 @@
 import {
+  copyFileSync,
   existsSync,
   mkdirSync,
   mkdtempSync,
@@ -9,6 +10,7 @@ import {
   symlinkSync,
   writeFileSync,
 } from 'node:fs';
+import { spawnSync } from 'node:child_process';
 import { X509Certificate } from 'node:crypto';
 import { tmpdir } from 'node:os';
 import { dirname, join } from 'node:path';
@@ -1645,6 +1647,24 @@ describe('the QA testers', () => {
     expect(testerOf('/Users/x/Projects/soirely-qa')).toBe(1);
     expect(testerOf('/Users/x/Projects/soirely-qa3')).toBe(3);
     expect(testerOf('/Users/x/Projects/soirely')).toBeNull();
+  });
+
+  it('refuse another tester when run from a QA worktree', () => {
+    const scripts = join(mkdtempSync(join(tmpdir(), 'qa-own-')), 'soirely-qa3', 'scripts');
+    mkdirSync(scripts, { recursive: true });
+    copyFileSync(
+      fileURLToPath(new URL('./qa-env.mjs', import.meta.url)),
+      join(scripts, 'qa-env.mjs'),
+    );
+    const result = spawnSync(
+      process.execPath,
+      [join(scripts, 'qa-env.mjs'), '--tester', '1', 'status'],
+      {
+        encoding: 'utf8',
+      },
+    );
+    expect(result.status).toBe(2);
+    expect(result.stderr).toContain('belongs to tester 3, not 1');
   });
 
   it('stop at five', () => {
