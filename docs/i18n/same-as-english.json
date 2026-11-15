@@ -134,6 +134,7 @@
     "web:schedule.date"
   ],
   "pt": [
+    "web:seating.shapeCocktailShort",
     "web:nav.menu",
     "web:app.name",
     "mobile:app.name",
