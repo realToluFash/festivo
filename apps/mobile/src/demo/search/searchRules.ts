@@ -378,7 +378,7 @@ export const SEARCH_BOARDS: readonly { title: string; what: string; href: string
   },
   {
     title: 'Search on Today’s cover',
-    what: 'In glass beside the bell, on the cover of a phone and an upright iPad',
+    what: 'In glass beside the bell, on the cover of a phone and an upright iPad; held sideways, the banner keeps the bell alone, as the sidebar’s row is Search',
     href: '/demo/search-header?on=today',
   },
   {
