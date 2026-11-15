@@ -1,0 +1,46 @@
+# sc-49861: ${EVENT_ID}'s type part opened as Can edit, then the role is Can view: Save says the role's refusal, no Try again, what was changed stays, and a second Save says the same.
+appId: host.exp.Exponent
+---
+- runScript:
+    file: ../scripts/event-role-elsewhere.js
+    env:
+      ROLE: can_edit
+- openLink: ${METRO_URL}/--/events/${EVENT_ID}
+- extendedWaitUntil:
+    visible:
+      id: 'events.page'
+    timeout: 30000
+- scrollUntilVisible:
+    element:
+      id: 'events.details.type'
+    direction: DOWN
+    centerElement: true
+- tapOn:
+    id: 'events.details.type'
+- extendedWaitUntil:
+    visible:
+      id: 'event.edit.type'
+    timeout: 20000
+- tapOn: 'Birthday'
+- runScript:
+    file: ../scripts/event-role-elsewhere.js
+    env:
+      ROLE: can_view
+- tapOn:
+    id: 'event.edit.type.save'
+- extendedWaitUntil:
+    visible: 'Nothing was changed. Your role does not include the permission this needs.'
+    timeout: 15000
+- assertNotVisible: '.*Try again.*'
+- takeScreenshot: forbidden
+- tapOn:
+    id: 'event.edit.type.save'
+- extendedWaitUntil:
+    visible: 'Nothing was changed. Your role does not include the permission this needs.'
+    timeout: 15000
+- assertNotVisible: '.*Try again.*'
+- takeScreenshot: forbidden-again
+- runScript:
+    file: ../scripts/event-role-elsewhere.js
+    env:
+      ROLE: can_edit
