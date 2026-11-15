@@ -475,7 +475,7 @@ export function EventScreen({
           bottom={
             phone
               ? phoneTabBarClearance(insets.bottom) + tokens.spaceXl + tokens.spaceHair
-              : insets.bottom + tokens.spaceLg
+              : Math.max(insets.bottom, tokens.spaceLg)
           }
         />
       )}
