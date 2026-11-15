@@ -996,7 +996,7 @@ export function GuestsArea({
                 <GuestsCover
                   mesh={meshFor(event.id)}
                   cover={card}
-                  stepRef={opener}
+                  makeLiveRef={opener}
                   onStep={onStep}
                 />
               )}
@@ -1394,12 +1394,12 @@ const STEP_KEY: Record<CoverStep, string> = {
 function GuestsCover({
   mesh,
   cover: { tag = null, says, line = null, step = null, also = null },
-  stepRef,
+  makeLiveRef,
   onStep,
 }: {
   mesh: Mesh;
   cover: Cover;
-  stepRef: RefObject<HTMLButtonElement | null>;
+  makeLiveRef: RefObject<HTMLButtonElement | null>;
   onStep: (step: CoverStep) => void;
 }) {
   const { t } = useTranslation();
@@ -1423,9 +1423,18 @@ function GuestsCover({
         {line != null && <p className="desk-on-card">{line}</p>}
         {step != null && (
           <div className={also == null ? 'ev-card-foot' : 'ev-card-foot gs-card-steps'}>
-            <CardStep ref={stepRef} label={t(STEP_KEY[step])} onClick={() => onStep(step)} />
+            <CardStep
+              ref={step === 'makeLive' ? makeLiveRef : undefined}
+              label={t(STEP_KEY[step])}
+              onClick={() => onStep(step)}
+            />
             {also != null && (
-              <button type="button" className="gs-card-also" onClick={() => onStep(also)}>
+              <button
+                ref={also === 'makeLive' ? makeLiveRef : undefined}
+                type="button"
+                className="gs-card-also"
+                onClick={() => onStep(also)}
+              >
                 {t(STEP_KEY[also])}
               </button>
             )}

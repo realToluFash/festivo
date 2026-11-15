@@ -4302,6 +4302,18 @@ describe('Nobody on the list yet, in each phase (sc-50409)', () => {
     expect(await screen.findByRole('dialog')).toBeDefined();
   });
 
+  it('returns focus to Make live, not Add guest, when its question is put off', async () => {
+    const card = await emptyOn(DRAFT);
+    const makeLive = within(card).getByRole('button', { name: 'Make live' });
+
+    fireEvent.click(makeLive);
+    fireEvent.click(
+      within(await screen.findByRole('dialog')).getByRole('button', { name: 'Not yet' }),
+    );
+
+    await waitFor(() => expect(document.activeElement).toBe(makeLive));
+  });
+
   it('draws Make live on glass beside Add guest, wrapping rather than truncating', () => {
     expect(cssRule('.ev-card-foot.gs-card-steps', GUESTS_CSS)).toContain('flex-flow: row wrap;');
     expect(cssRule('.gs-card-also', GUESTS_CSS)).toContain('background: var(--deskGlass);');
