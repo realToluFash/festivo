@@ -1706,6 +1706,7 @@
     "cancel": "Annuler",
     "currencyInUse": "La devise ne peut plus changer une fois que des montants sont enregistrés pour cet événement.",
     "notSaved": "Non enregistré. Vos modifications sont toujours là. Réessayez.",
+    "forbidden": "Nothing was changed. Your role does not include the permission this needs.",
     "changedElsewhere": "Non enregistré. Quelqu’un d’autre a modifié cet événement depuis que vous l’avez ouvert. Ce que vous avez saisi est toujours là.",
     "showLatest": "Afficher la dernière version",
     "showLatestTitle": "Afficher la dernière version ?",

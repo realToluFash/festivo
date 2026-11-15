@@ -1,0 +1,25 @@
+# sc-49445: Members' People filter, its trigger and its open menu, at the current orientation.
+appId: host.exp.Exponent
+---
+- setOrientation: PORTRAIT
+- openLink: ${METRO_URL}/--/settings/members
+- extendedWaitUntil:
+    visible: '{{t:membersScreen.title}}'
+    timeout: 30000
+- extendedWaitUntil:
+    visible:
+      id: members.filter
+    timeout: 300000
+- waitForAnimationToEnd:
+    timeout: 5000
+- takeScreenshot: members-top
+- scrollUntilVisible:
+    element:
+      id: members.filter
+    timeout: 20000
+- takeScreenshot: filter-trigger
+- tapOn:
+    id: members.filter
+- waitForAnimationToEnd:
+    timeout: 3000
+- takeScreenshot: filter-menu
