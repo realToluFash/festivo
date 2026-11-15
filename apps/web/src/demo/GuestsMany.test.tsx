@@ -218,7 +218,7 @@ describe('select many guests (sc-3776)', () => {
     await waitFor(() => expect(screen.getByRole('link', { name: /^Zainab Bello/u })).toBeTruthy());
     expect(page()).not.toContain('No guests match');
     expect(page()).not.toMatch(/\d+ of \d+ shown/u);
-    expect(screen.getByRole('checkbox', { name: 'Select all 1 shown' })).toBeTruthy();
+    expect(screen.getByRole('checkbox', { name: 'Select the 1 shown' })).toBeTruthy();
   });
 
   it('shows no boxes and no bar without guests.manage', SLOW, async () => {
