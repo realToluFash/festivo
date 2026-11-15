@@ -191,6 +191,8 @@ describe('the demo’s states', () => {
     expect(SEARCH_BOARDS.map((board) => board.href)).toEqual([
       ...SEARCH_STATES.map((state) => `/demo/search?state=${state.key}`),
       '/demo/search-header',
+      '/demo/search-header?on=today',
+      '/demo/search-header?on=today-now',
     ]);
   });
 });
