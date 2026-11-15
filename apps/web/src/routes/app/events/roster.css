@@ -432,3 +432,20 @@
     max-height: none;
   }
 }
+
+@media (width <= 720px) {
+  .rs.desk-page {
+    padding: var(--spaceXl) var(--spaceLg) var(--space3xl);
+  }
+
+  .rs .ev-crumb ol,
+  .rs .gs-top,
+  .rs .sn-card-top,
+  .rs .mn-panel-acts {
+    flex-wrap: wrap;
+  }
+
+  .rs .sn-card-names {
+    flex-basis: 12rem;
+  }
+}

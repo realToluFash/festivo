@@ -6,7 +6,6 @@ namespace App\Tests\Functional;
 
 use App\Domain\Organisation\OrganisationFounder;
 use App\Domain\Organisation\Roles\RoleAssignment;
-use App\Domain\Organisation\Roles\RoleManager;
 use App\Domain\User\TwoFactor\Recovery\RecoveryApprovers;
 use App\Domain\User\UserRegistrar;
 use App\Entity\Membership;
@@ -130,53 +129,24 @@ final class RolesTest extends ApiTestCase
     }
 
     #[Test]
-    public function aRoleNamesWhomItCountsByNameIgnoringCaseAndAccentsThenByEmail(): void
+    public function aRoleCountsWhomItHoldsActiveOrSuspended(): void
     {
         $door = $this->seeded(SeededRole::Member);
         $this->member('zara@ire.events', null, $door, name: 'zara Bello');
         $this->member('emeka@ire.events', null, $door, MembershipStatus::Suspended, name: 'Émeka Obi');
-        $this->member('ada2@ire.events', null, $door, name: 'Ada Okeke');
-        $this->member('ada1@ire.events', null, $door, name: 'Ada Okeke');
-        $this->member('bisi@ire.events', null, $door, name: 'bisi Ade');
         $this->member('left@ire.events', null, $door, MembershipStatus::LeftOrRemoved, name: 'Aaron Left');
         $this->member('asked@ire.events', null, $door, MembershipStatus::PendingApproval, name: 'Aaron Asked');
 
         $listed = Iter\first(Vec\filter($this->roles(), static fn (array $role): bool => $door === $role['id'])) ?? self::fail('no role');
 
-        self::assertSame(5, $listed['holders']);
-        self::assertSame([
-            ['name' => 'Ada Okeke', 'suspended' => false],
-            ['name' => 'Ada Okeke', 'suspended' => false],
-            ['name' => 'bisi Ade', 'suspended' => false],
-            ['name' => 'Émeka Obi', 'suspended' => true],
-            ['name' => 'zara Bello', 'suspended' => false],
-        ], $listed['holderNames']);
+        self::assertSame(2, $listed['holders']);
+        self::assertArrayNotHasKey('holderNames', $listed);
     }
 
     #[Test]
-    public function namesThatTieAreOrderedByEmail(): void
+    public function anOrganisationWithNobodyElseCountsOnlyItsOwner(): void
     {
-        $door = $this->seeded(SeededRole::Member);
-        $this->member('b@ire.events', null, $door, name: 'Ada Okeke');
-        $this->member('c@ire.events', null, $door, name: 'ada okeke');
-        $this->member('a@ire.events', null, $door, name: 'Ada Okeke');
-        $role = self::em()->find(Role::class, $door) ?? self::fail('no role');
-
-        self::assertSame(['a@ire.events', 'b@ire.events', 'c@ire.events'], Vec\map(
-            self::service(RoleManager::class)->holdersOf($role),
-            static fn (Membership $membership): string => $membership->getUser()->getPrimaryEmailAddress()?->getAddress() ?? '',
-        ));
-    }
-
-    #[Test]
-    public function anOrganisationWithNobodyElseListsOnlyItsOwner(): void
-    {
-        $roles = $this->roles();
-
-        foreach ($roles as $role) {
-            self::assertCount(Type\int()->coerce($role['holders']), Type\vec(Type\mixed())->coerce($role['holderNames']));
-        }
-        self::assertSame([['name' => 'Person', 'suspended' => false]], Iter\first($roles)['holderNames'] ?? null);
+        self::assertSame([1, 0, 0], Vec\map($this->roles(), static fn (array $role): mixed => $role['holders']));
     }
 
     #[Test]
