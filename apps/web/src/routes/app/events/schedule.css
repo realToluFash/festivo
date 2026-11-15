@@ -608,9 +608,19 @@
 }
 
 .ro-limit:focus,
-.ro-conflict:focus {
+.ro-conflict:focus,
+.ro-gone:focus {
   outline: 2px solid var(--colorAccent);
   outline-offset: 2px;
+}
+
+.ro .ro-gone p {
+  font-weight: 500;
+}
+
+.ro .ro-unsaid {
+  align-items: center;
+  margin: 0;
 }
 
 .ro-conflict-acts {
@@ -666,6 +676,7 @@
   .ro .mn-page > .mn-lock,
   .ro .mn-page > .mn-said,
   .ro .mn-page > .mn-failed,
+  .ro .mn-page > .ro-unsaid,
   .ro .mn-page > .mn-split {
     order: 2;
   }

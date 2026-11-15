@@ -207,7 +207,9 @@ function ScheduleView({
   const [picking, setPicking] = useState(false);
   const [picked, setPicked] = useState<string | null>(null);
   const [said, setSaid] = useState('');
-  const [failed, setFailed] = useState<string | null>(null);
+  const [failed, setFailed] = useState<'save' | 'delete' | null>(null);
+  const [gone, setGone] = useState(false);
+  const [unrestored, setUnrestored] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
   const focusAfter = useRef<string | null>(null);
 
@@ -234,6 +236,7 @@ function ScheduleView({
     setConflict(null);
     setAsking(false);
     setFailed(null);
+    setGone(false);
   }
 
   function openAdd() {
@@ -255,7 +258,8 @@ function ScheduleView({
     setPanel(null);
     setForm(null);
     reset();
-    focusAfter.current = back ?? (was?.kind === 'edit' ? `ro-open-${was.id}` : 'ro-add');
+    const there = was?.kind === 'edit' && items.some((one) => one.id === was.id);
+    focusAfter.current = back ?? (there ? `ro-open-${was.id}` : 'ro-add');
   }
 
   function kept(next: Schedule, itemId: string, words: string) {
@@ -266,6 +270,7 @@ function ScheduleView({
       setPicked(saved.place ?? main);
     }
     setSaid(words);
+    setUnrestored(null);
     close(`ro-open-${itemId}`);
   }
 
@@ -277,18 +282,18 @@ function ScheduleView({
   async function send(sent: Panel) {
     if (form == null || sent == null) return;
     const title = form.title.trim();
+    const changing = sent.kind === 'edit' && !gone;
     const details = detailsOf(form, formPlaces(items, form, main), main);
     setBusy(true);
     setFailed(null);
     try {
-      const answer =
-        sent.kind === 'edit'
-          ? await api.changeScheduleItem(event.id, sent.id, details, sent.version)
-          : await api.addScheduleItem(event.id, details);
+      const answer = changing
+        ? await api.changeScheduleItem(event.id, sent.id, details, sent.version)
+        : await api.addScheduleItem(event.id, details);
       kept(
         answer.schedule,
         answer.itemId,
-        t(sent.kind === 'edit' ? 'schedule.saved' : 'schedule.added', { title }),
+        t(changing ? 'schedule.saved' : 'schedule.added', { title }),
       );
     } catch (error) {
       if (error instanceof ApiError && error.code === 'validation_failed') {
@@ -305,17 +310,18 @@ function ScheduleView({
       } else if (error instanceof ApiError && error.status === 412) {
         const current = asScheduleItem(error.problem.current);
         if (current == null) {
-          setFailed(t('schedule.notSaved', { title }));
+          setFailed('save');
           focusAfter.current = 'ro-failed';
         } else {
           setConflict(current);
           focusAfter.current = 'ro-conflict';
         }
-      } else if (error instanceof ApiError && error.status === 404) {
-        setFailed(t('schedule.gone'));
-        focusAfter.current = 'ro-failed';
+      } else if (changing && error instanceof ApiError && error.status === 404) {
+        setGone(true);
+        setAsking(false);
+        focusAfter.current = 'ro-gone';
       } else {
-        setFailed(t('schedule.notSaved', { title }));
+        setFailed('save');
         focusAfter.current = 'ro-failed';
       }
     } finally {
@@ -326,7 +332,7 @@ function ScheduleView({
   function save() {
     if (form == null || busy) return;
     setRefused({});
-    if (panel?.kind === 'add' && items.length >= schedule.itemsMaximum) {
+    if ((panel?.kind === 'add' || gone) && items.length >= schedule.itemsMaximum) {
       setLimit(true);
       focusAfter.current = 'ro-limit';
       return;
@@ -368,16 +374,18 @@ function ScheduleView({
 
   async function remove() {
     if (editing == null || busy) return;
-    const gone = editing;
+    const leaving = editing;
     setBusy(true);
     setFailed(null);
     try {
-      onSchedule(await api.deleteScheduleItem(event.id, gone.id));
-      setDeleted(gone);
+      onSchedule(await api.deleteScheduleItem(event.id, leaving.id));
+      setDeleted(leaving);
       setSaid('');
+      setUnrestored(null);
       close('ro-add');
     } catch {
-      setFailed(t('schedule.notDeleted', { title: gone.title }));
+      setAsking(false);
+      setFailed('delete');
       focusAfter.current = 'ro-failed';
     } finally {
       setBusy(false);
@@ -388,6 +396,7 @@ function ScheduleView({
     if (deleted == null) return;
     const back = deleted;
     setDeleted(null);
+    setUnrestored(null);
     try {
       const answer = await api.addScheduleItem(event.id, detailsOfItem(back));
       onSchedule(answer.schedule);
@@ -395,7 +404,9 @@ function ScheduleView({
       setSaid(t('schedule.restored', { title: back.title }));
       focusAfter.current = `ro-open-${answer.itemId}`;
     } catch {
-      setSaid(t('schedule.notRestored', { title: back.title }));
+      setSaid('');
+      setUnrestored(back.title);
+      focusAfter.current = 'ro-unsaid';
     }
   }
 
@@ -477,6 +488,12 @@ function ScheduleView({
             </>
           )}
         </p>
+        {unrestored != null && (
+          <p id="ro-unsaid" className="ro-limit ro-unsaid ro-chrome" role="alert" tabIndex={-1}>
+            <Broken />
+            {t('schedule.notRestored', { title: unrestored })}
+          </p>
+        )}
         <div className="mn-split">
           <div
             id="ro-tables"
@@ -541,6 +558,7 @@ function ScheduleView({
               conflict={conflict}
               asking={asking}
               failed={failed}
+              gone={gone}
               busy={busy}
               onChange={(next) => {
                 setForm({ ...form, ...next });
@@ -554,6 +572,7 @@ function ScheduleView({
               onTheirs={useTheirs}
               onMine={keepMine}
               onAsk={() => {
+                setFailed(null);
                 setAsking(true);
                 focusAfter.current = 'ro-keep';
               }}
@@ -754,6 +773,7 @@ function ItemPanel({
   conflict,
   asking,
   failed,
+  gone,
   busy,
   onChange,
   onSave,
@@ -774,7 +794,8 @@ function ItemPanel({
   limit: boolean;
   conflict: ScheduleItem | null;
   asking: boolean;
-  failed: string | null;
+  failed: 'save' | 'delete' | null;
+  gone: boolean;
   busy: boolean;
   onChange: (next: Partial<Form>) => void;
   onSave: () => void;
@@ -820,17 +841,21 @@ function ItemPanel({
       <div className="mn-panel-body">
         {limit && (
           <div id="ro-limit" className="ro-limit" role="alert" tabIndex={-1}>
-            <span className="ro-ring" aria-hidden="true">
-              <Glyph name="clear" size={14} weight={2.6} />
-            </span>
+            <Broken />
             <p>{t('schedule.limit', { max: schedule.itemsMaximum })}</p>
           </div>
         )}
         {failed != null && (
-          <p id="ro-failed" className="mn-failed" role="alert" tabIndex={-1}>
-            <Glyph name="alert" size={17} weight={2.2} />
-            {failed}
-          </p>
+          <div id="ro-failed" className="ro-limit" role="alert" tabIndex={-1}>
+            <Broken />
+            <p>{t(failed === 'save' ? 'schedule.notSaved' : 'schedule.notDeleted')}</p>
+          </div>
+        )}
+        {gone && (
+          <div id="ro-gone" className="sn-alert ro-gone" role="alert" tabIndex={-1}>
+            <Glyph name="warn" size={18} weight={2.2} />
+            <p>{t('schedule.gone')}</p>
+          </div>
         )}
         {conflict != null && (
           <Conflict
@@ -998,7 +1023,7 @@ function ItemPanel({
         />
       </div>
       <div className="mn-panel-foot">
-        {asking && editing != null ? (
+        {asking && editing != null && !gone ? (
           <div className="ro-ask">
             <p className="ro-ask-words">{t('schedule.deleteAsk', { title: editing.title })}</p>
             <div className="ro-ask-acts">
@@ -1017,7 +1042,7 @@ function ItemPanel({
           </div>
         ) : (
           <div className="mn-panel-acts ro-acts">
-            {editing != null && (
+            {editing != null && !gone && (
               <button
                 id="ro-delete"
                 type="button"
@@ -1036,7 +1061,7 @@ function ItemPanel({
               aria-disabled={busy || undefined}
               onClick={onSave}
             >
-              {t('schedule.save')}
+              {t(gone ? 'schedule.addAgain' : 'schedule.save')}
             </button>
           </div>
         )}
@@ -1095,6 +1120,14 @@ function Conflict({
         </div>
       </div>
     </div>
+  );
+}
+
+function Broken() {
+  return (
+    <span className="ro-ring" aria-hidden="true">
+      <Glyph name="clear" size={14} weight={2.6} />
+    </span>
   );
 }
 

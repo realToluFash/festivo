@@ -419,6 +419,115 @@ describe('The event’s Schedule (sc-3893)', () => {
       showToGuests: true,
     });
   });
+
+  it('on a 404, offers Add it again in place of Delete item…, and Add it again adds the form', async () => {
+    const again = { ...DRINKS, id: 'it_again', title: 'Cocktails' };
+    const sent = await onSchedule({
+      'GET /api/events/ev_1/schedule': () => json({ schedule: schedule([DRINKS, PHOTOS]) }),
+      'PUT /api/events/ev_1/schedule/items/it_drinks': () => problem('not_found', 404),
+      'POST /api/events/ev_1/schedule/items': () =>
+        json({ schedule: schedule([again, PHOTOS]), itemId: 'it_again' }, 201),
+    });
+    fireEvent.click(await screen.findByRole('button', { name: 'Welcome drinks' }));
+    fireEvent.change(screen.getByLabelText('Title'), { target: { value: 'Cocktails' } });
+    fireEvent.click(screen.getByRole('button', { name: 'Save item' }));
+
+    await waitFor(() => expect(document.activeElement?.id).toBe('ro-gone'));
+    expect(document.getElementById('ro-gone')?.textContent).toBe(
+      'Someone else deleted this item while you had it open. Nothing was saved.',
+    );
+    expect(screen.getByRole('heading', { name: 'Edit item' })).toBeDefined();
+    expect((screen.getByLabelText('Title') as HTMLInputElement).value).toBe('Cocktails');
+    expect(screen.queryByRole('button', { name: 'Delete item…' })).toBeNull();
+    expect(screen.queryByRole('button', { name: 'Save item' })).toBeNull();
+
+    fireEvent.click(screen.getByRole('button', { name: 'Add it again' }));
+
+    expect(await screen.findByText('Cocktails added.')).toBeDefined();
+    const posted = sent.filter(({ line }) => line === 'POST /api/events/ev_1/schedule/items');
+    expect(posted).toHaveLength(1);
+    expect(posted[0]?.body).toMatchObject({ title: 'Cocktails', startsAt: '2030-11-15T18:00' });
+    expect(sent.filter(({ line }) => line.startsWith('PUT'))).toHaveLength(1);
+  });
+
+  it('Add it again is held to the 200 limit before sending', async () => {
+    const sent = await onSchedule({
+      'GET /api/events/ev_1/schedule': () =>
+        json({ schedule: schedule([DRINKS, PHOTOS], { itemsMaximum: 2 }) }),
+      'PUT /api/events/ev_1/schedule/items/it_drinks': () => problem('not_found', 404),
+    });
+    fireEvent.click(await screen.findByRole('button', { name: 'Welcome drinks' }));
+    fireEvent.click(screen.getByRole('button', { name: 'Save item' }));
+    await waitFor(() => expect(document.activeElement?.id).toBe('ro-gone'));
+
+    fireEvent.click(screen.getByRole('button', { name: 'Add it again' }));
+
+    await waitFor(() => expect(document.activeElement?.id).toBe('ro-limit'));
+    expect(
+      sent.filter(({ line }) => line.startsWith('POST /api/events/ev_1/schedule/items')),
+    ).toEqual([]);
+  });
+
+  it('says a failed save with the ✕ ring, keeps what was entered, and Save item retries', async () => {
+    await onSchedule({
+      'GET /api/events/ev_1/schedule': () => json({ schedule: schedule([DRINKS, PHOTOS]) }),
+      'PUT /api/events/ev_1/schedule/items/it_drinks': () => problem('internal_error', 500),
+    });
+    fireEvent.click(await screen.findByRole('button', { name: 'Welcome drinks' }));
+    fireEvent.change(screen.getByLabelText('Title'), { target: { value: 'Cocktails' } });
+    fireEvent.click(screen.getByRole('button', { name: 'Save item' }));
+
+    await waitFor(() => expect(document.activeElement?.id).toBe('ro-failed'));
+    const notice = document.getElementById('ro-failed');
+    expect(notice?.textContent).toBe('Not saved. What you entered is still here. Try again.');
+    expect(notice?.querySelector('.ro-ring')).not.toBeNull();
+    expect((screen.getByLabelText('Title') as HTMLInputElement).value).toBe('Cocktails');
+    expect(screen.getByRole('button', { name: 'Save item' })).toBeDefined();
+  });
+
+  it('a failed delete closes the confirm back to the footer and keeps the row', async () => {
+    await onSchedule({
+      'GET /api/events/ev_1/schedule': () => json({ schedule: schedule([DRINKS, PHOTOS]) }),
+      'DELETE /api/events/ev_1/schedule/items/it_drinks': () => problem('internal_error', 500),
+    });
+    fireEvent.click(await screen.findByRole('button', { name: 'Welcome drinks' }));
+    fireEvent.click(screen.getByRole('button', { name: 'Delete item…' }));
+    fireEvent.click(screen.getByRole('button', { name: 'Delete item' }));
+
+    await waitFor(() => expect(document.activeElement?.id).toBe('ro-failed'));
+    expect(document.getElementById('ro-failed')?.textContent).toBe(
+      'Not deleted. Nothing was changed. Try again.',
+    );
+    expect(screen.queryByText('Delete Welcome drinks?')).toBeNull();
+    expect(screen.getByRole('button', { name: 'Delete item…' })).toBeDefined();
+    expect(screen.getByRole('button', { name: 'Welcome drinks' })).toBeDefined();
+  });
+
+  it('a failed Undo says so with the ✕ ring, and shows no tick', async () => {
+    await onSchedule({
+      'GET /api/events/ev_1/schedule': () => json({ schedule: schedule([DRINKS, PHOTOS]) }),
+      'DELETE /api/events/ev_1/schedule/items/it_drinks': () =>
+        json({ schedule: schedule([PHOTOS]) }),
+      'POST /api/events/ev_1/schedule/items': () => problem('internal_error', 500),
+    });
+    fireEvent.click(await screen.findByRole('button', { name: 'Welcome drinks' }));
+    fireEvent.click(screen.getByRole('button', { name: 'Delete item…' }));
+    fireEvent.click(screen.getByRole('button', { name: 'Delete item' }));
+    expect(await screen.findByText('Welcome drinks deleted.')).toBeDefined();
+    await act(async () => {
+      fireEvent.click(screen.getByRole('button', { name: 'Undo' }));
+    });
+
+    await waitFor(() => expect(document.activeElement?.id).toBe('ro-unsaid'));
+    const line = document.getElementById('ro-unsaid');
+    expect(line?.getAttribute('role')).toBe('alert');
+    expect(line?.textContent).toBe(
+      'Welcome drinks was not brought back. Add it again with Add item.',
+    );
+    expect(line?.querySelector('.ro-ring')).not.toBeNull();
+    expect(document.querySelector('.mn-said')?.textContent).toBe('');
+    expect(document.querySelector('.mn-said svg')).toBeNull();
+  });
 });
 
 class StubSource {
@@ -485,7 +594,7 @@ describe('The Schedule’s form, while the hub moves the items (sc-3893)', () =>
     );
   });
 
-  it('says the item is gone when the hub drops it from an open form, and adds nothing', async () => {
+  it('says the item is gone when the hub drops it from an open form, and adds nothing unasked', async () => {
     const sent = await onSchedule({
       'GET /api/events/ev_1/schedule': () => json({ schedule: schedule([DRINKS, PHOTOS]) }),
       'POST /api/events/ev_1/schedule/subscriptions': hub,
@@ -498,10 +607,11 @@ describe('The Schedule’s form, while the hub moves the items (sc-3893)', () =>
 
     fireEvent.click(screen.getByRole('button', { name: 'Save item' }));
 
-    await waitFor(() => expect(document.activeElement?.id).toBe('ro-failed'));
-    expect(document.getElementById('ro-failed')?.textContent).toContain(
-      'Someone else deleted this item. Nothing was saved.',
+    await waitFor(() => expect(document.activeElement?.id).toBe('ro-gone'));
+    expect(document.getElementById('ro-gone')?.textContent).toContain(
+      'Someone else deleted this item while you had it open. Nothing was saved.',
     );
+    expect(screen.getByRole('button', { name: 'Add it again' })).toBeDefined();
     expect(
       sent.filter(({ line }) => line.startsWith('POST /api/events/ev_1/schedule/items')),
     ).toEqual([]);

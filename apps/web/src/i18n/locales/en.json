@@ -3446,6 +3446,7 @@
     "close": "Close",
     "back": "Back to schedule",
     "save": "Save item",
+    "addAgain": "Add it again",
     "cancel": "Cancel",
     "optional": "Optional",
     "titleLabel": "Title",
@@ -3468,7 +3469,7 @@
     "weekdayAndTime": "{{weekday}} {{time}}",
     "zoneLine": "Times are in {{zone}}.",
     "newPlace": "A new place. {{name}} gets its own table on this day.",
-    "moves": "[It moves to {{place}}’s table and keeps its start.]",
+    "moves": "It moves to {{place}}’s table and keeps its start.",
     "blankTitle": "Enter a title.",
     "longTitle": "That title is {{n, number}} characters. Use {{max, number}} or fewer.",
     "noStart": "Choose the date and time it starts.",
@@ -3477,7 +3478,7 @@
     "longRole": "That role is {{n, number}} characters. Use {{max, number}} or fewer.",
     "longNote": "That note is {{n, number}} characters. Use {{max, number}} or fewer.",
     "limit": "This schedule has {{max, number}} items, the most an event can hold. Delete one to add another. Nothing was saved.",
-    "conflict": "[Someone else changed this item while you had it open. Choose which version to keep.]",
+    "conflict": "Someone else changed this item while you had it open. Choose which version to keep.",
     "theirs": "Theirs",
     "yours": "Yours",
     "field": "Field",
@@ -3497,9 +3498,9 @@
     "loading": "Loading the schedule",
     "failed": "The schedule did not load.",
     "tryAgain": "Try again",
-    "notSaved": "[{{title}} was not saved. What you entered is still here. Try again.]",
-    "notDeleted": "[{{title}} was not deleted. Try again.]",
-    "notRestored": "[{{title}} could not be brought back. Add it again.]",
-    "gone": "[Someone else deleted this item. Nothing was saved.]"
+    "notSaved": "Not saved. What you entered is still here. Try again.",
+    "notDeleted": "Not deleted. Nothing was changed. Try again.",
+    "notRestored": "{{title}} was not brought back. Add it again with Add item.",
+    "gone": "Someone else deleted this item while you had it open. Nothing was saved."
   }
 }
