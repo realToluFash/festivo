@@ -1,0 +1,10 @@
+# Today, at rest with the organisation's name in the top band, for a TalkBack pass on the switcher. sc-42690.
+appId: host.exp.Exponent
+---
+- openLink: ${METRO_URL}/--/
+- extendedWaitUntil:
+    visible:
+      id: 'home.switchOrganisation'
+    timeout: 45000
+- waitForAnimationToEnd
+- takeScreenshot: today

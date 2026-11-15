@@ -1,0 +1,21 @@
+# The Calendar in month view with ${DAY} showing, at rest, for a TalkBack double tap on that day that opens its day dialog (tablet portrait). sc-42690.
+appId: host.exp.Exponent
+---
+- openLink: ${METRO_URL}/--/calendar
+- extendedWaitUntil:
+    visible:
+      id: 'calendar.show'
+    timeout: 30000
+- runFlow:
+    when:
+      visible:
+        id: 'calendar.view.month'
+    commands:
+      - tapOn:
+          id: 'calendar.view.month'
+- extendedWaitUntil:
+    visible:
+      id: 'calendar.day.${DAY}'
+    timeout: 15000
+- waitForAnimationToEnd
+- takeScreenshot: calendar-month

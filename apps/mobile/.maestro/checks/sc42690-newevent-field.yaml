@@ -1,0 +1,15 @@
+# New event, scrolled to the field ${FIELD} (eventForm.type, eventForm.timeZone, eventForm.currency), at rest for a TalkBack pass on its list picker. sc-42690.
+appId: host.exp.Exponent
+---
+- openLink: ${METRO_URL}/--/events/new
+- extendedWaitUntil:
+    visible:
+      id: 'eventForm.name'
+    timeout: 30000
+- scrollUntilVisible:
+    element:
+      id: '${FIELD}'
+    direction: DOWN
+    centerElement: true
+- waitForAnimationToEnd
+- takeScreenshot: field-ready
