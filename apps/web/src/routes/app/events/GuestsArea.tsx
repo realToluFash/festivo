@@ -105,6 +105,7 @@ import {
 import {
   type Action,
   type Line,
+  type MarkQuestion,
   companionsWith,
   markQuestion,
   onlyCompanions,
@@ -286,7 +287,8 @@ export function GuestsArea({
   const [selectionCleared, setSelectionCleared] = useState(false);
   const [sheet, setSheet] = useState<{ refused: string | null } | null>(null);
   const [removing, setRemoving] = useState<{ busy: boolean } | null>(null);
-  const [marking, setMarking] = useState(false);
+  // The guests selected as the dialog opened: one removed meanwhile is still sent, so the line counts it (sc-46880).
+  const [marking, setMarking] = useState<{ ids: string[]; asked: MarkQuestion } | null>(null);
   const [notLiveAt, setNotLiveAt] = useState<string | null>(null);
   const [line, setLine] = useState<Line | null>(null);
   const [removal, setRemoval] = useState<string | null>(null);
@@ -686,6 +688,7 @@ export function GuestsArea({
   const companionsPicked = companionsWith(guests, picked);
   const undoing = line?.kind === 'removed' && removal != null;
   const bar = manages && picked.size > 0 && (line == null || line.kind === 'undone');
+  const showsList = guests.length > 0 || line != null;
 
   function select(next: ReadonlySet<string>): void {
     setSelected(next);
@@ -705,7 +708,7 @@ export function GuestsArea({
     setLine(next);
     setSheet(null);
     setRemoving(null);
-    setMarking(false);
+    setMarking(null);
     focus('many-line');
   }
 
@@ -720,10 +723,10 @@ export function GuestsArea({
     const asked = markQuestion(guests, picked);
 
     if (asked.marks === 0) {
-      ended({ kind: 'nothing', already: asked.already.length });
+      ended({ kind: 'nothing', already: asked.already.length, gone: 0 });
       return;
     }
-    setMarking(true);
+    setMarking({ ids: [...picked], asked });
   }
 
   /** A phase that no longer invites is read again, so Mark as invited leaves the bar while the selection stays. */
@@ -734,7 +737,11 @@ export function GuestsArea({
         setSelected(NONE);
         setRecount((n) => n + 1);
         setAttempt((n) => n + 1);
-        ended({ kind: 'marked', marked, how });
+        ended(
+          marked.marked === 0
+            ? { kind: 'nothing', already: marked.already, gone: marked.gone }
+            : { kind: 'marked', marked, how },
+        );
       },
       (error: unknown) => {
         if (error instanceof ApiError && error.is('event_state_invalid')) {
@@ -746,7 +753,7 @@ export function GuestsArea({
           ended({ kind: 'notLive' });
           return;
         }
-        ended({ kind: 'failed', action: { kind: 'mark', how } });
+        ended({ kind: 'failed', action: { kind: 'mark', how, ids } });
       },
     );
   }
@@ -798,7 +805,7 @@ export function GuestsArea({
   }
 
   function retry(action: Action): void {
-    if (action.kind === 'mark') mark(action.how);
+    if (action.kind === 'mark') mark(action.how, action.ids);
     else if (action.kind === 'move') move(action.to);
     else removeMany();
   }
@@ -983,10 +990,10 @@ export function GuestsArea({
                   onStep={onStep}
                 />
               )}
-              {(guests.length > 0 || adding || grouping) && (
+              {(showsList || adding || grouping) && (
                 <div className="gs-cols">
                   <section className="gs-list" aria-label={t('eventPage.guests')}>
-                    {guests.length > 0 && counts != null && (
+                    {showsList && counts != null && (
                       <>
                         <SearchRow
                           q={q}
@@ -1299,14 +1306,14 @@ export function GuestsArea({
             onMove={(to) => move(to)}
           />
         )}
-        {marking && picked.size > 0 && (
+        {marking != null && (
           <MarkMany
-            asked={markQuestion(guests, picked)}
+            asked={marking.asked}
             onCancel={() => {
-              setMarking(false);
+              setMarking(null);
               focus('many-mark');
             }}
-            onMark={(how) => mark(how)}
+            onMark={(how) => mark(how, marking.ids)}
           />
         )}
         {removing != null && picked.size > 0 && (

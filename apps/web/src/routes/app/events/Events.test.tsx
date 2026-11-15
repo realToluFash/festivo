@@ -1972,8 +1972,9 @@ describe("An event's Overview (sc-22103)", () => {
   });
 
   it('keeps the Top above an area, with the area in a panel under it', async () => {
+    const ahead = { startsAt: '2030-11-14T16:00:00+01:00', endsAt: '2030-11-15T02:00:00+01:00' };
     signedIn();
-    answering({ 'GET /api/events/ev_1': () => json({ event: event() }) });
+    answering({ 'GET /api/events/ev_1': () => json({ event: event(ahead) }) });
     at('/app/events/ev_1/menu');
 
     await screen.findByRole('heading', { level: 1, name: 'Adaeze and Tunde' });

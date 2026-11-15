@@ -69,7 +69,12 @@ import { LIST_EDGES } from './listFrame.ts';
 import { useReadOut } from './ReadOut.tsx';
 import { MarkSlot } from './ReplyMark.tsx';
 import { FailedBlock, type StepProps } from './Summary.tsx';
-import { type Anchor, AnchoredMenu, anchorUnder } from './SummaryOverlays.tsx';
+import {
+  type Anchor,
+  AnchoredMenu,
+  anchorUnder,
+  useAnchorFollowsTurn,
+} from './SummaryOverlays.tsx';
 import { Row, RowList, TextAction } from './SummaryRows.tsx';
 import { Text, type TextHandle } from './Text.tsx';
 
@@ -723,6 +728,7 @@ function FilterChoice({
   const { t } = useTranslation();
   const trigger = useRef<ViewInstance>(null);
   const [at, setAt] = useState<Anchor | null>(null);
+  useAnchorFollowsTurn(trigger, at != null, setAt);
   const word = t(CHOICE_KEY[choice]);
   const figure = t('guestList.figure', { count: counts[choice] });
 

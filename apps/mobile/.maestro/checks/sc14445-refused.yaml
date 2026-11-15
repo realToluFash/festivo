@@ -1,0 +1,52 @@
+# sc-14445: Delete event on an event with a guest Invited opens on the refusal (no name field); Keep it closes it; the verb opens sc-3585's own confirmation and leaves the host on the page. Needs ${METRO_URL}, ${EV}.
+appId: host.exp.Exponent
+---
+- openLink: ${METRO_URL}/--/events/${EV}
+- extendedWaitUntil:
+    visible:
+      id: 'events.page'
+    timeout: 30000
+- scrollUntilVisible:
+    element:
+      id: 'events.delete'
+    centerElement: true
+    timeout: 30000
+- tapOn:
+    id: 'events.delete'
+- extendedWaitUntil:
+    visible:
+      id: 'events.deleteRefused'
+    timeout: 15000
+- waitForAnimationToEnd
+- assertNotVisible:
+    id: 'events.deleteName'
+- takeScreenshot: refused
+- tapOn:
+    id: 'events.deleteRefusedKeep'
+- waitForAnimationToEnd
+- assertNotVisible:
+    id: 'events.deleteRefused'
+- assertVisible:
+    id: 'events.page'
+- tapOn:
+    id: 'events.delete'
+- extendedWaitUntil:
+    visible:
+      id: 'events.deleteRefusedGo'
+    timeout: 15000
+- tapOn:
+    id: 'events.deleteRefusedGo'
+- extendedWaitUntil:
+    visible:
+      id: 'events.endYes'
+    timeout: 15000
+- waitForAnimationToEnd
+- takeScreenshot: verb-confirm
+- tapOn:
+    id: 'events.endNo'
+- waitForAnimationToEnd
+- assertNotVisible:
+    id: 'events.endYes'
+- assertVisible:
+    id: 'events.page'
+- takeScreenshot: back-on-page

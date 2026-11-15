@@ -61,6 +61,32 @@
   overflow-wrap: anywhere;
 }
 
+/* sc-50409: an empty Draft's Add guest, with Make live beside it on glass, as the app's card (sc-46879). */
+.ev-card-foot.gs-card-steps {
+  flex-flow: row wrap;
+  align-items: center;
+}
+
+.gs-card-steps .desk-step {
+  margin-top: 0;
+}
+
+.gs-card-also {
+  display: inline-flex;
+  flex: none;
+  align-items: center;
+  height: var(--sizeHit);
+  padding: 0 var(--spaceXl);
+  border: 0;
+  border-radius: var(--radiusPill);
+  background: var(--deskGlass);
+  color: inherit;
+  font: 600 15px/1 var(--fontFamily);
+  white-space: nowrap;
+  cursor: pointer;
+  backdrop-filter: blur(14px);
+}
+
 .gs-name:focus {
   outline: none;
 }

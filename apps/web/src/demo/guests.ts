@@ -1429,36 +1429,43 @@ export interface GuestsCard {
   arrived: string | null;
   line: string | null;
   step: CardStepDoes | null;
+  /** sc-50409: the quieter step beside Add guest on an empty Draft, as the app's card has it (sc-46879). */
+  also?: 'makeLive' | 'changeDates' | null;
 }
 
-/** How the room stands, and the one next step (spec §4). The web has no Check-in (sc-1454), so the day's card counts with no step. */
+/** How the room stands, and the one next step (spec §4). The web has no Check-in (sc-1454), so the day's card counts with no step. manages is guests.manage, events is events.manage. */
 export function guestsCardOf(
   event: SampleEvent,
   list: readonly Guest[],
   kind: CardKind,
   now: Date,
   manages: boolean,
+  events: boolean = manages,
 ): GuestsCard {
   const counts = countsOf(list);
   const replyBy = replyByOf(event.id);
   const comingOf = GW.comingOf(counts.coming, counts.invited);
+  const held = list.length === 0 ? GW.noGuests : comingOf;
 
   if (event.status === 'draft') {
     const { step } = cardOf(event, now);
     const passed = step.kind === 'button' && step.does === 'changeDates';
+    const live = passed ? 'changeDates' : 'makeLive';
+    const add = list.length === 0 && manages;
 
     return {
       tags: [{ kind: 'draft', word: 'Draft' }],
-      says: GW.onList(counts.all),
+      says: list.length === 0 ? GW.noGuests : GW.onList(counts.all),
       arrived: null,
       line: passed ? step.line : GW.draftLine,
-      step: manages ? (passed ? 'changeDates' : 'makeLive') : null,
+      step: add ? 'add' : events ? live : null,
+      also: add && events ? live : null,
     };
   }
   if (event.status === 'paused')
     return {
       tags: [{ kind: 'paused', word: 'Paused' }],
-      says: comingOf,
+      says: held,
       arrived: null,
       line: GW.pausedLine,
       step: null,
@@ -1466,7 +1473,7 @@ export function guestsCardOf(
   if (eventPhase(event, now) === 'finished')
     return {
       tags: [{ kind: null, word: 'Finished' }],
-      says: comingOf,
+      says: held,
       arrived: null,
       line: GW.finishedLine,
       step: null,
@@ -1531,8 +1538,8 @@ function nextDay(iso: string): string {
   return at.toISOString().slice(0, 10);
 }
 
-/** member: a member without guests.manage (sc-3784), who exports without the needs columns. */
-export type Role = 'owner' | 'member' | 'viewer' | 'staff';
+/** member: a member without guests.manage (sc-3784), who exports without the needs columns. host: guests.manage without events.manage (sc-50409), so no Make live. */
+export type Role = 'owner' | 'host' | 'planner' | 'member' | 'viewer' | 'staff';
 export type GuestNote =
   'recorded' | 'notReplaced' | 'linkReplaced' | 'unmarked' | 'unmarkRefused' | 'backOnList';
 export type Invite = 'copied' | 'refused' | 'mark' | 'markRefused' | 'markNotSaved';
@@ -1713,6 +1720,26 @@ export const GUESTS_STATES = [
   { key: 'draft', name: 'A Draft event' },
   { key: 'draftPast', name: 'A Draft whose end has passed: Change dates' },
   { key: 'paused', name: 'A Paused event' },
+  { key: 'draftEmpty', name: 'A Draft with nobody on its list: Add guest and Make live' },
+  {
+    key: 'draftEmptyPast',
+    name: 'An empty Draft whose end has passed: Add guest and Change dates',
+  },
+  { key: 'draftEmptyHost', name: 'An empty Draft without events.manage: Add guest alone' },
+  { key: 'draftEmptyViewer', name: 'An empty Draft without guests.manage: no Add guest' },
+  {
+    key: 'draftEmptyEvents',
+    name: 'An empty Draft with events.manage but not guests.manage: Make live alone',
+  },
+  {
+    key: 'draftOneLeft',
+    name: 'A Draft with one guest left, their details open: Remove, then Add guest on the card',
+  },
+  { key: 'pausedEmpty', name: 'A Paused event with nobody on its list: Add guest in the header' },
+  {
+    key: 'finishedEmpty',
+    name: 'A Finished event with nobody on its list: Add guest in the header',
+  },
   { key: 'eventDeleted', name: 'The event deleted: not found' },
   { key: 'onTheDay', name: 'On the day: arrivals and a walk-in' },
   { key: 'secondDay', name: 'The event’s second day' },
@@ -1932,11 +1959,17 @@ export function choiceOf(raw: string | null): Choice | null {
 export function guestsStart(state: GuestsState | null, params: URLSearchParams): GuestsStart {
   const asked = params.get('event');
   const event =
-    state === 'draft' || state === 'draftGuest'
+    state === 'draft' ||
+    state === 'draftGuest' ||
+    state === 'draftEmpty' ||
+    state === 'draftEmptyHost' ||
+    state === 'draftEmptyViewer' ||
+    state === 'draftEmptyEvents' ||
+    state === 'draftOneLeft'
       ? DRAFT
-      : state === 'draftPast'
+      : state === 'draftPast' || state === 'draftEmptyPast'
         ? DRAFT_PAST
-        : state === 'paused'
+        : state === 'paused' || state === 'pausedEmpty'
           ? PARTY
           : asked != null && hasGuests(asked)
             ? asked
@@ -2026,6 +2059,23 @@ export function guestsStart(state: GuestsState | null, params: URLSearchParams):
     case 'paused':
     case 'eventDeleted':
       return start;
+    case 'draftEmpty':
+    case 'draftEmptyPast':
+    case 'pausedEmpty':
+      return { ...start, list: [] };
+    case 'draftEmptyHost':
+      return { ...start, list: [], role: 'host' };
+    case 'draftEmptyViewer':
+      return { ...start, list: [], role: 'viewer' };
+    case 'draftEmptyEvents':
+      return { ...start, list: [], role: 'planner' };
+    case 'draftOneLeft':
+      return column(guestPane('leila'), {
+        choice: 'all',
+        list: start.list.filter((one) => one.id === 'leila'),
+      });
+    case 'finishedEmpty':
+      return { ...start, list: [], clock: CLOCKS.finished };
     case 'filterOpen':
       return column(guestPane('emeka'), { menu: true });
     case 'filtered':
@@ -2684,6 +2734,16 @@ export const GUESTS_PAGES: readonly { name: string; states: readonly DemoLink[] 
     'eventDeleted',
     'onTheDay',
     'secondDay',
+  ]),
+  group('Nobody on the list yet, in each phase (sc-50409)', [
+    'draftEmpty',
+    'draftEmptyPast',
+    'draftEmptyHost',
+    'draftEmptyViewer',
+    'draftEmptyEvents',
+    'draftOneLeft',
+    'pausedEmpty',
+    'finishedEmpty',
   ]),
   group('A guest, beside the list', [
     'guest',

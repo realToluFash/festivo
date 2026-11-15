@@ -262,12 +262,17 @@ export function GuestsCardView({
   card,
   mesh,
   step,
+  also = null,
   onStep,
+  onAlso,
 }: {
   card: GuestsCard;
   mesh: Mesh;
   step: string | null;
+  /** sc-50409: Make live or Change dates beside Add guest, quieter, as the app's card (sc-46879). */
+  also?: string | null;
   onStep: () => void;
+  onAlso?: () => void;
 }) {
   return (
     <Cover mesh={mesh} size="page">
@@ -291,8 +296,13 @@ export function GuestsCardView({
       )}
       {card.line != null && <p className="desk-on-card">{card.line}</p>}
       {step != null && (
-        <div className="ev-card-foot">
+        <div className={also == null ? 'ev-card-foot' : 'ev-card-foot gs-card-steps'}>
           <CardStep label={step} onClick={onStep} />
+          {also != null && (
+            <button type="button" className="gs-card-also" onClick={onAlso}>
+              {also}
+            </button>
+          )}
         </div>
       )}
     </Cover>
