@@ -18,6 +18,7 @@ import {
   handlePoints,
   handleReach,
   inside,
+  keepsClear,
   detailOf,
   feetInches,
   fit,
@@ -421,6 +422,34 @@ describe('the room to scale', () => {
     expect(heldInside({ ...item(pad, 't5'), x: 2600 }, ROOM).x).toBe(2260);
     const at = nearestFree(item(pad, 't10'), pad.items, ROOM, { x: 1200, y: 1020 });
     expect(overlapping({ ...item(pad, 't10'), ...at }, pad.items)).toEqual([]);
+  });
+});
+
+describe('new rows and seats land clear of each other (sc-4003)', () => {
+  const empty = { ...pad, items: [] };
+
+  it('puts rows 90 cm apart and a single seat clear of the last one and its name', () => {
+    const rows = run(empty, { type: 'addRow' }, { type: 'addRow' }).items;
+    expect((rows[1]?.y ?? 0) - (rows[0]?.y ?? 0)).toBe(90);
+
+    const seats = run(empty, { type: 'addSeat' }, { type: 'addSeat' }).items;
+    expect(seats[0]).toMatchObject({ x: 1200, y: 900 });
+    expect(seats[1]).toMatchObject({ x: 1200, y: 990 });
+    expect(keepsClear(seats[1]!, seats)).toBe(true);
+    expect(keepsClear({ ...seats[1]!, x: 1260, y: 900 }, seats)).toBe(false);
+  });
+
+  it('places every add quickly, even once the hall is full', () => {
+    let m: Seating = empty;
+    let slowest = 0;
+    for (let n = 0; n < 120; n += 1) {
+      const began = performance.now();
+      m = run(m, { type: n % 3 === 2 ? 'addSeat' : 'addRow' });
+      slowest = Math.max(slowest, performance.now() - began);
+    }
+    expect(m.items).toHaveLength(120);
+    expect(m.items.every((it) => inside(it, ROOM))).toBe(true);
+    expect(slowest).toBeLessThan(500);
   });
 });
 

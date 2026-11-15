@@ -272,6 +272,26 @@ describe('moving and overlapping (sc-5028)', () => {
     expect(inside(placed, room)).toBe(true);
   });
 
+  it('places every new row and seat quickly, even once the hall is full', () => {
+    const room = { name: 'Hall', w: 2400, l: 1800 };
+    const centre: Point = [1200, 900];
+    const items: Item[] = [];
+    let slowest = 0;
+
+    for (let n = 0; n < 120; n += 1) {
+      const draft = newItem(n % 3 === 2 ? 'single' : 'row', items, centre);
+      const began = performance.now();
+      const [x, y] = nearestFree(draft, items, room, centre);
+
+      slowest = Math.max(slowest, performance.now() - began);
+      items.push({ ...draft, x, y });
+    }
+
+    expect(items.some((item) => !keepsClear(item, items))).toBe(true);
+    expect(items.every((item) => inside(item, room))).toBe(true);
+    expect(slowest).toBeLessThan(500);
+  });
+
   it('names the next table, row and seat by the first free number or letter', () => {
     const items = sampleItems();
 

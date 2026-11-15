@@ -596,17 +596,22 @@ function placingBox(item: Item, at: Point = [item.x, item.y]) {
   return item.kind === 'single' ? { ...box, x1: box.x1 + SEAT_NAME_ROOM } : box;
 }
 
+type Box = { x0: number; y0: number; x1: number; y1: number };
+
+function apart(a: Box, b: Box, clear: number): boolean {
+  return (
+    a.x1 + clear <= b.x0 || b.x1 + clear <= a.x0 || a.y1 + clear <= b.y0 || b.y1 + clear <= a.y0
+  );
+}
+
+function shifted(box: Box, x: number, y: number): Box {
+  return { x0: box.x0 + x, y0: box.y0 + y, x1: box.x1 + x, y1: box.y1 + y };
+}
+
 export function keepsClear(item: Item, items: readonly Item[], clear = PLACE_CLEAR): boolean {
   const a = placingBox(item);
 
-  return items.every((other) => {
-    if (other.id === item.id) return true;
-    const b = placingBox(other);
-
-    return (
-      a.x1 + clear <= b.x0 || b.x1 + clear <= a.x0 || a.y1 + clear <= b.y0 || b.y1 + clear <= a.y0
-    );
-  });
+  return items.every((other) => other.id === item.id || apart(a, placingBox(other), clear));
 }
 
 function preferred([dx, dy]: Point): number {
@@ -614,43 +619,58 @@ function preferred([dx, dy]: Point): number {
   return dx > 0 ? 2 : 3;
 }
 
-function searchFree(
-  item: Item,
-  items: readonly Item[],
-  room: Room,
-  from: Point,
-  fits: (moved: Item) => boolean,
-): Point | null {
-  const step = 10;
-  const limit = Math.max(room.w, room.l);
+const RING_STEP = 10;
+const CLEAR_REACH = Math.ceil((PLACE_CLEAR + SEAT_NAME_ROOM) / RING_STEP);
+const rings: Point[][] = [];
 
-  for (let ring = 0; ring * step <= limit; ring += 1) {
-    const tries: Point[] = [];
+function ringOf(ring: number): Point[] {
+  const known = rings[ring];
 
-    for (let dx = -ring; dx <= ring; dx += 1)
-      for (let dy = -ring; dy <= ring; dy += 1)
-        if (Math.max(Math.abs(dx), Math.abs(dy)) === ring) tries.push([dx * step, dy * step]);
-    tries.sort((a, b) => Math.hypot(...a) - Math.hypot(...b) || preferred(a) - preferred(b));
-    for (const [dx, dy] of tries) {
-      const moved = {
-        ...item,
-        x: Math.round((from[0] + dx) / 10) * 10,
-        y: Math.round((from[1] + dy) / 10) * 10,
-      };
+  if (known != null) return known;
+  const tries: Point[] = [];
 
-      if (inside(moved, room) && fits(moved)) return [moved.x, moved.y];
-    }
-  }
+  for (let dx = -ring; dx <= ring; dx += 1)
+    for (let dy = -ring; dy <= ring; dy += 1)
+      if (Math.max(Math.abs(dx), Math.abs(dy)) === ring)
+        tries.push([dx * RING_STEP, dy * RING_STEP]);
+  tries.sort((a, b) => Math.hypot(...a) - Math.hypot(...b) || preferred(a) - preferred(b));
+  rings[ring] = tries;
 
-  return null;
+  return tries;
 }
 
 export function nearestFree(item: Item, items: readonly Item[], room: Room, from: Point): Point {
-  return (
-    searchFree(item, items, room, from, (moved) => keepsClear(moved, items)) ??
-    searchFree(item, items, room, from, (moved) => overlapsOf(moved, items).length === 0) ??
-    within(item, room, from)
-  );
+  const others = items.filter((other) => other.id !== item.id);
+  const spaces = others.map((other) => placingBox(other));
+  const bodies = others.map((other) => bounds(other));
+  const space = placingBox(item, [0, 0]);
+  const body = bounds(item, [0, 0]);
+  const last = Math.ceil(Math.max(room.w, room.l) / RING_STEP);
+  let free: Point | null = null;
+  let freeRing = 0;
+
+  for (let ring = 0; ring <= last; ring += 1) {
+    if (free != null && ring > freeRing + CLEAR_REACH) return free;
+    for (const [dx, dy] of ringOf(ring)) {
+      const x = Math.round((from[0] + dx) / 10) * 10;
+      const y = Math.round((from[1] + dy) / 10) * 10;
+      const at = shifted(body, x, y);
+
+      if (at.x0 < -0.5 || at.y0 < -0.5 || at.x1 > room.w + 0.5 || at.y1 > room.l + 0.5) continue;
+      const mine = shifted(space, x, y);
+
+      if (spaces.every((other) => apart(mine, other, PLACE_CLEAR))) return [x, y];
+      if (free != null) continue;
+      const moved = { ...item, x, y };
+
+      if (others.every((other, i) => apart(at, bodies[i]!, 0) || !overlap(moved, other))) {
+        free = [x, y];
+        freeRing = ring;
+      }
+    }
+  }
+
+  return free ?? within(item, room, from);
 }
 
 export function readingOrder(items: readonly Item[]): Item[] {
