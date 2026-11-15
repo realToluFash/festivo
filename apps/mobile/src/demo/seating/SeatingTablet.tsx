@@ -742,6 +742,8 @@ export function Overlays({ m, go }: { m: Seating; go: Go }) {
               title: say.deleteAsk(sec?.name ?? ''),
               line: say.sectionDeleteBody(
                 m.items.filter((t) => t.sec === ask.key && isTable(t)).length,
+                m.items.filter((t) => t.sec === ask.key && t.kind === 'row').length,
+                m.items.filter((t) => t.sec === ask.key && t.kind === 'single').length,
               ),
               keep: W.keepIt,
               confirm: W.deleteSection,
