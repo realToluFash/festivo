@@ -5,6 +5,9 @@ import { RouterProvider, createMemoryRouter } from 'react-router';
 import { __setSessionState, type Session } from '../../../session.ts';
 import { OWNER_PERMISSIONS, membership } from '../../../test-memberships.ts';
 import { routes } from '../../index.tsx';
+import { cssRule, stylesheet } from '../../../test-styles.ts';
+
+const ROSTER_CSS = stylesheet(import.meta.dirname, 'roster.css');
 
 const IRE = membership({ id: 'org_1', name: 'Ìrè Events' });
 
@@ -143,6 +146,26 @@ describe('The Roster on the Staff page (sc-3906)', () => {
     expect(router.state.location.pathname).toBe('/app/events/ev_1/staff/roster');
     expect(router.state.historyAction).toBe('REPLACE');
     expect(screen.queryByRole('navigation', { name: 'Staff' })).toBeNull();
+  });
+
+  it("sits inside the desk's button and field resets, and wraps its card's header when narrow", async () => {
+    signedIn();
+    vi.spyOn(globalThis, 'fetch').mockImplementation(async (input) =>
+      new URL(String(input)).pathname === '/api/events/ev_1'
+        ? json({ event: { ...EVENT, permissions: OWNER_PERMISSIONS, phase: 'live' } })
+        : json({ staff: [] }),
+    );
+    render(
+      <RouterProvider
+        router={createMemoryRouter(routes, { initialEntries: ['/app/events/ev_1/staff/roster'] })}
+      />,
+    );
+
+    const add = await screen.findByRole('button', { name: 'Add a person' });
+    expect(add.closest('.desk.ev')).not.toBeNull();
+    expect(
+      cssRule('.rs .sn-card-names', ROSTER_CSS.slice(ROSTER_CSS.indexOf('(width <= 720px)'))),
+    ).toContain('flex-basis: 12rem;');
   });
 
   it('adds a person by name alone, refusing a blank name beside its field', async () => {

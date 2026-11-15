@@ -8,6 +8,8 @@ use App\Domain\Seating\Http\SeatingSerialiser;
 use App\Domain\Seating\SeatingPlanEditor;
 use App\Entity\Event;
 use App\Entity\SeatingPlan;
+use App\Entity\SeatingRow;
+use App\Entity\SeatingSeat;
 use App\Entity\SeatingSection;
 use App\Entity\SeatingTable;
 use App\Entity\User;
@@ -30,7 +32,7 @@ use Symfony\Component\HttpFoundation\Request;
 use Symfony\Component\HttpFoundation\Response;
 use Symfony\Component\Routing\Attribute\Route;
 
-/** An event's seating plan: its room, its sections (sc-3998) and its tables (sc-4000). The room's ETag is the plan's; each section and table carries its own `version`. */
+/** An event's seating plan: its room, its sections (sc-3998), its tables (sc-4000), its rows and its single seats (sc-4003). The room's ETag is the plan's; each section, table, row and seat carries its own `version`. */
 final readonly class SeatingPlanController
 {
     public function __construct(
@@ -152,7 +154,7 @@ final readonly class SeatingPlanController
 
         $table = $this->seatingPlanEditor->addTable($event, $this->plan($event), $this->user(), $body['shape']);
 
-        return $this->seating($event, $table->getPlan(), Response::HTTP_CREATED, $table);
+        return $this->seating($event, $table->getPlan(), Response::HTTP_CREATED, ['tableId' => $table->getId()->toRfc4122()]);
     }
 
     /** Any of the fields; needs If-Match with the table's `version` as an ETag. A round or cocktail table's diameter is `widthCm`. */
@@ -175,7 +177,7 @@ final readonly class SeatingPlanController
 
         $this->seatingPlanEditor->changeTable($event, $table, $request->headers->get('If-Match'), $this->user(), $body);
 
-        return $this->seating($event, $table->getPlan(), Response::HTTP_OK, $table);
+        return $this->seating($event, $table->getPlan(), Response::HTTP_OK, ['tableId' => $table->getId()->toRfc4122()]);
     }
 
     /** The copy, with nobody seated; needs If-Match with the original's `version`. */
@@ -186,7 +188,7 @@ final readonly class SeatingPlanController
         $event = $this->event($eventId);
         $copy = $this->seatingPlanEditor->duplicateTable($event, $table, $request->headers->get('If-Match'), $this->user());
 
-        return $this->seating($event, $copy->getPlan(), Response::HTTP_CREATED, $copy);
+        return $this->seating($event, $copy->getPlan(), Response::HTTP_CREATED, ['tableId' => $copy->getId()->toRfc4122()]);
     }
 
     /** Needs If-Match with the table's `version`. */
@@ -197,6 +199,96 @@ final readonly class SeatingPlanController
         $event = $this->event($eventId);
         $plan = $table->getPlan();
         $this->seatingPlanEditor->deleteTable($event, $table, $request->headers->get('If-Match'), $this->user());
+
+        return $this->seating($event, $plan);
+    }
+
+    /** Ten seats, labelled with the next free letter, at the room's centre or the nearest free floor. */
+    #[Route('/api/events/{eventId}/seating-plan/rows', name: 'seating_rows_add', methods: ['POST'])]
+    #[InEvent(Permission::SeatingManage)]
+    public function addRow(string $eventId): JsonResponse
+    {
+        $event = $this->event($eventId);
+        $row = $this->seatingPlanEditor->addRow($event, $this->plan($event), $this->user());
+
+        return $this->seating($event, $row->getPlan(), Response::HTTP_CREATED, ['rowId' => $row->getId()->toRfc4122()]);
+    }
+
+    /** Any of the fields; needs If-Match with the row's `version` as an ETag. Fewer seats drop from the right-hand end. */
+    #[Route('/api/events/{eventId}/seating-plan/rows/{rowId}', name: 'seating_rows_change', methods: ['PATCH'])]
+    #[InEvent(Permission::SeatingManage)]
+    public function changeRow(Request $request, string $eventId, #[InThisEvent('rowId')] SeatingRow $row): JsonResponse
+    {
+        $event = $this->event($eventId);
+        $body = Input::body($request, Type\shape([
+            'label' => Type\optional(Type\string()),
+            'sectionId' => Type\optional(Type\nullable(Type\string())),
+            'seats' => Type\optional(Type\int()),
+            'spacingCm' => Type\optional(Type\int()),
+            'rotation' => Type\optional(Type\int()),
+            'unusableSeats' => Type\optional(Type\vec(Type\int())),
+        ]));
+
+        $this->seatingPlanEditor->changeRow($event, $row, $request->headers->get('If-Match'), $this->user(), $body);
+
+        return $this->seating($event, $row->getPlan(), Response::HTTP_OK, ['rowId' => $row->getId()->toRfc4122()]);
+    }
+
+    #[Route('/api/events/{eventId}/seating-plan/rows/{rowId}/duplicate', name: 'seating_rows_duplicate', methods: ['POST'])]
+    #[InEvent(Permission::SeatingManage)]
+    public function duplicateRow(Request $request, string $eventId, #[InThisEvent('rowId')] SeatingRow $row): JsonResponse
+    {
+        $event = $this->event($eventId);
+        $copy = $this->seatingPlanEditor->duplicateRow($event, $row, $request->headers->get('If-Match'), $this->user());
+
+        return $this->seating($event, $copy->getPlan(), Response::HTTP_CREATED, ['rowId' => $copy->getId()->toRfc4122()]);
+    }
+
+    #[Route('/api/events/{eventId}/seating-plan/rows/{rowId}', name: 'seating_rows_delete', methods: ['DELETE'])]
+    #[InEvent(Permission::SeatingManage)]
+    public function deleteRow(Request $request, string $eventId, #[InThisEvent('rowId')] SeatingRow $row): JsonResponse
+    {
+        $event = $this->event($eventId);
+        $plan = $row->getPlan();
+        $this->seatingPlanEditor->deleteRow($event, $row, $request->headers->get('If-Match'), $this->user());
+
+        return $this->seating($event, $plan);
+    }
+
+    /** Named "Seat {n}" in the caller's language, at the room's centre or the nearest free floor. */
+    #[Route('/api/events/{eventId}/seating-plan/seats', name: 'seating_seats_add', methods: ['POST'])]
+    #[InEvent(Permission::SeatingManage)]
+    public function addSeat(string $eventId): JsonResponse
+    {
+        $event = $this->event($eventId);
+        $seat = $this->seatingPlanEditor->addSeat($event, $this->plan($event), $this->user());
+
+        return $this->seating($event, $seat->getPlan(), Response::HTTP_CREATED, ['seatId' => $seat->getId()->toRfc4122()]);
+    }
+
+    #[Route('/api/events/{eventId}/seating-plan/seats/{seatId}', name: 'seating_seats_change', methods: ['PATCH'])]
+    #[InEvent(Permission::SeatingManage)]
+    public function changeSeat(Request $request, string $eventId, #[InThisEvent('seatId')] SeatingSeat $seat): JsonResponse
+    {
+        $event = $this->event($eventId);
+        $body = Input::body($request, Type\shape([
+            'name' => Type\optional(Type\string()),
+            'sectionId' => Type\optional(Type\nullable(Type\string())),
+            'unusable' => Type\optional(Type\bool()),
+        ]));
+
+        $this->seatingPlanEditor->changeSeat($event, $seat, $request->headers->get('If-Match'), $this->user(), $body);
+
+        return $this->seating($event, $seat->getPlan(), Response::HTTP_OK, ['seatId' => $seat->getId()->toRfc4122()]);
+    }
+
+    #[Route('/api/events/{eventId}/seating-plan/seats/{seatId}', name: 'seating_seats_delete', methods: ['DELETE'])]
+    #[InEvent(Permission::SeatingManage)]
+    public function deleteSeat(Request $request, string $eventId, #[InThisEvent('seatId')] SeatingSeat $seat): JsonResponse
+    {
+        $event = $this->event($eventId);
+        $plan = $seat->getPlan();
+        $this->seatingPlanEditor->deleteSeat($event, $seat, $request->headers->get('If-Match'), $this->user());
 
         return $this->seating($event, $plan);
     }
@@ -214,11 +306,11 @@ final readonly class SeatingPlanController
         ]);
     }
 
-    /** A table answer carries the plan whole, and that table's id as `tableId`, so a client opens the one it added. */
-    private function seating(Event $event, ?SeatingPlan $plan, int $status = Response::HTTP_OK, ?SeatingTable $table = null): JsonResponse
+    /** @param array<string, string> $chosen a table's, row's or seat's id as `tableId`, `rowId` or `seatId`, so a client opens the one it added */
+    private function seating(Event $event, ?SeatingPlan $plan, int $status = Response::HTTP_OK, array $chosen = []): JsonResponse
     {
         return new JsonResponse(
-            ['seating' => $this->seatingSerialiser->seating($event, $plan)] + (null === $table ? [] : ['tableId' => $table->getId()->toRfc4122()]),
+            ['seating' => $this->seatingSerialiser->seating($event, $plan)] + $chosen,
             $status,
             null === $plan ? [] : ['ETag' => EntityTag::of($plan->getVersion())],
         );

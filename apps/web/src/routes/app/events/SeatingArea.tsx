@@ -6,8 +6,8 @@ import {
   SECTION_COLOURS,
   type Seating,
   type SeatingPlan,
-  type SeatingWithTable,
   type SectionColour,
+  type SectionContents,
   asSeating,
   realtimeTopic,
 } from '@soirely/api-client';
@@ -45,10 +45,18 @@ import {
   Line,
   type Outside,
   type Panel,
+  type Placed,
   type PlanApi,
   Refused,
   Said,
 } from './SeatingParts.tsx';
+import {
+  AddRowAndSeat,
+  RowDrawing,
+  RowPanel,
+  SingleSeatDrawing,
+  SingleSeatPanel,
+} from './SeatingRows.tsx';
 import { AddTable, ChairPanel, TableDrawing, TablePanel } from './SeatingTables.tsx';
 import { lengthField, lengthWords } from './seatingUnits.ts';
 import '../../../components/SettingsParts.css';
@@ -278,18 +286,30 @@ function Plan({
   const gone =
     (panel?.kind === 'sectionEdit' && !plan?.sections.some((one) => one.id === panel.id)) ||
     ((panel?.kind === 'table' || panel?.kind === 'chair') &&
-      !plan?.tables.some((one) => one.id === panel.id));
+      !plan?.tables.some((one) => one.id === panel.id)) ||
+    (panel?.kind === 'row' && !plan?.rows.some((one) => one.id === panel.id)) ||
+    (panel?.kind === 'seat' && !plan?.singleSeats.some((one) => one.id === panel.id));
   const shownPanel = gone || (plan == null && panel?.kind !== 'start') ? null : panel;
-  const chosenTable =
-    shownPanel?.kind === 'table' || shownPanel?.kind === 'chair' ? shownPanel.id : null;
+  const chosenItem =
+    shownPanel?.kind === 'table' ||
+    shownPanel?.kind === 'chair' ||
+    shownPanel?.kind === 'row' ||
+    shownPanel?.kind === 'seat'
+      ? shownPanel.id
+      : null;
+  const tableChosen = shownPanel?.kind === 'table' || shownPanel?.kind === 'chair';
 
   const open = (next: Panel | null) => {
     if (next == null) {
       const back = opener.current;
+      const table = tableChosen ? shownPanel.id : null;
 
       opener.current = null;
       focusWhenFree(
         () =>
+          (table == null
+            ? null
+            : document.querySelector<SVGElement>(`.st-room [data-table="${table}"]`)) ??
           [
             ...document.querySelectorAll<HTMLElement | SVGElement>(
               '.st-panel button, .st-room [role="button"]',
@@ -310,6 +330,17 @@ function Plan({
     setOutside(null);
   };
 
+  useEffect(() => {
+    const keys = (event: KeyboardEvent) => {
+      if (event.key !== 'Escape' || !tableChosen || covered) return;
+      event.preventDefault();
+      open(null);
+    };
+
+    window.addEventListener('keydown', keys);
+    return () => window.removeEventListener('keydown', keys);
+  });
+
   const attempt = async <A,>(
     change: () => Promise<A>,
     seatingOf: (answer: A) => Seating,
@@ -326,13 +357,7 @@ function Plan({
       if (error instanceof ApiError && error.status === 412) {
         const name = error.problem.changedBy;
 
-        const onTable = panel?.kind === 'table' || panel?.kind === 'chair';
-
-        setNotice(
-          name == null
-            ? t('seating.notSaved')
-            : t(onTable ? 'seating.changedTable' : 'seating.changedFirst', { name }),
-        );
+        setNotice(name == null ? t('seating.notSaved') : t(changedKey(panel), { name }));
         setReloads((n) => n + 1);
         reload();
         return { refused: null };
@@ -355,8 +380,8 @@ function Plan({
     }
   };
 
-  const seatingOf = (answer: Seating | SeatingWithTable): Seating =>
-    'tableId' in answer ? answer.seating : answer;
+  const seatingOf = (answer: Seating | Placed): Seating =>
+    'seating' in answer ? answer.seating : answer;
 
   const send: PlanApi['send'] = async (change, field, refusal) => {
     const result = await attempt(change, seatingOf, field, refusal);
@@ -367,11 +392,7 @@ function Plan({
   const place: PlanApi['place'] = async (change) => {
     const result = await attempt(change, (answer) => answer.seating);
 
-    if (!('answer' in result)) return null;
-    const { seating: saved, tableId } = result.answer;
-    const table = saved.plan?.tables.find((one) => one.id === tableId);
-
-    return table == null ? null : { id: table.id, name: table.name };
+    return 'answer' in result ? placedIn(result.answer) : null;
   };
 
   const remove = async (change: () => Promise<Seating>) =>
@@ -459,7 +480,16 @@ function Plan({
                 })
           }
         >
-          <rect className="st-floor" x={ox} y={oy} width={rw} height={rl} />
+          <rect
+            className="st-floor"
+            x={ox}
+            y={oy}
+            width={rw}
+            height={rl}
+            onClick={() => {
+              if (tableChosen) open(null);
+            }}
+          />
           {lines}
           <rect className="st-walls" x={ox} y={oy} width={rw} height={rl} />
           {outside != null &&
@@ -488,13 +518,45 @@ function Plan({
               s={s}
               ox={ox}
               oy={oy}
-              chosen={chosenTable === table.id}
+              chosen={chosenItem === table.id}
               chosenSeat={
                 shownPanel?.kind === 'chair' && shownPanel.id === table.id ? shownPanel.seat : null
               }
               outside={outside?.ids.includes(table.id) ?? false}
               onChoose={() => open({ kind: 'table', id: table.id })}
               onChair={(seat) => open({ kind: 'chair', id: table.id, seat })}
+            />
+          ))}
+          {plan.rows.map((row) => (
+            <RowDrawing
+              key={row.id}
+              plan={plan}
+              row={row}
+              s={s}
+              ox={ox}
+              oy={oy}
+              chosen={chosenItem === row.id}
+              chosenSeat={
+                shownPanel?.kind === 'row' && shownPanel.id === row.id
+                  ? (shownPanel.seat ?? null)
+                  : null
+              }
+              outside={outside?.ids.includes(row.id) ?? false}
+              onChoose={() => open({ kind: 'row', id: row.id })}
+              onChair={(seat) => open({ kind: 'row', id: row.id, seat })}
+            />
+          ))}
+          {plan.singleSeats.map((seat) => (
+            <SingleSeatDrawing
+              key={seat.id}
+              plan={plan}
+              seat={seat}
+              s={s}
+              ox={ox}
+              oy={oy}
+              chosen={chosenItem === seat.id}
+              outside={outside?.ids.includes(seat.id) ?? false}
+              onChoose={() => open({ kind: 'seat', id: seat.id })}
             />
           ))}
           <text
@@ -509,7 +571,7 @@ function Plan({
               : t('seating.roomLine', { name: plan.roomName, ...words })}
           </text>
         </svg>
-        {!readOnly && <AddTable ctx={ctx} />}
+        {!readOnly && <AddTable ctx={ctx} more={<AddRowAndSeat ctx={ctx} />} />}
       </>
     );
   } else if (shownPanel?.kind === 'start') {
@@ -601,6 +663,33 @@ function Plan({
       ) : (
         <ChairPanel ctx={ctx} plan={plan} table={table} seat={shownPanel.seat} />
       );
+  } else if (shownPanel?.kind === 'row') {
+    const row = plan.rows.find((one) => one.id === shownPanel.id);
+
+    body =
+      row == null ? null : (
+        <RowPanel
+          key={`${row.id}-${reloads}`}
+          ctx={ctx}
+          plan={plan}
+          row={row}
+          said={shownPanel.said}
+          seat={shownPanel.seat ?? null}
+        />
+      );
+  } else if (shownPanel?.kind === 'seat') {
+    const seat = plan.singleSeats.find((one) => one.id === shownPanel.id);
+
+    body =
+      seat == null ? null : (
+        <SingleSeatPanel
+          key={`${seat.id}-${reloads}`}
+          ctx={ctx}
+          plan={plan}
+          seat={seat}
+          said={shownPanel.said}
+        />
+      );
   } else
     body = (
       <>
@@ -642,6 +731,32 @@ function Plan({
   );
 }
 
+/** Who changed it first, said of what the panel shows. */
+function changedKey(panel: Panel | null): string {
+  if (panel?.kind === 'table' || panel?.kind === 'chair') return 'seating.changedTable';
+  if (panel?.kind === 'row') return 'seating.changedRow';
+  if (panel?.kind === 'seat') return 'seating.changedSeat';
+  return 'seating.changedFirst';
+}
+
+function placedIn(answer: Placed): { id: string; name: string; seats: number } | null {
+  const plan = answer.seating.plan;
+
+  if ('tableId' in answer) {
+    const table = plan?.tables.find((one) => one.id === answer.tableId);
+
+    return table == null ? null : { id: table.id, name: table.name, seats: table.seats };
+  }
+  if ('rowId' in answer) {
+    const row = plan?.rows.find((one) => one.id === answer.rowId);
+
+    return row == null ? null : { id: row.id, name: row.label, seats: row.seats };
+  }
+  const seat = plan?.singleSeats.find((one) => one.id === answer.seatId);
+
+  return seat == null ? null : { id: seat.id, name: seat.name, seats: 1 };
+}
+
 /** A panel's buttons are drawn again as it closes, so the one that opened it is found again by its name. */
 function nameOf(element: Element): string {
   return element.getAttribute('aria-label') ?? element.textContent ?? '';
@@ -671,8 +786,8 @@ function useRoomSide(system: MeasurementSystem) {
       return { refused: t(side === 'width' ? 'seating.enterWidth' : 'seating.enterLength') };
     return {
       refused: t('seating.roomRange', {
-        min: lengthWords(t, locale, ROOM_MINIMUM_CM, system, { grouping: false }),
-        max: lengthWords(t, locale, ROOM_MAXIMUM_CM, system, { grouping: false }),
+        min: lengthWords(t, locale, ROOM_MINIMUM_CM, system, { grouping: false, rounding: 'up' }),
+        max: lengthWords(t, locale, ROOM_MAXIMUM_CM, system, { grouping: false, rounding: 'down' }),
       }),
     };
   };
@@ -992,12 +1107,13 @@ function RoomSettings({ ctx, plan }: { ctx: PlanApi; plan: SeatingPlan }) {
 function sectionLine(
   t: ReturnType<typeof useTranslation>['t'],
   colour: SectionColour | null,
-  tables: number,
-  seats: number,
+  { tables, rows, singleSeats, seats }: SectionContents,
 ): string {
   return [
     colour == null ? null : t(`seating.colours.${colour}`),
-    t('seating.countTables', { count: tables }),
+    tables > 0 || colour != null ? t('seating.countTables', { count: tables }) : null,
+    rows > 0 ? t('seating.countRows', { count: rows }) : null,
+    singleSeats > 0 ? t('seating.countSingleSeats', { count: singleSeats }) : null,
     seats > 0 ? t('seating.countSeats', { count: seats }) : null,
   ]
     .filter((part): part is string => part != null)
@@ -1017,7 +1133,8 @@ function SectionsBlock({
 }) {
   const { t } = useTranslation();
   const full = plan.sections.length >= SEATING_LIMITS.sectionsMaximum;
-  const unsorted = plan.withoutSection.tables > 0 || plan.withoutSection.seats > 0;
+  const { tables, rows, singleSeats } = plan.withoutSection;
+  const unsorted = tables + rows + singleSeats > 0;
 
   return (
     <section className="st-block" aria-labelledby="st-sections">
@@ -1045,9 +1162,7 @@ function SectionsBlock({
               <Swatch colour={section.colour} />
               <span className="st-row-words">
                 <span className="st-row-name">{section.name}</span>
-                <span className="st-row-line">
-                  {sectionLine(t, section.colour, section.tables, section.seats)}
-                </span>
+                <span className="st-row-line">{sectionLine(t, section.colour, section)}</span>
               </span>
               {!ctx.readOnly && (
                 <button
@@ -1066,9 +1181,7 @@ function SectionsBlock({
               <Swatch colour={null} />
               <span className="st-row-words">
                 <span className="st-row-name">{t('seating.noSection')}</span>
-                <span className="st-row-line">
-                  {sectionLine(t, null, plan.withoutSection.tables, plan.withoutSection.seats)}
-                </span>
+                <span className="st-row-line">{sectionLine(t, null, plan.withoutSection)}</span>
               </span>
             </li>
           )}
@@ -1237,26 +1350,56 @@ function SectionForm({ ctx, plan, id }: { ctx: PlanApi; plan: SeatingPlan; id: s
   );
 }
 
+/** The furniture named as one list, each kind counted, zeros left out, joined with no serial comma; both delete asks read from it (sc-54060). */
+function furnitureList(
+  t: ReturnType<typeof useTranslation>['t'],
+  locale: string,
+  {
+    sections = 0,
+    tables,
+    rows,
+    singleSeats,
+  }: Pick<SectionContents, 'tables' | 'rows' | 'singleSeats'> & { sections?: number },
+): string | undefined {
+  const parts = [
+    sections > 0 ? t('seating.countSections', { count: sections }) : null,
+    tables > 0 ? t('seating.countTables', { count: tables }) : null,
+    rows > 0 ? t('seating.countRows', { count: rows }) : null,
+    singleSeats > 0 ? t('seating.countSingleSeats', { count: singleSeats }) : null,
+  ].filter((part): part is string => part != null);
+
+  if (parts.length === 0) return undefined;
+  return listFormat(locale, { style: 'long', type: 'conjunction' }).format(parts);
+}
+
+/** Deleting a section names each kind of furniture it leaves with no section, the verb from their total; an empty section says nothing (sc-54060). */
+export function sectionDeleteWords(
+  t: ReturnType<typeof useTranslation>['t'],
+  locale: string,
+  contents: SectionContents,
+): string | undefined {
+  const counts = furnitureList(t, locale, contents);
+
+  if (counts == null) return undefined;
+  return t('seating.sectionDeleteBody', {
+    count: contents.tables + contents.rows + contents.singleSeats,
+    counts,
+  });
+}
+
 /** Delete the plan's ask (pm, 8 Nov 2026): what it deletes, sections counted, then who loses a seat; a sentence with nothing to say is left out. */
 export function deletePlanWords(
   t: ReturnType<typeof useTranslation>['t'],
   locale: string,
   counts: SeatingPlan['counts'],
 ): string {
-  const parts = [
-    counts.sections > 0 ? t('seating.countSections', { count: counts.sections }) : null,
-    counts.tables > 0 ? t('seating.countTables', { count: counts.tables }) : null,
-    counts.rows > 0 ? t('seating.countRows', { count: counts.rows }) : null,
-    counts.singleSeats > 0 ? t('seating.countSingleSeats', { count: counts.singleSeats }) : null,
-  ].filter((part): part is string => part != null);
+  const listed = furnitureList(t, locale, counts);
   const guests =
     counts.seatedGuests === 0
       ? t('seating.deletePlanNobody')
       : t('seating.deletePlanSeated', { count: counts.seatedGuests });
 
-  if (parts.length === 0) return guests;
-  const listed = listFormat(locale, { style: 'long', type: 'conjunction' }).format(parts);
-
+  if (listed == null) return guests;
   return `${t('seating.deletePlanDeletes', { counts: listed })} ${guests}`;
 }
 
@@ -1316,6 +1459,36 @@ function AskFor({
     );
   }
 
+  if (asking.kind === 'deleteRow' || asking.kind === 'deleteSeat') {
+    const row = asking.kind === 'deleteRow' ? plan.rows.find((one) => one.id === asking.id) : null;
+    const seat =
+      asking.kind === 'deleteSeat' ? plan.singleSeats.find((one) => one.id === asking.id) : null;
+    const name =
+      row != null ? t('seating.rowName', { label: row.label }) : seat != null ? seat.name : null;
+
+    if (name == null) return null;
+    return (
+      <Ask
+        title={t('seating.deleteNamed', { name })}
+        line={t('seating.nobodyHere')}
+        keep={t('seating.keepIt')}
+        go={t('seating.deleteNamedGo', { name })}
+        busy={busy ? t('seating.deleteNamedGo', { name }) : undefined}
+        onKeep={onKeep}
+        onGo={() => {
+          setBusy(true);
+          void ctx
+            .remove(() =>
+              row != null
+                ? api.deleteSeatingRow(ctx.event.id, row.id, row.version)
+                : api.deleteSingleSeat(ctx.event.id, seat?.id ?? '', seat?.version ?? 0),
+            )
+            .then((deleted) => (deleted ? onDone() : onKeep()));
+        }}
+      />
+    );
+  }
+
   const section = plan.sections.find((one) => one.id === asking.id);
 
   if (section == null) return null;
@@ -1323,9 +1496,7 @@ function AskFor({
   return (
     <Ask
       title={t('seating.deleteNamed', { name: section.name })}
-      line={
-        section.tables === 0 ? undefined : t('seating.sectionDeleteBody', { count: section.tables })
-      }
+      line={sectionDeleteWords(t, currentLocale(), section)}
       keep={t('seating.keepIt')}
       go={t('seating.deleteSection')}
       busy={busy ? t('seating.deleteSection') : undefined}

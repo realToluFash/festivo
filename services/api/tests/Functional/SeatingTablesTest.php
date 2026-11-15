@@ -148,6 +148,9 @@ final class SeatingTablesTest extends ApiTestCase
         yield 'a turn off the steps' => ['rectangular', ['rotation' => 20], 'rotation', 'Choose a rotation in 15° steps, from 0° to 345°.'];
         yield 'a blank name' => ['round', ['name' => '   '], 'name', 'Enter a name for the table.'];
         yield 'a long name' => ['round', ['name' => Str\repeat('a', 31)], 'name', 'Use 30 characters or fewer.'];
+        yield 'a long name of marked letters' => ['round', ['name' => Str\repeat("e\u{0323}\u{0300}", 31)], 'name', 'Use 30 characters or fewer.'];
+        yield 'one letter of many marks' => ['round', ['name' => 'a' . Str\repeat("\u{0301}", 120)], 'name', 'Use 30 characters or fewer.'];
+        yield 'a name whose key outgrows the column' => ['round', ['name' => Str\repeat("\u{FDFA}", 7)], 'name', 'Use 30 characters or fewer.'];
         yield 'a seat it does not have' => ['round', ['unusableSeats' => [11]], 'unusableSeats', 'Choose seats from 1 to 10, each once.'];
         yield 'a section of another plan' => ['round', ['sectionId' => '0190a3c4-0000-7000-8000-000000000000'], 'sectionId', "Choose one of this plan's sections, or no section."];
     }
@@ -179,6 +182,20 @@ final class SeatingTablesTest extends ApiTestCase
         $this->as($host, 'PATCH', $this->tables() . '/' . $table['id'], ['widthCm' => 30], '"1"');
 
         self::assertSame('Enter a size from 1 ft 4 in to 32 ft 9 in.', $this->violation('widthCm'));
+    }
+
+    #[Test]
+    public function thirtyLettersWithADotAndAToneEachAreSavedAndReadBack(): void
+    {
+        $composed = Str\repeat("\u{1EB9}\u{0300}", 30);
+        $decomposed = Str\repeat("e\u{0323}\u{0300}", 30);
+        $table = $this->addTable('round');
+
+        $table = $this->change($table, ['name' => $composed]);
+        self::assertSame($composed, $table['name']);
+
+        $table = $this->change($table, ['name' => $decomposed]);
+        self::assertSame($decomposed, $this->tablesNow()[0]['name']);
     }
 
     #[Test]
@@ -279,7 +296,7 @@ final class SeatingTablesTest extends ApiTestCase
 
         self::assertSame(3, $plan['counts']['tables']);
         self::assertSame(['tables' => 1, 'seats' => 10], ['tables' => $plan['sections'][0]['tables'], 'seats' => $plan['sections'][0]['seats']]);
-        self::assertSame(['tables' => 2, 'seats' => 10], $plan['withoutSection']);
+        self::assertSame(['tables' => 2, 'rows' => 0, 'singleSeats' => 0, 'seats' => 10], $plan['withoutSection']);
     }
 
     #[Test]

@@ -259,5 +259,17 @@
     "calendar_feed.status.deleted": "Supprimé",
     "calendar_feed.paused_summary": "{name} (en pause)",
     "calendar_feed.status_line": "Statut : {status}",
-    "calendar_feed.open_line": "Ouvrir dans Soirely : {link}"
+    "calendar_feed.open_line": "Ouvrir dans Soirely : {link}",
+    "validation.schedule_title_required": "Saisissez un titre.",
+    "validation.schedule_title_too_long": "Ce titre compte {n} caractères. Utilisez-en {max} au maximum.",
+    "validation.schedule_start_required": "Choisissez la date et l’heure de début.",
+    "validation.schedule_start_outside": "Choisissez une heure entre {earliest} et {end}.",
+    "validation.schedule_length_range": "Saisissez une durée de 0 à {max} minutes, ou laissez le champ vide.",
+    "validation.schedule_place_too_long": "Ce nom d’espace compte {n} caractères. Utilisez-en {max} au maximum.",
+    "validation.schedule_owner_too_long": "Ce nom compte {n} caractères. Utilisez-en {max} au maximum.",
+    "validation.schedule_role_too_long": "Ce rôle compte {n} caractères. Utilisez-en {max} au maximum.",
+    "validation.schedule_note_too_long": "Cette note compte {n} caractères. Utilisez-en {max} au maximum.",
+    "run_of_show.version_required": "Envoyez la version que vous modifiez, dans If-Match.",
+    "run_of_show.changed_since": "Quelqu’un d’autre a modifié cet élément pendant que vous l’aviez ouvert. Votre modification n’a pas été enregistrée.",
+    "timeline.run_of_show_begins": "Début du déroulé"
 }

@@ -259,5 +259,17 @@
     "calendar_feed.status.deleted": "Eliminado",
     "calendar_feed.paused_summary": "{name} (em pausa)",
     "calendar_feed.status_line": "Estado: {status}",
-    "calendar_feed.open_line": "Abrir na Soirely: {link}"
+    "calendar_feed.open_line": "Abrir na Soirely: {link}",
+    "validation.schedule_title_required": "Introduza um título.",
+    "validation.schedule_title_too_long": "O título tem {n} caracteres. Use {max}, no máximo.",
+    "validation.schedule_start_required": "Escolha a data e a hora de início.",
+    "validation.schedule_start_outside": "Escolha uma hora entre {earliest} e {end}.",
+    "validation.schedule_length_range": "Introduza uma duração de 0 a {max} minutos, ou deixe o campo vazio.",
+    "validation.schedule_place_too_long": "O nome do espaço tem {n} caracteres. Use {max}, no máximo.",
+    "validation.schedule_owner_too_long": "O nome tem {n} caracteres. Use {max}, no máximo.",
+    "validation.schedule_role_too_long": "A função tem {n} caracteres. Use {max}, no máximo.",
+    "validation.schedule_note_too_long": "A nota tem {n} caracteres. Use {max}, no máximo.",
+    "run_of_show.version_required": "Envie a versão que está a alterar, em If-Match.",
+    "run_of_show.changed_since": "Outra pessoa alterou este item enquanto o tinha aberto. A sua alteração não foi guardada.",
+    "timeline.run_of_show_begins": "Início do programa"
 }

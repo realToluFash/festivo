@@ -4,6 +4,8 @@ import {
   type OrganisationEvent,
   type Seating,
   type SeatingPlan,
+  type SeatingWithRow,
+  type SeatingWithSeat,
   type SeatingWithTable,
 } from '@soirely/api-client';
 import { type KeyboardEvent, type ReactNode, useEffect, useId, useRef, useState } from 'react';
@@ -17,12 +19,16 @@ export type Panel =
   | { kind: 'sectionAdd' }
   | { kind: 'sectionEdit'; id: string }
   | { kind: 'table'; id: string; said?: string }
-  | { kind: 'chair'; id: string; seat: number };
+  | { kind: 'chair'; id: string; seat: number }
+  | { kind: 'row'; id: string; said?: string; seat?: number }
+  | { kind: 'seat'; id: string; said?: string };
 
 export type Asking =
   | { kind: 'deletePlan' }
   | { kind: 'deleteSection'; id: string }
-  | { kind: 'deleteTable'; id: string };
+  | { kind: 'deleteTable'; id: string }
+  | { kind: 'deleteRow'; id: string }
+  | { kind: 'deleteSeat'; id: string };
 
 /** A room size refused because these tables would sit outside it (sc-4000): they are outlined, the new wall dashed. */
 export interface Outside {
@@ -31,6 +37,8 @@ export interface Outside {
   cm: number;
 }
 
+export type Placed = SeatingWithTable | SeatingWithRow | SeatingWithSeat;
+
 export interface PlanApi {
   event: OrganisationEvent;
   system: MeasurementSystem;
@@ -38,12 +46,14 @@ export interface PlanApi {
   readOnly: boolean;
   /** Sends one change; a 412 reloads the plan and says who changed it first. Returns the field's refusal, if any. */
   send: (
-    change: () => Promise<Seating | SeatingWithTable>,
+    change: () => Promise<Seating | Placed>,
     field?: string,
     refusal?: (error: ApiError) => string | null,
   ) => Promise<string | null>;
-  /** Adds or copies a table: the one saved, or null with the notice saying why. */
-  place: (change: () => Promise<SeatingWithTable>) => Promise<{ id: string; name: string } | null>;
+  /** Adds or copies a table, a row or a seat: the one saved (a row named by its label), or null with the notice saying why. */
+  place: (
+    change: () => Promise<Placed>,
+  ) => Promise<{ id: string; name: string; seats: number } | null>;
   /** True once deleted; otherwise the notice says why, on the panel the ask was opened from. */
   remove: (change: () => Promise<Seating>) => Promise<boolean>;
   adopt: (seating: Seating) => void;
@@ -90,7 +100,7 @@ export function BackHead({
 }: {
   title: string;
   line?: string;
-  onClose: () => void;
+  onClose?: () => void;
 }) {
   const { t } = useTranslation();
 
@@ -100,14 +110,16 @@ export function BackHead({
         <h2 data-focus="title" tabIndex={-1}>
           {title}
         </h2>
-        <button
-          type="button"
-          className="st-icon-button"
-          aria-label={t('seating.close')}
-          onClick={onClose}
-        >
-          <Glyph name="clear" size={19} weight={2.2} />
-        </button>
+        {onClose != null && (
+          <button
+            type="button"
+            className="st-icon-button"
+            aria-label={t('seating.close')}
+            onClick={onClose}
+          >
+            <Glyph name="clear" size={19} weight={2.2} />
+          </button>
+        )}
       </div>
       {line != null && <p className="st-line">{line}</p>}
     </div>

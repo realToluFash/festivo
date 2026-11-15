@@ -1739,7 +1739,7 @@ describe('the QA testers', () => {
     ]);
     expect([c.chromePort, c.driverPort, c.helperPort]).toEqual([9227, 22093, 22196]);
     expect(c.emulators).toMatchObject({
-      phone: { name: 'Soirely_QA5_Phone' },
+      phone: { name: 'Soirely_QA5_Phone', ramMb: 4096 },
       tablet: { name: 'Soirely_QA5_Tablet', ramMb: 4096 },
     });
     expect(testerOf('/Users/x/Projects/soirely-qa5')).toBe(5);

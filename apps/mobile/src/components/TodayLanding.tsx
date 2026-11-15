@@ -143,7 +143,7 @@ export function TodayLanding({
 
   if (load.kind !== 'loaded')
     return (
-      <View style={styles.waiting}>
+      <View style={[styles.waiting, load.kind === 'loading' && styles.loading]}>
         {load.kind === 'loading' ? (
           <Pending after={SKELETON_AFTER_MS} stacked />
         ) : (
@@ -188,9 +188,9 @@ export function TodayLanding({
 const styles = StyleSheet.create({
   waiting: {
     flex: 1,
-    alignItems: 'center',
     justifyContent: 'center',
     padding: tokens.spaceXl,
     backgroundColor: tokens.colorPage,
   },
+  loading: { alignItems: 'center' },
 });

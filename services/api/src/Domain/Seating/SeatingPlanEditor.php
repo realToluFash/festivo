@@ -8,6 +8,8 @@ use App\Audit\Auditor;
 use App\Domain\Seating\Http\SeatingSerialiser;
 use App\Entity\Event;
 use App\Entity\SeatingPlan;
+use App\Entity\SeatingRow;
+use App\Entity\SeatingSeat;
 use App\Entity\SeatingSection;
 use App\Entity\SeatingTable;
 use App\Entity\User;
@@ -22,6 +24,8 @@ use App\Http\Exception\ApiException;
 use App\Locale\NameNormaliser;
 use App\Realtime\RealtimePublisher;
 use App\Repository\SeatingPlanRepository;
+use App\Repository\SeatingRowRepository;
+use App\Repository\SeatingSeatRepository;
 use App\Repository\SeatingSectionRepository;
 use App\Repository\SeatingTableRepository;
 use Doctrine\DBAL\LockMode;
@@ -54,11 +58,25 @@ final readonly class SeatingPlanEditor
 
     public const string TABLE_DELETED = 'seating.table_deleted';
 
+    public const string ROW_ADDED = 'seating.row_added';
+
+    public const string ROW_CHANGED = 'seating.row_changed';
+
+    public const string ROW_DELETED = 'seating.row_deleted';
+
+    public const string SEAT_ADDED = 'seating.seat_added';
+
+    public const string SEAT_CHANGED = 'seating.seat_changed';
+
+    public const string SEAT_DELETED = 'seating.seat_deleted';
+
     public function __construct(
         private SeatingRules $seatingRules,
         private SeatingPlanRepository $seatingPlanRepository,
         private SeatingSectionRepository $seatingSectionRepository,
         private SeatingTableRepository $seatingTableRepository,
+        private SeatingRowRepository $seatingRowRepository,
+        private SeatingSeatRepository $seatingSeatRepository,
         private SeatingSerialiser $seatingSerialiser,
         private EntityManagerInterface $entityManager,
         private Auditor $auditor,
@@ -131,8 +149,8 @@ final readonly class SeatingPlanEditor
         $this->locked($plan, function () use ($plan, $by): void {
             $this->auditor->record(self::DELETED, 'SeatingPlan', $plan->getId(), Actor::User, $by->getId(), $by->getName(), Auditor::diff(self::recorded($plan), []));
 
-            foreach ($this->seatingTableRepository->findInPlan($plan) as $table) {
-                $this->entityManager->remove($table);
+            foreach ($this->furniture($plan) as $item) {
+                $this->entityManager->remove($item);
             }
 
             foreach ($this->seatingSectionRepository->findInPlan($plan) as $section) {
@@ -214,9 +232,9 @@ final readonly class SeatingPlanEditor
         $plan = $section->getPlan();
 
         $this->locked($plan, function () use ($plan, $section, $by): void {
-            foreach ($this->seatingTableRepository->findInPlan($plan) as $table) {
-                if (true === $table->getSection()?->getId()->equals($section->getId())) {
-                    $table->setSection(null);
+            foreach ($this->furniture($plan) as $item) {
+                if (true === $item->getSection()?->getId()->equals($section->getId())) {
+                    $item->setSection(null);
                 }
             }
 
@@ -251,7 +269,7 @@ final readonly class SeatingPlanEditor
 
         $this->locked($plan, function () use ($event, $table, $plan, $ifMatch, $by, $fields): void {
             $this->entityManager->refresh($table);
-            $this->tableUnchangedSince($table, $ifMatch);
+            $this->unchangedSince($table, $ifMatch);
             $before = self::tableRecorded($table);
 
             if (Iter\contains_key($fields, 'name')) {
@@ -297,14 +315,14 @@ final readonly class SeatingPlanEditor
 
         $copy = $this->locked($plan, function () use ($original, $plan, $ifMatch, $by): SeatingTable {
             $this->entityManager->refresh($original);
-            $this->tableUnchangedSince($original, $ifMatch);
+            $this->unchangedSince($original, $ifMatch);
             $tables = $this->seatingTableRepository->findInPlan($plan);
             $copy = $this->newTable(
                 $plan,
                 $tables,
                 $original->getShape(),
-                $original->getXCm() + TableGeometry::COPY_OFFSET_CM[0],
-                $original->getYCm() + TableGeometry::COPY_OFFSET_CM[1],
+                $original->getXCm() + FloorGeometry::COPY_OFFSET_CM[0],
+                $original->getYCm() + FloorGeometry::COPY_OFFSET_CM[1],
                 $by,
                 $original,
             );
@@ -325,12 +343,242 @@ final readonly class SeatingPlanEditor
 
         $this->locked($plan, function () use ($table, $ifMatch, $by): void {
             $this->entityManager->refresh($table);
-            $this->tableUnchangedSince($table, $ifMatch);
+            $this->unchangedSince($table, $ifMatch);
             $this->auditor->record(self::TABLE_DELETED, 'SeatingTable', $table->getId(), Actor::User, $by->getId(), $by->getName(), Auditor::diff(self::tableRecorded($table), []));
             $this->entityManager->remove($table);
         });
 
         $this->published($event, $plan);
+    }
+
+    /** Ten seats labelled with the next free letter, at the room's centre or the nearest free floor to it. */
+    public function addRow(Event $event, SeatingPlan $plan, User $by): SeatingRow
+    {
+        $row = $this->locked($plan, function () use ($plan, $by): SeatingRow {
+            $row = $this->newRow($plan, Math\div($plan->getWidthCm(), 2), Math\div($plan->getLengthCm(), 2), $by);
+            $this->auditor->record(self::ROW_ADDED, 'SeatingRow', $row->getId(), Actor::User, $by->getId(), $by->getName(), Auditor::diff([], self::rowRecorded($row)));
+
+            return $row;
+        });
+
+        $this->published($event, $plan);
+
+        return $row;
+    }
+
+    /** @param array{label?: string, sectionId?: ?string, seats?: int, spacingCm?: int, rotation?: int, unusableSeats?: list<int>} $fields a field left out keeps its value; fewer seats drop from the right-hand end, and their unusable marks with them */
+    public function changeRow(Event $event, SeatingRow $row, ?string $ifMatch, User $by, array $fields): SeatingRow
+    {
+        $ifMatch = self::versionRequired($ifMatch);
+        $plan = $row->getPlan();
+
+        $this->locked($plan, function () use ($event, $row, $plan, $ifMatch, $by, $fields): void {
+            $this->entityManager->refresh($row);
+            $this->unchangedSince($row, $ifMatch);
+            $before = self::rowRecorded($row);
+
+            if (Iter\contains_key($fields, 'label')) {
+                $others = Vec\filter($this->seatingRowRepository->findInPlan($plan), static fn (SeatingRow $other): bool => !$other->getId()->equals($row->getId()));
+                $labelled = $this->seatingRules->rowLabel($fields['label'], $others);
+                $row->relabel($labelled['label'], $labelled['labelKey']);
+            }
+
+            if (Iter\contains_key($fields, 'sectionId')) {
+                $row->setSection($this->sectionIn($plan, $fields['sectionId']));
+            }
+
+            $seats = $fields['seats'] ?? $row->getSeats();
+            $spacingCm = $fields['spacingCm'] ?? $row->getSpacingCm();
+            $rotation = $fields['rotation'] ?? $row->getRotation();
+            $unusable = $fields['unusableSeats'] ?? Vec\filter($row->getUnusableSeats(), static fn (int $seat): bool => $seat <= $seats);
+            $this->seatingRules->rowLayout($seats, $spacingCm, $rotation, $unusable, self::systemOf($event));
+            $row->lay($seats, $spacingCm, $rotation, Vec\sort($unusable));
+
+            $changes = Auditor::diff($before, self::rowRecorded($row));
+
+            if ([] !== $changes) {
+                $row->setChangedBy($by);
+                $this->auditor->record(self::ROW_CHANGED, 'SeatingRow', $row->getId(), Actor::User, $by->getId(), $by->getName(), $changes);
+            }
+        });
+
+        $this->published($event, $plan);
+
+        return $row;
+    }
+
+    /** Seats, spacing, turn, section and unusable seats, with the next free label and nobody seated, below the original. */
+    public function duplicateRow(Event $event, SeatingRow $original, ?string $ifMatch, User $by): SeatingRow
+    {
+        $ifMatch = self::versionRequired($ifMatch);
+        $plan = $original->getPlan();
+
+        $copy = $this->locked($plan, function () use ($original, $plan, $ifMatch, $by): SeatingRow {
+            $this->entityManager->refresh($original);
+            $this->unchangedSince($original, $ifMatch);
+            $copy = $this->newRow($plan, $original->getXCm() + FloorGeometry::COPY_OFFSET_CM[0], $original->getYCm() + FloorGeometry::COPY_OFFSET_CM[1], $by, $original);
+            $this->auditor->record(self::ROW_ADDED, 'SeatingRow', $copy->getId(), Actor::User, $by->getId(), $by->getName(), Auditor::diff([], self::rowRecorded($copy)));
+
+            return $copy;
+        });
+
+        $this->published($event, $plan);
+
+        return $copy;
+    }
+
+    public function deleteRow(Event $event, SeatingRow $row, ?string $ifMatch, User $by): void
+    {
+        $ifMatch = self::versionRequired($ifMatch);
+        $plan = $row->getPlan();
+
+        $this->locked($plan, function () use ($row, $ifMatch, $by): void {
+            $this->entityManager->refresh($row);
+            $this->unchangedSince($row, $ifMatch);
+            $this->auditor->record(self::ROW_DELETED, 'SeatingRow', $row->getId(), Actor::User, $by->getId(), $by->getName(), Auditor::diff(self::rowRecorded($row), []));
+            $this->entityManager->remove($row);
+        });
+
+        $this->published($event, $plan);
+    }
+
+    /** Named "Seat {n}" in the creator's language with the next free number, at the room's centre or the nearest free floor to it. */
+    public function addSeat(Event $event, SeatingPlan $plan, User $by): SeatingSeat
+    {
+        $seat = $this->locked($plan, function () use ($plan, $by): SeatingSeat {
+            $named = $this->nextSeatName($this->seatingSeatRepository->findInPlan($plan));
+            $seat = new SeatingSeat($plan, $named['name'], $named['nameKey'], Math\div($plan->getWidthCm(), 2), Math\div($plan->getLengthCm(), 2), $by);
+            [$x, $y] = FloorGeometry::nearestFree($seat, $this->furniture($plan), $plan, $seat->getXCm(), $seat->getYCm());
+            $seat->moveTo($x, $y);
+            $this->entityManager->persist($seat);
+            $this->auditor->record(self::SEAT_ADDED, 'SeatingSeat', $seat->getId(), Actor::User, $by->getId(), $by->getName(), Auditor::diff([], self::seatRecorded($seat)));
+
+            return $seat;
+        });
+
+        $this->published($event, $plan);
+
+        return $seat;
+    }
+
+    /** @param array{name?: string, sectionId?: ?string, unusable?: bool} $fields a field left out keeps its value */
+    public function changeSeat(Event $event, SeatingSeat $seat, ?string $ifMatch, User $by, array $fields): SeatingSeat
+    {
+        $ifMatch = self::versionRequired($ifMatch);
+        $plan = $seat->getPlan();
+
+        $this->locked($plan, function () use ($seat, $plan, $ifMatch, $by, $fields): void {
+            $this->entityManager->refresh($seat);
+            $this->unchangedSince($seat, $ifMatch);
+            $before = self::seatRecorded($seat);
+
+            if (Iter\contains_key($fields, 'name')) {
+                $others = Vec\filter($this->seatingSeatRepository->findInPlan($plan), static fn (SeatingSeat $other): bool => !$other->getId()->equals($seat->getId()));
+                $named = $this->seatingRules->seatName($fields['name'], $others);
+                $seat->rename($named['name'], $named['nameKey']);
+            }
+
+            if (Iter\contains_key($fields, 'sectionId')) {
+                $seat->setSection($this->sectionIn($plan, $fields['sectionId']));
+            }
+
+            if (Iter\contains_key($fields, 'unusable')) {
+                $seat->setUnusable($fields['unusable']);
+            }
+
+            $changes = Auditor::diff($before, self::seatRecorded($seat));
+
+            if ([] !== $changes) {
+                $seat->setChangedBy($by);
+                $this->auditor->record(self::SEAT_CHANGED, 'SeatingSeat', $seat->getId(), Actor::User, $by->getId(), $by->getName(), $changes);
+            }
+        });
+
+        $this->published($event, $plan);
+
+        return $seat;
+    }
+
+    public function deleteSeat(Event $event, SeatingSeat $seat, ?string $ifMatch, User $by): void
+    {
+        $ifMatch = self::versionRequired($ifMatch);
+        $plan = $seat->getPlan();
+
+        $this->locked($plan, function () use ($seat, $ifMatch, $by): void {
+            $this->entityManager->refresh($seat);
+            $this->unchangedSince($seat, $ifMatch);
+            $this->auditor->record(self::SEAT_DELETED, 'SeatingSeat', $seat->getId(), Actor::User, $by->getId(), $by->getName(), Auditor::diff(self::seatRecorded($seat), []));
+            $this->entityManager->remove($seat);
+        });
+
+        $this->published($event, $plan);
+    }
+
+    /** @return list<SeatingTable|SeatingRow|SeatingSeat> everything standing in the room */
+    private function furniture(SeatingPlan $plan): array
+    {
+        return Vec\concat($this->seatingTableRepository->findInPlan($plan), $this->seatingRowRepository->findInPlan($plan), $this->seatingSeatRepository->findInPlan($plan));
+    }
+
+    private function newRow(SeatingPlan $plan, int $xCm, int $yCm, User $by, ?SeatingRow $copying = null): SeatingRow
+    {
+        $label = self::nextRowLabel(Vec\map($this->seatingRowRepository->findInPlan($plan), static fn (SeatingRow $row): string => $row->getLabelKey()));
+        $row = new SeatingRow($plan, $label, NameNormaliser::key($label), $xCm, $yCm, $by);
+
+        if (null !== $copying) {
+            $row->setSection($copying->getSection());
+            $row->lay($copying->getSeats(), $copying->getSpacingCm(), $copying->getRotation(), $copying->getUnusableSeats());
+        }
+
+        [$x, $y] = FloorGeometry::nearestFree($row, $this->furniture($plan), $plan, $xCm, $yCm);
+        $row->moveTo($x, $y);
+        $this->entityManager->persist($row);
+
+        return $row;
+    }
+
+    /** @param list<string> $taken the plan's label keys */
+    public static function nextRowLabel(array $taken): string
+    {
+        $n = 1;
+
+        while (Iter\contains($taken, NameNormaliser::key(self::rowLabelAt($n)))) {
+            ++$n;
+        }
+
+        return self::rowLabelAt($n);
+    }
+
+    /** 1 is A, 26 is Z, 27 is AA, 53 is BA. */
+    public static function rowLabelAt(int $n): string
+    {
+        $label = '';
+
+        for ($left = $n; $left > 0; $left = Math\div($left - 1, 26)) {
+            $label = Str\chr(65 + ($left - 1) % 26) . $label;
+        }
+
+        return $label;
+    }
+
+    /**
+     * @param list<SeatingSeat> $seats
+     *
+     * @return array{name: string, nameKey: string}
+     */
+    private function nextSeatName(array $seats): array
+    {
+        $taken = Vec\map($seats, static fn (SeatingSeat $seat): string => $seat->getNameKey());
+
+        $n = 1;
+
+        while (Iter\contains($taken, NameNormaliser::key($this->translator->trans('seating.seat_default_name', ['{n}' => $n])))) {
+            ++$n;
+        }
+
+        $name = $this->translator->trans('seating.seat_default_name', ['{n}' => $n]);
+
+        return ['name' => $name, 'nameKey' => NameNormaliser::key($name)];
     }
 
     /** @param list<SeatingTable> $tables the plan's tables before this one */
@@ -344,7 +592,7 @@ final readonly class SeatingPlanEditor
             $table->lay($shape, $copying->getSeats(), $copying->getWidthCm(), $copying->getLengthCm(), $copying->getEndSeats(), $copying->getRotation(), $copying->getUnusableSeats());
         }
 
-        [$x, $y] = TableGeometry::nearestFree($table, $tables, $plan, $xCm, $yCm);
+        [$x, $y] = FloorGeometry::nearestFree($table, $this->furniture($plan), $plan, $xCm, $yCm);
         $table->moveTo($x, $y);
         $this->entityManager->persist($table);
 
@@ -391,19 +639,19 @@ final readonly class SeatingPlanEditor
         return null !== $section && $section->getPlan()->getId()->equals($plan->getId()) ? $section : throw $this->seatingRules->unknownSection();
     }
 
-    private function tableUnchangedSince(SeatingTable $table, string $ifMatch): void
+    private function unchangedSince(SeatingTable|SeatingRow|SeatingSeat $item, string $ifMatch): void
     {
-        if (!EntityTag::matches($ifMatch, EntityTag::of($table->getVersion()))) {
-            throw self::changedSince($table->getChangedBy());
+        if (!EntityTag::matches($ifMatch, EntityTag::of($item->getVersion()))) {
+            throw self::changedSince($item->getChangedBy());
         }
     }
 
-    /** A room may not shrink past anything in it, chairs included, nor further past a table already through that wall (sc-4000, 409: the size is valid, the furniture is in the way). */
+    /** A room may not shrink past anything in it, chairs included, nor further past an item already through that wall (sc-4000, 409: the size is valid, the furniture is in the way); each table, row and single seat counts once (sc-4003). */
     private function refuseShrinkingPast(SeatingPlan $plan, int $widthCm, int $lengthCm, MeasurementSystem $system): void
     {
         $outside = Vec\filter(
-            $this->seatingTableRepository->findInPlan($plan),
-            static fn (SeatingTable $table): bool => TableGeometry::cutByShrinking($table, $plan->getWidthCm(), $plan->getLengthCm(), $widthCm, $lengthCm),
+            $this->furniture($plan),
+            static fn (SeatingTable|SeatingRow|SeatingSeat $item): bool => FloorGeometry::cutByShrinking($item, $plan->getWidthCm(), $plan->getLengthCm(), $widthCm, $lengthCm),
         );
 
         if ([] === $outside) {
@@ -415,7 +663,7 @@ final readonly class SeatingPlanEditor
         throw new ApiException(
             ErrorCode::SeatingItemsOutside,
             'seating.items_outside',
-            members: ['outside' => Vec\map($outside, static fn (SeatingTable $table): string => $table->getId()->toRfc4122())],
+            members: ['outside' => Vec\map($outside, static fn (SeatingTable|SeatingRow|SeatingSeat $item): string => $item->getId()->toRfc4122())],
             parameters: ['{count}' => Iter\count($outside), '{width}' => $system->written($widthCm, $locale), '{roomLength}' => $system->written($lengthCm, $locale)],
         );
     }
@@ -485,6 +733,33 @@ final readonly class SeatingPlanEditor
             'xCm' => $table->getXCm(),
             'yCm' => $table->getYCm(),
             'unusableSeats' => $table->getUnusableSeats(),
+        ];
+    }
+
+    /** @return array<string, mixed> */
+    private static function rowRecorded(SeatingRow $row): array
+    {
+        return [
+            'label' => $row->getLabel(),
+            'section' => $row->getSection()?->getId()->toRfc4122(),
+            'seats' => $row->getSeats(),
+            'spacingCm' => $row->getSpacingCm(),
+            'rotation' => $row->getRotation(),
+            'xCm' => $row->getXCm(),
+            'yCm' => $row->getYCm(),
+            'unusableSeats' => $row->getUnusableSeats(),
+        ];
+    }
+
+    /** @return array<string, mixed> */
+    private static function seatRecorded(SeatingSeat $seat): array
+    {
+        return [
+            'name' => $seat->getName(),
+            'section' => $seat->getSection()?->getId()->toRfc4122(),
+            'xCm' => $seat->getXCm(),
+            'yCm' => $seat->getYCm(),
+            'unusable' => $seat->isUnusable(),
         ];
     }
 

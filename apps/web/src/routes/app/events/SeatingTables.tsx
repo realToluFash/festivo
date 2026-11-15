@@ -26,6 +26,15 @@ import { api } from '../../../api.ts';
 import { Glyph } from '../../../components/Glyph.tsx';
 import { TextAction } from '../../../components/SettingsParts.tsx';
 import { currentLocale } from '../../../i18n/index.ts';
+import {
+  CHAIRS_FROM_SCALE,
+  f,
+  POINTER_CHAIRS_FROM_SCALE,
+  readCount,
+  rotations,
+  sectionOf,
+  turned,
+} from './seatingDraw.ts';
 import { Added, BackHead, Field, Line, type PlanApi, Said, Select } from './SeatingParts.tsx';
 import {
   centimetreUnit,
@@ -38,19 +47,34 @@ import {
 type T = ReturnType<typeof useTranslation>['t'];
 
 const SHAPE_WORDS = {
-  round: { whole: 'seating.shapeRound', kind: 'seating.kindRound', menu: 'seating.menuRound' },
+  round: {
+    whole: 'seating.shapeRound',
+    short: 'seating.shapeRoundShort',
+    kind: 'seating.kindRound',
+    menu: 'seating.menuRound',
+  },
   rectangular: {
     whole: 'seating.shapeRectangular',
+    short: 'seating.shapeRectangularShort',
     kind: 'seating.kindRectangular',
     menu: 'seating.menuRectangular',
   },
-  head: { whole: 'seating.shapeHead', kind: 'seating.kindHead', menu: 'seating.menuHead' },
+  head: {
+    whole: 'seating.shapeHead',
+    short: 'seating.shapeHeadShort',
+    kind: 'seating.kindHead',
+    menu: 'seating.menuHead',
+  },
   cocktail: {
     whole: 'seating.shapeCocktail',
+    short: 'seating.shapeCocktailShort',
     kind: 'seating.kindCocktail',
     menu: 'seating.menuCocktail',
   },
-} as const satisfies Record<TableShape, { whole: string; kind: string; menu: string }>;
+} as const satisfies Record<
+  TableShape,
+  { whole: string; short: string; kind: string; menu: string }
+>;
 
 const SIZE_RESET = {
   round: 'seating.sizeResetRound',
@@ -59,18 +83,10 @@ const SIZE_RESET = {
   cocktail: 'seating.sizeResetCocktail',
 } as const satisfies Record<TableShape, string>;
 
-/** From 25% a table shows its chairs, and from 75% each chair is a 44 target for a pointer (the demo's zoom levels). */
-const CHAIRS_FROM_SCALE = 0.25;
-const POINTER_CHAIRS_FROM_SCALE = 0.75;
-
 function seatsWords(t: T, shape: TableShape, count: number): string {
   return shape === 'cocktail'
     ? t('seating.countPlaces', { count })
     : t('seating.countSeats', { count });
-}
-
-function sectionOf(plan: SeatingPlan, table: SeatingTable) {
-  return plan.sections.find((one) => one.id === table.sectionId) ?? null;
 }
 
 function tableLine(t: T, plan: SeatingPlan, table: SeatingTable): string {
@@ -86,7 +102,8 @@ function chairWord(t: T, table: SeatingTable, seat: number): string {
   return table.unusableSeats.includes(seat) ? t('seating.unusable') : t('seating.empty');
 }
 
-export function AddTable({ ctx }: { ctx: PlanApi }) {
+/** The floating add bar: Add table's menu, then what `more` adds beside it. */
+export function AddTable({ ctx, more }: { ctx: PlanApi; more?: ReactNode }) {
   const { t } = useTranslation();
   const locale = currentLocale();
   const [menu, setMenu] = useState(false);
@@ -152,6 +169,7 @@ export function AddTable({ ctx }: { ctx: PlanApi }) {
           {t('seating.addTable')}
           <Glyph name="chevdown" size={15} weight={2.4} />
         </button>
+        {more}
       </div>
     </>
   );
@@ -163,16 +181,6 @@ function ShapeTile({ shape }: { shape: TableShape }) {
       <Glyph name={shape === 'rectangular' ? 'rect' : shape} size={22} weight={1.9} />
     </span>
   );
-}
-
-function f(value: number): number {
-  return Math.round(value * 10) / 10;
-}
-
-function turned([x, y]: [number, number], degrees: number): [number, number] {
-  const a = (degrees * Math.PI) / 180;
-
-  return [x * Math.cos(a) - y * Math.sin(a), x * Math.sin(a) + y * Math.cos(a)];
 }
 
 /** One table at s px per cm, as the demo's ItemDrawing draws it: the lit Tint, the body, its chairs, its name, then the outline of a refused room size. */
@@ -338,7 +346,7 @@ export function TableDrawing({
 }
 
 /** A chair in its state: an empty one an outline, an unusable one grey with a cross; a cocktail table's standing places are rounded squares. */
-function ChairMark({
+export function ChairMark({
   x,
   y,
   r,
@@ -393,19 +401,12 @@ function ChairMark({
   );
 }
 
-function StateMark({ unusable, square }: { unusable: boolean; square: boolean }) {
+export function StateMark({ unusable, square }: { unusable: boolean; square: boolean }) {
   return (
     <svg className="st-state-mark" width="22" height="22" viewBox="0 0 22 22" aria-hidden="true">
       <ChairMark x={11} y={11} r={9.5} unusable={unusable} square={square} label="" />
     </svg>
   );
-}
-
-function rotations() {
-  return Array.from({ length: 360 / SEATING_LIMITS.rotationStep }, (_, index) => ({
-    value: String(index * SEATING_LIMITS.rotationStep),
-    word: `${index * SEATING_LIMITS.rotationStep}°`,
-  }));
 }
 
 function endsLine(t: T, table: SeatingTable): string {
@@ -431,16 +432,16 @@ function readSize(
   if (read.kind === 'unreadable' && system === 'us') return { refused: t('seating.usHint') };
   return {
     refused: t('seating.tableSizeRange', {
-      min: tableLengthWords(t, locale, TABLE_MINIMUM_CM, system, { grouping: false }),
-      max: tableLengthWords(t, locale, TABLE_MAXIMUM_CM, system, { grouping: false }),
+      min: tableLengthWords(t, locale, TABLE_MINIMUM_CM, system, {
+        grouping: false,
+        rounding: 'up',
+      }),
+      max: tableLengthWords(t, locale, TABLE_MAXIMUM_CM, system, {
+        grouping: false,
+        rounding: 'down',
+      }),
     }),
   };
-}
-
-function readCount(text: string): number | null {
-  const typed = text.trim();
-
-  return /^\d+$/u.test(typed) ? Number(typed) : null;
 }
 
 export function TablePanel({
@@ -486,7 +487,10 @@ export function TablePanel({
     const typed = text.trim();
 
     if (typed === '') return t('seating.tableBlank');
-    if (typed.length > SEATING_LIMITS.tableNameMaximum)
+    if (
+      [...new Intl.Segmenter().segment(typed)].length > SEATING_LIMITS.tableNameMaximum ||
+      [...typed].length > SEATING_LIMITS.tableNameCodePoints
+    )
       return t('seating.tableLong', { max: SEATING_LIMITS.tableNameMaximum });
     const holder = holdingName(plan.tables, typed, table.id);
 
@@ -498,11 +502,7 @@ export function TablePanel({
 
   return (
     <div className="st-stack is-tight">
-      <BackHead
-        title={table.name}
-        line={tableLine(t, plan, table)}
-        onClose={() => ctx.open(null)}
-      />
+      <BackHead title={table.name} line={tableLine(t, plan, table)} />
       {said != null && <Added>{said}</Added>}
       {ctx.notice != null && <Said>{ctx.notice}</Said>}
       {note != null && <Line>{note}</Line>}
@@ -515,53 +515,40 @@ export function TablePanel({
         </Said>
       )}
       <div className="st-fields">
-        <Field
-          fieldKey="name"
-          label={t('seating.name')}
-          value={table.name}
-          maxLength={SEATING_LIMITS.tableNameMaximum}
-          onCommit={name}
+        <Field fieldKey="name" label={t('seating.name')} value={table.name} onCommit={name} />
+        <Select
+          fieldKey="section"
+          label={t('seating.section')}
+          value={table.sectionId ?? ''}
+          options={[
+            { value: '', word: t('seating.noSection') },
+            ...plan.sections.map((one) => ({ value: one.id, word: one.name })),
+          ]}
+          onPick={(value) => void change({ sectionId: value === '' ? null : value })}
         />
-        <div className="st-two">
-          <Select
-            fieldKey="section"
-            label={t('seating.section')}
-            value={table.sectionId ?? ''}
-            options={[
-              { value: '', word: t('seating.noSection') },
-              ...plan.sections.map((one) => ({ value: one.id, word: one.name })),
-            ]}
-            onPick={(value) => void change({ sectionId: value === '' ? null : value })}
-          />
-          <Select
-            fieldKey="shape"
-            label={t('seating.shape')}
-            value={table.shape}
-            options={TABLE_SHAPES.map((shape) => ({
-              value: shape,
-              word: t(SHAPE_WORDS[shape].whole),
-            }))}
-            onPick={(value) => {
-              const shape = TABLE_SHAPES.find((one) => one === value);
+        <Select
+          fieldKey="shape"
+          label={t('seating.shape')}
+          value={table.shape}
+          options={TABLE_SHAPES.map((shape) => ({
+            value: shape,
+            word: t(SHAPE_WORDS[shape].short),
+          }))}
+          onPick={(value) => {
+            const shape = TABLE_SHAPES.find((one) => one === value);
 
-              if (shape == null) return;
-              void change({ shape }).then((refused) => {
-                if (refused != null) return;
-                setNote(
-                  t(SIZE_RESET[shape], {
-                    size: tableSizeWords(
-                      t,
-                      locale,
-                      { shape, ...TABLE_DEFAULTS[shape] },
-                      ctx.system,
-                    ),
-                    count: table.seats,
-                  }),
-                );
-              });
-            }}
-          />
-        </div>
+            if (shape == null) return;
+            void change({ shape }).then((refused) => {
+              if (refused != null) return;
+              setNote(
+                t(SIZE_RESET[shape], {
+                  size: tableSizeWords(t, locale, { shape, ...TABLE_DEFAULTS[shape] }, ctx.system),
+                  count: table.seats,
+                }),
+              );
+            });
+          }}
+        />
         {round ? (
           <div className="st-two">
             <Field
@@ -682,11 +669,7 @@ function TableFacts({
 
   return (
     <div className="st-stack">
-      <BackHead
-        title={table.name}
-        line={tableLine(t, plan, table)}
-        onClose={() => ctx.open(null)}
-      />
+      <BackHead title={table.name} line={tableLine(t, plan, table)} />
       <dl className="st-facts">
         {facts.map(([key, value]) => (
           <div key={key}>
@@ -719,7 +702,6 @@ export function ChairPanel({
       <BackHead
         title={t('seating.chairTitle', { table: table.name, seat })}
         line={`${t(SHAPE_WORDS[table.shape].whole)} · ${sectionOf(plan, table)?.name ?? t('seating.noSection')}`}
-        onClose={() => ctx.open({ kind: 'table', id: table.id })}
       />
       <p className="st-state-line is-big">
         <StateMark unusable={unusable} square={table.shape === 'cocktail'} />

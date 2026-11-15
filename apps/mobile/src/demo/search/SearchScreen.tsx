@@ -144,7 +144,7 @@ export function SearchScreen({ start }: { start: SearchStart }) {
       typed={typed}
       off={false}
       width={null}
-      label={W.placeholder(start.reach)}
+      label={W.search}
       onTyped={setTyped}
       onSearch={() => {
         setTerm(typed);

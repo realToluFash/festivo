@@ -1,3 +1,5 @@
+import { listFormat } from '@soirely/domain';
+
 /** Seating A's English, word for word from the boards and seating-a-spec; the linguist takes the four locales when the product is built. */
 export const W = {
   seating: 'Seating',
@@ -59,7 +61,7 @@ export const W = {
   colour: 'Colour',
   deleteSectionOpener: 'Delete section…',
   deleteSection: 'Delete section',
-  sectionStays: 'Its tables stay where they are, with no section.',
+  sectionStays: 'Its tables, rows and single seats stay where they are, with no section.',
   keepIt: 'Keep it',
   enterSectionName: 'Enter a name for the section.',
   sectionLimit: 'A plan can have up to 30 sections. Delete one to add another.',
@@ -165,12 +167,18 @@ export const say = {
     `${colour} · ${plural(tables, 'table', 'tables')} · ${plural(seats, 'seat', 'seats')}`,
   sectionTaken: (name: string) => `This plan already has a section called ${name}.`,
   deleteAsk: (name: string) => `Delete ${name}?`,
-  sectionDeleteBody: (n: number) =>
-    n === 0
-      ? ''
-      : n === 1
-        ? 'Its 1 table stays where it is, with no section.'
-        : `Its ${n} tables stay where they are, with no section.`,
+  sectionDeleteBody: (tables: number, rows: number, singles: number) => {
+    const parts = [
+      tables === 0 ? null : plural(tables, 'table', 'tables'),
+      rows === 0 ? null : plural(rows, 'row', 'rows'),
+      singles === 0 ? null : plural(singles, 'single seat', 'single seats'),
+    ].filter((part): part is string => part != null);
+    if (parts.length === 0) return '';
+    const counts = listFormat('en', { style: 'long', type: 'conjunction' }).format(parts);
+    return tables + rows + singles === 1
+      ? `Its ${counts} stays where it is, with no section.`
+      : `Its ${counts} stay where they are, with no section.`;
+  },
   sectionsCount: (n: number) => `Sections · ${n}`,
   placeBar: (shape: string) =>
     `Tap the floor to place a ${shape.toLowerCase()}. It snaps to the grid.`,

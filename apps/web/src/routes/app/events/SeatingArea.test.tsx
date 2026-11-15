@@ -6,7 +6,7 @@ import { RouterProvider, createMemoryRouter } from 'react-router';
 import { __setSessionState, type Session } from '../../../session.ts';
 import { OWNER_PERMISSIONS, membership } from '../../../test-memberships.ts';
 import { routes } from '../../index.tsx';
-import { deletePlanWords } from './SeatingArea.tsx';
+import { deletePlanWords, sectionDeleteWords } from './SeatingArea.tsx';
 
 const IRE = membership({ id: 'org_1', name: 'Ìrè Events' });
 
@@ -47,6 +47,7 @@ const EVENT = {
 };
 
 const NONE = { sections: 0, tables: 0, rows: 0, singleSeats: 0, seatedGuests: 0 };
+const EMPTY = { tables: 0, rows: 0, singleSeats: 0, seats: 0 };
 
 function plan(sections: { id: string; name: string; colour: string; version?: number }[] = []) {
   return {
@@ -56,9 +57,11 @@ function plan(sections: { id: string; name: string; colour: string; version?: nu
     lengthCm: 1800,
     version: 1,
     changedBy: null,
-    sections: sections.map((one) => ({ version: 1, tables: 0, seats: 0, ...one })),
+    sections: sections.map((one) => ({ version: 1, ...EMPTY, ...one })),
     tables: [],
-    withoutSection: { tables: 0, seats: 0 },
+    rows: [],
+    singleSeats: [],
+    withoutSection: EMPTY,
     counts: { ...NONE, sections: sections.length },
   };
 }
@@ -333,6 +336,28 @@ describe('Seating at a desk (sc-3998)', () => {
     );
   });
 
+  it('counts the rows, single seats and seats in each section and in none', async () => {
+    signedIn();
+    const ceremony = plan([{ id: 's1', name: 'Ceremony', colour: 'teal' }]);
+    ceremony.sections = ceremony.sections.map((one) => ({
+      ...one,
+      rows: 3,
+      singleSeats: 1,
+      seats: 31,
+    }));
+    ceremony.withoutSection = { ...EMPTY, rows: 1, seats: 10 };
+    await onSeating({
+      'GET /api/events/ev_1/seating-plan': () =>
+        json({ seating: { measurementSystem: 'metric', plan: ceremony } }),
+    });
+
+    expect(
+      await screen.findByText('Teal · 0 tables · 3 rows · 1 single seat · 31 seats'),
+    ).toBeDefined();
+    expect(screen.getByText('No section')).toBeDefined();
+    expect(screen.getByText('1 row · 10 seats')).toBeDefined();
+  });
+
   it('asks before deleting a section, naming its tables', async () => {
     signedIn();
     const terrace = { ...plan([{ id: 's1', name: 'Terrace', colour: 'teal' }]) };
@@ -347,6 +372,34 @@ describe('Seating at a desk (sc-3998)', () => {
     const ask = await screen.findByRole('alertdialog', { name: 'Delete Terrace?' });
     expect(
       within(ask).getByText('Its 3 tables stay where they are, with no section.'),
+    ).toBeDefined();
+  });
+
+  it('asks before deleting a section, naming its rows and single seats too', async () => {
+    signedIn();
+    const terrace = { ...plan([{ id: 's1', name: 'Terrace', colour: 'teal' }]) };
+    terrace.sections = terrace.sections.map((one) => ({
+      ...one,
+      tables: 3,
+      rows: 2,
+      singleSeats: 1,
+      seats: 45,
+    }));
+    await onSeating({
+      'GET /api/events/ev_1/seating-plan': () =>
+        json({ seating: { measurementSystem: 'metric', plan: terrace } }),
+    });
+
+    fireEvent.click(await screen.findByRole('button', { name: 'Edit Terrace' }));
+    expect(
+      screen.getByText('Its tables, rows and single seats stay where they are, with no section.'),
+    ).toBeDefined();
+    fireEvent.click(screen.getByRole('button', { name: 'Delete section…' }));
+    const ask = await screen.findByRole('alertdialog', { name: 'Delete Terrace?' });
+    expect(
+      within(ask).getByText(
+        'Its 3 tables, 2 rows and 1 single seat stay where they are, with no section.',
+      ),
     ).toBeDefined();
   });
 
@@ -367,7 +420,7 @@ describe('Seating at a desk (sc-3998)', () => {
     fireEvent.click(await screen.findByRole('button', { name: 'Edit Terrace' }));
     fireEvent.click(screen.getByRole('button', { name: 'Delete section…' }));
     const ask = await screen.findByRole('alertdialog', { name: 'Delete Terrace?' });
-    expect(within(ask).queryByText(/tables? stays?/u)).toBeNull();
+    expect(within(ask).queryByText(/with no section/u)).toBeNull();
     expect(ask.getAttribute('aria-describedby')).toBeNull();
     expect(ask.closest('.desk')).not.toBeNull();
     fireEvent.click(within(ask).getByRole('button', { name: 'Delete section' }));
@@ -562,6 +615,54 @@ describe('Delete the plan’s words (sc-3998)', () => {
   });
 });
 
+describe('Delete a section’s words (sc-54060)', () => {
+  const t = i18next.t.bind(i18next);
+  const NOTHING = { tables: 0, rows: 0, singleSeats: 0, seats: 0 };
+
+  it('names each kind alone, the verb following its total', () => {
+    expect(sectionDeleteWords(t, 'en', { ...NOTHING, tables: 1 })).toBe(
+      'Its 1 table stays where it is, with no section.',
+    );
+    expect(sectionDeleteWords(t, 'en', { ...NOTHING, tables: 3 })).toBe(
+      'Its 3 tables stay where they are, with no section.',
+    );
+    expect(sectionDeleteWords(t, 'en', { ...NOTHING, rows: 1, seats: 12 })).toBe(
+      'Its 1 row stays where it is, with no section.',
+    );
+    expect(sectionDeleteWords(t, 'en', { ...NOTHING, singleSeats: 1, seats: 1 })).toBe(
+      'Its 1 single seat stays where it is, with no section.',
+    );
+    expect(sectionDeleteWords(t, 'en', { ...NOTHING, singleSeats: 4, seats: 4 })).toBe(
+      'Its 4 single seats stay where they are, with no section.',
+    );
+  });
+
+  it('lists all three in order, zeros left out, a row counted once however many seats', () => {
+    expect(sectionDeleteWords(t, 'en', { tables: 3, rows: 2, singleSeats: 1, seats: 50 })).toBe(
+      'Its 3 tables, 2 rows and 1 single seat stay where they are, with no section.',
+    );
+    expect(sectionDeleteWords(t, 'en', { ...NOTHING, tables: 1, rows: 1, seats: 20 })).toBe(
+      'Its 1 table and 1 row stay where they are, with no section.',
+    );
+  });
+
+  it('says nothing for an empty section', () => {
+    expect(sectionDeleteWords(t, 'en', NOTHING)).toBeUndefined();
+    expect(sectionDeleteWords(t, 'fr', NOTHING)).toBeUndefined();
+  });
+
+  it('counts and joins in French', () => {
+    const fr = i18next.getFixedT('fr');
+
+    expect(
+      sectionDeleteWords(fr, 'fr', { tables: 3, rows: 2, singleSeats: 1, seats: 50 }),
+    ).toContain('3 tables, 2 rangées et 1 place isolée');
+    expect(sectionDeleteWords(fr, 'fr', { ...NOTHING, rows: 1, seats: 10 })).toBe(
+      fr('seating.sectionDeleteBody', { count: 1, counts: '1 rangée' }),
+    );
+  });
+});
+
 function table(more: Record<string, unknown> = {}) {
   return {
     id: 't1',
@@ -586,7 +687,7 @@ function withTables(...tables: ReturnType<typeof table>[]) {
   return {
     ...plan(),
     tables,
-    withoutSection: { tables: tables.length, seats: 0 },
+    withoutSection: { ...EMPTY, tables: tables.length },
     counts: { ...NONE, tables: tables.length },
   };
 }
@@ -675,6 +776,20 @@ describe('Tables at a desk (sc-4000)', () => {
     expect(patch?.ifMatch).toBe('"1"');
   });
 
+  it('refuses a table size in feet, naming the largest it can take, rounded down', async () => {
+    signedIn();
+    const sent = await onSeating({
+      'GET /api/events/ev_1/seating-plan': () =>
+        json({ seating: { measurementSystem: 'us', plan: withTables(table()) } }),
+    });
+
+    await chooseTable('Table 1, round, 0 of 10 seats taken');
+    leave('Diameter', '33 ft');
+
+    expect(await screen.findByText('Enter a size from 1 ft 4 in to 32 ft 9 in.')).toBeDefined();
+    expect(sent.some((one) => one.line.startsWith('PATCH'))).toBe(false);
+  });
+
   it('says a new shape’s size was reset, and warns of a squeeze without refusing it', async () => {
     signedIn();
     const sent = await onSeating({
@@ -699,6 +814,27 @@ describe('Tables at a desk (sc-4000)', () => {
     expect(sent.find((one) => one.line.startsWith('PATCH'))?.body).toEqual({
       shape: 'rectangular',
     });
+  });
+
+  it('counts a name’s letters as a reader sees them, marks and all', async () => {
+    signedIn();
+    const thirty = 'e\u0323\u0300'.repeat(30);
+    const sent = await onSeating({
+      'GET /api/events/ev_1/seating-plan': () => seating(withTables(table())),
+      'PATCH /api/events/ev_1/seating-plan/tables/t1': () =>
+        seating(withTables(table({ name: thirty, version: 2 })), 't1'),
+    });
+
+    await chooseTable('Table 1, round, 0 of 10 seats taken');
+    expect(screen.getByLabelText<HTMLInputElement>('Name').maxLength).toBe(-1);
+    leave('Name', `${thirty}e\u0323\u0300`);
+    expect(await screen.findByText('Use 30 characters or fewer.')).toBeDefined();
+    expect(sent.some((one) => one.line.startsWith('PATCH'))).toBe(false);
+
+    leave('Name', thirty);
+    await waitFor(() =>
+      expect(sent.find((one) => one.line.startsWith('PATCH'))?.body).toEqual({ name: thirty }),
+    );
   });
 
   it('refuses a name another table has, in any case', async () => {
@@ -835,8 +971,50 @@ describe('Tables at a desk (sc-4000)', () => {
     fireEvent.click(item);
     await waitFor(() => expect(document.activeElement?.getAttribute('data-focus')).toBe('title'));
 
-    fireEvent.click(screen.getByRole('button', { name: 'Close' }));
+    expect(screen.queryByRole('button', { name: 'Close' })).toBeNull();
+    fireEvent.keyDown(document.activeElement as HTMLElement, { key: 'Escape' });
     await waitFor(() => expect(document.activeElement).toBe(item));
+    expect(screen.queryByRole('heading', { level: 2, name: 'Table 1' })).toBeNull();
+
+    fireEvent.click(item);
+    await waitFor(() => expect(document.activeElement?.getAttribute('data-focus')).toBe('title'));
+    fireEvent.click(document.querySelector('.st-floor') as Element);
+    await waitFor(() => expect(document.activeElement).toBe(item));
+  });
+
+  it('leaves a chair’s panel by Esc, with no Close, giving focus to its table', async () => {
+    signedIn();
+    await onSeating({
+      'GET /api/events/ev_1/seating-plan': () => seating(withTables(table())),
+    });
+
+    await chooseTable('Table 1, round, 0 of 10 seats taken');
+    fireEvent.click(screen.getByRole('button', { name: 'Table 1, Seat 3, Empty' }));
+    await screen.findByRole('button', { name: 'Mark unusable' });
+
+    expect(screen.queryByRole('button', { name: 'Close' })).toBeNull();
+    fireEvent.keyDown(document.activeElement as HTMLElement, { key: 'Escape' });
+    await waitFor(() => expect(document.activeElement?.getAttribute('data-table')).toBe('t1'));
+    expect(screen.queryByRole('button', { name: 'Mark unusable' })).toBeNull();
+  });
+
+  it('names the shape in the panel’s select by its short word, as the demo does', async () => {
+    signedIn();
+    await onSeating({
+      'GET /api/events/ev_1/seating-plan': () => seating(withTables(table())),
+    });
+
+    fireEvent.click(
+      await screen.findByRole('button', { name: 'Table 1, round, 0 of 10 seats taken' }),
+    );
+
+    const shape = await screen.findByLabelText<HTMLSelectElement>('Shape');
+    expect([...shape.options].map((option) => option.text)).toEqual([
+      'Round',
+      'Rectangular',
+      'Head',
+      'Cocktail',
+    ]);
   });
 
   it('shows a table as facts, with nothing to change, without seating.manage', async () => {
@@ -855,5 +1033,234 @@ describe('Tables at a desk (sc-4000)', () => {
 
     expect(facts).toEqual(['SectionNo section', 'ShapeRound table', 'Seats10', 'Diameter180 cm']);
     expect(screen.getByText('You can view and print this plan, but not change it.')).toBeDefined();
+  });
+});
+
+function row(more: Record<string, unknown> = {}) {
+  return {
+    id: 'r1',
+    label: 'A',
+    sectionId: null,
+    seats: 10,
+    spacingCm: 50,
+    rotation: 0,
+    xCm: 1200,
+    yCm: 400,
+    unusableSeats: [],
+    version: 1,
+    changedBy: null,
+    ...more,
+  };
+}
+
+function single(more: Record<string, unknown> = {}) {
+  return {
+    id: 's1',
+    name: 'Seat 1',
+    sectionId: null,
+    xCm: 300,
+    yCm: 300,
+    unusable: false,
+    version: 1,
+    changedBy: null,
+    ...more,
+  };
+}
+
+function withRowsAndSeats(
+  rows: ReturnType<typeof row>[],
+  singleSeats: ReturnType<typeof single>[],
+) {
+  return {
+    ...plan(),
+    rows,
+    singleSeats,
+    counts: { ...NONE, rows: rows.length, singleSeats: singleSeats.length },
+  };
+}
+
+function placed(planned: unknown, ids: { rowId?: string; seatId?: string }) {
+  return json({ seating: { measurementSystem: 'metric', plan: planned }, ...ids });
+}
+
+describe('Rows and single seats at a desk (sc-4003)', () => {
+  it('adds a row of ten in the nearest free space, opening it with five seats shown', async () => {
+    signedIn();
+    const sent = await onSeating({
+      'GET /api/events/ev_1/seating-plan': () => seating(plan()),
+      'POST /api/events/ev_1/seating-plan/rows': () =>
+        placed(withRowsAndSeats([row()], []), { rowId: 'r1' }),
+    });
+
+    fireEvent.click(await screen.findByRole('button', { name: 'Add row' }));
+
+    expect(
+      await screen.findByText('Row A added in the nearest free space, with 10 seats.'),
+    ).toBeDefined();
+    expect(sent.some((one) => one.line === 'POST /api/events/ev_1/seating-plan/rows')).toBe(true);
+    expect(screen.getByText('Faces the front · seat 1 on the left')).toBeDefined();
+    expect(document.querySelectorAll('.st-strip-seat')).toHaveLength(5);
+    expect(screen.getByText('+5 to the right')).toBeDefined();
+    expect(screen.getByLabelText('Label')).toHaveProperty('value', 'A');
+    expect(screen.getByLabelText('Spacing')).toHaveProperty('value', '50');
+    expect(document.querySelector('[data-row="r1"] .st-tab-text')?.textContent).toBe('A');
+  });
+
+  it('refuses a taken label, too many seats and a spacing out of range, then sends a good one', async () => {
+    signedIn();
+    const sent = await onSeating({
+      'GET /api/events/ev_1/seating-plan': () =>
+        seating(withRowsAndSeats([row(), row({ id: 'r2', label: 'B', yCm: 800 })], [])),
+      'PATCH /api/events/ev_1/seating-plan/rows/r1': () =>
+        placed(
+          withRowsAndSeats(
+            [row({ spacingCm: 60, version: 2 }), row({ id: 'r2', label: 'B', yCm: 800 })],
+            [],
+          ),
+          { rowId: 'r1' },
+        ),
+    });
+
+    await chooseTable('Row A, row of 10, 0 of 10 seats taken');
+    leave('Label', 'b');
+    expect(await screen.findByText('This plan already has a row labelled B.')).toBeDefined();
+    leave('Seats', '61');
+    expect(await screen.findByText('Enter a number of seats from 1 to 60.')).toBeDefined();
+    leave('Spacing', '30');
+    expect(await screen.findByText(/^Enter a spacing from 40 cm to /u)).toBeDefined();
+    expect(sent.some((one) => one.line.startsWith('PATCH'))).toBe(false);
+
+    leave('Spacing', '60');
+    await waitFor(() => expect(sent.some((one) => one.line.startsWith('PATCH'))).toBe(true));
+    const patch = sent.find((one) => one.line.startsWith('PATCH'));
+    expect(patch?.body).toEqual({ spacingCm: 60 });
+    expect(patch?.ifMatch).toBe('"1"');
+  });
+
+  it('marks a row’s chosen seat unusable from the strip', async () => {
+    signedIn();
+    const sent = await onSeating({
+      'GET /api/events/ev_1/seating-plan': () => seating(withRowsAndSeats([row()], [])),
+      'PATCH /api/events/ev_1/seating-plan/rows/r1': () =>
+        placed(withRowsAndSeats([row({ unusableSeats: [3], version: 2 })], []), { rowId: 'r1' }),
+    });
+
+    await chooseTable('Row A, row of 10, 0 of 10 seats taken');
+    const strip = document.querySelector<HTMLElement>('.st-strip')!;
+    fireEvent.click(within(strip).getByRole('button', { name: 'Row A, seat 3, Empty' }));
+    expect(await screen.findByText('Row A, seat 3 · Empty')).toBeDefined();
+    fireEvent.click(screen.getByRole('button', { name: 'Mark unusable' }));
+
+    await screen.findByRole('button', { name: 'Mark usable' });
+    expect(sent.find((one) => one.line.startsWith('PATCH'))?.body).toEqual({ unusableSeats: [3] });
+    expect(document.querySelectorAll('[data-row="r1"] .st-chair.is-unusable')).toHaveLength(1);
+  });
+
+  it('duplicates a row and asks before deleting one', async () => {
+    signedIn();
+    const sent = await onSeating({
+      'GET /api/events/ev_1/seating-plan': () => seating(withRowsAndSeats([row()], [])),
+      'POST /api/events/ev_1/seating-plan/rows/r1/duplicate': () =>
+        placed(withRowsAndSeats([row(), row({ id: 'r2', label: 'B', yCm: 460 })], []), {
+          rowId: 'r2',
+        }),
+      'DELETE /api/events/ev_1/seating-plan/rows/r2': () => seating(withRowsAndSeats([row()], [])),
+    });
+
+    await chooseTable('Row A, row of 10, 0 of 10 seats taken');
+    fireEvent.click(screen.getByRole('button', { name: 'Duplicate' }));
+    expect(
+      await screen.findByText('Row B added, a copy of Row A with nobody seated.'),
+    ).toBeDefined();
+
+    fireEvent.click(screen.getByRole('button', { name: 'Delete row' }));
+    const ask = await screen.findByRole('alertdialog');
+
+    expect(within(ask).getByText('Delete Row B?')).toBeDefined();
+    expect(within(ask).getByText('Nobody is seated here.')).toBeDefined();
+    fireEvent.click(within(ask).getByRole('button', { name: 'Delete Row B' }));
+    await waitFor(() => expect(document.querySelector('[data-row="r2"]')).toBeNull());
+    expect(sent.find((one) => one.line.startsWith('DELETE'))?.ifMatch).toBe('"1"');
+  });
+
+  it('says who changed a row first when a save comes back 412', async () => {
+    signedIn();
+    await onSeating({
+      'GET /api/events/ev_1/seating-plan': () => seating(withRowsAndSeats([row()], [])),
+      'PATCH /api/events/ev_1/seating-plan/rows/r1': () =>
+        problem('precondition_failed', 412, { changedBy: 'Ngozi Eze' }),
+    });
+
+    await chooseTable('Row A, row of 10, 0 of 10 seats taken');
+    leave('Seats', '8');
+
+    expect(
+      await screen.findByText('Ngozi Eze just changed this row. Your change was not saved.'),
+    ).toBeDefined();
+  });
+
+  it('says who changed a single seat first when a save comes back 412', async () => {
+    signedIn();
+    await onSeating({
+      'GET /api/events/ev_1/seating-plan': () => seating(withRowsAndSeats([], [single()])),
+      'PATCH /api/events/ev_1/seating-plan/seats/s1': () =>
+        problem('precondition_failed', 412, { changedBy: 'Ngozi Eze' }),
+    });
+
+    await chooseTable('Seat 1, single seat, Empty');
+    leave('Name', 'Usher');
+
+    expect(
+      await screen.findByText('Ngozi Eze just changed this seat. Your change was not saved.'),
+    ).toBeDefined();
+  });
+
+  it('adds a single seat, refuses a name another seat has, marks it unusable and deletes it', async () => {
+    signedIn();
+    const other = single({ id: 's2', name: 'Usher', xCm: 600 });
+    const sent = await onSeating({
+      'GET /api/events/ev_1/seating-plan': () => seating(withRowsAndSeats([], [other])),
+      'POST /api/events/ev_1/seating-plan/seats': () =>
+        placed(withRowsAndSeats([], [other, single()]), { seatId: 's1' }),
+      'PATCH /api/events/ev_1/seating-plan/seats/s1': () =>
+        placed(withRowsAndSeats([], [other, single({ unusable: true, version: 2 })]), {
+          seatId: 's1',
+        }),
+      'DELETE /api/events/ev_1/seating-plan/seats/s1': () => seating(withRowsAndSeats([], [other])),
+    });
+
+    fireEvent.click(await screen.findByRole('button', { name: 'Add seat' }));
+    expect(await screen.findByText('Seat 1 added in the nearest free space.')).toBeDefined();
+    expect(screen.getByText('Single seat · No section')).toBeDefined();
+
+    leave('Name', 'usher');
+    expect(await screen.findByText('This plan already has a seat called Usher.')).toBeDefined();
+    expect(sent.some((one) => one.line.startsWith('PATCH'))).toBe(false);
+
+    fireEvent.click(screen.getByRole('button', { name: 'Mark unusable' }));
+    await screen.findByRole('button', { name: 'Mark usable' });
+    expect(sent.find((one) => one.line.startsWith('PATCH'))?.body).toEqual({ unusable: true });
+
+    fireEvent.click(screen.getByRole('button', { name: 'Delete seat' }));
+    const ask = await screen.findByRole('alertdialog');
+    fireEvent.click(within(ask).getByRole('button', { name: 'Delete Seat 1' }));
+    await waitFor(() => expect(document.querySelector('[data-seat="s1"]')).toBeNull());
+    expect(sent.find((one) => one.line.startsWith('DELETE'))?.ifMatch).toBe('"2"');
+  });
+
+  it('shows a row as facts, with nothing to change, without seating.manage', async () => {
+    signedIn();
+    await onSeating(
+      { 'GET /api/events/ev_1/seating-plan': () => seating(withRowsAndSeats([row()], [])) },
+      OWNER_PERMISSIONS.filter((one) => one !== 'seating.manage'),
+    );
+
+    await chooseTable('Row A, row of 10, 0 of 10 seats taken');
+    expect(screen.queryByRole('button', { name: 'Add row' })).toBeNull();
+    expect(screen.queryByRole('button', { name: 'Delete row' })).toBeNull();
+    expect(screen.queryByLabelText('Label')).toBeNull();
+    const facts = [...document.querySelectorAll('.st-facts div')].map((one) => one.textContent);
+
+    expect(facts).toEqual(['SectionNo section', 'Seats10', 'Spacing50 cm']);
   });
 });

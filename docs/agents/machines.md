@@ -412,8 +412,8 @@ What the other computer needs, once:
 - **The Android SDK** at `%LOCALAPPDATA%\Android\Sdk` (or `sdk` in the setting), with the
   Android Emulator, the Command-line Tools (latest), and a Google Play x86_64 system image.
   `just qa-env setup --tester <n>` then makes the tester's phone and tablet AVDs there, the
-  tablet at 4096 MB, and says exactly what to install when something is missing. An AVD
-  already there is reported and left alone.
+  phone and the tablet at 4096 MB, and says exactly what to install when something is
+  missing. An AVD already there is reported and left alone.
 - **A JDK, when Android Studio is not installed.** The Command-line Tools' `avdmanager` is a
   Java program, and Android Studio's bundled one is the JDK it usually finds. Without Studio,
   install one (17 or later, such as Eclipse Temurin) with `java` on `PATH` or `JAVA_HOME` set,
@@ -422,7 +422,7 @@ What the other computer needs, once:
 - **Hardware acceleration**: the Windows Hypervisor Platform or the Android Emulator
   hypervisor driver. `-gpu host` (the default here) boots in about 50 s on a discrete GPU;
   set `"gpu": "swiftshader_indirect"` where there is none, at about twice that.
-- **Memory for one emulator at a time.** The phone or the tablet, never both; the tablet's
+- **Memory for one emulator at a time.** The phone or the tablet, never both; either one's
   4096 MB needs the rest of the computer quiet.
 - **Mains power, awake.** Turn off sleep on mains (Settings > System > Power), or the
   session drops mid-batch.

@@ -84,5 +84,12 @@
     "validation.seating_table_does_not_turn": "Só as mesas retangulares e de honra podem rodar.",
     "validation.seating_table_rotation_steps": "Escolha uma rotação em intervalos de 15°, de 0° a 345°.",
     "validation.seating_table_no_such_seat": "Escolha lugares de 1 a {max, number}, sem repetir nenhum.",
-    "validation.seating_table_section_unknown": "Escolha uma das zonas deste plano ou nenhuma."
+    "validation.seating_table_section_unknown": "Escolha uma das zonas deste plano ou nenhuma.",
+    "run_of_show.item_limit": "Este programa tem {max, number, ::group-auto} itens, o máximo que um evento pode ter. Elimine um para adicionar outro. Nada foi guardado.",
+    "seating.seat_default_name": "Seat {n}",
+    "validation.seating_row_label_required": "Enter a label for the row.",
+    "validation.seating_row_label_taken": "This plan already has a row labelled {label}.",
+    "validation.seating_row_spacing_between": "Enter a spacing from {min} to {max}.",
+    "validation.seating_seat_name_required": "Enter a name for the seat.",
+    "validation.seating_seat_name_taken": "This plan already has a seat called {name}."
 }

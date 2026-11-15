@@ -6,21 +6,27 @@ namespace App\Domain\Seating\Http;
 
 use App\Entity\Event;
 use App\Entity\SeatingPlan;
+use App\Entity\SeatingRow;
+use App\Entity\SeatingSeat;
 use App\Entity\SeatingSection;
 use App\Entity\SeatingTable;
 use App\Enum\MeasurementSystem;
+use App\Repository\SeatingRowRepository;
+use App\Repository\SeatingSeatRepository;
 use App\Repository\SeatingSectionRepository;
 use App\Repository\SeatingTableRepository;
 use Psl\Iter;
 use Psl\Math;
 use Psl\Vec;
 
-/** Rows, single seats and seated guests count as none until sc-4003 and sc-4013 can place them (sc-3998, sc-4000). */
+/** Seated guests count as none until sc-4013 can place them (sc-3998, sc-4000, sc-4003). */
 final readonly class SeatingSerialiser
 {
     public function __construct(
         private SeatingSectionRepository $seatingSectionRepository,
         private SeatingTableRepository $seatingTableRepository,
+        private SeatingRowRepository $seatingRowRepository,
+        private SeatingSeatRepository $seatingSeatRepository,
     ) {
     }
 
@@ -38,7 +44,8 @@ final readonly class SeatingSerialiser
     {
         $sections = $this->seatingSectionRepository->findInPlan($plan);
         $tables = $this->seatingTableRepository->findInPlan($plan);
-        $unsectioned = Vec\filter($tables, static fn (SeatingTable $table): bool => null === $table->getSection());
+        $rows = $this->seatingRowRepository->findInPlan($plan);
+        $singleSeats = $this->seatingSeatRepository->findInPlan($plan);
 
         return [
             'id' => $plan->getId()->toRfc4122(),
@@ -47,35 +54,55 @@ final readonly class SeatingSerialiser
             'lengthCm' => $plan->getLengthCm(),
             'version' => $plan->getVersion(),
             'changedBy' => $plan->getChangedBy()?->getName(),
-            'sections' => Vec\map($sections, static fn (SeatingSection $section): array => self::section($section, $tables)),
+            'sections' => Vec\map($sections, static fn (SeatingSection $section): array => [...self::section($section), ...self::contents($section, $tables, $rows, $singleSeats)]),
             'tables' => Vec\map($tables, self::table(...)),
-            'withoutSection' => ['tables' => Iter\count($unsectioned), 'seats' => self::seatsAt($unsectioned)],
+            'rows' => Vec\map($rows, self::row(...)),
+            'singleSeats' => Vec\map($singleSeats, self::singleSeat(...)),
+            'withoutSection' => self::contents(null, $tables, $rows, $singleSeats),
             'counts' => [
                 'sections' => Iter\count($sections),
                 'tables' => Iter\count($tables),
-                'rows' => 0,
-                'singleSeats' => 0,
+                'rows' => Iter\count($rows),
+                'singleSeats' => Iter\count($singleSeats),
                 'seatedGuests' => 0,
             ],
         ];
     }
 
-    /**
-     * @param list<SeatingTable> $tables the plan's
-     *
-     * @return array<string, mixed>
-     */
-    private static function section(SeatingSection $section, array $tables): array
+    /** @return array<string, mixed> */
+    private static function section(SeatingSection $section): array
     {
-        $inIt = Vec\filter($tables, static fn (SeatingTable $table): bool => true === $table->getSection()?->getId()->equals($section->getId()));
-
         return [
             'id' => $section->getId()->toRfc4122(),
             'name' => $section->getName(),
             'colour' => $section->getColour()->value,
             'version' => $section->getVersion(),
-            'tables' => Iter\count($inIt),
-            'seats' => self::seatsAt($inIt),
+        ];
+    }
+
+    /**
+     * @param list<SeatingTable> $tables      the plan's
+     * @param list<SeatingRow>   $rows        the plan's
+     * @param list<SeatingSeat>  $singleSeats the plan's
+     *
+     * @return array{tables: int, rows: int, singleSeats: int, seats: int} for `$section`, or for no section when it is null
+     */
+    private static function contents(?SeatingSection $section, array $tables, array $rows, array $singleSeats): array
+    {
+        $in = static fn (?SeatingSection $of): bool => null === $section ? null === $of : true === $of?->getId()->equals($section->getId());
+        $tables = Vec\filter($tables, static fn (SeatingTable $table): bool => $in($table->getSection()));
+        $rows = Vec\filter($rows, static fn (SeatingRow $row): bool => $in($row->getSection()));
+        $singleSeats = Vec\filter($singleSeats, static fn (SeatingSeat $seat): bool => $in($seat->getSection()));
+        $chairs = Vec\concat(
+            Vec\map($tables, static fn (SeatingTable $table): int => $table->getSeats()),
+            Vec\map($rows, static fn (SeatingRow $row): int => $row->getSeats()),
+        );
+
+        return [
+            'tables' => Iter\count($tables),
+            'rows' => Iter\count($rows),
+            'singleSeats' => Iter\count($singleSeats),
+            'seats' => Math\sum($chairs) + Iter\count($singleSeats),
         ];
     }
 
@@ -104,9 +131,40 @@ final readonly class SeatingSerialiser
         ];
     }
 
-    /** @param list<SeatingTable> $tables */
-    private static function seatsAt(array $tables): int
+    /**
+     * Seat 1 is on the left of a guest sitting in the row and facing the front; `xCm` and `yCm` are the row's centre, and `rotation` turns it clockwise about it.
+     *
+     * @return array<string, mixed>
+     */
+    private static function row(SeatingRow $row): array
     {
-        return Math\sum(Vec\map($tables, static fn (SeatingTable $table): int => $table->getSeats()));
+        return [
+            'id' => $row->getId()->toRfc4122(),
+            'label' => $row->getLabel(),
+            'sectionId' => $row->getSection()?->getId()->toRfc4122(),
+            'seats' => $row->getSeats(),
+            'spacingCm' => $row->getSpacingCm(),
+            'rotation' => $row->getRotation(),
+            'xCm' => $row->getXCm(),
+            'yCm' => $row->getYCm(),
+            'unusableSeats' => $row->getUnusableSeats(),
+            'version' => $row->getVersion(),
+            'changedBy' => $row->getChangedBy()?->getName(),
+        ];
+    }
+
+    /** @return array<string, mixed> */
+    private static function singleSeat(SeatingSeat $seat): array
+    {
+        return [
+            'id' => $seat->getId()->toRfc4122(),
+            'name' => $seat->getName(),
+            'sectionId' => $seat->getSection()?->getId()->toRfc4122(),
+            'xCm' => $seat->getXCm(),
+            'yCm' => $seat->getYCm(),
+            'unusable' => $seat->isUnusable(),
+            'version' => $seat->getVersion(),
+            'changedBy' => $seat->getChangedBy()?->getName(),
+        ];
     }
 }

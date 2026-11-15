@@ -86,7 +86,7 @@ describe('the states, as guests-a-spec §15 names them', () => {
     expect(
       GUESTS_STATES.filter((state) => (DOOR_STATES as readonly string[]).includes(state)),
     ).toEqual([]);
-    expect(GUESTS_STATES).toHaveLength(154);
+    expect(GUESTS_STATES).toHaveLength(168);
     expect(DOOR_STATES).toHaveLength(13);
   });
 

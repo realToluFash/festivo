@@ -71,6 +71,14 @@ export function readTableSide(text: string, units: RoomUnits, locale: string): R
 export const TABLE_MINIMUM_CM = 40;
 export const TABLE_MAXIMUM_CM = 1000;
 
+/** A row's spacing, centre to centre (sc-4003). */
+export function readRowSpacing(text: string, units: RoomUnits, locale: string): RoomSideReading {
+  return readLength(text, units, locale, 1, [ROW_SPACING_MINIMUM_CM, ROW_SPACING_MAXIMUM_CM]);
+}
+
+export const ROW_SPACING_MINIMUM_CM = 40;
+export const ROW_SPACING_MAXIMUM_CM = 100;
+
 function readLength(
   text: string,
   units: RoomUnits,
@@ -96,9 +104,13 @@ function readLength(
   return { kind: 'cm', cm };
 }
 
-/** Whole feet and the inches left over, rounded to the whole inch. */
-export function feetAndInchesOf(cm: number): { feet: number; inches: number } {
-  const total = Math.round(cm / CM_PER_INCH);
+/** Whole feet and the inches left over; a limit rounds inward so the size it states is accepted. */
+export function feetAndInchesOf(
+  cm: number,
+  rounding: 'nearest' | 'up' | 'down' = 'nearest',
+): { feet: number; inches: number } {
+  const round = { nearest: Math.round, up: Math.ceil, down: Math.floor }[rounding];
+  const total = round(cm / CM_PER_INCH);
 
   return { feet: Math.floor(total / 12), inches: total % 12 };
 }

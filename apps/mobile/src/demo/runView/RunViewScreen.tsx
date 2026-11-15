@@ -43,12 +43,19 @@ const PATHS = {
 } as const;
 
 export function RunViewRoute() {
-  const params = useLocalSearchParams<{ state?: string }>();
+  const params = useLocalSearchParams<{ state?: string; as?: string }>();
+  const manage = params.as !== 'reader';
 
-  return <RunViewBody key={params.state ?? ''} first={runAt(params.state)} />;
+  return (
+    <RunViewBody
+      key={`${params.state ?? ''}|${manage}`}
+      first={runAt(params.state)}
+      manage={manage}
+    />
+  );
 }
 
-function RunViewBody({ first }: { first: Run }) {
+function RunViewBody({ first, manage }: { first: Run; manage: boolean }) {
   const insets = useSafeAreaInsets();
   const { kind } = useLayout();
   const [run, setRun] = useState(first);
@@ -98,6 +105,14 @@ function RunViewBody({ first }: { first: Run }) {
             </Text>
           </View>
         </View>
+        {!manage && (
+          <View style={styles.lock}>
+            <Glyph paths={PATHS.lock} ink={tokens.colorInkSecondary} side={16} />
+            <Text size={14} style={[styles.secondary, styles.grow]}>
+              {RW.lock}
+            </Text>
+          </View>
+        )}
         <DemoOnly title={RW.demoOnly}>
           <SecondaryButton
             label={RW.later}
@@ -110,6 +125,7 @@ function RunViewBody({ first }: { first: Run }) {
             views={views}
             trackId={trackId}
             onTrack={setTrackId}
+            manage={manage}
             onStart={start}
             onFinish={finish}
           />
@@ -119,6 +135,7 @@ function RunViewBody({ first }: { first: Run }) {
               key={view.track.id}
               view={view}
               narrow={kind === 'tabletPortrait'}
+              manage={manage}
               onStart={(item) => start(view.track.id, item)}
               onFinish={(item) => finish(view.track.id, item)}
             />
@@ -188,11 +205,13 @@ function TrackTop({ view }: { view: TrackView }) {
 function TabletTrack({
   view,
   narrow,
+  manage,
   onStart,
   onFinish,
 }: {
   view: TrackView;
   narrow: boolean;
+  manage: boolean;
   onStart: (id: string) => void;
   onFinish: (id: string) => void;
 }) {
@@ -219,19 +238,20 @@ function TabletTrack({
             {column}
           </Text>
         ))}
-        <View style={styles.actCol} />
+        {manage && <View style={styles.actCol} />}
       </View>
       {view.rows.map((row) => (
         <TableRow
           key={row.item.id}
           row={row}
           narrow={narrow}
+          manage={manage}
           onStart={onStart}
           onFinish={onFinish}
         />
       ))}
       <Text size={14} style={[styles.secondary, styles.nextLine]}>
-        {nextLine(view)}
+        {nextLine(view, manage)}
       </Text>
     </View>
   );
@@ -240,11 +260,13 @@ function TabletTrack({
 function TableRow({
   row,
   narrow,
+  manage,
   onStart,
   onFinish,
 }: {
   row: Row;
   narrow: boolean;
+  manage: boolean;
   onStart: (id: string) => void;
   onFinish: (id: string) => void;
 }) {
@@ -279,9 +301,11 @@ function TableRow({
       >
         {item.owner ?? RW.noOwner}
       </Text>
-      <View style={styles.actCol}>
-        <Act item={item} onStart={onStart} onFinish={onFinish} />
-      </View>
+      {manage && (
+        <View style={styles.actCol}>
+          <Act item={item} onStart={onStart} onFinish={onFinish} />
+        </View>
+      )}
     </View>
   );
 }
@@ -374,12 +398,14 @@ function PhoneTrack({
   views,
   trackId,
   onTrack,
+  manage,
   onStart,
   onFinish,
 }: {
   views: readonly TrackView[];
   trackId: string;
   onTrack: (id: string) => void;
+  manage: boolean;
   onStart: (track: string, item: string) => void;
   onFinish: (track: string, item: string) => void;
 }) {
@@ -437,11 +463,13 @@ function PhoneTrack({
             <Text size={14} style={view.now.owner == null ? styles.none : styles.secondary}>
               {view.now.owner ?? RW.noOwner}
             </Text>
-            <Act
-              item={view.now}
-              onStart={() => undefined}
-              onFinish={(item) => onFinish(id, item)}
-            />
+            {manage && (
+              <Act
+                item={view.now}
+                onStart={() => undefined}
+                onFinish={(item) => onFinish(id, item)}
+              />
+            )}
           </>
         )}
       </View>
@@ -464,11 +492,13 @@ function PhoneTrack({
           <Text size={14} style={styles.secondary}>
             {`${lastsOf(view.next.item)} · ${view.next.item.owner ?? RW.noOwner}`}
           </Text>
-          <Act
-            item={view.next.item}
-            onStart={(item) => onStart(id, item)}
-            onFinish={() => undefined}
-          />
+          {manage && (
+            <Act
+              item={view.next.item}
+              onStart={(item) => onStart(id, item)}
+              onFinish={() => undefined}
+            />
+          )}
         </View>
       )}
       {view.figure.kind !== 'done' && (
@@ -629,6 +659,7 @@ const styles = StyleSheet.create({
   },
   thenTime: { width: 112 },
   nextLine: { paddingTop: tokens.spaceSm },
+  lock: { flexDirection: 'row', alignItems: 'center', gap: tokens.spaceSm },
 });
 
 const COLUMN = [styles.startsCol, styles.lastsCol, styles.grow, styles.ownerCol];

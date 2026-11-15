@@ -657,6 +657,11 @@
   margin-top: 2px;
 }
 
+.st-box.is-select select {
+  padding-right: 28px;
+  text-overflow: ellipsis;
+}
+
 .st-box.is-select svg {
   position: absolute;
   right: 12px;
@@ -741,6 +746,22 @@
   fill: var(--colorCard);
   stroke: var(--sec, var(--colorInkTertiary));
   stroke-width: 2.2;
+}
+
+.st-body.is-single {
+  stroke-width: 1.6;
+  stroke-dasharray: 3 2.5;
+}
+
+.st-row-tab {
+  fill: var(--stSunk);
+  stroke: var(--sec, var(--colorInkTertiary));
+  stroke-width: 1.6;
+}
+
+.st-tab-text {
+  fill: var(--colorInk);
+  font: 700 12px var(--fontFamily);
 }
 
 .st-chair {
@@ -941,4 +962,44 @@
   margin: 0;
   padding: 0;
   border: 0;
+}
+
+.st-name.is-quiet {
+  fill: var(--colorInkSecondary);
+}
+
+.st-strip {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 4px;
+}
+
+.st-strip-seat {
+  display: flex;
+  flex: none;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 2px;
+  width: 44px;
+  height: 52px;
+  padding: 0;
+  border: 0;
+  border-radius: 12px;
+  background: none;
+  color: var(--colorInkSecondary);
+  font: 600 12px/1 var(--fontFamily);
+  font-variant-numeric: tabular-nums;
+  cursor: pointer;
+}
+
+.st-strip-seat.is-on {
+  background: var(--colorAccentTint);
+}
+
+.st-strip-more {
+  color: var(--colorInkSecondary);
+  font: 500 13px/1.3 var(--fontFamily);
+  white-space: nowrap;
 }

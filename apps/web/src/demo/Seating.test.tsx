@@ -403,18 +403,34 @@ describe('Room settings and sections (sc-3998)', () => {
   });
 
   it(
-    'asks only "Delete {name}?" for a section with a row but no tables (pm, 9 Nov)',
+    'names the rows and single seats a section leaves with no section (sc-54060)',
     SLOW,
     async () => {
-      await seating('sectionDeleteEmpty');
+      await seating('sectionDeleteRows');
       const ask = screen.getByRole('alertdialog', { name: 'Delete Quiet corner?' });
 
-      expect(ask.textContent).not.toContain('stay where they are');
-      expect(ask.querySelector('p')?.textContent).toBe('');
+      expect(ask.textContent).toContain(
+        'Its 1 row and 1 single seat stay where they are, with no section.',
+      );
+      expect(
+        within(panel()).getByText(
+          'Its tables, rows and single seats stay where they are, with no section.',
+        ),
+      ).toBeDefined();
       fireEvent.click(within(ask).getByRole('button', { name: 'Delete section' }));
       expect(screen.queryByRole('alertdialog')).toBeNull();
     },
   );
+
+  it('asks only "Delete {name}?" for an empty section (pm, 9 Nov)', SLOW, async () => {
+    await seating('sectionDeleteEmpty');
+    const ask = screen.getByRole('alertdialog', { name: 'Delete Quiet corner?' });
+
+    expect(ask.textContent).not.toContain('stay where they are');
+    expect(ask.querySelector('p')?.textContent).toBe('');
+    fireEvent.click(within(ask).getByRole('button', { name: 'Delete section' }));
+    expect(screen.queryByRole('alertdialog')).toBeNull();
+  });
 });
 
 describe('tables, rows and seats (sc-4000, sc-4003)', () => {
@@ -457,6 +473,21 @@ describe('tables, rows and seats (sc-4000, sc-4003)', () => {
       press(item(/^Bar 1,/u));
       expect(within(panel()).getByLabelText('Places')).toBeDefined();
       expect(within(panel()).queryByLabelText('Rotation')).toBeNull();
+    },
+  );
+
+  it(
+    'gives Section and Shape a full row each, so a long name is never clipped (qa5 #54266)',
+    SLOW,
+    async () => {
+      await seating('placed');
+      for (const label of ['Section', 'Shape']) {
+        expect(within(panel()).getByLabelText(label).closest('.st-two')).toBeNull();
+      }
+      await seating('rowAdded');
+      for (const label of ['Label', 'Section']) {
+        expect(within(panel()).getByLabelText(label).closest('.st-two')).toBeNull();
+      }
     },
   );
 
