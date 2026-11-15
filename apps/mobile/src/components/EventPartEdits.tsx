@@ -37,7 +37,12 @@ import { useTranslation } from 'react-i18next';
 
 import { api } from '../api.ts';
 import { currentLocale, dateLocale } from '../i18n/index.ts';
-import { coverRefusalOf, pickedFile, pickedRefusal } from '../kit/coverUpload.ts';
+import {
+  coverRefusalOf,
+  coverSaveRefusalOf,
+  pickedFile,
+  pickedRefusal,
+} from '../kit/coverUpload.ts';
 import { changesOf, typedOf } from '../kit/eventForm.ts';
 import type { EditPart } from '../kit/eventNav.ts';
 import { type SavedPart, heldRead, sendPart } from '../kit/partSave.ts';
@@ -83,7 +88,7 @@ function cleared(was: Errors, field: EventFormField): Errors {
   return Object.fromEntries(Object.entries(was).filter(([key]) => key !== field));
 }
 
-type Outcome = 'changed' | 'failed' | null;
+type Outcome = 'changed' | 'failed' | 'forbidden' | null;
 
 /** An event's part on its own screen (sc-48600), opened from its row, Change dates or the photo notice. */
 export function EventEditScreen({ part, ...props }: PartEditProps & { part: EditPart }) {
@@ -157,7 +162,14 @@ function usePartSave(part: SavedPart, { event, onSaved, onLatest }: PartEditProp
         }
       : null;
 
-  return { busy, save, elsewhere, failed: outcome === 'failed', setOutcome };
+  const failed =
+    outcome === 'failed'
+      ? t('eventEdit.notSaved')
+      : outcome === 'forbidden'
+        ? t('eventEdit.forbidden')
+        : null;
+
+  return { busy, save, elsewhere, failed, setOutcome };
 }
 
 function useShellProps(part: EditPart, props: PartEditProps) {
@@ -649,7 +661,7 @@ function CoverEdit(props: PartEditProps) {
       onSaved(updated);
     } catch (error) {
       setBusy(false);
-      setRefused(coverRefusalOf(error, t));
+      setRefused(coverSaveRefusalOf(error, t));
     }
   }
 
