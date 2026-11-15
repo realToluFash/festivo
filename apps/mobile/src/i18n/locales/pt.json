@@ -2553,13 +2553,13 @@
     "pausedLine": "Não é possível convidar pessoas enquanto este evento estiver em pausa.",
     "finishedLine": "Este evento terminou, por isso já não é possível convidar pessoas.",
     "withGroup": "{{reply}} · {{group}}",
-    "repliesClosedManage": "O prazo de resposta terminou no dia {{date}}. «Registar resposta» volta a estar disponível se permitir alterar a resposta.",
-    "repliesClosedOn": "O prazo de resposta terminou no dia {{date}}.",
+    "repliesClosedManage": "Fim do prazo de resposta: {{date}}. «Registar resposta» volta a estar disponível se permitir alterar a resposta.",
+    "repliesClosedOn": "Fim do prazo de resposta: {{date}}.",
     "repliesReopened": "Resposta reaberta por {{name}} no dia {{date}}. Esta pessoa pode responder até ao início do evento.",
     "letThemChange": "Permitir alterar a resposta",
     "reopenNotSaved": "Não foi guardado. Verifique a sua ligação e tente novamente.",
-    "askedBy": "{{reply}} · resposta até ao dia {{date}}",
-    "askedByOn": "resposta até ao dia {{date}}"
+    "askedBy": "{{reply}} · resposta até {{date}}",
+    "askedByOn": "resposta até {{date}}"
   },
   "guestNumbers": {
     "title": "Convidados",
