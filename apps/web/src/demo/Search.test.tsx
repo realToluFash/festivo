@@ -242,6 +242,28 @@ describe('Search as a command palette (sc-39534)', () => {
     expect(within(dialog).queryAllByRole('option')).toHaveLength(0);
   });
 
+  it('says Search did not work online, and Try again searches the same term', SLOW, async () => {
+    const dialog = await board('failed');
+
+    expect(
+      within(dialog).getByText('Search did not work. Try again in a moment.', {
+        selector: '.search-nothing',
+      }),
+    ).toBeDefined();
+    expect(within(dialog).queryByText('Search needs a connection.')).toBeNull();
+    expect(within(dialog).queryAllByRole('option')).toHaveLength(0);
+    expect(within(dialog).getByRole('status').textContent).toBe(
+      'Search did not work. Try again in a moment.',
+    );
+
+    fireEvent.click(within(dialog).getByRole('button', { name: 'Try again' }));
+    expect((field(dialog) as HTMLInputElement).value).toBe('ines');
+    expect(document.activeElement).toBe(field(dialog));
+    expect(within(dialog).getByRole('status').textContent).toBe('Searching…');
+    expect(within(dialog).queryAllByRole('option')).toHaveLength(0);
+    expect((await within(dialog).findAllByRole('option', {}, WAIT)).length).toBeGreaterThan(0);
+  });
+
   it('moves the lit row with the arrows, Home and End', SLOW, async () => {
     const dialog = await board('mixed');
     const combo = field(dialog);
