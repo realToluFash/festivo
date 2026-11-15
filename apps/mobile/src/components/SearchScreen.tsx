@@ -1,4 +1,4 @@
-import type { SearchReach } from '@soirely/api-client';
+import { searchFailure, type SearchReach } from '@soirely/api-client';
 import {
   SEARCH_LEAST,
   type SearchGroup,
@@ -50,7 +50,8 @@ type Answer =
   | { kind: 'short' }
   | { kind: 'loading' }
   | { kind: 'found'; term: string; groups: SearchGroup[] }
-  | { kind: 'offline' };
+  | { kind: 'offline' }
+  | { kind: 'failed' };
 
 function close(): void {
   if (router.canGoBack()) router.back();
@@ -110,8 +111,12 @@ export function SearchScreen({ organisationId }: { organisationId: string }) {
                 dateLocale(),
               ),
             }),
-          () => {
-            if (!stop.signal.aborted) setAnswer({ kind: 'offline' });
+          (error: unknown) => {
+            if (stop.signal.aborted) return;
+            const failure = searchFailure(error);
+            setAnswer(
+              failure === 'refused' ? { kind: 'found', term, groups: [] } : { kind: failure },
+            );
           },
         );
       },
@@ -131,7 +136,9 @@ export function SearchScreen({ organisationId }: { organisationId: string }) {
         ? groups.length === 0
           ? t('search.nothing', { term: answer.term })
           : t('search.matches', { count: searchTotal(groups) })
-        : null,
+        : answer.kind === 'failed'
+          ? t('search.failed')
+          : null,
     { afterTyping: typed },
   );
 
@@ -146,6 +153,16 @@ export function SearchScreen({ organisationId }: { organisationId: string }) {
     field.current?.focus();
   }
 
+  function search(): void {
+    setAsked((was) => ({ term: typed, round: was.round + 1 }));
+  }
+
+  function retry(): void {
+    setAnswer({ kind: 'loading' });
+    search();
+    field.current?.focus();
+  }
+
   const searchField = (
     <SearchField
       ref={field}
@@ -154,7 +171,7 @@ export function SearchScreen({ organisationId }: { organisationId: string }) {
       width={null}
       label={t(keys.placeholder)}
       onTyped={setTyped}
-      onSearch={() => setAsked((was) => ({ term: typed, round: was.round + 1 }))}
+      onSearch={search}
       onClear={clear}
       testID="search.field"
     />
@@ -166,6 +183,7 @@ export function SearchScreen({ organisationId }: { organisationId: string }) {
       onShowAll={() => answer.kind === 'found' && open(eventsSearchHref(answer.term))}
       onRow={(row) => open(searchRowHref(row))}
       onClear={clear}
+      onRetry={retry}
     />
   );
 
@@ -248,12 +266,14 @@ function Results({
   onShowAll,
   onRow,
   onClear,
+  onRetry,
 }: {
   answer: Answer;
   hint: string | null;
   onShowAll: () => void;
   onRow: (row: SearchRow) => void;
   onClear: () => void;
+  onRetry: () => void;
 }) {
   const { t } = useTranslation();
 
@@ -266,6 +286,15 @@ function Results({
         <Text size={16} weight="semibold">
           {t('eventsSearch.searchOff')}
         </Text>
+      </View>
+    );
+  if (answer.kind === 'failed')
+    return (
+      <View style={styles.said}>
+        <Text size={16} weight="semibold">
+          {t('search.failed')}
+        </Text>
+        <TextAction label={t('search.tryAgain')} onPress={onRetry} testID="search.retry" />
       </View>
     );
   if (answer.groups.length === 0)

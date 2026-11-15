@@ -28,6 +28,8 @@ import { GENERAL_PAGES } from './general.ts';
 import { MESSAGES_PAGES } from './messages.ts';
 import { SeatingPage } from './Seating.tsx';
 import { SEATING_PAGES } from './seating.ts';
+import { SchedulePage } from './Schedule.tsx';
+import { SCHEDULE_PAGES } from './schedule.ts';
 import { GetBackInBoard } from './GetBackIn.tsx';
 import { GuestPage } from './Guest.tsx';
 import { GUEST_PAGES } from './guest.ts';
@@ -211,6 +213,7 @@ export default function Demo() {
       <Route path="events/:id/kitchen" element={<KitchenPage />} />
       <Route path="events/:id/menu" element={<MenuPage />} />
       <Route path="events/:id/staff" element={<StationsPage />} />
+      <Route path="events/:id/schedule" element={<SchedulePage />} />
       <Route path="events/:id/run" element={<RunViewPage />} />
       <Route path="calendar" element={<Calendar />} />
       <Route path="settings" element={<Settings />} />
@@ -365,6 +368,8 @@ function DemoHome({ from }: { from: string }) {
 
       <section className="demo-home-page" aria-labelledby="demo-page-33">
         <h2 id="demo-page-33">33 · Run of show</h2>
+        <h3>Building the schedule, a table per place (sc-3893) · desktop and 40rem</h3>
+        <BoardPages pages={SCHEDULE_PAGES} />
         <h3>The run view: expected times, how far behind, fixed times (sc-1404) · desktop</h3>
         <BoardPages pages={RUN_PAGES} />
       </section>

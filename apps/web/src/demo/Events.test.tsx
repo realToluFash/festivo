@@ -187,10 +187,8 @@ describe('Events in A at a desk (sc-30304)', () => {
       ),
     );
 
-    expect(
-      await screen.findByRole('heading', { level: 1, name: 'Run of show' }, { timeout: 8000 }),
-    ).toBeDefined();
-    expect(router.state.location.pathname).toBe('/demo/events/evt-wed-4/run');
+    expect(await screen.findByRole('heading', { level: 1, name: /^Schedule · / })).toBeDefined();
+    expect(router.state.location.pathname).toBe('/demo/events/evt-wed-4/schedule');
   });
 
   it('asks before Back drops a change, and the browser asks on reload', SLOW, async () => {
