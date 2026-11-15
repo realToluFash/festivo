@@ -3064,6 +3064,56 @@ describe("An event's venue (sc-3589)", () => {
     expect(patched(sent)).toBeUndefined();
   });
 
+  describe('a save the role no longer allows, edited in place (sc-49861)', () => {
+    const ROLE = 'Nothing was changed. Your role does not include the permission this needs.';
+
+    async function typedNote(answers: Record<string, Answer>) {
+      signedIn();
+      const sent = serving(answers);
+      at('/app/events/ev_1');
+      const details = await screen.findByRole('region', { name: 'Details' });
+
+      fireEvent.click(within(details).getByRole('button', { name: /Venue to be confirmed/ }));
+      fireEvent.change(await within(details).findByLabelText(/Arrival note/u), {
+        target: { value: 'Doors close at 23:00.' },
+      });
+      fireEvent.click(within(details).getByRole('button', { name: 'Save' }));
+
+      return { sent, details };
+    }
+
+    it('says the role refused it where Not saved sits, keeps the note typed and the edit open, and offers no retry', async () => {
+      const { sent, details } = await typedNote({
+        'PATCH /api/events/ev_1': () => problem(403, 'permission_required'),
+      });
+
+      expect((await within(details).findByRole('alert')).textContent).toContain(ROLE);
+      expect(within(details).queryByText(/Try again/u)).toBeNull();
+      expect(within(details).getByLabelText<HTMLTextAreaElement>(/Arrival note/u).value).toBe(
+        'Doors close at 23:00.',
+      );
+
+      fireEvent.click(within(details).getByRole('button', { name: 'Save' }));
+      await waitFor(() =>
+        expect(sent.filter(({ line }) => line === 'PATCH /api/events/ev_1')).toHaveLength(2),
+      );
+      expect(within(details).getByText(ROLE)).toBeDefined();
+      expect(screen.getByRole('group', { name: 'Venue' })).toBeDefined();
+      expect(within(details).queryByText(/Try again/u)).toBeNull();
+    });
+
+    it('keeps Not saved for a save that failed for another reason', async () => {
+      const { details } = await typedNote({
+        'PATCH /api/events/ev_1': () => problem(500, 'internal_error'),
+      });
+
+      expect(
+        await within(details).findByText('Not saved. Your changes are still here. Try again.'),
+      ).toBeDefined();
+      expect(within(details).queryByText(ROLE)).toBeNull();
+    });
+  });
+
   it('shows the arrival note with its line breaks under Venue to be confirmed', async () => {
     signedIn();
     serving({}, event({ arrivalNote: 'Side gate on Marylebone Road.\n\nDoors at 17:30.' }));

@@ -444,6 +444,7 @@
     "zoneHintPlain": "Ao mudar o fuso horário, as horas mantêm-se tal como as escreveu.",
     "currencyInUse": "A moeda não pode ser alterada depois de haver montantes registados neste evento.",
     "notSaved": "Não foi guardado. As suas alterações continuam aqui. Tente novamente.",
+    "forbidden": "Nothing was changed. Your role does not include the permission this needs.",
     "changedElsewhere": "Não foi guardado. Outra pessoa alterou este evento desde que o abriu. O que escreveu continua aqui.",
     "showLatest": "Ver a versão mais recente",
     "showLatestTitle": "Ver a versão mais recente?",

@@ -397,7 +397,7 @@ function DetailsForm({
         return;
       }
 
-      if (refusal.kind === 'failed') {
+      if (refusal.kind === 'failed' || refusal.kind === 'forbidden') {
         setStatus('failed');
         return;
       }

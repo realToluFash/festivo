@@ -1,4 +1,4 @@
-import { type OrganisationEvent, type TaggedEvent } from '@soirely/api-client';
+import { ApiError, type OrganisationEvent, type TaggedEvent } from '@soirely/api-client';
 import {
   EVENT_NAME_MAXIMUM,
   HOSTS_MAXIMUM,
@@ -137,16 +137,19 @@ function useDirty(changed: boolean, onDirty: (dirty: boolean) => void): void {
   useEffect(() => onDirty(changed), [changed, onDirty]);
 }
 
-/** The notice a save that failed for no reason the part can show leaves, and Changed elsewhere's way to the latest. */
+/** The notice a save that failed for no reason the part can show leaves, or for the role, and Changed elsewhere's way to the latest. */
 function useOutcome(onLatest: PartProps['onLatest'], latest: ReturnType<typeof useSave>['latest']) {
   const { t } = useTranslation();
-  const [outcome, setOutcome] = useState<'changed' | 'failed' | null>(null);
+  const [outcome, setOutcome] = useState<'changed' | 'failed' | 'forbidden' | null>(null);
 
   return {
     refused: outcome === 'changed',
-    failed: outcome === 'failed' ? <Broken>{t('eventEdit.notSaved')}</Broken> : null,
+    failed:
+      outcome === 'failed' || outcome === 'forbidden' ? (
+        <Broken>{t(outcome === 'forbidden' ? 'eventEdit.forbidden' : 'eventEdit.notSaved')}</Broken>
+      ) : null,
     took(saving: Saving): void {
-      setOutcome(saving.kind === 'changed' || saving.kind === 'failed' ? saving.kind : null);
+      setOutcome(saving.kind === 'refused' || saving.kind === 'saved' ? null : saving.kind);
     },
     showLatest(): void {
       void latest(onLatest).then((read) => setOutcome(read ? null : 'failed'));
@@ -926,7 +929,11 @@ export function CoverPart({
             description: change.description,
           });
     } catch (error) {
-      throw new Error(refusalOf(error, t));
+      throw new Error(
+        error instanceof ApiError && error.is('permission_required')
+          ? t('eventEdit.forbidden')
+          : refusalOf(error, t),
+      );
     }
   }
 
