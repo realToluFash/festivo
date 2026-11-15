@@ -136,6 +136,7 @@ export function SearchPalette({
   const [term, setTerm] = useState(start.term);
   const [phase, setPhase] = useState<Phase>(start.phase);
   const [lit, setLit] = useState(0);
+  const [retrying, setRetrying] = useState(false);
   const groups = useMemo(
     () => (phase === 'found' ? groupsFor(term, start.reach) : []),
     [phase, term, start.reach],
@@ -156,6 +157,17 @@ export function SearchPalette({
 
     return () => window.clearTimeout(wait);
   }, [typed, term]);
+
+  useEffect(() => {
+    if (!retrying) return undefined;
+
+    const wait = window.setTimeout(() => {
+      setPhase(phaseOf(term));
+      setRetrying(false);
+    }, TYPING_PAUSE_MS);
+
+    return () => window.clearTimeout(wait);
+  }, [retrying, term]);
 
   useEffect(() => {
     if (litAt < 0) return;
@@ -189,6 +201,13 @@ export function SearchPalette({
     field.current?.focus();
   }
 
+  function retry(): void {
+    setPhase('loading');
+    setRetrying(true);
+    setLit(0);
+    field.current?.focus();
+  }
+
   function keys(event: KeyboardEvent<HTMLInputElement>): void {
     const to = moved(litAt, event.key, stops.length);
     if (to != null) {
@@ -202,7 +221,14 @@ export function SearchPalette({
     }
   }
 
-  const said = phase === 'loading' ? W.searching : phase === 'found' ? saidOf(term, groups) : '';
+  const said =
+    phase === 'loading'
+      ? W.searching
+      : phase === 'found'
+        ? saidOf(term, groups)
+        : phase === 'failed'
+          ? W.failed
+          : '';
 
   return (
     <>
@@ -256,6 +282,14 @@ export function SearchPalette({
             </div>
           )}
           {phase === 'offline' && <p className="search-said search-nothing">{W.offline}</p>}
+          {phase === 'failed' && (
+            <div className="search-said">
+              <p className="search-nothing" aria-hidden="true">
+                {W.failed}
+              </p>
+              <TextAction label={W.tryAgain} onClick={retry} />
+            </div>
+          )}
           {phase === 'found' && groups.length === 0 && (
             <div className="search-said">
               <p className="search-nothing" aria-hidden="true">

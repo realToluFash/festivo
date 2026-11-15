@@ -197,6 +197,7 @@ describe('the demo’s states', () => {
       'two-events',
       'long',
       'offline',
+      'failed',
     ]);
     expect(searchStart('idle')).toMatchObject({ term: '', phase: 'idle' });
     expect(searchStart('short')).toMatchObject({ term: 'i', phase: 'short' });
@@ -206,6 +207,7 @@ describe('the demo’s states', () => {
     expect(searchStart('nothing-to-find').reach).toBe(REACHES.nobody);
     expect(searchStart(null, REACHES.member).reach).toBe(REACHES.member);
     expect(searchStart('offline')).toMatchObject({ term: 'ines', phase: 'offline' });
+    expect(searchStart('failed')).toMatchObject({ term: 'ines', phase: 'failed' });
     expect(searchStateOf('nope')).toBeNull();
   });
 });
