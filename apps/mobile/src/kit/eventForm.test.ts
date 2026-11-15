@@ -29,6 +29,7 @@ const gala: OrganisationEvent = {
   startsAt: '2026-11-14T16:00:00+01:00',
   endsAt: '2026-11-14T23:00:00+01:00',
   venue: null,
+  arrivalNote: null,
   timeZone: 'Africa/Lagos',
   dayCount: 1,
   currency: 'NGN',
@@ -89,6 +90,29 @@ describe('the app event form against the shared rules (sc-3595)', () => {
       currency: 'NGN',
       hosts: ['Funmi Adeyemi'],
     });
+  });
+
+  it('sends the arrival note trimmed, apart from the venue, and refuses one past 500 (sc-24385)', () => {
+    const typed = typedOf({ ...gala, arrivalNote: 'Side gate.' });
+    const noted = { ...typed, venue: { ...typed.venue, note: ' Side gate.\nDoors at 17:30. ' } };
+
+    expect(typed.venue.note).toBe('Side gate.');
+    expect(changesOf({ ...gala, arrivalNote: 'Side gate.' }, noted)).toEqual({
+      arrivalNote: 'Side gate.\nDoors at 17:30.',
+    });
+    expect(newEventOf(noted)).toMatchObject({ arrivalNote: 'Side gate.\nDoors at 17:30.' });
+    expect(newEventOf(typedOf(gala))).not.toHaveProperty('arrivalNote');
+    expect(
+      eventFormErrors({ ...typed, venue: { ...typed.venue, note: 'a'.repeat(501) } }, t),
+    ).toEqual({ arrivalNote: 'eventForm.arrivalNoteTooLong:500' });
+    expect(
+      sendOutcome(
+        refusal(422, 'validation_failed', [
+          { propertyPath: 'arrivalNote', message: 'Shorten it.', code: 'x' },
+        ]),
+        t,
+      ),
+    ).toEqual({ kind: 'refused', errors: { arrivalNote: 'Shorten it.' } });
   });
 
   it('is unchanged once typed back to what it was', () => {

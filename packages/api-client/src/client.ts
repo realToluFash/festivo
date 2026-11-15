@@ -23,17 +23,34 @@ import {
 import {
   asGuest,
   asGuestDetails,
+  asGuestGroup,
   asGuestList,
+  asGuestPageCompanion,
+  asGuestPagePlace,
+  asPageNeeds,
   asHeadcount,
+  asMarkedTogether,
+  asMovedTogether,
+  asRemovedTogether,
+  type CompanionChoice,
   type Guest,
   type GuestEdit,
   type GuestAnswer,
+  type GuestInvitationHow,
+  type GuestGroup,
   type GuestList,
   type GuestPage,
   type Headcount,
+  type MarkedTogether,
+  type MovedTogether,
+  type RemovedTogether,
   GUEST_ANSWERS,
   GUEST_PAGE_PHASES,
   type NewGuest,
+  type PageNeeds,
+  type PlaceChoice,
+  type PlaceNeeds,
+  type RecordedReplyInput,
   type TaggedGuest,
 } from './guests.ts';
 import { ApiError, ApiUnreachableError, type Problem, toProblem } from './problem.ts';
@@ -440,6 +457,8 @@ export interface OrganisationEvent {
   cover: EventCover | null;
   /** Null until a venue is added: the page says "Venue to be confirmed" (sc-3589). */
   venue: EventVenue | null;
+  /** The host's words on finding the way in, shown under the address and never translated; null when there are none (sc-24385). */
+  arrivalNote: string | null;
   /** The names guests read, in order; none until somebody adds one, and Make live waits for one (sc-6713). */
   hosts: string[];
   /** Null while it is a Draft. */
@@ -450,14 +469,30 @@ export interface OrganisationEvent {
   phase: EventPhase;
   /** The end, or when it was ended or called off; null until it is Finished. */
   concludedAt: string | null;
+  /** Why Delete event would be refused 409 `event_call_off_first` now, worked out by the server (sc-14445); absent reads as null. */
+  deleteRefusedBecause?: DeleteRefusal | null;
+  /** The day guests answer by, in `timeZone` (sc-3780); null leaves replies open until the start, and absent reads as null. */
+  replyBy?: string | null;
+  /** 23:59:59 on `replyBy` in `timeZone`, with its offset; null with no Reply by. */
+  repliesCloseAt?: string | null;
+  /** The day replies closed in `timeZone`, the day of the save that closed them when one did; null while they are open. */
+  repliesClosedOn?: string | null;
   createdAt: string;
   /** What the caller may do on this event: a Member's follow their role on it, not the organisation's (sc-29915). */
   permissions: string[];
 }
 
-/** As a list shows it: with its timeline's milestones, so the list's Next up is the timeline's (sc-3624). */
+/** The tiles' measure on Events (sc-23284), which each event's guest line adds up to: `notReplied` is the guests who owe an answer and the companions held behind them. */
+export interface EventGuestFigures {
+  invited: number;
+  coming: number;
+  notReplied: number;
+}
+
+/** As a list shows it: with its timeline's milestones, so the list's Next up is the timeline's (sc-3624), and its guest figures from the list, null without guests.read on it (sc-3786). */
 export interface ListedEvent extends OrganisationEvent {
   milestones: Milestone[];
+  guests?: EventGuestFigures | null;
 }
 
 export interface EventsQuery {
@@ -527,7 +562,11 @@ export interface NewEvent {
   timeZone: string;
   currency: string;
   venue?: VenueInput | null;
+  /** Saved trimmed; null or blank removes it. Apart from `venue`, so a note can stand without one (sc-24385). */
+  arrivalNote?: string | null;
   hosts?: string[];
+  /** A day before the start's, in `timeZone`; null removes it, refused 422 on `replyBy` otherwise (sc-3780). */
+  replyBy?: string | null;
 }
 
 /** One of the address lookup's suggestions (sc-53): the place's name, and the rest of its line. */
@@ -755,6 +794,8 @@ export interface SentInvitation {
   invitedBy: MemberPerson | null;
   status: SentInvitationStatus;
   sentAt: string | null;
+  /** Its latest send could not be delivered, never why (sc-46109). */
+  undelivered: boolean;
   expiresAt: string | null;
   acceptedAt: string | null;
   declinedAt: string | null;
@@ -775,11 +816,15 @@ export interface OrganisationDeletion {
   restoreCloses: string;
 }
 
+/** `guestsInvited`: a Live or Paused event with a guest Invited is deleted only once it is Finished (sc-14445). Any reason refuses the same way. */
+export type DeleteRefusal = string;
+
 /** What an event's delete asks for: its name typed unless it is a Draft with nobody on its list, and until when support can restore it (sc-3592). */
 export interface EventDeletion {
   needsName: boolean;
   /** The Guests header's N, guests and companions together (sc-1468). */
   people: number;
+  deleteRefusedBecause: DeleteRefusal | null;
   restoreClosesAt: string;
   restoreCloses: string;
 }
@@ -848,6 +893,8 @@ export interface RequestOptions {
   query?: Record<string, string | number | boolean | undefined>;
   headers?: Record<string, string>;
   signal?: AbortSignal;
+  /** Sent even as the page goes, as an erasure on leaving it is. */
+  keepalive?: boolean;
   /** Skip the Authorization header — for sign-in and guest routes. */
   anonymous?: boolean;
 }
@@ -2109,6 +2156,165 @@ export class ApiClient {
     );
   }
 
+  /** Refused 409 `event_state_invalid` unless the event's phase allows `invite`; a guest already invited stays as recorded (sc-3788). */
+  async markInvited(
+    eventId: string,
+    guestId: string,
+    how: GuestInvitationHow,
+  ): Promise<TaggedGuest> {
+    return this.taggedGuest(
+      await this.exchange<{ guest?: unknown }>(`${this.guestPath(eventId, guestId)}/invitation`, {
+        method: 'PUT',
+        body: { how },
+      }),
+    );
+  }
+
+  /** Lets one guest answer again after Reply by, until the start (sc-3780); needs guests.manage, and is refused 409 `replies_open` while replies are open. */
+  async reopenGuestReplies(eventId: string, guestId: string): Promise<TaggedGuest> {
+    return this.taggedGuest(
+      await this.exchange<{ guest?: unknown }>(
+        `${this.guestPath(eventId, guestId)}/reopen-replies`,
+        {
+          method: 'POST',
+        },
+      ),
+    );
+  }
+
+  /** Record a reply (sc-3787); needs guests.manage. Refused 422 without `answer` or `how`, 409 `replies_closed` as the guest page is, and 409 `reply_is_theirs` over the guest's own reply unless `replace`. */
+  async recordGuestReply(
+    eventId: string,
+    guestId: string,
+    input: RecordedReplyInput,
+  ): Promise<TaggedGuest> {
+    return this.taggedGuest(
+      await this.exchange<{ guest?: unknown }>(`${this.guestPath(eventId, guestId)}/record-reply`, {
+        method: 'POST',
+        body: input,
+      }),
+    );
+  }
+
+  /** In any phase; refused 409 `guest_replied` once they have replied, and `guest_not_marked_by_hand` for Soirely's message. */
+  async markNotInvited(eventId: string, guestId: string): Promise<TaggedGuest> {
+    return this.taggedGuest(
+      await this.exchange<{ guest?: unknown }>(`${this.guestPath(eventId, guestId)}/invitation`, {
+        method: 'DELETE',
+      }),
+    );
+  }
+
+  /** Off the list and the counts at once, with their companions; their link works until eraseGuest (sc-3774). Refused 404 when somebody removed them already. */
+  async removeGuest(eventId: string, guestId: string): Promise<void> {
+    await this.delete<undefined>(this.guestPath(eventId, guestId));
+  }
+
+  /** Back on the list as they were; refused 404 once erased. */
+  async undoGuestRemoval(eventId: string, guestId: string): Promise<TaggedGuest> {
+    return this.taggedGuest(
+      await this.exchange<{ guest?: unknown }>(`${this.guestPath(eventId, guestId)}/removal`, {
+        method: 'DELETE',
+      }),
+    );
+  }
+
+  /** Once the undo has run out, or as the page goes: they, their companions and their link are gone. */
+  async eraseGuest(eventId: string, guestId: string): Promise<void> {
+    await this.post<undefined>(`${this.guestPath(eventId, guestId)}/erasure`, undefined, {
+      keepalive: true,
+    });
+  }
+
+  /** Every selected guest not yet invited, marked with one how (sc-46880); refused 409 `event_state_invalid` unless the phase allows `invite`, and `validation_failed` on `guestIds` over 2,000. */
+  async markGuestsInvited(
+    eventId: string,
+    guestIds: readonly string[],
+    how: GuestInvitationHow,
+  ): Promise<MarkedTogether> {
+    const body = await this.post<unknown>(`${this.guestsPath(eventId)}/invitations`, {
+      guestIds,
+      how,
+    });
+
+    return asMarkedTogether(body) ?? together();
+  }
+
+  /** Many guests into one group, chosen by `id` or made from `name` (sc-3776); refused `validation_failed` on `guestIds` over 2,000, or on the name as makeGuestGroup. */
+  async moveGuestsToGroup(
+    eventId: string,
+    guestIds: readonly string[],
+    group: { id: string } | { name: string },
+  ): Promise<MovedTogether> {
+    const body = await this.post<unknown>(`${this.guestsPath(eventId)}/group-moves`, {
+      guestIds,
+      group,
+    });
+
+    return asMovedTogether(body) ?? together();
+  }
+
+  /** Many guests and their companions off the list as one action with one Undo (sc-3776); one not on the list is counted in `gone`. */
+  async removeGuests(eventId: string, guestIds: readonly string[]): Promise<RemovedTogether> {
+    const body = await this.post<unknown>(`${this.guestsPath(eventId)}/removals`, { guestIds });
+
+    return asRemovedTogether(body) ?? together();
+  }
+
+  /** Every guest the removal took, back as they were; refused 404 once erased. */
+  async undoGuestsRemoval(eventId: string, removal: string): Promise<void> {
+    await this.delete<unknown>(
+      `${this.guestsPath(eventId)}/removals/${encodeURIComponent(removal)}`,
+    );
+  }
+
+  /** Once the undo has run out, or as the page goes. */
+  async eraseGuestsRemoval(eventId: string, removal: string): Promise<void> {
+    await this.post<undefined>(
+      `${this.guestsPath(eventId)}/removals/${encodeURIComponent(removal)}/erasure`,
+      undefined,
+      { keepalive: true },
+    );
+  }
+
+  /** Refused `validation_failed` on `name`: blank, over 60 characters, a name already used, or 50 groups (sc-3775). */
+  async makeGuestGroup(eventId: string, name: string): Promise<GuestGroup> {
+    return this.guestGroup(
+      await this.post<{ group?: unknown }>(this.guestGroupsPath(eventId), { name }),
+    );
+  }
+
+  /** Refused as makeGuestGroup, though the group's own name in another case is allowed. */
+  async renameGuestGroup(eventId: string, groupId: string, name: string): Promise<GuestGroup> {
+    return this.guestGroup(
+      await this.put<{ group?: unknown }>(
+        `${this.guestGroupsPath(eventId)}/${encodeURIComponent(groupId)}`,
+        { name },
+      ),
+    );
+  }
+
+  /** Its guests stay on the list, with no group. */
+  async deleteGuestGroup(eventId: string, groupId: string): Promise<void> {
+    await this.delete<undefined>(`${this.guestGroupsPath(eventId)}/${encodeURIComponent(groupId)}`);
+  }
+
+  private guestGroupsPath(eventId: string): string {
+    return `/api/events/${encodeURIComponent(eventId)}/guest-groups`;
+  }
+
+  private guestGroup(body: { group?: unknown } | undefined): GuestGroup {
+    const group = asGuestGroup(body?.group);
+
+    if (group == null) {
+      throw new Error(
+        'The API answered a guest group in a shape this client does not know. Check GuestGroupsController in services/api.',
+      );
+    }
+
+    return group;
+  }
+
   /** Needs guests.read on the event (sc-99). */
   async headcount(eventId: string): Promise<Headcount> {
     const body = await this.get<{ headcount?: unknown }>(
@@ -2129,6 +2335,22 @@ export class ApiClient {
   async guestsSubscription(eventId: string): Promise<RealtimeSubscription> {
     const body = await this.post<{ token?: unknown; expiresAt?: unknown }>(
       `${this.guestsPath(eventId)}/subscriptions`,
+    );
+
+    return {
+      token: typeof body.token === 'string' ? body.token : '',
+      expiresAt: typeof body.expiresAt === 'string' ? body.expiresAt : '',
+    };
+  }
+
+  /** A hub token for the headcounts of the events a list shows, those the caller reads guests on (sc-3786). */
+  async headcountsSubscription(
+    organisationId: string,
+    eventIds: readonly string[],
+  ): Promise<RealtimeSubscription> {
+    const body = await this.post<{ token?: unknown; expiresAt?: unknown }>(
+      `/api/orgs/${encodeURIComponent(organisationId)}/events/headcounts/subscriptions`,
+      { events: eventIds },
     );
 
     return {
@@ -2181,11 +2403,49 @@ export class ApiClient {
     );
   }
 
-  /** Records the guest's answer and answers the page as it now stands (sc-1439). Refused 422 for an answer the page does not offer, 409 `event_paused` or `event_concluded` by the event's phase, 409 `replies_closed` from the start, and `not_found` as the page is. */
-  async sendGuestAnswer(token: string, answer: GuestAnswer): Promise<GuestPage> {
+  /** Records the guest's answer, and with Coming each place by its id, named (sc-3779) or left unnamed, Coming or Not coming (sc-48740), with the needs of the guest and each person (sc-3778), and answers the page as it now stands (sc-1439). Refused 422 for an answer the page does not offer, a place that is not the guest's or one sent as unnamed that the reply names, a need the API does not know, 409 `event_paused` or `event_concluded` by the event's phase, 409 `replies_closed` from the start, and `not_found` as the page is. */
+  async sendGuestAnswer(
+    token: string,
+    answer: GuestAnswer,
+    companions: readonly CompanionChoice[] = [],
+    needs: PageNeeds | null = null,
+    unnamed: readonly PlaceChoice[] = [],
+  ): Promise<GuestPage> {
     return this.guestPageOf(
-      await this.post<unknown>('/api/guest-links/reply', { token, answer }, { anonymous: true }),
+      await this.post<unknown>(
+        '/api/guest-links/reply',
+        {
+          token,
+          answer,
+          ...(companions.length === 0 ? {} : { companions }),
+          ...(needs == null ? {} : { needs }),
+          ...(unnamed.length === 0 ? {} : { unnamed }),
+        },
+        { anonymous: true },
+      ),
       'POST /api/guest-links/reply',
+    );
+  }
+
+  /** After Reply by, a Coming guest's kitchen needs alone, until the start (sc-3780): the answer and who is coming stay. Refused 409 `replies_closed` from the start, and as sendGuestAnswer otherwise. */
+  async sendGuestNeeds(
+    token: string,
+    needs: PageNeeds | null,
+    companions: readonly PlaceNeeds[] = [],
+    unnamed: readonly PlaceNeeds[] = [],
+  ): Promise<GuestPage> {
+    return this.guestPageOf(
+      await this.post<unknown>(
+        '/api/guest-links/needs',
+        {
+          token,
+          ...(needs == null ? {} : { needs }),
+          ...(companions.length === 0 ? {} : { companions }),
+          ...(unnamed.length === 0 ? {} : { unnamed }),
+        },
+        { anonymous: true },
+      ),
+      'POST /api/guest-links/needs',
     );
   }
 
@@ -2408,7 +2668,8 @@ export class ApiClient {
       typeof body.needsName !== 'boolean' ||
       typeof body.people !== 'number' ||
       typeof body.restoreClosesAt !== 'string' ||
-      typeof body.restoreCloses !== 'string'
+      typeof body.restoreCloses !== 'string' ||
+      refusalOf(body.deleteRefusedBecause) === undefined
     ) {
       throw new Error(
         'The API answered an event deletion in a shape this client does not know. Check EventDeletionController in services/api.',
@@ -2418,6 +2679,7 @@ export class ApiClient {
     return {
       needsName: body.needsName,
       people: body.people,
+      deleteRefusedBecause: refusalOf(body.deleteRefusedBecause) ?? null,
       restoreClosesAt: body.restoreClosesAt,
       restoreCloses: body.restoreCloses,
     };
@@ -3053,6 +3315,7 @@ export class ApiClient {
     // accept it.
     if (init.body !== undefined) request.body = JSON.stringify(init.body);
     if (init.signal !== undefined) request.signal = init.signal;
+    if (init.keepalive === true) request.keepalive = true;
 
     try {
       const response = await doFetch(this.url(path, init.query), request);
@@ -3558,12 +3821,22 @@ function asMilestone(raw: unknown): Milestone | null {
 
 function asListedEvent(raw: unknown): ListedEvent | null {
   const event = asOrganisationEvent(raw);
-  const milestones = (raw as { milestones?: unknown } | null)?.milestones;
+  const { milestones, guests } = (raw ?? {}) as { milestones?: unknown; guests?: unknown };
   const read = Array.isArray(milestones) ? milestones.map(asMilestone) : null;
+  const figures = guests == null ? null : asEventGuestFigures(guests);
 
-  return event == null || read == null || read.some((one) => one == null)
+  return event == null || read == null || read.some((one) => one == null) || figures === undefined
     ? null
-    : { ...event, milestones: read as Milestone[] };
+    : { ...event, milestones: read as Milestone[], guests: figures };
+}
+
+/** An event's guest figures, from the events list or from its headcount as published (sc-3786); undefined for a shape this client does not know. */
+export function asEventGuestFigures(raw: unknown): EventGuestFigures | undefined {
+  const { invited, coming, notReplied } = (raw ?? {}) as Record<string, unknown>;
+
+  return isCount(invited) && isCount(coming) && isCount(notReplied)
+    ? { invited, coming, notReplied }
+    : undefined;
 }
 
 function isCount(value: unknown): value is number {
@@ -3590,23 +3863,33 @@ function asOrganisationEvent(raw: unknown): OrganisationEvent | null {
   const dayCount = candidate.dayCount;
   const cover = candidate.cover === null ? null : asEventCover(candidate.cover);
   const venue = candidate.venue === null ? null : asEventVenue(candidate.venue);
+  const arrivalNote = candidate.arrivalNote;
   const hosts = candidate.hosts;
   const madeLiveAt = candidate.madeLiveAt;
   const pausedAt = candidate.pausedAt;
   const phase = oneOf(candidate.phase, EVENT_PHASES);
   const concludedAt = candidate.concludedAt;
+  const deleteRefusedBecause = refusalOf(candidate.deleteRefusedBecause);
   const permissions = stringList(candidate.permissions);
+  const replyBy = candidate.replyBy ?? null;
+  const repliesCloseAt = candidate.repliesCloseAt ?? null;
+  const repliesClosedOn = candidate.repliesClosedOn ?? null;
 
   if (
     status == null ||
     permissions == null ||
     phase == null ||
     !isStringOrNull(concludedAt) ||
+    deleteRefusedBecause === undefined ||
     !isStringOrNull(madeLiveAt) ||
     !isStringOrNull(pausedAt) ||
     type == null ||
     cover === undefined ||
     venue === undefined ||
+    !isStringOrNull(arrivalNote) ||
+    !isStringOrNull(replyBy) ||
+    !isStringOrNull(repliesCloseAt) ||
+    !isStringOrNull(repliesClosedOn) ||
     !Array.isArray(hosts) ||
     hosts.some((host) => typeof host !== 'string') ||
     fields.some((field) => typeof candidate[field] !== 'string') ||
@@ -3629,14 +3912,26 @@ function asOrganisationEvent(raw: unknown): OrganisationEvent | null {
     currency: candidate.currency as string,
     cover,
     venue,
+    arrivalNote,
     hosts: hosts as string[],
     madeLiveAt,
     pausedAt,
     phase,
     concludedAt,
+    deleteRefusedBecause,
+    ...(candidate.replyBy === undefined ? {} : { replyBy }),
+    ...(candidate.repliesCloseAt === undefined ? {} : { repliesCloseAt }),
+    ...(candidate.repliesClosedOn === undefined ? {} : { repliesClosedOn }),
     createdAt: candidate.createdAt as string,
     permissions,
   };
+}
+
+/** Null, or absent, when nothing is refused; undefined when it is not a reason at all. */
+function refusalOf(raw: unknown): DeleteRefusal | null | undefined {
+  if (raw == null) return null;
+
+  return typeof raw === 'string' ? raw : undefined;
 }
 
 function asEventCover(raw: unknown): EventCover | undefined {
@@ -3665,7 +3960,10 @@ function asEventCover(raw: unknown): EventCover | undefined {
 
 function asGuestPage(raw: unknown): GuestPage | null {
   if (typeof raw !== 'object' || raw == null) return null;
-  const { guest, event, phase, started, answersOpen, language } = raw as Record<string, unknown>;
+  const { guest, event, phase, started, answersOpen, answersClosedOn, language } = raw as Record<
+    string,
+    unknown
+  >;
   const shown = GUEST_PAGE_PHASES.find((known) => known === phase);
   if (typeof guest !== 'object' || guest == null || typeof event !== 'object' || event == null)
     return null;
@@ -3675,11 +3973,19 @@ function asGuestPage(raw: unknown): GuestPage | null {
   const answer = GUEST_ANSWERS.find((known) => known === reply?.answer);
   const venue = what.venue as Record<string, unknown> | null | undefined;
   const languages = (language ?? {}) as Record<string, unknown>;
+  const companions = Array.isArray(who.companions) ? who.companions.map(asGuestPageCompanion) : [];
+  const needs = asPageNeeds(who.needs);
+  const unnamed = Array.isArray(who.unnamed) ? who.unnamed.map(asGuestPagePlace) : [];
 
   if (
     typeof languages.organisation !== 'string' ||
     typeof who.fullName !== 'string' ||
-    typeof who.companions !== 'number' ||
+    typeof who.places !== 'number' ||
+    needs == null ||
+    !Array.isArray(who.unnamed) ||
+    unnamed.some((one) => one == null) ||
+    !Array.isArray(who.companions) ||
+    companions.some((one) => one == null) ||
     (reply != null && (answer == null || typeof reply.at !== 'string')) ||
     typeof what.id !== 'string' ||
     typeof what.name !== 'string' ||
@@ -3695,8 +4001,18 @@ function asGuestPage(raw: unknown): GuestPage | null {
   return {
     guest: {
       fullName: who.fullName,
-      reply: reply == null || answer == null ? null : { answer, at: reply.at as string },
-      companions: who.companions,
+      reply:
+        reply == null || answer == null
+          ? null
+          : {
+              answer,
+              at: reply.at as string,
+              recordedBy: typeof reply.recordedBy === 'string' ? reply.recordedBy : null,
+            },
+      needs,
+      places: who.places,
+      unnamed: unnamed.filter((one) => one != null),
+      companions: companions.filter((one) => one != null),
     },
     language: {
       chosen: typeof languages.chosen === 'string' ? languages.chosen : null,
@@ -3720,7 +4036,10 @@ function asGuestPage(raw: unknown): GuestPage | null {
               name: typeof venue.name === 'string' ? venue.name : null,
               address: typeof venue.address === 'string' ? venue.address : null,
             },
+      arrivalNote: typeof what.arrivalNote === 'string' ? what.arrivalNote : null,
+      replyBy: typeof what.replyBy === 'string' ? what.replyBy : null,
     },
+    answersClosedOn: typeof answersClosedOn === 'string' ? answersClosedOn : null,
     phase: shown,
     started,
     answersOpen,
@@ -3996,6 +4315,7 @@ function asSentInvitation(raw: unknown): SentInvitation | null {
     invitedBy: asPerson(invitation.invitedBy),
     status,
     sentAt: stringOrNull(invitation.sentAt),
+    undelivered: invitation.undelivered === true,
     expiresAt: stringOrNull(invitation.expiresAt),
     acceptedAt: stringOrNull(invitation.acceptedAt),
     declinedAt: stringOrNull(invitation.declinedAt),
@@ -4627,4 +4947,10 @@ function linkedOrThrow<T>(linked: T | null): T {
   }
 
   return linked;
+}
+
+function together(): never {
+  throw new Error(
+    'The API answered an action on many guests in a shape this client does not know. Check GuestsTogetherController in services/api.',
+  );
 }

@@ -1,5 +1,6 @@
 import { LOCALES } from '@soirely/domain';
 
+import { type Needs, needsOf } from './GuestNeeds.ts';
 import type { ReplyKind } from './GuestsWords.ts';
 import type { OptOuts } from './OptOuts.ts';
 import type { WhatsAppConsent } from './WhatsAppConsent.ts';
@@ -31,6 +32,8 @@ export interface Companion {
   /** Their seat and meal pick (epics 31, 32): removing them says what goes first (sc-3773). */
   table?: string;
   meal?: boolean;
+  /** sc-5519: their own needs (sc-3777); none is None recorded. */
+  needs?: Needs;
 }
 
 /** sc-3790: a guest's language; null is Not set. The host's and the guest's own are the AC, not yet built. */
@@ -72,6 +75,10 @@ export interface SampleGuest {
   optOuts?: OptOuts;
   /** sc-1363: when a guest who answered Not sure yet will be, or was, asked again; Not sent: too late is none. */
   askAgain?: AskAgain | null;
+  /** sc-5519: the group's name (sc-3775); their companions follow it. */
+  group?: string | null;
+  /** sc-5519: their needs (sc-3777), seen only with guests.manage; none is None recorded. */
+  needs?: Needs;
 }
 
 export type AskAgain = { kind: 'will' | 'asked'; day: string } | { kind: 'wont' };
@@ -103,8 +110,14 @@ export const GUESTS: readonly SampleGuest[] = [
     email: 'musa.bello@gmail.com',
     phone: '+234 803 412 7730',
     companions: [{ name: 'Guest of Alhaji Musa Bello', kind: 'coming' }],
+    group: 'Bride’s side',
+    needs: needsOf({ diet: ['halal'] }),
   }),
-  guest('amaka', 'Amaka Eze', 'coming', { when: '2026-10-13', phone: '+234 803 555 0142' }),
+  guest('amaka', 'Amaka Eze', 'coming', {
+    when: '2026-10-13',
+    phone: '+234 803 555 0142',
+    group: 'Bride’s side',
+  }),
   guest('bisi', 'Bisi Adewale', 'notyet', {
     email: 'bisi.adewale@yahoo.com',
     greetAs: 'Auntie Bisi',
@@ -112,51 +125,76 @@ export const GUESTS: readonly SampleGuest[] = [
   guest('camille', 'Camille Dubois', 'notcoming', {
     when: '2026-10-20',
     email: 'camille.dubois@free.fr',
+    group: 'Work',
   }),
   guest('folasade', 'Chief Mrs Folasade Okonkwo-Williams', 'maybe', {
     when: '2026-10-16',
     phone: '+234 802 300 1188',
     companions: [{ name: 'Guest of Chief Mrs Folasade Okonkwo-Williams', kind: 'held' }],
+    group: 'Bride’s side',
+    needs: needsOf({ access: ['step_free', 'near_exit'] }),
   }),
   guest('emeka', 'Dr Emeka Nwosu', 'noreply', {
     email: 'emeka.nwosu@nhs.net',
     phone: '+44 7700 900231',
     companions: [{ name: 'Adanna Nwosu', kind: 'held' }],
     invited: { by: READER, how: 'WhatsApp', day: '2026-10-09' },
+    group: 'Bride’s side',
+    needs: needsOf({
+      allergies: ['peanuts', 'tree_nuts'],
+      diet: ['no_alcohol'],
+      note: 'Carries an adrenaline pen. His sister Adanna knows where it is.',
+    }),
   }),
   guest('ines', 'Inês Duarte', 'coming', {
     when: '2026-10-13',
     email: 'ines.duarte@sapo.pt',
-    companions: [{ name: 'Rui Duarte', kind: 'coming', table: 'Table 4', meal: true }],
+    companions: [
+      {
+        name: 'Rui Duarte',
+        kind: 'coming',
+        table: 'Table 4',
+        meal: true,
+        needs: needsOf({ allergies: ['sesame'] }),
+      },
+    ],
     language: 'es',
     chose: 'pt',
+    group: 'Work',
+    needs: needsOf({ diet: ['vegetarian'] }),
   }),
   guest('joaquin', 'Joaquín Ruiz', 'noreply', {
     invited: { by: READER, how: 'in person', day: '2026-10-09' },
+    group: 'Groom’s side',
   }),
   guest('kwame', 'Kwame Mensah', 'coming', {
     when: '2026-10-02',
     email: 'kwame.mensah@outlook.com',
     phone: '+44 7700 900412',
+    group: 'Groom’s side',
   }),
   guest('lucia', 'Lucía Ortega', 'maybe', {
     when: '2026-10-18',
     phone: '+34 612 345 678',
     whatsApp: { kind: 'guest', day: '2026-11-02' },
+    group: 'Old school friends',
   }),
   guest('marta', 'Marta Silva', 'coming', {
     when: '2026-10-11',
     email: 'marta.silva@gmail.com',
+    group: 'Old school friends',
   }),
   guest('nadia', 'Nadia Haddad', 'noreply', { email: 'nadia.haddad@gmail.com' }),
   guest('ngozi', 'Ngozi Eze', 'coming', {
     when: '2026-10-02',
     email: 'ngozi.eze@gmail.com',
     invited: null,
+    group: 'Bride’s side',
   }),
   guest('seun', 'Oluwaseun Ajayi', 'noreply', {
     phone: '+234 805 667 1209',
     invited: { by: COLLEAGUE, how: 'Text message', day: '2026-10-10' },
+    group: 'Groom’s side',
   }),
   guest('sophie', 'Sophie Laurent', 'coming', {
     when: '2026-10-12',
@@ -165,9 +203,13 @@ export const GUESTS: readonly SampleGuest[] = [
     companions: [{ name: 'Marc Laurent', kind: 'coming' }],
     language: 'fr',
     whatsApp: { kind: 'optedOut', day: '2026-11-01' },
+    group: 'Work',
   }),
-  guest('tomas', 'Tomás Ferreira', 'noreply', { email: 'tomas.ferreira@gmial.com' }),
-  guest('yusuf', 'Yusuf Ibrahim', 'notyet', { phone: '+234 809 221 4410' }),
+  guest('tomas', 'Tomás Ferreira', 'noreply', {
+    email: 'tomas.ferreira@gmial.com',
+    group: 'Old school friends',
+  }),
+  guest('yusuf', 'Yusuf Ibrahim', 'notyet', { phone: '+234 809 221 4410', group: 'Groom’s side' }),
 ];
 
 export const FIRST_ROWS: Readonly<

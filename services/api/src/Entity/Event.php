@@ -34,6 +34,8 @@ class Event implements SoftDeletableInterface
 
     public const int HOSTS_MAXIMUM = 6;
 
+    public const int ARRIVAL_NOTE_MAXIMUM = 500;
+
     #[ORM\Id]
     #[ORM\Column(type: 'uuid')]
     private Uuid $id;
@@ -117,6 +119,18 @@ class Event implements SoftDeletableInterface
 
     #[ORM\Column(type: Types::FLOAT, nullable: true)]
     private ?float $venueLongitude = null;
+
+    /** The host's, not the venue's: it stays when the venue has neither name nor address (sc-24385). */
+    #[ORM\Column(type: Types::TEXT, nullable: true)]
+    private ?string $arrivalNote = null;
+
+    /** A day in the event's own zone: replies close at its last second (sc-3780). */
+    #[ORM\Column(type: Types::DATE_IMMUTABLE, nullable: true)]
+    private ?DateTimeImmutable $replyBy = null;
+
+    /** The day a save closed replies before the end of Reply by, in the event's zone; null when they close at the end of Reply by (sc-3780). */
+    #[ORM\Column(type: Types::DATE_IMMUTABLE, nullable: true)]
+    private ?DateTimeImmutable $repliesClosedOn = null;
 
     /** @var list<string> the hosts' names as guests read them, in order (sc-6713) */
     #[ORM\Column(type: Types::JSON, options: ['default' => '[]'])]
@@ -331,6 +345,36 @@ class Event implements SoftDeletableInterface
     public function setHosts(array $hosts): void
     {
         $this->hosts = $hosts;
+    }
+
+    public function getArrivalNote(): ?string
+    {
+        return $this->arrivalNote;
+    }
+
+    public function setArrivalNote(?string $note): void
+    {
+        $this->arrivalNote = $note;
+    }
+
+    public function getReplyBy(): ?DateTimeImmutable
+    {
+        return $this->replyBy;
+    }
+
+    public function setReplyBy(?DateTimeImmutable $day): void
+    {
+        $this->replyBy = $day;
+    }
+
+    public function getRepliesClosedOn(): ?DateTimeImmutable
+    {
+        return $this->repliesClosedOn;
+    }
+
+    public function setRepliesClosedOn(?DateTimeImmutable $day): void
+    {
+        $this->repliesClosedOn = $day;
     }
 
     public function setType(EventType $type): void

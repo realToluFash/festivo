@@ -14,6 +14,7 @@ import {
   phoneAwaitingCode,
   primaryEmailAddress,
 } from './client.ts';
+import { asGuestList } from './guests.ts';
 import { ApiError, ApiUnreachableError } from './problem.ts';
 
 function problem(status: number, code: string, extra: Record<string, unknown> = {}): Response {
@@ -2670,6 +2671,7 @@ describe('invitations and members', () => {
             invitedBy: { id: 'u2', name: 'Bisi Adeyemi' },
             status: 'pending',
             sentAt: '2026-10-18T10:00:00+00:00',
+            undelivered: false,
             expiresAt: '2026-10-25T10:00:00+00:00',
             acceptedAt: null,
             declinedAt: null,
@@ -2703,6 +2705,7 @@ describe('invitations and members', () => {
           invitedBy: { id: 'u2', name: 'Bisi Adeyemi' },
           status: 'pending',
           sentAt: null,
+          undelivered: true,
           expiresAt: '2026-10-25T10:00:00+00:00',
           acceptedAt: null,
           declinedAt: null,
@@ -2714,6 +2717,7 @@ describe('invitations and members', () => {
     const sentInvitation = await api.inviteMember('org_1', 'amara@example.com', 'role_5');
 
     expect(sentInvitation.id).toBe('inv_2');
+    expect(sentInvitation.undelivered).toBe(true);
     expect(sent[0]).toEqual({
       line: 'POST /api/orgs/org_1/members/invite',
       body: { email: 'amara@example.com', roleId: 'role_5' },
@@ -2807,10 +2811,25 @@ describe('invitations and members', () => {
     expect(await api.eventDeletion('event_1')).toEqual({
       needsName: true,
       people: 421,
+      deleteRefusedBecause: null,
       restoreClosesAt: '2026-11-16T13:20:00+00:00',
       restoreCloses: 'Monday 16 Nov at 14:20 WAT',
     });
     expect(sent[0]?.line).toBe('GET /api/events/event_1/deletion');
+  });
+
+  test('an event deletion preview says why it would be refused (sc-14445)', async () => {
+    const { api } = client(
+      json({
+        needsName: true,
+        people: 3,
+        deleteRefusedBecause: 'guestsInvited',
+        restoreClosesAt: '2026-11-16T13:20:00+00:00',
+        restoreCloses: 'Monday 16 Nov at 14:20 WAT',
+      }),
+    );
+
+    expect((await api.eventDeletion('event_1')).deleteRefusedBecause).toBe('guestsInvited');
   });
 
   test('an event delete sends the name as typed, and none for a Draft', async () => {
@@ -2842,11 +2861,13 @@ describe('events (sc-1486)', () => {
     currency: 'NGN',
     cover: null,
     venue: null,
+    arrivalNote: null,
     hosts: ['Funmi Adeyemi', 'Tayo Adeyemi'],
     madeLiveAt: null,
     pausedAt: null,
     phase: 'draft',
     concludedAt: null,
+    deleteRefusedBecause: null,
     createdAt: '2026-10-21T09:00:00+00:00',
     permissions: ['events.read', 'events.manage'],
   };
@@ -2879,15 +2900,20 @@ describe('events (sc-1486)', () => {
       area: 'events',
       action: null,
     };
+    const WEDDING_GUESTS = { invited: 142, coming: 96, notReplied: 25 };
     const later = { ...EVENT, id: 'e2', name: 'Later', milestones: [] };
     const { api, sent } = client(() =>
-      json({ events: [{ ...EVENT, milestones: [starts] }, later], total: 12 }),
+      json({
+        events: [{ ...EVENT, milestones: [starts], guests: WEDDING_GUESTS }, later],
+        total: 12,
+      }),
     );
 
     const page = await api.events('org_1', { finished: true, page: 2, itemsPerPage: 10 });
 
     expect(page.events.map(({ name }) => name)).toEqual(['Adaeze and Tunde', 'Later']);
-    expect(page.events[0]).toEqual({ ...EVENT, milestones: [starts] });
+    expect(page.events[0]).toEqual({ ...EVENT, milestones: [starts], guests: WEDDING_GUESTS });
+    expect(page.events[1]?.guests).toBeNull();
     expect(page.total).toBe(12);
     expect(sent[0]?.line).toBe('GET /api/orgs/org_1/events');
   });
@@ -3180,6 +3206,7 @@ describe('events (sc-1486)', () => {
     ['a phase nobody declared', { phase: 'over' }],
     ['no phase', { phase: undefined }],
     ['a concludedAt that is not a string or null', { concludedAt: 1 }],
+    ['a deleteRefusedBecause that is not a string or null', { deleteRefusedBecause: true }],
     ['no permissions', { permissions: undefined }],
     ['a permission that is not a string', { permissions: [1] }],
   ])('an event with %s is an error', async (_, change) => {
@@ -3409,6 +3436,7 @@ describe("an event's venue (sc-3589)", () => {
     dayCount: 2,
     currency: 'NGN',
     cover: null,
+    arrivalNote: null,
     hosts: [],
     madeLiveAt: null,
     pausedAt: null,
@@ -3466,6 +3494,19 @@ describe("an event's venue (sc-3589)", () => {
 
   test('refuses an event with no venue field, naming where to look', async () => {
     await expect(client(json({ event })).api.event('e1')).rejects.toThrow(/events controller/);
+  });
+
+  test("reads the host's arrival note, with its line breaks, apart from the venue (sc-24385)", async () => {
+    const note = 'Use the side gate.\nDoors open at 17:30.';
+    const read = await client(
+      json({ event: { ...event, venue: null, arrivalNote: note } }),
+    ).api.event('e1');
+
+    expect(read.venue).toBeNull();
+    expect(read.arrivalNote).toBe(note);
+    await expect(
+      client(json({ event: { ...event, venue: null, arrivalNote: 5 } })).api.event('e1'),
+    ).rejects.toThrow(/events controller/);
   });
 
   const answers = JSON.parse(
@@ -3652,7 +3693,18 @@ describe("the guest's calendar on their page (sc-3627)", () => {
     guest: {
       fullName: 'Adaeze Okonkwo',
       reply: { answer: 'coming', at: '2026-10-17T14:20:00+01:00' },
-      companions: 0,
+      needs: {
+        allergies: [],
+        otherAllergy: null,
+        diet: [],
+        otherDiet: null,
+        access: [],
+        otherAccess: null,
+        changed: null,
+      },
+      places: 0,
+      unnamed: [],
+      companions: [],
     },
     language: { chosen: null, host: null, organisation: 'en' },
     event: {
@@ -3699,5 +3751,77 @@ describe("the guest's calendar on their page (sc-3627)", () => {
     await expect(
       answering({ ...PAGE, calendarFeed: 'https://elsewhere.test/x.ics' }).guestPage('tok'),
     ).rejects.toThrow(/GuestPageController/);
+  });
+
+  test('reads whether each unnamed place is coming, and refuses one without it (sc-48740)', async () => {
+    const place = { id: 'pl_1', coming: false, needs: PAGE.guest.needs };
+    const guest = { ...PAGE.guest, places: 1, unnamed: [place] };
+
+    expect(
+      (await answering({ ...PAGE, guest, calendarFeed: null }).guestPage('tok')).guest.unnamed,
+    ).toEqual([place]);
+    await expect(
+      answering({
+        ...PAGE,
+        guest: { ...guest, unnamed: [{ id: 'pl_1', needs: PAGE.guest.needs }] },
+        calendarFeed: null,
+      }).guestPage('tok'),
+    ).rejects.toThrow(/GuestPageController/);
+  });
+});
+
+describe('guest groups (sc-3775)', () => {
+  const counts = { people: 3, guests: 2, companions: 1 };
+
+  test('makes, renames and deletes a group under its event', async () => {
+    const sent: { url: string; method: string; body: unknown }[] = [];
+    const client = new ApiClient({
+      baseUrl: () => 'http://api.test',
+      fetch: async (input, init) => {
+        sent.push({
+          url: String(input),
+          method: init?.method ?? 'GET',
+          body: typeof init?.body === 'string' ? JSON.parse(init.body) : null,
+        });
+
+        return init?.method === 'DELETE'
+          ? new Response(null, { status: 204 })
+          : new Response(JSON.stringify({ group: { id: 'gr_1', name: 'Work' } }), {
+              status: 200,
+              headers: { 'Content-Type': 'application/json' },
+            });
+      },
+    });
+
+    expect(await client.makeGuestGroup('ev 1', 'Work')).toEqual({ id: 'gr_1', name: 'Work' });
+    expect(await client.renameGuestGroup('ev 1', 'gr_1', 'Work')).toEqual({
+      id: 'gr_1',
+      name: 'Work',
+    });
+    await client.deleteGuestGroup('ev 1', 'gr_1');
+
+    expect(sent.map(({ method, url, body }) => [method, url, body])).toEqual([
+      ['POST', 'http://api.test/api/events/ev%201/guest-groups', { name: 'Work' }],
+      ['PUT', 'http://api.test/api/events/ev%201/guest-groups/gr_1', { name: 'Work' }],
+      ['DELETE', 'http://api.test/api/events/ev%201/guest-groups/gr_1', null],
+    ]);
+  });
+
+  test('reads the list’s groups with their counts, and a list without them as all in No group', () => {
+    expect(
+      asGuestList({
+        guests: [],
+        counts,
+        groups: [{ id: 'gr_1', name: 'Work', counts }],
+        ungrouped: { people: 0, guests: 0, companions: 0 },
+      })?.groups,
+    ).toEqual([{ id: 'gr_1', name: 'Work', counts }]);
+    expect(asGuestList({ guests: [], counts })).toEqual({
+      guests: [],
+      counts,
+      groups: [],
+      ungrouped: counts,
+    });
+    expect(asGuestList({ guests: [], counts, groups: [{ id: 'gr_1' }] })).toBeNull();
   });
 });

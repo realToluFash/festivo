@@ -41,15 +41,10 @@ import {
   keysOver,
   liftNeeded,
   liftUnderFocus,
-  type InContent,
-  type IntoView,
   type LiftFromTop,
   offsetAboveKeyboard,
   scrollInsets,
   settleLifts,
-  settledAnswer,
-  settledOffsetKeeping,
-  shownAboveKeys,
   shownEnd,
 } from '../kit/keyboard.ts';
 import {
@@ -75,11 +70,15 @@ import {
   keyboardTopNow,
   settledLift,
   putKeysDownThen,
+  scrollLaidOut,
   useKeysUp,
   watchKeyboardTop,
 } from './keyboardWatch.ts';
+import { type Sight, SETTLED_MS, bringIntoView, followIntoView } from './intoView.ts';
 
-interface ScreenScrollView {
+export { SETTLED_MS } from './intoView.ts';
+
+export interface ScreenScrollView {
   ref: RefObject<ScrollViewInstance | null>;
   /** Called when the scroll view itself resizes, which a child's onLayout does not see. */
   resized: Set<() => void>;
@@ -106,7 +105,6 @@ interface ScreenScrollView {
   /** Whether any answer is coming into view now. */
   answeringNow(): boolean;
 }
-
 export const ScreenScroll = createContext<ScreenScrollView | null>(null);
 
 interface ScreenDock {
@@ -381,74 +379,13 @@ export function useScrolledToTop(
   return top;
 }
 
-// VoiceOver drops a focus asked for while a sheet is still sliding away, and the scroll has to land first.
-export const SETTLED_MS = 500;
-
-interface Sight {
-  when?: IntoView;
-  /** The sight ends at the keys while they are up. */
-  aboveKeys?: boolean;
-  /** Stays wholly in sight as the scroll goes back up, when the view can show with it. */
-  keep?: ScreenReaderTarget | null;
-  /** The scroll keeps the hold, as `scrollHolding`. */
-  holding?: boolean;
-}
-
-function bringIntoView(
-  scroll: ScreenScrollView | null,
-  line: ScreenReaderTarget | null,
-  animated: boolean,
-  { when = 'wholly', aboveKeys = false, keep = null, holding = false }: Sight = {},
-  measured: (found: { to: number | null } | null) => void = () => {},
-): void {
-  const view = scroll?.ref.current;
-  const content = view?.getInnerViewRef();
-  const scrollHost = view?.getNativeScrollRef();
-  if (scroll == null || view == null || content == null || scrollHost == null || line == null)
-    return measured(null);
-
-  const kept = (then: (at: InContent | null) => void) =>
-    keep == null
-      ? then(null)
-      : keep.measureLayout(
-          content,
-          (_x, contentY, _w, height) => then({ contentY, height }),
-          () => then(null),
-        );
-
-  // A field in another screen's scroll fails to measure here, and that screen brings it.
-  line.measureLayout(
-    content,
-    (_x, contentY, _w, height) => {
-      kept((keptAt) =>
-        scrollHost.measureInWindow((_sx, y, _sw, scrollHeight) => {
-          const keyboardTop = aboveKeys ? keyboardTopNow(scroll.origin.current) : null;
-          const shown = shownAboveKeys(keyboardTop, { y, height: scrollHeight });
-          const at = {
-            contentY,
-            height,
-            offset: scroll.offset.current,
-            shown,
-            margin: tokens.spaceLg,
-          };
-          const to = settledOffsetKeeping(at, when, keptAt);
-          if (to != null && holding) scroll.scrollHolding(to);
-          else if (to != null) view.scrollTo({ y: to, animated });
-          measured({ to });
-        }),
-      );
-    },
-    () => measured(null),
-  );
-}
-
 /** The Field a client check focuses comes wholly into view above the keys, again once they are up and its error has grown it (sc-20721). */
 function useCheckedFieldInView(scroll: ScreenScrollView): void {
   useEffect(() => {
     let cancel = () => {};
-    const unwatch = watchCheckedField((field, inView) => {
+    const unwatch = watchCheckedField((field, inView, jump) => {
       cancel();
-      cancel = followIntoView(scroll, () => field, { inView });
+      cancel = followIntoView(scroll, () => field, { inView, jump });
     });
 
     return () => {
@@ -456,64 +393,6 @@ function useCheckedFieldInView(scroll: ScreenScrollView): void {
       unwatch();
     };
   }, [scroll]);
-}
-
-/** Calls `then` once the scroll has reached `to`, at once when there is no scroll to make; returns what stops waiting. */
-function whenLanded(scroll: ScreenScrollView, to: number | null, then: () => void): () => void {
-  if (to == null || scrollAsked(to, scroll.offset.current)) {
-    then();
-    return () => {};
-  }
-  const landing = (y: number) => {
-    if (!scrollAsked(to, y)) return;
-    stop();
-    then();
-  };
-  const stop = () => scroll.scrolled.delete(landing);
-  scroll.scrolled.add(landing);
-
-  return stop;
-}
-
-/** Brings `shown` wholly into sight above the keys now and once it has settled, and again as the keys rise (and fall, with `alsoOnHide`) or the scroll view resizes, until two settles have passed; says so through `answering` as settledAnswer does, calls `inView` as the first scroll lands, and returns what stops it sooner. */
-function followIntoView(
-  scroll: ScreenScrollView,
-  shown: () => ScreenReaderTarget | null,
-  {
-    alsoOnHide = false,
-    answering = () => {},
-    inView,
-  }: {
-    alsoOnHide?: boolean;
-    answering?: (on: boolean) => void;
-    inView?: (() => void) | undefined;
-  } = {},
-): () => void {
-  const sight = { aboveKeys: true };
-  let landing = inView;
-  let stopLanding = () => {};
-  const bring = () => {
-    const then = landing;
-    landing = undefined;
-    bringIntoView(scroll, shown(), true, sight, (found) => {
-      if (then != null && found != null) stopLanding = whenLanded(scroll, found.to, then);
-    });
-  };
-  // Keys that rise, and Android's avoiding view shrinking under them, cover it afresh.
-  const keys = [Keyboard.addListener('keyboardDidShow', bring)];
-  if (alsoOnHide) keys.push(Keyboard.addListener('keyboardDidHide', bring));
-  scroll.resized.add(bring);
-  const unwatch = () => {
-    keys.forEach((key) => key.remove());
-    scroll.resized.delete(bring);
-  };
-
-  return settledAnswer(bring, SETTLED_MS, (on) => {
-    answering(on);
-    if (on) return;
-    unwatch();
-    stopLanding();
-  });
 }
 
 /** Brings `shown` into sight as far as `when`, and again once it has settled, and moves screen reader focus to `read` after `readMs`; returns what cancels the steps still to come. */
@@ -543,6 +422,27 @@ function settleOnto(
 export interface BroughtIntoView {
   shown: RefObject<ViewInstance | null>;
   read: RefObject<ViewInstance | null>;
+}
+
+/** Keeps the control under TalkBack's focus in sight each time `asked` is a new answer that grows the page above it: pushed wholly out of sight, TalkBack moves its focus to the nearest view still in sight and reads it before anything said (sc-43907, sc-22357). Null or false asks nothing. */
+export function useKeptInSight(
+  asked: object | boolean | null,
+  { aboveKeys = false, holding = false }: Pick<Sight, 'aboveKeys' | 'holding'> = {},
+): RefObject<ViewInstance | null> {
+  const scroll = useContext(ScreenScroll);
+  const kept = useRef<ViewInstance>(null);
+
+  useLayoutEffect(() => {
+    if (asked == null || asked === false) return;
+
+    const keep = () =>
+      bringIntoView(scroll, kept.current, false, { when: 'outOfSight', aboveKeys, holding });
+    keep();
+    // Fabric on Android runs a scroll before the mount it was asked in, so at the page's end the one above stops at the content's old end, with the control under the keys (sc-18587).
+    return afterMount(keep);
+  }, [asked, scroll, aboveKeys, holding]);
+
+  return kept;
 }
 
 /** Brings `shown` wholly into sight once it mounts, unless it already is, then moves screen reader focus to `read` (`readRef` when given). */
@@ -730,7 +630,8 @@ export function useStepClose(
   const started = useRef(false);
   const view = useRef<ViewInstance | null>(null);
   const holder = useRef<ViewInstance | null>(null);
-  const closer = useRef<ViewInstance | null>(null);
+  // The opener showing above the step pushes it down, and a Cancel pushed out of sight under TalkBack's focus has TalkBack read the step's nearest view still in sight before the opener takes focus.
+  const closer = useKeptInSight(closing, { aboveKeys: true, holding: true });
   const toBlur = useRef<HostInstance | null>(null);
   const stepField = useRef<HostInstance | null>(null);
   const stepFieldRef = useCallback((shown: HostInstance | null) => {
@@ -855,7 +756,7 @@ export function useStepClose(
 
       return () => cancels.forEach((stop) => stop());
     },
-    [scroll, to],
+    [closer, scroll, to],
   );
 
   useEffect(() => () => cancel.current(), []);
@@ -876,21 +777,6 @@ export function useStepClose(
       changed.remove();
     };
   }, []);
-
-  // The opener showing above the step pushes it down, and a Cancel pushed out of sight under TalkBack's focus has TalkBack move that focus to the step's nearest view still in sight, and read it, before the opener takes it (sc-22357).
-  useLayoutEffect(() => {
-    if (!closing) return;
-
-    const keepCloser = () =>
-      bringIntoView(scroll, closer.current, false, {
-        when: 'outOfSight',
-        aboveKeys: true,
-        holding: true,
-      });
-    keepCloser();
-    // Fabric on Android runs a scroll before the mount it was asked in, so at the page's end the one above stops at the content's old end, with the closer under the keys; TalkBack then reads the step's top as the keys go (sc-18587).
-    return afterMount(keepCloser);
-  }, [closing, scroll]);
 
   useEffect(() => {
     if (!closing) return;
@@ -1138,7 +1024,10 @@ export function useScreenScrollView() {
     screenScroll,
     scrollProps: {
       ref: scrollView,
-      onLayout: () => screenScroll.resized.forEach((resized) => resized()),
+      onLayout: (event: LayoutChangeEvent) => {
+        screenScroll.resized.forEach((resized) => resized());
+        scrollLaidOut(screenScroll, event.nativeEvent.layout.height);
+      },
       onScroll: follow,
       onScrollEndDrag: follow,
       onMomentumScrollEnd: follow,

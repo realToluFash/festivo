@@ -12,7 +12,7 @@ export interface Refused {
   kind: 'refused';
   title: string;
   lines: string[];
-  link?: { label: string; to: string };
+  link?: { label: string; to: string; state?: object };
 }
 
 export type Asking<C> = Confirming<C> | Refused;

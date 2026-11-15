@@ -94,7 +94,7 @@ import { SW, refusalLine } from './ScheduledSave.ts';
 import { outsideToken, tokenText } from './TokenText.ts';
 import { type ReachPerson, emailBounced, fixKindOf, reachViewOf, resendOf } from './Reach.ts';
 import { ContactEdit, type RowActions, WhoReached } from './WhoReached.tsx';
-import { type Anchored, InsertMenu, anchorAt } from './WriteItOnce.tsx';
+import { InsertMenu } from './WriteItOnce.tsx';
 import {
   STOP_MS,
   type StopSave,
@@ -228,7 +228,7 @@ export function MessagesScreen({
   const closed = m.closed == null || reading ? null : CLOSED_WORDS[m.closed];
   const [typed, setTyped] = useState<Partial<Record<GuestKey, string>>>(m.typed);
   const [toAt, setToAt] = useState<Anchor | null>(null);
-  const [insertAt, setInsertAt] = useState<Anchored | null>(null);
+  const [insertAt, setInsertAt] = useState<Anchor | null>(null);
   const [bellAt, setBellAt] = useState<Anchor | null>(null);
   const [filterAt, setFilterAt] = useState<Anchor | null>(null);
   const [actionsAt, setActionsAt] = useState<Anchor | null>(null);
@@ -348,7 +348,10 @@ export function MessagesScreen({
 
   useEffect(() => {
     if (!m.inserting || phone) return undefined;
-    const later = setTimeout(() => anchorAt(refs.current.insert, setInsertAt), 300);
+    const later = setTimeout(
+      () => anchorUnder({ current: refs.current.insert ?? null }, setInsertAt),
+      300,
+    );
 
     return () => clearTimeout(later);
   }, [m.inserting, phone]);

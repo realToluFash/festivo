@@ -5,13 +5,11 @@ declare(strict_types=1);
 namespace App\Domain\Guest\Link;
 
 use App\Audit\Auditor;
+use App\Domain\Guest\Invitation\GuestInvitations;
 use App\Entity\Event;
 use App\Entity\Guest;
 use App\Entity\User;
 use App\Enum\Actor;
-use App\Enum\ErrorCode;
-use App\Enum\EventAction;
-use App\Enum\EventPhase;
 use App\Http\Exception\ApiException;
 use App\Repository\GuestRepository;
 use Doctrine\ORM\EntityManagerInterface;
@@ -19,9 +17,7 @@ use Psl\Encoding\Base64;
 use Psl\SecureRandom;
 use Psl\Str;
 use Psl\Vec;
-use Psr\Clock\ClockInterface;
 use SensitiveParameter;
-use Symfony\Contracts\Translation\TranslatorInterface;
 
 /** One current link per guest (sc-1526): issued when they are added, copied only while the event may invite, replaced at any time. */
 final readonly class InvitationLinks
@@ -37,8 +33,7 @@ final readonly class InvitationLinks
         private GuestRepository $guestRepository,
         private EntityManagerInterface $entityManager,
         private Auditor $auditor,
-        private ClockInterface $clock,
-        private TranslatorInterface $translator,
+        private GuestInvitations $guestInvitations,
     ) {
     }
 
@@ -57,12 +52,7 @@ final readonly class InvitationLinks
     /** Refused 409 `event_state_invalid` unless the event's phase allows `invite`. */
     public function linkOf(Guest $guest): string
     {
-        $event = $guest->getEvent();
-        $phase = EventPhase::of($event->getStatus(), $event->getStartsAt(), $event->getEndsAt(), $this->clock->now());
-
-        if (!$phase->allows(EventAction::Invite)) {
-            throw new ApiException(ErrorCode::EventStateInvalid, $this->translator->trans('event.state_invalid'), members: ['phase' => $phase->value]);
-        }
+        $this->guestInvitations->assertInvitable($guest->getEvent());
 
         return $this->url($guest);
     }

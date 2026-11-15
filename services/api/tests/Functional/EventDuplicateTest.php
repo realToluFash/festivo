@@ -81,6 +81,28 @@ final class EventDuplicateTest extends ApiTestCase
         self::assertSame($copy, $this->show($copy['id']));
     }
 
+    #[Test]
+    public function aCopyKeepsTheArrivalNoteWithTheVenue(): void
+    {
+        $id = $this->original(['venue' => ['name' => 'The Civic Centre', 'address' => '12 Bode Thomas Street, Surulere'], 'arrivalNote' => "Side gate.\nDoors at 17:30."]);
+
+        $copy = $this->duplicate($id, '2031-05-15T16:00');
+
+        self::assertSame(201, $this->statusCode(), Json\encode($this->last()));
+        self::assertSame("Side gate.\nDoors at 17:30.", $copy['arrivalNote']);
+    }
+
+    #[Test]
+    public function aCopyKeepsAnArrivalNoteThatHasNoVenue(): void
+    {
+        $id = $this->original(['arrivalNote' => 'Address to follow; doors at 8']);
+
+        $copy = $this->duplicate($id, '2031-05-15T16:00');
+
+        self::assertSame(201, $this->statusCode(), Json\encode($this->last()));
+        self::assertSame([null, 'Address to follow; doors at 8'], [$copy['venue'], $copy['arrivalNote']]);
+    }
+
     /**
      * @return iterable<string, array{string, string, string, string}>
      */
@@ -331,6 +353,24 @@ final class EventDuplicateTest extends ApiTestCase
     }
 
     #[Test]
+    public function aCopiedGuestIsNotYetInvitedWithTheirCompanionsThoughTheOriginalWasInvited(): void
+    {
+        $id = $this->original();
+        $this->addGuest($id, ['fullName' => 'Adaeze Okonkwo', 'companions' => [['fullName' => 'Obi Okonkwo']]]);
+        self::service(Connection::class)->executeStatement("UPDATE guests SET invited_at = NOW(), invitation_method = 'whatsapp', invited_by_id = :by WHERE event_id = :id AND host_id IS NULL", ['id' => $id, 'by' => $this->owner->getId()->toRfc4122()]);
+
+        $body = $this->as($this->owner, 'POST', '/api/events/' . $id . '/duplicate', ['startsAt' => '2027-05-15T16:00', 'copyGuests' => true]);
+
+        self::assertSame(201, $this->statusCode(), Json\encode($body));
+        $copy = Type\shape(['id' => Type\string()], true)->coerce($body['event'] ?? null)['id'];
+        $row = Type\shape(['invitation' => Type\mixed(), 'companions' => Type\vec(Type\shape(['state' => Type\string()], true))], true);
+        $original = Type\vec($row)->coerce($this->guestList($id)['guests'] ?? null)[0];
+        $copied = Type\vec($row)->coerce($this->guestList($copy)['guests'] ?? null)[0];
+        self::assertNotNull($original['invitation']);
+        self::assertSame([null, ['notYetInvited']], [$copied['invitation'], Vec\map($copied['companions'], static fn (array $one): string => $one['state'])]);
+    }
+
+    #[Test]
     public function aTickedCopyLeavesTheOriginalsListAsItWas(): void
     {
         $id = $this->original();
@@ -364,7 +404,7 @@ final class EventDuplicateTest extends ApiTestCase
         self::assertSame(201, $this->statusCode(), Json\encode($body));
         self::assertArrayNotHasKey('guestsCopied', $body);
         $copy = Type\shape(['id' => Type\string()], true)->coerce($body['event'] ?? null)['id'];
-        self::assertSame(['guests' => [], 'counts' => ['people' => 0, 'guests' => 0, 'companions' => 0]], $this->guestList($copy));
+        self::assertSame(['guests' => [], 'counts' => ['people' => 0, 'guests' => 0, 'companions' => 0], 'groups' => [], 'ungrouped' => ['people' => 0, 'guests' => 0, 'companions' => 0]], $this->guestList($copy));
     }
 
     #[Test]

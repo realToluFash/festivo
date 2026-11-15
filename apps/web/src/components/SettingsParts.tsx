@@ -8,6 +8,7 @@ import {
   useRef,
   useState,
 } from 'react';
+import { numberFormat } from '@soirely/domain';
 import { createPortal } from 'react-dom';
 import { useTranslation } from 'react-i18next';
 
@@ -614,6 +615,8 @@ interface AskProps {
   failed?: string | undefined;
   /** Where the focus starts, when not on the way back. */
   first?: RefObject<HTMLElement | null> | undefined;
+  /** The focus starts on the title, as a dialog that has turned into another question does. */
+  titleFirst?: boolean | undefined;
   /** More of the body under the line, which stays its description. */
   children?: ReactNode;
   /** Ids in that body that describe the dialog too, after the line, as Delete event's list and restore window do. */
@@ -640,6 +643,7 @@ function AskBox(props: AskProps) {
     busy,
     failed,
     first,
+    titleFirst = false,
     children,
     describedBy,
     onKeep,
@@ -647,6 +651,7 @@ function AskBox(props: AskProps) {
   } = props;
   const id = useId();
   const box = useRef<HTMLDivElement>(null);
+  const heading = useRef<HTMLHeadingElement>(null);
   const keepButton = useRef<HTMLButtonElement>(null);
   const goButton = useRef<HTMLButtonElement>(null);
   const [onVerb] = useState(busy != null || failed != null);
@@ -659,7 +664,12 @@ function AskBox(props: AskProps) {
     );
   const alert = failed != null && <AskAlert>{failed}</AskAlert>;
 
-  useDeskDialog(box, first ?? (onVerb ? goButton : keepButton), onKeep, waits);
+  useDeskDialog(
+    box,
+    first ?? (titleFirst ? heading : onVerb ? goButton : keepButton),
+    onKeep,
+    waits,
+  );
 
   return (
     <>
@@ -674,7 +684,9 @@ function AskBox(props: AskProps) {
           [line == null ? null : `${id}-line`, describedBy].filter(Boolean).join(' ') || undefined
         }
       >
-        <h2 id={`${id}-title`}>{title}</h2>
+        <h2 ref={heading} id={`${id}-title`} tabIndex={titleFirst ? -1 : undefined}>
+          {title}
+        </h2>
         {children == null ? (
           <>
             {said}
@@ -762,6 +774,8 @@ export function Menu({
   onClose: () => void;
   onPick: (key: string) => void;
 }) {
+  const { i18n } = useTranslation();
+  const figure = numberFormat(i18n.language);
   const id = useId();
   const button = useRef<HTMLButtonElement>(null);
   const menu = useRef<HTMLUListElement>(null);
@@ -833,7 +847,7 @@ export function Menu({
           }
         }}
       >
-        {word?.word} · {word?.count}
+        {word?.word} · {word == null ? null : figure.format(word.count)}
         <Glyph name={open ? 'chevup' : 'chevdown'} size={16} weight={2.4} />
       </button>
       {open && (
@@ -856,7 +870,7 @@ export function Menu({
                   {item.key === picked && <Glyph name="tick" size={16} weight={2.6} />}
                 </span>
                 <span className="today-grow">{item.word}</span>
-                <span className="desk-menu-count">{item.count}</span>
+                <span className="desk-menu-count">{figure.format(item.count)}</span>
               </button>
             </li>
           ))}

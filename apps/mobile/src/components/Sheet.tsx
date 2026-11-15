@@ -57,6 +57,8 @@ type SheetProps = {
   opener: RefObject<ScreenReaderTarget | null>;
   /** Its heading takes screen reader focus as it opens, so TalkBack is given nothing to name the window by. */
   headingTakesFocus?: boolean;
+  /** On a tablet on its side, a panel docked at the right edge rather than a centred card (sc-3785's overlays). */
+  docked?: boolean;
   testID?: string;
   children: ReactNode;
 };
@@ -128,6 +130,7 @@ function SheetFrame({
   held = false,
   opener,
   headingTakesFocus = false,
+  docked = false,
   testID,
   children,
 }: SheetProps) {
@@ -135,6 +138,7 @@ function SheetFrame({
   const { kind, height } = useLayout();
   const insets = useSafeAreaInsets();
   const phone = kind === 'phone';
+  const docks = docked && kind === 'tabletLandscape';
   const underKeys = sheetUnderKeys(Platform.OS, phone);
   const keysUp = useKeysUp();
   const [windowHeight, setWindowHeight] = useState<number | null>(null);
@@ -192,8 +196,8 @@ function SheetFrame({
         <View
           style={[
             styles.scrim,
-            phone ? styles.scrimPhone : styles.scrimTablet,
-            {
+            phone ? styles.scrimPhone : docks ? styles.scrimDocked : styles.scrimTablet,
+            !docks && {
               paddingTop: padding.scrimTop,
               paddingLeft: padding.scrimLeft,
               paddingRight: padding.scrimRight,
@@ -220,8 +224,14 @@ function SheetFrame({
           <Animated.View
             style={[
               styles.frame,
-              phone ? styles.framePhone : styles.frameTablet,
-              { paddingBottom: padding.frameBottom },
+              phone ? styles.framePhone : docks ? styles.frameDocked : styles.frameTablet,
+              docks
+                ? {
+                    paddingTop: insets.top,
+                    paddingRight: insets.right,
+                    paddingBottom: insets.bottom,
+                  }
+                : { paddingBottom: padding.frameBottom },
               frame,
             ]}
             accessibilityViewIsModal
@@ -548,6 +558,8 @@ const styles = StyleSheet.create({
     borderTopLeftRadius: tokens.radiusSheet,
     borderTopRightRadius: tokens.radiusSheet,
   },
+  scrimDocked: { alignItems: 'flex-end' },
+  frameDocked: { flexGrow: 1, width: 420, borderWidth: 0, borderLeftWidth: 1 },
   frameTablet: {
     alignSelf: 'center',
     width: '100%',

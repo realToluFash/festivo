@@ -7,6 +7,7 @@ namespace App\Audit;
 use App\Entity\AuditEntry;
 use App\Enum\Actor;
 use App\Http\Listener\CorrelationIdListener;
+use DateTimeImmutable;
 use Doctrine\ORM\EntityManagerInterface;
 use Symfony\Component\HttpFoundation\RequestStack;
 use Symfony\Component\Uid\Uuid;
@@ -28,6 +29,7 @@ final readonly class Auditor
         ?Uuid $actorId = null,
         ?string $actorLabel = null,
         array $changes = [],
+        ?DateTimeImmutable $occurredAt = null,
     ): AuditEntry {
         $request = $this->requestStack->getCurrentRequest();
 
@@ -41,6 +43,7 @@ final readonly class Auditor
             $changes,
             $request?->getClientIp(),
             $this->correlationId($request),
+            $occurredAt,
         );
 
         $this->entityManager->persist($entry);

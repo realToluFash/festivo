@@ -409,3 +409,24 @@ describe('sc-40153’s organisation names', () => {
     expect(organisationOf('priya')).toBe('Ire Events');
   });
 });
+
+describe("Members' card with more people than its chip writes (sc-48825)", () => {
+  it('has 99 beyond the five faces at 104 people', () => {
+    expect(card('ninetyNine')).toMatchObject({ says: '104 people · 1 waiting', more: 99 });
+    expect(card('ninetyNine').faces).toHaveLength(5);
+  });
+
+  it('has 1,321 beyond the faces at 1,326 people, and the sentence groups the figure', () => {
+    expect(card('crowd')).toMatchObject({ says: '1,326 people · 1 waiting', more: 1321 });
+  });
+
+  it('keeps the first five faces as they were', () => {
+    expect(card('crowd').faces.map((one) => one.id)).toEqual(card('').faces.map((one) => one.id));
+  });
+
+  it('counts the crowd under the People filter', () => {
+    const start = membersStart('crowd', VIEWERS.folake);
+
+    expect(counts(start.people, start.invitations)).toMatchObject({ all: 1326, waiting: 1 });
+  });
+});

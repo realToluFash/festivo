@@ -7,13 +7,14 @@ import {
   eventPhase,
 } from '@soirely/domain';
 
-import { CLOCKS, type SampleEvent, cardOf, localDay, sampleEvent } from './events.ts';
+import { CLOCKS, EVENT_WORDS, type SampleEvent, cardOf, localDay, sampleEvent } from './events.ts';
 import {
   NO_NEEDS,
   type Needs,
   type NeedsLines,
   dietary,
   hasAllergy,
+  hostsSaved,
   needsLines,
   needsOf,
   savedNeeds,
@@ -33,6 +34,30 @@ import { type HowAgreed, NO_CONSENT, type WhatsAppConsent, hostAgreed } from './
 import type { DemoLink } from './settings.ts';
 import { type ExportStart, XW, exportDay, fileName } from './guestExport.ts';
 import { type Change, changeLabel, changeWhen } from './changedSince.ts';
+import {
+  type Removed,
+  type Removing,
+  arrivedIn,
+  companionArrivedIn,
+  removeGuest,
+} from './guestRemove.ts';
+import {
+  type GroupFieldStart,
+  type GroupFilter,
+  type GroupPick,
+  type GroupsStart,
+  type GuestGroup,
+  NO_GROUP,
+  WEDDING_GROUPS,
+  fullGroups,
+  groupLine,
+  groupProblem,
+  groupedWedding,
+  inGroupFilter,
+  longNamedGroups,
+  withGroup,
+  withLongNamedGuest,
+} from './guestGroups.ts';
 
 /** Guests in A · Summary first (page e30, board/guests-a-spec.md): the sample, its counts and the states; the words are in guestsWords.ts. */
 export { GW };
@@ -92,6 +117,8 @@ export interface Companion {
   namedBy?: 'guest';
   /** sc-3777: their own needs, as the guest's are. */
   needs?: Needs;
+  /** sc-1454: when door staff marked them arrived; their host then stays on the list. */
+  arrived?: string;
 }
 
 /** sc-3790: a guest's language, en, es, fr or pt; null is Not set. The host's and the guest's own are the AC, not yet built. */
@@ -129,6 +156,8 @@ export interface Guest {
   optOuts: OptOuts;
   askAgain: AskAgain | null;
   needs: Needs;
+  /** sc-3775: the one group they are in, by id; their companions follow them. Absent is No group. */
+  group?: string;
 }
 
 /** sc-1363: when a guest who answered Not sure yet will be, or was, asked again; Not sent: too late reads as nothing chosen. */
@@ -336,7 +365,7 @@ function wedding(): Guest[] {
       email: 'musa.bello@gmail.com',
       phone: { country: 'NG', number: '803 412 7730' },
       companions: companions('musa', 1, 'coming'),
-      needs: needsOf({ diet: ['halal'] }),
+      needs: needsOf({ diet: ['halal'], changed: { by: 'hosts', on: '2026-10-05' } }),
     }),
     guest('amaka', 'Amaka Eze', 'coming', {
       replied: '2026-10-13',
@@ -374,9 +403,9 @@ function wedding(): Guest[] {
         ...one,
         table: 'Table 4',
         meal: true,
-        needs: needsOf({ allergies: ['sesame'] }),
+        needs: needsOf({ allergies: ['sesame'], changed: { by: 'guest', on: '2026-10-13' } }),
       })),
-      needs: needsOf({ diet: ['vegetarian'] }),
+      needs: needsOf({ diet: ['vegetarian'], changed: { by: 'guest', on: '2026-10-13' } }),
       language: 'es',
       chose: 'pt',
     }),
@@ -822,6 +851,8 @@ export interface ListRow {
   person: Person;
   indent: boolean;
   line: string;
+  /** sc-1468: the guest's email address and mobile number, for members who can edit guests only (sc-3773). */
+  contact: string | null;
   label: string;
   /** sc-3777's grey Dietary notes tag and its allergy mark; never for someone who cannot manage guests. */
   dietary: boolean;
@@ -844,11 +875,13 @@ function rowOf(
 
   if (person.companion != null)
     line =
-      person.reply === 'held'
-        ? GW.heldLine
-        : !indent && person.companion.name != null
-          ? GW.guestOf(person.guest.name)
-          : word;
+      indent || person.companion.name == null
+        ? person.reply === 'held'
+          ? GW.heldLine
+          : word
+        : person.reply === 'held'
+          ? `${GW.guestOf(person.guest.name)} · ${GW.heldLine}`
+          : GW.guestOf(person.guest.name);
   else if (mode === 'noReply') line = invitedLine(person.guest.invited ?? BY_MESSAGE);
   else {
     const short =
@@ -866,14 +899,24 @@ function rowOf(
   const needs = contacts ? needsOfPerson(person) : undefined;
   const allergy = hasAllergy(needs);
   const tagged = dietary(needs);
+  const reach = contacts && person.companion == null ? reachOf(person.guest) : [];
   const label = [
     person.name,
-    line.startsWith(word) ? line : `${word}, ${line}`,
+    line.startsWith(word) || line.includes(GW.heldLine) ? line : `${word}, ${line}`,
+    ...reach,
     ...(allergy ? [GW.allergy] : []),
     ...(tagged ? [GW.dietaryNotes] : []),
   ].join(', ');
 
-  return { person, indent, line, label, dietary: tagged, allergy };
+  const contact = reach.length === 0 ? null : reach.join(' · ');
+
+  return { person, indent, line, contact, label, dietary: tagged, allergy };
+}
+
+function reachOf(one: Guest): string[] {
+  return [one.email, one.phone == null ? null : phoneShown(one.phone)].filter(
+    (part): part is string => part != null && part !== '',
+  );
 }
 
 export interface ListGroup {
@@ -937,17 +980,19 @@ export function viewOf(
   replyBy: string | null,
   contacts = true,
   dietaryOnly = false,
+  groupFilter: GroupFilter | null = null,
 ): { view: ListView; shown: number } {
   const people = peopleOf(list);
   const searched = q.trim() !== '';
   const needed = dietaryOnly && contacts;
 
-  if (searched || needed || (choice !== 'all' && choice !== 'invited')) {
+  if (searched || needed || groupFilter != null || (choice !== 'all' && choice !== 'invited')) {
     const found = people.filter(
       (one) =>
         inChoice(one.reply, choice) &&
         matches(one, q, contacts) &&
-        (!needed || dietary(needsOfPerson(one))),
+        (!needed || dietary(needsOfPerson(one))) &&
+        inGroupFilter(one.guest, groupFilter),
     );
 
     return {
@@ -1017,6 +1062,7 @@ export function changedView(
         person,
         indent: false,
         line,
+        contact: null,
         label: `${person.name}, ${line}`,
         dietary: false,
         allergy: false,
@@ -1036,6 +1082,8 @@ export interface Values {
   greetAs: string;
   needs: Needs;
   companions: readonly { id: string | null; name: string; needs?: Needs }[];
+  /** sc-3775's Group field: a group chosen, or a new name made on save. */
+  group?: GroupPick;
 }
 
 export function valuesOf(one: Guest | null): Values {
@@ -1053,6 +1101,7 @@ export function valuesOf(one: Guest | null): Values {
         name: companion.name ?? '',
         needs: companion.needs ?? NO_NEEDS,
       })) ?? [],
+    group: one?.group == null ? null : { id: one.group },
   };
 }
 
@@ -1063,6 +1112,8 @@ export interface Lines {
   number?: string;
   /** sc-3777: each person's Needs refusals, `guest` or `c{n}` for a companion. */
   needs?: Record<string, NeedsLines>;
+  /** sc-3775: a new group's name refused (over 60, or the event's 50 groups). */
+  group?: string;
 }
 
 /** sc-3960: Greet as is counted in code points after trimming, as the API counts it. */
@@ -1077,7 +1128,7 @@ function greetAsOf(values: Values): string | null {
   return values.greetAs.trim() === '' ? null : values.greetAs.trim();
 }
 
-export function linesOf(values: Values): Lines {
+export function linesOf(values: Values, groups: readonly GuestGroup[] = []): Lines {
   const lines: Lines = {};
   const name = values.name.trim();
 
@@ -1096,8 +1147,20 @@ export function linesOf(values: Values): Lines {
     ].filter(([, found]) => Object.keys(found).length > 0),
   );
   if (Object.keys(needs).length > 0) lines.needs = needs;
+  if (values.group != null && 'name' in values.group) {
+    const problem = groupProblem(groups, values.group.name);
+
+    if (problem != null) lines.group = groupLine(groups, values.group.name, problem, 'form');
+  }
 
   return lines;
+}
+
+/** A pick already settled to an id (settleGroup) or none; undefined leaves the guest's group as it was. */
+function groupOfPick(one: Guest, pick: GroupPick | undefined): Guest {
+  if (pick === undefined) return one;
+
+  return withGroup(one, pick != null && 'id' in pick ? pick.id : null);
 }
 
 export function namedOf(one: Guest): number {
@@ -1172,7 +1235,7 @@ function hostNamed(one: Companion): Companion {
   return copy;
 }
 
-export function saveGuest(list: readonly Guest[], id: string, values: Values): Guest[] {
+export function saveGuest(list: readonly Guest[], id: string, values: Values, on: string): Guest[] {
   return list.map((one) => {
     if (one.id !== id) return one;
     const kept = values.companions.map((companion, index) => {
@@ -1185,23 +1248,26 @@ export function saveGuest(list: readonly Guest[], id: string, values: Values): G
         id: was?.id ?? `${id}-n${index + 1}`,
         name: companion.name.trim() === '' ? null : companion.name.trim(),
         reply: was?.reply ?? placeReply(one.reply),
-        needs: savedNeeds(companion.needs ?? was?.needs ?? NO_NEEDS),
+        needs: hostsSaved(found?.needs, companion.needs ?? was?.needs ?? NO_NEEDS, on),
       };
     });
 
-    return {
-      ...one,
-      name: values.name.trim(),
-      email: values.email.trim() === '' ? null : values.email.trim(),
-      phone:
-        values.number.trim() === ''
-          ? null
-          : { country: values.country, number: values.number.trim() },
-      language: values.language,
-      greetAs: greetAsOf(values),
-      needs: savedNeeds(values.needs),
-      companions: kept,
-    };
+    return groupOfPick(
+      {
+        ...one,
+        name: values.name.trim(),
+        email: values.email.trim() === '' ? null : values.email.trim(),
+        phone:
+          values.number.trim() === ''
+            ? null
+            : { country: values.country, number: values.number.trim() },
+        language: values.language,
+        greetAs: greetAsOf(values),
+        needs: hostsSaved(one.needs, values.needs, on),
+        companions: kept,
+      },
+      values.group,
+    );
   });
 }
 
@@ -1224,15 +1290,18 @@ export function addGuest(list: readonly Guest[], values: Values, on: string): Gu
 
   return [
     ...list,
-    {
-      ...fresh,
-      companions: values.companions.map((companion, index) => ({
-        id: `${id}-c${index + 1}`,
-        name: companion.name.trim() === '' ? null : companion.name.trim(),
-        reply: 'notYet' as const,
-        needs: savedNeeds(companion.needs ?? NO_NEEDS),
-      })),
-    },
+    groupOfPick(
+      {
+        ...fresh,
+        companions: values.companions.map((companion, index) => ({
+          id: `${id}-c${index + 1}`,
+          name: companion.name.trim() === '' ? null : companion.name.trim(),
+          reply: 'notYet' as const,
+          needs: savedNeeds(companion.needs ?? NO_NEEDS),
+        })),
+      },
+      values.group,
+    ),
   ];
 }
 
@@ -1362,36 +1431,43 @@ export interface GuestsCard {
   arrived: string | null;
   line: string | null;
   step: CardStepDoes | null;
+  /** sc-50409: the quieter step beside Add guest on an empty Draft, as the app's card has it (sc-46879). */
+  also?: 'makeLive' | 'changeDates' | null;
 }
 
-/** How the room stands, and the one next step (spec §4). The web has no Check-in (sc-1454), so the day's card counts with no step. */
+/** How the room stands, and the one next step (spec §4). The web has no Check-in (sc-1454), so the day's card counts with no step. manages is guests.manage, events is events.manage. */
 export function guestsCardOf(
   event: SampleEvent,
   list: readonly Guest[],
   kind: CardKind,
   now: Date,
   manages: boolean,
+  events: boolean = manages,
 ): GuestsCard {
   const counts = countsOf(list);
   const replyBy = replyByOf(event.id);
   const comingOf = GW.comingOf(counts.coming, counts.invited);
+  const held = list.length === 0 ? GW.noGuests : comingOf;
 
   if (event.status === 'draft') {
     const { step } = cardOf(event, now);
     const passed = step.kind === 'button' && step.does === 'changeDates';
+    const live = passed ? 'changeDates' : 'makeLive';
+    const add = list.length === 0 && manages;
 
     return {
       tags: [{ kind: 'draft', word: 'Draft' }],
-      says: GW.onList(counts.all),
+      says: list.length === 0 ? GW.noGuests : GW.onList(counts.all),
       arrived: null,
-      line: passed ? step.line : GW.draftLine,
-      step: manages ? (passed ? 'changeDates' : 'makeLive') : null,
+      line: passed ? (events ? step.line : EVENT_WORDS.endPassedReader) : GW.draftLine,
+      step: add ? 'add' : events ? live : null,
+      also: add && events ? live : null,
     };
   }
   if (event.status === 'paused')
     return {
       tags: [{ kind: 'paused', word: 'Paused' }],
-      says: comingOf,
+      says: held,
       arrived: null,
       line: GW.pausedLine,
       step: null,
@@ -1399,7 +1475,7 @@ export function guestsCardOf(
   if (eventPhase(event, now) === 'finished')
     return {
       tags: [{ kind: null, word: 'Finished' }],
-      says: comingOf,
+      says: held,
       arrived: null,
       line: GW.finishedLine,
       step: null,
@@ -1464,9 +1540,10 @@ function nextDay(iso: string): string {
   return at.toISOString().slice(0, 10);
 }
 
-/** member: a member without guests.manage (sc-3784), who exports without the needs columns. */
-export type Role = 'owner' | 'member' | 'viewer' | 'staff';
-export type GuestNote = 'recorded' | 'notReplaced' | 'linkReplaced' | 'unmarked' | 'unmarkRefused';
+/** member: a member without guests.manage (sc-3784), who exports without the needs columns. host: guests.manage without events.manage (sc-50409), so no Make live. */
+export type Role = 'owner' | 'host' | 'planner' | 'member' | 'viewer' | 'staff';
+export type GuestNote =
+  'recorded' | 'notReplaced' | 'linkReplaced' | 'unmarked' | 'unmarkRefused' | 'backOnList';
 export type Invite = 'copied' | 'refused' | 'mark' | 'markRefused' | 'markNotSaved';
 
 export interface EditStart {
@@ -1484,6 +1561,8 @@ export interface EditStart {
   placesRefused?: boolean;
   /** sc-3777: the Needs sections open, `guest` or `c{n}`. */
   needs?: string[];
+  /** sc-3775: the Group field as it opens. */
+  group?: GroupFieldStart;
 }
 
 export interface RecordStart {
@@ -1509,6 +1588,7 @@ export interface AddStart {
   at?: string;
   placesRefused?: boolean;
   needs?: string[];
+  group?: GroupFieldStart;
 }
 
 export type Pane =
@@ -1519,7 +1599,8 @@ export type Pane =
   | { kind: 'edit'; id: string; start: EditStart }
   | { kind: 'record'; id: string; start: RecordStart }
   | { kind: 'whatsApp'; id: string; start: AgreeStart }
-  | { kind: 'add'; start: AddStart };
+  | { kind: 'add'; start: AddStart }
+  | { kind: 'groups'; start: GroupsStart };
 
 export interface GuestsStart {
   event: string;
@@ -1546,6 +1627,13 @@ export interface GuestsStart {
   askFailed: boolean;
   markEnds: 'saved' | 'fails' | 'refused';
   paused: boolean;
+  /** sc-3775: the event's groups, and the chip pressed. */
+  groups: GuestGroup[];
+  groupFilter: GroupFilter | null;
+  /** sc-3774: Remove's question open, and what the next Remove meets. */
+  removing: Removing | null;
+  /** sc-3774: a guest just removed, Undo open. */
+  undo: Removed | null;
 }
 
 export const THEIRS = { email: 'kwame.mensha@outlook.com', number: '7700 900518' } as const;
@@ -1633,7 +1721,32 @@ export const GUESTS_STATES = [
   { key: 'staffBefore', name: 'Door staff before the day: read-only' },
   { key: 'draft', name: 'A Draft event' },
   { key: 'draftPast', name: 'A Draft whose end has passed: Change dates' },
+  {
+    key: 'draftPastReader',
+    name: 'A Draft whose end has passed, as a Can view Member: no Change dates',
+  },
   { key: 'paused', name: 'A Paused event' },
+  { key: 'pausedReader', name: 'A Paused event, as a Can view Member' },
+  { key: 'draftEmpty', name: 'A Draft with nobody on its list: Add guest and Make live' },
+  {
+    key: 'draftEmptyPast',
+    name: 'An empty Draft whose end has passed: Add guest and Change dates',
+  },
+  { key: 'draftEmptyHost', name: 'An empty Draft without events.manage: Add guest alone' },
+  { key: 'draftEmptyViewer', name: 'An empty Draft without guests.manage: no Add guest' },
+  {
+    key: 'draftEmptyEvents',
+    name: 'An empty Draft with events.manage but not guests.manage: Make live alone',
+  },
+  {
+    key: 'draftOneLeft',
+    name: 'A Draft with one guest left, their details open: Remove, then Add guest on the card',
+  },
+  { key: 'pausedEmpty', name: 'A Paused event with nobody on its list: Add guest in the header' },
+  {
+    key: 'finishedEmpty',
+    name: 'A Finished event with nobody on its list: Add guest in the header',
+  },
   { key: 'eventDeleted', name: 'The event deleted: not found' },
   { key: 'onTheDay', name: 'On the day: arrivals and a walk-in' },
   { key: 'secondDay', name: 'The event’s second day' },
@@ -1722,6 +1835,14 @@ export const GUESTS_STATES = [
   { key: 'needsCompanionForm', name: 'Edit guest: Their needs under a companion' },
   { key: 'needsSaved', name: 'Saved: the needs in Details' },
   {
+    key: 'needsChangedByGuest',
+    name: 'Details: Last changed by the guest, under Inês Duarte’s needs and Rui Duarte’s',
+  },
+  {
+    key: 'needsChangedByHosts',
+    name: 'Details: the host changed Inês Duarte’s diet, so only Rui Duarte’s line stays',
+  },
+  {
     key: 'whatsAppNone',
     name: 'WhatsApp: Has not agreed to WhatsApp, and The guest agreed to WhatsApp',
   },
@@ -1778,6 +1899,66 @@ export const GUESTS_STATES = [
   { key: 'inviteGuestMobile', name: 'Send invitation beside Send on WhatsApp' },
   { key: 'inviteGuestInvited', name: 'Send invitation on a guest already invited' },
   { key: 'inviteNoneLeft', name: 'After the send, nobody left to invite' },
+  { key: 'groups', name: 'Each guest’s group on their row, a chip per group and No group' },
+  { key: 'groupsChip', name: 'The Bride’s side chip pressed' },
+  { key: 'groupsNoGroup', name: 'The No group chip pressed' },
+  { key: 'groupsGuest', name: 'Dr Emeka Nwosu: his group beside his name' },
+  { key: 'groupsGuestNone', name: 'Bisi Adewale, in no group: nothing in its place' },
+  { key: 'groupsViewerList', name: 'Can view: the groups seen on the rows and chips' },
+  {
+    key: 'groupsLong',
+    name: 'Groups named in 60 characters: each wraps in its chip and its row’s tag',
+  },
+  { key: 'groupsLongChip', name: 'The 60-character group’s chip pressed, its tick kept' },
+  {
+    key: 'groupsLongGuest',
+    name: 'A one-word first name wider than its row: kept whole, its tags under it',
+  },
+  { key: 'groupField', name: 'Edit guest: the Group field, Bride’s side chosen' },
+  { key: 'groupFieldOpen', name: 'Edit guest: the Group list open on “s”' },
+  { key: 'groupFieldCreate', name: 'Edit guest: “Cousins” typed, Create “Cousins” offered' },
+  { key: 'groupFieldLong', name: 'Edit guest: a new group over 60 characters, refused' },
+  { key: 'groupFieldLimit', name: 'Edit guest: 50 groups, a new one refused' },
+  { key: 'groupFieldAdd', name: 'Add guest: the Group field, empty' },
+  { key: 'groupsPane', name: 'Groups: each group and its count, Rename and Delete' },
+  { key: 'groupsFirst', name: 'Groups: none yet, the first time' },
+  { key: 'groupsNoGuests', name: 'Groups on a new event: no guests, no groups yet' },
+  { key: 'groupsNewBlank', name: 'New group: Create group pressed with no name' },
+  { key: 'groupsNewLong', name: 'New group: a name over 60 characters' },
+  { key: 'groupsNewTaken', name: 'New group: “work”, already Work' },
+  { key: 'groupsNewLimit', name: 'New group: the event has 50 groups' },
+  { key: 'groupsCreated', name: 'New group: Cousins created, 0 people' },
+  { key: 'groupsRename', name: 'Rename Work, in place' },
+  { key: 'groupsRenameTaken', name: 'Rename Work to “bride’s side”: taken' },
+  { key: 'groupsDelete', name: 'Delete Work? Three guests in it' },
+  { key: 'groupsDeleteEmpty', name: 'Delete Cousins? No one in it' },
+  { key: 'groupsViewer', name: 'Groups without guests.manage: seen, not changed' },
+  { key: 'groupsViewerFirst', name: 'Groups without guests.manage, none yet' },
+  { key: 'removeOffered', name: 'Dr Emeka Nwosu: Remove from the list at the foot of Details' },
+  { key: 'removeAsk', name: 'Remove Dr Emeka Nwosu? Their reply and a Held companion' },
+  { key: 'removeAskSeated', name: 'Remove Inês Duarte? Rui Duarte seated, a meal chosen' },
+  { key: 'removeAskUnnamed', name: 'Remove Alhaji Musa Bello? An unnamed Guest of' },
+  { key: 'removeAskAlone', name: 'Remove Kwame Mensah? Their reply only' },
+  { key: 'removed', name: 'Removed: Undo and its 10 seconds, focus on Undo' },
+  { key: 'removeUndone', name: 'Undo pressed: back on the list, the details reopened' },
+  { key: 'removeArrived', name: 'Kwame Mensah has arrived: Arrival · Arrived, no Remove' },
+  { key: 'removeArrives', name: 'They arrive while the question is open: Remove meets a 409' },
+  { key: 'removeRefusedArrived', name: 'Refused: has just arrived, Back to their details' },
+  {
+    key: 'removeCompanionArrived',
+    name: 'Rui Duarte has arrived: Inês Duarte has no Remove',
+  },
+  {
+    key: 'removeCompanionArrives',
+    name: 'Their companion arrives while the question is open: Remove meets a 409',
+  },
+  {
+    key: 'removeRefusedCompanionArrived',
+    name: 'Refused: a companion has just arrived, Back to their details',
+  },
+  { key: 'removeGoes', name: 'Someone else removed them first: Remove meets a 404' },
+  { key: 'removeRefusedGone', name: 'Refused: already removed by someone else, Back to guests' },
+  { key: 'removeViewer', name: 'Without guests.manage: no Remove' },
 ] as const;
 
 export type GuestsState = (typeof GUESTS_STATES)[number]['key'];
@@ -1794,11 +1975,17 @@ export function choiceOf(raw: string | null): Choice | null {
 export function guestsStart(state: GuestsState | null, params: URLSearchParams): GuestsStart {
   const asked = params.get('event');
   const event =
-    state === 'draft' || state === 'draftGuest'
+    state === 'draft' ||
+    state === 'draftGuest' ||
+    state === 'draftEmpty' ||
+    state === 'draftEmptyHost' ||
+    state === 'draftEmptyViewer' ||
+    state === 'draftEmptyEvents' ||
+    state === 'draftOneLeft'
       ? DRAFT
-      : state === 'draftPast'
+      : state === 'draftPast' || state === 'draftPastReader' || state === 'draftEmptyPast'
         ? DRAFT_PAST
-        : state === 'paused'
+        : state === 'paused' || state === 'pausedReader' || state === 'pausedEmpty'
           ? PARTY
           : asked != null && hasGuests(asked)
             ? asked
@@ -1823,6 +2010,10 @@ export function guestsStart(state: GuestsState | null, params: URLSearchParams):
     askFailed: false,
     markEnds: 'saved',
     paused: false,
+    groups: [],
+    groupFilter: null,
+    removing: null,
+    undo: null,
   };
   const column = (pane: Pane, more: Partial<GuestsStart> = {}): GuestsStart => ({
     ...start,
@@ -1854,6 +2045,23 @@ export function guestsStart(state: GuestsState | null, params: URLSearchParams):
   });
   const closed = { clock: CLOCK_DOOR, card: 'beforeDoor' as const };
   const picked = applyParams(start, params);
+  const grouped: GuestsStart = {
+    ...start,
+    list: groupedWedding(start.list),
+    groups: [...WEDDING_GROUPS],
+  };
+  const cousins: GuestGroup = { id: 'g-cousins', name: 'Cousins' };
+  const groupsPane = (from: GroupsStart = {}, more: Partial<GuestsStart> = {}): GuestsStart => ({
+    ...grouped,
+    pane: { kind: 'groups', start: from },
+    ...more,
+  });
+  const groupEdit = (from: EditStart = {}, more: Partial<GuestsStart> = {}): GuestsStart => ({
+    ...grouped,
+    choice: 'noReply',
+    pane: { kind: 'edit', id: 'emeka', start: from },
+    ...more,
+  });
 
   switch (state) {
     case null:
@@ -1867,6 +2075,26 @@ export function guestsStart(state: GuestsState | null, params: URLSearchParams):
     case 'paused':
     case 'eventDeleted':
       return start;
+    case 'draftPastReader':
+    case 'pausedReader':
+      return { ...start, role: 'viewer' };
+    case 'draftEmpty':
+    case 'draftEmptyPast':
+    case 'pausedEmpty':
+      return { ...start, list: [] };
+    case 'draftEmptyHost':
+      return { ...start, list: [], role: 'host' };
+    case 'draftEmptyViewer':
+      return { ...start, list: [], role: 'viewer' };
+    case 'draftEmptyEvents':
+      return { ...start, list: [], role: 'planner' };
+    case 'draftOneLeft':
+      return column(guestPane('leila'), {
+        choice: 'all',
+        list: start.list.filter((one) => one.id === 'leila'),
+      });
+    case 'finishedEmpty':
+      return { ...start, list: [], clock: CLOCKS.finished };
     case 'filterOpen':
       return column(guestPane('emeka'), { menu: true });
     case 'filtered':
@@ -1992,10 +2220,15 @@ export function guestsStart(state: GuestsState | null, params: URLSearchParams):
       return edit('kwame', { values: { email: 'kwame@mensah.co.uk' }, notSaved: true });
     case 'saved':
       return column(guestPane('kwame'), {
-        list: saveGuest(start.list, 'kwame', {
-          ...valuesOf(start.list.find((one) => one.id === 'kwame') ?? null),
-          email: 'kwame@mensah.co.uk',
-        }),
+        list: saveGuest(
+          start.list,
+          'kwame',
+          {
+            ...valuesOf(start.list.find((one) => one.id === 'kwame') ?? null),
+            email: 'kwame@mensah.co.uk',
+          },
+          TODAY,
+        ),
         told: GW.saved,
       });
     case 'record':
@@ -2150,10 +2383,15 @@ export function guestsStart(state: GuestsState | null, params: URLSearchParams):
     case 'greetAsSpaces':
       return column(guestPane('bisi'), {
         choice: 'notYet',
-        list: saveGuest(start.list, 'bisi', {
-          ...valuesOf(start.list.find((one) => one.id === 'bisi') ?? null),
-          greetAs: '   ',
-        }),
+        list: saveGuest(
+          start.list,
+          'bisi',
+          {
+            ...valuesOf(start.list.find((one) => one.id === 'bisi') ?? null),
+            greetAs: '   ',
+          },
+          TODAY,
+        ),
         told: GW.saved,
       });
     case 'greetAsViewer':
@@ -2204,13 +2442,34 @@ export function guestsStart(state: GuestsState | null, params: URLSearchParams):
       return refusedNeeds({ note: NOTE_LONG }, 'needs-note');
     case 'needsCompanionForm':
       return { ...edit('ines', { needs: ['c0'] }), choice: 'coming' };
+    case 'needsChangedByGuest':
+      return column(guestPane('ines'), { choice: 'coming' });
+    case 'needsChangedByHosts': {
+      const ines = start.list.find((one) => one.id === 'ines') ?? null;
+
+      return column(guestPane('ines'), {
+        choice: 'coming',
+        list: saveGuest(
+          start.list,
+          'ines',
+          { ...valuesOf(ines), needs: needsOf({ diet: ['vegetarian', 'no_alcohol'] }) },
+          TODAY,
+        ),
+        told: GW.saved,
+      });
+    }
     case 'needsSaved':
       return column(guestPane('kwame'), {
         choice: 'coming',
-        list: saveGuest(start.list, 'kwame', {
-          ...valuesOf(start.list.find((one) => one.id === 'kwame') ?? null),
-          needs: needsOf({ allergies: ['milk'], diet: ['pescatarian'] }),
-        }),
+        list: saveGuest(
+          start.list,
+          'kwame',
+          {
+            ...valuesOf(start.list.find((one) => one.id === 'kwame') ?? null),
+            needs: needsOf({ allergies: ['milk'], diet: ['pescatarian'] }),
+          },
+          TODAY,
+        ),
         told: GW.saved,
       });
     case 'whatsAppNone':
@@ -2276,8 +2535,155 @@ export function guestsStart(state: GuestsState | null, params: URLSearchParams):
       };
     case 'exportGrantView':
       return { ...start, role: 'viewer' };
+    case 'groups':
+      return grouped;
+    case 'groupsChip':
+      return { ...grouped, groupFilter: 'g-bride' };
+    case 'groupsNoGroup':
+      return { ...grouped, groupFilter: NO_GROUP };
+    case 'groupsGuest':
+      return { ...grouped, pane: guestPane('emeka') };
+    case 'groupsGuestNone':
+      return { ...grouped, pane: guestPane('bisi') };
+    case 'groupsViewerList':
+      return { ...grouped, role: 'viewer' };
+    case 'groupsLong':
+      return { ...grouped, groups: longNamedGroups() };
+    case 'groupsLongChip':
+      return { ...grouped, groups: longNamedGroups(), groupFilter: 'g-school' };
+    case 'groupsLongGuest':
+      return { ...grouped, list: withLongNamedGuest(grouped.list), groups: longNamedGroups() };
+    case 'groupField':
+      return groupEdit({ at: 'group' });
+    case 'groupFieldOpen':
+      return groupEdit({ at: 'group', group: { typed: 's', open: true } });
+    case 'groupFieldCreate':
+      return groupEdit({
+        at: 'group',
+        values: { group: { name: 'Cousins' } },
+        group: { typed: 'Cousins', open: true },
+      });
+    case 'groupFieldLong':
+      return groupEdit({
+        at: 'group',
+        tried: true,
+        values: { group: { name: GROUP_TOO_LONG } },
+        group: { typed: GROUP_TOO_LONG },
+      });
+    case 'groupFieldLimit':
+      return groupEdit(
+        {
+          at: 'group',
+          tried: true,
+          values: { group: { name: 'Cousins' } },
+          group: { typed: 'Cousins' },
+        },
+        { groups: fullGroups() },
+      );
+    case 'groupFieldAdd':
+      return { ...grouped, choice: 'noReply', pane: { kind: 'add', start: { at: 'group' } } };
+    case 'groupsPane':
+      return groupsPane();
+    case 'groupsFirst':
+      return groupsPane({}, { groups: [], list: start.list });
+    case 'groupsNoGuests':
+      return groupsPane({}, { groups: [], list: [] });
+    case 'groupsNewBlank':
+      return groupsPane({ typed: '', tried: true });
+    case 'groupsNewLong':
+      return groupsPane({ typed: GROUP_TOO_LONG, tried: true });
+    case 'groupsNewTaken':
+      return groupsPane({ typed: 'work', tried: true });
+    case 'groupsNewLimit':
+      return groupsPane({ typed: 'Cousins', tried: true }, { groups: fullGroups() });
+    case 'groupsCreated':
+      return groupsPane({ said: 'Cousins created.' }, { groups: [...WEDDING_GROUPS, cousins] });
+    case 'groupsRename':
+      return groupsPane({ renaming: { id: 'g-work', typed: 'Work' } });
+    case 'groupsRenameTaken':
+      return groupsPane({ renaming: { id: 'g-work', typed: 'bride’s side', tried: true } });
+    case 'groupsDelete':
+      return groupsPane({ deleting: 'g-work' });
+    case 'groupsDeleteEmpty':
+      return groupsPane({ deleting: 'g-cousins' }, { groups: [...WEDDING_GROUPS, cousins] });
+    case 'groupsViewer':
+      return groupsPane({}, { role: 'viewer' });
+    case 'groupsViewerFirst':
+      return groupsPane({}, { role: 'viewer', groups: [], list: start.list });
+    case 'removeOffered':
+      return column(guestPane('emeka'));
+    case 'removeAsk':
+      return column(guestPane('emeka'), { removing: { id: 'emeka', ends: 'removes' } });
+    case 'removeAskSeated':
+      return column(guestPane('ines'), {
+        choice: 'coming',
+        removing: { id: 'ines', ends: 'removes' },
+      });
+    case 'removeAskUnnamed':
+      return column(guestPane('musa'), {
+        choice: 'coming',
+        removing: { id: 'musa', ends: 'removes' },
+      });
+    case 'removeAskAlone':
+      return column(guestPane('kwame'), {
+        choice: 'coming',
+        removing: { id: 'kwame', ends: 'removes' },
+      });
+    case 'removed': {
+      const after = removeGuest(start.list, 'emeka');
+
+      return column({ kind: 'none' }, { list: after.list, undo: after.removed });
+    }
+    case 'removeUndone':
+      return column(guestPane('emeka', { note: 'backOnList' }));
+    case 'removeArrived':
+      return column(guestPane('kwame'), {
+        choice: 'coming',
+        clock: CLOCK_DAY1,
+        card: 'day1',
+        list: arrivedIn(start.list, 'kwame', '18:05'),
+      });
+    case 'removeArrives':
+      return column(guestPane('kwame'), {
+        choice: 'coming',
+        removing: { id: 'kwame', ends: 'arrived' },
+      });
+    case 'removeRefusedArrived':
+      return column(guestPane('kwame'), {
+        choice: 'coming',
+        list: arrivedIn(start.list, 'kwame', '18:05'),
+        removing: { id: 'kwame', ends: 'arrived', refused: 'arrived' },
+      });
+    case 'removeCompanionArrived':
+      return column(guestPane('ines'), {
+        choice: 'coming',
+        clock: CLOCK_DAY1,
+        card: 'day1',
+        list: companionArrivedIn(start.list, 'ines', '18:05'),
+      });
+    case 'removeCompanionArrives':
+      return column(guestPane('ines'), {
+        choice: 'coming',
+        removing: { id: 'ines', ends: 'companionArrived' },
+      });
+    case 'removeRefusedCompanionArrived':
+      return column(guestPane('ines'), {
+        choice: 'coming',
+        list: companionArrivedIn(start.list, 'ines', '18:05'),
+        removing: { id: 'ines', ends: 'companionArrived', refused: 'companionArrived' },
+      });
+    case 'removeGoes':
+      return column(guestPane('tomas'), { removing: { id: 'tomas', ends: 'gone' } });
+    case 'removeRefusedGone':
+      return column(guestPane('tomas'), {
+        removing: { id: 'tomas', ends: 'gone', refused: 'gone' },
+      });
+    case 'removeViewer':
+      return column(guestPane('kwame'), { choice: 'coming', role: 'viewer' });
   }
 }
+
+const GROUP_TOO_LONG = 'Everyone from the choir, the drama society and the Thursday netball team';
 
 /** With no state, `?guest=` opens a guest, as Overview's numbers do; `?filter=` and `?q=` are read by `useGuestsAddress`. */
 function applyParams(start: GuestsStart, params: URLSearchParams): GuestsStart {
@@ -2349,10 +2755,22 @@ export const GUESTS_PAGES: readonly { name: string; states: readonly DemoLink[] 
     'staffBefore',
     'draft',
     'draftPast',
+    'draftPastReader',
     'paused',
+    'pausedReader',
     'eventDeleted',
     'onTheDay',
     'secondDay',
+  ]),
+  group('Nobody on the list yet, in each phase (sc-50409)', [
+    'draftEmpty',
+    'draftEmptyPast',
+    'draftEmptyHost',
+    'draftEmptyViewer',
+    'draftEmptyEvents',
+    'draftOneLeft',
+    'pausedEmpty',
+    'finishedEmpty',
   ]),
   group('A guest, beside the list', [
     'guest',
@@ -2428,6 +2846,7 @@ export const GUESTS_PAGES: readonly { name: string; states: readonly DemoLink[] 
     'needsCompanionForm',
     'needsSaved',
   ]),
+  group('Last changed by the guest (sc-3778)', ['needsChangedByGuest', 'needsChangedByHosts']),
   group('WhatsApp, only to guests who agreed (sc-3950)', [
     'whatsAppNone',
     'whatsAppAgree',
@@ -2459,12 +2878,62 @@ export const GUESTS_PAGES: readonly { name: string; states: readonly DemoLink[] 
     'exportReady',
     'exportGrantView',
   ]),
+  group('Groups on the list and the guest (sc-3775)', [
+    'groups',
+    'groupsChip',
+    'groupsNoGroup',
+    'groupsGuest',
+    'groupsGuestNone',
+    'groupsViewerList',
+  ]),
+  group('The Group field on Edit and Add guest (sc-3775)', [
+    'groupField',
+    'groupFieldOpen',
+    'groupFieldCreate',
+    'groupFieldLong',
+    'groupFieldLimit',
+    'groupFieldAdd',
+  ]),
+  group('Groups: make, rename, delete (sc-3775)', [
+    'groupsPane',
+    'groupsFirst',
+    'groupsNoGuests',
+    'groupsNewBlank',
+    'groupsNewLong',
+    'groupsNewTaken',
+    'groupsNewLimit',
+    'groupsCreated',
+    'groupsRename',
+    'groupsRenameTaken',
+    'groupsDelete',
+    'groupsDeleteEmpty',
+    'groupsViewer',
+    'groupsViewerFirst',
+  ]),
   group('Send invitations (sc-3971)', [
     'inviteList',
     'inviteGuest',
     'inviteGuestMobile',
     'inviteGuestInvited',
     'inviteNoneLeft',
+  ]),
+  group('Remove from the list (sc-3774)', [
+    'removeOffered',
+    'removeAsk',
+    'removeAskSeated',
+    'removeAskUnnamed',
+    'removeAskAlone',
+    'removed',
+    'removeUndone',
+    'removeArrived',
+    'removeArrives',
+    'removeRefusedArrived',
+    'removeCompanionArrived',
+    'removeCompanionArrives',
+    'removeRefusedCompanionArrived',
+    'removeGoes',
+    'removeRefusedGone',
+    'removeViewer',
   ]),
   group('Send on WhatsApp (sc-26025)', [
     'sendNone',

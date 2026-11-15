@@ -1,7 +1,7 @@
 import { ApiError } from '@soirely/api-client';
 import { describe, expect, it } from 'vitest';
 
-import { type DeletesEvents, deleteEvent, offersDelete } from './eventDelete.ts';
+import { type DeletesEvents, deleteEvent, offersDelete, refusedVerb } from './eventDelete.ts';
 
 function recording(
   fails?: unknown,
@@ -40,6 +40,29 @@ describe('offersDelete', () => {
       expect(offersDelete(event)).toBe(false);
     },
   );
+});
+
+describe('refusedVerb (sc-14445)', () => {
+  const wedding = { startsAt: '2030-06-01T16:00:00Z' };
+
+  it('opens on Call off a second before the start, and on End now at it', () => {
+    expect(refusedVerb(wedding, 'live', new Date('2030-06-01T15:59:59Z'), true)).toBe('callOff');
+    expect(refusedVerb(wedding, 'happening_now', new Date('2030-06-01T16:00:00Z'), true)).toBe(
+      'endNow',
+    );
+  });
+
+  it('refuses a Paused event as a Live one', () => {
+    expect(refusedVerb(wedding, 'paused', new Date('2030-05-01T00:00:00Z'), true)).toBe('callOff');
+  });
+
+  it.each([
+    ['a Finished event, its page left open past the end', 'finished', true],
+    ['a Draft', 'draft', true],
+    ['an event with nobody Invited', 'live', false],
+  ] as const)('opens on the delete for %s', (_, phase, refused) => {
+    expect(refusedVerb(wedding, phase, new Date('2030-06-02T00:00:00Z'), refused)).toBeNull();
+  });
 });
 
 describe('deleteEvent', () => {
@@ -112,5 +135,19 @@ describe('deleteEvent', () => {
       typed: "Ada's Gala",
       error: offline,
     });
+  });
+
+  it('answers refused, never the detail, when a guest was Invited since the screen opened (sc-14445)', async () => {
+    const client = recording(
+      new ApiError({
+        type: 'https://soirely.com/errors/event_call_off_first',
+        title: 'This event cannot be deleted until it is finished.',
+        detail:
+          'Guests have been invited to it, or staff briefed for it. Call it off or end it first.',
+        status: 409,
+      }),
+    );
+
+    expect(await deleteEvent(client, gala, true, "Ada's Gala")).toEqual({ kind: 'refused' });
   });
 });

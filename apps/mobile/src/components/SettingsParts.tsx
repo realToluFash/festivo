@@ -125,7 +125,7 @@ export function Pill({
   height?: number;
   accessibilityLabel?: string;
   testID?: string;
-  ref?: Ref<ViewInstance>;
+  ref?: Ref<ViewInstance> | undefined;
 }) {
   const look = PILL[busy ? 'off' : kind];
   const off = busy || kind === 'off';

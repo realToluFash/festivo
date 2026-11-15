@@ -40,10 +40,12 @@ final readonly class EventDuplicator
 
         $copy = new Event($original->getOrganisation(), $original->getName(), $original->getType(), $start, LocalTimeResolver::resolve($end->setTimestamp($end->getTimestamp() + $length), $zone), $original->getCurrency());
         EventVenue::write($copy, EventVenue::of($original));
+        $copy->setArrivalNote($original->getArrivalNote());
         $this->entityManager->persist($copy);
         $cover = $this->eventCoverEditor->copy($original, $copy);
         $this->seatingPlanCopier->copy($original, $copy, $by);
-        $guestsCopied = $copyGuests ? $this->guestListCopier->copy($original, $copy, $by) : null;
+        $groups = $this->guestListCopier->copyGroups($original, $copy);
+        $guestsCopied = $copyGuests ? $this->guestListCopier->copy($original, $copy, $by, $groups) : null;
 
         $this->auditor->record(EventCreator::CREATED, 'Event', $copy->getId(), Actor::User, $by->getId(), $by->getName(), [
             ...EventCreator::recorded($copy),

@@ -5,7 +5,9 @@ declare(strict_types=1);
 namespace App\Domain\Guest;
 
 use App\Audit\Auditor;
+use App\Domain\Guest\Group\GuestGroupEditor;
 use App\Domain\Guest\Link\InvitationLinks;
+use App\Domain\Guest\Model\GuestNeeds;
 use App\Domain\Guest\Model\NewGuest;
 use App\Entity\Event;
 use App\Entity\Guest;
@@ -28,6 +30,8 @@ final readonly class GuestAdder
         private EntityManagerInterface $entityManager,
         private Auditor $auditor,
         private GuestListPublisher $guestListPublisher,
+        private GuestNeedsRecord $guestNeedsRecord,
+        private GuestGroupEditor $guestGroupEditor,
     ) {
     }
 
@@ -41,15 +45,18 @@ final readonly class GuestAdder
                 throw new ApiException(ErrorCode::GuestAlreadyListed, 'guest.already_listed', parameters: ['{name}' => $new->fullName]);
             }
 
-            $guest = Guest::invited($event, $new->fullName, $new->nameKey, $new->email, $new->mobile, $by, InvitationLinks::token());
+            $guest = Guest::listed($event, $new->fullName, $new->nameKey, $new->email, $new->mobile, $by, InvitationLinks::token());
             $guest->setLanguage($new->language);
+            $guest->setGroup(null === $new->group ? null : $this->guestGroupEditor->settle($event, $new->group, $by));
             $this->entityManager->persist($guest);
             self::recordAdded($this->auditor, $guest, $by);
+            $this->guestNeedsRecord->write($guest, $new->needs ?? GuestNeeds::none(), $by);
 
             foreach ($new->companions as $index => $name) {
                 $companion = Guest::companionOf($guest, $name, null === $name ? null : NameNormaliser::key($name), $index + 1, $by);
                 $this->entityManager->persist($companion);
                 self::recordAdded($this->auditor, $companion, $by);
+                $this->guestNeedsRecord->write($companion, $new->companionNeeds[$index] ?? GuestNeeds::none(), $by);
             }
 
             $this->entityManager->flush();

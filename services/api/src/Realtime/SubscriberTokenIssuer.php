@@ -11,6 +11,7 @@ use Lcobucci\JWT\Configuration;
 use Lcobucci\JWT\Signer\Hmac\Sha256;
 use Lcobucci\JWT\Signer\Key\InMemory;
 use Psl\Type;
+use Psl\Vec;
 use Psr\Clock\ClockInterface;
 use SensitiveParameter;
 use Symfony\Component\Uid\Uuid;
@@ -42,6 +43,16 @@ final readonly class SubscriberTokenIssuer
     public function issueForEventGuests(Uuid $eventId): IssuedSubscriberToken
     {
         return $this->issue([RealtimeTopic::EventGuests->for($eventId->toRfc4122()), RealtimeTopic::EventHeadcount->for($eventId->toRfc4122())]);
+    }
+
+    /**
+     * Several events' headcounts, for someone the route has already found holds guests.read on each (sc-3786).
+     *
+     * @param list<Uuid> $eventIds
+     */
+    public function issueForHeadcounts(array $eventIds): IssuedSubscriberToken
+    {
+        return $this->issue(Vec\map($eventIds, static fn (Uuid $eventId): string => RealtimeTopic::EventHeadcount->for($eventId->toRfc4122())));
     }
 
     /** @param list<string> $topics */

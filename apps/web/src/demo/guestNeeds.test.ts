@@ -88,7 +88,7 @@ describe('needs recorded as facts (sc-3777)', () => {
     ]);
     expect(shown).toBe(4);
     expect(view.rows[1]?.label).toBe(
-      'Dr Emeka Nwosu, No reply · 1 companion · 1 of 1 named, Allergy, Dietary notes',
+      'Dr Emeka Nwosu, No reply · 1 companion · 1 of 1 named, emeka.nwosu@nhs.net, +44 7700 900231, Allergy, Dietary notes',
     );
 
     const viewer = viewOf(list, 'all', 'nwosu', new Set(), null, false, true);

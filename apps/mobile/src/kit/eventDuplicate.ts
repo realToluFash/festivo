@@ -1,8 +1,61 @@
 import { ApiError } from '@soirely/api-client';
-import { type Translate, copyStartRefusal, localDateTime } from '@soirely/domain';
+import { type Translate, addDays, copyStartRefusal, localDateTime } from '@soirely/domain';
 
 /** The route param through which a copy's page knows the event it was duplicated from (sc-22145). */
 export const COPIED_FROM = 'from';
+
+/** The route param that opens an event's page with Duplicate over it, as an Events card's Duplicate does. */
+export const DUPLICATING = 'duplicate';
+
+/** The line is read before the copy opens. */
+export const OPENING_AFTER = 700;
+
+export interface Starts {
+  date: string;
+  time: string;
+}
+
+export interface DuplicateRun {
+  starts: Starts;
+  status: 'editing' | 'creating' | 'failed' | 'created';
+  error: string | null;
+  /** The half that takes focus with the error. */
+  focus: 'date' | 'time' | null;
+}
+
+/** The copy starts on the original's weekday and time, a year on. */
+export function startsAfter(begins: Starts): Starts {
+  return { date: addDays(begins.date, 52 * 7), time: begins.time };
+}
+
+export function duplicateRunOf(starts: Starts): DuplicateRun {
+  return { starts, status: 'editing', error: null, focus: null };
+}
+
+/** A chosen start clears its error once both halves are chosen; nothing changes while it sends. */
+export function pickedRun(run: DuplicateRun, starts: Starts): DuplicateRun {
+  if (run.status === 'creating' || run.status === 'created') return run;
+  const whole = starts.date !== '' && starts.time !== '';
+
+  return {
+    starts,
+    status: 'editing',
+    error: whole ? null : run.error,
+    focus: whole ? null : run.focus,
+  };
+}
+
+/** Where the answer leaves the screen: `duplicateStartsBlank` and `duplicateStartsRefused`, `duplicateNotCreated`, or `duplicateCreated`. */
+export function answeredRun(run: DuplicateRun, answer: DuplicateAnswer): DuplicateRun {
+  switch (answer.kind) {
+    case 'refused':
+      return { ...run, status: 'editing', error: answer.message, focus: answer.focus };
+    case 'failed':
+      return { ...run, status: 'failed', error: null, focus: null };
+    case 'created':
+      return { ...run, status: 'created', error: null, focus: null };
+  }
+}
 
 export interface DuplicatesEvents {
   duplicateEvent(eventId: string, startsAt: string): Promise<{ id: string }>;

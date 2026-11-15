@@ -65,11 +65,11 @@ final class GuestsTest extends ApiTestCase
         $list = $this->as($this->owner, 'GET', $this->guests());
 
         self::assertSame(200, $this->statusCode());
-        self::assertSame(['guests' => [], 'counts' => ['people' => 0, 'guests' => 0, 'companions' => 0]], $list);
+        self::assertSame(['guests' => [], 'counts' => ['people' => 0, 'guests' => 0, 'companions' => 0], 'groups' => [], 'ungrouped' => ['people' => 0, 'guests' => 0, 'companions' => 0]], $list);
     }
 
     #[Test]
-    public function aGuestIsKeptAsTypedWithNoReplyAndTheirCompanionsUnderThem(): void
+    public function aGuestIsKeptAsTypedNotYetInvitedAndTheirCompanionsUnderThem(): void
     {
         $body = $this->as($this->owner, 'POST', $this->guests(), [
             'fullName' => '  ' . self::ADAEZE . ' ',
@@ -80,9 +80,9 @@ final class GuestsTest extends ApiTestCase
 
         self::assertSame(201, $this->statusCode(), Json\encode($body));
         $guest = Type\dict(Type\string(), Type\mixed())->coerce($body['guest'] ?? null);
-        self::assertSame([self::ADAEZE, 'adaeze@example.com', '+2348031234567', 'noReply'], [$guest['fullName'], $guest['email'], $guest['mobile'], $guest['reply']]);
+        self::assertSame([self::ADAEZE, 'adaeze@example.com', '+2348031234567', 'noReply', null], [$guest['fullName'], $guest['email'], $guest['mobile'], $guest['reply'], $guest['invitation']]);
         self::assertSame(
-            [['Obi Okonkwo', 'held'], [null, 'held'], [null, 'held']],
+            [['Obi Okonkwo', 'notYetInvited'], [null, 'notYetInvited'], [null, 'notYetInvited']],
             Vec\map(Type\vec(Type\shape(['fullName' => Type\nullable(Type\string()), 'state' => Type\string()], true))->coerce($guest['companions']), static fn (array $companion): array => [$companion['fullName'], $companion['state']]),
         );
 

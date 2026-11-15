@@ -4,6 +4,8 @@ declare(strict_types=1);
 
 namespace App\Tests\Functional;
 
+use App\Domain\Messaging\EmailSuppressions;
+use App\Domain\Messaging\NotificationWorker;
 use App\Domain\Organisation\Invitations\InvitationDeliveries;
 use App\Domain\Organisation\Members\MembershipMachine;
 use App\Domain\User\TokenIssuer;
@@ -13,8 +15,10 @@ use App\Entity\Membership;
 use App\Entity\Organisation;
 use App\Entity\Role;
 use App\Entity\User;
+use App\Enum\AccountMail;
 use App\Enum\ErrorCode;
 use App\Enum\InvitationStatus;
+use App\Enum\MailProviderReport;
 use App\Enum\MembershipChannel;
 use App\Enum\MembershipStatus;
 use App\Enum\NotificationDeliveryStatus;
@@ -24,6 +28,7 @@ use App\Tests\ApiTestCase;
 use App\Tests\Double\FailingFlushListener;
 use App\Tests\Traits\InvitesPeople;
 use DateTimeImmutable;
+use Doctrine\DBAL\Connection;
 use Doctrine\DBAL\Exception\UniqueConstraintViolationException;
 use Doctrine\ORM\Events;
 use Lexik\Bundle\JWTAuthenticationBundle\Services\JWTTokenManagerInterface;
@@ -594,6 +599,61 @@ final class InvitationTest extends ApiTestCase
     }
 
     #[Test]
+    public function anInvitationAddressedToASuppressedAddressReadsUndeliveredAtOnce(): void
+    {
+        [$organisation, $owner] = $this->organisation();
+        self::service(EmailSuppressions::class)->suppress('kemi@example.com', MailProviderReport::Bounced);
+
+        $invited = Type\shape(['invitation' => Type\shape(['undelivered' => Type\bool()], true)], true)->coerce($this->as($owner)->invite($organisation, 'Kemi@example.com', SeededRole::Member));
+
+        self::assertTrue($invited['invitation']['undelivered'], 'its send is still waiting, and the worker will cancel it');
+        self::assertSame([true], $this->undelivered($organisation));
+        self::drainNotifications();
+        self::assertSame([true], $this->undelivered($organisation), 'cancelled: address suppressed');
+    }
+
+    /** @return iterable<string, array{string, ?string, ?string, bool}> */
+    public static function latestSends(): iterable
+    {
+        yield 'waiting, address not suppressed' => ['pending', null, null, false];
+        yield 'sent, no report yet' => ['sent', null, null, false];
+        yield 'delivered' => ['sent', 'delivered', null, false];
+        yield 'a hard bounce' => ['sent', 'bounced', null, true];
+        yield 'a complaint arrived' => ['sent', 'complained', null, false];
+        yield 'retries ran out' => ['failed', null, 'RuntimeException', true];
+        yield 'cancelled for its address' => ['cancelled', null, NotificationWorker::SUPPRESSED, true];
+        yield 'cancelled for another reason' => ['cancelled', null, 'no longer in the audience', false];
+    }
+
+    #[Test]
+    #[DataProvider('latestSends')]
+    public function theListSaysOnlyWhetherTheLatestSendCouldNotBeDelivered(string $status, ?string $report, ?string $error, bool $undelivered): void
+    {
+        [$organisation, $owner] = $this->organisation();
+        $this->as($owner)->invite($organisation, 'kemi@example.com', SeededRole::Member);
+        self::service(Connection::class)->executeStatement(
+            'UPDATE notification_deliveries SET status = :status, provider_report = :report, last_error = :error WHERE type = :type',
+            ['status' => $status, 'report' => $report, 'error' => $error, 'type' => AccountMail::Invitation->typeName()],
+        );
+
+        self::assertSame([$undelivered], $this->undelivered($organisation));
+        $body = Json\encode($this->call('GET', '/api/orgs/' . $organisation->getId()->toRfc4122() . '/members'));
+        foreach (['bounced', 'complained', 'suppressed', '"delivered"', 'opened'] as $reason) {
+            self::assertStringNotContainsString($reason, $body, 'never the reason');
+        }
+    }
+
+    #[Test]
+    public function anInvitationWithNoDeliveryRecordReadsAsSent(): void
+    {
+        [$organisation, $owner] = $this->organisation();
+        $this->as($owner)->invite($organisation, 'kemi@example.com', SeededRole::Member);
+        self::service(Connection::class)->executeStatement('DELETE FROM notification_deliveries WHERE type = :type', ['type' => AccountMail::Invitation->typeName()]);
+
+        self::assertSame([false], $this->undelivered($organisation));
+    }
+
+    #[Test]
     public function aRevokedInvitationsLinkIsUseless(): void
     {
         [$organisation, $owner] = $this->organisation();
@@ -640,6 +700,14 @@ final class InvitationTest extends ApiTestCase
         $owner = self::inviter('folake@ire.events', 'Folake Adeyemi');
 
         return [self::organisationFor($owner), $owner];
+    }
+
+    /** @return list<bool> */
+    private function undelivered(Organisation $organisation): array
+    {
+        $body = $this->call('GET', '/api/orgs/' . $organisation->getId()->toRfc4122() . '/members');
+
+        return Vec\map(Type\vec(Type\shape(['undelivered' => Type\bool()], true))->coerce($body['invitations']), static fn (array $invitation): bool => $invitation['undelivered']);
     }
 
     /** @return array<string, mixed> */

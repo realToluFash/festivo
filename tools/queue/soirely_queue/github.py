@@ -48,6 +48,9 @@ PASSED = re.compile(r"Review passed at ([0-9a-f]{7,40})")
 BACK = re.compile(r"(?:Failed code review|Back to In Progress): (\d+) blocking")
 STORY = re.compile(r"sc-(\d+)")
 SUFFIX = re.compile(r"\(sc-(\d+)\)\s*$")
+MENTION = re.compile(r"(?<![\w-])sc-(\d+)(?!\d)", re.I)
+# A non-breaking hyphen reads the same, and Shortcut does not link it.
+UNLINKED = "sc\u2011"
 REMOTE = re.compile(r"github\.com[:/]([^/]+)/([^/]+?)(?:\.git)?/?$")
 LIMITED = re.compile(r"rate limit", re.I)
 # A thread read over REST has no GraphQL id until the next GraphQL sync.
@@ -180,6 +183,14 @@ def story_of(branch, title):
     the first story its title names. A title may mention another story it works on."""
     found = SUFFIX.search(title or "") or STORY.search(branch) or STORY.search(title or "")
     return int(found.group(1)) if found else None
+
+
+def unlink_others(text, own):
+    """Shortcut links, and on merge moves, every story a pull request names as sc-N. Only
+    its own story keeps the link. Returns the text and how many mentions changed."""
+    others = [m for m in MENTION.finditer(text or "") if int(m.group(1)) != own]
+    return MENTION.sub(lambda m: m.group(0) if int(m.group(1)) == own
+                       else UNLINKED + m.group(1), text or ""), len(others)
 
 
 def slim(node):

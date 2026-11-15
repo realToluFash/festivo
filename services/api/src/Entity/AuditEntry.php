@@ -63,9 +63,10 @@ class AuditEntry
         array $changes = [],
         ?string $ip = null,
         ?string $correlationId = null,
+        ?DateTimeImmutable $occurredAt = null,
     ) {
         $this->id = Uuid::v7();
-        $this->occurredAt = new DateTimeImmutable();
+        $this->occurredAt = $occurredAt ?? new DateTimeImmutable();
         $this->actorType = $actorType;
         $this->actorId = $actorId;
         $this->actorLabel = $actorLabel;

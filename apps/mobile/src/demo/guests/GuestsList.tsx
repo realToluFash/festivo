@@ -30,11 +30,13 @@ import {
   filterCount,
   filterWord,
   filtersFor,
-  showAllWords,
+  inViewOf,
 } from './GuestsModel.ts';
 import { GroupHead, type Layout, ShownLine } from './GuestsParts.tsx';
 import { REPLY_WORD, W, say } from './GuestsWords.ts';
-import { MarkSlot } from './ReplyMark.tsx';
+import { MarkSlot } from '../../components/ReplyMark.tsx';
+import { NW } from './GuestNeeds.ts';
+import { AllergyMark } from './GuestNeedsParts.tsx';
 
 const MENU_AFTER_MS = 700;
 
@@ -98,7 +100,7 @@ function FilterChoice({
               }}
               style={({ pressed }) => [
                 styles.menuRow,
-                key === 'changed' && styles.menuApart,
+                (key === 'changed' || key === 'invited') && styles.menuApart,
                 pressed && styles.menuPressed,
               ]}
               accessibilityRole="button"
@@ -141,18 +143,22 @@ function personRow(
   wide: boolean,
 ) {
   const selected = lit === p.key;
+  const allergy = p.allergy === true;
   const row = (
     <Row
       ref={refFor(p.key)}
       title={p.name}
       line={p.line}
+      below={allergy ? <AllergyMark testID={`guests.row.${p.key}.allergy`} /> : undefined}
       lead={<MarkSlot kind={p.kind} />}
       opens
       selected={selected}
       gutter={wide ? 10 : 0}
       pad={p.companion ? 8 : 11}
       onPress={() => onOpen(p.guest, p.key)}
-      accessibilityLabel={[p.name, p.line].join('. ')}
+      accessibilityLabel={[p.name, p.line, allergy ? NW.allergy : null]
+        .filter((part) => part != null)
+        .join('. ')}
       testID={`guests.row.${p.key}`}
     />
   );
@@ -244,13 +250,13 @@ export function GuestsRows({
       {looking ? (
         <View>
           <ShownLine
-            shown={
-              rows.length === 0
-                ? 0
-                : searched.trim() === '' && filter !== 'changed'
-                  ? filterCount(filter, counts)
-                  : rows.length
-            }
+            shown={inViewOf({
+              filter,
+              searched,
+              rows: rows.length,
+              filtered: filter === 'changed' ? rows.length : filterCount(filter, counts),
+              total,
+            })}
             total={total}
             onClear={clear}
           />
@@ -284,7 +290,7 @@ export function GuestsRows({
                 </View>
                 {count > shown.length && !expanded.includes(group) && (
                   <TextAction
-                    label={showAllWords(group, count)}
+                    label={say.showAll(count)}
                     figures
                     onPress={() => onShowAll(group)}
                     testID={`guests.showAll.${group}`}

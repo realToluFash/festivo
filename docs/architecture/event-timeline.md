@@ -15,6 +15,7 @@ The code is `App\Domain\Event\Timeline`, served at `GET /api/events/<id>/timelin
 | `Milestone`                | a key, a date-time, a title, an optional note, an owner, the area, an optional action |
 | `EventTimeline`            | merges every source, drops the areas the reader cannot see, sorts earliest first      |
 | `EventDates`               | the first source: the event's own dates, as they happened                             |
+| `ReplyByDates`             | **Replies close**, at the end of the event's Reply by, owner Automatic (sc-3780)      |
 | `nextUp()`                 | `packages/domain`: the one rule for which milestone is **Next up**, on every client   |
 
 ## Adding an area's milestones

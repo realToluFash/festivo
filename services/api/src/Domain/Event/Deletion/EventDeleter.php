@@ -11,6 +11,7 @@ use App\Domain\Messaging\EventChanges\EventChangeRecorder;
 use App\Entity\Event;
 use App\Entity\User;
 use App\Enum\Actor;
+use App\Enum\ErrorCode;
 use App\Enum\EventStatus;
 use App\Http\Exception\ApiException;
 use App\Repository\GuestRepository;
@@ -31,6 +32,7 @@ final readonly class EventDeleter
         private ClockInterface $clock,
         private EventChangeRecorder $eventChangeRecorder,
         private GuestRepository $guestRepository,
+        private DeleteRefusal $deleteRefusal,
     ) {
     }
 
@@ -46,8 +48,18 @@ final readonly class EventDeleter
         return $this->guestRepository->countPeople($event);
     }
 
+    public function refusedBecause(Event $event): ?string
+    {
+        return $this->deleteRefusal->of($event);
+    }
+
+    /** Refused 409 `event_call_off_first` while a guest is invited and it is not Finished, before the name typed is read (sc-14445). */
     public function delete(Event $event, User $by, ?string $typedName): DateTimeImmutable
     {
+        if (null !== $this->refusedBecause($event)) {
+            throw new ApiException(ErrorCode::EventCallOffFirst, $this->translator->trans('event.call_off_first'));
+        }
+
         if ($this->needsName($event) && !TypedName::matches($typedName ?? '', $event->getName())) {
             throw ApiException::validation([[
                 'propertyPath' => 'name',

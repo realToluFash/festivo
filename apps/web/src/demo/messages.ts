@@ -1,3 +1,4 @@
+import { crowdName } from './sampleNames.ts';
 import { writtenTime } from './clock.ts';
 import type { SampleEvent } from './events.ts';
 import { demoWords } from './demoWords.ts';
@@ -633,67 +634,6 @@ const REACH: Record<Sample, Record<Channel, number>> = {
   coming: { email: 92, sms: 31, whatsApp: 3 },
   notReplied: { email: 23, sms: 9, whatsApp: 1 },
 };
-
-const FIRST = [
-  'Ana',
-  'Chidi',
-  'Léa',
-  'João',
-  'Hana',
-  'Mateo',
-  'Zainab',
-  'Lukas',
-  'Sofia',
-  'Kofi',
-  'Inés',
-  'Arjun',
-  'Chloé',
-  'Tiago',
-  'Aisha',
-  'Emil',
-  'Valentina',
-  'Femi',
-  'Camila',
-  'Hugo',
-  'Ngozi',
-  'Pedro',
-  'Yara',
-  'Olu',
-];
-const LAST = [
-  'Silva',
-  'Okonkwo',
-  'Moreau',
-  'Santos',
-  'Kim',
-  'García',
-  'Bello',
-  'Schmidt',
-  'Rossi',
-  'Boateng',
-  'Navarro',
-  'Patel',
-  'Lefèvre',
-  'Almeida',
-  'Owusu',
-  'Larsen',
-  'Romero',
-  'Adeleke',
-  'Torres',
-  'Bernard',
-  'Nnamdi',
-  'Pereira',
-  'Haddad',
-  'Nwosu',
-];
-
-/** The sample's unnamed guests, each name once for the first 576. */
-function crowdName(index: number): string {
-  const first = index % FIRST.length;
-  const last = (first + 5 * Math.floor(index / FIRST.length)) % LAST.length;
-
-  return `${FIRST[first] ?? ''} ${LAST[last] ?? ''}`;
-}
 
 function whyOf(one: Reasons, ticks: Ticks): string[] {
   const told = CHANNELS.flatMap((channel) => {

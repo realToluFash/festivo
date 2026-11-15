@@ -1,12 +1,13 @@
 import { type EventDeletion, type OrganisationEvent } from '@soirely/api-client';
-import { typedNameMatches } from '@soirely/domain';
+import { type EventPhase, typedNameMatches } from '@soirely/domain';
 import { type RefObject, useRef, useState } from 'react';
 import { StyleSheet, type TextInputInstance, View } from 'react-native';
 import { useTranslation } from 'react-i18next';
 
 import { api } from '../api.ts';
-import { deleteEvent } from '../kit/eventDelete.ts';
+import { deleteEvent, refusedVerb } from '../kit/eventDelete.ts';
 import { refusalTitle } from '../kit/refusal.ts';
+import { useSignedIn } from '../signedIn.ts';
 import { tokens } from '../theme/tokens.ts';
 import { Field, focusChecked, focusRefused } from './Field.tsx';
 import { BoxField } from './MomentPick.tsx';
@@ -17,19 +18,31 @@ import { useShellLayout } from './settingsShell.ts';
 import { Ask, ASK_WIDTH, FocusedScreen } from './Summary.tsx';
 import { Text } from './Text.tsx';
 
-type Asking = { kind: 'plain' } | { kind: 'named' };
+type Asking = { kind: 'plain' } | { kind: 'named' } | { kind: 'refused' };
 
-/** sc-3592: Delete event from Manage, to a role with Create events; it reads what deleting removes before it asks. */
+type Verb = 'callOff' | 'endNow';
+
+/** sc-3592: Delete event from Manage, to a role with Create events; it reads what deleting removes before it asks. With a guest Invited it opens on the refusal instead (sc-14445), whose verb is the page's own Call off or End now. */
 export function useDeleteEvent({
   event,
+  phase,
+  now,
+  manages,
   onDeleted,
+  onVerb,
   opener,
 }: {
   event: OrganisationEvent;
+  phase: EventPhase;
+  now: Date;
+  /** Events at Change: the page shows Call off and End now, so the refusal offers them (sc-3585). */
+  manages: boolean;
   onDeleted: (event: OrganisationEvent) => void;
+  onVerb: (verb: Verb) => void;
   opener: RefObject<ScreenReaderTarget | null>;
 }) {
   const { t } = useTranslation();
+  const { organisation } = useSignedIn();
   const [opening, setOpening] = useState(false);
   const [openFailed, setOpenFailed] = useState<string | null>(null);
   const [deletion, setDeletion] = useState<EventDeletion | null>(null);
@@ -49,7 +62,11 @@ export function useDeleteEvent({
         setDeletion(asked);
         setNamed(name);
         setRound((was) => was + 1);
-        setAsking({ kind: asked.needsName ? 'named' : 'plain' });
+        setAsking(
+          refusedVerb(event, phase, now, asked.deleteRefusedBecause != null) != null
+            ? { kind: 'refused' }
+            : { kind: asked.needsName ? 'named' : 'plain' },
+        );
       },
       (error: unknown) => {
         setOpening(false);
@@ -67,6 +84,12 @@ export function useDeleteEvent({
     onDeleted({ ...event, name });
   };
 
+  const raced = () => {
+    setFailed(null);
+    setAsking({ kind: 'refused' });
+  };
+  const verb = refusedVerb(event, phase, now, true);
+
   const plain = async () => {
     if (pending) return;
     setPending(true);
@@ -74,6 +97,7 @@ export function useDeleteEvent({
     const answered = await deleteEvent(api, event, false, '');
     setPending(false);
     if (answered.kind === 'deleted') deleted(event.name);
+    else if (answered.kind === 'refused') raced();
     else if (answered.kind === 'mismatch') open(answered.current);
     else setFailed(refusalTitle(answered.error, t('eventDelete.failed')));
   };
@@ -98,6 +122,21 @@ export function useDeleteEvent({
         onConfirm={() => void plain()}
         testID="events.deleteSheet"
       />
+      {verb != null && (
+        <RefusedAsk
+          open={asking?.kind === 'refused'}
+          verb={verb}
+          name={event.name}
+          organisation={organisation?.name ?? ''}
+          manages={manages}
+          opener={opener}
+          onKeep={close}
+          onVerb={() => {
+            setAsking(null);
+            onVerb(verb);
+          }}
+        />
+      )}
       {deletion != null && (
         <NamedDelete
           key={round}
@@ -110,6 +149,7 @@ export function useDeleteEvent({
           opener={opener}
           onCancel={close}
           onDeleted={deleted}
+          onRefused={raced}
         />
       )}
     </>
@@ -129,6 +169,7 @@ function NamedDelete({
   opener,
   onCancel,
   onDeleted,
+  onRefused,
 }: {
   open: boolean;
   event: OrganisationEvent;
@@ -139,6 +180,8 @@ function NamedDelete({
   opener: RefObject<ScreenReaderTarget | null>;
   onCancel: () => void;
   onDeleted: (name: string) => void;
+  /** A guest made Invited since it opened: the screen closes and the refusal shows over the page. */
+  onRefused: () => void;
 }) {
   const { t } = useTranslation();
   const [name, setName] = useState(named);
@@ -167,6 +210,10 @@ function NamedDelete({
 
     if (answered.kind === 'deleted') {
       onDeleted(name);
+      return;
+    }
+    if (answered.kind === 'refused') {
+      onRefused();
       return;
     }
     if (answered.kind === 'failed') {
@@ -253,6 +300,63 @@ function NamedDelete({
         </ReadOut>
       )}
     </FocusedScreen>
+  );
+}
+
+/** Before the start, Call off {event} first?; from it, End {event} first?. Without Events at Change, the line saying who can, and Keep it alone. */
+function RefusedAsk({
+  open,
+  verb,
+  name,
+  organisation,
+  manages,
+  opener,
+  onKeep,
+  onVerb,
+}: {
+  open: boolean;
+  verb: Verb;
+  name: string;
+  organisation: string;
+  manages: boolean;
+  opener: RefObject<ScreenReaderTarget | null>;
+  onKeep: () => void;
+  onVerb: () => void;
+}) {
+  const { t } = useTranslation();
+  const before = verb === 'callOff';
+  const ask = { area: t('eventsScreen.title'), organisation };
+
+  return (
+    <Ask
+      open={open}
+      opener={opener}
+      width={ASK_WIDTH}
+      title={t(before ? 'eventDelete.refusedCallOffTitle' : 'eventDelete.refusedEndTitle', {
+        event: name,
+      })}
+      line={t(before ? 'eventDelete.refusedCallOffBody' : 'eventDelete.refusedEndBody')}
+      body={
+        manages ? undefined : (
+          <Text size={15} weight="medium" style={styles.lines} testID="events.deleteRefusedWho">
+            {t(before ? 'eventDelete.refusedAskCallOff' : 'eventDelete.refusedAskEnd', ask)}
+          </Text>
+        )
+      }
+      keep={{ label: t('eventDelete.keep'), testID: 'events.deleteRefusedKeep' }}
+      confirm={
+        manages
+          ? {
+              label: t(before ? 'eventEnd.callOff' : 'eventEnd.endNow'),
+              removes: true,
+              testID: 'events.deleteRefusedGo',
+            }
+          : null
+      }
+      onKeep={onKeep}
+      onConfirm={onVerb}
+      testID="events.deleteRefused"
+    />
   );
 }
 

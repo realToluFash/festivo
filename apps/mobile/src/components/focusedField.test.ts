@@ -35,7 +35,7 @@ describe('the Field a client check hands over (sc-20721)', () => {
     store.fieldFocused(email);
     store.fieldChecked(true);
 
-    expect(checked).toHaveBeenCalledExactlyOnceWith(email, undefined);
+    expect(checked).toHaveBeenCalledExactlyOnceWith(email, undefined, false);
   });
 
   it('hands nothing on a later focus once a landed check has handed its Field', () => {
@@ -57,7 +57,7 @@ describe('the Field a client check on a picker hands over (sc-21232)', () => {
     store.fieldChecked(true, type);
     store.fieldFocused(field('name'));
 
-    expect(checked).toHaveBeenCalledExactlyOnceWith(type, undefined);
+    expect(checked).toHaveBeenCalledExactlyOnceWith(type, undefined, false);
   });
 
   it('hands over what to call once that Field is in view (sc-43907)', async () => {
@@ -69,7 +69,7 @@ describe('the Field a client check on a picker hands over (sc-21232)', () => {
 
     store.fieldChecked(true, type, inView);
 
-    expect(checked).toHaveBeenCalledExactlyOnceWith(type, inView);
+    expect(checked).toHaveBeenCalledExactlyOnceWith(type, inView, false);
   });
 });
 

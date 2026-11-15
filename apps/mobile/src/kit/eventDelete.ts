@@ -1,14 +1,26 @@
 import { ApiError } from '@soirely/api-client';
-import { roleHolds, typedNameMatches } from '@soirely/domain';
+import { type EventPhase, endLabel, roleHolds, typedNameMatches } from '@soirely/domain';
 
 /** Delete event is offered only to a role that holds Create events on it (sc-3592, sc-29914). */
 export function offersDelete(event: { permissions: readonly string[] } | null): boolean {
   return event != null && roleHolds(event, 'events.create');
 }
 
+/** With a guest Invited, Delete event opens on the page's own Call off or End now (sc-14445); once Finished, the event is deleted as before, read off the phase the page shows. */
+export function refusedVerb(
+  event: { startsAt: string },
+  phase: EventPhase,
+  now: Date,
+  refused: boolean,
+): 'callOff' | 'endNow' | null {
+  return refused ? endLabel(event, phase, now) : null;
+}
+
 export type DeleteAnswer =
   | { kind: 'deleted' }
   | { kind: 'mismatch'; typed: string; current?: string }
+  /** A guest made Invited since the screen opened (sc-14445): the refusal is said in the screen's own words, never the 409's. */
+  | { kind: 'refused' }
   | { kind: 'failed'; typed: string; error: unknown };
 
 export interface DeletesEvents {
@@ -31,6 +43,8 @@ export async function deleteEvent(
 
     return { kind: 'deleted' };
   } catch (error) {
+    if (error instanceof ApiError && error.is('event_call_off_first')) return { kind: 'refused' };
+
     const nameRefused =
       error instanceof ApiError &&
       (error.problem.violations ?? []).some((one) => one.propertyPath === 'name');

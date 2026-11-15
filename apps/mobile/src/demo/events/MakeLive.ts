@@ -11,6 +11,8 @@ export const MAKE_LIVE_STATES = [
   'makeLiveNotMade',
   'makeLiveHost',
   'makeLiveHostBlank',
+  'makeLiveStillNoHost',
+  'makeLiveNowHosted',
   'makeLiveChanged',
   'makeLiveCannotSend',
   'makeLiveOffer',
@@ -28,6 +30,7 @@ export const MAKE_LIVE_STATES = [
   'makeLiveOfferRefused',
   'makeLiveOfferForbidden',
   'makeLiveEndPassed',
+  'makeLivePlanLimit',
   'makeLiveNoOffer',
   'madeLive',
 ] as const;
@@ -49,6 +52,13 @@ export interface LiveSeed {
 
 const HOSTED: LiveSeed = { event: MAKE_LIVE_EVENT, hosts: ['Bisi Akindele'], live: false };
 const HOSTED_LIVE: LiveSeed = { ...HOSTED, live: true };
+/** Host 1 as typed before somebody else's save (sc-22143's 412), and the hosts that save gave it. */
+export const KEPT_HOST = 'Bisi Akindele';
+const HOSTED_MEANWHILE = ['Bisi Akindele', 'Kola Mensah'];
+
+/** A sample plan and its figure: today's API has no limit (`UnlimitedActiveEvents`), so neither comes from the product. */
+export const PLAN_LIMIT = { plan: 'Free', count: 3 } as const;
+
 const NO_OFFER: LiveSeed = { event: EMPTY_EVENT, hosts: ['Fundación Lucía'], live: false };
 
 const SEEDS: Record<MakeLiveState, LiveSeed> = {
@@ -57,6 +67,8 @@ const SEEDS: Record<MakeLiveState, LiveSeed> = {
   makeLiveNotMade: HOSTED,
   makeLiveHost: { event: MAKE_LIVE_EVENT, hosts: [], live: false },
   makeLiveHostBlank: { event: MAKE_LIVE_EVENT, hosts: [], live: false },
+  makeLiveStillNoHost: { event: MAKE_LIVE_EVENT, hosts: [], live: false },
+  makeLiveNowHosted: { event: MAKE_LIVE_EVENT, hosts: HOSTED_MEANWHILE, live: false },
   makeLiveChanged: HOSTED_LIVE,
   makeLiveCannotSend: HOSTED,
   makeLiveOffer: HOSTED_LIVE,
@@ -74,6 +86,7 @@ const SEEDS: Record<MakeLiveState, LiveSeed> = {
   makeLiveOfferRefused: HOSTED_LIVE,
   makeLiveOfferForbidden: HOSTED_LIVE,
   makeLiveEndPassed: { event: PASSED_EVENT, hosts: null, live: false },
+  makeLivePlanLimit: HOSTED,
   makeLiveNoOffer: NO_OFFER,
   madeLive: { ...NO_OFFER, live: true },
 };
@@ -342,13 +355,24 @@ export function creditsOf(reach: Reach): Credits {
 
 export interface HostAsk {
   error: string | null;
+  /** What was typed before the answer came back, still in the box. */
+  kept?: string;
 }
 
+/** sc-22143's 412: somebody else saved first, and the event either still has no host or has one now. */
+export type ChangedMeanwhile = 'stillNoHost' | 'nowHosted';
+
 export type Turn =
-  | { at: 'question'; making: boolean; failed: boolean; host: HostAsk | null }
+  | {
+      at: 'question';
+      making: boolean;
+      failed: boolean;
+      host: HostAsk | null;
+      changed: ChangedMeanwhile | null;
+    }
   | { at: 'offer'; sending: boolean; failed: boolean }
   | { at: 'stopped'; why: 'nobody' | 'forbidden' }
-  | { at: 'told'; why: 'endPassed' | 'changed' }
+  | { at: 'told'; why: 'endPassed' | 'planLimit' | 'changed' }
   | { at: 'closed' };
 
 export interface MakeLive {
@@ -358,7 +382,13 @@ export interface MakeLive {
 }
 
 const CLOSED: Turn = { at: 'closed' };
-const QUESTION: Turn = { at: 'question', making: false, failed: false, host: null };
+const QUESTION: Turn = {
+  at: 'question',
+  making: false,
+  failed: false,
+  host: null,
+  changed: null,
+};
 const ASKS_HOST: Turn = { ...QUESTION, host: { error: null } };
 const OFFER: Turn = { at: 'offer', sending: false, failed: false };
 const DRAFT = (turn: Turn): MakeLive => ({ turn, live: false, toast: null });
@@ -370,6 +400,12 @@ const STARTS: Record<MakeLiveState, MakeLive> = {
   makeLiveNotMade: DRAFT({ ...QUESTION, failed: true }),
   makeLiveHost: DRAFT(ASKS_HOST),
   makeLiveHostBlank: DRAFT({ ...QUESTION, host: { error: makeLiveHostError('', t) } }),
+  makeLiveStillNoHost: DRAFT({
+    ...QUESTION,
+    host: { error: null, kept: KEPT_HOST },
+    changed: 'stillNoHost',
+  }),
+  makeLiveNowHosted: DRAFT({ ...QUESTION, changed: 'nowHosted' }),
   makeLiveChanged: LIVE_NOW({ at: 'told', why: 'changed' }),
   makeLiveCannotSend: DRAFT(QUESTION),
   makeLiveOffer: LIVE_NOW(OFFER),
@@ -387,6 +423,7 @@ const STARTS: Record<MakeLiveState, MakeLive> = {
   makeLiveOfferRefused: LIVE_NOW({ at: 'stopped', why: 'nobody' }),
   makeLiveOfferForbidden: LIVE_NOW({ at: 'stopped', why: 'forbidden' }),
   makeLiveEndPassed: DRAFT({ at: 'told', why: 'endPassed' }),
+  makeLivePlanLimit: DRAFT({ at: 'told', why: 'planLimit' }),
   makeLiveNoOffer: DRAFT(QUESTION),
   madeLive: { turn: CLOSED, live: true, toast: 'madeLive' },
 };
@@ -420,7 +457,7 @@ export function reduceMakeLive(s: MakeLive, action: LiveAction, reach: Reach): M
       if (turn.at !== 'question' || turn.making) return s;
       if (turn.host != null && action.hostError != null)
         return { ...s, turn: { ...turn, host: { error: action.hostError } } };
-      return { ...s, turn: { ...turn, making: true, failed: false } };
+      return { ...s, turn: { ...turn, making: true, failed: false, changed: null } };
     case 'typed':
       return turn.at === 'question' && turn.host?.error != null
         ? { ...s, turn: { ...turn, host: { error: null } } }
@@ -457,6 +494,8 @@ export interface LiveAlert {
   credits: Credits;
   failedLast: string | null;
   host: HostAsk | null;
+  /** Who hosts it now, one per line, when somebody else gave it a host meanwhile. */
+  hostsNow: readonly string[] | null;
   keep: { label: string; off: boolean };
   confirm: { label: string; busy: string | undefined } | null;
 }
@@ -470,9 +509,34 @@ const PLAIN = {
   credits: NO_CREDITS,
   failedLast: null,
   host: null,
+  hostsNow: null,
 } as const;
 
-export function liveAlertOf(turn: Turn, reach: Reach, name: string): LiveAlert | null {
+const CHANGED_WORDS: Record<ChangedMeanwhile, string> = {
+  stillNoHost: W.changedElsewhere,
+  nowHosted: LIVE.notSavedChanged,
+};
+
+function toldWords(why: 'endPassed' | 'planLimit' | 'changed'): { title: string; line: string } {
+  switch (why) {
+    case 'endPassed':
+      return { title: LIVE.notMadeLive, line: W.endPassed };
+    case 'planLimit':
+      return {
+        title: sayLive.planLimit(PLAN_LIMIT.plan, PLAN_LIMIT.count),
+        line: LIVE.planLimitStays,
+      };
+    case 'changed':
+      return { title: LIVE.changedTitle, line: LIVE.nowLive };
+  }
+}
+
+export function liveAlertOf(
+  turn: Turn,
+  reach: Reach,
+  name: string,
+  hosts: readonly string[] = [],
+): LiveAlert | null {
   const close = { label: LIVE.close, off: false };
 
   switch (turn.at) {
@@ -484,8 +548,13 @@ export function liveAlertOf(turn: Turn, reach: Reach, name: string): LiveAlert |
         turn: 'question',
         title: sayLive.confirmTitle(name),
         line: LIVE.confirmLine,
-        failed: turn.failed ? LIVE.failed : null,
+        failed: turn.failed
+          ? LIVE.failed
+          : turn.changed == null
+            ? null
+            : CHANGED_WORDS[turn.changed],
         host: turn.host,
+        hostsNow: turn.changed === 'nowHosted' ? hosts : null,
         keep: { label: LIVE.notYet, off: turn.making },
         confirm: { label: LIVE.makeLive, busy: turn.making ? LIVE.making : undefined },
       };
@@ -519,8 +588,7 @@ export function liveAlertOf(turn: Turn, reach: Reach, name: string): LiveAlert |
       return {
         ...PLAIN,
         turn: 'told',
-        title: turn.why === 'endPassed' ? LIVE.notMadeLive : LIVE.changedTitle,
-        line: turn.why === 'endPassed' ? W.endPassed : LIVE.nowLive,
+        ...toldWords(turn.why),
         alert: true,
         keep: close,
         confirm: turn.why === 'endPassed' ? { label: W.changeDates, busy: undefined } : null,

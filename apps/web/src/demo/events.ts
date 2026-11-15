@@ -69,6 +69,12 @@ export const CURRENCIES: Record<Currency, string> = {
   MXN: 'Mexican peso',
 };
 
+export const currencyLabel = (code: Currency): string => `${code} · ${CURRENCIES[code]}`;
+
+export const CURRENCY_CHOICES: readonly (readonly [Currency, string])[] = (
+  Object.keys(CURRENCIES) as Currency[]
+).map((code) => [code, currencyLabel(code)]);
+
 export const TYPE_WORDS: Record<EventType, string> = {
   wedding: 'Wedding',
   birthday: 'Birthday',
@@ -476,8 +482,11 @@ export const EVENT_WORDS = {
   guestsBlocked: 'Guests can’t be invited until this event is live.',
   makeLive: 'Make live',
   endPassed: 'This event’s end has passed, so it cannot be made live. Change its dates first.',
+  endPassedReader:
+    'This event’s end has passed, so it cannot be made live. Someone who can edit this event can change its dates.',
   changeDates: 'Change dates',
   nextResume: 'Paused. Guests can’t reply or change anything until you resume it.',
+  nextResumeReader: 'Paused. Guests can’t reply or change anything until it is resumed.',
   resume: 'Resume',
   resumed: (name: string) => `${name} is live again.`,
   allPassed: 'Nothing coming up. Every date on this event has passed.',
@@ -627,6 +636,10 @@ export const EVENT_WORDS = {
   accepted: 'JPEG, PNG, WebP or HEIC, up to 15 MB, at least 1200 × 675 pixels.',
   refusedDimensions:
     'That photo is smaller than 1200 × 675 pixels, so it would look blurred. Choose a larger one.',
+  refusedType: 'That file is not a photo we can use. Choose a JPEG, PNG, WebP or HEIC.',
+  refusedSize: 'That photo is over 15 MB. Choose a smaller one.',
+  uploadFailed: 'The photo did not upload. Try again.',
+  uploading: 'Uploading…',
   changePhoto: 'Change photo',
   position: 'Photo position',
   top: 'Top',
@@ -1008,6 +1021,7 @@ export type ListState =
   | 'noGuests'
   | 'replyLands'
   | 'noGuestsRead'
+  | 'draftsReader'
   | 'tileInvited'
   | 'tileReplied';
 
@@ -1034,6 +1048,7 @@ const LIST_STATES: readonly ListState[] = [
   'noGuests',
   'replyLands',
   'noGuestsRead',
+  'draftsReader',
   'tileInvited',
   'tileReplied',
 ];
@@ -1060,6 +1075,8 @@ export interface ListStart {
   replyLands: boolean;
   /** Without guests.read, no guest numbers anywhere (sc-3786). */
   readsGuests: boolean;
+  /** sc-50996: a Can view Member, without events.manage, reads the card's line and is offered no step. */
+  reads: boolean;
   tile: 'invited' | 'replied' | null;
   failed: boolean;
   moreFailed: boolean;
@@ -1088,6 +1105,7 @@ export function listStart(state: ListState | null): ListStart {
     noGuests: false,
     replyLands: false,
     readsGuests: true,
+    reads: false,
     tile: null,
     failed: false,
     moreFailed: false,
@@ -1110,6 +1128,8 @@ export function listStart(state: ListState | null): ListStart {
       return { ...rest, tab: 'past', emptied: 'past' };
     case 'drafts':
       return { ...rest, tab: 'drafts' };
+    case 'draftsReader':
+      return { ...rest, tab: 'drafts', reads: true };
     case 'past':
       return { ...rest, tab: 'past' };
     case 'pastMore':
@@ -1154,7 +1174,16 @@ export function listStart(state: ListState | null): ListStart {
 }
 
 export type PhaseState =
-  'draft' | 'draftPast' | 'live' | 'now' | 'paused' | 'finished' | 'calledOff' | 'photo';
+  | 'draft'
+  | 'draftPast'
+  | 'draftPastReader'
+  | 'live'
+  | 'now'
+  | 'paused'
+  | 'pausedReader'
+  | 'finished'
+  | 'calledOff'
+  | 'photo';
 
 export type EditState =
   | 'dates'
@@ -1185,6 +1214,10 @@ export type EditState =
   | 'cover'
   | 'coverRefused'
   | 'coverPhoto'
+  | 'coverUploading'
+  | 'coverPhotoUploading'
+  | 'coverChangeRefused'
+  | 'coverSaveRefused'
   | 'replyBy'
   | 'replyByEmpty'
   | 'replyByError'
@@ -1233,9 +1266,11 @@ export type EventStateName =
 export const EVENT_STATES: Record<EventStateName, string> = {
   draft: 'evt-draft-4',
   draftPast: 'evt-shower-2',
+  draftPastReader: 'evt-shower-2',
   live: 'evt-wed-4',
   now: 'evt-wed-4',
   paused: 'evt-party-2',
+  pausedReader: 'evt-party-2',
   finished: 'evt-wed-4',
   calledOff: 'evt-off',
   photo: 'evt-wed-4',
@@ -1270,6 +1305,10 @@ export const EVENT_STATES: Record<EventStateName, string> = {
   cover: 'evt-wed-4',
   coverRefused: 'evt-wed-4',
   coverPhoto: 'evt-wed-4',
+  coverUploading: 'evt-wed-4',
+  coverPhotoUploading: 'evt-wed-4',
+  coverChangeRefused: 'evt-wed-4',
+  coverSaveRefused: 'evt-wed-4',
   replyBy: 'evt-wed-4',
   replyByEmpty: 'evt-draft-4',
   replyByError: 'evt-wed-4',
@@ -1333,6 +1372,11 @@ export const EVENT_STATES: Record<EventStateName, string> = {
   ...MAKE_LIVE_EVENTS,
 };
 
+/** sc-50996: the event's page as a Can view Member, who holds events.read without events.manage. */
+export function readsOnly(state: EventStateName | null): boolean {
+  return state === 'draftPastReader' || state === 'pausedReader';
+}
+
 export function eventStateOf(value: string | null): EventStateName | null {
   return value != null && Object.hasOwn(EVENT_STATES, value) ? (value as EventStateName) : null;
 }
@@ -1389,6 +1433,10 @@ export function partOf(state: EventStateName | null): Part | null {
     case 'cover':
     case 'coverRefused':
     case 'coverPhoto':
+    case 'coverUploading':
+    case 'coverPhotoUploading':
+    case 'coverChangeRefused':
+    case 'coverSaveRefused':
       return 'cover';
     case 'replyBy':
     case 'replyByEmpty':
@@ -1401,9 +1449,15 @@ export function partOf(state: EventStateName | null): Part | null {
   }
 }
 
+/** The states drawn on a second event as well: Dates on the draft whose end has passed, where Change dates lands (sc-48602). */
+export const ALSO_DRAWN_ON: Partial<Record<EventStateName, readonly string[]>> = {
+  dates: ['evt-shower-2'],
+};
+
 /** A state drawn on another event, or one its phase does not allow, opens the page with no state. */
 export function stateFits(state: EventStateName, event: SampleEvent): boolean {
-  if (EVENT_STATES[state] !== event.id) return false;
+  if (EVENT_STATES[state] !== event.id && !(ALSO_DRAWN_ON[state]?.includes(event.id) ?? false))
+    return false;
 
   const now = clockOf(state);
   const manage = manageOf(event, now);
@@ -1485,6 +1539,7 @@ export const EVENTS_PAGES: readonly { name: string; states: readonly DemoLink[] 
     states: [
       list(null, 'Upcoming, the soonest as the card'),
       list('drafts', 'Drafts, the soonest with its dates passed'),
+      list('draftsReader', 'Drafts, as a Can view Member: its dates passed, no Change dates'),
       list('past', 'Past, a page of ten'),
       list('pastMore', 'Past, after Show more'),
       list('pastFailed', 'Past, More finished events did not load'),
@@ -1504,8 +1559,25 @@ export const EVENTS_PAGES: readonly { name: string; states: readonly DemoLink[] 
     ],
   },
   {
-    name: 'New event, its top once the band has gone (sc-39509)',
-    states: [{ to: '/demo/events/new', name: 'New event: ‹ Events and the bell, then the title' }],
+    name: 'New event, its top (sc-39509) and its form (sc-48607)',
+    states: [
+      {
+        to: '/demo/events/new',
+        name: 'New event, empty: ‹ Events and the bell, the title, the form',
+      },
+      { to: '/demo/events/new?state=filled', name: 'Filled in' },
+      { to: '/demo/events/new?state=refused', name: 'Four fields refused at once' },
+      { to: '/demo/events/new?state=creating', name: 'Creating…, the fields held' },
+      { to: '/demo/events/new?state=notCreated', name: 'Not created, the form kept' },
+      { to: '/demo/events/new?state=server', name: 'The server refuses the time zone' },
+      { to: '/demo/events/new?state=offline', name: 'Offline: not created' },
+      { to: '/demo/events/new?state=leave', name: 'Leaving with something typed' },
+      { to: '/demo/events/new?state=moved', name: 'The end moved with the start' },
+      { to: '/demo/events/new?state=skipped', name: 'A start the clocks skip' },
+      { to: '/demo/events/new?state=created', name: 'Created, opening the event' },
+      { to: '/demo/events/new?state=photo', name: 'With a photo chosen' },
+      { to: '/demo/events/new?state=photoRefused', name: 'Created, its photo refused' },
+    ],
   },
   {
     name: 'Searching and filtering',
@@ -1524,9 +1596,11 @@ export const EVENTS_PAGES: readonly { name: string; states: readonly DemoLink[] 
     states: [
       on('draft', 'Draft'),
       on('draftPast', 'Draft, its dates passed'),
+      on('draftPastReader', 'Draft, its dates passed, as a Can view Member: no Change dates'),
       on('live', 'Live'),
       on('now', 'Happening now'),
       on('paused', 'Paused'),
+      on('pausedReader', 'Paused, as a Can view Member: no Resume'),
       on('finished', 'Finished'),
       on('calledOff', 'Called off'),
       on('photo', 'Live, with a cover photo'),
@@ -1550,6 +1624,10 @@ export const EVENTS_PAGES: readonly { name: string; states: readonly DemoLink[] 
     name: 'Dates and venue, in place',
     states: [
       on('dates', 'Dates, opened'),
+      {
+        to: '/demo/events/evt-shower-2?state=dates',
+        name: 'Dates, opened on a draft whose end has passed (sc-48602)',
+      },
       on('datesChanged', 'Dates, the start moved'),
       on('datesError', 'Dates, the end before the start'),
       on('datesReplyBy', 'Dates, the start on the Reply by day (sc-3780)'),
@@ -1590,6 +1668,10 @@ export const EVENTS_PAGES: readonly { name: string; states: readonly DemoLink[] 
       on('cover', 'Cover, the default'),
       on('coverRefused', 'Cover, a photo refused'),
       on('coverPhoto', 'Cover, a photo'),
+      on('coverUploading', 'Cover, a photo uploading onto the default cover'),
+      on('coverPhotoUploading', 'Cover, a new photo uploading over the photo'),
+      on('coverChangeRefused', 'Cover, Change photo refused: the photo stays'),
+      on('coverSaveRefused', 'Cover, the save refused by the server'),
     ],
   },
   {

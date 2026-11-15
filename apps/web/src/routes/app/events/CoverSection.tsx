@@ -24,7 +24,8 @@ import { useDialogKeys } from '../../../dialogFocus.ts';
 import { offButton } from '../../../offButton.ts';
 import { usePhoneWidth } from '../../../phoneWidth.ts';
 import { type CoverPhoto, EventCoverImage } from './EventCoverImage.tsx';
-import { checkCoverPick, discardCoverUpload, refusalOf } from './coverPhoto.ts';
+import { checkCoverPick } from '../../../coverPick.ts';
+import { discardCoverUpload, refusalOf } from './coverPhoto.ts';
 
 /** What Use this photo saves: a new photo when `upload` is set, and always the position and description. */
 export type CoverUse = {

@@ -237,12 +237,14 @@ describe('the step: after Yes, before Check and send', () => {
     expect(within(kitchenRow()).queryByText('You')).toBeNull();
   });
 
-  it('Back goes to the three answers with Yes focused, and Yes comes back with every pick', async () => {
+  it('Back goes to Who’s coming with you?, and Next comes back with every pick (sc-48740)', async () => {
     await guest('kitchen_picked');
 
     fireEvent.click(button('Back'));
-    expect(document.activeElement).toBe(button('Yes, I’ll be there'));
-    fireEvent.click(button('Yes, I’ll be there'));
+    expect(document.activeElement).toBe(
+      screen.getByRole('heading', { name: 'Who’s coming with you?' }),
+    );
+    fireEvent.click(button('Next'));
     expect(document.activeElement).toBe(heading());
     expect(
       within(card('You'))
@@ -388,6 +390,7 @@ describe('Check and send, For the kitchen', () => {
 
     fireEvent.click(button('Change my answer'));
     fireEvent.click(button(/^Yes, I’ll be there/u));
+    fireEvent.click(button('Next'));
     expect(
       within(card('You')).getByText('Last changed by you on Tuesday, October 27.'),
     ).toBeDefined();

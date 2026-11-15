@@ -1,9 +1,10 @@
+import { sharePercent } from '@soirely/domain';
 import { createInstance } from 'i18next';
 import { describe, expect, it } from 'vitest';
 
 import en from '../i18n/locales/en.json';
 import { ARRIVED_AT } from './today/arrived.ts';
-import { INVITES_NOT_SENT, momentOf, railAt, repliesOf, sayIn, sharePercent } from './today.ts';
+import { INVITES_NOT_SENT, momentOf, planGuests, railAt, repliesOf, sayIn } from './today.ts';
 
 const i18n = createInstance();
 void i18n.init({
@@ -132,9 +133,9 @@ describe('the event day', () => {
 describe('each event’s replies line, from the guests Events counts (sc-23284)', () => {
   it('reads coming and the share replied for each event, and nothing for a draft', () => {
     expect(momentOf('plan', us, t).events.map(({ ready }) => ready)).toEqual([
-      { words: '96 coming · 82% replied', percent: 82 },
-      { words: '31 coming · 63% replied', percent: 63 },
-      { words: '20 coming · 58% replied', percent: 58 },
+      { words: '96 coming · 82% replied', percent: 82, track: true },
+      { words: '31 coming · 63% replied', percent: 63, track: true },
+      { words: '20 coming · 58% replied', percent: 58, track: true },
       null,
     ]);
     expect(repliesOf('draft')).toBeNull();
@@ -153,8 +154,8 @@ describe('the planning day before the party’s invitations go out (?invites=non
 
   it('reads Invitations not sent on the party, with no bar, and the others as before', () => {
     expect(notSent.events.map(({ ready }) => ready)).toEqual([
-      { words: '96 coming · 82% replied', percent: 82 },
-      { words: '31 coming · 63% replied', percent: 63 },
+      { words: '96 coming · 82% replied', percent: 82, track: true },
+      { words: '31 coming · 63% replied', percent: 63, track: true },
       { words: 'Invitations not sent', percent: 0 },
       null,
     ]);
@@ -166,6 +167,55 @@ describe('the planning day before the party’s invitations go out (?invites=non
 
   it('changes only the party’s line: Needs you is the timeline’s, whoever has been invited', () => {
     expect(notSent.needs).toEqual(momentOf('plan', us, t).needs);
+  });
+});
+
+describe('the planning day with the party invited and nobody replied (?invites=unanswered)', () => {
+  const unanswered = momentOf('plan', us, t, { guests: planGuests('unanswered', undefined) });
+
+  it('reads 0 coming · 0% replied on the party, and the others as before', () => {
+    expect(unanswered.events.map(({ ready }) => ready)).toEqual([
+      { words: '96 coming · 82% replied', percent: 82, track: true },
+      { words: '31 coming · 63% replied', percent: 63, track: true },
+      { words: '0 coming · 0% replied', percent: 0, track: true },
+      null,
+    ]);
+  });
+});
+
+describe('no guests.read, and figures that fail to load (?figures=hidden, ?figures=failed)', () => {
+  it.each(['hidden', 'failed'])('shows no line and no bar on any card (%s)', (figures) => {
+    const shown = momentOf('plan', us, t);
+    const none = momentOf('plan', us, t, { guests: planGuests(undefined, figures) });
+
+    expect(none.events.map(({ ready }) => ready)).toEqual([null, null, null, null]);
+    const card = ({ name, dates, count, stage, live }: (typeof shown.events)[number]) => [
+      name,
+      dates,
+      count,
+      stage,
+      live,
+    ];
+
+    expect(none.events.map(card)).toEqual(shown.events.map(card));
+    expect(none.needs).toEqual(shown.needs);
+    expect([none.lead, none.sub]).toEqual([shown.lead, shown.sub]);
+  });
+
+  it.each(['hidden', 'failed'])('names no guest number in the agenda (%s)', (figures) => {
+    const shown = momentOf('plan', us, t);
+    const none = momentOf('plan', us, t, { guests: planGuests(undefined, figures) });
+    const titles = (moment: typeof shown) =>
+      moment.agenda.flatMap(({ items }) => items.map(({ title }) => title));
+
+    expect(titles(shown)[0]).toBe('Reminder goes to the 22 who haven’t replied');
+    expect(titles(none)[0]).toBe('Reminder goes to those who haven’t replied');
+    expect(titles(none).some((title) => /\d/.test(title))).toBe(false);
+    expect(titles(none).slice(1)).toEqual(titles(shown).slice(1));
+  });
+
+  it('wins over ?invites, since no figure reaches the device', () => {
+    expect(planGuests('none', 'hidden')).toEqual({});
   });
 });
 

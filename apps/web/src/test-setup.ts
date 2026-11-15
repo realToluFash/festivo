@@ -6,7 +6,7 @@
  * ends up testing its own harness.
  */
 import { cleanup, configure } from '@testing-library/react';
-import { afterEach } from 'vitest';
+import { afterEach, beforeAll, expect } from 'vitest';
 import { __freshConnection } from '@soirely/domain';
 
 import { __setConfig } from './config.ts';
@@ -33,6 +33,11 @@ await initI18n();
 
 // A loaded CI runner can take more than testing-library's default second to settle a screen.
 configure({ asyncUtilTimeout: 3000 });
+
+// The demo is a lazy chunk that takes longer than that wait to load cold, so a demo suite loads it before its first test.
+beforeAll(async () => {
+  if (expect.getState().testPath?.includes('/src/demo/')) await import('./demo/Demo.tsx');
+}, 60000);
 
 // jsdom lays nothing out, so it has none of these; a step or a page that takes focus asks them.
 Element.prototype.scrollIntoView = function scrollIntoView() {};

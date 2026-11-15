@@ -21,6 +21,8 @@ import {
   replyParts,
 } from './GuestsModel.ts';
 import { GreetAsRow } from './GuestGreetAs.tsx';
+import { GW, NW } from './GuestNeeds.ts';
+import { NeedsRows } from './GuestNeedsParts.tsx';
 import { ChoseNote } from './GuestLanguage.tsx';
 import { BlockHead, DoneLine, GuestCover, type Layout } from './GuestsParts.tsx';
 import {
@@ -34,7 +36,7 @@ import {
 import { REPLY_WORD, W, say } from './GuestsWords.ts';
 import { MessageGlyph } from '../messages/MessageMarks.tsx';
 import { type OptOutRow, optOutRowsOf } from './OptOuts.ts';
-import { MarkSlot } from './ReplyMark.tsx';
+import { MarkSlot } from '../../components/ReplyMark.tsx';
 import { type WhatsAppRow, whatsAppRowOf } from './WhatsAppConsent.ts';
 
 const REOPENED_ON = '2026-11-05';
@@ -116,8 +118,8 @@ export function GuestPage({
   replies: 'closed' | 'reopened' | null;
   replaced: boolean;
   notReplaced: boolean;
-  /** sc-3788: Mark as not invited landed, or the guest replied first (409). */
-  unmarked: 'done' | 'refused' | null;
+  /** sc-3788: Mark as not invited landed, the guest replied first (409), or it failed (sc-46879). */
+  unmarked: 'done' | 'refused' | 'notSaved' | null;
   status: string | null;
   /** The event's Reply by date, or none (sc-3780). */
   replyBy: string | null;
@@ -162,6 +164,7 @@ export function GuestPage({
         nameRef={nameRef}
       />
       {notReplaced && <AlertLine text={W.notReplaced} />}
+      {unmarked === 'notSaved' && <AlertLine text={W.unmarkNotSaved} />}
       {unmarked === 'refused' && g.when != null && (
         <AlertLine text={say.unmarkRefused(g.name, REPLY_WORD[kind], dayWords(g.when, locale))} />
       )}
@@ -201,6 +204,7 @@ export function GuestPage({
         <RowList
           items={[
             { key: 'greetAs', inset: 40, row: <GreetAsRow g={g} /> },
+            { key: 'group', inset: 40, row: <GroupRow g={g} /> },
             ...(owner
               ? [
                   {
@@ -279,6 +283,17 @@ export function GuestPage({
           ]}
         />
       </View>
+      {owner && (
+        <View testID="guest.needs">
+          <BlockHead title={NW.needs} />
+          <NeedsRows
+            people={[
+              { name: g.name, needs: g.needs, guest: true },
+              ...g.companions.map((c) => ({ name: c.name, needs: c.needs, guest: false })),
+            ]}
+          />
+        </View>
+      )}
       {!owner && event.phase === 'draft' && readOnly}
       {event.phase !== 'draft' && (
         <View>
@@ -480,6 +495,24 @@ function WhatsAppRows({
         </View>
       )}
     </View>
+  );
+}
+
+/** sc-5519: the group read-only, for every role that reads the guest; none is No group in Ink 2, as Not set is. */
+function GroupRow({ g }: { g: SampleGuest }) {
+  const name = g.group ?? null;
+  const title = name ?? GW.noGroup;
+
+  return (
+    <Row
+      title={title}
+      line={GW.group}
+      lead={<LineIcon name="users" />}
+      weight={name == null ? 'medium' : 'semibold'}
+      off={name == null}
+      accessibilityLabel={`${GW.group}, ${title}`}
+      testID="guest.group"
+    />
   );
 }
 

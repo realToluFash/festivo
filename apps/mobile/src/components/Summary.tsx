@@ -9,6 +9,7 @@ import {
   type ViewInstance,
 } from 'react-native';
 import { useTranslation } from 'react-i18next';
+import { moreChip } from '@soirely/domain';
 
 import { Initials } from './Initials.tsx';
 import { useReadOut } from './ReadOut.tsx';
@@ -241,6 +242,27 @@ export function StepButton({ label, onPress, testID, ref, busy = false }: StepPr
   );
 }
 
+/** A card's second step, in glass, so the white step stays the card's one filled button. */
+export function GlassStep({ label, onPress, testID, ref, busy = false }: StepProps) {
+  return (
+    <Pressable
+      ref={ref}
+      onPress={busy ? undefined : onPress}
+      style={({ pressed }) => [pressed && !busy && styles.pressed]}
+      accessibilityRole="button"
+      accessibilityLabel={label}
+      accessibilityState={{ disabled: busy, busy }}
+      testID={testID}
+    >
+      <Glass height={tokens.sizeHit} grows style={styles.glassStep}>
+        <Text size={15} weight="semibold" accessible={false} style={styles.white}>
+          {label}
+        </Text>
+      </Glass>
+    </Pressable>
+  );
+}
+
 export function CardSays({
   text,
   size = 24,
@@ -344,8 +366,15 @@ export function Faces({
       {more > 0 && (
         <View style={[styles.ring, ringed, styles.overlap]}>
           <View style={[styles.more, { width: side, height: side, borderRadius: side / 2 }]}>
-            <Text size={13} weight="bold" accessible={false} style={styles.accent}>
-              {`+${more}`}
+            <Text
+              size={13}
+              weight="bold"
+              accessible={false}
+              numberOfLines={1}
+              maxFontSizeMultiplier={1}
+              style={styles.accent}
+            >
+              {moreChip(more)}
             </Text>
           </View>
         </View>
@@ -398,9 +427,9 @@ export function GlassTag({
   testID?: string | undefined;
 }) {
   return (
-    <Glass height={28} style={styles.glassTag} testID={testID}>
+    <Glass height={28} grows style={styles.glassTag} testID={testID}>
       {shape ?? (mark != null && <ShapeMark kind={mark} side={13} ink={tokens.colorInkOnDark} />)}
-      <Text size={13} weight="semibold" numberOfLines={1} style={styles.white}>
+      <Text size={13} weight="semibold" style={[styles.white, styles.glassTagWord]}>
         {word}
       </Text>
     </Glass>
@@ -582,6 +611,7 @@ const styles = StyleSheet.create({
     borderRadius: tokens.sizeHit / 2,
     backgroundColor: tokens.colorCard,
   },
+  glassStep: { justifyContent: 'center', paddingHorizontal: 18 },
   faces: { flexDirection: 'row', alignItems: 'center', marginLeft: -2.5 },
   ring: { backgroundColor: tokens.colorCard },
   overlap: { marginLeft: -14 },
@@ -589,7 +619,15 @@ const styles = StyleSheet.create({
   cardFace: { alignItems: 'center', justifyContent: 'center', backgroundColor: tokens.colorCard },
   glyphRing: { alignItems: 'center', justifyContent: 'center', margin: -RING, overflow: 'hidden' },
   ringFill: { backgroundColor: tokens.colorInkOnDark, opacity: 0.28 },
-  glassTag: { alignSelf: 'flex-start', gap: tokens.spaceXs, paddingLeft: 9, paddingRight: 11 },
+  glassTag: {
+    alignSelf: 'flex-start',
+    flexShrink: 1,
+    gap: tokens.spaceXs,
+    paddingLeft: 9,
+    paddingRight: 11,
+    paddingVertical: tokens.spaceXxs,
+  },
+  glassTagWord: { flexShrink: 1 },
   sunkCard: { borderRadius: 26, backgroundColor: tokens.colorNeutralFill },
   sunkTabs: { height: tokens.sizeHit, borderRadius: 22, backgroundColor: tokens.colorNeutralFill },
   loadingRule: { height: 1, marginLeft: 52, backgroundColor: tokens.colorBorder },

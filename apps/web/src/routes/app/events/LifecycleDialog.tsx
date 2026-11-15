@@ -20,6 +20,7 @@ export function LifecycleDialog<C>({
   tone,
   onGo,
   onClose,
+  onFollow,
 }: {
   id: string;
   asking: Asking<C>;
@@ -32,6 +33,8 @@ export function LifecycleDialog<C>({
   tone: 'primary' | 'danger';
   onGo: () => void;
   onClose: () => void;
+  /** The refusal's link was followed: the dialog closes without taking focus back, as the link's page places it. */
+  onFollow?: () => void;
 }) {
   const { t } = useTranslation();
   const dialog = useRef<HTMLDivElement>(null);
@@ -97,7 +100,12 @@ export function LifecycleDialog<C>({
               <button ref={first} type="button" className="button" onClick={onClose}>
                 {t('eventLive.close')}
               </button>
-              <Link className="button button-primary" to={asking.link.to}>
+              <Link
+                className="button button-primary"
+                to={asking.link.to}
+                state={asking.link.state}
+                onClick={onFollow}
+              >
                 {asking.link.label}
               </Link>
             </>

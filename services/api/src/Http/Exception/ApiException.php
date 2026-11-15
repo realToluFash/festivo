@@ -15,10 +15,10 @@ use Throwable;
 class ApiException extends RuntimeException
 {
     /**
-     * @param list<array{propertyPath: string, message: string, code: string, parameters?: array<string, string>}> $violations each message a key, its slots in parameters
-     * @param array<string, string>                                                                                $headers    Retry-After on a 429, and little else
-     * @param array<string, int|string|list<string>>                                                               $members    extra problem members, such as the permission
-     * @param array<string, int|string>                                                                            $parameters the slots in the message's key
+     * @param list<array{propertyPath: string, message: string, code: string, parameters?: array<string, int|string>}> $violations each message a key, its slots in parameters
+     * @param array<string, string>                                                                                    $headers    Retry-After on a 429, and little else
+     * @param array<string, int|string|list<string>>                                                                   $members    extra problem members, such as the permission
+     * @param array<string, int|string>                                                                                $parameters the slots in the message's key
      */
     public function __construct(
         public readonly ErrorCode $errorCode,
@@ -57,7 +57,7 @@ class ApiException extends RuntimeException
         return new self(ErrorCode::OrganisationTwoFactorRequired, 'access.two_factor_required', [], null, [], ['permission' => $permission->value]);
     }
 
-    /** @param list<array{propertyPath: string, message: string, code: string, parameters?: array<string, string>}> $violations */
+    /** @param list<array{propertyPath: string, message: string, code: string, parameters?: array<string, int|string>}> $violations */
     public static function validation(array $violations, string $message = ''): self
     {
         return new self(ErrorCode::ValidationFailed, $message, $violations);

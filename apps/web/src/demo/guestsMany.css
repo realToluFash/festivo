@@ -1,0 +1,112 @@
+/* sc-3776: the bar and its line dock above the list at a desk, and as a card at the foot of the screen from 320. */
+.gb .gm-said:empty,
+.gb-cleared:empty {
+  display: none;
+}
+
+.gb-cleared .gm-line {
+  box-shadow: none;
+  background: var(--colorInset);
+}
+
+.gb-why {
+  color: var(--colorInkSecondary);
+  font-weight: 500;
+  font-size: 14px;
+}
+
+.gb-note {
+  padding-left: var(--spaceSm);
+}
+
+.gb-count {
+  min-width: 3ch;
+  color: var(--colorInkSecondary);
+  font: 600 14px/1.3 var(--fontFamily);
+  font-variant-numeric: tabular-nums;
+}
+
+.gb-sheet-line {
+  margin-bottom: var(--spaceMd);
+}
+
+.gb-group {
+  display: flex;
+  flex: 1;
+  flex-wrap: wrap;
+  justify-content: space-between;
+  gap: var(--spaceXxs) var(--spaceMd);
+}
+
+.gb-people {
+  color: var(--colorInkSecondary);
+  font-weight: 500;
+}
+
+.gb-new {
+  margin-top: var(--spaceMd);
+}
+
+.gb-goes {
+  display: flex;
+  flex-direction: column;
+  gap: var(--spaceXs);
+  margin: 0;
+  padding-left: var(--spaceLg);
+  color: var(--colorInk);
+  font: 500 15px/1.4 var(--fontFamily);
+}
+
+/* At 320 CSS px the desk reflows into one column (WCAG 2.2 1.4.10), and the bar docks to the foot of the screen with its pills wrapping. */
+@media (width <= 720px) {
+  .today.desk:has(.gb) {
+    flex-direction: column;
+    height: auto;
+    min-height: 100vh;
+  }
+
+  .today.desk:has(.gb) .today-side {
+    width: auto;
+    height: auto;
+    overflow: visible;
+  }
+
+  .today.desk:has(.gb) .desk-main {
+    margin: 0 var(--spaceMd) var(--spaceMd);
+    overflow: visible;
+  }
+
+  .gb.desk-page {
+    padding: var(--spaceXl) var(--spaceLg) var(--space3xl);
+    overflow: visible;
+  }
+
+  .gb .ev-crumb ol,
+  .gb .desk-row {
+    flex-wrap: wrap;
+  }
+
+  .gb .gb-dock {
+    position: fixed;
+    inset: auto var(--spaceMd) var(--spaceMd);
+    z-index: 2;
+    background: none;
+  }
+
+  .gb:has(.gm-bar, .gm-said:not(:empty)) .gm-list {
+    padding-bottom: 240px;
+  }
+
+  .gb .gm-bar,
+  .gb .gm-line {
+    padding: var(--spaceMd);
+  }
+
+  .gb .gm-actions {
+    width: 100%;
+  }
+
+  .gb .gm-actions .desk-text {
+    min-height: var(--sizeHit);
+  }
+}

@@ -244,6 +244,31 @@ describe('Guests, the list (sc-31781)', () => {
     expect(screen.getByRole('button', { name: 'Make live' })).toBeDefined();
   });
 
+  it('tells a reader on a passed Draft who can change its dates (sc-50996)', SLOW, async () => {
+    await guests('draftPastReader');
+
+    expect(
+      screen.getByText(
+        'This event’s end has passed, so it cannot be made live. Someone who can edit this event can change its dates.',
+      ),
+    ).toBeDefined();
+    expect(screen.queryByText(/Change its dates first/u)).toBeNull();
+    expect(screen.queryByRole('button', { name: 'Change dates' })).toBeNull();
+    expect(screen.queryByRole('button', { name: 'Make live' })).toBeNull();
+  });
+
+  it(
+    'keeps a Paused event’s line for a reader, with nothing to press (sc-50996)',
+    SLOW,
+    async () => {
+      await guests('pausedReader');
+
+      expect(screen.getByText('Guests can’t be invited while this event is paused.')).toBeDefined();
+      expect(screen.queryByRole('button', { name: 'Resume' })).toBeNull();
+      expect(screen.queryByRole('button', { name: 'Add guest' })).toBeNull();
+    },
+  );
+
   it('offers Change dates on a Draft whose end has passed, opening its dates', SLOW, async () => {
     const router = await guests('draftPast');
 
@@ -336,11 +361,12 @@ describe('Guests, the card’s words and the view in the address (sc-3772)', () 
     fireEvent.change(box, { target: { value: 'okon' } });
 
     expect(screen.getByText('2 of 156 shown')).toBeDefined();
-    await waitFor(() => expect(router.state.location.search).toBe('?state=inUse&q=okon'), WAIT);
+    await act(() => new Promise((settled) => setTimeout(settled, SEARCH_SETTLES_MS + 100)));
+    expect(router.state.location.search).toBe('?state=inUse&q=okon');
 
     await act(() => router.navigate(-1));
 
-    await waitFor(() => expect(box.value).toBe(''), WAIT);
+    expect(box.value).toBe('');
     expect(screen.queryByText('2 of 156 shown')).toBeNull();
   });
 
@@ -1148,7 +1174,7 @@ describe('Guests, the link and Mark as invited (sc-1526, sc-3788)', () => {
       expect(within(invitation).getByText('Invited by Soirely’s message, Oct 12')).toBeDefined();
       expect(
         within(invitation).getByText(
-          'You can see names, replies and who is invited. Marking guests as invited needs a host or organiser role.',
+          'You can see names, replies and who is invited. Marking guests as invited needs the Lead or Can edit role.',
         ),
       ).toBeDefined();
       expect(within(invitation).queryByRole('button')).toBeNull();
@@ -1289,6 +1315,14 @@ describe('Guests, places for companions (sc-3779)', () => {
     expect(within(column()).getByText('Named by the guest')).toBeDefined();
     expect(within(column()).getByText('1 companion · 1 of 1 named')).toBeDefined();
   });
+
+  it('says how many places are named in the list row, under the guest’s name', SLOW, async () => {
+    await guests('namedByGuest');
+
+    const row = screen.getByRole('link', { name: /^Sophie Laurent, Coming/u });
+
+    expect(within(row).getByText(/· 1 companion · 1 of 1 named$/u)).toBeDefined();
+  });
 });
 
 describe('Guests, needs recorded as facts (sc-3777)', () => {
@@ -1323,6 +1357,34 @@ describe('Guests, needs recorded as facts (sc-3777)', () => {
     expect(within(needs).getByText('Vegetarian')).toBeDefined();
     expect(within(needs).getByRole('heading', { level: 4, name: 'Rui Duarte' })).toBeDefined();
     expect(within(needs).getByText('Sesame')).toBeDefined();
+  });
+
+  it(
+    'says under each person’s needs when the guest last changed them (sc-3778)',
+    SLOW,
+    async () => {
+      await guests('needsChangedByGuest');
+
+      const needs = within(column()).getByRole('region', { name: 'Needs' });
+
+      expect(within(needs).getAllByText('Last changed by the guest on Oct 13.')).toHaveLength(2);
+    },
+  );
+
+  it('drops the guest’s line once a host changes that record (sc-3778)', SLOW, async () => {
+    await guests('needsChangedByHosts');
+
+    const needs = within(column()).getByRole('region', { name: 'Needs' });
+    const rui = within(needs).getByRole('heading', { level: 4, name: 'Rui Duarte' });
+
+    expect(within(needs).getAllByText(/^Last changed by/u)).toHaveLength(1);
+    expect(rui.parentElement?.textContent).toContain('Last changed by the guest on Oct 13.');
+  });
+
+  it('says nothing about who changed needs the hosts entered (sc-3778)', SLOW, async () => {
+    await guests('needsDetails');
+
+    expect(within(column()).queryByText(/^Last changed by/u)).toBeNull();
   });
 
   it('narrows the list with the Dietary notes chip, said on in words', SLOW, async () => {
@@ -1813,4 +1875,154 @@ describe('the numbers on Overview and Events (sc-3786, sc-23284)', () => {
     await act(() => router.navigate('/demo/events/evt-wed-4?area=guests'));
     expect(router.state.location.pathname).toBe('/demo/guests');
   });
+});
+
+describe('Guests, nobody on the list in each phase (sc-50409)', () => {
+  function adds(): HTMLElement[] {
+    return screen
+      .queryAllByRole('button', { name: 'Add guest' })
+      .filter((one) => one.closest('.gs-column') == null);
+  }
+
+  function card(): HTMLElement {
+    return main().querySelector<HTMLElement>('.ev-card-foot')?.parentElement as HTMLElement;
+  }
+
+  it(
+    'offers Add guest and Make live on an empty Draft’s card, and none in the header',
+    SLOW,
+    async () => {
+      await guests('draftEmpty');
+
+      expect(screen.getByText('Draft')).toBeDefined();
+      expect(screen.getByText('No guests yet')).toBeDefined();
+      expect(screen.queryByText('0 on the list')).toBeNull();
+      expect(screen.getByText('Guests can’t be invited until this event is live.')).toBeDefined();
+      expect(adds()).toHaveLength(1);
+      expect(within(card()).getByRole('button', { name: 'Add guest' })).toBeDefined();
+      expect(within(card()).getByRole('button', { name: 'Make live' })).toBeDefined();
+      expect(main().querySelector('.gs-top [data-focus="add"]')).toBeNull();
+    },
+  );
+
+  it(
+    'adds the first guest: the list beside the form, the card reads 1 on the list',
+    SLOW,
+    async () => {
+      await guests('draftEmpty');
+
+      fireEvent.click(within(card()).getByRole('button', { name: 'Add guest' }));
+      const name = await screen.findByRole('textbox', { name: 'Full name' });
+
+      await waitFor(() => expect(document.activeElement).toBe(name), WAIT);
+      fireEvent.change(name, { target: { value: 'Bimpe Adeyemi' } });
+      fireEvent.click(within(column()).getByRole('button', { name: 'Add guest' }));
+
+      expect(screen.getByText('Bimpe Adeyemi added.')).toBeDefined();
+      expect((screen.getByRole('textbox', { name: 'Full name' }) as HTMLInputElement).value).toBe(
+        '',
+      );
+      expect(screen.getByText('1 on the list')).toBeDefined();
+      expect(screen.getByRole('button', { name: 'Make live' })).toBeDefined();
+      expect(adds()).toHaveLength(1);
+      expect(main().querySelector('.gs-top [data-focus="add"]')).not.toBeNull();
+    },
+  );
+
+  it(
+    'puts Change dates beside Add guest on an empty Draft whose end has passed',
+    SLOW,
+    async () => {
+      const router = await guests('draftEmptyPast');
+
+      expect(
+        screen.getByText(
+          'This event’s end has passed, so it cannot be made live. Change its dates first.',
+        ),
+      ).toBeDefined();
+      expect(screen.queryByRole('button', { name: 'Make live' })).toBeNull();
+      expect(adds()).toHaveLength(1);
+      fireEvent.click(within(card()).getByRole('button', { name: 'Change dates' }));
+      await waitFor(
+        () => expect(router.state.location.pathname).toBe('/demo/events/evt-shower-2'),
+        WAIT,
+      );
+    },
+  );
+
+  it(
+    'gives Add guest alone without events.manage, and nothing to add without guests.manage',
+    SLOW,
+    async () => {
+      await guests('draftEmptyHost');
+
+      expect(adds()).toHaveLength(1);
+      expect(screen.queryByRole('button', { name: 'Make live' })).toBeNull();
+
+      cleanup();
+      await guests('draftEmptyViewer');
+
+      expect(screen.getByText('No guests yet')).toBeDefined();
+      expect(screen.getByText('Guests can’t be invited until this event is live.')).toBeDefined();
+      expect(adds()).toHaveLength(0);
+      expect(screen.queryByRole('button', { name: 'Make live' })).toBeNull();
+    },
+  );
+
+  it('gives Make live alone with events.manage and without guests.manage', SLOW, async () => {
+    await guests('draftEmptyEvents');
+
+    expect(screen.getByText('No guests yet')).toBeDefined();
+    expect(screen.getByText('Guests can’t be invited until this event is live.')).toBeDefined();
+    expect(adds()).toHaveLength(0);
+    expect(within(card()).getByRole('button', { name: 'Make live' })).toBeDefined();
+  });
+
+  it('reads as an empty Draft once the last guest is removed and Undo has gone', SLOW, async () => {
+    vi.useFakeTimers({ shouldAdvanceTime: true });
+    try {
+      await guests('draftOneLeft');
+      expect(adds()).toHaveLength(1);
+      expect(within(card()).queryByRole('button', { name: 'Add guest' })).toBeNull();
+
+      fireEvent.click(within(column()).getByRole('button', { name: 'Remove from the list' }));
+      const ask = await screen.findByRole('alertdialog', { name: 'Remove Leila Mansour?' }, WAIT);
+      fireEvent.click(within(ask).getByRole('button', { name: 'Remove' }));
+      const undo = await screen.findByRole('button', { name: 'Undo' }, WAIT);
+
+      act(() => {
+        undo.blur();
+        fireEvent.blur(undo);
+        vi.advanceTimersByTime(11000);
+      });
+      await waitFor(() => expect(screen.queryByRole('button', { name: 'Undo' })).toBeNull(), WAIT);
+
+      expect(screen.getByText('No guests yet')).toBeDefined();
+      expect(adds()).toHaveLength(1);
+      expect(within(card()).getByRole('button', { name: 'Add guest' })).toBeDefined();
+      expect(main().querySelector('.gs-top [data-focus="add"]')).toBeNull();
+    } finally {
+      vi.useRealTimers();
+    }
+  });
+
+  it.each([
+    ['pausedEmpty', 'Guests can’t be invited while this event is paused.'],
+    ['finishedEmpty', 'This event has finished, so guests can’t be invited.'],
+  ])(
+    'keeps %s’s tag and line, says No guests yet, and offers Add guest in the header',
+    SLOW,
+    async (state, line) => {
+      await guests(state);
+
+      expect(screen.getByText(line)).toBeDefined();
+      expect(screen.getByText('No guests yet')).toBeDefined();
+      expect(screen.queryByText(/coming of/)).toBeNull();
+      expect(main().querySelector('.ev-card-foot')).toBeNull();
+      expect(adds()).toHaveLength(1);
+      fireEvent.click(adds()[0] as HTMLElement);
+
+      expect(await screen.findByRole('textbox', { name: 'Full name' })).toBeDefined();
+    },
+  );
 });

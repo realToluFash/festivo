@@ -256,7 +256,11 @@ export function NeedsSection({
                 {NW.privateNote}
                 <span className="gs-optional">{GW.optional}</span>
               </label>
-              <div className={lines.note == null ? 'desk-box' : 'desk-box is-wrong'}>
+              <div
+                className={
+                  lines.note == null ? 'desk-box gs-note-box' : 'desk-box gs-note-box is-wrong'
+                }
+              >
                 <textarea
                   id={noteId}
                   className="gs-note"

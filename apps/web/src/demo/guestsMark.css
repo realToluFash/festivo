@@ -82,13 +82,23 @@
   color: var(--colorBroken);
 }
 
-.gm-row {
-  gap: var(--spaceLg);
+/* The box is its own target, the row's height and 36 wide, so the row beside it can open the guest. */
+.gm-pick {
+  display: flex;
+  align-items: stretch;
+}
+
+.gm-box {
+  display: flex;
+  flex: none;
+  align-items: center;
+  width: 36px;
   cursor: pointer;
 }
 
-.gm-row.is-companion {
-  cursor: default;
+.gm-pick > .gs-row {
+  flex: 1 1 auto;
+  min-width: 0;
 }
 
 .gm-already {

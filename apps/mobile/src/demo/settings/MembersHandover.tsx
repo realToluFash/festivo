@@ -257,7 +257,7 @@ export function HandoverAsk({
       : {
           layer: (
             <MenuLayer
-              at={{ ...menuAt, y: menuAt.y + shift }}
+              at={{ ...menuAt, y: menuAt.y + shift, top: menuAt.top + shift }}
               onClose={closeMenu}
               width={menuAt.width}
               align="start"

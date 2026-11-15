@@ -37,6 +37,8 @@ export interface ListAndPageSpacing {
   column: StyleProp<ViewStyle>;
   listWidth: number;
   between: number;
+  /** On its side, the two columns meet at a rule rather than a gap, each padded inside its own scroll, as Guests' demo draws them. */
+  ruled?: { list: StyleProp<ViewStyle>; page: StyleProp<ViewStyle> };
 }
 
 export interface ListAndPageProps {
@@ -55,11 +57,15 @@ export interface ListAndPageProps {
   pageless?: boolean;
   /** The page's own back, the header's on a phone included; Android's Back and iOS's swipe from the left edge run it too wherever the page is in front. `revealsList: false` when it leads elsewhere, so the swipe shows no list under the page. */
   back: { label: string; onPress: () => void; testID: string; revealsList?: boolean };
+  /** The frame's top already carries the back, so the upright tablet's page draws none of its own. */
+  backInFrame?: boolean;
   spacing: ListAndPageSpacing;
   /** The screen's own `useListAndPageLayout`, so the two never decide apart. */
   kind: LayoutKind;
   /** On its side, the list takes the Settings list's column with the heading at its top, and the page sits beside it (sc-39471). */
   settingsColumn?: boolean;
+  /** On its side, the heading scrolls away at the top of the list's column rather than standing above both. */
+  headingInList?: boolean;
 }
 
 function listBeside(spacing: ListAndPageSpacing) {
@@ -94,15 +100,20 @@ export function ListAndPage({
   pageInFront,
   pageless = false,
   back,
+  backInFrame = false,
   spacing,
   kind,
   settingsColumn = false,
+  headingInList = false,
 }: ListAndPageProps) {
   const { kind: frame } = useLayout();
   const listWidth = useSideListWidth(spacing.listWidth);
   const landscape = kind === 'tabletLandscape';
   const split = landscape && !pageless;
   const inColumn = landscape && settingsColumn;
+  const ruled = split && !inColumn ? spacing.ruled : undefined;
+  const bare = inColumn || ruled != null;
+  const headingAbove = landscape && !inColumn && !headingInList;
   const takesBack = pageTakesBack(kind, pageInFront);
   useSystemBack(takesBack, back.onPress);
   const swipe = useEdgeSwipeBack(takesBack, back.onPress);
@@ -117,30 +128,31 @@ export function ListAndPage({
     <Screen
       edges={bodyEdges(frame)}
       scroll={false}
-      contentStyle={landscape && !inColumn ? spacing.landscape : styles.bare}
+      contentStyle={landscape && !bare ? spacing.landscape : styles.bare}
     >
-      {landscape && !inColumn && (heading || besideHeading) && (
+      {headingAbove && (heading || besideHeading) && (
         <View style={styles.head}>
           <View style={styles.fill}>{heading}</View>
           {besideHeading}
         </View>
       )}
-      <View style={split ? [styles.split, { gap: inColumn ? 0 : spacing.between }] : styles.fill}>
+      <View style={split ? [styles.split, { gap: bare ? 0 : spacing.between }] : styles.fill}>
         <View
           style={[
             split ? { width: listWidth } : styles.fill,
             inColumn && SETTINGS_COLUMN,
+            ruled != null && styles.rule,
             !landscape && pageInFront && !listUnder && styles.behind,
           ]}
         >
           <ScrollColumn
             style={styles.fill}
-            contentContainerStyle={inColumn ? COLUMN : column}
+            contentContainerStyle={inColumn ? COLUMN : (ruled?.list ?? column)}
             refreshControl={listRefresh}
             away={!landscape && pageInFront}
           >
             {(landscape ? pageless : !pageInFront) && <FrameTop />}
-            {(!landscape || inColumn) && heading}
+            {!headingAbove && heading}
             {list}
           </ScrollColumn>
         </View>
@@ -155,10 +167,12 @@ export function ListAndPage({
           <ScrollColumn
             key={pageKey}
             style={styles.fill}
-            contentContainerStyle={inColumn ? [LIST_EDGES.tabletLandscape, column] : column}
+            contentContainerStyle={
+              inColumn ? [LIST_EDGES.tabletLandscape, column] : (ruled?.page ?? column)
+            }
           >
             {!landscape && pageInFront && <FrameTop />}
-            {kind === 'tabletPortrait' && (
+            {kind === 'tabletPortrait' && !backInFrame && (
               <View style={styles.start}>
                 <QuietButton label={back.label} onPress={back.onPress} testID={back.testID} />
               </View>
@@ -172,6 +186,7 @@ export function ListAndPage({
 }
 
 const styles = StyleSheet.create({
+  rule: { borderRightWidth: 1, borderRightColor: tokens.colorBorder },
   fill: { flex: 1, minWidth: 0 },
   bare: { padding: 0, gap: 0 },
   behind: { display: 'none' },

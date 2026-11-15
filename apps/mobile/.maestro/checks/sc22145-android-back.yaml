@@ -25,7 +25,7 @@ appId: host.exp.Exponent
       id: 'eventDuplicate.create'
     timeout: 15000
 - tapOn:
-    id: 'eventDuplicate.start.time'
+    id: 'eventDuplicate.time'
 - tapOn: 'OK'
 - waitForAnimationToEnd
 - takeScreenshot: time-first

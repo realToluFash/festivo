@@ -4,6 +4,7 @@ import { demoWords } from './demoWords.ts';
 import type { ConvoId, MessagesState, Row, Segment } from './messages.ts';
 import { TW } from './messagesToWords.ts';
 import { MW } from './messagesWords.ts';
+import { crowdName } from './sampleNames.ts';
 
 /** Who gets it (sc-3957): conditions on the event's guests, counted live, saved under a name, and resolved when a message goes. */
 export { TW };
@@ -93,99 +94,6 @@ export const SAVED: readonly Saved[] = [
 
 export const BOOK: Book = { groups: GROUPS, saved: SAVED };
 
-const FIRST = [
-  'Ama',
-  'Bruno',
-  'Carmen',
-  'Dayo',
-  'Elena',
-  'Femi',
-  'Gabriel',
-  'Hana',
-  'Ikenna',
-  'Jana',
-  'Kunle',
-  'Leila',
-  'Mateo',
-  'Nadia',
-  'Oscar',
-  'Precious',
-  'Quentin',
-  'Rosa',
-  'Sanjay',
-  'Tolu',
-  'Uche',
-  'Vera',
-  'Wei',
-  'Ximena',
-  'Yusuf',
-  'Zara',
-  'Adwoa',
-  'Bayo',
-  'Clara',
-  'Diego',
-  'Efua',
-  'Farid',
-  'Gloria',
-  'Hugo',
-  'Ivan',
-  'Jide',
-  'Kiran',
-  'Maya',
-  'Nico',
-  'Ola',
-];
-
-const LAST = [
-  'Adebayo',
-  'Afolabi',
-  'Alves',
-  'Amoah',
-  'Banda',
-  'Berger',
-  'Campos',
-  'Diallo',
-  'Eze',
-  'Fernandes',
-  'Gomez',
-  'Haddad',
-  'Ito',
-  'Jensen',
-  'Kamara',
-  'Lambert',
-  'Mendes',
-  'Moreau',
-  'Nwosu',
-  'Ogunde',
-  'Okafor',
-  'Owusu',
-  'Park',
-  'Petrov',
-  'Quaye',
-  'Reyes',
-  'Rossi',
-  'Sato',
-  'Silva',
-  'Soto',
-  'Tanaka',
-  'Torres',
-  'Usman',
-  'Varga',
-  'Weber',
-  'Yamada',
-  'Yilmaz',
-  'Zhou',
-  'Abara',
-  'Nunes',
-];
-
-function nameAt(index: number): string {
-  const first = FIRST[index % FIRST.length] ?? '';
-  const last = LAST[(index + 7 * Math.floor(index / FIRST.length)) % LAST.length] ?? '';
-
-  return `${first} ${last}`;
-}
-
 const one = (
   name: string,
   reply: Reply,
@@ -218,7 +126,7 @@ function populated(): SampleGuest[] {
     Array.from({ length: count }, (_, index) => {
       at += 1;
 
-      return one(nameAt(at - 1), reply, group, index < emails, index >= count - mobiles);
+      return one(crowdName(at - 1), reply, group, index < emails, index >= count - mobiles);
     }),
   );
 

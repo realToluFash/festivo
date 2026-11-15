@@ -21,7 +21,7 @@ function names(all: readonly string[]): string {
 }
 
 export const MW = {
-  selectAll: (count: number) => `Select all ${figure(count)} shown`,
+  selectAll: (count: number) => guests(count, 'Select the 1 shown', 'Select all {n} shown'),
   select: (name: string) => `Select ${name}`,
   selected: (count: number) => `${figure(count)} selected`,
   withCompanions: (count: number) =>
@@ -43,10 +43,11 @@ export const MW = {
   removedMeanwhile: (count: number) => `${figure(count)} not changed: someone else removed them.`,
   failed: 'Nothing changed. We could not reach Soirely.',
   tryAgain: 'Try again',
-  notLive: 'Nothing changed. This event is no longer live, so guests can’t be marked as invited.',
+  notLive: 'Nothing changed. This event is no longer live, so guests cannot be marked as invited.',
   narrowing:
     'You can act on up to 2,000 guests at once. Narrow the list with a tab, a search or a filter, then select again.',
-  theirOwn: 'Add to group and Remove from the list are sc-3776’s, with their own demo to come.',
+  theirOwn:
+    'Add to group and Remove from the list are sc-3776’s, in their own demo at /demo/guests/many.',
   pretend: (count: number) =>
     `Demo only: the sample has fewer guests, so this state counts ${figure(count)} selected.`,
 } as const;

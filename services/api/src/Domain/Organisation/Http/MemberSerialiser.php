@@ -16,7 +16,7 @@ use DateTimeInterface;
 use Psl\Iter;
 use Psl\Vec;
 
-/** Settings > Organisation > Members (sc-67): what an administrator reads. Delivery is support's and is not here. */
+/** Settings > Organisation > Members (sc-67): what an administrator reads. Of delivery, only that an invitation did not arrive (sc-46109); why is support's. */
 final readonly class MemberSerialiser
 {
     /**
@@ -65,11 +65,12 @@ final readonly class MemberSerialiser
     }
 
     /**
-     * @param ?DateTimeImmutable $sentAt when its latest send went, from its delivery record
+     * @param ?DateTimeImmutable $sentAt      when its latest send went, from its delivery record
+     * @param bool               $undelivered InvitationDeliveries::undelivered() names it
      *
      * @return array<string, mixed>
      */
-    public static function invitation(Invitation $invitation, DateTimeImmutable $now, ?DateTimeImmutable $sentAt = null): array
+    public static function invitation(Invitation $invitation, DateTimeImmutable $now, ?DateTimeImmutable $sentAt = null, bool $undelivered = false): array
     {
         $role = $invitation->getRole();
 
@@ -80,6 +81,7 @@ final readonly class MemberSerialiser
             'invitedBy' => self::person($invitation->getInvitedBy()),
             'status' => $invitation->getStatusAt($now)->value,
             'sentAt' => self::at($sentAt ?? $invitation->getCreatedAt()),
+            'undelivered' => $undelivered,
             'expiresAt' => self::at($invitation->getExpiresAt()),
             'acceptedAt' => self::at($invitation->getAcceptedAt()),
             'declinedAt' => self::at($invitation->getDeclinedAt()),

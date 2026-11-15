@@ -5734,6 +5734,25 @@ button.members-row {
   text-underline-offset: 3px;
 }
 
+/* A counted toast (sc-3774): its seconds beside Undo, and at 320 CSS px it spans the screen. */
+.toast.is-counted {
+  gap: var(--spaceXs);
+}
+
+.toast-count {
+  flex: none;
+  min-width: 3ch;
+  font: var(--typeButton);
+  font-variant-numeric: tabular-nums;
+}
+
+@media (width <= 40rem) {
+  .toast.is-counted {
+    width: calc(100% - var(--spaceXl) * 2);
+    max-width: none;
+  }
+}
+
 .toast-undo:hover,
 .toast-close:hover {
   background: var(--colorDarkInset);

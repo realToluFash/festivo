@@ -47,3 +47,10 @@ export function coverRefusalOf(error: unknown, t: (key: string) => string): stri
     t,
   );
 }
+
+/** A cover's save, refused for the role, says so rather than that the photo did not upload (sc-49861). */
+export function coverSaveRefusalOf(error: unknown, t: (key: string) => string): string {
+  return error instanceof ApiError && error.is('permission_required')
+    ? t('eventEdit.forbidden')
+    : coverRefusalOf(error, t);
+}

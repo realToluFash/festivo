@@ -43,6 +43,7 @@ import {
   RefusedAsk,
 } from './EventLifecycle.tsx';
 import { invitedOf, refusalOf, refusedStartOf, usableManage } from './DeleteRefusal.ts';
+import { duplicateStateOf } from './Duplicate.ts';
 import {
   type CardStep,
   type EditPart,
@@ -69,6 +70,7 @@ import {
   sampleEvent,
 } from './EventsSample.ts';
 import { LIVE, W, say } from './EventsWords.ts';
+import { EventNotice } from '../../components/EventNotice.tsx';
 import { NOTE_WORDS, WIDE_NOTE } from './ArrivalNote.ts';
 import { NoteInset } from './NoteInset.tsx';
 import {
@@ -288,7 +290,13 @@ export function EventScreen({
     canChange,
   );
   const [refused, setRefused] = useState(refusedStart != null && !refusedStart.race);
-  const [duplicating, setDuplicating] = useState(state === 'duplicate');
+  const [duplicating, setDuplicating] = useState(duplicateStateOf(state) != null);
+  const [copies, setCopies] = useState(0);
+  const duplicate = () => {
+    setCopies((count) => count + 1);
+    setDuplicating(true);
+  };
+  const [noPhoto, setNoPhoto] = useState(state === 'createdNoPhoto');
   const [muted, setMuted] = useState(state === 'muted');
   const [mute, setMute] = useState<Mute>(
     state === 'muteNotLoaded' ? 'notLoaded' : state === 'muteNotSaved' ? 'notSaved' : 'ok',
@@ -405,11 +413,11 @@ export function EventScreen({
     else if (step.action === 'resume') {
       setEvent({ ...event, status: 'live' });
       if (!(m.untold && m.change.what.includes(MW.pausedItem))) tellOf('tellResume');
-    } else setDuplicating(true);
+    } else duplicate();
   };
   const onManage = (key: ManageKey) => {
     from.current = key;
-    if (key === 'duplicate') setDuplicating(true);
+    if (key === 'duplicate') duplicate();
     else if (key === 'pause') setAsk('pause');
     else if (key === 'callOff') setAsk('callOff');
     else if (key === 'endNow') {
@@ -577,6 +585,7 @@ export function EventScreen({
       live={live.s}
       reach={reach}
       name={event.name}
+      hosts={event.hosts}
       opener={opener}
       onKeep={live.keep}
       onConfirm={live.confirm}
@@ -589,6 +598,23 @@ export function EventScreen({
     />
   );
   const liveSaid = liveToastOf(live.s, reach);
+  const photoNotice = noPhoto && (
+    <EventNotice
+      tone="broken"
+      words={say.createdWithout(W.coverRefused)}
+      actions={
+        <TextAction
+          label={W.upload}
+          glyph="camera"
+          onPress={() => {
+            setNoPhoto(false);
+            openEdit('cover');
+          }}
+          testID="event.createdNoPhoto.cover"
+        />
+      }
+    />
+  );
   const demoNote = live.s.toast === 'queued' && (
     <DemoOnly title={LIVE.demoMessages}>{null}</DemoOnly>
   );
@@ -719,6 +745,7 @@ export function EventScreen({
         card={card}
         left={
           <>
+            {photoNotice}
             {banner}
             {demoNote}
             {thankYou}
@@ -738,6 +765,7 @@ export function EventScreen({
         }
         stacked={
           <>
+            {photoNotice}
             {banner}
             {demoNote}
             {thankYou}
@@ -838,14 +866,16 @@ export function EventScreen({
             onDeleted={pressDelete}
           />
           <DuplicateScreen
+            key={copies}
             open={duplicating}
             event={event}
             locale={locale}
+            start={copies === 0 ? duplicateStateOf(state) : null}
             opener={opener}
             onClose={() => setDuplicating(false)}
-            onCreated={() => {
+            onCreated={(copy) => {
               setDuplicating(false);
-              setTold(W.created);
+              setEvent(copy);
             }}
           />
         </>

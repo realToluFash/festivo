@@ -86,7 +86,7 @@ describe('Guests, Send invitations (sc-3971)', () => {
     async () => {
       const router = await guests('inviteList');
 
-      expect(header()).toEqual(['Export', 'Send invitations', 'Add guest']);
+      expect(header()).toEqual(['Groups', 'Export', 'Send invitations', 'Add guest']);
       fireEvent.click(screen.getByRole('button', { name: 'Send invitations' }));
 
       await composer(/^Not yet invited · 14/u);
@@ -140,7 +140,7 @@ describe('Guests, Send invitations (sc-3971)', () => {
   it('drops Send invitations once nobody is left to invite', SLOW, async () => {
     await guests('inviteNoneLeft');
 
-    expect(header()).toEqual(['Export', 'Add guest']);
+    expect(header()).toEqual(['Groups', 'Export', 'Add guest']);
     expect(screen.getByText('96 coming of 156 invited')).toBeDefined();
     expect(screen.getByRole('button', { name: 'No reply · 35' })).toBeDefined();
     expect(screen.getAllByText('Invited by Soirely’s message, Nov 3')).toHaveLength(14);
@@ -150,7 +150,7 @@ describe('Guests, Send invitations (sc-3971)', () => {
     seed.companionAlone = true;
     await guests('inviteNoneLeft');
 
-    expect(header()).toEqual(['Export', 'Add guest']);
+    expect(header()).toEqual(['Groups', 'Export', 'Add guest']);
     fireEvent.click(screen.getByRole('button', { name: /^No reply · /u }));
     expect(
       within(screen.getByRole('menu')).getByRole('menuitemradio', { name: /^Not yet invited/u })

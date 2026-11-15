@@ -28,7 +28,7 @@ import { useModalOpen } from '../updateRequired.ts';
 import { FocusEdge, focusEdge, useFocusEdge, useHeld, useRefused } from './Field.tsx';
 import { controlTaken } from './focusedField.ts';
 import { useScreenReaderOn } from './screenReaderFocus.ts';
-import { LIFT } from './keyboardWatch.ts';
+import { LIFT, blurNatively } from './keyboardWatch.ts';
 import { SETTLED_MS, Screen, useFocusOnAnswer } from './Screen.tsx';
 import { SilentWindowName, WINDOW_ARRIVES_MS, useUnnamedWindow } from './Sheet.tsx';
 import { Text, type TextHandle } from './Text.tsx';
@@ -101,6 +101,7 @@ export function ListPicker({
   const ownField = useRef<ViewInstance>(null);
   const field = pickerRef ?? ownField;
   const [closed, setClosed] = useState<object>();
+  const heldBehind = useRef<ReturnType<typeof TextInput.State.currentlyFocusedInput>>(null);
   const [search, setSearch] = useState('');
   const searchNameID = useId();
   const searching = useHeld(false, search, undefined, setSearch);
@@ -120,8 +121,14 @@ export function ListPicker({
   );
 
   // Android hands TalkBack's focus to whichever field holds input focus, not to the picker that opened the menu (sc-43908).
+  // A field still holding input focus is what TalkBack says first as the window goes (sc-44356). Blurred under the menu's window its keyboard hide does nothing; at the tap TalkBack said "keyboard hidden" (qa #50794), and at a Back straight after it the hide landed once the screen had its window back (qa #51835). Natively, since the menu's search, once focused, is the field JS counts as focused.
+  const letGoHeld = () => {
+    if (heldBehind.current != null) blurNatively(heldBehind.current);
+    heldBehind.current = null;
+  };
   const close = () => {
     if (Platform.OS === 'android') setClosed({});
+    letGoHeld();
     setOpen(false);
   };
   // Until the menu's window takes Back, Android gives it to the screen beneath, which stepped back or asked to leave (sc-43145).
@@ -168,6 +175,8 @@ export function ListPicker({
         ]}
         onPress={() => {
           controlTaken();
+          if (Platform.OS === 'android' && readerOn)
+            heldBehind.current = TextInput.State.currentlyFocusedInput();
           setClosed(undefined);
           setOpen(true);
         }}
@@ -195,7 +204,10 @@ export function ListPicker({
         animationType={SLIDES_INSIDE ? 'none' : 'slide'}
         supportedOrientations={TURNS_WITH_THE_APP}
         onRequestClose={close}
-        onShow={risen}
+        onShow={() => {
+          letGoHeld();
+          risen();
+        }}
       >
         {Platform.OS === 'android' && <SilentWindowName />}
         {/* A full-screen modal takes the app's view out of the window, so the app's insets stop turning with it. */}

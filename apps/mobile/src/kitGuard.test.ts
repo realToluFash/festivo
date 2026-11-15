@@ -23,6 +23,7 @@ const KIT_STYLES = [
   'portraitContent',
   'landscapeContent',
 ];
+const SHELL_READERS = ['/settingsShell.ts', '/Summary.tsx'];
 const KIT_FIELDS = ['TextField', 'PasswordField', 'CodeField'];
 
 describe('nothing loads react-native whole at run time', () => {
@@ -34,6 +35,22 @@ describe('nothing loads react-native whole at run time', () => {
     expect(
       offenders,
       'Its namespace copy reads PushNotificationIOS, which throws in Expo Go: import the name statically, from a module loaded lazily if need be (src/devReload.ts).',
+    ).toEqual([]);
+  });
+});
+
+describe('a product part reads the shell only where the shell is mounted', () => {
+  it('in no component outside the Settings parts', () => {
+    const offenders = sources(['src/components'])
+      .filter(
+        ({ path, text }) =>
+          !SHELL_READERS.some((name) => path.endsWith(name)) && /\buseShell\(\)/u.test(text),
+      )
+      .map(({ path }) => path);
+
+    expect(
+      offenders,
+      'useShell() throws outside Settings (sc-48600): read useShellLayout() from src/components/settingsShell.ts.',
     ).toEqual([]);
   });
 });
@@ -1871,6 +1888,15 @@ function answersInView(text: string, said: string): boolean {
 
   return /<AnswerInView\b[^>]*>\s*$/u.test(text.slice(0, opened));
 }
+
+describe('the faces’ chip writes its count through moreChip (sc-48825)', () => {
+  it('in Faces, so 1,321 left out reads 99+ inside its circle', () => {
+    const summary = readFileSync(join(__dirname, 'components', 'Summary.tsx'), 'utf8');
+    const faces = summary.slice(summary.indexOf('export function Faces('));
+
+    expect(faces.slice(0, faces.indexOf('\n}\n'))).toContain('{moreChip(more)}');
+  });
+});
 
 describe('a screen still reading says so in words (sc-23279)', () => {
   it.each([

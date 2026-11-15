@@ -1,4 +1,12 @@
 import { type ReactNode, type RefObject, useEffect, useRef, useState } from 'react';
+import { NO_NEEDS, NW, type Needs, firstFailing, needsLines, savedNeeds } from './GuestNeeds.ts';
+import {
+  NeedsSection,
+  useCompanionNeedsRefs,
+  useGroupChoice,
+  useNeedsRefs,
+} from './GuestNeedsParts.tsx';
+import { addNeedsStart } from './GuestNeedsStart.ts';
 import {
   Pressable,
   ScrollView,
@@ -13,7 +21,7 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { focusChecked } from '../../components/Field.tsx';
 import { Glyph } from '../../components/Glyph.tsx';
 import { RadioMark } from '../../components/RadioMark.tsx';
-import { useReadOut } from '../../components/ReadOut.tsx';
+import { readOut, useReadOut } from '../../components/ReadOut.tsx';
 import type { ScreenReaderTarget } from '../../components/screenReaderFocus.ts';
 import { Text } from '../../components/Text.tsx';
 import { tokens } from '../../theme/tokens.ts';
@@ -192,7 +200,15 @@ export function AddGuest({
   const kept = start === 'addNotAdded' || start === 'addOffline';
   const lucas = start === 'languageAdd';
   const [name, setName] = useState(
-    start === 'addDuplicate' ? 'Marta Silva' : kept ? BIMPE.name : lucas ? LUCAS.name : '',
+    start === 'addDuplicate'
+      ? 'Marta Silva'
+      : kept
+        ? BIMPE.name
+        : lucas
+          ? LUCAS.name
+          : start === 'addGroupNeeds'
+            ? 'Abena Owusu'
+            : '',
   );
   const [email, setEmail] = useState(
     start === 'addDuplicate' ? 'm.silva@gmail.com' : kept ? BIMPE.email : lucas ? LUCAS.email : '',
@@ -211,6 +227,16 @@ export function AddGuest({
     start === 'addNotAdded' ? 'notAdded' : start === 'addOffline' ? 'offline' : null,
   );
   const [added, setAdded] = useState<string | null>(start === 'added' ? BIMPE.name : null);
+  const [gn] = useState(() => addNeedsStart(start, guests));
+  const group = useGroupChoice(gn, name.trim() === '' ? null : name.trim(), 'guests.add.group');
+  const [needs, setNeeds] = useState<Needs>(gn.needs);
+  const [needsOpen, setNeedsOpen] = useState(gn.open);
+  const [needsChecked, setNeedsChecked] = useState(gn.checked);
+  const [companionNeeds, setCompanionNeeds] = useState<Needs[]>([]);
+  const [companionOpen, setCompanionOpen] = useState<number[]>([]);
+  const needsRefs = useNeedsRefs();
+  const companionRefs = useCompanionNeedsRefs();
+  const lines = needsChecked ? needsLines(needs) : {};
   const refused = start === 'androidRefused';
   const nameRef = useRef<TextInputInstance>(null);
   const greetAsRef = useRef<TextInputInstance>(null);
@@ -223,27 +249,62 @@ export function AddGuest({
     phone: checked ? phoneCheck(number, country) : null,
   };
   const add = (anyway = false) => {
+    const guestLines = needsLines(needs);
+    const theirLines = companionNeeds.map(needsLines);
+    const failing =
+      [
+        nameProblem(name),
+        greetAsProblem(greetAs),
+        emailCheck(email),
+        phoneCheck(number, country),
+      ].filter((one) => one != null).length +
+      Object.keys(guestLines).length +
+      theirLines.reduce((sum, one) => sum + Object.keys(one).length, 0);
+    const theirs = theirLines.flatMap((one, at) => (Object.keys(one).length > 0 ? [at] : []));
     setChecked(true);
+    setNeedsChecked(true);
+    if (failing > 0) readOut(NW.toFix(failing), { interrupts: true });
+    if (Object.keys(guestLines).length > 0) setNeedsOpen(true);
+    if (theirs.length > 0) setCompanionOpen([...new Set([...companionOpen, ...theirs])]);
     if (nameProblem(name) != null) return focusChecked(nameRef);
     if (greetAsProblem(greetAs) != null) return focusChecked(greetAsRef);
     if (emailCheck(email) != null) return focusChecked(emailRef);
     if (phoneCheck(number, country) != null) return focusChecked(numberRef);
+    const first = firstFailing([guestLines, ...theirLines]);
+    if (first != null) {
+      setTimeout(
+        () =>
+          focusChecked(
+            first.at === 0 ? needsRefs[first.field] : companionRefs(first.at - 1)[first.field],
+          ),
+        300,
+      );
+      return;
+    }
+    if (group.refusedOnSave()) return;
     if (!anyway && sameNameAs(guests, name, null) != null) {
       setSame(true);
       return;
     }
     setFailed(null);
     setSame(false);
-    onAdded(
-      addedGuest(`added-${Date.now()}`, {
-        name,
-        email,
-        phone: joinPhone(country, number),
-        language,
-        companions,
-        greetAs,
-      }),
-    );
+    const made = addedGuest(`added-${Date.now()}`, {
+      name,
+      email,
+      phone: joinPhone(country, number),
+      language,
+      companions,
+      greetAs,
+    });
+    onAdded({
+      ...made,
+      group: group.name,
+      needs: savedNeeds(needs),
+      companions: made.companions.map((c, at) => ({
+        ...c,
+        needs: savedNeeds(companionNeeds[at] ?? NO_NEEDS),
+      })),
+    });
     setAdded(name.trim());
     setName('');
     setGreetAs('');
@@ -252,6 +313,12 @@ export function AddGuest({
     setLanguage(null);
     setCompanions([]);
     setChecked(false);
+    group.reset();
+    setNeeds(NO_NEEDS);
+    setNeedsOpen(false);
+    setNeedsChecked(false);
+    setCompanionNeeds([]);
+    setCompanionOpen([]);
     focusChecked(nameRef);
   };
 
@@ -273,7 +340,7 @@ export function AddGuest({
                 },
                 () => setChoosing(false),
               )
-            : null
+            : group.over
       }
       foot={<Pill label={W.addGuest} onPress={() => add()} testID="guests.add.do" />}
       testID="guests.add"
@@ -314,6 +381,7 @@ export function AddGuest({
         fieldRef={greetAsRef}
         testID="guests.add.greetAs"
       />
+      {group.field}
       <GuestField
         label={W.emailAddress}
         value={email}
@@ -339,6 +407,16 @@ export function AddGuest({
         onOpen={() => setChoosing(true)}
         testID="guests.add.language"
       />
+      <NeedsSection
+        title={NW.needs}
+        needs={needs}
+        onChange={setNeeds}
+        open={needsOpen}
+        onToggle={() => setNeedsOpen(!needsOpen)}
+        lines={lines}
+        refs={needsRefs}
+        testID="guests.add.needs"
+      />
       <View style={styles.tight}>
         <Legend text={W.companions} />
         {companions.map((c, index) => (
@@ -352,6 +430,28 @@ export function AddGuest({
                 }
                 error={null}
                 testID={`guests.add.companion.${index}`}
+              />
+              <NeedsSection
+                title={NW.theirNeeds}
+                needs={companionNeeds[index] ?? NO_NEEDS}
+                onChange={(next) =>
+                  setCompanionNeeds(
+                    companions.map((_, at) =>
+                      at === index ? next : (companionNeeds[at] ?? NO_NEEDS),
+                    ),
+                  )
+                }
+                open={companionOpen.includes(index)}
+                onToggle={() =>
+                  setCompanionOpen(
+                    companionOpen.includes(index)
+                      ? companionOpen.filter((at) => at !== index)
+                      : [...companionOpen, index],
+                  )
+                }
+                lines={needsChecked ? needsLines(companionNeeds[index] ?? NO_NEEDS) : {}}
+                refs={companionRefs(index)}
+                testID={`guests.add.companion.${index}.needs`}
               />
             </View>
           </View>

@@ -257,7 +257,9 @@ permit = [
 # contact address); the user scope does not reach back. A role's changes go to the
 # audit trail (sc-66), as an account's do. A custom role's name is checked against
 # the seeded labels in every one of SupportedLocales (sc-2301). Its deletion uses the
-# shared restore window and typed-name check (sc-3592).
+# shared restore window and typed-name check (sc-3592). Members reads
+# whether an invitation's email could not be delivered from its delivery record and the
+# suppression list (sc-46109); messaging does not reach back.
 [[guard.perimeter.rules]]
 namespace = "App\\Domain\\Organisation\\"
 permit = [
@@ -266,6 +268,7 @@ permit = [
     "@layer:shared",
     "@layer:domain_organisation",
     "@layer:domain_user",
+    "@layer:domain_messaging",
     "@layer:repository",
     "@layer:audit",
     "@layer:deletion",

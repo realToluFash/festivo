@@ -500,6 +500,7 @@
 }
 
 :where(.guest-page) .gp-outlined {
+  text-align: center;
   background: none;
   box-shadow: inset 0 0 0 1.5px var(--colorControlBorder);
   color: var(--colorInk);
@@ -1185,4 +1186,27 @@
 
 :where(.guest-page) .gp-closed > .gp-text + .gp-sub {
   margin-top: 2px;
+}
+
+:where(.guest-page) .gp-closed.is-live > .gp-text {
+  margin-top: 4px;
+}
+
+/* sc-3780: who recorded the answer for the guest, at the guest's 17 (pm, 8 Nov) */
+:where(.guest-page) .gp-sub.is-recorded {
+  font-size: 17px;
+  line-height: 1.45;
+}
+
+/* sc-24385: the host's arrival note, in an inset under the Where line, its line breaks kept */
+:where(.guest-page) .gp-note {
+  margin: 4px 0 12px 40px;
+  padding: 12px 14px;
+  border: 1px solid var(--colorBorder);
+  border-radius: 14px;
+  background: var(--colorInset);
+  color: var(--colorInk);
+  font: 400 16px/1.5 var(--fontFamily);
+  white-space: pre-line;
+  overflow-wrap: anywhere;
 }

@@ -122,6 +122,7 @@ const LIST = {
       invitedBy: FOLAKE,
       status: 'pending',
       sentAt: '2026-10-10T09:00:00+00:00',
+      undelivered: false,
       expiresAt: '2026-10-17T09:00:00+00:00',
       acceptedAt: null,
       declinedAt: null,
@@ -134,6 +135,7 @@ const LIST = {
       invitedBy: BISI,
       status: 'declined',
       sentAt: '2026-10-05T09:00:00+00:00',
+      undelivered: false,
       expiresAt: '2026-10-12T09:00:00+00:00',
       acceptedAt: null,
       declinedAt: '2026-10-09T09:00:00+00:00',
@@ -435,6 +437,54 @@ describe('Members at a desk (sc-34200)', () => {
       email: 'kemi@ire.events',
       roleId: 'role_5',
     });
+  });
+
+  it('says Not delivered where Sent was, with the end kept and no reason (sc-46109)', async () => {
+    signedIn();
+    answering({
+      ...READS,
+      'GET /api/orgs/org_1/members': () =>
+        json({
+          ...LIST,
+          invitations: LIST.invitations.map((one) => ({ ...one, undelivered: true })),
+        }),
+      'POST /api/orgs/org_1/members/invite': () =>
+        json(
+          {
+            invitation: {
+              ...LIST.invitations[0],
+              id: 'inv_3',
+              email: 'kemi@ire.events',
+              undelivered: true,
+              expiresAt: '2026-10-20T09:00:00+00:00',
+            },
+          },
+          201,
+        ),
+    });
+    open();
+
+    expect(await page().findByText('amaka@ire.events')).toBeDefined();
+    const lines = () =>
+      [...document.querySelectorAll('.not-delivered')].map((one) => one.textContent);
+    expect(lines()).toEqual([
+      '✕Not delivered · expires Saturday, Oct 17',
+      '✕Not delivered · declined Friday, Oct 9',
+    ]);
+    expect(page().queryByText(/^Sent /)).toBeNull();
+    expect(page().getByText('Declined')).toBeDefined();
+    expect(page().getByRole('button', { name: 'Revoke' })).toBeDefined();
+    expect(page().getByRole('button', { name: 'Invite again' })).toBeDefined();
+
+    fireEvent.click(page().getByRole('button', { name: 'Invite somebody' }));
+    const dialog = within(await screen.findByRole('dialog', { name: 'Invite somebody' }));
+    fireEvent.change(dialog.getByRole('textbox', { name: 'Email' }), {
+      target: { value: 'kemi@ire.events' },
+    });
+    fireEvent.click(dialog.getByRole('button', { name: 'Send invitation' }));
+
+    expect(await page().findByText('Invitation sent to kemi@ire.events')).toBeDefined();
+    await waitFor(() => expect(lines()).toContain('✕Not delivered · expires Tuesday, Oct 20'));
   });
 
   it('asks before throwing away a half-typed invitation', async () => {

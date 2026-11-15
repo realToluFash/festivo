@@ -1,5 +1,5 @@
 import { OPEN, type Visit } from './guest.ts';
-import { type Party, comingWith, hasStep } from './guestCompanions.ts';
+import { type Party, comingWith, hasStep, placeOf } from './guestCompanions.ts';
 import { partyPeople } from './guestKitchen.ts';
 import { type GuestKitchenActions, freshKitchen } from './useGuestKitchen.ts';
 
@@ -19,7 +19,11 @@ export function partyActions(go: Go, kitchen: GuestKitchenActions, visit: Visit)
     change: (next, want) => go((was) => ({ party: next(was.party) }), want),
     next: () => {
       go((was) => {
-        const coming = comingWith(was.party);
+        const coming = comingWith(was.party).map((one) => ({
+          key: one.key,
+          name: one.name,
+          place: one.name == null ? placeOf(was.party, one) : null,
+        }));
         const kitchen = was.kitchen;
 
         return {

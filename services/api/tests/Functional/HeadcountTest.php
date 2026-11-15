@@ -25,8 +25,12 @@ use App\Tests\Traits\OnboardsAccounts;
 use App\Tests\Traits\PutsPeopleOnEvents;
 use DateTimeImmutable;
 use Doctrine\DBAL\Connection;
+use Lcobucci\JWT\Encoding\JoseEncoder;
+use Lcobucci\JWT\Token\Parser;
+use Lcobucci\JWT\UnencryptedToken;
 use Lexik\Bundle\JWTAuthenticationBundle\Services\JWTTokenManagerInterface;
 use PHPUnit\Framework\Attributes\Test;
+use Psl\Dict;
 use Psl\Iter;
 use Psl\Json;
 use Psl\Str;
@@ -90,18 +94,18 @@ final class HeadcountTest extends ApiTestCase
         $this->answer($this->add('Adaeze', ['Obi', null]), 'coming');
         $this->answer($this->add('Bisi', ['Tunde']), 'maybe');
         $this->answer($this->add('Chidi', ['Ngozi']), 'notComing');
-        $this->add('Dayo', ['Femi']);
+        $this->markInvited($this->add('Dayo', ['Femi']));
         $this->add('Emeka');
 
         $counts = $this->counts();
 
         self::assertSame([
             'onList' => 10,
-            'notYetInvited' => 0,
-            'invited' => 10,
+            'notYetInvited' => 1,
+            'invited' => 9,
             'accepted' => 3,
             'maybe' => 1,
-            'awaitingReply' => 2,
+            'awaitingReply' => 1,
             'held' => 3,
             'heldBy' => ['hostNoReply' => 1, 'hostMaybe' => 1, 'hostNotComing' => 1],
             'declined' => 1,
@@ -124,19 +128,32 @@ final class HeadcountTest extends ApiTestCase
     }
 
     #[Test]
-    public function aHostsReplyMovesTheirCompanionAndNeverChangesWhoIsInvited(): void
+    public function aHostsReplyInvitesThemWithTheirCompanionAndMovesTheCompanion(): void
     {
         $token = $this->token($this->add('Adaeze', ['Obi']));
         $this->add('Bisi');
-        $held = fn (): array => Vec\map(['heldBy', 'accepted', 'invited'], fn (string $key): mixed => $this->counts()[$key]);
+        $held = fn (): array => Vec\map(['heldBy', 'accepted', 'invited', 'notYetInvited'], fn (string $key): mixed => $this->counts()[$key]);
 
-        self::assertSame([['hostNoReply' => 1, 'hostMaybe' => 0, 'hostNotComing' => 0], 0, 3], $held());
+        self::assertSame([['hostNoReply' => 0, 'hostMaybe' => 0, 'hostNotComing' => 0], 0, 0, 3], $held());
 
         $this->reply($token, 'notComing');
-        self::assertSame([['hostNoReply' => 0, 'hostMaybe' => 0, 'hostNotComing' => 1], 0, 3], $held());
+        self::assertSame([['hostNoReply' => 0, 'hostMaybe' => 0, 'hostNotComing' => 1], 0, 2, 1], $held());
 
         $this->reply($token, 'coming');
-        self::assertSame([['hostNoReply' => 0, 'hostMaybe' => 0, 'hostNotComing' => 0], 2, 3], $held());
+        self::assertSame([['hostNoReply' => 0, 'hostMaybe' => 0, 'hostNotComing' => 0], 2, 2, 1], $held());
+    }
+
+    #[Test]
+    public function aGuestMarkedByHandIsAwaitingAReplyAndTheirCompanionIsHeld(): void
+    {
+        $guest = $this->add('Dayo', ['Femi']);
+        self::assertSame([0, 2, 0], Vec\map(['awaitingReply', 'notYetInvited', 'held'], fn (string $key): mixed => $this->counts()[$key]));
+
+        $this->markInvited($guest);
+        self::assertSame([1, 0, 1, 2], Vec\map(['awaitingReply', 'notYetInvited', 'held', 'invited'], fn (string $key): mixed => $this->counts()[$key]));
+
+        $this->as($this->owner, 'DELETE', $this->guests() . '/' . $guest . '/invitation');
+        self::assertSame([0, 2, 0, 0], Vec\map(['awaitingReply', 'notYetInvited', 'held', 'invited'], fn (string $key): mixed => $this->counts()[$key]));
     }
 
     #[Test]
@@ -226,6 +243,99 @@ final class HeadcountTest extends ApiTestCase
         self::assertSame([$answers[0], $answers[0]], $answers);
     }
 
+    #[Test]
+    public function eachEventOnEventsCarriesTheTilesMeasureOfItsGuests(): void
+    {
+        $this->answer($this->add('Adaeze', ['Obi']), 'coming');
+        $this->answer($this->add('Bisi'), 'notComing');
+        $this->answer($this->add('Chidi'), 'maybe');
+        $this->markInvited($this->add('Dayo', ['Femi']));
+        $this->add('Emeka');
+        $empty = $this->newEvent();
+
+        $figures = $this->listedFigures($this->owner);
+
+        self::assertSame(['invited' => 6, 'coming' => 2, 'notReplied' => 2], $figures[$this->eventId] ?? null);
+        self::assertSame(['invited' => 0, 'coming' => 0, 'notReplied' => 0], $figures[$empty] ?? null);
+    }
+
+    #[Test]
+    public function eventsCarriesNoGuestFiguresWithoutGuestsRead(): void
+    {
+        $this->answer($this->add('Adaeze'), 'coming');
+        $organisation = $this->organisation->getId();
+        $directories = new FixtureDirectories(
+            [$organisation->toRfc4122() => Grants::only(Vec\filter(Permission::cases(), static fn (Permission $permission): bool => Permission::GuestsRead !== $permission))],
+            [$this->eventId => $organisation],
+        );
+        $this->client->getKernel()->shutdown();
+        $this->client->getKernel()->boot();
+        self::getContainer()->set(MembershipDirectoryInterface::class, $directories);
+        self::getContainer()->set(EventDirectoryInterface::class, $directories);
+
+        self::assertSame([$this->eventId => null], $this->listedFigures($this->owner));
+
+        $body = $this->as($this->owner, 'POST', $this->headcountsSubscription(), ['events' => [$this->eventId]]);
+        self::assertSame(200, $this->statusCode(), Json\encode($body));
+        self::assertSame(['subscribe' => []], $this->claims($body));
+    }
+
+    #[Test]
+    public function aMemberSeesTheFiguresOfTheEventTheyHoldARoleOnAlone(): void
+    {
+        $this->answer($this->add('Adaeze', ['Obi']), 'coming');
+        $other = $this->newEvent();
+        $member = $this->member('ada@ire.events', EventRole::CanView);
+
+        self::assertSame([$this->eventId => ['invited' => 2, 'coming' => 2, 'notReplied' => 0]], $this->listedFigures($member));
+
+        $body = $this->as($member, 'POST', $this->headcountsSubscription(), ['events' => [$this->eventId, $other, 'not-an-id']]);
+        self::assertSame(200, $this->statusCode(), Json\encode($body));
+        self::assertSame(['subscribe' => ['events/' . $this->eventId . '/headcount']], $this->claims($body));
+    }
+
+    #[Test]
+    public function anotherOrganisationsEventsAreLeftOutOfTheHeadcountsSubscription(): void
+    {
+        $stranger = $this->account('stranger@else.where');
+        $elsewhere = self::service(OrganisationFounder::class)->found($stranger, 'Elsewhere', 'NG', 'Africa/Lagos');
+        self::em()->flush();
+
+        $body = $this->as($stranger, 'POST', '/api/orgs/' . $elsewhere->getId()->toRfc4122() . '/events/headcounts/subscriptions', ['events' => [$this->eventId]]);
+
+        self::assertSame(200, $this->statusCode(), Json\encode($body));
+        self::assertSame(['subscribe' => []], $this->claims($body));
+
+        $this->as($stranger, 'POST', $this->headcountsSubscription(), ['events' => [$this->eventId]]);
+        self::assertSame(404, $this->statusCode());
+    }
+
+    /** @return array<string, mixed> */
+    private function listedFigures(User $user): array
+    {
+        $body = $this->as($user, 'GET', '/api/orgs/' . $this->organisation->getId()->toRfc4122() . '/events');
+        self::assertSame(200, $this->statusCode(), Json\encode($body));
+        $events = Type\vec(Type\shape(['id' => Type\string(), 'guests' => Type\mixed()], true))->coerce($body['events'] ?? null);
+
+        return Dict\from_entries(Vec\map($events, static fn (array $event): array => [$event['id'], $event['guests']]));
+    }
+
+    private function headcountsSubscription(): string
+    {
+        return '/api/orgs/' . $this->organisation->getId()->toRfc4122() . '/events/headcounts/subscriptions';
+    }
+
+    /**
+     * @param array<string, mixed> $body
+     */
+    private function claims(array $body): mixed
+    {
+        $token = new Parser(new JoseEncoder())->parse(Type\non_empty_string()->coerce($body['token'] ?? null));
+        self::assertInstanceOf(UnencryptedToken::class, $token);
+
+        return $token->claims()->get('mercure');
+    }
+
     /** @return array<string, mixed> */
     private function counts(): array
     {
@@ -250,6 +360,12 @@ final class HeadcountTest extends ApiTestCase
         self::assertSame(201, $this->statusCode(), Json\encode($body));
 
         return Type\shape(['id' => Type\string()], true)->coerce($body['guest'] ?? null)['id'];
+    }
+
+    private function markInvited(string $guest): void
+    {
+        $this->as($this->owner, 'PUT', $this->guests() . '/' . $guest . '/invitation', ['how' => 'inPerson']);
+        self::assertSame(200, $this->statusCode(), Json\encode($this->last()));
     }
 
     private function answer(string $guest, string $answer): void

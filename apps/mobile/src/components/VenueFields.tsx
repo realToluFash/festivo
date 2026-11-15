@@ -12,7 +12,7 @@ import { Notice } from './Notice.tsx';
 import { ReadOut, readOut } from './ReadOut.tsx';
 import { Text } from './Text.tsx';
 
-/** The form's venue (sc-3589), as the web's VenueSection: a name, and an address picked from suggestions or typed. */
+/** The form's venue (sc-3589), as the web's VenueSection: a name, an address picked from suggestions or typed, and the arrival note (sc-24385). */
 export function VenueFields({
   venue,
   errors,
@@ -20,6 +20,7 @@ export function VenueFields({
   timeZone,
   nameInput,
   addressInput,
+  noteInput,
   onVenue,
   onUseZone,
 }: {
@@ -29,6 +30,7 @@ export function VenueFields({
   timeZone: string;
   nameInput: RefObject<TextInputInstance | null>;
   addressInput: RefObject<TextInputInstance | null>;
+  noteInput: RefObject<TextInputInstance | null>;
   onVenue: (change: Partial<VenueDraft>) => void;
   /** Left out where the zone can't change, and then nothing is offered. */
   onUseZone?: (zone: string) => void;
@@ -132,6 +134,27 @@ export function VenueFields({
         />
       )}
 
+      <Field
+        label={t('eventForm.arrivalNote')}
+        pill={t('eventForm.optional')}
+        error={errors.arrivalNote}
+        help={t('eventForm.arrivalNoteHint')}
+      >
+        <TextField
+          ref={noteInput}
+          value={venue.note}
+          onChangeText={(note) => onVenue({ note })}
+          wrong={errors.arrivalNote != null}
+          submitting={busy}
+          multiline
+          scrollEnabled
+          style={styles.note}
+          accessibilityLabel={t('eventForm.arrivalNote')}
+          accessibilityHint={t('eventForm.arrivalNoteHint')}
+          testID="eventForm.arrivalNote"
+        />
+      </Field>
+
       {offer != null && (
         <View style={styles.offer} testID="eventForm.venueZoneOffer">
           <Notice
@@ -164,6 +187,8 @@ export function VenueFields({
   );
 }
 
+const NOTE_LINE = 24;
+
 const styles = StyleSheet.create({
   suggestions: {
     borderRadius: tokens.radiusRow,
@@ -178,6 +203,12 @@ const styles = StyleSheet.create({
     paddingVertical: tokens.spaceSm,
   },
   divided: { borderTopWidth: 1, borderTopColor: tokens.colorBorder },
+  note: {
+    minHeight: NOTE_LINE * 4 + tokens.spaceSm * 2,
+    maxHeight: NOTE_LINE * 10 + tokens.spaceSm * 2,
+    lineHeight: NOTE_LINE,
+    textAlignVertical: 'top',
+  },
   offer: { gap: tokens.spaceSm },
   actions: { gap: tokens.spaceSm },
 });

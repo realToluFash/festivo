@@ -1,6 +1,7 @@
 import type { OrganisationEvent } from '@soirely/api-client';
 import {
   type EventPhase,
+  calledOff,
   endLabel,
   eventAllows,
   formatEventRange,
@@ -9,6 +10,7 @@ import {
 } from '@soirely/domain';
 import type { TFunction } from 'i18next';
 
+import type { EditPart } from './eventNav.ts';
 import { dayCount } from './eventsList.ts';
 
 export type ManageKey = 'duplicate' | 'pause' | 'callOff' | 'endNow' | 'delete';
@@ -29,17 +31,32 @@ export function scheduleLocked(phase: EventPhase): boolean {
   return !eventAllows(phase, 'edit_schedule');
 }
 
+/** Show the latest after a 412 closes Dates on an event called off or over meanwhile, so its row reads the locked line (sc-45141). */
+export function closesOnLatest(part: EditPart, phase: EventPhase): boolean {
+  return part === 'dates' && scheduleLocked(phase);
+}
+
+/** A part whose row does not open, as Dates once the event is over, does not open from a link either. */
+export function partLocked(part: EditPart, phase: EventPhase): boolean {
+  return (part === 'dates' || part === 'replyBy') && scheduleLocked(phase);
+}
+
 export interface RowWords {
   title: string;
   line: string;
 }
 
-type Dated = Pick<OrganisationEvent, 'startsAt' | 'endsAt' | 'timeZone'>;
+type Dated = Pick<OrganisationEvent, 'startsAt' | 'endsAt' | 'timeZone' | 'status' | 'concludedAt'>;
 
 export function datesRow(event: Dated, phase: EventPhase, locale: string, t: TFunction): RowWords {
   const title = formatEventRange(event.startsAt, event.endsAt, event.timeZone, locale);
 
-  if (scheduleLocked(phase)) return { title, line: t('eventPage.datesLocked') };
+  if (scheduleLocked(phase)) {
+    return {
+      title,
+      line: t(calledOff(event) ? 'eventPage.datesCalledOff' : 'eventPage.datesLocked'),
+    };
+  }
 
   const count = dayCount(event);
 

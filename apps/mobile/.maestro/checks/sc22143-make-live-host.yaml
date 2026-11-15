@@ -13,18 +13,18 @@ appId: host.exp.Exponent
     id: 'events.card.step'
 - extendedWaitUntil:
     visible:
-      id: 'events.makeLiveHost'
+      id: 'events.makeLive.host'
     timeout: 10000
 - waitForAnimationToEnd
 - takeScreenshot: opens
 - tapOn:
-    id: 'events.makeLiveYes'
+    id: 'events.makeLive.confirm'
 - extendedWaitUntil:
     visible: '{{t:eventLive.hostEmpty}}'
     timeout: 10000
 - takeScreenshot: empty
 - tapOn:
-    id: 'events.makeLiveHost'
+    id: 'events.makeLive.host'
 - inputText: 'Abcdefghij Abcdefghij Abcdefghij Abcdefghij Abcdefghij Abcdefghi'
 - pressKey: Enter
 - extendedWaitUntil:

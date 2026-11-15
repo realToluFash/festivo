@@ -4,9 +4,13 @@ import { describe, expect, it } from 'vitest';
 
 import {
   type DuplicatesEvents,
+  answeredRun,
   backToOriginal,
   copyHref,
   duplicateEvent,
+  duplicateRunOf,
+  pickedRun,
+  startsAfter,
 } from './eventDuplicate.ts';
 
 const t: Translate = (key: string) => key;
@@ -76,6 +80,77 @@ describe('duplicateEvent', () => {
     expect(
       await duplicateEvent(recording(new Error('offline')), 'evt_1', '2027-05-15', '16:00', t),
     ).toEqual({ kind: 'failed' });
+  });
+});
+
+describe('answeredRun (sc-48601)', () => {
+  const run = duplicateRunOf({ date: '2027-05-15', time: '16:00' });
+
+  it('opens duplicateStartsRefused on a 422 under startsAt, its message under Starts with focus on the date', async () => {
+    const refused = new ApiError({
+      type: 'https://soirely.com/errors/validation_failed',
+      title: 'Validation failed',
+      status: 422,
+      violations: [
+        {
+          propertyPath: 'startsAt',
+          message: 'Enter a date and a time with no time zone offset.',
+          code: 'invalid',
+        },
+      ],
+    });
+    const answer = await duplicateEvent(recording(refused), 'evt_1', '2027-05-15', '16:00', t);
+
+    expect(answeredRun({ ...run, status: 'creating' }, answer)).toEqual({
+      ...run,
+      error: 'Enter a date and a time with no time zone offset.',
+      focus: 'date',
+    });
+  });
+
+  it('opens duplicateStartsBlank on a start left empty, with focus on the empty half', async () => {
+    const answer = await duplicateEvent(recording({ id: 'evt_2' }), 'evt_1', '2027-05-15', '', t);
+
+    expect(answeredRun(run, answer)).toEqual({
+      ...run,
+      error: 'eventDuplicate.timeMissing',
+      focus: 'time',
+    });
+  });
+
+  it('opens duplicateNotCreated on any other failure, and duplicateCreated once made', () => {
+    expect(answeredRun(run, { kind: 'failed' }).status).toBe('failed');
+    expect(answeredRun(run, { kind: 'created', href: '/events/evt_2' }).status).toBe('created');
+  });
+});
+
+describe('pickedRun', () => {
+  const refused = {
+    ...duplicateRunOf({ date: '', time: '' }),
+    error: 'Choose',
+    focus: 'date' as const,
+  };
+
+  it('keeps the error until both halves are chosen', () => {
+    expect(pickedRun(refused, { date: '2027-05-15', time: '' }).error).toBe('Choose');
+    expect(pickedRun(refused, { date: '2027-05-15', time: '16:00' })).toEqual(
+      duplicateRunOf({ date: '2027-05-15', time: '16:00' }),
+    );
+  });
+
+  it('changes nothing while Create draft sends', () => {
+    const sending = { ...refused, status: 'creating' as const };
+
+    expect(pickedRun(sending, { date: '2027-05-15', time: '16:00' })).toBe(sending);
+  });
+});
+
+describe('startsAfter', () => {
+  it('starts the copy a year on, on the same weekday and time', () => {
+    expect(startsAfter({ date: '2026-11-06', time: '15:00' })).toEqual({
+      date: '2027-11-05',
+      time: '15:00',
+    });
   });
 });
 

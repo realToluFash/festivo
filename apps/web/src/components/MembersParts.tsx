@@ -1,5 +1,6 @@
 import type { ReactNode, Ref } from 'react';
 import { useTranslation } from 'react-i18next';
+import { moreChip } from '@soirely/domain';
 
 import {
   Avatar,
@@ -96,7 +97,7 @@ export function MembersCardView<Step extends { label: string }>({
           {card.faces.map((face) => (
             <Avatar key={face.key} initials={face.initials} tone={face.tone} size="face" />
           ))}
-          {card.more > 0 && <span className="desk-more">+{card.more}</span>}
+          {card.more > 0 && <span className="desk-more">{moreChip(card.more)}</span>}
         </div>
       )}
       {step != null && <CardStep label={step.label} onClick={() => onStep(step)} />}
@@ -184,7 +185,7 @@ export function InvitationLine({
 }: {
   email: string;
   ended?: string | undefined;
-  lines: readonly string[];
+  lines: readonly ReactNode[];
   children?: ReactNode;
 }) {
   return (

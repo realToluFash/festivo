@@ -24,11 +24,11 @@ appId: host.exp.Exponent
 - waitForAnimationToEnd
 - takeScreenshot: refused-empty
 - tapOn:
-    id: 'eventDuplicate.start.date'
+    id: 'eventDuplicate.date'
 - waitForAnimationToEnd
 - takeScreenshot: date-sheet
 - tapOn:
-    id: 'eventDuplicate.start.done'
+    id: 'events.pick.done'
 - waitForAnimationToEnd
 - swipe:
     start: 50%, 80%
@@ -40,11 +40,11 @@ appId: host.exp.Exponent
 - waitForAnimationToEnd
 - takeScreenshot: refused-no-time
 - tapOn:
-    id: 'eventDuplicate.start.time'
+    id: 'eventDuplicate.time'
 - waitForAnimationToEnd
 - takeScreenshot: time-sheet
 - tapOn:
-    id: 'eventDuplicate.start.done'
+    id: 'events.pick.done'
 - waitForAnimationToEnd
 - takeScreenshot: start-chosen
 - swipe:

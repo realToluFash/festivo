@@ -1,3 +1,5 @@
+import type { ReplyKind } from '../../components/ReplyMark.tsx';
+
 /** Guests A's English, as the boards and guests-a-spec.md §16 give it; main's words where they exist. */
 export const W = {
   guests: 'Guests',
@@ -24,8 +26,9 @@ export const W = {
   finishedLine: 'This event has finished, so guests can’t be invited.',
   markNotInvited: 'Mark as not invited',
   unmarked: 'Marked as not invited.',
+  unmarkNotSaved: 'Not saved. They are still invited. Try again.',
   readOnlyInvited:
-    'You can see names, replies and who is invited. Marking guests as invited needs a host or organiser role.',
+    'You can see names, replies and who is invited. Marking guests as invited needs the Lead or Can edit role.',
   makeLive: 'Make live',
   openCheckIn: 'Open check-in',
   arrived: 'arrived',
@@ -212,7 +215,7 @@ export const W = {
   greetedByName: 'Messages greet them by their full name.',
 } as const;
 
-export type ReplyKind = 'coming' | 'maybe' | 'notcoming' | 'held' | 'noreply' | 'notyet';
+export type { ReplyKind };
 
 /** One word for one state, on the row, the group, the filter, the tag and the counts: the guest's own (pm, 7 Nov). */
 export const REPLY_WORD: Record<ReplyKind | 'walkin', string> = {
@@ -255,7 +258,7 @@ export const say = {
   dayOpened: (says: string) => `${says}. Check-in opened at 16:00.`,
   allDay: (says: string) => `${says}. Check-in is open all day.`,
   opensAt: (time: string) => `Check-in opens at ${time}`,
-  showAll: (count: number, words: string) => `Show all ${count} ${words}`,
+  showAll: (count: number) => `Show all ${count}`,
   filterLabel: (word: string, count: number) => `Filter: ${word}, ${count}`,
   menuItem: (word: string, count: number) => `${word} · ${count}`,
   repliedAt: (time: string) => `Replied at ${time}`,

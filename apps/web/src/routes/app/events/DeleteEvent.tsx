@@ -1,5 +1,5 @@
 import { ApiError, type EventDeletion, type OrganisationEvent } from '@soirely/api-client';
-import { typedNameMatches } from '@soirely/domain';
+import { type EventPhase, endLabel, typedNameMatches } from '@soirely/domain';
 import { useId, useRef, useState } from 'react';
 import { flushSync } from 'react-dom';
 import { useTranslation } from 'react-i18next';
@@ -9,20 +9,33 @@ import { api } from '../../../api.ts';
 import { FieldError } from '../../../components/FieldError.tsx';
 import { Ask } from '../../../components/SettingsParts.tsx';
 import { offButton } from '../../../offButton.ts';
+import { canOn, useSession } from '../../../session.ts';
 
-/** `Event View` (sc-3592): at the foot of the page, apart from the actions that change the event. */
+type Verb = 'callOff' | 'endNow';
+
+/** `Event View` (sc-3592): at the foot of the page, apart from the actions that change the event. With a guest Invited it opens on the refusal (sc-14445), whose verb is the page's own Call off or End now. */
 export function DeleteEvent({
   event,
+  phase,
+  now,
   look,
+  onVerb,
 }: {
   event: OrganisationEvent;
+  phase: EventPhase;
+  now: Date;
   look?: { className: string; describedBy: string } | undefined;
+  onVerb: () => void;
 }) {
   const { t } = useTranslation();
   const [opening, setOpening] = useState(false);
   const [unopened, setUnopened] = useState<string | null>(null);
   const [preview, setPreview] = useState<EventDeletion | null>(null);
+  const [raced, setRaced] = useState(false);
   const opener = useRef<HTMLButtonElement>(null);
+  const verb = endLabel(event, phase, now);
+  const refused =
+    preview != null && verb != null && (raced || preview.deleteRefusedBecause != null);
 
   function open(): void {
     setOpening(true);
@@ -30,6 +43,7 @@ export function DeleteEvent({
     api.eventDeletion(event.id).then(
       (answer) => {
         setOpening(false);
+        setRaced(false);
         setPreview(answer);
       },
       (error: unknown) => {
@@ -61,7 +75,26 @@ export function DeleteEvent({
         {t('eventDelete.open')}
       </button>
       {unopened != null && <FieldError id="event-delete-unopened" message={unopened} />}
-      {preview != null && <DeleteDialog event={event} preview={preview} onKeep={keep} />}
+      {preview != null &&
+        (refused ? (
+          <RefusedDialog
+            event={event}
+            verb={verb}
+            raced={raced}
+            onKeep={keep}
+            onVerb={() => {
+              setPreview(null);
+              window.setTimeout(onVerb, 0);
+            }}
+          />
+        ) : (
+          <DeleteDialog
+            event={event}
+            preview={preview}
+            onKeep={keep}
+            onRefused={() => setRaced(true)}
+          />
+        ))}
     </div>
   );
 }
@@ -71,10 +104,13 @@ function DeleteDialog({
   event,
   preview,
   onKeep,
+  onRefused,
 }: {
   event: OrganisationEvent;
   preview: EventDeletion;
   onKeep: () => void;
+  /** A guest made Invited since it opened: the dialog turns into the refusal, never the 409's words. */
+  onRefused: () => void;
 }) {
   const { t } = useTranslation();
   const navigate = useNavigate();
@@ -105,6 +141,13 @@ function DeleteDialog({
       await api.deleteEvent(event.id, needsName ? typed : undefined);
       void navigate('/app/events', { replace: true, state: { deletedEvent: name } });
     } catch (error) {
+      if (error instanceof ApiError && error.is('event_call_off_first')) {
+        setBusy(false);
+        onRefused();
+
+        return;
+      }
+
       const refusedName =
         error instanceof ApiError &&
         (error.problem.violations ?? []).some((one) => one.propertyPath === 'name');
@@ -192,6 +235,54 @@ function DeleteDialog({
           </p>
         )}
       </div>
+    </Ask>
+  );
+}
+
+/** Before the start, Call off {event} first?; from it, End {event} first?. Without Events at Change, the line saying who can, and Keep it alone. */
+function RefusedDialog({
+  event,
+  verb,
+  raced,
+  onKeep,
+  onVerb,
+}: {
+  event: OrganisationEvent;
+  verb: Verb;
+  raced: boolean;
+  onKeep: () => void;
+  onVerb: () => void;
+}) {
+  const { t } = useTranslation();
+  const session = useSession();
+  const body = useId();
+  const before = verb === 'callOff';
+  const changes = canOn(event, 'events.manage');
+  const ask = {
+    area: t('nav.events'),
+    organisation: session.organisation?.name ?? '',
+  };
+
+  return (
+    <Ask
+      title={t(before ? 'eventDelete.refusedCallOffTitle' : 'eventDelete.refusedEndTitle', {
+        event: event.name,
+      })}
+      keep={t('eventDelete.keep')}
+      {...(changes ? { go: t(before ? 'eventEnd.callOff' : 'eventEnd.endNow') } : {})}
+      titleFirst={raced}
+      describedBy={changes ? `${body}-why` : `${body}-why ${body}-who`}
+      onKeep={onKeep}
+      onGo={onVerb}
+    >
+      <p id={`${body}-why`}>
+        {t(before ? 'eventDelete.refusedCallOffBody' : 'eventDelete.refusedEndBody')}
+      </p>
+      {!changes && (
+        <p id={`${body}-who`} className="desk-line is-ink">
+          {t(before ? 'eventDelete.refusedAskCallOff' : 'eventDelete.refusedAskEnd', ask)}
+        </p>
+      )}
     </Ask>
   );
 }

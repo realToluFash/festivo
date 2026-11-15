@@ -1,4 +1,5 @@
 import type { View, Visit } from './guest.ts';
+import type { Party } from './guestCompanions.ts';
 import {
   type Access,
   type Allergen,
@@ -25,6 +26,8 @@ export interface Person {
   removed: readonly Access[];
   by: 'hosts' | 'you' | null;
   on: string | null;
+  /** An unnamed place's label from Who's coming with you?: 0 for "Your guest", else its position (sc-48740). */
+  place: number | null;
 }
 
 export interface GuestKitchen {
@@ -55,23 +58,30 @@ function person(key: string, name: string | null, extra: Partial<Person> = {}): 
     removed: [],
     by: null,
     on: null,
+    place: null,
     ...extra,
   };
+}
+
+export interface PartyPlace {
+  key: string;
+  name: string | null;
+  place: number | null;
 }
 
 /** sc-3779: the guest and the companions coming, by name; a person's notes stay with them, and go with whoever left. */
 export function partyPeople(
   people: readonly Person[],
-  coming: readonly { key: string; name: string }[],
+  coming: readonly PartyPlace[],
   record: readonly Person[] | null = null,
 ): Person[] {
-  const kept = (key: string, name: string | null) => {
+  const kept = (key: string, name: string | null, place: number | null) => {
     const was = people.find((one) => one.key === key) ?? record?.find((one) => one.key === key);
 
-    return was == null ? person(key, name) : { ...was, name };
+    return was == null ? person(key, name, { place }) : { ...was, name, place };
   };
 
-  return [kept('me', null), ...coming.map((one) => kept(one.key, one.name))];
+  return [kept('me', null, null), ...coming.map((one) => kept(one.key, one.name, one.place))];
 }
 
 /** Skip with nothing recorded: everyone's notes cleared, each person still by name. */
@@ -90,6 +100,7 @@ export function blankParty(companions: number): Person[] {
 export function whoOf(one: Person, people: readonly Person[], words: GuestKitchenWords): string {
   if (one.key === 'me') return words.say('you');
   if (one.name != null) return one.name;
+  if (one.place != null) return one.place === 0 ? words.say('yourGuest') : words.nth(one.place);
   const companions = people.filter((each) => each.key !== 'me');
 
   return companions.length === 1 ? words.say('yourGuest') : words.nth(companions.indexOf(one) + 1);
@@ -460,6 +471,15 @@ const FOCUS: Partial<Record<GuestKitchenState, string>> = {
   refused: 'send',
 };
 
+/** Companions on the kitchen step came through Who's coming with you?: here every place the hosts saved, none named, all Coming (sc-48740). */
+function unnamedPlaces(people: readonly Person[]): Party {
+  const places = people
+    .filter((one) => one.key !== 'me')
+    .map((one) => ({ key: one.key, name: null, by: null, coming: true }));
+
+  return { places: places.length, people: places, tried: false, renaming: null, draft: '' };
+}
+
 export function guestKitchenStarts(
   state: GuestKitchenState,
   { earlier, companions: invited }: { earlier: string; companions: number },
@@ -504,6 +524,7 @@ export function guestKitchenStarts(
   return {
     recorded: returning ? { answer: 'coming', on: earlier } : null,
     companionsComing: companions,
+    party: unnamedPlaces(people),
     view,
     kitchen,
     want: FOCUS[state] ?? (view.kind === 'check' ? 'checkHead' : 'kitchenHead'),

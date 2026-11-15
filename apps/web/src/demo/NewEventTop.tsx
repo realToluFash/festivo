@@ -1,4 +1,8 @@
+import { useSearchParams } from 'react-router';
+
 import { DemoBell } from './DemoBell.tsx';
+import { NewEventForm } from './NewEventForm.tsx';
+import { newEventStateOf } from './newEvent.ts';
 import { Crumb } from '../components/EventPageParts.tsx';
 import { TitleRow } from '../components/SettingsParts.tsx';
 import { EventsShell } from './EventParts.tsx';
@@ -6,8 +10,10 @@ import { EVENT_WORDS as W } from './events.ts';
 import { SIDEBAR_EVENTS, VIEWERS } from './settings.ts';
 import { TodaySidebar } from './TodaySidebar.tsx';
 
-/** New event's top at a desk, once the band has gone (sc-39509): the event pages' crumb row with the bell, then the title. */
+/** New event at a desk: sc-39509's top (the crumb row with the bell, then the title) over sc-48607's form. */
 export function NewEventTop() {
+  const [params] = useSearchParams();
+
   return (
     <EventsShell
       renderSide={(tell, covered) => (
@@ -27,9 +33,7 @@ export function NewEventTop() {
               <DemoBell tell={tell} />
             </Crumb>
             <TitleRow title={W.newEvent} compact />
-            <p className="demo-muted">
-              The form below the title has its own design, and stays as the product draws it.
-            </p>
+            <NewEventForm state={newEventStateOf(params.get('state'))} />
           </div>
         </div>
       )}

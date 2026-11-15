@@ -34,6 +34,7 @@ use App\Repository\MembershipTransitionRepository;
 use App\Repository\OrganisationRepository;
 use DateTimeImmutable;
 use Psl\Dict;
+use Psl\Iter;
 use Psl\Type;
 use Psl\Vec;
 use Symfony\Bundle\SecurityBundle\Security;
@@ -88,6 +89,7 @@ final readonly class MembersController
         );
         $now = new DateTimeImmutable();
         $sentAt = $this->invitationDeliveries->sentAt($invitations);
+        $undelivered = $this->invitationDeliveries->undelivered($invitations);
         $locale = $this->userMailer->shownLocaleFor($caller);
         $written = fn (DateTimeImmutable $at): string => $this->userMailer->deadline($at, $caller, $locale);
         $decides = true === $this->membershipDirectory->grantsIn($caller, $organisation->getId())?->holds(Permission::MembersManage);
@@ -108,7 +110,12 @@ final readonly class MembersController
                     $sentAt,
                 ),
             ),
-            'invitations' => Vec\map($invitations, static fn (Invitation $invitation): array => MemberSerialiser::invitation($invitation, $now, $sentAt[$invitation->getId()->toRfc4122()] ?? null)),
+            'invitations' => Vec\map($invitations, static fn (Invitation $invitation): array => MemberSerialiser::invitation(
+                $invitation,
+                $now,
+                $sentAt[$invitation->getId()->toRfc4122()] ?? null,
+                Iter\contains($undelivered, $invitation->getId()->toRfc4122()),
+            )),
         ]);
     }
 
@@ -127,7 +134,7 @@ final readonly class MembersController
         $invitation = $this->invitationSender->invite($organisation, $body['email'], $this->role($organisation, $body['roleId']), $this->user(), $request, $body['proof'] ?? null);
 
         return new JsonResponse(
-            ['invitation' => MemberSerialiser::invitation($invitation, new DateTimeImmutable(), $this->invitationDeliveries->sentAt([$invitation])[$invitation->getId()->toRfc4122()] ?? null)],
+            ['invitation' => $this->invitation($invitation)],
             Response::HTTP_CREATED,
         );
     }
@@ -147,7 +154,7 @@ final readonly class MembersController
 
         $this->invitationSender->revoke($invitation, $this->user());
 
-        return new JsonResponse(['invitation' => MemberSerialiser::invitation($invitation, new DateTimeImmutable(), $this->invitationDeliveries->sentAt([$invitation])[$invitation->getId()->toRfc4122()] ?? null)]);
+        return new JsonResponse(['invitation' => $this->invitation($invitation)]);
     }
 
     /** Takes effect on the member's next request: grants are read from the membership every time. Into Owner, `proof` comes from /api/auth/proof. */
@@ -264,5 +271,16 @@ final readonly class MembersController
         $user = $this->security->getUser();
 
         return $user instanceof User ? $user : throw new ApiException(ErrorCode::Unauthenticated, 'access.sign_in');
+    }
+
+    /** @return array<string, mixed> */
+    private function invitation(Invitation $invitation): array
+    {
+        return MemberSerialiser::invitation(
+            $invitation,
+            new DateTimeImmutable(),
+            $this->invitationDeliveries->sentAt([$invitation])[$invitation->getId()->toRfc4122()] ?? null,
+            [] !== $this->invitationDeliveries->undelivered([$invitation]),
+        );
     }
 }

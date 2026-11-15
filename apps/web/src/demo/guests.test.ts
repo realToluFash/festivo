@@ -42,6 +42,7 @@ import { COMING, GUESTS_N, NOT_REPLIED, countOf } from './messages.ts';
 import { GROUPS } from './messagesTo.ts';
 
 const NONE = new Set<never>();
+const DAY = '2026-11-03';
 
 describe('the wedding counts as Messaging B counts it (pm, 7 Nov)', () => {
   const counts = countsOf(sampleGuests(WEDDING));
@@ -140,9 +141,16 @@ describe('the list (sc-3772)', () => {
     if (view.kind !== 'rows') throw new Error('rows');
     expect(view.rows[0]).toMatchObject({
       line: 'Invited by Folake Adeyemi, WhatsApp, Oct 9',
+      contact: 'emeka.nwosu@nhs.net · +44 7700 900231',
       label:
-        'Dr Emeka Nwosu, No reply, Invited by Folake Adeyemi, WhatsApp, Oct 9, Allergy, Dietary notes',
+        'Dr Emeka Nwosu, No reply, Invited by Folake Adeyemi, WhatsApp, Oct 9, emeka.nwosu@nhs.net, +44 7700 900231, Allergy, Dietary notes',
     });
+
+    const viewer = viewOf(list, 'noReply', '', NONE, replyBy, false).view;
+
+    if (viewer.kind !== 'rows') throw new Error('rows');
+    expect(viewer.rows.every((row) => row.contact == null)).toBe(true);
+    expect(viewer.rows[0]?.label).not.toContain('nhs.net');
     expect(view.rows.slice(0, 5).map((row) => row.person.name)).toEqual([
       'Dr Emeka Nwosu',
       'Joaquín Ruiz',
@@ -170,6 +178,13 @@ describe('the list (sc-3772)', () => {
     expect(viewOf(list, 'all', 'okon', NONE, replyBy).shown).toBe(2);
     expect(viewOf(list, 'all', 'kofi', NONE, replyBy).shown).toBe(0);
     expect(viewOf(list, 'held', 'marta', NONE, replyBy).shown).toBe(0);
+    const held = viewOf(list, 'held', 'adanna', NONE, replyBy).view;
+    expect(held.kind === 'rows' && held.rows.map((row) => row.line)).toEqual([
+      'Guest of Dr Emeka Nwosu · Held · comes only if their host accepts',
+    ]);
+    expect(held.kind === 'rows' && held.rows.map((row) => row.label)).toEqual([
+      'Adanna Nwosu, Guest of Dr Emeka Nwosu · Held · comes only if their host accepts',
+    ]);
     expect(viewOf(list, 'all', 'nhs.net', NONE, replyBy).shown).toBe(1);
     expect(viewOf(list, 'all', '900412', NONE, replyBy).shown).toBe(1);
     expect(viewOf(list, 'all', 'ines', NONE, replyBy).shown).toBe(2);
@@ -366,6 +381,53 @@ describe('the card (spec §4)', () => {
     expect(guestsCardOf(passed, list, 'live', CLOCKS.rest, false).step).toBeNull();
   });
 
+  it('offers Add guest on an empty Draft, Make live beside it only for events.manage (sc-50409)', () => {
+    const draft = sampleEvent(DRAFT);
+    const passed = sampleEvent(DRAFT_PAST);
+    if (draft == null || passed == null) throw new Error('drafts');
+
+    expect(guestsCardOf(draft, [], 'live', CLOCKS.rest, true)).toMatchObject({
+      tags: [{ kind: 'draft', word: 'Draft' }],
+      says: 'No guests yet',
+      line: 'Guests can’t be invited until this event is live.',
+      step: 'add',
+      also: 'makeLive',
+    });
+    expect(guestsCardOf(passed, [], 'live', CLOCKS.rest, true)).toMatchObject({
+      step: 'add',
+      also: 'changeDates',
+    });
+    expect(guestsCardOf(draft, [], 'live', CLOCKS.rest, true, false)).toMatchObject({
+      step: 'add',
+      also: null,
+    });
+    expect(guestsCardOf(draft, [], 'live', CLOCKS.rest, false, true)).toMatchObject({
+      says: 'No guests yet',
+      step: 'makeLive',
+      also: null,
+    });
+    expect(guestsCardOf(draft, [], 'live', CLOCKS.rest, false, false).step).toBeNull();
+  });
+
+  it('says No guests yet on an empty Paused or Finished card, no step (pm, 15 Nov)', () => {
+    const wedding = sampleEvent(WEDDING);
+    if (wedding == null) throw new Error('wedding');
+    const paused = { ...wedding, status: 'paused' as const };
+
+    expect(guestsCardOf(paused, [], 'live', CLOCKS.rest, true)).toMatchObject({
+      tags: [{ kind: 'paused', word: 'Paused' }],
+      says: 'No guests yet',
+      line: 'Guests can’t be invited while this event is paused.',
+      step: null,
+    });
+    expect(guestsCardOf(wedding, [], 'live', CLOCKS.finished, true)).toMatchObject({
+      tags: [{ kind: null, word: 'Finished' }],
+      says: 'No guests yet',
+      line: 'This event has finished, so guests can’t be invited.',
+      step: null,
+    });
+  });
+
   it('counts a recorded reply straight away (sc-3787)', () => {
     const list = recordReply(
       sampleGuests(WEDDING),
@@ -480,11 +542,16 @@ describe('places for companions, the host’s side (sc-3779)', () => {
     expect(namedOf(sophie)).toBe(1);
     expect(sophie.companions[0]?.namedBy).toBe('guest');
 
-    const kept = saveGuest(list, 'sophie', { ...valuesOf(sophie), email: 'sophie@orange.fr' });
-    const renamed = saveGuest(list, 'sophie', {
-      ...valuesOf(sophie),
-      companions: [{ id: 'sophie-c1', name: 'Marc-Antoine Laurent' }],
-    });
+    const kept = saveGuest(list, 'sophie', { ...valuesOf(sophie), email: 'sophie@orange.fr' }, DAY);
+    const renamed = saveGuest(
+      list,
+      'sophie',
+      {
+        ...valuesOf(sophie),
+        companions: [{ id: 'sophie-c1', name: 'Marc-Antoine Laurent' }],
+      },
+      DAY,
+    );
 
     expect(kept.find((one) => one.id === 'sophie')?.companions[0]?.namedBy).toBe('guest');
     expect(renamed.find((one) => one.id === 'sophie')?.companions[0]).not.toHaveProperty('namedBy');
@@ -510,13 +577,31 @@ describe('a companion with a seat and a meal (sc-3773)', () => {
   });
 
   it('keeps the seat on a companion who stays when the guest is saved', () => {
-    const saved = saveGuest(list, 'ines', { ...valuesOf(ines ?? null), email: 'ines@sapo.pt' });
+    const saved = saveGuest(
+      list,
+      'ines',
+      { ...valuesOf(ines ?? null), email: 'ines@sapo.pt' },
+      DAY,
+    );
 
     expect(saved.find((one) => one.id === 'ines')?.companions[0]).toMatchObject({
       name: 'Rui Duarte',
       table: 'Table 4',
       meal: true,
     });
+  });
+
+  it('keeps the guest as the last to change needs when a host saves without changing them (sc-3778)', () => {
+    const saved = saveGuest(
+      list,
+      'ines',
+      { ...valuesOf(ines ?? null), email: 'ines@sapo.pt' },
+      DAY,
+    );
+    const after = saved.find((one) => one.id === 'ines');
+
+    expect(after?.needs.changed).toEqual({ by: 'guest', on: '2026-10-13' });
+    expect(after?.companions[0]?.needs?.changed).toEqual({ by: 'guest', on: '2026-10-13' });
   });
 });
 

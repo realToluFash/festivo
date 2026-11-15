@@ -8,7 +8,7 @@ import {
   REPLY_BY_WORDS as R,
   type ReplyByCheck,
   haventRepliedOf,
-  replyByCheck,
+  replyByCheckAt,
   showsPreview,
   haventCountOf,
 } from './replyBy.ts';
@@ -64,7 +64,7 @@ export function ReplyByPart({
   const field = useRef<HTMLInputElement>(null);
   const id = useId();
   const next = typed === '' ? null : typed;
-  const check = replyByCheck({
+  const check = replyByCheckAt({
     next,
     was: replyBy,
     startsAt: event.startsAt,

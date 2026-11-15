@@ -152,7 +152,7 @@ def product_manager(p, db, stories):
     if owner:
         p.add("", f"{R.WAITING} ({len(owner)}):", *[line(s) for s in owner])
     backlog = sorted([s for s in stories if s["state"] == "Backlog"
-                      and not {"translation", "idea"} & set(s["labels"])],
+                      and "translation" not in s["labels"] and s not in ideas],
                      key=W.epic_order(store.get_meta(db, "epics")))
     p.add("", f"Backlog ({len(backlog)}), next 10: take it up into To Do, or archive it "
           f"(`{SQ} pm find state:Backlog` for all):")

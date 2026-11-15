@@ -40,12 +40,20 @@ import { Text, type TextHandle } from './Text.tsx';
 import { Toast } from './Toast.tsx';
 import { TURNS_WITH_THE_APP } from '../layout/orientations.ts';
 import { useReducedMotion } from '../reducedMotion.ts';
-import { menuInModal, menuMost } from '../kit/anchoredMenu.ts';
+import {
+  keptSide,
+  menuButton,
+  menuSide,
+  menuTall,
+  nextHeld,
+  type HeldSide,
+} from '../kit/anchoredMenu.ts';
 import { tokens } from '../theme/tokens.ts';
 import { useModalOpen } from '../updateRequired.ts';
 import { Glyph } from './Glyph.tsx';
 import { AskLayer, type AskProps } from './AskLayer.tsx';
 import { TextAction } from './SummaryRows.tsx';
+import { menuFigure } from './menuFigure.ts';
 import { FocusNav, type FocusVerb } from './FocusNav.tsx';
 import { useShellLayout } from './settingsShell.ts';
 
@@ -268,8 +276,12 @@ export function FocusedScreen({
               <Toast key={toast.words} words={toast.words} onClose={toast.onClose} />
             </View>
           )}
-          {over?.layer}
-          {asking && <AskLayer {...ask} />}
+          {covered && (
+            <View style={[StyleSheet.absoluteFill, styles.overSheet]} pointerEvents="box-none">
+              {over?.layer}
+              {asking && <AskLayer {...ask} />}
+            </View>
+          )}
         </View>
       </KeyboardAvoidingView>
     </Window>
@@ -350,15 +362,21 @@ export interface MenuChoice<T extends string> {
 }
 
 const MENU_WIDTH = 220;
+const MENU_EDGE = 1;
 
 export interface Anchor {
   x: number;
+  /** Its opener's foot. */
   y: number;
   width: number;
+  /** Its opener's top, for a menu with no room under it to sit above. */
+  top: number;
 }
 
 export function anchorUnder(trigger: RefObject<ViewInstance | null>, then: (at: Anchor) => void) {
-  trigger.current?.measureInWindow((x, y, width, height) => then({ x, y: y + height, width }));
+  trigger.current?.measureInWindow((x, y, width, height) =>
+    then({ x, y: y + height, width, top: y }),
+  );
 }
 
 /** An open menu's anchor, measured again once a turned window settles; a button the turn took away closes it. */
@@ -388,7 +406,7 @@ interface MenuProps {
   onClose: () => void;
   width?: number;
   align?: 'start' | 'end';
-  /** How far under what opened it. */
+  /** How far from what opened it, under it or above it. */
   below?: number;
   /** Where it must end above, in measureInWindow's frame as `at` is: the keys' top less a gap; the window's foot otherwise. */
   floor?: number | null;
@@ -399,7 +417,7 @@ interface MenuProps {
   testID?: string;
 }
 
-/** A menu under what opened it, its right edge in line; capped at the room under it, it scrolls inside with a fade at its foot. */
+/** A menu under what opened it, its right edge in line, or above it when it does not fit under it and above has more room; capped at its room, it scrolls inside with a fade at its foot. */
 export function AnchoredMenu({
   opener,
   over,
@@ -434,29 +452,45 @@ export function MenuLayer({
   const frame = useWindowDimensions();
   const insets = useSafeAreaInsets();
   const origin = useWindowOrigin();
-  const [seen, setSeen] = useState({ panel: 0, content: 0, offset: 0 });
-  const place = menuInModal({ under: at?.y ?? 0, below, floor, origin });
-  const top = place.top;
-  const room = menuMost(place, frame.height - Math.max(insets.bottom, tokens.spaceLg));
+  const [seen, setSeen] = useState({ head: 0, panel: 0, content: 0, offset: 0 });
+  const [held, setHeld] = useState<HeldSide | null>(null);
+  const [layer, setLayer] = useState<number | null>(null);
+  const button = menuButton(at);
+  const side = menuSide({
+    under: at?.y ?? 0,
+    over: at?.top ?? 0,
+    gap: below,
+    floor,
+    origin,
+    ceiling: insets.top,
+    layer: layer ?? 0,
+    bar: Math.max(insets.bottom, tokens.spaceLg),
+    tall: menuTall(seen, MENU_EDGE),
+    above: keptSide(held, button),
+  });
   const more = seen.content - seen.offset - seen.panel > 1;
+
+  const hold = nextHeld(held, button, side, seen.content > 0);
+  if (hold !== held) setHeld(hold);
 
   return (
     <>
       <Pressable
         style={StyleSheet.absoluteFill}
+        onLayout={(event) => setLayer(event.nativeEvent.layout.height)}
         onPress={onClose}
         accessibilityRole="button"
         accessibilityLabel={t('frame.closeMenu')}
       />
-      {at != null && (
+      {at != null && layer != null && (
         <View
           style={[
             styles.menu,
             {
-              top,
+              top: side.top,
               left: menuLeft(at, width, align, frame.width),
               width,
-              maxHeight: room,
+              maxHeight: side.most,
             },
           ]}
           accessibilityViewIsModal
@@ -464,7 +498,14 @@ export function MenuLayer({
           testID={testID}
         >
           <View style={styles.menuClip}>
-            {head}
+            <View
+              onLayout={(event) => {
+                const headHeight = event.nativeEvent.layout.height;
+                setSeen((now) => (now.head === headHeight ? now : { ...now, head: headHeight }));
+              }}
+            >
+              {head}
+            </View>
             <ScrollView
               ref={scrollRef}
               bounces={false}
@@ -523,19 +564,22 @@ export function FilterMenu<T extends string>({
   name: string;
   testID: string;
 }) {
+  const { i18n } = useTranslation();
   const trigger = useRef<ViewInstance>(null);
   const [at, setAt] = useState<Anchor | null>(null);
+  useAnchorFollowsTurn(trigger, at != null, setAt);
   const current = choices.find((choice) => choice.value === value) ?? choices[0];
+  const figure = menuFigure(i18n, current?.count ?? 0);
   const close = () => setAt(null);
 
   return (
     <>
       <TextAction
         ref={trigger}
-        label={`${current?.word ?? ''} · ${current?.count ?? 0}`}
+        label={`${current?.word ?? ''} · ${figure}`}
         after="down"
         onPress={() => anchorUnder(trigger, setAt)}
-        accessibilityLabel={`${name}: ${current?.word ?? ''}, ${current?.count ?? 0}`}
+        accessibilityLabel={`${name}: ${current?.word ?? ''}, ${figure}`}
         testID={testID}
       />
       <AnchoredMenu at={at} onClose={close} opener={trigger}>
@@ -543,6 +587,7 @@ export function FilterMenu<T extends string>({
           <MenuRow
             key={choice.value}
             choice={choice}
+            figure={menuFigure(i18n, choice.count)}
             on={choice.value === value}
             onPress={() => {
               close();
@@ -563,11 +608,13 @@ function menuLeft(at: Anchor, width: number, align: 'start' | 'end', across: num
 
 function MenuRow<T extends string>({
   choice,
+  figure,
   on,
   onPress,
   testID,
 }: {
   choice: MenuChoice<T>;
+  figure: string;
   on: boolean;
   onPress: () => void;
   testID: string;
@@ -578,7 +625,7 @@ function MenuRow<T extends string>({
       style={({ pressed }) => [styles.menuRow, pressed && styles.menuPressed]}
       accessibilityRole="button"
       accessibilityState={{ selected: on }}
-      accessibilityLabel={`${choice.word}, ${choice.count}`}
+      accessibilityLabel={`${choice.word}, ${figure}`}
       testID={testID}
     >
       <View style={styles.menuTick}>
@@ -593,7 +640,7 @@ function MenuRow<T extends string>({
         {choice.word}
       </Text>
       <Text size={15} weight="medium" accessible={false} style={[styles.secondary, styles.count]}>
-        {String(choice.count)}
+        {figure}
       </Text>
     </Pressable>
   );
@@ -627,12 +674,14 @@ const styles = StyleSheet.create({
     ...tokens.elevationNative.popover.ios,
     elevation: tokens.elevationNative.popover.android.elevation,
   },
+  // Android hands a field's tap to the highest elevation, so whatever covers the raised sheet is raised above it.
+  overSheet: { elevation: tokens.elevationNative.popover.android.elevation + 1 },
   sheetBody: { flexGrow: 0 },
   sheetFill: { flexShrink: 1, minHeight: 0 },
   body: { paddingTop: tokens.spaceXl, paddingHorizontal: tokens.spaceXxl },
   menu: {
     position: 'absolute',
-    borderWidth: 1,
+    borderWidth: MENU_EDGE,
     borderColor: tokens.colorBorder,
     borderRadius: tokens.spaceXl,
     backgroundColor: tokens.colorCard,

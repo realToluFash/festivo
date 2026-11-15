@@ -38,6 +38,7 @@ use Psl\SecureRandom;
 use Psl\Str;
 use Psl\Type;
 use Psl\Vec;
+use Symfony\Contracts\Translation\TranslatorInterface;
 
 final class EventsTest extends ApiTestCase
 {
@@ -1227,6 +1228,67 @@ final class EventsTest extends ApiTestCase
         self::assertCount(1, self::em()->getRepository(AuditEntry::class)->findBy(['action' => EventEditor::UPDATED]), 'only the move into the past was recorded');
     }
 
+    /** @return iterable<string, array{array<string, string>}> */
+    public static function calledOffScheduleChanges(): iterable
+    {
+        yield 'the start' => [['startsAt' => '2030-11-14T17:00']];
+        yield 'the end' => [['endsAt' => '2030-11-15T03:00']];
+        yield 'the zone' => [['timeZone' => 'Europe/London']];
+    }
+
+    /** @param array<string, string> $change */
+    #[Test]
+    #[DataProvider('calledOffScheduleChanges')]
+    public function aCalledOffEventsScheduleSaysItWasCalledOff(array $change): void
+    {
+        $event = $this->live(self::AHEAD, '2030-11-15T02:00');
+        $this->as($this->owner, 'POST', '/api/events/' . $event['id'] . '/end');
+        $ended = $this->event($this->as($this->owner, 'GET', '/api/events/' . $event['id']));
+
+        $this->edit($event['id'], $change, $this->tagOf($event['id']));
+
+        self::assertSame(409, $this->statusCode());
+        self::assertSame(ErrorCode::EventConcluded->type(), $this->last()['type'] ?? null);
+        self::assertSame('This event was called off, so its start, end and time zone cannot be changed.', $this->last()['detail'] ?? null);
+        self::assertSame($ended, $this->event($this->as($this->owner, 'GET', '/api/events/' . $event['id'])));
+    }
+
+    #[Test]
+    public function aScheduleSavedFromBeforeTheCallOffIsStale(): void
+    {
+        $event = $this->live(self::AHEAD, '2030-11-15T02:00');
+        $read = $this->tagOf($event['id']);
+        $this->as($this->owner, 'POST', '/api/events/' . $event['id'] . '/end');
+        $ended = $this->event($this->as($this->owner, 'GET', '/api/events/' . $event['id']));
+
+        $this->edit($event['id'], ['startsAt' => '2030-11-14T17:00'], $read);
+
+        self::assertSame(412, $this->statusCode());
+        self::assertSame($ended, $this->event($this->as($this->owner, 'GET', '/api/events/' . $event['id'])));
+    }
+
+    /** @return iterable<string, array{string, ?string, string}> */
+    public static function calledOffLanguages(): iterable
+    {
+        yield 'en by Accept-Language' => ['', 'en', 'en'];
+        yield 'es by ?locale=' => ['?locale=es', null, 'es'];
+        yield 'fr by Accept-Language' => ['', 'fr', 'fr'];
+        yield 'pt by ?locale=' => ['?locale=pt', null, 'pt'];
+    }
+
+    #[Test]
+    #[DataProvider('calledOffLanguages')]
+    public function aCalledOffEventsScheduleSaysItWasCalledOffInEachLanguage(string $query, ?string $language, string $locale): void
+    {
+        $event = $this->live(self::AHEAD, '2030-11-15T02:00');
+        $this->as($this->owner, 'POST', '/api/events/' . $event['id'] . '/end');
+
+        $this->as($this->owner, 'PATCH', '/api/events/' . $event['id'] . $query, ['timeZone' => 'Europe/London'], $this->tagOf($event['id']), $language);
+
+        self::assertSame(409, $this->statusCode());
+        self::assertSame(self::service(TranslatorInterface::class)->trans('event.schedule_called_off', [], null, $locale), $this->last()['detail'] ?? null);
+    }
+
     #[Test]
     public function aFinishedEventIsRenamedWithItsScheduleSentUnchanged(): void
     {
@@ -1468,6 +1530,126 @@ final class EventsTest extends ApiTestCase
         self::assertInstanceOf(AuditEntry::class, $entry);
         self::assertSame([null, 'Victoria Island'], $entry->getChanges()['venueAddress'] ?? null);
         self::assertArrayNotHasKey('venueName', $entry->getChanges());
+    }
+
+    #[Test]
+    public function anArrivalNoteIsSavedTrimmedWithItsLineBreaks(): void
+    {
+        $body = $this->as($this->owner, 'POST', $this->path('events'), [...self::valid(), 'arrivalNote' => "\n  Side gate on Marylebone Road.\n\nDoors at 17:30.  \n "]);
+
+        self::assertSame(201, $this->statusCode(), Json\encode($body));
+        self::assertSame("Side gate on Marylebone Road.\n\nDoors at 17:30.", $this->event($body)['arrivalNote']);
+    }
+
+    #[Test]
+    public function anArrivalNoteStaysWithNeitherVenueNameNorAddress(): void
+    {
+        $id = $this->create('Owambe', '2026-11-14T16:00');
+
+        $this->edit($id, ['venue' => null, 'arrivalNote' => 'Address to follow; doors at 8'], $this->tagOf($id));
+
+        self::assertSame(200, $this->statusCode());
+        self::assertSame([null, 'Address to follow; doors at 8'], [$this->event($this->last())['venue'], $this->event($this->last())['arrivalNote']]);
+    }
+
+    /** @return iterable<string, array{string}> */
+    public static function noNotes(): iterable
+    {
+        yield 'emptied' => [''];
+        yield 'only spaces and blank lines' => ["  \n\n \t "];
+    }
+
+    #[Test]
+    #[DataProvider('noNotes')]
+    public function anArrivalNoteEmptiedIsRemoved(string $typed): void
+    {
+        $id = $this->create('Owambe', '2026-11-14T16:00');
+        $this->edit($id, ['arrivalNote' => 'Gate 2'], $this->tagOf($id));
+
+        $this->edit($id, ['arrivalNote' => $typed], $this->tagOf($id));
+
+        self::assertSame(200, $this->statusCode());
+        self::assertNull($this->event($this->last())['arrivalNote']);
+    }
+
+    #[Test]
+    public function anEditLeavingTheArrivalNoteOutKeepsIt(): void
+    {
+        $id = $this->create('Owambe', '2026-11-14T16:00');
+        $this->edit($id, ['arrivalNote' => 'Gate 2'], $this->tagOf($id));
+
+        $this->edit($id, ['venue' => null, 'name' => 'Renamed'], $this->tagOf($id));
+
+        self::assertSame('Gate 2', $this->event($this->last())['arrivalNote']);
+    }
+
+    #[Test]
+    public function anArrivalNoteOf500CodePointsWithAccentsAndAnEmojiIsSavedAnd501IsRefused(): void
+    {
+        $note = Str\repeat('a', 494) . 'éñç🚗 b';
+        self::assertSame(500, Str\length($note));
+
+        $body = $this->as($this->owner, 'POST', $this->path('events'), [...self::valid(), 'arrivalNote' => $note . '  ']);
+
+        self::assertSame(201, $this->statusCode(), Json\encode($body));
+        self::assertSame($note, $this->event($body)['arrivalNote']);
+
+        $id = $this->event($body)['id'];
+        $this->edit($id, ['arrivalNote' => $note . 'c'], $this->tagOf($id));
+
+        self::assertSame(422, $this->statusCode());
+        self::assertSame(['arrivalNote' => 'Shorten the arrival note to 500 characters or fewer.'], $this->violations());
+
+        $this->as($this->owner, 'POST', $this->path('events'), [...self::valid(), 'arrivalNote' => $note . 'c']);
+        self::assertSame(422, $this->statusCode());
+    }
+
+    #[Test]
+    public function aNoteOf500EndingInSpacesTheClientsTrimIsSaved(): void
+    {
+        $note = Str\repeat('a', 500);
+
+        $body = $this->as($this->owner, 'POST', $this->path('events'), [...self::valid(), 'arrivalNote' => "\u{3000}" . $note . "\u{2028}\u{202F}\u{3000}"]);
+
+        self::assertSame(201, $this->statusCode(), Json\encode($body));
+        self::assertSame($note, $this->event($body)['arrivalNote']);
+    }
+
+    #[Test]
+    public function anAccentTypedAsTwoCodePointsCountsAsOne(): void
+    {
+        $note = Str\repeat("e\u{301}", 500);
+
+        $body = $this->as($this->owner, 'POST', $this->path('events'), [...self::valid(), 'arrivalNote' => $note]);
+
+        self::assertSame(201, $this->statusCode(), Json\encode($body));
+        self::assertSame(Str\repeat('é', 500), $this->event($body)['arrivalNote']);
+    }
+
+    #[Test]
+    public function aMemberWhoCannotChangeTheVenueCannotChangeTheArrivalNote(): void
+    {
+        $id = $this->create('Owambe', '2026-11-14T16:00');
+        $tag = $this->tagOf($id);
+        $member = $this->member('member@ire.events', SeededRole::Member, $id, EventRole::CanView);
+
+        $this->as($member, 'PATCH', '/api/events/' . $id, ['arrivalNote' => 'Theirs'], $tag);
+
+        self::assertSame(403, $this->statusCode());
+        self::assertSame(ErrorCode::PermissionRequired->type(), $this->last()['type'] ?? null);
+        self::assertNull($this->event($this->as($member, 'GET', '/api/events/' . $id))['arrivalNote']);
+    }
+
+    #[Test]
+    public function anArrivalNoteIsAuditedAsPartOfTheEventsEdit(): void
+    {
+        $id = $this->create('Owambe', '2026-11-14T16:00');
+
+        $this->edit($id, ['arrivalNote' => 'Gate 2'], $this->tagOf($id));
+
+        $entry = self::em()->getRepository(AuditEntry::class)->findOneBy(['action' => EventEditor::UPDATED, 'subjectType' => 'Event']);
+        self::assertInstanceOf(AuditEntry::class, $entry);
+        self::assertSame(['arrivalNote' => [null, 'Gate 2']], $entry->getChanges());
     }
 
     #[Test]
@@ -1763,7 +1945,7 @@ final class EventsTest extends ApiTestCase
     /**
      * Made live while its end is ahead, then moved to `$startsAt` and `$endsAt` in the database, as time would.
      *
-     * @return array{id: string, organisationId: string, name: string, type: string, status: string, startsAt: string, endsAt: string, timeZone: string, dayCount: int, currency: string, cover: null, venue: mixed, hosts: list<string>, madeLiveAt: ?string, pausedAt: ?string, phase: string, concludedAt: ?string, createdAt: string, permissions: list<string>}
+     * @return array{id: string, organisationId: string, name: string, type: string, status: string, startsAt: string, endsAt: string, timeZone: string, dayCount: int, currency: string, cover: null, venue: mixed, arrivalNote: ?string, replyBy: ?string, repliesCloseAt: ?string, repliesClosedOn: ?string, hosts: list<string>, madeLiveAt: ?string, pausedAt: ?string, phase: string, concludedAt: ?string, deleteRefusedBecause: ?string, createdAt: string, permissions: list<string>}
      */
     private function live(string $startsAt, string $endsAt): array
     {
@@ -1819,7 +2001,7 @@ final class EventsTest extends ApiTestCase
     /**
      * @param array<string, mixed> $body
      *
-     * @return array{id: string, organisationId: string, name: string, type: string, status: string, startsAt: string, endsAt: string, timeZone: string, dayCount: int, currency: string, cover: null, venue: mixed, hosts: list<string>, madeLiveAt: ?string, pausedAt: ?string, phase: string, concludedAt: ?string, createdAt: string, permissions: list<string>}
+     * @return array{id: string, organisationId: string, name: string, type: string, status: string, startsAt: string, endsAt: string, timeZone: string, dayCount: int, currency: string, cover: null, venue: mixed, arrivalNote: ?string, replyBy: ?string, repliesCloseAt: ?string, repliesClosedOn: ?string, hosts: list<string>, madeLiveAt: ?string, pausedAt: ?string, phase: string, concludedAt: ?string, deleteRefusedBecause: ?string, createdAt: string, permissions: list<string>}
      */
     private function event(array $body): array
     {
@@ -1836,11 +2018,16 @@ final class EventsTest extends ApiTestCase
             'currency' => Type\string(),
             'cover' => Type\null(),
             'venue' => Type\mixed(),
+            'arrivalNote' => Type\nullable(Type\string()),
+            'replyBy' => Type\nullable(Type\string()),
+            'repliesCloseAt' => Type\nullable(Type\string()),
+            'repliesClosedOn' => Type\nullable(Type\string()),
             'hosts' => Type\vec(Type\string()),
             'madeLiveAt' => Type\nullable(Type\string()),
             'pausedAt' => Type\nullable(Type\string()),
             'phase' => Type\string(),
             'concludedAt' => Type\nullable(Type\string()),
+            'deleteRefusedBecause' => Type\nullable(Type\string()),
             'createdAt' => Type\string(),
             'permissions' => Type\vec(Type\string()),
         ])->assert($body['event'] ?? null);
@@ -1902,13 +2089,14 @@ final class EventsTest extends ApiTestCase
      *
      * @return array<string, mixed>
      */
-    private function as(User $user, string $method, string $path, ?array $body = null, ?string $ifMatch = null): array
+    private function as(User $user, string $method, string $path, ?array $body = null, ?string $ifMatch = null, ?string $language = null): array
     {
         $who = self::em()->find(User::class, $user->getId()) ?? self::fail('no user');
         $this->client->request($method, $path, server: [
             'CONTENT_TYPE' => 'application/json',
             'HTTP_AUTHORIZATION' => 'Bearer ' . self::service(JWTTokenManagerInterface::class)->create($who),
             ...null === $ifMatch ? [] : ['HTTP_IF_MATCH' => $ifMatch],
+            ...null === $language ? [] : ['HTTP_ACCEPT_LANGUAGE' => $language],
         ], content: null === $body ? null : Json\encode($body));
 
         return $this->last();

@@ -1,3 +1,6 @@
+// First, so a stylesheet a route imports wins a tie with the base, in the build as in dev (sc-14445).
+import './styles.css';
+
 import { StrictMode } from 'react';
 import { createRoot } from 'react-dom/client';
 import { RouterProvider } from 'react-router';
@@ -8,7 +11,6 @@ import { config, load } from './config.ts';
 import { initI18n } from './i18n/index.ts';
 import { router } from './routes/index.tsx';
 import { requireSameSiteApi } from './sameSite.ts';
-import './styles.css';
 
 /**
  * Configuration and language are both awaited before the first render.

@@ -18,7 +18,13 @@
     "mobile:calendar.agenda",
     "web:auth.copyright",
     "web:guest.calendarApple",
-    "web:guest.calendarGoogle"
+    "web:guest.calendarGoogle",
+    "web:guestList.how.whatsapp",
+    "web:guestNeeds.dietName.halal",
+    "web:guestNeeds.dietName.kosher",
+    "mobile:guestList.how.whatsapp",
+    "mobile:guestNeeds.dietName.halal",
+    "mobile:guestNeeds.dietName.kosher"
   ],
   "fr": [
     "web:nav.menu",
@@ -106,7 +112,17 @@
     "web:eventsSearch.type",
     "mobile:eventsSearch.type",
     "web:guestList.invitation",
-    "web:guest.calendarApple"
+    "web:guest.calendarApple",
+    "web:guestList.how.whatsapp",
+    "web:guestNeeds.dietName.halal",
+    "web:guestNeeds.allergen.lupin",
+    "web:guestNeeds.allergies",
+    "web:guestKitchen.allergies",
+    "mobile:guestList.invitation",
+    "mobile:guestList.how.whatsapp",
+    "mobile:guestNeeds.allergies",
+    "mobile:guestNeeds.allergen.lupin",
+    "mobile:guestNeeds.dietName.halal"
   ],
   "pt": [
     "web:nav.menu",
@@ -124,6 +140,12 @@
     "mobile:eventNav.menu",
     "web:auth.copyright",
     "web:guest.calendarApple",
-    "web:guest.calendarGoogle"
+    "web:guest.calendarGoogle",
+    "web:guestList.how.whatsapp",
+    "web:guestNeeds.dietName.halal",
+    "web:guestNeeds.dietName.kosher",
+    "mobile:guestList.how.whatsapp",
+    "mobile:guestNeeds.dietName.halal",
+    "mobile:guestNeeds.dietName.kosher"
   ]
 }

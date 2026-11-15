@@ -1,4 +1,4 @@
-import { type OrganisationEvent, type TaggedEvent } from '@soirely/api-client';
+import { ApiError, type OrganisationEvent, type TaggedEvent } from '@soirely/api-client';
 import {
   EVENT_NAME_MAXIMUM,
   HOSTS_MAXIMUM,
@@ -11,11 +11,14 @@ import {
   type HostRow,
   type VenueDraft,
   addressLookup,
+  arrivalNoteTooLong,
+  coverTypeOf,
   draftOf,
   eventChanges,
   eventSaveRefusal,
   eventFormErrors,
   eventNameLength,
+  formatWallDay,
   hostCalled,
   hostErrorsOf,
   hostsChanged,
@@ -23,8 +26,11 @@ import {
   keepsLastHost,
   movedHost,
   removedHost,
+  replyByAfterStart,
+  replyByAsk,
   skippedLine,
   venueDraftOf,
+  wallDay,
 } from '@soirely/domain';
 import { useEffect, useId, useLayoutEffect, useMemo, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
@@ -41,22 +47,27 @@ import {
   Radios,
   type Wall,
 } from '../../../components/EventPageParts.tsx';
+import { type CoverEdited, type CoverUploaded, CoverEdit } from '../../../components/CoverEdit.tsx';
 import { Glyph } from '../../../components/Glyph.tsx';
 import { RowWords, TextAction } from '../../../components/SettingsParts.tsx';
 import { currentLocale, dateLocale } from '../../../i18n/index.ts';
+import { meshFor } from '../../../mesh.ts';
 import { currencyChoices, timeZoneChoices } from '../../../zoneAndCurrencyChoices.ts';
-import { CoverSection } from './CoverSection.tsx';
+import { discardCoverUpload, refusalOf } from './coverPhoto.ts';
 import { typeChoices } from './eventTypes.ts';
 import { useStartCarriesEnd } from './useStartCarriesEnd.ts';
+import { ReplyByAsk } from './ReplyByPart.tsx';
+import { replyBySaid, useHavent } from './replyByHavent.ts';
 
-export type Part = 'name' | 'dates' | 'venue' | 'hosts' | 'type' | 'currency' | 'cover';
+export type Part = 'name' | 'dates' | 'replyBy' | 'venue' | 'hosts' | 'type' | 'currency' | 'cover';
 
 export interface PartProps {
   event: OrganisationEvent;
   tag: string;
   onDirty: (dirty: boolean) => void;
   onClose: () => void;
-  onSaved: (saved: TaggedEvent) => void;
+  /** `said` is the toast, when it is more than Saved. */
+  onSaved: (saved: TaggedEvent, said?: string) => void;
   onLatest: (latest: TaggedEvent) => void;
 }
 
@@ -72,7 +83,7 @@ function typedOf(event: OrganisationEvent): Typed {
     draft: draftOf(event),
     timeZone: event.timeZone,
     currency: event.currency,
-    venue: venueDraftOf(event.venue),
+    venue: venueDraftOf(event.venue, event.arrivalNote),
   };
 }
 
@@ -81,7 +92,11 @@ function useSave({ event, tag, onSaved }: Pick<PartProps, 'event' | 'tag' | 'onS
   const { t } = useTranslation();
   const [busy, setBusy] = useState(false);
 
-  async function save(typed: Typed, hosts: readonly HostRow[] | null): Promise<Saving> {
+  async function save(
+    typed: Typed,
+    hosts: readonly HostRow[] | null,
+    said?: (saved: TaggedEvent) => string | undefined,
+  ): Promise<Saving> {
     const changes = {
       ...eventChanges(event, typed),
       ...(hosts != null &&
@@ -100,7 +115,7 @@ function useSave({ event, tag, onSaved }: Pick<PartProps, 'event' | 'tag' | 'onS
     try {
       const saved = await api.updateEvent(event.id, changes, tag);
       setBusy(false);
-      onSaved(saved);
+      onSaved(saved, said?.(saved));
 
       return { kind: 'saved' };
     } catch (error) {
@@ -133,16 +148,19 @@ function useDirty(changed: boolean, onDirty: (dirty: boolean) => void): void {
   useEffect(() => onDirty(changed), [changed, onDirty]);
 }
 
-/** The notice a save that failed for no reason the part can show leaves, and Changed elsewhere's way to the latest. */
+/** The notice a save that failed for no reason the part can show leaves, or for the role, and Changed elsewhere's way to the latest. */
 function useOutcome(onLatest: PartProps['onLatest'], latest: ReturnType<typeof useSave>['latest']) {
   const { t } = useTranslation();
-  const [outcome, setOutcome] = useState<'changed' | 'failed' | null>(null);
+  const [outcome, setOutcome] = useState<'changed' | 'failed' | 'forbidden' | null>(null);
 
   return {
     refused: outcome === 'changed',
-    failed: outcome === 'failed' ? <Broken>{t('eventEdit.notSaved')}</Broken> : null,
+    failed:
+      outcome === 'failed' || outcome === 'forbidden' ? (
+        <Broken>{t(outcome === 'forbidden' ? 'eventEdit.forbidden' : 'eventEdit.notSaved')}</Broken>
+      ) : null,
     took(saving: Saving): void {
-      setOutcome(saving.kind === 'changed' || saving.kind === 'failed' ? saving.kind : null);
+      setOutcome(saving.kind === 'refused' || saving.kind === 'saved' ? null : saving.kind);
     },
     showLatest(): void {
       void latest(onLatest).then((read) => setOutcome(read ? null : 'failed'));
@@ -309,10 +327,22 @@ function wallOf(draft: EventDraft, end: boolean): Wall {
     : { date: draft.startDate, time: draft.startTime };
 }
 
-/** Dates: when it starts and ends in its zone; a new start carries the end with it. */
-export function DatesPart({ event, tag, onDirty, onClose, onSaved, onLatest }: PartProps) {
+/** Dates: when it starts and ends in its zone; a new start carries the end with it, and Reply by when the start reaches it (sc-3780). */
+export function DatesPart({
+  event,
+  tag,
+  now,
+  onDirty,
+  onClose,
+  onSaved,
+  onLatest,
+  focusStart = 0,
+}: PartProps & { now: Date; focusStart?: number }) {
   const { t } = useTranslation();
   const id = useId();
+  const replyBy = event.replyBy ?? null;
+  const havent = useHavent(event, replyBy != null);
+  const [asking, setAsking] = useState(false);
   const saved = draftOf(event);
   const [draft, setDraft] = useState(saved);
   const [zone, setZone] = useState(event.timeZone);
@@ -341,10 +371,12 @@ export function DatesPart({ event, tag, onDirty, onClose, onSaved, onLatest }: P
   const endSkipped = skippedLine(draft.endDate, draft.endTime, zone, dateLocale(), t);
   const endWrong = errors.endsAt ?? null;
   const startWrong = errors.startsAt ?? null;
+  const replyMoved = draft.startDate === '' ? null : replyByAfterStart(replyBy, draft.startDate);
+  const ask = replyByAsk(replyBy, replyMoved, wallDay(now, zone), havent?.count ?? 1);
 
   useDirty(changed, onDirty);
 
-  async function send(): Promise<void> {
+  async function send(asked: boolean): Promise<void> {
     const typed = {
       ...typedOf(event),
       draft: { ...draftOf(event), ...pick(draft) },
@@ -354,8 +386,13 @@ export function DatesPart({ event, tag, onDirty, onClose, onSaved, onLatest }: P
 
     setErrors(found);
     if (Object.keys(found).length > 0) return;
+    if (ask != null && !asked) return setAsking(true);
 
-    const saving = await save(typed, null);
+    const saving = await save(typed, null, (saved) =>
+      replyMoved == null
+        ? undefined
+        : replyBySaid(saved.event.replyBy ?? replyMoved, now, saved.event.timeZone, t),
+    );
 
     outcome.took(saving);
     if (saving.kind === 'refused') setErrors(saving.errors);
@@ -369,12 +406,13 @@ export function DatesPart({ event, tag, onDirty, onClose, onSaved, onLatest }: P
       busy={busy}
       onLatest={outcome.showLatest}
       onCancel={onClose}
-      onSave={() => void send()}
+      onSave={() => void send(false)}
     >
       {outcome.failed}
       <DateTime
         legend={t('eventForm.starts')}
         wall={wallOf(draft, false)}
+        focus={focusStart}
         wrong={startWrong != null}
         told={
           startWrong != null ? `${id}-start-wrong` : startSkipped != null ? `${id}-skip` : undefined
@@ -393,6 +431,27 @@ export function DatesPart({ event, tag, onDirty, onClose, onSaved, onLatest }: P
       {startSkipped != null && (
         <p id={`${id}-skip`} className="desk-help">
           {startSkipped}
+        </p>
+      )}
+      {asking && ask != null && replyMoved != null && (
+        <ReplyByAsk
+          asking={ask}
+          next={replyMoved}
+          havent={havent}
+          keep={t('eventEdit.keepEditing')}
+          onKeep={() => setAsking(false)}
+          onGo={() => {
+            setAsking(false);
+            void send(true);
+          }}
+        />
+      )}
+      {replyMoved != null && replyBy != null && (
+        <p className="ev-said" role="status">
+          {t('eventReplyBy.startMoves', {
+            old: formatWallDay(replyBy, dateLocale()),
+            next: formatWallDay(replyMoved, dateLocale()),
+          })}
         </p>
       )}
       <DateTime
@@ -464,13 +523,15 @@ export function VenuePart({
 }: PartProps & { over: boolean }) {
   const { t } = useTranslation();
   const id = useId();
-  const savedVenue = venueDraftOf(event.venue);
+  const savedVenue = venueDraftOf(event.venue, event.arrivalNote);
   const [venue, setVenue] = useState(savedVenue);
   const [zone, setZone] = useState(event.timeZone);
   const [zoneSet, setZoneSet] = useState<string | null>(null);
   const [errors, setErrors] = useState<Errors>({});
+  const [said, setSaid] = useState('');
   const [seen, setSeen] = useState(NOTHING_SEEN);
   const field = useRef<HTMLInputElement>(null);
+  const noteBox = useRef<HTMLTextAreaElement>(null);
   const { busy, save, latest } = useSave({ event, tag, onSaved });
   const outcome = useOutcome(onLatest, latest);
   const [lookup] = useState(() =>
@@ -494,22 +555,31 @@ export function VenuePart({
   const changed =
     venue.name !== savedVenue.name ||
     venue.address !== savedVenue.address ||
+    venue.note !== savedVenue.note ||
     zone !== event.timeZone;
 
   useDirty(changed, onDirty);
   useEffect(() => () => lookup.stop(), [lookup]);
 
-  async function send(): Promise<void> {
-    const typed = { ...typedOf(event), venue, timeZone: zone };
-    const found = only(eventFormErrors(typed, t), ['venueName', 'venueAddress']);
+  function refused(found: Errors): void {
+    const count = Object.keys(found).length;
 
     setErrors(found);
+    setSaid(count === 0 ? '' : t('eventForm.problems', { count }));
+    if (found.arrivalNote != null) noteBox.current?.focus();
+  }
+
+  async function send(): Promise<void> {
+    const typed = { ...typedOf(event), venue, timeZone: zone };
+    const found = only(eventFormErrors(typed, t), ['venueName', 'venueAddress', 'arrivalNote']);
+
+    refused(found);
     if (Object.keys(found).length > 0) return;
 
     const saving = await save(typed, null);
 
     outcome.took(saving);
-    if (saving.kind === 'refused') setErrors(saving.errors);
+    if (saving.kind === 'refused') refused(saving.errors);
   }
 
   return (
@@ -606,6 +676,47 @@ export function VenuePart({
           </ul>
         )}
       </div>
+      <div className="desk-field">
+        <label htmlFor={`${id}-note`} className="desk-label">
+          {t('eventForm.arrivalNote')}
+          <span className="ev-optional">{` · ${t('eventForm.optional')}`}</span>
+        </label>
+        <div
+          className={
+            errors.arrivalNote == null ? 'desk-box ev-note-box' : 'desk-box ev-note-box is-wrong'
+          }
+        >
+          <textarea
+            ref={noteBox}
+            id={`${id}-note`}
+            rows={4}
+            value={venue.note}
+            aria-invalid={errors.arrivalNote != null}
+            aria-describedby={
+              errors.arrivalNote == null ? `${id}-note-help` : `${id}-note-error ${id}-note-help`
+            }
+            onChange={(change) => {
+              const note = change.target.value;
+
+              setVenue((was) => ({ ...was, note }));
+              if (!arrivalNoteTooLong(note))
+                setErrors((was) => ({ ...was, arrivalNote: undefined }));
+            }}
+          />
+        </div>
+        {errors.arrivalNote != null && (
+          <p id={`${id}-note-error`} className="desk-error">
+            <Glyph name="alert" size={15} weight={2.2} />
+            {errors.arrivalNote}
+          </p>
+        )}
+        <p id={`${id}-note-help`} className="desk-help">
+          {t('eventForm.arrivalNoteHint')}
+        </p>
+      </div>
+      <p className="visually-hidden" role="status">
+        {said}
+      </p>
       {offer != null && (
         <Quiet
           action={
@@ -827,34 +938,70 @@ export function HostsPart({ event, tag, onDirty, onClose, onSaved, onLatest }: P
   );
 }
 
-/** Cover: the product's cover and its Cover photo dialog, which save as they are used, so Close is all this edit needs. */
+/** Cover: Soirely's cover in the event's own colours, or a photo, its position and what a screen reader says for it. */
 export function CoverPart({
   event,
+  onDirty,
   onClose,
   onCover,
-}: Pick<PartProps, 'event' | 'onClose'> & { onCover: (event: OrganisationEvent) => void }) {
+}: Pick<PartProps, 'event' | 'onDirty' | 'onClose'> & {
+  onCover: (event: OrganisationEvent) => void;
+}) {
   const { t } = useTranslation();
+  const organisationId = event.organisationId;
+
+  async function upload(file: File, shows: boolean): Promise<CoverUploaded> {
+    let key: string | null = null;
+
+    try {
+      const signed = await api.signEventCoverUpload(organisationId, {
+        contentType: coverTypeOf(file) ?? file.type,
+        size: file.size,
+        filename: file.name,
+      });
+      await api.uploadTo(signed, file);
+      key = signed.key;
+      // The server reads every new photo whole, so a damaged JPEG the browser sized is refused here, not saved grey.
+      const copy = await api.previewEventCoverUpload(organisationId, signed.key);
+
+      return { key: signed.key, url: shows ? URL.createObjectURL(file) : copy };
+    } catch (error) {
+      if (key != null) discardCoverUpload(organisationId, key);
+      throw new Error(refusalOf(error, t));
+    }
+  }
+
+  async function save(change: CoverEdited): Promise<OrganisationEvent> {
+    try {
+      return change.removed
+        ? await api.removeEventCover(event.id)
+        : await api.setEventCover(event.id, {
+            ...(change.upload == null ? {} : { uploadKey: change.upload.key }),
+            position: change.position,
+            description: change.description,
+          });
+    } catch (error) {
+      throw new Error(
+        error instanceof ApiError && error.is('permission_required')
+          ? t('eventEdit.forbidden')
+          : refusalOf(error, t),
+      );
+    }
+  }
 
   return (
-    <div className="ev-opened" role="group" aria-label={t('eventCover.heading')}>
-      <CoverSection
-        type={event.type}
-        photo={event.cover}
-        organisationId={event.organisationId}
-        onUse={async ({ upload, position, description }) =>
-          onCover(
-            await api.setEventCover(event.id, {
-              ...(upload == null ? {} : { uploadKey: upload.key }),
-              position,
-              description,
-            }),
-          )
-        }
-        onRemove={async () => onCover(await api.removeEventCover(event.id))}
-      />
-      <div className="ev-opened-actions">
-        <TextAction label={t('eventCover.close')} onClick={onClose} />
-      </div>
-    </div>
+    <CoverEdit
+      mesh={meshFor(event.id)}
+      saved={event.cover}
+      upload={upload}
+      discard={(uploaded) => {
+        if (uploaded.url.startsWith('blob:')) URL.revokeObjectURL(uploaded.url);
+        discardCoverUpload(organisationId, uploaded.key);
+      }}
+      save={save}
+      onSaved={onCover}
+      onDirty={onDirty}
+      onClose={onClose}
+    />
   );
 }

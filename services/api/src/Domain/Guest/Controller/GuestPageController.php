@@ -7,7 +7,11 @@ namespace App\Domain\Guest\Controller;
 use App\Domain\Event\CalendarFeed\FeedLinkIssuer;
 use App\Domain\Event\EventVenue;
 use App\Domain\Event\Http\EventSerialiser;
+use App\Domain\Guest\GuestNeedsRecord;
+use App\Domain\Guest\GuestRules;
+use App\Domain\Guest\Http\GuestSerialiser;
 use App\Domain\Guest\Link\InvitationLinks;
+use App\Domain\Guest\Model\GuestNeeds;
 use App\Domain\Guest\Reply\GuestAnswers;
 use App\Entity\Guest;
 use App\Enum\ErrorCode;
@@ -22,6 +26,7 @@ use DateTimeZone;
 use Doctrine\ORM\EntityManagerInterface;
 use Psl\Iter;
 use Psl\Type;
+use Psl\Vec;
 use Symfony\Component\HttpFoundation\JsonResponse;
 use Symfony\Component\HttpFoundation\Request;
 use Symfony\Component\HttpFoundation\Response;
@@ -37,6 +42,8 @@ final readonly class GuestPageController
         private EventSerialiser $eventSerialiser,
         private RateLimiterFactoryInterface $guestLinkWrongPersonLimiter,
         private GuestAnswers $guestAnswers,
+        private GuestRules $guestRules,
+        private GuestNeedsRecord $guestNeedsRecord,
         private GuestRepository $guestRepository,
         private TranslatorInterface $translator,
         private EntityManagerInterface $entityManager,
@@ -51,12 +58,27 @@ final readonly class GuestPageController
         return $this->answered($this->guest($request));
     }
 
-    /** Refused 422 for an answer the page does not offer, 409 `event_paused` or `event_concluded` by the event's phase, and 409 `replies_closed` from the start; answers the page as it now stands. */
+    /** Refused 422 for an answer the page does not offer, a place that is not the guest's, or one sent as unnamed that has a name (sc-48740), or a need it does not know (sc-3778), 409 `event_paused` or `event_concluded` by the event's phase, and 409 `replies_closed` from the start; answers the page as it now stands. */
     #[Route('/api/guest-links/reply', name: 'guest_links_reply', methods: ['POST'])]
     #[PublicAccess]
     public function reply(Request $request): JsonResponse
     {
-        $body = Input::body($request, Type\shape(['token' => Type\string(), 'answer' => Type\string()]));
+        $body = Input::body($request, Type\shape([
+            'token' => Type\string(),
+            'answer' => Type\string(),
+            'companions' => Type\optional(Type\vec(Type\shape([
+                'id' => Type\string(),
+                'fullName' => Type\string(),
+                'coming' => Type\bool(),
+                'needs' => Type\optional(Type\nullable(self::needsShape())),
+            ]))),
+            'needs' => Type\optional(Type\nullable(self::needsShape())),
+            'unnamed' => Type\optional(Type\vec(Type\shape([
+                'id' => Type\string(),
+                'coming' => Type\bool(),
+                'needs' => Type\optional(Type\nullable(self::needsShape())),
+            ]))),
+        ]));
         $guest = $this->invitationLinks->guestFor($body['token']) ?? throw ApiException::notFound('access.not_found');
         $answer = GuestReply::tryFrom($body['answer']);
 
@@ -68,9 +90,51 @@ final readonly class GuestPageController
             ]]);
         }
 
-        $this->guestAnswers->answer($guest, $answer);
+        $this->guestAnswers->answer($guest, $answer, $this->guestRules->pageReply($body['companions'] ?? [], $body['needs'] ?? null, $body['unnamed'] ?? []));
 
         return $this->answered($guest);
+    }
+
+    /** Update what the kitchen should know (sc-3780): a Coming guest's needs alone, after Reply by too, until the start; refused 422 unless the reply is Coming, and 409 as an answer is by the phase and the start. Answers the page as it now stands. */
+    #[Route('/api/guest-links/needs', name: 'guest_links_needs', methods: ['POST'])]
+    #[PublicAccess]
+    public function needs(Request $request): JsonResponse
+    {
+        $body = Input::body($request, Type\shape([
+            'token' => Type\string(),
+            'needs' => Type\optional(Type\nullable(self::needsShape())),
+            'companions' => Type\optional(Type\vec(Type\shape([
+                'id' => Type\string(),
+                'needs' => self::needsShape(),
+            ]))),
+            'unnamed' => Type\optional(Type\vec(Type\shape([
+                'id' => Type\string(),
+                'needs' => self::needsShape(),
+            ]))),
+        ]));
+        $guest = $this->invitationLinks->guestFor($body['token']) ?? throw ApiException::notFound('access.not_found');
+        [$own, $companions, $unnamed] = $this->guestRules->kitchen($body['needs'] ?? null, $body['companions'] ?? [], $body['unnamed'] ?? []);
+
+        $this->guestAnswers->kitchen($guest, $own, $companions, $unnamed);
+
+        return $this->answered($guest);
+    }
+
+    /**
+     * sc-3777's needs without the private note, which belongs to the hosts alone.
+     *
+     * @return Type\TypeInterface<array{allergies?: list<string>, diet?: list<string>, access?: list<string>, otherAllergy?: ?string, otherDiet?: ?string, otherAccess?: ?string}>
+     */
+    private static function needsShape(): Type\TypeInterface
+    {
+        return Type\shape([
+            'allergies' => Type\optional(Type\vec(Type\string())),
+            'diet' => Type\optional(Type\vec(Type\string())),
+            'access' => Type\optional(Type\vec(Type\string())),
+            'otherAllergy' => Type\optional(Type\nullable(Type\string())),
+            'otherDiet' => Type\optional(Type\nullable(Type\string())),
+            'otherAccess' => Type\optional(Type\nullable(Type\string())),
+        ]);
     }
 
     private function answered(Guest $guest): JsonResponse
@@ -80,6 +144,11 @@ final readonly class GuestPageController
         $venue = EventVenue::of($event);
         $reply = $guest->getReply();
         $repliedAt = $guest->getRepliedAt();
+        $places = $this->guestRepository->findCompanionsOf($guest);
+        $named = Vec\filter($places, static fn (Guest $place): bool => null !== $place->getFullName());
+        $unnamed = Vec\filter($places, static fn (Guest $place): bool => null === $place->getFullName());
+        $needs = $this->guestNeedsRecord->of([$guest, ...$places]);
+        $needsOf = static fn (Guest $person): array => GuestSerialiser::needs($person, $needs[$person->getId()->toRfc4122()] ?? GuestNeeds::none(), note: false);
 
         return new JsonResponse([
             'guest' => [
@@ -87,8 +156,28 @@ final readonly class GuestPageController
                 'reply' => null === $reply || GuestReply::NoReply === $reply || null === $repliedAt ? null : [
                     'answer' => $reply->value,
                     'at' => $repliedAt->setTimezone($zone)->format(\DATE_ATOM),
+                    'recordedBy' => $guest->getReplyRecordedBy(),
                 ],
-                'companions' => $this->guestRepository->countCompanions($guest),
+                'needs' => $needsOf($guest),
+                'places' => Iter\count($places),
+                'companions' => Vec\map(
+                    $named,
+                    static fn (Guest $companion): array => [
+                        'id' => $companion->getId()->toRfc4122(),
+                        'fullName' => $companion->getFullName(),
+                        'coming' => !$companion->isNotComingByGuest(),
+                        'namedByGuest' => $companion->isNamedByGuest(),
+                        'needs' => $needsOf($companion),
+                    ],
+                ),
+                'unnamed' => Vec\map(
+                    $unnamed,
+                    static fn (Guest $place): array => [
+                        'id' => $place->getId()->toRfc4122(),
+                        'coming' => !$place->isNotComingByGuest(),
+                        'needs' => $needsOf($place),
+                    ],
+                ),
             ],
             'language' => [
                 'chosen' => $guest->getChosenLanguage(),
@@ -104,10 +193,13 @@ final readonly class GuestPageController
                 'startsAt' => $event->getStartsAt()->format(\DATE_ATOM),
                 'timeZone' => $event->getTimeZone(),
                 'venue' => null === $venue ? null : ['name' => $venue->name, 'address' => $venue->address?->formatted],
+                'arrivalNote' => $event->getArrivalNote(),
+                'replyBy' => $event->getReplyBy()?->format('Y-m-d'),
             ],
             'phase' => $this->guestAnswers->phase($guest)->value,
             'started' => $this->guestAnswers->started($guest),
             'answersOpen' => $this->guestAnswers->open($guest),
+            'answersClosedOn' => $this->guestAnswers->closedOn($guest),
             'calendarFeed' => $this->calendarFeed($guest),
         ], headers: ['Cache-Control' => 'no-store']);
     }

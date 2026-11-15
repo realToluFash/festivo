@@ -156,6 +156,31 @@ export function VenueSection({
         </p>
       </div>
 
+      <div className="field">
+        <label htmlFor="event-arrival-note">
+          {t('eventForm.arrivalNote')} <span className="pill-quiet">{t('eventForm.optional')}</span>
+        </label>
+        <textarea
+          id="event-arrival-note"
+          className={
+            errors.arrivalNote == null ? 'input arrival-note' : 'input input-wrong arrival-note'
+          }
+          rows={4}
+          value={venue.note}
+          {...offField(busy)}
+          aria-invalid={errors.arrivalNote != null}
+          aria-describedby={describedBy(
+            errors.arrivalNote == null ? null : 'event-arrival-note-error',
+            'event-arrival-note-hint',
+          )}
+          onChange={(event) => onVenue({ note: event.target.value })}
+        />
+        <FieldError id="event-arrival-note-error" message={errors.arrivalNote} />
+        <p className="field-help" id="event-arrival-note-hint">
+          {t('eventForm.arrivalNoteHint')}
+        </p>
+      </div>
+
       <div aria-live="polite">
         {offer != null && (
           <div className="notice notice-attention venue-zone-offer">

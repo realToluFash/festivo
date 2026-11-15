@@ -875,8 +875,18 @@ def pr_create(c, a):
         raise Refused(f"the body has no {', '.join(missing)} heading at levels 1-3{levels}; "
                       f"open it in create-pr's shape, since pr-edit can only replace a section "
                       f"it can find")
-    url = github.create_pr(a.head, a.title, a.text, draft=a.draft)
-    return f"opened {url}{resync(c)}"
+    own = github.story_of(a.head, a.title)
+    title, in_title = github.unlink_others(a.title, own)
+    body, in_body = github.unlink_others(a.text, own)
+    url = github.create_pr(a.head, title, body, draft=a.draft)
+    return f"opened {url}{unlinked(in_title + in_body)}{resync(c)}"
+
+
+def unlinked(count):
+    if not count:
+        return ""
+    return (f"; {count} mention{'s' if count != 1 else ''} of other stories written sc\u2011N, "
+            "so Shortcut does not move them on merge")
 
 
 def needs_qa(story):
@@ -1098,11 +1108,12 @@ def pr_edit(c, a):
         headings = "; ".join(h for h, _, _ in T.sections(live["body"]) if h != T.TOP)
         raise Refused(f"{'no heading matches' if not found else f'{len(found)} headings match'} "
                       f"{a.section}; the body has: {headings or 'no headings'}")
-    body = T.swap(live["body"], found[0], a.text)
+    text, count = github.unlink_others(a.text, live["story_id"])
+    body = T.swap(live["body"], found[0], text)
     github.edit_body(a.pr, body)
     if known := store.pr(c.db, a.pr):
         store.put_pr(c.db, dict(known, body=body))
-    return f"PR #{a.pr}: replaced {found[0]}"
+    return f"PR #{a.pr}: replaced {found[0]}{unlinked(count)}"
 
 
 def to_qa(c, a):
