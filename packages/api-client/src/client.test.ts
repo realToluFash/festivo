@@ -3140,6 +3140,9 @@ describe('events (sc-1486)', () => {
     });
     expect(urls).toEqual(['/api/orgs/org_1/search?q=in%C3%AAs']);
 
+    await api.search('org_1', 'ines', { invitations: false });
+    expect(urls.at(-1)).toBe('/api/orgs/org_1/search?q=ines&invitations=false');
+
     const { api: members } = client(() =>
       json({ events: null, guests: null, members: { total: 1, matches: [invited] } }),
     );

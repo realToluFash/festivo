@@ -133,7 +133,11 @@ export function EventScreen({
   );
   const coverNotice = useRef<ViewInstance>(null);
   const [guestsOffline, setGuestsOffline] = useState<ScreenOffline>(NOT_OFFLINE);
-  const [guestsTop, setGuestsTop] = useState<GuestsTop>({ add: null, back: null });
+  const [guestsTop, setGuestsTop] = useState<GuestsTop>({
+    add: null,
+    back: null,
+    toSearch: false,
+  });
   const guestsAdd = useRef<ViewInstance>(null);
   const [toast, setToast] = useState<{
     eventId: string;
@@ -198,9 +202,11 @@ export function EventScreen({
     else if (router.canGoBack()) router.back();
     else router.replace(DESTINATION_HREF.events);
   };
-  const back = areaBack(area) === 'overview' ? () => chooseArea('overview') : leave;
-  const backLabel =
-    area !== 'overview'
+  const fromSearch = phone && opensGuest != null;
+  const back = !fromSearch && areaBack(area) === 'overview' ? () => chooseArea('overview') : leave;
+  const backLabel = fromSearch
+    ? t('todayScreen.search')
+    : area !== 'overview'
       ? t('eventNav.overview')
       : original != null
         ? t('timeline.backToEvent')
@@ -350,7 +356,10 @@ export function EventScreen({
   const titledInList = areaTitled || guests;
   const frameBack =
     guestBack != null
-      ? { label: t('eventNav.guests'), onPress: guestBack }
+      ? {
+          label: guestsTop.toSearch ? t('todayScreen.search') : t('eventNav.guests'),
+          onPress: guestBack,
+        }
       : top.frameBack === 'area'
         ? { label: backLabel, onPress: back }
         : top.frameBack === 'events'
@@ -390,6 +399,7 @@ export function EventScreen({
           event={event}
           filter={filter}
           opens={opensGuest}
+          leave={fromSearch ? leave : undefined}
           phase={phase}
           now={now}
           onEventChange={change}
