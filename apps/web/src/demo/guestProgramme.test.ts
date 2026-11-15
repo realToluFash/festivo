@@ -53,13 +53,13 @@ describe('expected times while Happening now', () => {
       guestProgramme(scheduleOf('days'), live(clock)).map((one) => [one.title, one.startsAt]),
     );
 
-  it('moves what is still to come by sc-1404’s rules, rounded to 5 minutes', () => {
+  it('moves what is still to come by sc-1404’s rules, rounded down to 5 minutes', () => {
     expect(at('2026-11-06T17:25')).toEqual({
       'Welcome drinks': '2026-11-05T18:00',
-      Ceremony: '2026-11-06T14:10',
+      Ceremony: '2026-11-06T14:05',
       'Drinks reception': '2026-11-06T15:05',
-      'Grand entrance': '2026-11-06T17:25',
-      Dinner: '2026-11-06T17:40',
+      'Grand entrance': '2026-11-06T17:20',
+      Dinner: '2026-11-06T17:35',
       'First dance': '2026-11-06T20:00',
     });
   });
@@ -79,13 +79,14 @@ describe('expected times while Happening now', () => {
     );
     const programme = guestProgramme(shown, live('2026-11-06T17:25'));
 
-    expect(programme.find((one) => one.title === 'First dance')?.startsAt).toBe('2026-11-06T20:10');
+    expect(programme.find((one) => one.title === 'First dance')?.startsAt).toBe('2026-11-06T20:05');
   });
 
-  it('rounds to the nearest 5 minutes', () => {
+  it('rounds down to 5 minutes, never later than the start', () => {
     expect(roundedToFive('2026-11-06T17:22')).toBe('2026-11-06T17:20');
-    expect(roundedToFive('2026-11-06T17:23')).toBe('2026-11-06T17:25');
-    expect(roundedToFive('2026-11-06T23:58')).toBe('2026-11-07T00:00');
+    expect(roundedToFive('2026-11-06T17:24')).toBe('2026-11-06T17:20');
+    expect(roundedToFive('2026-11-06T17:25')).toBe('2026-11-06T17:25');
+    expect(roundedToFive('2026-11-07T00:03')).toBe('2026-11-07T00:00');
   });
 
   it('is only while the event has started and is not over', () => {

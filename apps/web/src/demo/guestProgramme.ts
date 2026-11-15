@@ -82,13 +82,13 @@ export function laterBy(wall: string, minutes: number): string {
   return wallOf(msOf(wall) + minutes * MINUTE);
 }
 
-/** To the nearest 5 minutes, as the room screen (sc-3897): 17:22 reads 17:20, 17:23 reads 17:25. */
+/** Down to 5 minutes, as the room screen (sc-3897): 17:24 reads 17:20, so a guest is never told a start already gone. */
 export function roundedToFive(wall: string): string {
-  return wallOf(Math.round(msOf(wall) / FIVE) * FIVE);
+  return wallOf(Math.floor(msOf(wall) / FIVE) * FIVE);
 }
 
 export function wallIn(at: string, zone: string): string {
-  const parts = new Intl.DateTimeFormat('en-CA', {
+  const parts = new Intl.DateTimeFormat('en-GB', {
     timeZone: zone,
     year: 'numeric',
     month: '2-digit',
@@ -313,7 +313,7 @@ export const GUEST_PROGRAMME_STATES = {
     },
   },
   programmeHappening: {
-    name: 'Happening now, Coming: expected times rounded to 5 minutes, nothing about lateness',
+    name: 'Happening now, Coming: expected times rounded down to 5 minutes, nothing about lateness',
     starts: { programme: 'days', ...HAPPENING, ...COMING, ...CLOSED },
   },
   programmeHappeningOneDay: {

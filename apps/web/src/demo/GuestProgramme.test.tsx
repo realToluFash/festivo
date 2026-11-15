@@ -126,10 +126,10 @@ describe('The day on the guest’s page (sc-3899)', () => {
     const friday = within(programme).getAllByRole('list')[1] as HTMLElement;
 
     expect(rows(friday)).toEqual([
-      '14:10Ceremony',
+      '14:05Ceremony',
       '15:05Drinks reception · Garden',
-      '17:25Grand entrance · Ballroom',
-      '17:40Dinner · Ballroom',
+      '17:20Grand entrance · Ballroom',
+      '17:35Dinner · Ballroom',
       '20:00First dance · Ballroom',
     ]);
     expect(programme.textContent).not.toMatch(/late|behind|about|expected|planned/iu);
