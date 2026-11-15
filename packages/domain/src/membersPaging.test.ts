@@ -7,7 +7,7 @@ const rows = (from: number, to: number) =>
 
 describe('People a page at a time', () => {
   it('puts the next page under the rows held and takes its counts', () => {
-    const held = { members: rows(1, 2), next: 'm2', counts: 9 };
+    const held = { members: rows(1, 2), next: 'm2' as string | null, counts: 9 };
     const page = { members: rows(3, 4), next: null, counts: 8 };
 
     expect(withNextPage(held, page)).toEqual({ members: rows(1, 4), next: null, counts: 8 });
