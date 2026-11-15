@@ -292,6 +292,7 @@ export function GuestsArea({
   const [notLiveAt, setNotLiveAt] = useState<string | null>(null);
   const [line, setLine] = useState<Line | null>(null);
   const [removal, setRemoval] = useState<string | null>(null);
+  const [emptied, setEmptied] = useState(false);
   const [asked, setAsked] = useState<ReadonlySet<string>>(() =>
     invites ? keptAsked(event.id) : new Set(),
   );
@@ -688,7 +689,8 @@ export function GuestsArea({
   const companionsPicked = companionsWith(guests, picked);
   const undoing = line?.kind === 'removed' && removal != null;
   const bar = manages && picked.size > 0 && (line == null || line.kind === 'undone');
-  const showsList = guests.length > 0 || line != null;
+  // sc-50772: a removal that took everyone off reads as the empty event, its line above the card until Undo or its end.
+  const showsList = guests.length > 0 || (line != null && !emptied);
 
   function select(next: ReadonlySet<string>): void {
     setSelected(next);
@@ -797,6 +799,7 @@ export function GuestsArea({
         setSelected(NONE);
         setRecount((n) => n + 1);
         setRemoval(removed.removal);
+        setEmptied(guests.every((one) => gone.has(one.id)));
         if (open != null && gone.has(open)) setParams(withGuest(null));
         ended({ kind: 'removed', removed });
       },
@@ -825,6 +828,7 @@ export function GuestsArea({
     const undone = removal;
 
     setRemoval(null);
+    setEmptied(false);
     api.undoGuestsRemoval(event.id, undone).then(
       () => {
         const back = line?.kind === 'removed' ? line.removed.guests : 0;
@@ -842,6 +846,7 @@ export function GuestsArea({
 
   function lineGone(): void {
     endUndo();
+    setEmptied(false);
     setLine(null);
   }
 
@@ -909,6 +914,20 @@ export function GuestsArea({
   }
 
   const card = shows === 'loaded' && counts != null ? cover(counts) : null;
+  const said = (
+    <div className="gm-said" data-focus="many-line" tabIndex={-1} role="status">
+      {line != null && (
+        <ResultLine
+          key={line.kind === 'removed' ? line.removed.removal : line.kind}
+          line={line}
+          undo={undoing}
+          onUndo={undoMany}
+          onGone={lineGone}
+          onRetry={retry}
+        />
+      )}
+    </div>
+  );
 
   return (
     <LayersContext value={layers}>
@@ -992,6 +1011,7 @@ export function GuestsArea({
           )}
           {shows === 'loaded' && (
             <>
+              {emptied && <div className="gm-dock">{said}</div>}
               {card != null && (
                 <GuestsCover
                   mesh={meshFor(event.id)}
@@ -1083,23 +1103,7 @@ export function GuestsArea({
                         )}
                         {manages && (
                           <div className="gm-dock">
-                            <div
-                              className="gm-said"
-                              data-focus="many-line"
-                              tabIndex={-1}
-                              role="status"
-                            >
-                              {line != null && (
-                                <ResultLine
-                                  key={line.kind === 'removed' ? line.removed.removal : line.kind}
-                                  line={line}
-                                  undo={undoing}
-                                  onUndo={undoMany}
-                                  onGone={lineGone}
-                                  onRetry={retry}
-                                />
-                              )}
-                            </div>
+                            {!emptied && said}
                             {bar && (
                               <SelectBar
                                 count={picked.size}
@@ -1115,7 +1119,7 @@ export function GuestsArea({
                             )}
                           </div>
                         )}
-                        {shown === 0 ? (
+                        {guests.length === 0 ? null : shown === 0 ? (
                           <div className="gs-none">
                             <h2 tabIndex={-1} data-focus="none-heading">
                               {t('guestList.noMatch')}
@@ -1259,10 +1263,14 @@ export function GuestsArea({
                               ? { kind: 'loaded', list: listedWith(was.list, guest) }
                               : was,
                           );
+                          if (!emptied) return;
+                          clear();
+                          setDietary(false);
+                          setGroupFilter(null);
                         }}
                         onDone={() => {
                           setAdding(false);
-                          focus('add', 'title');
+                          focus(emptied ? 'many-line' : 'add', 'title');
                         }}
                       />
                     </section>
