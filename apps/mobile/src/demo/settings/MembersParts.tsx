@@ -265,11 +265,11 @@ export function People({
                 onRetry={onTryAgain}
                 testID="members.more.retry"
               />
-            ) : (
+            ) : more === 'loading' ? (
               <View style={styles.more} testID="members.more.loading">
                 <RowShapes count={2} words={MORE_WORDS.loading} />
               </View>
-            ))}
+            ) : null)}
         </View>
       )}
     </Section>
