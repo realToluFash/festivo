@@ -1,11 +1,11 @@
 import { LOCALES, primaryFirst } from '@soirely/domain';
-import { type ReactNode, useId, useState } from 'react';
+import { type ReactNode, useId } from 'react';
 import { useTranslation } from 'react-i18next';
 
 import { type ContactKind, type ContactRow } from '../accountPage.ts';
 import { Glyph, type GlyphName } from './Glyph.tsx';
 import { chooseLanguage } from '../accountLanguage.ts';
-import { currentLocale } from '../i18n/index.ts';
+import { useShownLanguage } from '../i18n/index.ts';
 import { Card, CardStep, Chevron, Choices, Head, OnCard, RowWords } from './SettingsParts.tsx';
 import './AccountParts.css';
 
@@ -260,7 +260,7 @@ export function ExpiredCode({ title, line }: { title: string; line: string }) {
 /** The account's language, each named in its own: a pick redraws the page in it and saves it to the account, as the pill did (sc-39509). */
 export function LanguageBlock({ onChosen }: { onChosen: (name: string) => void }) {
   const { t } = useTranslation();
-  const [picked, setPicked] = useState(currentLocale);
+  const picked = useShownLanguage();
 
   return (
     <section className="desk-block">
@@ -275,7 +275,6 @@ export function LanguageBlock({ onChosen }: { onChosen: (name: string) => void }
         }))}
         picked={picked}
         onPick={(code) => {
-          setPicked(code);
           onChosen(LOCALES.find((locale) => locale.code === code)?.nativeName ?? code);
           void chooseLanguage(code, true);
         }}

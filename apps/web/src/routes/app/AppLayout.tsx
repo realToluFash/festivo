@@ -350,12 +350,12 @@ function Shell() {
           className={bandless ? 'shell-content is-card' : 'shell-content'}
           inert={menuOpen}
         >
-          {!bandless && <OfflineBand />}
+          {!(bandless && ownNotices) && <OfflineBand />}
           <LinkedNotice />
           {organisation != null && session.pausedIn == null && (
             <SignInRulesNotices key={organisation.id} organisation={organisation} />
           )}
-          {!bandless && said}
+          {!(bandless && ownNotices) && said}
 
           <DeskTopContext
             value={
@@ -371,7 +371,7 @@ function Shell() {
             <ErrorBoundary>
               {standIn != null && !atSettings ? (
                 <>
-                  {bandless && (
+                  {bandless && ownNotices && (
                     <>
                       <OfflineBox />
                       {said}
@@ -380,15 +380,7 @@ function Shell() {
                   {standIn}
                 </>
               ) : (
-                <>
-                  {bandless && !ownNotices && (
-                    <>
-                      <OfflineBox />
-                      {said}
-                    </>
-                  )}
-                  <Outlet context={standIn} />
-                </>
+                <Outlet context={standIn} />
               )}
             </ErrorBoundary>
           </DeskTopContext>

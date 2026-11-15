@@ -3946,11 +3946,6 @@ button.members-row {
   gap: var(--spaceXl);
 }
 
-/* At a desk the bell ends the row (sc-39509). */
-.event-crumbs > .notifications {
-  margin-inline-start: auto;
-}
-
 .event-form {
   display: flex;
   flex-direction: column;
@@ -4956,6 +4951,11 @@ button.members-row {
 
 .notifications {
   position: relative;
+}
+
+/* At a desk the bell ends the row (sc-39509). */
+.event-crumbs > .notifications {
+  margin-inline-start: auto;
 }
 
 .notifications-bell {

@@ -235,16 +235,14 @@ describe('the application tree', () => {
     await followAccount({ ...ADA_ACCOUNT, locale: 'es' });
     await setLanguage(null);
 
-    at('/app');
+    at('/app/account');
 
-    const picker = screen.getByRole<HTMLSelectElement>('combobox', { name: 'Idioma' });
-    expect(picker.value).toBe('es');
-    expect([...picker.options].map((option) => option.textContent)).toEqual([
-      'English',
-      'Español',
-      'Français',
-      'Português',
-    ]);
+    const group = screen.getByRole('group', { name: 'Idioma' });
+    const radios = within(group).getAllByRole<HTMLInputElement>('radio');
+    expect(
+      radios.map((radio) => radio.closest('label')?.querySelector('[lang]')?.textContent),
+    ).toEqual(['English', 'Español', 'Français', 'Português']);
+    expect(radios.map((radio) => radio.checked)).toEqual([false, true, false, false]);
     expect(screen.getByRole('link', { name: 'Eventos' })).toBeDefined();
   });
 
@@ -454,20 +452,61 @@ describe('the application tree', () => {
       return document.querySelector('.shell-crumb')?.textContent;
     }
 
-    it('names the organisation and the page', () => {
+    it('names the organisation and the page between a phone and a desk', () => {
+      atStackedWidth();
       at('/app/events/new');
 
       expect(crumb()).toBe('Okonkwo Events / Events');
     });
 
-    it.each(['/app/events', '/app/calendar', '/app/settings', '/app/account'])(
-      'is not above %s at a desk (sc-39471)',
-      (place) => {
-        at(place);
+    it.each([
+      '/app',
+      '/app/events/new',
+      '/app/events/e1',
+      '/app/events',
+      '/app/calendar',
+      '/app/settings',
+      '/app/account',
+    ])('is not above %s at a desk (sc-39471, sc-39509)', (place) => {
+      at(place);
 
-        expect(crumb()).toBeUndefined();
-      },
-    );
+      expect(document.querySelector('header.shell-band')).toBeNull();
+      expect(document.querySelector('.language-pill')).toBeNull();
+    });
+
+    it('opens Today from /app/guests, leaving no way back to it (sc-39509)', () => {
+      const router = createMemoryRouter(routes, { initialEntries: ['/app/guests'] });
+      render(<RouterProvider router={router} />);
+
+      expect(router.state.location.pathname).toBe('/app');
+      expect(router.state.historyAction).toBe('REPLACE');
+    });
+
+    it('ends the crumb row of New event with the one bell at a desk (sc-39509)', async () => {
+      at('/app/events/new');
+
+      const bell = await screen.findByRole('button', { name: /^Notifications/ });
+      const row = bell.closest('.ev-crumb-row');
+      expect(
+        within(row as HTMLElement)
+          .getByRole('link', { name: 'Events' })
+          .getAttribute('href'),
+      ).toBe('/app/events');
+      expect(screen.getByRole('heading', { level: 1, name: 'New event' })).toBeDefined();
+      expect(screen.getAllByRole('button', { name: /^Notifications/ })).toHaveLength(1);
+    });
+
+    it.each([
+      ['the overdue screen', overdueSession],
+      ['a paused organisation', pausedSession],
+    ])('draws no band and no bell at a desk while %s stands in (sc-39509)', (_, session) => {
+      __setSessionState({ status: 'signedIn', session: session() });
+
+      at('/app');
+
+      expect(document.querySelector('header.shell-band')).toBeNull();
+      expect(screen.queryByRole('button', { name: /^Notifications/ })).toBeNull();
+    });
 
     it.each(['/app/events', '/app/calendar', '/app/settings'])(
       "puts the bell in the title row beside the page's heading on %s at a desk (sc-39471)",
@@ -494,13 +533,15 @@ describe('the application tree', () => {
       },
     );
 
-    it("names Today at the sidebar's Today", () => {
+    it("names Today at the sidebar's Today between a phone and a desk", () => {
+      atStackedWidth();
       at('/app');
 
       expect(crumb()).toBe('Okonkwo Events / Today');
     });
 
-    it('holds only the organisation while the overdue screen stands in', () => {
+    it('holds only the organisation while the overdue screen stands in, between a phone and a desk', () => {
+      atStackedWidth();
       __setSessionState({ status: 'signedIn', session: overdueSession() });
 
       at('/app');
@@ -508,7 +549,8 @@ describe('the application tree', () => {
       expect(crumb()).toBe('Okonkwo Events');
     });
 
-    it('holds only the organisation while a paused one stands in', () => {
+    it('holds only the organisation while a paused one stands in, between a phone and a desk', () => {
+      atStackedWidth();
       __setSessionState({ status: 'signedIn', session: pausedSession() });
 
       at('/app');
