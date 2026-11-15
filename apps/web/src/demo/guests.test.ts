@@ -381,6 +381,34 @@ describe('the card (spec §4)', () => {
     expect(guestsCardOf(passed, list, 'live', CLOCKS.rest, false).step).toBeNull();
   });
 
+  it('offers Add guest on an empty Draft, Make live beside it only for events.manage (sc-50409)', () => {
+    const draft = sampleEvent(DRAFT);
+    const passed = sampleEvent(DRAFT_PAST);
+    if (draft == null || passed == null) throw new Error('drafts');
+
+    expect(guestsCardOf(draft, [], 'live', CLOCKS.rest, true)).toMatchObject({
+      tags: [{ kind: 'draft', word: 'Draft' }],
+      says: 'No guests yet',
+      line: 'Guests can’t be invited until this event is live.',
+      step: 'add',
+      also: 'makeLive',
+    });
+    expect(guestsCardOf(passed, [], 'live', CLOCKS.rest, true)).toMatchObject({
+      step: 'add',
+      also: 'changeDates',
+    });
+    expect(guestsCardOf(draft, [], 'live', CLOCKS.rest, true, false)).toMatchObject({
+      step: 'add',
+      also: null,
+    });
+    expect(guestsCardOf(draft, [], 'live', CLOCKS.rest, false, true)).toMatchObject({
+      says: 'No guests yet',
+      step: 'makeLive',
+      also: null,
+    });
+    expect(guestsCardOf(draft, [], 'live', CLOCKS.rest, false, false).step).toBeNull();
+  });
+
   it('counts a recorded reply straight away (sc-3787)', () => {
     const list = recordReply(
       sampleGuests(WEDDING),
