@@ -1423,9 +1423,15 @@ export function partOf(state: EventStateName | null): Part | null {
   }
 }
 
+/** The states drawn on a second event as well: Dates on the draft whose end has passed, where Change dates lands (sc-48602). */
+export const ALSO_DRAWN_ON: Partial<Record<EventStateName, readonly string[]>> = {
+  dates: ['evt-shower-2'],
+};
+
 /** A state drawn on another event, or one its phase does not allow, opens the page with no state. */
 export function stateFits(state: EventStateName, event: SampleEvent): boolean {
-  if (EVENT_STATES[state] !== event.id) return false;
+  if (EVENT_STATES[state] !== event.id && !(ALSO_DRAWN_ON[state]?.includes(event.id) ?? false))
+    return false;
 
   const now = clockOf(state);
   const manage = manageOf(event, now);
@@ -1589,6 +1595,10 @@ export const EVENTS_PAGES: readonly { name: string; states: readonly DemoLink[] 
     name: 'Dates and venue, in place',
     states: [
       on('dates', 'Dates, opened'),
+      {
+        to: '/demo/events/evt-shower-2?state=dates',
+        name: 'Dates, opened on a draft whose end has passed (sc-48602)',
+      },
       on('datesChanged', 'Dates, the start moved'),
       on('datesError', 'Dates, the end before the start'),
       on('datesReplyBy', 'Dates, the start on the Reply by day (sc-3780)'),
