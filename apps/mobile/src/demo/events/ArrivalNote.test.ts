@@ -1,3 +1,6 @@
+import { readFileSync } from 'node:fs';
+import { join } from 'node:path';
+
 import { describe, expect, it } from 'vitest';
 
 import {
@@ -38,5 +41,28 @@ describe('the arrival note (sc-24385)', () => {
 
     expect(wedding?.arrivalNote).toBe(ARRIVAL_NOTE);
     expect(wedding?.venue).not.toHaveProperty('arrivalNote');
+  });
+});
+
+describe('a role refusal on Venue (sc-49861)', () => {
+  const read = (...path: string[]) => readFileSync(join(...path), 'utf8');
+  const demo = read('src', 'demo', 'events', 'EventEdits.tsx');
+  const venue = demo.slice(demo.indexOf('function VenueEdit('));
+  const venueShell = venue.slice(venue.indexOf('<Shell'), venue.indexOf('onSave='));
+  const shell = demo.slice(demo.indexOf('function Shell('), demo.indexOf('function VenueEdit('));
+  const kit = read('src', 'components', 'EventEdits.tsx');
+  const editShell = kit.slice(kit.indexOf('export function EditShell('));
+
+  it('says so in the notice above the fields, where Not saved goes', () => {
+    expect(venue).toMatch(/start === 'venueNoteForbidden'\) \{\s+setForbidden\(true\);/u);
+    expect(venueShell).toContain('failed={forbidden ? NOTE_WORDS.forbidden : null}');
+    expect(shell).toContain('failed={failed}');
+    expect(editShell).toMatch(
+      /\{failed != null && <EventNotice tone="broken" words=\{failed\} interrupts \/>\}\s+\{children\}/u,
+    );
+  });
+
+  it('is not a line under the note', () => {
+    expect(venue).not.toMatch(/<AlertLine text=\{NOTE_WORDS\.forbidden\}/u);
   });
 });
