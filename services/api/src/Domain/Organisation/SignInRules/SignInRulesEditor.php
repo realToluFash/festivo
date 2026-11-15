@@ -5,14 +5,15 @@ declare(strict_types=1);
 namespace App\Domain\Organisation\SignInRules;
 
 use App\Audit\Auditor;
-use App\Entity\Membership;
+use App\Domain\Messaging\Model\Audience;
+use App\Domain\Messaging\Model\Trigger;
+use App\Domain\Messaging\NotificationScheduler;
 use App\Entity\Organisation;
 use App\Entity\User;
 use App\Enum\Actor;
 use App\Enum\ErrorCode;
 use App\Http\Exception\ApiException;
 use App\Repository\MembershipRepository;
-use DateInterval;
 use Doctrine\ORM\EntityManagerInterface;
 use Psl\Iter;
 use Psl\Vec;
@@ -20,7 +21,7 @@ use Psr\Clock\ClockInterface;
 use Symfony\Component\HttpFoundation\Request;
 use Symfony\Contracts\Translation\TranslatorInterface;
 
-/** Changing an organisation's sign-in rules: recorded with who and when, and every member told (sc-69). */
+/** Changing an organisation's sign-in rules: recorded with who and when, and every member told once the save has answered (sc-69, sc-18317). */
 final readonly class SignInRulesEditor
 {
     public const string CHANGED = 'sign_in_rules.changed';
@@ -29,7 +30,7 @@ final readonly class SignInRulesEditor
 
     public function __construct(
         private MembershipRepository $membershipRepository,
-        private SignInRulesMailer $signInRulesMailer,
+        private NotificationScheduler $notificationScheduler,
         private Auditor $auditor,
         private EntityManagerInterface $entityManager,
         private ClockInterface $clock,
@@ -86,25 +87,25 @@ final readonly class SignInRulesEditor
             }
 
             $organisation->setSignInRulesChangedAt($at);
-            $this->auditor->record(self::CHANGED, self::SUBJECT, $organisation->getId(), Actor::User, $by->getId(), $by->getName(), $changes);
+            $entry = $this->auditor->record(self::CHANGED, self::SUBJECT, $organisation->getId(), Actor::User, $by->getId(), $by->getName(), $changes);
             $this->entityManager->flush();
 
-            $members = Vec\map($this->membershipRepository->findActiveIn($organisation), static fn (Membership $membership): User => $membership->getUser());
-            $stranded = isset($changes['providerOnly']) && $organisation->isProviderSignInOnly()
-                ? Vec\map($this->membershipRepository->findActiveWithoutProviderIn($organisation), static fn (Membership $membership): User => $membership->getUser())
-                : [];
-            $locale = $request?->getLocale();
-            $due = isset($changes['everyoneNeedsTwoFactor']) && $organisation->isTwoFactorRequired()
-                ? Vec\map($this->membershipRepository->findActiveWithoutTwoFactorIn($organisation), static fn (Membership $membership): User => $membership->getUser())
-                : [];
+            $twoFactorRequired = isset($changes['everyoneNeedsTwoFactor']) && $organisation->isTwoFactorRequired();
+            $emails = $twoFactorRequired && ['everyoneNeedsTwoFactor'] !== Vec\keys($changes)
+                ? [SignInRulesNotice::CHANGED, SignInRulesNotice::DUE]
+                : [SignInRulesNotice::CHANGED];
 
-            // Told once: somebody the deadline email reaches does not also hear of the same change in a second one.
-            if ([] !== $due && ['everyoneNeedsTwoFactor'] === Vec\keys($changes)) {
-                $members = Vec\filter($members, static fn (User $member): bool => !Iter\any($due, static fn (User $user): bool => $user->getId()->equals($member->getId())));
+            foreach ($emails as $email) {
+                $source = $entry->getId()->toRfc4122() . ':' . $email;
+                $this->notificationScheduler->schedule(
+                    SignInRulesNotice::NAME,
+                    $source,
+                    $source,
+                    Trigger::at($at),
+                    Audience::membersJoinedBy($organisation->getId(), $at),
+                    SignInRulesNotice::payload($email, $organisation->getName(), $by, $changes, $at, $request?->getLocale()),
+                );
             }
-
-            $this->signInRulesMailer->sendChanged($organisation, $by, $changes, $members, $stranded, $at, $locale);
-            $this->signInRulesMailer->sendTwoFactorDue($organisation, $due, $at->add(new DateInterval(SignInRules::TWO_FACTOR_GRACE)));
         });
     }
 

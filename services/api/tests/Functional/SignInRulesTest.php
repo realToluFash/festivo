@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\Tests\Functional;
 
 use App\Domain\Organisation\OrganisationFounder;
+use App\Domain\Organisation\SignInRules\SignInRulesNotice;
 use App\Domain\User\Mail\UserMailer;
 use App\Domain\User\Password\PasswordResolver;
 use App\Domain\User\TokenIssuer;
@@ -25,6 +26,7 @@ use App\Enum\SeededRole;
 use App\Tests\ApiTestCase;
 use App\Tests\Fixtures\OpenIdConnect\TestSigningKeys;
 use App\Tests\Traits\OnboardsAccounts;
+use Doctrine\DBAL\Connection;
 use Lexik\Bundle\JWTAuthenticationBundle\Services\JWTTokenManagerInterface;
 use PHPUnit\Framework\Attributes\DataProvider;
 use PHPUnit\Framework\Attributes\Test;
@@ -107,7 +109,7 @@ final class SignInRulesTest extends ApiTestCase
 
         self::assertSame(200, $this->statusCode(), Json\encode($body));
         self::assertSame(['Bisi Adeyemi', 'Chidi Okoro'], Vec\map(
-            Type\vec(Type\shape(['name' => Type\string()], true))->coerce($body['passwordOnly'] ?? null),
+            Type\shape(['named' => Type\vec(Type\shape(['name' => Type\string()], true))], true)->coerce($body['passwordOnly'] ?? null)['named'],
             static fn (array $member): string => $member['name'],
         ));
         self::assertArrayNotHasKey('passwordOnly', $this->as($linked, 'GET', $this->path()));
@@ -390,7 +392,7 @@ final class SignInRulesTest extends ApiTestCase
         $body = $this->as($this->owner, 'GET', $this->path());
 
         self::assertSame(['Bisi Adeyemi'], Vec\map(
-            Type\vec(Type\shape(['name' => Type\string()], true))->coerce($body['passwordOnly'] ?? null),
+            Type\shape(['named' => Type\vec(Type\shape(['name' => Type\string()], true))], true)->coerce($body['passwordOnly'] ?? null)['named'],
             static fn (array $member): string => $member['name'],
         ));
     }
@@ -432,6 +434,55 @@ final class SignInRulesTest extends ApiTestCase
         self::assertStringNotContainsString('Passwords stop working', (string) $toBisi?->getTextBody());
         $toFolake = Iter\first(Vec\filter($mails, static fn (Email $mail): bool => 'folake@ire.events' === $mail->getTo()[0]->getAddress()));
         self::assertStringNotContainsString('until you link Google or Apple', (string) $toFolake?->getTextBody());
+    }
+
+    #[Test]
+    public function upToThreeWhoARuleLeavesShortAreNamedAndPastThatOnlyCounted(): void
+    {
+        $this->member('bisi@ire.events', 'Bisi Adeyemi', SeededRole::Admin);
+        $this->member('chidi@ire.events', 'Chidi Okoro', SeededRole::Member);
+        $this->member('tope@ire.events', 'Tope Bello', SeededRole::Member);
+
+        self::assertSame(['count' => 3, 'named' => ['Bisi Adeyemi', 'Chidi Okoro', 'Tope Bello']], $this->shortOn('passwordOnly'));
+        self::assertSame(['count' => 3, 'named' => ['Bisi Adeyemi', 'Chidi Okoro', 'Tope Bello']], $this->shortOn('withoutTwoFactor'));
+
+        $this->member('ada@ire.events', 'Ada Eze', SeededRole::Member);
+
+        self::assertSame(['count' => 4, 'named' => []], $this->shortOn('passwordOnly'));
+        self::assertSame(['count' => 4, 'named' => []], $this->shortOn('withoutTwoFactor'));
+    }
+
+    #[Test]
+    public function theSaveAnswersBeforeAnyMemberIsWrittenToAndTheWorkerEmailsEachOnce(): void
+    {
+        $this->member('bisi@ire.events', 'Bisi Adeyemi', SeededRole::Admin);
+        $this->member('chidi@ire.events', 'Chidi Okoro', SeededRole::Member);
+
+        $this->set(['inactivityTimeoutDays' => 30]);
+
+        self::assertSame(200, $this->statusCode());
+        self::assertSame(0, $this->deliveriesOf(SignInRulesNotice::NAME), 'the save writes one row for the worker, never one per member');
+        self::assertSame(['bisi@ire.events', 'chidi@ire.events', 'folake@ire.events'], Vec\sort(Vec\map($this->mails(), static fn (Email $mail): string => $mail->getTo()[0]->getAddress())));
+        self::assertSame(3, $this->deliveriesOf(SignInRulesNotice::NAME));
+    }
+
+    #[Test]
+    public function somebodyWhoJoinsAfterTheSaveIsSentNeitherEmail(): void
+    {
+        self::mockTime('+1 day');
+        $this->member('bisi@ire.events', 'Bisi Adeyemi', SeededRole::Member);
+        $this->turnOnTwoFactor($this->owner);
+
+        $this->set(['everyoneNeedsTwoFactor' => true, 'inactivityTimeoutDays' => 30]);
+        self::mockTime('+1 minute');
+        $this->member('chidi@ire.events', 'Chidi Okoro', SeededRole::Member);
+
+        $to = Vec\map(Vec\filter(
+            self::getMailerMessages(),
+            static fn (object $message): bool => $message instanceof Email && Str\contains((string) $message->getSubject(), 'Ìrè Events'),
+        ), static fn (object $message): string => Type\instance_of(Email::class)->coerce($message)->getTo()[0]->getAddress());
+
+        self::assertSame(['bisi@ire.events', 'bisi@ire.events', 'folake@ire.events'], Vec\sort($to), 'Bisi hears of both changes and of the deadline, as before; Chidi of neither');
     }
 
     #[Test]
@@ -884,7 +935,7 @@ final class SignInRulesTest extends ApiTestCase
     {
         $mail = Iter\last(Vec\filter(
             self::getMailerMessages(),
-            static fn (object $message): bool => $message instanceof Email && $address === $message->getTo()[0]->getAddress(),
+            static fn (object $message): bool => $message instanceof Email && $address === $message->getTo()[0]->getAddress() && Str\contains((string) $message->getTextBody(), 'reset-password?token='),
         ));
 
         return Regex\first_match((string) Type\instance_of(Email::class)->coerce($mail)->getTextBody(), '/reset-password\?token=([0-9a-f]+)/')[1] ?? '';
@@ -905,6 +956,19 @@ final class SignInRulesTest extends ApiTestCase
             self::getMailerMessages(),
             static fn (object $message): bool => $message instanceof Email && Str\contains((string) $message->getSubject(), 'sign-in rules'),
         ), static fn (object $message): Email => Type\instance_of(Email::class)->coerce($message));
+    }
+
+    /** @return array{count: int, named: list<string>} */
+    private function shortOn(string $list): array
+    {
+        $short = Type\shape(['count' => Type\int(), 'named' => Type\vec(Type\shape(['name' => Type\string()], true))], true)->coerce($this->as($this->owner, 'GET', $this->path())[$list] ?? null);
+
+        return ['count' => $short['count'], 'named' => Vec\map($short['named'], static fn (array $member): string => $member['name'])];
+    }
+
+    private function deliveriesOf(string $type): int
+    {
+        return Type\int()->coerce(self::service(Connection::class)->fetchOne('SELECT COUNT(*) FROM notification_deliveries WHERE type = :type', ['type' => $type]));
     }
 
     private function path(): string
