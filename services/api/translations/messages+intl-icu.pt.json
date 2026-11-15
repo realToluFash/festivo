@@ -72,7 +72,7 @@
     "limits.calendar_feed": "Esta ligação de calendário foi consultada demasiadas vezes. Tente novamente {hour, plural, =1 {à {time}} other {às {time}}}.",
     "validation.guests_too_many": "Pode tratar até {most, number, ::group-auto} convidados de cada vez. Restrinja a lista com um separador, uma pesquisa ou um filtro e volte a selecionar.",
     "seating.table_default_name": "Table {n}",
-    "seating.items_outside": "{count, plural, one {# item sits} other {# items sit}} outside {width} × {length}. Move them first.",
+    "seating.items_outside": "{count, plural, one {{count, number, ::group-auto} item sits} other {{count, number, ::group-auto} items sit}} outside {width} × {roomLength}. Move them first.",
     "validation.seating_table_name_required": "Enter a name for the table.",
     "validation.seating_table_name_too_long": "Use {count, number, ::group-auto} characters or fewer.",
     "validation.seating_table_name_taken": "This plan already has a table called {name}.",

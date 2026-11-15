@@ -416,7 +416,7 @@ final readonly class SeatingPlanEditor
             ErrorCode::SeatingItemsOutside,
             'seating.items_outside',
             members: ['outside' => Vec\map($outside, static fn (SeatingTable $table): string => $table->getId()->toRfc4122())],
-            parameters: ['{count}' => Iter\count($outside), '{width}' => $system->written($widthCm, $locale), '{length}' => $system->written($lengthCm, $locale)],
+            parameters: ['{count}' => Iter\count($outside), '{width}' => $system->written($widthCm, $locale), '{roomLength}' => $system->written($lengthCm, $locale)],
         );
     }
 

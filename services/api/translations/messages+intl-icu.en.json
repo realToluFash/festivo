@@ -72,7 +72,7 @@
     "limits.calendar_feed": "This calendar link has been fetched too often. Try again {hour, plural, other {at {time}}}.",
     "validation.guests_too_many": "You can act on up to {most, number, ::group-auto} guests at once. Narrow the list with a tab, a search or a filter, then select again.",
     "seating.table_default_name": "Table {n}",
-    "seating.items_outside": "{count, plural, one {# item sits} other {# items sit}} outside {width} × {length}. Move them first.",
+    "seating.items_outside": "{count, plural, one {{count, number, ::group-auto} item sits} other {{count, number, ::group-auto} items sit}} outside {width} × {roomLength}. Move them first.",
     "validation.seating_table_name_required": "Enter a name for the table.",
     "validation.seating_table_name_too_long": "Use {count, number, ::group-auto} characters or fewer.",
     "validation.seating_table_name_taken": "This plan already has a table called {name}.",

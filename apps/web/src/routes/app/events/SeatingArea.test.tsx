@@ -597,7 +597,7 @@ function seating(planned: unknown, tableId?: string) {
 
 async function chooseTable(name: string): Promise<void> {
   fireEvent.click(await screen.findByRole('button', { name }));
-  await screen.findByRole('heading', { level: 2, name: name.split(',')[0] });
+  await screen.findByRole('heading', { level: 2, name: name.split(',')[0] ?? name });
 }
 
 function leave(label: string, value: string): void {
