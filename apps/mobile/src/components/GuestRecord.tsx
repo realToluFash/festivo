@@ -53,7 +53,7 @@ export function GuestRecord({
   const [answer, setAnswer] = useState<GuestAnswer | null>(null);
   const [how, setHow] = useState<GuestReplyHow | null>(null);
   const [ticked, setTicked] = useState<ReadonlySet<string>>(
-    () => new Set(tagged.guest.companions.map((one) => one.id)),
+    () => new Set(tagged.guest.companions.filter((one) => one.coming).map((one) => one.id)),
   );
   const [tried, setTried] = useState(false);
   const [asking, setAsking] = useState(false);

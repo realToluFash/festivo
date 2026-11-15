@@ -47,7 +47,10 @@ export function RecordForm({
   const [failed, setFailed] = useState(false);
   const [busy, setBusy] = useState(false);
   const [ticked, setTicked] = useState<ReadonlySet<string>>(
-    () => new Set(guest.companions.map((companion) => companion.id)),
+    () =>
+      new Set(
+        guest.companions.filter((companion) => companion.coming).map((companion) => companion.id),
+      ),
   );
   const dirty = answer != null || how != null;
   const noAnswer = tried && answer == null;

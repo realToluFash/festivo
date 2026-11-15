@@ -627,6 +627,22 @@ final class GuestAnswersTest extends ApiTestCase
     }
 
     #[Test]
+    public function eachCompanionCarriesTheirLastChoiceEvenWhileHeld(): void
+    {
+        $guest = $this->add(self::ADAEZE, ['Chidi Okonkwo-Williams', null]);
+        $token = $this->token($guest);
+        $chidi = $this->companionsOn($token)[0]['id'] ?? self::fail('no companion');
+        $place = $this->unnamedOn($token)[0]['id'] ?? self::fail('no place');
+        $this->record($guest, ['answer' => 'coming', 'how' => 'phone', 'companions' => [['id' => $chidi, 'coming' => false], ['id' => $place, 'coming' => true]]]);
+        self::assertSame([['notComing', false], ['coming', true]], $this->choices($guest));
+
+        $this->record($guest, ['answer' => 'maybe', 'how' => 'phone']);
+
+        self::assertSame(200, $this->statusCode(), Json\encode($this->last()));
+        self::assertSame([['held', false], ['held', true]], $this->choices($guest));
+    }
+
+    #[Test]
     public function recordingWithoutTheReplyOrHowTheyToldYouSavesNothing(): void
     {
         $guest = $this->add(self::ADAEZE);
@@ -745,6 +761,12 @@ final class GuestAnswersTest extends ApiTestCase
     private function unnamedOn(#[SensitiveParameter] string $token): array
     {
         return Type\vec(Type\dict(Type\string(), Type\mixed()))->coerce($this->open($token)['guest']['unnamed'] ?? null);
+    }
+
+    /** @return list<array{mixed, mixed}> */
+    private function choices(string $guest): array
+    {
+        return Vec\map(Type\vec(Type\dict(Type\string(), Type\mixed()))->coerce($this->row($guest)['companions']), static fn (array $one): array => [$one['state'] ?? null, $one['coming'] ?? null]);
     }
 
     /** @return list<mixed> */
