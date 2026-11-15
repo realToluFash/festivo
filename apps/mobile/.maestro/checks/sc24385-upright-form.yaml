@@ -1,0 +1,60 @@
+# sc-24385, the tablet upright (the harness turns it; no setOrientation, whose PORTRAIT lays this landscape-native tablet on its side): Edit details (the event form at 7f19dd7) holds a 500-character note of é ñ ç 🚗 a; one more character is refused on save, removing it saves. Needs ${METRO_URL}, ${COUNT}.
+appId: host.exp.Exponent
+---
+- runScript:
+    file: ../batch/helper.js
+    env:
+      ASK: /portrait # the batch's reset sets Maestro's PORTRAIT, rotation 0, which lays this landscape-native tablet on its side
+- waitForAnimationToEnd
+- openLink: ${METRO_URL}/--/events/${COUNT}/edit
+- extendedWaitUntil:
+    visible:
+      id: 'eventForm.name'
+    timeout: 90000
+- scrollUntilVisible:
+    element:
+      id: 'eventForm.arrivalNote'
+    centerElement: true
+    timeout: 20000
+- takeScreenshot: open
+- tapOn:
+    id: 'eventForm.arrivalNote'
+- inputText: 'x'
+- hideKeyboard
+- scrollUntilVisible:
+    element:
+      id: 'eventForm.send'
+    timeout: 20000
+- tapOn:
+    id: 'eventForm.send'
+- waitForAnimationToEnd
+- extendedWaitUntil:
+    visible: '.*500.*'
+    timeout: 10000
+- takeScreenshot: refused501
+- scrollUntilVisible:
+    element:
+      id: 'eventForm.arrivalNote'
+    centerElement: true
+    timeout: 20000
+- takeScreenshot: refused501-field
+- tapOn:
+    id: 'eventForm.arrivalNote'
+- eraseText: 1
+- hideKeyboard
+- scrollUntilVisible:
+    element:
+      id: 'eventForm.send'
+    timeout: 20000
+- tapOn:
+    id: 'eventForm.send'
+- extendedWaitUntil:
+    visible:
+      id: 'events.page'
+    timeout: 20000
+- scrollUntilVisible:
+    element:
+      id: 'events.arrivalNote'
+    centerElement: true
+    timeout: 20000
+- takeScreenshot: saved500
