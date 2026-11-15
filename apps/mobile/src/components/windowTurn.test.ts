@@ -401,9 +401,20 @@ describe('an anchored menu starts TalkBack on its first row (sc-52641)', () => {
       /useUnnamedWindow\(\s*Platform\.OS === 'android' && first != null,\s*onScreen,\s*null,\s*reduced \? 0 : WINDOW_ARRIVES_MS,?\s*\)/,
     );
     expect(overlays).toContain('onShow={() => setOnScreen(true)}');
-    expect(overlays).toContain('<MenuLayer {...menu} hidden={arriving} />');
+    expect(overlays).toMatch(/<MenuLayer\s+\{\.\.\.menu\}\s+hidden=\{arriving\}/);
     expect(overlays).toContain("const reach = hidden ? 'no-hide-descendants' : 'auto';");
-    expect(overlays.match(/importantForAccessibility=\{reach\}/g)).toHaveLength(2);
+    expect(overlays.match(/importantForAccessibility=\{reach\}/g)).toHaveLength(1);
+  });
+
+  it('keeps Close the menu out of reach until focus is on the first row, so TalkBack never reads it first (#53461)', () => {
+    expect(overlays).toContain(
+      "importantForAccessibility={outsideHidden ? 'no-hide-descendants' : reach}",
+    );
+    expect(overlays).toContain(
+      "outsideHidden={Platform.OS === 'android' && first != null && !focused}",
+    );
+    expect(overlays).toContain('const reached = setTimeout(() => setFocused(true), SETTLED_MS);');
+    expect(overlays).toContain('if (!landed && focused) setFocused(false);');
   });
 
   it('then moves TalkBack’s focus to its first row, on Android only', () => {
