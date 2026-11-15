@@ -1,0 +1,39 @@
+# sc-51870: Record a reply for ${NONE_ID} in ${EVENT_ID}, ${HOW}: the saved line and the Reply line's recorded-by line.
+appId: host.exp.Exponent
+---
+- setOrientation: ${ORIENT}
+- openLink: ${METRO_URL}/--/events/${EVENT_ID}?area=guests
+- extendedWaitUntil:
+    visible:
+      id: 'guests.search'
+    timeout: 30000
+- scrollUntilVisible:
+    element:
+      id: 'guests.row.${NONE_ID}'
+    direction: DOWN
+    timeout: 15000
+- tapOn:
+    id: 'guests.row.${NONE_ID}'
+- scrollUntilVisible:
+    element:
+      id: 'guest.record'
+    direction: DOWN
+    timeout: 20000
+- tapOn:
+    id: 'guest.record'
+- extendedWaitUntil:
+    visible:
+      id: 'guest.record.save'
+    timeout: 10000
+- tapOn:
+    id: 'guest.record.maybe'
+- tapOn:
+    id: 'guest.record.how.${HOW}'
+- tapOn:
+    id: 'guest.record.save'
+- takeScreenshot: saved
+- extendedWaitUntil:
+    visible:
+      id: 'guest.reply'
+    timeout: 10000
+- takeScreenshot: recorded
