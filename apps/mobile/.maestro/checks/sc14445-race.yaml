@@ -23,7 +23,7 @@ appId: host.exp.Exponent
 - inputText: ${NAME}
 - hideKeyboard
 - runScript:
-    file: ../../../../apps/mobile/.maestro/checks/sc14445-mark.js
+    file: ../scripts/sc14445-mark.js
     env:
       API: ${API}
       EV: ${EV}
