@@ -649,6 +649,7 @@ final class GuestAnswersTest extends ApiTestCase
         $guest = $this->add(self::ADAEZE);
         $token = $this->token($guest);
         $this->reply($token, 'coming');
+        self::service(Connection::class)->executeStatement('UPDATE guests SET reply_source = NULL WHERE id = :id', ['id' => $guest]);
 
         $this->record($guest, ['answer' => 'notComing', 'how' => 'inPerson']);
         self::assertSame([409, ErrorCode::ReplyIsTheirs->type()], [$this->statusCode(), $this->last()['type'] ?? null]);
@@ -659,6 +660,19 @@ final class GuestAnswersTest extends ApiTestCase
         $this->record($guest, ['answer' => 'maybe', 'how' => 'other']);
         self::assertSame(200, $this->statusCode(), Json\encode($this->last()));
         self::assertSame(['maybe', ['by' => 'Person', 'how' => 'other']], [$this->row($guest)['reply'] ?? null, $this->row($guest)['replyRecorded'] ?? null]);
+    }
+
+    #[Test]
+    public function recordingWithAnotherGuestsCompanionIsRefused422(): void
+    {
+        $guest = $this->add(self::ADAEZE);
+        $other = $this->token($this->add('Bisi Adewale', ['Tunde Adewale']));
+        $tunde = $this->companionsOn($other)[0]['id'] ?? self::fail('no companion');
+
+        $this->record($guest, ['answer' => 'coming', 'how' => 'phone', 'companions' => [['id' => $tunde, 'coming' => true]]]);
+
+        self::assertSame([422, 'companions[0].id'], [$this->statusCode(), $this->last()['violations'][0]['propertyPath'] ?? null]);
+        self::assertSame('noReply', $this->row($guest)['reply'] ?? null);
     }
 
     #[Test]

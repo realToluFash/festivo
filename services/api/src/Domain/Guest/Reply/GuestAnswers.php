@@ -91,7 +91,7 @@ final readonly class GuestAnswers
                 throw new ApiException(ErrorCode::RepliesClosed, 'guest.replies_closed');
             }
 
-            if (null !== $recorded && !$recorded->replace && GuestReplySource::GuestPage === $guest->getReplySource() && !Iter\contains([null, GuestReply::NoReply], $guest->getReply())) {
+            if (null !== $recorded && !$recorded->replace && null === $guest->getReplyRecordedHow() && !Iter\contains([null, GuestReply::NoReply], $guest->getReply())) {
                 throw new ApiException(ErrorCode::ReplyIsTheirs, 'guest.reply_is_theirs');
             }
 

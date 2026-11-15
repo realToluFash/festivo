@@ -193,7 +193,7 @@ final readonly class GuestsController
         $page = new PageReply(
             Vec\map(
                 Vec\filter($ticks, static fn (array $one): bool => !$isUnnamed($one)),
-                static fn (array $one): CompanionChoice => new CompanionChoice($one['id'], $places[$one['id']]?->getFullName() ?? '', $places[$one['id']]?->getNameKey() ?? '', $one['coming']),
+                static fn (array $one): CompanionChoice => new CompanionChoice($one['id'], ($places[$one['id']] ?? null)?->getFullName() ?? '', ($places[$one['id']] ?? null)?->getNameKey() ?? '', $one['coming']),
             ),
             null,
             Vec\map(Vec\filter($ticks, $isUnnamed), static fn (array $one): PlaceChoice => new PlaceChoice($one['id'], $one['coming'])),

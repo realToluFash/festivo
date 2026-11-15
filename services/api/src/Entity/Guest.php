@@ -255,7 +255,7 @@ class Guest
     /** Replaces the reply; the same answer from the same hand changes nothing and keeps its date, while the guest's own answer always replaces one a host recorded. False when nothing changed. */
     public function reply(GuestReply $reply, DateTimeImmutable $at, GuestReplySource $source, ?string $recordedBy = null, ?GuestReplyHow $how = null): bool
     {
-        if ($reply === $this->reply && $source === $this->replySource && $recordedBy === $this->replyRecordedBy && $how === $this->replyRecordedHow) {
+        if ($reply === $this->reply && $recordedBy === $this->replyRecordedBy && $how === $this->replyRecordedHow) {
             return false;
         }
 
