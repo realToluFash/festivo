@@ -1707,7 +1707,7 @@
   "eventLive": {
     "guestsBlocked": "Guests can't be invited until this event is live.",
     "makeLive": "Make live",
-    "endPassed": "This event's end has passed, so it cannot be made live. Change its dates first.",
+    "endPassed": "This event’s end has passed, so it cannot be made live. Change its dates first.",
     "changeDates": "Change dates",
     "confirmTitle": "Make {{name}} live?",
     "confirmLine": "Guests can be invited, and they can see it. It can't go back to being a draft.",
@@ -1772,7 +1772,7 @@
     "keepItLive": "Keep it live",
     "failed": "Not paused. Try again in a moment.",
     "notPaused": "Not paused.",
-    "notice": "Paused. Guests can't reply or change anything until you resume it. Check-in and service still work.",
+    "notice": "Paused. Guests can’t reply or change anything until you resume it. Check-in and service still work.",
     "resume": "Resume",
     "resumeFailed": "Not resumed. Try again in a moment.",
     "pausing": "Pausing…",
