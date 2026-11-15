@@ -361,7 +361,7 @@ describe('Members at a desk (sc-34200)', () => {
     fireEvent.click(await page().findByRole('button', { name: 'All · 2' }));
     fireEvent.click(page().getByRole('menuitemradio', { name: /^Former/ }));
 
-    expect(page().getByText('Chidi Okoro')).toBeDefined();
+    expect(await page().findByText('Chidi Okoro')).toBeDefined();
     expect(page().getByText('Removed')).toBeDefined();
     expect(page().queryByRole('button', { name: /^Chidi Okoro/ })).toBeNull();
 
@@ -1245,7 +1245,7 @@ describe('the dates the server wrote, after a language change (sc-9267)', () => 
       const language = new Headers(init?.headers).get('Accept-Language') ?? '';
       asked.push(language);
 
-      return language === 'es' ? spanish() : listIn(language);
+      return pagedMembers(await (language === 'es' ? spanish() : listIn(language)), String(input));
     });
 
     return asked;
