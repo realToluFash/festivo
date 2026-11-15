@@ -1,0 +1,32 @@
+# sc-37577: on its side, the calendar menu opened, then scrolled inside to its last choice.
+appId: host.exp.Exponent
+---
+- setOrientation: ${ORIENT}
+- waitForAnimationToEnd:
+    timeout: 3000
+- openLink: ${METRO_URL}/--/calendar
+- extendedWaitUntil:
+    visible:
+      id: 'calendar.show'
+    timeout: 30000
+- waitForAnimationToEnd:
+    timeout: 3000
+- tapOn:
+    id: 'calendar.show'
+- extendedWaitUntil:
+    visible:
+      id: 'calendar.showMenu'
+    timeout: 10000
+- waitForAnimationToEnd:
+    timeout: 3000
+- takeScreenshot: side-calendar-open
+- swipe:
+    from:
+      id: 'calendar.showMenu'
+    direction: UP
+    duration: 600
+- waitForAnimationToEnd:
+    timeout: 3000
+- takeScreenshot: side-calendar-scrolled
+- assertVisible:
+    id: 'calendar.show.events'

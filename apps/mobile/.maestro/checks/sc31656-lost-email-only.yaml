@@ -1,0 +1,128 @@
+# sc-31656: an email-only account's Get back in without your authenticator in the batch language: step 2, Send the code and Sending the code… (the api paused), the code from Mailpit, Waiting, then Cancel the request with the api stopped, for Not cancelled inside the sheet.
+# It signs the batch's session out, and brings the api back up when it ends. Pass EMAIL, PASSWORD and LANG (the batch's --lang): it picks LANG with the screen's own language picker, signed out.
+appId: host.exp.Exponent
+onFlowComplete:
+  - runScript:
+      file: ../batch/helper.js
+      env:
+        ASK: /api?to=up
+---
+- runFlow: ../sign-out.yaml
+- openLink: ${METRO_URL}/--/sign-in
+- extendedWaitUntil:
+    visible:
+      id: 'welcome\.email|signIn\.email'
+    timeout: 60000
+- runFlow:
+    when:
+      visible:
+        id: 'welcome.email'
+    commands:
+      - tapOn:
+          id: 'welcome.email'
+- tapOn:
+    id: 'signIn.email'
+- eraseText: 120
+- inputText: ${EMAIL}
+- tapOn:
+    id: 'signIn.password'
+- eraseText: 120
+- inputText: ${PASSWORD}
+- hideKeyboard
+- tapOn:
+    id: 'signIn.submit'
+- extendedWaitUntil:
+    visible:
+      id: 'twoFactor.lostBoth'
+    timeout: 30000
+- scrollUntilVisible:
+    element:
+      id: 'twoFactor.lostBoth'
+- tapOn:
+    id: 'twoFactor.lostBoth'
+- extendedWaitUntil:
+    visible:
+      id: 'lostTwoFactor.send'
+    timeout: 30000
+- tapOn:
+    id: 'language.open'
+- tapOn:
+    id: 'language.${LANG}'
+- extendedWaitUntil:
+    visible: '{{t:lostTwoFactor.step2EmailOnly}}'
+    timeout: 15000
+- waitForAnimationToEnd
+- takeScreenshot: start-top
+- assertVisible: '{{t:lostTwoFactor.step2EmailOnly}}'
+- assertNotVisible: '{{t:lostTwoFactor.step2}}'
+- scrollUntilVisible:
+    element:
+      id: 'lostTwoFactor.send'
+- assertVisible: '{{t:lostTwoFactor.sendEmailOnly}}'
+- takeScreenshot: start
+- runScript:
+    file: ../batch/helper.js
+    env:
+      ASK: /api?to=paused
+- tapOn:
+    id: 'lostTwoFactor.send'
+- extendedWaitUntil:
+    visible: '{{t:lostTwoFactor.sendingEmailOnly}}'
+    timeout: 10000
+- takeScreenshot: sending
+- runScript:
+    file: ../batch/helper.js
+    env:
+      ASK: /api?to=up
+- extendedWaitUntil:
+    visible:
+      id: 'lostTwoFactor.emailCode'
+    timeout: 60000
+- waitForAnimationToEnd
+- takeScreenshot: codes
+- evalScript: "${output.mails = json(http.get(MAILPIT_URL + '/api/v1/search?limit=1&query=' + encodeURIComponent('to:' + EMAIL)).body)}"
+- evalScript: "${output.code = json(http.get(MAILPIT_URL + '/api/v1/message/' + output.mails.messages[0].ID).body).Text.match(/\\b\\d{6}\\b/)[0]}"
+- tapOn:
+    id: 'lostTwoFactor.emailCode'
+- inputText: ${output.code}
+- hideKeyboard
+- tapOn:
+    id: 'lostTwoFactor.ask'
+- extendedWaitUntil:
+    visible:
+      id: 'lostTwoFactor.cancel'
+    timeout: 30000
+- waitForAnimationToEnd
+- takeScreenshot: waiting
+- scrollUntilVisible:
+    element:
+      id: 'lostTwoFactor.cancel'
+- tapOn:
+    id: 'lostTwoFactor.cancel'
+- extendedWaitUntil:
+    visible:
+      id: 'lostTwoFactor.cancelYes'
+    timeout: 10000
+- runScript:
+    file: ../batch/helper.js
+    env:
+      ASK: /api?to=stopped
+- tapOn:
+    id: 'lostTwoFactor.cancelYes'
+- extendedWaitUntil:
+    visible: '{{t:lostTwoFactor.notCancelled}}'
+    timeout: 60000
+- waitForAnimationToEnd
+- takeScreenshot: not-cancelled
+- runScript:
+    file: ../batch/helper.js
+    env:
+      ASK: /api?to=up
+- tapOn:
+    id: 'lostTwoFactor.cancelYes'
+- extendedWaitUntil:
+    notVisible:
+      id: 'lostTwoFactor.cancelYes'
+    timeout: 30000
+- waitForAnimationToEnd
+- takeScreenshot: cancelled

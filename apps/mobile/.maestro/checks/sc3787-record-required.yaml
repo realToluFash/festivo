@@ -1,0 +1,42 @@
+# sc-3787: Record a reply on ${G_REQ} (invited, no reply) in ${EVENT_ID} opens with nothing chosen, and Save with nothing chosen says both missing.
+appId: host.exp.Exponent
+---
+- openLink: ${METRO_URL}/--/events/${EVENT_ID}?area=guests
+- extendedWaitUntil:
+    visible:
+      id: 'guests.search'
+    timeout: 30000
+- tapOn:
+    id: 'guests.search'
+- inputText: ${G_REQ_NAME}
+- hideKeyboard
+- extendedWaitUntil:
+    visible:
+      id: 'guests.row.${G_REQ}'
+    timeout: 15000
+- tapOn:
+    id: 'guests.row.${G_REQ}'
+- extendedWaitUntil:
+    visible:
+      id: 'guest.${G_REQ}'
+    timeout: 30000
+- takeScreenshot: details-noreply
+- tapOn:
+    id: 'guest.card.step'
+- extendedWaitUntil:
+    visible:
+      id: 'guest.record.save'
+    timeout: 10000
+- takeScreenshot: form-blank
+- tapOn:
+    id: 'guest.record.save'
+- extendedWaitUntil:
+    visible: '{{t:guestList.chooseReply}}'
+    timeout: 5000
+- takeScreenshot: form-missing-both
+- scrollUntilVisible:
+    element: '{{t:guestList.chooseHow}}'
+    direction: DOWN
+- takeScreenshot: form-missing-both-scrolled
+- tapOn:
+    id: 'guest.record.cancel'

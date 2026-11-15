@@ -1,0 +1,5 @@
+The signing keys live here and are gitignored — see ../../.gitignore. This file
+exists so the directory does, because the container that writes the keys runs as
+a different user from the one that owns the checkout and cannot create it.
+
+`just keypair` generates them. `npm run setup` does it for a fresh clone.

@@ -1,0 +1,15 @@
+# sc-51754: ${EVENT_ID}'s Details, the Venue row with Open in maps under it (after the arrival note when there is one). Needs ${METRO_URL}, ${EVENT_ID}.
+appId: host.exp.Exponent
+---
+- openLink: ${METRO_URL}/--/events/${EVENT_ID}
+- extendedWaitUntil:
+    visible:
+      id: 'events.page'
+    timeout: 60000
+- takeScreenshot: top
+- scrollUntilVisible:
+    element:
+      id: 'events.maps'
+    centerElement: true
+    timeout: 20000
+- takeScreenshot: venue

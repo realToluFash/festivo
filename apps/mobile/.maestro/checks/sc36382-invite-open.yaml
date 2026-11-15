@@ -1,0 +1,26 @@
+# An invitation's tile opened, with Accept and join and Decline showing. sc-36382.
+appId: host.exp.Exponent
+---
+- openLink: ${METRO_URL}/--/
+- tapOn:
+    id: 'tab-today|frame.home'
+    optional: true
+- tapOn:
+    id: 'frame.organisation|home.switchOrganisation'
+- extendedWaitUntil:
+    visible:
+      id: 'switcher.heading'
+    timeout: 10000
+- waitForAnimationToEnd:
+    timeout: 5000
+- scrollUntilVisible:
+    element:
+      id: 'switcher.tile.01a1c822-0a50-753a-8935-0c0cf9ad25bb'
+    timeout: 15000
+- tapOn:
+    id: 'switcher.tile.01a1c822-0a50-753a-8935-0c0cf9ad25bb'
+- scrollUntilVisible:
+    element:
+      id: 'switcher.invitation.01a1c822-0a50-753a-8935-0c0cf9ad25bb.decline'
+    timeout: 10000
+- takeScreenshot: invite-open

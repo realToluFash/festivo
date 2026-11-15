@@ -1,0 +1,36 @@
+# sc-51444: on a tablet at ${ORIENT}, the round + on Guests carries its label as its name and opens Add guest; Events' New event starts one; the Guests demo's titlePt state beside it.
+appId: host.exp.Exponent
+---
+- setOrientation: ${ORIENT}
+- waitForAnimationToEnd:
+    timeout: 5000
+- openLink: ${METRO_URL}/--/events/${EVENT}?area=guests
+- extendedWaitUntil:
+    visible:
+      id: 'guests.add'
+    timeout: 30000
+- waitForAnimationToEnd:
+    timeout: 5000
+- assertVisible:
+    id: 'guests.add'
+    text: '{{t:guestList.addGuest}}'
+- takeScreenshot: guests-product
+- tapOn:
+    id: 'guests.add'
+- waitForAnimationToEnd:
+    timeout: 5000
+- takeScreenshot: guests-add-opened
+- openLink: ${METRO_URL}/--/events
+- extendedWaitUntil:
+    visible:
+      id: 'events.new'
+    timeout: 30000
+- tapOn:
+    id: 'events.new'
+- waitForAnimationToEnd:
+    timeout: 5000
+- takeScreenshot: events-new-opened
+- openLink: ${METRO_URL}/--/demo/guests?state=titlePt
+- waitForAnimationToEnd:
+    timeout: 8000
+- takeScreenshot: guests-demo
