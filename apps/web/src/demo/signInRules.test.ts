@@ -100,7 +100,7 @@ describe('Sign-in rules’ sample (sc-30064)', () => {
       '1,000,000 people can read but not change anything until they link Google or Apple. Their password still signs them in.',
     );
     expect(short('everyoneThree')).toBe(
-      'Priya Shah, Ana Souza, and Tunde Bakare don’t have it yet.',
+      'Priya Shah, Ana Souza and Tunde Bakare don’t have it yet.',
     );
     expect(short('everyoneFour')).toBe('4 people don’t have it yet.');
     expect(short('everyoneMillion')).toBe('1,000,000 people don’t have it yet.');
@@ -115,12 +115,14 @@ describe('Sign-in rules’ sample (sc-30064)', () => {
     );
   });
 
-  it('joins the names in the page’s language', () => {
+  it('joins the names in the page’s language, English with no serial comma', () => {
     const three = page('everyoneThree');
+    const joined = (locale: string) =>
+      effectsOf(three, applied('twoFactor', 'For everyone', three), locale)[1];
 
-    expect(effectsOf(three, applied('twoFactor', 'For everyone', three), 'en-GB')[1]).toBe(
-      'Priya Shah, Ana Souza and Tunde Bakare don’t have it yet.',
-    );
+    expect(joined('en')).toBe('Priya Shah, Ana Souza and Tunde Bakare don’t have it yet.');
+    expect(joined('en-US')).toBe('Priya Shah, Ana Souza and Tunde Bakare don’t have it yet.');
+    expect(joined('fr')).toContain('Priya Shah, Ana Souza et Tunde Bakare');
   });
 
   it('saves a change today, by the viewer, at the top', () => {

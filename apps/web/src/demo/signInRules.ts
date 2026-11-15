@@ -1,3 +1,4 @@
+import { listFormat } from '@soirely/domain';
 import type { Load } from './members.ts';
 import type { Mark } from '../components/SignInRulesParts.tsx';
 import type { Choice } from '../components/SettingsParts.tsx';
@@ -480,7 +481,7 @@ function shortOf(people: People, locale: string): { who: string; one: boolean } 
     return { who: `${number(people.count, locale)} people`, one: false };
 
   return {
-    who: new Intl.ListFormat(locale, { type: 'conjunction' }).format(people.names),
+    who: listFormat(locale, { style: 'long', type: 'conjunction' }).format(people.names),
     one: people.count === 1,
   };
 }
