@@ -93,7 +93,7 @@ export function EventPage({
   const now = useServerNow();
   const phase = useShownPhase(event, now);
   const said = useRef({ id: event.id, phase });
-  const timeline = useTimeline(event.id, now, event.status);
+  const timeline = useTimeline(event.id, now, event);
   const milestones = timeline.load.kind === 'loaded' ? timeline.load.timeline.milestones : null;
   const shown = shownEvent(listEventOf({ ...event, milestones }), phase);
   const cardOpener = useRef<ViewInstance>(null);
