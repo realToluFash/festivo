@@ -8,6 +8,7 @@ import { SIDE_AREA_GLYPHS } from '../components/eventSideAreas.ts';
 import { guestsAt, hasGuests } from './guests.ts';
 import { OrgSwitcher } from './OrgSwitcher.tsx';
 import { SAMPLE } from './rules.ts';
+import { SCHEDULE_EVENT } from './schedule.ts';
 import { STATIONS_EVENT } from './stations.ts';
 import type { Tell } from '../components/SettingsParts.tsx';
 import { SearchRow } from './Search.tsx';
@@ -79,7 +80,8 @@ export function EventSidebar({
                     ? `/demo/events/${event.id}`
                     : one.area === 'messages' ||
                         one.area === 'seating' ||
-                        (one.area === 'staff' && event.id === STATIONS_EVENT)
+                        (one.area === 'staff' && event.id === STATIONS_EVENT) ||
+                        (one.area === 'schedule' && event.id === SCHEDULE_EVENT)
                       ? `/demo/events/${event.id}/${one.area}`
                       : one.area === 'guests' && hasGuests(event.id)
                         ? guestsAt(event.id)
