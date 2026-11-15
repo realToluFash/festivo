@@ -59,7 +59,7 @@ export function GroupChips({
             onClick={() => onFilter(on ? null : chip.key)}
           >
             {on && <Glyph name="tick" size={16} weight={2.6} />}
-            {chip.word}
+            <span className="gs-chip-word">{chip.word}</span>
           </button>
         );
       })}
