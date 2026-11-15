@@ -625,7 +625,7 @@ describe('Guests, Record a reply in place (sc-3787)', () => {
       ).toBeDefined();
       expect(
         within(group(/^Coming/u)).getByRole('link', {
-          name: /^Dr Emeka Nwosu, Coming · recorded by Folake Adeyemi/u,
+          name: /^Dr Emeka Nwosu, Coming · replied /u,
         }),
       ).toBeDefined();
       expect(within(group(/^Coming/u)).queryByRole('link', { name: /^Adanna Nwosu/u })).toBeNull();
@@ -1124,7 +1124,7 @@ describe('Guests, the link and Mark as invited (sc-1526, sc-3788)', () => {
 
     expect(within(column()).getByText('Invited when they replied, Nov 3')).toBeDefined();
     expect(
-      await within(main()).findByRole('link', { name: /^Bisi Adewale, Coming · recorded by/u }),
+      await within(main()).findByRole('link', { name: /^Bisi Adewale, Coming · replied /u }),
     ).toBeDefined();
   });
 

@@ -21,6 +21,7 @@ use App\Http\Input;
 use App\Repository\AuditEntryRepository;
 use App\Repository\MembershipRepository;
 use App\Repository\OrganisationRepository;
+use Closure;
 use DateInterval;
 use DateTimeInterface;
 use Psl\Iter;
@@ -37,6 +38,9 @@ use Symfony\Contracts\Translation\TranslatorInterface;
 final readonly class SignInRulesController
 {
     private const int CHANGES_SHOWN = 20;
+
+    /** Past this many, the page counts who a rule leaves short instead of naming them (sc-18317). */
+    private const int NAMED_UP_TO = 3;
 
     public function __construct(
         private Security $security,
@@ -88,7 +92,7 @@ final readonly class SignInRulesController
         return new JsonResponse($this->rules($organisation));
     }
 
-    /** @return array<string, mixed> the password-only and no-two-factor lists only for somebody who can change the rules, and never naming them */
+    /** @return array<string, mixed> who is password-only and who has no two-factor only for somebody who can change the rules, and never the caller themselves */
     private function rules(Organisation $organisation): array
     {
         $grants = $this->membershipDirectory->grantsIn($this->user(), $organisation->getId());
@@ -109,19 +113,14 @@ final readonly class SignInRulesController
                 'days' => $limit->days,
             ],
             ...(true === $grants?->holds(Permission::OrganisationManage)
-                ? ['passwordOnly' => Vec\map(
-                    Vec\filter(
-                        $this->membershipRepository->findActiveWithoutProviderIn($organisation),
-                        fn (Membership $membership): bool => !$membership->getUser()->getId()->equals($this->user()->getId()),
+                ? [
+                    'passwordOnly' => $this->shortOf(
+                        $this->membershipRepository->countActiveWithoutProviderIn($organisation, $this->user()),
+                        fn (): array => $this->membershipRepository->findActiveWithoutProviderIn($organisation, $this->user(), self::NAMED_UP_TO),
                     ),
-                    self::member(...),
-                ),
-                    'withoutTwoFactor' => Vec\map(
-                        Vec\filter(
-                            $this->membershipRepository->findActiveWithoutTwoFactorIn($organisation),
-                            fn (Membership $membership): bool => !$membership->getUser()->getId()->equals($this->user()->getId()),
-                        ),
-                        self::member(...),
+                    'withoutTwoFactor' => $this->shortOf(
+                        $this->membershipRepository->countActiveWithoutTwoFactorIn($organisation, $this->user()),
+                        fn (): array => $this->membershipRepository->findActiveWithoutTwoFactorIn($organisation, $this->user(), self::NAMED_UP_TO),
                     ),
                 ]
                 : []),
@@ -168,6 +167,16 @@ final readonly class SignInRulesController
         $membership = null === $actor ? null : $this->membershipRepository->findActiveByUserId($actor, $organisation->getId());
 
         return ['name' => $entry->getActorLabel(), 'role' => null === $membership ? null : self::role($membership->getRole())];
+    }
+
+    /**
+     * @param Closure(): list<Membership> $named read only when there are few enough to name
+     *
+     * @return array{count: int, named: list<array<string, mixed>>}
+     */
+    private function shortOf(int $count, Closure $named): array
+    {
+        return ['count' => $count, 'named' => $count > self::NAMED_UP_TO ? [] : Vec\map($named(), self::member(...))];
     }
 
     /** @return array<string, mixed> */

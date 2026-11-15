@@ -1,0 +1,17 @@
+# sc-52652: the app's design demo state Cover · a role changed (403), and Use this photo pressed.
+appId: host.exp.Exponent
+---
+- openLink: ${METRO_URL}/--/demo/events/evt-wed-4?state=coverForbidden
+- extendedWaitUntil:
+    visible: 'never.there'
+    timeout: 6000
+    optional: true
+- takeScreenshot: demo-open
+- tapOn:
+    id: 'event.edit.cover.save'
+    optional: true
+- extendedWaitUntil:
+    visible: 'never.there'
+    timeout: 3000
+    optional: true
+- takeScreenshot: demo-pressed

@@ -251,7 +251,16 @@ export function GuestColumn({
     let current = true;
 
     api.guest(eventId, guestId).then(
-      (tagged) => current && setPane({ kind: 'guest', tagged }),
+      (tagged) =>
+        current &&
+        setPane((was) => ({
+          kind: 'guest',
+          tagged,
+          recorded:
+            was.kind === 'guest' &&
+            was.recorded === true &&
+            was.tagged.guest.id === tagged.guest.id,
+        })),
       (error: unknown) =>
         current &&
         setPane((was) =>
@@ -671,7 +680,14 @@ function GuestView({
   const cardLine =
     closed ??
     (replied != null
-      ? t('guestList.replied', { reply: t(REPLY_KEY[guest.reply]), date: replied })
+      ? recordedBy != null
+        ? t('guestList.recordedLine', {
+            reply: t(REPLY_KEY[guest.reply]),
+            name: recordedBy.by,
+            how: t(`guestList.toldInLine.${recordedBy.how}`),
+            date: replied,
+          })
+        : t('guestList.replied', { reply: t(REPLY_KEY[guest.reply]), date: replied })
       : notYet
         ? manages && invites
           ? t('guestList.copyFirst')

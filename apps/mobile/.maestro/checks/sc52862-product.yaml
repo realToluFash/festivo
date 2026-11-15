@@ -1,0 +1,23 @@
+# sc-52862: ${EVENT_ID}'s page, Overview, then Details from the top where it is its own area (a tablet; on a phone Details is Overview's section), and Details' Venue row with Open in maps, for the side-by-side margin pairs. Needs ${METRO_URL}, ${EVENT_ID}.
+appId: host.exp.Exponent
+---
+- setOrientation: PORTRAIT
+- waitForAnimationToEnd
+- openLink: ${METRO_URL}/--/events/${EVENT_ID}
+- extendedWaitUntil:
+    visible:
+      id: 'events.page'
+    timeout: 60000
+- waitForAnimationToEnd
+- takeScreenshot: overview
+- tapOn:
+    id: 'event.nav.details'
+    optional: true
+- waitForAnimationToEnd
+- takeScreenshot: details
+- scrollUntilVisible:
+    element:
+      id: 'events.maps'
+    centerElement: true
+    timeout: 20000
+- takeScreenshot: venue

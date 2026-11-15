@@ -180,14 +180,11 @@ export function NameStep({
   field,
   onTyped,
   onContinue,
-  nameless = false,
   onLeft,
 }: StepProps & {
   field: RefObject<TextInputInstance | null>;
   onTyped: (name: string) => void;
   onContinue: () => void;
-  /** Unnamed, so taking input focus says nothing: TalkBack voiced a hidden field's name as it took focus (qa2 #49329). */
-  nameless?: boolean;
   onLeft?: (() => void) | undefined;
 }) {
   const { t } = useTranslation();
@@ -261,8 +258,8 @@ export function NameStep({
             autoCorrect={false}
             spellCheck={false}
             returnKeyType="next"
-            accessibilityLabel={nameless ? '' : t('createOrganisation.name')}
-            accessibilityHint={nameless ? undefined : (refusal ?? help)}
+            accessibilityLabel={t('createOrganisation.name')}
+            accessibilityHint={refusal ?? help}
             style={[
               styles.name,
               {

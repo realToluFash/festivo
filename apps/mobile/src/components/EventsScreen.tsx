@@ -98,7 +98,8 @@ function readerZone(): string {
 const LOADING: Load = { kind: 'loading' };
 
 /** Events, `EventsHome-*` (sc-1593): the organisation's events; an event's page is pushed over it (sc-22103). The search and Filter stay while the person stays in Events (sc-30302). */
-export function EventsScreen() {
+/** `searched` is the term it opens searched for, as Search's Show all opens it (sc-39534). */
+export function EventsScreen({ searched: opened = '' }: { searched?: string | undefined } = {}) {
   const { t } = useTranslation();
   const { kind } = useListAndPageLayout(SPACING, 'nothing');
   const insets = useSafeAreaInsets();
@@ -124,8 +125,8 @@ export function EventsScreen() {
     locale,
   };
   const [lookIn, setLookIn] = useState(organisationId);
-  const [typed, setTyped] = useState('');
-  const [searched, setSearched] = useState('');
+  const [typed, setTyped] = useState(opened);
+  const [searched, setSearched] = useState(opened);
   const [filters, setFilters] = useState<EventsFilters>(NO_EVENTS_FILTERS);
   const [hosts, setHosts] = useState<readonly string[]>([]);
   const [found, setFound] = useState<Found | null>(null);

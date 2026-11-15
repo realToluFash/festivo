@@ -165,9 +165,8 @@ export function CreateWalkWindow<Made>({
   if (!shown && voiced) setVoiced(false);
   const [named, setNamed] = useState(false);
   if (!shown && named) setNamed(false);
-  // On the phone TalkBack sometimes spoke a field's own input focus before its focus reached it, so the name was heard twice (qa4 #48525): the search field stays hidden from TalkBack until its keys are up, and the name field takes input focus unnamed.
+  // On the phone TalkBack sometimes spoke a field's own input focus before its focus reached it, so the name was heard twice (qa4 #48525): the search field stays hidden from TalkBack until its keys are up.
   const quiet = talkBack && phone && !voiced && opening.focus === 'search' && !opening.walk.asking;
-  const nameless = talkBack && phone && !named && opening.focus === 'name' && !opening.walk.asking;
   const arriving = reduced ? 0 : phone ? WINDOW_ARRIVES_MS : tokens.motionBase;
   // With TalkBack on, hidden while the window arrives, so its focus lands on nothing, Cancel included (sc-42690).
   const unnamed = useUnnamedWindow(
@@ -230,21 +229,23 @@ export function CreateWalkWindow<Made>({
     return () => clearTimeout(wait);
   }, [talkBack, shown, opening]);
 
-  // The tablet's field takes the keys while the window is still hidden, so TalkBack says nothing as it does; once shown, its focus reads the field once (sc-42690). On the phone a field focused while hidden lost its keys as the window was shown (qa3 #47084), so it takes them once, as it is shown.
+  // The tablet's search field takes the keys while the window is still hidden, so TalkBack says nothing as it does; once shown, its focus reads the field once (sc-42690). On the phone a field focused while hidden lost its keys as the window was shown (qa3 #47084), so it takes them once, as it is shown.
   useEffect(() => {
     if (!talkBack || phone || !onScreen || !unnamed || opening.walk.asking) return;
-    const keys = setTimeout(() => {
-      if (opening.focus === 'search') search.current?.focus();
-      else if (opening.focus === 'name') field.current?.focus();
-    }, arriving);
+    if (opening.focus !== 'search') return;
+    const keys = setTimeout(() => search.current?.focus(), arriving);
 
     return () => clearTimeout(keys);
   }, [talkBack, phone, onScreen, unnamed, arriving, opening]);
 
   useEffect(() => {
     if (!talkBack || !onScreen || unnamed || opening.walk.asking) return;
-    const input =
-      opening.focus === 'search' ? search.current : opening.focus === 'name' ? field.current : null;
+    // With TalkBack on, the name field's keys wait for a double tap on it: its input focus and its name reached TalkBack in either order, so raised as it opened, it was read twice (qa3 #53015, Decided, 15 Nov).
+    if (opening.focus === 'name') {
+      moveScreenReaderFocus(field.current);
+      return;
+    }
+    const input = opening.focus === 'search' ? search.current : null;
     if (input == null) {
       moveScreenReaderFocus(question.current);
       return;
@@ -253,8 +254,6 @@ export function CreateWalkWindow<Made>({
     if (input.isFocused()) moveScreenReaderFocus(input);
     if (phone) holding.current = input;
     raiseKeysOn(input);
-    // Named right behind the focus command, which Android runs before the name lands: named from its onFocus, the name reached TalkBack after its focus had followed the input focus, so the field was read unnamed or its name said again (qa4 #52119).
-    if (phone && opening.focus === 'name') queueMicrotask(() => setNamed(true));
   }, [talkBack, onScreen, unnamed, opening, phone]);
 
   // The search field is named while still hidden, once it has taken input focus, and shown to TalkBack only NAMED_SETTLES_MS later (qa2 #49942). One that never takes focus is named after KEYS_AWAITED_MS.
@@ -281,7 +280,7 @@ export function CreateWalkWindow<Made>({
 
     return () => up.remove();
   }, []);
-  // A field that gives up focus after the window raised its keys and before they came up gets them once more (qa3 #47084). The search field is unnamed again first while still hidden, as a named one had that focus voiced (qa4 #48921); once shown to TalkBack, and the name field always, it keeps its name: unnamed and named again, the name was said after its reading (qa2 #50682).
+  // A field that gives up focus after the window raised its keys and before they came up gets them once more (qa3 #47084). The search field is unnamed again first while still hidden, as a named one had that focus voiced (qa4 #48921); once shown to TalkBack it keeps its name: unnamed and named again, the name was said after its reading (qa2 #50682).
   const regaining = useRef<TextInputInstance | null>(null);
   const keysLost = () => {
     const input = holding.current;
@@ -468,7 +467,6 @@ export function CreateWalkWindow<Made>({
           field={live ? field : spare}
           onTyped={(name) => setWalk((now) => typed(now, name))}
           onContinue={onPrimary}
-          nameless={live && nameless}
           onLeft={live ? keysLost : undefined}
         />
       );

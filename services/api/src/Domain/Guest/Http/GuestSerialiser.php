@@ -113,6 +113,7 @@ final readonly class GuestSerialiser
                 'id' => $companion->getId()->toRfc4122(),
                 'fullName' => $companion->getFullName(),
                 'state' => self::companionState(GuestStanding::of($reply, companion: true, invited: $host->isInvited(), notComingByGuest: $companion->isNotComingByGuest())),
+                'coming' => !$companion->isNotComingByGuest(),
                 'namedByGuest' => $companion->isNamedByGuest(),
                 ...$needsOf($companion),
             ]),

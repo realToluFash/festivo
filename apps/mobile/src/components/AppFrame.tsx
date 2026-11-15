@@ -74,6 +74,8 @@ import { switcherFocusBack } from '../kit/focusBack.ts';
 import { tokens } from '../theme/tokens.ts';
 import { useTwoFactorStanding } from '../twoFactorStanding.ts';
 import { BellButton } from './BellButton.tsx';
+import { SearchAndBell } from './SearchButton.tsx';
+import { SEARCH_HREF } from '../kit/searchLinks.ts';
 import { CreateWalkWindow, type WalkOpening, deviceNow } from './CreateWalkWindow.tsx';
 import { Sheet } from './Sheet.tsx';
 import type { GlyphName } from './Glyph.tsx';
@@ -786,7 +788,7 @@ function FixedTop({ kind, current, organisation, waiting, onSwitch, pill }: Fram
           />
         )
       }
-      bell={<BellButton />}
+      bell={<SearchAndBell />}
       tabLabels={tabLabels(tabs)}
       renderTabs={(labelSize) => <WhiteCapsule {...tabs} labelSize={labelSize} />}
     />
@@ -853,7 +855,7 @@ function ScreenTop({
             <OrgPill organisation={organisation} waiting={waiting} onSwitch={onSwitch} ref={pill} />
           )
         }
-        bell={<BellButton />}
+        bell={kind === 'tabletLandscape' ? <BellButton /> : <SearchAndBell />}
         beside={besideTitle}
         primary={primary}
         under={under}
@@ -999,7 +1001,7 @@ function FrameHeader({
               />
             )
           }
-          bell={<BellButton />}
+          bell={<SearchAndBell />}
           tabLabels={tabLabels(tabs)}
           renderTabs={(labelSize) => <WhiteCapsule {...tabs} labelSize={labelSize} />}
           tabsCentred
@@ -1071,7 +1073,7 @@ function FrameHeader({
         <View style={styles.titleRow}>
           {pillView}
           <View style={styles.fill} />
-          <BellButton />
+          <SearchAndBell />
         </View>
         {titleRow()}
       </View>
@@ -1400,10 +1402,11 @@ function FrameSidebar({
       person,
       unread: 0,
       creates: organisation != null && roleHolds(organisation, 'events.create'),
-      search: false,
+      search: organisation != null,
       open: (opens) => {
         if (opens.to === 'account') router.navigate(SECTION_HREF.account);
         if (opens.to === 'event') router.push(`/events/${opens.id}`);
+        if (opens.to === 'search') router.push(SEARCH_HREF);
       },
       useOrgOpener: useFrameOrgOpener,
     }),
@@ -1436,7 +1439,7 @@ function FrameSidebar({
   return (
     <TodayShellProvider value={shell}>
       <SidebarColumn>
-        <SidebarHead search={false} org={false} />
+        <SidebarHead org={false} />
         {organisation != null && (
           <OrgPill
             organisation={organisation}

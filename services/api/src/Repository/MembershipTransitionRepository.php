@@ -4,8 +4,8 @@ declare(strict_types=1);
 
 namespace App\Repository;
 
+use App\Entity\Membership;
 use App\Entity\MembershipTransition;
-use App\Entity\Organisation;
 use App\Entity\User;
 use App\Enum\MembershipStatus;
 use DateTimeImmutable;
@@ -20,13 +20,20 @@ final class MembershipTransitionRepository extends ServiceEntityRepository
         parent::__construct($registry, MembershipTransition::class);
     }
 
-    /** @return list<MembershipTransition> every member's history in one read, oldest first */
-    public function findInOrganisation(Organisation $organisation): array
+    /**
+     * @param list<Membership> $memberships
+     *
+     * @return list<MembershipTransition> these members' histories in one read, oldest first
+     */
+    public function findForMemberships(array $memberships): array
     {
+        if ([] === $memberships) {
+            return [];
+        }
+
         return $this->createQueryBuilder('t')
-            ->join('t.membership', 'm')
-            ->andWhere('m.organisation = :organisation')
-            ->setParameter('organisation', $organisation)
+            ->andWhere('t.membership IN (:memberships)')
+            ->setParameter('memberships', $memberships)
             ->orderBy('t.occurredAt', 'ASC')
             ->addOrderBy('t.id', 'ASC')
             ->getQuery()

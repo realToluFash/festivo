@@ -60,6 +60,32 @@ export function readFeetAndInches(text: string, locale: string): number | null {
 
 /** "." and "," are both the decimal point in every language: 2 to 500 needs no thousands separator. */
 export function readRoomSide(text: string, units: RoomUnits, locale: string): RoomSideReading {
+  return readLength(text, units, locale, 100, [ROOM_MINIMUM_CM, ROOM_MAXIMUM_CM]);
+}
+
+/** A table's width, length or diameter (sc-4000): whole centimetres, or feet and inches. */
+export function readTableSide(text: string, units: RoomUnits, locale: string): RoomSideReading {
+  return readLength(text, units, locale, 1, [TABLE_MINIMUM_CM, TABLE_MAXIMUM_CM]);
+}
+
+export const TABLE_MINIMUM_CM = 40;
+export const TABLE_MAXIMUM_CM = 1000;
+
+/** A row's spacing, centre to centre (sc-4003). */
+export function readRowSpacing(text: string, units: RoomUnits, locale: string): RoomSideReading {
+  return readLength(text, units, locale, 1, [ROW_SPACING_MINIMUM_CM, ROW_SPACING_MAXIMUM_CM]);
+}
+
+export const ROW_SPACING_MINIMUM_CM = 40;
+export const ROW_SPACING_MAXIMUM_CM = 100;
+
+function readLength(
+  text: string,
+  units: RoomUnits,
+  locale: string,
+  cmPerMetricUnit: number,
+  [minimum, maximum]: [number, number],
+): RoomSideReading {
   if (text.trim() === '') return { kind: 'blank' };
 
   let cm: number | null;
@@ -68,12 +94,12 @@ export function readRoomSide(text: string, units: RoomUnits, locale: string): Ro
     const inches = readFeetAndInches(text, locale);
     cm = inches == null ? null : Math.round(inches * CM_PER_INCH);
   } else {
-    const metres = new RegExp(`^${NUMBER}$`, 'u').exec(text.trim());
-    cm = metres?.[1] == null ? null : Math.round(decimal(metres[1]) * 100);
+    const typed = new RegExp(`^${NUMBER}$`, 'u').exec(text.trim());
+    cm = typed?.[1] == null ? null : Math.round(decimal(typed[1]) * cmPerMetricUnit);
   }
 
   if (cm == null || !Number.isFinite(cm)) return { kind: 'unreadable' };
-  if (cm < ROOM_MINIMUM_CM || cm > ROOM_MAXIMUM_CM) return { kind: 'outOfRange' };
+  if (cm < minimum || cm > maximum) return { kind: 'outOfRange' };
 
   return { kind: 'cm', cm };
 }

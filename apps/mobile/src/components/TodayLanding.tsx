@@ -12,6 +12,7 @@ import { TodayScreen } from './TodayScreen.tsx';
 import { type Opens, type TodayShell, TodayShellProvider } from './todayShell.ts';
 import { dateLocale } from '../i18n/index.ts';
 import { DESTINATION_HREF, SECTION_HREF } from '../kit/appNav.ts';
+import { SEARCH_HREF } from '../kit/searchLinks.ts';
 import { todayMoment } from '../kit/todayMoment.ts';
 import { SKELETON_AFTER_MS } from '../kit/skeleton.ts';
 import { useLayout } from '../layout/useLayout.ts';
@@ -120,6 +121,7 @@ export function TodayLanding({
         router.navigate(SECTION_HREF.account);
         return;
       case 'search':
+        router.push(SEARCH_HREF);
         return;
     }
   }, []);
@@ -129,7 +131,7 @@ export function TodayLanding({
       person: { name: account.name, role: roleName(t, organisation.role) },
       unread,
       creates: roleHolds(organisation, 'events.create'),
-      search: false,
+      search: true,
       open,
       useOrgOpener: useFrameOrgOpener,
     }),
@@ -141,7 +143,7 @@ export function TodayLanding({
 
   if (load.kind !== 'loaded')
     return (
-      <View style={styles.waiting}>
+      <View style={[styles.waiting, load.kind === 'loading' && styles.loading]}>
         {load.kind === 'loading' ? (
           <Pending after={SKELETON_AFTER_MS} stacked />
         ) : (
@@ -186,9 +188,9 @@ export function TodayLanding({
 const styles = StyleSheet.create({
   waiting: {
     flex: 1,
-    alignItems: 'center',
     justifyContent: 'center',
     padding: tokens.spaceXl,
     backgroundColor: tokens.colorPage,
   },
+  loading: { alignItems: 'center' },
 });

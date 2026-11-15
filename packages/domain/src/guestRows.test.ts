@@ -8,6 +8,7 @@ import {
   invitationLine,
   repliedRefusal,
   rowWords,
+  startTicks,
 } from './guestRows.ts';
 
 const t = (key: string, values?: Record<string, unknown>) =>
@@ -69,8 +70,8 @@ describe('the app guest rows', () => {
     const [person] = peopleOf([
       guest({
         companions: [
-          { id: 'c1', fullName: 'Bo', state: 'coming', namedByGuest: false },
-          { id: 'c2', fullName: null, state: 'held', namedByGuest: false },
+          { id: 'c1', fullName: 'Bo', state: 'coming', coming: true, namedByGuest: false },
+          { id: 'c2', fullName: null, state: 'held', coming: true, namedByGuest: false },
         ],
       }),
     ]);
@@ -90,7 +91,9 @@ describe('the app guest rows', () => {
     const [person] = peopleOf([
       guest({
         email: 'ada@example.com',
-        companions: [{ id: 'c1', fullName: 'Bo', state: 'coming', namedByGuest: false }],
+        companions: [
+          { id: 'c1', fullName: 'Bo', state: 'coming', coming: true, namedByGuest: false },
+        ],
       }),
     ]);
 
@@ -119,7 +122,11 @@ describe('the app guest rows', () => {
 
   it('says a held companion is held, under their host', () => {
     const people = peopleOf([
-      guest({ companions: [{ id: 'c1', fullName: null, state: 'held', namedByGuest: false }] }),
+      guest({
+        companions: [
+          { id: 'c1', fullName: null, state: 'held', coming: true, namedByGuest: false },
+        ],
+      }),
     ]);
 
     expect(
@@ -146,7 +153,7 @@ describe("the app row's group (sc-5519)", () => {
     reply: 'coming',
     repliedAt: '2026-10-14T12:00:00+01:00',
     group: { id: 'gr_bride', name: 'Bride’s side' },
-    companions: [{ id: 'c1', fullName: 'Bo', state: 'coming', namedByGuest: false }],
+    companions: [{ id: 'c1', fullName: 'Bo', state: 'coming', coming: true, namedByGuest: false }],
   });
 
   it('says the group after the reply and before the places', () => {
@@ -253,5 +260,24 @@ describe('repliedRefusal', () => {
       repliedRefusal(refused('not_found', { reply: 'coming', repliedAt: '2026-11-02' })),
     ).toBeNull();
     expect(repliedRefusal(new Error('offline'))).toBeNull();
+  });
+});
+
+describe('the ticks Record a reply starts with (sc-3787)', () => {
+  it('ticks each companion who is coming, and only them', () => {
+    const companion = (id: string, coming: boolean) => ({
+      id,
+      fullName: id,
+      state: 'coming' as const,
+      coming,
+      namedByGuest: false,
+    });
+    const dele = guest({
+      reply: 'coming',
+      companions: [companion('c1', true), companion('c2', false), companion('c3', true)],
+    });
+
+    expect([...startTicks(dele)]).toEqual(['c1', 'c3']);
+    expect(startTicks(guest()).size).toBe(0);
   });
 });

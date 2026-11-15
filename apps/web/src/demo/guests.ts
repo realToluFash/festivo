@@ -117,6 +117,8 @@ export interface Companion {
   namedBy?: 'guest';
   /** sc-3777: their own needs, as the guest's are. */
   needs?: Needs;
+  /** sc-3779: the guest's last choice for them, kept while a reply that isn't Coming holds them; none is a place nobody has chosen for. */
+  chose?: 'coming' | 'notComing';
   /** sc-1454: when door staff marked them arrived; their host then stays on the list. */
   arrived?: string;
 }
@@ -863,6 +865,11 @@ export function needsOfPerson(person: Person): Needs | undefined {
   return person.companion == null ? person.guest.needs : person.companion.needs;
 }
 
+/** sc-3787: the list's reply is the same word as any other; who recorded it shows only in the details. */
+function asOwnReply(one: Guest): Guest {
+  return one.recorded == null ? one : { ...one, recorded: null, replied: one.recorded.on };
+}
+
 function rowOf(
   person: Person,
   indent: boolean,
@@ -887,7 +894,7 @@ function rowOf(
     const short =
       person.reply === 'noReply' || person.reply === 'notYet'
         ? word
-        : replyLine(person.guest, replyBy);
+        : replyLine(asOwnReply(person.guest), replyBy);
     const many = person.guest.companions.length;
 
     line =
@@ -1305,6 +1312,19 @@ export function addGuest(list: readonly Guest[], values: Values, on: string): Gu
   ];
 }
 
+/** sc-3787: Record a reply's ticks start from each companion as they are; one held behind a reply that isn't Coming starts at their last choice (sc-3779). */
+export function startTicks(guest: Guest): ReadonlySet<string> {
+  return new Set(
+    guest.companions
+      .filter((companion) =>
+        guest.reply === 'coming'
+          ? companion.reply !== 'notComing'
+          : companion.chose !== 'notComing',
+      )
+      .map((companion) => companion.id),
+  );
+}
+
 export function recordReply(
   list: readonly Guest[],
   id: string,
@@ -1324,6 +1344,9 @@ export function recordReply(
           reopened: null,
           companions: one.companions.map((companion) => ({
             ...companion,
+            ...(answer === 'coming'
+              ? { chose: ticked.has(companion.id) ? ('coming' as const) : ('notComing' as const) }
+              : {}),
             reply:
               answer === 'coming'
                 ? ticked.has(companion.id)

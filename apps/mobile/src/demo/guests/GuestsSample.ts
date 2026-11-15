@@ -34,6 +34,8 @@ export interface Companion {
   meal?: boolean;
   /** sc-5519: their own needs (sc-3777); none is None recorded. */
   needs?: Needs;
+  /** sc-3779: the guest's last choice for them, kept while a reply that isn't Coming holds them; none is a place nobody has chosen for. */
+  chose?: 'coming' | 'notcoming';
 }
 
 /** sc-3790: a guest's language; null is Not set. The host's and the guest's own are the AC, not yet built. */

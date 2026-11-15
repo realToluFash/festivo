@@ -75,7 +75,7 @@ final class JoinRequestsTest extends ApiTestCase
 
         $this->send('POST', $this->path($organisation, $asker, '/approve'), ['roleId' => $this->role($organisation, SeededRole::Member)->getId()->toRfc4122()]);
 
-        $listed = Iter\first(Vec\filter($this->listed($organisation), static fn (array $member): bool => 'ada@okeke.ng' === ($member['user']['email'] ?? null)));
+        $listed = Iter\first(Vec\filter($this->listed($organisation, 'all'), static fn (array $member): bool => 'ada@okeke.ng' === ($member['user']['email'] ?? null)));
         self::assertSame(['active', 'request'], [$listed['status'] ?? null, $listed['channel'] ?? null]);
     }
 
@@ -172,7 +172,7 @@ final class JoinRequestsTest extends ApiTestCase
         $this->signIn($owner);
         $this->send('POST', $this->path($organisation, $turnedDown, '/turn-down'));
 
-        $listed = Iter\first(Vec\filter($this->listed($organisation), static fn (array $member): bool => 'kemi@lawal.ng' === ($member['user']['email'] ?? null)));
+        $listed = Iter\first(Vec\filter($this->listed($organisation, 'former'), static fn (array $member): bool => 'kemi@lawal.ng' === ($member['user']['email'] ?? null)));
 
         self::assertSame('left_or_removed', $listed['status'] ?? null);
         self::assertSame(
@@ -196,7 +196,7 @@ final class JoinRequestsTest extends ApiTestCase
         self::service(MembershipMachine::class)->ask($this->membershipOf($returning, $organisation)->getOrganisation(), $this->fresh($returning), MembershipChannel::Request);
         $this->send('POST', $this->path($organisation, $returning, '/turn-down'));
 
-        $former = Vec\filter($this->listed($organisation), static fn (array $member): bool => 'left_or_removed' === $member['status']);
+        $former = Vec\filter($this->listed($organisation, 'former'), static fn (array $member): bool => 'left_or_removed' === $member['status']);
 
         self::assertEqualsCanonicalizing(['bola@ire.events', 'chidi@ire.events'], Vec\map($former, static fn (array $member): mixed => $member['user']['email'] ?? null));
     }
@@ -241,7 +241,7 @@ final class JoinRequestsTest extends ApiTestCase
         [$owner, $organisation] = $this->organisation();
         $this->asks($organisation, 'ada@okeke.ng');
         $this->signIn($owner);
-        $removes = fn (): mixed => Iter\first(Vec\filter($this->listed($organisation), static fn (array $member): bool => 'pending_approval' === $member['status']))['removesAt'] ?? null;
+        $removes = fn (): mixed => Iter\first(Vec\filter($this->listed($organisation, 'waiting'), static fn (array $member): bool => 'pending_approval' === $member['status']))['removesAt'] ?? null;
 
         $this->fresh($owner)->setTimezone('Africa/Lagos');
         self::assertSame(['at' => '2026-11-11T08:40:00+00:00', 'written' => 'Wednesday 11 Nov at 09:40 WAT'], $removes());
@@ -262,7 +262,7 @@ final class JoinRequestsTest extends ApiTestCase
         $this->fresh($owner)->setLocale('pt');
         $this->client->setServerParameter('HTTP_ACCEPT_LANGUAGE', 'es');
 
-        $pending = Iter\first(Vec\filter($this->listed($organisation), static fn (array $member): bool => 'pending_approval' === $member['status']));
+        $pending = Iter\first(Vec\filter($this->listed($organisation, 'waiting'), static fn (array $member): bool => 'pending_approval' === $member['status']));
         $removes = Type\shape(['at' => Type\string(), 'written' => Type\string()], true)->coerce($pending['removesAt'] ?? null);
 
         $written = fn (string $locale): string => self::service(UserMailer::class)->deadline(new DateTimeImmutable($removes['at']), $this->fresh($owner), $locale);
@@ -361,7 +361,7 @@ final class JoinRequestsTest extends ApiTestCase
         $coordinator = $this->member($organisation, 'tunde@ire.events', SeededRole::Member);
         $this->signIn($owner);
 
-        $listed = Iter\first(Vec\filter($this->listed($organisation), static fn (array $member): bool => 'tunde@ire.events' === ($member['user']['email'] ?? null)));
+        $listed = Iter\first(Vec\filter($this->listed($organisation, 'all'), static fn (array $member): bool => 'tunde@ire.events' === ($member['user']['email'] ?? null)));
         self::assertArrayHasKey('removesAt', $listed ?? []);
         self::assertNull($listed['removesAt'] ?? null);
         $this->send('POST', $this->path($organisation, $coordinator, '/approve'), ['roleId' => $this->role($organisation, SeededRole::Member)->getId()->toRfc4122()]);
@@ -418,10 +418,10 @@ final class JoinRequestsTest extends ApiTestCase
     }
 
     /** @return list<array<string, mixed>> */
-    private function listed(Organisation $organisation): array
+    private function listed(Organisation $organisation, string $show): array
     {
         self::service(EntityManagerInterface::class)->flush();
-        $body = $this->send('GET', Str\format('/api/orgs/%s/members', $organisation->getId()->toRfc4122()));
+        $body = $this->send('GET', Str\format('/api/orgs/%s/members?show=%s', $organisation->getId()->toRfc4122(), $show));
 
         return Type\vec(Type\dict(Type\string(), Type\mixed()))->coerce($body['members'] ?? null);
     }

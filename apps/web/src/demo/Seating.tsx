@@ -51,6 +51,7 @@ import {
   say,
   seatAt as seatChairs,
   seatingStateOf,
+  sectionDeleteWords,
   sectionLine,
   snapTo,
   turn,
@@ -2052,13 +2053,12 @@ function Asking() {
     );
   if (asking.kind === 'deleteSection') {
     const section = ui.plan.sections.find((one) => one.id === asking.id);
-    const n = ui.plan.items.filter((item) => item.sec === asking.id && isTable(item)).length;
 
     if (section == null) return null;
     return (
       <Ask
         title={say(SW.deleteNamed, { name: section.name })}
-        line={n === 0 ? '' : many('sectionDeleteBody', n)}
+        line={sectionDeleteWords(ui.plan.items, section.id)}
         keep={SW.keepIt}
         go={SW.deleteSection}
         onKeep={keep}
@@ -2095,7 +2095,13 @@ function Asking() {
       line={name.length > 1 ? SW.theirGuestsGo : n > 0 ? say(SW.seatedHere, { n }) : SW.nobodyHere}
       keep={SW.keepIt}
       go={name.length === 1 ? say(SW.deleteName, { name: name[0] ?? '' }) : SW.deleteThese}
-      onKeep={keep}
+      onKeep={() => {
+        keep();
+        window.setTimeout(
+          () => document.querySelector<SVGElement>(`[data-item="${asking.ids[0]}"]`)?.focus(),
+          0,
+        );
+      }}
       onGo={() => {
         const back: Party[] = doomed.flatMap((item) =>
           item.chairs

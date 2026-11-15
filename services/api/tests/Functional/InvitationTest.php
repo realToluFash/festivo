@@ -680,7 +680,7 @@ final class InvitationTest extends ApiTestCase
         self::em()->flush();
         $this->as($owner)->invite($organisation, 'amara@example.com', SeededRole::Member);
 
-        $body = $this->call('GET', '/api/orgs/' . $organisation->getId()->toRfc4122() . '/members');
+        $body = $this->call('GET', '/api/orgs/' . $organisation->getId()->toRfc4122() . '/members?show=former');
 
         self::assertSame(200, $this->statusCode());
         $members = Type\vec(Type\dict(Type\string(), Type\mixed()))->coerce($body['members']);

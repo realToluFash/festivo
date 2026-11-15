@@ -1,6 +1,12 @@
 import { describe, expect, it } from 'vitest';
 
-import { feetAndInchesOf, readFeetAndInches, readRoomSide } from './roomSize.ts';
+import {
+  feetAndInchesOf,
+  readFeetAndInches,
+  readRoomSide,
+  readRowSpacing,
+  readTableSide,
+} from './roomSize.ts';
 
 describe('a room side in metres', () => {
   it.each(['12.5', '12,5', ' 12.5 '])('reads %s as 12.5 m in every language', (typed) => {
@@ -57,5 +63,27 @@ describe('a room side in feet and inches', () => {
     expect(feetAndInchesOf(381)).toEqual({ feet: 12, inches: 6 });
     expect(feetAndInchesOf(200)).toEqual({ feet: 6, inches: 7 });
     expect(feetAndInchesOf(50_000)).toEqual({ feet: 1640, inches: 5 });
+  });
+});
+
+describe('readTableSide', () => {
+  it('reads whole centimetres from 40 to 1000, or feet and inches', () => {
+    expect(readTableSide('180', 'metric', 'en')).toEqual({ kind: 'cm', cm: 180 });
+    expect(readTableSide('39', 'metric', 'en')).toEqual({ kind: 'outOfRange' });
+    expect(readTableSide('1001', 'metric', 'en')).toEqual({ kind: 'outOfRange' });
+    expect(readTableSide('wide', 'metric', 'en')).toEqual({ kind: 'unreadable' });
+    expect(readTableSide(' ', 'metric', 'en')).toEqual({ kind: 'blank' });
+    expect(readTableSide('6 ft', 'us', 'en')).toEqual({ kind: 'cm', cm: 183 });
+    expect(readTableSide('1 ft 3 in', 'us', 'en')).toEqual({ kind: 'outOfRange' });
+  });
+});
+
+describe('readRowSpacing', () => {
+  it('reads whole centimetres from 40 to 100, or feet and inches', () => {
+    expect(readRowSpacing('50', 'metric', 'en')).toEqual({ kind: 'cm', cm: 50 });
+    expect(readRowSpacing('39', 'metric', 'en')).toEqual({ kind: 'outOfRange' });
+    expect(readRowSpacing('101', 'metric', 'en')).toEqual({ kind: 'outOfRange' });
+    expect(readRowSpacing('1 ft 8 in', 'us', 'en')).toEqual({ kind: 'cm', cm: 51 });
+    expect(readRowSpacing('3 ft 4 in', 'us', 'en')).toEqual({ kind: 'outOfRange' });
   });
 });

@@ -203,6 +203,11 @@ export type EventDayWords =
   | { kind: 'days'; first: string; last: string }
   | { kind: 'calledOffOn'; date: string };
 
+export interface EventDayWordsOptions {
+  keepDays?: boolean;
+  day?: (moment: string, timeZone: string, locale: string, withYear: boolean) => string;
+}
+
 /** Whether any of these moments falls outside this year, today's in the event's zone: such a date is written with its year (sc-30413). */
 export function notThisYear(timeZone: string, now: Date, ...moments: string[]): boolean {
   const thisYear = wallDay(now, timeZone).slice(0, 4);
@@ -238,12 +243,12 @@ export function calledOffDay(
   return formatEventDate(concludedAt, timeZone, locale, notThisYear(timeZone, now, concludedAt));
 }
 
-/** A dates line's dates in the reader's words; every one carries its year unless all are in this year (sc-30413). A called-off event's day it was called off, unless `keepDays`. */
+/** A dates line's dates in the reader's words, each written by `day`; every one carries its year unless all are in this year (sc-30413). A called-off event's day it was called off, unless `keepDays`. */
 export function eventDayWords(
   event: Parameters<typeof eventDays>[0],
   now: Date,
   locale: string,
-  keepDays = false,
+  { keepDays = false, day = formatEventWeekday }: EventDayWordsOptions = {},
 ): EventDayWords {
   const { timeZone } = event;
   const withYear = (...moments: string[]) => notThisYear(timeZone, now, ...moments);
@@ -260,11 +265,11 @@ export function eventDayWords(
 
   const { startsAt, endsAt } = event;
   const year = withYear(startsAt, endsAt);
-  const first = formatEventWeekday(startsAt, timeZone, locale, year);
+  const first = day(startsAt, timeZone, locale, year);
 
   return wallDay(startsAt, timeZone) === wallDay(endsAt, timeZone)
     ? { kind: 'oneDay', day: first }
-    : { kind: 'days', first, last: formatEventWeekday(endsAt, timeZone, locale, year) };
+    : { kind: 'days', first, last: day(endsAt, timeZone, locale, year) };
 }
 
 export interface HowSoon {

@@ -15,6 +15,7 @@ import {
   type EventsSearch,
   isEventType,
   type Milestone,
+  MEMBERS_MOST,
   MILESTONE_OWNERS,
   type ServerClock,
   serverClock,
@@ -58,9 +59,44 @@ import {
   asSeating,
   type Seating,
   type SeatingRoom,
+  type SeatingRowChanges,
+  type SeatingTableChanges,
+  type SingleSeatChanges,
   type SectionColour,
+  type TableShape,
   versionTag,
 } from './seating.ts';
+import {
+  type StaffAnswer,
+  type StaffDetails,
+  type StaffEntry,
+  asStaffEntry,
+  asStaffRoster,
+} from './staff.ts';
+import {
+  type Schedule,
+  type ScheduleItemDetails,
+  type ScheduleWithItem,
+  asSchedule,
+} from './schedule.ts';
+
+/** A table call's answer: the plan whole, and the table it added or changed. */
+export interface SeatingWithTable {
+  seating: Seating;
+  tableId: string;
+}
+
+/** A row call's answer: the plan whole, and the row it added or changed. */
+export interface SeatingWithRow {
+  seating: Seating;
+  rowId: string;
+}
+
+/** A single seat call's answer: the plan whole, and the seat it added or changed. */
+export interface SeatingWithSeat {
+  seating: Seating;
+  seatId: string;
+}
 
 /** See docs/architecture/sessions.md. */
 export type RefreshTokenDelivery = 'body' | 'cookie';
@@ -396,14 +432,6 @@ export interface OrganisationRole extends MemberRole {
   removable: boolean;
   permissions: string[];
   holders: number;
-  /** Whom `holders` counts, alphabetical by name, ties by email (sc-6447). */
-  holderNames: RoleHolder[];
-}
-
-/** A name as its person wrote it, never translated; a suspended holder still holds the role. */
-export interface RoleHolder {
-  name: string;
-  suspended: boolean;
 }
 
 /** Every role, and every registered permission grouped by area, in the order the grid shows them. */
@@ -699,9 +727,9 @@ export interface SignInRulesPage extends OrganisationSignInRules {
   inactivityChoices: number[];
   changes: SignInRuleChange[];
   /** Members with no Google or Apple linked, never the caller; only for a caller who may change the rules. */
-  passwordOnly: RulesMember[] | null;
+  passwordOnly: RulesShort | null;
   /** Members with no two-factor, never the caller; only for a caller who may change the rules (sc-609). */
-  withoutTwoFactor: RulesMember[] | null;
+  withoutTwoFactor: RulesShort | null;
   /** Seven days from the switch-on, or from now while it is off. */
   twoFactorDeadline: TwoFactorDeadline | null;
   /** The shortest limit across the caller's organisations, which may be another organisation's. */
@@ -716,6 +744,12 @@ export interface RulesMember {
   userId: string;
   name: string;
   role: MemberRole;
+}
+
+/** Who a rule leaves short: every one of them named up to three, and only counted past that (sc-18317). */
+export interface RulesShort {
+  count: number;
+  named: RulesMember[];
 }
 
 export interface InactivityLimit {
@@ -765,6 +799,43 @@ export interface MembershipStep {
   at: string;
 }
 
+/** What the sidebar's Search may find for the caller (sc-39534): events.read, guests.read on at least one event, members.read. */
+export interface SearchReach {
+  events: boolean;
+  guests: boolean;
+  members: boolean;
+}
+
+/** A guest Search found: their name and their event, and never their contact details. */
+export interface SearchGuest {
+  id: string;
+  name: string;
+  event: { id: string; name: string; startsAt: string; timeZone: string };
+}
+
+/** Somebody Settings › Members lists to the caller; an Invited person is an invitation and has no name yet. */
+export interface SearchMember {
+  id: string;
+  kind: 'member' | 'invitation';
+  name: string | null;
+  email: string | null;
+  role: MemberRole | null;
+  status: 'active' | 'suspended' | 'pending_approval' | 'invited';
+}
+
+/** Up to five matches and the count of all of them. */
+export interface SearchKind<Match> {
+  total: number;
+  matches: Match[];
+}
+
+/** A kind is null where the caller may not find it. */
+export interface SearchFound {
+  events: SearchKind<OrganisationEvent> | null;
+  guests: SearchKind<SearchGuest> | null;
+  members: SearchKind<SearchMember> | null;
+}
+
 /** A row on Settings > Members; `former` tells left from removed, which share one state. */
 export interface OrganisationMember {
   id: string;
@@ -802,9 +873,35 @@ export interface SentInvitation {
   revokedAt: string | null;
 }
 
+/** The options under Show that list memberships. Invited lists invitations, which every page carries whole. */
+export type MembersShow = 'all' | 'active' | 'waiting' | 'suspended' | 'former';
+
+export const MEMBERS_SHOWN: readonly MembersShow[] = [
+  'all',
+  'active',
+  'waiting',
+  'suspended',
+  'former',
+];
+
+/** Settings › Members (sc-49170): People under one option a page at a time, and everything else whole. */
 export interface MembersList {
   members: OrganisationMember[];
+  /** What the next page is read after; null once every person under the option is here. */
+  next: string | null;
+  counts: Record<MembersShow, number>;
+  owners: number;
+  faces: OrganisationMember[];
+  /** Everybody waiting for approval, only to those who decide on them. */
+  waiting: OrganisationMember[];
+  /** Every invitation sent, on a first page only: a later page carries none, and `withNextPage` keeps the ones held. */
   invitations: SentInvitation[];
+}
+
+export interface MembersPage {
+  show?: MembersShow;
+  after?: string | null;
+  limit?: number;
 }
 
 /** What deleting an organisation destroys, and until when support can restore it, as the reader writes it. */
@@ -1830,6 +1927,44 @@ export class ApiClient {
     return { unfinished, past };
   }
 
+  /** Which kinds the sidebar's Search may find for the caller, for its field's words (sc-39534). */
+  async searchReach(organisationId: string): Promise<SearchReach> {
+    const body = await this.get<Record<string, unknown> | null>(
+      `/api/orgs/${encodeURIComponent(organisationId)}/search/reach`,
+    );
+
+    if (
+      typeof body?.events !== 'boolean' ||
+      typeof body.guests !== 'boolean' ||
+      typeof body.members !== 'boolean'
+    ) {
+      throw new Error(
+        'The API answered GET /api/orgs/{id}/search/reach in a shape this client does not know. Check the search controller in services/api.',
+      );
+    }
+
+    return { events: body.events, guests: body.guests, members: body.members };
+  }
+
+  /** The sidebar's Search (sc-39534): each kind's first five matches and the count of all, only what the caller may open. */
+  async search(organisationId: string, term: string, signal?: AbortSignal): Promise<SearchFound> {
+    const body = await this.get<Record<string, unknown> | null>(
+      `/api/orgs/${encodeURIComponent(organisationId)}/search?${new URLSearchParams({ q: term }).toString()}`,
+      signal == null ? undefined : { signal },
+    );
+    const events = asSearchKind(body?.events, asOrganisationEvent);
+    const guests = asSearchKind(body?.guests, asSearchGuest);
+    const members = asSearchKind(body?.members, asSearchMember);
+
+    if (events === undefined || guests === undefined || members === undefined) {
+      throw new Error(
+        'The API answered GET /api/orgs/{id}/search in a shape this client does not know. Check the search controller in services/api.',
+      );
+    }
+
+    return { events, guests, members };
+  }
+
   /** The names Events' Filter offers under Hosted by, alphabetical (sc-30302). */
   async eventHosts(organisationId: string): Promise<string[]> {
     const body = await this.get<{ hosts?: unknown }>(
@@ -2095,6 +2230,151 @@ export class ApiClient {
     );
   }
 
+  /** Of the shape's default size and seats, named "Table {n}"; `tableId` is the one added. Refused 422 on a shape outside the four. */
+  async addSeatingTable(eventId: string, shape: TableShape): Promise<SeatingWithTable> {
+    return this.seatingWithTable(
+      await this.post<{ seating?: unknown; tableId?: unknown }>(this.tablesPath(eventId), {
+        shape,
+      }),
+    );
+  }
+
+  /** Refused `validation_failed` beside each field, and 412 with `changedBy` when a colleague changed it since `version`. */
+  async changeSeatingTable(
+    eventId: string,
+    tableId: string,
+    changes: SeatingTableChanges,
+    version: number,
+  ): Promise<SeatingWithTable> {
+    return this.seatingWithTable(
+      await this.patch<{ seating?: unknown; tableId?: unknown }>(
+        `${this.tablesPath(eventId)}/${encodeURIComponent(tableId)}`,
+        changes,
+        { headers: { 'If-Match': versionTag(version) } },
+      ),
+    );
+  }
+
+  /** The copy, with nobody seated, as `tableId`. */
+  async duplicateSeatingTable(
+    eventId: string,
+    tableId: string,
+    version: number,
+  ): Promise<SeatingWithTable> {
+    return this.seatingWithTable(
+      await this.post<{ seating?: unknown; tableId?: unknown }>(
+        `${this.tablesPath(eventId)}/${encodeURIComponent(tableId)}/duplicate`,
+        undefined,
+        { headers: { 'If-Match': versionTag(version) } },
+      ),
+    );
+  }
+
+  async deleteSeatingTable(eventId: string, tableId: string, version: number): Promise<Seating> {
+    return this.seatingOf(
+      await this.delete<{ seating?: unknown }>(
+        `${this.tablesPath(eventId)}/${encodeURIComponent(tableId)}`,
+        { headers: { 'If-Match': versionTag(version) } },
+      ),
+    );
+  }
+
+  /** Ten seats labelled with the next free letter; `rowId` is the one added. */
+  async addSeatingRow(eventId: string): Promise<SeatingWithRow> {
+    const body = await this.post<{ seating?: unknown; rowId?: unknown }>(this.rowsPath(eventId));
+
+    return {
+      seating: this.seatingOf(body),
+      rowId: typeof body?.rowId === 'string' ? body.rowId : '',
+    };
+  }
+
+  /** Refused `validation_failed` beside each field, and 412 with `changedBy` when a colleague changed it since `version`. */
+  async changeSeatingRow(
+    eventId: string,
+    rowId: string,
+    changes: SeatingRowChanges,
+    version: number,
+  ): Promise<SeatingWithRow> {
+    const body = await this.patch<{ seating?: unknown; rowId?: unknown }>(
+      `${this.rowsPath(eventId)}/${encodeURIComponent(rowId)}`,
+      changes,
+      { headers: { 'If-Match': versionTag(version) } },
+    );
+
+    return {
+      seating: this.seatingOf(body),
+      rowId: typeof body?.rowId === 'string' ? body.rowId : '',
+    };
+  }
+
+  /** The copy, with the next free label and nobody seated, as `rowId`. */
+  async duplicateSeatingRow(
+    eventId: string,
+    rowId: string,
+    version: number,
+  ): Promise<SeatingWithRow> {
+    const body = await this.post<{ seating?: unknown; rowId?: unknown }>(
+      `${this.rowsPath(eventId)}/${encodeURIComponent(rowId)}/duplicate`,
+      undefined,
+      { headers: { 'If-Match': versionTag(version) } },
+    );
+
+    return {
+      seating: this.seatingOf(body),
+      rowId: typeof body?.rowId === 'string' ? body.rowId : '',
+    };
+  }
+
+  async deleteSeatingRow(eventId: string, rowId: string, version: number): Promise<Seating> {
+    return this.seatingOf(
+      await this.delete<{ seating?: unknown }>(
+        `${this.rowsPath(eventId)}/${encodeURIComponent(rowId)}`,
+        { headers: { 'If-Match': versionTag(version) } },
+      ),
+    );
+  }
+
+  /** Named "Seat {n}" in the caller's language; `seatId` is the one added. */
+  async addSingleSeat(eventId: string): Promise<SeatingWithSeat> {
+    const body = await this.post<{ seating?: unknown; seatId?: unknown }>(
+      this.singleSeatsPath(eventId),
+    );
+
+    return {
+      seating: this.seatingOf(body),
+      seatId: typeof body?.seatId === 'string' ? body.seatId : '',
+    };
+  }
+
+  /** Refused `validation_failed` on `name`, and 412 with `changedBy` when a colleague changed it since `version`. */
+  async changeSingleSeat(
+    eventId: string,
+    seatId: string,
+    changes: SingleSeatChanges,
+    version: number,
+  ): Promise<SeatingWithSeat> {
+    const body = await this.patch<{ seating?: unknown; seatId?: unknown }>(
+      `${this.singleSeatsPath(eventId)}/${encodeURIComponent(seatId)}`,
+      changes,
+      { headers: { 'If-Match': versionTag(version) } },
+    );
+
+    return {
+      seating: this.seatingOf(body),
+      seatId: typeof body?.seatId === 'string' ? body.seatId : '',
+    };
+  }
+
+  async deleteSingleSeat(eventId: string, seatId: string, version: number): Promise<Seating> {
+    return this.seatingOf(
+      await this.delete<{ seating?: unknown }>(
+        `${this.singleSeatsPath(eventId)}/${encodeURIComponent(seatId)}`,
+        { headers: { 'If-Match': versionTag(version) } },
+      ),
+    );
+  }
+
   /** A hub token for this event's seating topic alone. */
   async seatingSubscription(eventId: string): Promise<RealtimeSubscription> {
     const body = await this.post<{ token?: unknown; expiresAt?: unknown }>(
@@ -2105,6 +2385,148 @@ export class ApiClient {
       token: typeof body.token === 'string' ? body.token : '',
       expiresAt: typeof body.expiresAt === 'string' ? body.expiresAt : '',
     };
+  }
+
+  /** The event's roster in roster order; refused 403 without staff.read (sc-3906). */
+  async staff(eventId: string): Promise<StaffEntry[]> {
+    return this.staffRosterOf(await this.get<unknown>(this.staffPath(eventId)));
+  }
+
+  /** Refused `validation_failed` on each field, and 409 `staff_number_shared` naming `sharedWith` until `allowShared`. */
+  async addStaff(eventId: string, details: StaffDetails): Promise<StaffAnswer> {
+    return this.staffAnswerOf(await this.post<unknown>(this.staffPath(eventId), details));
+  }
+
+  /** As `addStaff`, asking only when the number changed; `mobile` and `email` are ignored once erased. */
+  async editStaff(eventId: string, staffId: string, details: StaffDetails): Promise<StaffAnswer> {
+    return this.staffAnswerOf(
+      await this.put<unknown>(`${this.staffPath(eventId)}/${encodeURIComponent(staffId)}`, details),
+    );
+  }
+
+  /** Refused 409 `event_concluded` once the event has finished. */
+  async removeStaff(eventId: string, staffId: string): Promise<void> {
+    await this.delete<unknown>(`${this.staffPath(eventId)}/${encodeURIComponent(staffId)}`);
+  }
+
+  async staffSubscription(eventId: string): Promise<RealtimeSubscription> {
+    const body = await this.post<{ token?: unknown; expiresAt?: unknown }>(
+      `${this.staffPath(eventId)}/subscriptions`,
+    );
+
+    return {
+      token: typeof body.token === 'string' ? body.token : '',
+      expiresAt: typeof body.expiresAt === 'string' ? body.expiresAt : '',
+    };
+  }
+
+  private staffRosterOf(body: unknown): StaffEntry[] {
+    return (
+      asStaffRoster(body) ??
+      (() => {
+        throw new Error(
+          'The API answered the roster in a shape this client does not know. Check StaffSerialiser in services/api.',
+        );
+      })()
+    );
+  }
+
+  private staffAnswerOf(body: unknown): StaffAnswer {
+    const record =
+      typeof body === 'object' && body != null ? (body as Record<string, unknown>) : {};
+    const staff = asStaffEntry(record.staff);
+
+    if (staff == null) {
+      throw new Error(
+        'The API answered a roster entry in a shape this client does not know. Check StaffSerialiser in services/api.',
+      );
+    }
+
+    return { staff, member: typeof record.member === 'string' ? record.member : null };
+  }
+
+  /** The event's running order, sorted by start; refused 403 without run_of_show.read (sc-3893). */
+  async schedule(eventId: string): Promise<Schedule> {
+    return this.scheduleOf(await this.get<unknown>(this.schedulePath(eventId)));
+  }
+
+  /** Refused `validation_failed` beside each field, and 409 `schedule_item_limit` once the event holds its most. */
+  async addScheduleItem(eventId: string, details: ScheduleItemDetails): Promise<ScheduleWithItem> {
+    return this.scheduleWithItem(
+      await this.post<unknown>(`${this.schedulePath(eventId)}/items`, details),
+    );
+  }
+
+  /** The whole item. Refused as `addScheduleItem`, and 412 with `current` and `changedBy` when a colleague changed it since `version`. */
+  async changeScheduleItem(
+    eventId: string,
+    itemId: string,
+    details: ScheduleItemDetails,
+    version: number,
+  ): Promise<ScheduleWithItem> {
+    return this.scheduleWithItem(
+      await this.put<unknown>(
+        `${this.schedulePath(eventId)}/items/${encodeURIComponent(itemId)}`,
+        details,
+        { headers: { 'If-Match': versionTag(version) } },
+      ),
+    );
+  }
+
+  async deleteScheduleItem(eventId: string, itemId: string): Promise<Schedule> {
+    return this.scheduleOf(
+      await this.delete<unknown>(
+        `${this.schedulePath(eventId)}/items/${encodeURIComponent(itemId)}`,
+      ),
+    );
+  }
+
+  /** A hub token for this event's schedule topic alone. */
+  async scheduleSubscription(eventId: string): Promise<RealtimeSubscription> {
+    const body = await this.post<{ token?: unknown; expiresAt?: unknown }>(
+      `${this.schedulePath(eventId)}/subscriptions`,
+    );
+
+    return {
+      token: typeof body.token === 'string' ? body.token : '',
+      expiresAt: typeof body.expiresAt === 'string' ? body.expiresAt : '',
+    };
+  }
+
+  private scheduleOf(body: unknown): Schedule {
+    const record =
+      typeof body === 'object' && body != null ? (body as Record<string, unknown>) : {};
+
+    return (
+      asSchedule(record.schedule) ??
+      (() => {
+        throw new Error(
+          'The API answered the schedule in a shape this client does not know. Check ScheduleSerialiser in services/api.',
+        );
+      })()
+    );
+  }
+
+  private scheduleWithItem(body: unknown): ScheduleWithItem {
+    const record =
+      typeof body === 'object' && body != null ? (body as Record<string, unknown>) : {};
+    const itemId = record.itemId;
+
+    if (typeof itemId !== 'string') {
+      throw new Error(
+        'The API answered a schedule item without its id. Check the schedule controller in services/api.',
+      );
+    }
+
+    return { schedule: this.scheduleOf(body), itemId };
+  }
+
+  private schedulePath(eventId: string): string {
+    return `/api/events/${encodeURIComponent(eventId)}/schedule`;
+  }
+
+  private staffPath(eventId: string): string {
+    return `/api/events/${encodeURIComponent(eventId)}/staff`;
   }
 
   async guests(eventId: string): Promise<GuestList> {
@@ -2517,6 +2939,27 @@ export class ApiClient {
     return `/api/events/${encodeURIComponent(eventId)}/seating-plan`;
   }
 
+  private tablesPath(eventId: string): string {
+    return `${this.seatingPath(eventId)}/tables`;
+  }
+
+  private rowsPath(eventId: string): string {
+    return `${this.seatingPath(eventId)}/rows`;
+  }
+
+  private singleSeatsPath(eventId: string): string {
+    return `${this.seatingPath(eventId)}/seats`;
+  }
+
+  private seatingWithTable(
+    body: { seating?: unknown; tableId?: unknown } | null | undefined,
+  ): SeatingWithTable {
+    const seating = this.seatingOf(body);
+    const tableId = typeof body?.tableId === 'string' ? body.tableId : '';
+
+    return { seating, tableId };
+  }
+
   private seatingOf(body: { seating?: unknown } | null | undefined): Seating {
     const seating = asSeating(body?.seating);
 
@@ -2568,7 +3011,7 @@ export class ApiClient {
     return { url, key, contentType };
   }
 
-  async uploadTo(upload: CoverUpload, file: Blob): Promise<void> {
+  async uploadTo(upload: CoverUpload, file: Blob | Uint8Array<ArrayBuffer>): Promise<void> {
     const doFetch = this.options.fetch ?? fetch;
     const response = await doFetch(upload.url, {
       method: 'PUT',
@@ -2723,8 +3166,15 @@ export class ApiClient {
     return event;
   }
 
-  async members(organisationId: string): Promise<MembersList> {
-    const raw = await this.get<unknown>(`/api/orgs/${encodeURIComponent(organisationId)}/members`);
+  /** A page under `show` (All unless named), 50 people unless `limit` says, after `after`; the counts, Waiting and the invitations whole. */
+  async members(organisationId: string, page: MembersPage = {}): Promise<MembersList> {
+    const asked = Object.entries({ show: page.show, after: page.after, limit: page.limit })
+      .filter((pair): pair is [string, string | number] => pair[1] != null)
+      .map(([key, value]): [string, string] => [key, String(value)]);
+    const query = asked.length > 0 ? `?${new URLSearchParams(asked).toString()}` : '';
+    const raw = await this.get<unknown>(
+      `/api/orgs/${encodeURIComponent(organisationId)}/members${query}`,
+    );
     const list = asMembersList(raw);
 
     if (list == null) {
@@ -2734,6 +3184,40 @@ export class ApiClient {
     }
 
     return list;
+  }
+
+  /** One person's row as it now is; refused `not_found` for somebody the caller is not shown. */
+  async member(organisationId: string, membershipId: string): Promise<OrganisationMember> {
+    const body = await this.get<{ member?: unknown }>(
+      `/api/orgs/${encodeURIComponent(organisationId)}/members/${encodeURIComponent(membershipId)}`,
+    );
+    const member = asOrganisationMember(body?.member);
+
+    if (member == null) {
+      throw new Error(
+        'The API answered GET /api/orgs/{id}/members/{membershipId} in a shape this client does not know. Check MembersController in services/api.',
+      );
+    }
+
+    return member;
+  }
+
+  /** Every person under `show`, page after page, for a screen that has to choose among them all. */
+  async everyMember(organisationId: string, show: MembersShow): Promise<OrganisationMember[]> {
+    const read: OrganisationMember[] = [];
+    let after: string | null = null;
+
+    do {
+      const page: MembersList = await this.members(organisationId, {
+        show,
+        after,
+        limit: MEMBERS_MOST,
+      });
+      read.push(...page.members);
+      after = page.next;
+    } while (after != null);
+
+    return read;
   }
 
   /** Refused `already_a_member`, `grant_not_held`, `proof_required` into Owner, or a violation on `email` or `roleId`. Sending again replaces the link. */
@@ -3720,15 +4204,8 @@ function asOrganisationRole(raw: unknown): OrganisationRole | null {
 
   const role = raw as Record<string, unknown>;
   const permissions = stringList(role.permissions);
-  const holderNames = Array.isArray(role.holderNames) ? role.holderNames.map(asRoleHolder) : null;
 
-  if (
-    typeof role.id !== 'string' ||
-    typeof role.holders !== 'number' ||
-    permissions == null ||
-    holderNames == null ||
-    !holderNames.every((holder) => holder != null)
-  )
+  if (typeof role.id !== 'string' || typeof role.holders !== 'number' || permissions == null)
     return null;
 
   return {
@@ -3740,16 +4217,7 @@ function asOrganisationRole(raw: unknown): OrganisationRole | null {
     removable: role.removable === true,
     permissions,
     holders: role.holders,
-    holderNames,
   };
-}
-
-function asRoleHolder(raw: unknown): RoleHolder | null {
-  if (typeof raw !== 'object' || raw == null) return null;
-
-  const { name, suspended } = raw as Record<string, unknown>;
-
-  return typeof name === 'string' && typeof suspended === 'boolean' ? { name, suspended } : null;
 }
 
 function asRolesCatalogue(raw: unknown): RolesCatalogue | null {
@@ -4193,6 +4661,70 @@ function stringOrNull(raw: unknown): string | null {
   return typeof raw === 'string' ? raw : null;
 }
 
+/** A kind Search answered: null where the caller may not find it, undefined for a shape this client does not know. */
+function asSearchKind<Match>(
+  raw: unknown,
+  match: (raw: unknown) => Match | null,
+): SearchKind<Match> | null | undefined {
+  if (raw === null) return null;
+
+  const { total, matches } = (raw ?? {}) as { total?: unknown; matches?: unknown };
+  const read = Array.isArray(matches) ? matches.map(match) : null;
+
+  return isCount(total) && read != null && read.every((one) => one != null)
+    ? { total, matches: read as Match[] }
+    : undefined;
+}
+
+function asSearchGuest(raw: unknown): SearchGuest | null {
+  const guest = raw as { id?: unknown; name?: unknown; event?: Record<string, unknown> } | null;
+  const event = guest?.event;
+
+  return typeof guest?.id === 'string' &&
+    typeof guest.name === 'string' &&
+    typeof event?.id === 'string' &&
+    typeof event.name === 'string' &&
+    typeof event.startsAt === 'string' &&
+    typeof event.timeZone === 'string'
+    ? {
+        id: guest.id,
+        name: guest.name,
+        event: {
+          id: event.id,
+          name: event.name,
+          startsAt: event.startsAt,
+          timeZone: event.timeZone,
+        },
+      }
+    : null;
+}
+
+const SEARCH_MEMBER_STATUSES = ['active', 'suspended', 'pending_approval', 'invited'] as const;
+
+function asSearchMember(raw: unknown): SearchMember | null {
+  const member = raw as Record<string, unknown> | null;
+  const status = SEARCH_MEMBER_STATUSES.find((one) => one === member?.status);
+  const role = member?.role == null ? null : asMemberRole(member.role);
+
+  if (
+    typeof member?.id !== 'string' ||
+    (member.kind !== 'member' && member.kind !== 'invitation') ||
+    status == null ||
+    (member.role != null && role == null)
+  ) {
+    return null;
+  }
+
+  return {
+    id: member.id,
+    kind: member.kind,
+    name: stringOrNull(member.name),
+    email: stringOrNull(member.email),
+    role,
+    status,
+  };
+}
+
 function asMemberRole(raw: unknown): MemberRole | null {
   const role = raw as Record<string, unknown> | null;
 
@@ -4325,16 +4857,37 @@ function asSentInvitation(raw: unknown): SentInvitation | null {
 
 function asMembersList(raw: unknown): MembersList | null {
   const list = raw as Record<string, unknown> | null;
+  const counts = list?.counts as Record<string, unknown> | null | undefined;
 
-  if (!Array.isArray(list?.members) || !Array.isArray(list.invitations)) return null;
+  if (
+    !Array.isArray(list?.members) ||
+    !Array.isArray(list.faces) ||
+    !Array.isArray(list.waiting) ||
+    (list.invitations != null && !Array.isArray(list.invitations)) ||
+    typeof list.owners !== 'number' ||
+    (list.next != null && typeof list.next !== 'string') ||
+    MEMBERS_SHOWN.some((show) => typeof counts?.[show] !== 'number')
+  )
+    return null;
 
   const members = list.members.map(asOrganisationMember);
-  const invitations = list.invitations.map(asSentInvitation);
+  const faces = list.faces.map(asOrganisationMember);
+  const waiting = list.waiting.map(asOrganisationMember);
+  const invitations = ((list.invitations as unknown[] | undefined) ?? []).map(asSentInvitation);
 
-  if (members.some((one) => one == null) || invitations.some((one) => one == null)) return null;
+  if (
+    [...members, ...faces, ...waiting].some((one) => one == null) ||
+    invitations.some((one) => one == null)
+  )
+    return null;
 
   return {
     members: members as OrganisationMember[],
+    next: (list.next as string | null | undefined) ?? null,
+    counts: counts as Record<MembersShow, number>,
+    owners: list.owners,
+    faces: faces as OrganisationMember[],
+    waiting: waiting as OrganisationMember[],
     invitations: invitations as SentInvitation[],
   };
 }
@@ -4518,17 +5071,28 @@ function asTwoFactorDue(raw: unknown): TwoFactorDue | null {
     : { ...deadline, overdue: (raw as Record<string, unknown>).overdue === true };
 }
 
-function asRulesMembers(raw: unknown): (RulesMember | null)[] | null {
-  return Array.isArray(raw)
-    ? raw.map((entry: unknown) => {
-        const member = (entry ?? {}) as Record<string, unknown>;
-        const role = asMemberRole(member.role);
+function asRulesMember(entry: unknown): RulesMember | null {
+  const member = (entry ?? {}) as Record<string, unknown>;
+  const role = asMemberRole(member.role);
 
-        return typeof member.userId === 'string' && typeof member.name === 'string' && role != null
-          ? { userId: member.userId, name: member.name, role }
-          : null;
-      })
+  return typeof member.userId === 'string' && typeof member.name === 'string' && role != null
+    ? { userId: member.userId, name: member.name, role }
     : null;
+}
+
+/** Undefined when it is there but malformed, null when it is not given. */
+function asRulesShort(raw: unknown): RulesShort | null | undefined {
+  if (raw == null) return null;
+
+  const short = raw as Record<string, unknown>;
+
+  if (typeof short.count !== 'number' || !Array.isArray(short.named)) return undefined;
+
+  const named = short.named.map(asRulesMember);
+
+  return named.every((member) => member != null)
+    ? { count: short.count, named: named as RulesMember[] }
+    : undefined;
 }
 
 function asRuleValue(raw: unknown): boolean | number | null | undefined {
@@ -4566,19 +5130,18 @@ function asSignInRulesPage(raw: unknown): SignInRulesPage | null {
     ? page.inactivityChoices.filter((one): one is number => typeof one === 'number')
     : null;
   const changes = Array.isArray(page.changes) ? page.changes.map(asSignInRuleChange) : null;
-  const passwordOnly = asRulesMembers(page.passwordOnly);
-  const withoutTwoFactor = asRulesMembers(page.withoutTwoFactor);
+  const passwordOnly = asRulesShort(page.passwordOnly);
+  const withoutTwoFactor = asRulesShort(page.withoutTwoFactor);
 
   if (choices == null || changes == null || changes.some((change) => change == null)) return null;
-  if (passwordOnly?.some((member) => member == null)) return null;
-  if (withoutTwoFactor?.some((member) => member == null)) return null;
+  if (passwordOnly === undefined || withoutTwoFactor === undefined) return null;
 
   return {
     ...rules,
     inactivityChoices: choices,
     changes: changes as SignInRuleChange[],
-    passwordOnly: passwordOnly as SignInRulesPage['passwordOnly'],
-    withoutTwoFactor: withoutTwoFactor as SignInRulesPage['withoutTwoFactor'],
+    passwordOnly,
+    withoutTwoFactor,
     twoFactorDeadline: asTwoFactorDeadline(page.twoFactorDeadline),
     inactivityLimit: asInactivityLimit(page.inactivityLimit),
     ownTwoFactor: page.ownTwoFactor === true,

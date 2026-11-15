@@ -69,6 +69,11 @@ export function companionShown(
   return nth > 1 ? t('guestList.guestOfNth', { host, nth }) : t('guestList.guestOf', { host });
 }
 
+/** Record a reply starts each companion as they are, never all ticked (sc-3787). */
+export function startTicks(guest: Guest): ReadonlySet<string> {
+  return new Set(guest.companions.filter((one) => one.coming).map((one) => one.id));
+}
+
 /** The email address and the mobile number, for those who are sent them; null when the guest has neither. */
 export function contactOf(t: Translate, guest: Guest): string | null {
   const mobile = guest.mobile == null ? null : formatPhone(guest.mobile);

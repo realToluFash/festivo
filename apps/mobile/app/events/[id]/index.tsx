@@ -10,6 +10,7 @@ import {
   GUESTS_FILTER,
   areaOf,
 } from '../../../src/kit/eventNav.ts';
+import { OPENED_GUEST } from '../../../src/kit/searchLinks.ts';
 
 /** An event's page, pushed over whatever opened it; from a copy, back leads to its original. */
 export default function EventPage() {
@@ -20,6 +21,7 @@ export default function EventPage() {
     [FROM_HAPPENING_NOW]: now,
     [GUESTS_FILTER]: filter,
     [DUPLICATING]: duplicating,
+    [OPENED_GUEST]: guest,
   } = useLocalSearchParams<{
     id?: string;
     [COPIED_FROM]?: string;
@@ -27,6 +29,7 @@ export default function EventPage() {
     [FROM_HAPPENING_NOW]?: string;
     [GUESTS_FILTER]?: string;
     [DUPLICATING]?: string;
+    [OPENED_GUEST]?: string;
   }>();
 
   return (
@@ -37,6 +40,7 @@ export default function EventPage() {
       copiedFrom={from}
       opensDuplicate={duplicating != null}
       keepsTab={now != null}
+      opensGuest={guest}
     />
   );
 }

@@ -211,6 +211,24 @@ export const OVER_LIMIT_STATES = [
 /** Someone who can't change the plan: Ask an owner in the plan line's place. */
 export const ASK_OWNER_STATES = ['overLimitAsk', 'ownerAsked'] as const;
 
+/** sc-54450: Paste a reply on Guests, Whose reply is this?, and Record a reply from the copied message. */
+export const PASTE_STATES = [
+  'paste',
+  'pasteNothing',
+  'pasteClosed',
+  'whose',
+  'whoseLong',
+  'whoseAll',
+  'whoseSearch',
+  'whoseNone',
+  'whoseEveryone',
+  'whoseOffline',
+  'fromMessage',
+  'fromMessageBlank',
+  'fromMessageOffline',
+  'fromMessageSaved',
+] as const;
+
 export const OVERVIEW_STATES = [
   'overview',
   'overviewLoading',
@@ -229,6 +247,7 @@ export const GUESTS_STATES = [
   ...REVIEW_STATES,
   ...OVERVIEW_STATES,
   ...EXPORT_STATES,
+  ...PASTE_STATES,
 ] as const;
 
 export type GuestsState = (typeof GUESTS_STATES)[number];
@@ -239,6 +258,7 @@ export type RecordState = (typeof RECORD_STATES)[number];
 export type AgreeState = (typeof AGREE_STATES)[number];
 export type AddState = (typeof ADD_STATES)[number];
 export type ReviewState = (typeof REVIEW_STATES)[number];
+export type PasteState = (typeof PASTE_STATES)[number];
 
 export const DOOR_STATES = [
   'door',
@@ -602,6 +622,11 @@ function lowerFirst(text: string): string {
   return text.charAt(0).toLowerCase() + text.slice(1);
 }
 
+/** sc-3787: the list's reply is the same word as any other; who recorded it shows only in the details. */
+function asOwnReply(g: SampleGuest): SampleGuest {
+  return g.recorded == null ? g : { ...g, recorded: null, when: g.recorded.day };
+}
+
 function rowLine(
   g: SampleGuest,
   locale: string,
@@ -614,7 +639,7 @@ function rowLine(
   const short = g.kind === 'noreply' || g.kind === 'notyet';
   const count = g.companions.length;
   return joined([
-    replyLine(g, locale, replyBy, short),
+    replyLine(asOwnReply(g), locale, replyBy, short),
     group,
     count > 0 ? say.companions(count) : null,
   ]);
@@ -958,6 +983,13 @@ export function sameNameAs(
 
 export type Answer = 'coming' | 'notcoming' | 'maybe';
 
+/** sc-3787: Record a reply's ticks start from each companion as they are; one held behind a reply that isn't Coming starts at their last choice (sc-3779). */
+export function startTicks(g: SampleGuest): boolean[] {
+  return g.companions.map((c) =>
+    g.kind === 'coming' ? c.kind !== 'notcoming' : c.chose !== 'notcoming',
+  );
+}
+
 export function recorded(
   g: SampleGuest,
   answer: Answer,
@@ -971,6 +1003,9 @@ export function recorded(
     when: today,
     companions: g.companions.map((c, index) => ({
       ...c,
+      ...(answer === 'coming'
+        ? { chose: ticked[index] === false ? ('notcoming' as const) : ('coming' as const) }
+        : {}),
       kind:
         answer === 'coming'
           ? ticked[index] === false
@@ -1167,6 +1202,10 @@ export function guestsAt(state: GuestsState | null): SampleGuest[] {
       return [...GUESTS, ...FROM_CONTACTS_ADDED].sort((a, b) => a.name.localeCompare(b.name));
     case 'recorded':
       return swap('emeka', (g) => recorded(g, 'coming', 'By phone', [true], TODAY));
+    case 'fromMessageSaved':
+      return swap('emeka', (g) => recorded(g, 'coming', 'By message', [true], TODAY));
+    case 'whoseEveryone':
+      return GUESTS.map((g) => (g.kind === 'noreply' ? { ...g, kind: 'coming', when: TODAY } : g));
     case 'marked':
       return swap('bisi', (g) => markedInvited(g, 'WhatsApp', TODAY));
     case 'recordedNotYet':
@@ -1405,6 +1444,8 @@ export function areaStart(state: GuestsState | null): AreaStart {
     case 'failed':
       return { ...base, phase: 'failed' };
     case 'offline':
+    case 'whoseOffline':
+    case 'fromMessageOffline':
     case 'exportOffline':
     case 'exportDropped':
       return { ...base, offline: true };
@@ -1426,6 +1467,7 @@ export function areaStart(state: GuestsState | null): AreaStart {
       return { ...base, recorded: true };
     case 'repliesClosed':
     case 'repliesClosedViewer':
+    case 'pasteClosed':
       return { ...base, replies: 'closed' };
     case 'reopened':
       return { ...base, replies: 'reopened' };

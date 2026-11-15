@@ -4,12 +4,10 @@ declare(strict_types=1);
 
 namespace App\Domain\Organisation\SignInRules;
 
+use App\Domain\Messaging\Model\RenderedNotification;
 use App\Domain\User\Mail\UserMailer;
-use App\Entity\Organisation;
 use App\Entity\User;
-use App\Enum\AccountMail;
 use DateTimeImmutable;
-use Psl\Iter;
 use Psl\Str;
 
 /** Every member hears what changed; one who signs in with a password only also hears how to link Google or Apple. */
@@ -21,63 +19,13 @@ final readonly class SignInRulesMailer
     ) {
     }
 
-    /**
-     * @param array<string, array{0: mixed, 1: mixed}> $changes  rule => [before, after]
-     * @param list<User>                               $members
-     * @param list<User>                               $stranded the members left reading only until they link one
-     */
-    public function sendChanged(Organisation $organisation, User $by, array $changes, array $members, array $stranded, DateTimeImmutable $at, ?string $asked = null): void
+    /** @param array<string, array{0: mixed, 1: mixed}> $changes rule => [before, after] */
+    public function changed(User $member, string $locale, string $organisation, string $by, array $changes, bool $stranded, DateTimeImmutable $at): RenderedNotification
     {
-        foreach ($members as $member) {
-            $this->sendTo($member, $organisation, $by, $changes, Iter\any($stranded, static fn (User $user): bool => $user->getId()->equals($member->getId())), $at, $asked);
-        }
-    }
-
-    /**
-     * The members without two-factor, told the moment it is required of them, with the instant in each one's zone (sc-609).
-     *
-     * @param list<User> $members
-     */
-    public function sendTwoFactorDue(Organisation $organisation, array $members, DateTimeImmutable $deadline): void
-    {
-        $origin = Str\trim_right($this->webOrigin, '/');
-
-        foreach ($members as $member) {
-            $address = $member->getPrimaryEmailAddress()?->getAddress();
-
-            if (null === $address) {
-                continue;
-            }
-
-            $locale = $this->userMailer->localeFor($member);
-            $named = ['{organisation}' => $organisation->getName()];
-            $due = [...$named, '{deadline}' => $this->userMailer->deadline($deadline, $member, $locale)];
-
-            $this->userMailer->send(AccountMail::SignInRules, $address, $locale, 'signInRules.twoFactorDue.subject', [
-                $this->userMailer->line('signInRules.twoFactorDue.body', $locale, $due),
-                $this->userMailer->line('signInRules.twoFactorDue.explain', $locale),
-                $this->userMailer->line('signInRules.twoFactorDue.facts', $locale, [...$due, '{address}' => $address]),
-                $this->userMailer->line('signInRules.twoFactorDue.turnOn', $locale, ['{link}' => $origin . '/app/account/security']),
-                '--',
-                $this->userMailer->line('signInRules.changed.footer', $locale, $named),
-            ], $due);
-        }
-    }
-
-    /** @param array<string, array{0: mixed, 1: mixed}> $changes */
-    private function sendTo(User $member, Organisation $organisation, User $by, array $changes, bool $stranded, DateTimeImmutable $at, ?string $asked): void
-    {
-        $address = $member->getPrimaryEmailAddress()?->getAddress();
-
-        if (null === $address) {
-            return;
-        }
-
-        $locale = $this->userMailer->localeFor($member, $member->getId()->equals($by->getId()) ? $asked : null);
-        $named = ['{organisation}' => $organisation->getName()];
+        $named = ['{organisation}' => $organisation];
         $origin = Str\trim_right($this->webOrigin, '/');
         $paragraphs = [
-            $this->userMailer->line('signInRules.changed.body', $locale, [...$named, '{name}' => $by->getName(), '{when}' => $this->userMailer->moment($at, $member, $locale)]),
+            $this->userMailer->line('signInRules.changed.body', $locale, [...$named, '{name}' => $by, '{when}' => $this->userMailer->moment($at, $member, $locale)]),
         ];
 
         foreach ($changes as $rule => [, $now]) {
@@ -93,7 +41,24 @@ final readonly class SignInRulesMailer
         $paragraphs[] = '--';
         $paragraphs[] = $this->userMailer->line('signInRules.changed.footer', $locale, $named);
 
-        $this->userMailer->send(AccountMail::SignInRules, $address, $locale, 'signInRules.changed.subject', $paragraphs, $named);
+        return new RenderedNotification($this->userMailer->line('signInRules.changed.subject', $locale, $named), Str\join($paragraphs, "\n\n"));
+    }
+
+    /** A member without two-factor, told the moment it is required of them, with the instant in their zone (sc-609). */
+    public function twoFactorDue(User $member, string $locale, string $address, string $organisation, DateTimeImmutable $deadline): RenderedNotification
+    {
+        $named = ['{organisation}' => $organisation];
+        $due = [...$named, '{deadline}' => $this->userMailer->deadline($deadline, $member, $locale)];
+        $origin = Str\trim_right($this->webOrigin, '/');
+
+        return new RenderedNotification($this->userMailer->line('signInRules.twoFactorDue.subject', $locale, $due), Str\join([
+            $this->userMailer->line('signInRules.twoFactorDue.body', $locale, $due),
+            $this->userMailer->line('signInRules.twoFactorDue.explain', $locale),
+            $this->userMailer->line('signInRules.twoFactorDue.facts', $locale, [...$due, '{address}' => $address]),
+            $this->userMailer->line('signInRules.twoFactorDue.turnOn', $locale, ['{link}' => $origin . '/app/account/security']),
+            '--',
+            $this->userMailer->line('signInRules.changed.footer', $locale, $named),
+        ], "\n\n"));
     }
 
     private function ruleLine(string $rule, mixed $now, string $locale): string

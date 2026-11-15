@@ -46,9 +46,15 @@ export interface Problem {
   permission?: string;
   /** On a seating plan's `precondition_failed`: who changed it since (sc-3998). */
   changedBy?: string;
+  /** On `seating_items_outside`: the tables the refused room size would leave outside it (sc-4000). */
+  outside?: string[];
   /** On `guest_replied`: the reply that keeps them invited and when, in the event's zone (sc-3788). */
   reply?: string;
   repliedAt?: string;
+  /** On `staff_number_shared`: the first roster entry already on that number (sc-3906). */
+  sharedWith?: string;
+  /** On a schedule item's `precondition_failed`: the item as it is stored now, which `asScheduleItem` reads (sc-3893). */
+  current?: unknown;
 }
 
 /**

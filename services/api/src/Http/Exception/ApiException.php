@@ -17,7 +17,7 @@ class ApiException extends RuntimeException
     /**
      * @param list<array{propertyPath: string, message: string, code: string, parameters?: array<string, int|string>}> $violations each message a key, its slots in parameters
      * @param array<string, string>                                                                                    $headers    Retry-After on a 429, and little else
-     * @param array<string, int|string|list<string>>                                                                   $members    extra problem members, such as the permission
+     * @param array<string, mixed>                                                                                     $members    extra problem members, such as the permission, or a 412's item as it now stands
      * @param array<string, int|string>                                                                                $parameters the slots in the message's key
      */
     public function __construct(

@@ -717,3 +717,284 @@
 .st-wide {
   width: 100%;
 }
+
+/* sc-4000's tables, as the demo draws them: the body in its section's colour, its chairs, its name. */
+.st-item {
+  cursor: pointer;
+  outline: none;
+}
+
+.st-hit {
+  fill: transparent;
+}
+
+.st-item:focus-visible .st-hit {
+  stroke: var(--colorAccent);
+  stroke-width: 2;
+}
+
+.st-lit {
+  fill: var(--colorAccentTint);
+}
+
+.st-body {
+  fill: var(--colorCard);
+  stroke: var(--sec, var(--colorInkTertiary));
+  stroke-width: 2.2;
+}
+
+.st-body.is-single {
+  stroke-width: 1.6;
+  stroke-dasharray: 3 2.5;
+}
+
+.st-row-tab {
+  fill: var(--stSunk);
+  stroke: var(--sec, var(--colorInkTertiary));
+  stroke-width: 1.6;
+}
+
+.st-tab-text {
+  fill: var(--colorInk);
+  font: 700 12px var(--fontFamily);
+}
+
+.st-chair {
+  stroke-width: 1.4;
+}
+
+.st-chair.is-near {
+  stroke-width: 2;
+}
+
+.st-chair.is-unusable {
+  fill: var(--stOff);
+  stroke: var(--stOffEdge);
+}
+
+.st-chair-cross {
+  fill: none;
+  stroke: var(--colorInkSecondary);
+  stroke-linecap: round;
+  stroke-width: 1.4;
+}
+
+.st-chair-cross.is-near {
+  stroke-width: 2.4;
+}
+
+.st-chair.is-empty {
+  fill: var(--colorCard);
+  stroke: var(--stEmpty);
+}
+
+.st-chair-text {
+  fill: var(--colorInkSecondary);
+  font: 600 13px var(--fontFamily);
+  pointer-events: none;
+}
+
+.st-chair-hit {
+  fill: transparent;
+  cursor: pointer;
+  outline: none;
+}
+
+.st-chair-hit.is-keys {
+  pointer-events: none;
+}
+
+.st-chair-hit:focus-visible {
+  stroke: var(--colorAccent);
+  stroke-width: 2;
+}
+
+.st-name {
+  fill: var(--colorInk);
+  font: 600 12px var(--fontFamily);
+  pointer-events: none;
+}
+
+.st-overlap {
+  fill: none;
+  stroke: var(--colorAttention);
+  stroke-dasharray: 6 4;
+  stroke-width: 2;
+}
+
+.st-add {
+  bottom: var(--spaceLg);
+  left: var(--spaceLg);
+  display: flex;
+  align-items: center;
+  gap: 2px;
+  padding: 4px;
+  border-radius: 26px;
+  background: var(--colorCard);
+  box-shadow: var(--stShadow);
+}
+
+.st-tool {
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  height: var(--sizeHit);
+  padding: 0 12px;
+  border: 0;
+  border-radius: 22px;
+  background: none;
+  color: var(--colorInk);
+  font: 600 14px/1 var(--fontFamily);
+  white-space: nowrap;
+  cursor: pointer;
+}
+
+.st-tool:hover {
+  background: var(--stSurface);
+}
+
+.st-tool.is-on {
+  background: var(--colorAccentTint);
+  color: var(--colorAccentText);
+}
+
+.st-menu {
+  bottom: 80px;
+  left: var(--spaceLg);
+  z-index: 7;
+  display: flex;
+  flex-direction: column;
+  width: 380px;
+  box-sizing: border-box;
+  padding: 6px;
+  border-radius: 18px;
+  background: var(--colorCard);
+  box-shadow: var(--stLift);
+}
+
+.st-menu-row {
+  display: flex;
+  align-items: center;
+  gap: var(--spaceLg);
+  min-height: 52px;
+  padding: 0 var(--spaceLg);
+  border: 0;
+  border-radius: var(--radiusRow);
+  background: none;
+  color: var(--colorInk);
+  font: 600 15px/1.3 var(--fontFamily);
+  text-align: left;
+  cursor: pointer;
+}
+
+.st-menu-row:hover,
+.st-menu-row:focus-visible {
+  background: var(--colorNeutralFill);
+}
+
+.st-shape-tile {
+  display: flex;
+  flex: none;
+  align-items: center;
+  justify-content: center;
+  width: 36px;
+  height: 36px;
+  border-radius: 10px;
+  background: var(--stSurface);
+  color: var(--colorInkSecondary);
+}
+
+.st-state-line {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  min-height: var(--sizeHit);
+  margin: 0;
+  color: var(--colorInk);
+  font: 600 16px/1.3 var(--fontFamily);
+}
+
+.st-added {
+  display: flex;
+  align-items: flex-start;
+  gap: var(--spaceMd);
+  margin: 0;
+  padding: 10px 12px;
+  border-radius: 14px;
+  background: color-mix(in srgb, var(--deskGreen) 12%, var(--colorCard));
+  color: var(--colorInk);
+  font: 600 14px/1.4 var(--fontFamily);
+}
+
+.st-facts {
+  margin: 0;
+}
+
+.st-facts div {
+  display: flex;
+  align-items: center;
+  min-height: 40px;
+  border-top: 1px solid var(--colorBorder);
+}
+
+.st-facts dt {
+  flex: 1;
+  color: var(--colorInkSecondary);
+  font: 500 14.5px/1.3 var(--fontFamily);
+}
+
+.st-facts dd {
+  margin: 0;
+  color: var(--colorInk);
+  font: 600 15px/1.3 var(--fontFamily);
+}
+
+.st-fields {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  min-width: 0;
+  margin: 0;
+  padding: 0;
+  border: 0;
+}
+
+.st-name.is-quiet {
+  fill: var(--colorInkSecondary);
+}
+
+.st-strip {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 4px;
+}
+
+.st-strip-seat {
+  display: flex;
+  flex: none;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 2px;
+  width: 44px;
+  height: 52px;
+  padding: 0;
+  border: 0;
+  border-radius: 12px;
+  background: none;
+  color: var(--colorInkSecondary);
+  font: 600 12px/1 var(--fontFamily);
+  font-variant-numeric: tabular-nums;
+  cursor: pointer;
+}
+
+.st-strip-seat.is-on {
+  background: var(--colorAccentTint);
+}
+
+.st-strip-more {
+  color: var(--colorInkSecondary);
+  font: 500 13px/1.3 var(--fontFamily);
+  white-space: nowrap;
+}

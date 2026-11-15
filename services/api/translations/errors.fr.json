@@ -29,6 +29,7 @@
     "seating_plan_exists": "Cet événement a déjà un plan de table.",
     "seating_section_limit": "Un plan peut comporter jusqu’à 30 zones. Supprimez-en une pour en ajouter une autre.",
     "guest_already_listed": "Ce nom est déjà sur la liste.",
+    "staff_number_shared": "Ce numéro figure déjà dans la liste du personnel.",
     "replies_closed": "Les réponses sont closes.",
     "replies_open": "Les réponses sont encore ouvertes.",
     "reply_is_theirs": "Cette personne a répondu elle-même. Confirmez pour remplacer sa réponse.",
@@ -97,5 +98,7 @@
     "owner_claim_ended": "Cette demande a déjà pris fin.",
     "owner_claim_unavailable": "Une personne ayant le rôle Propriétaire est déjà en fonction dans cette organisation.",
     "owner_claim_own": "Vous ne pouvez pas arrêter votre propre demande.",
-    "team_seats_in_use": "Toutes les places d’équipe du forfait de cette organisation sont occupées."
+    "team_seats_in_use": "Toutes les places d’équipe du forfait de cette organisation sont occupées.",
+    "seating_items_outside": "Un élément de la salle se retrouverait en dehors.",
+    "schedule_item_limit": "Ce programme compte {max} éléments, le maximum pour un événement. Supprimez-en un pour en ajouter un autre."
 }

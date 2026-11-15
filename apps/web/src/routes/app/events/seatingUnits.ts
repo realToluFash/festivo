@@ -6,7 +6,7 @@ type Display = 'short' | 'long';
 
 function unit(
   locale: string,
-  name: 'meter' | 'foot' | 'inch',
+  name: 'meter' | 'centimeter' | 'foot' | 'inch',
   value: number,
   display: Display,
   grouping: boolean,
@@ -50,4 +50,68 @@ export function lengthField(
   return system === 'metric'
     ? numberFormat(locale, { maximumFractionDigits: 2, useGrouping: false }).format(cm / 100)
     : lengthWords(t, locale, cm, system, { grouping: false });
+}
+
+/** A table's side: "180 cm", or feet and inches; a limit of whole metres reads "10 m". */
+export function tableLengthWords(
+  t: TFunction,
+  locale: string,
+  cm: number,
+  system: MeasurementSystem,
+  { grouping = true }: { grouping?: boolean } = {},
+): string {
+  if (system === 'us') return lengthWords(t, locale, cm, system, { grouping });
+  return cm >= 100 && cm % 100 === 0
+    ? unit(locale, 'meter', cm / 100, 'short', grouping)
+    : unit(locale, 'centimeter', cm, 'short', grouping);
+}
+
+/** One side of a table in whole centimetres, "200 cm" rather than "2 m", or feet and inches. */
+export function tableSideWords(
+  t: TFunction,
+  locale: string,
+  cm: number,
+  system: MeasurementSystem,
+): string {
+  return system === 'us'
+    ? lengthWords(t, locale, cm, system)
+    : unit(locale, 'centimeter', cm, 'short', true);
+}
+
+/** "180 cm" round, "180 × 76 cm" long: in metric the unit is said once, after the length. */
+export function tableSizeWords(
+  t: TFunction,
+  locale: string,
+  table: { shape: string; widthCm: number; lengthCm: number },
+  system: MeasurementSystem,
+): string {
+  const length = (cm: number) => tableSideWords(t, locale, cm, system);
+
+  if (table.shape === 'round' || table.shape === 'cocktail') return length(table.widthCm);
+  return t('seating.tableSize', {
+    width:
+      system === 'us'
+        ? length(table.widthCm)
+        : numberFormat(locale, { maximumFractionDigits: 0 }).format(table.widthCm),
+    tableLength: length(table.lengthCm),
+  });
+}
+
+/** What a table's size field holds: whole centimetres, or the feet and inches it reads back. */
+export function tableSizeField(
+  t: TFunction,
+  locale: string,
+  cm: number,
+  system: MeasurementSystem,
+): string {
+  return system === 'metric' ? String(cm) : lengthWords(t, locale, cm, system, { grouping: false });
+}
+
+/** The centimetre's short word in the reader's language, beside a table's size field. */
+export function centimetreUnit(locale: string): string {
+  return (
+    numberFormat(locale, { style: 'unit', unit: 'centimeter', unitDisplay: 'short' })
+      .formatToParts(1)
+      .find((part) => part.type === 'unit')?.value ?? 'cm'
+  );
 }

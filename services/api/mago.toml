@@ -156,6 +156,8 @@ domain_event = ["App\\Domain\\Event\\**"]
 domain_messaging = ["App\\Domain\\Messaging\\**"]
 domain_seating = ["App\\Domain\\Seating\\**"]
 domain_guest = ["App\\Domain\\Guest\\**"]
+domain_staff = ["App\\Domain\\Staff\\**"]
+domain_run_of_show = ["App\\Domain\\RunOfShow\\**"]
 
 # Capabilities. Each is its own layer so an edge between two of them has to be
 # declared below rather than appearing by accident.
@@ -280,7 +282,8 @@ permit = [
 # address is picked through the address lookup (sc-3589). Its deletion uses the
 # shared window and typed name (sc-3592). A new date, time or zone re-schedules
 # what the one clock counts from it (sc-104). A duplicate brings the guest list
-# through the guests' scope when asked (sc-3656).
+# through the guests' scope when asked (sc-3656). Search folds a member's name by the
+# shared rule (NameNormaliser) to match and rank it (sc-39534).
 [[guard.perimeter.rules]]
 namespace = "App\\Domain\\Event\\"
 permit = [
@@ -298,6 +301,7 @@ permit = [
     "@layer:deletion",
     "@layer:domain_seating",
     "@layer:domain_guest",
+    "@layer:locale",
 ]
 
 # Venue & seating: an event's one plan, its room and its sections (sc-3998). Each
@@ -328,6 +332,40 @@ permit = [
     "@layer:domain_guest",
     "@layer:domain_event",
     "@layer:domain_user",
+    "@layer:repository",
+    "@layer:audit",
+    "@layer:realtime",
+    "@layer:locale",
+]
+
+# Staffing: an event's roster, the people working it without being members (sc-3906). A
+# mobile number is checked by the account's parser; each change is audited and published.
+[[guard.perimeter.rules]]
+namespace = "App\\Domain\\Staff\\"
+permit = [
+    "@layer:native",
+    "@layer:external",
+    "@layer:shared",
+    "@layer:domain_staff",
+    "@layer:domain_user",
+    "@layer:repository",
+    "@layer:audit",
+    "@layer:realtime",
+    "@layer:locale",
+]
+
+# Run of show: an event's running order, built on the Schedule page (sc-3893). Its
+# starts are wall-clock times read with the event's zone (LocalTimeResolver), and it
+# adds each day's first item and its fixed-time items to the event's timeline. Each
+# change is audited and published.
+[[guard.perimeter.rules]]
+namespace = "App\\Domain\\RunOfShow\\"
+permit = [
+    "@layer:native",
+    "@layer:external",
+    "@layer:shared",
+    "@layer:domain_run_of_show",
+    "@layer:domain_event",
     "@layer:repository",
     "@layer:audit",
     "@layer:realtime",

@@ -1372,6 +1372,11 @@
       "turnDownLine": "No se añade a esta persona, y aparece en Antiguos.",
       "turningDown": "Rechazando",
       "keepsWaiting": "La solicitud de {{first}} sigue en espera."
+    },
+    "more": {
+      "loading": "Cargando más personas…",
+      "failedTitle": "No se han podido cargar más personas.",
+      "failedLine": "Compruebe la conexión y vuelva a intentarlo."
     }
   },
   "accessPaused": {
@@ -2433,6 +2438,7 @@
     "keepTheirs": "Mantener la respuesta",
     "replyRecorded": "Respuesta registrada. Cuenta como cualquier otra.",
     "recordedOn": "registrada por {{name}}, {{how}}, el {{date}}",
+    "recordedLine": "{{reply}} · registrada por {{name}}, {{how}}, el {{date}}",
     "line": "{{reply}} · {{contact}}",
     "withPlaces": "{{reply}} · {{places}}",
     "contacts": "{{email}} · {{mobile}}",
@@ -2705,5 +2711,62 @@
     "savedClosedNow": "Se ha guardado. El plazo para responder ha terminado.",
     "savedRemoved": "Se ha guardado. Se puede responder hasta que empiece el evento.",
     "moves": "El plazo termina el {{old}}, que no es anterior al nuevo inicio. Al guardar, el plazo de respuesta pasará al {{next}}."
+  },
+  "search": {
+    "row": "Buscar",
+    "field": {
+      "egm": "Buscar eventos, invitados y miembros",
+      "eg": "Buscar eventos e invitados",
+      "em": "Buscar eventos y miembros",
+      "gm": "Buscar invitados y miembros",
+      "e": "Buscar eventos",
+      "g": "Buscar invitados",
+      "m": "Buscar miembros"
+    },
+    "hint": {
+      "egm": "Encuentre un evento, un invitado o un miembro.",
+      "eg": "Encuentre un evento o un invitado.",
+      "em": "Encuentre un evento o un miembro.",
+      "gm": "Encuentre un invitado o un miembro.",
+      "e": "Encuentre un evento.",
+      "g": "Encuentre un invitado.",
+      "m": "Encuentre un miembro."
+    },
+    "short": "Escriba al menos 2 caracteres.",
+    "searching": "Buscando…",
+    "showAll": "Mostrar todos en Eventos",
+    "nothing": "No hay resultados para «{{term}}».",
+    "clear": "Borrar la búsqueda",
+    "failed": "La búsqueda no ha funcionado. Vuelva a intentarlo en un momento.",
+    "tryAgain": "Reintentar",
+    "keys": "↑ ↓ para moverse · Intro para abrir · Esc para cerrar",
+    "results": "Resultados",
+    "close": "Cerrar",
+    "cancel": "Cancelar",
+    "matches_one": "{{count, number}} resultado",
+    "matches_many": "{{count, number}} resultados",
+    "matches_other": "{{count, number}} resultados",
+    "heading": {
+      "events": "Eventos",
+      "guests": "Invitados",
+      "members": "Miembros"
+    },
+    "headingCount_one": "{{heading}}, {{count, number}} resultado",
+    "headingCount_many": "{{heading}}, {{count, number}} resultados",
+    "headingCount_other": "{{heading}}, {{count, number}} resultados",
+    "standing": {
+      "invited": "Con invitación",
+      "pending_approval": "Pendiente de aprobación",
+      "suspended": "Acceso suspendido"
+    },
+    "line": {
+      "event": "{{dates}} · {{place}}",
+      "days": "Del {{first}} al {{last}}",
+      "calledOffOn": "Cancelado el {{date}}",
+      "venueCity": "{{venue}}, {{city}}",
+      "venueToBeConfirmed": "Lugar por confirmar",
+      "guest": "{{event}} · {{day}}",
+      "member": "{{email}} · {{role}}"
+    }
   }
 }

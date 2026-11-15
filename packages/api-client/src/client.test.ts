@@ -1096,7 +1096,6 @@ describe('a browser never holds the refresh token', () => {
               seededAs: 'administrator',
               permissions: ['members.read'],
               holders: 1,
-              holderNames: [{ name: 'Julien Moreau', suspended: false }],
             },
           ],
           areas: [],
@@ -1126,10 +1125,6 @@ describe('a browser never holds the refresh token', () => {
       removable: true,
       permissions: ['events.read'],
       holders: 2,
-      holderNames: [
-        { name: 'Ada Okeke', suspended: false },
-        { name: 'Émeka Obi', suspended: true },
-      ],
     };
 
     const client = new ApiClient({
@@ -1155,7 +1150,7 @@ describe('a browser never holds the refresh token', () => {
     await client.deleteRole('org_1', 'role_6', 'role_5');
 
     expect(catalogue.roles[0]?.name).toBe('Door team');
-    expect(catalogue.roles[0]?.holderNames).toEqual(door.holderNames);
+    expect(catalogue.roles[0]?.holders).toBe(2);
     expect(catalogue.areas).toEqual([{ area: 'events', permissions: ['events.read'] }]);
     expect(sent.slice(1)).toEqual([
       {
@@ -1224,13 +1219,17 @@ describe('a browser never holds the refresh token', () => {
           was: false,
         },
       ],
-      passwordOnly: [
-        {
-          userId: 'user_2',
-          name: 'Bola Ade',
-          role: { id: 'role_2', seededAs: 'coordinator', name: null },
-        },
-      ],
+      passwordOnly: {
+        count: 1,
+        named: [
+          {
+            userId: 'user_2',
+            name: 'Bola Ade',
+            role: { id: 'role_2', seededAs: 'coordinator', name: null },
+          },
+        ],
+      },
+      withoutTwoFactor: { count: 1_000_000, named: [] },
       ownTwoFactor: true,
       ownProvider: true,
     };
@@ -1254,7 +1253,8 @@ describe('a browser never holds the refresh token', () => {
 
     expect(read.changes[0]?.entry).toBe('entry_1');
     expect(read.changes[0]?.by.name).toBe('Adaeze Okafor');
-    expect(read.passwordOnly?.[0]?.name).toBe('Bola Ade');
+    expect(read.passwordOnly?.named[0]?.name).toBe('Bola Ade');
+    expect(read.withoutTwoFactor).toEqual({ count: 1_000_000, named: [] });
     expect(read.ownTwoFactor).toBe(true);
     expect(read.ownProvider).toBe(true);
     expect(sent).toEqual([
@@ -1865,6 +1865,15 @@ function json(body: unknown, status = 200): Response {
     headers: { 'Content-Type': 'application/json' },
   });
 }
+
+/** What every page of Members carries besides its rows (sc-49170). */
+const PAGE_REST = {
+  next: null,
+  counts: { all: 1, active: 1, waiting: 0, suspended: 0, former: 1 },
+  owners: 1,
+  faces: [],
+  waiting: [],
+};
 
 const ACCOUNT = {
   id: '018f3a4c-7b2e-7c3d-9e1f-2a3b4c5d6e7f',
@@ -2530,19 +2539,24 @@ describe('getting back in without the second factor', () => {
 });
 
 describe('invitations and members', () => {
-  function client(response: Response, sent: { line: string; body: unknown }[] = []) {
+  function client(
+    response: Response | (() => Response),
+    sent: { line: string; query?: string | undefined; body: unknown }[] = [],
+  ) {
     return {
       api: new ApiClient({
         baseUrl: () => 'http://api.test',
         tokens: store('live', null),
         refreshTokenIn: 'cookie',
         fetch: async (url, init) => {
+          const { pathname, search } = new URL(String(url));
           sent.push({
-            line: `${init?.method ?? 'GET'} ${new URL(String(url)).pathname}`,
+            line: `${init?.method ?? 'GET'} ${pathname}`,
+            query: search === '' ? undefined : decodeURIComponent(search),
             body: typeof init?.body === 'string' ? JSON.parse(init.body) : null,
           });
 
-          return response;
+          return typeof response === 'function' ? response() : response;
         },
       }),
       sent,
@@ -2633,6 +2647,7 @@ describe('invitations and members', () => {
   test('the members list reads every state and its history', async () => {
     const { api, sent } = client(
       json({
+        ...PAGE_REST,
         members: [
           {
             id: 'm1',
@@ -2689,9 +2704,68 @@ describe('invitations and members', () => {
     expect(sent[0]?.line).toBe('GET /api/orgs/org_1/members');
   });
 
+  test('a page of members is asked for under its option, after the last row read', async () => {
+    const { api, sent } = client(json({ ...PAGE_REST, members: [], invitations: [] }));
+
+    await api.members('org_1', { show: 'former', after: 'm50', limit: 50 });
+
+    expect(sent[0]?.query).toBe('?show=former&after=m50&limit=50');
+  });
+
+  test('every member is read page after page until there is no next', async () => {
+    const row = (id: string) => ({
+      id,
+      user: { id: `u_${id}`, name: id, email: null },
+      role: { id: 'role_1', seededAs: 'owner', name: null },
+      status: 'active',
+      former: null,
+      channel: null,
+      since: null,
+      invitedBy: null,
+      invitedAt: null,
+      self: false,
+      history: [],
+    });
+    const pages = [
+      { ...PAGE_REST, next: 'm1', members: [row('m1')], invitations: [] },
+      { ...PAGE_REST, members: [row('m2')], invitations: [] },
+    ];
+    const { api, sent } = client(() => json(pages.shift() ?? {}));
+
+    const every = await api.everyMember('org_1', 'active');
+
+    expect(every.map((one) => one.id)).toEqual(['m1', 'm2']);
+    expect(sent.map((one) => one.query)).toEqual([
+      '?show=active&limit=500',
+      '?show=active&after=m1&limit=500',
+    ]);
+  });
+
+  test('a later page carries no invitations, and one person reads as their row', async () => {
+    const row = {
+      id: 'm9',
+      user: { id: 'u_m9', name: 'Ada', email: null },
+      role: { id: 'role_1', seededAs: 'member', name: null },
+      status: 'suspended',
+      former: null,
+      channel: null,
+      since: null,
+      invitedBy: null,
+      invitedAt: null,
+      self: false,
+      history: [],
+    };
+    const answers = [json({ ...PAGE_REST, members: [row] }), json({ member: row })];
+    const { api, sent } = client(() => answers.shift() ?? json({}));
+
+    expect((await api.members('org_1', { after: 'm8' })).invitations).toEqual([]);
+    expect((await api.member('org_1', 'm9')).status).toBe('suspended');
+    expect(sent[1]?.line).toBe('GET /api/orgs/org_1/members/m9');
+  });
+
   test('a members list in a shape it does not know names where to look', async () => {
     await expect(
-      client(json({ members: [{ id: 'm1' }], invitations: [] })).api.members('o'),
+      client(json({ ...PAGE_REST, members: [{ id: 'm1' }], invitations: [] })).api.members('o'),
     ).rejects.toThrow(/MembersController/);
   });
 
@@ -2739,6 +2813,7 @@ describe('invitations and members', () => {
   test('somebody awaiting approval carries the instant they are removed, as the server wrote it', async () => {
     const { api } = client(
       json({
+        ...PAGE_REST,
         members: [
           {
             id: 'm_ada',
@@ -3021,6 +3096,78 @@ describe('events (sc-1486)', () => {
     const { api: odd } = client(() => json({ hosts: [1] }));
 
     await expect(odd.eventHosts('org_1')).rejects.toThrow('/events/hosts');
+  });
+
+  test('Search reads each kind, null where the caller may not find it, and refuses a shape it does not know (sc-39534)', async () => {
+    const guest = {
+      id: 'g1',
+      name: 'Inês Duarte',
+      event: {
+        id: 'e1',
+        name: 'Gala',
+        startsAt: '2026-11-14T16:00:00+01:00',
+        timeZone: 'Africa/Lagos',
+      },
+    };
+    const invited = {
+      id: 'i1',
+      kind: 'invitation',
+      name: null,
+      email: 'ines@example.com',
+      role: { id: 'r1', seededAs: 'member' },
+      status: 'invited',
+    };
+    const urls: string[] = [];
+    const api = new ApiClient({
+      baseUrl: () => 'http://api.test',
+      tokens: store('live', null),
+      refreshTokenIn: 'cookie',
+      fetch: async (url) => {
+        urls.push(String(url).replace('http://api.test', ''));
+
+        return json({
+          events: { total: 7, matches: [EVENT] },
+          guests: { total: 1, matches: [guest] },
+          members: null,
+        });
+      },
+    });
+
+    expect(await api.search('org_1', 'inês')).toEqual({
+      events: { total: 7, matches: [expect.objectContaining({ id: EVENT.id })] },
+      guests: { total: 1, matches: [guest] },
+      members: null,
+    });
+    expect(urls).toEqual(['/api/orgs/org_1/search?q=in%C3%AAs']);
+
+    const { api: members } = client(() =>
+      json({ events: null, guests: null, members: { total: 1, matches: [invited] } }),
+    );
+
+    expect((await members.search('org_1', 'ines')).members?.matches).toEqual([
+      { ...invited, role: { id: 'r1', seededAs: 'member', name: null } },
+    ]);
+
+    const { api: odd } = client(() =>
+      json({
+        events: null,
+        guests: { total: 1, matches: [{ ...guest, event: null }] },
+        members: null,
+      }),
+    );
+
+    await expect(odd.search('org_1', 'ines')).rejects.toThrow('/search');
+  });
+
+  test('what Search may find is read, and a shape it does not know is refused (sc-39534)', async () => {
+    const { api, sent } = client(() => json({ events: true, guests: true, members: false }));
+
+    expect(await api.searchReach('org_1')).toEqual({ events: true, guests: true, members: false });
+    expect(sent).toEqual([{ line: 'GET /api/orgs/org_1/search/reach', body: null }]);
+
+    const { api: odd } = client(() => json({ events: true }));
+
+    await expect(odd.searchReach('org_1')).rejects.toThrow('/search/reach');
   });
 
   test('an event is created with local times and its zone, and read by its id', async () => {

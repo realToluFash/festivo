@@ -128,6 +128,6 @@ describe('stations (sc-3910)', () => {
   it('links every state from the demo’s home', () => {
     const linked = STATIONS_PAGES.flatMap((page) => page.states.map((one) => one.to));
     for (const state of STATIONS_STATES)
-      expect(linked).toContain(`/demo/events/evt-wed-4/staff?state=${state}`);
+      expect(linked).toContain(`/demo/events/evt-wed-4/staff/stations?state=${state}`);
   });
 });

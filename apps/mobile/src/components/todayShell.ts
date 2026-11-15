@@ -26,7 +26,7 @@ export interface TodayShell {
   unread: number;
   /** The role holds Create events: the first run offers Start your first event, or tells it to ask an owner. */
   creates: boolean;
-  /** The sidebar's Search, which the app does not have yet. */
+  /** Search: the sidebar's row held sideways, and the glass beside the bell on the cover and the band. */
   search: boolean;
   open: (opens: Opens) => void;
   /** A hook: the switcher as the opener at `ref` opens it; `primary` is the one an opening on load drops from. */

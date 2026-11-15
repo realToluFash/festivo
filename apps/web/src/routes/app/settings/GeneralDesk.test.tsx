@@ -5,6 +5,7 @@ import { RouterProvider, createMemoryRouter } from 'react-router';
 
 import { __setSessionState, type Session } from '../../../session.ts';
 import { OWNER_PERMISSIONS, membership } from '../../../test-memberships.ts';
+import { pagedMembers } from '../../../test-members.ts';
 import { atPhoneWidth } from '../../../test-widths.ts';
 import { routes } from '../../index.tsx';
 
@@ -124,7 +125,7 @@ function answering(answers: Record<string, () => Response | Promise<Response>> =
     const answer = all[line];
     if (answer == null) throw new TypeError('Failed to fetch');
 
-    return answer();
+    return line.endsWith('/members') ? pagedMembers(await answer(), String(input)) : answer();
   });
 
   return sent;

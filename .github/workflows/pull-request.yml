@@ -276,6 +276,12 @@ jobs:
       - name: The clients' topics match the API's
         run: npm run check-topics --workspace @soirely/api-client
 
+      - name: The generated client matches the API's OpenAPI document
+        # A stale src/schema.d.ts typechecks perfectly against a shape the
+        # API stopped serving, so the four table shapes (sc-4000) would be a
+        # promise nothing checks.
+        run: npm run check-current --workspace @soirely/api-client
+
       - name: PHP formatting
         run: npm run lint:php
 
