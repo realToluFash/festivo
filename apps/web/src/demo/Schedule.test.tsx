@@ -6,7 +6,7 @@ import { __setConfig, config } from '../config.ts';
 import { routes } from '../routes/index.tsx';
 
 const tested = config();
-const SLOW = 20000;
+const SLOW = { timeout: 20000 };
 
 beforeEach(() => __setConfig({ ...tested, environment: 'development' }));
 afterEach(() => __setConfig(tested));
