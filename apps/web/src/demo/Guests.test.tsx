@@ -1119,6 +1119,27 @@ describe('Guests, the link and Mark as invited (sc-1526, sc-3788)', () => {
     },
   );
 
+  it(
+    'returns Cancel to the Record a reply row of a guest not yet invited (sc-52829)',
+    SLOW,
+    async () => {
+      await guests('notYetFilter');
+
+      const row = within(within(column()).getByRole('region', { name: 'Invitation' })).getByRole(
+        'button',
+        { name: /^Record a reply/u },
+      );
+
+      fireEvent.click(row);
+      fireEvent.click(await within(column()).findByRole('button', { name: 'Cancel' }));
+
+      const invitation = await within(column()).findByRole('region', { name: 'Invitation' });
+      const back = within(invitation).getByRole('button', { name: /^Record a reply/u });
+
+      await waitFor(() => expect(document.activeElement).toBe(back), WAIT);
+    },
+  );
+
   it("lists them in their reply's group once recorded (sc-52829)", SLOW, async () => {
     await guests('recordedNotYet');
 
