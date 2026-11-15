@@ -156,6 +156,7 @@ final readonly class GuestPageController
                 'reply' => null === $reply || GuestReply::NoReply === $reply || null === $repliedAt ? null : [
                     'answer' => $reply->value,
                     'at' => $repliedAt->setTimezone($zone)->format(\DATE_ATOM),
+                    'recordedBy' => null,
                 ],
                 'needs' => $needsOf($guest),
                 'places' => Iter\count($places),

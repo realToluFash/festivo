@@ -2169,7 +2169,7 @@ export class ApiClient {
     );
   }
 
-  /** Lets one guest answer again after Reply by, until the start (sc-3780); needs guests.manage. */
+  /** Lets one guest answer again after Reply by, until the start (sc-3780); needs guests.manage, and is refused 409 `replies_open` while replies are open. */
   async reopenGuestReplies(eventId: string, guestId: string): Promise<TaggedGuest> {
     return this.taggedGuest(
       await this.exchange<{ guest?: unknown }>(

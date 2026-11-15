@@ -149,7 +149,7 @@ final readonly class GuestsController
         );
     }
 
-    /** Let them change their reply (sc-3780): this guest may answer after Reply by, until the start. */
+    /** Let them change their reply (sc-3780): this guest may answer after Reply by, until the start; refused 409 `replies_open` while replies are open. */
     #[Route('/api/events/{eventId}/guests/{guestId}/reopen-replies', name: 'guests_reopen_replies', methods: ['POST'])]
     #[InEvent(Permission::GuestsManage)]
     public function reopenReplies(string $eventId, string $guestId): JsonResponse

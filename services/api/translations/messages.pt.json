@@ -134,6 +134,7 @@
     "guest.version_required": "Envie a versão que está a alterar, no cabeçalho If-Match.",
     "guest.changed_since": "Outra pessoa alterou os dados deste convidado desde que os abriu. A sua alteração não foi guardada.",
     "guest.replies_closed": "O prazo de resposta terminou. Se algo mudou, contacte quem organiza o evento.",
+    "guest.replies_open": "Replies are still open, so this guest can already change their answer.",
     "guest.event_paused": "Não é possível responder enquanto o evento estiver em pausa. O que já enviou fica guardado.",
     "guest.event_concluded": "O prazo de resposta terminou.",
     "guest.replied": "Nada foi alterado. Esta pessoa já respondeu, por isso o convite mantém-se.",

@@ -148,6 +148,8 @@ final class ReplyByTest extends ApiTestCase
         self::assertSame([true, null], [$page['answersOpen'] ?? null, $page['answersClosedOn'] ?? null]);
         $this->reply($this->token($adaeze), 'coming');
         self::assertSame(200, $this->statusCode());
+        $answered = $this->open($this->token($adaeze))['guest']['reply'] ?? [];
+        self::assertSame([true, null], [Iter\contains_key($answered, 'recordedBy'), $answered['recordedBy'] ?? null]);
         $this->reply($this->token($bisi), 'coming');
         self::assertSame(409, $this->statusCode());
         self::assertNull($this->row($bisi)['repliesReopened'] ?? null);
@@ -155,6 +157,27 @@ final class ReplyByTest extends ApiTestCase
         self::mockTime(new DateTimeImmutable(self::START));
         $this->reply($this->token($adaeze), 'notComing');
         self::assertSame(409, $this->statusCode());
+    }
+
+    #[Test]
+    public function reopeningAGuestWhileRepliesAreOpenIsRefusedAndMarksNothing(): void
+    {
+        $adaeze = $this->add(self::ADAEZE);
+        $reopen = fn (): array => $this->as($this->owner, 'POST', $this->guests() . '/' . $adaeze . '/reopen-replies');
+
+        $reopen();
+        self::assertSame([409, ErrorCode::RepliesOpen->type()], [$this->statusCode(), $this->last()['type'] ?? null]);
+
+        $this->patch(['replyBy' => '2030-10-19']);
+        $reopen();
+        self::assertSame([409, ErrorCode::RepliesOpen->type()], [$this->statusCode(), $this->last()['type'] ?? null]);
+        self::assertNull($this->row($adaeze)['repliesReopened'] ?? null);
+
+        self::mockTime(new DateTimeImmutable(self::NOW));
+        $this->patch(['replyBy' => '2030-11-13']);
+        $reopen();
+        self::assertSame(409, $this->statusCode());
+        self::assertNull($this->row($adaeze)['repliesReopened'] ?? null);
     }
 
     #[Test]
