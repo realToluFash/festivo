@@ -49,10 +49,6 @@ class StaffMember
     #[ORM\Column(type: Types::DATETIME_IMMUTABLE, nullable: true)]
     private ?DateTimeImmutable $contactsErasedAt = null;
 
-    #[ORM\Version]
-    #[ORM\Column(type: Types::INTEGER, options: ['default' => 1])]
-    private int $version = 1;
-
     public function __construct(Event $event, string $fullName, ?string $mobile, ?string $email, ?User $member)
     {
         $this->id = Uuid::v7();
@@ -96,11 +92,6 @@ class StaffMember
     public function getContactsErasedAt(): ?DateTimeImmutable
     {
         return $this->contactsErasedAt;
-    }
-
-    public function getVersion(): int
-    {
-        return $this->version;
     }
 
     public function rename(string $fullName): void

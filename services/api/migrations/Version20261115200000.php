@@ -25,7 +25,6 @@ final class Version20261115200000 extends AbstractMigration
                 email               VARCHAR(180) DEFAULT NULL,
                 member_id           UUID DEFAULT NULL,
                 contacts_erased_at  TIMESTAMP(0) WITHOUT TIME ZONE DEFAULT NULL,
-                version             INT DEFAULT 1 NOT NULL,
                 created_at          TIMESTAMP(0) WITHOUT TIME ZONE NOT NULL,
                 updated_at          TIMESTAMP(0) WITHOUT TIME ZONE NOT NULL,
                 PRIMARY KEY (id)

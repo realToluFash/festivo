@@ -12,7 +12,6 @@ export interface StaffEntry {
   shift: string | null;
   link: StaffLink;
   contactsErased: boolean;
-  version: number;
 }
 
 export interface StaffDetails {
@@ -41,7 +40,7 @@ const text = (value: unknown): value is string | null =>
 
 export function asStaffEntry(raw: unknown): StaffEntry | null {
   if (!isRecord(raw)) return null;
-  const { id, fullName, mobile, email, job, station, shift, link, contactsErased, version } = raw;
+  const { id, fullName, mobile, email, job, station, shift, link, contactsErased } = raw;
 
   if (
     typeof id !== 'string' ||
@@ -52,8 +51,7 @@ export function asStaffEntry(raw: unknown): StaffEntry | null {
     !text(station) ||
     !text(shift) ||
     !LINKS.includes(link as StaffLink) ||
-    typeof contactsErased !== 'boolean' ||
-    typeof version !== 'number'
+    typeof contactsErased !== 'boolean'
   )
     return null;
 
@@ -67,7 +65,6 @@ export function asStaffEntry(raw: unknown): StaffEntry | null {
     shift,
     link: link as StaffLink,
     contactsErased,
-    version,
   };
 }
 

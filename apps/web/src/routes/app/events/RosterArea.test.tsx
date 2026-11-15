@@ -92,7 +92,6 @@ function entry(id: string, fullName: string, more: Record<string, unknown> = {})
     shift: null,
     link: 'no_mobile',
     contactsErased: false,
-    version: 1,
     ...more,
   };
 }

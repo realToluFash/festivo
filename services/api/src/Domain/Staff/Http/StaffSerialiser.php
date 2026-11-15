@@ -41,7 +41,6 @@ final readonly class StaffSerialiser
                 default => 'none',
             },
             'contactsErased' => null !== $entry->getContactsErasedAt(),
-            'version' => $entry->getVersion(),
         ];
     }
 }
