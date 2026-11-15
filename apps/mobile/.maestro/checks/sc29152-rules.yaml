@@ -4,7 +4,7 @@ appId: host.exp.Exponent
 - openLink: ${METRO_URL}/--/demo/settings/sign-in-rules
 - extendedWaitUntil:
     visible:
-      text: 'The rules in force'
+      text: '{{t:signInRules.stand.whereTitle}}'
     timeout: 30000
 - waitForAnimationToEnd:
     timeout: 8000
