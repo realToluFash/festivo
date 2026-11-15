@@ -266,6 +266,13 @@ const GLYPHS = {
     { x: 2.5, y: 10, w: 4, h: 4, rx: 1 },
     { x: 17.5, y: 10, w: 4, h: 4, rx: 1 },
   ],
+  row: [
+    { cx: 4.5, cy: 12, r: 2 },
+    { cx: 9.5, cy: 12, r: 2 },
+    { cx: 14.5, cy: 12, r: 2 },
+    { cx: 19.5, cy: 12, r: 2 },
+  ],
+  seat1: [{ cx: 12, cy: 12, r: 4 }],
 } satisfies Record<string, readonly Shape[]>;
 
 export type GlyphName = keyof typeof GLYPHS;

@@ -6,7 +6,6 @@ import {
   SECTION_COLOURS,
   type Seating,
   type SeatingPlan,
-  type SeatingWithTable,
   type SectionColour,
   asSeating,
   realtimeTopic,
@@ -45,10 +44,18 @@ import {
   Line,
   type Outside,
   type Panel,
+  type Placed,
   type PlanApi,
   Refused,
   Said,
 } from './SeatingParts.tsx';
+import {
+  AddRowAndSeat,
+  RowDrawing,
+  RowPanel,
+  SingleSeatDrawing,
+  SingleSeatPanel,
+} from './SeatingRows.tsx';
 import { AddTable, ChairPanel, TableDrawing, TablePanel } from './SeatingTables.tsx';
 import { lengthField, lengthWords } from './seatingUnits.ts';
 import '../../../components/SettingsParts.css';
@@ -278,10 +285,17 @@ function Plan({
   const gone =
     (panel?.kind === 'sectionEdit' && !plan?.sections.some((one) => one.id === panel.id)) ||
     ((panel?.kind === 'table' || panel?.kind === 'chair') &&
-      !plan?.tables.some((one) => one.id === panel.id));
+      !plan?.tables.some((one) => one.id === panel.id)) ||
+    (panel?.kind === 'row' && !plan?.rows.some((one) => one.id === panel.id)) ||
+    (panel?.kind === 'seat' && !plan?.singleSeats.some((one) => one.id === panel.id));
   const shownPanel = gone || (plan == null && panel?.kind !== 'start') ? null : panel;
-  const chosenTable =
-    shownPanel?.kind === 'table' || shownPanel?.kind === 'chair' ? shownPanel.id : null;
+  const chosenItem =
+    shownPanel?.kind === 'table' ||
+    shownPanel?.kind === 'chair' ||
+    shownPanel?.kind === 'row' ||
+    shownPanel?.kind === 'seat'
+      ? shownPanel.id
+      : null;
 
   const open = (next: Panel | null) => {
     if (next == null) {
@@ -326,13 +340,7 @@ function Plan({
       if (error instanceof ApiError && error.status === 412) {
         const name = error.problem.changedBy;
 
-        const onTable = panel?.kind === 'table' || panel?.kind === 'chair';
-
-        setNotice(
-          name == null
-            ? t('seating.notSaved')
-            : t(onTable ? 'seating.changedTable' : 'seating.changedFirst', { name }),
-        );
+        setNotice(name == null ? t('seating.notSaved') : t(changedKey(panel), { name }));
         setReloads((n) => n + 1);
         reload();
         return { refused: null };
@@ -355,8 +363,8 @@ function Plan({
     }
   };
 
-  const seatingOf = (answer: Seating | SeatingWithTable): Seating =>
-    'tableId' in answer ? answer.seating : answer;
+  const seatingOf = (answer: Seating | Placed): Seating =>
+    'seating' in answer ? answer.seating : answer;
 
   const send: PlanApi['send'] = async (change, field, refusal) => {
     const result = await attempt(change, seatingOf, field, refusal);
@@ -367,11 +375,7 @@ function Plan({
   const place: PlanApi['place'] = async (change) => {
     const result = await attempt(change, (answer) => answer.seating);
 
-    if (!('answer' in result)) return null;
-    const { seating: saved, tableId } = result.answer;
-    const table = saved.plan?.tables.find((one) => one.id === tableId);
-
-    return table == null ? null : { id: table.id, name: table.name };
+    return 'answer' in result ? placedIn(result.answer) : null;
   };
 
   const remove = async (change: () => Promise<Seating>) =>
@@ -488,13 +492,45 @@ function Plan({
               s={s}
               ox={ox}
               oy={oy}
-              chosen={chosenTable === table.id}
+              chosen={chosenItem === table.id}
               chosenSeat={
                 shownPanel?.kind === 'chair' && shownPanel.id === table.id ? shownPanel.seat : null
               }
               outside={outside?.ids.includes(table.id) ?? false}
               onChoose={() => open({ kind: 'table', id: table.id })}
               onChair={(seat) => open({ kind: 'chair', id: table.id, seat })}
+            />
+          ))}
+          {plan.rows.map((row) => (
+            <RowDrawing
+              key={row.id}
+              plan={plan}
+              row={row}
+              s={s}
+              ox={ox}
+              oy={oy}
+              chosen={chosenItem === row.id}
+              chosenSeat={
+                shownPanel?.kind === 'row' && shownPanel.id === row.id
+                  ? (shownPanel.seat ?? null)
+                  : null
+              }
+              outside={outside?.ids.includes(row.id) ?? false}
+              onChoose={() => open({ kind: 'row', id: row.id })}
+              onChair={(seat) => open({ kind: 'row', id: row.id, seat })}
+            />
+          ))}
+          {plan.singleSeats.map((seat) => (
+            <SingleSeatDrawing
+              key={seat.id}
+              plan={plan}
+              seat={seat}
+              s={s}
+              ox={ox}
+              oy={oy}
+              chosen={chosenItem === seat.id}
+              outside={outside?.ids.includes(seat.id) ?? false}
+              onChoose={() => open({ kind: 'seat', id: seat.id })}
             />
           ))}
           <text
@@ -509,7 +545,7 @@ function Plan({
               : t('seating.roomLine', { name: plan.roomName, ...words })}
           </text>
         </svg>
-        {!readOnly && <AddTable ctx={ctx} />}
+        {!readOnly && <AddTable ctx={ctx} more={<AddRowAndSeat ctx={ctx} />} />}
       </>
     );
   } else if (shownPanel?.kind === 'start') {
@@ -601,6 +637,33 @@ function Plan({
       ) : (
         <ChairPanel ctx={ctx} plan={plan} table={table} seat={shownPanel.seat} />
       );
+  } else if (shownPanel?.kind === 'row') {
+    const row = plan.rows.find((one) => one.id === shownPanel.id);
+
+    body =
+      row == null ? null : (
+        <RowPanel
+          key={`${row.id}-${reloads}`}
+          ctx={ctx}
+          plan={plan}
+          row={row}
+          said={shownPanel.said}
+          seat={shownPanel.seat ?? null}
+        />
+      );
+  } else if (shownPanel?.kind === 'seat') {
+    const seat = plan.singleSeats.find((one) => one.id === shownPanel.id);
+
+    body =
+      seat == null ? null : (
+        <SingleSeatPanel
+          key={`${seat.id}-${reloads}`}
+          ctx={ctx}
+          plan={plan}
+          seat={seat}
+          said={shownPanel.said}
+        />
+      );
   } else
     body = (
       <>
@@ -643,6 +706,32 @@ function Plan({
 }
 
 /** A panel's buttons are drawn again as it closes, so the one that opened it is found again by its name. */
+/** Who changed it first, said of what the panel shows. */
+function changedKey(panel: Panel | null): string {
+  if (panel?.kind === 'table' || panel?.kind === 'chair') return 'seating.changedTable';
+  if (panel?.kind === 'row') return 'seating.changedRow';
+  if (panel?.kind === 'seat') return 'seating.changedSeat';
+  return 'seating.changedFirst';
+}
+
+function placedIn(answer: Placed): { id: string; name: string; seats: number } | null {
+  const plan = answer.seating.plan;
+
+  if ('tableId' in answer) {
+    const table = plan?.tables.find((one) => one.id === answer.tableId);
+
+    return table == null ? null : { id: table.id, name: table.name, seats: table.seats };
+  }
+  if ('rowId' in answer) {
+    const row = plan?.rows.find((one) => one.id === answer.rowId);
+
+    return row == null ? null : { id: row.id, name: row.label, seats: row.seats };
+  }
+  const seat = plan?.singleSeats.find((one) => one.id === answer.seatId);
+
+  return seat == null ? null : { id: seat.id, name: seat.name, seats: 1 };
+}
+
 function nameOf(element: Element): string {
   return element.getAttribute('aria-label') ?? element.textContent ?? '';
 }
@@ -1310,6 +1399,36 @@ function AskFor({
           setBusy(true);
           void ctx
             .remove(() => api.deleteSeatingTable(ctx.event.id, table.id, table.version))
+            .then((deleted) => (deleted ? onDone() : onKeep()));
+        }}
+      />
+    );
+  }
+
+  if (asking.kind === 'deleteRow' || asking.kind === 'deleteSeat') {
+    const row = asking.kind === 'deleteRow' ? plan.rows.find((one) => one.id === asking.id) : null;
+    const seat =
+      asking.kind === 'deleteSeat' ? plan.singleSeats.find((one) => one.id === asking.id) : null;
+    const name =
+      row != null ? t('seating.rowName', { label: row.label }) : seat != null ? seat.name : null;
+
+    if (name == null) return null;
+    return (
+      <Ask
+        title={t('seating.deleteNamed', { name })}
+        line={t('seating.nobodyHere')}
+        keep={t('seating.keepIt')}
+        go={t('seating.deleteNamedGo', { name })}
+        busy={busy ? t('seating.deleteNamedGo', { name }) : undefined}
+        onKeep={onKeep}
+        onGo={() => {
+          setBusy(true);
+          void ctx
+            .remove(() =>
+              row != null
+                ? api.deleteSeatingRow(ctx.event.id, row.id, row.version)
+                : api.deleteSingleSeat(ctx.event.id, seat?.id ?? '', seat?.version ?? 0),
+            )
             .then((deleted) => (deleted ? onDone() : onKeep()));
         }}
       />
