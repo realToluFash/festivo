@@ -200,7 +200,10 @@ const GUESTS: Record<GuestsState, Board> = {
     'Paste a reply, nothing to paste',
     'Android: Nothing to paste beside it, read out; iOS greys its own Paste',
   ],
-  pasteClosed: ['Paste a reply, replies closed', 'Replies closed on Wed, Nov 4: no Paste'],
+  pasteClosed: [
+    'Paste a reply, replies closed',
+    'As Replies closed: no Paste; a guest offers Let them change',
+  ],
   whose: [
     'Whose reply is this?',
     'Their message, Find a guest, the 5 waiting, newest invite first',

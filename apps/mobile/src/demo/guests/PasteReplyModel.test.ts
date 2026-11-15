@@ -1,23 +1,26 @@
-import { describe, expect, it } from 'vitest';
+import { init, t } from 'i18next';
+import { beforeAll, describe, expect, it } from 'vitest';
 
+import en from '../../i18n/locales/en.json';
 import { GUESTS_BOARDS } from './GuestsBoards.ts';
 import {
+  type GuestsState,
   PASTE_STATES,
   areaStart,
-  cardWords,
-  countsAt,
   eventOf,
   guestsAt,
   roleOf,
 } from './GuestsModel.ts';
-import { GUESTS, REPLY_BY, TODAY, WEDDING } from './GuestsSample.ts';
+import { GUESTS, REPLY_BY, TODAY } from './GuestsSample.ts';
 import {
   LONG_QUOTE,
+  type PasteInputs,
   QUOTE_LINES,
   hasText,
   invitationLine,
   invitationOf,
   pasteShown,
+  pasteShownAt,
   pasteStart,
   repliesOpenOn,
   waitingCount,
@@ -26,18 +29,44 @@ import {
 
 const EN = 'en-US';
 
+beforeAll(() =>
+  init({
+    lng: 'en',
+    resources: { en: { translation: en } },
+    interpolation: { escapeValue: false },
+  }),
+);
+
+const shownAt = (state: GuestsState) => pasteShownAt(state, eventOf(state));
+
 describe('Paste a reply on Guests (sc-54450)', () => {
+  const open: PasteInputs = {
+    phase: 'ok',
+    empty: false,
+    role: 'owner',
+    replies: null,
+    replyBy: REPLY_BY,
+    today: TODAY,
+    invited: 1,
+  };
+
   it('shows only with guests.manage, replies open and someone invited', () => {
-    expect(pasteShown({ manage: true, repliesOpen: true, invited: 1 })).toBe(true);
-    expect(pasteShown({ manage: false, repliesOpen: true, invited: 142 })).toBe(false);
-    expect(pasteShown({ manage: true, repliesOpen: false, invited: 142 })).toBe(false);
-    expect(pasteShown({ manage: true, repliesOpen: true, invited: 0 })).toBe(false);
+    expect(pasteShown(open)).toBe(true);
+    expect(pasteShown({ ...open, role: 'viewer' })).toBe(false);
+    expect(pasteShown({ ...open, replies: 'closed' })).toBe(false);
+    expect(pasteShown({ ...open, replies: 'reopened' })).toBe(true);
+    expect(pasteShown({ ...open, today: '2026-11-05' })).toBe(false);
+    expect(pasteShown({ ...open, invited: 0 })).toBe(false);
+    expect(pasteShown({ ...open, empty: true })).toBe(false);
+    expect(pasteShown({ ...open, phase: 'loading' })).toBe(false);
   });
 
-  it('hides on a Draft, where nobody is invited yet', () => {
-    const counts = countsAt('draft', eventOf('draft'), guestsAt('draft'), 0);
-    expect(counts.invited).toBe(0);
-    expect(counts.list).toBeGreaterThan(0);
+  it('opens with it where the AC shows it, and without it everywhere else', () => {
+    expect(shownAt('paste')).toBe(true);
+    expect(shownAt('draft')).toBe(false);
+    expect(shownAt('viewer')).toBe(false);
+    expect(shownAt('repliesClosed')).toBe(false);
+    expect(shownAt('pasteClosed')).toBe(false);
   });
 
   it('keeps replies open through the Reply by day and closes them after it', () => {
@@ -54,17 +83,15 @@ describe('Paste a reply on Guests (sc-54450)', () => {
     expect(hasText('Yes')).toBe(true);
   });
 
-  it('says when replies closed on the card after the Reply by day', () => {
-    const counts = countsAt('pasteClosed', WEDDING, GUESTS, 0);
-    const card = cardWords('pasteClosed', 'owner', counts, false, EN, REPLY_BY);
-    expect(card.line).toBe('Replies closed on Wed, Nov 4.');
-    expect(pasteStart('pasteClosed').closed).toBe(true);
+  it('closes replies on pasteClosed as Replies closed does, with no flag of its own', () => {
+    expect(areaStart('pasteClosed').replies).toBe('closed');
+    expect(areaStart('repliesClosed').replies).toBe('closed');
   });
 });
 
 describe('Whose reply is this? (sc-54450)', () => {
   it('lists the guests still waiting, newest invitation first and ties by name', () => {
-    expect(whoseRows(GUESTS, '', EN).map((row) => row.key)).toEqual([
+    expect(whoseRows(GUESTS, '', EN, t).map((row) => row.key)).toEqual([
       'nadia',
       'tomas',
       'seun',
@@ -73,38 +100,43 @@ describe('Whose reply is this? (sc-54450)', () => {
     ]);
   });
 
-  it('gives each row its reply and the invitation line', () => {
-    const [emeka] = whoseRows(GUESTS, 'emeka', EN);
-    expect(emeka?.line).toBe('No reply · invited on WhatsApp, Oct 9');
-    const nadia = whoseRows(GUESTS, 'nadia', EN)[0];
-    expect(nadia?.line).toBe('No reply · invited by Soirely’s message, Oct 12');
+  it('gives each row its reply and the sc-3788 invitation line, as written', () => {
+    const [emeka] = whoseRows(GUESTS, 'emeka', EN, t);
+    expect(emeka?.line).toBe('No reply · Invited, WhatsApp, Oct 9');
+    const nadia = whoseRows(GUESTS, 'nadia', EN, t)[0];
+    expect(nadia?.line).toBe('No reply · Invited by Soirely’s message, Oct 12');
   });
 
   it('finds a guest who already replied, but never one not yet invited', () => {
-    expect(whoseRows(GUESTS, 'okon', EN).map((row) => [row.key, row.kind])).toEqual([
+    expect(whoseRows(GUESTS, 'okon', EN, t).map((row) => [row.key, row.kind])).toEqual([
       ['folasade', 'maybe'],
     ]);
-    expect(whoseRows(GUESTS, 'bisi', EN)).toEqual([]);
-    expect(whoseRows(GUESTS, '', EN).some((row) => row.kind === 'notyet')).toBe(false);
+    expect(whoseRows(GUESTS, 'bisi', EN, t)).toEqual([]);
+    expect(whoseRows(GUESTS, '', EN, t).some((row) => row.kind === 'notyet')).toBe(false);
   });
 
   it('lists no companion as a row of its own', () => {
-    expect(whoseRows(GUESTS, 'adanna', EN)).toEqual([]);
+    expect(whoseRows(GUESTS, 'adanna', EN, t)).toEqual([]);
   });
 
   it('has nobody waiting once everyone invited has replied', () => {
     const all = guestsAt('whoseEveryone');
     expect(waitingCount(all)).toBe(0);
-    expect(whoseRows(all, '', EN)).toEqual([]);
-    expect(whoseRows(all, 'emeka', EN).map((row) => row.key)).toEqual(['emeka']);
+    expect(whoseRows(all, '', EN, t)).toEqual([]);
+    expect(whoseRows(all, 'emeka', EN, t).map((row) => row.key)).toEqual(['emeka']);
   });
 
-  it('words every way GuestInvitationMethod says they were invited', () => {
+  it('words every way GuestInvitationMethod says they were invited, in the catalogue words', () => {
     const at = '2026-11-12T10:30:00+00:00';
-    expect(invitationLine({ at, how: 'whatsapp' }, 'en-GB')).toBe('Invited on WhatsApp, 12 Nov');
-    expect(invitationLine({ at, how: 'textMessage' }, EN)).toBe('Invited by text message, Nov 12');
-    expect(invitationLine({ at, how: 'inPerson' }, EN)).toBe('Invited in person, Nov 12');
-    expect(invitationLine({ at, how: 'reply' }, EN)).toBe('Invited when they replied, Nov 12');
+    const line = (how: Parameters<typeof invitationLine>[0]['how'], locale = EN) =>
+      invitationLine({ at, how }, locale, t);
+    expect(line('whatsapp', 'en-GB')).toBe('Invited, WhatsApp, 12 Nov');
+    expect(line('textMessage')).toBe('Invited, text message, Nov 12');
+    expect(line('email')).toBe('Invited, email, Nov 12');
+    expect(line('inPerson')).toBe('Invited, in person, Nov 12');
+    expect(line('other')).toBe('Invited, another way, Nov 12');
+    expect(line('soirelyMessage')).toBe('Invited by Soirely’s message, Nov 12');
+    expect(line('reply')).toBe('Invited when they replied, Nov 12');
   });
 
   it('reads the invitation the sample guests carry', () => {

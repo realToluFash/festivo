@@ -22,8 +22,6 @@ import {
 } from './PasteReplyModel.ts';
 
 const FIELD_HEIGHT = 48;
-/** Room for Apple's Paste in each locale: Paste, Pegar, Coller, Colar. */
-const APPLE_PASTE_WIDTH = 120;
 const RING = 1.5;
 
 function ClipboardMark({ ink }: { ink: string }) {
@@ -62,10 +60,10 @@ function OwnPaste({ onText }: { onText: (text: string) => void }) {
   );
 }
 
-/** iOS 16 on: the system's own Paste, which reads the clipboard without asking and greys itself when no text is copied. */
-function ApplePaste({ onText }: { onText: (text: string) => void }) {
+/** iOS 16 on: Apple's Paste, whose word follows the phone's language, so it is never given a fixed width. */
+function ApplePaste({ onText, inRow }: { onText: (text: string) => void; inRow: boolean }) {
   return (
-    <View style={styles.appleRing}>
+    <View style={[styles.appleRing, inRow ? styles.appleInRow : styles.appleAlone]}>
       <Clipboard.ClipboardPasteButton
         onPress={(data) => onText(data.type === 'text' ? data.text : '')}
         acceptedContentTypes={['plain-text']}
@@ -80,9 +78,15 @@ function ApplePaste({ onText }: { onText: (text: string) => void }) {
   );
 }
 
-export function PasteButton({ onText }: { onText: (text: string) => void }) {
+export function PasteButton({
+  onText,
+  inRow = false,
+}: {
+  onText: (text: string) => void;
+  inRow?: boolean;
+}) {
   return Platform.OS === 'ios' && Clipboard.isPasteButtonAvailable ? (
-    <ApplePaste onText={onText} />
+    <ApplePaste onText={onText} inRow={inRow} />
   ) : (
     <OwnPaste onText={onText} />
   );
@@ -335,12 +339,13 @@ const styles = StyleSheet.create({
   },
   appleRing: {
     height: FIELD_HEIGHT,
-    alignSelf: 'flex-start',
     padding: RING,
     borderRadius: FIELD_HEIGHT / 2,
     backgroundColor: tokens.colorBorder,
   },
-  apple: { width: APPLE_PASTE_WIDTH, height: FIELD_HEIGHT - RING * 2 },
+  appleAlone: { width: '100%' },
+  appleInRow: { flexGrow: 1, flexBasis: 0 },
+  apple: { flex: 1 },
   pasteBlock: { gap: tokens.spaceSm },
   pasteRow: {
     flexDirection: 'row',

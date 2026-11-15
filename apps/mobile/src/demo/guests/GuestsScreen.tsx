@@ -76,7 +76,6 @@ import {
   type PasteFlow,
   pasteShown,
   pasteStart,
-  repliesOpenOn,
   waitingCount,
   whoseRows,
 } from './PasteReplyModel.ts';
@@ -127,7 +126,7 @@ export function GuestsScreen({
   const { state, start, role, replyBy } = opening;
   const pasted = useMemo(() => pasteStart(state), [state]);
   const [paste, setPaste] = useState<PasteFlow | null>(pasted.flow);
-  const { i18n } = useTranslation();
+  const { t, i18n } = useTranslation();
   const inPortuguese = state === 'titlePt';
   const portuguese = useMemo(() => i18n.getFixedT('pt'), [i18n]);
   const [guests, setGuests] = useState(opening.guests);
@@ -333,14 +332,15 @@ export function GuestsScreen({
     },
   };
 
-  const showPaste =
-    phase === 'ok' &&
-    !empty &&
-    pasteShown({
-      manage: owner,
-      repliesOpen: !pasted.closed && repliesOpenOn(replyBy, TODAY),
-      invited: counts.invited,
-    });
+  const showPaste = pasteShown({
+    phase,
+    empty,
+    role,
+    replies,
+    replyBy,
+    today: TODAY,
+    invited: counts.invited,
+  });
   const demoPaste = isIn(PASTE_STATES, state);
   const pasteBelow = !showPaste ? null : layout === 'portrait' ? (
     nothing || demoPaste ? (
@@ -362,7 +362,7 @@ export function GuestsScreen({
         onShowAll={() => setPaste({ ...paste, all: true })}
         typed={paste.typed}
         onTyped={(typed) => setPaste({ ...paste, typed })}
-        rows={whoseRows(guests, paste.typed, locale)}
+        rows={whoseRows(guests, paste.typed, locale, t)}
         waiting={waitingCount(guests)}
         onPick={pickWhose}
         onBack={closeWhose}
@@ -434,7 +434,7 @@ export function GuestsScreen({
               refFor={refFor}
               fieldRef={fieldRef}
               pasteInRow={
-                showPaste && layout === 'portrait' ? <PasteButton onText={onText} /> : null
+                showPaste && layout === 'portrait' ? <PasteButton onText={onText} inRow /> : null
               }
               paste={pasteBelow}
             />

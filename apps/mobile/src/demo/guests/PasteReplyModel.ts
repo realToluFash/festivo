@@ -1,13 +1,18 @@
+import type { TFunction } from 'i18next';
+
 import {
+  type AreaStart,
   type GuestsState,
   type PasteState,
   PASTE_STATES,
+  type Role,
   dayWords,
+  guestsOpening,
   isIn,
   joined,
   matchesGuest,
 } from './GuestsModel.ts';
-import type { SampleGuest } from './GuestsSample.ts';
+import { type SampleGuest, TODAY } from './GuestsSample.ts';
 import { REPLY_WORD } from './GuestsWords.ts';
 
 /** sc-54450's English: the AC's words, and Apple's own "Paste" on iOS. */
@@ -35,16 +40,6 @@ export interface Invitation {
   how: InvitationHow;
 }
 
-const INVITED_ON: Record<InvitationHow, (date: string) => string> = {
-  whatsapp: (date) => `Invited on WhatsApp, ${date}`,
-  textMessage: (date) => `Invited by text message, ${date}`,
-  email: (date) => `Invited by email, ${date}`,
-  inPerson: (date) => `Invited in person, ${date}`,
-  other: (date) => `Invited another way, ${date}`,
-  soirelyMessage: (date) => `Invited by Soirely’s message, ${date}`,
-  reply: (date) => `Invited when they replied, ${date}`,
-};
-
 const SAMPLE_HOW: Readonly<Record<string, InvitationHow>> = {
   whatsapp: 'whatsapp',
   'text message': 'textMessage',
@@ -66,8 +61,17 @@ export function invitationOf(g: SampleGuest): Invitation | null {
   return g.when == null ? null : { at: g.when, how: 'reply' };
 }
 
-export function invitationLine(invitation: Invitation, locale: string): string {
-  return INVITED_ON[invitation.how](dayWords(invitation.at.slice(0, 10), locale));
+/** sc-3788's invitation line, in its own words from the catalogue, shown as written. */
+export function invitationLine(invitation: Invitation, locale: string, t: TFunction): string {
+  const date = dayWords(invitation.at.slice(0, 10), locale);
+  switch (invitation.how) {
+    case 'soirelyMessage':
+      return t('guestList.invitedByMessage', { date });
+    case 'reply':
+      return t('guestList.invitedWhenReplied', { date });
+    default:
+      return t('guestList.invitedHow', { how: t(`guestList.howMid.${invitation.how}`), date });
+  }
 }
 
 /** A copied message counts only when it has more than spaces in it. */
@@ -75,21 +79,44 @@ export function hasText(text: string | null | undefined): text is string {
   return text != null && text.trim() !== '';
 }
 
-/** The AC's rule: guests.manage, replies still open, and at least one guest invited. */
-export function pasteShown({
-  manage,
-  repliesOpen,
-  invited,
-}: {
-  manage: boolean;
-  repliesOpen: boolean;
-  invited: number;
-}): boolean {
-  return manage && repliesOpen && invited > 0;
-}
-
 export function repliesOpenOn(replyBy: string | null, today: string): boolean {
   return replyBy == null || today <= replyBy;
+}
+
+export interface PasteInputs {
+  phase: AreaStart['phase'];
+  empty: boolean;
+  role: Role;
+  replies: AreaStart['replies'];
+  replyBy: string | null;
+  today: string;
+  invited: number;
+}
+
+/** The AC's rule: Guests loaded with someone on it, guests.manage, replies open (sc-3787's closed, and the Reply by day), and someone invited. */
+export function pasteShown(p: PasteInputs): boolean {
+  return (
+    p.phase === 'ok' &&
+    !p.empty &&
+    p.role === 'owner' &&
+    p.replies !== 'closed' &&
+    repliesOpenOn(p.replyBy, p.today) &&
+    p.invited > 0
+  );
+}
+
+/** Whether a demo state opens with Paste a reply, from the same inputs the screen holds. */
+export function pasteShownAt(state: GuestsState, event: string): boolean {
+  const { start, role, replyBy, counts } = guestsOpening(state, event, 'en-US');
+  return pasteShown({
+    phase: start.phase,
+    empty: start.empty,
+    role,
+    replies: start.replies,
+    replyBy,
+    today: TODAY,
+    invited: counts.invited,
+  });
 }
 
 export interface WhoseRow {
@@ -104,13 +131,12 @@ function newestFirst(locale: string) {
     a.at === b.at ? a.g.name.localeCompare(b.g.name, locale) : a.at < b.at ? 1 : -1;
 }
 
-function rowOf(g: SampleGuest, invitation: Invitation, locale: string): WhoseRow {
-  const line = invitationLine(invitation, locale);
+function rowOf(g: SampleGuest, invitation: Invitation, locale: string, t: TFunction): WhoseRow {
   return {
     key: g.key,
     name: g.name,
     kind: g.kind,
-    line: joined([REPLY_WORD[g.kind], line.charAt(0).toLowerCase() + line.slice(1)]),
+    line: joined([REPLY_WORD[g.kind], invitationLine(invitation, locale, t)]),
   };
 }
 
@@ -119,6 +145,7 @@ export function whoseRows(
   guests: readonly SampleGuest[],
   typed: string,
   locale: string,
+  t: TFunction,
 ): WhoseRow[] {
   const looking = typed.trim() !== '';
   return guests
@@ -130,7 +157,7 @@ export function whoseRows(
       return [{ g, at: invitation.at, invitation }];
     })
     .sort(newestFirst(locale))
-    .map(({ g, invitation }) => rowOf(g, invitation, locale));
+    .map(({ g, invitation }) => rowOf(g, invitation, locale, t));
 }
 
 export function waitingCount(guests: readonly SampleGuest[]): number {
@@ -166,10 +193,9 @@ export interface PasteStart {
   flow: PasteFlow | null;
   nothing: boolean;
   recorded: boolean;
-  closed: boolean;
 }
 
-const LIST: PasteStart = { flow: null, nothing: false, recorded: false, closed: false };
+const LIST: PasteStart = { flow: null, nothing: false, recorded: false };
 
 function whose(rest: Partial<PasteFlow> = {}): PasteStart {
   return {
@@ -195,7 +221,7 @@ export function pasteStart(state: GuestsState | null): PasteStart {
   const states: Record<PasteState, PasteStart> = {
     paste: LIST,
     pasteNothing: { ...LIST, nothing: true },
-    pasteClosed: { ...LIST, closed: true },
+    pasteClosed: LIST,
     whose: whose(),
     whoseLong: whose({ quote: LONG_QUOTE }),
     whoseAll: whose({ quote: LONG_QUOTE, all: true }),

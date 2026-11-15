@@ -897,14 +897,6 @@ export function cardWords(
         line: say.dayOpened(says),
         step: 'openCheckIn',
       };
-    case 'pasteClosed':
-      return {
-        tags: [],
-        says,
-        count: null,
-        line: replyBy == null ? havent : say.closedOn(dayWords(replyBy, locale, true)),
-        step: owner ? 'write' : null,
-      };
     default:
       return { tags: [], says, count: null, line: havent, step: owner ? 'write' : null };
   }
@@ -1468,6 +1460,7 @@ export function areaStart(state: GuestsState | null): AreaStart {
       return { ...base, recorded: true };
     case 'repliesClosed':
     case 'repliesClosedViewer':
+    case 'pasteClosed':
       return { ...base, replies: 'closed' };
     case 'reopened':
       return { ...base, replies: 'reopened' };
