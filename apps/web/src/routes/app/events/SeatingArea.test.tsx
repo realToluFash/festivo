@@ -336,6 +336,40 @@ describe('Seating at a desk (sc-3998)', () => {
     );
   });
 
+  it('sends a room field entered before the one before it answers with the version that one saved', async () => {
+    signedIn();
+    let answered = 1;
+    const sent = await onSeating({
+      'GET /api/events/ev_1/seating-plan': () =>
+        json({ seating: { measurementSystem: 'metric', plan: plan() } }),
+      'PATCH /api/events/ev_1/seating-plan': async (body) => {
+        await new Promise((resolve) => setTimeout(resolve, 30));
+        answered += 1;
+        return json({
+          seating: {
+            measurementSystem: 'metric',
+            plan: { ...plan(), ...(body as object), version: answered },
+          },
+        });
+      },
+    });
+
+    fireEvent.click(await screen.findByRole('button', { name: 'Room settings' }));
+    const name = screen.getByLabelText(/^Room name/u);
+    fireEvent.change(name, { target: { value: 'Great Hall' } });
+    fireEvent.blur(name);
+    leave('Width', '26');
+
+    await waitFor(() => expect(sent.filter((one) => one.line.startsWith('PATCH'))).toHaveLength(2));
+    expect(
+      sent.filter((one) => one.line.startsWith('PATCH')).map((one) => [one.body, one.ifMatch]),
+    ).toEqual([
+      [{ roomName: 'Great Hall' }, '"1"'],
+      [{ widthCm: 2600 }, '"2"'],
+    ]);
+    expect(screen.queryByText(/just changed this/u)).toBeNull();
+  });
+
   it('counts the rows, single seats and seats in each section and in none', async () => {
     signedIn();
     const ceremony = plan([{ id: 's1', name: 'Ceremony', colour: 'teal' }]);

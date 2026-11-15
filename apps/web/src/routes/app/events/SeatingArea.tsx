@@ -6,6 +6,7 @@ import {
   SECTION_COLOURS,
   type Seating,
   type SeatingPlan,
+  type SeatingSection,
   type SeatingRow,
   type SeatingTable,
   type SectionColour,
@@ -426,8 +427,14 @@ function Plan({
   const remove = async (change: () => Promise<Seating>) =>
     'answer' in (await attempt(change, (answer) => answer));
 
-  const newestOf: PlanApi['newest'] = <T extends SeatingTable | SeatingRow | SingleSeat>(item: T) =>
+  const newestOf: PlanApi['newest'] = <
+    T extends SeatingPlan | SeatingSection | SeatingTable | SeatingRow | SingleSeat,
+  >(
+    item: T,
+  ) =>
     [
+      ...(newest.current == null ? [] : [newest.current]),
+      ...(newest.current?.sections ?? []),
       ...(newest.current?.tables ?? []),
       ...(newest.current?.rows ?? []),
       ...(newest.current?.singleSeats ?? []),
@@ -1063,7 +1070,7 @@ function RoomSettings({ ctx, plan }: { ctx: PlanApi; plan: SeatingPlan }) {
     if ('refused' in read) return read.refused;
     ctx.showOutside(null);
     return ctx.send(
-      () => api.changeSeatingRoom(ctx.event.id, { [key]: read.cm }, plan.version),
+      () => api.changeSeatingRoom(ctx.event.id, { [key]: read.cm }, ctx.newest(plan).version),
       key,
       (error) => {
         if (!error.is('seating_items_outside')) return null;
@@ -1103,7 +1110,7 @@ function RoomSettings({ ctx, plan }: { ctx: PlanApi; plan: SeatingPlan }) {
               api.changeSeatingRoom(
                 ctx.event.id,
                 { roomName: name === '' ? null : name },
-                plan.version,
+                ctx.newest(plan).version,
               ),
             'roomName',
           );
@@ -1287,7 +1294,7 @@ function SectionForm({ ctx, plan, id }: { ctx: PlanApi; plan: SeatingPlan; id: s
                     ctx.event.id,
                     section.id,
                     { colour: one },
-                    section.version,
+                    ctx.newest(section).version,
                   ),
                 );
             }}
@@ -1367,7 +1374,7 @@ function SectionForm({ ctx, plan, id }: { ctx: PlanApi; plan: SeatingPlan; id: s
                 ctx.event.id,
                 section.id,
                 { name: text.trim() },
-                section.version,
+                ctx.newest(section).version,
               ),
             'name',
           );
@@ -1488,7 +1495,7 @@ function AskFor({
         onGo={() => {
           setBusy(true);
           void ctx
-            .remove(() => api.deleteSeatingTable(ctx.event.id, table.id, table.version))
+            .remove(() => api.deleteSeatingTable(ctx.event.id, table.id, ctx.newest(table).version))
             .then((deleted) => (deleted ? onDone() : onKeep()));
         }}
       />
@@ -1516,8 +1523,12 @@ function AskFor({
           void ctx
             .remove(() =>
               row != null
-                ? api.deleteSeatingRow(ctx.event.id, row.id, row.version)
-                : api.deleteSingleSeat(ctx.event.id, seat?.id ?? '', seat?.version ?? 0),
+                ? api.deleteSeatingRow(ctx.event.id, row.id, ctx.newest(row).version)
+                : api.deleteSingleSeat(
+                    ctx.event.id,
+                    seat?.id ?? '',
+                    seat == null ? 0 : ctx.newest(seat).version,
+                  ),
             )
             .then((deleted) => (deleted ? onDone() : onKeep()));
         }}

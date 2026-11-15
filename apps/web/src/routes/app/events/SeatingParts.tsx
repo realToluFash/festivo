@@ -5,6 +5,7 @@ import {
   type Seating,
   type SeatingPlan,
   type SeatingRow,
+  type SeatingSection,
   type SeatingTable,
   type SeatingWithRow,
   type SeatingWithSeat,
@@ -54,7 +55,9 @@ export interface PlanApi {
     refusal?: (error: ApiError) => string | null,
   ) => Promise<string | null>;
   /** The item as the newest answer has it, so a change sent after another carries its version. */
-  newest: <T extends SeatingTable | SeatingRow | SingleSeat>(item: T) => T;
+  newest: <T extends SeatingPlan | SeatingSection | SeatingTable | SeatingRow | SingleSeat>(
+    item: T,
+  ) => T;
   /** Adds or copies a table, a row or a seat: the one saved (a row named by its label), or null with the notice saying why. */
   place: (
     change: () => Promise<Placed>,
