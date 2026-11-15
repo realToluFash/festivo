@@ -15,11 +15,17 @@ describe('Search’s links (sc-39534)', () => {
     );
   });
 
-  it('opens Members on a member’s row, and an invitation on Members', () => {
-    const member = { kind: 'member', id: 'm1', name: 'Ada', line: '', standing: null } as const;
-
-    expect(searchRowHref({ ...member, invitation: false })).toBe('/settings/members?member=m1');
-    expect(searchRowHref({ ...member, invitation: true })).toBe('/settings/members');
+  it('opens Members on a member’s row', () => {
+    expect(
+      searchRowHref({
+        kind: 'member',
+        id: 'm1',
+        name: 'Ada',
+        line: '',
+        standing: null,
+        invitation: false,
+      }),
+    ).toBe('/settings/members?member=m1');
   });
 
   it('opens Events searched for the term', () => {

@@ -1940,10 +1940,17 @@ export class ApiClient {
     return { events: body.events, guests: body.guests, members: body.members };
   }
 
-  /** The sidebar's Search (sc-39534): each kind's first five matches and the count of all, only what the caller may open. */
-  async search(organisationId: string, term: string, signal?: AbortSignal): Promise<SearchFound> {
+  /** The sidebar's Search (sc-39534): each kind's first five matches and the count of all, only what the caller may open. Without invitations, no invited person is matched or counted. */
+  async search(
+    organisationId: string,
+    term: string,
+    { invitations = true, signal }: { invitations?: boolean; signal?: AbortSignal } = {},
+  ): Promise<SearchFound> {
+    const query = new URLSearchParams({ q: term });
+    if (!invitations) query.set('invitations', 'false');
+
     const body = await this.get<Record<string, unknown> | null>(
-      `/api/orgs/${encodeURIComponent(organisationId)}/search?${new URLSearchParams({ q: term }).toString()}`,
+      `/api/orgs/${encodeURIComponent(organisationId)}/search?${query.toString()}`,
       signal == null ? undefined : { signal },
     );
     const events = asSearchKind(body?.events, asOrganisationEvent);

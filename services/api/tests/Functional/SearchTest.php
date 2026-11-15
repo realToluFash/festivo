@@ -168,6 +168,18 @@ final class SearchTest extends ApiTestCase
     }
 
     #[Test]
+    public function theAppAsksWithoutInvitationsAndCountsNone(): void
+    {
+        $this->member('ines.santos@ire.events', 'Inês Santos', SeededRole::Admin);
+        $this->invite('ines.moura@example.com');
+        $this->invite('moura.family@example.com');
+
+        self::assertSame(['total' => 1, 'names' => ['Inês Santos']], self::names($this->found($this->owner, 'ines', invitations: false)['members']));
+        self::assertSame(['total' => 0, 'matches' => []], $this->found($this->owner, 'moura', invitations: false)['members']);
+        self::assertSame(2, self::names($this->found($this->owner, 'moura')['members'])['total']);
+    }
+
+    #[Test]
     public function somebodyAwaitingApprovalWhoWasNeverAMemberIsFoundOnlyByThoseWhoDecide(): void
     {
         $this->member('ines.rocha@example.com', 'Inês Rocha', SeededRole::Member, MembershipStatus::PendingApproval, joined: false);
@@ -232,9 +244,9 @@ final class SearchTest extends ApiTestCase
     }
 
     /** @return array{events: mixed, guests: mixed, members: mixed} */
-    private function found(User $user, string $term): array
+    private function found(User $user, string $term, bool $invitations = true): array
     {
-        $body = $this->as($user, 'GET', $this->path('search?q=' . \rawurlencode($term)));
+        $body = $this->as($user, 'GET', $this->path('search?q=' . \rawurlencode($term) . ($invitations ? '' : '&invitations=false')));
         self::assertSame(200, $this->statusCode(), Json\encode($body));
 
         return Type\shape(['events' => Type\mixed(), 'guests' => Type\mixed(), 'members' => Type\mixed()])->coerce($body);
