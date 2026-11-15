@@ -1,0 +1,40 @@
+# sc-3787: Record a reply on ${G_TICKS} (Coming, a companion recorded Not coming) starts each companion's tick from their current reply, and the cover card names the recorder.
+appId: host.exp.Exponent
+---
+- openLink: ${METRO_URL}/--/events/${EVENT_ID}?area=guests
+- extendedWaitUntil:
+    visible:
+      id: 'guests.search'
+    timeout: 30000
+- tapOn:
+    id: 'guests.search'
+- inputText: ${G_TICKS_NAME}
+- hideKeyboard
+- extendedWaitUntil:
+    visible:
+      id: 'guests.row.${G_TICKS}'
+    timeout: 15000
+- tapOn:
+    id: 'guests.row.${G_TICKS}'
+- extendedWaitUntil:
+    visible:
+      id: 'guest.${G_TICKS}'
+    timeout: 30000
+- takeScreenshot: cover
+- scrollUntilVisible:
+    element:
+      id: 'guest.record'
+    direction: DOWN
+- tapOn:
+    id: 'guest.record'
+- extendedWaitUntil:
+    visible:
+      id: 'guest.record.coming'
+    timeout: 10000
+- tapOn:
+    id: 'guest.record.coming'
+- scrollUntilVisible:
+    element:
+      id: 'guest.record.companion.1'
+    direction: DOWN
+- takeScreenshot: ticks
