@@ -39,7 +39,7 @@ import {
   withCurrent,
 } from '@soirely/domain';
 import { launchImageLibraryAsync } from 'expo-image-picker';
-import { type RefObject, useEffect, useMemo, useRef, useState } from 'react';
+import { type RefObject, useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import {
   Pressable,
   StyleSheet,
@@ -865,19 +865,13 @@ function CoverEdit(props: PartEditProps) {
     (has && described !== (saved?.description ?? ''));
   const count = [...described].length;
 
-  useEffect(
-    () => () => {
-      attempt.current += 1;
-      if (staged.current != null) discardCoverUpload(event.organisationId, staged.current);
-    },
-    [event.organisationId],
-  );
-
-  function letGo(): void {
+  const letGo = useCallback((): void => {
     attempt.current += 1;
     if (staged.current != null) discardCoverUpload(event.organisationId, staged.current);
     staged.current = null;
-  }
+  }, [event.organisationId]);
+
+  useEffect(() => letGo, [letGo]);
 
   function close(): void {
     letGo();
