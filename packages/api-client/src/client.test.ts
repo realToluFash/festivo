@@ -2741,6 +2741,28 @@ describe('invitations and members', () => {
     ]);
   });
 
+  test('a later page carries no invitations, and one person reads as their row', async () => {
+    const row = {
+      id: 'm9',
+      user: { id: 'u_m9', name: 'Ada', email: null },
+      role: { id: 'role_1', seededAs: 'member', name: null },
+      status: 'suspended',
+      former: null,
+      channel: null,
+      since: null,
+      invitedBy: null,
+      invitedAt: null,
+      self: false,
+      history: [],
+    };
+    const answers = [json({ ...PAGE_REST, members: [row] }), json({ member: row })];
+    const { api, sent } = client(() => answers.shift() ?? json({}));
+
+    expect((await api.members('org_1', { after: 'm8' })).invitations).toEqual([]);
+    expect((await api.member('org_1', 'm9')).status).toBe('suspended');
+    expect(sent[1]?.line).toBe('GET /api/orgs/org_1/members/m9');
+  });
+
   test('a members list in a shape it does not know names where to look', async () => {
     await expect(
       client(json({ ...PAGE_REST, members: [{ id: 'm1' }], invitations: [] })).api.members('o'),

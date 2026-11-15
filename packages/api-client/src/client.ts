@@ -15,6 +15,7 @@ import {
   type EventsSearch,
   isEventType,
   type Milestone,
+  MEMBERS_MOST,
   MILESTONE_OWNERS,
   type ServerClock,
   serverClock,
@@ -860,11 +861,9 @@ export interface MembersList {
   faces: OrganisationMember[];
   /** Everybody waiting for approval, only to those who decide on them. */
   waiting: OrganisationMember[];
+  /** Every invitation sent, on a first page only: a later page carries none, and `withNextPage` keeps the ones held. */
   invitations: SentInvitation[];
 }
-
-/** The most one page of Members holds, as MembersController allows. */
-const MEMBERS_MOST = 500;
 
 export interface MembersPage {
   show?: MembersShow;
@@ -2846,6 +2845,22 @@ export class ApiClient {
     return list;
   }
 
+  /** One person's row as it now is; refused `not_found` for somebody the caller is not shown. */
+  async member(organisationId: string, membershipId: string): Promise<OrganisationMember> {
+    const body = await this.get<{ member?: unknown }>(
+      `/api/orgs/${encodeURIComponent(organisationId)}/members/${encodeURIComponent(membershipId)}`,
+    );
+    const member = asOrganisationMember(body?.member);
+
+    if (member == null) {
+      throw new Error(
+        'The API answered GET /api/orgs/{id}/members/{membershipId} in a shape this client does not know. Check MembersController in services/api.',
+      );
+    }
+
+    return member;
+  }
+
   /** Every person under `show`, page after page, for a screen that has to choose among them all. */
   async everyMember(organisationId: string, show: MembersShow): Promise<OrganisationMember[]> {
     const read: OrganisationMember[] = [];
@@ -4523,7 +4538,7 @@ function asMembersList(raw: unknown): MembersList | null {
     !Array.isArray(list?.members) ||
     !Array.isArray(list.faces) ||
     !Array.isArray(list.waiting) ||
-    !Array.isArray(list.invitations) ||
+    (list.invitations != null && !Array.isArray(list.invitations)) ||
     typeof list.owners !== 'number' ||
     (list.next != null && typeof list.next !== 'string') ||
     MEMBERS_SHOWN.some((show) => typeof counts?.[show] !== 'number')
@@ -4533,7 +4548,7 @@ function asMembersList(raw: unknown): MembersList | null {
   const members = list.members.map(asOrganisationMember);
   const faces = list.faces.map(asOrganisationMember);
   const waiting = list.waiting.map(asOrganisationMember);
-  const invitations = list.invitations.map(asSentInvitation);
+  const invitations = ((list.invitations as unknown[] | undefined) ?? []).map(asSentInvitation);
 
   if (
     [...members, ...faces, ...waiting].some((one) => one == null) ||
