@@ -2421,9 +2421,9 @@
       "other": "por otra vía"
     },
     "whoComing": "Quién viene con esta persona",
-    "recordPlaces_one": "{{count, number}} plaza · Vienen: {{coming, number}}. Desmarque a quien no venga. Las plazas se cambian en Editar.",
-    "recordPlaces_other": "{{count, number}} plazas · Vienen: {{coming, number}}. Desmarque a quien no venga. Las plazas se cambian en Editar.",
-    "recordPlaces_many": "{{count, number}} de plazas · Vienen: {{coming, number}}. Desmarque a quien no venga. Las plazas se cambian en Editar.",
+    "recordPlaces_one": "{{count, number}} plaza · vienen: {{coming, number}}. Desmarque a quien no venga. Las plazas se cambian en Editar.",
+    "recordPlaces_other": "{{count, number}} plazas · vienen: {{coming, number}}. Desmarque a quien no venga. Las plazas se cambian en Editar.",
+    "recordPlaces_many": "{{count, number}} de plazas · vienen: {{coming, number}}. Desmarque a quien no venga. Las plazas se cambian en Editar.",
     "recordFoot": "Cuenta en las cifras al momento y queda en el registro de actividad. {{name}} aún puede cambiarla desde su enlace.",
     "chooseReply": "Elija la respuesta.",
     "chooseHow": "Elija cómo le respondió.",
