@@ -1792,6 +1792,8 @@ describe("An event's Overview (sc-22103)", () => {
         '/app/events/ev_1/guests?filter=notYetInvited',
       ],
     ]);
+    const notYet = within(guests).getByRole('link', { name: /14 not yet invited/ });
+    expect(notYet.querySelector('.gs-mark')?.className).toBe('gs-mark is-not-yet is-16');
   });
 
   it('shows no guest numbers without guests.read, and says when they did not load (sc-3786)', async () => {
