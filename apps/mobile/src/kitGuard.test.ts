@@ -39,6 +39,23 @@ describe('nothing loads react-native whole at run time', () => {
   });
 });
 
+describe('a picked photo is read through pickedBytes (sc-53493)', () => {
+  it('in no .blob() in the app', () => {
+    const offenders = sources(['src', 'app']).flatMap(({ path, text }) =>
+      text
+        .split('\n')
+        .map((line, index) => ({ line: index + 1, code: line.trim() }))
+        .filter(({ code }) => !/^(\/\/|\/\*|\*)/u.test(code) && /\.blob\(\)/u.test(code))
+        .map(({ line }) => `${path}:${line}`),
+    );
+
+    expect(
+      offenders,
+      'A fetch(uri).blob() reaches an Android PUT as the text `File not found`: read the file with pickedBytes from src/kit/pickedBytes.ts.',
+    ).toEqual([]);
+  });
+});
+
 describe('a product part reads the shell only where the shell is mounted', () => {
   it('in no component outside the Settings parts', () => {
     const offenders = sources(['src/components'])

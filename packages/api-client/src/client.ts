@@ -2649,7 +2649,7 @@ export class ApiClient {
     return { url, key, contentType };
   }
 
-  async uploadTo(upload: CoverUpload, file: Blob): Promise<void> {
+  async uploadTo(upload: CoverUpload, file: Blob | Uint8Array<ArrayBuffer>): Promise<void> {
     const doFetch = this.options.fetch ?? fetch;
     const response = await doFetch(upload.url, {
       method: 'PUT',

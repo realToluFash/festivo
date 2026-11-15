@@ -57,6 +57,7 @@ import {
   pickedFile,
   pickedRefusal,
 } from '../kit/coverUpload.ts';
+import { pickedBytes } from '../kit/pickedBytes.ts';
 import { changesOf, typedOf } from '../kit/eventForm.ts';
 import type { EditPart } from '../kit/eventNav.ts';
 import { type SavedPart, heldRead, sendPart } from '../kit/partSave.ts';
@@ -893,7 +894,7 @@ function CoverEdit(props: PartEditProps) {
         size: file.size,
         filename: file.name,
       });
-      await api.uploadTo(signed, await (await fetch(chosen.uri)).blob());
+      await api.uploadTo(signed, await pickedBytes(chosen.uri));
       if (staged.current != null) discardCoverUpload(event.organisationId, staged.current);
       staged.current = signed.key;
       setPhoto({ kind: 'ready', uri: chosen.uri, width: chosen.width, key: signed.key });
