@@ -587,6 +587,7 @@
     "answerIsNotComing": "Your answer is Not coming.",
     "answerIsNotSure": "Your answer is Not sure yet.",
     "recordedOn": "{{name}} recorded this answer for you on {{date}}.",
+    "recordedFor": "{{name}} recorded this answer for you on {{date}}. If it isn’t right, change it here.",
     "greetComing": "Au plaisir de vous y voir, {{name}}.",
     "greetNotComing": "Vous nous manquerez, {{name}}.",
     "greetNotSure": "Merci de nous tenir au courant, {{name}}.",

@@ -756,6 +756,42 @@ describe('changing an answer', () => {
     ).toBeDefined();
   });
 
+  it('shows a reply a host recorded as theirs, naming only the recorder, until they answer themselves (sc-3787)', async () => {
+    const recorded = answered('coming');
+    api({
+      '/api/guest-links/page': [
+        {
+          status: 200,
+          body: {
+            ...recorded,
+            guest: {
+              ...recorded.guest,
+              reply: { ...recorded.guest.reply, recordedBy: 'Folake Adeyemi' },
+            },
+          },
+        },
+      ],
+      '/api/guest-links/reply': [
+        { status: 200, body: answered('notComing', '2026-10-19T10:00:00+01:00') },
+      ],
+    });
+    open();
+
+    expect(await screen.findByRole('heading', { name: 'Your answer is Coming.' })).toBeDefined();
+    expect(
+      screen.getByText(
+        /^Folake Adeyemi recorded this answer for you on .*If it isn’t right, change it here\.$/u,
+      ),
+    ).toBeDefined();
+    fireEvent.click(screen.getByRole('button', { name: 'Change my answer' }));
+    fireEvent.click(screen.getByRole('button', { name: 'Sorry, I can’t' }));
+
+    expect(
+      await screen.findByRole('heading', { name: `We’ll miss you, ${ADAEZE}.` }),
+    ).toBeDefined();
+    expect(screen.queryByText(/recorded this answer for you/u)).toBeNull();
+  });
+
   it('keeps the answer with Keep my answer', async () => {
     const { sent } = api({ '/api/guest-links/page': [{ status: 200, body: answered('coming') }] });
     open();

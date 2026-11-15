@@ -951,11 +951,19 @@ function Shown({
           <div className="gp-greet">
             <Mark answer={reply.answer} />
             <h2 id="gp-greeting" className="gp-h2" tabIndex={-1} data-focus="greeting">
-              {t(GREETING[reply.answer], { name: fullName })}
+              {reply.recordedBy == null
+                ? t(GREETING[reply.answer], { name: fullName })
+                : t(ANSWER_IS[reply.answer])}
             </h2>
           </div>
           <div className="gp-indent">
-            <p className="gp-sub">{t(ANSWERED[reply.answer], { date: day })}</p>
+            {reply.recordedBy == null ? (
+              <p className="gp-sub">{t(ANSWERED[reply.answer], { date: day })}</p>
+            ) : (
+              <p className="gp-sub is-recorded">
+                {t('guest.recordedFor', { name: reply.recordedBy, date: day })}
+              </p>
+            )}
             {view.same && (
               <p className="gp-sub is-ink">{t('guest.same', { answer: t(WORD[reply.answer]) })}</p>
             )}
@@ -977,7 +985,13 @@ function Shown({
     case 'changing':
       return (
         <section className="gp-changing" aria-labelledby="gp-new-h">
-          {reply != null && <p className="gp-sub">{t(ANSWERED[reply.answer], { date: day })}</p>}
+          {reply != null && (
+            <p className="gp-sub">
+              {reply.recordedBy == null
+                ? t(ANSWERED[reply.answer], { date: day })
+                : t(ANSWER_IS[reply.answer])}
+            </p>
+          )}
           <h2 id="gp-new-h" className="gp-h2" tabIndex={-1} data-focus="newHead">
             {t('guest.newAnswer')}
           </h2>
