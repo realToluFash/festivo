@@ -63,6 +63,8 @@ import { ROOM_STATES, ROOM_STATE_WHAT } from './serviceRoom.ts';
 import { QUEUE_STATES, type QueueStateName } from './queue.ts';
 import { RosterPage } from './Roster.tsx';
 import { ROSTER_PAGES } from './roster.ts';
+import { RunViewPage } from './RunView.tsx';
+import { RUN_PAGES } from './runView.ts';
 import { StationsPage } from './Stations.tsx';
 import { STATIONS_PAGES } from './stations.ts';
 import { TeamPage } from './Team.tsx';
@@ -215,6 +217,7 @@ export default function Demo() {
       <Route path="events/:id/staff" element={<StationsPage />} />
       <Route path="events/:id/staff/roster" element={<RosterPage />} />
       <Route path="events/:id/schedule" element={<SchedulePage />} />
+      <Route path="events/:id/run" element={<RunViewPage />} />
       <Route path="calendar" element={<Calendar />} />
       <Route path="settings" element={<Settings />} />
       <Route path="settings/members" element={<Settings />} />
@@ -370,6 +373,8 @@ function DemoHome({ from }: { from: string }) {
         <h2 id="demo-page-33">33 · Run of show</h2>
         <h3>Building the schedule, a table per place (sc-3893) · desktop and 40rem</h3>
         <BoardPages pages={SCHEDULE_PAGES} />
+        <h3>The run view: expected times, how far behind, fixed times (sc-1404) · desktop</h3>
+        <BoardPages pages={RUN_PAGES} />
       </section>
 
       <section className="demo-home-page" aria-labelledby="demo-page-34">
