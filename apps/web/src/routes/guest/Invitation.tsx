@@ -24,13 +24,12 @@ import { KITCHEN_SAVED_ID, KitchenCheck, KitchenSaved, KitchenStep } from './Kit
 import { openIn, saveAgain, useGuestLanguage } from './guestLanguage.ts';
 import {
   type Party,
-  added,
+  type PartyPerson,
   choices,
-  comingNames,
+  comingWith,
   hasStep,
-  opened,
+  labelOf,
   partyOf,
-  placesLeft,
   renamed,
   renaming,
   toggled,
@@ -39,11 +38,10 @@ import {
   type Kitchen,
   type Person,
   YOU,
-  companionNeeds,
   firstProblem,
   kitchenOf,
-  unnamedNeeds,
   needsOf,
+  placeNeeds,
   skipped,
 } from './kitchen.ts';
 import { forgetStarted, markStarted, wasStarted } from './started.ts';
@@ -119,19 +117,18 @@ function standing(page: GuestPage): string {
 function sameParty(was: GuestPage, now: GuestPage): boolean {
   return (
     JSON.stringify(was.guest.companions) === JSON.stringify(now.guest.companions) &&
+    JSON.stringify(was.guest.unnamed) === JSON.stringify(now.guest.unnamed) &&
     JSON.stringify(was.guest.needs) === JSON.stringify(now.guest.needs)
   );
 }
 
-/** What Send my answer sends with Coming: the party, each companion coming with their card from the kitchen step. */
+/** What Send my answer sends with Coming: every place, each one coming with its card from the kitchen step. */
 function sentParty(party: Party, kitchen: Kitchen | null): ReturnType<typeof choices> {
-  const card = (key: string): Person | undefined =>
-    kitchen?.left === false ? kitchen.people.find((one) => one.key === key) : undefined;
+  return choices(party, (id) => {
+    const one =
+      kitchen?.left === false ? kitchen.people.find((each) => each.key === id) : undefined;
 
-  return choices(party).map((choice, at) => {
-    const one = choice.coming ? card(party.people[at]?.key ?? '') : undefined;
-
-    return one == null ? choice : { ...choice, needs: needsOf(one) };
+    return one == null ? undefined : needsOf(one);
   });
 }
 
@@ -339,10 +336,10 @@ function Card({ token, first }: { token: string; first: GuestPage }) {
   function send(answer: GuestAnswer, onFail: (refused: boolean) => void): void {
     sends.current += 1;
     const coming = answer === 'coming';
-    const companions = coming && hasStep(party) ? sentParty(party, kitchen) : [];
+    const { companions, unnamed } =
+      coming && hasStep(party) ? sentParty(party, kitchen) : { companions: [], unnamed: [] };
     const me =
       coming && kitchen?.left === false ? kitchen.people.find((one) => one.key === YOU) : undefined;
-    const unnamed = coming && me != null && kitchen != null ? unnamedNeeds(kitchen) : [];
     api.sendGuestAnswer(token, answer, companions, me == null ? null : needsOf(me), unnamed).then(
       (next) => {
         forgetStarted(token);
@@ -475,7 +472,7 @@ function Card({ token, first }: { token: string; first: GuestPage }) {
 
   function kitchenSkip(): void {
     if (view.kind !== 'kitchen' || kitchen == null) return;
-    setKitchen(skipped(kitchen, page, party));
+    setKitchen(skipped(kitchen, page));
     toCheck(view.from);
   }
 
@@ -507,39 +504,33 @@ function Card({ token, first }: { token: string; first: GuestPage }) {
       return;
     }
     const me = kitchen.people.find((one) => one.key === YOU);
+    const { companions, unnamed } = placeNeeds(kitchen, page);
     setView({ kind: 'kitchenAfter', busy: true, failed: false });
     sends.current += 1;
-    api
-      .sendGuestNeeds(
-        token,
-        me == null ? null : needsOf(me),
-        companionNeeds(kitchen),
-        unnamedNeeds(kitchen),
-      )
-      .then(
-        (next) => {
-          seen.current = standing(next);
-          setPage(next);
-          setParty(partyOf(next));
-          setKitchen(null);
-          setKitchenSaved(true);
-          setView({ kind: 'closed' });
-          focus('kitchen');
-        },
-        (error: unknown) => {
-          if (error instanceof ApiError && error.status === 404) setGone(true);
-          else if (
-            error instanceof ApiError &&
-            (error.is('replies_closed') || REFUSED.some((code) => error.is(code)))
-          )
-            refuse();
-          else {
-            setKitchenSaved(false);
-            setView({ kind: 'kitchenAfter', busy: false, failed: true });
-            focus('kitchenRetry');
-          }
-        },
-      );
+    api.sendGuestNeeds(token, me == null ? null : needsOf(me), companions, unnamed).then(
+      (next) => {
+        seen.current = standing(next);
+        setPage(next);
+        setParty(partyOf(next));
+        setKitchen(null);
+        setKitchenSaved(true);
+        setView({ kind: 'closed' });
+        focus('kitchen');
+      },
+      (error: unknown) => {
+        if (error instanceof ApiError && error.status === 404) setGone(true);
+        else if (
+          error instanceof ApiError &&
+          (error.is('replies_closed') || REFUSED.some((code) => error.is(code)))
+        )
+          refuse();
+        else {
+          setKitchenSaved(false);
+          setView({ kind: 'kitchenAfter', busy: false, failed: true });
+          focus('kitchenRetry');
+        }
+      },
+    );
   }
 
   function card(key: string, change: (one: Person) => Partial<Person>, on?: string): void {
@@ -1127,9 +1118,20 @@ function AnswerRows({
 
 type Translate = ReturnType<typeof useTranslation>['t'];
 
-/** "You, Chidi Okonkwo-Williams · 2 people": the guest and each companion left Coming. */
+function placeWords(t: Translate) {
+  return {
+    yourGuest: t('guestKitchen.yourGuest'),
+    yourGuestN: (n: number) => t('guestKitchen.yourGuestN', { n }),
+  };
+}
+
+function label(party: Party, one: PartyPerson, t: Translate): string {
+  return labelOf(party, one, placeWords(t));
+}
+
+/** "You, Obi Okonkwo and Your guest 2 · 3 people": the guest and each place left Coming, named or not (sc-48740). */
 function partyLine(party: Party, t: Translate): string {
-  const names = [t('guest.withYouYou'), ...comingNames(party)];
+  const names = [t('guest.withYouYou'), ...comingWith(party).map((one) => label(party, one, t))];
 
   return t('guest.withYouPeople', {
     names: listFormat(currentLocale(), { type: 'conjunction' }).format(names),
@@ -1157,7 +1159,6 @@ function WithYou({
 }) {
   const { t } = useTranslation();
   const id = useId();
-  const left = placesLeft(party);
 
   return (
     <section className="gp-with" aria-labelledby={`${id}-h`}>
@@ -1181,102 +1182,76 @@ function WithYou({
           </span>
           <span className="gp-with-tag">{t('guest.withYouSelfComing')}</span>
         </li>
-        {party.people.map((one) => (
-          <li key={one.key} className={one.coming ? 'gp-with-row is-on' : 'gp-with-row'}>
-            <span className="gp-with-words">
-              {party.renaming === one.key ? (
-                <span className="gp-with-edit">
-                  <label htmlFor={`${id}-rename`} className="gp-with-label">
-                    {t('guest.withYouTheirName')}
-                  </label>
-                  <input
-                    id={`${id}-rename`}
-                    className="gp-with-input"
-                    type="text"
-                    value={party.draft}
-                    autoComplete="off"
-                    data-focus="renameField"
-                    aria-invalid={party.tried}
-                    onChange={(event) => {
-                      const draft = event.target.value;
-                      onChange((was) => ({ ...was, draft, tried: false }));
-                    }}
-                  />
+        {party.people.map((one) => {
+          const called = label(party, one, t);
+
+          return (
+            <li key={one.id} className={one.coming ? 'gp-with-row is-on' : 'gp-with-row'}>
+              <span className="gp-with-words">
+                {party.renaming === one.id ? (
+                  <span className="gp-with-edit">
+                    <label htmlFor={`${id}-rename`} className="gp-with-label">
+                      {t('guest.withYouTheirName')}
+                    </label>
+                    <input
+                      id={`${id}-rename`}
+                      className="gp-with-input"
+                      type="text"
+                      value={party.draft}
+                      autoComplete="off"
+                      data-focus="renameField"
+                      aria-invalid={party.tried}
+                      onChange={(event) => {
+                        const draft = event.target.value;
+                        onChange((was) => ({ ...was, draft, tried: false }));
+                      }}
+                    />
+                    <button
+                      type="button"
+                      className="gp-outlined"
+                      onClick={() => onChange(renamed, `rename-${one.id}`)}
+                    >
+                      {party.tried ? t('guest.withYouTypeTheirName') : t('guest.withYouDone')}
+                    </button>
+                  </span>
+                ) : (
                   <button
                     type="button"
-                    className="gp-outlined"
-                    onClick={() => onChange(renamed, `rename-${one.key}`)}
+                    className="gp-with-name is-button"
+                    aria-label={
+                      one.name == null
+                        ? t('guest.withYouAddName', { label: called })
+                        : t('guest.withYouRename', { name: called })
+                    }
+                    data-focus={`rename-${one.id}`}
+                    onClick={() => onChange((was) => renaming(was, one.id), 'renameField')}
                   >
-                    {party.tried ? t('guest.withYouTypeTheirName') : t('guest.withYouDone')}
+                    <span>{called}</span>
+                    <Pencil />
                   </button>
+                )}
+                <span className="gp-with-sub">
+                  {one.name == null
+                    ? t('guest.withYouNoName')
+                    : one.byGuest
+                      ? t('guest.withYouByYou')
+                      : t('guest.withYouByInvitation')}
                 </span>
-              ) : (
-                <button
-                  type="button"
-                  className="gp-with-name is-button"
-                  aria-label={t('guest.withYouRename', { name: one.name })}
-                  data-focus={`rename-${one.key}`}
-                  onClick={() => onChange((was) => renaming(was, one.key), 'renameField')}
-                >
-                  <span>{one.name}</span>
-                  <Pencil />
-                </button>
-              )}
-              <span className="gp-with-sub">
-                {one.byGuest ? t('guest.withYouByYou') : t('guest.withYouByInvitation')}
               </span>
-            </span>
-            <button
-              type="button"
-              className={one.coming ? 'gp-with-toggle is-on' : 'gp-with-toggle'}
-              aria-pressed={one.coming}
-              aria-label={t('guest.withYouIsComing', { name: one.name })}
-              onClick={() => onChange((was) => toggled(was, one.key))}
-            >
-              {one.coming && <Glyph name="tick" size={16} weight={2.6} />}
-              <span>{one.coming ? t('guest.withYouComing') : t('guest.withYouNotComing')}</span>
-            </button>
-          </li>
-        ))}
+              <button
+                type="button"
+                className={one.coming ? 'gp-with-toggle is-on' : 'gp-with-toggle'}
+                aria-pressed={one.coming}
+                aria-label={t('guest.withYouIsComing', { name: called })}
+                onClick={() => onChange((was) => toggled(was, one.id))}
+              >
+                {one.coming && <Glyph name="tick" size={16} weight={2.6} />}
+                <span>{one.coming ? t('guest.withYouComing') : t('guest.withYouNotComing')}</span>
+              </button>
+            </li>
+          );
+        })}
       </ul>
-      {left > 0 && party.adding == null && (
-        <button
-          type="button"
-          className="gp-outlined"
-          data-focus="add"
-          onClick={() => onChange(opened, 'newName')}
-        >
-          {t('guest.withYouAdd', { count: left })}
-        </button>
-      )}
-      {left > 0 && party.adding != null && (
-        <div className="gp-with-edit is-new">
-          <label htmlFor={`${id}-new`} className="gp-with-label">
-            {t('guest.withYouTheirName')}
-          </label>
-          <input
-            id={`${id}-new`}
-            className="gp-with-input"
-            type="text"
-            value={party.adding}
-            autoComplete="off"
-            data-focus="newName"
-            aria-invalid={party.tried}
-            onChange={(event) => {
-              const adding = event.target.value;
-              onChange((was) => ({ ...was, adding, tried: false }));
-            }}
-          />
-          <button
-            type="button"
-            className="gp-outlined"
-            data-focus="addNamed"
-            onClick={() => onChange(added, party.adding?.trim() === '' ? 'newName' : 'add')}
-          >
-            {party.tried ? t('guest.withYouTypeTheirName') : t('guest.withYouAdd', { count: left })}
-          </button>
-        </div>
-      )}
       <p className="visually-hidden" role="status">
         {party.tried ? t('guest.withYouTypeTheirName') : null}
       </p>

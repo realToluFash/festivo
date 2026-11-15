@@ -73,7 +73,8 @@ export interface ShellProps {
   asking?: 'discard' | 'latest' | null;
   /** Somebody else saved since it opened (412): what was typed stays, and Show the latest asks first. */
   elsewhere?: { onLatest: () => void; pending?: boolean } | null;
-  failed?: boolean;
+  /** A save that failed: today's Not saved, or the role's refusal (403), in the same place. */
+  failed?: string | null;
   ask?: AskProps | null;
   over?: { layer: ReactNode; onClose: () => void } | null;
   toast?: { words: string; onClose: () => void } | null;
@@ -97,7 +98,7 @@ export function EditShell({
   onClose,
   asking = null,
   elsewhere = null,
-  failed = false,
+  failed = null,
   ask = null,
   over = null,
   toast = null,
@@ -173,7 +174,7 @@ export function EditShell({
           }
         />
       )}
-      {failed && <EventNotice tone="broken" words={t('eventEdit.notSaved')} interrupts />}
+      {failed != null && <EventNotice tone="broken" words={failed} interrupts />}
       {children}
     </FocusedScreen>
   );

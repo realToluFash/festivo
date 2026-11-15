@@ -1,0 +1,27 @@
+# sc-5519: a Can view person (guests.read alone) in ${ORG}: rows show the group and no Allergy; details show Group and no Needs and no Edit.
+appId: host.exp.Exponent
+---
+- setOrientation: ${ORIENT}
+- runFlow:
+    file: ../switch-organisation.yaml
+    env:
+      ORG: ${ORG}
+- openLink: ${METRO_URL}/--/events/${EVENT_ID}?area=guests
+- extendedWaitUntil: { visible: { id: 'guests.search' }, timeout: 30000 }
+- tapOn: { id: 'guests.search' }
+- inputText: ${NAME}
+- hideKeyboard
+- extendedWaitUntil: { visible: { id: 'guests.row.${GUEST_ID}' }, timeout: 15000 }
+- extendedWaitUntil: { visible: { id: 'never.there' }, timeout: 1500, optional: true }
+- takeScreenshot: viewer-rows
+- tapOn: { id: 'guests.row.${GUEST_ID}' }
+- extendedWaitUntil: { visible: { id: 'guest.${GUEST_ID}' }, timeout: 20000 }
+- assertNotVisible: { id: 'guest.edit' }
+- extendedWaitUntil: { visible: { id: 'never.there' }, timeout: 1500, optional: true }
+- takeScreenshot: viewer-details
+- scroll
+- scroll
+- assertNotVisible: { id: 'guest.needs' }
+- assertNotVisible: { id: 'guest.edit' }
+- extendedWaitUntil: { visible: { id: 'never.there' }, timeout: 1000, optional: true }
+- takeScreenshot: viewer-details-foot

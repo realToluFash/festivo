@@ -90,12 +90,15 @@ describe("one part's save (sc-48600)", () => {
     expect(updateEvent).toHaveBeenCalledOnce();
   });
 
-  it('says changed on a 412, and failed on a 403', async () => {
+  it('says changed on a 412, forbidden when the role no longer allows it, and failed on any other 403 (sc-49861)', async () => {
     expect(
       await saving(gala, Promise.reject(refusal(412, 'precondition'))).send({ name: 'G' }),
     ).toEqual({ kind: 'changed' });
     expect(
-      await saving(gala, Promise.reject(refusal(403, 'forbidden'))).send({ name: 'G' }),
+      await saving(gala, Promise.reject(refusal(403, 'permission_required'))).send({ name: 'G' }),
+    ).toEqual({ kind: 'forbidden' });
+    expect(
+      await saving(gala, Promise.reject(refusal(403, 'two_factor_required'))).send({ name: 'G' }),
     ).toEqual({ kind: 'failed' });
   });
 

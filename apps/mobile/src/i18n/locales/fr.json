@@ -1706,6 +1706,7 @@
     "cancel": "Annuler",
     "currencyInUse": "La devise ne peut plus changer une fois que des montants sont enregistrés pour cet événement.",
     "notSaved": "Non enregistré. Vos modifications sont toujours là. Réessayez.",
+    "forbidden": "Nothing was changed. Your role does not include the permission this needs.",
     "changedElsewhere": "Non enregistré. Quelqu’un d’autre a modifié cet événement depuis que vous l’avez ouvert. Ce que vous avez saisi est toujours là.",
     "showLatest": "Afficher la dernière version",
     "showLatestTitle": "Afficher la dernière version ?",
@@ -1716,10 +1717,10 @@
     "saved": "Modifications enregistrées",
     "scheduleConcluded": "Cet événement est terminé, son début, sa fin et son fuseau horaire ne peuvent donc plus être modifiés.",
     "scheduleLocked": "Cet événement est terminé, son début, sa fin et son fuseau horaire ne peuvent donc plus être modifiés.",
-    "savePart": "Save",
-    "discardTitle": "Discard your change?",
-    "discardLine": "What you changed here is not saved.",
-    "discard": "Discard"
+    "savePart": "Enregistrer",
+    "discardTitle": "Abandonner votre modification ?",
+    "discardLine": "Ce que vous avez modifié ici n’a pas été enregistré.",
+    "discard": "Abandonner"
   },
   "eventCover": {
     "heading": "Image de couverture",
@@ -1751,8 +1752,8 @@
     "cancel": "Annuler",
     "use": "Utiliser cette photo",
     "saving": "Enregistrement…",
-    "meshLine": "Soirely’s cover, in this event’s own colours. Add your own photo if you like.",
-    "removeLine": "The default cover comes back."
+    "meshLine": "L’image de couverture de Soirely, aux couleurs de cet événement. Vous pouvez la remplacer par votre propre photo.",
+    "removeLine": "L’image de couverture par défaut sera rétablie."
   },
   "eventLive": {
     "guestsBlocked": "Vous ne pourrez inviter personne tant que cet événement n’est pas publié.",

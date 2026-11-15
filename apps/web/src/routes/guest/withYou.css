@@ -111,10 +111,6 @@
   min-width: 0;
 }
 
-:where(.guest-page) .gp-with-edit.is-new {
-  margin-top: 4px;
-}
-
 :where(.guest-page) .gp-with-label {
   color: var(--colorInk);
   font: 600 15px/1.3 var(--fontFamily);

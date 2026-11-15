@@ -116,6 +116,15 @@ describe('A refused save of an event, read once for Edit details and the parts e
     expect(eventSaveRefusal(problem(500, 'server_error'), [], t)).toEqual({ kind: 'failed' });
   });
 
+  it('reads a role that no longer allows the save as forbidden, and only that 403 (sc-49861)', () => {
+    expect(eventSaveRefusal(problem(403, 'permission_required'), [], t)).toEqual({
+      kind: 'forbidden',
+    });
+    expect(eventSaveRefusal(problem(403, 'two_factor_required'), [], t)).toEqual({
+      kind: 'failed',
+    });
+  });
+
   it('puts a concluded schedule under Starts, and says a currency in use', () => {
     expect(eventSaveRefusal(problem(409, 'event_concluded'), [], t)).toEqual({
       kind: 'refused',

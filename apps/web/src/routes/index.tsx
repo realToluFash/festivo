@@ -10,7 +10,7 @@ import { Personalisation } from './app/account/Personalisation.tsx';
 import { AppLayout } from './app/AppLayout.tsx';
 import { Calendar } from './app/calendar/Calendar.tsx';
 import { Dashboard } from './app/Dashboard.tsx';
-import { EditEvent } from './app/events/EditEvent.tsx';
+import { EditRedirect } from './app/events/EditRedirect.tsx';
 import {
   EventAreaPage,
   EventGuests,
@@ -90,7 +90,7 @@ export const routes = [
           { path: 'events', element: <Events /> },
           { path: 'events/new', element: <NewEvent /> },
           { path: 'events/:eventId', element: <EventView /> },
-          { path: 'events/:eventId/edit', element: <EditEvent /> },
+          { path: 'events/:eventId/edit', element: <EditRedirect /> },
           { path: 'events/:eventId/guests', element: <EventGuests /> },
           { path: 'events/:eventId/dates', element: <EventDates /> },
           { path: 'events/:eventId/people', element: <EventPeoplePage /> },

@@ -61,8 +61,15 @@
   flex: 1 1 0;
   flex-direction: column;
   gap: var(--spaceXxs);
+  max-width: calc(100% - 18px - var(--spaceMd));
   color: var(--colorInk);
   font: 600 15px/1.4 var(--fontFamily);
+}
+
+/* A word wider than the column moves the countdown and Undo under the words, rather than breaking in two; the max-width beside the glyph still breaks a group name too long for the card. */
+.gm-line p,
+.gm-line p > span {
+  overflow-wrap: break-word;
 }
 
 .gm-line > svg {

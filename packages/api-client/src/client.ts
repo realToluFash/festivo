@@ -48,6 +48,7 @@ import {
   GUEST_PAGE_PHASES,
   type NewGuest,
   type PageNeeds,
+  type PlaceChoice,
   type PlaceNeeds,
   type TaggedGuest,
 } from './guests.ts';
@@ -2387,13 +2388,13 @@ export class ApiClient {
     );
   }
 
-  /** Records the guest's answer, and with Coming who fills the places (sc-3779), the guest's own needs and those of each place left unnamed (sc-3778), and answers the page as it now stands (sc-1439). Refused 422 for an answer the page does not offer, a name beyond the places, a need the API does not know or a place the reply names, 409 `event_paused` or `event_concluded` by the event's phase, 409 `replies_closed` from the start, and `not_found` as the page is. */
+  /** Records the guest's answer, and with Coming each place by its id, named (sc-3779) or left unnamed, Coming or Not coming (sc-48740), with the needs of the guest and each person (sc-3778), and answers the page as it now stands (sc-1439). Refused 422 for an answer the page does not offer, a place that is not the guest's or one sent as unnamed that the reply names, a need the API does not know, 409 `event_paused` or `event_concluded` by the event's phase, 409 `replies_closed` from the start, and `not_found` as the page is. */
   async sendGuestAnswer(
     token: string,
     answer: GuestAnswer,
     companions: readonly CompanionChoice[] = [],
     needs: PageNeeds | null = null,
-    unnamed: readonly PlaceNeeds[] = [],
+    unnamed: readonly PlaceChoice[] = [],
   ): Promise<GuestPage> {
     return this.guestPageOf(
       await this.post<unknown>(

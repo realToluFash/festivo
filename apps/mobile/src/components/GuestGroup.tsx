@@ -134,7 +134,7 @@ export function GroupPicker({
   typed: string;
   problem: PickProblem | null;
   onTyped: (typed: string) => void;
-  onReturn: () => void;
+  onReturn: (typed: string) => void;
   onPick: (pick: GroupPick) => void;
   onClose: () => void;
 }) {
@@ -172,7 +172,7 @@ export function GroupPicker({
             returnKeyType="done"
             submitBehavior="submit"
             onChangeText={onTyped}
-            onSubmitEditing={onReturn}
+            onSubmitEditing={(event) => onReturn(event.nativeEvent.text)}
             placeholder={t('guestGroups.chooseOrType')}
             accessibilityLabel={t('guestGroups.chooseOrType')}
             aria-invalid={line != null}

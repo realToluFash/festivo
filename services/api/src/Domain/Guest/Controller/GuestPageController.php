@@ -58,7 +58,7 @@ final readonly class GuestPageController
         return $this->answered($this->guest($request));
     }
 
-    /** Refused 422 for an answer the page does not offer, a name beyond the places (sc-3779) or a need it does not know or a place it does not leave unnamed (sc-3778), 409 `event_paused` or `event_concluded` by the event's phase, and 409 `replies_closed` from the start; answers the page as it now stands. */
+    /** Refused 422 for an answer the page does not offer, a place that is not the guest's, or one sent as unnamed that has a name (sc-48740), or a need it does not know (sc-3778), 409 `event_paused` or `event_concluded` by the event's phase, and 409 `replies_closed` from the start; answers the page as it now stands. */
     #[Route('/api/guest-links/reply', name: 'guest_links_reply', methods: ['POST'])]
     #[PublicAccess]
     public function reply(Request $request): JsonResponse
@@ -67,7 +67,7 @@ final readonly class GuestPageController
             'token' => Type\string(),
             'answer' => Type\string(),
             'companions' => Type\optional(Type\vec(Type\shape([
-                'id' => Type\optional(Type\nullable(Type\string())),
+                'id' => Type\string(),
                 'fullName' => Type\string(),
                 'coming' => Type\bool(),
                 'needs' => Type\optional(Type\nullable(self::needsShape())),
@@ -75,7 +75,8 @@ final readonly class GuestPageController
             'needs' => Type\optional(Type\nullable(self::needsShape())),
             'unnamed' => Type\optional(Type\vec(Type\shape([
                 'id' => Type\string(),
-                'needs' => self::needsShape(),
+                'coming' => Type\bool(),
+                'needs' => Type\optional(Type\nullable(self::needsShape())),
             ]))),
         ]));
         $guest = $this->invitationLinks->guestFor($body['token']) ?? throw ApiException::notFound('access.not_found');
@@ -112,9 +113,9 @@ final readonly class GuestPageController
             ]))),
         ]));
         $guest = $this->invitationLinks->guestFor($body['token']) ?? throw ApiException::notFound('access.not_found');
-        [$page, $companions] = $this->guestRules->kitchen($body['needs'] ?? null, $body['companions'] ?? [], $body['unnamed'] ?? []);
+        [$own, $companions, $unnamed] = $this->guestRules->kitchen($body['needs'] ?? null, $body['companions'] ?? [], $body['unnamed'] ?? []);
 
-        $this->guestAnswers->kitchen($guest, $page, $companions);
+        $this->guestAnswers->kitchen($guest, $own, $companions, $unnamed);
 
         return $this->answered($guest);
     }
@@ -172,6 +173,7 @@ final readonly class GuestPageController
                     $unnamed,
                     static fn (Guest $place): array => [
                         'id' => $place->getId()->toRfc4122(),
+                        'coming' => !$place->isNotComingByGuest(),
                         'needs' => $needsOf($place),
                     ],
                 ),

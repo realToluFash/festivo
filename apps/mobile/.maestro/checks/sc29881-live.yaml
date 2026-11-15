@@ -1,0 +1,60 @@
+# sc-29881: Today's Your events, each event's replies line and bar, a reply landing while it is open (TOKEN_A on Naming ceremony, TOKEN_B on Year-end party).
+appId: host.exp.Exponent
+---
+- openLink: ${METRO_URL}/--/
+- extendedWaitUntil:
+    visible: '{{t:todayScreen.tab.today}}'
+    timeout: 45000
+- waitForAnimationToEnd
+- scrollUntilVisible:
+    element: '{{t:todayScreen.allEvents}}'
+    direction: DOWN
+    centerElement: true
+    timeout: 20000
+- swipe:
+    start: 50%, 70%
+    end: 50%, 40%
+    duration: 600
+- waitForAnimationToEnd
+- swipe:
+    start: 85%, 70%
+    end: 25%, 70%
+    duration: 700
+- waitForAnimationToEnd
+- swipe:
+    start: 85%, 70%
+    end: 25%, 70%
+    duration: 700
+- waitForAnimationToEnd
+- swipe:
+    start: 85%, 70%
+    end: 25%, 70%
+    duration: 700
+- waitForAnimationToEnd
+- takeScreenshot: naming-before
+- evalScript: "${http.post(API + '/api/guest-links/reply', {headers: {'Content-Type': 'application/json', 'Origin': WEB}, body: JSON.stringify({token: TOKEN_A, answer: 'coming'})}).status}"
+- extendedWaitUntil:
+    visible: '1 coming · 25% replied'
+    timeout: 10000
+- takeScreenshot: naming-after
+- swipe:
+    start: 85%, 70%
+    end: 25%, 70%
+    duration: 700
+- waitForAnimationToEnd
+- swipe:
+    start: 85%, 70%
+    end: 25%, 70%
+    duration: 700
+- waitForAnimationToEnd
+- swipe:
+    start: 85%, 70%
+    end: 25%, 70%
+    duration: 700
+- waitForAnimationToEnd
+- takeScreenshot: party-before
+- evalScript: "${http.post(API + '/api/guest-links/reply', {headers: {'Content-Type': 'application/json', 'Origin': WEB}, body: JSON.stringify({token: TOKEN_B, answer: 'coming'})}).status}"
+- extendedWaitUntil:
+    visible: '101 coming · 100% replied'
+    timeout: 10000
+- takeScreenshot: party-after

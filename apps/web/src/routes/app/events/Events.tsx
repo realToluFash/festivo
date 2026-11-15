@@ -64,6 +64,7 @@ import { can, useSession } from '../../../session.ts';
 import { useFocusOnceShown } from '../../../stepFocus.ts';
 import { DuplicateDialog } from './DuplicateEvent.tsx';
 import { useHubTopics } from './useHubTopics.ts';
+import { inPlace } from './openInPlace.ts';
 
 const PAST_PAGE = 10;
 const RECOUNT_AFTER_MS = 1_000;
@@ -474,7 +475,8 @@ function EventsOf({
         document.activeElement instanceof HTMLElement ? document.activeElement : null;
       setCopying(loadedEvent(event.id));
     } else if (step.action === 'changeDates') {
-      void navigate(`${eventLink(event)}/edit#starts`);
+      const dates = inPlace(event.id, 'dates');
+      void navigate(dates.to, { state: dates.state });
     } else {
       void navigate(eventLink(event));
     }

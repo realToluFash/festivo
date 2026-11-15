@@ -73,7 +73,12 @@ const CHIDI = {
   needs: NO_NEEDS,
 };
 
-const WITH_PLACES = { ...PAGE, guest: { ...PAGE.guest, places: 2, companions: [CHIDI] } };
+const SPARE = { id: '0193f5a8-0000-7000-8000-0000000000d9', coming: true, needs: NO_NEEDS };
+
+const WITH_PLACES = {
+  ...PAGE,
+  guest: { ...PAGE.guest, places: 2, companions: [CHIDI], unnamed: [SPARE] },
+};
 
 const CLOSED = {
   type: 'https://soirely.com/errors/replies_closed',
@@ -497,7 +502,10 @@ describe('answering', () => {
     expect(
       screen.getByRole('button', { name: 'Chidi Okonkwo-Williams is coming' }).ariaPressed,
     ).toBe('true');
-    expect(screen.getByRole('button', { name: 'Add someone · 1 place left' })).toBeDefined();
+    expect(screen.getByRole('button', { name: 'Add a name for Your guest 2' })).toBeDefined();
+    expect(screen.getByText('No name yet')).toBeDefined();
+    expect(screen.getByRole('button', { name: 'Your guest 2 is coming' }).ariaPressed).toBe('true');
+    expect(screen.queryByRole('button', { name: /Add someone/ })).toBeNull();
     expect(sent.map(({ path }) => path)).toEqual(['/api/guest-links/page']);
   });
 
@@ -517,17 +525,29 @@ describe('answering', () => {
     expect(screen.getByText('Funmi has saved places for you and up to 2 others.')).toBeDefined();
   });
 
-  it('does not add a blank name, and says why on the button', async () => {
+  it('leaves a place unnamed on Done with nothing typed, and refuses a companion’s name cleared, saying why on the button (sc-48740)', async () => {
     api({ '/api/guest-links/page': [{ status: 200, body: WITH_PLACES }] });
     open();
 
     fireEvent.click(await screen.findByRole('button', { name: 'Yes, I’ll be there' }));
-    fireEvent.click(screen.getByRole('button', { name: 'Add someone · 1 place left' }));
-    fireEvent.click(screen.getByRole('button', { name: 'Add someone · 1 place left' }));
+    fireEvent.click(screen.getByRole('button', { name: 'Add a name for Your guest 2' }));
+
+    expect(screen.getByLabelText('Their name')).toBe(document.activeElement);
+    expect((screen.getByLabelText('Their name') as HTMLInputElement).value).toBe('');
+
+    fireEvent.change(screen.getByLabelText('Their name'), { target: { value: '   ' } });
+    fireEvent.click(screen.getByRole('button', { name: 'Done' }));
+
+    expect(screen.queryByLabelText('Their name')).toBeNull();
+    expect(screen.queryByRole('button', { name: 'Type their name' })).toBeNull();
+    expect(screen.getByRole('button', { name: 'Add a name for Your guest 2' })).toBeDefined();
+
+    fireEvent.click(screen.getByRole('button', { name: 'Change Chidi Okonkwo-Williams’s name' }));
+    fireEvent.change(screen.getByLabelText('Their name'), { target: { value: '' } });
+    fireEvent.click(screen.getByRole('button', { name: 'Done' }));
 
     expect(screen.getByRole('button', { name: 'Type their name' })).toBeDefined();
     expect(screen.getByLabelText('Their name').getAttribute('aria-invalid')).toBe('true');
-    expect(screen.getByLabelText('Their name')).toBe(document.activeElement);
   });
 
   it('keeps Not sure yet on the cover while the guest changes to Coming with companions', async () => {
@@ -543,7 +563,7 @@ describe('answering', () => {
     expect(document.querySelector('.gp-tag')?.textContent).toBe('?Not sure yet');
   });
 
-  it('sends who fills the places with Send my answer: a toggle, a rename and a name added', async () => {
+  it('sends every place by its id with Send my answer: a toggle, a rename and a place named (sc-48740)', async () => {
     const { sent } = api({
       '/api/guest-links/page': [{ status: 200, body: WITH_PLACES }],
       '/api/guest-links/reply': [
@@ -552,7 +572,7 @@ describe('answering', () => {
           body: answered('coming', undefined, 2, [
             { ...CHIDI, fullName: 'Chidi Okonkwo', coming: false, namedByGuest: true },
             {
-              id: '0193f5a8-0000-7000-8000-0000000000c2',
+              id: SPARE.id,
               fullName: 'Nneka Okonkwo-Williams',
               coming: true,
               namedByGuest: true,
@@ -569,14 +589,16 @@ describe('answering', () => {
     fireEvent.change(screen.getByLabelText('Their name'), { target: { value: 'Chidi Okonkwo' } });
     fireEvent.click(screen.getByRole('button', { name: 'Done' }));
     fireEvent.click(screen.getByRole('button', { name: 'Chidi Okonkwo is coming' }));
-    fireEvent.click(screen.getByRole('button', { name: 'Add someone · 1 place left' }));
+    fireEvent.click(screen.getByRole('button', { name: 'Add a name for Your guest 2' }));
     fireEvent.change(screen.getByLabelText('Their name'), {
       target: { value: ' Nneka Okonkwo-Williams ' },
     });
-    fireEvent.click(screen.getByRole('button', { name: 'Add someone · 1 place left' }));
+    fireEvent.click(screen.getByRole('button', { name: 'Done' }));
 
-    expect(screen.queryByRole('button', { name: /Add someone/ })).toBeNull();
     expect(screen.getAllByText('Named by you')).toHaveLength(2);
+    expect(
+      screen.getByRole('button', { name: 'Nneka Okonkwo-Williams is coming' }).ariaPressed,
+    ).toBe('true');
 
     fireEvent.click(screen.getByRole('button', { name: 'Next' }));
     fireEvent.click(screen.getByRole('button', { name: 'Nothing to add' }));
@@ -592,7 +614,7 @@ describe('answering', () => {
       answer: 'coming',
       companions: [
         { id: CHIDI.id, fullName: 'Chidi Okonkwo', coming: false },
-        { id: null, fullName: 'Nneka Okonkwo-Williams', coming: true },
+        { id: SPARE.id, fullName: 'Nneka Okonkwo-Williams', coming: true },
       ],
     });
     expect(screen.getByText('You and Nneka Okonkwo-Williams · 2 people')).toBeDefined();
@@ -1651,22 +1673,27 @@ describe('Anything the kitchen must know? (sc-3778)', () => {
 
   const PLACE_1 = '0193f5a8-0000-7000-8000-0000000000d1';
   const PLACE_2 = '0193f5a8-0000-7000-8000-0000000000d2';
-  const unnamed = (...ids: string[]) => ({
+  const OBI = { ...CHIDI, id: '0193f5a8-0000-7000-8000-0000000000c3', fullName: 'Obi Okonkwo' };
+  const unnamed = (ids: string[], named: object[] = [], answer: string | null = null) => ({
     ...PAGE,
     guest: {
       ...PAGE.guest,
-      places: ids.length,
-      unnamed: ids.map((id) => ({ id, needs: NO_NEEDS })),
+      reply: answer == null ? null : { answer, at: '2026-10-17T14:20:00+01:00' },
+      places: ids.length + named.length,
+      companions: named,
+      unnamed: ids.map((id) => ({ id, coming: true, needs: NO_NEEDS })),
     },
   });
 
   it('gives a place nobody named its own card, “Your guest”, and sends its needs by the place', async () => {
     const { sent } = api({
-      '/api/guest-links/page': [{ status: 200, body: unnamed(PLACE_1) }],
+      '/api/guest-links/page': [{ status: 200, body: unnamed([PLACE_1]) }],
       '/api/guest-links/reply': [{ status: 200, body: answered('coming', undefined, 1) }],
     });
     open();
     fireEvent.click(await screen.findByRole('button', { name: 'Yes, I’ll be there' }));
+
+    expect(screen.getByRole('button', { name: 'Add a name for Your guest' })).toBeDefined();
     fireEvent.click(screen.getByRole('button', { name: 'Next' }));
 
     const guest = screen.getByRole('group', { name: 'Your guest' });
@@ -1674,13 +1701,15 @@ describe('Anything the kitchen must know? (sc-3778)', () => {
     fireEvent.click(within(guest).getByRole('button', { name: 'Peanuts' }));
     fireEvent.click(screen.getByRole('button', { name: 'Next' }));
     expect(screen.getByText('Allergy: peanuts')).toBeDefined();
+    expect(screen.getByText('You and Your guest · 2 people')).toBeDefined();
     fireEvent.click(screen.getByRole('button', { name: 'Send my answer' }));
 
     expect(await screen.findByRole('heading', { name: `See you there, ${ADAEZE}.` })).toBeDefined();
-    const body = sent.at(-1)?.body as { unnamed: { id: string; needs: { allergies: string[] } }[] };
+    const body = sent.at(-1)?.body as { unnamed: object[] };
     expect(body.unnamed).toEqual([
       {
         id: PLACE_1,
+        coming: true,
         needs: {
           allergies: ['peanuts'],
           otherAllergy: null,
@@ -1693,69 +1722,132 @@ describe('Anything the kitchen must know? (sc-3778)', () => {
     ]);
   });
 
-  it('numbers the companions when there are more, and a name added takes the first unnamed place', async () => {
+  it('labels a place by its position on all three screens, named first, with another declined (sc-48740)', async () => {
     const { sent } = api({
-      '/api/guest-links/page': [{ status: 200, body: unnamed(PLACE_1, PLACE_2) }],
-      '/api/guest-links/reply': [{ status: 200, body: answered('coming', undefined, 2) }],
+      '/api/guest-links/page': [{ status: 200, body: unnamed([PLACE_1, PLACE_2], [OBI]) }],
+      '/api/guest-links/reply': [{ status: 200, body: answered('coming', undefined, 3) }],
     });
     open();
     fireEvent.click(await screen.findByRole('button', { name: 'Yes, I’ll be there' }));
-    fireEvent.click(screen.getByRole('button', { name: 'Add someone · 2 places left' }));
-    fireEvent.change(screen.getByLabelText('Their name'), { target: { value: 'Kemi Adewale' } });
-    fireEvent.click(screen.getByRole('button', { name: 'Add someone · 2 places left' }));
+
+    expect(
+      within(document.querySelector('.gp-with-rows') as HTMLElement)
+        .getAllByRole('listitem')
+        .map((row) => row.querySelector('.gp-with-name')?.textContent),
+    ).toEqual([ADAEZE, 'Obi Okonkwo', 'Your guest 2', 'Your guest 3']);
+    fireEvent.click(screen.getByRole('button', { name: 'Your guest 2 is coming' }));
+    expect(screen.getByRole('button', { name: 'Your guest 2 is coming' }).ariaPressed).toBe(
+      'false',
+    );
+    expect(screen.getByRole('button', { name: 'Add a name for Your guest 3' })).toBeDefined();
     fireEvent.click(screen.getByRole('button', { name: 'Next' }));
 
-    expect(screen.getByRole('group', { name: 'Kemi Adewale' })).toBeDefined();
-    const second = screen.getByRole('group', { name: 'Your guest 2' });
-    fireEvent.click(within(second).getByRole('button', { name: 'Vegan' }));
+    expect(screen.queryByRole('group', { name: 'Your guest 2' })).toBeNull();
+    fireEvent.click(
+      within(screen.getByRole('group', { name: 'Your guest 3' })).getByRole('button', {
+        name: 'Vegan',
+      }),
+    );
     fireEvent.click(screen.getByRole('button', { name: 'Next' }));
+
+    expect(screen.getByText('You, Obi Okonkwo and Your guest 3 · 3 people')).toBeDefined();
+    expect(screen.getByText('Your guest 3')).toBeDefined();
     fireEvent.click(screen.getByRole('button', { name: 'Send my answer' }));
 
     await waitFor(() => expect(sent.at(-1)?.path).toBe('/api/guest-links/reply'));
-    const body = sent.at(-1)?.body as { unnamed: { id: string; needs: { diet: string[] } }[] };
-    expect(body.unnamed.map((one) => [one.id, one.needs.diet])).toEqual([[PLACE_2, ['vegan']]]);
+    const body = sent.at(-1)?.body as {
+      companions: { id: string; coming: boolean }[];
+      unnamed: { id: string; coming: boolean; needs?: { diet: string[] } }[];
+    };
+    expect(body.companions.map((one) => [one.id, one.coming])).toEqual([[OBI.id, true]]);
+    expect(body.unnamed.map((one) => [one.id, one.coming, one.needs?.diet])).toEqual([
+      [PLACE_1, false, undefined],
+      [PLACE_2, true, ['vegan']],
+    ]);
   });
 
-  it('starts a name added from the needs recorded on the place it fills, and sends them with it', async () => {
-    const page = unnamed(PLACE_1, PLACE_2);
-    const recorded = {
-      ...page,
-      guest: {
-        ...page.guest,
-        unnamed: [
-          { id: PLACE_1, needs: { ...NO_NEEDS, allergies: ['peanuts'] } },
-          { id: PLACE_2, needs: NO_NEEDS },
-        ],
-      },
+  it('keeps a declined place’s record, and gives its card back once it is Coming again (sc-48740)', async () => {
+    const page = unnamed([PLACE_1, PLACE_2]);
+    page.guest.unnamed[0] = {
+      id: PLACE_1,
+      coming: true,
+      needs: { ...NO_NEEDS, allergies: ['peanuts'] },
+    };
+    api({ '/api/guest-links/page': [{ status: 200, body: page }] });
+    open();
+    fireEvent.click(await screen.findByRole('button', { name: 'Yes, I’ll be there' }));
+    fireEvent.click(screen.getByRole('button', { name: 'Your guest 1 is coming' }));
+    fireEvent.click(screen.getByRole('button', { name: 'Next' }));
+
+    expect(screen.queryByRole('group', { name: 'Your guest 1' })).toBeNull();
+    expect(screen.getByRole('group', { name: 'Your guest 2' })).toBeDefined();
+
+    fireEvent.click(screen.getByRole('button', { name: 'Back' }));
+    fireEvent.click(screen.getByRole('button', { name: 'Your guest 1 is coming' }));
+    fireEvent.click(screen.getByRole('button', { name: 'Next' }));
+
+    const first = screen.getByRole('group', { name: 'Your guest 1' });
+    expect(
+      within(first).getByRole('button', { name: 'Peanuts' }).getAttribute('aria-pressed'),
+    ).toBe('true');
+  });
+
+  it('names a place, keeping what was recorded for it, and the other keeps its number (sc-48740)', async () => {
+    const page = unnamed([PLACE_1, PLACE_2]);
+    page.guest.unnamed[0] = {
+      id: PLACE_1,
+      coming: true,
+      needs: { ...NO_NEEDS, allergies: ['peanuts'] },
     };
     const { sent } = api({
-      '/api/guest-links/page': [{ status: 200, body: recorded }],
+      '/api/guest-links/page': [{ status: 200, body: page }],
       '/api/guest-links/reply': [{ status: 200, body: answered('coming', undefined, 2) }],
     });
     open();
     fireEvent.click(await screen.findByRole('button', { name: 'Yes, I’ll be there' }));
-    fireEvent.click(screen.getByRole('button', { name: 'Add someone · 2 places left' }));
+    fireEvent.click(screen.getByRole('button', { name: 'Add a name for Your guest 1' }));
     fireEvent.change(screen.getByLabelText('Their name'), { target: { value: 'Kemi Adewale' } });
-    fireEvent.click(screen.getByRole('button', { name: 'Add someone · 2 places left' }));
+    fireEvent.click(screen.getByRole('button', { name: 'Done' }));
+
+    expect(screen.getByText('Named by you')).toBeDefined();
+    expect(screen.getByRole('button', { name: 'Add a name for Your guest 2' })).toBeDefined();
     fireEvent.click(screen.getByRole('button', { name: 'Next' }));
 
     const kemi = screen.getByRole('group', { name: 'Kemi Adewale' });
     expect(within(kemi).getByRole('button', { name: 'Peanuts' }).getAttribute('aria-pressed')).toBe(
       'true',
     );
+    expect(screen.getByRole('group', { name: 'Your guest 2' })).toBeDefined();
     fireEvent.click(screen.getByRole('button', { name: 'Next' }));
     expect(screen.getByText('Allergy: peanuts')).toBeDefined();
     fireEvent.click(screen.getByRole('button', { name: 'Send my answer' }));
 
     await waitFor(() => expect(sent.at(-1)?.path).toBe('/api/guest-links/reply'));
     const body = sent.at(-1)?.body as {
-      companions: { id: string | null; fullName: string; needs: { allergies: string[] } }[];
-      unnamed: { id: string }[];
+      companions: { id: string; fullName: string; needs: { allergies: string[] } }[];
+      unnamed: { id: string; coming: boolean }[];
     };
     expect(body.companions.map((one) => [one.id, one.fullName, one.needs.allergies])).toEqual([
-      [null, 'Kemi Adewale', ['peanuts']],
+      [PLACE_1, 'Kemi Adewale', ['peanuts']],
     ]);
-    expect(body.unnamed.map((one) => one.id)).toEqual([PLACE_2]);
+    expect(body.unnamed.map((one) => [one.id, one.coming])).toEqual([[PLACE_2, true]]);
+  });
+
+  it('counts each place Coming in a returning guest’s line, and You · 1 person once all are declined (sc-48740)', async () => {
+    const page = unnamed([PLACE_1, PLACE_2], [OBI], 'coming');
+    page.guest.unnamed[1] = { id: PLACE_2, coming: false, needs: NO_NEEDS };
+    const alone = unnamed([PLACE_1], [{ ...OBI, coming: false }], 'coming');
+    alone.guest.unnamed[0] = { id: PLACE_1, coming: false, needs: NO_NEEDS };
+    api({ '/api/guest-links/page': [{ status: 200, body: page }] });
+    const first = open();
+
+    expect(await screen.findByText('You, Obi Okonkwo and Your guest 2 · 3 people')).toBeDefined();
+    first.unmount();
+
+    api({ '/api/guest-links/page': [{ status: 200, body: alone }] });
+    open();
+
+    expect(await screen.findByText('You · 1 person')).toBeDefined();
   });
 
   it.each([

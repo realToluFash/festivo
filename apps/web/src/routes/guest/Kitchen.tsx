@@ -48,8 +48,8 @@ function useWords(): { t: Translate; words: KitchenWords } {
   return { t, words };
 }
 
-function who(one: Person, kitchen: Kitchen, t: Translate): string {
-  return whoOf(one, kitchen.people, {
+function who(one: Person, t: Translate): string {
+  return whoOf(one, {
     you: t('guestKitchen.you'),
     yourGuest: t('guestKitchen.yourGuest'),
     yourGuestN: (n) => t('guestKitchen.yourGuestN', { n }),
@@ -260,7 +260,7 @@ function Card({
 
   return (
     <fieldset className="gk-card">
-      <legend className="gk-who">{who(one, kitchen, t)}</legend>
+      <legend className="gk-who">{who(one, t)}</legend>
       <div className="gk-card-body">
         {changed != null && (
           <p className="gk-text is-quiet">
@@ -558,7 +558,7 @@ export function KitchenCheck({
         <div className="gk-row">
           <div className="gk-row-words">
             <p className="gk-label">{t('guestKitchen.row')}</p>
-            {kitchenLines(kitchen, (one) => who(one, kitchen, t), words).map(({ who, lines }) => (
+            {kitchenLines(kitchen, (one) => who(one, t), words).map(({ who, lines }) => (
               <div key={who ?? 'nobody'} className="gk-person">
                 {who != null && <p className="gk-value">{who}</p>}
                 {lines.map((line, at) => (

@@ -1,0 +1,73 @@
+# sc-29881: Today's Your events, each event's replies line and bar, card by card, in the batch language.
+appId: host.exp.Exponent
+---
+- openLink: ${METRO_URL}/--/
+- extendedWaitUntil:
+    visible: '{{t:todayScreen.tab.today}}'
+    timeout: 45000
+- waitForAnimationToEnd
+- scrollUntilVisible:
+    element: '{{t:todayScreen.allEvents}}'
+    direction: DOWN
+    centerElement: true
+    timeout: 20000
+- swipe:
+    start: 50%, 70%
+    end: 50%, 40%
+    duration: 600
+- waitForAnimationToEnd
+- takeScreenshot: c0
+- swipe:
+    start: 85%, 70%
+    end: 25%, 70%
+    duration: 700
+- waitForAnimationToEnd
+- takeScreenshot: c1
+- swipe:
+    start: 85%, 70%
+    end: 25%, 70%
+    duration: 700
+- waitForAnimationToEnd
+- takeScreenshot: c2
+- swipe:
+    start: 85%, 70%
+    end: 25%, 70%
+    duration: 700
+- waitForAnimationToEnd
+- takeScreenshot: c3
+- swipe:
+    start: 85%, 70%
+    end: 25%, 70%
+    duration: 700
+- waitForAnimationToEnd
+- takeScreenshot: c4
+- swipe:
+    start: 85%, 70%
+    end: 25%, 70%
+    duration: 700
+- waitForAnimationToEnd
+- takeScreenshot: c5
+- swipe:
+    start: 85%, 70%
+    end: 25%, 70%
+    duration: 700
+- waitForAnimationToEnd
+- takeScreenshot: c6
+- swipe:
+    start: 85%, 70%
+    end: 25%, 70%
+    duration: 700
+- waitForAnimationToEnd
+- takeScreenshot: c7
+- swipe:
+    start: 85%, 70%
+    end: 25%, 70%
+    duration: 700
+- waitForAnimationToEnd
+- takeScreenshot: c8
+- swipe:
+    start: 85%, 70%
+    end: 25%, 70%
+    duration: 700
+- waitForAnimationToEnd
+- takeScreenshot: c9

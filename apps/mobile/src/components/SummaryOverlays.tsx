@@ -269,8 +269,12 @@ export function FocusedScreen({
               <Toast key={toast.words} words={toast.words} onClose={toast.onClose} />
             </View>
           )}
-          {over?.layer}
-          {asking && <AskLayer {...ask} />}
+          {covered && (
+            <View style={[StyleSheet.absoluteFill, styles.overSheet]} pointerEvents="box-none">
+              {over?.layer}
+              {asking && <AskLayer {...ask} />}
+            </View>
+          )}
         </View>
       </KeyboardAvoidingView>
     </Window>
@@ -633,6 +637,8 @@ const styles = StyleSheet.create({
     ...tokens.elevationNative.popover.ios,
     elevation: tokens.elevationNative.popover.android.elevation,
   },
+  // Android hands a field's tap to the highest elevation, so whatever covers the raised sheet is raised above it.
+  overSheet: { elevation: tokens.elevationNative.popover.android.elevation + 1 },
   sheetBody: { flexGrow: 0 },
   sheetFill: { flexShrink: 1, minHeight: 0 },
   body: { paddingTop: tokens.spaceXl, paddingHorizontal: tokens.spaceXxl },

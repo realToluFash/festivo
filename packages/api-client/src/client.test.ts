@@ -3752,6 +3752,22 @@ describe("the guest's calendar on their page (sc-3627)", () => {
       answering({ ...PAGE, calendarFeed: 'https://elsewhere.test/x.ics' }).guestPage('tok'),
     ).rejects.toThrow(/GuestPageController/);
   });
+
+  test('reads whether each unnamed place is coming, and refuses one without it (sc-48740)', async () => {
+    const place = { id: 'pl_1', coming: false, needs: PAGE.guest.needs };
+    const guest = { ...PAGE.guest, places: 1, unnamed: [place] };
+
+    expect(
+      (await answering({ ...PAGE, guest, calendarFeed: null }).guestPage('tok')).guest.unnamed,
+    ).toEqual([place]);
+    await expect(
+      answering({
+        ...PAGE,
+        guest: { ...guest, unnamed: [{ id: 'pl_1', needs: PAGE.guest.needs }] },
+        calendarFeed: null,
+      }).guestPage('tok'),
+    ).rejects.toThrow(/GuestPageController/);
+  });
 });
 
 describe('guest groups (sc-3775)', () => {
