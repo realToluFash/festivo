@@ -26,10 +26,4 @@ final class ArrivalNote
 
         return false === $normalised ? $trimmed : $normalised;
     }
-
-    /** In code points, so é, ñ, ç and 🚗 count one each. */
-    public static function length(string $saved): int
-    {
-        return Str\length($saved);
-    }
 }

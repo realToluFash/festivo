@@ -19,11 +19,7 @@ class SeatingTable
 {
     use Timestampable;
 
-    /** Counted as a reader sees them, in grapheme clusters (pm, 15 Nov 2026), so "Ẹ̀gbẹ́" is five. */
     public const int NAME_MAXIMUM = 30;
-
-    /** What the column holds: 30 letters with a dot and a tone each, decomposed, take 90. */
-    public const int NAME_CODE_POINTS = 120;
 
     public const int SEATS_MINIMUM = 1;
 
