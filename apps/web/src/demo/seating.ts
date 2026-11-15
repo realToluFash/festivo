@@ -859,6 +859,66 @@ export function readItemSize(text: string, units: Units): { cm: number } | { ref
   return cm == null || cm < 30 ? { refused: SW.sizeMin } : { cm };
 }
 
+export const TABLE_LIMITS = {
+  seats: 30,
+  cm: { min: 40, max: 1000 },
+  feet: { min: 16 * 2.54, max: 393 * 2.54 },
+} as const;
+
+function unitWords(value: number, unit: 'centimeter' | 'meter' | 'foot' | 'inch'): string {
+  return new Intl.NumberFormat('en', { style: 'unit', unit, maximumFractionDigits: 2 }).format(
+    value,
+  );
+}
+
+export function limitWords(cm: number, units: Units): string {
+  if (units === 'metric')
+    return cm < 100 ? unitWords(cm, 'centimeter') : unitWords(cm / 100, 'meter');
+  const inches = Math.round(cm / 2.54);
+  const ft = unitWords(Math.floor(inches / 12), 'foot');
+
+  return inches % 12 === 0
+    ? ft
+    : say(SW.feetInches, { feet: ft, inches: unitWords(inches % 12, 'inch') });
+}
+
+export function tableSizeRefusal(units: Units): string {
+  const range = units === 'us' ? TABLE_LIMITS.feet : TABLE_LIMITS.cm;
+
+  return say(SW.tableSize, {
+    min: limitWords(range.min, units),
+    max: limitWords(range.max, units),
+  });
+}
+
+export function readTableSize(text: string, units: Units): { cm: number } | { refused: string } {
+  const cm = readSize(text, units);
+  const range = units === 'us' ? TABLE_LIMITS.feet : TABLE_LIMITS.cm;
+  const refused = tableSizeRefusal(units);
+
+  if (cm == null && units === 'us') return { refused: SW.usHint };
+  if (cm == null || cm < range.min - 1e-6 || cm > range.max + 1e-6) return { refused };
+  return { cm };
+}
+
+export function readTableSeats(
+  text: string,
+  cocktail: boolean,
+): { n: number } | { refused: string } {
+  const n = readCount(text);
+
+  if (n == null || n < 1 || n > TABLE_LIMITS.seats)
+    return { refused: cocktail ? SW.placesRange : SW.seatsRange };
+  return { n };
+}
+
+export function readEnds(text: string, seats: number): { n: number } | { refused: string } {
+  const n = readCount(text);
+
+  if (n == null || n > seats) return { refused: say(SW.endsRange, { max: seats }) };
+  return { n };
+}
+
 export function readCount(text: string): number | null {
   const typed = text.trim();
 
@@ -1173,6 +1233,11 @@ export const SEATING_STATES = [
   { key: 'squeeze', name: 'The squeeze warning', group: 'Tables, rows and seats' },
   { key: 'nameTaken', name: 'A table name already used', group: 'Tables, rows and seats' },
   { key: 'belowSeated', name: 'Fewer seats than guests', group: 'Tables, rows and seats' },
+  { key: 'fieldBlank', name: 'A table’s name left blank', group: 'Tables, rows and seats' },
+  { key: 'seatsRange', name: 'Seats out of range', group: 'Tables, rows and seats' },
+  { key: 'sizeRange', name: 'A size out of range', group: 'Tables, rows and seats' },
+  { key: 'notNumber', name: 'A size that is not a number', group: 'Tables, rows and seats' },
+  { key: 'endsRange', name: 'More on the ends than seats', group: 'Tables, rows and seats' },
   { key: 'chair', name: 'A chair chosen', group: 'Tables, rows and seats' },
   { key: 'unusable', name: 'A chair marked unusable', group: 'Tables, rows and seats' },
   {

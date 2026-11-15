@@ -489,7 +489,7 @@ describe('tables, rows and seats (sc-4000, sc-4003)', () => {
       diameter.focus();
       fireEvent.change(diameter, { target: { value: 'wide' } });
       tapAway(room());
-      expect(await within(panel()).findByText('Use 30 cm or more.')).toBeDefined();
+      expect(await within(panel()).findByText('Enter a size from 40 cm to 10 m.')).toBeDefined();
       expect(within(panel()).getByRole('heading', { name: 'Table 4' })).toBeDefined();
       await vi.waitFor(() => expect(document.activeElement).toBe(diameter));
       fireEvent.change(diameter, { target: { value: '20' } });
@@ -507,19 +507,74 @@ describe('tables, rows and seats (sc-4000, sc-4003)', () => {
     diameter.focus();
     fireEvent.change(diameter, { target: { value: 'wide' } });
     tapAway(item(/^Table 8,/u));
-    expect(await within(panel()).findByText('Use 30 cm or more.')).toBeDefined();
+    expect(await within(panel()).findByText('Enter a size from 40 cm to 10 m.')).toBeDefined();
     expect(within(panel()).getByRole('heading', { name: 'Table 4' })).toBeDefined();
     await vi.waitFor(() => expect(document.activeElement).toBe(diameter));
   });
 
-  it('refuses a size under a foot, or one it can’t read, on a plan in feet', SLOW, async () => {
+  it('refuses a size out of range, or one it can’t read, on a plan in feet', SLOW, async () => {
     await seating('usCustomary');
-    typeIn('Diameter', '11 in');
-    expect(await within(panel()).findByText('Use 1 ft or more.')).toBeDefined();
+    typeIn('Diameter', '15 in');
+    expect(
+      await within(panel()).findByText('Enter a size from 1 ft 4 in to 32 ft 9 in.'),
+    ).toBeDefined();
     typeIn('Diameter', 'wide');
     expect(
       await within(panel()).findAllByText('Type 12′ 4″, 12 ft 4 in, 12.5 ft or 148 in.'),
     ).toHaveLength(2);
+  });
+
+  it(
+    'refuses a blank name, seats past 30, a size past 10 m or not a number, and ends past the seats',
+    SLOW,
+    async () => {
+      await seating('tapChooses');
+      typeIn('Name', '');
+      expect(await within(panel()).findByText('Enter a name for the table.')).toBeDefined();
+      typeIn('Seats', '31');
+      expect(
+        await within(panel()).findByText('Enter a number of seats from 1 to 30.'),
+      ).toBeDefined();
+      typeIn('Seats', '0');
+      expect(
+        await within(panel()).findByText('Enter a number of seats from 1 to 30.'),
+      ).toBeDefined();
+      expect(within(panel()).getByRole('heading', { name: 'Table 4' })).toBeDefined();
+      expect(item(/^Table 4, round, 8 of 10 seats taken/u)).toBeDefined();
+      await seating('rect');
+      typeIn('Width', '1001');
+      expect(await within(panel()).findByText('Enter a size from 40 cm to 10 m.')).toBeDefined();
+      typeIn('Length', 'long');
+      expect(await within(panel()).findAllByText('Enter a size from 40 cm to 10 m.')).toHaveLength(
+        2,
+      );
+      typeIn('Seats on the ends', '9');
+      expect(
+        await within(panel()).findByText('Enter 0 to 8, no more than the table has seats.'),
+      ).toBeDefined();
+      expect(within(panel()).getByRole('heading', { name: 'Table 9' })).toBeDefined();
+      for (let tries = 0; tries < 2; tries++) press(item(/^Table 8,/u));
+      press(item(/^Table 9,/u));
+      expect(within(panel()).getByLabelText('Width')).toHaveProperty('value', '240');
+      expect(within(panel()).getByLabelText('Length')).toHaveProperty('value', '76');
+      expect(within(panel()).getByLabelText('Seats on the ends')).toHaveProperty('value', '2');
+      expect(item(/^Table 9, [a-z]+, \d+ of 8 seats taken/u)).toBeDefined();
+    },
+  );
+
+  it('opens each field refusal from its own state', SLOW, async () => {
+    await seating('fieldBlank');
+    expect(await within(panel()).findByText('Enter a name for the table.')).toBeDefined();
+    await seating('seatsRange');
+    expect(await within(panel()).findByText('Enter a number of seats from 1 to 30.')).toBeDefined();
+    await seating('sizeRange');
+    expect(await within(panel()).findByText('Enter a size from 40 cm to 10 m.')).toBeDefined();
+    await seating('notNumber');
+    expect(await within(panel()).findByText('Enter a size from 40 cm to 10 m.')).toBeDefined();
+    await seating('endsRange');
+    expect(
+      await within(panel()).findByText('Enter 0 to 8, no more than the table has seats.'),
+    ).toBeDefined();
   });
 
   it('resets the size on a shape change, and warns when the seats are tight', SLOW, async () => {

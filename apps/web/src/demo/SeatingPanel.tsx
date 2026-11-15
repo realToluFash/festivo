@@ -23,7 +23,10 @@ import {
   partyTitle,
   peopleIn,
   readCount,
+  readEnds,
   readItemSize,
+  readTableSeats,
+  readTableSize,
   shownParties,
   unsureLeft,
   readPlace,
@@ -848,7 +851,7 @@ function PlaceFields({ item }: { item: Item }) {
 }
 
 function nameRefusal(plan: Plan, item: Item, name: string): string | null {
-  if (name.trim() === '') return null;
+  if (name.trim() === '') return item.kind === 'single' ? null : SW.tableBlank;
   if (!plan.items.some((other) => other.id !== item.id && sameName(other.name, name))) return null;
   return say(item.kind === 'single' ? SW.seatTaken : SW.tableTaken, { name: name.trim() });
 }
@@ -861,18 +864,18 @@ function TableFields({ item }: { item: Item }) {
   const unit = units === 'us' ? undefined : 'cm';
 
   function seats(text: string): string | null {
-    const n = readCount(text);
+    const read = readTableSeats(text, item.kind === 'cocktail');
 
-    if (n == null || n < 1) return null;
+    if ('refused' in read) return read.refused;
     const keep = keepSeats(item);
 
-    if (n < keep) return say(SW.belowSeated, { n: filled(item), m: keep });
-    edit(item.id, withSeats(item, n));
+    if (read.n < keep) return say(SW.belowSeated, { n: filled(item), m: keep });
+    edit(item.id, withSeats(item, read.n));
     return null;
   }
 
   function size(key: 'd' | 'w' | 'l', text: string): string | null {
-    const read = readItemSize(text, units);
+    const read = readTableSize(text, units);
 
     if ('refused' in read) return read.refused;
     edit(item.id, { [key]: Math.round(read.cm) });
@@ -962,9 +965,10 @@ function TableFields({ item }: { item: Item }) {
               label={SW.ends}
               value={String(item.ends ?? 0)}
               onCommit={(text) => {
-                const n = readCount(text);
+                const read = readEnds(text, item.chairs.length);
 
-                if (n != null && n <= item.chairs.length) edit(item.id, { ends: n });
+                if ('refused' in read) return read.refused;
+                edit(item.id, { ends: read.n });
                 return null;
               }}
             />
