@@ -11,6 +11,7 @@ use App\Domain\Guest\GuestRules;
 use App\Domain\Guest\Model\CompanionChoice;
 use App\Domain\Guest\Model\GuestNeeds;
 use App\Domain\Guest\Model\PageReply;
+use App\Domain\Guest\Model\PlaceChoice;
 use App\Entity\Guest;
 use App\Enum\ErrorCode;
 use App\Enum\GuestPagePhase;
@@ -77,9 +78,8 @@ final readonly class GuestAnswers
                 throw new ApiException(ErrorCode::RepliesClosed, 'guest.replies_closed');
             }
 
-            $places = $this->guestRepository->findCompanionsOf($guest);
-            $placed = $this->placed($places, $page->companions);
-            $needs = GuestReply::Coming === $reply ? $this->needs($guest, $page, $placed, self::left($places, $placed)) : [];
+            [$placed, $unnamed] = $this->chosen($this->guestRepository->findCompanionsOf($guest), $page);
+            $needs = GuestReply::Coming === $reply ? $this->needs($guest, $page, $placed, $unnamed) : [];
 
             $replied = $guest->reply($reply, $this->clock->now(), GuestReplySource::GuestPage);
             $chose = false;
@@ -87,6 +87,12 @@ final readonly class GuestAnswers
             foreach ($placed as [$place, $choice]) {
                 $was = self::state($place);
                 $place->nameByGuest($choice->fullName, $choice->nameKey);
+                $place->markComingByGuest($choice->coming);
+                $chose = $was !== self::state($place) || $chose;
+            }
+
+            foreach ($unnamed as [$place, $choice]) {
+                $was = self::state($place);
                 $place->markComingByGuest($choice->coming);
                 $chose = $was !== self::state($place) || $chose;
             }
@@ -117,83 +123,56 @@ final readonly class GuestAnswers
     }
 
     /**
-     * @param list<Guest>           $places
-     * @param list<CompanionChoice> $choices
+     * Each choice with the place it names by id: a companion's, or one nobody named, which a name fills (sc-48740); a place left unnamed only by its own id. Refused 422 for an id that is not one of this guest's places, or not an unnamed one left unnamed, and for one sent twice.
      *
-     * @return list<array{Guest, CompanionChoice}> each choice with the place it fills
+     * @param list<Guest> $places
+     *
+     * @return array{list<array{Guest, CompanionChoice}>, list<array{Guest, PlaceChoice}>}
      */
-    private function placed(array $places, array $choices): array
+    private function chosen(array $places, PageReply $page): array
     {
-        if ([] === $choices) {
-            return [];
-        }
-
-        $named = Dict\from_entries(Vec\map(
-            Vec\filter($places, static fn (Guest $place): bool => null !== $place->getFullName()),
-            static fn (Guest $place): array => [$place->getId()->toRfc4122(), $place],
-        ));
-        $unnamed = Vec\values(Vec\filter($places, static fn (Guest $place): bool => null === $place->getFullName()));
+        $byId = Dict\from_entries(Vec\map($places, static fn (Guest $place): array => [$place->getId()->toRfc4122(), $place]));
         $violations = [];
         $seen = [];
-        $fills = 0;
 
-        foreach ($choices as $index => $choice) {
-            if (null === $choice->id) {
-                ++$fills;
-                continue;
-            }
-
-            if (!Iter\contains_key($named, $choice->id) || Iter\contains_key($seen, $choice->id)) {
+        foreach ($page->companions as $index => $choice) {
+            if (!Iter\contains_key($byId, $choice->id) || Iter\contains_key($seen, $choice->id)) {
                 $violations[] = $this->guestRules->violation("companions[{$index}].id", 'validation.guest_companion_unknown');
             }
 
             $seen[$choice->id] = true;
         }
 
-        if ($fills > Iter\count($unnamed)) {
-            $violations[] = $this->guestRules->violation('companions', 'validation.guest_places_full');
+        foreach ($page->unnamed as $index => $one) {
+            $place = $byId[$one->id] ?? null;
+
+            if (null === $place || null !== $place->getFullName() || Iter\contains_key($seen, $one->id)) {
+                $violations[] = $this->guestRules->violation("unnamed[{$index}].id", 'validation.guest_companion_unknown');
+            }
+
+            $seen[$one->id] = true;
         }
 
         if ([] !== $violations) {
             throw ApiException::validation($violations);
         }
 
-        $fill = 0;
-
-        return Vec\map($choices, static function (CompanionChoice $choice) use ($named, $unnamed, &$fill): array {
-            $place = null === $choice->id ? $unnamed[$fill++] : $named[$choice->id];
-
-            return [$place, $choice];
-        });
-    }
-
-    /**
-     * @param list<Guest>                         $places
-     * @param list<array{Guest, CompanionChoice}> $placed
-     *
-     * @return array<string, Guest>
-     */
-    private static function left(array $places, array $placed): array
-    {
-        $filled = Vec\map($placed, static fn (array $one): string => $one[0]->getId()->toRfc4122());
-
-        return Dict\from_entries(Vec\map(
-            Vec\filter($places, static fn (Guest $place): bool => null === $place->getFullName() && !Iter\contains($filled, $place->getId()->toRfc4122())),
-            static fn (Guest $place): array => [$place->getId()->toRfc4122(), $place],
-        ));
+        return [
+            Vec\map($page->companions, static fn (CompanionChoice $choice): array => [$byId[$choice->id], $choice]),
+            Vec\map($page->unnamed, static fn (PlaceChoice $one): array => [$byId[$one->id], $one]),
+        ];
     }
 
     /**
      * @param list<array{Guest, CompanionChoice}> $placed
-     * @param array<string, Guest>                $left
+     * @param list<array{Guest, PlaceChoice}>     $unnamed
      *
      * @return list<array{Guest, GuestNeeds}>
      */
-    private function needs(Guest $guest, PageReply $page, array $placed, array $left): array
+    private function needs(Guest $guest, PageReply $page, array $placed, array $unnamed): array
     {
         $sent = null === $page->needs ? [] : [['needs', $guest, $page->needs]];
         $violations = [];
-        $seen = [];
 
         foreach ($placed as $index => [$place, $choice]) {
             if (null !== $choice->needs) {
@@ -201,14 +180,10 @@ final readonly class GuestAnswers
             }
         }
 
-        foreach ($page->unnamed as $index => $one) {
-            if (!Iter\contains_key($left, $one->id) || Iter\contains_key($seen, $one->id)) {
-                $violations[] = $this->guestRules->violation("unnamed[{$index}].id", 'validation.guest_companion_unknown');
-                continue;
+        foreach ($unnamed as $index => [$place, $choice]) {
+            if (null !== $choice->needs) {
+                $sent[] = ["unnamed[{$index}].needs", $place, $choice->needs];
             }
-
-            $seen[$one->id] = true;
-            $sent[] = ["unnamed[{$index}].needs", $left[$one->id], $one->needs];
         }
 
         $records = $this->guestNeedsRecord->of(Vec\map($sent, static fn (array $one): Guest => $one[1]));

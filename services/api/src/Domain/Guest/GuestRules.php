@@ -9,7 +9,7 @@ use App\Domain\Guest\Model\GroupChoice;
 use App\Domain\Guest\Model\GuestNeeds;
 use App\Domain\Guest\Model\NewGuest;
 use App\Domain\Guest\Model\PageReply;
-use App\Domain\Guest\Model\PlaceNeeds;
+use App\Domain\Guest\Model\PlaceChoice;
 use App\Domain\User\Phone\PhoneNumberParser;
 use App\Entity\Guest;
 use App\Entity\GuestGroup;
@@ -161,9 +161,9 @@ final readonly class GuestRules
     /**
      * What a guest sends with Coming from their own page: the names they gave on Who's coming with you? (sc-3779), a blank name never added, so it is refused rather than left unnamed, and each person's needs (sc-3778) by sc-3777's rules, every problem at once.
      *
-     * @param list<array{id?: ?string, fullName: string, coming: bool, needs?: ?NeedsInput}> $companions
-     * @param ?NeedsInput                                                                    $needs      the guest's own; null leaves them as they are
-     * @param list<array{id: string, needs: NeedsInput}>                                     $unnamed    a place nobody named, by its id
+     * @param list<array{id: string, fullName: string, coming: bool, needs?: ?NeedsInput}> $companions
+     * @param ?NeedsInput                                                                  $needs      the guest's own; null leaves them as they are
+     * @param list<array{id: string, coming: bool, needs?: ?NeedsInput}>                   $unnamed    a place left unnamed, by its id
      */
     public function pageReply(array $companions, ?array $needs, array $unnamed = []): PageReply
     {
@@ -178,7 +178,8 @@ final readonly class GuestRules
         $places = [];
 
         foreach ($unnamed as $index => $place) {
-            $places[] = new PlaceNeeds($place['id'], $this->needs($place['needs'], "unnamed[{$index}].needs", $violations));
+            $typed = $place['needs'] ?? null;
+            $places[] = new PlaceChoice($place['id'], $place['coming'], null === $typed ? null : $this->needs($typed, "unnamed[{$index}].needs", $violations));
         }
 
         foreach ($companions as $index => $companion) {
@@ -196,7 +197,7 @@ final readonly class GuestRules
                 continue;
             }
 
-            $choices[] = new CompanionChoice($companion['id'] ?? null, $name, NameNormaliser::key($name), $companion['coming'], $theirs);
+            $choices[] = new CompanionChoice($companion['id'], $name, NameNormaliser::key($name), $companion['coming'], $theirs);
         }
 
         if ([] !== $violations) {

@@ -9,26 +9,21 @@ import {
   NEED_OTHER_MAXIMUM,
   type NeedsChange,
   type PageNeeds,
-  type PlaceNeeds,
 } from '@soirely/api-client';
 
 import { needsLength } from '@soirely/domain';
-import type { Party } from './party.ts';
+import { type Party, comingWith, placeOf } from './party.ts';
 
 export type Field = 'other' | 'words' | 'access';
 export const FIELDS: readonly Field[] = ['other', 'words', 'access'];
 
 export const YOU = 'me';
-const PLACE = 'place-';
 
-function placeKey(id: string): string {
-  return `${PLACE}${id}`;
-}
-
-/** One card on Anything the kitchen must know? (sc-3778): the guest ("You"), a companion coming, or a place nobody named (no name, "Your guest"). `words` is Diet · Other and `access` is Access · Other; `host` are the access codes the hosts picked, which the guest may only remove. */
+/** One card on Anything the kitchen must know? (sc-3778): the guest ("You"), or a place left Coming by its id, named or not. `place` labels an unnamed one as Who's coming with you? does: 0 for "Your guest", else its position (sc-48740). `words` is Diet · Other and `access` is Access · Other; `host` are the access codes the hosts picked, which the guest may only remove. */
 export interface Person {
   key: string;
   name: string | null;
+  place: number | null;
   allergies: readonly Allergen[];
   other: string;
   diet: readonly Diet[];
@@ -48,10 +43,11 @@ export interface Kitchen {
   left: boolean;
 }
 
-function blank(key: string, name: string | null): Person {
+function blank(key: string, name: string | null, place: number | null = null): Person {
   return {
     key,
     name,
+    place,
     allergies: [],
     other: '',
     diet: [],
@@ -63,12 +59,13 @@ function blank(key: string, name: string | null): Person {
   };
 }
 
-function personOf(key: string, name: string | null, needs: GuestPageNeeds | null): Person {
-  if (needs == null) return blank(key, name);
+function personOf(key: string, needs: GuestPageNeeds | null): Person {
+  if (needs == null) return blank(key, null);
 
   return {
     key,
-    name,
+    name: null,
+    place: null,
     allergies: needs.allergies,
     other: needs.otherAllergy ?? '',
     diet: needs.diet.filter((code): code is Diet => code !== 'other'),
@@ -86,66 +83,49 @@ function hasAny(needs: GuestPageNeeds): boolean {
 
 function recordedPeople(page: GuestPage): Person[] {
   return [
-    personOf(YOU, null, page.guest.needs),
-    ...page.guest.companions.map((one) => personOf(one.id, one.fullName, one.needs)),
-    ...page.guest.unnamed.map((one) => personOf(placeKey(one.id), null, one.needs)),
+    personOf(YOU, page.guest.needs),
+    ...page.guest.companions.map((one) => personOf(one.id, one.needs)),
+    ...page.guest.unnamed.map((one) => personOf(one.id, one.needs)),
   ];
 }
 
 interface Coming {
   key: string;
   name: string | null;
-  from: string;
+  place: number | null;
 }
 
-function comingPeople(page: GuestPage, party: Party): Coming[] {
-  const added = party.people.filter((one) => one.id == null);
-  const place = (key: string): string => {
-    const one = page.guest.unnamed[added.findIndex((each) => each.key === key)];
-
-    return one == null ? key : placeKey(one.id);
-  };
-
+/** The guest, then each place left Coming on Who's coming with you?, in its order (sc-48740). */
+function comingPeople(party: Party): Coming[] {
   return [
-    ...party.people
-      .filter((one) => one.coming)
-      .map((one) => ({
-        key: one.key,
-        name: one.name,
-        from: one.id == null ? place(one.key) : one.key,
-      })),
-    ...page.guest.unnamed
-      .slice(added.length)
-      .map((one) => ({ key: placeKey(one.id), name: null, from: placeKey(one.id) })),
+    { key: YOU, name: null, place: null },
+    ...comingWith(party).map((one) => ({
+      key: one.id,
+      name: one.name,
+      place: one.name == null ? placeOf(party, one.id) : null,
+    })),
   ];
 }
 
-function fromRecord(
-  recorded: readonly Person[],
-  from: string,
-  key: string,
-  name: string | null,
-): Person {
-  const one = recorded.find((each) => each.key === from);
+function fromRecord(recorded: readonly Person[], { key, name, place }: Coming): Person {
+  const one = recorded.find((each) => each.key === key);
 
-  return one == null ? blank(key, name) : { ...one, key, name };
+  return one == null ? blank(key, name, place) : { ...one, name, place };
 }
 
-/** The guest and each companion coming, keeping what was chosen on the step so far, then the record, then nothing. */
+/** The guest and each place coming, keeping what was chosen on the step so far, then the record, then nothing; a place marked Not coming keeps its card for when it is Coming again. */
 export function kitchenOf(page: GuestPage, party: Party, was: Kitchen | null): Kitchen {
   const recorded = recordedPeople(page);
-  const kept = ({ key, name, from }: Coming): Person => {
-    const one = was?.people.find((each) => each.key === key);
+  const kept = (coming: Coming): Person => {
+    const one = was?.people.find((each) => each.key === coming.key);
 
-    return one == null ? fromRecord(recorded, from, key, name) : { ...one, name };
+    return one == null
+      ? fromRecord(recorded, coming)
+      : { ...one, name: coming.name, place: coming.place };
   };
-  const people = [
-    kept({ key: YOU, name: null, from: YOU }),
-    ...comingPeople(page, party).map(kept),
-  ];
 
   return {
-    people,
+    people: comingPeople(party).map(kept),
     record: [
       page.guest.needs,
       ...page.guest.companions.map((one) => one.needs),
@@ -157,18 +137,15 @@ export function kitchenOf(page: GuestPage, party: Party, was: Kitchen | null): K
 }
 
 /** Nothing to add clears every card; Leave it as it is puts the record back. Neither is sent as a change. */
-export function skipped(kitchen: Kitchen, page: GuestPage, party: Party): Kitchen {
+export function skipped(kitchen: Kitchen, page: GuestPage): Kitchen {
   const recorded = recordedPeople(page);
-  const from = new Map(comingPeople(page, party).map((one) => [one.key, one.from]));
 
   return {
     ...kitchen,
     tried: false,
     left: true,
     people: kitchen.people.map((one) =>
-      kitchen.record
-        ? fromRecord(recorded, from.get(one.key) ?? one.key, one.key, one.name)
-        : blank(one.key, one.name),
+      kitchen.record ? fromRecord(recorded, one) : blank(one.key, one.name, one.place),
     ),
   };
 }
@@ -201,24 +178,17 @@ export function needsOf(one: Person): PageNeeds {
   };
 }
 
-export function unnamedNeeds(kitchen: Kitchen): PlaceNeeds[] {
-  return kitchen.people
-    .filter((one) => one.key.startsWith(PLACE))
-    .map((one) => ({ id: one.key.slice(PLACE.length), needs: needsOf(one) }));
-}
-
 export interface WhoWords {
   you: string;
   yourGuest: string;
   yourGuestN: (n: number) => string;
 }
 
-export function whoOf(one: Person, people: readonly Person[], words: WhoWords): string {
+export function whoOf(one: Person, words: WhoWords): string {
   if (one.key === YOU) return words.you;
   if (one.name != null) return one.name;
-  const companions = people.filter((each) => each.key !== YOU);
 
-  return companions.length === 1 ? words.yourGuest : words.yourGuestN(companions.indexOf(one) + 1);
+  return one.place == null || one.place === 0 ? words.yourGuest : words.yourGuestN(one.place);
 }
 
 export type Problem = 'empty' | 'long';

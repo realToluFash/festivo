@@ -1,35 +1,40 @@
-import type { CompanionChoice, GuestPage } from '@soirely/api-client';
+import type { CompanionChoice, GuestPage, PageNeeds, PlaceChoice } from '@soirely/api-client';
 
-/** One named companion on Who's coming with you? (sc-3779); `id` is null for one the guest added and has not sent yet. */
+/** One place on Who's coming with you? (sc-3779): a named companion, or a place nobody has named yet, `name` null (sc-48740). */
 export interface PartyPerson {
-  key: string;
-  id: string | null;
-  name: string;
+  id: string;
+  name: string | null;
   byGuest: boolean;
   coming: boolean;
 }
 
-/** The host decides how many places, the guest decides who fills them; nothing is saved until Send my answer. */
+/** The host decides how many places, the guest decides who fills them; every place is a row, and nothing is saved until Send my answer. */
 export interface Party {
   places: number;
   people: readonly PartyPerson[];
-  adding: string | null;
   tried: boolean;
   renaming: string | null;
   draft: string;
 }
 
+/** Named companions first, then each place nobody has named, as the API lists them. */
 export function partyOf(page: GuestPage): Party {
   return {
     places: page.guest.places,
-    people: page.guest.companions.map((one) => ({
-      key: one.id,
-      id: one.id,
-      name: one.fullName,
-      byGuest: one.namedByGuest,
-      coming: one.coming,
-    })),
-    adding: null,
+    people: [
+      ...page.guest.companions.map((one) => ({
+        id: one.id,
+        name: one.fullName,
+        byGuest: one.namedByGuest,
+        coming: one.coming,
+      })),
+      ...page.guest.unnamed.map((one) => ({
+        id: one.id,
+        name: null,
+        byGuest: false,
+        coming: one.coming,
+      })),
+    ],
     tried: false,
     renaming: null,
     draft: '',
@@ -40,63 +45,48 @@ export function hasStep(party: Party): boolean {
   return party.places > 0;
 }
 
-export function placesLeft(party: Party): number {
-  return Math.max(0, party.places - party.people.length);
+/** 0 for "Your guest" (one place in all), else the place's position, named first; fixed for the visit, so naming or declining one renumbers none of the others. */
+export function placeOf(party: Party, id: string): number {
+  return party.places === 1 ? 0 : party.people.findIndex((one) => one.id === id) + 1;
 }
 
-export function toggled(party: Party, key: string): Party {
+export interface PlaceWords {
+  yourGuest: string;
+  yourGuestN: (n: number) => string;
+}
+
+export function labelOf(party: Party, one: PartyPerson, words: PlaceWords): string {
+  if (one.name != null) return one.name;
+  const place = placeOf(party, one.id);
+
+  return place === 0 ? words.yourGuest : words.yourGuestN(place);
+}
+
+export function toggled(party: Party, id: string): Party {
   return {
     ...party,
-    people: party.people.map((one) => (one.key === key ? { ...one, coming: !one.coming } : one)),
+    people: party.people.map((one) => (one.id === id ? { ...one, coming: !one.coming } : one)),
   };
 }
 
-export function opened(party: Party): Party {
-  return placesLeft(party) > 0 ? { ...party, adding: '', tried: false, renaming: null } : party;
+export function renaming(party: Party, id: string): Party {
+  const one = party.people.find((each) => each.id === id);
+
+  return one == null ? party : { ...party, renaming: id, draft: one.name ?? '', tried: false };
 }
 
-/** A blank name is not added, and the button says why. */
-export function added(party: Party): Party {
-  const name = party.adding?.trim() ?? '';
-
-  if (name === '') return { ...party, tried: true };
-  if (placesLeft(party) === 0) return { ...party, adding: null, tried: false };
-
-  return {
-    ...party,
-    people: [
-      ...party.people,
-      {
-        key: `new-${String(party.people.length + 1)}`,
-        id: null,
-        name,
-        byGuest: true,
-        coming: true,
-      },
-    ],
-    adding: null,
-    tried: false,
-  };
-}
-
-export function renaming(party: Party, key: string): Party {
-  const one = party.people.find((each) => each.key === key);
-
-  return one == null
-    ? party
-    : { ...party, renaming: key, draft: one.name, adding: null, tried: false };
-}
-
+/** A blank name is refused for a named companion; for an unnamed place it leaves the place unnamed (sc-48740). */
 export function renamed(party: Party): Party {
   const name = party.draft.trim();
+  const one = party.people.find((each) => each.id === party.renaming);
 
-  if (party.renaming == null) return party;
-  if (name === '') return { ...party, tried: true };
+  if (one == null) return party;
+  if (name === '' && one.name != null) return { ...party, tried: true };
 
   return {
     ...party,
-    people: party.people.map((one) =>
-      one.key === party.renaming && one.name !== name ? { ...one, name, byGuest: true } : one,
+    people: party.people.map((each) =>
+      each === one && name !== '' && each.name !== name ? { ...each, name, byGuest: true } : each,
     ),
     renaming: null,
     draft: '',
@@ -104,11 +94,25 @@ export function renamed(party: Party): Party {
   };
 }
 
-/** What Send my answer sends with Coming: every named companion, and each added one for an unnamed place. */
-export function choices(party: Party): CompanionChoice[] {
-  return party.people.map((one) => ({ id: one.id, fullName: one.name, coming: one.coming }));
+/** What Send my answer sends with Coming: each named place with its name, and each place left unnamed Coming or Not coming, every one by its id with its needs when given. */
+export function choices(
+  party: Party,
+  needsOf: (id: string) => PageNeeds | undefined,
+): { companions: CompanionChoice[]; unnamed: PlaceChoice[] } {
+  const companions: CompanionChoice[] = [];
+  const unnamed: PlaceChoice[] = [];
+
+  for (const one of party.people) {
+    const needs = one.coming ? needsOf(one.id) : undefined;
+    const given = needs == null ? {} : { needs };
+
+    if (one.name == null) unnamed.push({ id: one.id, coming: one.coming, ...given });
+    else companions.push({ id: one.id, fullName: one.name, coming: one.coming, ...given });
+  }
+
+  return { companions, unnamed };
 }
 
-export function comingNames(party: Party): string[] {
-  return party.people.filter((one) => one.coming).map((one) => one.name);
+export function comingWith(party: Party): PartyPerson[] {
+  return party.people.filter((one) => one.coming);
 }
