@@ -96,9 +96,13 @@ function readLength(
   return { kind: 'cm', cm };
 }
 
-/** Whole feet and the inches left over, rounded to the whole inch. */
-export function feetAndInchesOf(cm: number): { feet: number; inches: number } {
-  const total = Math.round(cm / CM_PER_INCH);
+/** Whole feet and the inches left over; a limit rounds inward so the size it states is accepted. */
+export function feetAndInchesOf(
+  cm: number,
+  rounding: 'nearest' | 'up' | 'down' = 'nearest',
+): { feet: number; inches: number } {
+  const round = { nearest: Math.round, up: Math.ceil, down: Math.floor }[rounding];
+  const total = round(cm / CM_PER_INCH);
 
   return { feet: Math.floor(total / 12), inches: total % 12 };
 }

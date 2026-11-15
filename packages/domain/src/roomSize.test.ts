@@ -1,6 +1,13 @@
 import { describe, expect, it } from 'vitest';
 
-import { feetAndInchesOf, readFeetAndInches, readRoomSide, readTableSide } from './roomSize.ts';
+import {
+  feetAndInchesOf,
+  readFeetAndInches,
+  readRoomSide,
+  readTableSide,
+  TABLE_MAXIMUM_CM,
+  TABLE_MINIMUM_CM,
+} from './roomSize.ts';
 
 describe('a room side in metres', () => {
   it.each(['12.5', '12,5', ' 12.5 '])('reads %s as 12.5 m in every language', (typed) => {
@@ -57,6 +64,16 @@ describe('a room side in feet and inches', () => {
     expect(feetAndInchesOf(381)).toEqual({ feet: 12, inches: 6 });
     expect(feetAndInchesOf(200)).toEqual({ feet: 6, inches: 7 });
     expect(feetAndInchesOf(50_000)).toEqual({ feet: 1640, inches: 5 });
+  });
+
+  it('states a table limit in feet as a size the reader accepts', () => {
+    const highest = feetAndInchesOf(TABLE_MAXIMUM_CM, 'down');
+    const lowest = feetAndInchesOf(TABLE_MINIMUM_CM, 'up');
+
+    expect(highest).toEqual({ feet: 32, inches: 9 });
+    expect(readTableSide(`${highest.feet} ft ${highest.inches} in`, 'us', 'en').kind).toBe('cm');
+    expect(readTableSide('32 ft 10 in', 'us', 'en')).toEqual({ kind: 'outOfRange' });
+    expect(readTableSide(`${lowest.feet} ft ${lowest.inches} in`, 'us', 'en').kind).toBe('cm');
   });
 });
 

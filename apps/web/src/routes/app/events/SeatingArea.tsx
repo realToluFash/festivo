@@ -671,8 +671,8 @@ function useRoomSide(system: MeasurementSystem) {
       return { refused: t(side === 'width' ? 'seating.enterWidth' : 'seating.enterLength') };
     return {
       refused: t('seating.roomRange', {
-        min: lengthWords(t, locale, ROOM_MINIMUM_CM, system, { grouping: false }),
-        max: lengthWords(t, locale, ROOM_MAXIMUM_CM, system, { grouping: false }),
+        min: lengthWords(t, locale, ROOM_MINIMUM_CM, system, { grouping: false, rounding: 'up' }),
+        max: lengthWords(t, locale, ROOM_MAXIMUM_CM, system, { grouping: false, rounding: 'down' }),
       }),
     };
   };

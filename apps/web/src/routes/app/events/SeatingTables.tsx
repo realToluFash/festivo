@@ -431,8 +431,14 @@ function readSize(
   if (read.kind === 'unreadable' && system === 'us') return { refused: t('seating.usHint') };
   return {
     refused: t('seating.tableSizeRange', {
-      min: tableLengthWords(t, locale, TABLE_MINIMUM_CM, system, { grouping: false }),
-      max: tableLengthWords(t, locale, TABLE_MAXIMUM_CM, system, { grouping: false }),
+      min: tableLengthWords(t, locale, TABLE_MINIMUM_CM, system, {
+        grouping: false,
+        rounding: 'up',
+      }),
+      max: tableLengthWords(t, locale, TABLE_MAXIMUM_CM, system, {
+        grouping: false,
+        rounding: 'down',
+      }),
     }),
   };
 }
