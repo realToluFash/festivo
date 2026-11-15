@@ -1,0 +1,56 @@
+# sc-28178 regression: with Alpha paused and remembered, a relaunch (the bundle reloaded) shows
+# Access paused at launch, and Switch organisation opens
+# ${ORG_NAME}, straight away or through Your organisations when there are more.
+appId: host.exp.Exponent
+---
+- runFlow:
+    file: ../checks/sc28178/joined.yaml
+    env:
+      ORG: Alpha
+- extendedWaitUntil:
+    notVisible: '{{t:switcher.switched}}'
+    timeout: 20000
+- runFlow:
+    file: ../checks/sc28178/changed.yaml
+    env:
+      ORG: Alpha
+      FROM: tab-events
+      CHANGE: pause
+      MOVE: frame.settings
+- extendedWaitUntil:
+    visible: '{{t:accessPaused.since}}'
+    timeout: 20000
+- runScript:
+    file: ../batch/helper.js
+    env:
+      ASK: /reload
+- runFlow:
+    when:
+      true: ${!output.helper.reloaded}
+    file: ../batch/reopen.yaml
+- extendedWaitUntil:
+    visible: '{{t:accessPaused.since}}'
+    timeout: 30000
+- assertVisible: '.*Alpha.*'
+- takeScreenshot: launch-paused
+- tapOn:
+    id: 'accessPaused.switch'
+- waitForAnimationToEnd:
+    timeout: 5000
+# With one other organisation Switch organisation opens it straight away; with more, the switcher.
+- runFlow:
+    when:
+      visible:
+        id: 'switcher.heading'
+    commands:
+      - takeScreenshot: paused-switcher
+      - scrollUntilVisible:
+          element: '${ORG_NAME}'
+          centerElement: true
+          timeout: 15000
+      - tapOn: '${ORG_NAME}'
+- extendedWaitUntil:
+    notVisible: '{{t:accessPaused.since}}'
+    timeout: 20000
+- assertVisible: '.*${ORG_NAME}.*'
+- takeScreenshot: switched

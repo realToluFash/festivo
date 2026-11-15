@@ -1,0 +1,26 @@
+# sc-29069: with the keys up, the password rule stays above a docked foot, and the foot
+# docks again once focus moves back to email. Run signed out.
+#   node .qa/bin/qa-env.mjs maestro sc29069-rule-focus-back --android
+appId: host.exp.Exponent
+---
+- runFlow: sign-in-screen-english.yaml
+- openLink: ${METRO_URL}/--/register
+- extendedWaitUntil:
+    visible:
+      id: 'register.password'
+    timeout: 60000
+- tapOn:
+    id: 'register.email'
+- waitForAnimationToEnd
+- takeScreenshot: email-keys-up-before
+- tapOn:
+    id: 'register.password'
+- inputText: 'short'
+- waitForAnimationToEnd
+- takeScreenshot: rule-keys-up
+- tapOn:
+    id: 'register.email'
+- waitForAnimationToEnd
+- takeScreenshot: email-keys-up-after
+- hideKeyboard
+- takeScreenshot: keys-down

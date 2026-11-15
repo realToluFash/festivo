@@ -1,0 +1,156 @@
+/* Notification settings at a desk, in B · Summary first (Web-Notifications-*.dc.html). Its rows are Your account's, each opening to its two switches. */
+
+.notif-covers {
+  padding: var(--spaceXs) 0 var(--spaceXxs);
+}
+
+.notif-switches {
+  display: flex;
+  flex-direction: column;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.notif-switches > * + * {
+  padding-top: 1px;
+  background: var(--deskHairline) no-repeat 0 0 / 100% 1px;
+}
+
+.notif-switch-row {
+  display: flex;
+  align-items: center;
+  gap: var(--spaceLg);
+  min-height: 56px;
+  padding: 6px 0;
+}
+
+.notif-switch {
+  display: inline-flex;
+  flex: none;
+  align-items: center;
+  gap: var(--spaceSm);
+  min-height: var(--sizeHit);
+  margin-right: calc(-1 * var(--spaceXxs));
+  padding: 0 var(--spaceXxs);
+  border: 0;
+  border-radius: var(--radiusSmall);
+  background: none;
+  color: var(--colorInkSecondary);
+  cursor: pointer;
+}
+
+.notif-switch[aria-busy='true'] {
+  cursor: progress;
+}
+
+.notif-switch[aria-disabled='true'] {
+  cursor: default;
+}
+
+.notif-word {
+  min-width: 26px;
+  font: 600 15px/1 var(--fontFamily);
+  text-align: end;
+}
+
+.notif-switch[aria-checked='true'] .notif-word {
+  color: var(--colorInk);
+}
+
+.notif-track {
+  position: relative;
+  flex: none;
+  width: var(--sizeToggleW);
+  height: var(--sizeToggleH);
+  border-radius: var(--radiusPill);
+  background: var(--colorTrack);
+  transition: background var(--motionBase) var(--motionEase);
+}
+
+.notif-knob {
+  position: absolute;
+  top: var(--spaceHair);
+  left: var(--spaceHair);
+  width: var(--sizeToggleKnob);
+  height: var(--sizeToggleKnob);
+  border-radius: var(--radiusPill);
+  background: var(--colorCard);
+  box-shadow: var(--shadowKnob);
+  transition: transform var(--motionBase) var(--motionEase);
+}
+
+.notif-switch[aria-checked='true'] .notif-track {
+  background: var(--colorAccent);
+}
+
+.notif-switch[aria-checked='true'] .notif-knob {
+  transform: translateX(calc(var(--sizeToggleW) - var(--sizeToggleKnob) - var(--spaceHair) * 2));
+}
+
+.desk-tag.notif-saving {
+  gap: 6px;
+  padding-left: 7px;
+}
+
+.notif-spin {
+  flex: none;
+  box-sizing: border-box;
+  width: 12px;
+  height: 12px;
+  border: 2px solid var(--colorInsetBorder);
+  border-top-color: currentcolor;
+  border-radius: 50%;
+  animation: notif-spin 0.9s linear infinite;
+}
+
+@keyframes notif-spin {
+  to {
+    transform: rotate(1turn);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .notif-spin {
+    animation: none;
+  }
+}
+
+.desk-error.notif-failed {
+  padding-bottom: var(--spaceXs);
+}
+
+.account-rows > li > .notif-failed {
+  padding: var(--spaceXxs) 0 var(--spaceSm) 40px;
+}
+
+.desk-rows.notif-bones > li.desk-row.is-bones {
+  min-height: 64px;
+  padding-top: 0;
+}
+
+.desk-rows.notif-bones > li.desk-row.is-bones + li.desk-row.is-bones {
+  padding-top: 1px;
+}
+
+.desk-sunk.notif-lead-bone {
+  flex: none;
+  width: 28px;
+  height: 28px;
+  border-radius: var(--radiusSmall);
+}
+
+.notif-steps {
+  display: flex;
+  flex-direction: column;
+  gap: var(--spaceSm);
+  margin: 0;
+  padding-left: 1.4em;
+  list-style: decimal;
+  color: var(--colorInk);
+  font: var(--deskLine);
+}
+
+.notif-steps > li {
+  padding-left: var(--spaceXxs);
+}

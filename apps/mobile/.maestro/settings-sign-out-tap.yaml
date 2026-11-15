@@ -1,0 +1,16 @@
+# Taps Settings' Sign out, from Settings. sc-21636.
+#
+# Sign out can stop under the iPhone's tab bar, which Maestro counts as visible, so
+# scrollUntilVisible leaves it there. Sign out is the list's last row, so one more scroll
+# brings it to rest whole above the tab bar.
+appId: host.exp.Exponent
+---
+- scrollUntilVisible:
+    element:
+      id: 'settings.signOut'
+    direction: DOWN
+    timeout: 30000
+- scroll
+- waitForAnimationToEnd
+- tapOn:
+    id: 'settings.signOut'

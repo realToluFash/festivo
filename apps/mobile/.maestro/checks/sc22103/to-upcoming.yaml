@@ -1,0 +1,22 @@
+# Events from the app's tab bar, with upcoming chosen.
+appId: host.exp.Exponent
+---
+- openLink: ${METRO_URL}/--/
+- extendedWaitUntil:
+    visible:
+      id: 'frame.events'
+    timeout: 30000
+- tapOn:
+    id: 'frame.events'
+- extendedWaitUntil:
+    visible:
+      id: 'events.summary'
+    timeout: 30000
+- scrollUntilVisible:
+    element:
+      id: 'events.tab.upcoming'
+    centerElement: true
+    timeout: 20000
+- tapOn:
+    id: 'events.tab.upcoming'
+- waitForAnimationToEnd

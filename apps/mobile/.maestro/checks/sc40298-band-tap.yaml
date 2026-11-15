@@ -1,0 +1,32 @@
+# Today scrolled to its band, then one tap on the band's organisation tile (top start corner). sc-40298.
+appId: host.exp.Exponent
+---
+- openLink: ${METRO_URL}/--/
+- tapOn:
+    id: 'tab-today|frame.home'
+    optional: true
+- extendedWaitUntil:
+    visible:
+      id: 'home.switchOrganisation'
+    timeout: 30000
+- waitForAnimationToEnd:
+    timeout: 5000
+- swipe:
+    start: 50%, 80%
+    end: 50%, 20%
+    duration: 600
+- swipe:
+    start: 50%, 80%
+    end: 50%, 20%
+    duration: 600
+- waitForAnimationToEnd:
+    timeout: 5000
+- takeScreenshot: band
+- tapOn:
+    id: 'home.switchOrganisation'
+- extendedWaitUntil:
+    visible: '{{t:switcher.asks}}'
+    timeout: 15000
+- waitForAnimationToEnd:
+    timeout: 5000
+- takeScreenshot: switcher

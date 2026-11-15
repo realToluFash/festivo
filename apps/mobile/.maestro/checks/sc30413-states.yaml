@@ -1,0 +1,109 @@
+# sc-30413: Events' tabs, empty tabs, first run and Today's moments, each beside the app demo's state. Needs the owner of QA Organisation, QA Plan Org (one live event this week), QA Quiet Org (one in December), QA Draft Org (one draft) and QA Empty Org.
+appId: host.exp.Exponent
+---
+- openLink: ${METRO_URL}/--/events
+- extendedWaitUntil: { visible: 'Drafts.*', timeout: 20000 }
+- tapOn: 'Drafts.*'
+- waitForAnimationToEnd: { timeout: 4000 }
+- takeScreenshot: events-drafts-product
+- tapOn: 'Past.*'
+- waitForAnimationToEnd: { timeout: 4000 }
+- takeScreenshot: events-past-product
+- openLink: ${METRO_URL}/--/demo/events
+- extendedWaitUntil: { visible: 'Drafts.*', timeout: 20000 }
+- tapOn: 'Drafts.*'
+- waitForAnimationToEnd: { timeout: 4000 }
+- takeScreenshot: events-drafts-demo
+- tapOn: 'Past.*'
+- waitForAnimationToEnd: { timeout: 4000 }
+- takeScreenshot: events-past-demo
+- openLink: ${METRO_URL}/--/events
+- extendedWaitUntil: { visible: 'Search events', timeout: 30000 }
+- tapOn: 'Today'
+- extendedWaitUntil: { visible: { id: 'home.switchOrganisation' }, timeout: 30000 }
+- runFlow: ../open-switcher.yaml
+- tapOn: 'QA Plan Org'
+- waitForAnimationToEnd: { timeout: 6000 }
+- openLink: ${METRO_URL}/--/events
+- tapOn: 'Today'
+- extendedWaitUntil: { visible: '.*QA Plan Party.*', timeout: 20000 }
+- waitForAnimationToEnd: { timeout: 4000 }
+- takeScreenshot: today-plan-product
+- openLink: ${METRO_URL}/--/demo/today?moment=plan
+- waitForAnimationToEnd: { timeout: 6000 }
+- takeScreenshot: today-plan-demo
+- openLink: ${METRO_URL}/--/events
+- extendedWaitUntil: { visible: 'Drafts.*', timeout: 20000 }
+- tapOn: 'Drafts.*'
+- waitForAnimationToEnd: { timeout: 4000 }
+- takeScreenshot: events-emptyDrafts-product
+- tapOn: 'Past.*'
+- waitForAnimationToEnd: { timeout: 4000 }
+- takeScreenshot: events-emptyPast-product
+- openLink: ${METRO_URL}/--/demo/events?state=emptyDrafts
+- waitForAnimationToEnd: { timeout: 6000 }
+- takeScreenshot: events-emptyDrafts-demo
+- openLink: ${METRO_URL}/--/demo/events?state=emptyPast
+- waitForAnimationToEnd: { timeout: 6000 }
+- takeScreenshot: events-emptyPast-demo
+- openLink: ${METRO_URL}/--/events
+- extendedWaitUntil: { visible: 'Search events', timeout: 30000 }
+- tapOn: 'Today'
+- extendedWaitUntil: { visible: { id: 'home.switchOrganisation' }, timeout: 30000 }
+- runFlow: ../open-switcher.yaml
+- tapOn: 'QA Quiet Org'
+- waitForAnimationToEnd: { timeout: 6000 }
+- openLink: ${METRO_URL}/--/events
+- tapOn: 'Today'
+- extendedWaitUntil: { visible: '.*QA Quiet Dinner.*', timeout: 20000 }
+- waitForAnimationToEnd: { timeout: 4000 }
+- takeScreenshot: today-quiet-product
+- openLink: ${METRO_URL}/--/demo/today?moment=quiet
+- waitForAnimationToEnd: { timeout: 6000 }
+- takeScreenshot: today-quiet-demo
+- openLink: ${METRO_URL}/--/events
+- extendedWaitUntil: { visible: 'Search events', timeout: 30000 }
+- tapOn: 'Today'
+- extendedWaitUntil: { visible: { id: 'home.switchOrganisation' }, timeout: 30000 }
+- runFlow: ../open-switcher.yaml
+- tapOn: 'QA Draft Org'
+- waitForAnimationToEnd: { timeout: 6000 }
+- openLink: ${METRO_URL}/--/events
+- extendedWaitUntil: { visible: 'Nothing coming up', timeout: 20000 }
+- waitForAnimationToEnd: { timeout: 4000 }
+- takeScreenshot: events-emptyUpcoming-product
+- openLink: ${METRO_URL}/--/demo/events?state=emptyUpcoming
+- waitForAnimationToEnd: { timeout: 6000 }
+- takeScreenshot: events-emptyUpcoming-demo
+- openLink: ${METRO_URL}/--/events
+- extendedWaitUntil: { visible: 'Search events', timeout: 30000 }
+- tapOn: 'Today'
+- extendedWaitUntil: { visible: { id: 'home.switchOrganisation' }, timeout: 30000 }
+- runFlow: ../open-switcher.yaml
+- tapOn: 'QA Empty Org'
+- waitForAnimationToEnd: { timeout: 6000 }
+- openLink: ${METRO_URL}/--/events
+- tapOn: 'Today'
+- extendedWaitUntil: { visible: 'Set up your first event', timeout: 20000 }
+- waitForAnimationToEnd: { timeout: 4000 }
+- takeScreenshot: today-first-product
+- openLink: ${METRO_URL}/--/demo/today?moment=first
+- waitForAnimationToEnd: { timeout: 6000 }
+- takeScreenshot: today-first-demo
+- openLink: ${METRO_URL}/--/events
+- extendedWaitUntil: { visible: 'Set up your first event', timeout: 20000 }
+- waitForAnimationToEnd: { timeout: 4000 }
+- takeScreenshot: events-first-product
+- openLink: ${METRO_URL}/--/demo/events?state=first
+- waitForAnimationToEnd: { timeout: 6000 }
+- takeScreenshot: events-first-demo
+- openLink: ${METRO_URL}/--/events
+- extendedWaitUntil: { visible: 'Search events', timeout: 30000 }
+- tapOn: 'Today'
+- extendedWaitUntil: { visible: { id: 'home.switchOrganisation' }, timeout: 30000 }
+- runFlow: ../open-switcher.yaml
+- tapOn: 'QA Organisation'
+- waitForAnimationToEnd: { timeout: 6000 }
+- openLink: ${METRO_URL}/--/demo/events?state=loading
+- waitForAnimationToEnd: { timeout: 4000 }
+- takeScreenshot: events-loading-demo
