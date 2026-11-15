@@ -712,7 +712,6 @@ export function ChairPanel({
       <BackHead
         title={t('seating.chairTitle', { table: table.name, seat })}
         line={`${t(SHAPE_WORDS[table.shape].whole)} · ${sectionOf(plan, table)?.name ?? t('seating.noSection')}`}
-        onClose={() => ctx.open({ kind: 'table', id: table.id })}
       />
       <p className="st-state-line is-big">
         <StateMark unusable={unusable} square={table.shape === 'cocktail'} />

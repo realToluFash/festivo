@@ -871,6 +871,22 @@ describe('Tables at a desk (sc-4000)', () => {
     await waitFor(() => expect(document.activeElement).toBe(item));
   });
 
+  it('leaves a chair’s panel by Esc, with no Close, giving focus to its table', async () => {
+    signedIn();
+    await onSeating({
+      'GET /api/events/ev_1/seating-plan': () => seating(withTables(table())),
+    });
+
+    await chooseTable('Table 1, round, 0 of 10 seats taken');
+    fireEvent.click(screen.getByRole('button', { name: 'Table 1, Seat 3, Empty' }));
+    await screen.findByRole('button', { name: 'Mark unusable' });
+
+    expect(screen.queryByRole('button', { name: 'Close' })).toBeNull();
+    fireEvent.keyDown(document.activeElement as HTMLElement, { key: 'Escape' });
+    await waitFor(() => expect(document.activeElement?.getAttribute('data-table')).toBe('t1'));
+    expect(screen.queryByRole('button', { name: 'Mark unusable' })).toBeNull();
+  });
+
   it('names the shape in the panel’s select by its short word, as the demo does', async () => {
     signedIn();
     await onSeating({

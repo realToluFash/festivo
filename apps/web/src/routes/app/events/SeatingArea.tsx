@@ -302,10 +302,14 @@ function Plan({
   const open = (next: Panel | null) => {
     if (next == null) {
       const back = opener.current;
+      const table = tableChosen ? shownPanel.id : null;
 
       opener.current = null;
       focusWhenFree(
         () =>
+          (table == null
+            ? null
+            : document.querySelector<SVGElement>(`.st-room [data-table="${table}"]`)) ??
           [
             ...document.querySelectorAll<HTMLElement | SVGElement>(
               '.st-panel button, .st-room [role="button"]',
