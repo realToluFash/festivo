@@ -7,11 +7,13 @@ import {
 import {
   type RunFigure,
   type RunRow,
+  asksNextStep,
   collisionWords,
   figureSaid,
   figureWords,
   formatWallClock,
   nextWords,
+  timeSlot,
   wallAt,
 } from '@soirely/domain';
 import { useEffect, useMemo, useState } from 'react';
@@ -25,6 +27,7 @@ import { dateLocale } from '../../../i18n/index.ts';
 import { pageTitle, usePageTitle } from '../../../pageTitle.ts';
 import { useServerNow } from '../../../serverNow.ts';
 import { canOn } from '../../../session.ts';
+import { eventAreaPath } from './EventNav.tsx';
 import { type RunItem, type RunTrackView, runViews, said } from './runArea.ts';
 import { dayName } from './scheduleArea.ts';
 import { useHubTopics } from './useHubTopics.ts';
@@ -131,6 +134,12 @@ function Crumbs({ event }: { event: OrganisationEvent }) {
               {event.name}
             </Link>
           </li>
+          <li className="ev-crumb-part">
+            <Glyph name="chevron" size={15} weight={2.4} className="desk-chevron" />
+            <Link className="ev-crumb-name" to={eventAreaPath(event.id, 'schedule')}>
+              {t('schedule.title')}
+            </Link>
+          </li>
           <li className="ev-crumb-part" aria-current="page">
             <Glyph name="chevron" size={15} weight={2.4} className="desk-chevron" />
             <span className="ev-crumb-name">{t('runView.title')}</span>
@@ -182,12 +191,16 @@ function RunView({
         <p className="rv-clock">
           <Glyph name="clock" size={16} weight={2.2} />
           <span>
-            <span className="num">
-              {t('runView.clock', { time: formatWallClock(now, locale) })}
-            </span>
+            <span className="num">{t('runView.clock', timeSlot(now, locale))}</span>
           </span>
         </p>
       </header>
+      {!manage && (
+        <p className="mn-lock">
+          <Glyph name="lock" size={16} weight={2.2} />
+          {t('schedule.lock')}
+        </p>
+      )}
       {failed && (
         <p className="mn-failed" role="alert">
           <Glyph name="alert" size={17} weight={2.2} />
@@ -285,7 +298,10 @@ function TrackTable({
           ))}
         </tbody>
       </table>
-      <p className="rv-next">{said(t, nextWords(view.track, locale))}</p>
+      <p className="rv-next">
+        {said(t, nextWords(view.track, locale))}
+        {asksNextStep(view.track, manage) && ` ${t('runView.nextStep')}`}
+      </p>
     </section>
   );
 }
@@ -311,11 +327,11 @@ function RunRowView({
         <span className="num">{formatWallClock(item.planned, locale)}</span>
         {phase !== 'waiting' && item.startedAt != null ? (
           <span className="rv-second is-started num">
-            {t('runView.started', { time: formatWallClock(item.startedAt, locale) })}
+            {t('runView.started', timeSlot(item.startedAt, locale))}
           </span>
         ) : row.expected != null ? (
           <span className="rv-second is-expected num">
-            {t('runView.about', { time: formatWallClock(row.expected, locale) })}
+            {t('runView.about', timeSlot(row.expected, locale))}
           </span>
         ) : null}
       </td>

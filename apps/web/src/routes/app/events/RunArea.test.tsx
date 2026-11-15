@@ -191,5 +191,18 @@ describe('The run view (sc-1404)', () => {
 
     expect(screen.queryByRole('button', { name: /^Start / })).toBeNull();
     expect(screen.queryByRole('button', { name: /^Finish / })).toBeNull();
+    expect(
+      screen.getByText('You can see this schedule. Ask whoever runs the event to change it.'),
+    ).toBeDefined();
+    expect(screen.getByText('Next: Speeches at about 20:13.')).toBeDefined();
+  });
+
+  it('goes back up to the Schedule from the breadcrumb', async () => {
+    await onRun([DINNER, SPEECHES]);
+    const crumbs = screen.getByRole('navigation', { name: 'Breadcrumb' });
+
+    expect(within(crumbs).getByRole('link', { name: 'Schedule' }).getAttribute('href')).toBe(
+      '/app/events/ev_1/schedule',
+    );
   });
 });

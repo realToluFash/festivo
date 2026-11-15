@@ -71,6 +71,18 @@ export function figureSaid(track: string, figure: RunFigure): RunWords {
   }
 }
 
+/** Spanish and Portuguese say "a la 1:15" but "a las 21:15", so a sentence holding a time picks its `_hour1` form at one o'clock. */
+export function hourContext(shown: string): { context?: 'hour1' } {
+  return /^0?1(?!\d)/.test(shown) ? { context: 'hour1' } : {};
+}
+
+/** A time slot and the context its sentence takes. */
+export function timeSlot(time: string, locale: string): { time: string; context?: 'hour1' } {
+  const shown = formatWallClock(time, locale);
+
+  return { time: shown, ...hourContext(shown) };
+}
+
 /** The line that ends each table: what is next and when, or that nothing follows. */
 export function nextWords<I extends RunTimesItem & { title: string }>(
   track: RunTrack<I>,
@@ -80,11 +92,14 @@ export function nextWords<I extends RunTimesItem & { title: string }>(
   if (track.next == null) return ['runView.nothingAfter'];
 
   const { item, expected } = track.next;
-  const time = formatWallClock(expected, locale);
+  const values = { title: item.title, ...timeSlot(expected, locale) };
 
-  return expected === item.planned
-    ? ['runView.nextAt', { title: item.title, time }]
-    : ['runView.nextAbout', { title: item.title, time }];
+  return expected === item.planned ? ['runView.nextAt', values] : ['runView.nextAbout', values];
+}
+
+/** Whether the closing line goes on to the step only someone who manages the run of show can take. */
+export function asksNextStep<I extends RunTimesItem>(track: RunTrack<I>, manage: boolean): boolean {
+  return manage && track.figure.kind !== 'done' && track.next != null;
 }
 
 /** "Cake cutting would run into Fireworks at 22:00". */
@@ -95,6 +110,6 @@ export function collisionWords<I extends RunTimesItem & { title: string }>(
 ): RunWords {
   return [
     'runView.collision',
-    { before: before.title, fixed: fixed.title, time: formatWallClock(fixed.planned, locale) },
+    { before: before.title, fixed: fixed.title, ...timeSlot(fixed.planned, locale) },
   ];
 }

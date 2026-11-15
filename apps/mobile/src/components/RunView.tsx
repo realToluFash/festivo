@@ -9,12 +9,14 @@ import {
   type RunRow,
   type RunTrackShown,
   type RunWords,
+  asksNextStep,
   collisionWords,
   figureSaid,
   figureWords,
   formatWallClock,
   nextWords,
   runShown,
+  timeSlot,
   wallAt,
   wallOfZoned,
 } from '@soirely/domain';
@@ -137,6 +139,7 @@ export function RunView({
       eventId={eventId}
       schedule={load.schedule}
       manage={event?.permissions.includes('run_of_show.manage') ?? false}
+      reader={event != null && !event.permissions.includes('run_of_show.manage')}
       kind={kind}
       onSchedule={(schedule) => setLoad({ kind: 'loaded', schedule })}
     />
@@ -147,12 +150,15 @@ function Loaded({
   eventId,
   schedule,
   manage,
+  reader,
   kind,
   onSchedule,
 }: {
   eventId: string;
   schedule: Schedule;
   manage: boolean;
+  /** Known to read and not manage, so the lock line says why there is nothing to press; unset until the event has loaded. */
+  reader: boolean;
   kind: LayoutKind;
   onSchedule: (schedule: Schedule) => void;
 }) {
@@ -199,10 +205,18 @@ function Loaded({
         <View style={styles.clock}>
           <Glyph paths={PATHS.clock} ink={tokens.colorInk} side={16} circle />
           <Text size={14} weight="semibold" style={styles.num}>
-            {t('runView.clock', { time: formatWallClock(now, locale) })}
+            {t('runView.clock', timeSlot(now, locale))}
           </Text>
         </View>
       </View>
+      {reader && (
+        <View style={styles.lock}>
+          <Glyph paths={PATHS.lock} ink={tokens.colorInkSecondary} side={16} />
+          <Text size={14} style={[styles.secondary, styles.grow]}>
+            {t('runView.lock')}
+          </Text>
+        </View>
+      )}
       {failed && (
         <Text size={15} weight="semibold" style={styles.attention} accessibilityRole="alert">
           {t('runView.markFailed')}
@@ -363,6 +377,7 @@ function TabletTrack({ view, narrow, act }: { view: TrackView; narrow: boolean; 
       ))}
       <Text size={14} style={[styles.secondary, styles.nextLine]}>
         {said(t, nextWords(view.track, locale))}
+        {asksNextStep(view.track, act.manage) && ` ${t('runView.nextStep')}`}
       </Text>
     </View>
   );
@@ -437,11 +452,11 @@ function startsSaid(row: RunRow<RunItem>, t: TFunction): string {
 
   if (second == null) return t('runView.saidPlanned', { planned });
 
-  const time = formatWallClock(second.time, locale);
+  const slot = { planned, ...timeSlot(second.time, locale) };
 
   return second.kind === 'expected'
-    ? t('runView.saidPlannedAbout', { planned, time })
-    : t('runView.saidPlannedStarted', { planned, time });
+    ? t('runView.saidPlannedAbout', slot)
+    : t('runView.saidPlannedStarted', slot);
 }
 
 function Second({ row, size }: { row: RunRow<RunItem>; size: 12 | 13 }) {
@@ -450,7 +465,7 @@ function Second({ row, size }: { row: RunRow<RunItem>; size: 12 | 13 }) {
 
   if (second == null) return null;
 
-  const time = formatWallClock(second.time, dateLocale());
+  const slot = timeSlot(second.time, dateLocale());
 
   return (
     <Text
@@ -459,7 +474,7 @@ function Second({ row, size }: { row: RunRow<RunItem>; size: 12 | 13 }) {
       weight="semibold"
       style={[styles.num, second.kind === 'expected' ? styles.attention : styles.secondary]}
     >
-      {second.kind === 'expected' ? t('runView.about', { time }) : t('runView.started', { time })}
+      {second.kind === 'expected' ? t('runView.about', slot) : t('runView.started', slot)}
     </Text>
   );
 }
@@ -626,7 +641,7 @@ function PhoneTrack({
             </Text>
             {nextRow.expected != null && (
               <Text size={16} weight="semibold" style={[styles.num, styles.attention]}>
-                {t('runView.arrowAbout', { time: formatWallClock(nextRow.expected, locale) })}
+                {t('runView.arrowAbout', timeSlot(nextRow.expected, locale))}
               </Text>
             )}
           </View>
@@ -795,6 +810,7 @@ const styles = StyleSheet.create({
   },
   thenTime: { width: 112 },
   nextLine: { paddingTop: tokens.spaceSm },
+  lock: { flexDirection: 'row', alignItems: 'center', gap: tokens.spaceSm },
 });
 
 const COLUMN = [styles.startsCol, styles.lastsCol, styles.grow, styles.ownerCol];
