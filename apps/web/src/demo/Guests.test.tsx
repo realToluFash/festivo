@@ -1851,3 +1851,153 @@ describe('the numbers on Overview and Events (sc-3786, sc-23284)', () => {
     expect(router.state.location.pathname).toBe('/demo/guests');
   });
 });
+
+describe('Guests, nobody on the list in each phase (sc-50409)', () => {
+  function adds(): HTMLElement[] {
+    return screen
+      .queryAllByRole('button', { name: 'Add guest' })
+      .filter((one) => one.closest('.gs-column') == null);
+  }
+
+  function card(): HTMLElement {
+    return main().querySelector<HTMLElement>('.ev-card-foot')?.parentElement as HTMLElement;
+  }
+
+  it(
+    'offers Add guest and Make live on an empty Draft’s card, and none in the header',
+    SLOW,
+    async () => {
+      await guests('draftEmpty');
+
+      expect(screen.getByText('Draft')).toBeDefined();
+      expect(screen.getByText('No guests yet')).toBeDefined();
+      expect(screen.queryByText('0 on the list')).toBeNull();
+      expect(screen.getByText('Guests can’t be invited until this event is live.')).toBeDefined();
+      expect(adds()).toHaveLength(1);
+      expect(within(card()).getByRole('button', { name: 'Add guest' })).toBeDefined();
+      expect(within(card()).getByRole('button', { name: 'Make live' })).toBeDefined();
+      expect(main().querySelector('.gs-top [data-focus="add"]')).toBeNull();
+    },
+  );
+
+  it(
+    'adds the first guest: the list beside the form, the card reads 1 on the list',
+    SLOW,
+    async () => {
+      await guests('draftEmpty');
+
+      fireEvent.click(within(card()).getByRole('button', { name: 'Add guest' }));
+      const name = await screen.findByRole('textbox', { name: 'Full name' });
+
+      await waitFor(() => expect(document.activeElement).toBe(name), WAIT);
+      fireEvent.change(name, { target: { value: 'Bimpe Adeyemi' } });
+      fireEvent.click(within(column()).getByRole('button', { name: 'Add guest' }));
+
+      expect(screen.getByText('Bimpe Adeyemi added.')).toBeDefined();
+      expect((screen.getByRole('textbox', { name: 'Full name' }) as HTMLInputElement).value).toBe(
+        '',
+      );
+      expect(screen.getByText('1 on the list')).toBeDefined();
+      expect(screen.getByRole('button', { name: 'Make live' })).toBeDefined();
+      expect(adds()).toHaveLength(1);
+      expect(main().querySelector('.gs-top [data-focus="add"]')).not.toBeNull();
+    },
+  );
+
+  it(
+    'puts Change dates beside Add guest on an empty Draft whose end has passed',
+    SLOW,
+    async () => {
+      const router = await guests('draftEmptyPast');
+
+      expect(
+        screen.getByText(
+          'This event’s end has passed, so it cannot be made live. Change its dates first.',
+        ),
+      ).toBeDefined();
+      expect(screen.queryByRole('button', { name: 'Make live' })).toBeNull();
+      expect(adds()).toHaveLength(1);
+      fireEvent.click(within(card()).getByRole('button', { name: 'Change dates' }));
+      await waitFor(
+        () => expect(router.state.location.pathname).toBe('/demo/events/evt-shower-2'),
+        WAIT,
+      );
+    },
+  );
+
+  it(
+    'gives Add guest alone without events.manage, and nothing to add without guests.manage',
+    SLOW,
+    async () => {
+      await guests('draftEmptyHost');
+
+      expect(adds()).toHaveLength(1);
+      expect(screen.queryByRole('button', { name: 'Make live' })).toBeNull();
+
+      cleanup();
+      await guests('draftEmptyViewer');
+
+      expect(screen.getByText('No guests yet')).toBeDefined();
+      expect(screen.getByText('Guests can’t be invited until this event is live.')).toBeDefined();
+      expect(adds()).toHaveLength(0);
+      expect(screen.queryByRole('button', { name: 'Make live' })).toBeNull();
+    },
+  );
+
+  it('gives Make live alone with events.manage and without guests.manage', SLOW, async () => {
+    await guests('draftEmptyEvents');
+
+    expect(screen.getByText('No guests yet')).toBeDefined();
+    expect(screen.getByText('Guests can’t be invited until this event is live.')).toBeDefined();
+    expect(adds()).toHaveLength(0);
+    expect(within(card()).getByRole('button', { name: 'Make live' })).toBeDefined();
+  });
+
+  it('reads as an empty Draft once the last guest is removed and Undo has gone', SLOW, async () => {
+    vi.useFakeTimers({ shouldAdvanceTime: true });
+    try {
+      await guests('draftOneLeft');
+      expect(adds()).toHaveLength(1);
+      expect(within(card()).queryByRole('button', { name: 'Add guest' })).toBeNull();
+
+      fireEvent.click(within(column()).getByRole('button', { name: 'Remove from the list' }));
+      const ask = await screen.findByRole('alertdialog', { name: 'Remove Leila Mansour?' }, WAIT);
+      fireEvent.click(within(ask).getByRole('button', { name: 'Remove' }));
+      const undo = await screen.findByRole('button', { name: 'Undo' }, WAIT);
+
+      act(() => {
+        undo.blur();
+        fireEvent.blur(undo);
+        vi.advanceTimersByTime(11000);
+      });
+      await waitFor(() => expect(screen.queryByRole('button', { name: 'Undo' })).toBeNull(), WAIT);
+
+      expect(screen.getByText('No guests yet')).toBeDefined();
+      expect(adds()).toHaveLength(1);
+      expect(within(card()).getByRole('button', { name: 'Add guest' })).toBeDefined();
+      expect(main().querySelector('.gs-top [data-focus="add"]')).toBeNull();
+    } finally {
+      vi.useRealTimers();
+    }
+  });
+
+  it.each([
+    ['pausedEmpty', 'Guests can’t be invited while this event is paused.'],
+    ['finishedEmpty', 'This event has finished, so guests can’t be invited.'],
+  ])(
+    'keeps %s’s tag and line, says No guests yet, and offers Add guest in the header',
+    SLOW,
+    async (state, line) => {
+      await guests(state);
+
+      expect(screen.getByText(line)).toBeDefined();
+      expect(screen.getByText('No guests yet')).toBeDefined();
+      expect(screen.queryByText(/coming of/)).toBeNull();
+      expect(main().querySelector('.ev-card-foot')).toBeNull();
+      expect(adds()).toHaveLength(1);
+      fireEvent.click(adds()[0] as HTMLElement);
+
+      expect(await screen.findByRole('textbox', { name: 'Full name' })).toBeDefined();
+    },
+  );
+});
