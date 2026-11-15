@@ -136,6 +136,7 @@ export function SearchPalette({
   const [term, setTerm] = useState(start.term);
   const [phase, setPhase] = useState<Phase>(start.phase);
   const [lit, setLit] = useState(0);
+  const [retrying, setRetrying] = useState(false);
   const groups = useMemo(
     () => (phase === 'found' ? groupsFor(term, start.reach) : []),
     [phase, term, start.reach],
@@ -156,6 +157,17 @@ export function SearchPalette({
 
     return () => window.clearTimeout(wait);
   }, [typed, term]);
+
+  useEffect(() => {
+    if (!retrying) return undefined;
+
+    const wait = window.setTimeout(() => {
+      setPhase(phaseOf(term));
+      setRetrying(false);
+    }, TYPING_PAUSE_MS);
+
+    return () => window.clearTimeout(wait);
+  }, [retrying, term]);
 
   useEffect(() => {
     if (litAt < 0) return;
@@ -190,7 +202,8 @@ export function SearchPalette({
   }
 
   function retry(): void {
-    setPhase(phaseOf(term));
+    setPhase('loading');
+    setRetrying(true);
     setLit(0);
     field.current?.focus();
   }

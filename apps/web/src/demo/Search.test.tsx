@@ -258,8 +258,10 @@ describe('Search as a command palette (sc-39534)', () => {
 
     fireEvent.click(within(dialog).getByRole('button', { name: 'Try again' }));
     expect((field(dialog) as HTMLInputElement).value).toBe('ines');
-    expect(within(dialog).getAllByRole('option').length).toBeGreaterThan(0);
     expect(document.activeElement).toBe(field(dialog));
+    expect(within(dialog).getByRole('status').textContent).toBe('Searching…');
+    expect(within(dialog).queryAllByRole('option')).toHaveLength(0);
+    expect((await within(dialog).findAllByRole('option', {}, WAIT)).length).toBeGreaterThan(0);
   });
 
   it('moves the lit row with the arrows, Home and End', SLOW, async () => {

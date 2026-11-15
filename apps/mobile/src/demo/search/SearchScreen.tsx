@@ -55,6 +55,7 @@ export function SearchScreen({ start }: { start: SearchStart }) {
   const [term, setTerm] = useState(start.term);
   const [phase, setPhase] = useState<Phase>(start.phase);
   const [told, setTold] = useState<string | null>(null);
+  const [retrying, setRetrying] = useState(false);
   const groups = useMemo(
     () => (phase === 'found' ? groupsFor(term, start.reach) : []),
     [phase, term, start.reach],
@@ -76,6 +77,17 @@ export function SearchScreen({ start }: { start: SearchStart }) {
 
     return () => clearTimeout(wait);
   }, [typed, term]);
+
+  useEffect(() => {
+    if (!retrying) return undefined;
+
+    const wait = setTimeout(() => {
+      setPhase(phaseOf(term));
+      setRetrying(false);
+    }, TYPING_PAUSE_MS);
+
+    return () => clearTimeout(wait);
+  }, [retrying, term]);
 
   useReadOut(
     phase === 'loading'
@@ -121,7 +133,8 @@ export function SearchScreen({ start }: { start: SearchStart }) {
   }
 
   function retry(): void {
-    setPhase(phaseOf(term));
+    setPhase('loading');
+    setRetrying(true);
     field.current?.focus();
   }
 
