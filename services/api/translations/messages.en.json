@@ -134,7 +134,7 @@
     "guest.version_required": "Send the version you are changing, as If-Match.",
     "guest.changed_since": "Someone else changed this guest since you opened it. Your change was not saved.",
     "guest.replies_closed": "Answers have closed. Contact your host if something has changed.",
-    "guest.replies_open": "Replies are still open, so this guest can already change their answer.",
+    "guest.replies_open": "Replies are still open, so this guest can already change their reply.",
     "guest.event_paused": "Answers are closed while the event is paused. Anything you sent is kept.",
     "guest.event_concluded": "Answers have closed.",
     "guest.replied": "Not changed. They have replied, so they stay invited.",
