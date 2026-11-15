@@ -168,6 +168,7 @@ export function MarkInvited({
       onClose={onClose}
       held={sending}
       opener={opener}
+      docked
       scrimLabel={t('guestList.cancel')}
       testID="guest.markSheet"
     >

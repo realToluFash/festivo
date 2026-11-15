@@ -82,7 +82,7 @@ export function GuestsCard({
   );
 }
 
-/** A guest's details lead with their reply on glass, their name and one line, as the demo's guest page does. */
+/** A guest's details lead with their reply on glass, their name, one line and its step, as the demo's guest page does. */
 export function GuestCover({
   kind,
   event,
@@ -90,6 +90,7 @@ export function GuestCover({
   word,
   name,
   line,
+  step = null,
   nameRef,
 }: {
   kind: LayoutKind;
@@ -98,6 +99,7 @@ export function GuestCover({
   word: string;
   name: string;
   line: string | null;
+  step?: StepProps | null;
   nameRef: Ref<TextHandle>;
 }) {
   return (
@@ -117,6 +119,11 @@ export function GuestCover({
       </View>
       <CardSays text={name} heading ref={nameRef} />
       {line != null && <OnCard text={line} />}
+      {step != null && (
+        <View style={styles.foot}>
+          <StepButton {...step} />
+        </View>
+      )}
     </SummaryCard>
   );
 }
