@@ -1251,16 +1251,18 @@ function createEmulators() {
     return;
   }
   const tools = androidTools();
-  if (!existsSync(tools.avdmanager)) {
-    console.log(missingCmdlineTools(tools));
-    return;
-  }
-  const image = playImage(tools.sdk);
   const existing = (capture(tools.emulator, ['-list-avds'], { env: tools.env }) ?? '').split('\n');
-  for (const avd of Object.values(CONFIG.emulators)) {
+  setUpLocalEmulators(tools, Object.values(CONFIG.emulators), existing);
+}
+
+export function setUpLocalEmulators(tools, emulators, existing) {
+  const canCreate = existsSync(tools.avdmanager);
+  if (!canCreate) console.log(missingCmdlineTools(tools));
+  const image = canCreate ? playImage(tools.sdk) : null;
+  for (const avd of emulators) {
     if (existing.includes(avd.name)) {
       console.log(`  ${avd.name}: already there`);
-    } else {
+    } else if (canCreate) {
       const created = spawnSync(
         tools.avdmanager,
         ['create', 'avd', '-n', avd.name, '-k', image, '-d', avd.device],
