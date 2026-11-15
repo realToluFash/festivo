@@ -955,6 +955,18 @@ const styles = StyleSheet.create({
   portrait: { ...LIST_EDGES.tabletPortrait, gap: LIST_GAP, paddingBottom: tokens.space6xl * 2 },
   landscape: { ...LIST_EDGES.tabletLandscape, gap: LIST_GAP },
   column: { gap: LIST_GAP, paddingBottom: tokens.space6xl * 2 },
+  ruledList: {
+    paddingTop: 22,
+    paddingHorizontal: tokens.spaceXxl,
+    gap: LIST_GAP,
+    paddingBottom: tokens.space6xl * 2,
+  },
+  ruledPage: {
+    paddingTop: 22,
+    paddingHorizontal: 32,
+    gap: LIST_GAP,
+    paddingBottom: tokens.space6xl * 2,
+  },
 });
 
 const SPACING: ListAndPageSpacing = {
@@ -964,4 +976,5 @@ const SPACING: ListAndPageSpacing = {
   column: styles.column,
   listWidth: 400,
   between: tokens.spaceXxl,
+  ruled: { list: styles.ruledList, page: styles.ruledPage },
 };
