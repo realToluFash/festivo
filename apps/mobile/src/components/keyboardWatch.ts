@@ -113,13 +113,30 @@ export function putKeysDownThen(
   );
 }
 
-/** Calls `then` once keys something else is putting down have gone and `settledMs` has passed since, as `keysDownThen`, but asks nothing of them: TalkBack's focus moves as the window grows under keys that close late, and what was timed from the tap lands before that (sc-43907). Returns what cancels the call still to come. */
+/** Calls `then` once keys something else is putting down have gone and `settledMs` has passed since, as `keysDownThen`, but asks nothing of them: TalkBack's focus moves as the window grows under keys that close late, and what was timed from the tap lands before that (sc-43907). The form grows only once the avoiding view has heard the keys went down and laid out again, which can come well after, so a screen's scroll resizing meanwhile starts the settle again. Returns what cancels the call still to come. */
 export function onceKeysDownThen(then: () => void, settledMs: number): () => void {
   return keysDownThen(
-    { up: () => Keyboard.isVisible(), hide: () => {}, onHidden: onKeysHidden },
+    { up: () => Keyboard.isVisible(), hide: () => {}, onHidden: onKeysHiddenOrGrown },
     then,
     settledMs,
   );
+}
+
+const scrollResizes = new Set<() => void>();
+
+/** A screen's scroll view has been laid out at a new size. */
+export function scrollResized(): void {
+  scrollResizes.forEach((resized) => resized());
+}
+
+function onKeysHiddenOrGrown(changed: () => void): () => void {
+  const unwatchHidden = onKeysHidden(changed);
+  scrollResizes.add(changed);
+
+  return () => {
+    unwatchHidden();
+    scrollResizes.delete(changed);
+  };
 }
 
 function onKeysHidden(hidden: () => void): () => void {

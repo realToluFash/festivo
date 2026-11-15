@@ -23,6 +23,7 @@ vi.mock('react-native', () => ({
 }));
 
 const { readOut } = await import('./ReadOut.tsx');
+const { scrollResized } = await import('./keyboardWatch.ts');
 
 describe('words handed over as the keys go down wait for them on Android (sc-43907)', () => {
   beforeEach(() => {
@@ -43,6 +44,20 @@ describe('words handed over as the keys go down wait for them on Android (sc-439
     expect(native.announce).not.toHaveBeenCalled();
     native.keyboard.isVisible.mockReturnValue(false);
     native.hidden.forEach((hidden) => hidden());
+    vi.advanceTimersByTime(TALKBACK_SETTLE_MS - 1);
+    expect(native.announce).not.toHaveBeenCalled();
+    vi.advanceTimersByTime(1);
+    expect(native.announce).toHaveBeenCalledOnce();
+  });
+
+  it('says them a settle after the form has grown, when it grows after the keys have gone', () => {
+    native.keyboard.isVisible.mockReturnValue(true);
+    readOut('3 champs sont à corriger, donc rien n’a été envoyé.', { afterKeysDown: true });
+    native.keyboard.isVisible.mockReturnValue(false);
+    native.hidden.forEach((hidden) => hidden());
+
+    vi.advanceTimersByTime(800);
+    scrollResized();
     vi.advanceTimersByTime(TALKBACK_SETTLE_MS - 1);
     expect(native.announce).not.toHaveBeenCalled();
     vi.advanceTimersByTime(1);

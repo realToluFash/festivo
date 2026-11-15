@@ -75,6 +75,7 @@ import {
   keyboardTopNow,
   settledLift,
   putKeysDownThen,
+  scrollResized,
   useKeysUp,
   watchKeyboardTop,
 } from './keyboardWatch.ts';
@@ -446,9 +447,9 @@ function bringIntoView(
 function useCheckedFieldInView(scroll: ScreenScrollView): void {
   useEffect(() => {
     let cancel = () => {};
-    const unwatch = watchCheckedField((field, inView) => {
+    const unwatch = watchCheckedField((field, inView, jump) => {
       cancel();
-      cancel = followIntoView(scroll, () => field, { inView });
+      cancel = followIntoView(scroll, () => field, { inView, jump });
     });
 
     return () => {
@@ -475,7 +476,7 @@ function whenLanded(scroll: ScreenScrollView, to: number | null, then: () => voi
   return stop;
 }
 
-/** Brings `shown` wholly into sight above the keys now and once it has settled, and again as the keys rise (and fall, with `alsoOnHide`) or the scroll view resizes, until two settles have passed; says so through `answering` as settledAnswer does, calls `inView` as the first scroll lands, and returns what stops it sooner. */
+/** Brings `shown` wholly into sight above the keys now and once it has settled, and again as the keys rise (and fall, with `alsoOnHide`) or the scroll view resizes, until two settles have passed; says so through `answering` as settledAnswer does, calls `inView` as the first scroll lands, and returns what stops it sooner. With `jump`, each scroll is made at once and `inView` is called as the first is asked, so a screen reader's move asked then reaches the native view after it: under a gliding scroll TalkBack's focus, pushed off the button, steps onto each view the scroll passes, and its own scroll onto one of them can stop the glide short (sc-43907). */
 function followIntoView(
   scroll: ScreenScrollView,
   shown: () => ScreenReaderTarget | null,
@@ -483,10 +484,12 @@ function followIntoView(
     alsoOnHide = false,
     answering = () => {},
     inView,
+    jump = false,
   }: {
     alsoOnHide?: boolean;
     answering?: (on: boolean) => void;
     inView?: (() => void) | undefined;
+    jump?: boolean | undefined;
   } = {},
 ): () => void {
   const sight = { aboveKeys: true };
@@ -495,8 +498,10 @@ function followIntoView(
   const bring = () => {
     const then = landing;
     landing = undefined;
-    bringIntoView(scroll, shown(), true, sight, (found) => {
-      if (then != null && found != null) stopLanding = whenLanded(scroll, found.to, then);
+    bringIntoView(scroll, shown(), !jump, sight, (found) => {
+      if (then == null || found == null) return;
+      if (jump) then();
+      else stopLanding = whenLanded(scroll, found.to, then);
     });
   };
   // Keys that rise, and Android's avoiding view shrinking under them, cover it afresh.
@@ -1145,7 +1150,10 @@ export function useScreenScrollView() {
     screenScroll,
     scrollProps: {
       ref: scrollView,
-      onLayout: () => screenScroll.resized.forEach((resized) => resized()),
+      onLayout: () => {
+        screenScroll.resized.forEach((resized) => resized());
+        scrollResized();
+      },
       onScroll: follow,
       onScrollEndDrag: follow,
       onMomentumScrollEnd: follow,
