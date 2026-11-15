@@ -33,6 +33,7 @@ function event(name: string, rest: Partial<ListedEvent> = {}): ListedEvent {
     currency: 'GBP',
     cover: null,
     venue: { name: 'The Landmark', address: null },
+    arrivalNote: null,
     hosts: [],
     madeLiveAt: '2026-10-01T00:00:00Z',
     pausedAt: null,

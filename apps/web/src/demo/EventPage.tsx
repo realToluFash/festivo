@@ -12,7 +12,7 @@ import {
   type SampleEvent,
   AREAS,
   COMING,
-  CURRENCIES,
+  currencyLabel,
   EVENT_WORDS as W,
   TYPE_WORDS,
   areaOf,
@@ -128,8 +128,15 @@ import { repliesOpen } from './replyClose.ts';
 import { noOrgStateOf } from './noOrg.ts';
 import { NoOrgEvent } from './NoOrgEvent.tsx';
 import { TellDialog, UntoldCard } from './MessagesTell.tsx';
-import { Ask, Head, RowWords } from '../components/SettingsParts.tsx';
-import { Crumb, Lead, ManageItem, ManageList, PartRow } from '../components/EventPageParts.tsx';
+import { Ask, Head, RowWords, TextAction } from '../components/SettingsParts.tsx';
+import {
+  Broken,
+  Crumb,
+  Lead,
+  ManageItem,
+  ManageList,
+  PartRow,
+} from '../components/EventPageParts.tsx';
 import { JustForYou } from '../components/JustForYou.tsx';
 import { GuestsCanWrite } from './GuestsCanWrite.tsx';
 import type { Tell } from '../components/SettingsParts.tsx';
@@ -157,6 +164,7 @@ const LOCALE = 'en-US';
 interface Arrival {
   open?: Part;
   told?: string;
+  noPhoto?: string;
 }
 
 type Asking = 'pause' | 'callOff' | 'endNow' | 'deleteDraft' | 'delete' | 'refused' | 'duplicate';
@@ -401,6 +409,7 @@ function EventView({
   const [tellMoved, setTellMoved] = useState<string | null>(null);
   const [part, setPart] = useState<Part | null>(partOf(state) ?? arrival.open ?? null);
   const [dirty, setDirty] = useState(false);
+  const [noPhoto, setNoPhoto] = useState(arrival.noPhoto ?? null);
   const [leaving, setLeaving] = useState<{ to: Part | null } | null>(null);
   const [asking, setAsking] = useState<Asking | null>(askingOf(state));
   const [ending, setEnding] = useState(0);
@@ -512,6 +521,21 @@ function EventView({
                 {sent && <p className="ml-demo-only">{LW.demoMessages}</p>}
                 <div className="ev-columns">
                   <div className="ev-left">
+                    {noPhoto != null && (
+                      <Broken
+                        action={
+                          <TextAction
+                            label={W.upload}
+                            onClick={() => {
+                              setNoPhoto(null);
+                              open('cover');
+                            }}
+                          />
+                        }
+                      >
+                        {noPhoto}
+                      </Broken>
+                    )}
                     {untold.length > 0 && (
                       <UntoldCard
                         items={untold}
@@ -1071,12 +1095,7 @@ function Details({
             event.hosts.length === 0 ? `${W.hostedBy} · ${W.noHostsLine}` : W.hostedBy,
           )}
           {row('type', <Lead name="events" />, TYPE_WORDS[event.type], W.type)}
-          {row(
-            'currency',
-            <Lead name="wallet" />,
-            `${event.currency} · ${CURRENCIES[event.currency]}`,
-            W.currency,
-          )}
+          {row('currency', <Lead name="wallet" />, currencyLabel(event.currency), W.currency)}
         </ul>
       </section>
       {needs}

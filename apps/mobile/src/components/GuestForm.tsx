@@ -8,11 +8,24 @@ import {
 import {
   GUEST_NAME_MAXIMUM,
   MOST_COMPANIONS,
+  NO_NEEDS,
+  type NeedsField,
+  type NeedsProblems,
+  type NeedsTyped,
   type Problem,
   type Problems,
   firstProblem,
-  newGuestOf,
+  needsFailingCount,
+  needsProblemsOf,
+  needsViolations,
+  problemsByWho,
   problemsOf,
+  type PickProblem,
+  pickName,
+  returnPick,
+  sameGroup,
+  shownProblem,
+  typedProblem,
   violationProblems,
 } from '@soirely/domain';
 import { type RefObject, useRef, useState } from 'react';
@@ -27,10 +40,15 @@ import { AlertLine } from './AlertLine.tsx';
 import { Field, TextField, focusRefused } from './Field.tsx';
 import { LanguageField, languageOver } from './GuestLanguage.tsx';
 import { PhoneEntry } from './PhoneEntry.tsx';
+import { type CountedGroup, GroupField, GroupPicker, pickProblemLine } from './GuestGroup.tsx';
+import { NeedsSection, useNeedsRefs } from './GuestNeeds.tsx';
+import { readOut } from './ReadOut.tsx';
+import { moveScreenReaderFocus } from './screenReaderFocus.ts';
+import { useShellLayout } from './settingsShell.ts';
 import { FocusedScreen } from './SummaryOverlays.tsx';
 import { TextAction } from './SummaryRows.tsx';
 import { Text } from './Text.tsx';
-import { type Values, editOf, typedOf, valuesOf } from './guestValues.ts';
+import { type Values, addOf, editOf, typedOf, valuesOf } from './guestValues.ts';
 
 export type GuestFormMode = { kind: 'add' } | { kind: 'edit'; tagged: TaggedGuest };
 
@@ -38,12 +56,17 @@ type Ask = 'duplicate' | 'discard' | null;
 
 type Refusal = 'offline' | 'notSaved' | null;
 
-/** Add guest and Edit (sc-1468, sc-3773) with sc-3790's Language: refused before sending, a duplicate asked about, a colleague's change held at the top, and offline refused with nothing typed lost. Group and Needs are not on it (sc-5519). */
+/** Group's refusal on Save in the API's words, said as taken once the list read again has a group of the name made. */
+type GroupRefusal = { made: string | null; line: string } | null;
+
+/** Add guest and Edit (sc-1468, sc-3773) with sc-3790's Language and sc-5519's Group and Needs: refused before sending, a duplicate asked about, a colleague's change held at the top, and offline refused with nothing typed lost. */
 export function GuestForm({
   open,
   mode,
   eventId,
   startCountry,
+  groups,
+  onGroupsStale,
   opener,
   onClose,
   onSaved,
@@ -52,6 +75,10 @@ export function GuestForm({
   mode: GuestFormMode;
   eventId: string;
   startCountry: string;
+  /** The event's groups with their people, as the list last read them. */
+  groups: readonly CountedGroup[];
+  /** Reads the list again, so the picker lists a group a colleague made meanwhile. */
+  onGroupsStale: () => void;
   opener: RefObject<ScreenReaderTarget | null>;
   onClose: () => void;
   onSaved: (saved: { guest: Guest; tagged: TaggedGuest | null }) => void;
@@ -67,6 +94,16 @@ export function GuestForm({
   const [theirs, setTheirs] = useState<GuestDetails | null>(null);
   const [sending, setSending] = useState(false);
   const [choosing, setChoosing] = useState(false);
+  const [picking, setPicking] = useState(false);
+  const [typedGroup, setTypedGroup] = useState('');
+  const [returned, setReturned] = useState<PickProblem | null>(null);
+  const [groupRefusal, setGroupRefusal] = useState<GroupRefusal>(null);
+  const [needsProblems, setNeedsProblems] = useState<Record<string, NeedsProblems>>({});
+  const [tried, setTried] = useState(false);
+  const [opened, setOpened] = useState<ReadonlySet<string>>(new Set());
+  const groupField = useRef<ViewInstance>(null);
+  const needsRefs = useNeedsRefs();
+  const wide = useShellLayout() === 'landscape';
   const nameField = useRef<TextInputInstance>(null);
   const emailField = useRef<TextInputInstance>(null);
   const numberField = useRef<TextInputInstance>(null);
@@ -80,6 +117,96 @@ export function GuestForm({
     setValues((was) => ({ ...was, ...next }));
     setProblems({});
     setRefusal(null);
+  }
+
+  const needsOf = (who: string): NeedsTyped =>
+    who === 'guest'
+      ? values.needs
+      : (values.companions[Number(who.slice(1))]?.needs ?? values.needs);
+
+  /** After the first Save, a message clears once its field is valid; nothing new is said until the field is left. */
+  function setNeeds(who: string, needs: NeedsTyped) {
+    if (who === 'guest') setValues((was) => ({ ...was, needs }));
+    else {
+      const at = Number(who.slice(1));
+      setValues((was) => ({
+        ...was,
+        companions: was.companions.map((one, here) => (here === at ? { ...one, needs } : one)),
+      }));
+    }
+    setRefusal(null);
+    if (!tried) return;
+    const now = needsProblemsOf(needs);
+    setNeedsProblems((was) => ({
+      ...was,
+      [who]: Object.fromEntries(
+        Object.entries(was[who] ?? {}).filter(([field]) => now[field as NeedsField] != null),
+      ),
+    }));
+  }
+
+  function checkNeeds(who: string, field: NeedsField) {
+    if (!tried) return;
+    const problem = needsProblemsOf(needsOf(who))[field];
+    setNeedsProblems((was) => ({ ...was, [who]: { ...was[who], [field]: problem } }));
+  }
+
+  function toggle(who: string) {
+    setOpened((was) => {
+      const after = new Set(was);
+      if (after.has(who)) after.delete(who);
+      else after.add(who);
+      return after;
+    });
+  }
+
+  function closePicker() {
+    setPicking(false);
+    setTypedGroup('');
+    setReturned(null);
+    setTimeout(() => moveScreenReaderFocus(groupField.current), 300);
+  }
+
+  function pickGroup(group: Values['group']) {
+    set({ group });
+    setGroupRefusal(null);
+    closePicker();
+  }
+
+  /** The form's order: name, contacts, the guest's needs, then each companion's name and needs. */
+  function firstFailing(found: Problems, needs: Record<string, NeedsProblems>): string | null {
+    const needsAt = (who: string) => {
+      const field = (['otherAllergy', 'otherDiet', 'otherAccess', 'note'] as const).find(
+        (one) => needs[who]?.[one] != null,
+      );
+      return field == null ? null : `needs:${who}:${field}`;
+    };
+    const order = [
+      ...['fullName', 'email', 'mobile'].map((key) => (found[key] == null ? null : key)),
+      needsAt('guest'),
+      ...values.companions.flatMap((_, at) => [
+        found[`companion-${at}`] == null ? null : `companion-${at}`,
+        needsAt(`c${at}`),
+      ]),
+    ];
+
+    return order.find((key) => key != null) ?? null;
+  }
+
+  function refuse(found: Problems, needs: Record<string, NeedsProblems>) {
+    setProblems(found);
+    setNeedsProblems(needs);
+    setOpened((was) => new Set([...was, ...Object.keys(needs)]));
+    const count = Object.keys(found).length + needsFailingCount(needs);
+    if (count > 0) readOut(t('guestNeeds.toFix', { count }));
+    const at = firstFailing(found, needs);
+    if (at == null) return;
+    if (!at.startsWith('needs:')) {
+      focus(at);
+      return;
+    }
+    const [, who, field] = at.split(':') as [string, string, NeedsField];
+    setTimeout(() => focusRefused(needsRefs(who)[field]), 300);
   }
 
   function focus(key: string) {
@@ -118,25 +245,26 @@ export function GuestForm({
   async function save(allowDuplicate = false, over: string | null = tag) {
     const typed = typedOf(values);
     const found = problemsOf(typed);
-    const at = firstProblem(found, count);
+    const needs = problemsByWho([values.needs, ...values.companions.map((one) => one.needs)]);
+    setTried(true);
 
-    if (at != null) {
-      setProblems(found);
-      focus(at);
+    if (firstProblem(found, count) != null || Object.keys(needs).length > 0) {
+      refuse(found, needs);
       return;
     }
+    setNeedsProblems({});
     setAsk(null);
     setRefusal(null);
     setSending(true);
     try {
       if (editing == null) {
-        const guest = await api.addGuest(eventId, newGuestOf(typed, allowDuplicate));
+        const guest = await api.addGuest(eventId, addOf(values, allowDuplicate));
         onSaved({ guest, tagged: null });
       } else {
         const tagged = await api.updateGuest(
           eventId,
           editing.guest.id,
-          editOf(values, allowDuplicate),
+          editOf(values, allowDuplicate, editing.guest.group),
           over ?? editing.tag,
         );
         onSaved({ guest: tagged.guest, tagged });
@@ -154,16 +282,30 @@ export function GuestForm({
           setRefusal('notSaved');
         }
       } else if (error instanceof ApiError && error.code === 'validation_failed') {
-        const refused = violationProblems(error.problem.violations ?? [], typed);
-        const first = firstProblem(refused, count);
-        setProblems(refused);
-        if (first != null) focus(first);
+        const violations = error.problem.violations ?? [];
+        const group = violations.find((one) => one.propertyPath.startsWith('group.'));
+        if (group != null) {
+          const pick = values.group;
+          setGroupRefusal({
+            made: pick != null && 'name' in pick ? pick.name : null,
+            line: group.message,
+          });
+          onGroupsStale();
+        }
+        const refused = violationProblems(violations, typed);
+        const needs = needsViolations(violations, needsOf);
+        if (firstProblem(refused, count) != null || Object.keys(needs).length > 0)
+          refuse(refused, needs);
+        else if (group != null) setTimeout(() => moveScreenReaderFocus(groupField.current), 300);
       } else setRefusal('notSaved');
     } finally {
       setSending(false);
     }
   }
 
+  const clash = groupRefusal?.made == null ? null : sameGroup(groups, groupRefusal.made);
+  const madeProblem =
+    groupRefusal?.made == null || clash != null ? null : typedProblem(groups, groupRefusal.made);
   const cancel = () => (changed ? setAsk('discard') : onClose());
   const adding = editing == null;
 
@@ -213,19 +355,43 @@ export function GuestForm({
             : null
       }
       over={
-        choosing
-          ? languageOver(
-              t('language.label'),
-              t('guestList.cancel'),
-              t('guestList.languageNotSet'),
-              values.language,
-              (code) => {
-                set({ language: code });
-                setChoosing(false);
-              },
-              () => setChoosing(false),
-            )
-          : null
+        picking
+          ? {
+              layer: (
+                <GroupPicker
+                  guestName={values.fullName.trim() === '' ? null : values.fullName.trim()}
+                  groups={groups}
+                  pick={values.group}
+                  typed={typedGroup}
+                  problem={shownProblem(groups, typedGroup, returned)}
+                  onTyped={(text) => {
+                    setTypedGroup(text);
+                    setReturned(null);
+                  }}
+                  onReturn={() => {
+                    const result = returnPick(groups, typedGroup);
+                    if ('problem' in result) setReturned(result.problem);
+                    else pickGroup(result.pick);
+                  }}
+                  onPick={pickGroup}
+                  onClose={closePicker}
+                />
+              ),
+              onClose: closePicker,
+            }
+          : choosing
+            ? languageOver(
+                t('language.label'),
+                t('guestList.cancel'),
+                t('guestList.languageNotSet'),
+                values.language,
+                (code) => {
+                  set({ language: code });
+                  setChoosing(false);
+                },
+                () => setChoosing(false),
+              )
+            : null
       }
       testID="guest.form"
     >
@@ -279,6 +445,21 @@ export function GuestForm({
           testID="guest.form.fullName"
         />
       </Field>
+      <GroupField
+        value={pickName(groups, values.group)}
+        isNew={values.group != null && 'name' in values.group}
+        error={
+          groupRefusal == null
+            ? undefined
+            : clash != null
+              ? t('guestGroups.taken', { name: clash.name })
+              : madeProblem != null
+                ? pickProblemLine(t, madeProblem)
+                : groupRefusal.line
+        }
+        onOpen={() => setPicking(true)}
+        fieldRef={groupField}
+      />
       <Field
         label={t('guestList.emailAddress')}
         pill={t('eventForm.optional')}
@@ -313,6 +494,19 @@ export function GuestForm({
         testID="guest.form.mobile"
       />
       <LanguageField value={values.language} chose={chose} onOpen={() => setChoosing(true)} />
+      <NeedsSection
+        title={t('guestNeeds.needs')}
+        needs={values.needs}
+        onChange={(next) => setNeeds('guest', next)}
+        open={opened.has('guest')}
+        onToggle={() => toggle('guest')}
+        problems={needsProblems.guest ?? {}}
+        fields={needsRefs('guest')}
+        wide={wide}
+        submitting={sending}
+        onBlur={(field) => checkNeeds('guest', field)}
+        testID="guest.form.needs"
+      />
       <View style={styles.companions}>
         <View style={styles.legend}>
           <Text size={15} weight="bold" accessibilityRole="header">
@@ -328,54 +522,72 @@ export function GuestForm({
           const host = values.fullName.trim();
 
           return (
-            <Field
-              key={one.id ?? `new-${at}`}
-              label={t('guestList.companionName', { nth: at + 1, total: count })}
-              error={words(`companion-${at}`)}
-            >
-              <View style={styles.companion}>
-                <TextField
-                  ref={(node) => {
-                    if (node == null) companionFields.current.delete(at);
-                    else companionFields.current.set(at, node);
-                  }}
-                  style={styles.grow}
-                  accessibilityLabel={t('guestList.companionName', { nth: at + 1, total: count })}
-                  value={one.name}
-                  placeholder={
-                    host === ''
-                      ? ''
-                      : at === 0
-                        ? t('guestList.guestOf', { host })
-                        : t('guestList.guestOfNth', { host, nth: at + 1 })
-                  }
-                  onChangeText={(name) =>
-                    set({
-                      companions: values.companions.map((was, here) =>
-                        here === at ? { ...was, name } : was,
-                      ),
-                    })
-                  }
-                  wrong={problems[`companion-${at}`] != null}
-                  submitting={sending}
-                  testID={`guest.form.companion.${at}`}
-                />
-                <TextAction
-                  label={t('guestList.remove')}
-                  onPress={() =>
-                    set({ companions: values.companions.filter((_, here) => here !== at) })
-                  }
-                  testID={`guest.form.companion.${at}.remove`}
-                />
-              </View>
-            </Field>
+            <View key={one.id ?? `new-${at}`} style={styles.companionBlock}>
+              <Field
+                label={t('guestList.companionName', { nth: at + 1, total: count })}
+                error={words(`companion-${at}`)}
+              >
+                <View style={styles.companion}>
+                  <TextField
+                    ref={(node) => {
+                      if (node == null) companionFields.current.delete(at);
+                      else companionFields.current.set(at, node);
+                    }}
+                    style={styles.grow}
+                    accessibilityLabel={t('guestList.companionName', { nth: at + 1, total: count })}
+                    value={one.name}
+                    placeholder={
+                      host === ''
+                        ? ''
+                        : at === 0
+                          ? t('guestList.guestOf', { host })
+                          : t('guestList.guestOfNth', { host, nth: at + 1 })
+                    }
+                    onChangeText={(name) =>
+                      set({
+                        companions: values.companions.map((was, here) =>
+                          here === at ? { ...was, name } : was,
+                        ),
+                      })
+                    }
+                    wrong={problems[`companion-${at}`] != null}
+                    submitting={sending}
+                    testID={`guest.form.companion.${at}`}
+                  />
+                  <TextAction
+                    label={t('guestList.remove')}
+                    onPress={() => {
+                      set({ companions: values.companions.filter((_, here) => here !== at) });
+                      setNeedsProblems({});
+                      setOpened((was) => new Set([...was].filter((who) => !who.startsWith('c'))));
+                    }}
+                    testID={`guest.form.companion.${at}.remove`}
+                  />
+                </View>
+              </Field>
+              <NeedsSection
+                title={t('guestNeeds.theirNeeds')}
+                needs={one.needs}
+                onChange={(next) => setNeeds(`c${at}`, next)}
+                open={opened.has(`c${at}`)}
+                onToggle={() => toggle(`c${at}`)}
+                problems={needsProblems[`c${at}`] ?? {}}
+                fields={needsRefs(`c${at}`)}
+                wide={wide}
+                submitting={sending}
+                onBlur={(field) => checkNeeds(`c${at}`, field)}
+                testID={`guest.form.companion.${at}.needs`}
+              />
+            </View>
           );
         })}
         {count < MOST_COMPANIONS ? (
           <TextAction
             label={t('guestList.addCompanion')}
             glyph="plus"
-            onPress={() => set({ companions: [...values.companions, { id: null, name: '' }] })}
+            onPress={() =>
+              set({ companions: [...values.companions, { id: null, name: '', needs: NO_NEEDS }] })
+            }
             testID="guest.form.addCompanion"
           />
         ) : (
@@ -405,4 +617,5 @@ const styles = StyleSheet.create({
   companions: { gap: 8 },
   legend: { gap: 4 },
   companion: { flexDirection: 'row', alignItems: 'center', gap: 10 },
+  companionBlock: { gap: 10 },
 });

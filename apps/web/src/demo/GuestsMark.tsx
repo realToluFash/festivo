@@ -2,26 +2,17 @@ import { useEffect, useId, useReducer, useRef, useState } from 'react';
 import { Link, useSearchParams } from 'react-router';
 
 import { Glyph, type GlyphName } from '../components/Glyph.tsx';
-import { Dialog, RowWords, type Tell, TextAction } from '../components/SettingsParts.tsx';
+import { Dialog, type Tell, TextAction } from '../components/SettingsParts.tsx';
 import { focusWhenFree } from '../layers.ts';
 import { DemoBell } from './DemoBell.tsx';
 import { EventsShell } from './EventParts.tsx';
 import { EventSidebar } from './EventSidebar.tsx';
 import { CLOCKS, type SampleEvent, sampleEvent } from './events.ts';
-import {
-  type Guest,
-  type ListRow,
-  type Reply,
-  invitesOn,
-  replyByOf,
-  todayOf,
-  viewOf,
-} from './guests.ts';
+import { type Guest, type Reply, invitesOn, replyByOf, todayOf, viewOf } from './guests.ts';
 import {
   type Line,
   type MarkStart,
   MW,
-  MOST_AT_ONCE,
   type MarkState,
   companionsWith,
   lineWords,
@@ -30,7 +21,7 @@ import {
   markStateOf,
   pressMark,
 } from './guestsMark.ts';
-import { MarkLead } from './GuestsParts.tsx';
+import { SelectBar, SelectRows, SelectedSaid } from './GuestsParts.tsx';
 import { GW, HOW_INVITED, type HowInvited, REPLY_WORDS, figure } from './guestsWords.ts';
 import './guests.css';
 import './guestsMark.css';
@@ -201,6 +192,10 @@ function MarkPage({ event, start, tell }: { event: SampleEvent; start: MarkStart
             />
             {MW.selectAll(list.length)}
           </label>
+          <SelectedSaid
+            count={!shown && selected.size > 0 ? count : null}
+            companions={companions}
+          />
           <div className="gm-dock">
             <div className="gm-said" role="status" data-focus="line" tabIndex={-1}>
               {shown && (
@@ -218,41 +213,15 @@ function MarkPage({ event, start, tell }: { event: SampleEvent; start: MarkStart
               )}
             </div>
             {!shown && selected.size > 0 && (
-              <section className="gm-bar" aria-label={MW.bar}>
-                <p className="gm-count">
-                  <strong>{MW.selected(count)}</strong>
-                  {companions > 0 && <span>{MW.withCompanions(companions)}</span>}
-                </p>
-                {count > MOST_AT_ONCE && <p className="desk-line gm-narrow">{MW.narrowing}</p>}
-                {pretend != null && <p className="desk-note gm-pretend">{MW.pretend(pretend)}</p>}
-                <div className="gm-actions">
-                  {marks && (
-                    <button
-                      type="button"
-                      className="gs-pill is-primary"
-                      data-focus="mark"
-                      onClick={press}
-                    >
-                      {MW.markAsInvited}
-                    </button>
-                  )}
-                  <button
-                    type="button"
-                    className="gs-pill is-secondary"
-                    onClick={() => tell(MW.theirOwn)}
-                  >
-                    {MW.addToGroup}
-                  </button>
-                  <button
-                    type="button"
-                    className="gs-pill is-secondary"
-                    onClick={() => tell(MW.theirOwn)}
-                  >
-                    {MW.remove}
-                  </button>
-                  <TextAction label={MW.clear} onClick={() => select(new Set())} />
-                </div>
-              </section>
+              <SelectBar
+                count={count}
+                companions={companions}
+                pretend={pretend}
+                onMark={marks ? press : null}
+                onAdd={() => tell(MW.theirOwn)}
+                onRemove={() => tell(MW.theirOwn)}
+                onClear={() => select(new Set())}
+              />
             )}
           </div>
           {groups.map((group) => (
@@ -261,7 +230,12 @@ function MarkPage({ event, start, tell }: { event: SampleEvent; start: MarkStart
                 {REPLY_WORDS[group.reply]}
                 <span className="gs-group-count"> · {figure(group.count)}</span>
               </h2>
-              <Rows rows={group.rows} selected={selected} onToggle={toggle} />
+              <SelectRows
+                rows={group.rows}
+                event={event.id}
+                selected={selected}
+                onToggle={toggle}
+              />
             </section>
           ))}
         </section>
@@ -276,46 +250,6 @@ function MarkPage({ event, start, tell }: { event: SampleEvent; start: MarkStart
         />
       )}
     </div>
-  );
-}
-
-/** A guest's row ticks them; a companion's has no box, since companions follow their host. */
-function Rows({
-  rows,
-  selected,
-  onToggle,
-}: {
-  rows: readonly ListRow[];
-  selected: ReadonlySet<string>;
-  onToggle: (id: string) => void;
-}) {
-  return (
-    <ul className="desk-rows gs-rows">
-      {rows.map((row) =>
-        row.person.companion == null ? (
-          <li key={row.person.id}>
-            <label className="desk-row gs-row gm-row">
-              <input
-                type="checkbox"
-                className="gs-box"
-                aria-label={row.label}
-                checked={selected.has(row.person.id)}
-                onChange={() => onToggle(row.person.id)}
-              />
-              <MarkLead reply={row.person.reply} />
-              <RowWords title={row.person.name} lines={[row.line]} />
-            </label>
-          </li>
-        ) : (
-          <li key={row.person.id} className="is-companion">
-            <div className="desk-row gs-row gm-row is-companion">
-              <MarkLead reply={row.person.reply} />
-              <RowWords title={row.person.name} lines={[row.line]} />
-            </div>
-          </li>
-        ),
-      )}
-    </ul>
   );
 }
 

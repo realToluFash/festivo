@@ -38,7 +38,8 @@ import {
   PlacesStepper,
 } from './GuestFields.tsx';
 import { GroupField } from './GuestGroups.tsx';
-import { choiceLine, groupChanged, groupRefusal, listOpen } from './guestGroups.ts';
+import { RemoveAsk, type Removing } from './GuestRemove.tsx';
+import { choiceLine, groupRefusal, listOpen } from './guestGroups.ts';
 import { type Copy, IconLead, Invitation } from './GuestInvitation.tsx';
 import { languageNameInSentence } from '../settings/organisationDetails.ts';
 import { type InvitationEvent, whatsAppHref } from './whatsAppSend.ts';
@@ -49,19 +50,7 @@ import {
   NeedsRefused,
   NeedsSection,
 } from './GuestNeeds.tsx';
-import {
-  NO_NEEDS,
-  type NeedsProblems,
-  type NeedsTyped,
-  firstNeedsFailing,
-  needsChips,
-  needsFailingCount,
-  needsInputOf,
-  needsTypedOf,
-  needsViolations,
-  problemsByWho,
-  useNeedsOpen,
-} from './guestNeeds.ts';
+import { useNeedsOpen } from './guestNeeds.ts';
 import {
   MOST_COMPANIONS,
   type Problem,
@@ -78,6 +67,17 @@ import {
   replyDate,
   shownReply,
   violationProblems,
+  NO_NEEDS,
+  type NeedsProblems,
+  type NeedsTyped,
+  firstNeedsFailing,
+  groupChanged,
+  needsChips,
+  needsFailingCount,
+  needsInputOf,
+  needsTypedOf,
+  needsViolations,
+  problemsByWho,
 } from '@soirely/domain';
 
 const SHOWN_COMPANIONS = 3;
@@ -104,7 +104,7 @@ export function ReplyMark({ reply, cover = false }: { reply: ReplyWord; cover?: 
   );
 }
 
-function MarkLead({ reply }: { reply: ReplyWord }) {
+export function MarkLead({ reply }: { reply: ReplyWord }) {
   return (
     <span className="gs-lead">
       <ReplyMark reply={reply} />
@@ -121,7 +121,7 @@ type Pane =
   | { kind: 'loading' }
   | { kind: 'failed' }
   | { kind: 'notFound' }
-  | { kind: 'guest'; tagged: TaggedGuest }
+  | { kind: 'guest'; tagged: TaggedGuest; gone?: boolean }
   | { kind: 'edit'; tagged: TaggedGuest };
 
 type Replace =
@@ -163,6 +163,9 @@ export function GuestColumn({
   onChanged,
   onShown,
   onClose,
+  backOnList,
+  onRemove,
+  onRemovedAlready,
 }: {
   eventId: string;
   guestId: string;
@@ -203,6 +206,11 @@ export function GuestColumn({
   /** Once the guest, or why they cannot be shown, first replaces the loading bones. */
   onShown: () => void;
   onClose: () => void;
+  /** Reopened by Undo (sc-3774). */
+  backOnList: boolean;
+  /** Remove from the list; refused 404 when somebody removed them already. */
+  onRemove: (guest: GuestDetails) => Promise<void>;
+  onRemovedAlready: () => void;
 }) {
   const { t } = useTranslation();
   const [pane, setPane] = useState<Pane>({ kind: 'loading' });
@@ -233,7 +241,9 @@ export function GuestColumn({
         current &&
         setPane((was) =>
           error instanceof ApiError && error.status === 404
-            ? { kind: 'notFound' }
+            ? was.kind === 'guest'
+              ? { ...was, gone: true }
+              : { kind: 'notFound' }
             : was.kind === 'guest'
               ? was
               : { kind: 'failed' },
@@ -381,6 +391,14 @@ export function GuestColumn({
         setPane({ kind: 'edit', tagged: pane.tagged });
         focus('fullName');
       }}
+      backOnList={backOnList}
+      onRemove={onRemove}
+      onRemovedAlready={onRemovedAlready}
+      gone={pane.gone === true}
+      onNotFound={() => {
+        setPane({ kind: 'notFound' });
+        focus('guest-heading');
+      }}
     />
   );
 }
@@ -404,6 +422,11 @@ function GuestView({
   onSentMarked,
   focus,
   onEdit,
+  backOnList,
+  onRemove,
+  onRemovedAlready,
+  gone,
+  onNotFound,
 }: {
   guest: GuestDetails;
   timeZone: string;
@@ -423,6 +446,12 @@ function GuestView({
   onSentMarked: () => void;
   focus: (...keys: string[]) => void;
   onEdit: () => void;
+  backOnList: boolean;
+  onRemove: (guest: GuestDetails) => Promise<void>;
+  onRemovedAlready: () => void;
+  /** Read again as not found, from another host's change: an open "Remove {full name}?" turns into the 404's refusal. */
+  gone: boolean;
+  onNotFound: () => void;
 }) {
   const { t } = useTranslation();
   const heading = useId();
@@ -431,6 +460,10 @@ function GuestView({
   const [marking, setMarking] = useState(false);
   const [markFailed, setMarkFailed] = useState(false);
   const [unmark, setUnmark] = useState<Unmark>({ kind: 'none' });
+  const [removing, setRemoving] = useState<Removing | null>(null);
+  const shown: Removing | null =
+    gone && removing?.kind === 'asking' && !removing.busy ? { kind: 'gone' } : removing;
+  const notFound = useEffectEvent(onNotFound);
   const replaceButton = useRef<HTMLButtonElement>(null);
   const [link, setLink] = useState<string | null>(null);
   const [linkTurn, setLinkTurn] = useState(0);
@@ -440,6 +473,10 @@ function GuestView({
   useEffect(() => {
     if (replace.kind === 'replaced') focusWhenFree(() => replaceButton.current);
   }, [replace.kind]);
+
+  useEffect(() => {
+    if (gone && removing == null) notFound();
+  }, [gone, removing]);
 
   // The address has to be whole before the press, so the link is read with the guest rather than on it.
   useEffect(() => {
@@ -525,6 +562,19 @@ function GuestView({
     );
   }
 
+  function removed(): void {
+    setRemoving({ kind: 'asking', busy: true, failed: false });
+    onRemove(guest).then(
+      () => setRemoving(null),
+      (error: unknown) =>
+        setRemoving(
+          error instanceof ApiError && error.status === 404
+            ? { kind: 'gone' }
+            : { kind: 'asking', busy: false, failed: true },
+        ),
+    );
+  }
+
   const ask = () => setReplace({ kind: 'asking', busy: false });
   const added = new Intl.DateTimeFormat(dateLocale(), {
     month: 'short',
@@ -550,6 +600,12 @@ function GuestView({
         <p className="gs-ok" role="status">
           <Glyph name="tick" size={17} weight={2.6} />
           {t('guestList.linkReplaced', { name: guest.fullName })}
+        </p>
+      )}
+      {backOnList && (
+        <p className="gs-ok" role="status">
+          <Glyph name="tick" size={17} weight={2.6} />
+          {t('guestList.backOnList')}
         </p>
       )}
       {unmark.kind === 'unmarked' && (
@@ -719,6 +775,18 @@ function GuestView({
               </li>
             )}
           </ul>
+          {manages && (
+            <div className="gr-foot">
+              <button
+                type="button"
+                className="gs-pill is-secondary"
+                data-focus="remove"
+                onClick={() => setRemoving({ kind: 'asking', busy: false, failed: false })}
+              >
+                {t('guestList.removeFromList')}
+              </button>
+            </div>
+          )}
         </section>
       )}
       {manages && (
@@ -766,6 +834,18 @@ function GuestView({
         />
       ) : (
         <p className="gs-inset gs-read-only">{t('guestList.readOnlyInvited')}</p>
+      )}
+      {shown != null && (
+        <RemoveAsk
+          guest={guest}
+          removing={shown}
+          onKeep={() => {
+            setRemoving(null);
+            focus('remove');
+          }}
+          onRemove={removed}
+          onGone={onRemovedAlready}
+        />
       )}
       {replace.kind === 'asking' && (
         <Ask

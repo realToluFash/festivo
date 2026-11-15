@@ -109,6 +109,21 @@ const PAGES: readonly { page: string; boards: readonly Board[] }[] = [
         href: '/demo/today?moment=plan&invites=none',
       },
       {
+        title: 'A planning day · invited, nobody replied',
+        what: 'The party at 0 coming · 0% replied',
+        href: '/demo/today?moment=plan&invites=unanswered',
+      },
+      {
+        title: 'A planning day · no guests.read',
+        what: 'No replies line on any event',
+        href: '/demo/today?moment=plan&figures=hidden',
+      },
+      {
+        title: 'A planning day · figures did not load',
+        what: 'No replies line, and no error',
+        href: '/demo/today?moment=plan&figures=failed',
+      },
+      {
         title: 'A planning day · the event starts later today',
         what: 'The party at 19:00, read at 09:41',
         href: '/demo/today?moment=plan&starts=later',
@@ -836,6 +851,16 @@ const PAGES: readonly { page: string; boards: readonly Board[] }[] = [
         title: 'Members · nobody left',
         what: 'The Former filter, empty',
         href: '/demo/settings/members?state=nobodyLeft',
+      },
+      {
+        title: 'Members · 104 people',
+        what: 'The card, +99 beside its five faces',
+        href: '/demo/settings/members?state=ninetyNine',
+      },
+      {
+        title: 'Members · 1,326 people',
+        what: 'The card, 99+ beside its five faces',
+        href: '/demo/settings/members?state=crowd',
       },
       {
         title: 'Members · loading',
@@ -1647,6 +1672,76 @@ const PAGES: readonly { page: string; boards: readonly Board[] }[] = [
         title: 'Cover · your photo',
         what: 'Position and a description',
         href: '/demo/events/evt-wed-4?state=coverPhoto',
+      },
+      {
+        title: 'New event',
+        what: 'Empty, Time zone and Currency from the organisation',
+        href: '/demo/events?state=new',
+      },
+      {
+        title: 'New event · filled',
+        what: 'Everything chosen, Create event ready',
+        href: '/demo/events?state=newFilled',
+      },
+      {
+        title: 'New event · refused',
+        what: 'Four fields at once, focus on Event name',
+        href: '/demo/events?state=newRefused',
+      },
+      {
+        title: 'New event · creating',
+        what: 'Creating…, the fields held',
+        href: '/demo/events?state=newCreating',
+      },
+      {
+        title: 'New event · not created',
+        what: 'Nothing saved, the form kept',
+        href: '/demo/events?state=newNotCreated',
+      },
+      {
+        title: 'New event · refused by the server',
+        what: 'Under Time zone',
+        href: '/demo/events?state=newServer',
+      },
+      {
+        title: 'New event · offline',
+        what: 'The same Not created notice',
+        href: '/demo/events?state=newOffline',
+      },
+      {
+        title: 'New event · leaving',
+        what: 'What you typed will be lost',
+        href: '/demo/events?state=newLeave',
+      },
+      {
+        title: 'New event · end moved',
+        what: 'Ends moved with the start',
+        href: '/demo/events?state=newMoved',
+      },
+      {
+        title: 'New event · clocks go forward',
+        what: '01:30 on the night London skips it',
+        href: '/demo/events?state=newSkipped',
+      },
+      {
+        title: 'New event · created',
+        what: 'Created, then the event opens',
+        href: '/demo/events?state=newCreated',
+      },
+      {
+        title: 'New event · with a photo',
+        what: 'The photo goes up once the draft exists',
+        href: '/demo/events?state=newPhoto',
+      },
+      {
+        title: 'New event · photo refused',
+        what: 'Created; the event opens without its photo',
+        href: '/demo/events?state=newPhotoRefused',
+      },
+      {
+        title: 'Created without its photo',
+        what: 'The event’s page, the cover a tap away',
+        href: '/demo/events/evt-draft-4?state=createdNoPhoto',
       },
       {
         title: 'Pause?',

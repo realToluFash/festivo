@@ -28,7 +28,7 @@ function markButton(): HTMLElement {
 }
 
 function said(): string {
-  return screen.getByRole('status').textContent ?? '';
+  return document.querySelector('.gm-said')?.textContent ?? '';
 }
 
 beforeEach(() => {
@@ -47,6 +47,28 @@ describe('Mark as invited from the selection bar (sc-46880)', () => {
     expect(names.slice(0, 3)).toEqual(['Mark as invited', 'Add to group', 'Remove from the list']);
     expect(bar().textContent).toContain('12 selected');
   });
+
+  it(
+    'selects with the box and opens the guest from the rest of the row (sc-3776)',
+    SLOW,
+    async () => {
+      await open('selected');
+      const box = screen
+        .getAllByRole<HTMLInputElement>('checkbox')
+        .find((one) => !one.checked && one.closest('.gm-pick') != null);
+
+      expect(box).toBeDefined();
+      if (box == null) return;
+
+      const row = screen.getByRole('link', { name: box.getAttribute('aria-label') ?? '' });
+
+      expect(row.contains(box)).toBe(false);
+      fireEvent.click(box);
+      expect(box.checked).toBe(true);
+      expect(bar().textContent).toContain('13 selected');
+      expect(row.getAttribute('href')).toMatch(/^\/demo\/guests\?guest=/u);
+    },
+  );
 
   it('asks how, refuses a blank press, and marks the Not yet invited', SLOW, async () => {
     await open('selected');
@@ -117,7 +139,10 @@ describe('Mark as invited from the selection bar (sc-46880)', () => {
     fireEvent.click(markButton());
     expect(screen.queryByRole('dialog')).toBeNull();
     expect(said()).toBe('4 already invited. Nothing to mark.');
-    await waitFor(() => expect(document.activeElement).toBe(screen.getByRole('status')), WAIT);
+    await waitFor(
+      () => expect(document.activeElement).toBe(document.querySelector('.gm-said')),
+      WAIT,
+    );
   });
 
   it(

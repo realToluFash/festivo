@@ -15,15 +15,18 @@ export interface TopicFollower {
   onDrop?: () => void;
 }
 
-/** One Mercure topic. The subscriber token goes in a header, renewed before it lapses; a refusal or a dropped line connects again with a fresh one. False with no hub to follow. */
+/** One Mercure topic, or several on one line. The subscriber token goes in a header, renewed before it lapses; a refusal or a dropped line connects again with a fresh one. False with no hub to follow. */
 export function followTopic(
-  topic: string,
+  topic: string | readonly string[],
   follower: TopicFollower,
 ): { stop: () => void; following: boolean } {
   const hub = config.mercureUrl;
   if (hub === '') return { stop: () => {}, following: false };
 
-  const url = `${hub}${hub.includes('?') ? '&' : '?'}topic=${encodeURIComponent(topic)}`;
+  const topics = (typeof topic === 'string' ? [topic] : topic)
+    .map((one) => `topic=${encodeURIComponent(one)}`)
+    .join('&');
+  const url = `${hub}${hub.includes('?') ? '&' : '?'}${topics}`;
   let source: EventSource | null = null;
   let timer: ReturnType<typeof setTimeout> | undefined;
   let stopped = false;
@@ -76,7 +79,7 @@ export function followTopic(
 
 /** A topic whose every change means reading again: read every so often while no line is open, and once at each line that opens. */
 export function followReadingAgain(
-  topic: string,
+  topic: string | readonly string[],
   subscribe: () => Promise<RealtimeSubscription>,
   read: () => void,
   everyMs: number,

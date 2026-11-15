@@ -35,7 +35,7 @@ describe('a group’s name (sc-3775)', () => {
     expect(groupProblem(WEDDING_GROUPS, '👰'.repeat(60))).toBeNull();
     expect(groupProblem(WEDDING_GROUPS, "BRIDE'S SIDE")).toBe('taken');
     expect(groupLine(WEDDING_GROUPS, "bride's side", 'taken')).toBe(
-      'There’s already a group called Bride’s side.',
+      'There is already a group called Bride’s side.',
     );
     expect(groupProblem([{ id: 'a', name: 'Família' }], 'familia')).toBe('taken');
   });

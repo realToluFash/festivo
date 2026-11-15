@@ -215,8 +215,8 @@ export interface GuestList {
   ungrouped: GuestCounts;
 }
 
-/** The Group field: a group by `id`, a `name` found or made on save, or null for none. Left out of an edit, it stays as it was. */
-export type GroupChoice = { id: string } | { name: string } | null;
+/** The Group field: a group by `id`, a `name` found or made on save, or null for none. Left out of an edit, it stays as it was. With `create`, a name already used is refused 422 on `group.name` rather than joined (sc-5519). */
+export type GroupChoice = { id: string } | { name: string; create?: boolean } | null;
 
 export interface NewGuest {
   fullName: string;
@@ -290,6 +290,8 @@ export interface GuestPage {
     timeZone: string;
     /** The address as the host entered it. */
     venue: { name: string | null; address: string | null } | null;
+    /** Shown as the host wrote it, with its line breaks, whether or not there is a venue (sc-24385). */
+    arrivalNote: string | null;
   };
   /** As the guest reads it (sc-3591): Paused, Called off and Finished each close answers with a notice. */
   phase: GuestPagePhase;
@@ -337,6 +339,73 @@ export function asGuestGroup(value: unknown): GuestGroup | null {
   const name = text(row.name);
 
   return id == null || name == null ? null : { id, name };
+}
+
+/** The most guests one action on a selection takes (sc-3776), as GuestsTogetherController::MOST_AT_ONCE. */
+export const GUESTS_TOGETHER_MOST = 2000;
+
+/** What Add to group did to each selected guest (sc-3776): `already` were in it, `gone` were not on the list to move. */
+export interface MovedTogether {
+  group: GuestGroup;
+  moved: number;
+  already: number;
+  gone: number;
+}
+
+/** What Remove from the list did (sc-3776): `removal` is what its one Undo and its erasure name, null when nobody was removed. */
+export interface RemovedTogether {
+  removal: string | null;
+  guests: number;
+  companions: number;
+  gone: number;
+}
+
+function whole(value: unknown): number | null {
+  return typeof value === 'number' && Number.isInteger(value) && value >= 0 ? value : null;
+}
+
+/** What Mark as invited did to the selected guests (sc-46880): `already` were invited before, by a mark or a reply, `gone` were not on the list to mark. */
+export interface MarkedTogether {
+  marked: number;
+  already: number;
+  gone: number;
+}
+
+export function asMarkedTogether(value: unknown): MarkedTogether | null {
+  if (typeof value !== 'object' || value == null) return null;
+  const body = value as Record<string, unknown>;
+  const marked = whole(body.marked);
+  const already = whole(body.already);
+  const gone = whole(body.gone);
+
+  return marked == null || already == null || gone == null ? null : { marked, already, gone };
+}
+
+export function asMovedTogether(value: unknown): MovedTogether | null {
+  if (typeof value !== 'object' || value == null) return null;
+  const body = value as Record<string, unknown>;
+  const group = asGuestGroup(body.group);
+  const moved = whole(body.moved);
+  const already = whole(body.already);
+  const gone = whole(body.gone);
+
+  return group == null || moved == null || already == null || gone == null
+    ? null
+    : { group, moved, already, gone };
+}
+
+export function asRemovedTogether(value: unknown): RemovedTogether | null {
+  if (typeof value !== 'object' || value == null) return null;
+  const body = value as Record<string, unknown>;
+  const removal = text(body.removal);
+  const guests = whole(body.guests);
+  const companions = whole(body.companions);
+  const gone = whole(body.gone);
+
+  if (guests == null || companions == null || gone == null) return null;
+  if (removal == null && body.removal !== null) return null;
+
+  return { removal, guests, companions, gone };
 }
 
 function asCounts(value: unknown): GuestCounts | null {

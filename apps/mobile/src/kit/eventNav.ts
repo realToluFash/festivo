@@ -14,6 +14,9 @@ export const MORE_PLACES: readonly EventPlace[] = EVENT_PLACES.filter(
 /** The route param an event's screen reads its area from, so choosing one replaces it and adds nothing to Back. */
 export const EVENT_AREA = 'area';
 
+/** The route param Guests opens its filter menu's choice from (sc-3786). */
+export const GUESTS_FILTER = 'filter';
+
 /** The route param saying the event was opened from Happening now, so Back keeps the tab that was showing. */
 export const FROM_HAPPENING_NOW = 'now';
 
@@ -26,17 +29,30 @@ export function areaBack(area: EventPlace): 'overview' | 'leave' {
   return area === 'overview' ? 'leave' : 'overview';
 }
 
-/** The field Edit details opens with focus on, from a row of Details (sc-22103) or Make live's Add who is hosting (sc-15497). */
-const EDIT_AT = ['starts', 'venue', 'hosts', 'name', 'type', 'currency'] as const;
+/** The parts of an event that open their own edit (sc-48600); Reply by is sc-3780's. */
+export type EditPart = 'dates' | 'venue' | 'hosts' | 'type' | 'currency' | 'name' | 'cover';
 
-export type EditAt = (typeof EDIT_AT)[number];
+/** What a link to /events/<id>/edit?at= opens, in the words the old Edit details took (sc-22103). */
+const EDIT_AT: Readonly<Record<string, EditPart>> = {
+  starts: 'dates',
+  venue: 'venue',
+  hosts: 'hosts',
+  name: 'name',
+  type: 'type',
+  currency: 'currency',
+};
 
-export function editAtOf(param: string | undefined): EditAt | undefined {
-  return EDIT_AT.find((at) => at === param);
+export function editPartOf(param: string | undefined): EditPart | undefined {
+  return param != null && Object.hasOwn(EDIT_AT, param) ? EDIT_AT[param] : undefined;
 }
 
 export function eventHref(eventId: string, fromHappeningNow = false): `/events/${string}` {
   const page = `/events/${encodeURIComponent(eventId)}` as const;
 
   return fromHappeningNow ? `${page}?${FROM_HAPPENING_NOW}=1` : page;
+}
+
+/** An event's Guests with a choice in its filter menu, as a figure on Events opens it (sc-3786). */
+export function guestsHref(eventId: string, filter: string): `/events/${string}` {
+  return `/events/${encodeURIComponent(eventId)}?${EVENT_AREA}=guests&${GUESTS_FILTER}=${encodeURIComponent(filter)}`;
 }

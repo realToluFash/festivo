@@ -17,13 +17,23 @@ import {
   type Standing,
   countsOf,
   eventAllows,
+  hasAllergy,
+  invitationLine,
   repliedRefusal,
   replyDate,
   roleHolds,
   rowWords,
   viewOf,
 } from '@soirely/domain';
-import { type ReactNode, useCallback, useEffect, useRef, useState } from 'react';
+import {
+  type ReactNode,
+  type RefObject,
+  useCallback,
+  useEffect,
+  useLayoutEffect,
+  useRef,
+  useState,
+} from 'react';
 import {
   Pressable,
   RefreshControl,
@@ -38,24 +48,27 @@ import { useTranslation } from 'react-i18next';
 import { api } from '../api.ts';
 import { followReadingAgain } from '../followTopic.ts';
 import { dateLocale } from '../i18n/index.ts';
-import { filterChoices, markOf } from '../kit/guestRows.ts';
+import type { Shown } from '../kit/eventsList.ts';
+import { sidebarCardOf } from '../kit/eventTop.ts';
+import { type PhaseCard, filterChoices, markOf, phaseCardOf } from '../kit/guestRows.ts';
 import { type ScreenOffline, useHandOffline, useOffline } from '../offline.ts';
 import { useSignedIn } from '../signedIn.ts';
 import { tokens } from '../theme/tokens.ts';
-import { PrimaryButton } from './Buttons.tsx';
 import { SearchField } from './EventsSearch.tsx';
 import { Glyph } from './Glyph.tsx';
 import { GuestDetails, type GuestNotice, type GuestPane } from './GuestDetails.tsx';
 import { GuestForm, type GuestFormMode } from './GuestForm.tsx';
+import { AllergyMark } from './GuestNeeds.tsx';
+import { GuestsCard } from './GuestsCard.tsx';
 import { type MarkRefusal, MarkInvited } from './GuestInvitation.tsx';
-import { DraftRow } from './MakeLive.tsx';
+import { DraftRow, useMakeLive } from './MakeLive.tsx';
 import type { ScreenReaderTarget } from './screenReaderFocus.ts';
-import { useLayout } from '../layout/useLayout.ts';
+import type { LayoutKind } from '../layout/useLayout.ts';
 import { type ListAndPageSpacing, ListAndPage, useListAndPageLayout } from './ListAndPage.tsx';
 import { LIST_EDGES } from './listFrame.ts';
 import { useReadOut } from './ReadOut.tsx';
 import { MarkSlot } from './ReplyMark.tsx';
-import { FailedBlock } from './Summary.tsx';
+import { FailedBlock, type StepProps } from './Summary.tsx';
 import { type Anchor, AnchoredMenu, anchorUnder } from './SummaryOverlays.tsx';
 import { Row, RowList, TextAction } from './SummaryRows.tsx';
 import { Text, type TextHandle } from './Text.tsx';
@@ -70,6 +83,7 @@ type Load =
 
 const CHOICE_KEY: Record<Choice, string> = {
   all: 'guestList.all',
+  invited: 'guestList.invited',
   coming: REPLY_KEY.coming,
   maybe: REPLY_KEY.maybe,
   noReply: REPLY_KEY.noReply,
@@ -78,20 +92,34 @@ const CHOICE_KEY: Record<Choice, string> = {
   notYetInvited: REPLY_KEY.notYetInvited,
 };
 
+/** What Guests puts in the frame's top: Add guest at the end of the title row, and on a phone the ‹ back to the list from a guest's details. */
+export interface GuestsTop {
+  add: (() => void) | null;
+  back: (() => void) | null;
+}
+
 /** An event's Guests in the app (sc-3785): the list to find and read a guest, and the small edits; planning at scale stays on the web. */
 export function EventGuests({
   event,
+  filter = 'all',
   phase,
   now,
   heading,
+  addRef,
+  onTop,
   onOffline,
   onEventChange,
   onEventStale,
 }: {
   event: OrganisationEvent;
+  /** The choice it opens on: a figure elsewhere opens the guests it counts (sc-3786). */
+  filter?: Choice;
   phase: EventPhase | null;
   now: Date;
   heading: ReactNode;
+  /** The frame's Add guest, where focus goes back once the form closes. */
+  addRef: RefObject<ViewInstance | null>;
+  onTop: (top: GuestsTop) => void;
   onOffline: (offline: ScreenOffline) => void;
   onEventChange: (event: OrganisationEvent) => void;
   /** A refusal said the event's phase moved on, so the event is read again for its line. */
@@ -104,7 +132,7 @@ export function EventGuests({
   const invites = phase != null && eventAllows(phase, 'invite');
   const { kind } = useListAndPageLayout(SPACING, 'nothing');
   const [load, setLoad] = useState<Load>({ kind: 'loading' });
-  const [choice, setChoice] = useState<Choice>('all');
+  const [choice, setChoice] = useState<Choice>(filter);
   const [typed, setTyped] = useState('');
   const [expanded, setExpanded] = useState<ReadonlySet<Standing>>(new Set());
   const [open, setOpen] = useState<string | null>(null);
@@ -120,10 +148,12 @@ export function EventGuests({
   const [markOpen, setMarkOpen] = useState(false);
   const title = useRef<TextHandle>(null);
   const guestName = useRef<TextHandle>(null);
-  const addButton = useRef<ViewInstance>(null);
+  const emptyAdd = useRef<ViewInstance>(null);
   const editButton = useRef<ViewInstance>(null);
   const markButton = useRef<ViewInstance>(null);
   const unmarkButton = useRef<ViewInstance>(null);
+  const liveOpener = useRef<ViewInstance>(null);
+  const makeLive = useMakeLive({ event, onChange: onEventChange, opener: liveOpener });
   const unmarking = useRef(false);
   const markOpener = useRef<ScreenReaderTarget | null>(null);
   const searchField = useRef<TextInputInstance>(null);
@@ -209,11 +239,11 @@ export function EventGuests({
     setOpen(guestId);
     readGuest(guestId, false);
   };
-  const closeGuest = () => {
+  const closeGuest = useCallback(() => {
     setOpen(null);
     setSaved(false);
     setNotice(null);
-  };
+  }, []);
   const showGuest = (tagged: TaggedGuest) => {
     tags.current.set(tagged.guest.id, tagged);
     setPane({ kind: 'guest', guest: tagged.guest });
@@ -289,21 +319,39 @@ export function EventGuests({
         },
       );
   };
-  const openForm = (mode: GuestFormMode, from: ViewInstance | null) => {
+  const openForm = useCallback((mode: GuestFormMode, from: ViewInstance | null) => {
     opener.current = from;
     setRound((was) => was + 1);
     setForm(mode);
-  };
+  }, []);
+  const add = useCallback(() => openForm({ kind: 'add' }, addRef.current), [openForm, addRef]);
 
   const counts = loaded ? countsOf(load.headcount.counts) : null;
   const empty = loaded && load.list.guests.length === 0;
+  const guestInFront = open != null && kind !== 'tabletLandscape';
+  const adds = manages && loaded && !empty && !guestInFront;
+  const shown = sidebarCardOf(event, phase);
+
+  useLayoutEffect(() => {
+    onTop({ add: adds ? add : null, back: guestInFront ? closeGuest : null });
+  }, [onTop, adds, add, guestInFront, closeGuest]);
+  useLayoutEffect(() => () => onTop({ add: null, back: null }), [onTop]);
+
   const timeZone = event.timeZone;
   const locale = dateLocale();
 
+  const onCard = loaded && !empty;
   const phaseLine =
-    phase == null ? null : (
+    phase == null || loaded ? null : (
       <PhaseLine event={event} phase={phase} now={now} onChange={onEventChange} />
     );
+  const phaseCard = phaseCardOf(t, event, shown, phase, now);
+  const liveStep: StepProps = {
+    label: t('eventLive.makeLive'),
+    ref: liveOpener,
+    onPress: makeLive.start,
+    testID: 'events.makeLive',
+  };
   const rows =
     load.kind === 'loading' ? (
       <GuestsLoading />
@@ -320,18 +368,26 @@ export function EventGuests({
         />
       </View>
     ) : empty || counts == null ? (
-      <View style={styles.empty} testID="guests.empty">
-        <Text size={20} weight="bold" accessibilityRole="header">
-          {t('guestList.noGuests')}
-        </Text>
-        {manages && (
-          <PrimaryButton
-            ref={addButton}
-            label={t('guestList.addGuest')}
-            onPress={() => openForm({ kind: 'add' }, addButton.current)}
-            testID="guests.add"
-          />
-        )}
+      <View testID="guests.empty">
+        <GuestsCard
+          kind={kind}
+          event={shown}
+          tags={phaseCard?.tags ?? []}
+          says={t('guestList.noGuests')}
+          heading
+          line={phaseCard?.line ?? null}
+          also={phaseCard?.offersMakeLive === true ? liveStep : null}
+          step={
+            manages
+              ? {
+                  label: t('guestList.addGuest'),
+                  ref: emptyAdd,
+                  onPress: () => openForm({ kind: 'add' }, emptyAdd.current),
+                  testID: 'guests.add',
+                }
+              : null
+          }
+        />
       </View>
     ) : (
       <GuestRows
@@ -345,19 +401,22 @@ export function EventGuests({
         onShowAll={(standing) => setExpanded((was) => new Set([...was, standing]))}
         open={open}
         onOpen={openGuest}
-        manages={manages}
         added={added}
-        addRef={addButton}
-        onAdd={() => openForm({ kind: 'add' }, addButton.current)}
+        card={shown}
+        phaseCard={phaseCard}
+        makeLive={liveStep}
+        kind={kind}
         searchRef={searchField}
         timeZone={timeZone}
         locale={locale}
+        manages={manages}
       />
     );
   const list = (
     <>
       {phaseLine}
       {rows}
+      {loaded && makeLive.sheet}
     </>
   );
 
@@ -370,6 +429,8 @@ export function EventGuests({
       </View>
     ) : (
       <GuestDetails
+        kind={kind}
+        event={shown}
         pane={pane}
         manages={manages}
         timeZone={timeZone}
@@ -407,6 +468,8 @@ export function EventGuests({
         pageInFront={open != null}
         pageless={!loaded || empty}
         back={{ label: t('guestList.backToGuests'), onPress: closeGuest, testID: 'guest.back' }}
+        backInFrame
+        headingInList
         spacing={SPACING}
       />
       {open != null && (
@@ -427,6 +490,16 @@ export function EventGuests({
           mode={form}
           eventId={eventId}
           startCountry={account?.organisationCountry ?? ''}
+          groups={
+            load.kind === 'loaded'
+              ? load.list.groups.map((one) => ({
+                  id: one.id,
+                  name: one.name,
+                  people: one.counts.people,
+                }))
+              : []
+          }
+          onGroupsStale={() => readList(watch)}
           opener={opener}
           onClose={() => setForm(null)}
           onSaved={({ guest, tagged }) => {
@@ -458,13 +531,15 @@ function GuestRows({
   onShowAll,
   open,
   onOpen,
-  manages,
   added,
-  addRef,
-  onAdd,
+  card,
+  phaseCard,
+  makeLive,
+  kind,
   searchRef,
   timeZone,
   locale,
+  manages,
 }: {
   list: GuestList;
   counts: Counts;
@@ -476,41 +551,61 @@ function GuestRows({
   onShowAll: (standing: Standing) => void;
   open: string | null;
   onOpen: (guestId: string) => void;
-  manages: boolean;
   added: string | null;
-  addRef: React.RefObject<ViewInstance | null>;
-  onAdd: () => void;
+  card: Shown | null;
+  phaseCard: PhaseCard | null;
+  makeLive: StepProps;
+  kind: LayoutKind;
   searchRef: React.RefObject<TextInputInstance | null>;
   timeZone: string;
   locale: string;
+  /** The allergy mark is for people who manage guests (sc-3777). */
+  manages: boolean;
 }) {
   const { t } = useTranslation();
   const { view, shown } = viewOf(list.guests, counts, choice, typed, expanded);
   const looking = choice !== 'all' || typed.trim() !== '';
+  const noReply = choice === 'noReply';
   const clear = () => {
     onTyped('');
     onChoice('all');
   };
   const says =
-    counts.invited === 0
+    counts.invited === 0 || phaseCard?.onList === true
       ? t('guestList.onTheList', { count: counts.all })
       : t('guestList.comingOf', {
           comingWords: t('guestList.countComing', { count: counts.coming }),
           invitedWords: t('guestList.countInvited', { count: counts.invited }),
         });
   const row = (person: Person, indent: boolean) => {
-    const { name, line } = rowWords(t, person, indent, timeZone, locale, false);
+    const { name, line } = rowWords(t, person, indent, timeZone, locale, {
+      places: noReply ? null : 'counted',
+      contact: false,
+      group: true,
+      invitation:
+        noReply && person.companion == null
+          ? invitationLine(t, person.guest, timeZone, locale)
+          : null,
+    });
+    const allergy =
+      manages &&
+      (person.companion == null
+        ? [person.guest, ...person.guest.companions].some((one) => hasAllergy(one.needs))
+        : hasAllergy(person.companion.needs));
     const selected = open === person.guest.id && person.companion == null;
     const item = (
       <Row
         title={name}
         line={line}
+        below={allergy ? <AllergyMark testID={`guests.row.${person.id}.allergy`} /> : undefined}
         lead={<MarkSlot kind={markOf(person.standing)} />}
         opens
         selected={selected}
         pad={person.companion == null ? 11 : 8}
         onPress={() => onOpen(person.guest.id)}
-        accessibilityLabel={`${name}, ${line}`}
+        accessibilityLabel={[name, line, allergy ? t('guestNeeds.allergy') : null]
+          .filter((part) => part != null)
+          .join(', ')}
         testID={`guests.row.${person.id}`}
       />
     );
@@ -526,27 +621,16 @@ function GuestRows({
   return (
     <View style={styles.rows}>
       {added != null && <AddedLine name={added} />}
-      <View style={styles.countRow}>
-        <View style={styles.grow}>
-          <Text size={17} weight="bold" style={styles.figures} testID="guests.count">
-            {says}
-          </Text>
-          {counts.invited > 0 && (
-            <Text size={15} weight="medium" style={[styles.secondary, styles.figures]}>
-              {haventLine(t, counts)}
-            </Text>
-          )}
-        </View>
-        {manages && (
-          <TextAction
-            ref={addRef}
-            label={t('guestList.addGuest')}
-            glyph="plus"
-            onPress={onAdd}
-            testID="guests.add"
-          />
-        )}
-      </View>
+      {typed.trim() === '' && (
+        <GuestsCard
+          kind={kind}
+          event={card}
+          tags={phaseCard?.tags ?? []}
+          says={says}
+          line={phaseCard?.line ?? (counts.invited > 0 ? haventLine(t, counts) : null)}
+          step={phaseCard?.offersMakeLive === true ? makeLive : null}
+        />
+      )}
       <View style={styles.searchRow}>
         <SearchField
           typed={typed}
@@ -670,7 +754,11 @@ function FilterChoice({
                 setAt(null);
                 onChoose(key);
               }}
-              style={({ pressed }) => [styles.menuRow, pressed && styles.menuPressed]}
+              style={({ pressed }) => [
+                styles.menuRow,
+                key === 'invited' && styles.menuApart,
+                pressed && styles.menuPressed,
+              ]}
               accessibilityRole="button"
               accessibilityState={{ selected: on }}
               accessibilityLabel={`${t(CHOICE_KEY[key])}, ${n}`}
@@ -703,7 +791,7 @@ function FilterChoice({
   );
 }
 
-/** Why nobody can be invited, at the top before anything is pressed: a Draft's line with Make live, a Paused or Finished event's line alone (sc-46879). */
+/** Before the list is read, the phase's line stands above where the card will be: a Draft's with Make live, a Paused or Finished event's alone (sc-46879). */
 function PhaseLine({
   event,
   phase,
@@ -716,12 +804,10 @@ function PhaseLine({
   onChange: (event: OrganisationEvent) => void;
 }) {
   const { t } = useTranslation();
-  const { kind } = useLayout();
 
   if (phase === 'draft')
     return (
       <DraftRow
-        kind={kind}
         event={event}
         manages={roleHolds(event, 'events.manage')}
         now={now}
@@ -799,13 +885,11 @@ const styles = StyleSheet.create({
   accent: { color: tokens.colorAccentText },
   figures: { fontVariant: ['tabular-nums'] },
   rows: { gap: LIST_GAP },
-  countRow: { flexDirection: 'row', alignItems: 'center', gap: tokens.spaceSm },
   searchRow: { flexDirection: 'row', alignItems: 'center', gap: 10 },
   shownRow: { flexDirection: 'row', alignItems: 'center', gap: tokens.spaceSm },
   indent: { paddingLeft: 40 },
   groupHead: { minHeight: tokens.sizeHit, flexDirection: 'row', alignItems: 'center' },
   headTitle: { letterSpacing: -0.18, lineHeight: 18 * 1.25 },
-  empty: { gap: tokens.spaceLg, paddingTop: tokens.spaceXs, alignItems: 'flex-start' },
   pick: { paddingTop: 120, alignItems: 'center' },
   added: { flexDirection: 'row', alignItems: 'center', gap: tokens.spaceXs },
   noMatch: { gap: 6, paddingTop: tokens.spaceXs },
@@ -815,6 +899,11 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     gap: tokens.spaceSm,
     paddingHorizontal: tokens.spaceLg,
+  },
+  menuApart: {
+    marginBottom: tokens.spaceXs,
+    borderBottomWidth: 1,
+    borderBottomColor: tokens.colorBorder,
   },
   menuPressed: { backgroundColor: tokens.colorInset },
   menuTick: { width: 18, alignItems: 'center' },

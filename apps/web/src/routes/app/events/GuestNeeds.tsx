@@ -9,7 +9,19 @@ import {
   type GuestNeeds,
   NEED_NOTE_MAXIMUM,
 } from '@soirely/api-client';
-import { replyDate } from '@soirely/domain';
+import {
+  type NeedsProblems,
+  type NeedsTyped,
+  accessNames,
+  allergyNames,
+  dietNames,
+  needsChips,
+  needsFocusKey,
+  needsLength,
+  needsWords,
+  recorded,
+  replyDate,
+} from '@soirely/domain';
 import { useId } from 'react';
 import { useTranslation } from 'react-i18next';
 
@@ -18,18 +30,6 @@ import { dateLocale } from '../../../i18n/index.ts';
 import { Head, RowWords } from '../../../components/SettingsParts.tsx';
 import { FieldWrong } from './GuestFields.tsx';
 import { IconLead } from './GuestInvitation.tsx';
-import {
-  type NeedsProblems,
-  type NeedsTyped,
-  needsFocusKey,
-  accessNames,
-  allergyNames,
-  dietNames,
-  lengthOf,
-  needsChips,
-  needsWords,
-  recorded,
-} from './guestNeeds.ts';
 
 type OtherKey = 'otherAllergy' | 'otherDiet' | 'otherAccess';
 
@@ -306,7 +306,7 @@ export function NeedsSection({
               </p>
               <p id={`${noteId}-count`} className="desk-help" aria-live="polite">
                 {t('guestNeeds.noteCount', {
-                  count: lengthOf(needs.note),
+                  count: needsLength(needs.note),
                   most: NEED_NOTE_MAXIMUM,
                 })}
               </p>

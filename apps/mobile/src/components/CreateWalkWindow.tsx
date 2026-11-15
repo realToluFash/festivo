@@ -75,6 +75,8 @@ import {
 import { AskLayer } from './AskLayer.tsx';
 
 const GROW_FROM = 0.96;
+const KEYS_AWAITED_MS = 5000;
+const NAMED_SETTLES_MS = 300;
 const PANEL = 760;
 const CARD = 300;
 const SIDE_PADDING = 32;
@@ -161,10 +163,11 @@ export function CreateWalkWindow<Made>({
   const talkBack = Platform.OS === 'android' && readerOn;
   const [voiced, setVoiced] = useState(false);
   if (!shown && voiced) setVoiced(false);
-  // On the phone TalkBack sometimes spoke the field's own input focus before its focus reached it, so the name was heard twice (qa4 #48525): the field stays hidden from TalkBack until it has taken input focus.
+  const [named, setNamed] = useState(false);
+  if (!shown && named) setNamed(false);
+  // On the phone TalkBack sometimes spoke the field's own input focus before its focus reached it, so the name was heard twice (qa4 #48525): the field stays hidden from TalkBack until its keys are up.
   const quiet =
     talkBack && phone && !voiced && opening.focus !== 'question' && !opening.walk.asking;
-  const voicing = useRef(false);
   const arriving = reduced ? 0 : phone ? WINDOW_ARRIVES_MS : tokens.motionBase;
   // With TalkBack on, hidden while the window arrives, so its focus lands on nothing, Cancel included (sc-42690).
   const unnamed = useUnnamedWindow(
@@ -252,13 +255,22 @@ export function CreateWalkWindow<Made>({
     raiseKeysOn(input);
   }, [talkBack, onScreen, unnamed, opening, phone]);
 
-  // A field the raise never focuses would stay out of TalkBack's reach, so it is shown to TalkBack once the raise has had time to land, at worst read twice (lead, PR #2216).
+  // Named while still hidden, once it has taken input focus unnamed, and shown to TalkBack only NAMED_SETTLES_MS later: named and shown together, the name's content change reached TalkBack up to 100 ms late and was said before its focus or after it (qa2 #49942). One that never takes focus is named after KEYS_AWAITED_MS.
+  const taken = () => {
+    if (quiet && onScreen && !unnamed) setNamed(true);
+  };
   useEffect(() => {
-    if (!quiet || !onScreen || unnamed) return;
-    const reachable = setTimeout(() => setVoiced(true), SETTLED_MS);
+    if (!quiet || !onScreen || unnamed || named) return;
+    const reachable = setTimeout(() => setNamed(true), KEYS_AWAITED_MS);
 
     return () => clearTimeout(reachable);
-  }, [quiet, onScreen, unnamed]);
+  }, [quiet, onScreen, unnamed, named]);
+  useEffect(() => {
+    if (!quiet || !named) return;
+    const settled = setTimeout(() => setVoiced(true), NAMED_SETTLES_MS);
+
+    return () => clearTimeout(settled);
+  }, [quiet, named]);
 
   useEffect(() => {
     const up = Keyboard.addListener('keyboardDidShow', () => {
@@ -267,23 +279,26 @@ export function CreateWalkWindow<Made>({
 
     return () => up.remove();
   }, []);
-  const voice = () => {
-    if (!quiet) return;
-    voicing.current = true;
-    setVoiced(true);
-  };
-  useEffect(() => {
-    if (!voiced || !voicing.current) return;
-    voicing.current = false;
-    const input = opening.focus === 'search' ? search.current : field.current;
-    if (input?.isFocused()) moveScreenReaderFocus(input);
-  }, [voiced, opening]);
-  // A field that gives up focus after the window raised its keys and before they came up gets them once more (qa3 #47084).
+  // A field that gives up focus after the window raised its keys and before they came up gets them once more (qa3 #47084), unnamed again first, as a named one had that focus voiced (qa4 #48921).
+  const regaining = useRef<TextInputInstance | null>(null);
   const keysLost = () => {
     const input = holding.current;
     holding.current = null;
-    if (input != null && open && !walk.asking) raiseKeysOn(input);
+    if (input == null || !open || walk.asking) return;
+    if (!named) {
+      raiseKeysOn(input);
+      return;
+    }
+    regaining.current = input;
+    setNamed(false);
+    setVoiced(false);
   };
+  useEffect(() => {
+    const input = regaining.current;
+    if (!quiet || named || input == null) return;
+    regaining.current = null;
+    raiseKeysOn(input);
+  }, [quiet, named]);
 
   useEffect(
     () => () => {
@@ -452,7 +467,8 @@ export function CreateWalkWindow<Made>({
           onTyped={(name) => setWalk((now) => typed(now, name))}
           onContinue={onPrimary}
           quiet={live && quiet && opening.focus === 'name'}
-          onTaken={live ? voice : undefined}
+          nameless={live && quiet && !named && opening.focus === 'name'}
+          onFocused={live ? taken : undefined}
           onLeft={live ? keysLost : undefined}
         />
       );
@@ -467,7 +483,7 @@ export function CreateWalkWindow<Made>({
           onPick={(code) => setWalk((now) => picked(now, code))}
           onSearchFocused={(focused) => {
             setSearchFocused(focused);
-            if (focused && live) voice();
+            if (focused && live) taken();
             if (!focused && live) keysLost();
           }}
         />

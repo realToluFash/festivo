@@ -134,11 +134,14 @@ def _item(fingerprint, pool, roles, kind, reason, priority, story=None, pr=None,
             "story_id": story["id"] if story else None, "pr": pr["number"] if pr else None}
 
 
+IDEA_ACCEPTED = "idea accepted"
+
+
 def open_ideas(stories):
-    """The creative director's ideas still waiting on the product manager's decision: the
-    cap and the digest count these, while the idea label stays on in every state."""
+    """The creative director's ideas the cap and both digests count: in Backlog and not yet
+    accepted, parked ones included. An accepted idea may wait in Backlog for its epic."""
     return [s for s in stories if "idea" in s["labels"] and s["state"] == "Backlog"
-            and not s.get("done")]
+            and IDEA_ACCEPTED not in s["labels"] and not s.get("done")]
 
 
 def finished(story):

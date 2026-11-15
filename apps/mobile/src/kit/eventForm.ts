@@ -12,6 +12,7 @@ import {
   type HostErrors,
   type HostRow,
   type VenueDraft,
+  arrivalNoteSent,
   draftOf,
   eventChanges,
   eventNameOf,
@@ -50,7 +51,7 @@ export function blankEvent(organisation: { timezone: string; currency: string })
 export function typedOf(event: OrganisationEvent): EventTyped {
   return {
     draft: draftOf(event),
-    venue: venueDraftOf(event.venue),
+    venue: venueDraftOf(event.venue, event.arrivalNote),
     timeZone: event.timeZone,
     currency: event.currency,
     hosts: event.hosts.map((name, key) => ({ key, name })),
@@ -77,6 +78,7 @@ export function newEventOf(typed: EventTyped): NewEvent | null {
   if (draft.type === '') return null;
 
   const sent = venueSent(venue);
+  const note = arrivalNoteSent(venue.note);
 
   return {
     name: eventNameOf(draft.name),
@@ -86,6 +88,7 @@ export function newEventOf(typed: EventTyped): NewEvent | null {
     timeZone,
     currency,
     ...(sent == null ? {} : { venue: sent }),
+    ...(note == null ? {} : { arrivalNote: note }),
     hosts: hostsSent(newEventHosts(hosts).map((row) => row.name)),
   };
 }

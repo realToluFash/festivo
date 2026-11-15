@@ -336,11 +336,12 @@ describe('Guests, the card’s words and the view in the address (sc-3772)', () 
     fireEvent.change(box, { target: { value: 'okon' } });
 
     expect(screen.getByText('2 of 156 shown')).toBeDefined();
-    await waitFor(() => expect(router.state.location.search).toBe('?state=inUse&q=okon'), WAIT);
+    await act(() => new Promise((settled) => setTimeout(settled, SEARCH_SETTLES_MS + 100)));
+    expect(router.state.location.search).toBe('?state=inUse&q=okon');
 
     await act(() => router.navigate(-1));
 
-    await waitFor(() => expect(box.value).toBe(''), WAIT);
+    expect(box.value).toBe('');
     expect(screen.queryByText('2 of 156 shown')).toBeNull();
   });
 

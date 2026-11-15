@@ -1,14 +1,14 @@
 import type { OrganisationEvent } from '@soirely/api-client';
-import { changedWords } from '@soirely/domain';
+import { type Choice, changedWords } from '@soirely/domain';
 import { router } from 'expo-router';
 import type { TFunction } from 'i18next';
-import { type Ref, useEffect, useRef } from 'react';
+import { type Ref, type RefObject, useEffect, useRef } from 'react';
 import { StyleSheet, View, type ViewInstance } from 'react-native';
 import { useTranslation } from 'react-i18next';
 
 import { dateLocale } from '../i18n/index.ts';
 import { SECTION_HREF } from '../kit/appNav.ts';
-import type { EditAt } from '../kit/eventNav.ts';
+import type { EditPart } from '../kit/eventNav.ts';
 import {
   type ManageKey,
   coverRow,
@@ -25,8 +25,10 @@ import { useServerNow } from '../kit/serverNow.ts';
 import type { LayoutKind } from '../layout/useLayout.ts';
 import { tokens } from '../theme/tokens.ts';
 import { AlertLine } from './AlertLine.tsx';
+import { ArrivalNoteInset } from './ArrivalNoteInset.tsx';
 import { useDeleteEvent } from './DeleteEvent.tsx';
 import { EventCard } from './EventCard.tsx';
+import { EventGuestNumbers } from './EventGuestNumbers.tsx';
 import { EventThumb } from './EventThumb.tsx';
 import { useManageAsks } from './EventManageAsks.tsx';
 import {
@@ -43,19 +45,10 @@ import { useMakeLive } from './MakeLive.tsx';
 import { useEventMute } from './MuteEventCard.tsx';
 import { useResume } from './PauseEvent.tsx';
 import { readOut } from './ReadOut.tsx';
+import type { ScreenReaderTarget } from './screenReaderFocus.ts';
 import type { TextHandle } from './Text.tsx';
+import { TextAction } from './Summary.tsx';
 import { ComingUp, useTimeline } from './Timeline.tsx';
-
-const EDIT_AT: Record<EventPart, EditAt | undefined> = {
-  dates: 'starts',
-  replyBy: undefined,
-  venue: 'venue',
-  hosts: 'hosts',
-  type: 'type',
-  currency: 'currency',
-  name: 'name',
-  cover: undefined,
-};
 
 /** An event's Overview as the design demo draws it (sc-30413): its card, then Details, Coming up, Name and cover, Just for you and Manage. */
 export function EventPage({
@@ -66,23 +59,32 @@ export function EventPage({
   takes,
   onChange,
   onEdit,
+  partRef,
   onDuplicate,
   onDeleted,
+  onGuests,
+  tell,
 }: {
   kind: LayoutKind;
   event: OrganisationEvent;
+  /** Guests, on the choice a count on the Guests card opens (sc-3786). */
+  onGuests: (choice: Choice) => void;
   /** The card's name, where it is the page's only title. */
   nameRef?: Ref<TextHandle> | undefined;
   manages: boolean;
   /** Whether the viewer's role can take the card's step. */
   takes: (action: StepAction) => boolean;
   onChange: (event: OrganisationEvent) => void;
-  /** Absent for a role without events.manage (sc-3595); `at` is the field it opens with focus on. */
-  onEdit?: ((at?: EditAt) => void) | undefined;
-  /** Absent for a role without events.create (sc-22145). */
-  onDuplicate?: (() => void) | undefined;
+  /** Absent for a role without events.manage (sc-3595): opens the part's own edit over the page (sc-48600), focus going back to `opener` when it closes. */
+  onEdit?: ((part: EditPart, opener: RefObject<ScreenReaderTarget | null>) => void) | undefined;
+  /** Each part's row, which its edit returns focus to. */
+  partRef: (part: EditPart) => RefObject<ViewInstance | null>;
+  /** Absent for a role without events.create (sc-22145); opens Duplicate over the page, focus going back to `opener`. */
+  onDuplicate?: ((opener: RefObject<ScreenReaderTarget | null>) => void) | undefined;
   /** Absent for a role without events.create (sc-3592). */
   onDeleted?: ((event: OrganisationEvent) => void) | undefined;
+  /** Says a toast at the foot of the page. */
+  tell?: ((words: string) => void) | undefined;
 }) {
   const { t } = useTranslation();
   const locale = dateLocale();
@@ -96,7 +98,14 @@ export function EventPage({
   const pauseOpener = useRef<ViewInstance>(null);
   const endOpener = useRef<ViewInstance>(null);
   const deleteOpener = useRef<ViewInstance>(null);
-  const makeLive = useMakeLive({ kind, event, onChange, onEdit, opener: cardOpener });
+  const duplicateOpener = useRef<ViewInstance>(null);
+  const makeLive = useMakeLive({
+    event,
+    onChange,
+    onEdit: onEdit == null ? undefined : (part) => onEdit(part, cardOpener),
+    onLive: tell,
+    opener: cardOpener,
+  });
   const resume = useResume(event, onChange);
   const { askPause, askEnd, asks } = useManageAsks({
     event,
@@ -105,7 +114,11 @@ export function EventPage({
   });
   const deletion = useDeleteEvent({
     event,
+    phase,
+    now,
+    manages,
     onDeleted: onDeleted ?? (() => undefined),
+    onVerb: askEnd,
     opener: deleteOpener,
   });
   const mute = useEventMute(event.id);
@@ -118,12 +131,18 @@ export function EventPage({
     said.current = { id: event.id, phase };
   }, [event.id, phase, t]);
 
-  const edit = onEdit == null ? null : (part: EventPart) => onEdit(EDIT_AT[part]);
+  const edit =
+    onEdit == null
+      ? null
+      : (part: EventPart) => {
+          if (part !== 'replyBy') onEdit(part, partRef(part));
+        };
+  const rowRef: RefFor = (part) => (part === 'replyBy' ? undefined : partRef(part as EditPart));
   const onStep = (step: Extract<CardStep, { kind: 'button' }>) => {
     if (step.action === 'makeLive') makeLive.start();
-    else if (step.action === 'changeDates') onEdit?.('starts');
+    else if (step.action === 'changeDates') onEdit?.('dates', cardOpener);
     else if (step.action === 'resume') resume.resume();
-    else onDuplicate?.();
+    else onDuplicate?.(cardOpener);
   };
   const refFor: RefFor = (key) =>
     key === 'pause'
@@ -132,9 +151,11 @@ export function EventPage({
         ? endOpener
         : key === 'delete'
           ? deleteOpener
-          : undefined;
+          : key === 'duplicate'
+            ? duplicateOpener
+            : undefined;
   const onManage = (key: ManageKey) => {
-    if (key === 'duplicate') onDuplicate?.();
+    if (key === 'duplicate') onDuplicate?.(duplicateOpener);
     else if (key === 'pause') askPause();
     else if (key === 'callOff' || key === 'endNow') askEnd(key);
     else deletion.open();
@@ -173,6 +194,7 @@ export function EventPage({
     <PartsSection
       title={t('eventPage.details')}
       rowIDs="events.details"
+      refFor={rowRef}
       onEdit={(part) => edit?.(part)}
       rows={[
         {
@@ -180,7 +202,24 @@ export function EventPage({
           ...datesRow(event, phase, locale, t),
           opens: edit != null && !scheduleLocked(phase),
         },
-        { part: 'venue', ...venueRow(event.venue, t), opens: edit != null },
+        {
+          part: 'venue',
+          ...venueRow(event.venue, t),
+          opens: edit != null && (event.venue != null || event.arrivalNote == null),
+          after:
+            event.arrivalNote == null ? undefined : (
+              <>
+                <ArrivalNoteInset note={event.arrivalNote} />
+                {event.venue == null && edit != null && (
+                  <TextAction
+                    label={t('eventPage.addVenue')}
+                    onPress={() => edit('venue')}
+                    testID="events.addVenue"
+                  />
+                )}
+              </>
+            ),
+        },
         { part: 'hosts', ...hostsRow(event.hosts, locale, t), opens: edit != null },
         {
           part: 'type',
@@ -208,6 +247,7 @@ export function EventPage({
     <PartsSection
       title={t('eventPage.nameAndCover')}
       rowIDs="events.details"
+      refFor={rowRef}
       onEdit={(part) => edit?.(part)}
       rows={[
         { part: 'name', title: event.name, line: t('eventPage.eventName'), opens: edit != null },
@@ -220,6 +260,7 @@ export function EventPage({
       ]}
     />
   );
+  const numbers = <EventGuestNumbers event={event} onOpen={onGuests} />;
   const forYou = (
     <JustForYou
       words={{
@@ -281,12 +322,14 @@ export function EventPage({
         }
         right={
           <>
+            {numbers}
             {forYou}
             {manage}
           </>
         }
         stacked={
           <>
+            {numbers}
             {details}
             {comingUp}
             {nameCover}

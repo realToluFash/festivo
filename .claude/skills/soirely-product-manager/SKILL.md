@@ -75,10 +75,13 @@ text again. Take the work in this order:
    settled goes to Ready For Dev rather than waiting in To Do; your To Do list and the move
    both end its line with `held by sc-N (<state>)`.
 3. **An idea waiting on a decision**: a `Backlog` story labelled `idea` with a `[pm]
-(from cd)` question. Accept (write the AC, or fold it into a story, and move it to
-   `To Do`), park, or reject (archive), each with a one-line reason. The creative director
-   holds at most three open, so an undecided one blocks the next. Accepting is
-   `sq pm move sc-N "To Do"`; rejecting is `sq pm archive sc-N`.
+(from cd)` question. Accept, park, or reject (archive), each with a one-line reason.
+   Accepting adds `idea accepted` (`sq pm label sc-N --add "idea accepted"`), writes the AC
+   or folds it into a story, and moves the story to `To Do` (`sq pm move sc-N "To Do"`)
+   when its epic is in progress; otherwise the story waits in `Backlog` with its epic's
+   other stories. Only you add or remove `idea accepted`. The creative director holds at
+   most three ideas in `Backlog` without it, parked ones included, so an undecided one
+   blocks the next. Rejecting is `sq pm archive sc-N`.
 4. **`Backlog`, after every To Do story.** Each Backlog story reaches you once. Read it and
    decide: take it up (`sq pm move sc-N "To Do"`) when it belongs to an epic in progress or
    next, or is a defect worth fixing now; archive it (`sq pm archive sc-N`) when it is

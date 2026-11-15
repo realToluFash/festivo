@@ -1,0 +1,12 @@
+# sc-48438: Guests' filter menu with its Invited item, in the batch language.
+appId: host.exp.Exponent
+---
+- openLink: ${METRO_URL}/--/events/${EVENT_ID}?area=guests
+- extendedWaitUntil:
+    visible:
+      id: 'guests.filter'
+    timeout: 30000
+- tapOn:
+    id: 'guests.filter'
+- waitForAnimationToEnd
+- takeScreenshot: menu

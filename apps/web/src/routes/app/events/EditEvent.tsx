@@ -18,6 +18,7 @@ import {
   skippedLine,
   isEventType,
   type VenueDraft,
+  arrivalNoteTooLong,
   venueDraftOf,
   formatWallClock,
 } from '@soirely/domain';
@@ -204,7 +205,7 @@ function typedOf({ event }: TaggedEvent): Typed {
     draft: draftOf(event),
     timeZone: event.timeZone,
     currency: event.currency,
-    venue: venueDraftOf(event.venue),
+    venue: venueDraftOf(event.venue, event.arrivalNote),
     hosts: event.hosts.map((name, key) => ({ key, name })),
   };
 }
@@ -557,6 +558,9 @@ function DetailsForm({
               ...previous,
               ...('name' in change ? { venueName: undefined } : {}),
               ...('address' in change ? { venueAddress: undefined } : {}),
+              ...(change.note != null && !arrivalNoteTooLong(change.note)
+                ? { arrivalNote: undefined }
+                : {}),
             }));
           }}
           {...(over ? {} : { onUseZone: (zone: string) => choose('timeZone', zone) })}

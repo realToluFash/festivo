@@ -1,13 +1,11 @@
-import { copyEndsLine, typedNameMatches } from '@soirely/domain';
-import { type Ref, type RefObject, useEffect, useRef, useState } from 'react';
-import { Pressable, StyleSheet, View, type ViewInstance } from 'react-native';
+import { typedNameMatches } from '@soirely/domain';
+import { type RefObject, useEffect, useRef, useState } from 'react';
+import { StyleSheet, View } from 'react-native';
 
-import { AlertLine } from '../../components/AlertLine.tsx';
-import { EventNotice } from '../../components/EventNotice.tsx';
-import { SETTLED_MS } from '../../components/Screen.tsx';
-import { moveScreenReaderFocus } from '../../components/screenReaderFocus.ts';
-
+import { DuplicateScreen as ProductDuplicate } from '../../components/DuplicateEvent.tsx';
+import { BoxField } from '../../components/MomentPick.tsx';
 import type { ScreenReaderTarget } from '../../components/screenReaderFocus.ts';
+import { Ask, type AskProps, FocusedScreen } from '../../components/Summary.tsx';
 import { Text } from '../../components/Text.tsx';
 import { tokens } from '../../theme/tokens.ts';
 import { ASK_WIDTH, EventField, useEditGap } from './EventEdits.tsx';
@@ -19,21 +17,13 @@ import {
   copyOf,
   duplicateStart,
   reduceDuplicate,
-  startsAfter,
 } from './Duplicate.ts';
+import { startsAfter } from '../../kit/eventDuplicate.ts';
 import { instantOf, wallOf } from './EventsModel.ts';
-import {
-  BoxField,
-  MomentBox,
-  type Picking,
-  PickerLayer,
-  pick,
-} from '../../components/MomentPick.tsx';
 import { type Refusal, type RefusedVerb, refusalWords } from './DeleteRefusal.ts';
 import { ORGANISATION, RESTORE_UNTIL, type SampleEvent } from './EventsSample.ts';
-import { W, say, t } from './EventsWords.ts';
+import { W, say } from './EventsWords.ts';
 import { figureOf } from './GuestCounts.ts';
-import { Ask, type AskProps, FocusedScreen, SectionHead } from '../../components/Summary.tsx';
 
 type Opener = RefObject<ScreenReaderTarget | null>;
 
@@ -245,7 +235,7 @@ export function DeleteScreen({
   );
 }
 
-/** Duplicate makes a draft: what is copied and what is not, and the copy's start with its end worked out. */
+/** The product's Duplicate (sc-48601), on the demo's answers: Create draft always comes back created. */
 export function DuplicateScreen({
   open,
   event,
@@ -266,37 +256,20 @@ export function DuplicateScreen({
   const [run, setRun] = useState(() =>
     duplicateStart(start, startsAfter(wallOf(event.startsAt, event.timeZone))),
   );
-  const { starts, status, error } = run;
-  const [aim, setAim] = useState(run.focus == null ? 0 : 1);
-  const [picking, setPicking] = useState<Picking | null>(null);
-  const date = useRef<ViewInstance>(null);
-  const time = useRef<ViewInstance>(null);
+  const [refusals, setRefusals] = useState(run.focus == null ? 0 : 1);
   const timer = useRef<ReturnType<typeof setTimeout> | null>(null);
-  const busy = status === 'creating' || status === 'created';
-  const gap = useEditGap();
   const act = (action: DuplicateAction) => setRun((now) => reduceDuplicate(now, action));
-  const choose = (mode: 'date' | 'time') =>
-    pick(
-      {
-        title: say.timesIn(event.timeZone),
-        mode,
-        field: starts,
-        take: (picked) => act({ type: 'picked', starts: picked }),
-      },
-      setPicking,
-    );
   const create = () => {
-    if (busy) return;
     const next = reduceDuplicate(run, { type: 'create' });
     setRun(next);
     if (next.status !== 'creating') {
-      setAim((count) => count + 1);
+      setRefusals((count) => count + 1);
       return;
     }
     timer.current = setTimeout(() => {
       act({ type: 'created' });
       timer.current = setTimeout(
-        () => onCreated(copyOf(event, instantOf(starts.date, starts.time, event.timeZone))),
+        () => onCreated(copyOf(event, instantOf(run.starts.date, run.starts.time, event.timeZone))),
         OPENING_MS,
       );
     }, CREATING_MS);
@@ -308,154 +281,20 @@ export function DuplicateScreen({
     },
     [],
   );
-  useEffect(() => {
-    if (aim === 0 || !open) return undefined;
-    const later = setTimeout(
-      () => moveScreenReaderFocus((run.focus === 'time' ? time : date).current),
-      SETTLED_MS,
-    );
-
-    return () => clearTimeout(later);
-  }, [aim, open, run.focus]);
 
   return (
-    <FocusedScreen
-      gap={gap}
+    <ProductDuplicate
       open={open}
-      title={W.duplicate}
-      verb={{
-        label: W.createDraft,
-        on: true,
-        busy,
-        onPress: create,
-        testID: 'event.duplicate.create',
-      }}
-      waits={busy}
-      onCancel={onClose}
-      cancelTestID="event.duplicate.cancel"
+      event={event}
+      locale={locale}
+      run={run}
+      refusals={refusals}
       opener={opener}
-      toast={status === 'created' ? { words: W.created, onClose: () => {} } : null}
-      over={
-        picking == null
-          ? null
-          : {
-              layer: (
-                <PickerLayer picking={picking} locale={locale} onClose={() => setPicking(null)} />
-              ),
-              onClose: () => setPicking(null),
-            }
-      }
+      onClose={onClose}
+      onPick={(starts) => act({ type: 'picked', starts })}
+      onCreate={create}
       testID="event.duplicate"
-    >
-      {status === 'failed' && <EventNotice tone="broken" words={W.notCreated} interrupts />}
-      <Text size={22} weight="bold" accessibilityRole="header" style={styles.title}>
-        {say.duplicateTitle(event.name)}
-      </Text>
-      <Text size={15} weight="medium" style={[styles.secondary, styles.lines]}>
-        {W.duplicateLine}
-      </Text>
-      <Listed title={W.copied} items={W.copiedList} />
-      <Listed title={W.notCopied} items={W.notCopiedList} />
-      <View style={styles.starts}>
-        <Text size={14} weight="semibold" style={styles.label}>
-          {W.starts}
-        </Text>
-        <View style={styles.pair}>
-          <StartBox
-            ref={date}
-            label={`${W.starts}, ${W.date}`}
-            mode="date"
-            value={starts.date}
-            locale={locale}
-            wrong={error != null && (starts.date === '' || run.focus === 'date')}
-            onPress={() => choose('date')}
-            testID="event.duplicate.date"
-          />
-          <StartBox
-            ref={time}
-            label={`${W.starts}, ${W.time}`}
-            mode="time"
-            value={starts.time}
-            locale={locale}
-            width={104}
-            wrong={error != null && starts.time === ''}
-            onPress={() => choose('time')}
-            testID="event.duplicate.time"
-          />
-        </View>
-        {error != null && <AlertLine text={error} />}
-      </View>
-      <Text size={14} weight="medium" style={[styles.secondary, styles.said]}>
-        {copyEndsLine(starts.date, starts.time, event, locale, t)}
-      </Text>
-    </FocusedScreen>
-  );
-}
-
-/** A half of Starts: the chosen date or time, or the empty box the Reply by edit draws when none is chosen. */
-function StartBox({
-  ref,
-  label,
-  mode,
-  value,
-  locale,
-  width,
-  wrong,
-  onPress,
-  testID,
-}: {
-  ref: Ref<ViewInstance>;
-  label: string;
-  mode: 'date' | 'time';
-  value: string;
-  locale: string;
-  width?: number;
-  wrong: boolean;
-  onPress: () => void;
-  testID: string;
-}) {
-  if (value !== '')
-    return (
-      <MomentBox
-        ref={ref}
-        label={label}
-        mode={mode}
-        value={value}
-        locale={locale}
-        {...(width == null ? {} : { width })}
-        wrong={wrong}
-        onPress={onPress}
-        testID={testID}
-      />
-    );
-
-  return (
-    <Pressable
-      ref={ref}
-      onPress={onPress}
-      style={({ pressed }) => [
-        styles.empty,
-        width == null ? styles.grow : { width },
-        wrong && styles.wrong,
-        pressed && styles.pressed,
-      ]}
-      accessibilityRole="button"
-      accessibilityLabel={label}
-      testID={testID}
     />
-  );
-}
-
-function Listed({ title, items }: { title: string; items: readonly string[] }) {
-  return (
-    <View>
-      <SectionHead title={title} />
-      {items.map((item) => (
-        <Text key={item} size={15} weight="medium" style={styles.bullet}>
-          {`• ${item}`}
-        </Text>
-      ))}
-    </View>
   );
 }
 
@@ -465,18 +304,4 @@ const styles = StyleSheet.create({
   tight: { gap: tokens.spaceHair },
   bullet: { lineHeight: 15 * 1.45 },
   lines: { lineHeight: 15 * 1.45 },
-  label: { lineHeight: 14 * 1.3 },
-  said: { lineHeight: 14 * 1.45 },
-  starts: { gap: 7 },
-  pair: { flexDirection: 'row', gap: tokens.spaceSm },
-  grow: { flex: 1, minWidth: 0 },
-  pressed: { opacity: tokens.opacityPressed },
-  empty: {
-    minHeight: 52,
-    borderWidth: 1.5,
-    borderColor: tokens.colorFieldBorder,
-    borderRadius: tokens.radiusInset,
-    backgroundColor: tokens.colorCard,
-  },
-  wrong: { borderWidth: 2, borderColor: tokens.colorBroken },
 });

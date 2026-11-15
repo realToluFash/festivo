@@ -6,6 +6,7 @@ import {
 } from './datetime.ts';
 import { type EventPhase, type EventState, calledOff } from './eventStates.ts';
 import {
+  ARRIVAL_NOTE_MAXIMUM,
   EVENT_NAME_MAXIMUM,
   type EventDraft,
   type EventFormField,
@@ -41,7 +42,9 @@ export function eventFormErrors(
                 ? VENUE_NAME_MAXIMUM
                 : field === 'venueAddress'
                   ? VENUE_ADDRESS_MAXIMUM
-                  : EVENT_NAME_MAXIMUM,
+                  : field === 'arrivalNote'
+                    ? ARRIVAL_NOTE_MAXIMUM
+                    : EVENT_NAME_MAXIMUM,
           });
 
   return errors;

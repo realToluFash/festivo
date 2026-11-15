@@ -25,6 +25,10 @@ export const RMW = {
   staysArrived:
     'They have arrived, so they stay on the list. Their record ends with the event’s guest data setting.',
   justArrived: (name: string) => `${name} has just arrived, so they stay on the list.`,
+  staysCompanionArrived:
+    'One of their companions has arrived, so they stay on the list. Their record ends with the event’s guest data setting.',
+  companionJustArrived: (name: string) =>
+    `A companion of ${name} has just arrived, so they stay on the list.`,
   backToDetails: 'Back to their details',
   alreadyRemoved: (name: string) => `${name} was already removed by someone else.`,
   backToGuests: 'Back to guests',
@@ -35,13 +39,13 @@ const LIST = new Intl.ListFormat('en', { style: 'long', type: 'conjunction' });
 /** The count Undo stays open for, in seconds (sc-3774, WCAG 2.2 §2.2.1). */
 export const UNDO_SECONDS = 10;
 
-/** What Remove meets at the API: it goes, 409 guest_arrived, or 404 already removed. */
-export type RemoveEnds = 'removes' | 'arrived' | 'gone';
+/** What Remove meets at the API: it goes, 409 guest_arrived (they or a companion arrived), or 404 already removed. */
+export type RemoveEnds = 'removes' | 'arrived' | 'companionArrived' | 'gone';
 
 export interface Removing {
   id: string;
   ends: RemoveEnds;
-  refused?: 'arrived' | 'gone';
+  refused?: 'arrived' | 'companionArrived' | 'gone';
 }
 
 export interface Removed {
@@ -49,9 +53,17 @@ export interface Removed {
   at: number;
 }
 
-/** Without guests.manage there is no Remove; an arrived guest has none either (sc-1454). */
+/** Why a guest stays on the list: they arrived, or one of their companions did, since removing them erases their companions (sc-1454). */
+export function staysBecause(guest: Guest): 'arrived' | 'companionArrived' | null {
+  if (guest.arrived != null) return 'arrived';
+  if (guest.companions.some((one) => one.arrived != null)) return 'companionArrived';
+
+  return null;
+}
+
+/** Without guests.manage there is no Remove; a guest who stays has none either (sc-1454). */
 export function removable(guest: Guest, manages: boolean): boolean {
-  return manages && guest.arrived == null;
+  return manages && staysBecause(guest) == null;
 }
 
 export function removeGuest(
@@ -80,4 +92,17 @@ export function nextCount(left: number, held: boolean): number {
 
 export function arrivedIn(list: readonly Guest[], id: string, at: string): Guest[] {
   return list.map((one) => (one.id === id ? { ...one, arrived: at } : one));
+}
+
+export function companionArrivedIn(list: readonly Guest[], id: string, at: string): Guest[] {
+  return list.map((one) =>
+    one.id === id && one.companions.length > 0
+      ? {
+          ...one,
+          companions: one.companions.map((companion, index) =>
+            index === 0 ? { ...companion, arrived: at } : companion,
+          ),
+        }
+      : one,
+  );
 }

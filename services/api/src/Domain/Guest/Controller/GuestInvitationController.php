@@ -9,20 +9,17 @@ use App\Domain\Guest\Invitation\GuestInvitations;
 use App\Entity\Guest;
 use App\Entity\User;
 use App\Enum\ErrorCode;
-use App\Enum\GuestInvitationMethod;
 use App\Enum\Permission;
 use App\Http\Access\InThisEvent;
 use App\Http\Access\Policy\InEvent;
 use App\Http\EntityTag;
 use App\Http\Exception\ApiException;
 use App\Http\Input;
-use Psl\Iter;
 use Psl\Type;
 use Symfony\Bundle\SecurityBundle\Security;
 use Symfony\Component\HttpFoundation\JsonResponse;
 use Symfony\Component\HttpFoundation\Request;
 use Symfony\Component\Routing\Attribute\Route;
-use Symfony\Contracts\Translation\TranslatorInterface;
 
 /** Mark as invited and Mark as not invited (sc-3788); each answers the guest's details as they now stand. */
 final readonly class GuestInvitationController
@@ -31,7 +28,6 @@ final readonly class GuestInvitationController
         private Security $security,
         private GuestInvitations $guestInvitations,
         private GuestSerialiser $guestSerialiser,
-        private TranslatorInterface $translator,
     ) {
     }
 
@@ -41,17 +37,7 @@ final readonly class GuestInvitationController
     public function mark(Request $request, #[InThisEvent('guestId')] Guest $guest): JsonResponse
     {
         $body = Input::body($request, Type\shape(['how' => Type\optional(Type\nullable(Type\string()))]));
-        $how = GuestInvitationMethod::tryFrom($body['how'] ?? '');
-
-        if (null === $how || !Iter\contains(GuestInvitationMethod::byHand(), $how)) {
-            throw ApiException::validation([[
-                'propertyPath' => 'how',
-                'message' => $this->translator->trans('validation.guest_invitation_how_required'),
-                'code' => ErrorCode::ValidationFailed->value,
-            ]]);
-        }
-
-        $this->guestInvitations->mark($guest, $how, $this->user());
+        $this->guestInvitations->mark($guest, $this->guestInvitations->chosen($body['how'] ?? null), $this->user());
 
         return $this->details($guest);
     }

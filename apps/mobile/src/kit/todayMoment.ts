@@ -6,6 +6,7 @@ import {
   type TodaySub,
   formatEventClock,
   notThisYear,
+  todayRepliesOf,
   todayView,
 } from '@soirely/domain';
 import type { TFunction } from 'i18next';
@@ -109,7 +110,30 @@ function card(one: TodayCard<ListedEvent>, now: Date, reader: Reader, t: TFuncti
     live: one.live,
     draft: one.draft,
     stage: one.finalWeek ? t('todayScreen.finalWeek') : null,
-    ready: null,
+    ready: readyOf(event, one.draft, t),
+  };
+}
+
+/** sc-29881's line, from the figures Events counts (sc-3786), so Today and Events agree. */
+function readyOf(event: ListedEvent, draft: boolean, t: TFunction): EventCard['ready'] {
+  const replies = todayRepliesOf(event.guests, draft);
+
+  if (replies == null) return null;
+  if (replies.kind === 'notSent') return { words: t('todayScreen.invitationsNotSent'), percent: 0 };
+
+  const parts = {
+    coming: t('todayScreen.repliesComing', { count: replies.coming }),
+    replied: t('todayScreen.repliesShare', {
+      count: replies.percent,
+      share: replies.percent / 100,
+    }),
+  };
+
+  return {
+    words: t('todayScreen.replies', parts),
+    spoken: t('todayScreen.repliesSpoken', parts),
+    percent: replies.percent,
+    track: true,
   };
 }
 

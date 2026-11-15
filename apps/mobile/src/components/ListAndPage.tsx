@@ -55,11 +55,15 @@ export interface ListAndPageProps {
   pageless?: boolean;
   /** The page's own back, the header's on a phone included; Android's Back and iOS's swipe from the left edge run it too wherever the page is in front. `revealsList: false` when it leads elsewhere, so the swipe shows no list under the page. */
   back: { label: string; onPress: () => void; testID: string; revealsList?: boolean };
+  /** The frame's top already carries the back, so the upright tablet's page draws none of its own. */
+  backInFrame?: boolean;
   spacing: ListAndPageSpacing;
   /** The screen's own `useListAndPageLayout`, so the two never decide apart. */
   kind: LayoutKind;
   /** On its side, the list takes the Settings list's column with the heading at its top, and the page sits beside it (sc-39471). */
   settingsColumn?: boolean;
+  /** On its side, the heading scrolls away at the top of the list's column rather than standing above both. */
+  headingInList?: boolean;
 }
 
 function listBeside(spacing: ListAndPageSpacing) {
@@ -94,15 +98,18 @@ export function ListAndPage({
   pageInFront,
   pageless = false,
   back,
+  backInFrame = false,
   spacing,
   kind,
   settingsColumn = false,
+  headingInList = false,
 }: ListAndPageProps) {
   const { kind: frame } = useLayout();
   const listWidth = useSideListWidth(spacing.listWidth);
   const landscape = kind === 'tabletLandscape';
   const split = landscape && !pageless;
   const inColumn = landscape && settingsColumn;
+  const headingAbove = landscape && !inColumn && !headingInList;
   const takesBack = pageTakesBack(kind, pageInFront);
   useSystemBack(takesBack, back.onPress);
   const swipe = useEdgeSwipeBack(takesBack, back.onPress);
@@ -119,7 +126,7 @@ export function ListAndPage({
       scroll={false}
       contentStyle={landscape && !inColumn ? spacing.landscape : styles.bare}
     >
-      {landscape && !inColumn && (heading || besideHeading) && (
+      {headingAbove && (heading || besideHeading) && (
         <View style={styles.head}>
           <View style={styles.fill}>{heading}</View>
           {besideHeading}
@@ -140,7 +147,7 @@ export function ListAndPage({
             away={!landscape && pageInFront}
           >
             {(landscape ? pageless : !pageInFront) && <FrameTop />}
-            {(!landscape || inColumn) && heading}
+            {!headingAbove && heading}
             {list}
           </ScrollColumn>
         </View>
@@ -158,7 +165,7 @@ export function ListAndPage({
             contentContainerStyle={inColumn ? [LIST_EDGES.tabletLandscape, column] : column}
           >
             {!landscape && pageInFront && <FrameTop />}
-            {kind === 'tabletPortrait' && (
+            {kind === 'tabletPortrait' && !backInFrame && (
               <View style={styles.start}>
                 <QuietButton label={back.label} onPress={back.onPress} testID={back.testID} />
               </View>

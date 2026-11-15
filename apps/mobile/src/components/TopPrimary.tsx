@@ -1,4 +1,5 @@
-import { Pressable, StyleSheet } from 'react-native';
+import type { Ref } from 'react';
+import { Pressable, StyleSheet, type ViewInstance } from 'react-native';
 
 import { tokens } from '../theme/tokens.ts';
 import { Glyph } from './Glyph.tsx';
@@ -11,10 +12,17 @@ export interface TopPrimaryProps {
 }
 
 /** The primary at the end of a top's title row, as the demos draw it: the round violet + on a phone, the + and its label wider (sc-39471). */
-export function TopPrimary({ label, onPress, wide, testID }: TopPrimaryProps & { wide: boolean }) {
+export function TopPrimary({
+  label,
+  onPress,
+  wide,
+  testID,
+  ref,
+}: TopPrimaryProps & { wide: boolean; ref?: Ref<ViewInstance> }) {
   if (wide)
     return (
       <Pill
+        ref={ref}
         label={label}
         glyph="plus"
         height={tokens.sizeHit}
@@ -26,6 +34,7 @@ export function TopPrimary({ label, onPress, wide, testID }: TopPrimaryProps & {
 
   return (
     <Pressable
+      ref={ref}
       onPress={onPress}
       style={({ pressed }) => [styles.round, pressed && styles.pressed]}
       accessibilityRole="button"

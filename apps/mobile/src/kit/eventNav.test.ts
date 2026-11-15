@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 
-import { areaBack, areaOf, editAtOf, eventHref } from './eventNav.ts';
+import { areaBack, areaOf, editPartOf, eventHref, guestsHref } from './eventNav.ts';
 
 describe('areaOf', () => {
   it('reads an area the event has', () => {
@@ -31,15 +31,25 @@ describe('eventHref', () => {
   });
 });
 
-describe('editAtOf', () => {
-  it('reads the field Edit details opens at, and nothing else', () => {
-    expect(editAtOf('starts')).toBe('starts');
-    expect(editAtOf('venue')).toBe('venue');
-    expect(editAtOf('hosts')).toBe('hosts');
-    expect(editAtOf('name')).toBe('name');
-    expect(editAtOf('type')).toBe('type');
-    expect(editAtOf('currency')).toBe('currency');
-    expect(editAtOf('cover')).toBeUndefined();
-    expect(editAtOf(undefined)).toBeUndefined();
+describe('editPartOf', () => {
+  it("reads the part a link's at= opens, starts being Dates (sc-48600)", () => {
+    expect(editPartOf('starts')).toBe('dates');
+    expect(editPartOf('venue')).toBe('venue');
+    expect(editPartOf('hosts')).toBe('hosts');
+    expect(editPartOf('name')).toBe('name');
+    expect(editPartOf('type')).toBe('type');
+    expect(editPartOf('currency')).toBe('currency');
+  });
+
+  it('opens nothing for no part, or one the app does not know', () => {
+    expect(editPartOf(undefined)).toBeUndefined();
+    expect(editPartOf('cover')).toBeUndefined();
+    expect(editPartOf('toString')).toBeUndefined();
+  });
+});
+
+describe('guestsHref', () => {
+  it("opens an event's Guests on the choice a figure counts (sc-3786)", () => {
+    expect(guestsHref('evt 1', 'noReply')).toBe('/events/evt%201?area=guests&filter=noReply');
   });
 });

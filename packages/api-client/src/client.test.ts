@@ -2811,10 +2811,25 @@ describe('invitations and members', () => {
     expect(await api.eventDeletion('event_1')).toEqual({
       needsName: true,
       people: 421,
+      deleteRefusedBecause: null,
       restoreClosesAt: '2026-11-16T13:20:00+00:00',
       restoreCloses: 'Monday 16 Nov at 14:20 WAT',
     });
     expect(sent[0]?.line).toBe('GET /api/events/event_1/deletion');
+  });
+
+  test('an event deletion preview says why it would be refused (sc-14445)', async () => {
+    const { api } = client(
+      json({
+        needsName: true,
+        people: 3,
+        deleteRefusedBecause: 'guestsInvited',
+        restoreClosesAt: '2026-11-16T13:20:00+00:00',
+        restoreCloses: 'Monday 16 Nov at 14:20 WAT',
+      }),
+    );
+
+    expect((await api.eventDeletion('event_1')).deleteRefusedBecause).toBe('guestsInvited');
   });
 
   test('an event delete sends the name as typed, and none for a Draft', async () => {
@@ -2846,11 +2861,13 @@ describe('events (sc-1486)', () => {
     currency: 'NGN',
     cover: null,
     venue: null,
+    arrivalNote: null,
     hosts: ['Funmi Adeyemi', 'Tayo Adeyemi'],
     madeLiveAt: null,
     pausedAt: null,
     phase: 'draft',
     concludedAt: null,
+    deleteRefusedBecause: null,
     createdAt: '2026-10-21T09:00:00+00:00',
     permissions: ['events.read', 'events.manage'],
   };
@@ -2883,15 +2900,20 @@ describe('events (sc-1486)', () => {
       area: 'events',
       action: null,
     };
+    const WEDDING_GUESTS = { invited: 142, coming: 96, notReplied: 25 };
     const later = { ...EVENT, id: 'e2', name: 'Later', milestones: [] };
     const { api, sent } = client(() =>
-      json({ events: [{ ...EVENT, milestones: [starts] }, later], total: 12 }),
+      json({
+        events: [{ ...EVENT, milestones: [starts], guests: WEDDING_GUESTS }, later],
+        total: 12,
+      }),
     );
 
     const page = await api.events('org_1', { finished: true, page: 2, itemsPerPage: 10 });
 
     expect(page.events.map(({ name }) => name)).toEqual(['Adaeze and Tunde', 'Later']);
-    expect(page.events[0]).toEqual({ ...EVENT, milestones: [starts] });
+    expect(page.events[0]).toEqual({ ...EVENT, milestones: [starts], guests: WEDDING_GUESTS });
+    expect(page.events[1]?.guests).toBeNull();
     expect(page.total).toBe(12);
     expect(sent[0]?.line).toBe('GET /api/orgs/org_1/events');
   });
@@ -3184,6 +3206,7 @@ describe('events (sc-1486)', () => {
     ['a phase nobody declared', { phase: 'over' }],
     ['no phase', { phase: undefined }],
     ['a concludedAt that is not a string or null', { concludedAt: 1 }],
+    ['a deleteRefusedBecause that is not a string or null', { deleteRefusedBecause: true }],
     ['no permissions', { permissions: undefined }],
     ['a permission that is not a string', { permissions: [1] }],
   ])('an event with %s is an error', async (_, change) => {
@@ -3413,6 +3436,7 @@ describe("an event's venue (sc-3589)", () => {
     dayCount: 2,
     currency: 'NGN',
     cover: null,
+    arrivalNote: null,
     hosts: [],
     madeLiveAt: null,
     pausedAt: null,
@@ -3470,6 +3494,19 @@ describe("an event's venue (sc-3589)", () => {
 
   test('refuses an event with no venue field, naming where to look', async () => {
     await expect(client(json({ event })).api.event('e1')).rejects.toThrow(/events controller/);
+  });
+
+  test("reads the host's arrival note, with its line breaks, apart from the venue (sc-24385)", async () => {
+    const note = 'Use the side gate.\nDoors open at 17:30.';
+    const read = await client(
+      json({ event: { ...event, venue: null, arrivalNote: note } }),
+    ).api.event('e1');
+
+    expect(read.venue).toBeNull();
+    expect(read.arrivalNote).toBe(note);
+    await expect(
+      client(json({ event: { ...event, venue: null, arrivalNote: 5 } })).api.event('e1'),
+    ).rejects.toThrow(/events controller/);
   });
 
   const answers = JSON.parse(

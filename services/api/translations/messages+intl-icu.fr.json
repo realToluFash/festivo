@@ -15,6 +15,7 @@
     "people.job_label_too_long": "Raccourcissez l’intitulé du poste à {count, plural, one {{count, number, ::group-auto} caractère} many {{count, number, ::group-auto} de caractères} other {{count, number, ::group-auto} caractères}} maximum.",
     "validation.event_name_too_long": "Raccourcissez le nom à {count, number, ::group-auto} caractères maximum.",
     "validation.name_too_long": "Raccourcissez votre nom à {count, number, ::group-auto} caractères maximum.",
+    "validation.event_arrival_note_too_long": "Shorten the arrival note to {count, number, ::group-auto} characters or fewer.",
     "validation.event_venue_address_too_long": "Raccourcissez l’adresse à {count, number, ::group-auto} caractères maximum.",
     "validation.event_venue_name_too_long": "Raccourcissez le nom du lieu à {count, number, ::group-auto} caractères maximum.",
     "validation.organisation_name_too_long": "Ce nom compte {length, number, ::group-auto} caractères. Raccourcissez-le à {count, number, ::group-auto} caractères maximum.",
@@ -68,5 +69,6 @@
     "eventChanges.email.link": "{label} : {url}",
     "eventChanges.email.footer": "Vous recevez ce message parce que vous faites partie de l’événement {event} de l’organisation {organisation}. Pour ne plus recevoir ces e-mails, désactivez l’e-mail « Modifications d’événements » dans les paramètres de notification.",
     "eventChanges.email.footerEventDay": "Vous recevez ce message parce que vous faites partie de l’événement {event} de l’organisation {organisation}. Pour ne plus recevoir ces e-mails, désactivez l’e-mail « Jour de l’événement » dans les paramètres de notification.",
-    "limits.calendar_feed": "Ce lien d’agenda a été consulté trop souvent. Réessayez {hour, plural, other {à {time}}}."
+    "limits.calendar_feed": "Ce lien d’agenda a été consulté trop souvent. Réessayez {hour, plural, other {à {time}}}.",
+    "validation.guests_too_many": "Vous pouvez traiter jusqu’à {most, number, ::group-auto} invités à la fois. Affinez la liste avec un onglet, une recherche ou un filtre, puis sélectionnez à nouveau."
 }

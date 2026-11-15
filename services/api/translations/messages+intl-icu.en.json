@@ -15,6 +15,7 @@
     "people.job_label_too_long": "Shorten the job label to {count, plural, one {{count, number, ::group-auto} character} other {{count, number, ::group-auto} characters}} or fewer.",
     "validation.event_name_too_long": "Shorten the name to {count, number, ::group-auto} characters or fewer.",
     "validation.name_too_long": "Shorten your name to {count, number, ::group-auto} characters or fewer.",
+    "validation.event_arrival_note_too_long": "Shorten the arrival note to {count, number, ::group-auto} characters or fewer.",
     "validation.event_venue_address_too_long": "Shorten the address to {count, number, ::group-auto} characters or fewer.",
     "validation.event_venue_name_too_long": "Shorten the venue name to {count, number, ::group-auto} characters or fewer.",
     "validation.organisation_name_too_long": "That name is {length, number, ::group-auto} characters. Use {count, number, ::group-auto} or fewer.",
@@ -68,5 +69,6 @@
     "eventChanges.email.link": "{label}: {url}",
     "eventChanges.email.footer": "You're getting this because you are on {event} at {organisation}. To stop these emails, turn off Event changes email in Notification settings.",
     "eventChanges.email.footerEventDay": "You're getting this because you are on {event} at {organisation}. To stop these emails, turn off Event day email in Notification settings.",
-    "limits.calendar_feed": "This calendar link has been fetched too often. Try again {hour, plural, other {at {time}}}."
+    "limits.calendar_feed": "This calendar link has been fetched too often. Try again {hour, plural, other {at {time}}}.",
+    "validation.guests_too_many": "You can act on up to {most, number, ::group-auto} guests at once. Narrow the list with a tab, a search or a filter, then select again."
 }

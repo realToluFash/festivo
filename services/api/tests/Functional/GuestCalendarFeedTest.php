@@ -187,6 +187,7 @@ final class GuestCalendarFeedTest extends ApiTestCase
     public function aDeletedEventIsCancelledForThirtyDaysThenNotFound(): void
     {
         $path = $this->feedOf($this->reply($this->token($this->add('Adaeze Okonkwo')), 'coming'));
+        $this->lifecycle('end');
 
         $this->as($this->owner, 'DELETE', '/api/events/' . $this->eventId, ['name' => "Amara & Tobi's wedding"]);
         self::assertSame(200, $this->statusCode(), Json\encode($this->last()));

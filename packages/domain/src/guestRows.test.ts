@@ -48,7 +48,9 @@ describe('the app guest rows', () => {
   it('says a guest with no reply and no contact by their reply alone', () => {
     const [person] = peopleOf([guest()]);
 
-    expect(rowWords(t, person!, false, 'Europe/London', 'en-GB', true)).toEqual({
+    expect(
+      rowWords(t, person!, false, 'Europe/London', 'en-GB', { places: 'named', contact: true }),
+    ).toEqual({
       name: 'Adaeze Okafor',
       line: 'guestList.reply.noReply',
     });
@@ -57,9 +59,10 @@ describe('the app guest rows', () => {
   it('says a guest nobody has invited is Not yet invited', () => {
     const [person] = peopleOf([guest({ invitation: null })]);
 
-    expect(rowWords(t, person!, false, 'Europe/London', 'en-GB', true).line).toBe(
-      'guestList.reply.notYetInvited',
-    );
+    expect(
+      rowWords(t, person!, false, 'Europe/London', 'en-GB', { places: 'named', contact: true })
+        .line,
+    ).toBe('guestList.reply.notYetInvited');
   });
 
   it("says a guest's places beside the reply, unless the places are not shown", () => {
@@ -74,25 +77,44 @@ describe('the app guest rows', () => {
     const places =
       'guestList.withPlaces{"reply":"guestList.reply.noReply","places":"guestList.companionsNamed{\\"count\\":2,\\"named\\":1}"}';
 
-    expect(rowWords(t, person!, false, 'Europe/London', 'en-GB', true).line).toBe(places);
-    expect(rowWords(t, person!, false, 'Europe/London', 'en-GB', false).line).toBe(
-      'guestList.reply.noReply',
+    expect(
+      rowWords(t, person!, false, 'Europe/London', 'en-GB', { places: 'named', contact: true })
+        .line,
+    ).toBe(places);
+    expect(
+      rowWords(t, person!, false, 'Europe/London', 'en-GB', { places: null, contact: true }).line,
+    ).toBe('guestList.reply.noReply');
+  });
+
+  it("counts a guest's companions alone and leaves out the contact, as the app's row says them", () => {
+    const [person] = peopleOf([
+      guest({
+        email: 'ada@example.com',
+        companions: [{ id: 'c1', fullName: 'Bo', state: 'coming', namedByGuest: false }],
+      }),
+    ]);
+
+    expect(
+      rowWords(t, person!, false, 'Europe/London', 'en-GB', { places: 'counted', contact: false })
+        .line,
+    ).toBe(
+      'guestList.withPlaces{"reply":"guestList.reply.noReply","places":"guestList.countCompanions{\\"count\\":1}"}',
     );
   });
 
-  it('says how a guest was invited in place of the reply when the places are not shown, and the reply when there is no such line', () => {
+  it('says how a guest was invited in place of the reply, and the reply when there is no such line', () => {
     const [person] = peopleOf([guest()]);
     const invited = 'Invited by Folake Adeyemi, WhatsApp, Oct 9';
 
-    expect(rowWords(t, person!, false, 'Europe/London', 'en-GB', false, invited).line).toBe(
-      invited,
-    );
-    expect(rowWords(t, person!, false, 'Europe/London', 'en-GB', false, null).line).toBe(
-      'guestList.reply.noReply',
-    );
-    expect(rowWords(t, person!, false, 'Europe/London', 'en-GB', true, invited).line).toBe(
-      'guestList.reply.noReply',
-    );
+    const noReply = { places: null, contact: true };
+
+    expect(
+      rowWords(t, person!, false, 'Europe/London', 'en-GB', { ...noReply, invitation: invited })
+        .line,
+    ).toBe(invited);
+    expect(
+      rowWords(t, person!, false, 'Europe/London', 'en-GB', { ...noReply, invitation: null }).line,
+    ).toBe('guestList.reply.noReply');
   });
 
   it('says a held companion is held, under their host', () => {
@@ -100,10 +122,75 @@ describe('the app guest rows', () => {
       guest({ companions: [{ id: 'c1', fullName: null, state: 'held', namedByGuest: false }] }),
     ]);
 
-    expect(rowWords(t, people[1]!, true, 'Europe/London', 'en-GB', true)).toEqual({
+    expect(
+      rowWords(t, people[1]!, true, 'Europe/London', 'en-GB', { places: 'named', contact: true }),
+    ).toEqual({
       name: 'guestList.guestOf{"host":"Adaeze Okafor"}',
       line: 'guestList.heldLine',
     });
+  });
+});
+
+describe("the app row's group (sc-5519)", () => {
+  const EN: Record<string, string> = {
+    'guestList.reply.coming': 'Coming',
+    'guestList.replied': '{reply} · replied {date}',
+    'guestList.withGroup': '{reply} · {group}',
+    'guestList.withPlaces': '{reply} · {places}',
+    'guestList.countCompanions': '{count} companion',
+  };
+  const en = (key: string, values: Record<string, string | number> = {}) =>
+    (EN[key] ?? key).replaceAll(/\{(\w+)\}/gu, (_, name: string) => String(values[name]));
+  const counted = { places: 'counted', contact: false } as const;
+  const bride = guest({
+    reply: 'coming',
+    repliedAt: '2026-10-14T12:00:00+01:00',
+    group: { id: 'gr_bride', name: 'Bride’s side' },
+    companions: [{ id: 'c1', fullName: 'Bo', state: 'coming', namedByGuest: false }],
+  });
+
+  it('says the group after the reply and before the places', () => {
+    const [person] = peopleOf([bride]);
+
+    expect(
+      rowWords(en, person!, false, 'Europe/London', 'en-GB', { ...counted, group: true }).line,
+    ).toBe('Coming · replied 14 Oct · Bride’s side · 1 companion');
+  });
+
+  it("gives a companion their host's group", () => {
+    const people = peopleOf([bride]);
+
+    expect(
+      rowWords(en, people[1]!, true, 'Europe/London', 'en-GB', { ...counted, group: true }).line,
+    ).toBe('Coming · Bride’s side');
+  });
+
+  it('says nothing more of a guest in no group', () => {
+    const [person] = peopleOf([guest({ ...bride, group: null })]);
+
+    expect(
+      rowWords(en, person!, false, 'Europe/London', 'en-GB', { ...counted, group: true }).line,
+    ).toBe('Coming · replied 14 Oct · 1 companion');
+  });
+
+  it('leaves the group out of a row that does not ask for it, as the web’s', () => {
+    const people = peopleOf([bride]);
+
+    expect(rowWords(en, people[0]!, false, 'Europe/London', 'en-GB', counted).line).toBe(
+      'Coming · replied 14 Oct · 1 companion',
+    );
+    expect(rowWords(en, people[1]!, true, 'Europe/London', 'en-GB', counted).line).toBe('Coming');
+  });
+});
+
+describe('the people of a guest list', () => {
+  it('sorts a list once, and a new list again', () => {
+    const list = [guest({ id: 'g2', fullName: 'Émile Bassey' }), guest()];
+    const first = peopleOf(list);
+
+    expect(first.map((one) => one.id)).toEqual(['g1', 'g2']);
+    expect(peopleOf(list)).toBe(first);
+    expect(peopleOf([...list])).not.toBe(first);
   });
 });
 

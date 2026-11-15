@@ -8,6 +8,7 @@ import {
   GUEST_LANGUAGES,
   type GuestLanguage,
   type GuestsCard,
+  type ListRow,
   type NumbersState,
   type Reply,
   type Values,
@@ -16,6 +17,8 @@ import {
   languageName,
   sampleGuests,
 } from './guests.ts';
+import { GGW, type GuestGroup, groupNameOf } from './guestGroups.ts';
+import { MOST_AT_ONCE, MW } from './guestsMark.ts';
 import { GW, REPLY_WORDS, figure } from './guestsWords.ts';
 import { COUNTRIES, codeChoice } from './rules.ts';
 import { CardStep, Chevron, Head, RowWords, TextAction } from '../components/SettingsParts.tsx';
@@ -83,6 +86,127 @@ export function MarkLead({ reply }: { reply: Reply }) {
     <span className="gs-lead">
       <ReplyMark reply={reply} />
     </span>
+  );
+}
+
+/** The selection bar, one for sc-3776 and sc-46880: the count with its companions, Mark as invited while invites are on, Add to group, Remove from the list, Clear. Each demo passes the actions; one it does not build points to the demo that does. */
+export function SelectBar({
+  count,
+  companions,
+  pretend,
+  onMark,
+  onAdd,
+  onRemove,
+  onClear,
+}: {
+  count: number;
+  companions: number;
+  pretend: number | null;
+  onMark: (() => void) | null;
+  onAdd: () => void;
+  onRemove: () => void;
+  onClear: () => void;
+}) {
+  return (
+    <section className="gm-bar" aria-label={MW.bar}>
+      <p className="gm-count">
+        <strong>{MW.selected(count)}</strong>
+        {companions > 0 && <span>{MW.withCompanions(companions)}</span>}
+      </p>
+      {count > MOST_AT_ONCE && <p className="desk-line gm-narrow">{MW.narrowing}</p>}
+      {pretend != null && <p className="desk-note gm-pretend">{MW.pretend(pretend)}</p>}
+      <div className="gm-actions">
+        {onMark != null && (
+          <button type="button" className="gs-pill is-primary" data-focus="mark" onClick={onMark}>
+            {MW.markAsInvited}
+          </button>
+        )}
+        <button type="button" className="gs-pill is-secondary" data-focus="add" onClick={onAdd}>
+          {MW.addToGroup}
+        </button>
+        <button
+          type="button"
+          className="gs-pill is-secondary"
+          data-focus="remove"
+          onClick={onRemove}
+        >
+          {MW.remove}
+        </button>
+        <TextAction label={MW.clear} onClick={onClear} />
+      </div>
+    </section>
+  );
+}
+
+/** Says the count when the bar comes up, since the bar itself is not a live region. */
+export function SelectedSaid({ count, companions }: { count: number | null; companions: number }) {
+  return (
+    <p className="visually-hidden" role="status">
+      {count != null &&
+        [MW.selected(count), companions > 0 ? MW.withCompanions(companions) : '']
+          .filter((words) => words !== '')
+          .join(', ')}
+    </p>
+  );
+}
+
+/** The box selects and the rest of the row opens the guest, as on Find a guest (sc-3772). A companion's row has no box, since they follow their guest; without guests.manage, no row has one. */
+export function SelectRows({
+  rows,
+  event,
+  selected,
+  onToggle,
+  groups = [],
+  manages = true,
+}: {
+  rows: readonly ListRow[];
+  event: string;
+  selected: ReadonlySet<string>;
+  onToggle: (id: string) => void;
+  groups?: readonly GuestGroup[];
+  manages?: boolean;
+}) {
+  return (
+    <ul className="desk-rows gs-rows">
+      {rows.map((row) => {
+        const group = row.indent ? null : groupNameOf(groups, row.person.guest.group);
+        const label = group == null ? row.label : `${row.label}, ${GGW.inGroup(group)}`;
+        const boxed = manages && row.person.companion == null;
+
+        return (
+          <li
+            key={row.person.id}
+            className={row.indent ? 'is-companion' : boxed ? 'gm-pick' : undefined}
+          >
+            {boxed && (
+              <label className="gm-box">
+                <input
+                  type="checkbox"
+                  className="gs-box"
+                  aria-label={label}
+                  checked={selected.has(row.person.id)}
+                  onChange={() => onToggle(row.person.id)}
+                />
+              </label>
+            )}
+            <Link
+              to={guestsAt(event, { guest: row.person.guest.id })}
+              className="desk-row gs-row"
+              aria-label={label}
+            >
+              <MarkLead reply={row.person.reply} />
+              <RowWords title={row.person.name} lines={[row.line]} />
+              {group != null && (
+                <span className="gs-row-tags" aria-hidden="true">
+                  <span className="gs-tag gg-tag">{group}</span>
+                </span>
+              )}
+              <Chevron />
+            </Link>
+          </li>
+        );
+      })}
+    </ul>
   );
 }
 

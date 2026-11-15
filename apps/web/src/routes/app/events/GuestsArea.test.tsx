@@ -19,6 +19,7 @@ const NONE = {
   note: null,
 };
 const GUESTS_CSS = stylesheet(import.meta.dirname, 'guests.css');
+const SELECT_CSS = stylesheet(import.meta.dirname, 'guestSelect.css');
 const SETTINGS_CSS = stylesheet(import.meta.dirname, '../../../components/SettingsParts.css');
 const IRE = membership({ id: 'org_1', name: 'Ìrè Events' });
 
@@ -35,6 +36,7 @@ const EVENT = {
   currency: 'NGN',
   cover: null,
   venue: null,
+  arrivalNote: null,
   hosts: [],
   madeLiveAt: '2026-10-26T15:00:00+00:00',
   pausedAt: null,
@@ -902,7 +904,15 @@ describe('Finding a guest (sc-3772)', () => {
       within(menu)
         .getAllByRole('menuitemradio')
         .map((item) => item.textContent),
-    ).toEqual(['All9', 'Coming4', 'Not sure yet1', 'No reply3', 'Held1', 'Not coming0']);
+    ).toEqual([
+      'All9',
+      'Invited9',
+      'Coming4',
+      'Not sure yet1',
+      'No reply3',
+      'Held1',
+      'Not coming0',
+    ]);
     fireEvent.click(within(menu).getByRole('menuitemradio', { name: /^Held/u }));
 
     expect(names()).toEqual(['Rui Ávila']);
@@ -947,6 +957,7 @@ describe('Finding a guest (sc-3772)', () => {
         .map((item) => item.textContent),
     ).toEqual([
       'All11',
+      'Invited9',
       'Coming4',
       'Not sure yet1',
       'No reply3',
@@ -965,6 +976,21 @@ describe('Finding a guest (sc-3772)', () => {
     expect(names()).toEqual(['Bisi Adewale', 'Tunde Adewale']);
     expect(screen.getByText('2 of 11 shown')).toBeDefined();
     expect(shownRouter?.state.location.search).toBe('?filter=notYetInvited');
+
+    fireEvent.click(screen.getByRole('button', { name: 'Not yet invited · 2' }));
+    fireEvent.click(
+      within(screen.getByRole('menu')).getByRole('menuitemradio', { name: /^Invited/u }),
+    );
+
+    expect(shownRouter?.state.location.search).toBe('?filter=invited');
+    expect(screen.getByText('9 of 11 shown')).toBeDefined();
+    expect(
+      screen
+        .getAllByRole('heading', { level: 2 })
+        .map((one) => one.textContent)
+        .filter((one) => one?.includes(' · ')),
+    ).not.toContain('Not yet invited · 2');
+    expect(names()).not.toContain('Bisi Adewale');
   });
 
   it('keeps the held line alone for an unnamed companion away from their host, already called Guest of', async () => {
@@ -2080,6 +2106,18 @@ describe('a companion field (sc-43267)', () => {
   });
 });
 
+describe('the reply marks Overview draws outside .gs (sc-3786, qa #49845)', () => {
+  const TOKENS = stylesheet(import.meta.dirname, '../../../tokens.css');
+
+  it('fills Not coming, Held and Not yet from a root token, not one scoped to .gs', () => {
+    expect(cssRule(':root', TOKENS)).toContain('--replyNotComingDot:');
+    expect(cssRule('.gs-mark.is-not-coming', GUESTS_CSS)).toContain('var(--replyNotComingDot)');
+    expect(cssRule('.gs-mark.is-held', GUESTS_CSS)).toContain('var(--replyNotComingDot)');
+    expect(cssRule('.gs-mark.is-not-yet', GUESTS_CSS)).toContain('var(--replyNotComingDot)');
+    expect(GUESTS_CSS).not.toContain('var(--gsGrey)');
+  });
+});
+
 describe('a guest’s column at 320 (sc-3773)', () => {
   it('shrinks below its widest field row, so the phone row never pushes the form past the screen', () => {
     expect(cssRule('.gs-column', GUESTS_CSS)).toContain('min-width: 0;');
@@ -3179,7 +3217,7 @@ describe('Groups (sc-3775)', () => {
     type('New group', ' work ');
     fireEvent.click(within(column).getByRole('button', { name: 'Create group' }));
 
-    expect(within(column).getByText('There’s already a group called Work.')).toBeDefined();
+    expect(within(column).getByText('There is already a group called Work.')).toBeDefined();
     expect(sent.some((one) => one.line === 'POST /api/events/ev_1/guest-groups')).toBe(false);
 
     type('New group', 'Cousins');
@@ -3313,5 +3351,790 @@ describe('Groups (sc-3775)', () => {
     expect(sent.find((one) => one.line === 'POST /api/events/ev_1/guests')?.body).toMatchObject({
       group: { id: 'gr_work' },
     });
+  });
+});
+
+describe('Remove from the list, with a short undo (sc-3774)', () => {
+  const NGOZI_TWO = {
+    ...DETAILS,
+    companions: [
+      { id: 'c_1', fullName: 'Obi Eze', state: 'coming', namedByGuest: false },
+      { id: 'c_2', fullName: null, state: 'held', namedByGuest: false },
+    ],
+  };
+  const NGOZI_ROW = { ...NGOZI, companions: NGOZI_TWO.companions };
+
+  async function removing(answers: Record<string, Answer> = {}) {
+    let listed = [NGOZI_ROW, AMAKA];
+    const sent = await openNgozi({
+      'GET /api/events/ev_1/guests': () => json(listOf(listed)),
+      'GET /api/events/ev_1/guests/g_1': () => tagged(NGOZI_TWO, '"1"'),
+      'DELETE /api/events/ev_1/guests/g_1': () => {
+        listed = [AMAKA];
+
+        return new Response(null, { status: 204 });
+      },
+      'DELETE /api/events/ev_1/guests/g_1/removal': () => {
+        listed = [NGOZI_ROW, AMAKA];
+
+        return tagged(NGOZI_TWO, '"1"');
+      },
+      'POST /api/events/ev_1/guests/g_1/erasure': () => new Response(null, { status: 204 }),
+      ...answers,
+    });
+    fireEvent.click(within(column()).getByRole('button', { name: 'Remove from the list' }));
+    await waitFor(() =>
+      expect(document.activeElement).toBe(screen.getByRole('button', { name: 'Keep on the list' })),
+    );
+
+    return sent;
+  }
+
+  function rows(): string[] {
+    return within(screen.getByRole('region', { name: 'Guests' }))
+      .getAllByRole('link')
+      .map((row) => row.textContent ?? '');
+  }
+
+  it('asks first, naming their reply and each companion, Held as Held, with Keep on the list focused', async () => {
+    await removing();
+
+    const ask = screen.getByRole('alertdialog', { name: 'Remove Ngozi Eze?' });
+    expect(
+      within(ask)
+        .getAllByRole('listitem')
+        .map((row) => row.textContent),
+    ).toEqual([
+      'ComingTheir reply',
+      'Obi EzeCompanion · Coming',
+      'Guest of Ngozi EzeCompanion · Held',
+    ]);
+    expect(within(ask).getByText('Nothing is sent to them.')).toBeDefined();
+  });
+
+  it('keeps them on the list with Keep on the list, sending nothing', async () => {
+    const sent = await removing();
+
+    fireEvent.click(screen.getByRole('button', { name: 'Keep on the list' }));
+
+    expect(screen.queryByRole('alertdialog')).toBeNull();
+    expect(sent.some((one) => one.line.startsWith('DELETE'))).toBe(false);
+    await waitFor(() =>
+      expect(document.activeElement).toBe(
+        screen.getByRole('button', { name: 'Remove from the list' }),
+      ),
+    );
+  });
+
+  it('takes them off at once with Remove, closes their details and moves focus to Undo', async () => {
+    const sent = await removing();
+
+    fireEvent.click(
+      within(screen.getByRole('alertdialog')).getByRole('button', { name: 'Remove' }),
+    );
+
+    const undo = await screen.findByRole('button', { name: 'Undo' });
+    await waitFor(() => expect(document.activeElement).toBe(undo));
+    expect(sent.some((one) => one.line === 'DELETE /api/events/ev_1/guests/g_1')).toBe(true);
+    expect(rows().some((row) => row.startsWith('Ngozi Eze'))).toBe(false);
+    await waitFor(() =>
+      expect(screen.queryByRole('heading', { level: 2, name: 'Ngozi Eze' })).toBeNull(),
+    );
+    const message = undo.closest('[role="status"]') as HTMLElement;
+    expect(message.querySelector('.toast-words')?.textContent).toBe(
+      'Ngozi Eze removed, with Obi Eze and Guest of Ngozi Eze. Undo is open for 10 seconds.',
+    );
+    expect(within(message).getByText('10 s').getAttribute('aria-hidden')).toBe('true');
+    expect(within(message).queryByRole('button', { name: 'Close' })).toBeNull();
+    await waitFor(() =>
+      expect(sent.filter((one) => one.line === 'GET /api/events/ev_1/headcount').length).toBe(2),
+    );
+  });
+
+  it('puts them back in their place with Undo and reopens their details on their name', async () => {
+    const sent = await removing();
+    fireEvent.click(
+      within(screen.getByRole('alertdialog')).getByRole('button', { name: 'Remove' }),
+    );
+    fireEvent.click(await screen.findByRole('button', { name: 'Undo' }));
+
+    const name = await screen.findByRole('heading', { level: 2, name: 'Ngozi Eze' });
+    await waitFor(() => expect(document.activeElement).toBe(name));
+    expect(sent.some((one) => one.line === 'DELETE /api/events/ev_1/guests/g_1/removal')).toBe(
+      true,
+    );
+    expect(rows()[0]?.startsWith('Ngozi Eze')).toBe(true);
+    expect(
+      screen.getByText('Back on the list. As they were, with their link, reply and companions.'),
+    ).toBeDefined();
+    expect(screen.queryByRole('button', { name: 'Undo' })).toBeNull();
+    expect(sent.some((one) => one.line.endsWith('/erasure'))).toBe(false);
+  });
+
+  it('erases them once the count runs out, and says nothing more', async () => {
+    vi.useFakeTimers({ shouldAdvanceTime: true });
+    try {
+      const sent = await removing();
+      fireEvent.click(
+        within(screen.getByRole('alertdialog')).getByRole('button', { name: 'Remove' }),
+      );
+      const undo = await screen.findByRole('button', { name: 'Undo' });
+      await waitFor(() => expect(document.activeElement).toBe(undo));
+      act(() => undo.blur());
+      act(() => vi.advanceTimersByTime(9000));
+      expect(sent.some((one) => one.line.endsWith('/erasure'))).toBe(false);
+      act(() => vi.advanceTimersByTime(1000));
+
+      await waitFor(() =>
+        expect(sent.some((one) => one.line === 'POST /api/events/ev_1/guests/g_1/erasure')).toBe(
+          true,
+        ),
+      );
+      expect(screen.queryByRole('button', { name: 'Undo' })).toBeNull();
+    } finally {
+      vi.useRealTimers();
+    }
+  });
+
+  it('erases them as the page goes, while Undo is still open', async () => {
+    const sent = await removing();
+    fireEvent.click(
+      within(screen.getByRole('alertdialog')).getByRole('button', { name: 'Remove' }),
+    );
+    await screen.findByRole('button', { name: 'Undo' });
+
+    window.dispatchEvent(new Event('pagehide'));
+
+    await waitFor(() =>
+      expect(sent.some((one) => one.line === 'POST /api/events/ev_1/guests/g_1/erasure')).toBe(
+        true,
+      ),
+    );
+  });
+
+  it('says somebody else removed them already, and Back to guests drops the row', async () => {
+    await removing({
+      'DELETE /api/events/ev_1/guests/g_1': () => problem('not_found', 404),
+    });
+
+    fireEvent.click(
+      within(screen.getByRole('alertdialog')).getByRole('button', { name: 'Remove' }),
+    );
+
+    expect(await screen.findByText('Ngozi Eze was already removed by someone else.')).toBeDefined();
+    const back = screen.getByRole('button', { name: 'Back to guests' });
+    await waitFor(() => expect(document.activeElement).toBe(back));
+    fireEvent.click(back);
+
+    expect(screen.queryByRole('alertdialog')).toBeNull();
+    expect(rows().some((row) => row.startsWith('Ngozi Eze'))).toBe(false);
+    expect(screen.queryByRole('button', { name: 'Undo' })).toBeNull();
+    const title = screen.getByRole('heading', { level: 1 });
+    await waitFor(() => expect(document.activeElement).toBe(title));
+  });
+
+  it('turns the open question into already removed when another host’s removal arrives live (#49283)', async () => {
+    const before = config();
+    __setConfig({ ...before, mercureUrl: 'http://hub.test/.well-known/mercure' });
+    StubSource.made = [];
+    vi.stubGlobal('EventSource', StubSource);
+    const hub = () =>
+      json({ token: 'tok', expiresAt: new Date(Date.now() + 3_600_000).toISOString() });
+    let there = true;
+
+    try {
+      const sent = await removing({
+        'GET /api/events/ev_1/guests': () => json(listOf(there ? [NGOZI_ROW, AMAKA] : [AMAKA])),
+        'GET /api/events/ev_1/guests/g_1': () =>
+          there ? tagged(NGOZI_TWO, '"1"') : problem('not_found', 404),
+        'POST /api/events/ev_1/guests/subscriptions': hub,
+        'POST /api/realtime/subscriptions': hub,
+      });
+      const source = StubSource.made.find((one) => one.url.includes('guests'))!;
+      there = false;
+      source.publish(listOf([AMAKA]));
+
+      expect(
+        await screen.findByText('Ngozi Eze was already removed by someone else.'),
+      ).toBeDefined();
+      const back = screen.getByRole('button', { name: 'Back to guests' });
+      await waitFor(() => expect(document.activeElement).toBe(back));
+      expect(screen.queryByText('This guest is not on this list')).toBeNull();
+      fireEvent.click(back);
+
+      expect(screen.queryByRole('alertdialog')).toBeNull();
+      expect(rows().some((row) => row.startsWith('Ngozi Eze'))).toBe(false);
+      expect(sent.some((one) => one.line === 'DELETE /api/events/ev_1/guests/g_1')).toBe(false);
+      const title = screen.getByRole('heading', { level: 1 });
+      await waitFor(() => expect(document.activeElement).toBe(title));
+    } finally {
+      __setConfig(before);
+      vi.unstubAllGlobals();
+    }
+  });
+
+  it('moves focus to the heading when a live removal lands with no question open', async () => {
+    const before = config();
+    __setConfig({ ...before, mercureUrl: 'http://hub.test/.well-known/mercure' });
+    StubSource.made = [];
+    vi.stubGlobal('EventSource', StubSource);
+    const hub = () =>
+      json({ token: 'tok', expiresAt: new Date(Date.now() + 3_600_000).toISOString() });
+    let there = true;
+
+    try {
+      await openNgozi({
+        'GET /api/events/ev_1/guests': () => json(listOf(there ? [NGOZI_ROW, AMAKA] : [AMAKA])),
+        'GET /api/events/ev_1/guests/g_1': () =>
+          there ? tagged(NGOZI_TWO, '"1"') : problem('not_found', 404),
+        'POST /api/events/ev_1/guests/subscriptions': hub,
+        'POST /api/realtime/subscriptions': hub,
+      });
+      const remove = within(column()).getByRole('button', { name: 'Remove from the list' });
+      act(() => remove.focus());
+      const source = StubSource.made.find((one) => one.url.includes('guests'))!;
+      there = false;
+      source.publish(listOf([AMAKA]));
+
+      const heading = await screen.findByRole('heading', {
+        name: 'This guest is not on this list',
+      });
+      await waitFor(() => expect(document.activeElement).toBe(heading));
+    } finally {
+      __setConfig(before);
+      vi.unstubAllGlobals();
+    }
+  });
+
+  it('offers no Remove without guests.manage', async () => {
+    await openNgozi(
+      {},
+      OWNER_PERMISSIONS.filter((one) => one !== 'guests.manage'),
+    );
+
+    expect(within(column()).queryByRole('button', { name: 'Remove from the list' })).toBeNull();
+  });
+});
+
+describe('Select many guests, then Add to group or Remove from the list (sc-3776)', () => {
+  const BRIDE = {
+    id: 'gr_1',
+    name: 'Bride’s side',
+    counts: { people: 2, guests: 1, companions: 1 },
+  };
+  const KEMI = guest('g_3', 'Kemi Bello', { reply: 'notComing', invitation: INVITED });
+
+  function grouped() {
+    return { ...listOf([NGOZI, AMAKA, KEMI]), groups: [BRIDE] };
+  }
+
+  async function selecting(answers: Record<string, Answer> = {}, permissions?: string[]) {
+    signedIn();
+    const sent = await onGuests(
+      { 'GET /api/events/ev_1/guests': () => json(grouped()), ...answers },
+      permissions,
+    );
+    await screen.findByRole('heading', { level: 1, name: 'Guests' });
+    await screen.findByText('Ngozi Eze');
+
+    return sent;
+  }
+
+  function box(name: string): HTMLInputElement {
+    return screen.getByRole('checkbox', { name }) as HTMLInputElement;
+  }
+
+  function bar(): HTMLElement {
+    return screen.getByRole('region', { name: 'Selected guests' });
+  }
+
+  function said(): string[] {
+    return [...document.querySelectorAll('.gm-said .gm-line p > span:not(.visually-hidden)')].map(
+      (one) => one.textContent ?? '',
+    );
+  }
+
+  it('gives each guest’s row a box, none to a companion’s, and counts only those shown in Select all', async () => {
+    await selecting();
+
+    expect(
+      screen
+        .getAllByRole('checkbox')
+        .map((one) => one.getAttribute('aria-label') ?? one.parentElement?.textContent),
+    ).toEqual([
+      'Select all 3 shown',
+      'Select Ngozi Eze',
+      'Select Chief Amaka Obi',
+      'Select Kemi Bello',
+    ]);
+    expect(cssRule('.gs-box', GUESTS_CSS)).toContain('height: 24px;');
+    expect(cssRule('.gm-box', SELECT_CSS)).toContain('width: 36px;');
+    expect(box('Select Ngozi Eze').closest('a')).toBeNull();
+  });
+
+  it('selects a guest’s companions with them, and says the count', async () => {
+    await selecting();
+
+    fireEvent.click(box('Select Ngozi Eze'));
+
+    expect(within(bar()).getByText('1 selected')).toBeDefined();
+    expect(within(bar()).getByText('and 3 companions with them')).toBeDefined();
+    expect(
+      screen
+        .getAllByRole('status')
+        .some((one) => one.textContent === '1 selected, and 3 companions with them'),
+    ).toBe(true);
+  });
+
+  it('clears the selection when the search changes, and says so until something is selected again', async () => {
+    await selecting();
+    fireEvent.click(box('Select all 3 shown'));
+
+    fireEvent.change(screen.getByRole('searchbox', { name: 'Find a guest' }), {
+      target: { value: 'Amaka' },
+    });
+
+    expect(await screen.findByText('Selection cleared.')).toBeDefined();
+    expect(screen.queryByRole('region', { name: 'Selected guests' })).toBeNull();
+    expect(box('Select the 1 shown').checked).toBe(false);
+    fireEvent.click(box('Select Chief Amaka Obi'));
+    expect(screen.queryByText('Selection cleared.')).toBeNull();
+  });
+
+  it('moves only the guests the search shows into the group, and says what happened to each', async () => {
+    const sent = await selecting({
+      'POST /api/events/ev_1/guests/group-moves': () =>
+        json({ group: { id: 'gr_1', name: 'Bride’s side' }, moved: 1, already: 0, gone: 0 }),
+    });
+    fireEvent.change(screen.getByRole('searchbox', { name: 'Find a guest' }), {
+      target: { value: 'Amaka' },
+    });
+    fireEvent.click(await screen.findByRole('checkbox', { name: 'Select the 1 shown' }));
+
+    fireEvent.click(within(bar()).getByRole('button', { name: 'Add to group' }));
+    const sheet = await screen.findByRole('dialog', { name: 'Add 1 guest to a group' });
+    fireEvent.click(within(sheet).getByRole('radio', { name: /Bride’s side/u }));
+    fireEvent.click(within(sheet).getByRole('button', { name: 'Add to group' }));
+
+    await waitFor(() => expect(said()).toEqual(['1 moved to Bride’s side.']));
+    expect(
+      sent.find((one) => one.line === 'POST /api/events/ev_1/guests/group-moves')?.body,
+    ).toEqual({
+      guestIds: ['g_2'],
+      group: { id: 'gr_1' },
+    });
+  });
+
+  it('counts those already in the group and those someone else removed, skipping nobody silently', async () => {
+    await selecting({
+      'POST /api/events/ev_1/guests/group-moves': () =>
+        json({ group: { id: 'gr_1', name: 'Bride’s side' }, moved: 1, already: 1, gone: 1 }),
+    });
+    fireEvent.click(box('Select all 3 shown'));
+    fireEvent.click(within(bar()).getByRole('button', { name: 'Add to group' }));
+    const sheet = await screen.findByRole('dialog', { name: 'Add 3 guests to a group' });
+    fireEvent.click(within(sheet).getByRole('radio', { name: /Bride’s side/u }));
+    fireEvent.click(within(sheet).getByRole('button', { name: 'Add to group' }));
+
+    await waitFor(() =>
+      expect(said()).toEqual([
+        '1 moved to Bride’s side.',
+        '1 was already in Bride’s side.',
+        '1 not changed: someone else removed them.',
+      ]),
+    );
+  });
+
+  it('sends nothing for a New group left blank, or for no group chosen', async () => {
+    const sent = await selecting();
+    fireEvent.click(box('Select Kemi Bello'));
+    fireEvent.click(within(bar()).getByRole('button', { name: 'Add to group' }));
+    const sheet = await screen.findByRole('dialog', { name: 'Add 1 guest to a group' });
+
+    fireEvent.click(within(sheet).getByRole('button', { name: 'Add to group' }));
+    expect(within(sheet).getByText('Choose a group, or make a new one.')).toBeDefined();
+    fireEvent.click(within(sheet).getByRole('radio', { name: 'New group' }));
+    fireEvent.click(within(sheet).getByRole('button', { name: 'Add to group' }));
+
+    expect(within(sheet).getByText('Enter a name for the group.')).toBeDefined();
+    expect(sent.some((one) => one.line.endsWith('/group-moves'))).toBe(false);
+  });
+
+  it('asks before removing, takes them off as one action, and one Undo puts them all back', async () => {
+    let listed = grouped();
+    const sent = await selecting({
+      'GET /api/events/ev_1/guests': () => json(listed),
+      'POST /api/events/ev_1/guests/removals': () => {
+        listed = { ...listOf([KEMI]), groups: [BRIDE] };
+
+        return json({ removal: 'rm_1', guests: 2, companions: 3, gone: 0 });
+      },
+      'DELETE /api/events/ev_1/guests/removals/rm_1': () => {
+        listed = grouped();
+
+        return json({ guests: 2 });
+      },
+    });
+    fireEvent.click(box('Select Ngozi Eze'));
+    fireEvent.click(box('Select Chief Amaka Obi'));
+
+    fireEvent.click(within(bar()).getByRole('button', { name: 'Remove from the list' }));
+    const ask = await screen.findByRole('alertdialog', {
+      name: 'Remove 2 guests and their 3 companions?',
+    });
+    expect(
+      within(ask)
+        .getAllByRole('listitem')
+        .map((one) => one.textContent),
+    ).toEqual([
+      '2 of them have replied. Their replies go too.',
+      '3 companions go with them.',
+      'Nothing is sent to them.',
+    ]);
+    fireEvent.click(within(ask).getByRole('button', { name: 'Remove 2' }));
+
+    await waitFor(() =>
+      expect(said()).toEqual([
+        '2 guests and 3 companions removed.',
+        'Undo puts them all back as they were.',
+      ]),
+    );
+    expect(screen.queryByText('Ngozi Eze')).toBeNull();
+    expect(sent.find((one) => one.line === 'POST /api/events/ev_1/guests/removals')?.body).toEqual({
+      guestIds: ['g_1', 'g_2'],
+    });
+
+    fireEvent.click(screen.getByRole('button', { name: 'Undo' }));
+
+    await waitFor(() => expect(said()).toEqual(['2 guests are back on the list, as they were.']));
+    expect(await screen.findByText('Ngozi Eze')).toBeDefined();
+    expect(sent.some((one) => one.line.endsWith('/erasure'))).toBe(false);
+  });
+
+  it('drops the companions clause from the question when there are none', async () => {
+    await selecting();
+    fireEvent.click(box('Select Kemi Bello'));
+
+    fireEvent.click(within(bar()).getByRole('button', { name: 'Remove from the list' }));
+
+    expect(await screen.findByRole('alertdialog', { name: 'Remove 1 guest?' })).toBeDefined();
+  });
+
+  it('erases the removal once its Undo runs out', async () => {
+    vi.useFakeTimers({ shouldAdvanceTime: true });
+    try {
+      const sent = await selecting({
+        'POST /api/events/ev_1/guests/removals': () =>
+          json({ removal: 'rm_1', guests: 1, companions: 0, gone: 0 }),
+        'POST /api/events/ev_1/guests/removals/rm_1/erasure': () =>
+          new Response(null, { status: 204 }),
+      });
+      fireEvent.click(box('Select Kemi Bello'));
+      fireEvent.click(within(bar()).getByRole('button', { name: 'Remove from the list' }));
+      fireEvent.click(
+        within(await screen.findByRole('alertdialog')).getByRole('button', { name: 'Remove 1' }),
+      );
+      await waitFor(() => expect(said()[0]).toBe('1 guest removed.'));
+      (document.activeElement as HTMLElement | null)?.blur();
+
+      await act(async () => {
+        await vi.advanceTimersByTimeAsync(11_000);
+      });
+
+      expect(
+        sent.some((one) => one.line === 'POST /api/events/ev_1/guests/removals/rm_1/erasure'),
+      ).toBe(true);
+    } finally {
+      vi.useRealTimers();
+    }
+  });
+
+  it('keeps the selection when nothing could be sent, and Try again sends it again', async () => {
+    let tries = 0;
+    await selecting({
+      'POST /api/events/ev_1/guests/removals': () => {
+        tries += 1;
+
+        return tries === 1
+          ? problem('internal_error', 500)
+          : json({ removal: 'rm_1', guests: 1, companions: 0, gone: 0 });
+      },
+    });
+    fireEvent.click(box('Select Kemi Bello'));
+    fireEvent.click(within(bar()).getByRole('button', { name: 'Remove from the list' }));
+    fireEvent.click(
+      within(await screen.findByRole('alertdialog')).getByRole('button', { name: 'Remove 1' }),
+    );
+
+    await waitFor(() => expect(said()).toEqual(['Nothing changed. We could not reach Soirely.']));
+    expect(box('Select Kemi Bello').checked).toBe(true);
+    fireEvent.click(screen.getByRole('button', { name: 'Try again' }));
+
+    await waitFor(() => expect(said()[0]).toBe('1 guest removed.'));
+  });
+
+  it('shows no boxes and no bar without guests.manage', async () => {
+    await selecting(
+      {},
+      OWNER_PERMISSIONS.filter((one) => one !== 'guests.manage'),
+    );
+
+    expect(screen.queryAllByRole('checkbox')).toEqual([]);
+    expect(
+      screen.getByText('You can see the list. Selecting guests is for people who manage guests.'),
+    ).toBeDefined();
+  });
+
+  it('still opens a guest from their row (sc-3773)', async () => {
+    await selecting({
+      'GET /api/events/ev_1/guests/g_2': () => tagged({ ...DETAILS, ...AMAKA }, '"1"'),
+    });
+
+    fireEvent.click(screen.getByRole('link', { name: /Chief Amaka Obi/u }));
+
+    expect(await screen.findByRole('region', { name: 'Chief Amaka Obi' })).toBeDefined();
+    expect(box('Select Chief Amaka Obi').checked).toBe(false);
+  });
+});
+
+describe('Mark many guests as invited from the selection bar (sc-46880)', () => {
+  const KEMI = guest('g_3', 'Kemi Bello', { reply: 'noReply', invitation: INVITED });
+  const BISI = guest('g_4', 'Bisi Adewale');
+  const TOMI = guest('g_5', 'Tomi Ade', {
+    companions: [{ id: 'c_9', fullName: 'Ife Ade', state: 'notYetInvited', namedByGuest: false }],
+  });
+  const PAUSED = { status: 'paused', phase: 'paused', pausedAt: '2026-11-13T10:00:00+00:00' };
+
+  async function selecting(
+    answers: Record<string, Answer> = {},
+    guests = [NGOZI, AMAKA, KEMI, BISI, TOMI],
+    more: Record<string, unknown> = {},
+  ) {
+    signedIn();
+    const sent = await onGuests({
+      'GET /api/events/ev_1': () =>
+        json({ event: { ...EVENT, ...more, permissions: OWNER_PERMISSIONS } }),
+      'GET /api/events/ev_1/guests': () => json(listOf(guests)),
+      ...answers,
+    });
+    await screen.findByRole('heading', { level: 1, name: 'Guests' });
+    await screen.findByText(guests[0]!.fullName);
+
+    return sent;
+  }
+
+  function box(name: RegExp | string): HTMLInputElement {
+    return screen.getByRole('checkbox', { name }) as HTMLInputElement;
+  }
+
+  function bar(): HTMLElement {
+    return screen.getByRole('region', { name: 'Selected guests' });
+  }
+
+  function said(): string[] {
+    return [...document.querySelectorAll('.gm-said .gm-line p > span:not(.visually-hidden)')].map(
+      (one) => one.textContent ?? '',
+    );
+  }
+
+  function marks(sent: { line: string; body: unknown }[]) {
+    return sent.filter((one) => one.line === 'POST /api/events/ev_1/guests/invitations');
+  }
+
+  async function asked(name: string): Promise<HTMLElement> {
+    fireEvent.click(box(/^Select all/u));
+    fireEvent.click(within(bar()).getByRole('button', { name: 'Mark as invited' }));
+
+    return screen.findByRole('dialog', { name });
+  }
+
+  it('puts Mark as invited first in the bar, before Add to group', async () => {
+    await selecting();
+    fireEvent.click(box('Select Bisi Adewale'));
+
+    expect(
+      within(bar())
+        .getAllByRole('button')
+        .map((one) => one.textContent),
+    ).toEqual(['Mark as invited', 'Add to group', 'Remove from the list', 'Clear']);
+  });
+
+  it('counts in its title only those Not yet invited, never a companion, and names who is already invited', async () => {
+    await selecting();
+    const dialog = await asked('Mark 2 guests as invited');
+
+    expect(
+      within(dialog).getByText(
+        '3 already invited, who stay as recorded: Ngozi Eze, Chief Amaka Obi and Kemi Bello.',
+      ),
+    ).toBeDefined();
+    expect(
+      within(dialog)
+        .getAllByRole('radio')
+        .map((one) => one.parentElement?.textContent),
+    ).toEqual(['WhatsApp', 'Text message', 'Email', 'In person', 'Other']);
+    expect(
+      within(dialog)
+        .getAllByRole('radio')
+        .some((one) => (one as HTMLInputElement).checked),
+    ).toBe(false);
+  });
+
+  it('names five already invited, then how many more', async () => {
+    const invited = Array.from({ length: 8 }, (_, at) =>
+      guest(`g_${10 + at}`, `Guest ${at + 1}`, { invitation: INVITED }),
+    );
+    await selecting({}, [BISI, ...invited]);
+    for (const all of screen.queryAllByRole('button', { name: /^Show all/u })) fireEvent.click(all);
+
+    const dialog = await asked('Mark 1 guest as invited');
+
+    expect(
+      within(dialog).getByText(
+        '8 already invited, who stay as recorded: Guest 1, Guest 2, Guest 3, Guest 4, Guest 5 and 3 more.',
+      ),
+    ).toBeDefined();
+  });
+
+  it('sends nothing with no how chosen, says so and puts focus on the first choice', async () => {
+    const sent = await selecting();
+    const dialog = await asked('Mark 2 guests as invited');
+
+    fireEvent.click(within(dialog).getByRole('button', { name: 'Mark as invited' }));
+
+    expect(within(dialog).getByText('Choose how you invited them.')).toBeDefined();
+    expect(document.activeElement).toBe(within(dialog).getByRole('radio', { name: 'WhatsApp' }));
+    expect(marks(sent)).toEqual([]);
+  });
+
+  it('closes on Cancel and on Escape, keeps the selection, and gives focus back to Mark as invited', async () => {
+    const sent = await selecting();
+    const dialog = await asked('Mark 2 guests as invited');
+
+    fireEvent.click(within(dialog).getByRole('button', { name: 'Cancel' }));
+    await waitFor(() =>
+      expect(document.activeElement).toBe(
+        within(bar()).getByRole('button', { name: 'Mark as invited' }),
+      ),
+    );
+    fireEvent.click(within(bar()).getByRole('button', { name: 'Mark as invited' }));
+    fireEvent.keyDown(await screen.findByRole('dialog'), { key: 'Escape' });
+
+    await waitFor(() => expect(screen.queryByRole('dialog')).toBeNull());
+    expect(box(/^Select all/u).checked).toBe(true);
+    expect(marks(sent)).toEqual([]);
+  });
+
+  it('marks them with the how chosen, says what happened to each, clears the selection and reads the list again', async () => {
+    const sent = await selecting({
+      'POST /api/events/ev_1/guests/invitations': () => json({ marked: 1, already: 3, gone: 1 }),
+    });
+    const dialog = await asked('Mark 2 guests as invited');
+
+    fireEvent.click(within(dialog).getByRole('radio', { name: 'In person' }));
+    fireEvent.click(within(dialog).getByRole('button', { name: 'Mark as invited' }));
+
+    await waitFor(() =>
+      expect(said()).toEqual([
+        '1 marked as invited, in person.',
+        '3 already invited, kept as recorded.',
+        '1 not changed: someone else removed them.',
+      ]),
+    );
+    expect(marks(sent).map((one) => one.body)).toEqual([
+      { guestIds: ['g_1', 'g_2', 'g_3', 'g_4', 'g_5'], how: 'inPerson' },
+    ]);
+    expect(screen.queryByRole('dialog')).toBeNull();
+    expect(box(/^Select all/u).checked).toBe(false);
+    await waitFor(() =>
+      expect(sent.filter((one) => one.line === 'GET /api/events/ev_1/guests').length).toBe(2),
+    );
+  });
+
+  it('leaves out the already invited sentence when nobody was', async () => {
+    await selecting(
+      {
+        'POST /api/events/ev_1/guests/invitations': () => json({ marked: 2, already: 0, gone: 0 }),
+      },
+      [BISI, TOMI],
+    );
+    const dialog = await asked('Mark 2 guests as invited');
+    expect(within(dialog).queryByText(/already invited/u)).toBeNull();
+
+    fireEvent.click(within(dialog).getByRole('radio', { name: 'WhatsApp' }));
+    fireEvent.click(within(dialog).getByRole('button', { name: 'Mark as invited' }));
+
+    await waitFor(() => expect(said()).toEqual(['2 marked as invited, WhatsApp.']));
+  });
+
+  it('opens no dialog and sends nothing when everyone selected is already invited', async () => {
+    const sent = await selecting();
+    fireEvent.click(box('Select Ngozi Eze'));
+    fireEvent.click(box('Select Kemi Bello'));
+
+    fireEvent.click(within(bar()).getByRole('button', { name: 'Mark as invited' }));
+
+    await waitFor(() => expect(said()).toEqual(['2 already invited. Nothing to mark.']));
+    expect(screen.queryByRole('dialog')).toBeNull();
+    expect(marks(sent)).toEqual([]);
+  });
+
+  it('keeps the selection when nothing could be sent, and Try again sends the same mark', async () => {
+    let tries = 0;
+    const sent = await selecting({
+      'POST /api/events/ev_1/guests/invitations': () => {
+        tries += 1;
+
+        return tries === 1
+          ? problem('internal_error', 500)
+          : json({ marked: 2, already: 3, gone: 0 });
+      },
+    });
+    const dialog = await asked('Mark 2 guests as invited');
+    fireEvent.click(within(dialog).getByRole('radio', { name: 'Email' }));
+    fireEvent.click(within(dialog).getByRole('button', { name: 'Mark as invited' }));
+
+    await waitFor(() => expect(said()).toEqual(['Nothing changed. We could not reach Soirely.']));
+    expect(box(/^Select all/u).checked).toBe(true);
+    fireEvent.click(screen.getByRole('button', { name: 'Try again' }));
+
+    await waitFor(() => expect(said()[0]).toBe('2 marked as invited, email.'));
+    expect(marks(sent).map((one) => (one.body as { how: string }).how)).toEqual(['email', 'email']);
+  });
+
+  it('says the event is no longer live on a 409, keeps the selection, and the bar comes back without Mark as invited', async () => {
+    let reads = 0;
+    await selecting({
+      'GET /api/events/ev_1': () => {
+        reads += 1;
+
+        return json({
+          event: { ...EVENT, ...(reads > 1 ? PAUSED : {}), permissions: OWNER_PERMISSIONS },
+        });
+      },
+      'POST /api/events/ev_1/guests/invitations': () =>
+        problem('event_state_invalid', 409, { phase: 'paused' }),
+    });
+    const dialog = await asked('Mark 2 guests as invited');
+    fireEvent.click(within(dialog).getByRole('radio', { name: 'WhatsApp' }));
+    fireEvent.click(within(dialog).getByRole('button', { name: 'Mark as invited' }));
+
+    await waitFor(() =>
+      expect(said()).toEqual([
+        'Nothing changed. This event is no longer live, so guests can’t be marked as invited.',
+      ]),
+    );
+    expect(box(/^Select all/u).checked).toBe(true);
+    fireEvent.click(box('Select Bisi Adewale'));
+
+    expect(within(bar()).queryByRole('button', { name: 'Mark as invited' })).toBeNull();
+    expect(within(bar()).getByRole('button', { name: 'Add to group' })).toBeDefined();
+  });
+
+  it('has no Mark as invited in the bar on a Paused event', async () => {
+    await selecting({}, undefined, PAUSED);
+    fireEvent.click(box('Select Bisi Adewale'));
+
+    expect(within(bar()).queryByRole('button', { name: 'Mark as invited' })).toBeNull();
   });
 });

@@ -10,6 +10,7 @@ import { CardBackdrop, PhaseShape } from '../../components/EventCard.tsx';
 import type { Shown } from '../events/EventsModel.ts';
 import { useShell } from '../../components/settingsShell.ts';
 import { Pill } from '../../components/SettingsParts.tsx';
+import { Glass } from '../../components/TodayCover.tsx';
 import {
   CardSays,
   GlassTag,
@@ -50,12 +51,15 @@ export function GuestsCard({
   layout,
   onStep,
   stepLabel,
+  also = null,
 }: {
   event: Shown;
   words: GuestsCardWords;
   layout: Layout;
   onStep: () => void;
   stepLabel: string | null;
+  /** sc-46879: the quieter second step, in glass beside the white one. */
+  also?: { label: string; onPress: () => void } | null;
 }) {
   return (
     <SummaryCard
@@ -84,11 +88,39 @@ export function GuestsCard({
       )}
       {words.line != null && <OnCard text={words.line} />}
       {stepLabel != null && (
-        <View style={styles.foot}>
+        <View style={[styles.foot, styles.steps]}>
           <StepButton label={stepLabel} onPress={onStep} testID="guests.card.step" />
+          {also != null && <GlassStep {...also} testID="guests.card.also" />}
         </View>
       )}
     </SummaryCard>
+  );
+}
+
+/** A card's second step: glass, so the white step stays the card's one filled button. */
+function GlassStep({
+  label,
+  onPress,
+  testID,
+}: {
+  label: string;
+  onPress: () => void;
+  testID: string;
+}) {
+  return (
+    <Pressable
+      onPress={onPress}
+      style={({ pressed }) => [pressed && styles.pressed]}
+      accessibilityRole="button"
+      accessibilityLabel={label}
+      testID={testID}
+    >
+      <Glass height={tokens.sizeHit} grows style={styles.glassStep}>
+        <Text size={15} weight="semibold" accessible={false} style={styles.white}>
+          {label}
+        </Text>
+      </Glass>
+    </Pressable>
   );
 }
 
@@ -419,6 +451,8 @@ const styles = StyleSheet.create({
   pressed: { opacity: tokens.opacityPressed },
   tags: { flexDirection: 'row', flexWrap: 'wrap', gap: tokens.spaceSm },
   foot: { marginTop: 'auto', paddingTop: tokens.spaceXs },
+  steps: { flexDirection: 'row', flexWrap: 'wrap', alignItems: 'center', gap: tokens.spaceSm },
+  glassStep: { justifyContent: 'center', paddingHorizontal: 18 },
   count: { flexDirection: 'row', alignItems: 'baseline', gap: 10 },
   big: { lineHeight: 42, letterSpacing: 40 * -0.02, fontVariant: ['tabular-nums'] },
   amber: {

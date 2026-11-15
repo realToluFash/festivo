@@ -45,6 +45,7 @@ function event(name: string, rest: Record<string, unknown> = {}) {
     currency: 'NGN',
     cover: null,
     venue: null,
+    arrivalNote: null,
     hosts: [],
     madeLiveAt: null,
     pausedAt: null,

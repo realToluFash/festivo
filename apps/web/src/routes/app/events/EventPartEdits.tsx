@@ -11,6 +11,8 @@ import {
   type HostRow,
   type VenueDraft,
   addressLookup,
+  arrivalNoteTooLong,
+  coverTypeOf,
   draftOf,
   eventChanges,
   eventSaveRefusal,
@@ -41,11 +43,13 @@ import {
   Radios,
   type Wall,
 } from '../../../components/EventPageParts.tsx';
+import { type CoverEdited, type CoverUploaded, CoverEdit } from '../../../components/CoverEdit.tsx';
 import { Glyph } from '../../../components/Glyph.tsx';
 import { RowWords, TextAction } from '../../../components/SettingsParts.tsx';
 import { currentLocale, dateLocale } from '../../../i18n/index.ts';
+import { meshFor } from '../../../mesh.ts';
 import { currencyChoices, timeZoneChoices } from '../../../zoneAndCurrencyChoices.ts';
-import { CoverSection } from './CoverSection.tsx';
+import { discardCoverUpload, refusalOf } from './coverPhoto.ts';
 import { typeChoices } from './eventTypes.ts';
 import { useStartCarriesEnd } from './useStartCarriesEnd.ts';
 
@@ -72,7 +76,7 @@ function typedOf(event: OrganisationEvent): Typed {
     draft: draftOf(event),
     timeZone: event.timeZone,
     currency: event.currency,
-    venue: venueDraftOf(event.venue),
+    venue: venueDraftOf(event.venue, event.arrivalNote),
   };
 }
 
@@ -464,13 +468,15 @@ export function VenuePart({
 }: PartProps & { over: boolean }) {
   const { t } = useTranslation();
   const id = useId();
-  const savedVenue = venueDraftOf(event.venue);
+  const savedVenue = venueDraftOf(event.venue, event.arrivalNote);
   const [venue, setVenue] = useState(savedVenue);
   const [zone, setZone] = useState(event.timeZone);
   const [zoneSet, setZoneSet] = useState<string | null>(null);
   const [errors, setErrors] = useState<Errors>({});
+  const [said, setSaid] = useState('');
   const [seen, setSeen] = useState(NOTHING_SEEN);
   const field = useRef<HTMLInputElement>(null);
+  const noteBox = useRef<HTMLTextAreaElement>(null);
   const { busy, save, latest } = useSave({ event, tag, onSaved });
   const outcome = useOutcome(onLatest, latest);
   const [lookup] = useState(() =>
@@ -494,22 +500,31 @@ export function VenuePart({
   const changed =
     venue.name !== savedVenue.name ||
     venue.address !== savedVenue.address ||
+    venue.note !== savedVenue.note ||
     zone !== event.timeZone;
 
   useDirty(changed, onDirty);
   useEffect(() => () => lookup.stop(), [lookup]);
 
-  async function send(): Promise<void> {
-    const typed = { ...typedOf(event), venue, timeZone: zone };
-    const found = only(eventFormErrors(typed, t), ['venueName', 'venueAddress']);
+  function refused(found: Errors): void {
+    const count = Object.keys(found).length;
 
     setErrors(found);
+    setSaid(count === 0 ? '' : t('eventForm.problems', { count }));
+    if (found.arrivalNote != null) noteBox.current?.focus();
+  }
+
+  async function send(): Promise<void> {
+    const typed = { ...typedOf(event), venue, timeZone: zone };
+    const found = only(eventFormErrors(typed, t), ['venueName', 'venueAddress', 'arrivalNote']);
+
+    refused(found);
     if (Object.keys(found).length > 0) return;
 
     const saving = await save(typed, null);
 
     outcome.took(saving);
-    if (saving.kind === 'refused') setErrors(saving.errors);
+    if (saving.kind === 'refused') refused(saving.errors);
   }
 
   return (
@@ -606,6 +621,47 @@ export function VenuePart({
           </ul>
         )}
       </div>
+      <div className="desk-field">
+        <label htmlFor={`${id}-note`} className="desk-label">
+          {t('eventForm.arrivalNote')}
+          <span className="ev-optional">{` · ${t('eventForm.optional')}`}</span>
+        </label>
+        <div
+          className={
+            errors.arrivalNote == null ? 'desk-box ev-note-box' : 'desk-box ev-note-box is-wrong'
+          }
+        >
+          <textarea
+            ref={noteBox}
+            id={`${id}-note`}
+            rows={4}
+            value={venue.note}
+            aria-invalid={errors.arrivalNote != null}
+            aria-describedby={
+              errors.arrivalNote == null ? `${id}-note-help` : `${id}-note-error ${id}-note-help`
+            }
+            onChange={(change) => {
+              const note = change.target.value;
+
+              setVenue((was) => ({ ...was, note }));
+              if (!arrivalNoteTooLong(note))
+                setErrors((was) => ({ ...was, arrivalNote: undefined }));
+            }}
+          />
+        </div>
+        {errors.arrivalNote != null && (
+          <p id={`${id}-note-error`} className="desk-error">
+            <Glyph name="alert" size={15} weight={2.2} />
+            {errors.arrivalNote}
+          </p>
+        )}
+        <p id={`${id}-note-help`} className="desk-help">
+          {t('eventForm.arrivalNoteHint')}
+        </p>
+      </div>
+      <p className="visually-hidden" role="status">
+        {said}
+      </p>
       {offer != null && (
         <Quiet
           action={
@@ -827,34 +883,66 @@ export function HostsPart({ event, tag, onDirty, onClose, onSaved, onLatest }: P
   );
 }
 
-/** Cover: the product's cover and its Cover photo dialog, which save as they are used, so Close is all this edit needs. */
+/** Cover: Soirely's cover in the event's own colours, or a photo, its position and what a screen reader says for it. */
 export function CoverPart({
   event,
+  onDirty,
   onClose,
   onCover,
-}: Pick<PartProps, 'event' | 'onClose'> & { onCover: (event: OrganisationEvent) => void }) {
+}: Pick<PartProps, 'event' | 'onDirty' | 'onClose'> & {
+  onCover: (event: OrganisationEvent) => void;
+}) {
   const { t } = useTranslation();
+  const organisationId = event.organisationId;
+
+  async function upload(file: File, shows: boolean): Promise<CoverUploaded> {
+    let key: string | null = null;
+
+    try {
+      const signed = await api.signEventCoverUpload(organisationId, {
+        contentType: coverTypeOf(file) ?? file.type,
+        size: file.size,
+        filename: file.name,
+      });
+      await api.uploadTo(signed, file);
+      key = signed.key;
+      // The server reads every new photo whole, so a damaged JPEG the browser sized is refused here, not saved grey.
+      const copy = await api.previewEventCoverUpload(organisationId, signed.key);
+
+      return { key: signed.key, url: shows ? URL.createObjectURL(file) : copy };
+    } catch (error) {
+      if (key != null) discardCoverUpload(organisationId, key);
+      throw new Error(refusalOf(error, t));
+    }
+  }
+
+  async function save(change: CoverEdited): Promise<OrganisationEvent> {
+    try {
+      return change.removed
+        ? await api.removeEventCover(event.id)
+        : await api.setEventCover(event.id, {
+            ...(change.upload == null ? {} : { uploadKey: change.upload.key }),
+            position: change.position,
+            description: change.description,
+          });
+    } catch (error) {
+      throw new Error(refusalOf(error, t));
+    }
+  }
 
   return (
-    <div className="ev-opened" role="group" aria-label={t('eventCover.heading')}>
-      <CoverSection
-        type={event.type}
-        photo={event.cover}
-        organisationId={event.organisationId}
-        onUse={async ({ upload, position, description }) =>
-          onCover(
-            await api.setEventCover(event.id, {
-              ...(upload == null ? {} : { uploadKey: upload.key }),
-              position,
-              description,
-            }),
-          )
-        }
-        onRemove={async () => onCover(await api.removeEventCover(event.id))}
-      />
-      <div className="ev-opened-actions">
-        <TextAction label={t('eventCover.close')} onClick={onClose} />
-      </div>
-    </div>
+    <CoverEdit
+      mesh={meshFor(event.id)}
+      saved={event.cover}
+      upload={upload}
+      discard={(uploaded) => {
+        if (uploaded.url.startsWith('blob:')) URL.revokeObjectURL(uploaded.url);
+        discardCoverUpload(organisationId, uploaded.key);
+      }}
+      save={save}
+      onSaved={onCover}
+      onDirty={onDirty}
+      onClose={onClose}
+    />
   );
 }

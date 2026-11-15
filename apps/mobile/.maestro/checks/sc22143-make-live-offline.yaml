@@ -16,7 +16,7 @@ onFlowComplete:
     id: 'events.card.step'
 - extendedWaitUntil:
     visible:
-      id: 'events.makeLiveHost'
+      id: 'events.makeLive.host'
     timeout: 10000
 - inputText: 'Offline Host'
 - runScript:
@@ -24,7 +24,7 @@ onFlowComplete:
     env:
       ASK: /api?to=stopped
 - tapOn:
-    id: 'events.makeLiveYes'
+    id: 'events.makeLive.confirm'
 - extendedWaitUntil:
     visible: '{{t:eventLive.failed}}'
     timeout: 40000
@@ -35,7 +35,7 @@ onFlowComplete:
     env:
       ASK: /api?to=up
 - tapOn:
-    id: 'events.makeLiveYes'
+    id: 'events.makeLive.confirm'
 - extendedWaitUntil:
     visible:
       id: 'events.phase.live'

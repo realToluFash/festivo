@@ -61,6 +61,7 @@ import {
 import { useMakeLive } from './MakeLive.tsx';
 import { PHASE_WORD } from './eventWords.ts';
 import { typeLabel } from './eventTypes.ts';
+import { GuestNumbers } from './GuestNumbers.tsx';
 import { MuteEvent } from './MuteEvent.tsx';
 import { OutcomeLine } from './OutcomeLine.tsx';
 import { PauseButton, useResume } from './PauseEvent.tsx';
@@ -148,6 +149,7 @@ export function Overview({
   const [resumed, setResumed] = useState(false);
   const [copying, setCopying] = useState(false);
   const stepButton = useRef<HTMLButtonElement>(null);
+  const askEnd = useRef<(() => void) | null>(null);
   const makeLive = useMakeLive({
     event,
     tag,
@@ -275,12 +277,13 @@ export function Overview({
             part={part}
             parts={parts}
             shown={shown}
-            onCover={(next) => onChange(next, tag)}
+            onCover={(next) => saved({ event: next, tag })}
             onOpen={open}
             comingUp={<ComingUp event={event} timeline={timeline} heading={comingUpHeading} />}
           />
         </div>
         <div className="ev-right">
+          {canOn(event, 'guests.read') && <GuestNumbers event={event} />}
           <MuteEvent eventId={event.id} />
           {(creates || manages) && (
             <ManageList title={t('eventPage.manage')}>
@@ -305,6 +308,7 @@ export function Overview({
                     now={now}
                     heading={heading}
                     inManage
+                    askRef={askEnd}
                     onChange={onChange}
                     onEnded={() => setEnded(true)}
                   />
@@ -312,7 +316,15 @@ export function Overview({
               )}
               {creates && (
                 <ManageItem red line={t('eventDelete.note')}>
-                  {(look) => <DeleteEvent event={event} look={look} />}
+                  {(look) => (
+                    <DeleteEvent
+                      event={event}
+                      phase={phase}
+                      now={now}
+                      look={look}
+                      onVerb={() => askEnd.current?.()}
+                    />
+                  )}
                 </ManageItem>
               )}
             </ManageList>
@@ -377,6 +389,7 @@ function Details({
   const maps = mapsLink(event);
   const venue = event.venue;
   const address = venue?.address?.formatted ?? null;
+  const note = event.arrivalNote;
   const cover = event.cover;
 
   const editor = (one: Part): ReactNode => {
@@ -394,7 +407,14 @@ function Details({
       case 'currency':
         return <CurrencyPart {...parts} />;
       case 'cover':
-        return <CoverPart event={event} onClose={parts.onClose} onCover={onCover} />;
+        return (
+          <CoverPart
+            event={event}
+            onDirty={parts.onDirty}
+            onClose={parts.onClose}
+            onCover={onCover}
+          />
+        );
     }
   };
 
@@ -402,14 +422,21 @@ function Details({
   const editing = (one: Part): ReactNode =>
     part === one ? <Fragment key={shown}>{editor(one)}</Fragment> : null;
 
-  const row = (one: Part, lead: ReactNode, title: string, line: string, after?: ReactNode) => (
+  const row = (
+    one: Part,
+    lead: ReactNode,
+    title: string,
+    line: string,
+    after?: ReactNode,
+    plain = false,
+  ) => (
     <PartRow
       key={one}
       lead={lead}
       title={title}
       line={line}
       open={part === one}
-      locked={!manages || (one === 'dates' && finished)}
+      locked={!manages || (one === 'dates' && finished) || plain}
       after={after}
       onOpen={() => onOpen(one)}
     >
@@ -441,17 +468,28 @@ function Details({
             venue?.name != null && address != null
               ? `${t('eventPage.venue')} · ${address}`
               : t('eventPage.venue'),
-            maps == null ? undefined : (
-              <a
-                className="desk-text ev-maps"
-                href={maps}
-                target="_blank"
-                rel="noopener noreferrer"
-              >
-                <Glyph name="globe" size={17} weight={2.3} />
-                {t('eventPage.openInMaps')}
-              </a>
+            maps == null && note == null ? undefined : (
+              <>
+                {note != null && <p className="ev-note">{note}</p>}
+                {maps != null && (
+                  <a
+                    className="desk-text ev-maps"
+                    href={maps}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                  >
+                    <Glyph name="globe" size={17} weight={2.3} />
+                    {t('eventPage.openInMaps')}
+                  </a>
+                )}
+                {venue == null && manages && (
+                  <button type="button" className="desk-text" onClick={() => onOpen('venue')}>
+                    {t('eventPage.addVenue')}
+                  </button>
+                )}
+              </>
             ),
+            venue == null && note != null,
           )}
           {row(
             'hosts',

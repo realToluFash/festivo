@@ -181,15 +181,18 @@ export function NameStep({
   onTyped,
   onContinue,
   quiet = false,
-  onTaken,
+  nameless = false,
+  onFocused,
   onLeft,
 }: StepProps & {
   field: RefObject<TextInputInstance | null>;
   onTyped: (name: string) => void;
   onContinue: () => void;
-  /** Hidden from the screen reader, so taking input focus says nothing. */
+  /** Hidden from the screen reader. */
   quiet?: boolean;
-  onTaken?: (() => void) | undefined;
+  /** Unnamed, so taking input focus says nothing: TalkBack voiced a hidden field's name as it took focus (qa2 #49329). */
+  nameless?: boolean;
+  onFocused?: (() => void) | undefined;
   onLeft?: (() => void) | undefined;
 }) {
   const { t } = useTranslation();
@@ -253,7 +256,7 @@ export function NameStep({
             onSubmitEditing={onContinue}
             onFocus={() => {
               setFocused(true);
-              onTaken?.();
+              onFocused?.();
             }}
             onBlur={() => {
               setFocused(false);
@@ -266,8 +269,8 @@ export function NameStep({
             autoCorrect={false}
             spellCheck={false}
             returnKeyType="next"
-            accessibilityLabel={t('createOrganisation.name')}
-            accessibilityHint={refusal ?? help}
+            accessibilityLabel={nameless ? '' : t('createOrganisation.name')}
+            accessibilityHint={nameless ? undefined : (refusal ?? help)}
             style={[
               styles.name,
               {

@@ -97,6 +97,26 @@ final class GuestGroupsTest extends ApiTestCase
     }
 
     #[Test]
+    public function aNameChosenAsANewGroupIsRefusedOnceSomebodyElseMadeItAndNothingIsSaved(): void
+    {
+        $guest = $this->add(['fullName' => 'Bisi']);
+        $this->make("Bride's side");
+
+        $this->as($this->owner, 'POST', $this->guests(), ['fullName' => 'Kemi', 'group' => ['name' => 'BRIDE’S SIDE', 'create' => true]]);
+        self::assertSame(422, $this->statusCode());
+        self::assertSame(['group.name' => "There is already a group called Bride's side."], $this->violations());
+
+        $this->as($this->owner, 'PUT', $this->guest($guest), ['fullName' => 'Bisi Adewale', 'group' => ['name' => "bride's side", 'create' => true]], '"1"');
+        self::assertSame(422, $this->statusCode());
+        self::assertSame(['group.name' => "There is already a group called Bride's side."], $this->violations());
+        self::assertCount(1, $this->list()['guests'] ?? []);
+        self::assertSame(['people' => 1, 'guests' => 1, 'companions' => 0], $this->list()['ungrouped'] ?? null);
+
+        $made = $this->add(['fullName' => 'Kemi', 'group' => ['name' => 'Work', 'create' => true]]);
+        self::assertSame('Work', Type\shape(['name' => Type\string()], true)->coerce($made['group'])['name']);
+    }
+
+    #[Test]
     public function aBlankGroupIsNoGroupAndAnEditWithoutGroupKeepsIt(): void
     {
         $work = $this->make('Work');
@@ -132,7 +152,7 @@ final class GuestGroupsTest extends ApiTestCase
     {
         yield 'blank' => ['   ', 'Enter a name for the group.'];
         yield 'over 60 characters' => [Str\repeat('é', 61), 'A group name can be up to 60 characters.'];
-        yield 'a name already used, case and accents aside' => ['WÖRK', "There's already a group called Work."];
+        yield 'a name already used, case and accents aside' => ['WÖRK', 'There is already a group called Work.'];
     }
 
     #[Test]

@@ -29,6 +29,9 @@ import {
   asGuestPagePlace,
   asPageNeeds,
   asHeadcount,
+  asMarkedTogether,
+  asMovedTogether,
+  asRemovedTogether,
   type CompanionChoice,
   type Guest,
   type GuestEdit,
@@ -38,6 +41,9 @@ import {
   type GuestList,
   type GuestPage,
   type Headcount,
+  type MarkedTogether,
+  type MovedTogether,
+  type RemovedTogether,
   GUEST_ANSWERS,
   GUEST_PAGE_PHASES,
   type NewGuest,
@@ -449,6 +455,8 @@ export interface OrganisationEvent {
   cover: EventCover | null;
   /** Null until a venue is added: the page says "Venue to be confirmed" (sc-3589). */
   venue: EventVenue | null;
+  /** The host's words on finding the way in, shown under the address and never translated; null when there are none (sc-24385). */
+  arrivalNote: string | null;
   /** The names guests read, in order; none until somebody adds one, and Make live waits for one (sc-6713). */
   hosts: string[];
   /** Null while it is a Draft. */
@@ -459,14 +467,24 @@ export interface OrganisationEvent {
   phase: EventPhase;
   /** The end, or when it was ended or called off; null until it is Finished. */
   concludedAt: string | null;
+  /** Why Delete event would be refused 409 `event_call_off_first` now, worked out by the server (sc-14445); absent reads as null. */
+  deleteRefusedBecause?: DeleteRefusal | null;
   createdAt: string;
   /** What the caller may do on this event: a Member's follow their role on it, not the organisation's (sc-29915). */
   permissions: string[];
 }
 
-/** As a list shows it: with its timeline's milestones, so the list's Next up is the timeline's (sc-3624). */
+/** The tiles' measure on Events (sc-23284), which each event's guest line adds up to: `notReplied` is the guests who owe an answer and the companions held behind them. */
+export interface EventGuestFigures {
+  invited: number;
+  coming: number;
+  notReplied: number;
+}
+
+/** As a list shows it: with its timeline's milestones, so the list's Next up is the timeline's (sc-3624), and its guest figures from the list, null without guests.read on it (sc-3786). */
 export interface ListedEvent extends OrganisationEvent {
   milestones: Milestone[];
+  guests?: EventGuestFigures | null;
 }
 
 export interface EventsQuery {
@@ -536,6 +554,8 @@ export interface NewEvent {
   timeZone: string;
   currency: string;
   venue?: VenueInput | null;
+  /** Saved trimmed; null or blank removes it. Apart from `venue`, so a note can stand without one (sc-24385). */
+  arrivalNote?: string | null;
   hosts?: string[];
 }
 
@@ -786,11 +806,15 @@ export interface OrganisationDeletion {
   restoreCloses: string;
 }
 
+/** `guestsInvited`: a Live or Paused event with a guest Invited is deleted only once it is Finished (sc-14445). Any reason refuses the same way. */
+export type DeleteRefusal = string;
+
 /** What an event's delete asks for: its name typed unless it is a Draft with nobody on its list, and until when support can restore it (sc-3592). */
 export interface EventDeletion {
   needsName: boolean;
   /** The Guests header's N, guests and companions together (sc-1468). */
   people: number;
+  deleteRefusedBecause: DeleteRefusal | null;
   restoreClosesAt: string;
   restoreCloses: string;
 }
@@ -859,6 +883,8 @@ export interface RequestOptions {
   query?: Record<string, string | number | boolean | undefined>;
   headers?: Record<string, string>;
   signal?: AbortSignal;
+  /** Sent even as the page goes, as an erasure on leaving it is. */
+  keepalive?: boolean;
   /** Skip the Authorization header — for sign-in and guest routes. */
   anonymous?: boolean;
 }
@@ -2143,6 +2169,78 @@ export class ApiClient {
     );
   }
 
+  /** Off the list and the counts at once, with their companions; their link works until eraseGuest (sc-3774). Refused 404 when somebody removed them already. */
+  async removeGuest(eventId: string, guestId: string): Promise<void> {
+    await this.delete<undefined>(this.guestPath(eventId, guestId));
+  }
+
+  /** Back on the list as they were; refused 404 once erased. */
+  async undoGuestRemoval(eventId: string, guestId: string): Promise<TaggedGuest> {
+    return this.taggedGuest(
+      await this.exchange<{ guest?: unknown }>(`${this.guestPath(eventId, guestId)}/removal`, {
+        method: 'DELETE',
+      }),
+    );
+  }
+
+  /** Once the undo has run out, or as the page goes: they, their companions and their link are gone. */
+  async eraseGuest(eventId: string, guestId: string): Promise<void> {
+    await this.post<undefined>(`${this.guestPath(eventId, guestId)}/erasure`, undefined, {
+      keepalive: true,
+    });
+  }
+
+  /** Every selected guest not yet invited, marked with one how (sc-46880); refused 409 `event_state_invalid` unless the phase allows `invite`, and `validation_failed` on `guestIds` over 2,000. */
+  async markGuestsInvited(
+    eventId: string,
+    guestIds: readonly string[],
+    how: GuestInvitationHow,
+  ): Promise<MarkedTogether> {
+    const body = await this.post<unknown>(`${this.guestsPath(eventId)}/invitations`, {
+      guestIds,
+      how,
+    });
+
+    return asMarkedTogether(body) ?? together();
+  }
+
+  /** Many guests into one group, chosen by `id` or made from `name` (sc-3776); refused `validation_failed` on `guestIds` over 2,000, or on the name as makeGuestGroup. */
+  async moveGuestsToGroup(
+    eventId: string,
+    guestIds: readonly string[],
+    group: { id: string } | { name: string },
+  ): Promise<MovedTogether> {
+    const body = await this.post<unknown>(`${this.guestsPath(eventId)}/group-moves`, {
+      guestIds,
+      group,
+    });
+
+    return asMovedTogether(body) ?? together();
+  }
+
+  /** Many guests and their companions off the list as one action with one Undo (sc-3776); one not on the list is counted in `gone`. */
+  async removeGuests(eventId: string, guestIds: readonly string[]): Promise<RemovedTogether> {
+    const body = await this.post<unknown>(`${this.guestsPath(eventId)}/removals`, { guestIds });
+
+    return asRemovedTogether(body) ?? together();
+  }
+
+  /** Every guest the removal took, back as they were; refused 404 once erased. */
+  async undoGuestsRemoval(eventId: string, removal: string): Promise<void> {
+    await this.delete<unknown>(
+      `${this.guestsPath(eventId)}/removals/${encodeURIComponent(removal)}`,
+    );
+  }
+
+  /** Once the undo has run out, or as the page goes. */
+  async eraseGuestsRemoval(eventId: string, removal: string): Promise<void> {
+    await this.post<undefined>(
+      `${this.guestsPath(eventId)}/removals/${encodeURIComponent(removal)}/erasure`,
+      undefined,
+      { keepalive: true },
+    );
+  }
+
   /** Refused `validation_failed` on `name`: blank, over 60 characters, a name already used, or 50 groups (sc-3775). */
   async makeGuestGroup(eventId: string, name: string): Promise<GuestGroup> {
     return this.guestGroup(
@@ -2201,6 +2299,22 @@ export class ApiClient {
   async guestsSubscription(eventId: string): Promise<RealtimeSubscription> {
     const body = await this.post<{ token?: unknown; expiresAt?: unknown }>(
       `${this.guestsPath(eventId)}/subscriptions`,
+    );
+
+    return {
+      token: typeof body.token === 'string' ? body.token : '',
+      expiresAt: typeof body.expiresAt === 'string' ? body.expiresAt : '',
+    };
+  }
+
+  /** A hub token for the headcounts of the events a list shows, those the caller reads guests on (sc-3786). */
+  async headcountsSubscription(
+    organisationId: string,
+    eventIds: readonly string[],
+  ): Promise<RealtimeSubscription> {
+    const body = await this.post<{ token?: unknown; expiresAt?: unknown }>(
+      `/api/orgs/${encodeURIComponent(organisationId)}/events/headcounts/subscriptions`,
+      { events: eventIds },
     );
 
     return {
@@ -2496,7 +2610,8 @@ export class ApiClient {
       typeof body.needsName !== 'boolean' ||
       typeof body.people !== 'number' ||
       typeof body.restoreClosesAt !== 'string' ||
-      typeof body.restoreCloses !== 'string'
+      typeof body.restoreCloses !== 'string' ||
+      refusalOf(body.deleteRefusedBecause) === undefined
     ) {
       throw new Error(
         'The API answered an event deletion in a shape this client does not know. Check EventDeletionController in services/api.',
@@ -2506,6 +2621,7 @@ export class ApiClient {
     return {
       needsName: body.needsName,
       people: body.people,
+      deleteRefusedBecause: refusalOf(body.deleteRefusedBecause) ?? null,
       restoreClosesAt: body.restoreClosesAt,
       restoreCloses: body.restoreCloses,
     };
@@ -3141,6 +3257,7 @@ export class ApiClient {
     // accept it.
     if (init.body !== undefined) request.body = JSON.stringify(init.body);
     if (init.signal !== undefined) request.signal = init.signal;
+    if (init.keepalive === true) request.keepalive = true;
 
     try {
       const response = await doFetch(this.url(path, init.query), request);
@@ -3646,12 +3763,22 @@ function asMilestone(raw: unknown): Milestone | null {
 
 function asListedEvent(raw: unknown): ListedEvent | null {
   const event = asOrganisationEvent(raw);
-  const milestones = (raw as { milestones?: unknown } | null)?.milestones;
+  const { milestones, guests } = (raw ?? {}) as { milestones?: unknown; guests?: unknown };
   const read = Array.isArray(milestones) ? milestones.map(asMilestone) : null;
+  const figures = guests == null ? null : asEventGuestFigures(guests);
 
-  return event == null || read == null || read.some((one) => one == null)
+  return event == null || read == null || read.some((one) => one == null) || figures === undefined
     ? null
-    : { ...event, milestones: read as Milestone[] };
+    : { ...event, milestones: read as Milestone[], guests: figures };
+}
+
+/** An event's guest figures, from the events list or from its headcount as published (sc-3786); undefined for a shape this client does not know. */
+export function asEventGuestFigures(raw: unknown): EventGuestFigures | undefined {
+  const { invited, coming, notReplied } = (raw ?? {}) as Record<string, unknown>;
+
+  return isCount(invited) && isCount(coming) && isCount(notReplied)
+    ? { invited, coming, notReplied }
+    : undefined;
 }
 
 function isCount(value: unknown): value is number {
@@ -3678,11 +3805,13 @@ function asOrganisationEvent(raw: unknown): OrganisationEvent | null {
   const dayCount = candidate.dayCount;
   const cover = candidate.cover === null ? null : asEventCover(candidate.cover);
   const venue = candidate.venue === null ? null : asEventVenue(candidate.venue);
+  const arrivalNote = candidate.arrivalNote;
   const hosts = candidate.hosts;
   const madeLiveAt = candidate.madeLiveAt;
   const pausedAt = candidate.pausedAt;
   const phase = oneOf(candidate.phase, EVENT_PHASES);
   const concludedAt = candidate.concludedAt;
+  const deleteRefusedBecause = refusalOf(candidate.deleteRefusedBecause);
   const permissions = stringList(candidate.permissions);
 
   if (
@@ -3690,11 +3819,13 @@ function asOrganisationEvent(raw: unknown): OrganisationEvent | null {
     permissions == null ||
     phase == null ||
     !isStringOrNull(concludedAt) ||
+    deleteRefusedBecause === undefined ||
     !isStringOrNull(madeLiveAt) ||
     !isStringOrNull(pausedAt) ||
     type == null ||
     cover === undefined ||
     venue === undefined ||
+    !isStringOrNull(arrivalNote) ||
     !Array.isArray(hosts) ||
     hosts.some((host) => typeof host !== 'string') ||
     fields.some((field) => typeof candidate[field] !== 'string') ||
@@ -3717,14 +3848,23 @@ function asOrganisationEvent(raw: unknown): OrganisationEvent | null {
     currency: candidate.currency as string,
     cover,
     venue,
+    arrivalNote,
     hosts: hosts as string[],
     madeLiveAt,
     pausedAt,
     phase,
     concludedAt,
+    deleteRefusedBecause,
     createdAt: candidate.createdAt as string,
     permissions,
   };
+}
+
+/** Null, or absent, when nothing is refused; undefined when it is not a reason at all. */
+function refusalOf(raw: unknown): DeleteRefusal | null | undefined {
+  if (raw == null) return null;
+
+  return typeof raw === 'string' ? raw : undefined;
 }
 
 function asEventCover(raw: unknown): EventCover | undefined {
@@ -3819,6 +3959,7 @@ function asGuestPage(raw: unknown): GuestPage | null {
               name: typeof venue.name === 'string' ? venue.name : null,
               address: typeof venue.address === 'string' ? venue.address : null,
             },
+      arrivalNote: typeof what.arrivalNote === 'string' ? what.arrivalNote : null,
     },
     phase: shown,
     started,
@@ -4727,4 +4868,10 @@ function linkedOrThrow<T>(linked: T | null): T {
   }
 
   return linked;
+}
+
+function together(): never {
+  throw new Error(
+    'The API answered an action on many guests in a shape this client does not know. Check GuestsTogetherController in services/api.',
+  );
 }

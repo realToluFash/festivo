@@ -30,9 +30,11 @@ export function RemoveAsk({
         line={
           removing.refused === 'arrived'
             ? RMW.justArrived(guest.name)
-            : RMW.alreadyRemoved(guest.name)
+            : removing.refused === 'companionArrived'
+              ? RMW.companionJustArrived(guest.name)
+              : RMW.alreadyRemoved(guest.name)
         }
-        keep={removing.refused === 'arrived' ? RMW.backToDetails : RMW.backToGuests}
+        keep={removing.refused === 'gone' ? RMW.backToGuests : RMW.backToDetails}
         onKeep={onBack}
       >
         <span className="gr-ask" hidden />

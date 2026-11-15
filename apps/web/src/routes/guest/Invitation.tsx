@@ -1224,7 +1224,7 @@ function useWhen(event: GuestPage['event']): string {
     : t('calendar.timeInZone', { time, timeZone: event.timeZone });
 }
 
-/** When, where and who, as Events A writes them. */
+/** When, where and who, as Events A writes them, and the host's arrival note under the Where line, never translated. */
 function Details({ page, hosts }: { page: GuestPage; hosts: string }) {
   const { t } = useTranslation();
   const { event } = page;
@@ -1233,6 +1233,12 @@ function Details({ page, hosts }: { page: GuestPage; hosts: string }) {
   const address = event.venue?.address ?? null;
   const where = name != null || address != null;
   const named = event.hosts.length > 0 && page.phase !== 'calledOff';
+  const note = page.phase === 'live' ? event.arrivalNote : null;
+  const noteLine = note != null && (
+    <p className="gp-note" dir="auto">
+      {note}
+    </p>
+  );
 
   return (
     <div className="gp-details gp-left-after">
@@ -1264,7 +1270,11 @@ function Details({ page, hosts }: { page: GuestPage; hosts: string }) {
               <span>{t('eventPage.openInMaps')}</span>
             </a>
           )}
+          {noteLine}
         </div>
+      )}
+      {!where && noteLine !== false && (
+        <div className={named ? 'gp-where has-rule' : 'gp-where'}>{noteLine}</div>
       )}
       {named && (
         <Row lead={<Glyph name="users" size={22} />} title={hosts} line={t('eventHosts.heading')} />

@@ -1,4 +1,4 @@
-import { type Ref, useRef } from 'react';
+import { type Ref, useEffect, useRef, useState } from 'react';
 import { StyleSheet, View, type ViewInstance } from 'react-native';
 
 import { useReadOut } from '../../components/ReadOut.tsx';
@@ -193,8 +193,12 @@ export function People({
 }) {
   const side = dense ? 36 : 40;
   const gutter = dense ? 10 : 0;
-  const items: ListItem[] = listed.map((person) => {
+  const drawn = useDrawn(listed.length);
+  const seen = new Map<string, number>();
+  const items: ListItem[] = listed.slice(0, drawn).map((person) => {
     const selected = person.id === open;
+    const twin = (seen.get(person.initials) ?? 0) + 1;
+    seen.set(person.initials, twin);
 
     return {
       key: person.id,
@@ -210,7 +214,9 @@ export function People({
           selected={selected}
           gutter={gutter}
           onPress={person.status === 'former' ? undefined : () => onOpen(person.id)}
-          testID={`members.row.${person.initials}`}
+          testID={
+            twin === 1 ? `members.row.${person.initials}` : `members.row.${person.initials}.${twin}`
+          }
         />
       ),
     };
@@ -243,6 +249,25 @@ export function People({
       )}
     </Section>
   );
+}
+
+const FIRST_ROWS = 40;
+const MORE_ROWS = 200;
+
+/** A crowd's rows arrive a frame at a time after the first 40, so the card above them draws first (sc-48825). */
+function useDrawn(total: number): number {
+  const [drawn, setDrawn] = useState(FIRST_ROWS);
+
+  useEffect(() => {
+    if (drawn >= total) {
+      return;
+    }
+    const frame = requestAnimationFrame(() => setDrawn((now) => now + MORE_ROWS));
+
+    return () => cancelAnimationFrame(frame);
+  }, [drawn, total]);
+
+  return Math.min(drawn, total);
 }
 
 function Empty({ filter, onShowEveryone }: { filter: Filter; onShowEveryone: () => void }) {

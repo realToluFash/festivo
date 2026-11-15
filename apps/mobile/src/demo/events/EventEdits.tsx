@@ -1,7 +1,5 @@
 import {
-  EVENT_TYPES,
   type EventType,
-  HOSTS_MAXIMUM,
   endMovedLine,
   eventProblems,
   formatWallDay,
@@ -18,23 +16,43 @@ import {
   type ViewInstance,
 } from 'react-native';
 
-import { fieldFocused, fieldLeft } from '../../components/focusedField.ts';
-import { RadioMark } from '../../components/RadioMark.tsx';
+import { AlertLine } from '../../components/AlertLine.tsx';
+import {
+  ArrivalNoteField,
+  Choices,
+  CoverPhotoFields,
+  CoverPreview as PartPreview,
+  CoverUpload as PartUpload,
+  CurrencyView,
+  DatePair,
+  DatesView,
+  EditShell,
+  EventField,
+  type Host,
+  HostRows,
+  NameView,
+  NoteBox,
+  type Position,
+  SelectBox,
+  TypeChoices,
+  VenueFieldsView,
+  pickerOver,
+  useEditGap,
+  useEditTitle,
+} from '../../components/EventEdits.tsx';
+import { PhotoFill } from '../../components/EventThumb.tsx';
+import { Glyph } from '../../components/Glyph.tsx';
+import { MomentBox, type Picking, pick } from '../../components/MomentPick.tsx';
 import { useReadOut } from '../../components/ReadOut.tsx';
 import {
   type ScreenReaderTarget,
   moveScreenReaderFocus,
 } from '../../components/screenReaderFocus.ts';
+import { ASK_WIDTH, type AskProps, TextAction } from '../../components/Summary.tsx';
 import { Text } from '../../components/Text.tsx';
 import { tokens } from '../../theme/tokens.ts';
-import { EventMesh } from '../../components/EventMesh.tsx';
-import { Glyph } from '../../components/Glyph.tsx';
-import { AlertLine } from '../../components/AlertLine.tsx';
-import { LineIcon } from '../../components/AccountCard.tsx';
-import { PhotoFill } from '../../components/EventThumb.tsx';
-import { EventNotice } from '../../components/EventNotice.tsx';
+import { LONG_NOTE, ARRIVAL_NOTE, NOTE_WORDS, noteTooLong, savedNote } from './ArrivalNote.ts';
 import { type EditPart, type EventDemoState, folded, instantOf, wallOf } from './EventsModel.ts';
-import { ARRIVAL_NOTE, LONG_NOTE, NOTE_WORDS, noteTooLong, savedNote } from './ArrivalNote.ts';
 import {
   CLOSES_AT,
   datesAsk,
@@ -49,14 +67,6 @@ import {
   replyByWrong,
   todayIn,
 } from './ReplyBy.ts';
-import { SearchField } from '../../components/EventsSearch.tsx';
-import {
-  BoxField,
-  MomentBox,
-  type Picking,
-  PickerLayer,
-  pick,
-} from '../../components/MomentPick.tsx';
 import {
   CURRENCIES,
   PHOTO_DESCRIPTION,
@@ -64,24 +74,25 @@ import {
   SUGGESTIONS,
   type SampleEvent,
   type Suggestion,
-  TYPE_WORDS,
   ZONES,
 } from './EventsSample.ts';
-import { meshFor } from '../../kit/today.ts';
-import { FieldError, TextField, type TextFieldProps } from '../../components/Field.tsx';
-import { weight } from '../../theme/fonts.ts';
 import { W, say, t } from './EventsWords.ts';
-import { useShell } from '../../components/settingsShell.ts';
-import { Pill } from '../../components/SettingsParts.tsx';
-import {
-  type AskProps,
-  FocusedScreen,
-  Row,
-  RowList,
-  TextAction,
-} from '../../components/Summary.tsx';
+import { hostErrorWords } from './hostErrors.ts';
 
-export { AlertLine };
+/** The edits are the product's own (sc-48600); the demo drives them from its sample and its states. */
+export {
+  ASK_WIDTH,
+  AlertLine,
+  Choices,
+  DatePair,
+  EventField,
+  type Host,
+  HostRows,
+  NoteBox,
+  SelectBox,
+  TypeChoices,
+  useEditGap,
+};
 
 type Opener = RefObject<ScreenReaderTarget | null>;
 
@@ -98,17 +109,6 @@ export interface EditProps {
   now?: Date;
   onReplyBy?: (date: string | null) => void;
 }
-
-const TITLES: Record<EditPart, string> = {
-  dates: W.dates,
-  replyBy: W.replyBy,
-  venue: W.venue,
-  hosts: W.hostedBy,
-  type: W.type,
-  currency: W.currency,
-  name: W.eventName,
-  cover: W.coverPhoto,
-};
 
 /** Each part on its own screen: Cancel, the part and Save, which stays off until something changes. */
 export function EditScreen({ part, ...edit }: EditProps & { part: EditPart }) {
@@ -132,21 +132,17 @@ export function EditScreen({ part, ...edit }: EditProps & { part: EditPart }) {
   }
 }
 
-export const ASK_WIDTH = 340;
-
-export function useEditGap(): number {
-  return useShell().layout === 'phone' ? tokens.spaceXl : tokens.spaceLg;
-}
-
-function EditShell({
+/** The product's shell, opened on the demo's state: the discard question or Show the latest. */
+function Shell({
   part,
-  verb = W.save,
+  verb,
   changed,
   onSave,
   edit,
-  latest,
-  over,
-  toast,
+  ask = null,
+  elsewhere = null,
+  over = null,
+  toast = null,
   children,
 }: {
   part: EditPart;
@@ -154,98 +150,32 @@ function EditShell({
   changed: boolean;
   onSave: () => void;
   edit: EditProps;
-  latest?: AskProps | null;
+  ask?: AskProps | null;
+  elsewhere?: { onLatest: () => void } | null;
   over?: { layer: ReactNode; onClose: () => void } | null;
   toast?: { words: string; onClose: () => void } | null;
   children: ReactNode;
 }) {
-  const [discarding, setDiscarding] = useState(edit.start === 'discard');
-  const testID = `event.edit.${part}`;
-  const gap = useEditGap();
-  const discard: AskProps | null = discarding
-    ? {
-        title: W.discardTitle,
-        line: W.discardLine,
-        keep: { label: W.keepEditing, testID: `${testID}.keep` },
-        confirm: { label: W.discard, testID: `${testID}.discard`, removes: true },
-        onKeep: () => setDiscarding(false),
-        onConfirm: edit.onClose,
-      }
-    : null;
-  const asked = latest ?? discard;
+  const title = useEditTitle();
 
   return (
-    <FocusedScreen
-      gap={gap}
+    <EditShell
       open={edit.open}
-      title={TITLES[part]}
-      verb={{ label: verb, on: changed, onPress: onSave, testID: `${testID}.save` }}
-      onCancel={() => (changed ? setDiscarding(true) : edit.onClose())}
-      cancelTestID={`${testID}.cancel`}
+      title={part === 'replyBy' ? W.replyBy : title(part)}
+      testID={`event.edit.${part}`}
       opener={edit.opener}
-      ask={asked && { ...asked, width: ASK_WIDTH }}
-      over={over ?? null}
-      toast={toast ?? null}
-      testID={testID}
+      {...(verb == null ? {} : { verb })}
+      changed={changed}
+      onSave={onSave}
+      onClose={edit.onClose}
+      asking={edit.start === 'discard' ? 'discard' : edit.start === 'showLatest' ? 'latest' : null}
+      elsewhere={elsewhere}
+      ask={ask}
+      over={over}
+      toast={toast}
     >
       {children}
-    </FocusedScreen>
-  );
-}
-
-/** A typed field as the boards draw it: the label and any Optional, the box, then its error or its help. */
-export function EventField({
-  label,
-  optional = false,
-  error = null,
-  help,
-  children,
-}: {
-  label: string;
-  optional?: boolean;
-  error?: string | null;
-  help?: string | undefined;
-  children: ReactNode;
-}) {
-  const field = useRef<ViewInstance>(null);
-  useEffect(() => {
-    const mounted = field.current;
-
-    return () => fieldLeft(mounted);
-  }, []);
-
-  return (
-    <View
-      ref={field}
-      onFocus={() => fieldFocused(field.current)}
-      onBlur={() => fieldLeft(field.current)}
-      style={styles.labelled}
-    >
-      <View
-        style={styles.fieldHead}
-        accessible
-        accessibilityLabel={optional ? `${label}, ${W.optional}` : label}
-      >
-        <Text size={14} weight="semibold" style={styles.label}>
-          {label}
-        </Text>
-        {optional && (
-          <Text size={14} weight="medium" style={[styles.secondary, styles.label]}>
-            {` · ${W.optional}`}
-          </Text>
-        )}
-      </View>
-      {children}
-      {error != null ? (
-        <FieldError message={error} />
-      ) : (
-        help != null && (
-          <Text size={13.5} weight="medium" style={[styles.secondary, styles.hint]}>
-            {help}
-          </Text>
-        )
-      )}
-    </View>
+    </EditShell>
   );
 }
 
@@ -255,51 +185,6 @@ export function AcPill({ words }: { words: string }) {
       <Text size={12.5} weight="semibold" style={styles.secondary}>
         {words}
       </Text>
-    </View>
-  );
-}
-
-/** The event's choices: each a row with its radio at the right, ruled apart. */
-function Choices<Key extends string>({
-  items,
-  on,
-  onPick,
-  testID,
-}: {
-  items: readonly { key: Key; title: string }[];
-  on: Key;
-  onPick: (key: Key) => void;
-  testID: string;
-}) {
-  return (
-    <View accessibilityRole="radiogroup">
-      <RowList
-        items={items.map((one) => ({
-          key: one.key,
-          row: (
-            <Row
-              title={one.title}
-              trail={<RadioMark on={one.key === on} />}
-              accent={one.key === on}
-              onPress={() => onPick(one.key)}
-              accessibilityRole="radio"
-              accessibilityState={{ checked: one.key === on }}
-              testID={`${testID}.${one.key}`}
-            />
-          ),
-        }))}
-      />
-    </View>
-  );
-}
-
-function Labelled({ label, children }: { label: string; children: ReactNode }) {
-  return (
-    <View style={styles.labelled}>
-      <Text size={14} weight="semibold" style={styles.label}>
-        {label}
-      </Text>
-      {children}
     </View>
   );
 }
@@ -339,7 +224,6 @@ function DatesEdit(edit: EditProps) {
   const [elsewhere, setElsewhere] = useState(
     start === 'changedElsewhere' || start === 'showLatest',
   );
-  const [showing, setShowing] = useState(start === 'showLatest');
   const [picking, setPicking] = useState<Picking | null>(null);
   const draft = draftOf(event, { start: from, end: to });
   const wrong = eventProblems(draft, zone).some((problem) => problem.problem === 'endBeforeStart');
@@ -427,148 +311,43 @@ function DatesEdit(edit: EditProps) {
       : null;
 
   return (
-    <EditShell
+    <Shell
       part="dates"
       changed={changed}
       onSave={save}
       edit={edit}
-      latest={
-        showing
+      ask={closeAsk}
+      elsewhere={
+        elsewhere
           ? {
-              title: W.showLatestTitle,
-              line: W.showLatestBody,
-              keep: { label: W.keepEditing, testID: 'event.edit.dates.latest.keep' },
-              confirm: {
-                label: W.showLatest,
-                testID: 'event.edit.dates.latest.show',
-                removes: true,
-              },
-              onKeep: () => setShowing(false),
-              onConfirm: () => {
+              onLatest: () => {
                 setFrom(saved.start);
                 setTo(saved.end);
                 setZone(event.timeZone);
                 setMoved(null);
                 setElsewhere(false);
-                setShowing(false);
               },
             }
-          : closeAsk
+          : null
       }
-      over={
-        picking == null
-          ? null
-          : {
-              layer: (
-                <PickerLayer picking={picking} locale={locale} onClose={() => setPicking(null)} />
-              ),
-              onClose: () => setPicking(null),
-            }
-      }
+      over={pickerOver(picking, locale, () => setPicking(null))}
     >
-      {elsewhere && (
-        <EventNotice
-          tone="broken"
-          words={W.changedElsewhere}
-          actions={
-            <TextAction
-              label={W.showLatest}
-              onPress={() => setShowing(true)}
-              testID="event.edit.dates.latest"
-            />
-          }
-        />
-      )}
-      <Labelled label={W.starts}>
-        <View style={styles.pair}>
-          <MomentBox
-            label={`${W.starts}, ${W.date}`}
-            mode="date"
-            value={from.date}
-            locale={locale}
-            onPress={() => pickStart('date')}
-            testID="event.edit.dates.startDate"
-          />
-          <MomentBox
-            label={`${W.starts}, ${W.time}`}
-            mode="time"
-            value={from.time}
-            locale={locale}
-            width={104}
-            onPress={() => pickStart('time')}
-            testID="event.edit.dates.startTime"
-          />
-        </View>
-        {replyByLine != null && (
-          <Text size={13.5} weight="semibold" style={styles.hint} testID="event.edit.dates.replyBy">
-            {replyByLine}
-          </Text>
-        )}
-      </Labelled>
-      <Labelled label={W.ends}>
-        <View style={styles.pair}>
-          <MomentBox
-            label={`${W.ends}, ${W.date}`}
-            mode="date"
-            value={to.date}
-            locale={locale}
-            wrong={wrong}
-            onPress={() => pickEnd('date')}
-            testID="event.edit.dates.endDate"
-          />
-          <MomentBox
-            label={`${W.ends}, ${W.time}`}
-            mode="time"
-            value={to.time}
-            locale={locale}
-            width={104}
-            wrong={wrong}
-            onPress={() => pickEnd('time')}
-            testID="event.edit.dates.endTime"
-          />
-        </View>
-      </Labelled>
-      {wrong ? (
-        <AlertLine text={W.endBeforeStart} />
-      ) : moved != null ? (
-        <Text size={13.5} weight="semibold" style={styles.hint}>
-          {moved}
-        </Text>
-      ) : (
-        <Text size={13.5} weight="medium" style={[styles.secondary, styles.hint]}>
-          {W.endsHint}
-        </Text>
-      )}
-      <Labelled label={W.timeZone}>
-        <Pressable
-          onPress={() => setZonesOpen((now) => !now)}
-          style={({ pressed }) => [styles.select, pressed && styles.pressed]}
-          accessibilityRole="button"
-          accessibilityState={{ expanded: zonesOpen }}
-          accessibilityLabel={`${W.timeZone}, ${zone}`}
-          testID="event.edit.dates.zone"
-        >
-          <Text size={16} weight="medium" accessible={false} style={styles.grow}>
-            {zone}
-          </Text>
-          <Glyph name="down" size={18} ink={tokens.colorInkSecondary} weight={2.3} />
-        </Pressable>
-        <Text size={13.5} weight="medium" style={[styles.secondary, styles.hint]}>
-          {say.timesIn(zone)}
-        </Text>
-      </Labelled>
-      {zonesOpen && (
-        <Choices
-          items={ZONES.map((one) => ({ key: one, title: one }))}
-          on={zone}
-          onPick={(one) => {
-            setZone(one);
-            setZonesOpen(false);
-          }}
-          testID="event.edit.dates.zone"
-        />
-      )}
-    </EditShell>
+      <DatesView
+        from={from}
+        to={to}
+        zone={zone}
+        locale={locale}
+        startLine={replyByLine}
+        endError={wrong ? W.endBeforeStart : null}
+        moved={moved}
+        zones={ZONES}
+        zonesOpen={zonesOpen}
+        onZonesOpen={setZonesOpen}
+        onZone={setZone}
+        onPickStart={pickStart}
+        onPickEnd={pickEnd}
+      />
+    </Shell>
   );
 }
 
@@ -652,22 +431,13 @@ function ReplyByEdit(edit: EditProps) {
         };
 
   return (
-    <EditShell
+    <Shell
       part="replyBy"
       changed={next !== saved}
       onSave={save}
       edit={edit}
-      latest={ask}
-      over={
-        picking == null
-          ? null
-          : {
-              layer: (
-                <PickerLayer picking={picking} locale={locale} onClose={() => setPicking(null)} />
-              ),
-              onClose: () => setPicking(null),
-            }
-      }
+      ask={ask}
+      over={pickerOver(picking, locale, () => setPicking(null))}
     >
       <EventField
         label={W.replyBy}
@@ -709,7 +479,7 @@ function ReplyByEdit(edit: EditProps) {
           </Text>
         </View>
       )}
-    </EditShell>
+    </Shell>
   );
 }
 
@@ -727,6 +497,93 @@ function draftOf(
   };
 }
 
+/** Venue name and Address with the sample's suggestions, shared by the Venue edit and New event; a suggestion in another zone offers it. */
+export function VenueFields({
+  name,
+  address,
+  onName,
+  onAddress,
+  zone,
+  onZone,
+  down,
+  offering = null,
+  nameError = null,
+  addressError = null,
+  nameRef,
+  addressRef,
+  autoFocus = false,
+  off = false,
+  testID,
+}: {
+  name: string;
+  address: string;
+  onName: (name: string) => void;
+  onAddress: (address: string) => void;
+  zone: string;
+  onZone: (zone: string) => void;
+  down: boolean;
+  offering?: Suggestion | null;
+  nameError?: string | null;
+  addressError?: string | null;
+  nameRef?: RefObject<TextInputInstance | null>;
+  addressRef?: RefObject<TextInputInstance | null>;
+  autoFocus?: boolean;
+  off?: boolean;
+  testID: string;
+}) {
+  const [chosen, setChosen] = useState<Suggestion | null>(offering);
+  const [offer, setOffer] = useState(offering != null);
+  const looking = chosen == null && !down && folded(address).length >= 3;
+  const found = looking
+    ? SUGGESTIONS.filter((one) => folded(one.name).includes(folded(address)))
+    : [];
+
+  useReadOut(found.length > 0 ? say.suggestionsBelow(found.length) : null);
+
+  return (
+    <VenueFieldsView
+      name={name}
+      address={address}
+      onName={onName}
+      onAddress={(typed) => {
+        onAddress(typed);
+        setChosen(null);
+        setOffer(false);
+      }}
+      suggestions={found.map((one) => ({ key: one.name, title: one.name, line: one.address }))}
+      onSuggestion={(key) => {
+        const one = found.find((each) => each.name === key);
+        if (one == null) return;
+        onName(one.name);
+        onAddress(one.address);
+        setChosen(one);
+        setOffer(one.timeZone !== zone);
+      }}
+      down={down}
+      offer={
+        offer && chosen != null
+          ? {
+              zone: chosen.timeZone,
+              keep: zone,
+              onUse: () => {
+                onZone(chosen.timeZone);
+                setOffer(false);
+              },
+              onKeep: () => setOffer(false),
+            }
+          : null
+      }
+      nameError={nameError}
+      addressError={addressError}
+      {...(nameRef == null ? {} : { nameRef })}
+      {...(addressRef == null ? {} : { addressRef })}
+      autoFocus={autoFocus}
+      off={off}
+      testID={testID}
+    />
+  );
+}
+
 function VenueEdit(edit: EditProps) {
   const { event, start } = edit;
   const eko = SUGGESTIONS[0];
@@ -740,11 +597,7 @@ function VenueEdit(edit: EditProps) {
           : { name: event.venue?.name ?? '', address: event.venue?.address ?? '' };
   const [name, setName] = useState(sample.name);
   const [address, setAddress] = useState(sample.address);
-  const [chosen, setChosen] = useState<Suggestion | null>(
-    start === 'venueZone' ? (eko ?? null) : null,
-  );
   const [zone, setZone] = useState(event.timeZone);
-  const [offer, setOffer] = useState(start === 'venueZone');
   const refusedNote = start === 'venueNoteTooLong' || start === 'venueNoteRefused';
   const [note, setNote] = useState(
     refusedNote
@@ -762,22 +615,16 @@ function VenueEdit(edit: EditProps) {
   );
   const noteField = useRef<TextInputInstance>(null);
   const down = start === 'venueDown';
-  const looking = chosen == null && !down && folded(address).length >= 3;
-  const found = looking
-    ? SUGGESTIONS.filter((one) => folded(one.name).includes(folded(address)))
-    : [];
   const changed =
     name !== (event.venue?.name ?? '') ||
     address !== (event.venue?.address ?? '') ||
     note !== (event.arrivalNote ?? '') ||
     zone !== event.timeZone;
-  const words = found.length > 0 ? say.suggestionsBelow(found.length) : null;
 
-  useReadOut(words);
   useReadOut(noteSaid);
 
   return (
-    <EditShell
+    <Shell
       part="venue"
       changed={changed}
       onSave={() => {
@@ -807,108 +654,33 @@ function VenueEdit(edit: EditProps) {
       }}
       edit={edit}
     >
-      <EventField label={W.venueName} optional>
-        <BoxField
-          value={name}
-          onChangeText={setName}
-          autoCorrect={false}
-          accessibilityLabel={`${W.venueName} · ${W.optional}`}
-          testID="event.edit.venue.name"
-        />
-      </EventField>
-      <EventField
-        label={W.address}
-        optional
-        help={down || words != null || offer ? undefined : W.venueAddressHint}
-      >
-        <BoxField
-          value={address}
-          autoFocus={start === 'venueSuggestions' || down}
-          onChangeText={(typed) => {
-            setAddress(typed);
-            setChosen(null);
-            setOffer(false);
-          }}
-          autoCorrect={false}
-          accessibilityLabel={`${W.address} · ${W.optional}`}
-          testID="event.edit.venue.address"
-        />
-      </EventField>
-      {down && <AlertLine text={W.venueLookupDown} />}
-      {words != null && (
-        <>
-          <Text size={13.5} weight="medium" style={[styles.secondary, styles.hint]}>
-            {words}
-          </Text>
-          <RowList
-            items={found.map((one) => ({
-              key: one.name,
-              inset: 40,
-              row: (
-                <Row
-                  title={one.name}
-                  line={one.address}
-                  lead={<LineIcon name="pin" />}
-                  onPress={() => {
-                    setName(one.name);
-                    setAddress(one.address);
-                    setChosen(one);
-                    setOffer(one.timeZone !== zone);
-                  }}
-                  testID={`event.edit.venue.suggestion.${one.name}`}
-                />
-              ),
-            }))}
-          />
-        </>
-      )}
-      {offer && chosen != null && (
-        <EventNotice
-          tone="quiet"
-          words={say.zoneOffer(chosen.timeZone)}
-          actions={
-            <View style={styles.offer}>
-              <TextAction
-                label={say.zoneUse(chosen.timeZone)}
-                onPress={() => {
-                  setZone(chosen.timeZone);
-                  setOffer(false);
-                }}
-                testID="event.edit.venue.useZone"
-              />
-              <TextAction
-                label={say.zoneKeep(zone)}
-                onPress={() => setOffer(false)}
-                testID="event.edit.venue.keepZone"
-              />
-            </View>
-          }
-        />
-      )}
-      <EventField label={NOTE_WORDS.label} optional error={noteError} help={NOTE_WORDS.hint}>
-        <NoteBox
-          ref={noteField}
-          value={note}
-          onChangeText={(typed) => {
-            setNote(typed);
-            setForbidden(false);
-            if (!noteTooLong(typed)) setNoteError(null);
-          }}
-          autoFocus={start === 'venueNote' || refusedNote}
-          wrong={noteError != null}
-          accessibilityLabel={`${NOTE_WORDS.label} · ${W.optional}`}
-          accessibilityHint={NOTE_WORDS.hint}
-          testID="event.edit.venue.note"
-        />
-      </EventField>
+      <VenueFields
+        name={name}
+        address={address}
+        onName={setName}
+        onAddress={setAddress}
+        zone={zone}
+        onZone={setZone}
+        down={down}
+        offering={start === 'venueZone' ? (eko ?? null) : null}
+        autoFocus={start === 'venueSuggestions' || down}
+        testID="event.edit.venue"
+      />
+      <ArrivalNoteField
+        note={note}
+        onNote={(typed) => {
+          setNote(typed);
+          setForbidden(false);
+          if (!noteTooLong(typed)) setNoteError(null);
+        }}
+        error={noteError}
+        autoFocus={start === 'venueNote' || refusedNote}
+        noteRef={noteField}
+        testID="event.edit.venue.note"
+      />
       {forbidden && <AlertLine text={NOTE_WORDS.forbidden} />}
-    </EditShell>
+    </Shell>
   );
-}
-
-interface Host {
-  key: number;
-  name: string;
 }
 
 function HostsEdit(edit: EditProps) {
@@ -921,7 +693,6 @@ function HostsEdit(edit: EditProps) {
         : [...event.hosts]
     ).map((name, key) => ({ key, name })),
   );
-  const [next, setNext] = useState(HOSTS_MAXIMUM);
   const [tried, setTried] = useState(false);
   const [said, setSaid] = useState<string | null>(null);
   const names = hosts.map((host) => host.name);
@@ -931,14 +702,6 @@ function HostsEdit(edit: EditProps) {
 
   useReadOut(said);
 
-  const move = (from: number, to: number) => {
-    const moved = [...hosts];
-    const [one] = moved.splice(from, 1);
-    if (one == null) return;
-    moved.splice(to, 0, one);
-    setHosts(moved);
-    setSaid(say.hostMoved(one.name.trim() || say.hostLabel(from + 1), to + 1, moved.length));
-  };
   const save = () => {
     if (problems.some((problem) => problem != null)) {
       setTried(true);
@@ -948,161 +711,32 @@ function HostsEdit(edit: EditProps) {
   };
 
   return (
-    <EditShell part="hosts" changed={changed} onSave={save} edit={edit}>
-      <Text size={15} weight="medium" style={[styles.secondary, styles.lines]}>
-        {W.hostsExplainer}
-      </Text>
-      {hosts.map((host, index) => {
-        const problem = problems[index];
-        const error =
-          problem?.problem === 'hostDuplicate'
-            ? say.hostDuplicate(problem.name)
-            : problem?.problem === 'hostBlank' && tried
-              ? W.hostBlank
-              : null;
-        const named = host.name.trim() || say.hostLabel(index + 1);
-
-        return (
-          <View key={host.key} style={styles.host}>
-            <View style={styles.hostHead}>
-              <Text size={14} weight="semibold" style={styles.grow}>
-                {say.hostLabel(index + 1)}
-              </Text>
-              {!kept && (
-                <TextAction
-                  label={W.remove}
-                  onPress={() => setHosts(hosts.filter((one) => one.key !== host.key))}
-                  accessibilityLabel={say.removeNamed(named)}
-                  testID={`event.edit.hosts.remove.${index}`}
-                />
-              )}
-            </View>
-            <View style={styles.hostRow}>
-              <View style={styles.grow}>
-                <BoxField
-                  value={host.name}
-                  wrong={error != null}
-                  autoFocus={
-                    (start === 'hostsDuplicate' && index === 2) ||
-                    (start === 'lastHost' && index === 0)
-                  }
-                  onChangeText={(typed) =>
-                    setHosts(
-                      hosts.map((one) => (one.key === host.key ? { ...one, name: typed } : one)),
-                    )
-                  }
-                  autoCapitalize="words"
-                  autoCorrect={false}
-                  accessibilityLabel={say.hostLabel(index + 1)}
-                  testID={`event.edit.hosts.field.${index}`}
-                />
-              </View>
-              {!kept && (
-                <>
-                  <MoveButton
-                    glyph="up"
-                    label={say.moveUp(named)}
-                    off={index === 0}
-                    onPress={() => move(index, index - 1)}
-                  />
-                  <MoveButton
-                    glyph="down"
-                    label={say.moveDown(named)}
-                    off={index === hosts.length - 1}
-                    onPress={() => move(index, index + 1)}
-                  />
-                </>
-              )}
-            </View>
-            {error != null && <AlertLine text={error} />}
-          </View>
-        );
-      })}
-      {kept && (
-        <Text size={14} weight="medium" style={[styles.secondary, styles.said]}>
-          {W.lastHost}
-        </Text>
-      )}
-      {hosts.length >= HOSTS_MAXIMUM ? (
-        <Text size={14} weight="medium" style={[styles.secondary, styles.said]}>
-          {W.hostsMost}
-        </Text>
-      ) : (
-        <TextAction
-          label={W.addHost}
-          glyph="plus"
-          onPress={() => {
-            setHosts([...hosts, { key: next, name: '' }]);
-            setNext(next + 1);
-          }}
-          testID="event.edit.hosts.add"
-        />
-      )}
-    </EditShell>
-  );
-}
-
-function MoveButton({
-  glyph,
-  label,
-  off,
-  onPress,
-}: {
-  glyph: 'up' | 'down';
-  label: string;
-  off: boolean;
-  onPress: () => void;
-}) {
-  return (
-    <Pressable
-      onPress={off ? undefined : onPress}
-      disabled={off}
-      style={({ pressed }) => [styles.move, pressed && styles.pressed]}
-      accessibilityRole="button"
-      accessibilityState={{ disabled: off }}
-      accessibilityLabel={label}
-    >
-      <Glyph
-        name={glyph}
-        size={18}
-        ink={off ? tokens.colorInkTertiary : tokens.colorInk}
-        weight={2.4}
+    <Shell part="hosts" changed={changed} onSave={save} edit={edit}>
+      <HostRows
+        hosts={hosts}
+        onHosts={setHosts}
+        errors={hostErrorWords(names, tried)}
+        kept={kept}
+        focusAt={start === 'hostsDuplicate' ? 2 : start === 'lastHost' ? 0 : null}
+        onSaid={setSaid}
+        testID="event.edit.hosts"
       />
-    </Pressable>
+    </Shell>
   );
 }
 
 function TypeEdit(edit: EditProps) {
   const [type, setType] = useState<EventType>(edit.event.type);
-  const [typed, setTyped] = useState('');
-  const shown = EVENT_TYPES.filter((one) => folded(TYPE_WORDS[one]).includes(folded(typed.trim())));
 
   return (
-    <EditShell
+    <Shell
       part="type"
       changed={type !== edit.event.type}
       onSave={() => edit.onSaved({ ...edit.event, type })}
       edit={edit}
     >
-      <View style={styles.searchRow}>
-        <SearchField
-          typed={typed}
-          off={false}
-          width={null}
-          onTyped={setTyped}
-          onSearch={() => undefined}
-          onClear={() => setTyped('')}
-          label={W.searchTypes}
-          testID="event.edit.type.search"
-        />
-      </View>
-      <Choices
-        items={shown.map((one) => ({ key: one, title: TYPE_WORDS[one] }))}
-        on={type}
-        onPick={setType}
-        testID="event.edit.type"
-      />
-    </EditShell>
+      <TypeChoices type={type} onPick={setType} testID="event.edit.type" />
+    </Shell>
   );
 }
 
@@ -1112,60 +746,81 @@ function CurrencyEdit(edit: EditProps) {
   const [refusal, setRefusal] = useState(refused);
 
   return (
-    <EditShell
+    <Shell
       part="currency"
       changed={code !== edit.event.currency}
       onSave={() => (refused ? setRefusal(true) : edit.onSaved({ ...edit.event, currency: code }))}
       edit={edit}
     >
-      {refusal && <EventNotice tone="broken" words={W.currencyInUse} />}
-      <Choices
-        items={CURRENCIES.map((one) => ({ key: one.code, title: `${one.code} · ${one.name}` }))}
-        on={code}
-        onPick={setCode}
-        testID="event.edit.currency"
-      />
-    </EditShell>
+      <CurrencyView code={code} choices={CURRENCIES} refused={refusal} onPick={setCode} />
+    </Shell>
   );
 }
+
+const NAME_MOST = 120;
 
 function NameEdit(edit: EditProps) {
   const [name, setName] = useState(edit.start === 'nameBlank' ? '' : edit.event.name);
   const blank = name.trim() === '';
 
   return (
-    <EditShell
+    <Shell
       part="name"
       changed={name.trim() !== edit.event.name}
       onSave={() => !blank && edit.onSaved({ ...edit.event, name: name.trim() })}
       edit={edit}
     >
-      <EventField
-        label={W.eventName}
+      <NameView
+        name={name}
         error={blank ? W.nameBlank : null}
-        help={say.nameCount([...name].length)}
-      >
-        <BoxField
-          value={name}
-          wrong={blank}
-          autoFocus
-          maxLength={120}
-          onChangeText={setName}
-          accessibilityLabel={W.eventName}
-          testID="event.edit.name.field"
-        />
-      </EventField>
-    </EditShell>
+        count={[...name].length}
+        most={NAME_MOST}
+        onName={setName}
+      />
+    </Shell>
   );
 }
 
-type Position = 'top' | 'middle' | 'bottom';
+/** The cover as it will show: the sample's photo, or Soirely's cover in the colours its key gives. */
+export function CoverPreview({
+  photo,
+  meshKey,
+  id,
+}: {
+  photo: boolean;
+  meshKey: string;
+  id: string;
+}) {
+  return (
+    <PartPreview
+      photo={
+        photo ? (
+          <>
+            <PhotoFill id={id} />
+            <Glyph name="photo" size={56} ink={tokens.colorInkOnDark} weight={1.6} />
+          </>
+        ) : null
+      }
+      meshKey={meshKey}
+    />
+  );
+}
 
-const SHOWING: Record<Position, string> = {
-  top: W.showingTop,
-  middle: W.showingMiddle,
-  bottom: W.showingBottom,
-};
+/** With no photo yet: what the cover is, or that the sample's last one was refused. */
+export function CoverUpload({
+  refused = false,
+  ...rest
+}: {
+  refused?: boolean;
+  off?: boolean;
+  kind?: 'secondary';
+  onUpload: () => void;
+  testID: string;
+}) {
+  return <PartUpload refused={refused ? W.coverRefused : null} {...rest} />;
+}
+
+const DESCRIBE_MOST = 250;
 
 function CoverEdit(edit: EditProps) {
   const { event, start } = edit;
@@ -1180,7 +835,7 @@ function CoverEdit(edit: EditProps) {
     photo !== event.photo || position !== 'middle' || (photo && described !== PHOTO_DESCRIPTION);
 
   return (
-    <EditShell
+    <Shell
       part="cover"
       verb={W.useThisPhoto}
       changed={changed}
@@ -1188,192 +843,39 @@ function CoverEdit(edit: EditProps) {
       edit={edit}
       toast={told == null ? null : { words: told, onClose: () => setTold(null) }}
     >
-      <View
-        style={styles.preview}
-        accessibilityElementsHidden
-        importantForAccessibility="no-hide-descendants"
-      >
-        {photo ? (
-          <>
-            <PhotoFill id="cover-edit" />
-            <Glyph name="photo" size={56} ink={tokens.colorInkOnDark} weight={1.6} />
-          </>
-        ) : (
-          <EventMesh event={{ mesh: meshFor(event.id), photo: null }} />
-        )}
-      </View>
+      <CoverPreview photo={photo} meshKey={event.id} id="cover-edit" />
       {photo ? (
-        <>
-          <TextAction
-            label={W.changePhoto}
-            glyph="camera"
-            onPress={() => setTold(say.ownDesign(W.choosingPhoto))}
-            testID="event.edit.cover.change"
-          />
-          <PositionSlider position={position} onPosition={setPosition} />
-          <EventField label={W.describe} optional help={W.describeHint}>
-            <BoxField
-              value={described}
-              onChangeText={setDescribed}
-              multiline
-              maxLength={250}
-              accessibilityLabel={`${W.describe} · ${W.optional}`}
-              testID="event.edit.cover.describe"
-            />
-          </EventField>
-          <Text size={13.5} weight="medium" style={[styles.secondary, styles.hint, styles.figures]}>
-            {say.describeCount([...described].length)}
-          </Text>
-          <TextAction
-            label={W.removePhoto}
-            removes
-            consequence={W.removePhotoLine}
-            onPress={() => {
-              setPhoto(false);
-              setDescribed('');
-            }}
-            testID="event.edit.cover.remove"
-          />
-        </>
+        <CoverPhotoFields
+          position={position}
+          onPosition={setPosition}
+          described={described}
+          onDescribed={(typed) => setDescribed(typed.slice(0, DESCRIBE_MOST))}
+          count={[...described].length}
+          most={DESCRIBE_MOST}
+          onChange={() => setTold(say.ownDesign(W.choosingPhoto))}
+          onRemove={() => {
+            setPhoto(false);
+            setDescribed('');
+          }}
+        />
       ) : (
-        <>
-          {refused ? (
-            <EventNotice tone="broken" words={W.coverRefused} />
-          ) : (
-            <Text size={15} weight="medium" style={[styles.secondary, styles.lines]}>
-              {W.coverDefaultLine}
-            </Text>
-          )}
-          <Pill
-            label={W.upload}
-            glyph="camera"
-            onPress={() => {
-              setRefused(false);
-              setPhoto(true);
-              setDescribed('');
-            }}
-            testID="event.edit.cover.upload"
-          />
-          <Text size={13.5} weight="medium" style={[styles.secondary, styles.hint]}>
-            {W.accepted}
-          </Text>
-        </>
+        <CoverUpload
+          refused={refused}
+          onUpload={() => {
+            setRefused(false);
+            setPhoto(true);
+            setDescribed('');
+          }}
+          testID="event.edit.cover.upload"
+        />
       )}
-    </EditShell>
+    </Shell>
   );
 }
-
-const POSITIONS: readonly Position[] = ['top', 'middle', 'bottom'];
-
-/** Top to Bottom in three stops, as the board draws it; a screen reader moves it a stop at a time. */
-function PositionSlider({
-  position,
-  onPosition,
-}: {
-  position: Position;
-  onPosition: (position: Position) => void;
-}) {
-  const at = POSITIONS.indexOf(position);
-  const step = (by: number) => {
-    const next = POSITIONS[Math.min(2, Math.max(0, at + by))];
-    if (next != null) onPosition(next);
-  };
-
-  return (
-    <View style={styles.slider}>
-      <Text size={14} weight="semibold" style={styles.label}>
-        {W.position}
-      </Text>
-      <View style={styles.track}>
-        <View
-          style={styles.track}
-          accessible
-          accessibilityRole="adjustable"
-          accessibilityLabel={W.position}
-          accessibilityValue={{ text: SHOWING[position] }}
-          accessibilityActions={[{ name: 'increment' }, { name: 'decrement' }]}
-          onAccessibilityAction={(action) =>
-            step(action.nativeEvent.actionName === 'increment' ? 1 : -1)
-          }
-          testID="event.edit.cover.position"
-        >
-          <View style={styles.rail} />
-          <View style={styles.stops}>
-            {POSITIONS.map((one) => (
-              <View key={one} style={styles.stop}>
-                {one === position && <View style={styles.knob} />}
-              </View>
-            ))}
-          </View>
-        </View>
-        <View
-          style={styles.stops}
-          accessibilityElementsHidden
-          importantForAccessibility="no-hide-descendants"
-        >
-          {POSITIONS.map((one) => (
-            <Pressable key={one} onPress={() => onPosition(one)} style={styles.stop} />
-          ))}
-        </View>
-      </View>
-      <View style={styles.ends}>
-        <Text size={13.5} weight="medium" style={[styles.grow, styles.secondary]}>
-          {W.top}
-        </Text>
-        <Text size={13.5} weight="medium" style={styles.secondary}>
-          {W.bottom}
-        </Text>
-      </View>
-      <Text size={13.5} weight="medium" style={[styles.secondary, styles.hint]}>
-        {SHOWING[position]}
-      </Text>
-    </View>
-  );
-}
-
-/** The arrival note's box: BoxField's look, four lines tall at first, growing to ten and then scrolling inside. */
-export function NoteBox({
-  wrong = false,
-  accessibilityLabel,
-  ...rest
-}: TextFieldProps & { accessibilityLabel: string }) {
-  const [focused, setFocused] = useState(false);
-
-  return (
-    <TextField
-      {...rest}
-      multiline
-      scrollEnabled
-      accessibilityLabel={accessibilityLabel}
-      wrong={wrong}
-      onFocus={() => setFocused(true)}
-      onBlur={() => setFocused(false)}
-      style={[styles.noteBox, (focused || wrong) && styles.noteBoxLit]}
-    />
-  );
-}
-
-const NOTE_LINE = 24;
 
 const styles = StyleSheet.create({
-  grow: { flex: 1, minWidth: 0 },
-  searchRow: { flexDirection: 'row' },
   secondary: { color: tokens.colorInkSecondary },
   pressed: { opacity: tokens.opacityPressed },
-  fieldHead: { flexDirection: 'row', flexWrap: 'wrap' },
-  figures: { fontVariant: ['tabular-nums'] },
-  noteBox: {
-    minHeight: NOTE_LINE * 4 + tokens.spaceSm * 2,
-    maxHeight: NOTE_LINE * 10 + tokens.spaceSm * 2,
-    paddingLeft: 14.5,
-    paddingRight: 10.5,
-    borderWidth: 1.5,
-    borderRadius: tokens.radiusInset,
-    lineHeight: NOTE_LINE,
-    textAlignVertical: 'top',
-    ...weight('medium'),
-  },
-  noteBoxLit: { paddingLeft: tokens.spacePillEnd, paddingRight: tokens.spaceMd, borderWidth: 2 },
   acPill: {
     minHeight: 26,
     justifyContent: 'center',
@@ -1384,10 +886,6 @@ const styles = StyleSheet.create({
     borderRadius: 13,
     backgroundColor: tokens.colorCard,
   },
-  labelled: { gap: 7 },
-  label: { lineHeight: 14 * 1.3 },
-  hint: { lineHeight: 13.5 * 1.4 },
-  said: { lineHeight: 14 * 1.45 },
   lines: { lineHeight: 15 * 1.45 },
   start: { alignItems: 'flex-start' },
   inset: {
@@ -1398,7 +896,6 @@ const styles = StyleSheet.create({
     borderColor: tokens.colorInsetBorder,
     backgroundColor: tokens.colorInset,
   },
-  pair: { flexDirection: 'row', gap: tokens.spaceSm },
   select: {
     minHeight: 52,
     flexDirection: 'row',
@@ -1410,48 +907,4 @@ const styles = StyleSheet.create({
     borderColor: tokens.colorFieldBorder,
     borderRadius: 14,
   },
-  offer: { flexDirection: 'row', flexWrap: 'wrap', columnGap: tokens.spaceXxl },
-  host: { gap: tokens.spaceHair },
-  hostHead: { minHeight: tokens.sizeHit, flexDirection: 'row', alignItems: 'center' },
-  hostRow: { flexDirection: 'row', alignItems: 'center', gap: tokens.spaceSm },
-  move: {
-    width: tokens.sizeHit,
-    height: tokens.sizeHit,
-    borderRadius: tokens.sizeHit / 2,
-    alignItems: 'center',
-    justifyContent: 'center',
-    backgroundColor: tokens.colorInset,
-  },
-  preview: {
-    width: '100%',
-    aspectRatio: 16 / 9,
-    borderRadius: 18,
-    overflow: 'hidden',
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  slider: { gap: tokens.spaceXxs },
-  track: { height: tokens.sizeHit, justifyContent: 'center' },
-  rail: { height: 6, borderRadius: 3, backgroundColor: tokens.colorNeutralFill },
-  stops: {
-    position: 'absolute',
-    top: 0,
-    bottom: 0,
-    left: 0,
-    right: 0,
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    marginHorizontal: -tokens.spaceSm,
-  },
-  stop: { width: tokens.sizeHit, alignItems: 'center', justifyContent: 'center' },
-  knob: {
-    width: 28,
-    height: 28,
-    borderRadius: 14,
-    borderWidth: 1.5,
-    borderColor: tokens.colorFieldBorder,
-    backgroundColor: tokens.colorCard,
-    ...tokens.elevationNative.raised.ios,
-  },
-  ends: { flexDirection: 'row' },
 });

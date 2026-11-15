@@ -3,10 +3,12 @@ import {
   GUEST_NAME_MAXIMUM,
   type GroupChoice,
   type Guest,
+  type GuestInvitationHow,
   type GuestDetails,
   type GuestGroup,
   type GuestList,
   type OrganisationEvent,
+  GUESTS_TOGETHER_MOST,
   asGuestList,
   realtimeTopic,
 } from '@soirely/api-client';
@@ -38,6 +40,19 @@ import {
   viewOf,
   violationProblems,
   withGuest as listedWith,
+  withGuestAt,
+  withoutGuest,
+  companionShown,
+  listFormat,
+  NO_NEEDS,
+  type NeedsProblems,
+  type NeedsTyped,
+  firstNeedsFailing,
+  hasAllergy,
+  needsFailingCount,
+  needsInputOf,
+  needsViolations,
+  problemsByWho,
 } from '@soirely/domain';
 import {
   type ReactNode,
@@ -57,7 +72,6 @@ import { useTranslation } from 'react-i18next';
 import { Link, useBlocker, useNavigate, useSearchParams } from 'react-router';
 
 import { api } from '../../../api.ts';
-import { config } from '../../../config.ts';
 import { GlassMark } from '../../../components/EventCard.tsx';
 import { Glyph } from '../../../components/Glyph.tsx';
 import { SearchField } from '../../../components/SearchField.tsx';
@@ -70,7 +84,7 @@ import {
   TextAction,
 } from '../../../components/SettingsParts.tsx';
 import { Toast } from '../../../components/Toast.tsx';
-import { dateLocale } from '../../../i18n/index.ts';
+import { currentLocale, dateLocale } from '../../../i18n/index.ts';
 import { LayersContext, focusWhenFree, useDeskLayers } from '../../../layers.ts';
 import { type Mesh, meshFor } from '../../../mesh.ts';
 import { pageTitle, usePageTitle } from '../../../pageTitle.ts';
@@ -79,7 +93,24 @@ import { useLoadedAt, useServerNow } from '../../../serverNow.ts';
 import { canOn, useSession } from '../../../session.ts';
 import { useMakeLive } from './MakeLive.tsx';
 import { GroupChips, GroupField, GroupTag, GroupsColumn } from './GuestGroups.tsx';
-import { choiceLine, groupRefusal, listOpen } from './guestGroups.ts';
+import {
+  GroupSheet,
+  MarkMany,
+  RemoveMany,
+  ResultLine,
+  SelectBar,
+  SelectedSaid,
+} from './GuestSelect.tsx';
+import {
+  type Action,
+  type Line,
+  companionsWith,
+  markQuestion,
+  onlyCompanions,
+  removeQuestion,
+  shownGuests,
+} from './guestSelect.ts';
+import { choiceLine, groupRefusal, listOpen, refusedLine } from './guestGroups.ts';
 import { GuestColumn, ReplyMark, guestAddress } from './GuestColumn.tsx';
 import {
   CompanionField,
@@ -95,19 +126,9 @@ import {
   NeedsRefused,
   NeedsSection,
 } from './GuestNeeds.tsx';
-import {
-  NO_NEEDS,
-  type NeedsProblems,
-  type NeedsTyped,
-  firstNeedsFailing,
-  hasAllergy,
-  needsFailingCount,
-  needsInputOf,
-  needsViolations,
-  problemsByWho,
-  useNeedsOpen,
-} from './guestNeeds.ts';
+import { useNeedsOpen } from './guestNeeds.ts';
 import { useGuestsAddress } from './useGuestsAddress.ts';
+import { useHubTopics } from './useHubTopics.ts';
 import { keepAsked, keptAsked } from './whatsAppSend.ts';
 import '../../../components/desk.css';
 import '../../../components/SettingsParts.css';
@@ -119,72 +140,20 @@ import './guests.css';
 
 type Load = { kind: 'loading' } | { kind: 'failed' } | { kind: 'loaded'; list: GuestList };
 
-const RETRY_MS = 5_000;
-const RENEW_BEFORE_MS = 60_000;
 const FOCUSABLE = 'button, a[href], input, select, textarea, [tabindex]';
 
 /** The guest list as the API holds it, published to every page open on it. */
 function useLiveGuests(eventId: string, onList: (list: GuestList) => void, onGap: () => void) {
-  const latest = useRef({ onList, onGap });
-
-  useEffect(() => {
-    latest.current = { onList, onGap };
-  });
-
-  useEffect(() => {
-    const hub = config().mercureUrl;
-    if (hub === '') return;
-
-    let source: EventSource | null = null;
-    let timer: ReturnType<typeof setTimeout> | undefined;
-    let stopped = false;
-
-    const connect = async (): Promise<void> => {
-      let subscription;
-      try {
-        subscription = await api.guestsSubscription(eventId);
-      } catch {
-        if (!stopped) timer = setTimeout(() => void connect(), RETRY_MS);
-        return;
-      }
-      if (stopped) return;
-
-      const url = new URL(hub);
-      url.searchParams.append('topic', realtimeTopic('EventGuests', eventId));
-      url.searchParams.append('authorization', subscription.token);
-
-      source?.close();
-      source = new EventSource(url);
-      source.onopen = () => latest.current.onGap();
-      source.onmessage = (message: MessageEvent<string>) => {
-        let list: GuestList | null = null;
-        try {
-          list = asGuestList(JSON.parse(message.data));
-        } catch {
-          list = null;
-        }
-        if (list == null) latest.current.onGap();
-        else latest.current.onList(list);
-      };
-      source.onerror = () => {
-        if (source?.readyState !== EventSource.CLOSED || stopped) return;
-        clearTimeout(timer);
-        timer = setTimeout(() => void connect(), RETRY_MS);
-      };
-
-      const lapses = Date.parse(subscription.expiresAt) - Date.now() - RENEW_BEFORE_MS;
-      clearTimeout(timer);
-      timer = setTimeout(() => void connect(), Math.max(lapses, RETRY_MS));
-    };
-
-    void connect();
-
-    return () => {
-      stopped = true;
-      clearTimeout(timer);
-      source?.close();
-    };
-  }, [eventId]);
+  useHubTopics(
+    [realtimeTopic('EventGuests', eventId)],
+    () => api.guestsSubscription(eventId),
+    (data) => {
+      const list = asGuestList(data);
+      if (list == null) onGap();
+      else onList(list);
+    },
+    onGap,
+  );
 }
 
 /** The code the Mobile number starts on, as the account's own Mobile number field picks it. */
@@ -216,20 +185,19 @@ function useStartingCountry(asks: boolean): string {
 
 /** Focus asked for by `data-focus` key, given once the next render has drawn it. */
 function useFocusKeys(root: RefObject<HTMLElement | null>) {
-  const pending = useRef<string[]>([]);
-  const latest = useRef(0);
-  const [, rerender] = useReducer((count: number) => count + 1, 0);
+  const pending = useRef<{ keys: string[]; turn: number } | null>(null);
+  const asked = useRef(0);
+  const [committedTurn, commitTurn] = useReducer((_: number, turn: number) => turn, 0);
 
   useEffect(() => {
-    const keys = pending.current;
+    if (pending.current == null || pending.current.turn !== committedTurn) return;
+    const { keys, turn } = pending.current;
 
-    if (keys.length === 0) return;
-    pending.current = [];
-    const turn = ++latest.current;
+    pending.current = null;
 
     // A request still retrying for its target must not take the focus from a later one.
     focusWhenFree(() => {
-      if (turn !== latest.current) return null;
+      if (turn !== asked.current) return null;
       for (const key of keys) {
         const at = root.current?.querySelector<HTMLElement>(`[data-focus="${key}"]`);
 
@@ -243,8 +211,10 @@ function useFocusKeys(root: RefObject<HTMLElement | null>) {
   });
 
   return useCallback((...keys: string[]) => {
-    pending.current = keys;
-    rerender();
+    const turn = ++asked.current;
+
+    pending.current = { keys, turn };
+    commitTurn(turn);
   }, []);
 }
 
@@ -269,6 +239,8 @@ export function GuestsGone({ heading }: { heading: RefObject<HTMLHeadingElement 
 }
 
 const NO_GUESTS: GuestList['guests'] = [];
+
+const NONE: ReadonlySet<string> = new Set();
 
 export function GuestsArea({
   event,
@@ -307,6 +279,16 @@ export function GuestsArea({
   const [dirty, setDirty] = useState(false);
   const [asking, setAsking] = useState<(() => void) | null>(null);
   const [saved, setSaved] = useState(false);
+  const [removed, setRemoved] = useState<{ guest: Guest; at: number } | null>(null);
+  const [backOnList, setBackOnList] = useState<string | null>(null);
+  const [selected, setSelected] = useState<ReadonlySet<string>>(NONE);
+  const [selectionCleared, setSelectionCleared] = useState(false);
+  const [sheet, setSheet] = useState<{ refused: string | null } | null>(null);
+  const [removing, setRemoving] = useState<{ busy: boolean } | null>(null);
+  const [marking, setMarking] = useState(false);
+  const [notLiveAt, setNotLiveAt] = useState<string | null>(null);
+  const [line, setLine] = useState<Line | null>(null);
+  const [removal, setRemoval] = useState<string | null>(null);
   const [asked, setAsked] = useState<ReadonlySet<string>>(() =>
     invites ? keptAsked(event.id) : new Set(),
   );
@@ -343,6 +325,48 @@ export function GuestsArea({
   }, [open]);
 
   usePageTitle(pageTitle(t, [t('eventPage.guests'), event.name]));
+
+  const erasing = removed?.guest.id ?? null;
+
+  // Leaving the page ends the undo as running out would (sc-3774).
+  useEffect(() => {
+    if (erasing == null) return;
+    const erase = (): void => void api.eraseGuest(event.id, erasing).catch(() => undefined);
+
+    window.addEventListener('pagehide', erase);
+
+    return () => window.removeEventListener('pagehide', erase);
+  }, [event.id, erasing]);
+
+  // The same for many guests' one Undo (sc-3776).
+  useEffect(() => {
+    if (removal == null) return;
+    const erase = (): void => void api.eraseGuestsRemoval(event.id, removal).catch(() => undefined);
+
+    window.addEventListener('pagehide', erase);
+
+    return () => window.removeEventListener('pagehide', erase);
+  }, [event.id, removal]);
+
+  const unmounting = useRef<{ eventId: string; id: string | null; removal: string | null }>({
+    eventId: event.id,
+    id: null,
+    removal: null,
+  });
+
+  useEffect(() => {
+    unmounting.current = { eventId: event.id, id: erasing, removal };
+  });
+
+  useEffect(
+    () => () => {
+      const { eventId, id, removal: many } = unmounting.current;
+
+      if (id != null) void api.eraseGuest(eventId, id).catch(() => undefined);
+      if (many != null) void api.eraseGuestsRemoval(eventId, many).catch(() => undefined);
+    },
+    [],
+  );
 
   useEffect(() => {
     let current = true;
@@ -496,6 +520,68 @@ export function GuestsArea({
     );
   }
 
+  /** Off the list at once, with Undo open; a guest still inside an earlier undo is erased now, since only one message shows. */
+  async function remove(gone: GuestDetails): Promise<void> {
+    await api.removeGuest(event.id, gone.id);
+    if (removed != null) void api.eraseGuest(event.id, removed.guest.id).catch(() => undefined);
+    const at = guests.findIndex((one) => one.id === gone.id);
+    const row = guests[at] ?? gone;
+
+    setLoad((was) =>
+      was.kind === 'loaded' ? { kind: 'loaded', list: withoutGuest(was.list, gone.id).list } : was,
+    );
+    setRecount((n) => n + 1);
+    setBackOnList(null);
+    setRemoved({ guest: row, at });
+    setParams(withGuest(null));
+    focus('undo');
+  }
+
+  function undoRemoval(): void {
+    if (removed == null) return;
+    const { guest, at } = removed;
+
+    setRemoved(null);
+    api.undoGuestRemoval(event.id, guest.id).then(
+      () => {
+        setLoad((was) =>
+          was.kind === 'loaded' ? { kind: 'loaded', list: withGuestAt(was.list, guest, at) } : was,
+        );
+        setRecount((n) => n + 1);
+        setBackOnList(guest.id);
+        lastRow.current = guest.id;
+        setParams(withGuest(guest.id));
+        headingOwed.current = true;
+        focus('guest-heading');
+      },
+      () => setAttempt((n) => n + 1),
+    );
+  }
+
+  function removedLine(guest: Guest): string {
+    const names = guest.companions.map((one) => one.fullName);
+    const companions = names.map((_, at) => companionShown(t, guest.fullName, names, at));
+
+    return companions.length === 0
+      ? t('guestList.guestRemoved', { name: guest.fullName })
+      : t('guestList.guestRemovedWith', {
+          name: guest.fullName,
+          companions: listFormat(currentLocale(), { style: 'long', type: 'conjunction' }).format(
+            companions,
+          ),
+        });
+  }
+
+  /** The 404 "already removed by someone else": Back to guests drops their row. */
+  function removedAlready(id: string): void {
+    setLoad((was) =>
+      was.kind === 'loaded' ? { kind: 'loaded', list: withoutGuest(was.list, id).list } : was,
+    );
+    setRecount((n) => n + 1);
+    setParams(withGuest(null));
+    focus('title');
+  }
+
   /** A phase that no longer invites: the event is read again, so the page says why, and the refusal still reaches the caller. */
   function phaseRefused(error: unknown): never {
     if (error instanceof ApiError && error.is('event_state_invalid')) {
@@ -576,6 +662,180 @@ export function GuestsArea({
     [guests, counts, choice, q, expanded, dietaryOn, groupFilter],
   );
   const looking = choice !== 'all' || q.trim() !== '' || dietaryOn || groupFilter != null;
+  const listLook = `${choice}\n${q}\n${dietaryOn}\n${groupFilter ?? ''}`;
+  const [lookedAt, setLookedAt] = useState(listLook);
+
+  // A tab, a search or a filter changes what is shown, so nothing hidden stays selected (PM #5003).
+  if (lookedAt !== listLook) {
+    setLookedAt(listLook);
+    if (selected.size > 0) {
+      setSelected(NONE);
+      setSelectionCleared(true);
+    }
+  }
+
+  const shownIds = useMemo(() => (manages ? shownGuests(view) : []), [manages, view]);
+  // Only guests the person can see selected are acted on: one removed meanwhile drops out of the count.
+  const picked = useMemo(() => {
+    const shownSet = new Set(shownIds);
+
+    return new Set([...selected].filter((id) => shownSet.has(id)));
+  }, [selected, shownIds]);
+  const everyone = shownIds.length > 0 && shownIds.every((id) => picked.has(id));
+  const companionsPicked = companionsWith(guests, picked);
+  const undoing = line?.kind === 'removed' && removal != null;
+  const bar = manages && picked.size > 0 && (line == null || line.kind === 'undone');
+
+  function select(next: ReadonlySet<string>): void {
+    setSelected(next);
+    setSelectionCleared(false);
+    if (!undoing) setLine(null);
+  }
+
+  function toggle(id: string): void {
+    const next = new Set(picked);
+
+    if (next.has(id)) next.delete(id);
+    else next.add(id);
+    select(next);
+  }
+
+  function ended(next: Line): void {
+    setLine(next);
+    setSheet(null);
+    setRemoving(null);
+    setMarking(false);
+    focus('many-line');
+  }
+
+  /** A removal still inside its Undo is erased once another action ends it, since one line shows at a time. */
+  function endUndo(): void {
+    if (removal != null) void api.eraseGuestsRemoval(event.id, removal).catch(() => undefined);
+    setRemoval(null);
+  }
+
+  function pressMark(): void {
+    if (picked.size > GUESTS_TOGETHER_MOST) return;
+    const asked = markQuestion(guests, picked);
+
+    if (asked.marks === 0) {
+      ended({ kind: 'nothing', already: asked.already.length });
+      return;
+    }
+    setMarking(true);
+  }
+
+  /** A phase that no longer invites is read again, so Mark as invited leaves the bar while the selection stays. */
+  function mark(how: GuestInvitationHow, ids: readonly string[] = [...picked]): void {
+    api.markGuestsInvited(event.id, ids, how).then(
+      (marked) => {
+        endUndo();
+        setSelected(NONE);
+        setRecount((n) => n + 1);
+        setAttempt((n) => n + 1);
+        ended({ kind: 'marked', marked, how });
+      },
+      (error: unknown) => {
+        if (error instanceof ApiError && error.is('event_state_invalid')) {
+          setNotLiveAt(tag);
+          void api.taggedEvent(event.id).then(
+            (latest) => onChange(latest.event, latest.tag),
+            () => undefined,
+          );
+          ended({ kind: 'notLive' });
+          return;
+        }
+        ended({ kind: 'failed', action: { kind: 'mark', how } });
+      },
+    );
+  }
+
+  function move(to: { id: string } | { name: string }, ids: readonly string[] = [...picked]): void {
+    api.moveGuestsToGroup(event.id, ids, to).then(
+      (moved) => {
+        endUndo();
+        setSelected(NONE);
+        setRecount((n) => n + 1);
+        setAttempt((n) => n + 1);
+        ended({ kind: 'moved', moved });
+      },
+      (error: unknown) => {
+        const refused = refusedLine(error, 'group.name', 'group.id');
+
+        if (refused != null && sheet != null) {
+          setSheet({ refused });
+          return;
+        }
+        ended({ kind: 'failed', action: { kind: 'move', to } });
+      },
+    );
+  }
+
+  function removeMany(ids: readonly string[] = [...picked]): void {
+    setRemoving({ busy: true });
+    api.removeGuests(event.id, ids).then(
+      (removed) => {
+        endUndo();
+        const gone = new Set(ids);
+
+        setLoad((was) =>
+          was.kind === 'loaded'
+            ? {
+                kind: 'loaded',
+                list: [...gone].reduce((list, id) => withoutGuest(list, id).list, was.list),
+              }
+            : was,
+        );
+        setSelected(NONE);
+        setRecount((n) => n + 1);
+        setRemoval(removed.removal);
+        if (open != null && gone.has(open)) setParams(withGuest(null));
+        ended({ kind: 'removed', removed });
+      },
+      () => ended({ kind: 'failed', action: { kind: 'remove' } }),
+    );
+  }
+
+  function retry(action: Action): void {
+    if (action.kind === 'mark') mark(action.how);
+    else if (action.kind === 'move') move(action.to);
+    else removeMany();
+  }
+
+  function pressAdd(): void {
+    if (picked.size > GUESTS_TOGETHER_MOST) return;
+    setSheet({ refused: null });
+  }
+
+  function pressRemove(): void {
+    if (picked.size > GUESTS_TOGETHER_MOST) return;
+    setRemoving({ busy: false });
+  }
+
+  function undoMany(): void {
+    if (removal == null) return;
+    const undone = removal;
+
+    setRemoval(null);
+    api.undoGuestsRemoval(event.id, undone).then(
+      () => {
+        const back = line?.kind === 'removed' ? line.removed.guests : 0;
+
+        setAttempt((n) => n + 1);
+        setRecount((n) => n + 1);
+        ended({ kind: 'undone', guests: back });
+      },
+      () => {
+        setLine(null);
+        setAttempt((n) => n + 1);
+      },
+    );
+  }
+
+  function lineGone(): void {
+    endUndo();
+    setLine(null);
+  }
 
   /** The card as `/demo/guests` draws it: a Draft, Paused or Finished event says so on the card, in place of its counts' step. */
   function cover(counts: Counts): Cover {
@@ -762,6 +1022,78 @@ export function GuestsArea({
                             <TextAction label={t('guestList.clear')} onClick={clearView} />
                           )}
                         </div>
+                        <div role="status" className="gb-cleared">
+                          {selectionCleared && (
+                            <div className="gm-line is-quiet">
+                              <Glyph name="info" size={18} weight={2.4} />
+                              <p>
+                                <span>{t('guestSelect.cleared')}</span>
+                                <span className="gb-why">{t('guestSelect.clearedWhy')}</span>
+                              </p>
+                            </div>
+                          )}
+                        </div>
+                        <SelectedSaid
+                          count={bar ? picked.size : null}
+                          companions={companionsPicked}
+                        />
+                        {!manages && (
+                          <p className="desk-note gb-note">{t('guestSelect.viewOnly')}</p>
+                        )}
+                        {manages && shownIds.length > 0 && (
+                          <label className="gs-tick gm-all">
+                            <input
+                              type="checkbox"
+                              className="gs-box"
+                              checked={everyone}
+                              data-focus="many-all"
+                              ref={(box) => {
+                                if (box != null)
+                                  box.indeterminate =
+                                    !everyone && shownIds.some((id) => picked.has(id));
+                              }}
+                              onChange={() => select(everyone ? NONE : new Set(shownIds))}
+                            />
+                            {t('guestSelect.selectAll', { count: shownIds.length })}
+                          </label>
+                        )}
+                        {manages && onlyCompanions(view) && (
+                          <p className="desk-note gb-note">{t('guestSelect.heldNote')}</p>
+                        )}
+                        {manages && (
+                          <div className="gm-dock">
+                            <div
+                              className="gm-said"
+                              data-focus="many-line"
+                              tabIndex={-1}
+                              role="status"
+                            >
+                              {line != null && (
+                                <ResultLine
+                                  key={line.kind === 'removed' ? line.removed.removal : line.kind}
+                                  line={line}
+                                  undo={undoing}
+                                  onUndo={undoMany}
+                                  onGone={lineGone}
+                                  onRetry={retry}
+                                />
+                              )}
+                            </div>
+                            {bar && (
+                              <SelectBar
+                                count={picked.size}
+                                companions={companionsPicked}
+                                onMark={invites && notLiveAt !== tag ? pressMark : null}
+                                onAdd={pressAdd}
+                                onRemove={pressRemove}
+                                onClear={() => {
+                                  select(NONE);
+                                  focus('many-all');
+                                }}
+                              />
+                            )}
+                          </div>
+                        )}
                         {shown === 0 ? (
                           <div className="gs-none">
                             <h2 tabIndex={-1} data-focus="none-heading">
@@ -779,6 +1111,8 @@ export function GuestsArea({
                             timeZone={event.timeZone}
                             open={open}
                             onOpen={openGuest}
+                            picked={manages ? picked : null}
+                            onPick={toggle}
                           />
                         ) : (
                           view.groups.map((group) => (
@@ -800,6 +1134,8 @@ export function GuestsArea({
                                 timeZone={event.timeZone}
                                 open={open}
                                 onOpen={openGuest}
+                                picked={manages ? picked : null}
+                                onPick={toggle}
                               />
                             </Group>
                           ))
@@ -869,6 +1205,9 @@ export function GuestsArea({
                           onDirty={setDirty}
                           onAsk={(then) => setAsking(() => then)}
                           onClose={close}
+                          backOnList={backOnList === open}
+                          onRemove={remove}
+                          onRemovedAlready={() => removedAlready(open)}
                           onShown={() => {
                             if (!headingOwed.current) return;
                             headingOwed.current = false;
@@ -944,8 +1283,53 @@ export function GuestsArea({
             }}
           />
         )}
+        {sheet != null && load.kind === 'loaded' && (
+          <GroupSheet
+            count={picked.size}
+            list={load.list}
+            refused={sheet.refused}
+            onCancel={() => {
+              setSheet(null);
+              focus('many-add');
+            }}
+            onMove={(to) => move(to)}
+          />
+        )}
+        {marking && picked.size > 0 && (
+          <MarkMany
+            asked={markQuestion(guests, picked)}
+            onCancel={() => {
+              setMarking(false);
+              focus('many-mark');
+            }}
+            onMark={(how) => mark(how)}
+          />
+        )}
+        {removing != null && picked.size > 0 && (
+          <RemoveMany
+            asked={removeQuestion(guests, picked)}
+            busy={removing.busy}
+            onKeep={() => {
+              setRemoving(null);
+              focus('many-remove');
+            }}
+            onRemove={() => removeMany()}
+          />
+        )}
         {makeLive.dialogs}
         {saved && <Toast words={t('guestList.saved')} onClose={() => setSaved(false)} />}
+        {removed != null && (
+          <Toast
+            key={removed.guest.id}
+            words={removedLine(removed.guest)}
+            counted={{ said: t('guestList.undoOpen') }}
+            onUndo={undoRemoval}
+            onClose={() => {
+              setRemoved(null);
+              void api.eraseGuest(event.id, removed.guest.id).catch(() => undefined);
+            }}
+          />
+        )}
         <div ref={setHost} className="desk-layers" />
       </div>
     </LayersContext>
@@ -1026,6 +1410,7 @@ function GuestsCover({
 
 const CHOICE_KEY: Record<Choice, string> = {
   all: 'guestList.all',
+  invited: 'guestNumbers.invited',
   coming: REPLY_KEY.coming,
   maybe: REPLY_KEY.maybe,
   noReply: REPLY_KEY.noReply,
@@ -1136,6 +1521,9 @@ function Rows({
   timeZone: string;
   open: string | null;
   onOpen: (id: string) => void;
+  /** The guests selected, or null without guests.manage, when no row has a box (sc-3776). */
+  picked: ReadonlySet<string> | null;
+  onPick: (id: string) => void;
 }) {
   const [drawn, setDrawn] = useState({ look, upTo: ROWS_PER_FRAME });
   const upTo = drawn.look === look ? drawn.upTo : ROWS_PER_FRAME;
@@ -1171,6 +1559,8 @@ function RowsFrom({
   timeZone,
   open,
   onOpen,
+  picked,
+  onPick,
 }: {
   rows: readonly ViewRow[];
   from: number;
@@ -1181,6 +1571,8 @@ function RowsFrom({
   timeZone: string;
   open: string | null;
   onOpen: (id: string) => void;
+  picked: ReadonlySet<string> | null;
+  onPick: (id: string) => void;
 }) {
   const { t } = useTranslation();
 
@@ -1188,19 +1580,28 @@ function RowsFrom({
     <>
       {rows.slice(from, to).map(({ person, indent }) => {
         const { guest, companion } = person;
-        const { name, line } = rowWords(
-          t,
-          person,
-          indent,
-          timeZone,
-          dateLocale(),
-          choice !== 'noReply',
-          companion == null ? invitationLine(t, guest, timeZone, dateLocale()) : null,
-        );
+        const noReply = choice === 'noReply';
+        const { name, line } = rowWords(t, person, indent, timeZone, dateLocale(), {
+          places: noReply ? null : 'named',
+          contact: true,
+          invitation:
+            noReply && companion == null ? invitationLine(t, guest, timeZone, dateLocale()) : null,
+        });
 
         if (companion == null)
           return (
-            <li key={guest.id}>
+            <li key={guest.id} className={picked == null ? undefined : 'gm-pick'}>
+              {picked != null && (
+                <label className="gm-box">
+                  <input
+                    type="checkbox"
+                    className="gs-box"
+                    aria-label={t('guestSelect.select', { name: guest.fullName })}
+                    checked={picked.has(guest.id)}
+                    onChange={() => onPick(guest.id)}
+                  />
+                </label>
+              )}
               <RowLink
                 eventId={eventId}
                 guestId={guest.id}

@@ -1,6 +1,7 @@
 import { memberStanding, type MemberStanding } from '@soirely/domain';
 
 import { writtenTime } from '../clock.ts';
+import { crowdName } from '../sampleNames.ts';
 
 import { handedLines, HANDOVER_WORDS } from './MembersHandoverWords.ts';
 import {
@@ -315,6 +316,8 @@ export const MEMBERS_STATES = [
   'readOnly',
   'nobodySuspended',
   'nobodyLeft',
+  'ninetyNine',
+  'crowd',
   'loading',
   'failed',
   'approving',
@@ -751,6 +754,36 @@ const MORE_PEOPLE: readonly (readonly [string, string, string])[] = [
   ['Pierre Lambert', 'PL', 'pierre.lambert'],
 ];
 
+/** All at 104 shows +99 beside the faces, the chip's widest figure; at 1,326 it shows 99+ (sc-48825). */
+export const CROWDS = { ninetyNine: 104, crowd: 1326 } as const;
+
+/** Ire Events grown to `total` on All, so the card's chip has more beyond its five faces than its circle holds (sc-48825). */
+export function crowdOf(people: readonly Person[], total: number): Person[] {
+  const shown = people.filter((one) => isShown(one.status, 'all')).length;
+  const extra = Array.from({ length: Math.max(0, total - shown) }, (_, index) => {
+    const name = crowdName(index);
+    const id = `crowd-${index + 1}@${DOMAIN}`;
+
+    return {
+      name,
+      initials: name
+        .split(' ')
+        .map((part) => part[0] ?? '')
+        .join(''),
+      email: id,
+      id,
+      role: 'Member',
+      status: 'active' as const,
+      how: 'Company email address',
+      when: '2026-10-05',
+      tone: people.length + index,
+      gone: null,
+    };
+  });
+
+  return [...people, ...extra];
+}
+
 /** handoverSearch's Ire Events: eleven more people, 18 in all, so the menu offers 16 and starts with its search. */
 export function withMorePeople(people: readonly Person[]): Person[] {
   return [
@@ -900,6 +933,9 @@ export function membersStart(
       return { ...base, people: restored(people, MARTA), filter: 'suspended' };
     case 'nobodyLeft':
       return { ...base, people: people.filter(({ id }) => id !== DANIEL), filter: 'former' };
+    case 'ninetyNine':
+    case 'crowd':
+      return { ...base, people: crowdOf(people, CROWDS[state]) };
     case 'loading':
     case 'failed':
       return { ...base, load: state };

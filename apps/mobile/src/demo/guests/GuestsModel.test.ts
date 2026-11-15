@@ -85,7 +85,7 @@ describe('the states, as guests-a-spec §15 names them', () => {
     expect(
       GUESTS_STATES.filter((state) => (DOOR_STATES as readonly string[]).includes(state)),
     ).toEqual([]);
-    expect(GUESTS_STATES).toHaveLength(132);
+    expect(GUESTS_STATES).toHaveLength(153);
     expect(DOOR_STATES).toHaveLength(13);
   });
 
@@ -287,6 +287,69 @@ describe('invited is a fact with a date and a way (sc-3788)', () => {
   });
 });
 
+describe('an empty list on a Draft, a Paused or a Finished event (sc-46879)', () => {
+  const none = countsFrom([]);
+
+  it('opens each on an event of that phase, with nobody on the list', () => {
+    expect(eventOf('emptyDraft')).toBe('evt-cena-4');
+    expect(eventOf('emptyDraftViewer')).toBe('evt-cena-4');
+    expect(eventOf('emptyPaused')).toBe('evt-party-2');
+    expect(eventOf('emptyFinished')).toBe('evt-off');
+    for (const state of ['emptyDraft', 'emptyPaused', 'emptyFinished'] as const) {
+      expect(areaStart(state).empty).toBe(true);
+      expect(guestsAt(state)).toEqual([]);
+      expect(guestsOpening(state, eventOf(state), EN).counts.list).toBe(0);
+    }
+    expect(roleOf('emptyDraft')).toBe('owner');
+    expect(roleOf('emptyDraftViewer')).toBe('viewer');
+  });
+
+  it('keeps No guests yet and Add guest, with the phase’s chip and line under the title', () => {
+    expect(cardWords('emptyDraft', 'owner', none, true, EN, null)).toEqual({
+      tags: [{ word: 'Draft', mark: 'draft' }],
+      says: 'No guests yet',
+      count: null,
+      line: 'Guests can’t be invited until this event is live.',
+      step: 'addGuest',
+      also: 'makeLive',
+    });
+    expect(cardWords('emptyPaused', 'owner', none, true, EN, null)).toEqual({
+      tags: [{ word: 'Paused', mark: 'paused' }],
+      says: 'No guests yet',
+      count: null,
+      line: 'Guests can’t be invited while this event is paused.',
+      step: 'addGuest',
+    });
+    expect(cardWords('emptyFinished', 'owner', none, true, EN, null)).toEqual({
+      tags: [{ word: 'Finished', mark: 'finished' }],
+      says: 'No guests yet',
+      count: null,
+      line: 'This event has finished, so guests can’t be invited.',
+      step: 'addGuest',
+    });
+  });
+
+  it('gives someone without events.manage the line alone: no Add guest, no Make live', () => {
+    expect(cardWords('emptyDraftViewer', 'viewer', none, true, EN, null)).toEqual({
+      tags: [{ word: 'Draft', mark: 'draft' }],
+      says: 'No guests yet',
+      count: null,
+      line: 'Guests can’t be invited until this event is live.',
+      step: null,
+    });
+  });
+
+  it('leaves the first-time card on a Live event as it was', () => {
+    expect(cardWords('first', 'owner', none, true, EN, null)).toEqual({
+      tags: [],
+      says: 'No guests yet',
+      count: null,
+      line: null,
+      step: 'addGuest',
+    });
+  });
+});
+
 describe('a list that starts empty', () => {
   it('counts only who was added to it', () => {
     expect(countsFrom([])).toMatchObject({ list: 0, invited: 0, havent: 0 });
@@ -334,9 +397,9 @@ describe('the list: groups, the filter and search (sc-3772)', () => {
       'Inês Duarte',
       'Rui Duarte',
     ]);
-    expect(coming[0]?.line).toBe('Coming · replied Oct 14 · 1 companion');
+    expect(coming[0]?.line).toBe('Coming · replied Oct 14 · Bride’s side · 1 companion');
     expect(groupRows(GUESTS, 'maybe', EN, REPLY_BY)[1]?.line).toBe(
-      'Held · comes only if their host accepts',
+      'Held · comes only if their host accepts · Bride’s side',
     );
   });
 
@@ -349,14 +412,14 @@ describe('the list: groups, the filter and search (sc-3772)', () => {
       'Oluwaseun Ajayi',
       'Tomás Ferreira',
     ]);
-    expect(rows[0]?.line).toBe('Invited by Folake Adeyemi, WhatsApp, Oct 9');
+    expect(rows[0]?.line).toBe('Invited by Folake Adeyemi, WhatsApp, Oct 9 · Bride’s side');
     expect(rowsOf(GUESTS, 'held', '', EN, REPLY_BY).map((row) => row.name)).toEqual([
       'Guest of Chief Mrs Folasade Okonkwo-Williams',
       'Adanna Nwosu',
     ]);
     expect(rowsOf(GUESTS, 'held', '', EN, REPLY_BY).map((row) => row.line)).toEqual([
-      'Held · comes only if their host accepts',
-      'Guest of Dr Emeka Nwosu · Held · comes only if their host accepts',
+      'Held · comes only if their host accepts · Bride’s side',
+      'Guest of Dr Emeka Nwosu · Held · comes only if their host accepts · Bride’s side',
     ]);
   });
 
@@ -409,7 +472,7 @@ describe('a split family (sc-3773, ux, 8 Nov): each group shows the people it co
     const notComing = groupRows(after, 'notcoming', EN, REPLY_BY);
     expect(notComing.map((row) => [row.name, row.line, row.companion])).toContainEqual([
       'Adanna Nwosu',
-      'Guest of Dr Emeka Nwosu',
+      'Guest of Dr Emeka Nwosu · Bride’s side',
       false,
     ]);
     expect(groupRows(after, 'noreply', EN, REPLY_BY).map((row) => row.name)).not.toContain(
@@ -683,11 +746,11 @@ describe('Changed since you looked (sc-4331)', () => {
     expect(
       changedRows(GUESTS, changesSince(null), '', now, 'en-US').map((p) => `${p.name}: ${p.line}`),
     ).toEqual([
-      'Lucía Ortega: Not sure yet · Changed at 09:31',
-      'Inês Duarte: Coming · Replied at 08:40',
-      'Amaka Eze: Coming · Replied at 07:52',
-      'Camille Dubois: Not coming · Replied Nov 2',
-      'Alhaji Musa Bello: Coming · Replied Nov 2',
+      'Lucía Ortega: Not sure yet · Changed at 09:31 · Old school friends',
+      'Inês Duarte: Coming · Replied at 08:40 · Work',
+      'Amaka Eze: Coming · Replied at 07:52 · Bride’s side',
+      'Camille Dubois: Not coming · Replied Nov 2 · Work',
+      'Alhaji Musa Bello: Coming · Replied Nov 2 · Bride’s side',
     ]);
   });
 
@@ -705,7 +768,7 @@ describe('Changed since you looked (sc-4331)', () => {
       now,
       'en-US',
     );
-    expect(row?.line).toBe('Updated dietary needs · Changed Nov 2');
+    expect(row?.line).toBe('Updated dietary needs · Changed Nov 2 · Groom’s side');
   });
 
   it('keeps the bell’s item and the filter on one look: bell, filter, bell', () => {

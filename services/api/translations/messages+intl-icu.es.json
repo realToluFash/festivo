@@ -15,6 +15,7 @@
     "people.job_label_too_long": "Acorte el nombre del puesto a {count, plural, one {{count, number, ::group-auto} carácter} many {{count, number, ::group-auto} de caracteres} other {{count, number, ::group-auto} caracteres}} como máximo.",
     "validation.event_name_too_long": "Acorte el nombre a {count, number, ::group-auto} caracteres como máximo.",
     "validation.name_too_long": "Acorte su nombre a {count, number, ::group-auto} caracteres como máximo.",
+    "validation.event_arrival_note_too_long": "Shorten the arrival note to {count, number, ::group-auto} characters or fewer.",
     "validation.event_venue_address_too_long": "Acorte la dirección a {count, number, ::group-auto} caracteres como máximo.",
     "validation.event_venue_name_too_long": "Acorte el nombre del lugar a {count, number, ::group-auto} caracteres como máximo.",
     "validation.organisation_name_too_long": "Ese nombre tiene {length, number, ::group-auto} caracteres. Acórtelo a {count, number, ::group-auto} como máximo.",
@@ -68,5 +69,6 @@
     "eventChanges.email.link": "{label}: {url}",
     "eventChanges.email.footer": "Recibe este correo porque forma parte de {event}, en {organisation}. Para dejar de recibirlos, desactive el correo electrónico de «Cambios en eventos» en la configuración de notificaciones.",
     "eventChanges.email.footerEventDay": "Recibe este correo porque forma parte de {event}, en {organisation}. Para dejar de recibirlos, desactive el correo electrónico de «Día del evento» en la configuración de notificaciones.",
-    "limits.calendar_feed": "Este enlace de calendario se ha consultado demasiadas veces. Inténtelo de nuevo {hour, plural, =1 {a la {time}} other {a las {time}}}."
+    "limits.calendar_feed": "Este enlace de calendario se ha consultado demasiadas veces. Inténtelo de nuevo {hour, plural, =1 {a la {time}} other {a las {time}}}.",
+    "validation.guests_too_many": "Puede gestionar a la vez un máximo de {most, number, ::group-auto} invitados. Acote la lista con una pestaña, una búsqueda o un filtro y vuelva a seleccionar."
 }

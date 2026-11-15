@@ -7,9 +7,10 @@ import { phoneMatches } from './phone.ts';
 /** Where a person stands, in the host's words: a companion is Not yet invited with their guest, then Held until their guest is Coming. */
 export type Standing = 'coming' | 'maybe' | 'noReply' | 'notYetInvited' | 'held' | 'notComing';
 
-/** The filter menu's choices in its order (sc-3772); `all` is the default and is never written to the address. */
+/** The filter menu's choices in its order (sc-3772); `all` is the default and is never written to the address. All and Invited are totals, set apart from the replies below them, which add up to All; Invited is the five replies together (sc-3786). */
 export const CHOICES = [
   'all',
+  'invited',
   'coming',
   'maybe',
   'noReply',
@@ -47,8 +48,14 @@ export function dietary(needs: GuestNeeds | null | undefined): boolean {
   return needs != null && (needs.allergies.length > 0 || needs.diet.length > 0);
 }
 
-export function peopleOf(guests: readonly Guest[]): Person[] {
-  return [...guests]
+/** Sorted once per list the API returned, not once per keystroke (sc-3772). */
+const sorted = new WeakMap<readonly Guest[], readonly Person[]>();
+
+export function peopleOf(guests: readonly Guest[]): readonly Person[] {
+  const known = sorted.get(guests);
+
+  if (known != null) return known;
+  const people = [...guests]
     .sort((a, b) => compareGuestNames({ name: a.fullName }, { name: b.fullName }))
     .flatMap((guest) => [
       { id: guest.id, standing: shownReply(guest), guest, companion: null, at: 0 },
@@ -60,10 +67,13 @@ export function peopleOf(guests: readonly Guest[]): Person[] {
         at,
       })),
     ]);
+
+  sorted.set(guests, people);
+
+  return people;
 }
 
 export type Counts = Record<Choice, number> & {
-  invited: number;
   /** Everyone without an answer of their own: the guests who owe one and the companions held behind them. */
   havent: number;
   haventGuests: number;
@@ -92,15 +102,31 @@ export function matches(person: Person, q: string): boolean {
   const typed = nameKey(q);
 
   if (typed === '') return true;
-  const name = person.companion == null ? person.guest.fullName : person.companion.fullName;
+  const { name, email } = keysOf(person);
 
-  if (name != null && nameKey(name).includes(typed)) return true;
+  if (name != null && name.includes(typed)) return true;
   if (person.companion != null) return false;
-  const { email, mobile } = person.guest;
+  const { mobile } = person.guest;
 
-  return (
-    (email != null && nameKey(email).includes(typed)) || (mobile != null && phoneMatches(mobile, q))
-  );
+  return (email != null && email.includes(typed)) || (mobile != null && phoneMatches(mobile, q));
+}
+
+const keys = new WeakMap<Person, { name: string | null; email: string | null }>();
+
+function keysOf(person: Person): { name: string | null; email: string | null } {
+  const known = keys.get(person);
+
+  if (known != null) return known;
+  const name = person.companion == null ? person.guest.fullName : person.companion.fullName;
+  const email = person.companion == null ? person.guest.email : null;
+  const made = {
+    name: name == null ? null : nameKey(name),
+    email: email == null ? null : nameKey(email),
+  };
+
+  keys.set(person, made);
+
+  return made;
 }
 
 /** sc-3775's chips: a group's id, or No group; a companion is in their guest's. */
@@ -127,7 +153,7 @@ export interface ViewGroup {
 
 export type ListView = { kind: 'groups'; groups: ViewGroup[] } | { kind: 'rows'; rows: ViewRow[] };
 
-/** On All with no search, no Dietary notes and no group chip, the groups; otherwise the flat rows the choice, the search and Dietary notes keep, a companion under their guest when both are kept. */
+/** On All or Invited with no search, no Dietary notes and no group chip, the groups (Invited's without Not yet invited); otherwise the flat rows the choice, the search and Dietary notes keep, a companion under their guest when both are kept. */
 export function viewOf(
   guests: readonly Guest[],
   counts: Counts,
@@ -139,10 +165,13 @@ export function viewOf(
 ): { view: ListView; shown: number } {
   const people = peopleOf(guests);
 
-  if (choice !== 'all' || q.trim() !== '' || dietaryOnly || group != null) {
+  const totals = choice === 'all' || choice === 'invited';
+
+  if (!totals || q.trim() !== '' || dietaryOnly || group != null) {
     const found = people.filter(
       (one) =>
-        (choice === 'all' || one.standing === choice) &&
+        (choice === 'all' ||
+          (choice === 'invited' ? one.standing !== 'notYetInvited' : one.standing === choice)) &&
         matches(one, q) &&
         inGroup(one, group) &&
         (!dietaryOnly || dietary(one.companion == null ? one.guest.needs : one.companion.needs)),
@@ -161,24 +190,26 @@ export function viewOf(
     };
   }
 
-  const groups = GROUPS.map((standing) => {
-    const heads = people.filter((one) => one.companion == null && one.standing === standing);
-    const open = expanded.has(standing) || heads.length <= FIRST_ROWS;
-    const rows = (open ? heads : heads.slice(0, FIRST_ROWS)).flatMap((head) => [
-      { person: head, indent: false },
-      ...people
-        .filter((one) => one.companion != null && one.guest.id === head.id)
-        .map((person) => ({ person, indent: true })),
-    ]);
+  const groups = GROUPS.filter((standing) => choice === 'all' || standing !== 'notYetInvited')
+    .map((standing) => {
+      const heads = people.filter((one) => one.companion == null && one.standing === standing);
+      const open = expanded.has(standing) || heads.length <= FIRST_ROWS;
+      const rows = (open ? heads : heads.slice(0, FIRST_ROWS)).flatMap((head) => [
+        { person: head, indent: false },
+        ...people
+          .filter((one) => one.companion != null && one.guest.id === head.id)
+          .map((person) => ({ person, indent: true })),
+      ]);
 
-    return {
-      standing,
-      count: counts[standing],
-      rows,
-      collapsed: !open,
-      next: open ? null : (heads[FIRST_ROWS]?.id ?? null),
-    };
-  }).filter((group) => group.rows.length > 0);
+      return {
+        standing,
+        count: counts[standing],
+        rows,
+        collapsed: !open,
+        next: open ? null : (heads[FIRST_ROWS]?.id ?? null),
+      };
+    })
+    .filter((group) => group.rows.length > 0);
 
-  return { view: { kind: 'groups', groups }, shown: counts.all };
+  return { view: { kind: 'groups', groups }, shown: counts[choice] };
 }

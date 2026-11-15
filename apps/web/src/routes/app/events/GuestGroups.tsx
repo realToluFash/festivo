@@ -12,16 +12,15 @@ import { useTranslation } from 'react-i18next';
 import { api } from '../../../api.ts';
 import { Glyph } from '../../../components/Glyph.tsx';
 import { Ask, RowWords } from '../../../components/SettingsParts.tsx';
+import { problemLine, refusedLine } from './guestGroups.ts';
 import {
-  choiceOf,
+  NO_GROUP,
+  groupChoiceOf,
   groupNameLength,
   groupOptions,
   groupProblem,
-  problemLine,
-  refusedLine,
   sortedGroups,
-} from './guestGroups.ts';
-import { NO_GROUP } from '@soirely/domain';
+} from '@soirely/domain';
 import './guestGroups.css';
 
 const BLUR_MS = 120;
@@ -127,7 +126,7 @@ export function GroupField({
     setOpen(true);
     setActive(0);
     setRefused(null);
-    onChange(choiceOf(groups, next));
+    onChange(groupChoiceOf(groups, next));
   }
 
   function choose(row: (typeof rows)[number] | undefined): void {

@@ -278,7 +278,7 @@ describe('a window that opens through a Modal of its own (sc-42690)', () => {
     );
   });
 
-  it('on the phone, hides Create an organisation’s field from TalkBack until it has taken input focus, then moves TalkBack’s focus onto it (qa4 #48525)', () => {
+  it('on the phone, hides and unnames Create an organisation’s field until it has taken input focus, names it while still hidden and shows it a moment later, unnames it again before raising its keys once more, and leaves TalkBack to move its own focus onto it (qa4 #48525, #48921, qa2 #49329, #49366, #49942)', () => {
     const walk = read('CreateWalkWindow.tsx');
     const steps = read('CreateWalkSteps.tsx');
 
@@ -287,16 +287,29 @@ describe('a window that opens through a Modal of its own (sc-42690)', () => {
     );
     expect(walk).toContain("quiet={live && quiet && opening.focus === 'name'}");
     expect(walk).toContain("quiet={live && quiet && opening.focus === 'search'}");
-    expect(walk).toContain('onTaken={live ? voice : undefined}');
-    expect(walk).toContain('if (focused && live) voice();');
+    expect(walk).not.toContain('voice()');
+    expect(steps).not.toContain('onTaken');
+    expect(walk).not.toContain('voicing');
     expect(walk).toMatch(
-      /if \(input\?\.isFocused\(\)\) moveScreenReaderFocus\(input\);\s+\}, \[voiced, opening\]\);/,
+      /const taken = \(\) => \{\s+if \(quiet && onScreen && !unnamed\) setNamed\(true\);/,
+    );
+    expect(walk).toContain('onFocused={live ? taken : undefined}');
+    expect(walk).toContain('if (focused && live) taken();');
+    expect(steps).toMatch(/setFocused\(true\);\s+onFocused\?\.\(\);/);
+    expect(walk).toMatch(
+      /if \(!quiet \|\| !onScreen \|\| unnamed \|\| named\) return;\s+const reachable = setTimeout\(\(\) => setNamed\(true\), KEYS_AWAITED_MS\);/,
     );
     expect(walk).toMatch(
-      /if \(!quiet \|\| !onScreen \|\| unnamed\) return;\s+const reachable = setTimeout\(\(\) => setVoiced\(true\), SETTLED_MS\);\s+return \(\) => clearTimeout\(reachable\);\s+\}, \[quiet, onScreen, unnamed\]\);/,
+      /if \(!quiet \|\| !named\) return;\s+const settled = setTimeout\(\(\) => setVoiced\(true\), NAMED_SETTLES_MS\);/,
     );
+    expect(walk).toContain("nameless={live && quiet && !named && opening.focus === 'name'}");
+    expect(walk).toMatch(/regaining\.current = input;\s+setNamed\(false\);\s+setVoiced\(false\);/);
+    expect(walk).toMatch(
+      /if \(!quiet \|\| named \|\| input == null\) return;\s+regaining\.current = null;\s+raiseKeysOn\(input\);\s+\}, \[quiet, named\]\);/,
+    );
+    expect(steps).toContain("accessibilityLabel={nameless ? '' : t('createOrganisation.name')}");
+    expect(steps).toContain('accessibilityHint={nameless ? undefined : (refusal ?? help)}');
     expect(steps.match(/importantForAccessibility=\{quiet \? 'no' : 'auto'\}/g)).toHaveLength(2);
-    expect(steps).toMatch(/setFocused\(true\);\s+onTaken\?\.\(\);/);
   });
 
   it('raises the keys once more on a field that gives up focus before the keys it was raised with come up (qa3 #47084)', () => {
@@ -306,7 +319,7 @@ describe('a window that opens through a Modal of its own (sc-42690)', () => {
       /Keyboard\.addListener\('keyboardDidShow', \(\) => \{\s+holding\.current = null;/,
     );
     expect(walk).toMatch(
-      /const keysLost = \(\) => \{\s+const input = holding\.current;\s+holding\.current = null;\s+if \(input != null && open && !walk\.asking\) raiseKeysOn\(input\);/,
+      /const keysLost = \(\) => \{\s+const input = holding\.current;\s+holding\.current = null;\s+if \(input == null \|\| !open \|\| walk\.asking\) return;/,
     );
     expect(walk).toContain('onLeft={live ? keysLost : undefined}');
     expect(walk).toContain('if (!focused && live) keysLost();');
