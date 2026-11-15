@@ -1,0 +1,20 @@
+# sc-50313: Members on its side, the People filter low on the screen, opened and left open.
+appId: host.exp.Exponent
+---
+- setOrientation: LANDSCAPE_LEFT
+- openLink: ${METRO_URL}/--/settings/members
+- extendedWaitUntil:
+    visible: '{{t:membersScreen.title}}'
+    timeout: 30000
+- waitForAnimationToEnd:
+    timeout: 5000
+- scrollUntilVisible:
+    element:
+      id: members.filter
+    timeout: 20000
+- takeScreenshot: members-low-closed
+- tapOn:
+    id: members.filter
+- waitForAnimationToEnd:
+    timeout: 3000
+- takeScreenshot: members-low-open
