@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 
-import { hourContext, timeSlot } from './runWords.ts';
+import { hourContext, runItemOf, timeSlot } from './runWords.ts';
 
 describe('the article a time takes in a sentence (sc-1404)', () => {
   it('picks the one o’clock form, "a la 1:15", in 24-hour and 12-hour clocks', () => {
@@ -19,5 +19,24 @@ describe('the article a time takes in a sentence (sc-1404)', () => {
   it('carries the formatted time beside its context', () => {
     expect(timeSlot('01:15', 'es')).toEqual({ time: '01:15', context: 'hour1' });
     expect(timeSlot('21:15', 'es')).toEqual({ time: '21:15' });
+  });
+});
+
+describe('an item as the run view reads it (sc-1404)', () => {
+  it('reads its planned start and its marks as wall-clock times in the event zone', () => {
+    expect(
+      runItemOf({
+        id: 'a',
+        startsAt: '2026-11-15T21:15:00+01:00',
+        startedAt: '2026-11-15T21:22:41+01:00',
+        endedAt: null,
+      }),
+    ).toEqual({
+      id: 'a',
+      startsAt: '2026-11-15T21:15:00+01:00',
+      planned: '2026-11-15T21:15',
+      startedAt: '2026-11-15T21:22',
+      endedAt: null,
+    });
   });
 });

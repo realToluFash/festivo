@@ -1,4 +1,5 @@
 import { formatWallClock } from './datetime.ts';
+import { wallOfZoned } from './runOfShow.ts';
 import {
   type RunFigure,
   type RunTimesItem,
@@ -17,6 +18,22 @@ export interface RunTrackShown<I extends RunTimesItem> {
   /** The place alone, for the phone's track picker. */
   place: string;
   track: RunTrack<I>;
+}
+
+export interface RunMarked {
+  startsAt: string;
+  startedAt: string | null;
+  endedAt: string | null;
+}
+
+/** An item as the API sends it, read by the run view's rules: its planned start, and its marks as wall-clock times rather than RFC 3339. */
+export function runItemOf<I extends RunMarked>(one: I): I & { planned: string } {
+  return {
+    ...one,
+    planned: wallOfZoned(one.startsAt),
+    startedAt: one.startedAt == null ? null : wallOfZoned(one.startedAt),
+    endedAt: one.endedAt == null ? null : wallOfZoned(one.endedAt),
+  };
 }
 
 /** One table per place on each event day, in the order their first items start. */

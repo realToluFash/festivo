@@ -15,10 +15,10 @@ import {
   figureWords,
   formatWallClock,
   nextWords,
+  runItemOf,
   runShown,
   timeSlot,
   wallAt,
-  wallOfZoned,
 } from '@soirely/domain';
 import type { TFunction } from 'i18next';
 import { useEffect, useState } from 'react';
@@ -54,15 +54,6 @@ const PATHS = {
     'M12 17h.01',
   ],
 } as const;
-
-function runItemOf(one: ScheduleItem): RunItem {
-  return {
-    ...one,
-    planned: wallOfZoned(one.startsAt),
-    startedAt: one.startedAt == null ? null : wallOfZoned(one.startedAt),
-    endedAt: one.endedAt == null ? null : wallOfZoned(one.endedAt),
-  };
-}
 
 function said(t: TFunction, [key, values]: RunWords): string {
   return values == null ? t(key) : t(key, values);
