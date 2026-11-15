@@ -37,7 +37,7 @@ appId: host.exp.Exponent
 - repeat:
     times: 120
     while:
-      true: ${(function(){try{return http.get('http://127.0.0.1:38080/api/health').ok}catch(e){return false}})()}
+      true: ${(function(){try{return http.get(API_URL + '/api/health').ok}catch(e){return false}})()}
     commands:
       - extendedWaitUntil: { visible: { id: 'never.there' }, timeout: 2000, optional: true }
 - tapOn: { id: 'guest.form.save' }

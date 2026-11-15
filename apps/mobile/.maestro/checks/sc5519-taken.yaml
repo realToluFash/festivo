@@ -23,7 +23,7 @@ appId: host.exp.Exponent
 - extendedWaitUntil: { visible: { id: 'never.there' }, timeout: 1000, optional: true }
 - takeScreenshot: taken-chosen
 - evalScript: >-
-    ${output.made = http.post('http://127.0.0.1:38080/api/events/' + EVENT_ID + '/guest-groups', {headers: {'Content-Type': 'application/json', 'Authorization': 'Bearer ' + TOKEN, 'Origin': 'http://127.0.0.1:35173'}, body: '{"name":"cousins TÁBLE"}'}).status}
+    ${output.made = http.post(API_URL + '/api/events/' + EVENT_ID + '/guest-groups', {headers: {'Content-Type': 'application/json', 'Authorization': 'Bearer ' + TOKEN, 'Origin': WEB_URL}, body: '{"name":"cousins TÁBLE"}'}).status}
 - assertTrue: ${output.made == 201}
 - tapOn: { id: 'guest.form.save' }
 - extendedWaitUntil: { visible: { id: 'never.there' }, timeout: 3000, optional: true }
