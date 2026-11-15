@@ -10,7 +10,7 @@ import {
   useWindowDimensions,
 } from 'react-native';
 
-import { labelFits } from '../layout/titleFit.ts';
+import { labelFits, rowRoom } from '../layout/titleFit.ts';
 import { titleSize } from '../layout/textSize.ts';
 import { tokens } from '../theme/tokens.ts';
 import { Glyph } from './Glyph.tsx';
@@ -84,7 +84,13 @@ export function usePrimaryLabel({
   const wide =
     measuring &&
     labelFits({
-      room: slot.width > 0 ? slot.width + gap + (slot.wide ? labelledWidth : tokens.sizeHit) : 0,
+      room: rowRoom({
+        slot: slot.width,
+        gap,
+        drawn: slot.wide ? 'labelled' : 'round',
+        labelled: labelledWidth,
+        round: tokens.sizeHit,
+      }),
       title: titleWidth,
       extra: 0,
       labelled: labelledWidth,
