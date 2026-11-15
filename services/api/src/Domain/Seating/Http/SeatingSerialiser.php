@@ -6,21 +6,27 @@ namespace App\Domain\Seating\Http;
 
 use App\Entity\Event;
 use App\Entity\SeatingPlan;
+use App\Entity\SeatingRow;
+use App\Entity\SeatingSeat;
 use App\Entity\SeatingSection;
 use App\Entity\SeatingTable;
 use App\Enum\MeasurementSystem;
+use App\Repository\SeatingRowRepository;
+use App\Repository\SeatingSeatRepository;
 use App\Repository\SeatingSectionRepository;
 use App\Repository\SeatingTableRepository;
 use Psl\Iter;
 use Psl\Math;
 use Psl\Vec;
 
-/** Rows, single seats and seated guests count as none until sc-4003 and sc-4013 can place them (sc-3998, sc-4000). */
+/** Seated guests count as none until sc-4013 can place them (sc-3998, sc-4000, sc-4003). */
 final readonly class SeatingSerialiser
 {
     public function __construct(
         private SeatingSectionRepository $seatingSectionRepository,
         private SeatingTableRepository $seatingTableRepository,
+        private SeatingRowRepository $seatingRowRepository,
+        private SeatingSeatRepository $seatingSeatRepository,
     ) {
     }
 
@@ -38,6 +44,8 @@ final readonly class SeatingSerialiser
     {
         $sections = $this->seatingSectionRepository->findInPlan($plan);
         $tables = $this->seatingTableRepository->findInPlan($plan);
+        $rows = $this->seatingRowRepository->findInPlan($plan);
+        $singleSeats = $this->seatingSeatRepository->findInPlan($plan);
         $unsectioned = Vec\filter($tables, static fn (SeatingTable $table): bool => null === $table->getSection());
 
         return [
@@ -49,12 +57,14 @@ final readonly class SeatingSerialiser
             'changedBy' => $plan->getChangedBy()?->getName(),
             'sections' => Vec\map($sections, static fn (SeatingSection $section): array => self::section($section, $tables)),
             'tables' => Vec\map($tables, self::table(...)),
+            'rows' => Vec\map($rows, self::row(...)),
+            'singleSeats' => Vec\map($singleSeats, self::singleSeat(...)),
             'withoutSection' => ['tables' => Iter\count($unsectioned), 'seats' => self::seatsAt($unsectioned)],
             'counts' => [
                 'sections' => Iter\count($sections),
                 'tables' => Iter\count($tables),
-                'rows' => 0,
-                'singleSeats' => 0,
+                'rows' => Iter\count($rows),
+                'singleSeats' => Iter\count($singleSeats),
                 'seatedGuests' => 0,
             ],
         ];
@@ -101,6 +111,43 @@ final readonly class SeatingSerialiser
             'unusableSeats' => $table->getUnusableSeats(),
             'version' => $table->getVersion(),
             'changedBy' => $table->getChangedBy()?->getName(),
+        ];
+    }
+
+    /**
+     * Seat 1 is on the left of a guest sitting in the row and facing the front; `xCm` and `yCm` are the row's centre, and `rotation` turns it clockwise about it.
+     *
+     * @return array<string, mixed>
+     */
+    private static function row(SeatingRow $row): array
+    {
+        return [
+            'id' => $row->getId()->toRfc4122(),
+            'label' => $row->getLabel(),
+            'sectionId' => $row->getSection()?->getId()->toRfc4122(),
+            'seats' => $row->getSeats(),
+            'spacingCm' => $row->getSpacingCm(),
+            'rotation' => $row->getRotation(),
+            'xCm' => $row->getXCm(),
+            'yCm' => $row->getYCm(),
+            'unusableSeats' => $row->getUnusableSeats(),
+            'version' => $row->getVersion(),
+            'changedBy' => $row->getChangedBy()?->getName(),
+        ];
+    }
+
+    /** @return array<string, mixed> */
+    private static function singleSeat(SeatingSeat $seat): array
+    {
+        return [
+            'id' => $seat->getId()->toRfc4122(),
+            'name' => $seat->getName(),
+            'sectionId' => $seat->getSection()?->getId()->toRfc4122(),
+            'xCm' => $seat->getXCm(),
+            'yCm' => $seat->getYCm(),
+            'unusable' => $seat->isUnusable(),
+            'version' => $seat->getVersion(),
+            'changedBy' => $seat->getChangedBy()?->getName(),
         ];
     }
 
