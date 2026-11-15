@@ -8,6 +8,7 @@ import { SIDE_AREA_GLYPHS } from '../components/eventSideAreas.ts';
 import { guestsAt, hasGuests } from './guests.ts';
 import { OrgSwitcher } from './OrgSwitcher.tsx';
 import { SAMPLE } from './rules.ts';
+import { RUN_EVENT } from './runView.ts';
 import { STATIONS_EVENT } from './stations.ts';
 import type { Tell } from '../components/SettingsParts.tsx';
 import { SearchRow } from './Search.tsx';
@@ -81,9 +82,11 @@ export function EventSidebar({
                         one.area === 'seating' ||
                         (one.area === 'staff' && event.id === STATIONS_EVENT)
                       ? `/demo/events/${event.id}/${one.area}`
-                      : one.area === 'guests' && hasGuests(event.id)
-                        ? guestsAt(event.id)
-                        : `/demo/events/${event.id}?area=${one.area}`
+                      : one.area === 'schedule' && event.id === RUN_EVENT
+                        ? `/demo/events/${event.id}/run`
+                        : one.area === 'guests' && hasGuests(event.id)
+                          ? guestsAt(event.id)
+                          : `/demo/events/${event.id}?area=${one.area}`
               }
               aria-current={one.area === area ? 'page' : undefined}
               aria-label={one.area === 'messages' && waiting != null ? waiting.name : undefined}

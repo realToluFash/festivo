@@ -59,6 +59,8 @@ import { SERVICE_STATES, SERVICE_STATE_WHAT } from './howItsGoing.ts';
 import { ServiceRoomPage } from './ServiceRoom.tsx';
 import { ROOM_STATES, ROOM_STATE_WHAT } from './serviceRoom.ts';
 import { QUEUE_STATES, type QueueStateName } from './queue.ts';
+import { RunViewPage } from './RunView.tsx';
+import { RUN_PAGES } from './runView.ts';
 import { StationsPage } from './Stations.tsx';
 import { STATIONS_PAGES } from './stations.ts';
 import { TeamPage } from './Team.tsx';
@@ -209,6 +211,7 @@ export default function Demo() {
       <Route path="events/:id/kitchen" element={<KitchenPage />} />
       <Route path="events/:id/menu" element={<MenuPage />} />
       <Route path="events/:id/staff" element={<StationsPage />} />
+      <Route path="events/:id/run" element={<RunViewPage />} />
       <Route path="calendar" element={<Calendar />} />
       <Route path="settings" element={<Settings />} />
       <Route path="settings/members" element={<Settings />} />
@@ -358,6 +361,12 @@ function DemoHome({ from }: { from: string }) {
         <h2 id="demo-page-32-kitchen">32 · Menu · the kitchen sheet’s parts</h2>
         <h3>Each part of a course, and each table’s platters · sc-34244 · desktop and A4</h3>
         <BoardPages pages={PARTS_PAGES} />
+      </section>
+
+      <section className="demo-home-page" aria-labelledby="demo-page-33">
+        <h2 id="demo-page-33">33 · Run of show</h2>
+        <h3>The run view: expected times, how far behind, fixed times (sc-1404) · desktop</h3>
+        <BoardPages pages={RUN_PAGES} />
       </section>
 
       <section className="demo-home-page" aria-labelledby="demo-page-34">
