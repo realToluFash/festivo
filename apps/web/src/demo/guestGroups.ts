@@ -247,7 +247,7 @@ export const WEDDING_GROUPS: readonly GuestGroup[] = [
   { id: 'g-school', name: 'Old school friends' },
 ];
 
-/** sc-51198: the longest names a group may have (60), one with no spaces and one in words, on Old school friends and Work. */
+/** sc-51198: a 60-character name with no spaces and a 56-character one in words, on Old school friends and Work. */
 export const GROUP_LONG_WORD = 'Thecousinsfromthebridesmotherssidewhoalltravelledinfromlagos';
 export const GROUP_LONG_WORDS = 'Colleagues from the Lagos office who came with a partner';
 
@@ -258,6 +258,13 @@ export function longNamedGroups(): GuestGroup[] {
 
     return one;
   });
+}
+
+/** sc-51198: a first name wider than the row's 12rem, on a guest with a dietary note and a group. */
+export const GUEST_LONG_WORD = 'Dr Oluwatobilobaayomideoluwaseun Nwosu';
+
+export function withLongNamedGuest(list: readonly Guest[]): Guest[] {
+  return list.map((one) => (one.id === 'emeka' ? { ...one, name: GUEST_LONG_WORD } : one));
 }
 
 const WEDDING_MEMBERS: Readonly<Record<string, string>> = {

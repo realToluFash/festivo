@@ -56,6 +56,7 @@ import {
   inGroupFilter,
   longNamedGroups,
   withGroup,
+  withLongNamedGuest,
 } from './guestGroups.ts';
 
 /** Guests in A · Summary first (page e30, board/guests-a-spec.md): the sample, its counts and the states; the words are in guestsWords.ts. */
@@ -1904,6 +1905,10 @@ export const GUESTS_STATES = [
     name: 'Groups named in 60 characters: each wraps in its chip and its row’s tag',
   },
   { key: 'groupsLongChip', name: 'The 60-character group’s chip pressed, its tick kept' },
+  {
+    key: 'groupsLongGuest',
+    name: 'A one-word first name wider than its row: kept whole, its tags under it',
+  },
   { key: 'groupField', name: 'Edit guest: the Group field, Bride’s side chosen' },
   { key: 'groupFieldOpen', name: 'Edit guest: the Group list open on “s”' },
   { key: 'groupFieldCreate', name: 'Edit guest: “Cousins” typed, Create “Cousins” offered' },
@@ -2538,6 +2543,8 @@ export function guestsStart(state: GuestsState | null, params: URLSearchParams):
       return { ...grouped, groups: longNamedGroups() };
     case 'groupsLongChip':
       return { ...grouped, groups: longNamedGroups(), groupFilter: 'g-school' };
+    case 'groupsLongGuest':
+      return { ...grouped, list: withLongNamedGuest(grouped.list), groups: longNamedGroups() };
     case 'groupField':
       return groupEdit({ at: 'group' });
     case 'groupFieldOpen':

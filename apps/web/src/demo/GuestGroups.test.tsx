@@ -95,6 +95,18 @@ describe('Groups on the list and the guest (sc-3775)', () => {
     ).toBeDefined();
   });
 
+  it('keeps a one-word first name whole beside its dietary note and group', SLOW, async () => {
+    await guests('groupsLongGuest');
+
+    const row = screen.getByRole('link', { name: /^Dr Oluwatobilobaayomideoluwaseun Nwosu,/u });
+
+    expect(row.querySelector('.gs-row-mid .desk-row-name')?.textContent).toBe(
+      'Dr Oluwatobilobaayomideoluwaseun Nwosu',
+    );
+    expect(row.querySelector('.gg-tag')?.textContent).toBe('Bride’s side');
+    expect(row.querySelector('.gs-row-tags')?.textContent).toContain('Dietary notes');
+  });
+
   it('No group shows only guests without one', SLOW, async () => {
     await guests('groupsNoGroup');
 

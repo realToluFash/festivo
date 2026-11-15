@@ -1324,6 +1324,10 @@
   overflow-wrap: break-word;
 }
 
+.gs-row-mid > .desk-row-words .desk-row-name {
+  overflow-wrap: break-word;
+}
+
 .gs-row-tags {
   display: flex;
   flex: none;
