@@ -540,6 +540,7 @@ describe('tables, rows and seats (sc-4000, sc-4003)', () => {
         await within(panel()).findByText('Enter a number of seats from 1 to 30.'),
       ).toBeDefined();
       expect(within(panel()).getByRole('heading', { name: 'Table 4' })).toBeDefined();
+      expect(item(/^Table 4, round, 8 of 10 seats taken/u)).toBeDefined();
       await seating('rect');
       typeIn('Width', '1001');
       expect(await within(panel()).findByText('Enter a size from 40 cm to 10 m.')).toBeDefined();
@@ -552,6 +553,12 @@ describe('tables, rows and seats (sc-4000, sc-4003)', () => {
         await within(panel()).findByText('Enter 0 to 8, no more than the table has seats.'),
       ).toBeDefined();
       expect(within(panel()).getByRole('heading', { name: 'Table 9' })).toBeDefined();
+      for (let tries = 0; tries < 2; tries++) press(item(/^Table 8,/u));
+      press(item(/^Table 9,/u));
+      expect(within(panel()).getByLabelText('Width')).toHaveProperty('value', '240');
+      expect(within(panel()).getByLabelText('Length')).toHaveProperty('value', '76');
+      expect(within(panel()).getByLabelText('Seats on the ends')).toHaveProperty('value', '2');
+      expect(item(/^Table 9, [a-z]+, \d+ of 8 seats taken/u)).toBeDefined();
     },
   );
 

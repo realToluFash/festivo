@@ -279,12 +279,18 @@ describe('a table’s limits (sc-4000)', () => {
   it('takes a size from 40 cm to 10 m, or 1 ft 4 in to 32 ft 9 in', () => {
     expect(readTableSize('40', 'metric')).toEqual({ cm: 40 });
     expect(readTableSize('1000', 'metric')).toEqual({ cm: 1000 });
-    expect(readTableSize('39', 'metric')).toEqual({ refused: SW.tableSize });
-    expect(readTableSize('1001', 'metric')).toEqual({ refused: SW.tableSize });
-    expect(readTableSize('', 'metric')).toEqual({ refused: SW.tableSize });
+    expect(readTableSize('39', 'metric')).toEqual({ refused: 'Enter a size from 40 cm to 10 m.' });
+    expect(readTableSize('1001', 'metric')).toEqual({
+      refused: 'Enter a size from 40 cm to 10 m.',
+    });
+    expect(readTableSize('', 'metric')).toEqual({ refused: 'Enter a size from 40 cm to 10 m.' });
     expect(readTableSize('16 in', 'us')).toEqual({ cm: 40.64 });
-    expect(readTableSize('15 in', 'us')).toEqual({ refused: SW.tableSizeFeet });
-    expect(readTableSize('33 ft', 'us')).toEqual({ refused: SW.tableSizeFeet });
+    expect(readTableSize('15 in', 'us')).toEqual({
+      refused: 'Enter a size from 1 ft 4 in to 32 ft 9 in.',
+    });
+    expect(readTableSize('33 ft', 'us')).toEqual({
+      refused: 'Enter a size from 1 ft 4 in to 32 ft 9 in.',
+    });
     expect(readTableSize('wide', 'us')).toEqual({ refused: SW.usHint });
   });
 

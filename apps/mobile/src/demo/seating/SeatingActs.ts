@@ -471,10 +471,30 @@ function cleared(m: Seating, key: string): Seating {
 }
 
 const TABLE_SEATS = 30;
+const TABLE_SIZE_CM = { min: 40, max: 1000 };
+const TABLE_SIZE_FEET = { min: 16 * 2.54, max: 393 * 2.54 };
+
+function unitWords(value: number, unit: 'centimeter' | 'meter' | 'foot' | 'inch'): string {
+  return new Intl.NumberFormat('en', { style: 'unit', unit, maximumFractionDigits: 2 }).format(
+    value,
+  );
+}
+
+function limitWords(cm: number, us: boolean): string {
+  if (!us) return cm < 100 ? unitWords(cm, 'centimeter') : unitWords(cm / 100, 'meter');
+  const inches = Math.round(cm / 2.54);
+  const feet = unitWords(Math.floor(inches / 12), 'foot');
+  return inches % 12 === 0 ? feet : say.feetInches(feet, unitWords(inches % 12, 'inch'));
+}
+
+export function tableSizeRefusal(us: boolean): string {
+  const range = us ? TABLE_SIZE_FEET : TABLE_SIZE_CM;
+  return say.tableSize(limitWords(range.min, us), limitWords(range.max, us));
+}
 
 function tableSizeFits(cm: number, us: boolean): boolean {
-  const [min, max] = us ? [40.64, 998.22] : [40, 1000];
-  return cm >= min - 1e-6 && cm <= max + 1e-6;
+  const range = us ? TABLE_SIZE_FEET : TABLE_SIZE_CM;
+  return cm >= range.min - 1e-6 && cm <= range.max + 1e-6;
 }
 
 function length(m: Seating, text: string): number | null {
@@ -555,16 +575,16 @@ function applyField(m: Seating, key: string): Seating {
       if (key === 'Ends' && (size == null || size > it.chairs.length))
         return refuse(m, key, say.endsRange(it.chairs.length));
       const table = key !== 'Spacing' && key !== 'Ends';
-      if (size == null) return refuse(m, key, us ? W.usHint : table ? W.tableSize : W.sizeMin);
-      if (table && !tableSizeFits(size, us))
-        return refuse(m, key, us ? W.tableSizeFeet : W.tableSize);
+      if (size == null)
+        return refuse(m, key, us ? W.usHint : table ? tableSizeRefusal(false) : W.sizeMin);
+      if (table && !tableSizeFits(size, us)) return refuse(m, key, tableSizeRefusal(us));
       if (key !== 'Ends' && size < (us ? 30.48 : 30))
         return refuse(m, key, us ? W.sizeMinFeet : W.sizeMin);
       const field = { Diameter: 'd', Width: 'w', Length: 'l', Spacing: 'spacing', Ends: 'ends' }[
         key
       ];
       return done({
-        [field]: key === 'Ends' ? Math.min(size, it.chairs.length) : Math.round(size),
+        [field]: key === 'Ends' ? size : Math.round(size),
       });
     }
     case 'Across':

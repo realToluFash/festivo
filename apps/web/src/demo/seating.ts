@@ -862,13 +862,39 @@ export function readItemSize(text: string, units: Units): { cm: number } | { ref
 export const TABLE_LIMITS = {
   seats: 30,
   cm: { min: 40, max: 1000 },
-  feet: { min: 40.64, max: 998.22 },
+  feet: { min: 16 * 2.54, max: 393 * 2.54 },
 } as const;
+
+function unitWords(value: number, unit: 'centimeter' | 'meter' | 'foot' | 'inch'): string {
+  return new Intl.NumberFormat('en', { style: 'unit', unit, maximumFractionDigits: 2 }).format(
+    value,
+  );
+}
+
+export function limitWords(cm: number, units: Units): string {
+  if (units === 'metric')
+    return cm < 100 ? unitWords(cm, 'centimeter') : unitWords(cm / 100, 'meter');
+  const inches = Math.round(cm / 2.54);
+  const ft = unitWords(Math.floor(inches / 12), 'foot');
+
+  return inches % 12 === 0
+    ? ft
+    : say(SW.feetInches, { feet: ft, inches: unitWords(inches % 12, 'inch') });
+}
+
+export function tableSizeRefusal(units: Units): string {
+  const range = units === 'us' ? TABLE_LIMITS.feet : TABLE_LIMITS.cm;
+
+  return say(SW.tableSize, {
+    min: limitWords(range.min, units),
+    max: limitWords(range.max, units),
+  });
+}
 
 export function readTableSize(text: string, units: Units): { cm: number } | { refused: string } {
   const cm = readSize(text, units);
   const range = units === 'us' ? TABLE_LIMITS.feet : TABLE_LIMITS.cm;
-  const refused = units === 'us' ? SW.tableSizeFeet : SW.tableSize;
+  const refused = tableSizeRefusal(units);
 
   if (cm == null && units === 'us') return { refused: SW.usHint };
   if (cm == null || cm < range.min - 1e-6 || cm > range.max + 1e-6) return { refused };

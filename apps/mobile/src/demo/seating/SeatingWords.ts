@@ -109,8 +109,6 @@ export const W = {
   tableBlank: 'Enter a name for the table.',
   seatsRange: 'Enter a number of seats from 1 to 30.',
   placesRange: 'Enter a number of places from 1 to 30.',
-  tableSize: 'Enter a size from 40 cm to 10 m.',
-  tableSizeFeet: 'Enter a size from 1 ft 4 in to 32 ft 9 in.',
   undo: 'Undo',
   allSections: 'All sections',
   full: 'Full',
@@ -186,6 +184,8 @@ export const say = {
     `Size reset to the ${shape} default, ${size}. Seats kept at ${seats}.`,
   squeeze: (seats: number, size: string) => `${seats} seats will be tight at a ${size} table.`,
   tableTaken: (name: string) => `This plan already has a table called ${name}.`,
+  tableSize: (min: string, max: string) => `Enter a size from ${min} to ${max}.`,
+  feetInches: (feet: string, inches: string) => `${feet} ${inches}`,
   endsRange: (max: number) => `Enter 0 to ${max}, no more than the table has seats.`,
   belowSeated: (n: number, keep: number) =>
     `${plural(n, 'guest is', 'guests are')} seated here. Move them first, or keep ${keep} seats.`,

@@ -22,6 +22,7 @@ import {
   samplePlan,
   sampleTray,
   say,
+  tableSizeRefusal,
   seatAt,
   sideBySide,
   usable,
@@ -470,14 +471,14 @@ export function seedOf(state: SeatingState | null): Ui {
       return {
         ...ui,
         chosen: ['t10'],
-        seed: { key: 'diameter', value: '1200', error: SW.tableSize },
+        seed: { key: 'diameter', value: '1200', error: tableSizeRefusal('metric') },
         focus: 'diameter',
       };
     case 'notNumber':
       return {
         ...ui,
         chosen: ['t9'],
-        seed: { key: 'width', value: 'two metres', error: SW.tableSize },
+        seed: { key: 'width', value: 'two metres', error: tableSizeRefusal('metric') },
         focus: 'width',
       };
     case 'endsRange':
