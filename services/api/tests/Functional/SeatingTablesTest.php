@@ -150,6 +150,7 @@ final class SeatingTablesTest extends ApiTestCase
         yield 'a long name' => ['round', ['name' => Str\repeat('a', 31)], 'name', 'Use 30 characters or fewer.'];
         yield 'a long name of marked letters' => ['round', ['name' => Str\repeat("e\u{0323}\u{0300}", 31)], 'name', 'Use 30 characters or fewer.'];
         yield 'one letter of many marks' => ['round', ['name' => 'a' . Str\repeat("\u{0301}", 120)], 'name', 'Use 30 characters or fewer.'];
+        yield 'a name whose key outgrows the column' => ['round', ['name' => Str\repeat("\u{FDFA}", 7)], 'name', 'Use 30 characters or fewer.'];
         yield 'a seat it does not have' => ['round', ['unusableSeats' => [11]], 'unusableSeats', 'Choose seats from 1 to 10, each once.'];
         yield 'a section of another plan' => ['round', ['sectionId' => '0190a3c4-0000-7000-8000-000000000000'], 'sectionId', "Choose one of this plan's sections, or no section."];
     }
