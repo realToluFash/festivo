@@ -132,23 +132,17 @@ describe('what Search finds in the sample (sc-39534)', () => {
 });
 
 describe('what the field says', () => {
-  it('names only what the person can find, a whole sentence for each', () => {
-    expect([SEARCH_WORDS.placeholder(REACHES.owner), SEARCH_WORDS.idle(REACHES.owner)]).toEqual([
-      'Search events, guests and members',
-      'Find an event, a guest or a member.',
-    ]);
-    expect([SEARCH_WORDS.placeholder(REACHES.member), SEARCH_WORDS.idle(REACHES.member)]).toEqual([
-      'Search events and guests',
-      'Find an event or a guest.',
-    ]);
-    expect(SEARCH_WORDS.placeholder(REACHES.planner)).toBe('Search events and members');
-    expect(
-      SEARCH_WORDS.placeholder({ events: false, guests: false, members: true, manage: false }),
-    ).toBe('Search members');
+  it('reads Search for everyone, and the hint names only what the person can find', () => {
+    expect(SEARCH_WORDS.search).toBe('Search');
+    expect(SEARCH_WORDS.idle(REACHES.owner)).toBe('Find an event, a guest or a member.');
+    expect(SEARCH_WORDS.idle(REACHES.member)).toBe('Find an event or a guest.');
+    expect(SEARCH_WORDS.idle(REACHES.planner)).toBe('Find an event or a member.');
+    expect(SEARCH_WORDS.idle({ events: false, guests: false, members: true, manage: false })).toBe(
+      'Find a member.',
+    );
   });
 
-  it('is "Search" with no hint for a person who can find nothing', () => {
-    expect(SEARCH_WORDS.placeholder(REACHES.nobody)).toBe('Search');
+  it('has no hint for a person who can find nothing', () => {
     expect(SEARCH_WORDS.idle(REACHES.nobody)).toBeNull();
   });
 

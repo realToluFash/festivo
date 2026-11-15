@@ -149,7 +149,7 @@ describe('Search as a command palette (sc-39534)', () => {
     const dialog = await board('member');
 
     expect(groupNames(dialog)).toEqual(['Events1', 'Guests7']);
-    expect(field(dialog).getAttribute('placeholder')).toBe('Search events and guests');
+    expect(field(dialog).getAttribute('placeholder')).toBe('Search');
   });
 
   it(
@@ -159,7 +159,7 @@ describe('Search as a command palette (sc-39534)', () => {
       const dialog = await board('no-guests');
 
       expect(groupNames(dialog)).toEqual(['Events1', 'Members3']);
-      expect(field(dialog).getAttribute('placeholder')).toBe('Search events and members');
+      expect(field(dialog).getAttribute('placeholder')).toBe('Search');
       expect(within(dialog).queryByText('Awaiting approval')).toBeNull();
     },
   );
@@ -180,7 +180,8 @@ describe('Search as a command palette (sc-39534)', () => {
 
       fireEvent.keyDown(window, { key: 'k', metaKey: true });
       const dialog = screen.getByRole('dialog', { name: 'Search' });
-      expect(field(dialog).getAttribute('placeholder')).toBe('Search events and guests');
+      expect(field(dialog).getAttribute('placeholder')).toBe('Search');
+      expect(within(dialog).getByText('Find an event or a guest.')).toBeDefined();
     },
   );
 
@@ -190,7 +191,8 @@ describe('Search as a command palette (sc-39534)', () => {
 
     fireEvent.keyDown(window, { key: 'k', metaKey: true });
     const dialog = screen.getByRole('dialog', { name: 'Search' });
-    expect(field(dialog).getAttribute('placeholder')).toBe('Search events and guests');
+    expect(field(dialog).getAttribute('placeholder')).toBe('Search');
+    expect(within(dialog).getByText('Find an event or a guest.')).toBeDefined();
   });
 
   it('draws one guest on two events as two rows', SLOW, async () => {
