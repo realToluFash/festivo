@@ -1374,9 +1374,9 @@
       "keepsWaiting": "La demande de {{first}} reste en attente."
     },
     "more": {
-      "loading": "Loading more people…",
-      "failedTitle": "More people did not load.",
-      "failedLine": "Check your connection and try again."
+      "loading": "Chargement d’autres personnes…",
+      "failedTitle": "Les personnes suivantes n’ont pas pu être chargées.",
+      "failedLine": "Vérifiez votre connexion et réessayez."
     }
   },
   "accessPaused": {
