@@ -1872,6 +1872,15 @@ describe('a notice answering a send comes into view (sc-24496)', () => {
     expect(text).not.toContain('AnswerInView');
   });
 
+  it('lifts the saved toast on an event clear of the phone tab bar, as the demo does (sc-3780)', () => {
+    const text = readFileSync(join('src', 'components', 'EventScreen.tsx'), 'utf8');
+
+    expect(text).toMatch(
+      /<PageToast[\s\S]{0,200}?bottom=\{\s*phone\s*\?\s*phoneTabBarClearance\(insets\.bottom\)/u,
+    );
+    expect(text).toMatch(/:\s*Math\.max\(insets\.bottom, tokens\.spaceLg\)/u);
+  });
+
   it('notices a notice left where it shows', () => {
     expect(answersInView('<ReadOut words={failed} interrupts>', 'words={failed}')).toBe(false);
     expect(
