@@ -173,7 +173,7 @@ export function replyByAskWords(
       ask === 'now'
         ? t('replyBy.closeNowTitle')
         : t('replyBy.closeSoonerTitle', { date: formatWallDay(date, locale) }),
-    line: counts == null ? after : t('replyBy.askLine', { count: haventLine(t, counts), after }),
+    line: counts == null ? after : t('replyBy.askLine', { havent: haventLine(t, counts), after }),
     confirm: ask === 'now' ? t('replyBy.closeNow') : t('replyBy.closeSooner'),
   };
 }

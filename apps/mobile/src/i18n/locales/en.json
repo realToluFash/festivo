@@ -2568,7 +2568,7 @@
     "closeNowTitle": "Close replies now?",
     "closeSoonerLine": "After that day they can’t reply, unless you let them change their reply.",
     "closeNowLine": "From now on they can’t reply, unless you let them change their reply.",
-    "askLine": "{{count}} {{after}}",
+    "askLine": "{{havent}} {{after}}",
     "closeSooner": "Close replies sooner",
     "closeNow": "Close replies now",
     "keepDate": "Keep {{date}}",
