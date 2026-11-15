@@ -28,7 +28,7 @@ import { useModalOpen } from '../updateRequired.ts';
 import { FocusEdge, focusEdge, useFocusEdge, useHeld, useRefused } from './Field.tsx';
 import { controlTaken } from './focusedField.ts';
 import { useScreenReaderOn } from './screenReaderFocus.ts';
-import { LIFT } from './keyboardWatch.ts';
+import { LIFT, blurNatively } from './keyboardWatch.ts';
 import { SETTLED_MS, Screen, useFocusOnAnswer } from './Screen.tsx';
 import { SilentWindowName, WINDOW_ARRIVES_MS, useUnnamedWindow } from './Sheet.tsx';
 import { Text, type TextHandle } from './Text.tsx';
@@ -123,8 +123,8 @@ export function ListPicker({
   // Android hands TalkBack's focus to whichever field holds input focus, not to the picker that opened the menu (sc-43908).
   const close = () => {
     if (Platform.OS === 'android') setClosed({});
-    // A field still holding input focus is what TalkBack says first as the window goes (sc-44356). Blurred under the menu's window its keyboard hide does nothing; at the tap TalkBack said "keyboard hidden" (qa #50794).
-    heldBehind.current?.blur();
+    // A field still holding input focus is what TalkBack says first as the window goes (sc-44356). Blurred under the menu's window its keyboard hide does nothing; at the tap TalkBack said "keyboard hidden" (qa #50794). Natively, since the menu's search, once focused, is the field JS counts as focused.
+    if (heldBehind.current != null) blurNatively(heldBehind.current);
     heldBehind.current = null;
     setOpen(false);
   };

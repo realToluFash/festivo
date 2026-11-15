@@ -235,9 +235,17 @@ describe('a window that opens through a Modal of its own (sc-42690)', () => {
         /onPress=\{\(\) => \{\s*controlTaken\(\);\s*if \(Platform\.OS === 'android' && readerOn\)\s*heldBehind\.current = TextInput\.State\.currentlyFocusedInput\(\);\s*setClosed\(undefined\);\s*setOpen\(true\);/,
       );
       expect(picker).toMatch(
-        /const close = \(\) => \{\s*if \(Platform\.OS === 'android'\) setClosed\(\{\}\);[^}]*heldBehind\.current\?\.blur\(\);\s*heldBehind\.current = null;\s*setOpen\(false\);\s*\};/,
+        /const close = \(\) => \{\s*if \(Platform\.OS === 'android'\) setClosed\(\{\}\);[^}]*if \(heldBehind\.current != null\) blurNatively\(heldBehind\.current\);\s*heldBehind\.current = null;\s*setOpen\(false\);\s*\};/,
       );
-      expect(picker.match(/\.blur\(\)/g)).toHaveLength(1);
+    });
+
+    it("blurs the field it found natively, which TextInput skips once the menu's search has taken focus (sc-44356, lead on #2327)", () => {
+      expect(picker).not.toMatch(/\.blur\(\)/);
+      const watch = readFileSync(join(import.meta.dirname, 'keyboardWatch.ts'), 'utf8');
+      expect(watch).toMatch(
+        /export function blurNatively\(field: HostInstance\): void \{\s*textInput\.blur\(field\);\s*\}/,
+      );
+      expect(watch).toMatch(/const textInput = codegenNativeCommands</);
     });
 
     it('blurs nothing at the tap, where hiding the keyboard behind the opening menu made TalkBack say "keyboard hidden" (qa #50794)', () => {
