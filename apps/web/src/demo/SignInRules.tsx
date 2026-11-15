@@ -167,6 +167,7 @@ export function SignInRules({
         <EditDialog
           edit={edit}
           page={page}
+          locale={locale}
           onStep={toSecurity}
           onEdit={setEdit}
           onClose={() => setEdit(null)}
@@ -231,6 +232,7 @@ function Changes({ changes }: { changes: readonly ChangeRow[] }) {
 function EditDialog({
   edit,
   page,
+  locale,
   onStep,
   onEdit,
   onClose,
@@ -238,6 +240,7 @@ function EditDialog({
 }: {
   edit: Edit;
   page: RulesPage;
+  locale: string;
   onStep: (step: HeldStep) => void;
   onEdit: (edit: Edit) => void;
   onClose: () => void;
@@ -281,13 +284,11 @@ function EditDialog({
         ) : refused == null ? (
           <div className="desk-after">
             <Head title="What happens when you save" level={3} />
-            {effectsOf(page, applied(edit.key, edit.picked, page), page.passwordOnly).map(
-              (line) => (
-                <p key={line} className="desk-line">
-                  {line}
-                </p>
-              ),
-            )}
+            {effectsOf(page, applied(edit.key, edit.picked, page), locale).map((line) => (
+              <p key={line} className="desk-line">
+                {line}
+              </p>
+            ))}
             {changed && <p className="desk-foot">{EMAIL_NOTE}</p>}
           </div>
         ) : (

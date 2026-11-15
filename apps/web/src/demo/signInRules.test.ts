@@ -73,16 +73,54 @@ describe('Sign-in rules’ sample (sc-30064)', () => {
   it('says what saving does in the product’s words, or that nothing changes', () => {
     const rules = page('');
 
-    expect(
-      effectsOf(rules, applied('method', 'Google or Apple only', rules), rules.passwordOnly),
-    ).toEqual([
+    expect(effectsOf(rules, applied('method', 'Google or Apple only', rules), 'en')).toEqual([
       'Everyone signs in with Google or Apple. Anyone with one linked who signed in with a password is asked to sign in again with it.',
       'Priya Shah and Ana Souza can read but not change anything until they link Google or Apple. Their password still signs them in.',
     ]);
-    expect(effectsOf(rules, applied('limit', 'No limit', rules), [])).toEqual([
+    expect(effectsOf(rules, applied('limit', 'No limit', rules), 'en')).toEqual([
       'Sign-ins last until people sign out.',
     ]);
-    expect(effectsOf(rules, rules, [])).toEqual(['Nothing changes. These are the rules in force.']);
+    expect(effectsOf(rules, rules, 'en')).toEqual([
+      'Nothing changes. These are the rules in force.',
+    ]);
+  });
+
+  it('names up to three people a pick leaves short, and counts them past that (sc-18317)', () => {
+    const short = (state: string) => {
+      const start = signInRulesStart(state, 'Folake Adeyemi', NOW);
+      const { key, picked } = start.edit ?? { key: 'method' as const, picked: '' };
+
+      return effectsOf(start.page, applied(key, picked, start.page), 'en-US')[1];
+    };
+
+    expect(short('methodFour')).toBe(
+      '4 people can read but not change anything until they link Google or Apple. Their password still signs them in.',
+    );
+    expect(short('methodMillion')).toBe(
+      '1,000,000 people can read but not change anything until they link Google or Apple. Their password still signs them in.',
+    );
+    expect(short('everyoneThree')).toBe(
+      'Priya Shah, Ana Souza, and Tunde Bakare don’t have it yet.',
+    );
+    expect(short('everyoneFour')).toBe('4 people don’t have it yet.');
+    expect(short('everyoneMillion')).toBe('1,000,000 people don’t have it yet.');
+    expect(short('twoFactorEveryone')).toBeUndefined();
+  });
+
+  it('writes the count in the page’s language', () => {
+    const million = page('everyoneMillion');
+
+    expect(effectsOf(million, applied('twoFactor', 'For everyone', million), 'en-IN')[1]).toBe(
+      '10,00,000 people don’t have it yet.',
+    );
+  });
+
+  it('joins the names in the page’s language', () => {
+    const three = page('everyoneThree');
+
+    expect(effectsOf(three, applied('twoFactor', 'For everyone', three), 'en-GB')[1]).toBe(
+      'Priya Shah, Ana Souza and Tunde Bakare don’t have it yet.',
+    );
   });
 
   it('saves a change today, by the viewer, at the top', () => {
