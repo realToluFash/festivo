@@ -1,0 +1,421 @@
+import { act, fireEvent, render, screen, waitFor, within } from '@testing-library/react';
+import { afterEach, describe, expect, it, vi } from 'vitest';
+import { RouterProvider, createMemoryRouter } from 'react-router';
+
+import { __setSessionState, type Session } from '../../../session.ts';
+import { OWNER_PERMISSIONS, membership } from '../../../test-memberships.ts';
+import { routes } from '../../index.tsx';
+
+const IRE = membership({ id: 'org_1', name: 'Ìrè Events' });
+
+const EVENT = {
+  id: 'ev_1',
+  organisationId: 'org_1',
+  name: 'Adaeze and Tunde',
+  type: 'wedding',
+  status: 'live',
+  startsAt: '2030-11-15T18:00:00+00:00',
+  endsAt: '2030-11-16T15:00:00+00:00',
+  timeZone: 'Europe/London',
+  dayCount: 2,
+  currency: 'GBP',
+  cover: null,
+  venue: null,
+  arrivalNote: null,
+  hosts: [],
+  madeLiveAt: '2026-10-26T15:00:00+00:00',
+  pausedAt: null,
+  phase: 'live',
+  concludedAt: null,
+  createdAt: '2026-10-21T09:00:00+00:00',
+  permissions: OWNER_PERMISSIONS,
+};
+
+function signedIn(): void {
+  const session: Session = {
+    name: 'Folake Adeyemi',
+    email: 'folake@ire.events',
+    verified: true,
+    complete: true,
+    awaiting: null,
+    providers: [],
+    userId: 'u_folake',
+    needsOrganisation: false,
+    hasPassword: true,
+    organisation: IRE,
+    organisations: [IRE],
+    organisationCountry: null,
+    timezone: null,
+    waitingFor: null,
+  };
+
+  __setSessionState({ status: 'signedIn', session });
+}
+
+function json(body: unknown, status = 200): Response {
+  return new Response(JSON.stringify(body), {
+    status,
+    headers: { ETag: '"1"', 'Content-Type': 'application/json' },
+  });
+}
+
+function problem(code: string, status: number, more: Record<string, unknown> = {}): Response {
+  return new Response(
+    JSON.stringify({ type: `https://soirely.com/errors/${code}`, title: code, status, ...more }),
+    { status, headers: { 'Content-Type': 'application/problem+json' } },
+  );
+}
+
+type Answer = (body: unknown, init?: RequestInit) => Response | Promise<Response>;
+
+/** An item exactly as the API's contract writes one (sc-3893). */
+function item(
+  id: string,
+  title: string,
+  startsAt: string,
+  day: string,
+  more: Record<string, unknown> = {},
+) {
+  return {
+    id,
+    title,
+    startsAt,
+    day,
+    lengthMinutes: null,
+    place: null,
+    ownerName: null,
+    ownerRole: null,
+    note: null,
+    fixedTime: false,
+    showToGuests: false,
+    version: 1,
+    ...more,
+  };
+}
+
+function schedule(items: unknown[], more: Record<string, unknown> = {}) {
+  return {
+    timeZone: 'Europe/London',
+    earliest: '2030-11-15T06:00:00+00:00',
+    latest: '2030-11-16T15:00:00+00:00',
+    itemsMaximum: 200,
+    items,
+    ...more,
+  };
+}
+
+const DRINKS = item('it_drinks', 'Welcome drinks', '2030-11-15T18:00:00+00:00', '2030-11-15', {
+  lengthMinutes: 120,
+  ownerName: 'Ebele Nwosu',
+  ownerRole: 'Venue',
+  showToGuests: true,
+});
+const PHOTOS = item('it_photos', 'Photos', '2030-11-15T19:00:00+00:00', '2030-11-15', {
+  lengthMinutes: 60,
+  place: 'Garden',
+});
+const LATE = item('it_late', 'Late food', '2030-11-16T00:30:00+00:00', '2030-11-15', {
+  lengthMinutes: 30,
+});
+const BRUNCH = item('it_brunch', 'Brunch', '2030-11-16T11:00:00+00:00', '2030-11-16');
+
+async function onSchedule(
+  answers: Record<string, Answer>,
+  permissions: string[] = OWNER_PERMISSIONS,
+): Promise<{ line: string; body: unknown; ifMatch: string | null }[]> {
+  const sent: { line: string; body: unknown; ifMatch: string | null }[] = [];
+  signedIn();
+
+  vi.spyOn(globalThis, 'fetch').mockImplementation(async (input, init) => {
+    const line = `${init?.method ?? 'GET'} ${new URL(String(input)).pathname}`;
+    const body = typeof init?.body === 'string' ? (JSON.parse(init.body) as unknown) : null;
+    const ifMatch = new Headers(init?.headers).get('If-Match');
+    sent.push({ line, body, ifMatch });
+
+    const answer = answers[line];
+    if (answer != null) return answer(body, init);
+    if (line === 'GET /api/events/ev_1') return json({ event: { ...EVENT, permissions } });
+
+    return json({});
+  });
+  render(
+    <RouterProvider
+      router={createMemoryRouter(routes, { initialEntries: ['/app/events/ev_1/schedule'] })}
+    />,
+  );
+
+  return sent;
+}
+
+afterEach(() => {
+  vi.restoreAllMocks();
+});
+
+describe('The event’s Schedule (sc-3893)', () => {
+  it('shows a tab per event day and a table per place, sorted by start, with an item after midnight on the day before', async () => {
+    await onSchedule({
+      'GET /api/events/ev_1/schedule': () =>
+        json({ schedule: schedule([LATE, PHOTOS, DRINKS, BRUNCH]) }),
+    });
+
+    const heading = await screen.findByRole('heading', { level: 1, name: /^Schedule · / });
+    expect(heading).toBeDefined();
+    const tabs = screen.getAllByRole('tab');
+    expect(tabs).toHaveLength(2);
+    expect(tabs[0]?.textContent).toContain('3 items');
+    expect(tabs[1]?.textContent).toContain('1 item');
+
+    const main = screen.getByRole('table', { name: 'Main' });
+    const rows = within(main).getAllByRole('row').slice(1);
+    expect(rows.map((row) => row.textContent)).toEqual([
+      expect.stringContaining('Welcome drinks'),
+      expect.stringContaining('Late food'),
+    ]);
+    expect(rows[1]?.textContent).toMatch(/00:30/);
+    expect(
+      within(main)
+        .getAllByRole('columnheader')
+        .map((one) => one.textContent),
+    ).toEqual(['Starts', 'Lasts', 'Item', 'Owner']);
+    expect(screen.getByRole('table', { name: 'Garden' })).toBeDefined();
+    expect(main.textContent).toContain('18:00');
+    expect(main.textContent).toContain('120 min');
+    expect(main.textContent).toContain('Shown to guests');
+  });
+
+  it('moves between days with the arrow keys', async () => {
+    await onSchedule({
+      'GET /api/events/ev_1/schedule': () => json({ schedule: schedule([DRINKS, BRUNCH]) }),
+    });
+    const first = (await screen.findAllByRole('tab'))[0] as HTMLElement;
+    fireEvent.keyDown(first, { key: 'ArrowRight' });
+
+    await waitFor(() =>
+      expect(screen.getAllByRole('tab')[1]?.getAttribute('aria-selected')).toBe('true'),
+    );
+    expect(screen.getByRole('table', { name: 'Main' }).textContent).toContain('Brunch');
+  });
+
+  it('says nothing is scheduled yet, with Add item', async () => {
+    await onSchedule({ 'GET /api/events/ev_1/schedule': () => json({ schedule: schedule([]) }) });
+
+    expect(await screen.findByRole('heading', { name: 'Nothing scheduled yet' })).toBeDefined();
+    expect(screen.getAllByRole('button', { name: 'Add item' }).length).toBeGreaterThan(0);
+  });
+
+  it('is read-only without run_of_show.manage', async () => {
+    await onSchedule(
+      { 'GET /api/events/ev_1/schedule': () => json({ schedule: schedule([DRINKS]) }) },
+      OWNER_PERMISSIONS.filter((one) => one !== 'run_of_show.manage'),
+    );
+
+    expect(
+      await screen.findByText(
+        'You can see this schedule. Ask whoever runs the event to change it.',
+      ),
+    ).toBeDefined();
+    expect(screen.queryByRole('button', { name: 'Add item' })).toBeNull();
+    expect(screen.queryByRole('button', { name: 'Welcome drinks' })).toBeNull();
+    expect(screen.getByText('Welcome drinks')).toBeDefined();
+  });
+
+  it('is not found without run_of_show.read', async () => {
+    const sent = await onSchedule(
+      {},
+      OWNER_PERMISSIONS.filter((one) => !one.startsWith('run_of_show.')),
+    );
+
+    await waitFor(() =>
+      expect(sent.some(({ line }) => line === 'GET /api/events/ev_1')).toBe(true),
+    );
+    await waitFor(() => expect(screen.queryByRole('heading', { name: /^Schedule/ })).toBeNull());
+    expect(sent.some(({ line }) => line === 'GET /api/events/ev_1/schedule')).toBe(false);
+  });
+
+  it('refuses a blank form beside each field, focus on the first, and sends nothing', async () => {
+    const sent = await onSchedule({
+      'GET /api/events/ev_1/schedule': () => json({ schedule: schedule([DRINKS]) }),
+    });
+    fireEvent.click(await screen.findByRole('button', { name: 'Add item' }));
+    fireEvent.click(screen.getByRole('button', { name: 'Save item' }));
+
+    await waitFor(() => expect(document.activeElement?.id).toBe('ro-title'));
+    expect(screen.getByText('Enter a title.')).toBeDefined();
+    expect(screen.getByText('Choose the date and time it starts.')).toBeDefined();
+    expect(sent.filter(({ line }) => line.startsWith('POST'))).toEqual([]);
+  });
+
+  it('refuses a start outside the window and a length over 720', async () => {
+    const sent = await onSchedule({
+      'GET /api/events/ev_1/schedule': () => json({ schedule: schedule([DRINKS]) }),
+    });
+    fireEvent.click(await screen.findByRole('button', { name: 'Add item' }));
+    fireEvent.change(screen.getByLabelText('Title'), { target: { value: 'Fireworks' } });
+    fireEvent.change(screen.getByLabelText('Date'), { target: { value: '2030-11-16' } });
+    fireEvent.change(screen.getByLabelText('Time'), { target: { value: '22:00' } });
+    fireEvent.change(screen.getByLabelText(/Lasts, in minutes/), { target: { value: '800' } });
+    fireEvent.click(screen.getByRole('button', { name: 'Save item' }));
+
+    await waitFor(() => expect(document.activeElement?.id).toBe('ro-date'));
+    expect(document.getElementById('ro-starts-error')?.textContent).toMatch(
+      /^Choose a time between .* and .*\.$/,
+    );
+    expect(
+      screen.getByText('Enter a length from 0 to 720 minutes, or leave it empty.'),
+    ).toBeDefined();
+    expect(sent.filter(({ line }) => line.startsWith('POST'))).toEqual([]);
+  });
+
+  it('adds an item as the contract asks, and shows it', async () => {
+    const added = item('it_new', 'Fireworks', '2030-11-15T23:00:00+00:00', '2030-11-15', {
+      place: 'Garden',
+      lengthMinutes: 15,
+    });
+    const sent = await onSchedule({
+      'GET /api/events/ev_1/schedule': () => json({ schedule: schedule([DRINKS, PHOTOS]) }),
+      'POST /api/events/ev_1/schedule/items': () =>
+        json({ schedule: schedule([DRINKS, PHOTOS, added]), itemId: 'it_new' }, 201),
+    });
+    fireEvent.click(await screen.findByRole('button', { name: 'Add item' }));
+    fireEvent.change(screen.getByLabelText('Title'), { target: { value: ' Fireworks ' } });
+    fireEvent.change(screen.getByLabelText('Time'), { target: { value: '23:00' } });
+    fireEvent.change(screen.getByLabelText(/Lasts, in minutes/), { target: { value: '15' } });
+    fireEvent.change(screen.getByRole('textbox', { name: /^Place/ }), {
+      target: { value: 'garden' },
+    });
+    fireEvent.click(screen.getByRole('button', { name: 'Save item' }));
+
+    expect(await screen.findByText('Fireworks added.')).toBeDefined();
+    expect(sent.find(({ line }) => line === 'POST /api/events/ev_1/schedule/items')?.body).toEqual({
+      title: 'Fireworks',
+      startsAt: '2030-11-15T23:00',
+      lengthMinutes: 15,
+      place: 'Garden',
+      ownerName: null,
+      ownerRole: null,
+      note: null,
+      fixedTime: false,
+      showToGuests: false,
+    });
+    expect(screen.getByRole('table', { name: 'Garden' }).textContent).toContain('Fireworks');
+  });
+
+  it('shows the API’s refusal beside its field', async () => {
+    await onSchedule({
+      'GET /api/events/ev_1/schedule': () => json({ schedule: schedule([]) }),
+      'POST /api/events/ev_1/schedule/items': () =>
+        problem('validation_failed', 422, {
+          violations: [
+            { propertyPath: 'startsAt', message: 'Choose a time between A and B.', code: 'x' },
+          ],
+        }),
+    });
+    fireEvent.click((await screen.findAllByRole('button', { name: 'Add item' }))[0] as HTMLElement);
+    fireEvent.change(screen.getByLabelText('Title'), { target: { value: 'Toast' } });
+    fireEvent.change(screen.getByLabelText('Time'), { target: { value: '20:00' } });
+    fireEvent.click(screen.getByRole('button', { name: 'Save item' }));
+
+    expect(await screen.findByText('Choose a time between A and B.')).toBeDefined();
+    await waitFor(() => expect(document.activeElement?.id).toBe('ro-date'));
+  });
+
+  it('refuses a 201st item before sending', async () => {
+    const sent = await onSchedule({
+      'GET /api/events/ev_1/schedule': () =>
+        json({ schedule: schedule([DRINKS, PHOTOS], { itemsMaximum: 2 }) }),
+    });
+    fireEvent.click(await screen.findByRole('button', { name: 'Add item' }));
+    fireEvent.click(screen.getByRole('button', { name: 'Save item' }));
+
+    await waitFor(() => expect(document.activeElement?.id).toBe('ro-limit'));
+    expect(document.getElementById('ro-limit')?.textContent).toContain(
+      'Delete one to add another. Nothing was saved.',
+    );
+    expect(sent.filter(({ line }) => line.startsWith('POST'))).toEqual([]);
+  });
+
+  it('saves with the version as If-Match, and on a 412 shows theirs beside yours', async () => {
+    const theirs = { ...DRINKS, title: 'Drinks on the lawn', version: 2 };
+    let puts = 0;
+    const sent = await onSchedule({
+      'GET /api/events/ev_1/schedule': () => json({ schedule: schedule([DRINKS]) }),
+      'PUT /api/events/ev_1/schedule/items/it_drinks': () => {
+        puts += 1;
+        return puts === 1
+          ? problem('precondition_failed', 412, { current: theirs, changedBy: 'Kemi' })
+          : json({
+              schedule: schedule([{ ...DRINKS, title: 'Cocktails', version: 3 }]),
+              itemId: 'it_drinks',
+            });
+      },
+    });
+    fireEvent.click(await screen.findByRole('button', { name: 'Welcome drinks' }));
+    fireEvent.change(screen.getByLabelText('Title'), { target: { value: 'Cocktails' } });
+    fireEvent.click(screen.getByRole('button', { name: 'Save item' }));
+
+    const notice = await screen.findByRole('alert');
+    await waitFor(() => expect(document.activeElement?.id).toBe('ro-conflict'));
+    const diff = within(notice).getByRole('table');
+    expect(within(diff).getAllByRole('row')[1]?.textContent).toBe(
+      'TitleDrinks on the lawnCocktails',
+    );
+    expect(sent.find(({ line }) => line.startsWith('PUT'))?.ifMatch).toBe('"1"');
+
+    fireEvent.click(within(notice).getByRole('button', { name: 'Keep mine' }));
+    expect(await screen.findByText('Cocktails saved.')).toBeDefined();
+    expect(sent.filter(({ line }) => line.startsWith('PUT')).at(-1)?.ifMatch).toBe('"2"');
+  });
+
+  it('Use theirs refills the form', async () => {
+    const theirs = { ...DRINKS, title: 'Drinks on the lawn', version: 2 };
+    await onSchedule({
+      'GET /api/events/ev_1/schedule': () => json({ schedule: schedule([DRINKS]) }),
+      'PUT /api/events/ev_1/schedule/items/it_drinks': () =>
+        problem('precondition_failed', 412, { current: theirs, changedBy: null }),
+    });
+    fireEvent.click(await screen.findByRole('button', { name: 'Welcome drinks' }));
+    fireEvent.change(screen.getByLabelText('Title'), { target: { value: 'Cocktails' } });
+    fireEvent.click(screen.getByRole('button', { name: 'Save item' }));
+    fireEvent.click(await screen.findByRole('button', { name: 'Use theirs' }));
+
+    await waitFor(() =>
+      expect((screen.getByLabelText('Title') as HTMLInputElement).value).toBe('Drinks on the lawn'),
+    );
+    expect(screen.queryByRole('button', { name: 'Use theirs' })).toBeNull();
+  });
+
+  it('asks before deleting, deletes, and Undo adds it back', async () => {
+    const back = { ...DRINKS, id: 'it_back' };
+    const sent = await onSchedule({
+      'GET /api/events/ev_1/schedule': () => json({ schedule: schedule([DRINKS, PHOTOS]) }),
+      'DELETE /api/events/ev_1/schedule/items/it_drinks': () =>
+        json({ schedule: schedule([PHOTOS]) }),
+      'POST /api/events/ev_1/schedule/items': () =>
+        json({ schedule: schedule([back, PHOTOS]), itemId: 'it_back' }, 201),
+    });
+    fireEvent.click(await screen.findByRole('button', { name: 'Welcome drinks' }));
+    fireEvent.click(screen.getByRole('button', { name: 'Delete item…' }));
+    expect(screen.getByText('Delete Welcome drinks?')).toBeDefined();
+    await waitFor(() => expect(document.activeElement?.id).toBe('ro-keep'));
+    fireEvent.click(screen.getByRole('button', { name: 'Delete item' }));
+
+    expect(await screen.findByText('Welcome drinks deleted.')).toBeDefined();
+    expect(screen.queryByRole('button', { name: 'Welcome drinks' })).toBeNull();
+
+    await act(async () => {
+      fireEvent.click(screen.getByRole('button', { name: 'Undo' }));
+    });
+    expect(await screen.findByText('Welcome drinks is back.')).toBeDefined();
+    expect(sent.filter(({ line }) => line.startsWith('POST')).at(-1)?.body).toEqual({
+      title: 'Welcome drinks',
+      startsAt: '2030-11-15T18:00',
+      lengthMinutes: 120,
+      place: null,
+      ownerName: 'Ebele Nwosu',
+      ownerRole: 'Venue',
+      note: null,
+      fixedTime: false,
+      showToGuests: true,
+    });
+  });
+});
