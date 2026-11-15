@@ -7,7 +7,7 @@ appId: host.exp.Exponent
 - tapOn:
     id: 'event.edit.cover.change'
 - runFlow:
-    file: _sc52652-pick.yaml
+    file: pick.yaml
     env:
       TILE: ${TILE}
 - swipe:
