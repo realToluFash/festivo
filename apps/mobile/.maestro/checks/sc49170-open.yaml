@@ -1,15 +1,11 @@
-# sc-49170: Members opened by its link at the organisation's size; what shows after 3 s and after 15 s.
+# sc-49170: Members opened by its link at the organisation's size; what shows 3 s and 15 s after the title shows (measured from the title, not from the link opening).
 appId: host.exp.Exponent
 ---
 - openLink: ${METRO_URL}/--/settings/members
 - extendedWaitUntil:
     visible: '{{t:membersScreen.title}}'
     timeout: 30000
-- waitForAnimationToEnd:
-    timeout: 3000
+- extendedWaitUntil: { visible: { id: 'never.there' }, timeout: 3000, optional: true }
 - takeScreenshot: open-3s
-- extendedWaitUntil:
-    visible: 'nothing-that-exists-sc49170'
-    timeout: 12000
-    optional: true
+- extendedWaitUntil: { visible: { id: 'never.there' }, timeout: 12000, optional: true }
 - takeScreenshot: open-15s
