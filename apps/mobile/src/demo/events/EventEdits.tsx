@@ -143,6 +143,7 @@ function Shell({
   elsewhere = null,
   over = null,
   toast = null,
+  failed = null,
   children,
 }: {
   part: EditPart;
@@ -154,6 +155,7 @@ function Shell({
   elsewhere?: { onLatest: () => void } | null;
   over?: { layer: ReactNode; onClose: () => void } | null;
   toast?: { words: string; onClose: () => void } | null;
+  failed?: string | null;
   children: ReactNode;
 }) {
   const title = useEditTitle();
@@ -173,6 +175,7 @@ function Shell({
       ask={ask}
       over={over}
       toast={toast}
+      failed={failed}
     >
       {children}
     </EditShell>
@@ -627,6 +630,7 @@ function VenueEdit(edit: EditProps) {
     <Shell
       part="venue"
       changed={changed}
+      failed={forbidden ? NOTE_WORDS.forbidden : null}
       onSave={() => {
         if (noteTooLong(note)) {
           setNoteError(NOTE_WORDS.tooLong);
@@ -678,7 +682,6 @@ function VenueEdit(edit: EditProps) {
         noteRef={noteField}
         testID="event.edit.venue.note"
       />
-      {forbidden && <AlertLine text={NOTE_WORDS.forbidden} />}
     </Shell>
   );
 }

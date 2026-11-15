@@ -641,6 +641,7 @@ export function VenuePart({ event, state, onDirty, onClose, onSave }: PartProps)
         });
       }}
     >
+      {forbidden && <Broken>{NOTE_WORDS.forbidden}</Broken>}
       <VenueFields
         name={name}
         onName={setName}
@@ -688,7 +689,6 @@ export function VenuePart({ event, state, onDirty, onClose, onSave }: PartProps)
           {NOTE_WORDS.hint}
         </p>
       </div>
-      {forbidden && <Alert>{NOTE_WORDS.forbidden}</Alert>}
       <p className="visually-hidden" role="status">
         {said}
       </p>
