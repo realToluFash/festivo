@@ -18,6 +18,7 @@ use BackedEnum;
 use Doctrine\DBAL\ArrayParameterType;
 use Doctrine\DBAL\Connection;
 use Doctrine\DBAL\ParameterType;
+use Doctrine\DBAL\Types\Types;
 use Doctrine\ORM\EntityManagerInterface;
 use InvalidArgumentException;
 use Psl\Type;
@@ -102,6 +103,7 @@ final readonly class MemberAudienceResolver implements AudienceResolverInterface
                   AND m.user_id NOT IN (:except)
                   AND (CAST(:after AS UUID) IS NULL OR m.user_id > CAST(:after AS UUID))
                   AND (CAST(:one AS UUID) IS NULL OR m.user_id = CAST(:one AS UUID))
+                  AND (CAST(:joinedBy AS TIMESTAMP) IS NULL OR m.joined_at IS NULL OR m.joined_at <= CAST(:joinedBy AS TIMESTAMP))
                 ORDER BY m.user_id
                 LIMIT :limit
                 SQL,
@@ -119,6 +121,7 @@ final readonly class MemberAudienceResolver implements AudienceResolverInterface
                 'except' => self::ids($audience->except),
                 'after' => $after?->toRfc4122(),
                 'one' => $only?->toRfc4122(),
+                'joinedBy' => $audience->joinedBy,
                 'limit' => $limit,
             ],
             [
@@ -126,6 +129,7 @@ final readonly class MemberAudienceResolver implements AudienceResolverInterface
                 'holding' => ArrayParameterType::STRING,
                 'eventRoles' => ArrayParameterType::STRING,
                 'except' => ArrayParameterType::STRING,
+                'joinedBy' => Types::DATETIME_IMMUTABLE,
                 'anyNamed' => ParameterType::INTEGER,
                 'limit' => ParameterType::INTEGER,
             ],

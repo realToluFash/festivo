@@ -1224,13 +1224,17 @@ describe('a browser never holds the refresh token', () => {
           was: false,
         },
       ],
-      passwordOnly: [
-        {
-          userId: 'user_2',
-          name: 'Bola Ade',
-          role: { id: 'role_2', seededAs: 'coordinator', name: null },
-        },
-      ],
+      passwordOnly: {
+        count: 1,
+        named: [
+          {
+            userId: 'user_2',
+            name: 'Bola Ade',
+            role: { id: 'role_2', seededAs: 'coordinator', name: null },
+          },
+        ],
+      },
+      withoutTwoFactor: { count: 1_000_000, named: [] },
       ownTwoFactor: true,
       ownProvider: true,
     };
@@ -1254,7 +1258,8 @@ describe('a browser never holds the refresh token', () => {
 
     expect(read.changes[0]?.entry).toBe('entry_1');
     expect(read.changes[0]?.by.name).toBe('Adaeze Okafor');
-    expect(read.passwordOnly?.[0]?.name).toBe('Bola Ade');
+    expect(read.passwordOnly?.named[0]?.name).toBe('Bola Ade');
+    expect(read.withoutTwoFactor).toEqual({ count: 1_000_000, named: [] });
     expect(read.ownTwoFactor).toBe(true);
     expect(read.ownProvider).toBe(true);
     expect(sent).toEqual([

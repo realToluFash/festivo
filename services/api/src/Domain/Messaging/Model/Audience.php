@@ -6,6 +6,8 @@ namespace App\Domain\Messaging\Model;
 
 use App\Enum\NotificationAudienceKind;
 use App\Enum\Permission;
+use DateTimeImmutable;
+use DateTimeInterface;
 use Psl\Type;
 use Psl\Vec;
 use Symfony\Component\Uid\Uuid;
@@ -17,6 +19,7 @@ final readonly class Audience
      * @param list<Uuid>           $only       when not empty, nobody outside it
      * @param list<Uuid>           $except     the one who acted, say
      * @param array<string, mixed> $conditions a guest audience's, for sc-3957's resolver
+     * @param ?DateTimeImmutable   $joinedBy   when set, only members who had joined by then
      */
     private function __construct(
         public NotificationAudienceKind $kind,
@@ -27,6 +30,7 @@ final readonly class Audience
         public array $except = [],
         public array $conditions = [],
         public ?Uuid $eventId = null,
+        public ?DateTimeImmutable $joinedBy = null,
     ) {
     }
 
@@ -70,6 +74,12 @@ final readonly class Audience
         return new self(NotificationAudienceKind::Member, $organisationId, only: $userIds);
     }
 
+    /** Every member who had joined by the moment, still only while each is an active member: somebody who joins later joined under what that moment changed (sc-18317). */
+    public static function membersJoinedBy(Uuid $organisationId, DateTimeImmutable $at): self
+    {
+        return new self(NotificationAudienceKind::Member, $organisationId, joinedBy: $at);
+    }
+
     /** One person at the address they are written to now, whatever becomes of their account or organisation (sc-4332). */
     public static function person(Uuid $id, string $address, string $locale): self
     {
@@ -94,6 +104,7 @@ final readonly class Audience
             'except' => Vec\map($this->except, static fn (Uuid $id): string => $id->toRfc4122()),
             'conditions' => $this->conditions,
             'eventId' => $this->eventId?->toRfc4122(),
+            'joinedBy' => $this->joinedBy?->format(DateTimeInterface::ATOM),
         ];
     }
 
@@ -109,8 +120,10 @@ final readonly class Audience
             'except' => Type\vec(Type\string()),
             'conditions' => Type\dict(Type\string(), Type\mixed()),
             'eventId' => Type\optional(Type\nullable(Type\string())),
+            'joinedBy' => Type\optional(Type\nullable(Type\string())),
         ])->coerce($stored);
         $eventId = $shape['eventId'] ?? null;
+        $joinedBy = $shape['joinedBy'] ?? null;
 
         return new self(
             $shape['kind'],
@@ -121,6 +134,7 @@ final readonly class Audience
             Vec\map($shape['except'], Uuid::fromString(...)),
             $shape['conditions'],
             null === $eventId ? null : Uuid::fromString($eventId),
+            null === $joinedBy ? null : new DateTimeImmutable($joinedBy),
         );
     }
 }

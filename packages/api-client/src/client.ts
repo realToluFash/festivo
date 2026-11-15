@@ -699,9 +699,9 @@ export interface SignInRulesPage extends OrganisationSignInRules {
   inactivityChoices: number[];
   changes: SignInRuleChange[];
   /** Members with no Google or Apple linked, never the caller; only for a caller who may change the rules. */
-  passwordOnly: RulesMember[] | null;
+  passwordOnly: RulesShort | null;
   /** Members with no two-factor, never the caller; only for a caller who may change the rules (sc-609). */
-  withoutTwoFactor: RulesMember[] | null;
+  withoutTwoFactor: RulesShort | null;
   /** Seven days from the switch-on, or from now while it is off. */
   twoFactorDeadline: TwoFactorDeadline | null;
   /** The shortest limit across the caller's organisations, which may be another organisation's. */
@@ -716,6 +716,12 @@ export interface RulesMember {
   userId: string;
   name: string;
   role: MemberRole;
+}
+
+/** Who a rule leaves short: every one of them named up to three, and only counted past that (sc-18317). */
+export interface RulesShort {
+  count: number;
+  named: RulesMember[];
 }
 
 export interface InactivityLimit {
@@ -4657,17 +4663,28 @@ function asTwoFactorDue(raw: unknown): TwoFactorDue | null {
     : { ...deadline, overdue: (raw as Record<string, unknown>).overdue === true };
 }
 
-function asRulesMembers(raw: unknown): (RulesMember | null)[] | null {
-  return Array.isArray(raw)
-    ? raw.map((entry: unknown) => {
-        const member = (entry ?? {}) as Record<string, unknown>;
-        const role = asMemberRole(member.role);
+function asRulesMember(entry: unknown): RulesMember | null {
+  const member = (entry ?? {}) as Record<string, unknown>;
+  const role = asMemberRole(member.role);
 
-        return typeof member.userId === 'string' && typeof member.name === 'string' && role != null
-          ? { userId: member.userId, name: member.name, role }
-          : null;
-      })
+  return typeof member.userId === 'string' && typeof member.name === 'string' && role != null
+    ? { userId: member.userId, name: member.name, role }
     : null;
+}
+
+/** Undefined when it is there but malformed, null when it is not given. */
+function asRulesShort(raw: unknown): RulesShort | null | undefined {
+  if (raw == null) return null;
+
+  const short = raw as Record<string, unknown>;
+
+  if (typeof short.count !== 'number' || !Array.isArray(short.named)) return undefined;
+
+  const named = short.named.map(asRulesMember);
+
+  return named.every((member) => member != null)
+    ? { count: short.count, named: named as RulesMember[] }
+    : undefined;
 }
 
 function asRuleValue(raw: unknown): boolean | number | null | undefined {
@@ -4705,19 +4722,18 @@ function asSignInRulesPage(raw: unknown): SignInRulesPage | null {
     ? page.inactivityChoices.filter((one): one is number => typeof one === 'number')
     : null;
   const changes = Array.isArray(page.changes) ? page.changes.map(asSignInRuleChange) : null;
-  const passwordOnly = asRulesMembers(page.passwordOnly);
-  const withoutTwoFactor = asRulesMembers(page.withoutTwoFactor);
+  const passwordOnly = asRulesShort(page.passwordOnly);
+  const withoutTwoFactor = asRulesShort(page.withoutTwoFactor);
 
   if (choices == null || changes == null || changes.some((change) => change == null)) return null;
-  if (passwordOnly?.some((member) => member == null)) return null;
-  if (withoutTwoFactor?.some((member) => member == null)) return null;
+  if (passwordOnly === undefined || withoutTwoFactor === undefined) return null;
 
   return {
     ...rules,
     inactivityChoices: choices,
     changes: changes as SignInRuleChange[],
-    passwordOnly: passwordOnly as SignInRulesPage['passwordOnly'],
-    withoutTwoFactor: withoutTwoFactor as SignInRulesPage['withoutTwoFactor'],
+    passwordOnly,
+    withoutTwoFactor,
     twoFactorDeadline: asTwoFactorDeadline(page.twoFactorDeadline),
     inactivityLimit: asInactivityLimit(page.inactivityLimit),
     ownTwoFactor: page.ownTwoFactor === true,
