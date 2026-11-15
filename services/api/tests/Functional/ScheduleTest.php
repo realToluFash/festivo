@@ -262,6 +262,8 @@ final class ScheduleTest extends ApiTestCase
 
         self::assertSame(409, $this->statusCode());
         self::assertSame('https://soirely.com/errors/schedule_item_limit', $refused['type'] ?? null);
+        self::assertSame('This schedule has 200 items, the most an event can hold. Delete one to add another.', $refused['title'] ?? null);
+        self::assertSame('This schedule has 200 items, the most an event can hold. Delete one to add another. Nothing was saved.', $refused['detail'] ?? null);
         self::assertCount(200, $this->schedule()['items']);
     }
 

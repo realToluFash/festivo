@@ -100,5 +100,5 @@
     "owner_claim_own": "Vous ne pouvez pas arrêter votre propre demande.",
     "team_seats_in_use": "Toutes les places d’équipe du forfait de cette organisation sont occupées.",
     "seating_items_outside": "Un élément de la salle se retrouverait en dehors.",
-    "schedule_item_limit": "Ce programme compte 200 éléments, le maximum pour un événement. Supprimez-en un pour en ajouter un autre."
+    "schedule_item_limit": "Ce programme compte {max} éléments, le maximum pour un événement. Supprimez-en un pour en ajouter un autre."
 }

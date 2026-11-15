@@ -269,7 +269,6 @@
     "validation.schedule_owner_too_long": "That name is {n} characters. Use {max} or fewer.",
     "validation.schedule_role_too_long": "That role is {n} characters. Use {max} or fewer.",
     "validation.schedule_note_too_long": "That note is {n} characters. Use {max} or fewer.",
-    "run_of_show.item_limit": "This schedule has 200 items, the most an event can hold. Delete one to add another. Nothing was saved.",
     "run_of_show.version_required": "Send the version you are changing, as If-Match.",
     "run_of_show.changed_since": "Someone else changed this item while you had it open. Your change was not saved.",
     "timeline.run_of_show_begins": "Run of show begins"

@@ -26,7 +26,7 @@ final readonly class ProblemRenderer
      * @param list<array{propertyPath: string, message: string, code: string, parameters?: array<string, int|string>}> $violations
      * @param array<string, string>                                                                                    $headers
      * @param array<string, mixed>                                                                                     $members
-     * @param array<string, int|string>                                                                                $parameters the detail key's slots
+     * @param array<string, int|string>                                                                                $parameters the slots in the detail's key and the title's
      */
     public function render(
         Request $request,
@@ -42,7 +42,7 @@ final readonly class ProblemRenderer
 
         $problem = [
             'type' => $code->type(),
-            'title' => $this->titleOf($request, $code),
+            'title' => $this->titleOf($request, $code, $parameters),
             'status' => $code->status(),
         ];
 
@@ -85,11 +85,12 @@ final readonly class ProblemRenderer
         return $response;
     }
 
-    public function titleOf(Request $request, ErrorCode $code): string
+    /** @param array<string, int|string> $parameters */
+    public function titleOf(Request $request, ErrorCode $code, array $parameters = []): string
     {
         $locale = $request->attributes->get(RequestLocaleListener::ATTRIBUTE);
 
-        return $this->translator->trans($code->translationKey(), [], ErrorCode::DOMAIN, \is_string($locale) ? $locale : null);
+        return $this->translator->trans($code->translationKey(), $parameters, ErrorCode::DOMAIN, \is_string($locale) ? $locale : null);
     }
 
     /**

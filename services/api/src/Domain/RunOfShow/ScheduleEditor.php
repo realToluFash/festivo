@@ -44,7 +44,7 @@ final readonly class ScheduleEditor
     {
         $item = $this->locked($event, function () use ($event, $details, $by): ScheduleItem {
             if ($this->scheduleItemRepository->countOnEvent($event) >= ScheduleItem::PER_EVENT_MAXIMUM) {
-                throw new ApiException(ErrorCode::ScheduleItemLimit, 'run_of_show.item_limit');
+                throw new ApiException(ErrorCode::ScheduleItemLimit, 'run_of_show.item_limit', parameters: ['{max}' => ScheduleItem::PER_EVENT_MAXIMUM]);
             }
 
             $item = new ScheduleItem($event, $details->title, $details->startsAt, $by);
