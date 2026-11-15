@@ -1,5 +1,10 @@
-# sc-46879: ${BRUNO}'s How did you invite them? open on ${LIVE}; the event is paused through the API (as ${EMAIL}, from ${WEB_URL} to ${API_URL}); Mark as invited then gets 409 event_state_invalid, the sheet closes and Guests shows the Paused line. Resumes the event after.
+# sc-46879: ${BRUNO}'s How did you invite them? open on ${LIVE}; the event is paused through the API (as ${EMAIL}, from ${WEB_URL} to ${API_URL}); Mark as invited then gets 409 event_state_invalid, the sheet closes and Guests shows the Paused line. Resumes the event in onFlowComplete, pass or fail.
 appId: host.exp.Exponent
+onFlowComplete:
+  - runScript:
+      file: ../scripts/resume-event-elsewhere.js
+      env:
+        EVENT_ID: ${LIVE}
 ---
 - setOrientation: ${ORIENT}
 - openLink: ${METRO_URL}/--/events/${LIVE}?area=guests
@@ -43,4 +48,3 @@ appId: host.exp.Exponent
 - waitForAnimationToEnd:
     timeout: 5000
 - takeScreenshot: sheetStateInvalid-guests
-- evalScript: "${http.post(API_URL + '/api/events/' + LIVE + '/resume', {headers: {'Content-Type': 'application/json', 'Origin': WEB_URL, 'Authorization': 'Bearer ' + output.t}, body: '{}'}).status}"
