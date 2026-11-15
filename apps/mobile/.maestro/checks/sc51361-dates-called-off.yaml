@@ -1,0 +1,56 @@
+# sc-51361: ${EVENT_ID}'s Dates opened while Live, the event called off elsewhere, then Save: changed elsewhere; the latest, a second change and Save: the line under the start says why, in the app's language.
+appId: host.exp.Exponent
+---
+- openLink: ${METRO_URL}/--/events/${EVENT_ID}
+- extendedWaitUntil:
+    visible:
+      id: 'events.page'
+    timeout: 30000
+- scrollUntilVisible:
+    element:
+      id: 'events.details.dates'
+    direction: DOWN
+    centerElement: true
+- tapOn:
+    id: 'events.details.dates'
+- extendedWaitUntil:
+    visible:
+      id: 'event.edit.dates.startDate'
+    timeout: 20000
+- tapOn:
+    id: 'event.edit.dates.startDate'
+- waitForAnimationToEnd
+- tapOn: '19'
+- tapOn: 'OK'
+- waitForAnimationToEnd
+- runScript:
+    file: ../scripts/call-off-event-elsewhere.js
+- tapOn:
+    id: 'event.edit.dates.save'
+- extendedWaitUntil:
+    visible: '(Show the latest|Afficher la dernière version|Ver la última versión|Ver a versão mais recente).*'
+    timeout: 15000
+- takeScreenshot: changed-elsewhere
+- tapOn: '(Show the latest|Afficher la dernière version|Ver la última versión|Ver a versão mais recente).*'
+- extendedWaitUntil:
+    visible:
+      id: 'event.edit.dates.latest.show'
+    timeout: 10000
+- tapOn:
+    id: 'event.edit.dates.latest.show'
+- waitForAnimationToEnd
+- takeScreenshot: latest
+- tapOn:
+    id: 'event.edit.dates.startDate'
+- waitForAnimationToEnd
+- tapOn: '18'
+- tapOn: 'OK'
+- waitForAnimationToEnd
+- tapOn:
+    id: 'event.edit.dates.save'
+- waitForAnimationToEnd
+- takeScreenshot: second-save
+- extendedWaitUntil:
+    visible: '.*(called off|cancelado|annulé).*'
+    timeout: 15000
+- takeScreenshot: refused
