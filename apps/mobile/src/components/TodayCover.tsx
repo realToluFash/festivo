@@ -234,6 +234,45 @@ export function BellButton() {
   );
 }
 
+/** Search in glass, the bell's twin: drawn 40, tapped 48 (sc-39534). */
+function SearchGlass() {
+  const { t } = useTranslation();
+  const { open } = useTodayShell();
+
+  return (
+    <Pressable
+      onPress={() => open({ to: 'search' })}
+      accessibilityRole="button"
+      accessibilityLabel={t('search.row')}
+      hitSlop={tokens.spaceXxs}
+      testID="today.search"
+    >
+      <Glass style={styles.bell}>
+        <Glyph name="search" size={19} ink={tokens.colorInkOnDark} />
+      </Glass>
+    </Pressable>
+  );
+}
+
+/** The right end of the phone's and the upright iPad's top: Search, then the bell. */
+function SearchAndBell() {
+  const { search } = useTodayShell();
+
+  if (!search) return <BellButton />;
+
+  return (
+    <View style={styles.ends}>
+      <SearchGlass />
+      <BellButton />
+    </View>
+  );
+}
+
+/** How far Search beside the bell takes the upright row's end past the 46 tile the capsule's room allows for at each side. */
+function useEndsPastTile(): number {
+  return useTodayShell().search ? 40 + tokens.spaceSm + 40 - 46 : 0;
+}
+
 /** iPadOS 26's tab bar, in glass at the top of the cover. */
 export function TabCapsule({
   onTab,
@@ -690,7 +729,7 @@ export function TodayCover({
           <View style={[styles.topPhone, { marginTop: top }]}>
             <OrgButton />
             <View style={styles.grow} />
-            <BellButton />
+            <SearchAndBell />
           </View>
         ) : (
           <TabletTop top={top} onTab={onTab} />
@@ -714,7 +753,10 @@ export function TodayCover({
 function TabletTop({ top, onTab }: { top: number; onTab: (tab: Tab) => void }) {
   const [row, setRow] = useState<number>();
   const [capsule, setCapsule] = useState<number>();
-  const { labelSize, givesWay, measure } = useCapsuleLabels(useTabLabels(), tabletRow(row));
+  const { labelSize, givesWay, measure } = useCapsuleLabels(
+    useTabLabels(),
+    tabletRow(row, useEndsPastTile()),
+  );
   const room =
     row == null || capsule == null
       ? undefined
@@ -728,7 +770,7 @@ function TabletTop({ top, onTab }: { top: number; onTab: (tab: Tab) => void }) {
       {measure}
       <OrgButton maxWidth={room} givesWay={givesWay} />
       <View style={styles.grow} />
-      <BellButton />
+      <SearchAndBell />
       <View style={styles.capsuleAt} pointerEvents="box-none">
         <View onLayout={(event) => setCapsule(event.nativeEvent.layout.width)}>
           <TabCapsule onTab={onTab} labelSize={labelSize} />
@@ -744,9 +786,9 @@ function useTabLabels(): string[] {
   return TABS.map(([, glyph]) => t(`todayScreen.tab.${glyph}`));
 }
 
-/** The upright tablet's row from the tile's edge to the bell's, inside its side margins. */
-function tabletRow(width: number | undefined): number {
-  return width == null ? 0 : Math.max(0, width - 2 * tokens.space3xl);
+/** The upright tablet's row from the tile's edge to the bell's, inside its side margins, less what the end takes past the tile at each side, as the capsule is centred. */
+function tabletRow(width: number | undefined, endsPastTile = 0): number {
+  return width == null ? 0 : Math.max(0, width - 2 * tokens.space3xl - 2 * endsPastTile);
 }
 
 export function Band({
@@ -764,7 +806,11 @@ export function Band({
   const { now } = moment;
   const phone = layout === 'phone';
   const [row, setRow] = useState<number>();
-  const { labelSize, measure } = useCapsuleLabels(useTabLabels(), phone ? 0 : tabletRow(row));
+  const endsPastTile = useEndsPastTile();
+  const { labelSize, measure } = useCapsuleLabels(
+    useTabLabels(),
+    phone ? 0 : tabletRow(row, endsPastTile),
+  );
 
   return (
     <View style={[styles.band, { height: top + bandBody(moment, layout) }]}>
@@ -785,7 +831,7 @@ export function Band({
         {!phone && measure}
         <OrgButton compact />
         <View style={styles.grow} />
-        <BellButton />
+        <SearchAndBell />
         <View style={phone ? styles.bandTitle : styles.capsuleAt} pointerEvents="box-none">
           {phone ? (
             <Text size={17} weight="semibold" accessibilityRole="header" style={styles.white}>
@@ -985,6 +1031,7 @@ export function PhoneTabBar({
 
 const styles = StyleSheet.create({
   grow: { flex: 1, minWidth: 0 },
+  ends: { flexDirection: 'row', alignItems: 'center', gap: tokens.spaceSm },
   fade: { position: 'absolute', left: 0, right: 0, bottom: 0, height: 150 },
   whiteCapsule: {
     height: 46,

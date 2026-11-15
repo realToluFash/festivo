@@ -13,6 +13,7 @@ use App\Http\Access\Interfaces\EventScopedRepositoryInterface;
 use DateTimeImmutable;
 use Doctrine\Bundle\DoctrineBundle\Repository\ServiceEntityRepository;
 use Doctrine\DBAL\LockMode;
+use Doctrine\ORM\QueryBuilder;
 use Doctrine\Persistence\ManagerRegistry;
 use Psl\Type;
 use Psl\Vec;
@@ -35,6 +36,58 @@ final class GuestRepository extends ServiceEntityRepository implements EventScop
     public function findOneInEvent(Uuid $eventId, Uuid $id): ?Guest
     {
         return $this->findOneBy(['event' => $eventId, 'id' => $id, 'removedAt' => null]);
+    }
+
+    /**
+     * Search's guests (sc-39534): the hosts on the lists of the events the caller may open their guests on, by name.
+     *
+     * @param list<Uuid>|null $within those events; null for every event of the organisation
+     *
+     * @return list<Guest> names beginning with the term first, then the rest, each alphabetical; two of one name by their event's start
+     */
+    public function findNamedLike(Organisation $organisation, string $term, ?array $within, int $most): array
+    {
+        if ([] === $within) {
+            return [];
+        }
+
+        /** @var list<Guest> */
+        return $this->namedLike($organisation, $term, $within)
+            ->addSelect('e')
+            ->addSelect('CASE WHEN FOLDED(g.fullName) LIKE FOLDED(:start) THEN 0 ELSE 1 END AS HIDDEN later')
+            ->addSelect('FOLDED(g.fullName) AS HIDDEN folded')
+            ->setParameter('start', NameSearch::start($term))
+            ->orderBy('later', 'ASC')
+            ->addOrderBy('folded', 'ASC')
+            ->addOrderBy('e.startsAtUtc', 'ASC')
+            ->addOrderBy('g.id', 'ASC')
+            ->setMaxResults($most)
+            ->getQuery()
+            ->getResult();
+    }
+
+    /** @param list<Uuid>|null $within */
+    public function countNamedLike(Organisation $organisation, string $term, ?array $within): int
+    {
+        return [] === $within ? 0 : (int) $this->namedLike($organisation, $term, $within)
+            ->select('COUNT(g.id)')
+            ->getQuery()
+            ->getSingleScalarResult();
+    }
+
+    /** @param list<Uuid>|null $within */
+    private function namedLike(Organisation $organisation, string $term, ?array $within): QueryBuilder
+    {
+        $query = $this->createQueryBuilder('g')
+            ->innerJoin('g.event', 'e')
+            ->andWhere('e.organisation = :organisation')
+            ->andWhere('g.host IS NULL')
+            ->andWhere('g.removedAt IS NULL')
+            ->andWhere('FOLDED(g.fullName) LIKE FOLDED(:term)')
+            ->setParameter('organisation', $organisation)
+            ->setParameter('term', NameSearch::anywhere($term));
+
+        return null === $within ? $query : $query->andWhere('e.id IN (:within)')->setParameter('within', NameSearch::ids($within));
     }
 
     /** @return list<Guest> hosts and companions alike, each companion in its place */
