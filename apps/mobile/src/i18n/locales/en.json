@@ -1328,6 +1328,11 @@
       "approvedNext": "See {{name}}",
       "turnedDown": "{{name}}’s request is turned down.",
       "turnedDownNext": "See Former"
+    },
+    "more": {
+      "loading": "Loading more people…",
+      "failedTitle": "More people did not load.",
+      "failedLine": "Check your connection and try again."
     }
   },
   "accessPaused": {

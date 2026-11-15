@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 
-import { MEMBERS_PAGE, rereadLimit, withNextPage } from './membersPaging.ts';
+import { MEMBERS_PAGE, nearsEnd, rereadLimit, withNextPage } from './membersPaging.ts';
 
 const rows = (from: number, to: number) =>
   Array.from({ length: to - from + 1 }, (_, at) => ({ id: `m${from + at}` }));
@@ -23,5 +23,17 @@ describe('People a page at a time', () => {
     expect(rereadLimit({ members: rows(1, 3), next: null })).toBe(MEMBERS_PAGE);
     expect(rereadLimit({ members: rows(1, 150), next: 'm150' })).toBe(150);
     expect(rereadLimit({ members: rows(1, 700), next: 'm700' })).toBe(500);
+  });
+
+  it('starts the next page once the end is within one screen of the bottom of the view', () => {
+    const at = (y: number) =>
+      nearsEnd({
+        contentOffset: { y },
+        contentSize: { height: 4000 },
+        layoutMeasurement: { height: 800 },
+      });
+
+    expect(at(2399)).toBe(false);
+    expect(at(2400)).toBe(true);
   });
 });

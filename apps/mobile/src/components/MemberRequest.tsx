@@ -30,6 +30,7 @@ export function RequestScreen({
   organisation,
   member,
   list,
+  reread,
   roles,
   open,
   opener,
@@ -39,6 +40,7 @@ export function RequestScreen({
   organisation: Membership;
   member: OrganisationMember;
   list: MembersList;
+  reread: () => Promise<MembersList>;
   roles: readonly OrganisationRole[];
   open: boolean;
   opener: RefObject<ScreenReaderTarget | null>;
@@ -56,7 +58,6 @@ export function RequestScreen({
   const first = firstName(name);
   const face = faceOf(member);
   const role = offered.find((one) => one.id === picked);
-  const read = () => api.members(organisation.id);
   const asked = member.since == null ? '' : formatDay(member.since, dateLocale());
 
   async function approve(): Promise<void> {
@@ -73,7 +74,7 @@ export function RequestScreen({
       setBusy(null);
       return;
     }
-    onAnswered(await membersAfterWrite(read, list, withApproved(member.id, role)), {
+    onAnswered(await membersAfterWrite(reread, list, withApproved(member.id, role)), {
       kind: 'approved',
       member: member.id,
       name,
@@ -94,7 +95,7 @@ export function RequestScreen({
       setBusy(null);
       return;
     }
-    onAnswered(await membersAfterWrite(read, list, withTurnedDown(member.id)), {
+    onAnswered(await membersAfterWrite(reread, list, withTurnedDown(member.id)), {
       kind: 'turnedDown',
       name,
     });

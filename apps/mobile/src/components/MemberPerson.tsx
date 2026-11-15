@@ -47,6 +47,7 @@ export function PersonBody({
   organisation,
   member,
   list,
+  reread,
   roles,
   withheld,
   manages,
@@ -59,6 +60,8 @@ export function PersonBody({
   organisation: Membership;
   member: OrganisationMember;
   list: MembersList;
+  /** Every row the screen holds, as they now are. */
+  reread: () => Promise<MembersList>;
   roles: readonly OrganisationRole[];
   withheld: readonly OrganisationRole[];
   manages: boolean;
@@ -69,7 +72,7 @@ export function PersonBody({
 }) {
   const { t } = useTranslation();
   const callerOwns = organisation.role.seededAs === 'owner';
-  const standing = memberStanding(member, list.members, {
+  const standing = memberStanding(member, list.owners, {
     owns: callerOwns,
     manages,
     withholds: withheld,
@@ -102,8 +105,7 @@ export function PersonBody({
   }
 
   function changedElsewhere(): void {
-    void api
-      .members(organisation.id)
+    void reread()
       .then(onChanged)
       .catch(() => undefined)
       .finally(() => tell([t('membersScreen.accessConflict', { name })]));
@@ -133,9 +135,7 @@ export function PersonBody({
       return;
     }
     const role = memberRole(t, member);
-    onChanged(
-      await membersAfterWrite(() => api.members(organisation.id), list, withRestored(member.id)),
-    );
+    onChanged(await membersAfterWrite(reread, list, withRestored(member.id)));
     setRestoring(false);
     tell(
       byHand
@@ -157,10 +157,7 @@ export function PersonBody({
       setRefused({ on: 'remove', words: refusalTitle(error, t('membersScreen.actionFailed')) });
       return;
     }
-    onRemoved(
-      await membersAfterWrite(() => api.members(organisation.id), list, withRemoved(member.id)),
-      name,
-    );
+    onRemoved(await membersAfterWrite(reread, list, withRemoved(member.id)), name);
   }
 
   const step = changes
@@ -311,6 +308,7 @@ export function PersonBody({
           organisation={organisation}
           member={member}
           list={list}
+          reread={reread}
           roles={roles}
           open={roleOpen}
           opener={stepRef}

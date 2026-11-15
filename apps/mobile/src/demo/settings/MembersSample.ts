@@ -767,18 +767,7 @@ export const PEOPLE_PAGE = 50;
 /** The next page of People: on its way as the end nears, or failed with the rows already shown kept. */
 export type More = 'idle' | 'loading' | 'failed';
 
-/** The next page starts once the list's end is within one screen of the bottom of the view. */
-export function nearsEnd({
-  contentOffset,
-  contentSize,
-  layoutMeasurement,
-}: {
-  contentOffset: { y: number };
-  contentSize: { height: number };
-  layoutMeasurement: { height: number };
-}): boolean {
-  return contentOffset.y + layoutMeasurement.height * 2 >= contentSize.height;
-}
+export { nearsEnd } from '@soirely/domain';
 
 export const MORE_WORDS = {
   loading: 'Loading more people…',

@@ -1047,6 +1047,7 @@ export function ScrollColumn({
   contentContainerStyle,
   refreshControl,
   away = false,
+  onScroll,
 }: {
   children: ReactNode;
   style?: StyleProp<ViewStyle>;
@@ -1054,6 +1055,7 @@ export function ScrollColumn({
   refreshControl?: ReactElement<RefreshControlProps> | undefined;
   /** Out of the layout behind another column; back in, it shows where it was left. */
   away?: boolean;
+  onScroll?: ((event: NativeSyntheticEvent<NativeScrollEvent>) => void) | undefined;
 }) {
   const { screenScroll, scrollProps, heldStyle, onContentLayout } = useScreenScrollView();
   const docked = useContext(Dock)?.docked ?? false;
@@ -1077,6 +1079,7 @@ export function ScrollColumn({
         onScroll={(event) => {
           if (away) return;
           scrollProps.onScroll(event);
+          onScroll?.(event);
           if (
             left.current != null &&
             Math.abs(event.nativeEvent.contentOffset.y - left.current) < 1
@@ -1088,6 +1091,7 @@ export function ScrollColumn({
           left.current = null;
         }}
         onContentSizeChange={restore}
+        scrollEventThrottle={onScroll == null ? undefined : 64}
         style={style}
         contentContainerStyle={[styles.grow, heldStyle]}
         refreshControl={refreshControl}

@@ -16,6 +16,7 @@ import {
   memberIsShown,
   recoveryEndedByRemoval,
   recoveryShownIn,
+  type MembersMore,
   rereadLimit,
   roleName,
   withNextPage,
@@ -80,7 +81,7 @@ type Load =
     };
 
 /** The next page of People: on its way, or failed with the rows already shown kept (sc-49170). */
-type More = 'idle' | 'loading' | 'failed';
+type More = MembersMore;
 
 type Dialog =
   | { kind: 'invite'; email: string; roleId: string | null; again: string | null }

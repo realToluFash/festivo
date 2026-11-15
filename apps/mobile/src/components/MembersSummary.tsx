@@ -1,4 +1,5 @@
 import type { OrganisationMember } from '@soirely/api-client';
+import type { MembersMore } from '@soirely/domain';
 import type { Ref } from 'react';
 import { useTranslation } from 'react-i18next';
 import { StyleSheet, View, type ViewInstance } from 'react-native';
@@ -25,7 +26,9 @@ import {
   OnCard,
   Row,
   RowList,
+  RowShapes,
   Section,
+  SectionFailed,
   SummaryCard,
   TextAction,
 } from './Summary.tsx';
@@ -172,8 +175,10 @@ export function People({
   dense,
   manages,
   rowRef,
+  more,
   onFilter,
   onOpen,
+  onTryAgain,
 }: {
   listed: readonly OrganisationMember[];
   counts: Record<MembersFilter, number>;
@@ -183,8 +188,11 @@ export function People({
   dense: boolean;
   manages: boolean;
   rowRef: (id: string) => Ref<ViewInstance>;
+  /** The next page of People, under the rows held (sc-49170). */
+  more: MembersMore;
   onFilter: (filter: MembersFilter) => void;
   onOpen: (id: string) => void;
+  onTryAgain: () => void;
 }) {
   const { t } = useTranslation();
   const side = dense ? 36 : 40;
@@ -238,6 +246,20 @@ export function People({
       ) : (
         <View style={dense && styles.bleed}>
           <RowList items={items} gutter={gutter} />
+          {more === 'failed' ? (
+            <SectionFailed
+              title={t('membersScreen.more.failedTitle')}
+              line={t('membersScreen.more.failedLine')}
+              onRetry={onTryAgain}
+              testID="members.more.retry"
+            />
+          ) : (
+            more === 'loading' && (
+              <View style={styles.more} testID="members.more.loading">
+                <RowShapes count={2} words={t('membersScreen.more.loading')} />
+              </View>
+            )
+          )}
         </View>
       )}
     </Section>
@@ -293,6 +315,7 @@ const styles = StyleSheet.create({
   secondary: { color: tokens.colorInkSecondary },
   centred: { textAlign: 'center' },
   bleed: { marginHorizontal: -10 },
+  more: { paddingTop: tokens.spaceSm },
   empty: { gap: tokens.spaceXs, paddingTop: tokens.spaceXs },
   nobody: { flex: 1, alignItems: 'center', justifyContent: 'center', padding: tokens.space5xl },
 });

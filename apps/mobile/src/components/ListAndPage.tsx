@@ -1,6 +1,8 @@
 import type { ReactElement, ReactNode } from 'react';
 import {
   Animated,
+  type NativeScrollEvent,
+  type NativeSyntheticEvent,
   type RefreshControlProps,
   type StyleProp,
   StyleSheet,
@@ -48,6 +50,7 @@ export interface ListAndPageProps {
   list: ReactNode;
   /** Pulling the list down. */
   listRefresh?: ReactElement<RefreshControlProps> | undefined;
+  onListScroll?: (event: NativeSyntheticEvent<NativeScrollEvent>) => void;
   page: ReactNode;
   /** Changes with the page, so a page opened after a longer one shows from its top. */
   pageKey: string;
@@ -95,6 +98,7 @@ export function ListAndPage({
   besideHeading,
   list,
   listRefresh,
+  onListScroll,
   page,
   pageKey,
   pageInFront,
@@ -150,6 +154,7 @@ export function ListAndPage({
             contentContainerStyle={inColumn ? COLUMN : (ruled?.list ?? column)}
             refreshControl={listRefresh}
             away={!landscape && pageInFront}
+            onScroll={onListScroll}
           >
             {(landscape ? pageless : !pageInFront) && <FrameTop />}
             {!headingAbove && heading}

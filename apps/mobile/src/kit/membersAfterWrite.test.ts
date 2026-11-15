@@ -9,6 +9,7 @@ import {
   withRole,
   withTurnedDown,
 } from './membersAfterWrite.ts';
+import { membersListOf } from '../test-members.ts';
 
 const member = (id: string): OrganisationMember => ({
   id,
@@ -27,14 +28,14 @@ const member = (id: string): OrganisationMember => ({
   suspension: null,
 });
 
-const list: MembersList = { members: [member('m1'), member('m2')], invitations: [] };
+const list: MembersList = membersListOf([member('m1'), member('m2')]);
 const unreadable = async (): Promise<MembersList> => {
   throw new Error('offline');
 };
 
 describe('the members list after a write that landed', () => {
   it('is the list read again when that read works', async () => {
-    const fresh: MembersList = { members: [member('m3')], invitations: [] };
+    const fresh: MembersList = membersListOf([member('m3')]);
 
     expect(await membersAfterWrite(async () => fresh, list, withRemoved('m1'))).toBe(fresh);
   });
@@ -55,16 +56,16 @@ describe('the members list after a write that landed', () => {
   });
 
   it('still shows an approval or a turn-down when the read fails', async () => {
-    const waiting: MembersList = {
-      members: [
+    const waiting = membersListOf(
+      [
         {
           ...member('m1'),
           status: 'pending_approval',
           removesAt: { at: '2026-11-11T08:40:00+00:00', written: 'Wednesday, Nov 11 at 09:40 WAT' },
         },
       ],
-      invitations: [],
-    };
+      'waiting',
+    );
     const role = { id: 'role_read_only', seededAs: 'read_only', name: null };
 
     expect(
@@ -83,23 +84,34 @@ describe('the members list after a write that landed', () => {
     });
   });
 
+  it('takes an approval off Waiting and into the counts when the read fails (sc-49170)', async () => {
+    const asked = { ...member('m1'), status: 'pending_approval' as const };
+    const role = { id: 'role_owner', seededAs: 'owner', name: null };
+    const after = await membersAfterWrite(
+      unreadable,
+      membersListOf([asked, member('m2')]),
+      withApproved('m1', role),
+    );
+
+    expect(after.waiting).toEqual([]);
+    expect(after.counts).toEqual({ all: 2, active: 2, waiting: 0, suspended: 0, former: 0 });
+    expect(after.owners).toBe(1);
+  });
+
   it('still shows a restore when the read fails', async () => {
-    const suspended: MembersList = {
-      members: [
-        {
-          ...member('m1'),
-          status: 'suspended',
-          suspension: {
-            reason: 'manual',
-            domain: null,
-            since: { at: '2026-10-20T08:40:00+00:00', written: 'Tuesday, Oct 20 at 09:40 WAT' },
-            removesAt: null,
-            onlyOwner: false,
-          },
+    const suspended = membersListOf([
+      {
+        ...member('m1'),
+        status: 'suspended',
+        suspension: {
+          reason: 'manual',
+          domain: null,
+          since: { at: '2026-10-20T08:40:00+00:00', written: 'Tuesday, Oct 20 at 09:40 WAT' },
+          removesAt: null,
+          onlyOwner: false,
         },
-      ],
-      invitations: [],
-    };
+      },
+    ]);
 
     expect(
       (await membersAfterWrite(unreadable, suspended, withRestored('m1'))).members[0],
