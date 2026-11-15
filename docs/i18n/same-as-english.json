@@ -24,7 +24,8 @@
     "web:guestNeeds.dietName.kosher",
     "mobile:guestList.how.whatsapp",
     "mobile:guestNeeds.dietName.halal",
-    "mobile:guestNeeds.dietName.kosher"
+    "mobile:guestNeeds.dietName.kosher",
+    "web:seating.kindRectangular"
   ],
   "fr": [
     "web:nav.menu",
