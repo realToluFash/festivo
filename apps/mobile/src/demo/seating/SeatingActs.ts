@@ -470,6 +470,13 @@ function cleared(m: Seating, key: string): Seating {
   return { ...m, fields: { ...m.fields, drafts, errors, focus: null } };
 }
 
+const TABLE_SEATS = 30;
+
+function tableSizeFits(cm: number, us: boolean): boolean {
+  const [min, max] = us ? [40.64, 998.22] : [40, 1000];
+  return cm >= min - 1e-6 && cm <= max + 1e-6;
+}
+
 function length(m: Seating, text: string): number | null {
   return m.units === 'metric' ? parseMetres(text) : parseFeet(text);
 }
@@ -501,8 +508,9 @@ function applyField(m: Seating, key: string): Seating {
     case 'Name':
     case 'Label': {
       const name = key === 'Label' ? text.trim().toLocaleUpperCase() : text.trim();
-      if (name === '') return cleared(m, key);
       const rows = it.kind === 'row';
+      if (name === '')
+        return rows || it.kind === 'single' ? cleared(m, key) : refuse(m, key, W.tableBlank);
       const clash = m.items.some(
         (other) =>
           other.id !== it.id &&
@@ -523,6 +531,8 @@ function applyField(m: Seating, key: string): Seating {
       return done(rows ? { label: name, name: `Row ${name}` } : { name });
     }
     case 'Seats': {
+      if (it.kind !== 'row' && (whole == null || whole < 1))
+        return refuse(m, key, it.kind === 'cocktail' ? W.placesRange : W.seatsRange);
       if (whole == null || whole < 1) return cleared(m, key);
       if (it.kind === 'row') {
         const last = it.chairs.reduce((n, c, i) => (c.state === 'taken' ? i + 1 : n), 0);
@@ -530,6 +540,8 @@ function applyField(m: Seating, key: string): Seating {
         if (whole < last) return refuse(m, key, say.rowBelow(who, last, last));
         return done({ chairs: resizeChairs(it.chairs.slice(0, Math.max(whole, last)), whole) });
       }
+      if (whole > TABLE_SEATS)
+        return refuse(m, key, it.kind === 'cocktail' ? W.placesRange : W.seatsRange);
       const seated = filled(it);
       if (whole < seated) return refuse(m, key, say.belowSeated(seated, seated));
       return done({ chairs: resizeChairs(it.chairs, whole) });
@@ -540,8 +552,12 @@ function applyField(m: Seating, key: string): Seating {
     case 'Spacing':
     case 'Ends': {
       const us = m.units === 'us';
-      if (key === 'Ends' && size == null) return cleared(m, key);
-      if (size == null) return refuse(m, key, us ? W.usHint : W.sizeMin);
+      if (key === 'Ends' && (size == null || size > it.chairs.length))
+        return refuse(m, key, say.endsRange(it.chairs.length));
+      const table = key !== 'Spacing' && key !== 'Ends';
+      if (size == null) return refuse(m, key, us ? W.usHint : table ? W.tableSize : W.sizeMin);
+      if (table && !tableSizeFits(size, us))
+        return refuse(m, key, us ? W.tableSizeFeet : W.tableSize);
       if (key !== 'Ends' && size < (us ? 30.48 : 30))
         return refuse(m, key, us ? W.sizeMinFeet : W.sizeMin);
       const field = { Diameter: 'd', Width: 'w', Length: 'l', Spacing: 'spacing', Ends: 'ends' }[
