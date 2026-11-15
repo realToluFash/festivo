@@ -115,9 +115,6 @@ export function BackHead({
 }
 
 /** A labelled field that applies on Enter or on leaving it (pm, 7 Nov 2026): a refusal is said beside it and nothing is saved. */
-/** A field's refusal: words beside it, or words with the saved value put back in it (the room's 409, sc-4000). */
-export type FieldRefusal = string | { refused: string; savedBack: true } | null;
-
 export function Field({
   fieldKey,
   label,
@@ -137,7 +134,7 @@ export function Field({
   hint?: string | undefined;
   maxLength?: number;
   inputMode?: 'text' | 'decimal';
-  onCommit: (text: string) => Promise<FieldRefusal> | FieldRefusal;
+  onCommit: (text: string) => Promise<string | null> | string | null;
 }) {
   const { t } = useTranslation();
   const id = useId();
@@ -161,12 +158,7 @@ export function Field({
       setError(null);
       return;
     }
-    const refusal = await onCommit(draft);
-
-    if (refusal != null && typeof refusal === 'object') {
-      setDraft(value);
-      setError(refusal.refused);
-    } else setError(refusal);
+    setError(await onCommit(draft));
   }
 
   function keys(event: KeyboardEvent<HTMLInputElement>): void {

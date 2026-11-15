@@ -42,7 +42,6 @@ import {
   type Asking,
   BackHead,
   Field,
-  type FieldRefusal,
   Line,
   type Outside,
   type Panel,
@@ -903,13 +902,12 @@ function RoomSettings({ ctx, plan }: { ctx: PlanApi; plan: SeatingPlan }) {
   const side = useRoomSide(ctx.system);
   const unit = ctx.system === 'us' ? undefined : 'm';
 
-  async function resize(key: 'widthCm' | 'lengthCm', text: string): Promise<FieldRefusal> {
+  function resize(key: 'widthCm' | 'lengthCm', text: string): Promise<string | null> | string {
     const read = side(text, key === 'widthCm' ? 'width' : 'length');
-    let outside = false;
 
     if ('refused' in read) return read.refused;
     ctx.showOutside(null);
-    const said = await ctx.send(
+    return ctx.send(
       () => api.changeSeatingRoom(ctx.event.id, { [key]: read.cm }, plan.version),
       key,
       (error) => {
@@ -919,7 +917,6 @@ function RoomSettings({ ctx, plan }: { ctx: PlanApi; plan: SeatingPlan }) {
         const length = key === 'lengthCm' ? read.cm : plan.lengthCm;
 
         ctx.showOutside({ ids, side: key === 'widthCm' ? 'width' : 'length', cm: read.cm });
-        outside = true;
         return t('seating.itemsOutside', {
           count: ids.length,
           width: lengthWords(t, locale, width, ctx.system),
@@ -927,8 +924,6 @@ function RoomSettings({ ctx, plan }: { ctx: PlanApi; plan: SeatingPlan }) {
         });
       },
     );
-
-    return outside && said != null ? { refused: said, savedBack: true } : said;
   }
 
   return (

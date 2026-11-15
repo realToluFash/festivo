@@ -821,7 +821,7 @@ describe('Tables at a desk (sc-4000)', () => {
     expect(screen.getByRole('heading', { level: 2, name: 'Room settings' })).toBeDefined();
     expect(document.querySelector('[data-table="t1"] .st-overlap')).not.toBeNull();
     expect(document.querySelector('.st-new-wall')).not.toBeNull();
-    expect(screen.getByLabelText<HTMLInputElement>('Width').value).toBe('24');
+    expect(screen.getByLabelText<HTMLInputElement>('Width').value).toBe('13');
   });
 
   it('shows a table as facts, with nothing to change, without seating.manage', async () => {
