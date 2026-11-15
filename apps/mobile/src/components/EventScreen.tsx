@@ -31,7 +31,7 @@ import {
 import { DESTINATION_HREF } from '../kit/appNav.ts';
 import { offersDelete } from '../kit/eventDelete.ts';
 import { offersEdit } from '../kit/eventEdit.ts';
-import { partLocked } from '../kit/eventOverview.ts';
+import { closesOnLatest, partLocked } from '../kit/eventOverview.ts';
 import { DUPLICATING, backToOriginal } from '../kit/eventDuplicate.ts';
 import {
   type EditPart,
@@ -458,8 +458,7 @@ export function EventScreen({
           }}
           onLatest={(latest) => {
             change(latest);
-            if (editing.part === 'dates' && partLocked('dates', latest.phase))
-              closeEdit(partRef('dates'));
+            if (closesOnLatest(editing.part, latest.phase)) closeEdit(partRef('dates'));
             else setEditing((was) => (was == null ? was : { ...was, count: was.count + 1 }));
           }}
         />

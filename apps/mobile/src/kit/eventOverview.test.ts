@@ -3,6 +3,7 @@ import type { TFunction } from 'i18next';
 import { describe, expect, it } from 'vitest';
 
 import {
+  closesOnLatest,
   coverRow,
   datesRow,
   hostsRow,
@@ -111,5 +112,14 @@ describe('coverRow', () => {
       title: 'eventPage.yourPhoto',
       line: `eventPage.coverLine ${JSON.stringify({ showing: 'eventCover.showing_top' })}`,
     });
+  });
+});
+
+describe('closesOnLatest', () => {
+  it('closes Dates on a finished event, and leaves a Live one and every other part open', () => {
+    expect(closesOnLatest('dates', 'finished')).toBe(true);
+    expect(closesOnLatest('dates', 'live')).toBe(false);
+    expect(closesOnLatest('dates', 'happening_now')).toBe(false);
+    expect(closesOnLatest('venue', 'finished')).toBe(false);
   });
 });
