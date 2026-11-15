@@ -1,4 +1,4 @@
-import { cleanup, fireEvent, render, screen, within } from '@testing-library/react';
+import { cleanup, fireEvent, render, screen, waitFor, within } from '@testing-library/react';
 import { RouterProvider, createMemoryRouter } from 'react-router';
 import { afterEach, beforeAll, beforeEach, describe, expect, it, vi } from 'vitest';
 
@@ -654,6 +654,36 @@ describe('tables, rows and seats (sc-4000, sc-4003)', () => {
     expect(
       within(panel()).getByText('This plan already has a seat called By the door.'),
     ).toBeDefined();
+  });
+
+  it('refuses a blank or too long name and label, and keeps the old one', SLOW, async () => {
+    await seating();
+    press(item(/^Table 4,/u));
+    expect(typeIn('Name', '').getAttribute('aria-invalid')).toBe('true');
+    expect(within(panel()).getByText('Enter a name for the table.')).toBeDefined();
+    expect(within(panel()).getByRole('heading', { name: 'Table 4' })).toBeDefined();
+    typeIn('Name', 'T'.repeat(31));
+    expect(within(panel()).getByText('Use 30 characters or fewer.')).toBeDefined();
+    expect(within(panel()).getByRole('heading', { name: 'Table 4' })).toBeDefined();
+    press(item(/^Row A,/u));
+    typeIn('Label', 'ABCDEFGHIJK');
+    expect(within(panel()).getByText('Use 10 characters or fewer.')).toBeDefined();
+    typeIn('Label', '');
+    expect(within(panel()).getByText('Enter a label for the row.')).toBeDefined();
+    press(item(/^By the door,/u));
+    typeIn('Name', 'S'.repeat(31));
+    expect(within(panel()).getByText('Use 30 characters or fewer.')).toBeDefined();
+    typeIn('Name', '');
+    expect(within(panel()).getByText('Enter a name for the seat.')).toBeDefined();
+    expect(within(panel()).getByRole('heading', { name: 'By the door' })).toBeDefined();
+  });
+
+  it('gives focus back to the table when Delete’s ask is kept', SLOW, async () => {
+    await seating('deleteTable');
+    const ask = screen.getByRole('alertdialog', { name: /^Delete Table 4/u });
+
+    fireEvent.click(within(ask).getByRole('button', { name: 'Keep it' }));
+    await waitFor(() => expect(document.activeElement).toBe(item(/^Table 4,/u)));
   });
 
   it('says a colleague changed the table first (412)', SLOW, async () => {
