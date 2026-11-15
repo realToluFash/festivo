@@ -1,0 +1,29 @@
+# sc-49805: ${GUEST2_ID}'s details in ${EVENT_ID}, Mark as invited's How did you invite them? sheet.
+appId: host.exp.Exponent
+---
+- openLink: ${METRO_URL}/--/events/${EVENT_ID}?area=guests
+- extendedWaitUntil:
+    visible:
+      id: 'guests.row.${GUEST2_ID}'
+    timeout: 30000
+- tapOn:
+    id: 'guests.row.${GUEST2_ID}'
+- extendedWaitUntil:
+    visible:
+      id: 'guest.${GUEST2_ID}'
+    timeout: 20000
+- scrollUntilVisible:
+    element:
+      id: 'guest.mark'
+    direction: DOWN
+- tapOn:
+    id: 'guest.mark'
+- extendedWaitUntil:
+    visible:
+      id: 'guest.markSheet'
+    timeout: 10000
+- waitForAnimationToEnd:
+    timeout: 3000
+- takeScreenshot: how-sheet
+- tapOn:
+    id: 'guest.markSheet.cancel'
