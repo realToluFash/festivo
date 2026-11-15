@@ -1,6 +1,6 @@
-import { fireEvent, render, screen, waitFor, within } from '@testing-library/react';
+import { act, fireEvent, render, screen, waitFor, within } from '@testing-library/react';
 import { RouterProvider, createMemoryRouter } from 'react-router';
-import { beforeEach, describe, expect, it } from 'vitest';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
 import { __setConfig, config } from '../config.ts';
 import { routes } from '../routes/index.tsx';
@@ -23,6 +23,10 @@ function bar(): HTMLElement {
   return screen.getByRole('region', { name: 'Selected guests' });
 }
 
+function cardSays(): string | null {
+  return document.querySelector('.gs-says')?.textContent ?? null;
+}
+
 function page(): string {
   return document.body.textContent ?? '';
 }
@@ -30,6 +34,10 @@ function page(): string {
 beforeEach(() => {
   __setConfig({ ...tested, environment: 'development' });
   resetSample();
+});
+
+afterEach(() => {
+  vi.useRealTimers();
 });
 
 describe('select many guests (sc-3776)', () => {
@@ -132,6 +140,138 @@ describe('select many guests (sc-3776)', () => {
     fireEvent.click(screen.getByRole('button', { name: 'Try again' }));
 
     await waitFor(() => expect(page()).toContain('4 moved to Bride’s side.'));
+  });
+
+  it('shows the empty event under Undo once everyone is removed (sc-50772)', SLOW, async () => {
+    await open('removedAll');
+    expect(page()).toContain('removed.');
+    expect(page()).toContain('No guests yet');
+    expect(page()).not.toContain('No guests match');
+    expect(screen.queryAllByRole('checkbox')).toEqual([]);
+    expect(screen.queryByRole('region', { name: 'Selected guests' })).toBeNull();
+    expect(screen.queryByRole('button', { name: 'Clear' })).toBeNull();
+    expect(screen.getAllByRole('button', { name: 'Add guest' })).toHaveLength(1);
+    expect(screen.getByRole('button', { name: 'Undo' })).toBeTruthy();
+  });
+
+  it('empties the list from the bar and shows the empty event (sc-50772)', SLOW, async () => {
+    await open('all');
+    fireEvent.click(within(bar()).getByRole('button', { name: 'Remove from the list' }));
+    fireEvent.click(await screen.findByRole('button', { name: /^Remove \d+$/u }));
+
+    await waitFor(() => expect(page()).toContain('No guests yet'));
+    expect(page()).not.toContain('No guests match');
+    expect(screen.queryAllByRole('checkbox')).toEqual([]);
+  });
+
+  it(
+    'keeps No guests match when a filtered removal leaves guests outside it (sc-50772)',
+    SLOW,
+    async () => {
+      await open('filtered');
+      fireEvent.click(within(bar()).getByRole('button', { name: 'Remove from the list' }));
+      fireEvent.click(await screen.findByRole('button', { name: /^Remove \d+$/u }));
+
+      await waitFor(() =>
+        expect(screen.getByRole('heading', { level: 2, name: 'No guests match' })).toBeTruthy(),
+      );
+      expect(page()).not.toContain('No guests yet');
+      fireEvent.click(screen.getByRole('button', { name: 'Clear' }));
+
+      await waitFor(() => expect(screen.getByRole('link', { name: /^Amaka Eze/u })).toBeTruthy());
+      expect(screen.queryByRole('heading', { name: 'No guests match' })).toBeNull();
+    },
+  );
+
+  it('brings everyone back with Undo, rows and Select all again (sc-50772)', SLOW, async () => {
+    await open('removedAll');
+    fireEvent.click(screen.getByRole('button', { name: 'Undo' }));
+
+    await waitFor(() => expect(page()).toContain('back on the list, as they were.'));
+    expect(cardSays()).toMatch(/\d/u);
+    expect(cardSays()).not.toBe('No guests yet');
+    expect(screen.getByRole('checkbox', { name: /^Select all \d+ shown$/u })).toBeTruthy();
+  });
+
+  it('moves focus to the title on Done once the Undo has run out (sc-50772)', SLOW, async () => {
+    vi.useFakeTimers({ shouldAdvanceTime: true });
+    await open('removedAll');
+    fireEvent.click(screen.getByRole('button', { name: 'Add guest' }));
+    const name = await screen.findByRole('textbox', { name: 'Full name' });
+
+    await waitFor(() => expect(document.activeElement).toBe(name));
+    act(() => {
+      vi.advanceTimersByTime(11000);
+    });
+    expect(screen.queryByRole('button', { name: 'Undo' })).toBeNull();
+    fireEvent.click(
+      within(screen.getByRole('region', { name: 'Add guest' })).getByRole('button', {
+        name: 'Done',
+      }),
+    );
+
+    await waitFor(() =>
+      expect(document.activeElement).toBe(
+        screen.getByRole('heading', { level: 1, name: 'Guests' }),
+      ),
+    );
+    expect(cardSays()).toBe('No guests yet');
+  });
+
+  it(
+    'opens Add guest under the Undo and keeps the saved guest after it (sc-50772)',
+    SLOW,
+    async () => {
+      await open('removedAll');
+      fireEvent.click(screen.getByRole('button', { name: 'Add guest' }));
+      const name = await screen.findByRole('textbox', { name: 'Full name' });
+
+      await waitFor(() => expect(document.activeElement).toBe(name));
+      expect(screen.getByRole('button', { name: 'Undo' })).toBeTruthy();
+      fireEvent.change(name, { target: { value: 'Zainab Bello' } });
+      const form = screen.getByRole('region', { name: 'Add guest' });
+
+      fireEvent.click(within(form).getByRole('button', { name: 'Add guest' }));
+
+      await waitFor(() =>
+        expect(screen.getByRole('link', { name: /^Zainab Bello/u })).toBeTruthy(),
+      );
+      fireEvent.click(screen.getByRole('button', { name: 'Undo' }));
+      await waitFor(() => expect(page()).toContain('back on the list, as they were.'));
+      expect(screen.getByRole('link', { name: /^Zainab Bello/u })).toBeTruthy();
+      expect(screen.getByRole('link', { name: /^Amaka Eze/u })).toBeTruthy();
+    },
+  );
+
+  it(
+    'turns the group filter back on with Undo when nothing was saved (sc-50772)',
+    SLOW,
+    async () => {
+      await open('removedAllFiltered');
+      expect(page()).toContain('No guests yet');
+      fireEvent.click(screen.getByRole('button', { name: 'Undo' }));
+
+      await waitFor(() => expect(page()).toContain('back on the list, as they were.'));
+      expect(page()).toMatch(/(\d+) of \1 shown/u);
+    },
+  );
+
+  it('clears the group filter when a guest is saved under the Undo (sc-50772)', SLOW, async () => {
+    await open('removedAllFiltered');
+    fireEvent.click(screen.getByRole('button', { name: 'Add guest' }));
+    const name = await screen.findByRole('textbox', { name: 'Full name' });
+
+    fireEvent.change(name, { target: { value: 'Zainab Bello' } });
+    fireEvent.click(
+      within(screen.getByRole('region', { name: 'Add guest' })).getByRole('button', {
+        name: 'Add guest',
+      }),
+    );
+
+    await waitFor(() => expect(screen.getByRole('link', { name: /^Zainab Bello/u })).toBeTruthy());
+    expect(page()).not.toContain('No guests match');
+    expect(page()).not.toMatch(/\d+ of \d+ shown/u);
+    expect(screen.getByRole('checkbox', { name: 'Select the 1 shown' })).toBeTruthy();
   });
 
   it('shows no boxes and no bar without guests.manage', SLOW, async () => {
