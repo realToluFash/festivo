@@ -291,13 +291,17 @@ function Plan({
       focusWhenFree(
         () =>
           [
-            ...document.querySelectorAll<HTMLElement>('.st-panel button, .st-room [role="button"]'),
+            ...document.querySelectorAll<HTMLElement | SVGElement>(
+              '.st-panel button, .st-room [role="button"]',
+            ),
           ].find((button) => back != null && nameOf(button) === back) ??
           document.querySelector('.st-top h1'),
       );
     } else {
-      if (panel == null && document.activeElement instanceof HTMLElement)
-        opener.current = nameOf(document.activeElement);
+      const active = document.activeElement;
+
+      if (panel == null && (active instanceof HTMLElement || active instanceof SVGElement))
+        opener.current = nameOf(active);
       focusWhenFree(() => document.querySelector('.st-panel [data-focus="title"]'));
     }
     setPanel(next);
@@ -639,7 +643,7 @@ function Plan({
 }
 
 /** A panel's buttons are drawn again as it closes, so the one that opened it is found again by its name. */
-function nameOf(element: HTMLElement): string {
+function nameOf(element: Element): string {
   return element.getAttribute('aria-label') ?? element.textContent ?? '';
 }
 
