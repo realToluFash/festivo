@@ -1,4 +1,4 @@
-# The Calendar in month view with ${DAY} showing, at rest, for a TalkBack double tap on that day that opens its day dialog (tablet portrait). sc-42690.
+# The Calendar in month view with ${DAY} showing, at rest, for a TalkBack double tap on that day that opens its day dialog (tablet portrait). sc-42690. Needs ${DAY}, a day of the month showing, as YYYY-MM-DD.
 appId: host.exp.Exponent
 ---
 - openLink: ${METRO_URL}/--/calendar

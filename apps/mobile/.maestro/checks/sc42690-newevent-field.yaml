@@ -1,4 +1,4 @@
-# New event, scrolled to the field ${FIELD} (eventForm.type, eventForm.timeZone, eventForm.currency), at rest for a TalkBack pass on its list picker. sc-42690.
+# New event, scrolled to the field ${FIELD} (eventForm.type, eventForm.timeZone, eventForm.currency), at rest for a TalkBack pass on its list picker. sc-42690. Needs ${FIELD}, one of those three ids.
 appId: host.exp.Exponent
 ---
 - openLink: ${METRO_URL}/--/events/new

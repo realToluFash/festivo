@@ -1,4 +1,4 @@
-# Today, at rest with the organisation's name in the top band, for a TalkBack pass on the switcher. sc-42690.
+# Today, at rest with the organisation's name in the top band, for a TalkBack pass on the switcher. sc-42690. Phone only: the tablet's top band has no home.switchOrganisation.
 appId: host.exp.Exponent
 ---
 - openLink: ${METRO_URL}/--/
