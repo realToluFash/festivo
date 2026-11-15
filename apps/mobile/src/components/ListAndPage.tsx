@@ -126,9 +126,9 @@ export function ListAndPage({
 
   return (
     <Screen
-      edges={frame === 'tabletLandscape' ? SIDE_EDGES : bodyEdges(frame)}
+      edges={bodyEdges(frame)}
       scroll={false}
-      contentStyle={landscape && !bare ? { ...spacing.landscape, paddingBottom: 0 } : styles.bare}
+      contentStyle={landscape && !bare ? spacing.landscape : styles.bare}
     >
       {headingAbove && (heading || besideHeading) && (
         <View style={styles.head}>
@@ -184,9 +184,6 @@ export function ListAndPage({
     </Screen>
   );
 }
-
-// On its side the frame's card already stands above the bottom inset, so the columns run to its foot.
-const SIDE_EDGES = ['right'] as const;
 
 const styles = StyleSheet.create({
   rule: { borderRightWidth: 1, borderRightColor: tokens.colorBorder },
