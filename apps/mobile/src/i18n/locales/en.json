@@ -2354,6 +2354,7 @@
     "keepTheirs": "Keep their reply",
     "replyRecorded": "Reply recorded. It counts like any other reply.",
     "recordedOn": "recorded by {{name}}, {{how}}, {{date}}",
+    "recordedLine": "{{reply}} · recorded by {{name}}, {{how}}, {{date}}",
     "line": "{{reply}} · {{contact}}",
     "withPlaces": "{{reply}} · {{places}}",
     "contacts": "{{email}} · {{mobile}}",

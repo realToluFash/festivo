@@ -246,11 +246,18 @@ export function GuestDetails({
         line={
           after.card ??
           (guest.repliedAt != null
-            ? (after.reply ??
-              t('guestList.replied', {
-                reply: word,
-                date: replyDate(guest.repliedAt, timeZone, locale),
-              }))
+            ? recordedBy != null
+              ? t('guestList.recordedLine', {
+                  reply: word,
+                  name: recordedBy.by,
+                  how: t(`guestList.toldInLine.${recordedBy.how}`),
+                  date: replyDate(guest.repliedAt, timeZone, locale),
+                })
+              : (after.reply ??
+                t('guestList.replied', {
+                  reply: word,
+                  date: replyDate(guest.repliedAt, timeZone, locale),
+                }))
             : shown === 'notYetInvited'
               ? t('guestList.copyFirst')
               : invitationLine(t, guest, timeZone, locale))

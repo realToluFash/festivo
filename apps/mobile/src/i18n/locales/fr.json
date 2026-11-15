@@ -2433,6 +2433,7 @@
     "keepTheirs": "Garder sa réponse",
     "replyRecorded": "Réponse saisie. Elle compte comme toutes les autres.",
     "recordedOn": "saisie par {{name}}, {{how}}, le {{date}}",
+    "recordedLine": "{{reply}} · saisie par {{name}}, {{how}}, le {{date}}",
     "line": "{{reply}} · {{contact}}",
     "withPlaces": "{{reply}} · {{places}}",
     "contacts": "{{email}} · {{mobile}}",
