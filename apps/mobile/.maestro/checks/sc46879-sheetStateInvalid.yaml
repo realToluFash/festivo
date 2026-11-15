@@ -1,0 +1,46 @@
+# sc-46879: ${BRUNO}'s How did you invite them? open on ${LIVE}; the event is paused through the API (as ${EMAIL}, from ${WEB_URL} to ${API_URL}); Mark as invited then gets 409 event_state_invalid, the sheet closes and Guests shows the Paused line. Resumes the event after.
+appId: host.exp.Exponent
+---
+- setOrientation: ${ORIENT}
+- openLink: ${METRO_URL}/--/events/${LIVE}?area=guests
+- extendedWaitUntil:
+    visible:
+      id: 'guests.card'
+    timeout: 30000
+- tapOn:
+    id: 'guests.search'
+- inputText: 'Bruno'
+- hideKeyboard
+- tapOn:
+    id: 'guests.row.${BRUNO}'
+- extendedWaitUntil:
+    visible:
+      id: 'guest.${BRUNO}'
+    timeout: 20000
+- scrollUntilVisible:
+    element:
+      id: 'guest.mark'
+    direction: DOWN
+- tapOn:
+    id: 'guest.mark'
+- waitForAnimationToEnd:
+    timeout: 3000
+- tapOn:
+    id: 'guest.markSheet.whatsapp'
+- evalScript: "${output.t = json(http.post(API_URL + '/api/auth/login', {headers: {'Content-Type': 'application/json', 'Origin': WEB_URL}, body: JSON.stringify({email: EMAIL, password: PASSWORD})}).body).accessToken}"
+- evalScript: "${http.post(API_URL + '/api/events/' + LIVE + '/pause', {headers: {'Content-Type': 'application/json', 'Origin': WEB_URL, 'Authorization': 'Bearer ' + output.t}, body: '{}'}).status}"
+- tapOn:
+    id: 'guest.markSheet.do'
+- waitForAnimationToEnd:
+    timeout: 5000
+- takeScreenshot: sheetStateInvalid
+- swipe:
+    direction: DOWN
+- swipe:
+    direction: DOWN
+- takeScreenshot: sheetStateInvalid-top
+- openLink: ${METRO_URL}/--/events/${LIVE}?area=guests
+- waitForAnimationToEnd:
+    timeout: 5000
+- takeScreenshot: sheetStateInvalid-guests
+- evalScript: "${http.post(API_URL + '/api/events/' + LIVE + '/resume', {headers: {'Content-Type': 'application/json', 'Origin': WEB_URL, 'Authorization': 'Bearer ' + output.t}, body: '{}'}).status}"
