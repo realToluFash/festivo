@@ -133,6 +133,8 @@
     "messagesCounts:seating.table_default_name",
     "web:schedule.minutes_one",
     "web:schedule.minutes_other",
+    "mobile:runView.minutes_one",
+    "mobile:runView.minutes_other",
     "web:schedule.date"
   ],
   "pt": [
