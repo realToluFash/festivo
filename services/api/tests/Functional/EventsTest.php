@@ -1227,6 +1227,53 @@ final class EventsTest extends ApiTestCase
         self::assertCount(1, self::em()->getRepository(AuditEntry::class)->findBy(['action' => EventEditor::UPDATED]), 'only the move into the past was recorded');
     }
 
+    /** @return iterable<string, array{array<string, string>}> */
+    public static function calledOffScheduleChanges(): iterable
+    {
+        yield 'the start' => [['startsAt' => '2030-11-14T17:00']];
+        yield 'the end' => [['endsAt' => '2030-11-15T03:00']];
+        yield 'the zone' => [['timeZone' => 'Europe/London']];
+    }
+
+    /** @param array<string, string> $change */
+    #[Test]
+    #[DataProvider('calledOffScheduleChanges')]
+    public function aCalledOffEventsScheduleSaysItWasCalledOff(array $change): void
+    {
+        $event = $this->live(self::AHEAD, '2030-11-15T02:00');
+        $this->as($this->owner, 'POST', '/api/events/' . $event['id'] . '/end');
+        $ended = $this->event($this->as($this->owner, 'GET', '/api/events/' . $event['id']));
+
+        $this->edit($event['id'], $change, $this->tagOf($event['id']));
+
+        self::assertSame(409, $this->statusCode());
+        self::assertSame(ErrorCode::EventConcluded->type(), $this->last()['type'] ?? null);
+        self::assertSame('This event was called off, so its start, end and time zone cannot be changed.', $this->last()['detail'] ?? null);
+        self::assertSame($ended, $this->event($this->as($this->owner, 'GET', '/api/events/' . $event['id'])));
+    }
+
+    /** @return iterable<string, array{string, ?string}> */
+    public static function calledOffLanguages(): iterable
+    {
+        yield 'en by Accept-Language' => ['', 'en'];
+        yield 'es by ?locale=' => ['?locale=es', null];
+        yield 'fr by Accept-Language' => ['', 'fr'];
+        yield 'pt by ?locale=' => ['?locale=pt', null];
+    }
+
+    #[Test]
+    #[DataProvider('calledOffLanguages')]
+    public function aCalledOffEventsScheduleSaysItWasCalledOffInEachLanguage(string $query, ?string $language): void
+    {
+        $event = $this->live(self::AHEAD, '2030-11-15T02:00');
+        $this->as($this->owner, 'POST', '/api/events/' . $event['id'] . '/end');
+
+        $this->as($this->owner, 'PATCH', '/api/events/' . $event['id'] . $query, ['timeZone' => 'Europe/London'], $this->tagOf($event['id']), $language);
+
+        self::assertSame(409, $this->statusCode());
+        self::assertSame('This event was called off, so its start, end and time zone cannot be changed.', $this->last()['detail'] ?? null);
+    }
+
     #[Test]
     public function aFinishedEventIsRenamedWithItsScheduleSentUnchanged(): void
     {
@@ -2024,13 +2071,14 @@ final class EventsTest extends ApiTestCase
      *
      * @return array<string, mixed>
      */
-    private function as(User $user, string $method, string $path, ?array $body = null, ?string $ifMatch = null): array
+    private function as(User $user, string $method, string $path, ?array $body = null, ?string $ifMatch = null, ?string $language = null): array
     {
         $who = self::em()->find(User::class, $user->getId()) ?? self::fail('no user');
         $this->client->request($method, $path, server: [
             'CONTENT_TYPE' => 'application/json',
             'HTTP_AUTHORIZATION' => 'Bearer ' . self::service(JWTTokenManagerInterface::class)->create($who),
             ...null === $ifMatch ? [] : ['HTTP_IF_MATCH' => $ifMatch],
+            ...null === $language ? [] : ['HTTP_ACCEPT_LANGUAGE' => $language],
         ], content: null === $body ? null : Json\encode($body));
 
         return $this->last();
