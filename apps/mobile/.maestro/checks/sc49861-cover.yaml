@@ -1,4 +1,4 @@
-# sc-49861: ${EVENT_ID}'s Cover photo opened as Can edit, a photo picked and uploaded, then the role is Can view: Use this photo says the role's refusal, no Try again, the picked photo stays, and a second press says the same.
+# sc-49861 (the photo picker's first tile, half or full height): ${EVENT_ID}'s Cover photo opened as Can edit, a photo picked and uploaded, then the role is Can view: Use this photo says the role's refusal, no Try again, the picked photo stays, and a second press says the same.
 appId: host.exp.Exponent
 ---
 - runScript:
@@ -31,6 +31,12 @@ appId: host.exp.Exponent
 - takeScreenshot: picker
 - tapOn:
     point: '16%,61%'
+- runFlow:
+    when:
+      visible: 'This app can only access.*'
+    commands:
+      - tapOn:
+          point: '16%,34%'
 - extendedWaitUntil:
     visible:
       id: 'event.edit.cover.change'
