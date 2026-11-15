@@ -4034,6 +4034,22 @@ describe('The cover (sc-3590)', () => {
       expect(off('Use this photo')).toBe(false);
     });
 
+    it('a save the role no longer allows says so, with no Try again (sc-49861)', async () => {
+      await opened(null, {
+        'PUT /api/events/ev_1/cover': () => problem(403, 'permission_required'),
+      });
+
+      pick(file());
+      await within(part()).findByLabelText('Photo position');
+      fireEvent.click(within(part()).getByRole('button', { name: 'Use this photo' }));
+
+      expect((await within(part()).findByRole('alert')).textContent).toContain(
+        'Nothing was changed. Your role does not include the permission this needs.',
+      );
+      expect(within(part()).queryByText(/Try again/u)).toBeNull();
+      expect(part().querySelector('.ev-preview.is-photo')).not.toBeNull();
+    });
+
     it('refuses a description over 250 characters and saves nothing', async () => {
       const { sent } = await opened(PHOTO);
 

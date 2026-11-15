@@ -1,7 +1,13 @@
 import { ApiError } from '@soirely/api-client';
 import { describe, expect, it } from 'vitest';
 
-import { coverRefusalOf, photoOverflow, pickedFile, pickedRefusal } from './coverUpload.ts';
+import {
+  coverRefusalOf,
+  coverSaveRefusalOf,
+  photoOverflow,
+  pickedFile,
+  pickedRefusal,
+} from './coverUpload.ts';
 
 const large = { uri: 'file:///photos/IMG_0001.HEIC', width: 4032, height: 3024 };
 
@@ -47,5 +53,20 @@ describe('a photo picked for the cover (sc-3590)', () => {
 
     expect(coverRefusalOf(refused, t)).toBe('Too small.');
     expect(coverRefusalOf(new Error('offline'), t)).toBe('eventCover.uploadFailed');
+  });
+
+  it('says a save the role no longer allows was refused for the role, not that it did not upload (sc-49861)', () => {
+    const refusal = (status: number, code: string) => {
+      const problem = { type: `https://soirely.com/errors/${code}`, title: 'No.', status };
+
+      return new ApiError(problem, new Response(JSON.stringify(problem), { status }));
+    };
+    const t = (key: string) => key;
+
+    expect(coverSaveRefusalOf(refusal(403, 'permission_required'), t)).toBe('eventEdit.forbidden');
+    expect(coverSaveRefusalOf(refusal(403, 'two_factor_required'), t)).toBe(
+      'eventCover.uploadFailed',
+    );
+    expect(coverSaveRefusalOf(new Error('offline'), t)).toBe('eventCover.uploadFailed');
   });
 });

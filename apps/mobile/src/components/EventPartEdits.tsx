@@ -1,5 +1,4 @@
 import {
-  ApiError,
   type EventChanges,
   type EventCover as Cover,
   type OrganisationEvent,
@@ -38,7 +37,12 @@ import { useTranslation } from 'react-i18next';
 
 import { api } from '../api.ts';
 import { currentLocale, dateLocale } from '../i18n/index.ts';
-import { coverRefusalOf, pickedFile, pickedRefusal } from '../kit/coverUpload.ts';
+import {
+  coverRefusalOf,
+  coverSaveRefusalOf,
+  pickedFile,
+  pickedRefusal,
+} from '../kit/coverUpload.ts';
 import { changesOf, typedOf } from '../kit/eventForm.ts';
 import type { EditPart } from '../kit/eventNav.ts';
 import { type SavedPart, heldRead, sendPart } from '../kit/partSave.ts';
@@ -657,11 +661,7 @@ function CoverEdit(props: PartEditProps) {
       onSaved(updated);
     } catch (error) {
       setBusy(false);
-      setRefused(
-        error instanceof ApiError && error.is('permission_required')
-          ? t('eventEdit.forbidden')
-          : coverRefusalOf(error, t),
-      );
+      setRefused(coverSaveRefusalOf(error, t));
     }
   }
 
