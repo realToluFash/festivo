@@ -24,7 +24,6 @@ import {
   type Typed,
   type ViewRow,
   countsOf,
-  deviceCountry,
   dietary,
   eventAllows,
   firstProblem,
@@ -32,7 +31,6 @@ import {
   isListed,
   makeLiveRow,
   newGuestOf,
-  phoneScreenCountry,
   problemsOf,
   rowWords,
   shownPhase,
@@ -90,7 +88,7 @@ import { type Mesh, meshFor } from '../../../mesh.ts';
 import { pageTitle, usePageTitle } from '../../../pageTitle.ts';
 import { phoneProblemMessage } from '../../../phoneProblem.ts';
 import { useLoadedAt, useServerNow } from '../../../serverNow.ts';
-import { canOn, useSession } from '../../../session.ts';
+import { canOn } from '../../../session.ts';
 import { useMakeLive } from './MakeLive.tsx';
 import { inPlace } from './openInPlace.ts';
 import { GroupChips, GroupField, GroupTag, GroupsColumn } from './GuestGroups.tsx';
@@ -132,6 +130,7 @@ import {
 import { useNeedsOpen } from './guestNeeds.ts';
 import { useGuestsAddress } from './useGuestsAddress.ts';
 import { useHubTopics } from './useHubTopics.ts';
+import { useStartingCountry } from './useStartingCountry.ts';
 import { keepAsked, keptAsked } from './whatsAppSend.ts';
 import '../../../components/desk.css';
 import '../../../components/SettingsParts.css';
@@ -156,33 +155,6 @@ function useLiveGuests(eventId: string, onList: (list: GuestList) => void, onGap
       else onList(list);
     },
     onGap,
-  );
-}
-
-/** The code the Mobile number starts on, as the account's own Mobile number field picks it. */
-function useStartingCountry(asks: boolean): string {
-  const session = useSession();
-  const [numbers, setNumbers] = useState<
-    readonly { primary: boolean; countryCode: string | null }[]
-  >([]);
-
-  useEffect(() => {
-    if (!asks) return;
-    let current = true;
-
-    api.me().then(
-      (me) => current && setNumbers(me.phoneNumbers),
-      () => undefined,
-    );
-
-    return () => {
-      current = false;
-    };
-  }, [asks]);
-
-  return phoneScreenCountry(
-    { organisationCountry: session.organisationCountry ?? null, phoneNumbers: numbers },
-    deviceCountry(navigator.languages),
   );
 }
 

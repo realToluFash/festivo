@@ -49,6 +49,8 @@ export interface Problem {
   /** On `guest_replied`: the reply that keeps them invited and when, in the event's zone (sc-3788). */
   reply?: string;
   repliedAt?: string;
+  /** On `staff_number_shared`: the first roster entry already on that number (sc-3906). */
+  sharedWith?: string;
 }
 
 /**
