@@ -231,40 +231,53 @@ final class NotificationWorker
         $now = $this->clock->now();
         $muted = null === $eventId || NotificationAudienceKind::Member !== $kind ? [] : $this->eventMuteRepository->findMutedAmong($eventId, $recipients);
 
+        $values = [];
+        $parameters = [
+            'scheduled' => $scheduledId,
+            'event' => $eventId,
+            'type' => $type->name(),
+            'source' => $sourceId,
+            'kind' => $kind->value,
+            'collapse' => $type->collapseKey(),
+            'pending' => NotificationDeliveryStatus::Pending->value,
+            'due' => $dueAt,
+            'sendBy' => $sendBy,
+            'now' => $now,
+        ];
+
         foreach ($recipients as $recipient) {
             foreach ($this->channelSelector->select($kind, $recipient, $type->category(), $type->channels(), Iter\contains($muted, $recipient->toRfc4122())) as $channel) {
+                $row = Iter\count($values);
                 $urgent = NotificationPriority::Urgent === $type->priority() || NotificationChannel::InApp === $channel;
-                $this->connection->executeStatement(
-                    <<<'SQL'
-                        INSERT INTO notification_deliveries (
-                            id, scheduled_notification_id, event_id, type, source_id, recipient_kind, recipient_id, channel,
-                            priority, collapse_key, status, due_at, next_attempt_at, send_by, attempts, created_at
-                        ) VALUES (
-                            :id, :scheduled, :event, :type, :source, :kind, :recipient, :channel,
-                            :priority, :collapse, :pending, :due, :due, :sendBy, 0, :now
-                        )
-                        ON CONFLICT (type, source_id, recipient_kind, recipient_id, channel) DO NOTHING
-                        SQL,
-                    [
-                        'id' => Uuid::v7()->toRfc4122(),
-                        'scheduled' => $scheduledId,
-                        'event' => $eventId,
-                        'type' => $type->name(),
-                        'source' => $sourceId,
-                        'kind' => $kind->value,
-                        'recipient' => $recipient->toRfc4122(),
-                        'channel' => $channel->value,
-                        'priority' => ($urgent ? NotificationPriority::Urgent : $type->priority())->value,
-                        'collapse' => $type->collapseKey(),
-                        'pending' => NotificationDeliveryStatus::Pending->value,
-                        'due' => $dueAt,
-                        'sendBy' => $sendBy,
-                        'now' => $now,
-                    ],
-                    ['due' => Types::DATETIME_IMMUTABLE, 'sendBy' => Types::DATETIME_IMMUTABLE, 'now' => Types::DATETIME_IMMUTABLE],
+                $values[] = Str\format(
+                    '(:id%1$d, :scheduled, :event, :type, :source, :kind, :recipient%1$d, :channel%1$d, :priority%1$d, :collapse, :pending, :due, :due, :sendBy, 0, :now)',
+                    $row,
                 );
+                $parameters['id' . $row] = Uuid::v7()->toRfc4122();
+                $parameters['recipient' . $row] = $recipient->toRfc4122();
+                $parameters['channel' . $row] = $channel->value;
+                $parameters['priority' . $row] = ($urgent ? NotificationPriority::Urgent : $type->priority())->value;
             }
         }
+
+        if ([] === $values) {
+            return;
+        }
+
+        $this->connection->executeStatement(
+            Str\format(
+                <<<'SQL'
+                    INSERT INTO notification_deliveries (
+                        id, scheduled_notification_id, event_id, type, source_id, recipient_kind, recipient_id, channel,
+                        priority, collapse_key, status, due_at, next_attempt_at, send_by, attempts, created_at
+                    ) VALUES %s
+                    ON CONFLICT (type, source_id, recipient_kind, recipient_id, channel) DO NOTHING
+                    SQL,
+                Str\join($values, ', '),
+            ),
+            $parameters,
+            ['due' => Types::DATETIME_IMMUTABLE, 'sendBy' => Types::DATETIME_IMMUTABLE, 'now' => Types::DATETIME_IMMUTABLE],
+        );
     }
 
     private function sendNext(NotificationPriority $atMost): bool

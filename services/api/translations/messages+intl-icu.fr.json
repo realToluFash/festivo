@@ -84,5 +84,11 @@
     "validation.seating_table_does_not_turn": "Seules les tables rectangulaires et d’honneur peuvent pivoter.",
     "validation.seating_table_rotation_steps": "Choisissez une rotation par pas de 15°, de 0° à 345°.",
     "validation.seating_table_no_such_seat": "Choisissez des places de 1 à {max, number}, chacune une seule fois.",
-    "validation.seating_table_section_unknown": "Choisissez l’une des zones de ce plan, ou aucune zone."
+    "validation.seating_table_section_unknown": "Choisissez l’une des zones de ce plan, ou aucune zone.",
+    "seating.seat_default_name": "Seat {n}",
+    "validation.seating_row_label_required": "Enter a label for the row.",
+    "validation.seating_row_label_taken": "This plan already has a row labelled {label}.",
+    "validation.seating_row_spacing_between": "Enter a spacing from {min} to {max}.",
+    "validation.seating_seat_name_required": "Enter a name for the seat.",
+    "validation.seating_seat_name_taken": "This plan already has a seat called {name}."
 }

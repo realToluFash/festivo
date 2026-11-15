@@ -4,6 +4,7 @@ import {
   feetAndInchesOf,
   readFeetAndInches,
   readRoomSide,
+  readRowSpacing,
   readTableSide,
   TABLE_MAXIMUM_CM,
   TABLE_MINIMUM_CM,
@@ -86,5 +87,15 @@ describe('readTableSide', () => {
     expect(readTableSide(' ', 'metric', 'en')).toEqual({ kind: 'blank' });
     expect(readTableSide('6 ft', 'us', 'en')).toEqual({ kind: 'cm', cm: 183 });
     expect(readTableSide('1 ft 3 in', 'us', 'en')).toEqual({ kind: 'outOfRange' });
+  });
+});
+
+describe('readRowSpacing', () => {
+  it('reads whole centimetres from 40 to 100, or feet and inches', () => {
+    expect(readRowSpacing('50', 'metric', 'en')).toEqual({ kind: 'cm', cm: 50 });
+    expect(readRowSpacing('39', 'metric', 'en')).toEqual({ kind: 'outOfRange' });
+    expect(readRowSpacing('101', 'metric', 'en')).toEqual({ kind: 'outOfRange' });
+    expect(readRowSpacing('1 ft 8 in', 'us', 'en')).toEqual({ kind: 'cm', cm: 51 });
+    expect(readRowSpacing('3 ft 4 in', 'us', 'en')).toEqual({ kind: 'outOfRange' });
   });
 });

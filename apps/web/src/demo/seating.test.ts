@@ -40,6 +40,7 @@ import {
   sampleTray,
   unsureLeft,
   peopleIn,
+  sectionDeleteWords,
   sectionLine,
   sideBySide,
   squeezed,
@@ -116,6 +117,50 @@ describe('the sample (seating-a-spec §8)', () => {
     expect(planCounts(plan)).toBe('3 sections, 13 tables, 1 row and 2 single seats');
     expect(readRoom('5', 'width', 'us')).toEqual({ refused: 'Use 7 to 1,640 ft.' });
     expect(readRoom('80 ft', 'width', 'us')).toEqual({ cm: 2438 });
+  });
+});
+
+describe('deleting a section names what loses it (sc-54060)', () => {
+  const into = (ids: readonly string[]) =>
+    samplePlan().items.map((item) => ({ ...item, sec: ids.includes(item.id) ? 'quiet' : null }));
+  const firstTables = (n: number) =>
+    samplePlan()
+      .items.filter((item) => item.kind !== 'row' && item.kind !== 'single')
+      .slice(0, n)
+      .map((item) => item.id);
+
+  it('names each kind alone, the verb from the total', () => {
+    expect(sectionDeleteWords(into(firstTables(3)), 'quiet')).toBe(
+      'Its 3 tables stay where they are, with no section.',
+    );
+    expect(sectionDeleteWords(into(firstTables(1)), 'quiet')).toBe(
+      'Its 1 table stays where it is, with no section.',
+    );
+    expect(sectionDeleteWords(into(['rowA']), 'quiet')).toBe(
+      'Its 1 row stays where it is, with no section.',
+    );
+    expect(sectionDeleteWords(into(['door']), 'quiet')).toBe(
+      'Its 1 single seat stays where it is, with no section.',
+    );
+    expect(sectionDeleteWords(into(['door', 'interp']), 'quiet')).toBe(
+      'Its 2 single seats stay where they are, with no section.',
+    );
+  });
+
+  it('joins the kinds it has, zeros left out, and counts a row once', () => {
+    expect(sectionDeleteWords(into([...firstTables(3), 'rowA', 'door']), 'quiet')).toBe(
+      'Its 3 tables, 1 row and 1 single seat stay where they are, with no section.',
+    );
+    expect(sectionDeleteWords(into([...firstTables(1), 'rowA']), 'quiet')).toBe(
+      'Its 1 table and 1 row stay where they are, with no section.',
+    );
+    expect(sectionDeleteWords(into(['rowA', 'door']), 'quiet')).toBe(
+      'Its 1 row and 1 single seat stay where they are, with no section.',
+    );
+  });
+
+  it('says nothing for an empty section', () => {
+    expect(sectionDeleteWords(into([]), 'quiet')).toBe('');
   });
 });
 
