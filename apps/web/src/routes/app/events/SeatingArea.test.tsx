@@ -816,7 +816,7 @@ describe('Tables at a desk (sc-4000)', () => {
     leave('Width', '13');
 
     expect(
-      await screen.findByText('1 item sits outside 13 m × 18 m. Move them first.'),
+      await screen.findByText('1 item sits outside 13 m × 18 m. Move it first.'),
     ).toBeDefined();
     expect(screen.getByRole('heading', { level: 2, name: 'Room settings' })).toBeDefined();
     expect(document.querySelector('[data-table="t1"] .st-overlap')).not.toBeNull();

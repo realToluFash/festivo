@@ -2715,7 +2715,7 @@
     "deleteNamedGo": "Delete {{name}}",
     "nobodyHere": "Nobody is seated here.",
     "changedTable": "{{name}} just changed this table. Your change was not saved.",
-    "itemsOutside_one": "{{count, number}} item sits outside {{width}} × {{roomLength}}. Move them first.",
+    "itemsOutside_one": "{{count, number}} item sits outside {{width}} × {{roomLength}}. Move it first.",
     "itemsOutside_other": "{{count, number}} items sit outside {{width}} × {{roomLength}}. Move them first."
   },
   "onboarding": {
