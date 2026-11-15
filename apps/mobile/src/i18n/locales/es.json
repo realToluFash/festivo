@@ -1643,7 +1643,7 @@
     "pauseLine": "Los invitados no podrán responder ni cambiar nada hasta que lo reanude. No se pierde nada. El registro de llegada y el servicio siguen funcionando.",
     "callOffLine": "El evento no se celebrará. Se avisará a los invitados que abran su enlace. Esta acción no se puede deshacer.",
     "endLine": "El evento terminará para todos. Esta acción no se puede deshacer.",
-    "dates": "Dates"
+    "dates": "Fechas"
   },
   "eventForm": {
     "title": "Nuevo evento",
@@ -1716,10 +1716,10 @@
     "saved": "Cambios guardados",
     "scheduleConcluded": "Este evento ha terminado, así que ya no se pueden cambiar su inicio, su fin ni su zona horaria.",
     "scheduleLocked": "Este evento ha terminado, así que ya no se pueden cambiar su inicio, su fin ni su zona horaria.",
-    "savePart": "Save",
-    "discardTitle": "Discard your change?",
-    "discardLine": "What you changed here is not saved.",
-    "discard": "Discard"
+    "savePart": "Guardar",
+    "discardTitle": "¿Descartar el cambio?",
+    "discardLine": "Lo que ha cambiado aquí no se ha guardado.",
+    "discard": "Descartar"
   },
   "eventCover": {
     "heading": "Portada",
@@ -1751,8 +1751,8 @@
     "cancel": "Cancelar",
     "use": "Usar esta foto",
     "saving": "Guardando…",
-    "meshLine": "Soirely’s cover, in this event’s own colours. Add your own photo if you like.",
-    "removeLine": "The default cover comes back."
+    "meshLine": "La portada de Soirely, con los colores de este evento. Si lo desea, añada su propia foto.",
+    "removeLine": "Volverá a mostrarse la portada predeterminada."
   },
   "eventLive": {
     "guestsBlocked": "No se puede invitar a nadie hasta que este evento esté publicado.",
