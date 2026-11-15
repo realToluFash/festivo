@@ -20,6 +20,7 @@ import { useRereadOnMoves } from '../src/rereadOnMoves.ts';
 import { loadBoldText } from '../src/theme/boldText.ts';
 import { FONT_FACES, facesLoaded } from '../src/theme/fonts.ts';
 import { tokens } from '../src/theme/tokens.ts';
+import { useLayout } from '../src/layout/useLayout.ts';
 
 void SplashScreen.preventAutoHideAsync();
 showPushInForeground();
@@ -36,6 +37,7 @@ export default function RootLayout() {
   const [state, setState] = useState<'loading' | 'ready' | 'failed'>('loading');
   const reduced = useReducedMotion();
   const sheet = useStepsInSheet();
+  const phone = useLayout().kind === 'phone';
   useRereadOnMoves();
   const [message, setMessage] = useState('');
 
@@ -107,6 +109,15 @@ export default function RootLayout() {
                 options={({ navigation }) => ({
                   presentation: sheet && navigation.canGoBack() ? 'formSheet' : 'card',
                 })}
+              />
+              {/* On a tablet Search is a palette over the page it was opened from (sc-39534). */}
+              <Stack.Screen
+                name="search"
+                options={
+                  phone
+                    ? {}
+                    : { presentation: 'transparentModal', animation: 'fade', gestureEnabled: false }
+                }
               />
             </Stack>
             <LandingToast />

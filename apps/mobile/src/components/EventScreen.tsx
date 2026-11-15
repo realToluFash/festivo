@@ -84,6 +84,7 @@ export function EventScreen({
   opensEdit,
   editLeaves = false,
   keepsTab,
+  opensGuest,
 }: {
   eventId: string;
   area: EventPlace;
@@ -99,6 +100,8 @@ export function EventScreen({
   editLeaves?: boolean;
   /** Opened from Happening now, so Back returns to the tab that was showing. */
   keepsTab: boolean;
+  /** The guest whose details Guests opens on, as a match in Search opens them (sc-39534). */
+  opensGuest?: string | undefined;
 }) {
   const { t } = useTranslation();
   const { kind } = useLayout();
@@ -386,6 +389,7 @@ export function EventScreen({
           key={`${event.id}.${filter}`}
           event={event}
           filter={filter}
+          opens={opensGuest}
           phase={phase}
           now={now}
           onEventChange={change}
