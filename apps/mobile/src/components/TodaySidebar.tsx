@@ -141,11 +141,6 @@ export function SidebarHead({
           >
             {t('todayScreen.search')}
           </Text>
-          <View style={styles.key}>
-            <Text size={12} weight="medium" accessible={false} style={styles.secondary}>
-              ⌘K
-            </Text>
-          </View>
         </Pressable>
       )}
     </>
@@ -406,13 +401,6 @@ const styles = StyleSheet.create({
     paddingHorizontal: tokens.spaceLg,
     borderRadius: tokens.radiusRow,
     backgroundColor: tokens.colorCard,
-  },
-  key: {
-    paddingHorizontal: tokens.spaceXs,
-    paddingVertical: tokens.spaceHair,
-    borderRadius: tokens.spaceXs,
-    borderWidth: 1,
-    borderColor: tokens.colorBorder,
   },
   places: { gap: tokens.spaceHair },
   back: {
