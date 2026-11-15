@@ -53,7 +53,7 @@ import { dateLocale } from '../i18n/index.ts';
 import type { Shown } from '../kit/eventsList.ts';
 import { sidebarCardOf } from '../kit/eventTop.ts';
 import { type PhaseCard, filterChoices, markOf, phaseCardOf } from '../kit/guestRows.ts';
-import { waiting, whoseRows } from '../kit/pasteReply.ts';
+import { pasteShown, waiting, whoseRows } from '../kit/pasteReply.ts';
 import { type GuestReplies, guestRepliesOf, guestReplyBy } from '../kit/replyBy.ts';
 import { type ScreenOffline, useHandOffline, useOffline } from '../offline.ts';
 import { useSignedIn } from '../signedIn.ts';
@@ -169,7 +169,7 @@ export function EventGuests({
   const [saved, setSaved] = useState(false);
   const [form, setForm] = useState<GuestFormMode | null>(null);
   const [round, setRound] = useState(0);
-  const [added, setAdded] = useState<string | null>(null);
+  const [done, setDone] = useState<Done>(null);
   const [notice, setNotice] = useState<GuestNotice>(null);
   const [marking, setMarking] = useState<{ round: number; sending: boolean; refusal: MarkRefusal }>(
     { round: 0, sending: false, refusal: null },
@@ -178,7 +178,6 @@ export function EventGuests({
   const [recording, setRecording] = useState<TaggedGuest | null>(null);
   const [pasted, setPasted] = useState<Pasted | null>(null);
   const [fromMessage, setFromMessage] = useState<Guest | null>(null);
-  const [recorded, setRecorded] = useState(false);
   const whoseTitle = useRef<TextHandle>(null);
   const recordButton = useRef<ViewInstance>(null);
   const title = useRef<TextHandle>(null);
@@ -283,9 +282,8 @@ export function EventGuests({
 
   const openGuest = (guestId: string) => {
     setPasted(null);
-    setRecorded(false);
     setSaved(false);
-    setAdded(null);
+    setDone(null);
     setNotice(null);
     setOpen(guestId);
     readGuest(guestId, false);
@@ -298,8 +296,7 @@ export function EventGuests({
   }, []);
   const openWhose = (quote: string) => {
     setOpen(null);
-    setRecorded(false);
-    setAdded(null);
+    setDone(null);
     setPasted({ quote, all: false, typed: '' });
     setTimeout(() => moveScreenReaderFocus(whoseTitle.current), FOCUS_AFTER_MS);
   };
@@ -417,9 +414,6 @@ export function EventGuests({
     );
   };
 
-  const onCard = loaded && !empty;
-  /** sc-54450: Paste a reply, with guests.manage, while replies are open, once somebody has been invited. */
-  const pastes = manages && onCard && replies.closedOn == null && (counts?.invited ?? 0) > 0;
   const phaseLine =
     phase == null || loaded ? null : (
       <PhaseLine event={event} phase={phase} now={now} onChange={onEventChange} />
@@ -480,7 +474,7 @@ export function EventGuests({
         onShowAll={(standing) => setExpanded((was) => new Set([...was, standing]))}
         open={open}
         onOpen={openGuest}
-        added={added}
+        done={done}
         card={shown}
         phaseCard={phaseCard}
         makeLive={liveStep}
@@ -490,12 +484,9 @@ export function EventGuests({
         locale={locale}
         manages={manages}
         replies={replies}
-        recorded={recorded}
-        pasteInRow={
-          pastes && kind === 'tabletPortrait' ? <PasteButton onText={paste.onText} inRow /> : null
-        }
+        pasteInRow={kind === 'tabletPortrait' ? <PasteButton onText={paste.onText} inRow /> : null}
         pasteUnder={
-          !pastes ? null : kind === 'tabletPortrait' ? (
+          kind === 'tabletPortrait' ? (
             paste.nothing ? (
               <PasteNotice />
             ) : null
@@ -633,7 +624,7 @@ export function EventGuests({
           onSaved={() => {
             setFromMessage(null);
             setPasted(null);
-            setRecorded(true);
+            setDone({ kind: 'recorded' });
             readList(watch);
           }}
         />
@@ -686,7 +677,7 @@ export function EventGuests({
               setPane({ kind: 'guest', guest: tagged.guest });
               setSaved(true);
             } else {
-              setAdded(guest.fullName);
+              setDone({ kind: 'added', name: guest.fullName });
               setChoice('all');
             }
             readList(watch);
@@ -708,7 +699,7 @@ function GuestRows({
   onShowAll,
   open,
   onOpen,
-  added,
+  done,
   card,
   phaseCard,
   makeLive,
@@ -718,7 +709,6 @@ function GuestRows({
   locale,
   manages,
   replies,
-  recorded,
   pasteInRow,
   pasteUnder,
 }: {
@@ -732,7 +722,7 @@ function GuestRows({
   onShowAll: (standing: Standing) => void;
   open: string | null;
   onOpen: (guestId: string) => void;
-  added: string | null;
+  done: Done;
   card: Shown | null;
   phaseCard: PhaseCard | null;
   makeLive: StepProps;
@@ -743,8 +733,6 @@ function GuestRows({
   /** The allergy mark is for people who manage guests (sc-3777). */
   manages: boolean;
   replies: GuestReplies;
-  /** sc-54450: a reply just recorded from a copied message. */
-  recorded: boolean;
   /** sc-54450's Paste a reply: in the search row on an upright iPad, under it on a phone and in the list pane. */
   pasteInRow: ReactNode;
   pasteUnder: ReactNode;
@@ -757,6 +745,7 @@ function GuestRows({
     onTyped('');
     onChoice('all');
   };
+  const pastes = pasteShown(manages, replies.closedOn, counts.invited);
   const says =
     counts.invited === 0 || phaseCard?.onList === true
       ? t('guestList.onTheList', { count: counts.all })
@@ -817,8 +806,10 @@ function GuestRows({
 
   return (
     <View style={styles.rows}>
-      {added != null && <DoneLine words={t('guestList.justAdded', { name: added })} />}
-      {recorded && <DoneLine words={t('guestList.replyRecorded')} testID="guests.recorded" />}
+      {done?.kind === 'added' && <DoneLine words={t('guestList.justAdded', { name: done.name })} />}
+      {done?.kind === 'recorded' && (
+        <DoneLine words={t('guestList.replyRecorded')} testID="guests.recorded" />
+      )}
       {typed.trim() === '' && (
         <GuestsCard
           kind={kind}
@@ -842,9 +833,9 @@ function GuestRows({
           ref={searchRef}
         />
         <FilterChoice choice={choice} counts={counts} onChoose={onChoice} />
-        {pasteInRow}
+        {pastes && pasteInRow}
       </View>
-      {pasteUnder}
+      {pastes && pasteUnder}
       {view.kind === 'rows' ? (
         <View>
           {looking && (
@@ -1001,6 +992,9 @@ function PhaseLine({
     </Text>
   );
 }
+
+/** The one done line over the list: a guest just added, or sc-54450's reply just recorded from a copied message. */
+type Done = { kind: 'added'; name: string } | { kind: 'recorded' } | null;
 
 function DoneLine({ words, testID = 'guests.added' }: { words: string; testID?: string }) {
   useReadOut(words);

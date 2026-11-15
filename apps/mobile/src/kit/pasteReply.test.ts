@@ -3,7 +3,7 @@ import { createInstance } from 'i18next';
 import { describe, expect, it } from 'vitest';
 
 import en from '../i18n/locales/en.json';
-import { hasText, whoseRows } from './pasteReply.ts';
+import { hasText, pasteShown, whoseRows } from './pasteReply.ts';
 
 const i18n = createInstance();
 void i18n.init({
@@ -43,6 +43,15 @@ describe('a copied message', () => {
     expect(hasText(' \n\t ')).toBe(false);
     expect(hasText('')).toBe(false);
     expect(hasText(null)).toBe(false);
+  });
+});
+
+describe('Paste a reply', () => {
+  it('shows with guests.manage while replies are open, once somebody is invited', () => {
+    expect(pasteShown(true, null, 1)).toBe(true);
+    expect(pasteShown(false, null, 1)).toBe(false);
+    expect(pasteShown(true, '2026-11-05', 1)).toBe(false);
+    expect(pasteShown(true, null, 0)).toBe(false);
   });
 });
 

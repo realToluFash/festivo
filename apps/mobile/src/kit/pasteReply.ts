@@ -13,6 +13,15 @@ export function hasText(text: string | null | undefined): text is string {
   return text != null && text.trim() !== '';
 }
 
+/** sc-54450: on a list with guests in it, Paste a reply shows with guests.manage while replies are open, once somebody has been invited. */
+export function pasteShown(
+  manages: boolean,
+  closedOn: string | null | undefined,
+  invited: number,
+): boolean {
+  return manages && closedOn == null && invited > 0;
+}
+
 export interface WhoseRow {
   guest: Guest;
   line: string;
