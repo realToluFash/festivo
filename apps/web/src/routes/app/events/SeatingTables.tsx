@@ -487,7 +487,10 @@ export function TablePanel({
     const typed = text.trim();
 
     if (typed === '') return t('seating.tableBlank');
-    if (typed.length > SEATING_LIMITS.tableNameMaximum)
+    if (
+      [...new Intl.Segmenter().segment(typed)].length > SEATING_LIMITS.tableNameMaximum ||
+      [...typed].length > SEATING_LIMITS.tableNameCodePoints
+    )
       return t('seating.tableLong', { max: SEATING_LIMITS.tableNameMaximum });
     const holder = holdingName(plan.tables, typed, table.id);
 
@@ -512,13 +515,7 @@ export function TablePanel({
         </Said>
       )}
       <div className="st-fields">
-        <Field
-          fieldKey="name"
-          label={t('seating.name')}
-          value={table.name}
-          maxLength={SEATING_LIMITS.tableNameMaximum}
-          onCommit={name}
-        />
+        <Field fieldKey="name" label={t('seating.name')} value={table.name} onCommit={name} />
         <div className="st-two">
           <Select
             fieldKey="section"

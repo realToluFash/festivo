@@ -726,6 +726,27 @@ describe('Tables at a desk (sc-4000)', () => {
     });
   });
 
+  it('counts a name’s letters as a reader sees them, marks and all', async () => {
+    signedIn();
+    const thirty = 'e\u0323\u0300'.repeat(30);
+    const sent = await onSeating({
+      'GET /api/events/ev_1/seating-plan': () => seating(withTables(table())),
+      'PATCH /api/events/ev_1/seating-plan/tables/t1': () =>
+        seating(withTables(table({ name: thirty, version: 2 })), 't1'),
+    });
+
+    await chooseTable('Table 1, round, 0 of 10 seats taken');
+    expect(screen.getByLabelText<HTMLInputElement>('Name').maxLength).toBe(-1);
+    leave('Name', `${thirty}e\u0323\u0300`);
+    expect(await screen.findByText('Use 30 characters or fewer.')).toBeDefined();
+    expect(sent.some((one) => one.line.startsWith('PATCH'))).toBe(false);
+
+    leave('Name', thirty);
+    await waitFor(() =>
+      expect(sent.find((one) => one.line.startsWith('PATCH'))?.body).toEqual({ name: thirty }),
+    );
+  });
+
   it('refuses a name another table has, in any case', async () => {
     signedIn();
     await onSeating({
