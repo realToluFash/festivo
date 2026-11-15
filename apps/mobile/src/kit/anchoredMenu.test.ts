@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 
-import { inModal, menuInModal, menuMost } from './anchoredMenu.ts';
+import { inModal, menuInModal, menuMost, menuSide } from './anchoredMenu.ts';
 import { keyboardInWindow } from './keyboard.ts';
 
 describe('menuInModal', () => {
@@ -44,5 +44,57 @@ describe('menuMost', () => {
 
   it('is nothing, never less, under a button at the foot', () => {
     expect(menuMost({ top: 340, floor: null }, 336)).toBe(0);
+  });
+});
+
+describe('menuSide', () => {
+  const sideways = { gap: 4, floor: null, origin: 0, ceiling: 0, foot: 360 - 24 };
+
+  it('stays below when its whole height fits there', () => {
+    expect(menuSide({ ...sideways, under: 100, over: 60, tall: 200 })).toEqual({
+      top: 104,
+      most: 232,
+      above: false,
+    });
+  });
+
+  it('opens above, its foot the gap over the button, when below is short and above is larger', () => {
+    expect(menuSide({ ...sideways, under: 280, over: 240, tall: 200 })).toEqual({
+      top: 36,
+      most: 236,
+      above: true,
+    });
+  });
+
+  it('is capped at the room above, its top at the safe area, when its rows do not all fit', () => {
+    expect(menuSide({ ...sideways, ceiling: 20, under: 280, over: 240, tall: 400 })).toEqual({
+      top: 20,
+      most: 216,
+      above: true,
+    });
+  });
+
+  it('stays below, capped, when the room above is no larger', () => {
+    expect(menuSide({ ...sideways, foot: 344, under: 192, over: 152, tall: 400 })).toEqual({
+      top: 196,
+      most: 148,
+      above: false,
+    });
+  });
+
+  it('measures above from the Modal top on Android, not off by the status bar', () => {
+    const android = menuSide({ ...sideways, origin: -24, under: 256, over: 216, tall: 200 });
+
+    expect(android.top + 200).toBe(216 + 24 - 4);
+  });
+
+  it('keeps the side it took while open, though what it holds has changed', () => {
+    expect(menuSide({ ...sideways, under: 280, over: 240, tall: 40, above: true }).above).toBe(
+      true,
+    );
+  });
+
+  it('goes below until it has measured itself', () => {
+    expect(menuSide({ ...sideways, under: 280, over: 240, tall: null }).above).toBe(false);
   });
 });

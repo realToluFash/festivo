@@ -144,10 +144,11 @@ export function ShowMenu<S extends string>({
 }) {
   return (
     <AnchoredMenu
-      at={at == null ? null : { ...at, y: at.y + tokens.spaceXxs }}
+      at={at}
       onClose={onClose}
       opener={opener}
       width={264}
+      below={tokens.spaceSm}
       testID="calendar.showMenu"
     >
       <View style={styles.menu}>

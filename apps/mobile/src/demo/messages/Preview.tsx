@@ -5,6 +5,7 @@ import { EventMesh } from '../../components/EventMesh.tsx';
 import { Glyph } from '../../components/Glyph.tsx';
 import { useReadOut } from '../../components/ReadOut.tsx';
 import { Text } from '../../components/Text.tsx';
+import { type Anchor, anchorUnder } from '../../components/Summary.tsx';
 import { tokens } from '../../theme/tokens.ts';
 import { meshFor } from '../../kit/today.ts';
 import { MessageGlyph } from './MessageMarks.tsx';
@@ -27,7 +28,7 @@ import { sayPreview } from './PreviewWords.ts';
 import { noticeSmsOf } from './NoticeStates.ts';
 import { smsHead } from './Sms.ts';
 import { saySms } from './SmsWords.ts';
-import { type Anchored, PreviewAsChooser, PreviewAsControl, anchorAt } from './WriteItOnce.tsx';
+import { PreviewAsChooser, PreviewAsControl } from './WriteItOnce.tsx';
 
 /** The message as the guest's own page shows it (GuestPage-A): the cover, then the hosts' words in a figure, signed. */
 function PagePreview({ draft, person }: { draft: Draft; person: PreviewPerson }) {
@@ -202,12 +203,12 @@ export function Preview({
 }) {
   const person = PREVIEW_PEOPLE[as.who];
   const control = useRef<ViewInstance>(null);
-  const [at, setAt] = useState<Anchored | null>(null);
+  const [at, setAt] = useState<Anchor | null>(null);
   const set = (previewing: Previewing) => dispatch({ type: 'previewing', previewing });
 
   useEffect(() => {
     if (!as.choosing || phone) return undefined;
-    const later = setTimeout(() => anchorAt(control.current, setAt), 300);
+    const later = setTimeout(() => anchorUnder(control, setAt), 300);
 
     return () => clearTimeout(later);
   }, [as.choosing, phone]);
