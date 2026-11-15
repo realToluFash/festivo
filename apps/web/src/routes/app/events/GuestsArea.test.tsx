@@ -4227,11 +4227,7 @@ describe('Mark many guests as invited from the selection bar (sc-46880)', () => 
     fireEvent.click(within(dialog).getByRole('radio', { name: 'WhatsApp' }));
     fireEvent.click(within(dialog).getByRole('button', { name: 'Mark as invited' }));
 
-    await waitFor(() =>
-      expect(said()).toEqual([
-        'Nothing changed. This event is no longer live, so guests can’t be marked as invited.',
-      ]),
-    );
+    await waitFor(() => expect(said()).toEqual([i18next.t('guestSelect.notLive')]));
     expect(box(/^Select all/u).checked).toBe(true);
     fireEvent.click(box('Select Bisi Adewale'));
 
