@@ -279,13 +279,13 @@ export function CreateWalkWindow<Made>({
 
     return () => up.remove();
   }, []);
-  // A field that gives up focus after the window raised its keys and before they came up gets them once more (qa3 #47084), unnamed again first, as a named one had that focus voiced (qa4 #48921).
+  // A field that gives up focus after the window raised its keys and before they came up gets them once more (qa3 #47084), unnamed again first while still hidden, as a named one had that focus voiced (qa4 #48921). Once shown to TalkBack it keeps its name: unnamed and named again, the name was said after its reading (qa2 #50682).
   const regaining = useRef<TextInputInstance | null>(null);
   const keysLost = () => {
     const input = holding.current;
     holding.current = null;
     if (input == null || !open || walk.asking) return;
-    if (!named) {
+    if (!named || voiced) {
       raiseKeysOn(input);
       return;
     }
