@@ -416,12 +416,7 @@
   },
   "eventEdit": {
     "open": "Edit details",
-    "title": "Edit details",
-    "save": "Save changes",
-    "saving": "Saving…",
     "cancel": "Cancel",
-    "zoneHint": "Changing the zone keeps the times as typed. {{day}} {{time}} stays {{time}} in the new zone.",
-    "zoneHintPlain": "Changing the zone keeps the times as typed.",
     "currencyInUse": "The currency cannot change once amounts are recorded against this event.",
     "notSaved": "Not saved. Your changes are still here. Try again.",
     "changedElsewhere": "Not saved. Somebody else changed this event since you opened it. What you typed is still here.",
@@ -433,7 +428,6 @@
     "leaveBody": "Your changes to this event will be lost.",
     "leave": "Leave without saving",
     "saved": "Saved",
-    "nothingChanged": "Nothing changed, so nothing was sent.",
     "scheduleConcluded": "This event is over, so its start, end and time zone cannot be changed.",
     "scheduleLocked": "This event is over, so its start, end and time zone can't be changed."
   },

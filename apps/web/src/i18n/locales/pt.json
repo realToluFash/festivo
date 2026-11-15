@@ -436,12 +436,7 @@
   },
   "eventEdit": {
     "open": "Editar detalhes",
-    "title": "Editar detalhes",
-    "save": "Guardar alterações",
-    "saving": "A guardar…",
     "cancel": "Cancelar",
-    "zoneHint": "Ao mudar o fuso horário, as horas mantêm-se tal como as escreveu: {{day}} {{time}} continua a ser {{time}} no novo fuso.",
-    "zoneHintPlain": "Ao mudar o fuso horário, as horas mantêm-se tal como as escreveu.",
     "currencyInUse": "A moeda não pode ser alterada depois de haver montantes registados neste evento.",
     "notSaved": "Não foi guardado. As suas alterações continuam aqui. Tente novamente.",
     "changedElsewhere": "Não foi guardado. Outra pessoa alterou este evento desde que o abriu. O que escreveu continua aqui.",
@@ -453,7 +448,6 @@
     "leaveBody": "As alterações feitas a este evento serão perdidas.",
     "leave": "Sair sem guardar",
     "saved": "Alterações guardadas",
-    "nothingChanged": "Nada foi alterado, por isso nada foi enviado.",
     "scheduleConcluded": "Este evento terminou, por isso o início, o fim e o fuso horário já não podem ser alterados.",
     "scheduleLocked": "Este evento terminou, por isso o início, o fim e o fuso horário já não podem ser alterados."
   },

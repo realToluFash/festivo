@@ -436,12 +436,7 @@
   },
   "eventEdit": {
     "open": "Modifier les informations",
-    "title": "Modifier les informations",
-    "save": "Enregistrer les modifications",
-    "saving": "Enregistrement…",
     "cancel": "Annuler",
-    "zoneHint": "Si vous changez de fuseau horaire, les heures restent telles que saisies : {{day}} {{time}} reste {{time}} dans le nouveau fuseau.",
-    "zoneHintPlain": "Si vous changez de fuseau horaire, les heures restent telles que saisies.",
     "currencyInUse": "La devise ne peut plus changer une fois que des montants sont enregistrés pour cet événement.",
     "notSaved": "Non enregistré. Vos modifications sont toujours là. Réessayez.",
     "changedElsewhere": "Non enregistré. Quelqu’un d’autre a modifié cet événement depuis que vous l’avez ouvert. Ce que vous avez saisi est toujours là.",
@@ -453,7 +448,6 @@
     "leaveBody": "Les modifications apportées à cet événement seront perdues.",
     "leave": "Quitter sans enregistrer",
     "saved": "Modifications enregistrées",
-    "nothingChanged": "Rien n’a changé, donc rien n’a été envoyé.",
     "scheduleConcluded": "Cet événement est terminé, son début, sa fin et son fuseau horaire ne peuvent donc plus être modifiés.",
     "scheduleLocked": "Cet événement est terminé, son début, sa fin et son fuseau horaire ne peuvent donc plus être modifiés."
   },
