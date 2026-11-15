@@ -1866,6 +1866,15 @@ function json(body: unknown, status = 200): Response {
   });
 }
 
+/** What every page of Members carries besides its rows (sc-49170). */
+const PAGE_REST = {
+  next: null,
+  counts: { all: 1, active: 1, waiting: 0, suspended: 0, former: 1 },
+  owners: 1,
+  faces: [],
+  waiting: [],
+};
+
 const ACCOUNT = {
   id: '018f3a4c-7b2e-7c3d-9e1f-2a3b4c5d6e7f',
   name: 'Folake Ire',
@@ -2530,19 +2539,24 @@ describe('getting back in without the second factor', () => {
 });
 
 describe('invitations and members', () => {
-  function client(response: Response, sent: { line: string; body: unknown }[] = []) {
+  function client(
+    response: Response | (() => Response),
+    sent: { line: string; query?: string | undefined; body: unknown }[] = [],
+  ) {
     return {
       api: new ApiClient({
         baseUrl: () => 'http://api.test',
         tokens: store('live', null),
         refreshTokenIn: 'cookie',
         fetch: async (url, init) => {
+          const { pathname, search } = new URL(String(url));
           sent.push({
-            line: `${init?.method ?? 'GET'} ${new URL(String(url)).pathname}`,
+            line: `${init?.method ?? 'GET'} ${pathname}`,
+            query: search === '' ? undefined : decodeURIComponent(search),
             body: typeof init?.body === 'string' ? JSON.parse(init.body) : null,
           });
 
-          return response;
+          return typeof response === 'function' ? response() : response;
         },
       }),
       sent,
@@ -2633,6 +2647,7 @@ describe('invitations and members', () => {
   test('the members list reads every state and its history', async () => {
     const { api, sent } = client(
       json({
+        ...PAGE_REST,
         members: [
           {
             id: 'm1',
@@ -2689,9 +2704,46 @@ describe('invitations and members', () => {
     expect(sent[0]?.line).toBe('GET /api/orgs/org_1/members');
   });
 
+  test('a page of members is asked for under its option, after the last row read', async () => {
+    const { api, sent } = client(json({ ...PAGE_REST, members: [], invitations: [] }));
+
+    await api.members('org_1', { show: 'former', after: 'm50', limit: 50 });
+
+    expect(sent[0]?.query).toBe('?show=former&after=m50&limit=50');
+  });
+
+  test('every member is read page after page until there is no next', async () => {
+    const row = (id: string) => ({
+      id,
+      user: { id: `u_${id}`, name: id, email: null },
+      role: { id: 'role_1', seededAs: 'owner', name: null },
+      status: 'active',
+      former: null,
+      channel: null,
+      since: null,
+      invitedBy: null,
+      invitedAt: null,
+      self: false,
+      history: [],
+    });
+    const pages = [
+      { ...PAGE_REST, next: 'm1', members: [row('m1')], invitations: [] },
+      { ...PAGE_REST, members: [row('m2')], invitations: [] },
+    ];
+    const { api, sent } = client(() => json(pages.shift() ?? {}));
+
+    const every = await api.everyMember('org_1', 'active');
+
+    expect(every.map((one) => one.id)).toEqual(['m1', 'm2']);
+    expect(sent.map((one) => one.query)).toEqual([
+      '?show=active&limit=500',
+      '?show=active&after=m1&limit=500',
+    ]);
+  });
+
   test('a members list in a shape it does not know names where to look', async () => {
     await expect(
-      client(json({ members: [{ id: 'm1' }], invitations: [] })).api.members('o'),
+      client(json({ ...PAGE_REST, members: [{ id: 'm1' }], invitations: [] })).api.members('o'),
     ).rejects.toThrow(/MembersController/);
   });
 
@@ -2739,6 +2791,7 @@ describe('invitations and members', () => {
   test('somebody awaiting approval carries the instant they are removed, as the server wrote it', async () => {
     const { api } = client(
       json({
+        ...PAGE_REST,
         members: [
           {
             id: 'm_ada',
