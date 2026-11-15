@@ -765,6 +765,43 @@ export interface MembershipStep {
   at: string;
 }
 
+/** What the sidebar's Search may find for the caller (sc-39534): events.read, guests.read on at least one event, members.read. */
+export interface SearchReach {
+  events: boolean;
+  guests: boolean;
+  members: boolean;
+}
+
+/** A guest Search found: their name and their event, and never their contact details. */
+export interface SearchGuest {
+  id: string;
+  name: string;
+  event: { id: string; name: string; startsAt: string; timeZone: string };
+}
+
+/** Somebody Settings › Members lists to the caller; an Invited person is an invitation and has no name yet. */
+export interface SearchMember {
+  id: string;
+  kind: 'member' | 'invitation';
+  name: string | null;
+  email: string | null;
+  role: MemberRole | null;
+  status: 'active' | 'suspended' | 'pending_approval' | 'invited';
+}
+
+/** Up to five matches and the count of all of them. */
+export interface SearchKind<Match> {
+  total: number;
+  matches: Match[];
+}
+
+/** A kind is null where the caller may not find it. */
+export interface SearchFound {
+  events: SearchKind<OrganisationEvent> | null;
+  guests: SearchKind<SearchGuest> | null;
+  members: SearchKind<SearchMember> | null;
+}
+
 /** A row on Settings > Members; `former` tells left from removed, which share one state. */
 export interface OrganisationMember {
   id: string;
@@ -1828,6 +1865,44 @@ export class ApiClient {
     ]);
 
     return { unfinished, past };
+  }
+
+  /** Which kinds the sidebar's Search may find for the caller, for its field's words (sc-39534). */
+  async searchReach(organisationId: string): Promise<SearchReach> {
+    const body = await this.get<Record<string, unknown> | null>(
+      `/api/orgs/${encodeURIComponent(organisationId)}/search/reach`,
+    );
+
+    if (
+      typeof body?.events !== 'boolean' ||
+      typeof body.guests !== 'boolean' ||
+      typeof body.members !== 'boolean'
+    ) {
+      throw new Error(
+        'The API answered GET /api/orgs/{id}/search/reach in a shape this client does not know. Check the search controller in services/api.',
+      );
+    }
+
+    return { events: body.events, guests: body.guests, members: body.members };
+  }
+
+  /** The sidebar's Search (sc-39534): each kind's first five matches and the count of all, only what the caller may open. */
+  async search(organisationId: string, term: string, signal?: AbortSignal): Promise<SearchFound> {
+    const body = await this.get<Record<string, unknown> | null>(
+      `/api/orgs/${encodeURIComponent(organisationId)}/search?${new URLSearchParams({ q: term }).toString()}`,
+      signal == null ? undefined : { signal },
+    );
+    const events = asSearchKind(body?.events, asOrganisationEvent);
+    const guests = asSearchKind(body?.guests, asSearchGuest);
+    const members = asSearchKind(body?.members, asSearchMember);
+
+    if (events === undefined || guests === undefined || members === undefined) {
+      throw new Error(
+        'The API answered GET /api/orgs/{id}/search in a shape this client does not know. Check the search controller in services/api.',
+      );
+    }
+
+    return { events, guests, members };
   }
 
   /** The names Events' Filter offers under Hosted by, alphabetical (sc-30302). */
@@ -4191,6 +4266,70 @@ function oneOf<T extends string>(raw: unknown, values: readonly T[]): T | null {
 
 function stringOrNull(raw: unknown): string | null {
   return typeof raw === 'string' ? raw : null;
+}
+
+/** A kind Search answered: null where the caller may not find it, undefined for a shape this client does not know. */
+function asSearchKind<Match>(
+  raw: unknown,
+  match: (raw: unknown) => Match | null,
+): SearchKind<Match> | null | undefined {
+  if (raw === null) return null;
+
+  const { total, matches } = (raw ?? {}) as { total?: unknown; matches?: unknown };
+  const read = Array.isArray(matches) ? matches.map(match) : null;
+
+  return isCount(total) && read != null && read.every((one) => one != null)
+    ? { total, matches: read as Match[] }
+    : undefined;
+}
+
+function asSearchGuest(raw: unknown): SearchGuest | null {
+  const guest = raw as { id?: unknown; name?: unknown; event?: Record<string, unknown> } | null;
+  const event = guest?.event;
+
+  return typeof guest?.id === 'string' &&
+    typeof guest.name === 'string' &&
+    typeof event?.id === 'string' &&
+    typeof event.name === 'string' &&
+    typeof event.startsAt === 'string' &&
+    typeof event.timeZone === 'string'
+    ? {
+        id: guest.id,
+        name: guest.name,
+        event: {
+          id: event.id,
+          name: event.name,
+          startsAt: event.startsAt,
+          timeZone: event.timeZone,
+        },
+      }
+    : null;
+}
+
+const SEARCH_MEMBER_STATUSES = ['active', 'suspended', 'pending_approval', 'invited'] as const;
+
+function asSearchMember(raw: unknown): SearchMember | null {
+  const member = raw as Record<string, unknown> | null;
+  const status = SEARCH_MEMBER_STATUSES.find((one) => one === member?.status);
+  const role = member?.role == null ? null : asMemberRole(member.role);
+
+  if (
+    typeof member?.id !== 'string' ||
+    (member.kind !== 'member' && member.kind !== 'invitation') ||
+    status == null ||
+    (member.role != null && role == null)
+  ) {
+    return null;
+  }
+
+  return {
+    id: member.id,
+    kind: member.kind,
+    name: stringOrNull(member.name),
+    email: stringOrNull(member.email),
+    role,
+    status,
+  };
 }
 
 function asMemberRole(raw: unknown): MemberRole | null {

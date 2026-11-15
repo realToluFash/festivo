@@ -3380,5 +3380,60 @@
     "savedNone": "Enregistré. Les réponses restent ouvertes jusqu’au début de l’événement.",
     "savedClosed": "Enregistré. Les réponses sont désormais closes.",
     "startMoves": "La clôture des réponses, le {{old}}, ne tombe pas avant le nouveau début. En enregistrant, la date limite de réponse passe au {{next}}."
+  },
+  "search": {
+    "row": "Rechercher",
+    "field": {
+      "egm": "Rechercher événements, invités et membres",
+      "eg": "Rechercher événements et invités",
+      "em": "Rechercher événements et membres",
+      "gm": "Rechercher invités et membres",
+      "e": "Rechercher un événement",
+      "g": "Rechercher un invité",
+      "m": "Rechercher un membre"
+    },
+    "hint": {
+      "egm": "Trouvez un événement, un invité ou un membre.",
+      "eg": "Trouvez un événement ou un invité.",
+      "em": "Trouvez un événement ou un membre.",
+      "gm": "Trouvez un invité ou un membre.",
+      "e": "Trouvez un événement.",
+      "g": "Trouvez un invité.",
+      "m": "Trouvez un membre."
+    },
+    "short": "Saisissez au moins 2 caractères.",
+    "searching": "Recherche en cours…",
+    "showAll": "Tout afficher dans Événements",
+    "nothing": "Aucun résultat pour « {{term}} ».",
+    "clear": "Effacer la recherche",
+    "keys": "↑ ↓ pour vous déplacer · Entrée pour ouvrir · Échap pour fermer",
+    "results": "Résultats",
+    "close": "Fermer",
+    "cancel": "Annuler",
+    "matches_one": "{{count, number}} résultat",
+    "matches_many": "{{count, number}} résultats",
+    "matches_other": "{{count, number}} résultats",
+    "heading": {
+      "events": "Événements",
+      "guests": "Invités",
+      "members": "Membres"
+    },
+    "headingCount_one": "{{heading}}, {{count, number}} résultat",
+    "headingCount_many": "{{heading}}, {{count, number}} résultats",
+    "headingCount_other": "{{heading}}, {{count, number}} résultats",
+    "standing": {
+      "invited": "Invitation envoyée",
+      "pending_approval": "En attente d’approbation",
+      "suspended": "Accès suspendu"
+    },
+    "line": {
+      "event": "{{dates}} · {{place}}",
+      "days": "Du {{first}} au {{last}}",
+      "calledOffOn": "Annulé le {{date}}",
+      "venueCity": "{{venue}}, {{city}}",
+      "venueToBeConfirmed": "Lieu à confirmer",
+      "guest": "{{event}} · {{day}}",
+      "member": "{{email}} · {{role}}"
+    }
   }
 }

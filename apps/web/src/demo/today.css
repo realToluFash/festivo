@@ -9,28 +9,6 @@
   color: var(--colorInk);
 }
 
-.today-search {
-  display: flex;
-  flex: none;
-  align-items: center;
-  gap: var(--spaceMd);
-  box-sizing: border-box;
-  height: var(--sizeHit);
-  padding: 0 var(--spaceLg);
-  border: 1px solid var(--colorBorder);
-  border-radius: var(--radiusRow);
-  background: var(--colorCard);
-  color: var(--colorInkSecondary);
-  font: 500 14px/1 var(--fontFamily);
-}
-
-.today-key {
-  padding: var(--spaceHair) var(--spaceXs);
-  border: 1px solid var(--colorBorder);
-  border-radius: var(--radiusCheckbox);
-  font: 500 12px/1.2 var(--fontFamily);
-}
-
 .today-main {
   display: flex;
   flex: 1;

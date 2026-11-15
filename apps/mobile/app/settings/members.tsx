@@ -18,6 +18,7 @@ import { StyleSheet, View, type ViewInstance } from 'react-native';
 import { useTranslation } from 'react-i18next';
 
 import { api } from '../../src/api.ts';
+import { SEARCHED_MEMBER } from '../../src/kit/searchLinks.ts';
 import { AppFrame, besideRow } from '../../src/components/AppFrame.tsx';
 import {
   type ListAndPageSpacing,
@@ -85,7 +86,10 @@ type Targets = Partial<Record<string, Partial<Record<RecoveryPart, ViewInstance 
 export default function MembersScreen() {
   const { t } = useTranslation();
   const backToSettings = useBackToSettings();
-  const { from } = useLocalSearchParams<{ from?: string }>();
+  const { from, [SEARCHED_MEMBER]: searched } = useLocalSearchParams<{
+    from?: string;
+    [SEARCHED_MEMBER]?: string;
+  }>();
   const { kind, givesWay } = useListAndPageLayout(SPACING, 'settingsList');
   const alone = !settingsListBeside(useLayout().kind);
   const { organisation } = useSignedIn();
@@ -201,6 +205,17 @@ export default function MembersScreen() {
 
     return () => clearTimeout(focus);
   }, [backTo]);
+
+  // A member Search found takes the focus once the list is drawn (sc-39534).
+  useEffect(() => {
+    if (searched == null || load.kind !== 'loaded') return;
+    const focus = setTimeout(() => {
+      moveScreenReaderFocus(rows.current[searched] ?? membersTitle.current);
+      router.setParams({ [SEARCHED_MEMBER]: undefined });
+    }, SETTLED_MS);
+
+    return () => clearTimeout(focus);
+  }, [searched, load.kind]);
 
   if (organisation != null && !roleHolds(organisation, 'members.read')) {
     return <Redirect href={DESTINATION_HREF.settings} />;

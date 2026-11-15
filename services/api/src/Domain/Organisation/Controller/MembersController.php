@@ -22,7 +22,6 @@ use App\Entity\Organisation;
 use App\Entity\Role;
 use App\Entity\User;
 use App\Enum\ErrorCode;
-use App\Enum\MembershipStatus;
 use App\Enum\Permission;
 use App\Http\Access\Interfaces\MembershipDirectoryInterface;
 use App\Http\Access\Policy\InOrganisation;
@@ -93,9 +92,7 @@ final readonly class MembersController
         $locale = $this->userMailer->shownLocaleFor($caller);
         $written = fn (DateTimeImmutable $at): string => $this->userMailer->deadline($at, $caller, $locale);
         $decides = true === $this->membershipDirectory->grantsIn($caller, $organisation->getId())?->holds(Permission::MembersManage);
-
-        // Somebody who asked to join and was never let in is shown only to the people who decide on them (sc-392, sc-8168).
-        $shown = static fn (Membership $membership): bool => $decides || MembershipStatus::PendingApproval !== $membership->getStatus() && $membership->hasBeenActive();
+        $shown = static fn (Membership $membership): bool => $membership->isListedTo($decides);
 
         return new JsonResponse([
             'members' => Vec\map(

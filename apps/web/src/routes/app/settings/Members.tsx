@@ -19,6 +19,7 @@ import {
 } from '@soirely/domain';
 import { type ReactNode, useCallback, useEffect, useRef, useState } from 'react';
 import { Trans, useTranslation } from 'react-i18next';
+import { useSearchParams } from 'react-router';
 
 import { api } from '../../../api.ts';
 import { Refreshing } from '../../../components/OfflineBand.tsx';
@@ -58,6 +59,7 @@ import { InviteDialog, RequestDialog } from './MembersDialogs.tsx';
 import { RecoveryAsk, RecoveryBlock } from './MembersRecovery.tsx';
 import { backToMakeOwner } from './ownerReturn.ts';
 import { memberTag } from './memberWords.ts';
+import { SEARCHED_MEMBER } from '../../../searchLinks.ts';
 import '../../../components/SettingsParts.css';
 import './members.css';
 
@@ -210,6 +212,33 @@ export function Members() {
   );
 }
 
+/** A member Search opened (sc-39534): their row, or their invitation's, in view and focused, once. */
+function useSearchedMember(): void {
+  const [params, setParams] = useSearchParams();
+  const searched = params.get(SEARCHED_MEMBER);
+
+  useEffect(() => {
+    if (searched == null) return;
+
+    const row = () =>
+      document.querySelector<HTMLElement>(
+        `[data-member="${CSS.escape(searched)}"], [data-invitation="${CSS.escape(searched)}"]`,
+      );
+
+    row()?.scrollIntoView?.({ block: 'center' });
+    focusWhenFree(row);
+    setParams(
+      (now) => {
+        const next = new URLSearchParams(now);
+        next.delete(SEARCHED_MEMBER);
+
+        return next;
+      },
+      { replace: true },
+    );
+  }, [searched, setParams]);
+}
+
 function Column({ children }: { children: ReactNode }) {
   return <div className="desk-column">{children}</div>;
 }
@@ -262,6 +291,8 @@ function MembersLoaded({
   useEffect(() => {
     if (returned != null) dropProviderReturn();
   }, [returned]);
+
+  useSearchedMember();
 
   useEffect(() => {
     if (!moved.current) return;
@@ -775,6 +806,7 @@ function InvitationRow({
 
   return (
     <InvitationLine
+      invitation={invitation.id}
       email={invitation.email}
       ended={pending ? undefined : t(`membersScreen.invitationState.${invitation.status}`)}
       lines={[
