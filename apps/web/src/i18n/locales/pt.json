@@ -2860,10 +2860,10 @@
     "recordFor": "Para {{name}}. Conta como resposta desta pessoa e fica indicado que foi registada por si.",
     "howTold": "Como recebeu a resposta?",
     "toldHow": {
-      "phone": "Por telefone",
+      "phone": "Telefone",
       "inPerson": "Pessoalmente",
-      "message": "Por mensagem",
-      "other": "Outra forma"
+      "message": "Mensagem",
+      "other": "Outro"
     },
     "toldInLine": {
       "phone": "ao telefone",
@@ -2884,6 +2884,7 @@
     "keepTheirs": "Manter a resposta",
     "replyRecorded": "Resposta registada. Conta como qualquer outra.",
     "recordedOn": "registada por {{name}}, {{how}}, no dia {{date}}",
+    "recordedLine": "{{reply}} · registada por {{name}}, {{how}}, no dia {{date}}",
     "line": "{{reply}} · {{contact}}",
     "withPlaces": "{{reply}} · {{places}}",
     "contacts": "{{email}} · {{mobile}}",

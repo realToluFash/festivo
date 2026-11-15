@@ -23,6 +23,7 @@ import {
   placesTo,
   sameName,
   seatedOf,
+  startTicks,
   valuesOf,
 } from './guests.ts';
 import {
@@ -646,9 +647,7 @@ export function RecordForm({
     start.replace === true ? 'asked' : null,
   );
   const [failed, setFailed] = useState(start.notSaved ?? false);
-  const [ticked, setTicked] = useState<ReadonlySet<string>>(
-    () => new Set(guest.companions.map((companion) => companion.id)),
-  );
+  const [ticked, setTicked] = useState<ReadonlySet<string>>(() => startTicks(guest));
   const [busy, setBusy] = useState(false);
   const ownReply =
     guest.recorded == null &&

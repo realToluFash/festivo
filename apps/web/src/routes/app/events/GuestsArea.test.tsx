@@ -4520,18 +4520,20 @@ describe('Record a reply (sc-3787)', () => {
   const OWN = { ...DETAILS, repliedAt: '2026-10-02T10:00:00+01:00' };
 
   it('refuses Save with nothing chosen, asks before replacing their own reply, then says who recorded it', async () => {
+    const RECORDED = {
+      ...OWN,
+      reply: 'notComing',
+      repliedAt: '2026-11-05T10:00:00+01:00',
+      replyRecorded: { by: 'Kemi Bankole', how: 'other' },
+    };
+    let saved = false;
     const sent = await openNgozi({
-      'GET /api/events/ev_1/guests/g_1': () => tagged(OWN, '"1"'),
-      'POST /api/events/ev_1/guests/g_1/record-reply': () =>
-        tagged(
-          {
-            ...OWN,
-            reply: 'notComing',
-            repliedAt: '2026-11-05T10:00:00+01:00',
-            replyRecorded: { by: 'Kemi Bankole', how: 'other' },
-          },
-          '"2"',
-        ),
+      'GET /api/events/ev_1/guests/g_1': () =>
+        saved ? tagged(RECORDED, '"2"') : tagged(OWN, '"1"'),
+      'POST /api/events/ev_1/guests/g_1/record-reply': () => {
+        saved = true;
+        return tagged(RECORDED, '"2"');
+      },
     });
     const recorded = () => sent.filter((one) => one.line.endsWith('/record-reply'));
 
@@ -4553,6 +4555,9 @@ describe('Record a reply (sc-3787)', () => {
       ),
     ).toBeDefined();
     expect(recorded()).toEqual([]);
+    expect(
+      within(column()).getByRole('button', { name: 'Replace their reply' }).classList,
+    ).toContain('is-primary');
     fireEvent.click(within(column()).getByRole('button', { name: 'Replace their reply' }));
 
     expect(
@@ -4561,9 +4566,62 @@ describe('Record a reply (sc-3787)', () => {
     expect(
       within(column()).getByText('recorded by Kemi Bankole, another way, Nov 5'),
     ).toBeDefined();
+    expect(
+      within(column()).getByText('Not coming · recorded by Kemi Bankole, another way, Nov 5'),
+    ).toBeDefined();
     expect(recorded().map((one) => one.body)).toEqual([
       { answer: 'notComing', how: 'other', companions: [], replace: true },
     ]);
+  });
+
+  it('keeps Reply recorded above the card when the list arrives live after the save', async () => {
+    const before = config();
+    __setConfig({ ...before, mercureUrl: 'http://hub.test/.well-known/mercure' });
+    StubSource.made = [];
+    vi.stubGlobal('EventSource', StubSource);
+    const hub = () =>
+      json({ token: 'tok', expiresAt: new Date(Date.now() + 3_600_000).toISOString() });
+    const RECORDED = {
+      ...DETAILS,
+      reply: 'coming',
+      repliedAt: '2026-11-05T10:00:00+01:00',
+      replyRecorded: { by: 'Kemi Bankole', how: 'phone' },
+    };
+    const EARLIER = { ...RECORDED, repliedAt: '2026-10-02T10:00:00+01:00' };
+    let saved = false;
+
+    try {
+      const sent = await openNgozi({
+        'GET /api/events/ev_1/guests/g_1': () =>
+          saved ? tagged(RECORDED, '"2"') : tagged(EARLIER, '"1"'),
+        'POST /api/events/ev_1/guests/g_1/record-reply': () => {
+          saved = true;
+          return tagged(RECORDED, '"2"');
+        },
+        'POST /api/events/ev_1/guests/subscriptions': hub,
+        'POST /api/realtime/subscriptions': hub,
+      });
+      const reads = () => sent.filter((one) => one.line === 'GET /api/events/ev_1/guests/g_1');
+
+      fireEvent.click(within(column()).getByRole('button', { name: 'Record a reply' }));
+      fireEvent.click(within(column()).getByRole('radio', { name: 'Coming' }));
+      fireEvent.click(within(column()).getByRole('radio', { name: 'By phone' }));
+      fireEvent.click(within(column()).getByRole('button', { name: 'Save' }));
+      await within(column()).findByText('Reply recorded. It counts like any other reply.');
+      const read = reads().length;
+      StubSource.made.find((one) => one.url.includes('guests'))!.publish(listOf([NGOZI, AMAKA]));
+      await waitFor(() => expect(reads().length).toBeGreaterThan(read));
+
+      expect(
+        await within(column()).findByText('Coming · recorded by Kemi Bankole, by phone, Nov 5'),
+      ).toBeDefined();
+      expect(
+        within(column()).getByText('Reply recorded. It counts like any other reply.'),
+      ).toBeDefined();
+    } finally {
+      __setConfig(before);
+      vi.unstubAllGlobals();
+    }
   });
 
   it('keeps their reply, sending nothing', async () => {

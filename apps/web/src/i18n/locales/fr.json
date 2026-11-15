@@ -2860,9 +2860,9 @@
     "recordFor": "Pour {{name}}. Cette réponse compte comme la sienne et apparaît comme saisie par vous.",
     "howTold": "Comment vous a-t-on répondu ?",
     "toldHow": {
-      "phone": "Par téléphone",
+      "phone": "Téléphone",
       "inPerson": "En personne",
-      "message": "Par message",
+      "message": "Message",
       "other": "Autre"
     },
     "toldInLine": {
@@ -2884,6 +2884,7 @@
     "keepTheirs": "Garder sa réponse",
     "replyRecorded": "Réponse saisie. Elle compte comme toutes les autres.",
     "recordedOn": "saisie par {{name}}, {{how}}, le {{date}}",
+    "recordedLine": "{{reply}} · saisie par {{name}}, {{how}}, le {{date}}",
     "line": "{{reply}} · {{contact}}",
     "withPlaces": "{{reply}} · {{places}}",
     "contacts": "{{email}} · {{mobile}}",
