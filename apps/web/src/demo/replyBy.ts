@@ -8,7 +8,7 @@ export {
   type ReplyByCheck,
   datesAsk,
   replyByAfterStart,
-  replyByCheck,
+  replyByCheckAt,
   showsPreview,
 } from '../replyBy.ts';
 

@@ -9,7 +9,7 @@ import {
 export type { ReplyByCheck };
 
 /** `replyByCheck` of packages/domain, from the start's and the clock's moments; the demo calls it so. */
-export function replyByCheck({
+export function replyByCheckAt({
   next,
   was,
   startsAt,
@@ -60,7 +60,7 @@ export function datesAsk({
   noReply: number;
 }): 'sooner' | 'now' | null {
   if (moved == null) return null;
-  const check = replyByCheck({ next: moved, ...rest });
+  const check = replyByCheckAt({ next: moved, ...rest });
 
   return check === 'sooner' || check === 'now' ? check : null;
 }
