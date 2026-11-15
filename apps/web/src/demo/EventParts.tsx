@@ -119,8 +119,8 @@ const READER_LINES: Readonly<Record<string, string>> = {
   'events.nextResume': EVENT_WORDS.nextResumeReader,
 };
 
-function readerWords() {
-  const local = i18next.cloneInstance();
+function readerWords(language: string) {
+  const local = i18next.cloneInstance({ lng: language });
   const t = local.t.bind(local) as unknown as (...args: unknown[]) => string;
   const read = (...args: unknown[]) =>
     (typeof args[0] === 'string' ? READER_LINES[args[0]] : undefined) ?? t(...args);
@@ -147,7 +147,9 @@ export function EventCard({
   reads?: boolean;
   onStep: (does: CardStepAction) => void;
 }) {
-  const words = useMemo(() => (reads ? readerWords() : null), [reads]);
+  const { i18n } = useTranslation();
+  const language = i18n.language;
+  const words = useMemo(() => (reads ? readerWords(language) : null), [reads, language]);
   const card = (
     <ProductCard
       event={shownSample(event, now)}

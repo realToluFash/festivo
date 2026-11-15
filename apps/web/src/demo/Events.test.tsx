@@ -864,6 +864,16 @@ describe('a reader who cannot change the event (sc-50996)', () => {
   const SHOWER = 'Kemi’s baby shower';
   const PARTY = 'Ire Events end-of-year party';
 
+  function readerManage() {
+    const manage = screen.getByRole('region', { name: 'Manage' });
+
+    expect(within(manage).queryByRole('button', { name: /^Pause/ })).toBeNull();
+    expect(within(manage).queryByRole('button', { name: /^Call off/ })).toBeNull();
+    expect(within(manage).queryByRole('button', { name: /^End now/ })).toBeNull();
+    expect(within(manage).getByRole('button', { name: 'Duplicate' })).toBeDefined();
+    expect(within(manage).getByRole('button', { name: 'Delete event…' })).toBeDefined();
+  }
+
   beforeEach(() => {
     __setConfig({ ...tested, environment: 'development' });
     resetSample();
@@ -896,6 +906,7 @@ describe('a reader who cannot change the event (sc-50996)', () => {
     expect(within(main()).queryByText(PAST)).toBeNull();
     expect(within(main()).queryByRole('button', { name: 'Change dates' })).toBeNull();
     expect(screen.getByLabelText('Ana Souza, Member')).toBeDefined();
+    readerManage();
   });
 
   it('gives a reader the Paused line without you, and no Resume or Pause', SLOW, async () => {
@@ -904,12 +915,18 @@ describe('a reader who cannot change the event (sc-50996)', () => {
     expect(within(main()).getByText(PAUSED_READ)).toBeDefined();
     expect(within(main()).queryByText(PAUSED)).toBeNull();
     expect(within(main()).queryByRole('button', { name: 'Resume' })).toBeNull();
+    readerManage();
 
     cleanup();
     await page('/demo/events/evt-party-2?state=paused', PARTY);
 
     expect(within(main()).getByText(PAUSED)).toBeDefined();
     expect(within(main()).getByRole('button', { name: 'Resume' })).toBeDefined();
+    expect(
+      within(screen.getByRole('region', { name: 'Manage' })).getByRole('button', {
+        name: /^Call off/,
+      }),
+    ).toBeDefined();
   });
 });
 
