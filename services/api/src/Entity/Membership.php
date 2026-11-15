@@ -166,6 +166,12 @@ class Membership
         return null !== $this->joinedAt;
     }
 
+    /** Whether Settings › Members lists them (sc-392, sc-8168): somebody waiting on approval only to the people who decide on them. */
+    public function isListedTo(bool $decides): bool
+    {
+        return $decides || MembershipStatus::PendingApproval !== $this->status && $this->hasBeenActive();
+    }
+
     public function getTwoFactorBlockedAt(): ?DateTimeImmutable
     {
         return $this->twoFactorBlockedAt;

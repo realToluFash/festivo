@@ -38,7 +38,7 @@ import {
   searchStart,
   stopsOf,
 } from './search.ts';
-import './search.css';
+import '../components/search.css';
 
 const SearchOpen = createContext<(() => void) | null>(null);
 

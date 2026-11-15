@@ -280,7 +280,8 @@ permit = [
 # address is picked through the address lookup (sc-3589). Its deletion uses the
 # shared window and typed name (sc-3592). A new date, time or zone re-schedules
 # what the one clock counts from it (sc-104). A duplicate brings the guest list
-# through the guests' scope when asked (sc-3656).
+# through the guests' scope when asked (sc-3656). Search folds a member's name by the
+# shared rule (NameNormaliser) to match and rank it (sc-39534).
 [[guard.perimeter.rules]]
 namespace = "App\\Domain\\Event\\"
 permit = [
@@ -298,6 +299,7 @@ permit = [
     "@layer:deletion",
     "@layer:domain_seating",
     "@layer:domain_guest",
+    "@layer:locale",
 ]
 
 # Venue & seating: an event's one plan, its room and its sections (sc-3998). Each
