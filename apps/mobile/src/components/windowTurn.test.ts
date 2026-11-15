@@ -391,3 +391,42 @@ describe('a window that opens through a Modal of its own (sc-42690)', () => {
     );
   });
 });
+
+describe('an anchored menu starts TalkBack on its first row (sc-52641)', () => {
+  const read = (file: string) => readFileSync(join(import.meta.dirname, file), 'utf8');
+  const overlays = read('SummaryOverlays.tsx');
+
+  it('hides the menu on Android from when its window is up until it has arrived', () => {
+    expect(overlays).toMatch(
+      /useUnnamedWindow\(\s*Platform\.OS === 'android' && first != null,\s*onScreen,\s*null,\s*reduced \? 0 : WINDOW_ARRIVES_MS,?\s*\)/,
+    );
+    expect(overlays).toContain('onShow={() => setOnScreen(true)}');
+    expect(overlays).toContain('<MenuLayer {...menu} hidden={arriving} />');
+    expect(overlays).toContain("const reach = hidden ? 'no-hide-descendants' : 'auto';");
+    expect(overlays.match(/importantForAccessibility=\{reach\}/g)).toHaveLength(2);
+  });
+
+  it('then moves TalkBack’s focus to its first row, on Android only', () => {
+    expect(overlays).toContain('const landed = onScreen && first != null && !arriving;');
+    expect(overlays).toMatch(
+      /if \(!landed \|\| Platform\.OS !== 'android'\) return;\s*const wait = setTimeout\(\(\) => moveScreenReaderFocus\(first\.current\)\);/,
+    );
+  });
+
+  it.each([
+    ['SummaryOverlays.tsx', 'FilterMenu'],
+    ['CalendarControls.tsx', 'ShowMenu'],
+    ['EventGuests.tsx', 'FilterChoice'],
+    ['EventsSearch.tsx', 'EventsFilterMenu'],
+  ])('in %s, %s hands its first row to the menu', (file, menu) => {
+    const text = read(file);
+    const body = text.slice(text.indexOf(`function ${menu}`));
+    const opened = body.slice(0, body.indexOf('</AnchoredMenu>'));
+
+    expect(opened).toContain('const first = useRef<ViewInstance>(null);');
+    const [tag = ''] = opened.match(/<AnchoredMenu\b[\s\S]*?(\n\s*>|\/>)/) ?? [];
+
+    expect(tag).toContain('first={first}');
+    expect(opened).toMatch(/ref=\{(index === 0 \? first : undefined|first)\}/);
+  });
+});

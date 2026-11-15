@@ -789,6 +789,7 @@ function FilterChoice({
 }) {
   const { t } = useTranslation();
   const trigger = useRef<ViewInstance>(null);
+  const first = useRef<ViewInstance>(null);
   const [at, setAt] = useState<Anchor | null>(null);
   useAnchorFollowsTurn(trigger, at != null, setAt);
   const word = t(CHOICE_KEY[choice]);
@@ -808,16 +809,18 @@ function FilterChoice({
         at={at}
         onClose={() => setAt(null)}
         opener={trigger}
+        first={first}
         width={230}
         testID="guests.filter.menu"
       >
-        {filterChoices(counts, choice).map((key) => {
+        {filterChoices(counts, choice).map((key, index) => {
           const on = key === choice;
           const n = t('guestList.figure', { count: counts[key] });
 
           return (
             <Pressable
               key={key}
+              ref={index === 0 ? first : undefined}
               onPress={() => {
                 setAt(null);
                 onChoose(key);
