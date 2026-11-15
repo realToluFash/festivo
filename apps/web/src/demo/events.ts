@@ -730,7 +730,7 @@ export function shownOf(event: SampleEvent, now: Date): Shown {
 const LOCALE = 'en-US';
 
 export function rangeOf(event: SampleEvent, now: Date, keepDays = false): string {
-  const days = eventDayWords(event, now, LOCALE, keepDays);
+  const days = eventDayWords(event, now, LOCALE, { keepDays });
 
   switch (days.kind) {
     case 'calledOffOn':

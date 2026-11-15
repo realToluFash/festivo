@@ -1,6 +1,6 @@
-import { formatEventDate, formatEventShortDay } from './datetime.ts';
+import { formatEventDate } from './datetime.ts';
 import type { EventState } from './eventStates.ts';
-import { eventDays, notThisYear } from './eventsHome.ts';
+import { eventDayWords, notThisYear } from './eventsHome.ts';
 import { roleName } from './organisations.ts';
 
 /** The sidebar's Search (sc-39534): what both clients show of an answer, worded through the `search` keys each app carries. */
@@ -153,26 +153,13 @@ export function searchTotal(groups: readonly SearchGroup[]): number {
 }
 
 function eventLine(event: FoundEvent, word: Word, now: Date, locale: string): string {
-  const { timeZone } = event;
-  const days = eventDays(event);
-  const day = (moment: string, year: boolean) => formatEventDate(moment, timeZone, locale, year);
-  const year = notThisYear(timeZone, now, event.startsAt, event.endsAt);
+  const days = eventDayWords(event, now, locale, { day: formatEventDate });
   const dates =
     days.kind === 'oneDay'
-      ? day(days.startsAt, year)
+      ? days.day
       : days.kind === 'days'
-        ? word('search.line.days', {
-            first: day(days.startsAt, year),
-            last: day(days.endsAt, year),
-          })
-        : word('search.line.calledOffOn', {
-            date: formatEventShortDay(
-              days.concludedAt,
-              timeZone,
-              locale,
-              notThisYear(timeZone, now, days.concludedAt),
-            ),
-          });
+        ? word('search.line.days', { first: days.first, last: days.last })
+        : word('search.line.calledOffOn', { date: days.date });
   const venue = event.venue?.name ?? null;
   const city = event.venue?.address?.city ?? null;
   const place =
