@@ -4,6 +4,7 @@ import { describe, expect, it } from 'vitest';
 
 import en from '../i18n/locales/en.json';
 import {
+  guestRepliedLine,
   guestRepliesOf,
   guestReplyBy,
   replyByAskWords,
@@ -152,5 +153,36 @@ describe('a guest’s card after Reply by', () => {
     expect(
       guestReplyBy({ repliesReopened: null }, 'coming', open, true, LONDON, 'en-GB', t).reply,
     ).toBeNull();
+  });
+});
+
+describe('the cover card’s line once a guest has replied', () => {
+  const asked = 'Not coming · asked to decide by Sun 25 Oct';
+  const line = (replyRecorded: { by: string; how: 'other' } | null, ask: string | null) =>
+    guestRepliedLine(
+      { repliedAt: '2026-11-05T10:00:00Z', replyRecorded },
+      'Not coming',
+      ask,
+      LONDON,
+      'en-GB',
+      t,
+    );
+
+  it('names who recorded a reply, and how they were told, even with a Reply by asked', () => {
+    expect(line({ by: 'Kemi Bankole', how: 'other' }, asked)).toBe(
+      'Not coming · recorded by Kemi Bankole, another way, 5 Nov',
+    );
+    expect(line({ by: 'Kemi Bankole', how: 'other' }, null)).toBe(
+      'Not coming · recorded by Kemi Bankole, another way, 5 Nov',
+    );
+  });
+
+  it('reads a guest’s own reply as replied, and names no recorder', () => {
+    expect(line(null, null)).toBe('Not coming · replied 5 Nov');
+    expect(line(null, asked)).toBe(asked);
+  });
+
+  it('has no line before any reply', () => {
+    expect(guestRepliedLine({ repliedAt: null }, 'No reply', null, LONDON, 'en-GB', t)).toBeNull();
   });
 });

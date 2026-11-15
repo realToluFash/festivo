@@ -145,7 +145,7 @@ export function RecordForm({
           <div className="gs-pair">
             <button
               type="button"
-              className="gs-pill"
+              className="gs-pill is-primary"
               aria-busy={busy || undefined}
               onClick={() => {
                 setReplace('confirmed');

@@ -2433,6 +2433,7 @@
     "keepTheirs": "Mantener la respuesta",
     "replyRecorded": "Respuesta registrada. Cuenta como cualquier otra.",
     "recordedOn": "registrada por {{name}}, {{how}}, el {{date}}",
+    "recordedLine": "{{reply}} · registrada por {{name}}, {{how}}, el {{date}}",
     "line": "{{reply}} · {{contact}}",
     "withPlaces": "{{reply}} · {{places}}",
     "contacts": "{{email}} · {{mobile}}",

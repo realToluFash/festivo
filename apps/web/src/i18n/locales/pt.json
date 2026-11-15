@@ -2884,6 +2884,7 @@
     "keepTheirs": "Manter a resposta",
     "replyRecorded": "Resposta registada. Conta como qualquer outra.",
     "recordedOn": "registada por {{name}}, {{how}}, no dia {{date}}",
+    "recordedLine": "{{reply}} · registada por {{name}}, {{how}}, no dia {{date}}",
     "line": "{{reply}} · {{contact}}",
     "withPlaces": "{{reply}} · {{places}}",
     "contacts": "{{email}} · {{mobile}}",
