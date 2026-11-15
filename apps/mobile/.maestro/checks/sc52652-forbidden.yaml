@@ -57,6 +57,7 @@ appId: host.exp.Exponent
     file: ../checks/sc52652/change.yaml
     env:
       TILE: '50%,74%'
+- assertNotVisible: '{{t:eventEdit.forbidden}}'
 - takeScreenshot: reupload-cleared
 - runScript:
     file: ../scripts/event-role-elsewhere.js
