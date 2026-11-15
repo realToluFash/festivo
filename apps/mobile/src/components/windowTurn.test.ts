@@ -285,7 +285,7 @@ describe('a window that opens through a Modal of its own (sc-42690)', () => {
     expect(read('TodayCover.tsx')).toContain('...quietTap(org.onPress, org.expanded),');
   });
 
-  it('has Create an organisation take the keys while hidden on the tablet, then TalkBack’s focus on its field (qa2 #44464)', () => {
+  it('has Create an organisation’s search field take the keys while hidden on the tablet, then TalkBack’s focus on it (qa2 #44464)', () => {
     const walk = read('CreateWalkWindow.tsx');
 
     expect(walk).toContain("const talkBack = Platform.OS === 'android' && readerOn;");
@@ -295,28 +295,35 @@ describe('a window that opens through a Modal of its own (sc-42690)', () => {
     expect(walk).toContain('onShow={() => setOnScreen(true)}');
     expect(walk).toMatch(/const behind = walk\.asking \|\| unnamed \?/);
     expect(walk).toMatch(
-      /!talkBack \|\| phone \|\| !onScreen \|\| !unnamed \|\| opening\.walk\.asking\) return;\s+const keys = setTimeout/,
+      /!talkBack \|\| phone \|\| !onScreen \|\| !unnamed \|\| opening\.walk\.asking\) return;\s+if \(opening\.focus !== 'search'\) return;\s+const keys = setTimeout\(\(\) => search\.current\?\.focus\(\), arriving\);/,
     );
+  });
+
+  it('with TalkBack on, moves only TalkBack’s focus onto Create an organisation’s name field, named throughout, and leaves its keys to a double tap (qa3 #53015, Decided, 15 Nov)', () => {
+    const walk = read('CreateWalkWindow.tsx');
+    const steps = read('CreateWalkSteps.tsx');
+
     expect(walk).toMatch(
-      /!talkBack \|\| !onScreen \|\| unnamed \|\| opening\.walk\.asking\) return;\s+const input =\s+opening\.focus === 'search' \? search\.current : opening\.focus === 'name' \? field\.current : null;/,
+      /!talkBack \|\| !onScreen \|\| unnamed \|\| opening\.walk\.asking\) return;\s+\/\/ .*\s+if \(opening\.focus === 'name'\) \{\s+moveScreenReaderFocus\(field\.current\);\s+return;\s+\}\s+const input = opening\.focus === 'search' \? search\.current : null;/,
     );
+    expect(walk).not.toContain('nameless');
+    expect(walk.match(/field\.current\?\.focus\(\)/g)).toHaveLength(1);
+    expect(steps).toContain("accessibilityLabel={t('createOrganisation.name')}");
+    expect(steps).toContain('accessibilityHint={refusal ?? help}');
   });
 
-  it('raises the keys on Create an organisation’s field once shown, moving TalkBack’s focus only onto a field still focused (qa3 #45182)', () => {
+  it('raises the keys on Create an organisation’s search field once shown, moving TalkBack’s focus only onto a field still focused (qa3 #45182)', () => {
     expect(read('CreateWalkWindow.tsx')).toMatch(
-      /\/\/ .*\s+if \(input\.isFocused\(\)\) moveScreenReaderFocus\(input\);\s+if \(phone\) holding\.current = input;\s+raiseKeysOn\(input\);\s+\/\/ .*\s+if \(phone && opening\.focus === 'name'\) queueMicrotask\(\(\) => setNamed\(true\)\);\s+\}, \[talkBack, onScreen, unnamed, opening, phone\]\);/,
+      /\/\/ .*\s+if \(input\.isFocused\(\)\) moveScreenReaderFocus\(input\);\s+if \(phone\) holding\.current = input;\s+raiseKeysOn\(input\);\s+\}, \[talkBack, onScreen, unnamed, opening, phone\]\);/,
     );
   });
 
-  it('on the phone, has Create an organisation’s name field take input focus unnamed and be named right behind it, hides its search field until it has taken input focus, names it while still hidden and shows it a moment later, unnames it again before raising its keys once more only while still hidden, and leaves TalkBack to move its own focus onto either (qa4 #48525, #48921, #52119, qa2 #49329, #49366, #49942, #50682)', () => {
+  it('on the phone, hides Create an organisation’s search field until it has taken input focus, names it while still hidden and shows it a moment later, unnames it again before raising its keys once more only while still hidden, and leaves TalkBack to move its own focus onto either (qa4 #48525, #48921, #52119, qa2 #49329, #49366, #49942, #50682)', () => {
     const walk = read('CreateWalkWindow.tsx');
     const steps = read('CreateWalkSteps.tsx');
 
     expect(walk).toMatch(
       /const quiet =\s+talkBack && phone && !voiced && opening\.focus === 'search' && !opening\.walk\.asking;/,
-    );
-    expect(walk).toMatch(
-      /const nameless =\s+talkBack && phone && !named && opening\.focus === 'name' && !opening\.walk\.asking;/,
     );
     expect(walk).toContain("quiet={live && quiet && opening.focus === 'search'}");
     expect(walk).not.toContain('voice()');
@@ -332,15 +339,12 @@ describe('a window that opens through a Modal of its own (sc-42690)', () => {
     expect(walk).toMatch(
       /if \(!quiet \|\| !named\) return;\s+const settled = setTimeout\(\(\) => setVoiced\(true\), NAMED_SETTLES_MS\);/,
     );
-    expect(walk).toContain('nameless={live && nameless}');
     expect(walk).toMatch(
       /if \(!quiet \|\| !named\) \{\s+raiseKeysOn\(input\);\s+return;\s+\}\s+regaining\.current = input;\s+setNamed\(false\);\s+setVoiced\(false\);/,
     );
     expect(walk).toMatch(
       /if \(!quiet \|\| named \|\| input == null\) return;\s+regaining\.current = null;\s+raiseKeysOn\(input\);\s+\}, \[quiet, named\]\);/,
     );
-    expect(steps).toContain("accessibilityLabel={nameless ? '' : t('createOrganisation.name')}");
-    expect(steps).toContain('accessibilityHint={nameless ? undefined : (refusal ?? help)}');
     expect(steps.match(/importantForAccessibility=\{quiet \? 'no' : 'auto'\}/g)).toHaveLength(1);
   });
 
