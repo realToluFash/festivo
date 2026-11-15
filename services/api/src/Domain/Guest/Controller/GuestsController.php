@@ -8,12 +8,19 @@ use App\Domain\Guest\GuestAdder;
 use App\Domain\Guest\GuestEditor;
 use App\Domain\Guest\GuestRules;
 use App\Domain\Guest\Http\GuestSerialiser;
+use App\Domain\Guest\Model\CompanionChoice;
 use App\Domain\Guest\Model\GroupChoice;
+use App\Domain\Guest\Model\PageReply;
+use App\Domain\Guest\Model\PlaceChoice;
+use App\Domain\Guest\Model\RecordedReply;
+use App\Domain\Guest\Reply\GuestAnswers;
 use App\Domain\Guest\Reply\GuestRepliesReopener;
 use App\Entity\Event;
 use App\Entity\Guest;
 use App\Entity\User;
 use App\Enum\ErrorCode;
+use App\Enum\GuestReply;
+use App\Enum\GuestReplyHow;
 use App\Enum\Permission;
 use App\Http\Access\Interfaces\MembershipDirectoryInterface;
 use App\Http\Access\Policy\InEvent;
@@ -23,6 +30,7 @@ use App\Http\Input;
 use App\Realtime\SubscriberTokenIssuer;
 use App\Repository\EventRepository;
 use App\Repository\GuestRepository;
+use Psl\Dict;
 use Psl\Iter;
 use Psl\Type;
 use Psl\Vec;
@@ -46,6 +54,7 @@ final readonly class GuestsController
         private GuestSerialiser $guestSerialiser,
         private SubscriberTokenIssuer $subscriberTokenIssuer,
         private GuestRepliesReopener $guestRepliesReopener,
+        private GuestAnswers $guestAnswers,
     ) {
     }
 
@@ -155,6 +164,44 @@ final readonly class GuestsController
     public function reopenReplies(string $eventId, string $guestId): JsonResponse
     {
         return $this->tagged($this->guestRepliesReopener->reopen($this->guest($this->event($eventId), $guestId), $this->user()), contacts: true);
+    }
+
+    /** Record a reply (sc-3787): the guest's reply as a host heard it, marked as recorded by them, under the guest page's rules (GuestAnswers). Refused 422 without an answer or how they told you, and 409 `reply_is_theirs` over the guest's own answer unless `replace`. `companions` ticks each place, named or not, by its id. */
+    #[Route('/api/events/{eventId}/guests/{guestId}/record-reply', name: 'guests_record_reply', methods: ['POST'])]
+    #[InEvent(Permission::GuestsManage)]
+    public function recordReply(Request $request, string $eventId, string $guestId): JsonResponse
+    {
+        $guest = $this->guest($this->event($eventId), $guestId);
+        $body = Input::body($request, Type\shape([
+            'answer' => Type\optional(Type\nullable(Type\string())),
+            'how' => Type\optional(Type\nullable(Type\string())),
+            'companions' => Type\optional(Type\vec(Type\shape(['id' => Type\string(), 'coming' => Type\bool()]))),
+            'replace' => Type\optional(Type\bool()),
+        ]));
+        $answer = GuestReply::tryFrom($body['answer'] ?? '');
+        $how = GuestReplyHow::tryFrom($body['how'] ?? '');
+        if (null === $answer || GuestReply::NoReply === $answer || null === $how) {
+            throw ApiException::validation([
+                ...null === $answer || GuestReply::NoReply === $answer ? [$this->guestRules->violation('answer', 'validation.guest_reply_choose')] : [],
+                ...null === $how ? [$this->guestRules->violation('how', 'validation.guest_how_choose')] : [],
+            ]);
+        }
+
+        $places = Dict\from_entries(Vec\map($this->guestRepository->findCompanionsOf($guest), static fn (Guest $place): array => [$place->getId()->toRfc4122(), $place]));
+        $isUnnamed = static fn (array $one): bool => Iter\contains_key($places, $one['id']) && null === $places[$one['id']]->getFullName();
+        $ticks = $body['companions'] ?? [];
+        $page = new PageReply(
+            Vec\map(
+                Vec\filter($ticks, static fn (array $one): bool => !$isUnnamed($one)),
+                static fn (array $one): CompanionChoice => new CompanionChoice($one['id'], $places[$one['id']]?->getFullName() ?? '', $places[$one['id']]?->getNameKey() ?? '', $one['coming']),
+            ),
+            null,
+            Vec\map(Vec\filter($ticks, $isUnnamed), static fn (array $one): PlaceChoice => new PlaceChoice($one['id'], $one['coming'])),
+        );
+
+        $this->guestAnswers->answer($guest, $answer, $page, new RecordedReply($this->user(), $how, $body['replace'] ?? false));
+
+        return $this->tagged($guest, contacts: true);
     }
 
     /** A hub token for this event's guest list and its headcount; each add and edit publishes the whole list there, without contacts, so a manager reads them again. */

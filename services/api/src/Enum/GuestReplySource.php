@@ -8,4 +8,5 @@ namespace App\Enum;
 enum GuestReplySource: string
 {
     case GuestPage = 'guestPage';
+    case Host = 'host';
 }

@@ -606,6 +606,121 @@ final class GuestAnswersTest extends ApiTestCase
         self::assertSame(['Chidi Okonkwo-Williams', false], [$this->row($guest)['companions'][0]['fullName'] ?? null, $this->row($guest)['companions'][0]['namedByGuest'] ?? null]);
     }
 
+    #[Test]
+    public function aRecordedReplyCountsAsTheGuestsAndSaysWhoRecordedItAndHow(): void
+    {
+        $guest = $this->add(self::ADAEZE, ['Chidi Okonkwo-Williams', null]);
+        $token = $this->token($guest);
+        $chidi = $this->companionsOn($token)[0]['id'] ?? self::fail('no companion');
+        $place = $this->unnamedOn($token)[0]['id'] ?? self::fail('no place');
+
+        $saved = $this->record($guest, ['answer' => 'coming', 'how' => 'phone', 'companions' => [['id' => $chidi, 'coming' => true], ['id' => $place, 'coming' => false]]]);
+
+        self::assertSame(200, $this->statusCode(), Json\encode($saved));
+        self::assertSame(['coming', '2026-10-17T14:20:00+01:00', ['by' => 'Person', 'how' => 'phone']], [$saved['guest']['reply'] ?? null, $saved['guest']['repliedAt'] ?? null, $saved['guest']['replyRecorded'] ?? null]);
+        self::assertSame(['by' => 'Person', 'how' => 'phone'], $this->row($guest)['replyRecorded'] ?? null);
+        self::assertSame(['coming', 'notComing'], $this->states($guest));
+        self::assertSame(['coming', 'Person'], [$this->open($token)['guest']['reply']['answer'] ?? null, $this->open($token)['guest']['reply']['recordedBy'] ?? null]);
+        $counts = Type\dict(Type\string(), Type\mixed())->coerce($this->as($this->owner, 'GET', '/api/events/' . $this->eventId . '/headcount')['headcount']['counts'] ?? null);
+        self::assertSame(['accepted' => 2, 'declined' => 1], Dict\select_keys($counts, ['accepted', 'declined']));
+        self::assertSame(1, self::em()->getConnection()->fetchOne('SELECT COUNT(*) FROM audit_entries WHERE action = :action', ['action' => GuestAnswers::RECORDED]));
+    }
+
+    #[Test]
+    public function recordingWithoutTheReplyOrHowTheyToldYouSavesNothing(): void
+    {
+        $guest = $this->add(self::ADAEZE);
+
+        $this->record($guest, ['answer' => null, 'how' => null]);
+
+        self::assertSame(422, $this->statusCode());
+        self::assertSame([['answer', 'Choose their reply.'], ['how', 'Choose how they told you.']], Vec\map(
+            Type\vec(Type\dict(Type\string(), Type\mixed()))->coerce($this->last()['violations'] ?? null),
+            static fn (array $one): array => [$one['propertyPath'] ?? null, $one['message'] ?? null],
+        ));
+        $this->record($guest, ['answer' => 'coming']);
+        self::assertSame([422, 'how'], [$this->statusCode(), $this->last()['violations'][0]['propertyPath'] ?? null]);
+        self::assertSame(['noReply', null], [$this->row($guest)['reply'] ?? null, $this->row($guest)['replyRecorded'] ?? null]);
+    }
+
+    #[Test]
+    public function theGuestsOwnReplyIsReplacedOnlyOnceConfirmedAndARecordedOneWithoutAsking(): void
+    {
+        $guest = $this->add(self::ADAEZE);
+        $token = $this->token($guest);
+        $this->reply($token, 'coming');
+
+        $this->record($guest, ['answer' => 'notComing', 'how' => 'inPerson']);
+        self::assertSame([409, ErrorCode::ReplyIsTheirs->type()], [$this->statusCode(), $this->last()['type'] ?? null]);
+        self::assertSame(['coming', null], [$this->row($guest)['reply'] ?? null, $this->row($guest)['replyRecorded'] ?? null]);
+
+        $this->record($guest, ['answer' => 'notComing', 'how' => 'inPerson', 'replace' => true]);
+        self::assertSame(200, $this->statusCode(), Json\encode($this->last()));
+        $this->record($guest, ['answer' => 'maybe', 'how' => 'other']);
+        self::assertSame(200, $this->statusCode(), Json\encode($this->last()));
+        self::assertSame(['maybe', ['by' => 'Person', 'how' => 'other']], [$this->row($guest)['reply'] ?? null, $this->row($guest)['replyRecorded'] ?? null]);
+    }
+
+    #[Test]
+    public function theGuestAnsweringThemselvesClearsWhoRecordedIt(): void
+    {
+        $guest = $this->add(self::ADAEZE);
+        $token = $this->token($guest);
+        $this->record($guest, ['answer' => 'maybe', 'how' => 'message']);
+
+        $this->reply($token, 'maybe');
+
+        self::assertSame(200, $this->statusCode());
+        self::assertSame(['maybe', null], [$this->row($guest)['reply'] ?? null, $this->row($guest)['replyRecorded'] ?? null]);
+        self::assertNull($this->open($token)['guest']['reply']['recordedBy'] ?? null);
+    }
+
+    #[Test]
+    public function recordingIsClosedAfterReplyByUnlessTheGuestWasLetChangeTheirReply(): void
+    {
+        $guest = $this->add(self::ADAEZE);
+        self::service(Connection::class)->executeStatement("UPDATE events SET reply_by = '2026-10-16' WHERE id = :id", ['id' => $this->eventId]);
+
+        $this->record($guest, ['answer' => 'coming', 'how' => 'phone']);
+        self::assertSame([409, ErrorCode::RepliesClosed->type()], [$this->statusCode(), $this->last()['type'] ?? null]);
+
+        $this->as($this->owner, 'POST', $this->guests() . '/' . $guest . '/reopen-replies');
+        $this->record($guest, ['answer' => 'coming', 'how' => 'phone']);
+        self::assertSame([200, 'coming'], [$this->statusCode(), $this->row($guest)['reply'] ?? null]);
+    }
+
+    #[Test]
+    #[DataProvider('rolesThatCannotManage')]
+    public function withoutGuestsManageNoReplyIsRecorded(EventRole $role): void
+    {
+        $guest = $this->add(self::ADAEZE, ['Chidi Okonkwo-Williams']);
+        $viewer = $this->member('ada@ire.events', SeededRole::Member, $role);
+
+        $this->as($viewer, 'POST', $this->guests() . '/' . $guest . '/record-reply', ['answer' => 'coming', 'how' => 'phone']);
+        self::assertSame(403, $this->statusCode());
+        $chidi = $this->row($guest)['companions'][0]['id'] ?? self::fail('no companion');
+        $this->record(Type\string()->coerce($chidi), ['answer' => 'coming', 'how' => 'phone']);
+        self::assertSame(404, $this->statusCode());
+        self::assertSame('noReply', $this->row($guest)['reply'] ?? null);
+    }
+
+    /** @return iterable<string, array{EventRole}> */
+    public static function rolesThatCannotManage(): iterable
+    {
+        yield 'Can view' => [EventRole::CanView];
+        yield 'Can check guests in' => [EventRole::CanCheckIn];
+    }
+
+    /**
+     * @param array<string, mixed> $body
+     *
+     * @return array<string, mixed>
+     */
+    private function record(string $guest, array $body): array
+    {
+        return $this->as($this->owner, 'POST', $this->guests() . '/' . $guest . '/record-reply', $body);
+    }
+
     /** @return list<array<string, mixed>> */
     private function companionsOn(#[SensitiveParameter] string $token): array
     {

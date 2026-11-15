@@ -7,6 +7,7 @@ namespace App\Entity;
 use App\Doctrine\Traits\Timestampable;
 use App\Enum\GuestInvitationMethod;
 use App\Enum\GuestReply;
+use App\Enum\GuestReplyHow;
 use App\Enum\GuestReplySource;
 use App\Enum\NeedKind;
 use DateTimeImmutable;
@@ -64,6 +65,13 @@ class Guest
 
     #[ORM\Column(type: Types::STRING, length: 16, nullable: true, enumType: GuestReplySource::class)]
     private ?GuestReplySource $replySource = null;
+
+    /** Who recorded a reply a host gave for the guest, and how the guest told them (sc-3787); null for the guest's own. */
+    #[ORM\Column(type: Types::STRING, length: 255, nullable: true)]
+    private ?string $replyRecordedBy = null;
+
+    #[ORM\Column(type: Types::STRING, length: 16, nullable: true, enumType: GuestReplyHow::class)]
+    private ?GuestReplyHow $replyRecordedHow = null;
 
     /** A companion's place under their host, from 1; a host's is 0. */
     #[ORM\Column(type: Types::SMALLINT, options: ['default' => 0])]
@@ -234,16 +242,28 @@ class Guest
         return $this->replySource;
     }
 
-    /** Replaces the reply; the same answer again changes nothing and keeps its date. False when nothing changed. */
-    public function reply(GuestReply $reply, DateTimeImmutable $at, GuestReplySource $source): bool
+    public function getReplyRecordedBy(): ?string
     {
-        if ($reply === $this->reply) {
+        return $this->replyRecordedBy;
+    }
+
+    public function getReplyRecordedHow(): ?GuestReplyHow
+    {
+        return $this->replyRecordedHow;
+    }
+
+    /** Replaces the reply; the same answer from the same hand changes nothing and keeps its date, while the guest's own answer always replaces one a host recorded. False when nothing changed. */
+    public function reply(GuestReply $reply, DateTimeImmutable $at, GuestReplySource $source, ?string $recordedBy = null, ?GuestReplyHow $how = null): bool
+    {
+        if ($reply === $this->reply && $source === $this->replySource && $recordedBy === $this->replyRecordedBy && $how === $this->replyRecordedHow) {
             return false;
         }
 
         $this->reply = $reply;
         $this->repliedAt = $at;
         $this->replySource = $source;
+        $this->replyRecordedBy = $recordedBy;
+        $this->replyRecordedHow = $how;
 
         if (!$this->isInvited()) {
             $this->invite(GuestInvitationMethod::Reply, $at, null);

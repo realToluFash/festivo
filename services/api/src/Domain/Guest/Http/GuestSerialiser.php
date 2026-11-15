@@ -78,6 +78,7 @@ final readonly class GuestSerialiser
         $zone = new DateTimeZone($host->getEvent()->getTimeZone());
         $invitedAt = $host->getInvitedAt();
         $reopenedAt = $host->getRepliesReopenedAt();
+        $recordedHow = $host->getReplyRecordedHow();
         $group = $host->getGroup();
 
         return [
@@ -94,6 +95,10 @@ final readonly class GuestSerialiser
             'reply' => $reply->value,
             'repliedAt' => GuestReply::NoReply === $reply ? null : $host->getRepliedAt()?->setTimezone($zone)->format(\DATE_ATOM),
             'replySource' => GuestReply::NoReply === $reply ? null : $host->getReplySource()?->value,
+            'replyRecorded' => GuestReply::NoReply === $reply || null === $recordedHow ? null : [
+                'by' => $host->getReplyRecordedBy() ?? '',
+                'how' => $recordedHow->value,
+            ],
             'repliesReopened' => null === $reopenedAt ? null : [
                 'by' => $host->getRepliesReopenedBy() ?? '',
                 'at' => $reopenedAt->setTimezone($zone)->format(\DATE_ATOM),
