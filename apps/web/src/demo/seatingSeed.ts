@@ -452,6 +452,41 @@ export function seedOf(state: SeatingState | null): Ui {
         seed: { key: 'seats', value: '6', error: say(SW.belowSeated, { n: 8, m: 8 }) },
         focus: 'seats',
       };
+    case 'fieldBlank':
+      return {
+        ...ui,
+        chosen: ['t10'],
+        seed: { key: 'name', value: '', error: SW.tableBlank },
+        focus: 'name',
+      };
+    case 'seatsRange':
+      return {
+        ...ui,
+        chosen: ['t10'],
+        seed: { key: 'seats', value: '40', error: SW.seatsRange },
+        focus: 'seats',
+      };
+    case 'sizeRange':
+      return {
+        ...ui,
+        chosen: ['t10'],
+        seed: { key: 'diameter', value: '1200', error: SW.tableSize },
+        focus: 'diameter',
+      };
+    case 'notNumber':
+      return {
+        ...ui,
+        chosen: ['t9'],
+        seed: { key: 'width', value: 'two metres', error: SW.tableSize },
+        focus: 'width',
+      };
+    case 'endsRange':
+      return {
+        ...ui,
+        chosen: ['t9'],
+        seed: { key: 'ends', value: '10', error: say(SW.endsRange, { max: 8 }) },
+        focus: 'ends',
+      };
     case 'chair':
       return { ...ui, camera: at(0.75, 1590, 620), chair: { id: 't4', i: 8 } };
     case 'unusable': {
