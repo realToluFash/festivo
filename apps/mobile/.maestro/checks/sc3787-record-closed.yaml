@@ -1,0 +1,49 @@
+# sc-3787: after replies close ${G_CLOSED} offers no Record a reply and says when replies closed; ${G_REOPEN}, reopened, offers it.
+appId: host.exp.Exponent
+---
+- openLink: ${METRO_URL}/--/events/${EVENT2_ID}?area=guests
+- extendedWaitUntil:
+    visible:
+      id: 'guests.search'
+    timeout: 30000
+- tapOn:
+    id: 'guests.search'
+- inputText: ${G_CLOSED_NAME}
+- hideKeyboard
+- extendedWaitUntil:
+    visible:
+      id: 'guests.row.${G_CLOSED}'
+    timeout: 15000
+- tapOn:
+    id: 'guests.row.${G_CLOSED}'
+- extendedWaitUntil:
+    visible:
+      id: 'guest.${G_CLOSED}'
+    timeout: 30000
+- takeScreenshot: closed
+- assertVisible: 'Replies closed on.*'
+- assertNotVisible:
+    id: 'guest.record'
+- back
+- extendedWaitUntil:
+    visible:
+      id: 'guests.search'
+    timeout: 30000
+- tapOn:
+    id: 'guests.search'
+- eraseText: 40
+- inputText: ${G_REOPEN_NAME}
+- hideKeyboard
+- extendedWaitUntil:
+    visible:
+      id: 'guests.row.${G_REOPEN}'
+    timeout: 15000
+- tapOn:
+    id: 'guests.row.${G_REOPEN}'
+- extendedWaitUntil:
+    visible:
+      id: 'guest.${G_REOPEN}'
+    timeout: 30000
+- takeScreenshot: reopened
+- assertVisible:
+    id: 'guest.card.step'
