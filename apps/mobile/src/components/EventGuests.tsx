@@ -1,4 +1,5 @@
 import {
+  type Guest,
   type GuestInvitationHow,
   type GuestList,
   type Headcount,
@@ -52,6 +53,7 @@ import { dateLocale } from '../i18n/index.ts';
 import type { Shown } from '../kit/eventsList.ts';
 import { sidebarCardOf } from '../kit/eventTop.ts';
 import { type PhaseCard, filterChoices, markOf, phaseCardOf } from '../kit/guestRows.ts';
+import { waiting, whoseRows } from '../kit/pasteReply.ts';
 import { type GuestReplies, guestRepliesOf, guestReplyBy } from '../kit/replyBy.ts';
 import { type ScreenOffline, useHandOffline, useOffline } from '../offline.ts';
 import { useSignedIn } from '../signedIn.ts';
@@ -65,11 +67,19 @@ import { AllergyMark } from './GuestNeeds.tsx';
 import { GuestsCard } from './GuestsCard.tsx';
 import { type MarkRefusal, MarkInvited } from './GuestInvitation.tsx';
 import { DraftRow, useMakeLive } from './MakeLive.tsx';
-import type { ScreenReaderTarget } from './screenReaderFocus.ts';
+import { type ScreenReaderTarget, moveScreenReaderFocus } from './screenReaderFocus.ts';
 import type { LayoutKind } from '../layout/useLayout.ts';
 import { type ListAndPageSpacing, ListAndPage, useListAndPageLayout } from './ListAndPage.tsx';
 import { LIST_EDGES } from './listFrame.ts';
 import { useReadOut } from './ReadOut.tsx';
+import {
+  GroupHead,
+  PasteButton,
+  PasteNotice,
+  PasteRow,
+  WhoseReply,
+  usePaste,
+} from './PasteReply.tsx';
 import { MarkSlot } from './ReplyMark.tsx';
 import { FailedBlock, type StepProps } from './Summary.tsx';
 import {
@@ -83,6 +93,14 @@ import { Text, type TextHandle } from './Text.tsx';
 
 /** How often the list is read again while open with no live line to the hub: changes from others show within 10 seconds. */
 const READ_AGAIN_MS = 10_000;
+const FOCUS_AFTER_MS = 450;
+
+/** sc-54450's copied message and where the host is with it; it lives here only, and goes when Guests is shown again. */
+interface Pasted {
+  quote: string;
+  all: boolean;
+  typed: string;
+}
 
 type Load =
   | { kind: 'loading' }
@@ -136,7 +154,7 @@ export function EventGuests({
   /** A refusal said the event's phase moved on, so the event is read again for its line. */
   onEventStale: () => void;
 }) {
-  const { t } = useTranslation();
+  const { t, i18n } = useTranslation();
   const { account } = useSignedIn();
   const eventId = event.id;
   const manages = roleHolds(event, 'guests.manage');
@@ -158,6 +176,10 @@ export function EventGuests({
   );
   const [markOpen, setMarkOpen] = useState(false);
   const [recording, setRecording] = useState<TaggedGuest | null>(null);
+  const [pasted, setPasted] = useState<Pasted | null>(null);
+  const [fromMessage, setFromMessage] = useState<Guest | null>(null);
+  const [recorded, setRecorded] = useState(false);
+  const whoseTitle = useRef<TextHandle>(null);
   const recordButton = useRef<ViewInstance>(null);
   const title = useRef<TextHandle>(null);
   const guestName = useRef<TextHandle>(null);
@@ -260,6 +282,8 @@ export function EventGuests({
   );
 
   const openGuest = (guestId: string) => {
+    setPasted(null);
+    setRecorded(false);
     setSaved(false);
     setAdded(null);
     setNotice(null);
@@ -271,6 +295,18 @@ export function EventGuests({
     setSaved(false);
     setNotice(null);
     setReopening({ busy: false, failed: false });
+  }, []);
+  const openWhose = (quote: string) => {
+    setOpen(null);
+    setRecorded(false);
+    setAdded(null);
+    setPasted({ quote, all: false, typed: '' });
+    setTimeout(() => moveScreenReaderFocus(whoseTitle.current), FOCUS_AFTER_MS);
+  };
+  const paste = usePaste(openWhose);
+  const closeWhose = useCallback(() => {
+    setPasted(null);
+    setTimeout(() => moveScreenReaderFocus(searchField.current), FOCUS_AFTER_MS);
   }, []);
   const showGuest = (tagged: TaggedGuest) => {
     tags.current.set(tagged.guest.id, tagged);
@@ -356,13 +392,15 @@ export function EventGuests({
 
   const counts = loaded ? countsOf(load.headcount.counts) : null;
   const empty = loaded && load.list.guests.length === 0;
-  const guestInFront = open != null && kind !== 'tabletLandscape';
+  const pageOpen = open != null || pasted != null;
+  const guestInFront = pageOpen && kind !== 'tabletLandscape';
+  const back = pasted != null ? closeWhose : closeGuest;
   const adds = manages && loaded && !empty && !guestInFront;
   const shown = sidebarCardOf(event, phase);
 
   useLayoutEffect(() => {
-    onTop({ add: adds ? add : null, back: guestInFront ? closeGuest : null });
-  }, [onTop, adds, add, guestInFront, closeGuest]);
+    onTop({ add: adds ? add : null, back: guestInFront ? back : null });
+  }, [onTop, adds, add, guestInFront, back]);
   useLayoutEffect(() => () => onTop({ add: null, back: null }), [onTop]);
 
   const timeZone = event.timeZone;
@@ -380,6 +418,8 @@ export function EventGuests({
   };
 
   const onCard = loaded && !empty;
+  /** sc-54450: Paste a reply, with guests.manage, while replies are open, once somebody has been invited. */
+  const pastes = manages && onCard && replies.closedOn == null && (counts?.invited ?? 0) > 0;
   const phaseLine =
     phase == null || loaded ? null : (
       <PhaseLine event={event} phase={phase} now={now} onChange={onEventChange} />
@@ -450,6 +490,19 @@ export function EventGuests({
         locale={locale}
         manages={manages}
         replies={replies}
+        recorded={recorded}
+        pasteInRow={
+          pastes && kind === 'tabletPortrait' ? <PasteButton onText={paste.onText} inRow /> : null
+        }
+        pasteUnder={
+          !pastes ? null : kind === 'tabletPortrait' ? (
+            paste.nothing ? (
+              <PasteNotice />
+            ) : null
+          ) : (
+            <PasteRow nothing={paste.nothing} onText={paste.onText} />
+          )
+        }
       />
     );
   const list = (
@@ -461,7 +514,27 @@ export function EventGuests({
   );
 
   const page =
-    open == null ? (
+    pasted != null && loaded ? (
+      <WhoseReply
+        kind={kind}
+        quote={pasted.quote}
+        all={pasted.all}
+        onShowAll={() => setPasted({ ...pasted, all: true })}
+        typed={pasted.typed}
+        onTyped={(typed) => setPasted({ ...pasted, typed })}
+        rows={whoseRows(load.list.guests, pasted.typed, t, timeZone, locale, i18n.language)}
+        waiting={load.list.guests.filter(waiting).length}
+        onPick={(guestId) => {
+          const guest = load.list.guests.find((one) => one.id === guestId);
+          if (guest == null) return;
+          opener.current = null;
+          setRound((was) => was + 1);
+          setFromMessage(guest);
+        }}
+        onBack={closeWhose}
+        titleRef={whoseTitle}
+      />
+    ) : open == null ? (
       <View style={styles.pick}>
         <Text size={15} weight="medium" style={styles.secondary}>
           {t('guestList.pick')}
@@ -524,10 +597,10 @@ export function EventGuests({
           ) : undefined
         }
         page={page}
-        pageKey={open ?? ''}
-        pageInFront={open != null}
+        pageKey={pasted != null ? 'paste' : (open ?? '')}
+        pageInFront={pageOpen}
         pageless={!loaded || empty}
-        back={{ label: t('guestList.backToGuests'), onPress: closeGuest, testID: 'guest.back' }}
+        back={{ label: t('guestList.backToGuests'), onPress: back, testID: 'guest.back' }}
         backInFrame
         headingInList
         spacing={SPACING}
@@ -543,11 +616,33 @@ export function EventGuests({
           onMark={(how) => mark(open, how)}
         />
       )}
+      {pasted != null && fromMessage != null && (
+        <GuestRecord
+          key={round}
+          open
+          guest={fromMessage}
+          message={{ quote: pasted.quote }}
+          eventId={eventId}
+          timeZone={event.timeZone}
+          opener={whoseTitle}
+          onClose={() => setFromMessage(null)}
+          onGone={() => {
+            setFromMessage(null);
+            readList(watch);
+          }}
+          onSaved={() => {
+            setFromMessage(null);
+            setPasted(null);
+            setRecorded(true);
+            readList(watch);
+          }}
+        />
+      )}
       {recording != null && (
         <GuestRecord
           key={round}
           open
-          tagged={recording}
+          guest={recording.guest}
           eventId={eventId}
           timeZone={event.timeZone}
           opener={opener}
@@ -623,6 +718,9 @@ function GuestRows({
   locale,
   manages,
   replies,
+  recorded,
+  pasteInRow,
+  pasteUnder,
 }: {
   list: GuestList;
   counts: Counts;
@@ -645,6 +743,11 @@ function GuestRows({
   /** The allergy mark is for people who manage guests (sc-3777). */
   manages: boolean;
   replies: GuestReplies;
+  /** sc-54450: a reply just recorded from a copied message. */
+  recorded: boolean;
+  /** sc-54450's Paste a reply: in the search row on an upright iPad, under it on a phone and in the list pane. */
+  pasteInRow: ReactNode;
+  pasteUnder: ReactNode;
 }) {
   const { t } = useTranslation();
   const { view, shown } = viewOf(list.guests, counts, choice, typed, expanded);
@@ -714,7 +817,8 @@ function GuestRows({
 
   return (
     <View style={styles.rows}>
-      {added != null && <AddedLine name={added} />}
+      {added != null && <DoneLine words={t('guestList.justAdded', { name: added })} />}
+      {recorded && <DoneLine words={t('guestList.replyRecorded')} testID="guests.recorded" />}
       {typed.trim() === '' && (
         <GuestsCard
           kind={kind}
@@ -738,7 +842,9 @@ function GuestRows({
           ref={searchRef}
         />
         <FilterChoice choice={choice} counts={counts} onChoose={onChoice} />
+        {pasteInRow}
       </View>
+      {pasteUnder}
       {view.kind === 'rows' ? (
         <View>
           {looking && (
@@ -762,19 +868,7 @@ function GuestRows({
       ) : (
         view.groups.map((group) => (
           <View key={group.standing} testID={`guests.group.${group.standing}`}>
-            <View style={styles.groupHead} accessible accessibilityRole="header">
-              <Text size={18} weight="bold" accessible={false} style={styles.headTitle}>
-                {t(REPLY_KEY[group.standing])}
-              </Text>
-              <Text
-                size={18}
-                weight="bold"
-                accessible={false}
-                style={[styles.secondary, styles.figures, styles.headTitle]}
-              >
-                {` · ${t('guestList.figure', { count: group.count })}`}
-              </Text>
-            </View>
+            <GroupHead word={t(REPLY_KEY[group.standing])} count={group.count} />
             <RowList items={group.rows.map(({ person, indent }) => row(person, indent))} />
             {group.collapsed && (
               <TextAction
@@ -908,13 +1002,11 @@ function PhaseLine({
   );
 }
 
-function AddedLine({ name }: { name: string }) {
-  const { t } = useTranslation();
-  const words = t('guestList.justAdded', { name });
+function DoneLine({ words, testID = 'guests.added' }: { words: string; testID?: string }) {
   useReadOut(words);
 
   return (
-    <View style={styles.added} testID="guests.added">
+    <View style={styles.added} testID={testID}>
       <Glyph name="tick" size={18} ink={tokens.colorAccentText} weight={2.6} />
       <Text size={15} weight="semibold" style={styles.grow}>
         {words}
@@ -973,8 +1065,6 @@ const styles = StyleSheet.create({
   searchRow: { flexDirection: 'row', alignItems: 'center', gap: 10 },
   shownRow: { flexDirection: 'row', alignItems: 'center', gap: tokens.spaceSm },
   indent: { paddingLeft: 40 },
-  groupHead: { minHeight: tokens.sizeHit, flexDirection: 'row', alignItems: 'center' },
-  headTitle: { letterSpacing: -0.18, lineHeight: 18 * 1.25 },
   pick: { paddingTop: 120, alignItems: 'center' },
   added: { flexDirection: 'row', alignItems: 'center', gap: tokens.spaceXs },
   noMatch: { gap: 6, paddingTop: tokens.spaceXs },

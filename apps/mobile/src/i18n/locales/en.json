@@ -2313,6 +2313,15 @@
     "sending": "Sending your answer…"
   },
   "guestList": {
+    "paste": {
+      "button": "Paste a reply",
+      "nothing": "Nothing to paste. Copy their message in your chat, then try again.",
+      "whose": "Whose reply is this?",
+      "theirMessage": "Their message",
+      "showAll": "Show all",
+      "everyone": "Everyone you invited has replied. Find a guest to change their reply.",
+      "rowLine": "{{reply}} · {{invited}}"
+    },
     "addGuest": "Add guest",
     "replied": "{{reply}} · replied {{date}}",
     "figure": "{{count, number}}",
