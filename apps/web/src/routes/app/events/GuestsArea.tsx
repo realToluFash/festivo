@@ -686,6 +686,7 @@ export function GuestsArea({
   const companionsPicked = companionsWith(guests, picked);
   const undoing = line?.kind === 'removed' && removal != null;
   const bar = manages && picked.size > 0 && (line == null || line.kind === 'undone');
+  const showsList = guests.length > 0 || line != null;
 
   function select(next: ReadonlySet<string>): void {
     setSelected(next);
@@ -983,10 +984,10 @@ export function GuestsArea({
                   onStep={onStep}
                 />
               )}
-              {(guests.length > 0 || adding || grouping) && (
+              {(showsList || adding || grouping) && (
                 <div className="gs-cols">
                   <section className="gs-list" aria-label={t('eventPage.guests')}>
-                    {guests.length > 0 && counts != null && (
+                    {showsList && counts != null && (
                       <>
                         <SearchRow
                           q={q}
