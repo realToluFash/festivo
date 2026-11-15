@@ -20,6 +20,7 @@ import {
   rereadLimit,
   roleName,
   withNextPage,
+  withPagesSince,
 } from '@soirely/domain';
 import { type ReactNode, type RefObject, useCallback, useEffect, useRef, useState } from 'react';
 import { Trans, useTranslation } from 'react-i18next';
@@ -117,6 +118,7 @@ export function Members() {
   const [refresh, setRefresh] = useState(0);
   const language = useShownLanguage();
   const loadedFor = useRef<string | null>(null);
+  const shown = useRef<{ list: MembersList; listed: MembersShow } | null>(null);
   const retrying = useRef(false);
   const heading = useRef<HTMLHeadingElement>(null);
   const failedTitle = useRef<HTMLHeadingElement>(null);
@@ -131,10 +133,15 @@ export function Members() {
     if (organisationId == null) return;
     let current = true;
     const askedAgain = loadedFor.current === organisationId;
+    // Asked again, it reads what is on screen: the option under Show, and every row its pages brought.
+    const again = askedAgain ? shown.current : null;
+    const listed = again?.listed ?? 'all';
 
     watch(
       Promise.all([
-        api.members(organisationId),
+        again == null
+          ? api.members(organisationId)
+          : api.members(organisationId, { show: listed, limit: rereadLimit(again.list) }),
         api.roles(organisationId),
         manages ? api.recoveryRequests() : Promise.resolve([]),
       ]),
@@ -142,13 +149,16 @@ export function Members() {
       ([list, catalogue, recoveries]) => {
         if (!current) return;
         loadedFor.current = organisationId;
-        setLoad({
+        setLoad((before) => ({
           kind: 'loaded',
-          list,
-          listed: 'all',
+          list:
+            again != null && before.kind === 'loaded' && before.listed === listed
+              ? withPagesSince(list, before.list)
+              : list,
+          listed,
           roles: catalogue.roles,
           recoveries: recoveryShownIn(recoveries, organisationId),
-        });
+        }));
         if (retrying.current) focusWhenFree(title);
         retrying.current = false;
       },
@@ -167,6 +177,10 @@ export function Members() {
       current = false;
     };
   }, [organisationId, manages, attempt, refresh, language, watch]);
+
+  useEffect(() => {
+    shown.current = load.kind === 'loaded' ? { list: load.list, listed: load.listed } : null;
+  }, [load]);
 
   useEffect(() => {
     heading.current = title() as HTMLHeadingElement | null;
