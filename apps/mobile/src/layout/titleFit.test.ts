@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 
-import { labelFits } from './TitleFit.ts';
+import { labelFits } from './titleFit.ts';
 
 const row = { room: 400, title: 140, extra: 0, labelled: 170, gap: 16 };
 

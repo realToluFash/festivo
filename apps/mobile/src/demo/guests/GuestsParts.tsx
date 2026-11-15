@@ -22,7 +22,7 @@ import {
 } from '../../components/Summary.tsx';
 import type { GuestsCardWords } from './GuestsModel.ts';
 import { W, say } from './GuestsWords.ts';
-import { labelFits } from './TitleFit.ts';
+import { labelFits } from '../../layout/titleFit.ts';
 import { type MarkKind, ReplyMark } from '../../components/ReplyMark.tsx';
 
 export type Layout = 'phone' | 'portrait' | 'landscape';
