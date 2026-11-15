@@ -850,8 +850,12 @@ function PlaceFields({ item }: { item: Item }) {
   );
 }
 
+const NAME_MAX = 30;
+const LABEL_MAX = 10;
+
 function nameRefusal(plan: Plan, item: Item, name: string): string | null {
-  if (name.trim() === '') return item.kind === 'single' ? null : SW.tableBlank;
+  if (name.trim() === '') return item.kind === 'single' ? SW.seatBlank : SW.tableBlank;
+  if (name.trim().length > NAME_MAX) return SW.nameLong;
   if (!plan.items.some((other) => other.id !== item.id && sameName(other.name, name))) return null;
   return say(item.kind === 'single' ? SW.seatTaken : SW.tableTaken, { name: name.trim() });
 }
@@ -1058,7 +1062,8 @@ function RowFields({ item }: { item: Item }) {
           onCommit={(text) => {
             const label = text.trim().toUpperCase();
 
-            if (label === '') return null;
+            if (label === '') return SW.rowBlank;
+            if (label.length > LABEL_MAX) return SW.labelLong;
             if (
               plan.items.some(
                 (other) =>
