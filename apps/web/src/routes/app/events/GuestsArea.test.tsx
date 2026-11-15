@@ -813,12 +813,14 @@ describe('Finding a guest (sc-3772)', () => {
     expect(screen.getByText('4 haven’t replied (3 guests and 1 companion).')).toBeDefined();
   });
 
-  async function cardOn(event: Record<string, unknown>): Promise<HTMLElement> {
+  async function cardOn(
+    event: Record<string, unknown>,
+    permissions: string[] = OWNER_PERMISSIONS,
+  ): Promise<HTMLElement> {
     signedIn();
     await onGuests({
       'GET /api/events/ev_1/guests': () => json(listOf(EVERYONE)),
-      'GET /api/events/ev_1': () =>
-        json({ event: { ...EVENT, ...event, permissions: OWNER_PERMISSIONS } }),
+      'GET /api/events/ev_1': () => json({ event: { ...EVENT, ...event, permissions } }),
     });
 
     return (await screen.findByText(/^(4 coming of 9 invited|\d+ on the list)$/u)).closest(
@@ -851,6 +853,60 @@ describe('Finding a guest (sc-3772)', () => {
 
     expect(await screen.findByRole('dialog')).toBeDefined();
   });
+
+  it.each([
+    [
+      'a reader',
+      OWNER_PERMISSIONS.filter((one) => one.endsWith('.read')),
+      'This event’s end has passed, so it cannot be made live. Someone who can edit this event can change its dates.',
+    ],
+    [
+      'someone with events.manage',
+      OWNER_PERMISSIONS,
+      "This event's end has passed, so it cannot be made live. Change its dates first.",
+    ],
+  ])('words a passed Draft’s card for %s (sc-50996)', async (_, permissions, line) => {
+    const card = await cardOn(
+      {
+        status: 'draft',
+        phase: 'draft',
+        madeLiveAt: null,
+        startsAt: '2026-10-24T12:00:00+01:00',
+        endsAt: '2026-10-24T18:00:00+01:00',
+      },
+      permissions,
+    );
+
+    expect(within(card).getByText(line)).toBeDefined();
+    expect(within(card).queryByRole('button', { name: 'Change dates' }) != null).toBe(
+      permissions === OWNER_PERMISSIONS,
+    );
+  });
+
+  it.each([
+    ['a reader', OWNER_PERMISSIONS.filter((one) => one.endsWith('.read'))],
+    ['someone with events.manage', OWNER_PERMISSIONS],
+  ])(
+    'keeps the Draft and Paused “can’t be invited” lines for %s (sc-50996)',
+    async (_, permissions) => {
+      const draft = await cardOn(
+        { status: 'draft', phase: 'draft', madeLiveAt: null },
+        permissions,
+      );
+      expect(
+        within(draft).getByText('Guests can’t be invited until this event is live.'),
+      ).toBeDefined();
+      cleanup();
+
+      const paused = await cardOn(
+        { status: 'paused', phase: 'paused', pausedAt: '2026-11-01T10:00:00+00:00' },
+        permissions,
+      );
+      expect(
+        within(paused).getByText('Guests can’t be invited while this event is paused.'),
+      ).toBeDefined();
+    },
+  );
 
   it('says a Draft whose end has passed cannot be made live, with Change dates as its step', async () => {
     const card = await cardOn({
@@ -3818,9 +3874,16 @@ describe('Select many guests, then Add to group or Remove from the list (sc-3776
     expect(sent.some((one) => one.line.endsWith('/erasure'))).toBe(false);
   });
 
-  it('keeps the result line and its Undo when everyone on the list is removed', async () => {
+  function searching(search: string): () => void {
+    return () =>
+      fireEvent.change(screen.getByRole('searchbox', { name: 'Find a guest' }), {
+        target: { value: search },
+      });
+  }
+
+  async function removingEveryone(narrow = () => {}, more: Record<string, Answer> = {}) {
     let listed = grouped();
-    await selecting({
+    const sent = await selecting({
       'GET /api/events/ev_1/guests': () => json(listed),
       'POST /api/events/ev_1/guests/removals': () => {
         listed = { ...listOf([]), groups: [BRIDE] };
@@ -3828,22 +3891,152 @@ describe('Select many guests, then Add to group or Remove from the list (sc-3776
         return json({ removal: 'rm_1', guests: 3, companions: 3, gone: 0 });
       },
       'DELETE /api/events/ev_1/guests/removals/rm_1': () => {
-        listed = grouped();
+        listed = { ...listOf([...listed.guests, NGOZI, AMAKA, KEMI]), groups: [BRIDE] };
 
         return json({ guests: 3 });
       },
+      'POST /api/events/ev_1/guests': () => {
+        listed = { ...listOf([guest('g_9', 'Bimpe Adeyemi')]), groups: [BRIDE] };
+
+        return json({ guest: guest('g_9', 'Bimpe Adeyemi') }, 201);
+      },
+      ...more,
     });
-    fireEvent.click(box('Select all 3 shown'));
+    narrow();
+    fireEvent.click(await screen.findByRole('checkbox', { name: 'Select all 3 shown' }));
     fireEvent.click(within(bar()).getByRole('button', { name: 'Remove from the list' }));
     fireEvent.click(
       within(await screen.findByRole('alertdialog')).getByRole('button', { name: 'Remove 3' }),
     );
-
     await waitFor(() => expect(said()[0]).toBe('3 guests and 3 companions removed.'));
-    expect(screen.queryByText('Ngozi Eze')).toBeNull();
+
+    return sent;
+  }
+
+  function readsEmpty(): void {
+    const card = screen.getByText('No guests yet').closest('section') as HTMLElement;
+
+    expect(within(card).getByRole('button', { name: 'Add guest' })).toBeDefined();
+    expect(screen.getAllByRole('button', { name: 'Add guest' })).toHaveLength(1);
+    expect(screen.queryByText('No guests match')).toBeNull();
+    expect(screen.queryByText('Try a different name, or clear the filters.')).toBeNull();
+    expect(screen.queryByRole('button', { name: 'Clear' })).toBeNull();
+    expect(screen.queryByRole('searchbox')).toBeNull();
+    expect(screen.queryByRole('group', { name: 'Groups' })).toBeNull();
+    expect(screen.queryAllByRole('checkbox')).toEqual([]);
+    expect(screen.queryByRole('region', { name: 'Selected guests' })).toBeNull();
+  }
+
+  it('reads as the empty event under the line and its Undo when everyone is removed (sc-50772)', async () => {
+    await removingEveryone();
+
+    readsEmpty();
+    expect(document.activeElement?.closest('.gm-said')).not.toBeNull();
     fireEvent.click(screen.getByRole('button', { name: 'Undo' }));
 
     expect(await screen.findByText('Ngozi Eze')).toBeDefined();
+    expect(box('Select all 3 shown')).toBeDefined();
+  });
+
+  it('reads as the empty event when a search showed everyone, and Undo turns the search back on (sc-50772)', async () => {
+    await removingEveryone(searching('e'));
+
+    readsEmpty();
+    fireEvent.click(screen.getByRole('button', { name: 'Undo' }));
+
+    expect(await screen.findByText('Ngozi Eze')).toBeDefined();
+    expect(
+      (screen.getByRole('searchbox', { name: 'Find a guest' }) as HTMLInputElement).value,
+    ).toBe('e');
+  });
+
+  it('reads as the empty event when a group filter showed everyone, and Undo turns the filter back on (sc-50772)', async () => {
+    const noGroup = () =>
+      within(screen.getByRole('group', { name: 'Groups' })).getByRole('button', {
+        name: 'No group',
+      });
+    await removingEveryone(() => fireEvent.click(noGroup()));
+
+    readsEmpty();
+    fireEvent.click(screen.getByRole('button', { name: 'Undo' }));
+
+    expect(await screen.findByText('Ngozi Eze')).toBeDefined();
+    expect(noGroup().getAttribute('aria-pressed')).toBe('true');
+  });
+
+  it('moves focus to the page title on Done once the line has gone after a save (sc-50772)', async () => {
+    vi.useFakeTimers({ shouldAdvanceTime: true });
+    try {
+      await removingEveryone(undefined, {
+        'POST /api/events/ev_1/guests/removals/rm_1/erasure': () =>
+          new Response(null, { status: 204 }),
+      });
+      fireEvent.click(screen.getByRole('button', { name: 'Add guest' }));
+      await waitFor(() => expect(document.activeElement).toBe(field('Full name')));
+      type('Full name', 'Bimpe Adeyemi');
+      fireEvent.click(addButton());
+      expect(await screen.findByText('Bimpe Adeyemi')).toBeDefined();
+
+      await act(async () => {
+        await vi.advanceTimersByTimeAsync(11_000);
+      });
+      expect(said()).toEqual([]);
+      fireEvent.click(within(form()).getByRole('button', { name: 'Done' }));
+
+      await waitFor(() =>
+        expect(document.activeElement).toBe(screen.getByRole('heading', { level: 1 })),
+      );
+    } finally {
+      vi.useRealTimers();
+    }
+  });
+
+  it('still says No guests match with Clear when the search removed everyone it showed and others remain (sc-50772)', async () => {
+    await selecting({
+      'POST /api/events/ev_1/guests/removals': () =>
+        json({ removal: 'rm_1', guests: 1, companions: 0, gone: 0 }),
+    });
+    fireEvent.change(screen.getByRole('searchbox', { name: 'Find a guest' }), {
+      target: { value: 'Kemi' },
+    });
+    fireEvent.click(await screen.findByRole('checkbox', { name: 'Select the 1 shown' }));
+    fireEvent.click(within(bar()).getByRole('button', { name: 'Remove from the list' }));
+    fireEvent.click(
+      within(await screen.findByRole('alertdialog')).getByRole('button', { name: 'Remove 1' }),
+    );
+
+    expect(await screen.findByText('No guests match')).toBeDefined();
+    fireEvent.click(screen.getAllByRole('button', { name: 'Clear' }).at(-1)!);
+
+    expect(await screen.findByText('Ngozi Eze')).toBeDefined();
+    expect(screen.getByText('Chief Amaka Obi')).toBeDefined();
+  });
+
+  it('ends the empty page with a guest saved during the Undo, the search cleared, and Done focuses the line (sc-50772)', async () => {
+    await removingEveryone(searching('e'));
+    fireEvent.click(screen.getByRole('button', { name: 'Add guest' }));
+    await waitFor(() => expect(document.activeElement).toBe(field('Full name')));
+
+    type('Full name', 'Bimpe Adeyemi');
+    fireEvent.click(addButton());
+
+    expect(await screen.findByText('Bimpe Adeyemi')).toBeDefined();
+    expect(said()[0]).toBe('3 guests and 3 companions removed.');
+    expect(
+      (screen.getByRole('searchbox', { name: 'Find a guest' }) as HTMLInputElement).value,
+    ).toBe('');
+    expect(box('Select the 1 shown')).toBeDefined();
+    expect(screen.queryByRole('region', { name: 'Selected guests' })).toBeNull();
+    fireEvent.click(within(form()).getByRole('button', { name: 'Done' }));
+    await waitFor(() => expect(document.activeElement?.closest('.gm-said')).not.toBeNull());
+
+    fireEvent.click(screen.getByRole('button', { name: 'Undo' }));
+
+    expect(await screen.findByText('Ngozi Eze')).toBeDefined();
+    expect(screen.getByText('Bimpe Adeyemi')).toBeDefined();
+    expect(
+      (screen.getByRole('searchbox', { name: 'Find a guest' }) as HTMLInputElement).value,
+    ).toBe('');
   });
 
   it('drops the companions clause from the question when there are none', async () => {

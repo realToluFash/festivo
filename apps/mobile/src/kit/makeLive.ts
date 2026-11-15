@@ -28,7 +28,7 @@ export function draftRowOf(
   now: Date,
   manages: boolean,
 ): DraftRow | null {
-  const row = makeLiveRow(event, now);
+  const row = makeLiveRow(event, now, true);
 
   return row == null ? null : { line: row.line, offersMakeLive: manages && row.makeLive };
 }

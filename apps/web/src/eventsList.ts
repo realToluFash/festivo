@@ -230,7 +230,14 @@ export function cardTags(event: Shown, now: Date, t: TFunction): CardTag[] {
 }
 
 export type CardStep =
-  | { kind: 'button'; line: string; label: string; action: CardStepAction }
+  | {
+      kind: 'button';
+      line: string;
+      /** What someone who cannot take the step reads instead, when the line asks them to (sc-50996). */
+      readerLine?: string;
+      label: string;
+      action: CardStepAction;
+    }
   | { kind: 'next'; title: string; line: string };
 
 /** The card's one step, by the domain's nextStep: what the phase asks for, else the next thing that happens; Duplicate once it is over. */
@@ -249,6 +256,7 @@ export function cardStep(event: Shown, now: Date, locale: string, t: TFunction):
       return {
         kind: 'button',
         line: t('events.nextChangeDates'),
+        readerLine: t('eventLive.endPassedReader'),
         label: t('eventLive.changeDates'),
         action: 'changeDates',
       };
@@ -256,6 +264,7 @@ export function cardStep(event: Shown, now: Date, locale: string, t: TFunction):
       return {
         kind: 'button',
         line: t('events.nextResume'),
+        readerLine: t('events.nextResumeReader'),
         label: t('eventPause.resume'),
         action: 'resume',
       };

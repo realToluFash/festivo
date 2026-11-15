@@ -1,7 +1,6 @@
-# sc-49805, tablet landscape: ${GUEST_ID}'s details in ${EVENT_ID}, Mark as not invited failing on a server error, then the needs; beside the demo's unmarkNotSaved.
+# sc-49805, tablet landscape: ${GUEST_ID}'s details in the right-hand pane; the failed Mark as not invited line, then the Edit sheet's Needs. Swipes inside the pane, which scrollUntilVisible does not reach.
 appId: host.exp.Exponent
 ---
-# Android's LANDSCAPE_LEFT can leave the tablet portrait: the harness turns it. sc-50565.
 - setOrientation: LANDSCAPE_LEFT
 - runScript:
     file: ../batch/helper.js
@@ -20,33 +19,53 @@ appId: host.exp.Exponent
     visible:
       id: 'guest.${GUEST_ID}'
     timeout: 20000
+- repeat:
+    times: 4
+    commands:
+      - swipe:
+          start: 75%, 85%
+          end: 75%, 25%
 - waitForAnimationToEnd:
-    timeout: 3000
-- takeScreenshot: land-invited
-- scrollUntilVisible:
-    element:
-      id: 'guest.unmark'
-    direction: DOWN
+    timeout: 2000
+- takeScreenshot: land-pane-foot
 - tapOn:
     id: 'guest.unmark'
 - waitForAnimationToEnd:
     timeout: 5000
-- swipe:
-    direction: DOWN
-- swipe:
-    direction: DOWN
-- swipe:
-    direction: DOWN
+- repeat:
+    times: 4
+    commands:
+      - swipe:
+          start: 75%, 25%
+          end: 75%, 85%
 - waitForAnimationToEnd:
     timeout: 2000
 - takeScreenshot: land-unmark-failed
+- tapOn:
+    id: 'guest.edit'
+- extendedWaitUntil:
+    visible:
+      id: 'guest.form.fullName'
+    timeout: 20000
 - scrollUntilVisible:
     element:
-      id: 'guest.needs'
+      id: 'guest.form.needs.toggle'
     direction: DOWN
+- tapOn:
+    id: 'guest.form.needs.toggle'
 - waitForAnimationToEnd:
     timeout: 2000
-- takeScreenshot: land-needs
+- takeScreenshot: land-form-needs
+- repeat:
+    times: 3
+    commands:
+      - swipe:
+          start: 50%, 80%
+          end: 50%, 30%
+- waitForAnimationToEnd:
+    timeout: 2000
+- takeScreenshot: land-form-diet
+- back
 - openLink: ${METRO_URL}/--/demo/guests?state=unmarkNotSaved
 - waitForAnimationToEnd:
     timeout: 8000

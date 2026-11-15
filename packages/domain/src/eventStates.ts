@@ -60,14 +60,15 @@ export function eventTransition(
 }
 
 export interface MakeLiveRow {
-  line: 'guestsBlocked' | 'endPassed';
+  line: 'guestsBlocked' | 'endPassed' | 'endPassedReader';
   makeLive: boolean;
 }
 
-/** A Draft's one line for the areas it blocks, while the table still leads it to Live; past `end_not_passed` it says so instead. */
+/** A Draft's one line for the areas it blocks, while the table still leads it to Live; past `end_not_passed` it says so instead, and to someone who cannot change the dates it never asks them to (sc-50996). */
 export function makeLiveRow(
   event: { status: EventState; startsAt: string; endsAt: string },
   now: Date,
+  changesDates: boolean,
 ): MakeLiveRow | null {
   const phase = eventPhase(event, now);
   const transition = eventTransition(event.status, 'make_live');
@@ -78,7 +79,7 @@ export function makeLiveRow(
     transition.guards.includes('end_not_passed') && now.getTime() >= Date.parse(event.endsAt);
 
   return {
-    line: endPassed ? 'endPassed' : 'guestsBlocked',
+    line: !endPassed ? 'guestsBlocked' : changesDates ? 'endPassed' : 'endPassedReader',
     makeLive: !endPassed && eventAllows(phase, 'make_live'),
   };
 }

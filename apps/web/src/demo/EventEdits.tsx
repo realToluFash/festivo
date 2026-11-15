@@ -13,6 +13,7 @@ import {
   keepsLastHost,
   startMoved,
   formatWallDay,
+  timezoneLabel,
 } from '@soirely/domain';
 import { type Ref, type RefObject, useEffect, useId, useRef, useState } from 'react';
 
@@ -292,7 +293,7 @@ export function ZoneSelect({
   );
 }
 
-const ZONE_CHOICES = ZONES.map((one) => [one, one] as const);
+const ZONE_CHOICES = ZONES.map((one) => [one, timezoneLabel(one)] as const);
 
 export function Select({
   refTo,
@@ -640,6 +641,7 @@ export function VenuePart({ event, state, onDirty, onClose, onSave }: PartProps)
         });
       }}
     >
+      {forbidden && <Broken>{NOTE_WORDS.forbidden}</Broken>}
       <VenueFields
         name={name}
         onName={setName}
@@ -687,7 +689,6 @@ export function VenuePart({ event, state, onDirty, onClose, onSave }: PartProps)
           {NOTE_WORDS.hint}
         </p>
       </div>
-      {forbidden && <Alert>{NOTE_WORDS.forbidden}</Alert>}
       <p className="visually-hidden" role="status">
         {said}
       </p>

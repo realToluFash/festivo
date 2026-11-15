@@ -145,17 +145,23 @@ describe('Edit details › Venue, the arrival note', () => {
     expect(box()).toBe(document.activeElement);
   });
 
-  it('says a 403 beside the button and changes nothing', SLOW, async () => {
-    await page('venueNoteForbidden');
-    fireEvent.click(within(venue()).getByRole('button', { name: 'Save' }));
+  it(
+    'says a 403 in the notice at the top of Venue, where Not saved sits, and changes nothing',
+    SLOW,
+    async () => {
+      await page('venueNoteForbidden');
+      fireEvent.click(within(venue()).getByRole('button', { name: 'Save' }));
 
-    expect(
-      within(venue()).getByText(
+      const notice = within(venue()).getByRole('alert');
+
+      expect(notice.textContent).toContain(
         'Nothing was changed. Your role does not include the permission this needs.',
-      ),
-    ).toBeDefined();
-    expect(sampleEvent('evt-wed-4')?.arrivalNote).toBe(ARRIVAL_NOTE);
-  });
+      );
+      expect(notice.classList.contains('notice-broken')).toBe(true);
+      expect(venue().firstElementChild).toBe(notice);
+      expect(sampleEvent('evt-wed-4')?.arrivalNote).toBe(ARRIVAL_NOTE);
+    },
+  );
 });
 
 describe('Details › Venue on the event’s page', () => {

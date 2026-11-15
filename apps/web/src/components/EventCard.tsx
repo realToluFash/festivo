@@ -225,7 +225,9 @@ export function EventCard({
             ))
           ) : (
             <>
-              <p className="desk-on-card">{step.line}</p>
+              <p className="desk-on-card">
+                {takes(step.action) ? step.line : (step.readerLine ?? step.line)}
+              </p>
               {takes(step.action) && (
                 <StepButton
                   ref={stepRef}

@@ -747,6 +747,26 @@
   cursor: pointer;
 }
 
+.gs-filters .gs-chip {
+  box-sizing: border-box;
+  height: auto;
+  min-height: var(--sizeHit);
+  max-width: 100%;
+  padding-block: var(--spaceSm);
+  white-space: normal;
+}
+
+.gs-chip > svg {
+  flex: none;
+}
+
+.gs-chip-word {
+  min-width: 0;
+  font-size: inherit;
+  line-height: 1.3;
+  overflow-wrap: anywhere;
+}
+
 .gs-chip.is-on {
   padding-left: var(--spaceLg);
   background: var(--colorAccentTint);
@@ -1288,11 +1308,38 @@
   margin-top: var(--spaceSm);
 }
 
+.gs-row-mid {
+  display: flex;
+  flex: 1;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--spaceXs) var(--spaceLg);
+  min-width: 0;
+}
+
+.gs-row-mid > .desk-row-words {
+  flex: 1 1 min-content;
+  min-width: min(100%, 12rem);
+  max-width: 100%;
+  overflow-wrap: break-word;
+}
+
+.gs-row-mid > .desk-row-words .desk-row-name {
+  overflow-wrap: break-word;
+}
+
 .gs-row-tags {
   display: flex;
   flex: none;
   align-items: center;
   gap: var(--spaceXs);
+}
+
+.gs-row-mid > .gs-row-tags {
+  flex: 0 1 auto;
+  flex-wrap: wrap;
+  min-width: 0;
+  max-width: 100%;
 }
 
 .gs-tag {

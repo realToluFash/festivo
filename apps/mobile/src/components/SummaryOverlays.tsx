@@ -454,6 +454,7 @@ export function MenuLayer({
   const origin = useWindowOrigin();
   const [seen, setSeen] = useState({ head: 0, panel: 0, content: 0, offset: 0 });
   const [held, setHeld] = useState<HeldSide | null>(null);
+  const [layer, setLayer] = useState<number | null>(null);
   const button = menuButton(at);
   const side = menuSide({
     under: at?.y ?? 0,
@@ -462,7 +463,8 @@ export function MenuLayer({
     floor,
     origin,
     ceiling: insets.top,
-    foot: frame.height - Math.max(insets.bottom, tokens.spaceLg),
+    layer: layer ?? 0,
+    bar: Math.max(insets.bottom, tokens.spaceLg),
     tall: menuTall(seen, MENU_EDGE),
     above: keptSide(held, button),
   });
@@ -475,11 +477,12 @@ export function MenuLayer({
     <>
       <Pressable
         style={StyleSheet.absoluteFill}
+        onLayout={(event) => setLayer(event.nativeEvent.layout.height)}
         onPress={onClose}
         accessibilityRole="button"
         accessibilityLabel={t('frame.closeMenu')}
       />
-      {at != null && (
+      {at != null && layer != null && (
         <View
           style={[
             styles.menu,

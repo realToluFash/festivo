@@ -228,7 +228,7 @@ export function DraftRow({
   onMadeLive: () => void;
 }) {
   const { t } = useTranslation();
-  const row = makeLiveRow(event, now);
+  const row = makeLiveRow(event, now, manages);
   const opener = useRef<HTMLButtonElement>(null);
   const makeLive = useMakeLive({ event, tag, heading, opener, onChange, onMadeLive });
 
