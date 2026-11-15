@@ -6,7 +6,7 @@ import { setLanguage } from '../../../i18n/index.ts';
 import { holdProof } from '../../../recentProof.ts';
 import { __setSessionState, type Session } from '../../../session.ts';
 import { OWNER_PERMISSIONS, membership } from '../../../test-memberships.ts';
-import { pagedMembers } from '../../../test-members.ts';
+import { oneMember, pagedMembers } from '../../../test-members.ts';
 import { routes } from '../../index.tsx';
 
 const IRE = membership({ id: 'org_1', name: 'Ìrè Events' });
@@ -213,7 +213,15 @@ function answering(answers: Record<string, () => Response | Promise<Response>>) 
     const line = `${init?.method ?? 'GET'} ${new URL(String(input)).pathname}`;
     sent.push({ line, body: typeof init?.body === 'string' ? JSON.parse(init.body) : null });
 
-    const answer = { ...NO_RECOVERIES, ...answers }[line];
+    const served: Record<string, () => Response | Promise<Response>> = {
+      ...NO_RECOVERIES,
+      ...answers,
+    };
+    const one = /^(GET \/api\/orgs\/[^/]+\/members)\/([^/]+)$/.exec(line);
+    const whole = one == null ? undefined : served[one[1] ?? ''];
+    const answer = served[line];
+    if (answer == null && whole != null && one?.[2] != null)
+      return oneMember(await whole(), one[2]);
     if (answer == null) throw new TypeError('Failed to fetch');
 
     return line.endsWith('/members') ? pagedMembers(await answer(), String(input)) : answer();

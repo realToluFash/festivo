@@ -19,6 +19,7 @@ import {
   type MembersMore,
   rereadLimit,
   roleName,
+  withChanged,
   withNextPage,
   withPagesSince,
 } from '@soirely/domain';
@@ -355,7 +356,11 @@ function MembersLoaded({
     };
   }, [organisation.id, wanted, switching, switched, onChange]);
 
-  const reread = () => api.members(organisation.id, { show: listed, limit: rereadLimit(list) });
+  const reread = (changed: string) =>
+    Promise.all([
+      api.members(organisation.id, { show: listed, limit: rereadLimit(list) }),
+      api.member(organisation.id, changed),
+    ]).then(([again, one]) => withChanged(again, list, one, listed));
 
   /** The next 50 under the rows shown; the focus goes to the first of them. A press while they load does nothing. */
   const showMore = async () => {

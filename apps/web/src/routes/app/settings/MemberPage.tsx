@@ -79,7 +79,8 @@ export function MemberPage({
   level: 1 | 2;
   returned: OwnerReturn | null;
   /** The rows on screen and the counts, read again once a change lands. */
-  reread: () => Promise<MembersList>;
+  /** The rows on screen read again after a change to `changed`, with their row as it now is wherever it is held. */
+  reread: (changed: string) => Promise<MembersList>;
   onChanged: (list: MembersList) => void;
   onRemoved: (list: MembersList, name: string) => void;
   onBack: () => void;
@@ -115,7 +116,7 @@ export function MemberPage({
   }, [outcome]);
 
   async function reload(): Promise<void> {
-    onChanged(await reread());
+    onChanged(await reread(member.id));
   }
 
   function changedElsewhere(): void {
@@ -155,7 +156,7 @@ export function MemberPage({
 
     try {
       await api.removeMember(organisation.id, member.id);
-      onRemoved(await reread(), name);
+      onRemoved(await reread(member.id), name);
     } catch (error) {
       setBusy(false);
       if (asking === 'remove') setFailed(refused(error));
@@ -483,7 +484,8 @@ function RoleDialog({
   member: OrganisationMember;
   roles: OrganisationRole[];
   returned: OwnerReturn | null;
-  reread: () => Promise<MembersList>;
+  /** The rows on screen read again after a change to `changed`, with their row as it now is wherever it is held. */
+  reread: (changed: string) => Promise<MembersList>;
   onClose: () => void;
   onChanged: (list: MembersList, role: string) => void;
   onChangedElsewhere: () => void;
@@ -541,7 +543,7 @@ function RoleDialog({
 
     try {
       await api.changeMemberRole(organisation.id, member.id, picked, proof ?? undefined);
-      onChanged(await reread(), roleName(t, role));
+      onChanged(await reread(member.id), roleName(t, role));
     } catch (error) {
       setBusy(false);
       if (toOwner && error instanceof ApiError && error.is('proof_required')) {

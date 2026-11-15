@@ -34,6 +34,18 @@ export function membersPage(
   };
 }
 
+/** A test's answer to GET …/members/{id}: that person's row in what the test serves for GET …/members. */
+export async function oneMember(answer: Response, id: string): Promise<Response> {
+  if (!answer.ok) return answer;
+  const body = (await answer.json()) as { members: { id: string }[]; waiting?: { id: string }[] };
+  const member = [...body.members, ...(body.waiting ?? [])].find((one) => one.id === id);
+
+  return new Response(JSON.stringify(member == null ? { code: 'not_found' } : { member }), {
+    status: member == null ? 404 : 200,
+    headers: { 'Content-Type': 'application/json' },
+  });
+}
+
 /** A test's answer to GET …/members, paged by the request's own query when it holds the whole organisation. */
 export async function pagedMembers(answer: Response, url: string): Promise<Response> {
   if (!answer.ok) return answer;

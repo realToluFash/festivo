@@ -236,7 +236,8 @@ export function RequestDialog({
   member: OrganisationMember;
   roles: OrganisationRole[];
   /** The rows on screen, the counts and Waiting, read again once the answer lands. */
-  reread: () => Promise<MembersList>;
+  /** The rows on screen read again after a change to `changed`, with their row as it now is wherever it is held. */
+  reread: (changed: string) => Promise<MembersList>;
   onClose: () => void;
   onAnswered: (list: MembersList, notice: Notice) => void;
 }) {
@@ -258,7 +259,7 @@ export function RequestDialog({
     try {
       if (approve && role != null) {
         await api.approveMember(organisation.id, member.id, role.id);
-        onAnswered(await reread(), {
+        onAnswered(await reread(member.id), {
           kind: 'approved',
           member: member.id,
           name,
@@ -266,7 +267,7 @@ export function RequestDialog({
         });
       } else {
         await api.turnDownMember(organisation.id, member.id);
-        onAnswered(await reread(), { kind: 'turnedDown', name });
+        onAnswered(await reread(member.id), { kind: 'turnedDown', name });
       }
     } catch (error) {
       setBusy(false);
