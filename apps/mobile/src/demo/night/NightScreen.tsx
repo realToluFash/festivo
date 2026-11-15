@@ -122,7 +122,7 @@ function NightBody({ first, locale }: { first: NightStart; locale: string }) {
           </Pressable>
           <Head
             night={night}
-            view={view}
+            view={first.loading ? null : view}
             locale={locale}
             many={tracks.length > 1}
             menuOpen={menuOpen}
@@ -334,7 +334,7 @@ function Head({
               style={styles.picker}
               testID="night.picker"
             >
-              <Text size={15} weight="semibold">
+              <Text size={15} weight="semibold" style={styles.shrink}>
                 {view.label}
               </Text>
               <Glyph paths={PATHS.chevron} ink={tokens.colorInk} side={16} />
@@ -913,6 +913,7 @@ const styles = StyleSheet.create({
   overOnDark: { color: tokens.colorAttentionOnDark },
   num: { fontVariant: ['tabular-nums'] },
   grow: { flex: 1, minWidth: 0 },
+  shrink: { flexShrink: 1 },
   struck: { textDecorationLine: 'line-through' },
   head: { gap: tokens.spaceSm },
   headTop: { flexDirection: 'row', alignItems: 'flex-start', gap: tokens.spaceMd },
@@ -938,7 +939,6 @@ const styles = StyleSheet.create({
   },
   picker: {
     flexDirection: 'row',
-    flexWrap: 'wrap',
     alignItems: 'center',
     gap: tokens.spaceXs,
     minHeight: tokens.sizeHit,

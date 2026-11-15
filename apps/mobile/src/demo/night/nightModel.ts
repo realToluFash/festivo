@@ -315,7 +315,7 @@ export function trackView(night: Night, track: NightTrack, locale: string): Trac
       : behind > 0
         ? { kind: 'behind', minutes: behind }
         : { kind: 'onTime' },
-    sub: `${doneCount} of ${track.items.length} done${endsAt == null ? '' : ` · ends about ${timeIn(locale, endsAt)}`}`,
+    sub: `${doneCount} of ${track.items.length} done${endsAt == null || finished ? '' : ` · ends about ${timeIn(locale, endsAt)}`}`,
     finished: finished ? finishedOf(track, night, locale) : null,
   };
 }
@@ -334,7 +334,7 @@ export function headerWords(header: Header): string | null {
   return header.kind === 'onTime'
     ? NW.onTime
     : header.kind === 'behind'
-      ? `${header.minutes} min behind`
+      ? `${minutesWord(header.minutes)} behind`
       : null;
 }
 
