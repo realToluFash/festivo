@@ -979,6 +979,69 @@
   box-shadow: var(--deskRing);
 }
 
+/* sc-3787: Record a reply, as the demo draws it: the guest's own three answers as rows of 56, the lit one in Tint, and How did they tell you? as radio chips. */
+.gs-answers > * + * {
+  margin-top: 1px;
+  background: var(--deskHairline) no-repeat 52px 0 / calc(100% - 52px) 1px;
+}
+
+.gs-answer {
+  display: flex;
+  align-items: center;
+  gap: var(--spaceLg);
+  min-height: 56px;
+  margin: 0 -10px;
+  padding: 0 10px;
+  border-radius: var(--radiusRow);
+  cursor: pointer;
+}
+
+.gs-answer:hover {
+  background-color: var(--evWash);
+}
+
+.gs-answer.is-lit {
+  background: var(--colorAccentTint);
+}
+
+.gs-answer.is-wrong,
+.gs-chip.is-wrong {
+  box-shadow: inset 0 0 0 1.5px var(--colorBroken);
+}
+
+.gs-answer-lead {
+  display: flex;
+  flex: none;
+  justify-content: center;
+  width: 40px;
+}
+
+.gs-answer-word {
+  flex: 1;
+  font: 600 17px/1.3 var(--fontFamily);
+}
+
+.gs-answer.is-lit .gs-answer-word {
+  color: var(--colorAccent);
+}
+
+.gs-radio {
+  width: 24px;
+  height: 24px;
+}
+
+.gs-chip:has(:focus-visible) {
+  box-shadow: var(--deskRing);
+}
+
+.gs-chip-input {
+  position: absolute;
+  inset: 0;
+  margin: 0;
+  opacity: 0;
+  cursor: pointer;
+}
+
 .gs-tick {
   display: flex;
   align-items: center;

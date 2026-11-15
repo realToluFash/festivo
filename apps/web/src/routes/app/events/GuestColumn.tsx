@@ -1,5 +1,6 @@
 import {
   ApiError,
+  GUEST_ANSWERS,
   GUEST_NAME_MAXIMUM,
   type GroupChoice,
   type Guest,
@@ -38,6 +39,7 @@ import {
   PlacesStepper,
 } from './GuestFields.tsx';
 import { GroupField } from './GuestGroups.tsx';
+import { RecordForm } from './GuestRecord.tsx';
 import { RemoveAsk, type Removing } from './GuestRemove.tsx';
 import { choiceLine, groupRefusal, listOpen } from './guestGroups.ts';
 import { type Copy, IconLead, Invitation } from './GuestInvitation.tsx';
@@ -131,8 +133,9 @@ type Pane =
   | { kind: 'loading' }
   | { kind: 'failed' }
   | { kind: 'notFound' }
-  | { kind: 'guest'; tagged: TaggedGuest; gone?: boolean }
-  | { kind: 'edit'; tagged: TaggedGuest };
+  | { kind: 'guest'; tagged: TaggedGuest; gone?: boolean; recorded?: boolean }
+  | { kind: 'edit'; tagged: TaggedGuest }
+  | { kind: 'record'; tagged: TaggedGuest };
 
 type Replace =
   { kind: 'none' } | { kind: 'asking'; busy: boolean } | { kind: 'failed' } | { kind: 'replaced' };
@@ -233,7 +236,7 @@ export function GuestColumn({
   const showing = useEffectEvent(onShown);
 
   useEffect(() => {
-    editing.current = pane.kind === 'edit';
+    editing.current = pane.kind === 'edit' || pane.kind === 'record';
   });
 
   useEffect(() => {
@@ -364,9 +367,54 @@ export function GuestColumn({
     );
   }
 
+  if (pane.kind === 'record') {
+    const back = (tagged: TaggedGuest, recorded: boolean): void => {
+      onDirty(false);
+      setPane({ kind: 'guest', tagged, recorded });
+      if (missed.current) {
+        missed.current = false;
+        setAttempt((n) => n + 1);
+      }
+    };
+
+    return (
+      <RecordForm
+        eventId={eventId}
+        tagged={pane.tagged}
+        timeZone={timeZone}
+        focus={focus}
+        onDirty={onDirty}
+        onCancel={(dirty) => {
+          const leave = () => {
+            back(pane.tagged, false);
+            focus('record', 'step');
+          };
+
+          if (dirty) onAsk(leave);
+          else leave();
+        }}
+        onGone={() => {
+          onDirty(false);
+          setPane({ kind: 'notFound' });
+          focus('guest-heading');
+        }}
+        onSaved={(tagged) => {
+          back(tagged, true);
+          onChanged(tagged.guest);
+          focus('guest-heading');
+        }}
+      />
+    );
+  }
+
   return (
     <GuestView
       guest={pane.tagged.guest}
+      recorded={pane.recorded === true}
+      onRecord={() => {
+        setPane({ kind: 'record', tagged: pane.tagged });
+        focus(`answer-${GUEST_ANSWERS[0]}`);
+      }}
       timeZone={timeZone}
       event={event}
       replies={replies}
@@ -424,6 +472,8 @@ export function GuestColumn({
 
 function GuestView({
   guest,
+  recorded,
+  onRecord,
   timeZone,
   event,
   replies,
@@ -450,6 +500,9 @@ function GuestView({
   onNotFound,
 }: {
   guest: GuestDetails;
+  /** Just recorded by Record a reply (sc-3787): "Reply recorded." above the card. */
+  recorded: boolean;
+  onRecord: () => void;
   timeZone: string;
   event: InvitationEvent;
   replies: Replies;
@@ -612,6 +665,8 @@ function GuestView({
   const notYet = reply === 'notYetInvited';
   const closed = notYet ? null : closedLine(t, guest, replies, manages, timeZone, dateLocale());
   const reopens = manages && !notYet && replies.closedOn != null && guest.repliesReopened == null;
+  const records = manages && !notYet && !draft && !reopens;
+  const recordedBy = guest.replyRecorded;
   const decides = decideBy(t, guest, replies.replyBy, dateLocale());
   const cardLine =
     closed ??
@@ -654,6 +709,12 @@ function GuestView({
           {t('guestList.unmarked')}
         </p>
       )}
+      {recorded && (
+        <p className="gs-ok" role="status">
+          <Glyph name="tick" size={17} weight={2.6} />
+          {t('guestList.replyRecorded')}
+        </p>
+      )}
       <section
         className={`ev-card today-cover is-${mesh} gs-card is-guest`}
         aria-labelledby={heading}
@@ -691,6 +752,11 @@ function GuestView({
                 busy={reopening === 'busy'}
                 onClick={reopen}
               />
+            </div>
+          )}
+          {records && guest.reply === 'noReply' && (
+            <div className="ev-card-foot" data-focus="step">
+              <CardStep label={t('guestList.recordReply')} onClick={onRecord} />
             </div>
           )}
         </div>
@@ -737,10 +803,23 @@ function GuestView({
               <MarkLead reply={guest.reply} />
               <RowWords
                 title={t(REPLY_KEY[guest.reply])}
-                lines={[decides ?? t('guestList.repliedOn', { date: replied })]}
+                lines={[
+                  recordedBy != null
+                    ? t('guestList.recordedOn', {
+                        name: recordedBy.by,
+                        how: t(`guestList.toldInLine.${recordedBy.how}`),
+                        date: replied,
+                      })
+                    : (decides ?? t('guestList.repliedOn', { date: replied })),
+                ]}
               />
             </li>
           </ul>
+          {records && (
+            <button type="button" className="desk-text" data-focus="record" onClick={onRecord}>
+              {t('guestList.recordReply')}
+            </button>
+          )}
         </section>
       )}
       {(manages || guest.companions.length > 0) && (
@@ -1609,7 +1688,7 @@ function EditForm({
   );
 }
 
-function Amber({
+export function Amber({
   title,
   focusKey,
   children,

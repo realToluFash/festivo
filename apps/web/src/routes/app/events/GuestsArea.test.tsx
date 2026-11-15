@@ -4323,6 +4323,72 @@ describe('Guests after Reply by (sc-3780)', () => {
   });
 });
 
+describe('Record a reply (sc-3787)', () => {
+  const OWN = { ...DETAILS, repliedAt: '2026-10-02T10:00:00+01:00' };
+
+  it('refuses Save with nothing chosen, asks before replacing their own reply, then says who recorded it', async () => {
+    const sent = await openNgozi({
+      'GET /api/events/ev_1/guests/g_1': () => tagged(OWN, '"1"'),
+      'POST /api/events/ev_1/guests/g_1/record-reply': () =>
+        tagged(
+          {
+            ...OWN,
+            reply: 'notComing',
+            repliedAt: '2026-11-05T10:00:00+01:00',
+            replyRecorded: { by: 'Kemi Bankole', how: 'other' },
+          },
+          '"2"',
+        ),
+    });
+    const recorded = () => sent.filter((one) => one.line.endsWith('/record-reply'));
+
+    fireEvent.click(within(column()).getByRole('button', { name: 'Record a reply' }));
+    fireEvent.click(within(column()).getByRole('button', { name: 'Save' }));
+
+    expect(within(column()).getByText('Choose their reply.')).toBeDefined();
+    expect(within(column()).getByText('Choose how they told you.')).toBeDefined();
+    await waitFor(() =>
+      expect(document.activeElement).toBe(within(column()).getByRole('radio', { name: 'Coming' })),
+    );
+    fireEvent.click(within(column()).getByRole('radio', { name: 'Not coming' }));
+    fireEvent.click(within(column()).getByRole('radio', { name: 'Other' }));
+    fireEvent.click(within(column()).getByRole('button', { name: 'Save' }));
+
+    expect(
+      await within(column()).findByText(
+        'Ngozi Eze replied Coming themselves on Oct 2. Replace it?',
+      ),
+    ).toBeDefined();
+    expect(recorded()).toEqual([]);
+    fireEvent.click(within(column()).getByRole('button', { name: 'Replace their reply' }));
+
+    expect(
+      await within(column()).findByText('Reply recorded. It counts like any other reply.'),
+    ).toBeDefined();
+    expect(
+      within(column()).getByText('recorded by Kemi Bankole, another way, Nov 5'),
+    ).toBeDefined();
+    expect(recorded().map((one) => one.body)).toEqual([
+      { answer: 'notComing', how: 'other', companions: [], replace: true },
+    ]);
+  });
+
+  it('keeps their reply, sending nothing', async () => {
+    const sent = await openNgozi({
+      'GET /api/events/ev_1/guests/g_1': () => tagged(OWN, '"1"'),
+    });
+
+    fireEvent.click(within(column()).getByRole('button', { name: 'Record a reply' }));
+    fireEvent.click(within(column()).getByRole('radio', { name: 'Coming' }));
+    fireEvent.click(within(column()).getByRole('radio', { name: 'By phone' }));
+    fireEvent.click(within(column()).getByRole('button', { name: 'Save' }));
+    fireEvent.click(await within(column()).findByRole('button', { name: 'Keep their reply' }));
+
+    expect(await within(column()).findByText('replied Oct 2')).toBeDefined();
+    expect(sent.filter((one) => one.line.endsWith('/record-reply'))).toEqual([]);
+  });
+});
+
 describe('Nobody on the list yet, in each phase (sc-50409)', () => {
   const DRAFT = { status: 'draft', phase: 'draft', madeLiveAt: null };
   const PAST = {
