@@ -85,6 +85,7 @@
     "validation.seating_table_rotation_steps": "Elija un giro en pasos de 15°, de 0° a 345°.",
     "validation.seating_table_no_such_seat": "Elija asientos del 1 al {max, number}, sin repetir ninguno.",
     "validation.seating_table_section_unknown": "Elija una de las zonas de este plano o ninguna.",
+    "run_of_show.item_limit": "This schedule has {max, number, ::group-auto} items, the most an event can hold. Delete one to add another. Nothing was saved.",
     "seating.seat_default_name": "Seat {n}",
     "validation.seating_row_label_required": "Enter a label for the row.",
     "validation.seating_row_label_taken": "This plan already has a row labelled {label}.",
