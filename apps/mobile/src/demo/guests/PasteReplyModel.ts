@@ -61,7 +61,6 @@ export function invitationOf(g: SampleGuest): Invitation | null {
   return g.when == null ? null : { at: g.when, how: 'reply' };
 }
 
-/** sc-3788's invitation line, in its own words from the catalogue, shown as written. */
 export function invitationLine(invitation: Invitation, locale: string, t: TFunction): string {
   const date = dayWords(invitation.at.slice(0, 10), locale);
   switch (invitation.how) {
@@ -105,7 +104,6 @@ export function pasteShown(p: PasteInputs): boolean {
   );
 }
 
-/** Whether a demo state opens with Paste a reply, from the same inputs the screen holds. */
 export function pasteShownAt(state: GuestsState, event: string): boolean {
   const { start, role, replyBy, counts } = guestsOpening(state, event, 'en-US');
   return pasteShown({
