@@ -99,7 +99,7 @@ export function SearchScreen({ organisationId }: { organisationId: string }) {
         if (term.length < SEARCH_LEAST) return setAnswer({ kind: 'short' });
 
         setAnswer({ kind: 'loading' });
-        api.search(organisationId, term, stop.signal).then(
+        api.search(organisationId, term, { invitations: false, signal: stop.signal }).then(
           (found) =>
             setAnswer({
               kind: 'found',

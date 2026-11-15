@@ -37,6 +37,7 @@ import { GUEST_KITCHEN_PAGES } from './guestKitchen.ts';
 import { GUEST_PARTY_PAGES } from './guestCompanions.ts';
 import { GUEST_ASK_PAGES } from './guestAskStates.ts';
 import { GUEST_DAY_PAGES } from './guestDay.ts';
+import { GUEST_PROGRAMME_PAGES } from './guestProgramme.ts';
 import { GUEST_NOTE_PAGES } from './guestNote.ts';
 import { GUEST_CHANGE_PAGES } from './guestChange.ts';
 import { Guests } from './Guests.tsx';
@@ -376,6 +377,8 @@ function DemoHome({ from }: { from: string }) {
         <BoardPages pages={SCHEDULE_PAGES} />
         <h3>The run view: expected times, how far behind, fixed times (sc-1404) · desktop</h3>
         <BoardPages pages={RUN_PAGES} />
+        <h3>The day on the guest’s page (sc-3899) · phone, tablet and desk</h3>
+        <BoardPages pages={GUEST_PROGRAMME_PAGES} />
       </section>
 
       <section className="demo-home-page" aria-labelledby="demo-page-34">

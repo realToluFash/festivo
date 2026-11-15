@@ -43,14 +43,24 @@ final readonly class SearchController
         return new JsonResponse($this->organisationSearch->reach($this->user(), $organisation, $this->scope($organisation)));
     }
 
-    /** Up to five matches of each kind with the count of all; a kind the caller may not find is null. A term under two characters finds nothing. */
+    /** Up to five matches of each kind with the count of all; a kind the caller may not find is null. A term under two characters finds nothing. The app asks without invitations, which its Members does not list. */
     #[Route('/api/orgs/{organisationId}/search', name: 'orgs_search', methods: ['GET'])]
     #[InOrganisation(null)]
     public function search(Request $request, string $organisationId): JsonResponse
     {
-        $term = Str\trim(Input::query($request, Type\shape(['q' => Type\optional(Type\string())]))['q'] ?? '');
+        $query = Input::query($request, Type\shape([
+            'q' => Type\optional(Type\string()),
+            'invitations' => Type\optional(Type\union(Type\literal_scalar('true'), Type\literal_scalar('false'))),
+        ]));
+        $term = Str\trim($query['q'] ?? '');
         $organisation = $this->organisation($organisationId);
-        $found = $this->organisationSearch->find($this->user(), $organisation, $this->scope($organisation), Str\length($term) < EventSearch::SHORTEST_TERM ? null : $term);
+        $found = $this->organisationSearch->find(
+            $this->user(),
+            $organisation,
+            $this->scope($organisation),
+            Str\length($term) < EventSearch::SHORTEST_TERM ? null : $term,
+            'false' !== ($query['invitations'] ?? 'true'),
+        );
 
         return new JsonResponse($found);
     }

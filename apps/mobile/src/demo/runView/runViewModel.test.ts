@@ -117,6 +117,12 @@ describe('the track’s figure', () => {
     expect(nextLine(hall('allDone'))).toBe('Every item on this track is done.');
   });
 
+  it('gives a reader the next item without the step only a manager can take', () => {
+    expect(nextLine(hall('behind'), false)).toBe('Next: Speeches at about 20:13.');
+    expect(nextLine(hall('last'), false)).toBe('Nothing after this.');
+    expect(nextLine(hall('allDone'), false)).toBe('Every item on this track is done.');
+  });
+
   it('is said with the track’s name, in words', () => {
     expect(figureSaid('Main hall', { kind: 'behind', minutes: 1 })).toBe(
       'Main hall, 1 minute behind',

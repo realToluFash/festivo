@@ -122,6 +122,7 @@ const CHOICE_KEY: Record<Choice, string> = {
 export interface GuestsTop {
   add: (() => void) | null;
   back: (() => void) | null;
+  toSearch: boolean;
 }
 
 /** An event's Guests in the app (sc-3785): the list to find and read a guest, and the small edits; planning at scale stays on the web. */
@@ -129,6 +130,7 @@ export function EventGuests({
   event,
   filter = 'all',
   opens,
+  leave,
   phase,
   now,
   heading,
@@ -143,6 +145,8 @@ export function EventGuests({
   filter?: Choice;
   /** The guest whose details it opens on (sc-39534). */
   opens?: string | undefined;
+  /** Back from the guest it opened on leaves the event, so a phone returns to Search with its term and matches (sc-39534). */
+  leave?: (() => void) | undefined;
   phase: EventPhase | null;
   now: Date;
   heading: ReactNode;
@@ -305,6 +309,14 @@ export function EventGuests({
     setPasted(null);
     setTimeout(() => moveScreenReaderFocus(searchField.current), FOCUS_AFTER_MS);
   }, []);
+  const leaveRef = useRef(leave);
+  useEffect(() => {
+    leaveRef.current = leave;
+  });
+  const leaveGuest = useCallback(() => {
+    if (leaveRef.current != null) leaveRef.current();
+    else closeGuest();
+  }, [closeGuest]);
   const showGuest = (tagged: TaggedGuest) => {
     tags.current.set(tagged.guest.id, tagged);
     setPane({ kind: 'guest', guest: tagged.guest });
@@ -391,14 +403,20 @@ export function EventGuests({
   const empty = loaded && load.list.guests.length === 0;
   const pageOpen = open != null || pasted != null;
   const guestInFront = pageOpen && kind !== 'tabletLandscape';
-  const back = pasted != null ? closeWhose : closeGuest;
+  const leavesFromGuest = leave != null && open != null && open === opening;
+  const guestBack = leavesFromGuest ? leaveGuest : closeGuest;
+  const back = pasted != null ? closeWhose : guestBack;
   const adds = manages && loaded && !empty && !guestInFront;
   const shown = sidebarCardOf(event, phase);
 
   useLayoutEffect(() => {
-    onTop({ add: adds ? add : null, back: guestInFront ? back : null });
-  }, [onTop, adds, add, guestInFront, back]);
-  useLayoutEffect(() => () => onTop({ add: null, back: null }), [onTop]);
+    onTop({
+      add: adds ? add : null,
+      back: guestInFront ? back : null,
+      toSearch: guestInFront && leavesFromGuest,
+    });
+  }, [onTop, adds, add, guestInFront, back, leavesFromGuest]);
+  useLayoutEffect(() => () => onTop({ add: null, back: null, toSearch: false }), [onTop]);
 
   const timeZone = event.timeZone;
   const locale = dateLocale();
@@ -571,7 +589,7 @@ export function EventGuests({
           setRound((was) => was + 1);
           setRecording(tagged);
         }}
-        onBack={closeGuest}
+        onBack={guestBack}
         onRetry={() => readGuest(open, false)}
       />
     );
@@ -591,7 +609,11 @@ export function EventGuests({
         pageKey={pasted != null ? 'paste' : (open ?? '')}
         pageInFront={pageOpen}
         pageless={!loaded || empty}
-        back={{ label: t('guestList.backToGuests'), onPress: back, testID: 'guest.back' }}
+        back={{
+          label: leavesFromGuest ? t('todayScreen.search') : t('guestList.backToGuests'),
+          onPress: back,
+          testID: 'guest.back',
+        }}
         backInFrame
         headingInList
         spacing={SPACING}

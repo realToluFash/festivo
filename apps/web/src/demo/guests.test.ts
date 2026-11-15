@@ -668,3 +668,18 @@ describe('a companion field (sc-43267)', () => {
     );
   });
 });
+
+describe('a reply from a guest nobody invited yet (sc-52829)', () => {
+  it('invites them when it is recorded, counts them straight away, and offers no undo', () => {
+    const before = sampleGuests(WEDDING);
+    const list = recordReply(before, 'bisi', 'coming', 'By phone', NONE, '2026-11-03');
+    const bisi = list.find((one) => one.id === 'bisi');
+
+    if (bisi == null) throw new Error('bisi');
+    expect(invitationLine(bisi)).toBe(GW.invitedWhenReplied('Nov 3'));
+    expect(handMarked(bisi)).toBe(false);
+    expect(countsOf(list).invited).toBe(countsOf(before).invited + 1);
+    expect(countsOf(list).coming).toBe(countsOf(before).coming + 1);
+    expect(countsOf(list).notYet).toBe(countsOf(before).notYet - 1);
+  });
+});

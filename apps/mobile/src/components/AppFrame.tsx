@@ -1439,16 +1439,17 @@ function FrameSidebar({
   return (
     <TodayShellProvider value={shell}>
       <SidebarColumn>
-        <SidebarHead org={false} />
-        {organisation != null && (
-          <OrgPill
-            organisation={organisation}
-            waiting={waiting}
-            onSwitch={onSwitch}
-            sidebar
-            ref={pill}
-          />
-        )}
+        <SidebarHead>
+          {organisation != null && (
+            <OrgPill
+              organisation={organisation}
+              waiting={waiting}
+              onSwitch={onSwitch}
+              sidebar
+              ref={pill}
+            />
+          )}
+        </SidebarHead>
         {inEvent && (
           <SidebarBack
             label={up?.label ?? t('todayScreen.tab.events')}

@@ -53,7 +53,7 @@ final readonly class OrganisationSearch
     }
 
     /** @return array{events: ?array{total: int, matches: list<array<string, mixed>>}, guests: ?array{total: int, matches: list<array<string, mixed>>}, members: ?array{total: int, matches: list<array<string, mixed>>}} */
-    public function find(User $user, Organisation $organisation, EventScope $scope, ?string $term): array
+    public function find(User $user, Organisation $organisation, EventScope $scope, ?string $term, bool $invitations): array
     {
         $reach = $this->reach($user, $organisation, $scope);
 
@@ -75,12 +75,12 @@ final readonly class OrganisationSearch
                 'total' => $this->guestRepository->countNamedLike($organisation, $term, $guests),
                 'matches' => Vec\map($this->guestRepository->findNamedLike($organisation, $term, $guests, self::SHOWN), self::guest(...)),
             ] : null,
-            'members' => $reach['members'] ? $this->members($user, $organisation, $term) : null,
+            'members' => $reach['members'] ? $this->members($user, $organisation, $term, $invitations) : null,
         ];
     }
 
     /** @return array{total: int, matches: list<array<string, mixed>>} */
-    private function members(User $user, Organisation $organisation, string $term): array
+    private function members(User $user, Organisation $organisation, string $term, bool $invitations): array
     {
         $decides = $this->holds($user, $organisation, Permission::MembersManage);
         $now = $this->clock->now();
@@ -93,7 +93,7 @@ final readonly class OrganisationSearch
             }
         }
 
-        foreach ($this->invitationRepository->findForOrganisation($organisation) as $invitation) {
+        foreach ($invitations ? $this->invitationRepository->findForOrganisation($organisation) : [] as $invitation) {
             if (InvitationStatus::Pending === $invitation->getStatusAt($now)) {
                 $found[] = self::match(null, $invitation->getEmail(), $wanted, self::invited($invitation));
             }
