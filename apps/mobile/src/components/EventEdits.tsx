@@ -24,7 +24,7 @@ import { Glyph } from './Glyph.tsx';
 import { BoxField, MomentBox, type Picking, PickerLayer } from './MomentPick.tsx';
 import { RadioMark } from './RadioMark.tsx';
 import { type ScreenReaderTarget } from './screenReaderFocus.ts';
-import { useShell } from './settingsShell.ts';
+import { useShellLayout } from './settingsShell.ts';
 import { Pill } from './SettingsParts.tsx';
 import { ASK_WIDTH, type AskProps, FocusedScreen, Row, RowList, TextAction } from './Summary.tsx';
 import { Text } from './Text.tsx';
@@ -80,7 +80,7 @@ export interface ShellProps {
 }
 
 export function useEditGap(): number {
-  return useShell().layout === 'phone' ? tokens.spaceXl : tokens.spaceLg;
+  return useShellLayout() === 'phone' ? tokens.spaceXl : tokens.spaceLg;
 }
 
 /** Each part on its own screen: Cancel, the part's title and Save, which stays off until something changes. */
