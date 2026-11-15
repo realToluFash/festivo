@@ -115,9 +115,11 @@
   font: 700 17px/1.3 var(--fontFamily);
 }
 
-/* The guest's group beside their name on the card, as their reply sits. */
-.gs-row-tags .gg-tag {
-  max-width: 160px;
-  overflow: hidden;
-  text-overflow: ellipsis;
+/* The guest's group beside their name while both fit and under it once not, its name never cut short (sc-51198). */
+.gs-row-mid .gg-tag {
+  min-width: 0;
+  max-width: none;
+  overflow: visible;
+  white-space: normal;
+  overflow-wrap: anywhere;
 }

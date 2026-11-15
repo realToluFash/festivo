@@ -1247,17 +1247,19 @@ function Rows({
               }}
             >
               <MarkLead reply={row.person.reply} />
-              <RowWords
-                title={row.person.name}
-                lines={row.contact == null ? [row.line] : [row.line, row.contact]}
-              />
-              {(row.allergy || row.dietary || group != null) && (
-                <span className="gs-row-tags" aria-hidden="true">
-                  {row.allergy && <AllergyMark />}
-                  {row.dietary && <span className="gs-tag">{GW.dietaryNotes}</span>}
-                  {group != null && <span className="gs-tag gg-tag">{group}</span>}
-                </span>
-              )}
+              <span className="gs-row-mid">
+                <RowWords
+                  title={row.person.name}
+                  lines={row.contact == null ? [row.line] : [row.line, row.contact]}
+                />
+                {(row.allergy || row.dietary || group != null) && (
+                  <span className="gs-row-tags" aria-hidden="true">
+                    {row.allergy && <AllergyMark />}
+                    {row.dietary && <span className="gs-tag">{GW.dietaryNotes}</span>}
+                    {group != null && <span className="gs-tag gg-tag">{group}</span>}
+                  </span>
+                )}
+              </span>
               <Chevron />
             </a>
           </li>

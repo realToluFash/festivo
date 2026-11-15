@@ -54,6 +54,7 @@ import {
   groupProblem,
   groupedWedding,
   inGroupFilter,
+  longNamedGroups,
   withGroup,
 } from './guestGroups.ts';
 
@@ -1898,6 +1899,11 @@ export const GUESTS_STATES = [
   { key: 'groupsGuest', name: 'Dr Emeka Nwosu: his group beside his name' },
   { key: 'groupsGuestNone', name: 'Bisi Adewale, in no group: nothing in its place' },
   { key: 'groupsViewerList', name: 'Can view: the groups seen on the rows and chips' },
+  {
+    key: 'groupsLong',
+    name: 'Groups named in 60 characters: each wraps in its chip and its row’s tag',
+  },
+  { key: 'groupsLongChip', name: 'The 60-character group’s chip pressed, its tick kept' },
   { key: 'groupField', name: 'Edit guest: the Group field, Bride’s side chosen' },
   { key: 'groupFieldOpen', name: 'Edit guest: the Group list open on “s”' },
   { key: 'groupFieldCreate', name: 'Edit guest: “Cousins” typed, Create “Cousins” offered' },
@@ -2528,6 +2534,10 @@ export function guestsStart(state: GuestsState | null, params: URLSearchParams):
       return { ...grouped, pane: guestPane('bisi') };
     case 'groupsViewerList':
       return { ...grouped, role: 'viewer' };
+    case 'groupsLong':
+      return { ...grouped, groups: longNamedGroups() };
+    case 'groupsLongChip':
+      return { ...grouped, groups: longNamedGroups(), groupFilter: 'g-school' };
     case 'groupField':
       return groupEdit({ at: 'group' });
     case 'groupFieldOpen':
