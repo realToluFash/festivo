@@ -19,6 +19,7 @@ import {
   inside,
   keepSeats,
   leastUsed,
+  many,
   metres,
   nearestFree,
   nextName,
@@ -119,6 +120,15 @@ describe('the sample (seating-a-spec §8)', () => {
 });
 
 describe('the room to scale (sc-4007)', () => {
+  it('says it for one item outside the room and them for more, as the product does (sc-4000)', () => {
+    const sizes = { width: '20 m', length: '18 m' };
+
+    expect(many('shrinkRefused', 1, sizes)).toBe('1 item sits outside 20 m × 18 m. Move it first.');
+    expect(many('shrinkRefused', 3, sizes)).toBe(
+      '3 items sit outside 20 m × 18 m. Move them first.',
+    );
+  });
+
   it('fits the 24 × 18 m room at 57% in the desk’s 718 × 719 room, with 84 above and below', () => {
     const fit = fitOf(718, 719, samplePlan().room!);
 

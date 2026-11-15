@@ -33,6 +33,7 @@ import {
   readRoom,
   reshaped,
   sameName,
+  many,
   say,
   sectionLine,
   sectionName,
@@ -618,8 +619,7 @@ function RoomSettings() {
             ? { width: read.cm, outside: outside.map((item) => item.id) }
             : { width: now.plan.room?.w ?? read.cm, outside: outside.map((item) => item.id) },
       }));
-      return say(SW.shrinkRefused, {
-        n: outside.length,
+      return many('shrinkRefused', outside.length, {
         width: lengthOf(next.w, ui.units),
         length: lengthOf(next.l, ui.units),
       });

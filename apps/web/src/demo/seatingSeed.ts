@@ -318,7 +318,7 @@ export function seedOf(state: SeatingState | null): Ui {
         seed: {
           key: 'roomWidth',
           value: '20',
-          error: say(SW.shrinkRefused, { n: 3, width: '20 m', length: '18 m' }),
+          error: many('shrinkRefused', 3, { width: '20 m', length: '18 m' }),
         },
         focus: 'roomWidth',
       };
