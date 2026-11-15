@@ -39,6 +39,23 @@ describe('nothing loads react-native whole at run time', () => {
   });
 });
 
+describe('a picked photo is read through pickedBytes (sc-53493)', () => {
+  it('in no .blob() in the app', () => {
+    const offenders = sources(['src', 'app']).flatMap(({ path, text }) =>
+      text
+        .split('\n')
+        .map((line, index) => ({ line: index + 1, code: line.trim() }))
+        .filter(({ code }) => !/^(\/\/|\/\*|\*)/u.test(code) && /\.blob\(\)/u.test(code))
+        .map(({ line }) => `${path}:${line}`),
+    );
+
+    expect(
+      offenders,
+      'A fetch(uri).blob() reaches an Android PUT as the text `File not found`: read the file with pickedBytes from src/kit/pickedBytes.ts.',
+    ).toEqual([]);
+  });
+});
+
 describe('a product part reads the shell only where the shell is mounted', () => {
   it('in no component outside the Settings parts', () => {
     const offenders = sources(['src/components'])
@@ -1870,6 +1887,15 @@ describe('a notice answering a send comes into view (sc-24496)', () => {
 
     expect(text).toMatch(/<PageToast\s+words=\{t\('eventDelete\.deleted'/u);
     expect(text).not.toContain('AnswerInView');
+  });
+
+  it('lifts the saved toast on an event clear of the phone tab bar, as the demo does (sc-3780)', () => {
+    const text = readFileSync(join('src', 'components', 'EventScreen.tsx'), 'utf8');
+
+    expect(text).toMatch(
+      /<PageToast[\s\S]{0,200}?bottom=\{\s*phone\s*\?\s*phoneTabBarClearance\(insets\.bottom\)/u,
+    );
+    expect(text).toMatch(/:\s*Math\.max\(insets\.bottom, tokens\.spaceLg\)/u);
   });
 
   it('notices a notice left where it shows', () => {

@@ -23,13 +23,17 @@ import {
   partyTitle,
   peopleIn,
   readCount,
+  readEnds,
   readItemSize,
+  readTableSeats,
+  readTableSize,
   shownParties,
   unsureLeft,
   readPlace,
   readRoom,
   reshaped,
   sameName,
+  many,
   say,
   sectionLine,
   sectionName,
@@ -615,8 +619,7 @@ function RoomSettings() {
             ? { width: read.cm, outside: outside.map((item) => item.id) }
             : { width: now.plan.room?.w ?? read.cm, outside: outside.map((item) => item.id) },
       }));
-      return say(SW.shrinkRefused, {
-        n: outside.length,
+      return many('shrinkRefused', outside.length, {
         width: lengthOf(next.w, ui.units),
         length: lengthOf(next.l, ui.units),
       });
@@ -847,8 +850,12 @@ function PlaceFields({ item }: { item: Item }) {
   );
 }
 
+const NAME_MAX = 30;
+const LABEL_MAX = 10;
+
 function nameRefusal(plan: Plan, item: Item, name: string): string | null {
-  if (name.trim() === '') return null;
+  if (name.trim() === '') return item.kind === 'single' ? SW.seatBlank : SW.tableBlank;
+  if (name.trim().length > NAME_MAX) return SW.nameLong;
   if (!plan.items.some((other) => other.id !== item.id && sameName(other.name, name))) return null;
   return say(item.kind === 'single' ? SW.seatTaken : SW.tableTaken, { name: name.trim() });
 }
@@ -861,18 +868,18 @@ function TableFields({ item }: { item: Item }) {
   const unit = units === 'us' ? undefined : 'cm';
 
   function seats(text: string): string | null {
-    const n = readCount(text);
+    const read = readTableSeats(text, item.kind === 'cocktail');
 
-    if (n == null || n < 1) return null;
+    if ('refused' in read) return read.refused;
     const keep = keepSeats(item);
 
-    if (n < keep) return say(SW.belowSeated, { n: filled(item), m: keep });
-    edit(item.id, withSeats(item, n));
+    if (read.n < keep) return say(SW.belowSeated, { n: filled(item), m: keep });
+    edit(item.id, withSeats(item, read.n));
     return null;
   }
 
   function size(key: 'd' | 'w' | 'l', text: string): string | null {
-    const read = readItemSize(text, units);
+    const read = readTableSize(text, units);
 
     if ('refused' in read) return read.refused;
     edit(item.id, { [key]: Math.round(read.cm) });
@@ -962,9 +969,10 @@ function TableFields({ item }: { item: Item }) {
               label={SW.ends}
               value={String(item.ends ?? 0)}
               onCommit={(text) => {
-                const n = readCount(text);
+                const read = readEnds(text, item.chairs.length);
 
-                if (n != null && n <= item.chairs.length) edit(item.id, { ends: n });
+                if ('refused' in read) return read.refused;
+                edit(item.id, { ends: read.n });
                 return null;
               }}
             />
@@ -1054,7 +1062,8 @@ function RowFields({ item }: { item: Item }) {
           onCommit={(text) => {
             const label = text.trim().toUpperCase();
 
-            if (label === '') return null;
+            if (label === '') return SW.rowBlank;
+            if (label.length > LABEL_MAX) return SW.labelLong;
             if (
               plan.items.some(
                 (other) =>

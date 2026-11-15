@@ -190,7 +190,7 @@ describe('a window that opens through a Modal of its own (sc-42690)', () => {
     const picker = read('ListPicker.tsx');
 
     it('hides on Android through the sheet’s own wait, from when its window is up until it has slid in', () => {
-      expect(picker).toMatch(/onShow=\{\(\) => \{\s*letGoHeld\(\);\s*risen\(\);\s*\}\}/);
+      expect(picker).toContain('onShow={risen}');
       expect(picker).toContain('const onScreen = windowUp && pickerShown;');
       expect(picker).toMatch(
         /useUnnamedWindow\(\s*Platform\.OS === 'android' && pickerShown,\s*onScreen,\s*null,\s*reduced \? 0 : WINDOW_ARRIVES_MS,?\s*\)/,
@@ -235,16 +235,12 @@ describe('a window that opens through a Modal of its own (sc-42690)', () => {
         /onPress=\{\(\) => \{\s*controlTaken\(\);\s*if \(Platform\.OS === 'android' && readerOn\)\s*heldBehind\.current = TextInput\.State\.currentlyFocusedInput\(\);\s*setClosed\(undefined\);\s*setOpen\(true\);/,
       );
       expect(picker).toMatch(
-        /const letGoHeld = \(\) => \{\s*if \(heldBehind\.current != null\) blurNatively\(heldBehind\.current\);\s*heldBehind\.current = null;\s*\};/,
-      );
-      expect(picker).toMatch(
-        /const close = \(\) => \{\s*if \(Platform\.OS === 'android'\) setClosed\(\{\}\);\s*letGoHeld\(\);\s*setOpen\(false\);\s*\};/,
+        /const close = \(\) => \{\s*if \(Platform\.OS === 'android'\) setClosed\(\{\}\);[^}]*if \(heldBehind\.current != null\) blurNatively\(heldBehind\.current\);\s*heldBehind\.current = null;\s*setOpen\(false\);\s*\};/,
       );
     });
 
-    it("blurs the held field as the menu's window shows, so a Back straight after the tap closes with nothing held (qa #51835)", () => {
-      const shown = picker.slice(picker.indexOf('onShow={'), picker.indexOf('risen();'));
-      expect(shown).toContain('letGoHeld();');
+    it('blurs nothing as the menu’s window shows, where the keyboard hide had TalkBack say "keyboard hidden" at the open (qa #52739)', () => {
+      expect(picker.match(/blurNatively\(/g)).toHaveLength(1);
     });
 
     it("blurs the field it found natively, which TextInput skips once the menu's search has taken focus (sc-44356, lead on #2327)", () => {
@@ -289,7 +285,7 @@ describe('a window that opens through a Modal of its own (sc-42690)', () => {
     expect(read('TodayCover.tsx')).toContain('...quietTap(org.onPress, org.expanded),');
   });
 
-  it('has Create an organisation take the keys while hidden on the tablet, then TalkBack’s focus on its field (qa2 #44464)', () => {
+  it('has Create an organisation’s search field take the keys while hidden on the tablet, then TalkBack’s focus on it (qa2 #44464)', () => {
     const walk = read('CreateWalkWindow.tsx');
 
     expect(walk).toContain("const talkBack = Platform.OS === 'android' && readerOn;");
@@ -299,28 +295,35 @@ describe('a window that opens through a Modal of its own (sc-42690)', () => {
     expect(walk).toContain('onShow={() => setOnScreen(true)}');
     expect(walk).toMatch(/const behind = walk\.asking \|\| unnamed \?/);
     expect(walk).toMatch(
-      /!talkBack \|\| phone \|\| !onScreen \|\| !unnamed \|\| opening\.walk\.asking\) return;\s+const keys = setTimeout/,
+      /!talkBack \|\| phone \|\| !onScreen \|\| !unnamed \|\| opening\.walk\.asking\) return;\s+if \(opening\.focus !== 'search'\) return;\s+const keys = setTimeout\(\(\) => search\.current\?\.focus\(\), arriving\);/,
     );
+  });
+
+  it('with TalkBack on, moves only TalkBack’s focus onto Create an organisation’s name field, named throughout, and leaves its keys to a double tap (qa3 #53015, Decided, 15 Nov)', () => {
+    const walk = read('CreateWalkWindow.tsx');
+    const steps = read('CreateWalkSteps.tsx');
+
     expect(walk).toMatch(
-      /!talkBack \|\| !onScreen \|\| unnamed \|\| opening\.walk\.asking\) return;\s+const input =\s+opening\.focus === 'search' \? search\.current : opening\.focus === 'name' \? field\.current : null;/,
+      /!talkBack \|\| !onScreen \|\| unnamed \|\| opening\.walk\.asking\) return;\s+\/\/ .*\s+if \(opening\.focus === 'name'\) \{\s+moveScreenReaderFocus\(field\.current\);\s+return;\s+\}\s+const input = opening\.focus === 'search' \? search\.current : null;/,
     );
+    expect(walk).not.toContain('nameless');
+    expect(walk.match(/field\.current\?\.focus\(\)/g)).toHaveLength(1);
+    expect(steps).toContain("accessibilityLabel={t('createOrganisation.name')}");
+    expect(steps).toContain('accessibilityHint={refusal ?? help}');
   });
 
-  it('raises the keys on Create an organisation’s field once shown, moving TalkBack’s focus only onto a field still focused (qa3 #45182)', () => {
+  it('raises the keys on Create an organisation’s search field once shown, moving TalkBack’s focus only onto a field still focused (qa3 #45182)', () => {
     expect(read('CreateWalkWindow.tsx')).toMatch(
-      /\/\/ .*\s+if \(input\.isFocused\(\)\) moveScreenReaderFocus\(input\);\s+if \(phone\) holding\.current = input;\s+raiseKeysOn\(input\);\s+\/\/ .*\s+if \(phone && opening\.focus === 'name'\) queueMicrotask\(\(\) => setNamed\(true\)\);\s+\}, \[talkBack, onScreen, unnamed, opening, phone\]\);/,
+      /\/\/ .*\s+if \(input\.isFocused\(\)\) moveScreenReaderFocus\(input\);\s+if \(phone\) holding\.current = input;\s+raiseKeysOn\(input\);\s+\}, \[talkBack, onScreen, unnamed, opening, phone\]\);/,
     );
   });
 
-  it('on the phone, has Create an organisation’s name field take input focus unnamed and be named right behind it, hides its search field until it has taken input focus, names it while still hidden and shows it a moment later, unnames it again before raising its keys once more only while still hidden, and leaves TalkBack to move its own focus onto either (qa4 #48525, #48921, #52119, qa2 #49329, #49366, #49942, #50682)', () => {
+  it('on the phone, hides Create an organisation’s search field until it has taken input focus, names it while still hidden and shows it a moment later, unnames it again before raising its keys once more only while still hidden, and leaves TalkBack to move its own focus onto either (qa4 #48525, #48921, #52119, qa2 #49329, #49366, #49942, #50682)', () => {
     const walk = read('CreateWalkWindow.tsx');
     const steps = read('CreateWalkSteps.tsx');
 
     expect(walk).toMatch(
       /const quiet =\s+talkBack && phone && !voiced && opening\.focus === 'search' && !opening\.walk\.asking;/,
-    );
-    expect(walk).toMatch(
-      /const nameless =\s+talkBack && phone && !named && opening\.focus === 'name' && !opening\.walk\.asking;/,
     );
     expect(walk).toContain("quiet={live && quiet && opening.focus === 'search'}");
     expect(walk).not.toContain('voice()');
@@ -336,15 +339,12 @@ describe('a window that opens through a Modal of its own (sc-42690)', () => {
     expect(walk).toMatch(
       /if \(!quiet \|\| !named\) return;\s+const settled = setTimeout\(\(\) => setVoiced\(true\), NAMED_SETTLES_MS\);/,
     );
-    expect(walk).toContain('nameless={live && nameless}');
     expect(walk).toMatch(
       /if \(!quiet \|\| !named\) \{\s+raiseKeysOn\(input\);\s+return;\s+\}\s+regaining\.current = input;\s+setNamed\(false\);\s+setVoiced\(false\);/,
     );
     expect(walk).toMatch(
       /if \(!quiet \|\| named \|\| input == null\) return;\s+regaining\.current = null;\s+raiseKeysOn\(input\);\s+\}, \[quiet, named\]\);/,
     );
-    expect(steps).toContain("accessibilityLabel={nameless ? '' : t('createOrganisation.name')}");
-    expect(steps).toContain('accessibilityHint={nameless ? undefined : (refusal ?? help)}');
     expect(steps.match(/importantForAccessibility=\{quiet \? 'no' : 'auto'\}/g)).toHaveLength(1);
   });
 
@@ -389,5 +389,55 @@ describe('a window that opens through a Modal of its own (sc-42690)', () => {
     expect(walk).toContain(
       'const arriving = reduced ? 0 : phone ? WINDOW_ARRIVES_MS : tokens.motionBase;',
     );
+  });
+});
+
+describe('an anchored menu starts TalkBack on its first row (sc-52641)', () => {
+  const read = (file: string) => readFileSync(join(import.meta.dirname, file), 'utf8');
+  const overlays = read('SummaryOverlays.tsx');
+
+  it('hides the menu on Android from when its window is up until it has arrived', () => {
+    expect(overlays).toMatch(
+      /useUnnamedWindow\(\s*Platform\.OS === 'android' && first != null,\s*onScreen,\s*null,\s*reduced \? 0 : WINDOW_ARRIVES_MS,?\s*\)/,
+    );
+    expect(overlays).toContain('onShow={() => setOnScreen(true)}');
+    expect(overlays).toMatch(/<MenuLayer\s+\{\.\.\.menu\}\s+hidden=\{arriving\}/);
+    expect(overlays).toContain("const reach = hidden ? 'no-hide-descendants' : 'auto';");
+    expect(overlays.match(/importantForAccessibility=\{reach\}/g)).toHaveLength(1);
+  });
+
+  it('keeps Close the menu out of reach until focus is on the first row, so TalkBack never reads it first (#53461)', () => {
+    expect(overlays).toContain(
+      "importantForAccessibility={outsideHidden ? 'no-hide-descendants' : reach}",
+    );
+    expect(overlays).toContain(
+      "outsideHidden={Platform.OS === 'android' && first != null && !focused}",
+    );
+    expect(overlays).toContain('const reached = setTimeout(() => setFocused(true), SETTLED_MS);');
+    expect(overlays).toContain('if (!landed && focused) setFocused(false);');
+  });
+
+  it('then moves TalkBack’s focus to its first row, on Android only', () => {
+    expect(overlays).toContain('const landed = onScreen && first != null && !arriving;');
+    expect(overlays).toMatch(
+      /if \(!landed \|\| Platform\.OS !== 'android'\) return;\s*const wait = setTimeout\(\(\) => moveScreenReaderFocus\(first\.current\)\);/,
+    );
+  });
+
+  it.each([
+    ['SummaryOverlays.tsx', 'FilterMenu'],
+    ['CalendarControls.tsx', 'ShowMenu'],
+    ['EventGuests.tsx', 'FilterChoice'],
+    ['EventsSearch.tsx', 'EventsFilterMenu'],
+  ])('in %s, %s hands its first row to the menu', (file, menu) => {
+    const text = read(file);
+    const body = text.slice(text.indexOf(`function ${menu}`));
+    const opened = body.slice(0, body.indexOf('</AnchoredMenu>'));
+
+    expect(opened).toContain('const first = useRef<ViewInstance>(null);');
+    const [tag = ''] = opened.match(/<AnchoredMenu\b[\s\S]*?(\n\s*>|\/>)/) ?? [];
+
+    expect(tag).toContain('first={first}');
+    expect(opened).toMatch(/ref=\{(index === 0 \? first : undefined|first)\}/);
   });
 });

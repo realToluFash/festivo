@@ -33,7 +33,8 @@
   color: var(--colorAccentText);
 }
 
-button.sn-tab:hover {
+button.sn-tab:hover,
+a.sn-tab:hover {
   color: var(--colorInk);
 }
 

@@ -21,6 +21,7 @@ import { SignInRulesNotices } from '../../components/SignInRulesNotices.tsx';
 import { AccessPaused } from '../../components/AccessPaused.tsx';
 import { Switched } from '../../components/Switched.tsx';
 import { TwoFactorOverdue } from '../../components/TwoFactorOverdue.tsx';
+import { SearchRow, ShellSearch } from '../../components/ShellSearch.tsx';
 import { SkipLink } from '../../components/SkipLink.tsx';
 import {
   joinOrganisation,
@@ -90,7 +91,13 @@ export function AppLayout() {
   const landing = landingFor(state.session.awaiting);
   if (landing !== '/app') return <Navigate to={landing} replace />;
 
-  return <Shell />;
+  const { organisation, pausedIn } = state.session;
+
+  return (
+    <ShellSearch organisationId={pausedIn == null ? (organisation?.id ?? null) : null}>
+      <Shell />
+    </ShellSearch>
+  );
 }
 
 function Shell() {
@@ -311,6 +318,7 @@ function Shell() {
             </button>
 
             <div className="shell-links">
+              <SearchRow />
               <ShellLinks />
             </div>
             <ShellEvents organisationId={organisation?.id ?? null} />

@@ -25,10 +25,12 @@ const ADAEZE = guest('g_1', 'Chief Mrs Adaeze Okonkwo-Williams', {
   email: 'adaeze@example.com',
   mobile: '+2348031234567',
   reply: 'coming',
-  companions: [{ id: 'c_1', fullName: 'Obi Okonkwo', state: 'coming', namedByGuest: false }],
+  companions: [
+    { id: 'c_1', fullName: 'Obi Okonkwo', state: 'coming', coming: true, namedByGuest: false },
+  ],
 });
 const JOSE = guest('g_2', 'José Ávila', {
-  companions: [{ id: 'c_2', fullName: null, state: 'held', namedByGuest: false }],
+  companions: [{ id: 'c_2', fullName: null, state: 'held', coming: true, namedByGuest: false }],
 });
 const BEN = guest('g_3', 'Ben Cole', { reply: 'notComing' });
 const CLEO = guest('g_4', 'Cleo Dunn');
@@ -138,7 +140,9 @@ describe('the list as the choice and the search leave it', () => {
   it('lists a guest nobody invited, and their companions, apart from No reply (sc-3788)', () => {
     const EMEKA = guest('g_6', 'Emeka Obi', {
       invitation: null,
-      companions: [{ id: 'c_3', fullName: null, state: 'notYetInvited', namedByGuest: false }],
+      companions: [
+        { id: 'c_3', fullName: null, state: 'notYetInvited', coming: true, namedByGuest: false },
+      ],
     });
     const list = [...LIST, EMEKA];
     const counts = countsOf({ ...HEADCOUNT, onList: 9, notYetInvited: 2 });
@@ -169,7 +173,9 @@ describe('the list as the choice and the search leave it', () => {
   it('groups Invited as All, without the guests nobody has invited, and counts it as the five replies (sc-3786)', () => {
     const EMEKA = guest('g_6', 'Emeka Obi', {
       invitation: null,
-      companions: [{ id: 'c_3', fullName: null, state: 'notYetInvited', namedByGuest: false }],
+      companions: [
+        { id: 'c_3', fullName: null, state: 'notYetInvited', coming: true, namedByGuest: false },
+      ],
     });
     const list = [...LIST, EMEKA];
     const counts = countsOf({ ...HEADCOUNT, onList: 9, notYetInvited: 2 });

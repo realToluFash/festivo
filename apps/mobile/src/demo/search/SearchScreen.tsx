@@ -55,6 +55,7 @@ export function SearchScreen({ start }: { start: SearchStart }) {
   const [term, setTerm] = useState(start.term);
   const [phase, setPhase] = useState<Phase>(start.phase);
   const [told, setTold] = useState<string | null>(null);
+  const [retrying, setRetrying] = useState(false);
   const groups = useMemo(
     () => (phase === 'found' ? groupsFor(term, start.reach) : []),
     [phase, term, start.reach],
@@ -77,9 +78,29 @@ export function SearchScreen({ start }: { start: SearchStart }) {
     return () => clearTimeout(wait);
   }, [typed, term]);
 
-  useReadOut(phase === 'loading' ? W.searching : phase === 'found' ? saidOf(term, groups) : null, {
-    afterTyping: typed,
-  });
+  useEffect(() => {
+    if (!retrying) return undefined;
+
+    const wait = setTimeout(() => {
+      setPhase(phaseOf(term));
+      setRetrying(false);
+    }, TYPING_PAUSE_MS);
+
+    return () => clearTimeout(wait);
+  }, [retrying, term]);
+
+  useReadOut(
+    phase === 'loading'
+      ? W.searching
+      : phase === 'found'
+        ? saidOf(term, groups)
+        : phase === 'failed'
+          ? W.failed
+          : null,
+    {
+      afterTyping: typed,
+    },
+  );
 
   function go(row: Found): void {
     const known = (id: string) => EVENTS.some((one) => one.id === id);
@@ -111,13 +132,19 @@ export function SearchScreen({ start }: { start: SearchStart }) {
     field.current?.focus();
   }
 
+  function retry(): void {
+    setPhase('loading');
+    setRetrying(true);
+    field.current?.focus();
+  }
+
   const searchField = (
     <SearchField
       ref={field}
       typed={typed}
       off={false}
       width={null}
-      label={W.placeholder(start.reach)}
+      label={W.search}
       onTyped={setTyped}
       onSearch={() => {
         setTerm(typed);
@@ -136,6 +163,7 @@ export function SearchScreen({ start }: { start: SearchStart }) {
       onShowAll={showAll}
       onRow={go}
       onClear={clear}
+      onRetry={retry}
     />
   );
   const toast = told != null && (
@@ -245,6 +273,7 @@ function Results({
   onShowAll,
   onRow,
   onClear,
+  onRetry,
 }: {
   phase: Phase;
   term: string;
@@ -253,6 +282,7 @@ function Results({
   onShowAll: () => void;
   onRow: (row: Found) => void;
   onClear: () => void;
+  onRetry: () => void;
 }) {
   if (phase === 'idle') return hint == null ? null : <Said words={hint} />;
   if (phase === 'short') return <Said words={W.short} />;
@@ -263,6 +293,15 @@ function Results({
         <Text size={16} weight="semibold">
           {W.offline}
         </Text>
+      </View>
+    );
+  if (phase === 'failed')
+    return (
+      <View style={styles.said}>
+        <Text size={16} weight="semibold">
+          {W.failed}
+        </Text>
+        <TextAction label={W.tryAgain} onPress={onRetry} testID="demo.search.retry" />
       </View>
     );
   if (groups.length === 0)

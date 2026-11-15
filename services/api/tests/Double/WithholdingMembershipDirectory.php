@@ -10,6 +10,7 @@ use App\Enum\Permission;
 use App\Http\Access\EventScope;
 use App\Http\Access\Grants;
 use App\Http\Access\Interfaces\MembershipDirectoryInterface;
+use Psl\Dict;
 use Psl\Iter;
 use Psl\Vec;
 use Symfony\Component\Uid\Uuid;
@@ -42,7 +43,21 @@ final class WithholdingMembershipDirectory implements MembershipDirectoryInterfa
 
     public function eventScopeIn(User $user, Uuid $organisationId): ?EventScope
     {
-        return $this->real->eventScopeIn($user, $organisationId);
+        $scope = $this->real->eventScopeIn($user, $organisationId);
+
+        if (null === $scope || [] === $this->withheld) {
+            return $scope;
+        }
+
+        $byEvent = [];
+
+        foreach (Permission::cases() as $permission) {
+            foreach ($scope->eventsHolding($permission) ?? [] as $eventId) {
+                $byEvent[$eventId->toRfc4122()] ??= $this->less($scope->on($eventId));
+            }
+        }
+
+        return new EventScope($scope->onlyFor, $this->less($scope->organisation) ?? Grants::only([]), Dict\filter_nulls($byEvent));
     }
 
     private function less(?Grants $grants): ?Grants

@@ -192,3 +192,25 @@ export function guestReplyBy(
     asked,
   };
 }
+
+/** The cover card's line once a guest has replied: a recorded reply names who recorded it, ahead of the Reply by it was asked by (sc-3787); null before any reply. */
+export function guestRepliedLine(
+  guest: Pick<Guest, 'repliedAt' | 'replyRecorded'>,
+  word: string,
+  asked: string | null,
+  timeZone: string,
+  locale: string,
+  t: TFunction,
+): string | null {
+  if (guest.repliedAt == null) return null;
+  const date = replyDate(guest.repliedAt, timeZone, locale);
+  const recorded = guest.replyRecorded ?? null;
+  if (recorded != null)
+    return t('guestList.recordedLine', {
+      reply: word,
+      name: recorded.by,
+      how: t(`guestList.toldInLine.${recorded.how}`),
+      date,
+    });
+  return asked ?? t('guestList.replied', { reply: word, date });
+}

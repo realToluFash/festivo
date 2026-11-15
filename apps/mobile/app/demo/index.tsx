@@ -27,6 +27,7 @@ import { isSmsState } from '../../src/demo/messages/Sms.ts';
 import { isStopState } from '../../src/demo/messages/StopWriting.ts';
 import { isReasonState } from '../../src/demo/messages/TrySms.ts';
 import { SEATING_BOARDS } from '../../src/demo/seating/SeatingBoards.ts';
+import { RUN_BOARDS } from '../../src/demo/runView/runViewModel.ts';
 import { MOVED_BOARDS, TEAM_BOARDS } from '../../src/demo/team/TeamBoards.ts';
 import { tokens } from '../../src/theme/tokens.ts';
 
@@ -863,6 +864,21 @@ const PAGES: readonly { page: string; boards: readonly Board[] }[] = [
         href: '/demo/settings/members?state=crowd',
       },
       {
+        title: 'Members · 12,345 people',
+        what: 'People a page at a time as the end nears',
+        href: '/demo/settings/members?state=largest',
+      },
+      {
+        title: 'Members · more loading',
+        what: '12,345 people, the next page on its way',
+        href: '/demo/settings/members?state=moreLoading',
+      },
+      {
+        title: 'Members · more failed',
+        what: '12,345 people, the rows kept, Try again',
+        href: '/demo/settings/members?state=moreFailed',
+      },
+      {
         title: 'Members · loading',
         what: 'Loading members',
         href: '/demo/settings/members?state=loading',
@@ -1674,6 +1690,11 @@ const PAGES: readonly { page: string; boards: readonly Board[] }[] = [
         href: '/demo/events/evt-wed-4?state=coverPhoto',
       },
       {
+        title: 'Cover · a role changed (403)',
+        what: 'Use this photo: nothing was changed, at the top',
+        href: '/demo/events/evt-wed-4?state=coverForbidden',
+      },
+      {
         title: 'New event',
         what: 'Empty, Time zone and Currency from the organisation',
         href: '/demo/events?state=new',
@@ -2104,6 +2125,10 @@ const PAGES: readonly { page: string; boards: readonly Board[] }[] = [
   {
     page: 'Seating · A The room',
     boards: SEATING_BOARDS.map(({ title, what, href }) => ({ title, what, href: href as Href })),
+  },
+  {
+    page: 'Run of show · the run view (sc-1404) · phone, tablet portrait and landscape',
+    boards: RUN_BOARDS.map(({ title, what, href }) => ({ title, what, href: href as Href })),
   },
   {
     page: 'Service · the pass’s print controls (sc-4018) · tablet landscape',

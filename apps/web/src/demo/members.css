@@ -16,3 +16,16 @@
   color: var(--colorBrokenText);
   font-weight: 600;
 }
+
+/* sc-49170: under People's rows while more remain, so Invitations stays a Tab away at any size. */
+
+.members-more {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: var(--spaceSm);
+}
+
+.members-more > .desk-rows {
+  align-self: stretch;
+}

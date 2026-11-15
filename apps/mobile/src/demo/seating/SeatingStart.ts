@@ -328,6 +328,36 @@ function tablet(state: SeatingState, b: Seating): Seating {
         { type: 'draft', key: 'Seats', text: '6' },
         { type: 'apply', key: 'Seats' },
       );
+    case 'fieldBlank':
+      return run(
+        chosen(b, 't10'),
+        { type: 'draft', key: 'Name', text: '' },
+        { type: 'apply', key: 'Name' },
+      );
+    case 'seatsRange':
+      return run(
+        chosen(b, 't10'),
+        { type: 'draft', key: 'Seats', text: '40' },
+        { type: 'apply', key: 'Seats' },
+      );
+    case 'sizeRange':
+      return run(
+        chosen(b, 't10'),
+        { type: 'draft', key: 'Diameter', text: '1200' },
+        { type: 'apply', key: 'Diameter' },
+      );
+    case 'notNumber':
+      return run(
+        chosen(b, 't9'),
+        { type: 'draft', key: 'Width', text: 'two metres' },
+        { type: 'apply', key: 'Width' },
+      );
+    case 'endsRange':
+      return run(
+        chosen(b, 't9'),
+        { type: 'draft', key: 'Ends', text: '10' },
+        { type: 'apply', key: 'Ends' },
+      );
     case 'chair':
       return chosen(b, 't4', { chair: 8, zoom: at(0.75, 1590, 620) });
     case 'unusable':
@@ -363,6 +393,18 @@ function tablet(state: SeatingState, b: Seating): Seating {
         people: BOTH,
         rings: { t7: PRIYA },
         fields: { ...NO_FIELDS, changedBy: say.tableChanged(PRIYA.name) },
+      });
+    case 'rowChanged':
+      return chosen(b, 'rowA', {
+        people: BOTH,
+        rings: { rowA: PRIYA },
+        fields: { ...NO_FIELDS, changedBy: say.rowChanged(PRIYA.name) },
+      });
+    case 'seatChanged':
+      return chosen(b, 'door', {
+        people: BOTH,
+        rings: { door: PRIYA },
+        fields: { ...NO_FIELDS, changedBy: say.seatChanged(PRIYA.name) },
       });
     case 'rowAdded':
       return chosen(rowB, 'rowB', { fields: { ...NO_FIELDS, added: say.rowAdded('B', 10) } });

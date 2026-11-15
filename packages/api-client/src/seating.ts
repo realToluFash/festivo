@@ -1,4 +1,6 @@
-/** An event's seating plan as the API answers and the hub publishes it (sc-3998). */
+import type { components } from './schema.d.ts';
+
+/** An event's seating plan as the API answers and the hub publishes it (sc-3998, sc-4000). */
 
 export const SECTION_COLOURS = [
   'blue',
@@ -14,6 +16,63 @@ export const SECTION_COLOURS = [
 export type SectionColour = (typeof SECTION_COLOURS)[number];
 
 export type MeasurementSystem = 'metric' | 'us';
+
+/** Generated from the API's App\Enum\TableShape: a fifth spelling fails here, not on a drawing. */
+export type TableShape = components['schemas']['TableShape'];
+
+export const TABLE_SHAPES = [
+  'round',
+  'rectangular',
+  'head',
+  'cocktail',
+] as const satisfies readonly TableShape[];
+
+type EveryShapeListed =
+  Exclude<TableShape, (typeof TABLE_SHAPES)[number]> extends never ? true : never;
+const everyShapeListed: EveryShapeListed = true;
+void everyShapeListed;
+
+/** The API's TableShape::defaults(): a round or cocktail table's width and length are its diameter. */
+export const TABLE_DEFAULTS: Record<
+  TableShape,
+  { widthCm: number; lengthCm: number; seats: number }
+> = {
+  round: { widthCm: 180, lengthCm: 180, seats: 10 },
+  rectangular: { widthCm: 180, lengthCm: 76, seats: 6 },
+  head: { widthCm: 240, lengthCm: 76, seats: 4 },
+  cocktail: { widthCm: 60, lengthCm: 60, seats: 4 },
+};
+
+export interface SeatingTable {
+  id: string;
+  name: string;
+  sectionId: string | null;
+  shape: TableShape;
+  seats: number;
+  /** A round or cocktail table's diameter, as `lengthCm` is too. */
+  widthCm: number;
+  lengthCm: number;
+  endSeats: number;
+  rotation: number;
+  /** The table's centre from the room's top left corner. */
+  xCm: number;
+  yCm: number;
+  unusableSeats: number[];
+  version: number;
+  changedBy: string | null;
+}
+
+export interface SeatingTableChanges {
+  name?: string;
+  sectionId?: string | null;
+  shape?: TableShape;
+  seats?: number;
+  widthCm?: number;
+  lengthCm?: number;
+  endSeats?: number;
+  rotation?: number;
+  unusableSeats?: number[];
+}
 
 export interface SeatingSection {
   id: string;
@@ -32,6 +91,7 @@ export interface SeatingPlan {
   version: number;
   changedBy: string | null;
   sections: SeatingSection[];
+  tables: SeatingTable[];
   withoutSection: { tables: number; seats: number };
   counts: {
     sections: number;
@@ -57,11 +117,17 @@ const SECTION_NAME_MAXIMUM = 40;
 const SECTIONS_MAXIMUM = 30;
 const ROOM_NAME_MAXIMUM = 60;
 
-/** The API's SeatingPlan and SeatingSection limits, which the forms check before sending */
+/** The API's SeatingPlan, SeatingSection and SeatingTable limits, which the forms check before sending */
 export const SEATING_LIMITS = {
   roomNameMaximum: ROOM_NAME_MAXIMUM,
   sectionNameMaximum: SECTION_NAME_MAXIMUM,
   sectionsMaximum: SECTIONS_MAXIMUM,
+  tableNameMaximum: 30,
+  tableSeatsMinimum: 1,
+  tableSeatsMaximum: 30,
+  tableSizeMinimumCm: 40,
+  tableSizeMaximumCm: 1000,
+  rotationStep: 15,
 } as const;
 
 function isRecord(value: unknown): value is Record<string, unknown> {
@@ -89,11 +155,55 @@ function asSection(raw: unknown): SeatingSection | null {
   return { id, name, colour: colour as SectionColour, version, tables, seats };
 }
 
+function asTable(raw: unknown): SeatingTable | null {
+  if (!isRecord(raw)) return null;
+  const { id, name, sectionId, shape, seats, widthCm, lengthCm, endSeats, rotation, xCm, yCm } =
+    raw;
+  const { unusableSeats, version, changedBy } = raw;
+
+  if (
+    typeof id !== 'string' ||
+    typeof name !== 'string' ||
+    !(sectionId === null || typeof sectionId === 'string') ||
+    !(TABLE_SHAPES as readonly unknown[]).includes(shape) ||
+    !isCount(seats) ||
+    !isCount(widthCm) ||
+    !isCount(lengthCm) ||
+    !isCount(endSeats) ||
+    !isCount(rotation) ||
+    !Number.isInteger(xCm) ||
+    !Number.isInteger(yCm) ||
+    !Array.isArray(unusableSeats) ||
+    !unusableSeats.every(isCount) ||
+    !isCount(version) ||
+    !(changedBy === null || typeof changedBy === 'string')
+  )
+    return null;
+
+  return {
+    id,
+    name,
+    sectionId,
+    shape: shape as TableShape,
+    seats,
+    widthCm,
+    lengthCm,
+    endSeats,
+    rotation,
+    xCm: xCm as number,
+    yCm: yCm as number,
+    unusableSeats: unusableSeats as number[],
+    version,
+    changedBy,
+  };
+}
+
 function asPlan(raw: unknown): SeatingPlan | null {
   if (!isRecord(raw)) return null;
   const { id, roomName, widthCm, lengthCm, version, changedBy, sections, withoutSection, counts } =
     raw;
   const read = Array.isArray(sections) ? sections.map(asSection) : null;
+  const tables = Array.isArray(raw.tables) ? raw.tables.map(asTable) : null;
 
   if (
     typeof id !== 'string' ||
@@ -104,6 +214,8 @@ function asPlan(raw: unknown): SeatingPlan | null {
     !(changedBy === null || typeof changedBy === 'string') ||
     read == null ||
     !read.every((section) => section != null) ||
+    tables == null ||
+    !tables.every((table) => table != null) ||
     !isRecord(withoutSection) ||
     !isCount(withoutSection.tables) ||
     !isCount(withoutSection.seats) ||
@@ -124,6 +236,7 @@ function asPlan(raw: unknown): SeatingPlan | null {
     version,
     changedBy,
     sections: read as SeatingSection[],
+    tables: tables as SeatingTable[],
     withoutSection: { tables: withoutSection.tables, seats: withoutSection.seats },
     counts: {
       sections: counts.sections,
@@ -148,7 +261,7 @@ export function asSeating(raw: unknown): Seating | null {
   return read == null ? null : { measurementSystem, plan: read };
 }
 
-/** The ETag the API gave the room's or a section's version (`EntityTag::of`). */
+/** The ETag the API gave the room's, a section's or a table's version (`EntityTag::of`). */
 export function versionTag(version: number): string {
   return `"${version}"`;
 }

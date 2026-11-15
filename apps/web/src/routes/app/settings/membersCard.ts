@@ -8,7 +8,6 @@ import type {
 import {
   OWNER_CLAIM_KEEPS_WORKING,
   type OwnerClaimLine,
-  memberIsShown,
   membersNextAnswer,
   ownerClaimView,
   recoveryAnswerable,
@@ -21,7 +20,7 @@ export type RecoveryAnswer = 'approve' | 'turnDown';
 /** What the last answer on Members came to, said on its card until something else happens. */
 export type Notice =
   | { kind: 'sent'; email: string }
-  | { kind: 'approved'; member: string; role: string }
+  | { kind: 'approved'; member: string; name: string; role: string }
   | { kind: 'turnedDown'; name: string }
   | { kind: 'removed'; name: string }
   | { kind: 'recovered'; name: string; answer: RecoveryAnswer };
@@ -47,8 +46,13 @@ export interface MembersCard {
 
 const FACES = 5;
 
+/** The viewer's own account, among the rows the page holds. */
+export function callerIn(list: MembersList): string | null {
+  return [...list.faces, ...list.members, ...list.waiting].find((one) => one.self)?.user.id ?? null;
+}
+
 export function waitingMembers(list: MembersList, manages: boolean): OrganisationMember[] {
-  return manages ? list.members.filter((one) => one.status === 'pending_approval') : [];
+  return manages ? list.waiting : [];
 }
 
 /** The one thing to do next, in the order both clients take (`membersNextAnswer`). */
@@ -108,7 +112,7 @@ export function membersCard({
         lines: [t('membersScreen.invitationsNote')],
       };
     case 'approved': {
-      const name = list.members.find((one) => one.id === notice.member)?.user.name ?? '';
+      const name = notice.name;
 
       return {
         ...quiet,
@@ -152,15 +156,15 @@ export function membersCard({
 
   if (claim != null) return { ...quiet, ...claimCard(claim, organisation, t) };
 
-  const all = list.members.filter((one) => memberIsShown(one.status, 'all'));
+  const all = list.counts.all;
   const join = waitingMembers(list, manages).length;
   const back = manages ? recoveryAnswerable(recoveries).length : 0;
   const waiting = back + join;
-  const faces = all.slice(0, FACES);
+  const faces = list.faces.slice(0, FACES);
 
   return {
     says: [
-      t('membersScreen.card.people', { count: all.length }),
+      t('membersScreen.card.people', { count: all }),
       ...(waiting > 0 ? [t('membersScreen.card.waiting', { count: waiting })] : []),
     ].join(' · '),
     lines:
@@ -174,7 +178,7 @@ export function membersCard({
         : [],
     step: firstStep(list, recoveries, manages, t),
     faces,
-    more: all.length - faces.length,
+    more: all - faces.length,
   };
 }
 

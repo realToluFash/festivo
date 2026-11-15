@@ -584,7 +584,7 @@ final class CompanyDomainJoiningTest extends ApiTestCase
         self::assertResponseStatusCodeSame(200);
 
         return Vec\map(
-            Type\vec(Type\shape(['status' => Type\string()], true))->coerce($body['members']),
+            Type\vec(Type\shape(['status' => Type\string()], true))->coerce($body['waiting']),
             static fn (array $member): string => $member['status'],
         );
     }

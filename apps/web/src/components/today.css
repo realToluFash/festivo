@@ -1245,3 +1245,27 @@
 .today-create:hover {
   background: var(--colorPrimaryHover);
 }
+
+/* The sidebar's Search row and its key hint (sc-39534), as Today's board draws it. */
+.today-search {
+  display: flex;
+  flex: none;
+  align-items: center;
+  gap: var(--spaceMd);
+  box-sizing: border-box;
+  height: var(--sizeHit);
+  padding: 0 var(--spaceLg);
+  border: 1px solid var(--colorBorder);
+  border-radius: var(--radiusRow);
+  background: var(--colorCard);
+  color: var(--colorInkSecondary);
+  font: 500 14px/1 var(--fontFamily);
+  text-align: start;
+}
+
+.today-key {
+  padding: var(--spaceHair) var(--spaceXs);
+  border: 1px solid var(--colorBorder);
+  border-radius: var(--radiusCheckbox);
+  font: 500 12px/1.2 var(--fontFamily);
+}

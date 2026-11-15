@@ -7,7 +7,7 @@ import {
   type TaggedGuest,
   repliedThemselves,
 } from '@soirely/api-client';
-import { REPLY_KEY, companionShown, replyDate } from '@soirely/domain';
+import { REPLY_KEY, companionShown, replyDate, startTicks } from '@soirely/domain';
 import { useEffect, useId, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 
@@ -46,9 +46,7 @@ export function RecordForm({
   const [replace, setReplace] = useState<'asked' | 'confirmed' | null>(null);
   const [failed, setFailed] = useState(false);
   const [busy, setBusy] = useState(false);
-  const [ticked, setTicked] = useState<ReadonlySet<string>>(
-    () => new Set(guest.companions.map((companion) => companion.id)),
-  );
+  const [ticked, setTicked] = useState(() => startTicks(guest));
   const dirty = answer != null || how != null;
   const noAnswer = tried && answer == null;
   const noHow = tried && how == null;
@@ -145,7 +143,7 @@ export function RecordForm({
           <div className="gs-pair">
             <button
               type="button"
-              className="gs-pill"
+              className="gs-pill is-primary"
               aria-busy={busy || undefined}
               onClick={() => {
                 setReplace('confirmed');

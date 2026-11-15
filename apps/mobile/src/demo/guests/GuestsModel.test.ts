@@ -51,6 +51,7 @@ import {
   phoneCheck,
   planRoom,
   recorded,
+  startTicks,
   replyLine,
   reviewProblems,
   roleOf,
@@ -85,7 +86,7 @@ describe('the states, as guests-a-spec §15 names them', () => {
     expect(
       GUESTS_STATES.filter((state) => (DOOR_STATES as readonly string[]).includes(state)),
     ).toEqual([]);
-    expect(GUESTS_STATES).toHaveLength(153);
+    expect(GUESTS_STATES).toHaveLength(154);
     expect(DOOR_STATES).toHaveLength(13);
   });
 
@@ -222,6 +223,15 @@ describe('the counts (sc-99), as Messaging B and Events count the wedding', () =
       held: 5,
       havent: 23,
     });
+  });
+
+  it('lists a recorded reply as any other: the word and the day, never who recorded it', () => {
+    const after = GUESTS.map((g) =>
+      g.key === 'emeka' ? recorded(g, 'coming', 'By phone', [true], '2026-11-03') : g,
+    );
+    const row = rowsOf(after, 'all', '', EN, REPLY_BY).find((r) => r.name === 'Dr Emeka Nwosu');
+    expect(row?.line).toMatch(/^Coming · replied Nov 3 · /);
+    expect(row?.line).not.toContain('recorded');
   });
 
   it('counts a guest marked as invited as No reply, and 23 from contacts as Not yet invited', () => {
@@ -463,6 +473,25 @@ describe('a split family (sc-3773, ux, 8 Nov): each group shows the people it co
     GUESTS.map((g) =>
       g.key === 'emeka' ? recorded(g, 'coming', 'By phone', [false], '2026-11-03') : g,
     );
+
+  it('opens Record a reply again with Adanna unticked, as she was recorded', () => {
+    expect(startTicks(emeka)).toEqual([true]);
+    const again = walk().find((g) => g.key === 'emeka');
+    if (again == null) throw new Error('emeka');
+    expect(startTicks(again)).toEqual([false]);
+    expect(startTicks(recorded(again, 'notcoming', 'By phone', [true], '2026-11-03'))).toEqual([
+      false,
+    ]);
+  });
+
+  it('keeps Adanna unticked while Not sure yet holds her, her last choice (sc-3779)', () => {
+    const again = walk().find((g) => g.key === 'emeka');
+    if (again == null) throw new Error('emeka');
+    const held = recorded(again, 'maybe', 'By phone', [true], '2026-11-03');
+    expect(held.companions[0]?.kind).toBe('held');
+    expect(startTicks(held)).toEqual([false]);
+    expect(startTicks(recorded(held, 'coming', 'By phone', [true], '2026-11-03'))).toEqual([true]);
+  });
 
   it('Record a reply for Dr Emeka Nwosu, Coming, Adanna unticked: Coming gains Emeka only', () => {
     const after = walk();

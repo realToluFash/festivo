@@ -121,14 +121,11 @@ export function ListPicker({
   );
 
   // Android hands TalkBack's focus to whichever field holds input focus, not to the picker that opened the menu (sc-43908).
-  // A field still holding input focus is what TalkBack says first as the window goes (sc-44356). Blurred under the menu's window its keyboard hide does nothing; at the tap TalkBack said "keyboard hidden" (qa #50794), and at a Back straight after it the hide landed once the screen had its window back (qa #51835). Natively, since the menu's search, once focused, is the field JS counts as focused.
-  const letGoHeld = () => {
-    if (heldBehind.current != null) blurNatively(heldBehind.current);
-    heldBehind.current = null;
-  };
   const close = () => {
     if (Platform.OS === 'android') setClosed({});
-    letGoHeld();
+    // A field still holding input focus is what TalkBack says first as the window goes (sc-44356). Not at the tap, nor as the menu's window shows: its keyboard hide there had TalkBack say "keyboard hidden" as the menu opened (qa #50794, #52739). Natively, since the menu's search, once focused, is the field JS counts as focused.
+    if (heldBehind.current != null) blurNatively(heldBehind.current);
+    heldBehind.current = null;
     setOpen(false);
   };
   // Until the menu's window takes Back, Android gives it to the screen beneath, which stepped back or asked to leave (sc-43145).
@@ -204,10 +201,7 @@ export function ListPicker({
         animationType={SLIDES_INSIDE ? 'none' : 'slide'}
         supportedOrientations={TURNS_WITH_THE_APP}
         onRequestClose={close}
-        onShow={() => {
-          letGoHeld();
-          risen();
-        }}
+        onShow={risen}
       >
         {Platform.OS === 'android' && <SilentWindowName />}
         {/* A full-screen modal takes the app's view out of the window, so the app's insets stop turning with it. */}

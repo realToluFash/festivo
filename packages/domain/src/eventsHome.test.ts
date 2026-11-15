@@ -472,7 +472,7 @@ describe('eventDayWords', () => {
     };
 
     expect(eventDayWords(off, now, 'en-US')).toEqual({ kind: 'calledOffOn', date: 'Nov 3, 2025' });
-    expect(eventDayWords(off, now, 'en-US', true)).toEqual({
+    expect(eventDayWords(off, now, 'en-US', { keepDays: true })).toEqual({
       kind: 'oneDay',
       day: 'Friday, Nov 14, 2025',
     });

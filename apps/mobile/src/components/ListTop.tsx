@@ -9,7 +9,7 @@ import { type TextHandle } from './Text.tsx';
 import { useCapsuleLabels } from './CapsuleLabels.tsx';
 import { Title } from './Title.tsx';
 import { TOP_TITLE, topTitle } from './topTitle.ts';
-import { TopPrimary, type TopPrimaryProps } from './TopPrimary.tsx';
+import { TopPrimary, type TopPrimaryProps, usePrimaryLabel } from './TopPrimary.tsx';
 
 /** Events', the Calendar's and Settings' top as their demos draw it (sc-39471): on a phone the pill and the bell on a row of their own, then the title at 34 with what ends its row; on its side the bell ends that row. */
 export function ListTop({
@@ -37,15 +37,24 @@ export function ListTop({
   /** The title's row, as Settings' column draws it shorter. */
   rowStyle?: StyleProp<ViewStyle>;
 }) {
+  const label = usePrimaryLabel({
+    title,
+    size: TOP_TITLE,
+    style: topTitle,
+    label: primary?.label,
+    gap: tokens.spaceMd,
+    labelled: kind !== 'phone',
+  });
   const titleRow = (
     <View style={[styles.titleRow, rowStyle]}>
-      <View style={styles.fill}>
+      <View style={styles.fill} onLayout={label.onSlot}>
+        {label.measure}
         <Title size={TOP_TITLE} accessibilityRole="header" ref={titleRef} style={topTitle}>
           {title}
         </Title>
       </View>
       {beside}
-      {primary != null && <TopPrimary {...primary} wide={kind !== 'phone'} />}
+      {primary != null && <TopPrimary {...primary} wide={label.wide} />}
       {kind === 'tabletLandscape' && bell}
     </View>
   );

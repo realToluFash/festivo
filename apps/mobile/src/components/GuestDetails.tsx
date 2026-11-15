@@ -13,7 +13,7 @@ import { StyleSheet, View, type ViewInstance } from 'react-native';
 import { useTranslation } from 'react-i18next';
 
 import { dateLocale } from '../i18n/index.ts';
-import { type GuestReplies, guestReplyBy } from '../kit/replyBy.ts';
+import { type GuestReplies, guestRepliedLine, guestReplyBy } from '../kit/replyBy.ts';
 import type { Shown } from '../kit/eventsList.ts';
 import { markOf } from '../kit/guestRows.ts';
 import type { LayoutKind } from '../layout/useLayout.ts';
@@ -128,7 +128,10 @@ export function GuestDetails({
   const word = t(REPLY_KEY[shown]);
   const names = guest.companions.map((one) => one.fullName);
   const language = ownLanguageName(guest.language);
-  const fallback = ownLanguageName(guest.organisationLanguage) ?? guest.organisationLanguage ?? '';
+  const organisationLanguage = guest.organisationLanguage ?? 'en';
+  const fallback = t(`languageNamesInSentence.${organisationLanguage}`, {
+    defaultValue: organisationLanguage,
+  });
   const added = replyDate(guest.added.at, timeZone, locale);
   const group = guest.group?.name ?? null;
   const groupWords = group ?? t('guestGroups.noGroup');
@@ -245,15 +248,10 @@ export function GuestDetails({
         name={guest.fullName}
         line={
           after.card ??
-          (guest.repliedAt != null
-            ? (after.reply ??
-              t('guestList.replied', {
-                reply: word,
-                date: replyDate(guest.repliedAt, timeZone, locale),
-              }))
-            : shown === 'notYetInvited'
-              ? t('guestList.copyFirst')
-              : invitationLine(t, guest, timeZone, locale))
+          guestRepliedLine(guest, word, after.reply, timeZone, locale, t) ??
+          (shown === 'notYetInvited'
+            ? t('guestList.copyFirst')
+            : invitationLine(t, guest, timeZone, locale))
         }
         step={
           after.reopens

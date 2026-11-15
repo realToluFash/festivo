@@ -8,6 +8,7 @@ import { browser } from '../../../providerSignIn.ts';
 import { holdProof } from '../../../recentProof.ts';
 import { __setSessionState, switchOrganisation, type Session } from '../../../session.ts';
 import { membership } from '../../../test-memberships.ts';
+import { pagedMembers } from '../../../test-members.ts';
 import { breaksAnywhere } from '../../../test-wrapping.ts';
 import { routes } from '../../index.tsx';
 import { atPhoneWidth } from '../../../test-widths.ts';
@@ -99,7 +100,7 @@ function answering(answers: Record<string, () => Response | Promise<Response>>) 
     const answer = answers[line];
     if (answer == null) throw new TypeError('Failed to fetch');
 
-    return answer();
+    return line.endsWith('/members') ? pagedMembers(await answer(), String(input)) : answer();
   });
 
   return sent;

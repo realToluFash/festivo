@@ -74,6 +74,8 @@ import { switcherFocusBack } from '../kit/focusBack.ts';
 import { tokens } from '../theme/tokens.ts';
 import { useTwoFactorStanding } from '../twoFactorStanding.ts';
 import { BellButton } from './BellButton.tsx';
+import { SearchAndBell } from './SearchButton.tsx';
+import { SEARCH_HREF } from '../kit/searchLinks.ts';
 import { CreateWalkWindow, type WalkOpening, deviceNow } from './CreateWalkWindow.tsx';
 import { Sheet } from './Sheet.tsx';
 import type { GlyphName } from './Glyph.tsx';
@@ -116,13 +118,14 @@ import type { ScreenReaderTarget } from './screenReaderFocus.ts';
 import { type TextHandle, Text, TitleCap } from './Text.tsx';
 import { Title } from './Title.tsx';
 import { PAGE_TITLE, pageTitle } from './topTitle.ts';
-import { TopPrimary, type TopPrimaryProps } from './TopPrimary.tsx';
+import { TopPrimary, type TopPrimaryProps, usePrimaryLabel } from './TopPrimary.tsx';
 import { ListTop, PortraitRow, PortraitTop } from './ListTop.tsx';
 import { AccessPaused } from './AccessPaused.tsx';
 import { TwoFactorOverdue } from './TwoFactorOverdue.tsx';
 import { type EdgeSwipeHandlers, EdgeSwipeStrip } from './useEdgeSwipeBack.ts';
 import { useSystemBack } from './useSystemBack.ts';
 import { OfflineBand } from './OfflineBand.tsx';
+import { sideInsets } from './bodyEdges.ts';
 import { LIST_EDGES, useSideFrame } from './listFrame.ts';
 import { type Stale } from '../offline.ts';
 
@@ -488,6 +491,8 @@ export function AppFrame({
   const ownTop = framed && top != null && standIn == null;
   const underTabs =
     floatingTabs && listUnderTabs && standIn == null ? phoneTabBarClearance(insets.bottom) : 0;
+  // A top that stays sits outside any Screen, so it and the body under it clear the side bars here, as a Screen does for Events (sc-52423).
+  const sides = ownTop && top === 'stays' ? sideInsets(kind, insets) : null;
   const switchedRead = created?.takesFocus !== true;
   // A body with its own top, as Today, draws it where its demo does, under its cover, while the frame says it once whatever the body shows (sc-44087, sc-46032).
   const inBody = !framed;
@@ -566,11 +571,16 @@ export function AppFrame({
           <View style={[styles.column, sidebar && side.card]}>
             {framed && !ownTop && <FrameHeader {...header} />}
             {ownTop && <FixedTop {...header} />}
-            {ownTop && top === 'stays' && <ScreenTop {...header} stays />}
+            {ownTop && top === 'stays' && (
+              <View style={sides}>
+                <ScreenTop {...header} stays />
+              </View>
+            )}
             <OfflineBand stale={standIn == null ? offline : null} inFront={inFront} />
             <View
               style={[
                 styles.body,
+                sides,
                 (eventTabs || (floatingTabs && underTabs === 0)) && {
                   paddingBottom: phoneTabBarClearance(insets.bottom) + tokens.spaceMd,
                 },
@@ -778,7 +788,7 @@ function FixedTop({ kind, current, organisation, waiting, onSwitch, pill }: Fram
           />
         )
       }
-      bell={<BellButton />}
+      bell={<SearchAndBell />}
       tabLabels={tabLabels(tabs)}
       renderTabs={(labelSize) => <WhiteCapsule {...tabs} labelSize={labelSize} />}
     />
@@ -825,6 +835,14 @@ function ScreenTop({
     </>
   );
   const staysStyle = stays && LIST_EDGES[kind];
+  const label = usePrimaryLabel({
+    title,
+    size: PAGE_TITLE,
+    style: pageTitle,
+    label: page ? primary?.label : undefined,
+    gap: tokens.spaceMd,
+    labelled: kind !== 'phone',
+  });
 
   if (!page)
     return (
@@ -837,7 +855,7 @@ function ScreenTop({
             <OrgPill organisation={organisation} waiting={waiting} onSwitch={onSwitch} ref={pill} />
           )
         }
-        bell={<BellButton />}
+        bell={kind === 'tabletLandscape' ? <BellButton /> : <SearchAndBell />}
         beside={besideTitle}
         primary={primary}
         under={under}
@@ -848,13 +866,14 @@ function ScreenTop({
 
   const titleRow = (
     <View style={[styles.topRow, styles.pageRow, rowStyle]}>
-      <View style={styles.fill}>
+      <View style={styles.fill} onLayout={label.onSlot}>
+        {label.measure}
         <Title size={PAGE_TITLE} accessibilityRole="header" ref={read} style={pageTitle}>
           {title}
         </Title>
       </View>
       {besideTitle}
-      {primary != null && <TopPrimary {...primary} wide={kind !== 'phone'} />}
+      {primary != null && <TopPrimary {...primary} wide={label.wide} />}
       {kind === 'tabletLandscape' && <BellButton />}
     </View>
   );
@@ -982,7 +1001,7 @@ function FrameHeader({
               />
             )
           }
-          bell={<BellButton />}
+          bell={<SearchAndBell />}
           tabLabels={tabLabels(tabs)}
           renderTabs={(labelSize) => <WhiteCapsule {...tabs} labelSize={labelSize} />}
           tabsCentred
@@ -1054,7 +1073,7 @@ function FrameHeader({
         <View style={styles.titleRow}>
           {pillView}
           <View style={styles.fill} />
-          <BellButton />
+          <SearchAndBell />
         </View>
         {titleRow()}
       </View>
@@ -1383,10 +1402,11 @@ function FrameSidebar({
       person,
       unread: 0,
       creates: organisation != null && roleHolds(organisation, 'events.create'),
-      search: false,
+      search: organisation != null,
       open: (opens) => {
         if (opens.to === 'account') router.navigate(SECTION_HREF.account);
         if (opens.to === 'event') router.push(`/events/${opens.id}`);
+        if (opens.to === 'search') router.push(SEARCH_HREF);
       },
       useOrgOpener: useFrameOrgOpener,
     }),
@@ -1419,7 +1439,7 @@ function FrameSidebar({
   return (
     <TodayShellProvider value={shell}>
       <SidebarColumn>
-        <SidebarHead search={false} org={false} />
+        <SidebarHead org={false} />
         {organisation != null && (
           <OrgPill
             organisation={organisation}

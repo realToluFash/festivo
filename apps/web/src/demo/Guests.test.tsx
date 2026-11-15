@@ -255,6 +255,7 @@ describe('Guests, the list (sc-31781)', () => {
     expect(screen.queryByText(/Change its dates first/u)).toBeNull();
     expect(screen.queryByRole('button', { name: 'Change dates' })).toBeNull();
     expect(screen.queryByRole('button', { name: 'Make live' })).toBeNull();
+    expect(screen.getByLabelText('Ana Souza, Member')).toBeDefined();
   });
 
   it(
@@ -266,6 +267,7 @@ describe('Guests, the list (sc-31781)', () => {
       expect(screen.getByText('Guests can’t be invited while this event is paused.')).toBeDefined();
       expect(screen.queryByRole('button', { name: 'Resume' })).toBeNull();
       expect(screen.queryByRole('button', { name: 'Add guest' })).toBeNull();
+      expect(screen.getByLabelText('Ana Souza, Member')).toBeDefined();
     },
   );
 
@@ -623,7 +625,7 @@ describe('Guests, Record a reply in place (sc-3787)', () => {
       ).toBeDefined();
       expect(
         within(group(/^Coming/u)).getByRole('link', {
-          name: /^Dr Emeka Nwosu, Coming · recorded by Folake Adeyemi/u,
+          name: /^Dr Emeka Nwosu, Coming · replied /u,
         }),
       ).toBeDefined();
       expect(within(group(/^Coming/u)).queryByRole('link', { name: /^Adanna Nwosu/u })).toBeNull();

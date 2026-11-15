@@ -15,7 +15,7 @@ import {
   withTypeToggled,
 } from '@soirely/domain';
 import type { TFunction } from 'i18next';
-import { type ReactNode, type Ref, type RefObject, useState } from 'react';
+import { type ReactNode, type Ref, type RefObject, useEffect, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import {
   Platform,
@@ -34,7 +34,7 @@ import { Glyph } from './Glyph.tsx';
 import { MomentBox, type Picking, PickerLayer, pick } from './MomentPick.tsx';
 import { RadioMark } from './RadioMark.tsx';
 import { useReadOut } from './ReadOut.tsx';
-import type { ScreenReaderTarget } from './screenReaderFocus.ts';
+import { moveScreenReaderFocus, type ScreenReaderTarget } from './screenReaderFocus.ts';
 import { type Anchor, AnchoredMenu, HeadCount, SectionHead, TextAction } from './Summary.tsx';
 import { Text } from './Text.tsx';
 import { MeasuredWords } from './Title.tsx';
@@ -380,6 +380,7 @@ export function EventsFilterMenu({
   const { t } = useTranslation();
   const [level, setLevel] = useState<Level>('top');
   const [picking, setPicking] = useState<Picking | null>(null);
+  const first = useRef<ViewInstance>(null);
   const { locale } = calendar;
   const types = filters.types.map((type) => t(`eventTypes.${type}`));
   const whenNamed = whenWords(filters.when, locale, t);
@@ -417,6 +418,7 @@ export function EventsFilterMenu({
       at={at}
       onClose={close}
       opener={opener}
+      first={first}
       width={272}
       align="start"
       over={
@@ -429,6 +431,7 @@ export function EventsFilterMenu({
       {level === 'top' && (
         <>
           <TopRow
+            ref={first}
             title={t('eventsSearch.type')}
             picks={types}
             value={types.length === 0 ? t('eventsSearch.anyType') : listed(types, locale)}
@@ -535,12 +538,14 @@ export function EventsFilterMenu({
 
 /** A menu row: its title, then its picks fitted between the title and the chevron. */
 function TopRow({
+  ref,
   title,
   picks,
   value,
   onPress,
   testID,
 }: {
+  ref?: Ref<ViewInstance>;
   title: string;
   picks: readonly string[];
   value: string;
@@ -553,6 +558,7 @@ function TopRow({
 
   return (
     <Pressable
+      ref={ref}
       onPress={onPress}
       style={({ pressed }) => [styles.top, pressed && styles.rowPressed]}
       accessibilityRole="button"
@@ -590,10 +596,20 @@ function Drilled({
   children: ReactNode;
 }) {
   const { t } = useTranslation();
+  const back = useRef<ViewInstance>(null);
+
+  // Its row under TalkBack's focus is gone with the level it opened, so focus starts this level as the menu's first row does (sc-52641).
+  useEffect(() => {
+    if (Platform.OS !== 'android') return;
+    const wait = setTimeout(() => moveScreenReaderFocus(back.current));
+
+    return () => clearTimeout(wait);
+  }, []);
 
   return (
     <>
       <Pressable
+        ref={back}
         onPress={onBack}
         style={({ pressed }) => [styles.back, pressed && styles.rowPressed]}
         accessibilityRole="button"

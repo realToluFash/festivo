@@ -1328,6 +1328,11 @@
       "approvedNext": "See {{name}}",
       "turnedDown": "{{name}}’s request is turned down.",
       "turnedDownNext": "See Former"
+    },
+    "more": {
+      "loading": "Loading more people…",
+      "failedTitle": "More people did not load.",
+      "failedLine": "Check your connection and try again."
     }
   },
   "accessPaused": {
@@ -1707,7 +1712,7 @@
   "eventLive": {
     "guestsBlocked": "Guests can't be invited until this event is live.",
     "makeLive": "Make live",
-    "endPassed": "This event's end has passed, so it cannot be made live. Change its dates first.",
+    "endPassed": "This event’s end has passed, so it cannot be made live. Change its dates first.",
     "changeDates": "Change dates",
     "confirmTitle": "Make {{name}} live?",
     "confirmLine": "Guests can be invited, and they can see it. It can't go back to being a draft.",
@@ -1772,7 +1777,7 @@
     "keepItLive": "Keep it live",
     "failed": "Not paused. Try again in a moment.",
     "notPaused": "Not paused.",
-    "notice": "Paused. Guests can't reply or change anything until you resume it. Check-in and service still work.",
+    "notice": "Paused. Guests can’t reply or change anything until you resume it. Check-in and service still work.",
     "resume": "Resume",
     "resumeFailed": "Not resumed. Try again in a moment.",
     "pausing": "Pausing…",
@@ -2354,6 +2359,7 @@
     "keepTheirs": "Keep their reply",
     "replyRecorded": "Reply recorded. It counts like any other reply.",
     "recordedOn": "recorded by {{name}}, {{how}}, {{date}}",
+    "recordedLine": "{{reply}} · recorded by {{name}}, {{how}}, {{date}}",
     "line": "{{reply}} · {{contact}}",
     "withPlaces": "{{reply}} · {{places}}",
     "contacts": "{{email}} · {{mobile}}",
@@ -2607,5 +2613,60 @@
     "savedClosedNow": "Saved. Replies are now closed.",
     "savedRemoved": "Saved. Replies stay open until the event starts.",
     "moves": "Replies close on {{old}}, which isn’t before the new start. Saving moves Reply by to {{next}}."
+  },
+  "search": {
+    "row": "Search",
+    "field": {
+      "egm": "Search events, guests and members",
+      "eg": "Search events and guests",
+      "em": "Search events and members",
+      "gm": "Search guests and members",
+      "e": "Search events",
+      "g": "Search guests",
+      "m": "Search members"
+    },
+    "hint": {
+      "egm": "Find an event, a guest or a member.",
+      "eg": "Find an event or a guest.",
+      "em": "Find an event or a member.",
+      "gm": "Find a guest or a member.",
+      "e": "Find an event.",
+      "g": "Find a guest.",
+      "m": "Find a member."
+    },
+    "short": "Type at least 2 characters.",
+    "searching": "Searching…",
+    "showAll": "Show all in Events",
+    "nothing": "Nothing matches “{{term}}”.",
+    "clear": "Clear search",
+    "failed": "Search did not work. Try again in a moment.",
+    "tryAgain": "Try again",
+    "keys": "↑ ↓ to move · Enter to open · Esc to close",
+    "results": "Results",
+    "close": "Close",
+    "cancel": "Cancel",
+    "matches_one": "{{count, number}} match",
+    "matches_other": "{{count, number}} matches",
+    "heading": {
+      "events": "Events",
+      "guests": "Guests",
+      "members": "Members"
+    },
+    "headingCount_one": "{{heading}}, {{count, number}} match",
+    "headingCount_other": "{{heading}}, {{count, number}} matches",
+    "standing": {
+      "invited": "Invited",
+      "pending_approval": "Awaiting approval",
+      "suspended": "Suspended"
+    },
+    "line": {
+      "event": "{{dates}} · {{place}}",
+      "days": "{{first}} to {{last}}",
+      "calledOffOn": "Called off on {{date}}",
+      "venueCity": "{{venue}}, {{city}}",
+      "venueToBeConfirmed": "Venue to be confirmed",
+      "guest": "{{event}} · {{day}}",
+      "member": "{{email}} · {{role}}"
+    }
   }
 }

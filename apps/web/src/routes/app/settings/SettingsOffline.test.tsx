@@ -4,6 +4,7 @@ import { RouterProvider, createMemoryRouter } from 'react-router';
 
 import { __setSessionState, type Session } from '../../../session.ts';
 import { OWNER_PERMISSIONS, membership } from '../../../test-memberships.ts';
+import { pagedMembers } from '../../../test-members.ts';
 import { routes } from '../../index.tsx';
 
 const IRE = membership({ id: 'org_1', name: 'Ìrè Events' });
@@ -84,8 +85,8 @@ const ANSWERS: Record<string, unknown> = {
     changedAt: null,
     inactivityChoices: [7, 30],
     changes: [],
-    passwordOnly: [],
-    withoutTwoFactor: [],
+    passwordOnly: { count: 0, named: [] },
+    withoutTwoFactor: { count: 0, named: [] },
     twoFactorDeadline: null,
     inactivityLimit: null,
     ownTwoFactor: false,
@@ -151,7 +152,7 @@ function serving(soirely: { reachable: boolean }): void {
     const answer = ANSWERS[path];
     if (answer == null) throw new Error(`Nothing stubbed for ${path}`);
 
-    return json(answer);
+    return path.endsWith('/members') ? pagedMembers(json(answer), String(input)) : json(answer);
   });
 }
 

@@ -1689,7 +1689,7 @@ describe("Inside an event, the navigation menu is the event's (sc-22103)", () =>
     fireEvent.click(eventNav().getByRole('link', { name: 'Menu' }));
     await screen.findByRole('heading', { level: 2, name: 'Menu' });
     fireEvent.click(eventNav().getByRole('link', { name: 'Staff' }));
-    await screen.findByRole('heading', { level: 2, name: 'Staff' });
+    await screen.findByRole('heading', { level: 1, name: 'Staff' });
     fireEvent.click(eventNav().getByRole('link', { name: 'Reports' }));
     await screen.findByRole('heading', { level: 2, name: 'Reports' });
 
@@ -4921,7 +4921,7 @@ describe('Someone who can only view an event is never told to change its dates o
   const MANAGER_PAUSED = 'Paused. Guests can’t reply or change anything until you resume it.';
   const READER_PAUSED = 'Paused. Guests can’t reply or change anything until it is resumed.';
   const ABOVE_PASSED =
-    "This event's end has passed, so it cannot be made live. Change its dates first.";
+    'This event’s end has passed, so it cannot be made live. Change its dates first.';
 
   function paused() {
     return event({
@@ -4984,7 +4984,7 @@ describe('Someone who can only view an event is never told to change its dates o
       'a manager',
       IRE,
       ABOVE_PASSED,
-      "Paused. Guests can't reply or change anything until you resume it. Check-in and service still work.",
+      'Paused. Guests can’t reply or change anything until you resume it. Check-in and service still work.',
       true,
     ],
   ] as const)(

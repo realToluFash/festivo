@@ -579,3 +579,57 @@ describe('The card’s chip at the crowd (sc-48825)', () => {
     expect(document.querySelector('.desk-more')?.textContent).toBe('99+');
   });
 });
+
+describe('People a page at a time at 12,345 (sc-49170)', () => {
+  beforeEach(() => __setConfig({ ...tested, environment: 'development' }));
+  afterEach(() => cleanup());
+
+  const peopleRows = () =>
+    document.querySelectorAll('.desk-block:has(.members-more) > .desk-rows > li').length;
+
+  it('counts the whole organisation and shows Invitations after the first page', async () => {
+    await members('/demo/settings/members?state=largest');
+
+    expect(screen.getByText('Showing 50 of 12,345')).toBeTruthy();
+    expect(peopleRows()).toBe(50);
+    expect(screen.getByRole('heading', { name: 'Invitations' })).toBeTruthy();
+  });
+
+  it('loads the next page under Show more and gives the focus to its first row', async () => {
+    await members('/demo/settings/members?state=largest');
+
+    fireEvent.click(screen.getByRole('button', { name: 'Show more' }));
+    expect(screen.getByText('Loading more people…').getAttribute('role')).toBe('status');
+    await waitFor(() => expect(screen.getByText('Showing 100 of 12,345')).toBeTruthy(), {
+      timeout: 3000,
+    });
+    expect(peopleRows()).toBe(100);
+    await waitFor(() =>
+      expect(document.activeElement?.closest('li')).toBe(
+        document.querySelectorAll('.desk-block:has(.members-more) > .desk-rows > li')[50],
+      ),
+    );
+  });
+
+  it('keeps the people shown when more did not load, and tries again under Show more', async () => {
+    await members('/demo/settings/members?state=moreFailed');
+
+    expect(screen.getByRole('alert').textContent).toBe(
+      'More people did not load. Check your connection and try again.',
+    );
+    expect(peopleRows()).toBe(50);
+    expect(screen.queryByText('We could not load the members.')).toBeNull();
+    fireEvent.click(screen.getByRole('button', { name: 'Show more' }));
+    await waitFor(() => expect(screen.getByText('Showing 100 of 12,345')).toBeTruthy(), {
+      timeout: 3000,
+    });
+    expect(screen.queryByRole('alert')).toBeNull();
+  });
+
+  it('holds the loading state with the rows already shown', async () => {
+    await members('/demo/settings/members?state=moreLoading');
+
+    expect(screen.getByText('Loading more people…')).toBeTruthy();
+    expect(peopleRows()).toBe(50);
+  });
+});

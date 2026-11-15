@@ -48,6 +48,7 @@
 }
 
 .gs-card.is-page {
+  isolation: isolate;
   min-height: 150px;
 }
 

@@ -106,6 +106,9 @@ export const W = {
   sectionTooLong: 'Use 40 characters or fewer.',
   sizeMin: 'Use 30 cm or more.',
   sizeMinFeet: 'Use 1 ft or more.',
+  tableBlank: 'Enter a name for the table.',
+  seatsRange: 'Enter a number of seats from 1 to 30.',
+  placesRange: 'Enter a number of places from 1 to 30.',
   undo: 'Undo',
   allSections: 'All sections',
   full: 'Full',
@@ -149,7 +152,7 @@ export const say = {
   startLine: (venue: string, town: string, org: string) =>
     `At ${venue}, ${town}. Sizes are in metres, the units used where ${org} is based.`,
   outside: (n: number, w: string, l: string) =>
-    `${plural(n, 'item sits', 'items sit')} outside ${w} × ${l}. Move them first.`,
+    `${plural(n, 'item sits', 'items sit')} outside ${w} × ${l}. Move ${n === 1 ? 'it' : 'them'} first.`,
   deletePlanBody: (counts: string, seated: number) => {
     const guests =
       seated === 0
@@ -181,6 +184,9 @@ export const say = {
     `Size reset to the ${shape} default, ${size}. Seats kept at ${seats}.`,
   squeeze: (seats: number, size: string) => `${seats} seats will be tight at a ${size} table.`,
   tableTaken: (name: string) => `This plan already has a table called ${name}.`,
+  tableSize: (min: string, max: string) => `Enter a size from ${min} to ${max}.`,
+  feetInches: (feet: string, inches: string) => `${feet} ${inches}`,
+  endsRange: (max: number) => `Enter 0 to ${max}, no more than the table has seats.`,
   belowSeated: (n: number, keep: number) =>
     `${plural(n, 'guest is', 'guests are')} seated here. Move them first, or keep ${keep} seats.`,
   chairTitle: (table: string, n: number) => `${table} · Seat ${n}`,
@@ -191,6 +197,8 @@ export const say = {
       : `${plural(n, 'guest is', 'guests are')} seated here. They go back to Without a seat.`,
   deleteVerb: (name: string) => `Delete ${name}`,
   tableChanged: (name: string) => `${name} just changed this table. Your change was not saved.`,
+  rowChanged: (name: string) => `${name} just changed this row. Your change was not saved.`,
+  seatChanged: (name: string) => `${name} just changed this seat. Your change was not saved.`,
   rowSeat: (label: string, n: number, word: string) => `Row ${label}, seat ${n} · ${word}`,
   takenBy: (name: string) => `Taken by ${name}`,
   moreRight: (n: number) => `+${n} to the right`,

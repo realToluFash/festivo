@@ -187,8 +187,8 @@ describe('Events in A at a desk (sc-30304)', () => {
       ),
     );
 
-    expect(await screen.findByRole('heading', { level: 1, name: 'Schedule' })).toBeDefined();
-    expect(router.state.location.search).toBe('?area=schedule');
+    expect(await screen.findByRole('heading', { level: 1, name: /^Schedule · / })).toBeDefined();
+    expect(router.state.location.pathname).toBe('/demo/events/evt-wed-4/schedule');
   });
 
   it('asks before Back drops a change, and the browser asks on reload', SLOW, async () => {
@@ -889,6 +889,8 @@ describe('a reader who cannot change the event (sc-50996)', () => {
       expect(within(card).getByText(PAST_READ)).toBeDefined();
       expect(within(card).queryByText(PAST)).toBeNull();
       expect(within(card).queryByRole('button')).toBeNull();
+      expect(screen.getByLabelText('Ana Souza, Member')).toBeDefined();
+      expect(screen.queryByRole('button', { name: 'New event' })).toBeNull();
 
       cleanup();
       await list('/demo/events?state=drafts');

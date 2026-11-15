@@ -62,11 +62,12 @@ import { Notice } from './Notice.tsx';
 import { Refreshing } from './Refreshing.tsx';
 import { Screen } from './Screen.tsx';
 import { LoadingBlock, PageToast } from './Summary.tsx';
+import { phoneTabBarClearance } from './TodayCover.tsx';
 import { Arrived } from './Skeleton.tsx';
 import { type ScreenReaderTarget, moveScreenReaderFocus } from './screenReaderFocus.ts';
 import { Text, type TextHandle } from './Text.tsx';
 import { Title } from './Title.tsx';
-import { TopPrimary } from './TopPrimary.tsx';
+import { TopPrimary, usePrimaryLabel } from './TopPrimary.tsx';
 import { COLUMN_TITLE, PAGE_TITLE, columnTitle, pageTitle } from './topTitle.ts';
 import { useSidebarCard } from './sidebarCard.ts';
 import { eventTop } from '../kit/eventTop.ts';
@@ -83,6 +84,7 @@ export function EventScreen({
   opensEdit,
   editLeaves = false,
   keepsTab,
+  opensGuest,
 }: {
   eventId: string;
   area: EventPlace;
@@ -98,6 +100,8 @@ export function EventScreen({
   editLeaves?: boolean;
   /** Opened from Happening now, so Back returns to the tab that was showing. */
   keepsTab: boolean;
+  /** The guest whose details Guests opens on, as a match in Search opens them (sc-39534). */
+  opensGuest?: string | undefined;
 }) {
   const { t } = useTranslation();
   const { kind } = useLayout();
@@ -322,13 +326,23 @@ export function EventScreen({
         {event.name}
       </Text>
     ) : undefined;
+  const guestsTitleSize = kind === 'tabletLandscape' ? COLUMN_TITLE : PAGE_TITLE;
+  const guestsTitleStyle = kind === 'tabletLandscape' ? columnTitle : pageTitle;
+  const guestsLabel = usePrimaryLabel({
+    title: t('eventNav.guests'),
+    size: guestsTitleSize,
+    style: guestsTitleStyle,
+    label: guests && guestsTop.add != null ? t('guestList.addGuest') : undefined,
+    gap: tokens.spaceSm,
+    labelled: !phone,
+  });
   const addGuest =
     guests && guestsTop.add != null ? (
       <TopPrimary
         ref={guestsAdd}
         label={t('guestList.addGuest')}
         onPress={guestsTop.add}
-        wide={!phone}
+        wide={guestsLabel.wide}
         testID="guests.add"
       />
     ) : null;
@@ -375,6 +389,7 @@ export function EventScreen({
           key={`${event.id}.${filter}`}
           event={event}
           filter={filter}
+          opens={opensGuest}
           phase={phase}
           now={now}
           onEventChange={change}
@@ -383,12 +398,13 @@ export function EventScreen({
           onTop={setGuestsTop}
           heading={
             <View style={styles.titleRow}>
-              <View style={styles.fill}>
+              <View style={styles.fill} onLayout={guestsLabel.onSlot}>
+                {guestsLabel.measure}
                 <Title
-                  size={kind === 'tabletLandscape' ? COLUMN_TITLE : PAGE_TITLE}
+                  size={guestsTitleSize}
                   accessibilityRole="header"
                   ref={title}
-                  style={kind === 'tabletLandscape' ? columnTitle : pageTitle}
+                  style={guestsTitleStyle}
                 >
                   {t('eventNav.guests')}
                 </Title>
@@ -407,9 +423,11 @@ export function EventScreen({
               ? cardNamed
                 ? styles.phoneUntitled
                 : styles.phone
-              : kind === 'tabletLandscape' && cardNamed
-                ? styles.landscapeUntitled
-                : styles.tablet
+              : kind === 'tabletPortrait'
+                ? styles.tabletPortrait
+                : cardNamed
+                  ? styles.landscapeUntitled
+                  : styles.tabletLandscape
           }
         >
           {kind === 'tabletLandscape' &&
@@ -471,7 +489,11 @@ export function EventScreen({
         <PageToast
           words={toast.words}
           onClose={() => setToast(null)}
-          bottom={insets.bottom + tokens.spaceLg}
+          bottom={
+            phone
+              ? phoneTabBarClearance(insets.bottom) + tokens.spaceXl + tokens.spaceHair
+              : Math.max(insets.bottom, tokens.spaceLg)
+          }
         />
       )}
     </AppFrame>
@@ -587,13 +609,13 @@ const styles = StyleSheet.create({
   phone: {
     gap: tokens.spaceLg,
     paddingTop: tokens.spaceXl,
-    paddingHorizontal: tokens.spaceXl,
+    paddingHorizontal: tokens.spaceXxl,
     paddingBottom: tokens.space3xl,
   },
   phoneUntitled: {
     gap: tokens.spaceLg,
     paddingTop: 0,
-    paddingHorizontal: tokens.spaceXl,
+    paddingHorizontal: tokens.spaceXxl,
     paddingBottom: tokens.space3xl,
   },
   landscapeUntitled: {
@@ -602,7 +624,13 @@ const styles = StyleSheet.create({
     paddingHorizontal: 30,
     paddingBottom: tokens.space6xl * 2,
   },
-  tablet: {
+  tabletPortrait: {
+    gap: tokens.spaceLg,
+    paddingTop: tokens.space3xl,
+    paddingHorizontal: tokens.space5xl,
+    paddingBottom: tokens.space6xl,
+  },
+  tabletLandscape: {
     gap: tokens.spaceLg,
     paddingTop: tokens.space3xl,
     paddingHorizontal: tokens.space4xl,

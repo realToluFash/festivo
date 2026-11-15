@@ -463,6 +463,7 @@ export const EVENT_STATES = [
   'cover',
   'coverRefused',
   'coverPhoto',
+  'coverForbidden',
   'createdNoPhoto',
   'pause',
   'callOff',
@@ -557,6 +558,7 @@ export function editOf(state: EventDemoState | null): EditPart | null {
     case 'cover':
     case 'coverRefused':
     case 'coverPhoto':
+    case 'coverForbidden':
       return 'cover';
     default:
       return null;

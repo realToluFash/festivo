@@ -34,6 +34,7 @@ import { type HowAgreed, hostAgreed } from './WhatsAppConsent.ts';
 export const LIST_STATES = [
   'first',
   'inUse',
+  'titlePt',
   'filterOpen',
   'filtered',
   'search',
@@ -599,6 +600,11 @@ function lowerFirst(text: string): string {
   return text.charAt(0).toLowerCase() + text.slice(1);
 }
 
+/** sc-3787: the list's reply is the same word as any other; who recorded it shows only in the details. */
+function asOwnReply(g: SampleGuest): SampleGuest {
+  return g.recorded == null ? g : { ...g, recorded: null, when: g.recorded.day };
+}
+
 function rowLine(
   g: SampleGuest,
   locale: string,
@@ -611,7 +617,7 @@ function rowLine(
   const short = g.kind === 'noreply' || g.kind === 'notyet';
   const count = g.companions.length;
   return joined([
-    replyLine(g, locale, replyBy, short),
+    replyLine(asOwnReply(g), locale, replyBy, short),
     group,
     count > 0 ? say.companions(count) : null,
   ]);
@@ -955,6 +961,13 @@ export function sameNameAs(
 
 export type Answer = 'coming' | 'notcoming' | 'maybe';
 
+/** sc-3787: Record a reply's ticks start from each companion as they are; one held behind a reply that isn't Coming starts at their last choice (sc-3779). */
+export function startTicks(g: SampleGuest): boolean[] {
+  return g.companions.map((c) =>
+    g.kind === 'coming' ? c.kind !== 'notcoming' : c.chose !== 'notcoming',
+  );
+}
+
 export function recorded(
   g: SampleGuest,
   answer: Answer,
@@ -968,6 +981,9 @@ export function recorded(
     when: today,
     companions: g.companions.map((c, index) => ({
       ...c,
+      ...(answer === 'coming'
+        ? { chose: ticked[index] === false ? ('notcoming' as const) : ('coming' as const) }
+        : {}),
       kind:
         answer === 'coming'
           ? ticked[index] === false

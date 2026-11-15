@@ -1,6 +1,8 @@
 import { type ReactNode, type Ref, type RefObject, useContext, useState } from 'react';
 import {
   type DimensionValue,
+  type NativeScrollEvent,
+  type NativeSyntheticEvent,
   Pressable,
   ScrollView,
   type ScrollViewInstance,
@@ -44,8 +46,10 @@ export {
   Line,
   Row,
   RowList,
+  RowRule,
   type RowTag,
   Section,
+  SectionFoot,
   SectionHead,
   SELECTED_ROW,
   TITLE_BESIDE_TAG,
@@ -94,10 +98,12 @@ export function PageToast({ words, onClose, bottom }: PageToastProps & { bottom:
 export function SummaryColumn({
   title,
   scrollRef,
+  onScroll,
   children,
 }: {
   title: string;
   scrollRef?: Ref<ScrollViewInstance>;
+  onScroll?: (event: NativeSyntheticEvent<NativeScrollEvent>) => void;
   children: ReactNode;
 }) {
   const shell = useShell();
@@ -105,6 +111,8 @@ export function SummaryColumn({
   return (
     <ScrollView
       ref={scrollRef}
+      onScroll={onScroll}
+      scrollEventThrottle={onScroll == null ? undefined : 64}
       contentContainerStyle={COLUMN}
       keyboardShouldPersistTaps="handled"
       showsVerticalScrollIndicator={false}

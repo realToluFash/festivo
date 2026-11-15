@@ -202,6 +202,29 @@ describe('Sign-in rules at a desk (sc-30064)', () => {
     expect(titles('Where you stand')[2]).toBe('Two-factor not required');
   });
 
+  it('counts the people a pick leaves short past three, and names them up to three (sc-18317)', async () => {
+    await rules('/demo/settings/sign-in-rules?state=everyoneMillion');
+    const million = screen.getByRole('dialog', { name: 'Two-factor' });
+
+    expect(within(million).getByText('1,000,000 people don’t have it yet.')).toBeDefined();
+    cleanup();
+
+    await rules('/demo/settings/sign-in-rules?state=everyoneThree');
+    const three = screen.getByRole('dialog', { name: 'Two-factor' });
+
+    expect(
+      within(three).getByText('Priya Shah, Ana Souza and Tunde Bakare don’t have it yet.'),
+    ).toBeDefined();
+    cleanup();
+
+    await rules('/demo/settings/sign-in-rules?state=methodFour');
+    const four = screen.getByRole('dialog', { name: 'How people sign in' });
+
+    expect(within(four).getByText(/^4 people can read but not change anything/u)).toBeDefined();
+    fireEvent.click(within(four).getByRole('radio', { name: /^Any method/u }));
+    expect(within(four).queryByText(/^4 people/u)).toBeNull();
+  });
+
   it('holds every change while the viewer’s own two-factor is due under the managers rule', async () => {
     await rules('/demo/settings/sign-in-rules?state=everyone&as=julien');
 

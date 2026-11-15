@@ -40,8 +40,8 @@ describe('an edited guest as the app saves them', () => {
     const opened = valuesOf(
       details({
         companions: [
-          { id: 'c1', fullName: 'Bo', state: 'held', namedByGuest: false },
-          { id: 'c2', fullName: null, state: 'held', namedByGuest: false },
+          { id: 'c1', fullName: 'Bo', state: 'held', coming: true, namedByGuest: false },
+          { id: 'c2', fullName: null, state: 'held', coming: true, namedByGuest: false },
         ],
       }),
       'GB',
@@ -88,7 +88,9 @@ describe('Group and Needs as the app saves them (sc-5519)', () => {
           otherAccess: null,
           note: null,
         },
-        companions: [{ id: 'c1', fullName: 'Bo', state: 'held', namedByGuest: false }],
+        companions: [
+          { id: 'c1', fullName: 'Bo', state: 'held', coming: true, namedByGuest: false },
+        ],
       }),
       'GB',
     );

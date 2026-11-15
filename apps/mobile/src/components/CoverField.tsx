@@ -29,6 +29,7 @@ import {
   pickedFile,
   pickedRefusal,
 } from '../kit/coverUpload.ts';
+import { pickedBytes } from '../kit/pickedBytes.ts';
 import { tokens } from '../theme/tokens.ts';
 import { PrimaryButton, QuietButton, SecondaryButton } from './Buttons.tsx';
 import { EventCover } from './EventCover.tsx';
@@ -232,8 +233,7 @@ function CoverDialog({
         filename: file.name,
       })
       .then(async (signed) => {
-        const body = await (await fetch(photo.uri)).blob();
-        await api.uploadTo(signed, body);
+        await api.uploadTo(signed, await pickedBytes(photo.uri));
         uploaded = signed.key;
         if (current) setUpload({ kind: 'ready', key: signed.key });
         else discardCoverUpload(organisationId, signed.key);

@@ -170,7 +170,7 @@ final class RequestLinkTest extends ApiTestCase
 
         $this->signIn($owner);
         $members = Type\vec(Type\shape(['status' => Type\string(), 'channel' => Type\nullable(Type\string()), 'message' => Type\nullable(Type\string())], true))
-            ->coerce($this->send('GET', Str\format('/api/orgs/%s/members', $organisation->getId()->toRfc4122()))['members']);
+            ->coerce($this->send('GET', Str\format('/api/orgs/%s/members', $organisation->getId()->toRfc4122()))['waiting']);
         $waiting = Vec\filter($members, static fn (array $member): bool => 'pending_approval' === $member['status']);
         self::assertSame([['request', 'I run the Abuja office.']], Vec\map($waiting, static fn (array $member): array => [$member['channel'], $member['message']]));
     }

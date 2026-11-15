@@ -274,6 +274,24 @@ describe('select many guests (sc-3776)', () => {
     expect(screen.getByRole('checkbox', { name: 'Select the 1 shown' })).toBeTruthy();
   });
 
+  it(
+    'opens Groups from the header, as on the guests page, under the Undo too (sc-50772)',
+    SLOW,
+    async () => {
+      await open('removedAll');
+      const groups = screen.getByRole('button', { name: 'Groups' });
+
+      fireEvent.click(groups);
+      const column = await screen.findByRole('region', { name: 'Groups' });
+
+      expect(groups.getAttribute('aria-pressed')).toBe('true');
+      expect(page()).toContain('Undo');
+      fireEvent.click(within(column).getByRole('button', { name: 'Done' }));
+      await waitFor(() => expect(document.activeElement).toBe(groups));
+      expect(screen.queryByRole('region', { name: 'Groups' })).toBeNull();
+    },
+  );
+
   it('shows no boxes and no bar without guests.manage', SLOW, async () => {
     await open('viewOnly');
     expect(screen.queryAllByRole('checkbox')).toEqual([]);

@@ -191,12 +191,16 @@ export function Section({
     <View>
       <SectionHead title={title} right={right} />
       {children}
-      {foot != null && (
-        <Text size={14} weight="medium" style={[styles.secondary, styles.foot]}>
-          {foot}
-        </Text>
-      )}
+      {foot != null && <SectionFoot foot={foot} />}
     </View>
+  );
+}
+
+export function SectionFoot({ foot }: { foot: string }) {
+  return (
+    <Text size={14} weight="medium" style={[styles.secondary, styles.foot]}>
+      {foot}
+    </Text>
   );
 }
 
@@ -371,13 +375,18 @@ export function RowList({ items, gutter = 0 }: { items: readonly ListItem[]; gut
 
         return (
           <View key={item.key}>
-            {rule && <View style={[styles.hairline, { marginLeft: (item.inset ?? 0) + gutter }]} />}
+            {rule && <RowRule inset={(item.inset ?? 0) + gutter} />}
             {item.row}
           </View>
         );
       })}
     </View>
   );
+}
+
+/** The hairline between two rows, starting where the text starts. */
+export function RowRule({ inset }: { inset: number }) {
+  return <View style={[styles.hairline, { marginLeft: inset }]} />;
 }
 
 /** B's action: Violet text, or red for anything that removes, with what it does on the line under it; `plain` is Ink, as Manage's Duplicate and Pause; `wraps` shows a long label whole, on as many lines as it needs. */

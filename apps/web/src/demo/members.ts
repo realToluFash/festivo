@@ -1,5 +1,5 @@
 import type { MarkKind } from '../components/SettingsParts.tsx';
-import { emailProblem, type MemberStanding, memberStanding } from '@soirely/domain';
+import { activeOwners, emailProblem, type MemberStanding, memberStanding } from '@soirely/domain';
 
 import {
   type AskWords,
@@ -155,7 +155,23 @@ export function crowdOf(people: readonly Person[], total: number): Person[] {
 }
 
 /** All at 104 shows +99 beside the faces, the chip's widest figure; at 1,326 it shows 99+ (sc-48825). */
-export const CROWDS = { ninetyNine: 104, crowd: 1326 } as const;
+export const CROWDS = { ninetyNine: 104, crowd: 1326, largest: 12345 } as const;
+
+/** People arrive a page at a time under Show more, so Invitations stays a Tab away at any size; the build picks its own page (sc-49170). */
+export const PEOPLE_PAGE = 50;
+
+export type More = 'idle' | 'loading' | 'failed';
+
+export const MORE_WORDS = {
+  showMore: 'Show more',
+  loading: 'Loading more people…',
+  failed: 'More people did not load. Check your connection and try again.',
+} as const;
+
+/** Under the rows while more remain: how far down the list is, against the whole of what Show counts. */
+export function showingLine(shown: number, total: number): string {
+  return `Showing ${shown.toLocaleString('en')} of ${total.toLocaleString('en')}`;
+}
 
 const EVENT = {
   wed: 'evt-wed-4',
@@ -497,7 +513,7 @@ export function standingOf(
   });
   const withheld = ROLE_NAMES.filter((role) => !grantable(viewer).includes(role));
 
-  return memberStanding(shaped(person), people.map(shaped), {
+  return memberStanding(shaped(person), activeOwners(people.map(shaped)), {
     owns: viewer.owns,
     manages: viewer.manages,
     withholds: withheld.map((id) => ({ id })),
@@ -1120,6 +1136,8 @@ export type MembersDialog =
 
 export interface MembersStart {
   load: Load;
+  /** The next page of People: held loading, or failed with the rows already shown kept. */
+  more: More;
   people: Person[];
   recoveries: Recovery[];
   invitations: Invitation[];
@@ -1142,6 +1160,9 @@ export const MEMBERS_STATES = [
   'nobodyLeft',
   'ninetyNine',
   'crowd',
+  'largest',
+  'moreLoading',
+  'moreFailed',
   'invited',
   'revoked',
   'loading',
@@ -1481,7 +1502,11 @@ function peopleOf(state: MembersState, viewer: Pick<Viewer, 'id'>): Person[] {
       return people.filter((one) => one.id !== DANIEL);
     case 'ninetyNine':
     case 'crowd':
+    case 'largest':
       return crowdOf(people, CROWDS[state]);
+    case 'moreLoading':
+    case 'moreFailed':
+      return crowdOf(people, CROWDS.largest);
     case 'approved':
       return approved(people, LUCIA, 'Member', viewer.id);
     case 'turnedDown':
@@ -1598,6 +1623,7 @@ export function membersStart(name: string, viewer: Pick<Viewer, 'id' | 'manages'
   const invitations = sampleInvitations();
   const start: MembersStart = {
     load: 'loaded',
+    more: 'idle',
     people: samplePeople(),
     recoveries: [],
     invitations,
@@ -1621,6 +1647,7 @@ export function membersStart(name: string, viewer: Pick<Viewer, 'id' | 'manages'
   return {
     ...start,
     load: state === 'loading' || state === 'failed' ? state : 'loaded',
+    more: state === 'moreLoading' ? 'loading' : state === 'moreFailed' ? 'failed' : 'idle',
     leadsLoad:
       state === 'martaLoading' ? 'loading' : state === 'martaLoadFailed' ? 'failed' : 'loaded',
     people: peopleOf(state, viewer),

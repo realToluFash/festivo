@@ -19,6 +19,7 @@ import {
   inside,
   keepSeats,
   leastUsed,
+  many,
   metres,
   nearestFree,
   nextName,
@@ -27,6 +28,9 @@ import {
   planCounts,
   readFeet,
   readItemSize,
+  readEnds,
+  readTableSeats,
+  readTableSize,
   readMetres,
   readRoom,
   readingOrder,
@@ -116,6 +120,15 @@ describe('the sample (seating-a-spec §8)', () => {
 });
 
 describe('the room to scale (sc-4007)', () => {
+  it('says it for one item outside the room and them for more, as the product does (sc-4000)', () => {
+    const sizes = { width: '20 m', length: '18 m' };
+
+    expect(many('shrinkRefused', 1, sizes)).toBe('1 item sits outside 20 m × 18 m. Move it first.');
+    expect(many('shrinkRefused', 3, sizes)).toBe(
+      '3 items sit outside 20 m × 18 m. Move them first.',
+    );
+  });
+
   it('fits the 24 × 18 m room at 57% in the desk’s 718 × 719 room, with 84 above and below', () => {
     const fit = fitOf(718, 719, samplePlan().room!);
 
@@ -261,6 +274,43 @@ describe('sizes in the organisation’s units', () => {
     expect(readItemSize('wide', 'us')).toEqual({
       refused: 'Type 12′ 4″, 12 ft 4 in, 12.5 ft or 148 in.',
     });
+  });
+});
+
+describe('a table’s limits (sc-4000)', () => {
+  it('takes 1 to 30 seats or places, refusing blank, words and out of range', () => {
+    expect(readTableSeats('30', false)).toEqual({ n: 30 });
+    expect(readTableSeats('31', false)).toEqual({ refused: SW.seatsRange });
+    expect(readTableSeats('0', false)).toEqual({ refused: SW.seatsRange });
+    expect(readTableSeats('', false)).toEqual({ refused: SW.seatsRange });
+    expect(readTableSeats('ten', true)).toEqual({ refused: SW.placesRange });
+  });
+
+  it('takes a size from 40 cm to 10 m, or 1 ft 4 in to 32 ft 9 in', () => {
+    expect(readTableSize('40', 'metric')).toEqual({ cm: 40 });
+    expect(readTableSize('1000', 'metric')).toEqual({ cm: 1000 });
+    expect(readTableSize('39', 'metric')).toEqual({ refused: 'Enter a size from 40 cm to 10 m.' });
+    expect(readTableSize('1001', 'metric')).toEqual({
+      refused: 'Enter a size from 40 cm to 10 m.',
+    });
+    expect(readTableSize('', 'metric')).toEqual({ refused: 'Enter a size from 40 cm to 10 m.' });
+    expect(readTableSize('16 in', 'us')).toEqual({ cm: 40.64 });
+    expect(readTableSize('15 in', 'us')).toEqual({
+      refused: 'Enter a size from 1 ft 4 in to 32 ft 9 in.',
+    });
+    expect(readTableSize('33 ft', 'us')).toEqual({
+      refused: 'Enter a size from 1 ft 4 in to 32 ft 9 in.',
+    });
+    expect(readTableSize('wide', 'us')).toEqual({ refused: SW.usHint });
+  });
+
+  it('takes 0 to the table’s seats on the ends', () => {
+    expect(readEnds('0', 8)).toEqual({ n: 0 });
+    expect(readEnds('8', 8)).toEqual({ n: 8 });
+    expect(readEnds('9', 8)).toEqual({
+      refused: 'Enter 0 to 8, no more than the table has seats.',
+    });
+    expect(readEnds('', 8)).toEqual({ refused: 'Enter 0 to 8, no more than the table has seats.' });
   });
 });
 

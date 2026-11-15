@@ -8,7 +8,7 @@ import {
 } from '@soirely/domain';
 import { type ReactNode, type RefObject, useEffect, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { useParams } from 'react-router';
+import { Navigate, useParams } from 'react-router';
 
 import { BackControl } from '../../../components/BackControl.tsx';
 import { api } from '../../../api.ts';
@@ -28,6 +28,7 @@ import { OutcomeLine } from './OutcomeLine.tsx';
 import { EventPeople } from './EventPeople.tsx';
 import { GuestsArea, GuestsGone } from './GuestsArea.tsx';
 import { SeatingArea } from './SeatingArea.tsx';
+import { RosterArea } from './RosterArea.tsx';
 import { typeLabel } from './eventTypes.ts';
 import { AllDates } from './Timeline.tsx';
 import { EventCrumb, Overview, PhaseChange } from './EventOverview.tsx';
@@ -57,6 +58,17 @@ export function EventDates() {
 
 export function EventPeoplePage() {
   return <ForEvent page="people" />;
+}
+
+export function EventRoster() {
+  return <ForEvent page="staff" />;
+}
+
+/** Staff opens its first tab, the Roster (sc-3906). */
+export function EventStaff() {
+  const { eventId = '' } = useParams();
+
+  return <Navigate replace to={`/app/events/${encodeURIComponent(eventId)}/staff/roster`} />;
 }
 
 /** One of the areas not built yet: its panel says it is coming (sc-22103). */
@@ -144,6 +156,9 @@ function EventOf({
 
   if (page === 'seating' && load.kind === 'loaded')
     return canOn(load.event, 'seating.read') ? <SeatingArea event={load.event} /> : <NotFound />;
+
+  if (page === 'staff' && load.kind === 'loaded')
+    return canOn(load.event, 'staff.read') ? <RosterArea event={load.event} /> : <NotFound />;
 
   if (page === 'guests' && load.kind === 'loaded')
     return canOn(load.event, 'guests.read') ? (
