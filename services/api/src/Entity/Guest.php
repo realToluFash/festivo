@@ -81,6 +81,13 @@ class Guest
     #[ORM\Column(type: Types::STRING, length: 43, unique: true, nullable: true)]
     private ?string $linkToken;
 
+    /** A host's Let them change their reply: they may answer after Reply by, until the start (sc-3780). */
+    #[ORM\Column(type: Types::DATETIME_IMMUTABLE, nullable: true)]
+    private ?DateTimeImmutable $repliesReopenedAt = null;
+
+    #[ORM\Column(type: Types::STRING, length: 255, nullable: true)]
+    private ?string $repliesReopenedBy = null;
+
     /** Somebody holding the link said it reached the wrong person; replacing the link clears it. */
     #[ORM\Column(type: Types::BOOLEAN, options: ['default' => false])]
     private bool $linkFlagged = false;
@@ -243,6 +250,22 @@ class Guest
         }
 
         return true;
+    }
+
+    public function getRepliesReopenedAt(): ?DateTimeImmutable
+    {
+        return $this->repliesReopenedAt;
+    }
+
+    public function getRepliesReopenedBy(): ?string
+    {
+        return $this->repliesReopenedBy;
+    }
+
+    public function setRepliesReopened(DateTimeImmutable $at, string $by): void
+    {
+        $this->repliesReopenedAt = $at;
+        $this->repliesReopenedBy = $by;
     }
 
     public function isInvited(): bool

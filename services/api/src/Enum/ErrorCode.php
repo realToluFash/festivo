@@ -40,6 +40,7 @@ enum ErrorCode: string
     case SeatingSectionLimit = 'seating_section_limit';
     case GuestAlreadyListed = 'guest_already_listed';
     case RepliesClosed = 'replies_closed';
+    case RepliesOpen = 'replies_open';
     case GuestReplied = 'guest_replied';
     case GuestNotMarkedByHand = 'guest_not_marked_by_hand';
 
@@ -136,7 +137,7 @@ enum ErrorCode: string
             self::PreconditionRequired => 428,
             self::EventCurrencyInUse, self::EventStateInvalid, self::EventConcluded, self::EventPaused, self::EventHostRequired, self::EventCallOffFirst => 409,
             self::PlanLimit => 403,
-            self::SeatingPlanExists, self::SeatingSectionLimit, self::GuestAlreadyListed, self::RepliesClosed, self::GuestReplied, self::GuestNotMarkedByHand => 409,
+            self::SeatingPlanExists, self::SeatingSectionLimit, self::GuestAlreadyListed, self::RepliesClosed, self::RepliesOpen, self::GuestReplied, self::GuestNotMarkedByHand => 409,
             self::Unauthenticated, self::InvalidCredentials, self::InvalidRefreshToken, self::OAuthTokenInvalid, self::TwoFactorChallengeInvalid, self::SessionTimedOut => 401,
             self::Forbidden, self::PermissionRequired, self::GrantNotHeld, self::OwnEventRole, self::AccountUnverified, self::ProfileIncomplete, self::TwoFactorRequired, self::ProofRequired => 403,
             self::OAuthOnly, self::OAuthOnlyUnlinked, self::OrganisationTwoFactorRequired, self::OrganisationTwoFactorOverdue, self::OwnerRequired => 403,

@@ -1837,6 +1837,7 @@ describe("An event's Overview (sc-22103)", () => {
         .map((row) => spaced(row.textContent)),
     ).toEqual([
       expect.stringMatching(/Dates · 2 days · Africa\/Lagos$/u),
+      'Replies stay open until the event startsReply by',
       'Venue to be confirmedVenue',
       'Funmi AdeyemiHosted by',
       'WeddingType',
@@ -1847,6 +1848,27 @@ describe("An event's Overview (sc-22103)", () => {
         .getAllByRole('button')
         .map((row) => spaced(row.textContent)),
     ).toEqual(['Adaeze and TundeEvent name', 'Default coverCover']);
+  });
+
+  it('reads Reply by as the day and the time replies close, in the event’s zone (sc-3780)', async () => {
+    signedIn();
+    answering({
+      'GET /api/events/ev_1': () =>
+        json({
+          event: event({
+            replyBy: '2030-11-10',
+            repliesCloseAt: '2030-11-10T23:59:59+01:00',
+            repliesClosedOn: null,
+          }),
+        }),
+    });
+    at('/app/events/ev_1');
+
+    const details = await screen.findByRole('region', { name: 'Details' });
+    expect(within(details).getByText('Sun, Nov 10, 2030')).toBeDefined();
+    expect(
+      within(details).getByText(/^Reply by · Replies close at 23:59, Africa\/Lagos time$/u),
+    ).toBeDefined();
   });
 
   it('says there are no hosts yet in Hosted by', async () => {

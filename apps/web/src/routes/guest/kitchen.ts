@@ -9,6 +9,7 @@ import {
   NEED_OTHER_MAXIMUM,
   type NeedsChange,
   type PageNeeds,
+  type PlaceNeeds,
 } from '@soirely/api-client';
 
 import { needsLength } from '@soirely/domain';
@@ -175,6 +176,21 @@ export function needsOf(one: Person): PageNeeds {
     otherDiet: sent.words === '' ? null : sent.words,
     access: sent.access === '' ? access : [...access, 'other'],
     otherAccess: sent.access === '' ? null : sent.access,
+  };
+}
+
+/** The kitchen needs alone, as they are sent after Reply by (sc-3780): each place's by its id, named or left unnamed. */
+export function placeNeeds(
+  kitchen: Kitchen,
+  page: GuestPage,
+): { companions: PlaceNeeds[]; unnamed: PlaceNeeds[] } {
+  const left = new Set(page.guest.unnamed.map((one) => one.id));
+  const places = kitchen.people.filter((one) => one.key !== YOU);
+  const sent = (one: Person): PlaceNeeds => ({ id: one.key, needs: needsOf(one) });
+
+  return {
+    companions: places.filter((one) => !left.has(one.key)).map(sent),
+    unnamed: places.filter((one) => left.has(one.key)).map(sent),
   };
 }
 

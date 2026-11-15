@@ -159,6 +159,37 @@ final readonly class GuestRules
     }
 
     /**
+     * What a guest sends from Update what the kitchen should know after Reply by (sc-3780): needs only, each place's by its id.
+     *
+     * @param ?NeedsInput                                $needs      the guest's own; null leaves them as they are
+     * @param list<array{id: string, needs: NeedsInput}> $companions
+     * @param list<array{id: string, needs: NeedsInput}> $unnamed
+     *
+     * @return array{?GuestNeeds, list<array{string, GuestNeeds}>, list<array{string, GuestNeeds}>}
+     */
+    public function kitchen(?array $needs, array $companions, array $unnamed): array
+    {
+        $violations = [];
+        $own = null === $needs ? null : $this->needs($needs, 'needs', $violations);
+        $named = [];
+        $left = [];
+
+        foreach ($companions as $index => $companion) {
+            $named[] = [$companion['id'], $this->needs($companion['needs'], "companions[{$index}].needs", $violations)];
+        }
+
+        foreach ($unnamed as $index => $place) {
+            $left[] = [$place['id'], $this->needs($place['needs'], "unnamed[{$index}].needs", $violations)];
+        }
+
+        if ([] !== $violations) {
+            throw ApiException::validation($violations);
+        }
+
+        return [$own, $named, $left];
+    }
+
+    /**
      * What a guest sends with Coming from their own page: the names they gave on Who's coming with you? (sc-3779), a blank name never added, so it is refused rather than left unnamed, and each person's needs (sc-3778) by sc-3777's rules, every problem at once.
      *
      * @param list<array{id: string, fullName: string, coming: bool, needs?: ?NeedsInput}> $companions

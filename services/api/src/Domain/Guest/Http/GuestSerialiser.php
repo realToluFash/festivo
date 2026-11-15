@@ -77,6 +77,7 @@ final readonly class GuestSerialiser
         $needsOf = static fn (Guest $person): array => null === $needs ? [] : ['needs' => self::needs($person, $needs[$person->getId()->toRfc4122()] ?? GuestNeeds::none(), note: true)];
         $zone = new DateTimeZone($host->getEvent()->getTimeZone());
         $invitedAt = $host->getInvitedAt();
+        $reopenedAt = $host->getRepliesReopenedAt();
         $group = $host->getGroup();
 
         return [
@@ -93,6 +94,10 @@ final readonly class GuestSerialiser
             'reply' => $reply->value,
             'repliedAt' => GuestReply::NoReply === $reply ? null : $host->getRepliedAt()?->setTimezone($zone)->format(\DATE_ATOM),
             'replySource' => GuestReply::NoReply === $reply ? null : $host->getReplySource()?->value,
+            'repliesReopened' => null === $reopenedAt ? null : [
+                'by' => $host->getRepliesReopenedBy() ?? '',
+                'at' => $reopenedAt->setTimezone($zone)->format(\DATE_ATOM),
+            ],
             'invitation' => null === $invitedAt ? null : [
                 'at' => $invitedAt->setTimezone($zone)->format(\DATE_ATOM),
                 'how' => $host->getInvitationMethod()?->value,

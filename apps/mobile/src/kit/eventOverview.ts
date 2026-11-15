@@ -33,7 +33,7 @@ export function scheduleLocked(phase: EventPhase): boolean {
 
 /** A part whose row does not open, as Dates once the event is over, does not open from a link either. */
 export function partLocked(part: EditPart, phase: EventPhase): boolean {
-  return part === 'dates' && scheduleLocked(phase);
+  return (part === 'dates' || part === 'replyBy') && scheduleLocked(phase);
 }
 
 export interface RowWords {

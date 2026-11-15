@@ -21,6 +21,7 @@ import {
 } from '../kit/eventOverview.ts';
 import { type CardStep, type StepAction, listEventOf, shownEvent } from '../kit/eventsList.ts';
 import { PHASE_WORD } from '../kit/makeLive.ts';
+import { replyByRow } from '../kit/replyBy.ts';
 import { useServerNow } from '../kit/serverNow.ts';
 import type { LayoutKind } from '../layout/useLayout.ts';
 import { tokens } from '../theme/tokens.ts';
@@ -131,13 +132,8 @@ export function EventPage({
     said.current = { id: event.id, phase };
   }, [event.id, phase, t]);
 
-  const edit =
-    onEdit == null
-      ? null
-      : (part: EventPart) => {
-          if (part !== 'replyBy') onEdit(part, partRef(part));
-        };
-  const rowRef: RefFor = (part) => (part === 'replyBy' ? undefined : partRef(part as EditPart));
+  const edit = onEdit == null ? null : (part: EventPart) => onEdit(part, partRef(part));
+  const rowRef: RefFor = (part) => partRef(part as EditPart);
   const onStep = (step: Extract<CardStep, { kind: 'button' }>) => {
     if (step.action === 'makeLive') makeLive.start();
     else if (step.action === 'changeDates') onEdit?.('dates', cardOpener);
@@ -200,6 +196,11 @@ export function EventPage({
         {
           part: 'dates',
           ...datesRow(event, phase, locale, t),
+          opens: edit != null && !scheduleLocked(phase),
+        },
+        {
+          part: 'replyBy',
+          ...replyByRow(event, locale, now, t),
           opens: edit != null && !scheduleLocked(phase),
         },
         {

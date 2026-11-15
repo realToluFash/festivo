@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\Domain\Guest\Reply;
 
 use App\Audit\Auditor;
+use App\Domain\Event\Model\ReplyDeadline;
 use App\Domain\Guest\GuestListPublisher;
 use App\Domain\Guest\GuestNeedsRecord;
 use App\Domain\Guest\GuestRules;
@@ -43,10 +44,18 @@ final readonly class GuestAnswers
     ) {
     }
 
-    /** Until the start, in the event's own zone, and only while the event is Live; sc-3780's reply-by date will close it earlier. */
+    public const string KITCHEN = 'guest.kitchen_updated';
+
+    /** Until the start, in the event's own zone, and only while the event is Live; Reply by closes it earlier unless a host reopened this guest (sc-3780). */
     public function open(Guest $guest): bool
     {
-        return GuestPagePhase::Live === $this->phase($guest) && !$this->started($guest);
+        return GuestPagePhase::Live === $this->phase($guest) && !$this->started($guest) && null === $this->closedOn($guest);
+    }
+
+    /** The day answers closed for this guest by Reply by; null while they may answer, or once a host let them change their reply. */
+    public function closedOn(Guest $guest): ?string
+    {
+        return null === $guest->getRepliesReopenedAt() ? ReplyDeadline::closedOn($guest->getEvent(), $this->clock->now()) : null;
     }
 
     public function phase(Guest $guest): GuestPagePhase
@@ -61,7 +70,7 @@ final readonly class GuestAnswers
         return $this->clock->now() >= $guest->getEvent()->getStartsAt();
     }
 
-    /** Refused 409 `event_paused` while paused, `event_concluded` once over, `replies_closed` from the start; the same answer again keeps its date. Needs go only with Coming (sc-3778), keep the hosts' note, and may drop a host's access need but never add one (422, nothing saved). */
+    /** Refused 409 `event_paused` while paused, `event_concluded` once over, `replies_closed` from the start or after Reply by; the same answer again keeps its date. Needs go only with Coming (sc-3778), keep the hosts' note, and may drop a host's access need but never add one (422, nothing saved). */
     public function answer(Guest $guest, GuestReply $reply, ?PageReply $page = null): void
     {
         $page ??= new PageReply([], null);
@@ -74,7 +83,7 @@ final readonly class GuestAnswers
                 throw new ApiException($refusal, ErrorCode::EventPaused === $refusal ? 'guest.event_paused' : 'guest.event_concluded');
             }
 
-            if ($this->started($guest)) {
+            if ($this->started($guest) || null !== $this->closedOn($guest)) {
                 throw new ApiException(ErrorCode::RepliesClosed, 'guest.replies_closed');
             }
 
@@ -119,6 +128,65 @@ final readonly class GuestAnswers
         if ($changed) {
             $event = $guest->getEvent();
             $this->guestListPublisher->publish($event);
+        }
+    }
+
+    /**
+     * Update what the kitchen should know (sc-3780): a Coming guest's needs alone, after Reply by as before it, until the start; the reply and who fills the places stay as they are. Refused as an answer is by the phase and the start, 422 unless the reply is Coming, and 422 as an answer is for a place that is not the guest's.
+     *
+     * @param list<array{string, GuestNeeds}> $companions a named companion's needs, by their id
+     * @param list<array{string, GuestNeeds}> $unnamed    a place nobody named, by its id
+     */
+    public function kitchen(Guest $guest, ?GuestNeeds $own, array $companions, array $unnamed): void
+    {
+        $changed = $this->entityManager->wrapInTransaction(function () use ($guest, $own, $companions, $unnamed): bool {
+            $this->entityManager->refresh($guest, LockMode::PESSIMISTIC_WRITE);
+
+            $refusal = $this->phase($guest)->refusal();
+
+            if (null !== $refusal) {
+                throw new ApiException($refusal, ErrorCode::EventPaused === $refusal ? 'guest.event_paused' : 'guest.event_concluded');
+            }
+
+            if ($this->started($guest)) {
+                throw new ApiException(ErrorCode::RepliesClosed, 'guest.replies_closed');
+            }
+
+            if (GuestReply::Coming !== $guest->getReply()) {
+                throw ApiException::validation([$this->guestRules->violation('answer', 'validation.guest_kitchen_not_coming')]);
+            }
+
+            $places = $this->guestRepository->findCompanionsOf($guest);
+            $byId = Dict\from_entries(Vec\map($places, static fn (Guest $place): array => [$place->getId()->toRfc4122(), $place]));
+            $page = new PageReply(
+                Vec\map($companions, static function (array $one) use ($byId): CompanionChoice {
+                    $place = $byId[$one[0]] ?? null;
+
+                    return new CompanionChoice($one[0], $place?->getFullName() ?? '', $place?->getNameKey() ?? '', !($place?->isNotComingByGuest() ?? false), $one[1]);
+                }),
+                $own,
+                Vec\map($unnamed, static fn (array $one): PlaceChoice => new PlaceChoice($one[0], !(($byId[$one[0]] ?? null)?->isNotComingByGuest() ?? false), $one[1])),
+            );
+            [$placed, $left] = $this->chosen($places, $page);
+            $noted = false;
+
+            foreach ($this->needs($guest, $page, $placed, $left) as [$person, $theirs]) {
+                $noted = $this->guestNeedsRecord->write($person, $theirs, null) || $noted;
+            }
+
+            if (!$noted) {
+                return false;
+            }
+
+            $guest->raiseVersion();
+            $this->auditor->record(self::KITCHEN, 'Guest', $guest->getId());
+            $this->entityManager->flush();
+
+            return true;
+        });
+
+        if ($changed) {
+            $this->guestListPublisher->publish($guest->getEvent());
         }
     }
 
