@@ -409,6 +409,25 @@ describe('the card (spec §4)', () => {
     expect(guestsCardOf(draft, [], 'live', CLOCKS.rest, false, false).step).toBeNull();
   });
 
+  it('says No guests yet on an empty Paused or Finished card, no step (pm, 15 Nov)', () => {
+    const wedding = sampleEvent(WEDDING);
+    if (wedding == null) throw new Error('wedding');
+    const paused = { ...wedding, status: 'paused' as const };
+
+    expect(guestsCardOf(paused, [], 'live', CLOCKS.rest, true)).toMatchObject({
+      tags: [{ kind: 'paused', word: 'Paused' }],
+      says: 'No guests yet',
+      line: 'Guests can’t be invited while this event is paused.',
+      step: null,
+    });
+    expect(guestsCardOf(wedding, [], 'live', CLOCKS.finished, true)).toMatchObject({
+      tags: [{ kind: null, word: 'Finished' }],
+      says: 'No guests yet',
+      line: 'This event has finished, so guests can’t be invited.',
+      step: null,
+    });
+  });
+
   it('counts a recorded reply straight away (sc-3787)', () => {
     const list = recordReply(
       sampleGuests(WEDDING),

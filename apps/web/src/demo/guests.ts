@@ -1445,6 +1445,7 @@ export function guestsCardOf(
   const counts = countsOf(list);
   const replyBy = replyByOf(event.id);
   const comingOf = GW.comingOf(counts.coming, counts.invited);
+  const held = list.length === 0 ? GW.noGuests : comingOf;
 
   if (event.status === 'draft') {
     const { step } = cardOf(event, now);
@@ -1464,7 +1465,7 @@ export function guestsCardOf(
   if (event.status === 'paused')
     return {
       tags: [{ kind: 'paused', word: 'Paused' }],
-      says: comingOf,
+      says: held,
       arrived: null,
       line: GW.pausedLine,
       step: null,
@@ -1472,7 +1473,7 @@ export function guestsCardOf(
   if (eventPhase(event, now) === 'finished')
     return {
       tags: [{ kind: null, word: 'Finished' }],
-      says: comingOf,
+      says: held,
       arrived: null,
       line: GW.finishedLine,
       step: null,

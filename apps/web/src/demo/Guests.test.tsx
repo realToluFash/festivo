@@ -1948,12 +1948,14 @@ describe('Guests, nobody on the list in each phase (sc-50409)', () => {
     ['pausedEmpty', 'Guests can’t be invited while this event is paused.'],
     ['finishedEmpty', 'This event has finished, so guests can’t be invited.'],
   ])(
-    'keeps %s’s card with no step and offers Add guest in the header',
+    'keeps %s’s tag and line, says No guests yet, and offers Add guest in the header',
     SLOW,
     async (state, line) => {
       await guests(state);
 
       expect(screen.getByText(line)).toBeDefined();
+      expect(screen.getByText('No guests yet')).toBeDefined();
+      expect(screen.queryByText(/coming of/)).toBeNull();
       expect(main().querySelector('.ev-card-foot')).toBeNull();
       expect(adds()).toHaveLength(1);
       fireEvent.click(adds()[0] as HTMLElement);
