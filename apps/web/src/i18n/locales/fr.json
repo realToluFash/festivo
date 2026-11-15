@@ -648,7 +648,10 @@
     "finishedNotice": "Cet événement a eu lieu. Cette page reste en ligne, en souvenir.",
     "refused": "Non envoyé : les réponses ont été closes entre-temps. Tous vos choix sont conservés.",
     "languageSwitched": "Cette page est maintenant en français.",
-    "languageNotSaved": "Votre langue n’a pas été enregistrée. Cette page reste en français sur cet appareil, mais elle peut s’ouvrir dans une autre langue sur vos autres appareils."
+    "languageNotSaved": "Votre langue n’a pas été enregistrée. Cette page reste en français sur cet appareil, mais elle peut s’ouvrir dans une autre langue sur vos autres appareils.",
+    "theDay": "The day",
+    "programme": "Programme",
+    "timesIn": "Times in {{timeZone}}."
   },
   "signIn": {
     "title": "Se connecter",

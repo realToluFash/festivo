@@ -623,7 +623,10 @@
     "finishedNotice": "This event has taken place. This page stays here as a keepsake.",
     "refused": "Answers closed before this was sent. Everything you chose is still here.",
     "languageSwitched": "This page is now in English.",
-    "languageNotSaved": "Your language was not saved. This page stays in English on this device, but it may open in another language on other devices."
+    "languageNotSaved": "Your language was not saved. This page stays in English on this device, but it may open in another language on other devices.",
+    "theDay": "The day",
+    "programme": "Programme",
+    "timesIn": "Times in {{timeZone}}."
   },
   "signIn": {
     "title": "Sign in",
