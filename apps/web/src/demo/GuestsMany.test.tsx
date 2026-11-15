@@ -164,6 +164,25 @@ describe('select many guests (sc-3776)', () => {
     expect(screen.queryAllByRole('checkbox')).toEqual([]);
   });
 
+  it(
+    'keeps No guests match when a filtered removal leaves guests outside it (sc-50772)',
+    SLOW,
+    async () => {
+      await open('filtered');
+      fireEvent.click(within(bar()).getByRole('button', { name: 'Remove from the list' }));
+      fireEvent.click(await screen.findByRole('button', { name: /^Remove \d+$/u }));
+
+      await waitFor(() =>
+        expect(screen.getByRole('heading', { level: 2, name: 'No guests match' })).toBeTruthy(),
+      );
+      expect(page()).not.toContain('No guests yet');
+      fireEvent.click(screen.getByRole('button', { name: 'Clear' }));
+
+      await waitFor(() => expect(screen.getByRole('link', { name: /^Amaka Eze/u })).toBeTruthy());
+      expect(screen.queryByRole('heading', { name: 'No guests match' })).toBeNull();
+    },
+  );
+
   it('brings everyone back with Undo, rows and Select all again (sc-50772)', SLOW, async () => {
     await open('removedAll');
     fireEvent.click(screen.getByRole('button', { name: 'Undo' }));
