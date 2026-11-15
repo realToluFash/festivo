@@ -2391,12 +2391,12 @@
   },
   "guestList": {
     "paste": {
-      "button": "Paste a reply",
-      "nothing": "Nothing to paste. Copy their message in your chat, then try again.",
-      "whose": "Whose reply is this?",
-      "theirMessage": "Their message",
-      "showAll": "Show all",
-      "everyone": "Everyone you invited has replied. Find a guest to change their reply.",
+      "button": "Pegar respuesta",
+      "nothing": "No hay nada que pegar. Copie el mensaje en el chat y vuelva a intentarlo.",
+      "whose": "¿De quién es esta respuesta?",
+      "theirMessage": "Mensaje recibido",
+      "showAll": "Mostrar todo",
+      "everyone": "Ya han respondido todas las personas que invitó. Para cambiar una respuesta, busque a la persona.",
       "rowLine": "{{reply}} · {{invitation}}"
     },
     "addGuest": "Añadir invitado",
