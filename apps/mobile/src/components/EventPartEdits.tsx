@@ -337,6 +337,9 @@ function DatesEdit(props: PartEditProps) {
   const [zonesOpen, setZonesOpen] = useState(false);
   const [picking, setPicking] = useState<Picking | null>(null);
   const [asking, setAsking] = useState<ReplyByAsk | null>(null);
+  const [aim, setAim] = useState<{ start: boolean } | null>(null);
+  const startBox = useRef<ViewInstance>(null);
+  const endBox = useRef<ViewInstance>(null);
   const now = useServerNow();
   const counts = useHaventCounts(event);
   const { busy, save, elsewhere, failed } = usePartSave('dates', props, (saved) =>
@@ -370,6 +373,10 @@ function DatesEdit(props: PartEditProps) {
 
   useReadOut(moved);
   useReadOut(replyByLine);
+
+  useEffect(() => {
+    if (aim != null) moveScreenReaderFocus((aim.start ? startBox : endBox).current);
+  }, [aim]);
 
   const pickStart = (mode: 'date' | 'time') =>
     pick(
@@ -409,11 +416,17 @@ function DatesEdit(props: PartEditProps) {
   async function send(): Promise<void> {
     setAsking(null);
     const refusal = await save(eventChanges(event, typed));
-    if (refusal?.kind === 'refused') setRefused(refusal.errors);
+    if (refusal?.kind === 'refused') {
+      setRefused(refusal.errors);
+      setAim({ start: (refusal.errors.startsAt ?? refusal.errors.timeZone) != null });
+    }
   }
 
   function ask(): void {
-    if (Object.keys(live).length > 0) return;
+    if (Object.keys(live).length > 0) {
+      setAim({ start: (live.startsAt ?? live.timeZone) != null });
+      return;
+    }
     if (closes != null) setAsking(closes);
     else void send();
   }
@@ -470,6 +483,8 @@ function DatesEdit(props: PartEditProps) {
         }}
         onPickStart={pickStart}
         onPickEnd={pickEnd}
+        startRef={startBox}
+        endRef={endBox}
       />
     </EditShell>
   );
