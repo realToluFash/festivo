@@ -1,10 +1,10 @@
 import { writtenTime } from './clock.ts';
 import { demoWords } from './demoWords.ts';
-import { SW } from './seatingWords.ts';
+import { CRUMB_WORDS, type CrumbLang, LONG_NAME, QA_NAME, SW } from './seatingWords.ts';
 import type { DemoLink } from './settings.ts';
 
 /** Seating · A · The room (page e31, board/seating-a-spec.md): the sample, the room's geometry and the plan's rules; the words are in seatingWords.ts. */
-export { SW };
+export { CRUMB_WORDS, type CrumbLang, LONG_NAME, QA_NAME, SW };
 
 const WORDS = demoWords(SW);
 
@@ -1352,9 +1352,28 @@ export const SEATING_STATES = [
   { key: 'paperNobody', name: 'Paper: table lists, nobody seated', group: 'Print and paper' },
   { key: 'paperCard', name: 'Paper: a table card', group: 'Print and paper' },
   { key: 'paperCardTop', name: 'Paper: the head table’s card', group: 'Print and paper' },
+  { key: 'longName', name: 'A 120-character event name', group: 'The breadcrumb' },
+  { key: 'longNameFr', name: 'A 120-character event name, in French', group: 'The breadcrumb' },
+  {
+    key: 'crumbWidths',
+    name: 'The header band at 320 and 375, English and French',
+    group: 'The breadcrumb',
+  },
 ] as const;
 
 export type SeatingState = (typeof SEATING_STATES)[number]['key'];
+
+const LONG_STATES: readonly (SeatingState | null)[] = ['longName', 'longNameFr'];
+
+export function crumbOf(
+  state: SeatingState | null,
+  name: string,
+): { name: string; lang: CrumbLang } {
+  return {
+    name: LONG_STATES.includes(state) ? LONG_NAME : name,
+    lang: state === 'longNameFr' ? 'fr' : 'en',
+  };
+}
 
 export function seatingStateOf(raw: string | null): SeatingState | null {
   return SEATING_STATES.find((one) => one.key === raw)?.key ?? null;

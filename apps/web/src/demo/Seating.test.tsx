@@ -168,7 +168,7 @@ describe('the plan and the room (sc-3998, sc-4007)', () => {
 
     expect(links).toHaveLength(SEATING_STATES.length);
     expect(links[0]?.getAttribute('href')).toBe(AT);
-    expect(links.at(-1)?.getAttribute('href')).toBe(`${AT}?state=paperCardTop`);
+    expect(links.at(-1)?.getAttribute('href')).toBe(`${AT}?state=crumbWidths`);
   });
 
   it('is the event’s own Seating entry, lit while it is open', SLOW, async () => {
@@ -1100,5 +1100,45 @@ describe('Print and its paper (sc-4024, sc-5032)', () => {
     open(`${AT}?state=paperCardTop`);
     expect(await screen.findAllByText('Top table', undefined, WAIT)).toHaveLength(2);
     expect(screen.getByText('Page 13 of 13')).toBeDefined();
+  });
+});
+
+describe('the breadcrumb (sc-55300)', () => {
+  const LONG =
+    'Adaeze & Tunde’s wedding weekend, with both families from Lagos, London and Accra, the church, the dinner and the brunch';
+
+  it('names the long event in full to the link, the cut being only drawn', SLOW, async () => {
+    await seating('longName');
+    const crumb = screen.getByRole('navigation', { name: 'Breadcrumb' });
+    const event = within(crumb).getByRole('link', { name: LONG });
+
+    expect(event.getAttribute('href')).toBe('/demo/events/evt-wed-4');
+    expect(event.querySelector('.st-crumb-name')).not.toBeNull();
+    expect(within(crumb).getByRole('link', { name: 'Events' }).getAttribute('href')).toBe(
+      '/demo/events',
+    );
+  });
+
+  it('speaks French in French, Plan de table still the heading', SLOW, async () => {
+    open(`${AT}?state=longNameFr`);
+    await screen.findByRole('heading', { level: 1, name: 'Plan de table' }, WAIT);
+    const crumb = screen.getByRole('navigation', { name: 'Fil d’Ariane' });
+
+    expect(crumb.getAttribute('lang')).toBe('fr');
+    expect(within(crumb).getByRole('link', { name: 'Événements' })).toBeDefined();
+    expect(within(crumb).getByRole('link', { name: LONG })).toBeDefined();
+  });
+
+  it('draws the header band at 320 and 375 in English and French', SLOW, async () => {
+    open(`${AT}?state=crumbWidths`);
+    await screen.findByRole(
+      'heading',
+      { level: 1, name: 'The header band in a narrow window' },
+      WAIT,
+    );
+
+    expect(screen.getAllByRole('navigation', { name: 'Breadcrumb' })).toHaveLength(2);
+    expect(screen.getAllByRole('navigation', { name: 'Fil d’Ariane' })).toHaveLength(3);
+    expect(screen.getByRole('link', { name: 'Seating words QA' })).toBeDefined();
   });
 });
