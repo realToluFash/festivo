@@ -50,6 +50,7 @@ import {
   type PageNeeds,
   type PlaceChoice,
   type PlaceNeeds,
+  type RecordedReplyInput,
   type TaggedGuest,
 } from './guests.ts';
 import { ApiError, ApiUnreachableError, type Problem, toProblem } from './problem.ts';
@@ -2178,6 +2179,20 @@ export class ApiClient {
           method: 'POST',
         },
       ),
+    );
+  }
+
+  /** Record a reply (sc-3787); needs guests.manage. Refused 422 without `answer` or `how`, 409 `replies_closed` as the guest page is, and 409 `reply_is_theirs` over the guest's own reply unless `replace`. */
+  async recordGuestReply(
+    eventId: string,
+    guestId: string,
+    input: RecordedReplyInput,
+  ): Promise<TaggedGuest> {
+    return this.taggedGuest(
+      await this.exchange<{ guest?: unknown }>(`${this.guestPath(eventId, guestId)}/record-reply`, {
+        method: 'POST',
+        body: input,
+      }),
     );
   }
 

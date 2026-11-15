@@ -149,7 +149,14 @@ export function guestReplyBy(
   timeZone: string,
   locale: string,
   t: TFunction,
-): { card: string | null; reopens: boolean; reply: string | null; asked: string | null } {
+): {
+  card: string | null;
+  reopens: boolean;
+  /** Record a reply is offered: to those who manage guests, while replies are open or reopened (sc-3787). */
+  records: boolean;
+  reply: string | null;
+  asked: string | null;
+} {
   const asked = askedBy(reply, replies, locale, t);
   const word = t(REPLY_KEY[reply]);
   const replyLine =
@@ -158,8 +165,9 @@ export function guestReplyBy(
       : t('guestList.askedBy', { reply: word, date: formatWallDay(replies.replyBy ?? '', locale) });
   const closed = replies.closedOn != null && reply !== 'notYetInvited';
   const reopened = guest.repliesReopened ?? null;
+  const records = manages && reply !== 'notYetInvited' && (!closed || reopened != null);
 
-  if (!closed) return { card: null, reopens: false, reply: replyLine, asked };
+  if (!closed) return { card: null, reopens: false, records, reply: replyLine, asked };
   if (reopened != null)
     return {
       card: t('guestList.repliesReopened', {
@@ -167,6 +175,7 @@ export function guestReplyBy(
         date: replyDate(reopened.at, timeZone, locale),
       }),
       reopens: false,
+      records,
       reply: replyLine,
       asked,
     };
@@ -178,6 +187,7 @@ export function guestReplyBy(
       ? t('guestList.repliesClosedManage', { date: day })
       : t('guestList.repliesClosedOn', { date: day }),
     reopens: manages,
+    records,
     reply: replyLine,
     asked,
   };

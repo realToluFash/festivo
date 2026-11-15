@@ -59,6 +59,7 @@ import { tokens } from '../theme/tokens.ts';
 import { SearchField } from './EventsSearch.tsx';
 import { Glyph } from './Glyph.tsx';
 import { GuestDetails, type GuestNotice, type GuestPane } from './GuestDetails.tsx';
+import { GuestRecord } from './GuestRecord.tsx';
 import { GuestForm, type GuestFormMode } from './GuestForm.tsx';
 import { AllergyMark } from './GuestNeeds.tsx';
 import { GuestsCard } from './GuestsCard.tsx';
@@ -153,6 +154,8 @@ export function EventGuests({
     { round: 0, sending: false, refusal: null },
   );
   const [markOpen, setMarkOpen] = useState(false);
+  const [recording, setRecording] = useState<TaggedGuest | null>(null);
+  const recordButton = useRef<ViewInstance>(null);
   const title = useRef<TextHandle>(null);
   const guestName = useRef<TextHandle>(null);
   const emptyAdd = useRef<ViewInstance>(null);
@@ -218,8 +221,8 @@ export function EventGuests({
   );
   const reload = useCallback(() => {
     readList(watch);
-    if (open != null && form == null) readGuest(open, true);
-  }, [readList, watch, open, form, readGuest]);
+    if (open != null && form == null && recording == null) readGuest(open, true);
+  }, [readList, watch, open, form, recording, readGuest]);
 
   useEffect(() => {
     reloadRef.current = reload;
@@ -479,7 +482,17 @@ export function EventGuests({
         }}
         onMark={() => startMark(markButton.current)}
         onCoverMark={() => startMark(coverMark.current)}
+        recordRef={recordButton}
         onUnmark={() => unmark(open)}
+        onRecord={() => {
+          const tagged = tags.current.get(open);
+          if (tagged == null) return;
+          setNotice(null);
+          setSaved(false);
+          opener.current = recordButton.current;
+          setRound((was) => was + 1);
+          setRecording(tagged);
+        }}
         onBack={closeGuest}
         onRetry={() => readGuest(open, false)}
       />
@@ -514,6 +527,28 @@ export function EventGuests({
           opener={markOpener}
           onClose={() => setMarkOpen(false)}
           onMark={(how) => mark(open, how)}
+        />
+      )}
+      {recording != null && (
+        <GuestRecord
+          key={round}
+          open
+          tagged={recording}
+          eventId={eventId}
+          timeZone={event.timeZone}
+          opener={opener}
+          onClose={() => setRecording(null)}
+          onGone={() => {
+            setRecording(null);
+            readGuest(recording.guest.id, false);
+            readList(watch);
+          }}
+          onSaved={(tagged) => {
+            opener.current = guestName.current;
+            setRecording(null);
+            setNotice({ kind: 'recorded' });
+            showGuest(tagged);
+          }}
         />
       )}
       {form != null && (

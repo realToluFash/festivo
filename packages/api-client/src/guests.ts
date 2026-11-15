@@ -197,6 +197,30 @@ export interface Guest {
   companions: Companion[];
   /** Who let them answer again after Reply by, and when, in the event's zone (sc-3780); null until then, and absent reads as null. */
   repliesReopened?: { by: string; at: string } | null;
+  /** A reply a host recorded for them (sc-3787): who, and how the guest told them; null for the guest's own, and absent reads as null. */
+  replyRecorded?: GuestReplyRecorded | null;
+}
+
+/** How a guest told the host who recorded their reply (sc-3787). */
+export type GuestReplyHow = 'phone' | 'inPerson' | 'message' | 'other';
+export const GUEST_REPLY_HOWS: readonly GuestReplyHow[] = ['phone', 'inPerson', 'message', 'other'];
+
+export interface GuestReplyRecorded {
+  by: string;
+  how: GuestReplyHow;
+}
+
+/** What Record a reply sends (sc-3787): `companions` ticks each place, named or not, by id; `replace` confirms replacing the guest's own reply. */
+export interface RecordedReplyInput {
+  answer: GuestAnswer;
+  how: GuestReplyHow;
+  companions: { id: string; coming: boolean }[];
+  replace: boolean;
+}
+
+/** The guest gave this reply themselves, so recording over it asks first (sc-3787). */
+export function repliedThemselves(guest: Guest): boolean {
+  return guest.reply !== 'noReply' && guest.replyRecorded == null;
 }
 
 /** Mark as not invited is offered only on a mark made by hand on a guest who has not replied. */
@@ -538,7 +562,17 @@ export function asGuest(value: unknown): Guest | null {
     needs: asNeeds(row.needs),
     companions: companions as Companion[],
     repliesReopened: asReopened(row.repliesReopened),
+    replyRecorded: reply === 'noReply' ? null : asRecorded(row.replyRecorded),
   };
+}
+
+function asRecorded(value: unknown): GuestReplyRecorded | null {
+  if (typeof value !== 'object' || value == null) return null;
+  const recorded = value as Record<string, unknown>;
+  const by = text(recorded.by) ?? '';
+  const how = GUEST_REPLY_HOWS.find((known) => known === recorded.how);
+
+  return how == null ? null : { by, how };
 }
 
 function asReopened(value: unknown): { by: string; at: string } | null {

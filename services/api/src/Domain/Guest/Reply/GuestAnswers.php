@@ -13,7 +13,9 @@ use App\Domain\Guest\Model\CompanionChoice;
 use App\Domain\Guest\Model\GuestNeeds;
 use App\Domain\Guest\Model\PageReply;
 use App\Domain\Guest\Model\PlaceChoice;
+use App\Domain\Guest\Model\RecordedReply;
 use App\Entity\Guest;
+use App\Enum\Actor;
 use App\Enum\ErrorCode;
 use App\Enum\GuestPagePhase;
 use App\Enum\GuestReply;
@@ -32,6 +34,8 @@ use Psr\Clock\ClockInterface;
 final readonly class GuestAnswers
 {
     public const string ANSWERED = 'guest.answered';
+
+    public const string RECORDED = 'guest.reply_recorded';
 
     public function __construct(
         private EntityManagerInterface $entityManager,
@@ -71,10 +75,10 @@ final readonly class GuestAnswers
     }
 
     /** Refused 409 `event_paused` while paused, `event_concluded` once over, `replies_closed` from the start or after Reply by; the same answer again keeps its date. Needs go only with Coming (sc-3778), keep the hosts' note, and may drop a host's access need but never add one (422, nothing saved). */
-    public function answer(Guest $guest, GuestReply $reply, ?PageReply $page = null): void
+    public function answer(Guest $guest, GuestReply $reply, ?PageReply $page = null, ?RecordedReply $recorded = null): void
     {
         $page ??= new PageReply([], null);
-        $changed = $this->entityManager->wrapInTransaction(function () use ($guest, $reply, $page): bool {
+        $changed = $this->entityManager->wrapInTransaction(function () use ($guest, $reply, $page, $recorded): bool {
             $this->entityManager->refresh($guest, LockMode::PESSIMISTIC_WRITE);
 
             $refusal = $this->phase($guest)->refusal();
@@ -87,10 +91,17 @@ final readonly class GuestAnswers
                 throw new ApiException(ErrorCode::RepliesClosed, 'guest.replies_closed');
             }
 
+            if (null !== $recorded && !$recorded->replace && null === $guest->getReplyRecordedHow() && !Iter\contains([null, GuestReply::NoReply], $guest->getReply())) {
+                throw new ApiException(ErrorCode::ReplyIsTheirs, 'guest.reply_is_theirs');
+            }
+
             [$placed, $unnamed] = $this->chosen($this->guestRepository->findCompanionsOf($guest), $page);
             $needs = GuestReply::Coming === $reply ? $this->needs($guest, $page, $placed, $unnamed) : [];
 
-            $replied = $guest->reply($reply, $this->clock->now(), GuestReplySource::GuestPage);
+            $previous = $guest->getReply();
+            $replied = null === $recorded
+                ? $guest->reply($reply, $this->clock->now(), GuestReplySource::GuestPage)
+                : $guest->reply($reply, $this->clock->now(), GuestReplySource::Host, $recorded->by->getName(), $recorded->how);
             $chose = false;
 
             foreach ($placed as [$place, $choice]) {
@@ -119,7 +130,16 @@ final readonly class GuestAnswers
                 return false;
             }
 
-            $this->auditor->record(self::ANSWERED, 'Guest', $guest->getId());
+            if (null === $recorded) {
+                $this->auditor->record(self::ANSWERED, 'Guest', $guest->getId());
+            } else {
+                $guest->raiseVersion();
+                $this->auditor->record(self::RECORDED, 'Guest', $guest->getId(), Actor::User, $recorded->by->getId(), $recorded->by->getName(), [
+                    'reply' => [$previous?->value, $reply->value],
+                    'how' => [null, $recorded->how->value],
+                ]);
+            }
+
             $this->entityManager->flush();
 
             return true;
