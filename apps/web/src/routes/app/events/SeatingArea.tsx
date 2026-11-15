@@ -1350,26 +1350,56 @@ function SectionForm({ ctx, plan, id }: { ctx: PlanApi; plan: SeatingPlan; id: s
   );
 }
 
+/** The furniture named as one list, each kind counted, zeros left out, joined with no serial comma; both delete asks read from it (sc-54060). */
+function furnitureList(
+  t: ReturnType<typeof useTranslation>['t'],
+  locale: string,
+  {
+    sections = 0,
+    tables,
+    rows,
+    singleSeats,
+  }: Pick<SectionContents, 'tables' | 'rows' | 'singleSeats'> & { sections?: number },
+): string | undefined {
+  const parts = [
+    sections > 0 ? t('seating.countSections', { count: sections }) : null,
+    tables > 0 ? t('seating.countTables', { count: tables }) : null,
+    rows > 0 ? t('seating.countRows', { count: rows }) : null,
+    singleSeats > 0 ? t('seating.countSingleSeats', { count: singleSeats }) : null,
+  ].filter((part): part is string => part != null);
+
+  if (parts.length === 0) return undefined;
+  return listFormat(locale, { style: 'long', type: 'conjunction' }).format(parts);
+}
+
+/** Deleting a section names each kind of furniture it leaves with no section, the verb from their total; an empty section says nothing (sc-54060). */
+export function sectionDeleteWords(
+  t: ReturnType<typeof useTranslation>['t'],
+  locale: string,
+  contents: SectionContents,
+): string | undefined {
+  const counts = furnitureList(t, locale, contents);
+
+  if (counts == null) return undefined;
+  return t('seating.sectionDeleteBody', {
+    count: contents.tables + contents.rows + contents.singleSeats,
+    counts,
+  });
+}
+
 /** Delete the plan's ask (pm, 8 Nov 2026): what it deletes, sections counted, then who loses a seat; a sentence with nothing to say is left out. */
 export function deletePlanWords(
   t: ReturnType<typeof useTranslation>['t'],
   locale: string,
   counts: SeatingPlan['counts'],
 ): string {
-  const parts = [
-    counts.sections > 0 ? t('seating.countSections', { count: counts.sections }) : null,
-    counts.tables > 0 ? t('seating.countTables', { count: counts.tables }) : null,
-    counts.rows > 0 ? t('seating.countRows', { count: counts.rows }) : null,
-    counts.singleSeats > 0 ? t('seating.countSingleSeats', { count: counts.singleSeats }) : null,
-  ].filter((part): part is string => part != null);
+  const listed = furnitureList(t, locale, counts);
   const guests =
     counts.seatedGuests === 0
       ? t('seating.deletePlanNobody')
       : t('seating.deletePlanSeated', { count: counts.seatedGuests });
 
-  if (parts.length === 0) return guests;
-  const listed = listFormat(locale, { style: 'long', type: 'conjunction' }).format(parts);
-
+  if (listed == null) return guests;
   return `${t('seating.deletePlanDeletes', { counts: listed })} ${guests}`;
 }
 
@@ -1466,9 +1496,7 @@ function AskFor({
   return (
     <Ask
       title={t('seating.deleteNamed', { name: section.name })}
-      line={
-        section.tables === 0 ? undefined : t('seating.sectionDeleteBody', { count: section.tables })
-      }
+      line={sectionDeleteWords(t, currentLocale(), section)}
       keep={t('seating.keepIt')}
       go={t('seating.deleteSection')}
       busy={busy ? t('seating.deleteSection') : undefined}

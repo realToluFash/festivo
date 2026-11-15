@@ -27,6 +27,7 @@ import { PausedRow } from './PauseEvent.tsx';
 import { OutcomeLine } from './OutcomeLine.tsx';
 import { EventPeople } from './EventPeople.tsx';
 import { GuestsArea, GuestsGone } from './GuestsArea.tsx';
+import { ScheduleArea } from './ScheduleArea.tsx';
 import { SeatingArea } from './SeatingArea.tsx';
 import { RosterArea } from './RosterArea.tsx';
 import { typeLabel } from './eventTypes.ts';
@@ -157,6 +158,13 @@ function EventOf({
   if (page === 'seating' && load.kind === 'loaded')
     return canOn(load.event, 'seating.read') ? <SeatingArea event={load.event} /> : <NotFound />;
 
+  if (page === 'schedule' && load.kind === 'loaded')
+    return canOn(load.event, 'run_of_show.read') ? (
+      <ScheduleArea event={load.event} />
+    ) : (
+      <NotFound />
+    );
+
   if (page === 'staff' && load.kind === 'loaded')
     return canOn(load.event, 'staff.read') ? <RosterArea event={load.event} /> : <NotFound />;
 
@@ -258,7 +266,7 @@ function EventOf({
           />
           {page === 'dates' && <AllDatesPage event={load.event} heading={heading} />}
           {page === 'people' && <PeoplePage event={load.event} />}
-          {isPlaceholderEventArea(page) && page !== 'seating' && (
+          {isPlaceholderEventArea(page) && page !== 'seating' && page !== 'schedule' && (
             <AreaComing event={load.event} area={page} />
           )}
         </Arrived>

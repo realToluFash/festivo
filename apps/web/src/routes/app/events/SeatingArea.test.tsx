@@ -6,7 +6,7 @@ import { RouterProvider, createMemoryRouter } from 'react-router';
 import { __setSessionState, type Session } from '../../../session.ts';
 import { OWNER_PERMISSIONS, membership } from '../../../test-memberships.ts';
 import { routes } from '../../index.tsx';
-import { deletePlanWords } from './SeatingArea.tsx';
+import { deletePlanWords, sectionDeleteWords } from './SeatingArea.tsx';
 
 const IRE = membership({ id: 'org_1', name: 'Ìrè Events' });
 
@@ -375,6 +375,34 @@ describe('Seating at a desk (sc-3998)', () => {
     ).toBeDefined();
   });
 
+  it('asks before deleting a section, naming its rows and single seats too', async () => {
+    signedIn();
+    const terrace = { ...plan([{ id: 's1', name: 'Terrace', colour: 'teal' }]) };
+    terrace.sections = terrace.sections.map((one) => ({
+      ...one,
+      tables: 3,
+      rows: 2,
+      singleSeats: 1,
+      seats: 45,
+    }));
+    await onSeating({
+      'GET /api/events/ev_1/seating-plan': () =>
+        json({ seating: { measurementSystem: 'metric', plan: terrace } }),
+    });
+
+    fireEvent.click(await screen.findByRole('button', { name: 'Edit Terrace' }));
+    expect(
+      screen.getByText('Its tables, rows and single seats stay where they are, with no section.'),
+    ).toBeDefined();
+    fireEvent.click(screen.getByRole('button', { name: 'Delete section…' }));
+    const ask = await screen.findByRole('alertdialog', { name: 'Delete Terrace?' });
+    expect(
+      within(ask).getByText(
+        'Its 3 tables, 2 rows and 1 single seat stay where they are, with no section.',
+      ),
+    ).toBeDefined();
+  });
+
   it('asks only "Delete {name}?" for a section with no tables, and deletes it', async () => {
     signedIn();
     const sent = await onSeating({
@@ -392,7 +420,7 @@ describe('Seating at a desk (sc-3998)', () => {
     fireEvent.click(await screen.findByRole('button', { name: 'Edit Terrace' }));
     fireEvent.click(screen.getByRole('button', { name: 'Delete section…' }));
     const ask = await screen.findByRole('alertdialog', { name: 'Delete Terrace?' });
-    expect(within(ask).queryByText(/tables? stays?/u)).toBeNull();
+    expect(within(ask).queryByText(/with no section/u)).toBeNull();
     expect(ask.getAttribute('aria-describedby')).toBeNull();
     expect(ask.closest('.desk')).not.toBeNull();
     fireEvent.click(within(ask).getByRole('button', { name: 'Delete section' }));
@@ -584,6 +612,54 @@ describe('Delete the plan’s words (sc-3998)', () => {
 
   it('leaves the first sentence out when the plan holds nothing', () => {
     expect(deletePlanWords(t, 'en', NONE)).toBe('The guest list does not change.');
+  });
+});
+
+describe('Delete a section’s words (sc-54060)', () => {
+  const t = i18next.t.bind(i18next);
+  const NOTHING = { tables: 0, rows: 0, singleSeats: 0, seats: 0 };
+
+  it('names each kind alone, the verb following its total', () => {
+    expect(sectionDeleteWords(t, 'en', { ...NOTHING, tables: 1 })).toBe(
+      'Its 1 table stays where it is, with no section.',
+    );
+    expect(sectionDeleteWords(t, 'en', { ...NOTHING, tables: 3 })).toBe(
+      'Its 3 tables stay where they are, with no section.',
+    );
+    expect(sectionDeleteWords(t, 'en', { ...NOTHING, rows: 1, seats: 12 })).toBe(
+      'Its 1 row stays where it is, with no section.',
+    );
+    expect(sectionDeleteWords(t, 'en', { ...NOTHING, singleSeats: 1, seats: 1 })).toBe(
+      'Its 1 single seat stays where it is, with no section.',
+    );
+    expect(sectionDeleteWords(t, 'en', { ...NOTHING, singleSeats: 4, seats: 4 })).toBe(
+      'Its 4 single seats stay where they are, with no section.',
+    );
+  });
+
+  it('lists all three in order, zeros left out, a row counted once however many seats', () => {
+    expect(sectionDeleteWords(t, 'en', { tables: 3, rows: 2, singleSeats: 1, seats: 50 })).toBe(
+      'Its 3 tables, 2 rows and 1 single seat stay where they are, with no section.',
+    );
+    expect(sectionDeleteWords(t, 'en', { ...NOTHING, tables: 1, rows: 1, seats: 20 })).toBe(
+      'Its 1 table and 1 row stay where they are, with no section.',
+    );
+  });
+
+  it('says nothing for an empty section', () => {
+    expect(sectionDeleteWords(t, 'en', NOTHING)).toBeUndefined();
+    expect(sectionDeleteWords(t, 'fr', NOTHING)).toBeUndefined();
+  });
+
+  it('counts and joins in French', () => {
+    const fr = i18next.getFixedT('fr');
+
+    expect(
+      sectionDeleteWords(fr, 'fr', { tables: 3, rows: 2, singleSeats: 1, seats: 50 }),
+    ).toContain('3 tables, 2 rangées et 1 place isolée');
+    expect(sectionDeleteWords(fr, 'fr', { ...NOTHING, rows: 1, seats: 10 })).toBe(
+      fr('seating.sectionDeleteBody', { count: 1, counts: '1 rangée' }),
+    );
   });
 });
 

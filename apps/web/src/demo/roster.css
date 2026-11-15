@@ -288,4 +288,8 @@ a.sn-tab {
   .rs .mn-panel-acts {
     flex-wrap: wrap;
   }
+
+  .rs .sn-card-names {
+    flex-basis: 12rem;
+  }
 }
