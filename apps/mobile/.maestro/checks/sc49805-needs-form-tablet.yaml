@@ -1,0 +1,76 @@
+# sc-49805, tablet: ${GUEST_ID}'s Edit (Allergies sits above where the toggle leaves the sheet), the Needs section opened to Allergies (Lupin ticked) and Diet (Halal, Kosher).
+appId: host.exp.Exponent
+---
+- openLink: ${METRO_URL}/--/events/${EVENT_ID}?area=guests
+- extendedWaitUntil:
+    visible:
+      id: 'guests.row.${GUEST_ID}'
+    timeout: 30000
+- tapOn:
+    id: 'guests.row.${GUEST_ID}'
+- extendedWaitUntil:
+    visible:
+      id: 'guest.edit'
+    timeout: 20000
+- tapOn:
+    id: 'guest.edit'
+- extendedWaitUntil:
+    visible:
+      id: 'guest.form.fullName'
+    timeout: 20000
+- scrollUntilVisible:
+    element:
+      id: 'guest.form.needs.toggle'
+    direction: DOWN
+- tapOn:
+    id: 'guest.form.needs.toggle'
+- scrollUntilVisible:
+    element:
+      id: 'guest.form.needs.allergies'
+    direction: UP
+    centerElement: true
+- waitForAnimationToEnd:
+    timeout: 2000
+- takeScreenshot: form-allergies
+- scrollUntilVisible:
+    element:
+      id: 'guest.form.needs.diet'
+    direction: DOWN
+    centerElement: true
+- takeScreenshot: form-diet
+# Android's LANDSCAPE_LEFT can leave the tablet portrait: the harness turns it. sc-50565.
+- setOrientation: LANDSCAPE_LEFT
+- runScript:
+    file: ../batch/helper.js
+    env:
+      ASK: /landscape
+- waitForAnimationToEnd:
+    timeout: 3000
+- scrollUntilVisible:
+    element:
+      id: 'guest.form.needs.allergies'
+    direction: UP
+    centerElement: true
+- takeScreenshot: land-form-allergies
+- back
+- back
+- waitForAnimationToEnd:
+    timeout: 3000
+- scrollUntilVisible:
+    element:
+      id: 'guest.unmark'
+    direction: DOWN
+- tapOn:
+    id: 'guest.unmark'
+- waitForAnimationToEnd:
+    timeout: 5000
+- swipe:
+    direction: DOWN
+- swipe:
+    direction: DOWN
+- takeScreenshot: land-unmark-failed
+- setOrientation: PORTRAIT
+- runScript:
+    file: ../batch/helper.js
+    env:
+      ASK: /portrait

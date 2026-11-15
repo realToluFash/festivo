@@ -1,0 +1,18 @@
+# sc-14445: the app demo's deleteRace: Delete on the typed name screen turns into the refusal, for the side-by-side pair. Needs ${METRO_URL}.
+appId: host.exp.Exponent
+---
+- openLink: ${METRO_URL}/--/demo/events/evt-wed-4?state=deleteRace
+- extendedWaitUntil:
+    visible:
+      id: 'event.delete.confirm'
+    timeout: 30000
+- waitForAnimationToEnd
+- takeScreenshot: name-screen
+- tapOn:
+    id: 'event.delete.confirm'
+- extendedWaitUntil:
+    visible:
+      id: 'event.refused'
+    timeout: 15000
+- waitForAnimationToEnd
+- takeScreenshot: refused

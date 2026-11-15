@@ -164,7 +164,7 @@ export function GuestNumbers({ event }: { event: OrganisationEvent }) {
           to={`${guests}?filter=notYetInvited`}
           aria-label={t('guestNumbers.notYetName', { count: counts.notYetInvited })}
         >
-          <ReplyMark reply="notYetInvited" cover />
+          <ReplyMark reply="notYetInvited" size={16} />
           {t('guestNumbers.notYet', { count: counts.notYetInvited })}
           <Glyph name="chevron" size={15} weight={2.4} />
         </Link>

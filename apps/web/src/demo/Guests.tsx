@@ -25,6 +25,7 @@ import { ExportDialog } from './GuestExport.tsx';
 import { XW, narrowing } from './guestExport.ts';
 import {
   CHOICES,
+  type CardStepDoes,
   LINK,
   type Filter,
   type Guest,
@@ -292,10 +293,11 @@ function GuestsPage({
   const lastRow = useRef<string | null>(start.pane.kind === 'guest' ? start.pane.id : null);
   const away = useLeaveAsk(dirty);
   const { stack } = useContext(LayersContext);
-  const manages = start.role === 'owner';
+  const manages = start.role === 'owner' || start.role === 'host';
   const today = todayOf(start.clock);
   const counts = countsOf(list);
-  const card = guestsCardOf(event, list, start.card, start.clock, manages);
+  const plans = start.role === 'owner' || start.role === 'planner';
+  const card = guestsCardOf(event, list, start.card, start.clock, manages, plans);
   const changes = sample.id === CHANGES_EVENT;
   const listed = changes ? changesSince(since) : [];
   const unseen = changes ? changesSince(looked).length : 0;
@@ -597,10 +599,10 @@ function GuestsPage({
     void navigate(MESSAGES_AT);
   }
 
-  function onStep(): void {
-    if (card.step === 'add') startAdd();
-    else if (card.step === 'write') writeToThem();
-    else if (card.step === 'changeDates')
+  function onStep(does: CardStepDoes | null | undefined): void {
+    if (does === 'add') startAdd();
+    else if (does === 'write') writeToThem();
+    else if (does === 'changeDates')
       void navigate(`/demo/events/${event.id}`, { state: { open: 'dates' } });
     else tell('Make live has its own design.');
   }
@@ -628,7 +630,7 @@ function GuestsPage({
     return () => at?.removeEventListener('keydown', listen);
   });
 
-  const plus = manages && status === 'ready' && list.length > 0;
+  const plus = manages && status === 'ready' && card.step !== 'add';
   const exports = (manages || start.role === 'member') && status === 'ready' && list.length > 0;
   const inviting =
     manages &&
@@ -636,14 +638,14 @@ function GuestsPage({
     invitesOn(event, start.clock) &&
     notYetInvited(list).length > 0;
   const columns = list.length > 0 || pane.kind === 'add' || pane.kind === 'groups';
-  const stepWord =
-    card.step === 'add'
+  const wordOf = (does: CardStepDoes | null | undefined) =>
+    does === 'add'
       ? GW.addGuest
-      : card.step === 'write'
+      : does === 'write'
         ? GW.writeToThem
-        : card.step === 'makeLive'
+        : does === 'makeLive'
           ? GW.makeLive
-          : card.step === 'changeDates'
+          : does === 'changeDates'
             ? EVENT_WORDS.changeDates
             : null;
 
@@ -722,7 +724,14 @@ function GuestsPage({
           </div>
         ) : (
           <>
-            <GuestsCardView card={card} mesh={event.mesh} step={stepWord} onStep={onStep} />
+            <GuestsCardView
+              card={card}
+              mesh={event.mesh}
+              step={wordOf(card.step)}
+              also={wordOf(card.also)}
+              onStep={() => onStep(card.step)}
+              onAlso={() => onStep(card.also)}
+            />
             {columns && (
               <div className="gs-cols">
                 <section className="gs-list" aria-label={GW.title}>

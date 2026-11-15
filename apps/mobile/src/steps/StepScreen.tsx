@@ -373,7 +373,7 @@ export function StepScreen({
         <ScrollView
           {...scrollProps}
           onLayout={(event) => {
-            scrollProps.onLayout();
+            scrollProps.onLayout(event);
             measuredAs('shown')(event);
           }}
           style={styles.grow}

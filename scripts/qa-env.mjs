@@ -3425,9 +3425,14 @@ export function portraitRotation(wmSize) {
   return size.width > size.height ? 1 : 0;
 }
 
-function portraitOnEmulator() {
+// Maestro's LANDSCAPE_LEFT can leave a portrait-native tablet portrait (sc-50565).
+export function landscapeRotation(wmSize) {
+  return 1 - portraitRotation(wmSize);
+}
+
+function turnEmulator(rotationFor) {
   const tools = androidTools();
-  const rotation = portraitRotation(adbOut(tools, ['shell', 'wm', 'size']));
+  const rotation = rotationFor(adbOut(tools, ['shell', 'wm', 'size']));
   for (const [setting, value] of [
     ['accelerometer_rotation', '0'],
     ['user_rotation', String(rotation)],
@@ -3437,6 +3442,9 @@ function portraitOnEmulator() {
   }
   return rotation;
 }
+
+const portraitOnEmulator = () => turnEmulator(portraitRotation);
+const landscapeOnEmulator = () => turnEmulator(landscapeRotation);
 
 export function expoGoRunning(launchctlList) {
   return new RegExp(
@@ -3639,6 +3647,7 @@ export function startHelper({
   open = openOnEmulator,
   reload = reloadOnEmulator,
   portrait = portraitOnEmulator,
+  landscape = landscapeOnEmulator,
   shoot = (file) => screenshotDevice(device, onAndroid, file),
   out,
   port = CONFIG.helperPort,
@@ -3670,6 +3679,9 @@ export function startHelper({
       }
       if (url.pathname === '/portrait') {
         return reply(200, { rotation: onAndroid ? portrait() : null });
+      }
+      if (url.pathname === '/landscape') {
+        return reply(200, { rotation: onAndroid ? landscape() : null });
       }
       if (url.pathname === '/shot') {
         const name = url.searchParams.get('name') ?? '';

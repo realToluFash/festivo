@@ -41,6 +41,7 @@ import {
   batchSummary,
   physicalSize,
   portraitRotation,
+  landscapeRotation,
   ANDROID_START,
   startParts,
   iosExpoGoStops,
@@ -2265,6 +2266,13 @@ describe('portraitRotation', () => {
   });
 });
 
+describe('landscapeRotation', () => {
+  it('turns a portrait-native display a quarter, and leaves a landscape-native one at 0', () => {
+    expect(landscapeRotation('Physical size: 1600x2560\n')).toBe(1);
+    expect(landscapeRotation('Physical size: 2560x1600\n')).toBe(0);
+  });
+});
+
 describe('the batch helper', () => {
   const helperFor = async (container, open, options = {}) => {
     const { control, ran } = dockerDouble(container);
@@ -2344,6 +2352,21 @@ describe('the batch helper', () => {
       expect(await android.ask('/portrait')).toEqual({ rotation: 1 });
       expect(await ios.ask('/portrait')).toEqual({ rotation: null });
       expect(turned).toEqual(['portrait']);
+    } finally {
+      android.server.close();
+      ios.server.close();
+    }
+  });
+
+  it('turns an Android device to landscape, and leaves iOS to Maestro', async () => {
+    const turned = [];
+    const landscape = () => turned.push('landscape') && 1;
+    const android = await helperFor('running', undefined, { onAndroid: true, landscape });
+    const ios = await helperFor('running', undefined, { onAndroid: false, landscape });
+    try {
+      expect(await android.ask('/landscape')).toEqual({ rotation: 1 });
+      expect(await ios.ask('/landscape')).toEqual({ rotation: null });
+      expect(turned).toEqual(['landscape']);
     } finally {
       android.server.close();
       ios.server.close();
