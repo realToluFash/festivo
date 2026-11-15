@@ -1,4 +1,5 @@
 import {
+  ApiError,
   type OrganisationEvent,
   type Schedule,
   asSchedule,
@@ -164,18 +165,23 @@ function RunView({
   const now = wallAt(useServerNow(), schedule.timeZone);
   const manage = canOn(event, 'run_of_show.manage');
   const [busy, setBusy] = useState<string | null>(null);
-  const [failed, setFailed] = useState(false);
+  const [failed, setFailed] = useState<string | null>(null);
   const views = runViews(schedule.items, now, t('schedule.main'), (day) =>
     dayName(day, { locale, zone: schedule.timeZone }),
   );
 
   async function mark(item: RunItem, how: 'start' | 'finish') {
     setBusy(item.id);
-    setFailed(false);
+    setFailed(null);
     try {
       onSchedule(await api.markScheduleItem(event.id, item.id, how));
-    } catch {
-      setFailed(true);
+    } catch (error) {
+      if (error instanceof ApiError && error.status === 409) {
+        setFailed(error.problem.title);
+        api.schedule(event.id).then(onSchedule, () => undefined);
+      } else {
+        setFailed(t('runView.markFailed'));
+      }
     } finally {
       setBusy(null);
     }
@@ -201,10 +207,10 @@ function RunView({
           {t('schedule.lock')}
         </p>
       )}
-      {failed && (
+      {failed != null && (
         <p className="mn-failed" role="alert">
           <Glyph name="alert" size={17} weight={2.2} />
-          {t('runView.markFailed')}
+          {failed}
         </p>
       )}
       {views.length === 0 && <p className="mn-sub">{t('runView.empty')}</p>}

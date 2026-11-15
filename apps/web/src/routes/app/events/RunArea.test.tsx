@@ -186,6 +186,32 @@ describe('The run view (sc-1404)', () => {
     expect(screen.getByText('Main, last item under way')).toBeDefined();
   });
 
+  it('reads the schedule again and says what the API said when the item was already started', async () => {
+    const started = { ...SPEECHES, startedAt: '2030-11-15T19:20:00+00:00' };
+    let marked = false;
+    await onRun([DINNER, SPEECHES], OWNER_PERMISSIONS, {
+      'POST /api/events/ev_1/schedule/items/it_speeches/start': () => {
+        marked = true;
+
+        return new Response(
+          JSON.stringify({
+            type: 'https://soirely.com/errors/item_started',
+            title: 'This item has already started.',
+            status: 409,
+          }),
+          { status: 409, headers: { 'Content-Type': 'application/problem+json' } },
+        );
+      },
+      'GET /api/events/ev_1/schedule': () =>
+        json({ schedule: schedule(marked ? [DINNER, started] : [DINNER, SPEECHES]) }),
+    });
+
+    fireEvent.click(screen.getByRole('button', { name: 'Start Speeches' }));
+
+    expect(await screen.findByRole('button', { name: 'Finish Speeches' })).toBeDefined();
+    expect(screen.getByText('This item has already started.')).toBeDefined();
+  });
+
   it('gives no Start or Finish to somebody who can only read the schedule', async () => {
     await onRun([DINNER, SPEECHES], ['run_of_show.read', 'events.read']);
 

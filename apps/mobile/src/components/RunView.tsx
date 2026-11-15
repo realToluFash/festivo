@@ -1,4 +1,5 @@
 import {
+  ApiError,
   type OrganisationEvent,
   type Schedule,
   type ScheduleItem,
@@ -161,7 +162,7 @@ function Loaded({
   );
   const [trackKey, setTrackKey] = useState(views[0]?.key ?? '');
   const [busy, setBusy] = useState<string | null>(null);
-  const [failed, setFailed] = useState(false);
+  const [failed, setFailed] = useState<string | null>(null);
   const phone = kind === 'phone';
 
   useReadOut(
@@ -173,15 +174,20 @@ function Loaded({
 
   const mark = (item: RunItem, how: 'start' | 'finish') => {
     setBusy(item.id);
-    setFailed(false);
+    setFailed(null);
     api.markScheduleItem(eventId, item.id, how).then(
       (next) => {
         setBusy(null);
         onSchedule(next);
       },
-      () => {
+      (error: unknown) => {
         setBusy(null);
-        setFailed(true);
+        if (error instanceof ApiError && error.status === 409) {
+          setFailed(error.problem.title);
+          api.schedule(eventId).then(onSchedule, () => undefined);
+        } else {
+          setFailed(t('runView.markFailed'));
+        }
       },
     );
   };
@@ -208,9 +214,9 @@ function Loaded({
           </Text>
         </View>
       )}
-      {failed && (
+      {failed != null && (
         <Text size={15} weight="semibold" style={styles.attention} accessibilityRole="alert">
-          {t('runView.markFailed')}
+          {failed}
         </Text>
       )}
       {views.length === 0 && (
