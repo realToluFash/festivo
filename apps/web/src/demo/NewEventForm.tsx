@@ -221,7 +221,7 @@ export function NewEventForm({ state }: { state: NewEventState | null }) {
     );
 
   return (
-    <form className="ev-new" noValidate aria-busy={busy} onSubmit={create}>
+    <form className="ev-new-form" noValidate aria-busy={busy} onSubmit={create}>
       <Block title={N.aboutHeading}>
         <Text
           label={W.eventName}
