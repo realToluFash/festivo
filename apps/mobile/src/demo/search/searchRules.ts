@@ -60,6 +60,8 @@ export const SEARCH_WORDS = {
   nothing: (term: string) => `Nothing matches “${term}”.`,
   clear: 'Clear search',
   offline: EVENTS_WORDS.searchOffline,
+  failed: 'Search did not work. Try again in a moment.',
+  tryAgain: 'Try again',
   cancel: 'Cancel',
   close: 'Close',
   results: 'Results',
@@ -302,7 +304,7 @@ export function saidOf(term: string, groups: readonly Group[]): string {
   return count === 0 ? SEARCH_WORDS.nothing(term.trim()) : SEARCH_WORDS.matches(count);
 }
 
-export type Phase = 'idle' | 'short' | 'loading' | 'found' | 'offline';
+export type Phase = 'idle' | 'short' | 'loading' | 'found' | 'offline' | 'failed';
 
 export const SEARCH_STATES = [
   { key: 'idle', term: '', name: 'Idle, an owner: Find an event, a guest or a member.' },
@@ -325,6 +327,11 @@ export const SEARCH_STATES = [
   { key: 'two-events', term: 'duarte', name: '“duarte”: one guest on two events, two rows' },
   { key: 'long', term: 'quinta', name: '“quinta”: Events 6 with Show all in Events, a long name' },
   { key: 'offline', term: 'ines', name: 'Offline: Search needs a connection.' },
+  {
+    key: 'failed',
+    term: 'ines',
+    name: 'Online, the search failed: Search did not work. Try again in a moment.',
+  },
 ] as const;
 
 export type SearchStateName = (typeof SEARCH_STATES)[number]['key'];
@@ -356,7 +363,8 @@ export function searchStart(
   reach: Reach = REACHES.owner,
 ): SearchStart {
   const term = SEARCH_STATES.find((one) => one.key === state)?.term ?? '';
-  const phase = state === 'loading' ? 'loading' : state === 'offline' ? 'offline' : phaseOf(term);
+  const phase =
+    state === 'loading' || state === 'offline' || state === 'failed' ? state : phaseOf(term);
 
   return {
     term,

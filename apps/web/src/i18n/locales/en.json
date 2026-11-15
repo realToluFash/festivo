@@ -3318,6 +3318,8 @@
     "showAll": "Show all in Events",
     "nothing": "Nothing matches “{{term}}”.",
     "clear": "Clear search",
+    "failed": "Search did not work. Try again in a moment.",
+    "tryAgain": "Try again",
     "keys": "↑ ↓ to move · Enter to open · Esc to close",
     "results": "Results",
     "close": "Close",

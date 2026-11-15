@@ -1,4 +1,4 @@
-import type { SearchFound } from '@soirely/api-client';
+import { ApiError, ApiUnreachableError, type SearchFound } from '@soirely/api-client';
 import { act, fireEvent, render, screen, waitFor, within } from '@testing-library/react';
 import { MemoryRouter, Route, Routes, useLocation } from 'react-router';
 import { afterEach, describe, expect, it, vi } from 'vitest';
@@ -144,6 +144,61 @@ describe('Search (sc-39534)', () => {
       fireEvent.click(screen.getByRole('button', { name: 'Clear search' }));
     });
     expect((screen.getByRole('combobox') as HTMLInputElement).value).toBe('');
+  });
+
+  it('says Search did not work when the server fails online, and Try again searches the same term through loading', async () => {
+    reaching();
+    const search = vi
+      .spyOn(api, 'search')
+      .mockRejectedValueOnce(new ApiError({ type: 'about:blank', title: 'Oops', status: 500 }))
+      .mockResolvedValue(FOUND);
+    shell();
+    fireEvent.click(screen.getByRole('button', { name: 'Search' }));
+
+    fireEvent.change(screen.getByRole('combobox'), { target: { value: 'ines' } });
+
+    expect(await screen.findAllByText('Search did not work. Try again in a moment.')).toHaveLength(
+      2,
+    );
+    expect(screen.queryByText('Search needs a connection.')).toBeNull();
+    expect(screen.queryAllByRole('option')).toHaveLength(0);
+
+    fireEvent.click(screen.getByRole('button', { name: 'Try again' }));
+
+    const field = screen.getByRole('combobox') as HTMLInputElement;
+    expect(field.value).toBe('ines');
+    expect(document.activeElement).toBe(field);
+    expect(screen.getByRole('status').textContent).toBe('Searching…');
+    expect(await screen.findByRole('group', { name: 'Guests, 23 matches' })).toBeTruthy();
+    expect(search).toHaveBeenCalledTimes(2);
+    expect(search).toHaveBeenLastCalledWith('org_1', 'ines', expect.any(AbortSignal));
+  });
+
+  it('says Search needs a connection, with no Try again, when the API cannot be reached', async () => {
+    reaching();
+    vi.spyOn(api, 'search').mockRejectedValue(new ApiUnreachableError());
+    shell();
+    fireEvent.click(screen.getByRole('button', { name: 'Search' }));
+
+    fireEvent.change(screen.getByRole('combobox'), { target: { value: 'ines' } });
+
+    expect(await screen.findAllByText('Search needs a connection.')).toHaveLength(2);
+    expect(screen.queryByRole('button', { name: 'Try again' })).toBeNull();
+  });
+
+  it('shows the no-match state, never an error, when the search is refused', async () => {
+    reaching();
+    vi.spyOn(api, 'search').mockRejectedValue(
+      new ApiError({ type: 'about:blank', title: 'Forbidden', status: 403 }),
+    );
+    shell();
+    fireEvent.click(screen.getByRole('button', { name: 'Search' }));
+
+    fireEvent.change(screen.getByRole('combobox'), { target: { value: 'ines' } });
+
+    expect(await screen.findAllByText('Nothing matches “ines”.')).toHaveLength(2);
+    expect(screen.getByRole('button', { name: 'Clear search' })).toBeTruthy();
+    expect(screen.queryByText('Search did not work. Try again in a moment.')).toBeNull();
   });
 
   it('writes the key hint the reader’s keyboard has', () => {

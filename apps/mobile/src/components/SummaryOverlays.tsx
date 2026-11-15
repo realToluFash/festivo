@@ -415,6 +415,8 @@ interface MenuProps {
   scrollRef?: Ref<ScrollViewInstance>;
   /** Out of TalkBack's reach while its window arrives, so its own first focus finds nothing. */
   hidden?: boolean;
+  /** Close the menu alone out of TalkBack's reach, so its own first focus can only find the menu. */
+  outsideHidden?: boolean;
   children: ReactNode;
   testID?: string;
 }
@@ -443,17 +445,28 @@ export function AnchoredMenu({
     reduced ? 0 : WINDOW_ARRIVES_MS,
   );
   const landed = onScreen && first != null && !arriving;
+  const [focused, setFocused] = useState(false);
+  if (!landed && focused) setFocused(false);
 
+  // TalkBack's own first focus can still come after the window has arrived, and Close the menu comes first in the tree, so it stays out of reach until focus is on the first row (sc-52641, #53461).
   useEffect(() => {
     if (!landed || Platform.OS !== 'android') return;
     const wait = setTimeout(() => moveScreenReaderFocus(first.current));
+    const reached = setTimeout(() => setFocused(true), SETTLED_MS);
 
-    return () => clearTimeout(wait);
+    return () => {
+      clearTimeout(wait);
+      clearTimeout(reached);
+    };
   }, [landed, first]);
 
   return (
     <Window open={open} onClose={menu.onClose} opener={opener} onShow={() => setOnScreen(true)}>
-      <MenuLayer {...menu} hidden={arriving} />
+      <MenuLayer
+        {...menu}
+        hidden={arriving}
+        outsideHidden={Platform.OS === 'android' && first != null && !focused}
+      />
       {over}
     </Window>
   );
@@ -470,6 +483,7 @@ export function MenuLayer({
   head,
   scrollRef,
   hidden = false,
+  outsideHidden = false,
   children,
   testID,
 }: MenuProps) {
@@ -507,7 +521,7 @@ export function MenuLayer({
         onPress={onClose}
         accessibilityRole="button"
         accessibilityLabel={t('frame.closeMenu')}
-        importantForAccessibility={reach}
+        importantForAccessibility={outsideHidden ? 'no-hide-descendants' : reach}
       />
       {at != null && layer != null && (
         <View
