@@ -110,3 +110,8 @@
     min-height: var(--sizeHit);
   }
 }
+
+/* sc-50772 (qa4 #52562): the card's inner layer sits at z-index 2, so without its own stack it paints over the result line docked above it. */
+.gb .gs-card {
+  isolation: isolate;
+}
