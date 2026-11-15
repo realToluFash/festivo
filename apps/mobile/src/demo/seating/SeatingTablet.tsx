@@ -41,6 +41,7 @@ import {
   shapeChoice,
   placedCount,
   roomLine,
+  sectionDeleteLine,
   whatGoes,
   SHAPE_CHOICES,
 } from './SeatingModel.ts';
@@ -740,11 +741,7 @@ export function Overlays({ m, go }: { m: Seating; go: Go }) {
         : ask.kind === 'deleteSection'
           ? {
               title: say.deleteAsk(sec?.name ?? ''),
-              line: say.sectionDeleteBody(
-                m.items.filter((t) => t.sec === ask.key && isTable(t)).length,
-                m.items.filter((t) => t.sec === ask.key && t.kind === 'row').length,
-                m.items.filter((t) => t.sec === ask.key && t.kind === 'single').length,
-              ),
+              line: sectionDeleteLine(m, ask.key),
               keep: W.keepIt,
               confirm: W.deleteSection,
               removes: true,

@@ -45,7 +45,9 @@ import {
   freeCount,
   handlesLive,
   itemOf,
+  isTable,
   noSectionLine,
+  sectionDeleteLine,
   nobodyComing,
   placedCount,
   roomLine,
@@ -897,6 +899,20 @@ describe('sections', () => {
     const m = startOf('sectionDeleteRows', 'landscape');
     expect(m.ask).toEqual({ kind: 'deleteSection', key: 'quiet' });
     expect(m.items.filter((it) => it.sec === 'quiet').map((it) => it.id)).toEqual(['rowA', 'door']);
+    expect(sectionDeleteLine(m, 'quiet')).toBe(
+      'Its 1 row and 1 single seat stay where they are, with no section.',
+    );
+    const t = m.items.find((it) => isTable(it) && it.sec !== 'quiet');
+    const more = {
+      ...m,
+      items: [
+        ...m.items.map((it) => (it === t ? { ...it, sec: 'quiet' } : it)),
+        { ...item(m, 'door'), id: 'door2' },
+      ],
+    };
+    expect(sectionDeleteLine(more, 'quiet')).toBe(
+      'Its 1 table, 1 row and 2 single seats stay where they are, with no section.',
+    );
     const done = run(m, { type: 'confirm' });
     expect(done.sections.map((s) => s.key)).not.toContain('quiet');
     expect(item(done, 'rowA').sec).toBeNull();

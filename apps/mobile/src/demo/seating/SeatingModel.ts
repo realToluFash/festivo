@@ -398,6 +398,15 @@ export function noSectionLine(m: Seating): string {
   ].join(' · ');
 }
 
+export function sectionDeleteLine(m: Seating, key: string): string {
+  const its = m.items.filter((it) => it.sec === key);
+  return say.sectionDeleteBody(
+    its.filter(isTable).length,
+    its.filter((it) => it.kind === 'row').length,
+    its.filter((it) => it.kind === 'single').length,
+  );
+}
+
 /** The least-used colour, the first in order on a tie (sc-3998). */
 export function leastUsed(sections: readonly Section[]): ColourName {
   const uses = (name: ColourName) => sections.filter((s) => s.colour === name).length;
