@@ -138,8 +138,16 @@ export function linkOf(entry: Entry, erased: boolean): LinkState {
   return entry.link;
 }
 
-function startOf(entry: Entry): string | null {
-  return entry.shift?.split(' to ')[0] ?? null;
+const DAY = 24 * 60;
+const DAY_TURNS = 6 * 60;
+
+/** Minutes from 06:00, so a start after midnight sorts last; the product sorts on sc-3908's full start. */
+function startOf(entry: Entry): number | null {
+  const clock = entry.shift?.split(' to ')[0];
+  if (clock == null) return null;
+  const [hours, minutes] = clock.split(':').map(Number);
+
+  return ((hours as number) * 60 + (minutes as number) - DAY_TURNS + DAY) % DAY;
 }
 
 /** By shift start, then name; people with no shift after everyone with one. */

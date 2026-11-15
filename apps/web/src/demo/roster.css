@@ -3,6 +3,10 @@ a.sn-tab {
   text-decoration: none;
 }
 
+.rs-frame {
+  overflow-x: auto;
+}
+
 .rs-table {
   width: 100%;
   border-collapse: collapse;
@@ -238,4 +242,50 @@ a.sn-tab {
 .rs-bar .desk-text.rs-bar-dismiss {
   min-height: var(--sizeHit);
   color: var(--colorInkOnDark);
+}
+
+/* Below about 920 px the panel drops under the table; at 400% zoom (320 CSS px) the desk is one column and only the table scrolls sideways (WCAG 2.2 1.4.10). */
+@media (width <= 920px) {
+  .rs .mn-split {
+    flex-direction: column;
+    align-items: stretch;
+  }
+
+  .rs .mn-panel {
+    position: static;
+    width: auto;
+    max-height: none;
+  }
+}
+
+@media (width <= 720px) {
+  .today.desk:has(.rs) {
+    flex-direction: column;
+    height: auto;
+    min-height: 100vh;
+  }
+
+  .today.desk:has(.rs) .today-side {
+    width: auto;
+    height: auto;
+    overflow: visible;
+  }
+
+  .today.desk:has(.rs) .desk-main {
+    min-width: 0;
+    margin: 0 var(--spaceMd) var(--spaceMd);
+    overflow: visible;
+  }
+
+  .rs.desk-page {
+    padding: var(--spaceXl) var(--spaceLg) var(--space3xl);
+    overflow: visible;
+  }
+
+  .rs .ev-crumb ol,
+  .rs .gs-top,
+  .rs .sn-card-top,
+  .rs .mn-panel-acts {
+    flex-wrap: wrap;
+  }
 }

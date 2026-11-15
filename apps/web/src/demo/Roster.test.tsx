@@ -105,6 +105,11 @@ describe('/demo/events/evt-wed-4/staff/roster (sc-3906)', () => {
     type('Name', 'Kunle A. Ajayi');
     press('Save changes');
     expect(live()?.textContent).toBe('Saved.');
+    const said = live()?.firstChild;
+    press('Edit');
+    press('Save changes');
+    expect(live()?.textContent).toBe('Saved.');
+    expect(live()?.firstChild).not.toBe(said);
     press('Edit');
     type(/Mobile number/, '0803 111 0008');
     press('Save changes');

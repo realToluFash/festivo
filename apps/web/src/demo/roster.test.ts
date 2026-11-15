@@ -24,6 +24,15 @@ describe('the roster (sc-3906)', () => {
     expect(names.at(-1)).toBe('Chinedu Eze');
   });
 
+  it('sorts a shift starting after midnight after the evening’s', () => {
+    const [ada, bisi] = sample();
+    const names = sorted([
+      { ...ada!, name: 'Late', shift: '00:30 to 06:00' },
+      { ...bisi!, name: 'Early', shift: '15:00 to 23:00' },
+    ]).map((one) => one.name);
+    expect(names).toEqual(['Early', 'Late']);
+  });
+
   it('reads Add a mobile number with no number, and every row as removed after the erasure', () => {
     expect(linkOf(byId('ada'), false)).toBe('noMobile');
     expect(linkOf(byId('amina'), false)).toBe('copied');

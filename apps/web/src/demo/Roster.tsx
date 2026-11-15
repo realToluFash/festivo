@@ -101,7 +101,7 @@ function RosterView({
   const [pressed, setPressed] = useState(first.pressed);
   const [warning, setWarning] = useState<string | null>(first.warning);
   const [bar, setBar] = useState<string[] | null>(first.bar);
-  const [live, setLive] = useState(first.bar?.join(' ') ?? '');
+  const [live, setLive] = useState({ text: first.bar?.join(' ') ?? '', said: 0 });
   const [failed, setFailed] = useState<string | null>(first.failed);
   const focusAfter = useRef<string | null>(null);
   const { manage, finished, erased } = first;
@@ -129,7 +129,7 @@ function RosterView({
 
   function say(lines: string[]) {
     setBar(lines);
-    setLive(lines.join(' '));
+    setLive((was) => ({ text: lines.join(' '), said: was.said + 1 }));
   }
 
   const rows = sorted(entries);
@@ -261,7 +261,7 @@ function RosterView({
           </p>
         )}
         <p className="visually-hidden" role="status">
-          {live}
+          <span key={live.said}>{live.text}</span>
         </p>
         <div className="mn-split">
           <div className="mn-list">
@@ -302,46 +302,48 @@ function RosterView({
                   )}
                 </div>
               ) : (
-                <table className="rs-table" aria-labelledby="rs-roster">
-                  <thead>
-                    <tr>
-                      <th scope="col">{RW.person}</th>
-                      <th scope="col">{RW.job}</th>
-                      <th scope="col">{RW.station}</th>
-                      <th scope="col">{RW.shift}</th>
-                      <th scope="col">{RW.link}</th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {rows.map((one) => (
-                      <tr key={one.id} className={lit === one.id ? 'is-lit' : undefined}>
-                        <th scope="row">
-                          <button
-                            id={`rs-name-${one.id}`}
-                            type="button"
-                            className="rs-name"
-                            aria-current={lit === one.id || undefined}
-                            onClick={() => open({ kind: 'details', id: one.id })}
-                          >
-                            {one.name}
-                          </button>
-                        </th>
-                        <td className={one.job == null ? 'rs-quiet' : undefined}>
-                          {one.job ?? RW.noJob}
-                        </td>
-                        <td className={one.station == null ? 'rs-quiet' : undefined}>
-                          {one.station ?? RW.noStation}
-                        </td>
-                        <td className={one.shift == null ? 'rs-quiet' : 'rs-shift'}>
-                          {one.shift ?? RW.noShift}
-                        </td>
-                        <td>
-                          <LinkWord state={linkOf(one, erased)} />
-                        </td>
+                <div className="rs-frame">
+                  <table className="rs-table" aria-labelledby="rs-roster">
+                    <thead>
+                      <tr>
+                        <th scope="col">{RW.person}</th>
+                        <th scope="col">{RW.job}</th>
+                        <th scope="col">{RW.station}</th>
+                        <th scope="col">{RW.shift}</th>
+                        <th scope="col">{RW.link}</th>
                       </tr>
-                    ))}
-                  </tbody>
-                </table>
+                    </thead>
+                    <tbody>
+                      {rows.map((one) => (
+                        <tr key={one.id} className={lit === one.id ? 'is-lit' : undefined}>
+                          <th scope="row">
+                            <button
+                              id={`rs-name-${one.id}`}
+                              type="button"
+                              className="rs-name"
+                              aria-current={lit === one.id || undefined}
+                              onClick={() => open({ kind: 'details', id: one.id })}
+                            >
+                              {one.name}
+                            </button>
+                          </th>
+                          <td className={one.job == null ? 'rs-quiet' : undefined}>
+                            {one.job ?? RW.noJob}
+                          </td>
+                          <td className={one.station == null ? 'rs-quiet' : undefined}>
+                            {one.station ?? RW.noStation}
+                          </td>
+                          <td className={one.shift == null ? 'rs-quiet' : 'rs-shift'}>
+                            {one.shift ?? RW.noShift}
+                          </td>
+                          <td>
+                            <LinkWord state={linkOf(one, erased)} />
+                          </td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
               )}
             </section>
           </div>
