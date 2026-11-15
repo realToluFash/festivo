@@ -419,9 +419,11 @@ export function EventScreen({
               ? cardNamed
                 ? styles.phoneUntitled
                 : styles.phone
-              : kind === 'tabletLandscape' && cardNamed
-                ? styles.landscapeUntitled
-                : styles.tablet
+              : kind === 'tabletPortrait'
+                ? styles.tabletPortrait
+                : cardNamed
+                  ? styles.landscapeUntitled
+                  : styles.tabletLandscape
           }
         >
           {kind === 'tabletLandscape' &&
@@ -603,13 +605,13 @@ const styles = StyleSheet.create({
   phone: {
     gap: tokens.spaceLg,
     paddingTop: tokens.spaceXl,
-    paddingHorizontal: tokens.spaceXl,
+    paddingHorizontal: tokens.spaceXxl,
     paddingBottom: tokens.space3xl,
   },
   phoneUntitled: {
     gap: tokens.spaceLg,
     paddingTop: 0,
-    paddingHorizontal: tokens.spaceXl,
+    paddingHorizontal: tokens.spaceXxl,
     paddingBottom: tokens.space3xl,
   },
   landscapeUntitled: {
@@ -618,7 +620,13 @@ const styles = StyleSheet.create({
     paddingHorizontal: 30,
     paddingBottom: tokens.space6xl * 2,
   },
-  tablet: {
+  tabletPortrait: {
+    gap: tokens.spaceLg,
+    paddingTop: tokens.space3xl,
+    paddingHorizontal: tokens.space5xl,
+    paddingBottom: tokens.space6xl,
+  },
+  tabletLandscape: {
     gap: tokens.spaceLg,
     paddingTop: tokens.space3xl,
     paddingHorizontal: tokens.space4xl,
