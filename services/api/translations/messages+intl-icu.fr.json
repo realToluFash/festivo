@@ -70,5 +70,19 @@
     "eventChanges.email.footer": "Vous recevez ce message parce que vous faites partie de l’événement {event} de l’organisation {organisation}. Pour ne plus recevoir ces e-mails, désactivez l’e-mail « Modifications d’événements » dans les paramètres de notification.",
     "eventChanges.email.footerEventDay": "Vous recevez ce message parce que vous faites partie de l’événement {event} de l’organisation {organisation}. Pour ne plus recevoir ces e-mails, désactivez l’e-mail « Jour de l’événement » dans les paramètres de notification.",
     "limits.calendar_feed": "Ce lien d’agenda a été consulté trop souvent. Réessayez {hour, plural, other {à {time}}}.",
-    "validation.guests_too_many": "Vous pouvez traiter jusqu’à {most, number, ::group-auto} invités à la fois. Affinez la liste avec un onglet, une recherche ou un filtre, puis sélectionnez à nouveau."
+    "validation.guests_too_many": "Vous pouvez traiter jusqu’à {most, number, ::group-auto} invités à la fois. Affinez la liste avec un onglet, une recherche ou un filtre, puis sélectionnez à nouveau.",
+    "seating.table_default_name": "Table {n}",
+    "seating.items_outside": "{count, plural, one {{count, number, ::group-auto} item sits} other {{count, number, ::group-auto} items sit}} outside {width} × {roomLength}. Move them first.",
+    "validation.seating_table_name_required": "Enter a name for the table.",
+    "validation.seating_table_name_too_long": "Use {count, number, ::group-auto} characters or fewer.",
+    "validation.seating_table_name_taken": "This plan already has a table called {name}.",
+    "validation.seating_table_seats_between": "Enter a number of seats from {min, number} to {max, number}.",
+    "validation.seating_table_places_between": "Enter a number of places from {min, number} to {max, number}.",
+    "validation.seating_table_size_between": "Enter a size from {min} to {max}.",
+    "validation.seating_table_ends_between": "Enter 0 to {max, number}, no more than the table has seats.",
+    "validation.seating_table_no_ends": "Only a rectangular or head table has seats on the ends.",
+    "validation.seating_table_does_not_turn": "Only a rectangular or head table turns.",
+    "validation.seating_table_rotation_steps": "Choose a rotation in 15° steps, from 0° to 345°.",
+    "validation.seating_table_no_such_seat": "Choose seats from 1 to {max, number}, each once.",
+    "validation.seating_table_section_unknown": "Choose one of this plan's sections, or no section."
 }

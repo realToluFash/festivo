@@ -6,6 +6,7 @@ import {
   SECTION_COLOURS,
   type Seating,
   type SeatingPlan,
+  type SeatingWithTable,
   type SectionColour,
   asSeating,
   realtimeTopic,
@@ -15,18 +16,10 @@ import {
   ROOM_MINIMUM_CM,
   leastUsedColour,
   readRoomSide,
-  sectionHoldingName,
+  holdingName,
   listFormat,
 } from '@soirely/domain';
-import {
-  type KeyboardEvent,
-  type ReactNode,
-  useCallback,
-  useEffect,
-  useId,
-  useRef,
-  useState,
-} from 'react';
+import { type ReactNode, useCallback, useEffect, useId, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Link } from 'react-router';
 
@@ -45,19 +38,23 @@ import { currentLocale } from '../../../i18n/index.ts';
 import { LayersContext, focusWhenFree, useDeskLayers } from '../../../layers.ts';
 import { pageTitle, usePageTitle } from '../../../pageTitle.ts';
 import { canOn, useSession } from '../../../session.ts';
+import {
+  type Asking,
+  BackHead,
+  Field,
+  Line,
+  type Outside,
+  type Panel,
+  type PlanApi,
+  Refused,
+  Said,
+} from './SeatingParts.tsx';
+import { AddTable, ChairPanel, TableDrawing, TablePanel } from './SeatingTables.tsx';
 import { lengthField, lengthWords } from './seatingUnits.ts';
 import '../../../components/SettingsParts.css';
 import './seating.css';
 
 type Load = { kind: 'loading' } | { kind: 'failed' } | { kind: 'loaded'; seating: Seating };
-
-type Panel =
-  | { kind: 'start' }
-  | { kind: 'room' }
-  | { kind: 'sectionAdd' }
-  | { kind: 'sectionEdit'; id: string };
-
-type Asking = { kind: 'deletePlan' } | { kind: 'deleteSection'; id: string };
 
 const RETRY_MS = 5_000;
 const RENEW_BEFORE_MS = 60_000;
@@ -251,23 +248,6 @@ export function SeatingArea({ event }: { event: OrganisationEvent }) {
   );
 }
 
-interface PlanApi {
-  event: OrganisationEvent;
-  system: MeasurementSystem;
-  plan: SeatingPlan | null;
-  readOnly: boolean;
-  /** Sends one change; a 412 reloads the plan and says who changed it first. Returns the field's refusal, if any. */
-  send: (change: () => Promise<Seating>, field?: string) => Promise<string | null>;
-  /** True once deleted; otherwise the notice says why, on the panel the ask was opened from. */
-  remove: (change: () => Promise<Seating>) => Promise<boolean>;
-  adopt: (seating: Seating) => void;
-  /** Counts the 412s: a form keyed on it reloads what a colleague saved. */
-  reloads: number;
-  notice: string | null;
-  open: (panel: Panel | null) => void;
-  ask: (asking: Asking) => void;
-}
-
 function Plan({
   event,
   seating,
@@ -287,6 +267,7 @@ function Plan({
   const [notice, setNotice] = useState<string | null>(null);
   const [sectionsRefused, setSectionsRefused] = useState(false);
   const [reloads, setReloads] = useState(0);
+  const [outside, setOutside] = useState<Outside | null>(null);
   const [placeCanvas, size] = useCanvasSize();
   const [start, setStart] = useState({ name: '', width: '', length: '' });
   const plan = seating.plan;
@@ -294,12 +275,13 @@ function Plan({
   const readOnly = !canOn(event, 'seating.manage');
   const locale = currentLocale();
 
-  const shownPanel =
-    panel?.kind === 'sectionEdit' && !plan?.sections.some((one) => one.id === panel.id)
-      ? null
-      : plan == null && panel?.kind !== 'start'
-        ? null
-        : panel;
+  const gone =
+    (panel?.kind === 'sectionEdit' && !plan?.sections.some((one) => one.id === panel.id)) ||
+    ((panel?.kind === 'table' || panel?.kind === 'chair') &&
+      !plan?.tables.some((one) => one.id === panel.id));
+  const shownPanel = gone || (plan == null && panel?.kind !== 'start') ? null : panel;
+  const chosenTable =
+    shownPanel?.kind === 'table' || shownPanel?.kind === 'chair' ? shownPanel.id : null;
 
   const open = (next: Panel | null) => {
     if (next == null) {
@@ -308,9 +290,10 @@ function Plan({
       opener.current = null;
       focusWhenFree(
         () =>
-          [...document.querySelectorAll<HTMLElement>('.st-panel button')].find(
-            (button) => back != null && nameOf(button) === back,
-          ) ?? document.querySelector('.st-top h1'),
+          [
+            ...document.querySelectorAll<HTMLElement>('.st-panel button, .st-room [role="button"]'),
+          ].find((button) => back != null && nameOf(button) === back) ??
+          document.querySelector('.st-top h1'),
       );
     } else {
       if (panel == null && document.activeElement instanceof HTMLElement)
@@ -320,44 +303,75 @@ function Plan({
     setPanel(next);
     setNotice(null);
     setSectionsRefused(false);
+    setOutside(null);
   };
 
-  const attempt = async (
-    change: () => Promise<Seating>,
+  const attempt = async <A,>(
+    change: () => Promise<A>,
+    seatingOf: (answer: A) => Seating,
     field?: string,
-  ): Promise<{ saved: boolean; refused: string | null }> => {
+    refusal?: (error: ApiError) => string | null,
+  ): Promise<{ answer: A } | { refused: string | null }> => {
     try {
-      onSeating(await change());
+      const answer = await change();
+
+      onSeating(seatingOf(answer));
       setNotice(null);
-      return { saved: true, refused: null };
+      return { answer };
     } catch (error) {
       if (error instanceof ApiError && error.status === 412) {
         const name = error.problem.changedBy;
 
-        setNotice(name == null ? t('seating.notSaved') : t('seating.changedFirst', { name }));
+        const onTable = panel?.kind === 'table' || panel?.kind === 'chair';
+
+        setNotice(
+          name == null
+            ? t('seating.notSaved')
+            : t(onTable ? 'seating.changedTable' : 'seating.changedFirst', { name }),
+        );
         setReloads((n) => n + 1);
         reload();
-        return { saved: false, refused: null };
+        return { refused: null };
       }
       if (error instanceof ApiError && error.is('seating_section_limit')) {
         setPanel(null);
         setSectionsRefused(true);
-        return { saved: false, refused: null };
+        return { refused: null };
       }
+      const said = error instanceof ApiError ? (refusal?.(error) ?? null) : null;
+
+      if (said != null) return { refused: said };
       if (error instanceof ApiError && field != null) {
         const refused = error.fieldErrors()[field];
 
-        if (refused != null) return { saved: false, refused };
+        if (refused != null) return { refused };
       }
       setNotice(t('seating.notSaved'));
-      return { saved: false, refused: null };
+      return { refused: null };
     }
   };
 
-  const send = async (change: () => Promise<Seating>, field?: string) =>
-    (await attempt(change, field)).refused;
+  const seatingOf = (answer: Seating | SeatingWithTable): Seating =>
+    'tableId' in answer ? answer.seating : answer;
 
-  const remove = async (change: () => Promise<Seating>) => (await attempt(change)).saved;
+  const send: PlanApi['send'] = async (change, field, refusal) => {
+    const result = await attempt(change, seatingOf, field, refusal);
+
+    return 'answer' in result ? null : result.refused;
+  };
+
+  const place: PlanApi['place'] = async (change) => {
+    const result = await attempt(change, (answer) => answer.seating);
+
+    if (!('answer' in result)) return null;
+    const { seating: saved, tableId } = result.answer;
+    const table = saved.plan?.tables.find((one) => one.id === tableId);
+
+    return table == null ? null : { id: table.id, name: table.name };
+  };
+
+  const remove = async (change: () => Promise<Seating>) =>
+    'answer' in (await attempt(change, (answer) => answer));
 
   const ctx: PlanApi = {
     event,
@@ -365,12 +379,14 @@ function Plan({
     plan,
     readOnly,
     send,
+    place,
     remove,
     adopt: onSeating,
     reloads,
     notice,
     open,
     ask: setAsking,
+    showOutside: setOutside,
   };
 
   const lengths = (cm: number, display: 'short' | 'long' = 'short') =>
@@ -442,6 +458,41 @@ function Plan({
           <rect className="st-floor" x={ox} y={oy} width={rw} height={rl} />
           {lines}
           <rect className="st-walls" x={ox} y={oy} width={rw} height={rl} />
+          {outside != null &&
+            (outside.side === 'width' ? (
+              <line
+                className="st-new-wall"
+                x1={ox + outside.cm * s}
+                y1={oy}
+                x2={ox + outside.cm * s}
+                y2={oy + rl}
+              />
+            ) : (
+              <line
+                className="st-new-wall"
+                x1={ox}
+                y1={oy + outside.cm * s}
+                x2={ox + rw}
+                y2={oy + outside.cm * s}
+              />
+            ))}
+          {plan.tables.map((table) => (
+            <TableDrawing
+              key={table.id}
+              plan={plan}
+              table={table}
+              s={s}
+              ox={ox}
+              oy={oy}
+              chosen={chosenTable === table.id}
+              chosenSeat={
+                shownPanel?.kind === 'chair' && shownPanel.id === table.id ? shownPanel.seat : null
+              }
+              outside={outside?.ids.includes(table.id) ?? false}
+              onChoose={() => open({ kind: 'table', id: table.id })}
+              onChair={(seat) => open({ kind: 'chair', id: table.id, seat })}
+            />
+          ))}
           <text
             className="st-room-line"
             x={ox}
@@ -454,6 +505,7 @@ function Plan({
               : t('seating.roomLine', { name: plan.roomName, ...words })}
           </text>
         </svg>
+        {!readOnly && <AddTable ctx={ctx} />}
       </>
     );
   } else if (shownPanel?.kind === 'start') {
@@ -530,7 +582,22 @@ function Plan({
     body = (
       <SectionForm key={`${shownPanel.id}-${reloads}`} ctx={ctx} plan={plan} id={shownPanel.id} />
     );
-  else
+  else if (shownPanel?.kind === 'table' || shownPanel?.kind === 'chair') {
+    const table = plan.tables.find((one) => one.id === shownPanel.id);
+
+    body =
+      table == null ? null : shownPanel.kind === 'table' ? (
+        <TablePanel
+          key={`${table.id}-${reloads}`}
+          ctx={ctx}
+          plan={plan}
+          table={table}
+          said={shownPanel.said}
+        />
+      ) : (
+        <ChairPanel ctx={ctx} plan={plan} table={table} seat={shownPanel.seat} />
+      );
+  } else
     body = (
       <>
         <RoomHead ctx={ctx} plan={plan} />
@@ -576,51 +643,6 @@ function nameOf(element: HTMLElement): string {
   return element.getAttribute('aria-label') ?? element.textContent ?? '';
 }
 
-function Line({ children, tone = 'quiet' }: { children: ReactNode; tone?: 'quiet' | 'big' }) {
-  return <p className={tone === 'quiet' ? 'st-line' : `st-line is-${tone}`}>{children}</p>;
-}
-
-function Said({ children }: { children: ReactNode }) {
-  return (
-    <p className="st-alert is-amber" role="status">
-      <Glyph name="alert" size={15} weight={2.2} />
-      <span>{children}</span>
-    </p>
-  );
-}
-
-function Refused({ children }: { children: ReactNode }) {
-  return (
-    <p className="st-alert is-red" role="alert">
-      <Glyph name="alert" size={15} weight={2.2} />
-      <span>{children}</span>
-    </p>
-  );
-}
-
-function BackHead({ title, line, onClose }: { title: string; line?: string; onClose: () => void }) {
-  const { t } = useTranslation();
-
-  return (
-    <div className="st-back-head">
-      <div className="st-back-row">
-        <h2 data-focus="title" tabIndex={-1}>
-          {title}
-        </h2>
-        <button
-          type="button"
-          className="st-icon-button"
-          aria-label={t('seating.close')}
-          onClick={onClose}
-        >
-          <Glyph name="clear" size={19} weight={2.2} />
-        </button>
-      </div>
-      {line != null && <p className="st-line">{line}</p>}
-    </div>
-  );
-}
-
 function Swatch({ colour, size = 20 }: { colour: SectionColour | null; size?: 16 | 20 }) {
   return (
     <span
@@ -629,115 +651,6 @@ function Swatch({ colour, size = 20 }: { colour: SectionColour | null; size?: 16
       }
       aria-hidden="true"
     />
-  );
-}
-
-/** A labelled field that applies on Enter or on leaving it (pm, 7 Nov 2026): a refusal is said beside it and nothing is saved. */
-function Field({
-  fieldKey,
-  label,
-  value,
-  unit,
-  optional = false,
-  hint,
-  maxLength,
-  inputMode = 'text',
-  onCommit,
-}: {
-  fieldKey: string;
-  label: string;
-  value: string;
-  unit?: string | undefined;
-  optional?: boolean;
-  hint?: string | undefined;
-  maxLength?: number;
-  inputMode?: 'text' | 'decimal';
-  onCommit: (text: string) => Promise<string | null> | string | null;
-}) {
-  const { t } = useTranslation();
-  const id = useId();
-  const [draft, setDraft] = useState(value);
-  const [error, setError] = useState<string | null>(null);
-  const editing = useRef(false);
-  const was = useRef(value);
-
-  useEffect(() => {
-    if (was.current === value) return;
-    was.current = value;
-    if (!editing.current) {
-      setDraft(value);
-      setError(null);
-    }
-  }, [value]);
-
-  async function commit(): Promise<void> {
-    editing.current = false;
-    if (draft === value) {
-      setError(null);
-      return;
-    }
-    setError(await onCommit(draft));
-  }
-
-  function keys(event: KeyboardEvent<HTMLInputElement>): void {
-    if (event.key === 'Enter') {
-      event.preventDefault();
-      void commit();
-    } else if (event.key === 'Escape') {
-      event.stopPropagation();
-      editing.current = false;
-      setDraft(value);
-      setError(null);
-    }
-  }
-
-  const told = [error != null && `${id}-error`, hint != null && `${id}-hint`]
-    .filter(Boolean)
-    .join(' ');
-
-  return (
-    <div className="st-field">
-      <label htmlFor={id} className="st-label">
-        {label}
-        {optional && <span className="st-optional">{t('seating.optional')}</span>}
-      </label>
-      <div className={error == null ? 'st-box' : 'st-box is-wrong'}>
-        <input
-          id={id}
-          data-focus={fieldKey}
-          type="text"
-          inputMode={inputMode}
-          value={draft}
-          maxLength={maxLength}
-          spellCheck={false}
-          autoComplete="off"
-          aria-invalid={error != null}
-          aria-describedby={told === '' ? undefined : told}
-          onChange={(event) => {
-            editing.current = true;
-            setDraft(event.target.value);
-          }}
-          onBlur={() => void commit()}
-          onKeyDown={keys}
-        />
-        {unit != null && (
-          <span className="st-unit" aria-hidden="true">
-            {unit}
-          </span>
-        )}
-      </div>
-      {error != null && (
-        <p id={`${id}-error`} className="st-field-error">
-          <Glyph name="alert" size={15} weight={2.2} />
-          <span>{error}</span>
-        </p>
-      )}
-      {hint != null && (
-        <p id={`${id}-hint`} className="st-field-hint">
-          {hint}
-        </p>
-      )}
-    </div>
   );
 }
 
@@ -993,9 +906,23 @@ function RoomSettings({ ctx, plan }: { ctx: PlanApi; plan: SeatingPlan }) {
     const read = side(text, key === 'widthCm' ? 'width' : 'length');
 
     if ('refused' in read) return read.refused;
+    ctx.showOutside(null);
     return ctx.send(
       () => api.changeSeatingRoom(ctx.event.id, { [key]: read.cm }, plan.version),
       key,
+      (error) => {
+        if (!error.is('seating_items_outside')) return null;
+        const ids = error.problem.outside ?? [];
+        const width = key === 'widthCm' ? read.cm : plan.widthCm;
+        const length = key === 'lengthCm' ? read.cm : plan.lengthCm;
+
+        ctx.showOutside({ ids, side: key === 'widthCm' ? 'width' : 'length', cm: read.cm });
+        return t('seating.itemsOutside', {
+          count: ids.length,
+          width: lengthWords(t, locale, width, ctx.system),
+          roomLength: lengthWords(t, locale, length, ctx.system),
+        });
+      },
     );
   }
 
@@ -1167,7 +1094,7 @@ function SectionForm({ ctx, plan, id }: { ctx: PlanApi; plan: SeatingPlan; id: s
 
     if (name === '') return t('seating.sectionBlank');
     if (name.length > SEATING_LIMITS.sectionNameMaximum) return t('seating.sectionLong');
-    const holder = sectionHoldingName(plan.sections, name, id);
+    const holder = holdingName(plan.sections, name, id);
 
     return holder == null ? null : t('seating.sectionTaken', { name: holder.name });
   }
@@ -1362,6 +1289,28 @@ function AskFor({
         }}
       />
     );
+
+  if (asking.kind === 'deleteTable') {
+    const table = plan.tables.find((one) => one.id === asking.id);
+
+    if (table == null) return null;
+    return (
+      <Ask
+        title={t('seating.deleteNamed', { name: table.name })}
+        line={t('seating.nobodyHere')}
+        keep={t('seating.keepIt')}
+        go={t('seating.deleteNamedGo', { name: table.name })}
+        busy={busy ? t('seating.deleteNamedGo', { name: table.name }) : undefined}
+        onKeep={onKeep}
+        onGo={() => {
+          setBusy(true);
+          void ctx
+            .remove(() => api.deleteSeatingTable(ctx.event.id, table.id, table.version))
+            .then((deleted) => (deleted ? onDone() : onKeep()));
+        }}
+      />
+    );
+  }
 
   const section = plan.sections.find((one) => one.id === asking.id);
 

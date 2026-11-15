@@ -7,3 +7,14 @@ export function nameKey(name: string): string {
     .trim()
     .replace(/\s+/gu, ' ');
 }
+
+/** The one already holding this name, a section or a table, as the API names it in its refusal. */
+export function holdingName<S extends { id: string; name: string }>(
+  named: readonly S[],
+  name: string,
+  exceptId: string | null,
+): S | null {
+  const key = nameKey(name);
+
+  return named.find((one) => one.id !== exceptId && nameKey(one.name) === key) ?? null;
+}
