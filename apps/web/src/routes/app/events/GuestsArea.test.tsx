@@ -4138,3 +4138,83 @@ describe('Mark many guests as invited from the selection bar (sc-46880)', () => 
     expect(within(bar()).queryByRole('button', { name: 'Mark as invited' })).toBeNull();
   });
 });
+
+describe('Guests after Reply by (sc-3780)', () => {
+  const SHUT = {
+    'GET /api/events/ev_1': () =>
+      json({
+        event: {
+          ...EVENT,
+          replyBy: '2026-11-04',
+          repliesCloseAt: '2026-11-04T23:59:59+01:00',
+          repliesClosedOn: '2026-11-04',
+        },
+      }),
+  };
+
+  it('lets a host who manages guests let them change their reply', async () => {
+    const sent = await openNgozi({
+      ...SHUT,
+      'POST /api/events/ev_1/guests/g_1/reopen-replies': () =>
+        tagged(
+          {
+            ...DETAILS,
+            repliesReopened: { by: 'Folake Adeyemi', at: '2026-11-05T10:00:00+01:00' },
+          },
+          '"2"',
+        ),
+    });
+
+    expect(
+      within(column()).getByText(
+        'Replies closed on Wed, Nov 4. Record a reply opens again if you let them change their reply.',
+      ),
+    ).toBeDefined();
+    fireEvent.click(within(column()).getByRole('button', { name: 'Let them change their reply' }));
+
+    expect(
+      await within(column()).findByText(
+        'Reply reopened by Folake Adeyemi, Nov 5. They can answer until the event starts.',
+      ),
+    ).toBeDefined();
+    expect(sent.map((one) => one.line)).toContain(
+      'POST /api/events/ev_1/guests/g_1/reopen-replies',
+    );
+    expect(
+      within(column()).queryByRole('button', { name: 'Let them change their reply' }),
+    ).toBeNull();
+  });
+
+  it('shows a member who cannot manage guests only that replies closed', async () => {
+    await openNgozi(
+      {
+        'GET /api/events/ev_1': () =>
+          json({
+            event: {
+              ...EVENT,
+              replyBy: '2026-11-04',
+              repliesCloseAt: '2026-11-04T23:59:59+01:00',
+              repliesClosedOn: '2026-11-04',
+              permissions: OWNER_PERMISSIONS.filter((one) => one !== 'guests.manage'),
+            },
+          }),
+      },
+      OWNER_PERMISSIONS.filter((one) => one !== 'guests.manage'),
+    );
+
+    expect(within(column()).getByText('Replies closed on Wed, Nov 4.')).toBeDefined();
+    expect(
+      within(column()).queryByRole('button', { name: 'Let them change their reply' }),
+    ).toBeNull();
+  });
+
+  it('asks Not sure yet to decide by the day on the list', async () => {
+    signedIn();
+    await onGuests({
+      ...SHUT,
+      'GET /api/events/ev_1/guests': () => json(listOf([NGOZI, AMAKA])),
+    });
+
+    expect(await screen.findByText(/^Not sure yet · asked to decide by Nov 4/u)).toBeDefined();
+  });
+});

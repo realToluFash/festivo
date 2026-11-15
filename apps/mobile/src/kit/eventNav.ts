@@ -29,8 +29,9 @@ export function areaBack(area: EventPlace): 'overview' | 'leave' {
   return area === 'overview' ? 'leave' : 'overview';
 }
 
-/** The parts of an event that open their own edit (sc-48600); Reply by is sc-3780's. */
-export type EditPart = 'dates' | 'venue' | 'hosts' | 'type' | 'currency' | 'name' | 'cover';
+/** The parts of an event that open their own edit (sc-48600), Reply by among them (sc-3780). */
+export type EditPart =
+  'dates' | 'replyBy' | 'venue' | 'hosts' | 'type' | 'currency' | 'name' | 'cover';
 
 /** What a link to /events/<id>/edit?at= opens, in the words the old Edit details took (sc-22103). */
 const EDIT_AT: Readonly<Record<string, EditPart>> = {

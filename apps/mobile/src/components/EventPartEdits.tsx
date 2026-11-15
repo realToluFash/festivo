@@ -10,13 +10,17 @@ import {
   NOTHING_SEEN,
   type EventFormField,
   type EventType,
+  type Counts,
   type HostRow,
   addressLookup,
+  countsOf,
+  roleHolds,
   arrivalNoteTooLong,
   coverTypeOf,
   currencyChoices,
   draftOf,
   endMovedLine,
+  formatWallDay,
   eventChanges,
   eventFormErrors,
   eventNameLength,
@@ -32,7 +36,13 @@ import {
 } from '@soirely/domain';
 import { launchImageLibraryAsync } from 'expo-image-picker';
 import { type RefObject, useEffect, useMemo, useRef, useState } from 'react';
-import { type TextInputInstance } from 'react-native';
+import {
+  Pressable,
+  StyleSheet,
+  type TextInputInstance,
+  View,
+  type ViewInstance,
+} from 'react-native';
 import { useTranslation } from 'react-i18next';
 
 import { api } from '../api.ts';
@@ -41,6 +51,21 @@ import { coverRefusalOf, pickedFile, pickedRefusal } from '../kit/coverUpload.ts
 import { changesOf, typedOf } from '../kit/eventForm.ts';
 import type { EditPart } from '../kit/eventNav.ts';
 import { type SavedPart, heldRead, sendPart } from '../kit/partSave.ts';
+import {
+  CLOSES_AT,
+  type ReplyByAsk,
+  replyByAfterStart,
+  replyByAsk,
+  replyByAskWords,
+  replyByHint,
+  replyByMoves,
+  replyByPreview,
+  replyBySaved,
+  replyByWrong,
+  todayIn,
+} from '../kit/replyBy.ts';
+import { useServerNow } from '../kit/serverNow.ts';
+import { tokens } from '../theme/tokens.ts';
 import { discardCoverUpload } from './CoverField.tsx';
 import { EventCover } from './EventCover.tsx';
 import { EventNotice } from './EventNotice.tsx';
@@ -52,6 +77,7 @@ import {
   CurrencyView,
   DatesView,
   EditShell,
+  EventField,
   type Host,
   HostRows,
   NameView,
@@ -62,9 +88,11 @@ import {
   pickerOver,
   useEditTitle,
 } from './EventEdits.tsx';
-import { type Picking, pick } from './MomentPick.tsx';
+import { MomentBox, type Picking, pick } from './MomentPick.tsx';
 import { useReadOut } from './ReadOut.tsx';
-import { type ScreenReaderTarget } from './screenReaderFocus.ts';
+import { type ScreenReaderTarget, moveScreenReaderFocus } from './screenReaderFocus.ts';
+import { type AskProps, TextAction } from './Summary.tsx';
+import { Text } from './Text.tsx';
 
 export interface PartEditProps {
   open: boolean;
@@ -72,7 +100,8 @@ export interface PartEditProps {
   opener: RefObject<ScreenReaderTarget | null>;
   /** Cancel, or Discard: nothing saved. */
   onClose: () => void;
-  onSaved: (event: OrganisationEvent) => void;
+  /** With the toast's words when the part says more than Saved (sc-3780). */
+  onSaved: (event: OrganisationEvent, said?: string) => void;
   /** Show the latest: the event as somebody else saved it, which the screen starts over from. */
   onLatest: (event: OrganisationEvent) => void;
 }
@@ -90,6 +119,8 @@ export function EventEditScreen({ part, ...props }: PartEditProps & { part: Edit
   switch (part) {
     case 'dates':
       return <DatesEdit {...props} />;
+    case 'replyBy':
+      return <ReplyByEdit {...props} />;
     case 'venue':
       return <VenueEdit {...props} />;
     case 'hosts':
@@ -112,7 +143,11 @@ function only(errors: Errors, fields: readonly EventFormField[]): Errors {
 }
 
 /** One part's save, as Edit details saved the whole form: only what changed, under the version the screen opened on, the API's refusals mapped back. */
-function usePartSave(part: SavedPart, { event, onSaved, onLatest }: PartEditProps) {
+function usePartSave(
+  part: SavedPart,
+  { event, onSaved, onLatest }: PartEditProps,
+  said?: (saved: OrganisationEvent) => string | undefined,
+) {
   const { t } = useTranslation();
   const [read] = useState(() => heldRead(() => api.taggedEvent(event.id)));
   const [busy, setBusy] = useState(false);
@@ -133,7 +168,7 @@ function usePartSave(part: SavedPart, { event, onSaved, onLatest }: PartEditProp
     setBusy(false);
 
     if (sent.kind === 'unchanged') onSaved(event);
-    if (sent.kind === 'saved') onSaved(sent.event);
+    if (sent.kind === 'saved') onSaved(sent.event, said?.(sent.event));
     if (sent.kind === 'unchanged' || sent.kind === 'saved') return null;
 
     setOutcome(sent.kind === 'refused' ? null : sent.kind);
@@ -289,7 +324,14 @@ function DatesEdit(props: PartEditProps) {
   const [refused, setRefused] = useState<Errors>({});
   const [zonesOpen, setZonesOpen] = useState(false);
   const [picking, setPicking] = useState<Picking | null>(null);
-  const { busy, save, elsewhere, failed } = usePartSave('dates', props);
+  const [asking, setAsking] = useState<ReplyByAsk | null>(null);
+  const now = useServerNow();
+  const counts = useHaventCounts(event);
+  const { busy, save, elsewhere, failed } = usePartSave('dates', props, (saved) =>
+    saved.replyBy !== event.replyBy && saved.replyBy != null
+      ? replyBySaved(saved.replyBy, saved.timeZone, locale, now, t)
+      : undefined,
+  );
   const zones = useMemo(
     () => withCurrent(Intl.supportedValuesOf('timeZone'), event.timeZone),
     [event.timeZone],
@@ -304,7 +346,18 @@ function DatesEdit(props: PartEditProps) {
     [draft.startDate, draft.startTime, draft.endDate, draft.endTime].join() !==
       [saved.startDate, saved.startTime, saved.endDate, saved.endTime].join();
 
+  const replyBy = event.replyBy ?? null;
+  const replyByTo = replyByAfterStart(replyBy, draft.startDate);
+  const replyByLine =
+    replyBy == null || replyByTo == null ? null : replyByMoves(replyBy, replyByTo, locale, t);
+  const closes =
+    replyByTo == null
+      ? null
+      : replyByAsk(replyBy, replyByTo, todayIn(now, zone), counts?.havent ?? 1);
+  const skipped = skippedLine(draft.startDate, draft.startTime, zone, locale, t);
+
   useReadOut(moved);
+  useReadOut(replyByLine);
 
   const pickStart = (mode: 'date' | 'time') =>
     pick(
@@ -342,11 +395,32 @@ function DatesEdit(props: PartEditProps) {
     );
 
   async function send(): Promise<void> {
-    if (Object.keys(live).length > 0) return;
-
+    setAsking(null);
     const refusal = await save(eventChanges(event, typed));
     if (refusal?.kind === 'refused') setRefused(refusal.errors);
   }
+
+  function ask(): void {
+    if (Object.keys(live).length > 0) return;
+    if (closes != null) setAsking(closes);
+    else void send();
+  }
+
+  const closeAsk: AskProps | null =
+    asking == null || replyByTo == null
+      ? null
+      : (() => {
+          const words = replyByAskWords(asking, replyByTo, counts, locale, t);
+
+          return {
+            title: words.title,
+            line: words.line,
+            keep: { label: t('eventEdit.keepEditing'), testID: 'event.edit.dates.replyBy.keep' },
+            confirm: { label: words.confirm, testID: 'event.edit.dates.replyBy.close' },
+            onKeep: () => setAsking(null),
+            onConfirm: () => void send(),
+          };
+        })();
 
   return (
     <EditShell
@@ -355,7 +429,8 @@ function DatesEdit(props: PartEditProps) {
       busy={busy}
       elsewhere={elsewhere}
       failed={failed}
-      onSave={() => void send()}
+      onSave={ask}
+      ask={closeAsk}
       over={pickerOver(picking, locale, () => setPicking(null))}
     >
       <DatesView
@@ -364,7 +439,13 @@ function DatesEdit(props: PartEditProps) {
         zone={zone}
         locale={locale}
         startError={errors.startsAt ?? errors.timeZone ?? null}
-        startLine={skippedLine(draft.startDate, draft.startTime, zone, locale, t)}
+        startLine={
+          skipped == null
+            ? replyByLine
+            : replyByLine == null
+              ? skipped
+              : `${skipped} ${replyByLine}`
+        }
         endError={errors.endsAt ?? null}
         moved={moved}
         endLine={skippedLine(draft.endDate, draft.endTime, zone, locale, t)}
@@ -378,6 +459,174 @@ function DatesEdit(props: PartEditProps) {
         onPickStart={pickStart}
         onPickEnd={pickEnd}
       />
+    </EditShell>
+  );
+}
+
+/** Who has still to reply, as Guests' card counts them, for the question before replies close sooner; null without guests.read or until read. */
+function useHaventCounts(event: OrganisationEvent): Counts | null {
+  const reads = roleHolds(event, 'guests.read');
+  const [counts, setCounts] = useState<Counts | null>(null);
+
+  useEffect(() => {
+    if (!reads) return;
+    let current = true;
+    api.headcount(event.id).then(
+      (headcount) => current && setCounts(countsOf(headcount.counts)),
+      () => undefined,
+    );
+
+    return () => {
+      current = false;
+    };
+  }, [event.id, reads]);
+
+  return counts;
+}
+
+/** Reply by (sc-3780): an optional day before the start's; closing replies sooner asks first, and only while somebody has still to reply. */
+function ReplyByEdit(props: PartEditProps) {
+  const { t } = useTranslation();
+  const { event } = props;
+  const locale = dateLocale();
+  const now = useServerNow();
+  const saved = event.replyBy ?? null;
+  const [value, setValue] = useState<string | null>(saved);
+  const [tried, setTried] = useState(false);
+  const [refused, setRefused] = useState(false);
+  const [asking, setAsking] = useState<ReplyByAsk | null>(null);
+  const [picking, setPicking] = useState<Picking | null>(null);
+  const [aim, setAim] = useState(0);
+  const box = useRef<ViewInstance>(null);
+  const counts = useHaventCounts(event);
+  const { busy, save, elsewhere, failed } = usePartSave('replyBy', props, (shown) =>
+    replyBySaved(shown.replyBy ?? null, shown.timeZone, locale, now, t),
+  );
+  const today = todayIn(now, event.timeZone);
+  const wrong = replyByWrong(value, draftOf(event).startDate);
+  const error = (tried && wrong) || refused ? t('replyBy.notBefore') : null;
+  const preview = wrong ? null : replyByPreview(value, today, locale, t);
+
+  useEffect(() => {
+    if (aim > 0) moveScreenReaderFocus(box.current);
+  }, [aim]);
+
+  async function send(): Promise<void> {
+    setAsking(null);
+    const refusal = await save({ replyBy: value });
+    if (refusal?.kind === 'refused') {
+      setRefused(true);
+      setAim((count) => count + 1);
+    }
+  }
+
+  function ask(): void {
+    if (wrong) {
+      setTried(true);
+      setAim((count) => count + 1);
+      return;
+    }
+    const closes = replyByAsk(saved, value, today, counts?.havent ?? 1);
+    if (closes == null) void send();
+    else setAsking(closes);
+  }
+
+  const choose = () =>
+    pick(
+      {
+        title: t('replyBy.label'),
+        mode: 'date',
+        field: { date: value ?? '', time: CLOSES_AT },
+        take: (picked) => {
+          setValue(picked.date);
+          setTried(false);
+          setRefused(false);
+        },
+      },
+      setPicking,
+    );
+  const closeAsk: AskProps | null =
+    asking == null || value == null
+      ? null
+      : (() => {
+          const words = replyByAskWords(asking, value, counts, locale, t);
+
+          return {
+            title: words.title,
+            line: words.line,
+            keep: {
+              label:
+                saved == null
+                  ? t('eventEdit.keepEditing')
+                  : t('replyBy.keepDate', { date: formatWallDay(saved, locale) }),
+              testID: 'event.edit.replyBy.keep',
+            },
+            confirm: { label: words.confirm, testID: 'event.edit.replyBy.close' },
+            onKeep: () => setAsking(null),
+            onConfirm: () => void send(),
+          };
+        })();
+
+  return (
+    <EditShell
+      {...useShellProps('replyBy', props)}
+      changed={value !== saved}
+      busy={busy}
+      elsewhere={elsewhere}
+      failed={failed}
+      onSave={ask}
+      ask={closeAsk}
+      over={pickerOver(picking, locale, () => setPicking(null))}
+    >
+      <EventField
+        label={t('replyBy.label')}
+        optional
+        error={error}
+        help={replyByHint(event.timeZone, locale, t)}
+      >
+        {value == null ? (
+          <Pressable
+            ref={box}
+            onPress={choose}
+            style={({ pressed }) => [styles.select, pressed && styles.pressed]}
+            accessibilityRole="button"
+            accessibilityLabel={t('replyBy.label')}
+            testID="event.edit.replyBy.date"
+          />
+        ) : (
+          <MomentBox
+            ref={box}
+            label={t('replyBy.label')}
+            mode="date"
+            value={value}
+            locale={locale}
+            wrong={error != null}
+            onPress={choose}
+            testID="event.edit.replyBy.date"
+          />
+        )}
+      </EventField>
+      {value != null && (
+        <View style={styles.start}>
+          <TextAction
+            label={t('replyBy.remove')}
+            onPress={() => {
+              setValue(null);
+              setTried(false);
+              setRefused(false);
+              setAim((count) => count + 1);
+            }}
+            testID="event.edit.replyBy.remove"
+          />
+        </View>
+      )}
+      {preview != null && (
+        <View style={styles.inset}>
+          <Text size={15} weight="medium" style={styles.lines}>
+            {preview}
+          </Text>
+        </View>
+      )}
     </EditShell>
   );
 }
@@ -713,3 +962,28 @@ function CoverEdit(props: PartEditProps) {
     </EditShell>
   );
 }
+
+const styles = StyleSheet.create({
+  pressed: { opacity: tokens.opacityPressed },
+  lines: { lineHeight: 15 * 1.45 },
+  start: { alignItems: 'flex-start' },
+  inset: {
+    paddingVertical: tokens.spaceMd,
+    paddingHorizontal: tokens.spaceLg,
+    borderRadius: tokens.radiusInset,
+    borderWidth: 1,
+    borderColor: tokens.colorInsetBorder,
+    backgroundColor: tokens.colorInset,
+  },
+  select: {
+    minHeight: 52,
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: tokens.spaceMd,
+    paddingLeft: 14.5,
+    paddingRight: 12.5,
+    borderWidth: 1.5,
+    borderColor: tokens.colorFieldBorder,
+    borderRadius: 14,
+  },
+});

@@ -2519,7 +2519,14 @@
     "readOnlyInvited": "Puede ver los nombres, las respuestas y a quién se ha invitado. Para registrar invitaciones hace falta el rol Responsable o Puede editar.",
     "pausedLine": "No se puede invitar a nadie mientras este evento esté en pausa.",
     "finishedLine": "Este evento ha terminado, así que ya no se puede invitar a nadie.",
-    "withGroup": "{{reply}} · {{group}}"
+    "withGroup": "{{reply}} · {{group}}",
+    "repliesClosedManage": "Replies closed on {{date}}. Record a reply opens again if you let them change their reply.",
+    "repliesClosedOn": "Replies closed on {{date}}.",
+    "repliesReopened": "Reply reopened by {{name}}, {{date}}. They can answer until the event starts.",
+    "letThemChange": "Let them change their reply",
+    "reopenNotSaved": "Not saved. Check your connection and try again.",
+    "askedBy": "{{reply}} · asked to decide by {{date}}",
+    "askedByOn": "asked to decide by {{date}}"
   },
   "guestNumbers": {
     "title": "Invitados",
@@ -2642,5 +2649,28 @@
     "forWhom": "Para {{name}} y sus acompañantes.",
     "chooseOrType": "Elija o escriba un grupo",
     "limitApp": "Este evento tiene {{most, number}} grupos, el máximo posible. Elija uno de ellos o, para crear otro, use Soirely en la web y elimine uno en Grupos."
+  },
+  "replyBy": {
+    "label": "Reply by",
+    "none": "Replies stay open until the event starts",
+    "rowCloses": "Reply by · Replies close at {{time}}, {{zone}} time",
+    "rowClosed": "Reply by · Replies closed",
+    "hint": "Replies close at the end of this day, {{time}} {{zone}} time. Leave it empty and replies stay open until the event starts.",
+    "notBefore": "Choose a date before the event starts.",
+    "remove": "Remove the date",
+    "onGuestsPage": "On the guests’ page: “{{sentence}}”",
+    "pleaseAnswerBy": "Please answer by {{date}}. You can change your answer any time before then.",
+    "closeSoonerTitle": "Close replies sooner, on {{date}}?",
+    "closeNowTitle": "Close replies now?",
+    "closeSoonerLine": "After that day they can’t reply, unless you let them change their reply.",
+    "closeNowLine": "From now on they can’t reply, unless you let them change their reply.",
+    "askLine": "{{count}} {{after}}",
+    "closeSooner": "Close replies sooner",
+    "closeNow": "Close replies now",
+    "keepDate": "Keep {{date}}",
+    "saved": "Saved. Replies close on {{date}} at {{time}}, {{zone}} time.",
+    "savedClosedNow": "Saved. Replies are now closed.",
+    "savedRemoved": "Saved. Replies stay open until the event starts.",
+    "moves": "Replies close on {{old}}, which isn’t before the new start. Saving moves Reply by to {{next}}."
   }
 }

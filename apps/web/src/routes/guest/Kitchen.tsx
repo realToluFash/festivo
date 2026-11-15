@@ -365,6 +365,7 @@ export function KitchenStep({
   onBack,
   onNext,
   onSkip,
+  after = null,
 }: {
   kitchen: Kitchen;
   hosts: string;
@@ -374,15 +375,24 @@ export function KitchenStep({
   onBack: () => void;
   onNext: () => void;
   onSkip: () => void;
+  /** After Reply by (sc-3780): the step on its own, whose Save sends only the needs. */
+  after?: { busy: boolean; failed: boolean } | null;
 }) {
   const { t } = useTranslation();
+  const busy = after?.busy === true;
 
   return (
-    <section className="gk" aria-labelledby="gk-h">
-      <TextAction ink icon={<Glyph name="back" size={18} weight={2.2} />} onClick={onBack}>
+    <section className="gk" aria-labelledby="gk-h" aria-busy={busy}>
+      <TextAction
+        ink
+        off={busy}
+        icon={<Glyph name="back" size={18} weight={2.2} />}
+        onClick={onBack}
+      >
         {t('guest.back')}
       </TextAction>
       <div className="gk-head">
+        {after != null && <p className="gk-label">{t('guestKitchen.row')}</p>}
         <h2
           id="gk-h"
           className="gp-h2 gk-h2"
@@ -393,7 +403,13 @@ export function KitchenStep({
           {t('guestKitchen.title')}
         </h2>
         <p className="gk-text is-quiet">
-          {t(kitchen.people.length > 1 ? 'guestKitchen.intro' : 'guestKitchen.introAlone')}
+          {t(
+            after != null
+              ? 'guestKitchen.stays'
+              : kitchen.people.length > 1
+                ? 'guestKitchen.intro'
+                : 'guestKitchen.introAlone',
+          )}
         </p>
       </div>
       <div className="gk-consent">
@@ -411,15 +427,46 @@ export function KitchenStep({
           onChange={onChange}
         />
       ))}
+      {after?.failed === true && (
+        <Notice
+          kind="broken"
+          action={
+            <TextAction off={busy} focus="kitchenRetry" onClick={onNext}>
+              {busy ? t('session.retrying') : t('error.retry')}
+            </TextAction>
+          }
+        >
+          {t('guestKitchen.saveFailed')}
+        </Notice>
+      )}
       <div className="gk-actions">
-        <Filled busy={false} focus="kitchenNext" onClick={onNext}>
-          {t('guestKitchen.next')}
+        <Filled busy={busy} focus="kitchenNext" onClick={onNext}>
+          {t(after != null ? 'guestKitchen.save' : 'guestKitchen.next')}
         </Filled>
-        <button className="gp-outlined" type="button" onClick={onSkip}>
+        <button
+          className="gp-outlined"
+          type="button"
+          {...offButton(busy, { dim: false })}
+          onClick={onSkip}
+        >
           {t(kitchen.record ? 'guestKitchen.leave' : 'guestKitchen.nothing')}
         </button>
       </div>
     </section>
+  );
+}
+
+export const KITCHEN_SAVED_ID = 'gk-saved';
+
+/** After Reply by, on the closed card once the kitchen needs are sent (sc-3780). */
+export function KitchenSaved() {
+  const { t } = useTranslation();
+
+  return (
+    <p className="gk-saved" role="status">
+      <Glyph name="tick" size={16} weight={2.6} />
+      <span id={KITCHEN_SAVED_ID}>{t('guestKitchen.saved')}</span>
+    </p>
   );
 }
 

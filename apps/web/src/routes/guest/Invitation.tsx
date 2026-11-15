@@ -18,9 +18,9 @@ import { currentLocale, dateLocale } from '../../i18n/index.ts';
 import { meshFor } from '../../mesh.ts';
 import { offButton } from '../../offButton.ts';
 import { useWideWidth } from '../../phoneWidth.ts';
-import { Filled, Notice, TextAction, dayOf, format, readerZone } from './GuestParts.tsx';
+import { Filled, Notice, TextAction, dayOf, format, readerZone, wallDayOf } from './GuestParts.tsx';
 import { InvalidInvitation } from './InvalidInvitation.tsx';
-import { KitchenCheck, KitchenStep } from './Kitchen.tsx';
+import { KITCHEN_SAVED_ID, KitchenCheck, KitchenSaved, KitchenStep } from './Kitchen.tsx';
 import { openIn, saveAgain, useGuestLanguage } from './guestLanguage.ts';
 import {
   type Party,
@@ -39,6 +39,7 @@ import {
   type Kitchen,
   type Person,
   YOU,
+  companionNeeds,
   firstProblem,
   kitchenOf,
   unnamedNeeds,
@@ -58,6 +59,7 @@ type View =
   | { kind: 'answer'; busy: GuestAnswer | null; note: 'unsent' | 'notSentTap' | null }
   | { kind: 'withYou'; from: 'answer' | 'changing' }
   | { kind: 'kitchen'; from: 'answer' | 'changing' }
+  | { kind: 'kitchenAfter'; busy: boolean; failed: boolean }
   | {
       kind: 'check';
       busy: boolean;
@@ -85,6 +87,11 @@ const ANSWERED = {
   coming: 'guest.answeredComing',
   notComing: 'guest.answeredNotComing',
   maybe: 'guest.answeredNotSure',
+} as const;
+const ANSWER_IS = {
+  coming: 'guest.answerIsComing',
+  notComing: 'guest.answerIsNotComing',
+  maybe: 'guest.answerIsNotSure',
 } as const;
 const GREETING = {
   coming: 'guest.greetComing',
@@ -272,6 +279,7 @@ function Card({ token, first }: { token: string; first: GuestPage }) {
   const [view, setView] = useState<View>(() => opening(first, token));
   const [party, setParty] = useState<Party>(() => partyOf(first));
   const [kitchen, setKitchen] = useState<Kitchen | null>(null);
+  const [kitchenSaved, setKitchenSaved] = useState(false);
   const [tell, setTell] = useState<Tell>({ kind: 'card' });
   const [want, setWant] = useState<{ on: string } | null>(null);
   const [gone, setGone] = useState(false);
@@ -350,6 +358,12 @@ function Card({ token, first }: { token: string; first: GuestPage }) {
       },
       (error: unknown) => {
         if (error instanceof ApiError && REFUSED.some((code) => error.is(code))) {
+          refuse();
+        } else if (
+          error instanceof ApiError &&
+          error.is('replies_closed') &&
+          view.kind === 'check'
+        ) {
           refuse();
         } else if (error instanceof ApiError && error.is('replies_closed')) {
           setPage((was) => ({ ...was, answersOpen: false }));
@@ -470,6 +484,64 @@ function Card({ token, first }: { token: string; first: GuestPage }) {
     else back();
   }
 
+  function kitchenAfter(): void {
+    setKitchen(kitchenOf(page, party, null));
+    setView({ kind: 'kitchenAfter', busy: false, failed: false });
+    focus('kitchenHead');
+  }
+
+  /** Back and Leave it as it is put the record back; focus returns to the button that opened the step. */
+  function kitchenAfterLeave(): void {
+    if (view.kind !== 'kitchenAfter' || view.busy) return;
+    setKitchen(null);
+    setView({ kind: 'closed' });
+    focus('kitchen');
+  }
+
+  function kitchenAfterSave(): void {
+    if (view.kind !== 'kitchenAfter' || view.busy || kitchen == null) return;
+    const failing = firstProblem(kitchen);
+    if (failing != null) {
+      setKitchen({ ...kitchen, tried: true });
+      focus(failing);
+      return;
+    }
+    const me = kitchen.people.find((one) => one.key === YOU);
+    setView({ kind: 'kitchenAfter', busy: true, failed: false });
+    sends.current += 1;
+    api
+      .sendGuestNeeds(
+        token,
+        me == null ? null : needsOf(me),
+        companionNeeds(kitchen),
+        unnamedNeeds(kitchen),
+      )
+      .then(
+        (next) => {
+          seen.current = standing(next);
+          setPage(next);
+          setParty(partyOf(next));
+          setKitchen(null);
+          setKitchenSaved(true);
+          setView({ kind: 'closed' });
+          focus('kitchen');
+        },
+        (error: unknown) => {
+          if (error instanceof ApiError && error.status === 404) setGone(true);
+          else if (
+            error instanceof ApiError &&
+            (error.is('replies_closed') || REFUSED.some((code) => error.is(code)))
+          )
+            refuse();
+          else {
+            setKitchenSaved(false);
+            setView({ kind: 'kitchenAfter', busy: false, failed: true });
+            focus('kitchenRetry');
+          }
+        },
+      );
+  }
+
   function card(key: string, change: (one: Person) => Partial<Person>, on?: string): void {
     setKitchen((was) =>
       was == null
@@ -516,7 +588,11 @@ function Card({ token, first }: { token: string; first: GuestPage }) {
 
   if (gone) return <InvalidInvitation />;
 
-  const stepping = view.kind === 'check' || view.kind === 'withYou' || view.kind === 'kitchen';
+  const stepping =
+    view.kind === 'check' ||
+    view.kind === 'withYou' ||
+    view.kind === 'kitchen' ||
+    view.kind === 'kitchenAfter';
   const alone = tell.kind !== 'card' || stepping;
   const tagged = guest.reply != null && view.kind !== 'check';
 
@@ -536,6 +612,10 @@ function Card({ token, first }: { token: string; first: GuestPage }) {
             onKitchenBack={kitchenBack}
             onKitchenNext={kitchenNext}
             onKitchenSkip={kitchenSkip}
+            kitchenSaved={kitchenSaved}
+            onKitchenAfter={kitchenAfter}
+            onKitchenAfterLeave={kitchenAfterLeave}
+            onKitchenAfterSave={kitchenAfterSave}
             onParty={(change, on) => {
               setParty(change);
               if (on != null) focus(on);
@@ -690,6 +770,10 @@ function Shown({
   onKitchenBack,
   onKitchenNext,
   onKitchenSkip,
+  kitchenSaved,
+  onKitchenAfter,
+  onKitchenAfterLeave,
+  onKitchenAfterSave,
   onParty,
   onPartyNext,
   onPartyChange,
@@ -708,6 +792,10 @@ function Shown({
   onKitchenBack: () => void;
   onKitchenNext: () => void;
   onKitchenSkip: () => void;
+  kitchenSaved: boolean;
+  onKitchenAfter: () => void;
+  onKitchenAfterLeave: () => void;
+  onKitchenAfterSave: () => void;
   onParty: (change: (was: Party) => Party, focus?: string) => void;
   onPartyNext: () => void;
   onPartyChange: () => void;
@@ -730,6 +818,9 @@ function Shown({
           <h2 id="gp-answer-h" className="gp-h2">
             {t('guest.yourAnswer')}
           </h2>
+          {page.event.replyBy != null && (
+            <p className="gp-sub">{t('guest.replyBy', { date: wallDayOf(page.event.replyBy) })}</p>
+          )}
           {view.note === 'unsent' && <Notice kind="attention">{t('guest.unsent')}</Notice>}
           {view.note === 'notSentTap' && <Notice kind="broken">{t('guest.notSentTap')}</Notice>}
           <AnswerRows busy={view.busy} onChoose={onChoose} />
@@ -760,6 +851,22 @@ function Shown({
           onBack={onKitchenBack}
           onNext={onKitchenNext}
           onSkip={onKitchenSkip}
+        />
+      );
+    case 'kitchenAfter':
+      if (kitchen == null) return null;
+
+      return (
+        <KitchenStep
+          kitchen={kitchen}
+          hosts={hostsLine(page.event.hosts, currentLocale())}
+          hostCount={Math.max(page.event.hosts.length, 1)}
+          timeZone={page.event.timeZone}
+          after={{ busy: view.busy, failed: view.failed }}
+          onChange={onCard}
+          onBack={onKitchenAfterLeave}
+          onNext={onKitchenAfterSave}
+          onSkip={onKitchenAfterLeave}
         />
       );
     case 'check':
@@ -884,7 +991,11 @@ function Shown({
       );
     case 'closed': {
       const said =
-        reply == null ? t('guest.didNotAnswer') : t(ANSWERED[reply.answer], { date: day });
+        reply == null
+          ? t('guest.didNotAnswer')
+          : reply.recordedBy != null
+            ? t(ANSWER_IS[reply.answer])
+            : t(ANSWERED[reply.answer], { date: day });
 
       if (page.phase === 'calledOff') return null;
       if (page.phase === 'finished') {
@@ -895,12 +1006,57 @@ function Shown({
         );
       }
 
+      const closedOn = page.started ? null : (page.answersClosedOn ?? null);
+      const closedLine =
+        closedOn == null
+          ? t('guest.closed')
+          : t(
+              reply == null || reply.answer === 'maybe'
+                ? 'guest.closedByNotSure'
+                : 'guest.closedBy',
+              {
+                date: wallDayOf(closedOn),
+              },
+            );
+      const kitchenAfter = page.phase === 'live' && !page.started && reply?.answer === 'coming';
+
       return (
-        <section className="gp-closed" aria-labelledby="gp-closed-h">
+        <section
+          className={page.phase === 'live' ? 'gp-closed is-live' : 'gp-closed'}
+          aria-labelledby="gp-closed-h"
+        >
           <h2 id="gp-closed-h" className="gp-h2 is-19" tabIndex={-1} data-focus="closedHead">
             {said}
           </h2>
-          {page.phase === 'live' && <p className="gp-sub">{t('guest.closed')}</p>}
+          {page.phase === 'live' && reply?.recordedBy != null && (
+            <p className="gp-sub is-recorded">
+              {t('guest.recordedOn', { name: reply.recordedBy, date: day })}
+            </p>
+          )}
+          {kitchenAfter && kitchenSaved && <KitchenSaved />}
+          {page.phase === 'live' && <p className="gp-sub">{closedLine}</p>}
+          {kitchenAfter && (
+            <TextAction
+              focus="kitchen"
+              {...(kitchenSaved ? { describedBy: KITCHEN_SAVED_ID } : {})}
+              icon={
+                <svg
+                  className="gp-line"
+                  width={18}
+                  height={18}
+                  viewBox="0 0 24 24"
+                  aria-hidden="true"
+                  focusable="false"
+                  strokeWidth={2.2}
+                >
+                  <path d="M21.174 6.812a1 1 0 0 0-3.986-3.987L3.842 16.174a2 2 0 0 0-.5.83l-1.321 4.352a.5.5 0 0 0 .623.622l4.353-1.32a2 2 0 0 0 .83-.497z" />
+                </svg>
+              }
+              onClick={onKitchenAfter}
+            >
+              {t('guest.kitchen')}
+            </TextAction>
+          )}
           {page.phase === 'paused' && !page.started && (
             <>
               <TextAction off focus="change" describedBy="gp-reason">

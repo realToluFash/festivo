@@ -59,6 +59,8 @@ import {
   VenuePart,
 } from './EventPartEdits.tsx';
 import { useMakeLive } from './MakeLive.tsx';
+import { ReplyByPart } from './ReplyByPart.tsx';
+import { closesAtClock, repliesClosed } from '../../../replyBy.ts';
 import { PHASE_WORD } from './eventWords.ts';
 import { typeLabel } from './eventTypes.ts';
 import { GuestNumbers } from './GuestNumbers.tsx';
@@ -203,10 +205,10 @@ export function Overview({
     else setCopying(true);
   };
 
-  const saved = (next: TaggedEvent) => {
+  const saved = (next: TaggedEvent, said = t('eventEdit.saved')) => {
     onChange(next.event, next.tag);
     close();
-    setToast(t('eventEdit.saved'));
+    setToast(said);
   };
 
   const parts: PartProps = {
@@ -274,6 +276,7 @@ export function Overview({
             event={event}
             phase={phase}
             manages={manages}
+            now={now}
             part={part}
             parts={parts}
             shown={shown}
@@ -365,6 +368,7 @@ function Details({
   event,
   phase,
   manages,
+  now,
   part,
   parts,
   shown,
@@ -375,6 +379,7 @@ function Details({
   event: OrganisationEvent;
   phase: ReturnType<typeof shownPhase>;
   manages: boolean;
+  now: Date;
   part: Part | null;
   parts: PartProps;
   shown: number;
@@ -390,6 +395,7 @@ function Details({
   const venue = event.venue;
   const address = venue?.address?.formatted ?? null;
   const note = event.arrivalNote;
+  const replyBy = event.replyBy ?? null;
   const cover = event.cover;
 
   const editor = (one: Part): ReactNode => {
@@ -397,7 +403,9 @@ function Details({
       case 'name':
         return <NamePart {...parts} />;
       case 'dates':
-        return <DatesPart {...parts} />;
+        return <DatesPart {...parts} now={now} />;
+      case 'replyBy':
+        return <ReplyByPart {...parts} now={now} />;
       case 'venue':
         return <VenuePart {...parts} over={finished} />;
       case 'hosts':
@@ -436,7 +444,7 @@ function Details({
       title={title}
       line={line}
       open={part === one}
-      locked={!manages || (one === 'dates' && finished) || plain}
+      locked={!manages || ((one === 'dates' || one === 'replyBy') && finished) || plain}
       after={after}
       onOpen={() => onOpen(one)}
     >
@@ -460,6 +468,21 @@ function Details({
                   ...(days > 1 ? [t('eventPage.dayCount', { count: days })] : []),
                   event.timeZone,
                 ].join(' · '),
+          )}
+          {row(
+            'replyBy',
+            <Lead name="clock" />,
+            replyBy == null ? t('eventReplyBy.rowNone') : replyByDay(replyBy, locale),
+            replyBy == null
+              ? t('eventReplyBy.replyBy')
+              : `${t('eventReplyBy.replyBy')} · ${
+                  repliesClosed(event, now)
+                    ? t('eventReplyBy.rowClosed')
+                    : t('eventReplyBy.rowCloses', {
+                        time: closesAtClock(locale),
+                        zone: event.timeZone,
+                      })
+                }`,
           )}
           {row(
             'venue',
@@ -532,6 +555,17 @@ function Details({
       </section>
     </>
   );
+}
+
+/** "Wed, Nov 4, 2026": the row's title, a calendar day with no zone to move it. */
+function replyByDay(day: string, locale: string): string {
+  return new Intl.DateTimeFormat(locale, {
+    weekday: 'short',
+    month: 'short',
+    day: 'numeric',
+    year: 'numeric',
+    timeZone: 'UTC',
+  }).format(new Date(`${day}T12:00:00Z`));
 }
 
 /** Set by New event when the event was created and its staged cover was refused or failed to save. */

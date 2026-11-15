@@ -67,7 +67,6 @@ import {
   useRef,
   useState,
 } from 'react';
-import { type TFunction } from 'i18next';
 import { useTranslation } from 'react-i18next';
 import { Link, useBlocker, useNavigate, useSearchParams } from 'react-router';
 
@@ -112,6 +111,8 @@ import {
 } from './guestSelect.ts';
 import { choiceLine, groupRefusal, listOpen, refusedLine } from './guestGroups.ts';
 import { GuestColumn, ReplyMark, guestAddress } from './GuestColumn.tsx';
+import { decideRow, repliesOf } from './guestReplyBy.ts';
+import { haventLine } from './havent.ts';
 import {
   CompanionField,
   GuestField,
@@ -257,6 +258,7 @@ export function GuestsArea({
   const { layers, covered, setHost } = useDeskLayers();
   const now = useServerNow();
   const phase = shownPhase(event, useLoadedAt(event), now);
+  const replies = repliesOf(event, now);
   const invites = eventAllows(phase, 'invite');
   const root = useRef<HTMLDivElement>(null);
   const focus = useFocusKeys(root);
@@ -1109,6 +1111,7 @@ export function GuestsArea({
                             choice={choice}
                             eventId={event.id}
                             timeZone={event.timeZone}
+                            replyBy={replies.replyBy}
                             open={open}
                             onOpen={openGuest}
                             picked={manages ? picked : null}
@@ -1132,6 +1135,7 @@ export function GuestsArea({
                                 choice={choice}
                                 eventId={event.id}
                                 timeZone={event.timeZone}
+                                replyBy={replies.replyBy}
                                 open={open}
                                 onOpen={openGuest}
                                 picked={manages ? picked : null}
@@ -1177,6 +1181,7 @@ export function GuestsArea({
                           guestId={open}
                           timeZone={event.timeZone}
                           event={event}
+                          replies={replies}
                           mesh={meshFor(event.id)}
                           manages={manages}
                           guests={guests}
@@ -1337,20 +1342,6 @@ export function GuestsArea({
 }
 
 const PIECES = [1, 2, 3, 4, 5, 6];
-
-/** "25 haven’t replied (21 guests and 4 companions).", the bracket only with a companion among them, and "Everyone has replied." at 0. */
-function haventLine(t: TFunction, counts: Counts): string {
-  if (counts.havent === 0) return t('guestList.everyoneReplied');
-  const havent = t('guestList.havent', { count: counts.havent });
-
-  return counts.haventCompanions === 0
-    ? t('guestList.haventLine', { havent })
-    : t('guestList.haventWho', {
-        havent,
-        guests: t('guestList.countGuests', { count: counts.haventGuests }),
-        companions: t('guestList.countCompanions', { count: counts.haventCompanions }),
-      });
-}
 
 type CoverStep = 'add' | 'makeLive' | 'changeDates';
 
@@ -1519,6 +1510,7 @@ function Rows({
   choice: Choice;
   eventId: string;
   timeZone: string;
+  replyBy: string | null;
   open: string | null;
   onOpen: (id: string) => void;
   /** The guests selected, or null without guests.manage, when no row has a box (sc-3776). */
@@ -1557,6 +1549,7 @@ function RowsFrom({
   choice,
   eventId,
   timeZone,
+  replyBy,
   open,
   onOpen,
   picked,
@@ -1569,6 +1562,7 @@ function RowsFrom({
   eventId: string;
   /** The event's: a reply's date is the day it was in the event's zone. */
   timeZone: string;
+  replyBy: string | null;
   open: string | null;
   onOpen: (id: string) => void;
   picked: ReadonlySet<string> | null;
@@ -1585,7 +1579,11 @@ function RowsFrom({
           places: noReply ? null : 'named',
           contact: true,
           invitation:
-            noReply && companion == null ? invitationLine(t, guest, timeZone, dateLocale()) : null,
+            companion != null
+              ? null
+              : noReply
+                ? invitationLine(t, guest, timeZone, dateLocale())
+                : decideRow(t, guest, replyBy, dateLocale()),
         });
 
         if (companion == null)

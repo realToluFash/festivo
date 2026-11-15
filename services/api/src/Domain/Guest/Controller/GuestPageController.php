@@ -94,6 +94,31 @@ final readonly class GuestPageController
         return $this->answered($guest);
     }
 
+    /** Update what the kitchen should know (sc-3780): a Coming guest's needs alone, after Reply by too, until the start; refused 422 unless the reply is Coming, and 409 as an answer is by the phase and the start. Answers the page as it now stands. */
+    #[Route('/api/guest-links/needs', name: 'guest_links_needs', methods: ['POST'])]
+    #[PublicAccess]
+    public function needs(Request $request): JsonResponse
+    {
+        $body = Input::body($request, Type\shape([
+            'token' => Type\string(),
+            'needs' => Type\optional(Type\nullable(self::needsShape())),
+            'companions' => Type\optional(Type\vec(Type\shape([
+                'id' => Type\string(),
+                'needs' => self::needsShape(),
+            ]))),
+            'unnamed' => Type\optional(Type\vec(Type\shape([
+                'id' => Type\string(),
+                'needs' => self::needsShape(),
+            ]))),
+        ]));
+        $guest = $this->invitationLinks->guestFor($body['token']) ?? throw ApiException::notFound('access.not_found');
+        [$page, $companions] = $this->guestRules->kitchen($body['needs'] ?? null, $body['companions'] ?? [], $body['unnamed'] ?? []);
+
+        $this->guestAnswers->kitchen($guest, $page, $companions);
+
+        return $this->answered($guest);
+    }
+
     /**
      * sc-3777's needs without the private note, which belongs to the hosts alone.
      *
@@ -166,10 +191,12 @@ final readonly class GuestPageController
                 'timeZone' => $event->getTimeZone(),
                 'venue' => null === $venue ? null : ['name' => $venue->name, 'address' => $venue->address?->formatted],
                 'arrivalNote' => $event->getArrivalNote(),
+                'replyBy' => $event->getReplyBy()?->format('Y-m-d'),
             ],
             'phase' => $this->guestAnswers->phase($guest)->value,
             'started' => $this->guestAnswers->started($guest),
             'answersOpen' => $this->guestAnswers->open($guest),
+            'answersClosedOn' => $this->guestAnswers->closedOn($guest),
             'calendarFeed' => $this->calendarFeed($guest),
         ], headers: ['Cache-Control' => 'no-store']);
     }

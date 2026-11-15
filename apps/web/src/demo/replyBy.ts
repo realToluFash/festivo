@@ -4,6 +4,14 @@ import { localDay } from './events.ts';
 import { countsOf, haventLine, sampleGuests } from './guests.ts';
 import { CLOSES_AT } from './replyClose.ts';
 
+export {
+  type ReplyByCheck,
+  datesAsk,
+  replyByAfterStart,
+  replyByCheck,
+  showsPreview,
+} from '../replyBy.ts';
+
 /** Who hasn't replied, in the Guests card's own sentence on the same sample (sc-99; l10n, #33419). */
 export function haventRepliedOf(id: string): string {
   return haventLine(countsOf(sampleGuests(id)));
@@ -11,28 +19,6 @@ export function haventRepliedOf(id: string): string {
 
 export function haventCountOf(id: string): number {
   return countsOf(sampleGuests(id)).havent;
-}
-
-/** pm, 8 Nov: Dates asks the Reply by part's own question, by the same rule, before a moved Reply by closes replies sooner. */
-export function datesAsk({
-  moved,
-  was,
-  startsAt,
-  now,
-  timeZone,
-  noReply,
-}: {
-  moved: string | null;
-  was: string | null;
-  startsAt: string;
-  now: Date;
-  timeZone: string;
-  noReply: number;
-}): 'sooner' | 'now' | null {
-  if (moved == null) return null;
-  const check = replyByCheck({ next: moved, was, startsAt, now, timeZone, noReply });
-
-  return check === 'sooner' || check === 'now' ? check : null;
 }
 
 /** After Dates saves: Tell guests is the answer when it opens, with the moved Reply by in it; otherwise the toast (ux, 8 Nov). */
@@ -62,38 +48,6 @@ export function replyBySays(
   };
 }
 
-export type ReplyByCheck = 'tooLate' | 'sooner' | 'now' | 'save';
-
-/** Before anything is sent: a date on or after the start is refused; closing sooner or now asks, unless nobody is left to reply. */
-export function replyByCheck({
-  next,
-  was,
-  startsAt,
-  now,
-  timeZone,
-  noReply,
-}: {
-  next: string | null;
-  was: string | null;
-  startsAt: string;
-  now: Date;
-  timeZone: string;
-  noReply: number;
-}): ReplyByCheck {
-  if (next == null) return 'save';
-  if (next >= localDay(startsAt, timeZone)) return 'tooLate';
-  if (noReply === 0) return 'save';
-  if (next < localDay(now.toISOString(), timeZone)) return 'now';
-  if (was != null && next < was) return 'sooner';
-
-  return 'save';
-}
-
-/** The guests' sentence is shown only for a date they can still answer by: today or later, before the start. */
-export function showsPreview(next: string | null, check: ReplyByCheck, today: string): boolean {
-  return next != null && check !== 'tooLate' && next >= today;
-}
-
 const LOCALE = 'en-US';
 
 function noon(date: string): Date {
@@ -108,18 +62,6 @@ export function rowDay(date: string): string {
     year: 'numeric',
     timeZone: 'UTC',
   }).format(noon(date));
-}
-
-/** pm, 8 Nov: a start moved to or before the Reply by day moves Reply by to the day before it; a later start leaves it. */
-export function replyByAfterStart(
-  replyBy: string | null,
-  startsAt: string,
-  timeZone: string,
-): string | null {
-  const startDay = localDay(startsAt, timeZone);
-  if (replyBy == null || replyBy < startDay) return null;
-
-  return new Date(Date.parse(`${startDay}T12:00:00Z`) - 86_400_000).toISOString().slice(0, 10);
 }
 
 /** The board's English for Reply by (sc-3780's Design, 7 Nov), held in the demo until the product's screen puts it in the catalogues. */

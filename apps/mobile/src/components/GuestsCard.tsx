@@ -90,6 +90,7 @@ export function GuestCover({
   word,
   name,
   line,
+  step = null,
   nameRef,
 }: {
   kind: LayoutKind;
@@ -98,6 +99,8 @@ export function GuestCover({
   word: string;
   name: string;
   line: string | null;
+  /** Its one step: Let them change their reply, once replies close (sc-3780). */
+  step?: StepProps | null;
   nameRef: Ref<TextHandle>;
 }) {
   return (
@@ -117,6 +120,11 @@ export function GuestCover({
       </View>
       <CardSays text={name} heading ref={nameRef} />
       {line != null && <OnCard text={line} />}
+      {step != null && (
+        <View style={styles.foot}>
+          <StepButton {...step} />
+        </View>
+      )}
     </SummaryCard>
   );
 }

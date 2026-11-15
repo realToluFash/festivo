@@ -207,6 +207,13 @@ export function unnamedNeeds(kitchen: Kitchen): PlaceNeeds[] {
     .map((one) => ({ id: one.key.slice(PLACE.length), needs: needsOf(one) }));
 }
 
+/** The named companions' cards, by their ids, as the kitchen needs alone are sent after Reply by (sc-3780). */
+export function companionNeeds(kitchen: Kitchen): PlaceNeeds[] {
+  return kitchen.people
+    .filter((one) => one.key !== YOU && !one.key.startsWith(PLACE))
+    .map((one) => ({ id: one.key, needs: needsOf(one) }));
+}
+
 export interface WhoWords {
   you: string;
   yourGuest: string;

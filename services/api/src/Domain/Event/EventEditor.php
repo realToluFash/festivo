@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\Domain\Event;
 
 use App\Audit\Auditor;
+use App\Domain\Event\Model\ReplyDeadline;
 use App\Domain\Messaging\EventChanges\EventChangeRecorder;
 use App\Domain\Messaging\Model\EventDetails;
 use App\Domain\Messaging\NotificationScheduler;
@@ -17,6 +18,9 @@ use App\Enum\EventPhase;
 use App\Enum\EventStatus;
 use App\Http\EntityTag;
 use App\Http\Exception\ApiException;
+use DateInterval;
+use DateTimeImmutable;
+use DateTimeZone;
 use Doctrine\DBAL\LockMode;
 use Doctrine\ORM\EntityManagerInterface;
 use Psl\Iter;
@@ -48,8 +52,9 @@ final readonly class EventEditor
      *
      * A type sent as null is refused like a missing one on create: an event, once typed, stays typed (sc-3588).
      * `hosts` replaces the whole list, and an event made live keeps at least one (sc-6713).
+     * A start moved onto or before Reply by moves Reply by to the day before it (sc-3780).
      *
-     * @param array{name?: string, type?: ?string, startsAt?: string, endsAt?: string, timeZone?: string, currency?: string, venue?: array{name?: ?string, address?: ?string, addressId?: ?string}|null, arrivalNote?: ?string, hosts?: list<string>} $fields
+     * @param array{name?: string, type?: ?string, startsAt?: string, endsAt?: string, timeZone?: string, currency?: string, venue?: array{name?: ?string, address?: ?string, addressId?: ?string}|null, arrivalNote?: ?string, hosts?: list<string>, replyBy?: ?string} $fields
      */
     public function edit(Event $event, ?string $ifMatch, User $by, array $fields): Event
     {
@@ -77,7 +82,9 @@ final readonly class EventEditor
                 ...Iter\contains_key($fields, 'venue') ? ['venue' => $fields['venue']] : [],
                 ...Iter\contains_key($fields, 'arrivalNote') ? ['arrivalNote' => $fields['arrivalNote']] : [],
                 ...Iter\contains_key($fields, 'hosts') ? ['hosts' => $fields['hosts']] : [],
+                ...Iter\contains_key($fields, 'replyBy') ? ['replyBy' => $fields['replyBy']] : [],
             ], $event->getCurrency(), EventVenue::of($event));
+            $wasClosed = ReplyDeadline::of($event)?->passedAt($this->clock->now()) ?? false;
 
             if ($checked['currency'] !== $event->getCurrency() && $this->eventAmounts->anyRecordedFor($event)) {
                 throw new ApiException(ErrorCode::EventCurrencyInUse, 'event.currency_in_use');
@@ -114,6 +121,8 @@ final readonly class EventEditor
                     $this->notificationScheduler->rescheduleForNewZone($event);
                 }
             }
+
+            $this->writeReplyBy($event, Iter\contains_key($checked, 'replyBy') ? $checked['replyBy'] : self::beforeStart($event->getReplyBy(), $checked['startsAt']), $wasClosed);
 
             $changes = Auditor::diff($before, self::recorded($event));
             $this->allow($phase, $changes);
@@ -159,7 +168,39 @@ final readonly class EventEditor
             ...self::venueRecorded($event),
             'arrivalNote' => $event->getArrivalNote(),
             'hosts' => $event->getHosts(),
+            'replyBy' => $event->getReplyBy()?->format('Y-m-d'),
         ];
+    }
+
+    /** The stored day, or the day before the start when the start has moved onto or before it. */
+    private static function beforeStart(?DateTimeImmutable $replyBy, DateTimeImmutable $startsAt): ?DateTimeImmutable
+    {
+        $startDay = $startsAt->format('Y-m-d');
+
+        if (null === $replyBy || $replyBy->format('Y-m-d') < $startDay) {
+            return $replyBy;
+        }
+
+        return new DateTimeImmutable($startDay, new DateTimeZone('UTC'))->sub(new DateInterval('P1D'));
+    }
+
+    /** A save that closes replies early keeps the day it did so, which the guest's page and card name; one that leaves them open forgets it. */
+    private function writeReplyBy(Event $event, ?DateTimeImmutable $replyBy, bool $wasClosed): void
+    {
+        if ($replyBy?->format('Y-m-d') !== $event->getReplyBy()?->format('Y-m-d')) {
+            $event->setReplyBy($replyBy);
+        }
+
+        $now = $this->clock->now();
+        $closed = ReplyDeadline::of($event)?->passedAt($now) ?? false;
+
+        if (!$closed) {
+            if (null !== $event->getRepliesClosedOn()) {
+                $event->setRepliesClosedOn(null);
+            }
+        } elseif (!$wasClosed) {
+            $event->setRepliesClosedOn(new DateTimeImmutable($now->setTimezone(new DateTimeZone($event->getTimeZone()))->format('Y-m-d'), new DateTimeZone('UTC')));
+        }
     }
 
     /**

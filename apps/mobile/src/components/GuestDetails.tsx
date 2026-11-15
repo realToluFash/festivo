@@ -13,6 +13,7 @@ import { StyleSheet, View, type ViewInstance } from 'react-native';
 import { useTranslation } from 'react-i18next';
 
 import { dateLocale } from '../i18n/index.ts';
+import { type GuestReplies, guestReplyBy } from '../kit/replyBy.ts';
 import type { Shown } from '../kit/eventsList.ts';
 import { markOf } from '../kit/guestRows.ts';
 import type { LayoutKind } from '../layout/useLayout.ts';
@@ -50,6 +51,8 @@ export function GuestDetails({
   pane,
   manages,
   timeZone,
+  replies,
+  reopen,
   saved,
   notice,
   invitation,
@@ -69,6 +72,10 @@ export function GuestDetails({
   pane: GuestPane;
   manages: boolean;
   timeZone: string;
+  /** The event's Reply by, and the day replies closed once they have (sc-3780). */
+  replies: GuestReplies;
+  /** Let them change their reply: under way, or not saved. */
+  reopen: { busy: boolean; failed: boolean; ref: Ref<ViewInstance>; onPress: () => void };
   saved: boolean;
   notice: GuestNotice;
   /** Null on a Draft, where nobody can be invited yet. */
@@ -109,6 +116,7 @@ export function GuestDetails({
   const added = replyDate(guest.added.at, timeZone, locale);
   const group = guest.group?.name ?? null;
   const groupWords = group ?? t('guestGroups.noGroup');
+  const after = guestReplyBy(guest, shown, replies, manages, timeZone, locale, t);
   const rows: { key: string; inset: number; row: ReactNode }[] = [
     {
       key: 'group',
@@ -217,17 +225,31 @@ export function GuestDetails({
         word={word}
         name={guest.fullName}
         line={
-          guest.repliedAt != null
-            ? t('guestList.replied', {
+          after.card ??
+          (guest.repliedAt != null
+            ? (after.reply ??
+              t('guestList.replied', {
                 reply: word,
                 date: replyDate(guest.repliedAt, timeZone, locale),
-              })
+              }))
             : shown === 'notYetInvited'
               ? t('guestList.copyFirst')
-              : invitationLine(t, guest, timeZone, locale)
+              : invitationLine(t, guest, timeZone, locale))
+        }
+        step={
+          after.reopens
+            ? {
+                label: t('guestList.letThemChange'),
+                onPress: reopen.onPress,
+                busy: reopen.busy,
+                ref: reopen.ref,
+                testID: 'guest.card.step',
+              }
+            : null
         }
         nameRef={nameRef}
       />
+      {reopen.failed && <AlertLine text={t('guestList.reopenNotSaved')} />}
       {notice?.kind === 'refused' && <AlertLine text={notice.line} />}
       {notice?.kind === 'offline' && <AlertLine text={t('guestList.offlineRefused')} />}
       {notice?.kind === 'failed' && <AlertLine text={t('guestList.unmarkNotSaved')} />}
@@ -236,7 +258,10 @@ export function GuestDetails({
           <BlockHead title={t('guestList.replyHeading')} />
           <Row
             title={word}
-            line={t('guestList.repliedOn', { date: replyDate(guest.repliedAt, timeZone, locale) })}
+            line={
+              after.asked ??
+              t('guestList.repliedOn', { date: replyDate(guest.repliedAt, timeZone, locale) })
+            }
             lead={<MarkSlot kind={markOf(shown)} />}
             testID="guest.reply"
           />
