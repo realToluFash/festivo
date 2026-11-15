@@ -645,7 +645,6 @@ function Details({
           </div>
         </dl>
         {next != null && <p className="rs-next">{next}</p>}
-        {!finished && <p className="mn-quiet">{t('roster.linksThere')}</p>}
       </div>
       {manage && (
         <div className="mn-panel-foot">
