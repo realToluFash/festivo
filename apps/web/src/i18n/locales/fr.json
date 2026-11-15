@@ -246,9 +246,9 @@
     "venueZoneSet": "Fuseau horaire défini sur {{zone}}.",
     "venueNameTooLong": "Raccourcissez le nom du lieu à {{most, number}} caractères maximum.",
     "venueAddressTooLong": "Raccourcissez l’adresse à {{most, number}} caractères maximum.",
-    "arrivalNote": "Arrival note",
-    "arrivalNoteHint": "How to find the entrance, where to park, when the doors open. Every guest sees this on their page.",
-    "arrivalNoteTooLong": "Shorten the arrival note to {{most, number}} characters or fewer."
+    "arrivalNote": "Informations d’arrivée",
+    "arrivalNoteHint": "Comment trouver l’entrée, où se garer, à quelle heure ouvrent les portes. Elles s’affichent sur la page de chaque personne invitée.",
+    "arrivalNoteTooLong": "Raccourcissez les informations d’arrivée à {{most, number}} caractères maximum."
   },
   "eventTypes": {
     "wedding": "Mariage",
@@ -439,7 +439,7 @@
     "cancel": "Annuler",
     "currencyInUse": "La devise ne peut plus changer une fois que des montants sont enregistrés pour cet événement.",
     "notSaved": "Non enregistré. Vos modifications sont toujours là. Réessayez.",
-    "forbidden": "Nothing was changed. Your role does not include the permission this needs.",
+    "forbidden": "Rien n’a été modifié. Votre rôle n’inclut pas l’autorisation nécessaire.",
     "changedElsewhere": "Non enregistré. Quelqu’un d’autre a modifié cet événement depuis que vous l’avez ouvert. Ce que vous avez saisi est toujours là.",
     "showLatest": "Afficher la dernière version",
     "showLatestTitle": "Afficher la dernière version ?",
@@ -449,8 +449,8 @@
     "leaveBody": "Les modifications apportées à cet événement seront perdues.",
     "leave": "Quitter sans enregistrer",
     "saved": "Modifications enregistrées",
-    "scheduleConcluded": "Cet événement est terminé, son début, sa fin et son fuseau horaire ne peuvent donc plus être modifiés.",
-    "scheduleCalledOff": "This event was called off, so its start, end and time zone can't be changed.",
+    "scheduleConcluded": "Cet événement est terminé ou a été annulé, son début, sa fin et son fuseau horaire ne peuvent donc plus être modifiés.",
+    "scheduleCalledOff": "Cet événement a été annulé, son début, sa fin et son fuseau horaire ne peuvent donc plus être modifiés.",
     "scheduleLocked": "Cet événement est terminé, son début, sa fin et son fuseau horaire ne peuvent donc plus être modifiés."
   },
   "eventHosts": {
@@ -605,8 +605,8 @@
     "withYouNotComing": "Ne vient pas",
     "withYouByInvitation": "Nom indiqué sur votre invitation",
     "withYouByYou": "Nom que vous avez indiqué",
-    "withYouNoName": "No name yet",
-    "withYouAddName": "Add a name for {{label}}",
+    "withYouNoName": "Pas encore de nom",
+    "withYouAddName": "Ajouter le nom : {{label}}",
     "withYouTheirName": "Nom complet",
     "withYouTypeTheirName": "Saisissez le nom complet",
     "withYouRename": "Modifier le nom : {{name}}",
