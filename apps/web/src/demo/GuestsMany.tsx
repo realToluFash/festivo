@@ -8,9 +8,10 @@ import { DemoBell } from './DemoBell.tsx';
 import { EventsShell } from './EventParts.tsx';
 import { EventSidebar } from './EventSidebar.tsx';
 import { CLOCKS, type SampleEvent, sampleEvent } from './events.ts';
+import { AddForm } from './GuestForms.tsx';
 import { GroupChips } from './GuestGroups.tsx';
 import { SearchRow } from './Guests.tsx';
-import { SelectBar, SelectRows, SelectedSaid } from './GuestsParts.tsx';
+import { GuestsCardView, SelectBar, SelectRows, SelectedSaid } from './GuestsParts.tsx';
 import { RMW, type Removed, UNDO_SECONDS, nextCount } from './guestRemove.ts';
 import {
   GGW,
@@ -21,16 +22,21 @@ import {
   groupNameLength,
   groupProblem,
   makeGroup,
+  settleGroup,
   sortedGroups,
 } from './guestGroups.ts';
 import {
   type Filter,
   type Guest,
   type Reply,
+  type Values,
   WEDDING,
+  addGuest,
   countsOf,
+  guestsCardOf,
   invitesOn,
   replyByOf,
+  todayOf,
   viewOf,
 } from './guests.ts';
 import { MW, companionsWith } from './guestsMark.ts';
@@ -130,6 +136,8 @@ function ManyPage({ event, start, tell }: { event: SampleEvent; start: ManyStart
   const [asking, setAsking] = useState(start.asking);
   const [line, setLine] = useState<Line | null>(start.line);
   const [undo, setUndo] = useState<Removed[] | null>(start.undo);
+  const [adding, setAdding] = useState(false);
+  const [emptied, setEmptied] = useState(start.list.length === 0);
   const manages = start.manages;
   const counts = countsOf(list);
   const { view, shown } = viewOf(
@@ -149,18 +157,30 @@ function ManyPage({ event, start, tell }: { event: SampleEvent; start: ManyStart
   const undoing = line?.kind === 'removed' && undo != null;
   const looking = choice !== 'all' || q.trim() !== '' || groupFilter != null;
   const marks = invitesOn(event, CLOCKS.rest);
+  const empty = list.length === 0;
+  /** sc-50772: once a removal empties the list, the page is sc-50409's empty event until Undo or its 10 seconds end, even after Add guest saves one. */
+  const carded = empty || adding || emptied;
+  const card = guestsCardOf(event, list, 'live', CLOCKS.rest, manages);
 
-  function focus(key: string): void {
-    pending.current = key;
+  function focus(...keys: string[]): void {
+    pending.current = keys.join(' ');
     rerender();
   }
 
   useEffect(() => {
-    const key = pending.current;
+    const keys = pending.current;
 
-    if (key == null) return;
+    if (keys == null) return;
     pending.current = null;
-    focusWhenFree(() => root.current?.querySelector<HTMLElement>(`[data-focus="${key}"]`) ?? null);
+    focusWhenFree(() => {
+      for (const key of keys.split(' ')) {
+        const found = root.current?.querySelector<HTMLElement>(`[data-focus="${key}"]`);
+
+        if (found != null) return found;
+      }
+
+      return null;
+    });
   });
 
   /** A tab, a search or a filter changes what is shown, so nothing hidden stays selected (PM #5003). */
@@ -221,6 +241,7 @@ function ManyPage({ event, start, tell }: { event: SampleEvent; start: ManyStart
     setList(after.list);
     setSelected(after.removed.length > 0 ? NONE : selected);
     setUndo(after.removed.length > 0 ? after.removed : null);
+    setEmptied(after.list.length === 0);
     done(after.line);
   }
 
@@ -249,15 +270,47 @@ function ManyPage({ event, start, tell }: { event: SampleEvent; start: ManyStart
     if (undo == null) return;
     setList(undoMany(list, undo));
     setUndo(null);
+    setEmptied(false);
     done({ kind: 'undone', guests: undo.length });
   }
 
   function gone(): void {
     setUndo(null);
     setLine(null);
+    setEmptied(false);
+  }
+
+  function startAdd(): void {
+    setAdding(true);
+    focus('name');
+  }
+
+  function added(values: Values): void {
+    let saved = values;
+
+    if (values.group !== undefined) {
+      const settled = settleGroup(groups, values.group);
+
+      if (settled.groups.length !== groups.length) setGroups(settled.groups);
+      saved = { ...values, group: settled.id == null ? null : { id: settled.id } };
+    }
+    setList((was) => addGuest(was, saved, todayOf(CLOCKS.rest)));
   }
 
   const asked = asking ? removeQuestion(list, selected) : null;
+  const said = (
+    <div className="gm-said" data-focus="line" tabIndex={-1} role="status">
+      {line != null && (
+        <ResultLine
+          line={line}
+          undo={undoing ? undo : null}
+          onUndo={undone}
+          onGone={gone}
+          onRetry={act}
+        />
+      )}
+    </div>
+  );
   const bar = manages && selected.size > 0 && (line == null || line.kind === 'undone');
 
   return (
@@ -284,132 +337,158 @@ function ManyPage({ event, start, tell }: { event: SampleEvent; start: ManyStart
           <DemoBell tell={tell} />
         </div>
         <header className="gs-top">
-          <h1 className="gs-title" tabIndex={-1}>
+          <h1 className="gs-title" tabIndex={-1} data-focus="title">
             {GW.title}
           </h1>
         </header>
-        <section className="gs-list gm-list" aria-label={GW.title}>
-          <SearchRow
-            q={q}
-            choice={choice}
-            counts={counts}
-            changed={0}
-            menu={menu}
-            onQ={(next) => changeList(() => setQ(next))}
-            onChoice={(next) => changeList(() => setChoice(next))}
-            onMenu={setMenu}
+        {carded && <div className="gm-dock">{said}</div>}
+        {carded && (
+          <GuestsCardView
+            card={card}
+            mesh={event.mesh}
+            step={card.step === 'add' ? GW.addGuest : null}
+            onStep={startAdd}
           />
-          <GroupChips
-            groups={groups}
-            list={list}
-            filter={groupFilter}
-            onFilter={(next) => changeList(() => setGroupFilter(next))}
-          />
-          {looking && (
-            <div className="gs-shown">
-              <p>{GW.shown(shown, counts.all)}</p>
-              <TextAction
-                label={GW.clear}
-                onClick={() =>
-                  changeList(() => {
-                    setQ('');
-                    setChoice('all');
-                    setGroupFilter(null);
-                  })
-                }
-              />
-            </div>
-          )}
-          <div role="status" className="gb-cleared">
-            {cleared && (
-              <div className="gm-line is-quiet">
-                <Glyph name="info" size={18} weight={2.4} />
-                <p>
-                  <span>{MMW.cleared}</span>
-                  <span className="gb-why">{MMW.clearedWhy}</span>
-                </p>
-              </div>
-            )}
-          </div>
-          <SelectedSaid count={bar ? count : null} companions={companions} />
-          {!manages && <p className="desk-note gb-note">{MMW.viewOnly}</p>}
-          {manages && ids.length > 0 && (
-            <label className="gs-tick gm-all">
-              <input
-                type="checkbox"
-                className="gs-box"
-                checked={everyone}
-                data-focus="all"
-                ref={(box) => {
-                  if (box != null)
-                    box.indeterminate = !everyone && ids.some((id) => selected.has(id));
-                }}
-                onChange={() => select(everyone ? NONE : new Set(ids))}
-              />
-              {MW.selectAll(ids.length)}
-            </label>
-          )}
-          {manages && onlyCompanions(view) && <p className="desk-note gb-note">{MMW.heldNote}</p>}
-          <div className="gm-dock gb-dock">
-            <div className="gm-said" data-focus="line" tabIndex={-1} role="status">
-              {line != null && (
-                <ResultLine
-                  line={line}
-                  undo={undoing ? undo : null}
-                  onUndo={undone}
-                  onGone={gone}
-                  onRetry={act}
+        )}
+        <div className={adding ? 'gs-cols' : undefined}>
+          <section className="gs-list gm-list" aria-label={GW.title}>
+            {!empty && (
+              <>
+                <SearchRow
+                  q={q}
+                  choice={choice}
+                  counts={counts}
+                  changed={0}
+                  menu={menu}
+                  onQ={(next) => changeList(() => setQ(next))}
+                  onChoice={(next) => changeList(() => setChoice(next))}
+                  onMenu={setMenu}
                 />
-              )}
-            </div>
-            {bar && (
-              <SelectBar
-                count={count}
-                companions={companions}
-                pretend={pretend}
-                onMark={marks ? () => tell(MMW.markTheirOwn) : null}
-                onAdd={pressAdd}
-                onRemove={pressRemove}
-                onClear={() => {
-                  select(NONE);
-                  focus('all');
-                }}
-              />
-            )}
-          </div>
-          {shown === 0 ? (
-            <div className="gs-none">
-              <h2>{GW.noMatch}</h2>
-              <p className="desk-line">{GW.noMatchLine}</p>
-            </div>
-          ) : view.kind === 'groups' ? (
-            view.groups.map((group) => (
-              <section key={group.reply} className="gs-group" aria-label={REPLY_WORDS[group.reply]}>
-                <h2 className="gs-group-head">
-                  {REPLY_WORDS[group.reply]}
-                  <span className="gs-group-count"> · {figure(group.count)}</span>
-                </h2>
-                <SelectRows
-                  rows={group.rows}
-                  event={event.id}
+                <GroupChips
                   groups={groups}
-                  manages={manages}
-                  selected={selected}
-                  onToggle={toggle}
+                  list={list}
+                  filter={groupFilter}
+                  onFilter={(next) => changeList(() => setGroupFilter(next))}
                 />
-              </section>
-            ))
-          ) : (
-            <SelectRows
-              rows={view.rows}
-              event={event.id}
-              groups={groups}
-              manages={manages}
-              selected={selected}
-              onToggle={toggle}
-            />
+                {looking && (
+                  <div className="gs-shown">
+                    <p>{GW.shown(shown, counts.all)}</p>
+                    <TextAction
+                      label={GW.clear}
+                      onClick={() =>
+                        changeList(() => {
+                          setQ('');
+                          setChoice('all');
+                          setGroupFilter(null);
+                        })
+                      }
+                    />
+                  </div>
+                )}
+                <div role="status" className="gb-cleared">
+                  {cleared && (
+                    <div className="gm-line is-quiet">
+                      <Glyph name="info" size={18} weight={2.4} />
+                      <p>
+                        <span>{MMW.cleared}</span>
+                        <span className="gb-why">{MMW.clearedWhy}</span>
+                      </p>
+                    </div>
+                  )}
+                </div>
+                <SelectedSaid count={bar ? count : null} companions={companions} />
+                {!manages && <p className="desk-note gb-note">{MMW.viewOnly}</p>}
+                {manages && ids.length > 0 && (
+                  <label className="gs-tick gm-all">
+                    <input
+                      type="checkbox"
+                      className="gs-box"
+                      checked={everyone}
+                      data-focus="all"
+                      ref={(box) => {
+                        if (box != null)
+                          box.indeterminate = !everyone && ids.some((id) => selected.has(id));
+                      }}
+                      onChange={() => select(everyone ? NONE : new Set(ids))}
+                    />
+                    {MW.selectAll(ids.length)}
+                  </label>
+                )}
+                {manages && onlyCompanions(view) && (
+                  <p className="desk-note gb-note">{MMW.heldNote}</p>
+                )}
+                <div className="gm-dock gb-dock">
+                  {!carded && said}
+                  {bar && (
+                    <SelectBar
+                      count={count}
+                      companions={companions}
+                      pretend={pretend}
+                      onMark={marks ? () => tell(MMW.markTheirOwn) : null}
+                      onAdd={pressAdd}
+                      onRemove={pressRemove}
+                      onClear={() => {
+                        select(NONE);
+                        focus('all');
+                      }}
+                    />
+                  )}
+                </div>
+                {shown === 0 ? (
+                  <div className="gs-none">
+                    <h2>{GW.noMatch}</h2>
+                    <p className="desk-line">{GW.noMatchLine}</p>
+                  </div>
+                ) : view.kind === 'groups' ? (
+                  view.groups.map((group) => (
+                    <section
+                      key={group.reply}
+                      className="gs-group"
+                      aria-label={REPLY_WORDS[group.reply]}
+                    >
+                      <h2 className="gs-group-head">
+                        {REPLY_WORDS[group.reply]}
+                        <span className="gs-group-count"> · {figure(group.count)}</span>
+                      </h2>
+                      <SelectRows
+                        rows={group.rows}
+                        event={event.id}
+                        groups={groups}
+                        manages={manages}
+                        selected={selected}
+                        onToggle={toggle}
+                      />
+                    </section>
+                  ))
+                ) : (
+                  <SelectRows
+                    rows={view.rows}
+                    event={event.id}
+                    groups={groups}
+                    manages={manages}
+                    selected={selected}
+                    onToggle={toggle}
+                  />
+                )}
+              </>
+            )}
+          </section>
+          {adding && (
+            <section className="gs-column" aria-label={GW.addGuest}>
+              <AddForm
+                list={list}
+                groups={groups}
+                start={{}}
+                focus={focus}
+                onDone={() => {
+                  setAdding(false);
+                  focus('line', 'title');
+                }}
+                onAdd={added}
+              />
+            </section>
           )}
-        </section>
+        </div>
       </div>
       {sheet != null && (
         <GroupSheet

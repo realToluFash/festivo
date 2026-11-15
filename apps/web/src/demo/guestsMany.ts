@@ -253,6 +253,10 @@ export const MANY_STATES = [
   { key: 'remove', name: 'Remove from the list: the question, an arrived guest named' },
   { key: 'removeNoCompanions', name: 'Remove from the list: no companions, the clause dropped' },
   { key: 'removed', name: 'Removed, with Undo for 10 seconds' },
+  {
+    key: 'removedAll',
+    name: 'Everyone removed: Undo above the empty event, Add guest on the card (sc-50772)',
+  },
   { key: 'undone', name: 'Undone: back on the list, as they were' },
   { key: 'nothingRemoved', name: 'Only arrived guests selected: nothing removed' },
   { key: 'failed', name: 'Not saved: Nothing changed, with Try again' },
@@ -352,6 +356,11 @@ export function manyStart(state: ManyState): ManyStart {
       return { ...start, selected: NO_COMPANIONS, asking: true };
     case 'removed': {
       const done = removeMany(arrived, new Set(REMOVING));
+
+      return { ...start, list: done.list, line: done.line, undo: done.removed };
+    }
+    case 'removedAll': {
+      const done = removeMany(list, new Set(list.map((one) => one.id)));
 
       return { ...start, list: done.list, line: done.line, undo: done.removed };
     }
