@@ -368,8 +368,9 @@ export function GuestForm({
                     setTypedGroup(text);
                     setReturned(null);
                   }}
-                  onReturn={() => {
-                    const result = returnPick(groups, typedGroup);
+                  onReturn={(text) => {
+                    setTypedGroup(text);
+                    const result = returnPick(groups, text);
                     if ('problem' in result) setReturned(result.problem);
                     else pickGroup(result.pick);
                   }}

@@ -870,7 +870,14 @@ describe('Finding a guest (sc-3772)', () => {
     expect(within(card).queryByRole('button', { name: 'Make live' })).toBeNull();
     fireEvent.click(within(card).getByRole('button', { name: 'Change dates' }));
 
-    await waitFor(() => expect(shownRouter?.state.location.pathname).toBe('/app/events/ev_1/edit'));
+    const starts = await screen.findByRole('group', { name: 'Starts' });
+    expect(shownRouter?.state.location.pathname).toBe('/app/events/ev_1');
+    await waitFor(() =>
+      expect(document.activeElement).toBe(within(starts).getByLabelText('Starts, Date')),
+    );
+
+    await act(() => shownRouter!.navigate(-1));
+    expect(shownRouter?.state.location.pathname).toBe('/app/events/ev_1/guests');
   });
 
   it('says Finished on the card, with its line, its counts and no step', async () => {

@@ -12,15 +12,7 @@ import {
   takesCardStep,
   wallDay,
 } from '@soirely/domain';
-import {
-  Fragment,
-  type ReactNode,
-  type RefObject,
-  useCallback,
-  useEffect,
-  useRef,
-  useState,
-} from 'react';
+import { Fragment, type ReactNode, type RefObject, useEffect, useRef, useState } from 'react';
 import { type TFunction } from 'i18next';
 import { useTranslation } from 'react-i18next';
 import { useLocation, useNavigate } from 'react-router';
@@ -44,7 +36,6 @@ import { canOn } from '../../../session.ts';
 import { DeleteEvent } from './DeleteEvent.tsx';
 import { DuplicateDialog, DuplicateEvent } from './DuplicateEvent.tsx';
 import { guestsCopied, wasDuplicated } from './duplicated.ts';
-import { type EditOutcome } from './EditEvent.tsx';
 import { EndButton } from './EndEvent.tsx';
 import { EventCoverImage } from './EventCoverImage.tsx';
 import {
@@ -59,6 +50,7 @@ import {
   VenuePart,
 } from './EventPartEdits.tsx';
 import { useMakeLive } from './MakeLive.tsx';
+import { arrivingPart } from './openInPlace.ts';
 import { PHASE_WORD } from './eventWords.ts';
 import { typeLabel } from './eventTypes.ts';
 import { GuestNumbers } from './GuestNumbers.tsx';
@@ -127,12 +119,10 @@ export function Overview({
   const { t } = useTranslation();
   const location = useLocation();
   const navigate = useNavigate();
-  const [outcome] = useState(() => editOutcome(location.state));
   const [coverRefused] = useState(() => coverRefusal(location.state));
   const coverLine = useRef<HTMLParagraphElement>(null);
   const [ended, setEnded] = useState(false);
   const [paused, setPaused] = useState(false);
-  const [part, setPart] = useState<Part | null>(null);
   const [dirty, setDirty] = useState(false);
   const [leaving, setLeaving] = useState<{ to: Part | null } | null>(null);
   const [toast, setToast] = useState<string | null>(() =>
@@ -144,6 +134,11 @@ export function Overview({
   const phase = shownPhase(event, loadedAt, now);
   const manages = canOn(event, 'events.manage');
   const creates = canOn(event, 'events.create');
+  const opens = (one: Part | null): Part | null =>
+    one == null || !manages || (one === 'dates' && phase === 'finished') ? null : one;
+  const [part, setPart] = useState<Part | null>(() => opens(arrivingPart(location.state)));
+  const [arrivals, setArrivals] = useState(part === 'dates' ? 1 : 0);
+  const [arrival, setArrival] = useState(location.key);
   const guard = useLeaveGuard({ dirty, busy: false, body: t('eventEdit.leaveBody') });
   const [madeLive, setMadeLive] = useState(false);
   const [resumed, setResumed] = useState(false);
@@ -168,7 +163,7 @@ export function Overview({
 
   useEffect(() => {
     if (
-      editOutcome(location.state) == null &&
+      arrivingPart(location.state) == null &&
       coverRefusal(location.state) == null &&
       !wasDuplicated(location.state)
     )
@@ -180,9 +175,10 @@ export function Overview({
     );
   }, [location, navigate]);
 
-  function open(next: Part): void {
+  function open(next: Part, arriving = false): void {
     const to = next === part ? null : next;
 
+    setArrivals((count) => (arriving ? count + 1 : 0));
     if (part != null && dirty) setLeaving({ to });
     else {
       setPart(to);
@@ -190,10 +186,19 @@ export function Overview({
     }
   }
 
-  const close = useCallback(() => {
+  function close(): void {
     setPart(null);
     setDirty(false);
-  }, []);
+  }
+
+  // Change dates followed while the page is already open, from Make live's refusal.
+  if (location.key !== arrival) {
+    const arriving = opens(arrivingPart(location.state));
+
+    setArrival(location.key);
+    if (arriving != null && arriving !== part) open(arriving, true);
+    else if (arriving === 'dates') setArrivals((count) => count + 1);
+  }
 
   const onStep = (step: ButtonStep) => {
     if (step.action === 'makeLive') makeLive.start();
@@ -263,11 +268,6 @@ export function Overview({
           onRetry={() => open('cover')}
         />
       )}
-      {outcome != null && (
-        <OutcomeLine
-          words={outcome === 'saved' ? t('eventEdit.saved') : t('eventEdit.nothingChanged')}
-        />
-      )}
       <div className="ev-columns">
         <div className="ev-left">
           <Details
@@ -275,6 +275,7 @@ export function Overview({
             phase={phase}
             manages={manages}
             part={part}
+            arrivals={arrivals}
             parts={parts}
             shown={shown}
             onCover={(next) => saved({ event: next, tag })}
@@ -366,6 +367,7 @@ function Details({
   phase,
   manages,
   part,
+  arrivals,
   parts,
   shown,
   onCover,
@@ -376,6 +378,7 @@ function Details({
   phase: ReturnType<typeof shownPhase>;
   manages: boolean;
   part: Part | null;
+  arrivals: number;
   parts: PartProps;
   shown: number;
   onCover: (event: OrganisationEvent) => void;
@@ -397,7 +400,7 @@ function Details({
       case 'name':
         return <NamePart {...parts} />;
       case 'dates':
-        return <DatesPart {...parts} />;
+        return <DatesPart {...parts} focusStart={arrivals} />;
       case 'venue':
         return <VenuePart {...parts} over={finished} />;
       case 'hosts':
@@ -542,12 +545,6 @@ function coverRefusal(state: unknown): string | null {
       : null;
 
   return typeof refused === 'string' ? refused : null;
-}
-
-function editOutcome(state: unknown): EditOutcome | null {
-  const edit = typeof state === 'object' && state != null && 'edit' in state ? state.edit : null;
-
-  return edit === 'saved' || edit === 'unchanged' ? edit : null;
 }
 
 /** The copy's toast, with how many guests came when the guest list did (sc-3656). */

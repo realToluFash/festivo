@@ -92,6 +92,7 @@ import { phoneProblemMessage } from '../../../phoneProblem.ts';
 import { useLoadedAt, useServerNow } from '../../../serverNow.ts';
 import { canOn, useSession } from '../../../session.ts';
 import { useMakeLive } from './MakeLive.tsx';
+import { inPlace } from './openInPlace.ts';
 import { GroupChips, GroupField, GroupTag, GroupsColumn } from './GuestGroups.tsx';
 import {
   GroupSheet,
@@ -879,7 +880,10 @@ export function GuestsArea({
   function onStep(step: CoverStep): void {
     if (step === 'add') startAdd();
     else if (step === 'makeLive') makeLive.start();
-    else void navigate(`/app/events/${encodeURIComponent(event.id)}/edit#starts`);
+    else {
+      const dates = inPlace(event.id, 'dates');
+      void navigate(dates.to, { state: dates.state });
+    }
   }
 
   function clearView(): void {

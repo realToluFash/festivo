@@ -317,7 +317,15 @@ function wallOf(draft: EventDraft, end: boolean): Wall {
 }
 
 /** Dates: when it starts and ends in its zone; a new start carries the end with it. */
-export function DatesPart({ event, tag, onDirty, onClose, onSaved, onLatest }: PartProps) {
+export function DatesPart({
+  event,
+  tag,
+  onDirty,
+  onClose,
+  onSaved,
+  onLatest,
+  focusStart = 0,
+}: PartProps & { focusStart?: number }) {
   const { t } = useTranslation();
   const id = useId();
   const saved = draftOf(event);
@@ -382,6 +390,7 @@ export function DatesPart({ event, tag, onDirty, onClose, onSaved, onLatest }: P
       <DateTime
         legend={t('eventForm.starts')}
         wall={wallOf(draft, false)}
+        focus={focusStart}
         wrong={startWrong != null}
         told={
           startWrong != null ? `${id}-start-wrong` : startSkipped != null ? `${id}-skip` : undefined
