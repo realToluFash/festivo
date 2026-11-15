@@ -34,6 +34,7 @@ import { type HowAgreed, hostAgreed } from './WhatsAppConsent.ts';
 export const LIST_STATES = [
   'first',
   'inUse',
+  'titlePt',
   'filterOpen',
   'filtered',
   'search',

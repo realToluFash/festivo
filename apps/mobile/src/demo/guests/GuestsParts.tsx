@@ -1,5 +1,5 @@
-import { type ReactNode, type Ref, useEffect, useRef } from 'react';
-import { Pressable, StyleSheet, View } from 'react-native';
+import { type ReactNode, type Ref, useEffect, useRef, useState } from 'react';
+import { type LayoutChangeEvent, Pressable, StyleSheet, View } from 'react-native';
 
 import { eventColour } from '../../components/EventMesh.tsx';
 import { Glyph } from '../../components/Glyph.tsx';
@@ -21,6 +21,7 @@ import {
 } from '../../components/Summary.tsx';
 import type { GuestsCardWords } from './GuestsModel.ts';
 import { W, say } from './GuestsWords.ts';
+import { labelFits } from './TitleFit.ts';
 import { type MarkKind, ReplyMark } from '../../components/ReplyMark.tsx';
 
 export type Layout = 'phone' | 'portrait' | 'landscape';
@@ -369,7 +370,7 @@ export function ShownLine({
   );
 }
 
-/** The title: "Guests" with the round plus on the phone, Add guest beside it on an iPad. */
+/** The title: "Guests" with the round plus on the phone; on an iPad Add guest beside it when both fit on one line, else the round plus (sc-51444). */
 export function GuestsTitle({
   layout,
   title = W.guests,
@@ -386,20 +387,37 @@ export function GuestsTitle({
   extra?: ReactNode;
 }) {
   const size = layout === 'landscape' ? 26 : 30;
+  const [room, setRoom] = useState(0);
+  const [extraWidth, setExtraWidth] = useState(0);
+  const [titleWidth, setTitleWidth] = useState(0);
+  const [labelledWidth, setLabelledWidth] = useState(0);
+  const titleStyle = { lineHeight: size * 1.12, letterSpacing: size * -0.02 };
+  const round =
+    layout === 'phone' ||
+    !labelFits({
+      room,
+      title: titleWidth,
+      extra: extra == null ? 0 : extraWidth,
+      labelled: labelledWidth,
+      gap: tokens.spaceMd,
+    });
+  const widthOf = (set: (width: number) => void) => (event: LayoutChangeEvent) =>
+    set(Math.ceil(event.nativeEvent.layout.width));
 
   return (
-    <View style={styles.titleRow}>
+    <View style={styles.titleRow} onLayout={widthOf(setRoom)} testID="guests.titleRow">
       <Text
         size={size}
         weight="bold"
         accessibilityRole="header"
-        style={[styles.grow, { lineHeight: size * 1.12, letterSpacing: size * -0.02 }]}
+        style={[styles.grow, titleStyle]}
+        testID="guests.title"
       >
         {title}
       </Text>
-      {extra}
+      {extra != null && <View onLayout={widthOf(setExtraWidth)}>{extra}</View>}
       {plus &&
-        (layout === 'phone' ? (
+        (round ? (
           <Pressable
             onPress={onPlus}
             style={({ pressed }) => [styles.plus, pressed && styles.pressed]}
@@ -419,6 +437,31 @@ export function GuestsTitle({
             testID="guests.add"
           />
         ))}
+      {layout !== 'phone' && (
+        <View
+          style={styles.measure}
+          pointerEvents="none"
+          accessibilityElementsHidden
+          importantForAccessibility="no-hide-descendants"
+        >
+          <View onLayout={widthOf(setTitleWidth)}>
+            <Text size={size} weight="bold" numberOfLines={1} style={titleStyle} accessible={false}>
+              {title}
+            </Text>
+          </View>
+          {plus && (
+            <View onLayout={widthOf(setLabelledWidth)}>
+              <Pill
+                label={plusLabel}
+                glyph="plus"
+                height={tokens.sizeHit}
+                full={false}
+                onPress={onPlus}
+              />
+            </View>
+          )}
+        </View>
+      )}
     </View>
   );
 }
@@ -506,6 +549,16 @@ const styles = StyleSheet.create({
   headTitle: { letterSpacing: -0.18, lineHeight: 18 * 1.25 },
   shown: { minHeight: tokens.sizeHit, flexDirection: 'row', alignItems: 'center', gap: 10 },
   titleRow: { minHeight: 48, flexDirection: 'row', alignItems: 'center', gap: tokens.spaceMd },
+  measure: {
+    position: 'absolute',
+    top: 0,
+    left: 0,
+    width: 4000,
+    flexDirection: 'row',
+    alignItems: 'flex-start',
+    gap: tokens.spaceMd,
+    opacity: 0,
+  },
   plus: {
     width: tokens.sizeHit,
     height: tokens.sizeHit,

@@ -11,6 +11,7 @@ import {
   View,
   type ViewInstance,
 } from 'react-native';
+import { useTranslation } from 'react-i18next';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import {
@@ -107,6 +108,9 @@ export function GuestsScreen({
   const locale = formattingLocale('en', getLocales()[0]?.languageTag);
   const opening = useMemo(() => guestsOpening(given, event.id, locale), [given, event.id, locale]);
   const { state, start, role, replyBy } = opening;
+  const { i18n } = useTranslation();
+  const inPortuguese = state === 'titlePt';
+  const portuguese = useMemo(() => i18n.getFixedT('pt'), [i18n]);
   const [guests, setGuests] = useState(opening.guests);
   const [added, setAdded] = useState(opening.added);
   const [filter, setFilter] = useState<ListFilter>(filterFrom ?? start.filter);
@@ -292,10 +296,12 @@ export function GuestsScreen({
     <>
       <GuestsTitle
         layout={layout}
+        title={inPortuguese ? portuguese('eventNav.guests') : W.guests}
+        plusLabel={inPortuguese ? portuguese('guestList.addGuest') : W.addGuest}
         plus={owner && phase !== 'loading' && !empty}
         onPlus={() => show('add', 'plus')}
         extra={
-          owner && phase === 'ok' && !empty ? (
+          owner && phase === 'ok' && !empty && !inPortuguese ? (
             <ExportButton
               ref={refFor('export')}
               layout={layout}
