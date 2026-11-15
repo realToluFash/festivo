@@ -238,6 +238,7 @@ export function DatePair({
   at,
   locale,
   wrong = false,
+  line = null,
   firstRef,
   onPick,
   testID,
@@ -247,6 +248,7 @@ export function DatePair({
   at: { date: string; time: string };
   locale: string;
   wrong?: boolean;
+  line?: string | null;
   firstRef?: RefObject<ViewInstance | null>;
   onPick: (mode: 'date' | 'time') => void;
   testID: string;
@@ -272,6 +274,7 @@ export function DatePair({
         ]}
         accessibilityRole="button"
         accessibilityLabel={`${label}, ${word}`}
+        {...(wrong && line != null ? { accessibilityHint: line } : {})}
         testID={id}
       >
         <Text size={16} weight="medium" accessible={false} style={styles.secondary}>
@@ -287,6 +290,7 @@ export function DatePair({
         locale={locale}
         {...(width == null ? {} : { width })}
         wrong={wrong}
+        line={line}
         onPress={() => onPick(mode)}
         testID={id}
       />
@@ -384,6 +388,7 @@ export function DatesView({
   onPickStart,
   onPickEnd,
   startRef,
+  endRef,
 }: {
   from: Wall;
   to: Wall;
@@ -403,6 +408,7 @@ export function DatesView({
   onPickStart: (mode: 'date' | 'time') => void;
   onPickEnd: (mode: 'date' | 'time') => void;
   startRef?: RefObject<ViewInstance | null>;
+  endRef?: RefObject<ViewInstance | null>;
 }) {
   const { t } = useTranslation();
 
@@ -413,6 +419,7 @@ export function DatesView({
         at={from}
         locale={locale}
         wrong={startError != null}
+        line={startError}
         {...(startRef == null ? {} : { firstRef: startRef })}
         onPick={onPickStart}
         testID="event.edit.dates.start"
@@ -425,6 +432,8 @@ export function DatesView({
         at={to}
         locale={locale}
         wrong={endError != null}
+        line={endError}
+        {...(endRef == null ? {} : { firstRef: endRef })}
         onPick={onPickEnd}
         testID="event.edit.dates.end"
       />

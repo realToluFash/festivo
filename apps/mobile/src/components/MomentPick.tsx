@@ -91,6 +91,7 @@ export function MomentBox({
   width,
   height = 52,
   wrong = false,
+  line = null,
   onPress,
   ref,
   testID,
@@ -103,6 +104,8 @@ export function MomentBox({
   width?: number;
   height?: number;
   wrong?: boolean;
+  /** Read after the box while it is wrong: the line under it. */
+  line?: string | null;
   onPress: () => void;
   ref?: Ref<ViewInstance>;
   testID?: string;
@@ -136,6 +139,7 @@ export function MomentBox({
       ]}
       accessibilityRole="button"
       accessibilityLabel={`${label}, ${words === '' ? t('eventForm.notChosen') : words}`}
+      {...(wrong && line != null ? { accessibilityHint: line } : {})}
       testID={testID}
     >
       <Text size={tall ? 16 : 15} weight="medium" accessible={false} style={styles.figures}>
