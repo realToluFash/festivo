@@ -1,4 +1,4 @@
-# sc-5519: in the raised over layer on a tablet, the guest form's Language list and Discard ask, the Duplicate's date picker and Delete event's typed-name ask open, take taps and close.
+# sc-5519, Android only (the date-picker steps are Android's OK dialog; an iPad's sheet closes with Done): in the raised over layer on a tablet, the guest form's Language list and Discard ask, the Duplicate's date picker and Delete event's typed-name ask open, take taps and close.
 appId: host.exp.Exponent
 ---
 - setOrientation: ${ORIENT}
