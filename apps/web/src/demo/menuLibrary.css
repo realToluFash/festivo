@@ -463,3 +463,84 @@
     opacity: 0;
   }
 }
+
+/* At 400% zoom (320 CSS px) the desk reflows into one column, and an open form comes before the list (WCAG 2.2 1.4.10, sc-3901 Decided 15 Nov). */
+@media (width <= 720px) {
+  .today.desk:has(.lib-page) {
+    flex-direction: column;
+    height: auto;
+    min-height: 100vh;
+  }
+
+  .today.desk:has(.lib-page) .today-side {
+    width: auto;
+    height: auto;
+    overflow: visible;
+  }
+
+  .today.desk:has(.lib-page) .desk-main {
+    margin: 0 var(--spaceMd) var(--spaceMd);
+    overflow: visible;
+  }
+
+  .lib-page.desk-page {
+    padding: var(--spaceXl) var(--spaceLg) var(--space3xl);
+    overflow: visible;
+  }
+
+  .lib-page .desk-row,
+  .lib-top-acts,
+  .lib-price {
+    flex-wrap: wrap;
+  }
+
+  .lib-split.is-docked {
+    flex-direction: column;
+    align-items: stretch;
+  }
+
+  .lib-split.is-docked .lib-panel {
+    position: static;
+    order: -1;
+    width: auto;
+    max-height: none;
+  }
+
+  .lib-split.is-docked .lib-panel .mn-panel-body {
+    overflow: visible;
+  }
+
+  .lib-cols {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .lib-search {
+    max-width: none;
+  }
+
+  .lib-amount {
+    flex: 1 1 8rem;
+  }
+}
+
+@media (width <= 30rem) {
+  .lib-acts {
+    flex-direction: column;
+  }
+}
+
+@media (width <= 720px) {
+  .lib-page .desk-top {
+    flex-wrap: wrap;
+    row-gap: var(--spaceMd);
+  }
+
+  .lib-page .desk-title {
+    flex: 1 0 100%;
+    overflow-wrap: normal;
+  }
+
+  .lib-top-acts {
+    margin-left: 0;
+  }
+}
