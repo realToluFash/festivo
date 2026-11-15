@@ -1046,6 +1046,22 @@ describe('Rows and single seats at a desk (sc-4003)', () => {
     ).toBeDefined();
   });
 
+  it('says who changed a single seat first when a save comes back 412', async () => {
+    signedIn();
+    await onSeating({
+      'GET /api/events/ev_1/seating-plan': () => seating(withRowsAndSeats([], [single()])),
+      'PATCH /api/events/ev_1/seating-plan/seats/s1': () =>
+        problem('precondition_failed', 412, { changedBy: 'Ngozi Eze' }),
+    });
+
+    await chooseTable('Seat 1, single seat, Empty');
+    leave('Name', 'Usher');
+
+    expect(
+      await screen.findByText('Ngozi Eze just changed this seat. Your change was not saved.'),
+    ).toBeDefined();
+  });
+
   it('adds a single seat, refuses a name another seat has, marks it unusable and deletes it', async () => {
     signedIn();
     const other = single({ id: 's2', name: 'Usher', xCm: 600 });
