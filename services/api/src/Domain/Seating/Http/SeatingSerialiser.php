@@ -54,7 +54,7 @@ final readonly class SeatingSerialiser
             'lengthCm' => $plan->getLengthCm(),
             'version' => $plan->getVersion(),
             'changedBy' => $plan->getChangedBy()?->getName(),
-            'sections' => Vec\map($sections, static fn (SeatingSection $section): array => self::section($section, $tables, $rows, $singleSeats)),
+            'sections' => Vec\map($sections, static fn (SeatingSection $section): array => [...self::section($section), ...self::contents($section, $tables, $rows, $singleSeats)]),
             'tables' => Vec\map($tables, self::table(...)),
             'rows' => Vec\map($rows, self::row(...)),
             'singleSeats' => Vec\map($singleSeats, self::singleSeat(...)),
@@ -69,21 +69,14 @@ final readonly class SeatingSerialiser
         ];
     }
 
-    /**
-     * @param list<SeatingTable> $tables      the plan's
-     * @param list<SeatingRow>   $rows        the plan's
-     * @param list<SeatingSeat>  $singleSeats the plan's
-     *
-     * @return array<string, mixed>
-     */
-    private static function section(SeatingSection $section, array $tables, array $rows, array $singleSeats): array
+    /** @return array<string, mixed> */
+    private static function section(SeatingSection $section): array
     {
         return [
             'id' => $section->getId()->toRfc4122(),
             'name' => $section->getName(),
             'colour' => $section->getColour()->value,
             'version' => $section->getVersion(),
-            ...self::contents($section, $tables, $rows, $singleSeats),
         ];
     }
 
