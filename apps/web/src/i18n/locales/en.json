@@ -3306,13 +3306,13 @@
   "search": {
     "row": "Search",
     "field": {
-      "egm": "Search events, guests and members",
-      "eg": "Search events and guests",
-      "em": "Search events and members",
-      "gm": "Search guests and members",
-      "e": "Search events",
-      "g": "Search guests",
-      "m": "Search members"
+      "egm": "Search",
+      "eg": "Search",
+      "em": "Search",
+      "gm": "Search",
+      "e": "Search",
+      "g": "Search",
+      "m": "Search"
     },
     "hint": {
       "egm": "Find an event, a guest or a member.",
