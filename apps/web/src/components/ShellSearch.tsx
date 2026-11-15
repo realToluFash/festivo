@@ -1,4 +1,4 @@
-import type { SearchReach } from '@soirely/api-client';
+import { ApiError, ApiUnreachableError, type SearchReach } from '@soirely/api-client';
 import {
   SEARCH_LEAST,
   type SearchGroup,
@@ -115,7 +115,8 @@ type Answer =
   | { kind: 'short' }
   | { kind: 'loading'; term: string }
   | { kind: 'found'; term: string; groups: SearchGroup[] }
-  | { kind: 'offline' };
+  | { kind: 'offline' }
+  | { kind: 'failed' };
 
 type Stop = { kind: 'row'; row: Row; group: SearchGroupKey } | { kind: 'more' };
 
@@ -146,6 +147,7 @@ function SearchPalette({
   const [typed, setTyped] = useState('');
   const [answer, setAnswer] = useState<Answer>({ kind: 'idle' });
   const [lit, setLit] = useState(0);
+  const [attempt, setAttempt] = useState(0);
   const words = searchFieldKeys(reach ?? NO_REACH);
   const groups = useMemo(() => (answer.kind === 'found' ? answer.groups : []), [answer]);
   const stops = useMemo(
@@ -193,8 +195,11 @@ function SearchPalette({
               dateLocale(),
             ),
           }),
-        () => {
-          if (!stop.signal.aborted) setAnswer({ kind: 'offline' });
+        (error: unknown) => {
+          if (stop.signal.aborted) return;
+          if (error instanceof ApiError && error.status === 403)
+            setAnswer({ kind: 'found', term: asked, groups: [] });
+          else setAnswer({ kind: error instanceof ApiUnreachableError ? 'offline' : 'failed' });
         },
       );
     }, TYPING_PAUSE_MS);
@@ -203,7 +208,7 @@ function SearchPalette({
       window.clearTimeout(wait);
       stop.abort();
     };
-  }, [organisationId, typed, t]);
+  }, [organisationId, typed, attempt, t]);
 
   useEffect(() => {
     if (litAt < 0) return;
@@ -219,6 +224,12 @@ function SearchPalette({
   function clear(): void {
     setTyped('');
     setAnswer({ kind: 'idle' });
+    field.current?.focus();
+  }
+
+  function retry(): void {
+    setAnswer({ kind: 'loading', term: typed.trim() });
+    setAttempt((now) => now + 1);
     field.current?.focus();
   }
 
@@ -244,7 +255,9 @@ function SearchPalette({
           : t('search.matches', { count: searchTotal(groups) })
         : answer.kind === 'offline'
           ? t('eventsSearch.searchOff')
-          : '';
+          : answer.kind === 'failed'
+            ? t('search.failed')
+            : '';
 
   return (
     <>
@@ -301,6 +314,14 @@ function SearchPalette({
           )}
           {answer.kind === 'offline' && (
             <p className="search-said search-nothing">{t('eventsSearch.searchOff')}</p>
+          )}
+          {answer.kind === 'failed' && (
+            <div className="search-said">
+              <p className="search-nothing" aria-hidden="true">
+                {t('search.failed')}
+              </p>
+              <TextAction label={t('search.tryAgain')} onClick={retry} />
+            </div>
           )}
           {answer.kind === 'found' && groups.length === 0 && (
             <div className="search-said">
