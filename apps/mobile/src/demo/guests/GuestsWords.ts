@@ -56,6 +56,7 @@ export const W = {
   replaceLinkLine: 'The old link stops working straight away',
   markAsInvited: 'Mark as invited',
   markLine: 'How you invited them, so they count as invited',
+  recordNotYetLine: 'What they told you, so they count as invited',
   linkReplacedLine: 'They still hold the old one until you send the new link.',
   conversationTitle: '2 messages',
   conversationLine: 'Parking at The Landmark · SMS · Delivered',

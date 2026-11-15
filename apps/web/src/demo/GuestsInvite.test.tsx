@@ -105,6 +105,7 @@ describe('Guests, Send invitations (sc-3971)', () => {
         'Copy invitation link',
         'Replace link…',
         'Mark as invited',
+        'Record a reply',
       ]);
       expect(screen.getByText('Soirely sends it to them by email or text.')).toBeDefined();
       fireEvent.click(screen.getByRole('button', { name: /^Send invitation(?!s)/u }));
@@ -122,6 +123,7 @@ describe('Guests, Send invitations (sc-3971)', () => {
       'Send on WhatsApp',
       'Replace link…',
       'Mark as invited',
+      'Record a reply',
     ]);
   });
 

@@ -66,6 +66,10 @@ const GUESTS: Record<GuestsState, Board> = {
   markAsInvited: ['Mark as invited', 'How did you invite them?, nothing chosen'],
   markRefused: ['Mark as invited refused', 'Choose how you invited them'],
   marked: ['marked as invited', 'Invited by Folake Adeyemi, WhatsApp, Nov 3'],
+  recordedNotYet: [
+    'a reply that invited them',
+    'sc-52829: Bisi Adewale, Coming, Invited when they replied, Nov 3',
+  ],
   markNotSaved: ['Mark as invited failed', 'Still Not yet invited'],
   invitedByMessage: ['invited by Soirely’s message', 'Marta Silva: no Mark as not invited'],
   invitedWhenReplied: ['invited when they replied', 'Ngozi Eze: no Mark as not invited'],
@@ -146,6 +150,7 @@ const GUESTS: Record<GuestsState, Board> = {
   recordComing: ['Record a reply, Coming', 'By phone, with their companion'],
   recordReplace: ['replacing their own reply', 'Ngozi Eze replied themselves'],
   recordNotSaved: ['Record a reply failed', 'Nothing changed, the choices kept'],
+  recordNotYet: ['Record a reply, not yet invited', 'sc-52829: Bisi Adewale, saving invites them'],
   whatsAppAgree: ['Agreed to WhatsApp', 'How?, nothing picked'],
   whatsAppAgreeBlank: ['Agreed to WhatsApp refused', 'Choose how they agreed, focus on In person'],
   whatsAppAgreePicked: ['Agreed to WhatsApp, picked', 'In person'],
