@@ -142,22 +142,26 @@ export function ShowMenu<S extends string>({
   onShow: (show: S) => void;
   onClose: () => void;
 }) {
+  const first = useRef<ViewInstance>(null);
+
   return (
     <AnchoredMenu
       at={at}
       onClose={onClose}
       opener={opener}
+      first={first}
       width={264}
       below={tokens.spaceSm}
       testID="calendar.showMenu"
     >
       <View style={styles.menu}>
-        {choices.map(({ value, word }) => {
+        {choices.map(({ value, word }, index) => {
           const on = value === show;
 
           return (
             <Pressable
               key={value}
+              ref={index === 0 ? first : undefined}
               onPress={() => {
                 onShow(value);
                 onClose();

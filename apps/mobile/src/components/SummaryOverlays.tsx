@@ -28,7 +28,7 @@ import Svg, { Defs, LinearGradient, Rect, Stop } from 'react-native-svg';
 import { useTranslation } from 'react-i18next';
 
 import { SETTLED_MS, useFocusOnAnswer, useWindowOrigin } from './Screen.tsx';
-import type { ScreenReaderTarget } from './screenReaderFocus.ts';
+import { moveScreenReaderFocus, type ScreenReaderTarget } from './screenReaderFocus.ts';
 import {
   SilentWindowName,
   WINDOW_ARRIVES_MS,
@@ -413,6 +413,8 @@ interface MenuProps {
   /** Above the scrolling items: a search field. */
   head?: ReactNode;
   scrollRef?: Ref<ScrollViewInstance>;
+  /** Out of TalkBack's reach while its window arrives, so its own first focus finds nothing. */
+  hidden?: boolean;
   children: ReactNode;
   testID?: string;
 }
@@ -421,15 +423,37 @@ interface MenuProps {
 export function AnchoredMenu({
   opener,
   over,
+  first,
   ...menu
 }: MenuProps & {
   opener: Opener;
   /** Drawn over the menu in its window, as FocusedScreen's `over` is. */
   over?: ReactNode;
+  /** The first row, where TalkBack's focus lands as the menu opens rather than on Close the menu (sc-52641). */
+  first?: RefObject<ScreenReaderTarget | null>;
 }) {
+  const open = menu.at != null;
+  const [onScreen, setOnScreen] = useState(false);
+  if (!open && onScreen) setOnScreen(false);
+  const reduced = useReducedMotion();
+  const arriving = useUnnamedWindow(
+    Platform.OS === 'android' && first != null,
+    onScreen,
+    null,
+    reduced ? 0 : WINDOW_ARRIVES_MS,
+  );
+  const landed = onScreen && first != null && !arriving;
+
+  useEffect(() => {
+    if (!landed || Platform.OS !== 'android') return;
+    const wait = setTimeout(() => moveScreenReaderFocus(first.current));
+
+    return () => clearTimeout(wait);
+  }, [landed, first]);
+
   return (
-    <Window open={menu.at != null} onClose={menu.onClose} opener={opener}>
-      <MenuLayer {...menu} />
+    <Window open={open} onClose={menu.onClose} opener={opener} onShow={() => setOnScreen(true)}>
+      <MenuLayer {...menu} hidden={arriving} />
       {over}
     </Window>
   );
@@ -445,6 +469,7 @@ export function MenuLayer({
   floor = null,
   head,
   scrollRef,
+  hidden = false,
   children,
   testID,
 }: MenuProps) {
@@ -472,6 +497,7 @@ export function MenuLayer({
 
   const hold = nextHeld(held, button, side, seen.content > 0);
   if (hold !== held) setHeld(hold);
+  const reach = hidden ? 'no-hide-descendants' : 'auto';
 
   return (
     <>
@@ -481,6 +507,7 @@ export function MenuLayer({
         onPress={onClose}
         accessibilityRole="button"
         accessibilityLabel={t('frame.closeMenu')}
+        importantForAccessibility={reach}
       />
       {at != null && layer != null && (
         <View
@@ -495,6 +522,7 @@ export function MenuLayer({
           ]}
           accessibilityViewIsModal
           onAccessibilityEscape={onClose}
+          importantForAccessibility={reach}
           testID={testID}
         >
           <View style={styles.menuClip}>
@@ -566,6 +594,7 @@ export function FilterMenu<T extends string>({
 }) {
   const { i18n } = useTranslation();
   const trigger = useRef<ViewInstance>(null);
+  const first = useRef<ViewInstance>(null);
   const [at, setAt] = useState<Anchor | null>(null);
   useAnchorFollowsTurn(trigger, at != null, setAt);
   const current = choices.find((choice) => choice.value === value) ?? choices[0];
@@ -582,10 +611,11 @@ export function FilterMenu<T extends string>({
         accessibilityLabel={`${name}: ${current?.word ?? ''}, ${figure}`}
         testID={testID}
       />
-      <AnchoredMenu at={at} onClose={close} opener={trigger}>
-        {choices.map((choice) => (
+      <AnchoredMenu at={at} onClose={close} opener={trigger} first={first}>
+        {choices.map((choice, index) => (
           <MenuRow
             key={choice.value}
+            ref={index === 0 ? first : undefined}
             choice={choice}
             figure={menuFigure(i18n, choice.count)}
             on={choice.value === value}
@@ -607,12 +637,14 @@ function menuLeft(at: Anchor, width: number, align: 'start' | 'end', across: num
 }
 
 function MenuRow<T extends string>({
+  ref,
   choice,
   figure,
   on,
   onPress,
   testID,
 }: {
+  ref?: Ref<ViewInstance> | undefined;
   choice: MenuChoice<T>;
   figure: string;
   on: boolean;
@@ -621,6 +653,7 @@ function MenuRow<T extends string>({
 }) {
   return (
     <Pressable
+      ref={ref}
       onPress={onPress}
       style={({ pressed }) => [styles.menuRow, pressed && styles.menuPressed]}
       accessibilityRole="button"
