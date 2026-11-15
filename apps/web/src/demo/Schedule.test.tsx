@@ -101,9 +101,38 @@ describe('/demo/events/evt-wed-4/schedule (sc-3893)', () => {
 
   it('holds 200 items: the notice, focus on it, nothing saved', SLOW, async () => {
     await open('atLimit');
+    fireEvent.click(button('Save item') as HTMLElement);
     const notice = screen.getByRole('alert');
     expect(notice.textContent).toContain('This schedule has 200 items');
     expect(document.activeElement).toBe(notice);
+    expect(screen.getAllByRole('tab')[1]?.textContent).toBe('Fri 6 Nov · 198 items');
+  });
+
+  it(
+    'checks the form before Keep mine saves it, focus on the first wrong field',
+    SLOW,
+    async () => {
+      await open('conflict');
+      fireEvent.change(screen.getByLabelText('Title'), { target: { value: '' } });
+      fireEvent.click(within(screen.getByRole('alert')).getByRole('button', { name: 'Keep mine' }));
+      expect(document.activeElement?.id).toBe('ro-title');
+      expect(screen.getByText('Enter a title.')).toBeTruthy();
+      expect(said()?.textContent).toBe('');
+      expect(screen.getByRole('alert')).toBeTruthy();
+    },
+  );
+
+  it('files a place typed in another case under the day’s table', SLOW, async () => {
+    await open('populated');
+    fireEvent.click(button('Add item') as HTMLElement);
+    fireEvent.change(screen.getByLabelText('Title'), { target: { value: 'Lawn games' } });
+    fireEvent.change(screen.getByLabelText('Time'), { target: { value: '16:00' } });
+    fireEvent.change(screen.getByRole('textbox', { name: /^Place/ }), {
+      target: { value: 'garden' },
+    });
+    expect(screen.queryByText(/^A new place\./)).toBeNull();
+    fireEvent.click(button('Save item') as HTMLElement);
+    expect(screen.getAllByRole('table')).toHaveLength(3);
   });
 
   it('offers Theirs and Yours on a 412, and Use theirs refills the form', SLOW, async () => {

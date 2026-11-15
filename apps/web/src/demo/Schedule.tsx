@@ -35,6 +35,7 @@ import {
   differences,
   firstWrong,
   formOf,
+  formPlaces,
   headingLine,
   itemOf,
   itemsOn,
@@ -235,11 +236,11 @@ function ScheduleView({
       return;
     }
     if (panel?.kind === 'edit') {
-      keep(itemOf(panel.id, form), RW.saved(form.title.trim()));
+      keep(itemOf(panel.id, form, formPlaces(items, form)), RW.saved(form.title.trim()));
       return;
     }
     added += 1;
-    keep(itemOf(`added-${added}`, form), RW.added(form.title.trim()));
+    keep(itemOf(`added-${added}`, form, formPlaces(items, form)), RW.added(form.title.trim()));
   }
 
   function useTheirs() {
@@ -253,7 +254,13 @@ function ScheduleView({
 
   function keepMine() {
     if (form == null || panel?.kind !== 'edit') return;
-    keep(itemOf(panel.id, form), RW.saved(form.title.trim()));
+    const wrong = firstWrong(check(form, reader));
+    if (wrong != null) {
+      setPressed(true);
+      focusAfter.current = FIELD_IDS[wrong];
+      return;
+    }
+    keep(itemOf(panel.id, form, formPlaces(items, form)), RW.saved(form.title.trim()));
   }
 
   function remove() {

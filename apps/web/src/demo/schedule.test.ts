@@ -17,6 +17,7 @@ import {
   firstWrong,
   formOf,
   headingLine,
+  itemOf,
   lastsHelp,
   placeHelp,
   readerOf,
@@ -113,6 +114,19 @@ describe('the schedule’s rules (sc-3893)', () => {
       RW.moves('Garden'),
     );
     expect(speeches && placeHelp(items, formOf(speeches), speeches)).toBeNull();
+  });
+
+  it('matches a typed place against the day’s tables, in any case, keeping its spelling', () => {
+    const items = sampleItems();
+    const garden = (date: string, place: string) => ({
+      ...blankForm(date),
+      title: 'Lawn games',
+      time: '16:00',
+      place,
+    });
+    expect(placeHelp(items, garden(DAYS[0], 'Garden'), null)).toBe(RW.newPlace('Garden'));
+    expect(placeHelp(items, garden(FRIDAY, 'garden'), null)).toBeNull();
+    expect(itemOf('x', garden(FRIDAY, 'garden'), ['Garden', 'Ballroom']).place).toBe('Garden');
   });
 
   it('lists only the fields that differ in the 412', () => {

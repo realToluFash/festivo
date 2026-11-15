@@ -270,11 +270,19 @@ export function placesOn(items: readonly Item[], day: string): string[] {
   return tablesOn(items, day).map((table) => table.place);
 }
 
-export function placeKey(typed: string): string | null {
+export function placeKey(typed: string, known: readonly string[] = []): string | null {
   const trimmed = typed.trim();
   if (trimmed === '' || trimmed.toLowerCase() === MAIN.toLowerCase()) return null;
 
-  return trimmed;
+  return known.find((one) => one.toLowerCase() === trimmed.toLowerCase()) ?? trimmed;
+}
+
+/** The places on the event day the form's start falls on, so a typed place matches that day's tables. */
+export function formPlaces(items: readonly Item[], form: Form): string[] {
+  if (form.date === '') return [];
+  const day = form.time === '' ? form.date : dayOf(`${form.date}T${form.time}`);
+
+  return placesOn(items, day);
 }
 
 export interface Reader {
@@ -384,13 +392,13 @@ export function formOf(one: Item): Form {
 
 const blankToNull = (typed: string): string | null => (typed.trim() === '' ? null : typed.trim());
 
-export function itemOf(id: string, form: Form): Item {
+export function itemOf(id: string, form: Form, known: readonly string[] = []): Item {
   return {
     id,
     title: form.title.trim(),
     starts: `${form.date}T${form.time}`,
     lasts: form.lasts.trim() === '' ? null : Number(form.lasts),
-    place: placeKey(form.place),
+    place: placeKey(form.place, known),
     owner: blankToNull(form.owner),
     role: blankToNull(form.role),
     note: blankToNull(form.note),
@@ -445,9 +453,9 @@ export function lastsHelp(form: Form, reader: Reader): string | null {
 }
 
 export function placeHelp(items: readonly Item[], form: Form, editing: Item | null): string | null {
-  const typed = placeKey(form.place);
-  const known = new Set(items.map(placeOf));
-  if (typed != null && !known.has(typed)) return RW.newPlace(typed);
+  const known = formPlaces(items, form);
+  const typed = placeKey(form.place, known);
+  if (typed != null && !known.includes(typed)) return RW.newPlace(typed);
   if (editing != null && typed !== editing.place) return RW.moves(typed ?? MAIN);
 
   return null;
