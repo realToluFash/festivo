@@ -3657,7 +3657,7 @@
     "window": "Escolha uma hora entre {{earliest}} e {{end}}.",
     "dayAndTime": "{{day}}, {{time}}",
     "weekdayAndTime": "{{weekday}} {{time}}",
-    "zoneLine": "Fuso horário: {{zone}}.",
+    "zoneLine": "Os horários estão em {{zone}}.",
     "newPlace": "Espaço novo. {{name}} passa a ter a sua própria tabela neste dia.",
     "moves": "Passa para a tabela de {{place}} e mantém a hora de início.",
     "blankTitle": "Introduza um título.",
