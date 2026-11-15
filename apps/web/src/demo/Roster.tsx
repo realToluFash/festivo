@@ -332,7 +332,7 @@ function RosterView({
                         <td className={one.station == null ? 'rs-quiet' : undefined}>
                           {one.station ?? RW.noStation}
                         </td>
-                        <td className={one.shift == null ? 'rs-quiet' : undefined}>
+                        <td className={one.shift == null ? 'rs-quiet' : 'rs-shift'}>
                           {one.shift ?? RW.noShift}
                         </td>
                         <td>
