@@ -53,6 +53,7 @@ import {
   windowLine,
   zoneNamed,
 } from './schedule.ts';
+import { RW as RUN_WORDS, runViewAt } from './runView.ts';
 import { useSwitcherStart } from './switcher.ts';
 import './guests.css';
 import './menu.css';
@@ -333,6 +334,12 @@ function ScheduleView({
             <h1 className="gs-title">{`${RW.title} · ${dayWord}`}</h1>
             {line != null && <p className="mn-sub">{line}</p>}
           </div>
+          {items.length > 0 && (
+            <Link className="gs-pill is-secondary ro-run" to={runViewAt(undefined, !manage)}>
+              <Glyph name="clock" size={17} weight={2.2} />
+              {RUN_WORDS.openRun}
+            </Link>
+          )}
           {manage && (
             <button
               id="ro-add"

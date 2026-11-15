@@ -184,7 +184,7 @@ function SearchPalette({
       if (asked.length < SEARCH_LEAST) return setAnswer({ kind: 'short' });
 
       setAnswer({ kind: 'loading', term: asked });
-      api.search(organisationId, asked, stop.signal).then(
+      api.search(organisationId, asked, { signal: stop.signal }).then(
         (found) =>
           setAnswer({
             kind: 'found',

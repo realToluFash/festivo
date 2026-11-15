@@ -2312,6 +2312,10 @@ describe('Not yet invited, and Mark as invited (sc-3788)', () => {
     return screen.getByRole('region', { name: 'Invitation' });
   }
 
+  function bisi(): HTMLElement {
+    return screen.getByRole('region', { name: 'Bisi Adewale' });
+  }
+
   function listed(): (string | null)[] {
     return within(screen.getByRole('region', { name: 'Guests' }))
       .getAllByRole('listitem')
@@ -2452,6 +2456,83 @@ describe('Not yet invited, and Mark as invited (sc-3788)', () => {
     expect(screen.queryByRole('button', { name: /^Mark as invited/u })).toBeNull();
   });
 
+  it('records the reply of a guest nobody invited, which invites them (sc-52829)', async () => {
+    const REPLIED = {
+      ...BISI_DETAILS,
+      reply: 'coming',
+      repliedAt: '2026-11-13T10:00:00+01:00',
+      replySource: 'host',
+      replyRecorded: { by: 'Kemi Bankole', how: 'phone' },
+      invitation: { at: '2026-11-13T10:00:00+01:00', how: 'reply', by: null },
+      companions: [
+        {
+          id: 'c_4',
+          fullName: 'Tunde Adewale',
+          state: 'coming',
+          coming: true,
+          namedByGuest: false,
+        },
+      ],
+    };
+    let saved = false;
+    const sent = await openBisi({
+      'GET /api/events/ev_1/guests/g_4': () =>
+        saved ? tagged(REPLIED, '"2"') : tagged(BISI_DETAILS, '"1"'),
+      'POST /api/events/ev_1/guests/g_4/record-reply': () => {
+        saved = true;
+        return tagged(REPLIED, '"2"');
+      },
+    });
+
+    const offers = within(invitation())
+      .getAllByRole('button')
+      .map((one) => one.textContent);
+    expect(offers.slice(-2)).toEqual([
+      'Mark as invitedHow you invited them, so they count as invited',
+      'Record a replyWhat they told you, so they count as invited',
+    ]);
+    fireEvent.click(within(invitation()).getByRole('button', { name: /^Record a reply/u }));
+    fireEvent.click(await within(bisi()).findByRole('radio', { name: 'Coming' }));
+    fireEvent.click(within(bisi()).getByRole('radio', { name: 'By phone' }));
+    fireEvent.click(within(bisi()).getByRole('button', { name: 'Save' }));
+
+    expect(
+      await within(bisi()).findByText('Reply recorded. It counts like any other reply.'),
+    ).toBeDefined();
+    expect(within(invitation()).getByText('Invited when they replied, Nov 13')).toBeDefined();
+    expect(screen.queryByRole('button', { name: 'Mark as not invited' })).toBeNull();
+    expect(screen.queryByRole('button', { name: /^Mark as invited/u })).toBeNull();
+    expect(sent.filter((one) => one.line.endsWith('/record-reply')).map((one) => one.body)).toEqual(
+      [
+        {
+          answer: 'coming',
+          how: 'phone',
+          companions: [{ id: 'c_4', coming: true }],
+          replace: false,
+        },
+      ],
+    );
+  });
+
+  it('returns Cancel to the Record a reply of a guest nobody invited (sc-52829)', async () => {
+    await openBisi();
+
+    fireEvent.click(within(invitation()).getByRole('button', { name: /^Record a reply/u }));
+    fireEvent.click(await within(bisi()).findByRole('button', { name: 'Cancel' }));
+
+    await waitFor(() =>
+      expect(document.activeElement).toBe(
+        within(invitation()).getByRole('button', { name: /^Record a reply/u }),
+      ),
+    );
+  });
+
+  it('offers no Record a reply on a Draft (sc-52829)', async () => {
+    await openBisi({}, { status: 'draft', phase: 'draft', madeLiveAt: null });
+
+    expect(screen.queryByRole('button', { name: /Record a reply/u })).toBeNull();
+  });
+
   it('offers no Mark as invited on a Paused event, and says why', async () => {
     await openBisi(
       {},
@@ -2477,6 +2558,7 @@ describe('Not yet invited, and Mark as invited (sc-3788)', () => {
     ).toBeDefined();
     expect(screen.queryByRole('button', { name: 'Mark as not invited' })).toBeNull();
     expect(screen.queryByRole('button', { name: /^Mark as invited/u })).toBeNull();
+    expect(screen.queryByRole('button', { name: /Record a reply/u })).toBeNull();
   });
 });
 
@@ -2585,7 +2667,13 @@ describe('Send on WhatsApp (sc-26025)', () => {
       within(invitation())
         .getAllByRole('listitem')
         .map((row) => row.querySelector('.desk-row-name')?.textContent),
-    ).toEqual(['Copy invitation link', 'Send on WhatsApp', 'Replace link…', 'Mark as invited']);
+    ).toEqual([
+      'Copy invitation link',
+      'Send on WhatsApp',
+      'Replace link…',
+      'Mark as invited',
+      'Record a reply',
+    ]);
   });
 
   it('is not offered to a guest with no mobile number', async () => {

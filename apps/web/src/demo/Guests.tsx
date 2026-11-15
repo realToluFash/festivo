@@ -409,7 +409,7 @@ function GuestsPage({
       focus('edit');
     } else if (pane.kind === 'record') {
       setPane({ kind: 'guest', id: pane.id });
-      focus('record', 'step');
+      focus('record', 'record-not-yet', 'step');
     } else if (pane.kind === 'whatsApp') {
       setPane({ kind: 'guest', id: pane.id });
       focus('whatsapp-agree');

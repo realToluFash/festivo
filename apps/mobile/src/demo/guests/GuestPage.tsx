@@ -402,6 +402,26 @@ export function GuestPage({
                     },
                   ]
                 : []),
+              ...(owner && g.kind === 'notyet' && invites
+                ? [
+                    {
+                      key: 'recordNotYet',
+                      inset: 40,
+                      row: (
+                        <Row
+                          ref={refFor('recordNotYet')}
+                          title={W.recordReply}
+                          line={W.recordNotYetLine}
+                          lead={<LineIcon name="chat" />}
+                          accent
+                          weight="medium"
+                          onPress={actions.onRecord}
+                          testID="guest.recordNotYet"
+                        />
+                      ),
+                    },
+                  ]
+                : []),
             ]}
           />
           {!owner && <View style={styles.below}>{readOnly}</View>}

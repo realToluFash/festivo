@@ -64,6 +64,7 @@ export function GuestDetails({
   coverMarkRef,
   unmarkRef,
   recordRef,
+  recordNotYetRef,
   onEdit,
   onMark,
   onCoverMark,
@@ -92,6 +93,7 @@ export function GuestDetails({
   coverMarkRef: Ref<ViewInstance>;
   unmarkRef: Ref<ViewInstance>;
   recordRef: Ref<ViewInstance>;
+  recordNotYetRef: Ref<ViewInstance>;
   onEdit: () => void;
   onMark: () => void;
   onCoverMark: () => void;
@@ -250,7 +252,9 @@ export function GuestDetails({
           after.card ??
           guestRepliedLine(guest, word, after.reply, timeZone, locale, t) ??
           (shown === 'notYetInvited'
-            ? t('guestList.copyFirst')
+            ? invitation == null
+              ? null
+              : t('guestList.copyFirst')
             : invitationLine(t, guest, timeZone, locale))
         }
         step={
@@ -352,6 +356,8 @@ export function GuestDetails({
           unmarkRef={unmarkRef}
           onMark={onMark}
           onUnmark={onUnmark}
+          recordRef={recordNotYetRef}
+          onRecord={onRecord}
         />
       ) : (
         !manages && (

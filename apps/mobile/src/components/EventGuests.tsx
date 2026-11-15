@@ -104,6 +104,7 @@ const CHOICE_KEY: Record<Choice, string> = {
 export interface GuestsTop {
   add: (() => void) | null;
   back: (() => void) | null;
+  toSearch: boolean;
 }
 
 /** An event's Guests in the app (sc-3785): the list to find and read a guest, and the small edits; planning at scale stays on the web. */
@@ -111,6 +112,7 @@ export function EventGuests({
   event,
   filter = 'all',
   opens,
+  leave,
   phase,
   now,
   heading,
@@ -125,6 +127,8 @@ export function EventGuests({
   filter?: Choice;
   /** The guest whose details it opens on (sc-39534). */
   opens?: string | undefined;
+  /** Back from the guest it opened on leaves the event, so a phone returns to Search with its term and matches (sc-39534). */
+  leave?: (() => void) | undefined;
   phase: EventPhase | null;
   now: Date;
   heading: ReactNode;
@@ -159,6 +163,7 @@ export function EventGuests({
   const [markOpen, setMarkOpen] = useState(false);
   const [recording, setRecording] = useState<TaggedGuest | null>(null);
   const recordButton = useRef<ViewInstance>(null);
+  const recordNotYet = useRef<ViewInstance>(null);
   const title = useRef<TextHandle>(null);
   const guestName = useRef<TextHandle>(null);
   const emptyAdd = useRef<ViewInstance>(null);
@@ -272,6 +277,14 @@ export function EventGuests({
     setNotice(null);
     setReopening({ busy: false, failed: false });
   }, []);
+  const leaveRef = useRef(leave);
+  useEffect(() => {
+    leaveRef.current = leave;
+  });
+  const leaveGuest = useCallback(() => {
+    if (leaveRef.current != null) leaveRef.current();
+    else closeGuest();
+  }, [closeGuest]);
   const showGuest = (tagged: TaggedGuest) => {
     tags.current.set(tagged.guest.id, tagged);
     setPane({ kind: 'guest', guest: tagged.guest });
@@ -357,13 +370,19 @@ export function EventGuests({
   const counts = loaded ? countsOf(load.headcount.counts) : null;
   const empty = loaded && load.list.guests.length === 0;
   const guestInFront = open != null && kind !== 'tabletLandscape';
+  const leavesFromGuest = leave != null && open != null && open === opening;
+  const guestBack = leavesFromGuest ? leaveGuest : closeGuest;
   const adds = manages && loaded && !empty && !guestInFront;
   const shown = sidebarCardOf(event, phase);
 
   useLayoutEffect(() => {
-    onTop({ add: adds ? add : null, back: guestInFront ? closeGuest : null });
-  }, [onTop, adds, add, guestInFront, closeGuest]);
-  useLayoutEffect(() => () => onTop({ add: null, back: null }), [onTop]);
+    onTop({
+      add: adds ? add : null,
+      back: guestInFront ? guestBack : null,
+      toSearch: guestInFront && leavesFromGuest,
+    });
+  }, [onTop, adds, add, guestInFront, guestBack, leavesFromGuest]);
+  useLayoutEffect(() => () => onTop({ add: null, back: null, toSearch: false }), [onTop]);
 
   const timeZone = event.timeZone;
   const locale = dateLocale();
@@ -497,17 +516,21 @@ export function EventGuests({
         onMark={() => startMark(markButton.current)}
         onCoverMark={() => startMark(coverMark.current)}
         recordRef={recordButton}
+        recordNotYetRef={recordNotYet}
         onUnmark={() => unmark(open)}
         onRecord={() => {
           const tagged = tags.current.get(open);
           if (tagged == null) return;
           setNotice(null);
           setSaved(false);
-          opener.current = recordButton.current;
+          opener.current =
+            shownReply(tagged.guest) === 'notYetInvited'
+              ? recordNotYet.current
+              : recordButton.current;
           setRound((was) => was + 1);
           setRecording(tagged);
         }}
-        onBack={closeGuest}
+        onBack={guestBack}
         onRetry={() => readGuest(open, false)}
       />
     );
@@ -527,7 +550,11 @@ export function EventGuests({
         pageKey={open ?? ''}
         pageInFront={open != null}
         pageless={!loaded || empty}
-        back={{ label: t('guestList.backToGuests'), onPress: closeGuest, testID: 'guest.back' }}
+        back={{
+          label: leavesFromGuest ? t('todayScreen.search') : t('guestList.backToGuests'),
+          onPress: guestBack,
+          testID: 'guest.back',
+        }}
         backInFrame
         headingInList
         spacing={SPACING}
@@ -558,7 +585,10 @@ export function EventGuests({
             readList(watch);
           }}
           onSaved={(tagged) => {
-            opener.current = guestName.current;
+            opener.current =
+              shownReply(recording.guest) === 'notYetInvited'
+                ? recordButton.current
+                : guestName.current;
             setRecording(null);
             setNotice({ kind: 'recorded' });
             showGuest(tagged);
