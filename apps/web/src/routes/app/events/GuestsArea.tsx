@@ -908,10 +908,14 @@ export function GuestsArea({
     }
   }
 
-  function clearView(): void {
+  function clearLook(): void {
     clear();
     setDietary(false);
     setGroupFilter(null);
+  }
+
+  function clearView(): void {
+    clearLook();
     focus('find');
   }
 
@@ -1265,10 +1269,7 @@ export function GuestsArea({
                               ? { kind: 'loaded', list: listedWith(was.list, guest) }
                               : was,
                           );
-                          if (!emptied) return;
-                          clear();
-                          setDietary(false);
-                          setGroupFilter(null);
+                          if (emptied) clearLook();
                         }}
                         onDone={() => {
                           setAdding(false);
