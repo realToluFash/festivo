@@ -224,24 +224,7 @@ function StationsView({
             <p className="mn-sub">{SW.sub}</p>
           </div>
         </header>
-        <nav className="sn-tabs" aria-label={SW.title}>
-          {SW.tabs.map((tab) =>
-            tab === 'Stations' ? (
-              <span key={tab} className="sn-tab" aria-current="page">
-                {tab}
-              </span>
-            ) : (
-              <button
-                key={tab}
-                type="button"
-                className="sn-tab"
-                onClick={() => tell(`${tab} has its own design (sc-3906, sc-3908, sc-101).`)}
-              >
-                {tab}
-              </button>
-            ),
-          )}
-        </nav>
+        <StaffTabs on="Stations" eventId={event.id} tell={tell} />
         {!manage && (
           <p className="mn-lock">
             <Glyph name="lock" size={16} weight={2.2} />
@@ -829,7 +812,46 @@ function PeoplePanel({
   );
 }
 
-function PanelTop({
+/** The Staff page's tabs: Roster and Stations open each other; the rest are their own stories. */
+export function StaffTabs({ on, eventId, tell }: { on: string; eventId: string; tell: Tell }) {
+  const pages: Record<string, string> = {
+    Roster: `/demo/events/${eventId}/staff/roster`,
+    Stations: `/demo/events/${eventId}/staff`,
+  };
+
+  return (
+    <nav className="sn-tabs" aria-label={SW.title}>
+      {SW.tabs.map((tab) => {
+        const to = pages[tab];
+        if (tab === on)
+          return (
+            <span key={tab} className="sn-tab" aria-current="page">
+              {tab}
+            </span>
+          );
+        if (to != null)
+          return (
+            <Link key={tab} className="sn-tab" to={to}>
+              {tab}
+            </Link>
+          );
+
+        return (
+          <button
+            key={tab}
+            type="button"
+            className="sn-tab"
+            onClick={() => tell(`${tab} has its own design (sc-3908, sc-101).`)}
+          >
+            {tab}
+          </button>
+        );
+      })}
+    </nav>
+  );
+}
+
+export function PanelTop({
   title,
   eyebrow,
   onClose,
@@ -853,7 +875,7 @@ function PanelTop({
   );
 }
 
-function PanelFoot({
+export function PanelFoot({
   cta,
   onSave,
   onCancel,
@@ -874,7 +896,7 @@ function PanelFoot({
   );
 }
 
-function Select({
+export function Select({
   id,
   value,
   shown,

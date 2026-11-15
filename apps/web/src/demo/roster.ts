@@ -1,0 +1,556 @@
+import { emailProblem, phoneE164, phoneFields, phoneLengthProblem } from '@soirely/domain';
+
+import { countryName } from './rules.ts';
+import type { DemoLink } from './settings.ts';
+import { STATIONS_EVENT } from './stations.ts';
+
+/** The Roster on the event's Staff page (sc-3906, Staffing.dc.html on page e34): who works the event, without making them members. */
+export const ORGANISATION = 'Ire Events';
+export const NAME_MAX = 200;
+export const BAR_MS = 10_000;
+
+export type LinkState = 'opened' | 'sent' | 'copied' | 'none' | 'noMobile' | 'erased';
+
+export interface Entry {
+  id: string;
+  name: string;
+  job: string | null;
+  station: string | null;
+  shift: string | null;
+  mobile: string | null;
+  email: string | null;
+  link: 'opened' | 'sent' | 'copied' | 'none';
+}
+
+export interface Draft {
+  name: string;
+  country: string;
+  number: string;
+  email: string;
+  job: string;
+  shift: string;
+}
+
+export type Panel =
+  | { kind: 'details'; id: string }
+  | { kind: 'add' }
+  | { kind: 'edit'; id: string }
+  | { kind: 'remove'; id: string }
+  | null;
+
+export const RW = {
+  title: 'Staff',
+  sub: 'Who works the event, where they work, and what each place dishes.',
+  tabs: ['Roster', 'Jobs and shifts', 'Stations', 'Hours worked'],
+  roster: 'Roster',
+  add: 'Add a person',
+  empty: 'Nobody on the staff yet',
+  emptySub: 'Add the people working this event. They are not made members of the organisation.',
+  person: 'Name',
+  job: 'Job',
+  station: 'Station',
+  shift: 'Shift',
+  link: 'Link',
+  mobile: 'Mobile number',
+  email: 'Email',
+  optional: 'Optional',
+  country: 'Country',
+  noJob: 'No job yet',
+  noStation: 'No station yet',
+  noShift: 'Not on a shift yet',
+  notBuilt: 'AC, not yet built',
+  nameHelp: 'As they would like to be called. At most 200 characters.',
+  mobileHelp: 'Their link is sent to this number.',
+  addCta: 'Add',
+  addAnyway: 'Add anyway',
+  saveChanges: 'Save changes',
+  saveAnyway: 'Save anyway',
+  cancel: 'Cancel',
+  edit: 'Edit',
+  remove: 'Remove from the event',
+  keep: 'Keep them',
+  stopsWorking: 'Their link stops working at once.',
+  saved: 'Saved.',
+  dismiss: 'Dismiss',
+  close: 'Close',
+  blank: 'Enter their name.',
+  emailShape: 'That does not look like an email address. Check it has an @ and a domain.',
+  phoneLength: (problem: 'short' | 'long', country: string) =>
+    `That number looks too ${problem} for ${country}. Check it and try again.`,
+  uses: (name: string) => `${name} already uses this number`,
+  added: (name: string) => `${name} added to the roster.`,
+  member: (name: string) =>
+    `${name} is a member of ${ORGANISATION}. Their shift will appear in their app.`,
+  removed: (name: string) => `[${name} removed from the event. Their shift is unassigned.]`,
+  notAdded: (name: string) => `[${name} was not added.]`,
+  removeAsk: (name: string) => `Remove ${name} from the event?`,
+  editTitle: (name: string) => `Edit ${name}`,
+  nextSend: 'Next: send a link to everyone who has not been sent one yet.',
+  nextHours: 'Next: check the hours on Hours worked before the budget closes.',
+  nextCopied: 'Next: once you have sent them the copied link, mark it as sent.',
+  nextErasing: 'Next: nothing. Their mobile number and email are removed 30 days after the event.',
+  linksThere: '[Copy link, Mark as sent and Replace link are on Roster links.]',
+  lock: 'You can see the roster. Changing it needs permission to manage staff.',
+  stationChange: 'Change station',
+};
+
+export const LINK_WORDS: Record<LinkState, string> = {
+  opened: 'Link opened',
+  sent: 'Link sent',
+  copied: 'Copied',
+  none: 'No link yet',
+  noMobile: 'Add a mobile number to send a link',
+  erased: 'Contact details removed after the event',
+};
+
+/** sc-3908's jobs, each with the station it brings (sc-3910) and its shifts. */
+export const JOBS: readonly { job: string; station: string | null; shifts: readonly string[] }[] = [
+  { job: 'Floor lead', station: 'Floor', shifts: ['16:00 to 01:00'] },
+  { job: 'Waiter', station: null, shifts: ['17:00 to 00:00', '19:00 to 23:00'] },
+  { job: 'Runner', station: 'Pass', shifts: ['17:00 to 00:00'] },
+  { job: 'Cook', station: 'Kitchen', shifts: ['15:00 to 23:00'] },
+  { job: 'Bar', station: 'Bar', shifts: ['16:00 to 01:00'] },
+  { job: 'Door', station: 'Door', shifts: ['16:30 to 21:00'] },
+];
+
+export const STATIONS: readonly string[] = [
+  'Pass',
+  'Door',
+  'Bar',
+  'Kitchen',
+  'Floor',
+  'Grill',
+  'Pastry',
+  'Section A',
+  'Section B',
+  'Section C',
+];
+
+/** Members of the organisation the roster can link to by mobile number or email. */
+export const MEMBERS: readonly { name: string; mobile: string; email: string }[] = [
+  { name: 'Amara Obi', mobile: '+2348035550142', email: 'amara.obi@ireevents.com' },
+];
+
+export function linkOf(entry: Entry, erased: boolean): LinkState {
+  if (erased) return 'erased';
+  if (entry.mobile == null) return 'noMobile';
+
+  return entry.link;
+}
+
+function startOf(entry: Entry): string | null {
+  return entry.shift?.split(' to ')[0] ?? null;
+}
+
+/** By shift start, then name; people with no shift after everyone with one. */
+export function sorted(entries: readonly Entry[]): Entry[] {
+  return [...entries].sort((a, b) => {
+    const left = startOf(a);
+    const right = startOf(b);
+    if (left !== right) {
+      if (left == null) return 1;
+      if (right == null) return -1;
+
+      return left < right ? -1 : 1;
+    }
+
+    return a.name.localeCompare(b.name, 'en');
+  });
+}
+
+export function jobOf(name: string): (typeof JOBS)[number] | undefined {
+  return JOBS.find((one) => one.job === name);
+}
+
+export function shiftLine(entry: Entry): string {
+  return entry.job == null || entry.shift == null ? RW.noShift : `${entry.job} · ${entry.shift}`;
+}
+
+export function nextLine(entries: readonly Entry[], finished: boolean): string | null {
+  if (finished) return RW.nextHours;
+  const unsent = entries.some(
+    (one) => one.mobile != null && (one.link === 'none' || one.link === 'copied'),
+  );
+
+  return unsent ? RW.nextSend : null;
+}
+
+export function detailsNext(entry: Entry, finished: boolean, erased: boolean): string | null {
+  if (erased) return null;
+  if (finished) return RW.nextErasing;
+
+  return linkOf(entry, false) === 'copied' ? RW.nextCopied : null;
+}
+
+export type Problems = { name?: string; number?: string; email?: string };
+
+/** A blank name, a number the wrong length for its country, an email with no @ and domain; in the form's order. */
+export function problemsOf(draft: Draft, contact: boolean): Problems {
+  const problems: Problems = {};
+  if (draft.name.trim() === '') problems.name = RW.blank;
+  if (!contact) return problems;
+
+  const length = phoneLengthProblem(draft.number, draft.country);
+  if (length === 'tooShort' || length === 'tooLong')
+    problems.number = RW.phoneLength(
+      length === 'tooShort' ? 'short' : 'long',
+      countryName(draft.country),
+    );
+  if (draft.email.trim() !== '' && emailProblem(draft.email) === 'shape')
+    problems.email = RW.emailShape;
+
+  return problems;
+}
+
+export function firstWrong(problems: Problems): 'name' | 'number' | 'email' | null {
+  return (['name', 'number', 'email'] as const).find((one) => problems[one] != null) ?? null;
+}
+
+export function mobileOf(draft: Draft): string | null {
+  return draft.number.trim() === '' ? null : phoneE164(draft.number, draft.country);
+}
+
+/** The first other entry in roster order on the same stored number; Edit asks only when the number changed. */
+export function sharesNumber(
+  entries: readonly Entry[],
+  draft: Draft,
+  editing: Entry | null,
+): Entry | null {
+  const mobile = mobileOf(draft);
+  if (mobile == null) return null;
+  if (editing != null && editing.mobile === mobile) return null;
+
+  return sorted(entries).find((one) => one.id !== editing?.id && one.mobile === mobile) ?? null;
+}
+
+export function memberOf(draft: Draft): string | null {
+  const mobile = mobileOf(draft);
+  const email = draft.email.trim().toLocaleLowerCase('en');
+
+  return (
+    MEMBERS.find((one) => one.mobile === mobile || (email !== '' && one.email === email))?.name ??
+    null
+  );
+}
+
+let made = 0;
+
+export function entryFrom(draft: Draft, before: Entry | null): Entry {
+  const job = draft.job === '' ? null : draft.job;
+  const mobile = mobileOf(draft);
+  made += 1;
+
+  return {
+    id: before?.id ?? `new${made}`,
+    name: draft.name.trim(),
+    job,
+    station:
+      before != null && before.job === job ? before.station : (jobOf(draft.job)?.station ?? null),
+    shift: job == null || draft.shift === '' ? null : draft.shift,
+    mobile,
+    email: draft.email.trim() === '' ? null : draft.email.trim(),
+    link: before != null && before.mobile === mobile ? before.link : 'none',
+  };
+}
+
+export function draftOf(entry: Entry | null): Draft {
+  const fields = entry?.mobile == null ? null : phoneFields(entry.mobile);
+
+  return {
+    name: entry?.name ?? '',
+    country: fields?.country ?? 'NG',
+    number: fields?.number ?? '',
+    email: entry?.email ?? '',
+    job: entry?.job ?? '',
+    shift: entry?.shift ?? '',
+  };
+}
+
+const entry = (
+  id: string,
+  name: string,
+  job: string | null,
+  station: string | null,
+  shift: string | null,
+  mobile: string | null,
+  link: Entry['link'],
+  email: string | null = null,
+): Entry => ({ id, name, job, station, shift, mobile, email, link });
+
+export function sample(): Entry[] {
+  return [
+    entry('bisi', 'Bisi Okon', 'Cook', 'Kitchen', '15:00 to 23:00', '+2348031110002', 'opened'),
+    entry('tayo', 'Tayo Bamidele', 'Cook', 'Grill', '15:00 to 23:00', '+2348031110003', 'sent'),
+    entry('ada', 'Ada Nnaji', 'Cook', 'Pastry', '15:00 to 23:00', null, 'none'),
+    entry(
+      'ifeoma',
+      'Ifeoma Nduka',
+      'Floor lead',
+      'Floor',
+      '16:00 to 01:00',
+      '+2348031110001',
+      'opened',
+    ),
+    entry('sade', 'Sade Lawal', 'Bar', 'Bar', '16:00 to 01:00', '+2348031110006', 'sent'),
+    entry('tolu', 'Tolu Bello', 'Door', 'Door', '16:30 to 21:00', '+2348031110007', 'none'),
+    entry(
+      'amina',
+      'Amina Yusuf',
+      'Waiter',
+      'Section B',
+      '17:00 to 00:00',
+      '+2348031110010',
+      'copied',
+    ),
+    entry(
+      'grace',
+      'Grace Udo',
+      'Waiter',
+      'Section A',
+      '17:00 to 00:00',
+      '+2348031110008',
+      'opened',
+    ),
+    entry(
+      'kunle',
+      'Kunle Ajayi',
+      'Waiter',
+      'Section A',
+      '17:00 to 00:00',
+      '+2348031110009',
+      'sent',
+      'kunle.ajayi@gmail.com',
+    ),
+    entry('ronke', 'Ronke Alade', 'Runner', 'Pass', '17:00 to 00:00', '+2348031110005', 'opened'),
+    entry('emeka', 'Emeka Obi', 'Waiter', null, '19:00 to 23:00', '+2348031110011', 'none'),
+    entry('chinedu', 'Chinedu Eze', null, null, null, '+2348031110012', 'none'),
+  ];
+}
+
+export interface RosterStart {
+  name: string;
+  note: string;
+  entries: Entry[];
+  panel: Panel;
+  manage: boolean;
+  finished: boolean;
+  erased: boolean;
+  draft: Draft;
+  pressed: boolean;
+  warning: string | null;
+  bar: string[] | null;
+  failed: string | null;
+}
+
+function start(o: Partial<RosterStart> & Pick<RosterStart, 'name' | 'note'>): RosterStart {
+  return {
+    entries: sample(),
+    panel: null,
+    manage: true,
+    finished: false,
+    erased: false,
+    draft: draftOf(null),
+    pressed: false,
+    warning: null,
+    bar: null,
+    failed: null,
+    ...o,
+  };
+}
+
+const typed = (o: Partial<Draft>): Draft => ({ ...draftOf(null), ...o });
+const byId = (id: string) => sample().find((one) => one.id === id) as Entry;
+
+const STATES = {
+  populated: () =>
+    start({
+      name: 'Populated',
+      note: 'By shift start, then name; each Link word with its own mark.',
+    }),
+  empty: () => start({ name: 'Nobody on the staff yet', note: 'A new event.', entries: [] }),
+  addBlank: () =>
+    start({
+      name: 'Add, the name left blank',
+      note: 'Add pressed with nothing typed.',
+      panel: { kind: 'add' },
+      pressed: true,
+    }),
+  mobileTooShort: () =>
+    start({
+      name: 'Add, the number too short',
+      note: 'Checked against sc-62’s length for Nigeria.',
+      panel: { kind: 'add' },
+      draft: typed({ name: 'Kemi Ade', number: '0803 111' }),
+      pressed: true,
+    }),
+  mobileTooLong: () =>
+    start({
+      name: 'Add, the number too long',
+      note: 'Checked against sc-62’s length for Nigeria.',
+      panel: { kind: 'add' },
+      draft: typed({ name: 'Kemi Ade', number: '0803 111 0013 44556' }),
+      pressed: true,
+    }),
+  emailShape: () =>
+    start({
+      name: 'Add, the email’s shape',
+      note: 'An email with no domain.',
+      panel: { kind: 'add' },
+      draft: typed({ name: 'Kemi Ade', number: '0803 111 0013', email: 'kemi.ade@' }),
+      pressed: true,
+    }),
+  duplicateNumber: () =>
+    start({
+      name: 'Add, a number already on the roster',
+      note: 'Add pressed with Kunle Ajayi’s number: Add anyway or Cancel.',
+      panel: { kind: 'add' },
+      draft: typed({ name: 'Funmi Bakare', number: '0803 111 0009', job: 'Waiter' }),
+      pressed: true,
+      warning: 'Kunle Ajayi',
+    }),
+  added: () =>
+    start({
+      name: 'Added',
+      note: 'The status bar at the foot, said through the live region.',
+      entries: [
+        ...sample(),
+        {
+          id: 'kemi',
+          name: 'Kemi Ade',
+          job: 'Waiter',
+          station: null,
+          shift: '17:00 to 00:00',
+          mobile: '+2348031110013',
+          email: null,
+          link: 'none',
+        },
+      ],
+      bar: [RW.added('Kemi Ade')],
+    }),
+  memberLinked: () =>
+    start({
+      name: 'Added, and linked to a member',
+      note: 'The member message names their account; the row keeps the typed name.',
+      entries: [
+        ...sample(),
+        {
+          id: 'mara',
+          name: 'Mara Obi',
+          job: 'Door',
+          station: 'Door',
+          shift: '16:30 to 21:00',
+          mobile: '+2348035550142',
+          email: null,
+          link: 'none',
+        },
+      ],
+      bar: [RW.added('Mara Obi'), RW.member('Amara Obi')],
+    }),
+  details: () =>
+    start({
+      name: 'Details, Amina Yusuf',
+      note: 'Copied: the next step points to Roster links.',
+      panel: { kind: 'details', id: 'amina' },
+    }),
+  edit: () =>
+    start({
+      name: 'Edit, Kunle Ajayi',
+      note: 'Name, mobile, email, job and shift; no Station field.',
+      panel: { kind: 'edit', id: 'kunle' },
+      draft: draftOf(byId('kunle')),
+    }),
+  editDuplicateNumber: () =>
+    start({
+      name: 'Edit, changed to a number on the roster',
+      note: 'Tolu Bello’s number changed to Grace Udo’s: Save anyway or Cancel.',
+      panel: { kind: 'edit', id: 'tolu' },
+      draft: { ...draftOf(byId('tolu')), number: '0803 111 0008' },
+      pressed: true,
+      warning: 'Grace Udo',
+    }),
+  removeAsk: () =>
+    start({
+      name: 'Remove, the question',
+      note: 'Their shift by job and times, and Keep them.',
+      panel: { kind: 'remove', id: 'kunle' },
+    }),
+  finishedEvent: () =>
+    start({
+      name: 'Finished event',
+      note: 'Edit stays; Remove from the event is not offered.',
+      finished: true,
+      panel: { kind: 'details', id: 'kunle' },
+    }),
+  finishedErased: () =>
+    start({
+      name: 'Finished, after the 30-day erasure',
+      note: 'Every row reads Contact details removed; Edit has no Mobile or Email.',
+      finished: true,
+      erased: true,
+      entries: sample().map((one) => ({ ...one, mobile: null, email: null })),
+      panel: { kind: 'edit', id: 'kunle' },
+      draft: { ...draftOf(byId('kunle')), number: '', email: '' },
+    }),
+  readOnly: () =>
+    start({
+      name: 'Without staff.manage',
+      note: 'No Add, Edit, Remove or station change.',
+      manage: false,
+      panel: { kind: 'details', id: 'grace' },
+    }),
+  actionFailed: () =>
+    start({
+      name: 'Add failed (system › actionFailed)',
+      note: 'The API did not take it; the form stays as typed.',
+      panel: { kind: 'add' },
+      draft: typed({ name: 'Kemi Ade', number: '0803 111 0013' }),
+      failed: RW.notAdded('Kemi Ade'),
+    }),
+} satisfies Record<string, () => RosterStart>;
+
+export type RosterStateName = keyof typeof STATES;
+
+export const ROSTER_STATES = Object.keys(STATES) as RosterStateName[];
+
+export function rosterStart(raw: string | null): RosterStart {
+  const name: RosterStateName =
+    raw != null && Object.hasOwn(STATES, raw) ? (raw as RosterStateName) : 'populated';
+
+  return STATES[name]();
+}
+
+export function rosterAt(state?: RosterStateName): string {
+  return `/demo/events/${STATIONS_EVENT}/staff/roster${state == null ? '' : `?state=${state}`}`;
+}
+
+function link(state: RosterStateName): DemoLink {
+  return { to: rosterAt(state), name: STATES[state]().name };
+}
+
+export const ROSTER_PAGES: readonly { name: string; states: readonly DemoLink[] }[] = [
+  {
+    name: 'The roster, and a person’s details',
+    states: (
+      ['populated', 'empty', 'details', 'readOnly', 'finishedEvent', 'finishedErased'] as const
+    ).map(link),
+  },
+  {
+    name: 'Adding a person',
+    states: (
+      [
+        'addBlank',
+        'mobileTooShort',
+        'mobileTooLong',
+        'emailShape',
+        'duplicateNumber',
+        'added',
+        'memberLinked',
+        'actionFailed',
+      ] as const
+    ).map(link),
+  },
+  {
+    name: 'Editing and removing',
+    states: (['edit', 'editDuplicateNumber', 'removeAsk'] as const).map(link),
+  },
+];
