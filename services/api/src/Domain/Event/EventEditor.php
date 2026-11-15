@@ -65,7 +65,10 @@ final readonly class EventEditor
         return $this->entityManager->wrapInTransaction(function () use ($event, $ifMatch, $by, $fields): Event {
             $this->entityManager->refresh($event, LockMode::PESSIMISTIC_WRITE);
 
-            $stale = !EntityTag::matches($ifMatch, EntityTag::of($event->getVersion()));
+            if (!EntityTag::matches($ifMatch, EntityTag::of($event->getVersion()))) {
+                throw new ApiException(ErrorCode::PreconditionFailed, 'event.changed_since');
+            }
+
             $before = self::recorded($event);
             $details = EventDetails::of($event);
             $phase = EventPhase::of($event->getStatus(), $event->getStartsAt(), $event->getEndsAt(), $this->clock->now());
@@ -83,16 +86,6 @@ final readonly class EventEditor
                 ...Iter\contains_key($fields, 'replyBy') ? ['replyBy' => $fields['replyBy']] : [],
             ], $event->getCurrency(), EventVenue::of($event));
             $wasClosed = ReplyDeadline::of($event)?->passedAt($this->clock->now()) ?? false;
-            $schedule = [$checked['startsAt']->format(\DATE_ATOM), $checked['endsAt']->format(\DATE_ATOM), $checked['startsAt']->getTimezone()->getName()];
-            $scheduleChanged = $schedule !== [$before['startsAt'], $before['endsAt'], $before['timeZone']];
-
-            if ($stale) {
-                if ($scheduleChanged && EventPhase::Finished === $phase) {
-                    throw $this->scheduleLocked($calledOff);
-                }
-
-                throw new ApiException(ErrorCode::PreconditionFailed, 'event.changed_since');
-            }
 
             if ($checked['currency'] !== $event->getCurrency() && $this->eventAmounts->anyRecordedFor($event)) {
                 throw new ApiException(ErrorCode::EventCurrencyInUse, 'event.currency_in_use');
@@ -118,7 +111,9 @@ final readonly class EventEditor
                 $event->setHosts($checked['hosts']);
             }
 
-            if ($scheduleChanged) {
+            $schedule = [$checked['startsAt']->format(\DATE_ATOM), $checked['endsAt']->format(\DATE_ATOM), $checked['startsAt']->getTimezone()->getName()];
+
+            if ($schedule !== [$before['startsAt'], $before['endsAt'], $before['timeZone']]) {
                 $event->setTimes($checked['startsAt'], $checked['endsAt']);
 
                 if ($schedule[2] === $before['timeZone']) {
@@ -231,17 +226,12 @@ final readonly class EventEditor
     {
         foreach (self::actionsFor(Vec\keys($changes)) as $action) {
             if (EventPhase::Finished === $phase && EventAction::EditSchedule === $action) {
-                throw $this->scheduleLocked($calledOff);
+                throw new ApiException(ErrorCode::EventConcluded, $this->translator->trans($calledOff ? 'event.schedule_called_off' : 'event.schedule_concluded'));
             }
 
             if (!$phase->allows($action)) {
                 throw new ApiException(ErrorCode::EventStateInvalid, $this->translator->trans('event.state_invalid'), members: ['phase' => $phase->value]);
             }
         }
-    }
-
-    private function scheduleLocked(bool $calledOff): ApiException
-    {
-        return new ApiException(ErrorCode::EventConcluded, $this->translator->trans($calledOff ? 'event.schedule_called_off' : 'event.schedule_concluded'));
     }
 }
