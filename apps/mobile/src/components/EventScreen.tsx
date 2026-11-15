@@ -62,6 +62,7 @@ import { Notice } from './Notice.tsx';
 import { Refreshing } from './Refreshing.tsx';
 import { Screen } from './Screen.tsx';
 import { LoadingBlock, PageToast } from './Summary.tsx';
+import { phoneTabBarClearance } from './TodayCover.tsx';
 import { Arrived } from './Skeleton.tsx';
 import { type ScreenReaderTarget, moveScreenReaderFocus } from './screenReaderFocus.ts';
 import { Text, type TextHandle } from './Text.tsx';
@@ -471,7 +472,11 @@ export function EventScreen({
         <PageToast
           words={toast.words}
           onClose={() => setToast(null)}
-          bottom={insets.bottom + tokens.spaceLg}
+          bottom={
+            phone
+              ? phoneTabBarClearance(insets.bottom) + tokens.spaceXl + tokens.spaceHair
+              : insets.bottom + tokens.spaceLg
+          }
         />
       )}
     </AppFrame>
