@@ -1,7 +1,6 @@
 import { ApiError, type Membership } from '@soirely/api-client';
 import {
   ORGANISATION_FIELDS,
-  ORGANISATION_NAME_MAXIMUM,
   type OrganisationField,
   countryChoices,
   heldCurrencyLabel,
@@ -253,7 +252,6 @@ function Editable({
           error={errors.name}
           busy={busy}
           autoComplete="organization"
-          maxLength={ORGANISATION_NAME_MAXIMUM}
           onChange={change}
         />
         <Choice

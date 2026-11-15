@@ -267,6 +267,26 @@ describe('The event’s Schedule (sc-3893)', () => {
     expect(sent.filter(({ line }) => line.startsWith('POST'))).toEqual([]);
   });
 
+  it('counts a title’s letters as a reader sees them, and quotes them (sc-54292)', async () => {
+    const sent = await onSchedule({
+      'GET /api/events/ev_1/schedule': () => json({ schedule: schedule([DRINKS]) }),
+    });
+    fireEvent.click(await screen.findByRole('button', { name: 'Add item' }));
+    const title = screen.getByLabelText('Title');
+
+    fireEvent.change(title, { target: { value: 'e\u0323\u0300'.repeat(120) } });
+    expect(screen.getByText('120 of 120')).toBeDefined();
+    fireEvent.change(title, { target: { value: '👨‍👩‍👧 🇳🇬' } });
+    expect(screen.getByText('3 of 120')).toBeDefined();
+
+    fireEvent.change(title, { target: { value: 'e\u0323\u0300'.repeat(121) } });
+    fireEvent.click(screen.getByRole('button', { name: 'Save item' }));
+    expect(
+      await screen.findByText('That title is 121 characters. Use 120 or fewer.'),
+    ).toBeDefined();
+    expect(sent.filter(({ line }) => line.startsWith('POST'))).toEqual([]);
+  });
+
   it('adds an item as the contract asks, and shows it', async () => {
     const added = item('it_new', 'Fireworks', '2030-11-15T23:00:00+00:00', '2030-11-15', {
       place: 'Garden',

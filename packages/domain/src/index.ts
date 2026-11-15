@@ -74,3 +74,4 @@ export * from './seatingRows.ts';
 export * from './titleLines.ts';
 export * from './moreChip.ts';
 export * from './replyBy.ts';
+export * from './visibleText.ts';

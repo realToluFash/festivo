@@ -37,6 +37,7 @@ import {
   startMoved,
   venueDraftOf,
   withCurrent,
+  visibleLength,
 } from '@soirely/domain';
 import { launchImageLibraryAsync } from 'expo-image-picker';
 import { type RefObject, useEffect, useMemo, useRef, useState } from 'react';
@@ -862,7 +863,7 @@ function CoverEdit(props: PartEditProps) {
     (photo.kind === 'none' && saved != null) ||
     (has && position !== savedPosition) ||
     (has && described !== (saved?.description ?? ''));
-  const count = [...described].length;
+  const count = visibleLength(described);
 
   useEffect(
     () => () => {
@@ -973,7 +974,7 @@ function CoverEdit(props: PartEditProps) {
             described={described}
             onDescribed={(next) => {
               setDescribed(next);
-              if ([...next].length <= COVER_DESCRIPTION_MAXIMUM) setDescribeError(null);
+              if (visibleLength(next) <= COVER_DESCRIPTION_MAXIMUM) setDescribeError(null);
             }}
             count={count}
             most={COVER_DESCRIPTION_MAXIMUM}

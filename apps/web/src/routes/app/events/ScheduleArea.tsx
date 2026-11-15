@@ -9,7 +9,7 @@ import {
   asScheduleItem,
   realtimeTopic,
 } from '@soirely/api-client';
-import { eventDayOf, wallOfZoned } from '@soirely/domain';
+import { eventDayOf, wallOfZoned, visibleLength } from '@soirely/domain';
 import type { TFunction } from 'i18next';
 import { type KeyboardEvent, useEffect, useMemo, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
@@ -873,7 +873,10 @@ function ItemPanel({
           label={t('schedule.titleLabel')}
           value={form.title}
           error={errors.title}
-          help={t('schedule.count', { n: form.title.trim().length, max: SCHEDULE_TITLE_MAXIMUM })}
+          help={t('schedule.count', {
+            n: visibleLength(form.title.trim()),
+            max: SCHEDULE_TITLE_MAXIMUM,
+          })}
           onChange={(title) => onChange({ title })}
         />
         <fieldset className="ro-starts-set">
@@ -1003,7 +1006,7 @@ function ItemPanel({
             />
           </div>
           <p id="ro-note-help" className="desk-help">
-            {t('schedule.noteHelp', { n: form.note.length, max: SCHEDULE_NOTE_MAXIMUM })}
+            {t('schedule.noteHelp', { n: visibleLength(form.note), max: SCHEDULE_NOTE_MAXIMUM })}
           </p>
           {errors.note != null && <FieldWrong id="ro-note-error">{errors.note}</FieldWrong>}
         </div>

@@ -26,7 +26,7 @@ export interface StaffAnswer {
   member: string | null;
 }
 
-/** The API's StaffMember::NAME_MAXIMUM, which the form stops typing at. */
+/** The API's StaffMember::NAME_MAXIMUM, in visible characters. */
 export const STAFF_NAME_MAXIMUM = 200;
 
 const LINKS: readonly StaffLink[] = ['none', 'no_mobile', 'erased'];

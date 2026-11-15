@@ -1,6 +1,5 @@
 import {
   ORGANISATION_FIELDS,
-  ORGANISATION_NAME_MAXIMUM,
   type OrganisationDetails,
   type OrganisationField,
   organisationChanges,
@@ -481,7 +480,6 @@ export function DetailsScreen({
           autoCapitalize="words"
           autoCorrect={false}
           spellCheck={false}
-          maxLength={ORGANISATION_NAME_MAXIMUM}
           returnKeyType="next"
           onSubmitEditing={() => contactRef.current?.focus()}
           submitBehavior="submit"
