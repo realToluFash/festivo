@@ -277,7 +277,7 @@ final readonly class MembersController
         $locale = $this->userMailer->shownLocaleFor($caller);
         $written = fn (DateTimeImmutable $at): string => $this->userMailer->deadline($at, $caller, $locale);
 
-        return function (array $memberships) use ($accepted, $sentAt, $caller, $written): array {
+        return /** @param list<Membership> $memberships */ function (array $memberships) use ($accepted, $sentAt, $caller, $written): array {
             $history = Dict\group_by(
                 $this->membershipTransitionRepository->findForMemberships($memberships),
                 static fn (MembershipTransition $step): string => $step->getMembership()->getId()->toRfc4122(),

@@ -59,12 +59,13 @@ final class MembersPagingTest extends ApiTestCase
     {
         $whole = $this->ids($this->list('?limit=500'));
         $paged = [];
-        $after = null;
+        $query = '?limit=3';
 
         do {
-            $page = $this->list('?limit=3' . (null === $after ? '' : '&after=' . $after));
+            $page = $this->list($query);
             $paged = [...$paged, ...$this->ids($page)];
             $after = Type\nullable(Type\string())->coerce($page['next']);
+            $query = '?limit=3&after=' . ($after ?? '');
         } while (null !== $after);
 
         self::assertCount(8, $whole, 'the owner, six active and one suspended');
