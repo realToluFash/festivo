@@ -83,6 +83,7 @@ import { SwitchedNotice } from '../../components/SwitchedNotice.tsx';
 import { Notice } from '../../components/Notice.tsx';
 import { EventsFailed } from '../../components/Events.tsx';
 import { ListTop } from '../../components/ListTop.tsx';
+import { sideInsets } from '../../components/bodyEdges.ts';
 import { OfflineBand as ProductOfflineBand } from '../../components/OfflineBand.tsx';
 import { LIST_EDGES, LIST_GAP } from '../../components/listFrame.ts';
 import { openEvent } from './openEvent.ts';
@@ -485,19 +486,21 @@ export function ListFrame({
     <View style={styles.page}>
       {phone ? <View style={{ height: insets.top }} /> : <PortraitTop at="Events" />}
       {band}
-      <ScrollView
-        style={styles.grow}
-        contentContainerStyle={[
-          styles.blocks,
-          phone
-            ? [LIST_EDGES.phone, { paddingBottom: foot + PHONE_TAB_BAR + tokens.space6xl * 2 }]
-            : [LIST_EDGES.tabletPortrait, { paddingBottom: insets.bottom + tokens.space6xl * 2 }],
-        ]}
-        keyboardShouldPersistTaps="handled"
-        showsVerticalScrollIndicator={false}
-      >
-        {children}
-      </ScrollView>
+      <View style={[styles.grow, phone && sideInsets('phone', insets)]}>
+        <ScrollView
+          style={styles.grow}
+          contentContainerStyle={[
+            styles.blocks,
+            phone
+              ? [LIST_EDGES.phone, { paddingBottom: foot + PHONE_TAB_BAR + tokens.space6xl * 2 }]
+              : [LIST_EDGES.tabletPortrait, { paddingBottom: insets.bottom + tokens.space6xl * 2 }],
+          ]}
+          keyboardShouldPersistTaps="handled"
+          showsVerticalScrollIndicator={false}
+        >
+          {children}
+        </ScrollView>
+      </View>
       {phone && (
         <>
           <TabBarFade />

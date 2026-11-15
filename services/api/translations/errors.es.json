@@ -100,5 +100,8 @@
     "owner_claim_own": "No puede detener su propia solicitud.",
     "team_seats_in_use": "Todas las plazas de equipo del plan de esta organización están ocupadas.",
     "seating_items_outside": "Algo de la sala quedaría fuera de ella.",
-    "schedule_item_limit": "Este programa tiene {max} elementos, el máximo que admite un evento. Elimine uno para añadir otro."
+    "schedule_item_limit": "Este programa tiene {max} elementos, el máximo que admite un evento. Elimine uno para añadir otro.",
+    "item_started": "Este elemento ya ha empezado.",
+    "item_not_started": "Este elemento aún no ha empezado, así que no puede terminarse.",
+    "item_finished": "Este elemento ya ha terminado."
 }
