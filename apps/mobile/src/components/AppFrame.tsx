@@ -123,6 +123,7 @@ import { TwoFactorOverdue } from './TwoFactorOverdue.tsx';
 import { type EdgeSwipeHandlers, EdgeSwipeStrip } from './useEdgeSwipeBack.ts';
 import { useSystemBack } from './useSystemBack.ts';
 import { OfflineBand } from './OfflineBand.tsx';
+import { sideInsets } from './bodyEdges.ts';
 import { LIST_EDGES, useSideFrame } from './listFrame.ts';
 import { type Stale } from '../offline.ts';
 
@@ -488,6 +489,8 @@ export function AppFrame({
   const ownTop = framed && top != null && standIn == null;
   const underTabs =
     floatingTabs && listUnderTabs && standIn == null ? phoneTabBarClearance(insets.bottom) : 0;
+  // A top that stays sits outside any Screen, so it and the body under it clear the side bars here, as a Screen does for Events (sc-52423).
+  const sides = ownTop && top === 'stays' ? sideInsets(kind, insets) : null;
   const switchedRead = created?.takesFocus !== true;
   // A body with its own top, as Today, draws it where its demo does, under its cover, while the frame says it once whatever the body shows (sc-44087, sc-46032).
   const inBody = !framed;
@@ -566,11 +569,16 @@ export function AppFrame({
           <View style={[styles.column, sidebar && side.card]}>
             {framed && !ownTop && <FrameHeader {...header} />}
             {ownTop && <FixedTop {...header} />}
-            {ownTop && top === 'stays' && <ScreenTop {...header} stays />}
+            {ownTop && top === 'stays' && (
+              <View style={sides}>
+                <ScreenTop {...header} stays />
+              </View>
+            )}
             <OfflineBand stale={standIn == null ? offline : null} inFront={inFront} />
             <View
               style={[
                 styles.body,
+                sides,
                 (eventTabs || (floatingTabs && underTabs === 0)) && {
                   paddingBottom: phoneTabBarClearance(insets.bottom) + tokens.spaceMd,
                 },
