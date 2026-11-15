@@ -78,12 +78,6 @@ export function inPlannedOrder<I extends RunTimesItem>(items: readonly I[]): I[]
   return [...items].sort((a, b) => minutesOf(a.planned) - minutesOf(b.planned));
 }
 
-/**
- * sc-1404's rules for one track. A not-started item is expected at the latest of its planned start, the
- * expected end of the item before it and now; a fixed-time item at its planned start, always. A running
- * item ends at the later of its actual start plus its length and now; no length counts as 0. Items passed
- * over by one started out of order keep their times and move nothing after them.
- */
 export function runTrack<I extends RunTimesItem>(items: readonly I[], now: string): RunTrack<I> {
   const at = minutesOf(now);
   const ordered = inPlannedOrder(items);
