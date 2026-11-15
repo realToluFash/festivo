@@ -1,0 +1,58 @@
+# sc-49805, tablet landscape: ${GUEST_ID}'s details in ${EVENT_ID}, Mark as not invited failing on a server error, then the needs; beside the demo's unmarkNotSaved.
+appId: host.exp.Exponent
+---
+# Android's LANDSCAPE_LEFT can leave the tablet portrait: the harness turns it. sc-50565.
+- setOrientation: LANDSCAPE_LEFT
+- runScript:
+    file: ../batch/helper.js
+    env:
+      ASK: /landscape
+- waitForAnimationToEnd:
+    timeout: 3000
+- openLink: ${METRO_URL}/--/events/${EVENT_ID}?area=guests
+- extendedWaitUntil:
+    visible:
+      id: 'guests.row.${GUEST_ID}'
+    timeout: 30000
+- tapOn:
+    id: 'guests.row.${GUEST_ID}'
+- extendedWaitUntil:
+    visible:
+      id: 'guest.${GUEST_ID}'
+    timeout: 20000
+- waitForAnimationToEnd:
+    timeout: 3000
+- takeScreenshot: land-invited
+- scrollUntilVisible:
+    element:
+      id: 'guest.unmark'
+    direction: DOWN
+- tapOn:
+    id: 'guest.unmark'
+- waitForAnimationToEnd:
+    timeout: 5000
+- swipe:
+    direction: DOWN
+- swipe:
+    direction: DOWN
+- swipe:
+    direction: DOWN
+- waitForAnimationToEnd:
+    timeout: 2000
+- takeScreenshot: land-unmark-failed
+- scrollUntilVisible:
+    element:
+      id: 'guest.needs'
+    direction: DOWN
+- waitForAnimationToEnd:
+    timeout: 2000
+- takeScreenshot: land-needs
+- openLink: ${METRO_URL}/--/demo/guests?state=unmarkNotSaved
+- waitForAnimationToEnd:
+    timeout: 8000
+- takeScreenshot: land-demo-unmarkNotSaved
+- setOrientation: PORTRAIT
+- runScript:
+    file: ../batch/helper.js
+    env:
+      ASK: /portrait
