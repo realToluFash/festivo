@@ -458,7 +458,9 @@ export function EventScreen({
           }}
           onLatest={(latest) => {
             change(latest);
-            setEditing((was) => (was == null ? was : { ...was, count: was.count + 1 }));
+            if (editing.part === 'dates' && partLocked('dates', latest.phase))
+              closeEdit(partRef('dates'));
+            else setEditing((was) => (was == null ? was : { ...was, count: was.count + 1 }));
           }}
         />
       )}
