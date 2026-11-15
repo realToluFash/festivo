@@ -7,6 +7,9 @@ import {
   asOf,
   eventDay,
   SEATING_PAGES,
+  CRUMB_WORDS,
+  LONG_NAME,
+  crumbOf,
   SEATING_STATES,
   SW,
   bounds,
@@ -409,10 +412,10 @@ describe('dates on paper (sc-4024)', () => {
 });
 
 describe('the states (§6)', () => {
-  it('links every state from the demo’s home, in seven groups', () => {
+  it('links every state from the demo’s home, in eight groups', () => {
     const links = SEATING_PAGES.flatMap((page) => page.states);
 
-    expect(SEATING_PAGES).toHaveLength(7);
+    expect(SEATING_PAGES).toHaveLength(8);
     expect(links).toHaveLength(SEATING_STATES.length);
     expect(links[0]?.to).toBe('/demo/events/evt-wed-4/seating');
   });
@@ -427,5 +430,22 @@ describe('the states (§6)', () => {
     expect(words).not.toMatch(/—/u);
     expect(words).not.toMatch(/\bMaybe\b/u);
     expect(words).not.toMatch(/\b(AM|PM)\b/u);
+  });
+});
+
+describe('the breadcrumb (sc-55300)', () => {
+  it('names the event at the longest an event name may be', () => {
+    expect([...LONG_NAME]).toHaveLength(120);
+  });
+
+  it('gives the long name and the French words only to their states', () => {
+    expect(crumbOf('plan', 'Wedding')).toEqual({ name: 'Wedding', lang: 'en' });
+    expect(crumbOf('longName', 'Wedding')).toEqual({ name: LONG_NAME, lang: 'en' });
+    expect(crumbOf('longNameFr', 'Wedding')).toEqual({ name: LONG_NAME, lang: 'fr' });
+    expect(CRUMB_WORDS.fr).toEqual({
+      crumb: 'Fil d’Ariane',
+      events: 'Événements',
+      area: 'Plan de table',
+    });
   });
 });
