@@ -37,6 +37,8 @@ import {
   sameNameAs,
 } from './GuestsModel.ts';
 import { GreetAsField } from './GuestGreetAs.tsx';
+import { Quote } from './PasteReply.tsx';
+import { PW } from './PasteReplyModel.ts';
 import { LanguageChoices, LanguageField } from './GuestLanguage.tsx';
 import { Amber, AmberLine, Choices, DoneLine } from './GuestsParts.tsx';
 import {
@@ -800,7 +802,14 @@ export function CheckRow({
   );
 }
 
-/** Record a reply (sc-3787): nothing chosen when it opens; both answers needed before Save. */
+/** sc-54450: Record a reply opened from a copied message, the quote above it and Back to Whose reply is this?. */
+export interface FromMessage {
+  quote: string;
+  offline: boolean;
+  start: 'open' | 'blank' | 'offline' | null;
+}
+
+/** Record a reply (sc-3787): nothing chosen when it opens; both answers needed before Save. From a message, By message is chosen. */
 export function RecordReply({
   open,
   guest: g,
@@ -809,6 +818,7 @@ export function RecordReply({
   opener,
   onClose,
   onSaved,
+  message = null,
 }: {
   open: boolean;
   guest: SampleGuest;
@@ -817,18 +827,30 @@ export function RecordReply({
   opener: Opener;
   onClose: () => void;
   onSaved: (next: SampleGuest) => void;
+  message?: FromMessage | null;
 }) {
-  const [answer, setAnswer] = useState<Answer | null>(start === 'recordComing' ? 'coming' : null);
-  const [how, setHow] = useState<string | null>(start === 'recordComing' ? HOW_TOLD[0] : null);
+  const [answer, setAnswer] = useState<Answer | null>(
+    start === 'recordComing' || message?.start === 'offline' ? 'coming' : null,
+  );
+  const [how, setHow] = useState<string | null>(
+    message != null ? PW.byMessage : start === 'recordComing' ? HOW_TOLD[0] : null,
+  );
   const [ticked, setTicked] = useState<boolean[]>(() => startTicks(g));
-  const [checked, setChecked] = useState(start === 'recordRefused');
+  const [checked, setChecked] = useState(start === 'recordRefused' || message?.start === 'blank');
   const [asking, setAsking] = useState(start === 'recordReplace');
   const [failed, setFailed] = useState(start === 'recordNotSaved');
+  const [refused, setRefused] = useState(message?.start === 'offline');
+  const [all, setAll] = useState(false);
   const first = useRef<ViewInstance>(null);
   const save = () => {
     setChecked(true);
     if (answer == null || how == null) return;
     setFailed(false);
+    if (message?.offline === true) {
+      setRefused(true);
+      readOut(`${W.offline} ${W.offlineLine}`, { interrupts: true });
+      return;
+    }
     onSaved(recorded(g, answer, how, ticked, TODAY));
   };
   const comps = answer === 'coming' && g.companions.length > 0;
@@ -838,6 +860,7 @@ export function RecordReply({
       open={open}
       title={W.recordReply}
       verb={{ label: W.save, on: !asking, onPress: save, testID: 'guest.record.save' }}
+      back={message == null ? undefined : PW.whose}
       onCancel={onClose}
       cancelTestID="guest.record.cancel"
       opener={opener}
@@ -866,6 +889,13 @@ export function RecordReply({
         </Amber>
       )}
       {failed && <AlertLine text={W.notSaved} />}
+      {refused && (
+        <View style={styles.tight} testID="guest.record.offline">
+          <AlertLine text={W.offline} />
+          <AmberLine text={W.offlineLine} />
+        </View>
+      )}
+      {message != null && <Quote text={message.quote} all={all} onShowAll={() => setAll(true)} />}
       <Text size={15} weight="medium" style={[styles.secondary, styles.lines]}>
         {say.forName(g.name)}
       </Text>

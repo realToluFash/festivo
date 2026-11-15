@@ -15,3 +15,4 @@ export * from './topics.ts';
 export * from './seating.ts';
 export * from './guests.ts';
 export * from './staff.ts';
+export * from './schedule.ts';

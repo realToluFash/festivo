@@ -4,8 +4,10 @@ import { afterEach, beforeEach, describe, expect, it } from 'vitest';
 
 import { __setConfig, config } from '../config.ts';
 import { routes } from '../routes/index.tsx';
+import { cssRule, stylesheet } from '../test-styles.ts';
 
 const tested = config();
+const ROSTER_CSS = stylesheet(import.meta.dirname, 'roster.css');
 
 beforeEach(() => __setConfig({ ...tested, environment: 'development' }));
 afterEach(() => __setConfig(tested));
@@ -162,5 +164,11 @@ describe('/demo/events/evt-wed-4/staff/roster (sc-3906)', () => {
     expect(button('Edit')).toBeNull();
     expect(button('Remove from the event')).toBeNull();
     expect(screen.queryByRole('combobox', { name: /Change station/ })).toBeNull();
+  });
+
+  it('keeps the card heading 12rem wide below 720 px, as the product does', () => {
+    expect(
+      cssRule('.rs .sn-card-names', ROSTER_CSS.slice(ROSTER_CSS.indexOf('(width <= 720px)'))),
+    ).toContain('flex-basis: 12rem;');
   });
 });

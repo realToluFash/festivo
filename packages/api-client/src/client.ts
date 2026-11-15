@@ -73,6 +73,12 @@ import {
   asStaffEntry,
   asStaffRoster,
 } from './staff.ts';
+import {
+  type Schedule,
+  type ScheduleItemDetails,
+  type ScheduleWithItem,
+  asSchedule,
+} from './schedule.ts';
 
 /** A table call's answer: the plan whole, and the table it added or changed. */
 export interface SeatingWithTable {
@@ -2444,6 +2450,86 @@ export class ApiClient {
     }
 
     return { staff, member: typeof record.member === 'string' ? record.member : null };
+  }
+
+  /** The event's running order, sorted by start; refused 403 without run_of_show.read (sc-3893). */
+  async schedule(eventId: string): Promise<Schedule> {
+    return this.scheduleOf(await this.get<unknown>(this.schedulePath(eventId)));
+  }
+
+  /** Refused `validation_failed` beside each field, and 409 `schedule_item_limit` once the event holds its most. */
+  async addScheduleItem(eventId: string, details: ScheduleItemDetails): Promise<ScheduleWithItem> {
+    return this.scheduleWithItem(
+      await this.post<unknown>(`${this.schedulePath(eventId)}/items`, details),
+    );
+  }
+
+  /** The whole item. Refused as `addScheduleItem`, and 412 with `current` and `changedBy` when a colleague changed it since `version`. */
+  async changeScheduleItem(
+    eventId: string,
+    itemId: string,
+    details: ScheduleItemDetails,
+    version: number,
+  ): Promise<ScheduleWithItem> {
+    return this.scheduleWithItem(
+      await this.put<unknown>(
+        `${this.schedulePath(eventId)}/items/${encodeURIComponent(itemId)}`,
+        details,
+        { headers: { 'If-Match': versionTag(version) } },
+      ),
+    );
+  }
+
+  async deleteScheduleItem(eventId: string, itemId: string): Promise<Schedule> {
+    return this.scheduleOf(
+      await this.delete<unknown>(
+        `${this.schedulePath(eventId)}/items/${encodeURIComponent(itemId)}`,
+      ),
+    );
+  }
+
+  /** A hub token for this event's schedule topic alone. */
+  async scheduleSubscription(eventId: string): Promise<RealtimeSubscription> {
+    const body = await this.post<{ token?: unknown; expiresAt?: unknown }>(
+      `${this.schedulePath(eventId)}/subscriptions`,
+    );
+
+    return {
+      token: typeof body.token === 'string' ? body.token : '',
+      expiresAt: typeof body.expiresAt === 'string' ? body.expiresAt : '',
+    };
+  }
+
+  private scheduleOf(body: unknown): Schedule {
+    const record =
+      typeof body === 'object' && body != null ? (body as Record<string, unknown>) : {};
+
+    return (
+      asSchedule(record.schedule) ??
+      (() => {
+        throw new Error(
+          'The API answered the schedule in a shape this client does not know. Check ScheduleSerialiser in services/api.',
+        );
+      })()
+    );
+  }
+
+  private scheduleWithItem(body: unknown): ScheduleWithItem {
+    const record =
+      typeof body === 'object' && body != null ? (body as Record<string, unknown>) : {};
+    const itemId = record.itemId;
+
+    if (typeof itemId !== 'string') {
+      throw new Error(
+        'The API answered a schedule item without its id. Check the schedule controller in services/api.',
+      );
+    }
+
+    return { schedule: this.scheduleOf(body), itemId };
+  }
+
+  private schedulePath(eventId: string): string {
+    return `/api/events/${encodeURIComponent(eventId)}/schedule`;
   }
 
   private staffPath(eventId: string): string {

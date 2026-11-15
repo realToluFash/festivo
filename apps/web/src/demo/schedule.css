@@ -3,8 +3,13 @@
   align-items: flex-start;
 }
 
-.ro-add {
+.ro-add,
+.ro-run {
   gap: var(--spaceXs);
+}
+
+.ro-run {
+  text-decoration: none;
 }
 
 .ro-day {
@@ -437,7 +442,8 @@
     order: 2;
   }
 
-  .ro-add {
+  .ro-add,
+  .ro-run {
     order: 1;
     align-self: stretch;
     height: 48px;

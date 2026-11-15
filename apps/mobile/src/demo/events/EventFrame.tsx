@@ -34,6 +34,8 @@ import { EventThumb } from '../../components/EventThumb.tsx';
 import { type Shown, rowLine } from './EventsModel.ts';
 import { AREAS, type AreaKey, MORE_AREAS, PHONE_TABS } from './EventsSample.ts';
 import { AREA_WORDS, COMING, W } from './EventsWords.ts';
+import { SecondaryButton } from '../../components/Buttons.tsx';
+import { RUN_EVENT, RW as RUN_WORDS } from '../runView/runViewModel.ts';
 import { useShell } from '../../components/settingsShell.ts';
 import { Back } from '../../components/SettingsParts.tsx';
 import { PageToast, Row, RowList } from '../../components/Summary.tsx';
@@ -598,6 +600,16 @@ export function AreaPage({
         <Text size={15} weight="medium" style={[styles.secondary, styles.comingLine]}>
           {COMING[area]}
         </Text>
+        {area === 'schedule' && event.id === RUN_EVENT && (
+          <View style={styles.comingAct}>
+            <SecondaryButton
+              label={RUN_WORDS.openRun}
+              link
+              onPress={() => router.push('/demo/run-view')}
+              testID="event.schedule.run"
+            />
+          </View>
+        )}
       </View>
     </>
   );
@@ -717,6 +729,7 @@ const styles = StyleSheet.create({
   stripLine: { lineHeight: 14 * 1.4 },
   comingTitle: { lineHeight: 17 * 1.3 },
   comingLine: { lineHeight: 15 * 1.45 },
+  comingAct: { paddingTop: tokens.spaceMd, alignItems: 'flex-start' },
   coming: {
     gap: tokens.spaceXxs,
     paddingVertical: 18,

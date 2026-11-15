@@ -220,6 +220,18 @@ describe('/demo/events/evt-wed-4/schedule (sc-3893)', () => {
     ).toBeTruthy();
   });
 
+  it('opens the run view from its header, as a reader when it is read only', SLOW, async () => {
+    await open('readOnly');
+    expect(screen.getByRole('link', { name: 'Run view' }).getAttribute('href')).toBe(
+      '/demo/events/evt-wed-4/run?as=reader',
+    );
+  });
+
+  it('leaves the run view out of an empty schedule', SLOW, async () => {
+    await open('empty');
+    expect(screen.queryByRole('link', { name: 'Run view' })).toBeNull();
+  });
+
   it('picks a place by its name and count', SLOW, async () => {
     await open('placePicker');
     expect(button('Place: Main')?.getAttribute('aria-expanded')).toBe('true');

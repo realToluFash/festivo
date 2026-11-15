@@ -259,5 +259,17 @@
     "calendar_feed.status.deleted": "Eliminado",
     "calendar_feed.paused_summary": "{name} (en pausa)",
     "calendar_feed.status_line": "Estado: {status}",
-    "calendar_feed.open_line": "Abrir en Soirely: {link}"
+    "calendar_feed.open_line": "Abrir en Soirely: {link}",
+    "validation.schedule_title_required": "Indique un título.",
+    "validation.schedule_title_too_long": "El título tiene {n} caracteres. Use {max} como máximo.",
+    "validation.schedule_start_required": "Elija la fecha y la hora de inicio.",
+    "validation.schedule_start_outside": "Elija una hora entre {earliest} y {end}.",
+    "validation.schedule_length_range": "Indique una duración de 0 a {max} minutos, o déjela vacía.",
+    "validation.schedule_place_too_long": "El nombre del espacio tiene {n} caracteres. Use {max} como máximo.",
+    "validation.schedule_owner_too_long": "El nombre tiene {n} caracteres. Use {max} como máximo.",
+    "validation.schedule_role_too_long": "La función tiene {n} caracteres. Use {max} como máximo.",
+    "validation.schedule_note_too_long": "La nota tiene {n} caracteres. Use {max} como máximo.",
+    "run_of_show.version_required": "Envíe la versión que está cambiando, en If-Match.",
+    "run_of_show.changed_since": "Otra persona ha cambiado este elemento mientras usted lo tenía abierto. Su cambio no se ha guardado.",
+    "timeline.run_of_show_begins": "Empieza el programa"
 }
