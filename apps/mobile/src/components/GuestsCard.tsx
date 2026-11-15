@@ -82,7 +82,7 @@ export function GuestsCard({
   );
 }
 
-/** A guest's details lead with their reply on glass, their name and one line, as the demo's guest page does. */
+/** A guest's details lead with their reply on glass, their name, one line and its step, as the demo's guest page does. */
 export function GuestCover({
   kind,
   event,
@@ -99,7 +99,6 @@ export function GuestCover({
   word: string;
   name: string;
   line: string | null;
-  /** Its one step: Let them change their reply, once replies close (sc-3780). */
   step?: StepProps | null;
   nameRef: Ref<TextHandle>;
 }) {

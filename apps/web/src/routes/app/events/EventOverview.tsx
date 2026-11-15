@@ -1,6 +1,7 @@
 import { type OrganisationEvent, type TaggedEvent } from '@soirely/api-client';
 import {
   type EventPhase,
+  calledOff,
   changedWords,
   currencyLabel,
   formatEventRange,
@@ -466,7 +467,7 @@ function Details({
             <Lead name="calendar" />,
             formatEventRange(event.startsAt, event.endsAt, event.timeZone, locale),
             finished
-              ? `${t('eventPage.dates')} · ${t('eventEdit.scheduleLocked')}`
+              ? `${t('eventPage.dates')} · ${t(calledOff(event) ? 'eventEdit.scheduleCalledOff' : 'eventEdit.scheduleLocked')}`
               : [
                   t('eventPage.dates'),
                   ...(days > 1 ? [t('eventPage.dayCount', { count: days })] : []),

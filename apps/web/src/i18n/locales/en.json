@@ -429,7 +429,8 @@
     "leaveBody": "Your changes to this event will be lost.",
     "leave": "Leave without saving",
     "saved": "Saved",
-    "scheduleConcluded": "This event is over, so its start, end and time zone cannot be changed.",
+    "scheduleConcluded": "This event has ended or been called off, so its start, end and time zone cannot be changed.",
+    "scheduleCalledOff": "This event was called off, so its start, end and time zone can't be changed.",
     "scheduleLocked": "This event is over, so its start, end and time zone can't be changed."
   },
   "eventHosts": {

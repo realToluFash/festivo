@@ -159,6 +159,7 @@
     "event.last_host": "Guests can see this event, so its last host cannot be removed.",
     "event.already_over": "This event is already over, so it cannot be ended.",
     "event.schedule_concluded": "This event is over, so its start, end and time zone cannot be changed.",
+    "event.schedule_called_off": "This event was called off, so its start, end and time zone cannot be changed.",
     "code.mismatch": "That code does not match.",
     "code.expired": "That code has expired.",
     "code.exhausted": "That code no longer works.",

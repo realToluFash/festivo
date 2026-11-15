@@ -158,6 +158,7 @@ export function EventGuests({
   const emptyAdd = useRef<ViewInstance>(null);
   const editButton = useRef<ViewInstance>(null);
   const markButton = useRef<ViewInstance>(null);
+  const coverMark = useRef<ViewInstance>(null);
   const unmarkButton = useRef<ViewInstance>(null);
   const reopenButton = useRef<ViewInstance>(null);
   const [reopening, setReopening] = useState({ busy: false, failed: false });
@@ -259,8 +260,8 @@ export function EventGuests({
     setPane({ kind: 'guest', guest: tagged.guest });
     readList(watch);
   };
-  const startMark = () => {
-    markOpener.current = markButton.current;
+  const startMark = (from: ViewInstance | null) => {
+    markOpener.current = from;
     setNotice(null);
     setSaved(false);
     setMarking((was) => ({ round: was.round + 1, sending: false, refusal: null }));
@@ -470,12 +471,14 @@ export function EventGuests({
         nameRef={guestName}
         editRef={editButton}
         markRef={markButton}
+        coverMarkRef={coverMark}
         unmarkRef={unmarkButton}
         onEdit={() => {
           const tagged = tags.current.get(open);
           if (tagged != null) openForm({ kind: 'edit', tagged }, editButton.current);
         }}
-        onMark={startMark}
+        onMark={() => startMark(markButton.current)}
+        onCoverMark={() => startMark(coverMark.current)}
         onUnmark={() => unmark(open)}
         onBack={closeGuest}
         onRetry={() => readGuest(open, false)}

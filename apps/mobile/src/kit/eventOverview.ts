@@ -1,6 +1,7 @@
 import type { OrganisationEvent } from '@soirely/api-client';
 import {
   type EventPhase,
+  calledOff,
   endLabel,
   eventAllows,
   formatEventRange,
@@ -40,12 +41,17 @@ export interface RowWords {
   line: string;
 }
 
-type Dated = Pick<OrganisationEvent, 'startsAt' | 'endsAt' | 'timeZone'>;
+type Dated = Pick<OrganisationEvent, 'startsAt' | 'endsAt' | 'timeZone' | 'status' | 'concludedAt'>;
 
 export function datesRow(event: Dated, phase: EventPhase, locale: string, t: TFunction): RowWords {
   const title = formatEventRange(event.startsAt, event.endsAt, event.timeZone, locale);
 
-  if (scheduleLocked(phase)) return { title, line: t('eventPage.datesLocked') };
+  if (scheduleLocked(phase)) {
+    return {
+      title,
+      line: t(calledOff(event) ? 'eventPage.datesCalledOff' : 'eventPage.datesLocked'),
+    };
+  }
 
   const count = dayCount(event);
 

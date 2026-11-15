@@ -72,6 +72,7 @@ final readonly class EventEditor
             $before = self::recorded($event);
             $details = EventDetails::of($event);
             $phase = EventPhase::of($event->getStatus(), $event->getStartsAt(), $event->getEndsAt(), $this->clock->now());
+            $calledOff = EventPhase::calledOff($event->getEndedAt(), $event->getStartsAt());
             $checked = $this->eventRules->check([
                 'name' => $fields['name'] ?? $event->getName(),
                 'type' => Iter\contains_key($fields, 'type') ? $fields['type'] : $event->getType()->value,
@@ -125,7 +126,7 @@ final readonly class EventEditor
             $this->writeReplyBy($event, Iter\contains_key($checked, 'replyBy') ? $checked['replyBy'] : self::beforeStart($event->getReplyBy(), $checked['startsAt']), $wasClosed);
 
             $changes = Auditor::diff($before, self::recorded($event));
-            $this->allow($phase, $changes);
+            $this->allow($phase, $calledOff, $changes);
 
             if ([] !== $changes) {
                 $this->auditor->record(self::UPDATED, 'Event', $event->getId(), Actor::User, $by->getId(), $by->getName(), $changes);
@@ -221,11 +222,11 @@ final readonly class EventEditor
     }
 
     /** @param array<string, mixed> $changes */
-    private function allow(EventPhase $phase, array $changes): void
+    private function allow(EventPhase $phase, bool $calledOff, array $changes): void
     {
         foreach (self::actionsFor(Vec\keys($changes)) as $action) {
             if (EventPhase::Finished === $phase && EventAction::EditSchedule === $action) {
-                throw new ApiException(ErrorCode::EventConcluded, $this->translator->trans('event.schedule_concluded'));
+                throw new ApiException(ErrorCode::EventConcluded, $this->translator->trans($calledOff ? 'event.schedule_called_off' : 'event.schedule_concluded'));
             }
 
             if (!$phase->allows($action)) {
