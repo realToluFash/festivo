@@ -1,0 +1,21 @@
+# sc-49445: the demo's Members at crowd, its People filter and its open menu, at the current orientation.
+appId: host.exp.Exponent
+---
+- setOrientation: PORTRAIT
+- openLink: ${METRO_URL}/--/demo/settings/members?state=crowd
+- waitForAnimationToEnd:
+    timeout: 8000
+- runFlow: ../developer-menu-close.yaml
+- waitForAnimationToEnd:
+    timeout: 3000
+- takeScreenshot: demo-crowd
+- scrollUntilVisible:
+    element:
+      id: members.filter
+    timeout: 20000
+- takeScreenshot: demo-filter-trigger
+- tapOn:
+    id: members.filter
+- waitForAnimationToEnd:
+    timeout: 3000
+- takeScreenshot: demo-filter-menu
