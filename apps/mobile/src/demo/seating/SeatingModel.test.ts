@@ -888,7 +888,9 @@ describe('sections', () => {
       'Its 1 table and 1 row stay where they are, with no section.',
     );
     expect(say.sectionDeleteBody(0, 0, 0)).toBe('');
-    expect(W.sectionStays).toBe('Its tables, rows and seats stay where they are, with no section.');
+    expect(W.sectionStays).toBe(
+      'Its tables, rows and single seats stay where they are, with no section.',
+    );
   });
 
   it('asks about Quiet corner, a section of a row and a single seat, which keep their places', () => {

@@ -86,7 +86,7 @@ export const SW = {
   cancel: 'Cancel',
   addSection: 'Add section',
   deleteSectionDots: 'Delete section…',
-  sectionStays: 'Its tables, rows and seats stay where they are, with no section.',
+  sectionStays: 'Its tables, rows and single seats stay where they are, with no section.',
   deleteNamed: 'Delete {{name}}?',
   sectionDeleteBody_one: 'Its {{counts}} stays where it is, with no section.',
   sectionDeleteBody_other: 'Its {{counts}} stay where they are, with no section.',

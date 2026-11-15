@@ -414,7 +414,7 @@ describe('Room settings and sections (sc-3998)', () => {
       );
       expect(
         within(panel()).getByText(
-          'Its tables, rows and seats stay where they are, with no section.',
+          'Its tables, rows and single seats stay where they are, with no section.',
         ),
       ).toBeDefined();
       fireEvent.click(within(ask).getByRole('button', { name: 'Delete section' }));

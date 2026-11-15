@@ -61,7 +61,7 @@ export const W = {
   colour: 'Colour',
   deleteSectionOpener: 'Delete section…',
   deleteSection: 'Delete section',
-  sectionStays: 'Its tables, rows and seats stay where they are, with no section.',
+  sectionStays: 'Its tables, rows and single seats stay where they are, with no section.',
   keepIt: 'Keep it',
   enterSectionName: 'Enter a name for the section.',
   sectionLimit: 'A plan can have up to 30 sections. Delete one to add another.',
