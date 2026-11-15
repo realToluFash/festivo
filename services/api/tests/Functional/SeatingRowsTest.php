@@ -310,18 +310,33 @@ final class SeatingRowsTest extends ApiTestCase
     }
 
     #[Test]
-    public function rowsAndSingleSeatsLeaveTheTablesCountsAsTheyWere(): void
+    public function aSectionCountsItsRowsAndSingleSeatsAndTheirSeats(): void
     {
         $section = $this->addSection('Ceremony');
         $this->as($this->owner, 'POST', $this->plan() . '/tables', ['shape' => 'round']);
         $this->change($this->addRow(), ['sectionId' => $section]);
         $this->change($this->addSeat(), ['sectionId' => $section]);
+        $this->addRow();
+        $this->addSeat();
 
         $plan = $this->planNow();
+        $ceremony = $plan['sections'][0];
 
-        self::assertSame(['sections' => 1, 'tables' => 1, 'rows' => 1, 'singleSeats' => 1, 'seatedGuests' => 0], $plan['counts']);
-        self::assertSame(['tables' => 0, 'seats' => 0], ['tables' => $plan['sections'][0]['tables'], 'seats' => $plan['sections'][0]['seats']]);
-        self::assertSame(['tables' => 1, 'seats' => 10], $plan['withoutSection']);
+        self::assertSame(['sections' => 1, 'tables' => 1, 'rows' => 2, 'singleSeats' => 2, 'seatedGuests' => 0], $plan['counts']);
+        self::assertSame(
+            ['tables' => 0, 'rows' => 1, 'singleSeats' => 1, 'seats' => 11],
+            ['tables' => $ceremony['tables'], 'rows' => $ceremony['rows'], 'singleSeats' => $ceremony['singleSeats'], 'seats' => $ceremony['seats']],
+        );
+        self::assertSame(['tables' => 1, 'rows' => 1, 'singleSeats' => 1, 'seats' => 21], $plan['withoutSection']);
+    }
+
+    #[Test]
+    public function onlyRowsAndSingleSeatsWithNoSectionStillMakeAWithoutASectionLine(): void
+    {
+        $this->addRow();
+        $this->addSeat();
+
+        self::assertSame(['tables' => 0, 'rows' => 1, 'singleSeats' => 1, 'seats' => 11], $this->planNow()['withoutSection']);
     }
 
     #[Test]

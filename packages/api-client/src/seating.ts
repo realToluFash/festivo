@@ -118,13 +118,19 @@ export interface SingleSeatChanges {
   unusable?: boolean;
 }
 
-export interface SeatingSection {
+/** `seats` counts every chair at the tables, in the rows and the single seats. */
+export interface SectionContents {
+  tables: number;
+  rows: number;
+  singleSeats: number;
+  seats: number;
+}
+
+export interface SeatingSection extends SectionContents {
   id: string;
   name: string;
   colour: SectionColour;
   version: number;
-  tables: number;
-  seats: number;
 }
 
 export interface SeatingPlan {
@@ -138,7 +144,7 @@ export interface SeatingPlan {
   tables: SeatingTable[];
   rows: SeatingRow[];
   singleSeats: SingleSeat[];
-  withoutSection: { tables: number; seats: number };
+  withoutSection: SectionContents;
   counts: {
     sections: number;
     tables: number;
@@ -190,21 +196,30 @@ function isCount(value: unknown): value is number {
   return typeof value === 'number' && Number.isInteger(value) && value >= 0;
 }
 
+function asContents(raw: unknown): SectionContents | null {
+  if (!isRecord(raw)) return null;
+  const { tables, rows, singleSeats, seats } = raw;
+
+  if (!isCount(tables) || !isCount(rows) || !isCount(singleSeats) || !isCount(seats)) return null;
+
+  return { tables, rows, singleSeats, seats };
+}
+
 function asSection(raw: unknown): SeatingSection | null {
   if (!isRecord(raw)) return null;
-  const { id, name, colour, version, tables, seats } = raw;
+  const { id, name, colour, version } = raw;
+  const contents = asContents(raw);
 
   if (
     typeof id !== 'string' ||
     typeof name !== 'string' ||
     !(SECTION_COLOURS as readonly unknown[]).includes(colour) ||
     !isCount(version) ||
-    !isCount(tables) ||
-    !isCount(seats)
+    contents == null
   )
     return null;
 
-  return { id, name, colour: colour as SectionColour, version, tables, seats };
+  return { id, name, colour: colour as SectionColour, version, ...contents };
 }
 
 function asTable(raw: unknown): SeatingTable | null {
@@ -316,8 +331,8 @@ function asSingleSeat(raw: unknown): SingleSeat | null {
 
 function asPlan(raw: unknown): SeatingPlan | null {
   if (!isRecord(raw)) return null;
-  const { id, roomName, widthCm, lengthCm, version, changedBy, sections, withoutSection, counts } =
-    raw;
+  const { id, roomName, widthCm, lengthCm, version, changedBy, sections, counts } = raw;
+  const withoutSection = asContents(raw.withoutSection);
   const read = Array.isArray(sections) ? sections.map(asSection) : null;
   const tables = Array.isArray(raw.tables) ? raw.tables.map(asTable) : null;
   const rows = Array.isArray(raw.rows) ? raw.rows.map(asRow) : null;
@@ -338,9 +353,7 @@ function asPlan(raw: unknown): SeatingPlan | null {
     !rows.every((row) => row != null) ||
     singleSeats == null ||
     !singleSeats.every((seat) => seat != null) ||
-    !isRecord(withoutSection) ||
-    !isCount(withoutSection.tables) ||
-    !isCount(withoutSection.seats) ||
+    withoutSection == null ||
     !isRecord(counts) ||
     !isCount(counts.sections) ||
     !isCount(counts.tables) ||
@@ -361,7 +374,7 @@ function asPlan(raw: unknown): SeatingPlan | null {
     tables: tables as SeatingTable[],
     rows: rows as SeatingRow[],
     singleSeats: singleSeats as SingleSeat[],
-    withoutSection: { tables: withoutSection.tables, seats: withoutSection.seats },
+    withoutSection,
     counts: {
       sections: counts.sections,
       tables: counts.tables,

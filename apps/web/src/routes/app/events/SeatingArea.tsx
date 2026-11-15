@@ -7,6 +7,7 @@ import {
   type Seating,
   type SeatingPlan,
   type SectionColour,
+  type SectionContents,
   asSeating,
   realtimeTopic,
 } from '@soirely/api-client';
@@ -1081,12 +1082,13 @@ function RoomSettings({ ctx, plan }: { ctx: PlanApi; plan: SeatingPlan }) {
 function sectionLine(
   t: ReturnType<typeof useTranslation>['t'],
   colour: SectionColour | null,
-  tables: number,
-  seats: number,
+  { tables, rows, singleSeats, seats }: SectionContents,
 ): string {
   return [
     colour == null ? null : t(`seating.colours.${colour}`),
-    t('seating.countTables', { count: tables }),
+    tables > 0 || colour != null ? t('seating.countTables', { count: tables }) : null,
+    rows > 0 ? t('seating.countRows', { count: rows }) : null,
+    singleSeats > 0 ? t('seating.countSingleSeats', { count: singleSeats }) : null,
     seats > 0 ? t('seating.countSeats', { count: seats }) : null,
   ]
     .filter((part): part is string => part != null)
@@ -1106,7 +1108,8 @@ function SectionsBlock({
 }) {
   const { t } = useTranslation();
   const full = plan.sections.length >= SEATING_LIMITS.sectionsMaximum;
-  const unsorted = plan.withoutSection.tables > 0 || plan.withoutSection.seats > 0;
+  const { tables, rows, singleSeats } = plan.withoutSection;
+  const unsorted = tables + rows + singleSeats > 0;
 
   return (
     <section className="st-block" aria-labelledby="st-sections">
@@ -1134,9 +1137,7 @@ function SectionsBlock({
               <Swatch colour={section.colour} />
               <span className="st-row-words">
                 <span className="st-row-name">{section.name}</span>
-                <span className="st-row-line">
-                  {sectionLine(t, section.colour, section.tables, section.seats)}
-                </span>
+                <span className="st-row-line">{sectionLine(t, section.colour, section)}</span>
               </span>
               {!ctx.readOnly && (
                 <button
@@ -1155,9 +1156,7 @@ function SectionsBlock({
               <Swatch colour={null} />
               <span className="st-row-words">
                 <span className="st-row-name">{t('seating.noSection')}</span>
-                <span className="st-row-line">
-                  {sectionLine(t, null, plan.withoutSection.tables, plan.withoutSection.seats)}
-                </span>
+                <span className="st-row-line">{sectionLine(t, null, plan.withoutSection)}</span>
               </span>
             </li>
           )}

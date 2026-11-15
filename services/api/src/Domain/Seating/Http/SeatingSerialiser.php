@@ -46,7 +46,6 @@ final readonly class SeatingSerialiser
         $tables = $this->seatingTableRepository->findInPlan($plan);
         $rows = $this->seatingRowRepository->findInPlan($plan);
         $singleSeats = $this->seatingSeatRepository->findInPlan($plan);
-        $unsectioned = Vec\filter($tables, static fn (SeatingTable $table): bool => null === $table->getSection());
 
         return [
             'id' => $plan->getId()->toRfc4122(),
@@ -55,11 +54,11 @@ final readonly class SeatingSerialiser
             'lengthCm' => $plan->getLengthCm(),
             'version' => $plan->getVersion(),
             'changedBy' => $plan->getChangedBy()?->getName(),
-            'sections' => Vec\map($sections, static fn (SeatingSection $section): array => self::section($section, $tables)),
+            'sections' => Vec\map($sections, static fn (SeatingSection $section): array => self::section($section, $tables, $rows, $singleSeats)),
             'tables' => Vec\map($tables, self::table(...)),
             'rows' => Vec\map($rows, self::row(...)),
             'singleSeats' => Vec\map($singleSeats, self::singleSeat(...)),
-            'withoutSection' => ['tables' => Iter\count($unsectioned), 'seats' => self::seatsAt($unsectioned)],
+            'withoutSection' => self::contents(null, $tables, $rows, $singleSeats),
             'counts' => [
                 'sections' => Iter\count($sections),
                 'tables' => Iter\count($tables),
@@ -71,21 +70,48 @@ final readonly class SeatingSerialiser
     }
 
     /**
-     * @param list<SeatingTable> $tables the plan's
+     * @param list<SeatingTable> $tables      the plan's
+     * @param list<SeatingRow>   $rows        the plan's
+     * @param list<SeatingSeat>  $singleSeats the plan's
      *
      * @return array<string, mixed>
      */
-    private static function section(SeatingSection $section, array $tables): array
+    private static function section(SeatingSection $section, array $tables, array $rows, array $singleSeats): array
     {
-        $inIt = Vec\filter($tables, static fn (SeatingTable $table): bool => true === $table->getSection()?->getId()->equals($section->getId()));
-
         return [
             'id' => $section->getId()->toRfc4122(),
             'name' => $section->getName(),
             'colour' => $section->getColour()->value,
             'version' => $section->getVersion(),
-            'tables' => Iter\count($inIt),
-            'seats' => self::seatsAt($inIt),
+            ...self::contents($section, $tables, $rows, $singleSeats),
+        ];
+    }
+
+    /**
+     * What sits in a section, or in none when `$section` is null; `seats` counts every chair at its tables, in its rows and its single seats.
+     *
+     * @param list<SeatingTable> $tables      the plan's
+     * @param list<SeatingRow>   $rows        the plan's
+     * @param list<SeatingSeat>  $singleSeats the plan's
+     *
+     * @return array{tables: int, rows: int, singleSeats: int, seats: int}
+     */
+    private static function contents(?SeatingSection $section, array $tables, array $rows, array $singleSeats): array
+    {
+        $in = static fn (?SeatingSection $of): bool => null === $section ? null === $of : true === $of?->getId()->equals($section->getId());
+        $tables = Vec\filter($tables, static fn (SeatingTable $table): bool => $in($table->getSection()));
+        $rows = Vec\filter($rows, static fn (SeatingRow $row): bool => $in($row->getSection()));
+        $singleSeats = Vec\filter($singleSeats, static fn (SeatingSeat $seat): bool => $in($seat->getSection()));
+        $chairs = Vec\concat(
+            Vec\map($tables, static fn (SeatingTable $table): int => $table->getSeats()),
+            Vec\map($rows, static fn (SeatingRow $row): int => $row->getSeats()),
+        );
+
+        return [
+            'tables' => Iter\count($tables),
+            'rows' => Iter\count($rows),
+            'singleSeats' => Iter\count($singleSeats),
+            'seats' => Math\sum($chairs) + Iter\count($singleSeats),
         ];
     }
 
@@ -149,11 +175,5 @@ final readonly class SeatingSerialiser
             'version' => $seat->getVersion(),
             'changedBy' => $seat->getChangedBy()?->getName(),
         ];
-    }
-
-    /** @param list<SeatingTable> $tables */
-    private static function seatsAt(array $tables): int
-    {
-        return Math\sum(Vec\map($tables, static fn (SeatingTable $table): int => $table->getSeats()));
     }
 }

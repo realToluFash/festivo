@@ -47,6 +47,7 @@ const EVENT = {
 };
 
 const NONE = { sections: 0, tables: 0, rows: 0, singleSeats: 0, seatedGuests: 0 };
+const EMPTY = { tables: 0, rows: 0, singleSeats: 0, seats: 0 };
 
 function plan(sections: { id: string; name: string; colour: string; version?: number }[] = []) {
   return {
@@ -56,11 +57,11 @@ function plan(sections: { id: string; name: string; colour: string; version?: nu
     lengthCm: 1800,
     version: 1,
     changedBy: null,
-    sections: sections.map((one) => ({ version: 1, tables: 0, seats: 0, ...one })),
+    sections: sections.map((one) => ({ version: 1, ...EMPTY, ...one })),
     tables: [],
     rows: [],
     singleSeats: [],
-    withoutSection: { tables: 0, seats: 0 },
+    withoutSection: EMPTY,
     counts: { ...NONE, sections: sections.length },
   };
 }
@@ -335,6 +336,28 @@ describe('Seating at a desk (sc-3998)', () => {
     );
   });
 
+  it('counts the rows, single seats and seats in each section and in none', async () => {
+    signedIn();
+    const ceremony = plan([{ id: 's1', name: 'Ceremony', colour: 'teal' }]);
+    ceremony.sections = ceremony.sections.map((one) => ({
+      ...one,
+      rows: 3,
+      singleSeats: 1,
+      seats: 31,
+    }));
+    ceremony.withoutSection = { ...EMPTY, rows: 1, seats: 10 };
+    await onSeating({
+      'GET /api/events/ev_1/seating-plan': () =>
+        json({ seating: { measurementSystem: 'metric', plan: ceremony } }),
+    });
+
+    expect(
+      await screen.findByText('Teal · 0 tables · 3 rows · 1 single seat · 31 seats'),
+    ).toBeDefined();
+    expect(screen.getByText('No section')).toBeDefined();
+    expect(screen.getByText('1 row · 10 seats')).toBeDefined();
+  });
+
   it('asks before deleting a section, naming its tables', async () => {
     signedIn();
     const terrace = { ...plan([{ id: 's1', name: 'Terrace', colour: 'teal' }]) };
@@ -588,7 +611,7 @@ function withTables(...tables: ReturnType<typeof table>[]) {
   return {
     ...plan(),
     tables,
-    withoutSection: { tables: tables.length, seats: 0 },
+    withoutSection: { ...EMPTY, tables: tables.length },
     counts: { ...NONE, tables: tables.length },
   };
 }
