@@ -1,7 +1,8 @@
 import { act, fireEvent, render, screen, waitFor, within } from '@testing-library/react';
-import { afterEach, describe, expect, it, vi } from 'vitest';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { RouterProvider, createMemoryRouter } from 'react-router';
 
+import { __setConfig, config } from '../../../config.ts';
 import { __setSessionState, type Session } from '../../../session.ts';
 import { OWNER_PERMISSIONS, membership } from '../../../test-memberships.ts';
 import { routes } from '../../index.tsx';
@@ -417,5 +418,92 @@ describe('The event’s Schedule (sc-3893)', () => {
       fixedTime: false,
       showToGuests: true,
     });
+  });
+});
+
+class StubSource {
+  static readonly CLOSED = 2;
+  static made: StubSource[] = [];
+
+  readyState = 0;
+  onopen: (() => void) | null = null;
+  onmessage: ((message: { data: string }) => void) | null = null;
+  onerror: (() => void) | null = null;
+
+  readonly url: string;
+
+  constructor(url: string | URL) {
+    this.url = String(url);
+    StubSource.made.push(this);
+  }
+
+  close(): void {
+    this.readyState = StubSource.CLOSED;
+  }
+
+  publish(data: unknown): void {
+    act(() => this.onmessage?.({ data: JSON.stringify(data) }));
+  }
+}
+
+describe('The Schedule’s form, while the hub moves the items (sc-3893)', () => {
+  const before = config();
+
+  beforeEach(() => {
+    __setConfig({ ...before, mercureUrl: 'http://hub.test/.well-known/mercure' });
+    StubSource.made = [];
+    vi.stubGlobal('EventSource', StubSource);
+  });
+
+  afterEach(() => {
+    __setConfig(before);
+    vi.unstubAllGlobals();
+  });
+
+  const hub = () =>
+    json({ token: 'tok', expiresAt: new Date(Date.now() + 3_600_000).toISOString() });
+
+  it('saves with the version the form opened with, not the one the hub delivered since', async () => {
+    const theirs = { ...DRINKS, title: 'Drinks on the lawn', version: 2 };
+    const sent = await onSchedule({
+      'GET /api/events/ev_1/schedule': () => json({ schedule: schedule([DRINKS]) }),
+      'POST /api/events/ev_1/schedule/subscriptions': hub,
+      'PUT /api/events/ev_1/schedule/items/it_drinks': () =>
+        problem('precondition_failed', 412, { current: theirs, changedBy: 'Kemi' }),
+    });
+    fireEvent.click(await screen.findByRole('button', { name: 'Welcome drinks' }));
+    const scheduled = () => StubSource.made.filter((one) => one.url.includes('schedule'));
+    await waitFor(() => expect(scheduled()).toHaveLength(1));
+    scheduled()[0]!.publish(schedule([theirs]));
+
+    fireEvent.change(screen.getByLabelText('Title'), { target: { value: 'Cocktails' } });
+    fireEvent.click(screen.getByRole('button', { name: 'Save item' }));
+
+    await waitFor(() => expect(document.activeElement?.id).toBe('ro-conflict'));
+    expect(sent.filter(({ line }) => line.startsWith('PUT')).map(({ ifMatch }) => ifMatch)).toEqual(
+      ['"1"'],
+    );
+  });
+
+  it('says the item is gone when the hub drops it from an open form, and adds nothing', async () => {
+    const sent = await onSchedule({
+      'GET /api/events/ev_1/schedule': () => json({ schedule: schedule([DRINKS, PHOTOS]) }),
+      'POST /api/events/ev_1/schedule/subscriptions': hub,
+      'PUT /api/events/ev_1/schedule/items/it_drinks': () => problem('not_found', 404),
+    });
+    fireEvent.click(await screen.findByRole('button', { name: 'Welcome drinks' }));
+    const scheduled = () => StubSource.made.filter((one) => one.url.includes('schedule'));
+    await waitFor(() => expect(scheduled()).toHaveLength(1));
+    scheduled()[0]!.publish(schedule([PHOTOS]));
+
+    fireEvent.click(screen.getByRole('button', { name: 'Save item' }));
+
+    await waitFor(() => expect(document.activeElement?.id).toBe('ro-failed'));
+    expect(document.getElementById('ro-failed')?.textContent).toContain(
+      'Someone else deleted this item. Nothing was saved.',
+    );
+    expect(
+      sent.filter(({ line }) => line.startsWith('POST /api/events/ev_1/schedule/items')),
+    ).toEqual([]);
   });
 });

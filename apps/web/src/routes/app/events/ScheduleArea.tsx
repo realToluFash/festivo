@@ -59,7 +59,7 @@ import './schedule.css';
 
 type Load = { kind: 'loading' } | { kind: 'failed' } | { kind: 'loaded'; schedule: Schedule };
 
-type Panel = { kind: 'add' } | { kind: 'edit'; id: string } | null;
+type Panel = { kind: 'add' } | { kind: 'edit'; id: string; version: number } | null;
 
 const FIELD_IDS: Record<Field, string> = {
   title: 'ro-title',
@@ -244,7 +244,7 @@ function ScheduleView({
   }
 
   function openEdit(one: ScheduleItem) {
-    setPanel({ kind: 'edit', id: one.id });
+    setPanel({ kind: 'edit', id: one.id, version: one.version });
     setForm(formOf(one));
     reset();
     focusAfter.current = 'ro-panel-title';
@@ -274,21 +274,21 @@ function ScheduleView({
     if (wrong != null) focusAfter.current = FIELD_IDS[wrong];
   }
 
-  async function send(version: number | null) {
-    if (form == null) return;
+  async function send(sent: Panel) {
+    if (form == null || sent == null) return;
     const title = form.title.trim();
     const details = detailsOf(form, formPlaces(items, form, main), main);
     setBusy(true);
     setFailed(null);
     try {
       const answer =
-        panel?.kind === 'edit' && version != null
-          ? await api.changeScheduleItem(event.id, panel.id, details, version)
+        sent.kind === 'edit'
+          ? await api.changeScheduleItem(event.id, sent.id, details, sent.version)
           : await api.addScheduleItem(event.id, details);
       kept(
         answer.schedule,
         answer.itemId,
-        t(panel?.kind === 'edit' ? 'schedule.saved' : 'schedule.added', { title }),
+        t(sent.kind === 'edit' ? 'schedule.saved' : 'schedule.added', { title }),
       );
     } catch (error) {
       if (error instanceof ApiError && error.code === 'validation_failed') {
@@ -337,11 +337,12 @@ function ScheduleView({
       wrongAt(found);
       return;
     }
-    void send(editing?.version ?? null);
+    void send(panel);
   }
 
   function useTheirs() {
-    if (conflict == null) return;
+    if (conflict == null || panel?.kind !== 'edit') return;
+    setPanel({ ...panel, version: conflict.version });
     setForm(formOf(conflict));
     onSchedule({
       ...schedule,
@@ -352,16 +353,17 @@ function ScheduleView({
   }
 
   function keepMine() {
-    if (form == null || conflict == null || busy) return;
+    if (form == null || conflict == null || panel?.kind !== 'edit' || busy) return;
     const found = check(form, schedule, reader, t);
     if (firstWrong(found) != null) {
       setPressed(true);
       wrongAt(found);
       return;
     }
-    const version = conflict.version;
+    const moved = { ...panel, version: conflict.version };
+    setPanel(moved);
     setConflict(null);
-    void send(version);
+    void send(moved);
   }
 
   async function remove() {
