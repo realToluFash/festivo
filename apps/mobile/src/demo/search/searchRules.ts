@@ -376,4 +376,14 @@ export const SEARCH_BOARDS: readonly { title: string; what: string; href: string
     what: 'The pill, the 44 search button, then the bell; the button opens Search',
     href: '/demo/search-header',
   },
+  {
+    title: 'Search on Today’s cover',
+    what: 'In glass beside the bell, on the cover of a phone and an upright iPad',
+    href: '/demo/search-header?on=today',
+  },
+  {
+    title: 'Search on Today’s band, an event happening now',
+    what: 'In glass beside the bell, over the event’s own colour',
+    href: '/demo/search-header?on=today-now',
+  },
 ];
