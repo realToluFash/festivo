@@ -67,6 +67,10 @@
   border-top: 1px solid var(--colorAttentionBorder);
   text-align: left;
   vertical-align: top;
+  overflow-wrap: break-word;
+}
+
+.ro-diff td {
   overflow-wrap: anywhere;
 }
 

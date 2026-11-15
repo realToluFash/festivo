@@ -271,5 +271,8 @@
     "validation.schedule_note_too_long": "Cette note compte {n} caractères. Utilisez-en {max} au maximum.",
     "run_of_show.version_required": "Envoyez la version que vous modifiez, dans If-Match.",
     "run_of_show.changed_since": "Quelqu’un d’autre a modifié cet élément pendant que vous l’aviez ouvert. Votre modification n’a pas été enregistrée.",
+    "run_of_show.item_started": "Cet élément a déjà commencé. Rien n’a été modifié.",
+    "run_of_show.item_not_started": "Commencez cet élément avant de le marquer comme terminé.",
+    "run_of_show.item_finished": "Cet élément est déjà terminé. Rien n’a été modifié.",
     "timeline.run_of_show_begins": "Début du déroulé"
 }

@@ -81,6 +81,8 @@ function item(
     id,
     title,
     startsAt,
+    startedAt: null,
+    endedAt: null,
     day,
     lengthMinutes: null,
     place: null,
@@ -202,6 +204,17 @@ describe('The event’s Schedule (sc-3893)', () => {
 
     expect(await screen.findByRole('heading', { name: 'Nothing scheduled yet' })).toBeDefined();
     expect(screen.getAllByRole('button', { name: 'Add item' }).length).toBeGreaterThan(0);
+    expect(screen.queryByRole('link', { name: 'Run view' })).toBeNull();
+  });
+
+  it('opens the run view from its header once it holds an item, for a reader too (sc-1404)', async () => {
+    await onSchedule(
+      { 'GET /api/events/ev_1/schedule': () => json({ schedule: schedule([DRINKS]) }) },
+      OWNER_PERMISSIONS.filter((one) => one !== 'run_of_show.manage'),
+    );
+
+    const run = await screen.findByRole('link', { name: 'Run view' });
+    expect(run.getAttribute('href')).toBe('/app/events/ev_1/run');
   });
 
   it('is read-only without run_of_show.manage', async () => {

@@ -6,8 +6,12 @@ import {
   SECTION_COLOURS,
   type Seating,
   type SeatingPlan,
+  type SeatingSection,
+  type SeatingRow,
+  type SeatingTable,
   type SectionColour,
   type SectionContents,
+  type SingleSeat,
   asSeating,
   realtimeTopic,
 } from '@soirely/api-client';
@@ -272,6 +276,8 @@ function Plan({
   const { layers, covered, setHost } = useDeskLayers();
   const [panel, setPanel] = useState<Panel | null>(null);
   const opener = useRef<string | null>(null);
+  const newest = useRef(seating.plan);
+  const queue = useRef<Promise<unknown>>(Promise.resolve());
   const [asking, setAsking] = useState<Asking | null>(null);
   const [notice, setNotice] = useState<string | null>(null);
   const [sectionsRefused, setSectionsRefused] = useState(false);
@@ -298,19 +304,24 @@ function Plan({
     shownPanel?.kind === 'seat'
       ? shownPanel.id
       : null;
-  const tableChosen = shownPanel?.kind === 'table' || shownPanel?.kind === 'chair';
+  const chosenAttribute =
+    shownPanel?.kind === 'table' || shownPanel?.kind === 'chair'
+      ? 'data-table'
+      : shownPanel?.kind === 'row'
+        ? 'data-row'
+        : shownPanel?.kind === 'seat'
+          ? 'data-seat'
+          : null;
 
   const open = (next: Panel | null) => {
     if (next == null) {
       const back = opener.current;
-      const table = tableChosen ? shownPanel.id : null;
+      const item = chosenAttribute == null ? null : `[${chosenAttribute}="${chosenItem}"]`;
 
       opener.current = null;
       focusWhenFree(
         () =>
-          (table == null
-            ? null
-            : document.querySelector<SVGElement>(`.st-room [data-table="${table}"]`)) ??
+          (item == null ? null : document.querySelector<SVGElement>(`.st-room ${item}`)) ??
           [
             ...document.querySelectorAll<HTMLElement | SVGElement>(
               '.st-panel button, .st-room [role="button"]',
@@ -332,8 +343,12 @@ function Plan({
   };
 
   useEffect(() => {
+    newest.current = plan;
+  }, [plan]);
+
+  useEffect(() => {
     const keys = (event: KeyboardEvent) => {
-      if (event.key !== 'Escape' || !tableChosen || covered) return;
+      if (event.key !== 'Escape' || chosenAttribute == null || covered) return;
       event.preventDefault();
       open(null);
     };
@@ -342,7 +357,19 @@ function Plan({
     return () => window.removeEventListener('keydown', keys);
   });
 
-  const attempt = async <A,>(
+  const attempt = <A,>(
+    change: () => Promise<A>,
+    seatingOf: (answer: A) => Seating,
+    field?: string,
+    refusal?: (error: ApiError) => string | null,
+  ): Promise<{ answer: A } | { refused: string | null }> => {
+    const turn = queue.current.then(() => attemptNow(change, seatingOf, field, refusal));
+
+    queue.current = turn;
+    return turn;
+  };
+
+  const attemptNow = async <A,>(
     change: () => Promise<A>,
     seatingOf: (answer: A) => Seating,
     field?: string,
@@ -350,8 +377,10 @@ function Plan({
   ): Promise<{ answer: A } | { refused: string | null }> => {
     try {
       const answer = await change();
+      const now = seatingOf(answer);
 
-      onSeating(seatingOf(answer));
+      newest.current = now.plan;
+      onSeating(now);
       setNotice(null);
       return { answer };
     } catch (error) {
@@ -399,12 +428,26 @@ function Plan({
   const remove = async (change: () => Promise<Seating>) =>
     'answer' in (await attempt(change, (answer) => answer));
 
+  const newestOf: PlanApi['newest'] = <
+    T extends SeatingPlan | SeatingSection | SeatingTable | SeatingRow | SingleSeat,
+  >(
+    item: T,
+  ) =>
+    [
+      ...(newest.current == null ? [] : [newest.current]),
+      ...(newest.current?.sections ?? []),
+      ...(newest.current?.tables ?? []),
+      ...(newest.current?.rows ?? []),
+      ...(newest.current?.singleSeats ?? []),
+    ].find((one): one is T => one.id === item.id) ?? item;
+
   const ctx: PlanApi = {
     event,
     system,
     plan,
     readOnly,
     send,
+    newest: newestOf,
     place,
     remove,
     adopt: onSeating,
@@ -488,7 +531,7 @@ function Plan({
             width={rw}
             height={rl}
             onClick={() => {
-              if (tableChosen) open(null);
+              if (chosenAttribute != null) open(null);
             }}
           />
           {lines}
@@ -1027,7 +1070,7 @@ function RoomSettings({ ctx, plan }: { ctx: PlanApi; plan: SeatingPlan }) {
     if ('refused' in read) return read.refused;
     ctx.showOutside(null);
     return ctx.send(
-      () => api.changeSeatingRoom(ctx.event.id, { [key]: read.cm }, plan.version),
+      () => api.changeSeatingRoom(ctx.event.id, { [key]: read.cm }, ctx.newest(plan).version),
       key,
       (error) => {
         if (!error.is('seating_items_outside')) return null;
@@ -1066,7 +1109,7 @@ function RoomSettings({ ctx, plan }: { ctx: PlanApi; plan: SeatingPlan }) {
               api.changeSeatingRoom(
                 ctx.event.id,
                 { roomName: name === '' ? null : name },
-                plan.version,
+                ctx.newest(plan).version,
               ),
             'roomName',
           );
@@ -1250,7 +1293,7 @@ function SectionForm({ ctx, plan, id }: { ctx: PlanApi; plan: SeatingPlan; id: s
                     ctx.event.id,
                     section.id,
                     { colour: one },
-                    section.version,
+                    ctx.newest(section).version,
                   ),
                 );
             }}
@@ -1330,7 +1373,7 @@ function SectionForm({ ctx, plan, id }: { ctx: PlanApi; plan: SeatingPlan; id: s
                 ctx.event.id,
                 section.id,
                 { name: text.trim() },
-                section.version,
+                ctx.newest(section).version,
               ),
             'name',
           );
@@ -1451,7 +1494,7 @@ function AskFor({
         onGo={() => {
           setBusy(true);
           void ctx
-            .remove(() => api.deleteSeatingTable(ctx.event.id, table.id, table.version))
+            .remove(() => api.deleteSeatingTable(ctx.event.id, table.id, ctx.newest(table).version))
             .then((deleted) => (deleted ? onDone() : onKeep()));
         }}
       />
@@ -1479,8 +1522,12 @@ function AskFor({
           void ctx
             .remove(() =>
               row != null
-                ? api.deleteSeatingRow(ctx.event.id, row.id, row.version)
-                : api.deleteSingleSeat(ctx.event.id, seat?.id ?? '', seat?.version ?? 0),
+                ? api.deleteSeatingRow(ctx.event.id, row.id, ctx.newest(row).version)
+                : api.deleteSingleSeat(
+                    ctx.event.id,
+                    seat?.id ?? '',
+                    seat == null ? 0 : ctx.newest(seat).version,
+                  ),
             )
             .then((deleted) => (deleted ? onDone() : onKeep()));
         }}

@@ -19,7 +19,7 @@ import { fileURLToPath } from 'node:url';
 import { runInNewContext } from 'node:vm';
 import { inflateSync } from 'node:zlib';
 
-import { describe, expect, it } from 'vitest';
+import { describe, expect, it, vi } from 'vitest';
 
 import {
   allowCleartext,
@@ -125,6 +125,7 @@ import {
   missingCmdlineTools,
   setupAgain,
   unauthorizedWarning,
+  setUpLocalEmulators,
   withAvdRam,
   parseTarget,
   hardwareKeyboardOff,
@@ -4342,6 +4343,39 @@ describe('madeAccount', () => {
 
   it('falls back to the exit status when qa-account said nothing', () => {
     expect(() => madeAccount({ status: 2, stdout: '', stderr: '' })).toThrow('exited 2');
+  });
+});
+
+describe('setUpLocalEmulators', () => {
+  it("raises an existing AVD's RAM when avdmanager is missing", () => {
+    const home = mkdtempSync(join(tmpdir(), 'avd-'));
+    mkdirSync(join(home, 'Soirely_QA_Phone.avd'));
+    writeFileSync(join(home, 'Soirely_QA_Phone.avd/config.ini'), 'hw.ramSize=2048\n');
+    const tools = {
+      sdk: join(home, 'sdk'),
+      avdmanager: join(home, 'sdk/cmdline-tools/latest/bin/avdmanager'),
+      vars: { ANDROID_AVD_HOME: home },
+      env: {},
+    };
+    const phone = { name: 'Soirely_QA_Phone', device: 'pixel_8', ramMb: 4096 };
+    const tablet = { name: 'Soirely_QA_Tablet', device: 'pixel_tablet', ramMb: 4096 };
+
+    const printed = [];
+    const log = vi
+      .spyOn(console, 'log')
+      .mockImplementation((...args) => printed.push(args.join(' ')));
+    try {
+      setUpLocalEmulators(tools, [phone, tablet], ['Soirely_QA_Phone']);
+    } finally {
+      log.mockRestore();
+    }
+
+    expect(printed).toContain(missingCmdlineTools(tools));
+    expect(printed.filter((line) => line.includes('Soirely_QA_Tablet'))).toEqual([]);
+    expect(readFileSync(join(home, 'Soirely_QA_Phone.avd/config.ini'), 'utf8')).toBe(
+      'hw.ramSize=4096\n',
+    );
+    expect(existsSync(join(home, 'Soirely_QA_Tablet.avd'))).toBe(false);
   });
 });
 

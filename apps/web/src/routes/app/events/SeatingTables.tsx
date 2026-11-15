@@ -464,7 +464,10 @@ export function TablePanel({
   const unit = ctx.system === 'us' ? undefined : centimetreUnit(locale);
 
   const change = (changes: Parameters<typeof api.changeSeatingTable>[2], field?: string) =>
-    ctx.send(() => api.changeSeatingTable(ctx.event.id, table.id, changes, table.version), field);
+    ctx.send(
+      () => api.changeSeatingTable(ctx.event.id, table.id, changes, ctx.newest(table).version),
+      field,
+    );
 
   function size(key: 'widthCm' | 'lengthCm', text: string): Promise<string | null> | string {
     const read = readSize(t, locale, text, ctx.system);
@@ -623,7 +626,9 @@ export function TablePanel({
           label={t('seating.duplicate')}
           onClick={() => {
             void ctx
-              .place(() => api.duplicateSeatingTable(ctx.event.id, table.id, table.version))
+              .place(() =>
+                api.duplicateSeatingTable(ctx.event.id, table.id, ctx.newest(table).version),
+              )
               .then((copy) => {
                 if (copy == null) return;
                 ctx.open({
@@ -710,18 +715,20 @@ export function ChairPanel({
           <TextAction
             label={t(unusable ? 'seating.markUsable' : 'seating.markUnusable')}
             onClick={() =>
-              void ctx.send(() =>
-                api.changeSeatingTable(
+              void ctx.send(() => {
+                const now = ctx.newest(table);
+
+                return api.changeSeatingTable(
                   ctx.event.id,
                   table.id,
                   {
                     unusableSeats: unusable
-                      ? table.unusableSeats.filter((one) => one !== seat)
-                      : [...table.unusableSeats, seat].sort((a, b) => a - b),
+                      ? now.unusableSeats.filter((one) => one !== seat)
+                      : [...new Set([...now.unusableSeats, seat])].sort((a, b) => a - b),
                   },
-                  table.version,
-                ),
-              )
+                  now.version,
+                );
+              })
             }
           />
         </div>

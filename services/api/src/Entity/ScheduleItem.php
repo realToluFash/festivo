@@ -70,6 +70,13 @@ class ScheduleItem
     #[ORM\Column(type: Types::BOOLEAN, options: ['default' => false])]
     private bool $showToGuests = false;
 
+    /** The moment it was marked started, in UTC; its planned start never moves with it (sc-1404). */
+    #[ORM\Column(type: Types::DATETIME_IMMUTABLE, nullable: true)]
+    private ?DateTimeImmutable $startedAt = null;
+
+    #[ORM\Column(type: Types::DATETIME_IMMUTABLE, nullable: true)]
+    private ?DateTimeImmutable $endedAt = null;
+
     /** Who last changed it, named in a colleague's refused save. */
     #[ORM\ManyToOne(targetEntity: User::class)]
     #[ORM\JoinColumn(nullable: true, onDelete: 'SET NULL')]
@@ -142,6 +149,28 @@ class ScheduleItem
     public function isShownToGuests(): bool
     {
         return $this->showToGuests;
+    }
+
+    public function getStartedAt(): ?DateTimeImmutable
+    {
+        return $this->startedAt;
+    }
+
+    public function getEndedAt(): ?DateTimeImmutable
+    {
+        return $this->endedAt;
+    }
+
+    public function start(DateTimeImmutable $at, User $by): void
+    {
+        $this->startedAt = $at;
+        $this->changedBy = $by;
+    }
+
+    public function finish(DateTimeImmutable $at, User $by): void
+    {
+        $this->endedAt = $at;
+        $this->changedBy = $by;
     }
 
     public function getChangedBy(): ?User

@@ -365,6 +365,40 @@ describe('Seating at a desk (sc-3998)', () => {
     );
   });
 
+  it('sends a room field entered before the one before it answers with the version that one saved', async () => {
+    signedIn();
+    let answered = 1;
+    const sent = await onSeating({
+      'GET /api/events/ev_1/seating-plan': () =>
+        json({ seating: { measurementSystem: 'metric', plan: plan() } }),
+      'PATCH /api/events/ev_1/seating-plan': async (body) => {
+        await new Promise((resolve) => setTimeout(resolve, 30));
+        answered += 1;
+        return json({
+          seating: {
+            measurementSystem: 'metric',
+            plan: { ...plan(), ...(body as object), version: answered },
+          },
+        });
+      },
+    });
+
+    fireEvent.click(await screen.findByRole('button', { name: 'Room settings' }));
+    const name = screen.getByLabelText(/^Room name/u);
+    fireEvent.change(name, { target: { value: 'Great Hall' } });
+    fireEvent.blur(name);
+    leave('Width', '26');
+
+    await waitFor(() => expect(sent.filter((one) => one.line.startsWith('PATCH'))).toHaveLength(2));
+    expect(
+      sent.filter((one) => one.line.startsWith('PATCH')).map((one) => [one.body, one.ifMatch]),
+    ).toEqual([
+      [{ roomName: 'Great Hall' }, '"1"'],
+      [{ widthCm: 2600 }, '"2"'],
+    ]);
+    expect(screen.queryByText(/just changed this/u)).toBeNull();
+  });
+
   it('counts the rows, single seats and seats in each section and in none', async () => {
     signedIn();
     const ceremony = plan([{ id: 's1', name: 'Ceremony', colour: 'teal' }]);
@@ -1210,6 +1244,59 @@ describe('Rows and single seats at a desk (sc-4003)', () => {
     fireEvent.click(within(ask).getByRole('button', { name: 'Delete Row B' }));
     await waitFor(() => expect(document.querySelector('[data-row="r2"]')).toBeNull());
     expect(sent.find((one) => one.line.startsWith('DELETE'))?.ifMatch).toBe('"1"');
+  });
+
+  it('sends a second field entered before the first answers with the version the first saved', async () => {
+    signedIn();
+    let answered = 1;
+    const sent = await onSeating({
+      'GET /api/events/ev_1/seating-plan': () => seating(withRowsAndSeats([row()], [])),
+      'PATCH /api/events/ev_1/seating-plan/rows/r1': async (body) => {
+        await new Promise((resolve) => setTimeout(resolve, 30));
+        answered += 1;
+        return placed(withRowsAndSeats([row({ ...(body as object), version: answered })], []), {
+          rowId: 'r1',
+        });
+      },
+    });
+
+    await chooseTable('Row A, row of 10, 0 of 10 seats taken');
+    leave('Seats', '11');
+    leave('Spacing', '60');
+
+    await waitFor(() => expect(sent.filter((one) => one.line.startsWith('PATCH'))).toHaveLength(2));
+    const patches = sent.filter((one) => one.line.startsWith('PATCH'));
+    expect(patches.map((one) => [one.body, one.ifMatch])).toEqual([
+      [{ seats: 11 }, '"1"'],
+      [{ spacingCm: 60 }, '"2"'],
+    ]);
+    await waitFor(() => expect(screen.getByLabelText('Spacing')).toHaveProperty('value', '60'));
+    expect(screen.queryByText(/just changed this row/u)).toBeNull();
+  });
+
+  it('leaves a row’s and a single seat’s panel by Esc or the floor, with no Close, giving focus back', async () => {
+    signedIn();
+    await onSeating({
+      'GET /api/events/ev_1/seating-plan': () =>
+        seating(withRowsAndSeats([row()], [single({ xCm: 600, yCm: 900 })])),
+    });
+
+    const rowItem = await screen.findByRole('button', {
+      name: 'Row A, row of 10, 0 of 10 seats taken',
+    });
+    fireEvent.click(rowItem);
+    await waitFor(() => expect(document.activeElement?.getAttribute('data-focus')).toBe('title'));
+    expect(screen.queryByRole('button', { name: 'Close' })).toBeNull();
+    fireEvent.keyDown(document.activeElement as HTMLElement, { key: 'Escape' });
+    await waitFor(() => expect(document.activeElement).toBe(rowItem));
+    expect(screen.queryByRole('heading', { level: 2, name: 'Row A' })).toBeNull();
+
+    const seatItem = screen.getByRole('button', { name: 'Seat 1, single seat, Empty' });
+    fireEvent.click(seatItem);
+    await waitFor(() => expect(document.activeElement?.getAttribute('data-focus')).toBe('title'));
+    expect(screen.queryByRole('button', { name: 'Close' })).toBeNull();
+    fireEvent.click(document.querySelector('.st-floor') as Element);
+    await waitFor(() => expect(document.activeElement).toBe(seatItem));
   });
 
   it('says who changed a row first when a save comes back 412', async () => {

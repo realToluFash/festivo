@@ -342,7 +342,10 @@ export function RowPanel({
   const name = t('seating.rowName', { label: row.label });
 
   const change = (changes: SeatingRowChanges, field?: string) =>
-    ctx.send(() => api.changeSeatingRow(ctx.event.id, row.id, changes, row.version), field);
+    ctx.send(
+      () => api.changeSeatingRow(ctx.event.id, row.id, changes, ctx.newest(row).version),
+      field,
+    );
 
   function label(text: string): Promise<string | null> | string {
     const typed = text.trim().toUpperCase();
@@ -385,7 +388,7 @@ export function RowPanel({
   if (ctx.readOnly)
     return (
       <div className="st-stack">
-        <BackHead title={name} line={rowLine(t, plan, row)} onClose={() => ctx.open(null)} />
+        <BackHead title={name} line={rowLine(t, plan, row)} />
         <SeatStrip t={t} row={row} chosen={seat} onPick={pick} />
         {seat != null && <ChosenSeat ctx={ctx} row={row} seat={seat} />}
         <dl className="st-facts">
@@ -406,7 +409,7 @@ export function RowPanel({
 
   return (
     <div className="st-stack is-tight">
-      <BackHead title={name} line={rowLine(t, plan, row)} onClose={() => ctx.open(null)} />
+      <BackHead title={name} line={rowLine(t, plan, row)} />
       {said != null && <Added>{said}</Added>}
       {ctx.notice != null && <Said>{ctx.notice}</Said>}
       <Line>{t('seating.faces')}</Line>
@@ -451,7 +454,7 @@ export function RowPanel({
           label={t('seating.duplicate')}
           onClick={() => {
             void ctx
-              .place(() => api.duplicateSeatingRow(ctx.event.id, row.id, row.version))
+              .place(() => api.duplicateSeatingRow(ctx.event.id, row.id, ctx.newest(row).version))
               .then((copy) => {
                 if (copy == null) return;
                 ctx.open({
@@ -537,18 +540,20 @@ function ChosenSeat({ ctx, row, seat }: { ctx: PlanApi; row: SeatingRow; seat: n
           <TextAction
             label={t(unusable ? 'seating.markUsable' : 'seating.markUnusable')}
             onClick={() =>
-              void ctx.send(() =>
-                api.changeSeatingRow(
+              void ctx.send(() => {
+                const now = ctx.newest(row);
+
+                return api.changeSeatingRow(
                   ctx.event.id,
                   row.id,
                   {
                     unusableSeats: unusable
-                      ? row.unusableSeats.filter((one) => one !== seat)
-                      : [...row.unusableSeats, seat].sort((a, b) => a - b),
+                      ? now.unusableSeats.filter((one) => one !== seat)
+                      : [...new Set([...now.unusableSeats, seat])].sort((a, b) => a - b),
                   },
-                  row.version,
-                ),
-              )
+                  now.version,
+                );
+              })
             }
           />
         </div>
@@ -574,7 +579,10 @@ export function SingleSeatPanel({
   });
 
   const change = (changes: Parameters<typeof api.changeSingleSeat>[2], field?: string) =>
-    ctx.send(() => api.changeSingleSeat(ctx.event.id, seat.id, changes, seat.version), field);
+    ctx.send(
+      () => api.changeSingleSeat(ctx.event.id, seat.id, changes, ctx.newest(seat).version),
+      field,
+    );
 
   function name(text: string): Promise<string | null> | string {
     const typed = text.trim();
@@ -598,7 +606,7 @@ export function SingleSeatPanel({
   if (ctx.readOnly)
     return (
       <div className="st-stack">
-        <BackHead title={seat.name} line={line} onClose={() => ctx.open(null)} />
+        <BackHead title={seat.name} line={line} />
         {state}
         <Line>{t('seating.readOnly')}</Line>
       </div>
@@ -606,7 +614,7 @@ export function SingleSeatPanel({
 
   return (
     <div className="st-stack is-tight">
-      <BackHead title={seat.name} line={line} onClose={() => ctx.open(null)} />
+      <BackHead title={seat.name} line={line} />
       {said != null && <Added>{said}</Added>}
       {ctx.notice != null && <Said>{ctx.notice}</Said>}
       <div className="st-fields">

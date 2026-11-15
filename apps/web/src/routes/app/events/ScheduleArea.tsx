@@ -433,6 +433,15 @@ function ScheduleView({
             <h1 className="gs-title">{t('schedule.heading', { day: dayName(day, reader) })}</h1>
             {line != null && <p className="mn-sub">{line}</p>}
           </div>
+          {items.length > 0 && (
+            <Link
+              className="gs-pill is-secondary ro-run"
+              to={`/app/events/${encodeURIComponent(event.id)}/run`}
+            >
+              <Glyph name="clock" size={17} weight={2.2} />
+              {t('runView.open')}
+            </Link>
+          )}
           {manage && (
             <button
               id="ro-add"
