@@ -271,7 +271,7 @@ export function GuestDetails({
                   onPress: onCoverMark,
                   testID: 'guest.card.step',
                 }
-              : records && shown === 'noReply'
+              : records && (shown === 'noReply' || guest.repliesReopened != null)
                 ? {
                     label: t('guestList.recordReply'),
                     ref: recordRef,

@@ -754,7 +754,7 @@ function GuestView({
               />
             </div>
           )}
-          {records && guest.reply === 'noReply' && (
+          {records && (guest.reply === 'noReply' || guest.repliesReopened != null) && (
             <div className="ev-card-foot" data-focus="step">
               <CardStep label={t('guestList.recordReply')} onClick={onRecord} />
             </div>
