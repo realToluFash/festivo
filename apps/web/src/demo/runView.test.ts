@@ -12,6 +12,7 @@ import {
   later,
   minutesOf,
   nextLine,
+  runViewAt,
   runAt,
   startItem,
   trackView,
@@ -115,6 +116,17 @@ describe('the track’s figure', () => {
     );
     expect(nextLine(hall('last'))).toBe('Nothing after this.');
     expect(nextLine(hall('allDone'))).toBe('Every item on this track is done.');
+  });
+
+  it('opens as a reader with as=reader, beside any state', () => {
+    expect(runViewAt()).toBe('/demo/events/evt-wed-4/run');
+    expect(runViewAt('behind', true)).toBe('/demo/events/evt-wed-4/run?state=behind&as=reader');
+  });
+
+  it('gives a reader the next item without the step only a manager can take', () => {
+    expect(nextLine(hall('behind'), false)).toBe('Next: Speeches at about 20:13.');
+    expect(nextLine(hall('last'), false)).toBe('Nothing after this.');
+    expect(nextLine(hall('allDone'), false)).toBe('Every item on this track is done.');
   });
 
   it('is said with the track’s name, in words', () => {
