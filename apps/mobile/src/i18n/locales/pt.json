@@ -2409,10 +2409,10 @@
     "theirReply": "Resposta",
     "howTold": "Como recebeu a resposta?",
     "toldHow": {
-      "phone": "Por telefone",
+      "phone": "Telefone",
       "inPerson": "Pessoalmente",
-      "message": "Por mensagem",
-      "other": "Outra forma"
+      "message": "Mensagem",
+      "other": "Outro"
     },
     "toldInLine": {
       "phone": "ao telefone",
