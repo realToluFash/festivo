@@ -46,6 +46,10 @@
   outline: none;
 }
 
+.desk .search-field input:focus-visible {
+  box-shadow: none;
+}
+
 .search-field input::placeholder {
   color: var(--colorInkTertiary);
 }
