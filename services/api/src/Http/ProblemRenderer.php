@@ -25,7 +25,7 @@ final readonly class ProblemRenderer
     /**
      * @param list<array{propertyPath: string, message: string, code: string, parameters?: array<string, int|string>}> $violations
      * @param array<string, string>                                                                                    $headers
-     * @param array<string, int|string|list<string>>                                                                   $members
+     * @param array<string, mixed>                                                                                     $members
      * @param array<string, int|string>                                                                                $parameters the detail key's slots
      */
     public function render(

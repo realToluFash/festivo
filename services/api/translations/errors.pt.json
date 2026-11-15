@@ -99,5 +99,6 @@
     "owner_claim_unavailable": "Já há alguém ativo com a função Proprietário nesta organização.",
     "owner_claim_own": "Não pode interromper o seu próprio pedido.",
     "team_seats_in_use": "Todos os lugares de equipa do plano desta organização estão ocupados.",
-    "seating_items_outside": "Algo na sala ficaria fora dela."
+    "seating_items_outside": "Algo na sala ficaria fora dela.",
+    "schedule_item_limit": "Este programa tem 200 itens, o máximo que um evento pode ter. Elimine um para adicionar outro."
 }
