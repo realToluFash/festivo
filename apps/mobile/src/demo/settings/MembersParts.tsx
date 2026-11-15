@@ -1,4 +1,4 @@
-import { type Ref, useEffect, useRef, useState } from 'react';
+import { type Ref, useRef } from 'react';
 import { StyleSheet, View, type ViewInstance } from 'react-native';
 
 import { useReadOut } from '../../components/ReadOut.tsx';
@@ -11,7 +11,10 @@ import {
   FILTERS,
   type MembersCard,
   type MembersSay,
+  type More,
+  MORE_WORDS,
   ORGANISATION,
+  PEOPLE_PAGE,
   type Person,
   personLine,
   tagOf,
@@ -27,7 +30,9 @@ import {
   OnCard,
   Row,
   RowList,
+  RowShapes,
   Section,
+  SectionFailed,
   SummaryCard,
   TextAction,
 } from '../../components/Summary.tsx';
@@ -178,8 +183,11 @@ export function People({
   open,
   dense,
   manages,
+  pages,
+  more,
   onFilter,
   onOpen,
+  onTryAgain,
 }: {
   listed: readonly Person[];
   counts: Record<Filter, number>;
@@ -188,12 +196,16 @@ export function People({
   open: string | null;
   dense: boolean;
   manages: boolean;
+  /** Pages of People shown so far; the next comes as the list's end nears. */
+  pages: number;
+  more: More;
   onFilter: (filter: Filter) => void;
   onOpen: (id: string) => void;
+  onTryAgain: () => void;
 }) {
   const side = dense ? 36 : 40;
   const gutter = dense ? 10 : 0;
-  const drawn = useDrawn(listed.length);
+  const drawn = Math.min(listed.length, pages * PEOPLE_PAGE);
   const seen = new Map<string, number>();
   const items: ListItem[] = listed.slice(0, drawn).map((person) => {
     const selected = person.id === open;
@@ -245,29 +257,23 @@ export function People({
       ) : (
         <View style={dense && styles.bleed}>
           <RowList items={items} gutter={gutter} />
+          {drawn < listed.length &&
+            (more === 'failed' ? (
+              <SectionFailed
+                title={MORE_WORDS.failed}
+                line={MORE_WORDS.failedLine}
+                onRetry={onTryAgain}
+                testID="members.more.retry"
+              />
+            ) : (
+              <View style={styles.more} testID="members.more.loading">
+                <RowShapes count={2} words={MORE_WORDS.loading} />
+              </View>
+            ))}
         </View>
       )}
     </Section>
   );
-}
-
-const FIRST_ROWS = 40;
-const MORE_ROWS = 200;
-
-/** A crowd's rows arrive a frame at a time after the first 40, so the card above them draws first (sc-48825). */
-function useDrawn(total: number): number {
-  const [drawn, setDrawn] = useState(FIRST_ROWS);
-
-  useEffect(() => {
-    if (drawn >= total) {
-      return;
-    }
-    const frame = requestAnimationFrame(() => setDrawn((now) => now + MORE_ROWS));
-
-    return () => cancelAnimationFrame(frame);
-  }, [drawn, total]);
-
-  return Math.min(drawn, total);
 }
 
 function Empty({ filter, onShowEveryone }: { filter: Filter; onShowEveryone: () => void }) {
@@ -305,6 +311,7 @@ const styles = StyleSheet.create({
   secondary: { color: tokens.colorInkSecondary },
   centred: { textAlign: 'center' },
   bleed: { marginHorizontal: -10 },
+  more: { paddingTop: tokens.spaceSm },
   empty: { gap: tokens.spaceXs, paddingTop: tokens.spaceXs },
   nobody: { flex: 1, alignItems: 'center', justifyContent: 'center', padding: tokens.space5xl },
 });

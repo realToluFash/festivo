@@ -863,6 +863,21 @@ const PAGES: readonly { page: string; boards: readonly Board[] }[] = [
         href: '/demo/settings/members?state=crowd',
       },
       {
+        title: 'Members · 12,345 people',
+        what: 'People a page at a time as the end nears',
+        href: '/demo/settings/members?state=largest',
+      },
+      {
+        title: 'Members · more loading',
+        what: '12,345 people, the next page on its way',
+        href: '/demo/settings/members?state=moreLoading',
+      },
+      {
+        title: 'Members · more failed',
+        what: '12,345 people, the rows kept, Try again',
+        href: '/demo/settings/members?state=moreFailed',
+      },
+      {
         title: 'Members · loading',
         what: 'Loading members',
         href: '/demo/settings/members?state=loading',

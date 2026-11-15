@@ -16,6 +16,7 @@ import {
   ORGANISATION,
   membersStateOf,
   type MembersViewer,
+  nearsEnd,
   membersViewerOf,
   personLine,
   proofProblem,
@@ -334,6 +335,9 @@ describe('Requests to get back in, in the app’s Members (sc-30893)', () => {
       'nobodyLeft',
       'ninetyNine',
       'crowd',
+      'largest',
+      'moreLoading',
+      'moreFailed',
       'loading',
       'failed',
       'approving',
@@ -686,5 +690,35 @@ describe("Members' card with more people than its chip writes (sc-48825)", () =>
       cardOf('list').faces.map(({ id }) => id),
     );
     expect(counts(membersStart('crowd').people).all).toBe(1326);
+  });
+});
+
+describe('People a page at a time at 12,345 (sc-49170)', () => {
+  const at = (y: number) =>
+    nearsEnd({
+      contentOffset: { y },
+      contentSize: { height: 4000 },
+      layoutMeasurement: { height: 800 },
+    });
+
+  it('counts the whole organisation, whatever has loaded', () => {
+    expect(counts(membersStart('largest').people).all).toBe(12345);
+    expect(membersCard({ ...plainCard, people: membersStart('largest').people }).says).toMatch(
+      /^12,345 people/u,
+    );
+  });
+
+  it('holds the next page loading, or failed, over the same 12,345', () => {
+    expect(membersStart('moreLoading')).toMatchObject({ more: 'loading', load: 'loaded' });
+    expect(membersStart('moreFailed')).toMatchObject({ more: 'failed', load: 'loaded' });
+    expect(counts(membersStart('moreFailed').people).all).toBe(12345);
+    expect(membersStart('largest').more).toBe('idle');
+  });
+
+  it('asks for the next page once the end is within a screen of the view', () => {
+    expect(at(0)).toBe(false);
+    expect(at(2399)).toBe(false);
+    expect(at(2400)).toBe(true);
+    expect(at(3200)).toBe(true);
   });
 });

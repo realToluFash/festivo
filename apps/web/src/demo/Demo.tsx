@@ -28,6 +28,8 @@ import { GENERAL_PAGES } from './general.ts';
 import { MESSAGES_PAGES } from './messages.ts';
 import { SeatingPage } from './Seating.tsx';
 import { SEATING_PAGES } from './seating.ts';
+import { SchedulePage } from './Schedule.tsx';
+import { SCHEDULE_PAGES } from './schedule.ts';
 import { GetBackInBoard } from './GetBackIn.tsx';
 import { GuestPage } from './Guest.tsx';
 import { GUEST_PAGES } from './guest.ts';
@@ -212,6 +214,7 @@ export default function Demo() {
       <Route path="events/:id/menu" element={<MenuPage />} />
       <Route path="events/:id/staff" element={<StationsPage />} />
       <Route path="events/:id/staff/roster" element={<RosterPage />} />
+      <Route path="events/:id/schedule" element={<SchedulePage />} />
       <Route path="calendar" element={<Calendar />} />
       <Route path="settings" element={<Settings />} />
       <Route path="settings/members" element={<Settings />} />
@@ -361,6 +364,12 @@ function DemoHome({ from }: { from: string }) {
         <h2 id="demo-page-32-kitchen">32 · Menu · the kitchen sheet’s parts</h2>
         <h3>Each part of a course, and each table’s platters · sc-34244 · desktop and A4</h3>
         <BoardPages pages={PARTS_PAGES} />
+      </section>
+
+      <section className="demo-home-page" aria-labelledby="demo-page-33">
+        <h2 id="demo-page-33">33 · Run of show</h2>
+        <h3>Building the schedule, a table per place (sc-3893) · desktop and 40rem</h3>
+        <BoardPages pages={SCHEDULE_PAGES} />
       </section>
 
       <section className="demo-home-page" aria-labelledby="demo-page-34">
