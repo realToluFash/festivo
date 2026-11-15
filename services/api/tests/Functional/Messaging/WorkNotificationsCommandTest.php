@@ -9,6 +9,7 @@ use App\Domain\Messaging\Model\Audience;
 use App\Domain\Messaging\Model\Trigger;
 use App\Enum\Permission;
 use DateTimeImmutable;
+use Doctrine\Bundle\DoctrineBundle\Middleware\BacktraceDebugDataHolder;
 use LogicException;
 use PHPUnit\Framework\Attributes\Test;
 use Psl\SecureRandom;
@@ -45,5 +46,19 @@ final class WorkNotificationsCommandTest extends MessagingTestCase
         self::assertFileExists($heartbeat);
         \unlink($heartbeat);
         self::assertSame($kernel->getProjectDir() . '/var/notifications-worker.heartbeat', $command->getDefinition()->getOption('heartbeat')->getDefault(), 'The compose healthcheck reads this file.');
+    }
+
+    #[Test]
+    public function eachStepLetsGoOfTheQueriesDebugKept(): void
+    {
+        $members = Audience::membersWithPermission($this->organisation->getId(), Permission::BillingManage);
+        self::scheduler()->schedule('test.notice', 'due', 'due', Trigger::at(new DateTimeImmutable('-1 minute')), $members);
+        $queries = self::getContainer()->get('doctrine.debug_data_holder');
+        self::assertInstanceOf(BacktraceDebugDataHolder::class, $queries);
+
+        new CommandTester(new Application(self::$kernel ?? throw new LogicException('No kernel.'))->find(WorkNotificationsCommand::NAME))->execute(['--once' => true]);
+
+        self::assertNotEmpty(self::sender()->sent);
+        self::assertSame([], $queries->getData(), 'A worker that keeps them exits at its memory limit every few thousand rows (sc-18317).');
     }
 }

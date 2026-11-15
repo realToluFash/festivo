@@ -26,6 +26,15 @@ import { api } from '../../../api.ts';
 import { Glyph } from '../../../components/Glyph.tsx';
 import { TextAction } from '../../../components/SettingsParts.tsx';
 import { currentLocale } from '../../../i18n/index.ts';
+import {
+  CHAIRS_FROM_SCALE,
+  f,
+  POINTER_CHAIRS_FROM_SCALE,
+  readCount,
+  rotations,
+  sectionOf,
+  turned,
+} from './seatingDraw.ts';
 import { Added, BackHead, Field, Line, type PlanApi, Said, Select } from './SeatingParts.tsx';
 import {
   centimetreUnit,
@@ -59,18 +68,10 @@ const SIZE_RESET = {
   cocktail: 'seating.sizeResetCocktail',
 } as const satisfies Record<TableShape, string>;
 
-/** From 25% a table shows its chairs, and from 75% each chair is a 44 target for a pointer (the demo's zoom levels). */
-const CHAIRS_FROM_SCALE = 0.25;
-const POINTER_CHAIRS_FROM_SCALE = 0.75;
-
 function seatsWords(t: T, shape: TableShape, count: number): string {
   return shape === 'cocktail'
     ? t('seating.countPlaces', { count })
     : t('seating.countSeats', { count });
-}
-
-function sectionOf(plan: SeatingPlan, table: SeatingTable) {
-  return plan.sections.find((one) => one.id === table.sectionId) ?? null;
 }
 
 function tableLine(t: T, plan: SeatingPlan, table: SeatingTable): string {
@@ -86,7 +87,8 @@ function chairWord(t: T, table: SeatingTable, seat: number): string {
   return table.unusableSeats.includes(seat) ? t('seating.unusable') : t('seating.empty');
 }
 
-export function AddTable({ ctx }: { ctx: PlanApi }) {
+/** The floating add bar: Add table's menu, then what `more` adds beside it. */
+export function AddTable({ ctx, more }: { ctx: PlanApi; more?: ReactNode }) {
   const { t } = useTranslation();
   const locale = currentLocale();
   const [menu, setMenu] = useState(false);
@@ -152,6 +154,7 @@ export function AddTable({ ctx }: { ctx: PlanApi }) {
           {t('seating.addTable')}
           <Glyph name="chevdown" size={15} weight={2.4} />
         </button>
+        {more}
       </div>
     </>
   );
@@ -163,16 +166,6 @@ function ShapeTile({ shape }: { shape: TableShape }) {
       <Glyph name={shape === 'rectangular' ? 'rect' : shape} size={22} weight={1.9} />
     </span>
   );
-}
-
-function f(value: number): number {
-  return Math.round(value * 10) / 10;
-}
-
-function turned([x, y]: [number, number], degrees: number): [number, number] {
-  const a = (degrees * Math.PI) / 180;
-
-  return [x * Math.cos(a) - y * Math.sin(a), x * Math.sin(a) + y * Math.cos(a)];
 }
 
 /** One table at s px per cm, as the demo's ItemDrawing draws it: the lit Tint, the body, its chairs, its name, then the outline of a refused room size. */
@@ -338,7 +331,7 @@ export function TableDrawing({
 }
 
 /** A chair in its state: an empty one an outline, an unusable one grey with a cross; a cocktail table's standing places are rounded squares. */
-function ChairMark({
+export function ChairMark({
   x,
   y,
   r,
@@ -393,19 +386,12 @@ function ChairMark({
   );
 }
 
-function StateMark({ unusable, square }: { unusable: boolean; square: boolean }) {
+export function StateMark({ unusable, square }: { unusable: boolean; square: boolean }) {
   return (
     <svg className="st-state-mark" width="22" height="22" viewBox="0 0 22 22" aria-hidden="true">
       <ChairMark x={11} y={11} r={9.5} unusable={unusable} square={square} label="" />
     </svg>
   );
-}
-
-function rotations() {
-  return Array.from({ length: 360 / SEATING_LIMITS.rotationStep }, (_, index) => ({
-    value: String(index * SEATING_LIMITS.rotationStep),
-    word: `${index * SEATING_LIMITS.rotationStep}°`,
-  }));
 }
 
 function endsLine(t: T, table: SeatingTable): string {
@@ -435,12 +421,6 @@ function readSize(
       max: tableLengthWords(t, locale, TABLE_MAXIMUM_CM, system, { grouping: false }),
     }),
   };
-}
-
-function readCount(text: string): number | null {
-  const typed = text.trim();
-
-  return /^\d+$/u.test(typed) ? Number(typed) : null;
 }
 
 export function TablePanel({

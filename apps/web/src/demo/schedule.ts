@@ -123,6 +123,11 @@ export const RW = {
   added: (title: string) => `${title} added.`,
   saved: (title: string) => `${title} saved.`,
   restored: (title: string) => `${title} is back.`,
+  notSaved: 'Not saved. What you entered is still here. Try again.',
+  notDeleted: 'Not deleted. Nothing was changed. Try again.',
+  notRestored: (title: string) => `${title} was not brought back. Add it again with Add item.`,
+  gone: 'Someone else deleted this item while you had it open. Nothing was saved.',
+  addAgain: 'Add it again',
   move: 'Move',
   more: 'More',
 } as const;
@@ -493,6 +498,8 @@ export const THEIRS: Item = {
   role: 'Groom',
 };
 
+export type Failure = 'save' | 'delete' | 'undo' | 'gone';
+
 export type Panel = { kind: 'add' } | { kind: 'edit'; id: string } | null;
 
 export interface ScheduleStart {
@@ -507,8 +514,10 @@ export interface ScheduleStart {
   conflict: Item | null;
   asking: boolean;
   deleted: Item | null;
+  unrestored: string | null;
   picking: boolean;
-  focus: Field | 'limit' | 'conflict' | 'ask' | null;
+  failed: Failure | null;
+  focus: Field | 'limit' | 'conflict' | 'ask' | 'failed' | null;
 }
 
 const FRIDAY = DAYS[1];
@@ -525,7 +534,9 @@ function start(over: Partial<ScheduleStart> & { name: string }): ScheduleStart {
     conflict: null,
     asking: false,
     deleted: null,
+    unrestored: null,
     picking: false,
+    failed: null,
     focus: null,
     ...over,
   };
@@ -617,6 +628,39 @@ const STATES = {
       items: sampleItems().filter((one) => one.id !== 'speeches'),
       deleted: speeches(),
     }),
+  saveFailed: () =>
+    start({
+      name: 'Save failed on the network',
+      panel: { kind: 'edit', id: 'speeches' },
+      form: { ...formOf(speeches()), title: 'Speeches and toasts' },
+      failed: 'save',
+      focus: 'failed',
+    }),
+  deleteFailed: () =>
+    start({
+      name: 'Delete failed on the network',
+      panel: { kind: 'edit', id: 'speeches' },
+      form: formOf(speeches()),
+      failed: 'delete',
+      focus: 'failed',
+    }),
+  undoFailed: () =>
+    start({
+      name: 'Undo failed, the item stays deleted',
+      items: sampleItems().filter((one) => one.id !== 'speeches'),
+      unrestored: speeches().title,
+      failed: 'undo',
+      focus: 'failed',
+    }),
+  gone: () =>
+    start({
+      name: 'Someone else deleted it, 404 on Save',
+      items: sampleItems().filter((one) => one.id !== 'speeches'),
+      panel: { kind: 'edit', id: 'speeches' },
+      form: { ...formOf(speeches()), title: 'Speeches and toasts' },
+      failed: 'gone',
+      focus: 'failed',
+    }),
   atLimit: () =>
     start({
       name: 'Add item when the event holds 200',
@@ -690,6 +734,10 @@ export const SCHEDULE_PAGES: readonly { name: string; states: readonly DemoLink[
   {
     name: 'Someone else’s change, delete and Undo',
     states: (['conflict', 'deleteConfirm', 'undo'] as const).map(link),
+  },
+  {
+    name: 'When the network or someone else gets in the way',
+    states: (['saveFailed', 'deleteFailed', 'undoFailed', 'gone'] as const).map(link),
   },
   {
     name: 'At 40rem and under (narrow the window)',

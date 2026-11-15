@@ -279,7 +279,7 @@ final class SeatingTablesTest extends ApiTestCase
 
         self::assertSame(3, $plan['counts']['tables']);
         self::assertSame(['tables' => 1, 'seats' => 10], ['tables' => $plan['sections'][0]['tables'], 'seats' => $plan['sections'][0]['seats']]);
-        self::assertSame(['tables' => 2, 'seats' => 10], $plan['withoutSection']);
+        self::assertSame(['tables' => 2, 'rows' => 0, 'singleSeats' => 0, 'seats' => 10], $plan['withoutSection']);
     }
 
     #[Test]

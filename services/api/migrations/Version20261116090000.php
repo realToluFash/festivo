@@ -11,24 +11,24 @@ final class Version20261116090000 extends AbstractMigration
 {
     public function getDescription(): string
     {
-        return 'An event\'s running order: each item a wall-clock start in the event\'s zone, a length, a place and an owner (sc-3893). No event has one yet.';
+        return 'Rows of numbered seats and single seats in a seating plan: label or name, seats, spacing, rotation, place and unusable seats (sc-4003). No plan has either yet.';
     }
 
     public function up(Schema $schema): void
     {
         $this->addSql(<<<'SQL'
-            CREATE TABLE schedule_items (
+            CREATE TABLE seating_rows (
                 id              UUID NOT NULL,
-                event_id        UUID NOT NULL,
-                title           VARCHAR(120) NOT NULL,
-                starts_at       TIMESTAMP(0) WITHOUT TIME ZONE NOT NULL,
-                length_minutes  SMALLINT DEFAULT NULL,
-                place           VARCHAR(60) DEFAULT NULL,
-                owner_name      VARCHAR(120) DEFAULT NULL,
-                owner_role      VARCHAR(40) DEFAULT NULL,
-                note            VARCHAR(500) DEFAULT NULL,
-                fixed_time      BOOLEAN DEFAULT false NOT NULL,
-                show_to_guests  BOOLEAN DEFAULT false NOT NULL,
+                plan_id         UUID NOT NULL,
+                section_id      UUID DEFAULT NULL,
+                label           VARCHAR(10) NOT NULL,
+                label_key       VARCHAR(40) NOT NULL,
+                seats           SMALLINT NOT NULL,
+                spacing_cm      SMALLINT NOT NULL,
+                rotation        SMALLINT NOT NULL,
+                x_cm            INT NOT NULL,
+                y_cm            INT NOT NULL,
+                unusable_seats  JSON DEFAULT '[]' NOT NULL,
                 changed_by_id   UUID DEFAULT NULL,
                 version         INT DEFAULT 1 NOT NULL,
                 created_at      TIMESTAMP(0) WITHOUT TIME ZONE NOT NULL,
@@ -36,15 +36,43 @@ final class Version20261116090000 extends AbstractMigration
                 PRIMARY KEY (id)
             )
             SQL);
-        $this->addSql('CREATE INDEX idx_schedule_item_start ON schedule_items (event_id, starts_at)');
-        $this->addSql('CREATE INDEX IDX_1D47291171F7E88B ON schedule_items (event_id)');
-        $this->addSql('CREATE INDEX IDX_1D472911828AD0A0 ON schedule_items (changed_by_id)');
-        $this->addSql('ALTER TABLE schedule_items ADD CONSTRAINT FK_1D47291171F7E88B FOREIGN KEY (event_id) REFERENCES events (id) ON DELETE CASCADE NOT DEFERRABLE');
-        $this->addSql('ALTER TABLE schedule_items ADD CONSTRAINT FK_1D472911828AD0A0 FOREIGN KEY (changed_by_id) REFERENCES users (id) ON DELETE SET NULL NOT DEFERRABLE');
+        $this->addSql('CREATE UNIQUE INDEX uniq_seating_row_label ON seating_rows (plan_id, label_key)');
+        $this->addSql('CREATE INDEX IDX_AB892EBE899029B ON seating_rows (plan_id)');
+        $this->addSql('CREATE INDEX IDX_AB892EBD823E37A ON seating_rows (section_id)');
+        $this->addSql('CREATE INDEX IDX_AB892EB828AD0A0 ON seating_rows (changed_by_id)');
+        $this->addSql('ALTER TABLE seating_rows ADD CONSTRAINT FK_AB892EBE899029B FOREIGN KEY (plan_id) REFERENCES seating_plans (id) ON DELETE CASCADE NOT DEFERRABLE');
+        $this->addSql('ALTER TABLE seating_rows ADD CONSTRAINT FK_AB892EBD823E37A FOREIGN KEY (section_id) REFERENCES seating_sections (id) ON DELETE SET NULL NOT DEFERRABLE');
+        $this->addSql('ALTER TABLE seating_rows ADD CONSTRAINT FK_AB892EB828AD0A0 FOREIGN KEY (changed_by_id) REFERENCES users (id) ON DELETE SET NULL NOT DEFERRABLE');
+
+        $this->addSql(<<<'SQL'
+            CREATE TABLE seating_seats (
+                id              UUID NOT NULL,
+                plan_id         UUID NOT NULL,
+                section_id      UUID DEFAULT NULL,
+                name            VARCHAR(30) NOT NULL,
+                name_key        VARCHAR(120) NOT NULL,
+                x_cm            INT NOT NULL,
+                y_cm            INT NOT NULL,
+                unusable        BOOLEAN DEFAULT false NOT NULL,
+                changed_by_id   UUID DEFAULT NULL,
+                version         INT DEFAULT 1 NOT NULL,
+                created_at      TIMESTAMP(0) WITHOUT TIME ZONE NOT NULL,
+                updated_at      TIMESTAMP(0) WITHOUT TIME ZONE NOT NULL,
+                PRIMARY KEY (id)
+            )
+            SQL);
+        $this->addSql('CREATE UNIQUE INDEX uniq_seating_seat_name ON seating_seats (plan_id, name_key)');
+        $this->addSql('CREATE INDEX IDX_29EBCCB8E899029B ON seating_seats (plan_id)');
+        $this->addSql('CREATE INDEX IDX_29EBCCB8D823E37A ON seating_seats (section_id)');
+        $this->addSql('CREATE INDEX IDX_29EBCCB8828AD0A0 ON seating_seats (changed_by_id)');
+        $this->addSql('ALTER TABLE seating_seats ADD CONSTRAINT FK_29EBCCB8E899029B FOREIGN KEY (plan_id) REFERENCES seating_plans (id) ON DELETE CASCADE NOT DEFERRABLE');
+        $this->addSql('ALTER TABLE seating_seats ADD CONSTRAINT FK_29EBCCB8D823E37A FOREIGN KEY (section_id) REFERENCES seating_sections (id) ON DELETE SET NULL NOT DEFERRABLE');
+        $this->addSql('ALTER TABLE seating_seats ADD CONSTRAINT FK_29EBCCB8828AD0A0 FOREIGN KEY (changed_by_id) REFERENCES users (id) ON DELETE SET NULL NOT DEFERRABLE');
     }
 
     public function down(Schema $schema): void
     {
-        $this->addSql('DROP TABLE schedule_items');
+        $this->addSql('DROP TABLE seating_seats');
+        $this->addSql('DROP TABLE seating_rows');
     }
 }

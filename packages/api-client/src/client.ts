@@ -59,7 +59,9 @@ import {
   asSeating,
   type Seating,
   type SeatingRoom,
+  type SeatingRowChanges,
   type SeatingTableChanges,
+  type SingleSeatChanges,
   type SectionColour,
   type TableShape,
   versionTag,
@@ -82,6 +84,18 @@ import {
 export interface SeatingWithTable {
   seating: Seating;
   tableId: string;
+}
+
+/** A row call's answer: the plan whole, and the row it added or changed. */
+export interface SeatingWithRow {
+  seating: Seating;
+  rowId: string;
+}
+
+/** A single seat call's answer: the plan whole, and the seat it added or changed. */
+export interface SeatingWithSeat {
+  seating: Seating;
+  seatId: string;
 }
 
 /** See docs/architecture/sessions.md. */
@@ -2273,6 +2287,102 @@ export class ApiClient {
     );
   }
 
+  /** Ten seats labelled with the next free letter; `rowId` is the one added. */
+  async addSeatingRow(eventId: string): Promise<SeatingWithRow> {
+    const body = await this.post<{ seating?: unknown; rowId?: unknown }>(this.rowsPath(eventId));
+
+    return {
+      seating: this.seatingOf(body),
+      rowId: typeof body?.rowId === 'string' ? body.rowId : '',
+    };
+  }
+
+  /** Refused `validation_failed` beside each field, and 412 with `changedBy` when a colleague changed it since `version`. */
+  async changeSeatingRow(
+    eventId: string,
+    rowId: string,
+    changes: SeatingRowChanges,
+    version: number,
+  ): Promise<SeatingWithRow> {
+    const body = await this.patch<{ seating?: unknown; rowId?: unknown }>(
+      `${this.rowsPath(eventId)}/${encodeURIComponent(rowId)}`,
+      changes,
+      { headers: { 'If-Match': versionTag(version) } },
+    );
+
+    return {
+      seating: this.seatingOf(body),
+      rowId: typeof body?.rowId === 'string' ? body.rowId : '',
+    };
+  }
+
+  /** The copy, with the next free label and nobody seated, as `rowId`. */
+  async duplicateSeatingRow(
+    eventId: string,
+    rowId: string,
+    version: number,
+  ): Promise<SeatingWithRow> {
+    const body = await this.post<{ seating?: unknown; rowId?: unknown }>(
+      `${this.rowsPath(eventId)}/${encodeURIComponent(rowId)}/duplicate`,
+      undefined,
+      { headers: { 'If-Match': versionTag(version) } },
+    );
+
+    return {
+      seating: this.seatingOf(body),
+      rowId: typeof body?.rowId === 'string' ? body.rowId : '',
+    };
+  }
+
+  async deleteSeatingRow(eventId: string, rowId: string, version: number): Promise<Seating> {
+    return this.seatingOf(
+      await this.delete<{ seating?: unknown }>(
+        `${this.rowsPath(eventId)}/${encodeURIComponent(rowId)}`,
+        { headers: { 'If-Match': versionTag(version) } },
+      ),
+    );
+  }
+
+  /** Named "Seat {n}" in the caller's language; `seatId` is the one added. */
+  async addSingleSeat(eventId: string): Promise<SeatingWithSeat> {
+    const body = await this.post<{ seating?: unknown; seatId?: unknown }>(
+      this.singleSeatsPath(eventId),
+    );
+
+    return {
+      seating: this.seatingOf(body),
+      seatId: typeof body?.seatId === 'string' ? body.seatId : '',
+    };
+  }
+
+  /** Refused `validation_failed` on `name`, and 412 with `changedBy` when a colleague changed it since `version`. */
+  async changeSingleSeat(
+    eventId: string,
+    seatId: string,
+    changes: SingleSeatChanges,
+    version: number,
+  ): Promise<SeatingWithSeat> {
+    const body = await this.patch<{ seating?: unknown; seatId?: unknown }>(
+      `${this.singleSeatsPath(eventId)}/${encodeURIComponent(seatId)}`,
+      changes,
+      { headers: { 'If-Match': versionTag(version) } },
+    );
+
+    return {
+      seating: this.seatingOf(body),
+      seatId: typeof body?.seatId === 'string' ? body.seatId : '',
+    };
+  }
+
+  async deleteSingleSeat(eventId: string, seatId: string, version: number): Promise<Seating> {
+    return this.seatingOf(
+      await this.delete<{ seating?: unknown }>(
+        `${this.singleSeatsPath(eventId)}/${encodeURIComponent(seatId)}`,
+        { headers: { 'If-Match': versionTag(version) } },
+      ),
+    );
+  }
+
   /** A hub token for this event's seating topic alone. */
   async seatingSubscription(eventId: string): Promise<RealtimeSubscription> {
     const body = await this.post<{ token?: unknown; expiresAt?: unknown }>(
@@ -2839,6 +2949,14 @@ export class ApiClient {
 
   private tablesPath(eventId: string): string {
     return `${this.seatingPath(eventId)}/tables`;
+  }
+
+  private rowsPath(eventId: string): string {
+    return `${this.seatingPath(eventId)}/rows`;
+  }
+
+  private singleSeatsPath(eventId: string): string {
+    return `${this.seatingPath(eventId)}/seats`;
   }
 
   private seatingWithTable(
