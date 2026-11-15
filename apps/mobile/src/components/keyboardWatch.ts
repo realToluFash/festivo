@@ -123,9 +123,12 @@ export function onceKeysDownThen(then: () => void, settledMs: number): () => voi
 }
 
 const scrollResizes = new Set<() => void>();
+const scrollHeights = new WeakMap<object, number>();
 
-/** A screen's scroll view has been laid out at a new size. */
-export function scrollResized(): void {
+/** A screen's scroll view has been laid out at `height`; only a new height counts, as a layout also comes when the view only moves, and each screen still mounted lays out its own. */
+export function scrollLaidOut(scroll: object, height: number): void {
+  if (scrollHeights.get(scroll) === height) return;
+  scrollHeights.set(scroll, height);
   scrollResizes.forEach((resized) => resized());
 }
 
