@@ -71,12 +71,10 @@ export function figureSaid(track: string, figure: RunFigure): RunWords {
   }
 }
 
-/** Spanish and Portuguese say "a la 1:15" but "a las 21:15", so a sentence holding a time picks its `_hour1` form at one o'clock. */
 export function hourContext(shown: string): { context?: 'hour1' } {
   return /^0?1(?!\d)/.test(shown) ? { context: 'hour1' } : {};
 }
 
-/** A time slot and the context its sentence takes. */
 export function timeSlot(time: string, locale: string): { time: string; context?: 'hour1' } {
   const shown = formatWallClock(time, locale);
 
@@ -97,7 +95,6 @@ export function nextWords<I extends RunTimesItem & { title: string }>(
   return expected === item.planned ? ['runView.nextAt', values] : ['runView.nextAbout', values];
 }
 
-/** Whether the closing line goes on to the step only someone who manages the run of show can take. */
 export function asksNextStep<I extends RunTimesItem>(track: RunTrack<I>, manage: boolean): boolean {
   return manage && track.figure.kind !== 'done' && track.next != null;
 }
