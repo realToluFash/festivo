@@ -11,7 +11,9 @@ export function mapsLinks(
 
   const { latitude, longitude, formatted } = address;
   const at = latitude != null && longitude != null ? `${latitude},${longitude}` : null;
-  const label = encodeURIComponent(venue?.name ?? formatted);
+  const label = encodeURIComponent(venue?.name ?? formatted)
+    .replace(/\(/g, '%28')
+    .replace(/\)/g, '%29');
   const browser = `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(at ?? formatted)}`;
 
   if (os === 'ios')

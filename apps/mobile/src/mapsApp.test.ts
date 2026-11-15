@@ -50,6 +50,9 @@ describe('mapsLinks', () => {
       app: 'geo:6.5,3.35?q=6.5,3.35(Finca)',
       browser: 'https://www.google.com/maps/search/?api=1&query=6.5%2C3.35',
     });
+    expect(mapsLinks(venue('Finca (Lekki)', [6.5, 3.35]), 'android')?.app).toBe(
+      'geo:6.5,3.35?q=6.5,3.35(Finca%20%28Lekki%29)',
+    );
     expect(mapsLinks(venue('Finca', null), 'android')).toEqual({
       app: 'geo:0,0?q=12%20Bode%20Thomas%20St%2C%20Lagos',
       browser: 'https://www.google.com/maps/search/?api=1&query=12%20Bode%20Thomas%20St%2C%20Lagos',
