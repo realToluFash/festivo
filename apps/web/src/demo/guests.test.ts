@@ -28,6 +28,7 @@ import {
   numberMatches,
   placesTo,
   recordReply,
+  startTicks,
   replyByOf,
   sampleGuests,
   saveGuest,
@@ -313,6 +314,39 @@ describe('Changed since you looked (sc-4331)', () => {
     expect(view.kind === 'rows' && view.rows[0]?.line).toBe(
       'Updated dietary needs · Changed Nov 2',
     );
+  });
+});
+
+describe('Record a reply starts from the companions as they are (sc-3787)', () => {
+  it('ticks a place nobody has chosen for, and leaves one recorded as not coming unticked', () => {
+    const emeka = sampleGuests(WEDDING).find((one) => one.id === 'emeka');
+    if (emeka == null) throw new Error('emeka');
+    const [adanna] = emeka.companions;
+
+    expect(startTicks(emeka)).toEqual(new Set([adanna?.id]));
+    const after = recordReply([emeka], 'emeka', 'coming', 'By phone', NONE, '2026-11-03')[0];
+    if (after == null) throw new Error('after');
+    expect(startTicks(after)).toEqual(new Set());
+    const notComing = recordReply([after], 'emeka', 'notComing', 'By phone', NONE, '2026-11-03')[0];
+    if (notComing == null) throw new Error('notComing');
+    expect(startTicks(notComing)).toEqual(new Set());
+  });
+
+  it('keeps a Held companion at their last choice (sc-3779)', () => {
+    const emeka = sampleGuests(WEDDING).find((one) => one.id === 'emeka');
+    if (emeka == null) throw new Error('emeka');
+    const [adanna] = emeka.companions;
+    if (adanna == null) throw new Error('adanna');
+    const all = new Set([adanna.id]);
+
+    const after = recordReply([emeka], 'emeka', 'coming', 'By phone', NONE, '2026-11-03');
+    const held = recordReply(after, 'emeka', 'notSure', 'By phone', all, '2026-11-03')[0];
+    if (held == null) throw new Error('held');
+    expect(held.companions[0]?.reply).toBe('held');
+    expect(startTicks(held)).toEqual(new Set());
+    const back = recordReply([held], 'emeka', 'coming', 'By phone', all, '2026-11-03')[0];
+    if (back == null) throw new Error('back');
+    expect(startTicks(back)).toEqual(all);
   });
 });
 
