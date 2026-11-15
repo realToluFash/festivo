@@ -67,6 +67,7 @@ export * from './accountName.ts';
 export * from './statusLook.ts';
 export * from './roomSize.ts';
 export * from './runOfShow.ts';
+export * from './runTimes.ts';
 export * from './nameKey.ts';
 export * from './seatingSections.ts';
 export * from './seatingTables.ts';
