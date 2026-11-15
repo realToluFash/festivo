@@ -70,7 +70,6 @@ const ANSWERS: Record<string, unknown> = {
         removable: false,
         permissions: OWNER_PERMISSIONS,
         holders: 1,
-        holderNames: [{ name: 'Folake Adeyemi', suspended: false }],
       },
     ],
     areas: [],
