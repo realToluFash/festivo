@@ -105,7 +105,7 @@ export const GW = {
   replaceLinkLine: 'The old link stops working straight away',
   markAsInvited: 'Mark as invited',
   markLine: 'How you invited them, so they count as invited',
-  recordNotYetLine: 'What they told you. Their reply counts them as invited',
+  recordNotYetLine: 'What they told you, so they count as invited',
   copyFirst: 'Copying their link does not mark them. Mark them once you have sent it.',
   linkCopied: 'Link copied',
   invitationLink: 'Invitation link',
