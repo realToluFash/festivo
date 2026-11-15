@@ -23,7 +23,6 @@ appId: host.exp.Exponent
           id: 'event.edit.venue.address'
           point: '97%,50%'
       - eraseText: 200
-- hideKeyboard
 - tapOn:
     id: 'event.edit.venue.save'
 - extendedWaitUntil:
@@ -39,4 +38,4 @@ appId: host.exp.Exponent
 - takeScreenshot: removed
 - assertNotVisible:
     id: 'events.maps'
-- assertNotVisible: 'Venue · .*'
+- assertNotVisible: '.*Venue · .*'
