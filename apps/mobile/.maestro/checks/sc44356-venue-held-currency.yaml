@@ -1,0 +1,26 @@
+# New event with a venue name typed and its cursor left in Venue name, scrolled so Currency sits centred, for a TalkBack pass on Time zone and Currency. sc-44356. Needs ${METRO_URL}.
+appId: host.exp.Exponent
+---
+- openLink: ${METRO_URL}/--/events/new
+- extendedWaitUntil:
+    visible:
+      id: 'eventForm.name'
+    timeout: 30000
+- scrollUntilVisible:
+    element:
+      id: 'eventForm.venueName'
+    direction: DOWN
+    centerElement: true
+- tapOn:
+    id: 'eventForm.venueName'
+- inputText: 'Held venue hall'
+- hideKeyboard
+- scrollUntilVisible:
+    element:
+      id: 'eventForm.currency'
+    direction: DOWN
+    centerElement: true
+- waitForAnimationToEnd
+- assertVisible:
+    id: 'eventForm.currency'
+- takeScreenshot: venue-held-currency
