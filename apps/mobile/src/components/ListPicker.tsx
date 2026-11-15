@@ -101,6 +101,7 @@ export function ListPicker({
   const ownField = useRef<ViewInstance>(null);
   const field = pickerRef ?? ownField;
   const [closed, setClosed] = useState<object>();
+  const heldBehind = useRef<ReturnType<typeof TextInput.State.currentlyFocusedInput>>(null);
   const [search, setSearch] = useState('');
   const searchNameID = useId();
   const searching = useHeld(false, search, undefined, setSearch);
@@ -122,6 +123,9 @@ export function ListPicker({
   // Android hands TalkBack's focus to whichever field holds input focus, not to the picker that opened the menu (sc-43908).
   const close = () => {
     if (Platform.OS === 'android') setClosed({});
+    // A field still holding input focus is what TalkBack says first as the window goes (sc-44356). Blurred under the menu's window its keyboard hide does nothing; at the tap TalkBack said "keyboard hidden" (qa #50794).
+    heldBehind.current?.blur();
+    heldBehind.current = null;
     setOpen(false);
   };
   // Until the menu's window takes Back, Android gives it to the screen beneath, which stepped back or asked to leave (sc-43145).
@@ -168,9 +172,8 @@ export function ListPicker({
         ]}
         onPress={() => {
           controlTaken();
-          // Android hands a closing window's focus to the field still holding input focus, and TalkBack says it before the picker (sc-44356).
           if (Platform.OS === 'android' && readerOn)
-            TextInput.State.currentlyFocusedInput()?.blur();
+            heldBehind.current = TextInput.State.currentlyFocusedInput();
           setClosed(undefined);
           setOpen(true);
         }}
