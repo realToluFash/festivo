@@ -26,6 +26,7 @@ import {
 } from './guest.ts';
 import { hasWhere, inDayOrder, mapsLink, placeOf } from './guestDay.ts';
 import { ChangeLines } from './GuestChange.tsx';
+import { Programme } from './GuestProgramme.tsx';
 
 const LINES = {
   map: [
@@ -497,6 +498,7 @@ export function Details({ visit, words, hosts }: { visit: Visit; words: Words; h
         <div className={hosts ? 'gp-where has-rule' : 'gp-where'}>{noteLine}</div>
       )}
       {hostsRow}
+      <Programme visit={visit} />
     </div>
   );
 }
