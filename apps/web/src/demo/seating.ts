@@ -587,8 +587,41 @@ export function snapTo(value: number, units: Units, on = true): number {
   return on ? Math.round(value / step) * step : Math.round(value);
 }
 
-export function nearestFree(item: Item, items: readonly Item[], room: Room, from: Point): Point {
-  const step = 20;
+export const PLACE_CLEAR = 46;
+export const SEAT_NAME_ROOM = 160;
+
+function placingBox(item: Item, at: Point = [item.x, item.y]) {
+  const box = bounds(item, at);
+
+  return item.kind === 'single' ? { ...box, x1: box.x1 + SEAT_NAME_ROOM } : box;
+}
+
+export function keepsClear(item: Item, items: readonly Item[], clear = PLACE_CLEAR): boolean {
+  const a = placingBox(item);
+
+  return items.every((other) => {
+    if (other.id === item.id) return true;
+    const b = placingBox(other);
+
+    return (
+      a.x1 + clear <= b.x0 || b.x1 + clear <= a.x0 || a.y1 + clear <= b.y0 || b.y1 + clear <= a.y0
+    );
+  });
+}
+
+function preferred([dx, dy]: Point): number {
+  if (Math.abs(dy) > Math.abs(dx)) return dy > 0 ? 0 : 1;
+  return dx > 0 ? 2 : 3;
+}
+
+function searchFree(
+  item: Item,
+  items: readonly Item[],
+  room: Room,
+  from: Point,
+  fits: (moved: Item) => boolean,
+): Point | null {
+  const step = 10;
   const limit = Math.max(room.w, room.l);
 
   for (let ring = 0; ring * step <= limit; ring += 1) {
@@ -596,20 +629,28 @@ export function nearestFree(item: Item, items: readonly Item[], room: Room, from
 
     for (let dx = -ring; dx <= ring; dx += 1)
       for (let dy = -ring; dy <= ring; dy += 1)
-        if (Math.max(Math.abs(dx), Math.abs(dy)) === ring)
-          tries.push([from[0] + dx * step, from[1] + dy * step]);
-    tries.sort(
-      (a, b) =>
-        Math.hypot(a[0] - from[0], a[1] - from[1]) - Math.hypot(b[0] - from[0], b[1] - from[1]),
-    );
-    for (const at of tries) {
-      const moved = { ...item, x: Math.round(at[0] / 10) * 10, y: Math.round(at[1] / 10) * 10 };
+        if (Math.max(Math.abs(dx), Math.abs(dy)) === ring) tries.push([dx * step, dy * step]);
+    tries.sort((a, b) => Math.hypot(...a) - Math.hypot(...b) || preferred(a) - preferred(b));
+    for (const [dx, dy] of tries) {
+      const moved = {
+        ...item,
+        x: Math.round((from[0] + dx) / 10) * 10,
+        y: Math.round((from[1] + dy) / 10) * 10,
+      };
 
-      if (inside(moved, room) && overlapsOf(moved, items).length === 0) return [moved.x, moved.y];
+      if (inside(moved, room) && fits(moved)) return [moved.x, moved.y];
     }
   }
 
-  return within(item, room, from);
+  return null;
+}
+
+export function nearestFree(item: Item, items: readonly Item[], room: Room, from: Point): Point {
+  return (
+    searchFree(item, items, room, from, (moved) => keepsClear(moved, items)) ??
+    searchFree(item, items, room, from, (moved) => overlapsOf(moved, items).length === 0) ??
+    within(item, room, from)
+  );
 }
 
 export function readingOrder(items: readonly Item[]): Item[] {
