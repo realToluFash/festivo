@@ -7,7 +7,7 @@ import {
   eventPhase,
 } from '@soirely/domain';
 
-import { CLOCKS, type SampleEvent, cardOf, localDay, sampleEvent } from './events.ts';
+import { CLOCKS, EVENT_WORDS, type SampleEvent, cardOf, localDay, sampleEvent } from './events.ts';
 import {
   NO_NEEDS,
   type Needs,
@@ -1457,7 +1457,7 @@ export function guestsCardOf(
       tags: [{ kind: 'draft', word: 'Draft' }],
       says: list.length === 0 ? GW.noGuests : GW.onList(counts.all),
       arrived: null,
-      line: passed ? step.line : GW.draftLine,
+      line: passed ? (events ? step.line : EVENT_WORDS.endPassedReader) : GW.draftLine,
       step: add ? 'add' : events ? live : null,
       also: add && events ? live : null,
     };
@@ -1719,7 +1719,12 @@ export const GUESTS_STATES = [
   { key: 'staffBefore', name: 'Door staff before the day: read-only' },
   { key: 'draft', name: 'A Draft event' },
   { key: 'draftPast', name: 'A Draft whose end has passed: Change dates' },
+  {
+    key: 'draftPastReader',
+    name: 'A Draft whose end has passed, as a Can view Member: no Change dates',
+  },
   { key: 'paused', name: 'A Paused event' },
+  { key: 'pausedReader', name: 'A Paused event, as a Can view Member' },
   { key: 'draftEmpty', name: 'A Draft with nobody on its list: Add guest and Make live' },
   {
     key: 'draftEmptyPast',
@@ -1967,9 +1972,9 @@ export function guestsStart(state: GuestsState | null, params: URLSearchParams):
     state === 'draftEmptyEvents' ||
     state === 'draftOneLeft'
       ? DRAFT
-      : state === 'draftPast' || state === 'draftEmptyPast'
+      : state === 'draftPast' || state === 'draftPastReader' || state === 'draftEmptyPast'
         ? DRAFT_PAST
-        : state === 'paused' || state === 'pausedEmpty'
+        : state === 'paused' || state === 'pausedReader' || state === 'pausedEmpty'
           ? PARTY
           : asked != null && hasGuests(asked)
             ? asked
@@ -2059,6 +2064,9 @@ export function guestsStart(state: GuestsState | null, params: URLSearchParams):
     case 'paused':
     case 'eventDeleted':
       return start;
+    case 'draftPastReader':
+    case 'pausedReader':
+      return { ...start, role: 'viewer' };
     case 'draftEmpty':
     case 'draftEmptyPast':
     case 'pausedEmpty':
@@ -2730,7 +2738,9 @@ export const GUESTS_PAGES: readonly { name: string; states: readonly DemoLink[] 
     'staffBefore',
     'draft',
     'draftPast',
+    'draftPastReader',
     'paused',
+    'pausedReader',
     'eventDeleted',
     'onTheDay',
     'secondDay',

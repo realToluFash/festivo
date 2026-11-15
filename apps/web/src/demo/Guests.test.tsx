@@ -244,6 +244,31 @@ describe('Guests, the list (sc-31781)', () => {
     expect(screen.getByRole('button', { name: 'Make live' })).toBeDefined();
   });
 
+  it('tells a reader on a passed Draft who can change its dates (sc-50996)', SLOW, async () => {
+    await guests('draftPastReader');
+
+    expect(
+      screen.getByText(
+        'This event’s end has passed, so it cannot be made live. Someone who can edit this event can change its dates.',
+      ),
+    ).toBeDefined();
+    expect(screen.queryByText(/Change its dates first/u)).toBeNull();
+    expect(screen.queryByRole('button', { name: 'Change dates' })).toBeNull();
+    expect(screen.queryByRole('button', { name: 'Make live' })).toBeNull();
+  });
+
+  it(
+    'keeps a Paused event’s line for a reader, with nothing to press (sc-50996)',
+    SLOW,
+    async () => {
+      await guests('pausedReader');
+
+      expect(screen.getByText('Guests can’t be invited while this event is paused.')).toBeDefined();
+      expect(screen.queryByRole('button', { name: 'Resume' })).toBeNull();
+      expect(screen.queryByRole('button', { name: 'Add guest' })).toBeNull();
+    },
+  );
+
   it('offers Change dates on a Draft whose end has passed, opening its dates', SLOW, async () => {
     const router = await guests('draftPast');
 

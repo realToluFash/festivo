@@ -482,8 +482,11 @@ export const EVENT_WORDS = {
   guestsBlocked: 'Guests can’t be invited until this event is live.',
   makeLive: 'Make live',
   endPassed: 'This event’s end has passed, so it cannot be made live. Change its dates first.',
+  endPassedReader:
+    'This event’s end has passed, so it cannot be made live. Someone who can edit this event can change its dates.',
   changeDates: 'Change dates',
   nextResume: 'Paused. Guests can’t reply or change anything until you resume it.',
+  nextResumeReader: 'Paused. Guests can’t reply or change anything until it is resumed.',
   resume: 'Resume',
   resumed: (name: string) => `${name} is live again.`,
   allPassed: 'Nothing coming up. Every date on this event has passed.',
@@ -1018,6 +1021,7 @@ export type ListState =
   | 'noGuests'
   | 'replyLands'
   | 'noGuestsRead'
+  | 'draftsReader'
   | 'tileInvited'
   | 'tileReplied';
 
@@ -1044,6 +1048,7 @@ const LIST_STATES: readonly ListState[] = [
   'noGuests',
   'replyLands',
   'noGuestsRead',
+  'draftsReader',
   'tileInvited',
   'tileReplied',
 ];
@@ -1070,6 +1075,8 @@ export interface ListStart {
   replyLands: boolean;
   /** Without guests.read, no guest numbers anywhere (sc-3786). */
   readsGuests: boolean;
+  /** sc-50996: a Can view Member, without events.manage, reads the card's line and is offered no step. */
+  reads: boolean;
   tile: 'invited' | 'replied' | null;
   failed: boolean;
   moreFailed: boolean;
@@ -1098,6 +1105,7 @@ export function listStart(state: ListState | null): ListStart {
     noGuests: false,
     replyLands: false,
     readsGuests: true,
+    reads: false,
     tile: null,
     failed: false,
     moreFailed: false,
@@ -1120,6 +1128,8 @@ export function listStart(state: ListState | null): ListStart {
       return { ...rest, tab: 'past', emptied: 'past' };
     case 'drafts':
       return { ...rest, tab: 'drafts' };
+    case 'draftsReader':
+      return { ...rest, tab: 'drafts', reads: true };
     case 'past':
       return { ...rest, tab: 'past' };
     case 'pastMore':
@@ -1164,7 +1174,16 @@ export function listStart(state: ListState | null): ListStart {
 }
 
 export type PhaseState =
-  'draft' | 'draftPast' | 'live' | 'now' | 'paused' | 'finished' | 'calledOff' | 'photo';
+  | 'draft'
+  | 'draftPast'
+  | 'draftPastReader'
+  | 'live'
+  | 'now'
+  | 'paused'
+  | 'pausedReader'
+  | 'finished'
+  | 'calledOff'
+  | 'photo';
 
 export type EditState =
   | 'dates'
@@ -1247,9 +1266,11 @@ export type EventStateName =
 export const EVENT_STATES: Record<EventStateName, string> = {
   draft: 'evt-draft-4',
   draftPast: 'evt-shower-2',
+  draftPastReader: 'evt-shower-2',
   live: 'evt-wed-4',
   now: 'evt-wed-4',
   paused: 'evt-party-2',
+  pausedReader: 'evt-party-2',
   finished: 'evt-wed-4',
   calledOff: 'evt-off',
   photo: 'evt-wed-4',
@@ -1350,6 +1371,11 @@ export const EVENT_STATES: Record<EventStateName, string> = {
   needsYouFailed: 'evt-wed-4',
   ...MAKE_LIVE_EVENTS,
 };
+
+/** sc-50996: the event's page as a Can view Member, who holds events.read without events.manage. */
+export function readsOnly(state: EventStateName | null): boolean {
+  return state === 'draftPastReader' || state === 'pausedReader';
+}
 
 export function eventStateOf(value: string | null): EventStateName | null {
   return value != null && Object.hasOwn(EVENT_STATES, value) ? (value as EventStateName) : null;
@@ -1513,6 +1539,7 @@ export const EVENTS_PAGES: readonly { name: string; states: readonly DemoLink[] 
     states: [
       list(null, 'Upcoming, the soonest as the card'),
       list('drafts', 'Drafts, the soonest with its dates passed'),
+      list('draftsReader', 'Drafts, as a Can view Member: its dates passed, no Change dates'),
       list('past', 'Past, a page of ten'),
       list('pastMore', 'Past, after Show more'),
       list('pastFailed', 'Past, More finished events did not load'),
@@ -1569,9 +1596,11 @@ export const EVENTS_PAGES: readonly { name: string; states: readonly DemoLink[] 
     states: [
       on('draft', 'Draft'),
       on('draftPast', 'Draft, its dates passed'),
+      on('draftPastReader', 'Draft, its dates passed, as a Can view Member: no Change dates'),
       on('live', 'Live'),
       on('now', 'Happening now'),
       on('paused', 'Paused'),
+      on('pausedReader', 'Paused, as a Can view Member: no Resume'),
       on('finished', 'Finished'),
       on('calledOff', 'Called off'),
       on('photo', 'Live, with a cover photo'),
