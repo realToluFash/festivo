@@ -1,4 +1,4 @@
-# sc-51754: ${EVENT_ID}'s Venue address replaced by ${NEW_ADDRESS}, typed and saved, then Open in maps tapped on the same page. Needs ${METRO_URL}, ${EVENT_ID}, ${NEW_ADDRESS}.
+# sc-51754: ${EVENT_ID}'s Venue address replaced by ${NEW_ADDRESS}, typed and saved, then Open in maps tapped on the same page. Needs ${METRO_URL}, ${EVENT_ID} (a venue with a name), ${NEW_ADDRESS} (plain text, no brackets).
 appId: host.exp.Exponent
 ---
 - openLink: ${METRO_URL}/--/events/${EVENT_ID}
