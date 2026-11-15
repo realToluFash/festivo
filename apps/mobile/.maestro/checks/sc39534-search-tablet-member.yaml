@@ -1,7 +1,7 @@
-# sc-39534: on the upright tablet, a member match found by email opens Settings › Members with that row in view.
+# sc-39534: on the upright tablet, a member match found by email opens Settings › Members with that row in view. Needs ORIENT (PORTRAIT, LANDSCAPE_LEFT on a landscape-natural tablet) and EMAIL, a member of the signed-in organisation.
 appId: host.exp.Exponent
 ---
-- setOrientation: LANDSCAPE_LEFT
+- setOrientation: ${ORIENT}
 - waitForAnimationToEnd
 - openLink: ${METRO_URL}/--/calendar
 - extendedWaitUntil:
@@ -14,11 +14,11 @@ appId: host.exp.Exponent
     visible:
       id: 'search.field'
     timeout: 15000
-- inputText: 'qa-17947713644'
+- inputText: ${EMAIL.split('@')[0]}
 - extendedWaitUntil:
-    visible: 'QA Tester'
+    visible: '${EMAIL}.*'
     timeout: 15000
 - hideKeyboard
-- tapOn: 'QA Tester'
+- tapOn: '${EMAIL}.*'
 - waitForAnimationToEnd
 - takeScreenshot: member-opened

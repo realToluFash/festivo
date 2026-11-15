@@ -1,7 +1,7 @@
-# sc-39534: the tablet's Search on Today, Events, Calendar and Settings, in both orientations (this emulator's PORTRAIT is its wide side).
+# sc-39534: the tablet's Search on Today, Events, Calendar and Settings, wide and upright. Needs WIDE and UPRIGHT: LANDSCAPE_LEFT and PORTRAIT, swapped on a landscape-natural tablet. The member open is sc39534-search-tablet-member.
 appId: host.exp.Exponent
 ---
-- setOrientation: PORTRAIT
+- setOrientation: ${WIDE}
 - waitForAnimationToEnd
 - openLink: ${METRO_URL}/--/
 - waitForAnimationToEnd
@@ -13,9 +13,14 @@ appId: host.exp.Exponent
 - waitForAnimationToEnd
 - takeScreenshot: wide-calendar
 - openLink: ${METRO_URL}/--/settings
+- extendedWaitUntil:
+    visible:
+      id: 'frame.search'
+    timeout: 30000
 - waitForAnimationToEnd
 - takeScreenshot: wide-settings
-- tapOn: 'Search.*'
+- tapOn:
+    id: 'frame.search'
 - extendedWaitUntil:
     visible:
       id: 'search.field'
@@ -27,7 +32,7 @@ appId: host.exp.Exponent
 - takeScreenshot: wide-mixed
 - tapOn:
     id: 'search.scrim'
-- setOrientation: LANDSCAPE_LEFT
+- setOrientation: ${UPRIGHT}
 - waitForAnimationToEnd
 - openLink: ${METRO_URL}/--/
 - waitForAnimationToEnd
@@ -38,17 +43,3 @@ appId: host.exp.Exponent
 - openLink: ${METRO_URL}/--/calendar
 - waitForAnimationToEnd
 - takeScreenshot: upright-calendar
-- tapOn:
-    id: 'frame.search'
-- extendedWaitUntil:
-    visible:
-      id: 'search.field'
-    timeout: 15000
-- inputText: 'qa-17947713644'
-- extendedWaitUntil:
-    visible: 'qa-1794771364488@soirely.test.*'
-    timeout: 15000
-- takeScreenshot: upright-member-results
-- tapOn: 'qa-1794771364488@soirely.test.*'
-- waitForAnimationToEnd
-- takeScreenshot: upright-member-opened

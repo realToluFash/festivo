@@ -4,48 +4,63 @@ appId: host.exp.Exponent
 - openLink: ${METRO_URL}/--/demo/search?state=idle
 - waitForAnimationToEnd
 - extendedWaitUntil:
-    visible: '.*'
-    timeout: 5000
+    visible:
+      id: 'demo.search.field'
+    timeout: 15000
 - takeScreenshot: demo-idle
 - openLink: ${METRO_URL}/--/demo/search?state=short
 - waitForAnimationToEnd
 - extendedWaitUntil:
-    visible: '.*'
-    timeout: 5000
+    visible:
+      id: 'demo.search.field'
+    timeout: 15000
 - takeScreenshot: demo-short
 - openLink: ${METRO_URL}/--/demo/search?state=mixed
 - waitForAnimationToEnd
 - extendedWaitUntil:
-    visible: '.*'
-    timeout: 5000
+    visible:
+      id: 'demo.search.field'
+    timeout: 15000
 - takeScreenshot: demo-mixed
 - openLink: ${METRO_URL}/--/demo/search?state=long
 - waitForAnimationToEnd
 - extendedWaitUntil:
-    visible: '.*'
-    timeout: 5000
+    visible:
+      id: 'demo.search.field'
+    timeout: 15000
 - takeScreenshot: demo-long
 - openLink: ${METRO_URL}/--/demo/search?state=none
 - waitForAnimationToEnd
 - extendedWaitUntil:
-    visible: '.*'
-    timeout: 5000
+    visible:
+      id: 'demo.search.field'
+    timeout: 15000
 - takeScreenshot: demo-none
 - openLink: ${METRO_URL}/--/demo/search?state=failed
 - waitForAnimationToEnd
 - extendedWaitUntil:
-    visible: '.*'
-    timeout: 5000
+    visible:
+      id: 'demo.search.field'
+    timeout: 15000
 - takeScreenshot: demo-failed
 - openLink: ${METRO_URL}/--/demo/search?state=offline
 - waitForAnimationToEnd
 - extendedWaitUntil:
-    visible: '.*'
-    timeout: 5000
+    visible:
+      id: 'demo.search.field'
+    timeout: 15000
 - takeScreenshot: demo-offline
 - openLink: ${METRO_URL}/--/demo/search-header
+- extendedWaitUntil:
+    visible:
+      id: 'demo.search.open'
+    timeout: 15000
 - waitForAnimationToEnd
 - takeScreenshot: demo-header
 - openLink: ${METRO_URL}/--/demo/search-header?on=today
+- extendedWaitUntil:
+    visible:
+      id: 'demo.search.open'
+    timeout: 15000
 - waitForAnimationToEnd
 - takeScreenshot: demo-header-today
