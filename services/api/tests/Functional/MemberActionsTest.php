@@ -218,7 +218,7 @@ final class MemberActionsTest extends ApiTestCase
         self::assertCount(1, Type\vec(Type\mixed())->coerce($this->bearing($token, 'GET', '/api/orgs')['organisations'] ?? null), 'their own organisation untouched');
         self::assertSame(MembershipStatus::LeftOrRemoved, $this->membership($chidi)->getStatus());
 
-        $list = $this->as($this->owner, 'GET', $this->path('/members'));
+        $list = $this->as($this->owner, 'GET', $this->path('/members?show=former'));
         $row = Vec\filter(Type\vec(Type\shape(['user' => Type\shape(['name' => Type\string()], true), 'former' => Type\nullable(Type\string())], true))->coerce($list['members']), static fn (array $one): bool => 'Chidi Okoro' === $one['user']['name']);
         self::assertSame('removed', $row[0]['former'] ?? null);
         self::assertSame(1, $this->audited(MemberActions::REMOVED));
