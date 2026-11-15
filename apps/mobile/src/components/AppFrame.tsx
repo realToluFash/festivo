@@ -116,7 +116,7 @@ import type { ScreenReaderTarget } from './screenReaderFocus.ts';
 import { type TextHandle, Text, TitleCap } from './Text.tsx';
 import { Title } from './Title.tsx';
 import { PAGE_TITLE, pageTitle } from './topTitle.ts';
-import { TopPrimary, type TopPrimaryProps } from './TopPrimary.tsx';
+import { TopPrimary, type TopPrimaryProps, usePrimaryLabel } from './TopPrimary.tsx';
 import { ListTop, PortraitRow, PortraitTop } from './ListTop.tsx';
 import { AccessPaused } from './AccessPaused.tsx';
 import { TwoFactorOverdue } from './TwoFactorOverdue.tsx';
@@ -833,6 +833,14 @@ function ScreenTop({
     </>
   );
   const staysStyle = stays && LIST_EDGES[kind];
+  const label = usePrimaryLabel({
+    title,
+    size: PAGE_TITLE,
+    style: pageTitle,
+    label: page ? primary?.label : undefined,
+    gap: tokens.spaceMd,
+    labelled: kind !== 'phone',
+  });
 
   if (!page)
     return (
@@ -856,13 +864,14 @@ function ScreenTop({
 
   const titleRow = (
     <View style={[styles.topRow, styles.pageRow, rowStyle]}>
-      <View style={styles.fill}>
+      <View style={styles.fill} onLayout={label.onSlot}>
+        {label.measure}
         <Title size={PAGE_TITLE} accessibilityRole="header" ref={read} style={pageTitle}>
           {title}
         </Title>
       </View>
       {besideTitle}
-      {primary != null && <TopPrimary {...primary} wide={kind !== 'phone'} />}
+      {primary != null && <TopPrimary {...primary} wide={label.wide} />}
       {kind === 'tabletLandscape' && <BellButton />}
     </View>
   );

@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 
-import { labelFits } from './TitleFit.ts';
+import { labelFits, rowRoom } from './titleFit.ts';
 
 const row = { room: 400, title: 140, extra: 0, labelled: 170, gap: 16 };
 
@@ -26,5 +26,27 @@ describe('the primary beside a title', () => {
   it('keeps the label until the row is measured', () => {
     expect(labelFits({ ...row, room: 0 })).toBe(true);
     expect(labelFits({ ...row, title: 0 })).toBe(true);
+  });
+});
+
+describe('the row a title stands in', () => {
+  const sides = { gap: 16, labelled: 170, round: 44 };
+
+  it('adds back the labelled primary when that is what was drawn', () => {
+    expect(rowRoom({ ...sides, slot: 214, drawn: 'labelled' })).toBe(400);
+  });
+
+  it('adds back the round primary when that is what was drawn', () => {
+    expect(rowRoom({ ...sides, slot: 340, drawn: 'round' })).toBe(400);
+  });
+
+  it('is the same row whichever primary took its share, so a flip settles', () => {
+    const labelled = rowRoom({ ...sides, slot: 400 - 16 - 170, drawn: 'labelled' });
+    const round = rowRoom({ ...sides, slot: 400 - 16 - 44, drawn: 'round' });
+    expect(labelled).toBe(round);
+  });
+
+  it('is unmeasured until the slot is', () => {
+    expect(rowRoom({ ...sides, slot: 0, drawn: 'labelled' })).toBe(0);
   });
 });

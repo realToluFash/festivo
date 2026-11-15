@@ -67,7 +67,7 @@ import { Arrived } from './Skeleton.tsx';
 import { type ScreenReaderTarget, moveScreenReaderFocus } from './screenReaderFocus.ts';
 import { Text, type TextHandle } from './Text.tsx';
 import { Title } from './Title.tsx';
-import { TopPrimary } from './TopPrimary.tsx';
+import { TopPrimary, usePrimaryLabel } from './TopPrimary.tsx';
 import { COLUMN_TITLE, PAGE_TITLE, columnTitle, pageTitle } from './topTitle.ts';
 import { useSidebarCard } from './sidebarCard.ts';
 import { eventTop } from '../kit/eventTop.ts';
@@ -323,13 +323,23 @@ export function EventScreen({
         {event.name}
       </Text>
     ) : undefined;
+  const guestsTitleSize = kind === 'tabletLandscape' ? COLUMN_TITLE : PAGE_TITLE;
+  const guestsTitleStyle = kind === 'tabletLandscape' ? columnTitle : pageTitle;
+  const guestsLabel = usePrimaryLabel({
+    title: t('eventNav.guests'),
+    size: guestsTitleSize,
+    style: guestsTitleStyle,
+    label: guests && guestsTop.add != null ? t('guestList.addGuest') : undefined,
+    gap: tokens.spaceSm,
+    labelled: !phone,
+  });
   const addGuest =
     guests && guestsTop.add != null ? (
       <TopPrimary
         ref={guestsAdd}
         label={t('guestList.addGuest')}
         onPress={guestsTop.add}
-        wide={!phone}
+        wide={guestsLabel.wide}
         testID="guests.add"
       />
     ) : null;
@@ -384,12 +394,13 @@ export function EventScreen({
           onTop={setGuestsTop}
           heading={
             <View style={styles.titleRow}>
-              <View style={styles.fill}>
+              <View style={styles.fill} onLayout={guestsLabel.onSlot}>
+                {guestsLabel.measure}
                 <Title
-                  size={kind === 'tabletLandscape' ? COLUMN_TITLE : PAGE_TITLE}
+                  size={guestsTitleSize}
                   accessibilityRole="header"
                   ref={title}
-                  style={kind === 'tabletLandscape' ? columnTitle : pageTitle}
+                  style={guestsTitleStyle}
                 >
                   {t('eventNav.guests')}
                 </Title>

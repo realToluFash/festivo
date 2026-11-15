@@ -14,3 +14,22 @@ export function labelFits({ room, title, extra, labelled, gap }: TitleRow): bool
 
   return title + gap + beside + labelled <= room;
 }
+
+/** The row's whole width, from the title's slot and whichever primary was drawn beside it, so the room is the same whether the labelled or the round primary took its share. */
+export function rowRoom({
+  slot,
+  gap,
+  drawn,
+  labelled,
+  round,
+}: {
+  slot: number;
+  gap: number;
+  drawn: 'labelled' | 'round';
+  labelled: number;
+  round: number;
+}): number {
+  if (slot <= 0) return 0;
+
+  return slot + gap + (drawn === 'labelled' ? labelled : round);
+}
