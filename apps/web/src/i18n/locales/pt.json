@@ -1800,10 +1800,10 @@
     "roleBecomes": "{{name}} passa a ter a função {{role}} assim que voltar a usar a Soirely. Nenhuma sessão é encerrada.",
     "roleDiscard": "{{name}} mantém a função {{role}}.",
     "more": {
-      "showMore": "Show more",
-      "showing": "Showing {{shown, number}} of {{total, number}}",
-      "loading": "Loading more people…",
-      "failed": "More people did not load. Check your connection and try again."
+      "showMore": "Mostrar mais",
+      "showing": "A mostrar {{shown, number}} de {{total, number}}",
+      "loading": "A carregar mais pessoas…",
+      "failed": "Não foi possível carregar mais pessoas. Verifique a ligação e tente novamente."
     }
   },
   "contacts": {
