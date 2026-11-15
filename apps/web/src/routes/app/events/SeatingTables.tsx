@@ -516,46 +516,39 @@ export function TablePanel({
       )}
       <div className="st-fields">
         <Field fieldKey="name" label={t('seating.name')} value={table.name} onCommit={name} />
-        <div className="st-two">
-          <Select
-            fieldKey="section"
-            label={t('seating.section')}
-            value={table.sectionId ?? ''}
-            options={[
-              { value: '', word: t('seating.noSection') },
-              ...plan.sections.map((one) => ({ value: one.id, word: one.name })),
-            ]}
-            onPick={(value) => void change({ sectionId: value === '' ? null : value })}
-          />
-          <Select
-            fieldKey="shape"
-            label={t('seating.shape')}
-            value={table.shape}
-            options={TABLE_SHAPES.map((shape) => ({
-              value: shape,
-              word: t(SHAPE_WORDS[shape].short),
-            }))}
-            onPick={(value) => {
-              const shape = TABLE_SHAPES.find((one) => one === value);
+        <Select
+          fieldKey="section"
+          label={t('seating.section')}
+          value={table.sectionId ?? ''}
+          options={[
+            { value: '', word: t('seating.noSection') },
+            ...plan.sections.map((one) => ({ value: one.id, word: one.name })),
+          ]}
+          onPick={(value) => void change({ sectionId: value === '' ? null : value })}
+        />
+        <Select
+          fieldKey="shape"
+          label={t('seating.shape')}
+          value={table.shape}
+          options={TABLE_SHAPES.map((shape) => ({
+            value: shape,
+            word: t(SHAPE_WORDS[shape].short),
+          }))}
+          onPick={(value) => {
+            const shape = TABLE_SHAPES.find((one) => one === value);
 
-              if (shape == null) return;
-              void change({ shape }).then((refused) => {
-                if (refused != null) return;
-                setNote(
-                  t(SIZE_RESET[shape], {
-                    size: tableSizeWords(
-                      t,
-                      locale,
-                      { shape, ...TABLE_DEFAULTS[shape] },
-                      ctx.system,
-                    ),
-                    count: table.seats,
-                  }),
-                );
-              });
-            }}
-          />
-        </div>
+            if (shape == null) return;
+            void change({ shape }).then((refused) => {
+              if (refused != null) return;
+              setNote(
+                t(SIZE_RESET[shape], {
+                  size: tableSizeWords(t, locale, { shape, ...TABLE_DEFAULTS[shape] }, ctx.system),
+                  count: table.seats,
+                }),
+              );
+            });
+          }}
+        />
         {round ? (
           <div className="st-two">
             <Field
