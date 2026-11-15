@@ -151,7 +151,7 @@ export function PausedRow({
             ))}
           </div>
         ) : (
-          <p>{t('eventPause.notice')}</p>
+          <p>{t(manages ? 'eventPause.notice' : 'eventPause.noticeReader')}</p>
         )}
         {state === 'failed' && <p role="alert">{t('eventPause.resumeFailed')}</p>}
         {manages && eventAllows(phase, 'resume') && (

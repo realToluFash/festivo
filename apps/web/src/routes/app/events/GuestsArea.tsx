@@ -858,14 +858,11 @@ export function GuestsArea({
             comingWords: t('guestList.countComing', { count: counts.coming }),
             invitedWords: t('guestList.countInvited', { count: counts.invited }),
           });
-    const draft = phase === 'draft' ? makeLiveRow(event, now) : null;
+    const changes = canOn(event, 'events.manage');
+    const draft = phase === 'draft' ? makeLiveRow(event, now, changes) : null;
 
     if (draft != null) {
-      const live = !canOn(event, 'events.manage')
-        ? null
-        : draft.makeLive
-          ? 'makeLive'
-          : 'changeDates';
+      const live = !changes ? null : draft.makeLive ? 'makeLive' : 'changeDates';
       const add = empty && manages;
 
       return {

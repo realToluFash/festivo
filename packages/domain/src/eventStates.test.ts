@@ -231,15 +231,22 @@ describe('makeLiveRow', () => {
   const after = new Date('2026-11-15T01:00:00Z');
 
   it('says what a draft blocks, with Make live', () => {
-    expect(makeLiveRow({ ...event, status: 'draft' }, before)).toEqual({
+    expect(makeLiveRow({ ...event, status: 'draft' }, before, true)).toEqual({
       line: 'guestsBlocked',
       makeLive: true,
     });
   });
 
   it('says a draft past its end cannot go live', () => {
-    expect(makeLiveRow({ ...event, status: 'draft' }, after)).toEqual({
+    expect(makeLiveRow({ ...event, status: 'draft' }, after, true)).toEqual({
       line: 'endPassed',
+      makeLive: false,
+    });
+  });
+
+  it('never asks someone who cannot change the dates to change them', () => {
+    expect(makeLiveRow({ ...event, status: 'draft' }, after, false)).toEqual({
+      line: 'endPassedReader',
       makeLive: false,
     });
   });
@@ -250,7 +257,7 @@ describe('makeLiveRow', () => {
     ['paused', before],
     ['ended', before],
   ] as const)('shows nothing for %s at %s', (status, now) => {
-    expect(makeLiveRow({ ...event, status }, now)).toBeNull();
+    expect(makeLiveRow({ ...event, status }, now, true)).toBeNull();
   });
 
   it('offers Make live five minutes before the end on a device ten minutes fast', () => {
@@ -258,7 +265,7 @@ describe('makeLiveRow', () => {
 
     clock.observe('Sun, 15 Nov 2026 00:55:00 GMT');
 
-    expect(makeLiveRow({ ...event, status: 'draft' }, clock.now())?.makeLive).toBe(true);
+    expect(makeLiveRow({ ...event, status: 'draft' }, clock.now(), true)?.makeLive).toBe(true);
   });
 
   it('says the end has passed five minutes after it on a device ten minutes slow', () => {
@@ -266,7 +273,7 @@ describe('makeLiveRow', () => {
 
     clock.observe('Sun, 15 Nov 2026 01:05:00 GMT');
 
-    expect(makeLiveRow({ ...event, status: 'draft' }, clock.now())).toEqual({
+    expect(makeLiveRow({ ...event, status: 'draft' }, clock.now(), true)).toEqual({
       line: 'endPassed',
       makeLive: false,
     });

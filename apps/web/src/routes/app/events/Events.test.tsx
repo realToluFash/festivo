@@ -4851,3 +4851,111 @@ describe("An event's timeline: Coming up and All dates (sc-3624)", () => {
     expect(within(page).queryByRole('listitem')).toBeNull();
   });
 });
+
+describe('Someone who can only view an event is never told to change its dates or resume it (sc-50996)', () => {
+  const PASSED = { startsAt: '2020-11-14T16:00:00+01:00', endsAt: '2020-11-15T02:00:00+01:00' };
+  const AHEAD = { startsAt: '2030-11-14T16:00:00+01:00', endsAt: '2030-11-15T02:00:00+01:00' };
+  const MANAGER_PASSED =
+    'This event’s end has passed, so it cannot be made live. Change its dates first.';
+  const READER_PASSED =
+    'This event’s end has passed, so it cannot be made live. Someone who can edit this event can change its dates.';
+  const MANAGER_PAUSED = 'Paused. Guests can’t reply or change anything until you resume it.';
+  const READER_PAUSED = 'Paused. Guests can’t reply or change anything until it is resumed.';
+  const ABOVE_PASSED =
+    "This event's end has passed, so it cannot be made live. Change its dates first.";
+
+  function paused() {
+    return event({
+      ...AHEAD,
+      status: 'paused',
+      phase: 'paused',
+      pausedAt: '2026-10-27T09:00:00+00:00',
+    });
+  }
+
+  const WHO = [
+    ['a reader', READER, READER_PASSED, READER_PAUSED, false],
+    ['a manager', IRE, MANAGER_PASSED, MANAGER_PAUSED, true],
+  ] as const;
+
+  it.each(WHO)(
+    'words the cards on Events for %s',
+    async (_, who, passedLine, pausedLine, offered) => {
+      signedIn(who);
+      answering({
+        'GET /api/orgs/org_1/events': listed([
+          event(PASSED),
+          { ...paused(), id: 'ev_2', name: 'Kemi at 40' },
+        ]),
+      });
+      at('/app/events');
+
+      fireEvent.click(await screen.findByRole('tab', { name: /^Drafts/ }));
+      const draft = await screen.findByRole('region', { name: 'Adaeze and Tunde' });
+      expect(within(draft).getByText(passedLine)).toBeDefined();
+      expect(within(draft).queryByRole('button', { name: 'Change dates' }) != null).toBe(offered);
+
+      fireEvent.click(screen.getByRole('tab', { name: /^Upcoming/ }));
+      const card = await screen.findByRole('region', { name: 'Kemi at 40' });
+      expect(within(card).getByText(pausedLine)).toBeDefined();
+      expect(within(card).queryByRole('button', { name: 'Resume' }) != null).toBe(offered);
+    },
+  );
+
+  it.each(WHO)('words the event’s page for %s', async (_, who, passedLine, pausedLine, offered) => {
+    signedIn(who);
+    answering({ 'GET /api/events/ev_1': () => json({ event: event(PASSED) }) });
+    at('/app/events/ev_1');
+    const heading = await screen.findByRole('heading', { level: 1, name: 'Adaeze and Tunde' });
+    const card = heading.closest('section')!;
+    expect(within(card).getByText(passedLine)).toBeDefined();
+    expect(within(card).queryByRole('button', { name: 'Change dates' }) != null).toBe(offered);
+    cleanup();
+
+    answering({ 'GET /api/events/ev_1': () => json({ event: paused() }) });
+    at('/app/events/ev_1');
+    const again = await screen.findByRole('heading', { level: 1, name: 'Adaeze and Tunde' });
+    expect(within(again.closest('section')!).getByText(pausedLine)).toBeDefined();
+    expect(screen.queryByRole('button', { name: 'Resume' }) != null).toBe(offered);
+  });
+
+  it.each([
+    ['a reader', READER, READER_PASSED, `${READER_PAUSED} Check-in and service still work.`, false],
+    [
+      'a manager',
+      IRE,
+      ABOVE_PASSED,
+      "Paused. Guests can't reply or change anything until you resume it. Check-in and service still work.",
+      true,
+    ],
+  ] as const)(
+    'words the row above Dates for %s',
+    async (_, who, passedLine, pausedLine, offered) => {
+      signedIn(who);
+      answering({ 'GET /api/events/ev_1': () => json({ event: event(PASSED) }) });
+      at('/app/events/ev_1/dates');
+      await screen.findByRole('heading', { level: 1, name: 'Adaeze and Tunde' });
+      expect(screen.getByText(passedLine)).toBeDefined();
+      expect(screen.queryByRole('link', { name: 'Change dates' }) != null).toBe(offered);
+      cleanup();
+
+      answering({ 'GET /api/events/ev_1': () => json({ event: paused() }) });
+      at('/app/events/ev_1/dates');
+      await screen.findByRole('heading', { level: 1, name: 'Adaeze and Tunde' });
+      expect(screen.getByText(pausedLine)).toBeDefined();
+      expect(screen.queryByRole('button', { name: 'Resume' }) != null).toBe(offered);
+    },
+  );
+
+  it.each([READER, IRE])(
+    'keeps the Draft’s “can’t be invited” line for everybody above an area',
+    async (who) => {
+      signedIn(who);
+      answering({ 'GET /api/events/ev_1': () => json({ event: event(AHEAD) }) });
+      at('/app/events/ev_1/dates');
+
+      await screen.findByRole('heading', { level: 1, name: 'Adaeze and Tunde' });
+      expect(screen.getByText('Guests can’t be invited until this event is live.')).toBeDefined();
+    },
+  );
+});

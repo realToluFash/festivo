@@ -813,12 +813,14 @@ describe('Finding a guest (sc-3772)', () => {
     expect(screen.getByText('4 haven’t replied (3 guests and 1 companion).')).toBeDefined();
   });
 
-  async function cardOn(event: Record<string, unknown>): Promise<HTMLElement> {
+  async function cardOn(
+    event: Record<string, unknown>,
+    permissions: string[] = OWNER_PERMISSIONS,
+  ): Promise<HTMLElement> {
     signedIn();
     await onGuests({
       'GET /api/events/ev_1/guests': () => json(listOf(EVERYONE)),
-      'GET /api/events/ev_1': () =>
-        json({ event: { ...EVENT, ...event, permissions: OWNER_PERMISSIONS } }),
+      'GET /api/events/ev_1': () => json({ event: { ...EVENT, ...event, permissions } }),
     });
 
     return (await screen.findByText(/^(4 coming of 9 invited|\d+ on the list)$/u)).closest(
@@ -851,6 +853,60 @@ describe('Finding a guest (sc-3772)', () => {
 
     expect(await screen.findByRole('dialog')).toBeDefined();
   });
+
+  it.each([
+    [
+      'a reader',
+      OWNER_PERMISSIONS.filter((one) => one.endsWith('.read')),
+      'This event’s end has passed, so it cannot be made live. Someone who can edit this event can change its dates.',
+    ],
+    [
+      'someone with events.manage',
+      OWNER_PERMISSIONS,
+      "This event's end has passed, so it cannot be made live. Change its dates first.",
+    ],
+  ])('words a passed Draft’s card for %s (sc-50996)', async (_, permissions, line) => {
+    const card = await cardOn(
+      {
+        status: 'draft',
+        phase: 'draft',
+        madeLiveAt: null,
+        startsAt: '2026-10-24T12:00:00+01:00',
+        endsAt: '2026-10-24T18:00:00+01:00',
+      },
+      permissions,
+    );
+
+    expect(within(card).getByText(line)).toBeDefined();
+    expect(within(card).queryByRole('button', { name: 'Change dates' }) != null).toBe(
+      permissions === OWNER_PERMISSIONS,
+    );
+  });
+
+  it.each([
+    ['a reader', OWNER_PERMISSIONS.filter((one) => one.endsWith('.read'))],
+    ['someone with events.manage', OWNER_PERMISSIONS],
+  ])(
+    'keeps the Draft and Paused “can’t be invited” lines for %s (sc-50996)',
+    async (_, permissions) => {
+      const draft = await cardOn(
+        { status: 'draft', phase: 'draft', madeLiveAt: null },
+        permissions,
+      );
+      expect(
+        within(draft).getByText('Guests can’t be invited until this event is live.'),
+      ).toBeDefined();
+      cleanup();
+
+      const paused = await cardOn(
+        { status: 'paused', phase: 'paused', pausedAt: '2026-11-01T10:00:00+00:00' },
+        permissions,
+      );
+      expect(
+        within(paused).getByText('Guests can’t be invited while this event is paused.'),
+      ).toBeDefined();
+    },
+  );
 
   it('says a Draft whose end has passed cannot be made live, with Change dates as its step', async () => {
     const card = await cardOn({
