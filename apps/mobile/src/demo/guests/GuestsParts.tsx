@@ -3,6 +3,7 @@ import { type LayoutChangeEvent, Pressable, StyleSheet, View } from 'react-nativ
 
 import { eventColour } from '../../components/EventMesh.tsx';
 import { Glyph } from '../../components/Glyph.tsx';
+import { MeasuredWords } from '../../components/Title.tsx';
 import { useReadOut } from '../../components/ReadOut.tsx';
 import { type TextHandle, Text } from '../../components/Text.tsx';
 import { tokens } from '../../theme/tokens.ts';
@@ -438,28 +439,29 @@ export function GuestsTitle({
           />
         ))}
       {layout !== 'phone' && (
+        <MeasuredWords
+          words={[title]}
+          size={size}
+          weight="bold"
+          style={titleStyle}
+          onWidth={(_, width) => setTitleWidth(Math.ceil(width))}
+        />
+      )}
+      {layout !== 'phone' && plus && (
         <View
           style={styles.measure}
           pointerEvents="none"
           accessibilityElementsHidden
           importantForAccessibility="no-hide-descendants"
+          onLayout={widthOf(setLabelledWidth)}
         >
-          <View onLayout={widthOf(setTitleWidth)}>
-            <Text size={size} weight="bold" numberOfLines={1} style={titleStyle} accessible={false}>
-              {title}
-            </Text>
-          </View>
-          {plus && (
-            <View onLayout={widthOf(setLabelledWidth)}>
-              <Pill
-                label={plusLabel}
-                glyph="plus"
-                height={tokens.sizeHit}
-                full={false}
-                onPress={onPlus}
-              />
-            </View>
-          )}
+          <Pill
+            label={plusLabel}
+            glyph="plus"
+            height={tokens.sizeHit}
+            full={false}
+            onPress={onPlus}
+          />
         </View>
       )}
     </View>
@@ -549,16 +551,7 @@ const styles = StyleSheet.create({
   headTitle: { letterSpacing: -0.18, lineHeight: 18 * 1.25 },
   shown: { minHeight: tokens.sizeHit, flexDirection: 'row', alignItems: 'center', gap: 10 },
   titleRow: { minHeight: 48, flexDirection: 'row', alignItems: 'center', gap: tokens.spaceMd },
-  measure: {
-    position: 'absolute',
-    top: 0,
-    left: 0,
-    width: 4000,
-    flexDirection: 'row',
-    alignItems: 'flex-start',
-    gap: tokens.spaceMd,
-    opacity: 0,
-  },
+  measure: { position: 'absolute', top: 0, left: 0, opacity: 0 },
   plus: {
     width: tokens.sizeHit,
     height: tokens.sizeHit,
