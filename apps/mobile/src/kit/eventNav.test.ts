@@ -1,6 +1,14 @@
 import { describe, expect, it } from 'vitest';
 
-import { areaBack, areaOf, editPartOf, eventHref, guestsHref } from './eventNav.ts';
+import {
+  EDIT_LEAVES,
+  areaBack,
+  areaOf,
+  changeDatesHref,
+  editPartOf,
+  eventHref,
+  guestsHref,
+} from './eventNav.ts';
 
 describe('areaOf', () => {
   it('reads an area the event has', () => {
@@ -51,5 +59,15 @@ describe('editPartOf', () => {
 describe('guestsHref', () => {
   it("opens an event's Guests on the choice a figure counts (sc-3786)", () => {
     expect(guestsHref('evt 1', 'noReply')).toBe('/events/evt%201?area=guests&filter=noReply');
+  });
+});
+
+describe('changeDatesHref', () => {
+  it("opens the event's Dates marked as opened from Events, so Cancel goes back there (sc-48600)", () => {
+    const href = new URL(changeDatesHref('evt 1'), 'https://app.test');
+
+    expect(href.pathname).toBe('/events/evt%201/edit');
+    expect(editPartOf(href.searchParams.get('at') ?? undefined)).toBe('dates');
+    expect(href.searchParams.get(EDIT_LEAVES)).not.toBeNull();
   });
 });

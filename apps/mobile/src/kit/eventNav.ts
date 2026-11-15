@@ -60,3 +60,8 @@ export function eventHref(eventId: string, fromHappeningNow = false): `/events/$
 export function guestsHref(eventId: string, filter: string): `/events/${string}` {
   return `/events/${encodeURIComponent(eventId)}?${EVENT_AREA}=guests&${GUESTS_FILTER}=${encodeURIComponent(filter)}`;
 }
+
+/** A card's Change dates opens the event's Dates and Cancel goes back to Events (sc-48600). */
+export function changeDatesHref(eventId: string): `/events/${string}` {
+  return `/events/${encodeURIComponent(eventId)}/edit?at=starts&${EDIT_LEAVES}=1`;
+}
