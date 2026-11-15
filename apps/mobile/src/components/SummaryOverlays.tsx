@@ -448,7 +448,6 @@ export function MenuLayer({
   children,
   testID,
 }: MenuProps) {
-  const { t } = useTranslation();
   const frame = useWindowDimensions();
   const insets = useSafeAreaInsets();
   const origin = useWindowOrigin();
@@ -463,14 +462,14 @@ export function MenuLayer({
     floor,
     origin,
     ceiling: insets.top,
-    layer: layer ?? 0,
+    layer: layer ?? frame.height,
     bar: Math.max(insets.bottom, tokens.spaceLg),
     tall: menuTall(seen, MENU_EDGE),
     above: keptSide(held, button),
   });
   const more = seen.content - seen.offset - seen.panel > 1;
 
-  const hold = nextHeld(held, button, side, seen.content > 0);
+  const hold = nextHeld(held, button, side, layer != null && seen.content > 0);
   if (hold !== held) setHeld(hold);
 
   return (
@@ -479,13 +478,14 @@ export function MenuLayer({
         style={StyleSheet.absoluteFill}
         onLayout={(event) => setLayer(event.nativeEvent.layout.height)}
         onPress={onClose}
-        accessibilityRole="button"
-        accessibilityLabel={t('frame.closeMenu')}
+        accessible={false}
+        importantForAccessibility="no"
       />
-      {at != null && layer != null && (
+      {at != null && (
         <View
           style={[
             styles.menu,
+            layer == null && styles.unplaced,
             {
               top: side.top,
               left: menuLeft(at, width, align, frame.width),
@@ -688,6 +688,7 @@ const styles = StyleSheet.create({
     ...tokens.elevationNative.popover.ios,
     elevation: tokens.elevationNative.popover.android.elevation,
   },
+  unplaced: { opacity: 0 },
   menuClip: { flexShrink: 1, borderRadius: tokens.spaceXl - 1, overflow: 'hidden' },
   menuBody: { paddingVertical: tokens.spaceXs },
   menuFade: { position: 'absolute', left: 0, right: 0, bottom: 0, height: tokens.space6xl },

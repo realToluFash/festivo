@@ -1976,3 +1976,23 @@ describe('a failing check keeps the keys up on a field Android holds focused, ov
     expect(android).not.toMatch(/\.blur\(|Keyboard\.isVisible\(/u);
   });
 });
+
+describe('a menu opens with TalkBack on its first row (sc-50313)', () => {
+  const layer = () => {
+    const source = readFileSync(join('src', 'components', 'SummaryOverlays.tsx'), 'utf8');
+    return source.slice(source.indexOf('export function MenuLayer('));
+  };
+
+  it('so the backdrop it closes on is out of TalkBack order', () => {
+    const source = layer();
+    const start = source.indexOf('<Pressable');
+    const backdrop = source.slice(start, tagEnd(source, start));
+
+    expect(propValue(backdrop, 'accessible')).toBe('{false}');
+    expect(propValue(backdrop, 'importantForAccessibility')).toBe('"no"');
+  });
+
+  it('and the rows are there when its window shows, before the layer is measured', () => {
+    expect(layer()).toContain('{at != null && (');
+  });
+});
