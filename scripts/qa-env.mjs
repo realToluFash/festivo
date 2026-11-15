@@ -4280,7 +4280,7 @@ if (process.argv[1] && resolve(process.argv[1]) === fileURLToPath(import.meta.ur
   const flag = argv.indexOf('--tester');
   if (flag !== -1) {
     const asked = argv[flag + 1] === LAN ? LAN : Number(argv[flag + 1]);
-    if (OWN_TESTER !== null && asked !== OWN_TESTER) {
+    if (OWN_TESTER !== null && asked !== LAN && asked !== OWN_TESTER) {
       console.error(`this harness belongs to tester ${CONFIG.tester}, not ${argv[flag + 1]}`);
       process.exit(2);
     }

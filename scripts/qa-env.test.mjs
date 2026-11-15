@@ -5,6 +5,7 @@ import {
   mkdtempSync,
   readdirSync,
   readFileSync,
+  realpathSync,
   rmSync,
   statSync,
   symlinkSync,
@@ -1650,7 +1651,11 @@ describe('the QA testers', () => {
   });
 
   it('refuse another tester when run from a QA worktree', () => {
-    const scripts = join(mkdtempSync(join(tmpdir(), 'qa-own-')), 'soirely-qa3', 'scripts');
+    const scripts = join(
+      mkdtempSync(join(realpathSync(tmpdir()), 'qa-own-')),
+      'soirely-qa3',
+      'scripts',
+    );
     mkdirSync(scripts, { recursive: true });
     copyFileSync(
       fileURLToPath(new URL('./qa-env.mjs', import.meta.url)),
@@ -1665,6 +1670,26 @@ describe('the QA testers', () => {
     );
     expect(result.status).toBe(2);
     expect(result.stderr).toContain('belongs to tester 3, not 1');
+  });
+
+  it('let a QA worktree reach the lan stack', () => {
+    const scripts = join(
+      mkdtempSync(join(realpathSync(tmpdir()), 'qa-lan-')),
+      'soirely-qa3',
+      'scripts',
+    );
+    mkdirSync(scripts, { recursive: true });
+    copyFileSync(
+      fileURLToPath(new URL('./qa-env.mjs', import.meta.url)),
+      join(scripts, 'qa-env.mjs'),
+    );
+    const result = spawnSync(
+      process.execPath,
+      [join(scripts, 'qa-env.mjs'), '--tester', 'lan', 'no-such-command'],
+      { encoding: 'utf8' },
+    );
+    expect(result.stderr).not.toContain('belongs to tester');
+    expect(result.stderr).toContain('unknown command no-such-command');
   });
 
   it('stop at five', () => {
