@@ -230,6 +230,13 @@ describe('a window that opens through a Modal of its own (sc-42690)', () => {
       expect(picker).toContain('useFocusOnAnswer(windowShown ? undefined : closed, field);');
     });
 
+    it('leaves no field holding input focus for Android to hand TalkBack to as it closes, under TalkBack only (sc-44356)', () => {
+      expect(picker).toMatch(
+        /onPress=\{\(\) => \{\s*controlTaken\(\);[^}]*if \(Platform\.OS === 'android' && readerOn\)\s*TextInput\.State\.currentlyFocusedInput\(\)\?\.blur\(\);\s*setClosed\(undefined\);\s*setOpen\(true\);/,
+      );
+      expect(picker.match(/\.blur\(\)/g)).toHaveLength(1);
+    });
+
     it('draws only the rows in sight until its title has taken focus, under TalkBack on Android (qa2 #43597)', () => {
       expect(picker).toMatch(
         /useListFilling\(\s*Platform\.OS === 'android' && readerOn,\s*windowShown,\s*onScreen && !unnamed,?\s*\)/,

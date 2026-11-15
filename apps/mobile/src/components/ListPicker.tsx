@@ -168,6 +168,9 @@ export function ListPicker({
         ]}
         onPress={() => {
           controlTaken();
+          // Android hands a closing window's focus to the field still holding input focus, and TalkBack says it before the picker (sc-44356).
+          if (Platform.OS === 'android' && readerOn)
+            TextInput.State.currentlyFocusedInput()?.blur();
           setClosed(undefined);
           setOpen(true);
         }}
