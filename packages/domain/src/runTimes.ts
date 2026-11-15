@@ -1,6 +1,6 @@
-import { eventDayOf } from './runOfShow.ts';
+import { eventDayOf, wallOfZoned } from './runOfShow.ts';
 
-/** One schedule item as the run view reads it: every time a wall-clock `YYYY-MM-DDTHH:mm` in the event's zone. */
+/** One schedule item as the run view reads it: every time RFC 3339 in the event zone's offset, as the API writes it, so a length is added to real time across a change of clocks. */
 export interface RunTimesItem {
   id: string;
   planned: string;
@@ -37,8 +37,11 @@ export interface RunTrack<I extends RunTimesItem> {
   next: { item: I; expected: string } | null;
 }
 
-/** What the event's clock reads at a moment, `YYYY-MM-DDTHH:mm`, as the run view's now. */
-export function wallAt(moment: Date, timeZone: string): string {
+const pad2 = (n: number): string => String(n).padStart(2, '0');
+
+/** A moment as RFC 3339 to the minute, written in the offset the event's zone has at that moment: the run view's now and every expected time. */
+export function zonedAt(moment: Date, timeZone: string): string {
+  const minute = Math.floor(moment.getTime() / 60_000) * 60_000;
   const parts = new Intl.DateTimeFormat('en-CA', {
     timeZone,
     year: 'numeric',
@@ -47,26 +50,18 @@ export function wallAt(moment: Date, timeZone: string): string {
     hour: '2-digit',
     minute: '2-digit',
     hourCycle: 'h23',
-  }).formatToParts(moment);
-  const part = (type: string) => parts.find((one) => one.type === type)?.value ?? '';
+  }).formatToParts(new Date(minute));
+  const part = (type: string) => Number(parts.find((one) => one.type === type)?.value ?? 0);
+  const wall = Date.UTC(part('year'), part('month') - 1, part('day'), part('hour'), part('minute'));
+  const offset = (wall - minute) / 60_000;
+  const sign = offset < 0 ? '-' : '+';
+  const zone = `${sign}${pad2(Math.floor(Math.abs(offset) / 60))}:${pad2(Math.abs(offset) % 60)}`;
 
-  return `${part('year')}-${part('month')}-${part('day')}T${part('hour')}:${part('minute')}`;
+  return `${new Date(wall).toISOString().slice(0, 16)}:00${zone}`;
 }
 
-function minutesOf(wall: string): number {
-  return (
-    Date.UTC(
-      Number(wall.slice(0, 4)),
-      Number(wall.slice(5, 7)) - 1,
-      Number(wall.slice(8, 10)),
-      Number(wall.slice(11, 13)),
-      Number(wall.slice(14, 16)),
-    ) / 60_000
-  );
-}
-
-function wallOf(minutes: number): string {
-  return new Date(minutes * 60_000).toISOString().slice(0, 16);
+function minutesOf(rfc3339: string): number {
+  return Math.floor(Date.parse(rfc3339) / 60_000);
 }
 
 export function phaseOf(item: RunTimesItem): RunPhase {
@@ -78,7 +73,12 @@ export function inPlannedOrder<I extends RunTimesItem>(items: readonly I[]): I[]
   return [...items].sort((a, b) => minutesOf(a.planned) - minutesOf(b.planned));
 }
 
-export function runTrack<I extends RunTimesItem>(items: readonly I[], now: string): RunTrack<I> {
+export function runTrack<I extends RunTimesItem>(
+  items: readonly I[],
+  now: string,
+  timeZone: string,
+): RunTrack<I> {
+  const zonedOf = (minutes: number): string => zonedAt(new Date(minutes * 60_000), timeZone);
   const at = minutesOf(now);
   const ordered = inPlannedOrder(items);
   const lastStarted = ordered.reduce(
@@ -119,7 +119,7 @@ export function runTrack<I extends RunTimesItem>(items: readonly I[], now: strin
     return {
       item,
       phase,
-      expected: start != null && start !== minutesOf(item.planned) ? wallOf(start) : null,
+      expected: start != null && start !== minutesOf(item.planned) ? zonedOf(start) : null,
       startedBefore:
         phase === 'waiting'
           ? null
@@ -133,7 +133,7 @@ export function runTrack<I extends RunTimesItem>(items: readonly I[], now: strin
       ? null
       : {
           item: nextItem,
-          expected: wallOf(starts.get(nextItem.id) ?? minutesOf(nextItem.planned)),
+          expected: zonedOf(starts.get(nextItem.id) ?? minutesOf(nextItem.planned)),
         };
 
   const collisions = ordered.flatMap<RunCollision<I>>((item, index) => {
@@ -168,7 +168,7 @@ export function runTracks<I extends RunTimesItem & { place: string | null }>(
   const tracks = new Map<string, { day: string; place: string | null; items: I[] }>();
 
   for (const item of inPlannedOrder(items)) {
-    const day = eventDayOf(item.planned);
+    const day = eventDayOf(wallOfZoned(item.planned));
     const key = `${day}\u0000${item.place ?? ''}`;
     const track = tracks.get(key) ?? { day, place: item.place, items: [] };
 

@@ -9,10 +9,11 @@ export type RunTrackView = RunTrackShown<RunItem>;
 export function runViews(
   items: readonly ScheduleItem[],
   now: string,
+  timeZone: string,
   main: string,
   dayName: (day: string) => string,
 ): RunTrackView[] {
-  return runShown(items.map(runItemOf), now, main, dayName);
+  return runShown(items.map(runItemOf), now, timeZone, main, dayName);
 }
 
 export function said(t: TFunction, [key, values]: RunWords): string {

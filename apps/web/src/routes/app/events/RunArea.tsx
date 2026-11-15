@@ -15,7 +15,8 @@ import {
   formatWallClock,
   nextWords,
   timeSlot,
-  wallAt,
+  wallOfZoned,
+  zonedAt,
 } from '@soirely/domain';
 import { useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
@@ -162,11 +163,11 @@ function RunView({
 }) {
   const { t } = useTranslation();
   const locale = dateLocale();
-  const now = wallAt(useServerNow(), schedule.timeZone);
+  const now = zonedAt(useServerNow(), schedule.timeZone);
   const manage = canOn(event, 'run_of_show.manage');
   const [busy, setBusy] = useState<string | null>(null);
   const [failed, setFailed] = useState<string | null>(null);
-  const views = runViews(schedule.items, now, t('schedule.main'), (day) =>
+  const views = runViews(schedule.items, now, schedule.timeZone, t('schedule.main'), (day) =>
     dayName(day, { locale, zone: schedule.timeZone }),
   );
 
@@ -330,7 +331,7 @@ function RunRowView({
   return (
     <tr className={`rv-row is-${phase}`}>
       <td className="rv-starts">
-        <span className="num">{formatWallClock(item.planned, locale)}</span>
+        <span className="num">{formatWallClock(wallOfZoned(item.planned), locale)}</span>
         {phase !== 'waiting' && item.startedAt != null ? (
           <span className="rv-second is-started num">
             {t('runView.started', timeSlot(item.startedAt, locale))}

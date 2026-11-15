@@ -23,7 +23,7 @@ describe('the article a time takes in a sentence (sc-1404)', () => {
 });
 
 describe('an item as the run view reads it (sc-1404)', () => {
-  it('reads its planned start and its marks as wall-clock times in the event zone', () => {
+  it('reads its planned start as its startsAt, keeping every offset', () => {
     expect(
       runItemOf({
         id: 'a',
@@ -34,8 +34,8 @@ describe('an item as the run view reads it (sc-1404)', () => {
     ).toEqual({
       id: 'a',
       startsAt: '2026-11-15T21:15:00+01:00',
-      planned: '2026-11-15T21:15',
-      startedAt: '2026-11-15T21:22',
+      planned: '2026-11-15T21:15:00+01:00',
+      startedAt: '2026-11-15T21:22:41+01:00',
       endedAt: null,
     });
   });

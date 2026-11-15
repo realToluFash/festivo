@@ -19,7 +19,8 @@ import {
   runItemOf,
   runShown,
   timeSlot,
-  wallAt,
+  wallOfZoned,
+  zonedAt,
 } from '@soirely/domain';
 import type { TFunction } from 'i18next';
 import { useEffect, useState } from 'react';
@@ -156,9 +157,13 @@ function Loaded({
 }) {
   const { t } = useTranslation();
   const locale = dateLocale();
-  const now = wallAt(useServerNow(), schedule.timeZone);
-  const views = runShown(schedule.items.map(runItemOf), now, t('runView.main'), (day) =>
-    dayName(day, locale),
+  const now = zonedAt(useServerNow(), schedule.timeZone);
+  const views = runShown(
+    schedule.items.map(runItemOf),
+    now,
+    schedule.timeZone,
+    t('runView.main'),
+    (day) => dayName(day, locale),
   );
   const [trackKey, setTrackKey] = useState(views[0]?.key ?? '');
   const [busy, setBusy] = useState<string | null>(null);
@@ -398,7 +403,7 @@ function TableRow({ row, narrow, act }: { row: RunRow<RunItem>; narrow: boolean;
           weight="semibold"
           style={[styles.num, phase === 'done' && styles.secondary]}
         >
-          {formatWallClock(item.planned, dateLocale())}
+          {formatWallClock(wallOfZoned(item.planned), dateLocale())}
         </Text>
         <Second row={row} size={13} />
       </View>
@@ -444,7 +449,7 @@ function secondOf(row: RunRow<RunItem>): { kind: 'expected' | 'started'; time: s
 
 function startsSaid(row: RunRow<RunItem>, t: TFunction): string {
   const locale = dateLocale();
-  const planned = formatWallClock(row.item.planned, locale);
+  const planned = formatWallClock(wallOfZoned(row.item.planned), locale);
   const second = secondOf(row);
 
   if (second == null) return t('runView.saidPlanned', { planned });
@@ -563,7 +568,11 @@ function PhoneTrack({
   const nowRow =
     track.rows
       .filter((row) => row.phase === 'now')
-      .sort((a, b) => (a.item.startedAt ?? '').localeCompare(b.item.startedAt ?? ''))[0] ?? null;
+      .sort(
+        (a, b) =>
+          Date.parse(a.item.startedAt ?? a.item.planned) -
+          Date.parse(b.item.startedAt ?? b.item.planned),
+      )[0] ?? null;
   const nextRow =
     track.next == null ? null : (track.rows.find((row) => row.item === track.next?.item) ?? null);
   const then = track.rows.filter((row) => row.phase === 'waiting' && row !== nextRow);
@@ -609,8 +618,11 @@ function PhoneTrack({
             <ItemLine row={nowRow} />
             <Text size={14} style={styles.secondary}>
               {t('runView.nowLine', {
-                started: formatWallClock(nowRow.item.startedAt ?? nowRow.item.planned, locale),
-                planned: formatWallClock(nowRow.item.planned, locale),
+                started: formatWallClock(
+                  wallOfZoned(nowRow.item.startedAt ?? nowRow.item.planned),
+                  locale,
+                ),
+                planned: formatWallClock(wallOfZoned(nowRow.item.planned), locale),
                 lasts: lastsOf(nowRow.item, t),
               })}
             </Text>
@@ -634,7 +646,7 @@ function PhoneTrack({
           <ItemLine row={nextRow} />
           <View style={styles.itemLine} accessible accessibilityLabel={startsSaid(nextRow, t)}>
             <Text size={16} weight="semibold" style={styles.num}>
-              {formatWallClock(nextRow.item.planned, locale)}
+              {formatWallClock(wallOfZoned(nextRow.item.planned), locale)}
             </Text>
             {nextRow.expected != null && (
               <Text size={16} weight="semibold" style={[styles.num, styles.attention]}>
@@ -665,7 +677,7 @@ function PhoneTrack({
               <View key={row.item.id} style={styles.thenRow}>
                 <View style={styles.thenTime} accessible accessibilityLabel={startsSaid(row, t)}>
                   <Text size={15} weight="semibold" style={styles.num}>
-                    {formatWallClock(row.item.planned, locale)}
+                    {formatWallClock(wallOfZoned(row.item.planned), locale)}
                   </Text>
                   <Second row={row} size={12} />
                 </View>

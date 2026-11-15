@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 
-import { type RunTimesItem, runTrack, runTracks, wallAt } from './runTimes.ts';
+import { type RunTimesItem, runTrack as runTrackIn, runTracks, zonedAt } from './runTimes.ts';
 
 const DAY = '2026-11-20';
 const NEXT = '2026-11-21';
@@ -19,7 +19,8 @@ const HALL: Plan[] = [
   ['lastSong', '00:15', 15],
 ];
 
-const wall = (hhmm: string) => `${hhmm < '05:00' ? NEXT : DAY}T${hhmm}`;
+const wall = (hhmm: string) => `${hhmm < '05:00' ? NEXT : DAY}T${hhmm}:00+01:00`;
+const runTrack = (items: RunTimesItem[], now: string) => runTrackIn(items, now, 'Europe/Paris');
 
 function hall(marks: Record<string, [string, string?]>): RunTimesItem[] {
   return HALL.map(([id, at, length, fixed = false]) => ({
@@ -116,10 +117,68 @@ describe('expected times on a track (sc-1404)', () => {
   });
 });
 
+describe('a night the clocks change on (sc-1404)', () => {
+  const night = (dancing: string, now: string, last: string) =>
+    runTrackIn(
+      [
+        {
+          id: 'dancing',
+          planned: dancing,
+          lengthMinutes: 60,
+          fixedTime: false,
+          startedAt: dancing,
+          endedAt: null,
+        },
+        {
+          id: 'lastSong',
+          planned: last,
+          lengthMinutes: 15,
+          fixedTime: false,
+          startedAt: null,
+          endedAt: null,
+        },
+      ],
+      now,
+      'Europe/Paris',
+    );
+
+  it('ends an hour of dancing started at 02:30 before the clocks go back at 02:30 after', () => {
+    const track = night(
+      '2026-10-25T02:30:00+02:00',
+      '2026-10-25T02:50:00+02:00',
+      '2026-10-25T02:30:00+01:00',
+    );
+
+    expect(track.figure).toEqual({ kind: 'onTime' });
+    expect(track.rows[1]?.expected).toBeNull();
+  });
+
+  it('ends an hour of dancing started at 01:30 before the clocks go forward at 03:30', () => {
+    const track = night(
+      '2026-03-29T01:30:00+01:00',
+      '2026-03-29T01:50:00+01:00',
+      '2026-03-29T03:00:00+02:00',
+    );
+
+    expect(track.rows[1]?.expected).toBe('2026-03-29T03:30:00+02:00');
+    expect(track.figure).toEqual({ kind: 'behind', minutes: 30 });
+  });
+});
+
 describe('the event clock as the run view reads now (sc-1404)', () => {
-  it('reads the wall clock in the event zone, 24-hour', () => {
-    expect(wallAt(new Date('2026-11-20T23:30:59Z'), 'Africa/Lagos')).toBe('2026-11-21T00:30');
-    expect(wallAt(new Date('2026-07-01T12:05:00Z'), 'America/New_York')).toBe('2026-07-01T08:05');
+  it('reads the moment in the event zone with the offset it has then, to the minute', () => {
+    expect(zonedAt(new Date('2026-11-20T23:30:59Z'), 'Africa/Lagos')).toBe(
+      '2026-11-21T00:30:00+01:00',
+    );
+    expect(zonedAt(new Date('2026-07-01T12:05:00Z'), 'America/New_York')).toBe(
+      '2026-07-01T08:05:00-04:00',
+    );
+    expect(zonedAt(new Date('2026-10-25T00:30:00Z'), 'Europe/Paris')).toBe(
+      '2026-10-25T02:30:00+02:00',
+    );
+    expect(zonedAt(new Date('2026-10-25T01:30:00Z'), 'Europe/Paris')).toBe(
+      '2026-10-25T02:30:00+01:00',
+    );
   });
 });
 
@@ -135,10 +194,10 @@ describe('the tracks of a schedule (sc-1404)', () => {
       endedAt: null,
     });
     const tracks = runTracks([
-      at('a', `${DAY}T20:00`, null),
-      at('b', `${NEXT}T00:30`, null),
-      at('c', `${DAY}T20:00`, 'Terrace'),
-      at('d', `${NEXT}T12:00`, null),
+      at('a', `${DAY}T20:00:00+01:00`, null),
+      at('b', `${NEXT}T00:30:00+01:00`, null),
+      at('c', `${DAY}T20:00:00+01:00`, 'Terrace'),
+      at('d', `${NEXT}T12:00:00+01:00`, null),
     ]);
 
     expect(tracks.map((track) => [track.day, track.place, track.items.map((i) => i.id)])).toEqual([

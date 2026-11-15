@@ -26,20 +26,16 @@ export interface RunMarked {
   endedAt: string | null;
 }
 
-/** An item as the API sends it, read by the run view's rules: its planned start, and its marks as wall-clock times rather than RFC 3339. */
+/** An item as the API sends it, read by the run view's rules: its planned start is its `startsAt`, every time kept with its offset. */
 export function runItemOf<I extends RunMarked>(one: I): I & { planned: string } {
-  return {
-    ...one,
-    planned: wallOfZoned(one.startsAt),
-    startedAt: one.startedAt == null ? null : wallOfZoned(one.startedAt),
-    endedAt: one.endedAt == null ? null : wallOfZoned(one.endedAt),
-  };
+  return { ...one, planned: one.startsAt };
 }
 
 /** One table per place on each event day, in the order their first items start. */
 export function runShown<I extends RunTimesItem & { place: string | null }>(
   items: readonly I[],
   now: string,
+  timeZone: string,
   main: string,
   dayName: (day: string) => string,
 ): RunTrackShown<I>[] {
@@ -56,7 +52,7 @@ export function runShown<I extends RunTimesItem & { place: string | null }>(
           ? ['runView.trackOnDay', { place, day: dayName(track.day) }]
           : ['runView.place', { place }],
       place,
-      track: runTrack(track.items, now),
+      track: runTrack(track.items, now, timeZone),
     };
   });
 }
@@ -93,7 +89,7 @@ export function hourContext(shown: string): { context?: 'hour1' } {
 }
 
 export function timeSlot(time: string, locale: string): { time: string; context?: 'hour1' } {
-  const shown = formatWallClock(time, locale);
+  const shown = formatWallClock(wallOfZoned(time), locale);
 
   return { time: shown, ...hourContext(shown) };
 }
