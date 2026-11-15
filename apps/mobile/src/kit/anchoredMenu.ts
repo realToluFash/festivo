@@ -38,7 +38,7 @@ export interface MenuSide {
   above: boolean;
 }
 
-/** `under`, `over` and `floor` in measureInWindow's frame, `ceiling` and `foot` in the Modal's; with `tall` unknown it goes below. */
+/** `under`, `over` and `floor` in measureInWindow's frame, `ceiling` and `layer` in the Modal's; with `tall` unknown it goes below. */
 export function menuSide({
   under,
   over,
@@ -46,7 +46,8 @@ export function menuSide({
   floor,
   origin,
   ceiling,
-  foot,
+  layer,
+  bar,
   tall,
   above,
 }: {
@@ -56,13 +57,16 @@ export function menuSide({
   floor: number | null;
   origin: number;
   ceiling: number;
-  foot: number;
+  /** The Modal's own height, not the window's: on Android with gesture navigation the window already ends above the bar that `bar` takes off again. */
+  layer: number;
+  /** What it keeps clear at the foot of `layer`. */
+  bar: number;
   tall: number | null;
   /** A side already taken for this button, kept while the menu stays open. */
   above?: boolean | undefined;
 }): MenuSide {
   const place = menuInModal({ under, below: gap, floor, origin });
-  const roomBelow = menuMost(place, foot);
+  const roomBelow = menuMost(place, layer - bar);
   const below = { top: place.top, most: roomBelow, above: false };
   if (tall == null) return below;
   const edge = inModal(over, origin) - gap;
