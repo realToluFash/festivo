@@ -2481,6 +2481,20 @@ export class ApiClient {
     );
   }
 
+  /** Marks the item started or done now, by the server's clock (sc-1404). 409 `item_started`, `item_not_started` or `item_finished` when it is not in a state to. */
+  async markScheduleItem(
+    eventId: string,
+    itemId: string,
+    mark: 'start' | 'finish',
+  ): Promise<Schedule> {
+    return this.scheduleOf(
+      await this.post<unknown>(
+        `${this.schedulePath(eventId)}/items/${encodeURIComponent(itemId)}/${mark}`,
+        {},
+      ),
+    );
+  }
+
   /** A hub token for this event's schedule topic alone. */
   async scheduleSubscription(eventId: string): Promise<RealtimeSubscription> {
     const body = await this.post<{ token?: unknown; expiresAt?: unknown }>(

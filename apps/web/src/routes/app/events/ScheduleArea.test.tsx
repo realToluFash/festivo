@@ -81,6 +81,8 @@ function item(
     id,
     title,
     startsAt,
+    startedAt: null,
+    endedAt: null,
     day,
     lengthMinutes: null,
     place: null,

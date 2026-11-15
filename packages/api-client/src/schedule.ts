@@ -5,6 +5,9 @@ export interface ScheduleItem {
   title: string;
   /** RFC 3339 with the event zone's offset. */
   startsAt: string;
+  /** When it was marked started and done, RFC 3339 in the event zone's offset (sc-1404); null until then. */
+  startedAt: string | null;
+  endedAt: string | null;
   /** The event day it sits on, `YYYY-MM-DD`: an event day runs from 05:00 to 05:00 in the event's zone. */
   day: string;
   lengthMinutes: number | null;
@@ -65,6 +68,8 @@ export function asScheduleItem(raw: unknown): ScheduleItem | null {
     id,
     title,
     startsAt,
+    startedAt,
+    endedAt,
     day,
     lengthMinutes,
     place,
@@ -80,6 +85,8 @@ export function asScheduleItem(raw: unknown): ScheduleItem | null {
     typeof id !== 'string' ||
     typeof title !== 'string' ||
     typeof startsAt !== 'string' ||
+    !text(startedAt) ||
+    !text(endedAt) ||
     typeof day !== 'string' ||
     !(lengthMinutes === null || typeof lengthMinutes === 'number') ||
     !text(place) ||
@@ -96,6 +103,8 @@ export function asScheduleItem(raw: unknown): ScheduleItem | null {
     id,
     title,
     startsAt,
+    startedAt,
+    endedAt,
     day,
     lengthMinutes,
     place,

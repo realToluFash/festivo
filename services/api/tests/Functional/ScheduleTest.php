@@ -91,6 +91,8 @@ final class ScheduleTest extends ApiTestCase
         self::assertSame([
             'title' => 'First dance',
             'startsAt' => '2027-03-06T20:15:00+01:00',
+            'startedAt' => null,
+            'endedAt' => null,
             'day' => '2027-03-06',
             'lengthMinutes' => 10,
             'place' => 'Ballroom',
@@ -234,6 +236,68 @@ final class ScheduleTest extends ApiTestCase
         $current = Type\shape(['title' => Type\string(), 'startsAt' => Type\string(), 'version' => Type\int()], true)->coerce($refused['current'] ?? null);
         self::assertSame(['Toasts', '2027-03-06T19:15:00+01:00', 2], [$current['title'], $current['startsAt'], $current['version']]);
         self::assertSame('Toasts', $this->only()['title']);
+    }
+
+    #[Test]
+    public function markingAnItemStartedAndDoneRecordsEachMomentAndLeavesItsPlannedStart(): void
+    {
+        $item = $this->add(['title' => 'Speeches', 'startsAt' => '2027-03-06T19:00', 'lengthMinutes' => 30]);
+
+        self::mockTime(new DateTimeImmutable('2027-03-06T18:12:40Z'));
+        $this->as($this->owner, 'POST', $this->items($item['id']) . '/start');
+        self::assertSame(200, $this->statusCode());
+
+        self::mockTime(new DateTimeImmutable('2027-03-06T18:47:05Z'));
+        $this->as($this->owner, 'POST', $this->items($item['id']) . '/finish');
+        self::assertSame(200, $this->statusCode());
+
+        $marked = $this->only();
+        self::assertSame(
+            ['2027-03-06T19:00:00+01:00', '2027-03-06T19:12:40+01:00', '2027-03-06T19:47:05+01:00', 30],
+            [$marked['startsAt'], $marked['startedAt'], $marked['endedAt'], $marked['lengthMinutes']],
+        );
+    }
+
+    #[Test]
+    public function anItemIsStartedOnceAndDoneOnceAndOnlyAfterItStarted(): void
+    {
+        $item = $this->add(['title' => 'Speeches', 'startsAt' => '2027-03-06T19:00']);
+
+        $refused = $this->as($this->owner, 'POST', $this->items($item['id']) . '/finish');
+        self::assertSame(409, $this->statusCode());
+        self::assertSame('https://soirely.com/errors/item_not_started', $refused['type'] ?? null);
+
+        $this->as($this->owner, 'POST', $this->items($item['id']) . '/start');
+        $refused = $this->as($this->owner, 'POST', $this->items($item['id']) . '/start');
+        self::assertSame(409, $this->statusCode());
+        self::assertSame('https://soirely.com/errors/item_started', $refused['type'] ?? null);
+
+        $this->as($this->owner, 'POST', $this->items($item['id']) . '/finish');
+        $refused = $this->as($this->owner, 'POST', $this->items($item['id']) . '/finish');
+        self::assertSame(409, $this->statusCode());
+        self::assertSame('https://soirely.com/errors/item_finished', $refused['type'] ?? null);
+    }
+
+    #[Test]
+    public function withoutManageAnItemCannotBeMarked(): void
+    {
+        $item = $this->add(['title' => 'Speeches', 'startsAt' => '2027-03-06T19:00']);
+        $viewer = $this->member('viewer@ire.events', 'Kemi Ade', EventRole::CanView);
+
+        $this->as($viewer, 'POST', $this->items($item['id']) . '/start');
+        self::assertSame(403, $this->statusCode());
+        self::assertNull($this->only()['startedAt']);
+    }
+
+    #[Test]
+    public function markingAnItemIsPublishedAsTheWholeSchedule(): void
+    {
+        $item = $this->add(['title' => 'Speeches', 'startsAt' => '2027-03-06T19:00']);
+        $this->as($this->owner, 'POST', $this->items($item['id']) . '/start');
+
+        $update = self::service(RecordingHub::class)->lastOn('events/' . $this->eventId . '/schedule') ?? self::fail('nothing published');
+        $published = Type\shape(['items' => Type\vec(Type\shape(['startedAt' => Type\nullable(Type\string())], true))], true)->coerce(Json\decode($update->getData()));
+        self::assertNotNull($published['items'][0]['startedAt']);
     }
 
     #[Test]

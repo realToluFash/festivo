@@ -271,5 +271,8 @@
     "validation.schedule_note_too_long": "That note is {n} characters. Use {max} or fewer.",
     "run_of_show.version_required": "Send the version you are changing, as If-Match.",
     "run_of_show.changed_since": "Someone else changed this item while you had it open. Your change was not saved.",
+    "run_of_show.item_started": "This item has already started. Nothing was changed.",
+    "run_of_show.item_not_started": "Start this item before marking it done.",
+    "run_of_show.item_finished": "This item is already done. Nothing was changed.",
     "timeline.run_of_show_begins": "Run of show begins"
 }
