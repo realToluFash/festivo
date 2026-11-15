@@ -13,7 +13,7 @@ appId: host.exp.Exponent
 - openLink: ${METRO_URL}/--/events
 - extendedWaitUntil:
     visible:
-      id: 'events.count'
+      id: 'events.tab.upcoming'
     timeout: 30000
 - waitForAnimationToEnd
 - takeScreenshot: wide-events
