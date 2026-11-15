@@ -394,13 +394,25 @@ export function seedOf(state: SeatingState | null): Ui {
         panel: { kind: 'sectionEdit', id: 'stage' },
         asking: { kind: 'deleteSection', id: 'stage' },
       };
+    case 'sectionDeleteRows':
+      return {
+        ...ui,
+        plan: {
+          ...plan,
+          sections: [...plan.sections, { id: 'quiet', name: 'Quiet corner', colour: 'Blue' }],
+          items: plan.items.map((item) =>
+            item.id === 'rowA' || item.id === 'door' ? { ...item, sec: 'quiet' } : item,
+          ),
+        },
+        panel: { kind: 'sectionEdit', id: 'quiet' },
+        asking: { kind: 'deleteSection', id: 'quiet' },
+      };
     case 'sectionDeleteEmpty':
       return {
         ...ui,
         plan: {
           ...plan,
           sections: [...plan.sections, { id: 'quiet', name: 'Quiet corner', colour: 'Blue' }],
-          items: plan.items.map((item) => (item.id === 'rowA' ? { ...item, sec: 'quiet' } : item)),
         },
         panel: { kind: 'sectionEdit', id: 'quiet' },
         asking: { kind: 'deleteSection', id: 'quiet' },
