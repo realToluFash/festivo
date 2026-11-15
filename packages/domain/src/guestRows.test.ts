@@ -8,6 +8,7 @@ import {
   invitationLine,
   repliedRefusal,
   rowWords,
+  startTicks,
 } from './guestRows.ts';
 
 const t = (key: string, values?: Record<string, unknown>) =>
@@ -259,5 +260,24 @@ describe('repliedRefusal', () => {
       repliedRefusal(refused('not_found', { reply: 'coming', repliedAt: '2026-11-02' })),
     ).toBeNull();
     expect(repliedRefusal(new Error('offline'))).toBeNull();
+  });
+});
+
+describe('the ticks Record a reply starts with (sc-3787)', () => {
+  it('ticks each companion who is coming, and only them', () => {
+    const companion = (id: string, coming: boolean) => ({
+      id,
+      fullName: id,
+      state: 'coming' as const,
+      coming,
+      namedByGuest: false,
+    });
+    const dele = guest({
+      reply: 'coming',
+      companions: [companion('c1', true), companion('c2', false), companion('c3', true)],
+    });
+
+    expect([...startTicks(dele)]).toEqual(['c1', 'c3']);
+    expect(startTicks(guest()).size).toBe(0);
   });
 });

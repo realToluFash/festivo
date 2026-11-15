@@ -8,7 +8,7 @@ import {
   type TaggedGuest,
   repliedThemselves,
 } from '@soirely/api-client';
-import { REPLY_KEY, companionShown, replyDate } from '@soirely/domain';
+import { REPLY_KEY, companionShown, replyDate, startTicks } from '@soirely/domain';
 import { type RefObject, useRef, useState } from 'react';
 import { Pressable, StyleSheet, View, type ViewInstance } from 'react-native';
 import { useTranslation } from 'react-i18next';
@@ -52,9 +52,7 @@ export function GuestRecord({
   const [guest, setGuest] = useState(tagged.guest);
   const [answer, setAnswer] = useState<GuestAnswer | null>(null);
   const [how, setHow] = useState<GuestReplyHow | null>(null);
-  const [ticked, setTicked] = useState<ReadonlySet<string>>(
-    () => new Set(tagged.guest.companions.filter((one) => one.coming).map((one) => one.id)),
-  );
+  const [ticked, setTicked] = useState(() => startTicks(tagged.guest));
   const [tried, setTried] = useState(false);
   const [asking, setAsking] = useState(false);
   const [refusal, setRefusal] = useState<Refusal>(null);
