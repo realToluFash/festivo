@@ -109,6 +109,23 @@ describe('a guest’s card after Reply by', () => {
     });
   });
 
+  it('offers Record a reply to those who manage guests, while replies are open or reopened', () => {
+    const open = { replyBy: '2026-10-25', closedOn: null };
+    const reopened = { repliesReopened: { by: 'Ada Obi', at: '2026-10-28T09:00:00Z' } };
+    const records = (
+      guest: typeof reopened | { repliesReopened: null },
+      reply: 'noReply' | 'notYetInvited',
+      replies: typeof closed,
+      manages: boolean,
+    ) => guestReplyBy(guest, reply, replies, manages, LONDON, 'en-GB', t).records;
+
+    expect(records({ repliesReopened: null }, 'noReply', open, true)).toBe(true);
+    expect(records({ repliesReopened: null }, 'noReply', open, false)).toBe(false);
+    expect(records({ repliesReopened: null }, 'notYetInvited', open, true)).toBe(false);
+    expect(records({ repliesReopened: null }, 'noReply', closed, true)).toBe(false);
+    expect(records(reopened, 'noReply', closed, true)).toBe(true);
+  });
+
   it('says who reopened them, and leaves a guest not yet invited alone', () => {
     const reopened = { repliesReopened: { by: 'Ada Obi', at: '2026-10-28T09:00:00Z' } };
     expect(guestReplyBy(reopened, 'noReply', closed, true, LONDON, 'en-GB', t)).toMatchObject({
@@ -128,6 +145,7 @@ describe('a guest’s card after Reply by', () => {
     ).toEqual({
       card: null,
       reopens: false,
+      records: true,
       reply: 'Not sure yet · asked to decide by Sun 25 Oct',
       asked: 'asked to decide by Sun 25 Oct',
     });

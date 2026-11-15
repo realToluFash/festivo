@@ -40,6 +40,7 @@ export type GuestPane =
 /** What the last Mark as not invited left above the guest (sc-46879). */
 export type GuestNotice =
   | { kind: 'unmarked' }
+  | { kind: 'recorded' }
   | { kind: 'refused'; line: string }
   | { kind: 'offline' }
   | { kind: 'failed' }
@@ -62,10 +63,12 @@ export function GuestDetails({
   markRef,
   coverMarkRef,
   unmarkRef,
+  recordRef,
   onEdit,
   onMark,
   onCoverMark,
   onUnmark,
+  onRecord,
   onBack,
   onRetry,
 }: {
@@ -88,10 +91,12 @@ export function GuestDetails({
   markRef: Ref<ViewInstance>;
   coverMarkRef: Ref<ViewInstance>;
   unmarkRef: Ref<ViewInstance>;
+  recordRef: Ref<ViewInstance>;
   onEdit: () => void;
   onMark: () => void;
   onCoverMark: () => void;
   onUnmark: () => void;
+  onRecord: () => void;
   onBack: () => void;
   onRetry: () => void;
 }) {
@@ -128,6 +133,8 @@ export function GuestDetails({
   const group = guest.group?.name ?? null;
   const groupWords = group ?? t('guestGroups.noGroup');
   const after = guestReplyBy(guest, shown, replies, manages, timeZone, locale, t);
+  const records = after.records && invitation != null;
+  const recordedBy = guest.replyRecorded ?? null;
   const rows: { key: string; inset: number; row: ReactNode }[] = [
     {
       key: 'group',
@@ -229,6 +236,7 @@ export function GuestDetails({
     <View style={styles.blocks} testID={`guest.${guest.id}`}>
       {saved && <SavedLine />}
       {notice?.kind === 'unmarked' && <SavedLine words={t('guestList.unmarked')} />}
+      {notice?.kind === 'recorded' && <SavedLine words={t('guestList.replyRecorded')} />}
       <GuestCover
         kind={kind}
         event={event}
@@ -263,7 +271,14 @@ export function GuestDetails({
                   onPress: onCoverMark,
                   testID: 'guest.card.step',
                 }
-              : null
+              : records && shown === 'noReply'
+                ? {
+                    label: t('guestList.recordReply'),
+                    ref: recordRef,
+                    onPress: onRecord,
+                    testID: 'guest.card.step',
+                  }
+                : null
         }
         nameRef={nameRef}
       />
@@ -277,12 +292,26 @@ export function GuestDetails({
           <Row
             title={word}
             line={
-              after.asked ??
-              t('guestList.repliedOn', { date: replyDate(guest.repliedAt, timeZone, locale) })
+              recordedBy != null
+                ? t('guestList.recordedOn', {
+                    name: recordedBy.by,
+                    how: t(`guestList.toldInLine.${recordedBy.how}`),
+                    date: replyDate(guest.repliedAt, timeZone, locale),
+                  })
+                : (after.asked ??
+                  t('guestList.repliedOn', { date: replyDate(guest.repliedAt, timeZone, locale) }))
             }
             lead={<MarkSlot kind={markOf(shown)} />}
             testID="guest.reply"
           />
+          {records && (
+            <TextAction
+              ref={recordRef}
+              label={t('guestList.recordReply')}
+              onPress={onRecord}
+              testID="guest.record"
+            />
+          )}
         </View>
       )}
       <View>
