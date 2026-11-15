@@ -63,6 +63,13 @@ import {
   type TableShape,
   versionTag,
 } from './seating.ts';
+import {
+  type StaffAnswer,
+  type StaffDetails,
+  type StaffEntry,
+  asStaffEntry,
+  asStaffRoster,
+} from './staff.ts';
 
 /** A table call's answer: the plan whole, and the table it added or changed. */
 export interface SeatingWithTable {
@@ -2243,6 +2250,68 @@ export class ApiClient {
       token: typeof body.token === 'string' ? body.token : '',
       expiresAt: typeof body.expiresAt === 'string' ? body.expiresAt : '',
     };
+  }
+
+  /** The event's roster in roster order; refused 403 without staff.read (sc-3906). */
+  async staff(eventId: string): Promise<StaffEntry[]> {
+    return this.staffRosterOf(await this.get<unknown>(this.staffPath(eventId)));
+  }
+
+  /** Refused `validation_failed` on each field, and 409 `staff_number_shared` naming `sharedWith` until `allowShared`. */
+  async addStaff(eventId: string, details: StaffDetails): Promise<StaffAnswer> {
+    return this.staffAnswerOf(await this.post<unknown>(this.staffPath(eventId), details));
+  }
+
+  /** As `addStaff`, asking only when the number changed; `mobile` and `email` are ignored once erased. */
+  async editStaff(eventId: string, staffId: string, details: StaffDetails): Promise<StaffAnswer> {
+    return this.staffAnswerOf(
+      await this.put<unknown>(`${this.staffPath(eventId)}/${encodeURIComponent(staffId)}`, details),
+    );
+  }
+
+  /** Refused 409 `event_concluded` once the event has finished. */
+  async removeStaff(eventId: string, staffId: string): Promise<void> {
+    await this.delete<unknown>(`${this.staffPath(eventId)}/${encodeURIComponent(staffId)}`);
+  }
+
+  async staffSubscription(eventId: string): Promise<RealtimeSubscription> {
+    const body = await this.post<{ token?: unknown; expiresAt?: unknown }>(
+      `${this.staffPath(eventId)}/subscriptions`,
+    );
+
+    return {
+      token: typeof body.token === 'string' ? body.token : '',
+      expiresAt: typeof body.expiresAt === 'string' ? body.expiresAt : '',
+    };
+  }
+
+  private staffRosterOf(body: unknown): StaffEntry[] {
+    return (
+      asStaffRoster(body) ??
+      (() => {
+        throw new Error(
+          'The API answered the roster in a shape this client does not know. Check StaffSerialiser in services/api.',
+        );
+      })()
+    );
+  }
+
+  private staffAnswerOf(body: unknown): StaffAnswer {
+    const record =
+      typeof body === 'object' && body != null ? (body as Record<string, unknown>) : {};
+    const staff = asStaffEntry(record.staff);
+
+    if (staff == null) {
+      throw new Error(
+        'The API answered a roster entry in a shape this client does not know. Check StaffSerialiser in services/api.',
+      );
+    }
+
+    return { staff, member: typeof record.member === 'string' ? record.member : null };
+  }
+
+  private staffPath(eventId: string): string {
+    return `/api/events/${encodeURIComponent(eventId)}/staff`;
   }
 
   async guests(eventId: string): Promise<GuestList> {

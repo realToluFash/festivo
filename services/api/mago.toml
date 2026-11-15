@@ -156,6 +156,7 @@ domain_event = ["App\\Domain\\Event\\**"]
 domain_messaging = ["App\\Domain\\Messaging\\**"]
 domain_seating = ["App\\Domain\\Seating\\**"]
 domain_guest = ["App\\Domain\\Guest\\**"]
+domain_staff = ["App\\Domain\\Staff\\**"]
 
 # Capabilities. Each is its own layer so an edge between two of them has to be
 # declared below rather than appearing by accident.
@@ -329,6 +330,22 @@ permit = [
     "@layer:shared",
     "@layer:domain_guest",
     "@layer:domain_event",
+    "@layer:domain_user",
+    "@layer:repository",
+    "@layer:audit",
+    "@layer:realtime",
+    "@layer:locale",
+]
+
+# Staffing: an event's roster, the people working it without being members (sc-3906). A
+# mobile number is checked by the account's parser; each change is audited and published.
+[[guard.perimeter.rules]]
+namespace = "App\\Domain\\Staff\\"
+permit = [
+    "@layer:native",
+    "@layer:external",
+    "@layer:shared",
+    "@layer:domain_staff",
     "@layer:domain_user",
     "@layer:repository",
     "@layer:audit",

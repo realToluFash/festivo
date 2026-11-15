@@ -4,6 +4,7 @@ export const REALTIME_TOPICS = {
   EventSeating: 'events/{id}/seating',
   EventGuests: 'events/{id}/guests',
   EventHeadcount: 'events/{id}/headcount',
+  EventStaff: 'events/{id}/staff',
 } as const;
 
 export type RealtimeTopicName = keyof typeof REALTIME_TOPICS;

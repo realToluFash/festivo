@@ -16,6 +16,8 @@ import {
   EventGuests,
   EventDates,
   EventPeoplePage,
+  EventRoster,
+  EventStaff,
   EventView,
 } from './app/events/EventView.tsx';
 import { Events } from './app/events/Events.tsx';
@@ -94,6 +96,8 @@ export const routes = [
           { path: 'events/:eventId/guests', element: <EventGuests /> },
           { path: 'events/:eventId/dates', element: <EventDates /> },
           { path: 'events/:eventId/people', element: <EventPeoplePage /> },
+          { path: 'events/:eventId/staff', element: <EventStaff /> },
+          { path: 'events/:eventId/staff/roster', element: <EventRoster /> },
           { path: 'events/:eventId/:area', element: <EventAreaPage /> },
           { path: 'calendar', element: <Calendar /> },
           { path: 'guests', element: <Dashboard /> },
