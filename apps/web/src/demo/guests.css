@@ -1318,8 +1318,10 @@
 }
 
 .gs-row-mid > .desk-row-words {
-  flex: 1 1 auto;
-  overflow-wrap: anywhere;
+  flex: 1 1 min-content;
+  min-width: min(100%, 12rem);
+  max-width: 100%;
+  overflow-wrap: break-word;
 }
 
 .gs-row-tags {
