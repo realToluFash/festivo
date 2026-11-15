@@ -30,13 +30,13 @@ final readonly class EventRules
     }
 
     /**
-     * The venue, the arrival note and the hosts are checked only when they are in the fields, and are in what this returns only then.
+     * The venue, the arrival note, the hosts and Reply by are checked only when they are in the fields, and are in what this returns only then.
      *
-     * @param array{name: ?string, type: ?string, startsAt: ?string, endsAt: ?string, timeZone: string, currency: string, venue?: array{name?: ?string, address?: ?string, addressId?: ?string}|null, arrivalNote?: ?string, hosts?: list<string>} $fields
-     * @param ?string                                                                                                                                                                                                                              $held      the event's currency on an edit, which may stay although no longer offered
-     * @param ?Venue                                                                                                                                                                                                                               $heldVenue the event's venue on an edit, whose address keeps its parts when sent back unchanged
+     * @param array{name: ?string, type: ?string, startsAt: ?string, endsAt: ?string, timeZone: string, currency: string, venue?: array{name?: ?string, address?: ?string, addressId?: ?string}|null, arrivalNote?: ?string, hosts?: list<string>, replyBy?: ?string} $fields
+     * @param ?string                                                                                                                                                                                                                                                 $held      the event's currency on an edit, which may stay although no longer offered
+     * @param ?Venue                                                                                                                                                                                                                                                  $heldVenue the event's venue on an edit, whose address keeps its parts when sent back unchanged
      *
-     * @return array{name: string, type: EventType, startsAt: DateTimeImmutable, endsAt: DateTimeImmutable, currency: string, venue?: ?Venue, arrivalNote?: ?string, hosts?: list<string>}
+     * @return array{name: string, type: EventType, startsAt: DateTimeImmutable, endsAt: DateTimeImmutable, currency: string, venue?: ?Venue, arrivalNote?: ?string, hosts?: list<string>, replyBy?: ?DateTimeImmutable}
      */
     public function check(array $fields, ?string $held = null, ?Venue $heldVenue = null): array
     {
@@ -90,12 +90,18 @@ final readonly class EventRules
             $this->checkHosts($hosts, $violations);
         }
 
+        $replyBy = Iter\contains_key($fields, 'replyBy') ? $this->day($fields['replyBy'], $violations) : null;
+
         if (null !== $zone && null !== $startsAt && null !== $endsAt) {
             $startsAt = LocalTimeResolver::resolve($startsAt, new DateTimeZone($zone));
             $endsAt = LocalTimeResolver::resolve($endsAt, new DateTimeZone($zone));
 
             if ($endsAt < $startsAt) {
                 $violations[] = $this->violation('endsAt', 'validation.event_end_before_start');
+            }
+
+            if (null !== $replyBy && $replyBy->format('Y-m-d') >= $startsAt->format('Y-m-d')) {
+                $violations[] = $this->violation('replyBy', 'validation.event_reply_by_not_before_start');
             }
         }
 
@@ -115,6 +121,10 @@ final readonly class EventRules
 
         if (null !== $hosts) {
             $checked['hosts'] = $hosts;
+        }
+
+        if (Iter\contains_key($fields, 'replyBy')) {
+            $checked['replyBy'] = $replyBy;
         }
 
         return $checked;
@@ -168,6 +178,28 @@ final readonly class EventRules
                 $seen[$folded] = $host;
             }
         }
+    }
+
+    /**
+     * A day as `Y-m-d`, at midnight UTC as a DATE column holds it; null clears it.
+     *
+     * @param list<array{propertyPath: string, message: string, code: string}> $violations
+     */
+    private function day(?string $typed, array &$violations): ?DateTimeImmutable
+    {
+        if (null === $typed) {
+            return null;
+        }
+
+        $parsed = DateTimeImmutable::createFromFormat('!Y-m-d', Str\trim($typed), new DateTimeZone('UTC'));
+
+        if (false === $parsed || $parsed->format('Y-m-d') !== Str\trim($typed)) {
+            $violations[] = $this->violation('replyBy', 'validation.event_reply_by_invalid');
+
+            return null;
+        }
+
+        return $parsed;
     }
 
     /**

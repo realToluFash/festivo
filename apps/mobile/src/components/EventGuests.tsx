@@ -18,11 +18,13 @@ import {
   countsOf,
   eventAllows,
   hasAllergy,
+  haventLine,
   invitationLine,
   repliedRefusal,
   replyDate,
   roleHolds,
   rowWords,
+  shownReply,
   viewOf,
 } from '@soirely/domain';
 import {
@@ -42,7 +44,6 @@ import {
   type TextInputInstance,
   type ViewInstance,
 } from 'react-native';
-import type { TFunction } from 'i18next';
 import { useTranslation } from 'react-i18next';
 
 import { api } from '../api.ts';
@@ -51,6 +52,7 @@ import { dateLocale } from '../i18n/index.ts';
 import type { Shown } from '../kit/eventsList.ts';
 import { sidebarCardOf } from '../kit/eventTop.ts';
 import { type PhaseCard, filterChoices, markOf, phaseCardOf } from '../kit/guestRows.ts';
+import { type GuestReplies, guestRepliesOf, guestReplyBy } from '../kit/replyBy.ts';
 import { type ScreenOffline, useHandOffline, useOffline } from '../offline.ts';
 import { useSignedIn } from '../signedIn.ts';
 import { tokens } from '../theme/tokens.ts';
@@ -158,6 +160,8 @@ export function EventGuests({
   const markButton = useRef<ViewInstance>(null);
   const coverMark = useRef<ViewInstance>(null);
   const unmarkButton = useRef<ViewInstance>(null);
+  const reopenButton = useRef<ViewInstance>(null);
+  const [reopening, setReopening] = useState({ busy: false, failed: false });
   const liveOpener = useRef<ViewInstance>(null);
   const makeLive = useMakeLive({ event, onChange: onEventChange, opener: liveOpener });
   const unmarking = useRef(false);
@@ -249,6 +253,7 @@ export function EventGuests({
     setOpen(null);
     setSaved(false);
     setNotice(null);
+    setReopening({ busy: false, failed: false });
   }, []);
   const showGuest = (tagged: TaggedGuest) => {
     tags.current.set(tagged.guest.id, tagged);
@@ -345,6 +350,17 @@ export function EventGuests({
 
   const timeZone = event.timeZone;
   const locale = dateLocale();
+  const replies = guestRepliesOf(event, now);
+  const reopen = (guestId: string) => {
+    setReopening({ busy: true, failed: false });
+    api.reopenGuestReplies(eventId, guestId).then(
+      (tagged) => {
+        setReopening({ busy: false, failed: false });
+        showGuest(tagged);
+      },
+      () => setReopening({ busy: false, failed: true }),
+    );
+  };
 
   const onCard = loaded && !empty;
   const phaseLine =
@@ -416,6 +432,7 @@ export function EventGuests({
         timeZone={timeZone}
         locale={locale}
         manages={manages}
+        replies={replies}
       />
     );
   const list = (
@@ -440,6 +457,14 @@ export function EventGuests({
         pane={pane}
         manages={manages}
         timeZone={timeZone}
+        replies={replies}
+        reopen={{
+          ...reopening,
+          ref: reopenButton,
+          onPress: () => {
+            if (open != null) reopen(open);
+          },
+        }}
         saved={saved}
         notice={notice}
         invitation={phase === 'draft' ? null : { manages, invites }}
@@ -548,6 +573,7 @@ function GuestRows({
   timeZone,
   locale,
   manages,
+  replies,
 }: {
   list: GuestList;
   counts: Counts;
@@ -569,6 +595,7 @@ function GuestRows({
   locale: string;
   /** The allergy mark is for people who manage guests (sc-3777). */
   manages: boolean;
+  replies: GuestReplies;
 }) {
   const { t } = useTranslation();
   const { view, shown } = viewOf(list.guests, counts, choice, typed, expanded);
@@ -593,7 +620,17 @@ function GuestRows({
       invitation:
         noReply && person.companion == null
           ? invitationLine(t, person.guest, timeZone, locale)
-          : null,
+          : person.companion == null && person.guest.repliedAt != null
+            ? guestReplyBy(
+                person.guest,
+                shownReply(person.guest),
+                replies,
+                manages,
+                timeZone,
+                locale,
+                t,
+              ).reply
+            : null,
     });
     const allergy =
       manages &&
@@ -703,19 +740,6 @@ function GuestRows({
       )}
     </View>
   );
-}
-
-function haventLine(t: TFunction, counts: Counts) {
-  if (counts.havent === 0) return t('guestList.everyoneReplied');
-  const havent = t('guestList.havent', { count: counts.havent });
-
-  return counts.haventCompanions === 0
-    ? t('guestList.haventLine', { havent })
-    : t('guestList.haventWho', {
-        havent,
-        guests: t('guestList.countGuests', { count: counts.haventGuests }),
-        companions: t('guestList.countCompanions', { count: counts.haventCompanions }),
-      });
 }
 
 /** The filter beside Find a guest: "All · 156", and the house menu under it with each choice counted. */
@@ -931,6 +955,18 @@ const styles = StyleSheet.create({
   portrait: { ...LIST_EDGES.tabletPortrait, gap: LIST_GAP, paddingBottom: tokens.space6xl * 2 },
   landscape: { ...LIST_EDGES.tabletLandscape, gap: LIST_GAP },
   column: { gap: LIST_GAP, paddingBottom: tokens.space6xl * 2 },
+  ruledList: {
+    paddingTop: 22,
+    paddingHorizontal: tokens.spaceXxl,
+    gap: LIST_GAP,
+    paddingBottom: tokens.space6xl * 2,
+  },
+  ruledPage: {
+    paddingTop: 22,
+    paddingHorizontal: 32,
+    gap: LIST_GAP,
+    paddingBottom: tokens.space6xl * 2,
+  },
 });
 
 const SPACING: ListAndPageSpacing = {
@@ -940,4 +976,5 @@ const SPACING: ListAndPageSpacing = {
   column: styles.column,
   listWidth: 400,
   between: tokens.spaceXxl,
+  ruled: { list: styles.ruledList, page: styles.ruledPage },
 };

@@ -1,4 +1,5 @@
 import type { View, Visit } from './guest.ts';
+import type { Party } from './guestCompanions.ts';
 import {
   type Access,
   type Allergen,
@@ -470,6 +471,15 @@ const FOCUS: Partial<Record<GuestKitchenState, string>> = {
   refused: 'send',
 };
 
+/** Companions on the kitchen step came through Who's coming with you?: here every place the hosts saved, none named, all Coming (sc-48740). */
+function unnamedPlaces(people: readonly Person[]): Party {
+  const places = people
+    .filter((one) => one.key !== 'me')
+    .map((one) => ({ key: one.key, name: null, by: null, coming: true }));
+
+  return { places: places.length, people: places, tried: false, renaming: null, draft: '' };
+}
+
 export function guestKitchenStarts(
   state: GuestKitchenState,
   { earlier, companions: invited }: { earlier: string; companions: number },
@@ -514,6 +524,7 @@ export function guestKitchenStarts(
   return {
     recorded: returning ? { answer: 'coming', on: earlier } : null,
     companionsComing: companions,
+    party: unnamedPlaces(people),
     view,
     kitchen,
     want: FOCUS[state] ?? (view.kind === 'check' ? 'checkHead' : 'kitchenHead'),

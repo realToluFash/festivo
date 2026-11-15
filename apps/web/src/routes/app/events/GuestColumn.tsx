@@ -42,6 +42,7 @@ import { RemoveAsk, type Removing } from './GuestRemove.tsx';
 import { choiceLine, groupRefusal, listOpen } from './guestGroups.ts';
 import { type Copy, IconLead, Invitation } from './GuestInvitation.tsx';
 import { languageNameInSentence } from '../settings/organisationDetails.ts';
+import { type Replies, closedLine, decideBy } from './guestReplyBy.ts';
 import { type InvitationEvent, whatsAppHref } from './whatsAppSend.ts';
 import {
   type CompanionNeeds,
@@ -148,6 +149,7 @@ export function GuestColumn({
   guestId,
   timeZone,
   event,
+  replies,
   mesh,
   manages,
   guests,
@@ -181,6 +183,7 @@ export function GuestColumn({
   timeZone: string;
   /** What the WhatsApp invitation says (sc-26025). */
   event: InvitationEvent;
+  replies: Replies;
   mesh: Mesh;
   manages: boolean;
   guests: readonly Guest[];
@@ -366,6 +369,7 @@ export function GuestColumn({
       guest={pane.tagged.guest}
       timeZone={timeZone}
       event={event}
+      replies={replies}
       mesh={mesh}
       manages={manages}
       invites={invites}
@@ -383,6 +387,12 @@ export function GuestColumn({
       asked={asked}
       onAsked={onAsked}
       onSentMarked={onSentMarked}
+      onReopen={() =>
+        api.reopenGuestReplies(eventId, guestId).then((tagged) => {
+          setPane({ kind: 'guest', tagged });
+          onChanged(tagged.guest);
+        })
+      }
       onUnmark={() =>
         onUnmark().then(
           (tagged) => {
@@ -416,6 +426,7 @@ function GuestView({
   guest,
   timeZone,
   event,
+  replies,
   mesh,
   manages,
   invites,
@@ -426,6 +437,7 @@ function GuestView({
   onReplace,
   onMark,
   onUnmark,
+  onReopen,
   asked,
   onAsked,
   onSentMarked,
@@ -440,6 +452,7 @@ function GuestView({
   guest: GuestDetails;
   timeZone: string;
   event: InvitationEvent;
+  replies: Replies;
   mesh: Mesh;
   manages: boolean;
   invites: boolean;
@@ -450,6 +463,8 @@ function GuestView({
   onReplace: () => Promise<void>;
   onMark: (how: GuestInvitationHow) => Promise<void>;
   onUnmark: () => Promise<void>;
+  /** Let them change their reply, once replies have closed (sc-3780). */
+  onReopen: () => Promise<void>;
   asked: boolean;
   onAsked: (open: boolean) => void;
   onSentMarked: () => void;
@@ -469,6 +484,7 @@ function GuestView({
   const [marking, setMarking] = useState(false);
   const [markFailed, setMarkFailed] = useState(false);
   const [unmark, setUnmark] = useState<Unmark>({ kind: 'none' });
+  const [reopening, setReopening] = useState<'busy' | 'failed' | null>(null);
   const [removing, setRemoving] = useState<Removing | null>(null);
   const shown: Removing | null =
     gone && removing?.kind === 'asking' && !removing.busy ? { kind: 'gone' } : removing;
@@ -594,14 +610,29 @@ function GuestView({
     guest.repliedAt == null ? null : replyDate(guest.repliedAt, timeZone, dateLocale());
   const reply = shownReply(guest);
   const notYet = reply === 'notYetInvited';
+  const closed = notYet ? null : closedLine(t, guest, replies, manages, timeZone, dateLocale());
+  const reopens = manages && !notYet && replies.closedOn != null && guest.repliesReopened == null;
+  const decides = decideBy(t, guest, replies.replyBy, dateLocale());
   const cardLine =
-    replied != null
+    closed ??
+    (replied != null
       ? t('guestList.replied', { reply: t(REPLY_KEY[guest.reply]), date: replied })
       : notYet
         ? manages && invites
           ? t('guestList.copyFirst')
           : null
-        : invitationLine(t, guest, timeZone, dateLocale());
+        : invitationLine(t, guest, timeZone, dateLocale()));
+
+  function reopen(): void {
+    setReopening('busy');
+    onReopen().then(
+      () => {
+        setReopening(null);
+        focus('guest-heading');
+      },
+      () => setReopening('failed'),
+    );
+  }
 
   return (
     <div className="gs-guest">
@@ -653,6 +684,15 @@ function GuestView({
               <CardStep label={t('guestList.markAsInvited')} onClick={() => setMarking(true)} />
             </div>
           )}
+          {reopens && (
+            <div className="ev-card-foot" data-focus="step">
+              <CardStep
+                label={t('guestList.letThemChange')}
+                busy={reopening === 'busy'}
+                onClick={reopen}
+              />
+            </div>
+          )}
         </div>
       </section>
       {manages && flagged && (
@@ -674,6 +714,12 @@ function GuestView({
           })}
         </p>
       )}
+      {reopening === 'failed' && (
+        <p className="desk-error gs-refused" role="alert">
+          <Glyph name="alert" size={15} weight={2.2} />
+          {t('guestList.loadFailedLine')}
+        </p>
+      )}
       {unmark.kind === 'failed' && (
         <p className="desk-error gs-refused" role="alert">
           <Glyph name="alert" size={15} weight={2.2} />
@@ -691,7 +737,7 @@ function GuestView({
               <MarkLead reply={guest.reply} />
               <RowWords
                 title={t(REPLY_KEY[guest.reply])}
-                lines={[t('guestList.repliedOn', { date: replied })]}
+                lines={[decides ?? t('guestList.repliedOn', { date: replied })]}
               />
             </li>
           </ul>

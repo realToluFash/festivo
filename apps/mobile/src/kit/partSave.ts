@@ -9,6 +9,7 @@ export type SavedPart = Exclude<EditPart, 'cover'>;
 /** What each part's screen edits: only these, changed by somebody else since the page was read, stop its save. */
 export const PART_FIELDS: Readonly<Record<SavedPart, readonly (keyof OrganisationEvent)[]>> = {
   dates: ['startsAt', 'endsAt', 'timeZone'],
+  replyBy: ['replyBy'],
   venue: ['venue', 'arrivalNote', 'timeZone'],
   hosts: ['hosts'],
   type: ['type'],

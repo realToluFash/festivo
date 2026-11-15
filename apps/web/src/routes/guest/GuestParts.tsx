@@ -65,10 +65,12 @@ export function Filled({
 export function Notice({
   kind,
   alert = kind === 'broken',
+  action,
   children,
 }: {
   kind: 'broken' | 'attention';
   alert?: boolean;
+  action?: ReactNode;
   children: ReactNode;
 }) {
   return (
@@ -76,7 +78,14 @@ export function Notice({
       <span className="gp-notice-mark" aria-hidden="true">
         {kind === 'broken' && <Glyph name="clear" size={14} weight={3} />}
       </span>
-      <p>{children}</p>
+      {action == null ? (
+        <p>{children}</p>
+      ) : (
+        <div className="gp-unsaved-words">
+          <p>{children}</p>
+          {action}
+        </div>
+      )}
     </div>
   );
 }
@@ -91,6 +100,11 @@ export function readerZone(): string | undefined {
 
 export function format(at: string, timeZone: string, options: Intl.DateTimeFormatOptions): string {
   return new Intl.DateTimeFormat(dateLocale(), { timeZone, ...options }).format(new Date(at));
+}
+
+/** A calendar day the event set, such as Reply by, written for the reader's locale with no zone to move it. */
+export function wallDayOf(day: string): string {
+  return dayOf(`${day}T12:00:00Z`, 'UTC');
 }
 
 /** The day an answer was given, in the event's zone, written for the reader's locale. */

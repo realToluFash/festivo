@@ -37,6 +37,8 @@ export interface ListAndPageSpacing {
   column: StyleProp<ViewStyle>;
   listWidth: number;
   between: number;
+  /** On its side, the two columns meet at a rule rather than a gap, each padded inside its own scroll, as Guests' demo draws them. */
+  ruled?: { list: StyleProp<ViewStyle>; page: StyleProp<ViewStyle> };
 }
 
 export interface ListAndPageProps {
@@ -109,6 +111,8 @@ export function ListAndPage({
   const landscape = kind === 'tabletLandscape';
   const split = landscape && !pageless;
   const inColumn = landscape && settingsColumn;
+  const ruled = split && !inColumn ? spacing.ruled : undefined;
+  const bare = inColumn || ruled != null;
   const headingAbove = landscape && !inColumn && !headingInList;
   const takesBack = pageTakesBack(kind, pageInFront);
   useSystemBack(takesBack, back.onPress);
@@ -124,7 +128,7 @@ export function ListAndPage({
     <Screen
       edges={bodyEdges(frame)}
       scroll={false}
-      contentStyle={landscape && !inColumn ? spacing.landscape : styles.bare}
+      contentStyle={landscape && !bare ? spacing.landscape : styles.bare}
     >
       {headingAbove && (heading || besideHeading) && (
         <View style={styles.head}>
@@ -132,17 +136,18 @@ export function ListAndPage({
           {besideHeading}
         </View>
       )}
-      <View style={split ? [styles.split, { gap: inColumn ? 0 : spacing.between }] : styles.fill}>
+      <View style={split ? [styles.split, { gap: bare ? 0 : spacing.between }] : styles.fill}>
         <View
           style={[
             split ? { width: listWidth } : styles.fill,
             inColumn && SETTINGS_COLUMN,
+            ruled != null && styles.rule,
             !landscape && pageInFront && !listUnder && styles.behind,
           ]}
         >
           <ScrollColumn
             style={styles.fill}
-            contentContainerStyle={inColumn ? COLUMN : column}
+            contentContainerStyle={inColumn ? COLUMN : (ruled?.list ?? column)}
             refreshControl={listRefresh}
             away={!landscape && pageInFront}
           >
@@ -162,7 +167,9 @@ export function ListAndPage({
           <ScrollColumn
             key={pageKey}
             style={styles.fill}
-            contentContainerStyle={inColumn ? [LIST_EDGES.tabletLandscape, column] : column}
+            contentContainerStyle={
+              inColumn ? [LIST_EDGES.tabletLandscape, column] : (ruled?.page ?? column)
+            }
           >
             {!landscape && pageInFront && <FrameTop />}
             {kind === 'tabletPortrait' && !backInFrame && (
@@ -179,6 +186,7 @@ export function ListAndPage({
 }
 
 const styles = StyleSheet.create({
+  rule: { borderRightWidth: 1, borderRightColor: tokens.colorBorder },
   fill: { flex: 1, minWidth: 0 },
   bare: { padding: 0, gap: 0 },
   behind: { display: 'none' },

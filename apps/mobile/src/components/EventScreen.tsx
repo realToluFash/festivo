@@ -450,11 +450,11 @@ export function EventScreen({
             if (editing.leaves && router.canGoBack()) router.back();
             else closeEdit();
           }}
-          onSaved={(saved) => {
+          onSaved={(saved, said) => {
             change(saved);
             if (editing.part === 'cover') setCoverRefused(null);
             closeEdit(partRef(editing.part));
-            setToast({ eventId, area, words: t('eventEdit.saved') });
+            setToast({ eventId, area, words: said ?? t('eventEdit.saved') });
           }}
           onLatest={(latest) => {
             change(latest);

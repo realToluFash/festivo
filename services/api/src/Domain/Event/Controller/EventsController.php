@@ -152,7 +152,7 @@ final readonly class EventsController
         return $this->tagged($this->event($eventId));
     }
 
-    /** Any of the nine fields; those left out keep their value, a `venue` or an `arrivalNote` of null removes it, and `hosts` is the whole list (sc-6713). Needs If-Match with the ETag it read (sc-3587). */
+    /** Any of the ten fields; those left out keep their value, a `venue`, an `arrivalNote` or a `replyBy` of null removes it, and `hosts` is the whole list (sc-6713). Needs If-Match with the ETag it read (sc-3587). */
     #[Route('/api/events/{eventId}', name: 'events_update', methods: ['PATCH'])]
     #[InEvent(Permission::EventsManage)]
     public function update(Request $request, string $eventId): JsonResponse
@@ -168,6 +168,7 @@ final readonly class EventsController
             'venue' => Type\optional(self::venue()),
             'arrivalNote' => Type\optional(Type\nullable(Type\string())),
             'hosts' => Type\optional(Type\vec(Type\string())),
+            'replyBy' => Type\optional(Type\nullable(Type\string())),
         ]));
 
         return $this->tagged($this->eventEditor->edit($event, $request->headers->get('If-Match'), $this->user(), $body));

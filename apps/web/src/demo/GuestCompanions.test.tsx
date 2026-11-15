@@ -110,6 +110,30 @@ describe('Who’s coming with you? on the guest’s page (sc-3779)', { timeout: 
     await guest('checkAlone');
 
     expect(screen.getByText('You · 1 person')).toBeDefined();
+    expect(screen.getByText('For the kitchen')).toBeDefined();
+  });
+
+  it('labels an unnamed place the same in Coming and For the kitchen, another declined (sc-48740)', async () => {
+    await guest('checkUnnamed');
+
+    expect(screen.getByText('You, Obi Okonkwo and Your guest 2 · 3 people')).toBeDefined();
+    expect(screen.getByText('For the kitchen')).toBeDefined();
+    expect(screen.getByText('Your guest 2')).toBeDefined();
+    expect(screen.getByText('Vegetarian')).toBeDefined();
+    expect(screen.queryByText('Your guest 3')).toBeNull();
+  });
+
+  it('marks every place Not coming for a guest coming alone (sc-48740)', async () => {
+    await guest('withYouAlone');
+
+    for (const name of ['Obi Okonkwo', 'Your guest 2', 'Your guest 3'])
+      expect(button(`${name} is coming`).getAttribute('aria-pressed')).toBe('false');
+  });
+
+  it('gives sc-3778’s Check and send its unnamed places, by position (sc-48740)', async () => {
+    await guest('check_and_send');
+
+    expect(screen.getByText('You, Your guest 1 and Your guest 2 · 3 people')).toBeDefined();
   });
 
   it('counts an unnamed place in the returning guest’s line (sc-48740)', async () => {

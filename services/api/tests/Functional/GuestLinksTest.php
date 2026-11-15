@@ -131,10 +131,11 @@ final class GuestLinksTest extends ApiTestCase
         self::assertSame([
             'guest' => ['fullName' => self::ADAEZE, 'reply' => null, 'needs' => ['allergies' => [], 'diet' => [], 'access' => [], 'otherAllergy' => null, 'otherDiet' => null, 'otherAccess' => null, 'changed' => null], 'places' => 0, 'companions' => [], 'unnamed' => []],
             'language' => ['chosen' => null, 'host' => null, 'organisation' => 'en'],
-            'event' => ['id' => $this->eventId, 'name' => "Amara & Tobi's wedding", 'type' => 'wedding', 'cover' => null, 'hosts' => ['Funmi Adeyemi'], 'startsAt' => '2030-11-14T16:00:00+01:00', 'timeZone' => 'Africa/Lagos', 'venue' => null, 'arrivalNote' => null],
+            'event' => ['id' => $this->eventId, 'name' => "Amara & Tobi's wedding", 'type' => 'wedding', 'cover' => null, 'hosts' => ['Funmi Adeyemi'], 'startsAt' => '2030-11-14T16:00:00+01:00', 'timeZone' => 'Africa/Lagos', 'venue' => null, 'arrivalNote' => null, 'replyBy' => null],
             'phase' => 'live',
             'started' => false,
             'answersOpen' => true,
+            'answersClosedOn' => null,
             'calendarFeed' => null,
         ], $page);
         self::assertSame('no-store, private', $this->client->getResponse()->headers->get('Cache-Control'));
