@@ -130,7 +130,7 @@ export function InvitationBlock({
                 onPress={link.onReplace}
                 testID="guest.replace"
               />
-              {link.notReplaced && <NotReplaced underRow testID="guest.notReplaced" />}
+              {link.notReplaced && <NotReplaced testID="guest.notReplaced" />}
             </View>
           ),
         },
@@ -258,16 +258,16 @@ function NotCopied() {
   );
 }
 
-/** A replace that failed: the old link still works. Under the Replace row it is small and indented; under the notice it is not (sc-55558). */
-export function NotReplaced({ underRow = false, testID }: { underRow?: boolean; testID: string }) {
+/** A replace that failed: the old link still works. Small and indented to the row text, under the Replace row and under the notice alike (sc-55558). */
+export function NotReplaced({ testID }: { testID: string }) {
   const { t } = useTranslation();
 
   return (
     <ReadOutAlertLine
       text={t('guestList.notReplaced')}
-      small={underRow}
+      small
       testID={testID}
-      style={underRow ? styles.underRow : undefined}
+      style={styles.underRow}
     />
   );
 }
