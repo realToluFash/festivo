@@ -10,7 +10,6 @@ import {
 } from '@soirely/domain';
 import { type ReactNode, type Ref, useContext, useEffect } from 'react';
 import { StyleSheet, View, type ViewInstance } from 'react-native';
-import Svg, { Path } from 'react-native-svg';
 import { useTranslation } from 'react-i18next';
 
 import { dateLocale } from '../i18n/index.ts';
@@ -32,12 +31,6 @@ import { FailedBlock } from './Summary.tsx';
 import { useReadOut } from './ReadOut.tsx';
 import { ScreenScroll } from './Screen.tsx';
 import { Text, type TextHandle } from './Text.tsx';
-
-const TRIANGLE = [
-  'M10.3 3.9 1.8 18a2 2 0 0 0 1.7 3h17a2 2 0 0 0 1.7-3L13.7 3.9a2 2 0 0 0-3.4 0z',
-  'M12 9v4',
-  'M12 17h.01',
-] as const;
 
 /** sc-55558: the wrong-person notice, the replace that failed, and the guest's own link rows. */
 export interface GuestLink {
@@ -422,18 +415,7 @@ function WrongPerson({
     <View style={styles.wrongPerson} testID="guest.flagged">
       <View style={styles.flagHead}>
         <View style={styles.flagMark}>
-          <Svg width={18} height={18} viewBox="0 0 24 24" fill="none">
-            {TRIANGLE.map((d) => (
-              <Path
-                key={d}
-                d={d}
-                stroke={tokens.colorAttentionText}
-                strokeWidth={2.2}
-                strokeLinecap="round"
-                strokeLinejoin="round"
-              />
-            ))}
-          </Svg>
+          <Glyph name="warn" ink={tokens.colorAttentionText} weight={2.2} />
         </View>
         <Text size={16} weight="bold" accessibilityRole="header" style={styles.flagTitle}>
           {t('guestList.flaggedTitle')}

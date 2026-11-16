@@ -35,6 +35,7 @@ import { useServerNow } from '../kit/serverNow.ts';
 import type { LayoutKind } from '../layout/classify.ts';
 import { tokens } from '../theme/tokens.ts';
 import { PrimaryButton, SecondaryButton } from './Buttons.tsx';
+import { Glyph as KitGlyph } from './Glyph.tsx';
 import { useReadOut } from './ReadOut.tsx';
 import { Text } from './Text.tsx';
 
@@ -50,11 +51,6 @@ const PATHS = {
   clock: ['M12 7v5l3 2'],
   arrow: ['M5 12h14', 'm13 6 6 6-6 6'],
   lock: ['M5 11h14v10H5z', 'M8 11V7a4 4 0 0 1 8 0v4'],
-  warn: [
-    'M10.3 3.9 1.8 18a2 2 0 0 0 1.7 3h17a2 2 0 0 0 1.7-3L13.7 3.9a2 2 0 0 0-3.4 0z',
-    'M12 9v4',
-    'M12 17h.01',
-  ],
 } as const;
 
 function said(t: TFunction, [key, values]: RunWords): string {
@@ -329,7 +325,7 @@ function TrackTop({ view }: { view: TrackView }) {
       </View>
       {view.track.collisions.map(({ before, fixed }) => (
         <View key={`${before.id}|${fixed.id}`} style={styles.collision}>
-          <Glyph paths={PATHS.warn} ink={tokens.colorAttentionText} side={16} />
+          <KitGlyph name="warn" ink={tokens.colorAttentionText} size={16} weight={2.4} />
           <Text size={14} weight="semibold" style={[styles.grow, styles.attention]}>
             {said(t, collisionWords(before, fixed, locale))}
           </Text>
