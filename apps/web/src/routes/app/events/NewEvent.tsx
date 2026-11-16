@@ -375,6 +375,7 @@ function EventForm({ organisation }: { organisation: Membership }) {
         />
         <input
           ref={fileInput}
+          id="cover-file"
           type="file"
           className="desk-unseen"
           accept="image/jpeg,image/png,image/webp,image/heic,image/heif,.heic,.heif"
@@ -416,13 +417,7 @@ function EventForm({ organisation }: { organisation: Membership }) {
             legend={t('eventForm.starts')}
             wall={{ date: draft.startDate, time: draft.startTime }}
             wrong={errors.startsAt != null}
-            told={
-              errors.startsAt != null
-                ? 'event-start-error'
-                : startSkipped != null
-                  ? 'event-start-skip'
-                  : undefined
-            }
+            told={told(errors.startsAt == null ? null : 'event-start-error', startSkipped, 'start')}
             off={busy}
             onChange={(wall) => {
               setMoved(null);
@@ -430,11 +425,7 @@ function EventForm({ organisation }: { organisation: Membership }) {
             }}
           />
           {error('event-start-error', errors.startsAt)}
-          {startSkipped != null && (
-            <p id="event-start-skip" className="ev-said" role="status">
-              {startSkipped}
-            </p>
-          )}
+          <Gap id="event-start-gap" line={startSkipped} />
         </div>
         <div className="ev-new-when">
           <DateTime
@@ -442,7 +433,11 @@ function EventForm({ organisation }: { organisation: Membership }) {
             legend={t('eventForm.ends')}
             wall={{ date: draft.endDate, time: draft.endTime }}
             wrong={errors.endsAt != null}
-            told={errors.endsAt != null ? 'event-end-error' : 'event-end-help'}
+            told={told(
+              errors.endsAt == null ? 'event-end-help' : 'event-end-error',
+              endSkipped,
+              'end',
+            )}
             off={busy}
             onChange={(wall) => {
               setMoved(null);
@@ -458,9 +453,10 @@ function EventForm({ organisation }: { organisation: Membership }) {
             </p>
           ) : (
             <p id="event-end-help" className="desk-help">
-              {endSkipped ?? t('eventForm.endsHint')}
+              {t('eventForm.endsHint')}
             </p>
           )}
+          <Gap id="event-end-gap" line={endSkipped} />
         </div>
       </FormBlock>
 
@@ -561,4 +557,23 @@ function EventForm({ organisation }: { organisation: Membership }) {
       )}
     </form>
   );
+}
+
+/** What a start or end in the clocks' gap is saved as, in a region that is there before the line is, so it is read out (sc-10638). */
+function Gap({ id, line }: { id: string; line: string | null }) {
+  return (
+    <div id={id} aria-live="polite">
+      {line != null && <p className="ev-said">{line}</p>}
+    </div>
+  );
+}
+
+function told(
+  first: string | null,
+  skipped: string | null,
+  which: 'start' | 'end',
+): string | undefined {
+  const ids = [first, skipped == null ? null : `event-${which}-gap`].filter((one) => one != null);
+
+  return ids.length === 0 ? undefined : ids.join(' ');
 }

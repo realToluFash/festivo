@@ -393,7 +393,10 @@ function AddressField({
       </div>
       {error != null && <Alert>{error}</Alert>}
       {down ? (
-        <Alert>{t('eventForm.venueLookupDown')}</Alert>
+        <p id={`${id}-help`} className="desk-error" role="alert">
+          <Glyph name="alert" size={15} weight={2.2} />
+          {t('eventForm.venueLookupDown')}
+        </p>
       ) : suggestions.length > 0 ? (
         <p id={`${id}-help`} className="desk-help" role="status">
           {t('eventForm.venueSuggestionsFound', { count: suggestions.length })}
