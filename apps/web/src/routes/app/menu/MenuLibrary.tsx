@@ -36,7 +36,7 @@ import { TitleRow } from '../../../components/SettingsParts.tsx';
 import { useDeskTop } from '../../../deskTop.ts';
 import { keepsWhatLoaded, useOffline } from '../../../offline.ts';
 import { useSession } from '../../../session.ts';
-import { currencyChoices } from '../../../zoneAndCurrencyChoices.ts';
+import { currencyCodeChoices } from '../../../zoneAndCurrencyChoices.ts';
 import { Forbidden } from '../Forbidden.tsx';
 import '../../../components/desk.css';
 import '../../../components/SettingsParts.css';
@@ -1110,9 +1110,9 @@ function DishFields({
                   aria-describedby={problems?.currency == null ? undefined : 'lib-currency-error'}
                   onChange={(event) => onPatch({ currency: event.target.value })}
                 >
-                  {currencyChoices(held, form.currency, i18n.language, t).map((choice) => (
+                  {currencyCodeChoices(held, form.currency, i18n.language, t).map((choice) => (
                     <option key={choice.value} value={choice.value}>
-                      {choice.value === '' ? choice.label : choice.value}
+                      {choice.label}
                     </option>
                   ))}
                 </select>
