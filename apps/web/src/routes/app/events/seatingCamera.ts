@@ -34,7 +34,7 @@ export interface Box {
   y1: number;
 }
 
-/** How far the picture slides, in screen px, to show a focused box (canvas px) whole and clear of the bars floating over the room (WCAG 2.2 SC 2.4.11). */
+/** How far the picture slides, in screen px, to show a focused box (canvas px) whole and clear of the bars floating over the room (WCAG 2.2 SC 2.4.11). Each axis is decided on its own: one where the box is larger than the view lines up with its top or left edge, and the bars are cleared along the other (sc-57361). */
 export function intoView(
   box: Box,
   width: number,
@@ -51,10 +51,13 @@ export function intoView(
     if (to > hi) return hi - to;
     return 0;
   };
+  const wide = box.x1 - box.x0 > right - left;
+  const tall = box.y1 - box.y0 > bottom - top;
   let dx = slide(box.x0, box.x1, left, right);
   let dy = slide(box.y0, box.y1, top, bottom);
 
   for (const bar of bars) {
+    if (wide && tall) break;
     const x0 = box.x0 + dx;
     const x1 = box.x1 + dx;
     const y0 = box.y0 + dy;
@@ -62,21 +65,30 @@ export function intoView(
 
     if (x1 <= bar.x0 - margin || x0 >= bar.x1 + margin) continue;
     if (y1 <= bar.y0 - margin || y0 >= bar.y1 + margin) continue;
-    const ways: Point[] = [
+    const across: Point[] = [
       [bar.x0 - margin - x1, 0],
       [bar.x1 + margin - x0, 0],
+    ];
+    const along: Point[] = [
       [0, bar.y0 - margin - y1],
       [0, bar.y1 + margin - y0],
     ];
+    const ways = wide ? along : tall ? across : [...across, ...along];
     const shortest = ways
       .filter(
-        ([mx, my]) => x0 + mx >= left && x1 + mx <= right && y0 + my >= top && y1 + my <= bottom,
+        ([mx, my]) =>
+          (wide || (x0 + mx >= left && x1 + mx <= right)) &&
+          (tall || (y0 + my >= top && y1 + my <= bottom)),
       )
       .sort((a, b) => Math.abs(a[0]) + Math.abs(a[1]) - Math.abs(b[0]) - Math.abs(b[1]))[0];
 
     if (shortest != null) {
       dx += shortest[0];
       dy += shortest[1];
+    } else if (wide) {
+      dy = top - box.y0;
+    } else if (tall) {
+      dx = left - box.x0;
     }
   }
 
