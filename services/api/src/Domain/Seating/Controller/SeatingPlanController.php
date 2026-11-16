@@ -369,7 +369,7 @@ final readonly class SeatingPlanController
         return $this->seating($event, $plan, Response::HTTP_CREATED, ['chosen' => $copies]);
     }
 
-    /** Deletes the chosen items in one step, all or nothing (sc-4717); their guests go back to Without a seat. */
+    /** Deletes the chosen items in one step, all or nothing (sc-4717). */
     #[Route('/api/events/{eventId}/seating-plan/furniture/delete', name: 'seating_furniture_delete', methods: ['POST'])]
     #[InEvent(Permission::SeatingManage)]
     public function deleteFurniture(Request $request, string $eventId): JsonResponse

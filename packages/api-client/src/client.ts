@@ -2292,7 +2292,7 @@ export class ApiClient {
     );
   }
 
-  /** Deletes in one step, all or nothing; their guests go back to Without a seat (sc-4717). */
+  /** Deletes in one step, all or nothing (sc-4717). */
   async deleteSeatingItems(eventId: string, items: SeatingItemRef[]): Promise<Seating> {
     return this.seatingOf(
       await this.post<{ seating?: unknown }>(`${this.seatingPath(eventId)}/furniture/delete`, {
