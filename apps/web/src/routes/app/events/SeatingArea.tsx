@@ -446,14 +446,7 @@ function Plan({
     shownPanel?.kind === 'seat'
       ? shownPanel.id
       : null;
-  const chosenAttribute =
-    shownPanel?.kind === 'table' || shownPanel?.kind === 'chair'
-      ? 'data-table'
-      : shownPanel?.kind === 'row'
-        ? 'data-row'
-        : shownPanel?.kind === 'seat'
-          ? 'data-seat'
-          : null;
+  const chosenAttribute = shownPanel == null ? null : itemAttribute(shownPanel.kind);
 
   const single =
     chosenItem != null && shownPanel?.kind !== 'chair' && several.length < 2 ? [chosenItem] : [];
@@ -482,7 +475,9 @@ function Plan({
 
       if (panel == null && (active instanceof HTMLElement || active instanceof SVGElement))
         opener.current = nameOf(active);
-      const item = onItem && 'id' in next ? itemSelector(next.kind, next.id) : null;
+      const id = onItem && 'id' in next ? next.id : null;
+      const attribute = id == null ? null : itemAttribute(next.kind);
+      const item = attribute == null ? null : `.st-room [${attribute}="${id}"]`;
 
       focusWhenFree(() =>
         document.querySelector<HTMLElement | SVGElement>(item ?? '.st-panel [data-focus="title"]'),
@@ -1534,17 +1529,14 @@ function Plan({
   );
 }
 
-function itemSelector(kind: Panel['kind'], id: string): string | null {
-  const attribute =
-    kind === 'table'
-      ? 'data-table'
-      : kind === 'row'
-        ? 'data-row'
-        : kind === 'seat'
-          ? 'data-seat'
-          : null;
-
-  return attribute == null ? null : `.st-room [${attribute}="${id}"]`;
+function itemAttribute(kind: Panel['kind']): string | null {
+  return kind === 'table' || kind === 'chair'
+    ? 'data-table'
+    : kind === 'row'
+      ? 'data-row'
+      : kind === 'seat'
+        ? 'data-seat'
+        : null;
 }
 
 function isFloor(target: EventTarget): boolean {

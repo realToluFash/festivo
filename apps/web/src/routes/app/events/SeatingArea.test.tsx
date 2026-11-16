@@ -2672,6 +2672,41 @@ describe('Moving, turning and resizing on the Floor plan (sc-5028)', () => {
     expect(sized!.widthCm % 10).toBe(0);
   });
 
+  it('moves a chosen long table pressed at its middle, though its s handle’s target covers it', async () => {
+    signedIn();
+    const long = { shape: 'rectangular', seats: 6, widthCm: 240, lengthCm: 80 };
+    const sent = await onSeating({
+      'GET /api/events/ev_1/seating-plan': () => seating(withTables(table(long))),
+      'PATCH /api/events/ev_1/seating-plan/furniture': (body) => {
+        const [item] = (body as { items: { xCm: number; yCm: number }[] }).items;
+
+        return seating(withTables(table({ ...long, xCm: item!.xCm, yCm: item!.yCm, version: 2 })));
+      },
+    });
+
+    await chooseTable('Table 1, rectangular, 0 of 6 seats taken');
+    const middle = (name: string) => {
+      const hit = document.querySelector(`.st-handle-hit[data-handle="${name}"]`)!;
+
+      return [Number(hit.getAttribute('x')) + 22, Number(hit.getAttribute('y')) + 22];
+    };
+    const [x, north] = middle('n');
+    const [, south] = middle('s');
+    const at = { pointerId: 3, button: 0, clientX: x!, clientY: (north! + south!) / 2 };
+    const room = document.querySelector('.st-room')!;
+
+    fireEvent.pointerDown(document.querySelector('.st-handle-hit[data-handle="s"]')!, at);
+    fireEvent.pointerMove(room, { ...at, clientX: at.clientX + 40, clientY: at.clientY + 30 });
+    fireEvent.pointerUp(room, { ...at, clientX: at.clientX + 40, clientY: at.clientY + 30 });
+
+    await waitFor(() => expect(furniture(sent)).toHaveLength(1));
+    const [moved] = furniture(sent)[0] as Record<string, number>[];
+
+    expect([moved!.xCm, moved!.yCm]).not.toEqual([1200, 900]);
+    expect(moved).not.toHaveProperty('widthCm');
+    expect(moved).not.toHaveProperty('lengthCm');
+  });
+
   it('moves a table by arrow straight after a click chooses it, focus staying on the table', async () => {
     signedIn();
     const sent = await onSeating({
