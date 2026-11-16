@@ -168,7 +168,7 @@ describe('the plan and the room (sc-3998, sc-4007)', () => {
 
     expect(links).toHaveLength(SEATING_STATES.length);
     expect(links[0]?.getAttribute('href')).toBe(AT);
-    expect(links.at(-1)?.getAttribute('href')).toBe(`${AT}?state=crumbWidths`);
+    expect(links.at(-1)?.getAttribute('href')).toBe(`${AT}?state=crumbFocus`);
   });
 
   it('is the event’s own Seating entry, lit while it is open', SLOW, async () => {
@@ -1389,5 +1389,30 @@ describe('the breadcrumb (sc-55300)', () => {
     expect(screen.getAllByRole('navigation', { name: 'Breadcrumb' })).toHaveLength(2);
     expect(screen.getAllByRole('navigation', { name: 'Fil d’Ariane' })).toHaveLength(3);
     expect(screen.getByRole('link', { name: 'Seating words QA' })).toBeDefined();
+  });
+
+  it('rings one link in each frame, each link at each width (sc-57088)', SLOW, async () => {
+    open(`${AT}?state=crumbFocus`);
+    await screen.findByRole(
+      'heading',
+      { level: 1, name: 'A focused link in the breadcrumb' },
+      WAIT,
+    );
+    const frames = screen.getAllByRole('figure');
+    const ringed = frames.map((frame) => {
+      const rings = frame.querySelectorAll('a.is-ring');
+
+      expect(rings).toHaveLength(1);
+      return `${frame.className} ${rings[0]?.textContent ?? ''}`;
+    });
+
+    expect(frames).toHaveLength(13);
+    expect(ringed).toContain('st-width is-1280 Events');
+    expect(ringed).toContain('st-width is-1280 Événements');
+    expect(ringed).toContain(`st-width is-320 ${LONG}`);
+    expect(ringed).toContain('st-width is-375 Seating words QA');
+    expect(frames[2]?.querySelector('figcaption')?.textContent).toMatch(
+      /^1280 px · French · .+ · focus on Événements$/u,
+    );
   });
 });

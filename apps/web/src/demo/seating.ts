@@ -1483,6 +1483,7 @@ export const SEATING_STATES = [
     name: 'The header band at 320 and 375, English and French',
     group: 'The breadcrumb',
   },
+  { key: 'crumbFocus', name: 'A focused link, its ring whole', group: 'The breadcrumb' },
 ] as const;
 
 export type SeatingState = (typeof SEATING_STATES)[number]['key'];

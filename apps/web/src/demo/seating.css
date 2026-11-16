@@ -138,12 +138,13 @@
   min-width: 0;
 }
 
+/* The list still clips what does not fit, but its padding gives a focused link's 2 px ring, set 2 px off, room on all four sides; the negative margin keeps the band's layout as it was (sc-57088). */
 .st-crumb ol {
   display: flex;
   align-items: center;
   gap: var(--spaceMd);
-  margin: 0;
-  padding: 0;
+  margin: calc(-1 * var(--spaceXxs));
+  padding: var(--spaceXxs);
   overflow: hidden;
   color: var(--colorInkSecondary);
   font: 500 15px/1.3 var(--fontFamily);
@@ -188,6 +189,11 @@
 
 .st-crumb a:hover {
   text-decoration: underline;
+}
+
+.st-crumb a.is-ring {
+  outline: 2px solid var(--colorAccent);
+  outline-offset: 2px;
 }
 
 .st-crumb h1 {
@@ -778,7 +784,7 @@
   display: flex;
   align-items: center;
   gap: 2px;
-  padding: 4px;
+  padding: var(--spaceXxs);
   border-radius: 26px;
   background: var(--colorCard);
   box-shadow: var(--stShadow);
@@ -2457,9 +2463,17 @@
   width: 375px;
 }
 
+.st-width.is-1280 .st-window {
+  padding: 0;
+}
+
 /* At 60rem and under the page's 16 px gutters already inset the band, so it keeps no padding of its own, and the name and the item that flexes around it both stop at 44 px (sc-55300). */
 .st-window .st-top {
   padding-inline: 0;
+}
+
+.st-width.is-1280 .st-top {
+  padding-inline: 24px var(--spaceLg);
 }
 
 .st-window .st-crumb-event,
