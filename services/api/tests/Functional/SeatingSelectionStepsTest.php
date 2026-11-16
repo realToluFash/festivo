@@ -89,6 +89,23 @@ final class SeatingSelectionStepsTest extends ApiTestCase
     }
 
     #[Test]
+    public function aStepIsRefusedWholeWhenItNamesOneItemTwice(): void
+    {
+        $first = $this->add('tables', ['shape' => 'round']);
+        $second = $this->add('tables', ['shape' => 'round']);
+
+        $this->step('PATCH', 'names', [
+            ['id' => $first['id'], 'version' => $first['version'], 'name' => 'Table 5'],
+            ['id' => $second['id'], 'version' => $second['version'], 'name' => 'Table 6'],
+            ['id' => $first['id'], 'version' => $first['version'], 'name' => 'Table 7'],
+        ]);
+
+        self::assertSame(422, $this->statusCode());
+        self::assertSame('Choose each item only once.', $this->violation('items'));
+        self::assertSame(['Table 1', 'Table 2'], $this->names());
+    }
+
+    #[Test]
     public function sectionSetsEveryChosenItemsSectionAndNoneTakesItAway(): void
     {
         $answer = $this->as($this->owner, 'POST', $this->plan() . '/sections', ['name' => 'Terrace']);

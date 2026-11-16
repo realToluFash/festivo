@@ -94,6 +94,7 @@
     "validation.seating_seat_name_taken": "This plan already has a seat called {name}.",
     "validation.seating_arrange_nothing": "Send at least one table, row or seat to move.",
     "validation.seating_arrange_table_only": "Only a table changes its size here.",
+    "validation.seating_arrange_twice": "Choose each item only once.",
     "validation.seating_seat_does_not_turn": "A single seat does not turn.",
     "validation.seating_outside_room": "{name} would sit outside the room.",
     "validation.seating_renumber_taken": "{name} is already taken by a table you didn’t choose.",

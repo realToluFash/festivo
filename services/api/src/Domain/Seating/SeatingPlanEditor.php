@@ -665,9 +665,7 @@ final readonly class SeatingPlanEditor
                 $yCm = $original->getYCm() + FloorGeometry::GROUP_COPY_OFFSET_CM;
 
                 if ($original instanceof SeatingTable) {
-                    $named = $this->nextTableName($tables);
-                    $copy = new SeatingTable($plan, $named['name'], $named['nameKey'], $original->getShape(), $xCm, $yCm, $by);
-                    $copy->lay($original->getShape(), $original->getSeats(), $original->getWidthCm(), $original->getLengthCm(), $original->getEndSeats(), $original->getRotation(), $original->getUnusableSeats());
+                    $copy = $this->tableCopy($plan, $tables, $original, $xCm, $yCm, $by);
                     $tables[] = $copy;
                 } elseif ($original instanceof SeatingRow) {
                     $label = self::nextRowLabel(Vec\map($rows, static fn (SeatingRow $row): string => $row->getLabelKey()));
@@ -827,6 +825,10 @@ final readonly class SeatingPlanEditor
      */
     private function unchangedItems(SeatingPlan $plan, array $items): array
     {
+        if (Iter\count(Vec\unique(Vec\map($items, static fn (array $item): string => $item['kind'] . ':' . $item['id']))) !== Iter\count($items)) {
+            throw ApiException::validation([$this->seatingRules->arrangeViolation('items', 'validation.seating_arrange_twice')]);
+        }
+
         $found = Vec\map($items, fn (array $item): SeatingTable|SeatingRow|SeatingSeat => $this->itemIn($plan, $item['kind'], $item['id']));
 
         foreach ($found as $item) {
@@ -1010,12 +1012,11 @@ final readonly class SeatingPlanEditor
     /** @param list<SeatingTable> $tables the plan's tables before this one */
     private function newTable(SeatingPlan $plan, array $tables, TableShape $shape, int $xCm, int $yCm, User $by, ?SeatingTable $copying = null): SeatingTable
     {
-        $named = $this->nextTableName($tables);
-        $table = new SeatingTable($plan, $named['name'], $named['nameKey'], $shape, $xCm, $yCm, $by);
-
-        if (null !== $copying) {
-            $table->setSection($copying->getSection());
-            $table->lay($shape, $copying->getSeats(), $copying->getWidthCm(), $copying->getLengthCm(), $copying->getEndSeats(), $copying->getRotation(), $copying->getUnusableSeats());
+        if (null === $copying) {
+            $named = $this->nextTableName($tables);
+            $table = new SeatingTable($plan, $named['name'], $named['nameKey'], $shape, $xCm, $yCm, $by);
+        } else {
+            $table = $this->tableCopy($plan, $tables, $copying, $xCm, $yCm, $by);
         }
 
         [$x, $y] = FloorGeometry::nearestFree($table, $this->furniture($plan), $plan, $xCm, $yCm);
@@ -1023,6 +1024,21 @@ final readonly class SeatingPlanEditor
         $this->entityManager->persist($table);
 
         return $table;
+    }
+
+    /**
+     * Everything of the original but its name and its guests, at the spot given: the one copy for a single duplicate and a group's.
+     *
+     * @param list<SeatingTable> $tables the plan's tables before this one
+     */
+    private function tableCopy(SeatingPlan $plan, array $tables, SeatingTable $original, int $xCm, int $yCm, User $by): SeatingTable
+    {
+        $named = $this->nextTableName($tables);
+        $copy = new SeatingTable($plan, $named['name'], $named['nameKey'], $original->getShape(), $xCm, $yCm, $by);
+        $copy->setSection($original->getSection());
+        $copy->lay($original->getShape(), $original->getSeats(), $original->getWidthCm(), $original->getLengthCm(), $original->getEndSeats(), $original->getRotation(), $original->getUnusableSeats());
+
+        return $copy;
     }
 
     /**
