@@ -13,6 +13,7 @@ import socket
 import subprocess
 import sys
 import time
+import typing
 import urllib.error
 import urllib.request
 
@@ -43,11 +44,19 @@ GENERATED = ("node_modules", "pnpm-workspace.yaml")
 LARGEST = 5
 MEASURE_SECONDS = 30 * 60
 DEVICES = ("~/Library/Developer/CoreSimulator/Devices", "~/.android/avd")
+
+
+class Desktop(typing.NamedTuple):
+    app: pathlib.Path
+    socket: str
+    start: list
+
+
 DOCKER_DESKTOP = {
-    "darwin": (pathlib.Path("/Applications/Docker.app"), "~/.docker/run/docker.sock",
-               ["open", "-a", "Docker"]),
-    "linux": (pathlib.Path("/opt/docker-desktop"), "~/.docker/desktop/docker.sock",
-              ["systemctl", "--user", "start", "docker-desktop"]),
+    "darwin": Desktop(pathlib.Path("/Applications/Docker.app"), "~/.docker/run/docker.sock",
+                      ["open", "-a", "Docker"]),
+    "linux": Desktop(pathlib.Path("/opt/docker-desktop"), "~/.docker/desktop/docker.sock",
+                     ["systemctl", "--user", "start", "docker-desktop"]),
 }
 WAKE_SECONDS = 5 * 60
 
@@ -91,15 +100,15 @@ def wake_docker(db, now, say=print, system=None, app=None, answers=None, start=N
     """Docker Desktop, started from this tick when its daemon is gone. A Claude run that
     starts it takes it down again when the run ends (sc-46912)."""
     desktop = DOCKER_DESKTOP.get(system or sys.platform)
-    if not desktop or not (app or desktop[0]).exists():
+    if not desktop or not (app or desktop.app).exists():
         return False
-    if (answers or (lambda: docker_answers(desktop[1])))():
+    if (answers or (lambda: docker_answers(desktop.socket)))():
         return False
     if now - (store.get_meta(db, "docker_woken") or {}).get("at", 0) < WAKE_SECONDS:
         return False
     store.set_meta(db, "docker_woken", {"at": now})
     try:
-        (start or (lambda: open_docker(desktop[2])))()
+        (start or (lambda: open_docker(desktop.start)))()
     except (OSError, subprocess.SubprocessError) as error:
         say(f"Docker is down on this machine and would not start: {error}")
         return False
