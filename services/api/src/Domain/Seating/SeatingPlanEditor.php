@@ -38,11 +38,7 @@ use Psl\Vec;
 use Symfony\Component\Uid\Uuid;
 use Symfony\Contracts\Translation\TranslatorInterface;
 
-/**
- * Each change runs under a lock on the plan's row, so two saves sent together queue and the second sees the first (sc-3998).
- *
- * @phpstan-type Restored array{kind: 'table'|'row'|'seat', name: string, sectionId: ?string, xCm: int, yCm: int, shape?: TableShape, seats?: int, widthCm?: int, lengthCm?: int, endSeats?: int, rotation?: int, spacingCm?: int, unusableSeats?: list<int>, unusable?: bool}
- */
+/** Each change runs under a lock on the plan's row, so two saves sent together queue and the second sees the first (sc-3998). */
 final readonly class SeatingPlanEditor
 {
     public const string STARTED = 'seating.plan_started';
@@ -573,11 +569,7 @@ final readonly class SeatingPlanEditor
         $this->published($event, $plan);
     }
 
-    /**
-     * Renames the chosen tables in one step (sc-4717's Renumber, and its Undo), all or nothing: a name taken by a table outside the step refuses it beside that name, and names may trade places within it.
-     *
-     * @param list<array{id: string, version: int, name: string}> $items
-     */
+    /** @param list<array{id: string, version: int, name: string}> $items */
     public function renameTables(Event $event, SeatingPlan $plan, User $by, array $items): void
     {
         $this->somethingChosen($items);
@@ -636,11 +628,7 @@ final readonly class SeatingPlanEditor
         $this->published($event, $plan);
     }
 
-    /**
-     * Sets each chosen item's section in one step (sc-4717's Section, and its Undo), all or nothing.
-     *
-     * @param list<array{kind: 'table'|'row'|'seat', id: string, version: int, sectionId: ?string}> $items
-     */
+    /** @param list<array{kind: 'table'|'row'|'seat', id: string, version: int, sectionId: ?string}> $items */
     public function sectionFurniture(Event $event, SeatingPlan $plan, User $by, array $items): void
     {
         $this->somethingChosen($items);
@@ -661,13 +649,7 @@ final readonly class SeatingPlanEditor
         $this->published($event, $plan);
     }
 
-    /**
-     * Copies every chosen item 50 cm down and to the right, with nobody seated, named in reading order from the next free number (sc-4717); one copy outside the room refuses them all.
-     *
-     * @param list<array{kind: 'table'|'row'|'seat', id: string, version: int}> $items
-     *
-     * @return list<string> the copies' ids, in reading order
-     */
+    /** @param list<array{kind: 'table'|'row'|'seat', id: string, version: int}> $items */
     public function duplicateFurniture(Event $event, SeatingPlan $plan, User $by, array $items): array
     {
         $this->somethingChosen($items);
@@ -717,11 +699,7 @@ final readonly class SeatingPlanEditor
         return Vec\map($copies, static fn (SeatingTable|SeatingRow|SeatingSeat $copy): string => $copy->getId()->toRfc4122());
     }
 
-    /**
-     * Deletes every chosen item in one step (sc-4717), all or nothing; their guests go back to Without a seat.
-     *
-     * @param list<array{kind: 'table'|'row'|'seat', id: string, version: int}> $items
-     */
+    /** @param list<array{kind: 'table'|'row'|'seat', id: string, version: int}> $items */
     public function deleteFurniture(Event $event, SeatingPlan $plan, User $by, array $items): void
     {
         $this->somethingChosen($items);
@@ -736,13 +714,7 @@ final readonly class SeatingPlanEditor
         $this->published($event, $plan);
     }
 
-    /**
-     * Puts deleted items back as they were, in one step: the Undo of sc-4717's Delete. A name taken since, or an item that no longer fits the room, refuses the whole step beside it.
-     *
-     * @param list<Restored> $items
-     *
-     * @return list<string> the items' new ids, in the order sent
-     */
+    /** @param list<array{kind: 'table'|'row'|'seat', name: string, sectionId: ?string, xCm: int, yCm: int, shape?: TableShape, seats?: int, widthCm?: int, lengthCm?: int, endSeats?: int, rotation?: int, spacingCm?: int, unusableSeats?: list<int>, unusable?: bool}> $items */
     public function restoreFurniture(Event $event, SeatingPlan $plan, User $by, array $items): array
     {
         $this->somethingChosen($items);
@@ -799,10 +771,10 @@ final readonly class SeatingPlanEditor
     }
 
     /**
-     * @param Restored           $item
-     * @param list<SeatingTable> $tables
-     * @param list<SeatingRow>   $rows
-     * @param list<SeatingSeat>  $seats
+     * @param array{kind: 'table'|'row'|'seat', name: string, sectionId: ?string, xCm: int, yCm: int, shape?: TableShape, seats?: int, widthCm?: int, lengthCm?: int, endSeats?: int, rotation?: int, spacingCm?: int, unusableSeats?: list<int>, unusable?: bool} $item
+     * @param list<SeatingTable>                                                                                                                                                                                                                                   $tables
+     * @param list<SeatingRow>                                                                                                                                                                                                                                     $rows
+     * @param list<SeatingSeat>                                                                                                                                                                                                                                    $seats
      */
     private function restored(SeatingPlan $plan, array $item, array $tables, array $rows, array $seats, MeasurementSystem $system, User $by): SeatingTable|SeatingRow|SeatingSeat
     {
@@ -849,8 +821,6 @@ final readonly class SeatingPlanEditor
     }
 
     /**
-     * The items as they are now, or 412 naming every one changed since its `version` (sc-5028, sc-4717).
-     *
      * @param list<array{kind: 'table'|'row'|'seat', id: string, version: int, ...}> $items
      *
      * @return list<SeatingTable|SeatingRow|SeatingSeat>

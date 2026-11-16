@@ -26,7 +26,6 @@ use Psl\Json;
 use Psl\Type;
 use Psl\Vec;
 
-/** The Selection panel's steps on many items at once — Renumber, Section, Duplicate, Delete and Delete's Undo — each saved all or nothing (sc-4717). */
 final class SeatingSelectionStepsTest extends ApiTestCase
 {
     use OnboardsAccounts;
@@ -253,12 +252,8 @@ final class SeatingSelectionStepsTest extends ApiTestCase
         return Vec\map($this->planNow()[$list], static fn (array $one): mixed => $one[$key]);
     }
 
-    /**
-     * @param array<string, mixed>|null $body
-     *
-     * @return array<string, mixed> the item it added
-     */
-    private function add(string $kind, ?array $body = null): array
+    /** @return array<string, mixed> the item it added */
+    private function add(string $kind, mixed $body = null): array
     {
         $answer = $this->as($this->owner, 'POST', $this->plan() . '/' . $kind, $body);
         self::assertSame(201, $this->statusCode(), Json\encode($answer));
@@ -354,12 +349,8 @@ final class SeatingSelectionStepsTest extends ApiTestCase
         return $user;
     }
 
-    /**
-     * @param array<string, mixed>|null $body
-     *
-     * @return array<string, mixed>
-     */
-    private function as(User $user, string $method, string $path, ?array $body = null): array
+    /** @return array<string, mixed> */
+    private function as(User $user, string $method, string $path, mixed $body = null): array
     {
         $who = self::em()->find(User::class, $user->getId()) ?? self::fail('no user');
         $this->client->request($method, $path, server: [

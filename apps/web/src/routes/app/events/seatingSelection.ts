@@ -33,7 +33,6 @@ export function rectOf(from: [number, number], to: [number, number]): FloorBox {
   };
 }
 
-/** Every item the box touches, so the host sees the choice grow while the box is still being drawn. */
 export function touchedBy(items: readonly FloorItem[], box: FloorBox): string[] {
   return items
     .filter((item) => {
@@ -152,7 +151,6 @@ export function movedItem(item: FloorItem, to: Placement): FloorItem {
   return { ...item, one: { ...item.one, xCm: to.xCm, yCm: to.yCm } } as FloorItem;
 }
 
-/** Each moved item's floor, amber where it would cross the wall: the grid's preview. */
 export function outlinesOf(
   plan: SeatingPlan,
   items: readonly FloorItem[],
@@ -168,7 +166,6 @@ export function outlinesOf(
   });
 }
 
-/** The first moved item, in reading order, that would leave the room; null when every one stays inside. */
 export function outsider(
   plan: SeatingPlan,
   items: readonly FloorItem[],
@@ -279,7 +276,6 @@ export function seatingIn(answer: Seating | SeatingWithChosen): Seating {
   return 'chosen' in answer ? answer.seating : answer;
 }
 
-/** A deleted item as Undo puts it back: everything the plan showed of it but its id. */
 export function restoredOf(item: FloorItem): SeatingRestoredItem {
   const at = { sectionId: item.one.sectionId, xCm: item.one.xCm, yCm: item.one.yCm };
 
@@ -309,7 +305,6 @@ export function restoredOf(item: FloorItem): SeatingRestoredItem {
   return { kind: 'seat', name: item.one.name, ...at, unusable: item.one.unusable };
 }
 
-/** "3 tables" when every one is a table, otherwise "3 items". */
 export function thingsOf(t: TFunction, items: readonly FloorItem[]): string {
   return items.every((item) => item.kind === 'table')
     ? t('seating.countTables', { count: items.length })
