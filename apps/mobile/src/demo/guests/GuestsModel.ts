@@ -1316,7 +1316,7 @@ export interface AreaStart {
   toast: GuestToastKind;
   replies: 'closed' | 'reopened' | null;
   replaced: boolean;
-  notReplaced: boolean;
+  notReplaced: 'replace' | 'notice' | null;
   /** sc-55558: the guests whose link someone told us reached the wrong person (GET …/guests/flagged). */
   flagged: readonly string[];
   /** sc-55558: Copy invitation link was pressed and nothing reached the clipboard. */
@@ -1348,7 +1348,7 @@ const QUIET: AreaStart = {
   toast: null,
   replies: null,
   replaced: false,
-  notReplaced: false,
+  notReplaced: null,
   flagged: [],
   copyFailed: false,
   focus: null,
@@ -1521,7 +1521,7 @@ export function areaStart(state: GuestsState | null): AreaStart {
     case 'replaced':
       return { ...base, replaced: true };
     case 'notReplaced':
-      return { ...base, notReplaced: true };
+      return { ...base, notReplaced: 'replace' };
     case 'flagged':
     case 'flaggedViewer':
       return { ...base, flagged: ['emeka'] };
@@ -1530,7 +1530,7 @@ export function areaStart(state: GuestsState | null): AreaStart {
     case 'flaggedReplaced':
       return { ...base, replaced: true, focus: 'replace' };
     case 'flaggedNotReplaced':
-      return { ...base, flagged: ['emeka'], notReplaced: true };
+      return { ...base, flagged: ['emeka'], notReplaced: 'notice' };
     case 'copyFailed':
     case 'copyFailedPt':
       return { ...base, copyFailed: true, focus: 'copy' };

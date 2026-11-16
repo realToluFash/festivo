@@ -142,7 +142,7 @@ describe('the states, as guests-a-spec §15 names them', () => {
     });
     expect(areaStart('flaggedNotReplaced')).toMatchObject({
       flagged: ['emeka'],
-      notReplaced: true,
+      notReplaced: 'notice',
     });
     expect(areaStart('copyFailed')).toMatchObject({ copyFailed: true, focus: 'copy' });
     expect(areaStart('copyFailedPt')).toMatchObject({ copyFailed: true, focus: 'copy' });
