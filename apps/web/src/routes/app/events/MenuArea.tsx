@@ -882,7 +882,7 @@ function Courses({
       setVariantAsk({ variantId: variant.id, kind: 'refused', lines: outcome.lines });
       return;
     }
-    setVariantAsk({ variantId: variant.id, kind: outcome.kind, failed: null });
+    setVariantAsk({ variantId: variant.id, kind: outcome.kind });
     focusAfter.current = `mc-vask-${variant.id}`;
   }
 
@@ -916,21 +916,12 @@ function Courses({
         setVariantAsk(null);
         return;
       }
-      setVariantAsk((was) =>
-        was?.variantId === variant.id && was.kind !== 'refused'
-          ? {
-              ...was,
-              failed:
-                error instanceof ApiError && error.status === 403
-                  ? t('eventMenu.forbidden')
-                  : t('dishVariants.failedChange', {
-                      dish: dish.name,
-                      count: dish.variants.length,
-                    }),
-            }
-          : was,
+      setVariantAsk(null);
+      tellFailed(
+        error instanceof ApiError && error.status === 403
+          ? t('eventMenu.forbidden')
+          : t('dishVariants.failedChange', { dish: dish.name, count: dish.variants.length }),
       );
-      focusAfter.current = `mc-vfailed-${variant.id}`;
     }
   }
 

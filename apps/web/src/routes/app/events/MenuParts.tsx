@@ -398,7 +398,11 @@ export function CourseCard({
                 {t('eventMenu.sameNeedsOne')}
               </p>
             )}
-            {pickTheWay != null && <p className="desk-help mc-same-note">{pickTheWay}</p>}
+            {pickTheWay != null && (
+              <p className="desk-help mc-same-note" role="status">
+                {pickTheWay}
+              </p>
+            )}
           </fieldset>
           <div className="mc-skip">
             <span className="mc-skip-label" id={`mc-skip-${course.id}`}>
@@ -420,9 +424,11 @@ export function CourseCard({
         </div>
       ) : (
         <ul className="mc-settings-read">
-          <li>{course.answer === 'same' ? t('eventMenu.same') : t('eventMenu.choose')}</li>
+          <li>
+            {course.answer === 'same' ? t('eventMenu.same') : t('eventMenu.choose')}
+            {pickTheWay != null && <span className="mc-hint-read"> {pickTheWay}</span>}
+          </li>
           {course.skippable && <li>{t('eventMenu.skip')}</li>}
-          {pickTheWay != null && <li className="desk-help">{pickTheWay}</li>}
         </ul>
       )}
       {manage && (
@@ -768,9 +774,19 @@ export function AddDishPanel({
                 {shown.map((dish) => (
                   <li key={dish.id} className="mc-pick">
                     <div className="mc-pick-words">
-                      <h3>{dish.name}</h3>
-                      <ContainsMark dish={dish} />
-                      <Tags dish={dish} />
+                      <h3>
+                        {dish.variants.length > 0
+                          ? t('dishVariants.ways', { dish: dish.name, count: dish.variants.length })
+                          : dish.name}
+                      </h3>
+                      {dish.variants.length > 0 ? (
+                        <p className="mn-quiet">{t('dishVariants.eachOwn')}</p>
+                      ) : (
+                        <>
+                          <ContainsMark dish={dish} />
+                          <Tags dish={dish} />
+                        </>
+                      )}
                     </div>
                     {onCourse(course, dish.id) ? (
                       <p className="mc-on-course">

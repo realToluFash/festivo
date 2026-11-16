@@ -497,6 +497,22 @@ describe('The event’s Menu (sc-3902)', () => {
       );
     });
 
+    it('closes the fold question when it fails and says so in the status line', async () => {
+      await onMenu({
+        'GET /api/events/ev_1/menu': menuOf(course('c_main', 'Main', [TWO])),
+        'DELETE /api/events/ev_1/menu/variants/v_hen': () => json({ title: 'No' }, 500),
+      });
+
+      fireEvent.click(await screen.findByRole('button', { name: 'Remove Chicken…' }));
+      fireEvent.click(await screen.findByRole('button', { name: 'Make it a single dish' }));
+
+      const line = await screen.findByText(
+        'Nothing was changed: Coconut rice still comes 2 ways. Check your connection, then try again.',
+      );
+      expect(line.closest('[role="status"]')).not.toBeNull();
+      expect(screen.queryByText('Make this a single dish?')).toBeNull();
+    });
+
     it('keeps Everyone gets the same on a set course and says guests pick the way', async () => {
       await onMenu({
         'GET /api/events/ev_1/menu': menuOf(course('c_main', 'Main', [TWO], { answer: 'same' })),

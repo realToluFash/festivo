@@ -210,6 +210,14 @@ function Library({
   const problems = state?.pressed === true ? checked(state.form) : null;
   const variantDish =
     panel?.kind === 'variant' ? (dishes.find((one) => one.id === panel.dishId) ?? null) : null;
+  const variantButton =
+    panel?.kind !== 'variant'
+      ? ''
+      : panel.mode === 'addFirst'
+        ? t('dishVariants.addVariants')
+        : panel.mode === 'add'
+          ? t('dishVariants.addVariant')
+          : t('dishVariants.saveVariant');
 
   function replace(next: Dish) {
     setLoad((was) =>
@@ -249,6 +257,17 @@ function Library({
     setPanel(null);
     setState(null);
     focusAfter.current = back ?? from;
+  }
+
+  function dishGone(dishId: string) {
+    setLoad((was) =>
+      was.kind === 'loaded'
+        ? { ...was, dishes: was.dishes.filter((one) => one.id !== dishId) }
+        : was,
+    );
+    setPanel({ kind: 'gone' });
+    setState(null);
+    focusAfter.current = 'lib-panel-title';
   }
 
   function say(line: string, failed = false) {
@@ -307,14 +326,7 @@ function Library({
         return;
       }
       if (error instanceof ApiError && error.status === 404 && selfId != null) {
-        setLoad((was) =>
-          was.kind === 'loaded'
-            ? { ...was, dishes: was.dishes.filter((one) => one.id !== selfId) }
-            : was,
-        );
-        setPanel({ kind: 'gone' });
-        setState(null);
-        focusAfter.current = 'lib-panel-title';
+        dishGone(selfId);
         return;
       }
       setState((now) => (now == null ? now : { ...now, busy: false, failed: true }));
@@ -449,6 +461,10 @@ function Library({
         setLimitAt(panel.dishId);
         return;
       }
+      if (error instanceof ApiError && error.status === 404) {
+        dishGone(panel.dishId);
+        return;
+      }
       setPanel((now) => (now?.kind === 'variant' ? { ...now, busy: false, failed: true } : now));
       focusAfter.current = 'lib-failed';
     }
@@ -462,7 +478,7 @@ function Library({
       setVariantAsk({ variantId: variant.id, kind: 'refused', lines: outcome.lines });
       return;
     }
-    setVariantAsk({ variantId: variant.id, kind: outcome.kind, failed: null });
+    setVariantAsk({ variantId: variant.id, kind: outcome.kind });
     focusAfter.current = `lib-vask-${variant.id}`;
   }
 
@@ -487,18 +503,18 @@ function Library({
         setVariantAsk({ variantId: variant.id, kind: 'refused', lines: ['lastEveryone'] });
         return;
       }
-      setVariantAsk((was) =>
-        was?.variantId === variant.id && was.kind !== 'refused'
-          ? {
-              ...was,
-              failed: t('dishVariants.failedChange', {
-                dish: dish.name,
-                count: dish.variants.length,
-              }),
-            }
-          : was,
+      if (error instanceof ApiError && error.status === 404) {
+        setVariantAsk(null);
+        dishGone(dish.id);
+        return;
+      }
+      setVariantAsk(null);
+      say(
+        error instanceof ApiError && error.status === 403
+          ? t('eventMenu.forbidden')
+          : t('dishVariants.failedChange', { dish: dish.name, count: dish.variants.length }),
+        true,
       );
-      focusAfter.current = `lib-vfailed-${variant.id}`;
     }
   }
 
@@ -731,7 +747,7 @@ function Library({
                 {panel.failed && (
                   <p id="lib-failed" className="mn-failed" role="alert" tabIndex={-1}>
                     <Glyph name="alert" size={16} weight={2.2} />
-                    {t('menuLibrary.failedSave')}
+                    {t('eventMenu.failedSave', { button: variantButton })}
                   </p>
                 )}
                 <div className="mn-panel-acts">
@@ -739,13 +755,7 @@ function Library({
                     {t('menuLibrary.cancel')}
                   </button>
                   <Pill
-                    label={
-                      panel.mode === 'addFirst'
-                        ? t('dishVariants.addVariants')
-                        : panel.mode === 'add'
-                          ? t('dishVariants.addVariant')
-                          : t('dishVariants.saveVariant')
-                    }
+                    label={variantButton}
                     busy={panel.busy}
                     onClick={() => void saveVariants()}
                   />

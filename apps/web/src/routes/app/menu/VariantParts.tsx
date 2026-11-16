@@ -40,7 +40,7 @@ export interface ShownVariant extends VariantLike {
 }
 
 export type VariantAsk =
-  | { variantId: string; kind: 'ask' | 'fold'; failed: string | null }
+  | { variantId: string; kind: 'ask' | 'fold' }
   | { variantId: string; kind: 'refused'; lines: readonly VariantRefusal[] };
 
 /** Add variant has no glyph in the web's set: stacked layers, in its 24 px stroke. */
@@ -243,7 +243,6 @@ export function VariantInsets({
                       {t('dishVariants.removeVariant')}
                     </button>
                   </div>
-                  <AskFailed id={`${ids}-vfailed-${variant.id}`} words={here.failed} />
                 </div>
               )}
               {here?.kind === 'fold' && staying != null && (
@@ -254,8 +253,6 @@ export function VariantInsets({
                   where={where}
                   prices={prices}
                   language={language}
-                  failed={here.failed}
-                  failedId={`${ids}-vfailed-${variant.id}`}
                   onKeep={() => onKeep(variant)}
                   onFold={() => onConfirm(variant)}
                 />
@@ -268,17 +265,6 @@ export function VariantInsets({
   );
 }
 
-function AskFailed({ id, words }: { id: string; words: string | null }) {
-  if (words == null) return null;
-
-  return (
-    <p id={id} className="mn-failed" role="alert" tabIndex={-1}>
-      <Glyph name="alert" size={16} weight={2.2} />
-      {words}
-    </p>
-  );
-}
-
 function FoldAsk({
   id,
   dish,
@@ -286,8 +272,6 @@ function FoldAsk({
   where,
   prices,
   language,
-  failed,
-  failedId,
   onKeep,
   onFold,
 }: {
@@ -297,8 +281,6 @@ function FoldAsk({
   where: VariantWhere;
   prices: boolean;
   language: MoneyLanguage;
-  failed: string | null;
-  failedId: string;
   onKeep: () => void;
   onFold: () => void;
 }) {
@@ -343,11 +325,10 @@ function FoldAsk({
         <button type="button" className="desk-text" onClick={onKeep}>
           {t('dishVariants.keepBoth')}
         </button>
-        <button type="button" className="gs-pill" onClick={onFold}>
+        <button type="button" className="gs-pill is-primary" onClick={onFold}>
           {t('dishVariants.makeSingle')}
         </button>
       </div>
-      <AskFailed id={failedId} words={failed} />
     </div>
   );
 }
