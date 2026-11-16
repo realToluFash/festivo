@@ -108,9 +108,28 @@
 
 .st-crumb li {
   display: flex;
+  flex: none;
   align-items: center;
   gap: var(--spaceMd);
+}
+
+.st-crumb svg {
+  flex: none;
+}
+
+/* Only the event name gives way (sc-55300): the chevrons, Events and Seating keep their size. */
+.st-crumb .st-crumb-event {
+  flex: 0 1 auto;
   min-width: 0;
+}
+
+.st-crumb-event a {
+  min-width: 0;
+}
+
+.st-crumb-name {
+  overflow: hidden;
+  text-overflow: ellipsis;
 }
 
 .st-crumb a {
@@ -128,6 +147,7 @@
 
 .st-crumb h1 {
   margin: 0;
+  white-space: nowrap;
   outline: none;
   color: var(--colorInk);
   font: 600 15px/1.3 var(--fontFamily);

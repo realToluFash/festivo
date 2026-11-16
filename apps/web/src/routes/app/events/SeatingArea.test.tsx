@@ -1760,3 +1760,25 @@ describe('The room to scale (sc-4007)', () => {
     expect(sent.filter((one) => !one.line.startsWith('GET '))).toEqual([]);
   });
 });
+
+describe('The breadcrumb (sc-55300)', () => {
+  it('cuts only the event name, whose link still carries it in full', async () => {
+    signedIn();
+    await onSeating({
+      'GET /api/events/ev_1/seating-plan': () =>
+        json({ seating: { measurementSystem: 'metric', plan: plan() } }),
+    });
+    const crumb = screen.getByRole('navigation', { name: i18next.t('seating.crumb') });
+    const event = within(crumb).getByRole('link', { name: 'Adaeze and Tunde' });
+
+    expect(event.getAttribute('href')).toBe('/app/events/ev_1');
+    expect(event.querySelector('.st-crumb-name')?.textContent).toBe('Adaeze and Tunde');
+    expect(event.closest('li')?.classList.contains('st-crumb-event')).toBe(true);
+    expect(
+      within(crumb)
+        .getByRole('link', { name: i18next.t('seating.events') })
+        .closest('li')
+        ?.classList.contains('st-crumb-event'),
+    ).toBe(false);
+  });
+});
