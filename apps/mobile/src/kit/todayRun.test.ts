@@ -4,7 +4,7 @@ import { beforeAll, describe, expect, it } from 'vitest';
 
 import en from '../i18n/locales/en.json';
 
-import { runNowOf } from './todayRun.ts';
+import { runNowOf, runScheduleFor } from './todayRun.ts';
 
 beforeAll(() =>
   init({
@@ -138,5 +138,21 @@ describe('Today’s Now in words (sc-29875)', () => {
 
   it('is null on a day with no running order', () => {
     expect(nowAt([], '16:00')).toBeNull();
+  });
+});
+
+describe('runScheduleFor', () => {
+  it('reads the running order for a role that holds run_of_show.read', () => {
+    expect(runScheduleFor({ id: 'evt-1', permissions: ['events.read', 'run_of_show.read'] })).toBe(
+      'evt-1',
+    );
+  });
+
+  it('reads nothing for a role without run_of_show.read, so Now stays sc-29090’s', () => {
+    expect(runScheduleFor({ id: 'evt-1', permissions: ['events.read'] })).toBeNull();
+  });
+
+  it('reads nothing with no event under way', () => {
+    expect(runScheduleFor(null)).toBeNull();
   });
 });

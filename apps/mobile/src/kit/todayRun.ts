@@ -5,12 +5,20 @@ import {
   type TodayStopState,
   timeSlot,
   todayRunOf,
+  roleHolds,
   todayTrackParam,
   zonedAt,
 } from '@soirely/domain';
 import type { TFunction } from 'i18next';
 
 import { clockOf, type NightShownItem, nightItemsOf } from './night.ts';
+
+/** The event whose running order Today reads, or null for a role without run_of_show.read, whose Now stays sc-29090's. */
+export function runScheduleFor(
+  event: { id: string; permissions: readonly string[] } | null,
+): string | null {
+  return event != null && roleHolds(event, 'run_of_show.read') ? event.id : null;
+}
 
 export interface RunStop {
   time: string;

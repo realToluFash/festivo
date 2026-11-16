@@ -1,18 +1,18 @@
 import type { Schedule } from '@soirely/api-client';
-import { roleHolds } from '@soirely/domain';
 import { useEffect, useState } from 'react';
 
 import { api } from '../api.ts';
+import { runScheduleFor } from '../kit/todayRun.ts';
 
 /** Today is a glance: a press shows within a minute, the slow read again sc-3897 settled (pm, 5 Nov), with room left for the read itself. */
 export const RUN_AGAIN_MS = 50_000;
 
-/** The running order of the event under way, for a role that reads it; read again every minute and whenever `refresh` changes. */
+/** The running order of the event under way, for a role that reads it; read again every 50 s and whenever `refresh` changes. */
 export function useRunSchedule(
   event: { id: string; permissions: readonly string[] } | null,
   refresh: number,
 ): Schedule | null {
-  const id = event != null && roleHolds(event, 'run_of_show.read') ? event.id : null;
+  const id = runScheduleFor(event);
   const [read, setRead] = useState<{ id: string; schedule: Schedule } | null>(null);
   const [, setMinute] = useState(0);
 
