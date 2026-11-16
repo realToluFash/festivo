@@ -33,7 +33,10 @@
     "mobile:runView.minutes_other",
     "web:seating.keyShiftUs",
     "web:seating.keyName.esc",
-    "web:seating.keyName.ctrl"
+    "web:seating.keyName.ctrl",
+    "web:night.minutes_one",
+    "web:night.minutes_other",
+    "web:night.hoursMinutes"
   ],
   "fr": [
     "web:nav.menu",
@@ -146,7 +149,10 @@
     "web:seating.tableNumbered",
     "web:eventMenu.title",
     "web:eventMenu.suggestions",
-    "web:eventMenu.dessert"
+    "web:eventMenu.dessert",
+    "web:night.minutes_one",
+    "web:night.minutes_other",
+    "web:night.hoursMinutes"
   ],
   "pt": [
     "web:seating.shapeCocktailShort",
@@ -185,6 +191,9 @@
     "web:seating.keyName.delete",
     "web:seating.keyName.esc",
     "web:seating.keyName.ctrl",
-    "web:eventMenu.title"
+    "web:eventMenu.title",
+    "web:night.minutes_one",
+    "web:night.minutes_other",
+    "web:night.hoursMinutes"
   ]
 }
