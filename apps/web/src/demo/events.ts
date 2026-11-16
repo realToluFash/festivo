@@ -525,7 +525,6 @@ export const EVENT_WORDS = {
   callOffTitle: (name: string) => `Call off ${name}?`,
   endNowOpen: 'End now…',
   endNow: 'End now',
-  endLine: 'It will be over for everybody. You can’t undo this.',
   endBody: 'It will be over for everybody.',
   endFinal: 'You can’t undo this.',
   endTitle: (name: string) => `End ${name} now?`,
