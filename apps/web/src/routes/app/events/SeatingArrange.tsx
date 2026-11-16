@@ -200,17 +200,19 @@ export function PlacingBars({
 
   return (
     <>
-      <div className="st-float st-bar is-tint" role="status" aria-live="polite">
+      <div className="st-float st-bar is-tint is-placing" role="status" aria-live="polite">
         <Glyph name="info" size={17} weight={2.2} />
-        <p>{t(PLACING_WORDS[placing.kind === 'table' ? placing.shape : placing.kind])}</p>
-        <span className="st-bar-acts">
-          <button type="button" className="desk-text" onClick={onCentre}>
-            {t('seating.placeCentre')}
-          </button>
-          <button type="button" className="desk-text" onClick={onStop}>
-            {t('seating.stopPlacing')}
-          </button>
-        </span>
+        <div className="st-bar-body">
+          <p>{t(PLACING_WORDS[placing.kind === 'table' ? placing.shape : placing.kind])}</p>
+          <span className="st-bar-acts">
+            <button type="button" className="desk-text" onClick={onCentre}>
+              {t('seating.placeCentre')}
+            </button>
+            <button type="button" className="desk-text" onClick={onStop}>
+              {t('seating.stopPlacing')}
+            </button>
+          </span>
+        </div>
       </div>
       <div className="st-float st-another">
         <label>

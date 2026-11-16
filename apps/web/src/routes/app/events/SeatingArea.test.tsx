@@ -2760,6 +2760,21 @@ describe('Moving, turning and resizing on the Floor plan (sc-5028)', () => {
     );
   });
 
+  it('keeps the placing bar in reading order: its words, Place at the centre, Stop placing', async () => {
+    signedIn();
+    await onSeating({
+      'GET /api/events/ev_1/seating-plan': () => seating(plan()),
+    });
+
+    fireEvent.click(await screen.findByRole('button', { name: 'Add seat' }));
+    const body = screen.getByRole('button', { name: 'Stop placing' }).closest('.st-bar-body');
+    const order = [...(body?.querySelectorAll('p, button') ?? [])].map((node) =>
+      node.tagName === 'P' ? 'words' : node.textContent,
+    );
+
+    expect(order).toEqual(['words', 'Place at the centre', 'Stop placing']);
+  });
+
   it('offers Snap to grid, on at first, and none of this without seating.manage', async () => {
     signedIn();
     await onSeating({
