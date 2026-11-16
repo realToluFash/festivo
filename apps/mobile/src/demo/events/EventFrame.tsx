@@ -615,6 +615,14 @@ export function AreaPage({
         </Text>
         {area === 'schedule' && event.id === RUN_EVENT && (
           <View style={styles.comingAct}>
+            {event.phase === 'happening_now' && (
+              <SecondaryButton
+                label={NIGHT_OPEN}
+                link
+                onPress={() => router.push('/demo/night')}
+                testID="event.schedule.night"
+              />
+            )}
             <SecondaryButton
               label={RUN_WORDS.openRun}
               link
@@ -627,6 +635,9 @@ export function AreaPage({
     </>
   );
 }
+
+/** The app's way into the night (sc-3895): above Run view, only while the event is happening now. */
+const NIGHT_OPEN = 'Run of show';
 
 const MORE_FOOT = 116;
 
@@ -743,7 +754,7 @@ const styles = StyleSheet.create({
   stripLine: { lineHeight: 14 * 1.4 },
   comingTitle: { lineHeight: 17 * 1.3 },
   comingLine: { lineHeight: 15 * 1.45 },
-  comingAct: { paddingTop: tokens.spaceMd, alignItems: 'flex-start' },
+  comingAct: { paddingTop: tokens.spaceMd, alignItems: 'flex-start', gap: tokens.spaceSm },
   coming: {
     gap: tokens.spaceXxs,
     paddingVertical: 18,

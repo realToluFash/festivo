@@ -24,11 +24,9 @@ export interface NightTrack {
   items: readonly NightItem[];
 }
 
-export interface Lost {
-  title: string;
-  by: string;
-  at: number;
-}
+/** A losing replay: who won and when, from the 409's `superseded_by`, or, when it names nobody, the 409's own words. */
+export type Lost =
+  { title: string; by: string; at: number } | { title: string; by: null; said: string };
 
 export interface Night {
   clock: number;
@@ -568,6 +566,16 @@ export const NIGHT_STATES = {
     hall: { ...GAP, dance: ['20:31'] },
     lost: { title: 'First dance', by: 'Ifeoma Nduka', at: at('20:31') },
   },
+  replay_lost_unnamed: {
+    name: 'A losing replay that names nobody: the 409’s own words',
+    clock: '20:06',
+    hall: SPEAKING,
+    lost: {
+      title: 'First dance',
+      by: null,
+      said: 'This item has not started yet, so it cannot be done.',
+    },
+  },
   read_only: {
     name: 'View only (run_of_show.read)',
     clock: '20:02',
@@ -710,5 +718,20 @@ export const NIGHT_BOARDS = [
     title: 'The night · end_behind without events.manage',
     what: 'The card with no End now link',
     href: '/demo/night?state=end_behind&as=no-events-manage',
+  },
+  {
+    title: 'The night · the way in · Run of show above Run view',
+    what: 'The event’s Schedule, while it is happening now: Run of show opens the night',
+    href: '/demo/events/evt-wed-4?area=schedule&state=now',
+  },
+  {
+    title: 'The night · the way in · before the event',
+    what: 'The event’s Schedule before it starts: Run view alone, no Run of show',
+    href: '/demo/events/evt-wed-4?area=schedule',
+  },
+  {
+    title: 'The night · End now · sc-3585’s confirmation on Overview',
+    what: 'End now on the end card opens the event’s Overview with End now’s confirmation open',
+    href: '/demo/events/evt-wed-4?state=endNow',
   },
 ];
