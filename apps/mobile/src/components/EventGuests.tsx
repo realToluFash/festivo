@@ -351,12 +351,12 @@ export function EventGuests({
     forgetLink();
     setReopening({ busy: false, failed: false });
   }, [forgetLink]);
-  const openWhose = (quote: string) => {
+  const openWhose = useCallback((quote: string) => {
     setOpen(null);
     setDone(null);
     setPasted({ quote, all: false, typed: '' });
     setTimeout(() => moveScreenReaderFocus(whoseTitle.current), FOCUS_AFTER_MS);
-  };
+  }, []);
   const paste = usePaste(openWhose);
   const closeWhose = useCallback(() => {
     setPasted(null);
