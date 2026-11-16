@@ -3888,8 +3888,7 @@ button.members-row {
   min-width: 0;
 }
 
-.event-form-page,
-.event-page {
+.event-form-page {
   max-width: 72rem;
 }
 

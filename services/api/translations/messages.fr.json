@@ -152,6 +152,7 @@
     "menu.course_limit": "Un menu peut compter au plus {max} services.",
     "menu.course_picked": "Des invités ont déjà choisi dans ce service.",
     "menu.dish_picked": "Des invités ont déjà choisi ce plat.",
+    "menu.dish_on_course": "Ce plat figure déjà dans ce service.",
     "menu.same_one_dish": "« Le même plat pour tous » n’est possible qu’avec un seul plat.",
     "validation.variant_name_required": "Saisissez le nom de la variante.",
     "validation.variant_name_too_long": "Raccourcissez le nom à {max} caractères maximum.",

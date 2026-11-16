@@ -58,6 +58,7 @@ enum ErrorCode: string
     case MenuCourseLimit = 'menu_course_limit';
     case MenuCoursePicked = 'menu_course_picked';
     case MenuDishPicked = 'menu_dish_picked';
+    case MenuDishOnCourse = 'menu_dish_on_course';
     case MenuSameOneDish = 'menu_same_one_dish';
     case VariantLimit = 'variant_limit';
     case VariantPicked = 'variant_picked';
@@ -156,7 +157,7 @@ enum ErrorCode: string
             self::PreconditionRequired => 428,
             self::EventCurrencyInUse, self::EventStateInvalid, self::EventConcluded, self::EventPaused, self::EventHostRequired, self::EventCallOffFirst => 409,
             self::PlanLimit => 403,
-            self::SeatingPlanExists, self::SeatingSectionLimit, self::SeatingItemsOutside, self::ScheduleItemLimit, self::ItemStarted, self::ItemNotStarted, self::ItemFinished, self::TrackBusy, self::GuestAlreadyListed, self::StaffNumberShared, self::RepliesClosed, self::RepliesOpen, self::GuestReplied, self::ReplyIsTheirs, self::GuestNotMarkedByHand, self::DishNameShared, self::DishInUse, self::MenuCourseLimit, self::MenuCoursePicked, self::MenuDishPicked, self::MenuSameOneDish, self::VariantLimit, self::VariantPicked, self::VariantLastEveryone => 409,
+            self::SeatingPlanExists, self::SeatingSectionLimit, self::SeatingItemsOutside, self::ScheduleItemLimit, self::ItemStarted, self::ItemNotStarted, self::ItemFinished, self::TrackBusy, self::GuestAlreadyListed, self::StaffNumberShared, self::RepliesClosed, self::RepliesOpen, self::GuestReplied, self::ReplyIsTheirs, self::GuestNotMarkedByHand, self::DishNameShared, self::DishInUse, self::MenuCourseLimit, self::MenuCoursePicked, self::MenuDishPicked, self::MenuDishOnCourse, self::MenuSameOneDish, self::VariantLimit, self::VariantPicked, self::VariantLastEveryone => 409,
             self::Unauthenticated, self::InvalidCredentials, self::InvalidRefreshToken, self::OAuthTokenInvalid, self::TwoFactorChallengeInvalid, self::SessionTimedOut => 401,
             self::Forbidden, self::PermissionRequired, self::GrantNotHeld, self::OwnEventRole, self::AccountUnverified, self::ProfileIncomplete, self::TwoFactorRequired, self::ProofRequired => 403,
             self::OAuthOnly, self::OAuthOnlyUnlinked, self::OrganisationTwoFactorRequired, self::OrganisationTwoFactorOverdue, self::OwnerRequired => 403,

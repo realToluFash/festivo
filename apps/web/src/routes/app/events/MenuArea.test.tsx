@@ -5,6 +5,9 @@ import { RouterProvider, createMemoryRouter } from 'react-router';
 import { __setSessionState, type Session } from '../../../session.ts';
 import { OWNER_PERMISSIONS, membership } from '../../../test-memberships.ts';
 import { routes } from '../../index.tsx';
+import { cssRule, stylesheet } from '../../../test-styles.ts';
+
+const MENU_CSS = stylesheet(import.meta.dirname, 'menu.css');
 
 const IRE = membership({ id: 'org_1', name: 'Ìrè Events' });
 
@@ -152,6 +155,14 @@ describe('The event’s Menu (sc-3902)', () => {
       within(cards[1] as HTMLElement).getAllByText('Contains: Celery', { selector: 'p' }),
     ).toHaveLength(2);
     expect(within(cards[1] as HTMLElement).getByText('Halal')).toBeDefined();
+  });
+
+  it('spaces its crumbs, header and panel 12 px apart as the demo does, not the event area’s 18', async () => {
+    await onMenu({ 'GET /api/events/ev_1/menu': menuOf(STARTER, MAIN) });
+
+    const counts = await screen.findByText('2 courses · 3 dishes');
+    expect(counts.closest('.mc .ev-wide.mn-page')).not.toBeNull();
+    expect(cssRule('.mc .mn-page', MENU_CSS)).toContain('gap: var(--spaceLg);');
   });
 
   it('has no ready line once every course has a dish', async () => {
@@ -303,6 +314,48 @@ describe('The event’s Menu (sc-3902)', () => {
     expect(screen.getByRole('button', { name: 'Delete course' })).toBeDefined();
   });
 
+  it('shows the menu as it now stands, with no failure line, when another page added the library dish first', async () => {
+    const library = {
+      id: 'lib_suya',
+      name: 'Suya wrap',
+      description: null,
+      allergens: ['peanuts'],
+      diets: [],
+      usedByEvent: true,
+      archivedAt: null,
+      lastPrice: null,
+      variants: [],
+    };
+    let menu = menuOf(LATE);
+    const sent = await onMenu({
+      'GET /api/events/ev_1/menu': () => menu(),
+      'GET /api/orgs/org_1/dishes': () =>
+        json({ dishes: [library], canManage: true, seesPrices: false }),
+      'POST /api/events/ev_1/menu/courses/c_late/dishes': () => {
+        menu = menuOf({
+          ...LATE,
+          dishes: [dish('d_suya', 'Suya wrap', { libraryDishId: 'lib_suya' })],
+        });
+        return problem('menu_dish_on_course', 409);
+      },
+    });
+
+    fireEvent.click(await screen.findByRole('button', { name: 'Add dish' }));
+    fireEvent.click(await screen.findByRole('button', { name: 'Add Suya wrap' }));
+
+    expect(await screen.findByText('On this course')).toBeDefined();
+    expect(screen.queryByRole('button', { name: 'Add Suya wrap' })).toBeNull();
+    expect(screen.queryByText(/Nothing was saved/)).toBeNull();
+    expect(
+      sent.filter((one) => one.line === 'POST /api/events/ev_1/menu/courses/c_late/dishes'),
+    ).toEqual([
+      {
+        line: 'POST /api/events/ev_1/menu/courses/c_late/dishes',
+        body: { libraryDishId: 'lib_suya' },
+      },
+    ]);
+  });
+
   it('offers Everyone gets the same only with exactly one dish', async () => {
     await onMenu({ 'GET /api/events/ev_1/menu': menuOf(STARTER, MAIN) });
 
@@ -369,12 +422,14 @@ describe('The event’s Menu (sc-3902)', () => {
     expect(screen.getByText('Guests choose')).toBeDefined();
   });
 
-  it('answers a member without menu.read as a page that does not exist', async () => {
+  it('answers a member without menu.read as a page that does not exist, under a crumb that stops at Events', async () => {
     const sent = await onMenu({}, ['events.read']);
 
     expect(
       await screen.findByRole('heading', { level: 1, name: 'This page does not exist' }),
     ).toBeDefined();
+    const crumb = within(screen.getByRole('navigation', { name: 'Breadcrumb' }));
+    expect(crumb.getAllByRole('listitem').map((part) => part.textContent)).toEqual(['Events']);
     expect(sent.some((one) => one.line === 'GET /api/events/ev_1/menu')).toBe(false);
   });
 

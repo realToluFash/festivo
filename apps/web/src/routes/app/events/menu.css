@@ -1,4 +1,11 @@
 /* The event's Menu (sc-3902), as the web demo's Menu draws it (apps/web/src/demo/menuCourses.css, and the course rules of demo/menu.css). */
+.mc .mn-page {
+  display: flex;
+  flex-direction: column;
+  gap: var(--spaceLg);
+  min-height: 0;
+}
+
 .mn-head {
   display: flex;
   flex: 1;
@@ -237,6 +244,10 @@
   margin: 0;
   padding: 0;
   list-style: none;
+}
+
+.mc-course.desk-card {
+  overflow: visible;
 }
 
 .mc-course-top {

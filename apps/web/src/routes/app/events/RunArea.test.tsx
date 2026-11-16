@@ -250,7 +250,7 @@ describe('The run view (sc-1404)', () => {
     expect(cssRule('.ev-column,\n.ev-wide', EVENTS_DESK_CSS)).toContain(
       'max-width: var(--evWide);',
     );
-    expect(cssRule('.ev', EVENTS_DESK_CSS)).toContain('--evWide: 938px;');
+    expect(cssRule('.ev,\n.event-page', EVENTS_DESK_CSS)).toContain('--evWide: 938px;');
   });
 
   it('goes back up to the Schedule from the breadcrumb', async () => {

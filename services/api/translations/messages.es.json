@@ -152,6 +152,7 @@
     "menu.course_limit": "Un menú puede tener como máximo {max} pases.",
     "menu.course_picked": "Los invitados ya han elegido platos de este pase.",
     "menu.dish_picked": "Los invitados ya han elegido este plato.",
+    "menu.dish_on_course": "Este plato ya está en este pase.",
     "menu.same_one_dish": "«Todos reciben lo mismo» requiere exactamente un plato.",
     "validation.variant_name_required": "Escriba el nombre de la variante.",
     "validation.variant_name_too_long": "Acorte el nombre a {max} caracteres como máximo.",

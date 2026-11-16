@@ -38,6 +38,7 @@ import { EventCrumb, Overview, PhaseChange } from './EventOverview.tsx';
 import { useGoneEvent, useShowEvent } from './EventNav.tsx';
 import { Arrived, Skeleton } from '../../../components/Skeleton.tsx';
 import { NotFound } from '../../public/NotFound.tsx';
+import '../../../components/eventsDesk.css';
 
 type Load =
   | { kind: 'loading' }
