@@ -994,8 +994,7 @@ function Plan({
       return item == null ? [] : [placementOf(item)];
     });
 
-    arrange(moved, true, () => setHeard(words));
-    setBar({ tone: 'undo', words, undo: () => arrange(back, true, undone) });
+    arrange(moved, true, () => stepDone(words, () => arrange(back, true, undone)));
   };
 
   const renameStep = (names: { id: string; name: string }[], words: string) => {

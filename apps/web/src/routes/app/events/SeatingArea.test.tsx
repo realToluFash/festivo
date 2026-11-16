@@ -3255,6 +3255,7 @@ describe('Choosing many and the Selection tools (sc-4717)', () => {
       { kind: 'table', id: 't2', xCm: 600, yCm: 900, version: 1 },
     ]);
     expect(heard()).toBe('');
+    expect(stepLine()).toBe('');
     answer(seating(withTables(table({ xCm: 600, version: 2 }), second({ version: 2 }))));
     await waitFor(() => expect(heard()).toBe('2 tables lined up on their left edges.'));
     expect(stepLine()).toBe('2 tables lined up on their left edges.');
@@ -3266,6 +3267,7 @@ describe('Choosing many and the Selection tools (sc-4717)', () => {
       { kind: 'table', id: 't2', xCm: 600, yCm: 900, version: 2 },
     ]);
     expect(heard()).toBe('2 tables lined up on their left edges.');
+    expect(screen.queryByRole('button', { name: 'Undo' })).toBeNull();
     answer(seating(withTables(table({ version: 3 }), second({ version: 3 }))));
     await waitFor(() => expect(heard()).toBe('Undone. Everything is back as it was.'));
     expect(steps).toBe(2);
