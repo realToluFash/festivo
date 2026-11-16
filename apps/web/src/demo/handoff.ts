@@ -12,6 +12,8 @@ export const HW = {
   closeMenu: 'Close menu',
   skip: 'Skip to content',
   events: 'Events',
+  language: 'Language',
+  languageSaved: 'In the product, the language is saved to your account and the page follows it.',
 } as const;
 
 export const HANDOFF_EVENT = 'evt-wed-4';

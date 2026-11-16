@@ -88,6 +88,22 @@ describe('an event’s page in a phone browser (sc-55397)', () => {
     expect(await screen.findByText('Guests', { selector: '.ho-area' })).toBeTruthy();
   });
 
+  it('ends Menu as the shell does: Settings, the person, and the language', SLOW, async () => {
+    atPhoneWidth();
+    const router = await open('/demo/handoff?state=area&area=seating');
+
+    fireEvent.click(screen.getByRole('button', { name: HW.menu }));
+    const sheet = screen.getByRole('dialog', { name: HW.menu });
+    const picker = within(sheet).getByRole('combobox', { name: HW.language });
+    fireEvent.change(picker, { target: { value: 'fr' } });
+
+    expect((picker as HTMLSelectElement).value).toBe('fr');
+    expect(screen.getByText(HW.languageSaved)).toBeTruthy();
+
+    fireEvent.click(within(sheet).getByRole('link', { name: /, Owner$/ }));
+    expect(router.state.location.pathname).toBe('/demo/settings/account');
+  });
+
   it('shows the page anyway, and every page after it in the tab', SLOW, async () => {
     atPhoneWidth();
     const router = await open('/demo/handoff?state=area&area=seating');

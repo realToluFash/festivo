@@ -1,8 +1,9 @@
 import { useCallback, useEffect, useId, useRef, useState } from 'react';
+import { LOCALES } from '@soirely/domain';
 import { Link, Navigate, useNavigate, useSearchParams } from 'react-router';
 
 import { Brand } from '../components/Brand.tsx';
-import { DeskSidebar } from '../components/DeskSidebar.tsx';
+import { DeskPersonFace, DeskSidebar } from '../components/DeskSidebar.tsx';
 import { Glyph } from '../components/Glyph.tsx';
 import { Toast } from '../components/Toast.tsx';
 import { SIDE_AREA_GLYPHS } from '../components/eventSideAreas.ts';
@@ -22,6 +23,7 @@ import {
   shownAnyway,
 } from './handoff.ts';
 import { OrgSwitcher } from './OrgSwitcher.tsx';
+import { VIEWERS, settingsPath } from './settings.ts';
 import './handoff.css';
 
 const PLACES = [
@@ -126,7 +128,13 @@ function Shell({ handoff, params }: { handoff: Handoff; params: URLSearchParams 
       </main>
 
       {menuOpen && (
-        <HandoffMenu id={menuId} handoff={handoff} params={params} onClose={closeMenu} />
+        <HandoffMenu
+          id={menuId}
+          handoff={handoff}
+          params={params}
+          onClose={closeMenu}
+          tell={setTold}
+        />
       )}
       {told != null && <Toast key={told} words={told} onClose={() => setTold(null)} />}
     </div>
@@ -139,12 +147,17 @@ function HandoffMenu({
   handoff,
   params,
   onClose,
+  tell,
 }: {
   id: string;
   handoff: Handoff;
   params: URLSearchParams;
   onClose: () => void;
+  tell: (words: string) => void;
 }) {
+  const [language, setLanguage] = useState('en');
+  const you = VIEWERS.folake;
+
   const dialog = useRef<HTMLDivElement>(null);
   const close = useRef<HTMLButtonElement>(null);
 
@@ -225,7 +238,31 @@ function HandoffMenu({
             <Glyph name="settings" />
             Settings
           </Link>
+          <Link
+            className="today-person"
+            to={settingsPath('account', you)}
+            aria-label={`${you.name}, ${you.role}`}
+          >
+            <DeskPersonFace person={you} />
+          </Link>
         </div>
+        <label className="language-picker">
+          <span className="visually-hidden">{HW.language}</span>
+          <select
+            value={language}
+            aria-label={HW.language}
+            onChange={(e) => {
+              setLanguage(e.target.value);
+              tell(HW.languageSaved);
+            }}
+          >
+            {LOCALES.map((locale) => (
+              <option key={locale.code} value={locale.code}>
+                {locale.nativeName}
+              </option>
+            ))}
+          </select>
+        </label>
       </div>
     </>
   );
