@@ -20,7 +20,6 @@ import { type KeyboardEvent, type ReactNode } from 'react';
 import { useTranslation } from 'react-i18next';
 
 import { api } from '../../../api.ts';
-import { Glyph } from '../../../components/Glyph.tsx';
 import { TextAction } from '../../../components/SettingsParts.tsx';
 import { currentLocale } from '../../../i18n/index.ts';
 import { Added, BackHead, Field, Line, type PlanApi, Said, Select } from './SeatingParts.tsx';
@@ -82,22 +81,15 @@ function onKeys(onChoose: () => void) {
   };
 }
 
-/** Add row and Add seat on the floating bar, beside Add table: each lands in the nearest free space. */
-export function AddRowAndSeat({ ctx }: { ctx: PlanApi }) {
-  const { t } = useTranslation();
-
-  return (
-    <>
-      <button type="button" className="st-tool" onClick={() => ctx.startPlacing({ kind: 'row' })}>
-        <Glyph name="row" size={18} weight={2.2} />
-        {t('seating.addRow')}
-      </button>
-      <button type="button" className="st-tool" onClick={() => ctx.startPlacing({ kind: 'seat' })}>
-        <Glyph name="seat1" size={18} weight={2.2} />
-        {t('seating.addSeat')}
-      </button>
-    </>
-  );
+/** Add row and Add seat, for the floating bar or the folded Add menu: each starts placing, and a click on the floor puts it there (sc-5028). */
+export function useAddRowAndSeat(ctx: PlanApi): {
+  addRow: () => Promise<void>;
+  addSeat: () => Promise<void>;
+} {
+  return {
+    addRow: () => Promise.resolve(ctx.startPlacing({ kind: 'row' })),
+    addSeat: () => Promise.resolve(ctx.startPlacing({ kind: 'seat' })),
+  };
 }
 
 /** A row at s px per cm, as the demo draws it: its label in a tab past seat 1, then its seats, numbered once near. */
@@ -333,6 +325,7 @@ export function RowPanel({
   seat: number | null;
 }) {
   const { t } = useTranslation();
+  const leave = () => ctx.open(null);
   const locale = currentLocale();
   const name = t('seating.rowName', { label: row.label });
 
@@ -411,7 +404,13 @@ export function RowPanel({
       <SeatStrip t={t} row={row} chosen={seat} onPick={pick} />
       {seat != null && <ChosenSeat ctx={ctx} row={row} seat={seat} />}
       <div className="st-fields">
-        <Field fieldKey="label" label={t('seating.label')} value={row.label} onCommit={label} />
+        <Field
+          onLeave={leave}
+          fieldKey="label"
+          label={t('seating.label')}
+          value={row.label}
+          onCommit={label}
+        />
         <Select
           fieldKey="section"
           label={t('seating.section')}
@@ -421,12 +420,14 @@ export function RowPanel({
         />
         <div className="st-two">
           <Field
+            onLeave={leave}
             fieldKey="seats"
             label={t('seating.seats')}
             value={String(row.seats)}
             onCommit={seats}
           />
           <Field
+            onLeave={leave}
             fieldKey="spacing"
             label={t('seating.spacing')}
             unit={ctx.system === 'us' ? undefined : centimetreUnit(locale)}
@@ -573,6 +574,7 @@ export function SingleSeatPanel({
   said: string | undefined;
 }) {
   const { t } = useTranslation();
+  const leave = () => ctx.open(null);
   const line = t('seating.singleLine', {
     section: sectionOf(plan, seat)?.name ?? t('seating.noSection'),
   });
@@ -617,7 +619,13 @@ export function SingleSeatPanel({
       {said != null && <Added>{said}</Added>}
       {ctx.notice != null && <Said>{ctx.notice}</Said>}
       <div className="st-fields">
-        <Field fieldKey="name" label={t('seating.name')} value={seat.name} onCommit={name} />
+        <Field
+          onLeave={leave}
+          fieldKey="name"
+          label={t('seating.name')}
+          value={seat.name}
+          onCommit={name}
+        />
         <Select
           fieldKey="section"
           label={t('seating.section')}

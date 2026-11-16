@@ -95,6 +95,11 @@ export const ORGANISATION_NAME_MAXIMUM = 100;
 /** What a request to join through the request link may say, in characters, as the API counts them (sc-562). */
 export const REQUEST_MESSAGE_MAXIMUM = 500;
 
+/** A request's message in visible characters, as its counter shows and its limit refuses (sc-54292). */
+export function requestMessageLength(message: string): number {
+  return visibleLength(message.trim());
+}
+
 /** What a client checks before saving. Country, time zone and language come from pickers, so they cannot be wrong; a currency can still be unchosen (sc-909). */
 export function organisationProblem(
   field: OrganisationField,

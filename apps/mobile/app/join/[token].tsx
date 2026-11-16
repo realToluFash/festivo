@@ -5,6 +5,7 @@ import {
   formatDay,
   formatTimeOfDay,
   lockLiftsAt,
+  requestMessageLength,
 } from '@soirely/domain';
 import { Redirect, router, useLocalSearchParams } from 'expo-router';
 import { type ReactNode, useEffect, useRef, useState } from 'react';
@@ -335,7 +336,7 @@ function Ask({
   const checks = useFormChecks(
     ['message'] as const,
     (_, value) =>
-      Array.from(value.trim()).length > REQUEST_MESSAGE_MAXIMUM
+      requestMessageLength(value) > REQUEST_MESSAGE_MAXIMUM
         ? t('requestToJoin.messageLong', { count: REQUEST_MESSAGE_MAXIMUM })
         : null,
     () => focusChecked(input),
@@ -465,7 +466,7 @@ function Ask({
       <Plain>
         {t('requestToJoin.messageHelp', {
           count: REQUEST_MESSAGE_MAXIMUM,
-          length: Array.from(message.trim()).length,
+          length: requestMessageLength(message),
         })}
       </Plain>
       <Plain top={tokens.spaceXl} ink>

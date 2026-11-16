@@ -28,6 +28,7 @@ import {
   asGuestList,
   asGuestPageCompanion,
   asGuestPagePlace,
+  asGuestProgrammeItem,
   asPageNeeds,
   asHeadcount,
   asMarkedTogether,
@@ -4457,10 +4458,8 @@ function asEventCover(raw: unknown): EventCover | undefined {
 
 function asGuestPage(raw: unknown): GuestPage | null {
   if (typeof raw !== 'object' || raw == null) return null;
-  const { guest, event, phase, started, answersOpen, answersClosedOn, language } = raw as Record<
-    string,
-    unknown
-  >;
+  const { guest, event, phase, started, answersOpen, answersClosedOn, language, programme } =
+    raw as Record<string, unknown>;
   const shown = GUEST_PAGE_PHASES.find((known) => known === phase);
   if (typeof guest !== 'object' || guest == null || typeof event !== 'object' || event == null)
     return null;
@@ -4473,8 +4472,11 @@ function asGuestPage(raw: unknown): GuestPage | null {
   const companions = Array.isArray(who.companions) ? who.companions.map(asGuestPageCompanion) : [];
   const needs = asPageNeeds(who.needs);
   const unnamed = Array.isArray(who.unnamed) ? who.unnamed.map(asGuestPagePlace) : [];
+  const items = Array.isArray(programme) ? programme.map(asGuestProgrammeItem) : [];
 
   if (
+    (programme != null && !Array.isArray(programme)) ||
+    items.some((one) => one == null) ||
     typeof languages.organisation !== 'string' ||
     typeof who.fullName !== 'string' ||
     typeof who.places !== 'number' ||
@@ -4541,6 +4543,7 @@ function asGuestPage(raw: unknown): GuestPage | null {
     started,
     answersOpen,
     calendar: null,
+    programme: items.filter((one) => one != null),
   };
 }
 

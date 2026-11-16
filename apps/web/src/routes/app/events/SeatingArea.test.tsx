@@ -1454,6 +1454,207 @@ describe('Rows and single seats at a desk (sc-4003)', () => {
   });
 });
 
+function barMeetsZoom() {
+  return vi.spyOn(HTMLElement.prototype, 'getBoundingClientRect').mockImplementation(function (
+    this: HTMLElement,
+  ) {
+    const width = this.classList.contains('st-add')
+      ? this.childElementCount > 1
+        ? 520
+        : 200
+      : this.classList.contains('st-zoom')
+        ? 240
+        : 0;
+
+    return { width, height: 0, top: 0, left: 0, right: width, bottom: 0, x: 0, y: 0 } as DOMRect;
+  });
+}
+
+describe('At a narrow desk (sc-55937)', () => {
+  it('folds Add row and Add seat into one Add menu when the bar meets the zoom', async () => {
+    signedIn();
+    const measured = barMeetsZoom();
+
+    try {
+      const sent = await onSeating({
+        'GET /api/events/ev_1/seating-plan': () => seating(plan()),
+        'POST /api/events/ev_1/seating-plan/rows': () =>
+          placed(withRowsAndSeats([row()], []), { rowId: 'r1' }),
+        'PATCH /api/events/ev_1/seating-plan/furniture': () =>
+          seating(withRowsAndSeats([row({ version: 2 })], [])),
+      });
+
+      fireEvent.click(await screen.findByRole('button', { name: 'Add' }));
+      expect(screen.queryByRole('button', { name: 'Add row' })).toBeNull();
+      expect(screen.queryByRole('button', { name: 'Add seat' })).toBeNull();
+      const menu = screen.getByRole('menu', { name: 'Add' });
+
+      expect(
+        within(menu)
+          .getAllByRole('menuitem')
+          .map((one) => one.textContent),
+      ).toEqual([
+        'Round table · 180\u00a0cm · 10 seats',
+        'Rectangular table · 180 × 76\u00a0cm · 6 seats',
+        'Head table · 240 × 76\u00a0cm · 4 seats',
+        'Cocktail table · 60\u00a0cm · 4 places',
+        'Row of chairs',
+        'Single seat',
+      ]);
+      await waitFor(() =>
+        expect(document.activeElement).toBe(within(menu).getAllByRole('menuitem')[0]),
+      );
+      fireEvent.click(within(menu).getByRole('menuitem', { name: 'Row of chairs' }));
+      fireEvent.click(await screen.findByRole('button', { name: 'Place at the centre' }));
+
+      await waitFor(() => expect(furniture(sent)).toHaveLength(1));
+      expect(sent.some((one) => one.line === 'POST /api/events/ev_1/seating-plan/rows')).toBe(true);
+      expect(screen.queryByRole('menu')).toBeNull();
+    } finally {
+      measured.mockRestore();
+    }
+  });
+
+  it('unfolds Add row and Add seat again once the floor is wide enough', async () => {
+    signedIn();
+    const measured = barMeetsZoom();
+    const resized: ResizeObserverCallback[] = [];
+
+    vi.stubGlobal(
+      'ResizeObserver',
+      class {
+        constructor(callback: ResizeObserverCallback) {
+          resized.push(callback);
+        }
+        observe() {}
+        disconnect() {}
+      },
+    );
+
+    try {
+      await onSeating({ 'GET /api/events/ev_1/seating-plan': () => seating(plan()) });
+
+      expect(await screen.findByRole('button', { name: 'Add' })).toBeDefined();
+      expect(screen.queryByRole('button', { name: 'Add row' })).toBeNull();
+
+      const widen = (width: number) =>
+        act(() => {
+          for (const callback of resized)
+            callback(
+              [{ contentRect: { width, height: 719 } } as ResizeObserverEntry],
+              {} as ResizeObserver,
+            );
+        });
+
+      widen(780);
+      expect(screen.getByRole('button', { name: 'Add' })).toBeDefined();
+      expect(screen.queryByRole('button', { name: 'Add row' })).toBeNull();
+
+      widen(1200);
+      expect(await screen.findByRole('button', { name: 'Add row' })).toBeDefined();
+      expect(screen.getByRole('button', { name: 'Add seat' })).toBeDefined();
+      expect(screen.getByRole('button', { name: 'Add table' })).toBeDefined();
+    } finally {
+      measured.mockRestore();
+      vi.unstubAllGlobals();
+    }
+  });
+
+  it('keeps Add row and Add seat on the bar, and the menu to the four tables, when they fit', async () => {
+    signedIn();
+    await onSeating({ 'GET /api/events/ev_1/seating-plan': () => seating(plan()) });
+
+    fireEvent.click(await screen.findByRole('button', { name: 'Add table' }));
+    expect(screen.getByRole('button', { name: 'Add row' })).toBeDefined();
+    expect(screen.getByRole('button', { name: 'Add seat' })).toBeDefined();
+    expect(
+      within(screen.getByRole('menu', { name: 'Add table' })).getAllByRole('menuitem'),
+    ).toHaveLength(4);
+  });
+
+  it('undoes the typing with the first Esc in a table’s field and leaves the table with the second', async () => {
+    signedIn();
+    const sent = await onSeating({
+      'GET /api/events/ev_1/seating-plan': () => seating(withTables(table())),
+    });
+
+    await chooseTable('Table 1, round, 0 of 10 seats taken');
+    const field = screen.getByLabelText('Seats');
+
+    field.focus();
+    fireEvent.change(field, { target: { value: '3' } });
+    fireEvent.keyDown(field, { key: 'Escape' });
+    expect(field).toHaveProperty('value', '10');
+    expect(screen.getByRole('heading', { level: 2, name: 'Table 1' })).toBeDefined();
+    expect(document.activeElement).toBe(field);
+
+    fireEvent.keyDown(field, { key: 'Escape' });
+    await waitFor(() =>
+      expect(document.activeElement).toBe(
+        screen.getByRole('button', { name: 'Table 1, round, 0 of 10 seats taken' }),
+      ),
+    );
+    expect(screen.queryByRole('heading', { level: 2, name: 'Table 1' })).toBeNull();
+    expect(sent.filter((one) => !one.line.startsWith('GET'))).toEqual([]);
+  });
+
+  it('clears a refusal with the first Esc and leaves with the second', async () => {
+    signedIn();
+    const sent = await onSeating({
+      'GET /api/events/ev_1/seating-plan': () => seating(withTables(table())),
+    });
+
+    await chooseTable('Table 1, round, 0 of 10 seats taken');
+    const field = screen.getByLabelText('Seats');
+
+    fireEvent.change(field, { target: { value: '31' } });
+    fireEvent.keyDown(field, { key: 'Enter' });
+    expect(await screen.findByText('Enter a number of seats from 1 to 30.')).toBeDefined();
+
+    fireEvent.keyDown(field, { key: 'Escape' });
+    expect(field).toHaveProperty('value', '10');
+    expect(screen.queryByText('Enter a number of seats from 1 to 30.')).toBeNull();
+    expect(screen.getByRole('heading', { level: 2, name: 'Table 1' })).toBeDefined();
+
+    fireEvent.keyDown(field, { key: 'Escape' });
+    await waitFor(() =>
+      expect(screen.queryByRole('heading', { level: 2, name: 'Table 1' })).toBeNull(),
+    );
+    expect(sent.filter((one) => !one.line.startsWith('GET'))).toEqual([]);
+  });
+
+  it('leaves a row and a single seat by Esc in a field with nothing to undo', async () => {
+    signedIn();
+    await onSeating({
+      'GET /api/events/ev_1/seating-plan': () =>
+        seating(withRowsAndSeats([row()], [single({ xCm: 600, yCm: 900 })])),
+    });
+
+    const rowItem = await screen.findByRole('button', {
+      name: 'Row A, row of 10, 0 of 10 seats taken',
+    });
+    fireEvent.click(rowItem);
+    fireEvent.keyDown(await screen.findByLabelText('Label'), { key: 'Escape' });
+    await waitFor(() => expect(document.activeElement).toBe(rowItem));
+
+    const seatItem = screen.getByRole('button', { name: 'Seat 1, single seat, Empty' });
+    fireEvent.click(seatItem);
+    fireEvent.keyDown(await screen.findByLabelText('Name'), { key: 'Escape' });
+    await waitFor(() => expect(document.activeElement).toBe(seatItem));
+  });
+
+  it('keeps Room settings open on Esc in its field', async () => {
+    signedIn();
+    await onSeating({ 'GET /api/events/ev_1/seating-plan': () => seating(withTables(table())) });
+
+    fireEvent.click(await screen.findByRole('button', { name: 'Room settings' }));
+    const field = await screen.findByLabelText('Room name', { exact: false });
+
+    fireEvent.keyDown(field, { key: 'Escape' });
+    expect(screen.getByRole('heading', { level: 2, name: 'Room settings' })).toBeDefined();
+  });
+});
+
 class StubSource {
   static readonly CLOSED = 2;
   static made: StubSource[] = [];
@@ -1587,7 +1788,7 @@ describe('The room to scale (sc-4007)', () => {
     fireEvent.pointerMove(room, { ...at, clientX: 260, clientY: 100 });
     expect(centreOf('t1')).toBeCloseTo(was + 60, 0);
 
-    fireEvent.click(screen.getByRole('button', { name: TABLE_1 }));
+    fireEvent.click(screen.getByRole('button', { name: 'Table 1, round, 0 of 10 seats taken' }));
     expect(screen.getByRole('heading', { level: 2, name: 'Table 1' })).toBeDefined();
     fireEvent.pointerDown(floor, { ...at, clientX: 100, clientY: 100 });
     fireEvent.pointerUp(floor, { ...at, clientX: 100, clientY: 100 });
@@ -1621,7 +1822,9 @@ describe('The room to scale (sc-4007)', () => {
       '0 of 9',
     ]);
     expect(document.querySelector('[data-seat="s1"] .st-fill')).toBeNull();
-    expect(screen.getByRole('button', { name: TABLE_1 })).toBeDefined();
+    expect(
+      screen.getByRole('button', { name: 'Table 1, round, 0 of 10 seats taken' }),
+    ).toBeDefined();
   });
 
   it('makes every chair a pointer target from 150%, so a click opens it with Mark unusable', async () => {
@@ -1732,7 +1935,7 @@ describe('The room to scale (sc-4007)', () => {
     await waitFor(() => expect(seatingSource()).toBeDefined());
 
     press('Zoom in', 2);
-    await chooseTable(TABLE_1);
+    await chooseTable('Table 1, round, 0 of 10 seats taken');
     const at = centreOf('t1');
 
     seatingSource()!.publish({

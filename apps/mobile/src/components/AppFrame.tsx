@@ -78,7 +78,7 @@ import { SearchAndBell } from './SearchButton.tsx';
 import { SEARCH_HREF } from '../kit/searchLinks.ts';
 import { CreateWalkWindow, type WalkOpening, deviceNow } from './CreateWalkWindow.tsx';
 import { Sheet } from './Sheet.tsx';
-import type { GlyphName } from './Glyph.tsx';
+import { Glyph, type GlyphName } from './Glyph.tsx';
 import { Notice } from './Notice.tsx';
 import {
   type Tab,
@@ -198,33 +198,6 @@ export function useHeaderWithoutBack(hidden: boolean): void {
   }, [hide, hidden]);
 }
 
-type IconPaths = readonly [string, string];
-
-const AREA_ICONS: Record<EventPlace, IconPaths> = {
-  overview: ['M3 3h7v7H3zM14 3h7v7h-7z', 'M14 14h7v7h-7zM3 14h7v7H3z'],
-  guests: [
-    'M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2M9 11a4 4 0 1 0 0-8 4 4 0 0 0 0 8z',
-    'M22 21v-2a4 4 0 0 0-3-3.87M16 3.13a4 4 0 0 1 0 7.75',
-  ],
-  menu: [
-    'M3 2v7a2 2 0 0 0 2 2h4a2 2 0 0 0 2-2V2M7 2v20',
-    'M21 15V2a5 5 0 0 0-5 5v6a2 2 0 0 0 2 2h3v7',
-  ],
-  seating: ['M4 10h16v4H4z', 'M6 14v6M18 14v6M8 6h8'],
-  messages: ['M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z', 'M8 9h8M8 13h5'],
-  schedule: ['M12 22a10 10 0 1 0 0-20 10 10 0 0 0 0 20z', 'M12 6v6l4 2'],
-  staff: ['M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2', 'M12 11a4 4 0 1 0 0-8 4 4 0 0 0 0 8z'],
-  people: [
-    'M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2M9 11a4 4 0 1 0 0-8 4 4 0 0 0 0 8z',
-    'M22 21v-2a4 4 0 0 0-3-3.87M16 3.13a4 4 0 0 1 0 7.75',
-  ],
-  budget: [
-    'M21 12V7H5a2 2 0 0 1 0-4h14v4',
-    'M3 5v14a2 2 0 0 0 2 2h16v-5M18 12a2 2 0 0 0 0 4h4v-4z',
-  ],
-  reports: ['M3 3v18h18', 'M8 17v-5M13 17V8M18 17v-9'],
-};
-
 /** Inside an event the navigation is the event's areas, in each layout's own form (sc-22103, #24878). */
 export interface InsideEvent {
   area: EventPlace;
@@ -238,7 +211,7 @@ export interface InsideEvent {
 interface NavEntry {
   key: string;
   label: string;
-  icon: IconPaths;
+  glyph: GlyphName;
   on: boolean;
   onPress: () => void;
   testID: string;
@@ -248,7 +221,7 @@ function areaEntry(t: (key: string) => string, inside: InsideEvent, area: EventP
   return {
     key: area,
     label: t(`eventNav.${area}`),
-    icon: AREA_ICONS[area],
+    glyph: AREA_GLYPH[area],
     on: area === inside.area,
     onPress: () => inside.onArea(area),
     testID: `event.nav.${area}`,
@@ -1289,7 +1262,11 @@ function TabBar({ inEvent }: { inEvent: InsideEvent }) {
                   accessibilityState={{ selected: on }}
                   testID={`event.nav.more.${area}`}
                 >
-                  <Icon paths={AREA_ICONS[area]} on={on} size={tokens.sizeMark} />
+                  <Glyph
+                    name={AREA_GLYPH[area]}
+                    size={tokens.sizeMark}
+                    ink={on ? tokens.colorInk : tokens.colorInkSecondary}
+                  />
                   <Text
                     size={tokens.typeBodyPhone.size}
                     weight={on ? 'semibold' : 'medium'}
@@ -1333,11 +1310,10 @@ function Pills({ entries, scrolls }: { entries: readonly NavEntry[]; scrolls: bo
       accessibilityState={{ selected: entry.on }}
       testID={entry.testID}
     >
-      <Icon
-        paths={entry.icon}
-        on={entry.on}
-        onInk={tokens.colorAccentText}
-        size={tokens.sizeMark}
+      <Glyph
+        name={entry.glyph}
+        size={18}
+        ink={entry.on ? tokens.colorAccentText : tokens.colorInkSecondary}
       />
       <Text
         size={tokens.typeBody.size}
@@ -1417,7 +1393,7 @@ function FrameSidebar({
         <SidebarPlace
           key={entry.key}
           label={entry.label}
-          glyph={AREA_GLYPH[entry.key as EventPlace]}
+          glyph={entry.glyph}
           on={entry.on}
           onPress={entry.onPress}
           testID={entry.testID}
@@ -1527,27 +1503,6 @@ function OrgPill({
 }
 
 const STROKE = { strokeWidth: 2, strokeLinecap: 'round', strokeLinejoin: 'round' } as const;
-
-function Icon({
-  paths,
-  on,
-  onInk = tokens.colorInk,
-  size,
-}: {
-  paths: IconPaths;
-  on: boolean;
-  onInk?: string;
-  size: number;
-}) {
-  const stroke = on ? onInk : tokens.colorInkSecondary;
-
-  return (
-    <Svg width={size} height={size} viewBox="0 0 24 24" fill="none">
-      <Path d={paths[0]} {...STROKE} stroke={stroke} />
-      <Path d={paths[1]} {...STROKE} stroke={stroke} />
-    </Svg>
-  );
-}
 
 const styles = StyleSheet.create({
   root: { flex: 1, backgroundColor: tokens.colorPage },

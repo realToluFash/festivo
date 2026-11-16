@@ -139,7 +139,7 @@ export function BackHead({
   );
 }
 
-/** A labelled field that applies on Enter or on leaving it (pm, 7 Nov 2026): a refusal is said beside it and nothing is saved. */
+/** A labelled field that applies on Enter or on leaving it (pm, 7 Nov 2026): a refusal is said beside it and nothing is saved. Esc undoes first, then calls `onLeave` (sc-55937). */
 export function Field({
   fieldKey,
   label,
@@ -149,6 +149,7 @@ export function Field({
   hint,
   inputMode = 'text',
   onCommit,
+  onLeave,
 }: {
   fieldKey: string;
   label: string;
@@ -158,6 +159,7 @@ export function Field({
   hint?: string | undefined;
   inputMode?: 'text' | 'decimal';
   onCommit: (text: string) => Promise<string | null> | string | null;
+  onLeave?: (() => void) | undefined;
 }) {
   const { t } = useTranslation();
   const id = useId();
@@ -191,6 +193,10 @@ export function Field({
     } else if (event.key === 'Escape') {
       event.stopPropagation();
       editing.current = false;
+      if (onLeave != null && draft === value && error == null) {
+        onLeave();
+        return;
+      }
       setDraft(value);
       setError(null);
     }

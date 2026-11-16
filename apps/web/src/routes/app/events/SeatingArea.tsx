@@ -73,11 +73,11 @@ import {
   Said,
 } from './SeatingParts.tsx';
 import {
-  AddRowAndSeat,
   RowDrawing,
   RowPanel,
   SingleSeatDrawing,
   SingleSeatPanel,
+  useAddRowAndSeat,
 } from './SeatingRows.tsx';
 import { AddTable, ChairPanel, TableDrawing, TablePanel } from './SeatingTables.tsx';
 import {
@@ -966,6 +966,7 @@ function Plan({
     arrange,
     startPlacing,
   };
+  const { addRow, addSeat } = useAddRowAndSeat(ctx);
 
   let canvas: ReactNode = null;
 
@@ -1203,7 +1204,7 @@ function Plan({
         <p className="visually-hidden" aria-live="polite">
           {heard}
         </p>
-        {!readOnly && <AddTable ctx={ctx} more={<AddRowAndSeat ctx={ctx} />} />}
+        {!readOnly && <AddTable ctx={ctx} floor={size.w} onRow={addRow} onSeat={addSeat} />}
         <ZoomControls camera={camera} />
         {s >= SMALL_MAP_FROM_SCALE - 1e-9 && (
           <SmallMap plan={plan} view={{ x: -ox / s, y: -oy / s, w: size.w / s, h: size.h / s }} />

@@ -648,7 +648,10 @@
     "finishedNotice": "Este evento ya se ha celebrado. Esta página se queda aquí como recuerdo.",
     "refused": "No se ha enviado: las respuestas se cerraron antes de que llegara. Todo lo que eligió sigue aquí.",
     "languageSwitched": "Esta página está ahora en español.",
-    "languageNotSaved": "Su idioma no se ha guardado. Esta página sigue en español en este dispositivo, pero puede abrirse en otro idioma en otros dispositivos."
+    "languageNotSaved": "Su idioma no se ha guardado. Esta página sigue en español en este dispositivo, pero puede abrirse en otro idioma en otros dispositivos.",
+    "theDay": "The day",
+    "programme": "Programme",
+    "timesIn": "Times in {{timeZone}}."
   },
   "signIn": {
     "title": "Iniciar sesión",
@@ -2754,6 +2757,7 @@
       "teal": "Verde petróleo"
     },
     "addTable": "Añadir mesa",
+    "add": "Añadir",
     "addBar": "Añadir a la sala",
     "shapeRound": "Mesa redonda",
     "shapeRectangular": "Mesa rectangular",
@@ -2771,6 +2775,7 @@
     "menuRectangular": "Mesa rectangular · {{size}} · {{seats}}",
     "menuHead": "Mesa presidencial · {{size}} · {{seats}}",
     "menuCocktail": "Mesa de cóctel · {{size}} · {{seats}}",
+    "menuRow": "Fila de asientos",
     "tableSize": "{{width}} × {{tableLength}}",
     "countPlaces_one": "{{count, number}} plaza de pie",
     "countPlaces_other": "{{count, number}} plazas de pie",
