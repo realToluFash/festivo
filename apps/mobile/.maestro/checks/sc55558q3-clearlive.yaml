@@ -31,6 +31,7 @@ appId: host.exp.Exponent
     env:
       URL: ${API_URL}/api/guest-links/wrong-person
       LINKTOKEN: ${LINKTOKEN}
+      ORIGIN: ${WEB_URL}
 - assertTrue: ${output.flagged == 204}
 - waitForAnimationToEnd:
     timeout: 5000
@@ -42,6 +43,7 @@ appId: host.exp.Exponent
     env:
       URL: ${API_URL}/api/events/${EVENT_ID}/guests/${GUEST_ID}/link/replace
       TOKEN: ${TOKEN}
+      ORIGIN: ${WEB_URL}
 - assertTrue: ${output.replaced == 204}
 - extendedWaitUntil:
     notVisible:
