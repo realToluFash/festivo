@@ -6,6 +6,7 @@ import type { Tell } from '../components/SettingsParts.tsx';
 import { DemoBell } from './DemoBell.tsx';
 import { EventsShell } from './EventParts.tsx';
 import { EventSidebar } from './EventSidebar.tsx';
+import { HintButton } from './HintButton.tsx';
 import { type SampleEvent, sampleEvent } from './events.ts';
 import { Pill } from './GuestsParts.tsx';
 import { clockOfKitchen, kitchenAt } from './kitchen.ts';
@@ -849,23 +850,9 @@ export function IconButton({
   onClick: () => void;
 }) {
   return (
-    <span className="mn-icon">
-      <button
-        id={id}
-        type="button"
-        className="ev-round mn-icon-button"
-        aria-label={label}
-        aria-disabled={disabled || undefined}
-        onClick={() => {
-          if (!disabled) onClick();
-        }}
-      >
-        <Glyph name={glyph} size={18} weight={2.3} />
-      </button>
-      <span className="mn-hint" aria-hidden="true">
-        {hint}
-      </span>
-    </span>
+    <HintButton id={id} label={label} hint={hint} disabled={disabled} onClick={onClick}>
+      <Glyph name={glyph} size={18} weight={2.3} />
+    </HintButton>
   );
 }
 
