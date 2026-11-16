@@ -886,7 +886,7 @@ function PeopleRows({
   );
 }
 
-/** Drawn again only when its person changes, so a page added under thousands of rows costs its own 50 (sc-49170). */
+/** Drawn again only when its props change, so a page added under thousands of rows costs its own 50 (sc-49170). */
 const PersonRow = memo(function PersonRow({
   member,
   tone,
