@@ -1,0 +1,323 @@
+/* Today at a desk from 641 to 1439 px (sc-57575): This week and Your events keep every word whole, in English and French. 640 and under is phone.css (sc-57468); 1440 and up is as on main. */
+
+@media (40rem < width < 1440px) {
+  .dp-fit .today-main {
+    container: today-main / inline-size;
+  }
+
+  /* Words wrap whole rather than end in an ellipsis. */
+  .dp-fit
+    :is(
+      .today-need-title,
+      .today-need-event,
+      .today-item-title,
+      .today-item-event,
+      .today-event-dates,
+      .today-event-date,
+      .today-event-piece
+    ) {
+    overflow: visible;
+    white-space: normal;
+  }
+
+  .dp-fit .today-item {
+    padding-block: var(--spaceXs);
+  }
+
+  .dp-fit .today-item-words {
+    flex-wrap: wrap;
+    row-gap: var(--spaceHair);
+    overflow: visible;
+    white-space: normal;
+  }
+
+  /* This week is one grid: the days and the bars share its seven columns, so a bar spans its days whatever width Today's name takes. */
+  .dp-fit .today-strip {
+    display: grid;
+    grid-template-columns: repeat(7, 1fr);
+  }
+
+  .dp-fit :is(.today-days, .today-bar-row) {
+    display: grid;
+    grid-template-columns: subgrid;
+    grid-column: 1 / -1;
+  }
+
+  .dp-fit .today-bar-row {
+    height: auto;
+  }
+
+  .dp-fit .today-bar-row > .today-bar {
+    position: static;
+    width: auto;
+    height: auto;
+    min-height: var(--space5xl);
+    margin: 0 3px;
+    padding-block: var(--spaceXxs);
+    white-space: normal;
+  }
+
+  .dp-fit .today-bar-row > .today-bar.is-open {
+    margin-left: 0;
+  }
+
+  .dp-fit .today-bar.from-0 {
+    grid-column-start: 1;
+  }
+
+  .dp-fit .today-bar.from-1 {
+    grid-column-start: 2;
+  }
+
+  .dp-fit .today-bar.from-2 {
+    grid-column-start: 3;
+  }
+
+  .dp-fit .today-bar.from-3 {
+    grid-column-start: 4;
+  }
+
+  .dp-fit .today-bar.from-4 {
+    grid-column-start: 5;
+  }
+
+  .dp-fit .today-bar.from-5 {
+    grid-column-start: 6;
+  }
+
+  .dp-fit .today-bar.from-6 {
+    grid-column-start: 7;
+  }
+
+  .dp-fit .today-bar.span-2 {
+    grid-column-end: span 2;
+  }
+
+  .dp-fit .today-bar.span-3 {
+    grid-column-end: span 3;
+  }
+
+  .dp-fit .today-bar.span-4 {
+    grid-column-end: span 4;
+  }
+
+  .dp-fit .today-bar.span-5 {
+    grid-column-end: span 5;
+  }
+
+  .dp-fit .today-bar.span-6 {
+    grid-column-end: span 6;
+  }
+
+  .dp-fit .today-bar.span-7 {
+    grid-column-end: span 7;
+  }
+
+  .dp-fit .today-bar-words {
+    height: auto;
+  }
+
+  .dp-fit .today-bar-name {
+    overflow: visible;
+  }
+
+  /* Too narrow for Your events beside This week: it follows This week, the order a phone reads them in. */
+  @container today-main (width < 840px) {
+    .dp-fit .today-columns {
+      flex-direction: column;
+      align-items: stretch;
+      gap: 26px;
+    }
+
+    .dp-fit .today-right {
+      width: auto;
+    }
+  }
+
+  /* A page as narrow as a phone's lays Today out as the phone does (phone.css), beside the sidebar. */
+  @container today-main (width < 620px) {
+    .dp-fit .today-banner,
+    .dp-fit .today-now {
+      height: auto;
+    }
+
+    .dp-fit .today-banner-inner {
+      position: relative;
+      flex-direction: column;
+      align-items: flex-start;
+      gap: var(--spaceLg);
+      padding: var(--spaceXl);
+    }
+
+    /* The event day's banner: its chips over its actions, then its words over what is next. */
+    .dp-fit .today-now {
+      padding: var(--spaceXl);
+    }
+
+    .dp-fit .today-now-top {
+      flex-wrap: wrap;
+      row-gap: var(--spaceSm);
+    }
+
+    .dp-fit .today-now-mid {
+      flex-direction: column;
+      align-items: stretch;
+      gap: var(--spaceXl);
+    }
+
+    .dp-fit .today-now-side {
+      width: auto;
+    }
+
+    .dp-fit .today-need-open {
+      display: grid;
+      grid-template-columns: auto minmax(0, 1fr);
+      gap: var(--spaceXxs) var(--spaceMd);
+      padding-block: var(--spaceSm);
+    }
+
+    .dp-fit .today-need-open > .today-need-cover {
+      grid-row: 1 / span 2;
+    }
+
+    .dp-fit .today-need-open > .today-due {
+      grid-column: 2;
+      width: auto;
+    }
+
+    .dp-fit .today-need-act {
+      width: auto;
+    }
+
+    .dp-fit .today-agenda {
+      padding-inline: var(--spaceLg);
+    }
+
+    .dp-fit .today-item {
+      display: grid;
+      grid-template-columns: auto auto minmax(0, 1fr);
+      align-items: start;
+      gap: var(--spaceXs) var(--spaceMd);
+      padding-block: var(--spaceSm);
+    }
+
+    .dp-fit .today-item-time {
+      grid-row: 1 / span 2;
+      width: auto;
+    }
+
+    .dp-fit .today-item-bar {
+      grid-row: 1 / span 2;
+      height: 100%;
+      min-height: 22px;
+    }
+
+    .dp-fit .today-item-words {
+      flex-direction: column;
+      align-items: flex-start;
+    }
+
+    .dp-fit .today-item > .today-chip {
+      grid-column: 3;
+      justify-self: start;
+    }
+
+    /* Today's name keeps its width and the other six days share the rest. */
+    .dp-fit .today-strip {
+      grid-template-columns: max-content repeat(6, minmax(0, 1fr));
+    }
+
+    .dp-fit .today-day.is-today {
+      padding-inline: var(--spaceXxs);
+    }
+
+    .dp-fit .today-weekday {
+      letter-spacing: 0.02em;
+    }
+
+    /* Too narrow for a name inside its days: the bar marks its days, and its name and length take the line under it, whole. */
+    .dp-fit .today-bar-row > .today-bar {
+      display: contents;
+    }
+
+    .dp-fit .today-bar::before {
+      grid-row: 1;
+      height: var(--spaceXs);
+      margin: 0 3px;
+      border-radius: var(--spaceXxs);
+      background: var(--todayEvent);
+      content: '';
+    }
+
+    .dp-fit .today-bar.is-open::before {
+      margin-left: 0;
+      border-radius: 0 var(--spaceXxs) var(--spaceXxs) 0;
+    }
+
+    .dp-fit .today-bar.from-0::before {
+      grid-column-start: 1;
+    }
+
+    .dp-fit .today-bar.from-1::before {
+      grid-column-start: 2;
+    }
+
+    .dp-fit .today-bar.from-2::before {
+      grid-column-start: 3;
+    }
+
+    .dp-fit .today-bar.from-3::before {
+      grid-column-start: 4;
+    }
+
+    .dp-fit .today-bar.from-4::before {
+      grid-column-start: 5;
+    }
+
+    .dp-fit .today-bar.from-5::before {
+      grid-column-start: 6;
+    }
+
+    .dp-fit .today-bar.from-6::before {
+      grid-column-start: 7;
+    }
+
+    .dp-fit .today-bar.span-2::before {
+      grid-column-end: span 2;
+    }
+
+    .dp-fit .today-bar.span-3::before {
+      grid-column-end: span 3;
+    }
+
+    .dp-fit .today-bar.span-4::before {
+      grid-column-end: span 4;
+    }
+
+    .dp-fit .today-bar.span-5::before {
+      grid-column-end: span 5;
+    }
+
+    .dp-fit .today-bar.span-6::before {
+      grid-column-end: span 6;
+    }
+
+    .dp-fit .today-bar.span-7::before {
+      grid-column-end: span 7;
+    }
+
+    .dp-fit .today-bar-row {
+      row-gap: var(--spaceXs);
+    }
+
+    .dp-fit .today-bar-words {
+      grid-column: 1 / -1;
+      padding: var(--spaceXxs) var(--spaceSm);
+      border-left: var(--spaceXxs) solid var(--todayEvent);
+      border-radius: var(--spaceMd);
+      background: color-mix(in srgb, var(--todayEvent) 16%, var(--colorInset));
+      color: var(--colorInk);
+      font: 600 12px/1.2 var(--fontFamily);
+    }
+  }
+}
