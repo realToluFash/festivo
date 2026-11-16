@@ -20,6 +20,7 @@ const dish = (id: string, picked = false): MenuDish => ({
   allergens: [],
   diets: [],
   libraryDishId: null,
+  variants: [],
   picked,
 });
 
