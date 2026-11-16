@@ -1466,7 +1466,7 @@ final class EventsTest extends ApiTestCase
             $event = $this->event($this->as($this->owner, 'GET', '/api/events/' . $id));
             $venue = Type\shape(['name' => Type\string(), 'address' => Type\shape(['formatted' => Type\string()], true)])->coerce($event['venue']);
             self::assertSame([Str\repeat($letter, 120), Str\repeat($letter, 120), Str\repeat($letter, 300)], [$event['name'], $venue['name'], $venue['address']['formatted']]);
-            self::assertSame(Str\repeat("\u{1EB9}\u{0300}", 500), $event['arrivalNote']);
+            self::assertSame(Str\repeat($letter, 500), $event['arrivalNote']);
         }
     }
 
@@ -1595,6 +1595,18 @@ final class EventsTest extends ApiTestCase
     }
 
     #[Test]
+    public function anArrivalNoteOf500DecomposedLettersIsSavedAsTyped(): void
+    {
+        $note = Str\repeat("o\u{0323}\u{0301}", 500);
+        $id = $this->create('Owambe', '2026-11-14T16:00');
+
+        $this->edit($id, ['arrivalNote' => " {$note}\n"], $this->tagOf($id));
+
+        self::assertSame(200, $this->statusCode(), Json\encode($this->last()));
+        self::assertSame($note, $this->event($this->as($this->owner, 'GET', '/api/events/' . $id))['arrivalNote']);
+    }
+
+    #[Test]
     public function anEditLeavingTheArrivalNoteOutKeepsIt(): void
     {
         $id = $this->create('Owambe', '2026-11-14T16:00');
@@ -1662,7 +1674,7 @@ final class EventsTest extends ApiTestCase
         $body = $this->as($this->owner, 'POST', $this->path('events'), [...self::valid(), 'arrivalNote' => $note]);
 
         self::assertSame(201, $this->statusCode(), Json\encode($body));
-        self::assertSame(Str\repeat('é', 500), $this->event($body)['arrivalNote']);
+        self::assertSame($note, $this->event($body)['arrivalNote']);
     }
 
     #[Test]
