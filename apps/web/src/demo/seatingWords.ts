@@ -5,7 +5,7 @@ export const SW = {
   crumb: 'Breadcrumb',
   widthsTitle: 'The header band in a narrow window',
   widthsLine:
-    'The Seating header band as it sits in a browser window 320 and 375 pixels wide. The event name gives way first; the chevrons, Events and Seating never shrink.',
+    'The Seating header band as it sits in a browser window 320 and 375 pixels wide: inside the page’s 16-pixel gutters, with no padding of its own. The event name gives way first; the chevrons, Events and Seating never shrink.',
   widthAt: '{{w}} px · {{lang}} · {{name}}',
   english: 'English',
   french: 'French',
