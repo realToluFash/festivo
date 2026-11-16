@@ -32,6 +32,8 @@ import { SchedulePage } from './Schedule.tsx';
 import { SCHEDULE_PAGES } from './schedule.ts';
 import { GetBackInBoard } from './GetBackIn.tsx';
 import { GuestPage } from './Guest.tsx';
+import { HandoffPage } from './Handoff.tsx';
+import { HANDOFF_PAGES, forgetAnyway } from './handoff.ts';
 import { GUEST_PAGES } from './guest.ts';
 import { GUEST_KITCHEN_PAGES } from './guestKitchen.ts';
 import { GUEST_PARTY_PAGES } from './guestCompanions.ts';
@@ -220,6 +222,7 @@ export default function Demo() {
       <Route path="events/:id/staff/roster" element={<RosterPage />} />
       <Route path="events/:id/schedule" element={<SchedulePage />} />
       <Route path="events/:id/run" element={<RunViewPage />} />
+      <Route path="handoff" element={<HandoffPage />} />
       <Route path="calendar" element={<Calendar />} />
       <Route path="settings" element={<Settings />} />
       <Route path="settings/members" element={<Settings />} />
@@ -281,7 +284,10 @@ export default function Demo() {
 function DemoHome({ from }: { from: string }) {
   const navigate = useNavigate();
 
-  useEffect(() => forgetBudget(), []);
+  useEffect(() => {
+    forgetBudget();
+    forgetAnyway();
+  }, []);
 
   return (
     <main id="content" className="demo-home">
@@ -320,6 +326,8 @@ function DemoHome({ from }: { from: string }) {
         </ul>
         <h3>Events in A · Summary first · desktop</h3>
         <BoardPages pages={EVENTS_PAGES} />
+        <h3>An event in a phone browser hands over to the app · 390 and 320 px</h3>
+        <BoardPages pages={HANDOFF_PAGES} />
         <h3>The organisation switcher in B · Places · desktop</h3>
         <BoardPages pages={SWITCHER_PAGES} />
         <h3>The Calendar in B · A · Weeks as lanes · desktop</h3>
