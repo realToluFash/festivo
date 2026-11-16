@@ -2693,12 +2693,61 @@ describe('Moving, turning and resizing on the Floor plan (sc-5028)', () => {
     await chooseTable('Table 1, round, 0 of 10 seats taken');
     fireEvent.keyDown(document.querySelector('[data-table="t1"]')!, { key: 'ArrowRight' });
 
-    expect(
-      await screen.findByText('Bola Ade just moved Table 1. Your change was not saved.'),
-    ).toBeDefined();
+    const said = await screen.findByText('Bola Ade just moved Table 1. Your change was not saved.');
+
+    expect(said.closest('.st-under-views .st-bar.is-amber')).not.toBeNull();
+    expect(said.closest('.st-panel')).toBeNull();
     await waitFor(() =>
       expect(screen.getByLabelText('Across')).toHaveProperty('value', '6\u00a0m'),
     );
+  });
+
+  it('clears the refusal from the floor once the host moves again or chooses another table', async () => {
+    signedIn();
+    let reads = 0;
+    let steps = 0;
+    await onSeating({
+      'GET /api/events/ev_1/seating-plan': () => {
+        reads += 1;
+        return seating(
+          withTables(
+            table(reads > 1 ? { xCm: 600, version: 2 } : {}),
+            table({ id: 't2', name: 'Table 2', xCm: 2400 }),
+          ),
+        );
+      },
+      'PATCH /api/events/ev_1/seating-plan/furniture': (body) => {
+        steps += 1;
+        if (steps !== 2)
+          return problem('precondition_failed', 412, { stale: ['t1'], changedBy: 'Bola Ade' });
+        const [item] = (body as { items: { xCm: number }[] }).items;
+
+        return seating(
+          withTables(
+            table({ xCm: item!.xCm, version: 3 }),
+            table({ id: 't2', name: 'Table 2', xCm: 2400 }),
+          ),
+        );
+      },
+    });
+    const refusal = 'Bola Ade just moved Table 1. Your change was not saved.';
+
+    await chooseTable('Table 1, round, 0 of 10 seats taken');
+    fireEvent.keyDown(document.querySelector('[data-table="t1"]')!, { key: 'ArrowRight' });
+    await screen.findByText(refusal);
+    await waitFor(() =>
+      expect(screen.getByLabelText('Across')).toHaveProperty('value', '6\u00a0m'),
+    );
+
+    fireEvent.keyDown(document.querySelector('[data-table="t1"]')!, { key: 'ArrowRight' });
+    expect(screen.queryByText(refusal)).toBeNull();
+    expect(await screen.findByText('Saved')).toBeDefined();
+
+    fireEvent.keyDown(document.querySelector('[data-table="t1"]')!, { key: 'ArrowRight' });
+    await screen.findByText(refusal);
+
+    await chooseTable('Table 2, round, 0 of 10 seats taken');
+    expect(screen.queryByText(refusal)).toBeNull();
   });
 
   it('sends a queued step on from the version its own earlier step saved', async () => {
