@@ -47,7 +47,6 @@ export function InsideField({
   state = 'plain',
   line,
   submitting = false,
-  multiline = false,
   ref,
   testID,
   ...rest
@@ -64,7 +63,6 @@ export function InsideField({
   line?: string | null | undefined;
   /** A request runs: what was typed is held, and the focus and the keys stay. */
   submitting?: boolean;
-  multiline?: boolean;
   ref?: Ref<TextInputInstance> | undefined;
   testID: string;
 }) {
@@ -77,7 +75,7 @@ export function InsideField({
   const bold = useBoldText();
   const [revealed, setRevealed] = useState(false);
   const [typed, setTyped] = useState(value ?? defaultValue ?? '');
-  const raised = focused || (value ?? typed) !== '' || multiline;
+  const raised = focused || (value ?? typed) !== '';
   const [lift] = useState(() => new Animated.Value(raised ? 1 : 0));
   const holding = useHeld(submitting, value, defaultValue, (text) => {
     setTyped(text);
@@ -113,7 +111,7 @@ export function InsideField({
       ref={box}
       onFocus={() => fieldFocused(box.current)}
       onBlur={() => fieldLeft(box.current)}
-      style={[styles.box, multiline && styles.tall, state === 'blank' && styles.blank]}
+      style={[styles.box, state === 'blank' && styles.blank]}
     >
       <TextInput
         {...FIELD_DEFAULTS}
@@ -123,7 +121,6 @@ export function InsideField({
         accessibilityHint={refusedHint(refused, rest.accessibilityHint)}
         {...holding}
         ref={ref}
-        multiline={multiline}
         onFocus={(event) => {
           setFocused(true);
           rest.onFocus?.(event);
@@ -136,7 +133,6 @@ export function InsideField({
           [
             styles.input,
             { paddingTop: tokens.spaceSm + labelLine },
-            multiline && styles.inputTall,
             password && styles.inputBeside,
           ],
           'sans',
@@ -236,7 +232,6 @@ const styles = StyleSheet.create({
     backgroundColor: tokens.colorCard,
     justifyContent: 'center',
   },
-  tall: { minHeight: 132 },
   blank: { borderColor: tokens.colorBroken },
   input: {
     minHeight: HEIGHT - 2,
@@ -245,7 +240,6 @@ const styles = StyleSheet.create({
     color: tokens.colorInk,
     fontSize: LABEL_LARGE,
   },
-  inputTall: { minHeight: 130, textAlignVertical: 'top' },
   inputBeside: { paddingRight: tokens.sizeHit + tokens.spaceXxs },
   label: {
     position: 'absolute',
