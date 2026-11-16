@@ -153,6 +153,17 @@
   font: 600 15px/1.3 var(--fontFamily);
 }
 
+/* At 60rem and under the page's 16 px gutters already inset the band, so it keeps no padding of its own, and the name stays a 44 px target (sc-55300). */
+@media (width <= 60rem) {
+  .st-top {
+    padding-inline: 0;
+  }
+
+  .st-crumb-event a {
+    min-width: var(--sizeHit);
+  }
+}
+
 /* The demo's room is 719 tall at a desk; the product's shell lets a page grow but not stretch. */
 .st-main {
   display: flex;
