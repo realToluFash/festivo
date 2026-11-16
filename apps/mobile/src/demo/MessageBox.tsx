@@ -76,26 +76,33 @@ export function MessageBox({
         >
           {label}
         </Text>
-        <TextInput
-          {...FIELD_DEFAULTS}
-          {...refusedName(Platform.OS, fieldName(Platform.OS, label, { labelID }), refused, label)}
-          accessibilityHint={refusedHint(refused, undefined)}
-          ref={ref}
-          value={value}
-          onChangeText={onChangeText}
-          multiline
-          scrollEnabled
-          autoFocus={autoFocus}
-          autoCapitalize="sentences"
-          onFocus={() => setFocused(true)}
-          onBlur={() => {
-            setFocused(false);
-            onBlur();
-          }}
-          style={inputFaced(styles.input, 'sans', bold)}
-          aria-invalid={refused != null}
-          testID={testID}
-        />
+        <View style={styles.clip}>
+          <TextInput
+            {...FIELD_DEFAULTS}
+            {...refusedName(
+              Platform.OS,
+              fieldName(Platform.OS, label, { labelID }),
+              refused,
+              label,
+            )}
+            accessibilityHint={refusedHint(refused, undefined)}
+            ref={ref}
+            value={value}
+            onChangeText={onChangeText}
+            multiline
+            scrollEnabled
+            autoFocus={autoFocus}
+            autoCapitalize="sentences"
+            onFocus={() => setFocused(true)}
+            onBlur={() => {
+              setFocused(false);
+              onBlur();
+            }}
+            style={inputFaced(styles.input, 'sans', bold)}
+            aria-invalid={refused != null}
+            testID={testID}
+          />
+        </View>
         <UnseenName nativeID={invalidNameID}>
           {refused == null ? label : withInvalid(label, refused.word)}
         </UnseenName>
@@ -122,9 +129,10 @@ const styles = StyleSheet.create({
   },
   labelPlain: { color: tokens.colorInkSecondary },
   labelWrong: { color: tokens.colorBrokenText },
+  clip: { flex: 1, marginTop: tokens.spaceXxs, overflow: 'hidden' },
   input: {
     flex: 1,
-    paddingTop: tokens.spaceXxs,
+    paddingTop: 0,
     paddingBottom: tokens.spaceSm,
     paddingHorizontal: tokens.spaceXl - 1,
     color: tokens.colorInk,
