@@ -2669,6 +2669,7 @@
       "teal": "Teal"
     },
     "addTable": "Add table",
+    "add": "Add",
     "addBar": "Add to the room",
     "shapeRound": "Round table",
     "shapeRectangular": "Rectangular table",
@@ -2686,6 +2687,7 @@
     "menuRectangular": "Rectangular table · {{size}} · {{seats}}",
     "menuHead": "Head table · {{size}} · {{seats}}",
     "menuCocktail": "Cocktail table · {{size}} · {{seats}}",
+    "menuRow": "Row of chairs",
     "tableSize": "{{width}} × {{tableLength}}",
     "countPlaces_one": "{{count, number}} place",
     "countPlaces_other": "{{count, number}} places",
