@@ -16,6 +16,7 @@ import {
   memberIsShown,
   recoveryEndedByRemoval,
   recoveryShownIn,
+  MEMBERS_PAGE,
   type MembersMore,
   rereadLimit,
   roleName,
@@ -330,9 +331,11 @@ function MembersLoaded({
   const granted = grantableRoles(roles, organisation);
   const [more, setMore] = useState<More>('idle');
   const [switched, setSwitched] = useState(0);
+  // A pick made with more than a page held reads its option again from the first page, so its time does not grow with the rows shown before.
+  const [restart, setRestart] = useState(false);
   const rows = useRef<HTMLUListElement>(null);
   const wanted: MembersShow | null = filter === 'invited' || filter === 'waiting' ? null : filter;
-  const switching = wanted != null && wanted !== listed;
+  const switching = wanted != null && (wanted !== listed || restart);
   const held = [...list.members, ...list.waiting, ...list.faces];
   const found = open == null ? null : (held.find((one) => one.id === open) ?? null);
   // A change can take an open person out of the option being read; their page stays as last read.
@@ -354,6 +357,7 @@ function MembersLoaded({
       (page) => {
         if (!current) return;
         setMore('idle');
+        setRestart(false);
         onChange(page, wanted);
       },
       () => current && setMore('failed'),
@@ -395,6 +399,8 @@ function MembersLoaded({
   };
   const pick = (next: MemberFilter) => {
     setMore('idle');
+    if (next === filter) return;
+    setRestart(next !== 'invited' && next !== 'waiting' && list.members.length > MEMBERS_PAGE);
     setFilter(next);
   };
 
@@ -679,10 +685,9 @@ function MembersBlocks(props: BlocksProps) {
   const waiting = waitingMembers(list, manages);
   const invitations = list.invitations.filter((one) => one.status !== 'accepted');
   const { switching, more } = props;
+  const listed = list.members.filter((one) => memberIsShown(one.status, filter));
   const shown =
-    filter === 'waiting'
-      ? list.waiting
-      : list.members.filter((one) => memberIsShown(one.status, filter));
+    filter === 'waiting' ? list.waiting : switching ? listed.slice(0, MEMBERS_PAGE) : listed;
   const count = (one: MemberFilter) =>
     one === 'invited'
       ? invitations.filter((invitation) => invitation.status === 'pending').length
@@ -750,7 +755,7 @@ function MembersBlocks(props: BlocksProps) {
           </>
         ) : filter !== 'invited' && (shown.length > 0 || moreToShow) ? (
           <>
-            {shown.length > 0 && <PeopleRows {...props} shown={shown} />}
+            {shown.length > 0 && <PeopleRows key={filter} {...props} shown={shown} />}
             {moreToShow && (
               <MorePeople shown={shown.length} total={total} more={more} onMore={props.onMore} />
             )}
