@@ -24,5 +24,8 @@ appId: host.exp.Exponent
 - waitForAnimationToEnd
 - takeScreenshot: frame-back
 - extendedWaitUntil:
-    visible: 'Annual Gala.*'
+    visible:
+      id: 'search.field'
+      text: 'okafor'
     timeout: 10000
+- assertVisible: 'Annual Gala.*'
