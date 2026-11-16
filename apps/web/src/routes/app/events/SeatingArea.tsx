@@ -432,7 +432,7 @@ function Plan({
     if (node == null || !hasRoom) return;
     let byKey = false;
     const key = (event: KeyboardEvent) => {
-      if (event.key === 'Tab') byKey = true;
+      byKey = event.key === 'Tab';
     };
     const point = () => {
       byKey = false;
@@ -452,6 +452,16 @@ function Plan({
         },
         view.current.size.w,
         view.current.size.h,
+        [...node.querySelectorAll(':scope > .st-float')].map((bar) => {
+          const at = bar.getBoundingClientRect();
+
+          return {
+            x0: at.left - box.left,
+            y0: at.top - box.top,
+            x1: at.right - box.left,
+            y1: at.bottom - box.top,
+          };
+        }),
       );
 
       if (dx !== 0 || dy !== 0) panBy(-dx, -dy);
