@@ -19,6 +19,7 @@ const dish = (id: string, name: string, more: Partial<Dish> = {}): Dish => ({
   diets: [],
   usedByEvent: false,
   archivedAt: null,
+  variants: [],
   ...more,
 });
 
