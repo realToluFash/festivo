@@ -9,6 +9,8 @@ use App\Domain\User\UserRegistrar;
 use App\Entity\Membership;
 use App\Entity\Organisation;
 use App\Entity\Role;
+use App\Entity\SeatingRow;
+use App\Entity\SeatingSeat;
 use App\Entity\User;
 use App\Enum\EventRole;
 use App\Enum\MembershipStatus;
@@ -23,6 +25,7 @@ use PHPUnit\Framework\Attributes\DataProvider;
 use PHPUnit\Framework\Attributes\Test;
 use Psl\Iter;
 use Psl\Json;
+use Psl\Math;
 use Psl\Str;
 use Psl\Type;
 use Psl\Vec;
@@ -91,6 +94,37 @@ final class SeatingRowsTest extends ApiTestCase
         $row = $this->addRow();
 
         self::assertNotSame([1200, 900], [$row['xCm'], $row['yCm']]);
+    }
+
+    #[Test]
+    public function withNothingClearWithinReachASeatTakesTheNearestSpotWithNoOverlap(): void
+    {
+        $this->as($this->owner, 'PATCH', $this->plan(), ['widthCm' => 200, 'lengthCm' => 2000], '"1"');
+        self::assertSame(200, $this->statusCode());
+        foreach (Vec\range(0, 12) as $n) {
+            $this->place(SeatingSeat::class, $this->addSeat(), 100, 400 + $n * 100);
+        }
+
+        $seat = $this->addSeat();
+
+        self::assertSame([100, 1050], [$seat['xCm'], $seat['yCm']]);
+    }
+
+    #[Test]
+    public function withNothingFreeACopyStaysInsideTheRoom(): void
+    {
+        $row = $this->change($this->addRow(), ['seats' => 1]);
+        $version = $this->place(SeatingRow::class, $row, 100, 100);
+        $this->as($this->owner, 'PATCH', $this->plan(), ['widthCm' => 200, 'lengthCm' => 200], '"1"');
+        self::assertSame(200, $this->statusCode());
+        foreach (Vec\range(0, 15) as $n) {
+            $this->place(SeatingSeat::class, $this->addSeat(), 25 + $n % 4 * 50, 25 + Math\div($n, 4) * 50);
+        }
+
+        $copy = $this->rowOf($this->as($this->owner, 'POST', $this->rows() . '/' . Type\string()->coerce($row['id']) . '/duplicate', null, '"' . $version . '"'));
+
+        self::assertSame(201, $this->statusCode());
+        self::assertSame([126, 178], [$copy['xCm'], $copy['yCm']]);
     }
 
     /** @return iterable<string, array{array<string, mixed>, string, string}> */
@@ -509,6 +543,21 @@ final class SeatingRowsTest extends ApiTestCase
     private function addSeat(): array
     {
         return $this->seatOf($this->as($this->owner, 'POST', $this->seats()));
+    }
+
+    /**
+     * @param class-string<SeatingRow|SeatingSeat> $class
+     * @param array<string, mixed>                 $item
+     *
+     * @return int its version once moved
+     */
+    private function place(string $class, array $item, int $xCm, int $yCm): int
+    {
+        $placed = self::em()->find($class, Type\string()->coerce($item['id'])) ?? self::fail('not found');
+        $placed->moveTo($xCm, $yCm);
+        self::em()->flush();
+
+        return $placed->getVersion();
     }
 
     /**

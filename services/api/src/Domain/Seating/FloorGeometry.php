@@ -94,7 +94,7 @@ final class FloorGeometry
      * @param list<SeatingTable|SeatingRow|SeatingSeat> $others
      *
      * @return array{0: int, 1: int} the nearest spot to the one given, in rings of 10 cm, inside the room and 46 cm clear of the others;
-     *                               the nearest with no overlap when none is clear within a seat's name and the clearance of it; the spot given when neither is
+     *                               the nearest with no overlap when none is clear within a seat's name and the clearance of it; the spot given, moved into the room, when neither is
      */
     public static function nearestFree(SeatingTable|SeatingRow|SeatingSeat $item, array $others, SeatingPlan $plan, int $fromX, int $fromY): array
     {
@@ -129,7 +129,20 @@ final class FloorGeometry
             }
         }
 
-        return $free ?? [$fromX, $fromY];
+        return $free ?? self::within($item, $plan, $fromX, $fromY);
+    }
+
+    /** @return array{0: int, 1: int} the spot moved the least way that puts the item inside the room */
+    private static function within(SeatingTable|SeatingRow|SeatingSeat $item, SeatingPlan $plan, int $xCm, int $yCm): array
+    {
+        $box = self::bounds($item, $xCm, $yCm);
+        $halfX = ($box['x1'] - $box['x0']) / 2;
+        $halfY = ($box['y1'] - $box['y0']) / 2;
+
+        return [
+            (int) Math\round(Math\minva(Math\maxva($xCm, $halfX), $plan->getWidthCm() - $halfX)),
+            (int) Math\round(Math\minva(Math\maxva($yCm, $halfY), $plan->getLengthCm() - $halfY)),
+        ];
     }
 
     /** @return Box its bounds, and a single seat's name to its right */
