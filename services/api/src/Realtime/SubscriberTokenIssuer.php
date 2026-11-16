@@ -19,7 +19,7 @@ use Symfony\Component\Uid\Uuid;
 /** A hub subscriber token naming only topics the caller may read, signed with the key the hub accepts for subscribing and never for publishing. */
 final readonly class SubscriberTokenIssuer
 {
-    public const int LIFETIME_SECONDS = 900;
+    public const int LIFETIME_SECONDS = 600;
 
     public function __construct(
         #[SensitiveParameter]
@@ -33,10 +33,25 @@ final readonly class SubscriberTokenIssuer
         return $this->issue([RealtimeTopic::UserNotifications->for($user->getId()->toRfc4122())]);
     }
 
-    /** One event's seating, for someone the route has already found holds seating.read on it (sc-3998). */
-    public function issueForEventSeating(Uuid $eventId): IssuedSubscriberToken
+    /**
+     * One event's seating, its editors' choices, and who else has it open, for someone the route has already found holds seating.read on it (sc-3998, sc-4719).
+     *
+     * The hub shows this payload to the event's other subscribers, so it names the person and never gives their email address.
+     */
+    public function issueForEventSeating(Uuid $eventId, User $user, bool $editor): IssuedSubscriberToken
     {
-        return $this->issue([RealtimeTopic::EventSeating->for($eventId->toRfc4122())]);
+        $seating = RealtimeTopic::EventSeating->for($eventId->toRfc4122());
+
+        return $this->issue(
+            [$seating, RealtimeTopic::EventSeatingChoices->for($eventId->toRfc4122()), self::subscribersOf($seating)],
+            ['userId' => $user->getId()->toRfc4122(), 'name' => $user->getName(), 'editor' => $editor],
+        );
+    }
+
+    /** The hub's active-subscriptions topic for one topic, matching its list and each subscriber arriving and leaving. */
+    public static function subscribersOf(string $topic): string
+    {
+        return '/.well-known/mercure/subscriptions/' . \urlencode($topic) . '{/subscriber}';
     }
 
     /** One event's roster, for someone the route has already found holds staff.read on it (sc-3906). */
@@ -73,8 +88,11 @@ final readonly class SubscriberTokenIssuer
         return $this->issue(Vec\map($eventIds, static fn (Uuid $eventId): string => RealtimeTopic::EventHeadcount->for($eventId->toRfc4122())));
     }
 
-    /** @param list<string> $topics */
-    private function issue(array $topics): IssuedSubscriberToken
+    /**
+     * @param list<string>              $topics
+     * @param array<string, mixed>|null $payload
+     */
+    private function issue(array $topics, ?array $payload = null): IssuedSubscriberToken
     {
         $configuration = Configuration::forSymmetricSigner(new Sha256(), InMemory::plainText(Type\non_empty_string()->coerce($this->mercureSubscriberKey)));
         $now = DateTimeImmutable::createFromInterface($this->clock->now());
@@ -83,7 +101,7 @@ final readonly class SubscriberTokenIssuer
         $token = $configuration->builder()
             ->issuedAt($now)
             ->expiresAt($expiresAt)
-            ->withClaim('mercure', ['subscribe' => $topics])
+            ->withClaim('mercure', null === $payload ? ['subscribe' => $topics] : ['subscribe' => $topics, 'payload' => $payload])
             ->getToken($configuration->signer(), $configuration->signingKey());
 
         return new IssuedSubscriberToken($token->toString(), $expiresAt);
