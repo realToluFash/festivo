@@ -1,6 +1,7 @@
 /* What Events' list and an event's page share at a desk (Events-A-Desk.dc.html, page 29): the page's measures, and the rows that open something. */
 
-.ev {
+.ev,
+.event-page {
   --evWide: 938px;
   --evLeft: 560px;
   --evRight: 346px;
@@ -39,6 +40,10 @@
 
 .ev .desk-text.is-off:hover {
   text-decoration: none;
+}
+
+.event-page {
+  max-width: var(--evWide);
 }
 
 .ev-column,
