@@ -162,6 +162,23 @@ describe('The Roster on the Staff page (sc-3906)', () => {
     expect(screen.getAllByRole('button', { name: /^Notifications/ })).toHaveLength(1);
   });
 
+  it('answers an area an event does not have as a page that does not exist, under the crumb row and its one bell (sc-39509)', async () => {
+    signedIn();
+    vi.spyOn(globalThis, 'fetch').mockImplementation(async () => json({}));
+    render(
+      <RouterProvider
+        router={createMemoryRouter(routes, { initialEntries: ['/app/events/ev_1/bogus'] })}
+      />,
+    );
+
+    expect(
+      await screen.findByRole('heading', { level: 1, name: 'This page does not exist' }),
+    ).toBeDefined();
+    const bell = await screen.findByRole('button', { name: /^Notifications/ });
+    expect(bell.closest('.ev-crumb-row')).not.toBeNull();
+    expect(screen.getAllByRole('button', { name: /^Notifications/ })).toHaveLength(1);
+  });
+
   it('opens from Staff at its own address, with no tab bar while it is the only tab', async () => {
     signedIn();
     vi.spyOn(globalThis, 'fetch').mockImplementation(async (input) =>

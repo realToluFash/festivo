@@ -82,7 +82,7 @@ export function EventStaff() {
 export function EventAreaPage() {
   const { area = '' } = useParams();
 
-  return isPlaceholderEventArea(area) ? <ForEvent page={area} /> : <NotFound />;
+  return isPlaceholderEventArea(area) ? <ForEvent page={area} /> : <Withheld />;
 }
 
 function ForEvent({ page }: { page: Page }) {
