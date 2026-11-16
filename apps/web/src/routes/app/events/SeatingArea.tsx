@@ -1304,10 +1304,10 @@ function Plan({
       <>
         {notice != null && <Said>{notice}</Said>}
         <SeveralPanel
-          names={several.flatMap((id) => {
+          items={several.flatMap((id) => {
             const item = itemOf(id);
 
-            return item == null ? [] : [itemName(t, item)];
+            return item == null ? [] : [item];
           })}
         />
       </>

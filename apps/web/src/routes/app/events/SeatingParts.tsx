@@ -298,3 +298,13 @@ export function Added({ children }: { children: ReactNode }) {
     </p>
   );
 }
+
+export type ShapeGlyph = 'round' | 'rect' | 'head' | 'cocktail' | 'row' | 'seat1';
+
+export function ShapeTile({ glyph }: { glyph: ShapeGlyph }) {
+  return (
+    <span className="st-shape-tile is-36" aria-hidden="true">
+      <Glyph name={glyph} size={22} weight={1.9} />
+    </span>
+  );
+}

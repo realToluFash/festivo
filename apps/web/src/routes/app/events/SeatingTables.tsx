@@ -43,7 +43,16 @@ import {
   sectionOf,
   turned,
 } from './seatingDraw.ts';
-import { Added, BackHead, Field, Line, type PlanApi, Said, Select } from './SeatingParts.tsx';
+import {
+  Added,
+  BackHead,
+  Field,
+  Line,
+  type PlanApi,
+  Said,
+  Select,
+  ShapeTile,
+} from './SeatingParts.tsx';
 import { Overlaps, PositionFields } from './SeatingArrange.tsx';
 import { placementOf } from './seatingItems.ts';
 import {
@@ -251,14 +260,6 @@ export function AddTable({
         )}
       </div>
     </>
-  );
-}
-
-function ShapeTile({ glyph }: { glyph: 'round' | 'rect' | 'head' | 'cocktail' | 'row' | 'seat1' }) {
-  return (
-    <span className="st-shape-tile is-36" aria-hidden="true">
-      <Glyph name={glyph} size={22} weight={1.9} />
-    </span>
   );
 }
 

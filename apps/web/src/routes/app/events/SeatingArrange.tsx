@@ -5,7 +5,15 @@ import { useTranslation } from 'react-i18next';
 
 import { Glyph } from '../../../components/Glyph.tsx';
 import { currentLocale } from '../../../i18n/index.ts';
-import { BackHead, Field, Line, type PlanApi, Said } from './SeatingParts.tsx';
+import {
+  BackHead,
+  Field,
+  Line,
+  type PlanApi,
+  Said,
+  type ShapeGlyph,
+  ShapeTile,
+} from './SeatingParts.tsx';
 import { f, turned } from './seatingDraw.ts';
 import {
   type FloorItem,
@@ -213,23 +221,32 @@ export function PlacingBars({
   );
 }
 
-export function SeveralPanel({ names }: { names: string[] }) {
+export function SeveralPanel({ items }: { items: FloorItem[] }) {
   const { t } = useTranslation();
 
   return (
     <div className="st-stack">
       <BackHead
-        title={t('seating.chosenCount', { count: names.length })}
+        title={t('seating.chosenCount', { count: items.length })}
         line={t('seating.moveTogether')}
       />
-      <ul className="st-chosen-list">
-        {names.map((name, index) => (
-          <li key={`${name}-${index}`}>{name}</li>
+      <ul className="st-rows">
+        {items.map((item) => (
+          <li key={item.one.id} className="st-row is-dense">
+            <ShapeTile glyph={shapeGlyph(item)} />
+            <span className="st-row-name">{itemName(t, item)}</span>
+          </li>
         ))}
       </ul>
       <Line>{t('seating.shiftClick')}</Line>
     </div>
   );
+}
+
+function shapeGlyph(item: FloorItem): ShapeGlyph {
+  if (item.kind === 'row') return 'row';
+  if (item.kind === 'seat') return 'seat1';
+  return item.one.shape === 'rectangular' ? 'rect' : item.one.shape;
 }
 
 const ROUND_HANDLES: readonly [Handle, number, number][] = [

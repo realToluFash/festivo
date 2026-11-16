@@ -2241,6 +2241,9 @@ describe('Moving, turning and resizing on the Floor plan (sc-5028)', () => {
     });
     expect(await screen.findByRole('heading', { level: 2, name: '2 chosen' })).toBeDefined();
     expect(screen.getByText('They move together, saved as one step.')).toBeDefined();
+    const rows = [...document.querySelectorAll('.st-stack .st-row')];
+    expect(rows.map((row) => row.textContent)).toEqual(['Table 1', 'Table 2']);
+    expect(rows.every((row) => row.querySelector('.st-shape-tile svg') != null)).toBe(true);
 
     fireEvent.keyDown(document.querySelector('[data-table="t2"]')!, {
       key: 'ArrowRight',
