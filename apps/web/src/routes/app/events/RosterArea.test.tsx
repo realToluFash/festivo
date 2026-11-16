@@ -132,6 +132,36 @@ afterEach(() => {
 });
 
 describe('The Roster on the Staff page (sc-3906)', () => {
+  it('ends its crumb row with the one bell at a desk (sc-39509)', async () => {
+    signedIn();
+    await onRoster({});
+
+    const bell = await screen.findByRole('button', { name: /^Notifications/ });
+    expect(bell.closest('.ev-crumb-row')).not.toBeNull();
+    expect(screen.getAllByRole('button', { name: /^Notifications/ })).toHaveLength(1);
+  });
+
+  it('answers a member without the staff permission as a page that does not exist, under the crumb row and its one bell (sc-39509)', async () => {
+    signedIn();
+    vi.spyOn(globalThis, 'fetch').mockImplementation(async (input) =>
+      new URL(String(input)).pathname === '/api/events/ev_1'
+        ? json({ event: { ...EVENT, permissions: ['events.read'], phase: 'live' } })
+        : json({}),
+    );
+    render(
+      <RouterProvider
+        router={createMemoryRouter(routes, { initialEntries: ['/app/events/ev_1/staff/roster'] })}
+      />,
+    );
+
+    expect(
+      await screen.findByRole('heading', { level: 1, name: 'This page does not exist' }),
+    ).toBeDefined();
+    const bell = await screen.findByRole('button', { name: /^Notifications/ });
+    expect(bell.closest('.ev-crumb-row')).not.toBeNull();
+    expect(screen.getAllByRole('button', { name: /^Notifications/ })).toHaveLength(1);
+  });
+
   it('opens from Staff at its own address, with no tab bar while it is the only tab', async () => {
     signedIn();
     vi.spyOn(globalThis, 'fetch').mockImplementation(async (input) =>
