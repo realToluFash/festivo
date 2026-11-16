@@ -143,3 +143,15 @@ export function rowsFloor(fontScale: number, pixelRatio: number | null): number 
 
   return row * 2 + 1;
 }
+
+// Apple's Paste sets its word in Body, 17 at the default size; 10 above and below leaves room over a medium button's 7.
+const PASTE_WORD = 17;
+const PASTE_WORD_LINE = 1.25;
+const PASTE_INSET = 10;
+
+/** Apple's Paste draws nothing and takes no press once its word no longer fits: the field's height below the accessibility sizes, the word's from them on. */
+export function pasteHeight(field: number, fontScale: number): number {
+  if (!atAccessibilitySizes(fontScale)) return field;
+
+  return Math.max(field, Math.ceil(PASTE_WORD * PASTE_WORD_LINE * fontScale + PASTE_INSET * 2));
+}

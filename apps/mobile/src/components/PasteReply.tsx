@@ -1,11 +1,12 @@
 import { shownReply } from '@soirely/domain';
 import * as Clipboard from 'expo-clipboard';
 import { type RefObject, memo, useCallback, useState } from 'react';
-import { Platform, Pressable, StyleSheet, View } from 'react-native';
+import { Platform, Pressable, StyleSheet, View, useWindowDimensions } from 'react-native';
 import { useTranslation } from 'react-i18next';
 
 import { markOf } from '../kit/guestRows.ts';
 import { LIST_EDGES } from './listFrame.ts';
+import { pasteHeight } from '../layout/textSize.ts';
 import type { LayoutKind } from '../layout/useLayout.ts';
 import { type WhoseRow, hasText } from '../kit/pasteReply.ts';
 import { tokens } from '../theme/tokens.ts';
@@ -58,9 +59,16 @@ const ApplePaste = memo(function ApplePaste({
     [onText],
   );
   const imageOptions = useRebuiltPaste();
+  const height = pasteHeight(FIELD_HEIGHT, useWindowDimensions().fontScale);
 
   return (
-    <View style={[styles.appleRing, inRow ? styles.appleInRow : styles.appleAlone]}>
+    <View
+      style={[
+        styles.appleRing,
+        { height, borderRadius: height / 2 },
+        inRow ? styles.appleInRow : styles.appleAlone,
+      ]}
+    >
       <Clipboard.ClipboardPasteButton
         onPress={onPress}
         acceptedContentTypes={PLAIN_TEXT}
@@ -358,9 +366,7 @@ const styles = StyleSheet.create({
     backgroundColor: tokens.colorCard,
   },
   appleRing: {
-    height: FIELD_HEIGHT,
     padding: RING,
-    borderRadius: FIELD_HEIGHT / 2,
     backgroundColor: tokens.colorBorder,
   },
   appleAlone: { width: '100%' },
