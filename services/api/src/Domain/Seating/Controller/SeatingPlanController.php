@@ -301,7 +301,7 @@ final readonly class SeatingPlanController
         $event = $this->event($eventId);
         $body = Input::body($request, Type\shape([
             'items' => Type\vec(Type\shape([
-                'kind' => Type\union(Type\literal_scalar('table'), Type\literal_scalar('row'), Type\literal_scalar('seat')),
+                'kind' => self::kind(),
                 'id' => Type\string(),
                 'version' => Type\int(),
                 'xCm' => Type\int(),
@@ -317,6 +317,101 @@ final readonly class SeatingPlanController
         return $this->seating($event, $plan);
     }
 
+    /** Renames the chosen tables in one step, all or nothing (sc-4717's Renumber): each with its `id`, `version` and new `name`. A name kept by a table outside the step refuses it beside that name; a stale table refuses it with 412. */
+    #[Route('/api/events/{eventId}/seating-plan/furniture/names', name: 'seating_furniture_rename', methods: ['PATCH'])]
+    #[InEvent(Permission::SeatingManage)]
+    public function rename(Request $request, string $eventId): JsonResponse
+    {
+        $event = $this->event($eventId);
+        $body = Input::body($request, Type\shape([
+            'items' => Type\vec(Type\shape([
+                'id' => Type\string(),
+                'version' => Type\int(),
+                'name' => Type\string(),
+            ])),
+        ]));
+        $plan = $this->plan($event);
+        $this->seatingPlanEditor->renameTables($event, $plan, $this->user(), $body['items']);
+
+        return $this->seating($event, $plan);
+    }
+
+    /** Sets each chosen item's `sectionId`, or none with null, in one step, all or nothing (sc-4717's Section). */
+    #[Route('/api/events/{eventId}/seating-plan/furniture/sections', name: 'seating_furniture_section', methods: ['PATCH'])]
+    #[InEvent(Permission::SeatingManage)]
+    public function section(Request $request, string $eventId): JsonResponse
+    {
+        $event = $this->event($eventId);
+        $body = Input::body($request, Type\shape([
+            'items' => Type\vec(Type\shape([
+                'kind' => self::kind(),
+                'id' => Type\string(),
+                'version' => Type\int(),
+                'sectionId' => Type\nullable(Type\string()),
+            ])),
+        ]));
+        $plan = $this->plan($event);
+        $this->seatingPlanEditor->sectionFurniture($event, $plan, $this->user(), $body['items']);
+
+        return $this->seating($event, $plan);
+    }
+
+    /** Copies the chosen items 50 cm down and to the right, with nobody seated, all or nothing (sc-4717); `chosen` lists the copies' ids in reading order. */
+    #[Route('/api/events/{eventId}/seating-plan/furniture/duplicate', name: 'seating_furniture_duplicate', methods: ['POST'])]
+    #[InEvent(Permission::SeatingManage)]
+    public function duplicateFurniture(Request $request, string $eventId): JsonResponse
+    {
+        $event = $this->event($eventId);
+        $plan = $this->plan($event);
+        /** @var list<string> $copies */
+        $copies = $this->seatingPlanEditor->duplicateFurniture($event, $plan, $this->user(), $this->chosenItems($request));
+
+        return $this->seating($event, $plan, Response::HTTP_CREATED, ['chosen' => $copies]);
+    }
+
+    /** Deletes the chosen items in one step, all or nothing (sc-4717). */
+    #[Route('/api/events/{eventId}/seating-plan/furniture/delete', name: 'seating_furniture_delete', methods: ['POST'])]
+    #[InEvent(Permission::SeatingManage)]
+    public function deleteFurniture(Request $request, string $eventId): JsonResponse
+    {
+        $event = $this->event($eventId);
+        $plan = $this->plan($event);
+        $this->seatingPlanEditor->deleteFurniture($event, $plan, $this->user(), $this->chosenItems($request));
+
+        return $this->seating($event, $plan);
+    }
+
+    /** Puts deleted items back, each with its `kind`, `name` (a row's label), `sectionId`, place and layout as the plan served them: the Undo of sc-4717's Delete. `chosen` lists their new ids in the order sent. */
+    #[Route('/api/events/{eventId}/seating-plan/furniture/restore', name: 'seating_furniture_restore', methods: ['POST'])]
+    #[InEvent(Permission::SeatingManage)]
+    public function restore(Request $request, string $eventId): JsonResponse
+    {
+        $event = $this->event($eventId);
+        $body = Input::body($request, Type\shape([
+            'items' => Type\vec(Type\shape([
+                'kind' => self::kind(),
+                'name' => Type\string(),
+                'sectionId' => Type\nullable(Type\string()),
+                'xCm' => Type\int(),
+                'yCm' => Type\int(),
+                'shape' => Type\optional(Type\backed_enum(TableShape::class)),
+                'seats' => Type\optional(Type\int()),
+                'widthCm' => Type\optional(Type\int()),
+                'lengthCm' => Type\optional(Type\int()),
+                'endSeats' => Type\optional(Type\int()),
+                'rotation' => Type\optional(Type\int()),
+                'spacingCm' => Type\optional(Type\int()),
+                'unusableSeats' => Type\optional(Type\vec(Type\int())),
+                'unusable' => Type\optional(Type\bool()),
+            ])),
+        ]));
+        $plan = $this->plan($event);
+        /** @var list<string> $restored */
+        $restored = $this->seatingPlanEditor->restoreFurniture($event, $plan, $this->user(), $body['items']);
+
+        return $this->seating($event, $plan, Response::HTTP_CREATED, ['chosen' => $restored]);
+    }
+
     /** A hub token for this event's seating alone; every change to the plan is published there whole. */
     #[Route('/api/events/{eventId}/seating-plan/subscriptions', name: 'seating_plan_subscribe', methods: ['POST'])]
     #[InEvent(Permission::SeatingRead)]
@@ -330,7 +425,7 @@ final readonly class SeatingPlanController
         ]);
     }
 
-    /** @param array<string, string> $chosen a table's, row's or seat's id as `tableId`, `rowId` or `seatId`, so a client opens the one it added */
+    /** @param array<string, string|list<string>> $chosen a table's, row's or seat's id as `tableId`, `rowId` or `seatId`, so a client opens the one it added, or the ids it should choose as `chosen` */
     private function seating(Event $event, ?SeatingPlan $plan, int $status = Response::HTTP_OK, array $chosen = []): JsonResponse
     {
         return new JsonResponse(
@@ -338,6 +433,24 @@ final readonly class SeatingPlanController
             $status,
             null === $plan ? [] : ['ETag' => EntityTag::of($plan->getVersion())],
         );
+    }
+
+    /** @return list<array{kind: 'table'|'row'|'seat', id: string, version: int}> */
+    private function chosenItems(Request $request): array
+    {
+        return Input::body($request, Type\shape([
+            'items' => Type\vec(Type\shape([
+                'kind' => self::kind(),
+                'id' => Type\string(),
+                'version' => Type\int(),
+            ])),
+        ]))['items'];
+    }
+
+    /** @return Type\TypeInterface<'table'|'row'|'seat'> */
+    private static function kind(): Type\TypeInterface
+    {
+        return Type\union(Type\literal_scalar('table'), Type\literal_scalar('row'), Type\literal_scalar('seat'));
     }
 
     private function plan(Event $event): SeatingPlan
