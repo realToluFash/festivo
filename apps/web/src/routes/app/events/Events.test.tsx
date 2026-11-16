@@ -9,6 +9,7 @@ import { __setSessionState, type Session, switchOrganisation } from '../../../se
 import { OWNER_PERMISSIONS, membership } from '../../../test-memberships.ts';
 import { breaksAnywhere } from '../../../test-wrapping.ts';
 import { routes } from '../../index.tsx';
+import { endingNow } from './openInPlace.ts';
 
 const IRE = membership({ id: 'org_1', name: 'Ìrè Events' });
 
@@ -3176,6 +3177,21 @@ describe('The phase, End now and Call off (sc-3585)', () => {
     expect(screen.queryByRole('button', { name: 'Call off…' })).toBeNull();
     expect(screen.queryByRole('button', { name: 'End now…' })).toBeNull();
     expect(sent.filter(({ line }) => line === 'POST /api/events/ev_1/end')).toHaveLength(1);
+  });
+
+  it('opens End now’s confirmation at once when the night’s end card leads here (sc-3895)', async () => {
+    signedIn();
+    answering({
+      'GET /api/events/ev_1': () => json({ event: live({ ...HAPPENING, phase: 'happening_now' }) }),
+    });
+    const { to, state } = endingNow('ev_1');
+    render(
+      <RouterProvider
+        router={createMemoryRouter(routes, { initialEntries: [{ pathname: to, state }] })}
+      />,
+    );
+
+    expect(await screen.findByRole('dialog', { name: 'End Adaeze and Tunde now?' })).toBeDefined();
   });
 
   it('ends it early once it is happening', async () => {

@@ -56,7 +56,7 @@ import {
 import { useMakeLive } from './MakeLive.tsx';
 import { ReplyByPart } from './ReplyByPart.tsx';
 import { closesAtClock } from '../../../replyBy.ts';
-import { arrivingPart } from './openInPlace.ts';
+import { arrivingPart, asksEndNow } from './openInPlace.ts';
 import { PHASE_WORD } from './eventWords.ts';
 import { typeLabel } from './eventTypes.ts';
 import { GuestNumbers } from './GuestNumbers.tsx';
@@ -171,10 +171,15 @@ export function Overview({
   useEffect(() => rememberTabHolding(event.organisationId, phase), [event.organisationId, phase]);
 
   useEffect(() => {
+    if (asksEndNow(location.state)) askEnd.current?.();
+  }, [location.state]);
+
+  useEffect(() => {
     if (
       arrivingPart(location.state) == null &&
       coverRefusal(location.state) == null &&
-      !wasDuplicated(location.state)
+      !wasDuplicated(location.state) &&
+      !asksEndNow(location.state)
     )
       return;
 

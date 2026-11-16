@@ -39,6 +39,7 @@ import { pageTitle, usePageTitle } from '../../../pageTitle.ts';
 import { useLoadedAt, useServerNow } from '../../../serverNow.ts';
 import { canOn } from '../../../session.ts';
 import { NightSwitch } from './NightSwitch.tsx';
+import { endingNow } from './openInPlace.ts';
 import {
   durationWords,
   keptPresses,
@@ -654,7 +655,7 @@ function Cards({
           </p>
         )}
         {endNow && (
-          <Link className="nt-link" to={`/app/events/${encodeURIComponent(eventId)}`}>
+          <Link className="nt-link" {...endingNow(eventId)}>
             {t('eventEnd.endNow')}
           </Link>
         )}
