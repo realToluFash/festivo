@@ -420,7 +420,10 @@ span {
     margin-inline: var(--space6xl);
   }
 
-  .shell-content.is-card:has(> .st) > :not(.st):first-child {
+  /* The offline band's wrapper stays in the page while online, holding only its hidden announcer: it takes no room, so the first notice after it does. */
+  .shell-content.is-card:has(> .st)
+    > :not(.st):first-child:not(:has(> .visually-hidden:only-child)),
+  .shell-content.is-card:has(> .st) > :first-child:has(> .visually-hidden:only-child) + :not(.st) {
     margin-top: var(--space3xl);
   }
 }
