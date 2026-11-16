@@ -521,15 +521,7 @@
   .lib-amount {
     flex: 1 1 8rem;
   }
-}
 
-@media (width <= 30rem) {
-  .lib-acts {
-    flex-direction: column;
-  }
-}
-
-@media (width <= 720px) {
   .lib-page .desk-top {
     flex-wrap: wrap;
     row-gap: var(--spaceMd);
@@ -542,5 +534,11 @@
 
   .lib-top-acts {
     margin-left: 0;
+  }
+}
+
+@media (width <= 30rem) {
+  .lib-acts {
+    flex-direction: column;
   }
 }
