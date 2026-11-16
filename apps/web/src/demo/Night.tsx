@@ -394,8 +394,10 @@ function Cards({
           <Glyph name="tick" size={22} weight={2.6} />
         </span>
         <h2>{NW.everything}</h2>
-        <p className="nt-end-sentence">{view.finished.sentence}</p>
-        <p className="nt-muted">{view.finished.workedOut}</p>
+        {view.finished.sentence != null && (
+          <p className="nt-end-sentence">{view.finished.sentence}</p>
+        )}
+        {view.finished.workedOut != null && <p className="nt-muted">{view.finished.workedOut}</p>}
         {view.finished.endNow && (
           <Link className="nt-link" to="/demo/events">
             {NW.endNow}

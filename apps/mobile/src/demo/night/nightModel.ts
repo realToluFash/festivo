@@ -181,8 +181,8 @@ export interface Elapsed {
 }
 
 export interface Finished {
-  sentence: string;
-  workedOut: string;
+  sentence: string | null;
+  workedOut: string | null;
   endNow: boolean;
 }
 
@@ -232,6 +232,7 @@ export function endNowShows(night: Night): boolean {
 
 export function finishedOf(track: NightTrack, night: Night, locale: string): Finished {
   const ran = track.items.filter((item) => item.phase === 'done');
+  if (ran.length === 0) return { sentence: null, workedOut: null, endNow: endNowShows(night) };
   const last = inOrder(track.items)
     .filter((item) => item.phase !== 'skipped')
     .at(-1);

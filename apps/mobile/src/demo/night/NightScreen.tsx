@@ -1,10 +1,12 @@
 import { useLocalSearchParams } from 'expo-router';
-import { type ReactNode, useState } from 'react';
-import { Modal, Pressable, ScrollView, StyleSheet, View } from 'react-native';
+import { type ReactNode, useEffect, useRef, useState } from 'react';
+import { Modal, Pressable, ScrollView, StyleSheet, View, type ViewInstance } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { SecondaryButton } from '../../components/Buttons.tsx';
 import { useReadOut } from '../../components/ReadOut.tsx';
+import { SETTLED_MS } from '../../components/Screen.tsx';
+import { moveScreenReaderFocus } from '../../components/screenReaderFocus.ts';
 import { Text } from '../../components/Text.tsx';
 import { useLayout } from '../../layout/useLayout.ts';
 import { useModalOpen } from '../../updateRequired.ts';
@@ -77,6 +79,17 @@ function NightBody({ first, locale }: { first: NightStart; locale: string }) {
   const view = track == null ? null : trackView(night, track, locale);
   const chosenRow = view?.later.find((row) => row.item.id === chosen) ?? null;
   const sheetShown = useModalOpen(kind !== 'tabletLandscape' && chosenRow != null);
+  const rows = useRef(new Map<string, ViewInstance>());
+  const [back, setBack] = useState<{ id: string } | null>(null);
+
+  useEffect(() => {
+    if (back == null) return;
+    const later = setTimeout(
+      () => moveScreenReaderFocus(rows.current.get(back.id) ?? null),
+      SETTLED_MS,
+    );
+    return () => clearTimeout(later);
+  }, [back]);
 
   useReadOut(night.said === '' ? null : night.said, { quietAtMount: true, answer: night.clock });
 
@@ -86,17 +99,25 @@ function NightBody({ first, locale }: { first: NightStart; locale: string }) {
     setMoving(false);
   };
   const close = () => {
+    if (chosen != null) setBack({ id: chosen });
     setChosen(null);
     setMoving(false);
   };
   const id = track?.id ?? '';
   const acts: Acts = {
     done: (item) => press(pressDone(night, id, item)),
-    skip: (item) => press(pressSkip(night, id, item)),
+    skip: (item) => {
+      if (item === chosen) setBack({ id: item });
+      press(pressSkip(night, id, item));
+    },
     start: (item) => press(pressStart(night, id, item)),
     choose: (item) => {
       setChosen(item);
       setMoving(false);
+    },
+    row: (item, node) => {
+      if (node == null) rows.current.delete(item);
+      else rows.current.set(item, node);
     },
   };
   const phone = kind === 'phone';
@@ -276,6 +297,7 @@ interface Acts {
   skip: (item: string) => void;
   start: (item: string) => void;
   choose: (item: string) => void;
+  row: (item: string, node: ViewInstance | null) => void;
 }
 
 function Head({
@@ -423,12 +445,16 @@ function Cards({
         <Text size={22} weight="bold">
           {NW.everything}
         </Text>
-        <Text size={17} weight="semibold">
-          {view.finished.sentence}
-        </Text>
-        <Text size={14} style={styles.secondary}>
-          {view.finished.workedOut}
-        </Text>
+        {view.finished.sentence != null && (
+          <Text size={17} weight="semibold">
+            {view.finished.sentence}
+          </Text>
+        )}
+        {view.finished.workedOut != null && (
+          <Text size={14} style={styles.secondary}>
+            {view.finished.workedOut}
+          </Text>
+        )}
         {view.finished.endNow && (
           <Pressable
             accessibilityRole="link"
@@ -671,6 +697,7 @@ function LaterCard({
             on={row.item.id === chosen}
             choosable={manage && row.mark === 'notStarted'}
             onChoose={() => acts.choose(row.item.id)}
+            onRef={(node) => acts.row(row.item.id, node)}
           />
         ))
       )}
@@ -685,11 +712,13 @@ function LaterLine({
   on,
   choosable,
   onChoose,
+  onRef,
 }: {
   row: LaterRow;
   on: boolean;
   choosable: boolean;
   onChoose: () => void;
+  onRef: (node: ViewInstance | null) => void;
 }) {
   const inner = (
     <>
@@ -730,11 +759,12 @@ function LaterLine({
       accessibilityState={{ selected: on }}
       style={[styles.laterRow, on && styles.laterOn]}
       testID={`night.later.${row.item.id}`}
+      ref={onRef}
     >
       {inner}
     </Pressable>
   ) : (
-    <View style={styles.laterRow} accessible>
+    <View style={styles.laterRow} accessible ref={onRef}>
       {inner}
     </View>
   );

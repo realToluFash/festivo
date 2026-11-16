@@ -175,6 +175,19 @@ describe('the end of the night', () => {
     );
   });
 
+  it('says no sentence and no worked-out line when every item was skipped', () => {
+    let { night } = nightAt('populated');
+    for (const id of ['booth', 'bar', 'carriages']) night = pressSkip(night, 'foyer', id);
+    const foyer = night.tracks.find((one) => one.id === 'foyer');
+
+    if (foyer == null) throw new Error('no Foyer');
+
+    expect(trackView(night, foyer, 'en-US').finished).toMatchObject({
+      sentence: null,
+      workedOut: null,
+    });
+  });
+
   it('shows End now only once the event has nothing left to run, to events.manage', () => {
     expect(endNowShows(nightAt('end_behind').night)).toBe(true);
     expect(hall('end_other_running').finished?.endNow).toBe(false);
