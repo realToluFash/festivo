@@ -1,6 +1,7 @@
+import { act, renderHook } from '@testing-library/react';
 import { describe, expect, it } from 'vitest';
 
-import { fitOf, intoView, planFitOf } from './seatingCamera.ts';
+import { fitOf, intoView, planFitOf, useCamera } from './seatingCamera.ts';
 import { percentOf } from './seatingDraw.ts';
 
 describe('the view following keyboard focus (sc-4007)', () => {
@@ -69,5 +70,21 @@ describe('Fit the room, held to the zoom bar’s range (sc-57678)', () => {
     expect(planFitOf(718, 719, { w: 2400, l: 1800 })).toEqual(
       fitOf(718, 719, { w: 2400, l: 1800 }),
     );
+  });
+
+  it('opens the plan on a 100 × 80 m room at 25%, and Fit the room comes back there', () => {
+    const { result } = renderHook(() =>
+      useCamera('sc-57678', { w: 10000, l: 8000 }, { w: 718, h: 719 }),
+    );
+
+    expect(percentOf(result.current.s)).toBe(25);
+    expect(result.current.atSmallest).toBe(true);
+
+    act(() => result.current.step(1));
+    expect(percentOf(result.current.s)).toBeGreaterThan(25);
+
+    act(() => result.current.fitRoom());
+    expect(percentOf(result.current.s)).toBe(25);
+    expect(result.current.atSmallest).toBe(true);
   });
 });
