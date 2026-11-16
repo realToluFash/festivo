@@ -88,6 +88,7 @@ const LOAD_MS = 1800;
 const PRINT_MS = 1500;
 const ARRIVES_MS = 1500;
 const DEFAULT_SIZE = { w: 718, h: 719 };
+const FLOAT_MARGINS = 3 * 12;
 
 /** Seating at a desk in A · The room (page e31, Seating-A-Desk-1 to -4): the room is the page, the panel at its right. */
 export function SeatingPage() {
@@ -1593,6 +1594,7 @@ function Seating({
               )}
               {!ui.readOnly && (
                 <AddBar
+                  floor={size.w}
                   menu={ui.menu}
                   placing={ui.placing?.kind ?? null}
                   onMenu={() => set((now) => ({ ...now, menu: !now.menu }))}
@@ -1894,6 +1896,7 @@ function KeysStrip() {
 }
 
 function AddBar({
+  floor,
   menu,
   placing,
   onMenu,
@@ -1901,6 +1904,7 @@ function AddBar({
   onRow,
   onSeat,
 }: {
+  floor: number;
   menu: boolean;
   placing: Kind | null;
   onMenu: () => void;
@@ -1915,15 +1919,31 @@ function AddBar({
     ['cocktail', SW.menuCocktail],
   ];
   const first = useRef<HTMLButtonElement>(null);
+  const bar = useRef<HTMLDivElement>(null);
+  const unfolded = useRef(0);
+  const [folded, setFolded] = useState(false);
+
+  useLayoutEffect(() => {
+    const box = bar.current;
+
+    if (box == null) return;
+    if (!folded) unfolded.current = box.getBoundingClientRect().width;
+    const zoom =
+      box.parentElement?.querySelector<HTMLElement>('.st-zoom')?.getBoundingClientRect().width ?? 0;
+
+    setFolded(unfolded.current + zoom + FLOAT_MARGINS > floor);
+  }, [floor, folded]);
 
   useEffect(() => {
     if (menu) first.current?.focus();
   }, [menu]);
 
+  const tableOn = placing != null && placing !== 'row' && placing !== 'single';
+
   return (
     <>
       {menu && (
-        <div className="st-float st-menu" role="menu" aria-label={SW.addTable}>
+        <div className="st-float st-menu" role="menu" aria-label={folded ? SW.add : SW.addTable}>
           {shapes.map(([kind, words], index) => (
             <button
               key={kind}
@@ -1937,32 +1957,60 @@ function AddBar({
               {words}
             </button>
           ))}
+          {folded && (
+            <>
+              <button
+                type="button"
+                role="menuitem"
+                className="st-menu-row"
+                onClick={() => {
+                  onMenu();
+                  onRow();
+                }}
+              >
+                <ShapeTile kind="row" />
+                {SW.menuRow}
+              </button>
+              <button
+                type="button"
+                role="menuitem"
+                className="st-menu-row"
+                onClick={() => {
+                  onMenu();
+                  onSeat();
+                }}
+              >
+                <ShapeTile kind="single" />
+                {SW.singleSeat}
+              </button>
+            </>
+          )}
         </div>
       )}
-      <div className="st-float st-add" role="group" aria-label={SW.addBar}>
+      <div className="st-float st-add" role="group" aria-label={SW.addBar} ref={bar}>
         <button
           type="button"
-          className={
-            menu || (placing != null && placing !== 'row' && placing !== 'single')
-              ? 'st-tool is-on'
-              : 'st-tool'
-          }
+          className={menu || (placing != null && (folded || tableOn)) ? 'st-tool is-on' : 'st-tool'}
           aria-haspopup="menu"
           aria-expanded={menu}
           onClick={onMenu}
         >
           <Icon name="plus" size={18} weight={2.2} />
-          {SW.addTable}
+          {folded ? SW.add : SW.addTable}
           <Icon name="chevdown" size={15} weight={2.4} />
         </button>
-        <button type="button" className="st-tool" onClick={onRow}>
-          <Icon name="row" size={18} weight={2.2} />
-          {SW.addRow}
-        </button>
-        <button type="button" className="st-tool" onClick={onSeat}>
-          <Icon name="seat1" size={18} weight={2.2} />
-          {SW.addSeat}
-        </button>
+        {!folded && (
+          <>
+            <button type="button" className="st-tool" onClick={onRow}>
+              <Icon name="row" size={18} weight={2.2} />
+              {SW.addRow}
+            </button>
+            <button type="button" className="st-tool" onClick={onSeat}>
+              <Icon name="seat1" size={18} weight={2.2} />
+              {SW.addSeat}
+            </button>
+          </>
+        )}
       </div>
     </>
   );
