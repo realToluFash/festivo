@@ -376,7 +376,7 @@ function TrayHere({ s, tray, z }: { s: StationState; tray: Tray; z: Sizes }) {
           </View>
           <View style={styles.grow}>
             <Text size={z.line} weight="semibold">
-              {[r.seat, r.variant, r.course].filter((x) => x !== '').join(' · ')}
+              {[r.seat, r.variant].filter((x) => x !== '').join(' · ')}
             </Text>
             {r.items.length === 0 ? (
               <Text size={z.line} style={styles.secondary}>
@@ -388,7 +388,7 @@ function TrayHere({ s, tray, z }: { s: StationState; tray: Tray; z: Sizes }) {
                 return (
                   <View key={it} style={styles.itemLine}>
                     <Text size={z.item} weight="bold" style={styles.grow}>
-                      {it}
+                      {r.course === '' ? it : `${r.course} · ${it}`}
                     </Text>
                     {r.mark === 'on' && <Chip status="on" big={!z.phone} />}
                     {r.mark === 'off' && <Chip status="off" big={!z.phone} />}
