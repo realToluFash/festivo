@@ -37,7 +37,7 @@ class EventPerson
     #[ORM\Column(type: Types::STRING, length: 20, enumType: EventRole::class)]
     private EventRole $role;
 
-    #[ORM\Column(type: Types::STRING, length: 60, nullable: true)]
+    #[ORM\Column(type: Types::STRING, length: 240, nullable: true)]
     private ?string $jobLabel;
 
     public function __construct(Event $event, Membership $membership, EventRole $role, ?string $jobLabel)

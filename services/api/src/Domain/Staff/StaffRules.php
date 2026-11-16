@@ -9,6 +9,7 @@ use App\Domain\User\Phone\PhoneNumberParser;
 use App\Entity\StaffMember;
 use App\Enum\ErrorCode;
 use App\Http\Exception\ApiException;
+use App\Locale\VisibleText;
 use Psl\Str;
 use Symfony\Contracts\Translation\TranslatorInterface;
 
@@ -29,7 +30,7 @@ final readonly class StaffRules
 
         if ('' === $name) {
             $violations[] = $this->violation('fullName', 'validation.staff_name_required');
-        } elseif (Str\length($name) > StaffMember::NAME_MAXIMUM) {
+        } elseif (VisibleText::tooLong($name, StaffMember::NAME_MAXIMUM)) {
             $violations[] = $this->violation('fullName', 'validation.staff_name_too_long');
         }
 

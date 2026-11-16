@@ -190,6 +190,24 @@ final class EventChangesTest extends MessagingTestCase
     }
 
     #[Test]
+    public function aMemberAndAnEventNamedToTheirLimitInMarkedLettersAreRecordedAndDelivered(): void
+    {
+        $actorName = Str\repeat("e\u{0323}\u{0300}", User::NAME_MAXIMUM);
+        $eventName = Str\repeat("e\u{0323}\u{0300}", Event::NAME_MAXIMUM);
+        $this->ada->setName($actorName);
+        $event = $this->liveEvent();
+        $event->setName($eventName);
+        self::em()->flush();
+
+        $this->edit($event, $this->ada, ['startsAt' => '2026-11-13T18:00:00', 'endsAt' => '2026-11-13T23:00:00']);
+        self::runUntilIdle();
+
+        self::assertSame([$actorName], self::connection()->fetchFirstColumn('SELECT actor_name FROM event_changes'));
+        self::assertSame([$eventName], self::connection()->fetchFirstColumn('SELECT event_name FROM notification_items WHERE user_id = :user', ['user' => $this->bola->getId()->toRfc4122()]));
+        self::assertSame($actorName . ' changed the event', $this->items($this->bola)[0]['title']);
+    }
+
+    #[Test]
     public function aMembersOwnEditWhileAnEarlierItemIsUnreadSendsThemNothing(): void
     {
         $event = $this->liveEvent();
