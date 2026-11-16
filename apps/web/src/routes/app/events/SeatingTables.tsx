@@ -20,7 +20,14 @@ import {
   TABLE_MINIMUM_CM,
   visibleLength,
 } from '@soirely/domain';
-import { type KeyboardEvent, type ReactNode, useEffect, useRef, useState } from 'react';
+import {
+  type KeyboardEvent,
+  type ReactNode,
+  useEffect,
+  useLayoutEffect,
+  useRef,
+  useState,
+} from 'react';
 import { useTranslation } from 'react-i18next';
 
 import { api } from '../../../api.ts';
@@ -103,24 +110,62 @@ function chairWord(t: T, table: SeatingTable, seat: number): string {
   return table.unusableSeats.includes(seat) ? t('seating.unusable') : t('seating.empty');
 }
 
-/** The floating add bar: Add table's menu, then what `more` adds beside it. */
-export function AddTable({ ctx, more }: { ctx: PlanApi; more?: ReactNode }) {
+const FLOAT_MARGINS = 3 * 12;
+
+/** The floating add bar: Add table's menu, Add row and Add seat; when the bar and the zoom do not fit the floor side by side, the two fold into one Add menu (sc-55937). */
+export function AddTable({
+  ctx,
+  floor,
+  onRow,
+  onSeat,
+}: {
+  ctx: PlanApi;
+  floor: number;
+  onRow: () => Promise<void>;
+  onSeat: () => Promise<void>;
+}) {
   const { t } = useTranslation();
   const locale = currentLocale();
   const [menu, setMenu] = useState(false);
+  const [folded, setFolded] = useState(false);
+  const [adding, setAdding] = useState(false);
   const first = useRef<HTMLButtonElement>(null);
+  const bar = useRef<HTMLDivElement>(null);
+  const unfolded = useRef(0);
+
+  useLayoutEffect(() => {
+    const box = bar.current;
+
+    if (box == null) return;
+    if (!folded) unfolded.current = box.getBoundingClientRect().width;
+    const zoom =
+      box.parentElement?.querySelector<HTMLElement>('.st-zoom')?.getBoundingClientRect().width ?? 0;
+
+    setFolded(unfolded.current + zoom + FLOAT_MARGINS > floor);
+  }, [floor, folded, locale]);
 
   useEffect(() => {
     if (menu) first.current?.focus();
   }, [menu]);
 
-  async function add(shape: TableShape): Promise<void> {
+  async function adds(change: () => Promise<void>): Promise<void> {
     setMenu(false);
+    setAdding(true);
+    try {
+      await change();
+    } finally {
+      setAdding(false);
+    }
+  }
+
+  async function add(shape: TableShape): Promise<void> {
     const added = await ctx.place(() => api.addSeatingTable(ctx.event.id, shape));
 
     if (added != null)
       ctx.open({ kind: 'table', id: added.id, said: t('seating.added', { name: added.name }) });
   }
+
+  const on = menu || (folded && adding);
 
   return (
     <>
@@ -129,7 +174,7 @@ export function AddTable({ ctx, more }: { ctx: PlanApi; more?: ReactNode }) {
           className="st-float st-menu"
           role="menu"
           tabIndex={-1}
-          aria-label={t('seating.addTable')}
+          aria-label={folded ? t('seating.add') : t('seating.addTable')}
           onKeyDown={(event) => {
             if (event.key !== 'Escape') return;
             event.stopPropagation();
@@ -146,9 +191,9 @@ export function AddTable({ ctx, more }: { ctx: PlanApi; more?: ReactNode }) {
                 type="button"
                 role="menuitem"
                 className="st-menu-row"
-                onClick={() => void add(shape)}
+                onClick={() => void adds(() => add(shape))}
               >
-                <ShapeTile shape={shape} />
+                <ShapeTile glyph={shape === 'rectangular' ? 'rect' : shape} />
                 {t(SHAPE_WORDS[shape].menu, {
                   size: tableSizeWords(t, locale, { shape, ...defaults }, ctx.system),
                   seats: seatsWords(t, shape, defaults.seats),
@@ -156,30 +201,63 @@ export function AddTable({ ctx, more }: { ctx: PlanApi; more?: ReactNode }) {
               </button>
             );
           })}
+          {folded && (
+            <>
+              <button
+                type="button"
+                role="menuitem"
+                className="st-menu-row"
+                onClick={() => void adds(onRow)}
+              >
+                <ShapeTile glyph="row" />
+                {t('seating.menuRow')}
+              </button>
+              <button
+                type="button"
+                role="menuitem"
+                className="st-menu-row"
+                onClick={() => void adds(onSeat)}
+              >
+                <ShapeTile glyph="seat1" />
+                {t('seating.singleSeat')}
+              </button>
+            </>
+          )}
         </div>
       )}
-      <div className="st-float st-add" role="group" aria-label={t('seating.addBar')}>
+      <div className="st-float st-add" role="group" aria-label={t('seating.addBar')} ref={bar}>
         <button
           type="button"
-          className={menu ? 'st-tool is-on' : 'st-tool'}
+          className={on ? 'st-tool is-on' : 'st-tool'}
           aria-haspopup="menu"
           aria-expanded={menu}
           onClick={() => setMenu((open) => !open)}
         >
           <Glyph name="plus" size={18} weight={2.2} />
-          {t('seating.addTable')}
+          {folded ? t('seating.add') : t('seating.addTable')}
           <Glyph name="chevdown" size={15} weight={2.4} />
         </button>
-        {more}
+        {!folded && (
+          <>
+            <button type="button" className="st-tool" onClick={() => void adds(onRow)}>
+              <Glyph name="row" size={18} weight={2.2} />
+              {t('seating.addRow')}
+            </button>
+            <button type="button" className="st-tool" onClick={() => void adds(onSeat)}>
+              <Glyph name="seat1" size={18} weight={2.2} />
+              {t('seating.addSeat')}
+            </button>
+          </>
+        )}
       </div>
     </>
   );
 }
 
-function ShapeTile({ shape }: { shape: TableShape }) {
+function ShapeTile({ glyph }: { glyph: 'round' | 'rect' | 'head' | 'cocktail' | 'row' | 'seat1' }) {
   return (
     <span className="st-shape-tile is-36" aria-hidden="true">
-      <Glyph name={shape === 'rectangular' ? 'rect' : shape} size={22} weight={1.9} />
+      <Glyph name={glyph} size={22} weight={1.9} />
     </span>
   );
 }
@@ -529,6 +607,7 @@ export function TablePanel({
   said: string | undefined;
 }) {
   const { t } = useTranslation();
+  const leave = () => ctx.open(null);
   const locale = currentLocale();
   const [note, setNote] = useState<string | null>(null);
   const round = isRoundShape(table.shape);
@@ -588,7 +667,13 @@ export function TablePanel({
         </Said>
       )}
       <div className="st-fields">
-        <Field fieldKey="name" label={t('seating.name')} value={table.name} onCommit={name} />
+        <Field
+          onLeave={leave}
+          fieldKey="name"
+          label={t('seating.name')}
+          value={table.name}
+          onCommit={name}
+        />
         <Select
           fieldKey="section"
           label={t('seating.section')}
@@ -625,12 +710,14 @@ export function TablePanel({
         {round ? (
           <div className="st-two">
             <Field
+              onLeave={leave}
               fieldKey="seats"
               label={t(cocktail ? 'seating.places' : 'seating.seats')}
               value={String(table.seats)}
               onCommit={seats}
             />
             <Field
+              onLeave={leave}
               fieldKey="diameter"
               label={t('seating.diameter')}
               unit={unit}
@@ -643,6 +730,7 @@ export function TablePanel({
           <>
             <div className="st-two">
               <Field
+                onLeave={leave}
                 fieldKey="width"
                 label={t('seating.width')}
                 unit={unit}
@@ -651,6 +739,7 @@ export function TablePanel({
                 onCommit={(text) => size('widthCm', text)}
               />
               <Field
+                onLeave={leave}
                 fieldKey="length"
                 label={t('seating.length')}
                 unit={unit}
@@ -661,12 +750,14 @@ export function TablePanel({
             </div>
             <div className="st-two">
               <Field
+                onLeave={leave}
                 fieldKey="seats"
                 label={t('seating.seats')}
                 value={String(table.seats)}
                 onCommit={seats}
               />
               <Field
+                onLeave={leave}
                 fieldKey="ends"
                 label={t('seating.ends')}
                 value={String(table.endSeats)}
