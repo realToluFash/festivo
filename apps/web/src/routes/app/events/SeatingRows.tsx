@@ -211,7 +211,7 @@ export function RowDrawing({
     name,
     shape: t('seating.kindRow', { count: row.seats }),
     taken: 0,
-    count: row.seats,
+    count: row.seats - row.unusableSeats.length,
   });
 
   return (

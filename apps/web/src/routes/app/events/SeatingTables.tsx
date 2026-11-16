@@ -391,7 +391,7 @@ export function TableDrawing({
     name: table.name,
     shape: t(SHAPE_WORDS[table.shape].kind),
     taken: 0,
-    count: table.seats,
+    count: table.seats - table.unusableSeats.length,
   });
 
   return (

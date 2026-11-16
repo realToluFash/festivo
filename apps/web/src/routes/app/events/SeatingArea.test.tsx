@@ -890,6 +890,41 @@ describe('Tables at a desk (sc-4000)', () => {
     });
   });
 
+  it('counts only usable chairs in a table’s name, and follows a chair marked unusable', async () => {
+    signedIn();
+    await onSeating({
+      'GET /api/events/ev_1/seating-plan': () =>
+        seating(
+          withTables(
+            table({ seats: 8, unusableSeats: [2] }),
+            table({ id: 't2', name: 'Table 2', seats: 2, unusableSeats: [1], xCm: 400 }),
+            table({ id: 't3', name: 'Table 3', seats: 2, unusableSeats: [1, 2], xCm: 700 }),
+          ),
+        ),
+      'PATCH /api/events/ev_1/seating-plan/tables/t1': () =>
+        seating(
+          withTables(
+            table({ seats: 8, unusableSeats: [2, 3], version: 2 }),
+            table({ id: 't2', name: 'Table 2', seats: 2, unusableSeats: [1], xCm: 400 }),
+            table({ id: 't3', name: 'Table 3', seats: 2, unusableSeats: [1, 2], xCm: 700 }),
+          ),
+          't1',
+        ),
+    });
+
+    await chooseTable('Table 1, round, 0 of 7 seats taken');
+    expect(screen.getByRole('button', { name: 'Table 2, round, 0 of 1 seat taken' })).toBeDefined();
+    expect(
+      screen.getByRole('button', { name: 'Table 3, round, 0 of 0 seats taken' }),
+    ).toBeDefined();
+    fireEvent.click(screen.getByRole('button', { name: 'Table 1, Seat 3, Empty' }));
+    fireEvent.click(await screen.findByRole('button', { name: 'Mark unusable' }));
+
+    expect(
+      await screen.findByRole('button', { name: 'Table 1, round, 0 of 6 seats taken' }),
+    ).toBeDefined();
+  });
+
   it('counts a name’s letters as a reader sees them, marks and all', async () => {
     signedIn();
     const thirty = 'e\u0323\u0300'.repeat(30);
@@ -1260,6 +1295,18 @@ describe('Rows and single seats at a desk (sc-4003)', () => {
     fireEvent.click(within(ask).getByRole('button', { name: 'Delete Row B' }));
     await waitFor(() => expect(document.querySelector('[data-row="r2"]')).toBeNull());
     expect(sent.find((one) => one.line.startsWith('DELETE'))?.ifMatch).toBe('"1"');
+  });
+
+  it('counts only usable chairs in a row’s name, while “row of” counts every chair', async () => {
+    signedIn();
+    await onSeating({
+      'GET /api/events/ev_1/seating-plan': () =>
+        seating(withRowsAndSeats([row({ unusableSeats: [4, 7] })], [])),
+    });
+
+    expect(
+      await screen.findByRole('button', { name: 'Row A, row of 10, 0 of 8 seats taken' }),
+    ).toBeDefined();
   });
 
   it('sends a second field entered before the first answers with the version the first saved', async () => {
@@ -1788,7 +1835,7 @@ describe('The room to scale (sc-4007)', () => {
         }),
     });
 
-    await screen.findByRole('button', { name: TABLE_1 });
+    await screen.findByRole('button', { name: 'Table 1, round, 0 of 9 seats taken' });
     press('Zoom out');
     expect(percent()).toBe('50%');
     expect(document.querySelectorAll('[data-table="t1"] .st-chair')).toHaveLength(10);
@@ -1804,7 +1851,7 @@ describe('The room to scale (sc-4007)', () => {
     ]);
     expect(document.querySelector('[data-seat="s1"] .st-fill')).toBeNull();
     expect(
-      screen.getByRole('button', { name: 'Table 1, round, 0 of 10 seats taken' }),
+      screen.getByRole('button', { name: 'Table 1, round, 0 of 9 seats taken' }),
     ).toBeDefined();
   });
 
