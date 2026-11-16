@@ -15,12 +15,18 @@ export type Handoff =
   | { kind: 'loading' }
   | { kind: 'shown'; page: HandoffPage; name: string | null };
 
-const AREA_NEEDS: Partial<Record<SideArea, string>> = {
+/** What each event page needs before EventView shows it; a page missing here needs only the event. */
+export const PAGE_NEEDS = {
   guests: 'guests.read',
   seating: 'seating.read',
   schedule: 'run_of_show.read',
+  run: 'run_of_show.read',
   staff: 'staff.read',
-};
+} as const;
+
+function needsOf(page: string): string | null {
+  return Object.hasOwn(PAGE_NEEDS, page) ? PAGE_NEEDS[page as keyof typeof PAGE_NEEDS] : null;
+}
 
 /** The pages main has under `/app/events`, and what each needs that EventView checks before it shows one. */
 export function handoffPage(pathname: string): HandoffPage | null {
@@ -31,7 +37,7 @@ export function handoffPage(pathname: string): HandoffPage | null {
 
   const roster = matchPath('/app/events/:eventId/staff/roster', pathname)?.params.eventId;
   if (roster != null)
-    return { kind: 'event', eventId: roster, area: 'staff', needs: AREA_NEEDS.staff ?? null };
+    return { kind: 'event', eventId: roster, area: 'staff', needs: PAGE_NEEDS.staff };
 
   const part = matchPath('/app/events/:eventId/:part', pathname)?.params;
   const eventId = part?.eventId;
@@ -40,9 +46,9 @@ export function handoffPage(pathname: string): HandoffPage | null {
   if (eventId == null) return null;
   if (name === 'edit' || name === 'dates')
     return { kind: 'event', eventId, area: 'overview', needs: null };
-  if (name === 'run') return { kind: 'event', eventId, area: null, needs: 'run_of_show.read' };
+  if (name === 'run') return { kind: 'event', eventId, area: null, needs: PAGE_NEEDS.run };
   if (name === 'guests' || name === 'people' || isPlaceholderEventArea(name))
-    return { kind: 'event', eventId, area: name, needs: AREA_NEEDS[name] ?? null };
+    return { kind: 'event', eventId, area: name, needs: needsOf(name) };
 
   return null;
 }

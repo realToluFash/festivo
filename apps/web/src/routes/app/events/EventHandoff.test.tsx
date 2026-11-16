@@ -259,6 +259,7 @@ describe('an event’s page at a phone’s width hands over to the app (sc-55397
     serving({});
     open('/app/events');
 
+    await screen.findByRole('heading', { level: 1, name: 'Events' });
     expect(screen.queryByRole('button', { name: 'Show this page anyway' })).toBeNull();
   });
 });
