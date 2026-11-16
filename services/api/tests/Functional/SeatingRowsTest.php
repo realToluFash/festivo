@@ -23,7 +23,6 @@ use PHPUnit\Framework\Attributes\DataProvider;
 use PHPUnit\Framework\Attributes\Test;
 use Psl\Iter;
 use Psl\Json;
-use Psl\Math;
 use Psl\Str;
 use Psl\Type;
 use Psl\Vec;
@@ -80,8 +79,7 @@ final class SeatingRowsTest extends ApiTestCase
 
         self::assertSame('B', $second['label']);
         self::assertSame('A', $third['label']);
-        self::assertSame($first['xCm'], $second['xCm']);
-        self::assertGreaterThanOrEqual(44, Math\abs(Type\int()->coerce($second['yCm']) - Type\int()->coerce($first['yCm'])));
+        self::assertSame([1200, 990], [$second['xCm'], $second['yCm']]);
     }
 
     #[Test]
@@ -241,7 +239,7 @@ final class SeatingRowsTest extends ApiTestCase
         self::assertSame(201, $this->statusCode());
         self::assertSame(['Seat 1', 'Seat 2', 'Seat 1'], [$first['name'], $second['name'], $third['name']]);
         self::assertFalse($first['unusable']);
-        self::assertNotSame([$first['xCm'], $first['yCm']], [$second['xCm'], $second['yCm']]);
+        self::assertSame([[1200, 900], [1200, 990]], [[$first['xCm'], $first['yCm']], [$second['xCm'], $second['yCm']]]);
     }
 
     #[Test]
