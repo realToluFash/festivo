@@ -431,6 +431,31 @@ describe('the plan and the room (sc-3998, sc-4007)', () => {
       }
     });
 
+    it(
+      'slides an item up until its focus halo, drawn after the focus, clears the small map (sc-57361)',
+      SLOW,
+      async () => {
+        const { table, measured } = await table4((node, t) =>
+          node === t
+            ? [600, 560, 660, 590]
+            : node.classList.contains('st-minimap')
+              ? [530, 607, 702, 739]
+              : null,
+        );
+        const top = () => Number(document.querySelector('.st-floor[y]')?.getAttribute('y'));
+
+        try {
+          const before = top();
+
+          table.focus();
+          // 590 + 20 of ring and halo + 8 clear - 607 of map: 11 px up.
+          await waitFor(() => expect(before - top()).toBeCloseTo(11, 1), WAIT);
+        } finally {
+          measured.mockRestore();
+        }
+      },
+    );
+
     it('leaves the view where it is when a click puts the focus there', SLOW, async () => {
       const { table, measured } = await table4((node, t) =>
         node === t ? [800, 300, 900, 400] : null,
