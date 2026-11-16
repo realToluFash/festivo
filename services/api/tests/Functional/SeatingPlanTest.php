@@ -112,6 +112,8 @@ final class SeatingPlanTest extends ApiTestCase
         yield 'too narrow' => [['widthCm' => 199, 'lengthCm' => 1000], 'widthCm', 'The room must be between 2 m and 500 m.'];
         yield 'too long' => [['widthCm' => 1000, 'lengthCm' => 50_001], 'lengthCm', 'The room must be between 2 m and 500 m.'];
         yield 'a long room name' => [['roomName' => Str\repeat('a', 61), 'widthCm' => 1000, 'lengthCm' => 1000], 'roomName', 'Shorten the room name to 60 characters or fewer.'];
+        yield 'a long room name of marked letters' => [['roomName' => Str\repeat("e\u{0323}\u{0300}", 61), 'widthCm' => 1000, 'lengthCm' => 1000], 'roomName', 'Shorten the room name to 60 characters or fewer.'];
+        yield 'a room name of one letter of many marks' => [['roomName' => 'a' . Str\repeat("\u{0301}", 240), 'widthCm' => 1000, 'lengthCm' => 1000], 'roomName', 'Shorten the room name to 60 characters or fewer.'];
     }
 
     /** @param array<string, mixed> $body */
@@ -124,6 +126,19 @@ final class SeatingPlanTest extends ApiTestCase
         self::assertSame(422, $this->statusCode());
         self::assertSame($message, $this->violation($field));
         self::assertNull($this->seating($this->as($this->owner, 'GET', $this->plan()))['plan']);
+    }
+
+    #[Test]
+    public function sixtyLettersWithADotAndAToneEachNameTheRoomAndReadBack(): void
+    {
+        $composed = Str\repeat("\u{1EB9}\u{0300}", 60);
+        $decomposed = Str\repeat("e\u{0323}\u{0300}", 60);
+
+        self::assertSame($composed, $this->planOf($this->seating($this->as($this->owner, 'POST', $this->plan(), ['roomName' => $composed, 'widthCm' => 2400, 'lengthCm' => 1800])))['roomName']);
+
+        $this->as($this->owner, 'PATCH', $this->plan(), ['roomName' => $decomposed], '"1"');
+        self::assertSame(200, $this->statusCode());
+        self::assertSame($decomposed, $this->planOf($this->seating($this->as($this->owner, 'GET', $this->plan())))['roomName']);
     }
 
     #[Test]
@@ -197,6 +212,8 @@ final class SeatingPlanTest extends ApiTestCase
         yield 'accents' => ['Terrâce', 'This plan already has a section called Terrace.'];
         yield 'blank' => ['   ', 'Enter a name for the section.'];
         yield 'too long' => [Str\repeat('a', 41), 'Use 40 characters or fewer.'];
+        yield 'too long in marked letters' => [Str\repeat("e\u{0323}\u{0300}", 41), 'Use 40 characters or fewer.'];
+        yield 'one letter of many marks' => ['a' . Str\repeat("\u{0301}", 160), 'Use 40 characters or fewer.'];
     }
 
     #[Test]
@@ -257,6 +274,21 @@ final class SeatingPlanTest extends ApiTestCase
 
         self::assertSame(200, $this->statusCode());
         self::assertSame(['Garden', 'teal'], [$this->planOf($seating)['sections'][0]['name'], $this->planOf($seating)['sections'][0]['colour']]);
+    }
+
+    #[Test]
+    public function fortyLettersWithADotAndAToneEachNameASectionAndReadBack(): void
+    {
+        $this->started();
+        $composed = Str\repeat("\u{1EB9}\u{0300}", 40);
+        $decomposed = Str\repeat("e\u{0323}\u{0300}", 40);
+        $section = $this->addSection($composed);
+        self::assertSame($composed, $this->planOf($this->seating($this->as($this->owner, 'GET', $this->plan())))['sections'][0]['name']);
+
+        $this->as($this->owner, 'PATCH', $this->sections() . '/' . $section['id'], ['name' => $decomposed], '"' . $section['version'] . '"');
+
+        self::assertSame(200, $this->statusCode());
+        self::assertSame($decomposed, $this->planOf($this->seating($this->as($this->owner, 'GET', $this->plan())))['sections'][0]['name']);
     }
 
     #[Test]

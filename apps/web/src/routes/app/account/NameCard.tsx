@@ -1,5 +1,5 @@
 import { ApiError } from '@soirely/api-client';
-import { ACCOUNT_NAME_MAXIMUM, nameToSave } from '@soirely/domain';
+import { nameToSave } from '@soirely/domain';
 import { useEffect, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 
@@ -145,7 +145,6 @@ function Editing({
           autoComplete="name"
           autoCorrect="off"
           spellCheck={false}
-          maxLength={ACCOUNT_NAME_MAXIMUM}
           value={typed}
           {...offField(saving)}
           aria-invalid={error != null}

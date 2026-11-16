@@ -1,4 +1,4 @@
-import { ACCOUNT_NAME_MAXIMUM, nameToSave } from '@soirely/domain';
+import { nameToSave } from '@soirely/domain';
 import type { TFunction } from 'i18next';
 import { type RefObject, useRef, useState } from 'react';
 import type { TextInputInstance } from 'react-native';
@@ -109,7 +109,6 @@ export function NameScreen({
           textContentType="name"
           autoCorrect={false}
           spellCheck={false}
-          maxLength={ACCOUNT_NAME_MAXIMUM}
           returnKeyType="done"
           onChangeText={(text) => {
             typed.current = text;

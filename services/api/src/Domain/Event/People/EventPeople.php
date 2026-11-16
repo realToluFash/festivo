@@ -14,6 +14,7 @@ use App\Enum\ErrorCode;
 use App\Enum\EventRole;
 use App\Enum\MembershipStatus;
 use App\Http\Exception\ApiException;
+use App\Locale\VisibleText;
 use App\Repository\EventPersonRepository;
 use Doctrine\ORM\EntityManagerInterface;
 use Psl\Str;
@@ -98,7 +99,7 @@ final readonly class EventPeople
     {
         $label = null === $typed ? '' : Str\trim($typed);
 
-        if (Str\length($label) > EventPerson::JOB_LABEL_MAXIMUM) {
+        if (VisibleText::tooLong($label, EventPerson::JOB_LABEL_MAXIMUM)) {
             throw $this->invalid('jobLabel', 'people.job_label_too_long', ['{count}' => (string) EventPerson::JOB_LABEL_MAXIMUM]);
         }
 

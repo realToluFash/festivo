@@ -40,7 +40,7 @@ class NotificationItem
     #[ORM\Column(type: 'uuid', nullable: true)]
     private ?Uuid $eventId;
 
-    #[ORM\Column(type: Types::STRING, length: 255, nullable: true)]
+    #[ORM\Column(type: Types::STRING, length: 480, nullable: true)]
     private ?string $eventName;
 
     #[ORM\Column(type: Types::STRING, length: 500, nullable: true)]
