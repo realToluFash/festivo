@@ -2784,7 +2784,7 @@
     "unusable": "Inutilizável",
     "markUnusable": "Marcar como inutilizável",
     "markUsable": "Marcar como utilizável",
-    "added": "{{name}} foi adicionada no espaço livre mais próximo.",
+    "added": "{{name}} ficou no espaço livre mais próximo.",
     "duplicated": "{{name}} foi adicionada, uma cópia de {{of}} sem ninguém sentado.",
     "squeeze": "Com {{seats}}, uma mesa de {{size}} fica apertada.",
     "sizeResetRound": "As medidas voltaram às da mesa redonda predefinida: {{size}}. O número de lugares mantém-se em {{count, number}}.",
