@@ -3209,6 +3209,27 @@ async function nextCode(email, secret) {
   return totp(secret, step);
 }
 
+// The web has no batch to type a code into, so a tester signs in there with this one.
+export function parseCode(args) {
+  const vars = Object.fromEntries(
+    args
+      .filter((arg) => /^[A-Z][A-Z0-9_]*=/.test(arg))
+      .map((arg) => [arg.slice(0, arg.indexOf('=')), arg.slice(arg.indexOf('=') + 1)]),
+  );
+  const { EMAIL: email, TOTP_SECRET: secret } = vars;
+  if (!email || !secret) throw new Error('whose code? EMAIL=… TOTP_SECRET=…, from `account`');
+  totp(secret, 0);
+  return { email, secret };
+}
+
+async function code(args) {
+  const { email, secret } = parseCode(args);
+  const value = await nextCode(email, secret);
+  const left = Math.round((STEP_MS - (Date.now() % STEP_MS)) / 1000);
+  process.stderr.write(`valid for about ${left}s; batches for ${email} skip past it\n`);
+  console.log(value);
+}
+
 async function signIn(email, password, secret) {
   const answer = await api('/api/auth/login', { body: { email, password } });
   if (typeof answer.twoFactorChallenge !== 'string') return answer;
@@ -4275,6 +4296,7 @@ const COMMANDS = {
   batch,
   hierarchy,
   account,
+  code,
   chrome,
 };
 

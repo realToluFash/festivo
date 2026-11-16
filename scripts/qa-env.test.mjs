@@ -71,6 +71,7 @@ import {
   composeBatch,
   localise,
   parseBatch,
+  parseCode,
   readyReport,
   accountKind,
   REBUILD,
@@ -1968,6 +1969,23 @@ describe('the step a code is made in', () => {
 
   it('is now, when the last was long ago', () => {
     expect(codeStep(10 * STEP_MS, 3)).toEqual({ step: 10, waitMs: 0 });
+  });
+});
+
+describe('the code command', () => {
+  it('reads whose code from the account line', () => {
+    expect(parseCode(['EMAIL=a@b.test', 'TOTP_SECRET=GEZDGNBV'])).toEqual({
+      email: 'a@b.test',
+      secret: 'GEZDGNBV',
+    });
+  });
+
+  it('refuses without a secret', () => {
+    expect(() => parseCode(['EMAIL=a@b.test'])).toThrow('TOTP_SECRET');
+  });
+
+  it('refuses a secret that is not base32 before waiting for a step', () => {
+    expect(() => parseCode(['EMAIL=a@b.test', 'TOTP_SECRET=nope!'])).toThrow('base32');
   });
 });
 
