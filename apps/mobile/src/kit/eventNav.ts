@@ -43,6 +43,9 @@ const EDIT_AT: Readonly<Record<string, EditPart>> = {
   currency: 'currency',
 };
 
+/** The route param a link to /events/<id>/edit names its part in; the event's screen clears it once the part is open, so a second link opens its own (sc-48600). */
+export const EDIT_AT_PARAM = 'at';
+
 /** Marks a link to /events/<id>/edit as opened from a screen in the app, so Cancel goes back to it (sc-48600). */
 export const EDIT_LEAVES = 'back';
 
@@ -63,5 +66,5 @@ export function guestsHref(eventId: string, filter: string): `/events/${string}`
 
 /** A card's Change dates opens the event's Dates and Cancel goes back to Events (sc-48600). */
 export function changeDatesHref(eventId: string): `/events/${string}` {
-  return `/events/${encodeURIComponent(eventId)}/edit?at=starts&${EDIT_LEAVES}=1`;
+  return `/events/${encodeURIComponent(eventId)}/edit?${EDIT_AT_PARAM}=starts&${EDIT_LEAVES}=1`;
 }

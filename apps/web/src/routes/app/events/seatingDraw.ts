@@ -24,6 +24,10 @@ export function sectionOf(plan: SeatingPlan, item: { sectionId: string | null })
   return plan.sections.find((one) => one.id === item.sectionId) ?? null;
 }
 
+export function usableSeats(item: { seats: number; unusableSeats: readonly number[] }): number {
+  return item.seats - item.unusableSeats.length;
+}
+
 export function f(value: number): number {
   return Math.round(value * 10) / 10;
 }

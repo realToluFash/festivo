@@ -21,6 +21,7 @@ use DateTimeImmutable;
 use Lexik\Bundle\JWTAuthenticationBundle\Services\JWTTokenManagerInterface;
 use PHPUnit\Framework\Attributes\DataProvider;
 use PHPUnit\Framework\Attributes\Test;
+use Psl\Dict;
 use Psl\Iter;
 use Psl\Json;
 use Psl\Math;
@@ -166,6 +167,41 @@ final class SeatingTablesTest extends ApiTestCase
 
         self::assertSame(422, $this->statusCode());
         self::assertSame($message, $this->violation($path));
+        self::assertSame($table, $this->tablesNow()[0]);
+    }
+
+    /** @return iterable<string, array{string, array<string, mixed>, array<string, mixed>, array<string, string>}> */
+    public static function refusedOnlyWhereWrong(): iterable
+    {
+        $seats = 'Enter a number of seats from 1 to 30.';
+
+        yield 'seats alone on a round table' => ['round', [], ['seats' => -1], ['seats' => $seats]];
+        yield 'seats alone on a table with ends' => ['rectangular', ['endSeats' => 2], ['seats' => -1], ['seats' => $seats]];
+        yield 'seats beside no ends' => ['rectangular', [], ['seats' => -1, 'endSeats' => 0], ['seats' => $seats]];
+        yield 'seats beside ends of their own fault' => ['rectangular', [], ['seats' => -1, 'endSeats' => -1], [
+            'seats' => $seats,
+            'endSeats' => 'Enter 0 to 0, no more than the table has seats.',
+        ]];
+        yield 'ends on a round table' => ['round', [], ['endSeats' => 1], ['endSeats' => 'Only a rectangular or head table has seats on the ends.']];
+        yield 'ends on a cocktail table' => ['cocktail', [], ['endSeats' => 1], ['endSeats' => 'Only a rectangular or head table has seats on the ends.']];
+    }
+
+    /**
+     * @param array<string, mixed>  $before
+     * @param array<string, mixed>  $fields
+     * @param array<string, string> $violations
+     */
+    #[Test]
+    #[DataProvider('refusedOnlyWhereWrong')]
+    public function aChangeIsRefusedOnlyOnTheFieldsItGotWrong(string $shape, array $before, array $fields, array $violations): void
+    {
+        $table = $this->addTable($shape);
+        $table = [] === $before ? $table : $this->change($table, $before);
+
+        $this->as($this->owner, 'PATCH', $this->tables() . '/' . $table['id'], $fields, '"' . $table['version'] . '"');
+
+        self::assertSame(422, $this->statusCode());
+        self::assertSame($violations, $this->violations());
         self::assertSame($table, $this->tablesNow()[0]);
     }
 
@@ -549,6 +585,14 @@ final class SeatingTablesTest extends ApiTestCase
             'withoutSection' => Type\mixed(),
             'counts' => Type\dict(Type\string(), Type\int()),
         ], true)->coerce(Type\dict(Type\string(), Type\mixed())->coerce($seating)['plan'] ?? null);
+    }
+
+    /** @return array<string, string> each violation's message by its field */
+    private function violations(): array
+    {
+        $violations = Type\vec(Type\shape(['propertyPath' => Type\string(), 'message' => Type\string()], true))->coerce($this->last()['violations'] ?? []);
+
+        return Dict\pull($violations, static fn (array $violation): string => $violation['message'], static fn (array $violation): string => $violation['propertyPath']);
     }
 
     private function violation(string $path): ?string

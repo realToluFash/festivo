@@ -24,8 +24,9 @@ describe('Cover in the app says a refused save in the top notice (sc-52652)', ()
     expect(choose).not.toContain('coverSaveRefusalOf');
   });
 
-  it('clears the top notice when another photo uploads, and before each save', () => {
-    expect(choose).toMatch(/setPhoto\(\{ kind: 'ready'[^\n]+\n\s+setFailed\(null\);/u);
+  it('keeps the top notice until the next save is sent (sc-53442)', () => {
+    expect(cover.match(/setFailed\(null\)/gu)).toHaveLength(1);
+    expect(choose).not.toContain('setFailed(');
     expect(use).toMatch(/setBusy\(true\);\s+setFailed\(null\);/u);
   });
 });

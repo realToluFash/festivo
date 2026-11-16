@@ -33,6 +33,7 @@ import {
   rotations,
   sectionOf,
   turned,
+  usableSeats,
 } from './seatingDraw.ts';
 import { ChairMark, OutWords, StateMark } from './SeatingTables.tsx';
 import {
@@ -55,7 +56,7 @@ function rowLine(t: T, plan: SeatingPlan, row: SeatingRow): string {
     shape: t('seating.rowOf', { count: row.seats }),
     section: sectionOf(plan, row)?.name ?? t('seating.noSection'),
     taken: 0,
-    seats: row.seats - row.unusableSeats.length,
+    seats: usableSeats(row),
   });
 }
 
@@ -197,7 +198,7 @@ export function RowDrawing({
     name,
     shape: t('seating.kindRow', { count: row.seats }),
     taken: 0,
-    count: row.seats,
+    count: usableSeats(row),
   });
 
   return (
@@ -241,7 +242,7 @@ export function RowDrawing({
           y={cy + Math.max(ey, 40) * s + 12}
           name={name}
           taken={0}
-          seats={row.seats - row.unusableSeats.length}
+          seats={usableSeats(row)}
         />
       )}
       {outside && box(6, 'st-overlap')}

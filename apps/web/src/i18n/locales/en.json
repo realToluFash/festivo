@@ -2784,6 +2784,12 @@
     "keyDuplicate": "duplicates",
     "keyDelete": "asks first",
     "keyEsc": "lets go",
+    "keyName": {
+      "shift": "Shift",
+      "delete": "Delete",
+      "esc": "Esc",
+      "ctrl": "Ctrl"
+    },
     "placingRound": "Click the floor to place a round table. It snaps to the grid. Esc stops.",
     "placingRectangular": "Click the floor to place a rectangular table. It snaps to the grid. Esc stops.",
     "placingHead": "Click the floor to place a head table. It snaps to the grid. Esc stops.",
@@ -3381,13 +3387,13 @@
   "search": {
     "row": "Search",
     "field": {
-      "egm": "Search events, guests and members",
-      "eg": "Search events and guests",
-      "em": "Search events and members",
-      "gm": "Search guests and members",
-      "e": "Search events",
-      "g": "Search guests",
-      "m": "Search members"
+      "egm": "Search",
+      "eg": "Search",
+      "em": "Search",
+      "gm": "Search",
+      "e": "Search",
+      "g": "Search",
+      "m": "Search"
     },
     "hint": {
       "egm": "Find an event, a guest or a member.",

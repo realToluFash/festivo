@@ -441,3 +441,31 @@ describe('an anchored menu starts TalkBack on its first row (sc-52641)', () => {
     expect(opened).toMatch(/ref=\{(index === 0 \? first : undefined|first)\}/);
   });
 });
+
+describe('going back up from a level of Events’ Filter (sc-53520)', () => {
+  const search = readFileSync(join(import.meta.dirname, 'EventsSearch.tsx'), 'utf8');
+  const menu = search.slice(search.indexOf('function EventsFilterMenu'));
+  const body = menu.slice(0, menu.indexOf('</AnchoredMenu>'));
+
+  it.each([
+    ['type', 'first'],
+    ['when', 'whenRow'],
+    ['hosts', 'hostsRow'],
+  ])('puts TalkBack’s focus back on the row the %s level came from', (level, row) => {
+    expect(body).toContain(`onBack={() => back('${level}')}`);
+    expect(body).toContain(`${level}: ${row}`);
+    expect(body).toMatch(
+      new RegExp(`ref=\\{${row}\\}[\\s\\S]*?testID="events\\.filter\\.${level}"`),
+    );
+  });
+
+  it('moves it on Android only, once the menu’s rows are back', () => {
+    expect(body).toMatch(
+      /if \(Platform\.OS !== 'android' \|\| level !== 'top' \|\| cameFrom == null\) return;[\s\S]*?const wait = setTimeout\(\(\) => moveScreenReaderFocus\(row\.current\)\);/,
+    );
+  });
+
+  it('forgets the level as the menu closes, so Android’s Back still hands focus to Filter', () => {
+    expect(body).toMatch(/const close = \(\) => \{\s*setLevel\('top'\);\s*setCameFrom\(null\);/);
+  });
+});

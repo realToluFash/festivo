@@ -168,7 +168,7 @@ describe('the plan and the room (sc-3998, sc-4007)', () => {
 
     expect(links).toHaveLength(SEATING_STATES.length);
     expect(links[0]?.getAttribute('href')).toBe(AT);
-    expect(links.at(-1)?.getAttribute('href')).toBe(`${AT}?state=crumbWidths`);
+    expect(links.at(-1)?.getAttribute('href')).toBe(`${AT}?state=crumbFocus`);
   });
 
   it('is the event’s own Seating entry, lit while it is open', SLOW, async () => {
@@ -911,6 +911,67 @@ describe('tables, rows and seats (sc-4000, sc-4003)', () => {
     }
   });
 
+  it.each([
+    [300, false],
+    [460, true],
+  ])(
+    'with the folded bar %i px wide, the zoom steps up above it: %s',
+    SLOW,
+    async (foldedWidth, up) => {
+      const measured = vi
+        .spyOn(HTMLElement.prototype, 'getBoundingClientRect')
+        .mockImplementation(function (this: HTMLElement) {
+          const width = this.classList.contains('st-add')
+            ? this.childElementCount > 1
+              ? 520
+              : foldedWidth
+            : this.classList.contains('st-zoom')
+              ? 240
+              : 0;
+
+          return {
+            width,
+            height: 0,
+            top: 0,
+            left: 0,
+            right: width,
+            bottom: 0,
+            x: 0,
+            y: 0,
+          } as DOMRect;
+        });
+
+      try {
+        await seating();
+        await screen.findByRole('button', { name: 'Add' }, WAIT);
+        await waitFor(() =>
+          expect(screen.getByRole('group', { name: /^Zoom/ }).closest('.is-zoom-up') != null).toBe(
+            up,
+          ),
+        );
+      } finally {
+        measured.mockRestore();
+      }
+    },
+  );
+
+  it.each([
+    ['zoomAbove', false],
+    ['zoomAboveMap', true],
+  ])(
+    'shows the zoom above the folded bar in English at any width: %s',
+    SLOW,
+    async (state, map) => {
+      await seating(state);
+      const zoom = await screen.findByRole('group', { name: /^Zoom/ }, WAIT);
+
+      expect(zoom.closest('.is-zoom-up')).not.toBeNull();
+      expect(screen.getByRole('button', { name: 'Add' })).toBeDefined();
+      expect(screen.queryByRole('button', { name: 'Add seat' })).toBeNull();
+      expect(document.querySelector('.is-zoom-up .st-minimap') !== null).toBe(map);
+    },
+  );
+
   it('Esc in a field undoes the typing first, then leaves the table', SLOW, async () => {
     await seating('tapChooses');
     const field = within(panel()).getByLabelText('Seats', { exact: false }) as HTMLInputElement;
@@ -1032,11 +1093,11 @@ describe('moving without dragging, and the save line (sc-5028, WCAG 2.2 SC 2.5.7
         'Shift and click adds or takes one away. Esc lets go of all of them.',
       ),
     ).toBeDefined();
-    fireEvent.click(within(panel()).getByRole('button', { name: 'Delete these' }));
-    const ask = screen.getByRole('alertdialog', { name: 'Delete Table 6, Table 7 and Table 8?' });
+    fireEvent.click(within(panel()).getByRole('button', { name: 'Delete' }));
+    const ask = screen.getByRole('alertdialog', { name: 'Delete 3 tables?' });
 
-    expect(ask.textContent).toContain('Their guests go back to Without a seat.');
-    fireEvent.click(within(ask).getByRole('button', { name: 'Keep it' }));
+    expect(ask.textContent).toContain('22 guests will be moved to Without a seat.');
+    fireEvent.click(within(ask).getByRole('button', { name: 'Keep them' }));
     key(item(/^Table 8,/u), 'Escape');
     expect(within(panel()).getByRole('heading', { name: 'Room' })).toBeDefined();
   });
@@ -1389,5 +1450,30 @@ describe('the breadcrumb (sc-55300)', () => {
     expect(screen.getAllByRole('navigation', { name: 'Breadcrumb' })).toHaveLength(2);
     expect(screen.getAllByRole('navigation', { name: 'Fil d’Ariane' })).toHaveLength(3);
     expect(screen.getByRole('link', { name: 'Seating words QA' })).toBeDefined();
+  });
+
+  it('rings one link in each frame, each link at each width (sc-57088)', SLOW, async () => {
+    open(`${AT}?state=crumbFocus`);
+    await screen.findByRole(
+      'heading',
+      { level: 1, name: 'A focused link in the breadcrumb' },
+      WAIT,
+    );
+    const frames = screen.getAllByRole('figure');
+    const ringed = frames.map((frame) => {
+      const rings = frame.querySelectorAll('a.is-ring');
+
+      expect(rings).toHaveLength(1);
+      return `${frame.className} ${rings[0]?.textContent ?? ''}`;
+    });
+
+    expect(frames).toHaveLength(13);
+    expect(ringed).toContain('st-width is-1280 Events');
+    expect(ringed).toContain('st-width is-1280 Événements');
+    expect(ringed).toContain(`st-width is-320 ${LONG}`);
+    expect(ringed).toContain('st-width is-375 Seating words QA');
+    expect(frames[2]?.querySelector('figcaption')?.textContent).toMatch(
+      /^1280 px · French · .+ · focus on Événements$/u,
+    );
   });
 });

@@ -2,12 +2,15 @@ import { act, fireEvent, render, screen, waitFor, within } from '@testing-librar
 import i18next from 'i18next';
 import { afterEach, beforeAll, beforeEach, describe, expect, it, vi } from 'vitest';
 import { RouterProvider, createMemoryRouter } from 'react-router';
+import { type SeatingPlan } from '@soirely/api-client';
 
 import { __setConfig, config } from '../../../config.ts';
+import fr from '../../../i18n/locales/fr.json';
 import { __setSessionState, type Session } from '../../../session.ts';
 import { OWNER_PERMISSIONS, membership } from '../../../test-memberships.ts';
 import { routes } from '../../index.tsx';
 import { deletePlanWords, sectionDeleteWords } from './SeatingArea.tsx';
+import { KeysStrip, Overlaps } from './SeatingArrange.tsx';
 
 const IRE = membership({ id: 'org_1', name: 'Ìrè Events' });
 
@@ -897,6 +900,87 @@ describe('Tables at a desk (sc-4000)', () => {
     });
   });
 
+  it('clears the reset line on the next saved change, and keeps it through a refused one', async () => {
+    signedIn();
+    let answered = 1;
+    let shape = 'round';
+    await onSeating({
+      'GET /api/events/ev_1/seating-plan': () => seating(withTables(table())),
+      'PATCH /api/events/ev_1/seating-plan/tables/t1': (body) => {
+        answered += 1;
+        const changes = body as Record<string, unknown>;
+
+        if (typeof changes.shape === 'string') shape = changes.shape;
+        return seating(
+          withTables(
+            table({
+              ...changes,
+              shape,
+              widthCm: shape === 'round' ? 150 : 180,
+              lengthCm: shape === 'round' ? 150 : 76,
+              version: answered,
+            }),
+          ),
+          't1',
+        );
+      },
+    });
+    const reset = 'Size reset to the rectangular default, 180 × 76 cm. Seats kept at 10.';
+
+    await chooseTable('Table 1, round, 0 of 10 seats taken');
+    fireEvent.change(screen.getByLabelText('Shape'), { target: { value: 'rectangular' } });
+    expect(await screen.findByText(reset)).toBeDefined();
+
+    leave('Seats', '31');
+    expect(await screen.findByText('Enter a number of seats from 1 to 30.')).toBeDefined();
+    expect(screen.getByText(reset)).toBeDefined();
+
+    leave('Seats', '10');
+    expect(screen.getByText(reset)).toBeDefined();
+
+    fireEvent.change(screen.getByLabelText('Shape'), { target: { value: 'round' } });
+    expect(await screen.findByText(/^Size reset to the round default, /u)).toBeDefined();
+    expect(screen.queryByText(reset)).toBeNull();
+
+    leave('Name', 'Top table');
+    await waitFor(() => expect(screen.queryByText(/^Size reset to/u)).toBeNull());
+  });
+
+  it('counts only usable chairs in a table’s name, and follows a chair marked unusable', async () => {
+    signedIn();
+    await onSeating({
+      'GET /api/events/ev_1/seating-plan': () =>
+        seating(
+          withTables(
+            table({ seats: 8, unusableSeats: [2] }),
+            table({ id: 't2', name: 'Table 2', seats: 2, unusableSeats: [1], xCm: 400 }),
+            table({ id: 't3', name: 'Table 3', seats: 2, unusableSeats: [1, 2], xCm: 700 }),
+          ),
+        ),
+      'PATCH /api/events/ev_1/seating-plan/tables/t1': () =>
+        seating(
+          withTables(
+            table({ seats: 8, unusableSeats: [2, 3], version: 2 }),
+            table({ id: 't2', name: 'Table 2', seats: 2, unusableSeats: [1], xCm: 400 }),
+            table({ id: 't3', name: 'Table 3', seats: 2, unusableSeats: [1, 2], xCm: 700 }),
+          ),
+          't1',
+        ),
+    });
+
+    await chooseTable('Table 1, round, 0 of 7 seats taken');
+    expect(screen.getByRole('button', { name: 'Table 2, round, 0 of 1 seat taken' })).toBeDefined();
+    expect(
+      screen.getByRole('button', { name: 'Table 3, round, 0 of 0 seats taken' }),
+    ).toBeDefined();
+    fireEvent.click(screen.getByRole('button', { name: 'Table 1, Seat 3, Empty' }));
+    fireEvent.click(await screen.findByRole('button', { name: 'Mark unusable' }));
+
+    expect(
+      await screen.findByRole('button', { name: 'Table 1, round, 0 of 6 seats taken' }),
+    ).toBeDefined();
+  });
+
   it('counts a name’s letters as a reader sees them, marks and all', async () => {
     signedIn();
     const thirty = 'e\u0323\u0300'.repeat(30);
@@ -1269,6 +1353,18 @@ describe('Rows and single seats at a desk (sc-4003)', () => {
     fireEvent.click(within(ask).getByRole('button', { name: 'Delete Row B' }));
     await waitFor(() => expect(document.querySelector('[data-row="r2"]')).toBeNull());
     expect(sent.find((one) => one.line.startsWith('DELETE'))?.ifMatch).toBe('"1"');
+  });
+
+  it('counts only usable chairs in a row’s name, while “row of” counts every chair', async () => {
+    signedIn();
+    await onSeating({
+      'GET /api/events/ev_1/seating-plan': () =>
+        seating(withRowsAndSeats([row({ unusableSeats: [4, 7] })], [])),
+    });
+
+    expect(
+      await screen.findByRole('button', { name: 'Row A, row of 10, 0 of 8 seats taken' }),
+    ).toBeDefined();
   });
 
   it('sends a second field entered before the first answers with the version the first saved', async () => {
@@ -1858,7 +1954,7 @@ describe('The room to scale (sc-4007)', () => {
         }),
     });
 
-    await screen.findByRole('button', { name: TABLE_1 });
+    await screen.findByRole('button', { name: 'Table 1, round, 0 of 9 seats taken' });
     press('Zoom out');
     expect(percent()).toBe('50%');
     expect(document.querySelectorAll('[data-table="t1"] .st-chair')).toHaveLength(10);
@@ -1874,7 +1970,7 @@ describe('The room to scale (sc-4007)', () => {
     ]);
     expect(document.querySelector('[data-seat="s1"] .st-fill')).toBeNull();
     expect(
-      screen.getByRole('button', { name: 'Table 1, round, 0 of 10 seats taken' }),
+      screen.getByRole('button', { name: 'Table 1, round, 0 of 9 seats taken' }),
     ).toBeDefined();
   });
 
@@ -2561,5 +2657,66 @@ describe('Moving, turning and resizing on the Floor plan (sc-5028)', () => {
 
     expect(sized!.widthCm).toBe(sized!.lengthCm);
     expect(sized!.widthCm % 10).toBe(0);
+  });
+});
+
+describe('The keys strip and the overlap line in the viewer’s language (sc-56839)', () => {
+  const near = withTables(
+    table(),
+    table({ id: 't2', name: 'Table 2', xCm: 1350 }),
+    table({ id: 't3', name: 'Table 3', xCm: 1050 }),
+    table({ id: 't4', name: 'Table 4', yCm: 1050 }),
+  );
+  const firstOf = (count: number) =>
+    ({ ...near, tables: near.tables.slice(0, count + 1) }) as unknown as SeatingPlan;
+
+  afterEach(async () => {
+    await act(() => i18next.changeLanguage('en'));
+  });
+
+  it('names the keys as the catalogue does', async () => {
+    const { container } = render(<KeysStrip system="metric" />);
+    const keys = () => [...container.querySelectorAll('kbd')].map((key) => key.textContent);
+
+    expect(keys()).toEqual(['← ↑ → ↓', 'Shift', 'R', 'Ctrl D', 'Delete', 'Esc']);
+
+    i18next.addResourceBundle(
+      'fr',
+      'translation',
+      {
+        seating: { keyName: { shift: 'Maj', delete: 'Suppr', esc: 'Échap', ctrl: 'Ctrl' } },
+      },
+      true,
+      true,
+    );
+    try {
+      await act(() => i18next.changeLanguage('fr'));
+      expect(keys()).toEqual(['← ↑ → ↓', 'Maj', 'R', 'Ctrl D', 'Suppr', 'Échap']);
+    } finally {
+      i18next.addResourceBundle('fr', 'translation', fr, true, true);
+    }
+  });
+
+  it('joins one, two and three overlapping names as a list in English', () => {
+    const line = (count: number) =>
+      render(<Overlaps plan={firstOf(count)} id="t1" />).container.textContent;
+
+    expect(line(1)).toBe('Overlaps Table 2');
+    expect(line(2)).toBe('Overlaps Table 2 and Table 3');
+    expect(line(3)).toBe('Overlaps Table 2, Table 3 and Table 4');
+  });
+
+  it('joins them with the language’s own word in Spanish', async () => {
+    await act(() => i18next.changeLanguage('es'));
+    const line = (count: number) =>
+      render(<Overlaps plan={firstOf(count)} id="t1" />).container.textContent;
+
+    expect(line(1)).toBe('Se solapa con Table 2');
+    expect(line(2)).toBe('Se solapa con Table 2 y Table 3');
+    expect(line(3)).toBe('Se solapa con Table 2, Table 3 y Table 4');
+  });
+
+  it('says nothing for an item that overlaps nothing', () => {
+    expect(render(<Overlaps plan={firstOf(0)} id="t1" />).container.textContent).toBe('');
   });
 });

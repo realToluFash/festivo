@@ -2875,12 +2875,18 @@
     "keyDuplicate": "duplique",
     "keyDelete": "demande d’abord",
     "keyEsc": "relâche",
-    "placingRound": "Cliquez sur le plan pour placer une table ronde. Elle s’aligne sur la grille. Appuyez sur Esc pour arrêter.",
-    "placingRectangular": "Cliquez sur le plan pour placer une table rectangulaire. Elle s’aligne sur la grille. Appuyez sur Esc pour arrêter.",
-    "placingHead": "Cliquez sur le plan pour placer une table d’honneur. Elle s’aligne sur la grille. Appuyez sur Esc pour arrêter.",
-    "placingCocktail": "Cliquez sur le plan pour placer un mange-debout. Il s’aligne sur la grille. Appuyez sur Esc pour arrêter.",
-    "placingRow": "Cliquez sur le plan pour placer une rangée de places. Elle s’aligne sur la grille. Appuyez sur Esc pour arrêter.",
-    "placingSeat": "Cliquez sur le plan pour placer une place isolée. Elle s’aligne sur la grille. Appuyez sur Esc pour arrêter.",
+    "keyName": {
+      "shift": "Maj",
+      "delete": "Suppr",
+      "esc": "Échap",
+      "ctrl": "Ctrl"
+    },
+    "placingRound": "Cliquez sur le plan pour placer une table ronde. Elle s’aligne sur la grille. Appuyez sur Échap pour arrêter.",
+    "placingRectangular": "Cliquez sur le plan pour placer une table rectangulaire. Elle s’aligne sur la grille. Appuyez sur Échap pour arrêter.",
+    "placingHead": "Cliquez sur le plan pour placer une table d’honneur. Elle s’aligne sur la grille. Appuyez sur Échap pour arrêter.",
+    "placingCocktail": "Cliquez sur le plan pour placer un mange-debout. Il s’aligne sur la grille. Appuyez sur Échap pour arrêter.",
+    "placingRow": "Cliquez sur le plan pour placer une rangée de places. Elle s’aligne sur la grille. Appuyez sur Échap pour arrêter.",
+    "placingSeat": "Cliquez sur le plan pour placer une place isolée. Elle s’aligne sur la grille. Appuyez sur Échap pour arrêter.",
     "placeCentre": "Placer au centre",
     "stopPlacing": "Arrêter de placer",
     "placeAnother": "Continuer à placer",
@@ -2888,7 +2894,7 @@
     "chosenCount_many": "{{count, number}} d’éléments choisis",
     "chosenCount_other": "{{count, number}} éléments choisis",
     "moveTogether": "Ils se déplacent ensemble, en une seule étape enregistrée.",
-    "shiftClick": "Shift et un clic ajoutent ou retirent un élément. Esc les relâche tous."
+    "shiftClick": "Maj et un clic ajoutent ou retirent un élément. Échap les relâche tous."
   },
   "onboarding": {
     "step": "Étape {{step, number}} sur 2",
@@ -3533,13 +3539,13 @@
   "search": {
     "row": "Rechercher",
     "field": {
-      "egm": "Rechercher événements, invités et membres",
-      "eg": "Rechercher événements et invités",
-      "em": "Rechercher événements et membres",
-      "gm": "Rechercher invités et membres",
-      "e": "Rechercher un événement",
-      "g": "Rechercher un invité",
-      "m": "Rechercher un membre"
+      "egm": "Rechercher",
+      "eg": "Rechercher",
+      "em": "Rechercher",
+      "gm": "Rechercher",
+      "e": "Rechercher",
+      "g": "Rechercher",
+      "m": "Rechercher"
     },
     "hint": {
       "egm": "Trouvez un événement, un invité ou un membre.",
