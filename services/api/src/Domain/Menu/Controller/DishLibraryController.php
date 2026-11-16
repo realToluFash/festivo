@@ -47,10 +47,13 @@ final readonly class DishLibraryController
     public function list(string $organisationId): JsonResponse
     {
         $organisation = $this->organisation($organisationId);
-        $withPrice = $this->seesPrices($organisation);
+        $scope = $this->membershipDirectory->eventScopeIn($this->user(), $organisation->getId());
+        $withPrice = true === $scope?->anywhere(Permission::BudgetRead);
 
         return new JsonResponse([
             'dishes' => Vec\map($this->dishRepository->findInOrganisation($organisation), static fn (Dish $dish): array => DishSerialiser::dish($dish, $withPrice)),
+            'canManage' => true === $scope?->anywhere(Permission::MenuManage) && !$scope->organisation->isReadOnly(),
+            'seesPrices' => $withPrice,
         ]);
     }
 

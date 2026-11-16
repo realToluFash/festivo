@@ -281,8 +281,11 @@ final class DishLibraryTest extends ApiTestCase
         $jollof = $this->add(['name' => 'Jollof rice', 'allergens' => ['celery']]);
         $viewer = $this->member('ada@ire.events', 'Ada Obi', EventRole::CanView);
 
-        $this->as($viewer, 'GET', $this->path());
+        $listed = $this->as($viewer, 'GET', $this->path());
         self::assertSame(200, $this->statusCode());
+        self::assertFalse($listed['canManage'] ?? null);
+        self::assertFalse($listed['seesPrices'] ?? null);
+        self::assertTrue($this->as($this->owner, 'GET', $this->path())['canManage'] ?? null);
 
         foreach ([
             ['POST', $this->path(), ['name' => 'Asun', 'containsNone' => true]],

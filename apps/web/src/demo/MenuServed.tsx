@@ -6,7 +6,7 @@ import type { Tell } from '../components/SettingsParts.tsx';
 import { DemoBell } from './DemoBell.tsx';
 import { EventsShell } from './EventParts.tsx';
 import { EventSidebar } from './EventSidebar.tsx';
-import { HintButton } from './HintButton.tsx';
+import { HintButton } from '../components/HintButton.tsx';
 import { type SampleEvent, sampleEvent } from './events.ts';
 import { Pill } from './GuestsParts.tsx';
 import { clockOfKitchen, kitchenAt } from './kitchen.ts';

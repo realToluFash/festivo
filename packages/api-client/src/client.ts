@@ -75,6 +75,7 @@ import {
   asStaffEntry,
   asStaffRoster,
 } from './staff.ts';
+import { type Dish, type DishDetails, type DishLibrary, asDish, asDishLibrary } from './dishes.ts';
 import {
   type Schedule,
   type ScheduleItemDetails,
@@ -997,6 +998,9 @@ export interface RequestOptions {
   /** Skip the Authorization header — for sign-in and guest routes. */
   anonymous?: boolean;
 }
+
+const DISH_SHAPE =
+  'The API answered the menu library in a shape this client does not know. Check DishSerialiser in services/api.';
 
 export class ApiClient {
   /** Bumped whenever the session changes hands, so an answer meant for an earlier one is let go (sc-16226). */
@@ -2459,6 +2463,60 @@ export class ApiClient {
     }
 
     return { staff, member: typeof record.member === 'string' ? record.member : null };
+  }
+
+  /** The organisation's menu library, archived dishes included; refused 403 without menu.read (sc-3901). */
+  async dishes(organisationId: string): Promise<DishLibrary> {
+    const library = asDishLibrary(await this.get<unknown>(this.dishesPath(organisationId)));
+
+    if (library == null) throw new Error(DISH_SHAPE);
+
+    return library;
+  }
+
+  /** Refused `validation_failed` beside each field, and 409 `dish_name_shared` naming `sharedWith` and whether it is `archived`, until `allowShared`. */
+  async addDish(organisationId: string, details: DishDetails): Promise<Dish> {
+    return this.dishOf(await this.post<unknown>(this.dishesPath(organisationId), details));
+  }
+
+  /** As `addDish`, asking only when the name changed; without `lastPrice` the price stays as it was. */
+  async editDish(organisationId: string, dishId: string, details: DishDetails): Promise<Dish> {
+    return this.dishOf(await this.put<unknown>(this.dishPath(organisationId, dishId), details));
+  }
+
+  async archiveDish(organisationId: string, dishId: string): Promise<Dish> {
+    return this.dishOf(
+      await this.post<unknown>(`${this.dishPath(organisationId, dishId)}/archive`),
+    );
+  }
+
+  async restoreDish(organisationId: string, dishId: string): Promise<Dish> {
+    return this.dishOf(
+      await this.post<unknown>(`${this.dishPath(organisationId, dishId)}/restore`),
+    );
+  }
+
+  /** Refused 409 `dish_in_use` once an event has used it. */
+  async deleteDish(organisationId: string, dishId: string): Promise<void> {
+    await this.delete<unknown>(this.dishPath(organisationId, dishId));
+  }
+
+  private dishOf(body: unknown): Dish {
+    const dish = asDish(
+      typeof body === 'object' && body != null ? (body as { dish?: unknown }).dish : null,
+    );
+
+    if (dish == null) throw new Error(DISH_SHAPE);
+
+    return dish;
+  }
+
+  private dishesPath(organisationId: string): string {
+    return `/api/orgs/${encodeURIComponent(organisationId)}/dishes`;
+  }
+
+  private dishPath(organisationId: string, dishId: string): string {
+    return `${this.dishesPath(organisationId)}/${encodeURIComponent(dishId)}`;
   }
 
   /** The event's running order, sorted by start; refused 403 without run_of_show.read (sc-3893). */

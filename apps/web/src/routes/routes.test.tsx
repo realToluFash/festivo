@@ -597,10 +597,11 @@ describe('the application tree', () => {
         'Today',
         'Events',
         'Calendar',
+        'Menu library',
         'Settings',
         'Ada Okonkwo, Owner',
       ]);
-      expect(links[3]!.getAttribute('aria-current')).toBe('page');
+      expect(links[4]!.getAttribute('aria-current')).toBe('page');
       expect(dialog.textContent).not.toContain('ada@example.com');
       expect(dialog.querySelector('select[aria-label="Language"]')).not.toBeNull();
       expect(document.activeElement).toBe(
