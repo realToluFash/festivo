@@ -13,6 +13,7 @@ import type {
 } from './today.ts';
 import './today.css';
 import './phoneFit.css';
+import './todayFit.css';
 
 /** An event's cover, in its own colours from the option tokens. */
 export function EventCover({ event, className }: { event: ShownEvent; className: string }) {

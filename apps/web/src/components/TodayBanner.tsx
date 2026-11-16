@@ -5,6 +5,7 @@ import { Glyph } from './Glyph.tsx';
 import type { Moment, Now, Open } from './today.ts';
 import './today.css';
 import './phoneFit.css';
+import './todayFit.css';
 
 /** Confetti cut from the mark's half disc and bar, placed from the banner's right edge in today.css. */
 const PIECES = ['half', 'bar', 'half', 'bar', 'half', 'bar'] as const;

@@ -1,4 +1,4 @@
-/* Today, Events and Calendar in a phone's browser, 40rem and under (sc-57468): every word whole at 390 and 320 px, in English and French. The page's frame carries `fits-phone`: the shell on those three pages, and their demos. Today's rules repeat demo/deskFit.css's today-main container blocks until sc-57575 folds the two. */
+/* Today, Events and Calendar in a phone's browser, 40rem and under (sc-57468): every word whole at 390 and 320 px, in English and French. The page's frame carries `fits-phone`: the shell on those three pages, and their demos. Today's arrangement by the page's width, shared with a narrow desk window, is todayFit.css. */
 
 @media (width <= 40rem) {
   .fits-phone .ev-top {
@@ -86,68 +86,6 @@
     flex: 1 0 100%;
   }
 
-  .fits-phone :is(.today-banner, .today-now) {
-    height: auto;
-  }
-
-  .fits-phone .today-banner-inner {
-    position: relative;
-    flex-direction: column;
-    align-items: flex-start;
-    gap: var(--spaceLg);
-    padding: var(--spaceXl);
-  }
-
-  /* The event day's banner: its chips over its actions, then its words over what is next. */
-  .fits-phone .today-now {
-    padding: var(--spaceXl);
-  }
-
-  .fits-phone .today-now-top {
-    flex-wrap: wrap;
-    row-gap: var(--spaceSm);
-  }
-
-  .fits-phone .today-now-mid {
-    flex-direction: column;
-    align-items: stretch;
-    gap: var(--spaceXl);
-  }
-
-  .fits-phone .today-now-side {
-    width: auto;
-  }
-
-  .fits-phone .today-columns {
-    flex-direction: column;
-    align-items: stretch;
-    gap: 26px;
-  }
-
-  .fits-phone .today-right {
-    width: auto;
-  }
-
-  .fits-phone .today-need-open {
-    display: grid;
-    grid-template-columns: auto minmax(0, 1fr);
-    gap: var(--spaceXxs) var(--spaceMd);
-    padding-block: var(--spaceSm);
-  }
-
-  .fits-phone .today-need-open > .today-need-cover {
-    grid-row: 1 / span 2;
-  }
-
-  .fits-phone .today-need-open > .today-due {
-    grid-column: 2;
-    width: auto;
-  }
-
-  .fits-phone .today-need-act {
-    width: auto;
-  }
-
   .fits-phone :is(.today-need-title, .today-need-event, .today-item-title, .today-item-event) {
     overflow: visible;
     white-space: normal;
@@ -162,58 +100,6 @@
 
   .fits-phone .today-day.is-today {
     flex: none;
-    padding-inline: var(--spaceXxs);
-  }
-
-  .fits-phone .today-weekday {
-    letter-spacing: 0.02em;
-    white-space: nowrap;
-  }
-
-  .fits-phone .today-date {
-    width: auto;
-    height: 32px;
-    font-size: 17px;
-  }
-
-  .fits-phone .today-day.is-today .today-date {
-    width: 32px;
-  }
-
-  .fits-phone .today-agenda {
-    padding-inline: var(--spaceLg);
-  }
-
-  .fits-phone .today-item {
-    display: grid;
-    grid-template-columns: auto auto minmax(0, 1fr);
-    align-items: start;
-    gap: var(--spaceXs) var(--spaceMd);
-    padding-block: var(--spaceSm);
-  }
-
-  .fits-phone .today-item-time {
-    width: auto;
-    grid-row: 1 / span 2;
-  }
-
-  .fits-phone .today-item-bar {
-    grid-row: 1 / span 2;
-    height: 100%;
-    min-height: 22px;
-  }
-
-  .fits-phone .today-item-words {
-    flex-direction: column;
-    align-items: flex-start;
-    gap: var(--spaceHair);
-    overflow: visible;
-    white-space: normal;
-  }
-
-  .fits-phone .today-item > .today-chip {
-    grid-column: 3;
-    justify-self: start;
   }
 
   /* A run of days is a stripe the strip's width with its name and length whole; the dots above mark its days. */
