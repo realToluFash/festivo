@@ -37,7 +37,7 @@ describe('variants on the event Menu (sc-3903)', () => {
     'reads a dish with variants as its ways, each with its own allergens and picks',
     SLOW,
     async () => {
-      await menu('variants');
+      await menu('menuVariants');
 
       expect(screen.getByRole('heading', { name: 'Jollof rice · 3 ways' })).toBeTruthy();
       expect(screen.getByText('4 courses · 6 dishes')).toBeTruthy();
@@ -92,7 +92,7 @@ describe('variants on the event Menu (sc-3903)', () => {
     'asks before removing, refuses the last Everyone variant, and folds from two',
     SLOW,
     async () => {
-      await menu('variants');
+      await menu('menuVariants');
       press('Remove Children’s plain…');
       expect(screen.getByText(VW.removeAsk('Children’s plain', 'Jollof rice'))).toBeTruthy();
       press(VW.removeVariant);

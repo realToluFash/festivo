@@ -792,7 +792,7 @@ const STATES = {
       note: 'This event is not available.',
       system: 'gone',
     }),
-  variants: () =>
+  menuVariants: () =>
     start({
       name: 'The menu with variants',
       note: 'Jollof rice · 3 ways, each variant in an inset with its Contains, Suitable for and picks; Add variant on every dish row; a dish with variants counts once.',
@@ -1189,7 +1189,7 @@ export const COURSES_PAGES: readonly { name: string; states: readonly DemoLink[]
   {
     name: 'Variants of a dish (sc-3903): the rows',
     states: (
-      ['variants', 'variantsReadOnly', 'addFirstPicked', 'atLimitVariants', 'addedTwo'] as const
+      ['menuVariants', 'variantsReadOnly', 'addFirstPicked', 'atLimitVariants', 'addedTwo'] as const
     ).map(link),
   },
   {
