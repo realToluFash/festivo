@@ -2693,9 +2693,10 @@ describe('Moving, turning and resizing on the Floor plan (sc-5028)', () => {
     await chooseTable('Table 1, round, 0 of 10 seats taken');
     fireEvent.keyDown(document.querySelector('[data-table="t1"]')!, { key: 'ArrowRight' });
 
-    expect(
-      await screen.findByText('Bola Ade just moved Table 1. Your change was not saved.'),
-    ).toBeDefined();
+    const said = await screen.findByText('Bola Ade just moved Table 1. Your change was not saved.');
+
+    expect(said.closest('.st-under-views .st-bar.is-amber')).not.toBeNull();
+    expect(said.closest('.st-panel')).toBeNull();
     await waitFor(() =>
       expect(screen.getByLabelText('Across')).toHaveProperty('value', '6\u00a0m'),
     );
