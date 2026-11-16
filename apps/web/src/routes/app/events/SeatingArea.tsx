@@ -410,6 +410,8 @@ function Plan({
   const opener = useRef<string | null>(null);
   const newest = useRef(seating.plan);
   const queue = useRef<Promise<unknown>>(Promise.resolve());
+  const pressedStep = useRef(0);
+  const runningStep = useRef(0);
   const [asking, setAsking] = useState<Asking | null>(null);
   const [notice, setNotice] = useState<string | null>(null);
   const [note, setNote] = useState<TableNote | null>(null);
@@ -894,7 +896,12 @@ function Plan({
     setSave('saving');
     if (tool) setBar(null);
     else dropRefusal();
-    queue.current = queue.current.then(() => sendStep(items, tool, onSaved));
+    const mine = tool ? (pressedStep.current += 1) : 0;
+
+    queue.current = queue.current.then(() => {
+      runningStep.current = mine;
+      return sendStep(items, tool, onSaved);
+    });
   };
 
   const tryAgain = () => {
@@ -922,7 +929,7 @@ function Plan({
   const refNow = (kind: FloorItem['kind'], id: string) => ({ kind, id, version: versionNow(id) });
 
   const stepDone = (words: string, undo: () => void) => {
-    setBar({ tone: 'undo', words, undo });
+    if (runningStep.current === pressedStep.current) setBar({ tone: 'undo', words, undo });
     setHeard(words);
   };
   const refuseStep = (words: string) => {
@@ -952,14 +959,18 @@ function Plan({
   };
 
   /** One step through the queue, all or nothing; a 412 keeps the choice and says who changed what.
-   *  Queuing it takes the last step's Undo down, which would otherwise act on a plan this step changes. */
+   *  Queuing it takes the last step's Undo down, which would otherwise act on a plan this step changes,
+   *  and an earlier step saved while this one waits puts no Undo up. */
   const runStep = <A extends Seating | SeatingWithChosen>(
     change: () => Promise<A> | null,
     done: (answer: A) => void,
   ) => {
     setSave('saving');
     setBar(null);
+    const mine = (pressedStep.current += 1);
+
     queue.current = queue.current.then(async () => {
+      runningStep.current = mine;
       try {
         const sending = change();
 

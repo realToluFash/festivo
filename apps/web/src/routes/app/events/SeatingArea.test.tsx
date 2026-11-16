@@ -3273,6 +3273,32 @@ describe('Choosing many and the Selection tools (sc-4717)', () => {
     expect(steps).toBe(2);
   });
 
+  it('puts no Undo up for a move saved while a later move waits, only for the later one', async () => {
+    signedIn();
+    const answers: ((response: Response) => void)[] = [];
+    const sent = await onSeating({
+      'GET /api/events/ev_1/seating-plan': () => seating(withTables(table(), second())),
+      'PATCH /api/events/ev_1/seating-plan/furniture': () =>
+        new Promise<Response>((done) => {
+          answers.push(done);
+        }),
+    });
+
+    await chooseBoth();
+    fireEvent.click(panel().getByRole('button', { name: 'Left' }));
+    fireEvent.click(panel().getByRole('button', { name: 'Right' }));
+    await waitFor(() => expect(furniture(sent)).toHaveLength(1));
+    answers[0]!(seating(withTables(table({ xCm: 600, version: 2 }), second({ version: 2 }))));
+    await waitFor(() => expect(furniture(sent)).toHaveLength(2));
+    expect(heard()).toBe('2 tables lined up on their left edges.');
+    expect(stepLine()).toBe('');
+    expect(screen.queryByRole('button', { name: 'Undo' })).toBeNull();
+
+    answers[1]!(seating(withTables(table({ version: 3 }), second({ xCm: 1200, version: 3 }))));
+    await waitFor(() => expect(stepLine()).toBe('2 tables lined up on their right edges.'));
+    expect(screen.getByRole('button', { name: 'Undo' })).toBeDefined();
+  });
+
   it('refuses a grid too wide for the room or out of range, beside its fields', async () => {
     signedIn();
     const sent = await onSeating({
