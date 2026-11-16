@@ -2,6 +2,7 @@ import { useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 
 import { AccountHeader } from '../../../components/AccountHeader.tsx';
+import { LanguageBlock } from '../../../components/AccountParts.tsx';
 import { Refreshing } from '../../../components/OfflineBand.tsx';
 import { useOffline } from '../../../offline.ts';
 import { usePhoneWidth } from '../../../phoneWidth.ts';
@@ -45,6 +46,8 @@ function PhoneAccount() {
       />
 
       <TimeZoneCard timezone={session.timezone} onSaved={() => refreshAccount()} />
+
+      <LanguageBlock onChosen={() => {}} />
     </div>
   );
 }

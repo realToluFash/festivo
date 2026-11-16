@@ -46,10 +46,10 @@ function answering(answers: Record<string, () => Response | Promise<Response>>) 
   return sent;
 }
 
-function renderedBell(desk = false) {
+function renderedBell(look: 'band' | 'desk' | 'banner' = 'band') {
   const router = createMemoryRouter(
     [
-      { path: '/app', element: <NotificationsBell userId="u1" desk={desk} /> },
+      { path: '/app', element: <NotificationsBell userId="u1" look={look} /> },
       { path: '/app/events/:id', element: <p>Event page</p> },
     ],
     { initialEntries: ['/app'] },
@@ -67,9 +67,10 @@ afterEach(() => {
 });
 
 describe.each([
-  ['in the band', false],
-  ['in the title row at a desk (sc-39471)', true],
-])('the bell %s', (_where, desk) => {
+  ['in the band', 'band'],
+  ['in the title row at a desk (sc-39471)', 'desk'],
+  ["on Today's banner at a desk (sc-39509)", 'banner'],
+] as const)('the bell %s', (_where, look) => {
   it('carries the unread count in its name, and none at 0', async () => {
     let unread = 3;
     answering({
@@ -79,7 +80,7 @@ describe.each([
         return json({ unreadCount: 0 });
       },
     });
-    renderedBell(desk);
+    renderedBell(look);
 
     fireEvent.click(await screen.findByRole('button', { name: 'Notifications, 3 unread' }));
     fireEvent.click(await screen.findByRole('button', { name: 'Mark all read' }));
@@ -91,7 +92,7 @@ describe.each([
     answering({
       'GET /api/notifications': () => json({ items: [item()], unreadCount: 1, next: null }),
     });
-    renderedBell(desk);
+    renderedBell(look);
 
     const bellButton = await screen.findByRole('button', { name: 'Notifications, 1 unread' });
     expect(bellButton.getAttribute('aria-expanded')).toBe('false');

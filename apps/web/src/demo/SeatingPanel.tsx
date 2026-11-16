@@ -1335,12 +1335,19 @@ function ReadFacts({ item }: { item: Item }) {
           string,
         ][])
       : []),
-    ...(item.w != null
-      ? ([[SW.width, `${sizeOf(item.w, units)}${units === 'us' ? '' : ' cm'}`]] as [
-          string,
-          string,
-        ][])
-      : []),
+    ...(item.kind === 'rect' || item.kind === 'head'
+      ? ([
+          [SW.width, `${sizeOf(item.w ?? 180, units)}${units === 'us' ? '' : ' cm'}`],
+          [SW.length, `${sizeOf(item.l ?? 76, units)}${units === 'us' ? '' : ' cm'}`],
+          [SW.ends, String(item.ends ?? 0)],
+          [SW.rotation, `${item.rot}°`],
+        ] as [string, string][])
+      : item.w != null
+        ? ([[SW.width, `${sizeOf(item.w, units)}${units === 'us' ? '' : ' cm'}`]] as [
+            string,
+            string,
+          ][])
+        : []),
     [SW.across, lengthOf(item.x, units)],
     [SW.down, lengthOf(item.y, units)],
   ];

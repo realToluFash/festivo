@@ -29,6 +29,7 @@ import { canOn, useSession } from '../../../session.ts';
 import { FieldWrong } from './GuestFields.tsx';
 import { useHubTopics } from './useHubTopics.ts';
 import { useStartingCountry } from './useStartingCountry.ts';
+import { useDeskTop } from '../../../deskTop.ts';
 import '../../../components/SettingsParts.css';
 import '../../../components/eventsDesk.css';
 import '../../../components/eventPage.css';
@@ -88,6 +89,7 @@ function firstWrong(problems: Problems): Field | null {
 /** /app/events/:id/staff (sc-3906): the Roster on the event's Staff page, as its demo draws it at a desk. */
 export function RosterArea({ event }: { event: OrganisationEvent }) {
   const { t } = useTranslation();
+  const desk = useDeskTop();
   const [load, setLoad] = useState<Load>({ kind: 'loading' });
   const [attempt, setAttempt] = useState(0);
 
@@ -139,6 +141,7 @@ export function RosterArea({ event }: { event: OrganisationEvent }) {
               </li>
             </ol>
           </nav>
+          {desk.bell}
         </div>
         <header className="gs-top">
           <div className="mn-head">
