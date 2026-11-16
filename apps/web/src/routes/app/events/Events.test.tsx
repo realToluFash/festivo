@@ -4148,6 +4148,29 @@ describe('The cover (sc-3590)', () => {
       expect(part().querySelector('.ev-preview.is-photo')).not.toBeNull();
     });
 
+    it('a photo that uploads after a refused save keeps the refusal at the top (sc-53442)', async () => {
+      const { sent } = await opened(null, {
+        'PUT /api/events/ev_1/cover': () => problem(403, 'permission_required'),
+      });
+      const refusal = 'Nothing was changed. Your role does not include the permission this needs.';
+
+      pick(file());
+      await within(part()).findByLabelText('Photo position');
+      fireEvent.click(within(part()).getByRole('button', { name: 'Use this photo' }));
+      expect((await within(part()).findByRole('alert')).textContent).toContain(refusal);
+
+      pick(file('two.jpg'));
+      await waitFor(() =>
+        expect(
+          sent.filter(({ line }) => line === 'POST /api/orgs/org_1/event-cover-uploads/preview'),
+        ).toHaveLength(2),
+      );
+      await waitFor(() => expect(off('Use this photo')).toBe(false));
+
+      expect(within(part()).getByRole('alert').textContent).toContain(refusal);
+      expect(part().querySelector('.ev-preview img')?.getAttribute('src')).toBe('blob:chosen');
+    });
+
     it('refuses a description over 250 characters and saves nothing', async () => {
       const { sent } = await opened(PHOTO);
 
