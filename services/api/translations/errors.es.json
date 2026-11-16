@@ -31,7 +31,7 @@
     "guest_already_listed": "Ese nombre ya está en la lista.",
     "staff_number_shared": "Ese número ya está en la lista del personal.",
     "dish_name_shared": "Ya hay un plato con ese nombre.",
-    "dish_in_use": "Un evento usa este plato, así que no se puede eliminar.",
+    "dish_in_use": "Un evento usa este plato, así que no se puede eliminar. Archívelo en su lugar.",
     "replies_closed": "El plazo para responder ha terminado.",
     "replies_open": "Las respuestas siguen abiertas.",
     "reply_is_theirs": "Esta persona ya ha respondido por su cuenta. Confirme que quiere sustituir esa respuesta.",
