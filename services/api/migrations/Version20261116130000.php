@@ -40,6 +40,8 @@ final class Version20261116130000 extends AbstractMigration
         $this->addSql('ALTER TABLE schedule_items ALTER note TYPE VARCHAR(2000)');
         $this->addSql('ALTER TABLE audit_entries ALTER actor_label TYPE VARCHAR(720)');
         $this->addSql('ALTER TABLE assistant_interactions ALTER actor_label TYPE VARCHAR(720)');
+        $this->addSql('ALTER TABLE event_changes ALTER actor_name TYPE VARCHAR(720)');
+        $this->addSql('ALTER TABLE notification_items ALTER event_name TYPE VARCHAR(480)');
         $this->addSql('ALTER TABLE memberships ALTER request_message TYPE VARCHAR(2000)');
         $this->addSql('ALTER TABLE invitations ALTER organisation_name TYPE VARCHAR(400)');
         $this->addSql('ALTER TABLE pending_registrations ALTER name TYPE VARCHAR(720)');
@@ -71,6 +73,8 @@ final class Version20261116130000 extends AbstractMigration
         $this->addSql('ALTER TABLE schedule_items ALTER note TYPE VARCHAR(500)');
         $this->addSql('ALTER TABLE audit_entries ALTER actor_label TYPE VARCHAR(180)');
         $this->addSql('ALTER TABLE assistant_interactions ALTER actor_label TYPE VARCHAR(180)');
+        $this->addSql('ALTER TABLE event_changes ALTER actor_name TYPE VARCHAR(255)');
+        $this->addSql('ALTER TABLE notification_items ALTER event_name TYPE VARCHAR(255)');
         $this->addSql('ALTER TABLE memberships ALTER request_message TYPE VARCHAR(500)');
         $this->addSql('ALTER TABLE invitations ALTER organisation_name TYPE VARCHAR(100)');
         $this->addSql('ALTER TABLE pending_registrations ALTER name TYPE VARCHAR(255)');
