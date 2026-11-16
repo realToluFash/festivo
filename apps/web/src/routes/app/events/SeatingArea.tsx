@@ -944,13 +944,19 @@ function Plan({
 
   /** One step through the queue, all or nothing; a 412 keeps the choice and says who changed what. */
   const runStep = <A extends Seating | SeatingWithChosen>(
-    change: () => Promise<A>,
+    change: () => Promise<A> | null,
     done: (answer: A) => void,
   ) => {
     setSave('saving');
     queue.current = queue.current.then(async () => {
       try {
-        const answer = await change();
+        const sending = change();
+
+        if (sending == null) {
+          setSave('saved');
+          return;
+        }
+        const answer = await sending;
         const now = seatingIn(answer);
 
         newest.current = now.plan;
@@ -1035,15 +1041,15 @@ function Plan({
         pick(answer.chosen);
         stepDone(t('seating.duplicatedMany', { count: answer.chosen.length }), () =>
           runStep(
-            () =>
-              api.deleteSeatingItems(
-                event.id,
-                answer.chosen.flatMap((id) => {
-                  const copy = itemOf(id, newest.current);
+            () => {
+              const copies = answer.chosen.flatMap((id) => {
+                const copy = itemOf(id, newest.current);
 
-                  return copy == null ? [] : [refNow(copy.kind, id)];
-                }),
-              ),
+                return copy == null ? [] : [refNow(copy.kind, id)];
+              });
+
+              return copies.length === 0 ? null : api.deleteSeatingItems(event.id, copies);
+            },
             () => {
               pick(items.map((item) => item.one.id));
               undone();

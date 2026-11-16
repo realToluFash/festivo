@@ -3351,6 +3351,49 @@ describe('Choosing many and the Selection tools (sc-4717)', () => {
     ]);
   });
 
+  it("sends nothing for a copy's Undo once a delete has taken the copies, and keeps the delete's Undo", async () => {
+    signedIn();
+    const copies = [
+      table({ id: 't3', name: 'Table 3', xCm: 650, yCm: 950 }),
+      table({ id: 't4', name: 'Table 4', xCm: 1250, yCm: 950 }),
+    ];
+    let deleted: (answer: Response) => void = () => {};
+    const sent = await onSeating({
+      'GET /api/events/ev_1/seating-plan': () => seating(withTables(table(), second())),
+      'POST /api/events/ev_1/seating-plan/furniture/duplicate': () =>
+        json(
+          {
+            seating: {
+              measurementSystem: 'metric',
+              plan: withTables(table(), second(), ...copies),
+            },
+            chosen: ['t3', 't4'],
+          },
+          201,
+        ),
+      'POST /api/events/ev_1/seating-plan/furniture/delete': () =>
+        new Promise<Response>((done) => {
+          deleted = done;
+        }),
+    });
+
+    await chooseBoth();
+    fireEvent.click(panel().getByRole('button', { name: 'Duplicate' }));
+    await waitFor(() => expect(stepLine()).toContain('2 copies added'));
+    fireEvent.click(screen.getByRole('button', { name: 'Select all' }));
+    fireEvent.click(panel().getByRole('button', { name: 'Delete' }));
+    const ask = within(await screen.findByRole('alertdialog'));
+
+    fireEvent.click(ask.getByRole('button', { name: 'Delete 4 tables' }));
+    await waitFor(() => expect(posted(sent, 'delete')).toHaveLength(1));
+    fireEvent.click(screen.getByRole('button', { name: 'Undo' }));
+    deleted(seating(withTables()));
+
+    await waitFor(() => expect(stepLine()).toBe('4 tables deleted.'));
+    expect(screen.getByRole('button', { name: 'Undo' })).toBeDefined();
+    expect(posted(sent, 'delete')).toHaveLength(1);
+  });
+
   it('asks before deleting the chosen, and Undo puts them back', async () => {
     signedIn();
     const sent = await onSeating({
