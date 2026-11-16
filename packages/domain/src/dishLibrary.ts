@@ -8,81 +8,9 @@ import {
   type DishDetails,
   type DishDiet,
 } from '@soirely/api-client';
-import { numberFormat } from './locales.ts';
+import { type MoneyLanguage, readAmount, typedAmount } from './money.ts';
 import { nameKey } from './nameKey.ts';
 import { visibleLength } from './visibleText.ts';
-
-export type DishLanguage = 'en' | 'es' | 'fr' | 'pt';
-
-/** The marks the AC fixes for each interface language: fr groups with a space, es and pt with a dot. */
-const MARKS: Record<DishLanguage, { group: string; decimal: string }> = {
-  en: { group: ',', decimal: '.' },
-  fr: { group: ' ', decimal: ',' },
-  es: { group: '.', decimal: ',' },
-  pt: { group: '.', decimal: ',' },
-};
-
-export function dishLanguage(locale: string): DishLanguage {
-  const base = locale.slice(0, 2);
-
-  return base === 'es' || base === 'fr' || base === 'pt' ? base : 'en';
-}
-
-export function minorDigits(currency: string): number {
-  try {
-    return (
-      numberFormat('en', { style: 'currency', currency }).resolvedOptions().maximumFractionDigits ??
-      2
-    );
-  } catch {
-    return 2;
-  }
-}
-
-const escaped = (mark: string): string => mark.replace(/[.]/gu, '\\.');
-
-/** The typed amount as the API takes it ("4500.00"), or null: a grouping mark only between groups of three, and never more decimals than the currency's minor unit. */
-export function readPrice(typed: string, language: DishLanguage, currency: string): string | null {
-  const plain = typed.trim().replace(/[\u00a0\u202f]/gu, ' ');
-  const { group, decimal } = MARKS[language];
-  const found = new RegExp(
-    `^(\\d{1,3}(?:${escaped(group)}\\d{3})+|\\d+)(?:${escaped(decimal)}(\\d+))?$`,
-    'u',
-  ).exec(plain);
-  if (found == null) return null;
-  const whole = (found[1] ?? '').split(group).join('');
-  const fraction = found[2] ?? '';
-  const digits = minorDigits(currency);
-  if (fraction.length > digits || whole.length > 15) return null;
-
-  return digits === 0 ? whole : `${whole}.${fraction.padEnd(digits, '0')}`;
-}
-
-function written(amount: number, language: DishLanguage, digits: number): string {
-  const { group, decimal } = MARKS[language];
-  const [whole = '0', fraction = ''] = amount.toFixed(digits).split('.');
-  const grouped = whole.replace(/\B(?=(\d{3})+(?!\d))/gu, group);
-
-  return fraction === '' ? grouped : `${grouped}${decimal}${fraction}`;
-}
-
-/** 12.50 written to the currency's minor unit in the language's format: en 12.50, fr 12,50, JPY 12, KWD 12.500. */
-export function priceExample(language: DishLanguage, currency: string): string {
-  const digits = minorDigits(currency);
-
-  return written(digits === 0 ? 12 : 12.5, language, digits);
-}
-
-/** The API's amount as the form shows it to be typed again: "4,500.00" in en, "4 500,00" in fr. */
-export function typedPrice(amount: string, language: DishLanguage, currency: string): string {
-  const digits = minorDigits(currency);
-  const [whole = '0', fraction = ''] = amount.split('.');
-  const grouped = whole.replace(/\B(?=(\d{3})+(?!\d))/gu, MARKS[language].group);
-
-  return digits === 0
-    ? grouped
-    : `${grouped}${MARKS[language].decimal}${fraction.padEnd(digits, '0')}`;
-}
 
 export type DietClash = 'vegetarianSea' | 'veganAnimal' | 'veganSea' | 'veganBoth';
 
@@ -131,7 +59,7 @@ export const dishLength = (text: string): number => visibleLength(text.trim());
 
 export function dishProblems(
   form: DishForm,
-  language: DishLanguage,
+  language: MoneyLanguage,
   prices: boolean,
 ): DishProblems {
   const name = dishLength(form.name);
@@ -145,7 +73,7 @@ export function dishProblems(
     clashes: dietClashes(form.allergens, form.diets),
     currency: priced && form.currency === '' ? 'blank' : null,
     amount:
-      priced && form.currency !== '' && readPrice(amount, language, form.currency) == null
+      priced && form.currency !== '' && readAmount(amount, language, form.currency) == null
         ? 'wrong'
         : null,
   };
@@ -168,7 +96,7 @@ export function blankDishForm(currency: string): DishForm {
   return { name: '', description: '', allergens: [], none: false, diets: [], amount: '', currency };
 }
 
-export function dishFormOf(dish: Dish, language: DishLanguage, currency: string): DishForm {
+export function dishFormOf(dish: Dish, language: MoneyLanguage, currency: string): DishForm {
   const price = dish.lastPrice ?? null;
 
   return {
@@ -177,7 +105,7 @@ export function dishFormOf(dish: Dish, language: DishLanguage, currency: string)
     allergens: dish.allergens ?? [],
     none: dish.allergens != null && dish.allergens.length === 0,
     diets: dish.diets,
-    amount: price == null ? '' : typedPrice(price.amount, language, price.currency),
+    amount: price == null ? '' : typedAmount(price.amount, language, price.currency),
     currency: price?.currency ?? currency,
   };
 }
@@ -185,12 +113,12 @@ export function dishFormOf(dish: Dish, language: DishLanguage, currency: string)
 /** What the API takes: without budget.read no last price is sent, so an edit keeps it; a cleared amount clears it. */
 export function dishDetailsOf(
   form: DishForm,
-  language: DishLanguage,
+  language: MoneyLanguage,
   prices: boolean,
   allowShared: boolean,
 ): DishDetails {
   const amount =
-    prices && form.amount.trim() !== '' ? readPrice(form.amount, language, form.currency) : null;
+    prices && form.amount.trim() !== '' ? readAmount(form.amount, language, form.currency) : null;
   const price = prices
     ? { lastPrice: amount == null ? null : { amount, currency: form.currency } }
     : {};
