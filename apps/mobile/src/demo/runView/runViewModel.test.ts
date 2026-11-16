@@ -186,3 +186,20 @@ describe('the rows', () => {
     });
   });
 });
+
+describe('two items under way at once', () => {
+  it('puts both on Now in track order, and the next item waits on the later end', () => {
+    const view = hall('twoRunning');
+    expect(view.now.map((row) => row.item.id)).toEqual(['arrive', 'welcome']);
+    expect(view.next).toMatchObject({ item: { id: 'dinner' }, expected: '18:43' });
+    expect(view.figure).toEqual({ kind: 'behind', minutes: 3 });
+    expect(view.then.map((row) => row.item.id)).not.toContain('welcome');
+  });
+
+  it('keeps the other on Now once one is finished', () => {
+    const run = finishItem(runAt('twoRunning'), 'hall', 'arrive');
+    const track = run.tracks.find((one) => one.id === 'hall');
+    if (track == null) throw new Error('no hall');
+    expect(trackView(track, run.clock).now.map((row) => row.item.id)).toEqual(['welcome']);
+  });
+});

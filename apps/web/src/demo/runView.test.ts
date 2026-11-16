@@ -192,3 +192,15 @@ describe('the rows', () => {
     });
   });
 });
+
+describe('two items under way at once', () => {
+  it('marks both Now and holds the next item for the later end', () => {
+    const view = hall('twoRunning');
+    expect(view.rows.filter((row) => row.item.phase === 'now').map((row) => row.item.id)).toEqual([
+      'arrive',
+      'welcome',
+    ]);
+    expect(view.next).toMatchObject({ item: { id: 'dinner' }, expected: '18:43' });
+    expect(view.figure).toEqual({ kind: 'behind', minutes: 3 });
+  });
+});
