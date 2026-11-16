@@ -38,7 +38,7 @@
     "menu_same_one_dish": "«Todos reciben lo mismo» requiere exactamente un plato.",
     "variant_limit": "Un plato puede tener como máximo {max} variantes.",
     "variant_picked": "Los invitados ya han elegido esta variante.",
-    "variant_last_everyone": "Esta es la única variante para todos. Cree primero otra variante para todos.",
+    "variant_last_everyone": "Esta es la única variante para «Todos». Cree primero otra variante para «Todos».",
     "replies_closed": "El plazo para responder ha terminado.",
     "replies_open": "Las respuestas siguen abiertas.",
     "reply_is_theirs": "Esta persona ya ha respondido por su cuenta. Confirme que quiere sustituir esa respuesta.",
