@@ -1,4 +1,4 @@
-/* Today, Events and Calendar in a phone's browser, 40rem and under (sc-57468): every word whole at 390 and 320 px, in English and French. */
+/* Today, Events and Calendar in a phone's browser, 40rem and under (sc-57468): every word whole at 390 and 320 px, in English and French. Today's narrow arrangement, shared with a narrow desk window, is in deskFit.css. */
 
 .dp-menu {
   display: none;
@@ -146,48 +146,6 @@
     flex: 1 0 100%;
   }
 
-  .dp-fit :is(.today-banner, .today-now) {
-    height: auto;
-  }
-
-  .dp-fit .today-banner-inner {
-    position: relative;
-    flex-direction: column;
-    align-items: flex-start;
-    gap: var(--spaceLg);
-    padding: var(--spaceXl);
-  }
-
-  .dp-fit .today-columns {
-    flex-direction: column;
-    align-items: stretch;
-    gap: 26px;
-  }
-
-  .dp-fit .today-right {
-    width: auto;
-  }
-
-  .dp-fit .today-need-open {
-    display: grid;
-    grid-template-columns: auto minmax(0, 1fr);
-    gap: var(--spaceXxs) var(--spaceMd);
-    padding-block: var(--spaceSm);
-  }
-
-  .dp-fit .today-need-open > .today-need-cover {
-    grid-row: 1 / span 2;
-  }
-
-  .dp-fit .today-need-open > .today-due {
-    grid-column: 2;
-    width: auto;
-  }
-
-  .dp-fit .today-need-act {
-    width: auto;
-  }
-
   .dp-fit :is(.today-need-title, .today-need-event, .today-item-title, .today-item-event) {
     overflow: visible;
     white-space: normal;
@@ -202,47 +160,6 @@
 
   .dp-fit .today-day.is-today {
     flex: none;
-    padding-inline: var(--spaceXxs);
-  }
-
-  .dp-fit .today-weekday {
-    letter-spacing: 0.02em;
-  }
-
-  .dp-fit .today-agenda {
-    padding-inline: var(--spaceLg);
-  }
-
-  .dp-fit .today-item {
-    display: grid;
-    grid-template-columns: auto auto minmax(0, 1fr);
-    align-items: start;
-    gap: var(--spaceXs) var(--spaceMd);
-    padding-block: var(--spaceSm);
-  }
-
-  .dp-fit .today-item-time {
-    width: auto;
-    grid-row: 1 / span 2;
-  }
-
-  .dp-fit .today-item-bar {
-    grid-row: 1 / span 2;
-    height: 100%;
-    min-height: 22px;
-  }
-
-  .dp-fit .today-item-words {
-    flex-direction: column;
-    align-items: flex-start;
-    gap: var(--spaceHair);
-    overflow: visible;
-    white-space: normal;
-  }
-
-  .dp-fit .today-item > .today-chip {
-    grid-column: 3;
-    justify-self: start;
   }
 
   /* A run of days is a stripe the strip's width with its name and length whole; the dots above mark its days. */
