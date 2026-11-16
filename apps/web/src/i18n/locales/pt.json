@@ -2846,7 +2846,13 @@
     "deleteRow": "Eliminar fila",
     "deleteSeat": "Eliminar lugar",
     "changedRow": "{{name}} acabou de alterar esta fila. A sua alteração não foi guardada.",
-    "changedSeat": "{{name}} acabou de alterar este lugar. A sua alteração não foi guardada."
+    "changedSeat": "{{name}} acabou de alterar este lugar. A sua alteração não foi guardada.",
+    "zoomIn": "Zoom in",
+    "zoomOut": "Zoom out",
+    "zoomIs": "Zoom {{pct, number}}%",
+    "percent": "{{pct, number}}%",
+    "fit": "Fit the room",
+    "takenOf": "{{taken, number}} of {{seats, number}}"
   },
   "onboarding": {
     "step": "Passo {{step, number}} de 2",

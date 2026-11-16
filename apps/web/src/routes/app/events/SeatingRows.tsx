@@ -33,7 +33,7 @@ import {
   sectionOf,
   turned,
 } from './seatingDraw.ts';
-import { ChairMark, StateMark } from './SeatingTables.tsx';
+import { ChairMark, OutWords, StateMark } from './SeatingTables.tsx';
 import {
   centimetreUnit,
   tableLengthWords,
@@ -186,11 +186,11 @@ export function RowDrawing({
             square={false}
             label={near ? String(chair.seat) : undefined}
           />
-          {chosen && (
+          {(chosen || near) && (
             <circle
               className={near ? 'st-chair-hit' : 'st-chair-hit is-keys'}
               role="button"
-              tabIndex={0}
+              tabIndex={chosen ? 0 : -1}
               aria-label={t('seating.rowSeatName', {
                 label: row.label,
                 seat: chair.seat,
@@ -258,6 +258,15 @@ export function RowDrawing({
         </text>
         {seats}
       </g>
+      {s < CHAIRS_FROM_SCALE && (
+        <OutWords
+          x={cx}
+          y={cy + Math.max(ey, 40) * s + 12}
+          name={name}
+          taken={0}
+          seats={row.seats - row.unusableSeats.length}
+        />
+      )}
       {outside && box(6, 'st-overlap')}
     </g>
   );
@@ -314,10 +323,12 @@ export function SingleSeatDrawing({
           <ChairMark x={cx} y={cy} r={r} unusable square={false} label={undefined} />
         )}
       </g>
-      {s >= CHAIRS_FROM_SCALE && (
+      {s >= CHAIRS_FROM_SCALE ? (
         <text className="st-name is-quiet" x={f(cx + r + 6)} y={f(cy)} dominantBaseline="central">
           {seat.name}
         </text>
+      ) : (
+        <OutWords x={cx} y={cy + 40 * s * 0.55 + 12} name={seat.name} taken={0} seats={null} />
       )}
       {outside && <circle className="st-overlap" cx={f(cx)} cy={f(cy)} r={f(r + 6)} />}
     </g>
