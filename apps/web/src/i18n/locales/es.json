@@ -4085,11 +4085,11 @@
     "removeHint": "Remove…",
     "containsHelp": "Tick every allergen in this variant, or Contains none of these.",
     "nameBlank": "Enter the variant’s name.",
-    "nameLong": "Shorten the name to {{most}} characters or fewer.",
+    "nameLong": "Shorten the name to {{most, number}} characters or fewer.",
     "nameTaken": "Each variant needs its own name.",
     "needsEveryone": "At least one variant must be for Everyone.",
     "costWrong": "Enter the cost as a number, like {{example}}.",
-    "limit": "A dish can have at most {{most}} variants.",
+    "limit": "A dish can have at most {{most, number}} variants.",
     "dishPicked": "Guests have picked this dish.",
     "variantPicked": "Guests have picked this variant.",
     "lastEveryone": "{{variant}} is the only variant for Everyone. Make another variant for Everyone first.",
@@ -4115,8 +4115,9 @@
     "removed": "{{variant}} removed from {{dish}}.",
     "failedChange": "Nothing was changed: {{dish}} still comes {{n}} ways. Check your connection, then try again.",
     "guestsPickTheWay": "Everyone gets {{dish}}. Guests pick the way.",
-    "unwarned_one": "[{{count}} guest who picked {{dish}}, {{variant}}, has {{allergens}} recorded, and nobody has told them.]",
-    "unwarned_other": "[{{count}} guests who picked {{dish}}, {{variant}}, have {{allergens}} recorded, and nobody has told them.]"
+    "unwarned_one": "[{{count, number}} guest who picked {{dish}}, {{variant}}, has {{allergens}} recorded, and nobody has told them.]",
+    "unwarned_other": "[{{count, number}} guests who picked {{dish}}, {{variant}}, have {{allergens}} recorded, and nobody has told them.]",
+    "unwarned_many": "[{{count, number}} guests who picked {{dish}}, {{variant}}, have {{allergens}} recorded, and nobody has told them.]"
   },
   "eventMenu": {
     "title": "Menú",
