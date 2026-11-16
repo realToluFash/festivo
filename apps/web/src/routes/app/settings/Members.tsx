@@ -23,7 +23,15 @@ import {
   withNextPage,
   withPagesSince,
 } from '@soirely/domain';
-import { type ReactNode, type RefObject, useCallback, useEffect, useRef, useState } from 'react';
+import {
+  memo,
+  type ReactNode,
+  type RefObject,
+  useCallback,
+  useEffect,
+  useRef,
+  useState,
+} from 'react';
 import { Trans, useTranslation } from 'react-i18next';
 import { useSearchParams } from 'react-router';
 
@@ -400,16 +408,16 @@ function MembersLoaded({
     toSays.current = false;
   }, [open, split]);
 
-  const openPerson = (id: string) => {
+  const openPerson = useCallback((id: string) => {
     moved.current = true;
     setOpen(id);
     setNotice(null);
-  };
+  }, []);
   const back = () => {
     moved.current = true;
     setOpen(null);
   };
-  const answer = (id: string) => setDialog({ kind: 'request', id });
+  const answer = useCallback((id: string) => setDialog({ kind: 'request', id }), []);
   const step = (does: CardStep) => {
     switch (does.does) {
       case 'answer':
@@ -860,41 +868,65 @@ function PeopleRows({
   onPerson,
   onAnswer,
 }: BlocksProps & { shown: readonly OrganisationMember[] }) {
-  const { t } = useTranslation();
-
   return (
     <ul className="desk-rows has-lead" ref={rowsRef}>
-      {shown.map((one, tone) => {
-        const tag = one.status === 'active' ? undefined : <Tag {...memberTag(t, one)} />;
-        const line = [
-          memberHeldNoRole(one) ? t('membersScreen.noRoleYet') : roleName(t, one.role),
-          ...(one.self ? [t('membersScreen.you')] : []),
-        ].join(' · ');
-        const on = column && one.id === picked;
-
-        return (
-          <li key={one.id}>
-            {one.status === 'pending_approval' ? (
-              <WaitingRow member={one} tone={tone} onAnswer={onAnswer} />
-            ) : (
-              <MemberRow
-                member={one.id}
-                initials={initials(one.user.name)}
-                tone={tone}
-                name={one.user.name}
-                tag={tag}
-                line={line}
-                {...(one.status === 'left_or_removed'
-                  ? {}
-                  : { size: column ? 'small' : 'row', on, onPress: () => onPerson(one.id) })}
-              />
-            )}
-          </li>
-        );
-      })}
+      {shown.map((one, tone) => (
+        <li key={one.id}>
+          <PersonRow
+            member={one}
+            tone={tone}
+            column={column}
+            on={column && one.id === picked}
+            onPerson={onPerson}
+            onAnswer={onAnswer}
+          />
+        </li>
+      ))}
     </ul>
   );
 }
+
+/** Drawn again only when its person changes, so a page added under thousands of rows costs its own 50 (sc-49170). */
+const PersonRow = memo(function PersonRow({
+  member,
+  tone,
+  column,
+  on,
+  onPerson,
+  onAnswer,
+}: {
+  member: OrganisationMember;
+  tone: number;
+  column: boolean;
+  on: boolean;
+  onPerson: (id: string) => void;
+  onAnswer: (id: string) => void;
+}) {
+  const { t } = useTranslation();
+
+  if (member.status === 'pending_approval') {
+    return <WaitingRow member={member} tone={tone} onAnswer={onAnswer} />;
+  }
+
+  const line = [
+    memberHeldNoRole(member) ? t('membersScreen.noRoleYet') : roleName(t, member.role),
+    ...(member.self ? [t('membersScreen.you')] : []),
+  ].join(' · ');
+
+  return (
+    <MemberRow
+      member={member.id}
+      initials={initials(member.user.name)}
+      tone={tone}
+      name={member.user.name}
+      tag={member.status === 'active' ? undefined : <Tag {...memberTag(t, member)} />}
+      line={line}
+      {...(member.status === 'left_or_removed'
+        ? {}
+        : { size: column ? 'small' : 'row', on, onPress: () => onPerson(member.id) })}
+    />
+  );
+});
 
 /** An invitation's address, its role and sender, when it was sent and ends; Revoke while it is pending, Invite again after. */
 function InvitationRows({
