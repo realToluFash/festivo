@@ -946,6 +946,50 @@ describe('Tables at a desk (sc-4000)', () => {
     await waitFor(() => expect(screen.queryByText(/^Size reset to/u)).toBeNull());
   });
 
+  it('clears the reset line once a turn or a move of that table saves', async () => {
+    signedIn();
+    let version = 1;
+    let shape = 'round';
+    let placedAs: Record<string, unknown> = {};
+    const now = () =>
+      table({
+        shape,
+        widthCm: shape === 'round' ? 150 : 180,
+        lengthCm: shape === 'round' ? 150 : 76,
+        ...placedAs,
+        version,
+      });
+    await onSeating({
+      'GET /api/events/ev_1/seating-plan': () => seating(withTables(now())),
+      'PATCH /api/events/ev_1/seating-plan/tables/t1': (body) => {
+        const changes = body as Record<string, unknown>;
+
+        if (typeof changes.shape === 'string') shape = changes.shape;
+        version += 1;
+        return seating(withTables(now()), 't1');
+      },
+      'PATCH /api/events/ev_1/seating-plan/furniture': (body) => {
+        const [item] = (body as { items: Record<string, unknown>[] }).items;
+
+        version += 1;
+        placedAs = { xCm: item?.xCm, yCm: item?.yCm, rotation: item?.rotation ?? 0 };
+        return seating(withTables(now()));
+      },
+    });
+    const reset = 'Size reset to the rectangular default, 180 × 76 cm. Seats kept at 10.';
+
+    await chooseTable('Table 1, round, 0 of 10 seats taken');
+    fireEvent.change(screen.getByLabelText('Shape'), { target: { value: 'rectangular' } });
+    expect(await screen.findByText(reset)).toBeDefined();
+    fireEvent.change(screen.getByLabelText('Rotation'), { target: { value: '45' } });
+    await waitFor(() => expect(screen.queryByText(reset)).toBeNull());
+
+    fireEvent.change(screen.getByLabelText('Shape'), { target: { value: 'round' } });
+    expect(await screen.findByText(/^Size reset to the round default, /u)).toBeDefined();
+    leave('Across', '6 m');
+    await waitFor(() => expect(screen.queryByText(/^Size reset to/u)).toBeNull());
+  });
+
   it('counts only usable chairs in a table’s name, and follows a chair marked unusable', async () => {
     signedIn();
     await onSeating({
