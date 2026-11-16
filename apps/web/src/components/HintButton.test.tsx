@@ -1,7 +1,21 @@
 import { act, cleanup, fireEvent, render, screen } from '@testing-library/react';
-import { afterEach, describe, expect, it, vi } from 'vitest';
+import { afterEach, beforeAll, describe, expect, it, vi } from 'vitest';
 
-import { HintButton } from './HintButton.tsx';
+import { HINT_LINGER_MS, HintButton, LONG_PRESS_MS } from './HintButton.tsx';
+
+beforeAll(() => {
+  if (!('PointerEvent' in window)) {
+    class StandIn extends MouseEvent {
+      pointerType: string;
+
+      constructor(type: string, init: PointerEventInit = {}) {
+        super(type, init);
+        this.pointerType = init.pointerType ?? 'mouse';
+      }
+    }
+    Object.defineProperty(window, 'PointerEvent', { value: StandIn, configurable: true });
+  }
+});
 
 afterEach(cleanup);
 
@@ -56,5 +70,61 @@ describe('the hint over a round button (WCAG 1.4.13)', () => {
     fireEvent.click(screen.getByRole('button', { name: 'Up' }));
 
     expect(onClick).not.toHaveBeenCalled();
+  });
+
+  it('shows on a long press, and lifting the finger then does not press the button', () => {
+    vi.useFakeTimers();
+    try {
+      const { button, wrap, onClick } = shown();
+      fireEvent.pointerDown(button, { pointerType: 'touch' });
+      act(() => vi.advanceTimersByTime(LONG_PRESS_MS));
+      expect(wrap.classList.contains('is-held')).toBe(true);
+
+      fireEvent.pointerUp(button, { pointerType: 'touch' });
+      fireEvent.click(button);
+      expect(onClick).not.toHaveBeenCalled();
+
+      act(() => vi.advanceTimersByTime(HINT_LINGER_MS));
+      expect(wrap.classList.contains('is-held')).toBe(false);
+
+      fireEvent.click(button);
+      expect(onClick).toHaveBeenCalledOnce();
+    } finally {
+      vi.useRealTimers();
+    }
+  });
+
+  it('presses as usual on a short tap', () => {
+    vi.useFakeTimers();
+    try {
+      const { button, wrap, onClick } = shown();
+      fireEvent.pointerDown(button, { pointerType: 'touch' });
+      act(() => vi.advanceTimersByTime(LONG_PRESS_MS - 100));
+      fireEvent.pointerUp(button, { pointerType: 'touch' });
+      fireEvent.click(button);
+
+      expect(onClick).toHaveBeenCalledOnce();
+      act(() => vi.advanceTimersByTime(LONG_PRESS_MS));
+      expect(wrap.classList.contains('is-held')).toBe(false);
+    } finally {
+      vi.useRealTimers();
+    }
+  });
+  it('presses on the next tap when a long press ended with no click, as when the finger scrolled', () => {
+    vi.useFakeTimers();
+    try {
+      const { button, onClick } = shown();
+      fireEvent.pointerDown(button, { pointerType: 'touch' });
+      act(() => vi.advanceTimersByTime(LONG_PRESS_MS));
+      fireEvent.pointerCancel(button, { pointerType: 'touch' });
+
+      fireEvent.pointerDown(button, { pointerType: 'touch' });
+      fireEvent.pointerUp(button, { pointerType: 'touch' });
+      fireEvent.click(button);
+
+      expect(onClick).toHaveBeenCalledOnce();
+    } finally {
+      vi.useRealTimers();
+    }
   });
 });

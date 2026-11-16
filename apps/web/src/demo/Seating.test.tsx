@@ -360,6 +360,28 @@ describe('the plan and the room (sc-3998, sc-4007)', () => {
     expect(screen.getByText('57%')).toBeDefined();
   });
 
+  it(
+    'holds − at 25% and + at 400% aria-disabled, as the product does (sc-57678)',
+    SLOW,
+    async () => {
+      await seating('corner');
+      const zoomIn = screen.getByRole('button', { name: 'Zoom in' });
+      const zoomOut = screen.getByRole('button', { name: 'Zoom out' });
+
+      expect(zoomIn.getAttribute('aria-disabled')).toBe('false');
+      fireEvent.click(zoomIn);
+      fireEvent.click(zoomIn);
+      expect(screen.getByText('400%')).toBeDefined();
+      expect(zoomIn.getAttribute('aria-disabled')).toBe('true');
+      fireEvent.click(zoomIn);
+      expect(screen.getByText('400%')).toBeDefined();
+      for (let step = 0; step < 8; step++) fireEvent.click(zoomOut);
+      expect(screen.getByText('25%')).toBeDefined();
+      expect(zoomOut.getAttribute('aria-disabled')).toBe('true');
+      expect(zoomIn.getAttribute('aria-disabled')).toBe('false');
+    },
+  );
+
   describe('the view follows keyboard focus (sc-4007, WCAG 2.2 2.4.11)', () => {
     type Rect = [number, number, number, number];
 
@@ -1241,6 +1263,27 @@ describe('moving without dragging, and the save line (sc-5028, WCAG 2.2 SC 2.5.7
         ),
       );
       expect(await screen.findByRole('note', { name: 'Keys for the chosen item' })).toBeDefined();
+    },
+  );
+
+  it(
+    'writes the duplicate key as the computer does, ⌘ D on a Mac and Ctrl D off one',
+    SLOW,
+    async () => {
+      const platform = vi.spyOn(navigator, 'platform', 'get');
+
+      for (const [system, label] of [
+        ['MacIntel', '⌘ D'],
+        ['Win32', 'Ctrl D'],
+      ] as const) {
+        platform.mockReturnValue(system);
+        await seating('tabOrder');
+        const strip = await screen.findByRole('note', { name: 'Keys for the chosen item' });
+
+        expect(within(strip).getByText(label)).toBeDefined();
+        cleanup();
+      }
+      platform.mockRestore();
     },
   );
 });

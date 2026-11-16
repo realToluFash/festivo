@@ -16,6 +16,7 @@ import { EventSidebar } from './EventSidebar.tsx';
 import { clockOf, sampleEvent, type SampleEvent } from './events.ts';
 import { Icon, type IconName } from './SeatingGlyph.tsx';
 import { keptInbox, waitingLine } from './messages.ts';
+import { browserPlatform, onApple } from './search.ts';
 import {
   type Item,
   type Kind,
@@ -25,11 +26,13 @@ import {
   type Point,
   AT_100,
   CRUMB_WORDS,
+  LARGEST_SCALE,
   type CrumbLang,
   EVENT_ID,
   LONG_NAME,
   QA_NAME,
   PRIYA,
+  SMALLEST_SCALE,
   SW,
   ZOOMS,
   bounds,
@@ -1644,6 +1647,8 @@ function Seating({
       ? { ...newItem(ui.placing.kind, items, placingAt), id: 'placing' }
       : null;
   const zoomUp = !ui.readOnly && (ui.zoomStep || crowded);
+  const atSmallest = s <= SMALLEST_SCALE + 1e-9;
+  const atLargest = s >= LARGEST_SCALE - 1e-9;
   const rowDown = ui.rowStep || rowMet;
   const keysShown =
     keyboard &&
@@ -1883,7 +1888,10 @@ function Seating({
                   type="button"
                   className="st-round-button"
                   aria-label={SW.zoomOut}
-                  onClick={() => stepZoom(-1)}
+                  aria-disabled={atSmallest}
+                  onClick={() => {
+                    if (!atSmallest) stepZoom(-1);
+                  }}
                 >
                   <Icon name="minus" size={19} weight={2.2} />
                 </button>
@@ -1894,7 +1902,10 @@ function Seating({
                   type="button"
                   className="st-round-button"
                   aria-label={SW.zoomIn}
-                  onClick={() => stepZoom(1)}
+                  aria-disabled={atLargest}
+                  onClick={() => {
+                    if (!atLargest) stepZoom(1);
+                  }}
                 >
                   <Icon name="plus" size={19} weight={2.2} />
                 </button>
@@ -2161,11 +2172,12 @@ function MessageBar({
 }
 
 function KeysStrip() {
+  const mac = typeof navigator !== 'undefined' && onApple(browserPlatform());
   const keys: readonly [string, string][] = [
     ['← ↑ → ↓', SW.keyMove],
     ['Shift', SW.keyShift],
     ['R', SW.keyTurn],
-    ['⌘ D', SW.keyDuplicate],
+    [mac ? '⌘ D' : 'Ctrl D', SW.keyDuplicate],
     ['Delete', SW.keyDelete],
     ['Esc', SW.keyEsc],
   ];

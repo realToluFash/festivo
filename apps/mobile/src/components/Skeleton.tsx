@@ -117,9 +117,11 @@ const LINE_WIDTHS = ['92%', '78%', '64%'] as const;
 export function Arrived({ children, style }: { children: ReactNode; style?: ViewStyle }) {
   const reduced = useReducedMotion();
   const [shown] = useState(() => new Animated.Value(0));
+  const [settled, setSettled] = useState(false);
+  const still = reduced || settled;
 
   useEffect(() => {
-    if (reduced) {
+    if (still) {
       shown.setValue(1);
       return;
     }
@@ -128,12 +130,13 @@ export function Arrived({ children, style }: { children: ReactNode; style?: View
       duration: tokens.motionBase,
       useNativeDriver: true,
     });
-    run.start();
+    run.start(() => setSettled(true));
 
     return () => run.stop();
-  }, [reduced, shown]);
+  }, [still, shown]);
 
-  return <Animated.View style={[style, { opacity: shown }]}>{children}</Animated.View>;
+  // A native fade's end never reaches the view's committed props, so a window opening over the page as it arrives could commit it back to unseen (sc-48600): once the fade ends, the opacity goes.
+  return <Animated.View style={[style, !still && { opacity: shown }]}>{children}</Animated.View>;
 }
 
 function usePulse(running: boolean): Animated.Value {
