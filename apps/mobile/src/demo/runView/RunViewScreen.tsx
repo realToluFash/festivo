@@ -17,7 +17,6 @@ import {
   type Run,
   type RunItem,
   type TrackView,
-  RUN_EVENT_NAME,
   RW,
   figureSaid,
   figureWords,
@@ -89,15 +88,13 @@ function RunViewBody({ first, manage }: { first: Run; manage: boolean }) {
             Back
           </Text>
         </Pressable>
+        <Text size={phone ? 28 : 30} weight="bold" accessibilityRole="header">
+          {RW.title}
+        </Text>
         <View style={styles.head}>
-          <View style={styles.grow}>
-            <Text size={phone ? 28 : 30} weight="bold" accessibilityRole="header">
-              {RW.title}
-            </Text>
-            <Text size={15} weight="medium" style={styles.secondary}>
-              {RUN_EVENT_NAME}
-            </Text>
-          </View>
+          <Text size={15} style={[styles.secondary, styles.grow]}>
+            {RW.sub}
+          </Text>
           <View style={styles.clock}>
             <Glyph paths={PATHS.clock} ink={tokens.colorInk} side={16} circle />
             <Text size={14} weight="semibold" style={styles.num}>

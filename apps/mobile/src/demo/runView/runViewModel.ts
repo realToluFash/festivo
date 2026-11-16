@@ -1,6 +1,5 @@
 /** The run view (sc-1404, RunOfShow.dc.html on page e33): each track's planned and expected times, how far behind it runs, fixed times and their collisions. */
 export const RUN_EVENT = 'evt-wed-4';
-export const RUN_EVENT_NAME = 'Adaeze & Tunde’s wedding';
 
 export type Phase = 'waiting' | 'now' | 'done';
 
@@ -61,7 +60,7 @@ export const RW = {
   now: 'Now',
   done: 'Done',
   next: 'Next',
-  then: 'Then',
+  then: 'Later',
   nothingNow: 'Nothing is on',
   nothingThen: 'Nothing after this.',
   allDone: 'Every item on this track is done.',
@@ -400,7 +399,7 @@ export function runAt(raw: string | null | undefined): Run {
 
 export const RUN_BOARDS = (Object.keys(RUN_STATES) as RunStateName[]).map((state) => ({
   title: `Run view · ${RUN_STATES[state].name}`,
-  what: 'Tablet: one table per track. Phone: Now, Next, Then, one track at a time',
+  what: 'Tablet: one table per track. Phone: Now, Next, Later, one track at a time',
   href: `/demo/run-view?state=${state}`,
 }));
 
