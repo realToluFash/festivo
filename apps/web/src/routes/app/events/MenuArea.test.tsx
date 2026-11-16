@@ -313,6 +313,7 @@ describe('The event’s Menu (sc-3902)', () => {
       usedByEvent: true,
       archivedAt: null,
       lastPrice: null,
+      variants: [],
     };
     let menu = menuOf(LATE);
     const sent = await onMenu({
