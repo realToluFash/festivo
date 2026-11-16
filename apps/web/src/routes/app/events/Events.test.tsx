@@ -3590,6 +3590,11 @@ describe('Pause and Resume (sc-3586)', () => {
     await waitFor(() =>
       expect(screen.getByRole('status').textContent).toBe('Adaeze and Tunde is paused.'),
     );
+    await waitFor(() =>
+      expect(document.activeElement).toBe(
+        screen.getByRole('heading', { level: 1, name: 'Adaeze and Tunde' }),
+      ),
+    );
   });
 
   it('resumes without asking, and the phase follows the clock', async () => {
