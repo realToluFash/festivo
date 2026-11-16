@@ -46,6 +46,7 @@ import { AgendaList, BrokenLine, DayPanel, MonthWeeks } from './CalendarWeeks.ts
 import { Glyph } from './Glyph.tsx';
 import './calendar.css';
 import './today.css';
+import './phoneFit.css';
 
 const SPAN = 12;
 const EDGE = 800;

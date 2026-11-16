@@ -11,6 +11,7 @@ import { CardStep, Chevron, RowWords, Tag } from './SettingsParts.tsx';
 import './SettingsParts.css';
 import './eventsDesk.css';
 import './EventsList.css';
+import './phoneFit.css';
 
 const TAB_WORD: Record<EventsTab, string> = {
   upcoming: 'events.tabUpcoming',

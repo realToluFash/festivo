@@ -883,6 +883,44 @@ span {
   height: 16px;
 }
 
+/* Today, Events and Calendar fill the window under the bar, their bell in their own top and no card frame (sc-57468); their parts are `components/phoneFit.css`. */
+@media (width <= 40rem) {
+  .shell.fits-phone .shell-sidebar {
+    grid-column: 1 / -1;
+  }
+
+  .shell.fits-phone .shell-content {
+    padding: var(--spaceXl) var(--spaceLg) var(--space3xl);
+  }
+
+  /* Calendar keeps the window's height, so its weeks scroll inside the page and the month's name follows them. */
+  .shell.fits-phone:has(.cal-page) {
+    height: 100dvh;
+    grid-template-rows: auto minmax(0, 1fr);
+  }
+
+  .shell.fits-phone .shell-content:has(.cal-page) {
+    display: flex;
+    flex-direction: column;
+    min-height: 0;
+    padding-bottom: 0;
+    overflow: hidden;
+  }
+
+  .shell.fits-phone .shell-content > .desk:has(> .cal-page) {
+    display: flex;
+    flex: 1;
+    flex-direction: column;
+    min-height: 0;
+  }
+
+  .shell.fits-phone .shell-content .cal-page {
+    flex: 1;
+    height: auto;
+    padding-bottom: var(--spaceLg);
+  }
+}
+
 .shell-menu {
   position: fixed;
   inset: 0;

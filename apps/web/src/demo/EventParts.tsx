@@ -62,7 +62,7 @@ export function EventsShell({
 
   return (
     <LayersContext value={layers}>
-      <div className={fit ? 'today desk ev dp-fit' : 'today desk ev'}>
+      <div className={fit ? 'today desk ev fits-phone' : 'today desk ev'}>
         <DeskSearch tell={tell}>
           {renderSide(tell, covered)}
           <main id="content" className="desk-main" inert={covered}>
