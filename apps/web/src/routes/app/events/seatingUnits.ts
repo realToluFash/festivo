@@ -5,6 +5,7 @@ import { type TFunction } from 'i18next';
 type Display = 'short' | 'long';
 type Rounding = 'nearest' | 'up' | 'down';
 
+/** A length never breaks between its number and its unit. */
 function unit(
   locale: string,
   name: 'meter' | 'centimeter' | 'foot' | 'inch',
@@ -18,7 +19,10 @@ function unit(
     unitDisplay: display,
     maximumFractionDigits: 2,
     ...(grouping ? {} : { useGrouping: false }),
-  }).format(value);
+  })
+    .formatToParts(value)
+    .map((part) => (part.type === 'literal' ? part.value.replaceAll(' ', '\u00a0') : part.value))
+    .join('');
 }
 
 /** "24 m" or "12 ft 6 in"; readRoomSide reads "," as a decimal point, so a field's value has no grouping. */

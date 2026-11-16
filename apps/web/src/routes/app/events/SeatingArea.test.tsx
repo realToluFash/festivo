@@ -758,10 +758,10 @@ describe('Tables at a desk (sc-4000)', () => {
         .getAllByRole('menuitem')
         .map((one) => one.textContent),
     ).toEqual([
-      'Round table · 180 cm · 10 seats',
-      'Rectangular table · 180 × 76 cm · 6 seats',
-      'Head table · 240 × 76 cm · 4 seats',
-      'Cocktail table · 60 cm · 4 places',
+      'Round table · 180\u00a0cm · 10 seats',
+      'Rectangular table · 180 × 76\u00a0cm · 6 seats',
+      'Head table · 240 × 76\u00a0cm · 4 seats',
+      'Cocktail table · 60\u00a0cm · 4 places',
     ]);
     fireEvent.click(within(menu).getAllByRole('menuitem')[0]!);
 
@@ -1065,7 +1065,12 @@ describe('Tables at a desk (sc-4000)', () => {
     expect(screen.queryByLabelText('Seats')).toBeNull();
     const facts = [...document.querySelectorAll('.st-facts div')].map((row) => row.textContent);
 
-    expect(facts).toEqual(['SectionNo section', 'ShapeRound table', 'Seats10', 'Diameter180 cm']);
+    expect(facts).toEqual([
+      'SectionNo section',
+      'ShapeRound table',
+      'Seats10',
+      'Diameter180\u00a0cm',
+    ]);
     expect(screen.getByText('You can view and print this plan, but not change it.')).toBeDefined();
   });
 });
@@ -1348,6 +1353,6 @@ describe('Rows and single seats at a desk (sc-4003)', () => {
     expect(screen.queryByLabelText('Label')).toBeNull();
     const facts = [...document.querySelectorAll('.st-facts div')].map((one) => one.textContent);
 
-    expect(facts).toEqual(['SectionNo section', 'Seats10', 'Spacing50 cm']);
+    expect(facts).toEqual(['SectionNo section', 'Seats10', 'Spacing50\u00a0cm']);
   });
 });
