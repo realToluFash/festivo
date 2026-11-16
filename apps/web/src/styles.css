@@ -3858,10 +3858,7 @@ button.members-row {
   min-width: 0;
 }
 
-.event-form-page {
-  max-width: 47.5rem;
-}
-
+.event-form-page,
 .event-page {
   max-width: 72rem;
 }
@@ -3943,6 +3940,11 @@ button.members-row {
   display: flex;
   flex-direction: column;
   gap: var(--spaceXxl);
+}
+
+/* The crumb row spans the page, so the bell ends it as on an event's page; the form keeps its width (sc-39509). */
+.event-form-page > .event-form {
+  max-width: 47.5rem;
 }
 
 .event-form .field {
