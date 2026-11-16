@@ -298,6 +298,20 @@
   width: auto;
 }
 
+/* sc-57282: the placing bar fits the floor; its actions step together under the words when, as drawn in the page's language, they would leave the words less than a 13em measure. */
+.st-bar.is-placing {
+  width: min(520px, calc(100% - 2 * var(--spaceLg)));
+}
+
+.st-bar-body {
+  display: flex;
+  flex: 1;
+  flex-wrap: wrap;
+  align-items: center;
+  column-gap: 10px;
+  min-width: 0;
+}
+
 .st-bar p {
   flex: 1;
   min-width: 0;
@@ -305,6 +319,10 @@
   padding: var(--spaceLg) 0;
   color: var(--colorInk);
   font: 600 14.5px/1.4 var(--fontFamily);
+}
+
+.st-bar-body p {
+  flex: 1 1 13em;
 }
 
 .st-bar.is-tint {
@@ -325,6 +343,7 @@
 
 .st-bar-acts {
   display: flex;
+  flex: none;
   gap: 18px;
 }
 
