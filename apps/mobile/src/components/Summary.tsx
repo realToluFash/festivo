@@ -19,7 +19,7 @@ import { AnswerHeading } from './AnswerHeading.tsx';
 import { FrameSwitched } from './AppFrame.tsx';
 import { useTappedSwitch } from '../tappedSwitch.ts';
 import { type TextHandle, Text } from './Text.tsx';
-import { Toast } from './Toast.tsx';
+import { Toast, type ToastAction } from './Toast.tsx';
 import { tokens } from '../theme/tokens.ts';
 import type { Box } from '../kit/confettiClearance.ts';
 import { CARD_PIECES, Confetti, Cover } from './Cover.tsx';
@@ -83,13 +83,14 @@ const hidden = {
 
 export interface PageToastProps {
   words: string;
+  action?: ToastAction | null | undefined;
   onClose: () => void;
 }
 
-export function PageToast({ words, onClose, bottom }: PageToastProps & { bottom: number }) {
+export function PageToast({ words, action, onClose, bottom }: PageToastProps & { bottom: number }) {
   return (
     <View style={[styles.toast, { bottom }]}>
-      <Toast key={words} words={words} onClose={onClose} />
+      <Toast key={words} words={words} action={action} onClose={onClose} />
     </View>
   );
 }
