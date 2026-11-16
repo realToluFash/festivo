@@ -3888,7 +3888,7 @@
     "howAnswer": "How guests answer",
     "choose": "Guests choose",
     "same": "Everyone gets the same",
-    "sameNeedsOne": "Everyone gets the same needs exactly one dish.",
+    "sameNeedsOne": "“Everyone gets the same” needs exactly one dish.",
     "skip": "Guests may skip this course",
     "skipOn": "Guests also see “No {{course}} for me”.",
     "on": "On",
