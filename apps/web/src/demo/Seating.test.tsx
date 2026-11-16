@@ -1020,7 +1020,7 @@ describe('tables, rows and seats (sc-4000, sc-4003)', () => {
   });
 
   it(
-    'keeps the placing bar in reading order: its words, Place at the centre, Stop placing',
+    "puts the placing bar's words, Place at the centre and Stop placing in one wrapping row, in that order",
     SLOW,
     async () => {
       await seating('placing');
