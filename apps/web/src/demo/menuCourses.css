@@ -146,6 +146,10 @@
   list-style: none;
 }
 
+.mc-course.desk-card {
+  overflow: visible;
+}
+
 .mc-course-top {
   align-items: flex-start;
 }
