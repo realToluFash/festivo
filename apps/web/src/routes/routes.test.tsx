@@ -558,12 +558,22 @@ describe('the application tree', () => {
       },
     );
 
-    it("draws no band above Today under the phone's bar (sc-57468)", () => {
+    it("draws no band above Today under the phone's bar, and puts the bell in its banner (sc-57468)", async () => {
+      vi.spyOn(globalThis, 'fetch').mockImplementation(async (input) =>
+        new URL(String(input)).pathname === '/api/orgs/org_1/events'
+          ? new Response(JSON.stringify({ events: [], total: 0 }), {
+              headers: { 'Content-Type': 'application/json' },
+            })
+          : new Promise<Response>(() => {}),
+      );
       atPhoneWidth();
       at('/app');
 
+      const bell = await screen.findByRole('button', { name: /^Notifications/ });
+      expect(bell.closest('.today-actions')).toBeTruthy();
       expect(document.querySelector('header.shell-band')).toBeNull();
       expect(document.querySelector('.shell.fits-phone')).toBeTruthy();
+      expect(screen.getAllByRole('button', { name: /^Notifications/ })).toHaveLength(1);
     });
 
     it.each(['/app/settings', '/app/account', '/app/events/new'])(

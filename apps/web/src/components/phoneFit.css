@@ -1,4 +1,4 @@
-/* Today, Events and Calendar in a phone's browser, 40rem and under (sc-57468): every word whole at 390 and 320 px, in English and French. The page's frame carries `fits-phone`: the shell on those three pages, and their demos. */
+/* Today, Events and Calendar in a phone's browser, 40rem and under (sc-57468): every word whole at 390 and 320 px, in English and French. The page's frame carries `fits-phone`: the shell on those three pages, and their demos. Today's rules repeat demo/deskFit.css's today-main container blocks until sc-57575 folds the two. */
 
 @media (width <= 40rem) {
   .fits-phone .ev-top {
