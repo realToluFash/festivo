@@ -143,7 +143,10 @@
     "web:guest.programme",
     "web:seating.keyName.ctrl",
     "web:seating.alignCentre",
-    "web:seating.tableNumbered"
+    "web:seating.tableNumbered",
+    "web:eventMenu.title",
+    "web:eventMenu.suggestions",
+    "web:eventMenu.dessert"
   ],
   "pt": [
     "web:seating.shapeCocktailShort",
@@ -181,6 +184,7 @@
     "web:seating.keyName.shift",
     "web:seating.keyName.delete",
     "web:seating.keyName.esc",
-    "web:seating.keyName.ctrl"
+    "web:seating.keyName.ctrl",
+    "web:eventMenu.title"
   ]
 }
