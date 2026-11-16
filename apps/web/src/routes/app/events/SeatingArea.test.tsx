@@ -1475,10 +1475,10 @@ describe('At a narrow desk (sc-55937)', () => {
           .getAllByRole('menuitem')
           .map((one) => one.textContent),
       ).toEqual([
-        'Round table · 180 cm · 10 seats',
-        'Rectangular table · 180 × 76 cm · 6 seats',
-        'Head table · 240 × 76 cm · 4 seats',
-        'Cocktail table · 60 cm · 4 places',
+        'Round table · 180\u00a0cm · 10 seats',
+        'Rectangular table · 180 × 76\u00a0cm · 6 seats',
+        'Head table · 240 × 76\u00a0cm · 4 seats',
+        'Cocktail table · 60\u00a0cm · 4 places',
         'Row of chairs',
         'Single seat',
       ]);
