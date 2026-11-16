@@ -1,5 +1,5 @@
 import type { Membership } from '@soirely/api-client';
-import { act, fireEvent, render, screen, within } from '@testing-library/react';
+import { act, fireEvent, render, screen, waitFor, within } from '@testing-library/react';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { RouterProvider, createMemoryRouter } from 'react-router';
 
@@ -129,7 +129,7 @@ describe('an event’s page at a phone’s width hands over to the app (sc-55397
 
     const heading = await screen.findByRole('heading', { level: 1, name: NAME });
 
-    expect(document.activeElement).toBe(heading);
+    await waitFor(() => expect(document.activeElement).toBe(heading));
     expect(heading.id).toBe('content');
     expect(document.querySelectorAll('#content')).toHaveLength(1);
     expect(screen.getByText('Seating', { selector: '.ho-area' })).toBeTruthy();
