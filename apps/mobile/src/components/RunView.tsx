@@ -565,14 +565,7 @@ function PhoneTrack({
   if (view == null) return null;
 
   const { track } = view;
-  const nowRow =
-    track.rows
-      .filter((row) => row.phase === 'now')
-      .sort(
-        (a, b) =>
-          Date.parse(a.item.startedAt ?? a.item.planned) -
-          Date.parse(b.item.startedAt ?? b.item.planned),
-      )[0] ?? null;
+  const nowRows = track.rows.filter((row) => row.phase === 'now');
   const nextRow =
     track.next == null ? null : (track.rows.find((row) => row.item === track.next?.item) ?? null);
   const then = track.rows.filter((row) => row.phase === 'waiting' && row !== nextRow);
@@ -609,33 +602,38 @@ function PhoneTrack({
         <Text size={13} weight="semibold" style={styles.secondary}>
           {upper('runView.now')}
         </Text>
-        {nowRow == null ? (
+        {nowRows.length === 0 ? (
           <Text size={18} weight="semibold" style={styles.secondary}>
             {track.figure.kind === 'done' ? t('runView.allDone') : t('runView.nothingNow')}
           </Text>
         ) : (
-          <>
-            <ItemLine row={nowRow} />
-            <Text size={14} style={styles.secondary}>
-              {t('runView.nowLine', {
-                started: formatWallClock(
-                  wallOfZoned(nowRow.item.startedAt ?? nowRow.item.planned),
-                  locale,
-                ),
-                planned: formatWallClock(wallOfZoned(nowRow.item.planned), locale),
-                lasts: lastsOf(nowRow.item, t),
-              })}
-            </Text>
-            {nowRow.startedBefore != null && (
+          nowRows.map((nowRow, index) => (
+            <View key={nowRow.item.id} style={[styles.nowItem, index > 0 && styles.nowAlso]}>
+              <ItemLine row={nowRow} />
               <Text size={14} style={styles.secondary}>
-                {t('runView.startedBefore', { title: nowRow.startedBefore.title })}
+                {t('runView.nowLine', {
+                  started: formatWallClock(
+                    wallOfZoned(nowRow.item.startedAt ?? nowRow.item.planned),
+                    locale,
+                  ),
+                  planned: formatWallClock(wallOfZoned(nowRow.item.planned), locale),
+                  lasts: lastsOf(nowRow.item, t),
+                })}
               </Text>
-            )}
-            <Text size={14} style={nowRow.item.ownerName == null ? styles.none : styles.secondary}>
-              {nowRow.item.ownerName ?? t('runView.noOwner')}
-            </Text>
-            <Act row={nowRow} act={act} />
-          </>
+              {nowRow.startedBefore != null && (
+                <Text size={14} style={styles.secondary}>
+                  {t('runView.startedBefore', { title: nowRow.startedBefore.title })}
+                </Text>
+              )}
+              <Text
+                size={14}
+                style={nowRow.item.ownerName == null ? styles.none : styles.secondary}
+              >
+                {nowRow.item.ownerName ?? t('runView.noOwner')}
+              </Text>
+              <Act row={nowRow} act={act} />
+            </View>
+          ))
         )}
       </View>
       {nextRow != null && track.next != null && (
@@ -818,6 +816,12 @@ const styles = StyleSheet.create({
     borderTopColor: tokens.colorBorder,
   },
   thenTime: { width: 112 },
+  nowItem: { gap: tokens.spaceMd },
+  nowAlso: {
+    paddingTop: tokens.spaceMd,
+    borderTopWidth: 1,
+    borderTopColor: tokens.colorBorder,
+  },
   nextLine: { paddingTop: tokens.spaceSm },
   lock: { flexDirection: 'row', alignItems: 'center', gap: tokens.spaceSm },
 });
