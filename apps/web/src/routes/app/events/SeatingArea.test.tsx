@@ -1828,6 +1828,14 @@ describe('The room to scale (sc-4007)', () => {
     fireEvent.click(screen.getByRole('button', { name: 'Table 2, Seat 4, Empty' }));
     expect(await screen.findByRole('button', { name: 'Mark unusable' })).toBeDefined();
     expect(percent()).toBe('150%');
+
+    const room = document.querySelector('.st-room [data-table="t2"]')!;
+    expect(room.getAttribute('aria-pressed')).toBe('false');
+    expect(room.querySelectorAll('.st-lit')).toHaveLength(1);
+    expect(room.querySelector('.st-lit')?.tagName).toBe('circle');
+    expect(
+      screen.getByRole('button', { name: 'Table 2, Seat 4, Empty' }).getAttribute('aria-pressed'),
+    ).toBe('true');
   });
 
   it('shows the small map with the view on it from 200%', async () => {
