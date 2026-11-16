@@ -43,6 +43,7 @@ import {
   RefreshControl,
   StyleSheet,
   View,
+  useWindowDimensions,
   type TextInputInstance,
   type ViewInstance,
 } from 'react-native';
@@ -61,7 +62,7 @@ import {
   markOf,
   phaseCardOf,
 } from '../kit/guestRows.ts';
-import { pasteShown, waiting, whoseRows } from '../kit/pasteReply.ts';
+import { pasteBeside, pasteShown, waiting, whoseRows } from '../kit/pasteReply.ts';
 import { type GuestReplies, guestRepliesOf, guestReplyBy } from '../kit/replyBy.ts';
 import { type ScreenOffline, useHandOffline, useOffline } from '../offline.ts';
 import { useSignedIn } from '../signedIn.ts';
@@ -87,6 +88,7 @@ import {
   PasteRow,
   WhoseReply,
   usePaste,
+  usePasteHeight,
 } from './PasteReply.tsx';
 import { MarkSlot } from './ReplyMark.tsx';
 import { FailedBlock, type StepProps } from './Summary.tsx';
@@ -362,6 +364,7 @@ export function EventGuests({
     setTimeout(() => moveScreenReaderFocus(whoseTitle.current), FOCUS_AFTER_MS);
   }, []);
   const paste = usePaste(openWhose);
+  const beside = pasteBeside(kind, useWindowDimensions().fontScale);
   const closeWhose = useCallback(() => {
     setPasted(null);
     setTimeout(() => moveScreenReaderFocus(searchField.current), FOCUS_AFTER_MS);
@@ -621,9 +624,9 @@ export function EventGuests({
         locale={locale}
         manages={manages}
         replies={replies}
-        pasteInRow={kind === 'tabletPortrait' ? <PasteButton onText={paste.onText} inRow /> : null}
+        pasteInRow={beside ? <PasteButton onText={paste.onText} inRow /> : null}
         pasteUnder={
-          kind === 'tabletPortrait' ? (
+          beside ? (
             paste.nothing ? (
               <PasteNotice />
             ) : null
@@ -922,7 +925,7 @@ function GuestRows({
   /** The allergy mark is for people who manage guests (sc-3777). */
   manages: boolean;
   replies: GuestReplies;
-  /** sc-54450's Paste a reply: in the search row on an upright iPad, under it on a phone and in the list pane. */
+  /** sc-54450's Paste a reply: in the search row on an upright iPad below AX1, under it otherwise. */
   pasteInRow: ReactNode;
   pasteUnder: ReactNode;
 }) {
@@ -935,6 +938,7 @@ function GuestRows({
     onChoice('all');
   };
   const pastes = pasteShown(manages, replies.closedOn, counts.invited);
+  const fieldHeight = usePasteHeight();
   const says =
     counts.invited === 0 || phaseCard?.onList === true
       ? t('guestList.onTheList', { count: counts.all })
@@ -1018,6 +1022,7 @@ function GuestRows({
           onSearch={() => undefined}
           onClear={() => onTyped('')}
           label={t('guestList.find')}
+          height={fieldHeight}
           testID="guests.search"
           ref={searchRef}
         />

@@ -9,6 +9,7 @@ import {
   frameTitleSize,
   nameLines,
   paddingToCentre,
+  pasteHeight,
   rowsFloor,
   sideListWidth,
   TITLE_LINE,
@@ -277,5 +278,17 @@ describe('the width labels have to fit (sc-37298)', () => {
 
     expect(before / 12).toBe(1);
     expect(after / 12).toBeLessThan(20 / 12);
+  });
+});
+
+describe('pasteHeight', () => {
+  it('keeps the field height up to xxxL', () => {
+    expect(pasteHeight(45, 1)).toBe(45);
+    expect(pasteHeight(45, 1.353)).toBe(45);
+  });
+
+  it('grows past the word Apple draws at the accessibility sizes', () => {
+    expect(pasteHeight(45, AX1)).toBeGreaterThan(17 * AX1 * 1.2 + 14);
+    expect(pasteHeight(45, 3.12)).toBeGreaterThan(17 * 3.12 * 1.2 + 14);
   });
 });
