@@ -1713,7 +1713,7 @@
     "cancel": "Annuler",
     "currencyInUse": "La devise ne peut plus changer une fois que des montants sont enregistrés pour cet événement.",
     "currencyRetired": "Plus utilisée",
-    "noCurrency": "No currency matches “{{typed}}”.",
+    "noCurrency": "Aucune devise ne correspond à « {{typed}} ».",
     "notSaved": "Non enregistré. Vos modifications sont toujours là. Réessayez.",
     "forbidden": "Rien n’a été modifié. Votre rôle n’inclut pas l’autorisation nécessaire.",
     "changedElsewhere": "Non enregistré. Quelqu’un d’autre a modifié cet événement depuis que vous l’avez ouvert. Ce que vous avez saisi est toujours là.",
