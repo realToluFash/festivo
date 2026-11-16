@@ -1,12 +1,12 @@
-/* Today in a narrow page, whatever the window (sc-57575, sc-57468): a phone's browser and a desk window from 641 to 1439 px share one arrangement by the page's width, so a change to it lands on both. phone.css keeps what only a phone has, the sidebar as a menu; 1440 and up is as on main. */
+/* Today in a narrow page, whatever the window (sc-57575, sc-57468): a phone's browser and a desk window from 641 to 1439 px share one arrangement by the page's width, so a change to it lands on both. phoneFit.css keeps what only a phone has; 1440 and up is as on main. The page's frame carries `fits-phone`: the shell on Today, and Today's demo. */
 
-.dp-fit .today-main {
-  container: today-main / inline-size;
+.fits-phone :is(.today-page, .today-main) {
+  container: today / inline-size;
 }
 
 /* At a desk, words wrap whole rather than end in an ellipsis. */
 @media (40rem < width < 1440px) {
-  .dp-fit
+  .fits-phone
     :is(
       .today-need-title,
       .today-need-event,
@@ -20,11 +20,11 @@
     white-space: normal;
   }
 
-  .dp-fit .today-item {
+  .fits-phone .today-item {
     padding-block: var(--spaceXs);
   }
 
-  .dp-fit .today-item-words {
+  .fits-phone .today-item-words {
     flex-wrap: wrap;
     row-gap: var(--spaceHair);
     overflow: visible;
@@ -32,75 +32,75 @@
   }
 
   /* This week is one grid: the days and the bars share its seven columns, so a bar spans its days whatever width Today's name takes. */
-  .dp-fit .today-strip {
+  .fits-phone .today-strip {
     display: grid;
     grid-template-columns: repeat(7, 1fr);
   }
 
-  .dp-fit :is(.today-days, .today-bar-row) {
+  .fits-phone :is(.today-days, .today-bar-row) {
     display: grid;
     grid-template-columns: subgrid;
     grid-column: 1 / -1;
   }
 
-  .dp-fit .today-bar-row {
+  .fits-phone .today-bar-row {
     height: auto;
   }
 
-  .dp-fit .today-bar {
+  .fits-phone .today-bar {
     --barFrom: 0;
     --barSpan: 1;
   }
 
-  .dp-fit .today-bar.from-1 {
+  .fits-phone .today-bar.from-1 {
     --barFrom: 1;
   }
 
-  .dp-fit .today-bar.from-2 {
+  .fits-phone .today-bar.from-2 {
     --barFrom: 2;
   }
 
-  .dp-fit .today-bar.from-3 {
+  .fits-phone .today-bar.from-3 {
     --barFrom: 3;
   }
 
-  .dp-fit .today-bar.from-4 {
+  .fits-phone .today-bar.from-4 {
     --barFrom: 4;
   }
 
-  .dp-fit .today-bar.from-5 {
+  .fits-phone .today-bar.from-5 {
     --barFrom: 5;
   }
 
-  .dp-fit .today-bar.from-6 {
+  .fits-phone .today-bar.from-6 {
     --barFrom: 6;
   }
 
-  .dp-fit .today-bar.span-2 {
+  .fits-phone .today-bar.span-2 {
     --barSpan: 2;
   }
 
-  .dp-fit .today-bar.span-3 {
+  .fits-phone .today-bar.span-3 {
     --barSpan: 3;
   }
 
-  .dp-fit .today-bar.span-4 {
+  .fits-phone .today-bar.span-4 {
     --barSpan: 4;
   }
 
-  .dp-fit .today-bar.span-5 {
+  .fits-phone .today-bar.span-5 {
     --barSpan: 5;
   }
 
-  .dp-fit .today-bar.span-6 {
+  .fits-phone .today-bar.span-6 {
     --barSpan: 6;
   }
 
-  .dp-fit .today-bar.span-7 {
+  .fits-phone .today-bar.span-7 {
     --barSpan: 7;
   }
 
-  .dp-fit .today-bar-row > .today-bar {
+  .fits-phone .today-bar-row > .today-bar {
     position: static;
     grid-column: calc(var(--barFrom) + 1) / span var(--barSpan);
     width: auto;
@@ -111,30 +111,30 @@
     white-space: normal;
   }
 
-  .dp-fit .today-bar-row > .today-bar.is-open {
+  .fits-phone .today-bar-row > .today-bar.is-open {
     margin-left: 0;
   }
 
-  .dp-fit .today-bar-words {
+  .fits-phone .today-bar-words {
     height: auto;
   }
 
-  .dp-fit .today-bar-name {
+  .fits-phone .today-bar-name {
     overflow: visible;
   }
 
-  @container today-main (width < 620px) {
+  @container today (width < 620px) {
     /* Today's name keeps its width and the other six days share the rest. */
-    .dp-fit .today-strip {
+    .fits-phone .today-strip {
       grid-template-columns: max-content repeat(6, minmax(0, 1fr));
     }
 
     /* Too narrow for a name inside its days: the bar marks its days, and its name and length take the line under it, whole. */
-    .dp-fit .today-bar-row > .today-bar {
+    .fits-phone .today-bar-row > .today-bar {
       display: contents;
     }
 
-    .dp-fit .today-bar::before {
+    .fits-phone .today-bar::before {
       grid-row: 1;
       grid-column: calc(var(--barFrom) + 1) / span var(--barSpan);
       height: var(--spaceXs);
@@ -144,16 +144,16 @@
       content: '';
     }
 
-    .dp-fit .today-bar.is-open::before {
+    .fits-phone .today-bar.is-open::before {
       margin-left: 0;
       border-radius: 0 var(--spaceXxs) var(--spaceXxs) 0;
     }
 
-    .dp-fit .today-bar-row {
+    .fits-phone .today-bar-row {
       row-gap: var(--spaceXs);
     }
 
-    .dp-fit .today-bar-words {
+    .fits-phone .today-bar-words {
       grid-column: 1 / -1;
       padding: var(--spaceXxs) var(--spaceSm);
       border-left: var(--spaceXxs) solid var(--todayEvent);
@@ -166,25 +166,25 @@
 }
 
 /* Too narrow for Your events beside This week: it follows This week, the order a phone reads them in. */
-@container today-main (width < 840px) {
-  .dp-fit .today-columns {
+@container today (width < 840px) {
+  .fits-phone .today-columns {
     flex-direction: column;
     align-items: stretch;
     gap: 26px;
   }
 
-  .dp-fit .today-right {
+  .fits-phone .today-right {
     width: auto;
   }
 }
 
 /* A page as narrow as a phone's, in a phone's window or beside the sidebar at a desk. */
-@container today-main (width < 620px) {
-  .dp-fit :is(.today-banner, .today-now) {
+@container today (width < 620px) {
+  .fits-phone :is(.today-banner, .today-now) {
     height: auto;
   }
 
-  .dp-fit .today-banner-inner {
+  .fits-phone .today-banner-inner {
     position: relative;
     flex-direction: column;
     align-items: flex-start;
@@ -193,58 +193,58 @@
   }
 
   /* The event day's banner: its chips over its actions, then its words over what is next. */
-  .dp-fit .today-now {
+  .fits-phone .today-now {
     padding: var(--spaceXl);
   }
 
-  .dp-fit .today-now-top {
+  .fits-phone .today-now-top {
     flex-wrap: wrap;
     row-gap: var(--spaceSm);
   }
 
-  .dp-fit .today-now-mid {
+  .fits-phone .today-now-mid {
     flex-direction: column;
     align-items: stretch;
     gap: var(--spaceXl);
   }
 
-  .dp-fit .today-now-side {
+  .fits-phone .today-now-side {
     width: auto;
   }
 
-  .dp-fit .today-need-open {
+  .fits-phone .today-need-open {
     display: grid;
     grid-template-columns: auto minmax(0, 1fr);
     gap: var(--spaceXxs) var(--spaceMd);
     padding-block: var(--spaceSm);
   }
 
-  .dp-fit .today-need-open > .today-need-cover {
+  .fits-phone .today-need-open > .today-need-cover {
     grid-row: 1 / span 2;
   }
 
-  .dp-fit .today-need-open > .today-due {
+  .fits-phone .today-need-open > .today-due {
     grid-column: 2;
     width: auto;
   }
 
-  .dp-fit .today-need-act {
+  .fits-phone .today-need-act {
     width: auto;
   }
 
-  .dp-fit .today-day.is-today {
+  .fits-phone .today-day.is-today {
     padding-inline: var(--spaceXxs);
   }
 
-  .dp-fit .today-weekday {
+  .fits-phone .today-weekday {
     letter-spacing: 0.02em;
   }
 
-  .dp-fit .today-agenda {
+  .fits-phone .today-agenda {
     padding-inline: var(--spaceLg);
   }
 
-  .dp-fit .today-item {
+  .fits-phone .today-item {
     display: grid;
     grid-template-columns: auto auto minmax(0, 1fr);
     align-items: start;
@@ -252,18 +252,18 @@
     padding-block: var(--spaceSm);
   }
 
-  .dp-fit .today-item-time {
+  .fits-phone .today-item-time {
     grid-row: 1 / span 2;
     width: auto;
   }
 
-  .dp-fit .today-item-bar {
+  .fits-phone .today-item-bar {
     grid-row: 1 / span 2;
     height: 100%;
     min-height: 22px;
   }
 
-  .dp-fit .today-item-words {
+  .fits-phone .today-item-words {
     flex-direction: column;
     align-items: flex-start;
     gap: var(--spaceHair);
@@ -271,7 +271,7 @@
     white-space: normal;
   }
 
-  .dp-fit .today-item > .today-chip {
+  .fits-phone .today-item > .today-chip {
     grid-column: 3;
     justify-self: start;
   }

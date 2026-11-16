@@ -595,6 +595,13 @@ describe('the application tree', () => {
       expect(crumb()).toBe('Okonkwo Events / Today');
     });
 
+    it('gives Today between a phone and a desk the frame its narrow arrangement hangs from (sc-57575)', () => {
+      atStackedWidth();
+      at('/app');
+
+      expect(document.querySelector('.shell.fits-phone')).toBeTruthy();
+    });
+
     it('holds only the organisation while the overdue screen stands in, between a phone and a desk', () => {
       atStackedWidth();
       __setSessionState({ status: 'signedIn', session: overdueSession() });
