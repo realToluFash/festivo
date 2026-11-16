@@ -257,8 +257,14 @@ export function ExpiredCode({ title, line }: { title: string; line: string }) {
   );
 }
 
-/** The account's language, each named in its own: a pick redraws the page in it and saves it to the account, as the pill did (sc-39509). */
-export function LanguageBlock({ onChosen }: { onChosen: (name: string) => void }) {
+/** The account's language, each named in its own: a pick redraws the page in it and saves it to the account, as the pill did (sc-39509). `said` takes the foot's place where the page has no card to say it on. */
+export function LanguageBlock({
+  onChosen,
+  said = null,
+}: {
+  onChosen: (name: string) => void;
+  said?: string | null;
+}) {
   const { t } = useTranslation();
   const picked = useShownLanguage();
 
@@ -278,7 +284,7 @@ export function LanguageBlock({ onChosen }: { onChosen: (name: string) => void }
           onChosen(LOCALES.find((locale) => locale.code === code)?.nativeName ?? code);
           void chooseLanguage(code, true);
         }}
-        foot={t('account.languageFoot')}
+        foot={said ?? t('account.languageFoot')}
       />
     </section>
   );
