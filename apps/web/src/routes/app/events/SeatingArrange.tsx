@@ -10,6 +10,7 @@ import { type PointerEvent as ReactPointerEvent, useId } from 'react';
 import { useTranslation } from 'react-i18next';
 
 import { Glyph } from '../../../components/Glyph.tsx';
+import { Mark } from '../../../components/SettingsParts.tsx';
 import { currentLocale } from '../../../i18n/index.ts';
 import { Field, type PlanApi, Said } from './SeatingParts.tsx';
 import { f, turned } from './seatingDraw.ts';
@@ -122,10 +123,14 @@ export function SaveLine({ state, onTryAgain }: { state: SaveState; onTryAgain: 
       role="status"
       aria-live="polite"
     >
-      {state === 'saved' && <Glyph name="tick" size={16} weight={2.4} />}
+      {state === 'saved' && <Mark kind="yes" />}
       {state === 'saving' && <span className="st-turning" aria-hidden="true" />}
       {state === 'retrying' && <Glyph name="alert" size={16} weight={2.2} />}
-      {state === 'notSaved' && <Glyph name="alert" size={16} weight={2.2} />}
+      {state === 'notSaved' && (
+        <span className="st-no" aria-hidden="true">
+          <Glyph name="clear" size={10} weight={3.4} />
+        </span>
+      )}
       {t(
         {
           saved: 'seating.saved',

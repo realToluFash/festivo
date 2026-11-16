@@ -2628,6 +2628,7 @@ describe('Moving, turning and resizing on the Floor plan (sc-5028)', () => {
       await screen.findByText('This change was not saved.', {}, { timeout: 6000 }),
     ).toBeDefined();
     expect(document.querySelector('.st-save')?.textContent).toContain('Try again');
+    expect(document.querySelector('.st-save .st-no')).not.toBeNull();
     expect(screen.getByLabelText('Across')).toHaveProperty('value', '12.1\u00a0m');
 
     fireEvent.click(screen.getByRole('button', { name: 'Try again' }));
@@ -2853,6 +2854,7 @@ describe('Moving, turning and resizing on the Floor plan (sc-5028)', () => {
 
     await screen.findByRole('button', { name: 'Table 1, round, 0 of 10 seats taken' });
     expect(document.querySelector('.st-save')?.textContent).toBe('Saved');
+    expect(document.querySelector('.st-save .desk-mark.is-yes')).not.toBeNull();
     unmount();
 
     await onSeating(
