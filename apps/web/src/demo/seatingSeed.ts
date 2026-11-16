@@ -262,6 +262,7 @@ export function seedOf(state: SeatingState | null): Ui {
     case 'longName':
     case 'longNameFr':
     case 'crumbWidths':
+    case 'crumbFocus':
       return ui;
     case 'presenceOne':
       return { ...ui, people: [], joining: PRIYA };

@@ -115,7 +115,19 @@ function SeatingAt({ id, raw }: { id: string | undefined; raw: string | null }) 
 
   if (event == null) return <Navigate to="/demo/events" replace />;
   if (first.paper != null) return <PaperPage paper={first.paper} plan={first.plan} />;
-  if (state === 'crumbWidths') return <CrumbWidths id={event.id} />;
+  if (state === 'crumbWidths')
+    return (
+      <CrumbFrames id={event.id} title={SW.widthsTitle} line={SW.widthsLine} frames={WIDTHS} />
+    );
+  if (state === 'crumbFocus')
+    return (
+      <CrumbFrames
+        id={event.id}
+        title={SW.focusTitle}
+        line={SW.focusLine}
+        frames={ringFrames(event.name)}
+      />
+    );
   const named = crumbOf(state, event.name);
 
   return (
@@ -137,20 +149,24 @@ function SeatingAt({ id, raw }: { id: string | undefined; raw: string | null }) 
 }
 
 type Named = { name: string; lang: CrumbLang };
+type Ring = 'events' | 'name';
 
 /** Events › the event › Seating (sc-55300): only the event name gives way, cut short with an ellipsis; its link keeps the full name. */
-function SeatingCrumb({ id, named }: { id: string; named: Named }) {
+function SeatingCrumb({ id, named, ring }: { id: string; named: Named; ring?: Ring | undefined }) {
   const words = CRUMB_WORDS[named.lang];
+  const ringOn = (link: Ring) => (ring === link ? 'is-ring' : undefined);
 
   return (
     <nav className="st-crumb" aria-label={words.crumb} lang={named.lang}>
       <ol>
         <li>
-          <Link to="/demo/events">{words.events}</Link>
+          <Link to="/demo/events" className={ringOn('events')}>
+            {words.events}
+          </Link>
         </li>
         <li className="st-crumb-event">
           <Icon name="chevron" size={14} weight={2.3} />
-          <Link to={`/demo/events/${id}`}>
+          <Link to={`/demo/events/${id}`} className={ringOn('name')}>
             <span className="st-crumb-name">{named.name}</span>
           </Link>
         </li>
@@ -163,7 +179,9 @@ function SeatingCrumb({ id, named }: { id: string; named: Named }) {
   );
 }
 
-const WIDTHS: readonly { w: 320 | 375; named: Named; label: string }[] = [
+type Frame = { w: 320 | 375 | 1280; named: Named; label: string; ring?: Ring | undefined };
+
+const WIDTHS: readonly Frame[] = [
   { w: 320, named: { name: LONG_NAME, lang: 'en' }, label: SW.longLabel },
   { w: 375, named: { name: LONG_NAME, lang: 'en' }, label: SW.longLabel },
   { w: 320, named: { name: LONG_NAME, lang: 'fr' }, label: SW.longLabel },
@@ -171,28 +189,64 @@ const WIDTHS: readonly { w: 320 | 375; named: Named; label: string }[] = [
   { w: 375, named: { name: QA_NAME, lang: 'fr' }, label: QA_NAME },
 ];
 
-/** ?state=crumbWidths: a 320 and a 375 window, the band inside the page's 16 px gutters as the product draws it, since the demo's desk keeps its sidebar there. */
-function CrumbWidths({ id }: { id: string }) {
+/** sc-57088's frames: each link focused at 1280 on a name that fits, then at 375 and 320 on the 120-character one, and the French QA name at 375. */
+function ringFrames(name: string): Frame[] {
+  const narrow = ([375, 320] as const).flatMap((w) =>
+    (['en', 'fr'] as const).flatMap((lang) =>
+      (['events', 'name'] as const).map((ring) => ({
+        w,
+        named: { name: LONG_NAME, lang },
+        label: SW.longLabel,
+        ring,
+      })),
+    ),
+  );
+
+  return [
+    { w: 1280, named: { name, lang: 'en' }, label: name, ring: 'events' },
+    { w: 1280, named: { name, lang: 'en' }, label: name, ring: 'name' },
+    { w: 1280, named: { name, lang: 'fr' }, label: name, ring: 'events' },
+    { w: 1280, named: { name, lang: 'fr' }, label: name, ring: 'name' },
+    ...narrow,
+    { w: 375, named: { name: QA_NAME, lang: 'fr' }, label: QA_NAME, ring: 'name' },
+  ];
+}
+
+/** ?state=crumbWidths and ?state=crumbFocus: the header band in a window of each width, the narrow ones inside the page's 16 px gutters as the product draws them, since the demo's desk keeps its sidebar there. */
+function CrumbFrames({
+  id,
+  title,
+  line,
+  frames,
+}: {
+  id: string;
+  title: string;
+  line: string;
+  frames: readonly Frame[];
+}) {
   return (
     <main className="st-widths">
-      <h1>{SW.widthsTitle}</h1>
-      <p className="st-widths-line">{SW.widthsLine}</p>
-      {WIDTHS.map(({ w, named, label }) => (
-        <figure key={`${w}|${named.lang}|${label}`} className={`st-width is-${w}`}>
-          <figcaption>
-            {say(SW.widthAt, {
-              w,
-              lang: named.lang === 'fr' ? SW.french : SW.english,
-              name: label,
-            })}
-          </figcaption>
-          <div className="st-window">
-            <header className="st-top">
-              <SeatingCrumb id={id} named={named} />
-            </header>
-          </div>
-        </figure>
-      ))}
+      <h1>{title}</h1>
+      <p className="st-widths-line">{line}</p>
+      {frames.map(({ w, named, label, ring }) => {
+        const lang = named.lang === 'fr' ? SW.french : SW.english;
+        const link = ring === 'events' ? CRUMB_WORDS[named.lang].events : SW.theName;
+
+        return (
+          <figure key={`${w}|${named.lang}|${label}|${ring ?? ''}`} className={`st-width is-${w}`}>
+            <figcaption>
+              {ring == null
+                ? say(SW.widthAt, { w: String(w), lang, name: label })
+                : say(SW.ringAt, { w: String(w), lang, name: label, link })}
+            </figcaption>
+            <div className="st-window">
+              <header className="st-top">
+                <SeatingCrumb id={id} named={named} ring={ring} />
+              </header>
+            </div>
+          </figure>
+        );
+      })}
     </main>
   );
 }
