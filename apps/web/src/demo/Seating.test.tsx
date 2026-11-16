@@ -972,6 +972,68 @@ describe('tables, rows and seats (sc-4000, sc-4003)', () => {
     },
   );
 
+  it.each([
+    [282, false],
+    [283, true],
+  ])(
+    'on a 718 px floor with the views 400 px wide and Saved · Print %i px, Saved · Print step down: %s',
+    SLOW,
+    async (rightWidth, down) => {
+      const measured = vi
+        .spyOn(HTMLElement.prototype, 'getBoundingClientRect')
+        .mockImplementation(function (this: HTMLElement) {
+          const width = this.classList.contains('st-views')
+            ? 400
+            : this.classList.contains('st-top-right')
+              ? rightWidth
+              : 0;
+
+          return {
+            width,
+            height: 0,
+            top: 0,
+            left: 0,
+            right: width,
+            bottom: 0,
+            x: 0,
+            y: 0,
+          } as DOMRect;
+        });
+
+      try {
+        await seating();
+        const print = await screen.findByRole('button', { name: 'Print' }, WAIT);
+
+        await waitFor(() => expect(print.closest('.is-row-down') != null).toBe(down));
+      } finally {
+        measured.mockRestore();
+      }
+    },
+  );
+
+  it('shows Saved · Print a line down in English at any width', SLOW, async () => {
+    await seating('rowStepped');
+    const print = await screen.findByRole('button', { name: 'Print' }, WAIT);
+
+    expect(print.closest('.is-row-down')).not.toBeNull();
+    expect(screen.getByRole('button', { name: 'Stop placing' })).toBeDefined();
+  });
+
+  it(
+    'keeps the placing bar in reading order: its words, Place at the centre, Stop placing',
+    SLOW,
+    async () => {
+      await seating('placing');
+      const stop = await screen.findByRole('button', { name: 'Stop placing' }, WAIT);
+      const body = stop.closest('.st-bar-body');
+      const order = [...(body?.querySelectorAll('p, button') ?? [])].map((node) =>
+        node.tagName === 'P' ? 'words' : node.textContent,
+      );
+
+      expect(order).toEqual(['words', 'Place at the centre', 'Stop placing']);
+    },
+  );
+
   it('Esc in a field undoes the typing first, then leaves the table', SLOW, async () => {
     await seating('tapChooses');
     const field = within(panel()).getByLabelText('Seats', { exact: false }) as HTMLInputElement;

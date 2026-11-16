@@ -1378,6 +1378,11 @@ export const SEATING_STATES = [
     group: 'Tables, rows and seats',
   },
   {
+    key: 'rowStepped',
+    name: 'Saved and Print a line down, as at 1024',
+    group: 'Tables, rows and seats',
+  },
+  {
     key: 'tapChooses',
     name: 'A click chooses a table for Arrange',
     group: 'Tables, rows and seats',

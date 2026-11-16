@@ -953,8 +953,18 @@
   width: auto;
 }
 
-.st-bar p {
+/* sc-57282: the words keep a readable measure beside the actions; when the actions, as drawn in the page's language, leave less, they step together onto a line under the words. */
+.st-bar-body {
+  display: flex;
   flex: 1;
+  flex-wrap: wrap;
+  align-items: center;
+  column-gap: 10px;
+  min-width: 0;
+}
+
+.st-bar p {
+  flex: 1 1 13em;
   min-width: 0;
   margin: 0;
   padding: var(--spaceLg) 0;
@@ -980,6 +990,7 @@
 
 .st-bar-acts {
   display: flex;
+  flex: none;
   gap: 18px;
 }
 
@@ -2761,4 +2772,21 @@
 .st-window .st-crumb-event,
 .st-window .st-crumb-event a {
   min-width: var(--sizeHit);
+}
+
+/* sc-57282: when the views and Saved · Print would come within 12 px, Saved · Print step down a line at the floor's right, and what stood on that line steps down with them. */
+.is-row-down .st-top-right {
+  top: 72px;
+}
+
+.is-row-down .st-print {
+  top: 130px;
+}
+
+.is-row-down .st-under-views {
+  top: 132px;
+}
+
+.is-row-down .st-view-wrap {
+  padding-top: 132px;
 }
