@@ -36,7 +36,7 @@ describe('Ask to join’s message in the demo', () => {
   it('says the refusal and the count in both languages', () => {
     expect(JOIN_COPY.en.tooLong).toBe('Keep your message to 500 characters or fewer.');
     expect(JOIN_COPY.fr.tooLong).toBe('Raccourcissez votre message à 500 caractères maximum.');
-    expect(JOIN_COPY.en.count(500)).toBe('500 of 500 characters.');
-    expect(JOIN_COPY.fr.count(501)).toBe('501 sur 500 caractères.');
+    expect(JOIN_COPY.en.count('a'.repeat(500))).toBe('500 of 500 characters.');
+    expect(JOIN_COPY.fr.count('a'.repeat(501))).toBe('501 sur 500 caractères.');
   });
 });

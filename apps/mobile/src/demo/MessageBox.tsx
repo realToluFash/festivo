@@ -21,6 +21,9 @@ import { inputFaced } from '../theme/fonts.ts';
 import { tokens } from '../theme/tokens.ts';
 import { MESSAGE_BOX, MESSAGE_BOX_MOST_SCALE } from './joinMessage.ts';
 
+/** InsideField's LABEL_LARGE: the two multi-line fields share one constant once this moves into the kit. */
+const TEXT_LARGE = 17;
+
 /** One focused group, so the keys lift the refusal and the count above Ask to join with the box. */
 export function MessageBox({
   label,
@@ -136,7 +139,7 @@ const styles = StyleSheet.create({
     paddingBottom: tokens.spaceSm,
     paddingHorizontal: tokens.spaceXl - 1,
     color: tokens.colorInk,
-    fontSize: 17,
+    fontSize: TEXT_LARGE,
     textAlignVertical: 'top',
   },
 });

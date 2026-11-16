@@ -1,6 +1,6 @@
 import { visibleLength } from '@soirely/domain';
 
-import { MESSAGE_MOST } from '../steps/rules.ts';
+import { MESSAGE_MOST, messageCount } from '../steps/rules.ts';
 import { SAMPLE } from './samples.ts';
 
 /** The Message box's height at the default text size: about four lines under its label, and with the label, refusal and count it still fits above the keys and Ask to join on an iPhone SE. It scrolls inside rather than growing. */
@@ -15,7 +15,7 @@ export interface JoinCopy {
   title: string;
   label: string;
   tooLong: string;
-  count: (length: number) => string;
+  count: (message: string) => string;
   whatTheySee: string;
   ask: string;
   asking: string;
@@ -27,7 +27,7 @@ export const JOIN_COPY: Record<JoinLanguage, JoinCopy> = {
     title: `Ask to join ${SAMPLE.organisation}`,
     label: 'Message · optional',
     tooLong: `Keep your message to ${MESSAGE_MOST} characters or fewer.`,
-    count: (length) => `${length} of ${MESSAGE_MOST} characters.`,
+    count: messageCount,
     whatTheySee: `${SAMPLE.organisation} sees your name, your email address and your message.`,
     ask: 'Ask to join',
     asking: 'Asking…',
@@ -36,7 +36,7 @@ export const JOIN_COPY: Record<JoinLanguage, JoinCopy> = {
     title: `Demander à rejoindre ${SAMPLE.organisation}`,
     label: 'Message · facultatif',
     tooLong: `Raccourcissez votre message à ${MESSAGE_MOST} caractères maximum.`,
-    count: (length) => `${length} sur ${MESSAGE_MOST} caractères.`,
+    count: (message) => `${visibleLength(message)} sur ${MESSAGE_MOST} caractères.`,
     whatTheySee: `${SAMPLE.organisation} verra votre nom, votre adresse e-mail et votre message.`,
     ask: 'Demander l’accès',
     asking: 'Envoi de la demande…',

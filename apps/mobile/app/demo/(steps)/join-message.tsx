@@ -1,7 +1,6 @@
 import { useLocalSearchParams } from 'expo-router';
 import { useRef, useState } from 'react';
 import { StyleSheet, type TextInputInstance, View } from 'react-native';
-import { visibleLength } from '@soirely/domain';
 
 import { PrimaryButton } from '../../../src/components/Buttons.tsx';
 import { focusChecked } from '../../../src/components/Field.tsx';
@@ -78,7 +77,7 @@ export default function JoinMessage() {
           }}
           onBlur={() => checks.left('message', message)}
           line={checks.errors.message ?? null}
-          count={copy.count(visibleLength(message))}
+          count={copy.count(message)}
           autoFocus={start !== 'empty'}
           testID="demo.message"
         />
