@@ -1,10 +1,11 @@
 import { shownReply } from '@soirely/domain';
 import * as Clipboard from 'expo-clipboard';
-import { type RefObject, useState } from 'react';
+import { type RefObject, memo, useCallback, useState } from 'react';
 import { Platform, Pressable, StyleSheet, View } from 'react-native';
 import { useTranslation } from 'react-i18next';
 
 import { markOf } from '../kit/guestRows.ts';
+import { LIST_EDGES } from './listFrame.ts';
 import type { LayoutKind } from '../layout/useLayout.ts';
 import { type WhoseRow, hasText } from '../kit/pasteReply.ts';
 import { tokens } from '../theme/tokens.ts';
@@ -18,6 +19,7 @@ import { Text, type TextHandle } from './Text.tsx';
 const FIELD_HEIGHT = 48;
 const RING = 1.5;
 const QUOTE_LINES = 6;
+const PLAIN_TEXT: Clipboard.AcceptedContentType[] = ['plain-text'];
 
 /** Soirely's own secondary button: Android's, and iOS's before 16. It reads the clipboard only when pressed. */
 function OwnPaste({ onText }: { onText: (text: string) => void }) {
@@ -43,13 +45,24 @@ function OwnPaste({ onText }: { onText: (text: string) => void }) {
   );
 }
 
-/** iOS 16 on: Apple's Paste, which asks nothing before pasting. Its word follows the phone's language, so it is never given a fixed width. */
-function ApplePaste({ onText, inRow }: { onText: (text: string) => void; inRow: boolean }) {
+/** iOS 16 on: Apple's Paste, memoised because expo-clipboard rebuilds it on every prop update, and a press on a rebuilt one does nothing. */
+const ApplePaste = memo(function ApplePaste({
+  onText,
+  inRow,
+}: {
+  onText: (text: string) => void;
+  inRow: boolean;
+}) {
+  const onPress = useCallback(
+    (data: Clipboard.PasteEventPayload) => onText(data.type === 'text' ? data.text : ''),
+    [onText],
+  );
+
   return (
     <View style={[styles.appleRing, inRow ? styles.appleInRow : styles.appleAlone]}>
       <Clipboard.ClipboardPasteButton
-        onPress={(data) => onText(data.type === 'text' ? data.text : '')}
-        acceptedContentTypes={['plain-text']}
+        onPress={onPress}
+        acceptedContentTypes={PLAIN_TEXT}
         displayMode="iconAndLabel"
         cornerStyle="capsule"
         backgroundColor={tokens.colorCard}
@@ -59,7 +72,7 @@ function ApplePaste({ onText, inRow }: { onText: (text: string) => void; inRow: 
       />
     </View>
   );
-}
+});
 
 export function PasteButton({
   onText,
@@ -94,15 +107,18 @@ export function PasteNotice() {
 export function usePaste(onQuote: (quote: string) => void) {
   const { t } = useTranslation();
   const [nothing, setNothing] = useState(false);
-  const onText = (text: string) => {
-    if (hasText(text)) {
-      setNothing(false);
-      onQuote(text);
-      return;
-    }
-    setNothing(true);
-    readOut(t('guestList.paste.nothing'), { interrupts: true });
-  };
+  const onText = useCallback(
+    (text: string) => {
+      if (hasText(text)) {
+        setNothing(false);
+        onQuote(text);
+        return;
+      }
+      setNothing(true);
+      readOut(t('guestList.paste.nothing'), { interrupts: true });
+    },
+    [onQuote, t],
+  );
 
   return { nothing, onText, forget: () => setNothing(false) };
 }
@@ -264,7 +280,7 @@ export function WhoseReply({
   const looking = typed.trim() !== '';
 
   return (
-    <View style={styles.page} testID="paste.whose">
+    <View style={[styles.page, kind === 'phone' && styles.flushPhone]} testID="paste.whose">
       {wide && (
         <TextAction
           label={t('guestList.backToGuests')}
@@ -367,6 +383,8 @@ const styles = StyleSheet.create({
   quoteText: { lineHeight: 16 * 1.45 },
   measure: { position: 'absolute', top: 0, left: 0, right: 0, opacity: 0 },
   page: { gap: 18 },
+  /** The demo starts this page flush under the top bar; the page column's top edge is the list's. */
+  flushPhone: { marginTop: -LIST_EDGES.phone.paddingTop },
   none: { gap: 6, paddingTop: tokens.spaceXs },
   groupHead: { minHeight: tokens.sizeHit, flexDirection: 'row', alignItems: 'center' },
   headTitle: { letterSpacing: -0.18, lineHeight: 18 * 1.25 },
