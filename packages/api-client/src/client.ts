@@ -59,6 +59,7 @@ import { ApiError, ApiUnreachableError, type Problem, toProblem } from './proble
 import {
   asSeating,
   type Seating,
+  type SeatingArrangement,
   type SeatingRoom,
   type SeatingRowChanges,
   type SeatingTableChanges,
@@ -2235,6 +2236,13 @@ export class ApiClient {
       await this.delete<{ seating?: unknown }>(
         `${this.seatingPath(eventId)}/sections/${encodeURIComponent(sectionId)}`,
       ),
+    );
+  }
+
+  /** Moves, turns and resizes, saved all or nothing; 412 with `stale` naming each item a colleague changed since its `version`, and `validation_failed` beside `items[n]` for one left outside the room. */
+  async arrangeSeating(eventId: string, items: SeatingArrangement[]): Promise<Seating> {
+    return this.seatingOf(
+      await this.patch<{ seating?: unknown }>(`${this.seatingPath(eventId)}/furniture`, { items }),
     );
   }
 

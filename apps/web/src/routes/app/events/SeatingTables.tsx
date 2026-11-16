@@ -43,7 +43,18 @@ import {
   sectionOf,
   turned,
 } from './seatingDraw.ts';
-import { Added, BackHead, Field, Line, type PlanApi, Said, Select } from './SeatingParts.tsx';
+import {
+  Added,
+  BackHead,
+  Field,
+  Line,
+  type PlanApi,
+  Said,
+  Select,
+  ShapeTile,
+} from './SeatingParts.tsx';
+import { Overlaps, PositionFields } from './SeatingArrange.tsx';
+import { placementOf } from './seatingItems.ts';
 import {
   centimetreUnit,
   tableLengthWords,
@@ -158,11 +169,9 @@ export function AddTable({
     }
   }
 
-  async function add(shape: TableShape): Promise<void> {
-    const added = await ctx.place(() => api.addSeatingTable(ctx.event.id, shape));
-
-    if (added != null)
-      ctx.open({ kind: 'table', id: added.id, said: t('seating.added', { name: added.name }) });
+  function add(shape: TableShape): Promise<void> {
+    ctx.startPlacing({ kind: 'table', shape });
+    return Promise.resolve();
   }
 
   const on = menu || (folded && adding);
@@ -251,14 +260,6 @@ export function AddTable({
         )}
       </div>
     </>
-  );
-}
-
-function ShapeTile({ glyph }: { glyph: 'round' | 'rect' | 'head' | 'cocktail' | 'row' | 'seat1' }) {
-  return (
-    <span className="st-shape-tile is-36" aria-hidden="true">
-      <Glyph name={glyph} size={22} weight={1.9} />
-    </span>
   );
 }
 
@@ -774,6 +775,7 @@ export function TablePanel({
             <Line>{endsLine(t, table)}</Line>
           </>
         )}
+        <PositionFields ctx={ctx} item={{ kind: 'table', one: table }} />
         {ctx.system === 'us' && <Line>{t('seating.usHint')}</Line>}
         {!round && (
           <Select
@@ -781,10 +783,15 @@ export function TablePanel({
             label={t('seating.rotation')}
             value={String(table.rotation)}
             options={rotations()}
-            onPick={(value) => void change({ rotation: Number(value) })}
+            onPick={(value) =>
+              ctx.arrange([
+                { ...placementOf({ kind: 'table', one: table }), rotation: Number(value) },
+              ])
+            }
           />
         )}
       </div>
+      <Overlaps plan={plan} id={table.id} />
       <div className="st-acts">
         <TextAction
           label={t('seating.duplicate')}

@@ -251,6 +251,16 @@ final readonly class SeatingRules
      *
      * @return array{propertyPath: string, message: string, code: string}
      */
+    public function arrangeViolation(string $path, string $key, array $parameters = []): array
+    {
+        return $this->violation($path, $key, $parameters);
+    }
+
+    /**
+     * @param array<string, string> $parameters
+     *
+     * @return array{propertyPath: string, message: string, code: string}
+     */
     private function violation(string $path, string $key, array $parameters = []): array
     {
         return [

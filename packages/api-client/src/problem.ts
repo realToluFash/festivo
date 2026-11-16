@@ -46,6 +46,8 @@ export interface Problem {
   permission?: string;
   /** On a seating plan's `precondition_failed`: who changed it since (sc-3998). */
   changedBy?: string;
+  /** On a Floor plan step's `precondition_failed`: every item a colleague changed since, so the whole step was refused (sc-5028). */
+  stale?: string[];
   /** On `seating_items_outside`: the tables the refused room size would leave outside it (sc-4000). */
   outside?: string[];
   /** On `guest_replied`: the reply that keeps them invited and when, in the event's zone (sc-3788). */

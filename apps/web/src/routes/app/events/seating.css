@@ -1101,3 +1101,235 @@
   stroke: var(--colorAccent);
   stroke-width: 2;
 }
+
+/* Moving, turning and resizing on the Floor plan (sc-5028), as the demo draws them: the save line, the keys strip, Place another, a chosen table's handles and the tip while dragging. */
+.st-movable {
+  cursor: grab;
+}
+
+.st-top-right {
+  top: var(--spaceLg);
+  right: var(--spaceLg);
+  display: flex;
+  align-items: center;
+  gap: 14px;
+}
+
+.st-save {
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  color: var(--colorInkSecondary);
+  font: 600 13.5px/1.3 var(--fontFamily);
+  white-space: nowrap;
+}
+
+.st-save.is-retrying {
+  color: var(--colorAttentionText);
+}
+
+.st-save.is-not-saved {
+  color: var(--colorBrokenText);
+}
+
+.st-turning {
+  display: inline-block;
+  flex: none;
+  box-sizing: border-box;
+  width: 15px;
+  height: 15px;
+  border: 2px solid var(--stSunk);
+  border-top-color: var(--colorInkSecondary);
+  border-right-color: var(--colorInkSecondary);
+  border-radius: 50%;
+  animation: spin 900ms linear infinite;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .st-turning {
+    animation: none;
+  }
+}
+
+.st-keys {
+  right: var(--spaceLg);
+  bottom: 78px;
+  left: var(--spaceLg);
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--spaceMd) 14px;
+  padding: 10px 14px;
+  border-radius: var(--spaceLg);
+  background: var(--stSurface);
+  box-shadow: 0 0 0 1px var(--colorBorder);
+}
+
+.st-key {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  color: var(--colorInkSecondary);
+  font: 500 13px/1.3 var(--fontFamily);
+  white-space: nowrap;
+}
+
+.st-key kbd {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  box-sizing: border-box;
+  min-width: 26px;
+  height: 26px;
+  padding: 0 7px;
+  border-radius: 7px;
+  background: var(--colorCard);
+  box-shadow:
+    inset 0 0 0 1px var(--colorBorder),
+    0 1px 0 var(--colorBorder);
+  color: var(--colorInk);
+  font: 600 12.5px/1 var(--fontFamily);
+}
+
+.st-another {
+  bottom: 80px;
+  left: var(--spaceLg);
+  display: flex;
+  align-items: center;
+  gap: 2px;
+  padding: 4px;
+  border-radius: 26px;
+  background: var(--colorCard);
+  box-shadow: var(--stShadow);
+}
+
+.st-another label {
+  display: flex;
+  align-items: center;
+  gap: var(--spaceMd);
+  height: var(--sizeHit);
+  padding: 0 10px;
+  color: var(--colorInk);
+  font: 600 14px/1 var(--fontFamily);
+  cursor: pointer;
+}
+
+.st-another input {
+  width: 20px;
+  height: 20px;
+  margin: 0;
+  accent-color: var(--colorAccent);
+}
+
+.st-handle {
+  fill: var(--colorCard);
+  stroke: var(--colorAccent);
+  stroke-width: 2.4;
+  pointer-events: none;
+}
+
+.st-handle-box {
+  fill: none;
+  stroke: var(--colorAccent);
+  stroke-width: 1.5;
+  pointer-events: none;
+}
+
+.st-handle-hit {
+  fill: transparent;
+}
+
+.st-handle-hit.is-nw,
+.st-handle-hit.is-se {
+  cursor: nwse-resize;
+}
+
+.st-handle-hit.is-ne,
+.st-handle-hit.is-sw {
+  cursor: nesw-resize;
+}
+
+.st-handle-hit.is-n,
+.st-handle-hit.is-s {
+  cursor: ns-resize;
+}
+
+.st-handle-hit.is-e,
+.st-handle-hit.is-w {
+  cursor: ew-resize;
+}
+
+.st-tip {
+  pointer-events: none;
+}
+
+.st-tip rect {
+  fill: var(--colorInk);
+}
+
+.st-tip text {
+  fill: var(--colorInkOnDark);
+  font: 600 13px var(--fontFamily);
+  font-variant-numeric: tabular-nums;
+}
+
+.st-switch-row {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  min-height: var(--sizeHit);
+}
+
+.st-switch-row > span {
+  flex: 1;
+  color: var(--colorInk);
+  font: 600 15px/1.3 var(--fontFamily);
+}
+
+.st-switch {
+  display: inline-flex;
+  flex: none;
+  align-items: center;
+  min-height: var(--sizeHit);
+  padding: 0 var(--spaceXxs);
+  border: 0;
+  border-radius: var(--radiusSmall);
+  background: none;
+  cursor: pointer;
+}
+
+.st-switch-track {
+  position: relative;
+  flex: none;
+  width: var(--sizeToggleW);
+  height: var(--sizeToggleH);
+  border-radius: var(--radiusPill);
+  background: var(--colorTrack);
+  transition: background var(--motionBase) var(--motionEase);
+}
+
+.st-switch-knob {
+  position: absolute;
+  top: var(--spaceHair);
+  left: var(--spaceHair);
+  width: var(--sizeToggleKnob);
+  height: var(--sizeToggleKnob);
+  border-radius: var(--radiusPill);
+  background: var(--colorCard);
+  box-shadow: var(--shadowKnob);
+  transition: transform var(--motionBase) var(--motionEase);
+}
+
+.st-switch[aria-checked='true'] .st-switch-track {
+  background: var(--colorAccent);
+}
+
+.st-switch[aria-checked='true'] .st-switch-knob {
+  transform: translateX(calc(var(--sizeToggleW) - var(--sizeToggleKnob) - var(--spaceHair) * 2));
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .st-switch-track,
+  .st-switch-knob {
+    transition: none;
+  }
+}
