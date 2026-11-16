@@ -22,3 +22,7 @@ appId: host.exp.Exponent
 - takeScreenshot: changedElsewhere-product
 - assertVisible:
     id: 'event.edit.name.field'
+    text: '.* mine'
+- assertVisible: 'Not saved. Somebody else changed this event since you opened it. What you typed is still here.'
+- assertVisible:
+    id: 'event.edit.name.latest'
