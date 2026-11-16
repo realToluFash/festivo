@@ -27,7 +27,7 @@ appId: host.exp.Exponent
 - assertVisible:
     id: 'guest.flagged'
 - runScript:
-    file: ../batch/flag-elsewhere.js
+    file: ../scripts/flag-elsewhere.js
     env:
       URL: ${API_URL}/api/guest-links/wrong-person
       LINKTOKEN: ${LINKTOKEN}
@@ -39,7 +39,7 @@ appId: host.exp.Exponent
     id: 'guest.flagged'
 - takeScreenshot: second-tell
 - runScript:
-    file: ../batch/replace-elsewhere.js
+    file: ../scripts/replace-elsewhere.js
     env:
       URL: ${API_URL}/api/events/${EVENT_ID}/guests/${GUEST_ID}/link/replace
       TOKEN: ${TOKEN}
