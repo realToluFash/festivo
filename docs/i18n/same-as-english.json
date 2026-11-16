@@ -143,7 +143,10 @@
     "web:guest.programme",
     "web:seating.keyName.ctrl",
     "web:seating.alignCentre",
-    "web:seating.tableNumbered"
+    "web:seating.tableNumbered",
+    "web:eventMenu.title",
+    "web:eventMenu.suggestions",
+    "web:eventMenu.dessert"
   ],
   "pt": [
     "web:seating.shapeCocktailShort",
