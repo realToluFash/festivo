@@ -1055,7 +1055,7 @@ export interface ColumnRows<Item> {
   onEndNear?: () => void;
 }
 
-// Thousands of rows scrolled through hold only a few screens mounted at once: the default window of 21 screens ran a 2 GB phone out of memory at 12,345 people (sc-49170).
+// Hold five screens of rows mounted, not the default 21 (sc-49170).
 const ROWS_FIRST = 12;
 const ROWS_WINDOW = 5;
 
@@ -1131,7 +1131,6 @@ export function ScrollColumn<Item>({
           initialNumToRender={ROWS_FIRST}
           maxToRenderPerBatch={ROWS_FIRST}
           windowSize={ROWS_WINDOW}
-          removeClippedSubviews
           onContentSizeChange={(_, height) => {
             contentSized(height);
             restore();
