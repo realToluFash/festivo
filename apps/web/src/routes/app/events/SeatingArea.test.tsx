@@ -1648,6 +1648,8 @@ function barMeetsZoom() {
 }
 
 describe('At a narrow desk (sc-55937)', () => {
+  beforeAll(standInPointerEvents);
+
   it('folds Add row and Add seat into one Add menu when the bar meets the zoom', async () => {
     signedIn();
     const measured = barMeetsZoom();
