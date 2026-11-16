@@ -120,7 +120,7 @@ describe('sending the queue', () => {
       (one) =>
         new Promise<Schedule>((resolve) => {
           if (one.key === 'a') held.answer = resolve;
-          else resolve(SCHEDULE);
+          else throw refused(503, 'unavailable');
         }),
     );
 
