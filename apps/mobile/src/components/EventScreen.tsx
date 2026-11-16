@@ -316,7 +316,11 @@ export function EventScreen({
       ) : (
         <PlaceholderArea
           area={area}
-          action={area === 'schedule' ? <RunViewEntry event={event} /> : null}
+          action={
+            area === 'schedule' ? (
+              <RunViewEntry event={event} happening={phase === 'happening_now'} />
+            ) : null
+          }
         >
           <EventTop
             kind={kind}
@@ -560,8 +564,8 @@ function PlaceholderArea({
   );
 }
 
-/** The Schedule's way into the run view (sc-1404), for anyone who can read the run of show once it holds an item. */
-function RunViewEntry({ event }: { event: OrganisationEvent }) {
+/** The Schedule's way into the run view (sc-1404), for anyone who can read the run of show once it holds an item, and into Run of show while the event is happening (sc-3895). */
+function RunViewEntry({ event, happening }: { event: OrganisationEvent; happening: boolean }) {
   const { t } = useTranslation();
   const reads = event.permissions.includes('run_of_show.read');
   const [items, setItems] = useState<{ for: string; count: number } | null>(null);
@@ -580,16 +584,27 @@ function RunViewEntry({ event }: { event: OrganisationEvent }) {
     };
   }, [event.id, reads]);
 
-  if (!reads || items?.for !== event.id || items.count === 0) return null;
+  if (!reads || items?.for !== event.id) return null;
+  if (items.count === 0 && !happening) return null;
 
   return (
     <View style={styles.runEntry}>
-      <SecondaryButton
-        label={t('runView.open')}
-        link
-        onPress={() => router.push({ pathname: '/events/[id]/run', params: { id: event.id } })}
-        testID="events.schedule.run"
-      />
+      {happening && (
+        <SecondaryButton
+          label={t('night.open')}
+          link
+          onPress={() => router.push({ pathname: '/events/[id]/night', params: { id: event.id } })}
+          testID="events.schedule.night"
+        />
+      )}
+      {items.count > 0 && (
+        <SecondaryButton
+          label={t('runView.open')}
+          link
+          onPress={() => router.push({ pathname: '/events/[id]/run', params: { id: event.id } })}
+          testID="events.schedule.run"
+        />
+      )}
     </View>
   );
 }
@@ -670,7 +685,7 @@ function useOpened(
 
 const styles = StyleSheet.create({
   stack: { gap: tokens.spaceMd },
-  runEntry: { paddingTop: tokens.spaceMd, alignItems: 'flex-start' },
+  runEntry: { paddingTop: tokens.spaceMd, alignItems: 'flex-start', gap: tokens.spaceSm },
   secondary: { color: tokens.colorInkSecondary },
   fill: { flex: 1 },
   titleRow: { flexDirection: 'row', alignItems: 'center', gap: tokens.spaceSm },

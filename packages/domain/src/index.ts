@@ -70,6 +70,7 @@ export * from './roomSize.ts';
 export * from './runOfShow.ts';
 export * from './runTimes.ts';
 export * from './runWords.ts';
+export * from './night.ts';
 export * from './nameKey.ts';
 export * from './seatingSections.ts';
 export * from './seatingTables.ts';

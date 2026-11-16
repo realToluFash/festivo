@@ -51,6 +51,7 @@ import {
   windowLine,
   zoneNamed,
 } from './scheduleArea.ts';
+import { NightSwitch } from './NightSwitch.tsx';
 import { useHubTopics } from './useHubTopics.ts';
 import { useDeskTop } from '../../../deskTop.ts';
 import '../../../components/SettingsParts.css';
@@ -78,7 +79,13 @@ function readerZone(): string {
 }
 
 /** /app/events/:id/schedule (sc-3893): the event's running order, a table per place for each event day, as its demo draws it. */
-export function ScheduleArea({ event }: { event: OrganisationEvent }) {
+export function ScheduleArea({
+  event,
+  night = false,
+}: {
+  event: OrganisationEvent;
+  night?: boolean;
+}) {
   const { t } = useTranslation();
   const [load, setLoad] = useState<Load>({ kind: 'loading' });
   const [attempt, setAttempt] = useState(0);
@@ -114,6 +121,7 @@ export function ScheduleArea({ event }: { event: OrganisationEvent }) {
     return (
       <ScheduleView
         event={event}
+        night={night}
         schedule={load.schedule}
         onSchedule={(schedule) => setLoad({ kind: 'loaded', schedule })}
       />
@@ -122,7 +130,7 @@ export function ScheduleArea({ event }: { event: OrganisationEvent }) {
   return (
     <div className="desk ev desk-page ev-page gs mn sn ro">
       <div className="ev-wide mn-page">
-        <Crumbs event={event} />
+        <Crumbs event={event} night={night} />
         <header className="gs-top">
           <div className="mn-head">
             <h1 className="gs-title">{t('schedule.title')}</h1>
@@ -156,7 +164,15 @@ export function ScheduleArea({ event }: { event: OrganisationEvent }) {
   );
 }
 
-function Crumbs({ event, chrome = false }: { event: OrganisationEvent; chrome?: boolean }) {
+function Crumbs({
+  event,
+  chrome = false,
+  night,
+}: {
+  event: OrganisationEvent;
+  chrome?: boolean;
+  night: boolean;
+}) {
   const { t } = useTranslation();
   const desk = useDeskTop();
 
@@ -179,6 +195,7 @@ function Crumbs({ event, chrome = false }: { event: OrganisationEvent; chrome?: 
           </li>
         </ol>
       </nav>
+      {night && <NightSwitch eventId={event.id} on="schedule" />}
       {desk.bell}
     </div>
   );
@@ -186,10 +203,12 @@ function Crumbs({ event, chrome = false }: { event: OrganisationEvent; chrome?: 
 
 function ScheduleView({
   event,
+  night,
   schedule,
   onSchedule,
 }: {
   event: OrganisationEvent;
+  night: boolean;
   schedule: Schedule;
   onSchedule: (schedule: Schedule) => void;
 }) {
@@ -431,7 +450,7 @@ function ScheduleView({
         .join(' ')}
     >
       <div className="ev-wide mn-page">
-        <Crumbs event={event} chrome />
+        <Crumbs event={event} chrome night={night} />
         <header className="gs-top ro-chrome ro-top">
           <div className="mn-head">
             <h1 className="gs-title">{t('schedule.heading', { day: dayName(day, reader) })}</h1>

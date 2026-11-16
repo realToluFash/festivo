@@ -28,7 +28,7 @@ import { EventPeople } from './EventPeople.tsx';
 import { GuestsArea, GuestsGone } from './GuestsArea.tsx';
 import { RunArea } from './RunArea.tsx';
 import { MenuArea } from './MenuArea.tsx';
-import { ScheduleArea } from './ScheduleArea.tsx';
+import { ScheduleOrNight } from './NightArea.tsx';
 import { SeatingArea } from './SeatingArea.tsx';
 import { RosterArea } from './RosterArea.tsx';
 import { PAGE_NEEDS } from './handoff.ts';
@@ -188,7 +188,7 @@ function EventOf({
 
   if (page === 'schedule' && load.kind === 'loaded')
     return canOn(load.event, PAGE_NEEDS.schedule) ? (
-      <ScheduleArea event={load.event} />
+      <ScheduleOrNight event={load.event} />
     ) : (
       <Withheld />
     );
