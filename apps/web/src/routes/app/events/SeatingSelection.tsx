@@ -727,6 +727,7 @@ export function DeleteItemsAsk({
       line={t('seating.nobodyInThem')}
       keep={t('seating.keepThem')}
       go={t(tables ? 'seating.deleteTablesGo' : 'seating.deleteItemsGo', { count })}
+      red={false}
       onKeep={onKeep}
       onGo={() => onGo(items)}
     />

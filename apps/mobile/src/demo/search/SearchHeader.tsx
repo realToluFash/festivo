@@ -19,12 +19,12 @@ export function openSearch(role: string | null = null): void {
 }
 
 /** The 44 search button the header gains, left of the bell. */
-export function SearchButton() {
+export function SearchButton({ role = null }: { role?: string | null }) {
   return (
     <RoundButton
       glyph="search"
       label={W.search}
-      onPress={() => openSearch()}
+      onPress={() => openSearch(role)}
       testID="demo.search.open"
     />
   );

@@ -171,17 +171,20 @@ export function Waiting({
   );
 }
 
-/** People's head: its title, Show, and what an option with nobody under it says. Its rows come from `peopleRows`. */
+/** People's head: its title, Show, and what an option with nobody under it says once its first page is read. Its rows come from `peopleRows`. */
 export function People({
   listed,
   counts,
   filter,
+  switching,
   organisation,
   onFilter,
 }: {
   listed: readonly OrganisationMember[];
   counts: Record<MembersFilter, number>;
   filter: MembersFilter;
+  /** The option's first page is still being read, so an empty list says nothing about it yet. */
+  switching: boolean;
   organisation: string;
   onFilter: (filter: MembersFilter) => void;
 }) {
@@ -205,7 +208,7 @@ export function People({
           />
         }
       />
-      {listed.length === 0 && (
+      {listed.length === 0 && !switching && (
         <Empty filter={filter} organisation={organisation} onShowEveryone={() => onFilter('all')} />
       )}
     </View>
@@ -300,7 +303,7 @@ export function peopleRows({
     },
     foot: (
       <>
-        {listed.length > 0 && (
+        {(listed.length > 0 || more === 'failed') && (
           <View style={dense && styles.bleed}>
             {more === 'failed' ? (
               <SectionFailed
