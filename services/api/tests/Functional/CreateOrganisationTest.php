@@ -141,6 +141,25 @@ final class CreateOrganisationTest extends ApiTestCase
         yield 'the length measured' => ['en', 250, 'That name is 250 characters. Use 100 or fewer.'];
     }
 
+    /** @return iterable<string, array{string, string}> */
+    public static function tooLongInLettersSeen(): iterable
+    {
+        yield 'marked letters' => [Str\repeat("e\u{0323}\u{0300}", 101), 'That name is 101 characters. Use 100 or fewer.'];
+        yield 'one letter of many marks' => ['a' . Str\repeat("\u{0301}", 400), 'That name is 1 characters. Use 100 or fewer.'];
+    }
+
+    #[Test]
+    #[DataProvider('tooLongInLettersSeen')]
+    public function anOverLongNameQuotesTheLettersAPersonSees(string $name, string $message): void
+    {
+        $this->signedIn('long-marks@example.com');
+
+        $body = $this->create(['name' => $name, 'countryCode' => 'NG', 'timezone' => 'Africa/Lagos']);
+
+        self::assertResponseStatusCodeSame(422);
+        self::assertSame([$message], $this->refusedMessages($body));
+    }
+
     #[Test]
     public function aNameOfExactlyOneHundredCharactersIsAccepted(): void
     {

@@ -1,8 +1,4 @@
-import {
-  ACCOUNT_NAME_MAXIMUM,
-  PASSWORD_MINIMUM_LENGTH,
-  meetsPasswordLength,
-} from '@soirely/domain';
+import { PASSWORD_MINIMUM_LENGTH, meetsPasswordLength } from '@soirely/domain';
 import { router, useLocalSearchParams, useNavigation } from 'expo-router';
 import type { NativeStackNavigationProp } from 'expo-router/native-stack';
 import { useEffect, useRef, useState } from 'react';
@@ -185,7 +181,6 @@ export default function Register() {
           state={said.name != null ? 'blank' : 'plain'}
           line={said.name}
           submitting={busy}
-          maxLength={ACCOUNT_NAME_MAXIMUM}
           autoCapitalize="words"
           autoComplete="name"
           textContentType="name"

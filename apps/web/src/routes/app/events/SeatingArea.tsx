@@ -6,8 +6,12 @@ import {
   SECTION_COLOURS,
   type Seating,
   type SeatingPlan,
+  type SeatingSection,
+  type SeatingRow,
+  type SeatingTable,
   type SectionColour,
   type SectionContents,
+  type SingleSeat,
   asSeating,
   realtimeTopic,
 } from '@soirely/api-client';
@@ -17,7 +21,10 @@ import {
   leastUsedColour,
   readRoomSide,
   holdingName,
+  isRoundShape,
   listFormat,
+  rowExtent,
+  visibleLength,
 } from '@soirely/domain';
 import { type ReactNode, useCallback, useEffect, useId, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
@@ -58,6 +65,8 @@ import {
   SingleSeatPanel,
 } from './SeatingRows.tsx';
 import { AddTable, ChairPanel, TableDrawing, TablePanel } from './SeatingTables.tsx';
+import { fitOf, useCamera } from './seatingCamera.ts';
+import { SMALL_MAP_FROM_SCALE, f, percentOf, readingOrder, sectionOf } from './seatingDraw.ts';
 import { lengthField, lengthWords } from './seatingUnits.ts';
 import '../../../components/SettingsParts.css';
 import './seating.css';
@@ -66,7 +75,8 @@ type Load = { kind: 'loading' } | { kind: 'failed' } | { kind: 'loaded'; seating
 
 const RETRY_MS = 5_000;
 const RENEW_BEFORE_MS = 60_000;
-const FIT_PAD = { top: 84, right: 16, bottom: 84, left: 16 } as const;
+const PAN_FROM_PX = 4;
+const WHEEL_ZOOM = 300;
 
 /** The room as the API holds it, published to every page open on it (sc-3998). */
 function useLiveSeating(eventId: string, onSeating: (seating: Seating) => void, onGap: () => void) {
@@ -148,14 +158,6 @@ function useCanvasSize(): [(node: HTMLDivElement | null) => void, { w: number; h
   return [place, size];
 }
 
-function fitOf(width: number, height: number, room: { w: number; l: number }) {
-  const w = width - FIT_PAD.left - FIT_PAD.right;
-  const h = height - FIT_PAD.top - FIT_PAD.bottom;
-  const s = Math.max(0.05, Math.min(w / room.w, h / room.l));
-
-  return { s, ox: FIT_PAD.left + (w - room.w * s) / 2, oy: FIT_PAD.top + (h - room.l * s) / 2 };
-}
-
 export function SeatingArea({ event }: { event: OrganisationEvent }) {
   const { t } = useTranslation();
   const [load, setLoad] = useState<Load>({ kind: 'loading' });
@@ -189,9 +191,11 @@ export function SeatingArea({ event }: { event: OrganisationEvent }) {
           <li>
             <Link to="/app/events">{t('seating.events')}</Link>
           </li>
-          <li>
+          <li className="st-crumb-event">
             <Glyph name="chevron" size={14} weight={2.3} />
-            <Link to={`/app/events/${encodeURIComponent(event.id)}`}>{event.name}</Link>
+            <Link to={`/app/events/${encodeURIComponent(event.id)}`}>
+              <span className="st-crumb-name">{event.name}</span>
+            </Link>
           </li>
           <li aria-current="page">
             <Glyph name="chevron" size={14} weight={2.3} />
@@ -271,6 +275,8 @@ function Plan({
   const { layers, covered, setHost } = useDeskLayers();
   const [panel, setPanel] = useState<Panel | null>(null);
   const opener = useRef<string | null>(null);
+  const newest = useRef(seating.plan);
+  const queue = useRef<Promise<unknown>>(Promise.resolve());
   const [asking, setAsking] = useState<Asking | null>(null);
   const [notice, setNotice] = useState<string | null>(null);
   const [sectionsRefused, setSectionsRefused] = useState(false);
@@ -282,6 +288,14 @@ function Plan({
   const system = seating.measurementSystem;
   const readOnly = !canOn(event, 'seating.manage');
   const locale = currentLocale();
+  const camera = useCamera(
+    event.id,
+    plan == null ? null : { w: plan.widthCm, l: plan.lengthCm },
+    size,
+  );
+  const canvasNode = useRef<HTMLDivElement | null>(null);
+  const press = useRef<{ from: [number, number]; moved: boolean; pointer: number } | null>(null);
+  const panned = useRef(false);
 
   const gone =
     (panel?.kind === 'sectionEdit' && !plan?.sections.some((one) => one.id === panel.id)) ||
@@ -297,19 +311,24 @@ function Plan({
     shownPanel?.kind === 'seat'
       ? shownPanel.id
       : null;
-  const tableChosen = shownPanel?.kind === 'table' || shownPanel?.kind === 'chair';
+  const chosenAttribute =
+    shownPanel?.kind === 'table' || shownPanel?.kind === 'chair'
+      ? 'data-table'
+      : shownPanel?.kind === 'row'
+        ? 'data-row'
+        : shownPanel?.kind === 'seat'
+          ? 'data-seat'
+          : null;
 
   const open = (next: Panel | null) => {
     if (next == null) {
       const back = opener.current;
-      const table = tableChosen ? shownPanel.id : null;
+      const item = chosenAttribute == null ? null : `[${chosenAttribute}="${chosenItem}"]`;
 
       opener.current = null;
       focusWhenFree(
         () =>
-          (table == null
-            ? null
-            : document.querySelector<SVGElement>(`.st-room [data-table="${table}"]`)) ??
+          (item == null ? null : document.querySelector<SVGElement>(`.st-room ${item}`)) ??
           [
             ...document.querySelectorAll<HTMLElement | SVGElement>(
               '.st-panel button, .st-room [role="button"]',
@@ -331,8 +350,64 @@ function Plan({
   };
 
   useEffect(() => {
+    newest.current = plan;
+  }, [plan]);
+
+  const hasRoom = plan != null;
+  const { zoomTo, panBy, view } = camera;
+
+  useEffect(() => {
+    const node = canvasNode.current;
+
+    if (node == null || !hasRoom) return;
+    const wheel = (event: WheelEvent) => {
+      event.preventDefault();
+      if (event.ctrlKey || event.metaKey) {
+        const box = node.getBoundingClientRect();
+
+        zoomTo(view.current.s * Math.exp(-event.deltaY / WHEEL_ZOOM), [
+          event.clientX - box.left,
+          event.clientY - box.top,
+        ]);
+      } else panBy(event.deltaX, event.deltaY);
+    };
+
+    node.addEventListener('wheel', wheel, { passive: false });
+    return () => node.removeEventListener('wheel', wheel);
+  }, [hasRoom, zoomTo, panBy, view]);
+
+  useEffect(() => {
+    const move = (event: PointerEvent) => {
+      const now = press.current;
+
+      if (now == null || now.pointer !== event.pointerId) return;
+      const dx = event.clientX - now.from[0];
+      const dy = event.clientY - now.from[1];
+
+      if (!now.moved && Math.hypot(dx, dy) < PAN_FROM_PX) return;
+      now.moved = true;
+      now.from = [event.clientX, event.clientY];
+      panBy(-dx, -dy);
+    };
+    const up = (event: PointerEvent) => {
+      if (press.current?.pointer !== event.pointerId) return;
+      panned.current = event.type === 'pointerup' && press.current.moved;
+      press.current = null;
+    };
+
+    window.addEventListener('pointermove', move);
+    window.addEventListener('pointerup', up);
+    window.addEventListener('pointercancel', up);
+    return () => {
+      window.removeEventListener('pointermove', move);
+      window.removeEventListener('pointerup', up);
+      window.removeEventListener('pointercancel', up);
+    };
+  }, [panBy]);
+
+  useEffect(() => {
     const keys = (event: KeyboardEvent) => {
-      if (event.key !== 'Escape' || !tableChosen || covered) return;
+      if (event.key !== 'Escape' || chosenAttribute == null || covered) return;
       event.preventDefault();
       open(null);
     };
@@ -341,7 +416,19 @@ function Plan({
     return () => window.removeEventListener('keydown', keys);
   });
 
-  const attempt = async <A,>(
+  const attempt = <A,>(
+    change: () => Promise<A>,
+    seatingOf: (answer: A) => Seating,
+    field?: string,
+    refusal?: (error: ApiError) => string | null,
+  ): Promise<{ answer: A } | { refused: string | null }> => {
+    const turn = queue.current.then(() => attemptNow(change, seatingOf, field, refusal));
+
+    queue.current = turn;
+    return turn;
+  };
+
+  const attemptNow = async <A,>(
     change: () => Promise<A>,
     seatingOf: (answer: A) => Seating,
     field?: string,
@@ -349,8 +436,10 @@ function Plan({
   ): Promise<{ answer: A } | { refused: string | null }> => {
     try {
       const answer = await change();
+      const now = seatingOf(answer);
 
-      onSeating(seatingOf(answer));
+      newest.current = now.plan;
+      onSeating(now);
       setNotice(null);
       return { answer };
     } catch (error) {
@@ -398,12 +487,26 @@ function Plan({
   const remove = async (change: () => Promise<Seating>) =>
     'answer' in (await attempt(change, (answer) => answer));
 
+  const newestOf: PlanApi['newest'] = <
+    T extends SeatingPlan | SeatingSection | SeatingTable | SeatingRow | SingleSeat,
+  >(
+    item: T,
+  ) =>
+    [
+      ...(newest.current == null ? [] : [newest.current]),
+      ...(newest.current?.sections ?? []),
+      ...(newest.current?.tables ?? []),
+      ...(newest.current?.rows ?? []),
+      ...(newest.current?.singleSeats ?? []),
+    ].find((one): one is T => one.id === item.id) ?? item;
+
   const ctx: PlanApi = {
     event,
     system,
     plan,
     readOnly,
     send,
+    newest: newestOf,
     place,
     remove,
     adopt: onSeating,
@@ -420,7 +523,7 @@ function Plan({
   let canvas: ReactNode = null;
 
   if (plan != null) {
-    const { s, ox, oy } = fitOf(size.w, size.h, { w: plan.widthCm, l: plan.lengthCm });
+    const { s, ox, oy } = camera;
     const rw = plan.widthCm * s;
     const rl = plan.lengthCm * s;
     const step = 100 * s;
@@ -467,6 +570,15 @@ function Plan({
           height={size.h}
           viewBox={`0 0 ${size.w} ${size.h}`}
           role="group"
+          onPointerDown={(event) => {
+            panned.current = false;
+            if (event.button !== 0 || !isFloor(event.target)) return;
+            press.current = {
+              from: [event.clientX, event.clientY],
+              moved: false,
+              pointer: event.pointerId,
+            };
+          }}
           aria-label={
             plan.roomName == null
               ? t('seating.roomGroupUnnamed', {
@@ -487,7 +599,8 @@ function Plan({
             width={rw}
             height={rl}
             onClick={() => {
-              if (tableChosen) open(null);
+              if (panned.current) panned.current = false;
+              else if (chosenAttribute != null) open(null);
             }}
           />
           {lines}
@@ -510,55 +623,69 @@ function Plan({
                 y2={oy + outside.cm * s}
               />
             ))}
-          {plan.tables.map((table) => (
-            <TableDrawing
-              key={table.id}
-              plan={plan}
-              table={table}
-              s={s}
-              ox={ox}
-              oy={oy}
-              chosen={chosenItem === table.id}
-              chosenSeat={
-                shownPanel?.kind === 'chair' && shownPanel.id === table.id ? shownPanel.seat : null
-              }
-              outside={outside?.ids.includes(table.id) ?? false}
-              onChoose={() => open({ kind: 'table', id: table.id })}
-              onChair={(seat) => open({ kind: 'chair', id: table.id, seat })}
-            />
-          ))}
-          {plan.rows.map((row) => (
-            <RowDrawing
-              key={row.id}
-              plan={plan}
-              row={row}
-              s={s}
-              ox={ox}
-              oy={oy}
-              chosen={chosenItem === row.id}
-              chosenSeat={
-                shownPanel?.kind === 'row' && shownPanel.id === row.id
-                  ? (shownPanel.seat ?? null)
-                  : null
-              }
-              outside={outside?.ids.includes(row.id) ?? false}
-              onChoose={() => open({ kind: 'row', id: row.id })}
-              onChair={(seat) => open({ kind: 'row', id: row.id, seat })}
-            />
-          ))}
-          {plan.singleSeats.map((seat) => (
-            <SingleSeatDrawing
-              key={seat.id}
-              plan={plan}
-              seat={seat}
-              s={s}
-              ox={ox}
-              oy={oy}
-              chosen={chosenItem === seat.id}
-              outside={outside?.ids.includes(seat.id) ?? false}
-              onChoose={() => open({ kind: 'seat', id: seat.id })}
-            />
-          ))}
+          {readingOrder([
+            ...plan.tables.map((one) => ({
+              kind: 'table' as const,
+              one,
+              xCm: one.xCm,
+              yCm: one.yCm,
+            })),
+            ...plan.rows.map((one) => ({ kind: 'row' as const, one, xCm: one.xCm, yCm: one.yCm })),
+            ...plan.singleSeats.map((one) => ({
+              kind: 'seat' as const,
+              one,
+              xCm: one.xCm,
+              yCm: one.yCm,
+            })),
+          ]).map(({ kind, one }) =>
+            kind === 'table' ? (
+              <TableDrawing
+                key={one.id}
+                plan={plan}
+                table={one}
+                s={s}
+                ox={ox}
+                oy={oy}
+                chosen={chosenItem === one.id}
+                chosenSeat={
+                  shownPanel?.kind === 'chair' && shownPanel.id === one.id ? shownPanel.seat : null
+                }
+                outside={outside?.ids.includes(one.id) ?? false}
+                onChoose={() => open({ kind: 'table', id: one.id })}
+                onChair={(seat) => open({ kind: 'chair', id: one.id, seat })}
+              />
+            ) : kind === 'row' ? (
+              <RowDrawing
+                key={one.id}
+                plan={plan}
+                row={one}
+                s={s}
+                ox={ox}
+                oy={oy}
+                chosen={chosenItem === one.id}
+                chosenSeat={
+                  shownPanel?.kind === 'row' && shownPanel.id === one.id
+                    ? (shownPanel.seat ?? null)
+                    : null
+                }
+                outside={outside?.ids.includes(one.id) ?? false}
+                onChoose={() => open({ kind: 'row', id: one.id })}
+                onChair={(seat) => open({ kind: 'row', id: one.id, seat })}
+              />
+            ) : (
+              <SingleSeatDrawing
+                key={one.id}
+                plan={plan}
+                seat={one}
+                s={s}
+                ox={ox}
+                oy={oy}
+                chosen={chosenItem === one.id}
+                outside={outside?.ids.includes(one.id) ?? false}
+                onChoose={() => open({ kind: 'seat', id: one.id })}
+              />
+            ),
+          )}
           <text
             className="st-room-line"
             x={ox}
@@ -572,6 +699,10 @@ function Plan({
           </text>
         </svg>
         {!readOnly && <AddTable ctx={ctx} more={<AddRowAndSeat ctx={ctx} />} />}
+        <ZoomControls camera={camera} />
+        {s >= SMALL_MAP_FROM_SCALE - 1e-9 && (
+          <SmallMap plan={plan} view={{ x: -ox / s, y: -oy / s, w: size.w / s, h: size.h / s }} />
+        )}
       </>
     );
   } else if (shownPanel?.kind === 'start') {
@@ -707,7 +838,13 @@ function Plan({
   return (
     <LayersContext value={layers}>
       <div className="st-main" inert={covered}>
-        <div className="st-canvas is-plan" ref={placeCanvas}>
+        <div
+          className="st-canvas is-plan"
+          ref={(node) => {
+            canvasNode.current = node;
+            placeCanvas(node);
+          }}
+        >
           {canvas}
         </div>
         <aside className="st-panel" aria-label={t('seating.panel')}>
@@ -728,6 +865,136 @@ function Plan({
         />
       )}
     </LayersContext>
+  );
+}
+
+function isFloor(target: EventTarget): boolean {
+  return (
+    target instanceof SVGElement &&
+    ['st-room', 'st-floor', 'st-grid', 'st-walls'].some((name) => target.classList.contains(name))
+  );
+}
+
+/** +, − and Fit the room: the steps stop at 25% and 400%, and a button at its limit stays in the Tab order. */
+function ZoomControls({ camera }: { camera: ReturnType<typeof useCamera> }) {
+  const { t } = useTranslation();
+  const pct = percentOf(camera.s);
+
+  return (
+    <div className="st-float st-zoom" role="group" aria-label={t('seating.zoomIs', { pct })}>
+      <button
+        type="button"
+        className="st-round-button"
+        aria-label={t('seating.zoomOut')}
+        aria-disabled={camera.atSmallest}
+        onClick={() => {
+          if (!camera.atSmallest) camera.step(-1);
+        }}
+      >
+        <Glyph name="minus" size={19} weight={2.2} />
+      </button>
+      <span className="st-pct" role="status">
+        {t('seating.percent', { pct })}
+      </span>
+      <button
+        type="button"
+        className="st-round-button"
+        aria-label={t('seating.zoomIn')}
+        aria-disabled={camera.atLargest}
+        onClick={() => {
+          if (!camera.atLargest) camera.step(1);
+        }}
+      >
+        <Glyph name="plus" size={19} weight={2.2} />
+      </button>
+      <button type="button" className="st-tool" onClick={camera.fitRoom}>
+        <Glyph name="fit" size={18} weight={2.2} />
+        {t('seating.fit')}
+      </button>
+    </div>
+  );
+}
+
+const SMALL_MAP_WIDTH = 160;
+const SMALL_MAP_SEAT_CM = 44;
+
+/** From 200%, the whole room small at the bottom right, with the part on screen as a rectangle. */
+function SmallMap({
+  plan,
+  view,
+}: {
+  plan: SeatingPlan;
+  view: { x: number; y: number; w: number; h: number };
+}) {
+  const s = SMALL_MAP_WIDTH / plan.widthCm;
+  const h = Math.round(plan.lengthCm * s);
+  const shape = (
+    item: { id: string; sectionId: string | null; xCm: number; yCm: number; rotation: number },
+    w: number,
+    l: number,
+    round: boolean,
+  ) => {
+    const section = sectionOf(plan, item);
+    const className = section == null ? 'st-body is-out' : `st-body is-out is-${section.colour}`;
+    const x = item.xCm * s;
+    const y = item.yCm * s;
+
+    return round ? (
+      <circle
+        key={item.id}
+        className={className}
+        cx={f(x)}
+        cy={f(y)}
+        r={f(Math.max(1.5, (w / 2) * s))}
+      />
+    ) : (
+      <g key={item.id} transform={`translate(${f(x)} ${f(y)}) rotate(${item.rotation})`}>
+        <rect
+          className={className}
+          x={f((-w / 2) * s)}
+          y={f((-l / 2) * s)}
+          width={f(w * s)}
+          height={f(Math.max(1.5, l * s))}
+        />
+      </g>
+    );
+  };
+
+  return (
+    <div className="st-float st-minimap" aria-hidden="true">
+      <svg
+        className="st-small-map"
+        width={SMALL_MAP_WIDTH}
+        height={h}
+        viewBox={`0 0 ${SMALL_MAP_WIDTH} ${h}`}
+        focusable="false"
+      >
+        <rect className="st-floor" width={SMALL_MAP_WIDTH} height={h} />
+        {plan.tables.map((one) => shape(one, one.widthCm, one.lengthCm, isRoundShape(one.shape)))}
+        {plan.rows.map((one) => {
+          const [ex, ey] = rowExtent(one);
+
+          return shape(one, 2 * ex, 2 * ey, false);
+        })}
+        {plan.singleSeats.map((one) =>
+          shape({ ...one, rotation: 0 }, SMALL_MAP_SEAT_CM, SMALL_MAP_SEAT_CM, true),
+        )}
+        <rect
+          className="st-walls is-thin"
+          x="0.75"
+          y="0.75"
+          width={SMALL_MAP_WIDTH - 1.5}
+          height={h - 1.5}
+        />
+        <rect
+          className="st-view-box"
+          x={f(view.x * s)}
+          y={f(view.y * s)}
+          width={f(view.w * s)}
+          height={f(view.h * s)}
+        />
+      </svg>
+    </div>
   );
 }
 
@@ -891,7 +1158,6 @@ function StartForm({
         label={t('seating.roomName')}
         optional
         value={draft.name}
-        maxLength={SEATING_LIMITS.roomNameMaximum}
         error={errors.name}
         onChange={(text) => onDraft({ ...draft, name: text })}
         fieldKey="startName"
@@ -934,7 +1200,6 @@ function StartField({
   value,
   unit,
   optional = false,
-  maxLength,
   error,
   fieldKey,
   onChange,
@@ -943,7 +1208,6 @@ function StartField({
   value: string;
   unit?: string | undefined;
   optional?: boolean;
-  maxLength?: number;
   error?: string | undefined;
   fieldKey: string;
   onChange: (text: string) => void;
@@ -964,7 +1228,6 @@ function StartField({
           type="text"
           inputMode={optional ? 'text' : 'decimal'}
           value={value}
-          maxLength={maxLength}
           spellCheck={false}
           autoComplete="off"
           aria-invalid={error != null}
@@ -1027,7 +1290,7 @@ function RoomSettings({ ctx, plan }: { ctx: PlanApi; plan: SeatingPlan }) {
     if ('refused' in read) return read.refused;
     ctx.showOutside(null);
     return ctx.send(
-      () => api.changeSeatingRoom(ctx.event.id, { [key]: read.cm }, plan.version),
+      () => api.changeSeatingRoom(ctx.event.id, { [key]: read.cm }, ctx.newest(plan).version),
       key,
       (error) => {
         if (!error.is('seating_items_outside')) return null;
@@ -1057,7 +1320,6 @@ function RoomSettings({ ctx, plan }: { ctx: PlanApi; plan: SeatingPlan }) {
         fieldKey="roomName"
         label={t('seating.roomName')}
         optional
-        maxLength={SEATING_LIMITS.roomNameMaximum}
         value={plan.roomName ?? ''}
         onCommit={(text) => {
           const name = text.trim();
@@ -1067,7 +1329,7 @@ function RoomSettings({ ctx, plan }: { ctx: PlanApi; plan: SeatingPlan }) {
               api.changeSeatingRoom(
                 ctx.event.id,
                 { roomName: name === '' ? null : name },
-                plan.version,
+                ctx.newest(plan).version,
               ),
             'roomName',
           );
@@ -1210,7 +1472,7 @@ function SectionForm({ ctx, plan, id }: { ctx: PlanApi; plan: SeatingPlan; id: s
     const name = text.trim();
 
     if (name === '') return t('seating.sectionBlank');
-    if (name.length > SEATING_LIMITS.sectionNameMaximum) return t('seating.sectionLong');
+    if (visibleLength(name) > SEATING_LIMITS.sectionNameMaximum) return t('seating.sectionLong');
     const holder = holdingName(plan.sections, name, id);
 
     return holder == null ? null : t('seating.sectionTaken', { name: holder.name });
@@ -1251,7 +1513,7 @@ function SectionForm({ ctx, plan, id }: { ctx: PlanApi; plan: SeatingPlan; id: s
                     ctx.event.id,
                     section.id,
                     { colour: one },
-                    section.version,
+                    ctx.newest(section).version,
                   ),
                 );
             }}
@@ -1331,7 +1593,7 @@ function SectionForm({ ctx, plan, id }: { ctx: PlanApi; plan: SeatingPlan; id: s
                 ctx.event.id,
                 section.id,
                 { name: text.trim() },
-                section.version,
+                ctx.newest(section).version,
               ),
             'name',
           );
@@ -1452,7 +1714,7 @@ function AskFor({
         onGo={() => {
           setBusy(true);
           void ctx
-            .remove(() => api.deleteSeatingTable(ctx.event.id, table.id, table.version))
+            .remove(() => api.deleteSeatingTable(ctx.event.id, table.id, ctx.newest(table).version))
             .then((deleted) => (deleted ? onDone() : onKeep()));
         }}
       />
@@ -1480,8 +1742,12 @@ function AskFor({
           void ctx
             .remove(() =>
               row != null
-                ? api.deleteSeatingRow(ctx.event.id, row.id, row.version)
-                : api.deleteSingleSeat(ctx.event.id, seat?.id ?? '', seat?.version ?? 0),
+                ? api.deleteSeatingRow(ctx.event.id, row.id, ctx.newest(row).version)
+                : api.deleteSingleSeat(
+                    ctx.event.id,
+                    seat?.id ?? '',
+                    seat == null ? 0 : ctx.newest(seat).version,
+                  ),
             )
             .then((deleted) => (deleted ? onDone() : onKeep()));
         }}

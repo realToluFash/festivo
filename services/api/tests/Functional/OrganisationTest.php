@@ -376,6 +376,21 @@ final class OrganisationTest extends ApiTestCase
         self::assertSame([['propertyPath' => 'name', 'message' => 'That name is 101 characters. Use 100 or fewer.']], self::violations($body));
     }
 
+    #[Test]
+    public function aNameOfOneHundredLettersWithADotAndAToneEachOrOfEmojiIsReadBackAsTyped(): void
+    {
+        $owner = $this->account('marked-name@example.com');
+        $organisation = $this->found($owner, 'Ìrè Events', 'NG', 'Africa/Lagos');
+        $this->signIn($owner);
+
+        foreach ([Str\repeat("\u{1EB9}\u{0300}", 100), Str\repeat("e\u{0323}\u{0300}", 100), Str\repeat('a', 97) . "👨\u{200D}👩\u{200D}👧 🇳🇬"] as $name) {
+            self::assertSame($name, $this->patch($organisation, ['name' => $name])['name']);
+            self::assertResponseStatusCodeSame(200);
+            self::em()->clear();
+            self::assertSame($name, self::em()->find(Organisation::class, $organisation->getId())?->getName());
+        }
+    }
+
     /** @return iterable<string, array{string, mixed, string}> */
     public static function countriesOfTheWrongShape(): iterable
     {

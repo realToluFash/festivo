@@ -108,9 +108,28 @@
 
 .st-crumb li {
   display: flex;
+  flex: none;
   align-items: center;
   gap: var(--spaceMd);
+}
+
+.st-crumb svg {
+  flex: none;
+}
+
+/* Only the event name gives way (sc-55300): the chevrons, Events and Seating keep their size. */
+.st-crumb .st-crumb-event {
+  flex: 0 1 auto;
   min-width: 0;
+}
+
+.st-crumb-event a {
+  min-width: 0;
+}
+
+.st-crumb-name {
+  overflow: hidden;
+  text-overflow: ellipsis;
 }
 
 .st-crumb a {
@@ -128,6 +147,7 @@
 
 .st-crumb h1 {
   margin: 0;
+  white-space: nowrap;
   outline: none;
   color: var(--colorInk);
   font: 600 15px/1.3 var(--fontFamily);
@@ -1002,4 +1022,64 @@
   color: var(--colorInkSecondary);
   font: 500 13px/1.3 var(--fontFamily);
   white-space: nowrap;
+}
+
+/* Zoomed out below 50% (sc-4007): a table's outline, its name and how full it is. */
+.st-body.is-out {
+  stroke-width: 2;
+}
+
+.st-fill-track {
+  fill: var(--stSunk);
+}
+
+.st-fill {
+  fill: var(--colorInkSecondary);
+}
+
+.st-of {
+  fill: var(--colorInkSecondary);
+  font: 500 12px var(--fontFamily);
+  font-variant-numeric: tabular-nums;
+}
+
+.st-zoom,
+.st-minimap {
+  display: flex;
+  align-items: center;
+  gap: 2px;
+  padding: 4px;
+  border-radius: 26px;
+  background: var(--colorCard);
+  box-shadow: var(--stShadow);
+}
+
+.st-zoom {
+  right: var(--spaceLg);
+  bottom: var(--spaceLg);
+}
+
+.st-pct {
+  min-width: 52px;
+  color: var(--colorInk);
+  font: 600 14px/1 var(--fontFamily);
+  font-variant-numeric: tabular-nums;
+  text-align: center;
+}
+
+.st-minimap {
+  right: var(--spaceLg);
+  bottom: 80px;
+  padding: 6px;
+  border-radius: 14px;
+}
+
+.st-small-map {
+  display: block;
+}
+
+.st-view-box {
+  fill: color-mix(in srgb, var(--colorAccent) 12%, transparent);
+  stroke: var(--colorAccent);
+  stroke-width: 2;
 }

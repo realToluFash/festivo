@@ -3,6 +3,13 @@ export const SW = {
   area: 'Seating',
   events: 'Events',
   crumb: 'Breadcrumb',
+  widthsTitle: 'The header band in a narrow window',
+  widthsLine:
+    'The Seating header band as it sits in a browser window 320 and 375 pixels wide. The event name gives way first; the chevrons, Events and Seating never shrink.',
+  widthAt: '{{w}} px · {{lang}} · {{name}}',
+  english: 'English',
+  french: 'French',
+  longLabel: '120-character name',
   floorPlan: 'Floor plan',
   tables: 'Tables',
   list: 'List',
@@ -300,3 +307,18 @@ export const SW = {
 } as const;
 
 export type SeatingWord = keyof typeof SW;
+
+/** The breadcrumb's words in the two locales QA checks it in (sc-55300): French has the longest fixed labels, so English and French cover Spanish and Portuguese. */
+export const CRUMB_WORDS = {
+  en: { crumb: 'Breadcrumb', events: 'Events', area: 'Seating' },
+  fr: { crumb: 'Fil d’Ariane', events: 'Événements', area: 'Plan de table' },
+} as const;
+
+export type CrumbLang = keyof typeof CRUMB_WORDS;
+
+/** 120 characters, the longest an event name may be (`Event.name`). */
+export const LONG_NAME =
+  'Adaeze & Tunde’s wedding weekend, with both families from Lagos, London and Accra, the church, the dinner and the brunch';
+
+/** The event qa5 found the fault on (sc-54391). */
+export const QA_NAME = 'Seating words QA';

@@ -14,6 +14,7 @@ import {
   rowExtent,
   rowSeatsOf,
   rowTabAt,
+  visibleLength,
 } from '@soirely/domain';
 import { type KeyboardEvent, type ReactNode } from 'react';
 import { useTranslation } from 'react-i18next';
@@ -32,7 +33,7 @@ import {
   sectionOf,
   turned,
 } from './seatingDraw.ts';
-import { ChairMark, StateMark } from './SeatingTables.tsx';
+import { ChairMark, OutWords, StateMark } from './SeatingTables.tsx';
 import {
   centimetreUnit,
   tableLengthWords,
@@ -185,11 +186,11 @@ export function RowDrawing({
             square={false}
             label={near ? String(chair.seat) : undefined}
           />
-          {chosen && (
+          {(chosen || near) && (
             <circle
               className={near ? 'st-chair-hit' : 'st-chair-hit is-keys'}
               role="button"
-              tabIndex={0}
+              tabIndex={chosen ? 0 : -1}
               aria-label={t('seating.rowSeatName', {
                 label: row.label,
                 seat: chair.seat,
@@ -257,6 +258,15 @@ export function RowDrawing({
         </text>
         {seats}
       </g>
+      {s < CHAIRS_FROM_SCALE && (
+        <OutWords
+          x={cx}
+          y={cy + Math.max(ey, 40) * s + 12}
+          name={name}
+          taken={0}
+          seats={row.seats - row.unusableSeats.length}
+        />
+      )}
       {outside && box(6, 'st-overlap')}
     </g>
   );
@@ -313,10 +323,12 @@ export function SingleSeatDrawing({
           <ChairMark x={cx} y={cy} r={r} unusable square={false} label={undefined} />
         )}
       </g>
-      {s >= CHAIRS_FROM_SCALE && (
+      {s >= CHAIRS_FROM_SCALE ? (
         <text className="st-name is-quiet" x={f(cx + r + 6)} y={f(cy)} dominantBaseline="central">
           {seat.name}
         </text>
+      ) : (
+        <OutWords x={cx} y={cy + 40 * s * 0.55 + 12} name={seat.name} taken={0} seats={null} />
       )}
       {outside && <circle className="st-overlap" cx={f(cx)} cy={f(cy)} r={f(r + 6)} />}
     </g>
@@ -341,13 +353,16 @@ export function RowPanel({
   const name = t('seating.rowName', { label: row.label });
 
   const change = (changes: SeatingRowChanges, field?: string) =>
-    ctx.send(() => api.changeSeatingRow(ctx.event.id, row.id, changes, row.version), field);
+    ctx.send(
+      () => api.changeSeatingRow(ctx.event.id, row.id, changes, ctx.newest(row).version),
+      field,
+    );
 
   function label(text: string): Promise<string | null> | string {
     const typed = text.trim().toUpperCase();
 
     if (typed === '') return t('seating.rowBlank');
-    if (typed.length > SEATING_LIMITS.rowLabelMaximum)
+    if (visibleLength(typed) > SEATING_LIMITS.rowLabelMaximum)
       return t('seating.tableLong', { max: SEATING_LIMITS.rowLabelMaximum });
     const labelled = plan.rows.map((one) => ({ id: one.id, name: one.label }));
 
@@ -384,7 +399,7 @@ export function RowPanel({
   if (ctx.readOnly)
     return (
       <div className="st-stack">
-        <BackHead title={name} line={rowLine(t, plan, row)} onClose={() => ctx.open(null)} />
+        <BackHead title={name} line={rowLine(t, plan, row)} />
         <SeatStrip t={t} row={row} chosen={seat} onPick={pick} />
         {seat != null && <ChosenSeat ctx={ctx} row={row} seat={seat} />}
         <dl className="st-facts">
@@ -405,20 +420,14 @@ export function RowPanel({
 
   return (
     <div className="st-stack is-tight">
-      <BackHead title={name} line={rowLine(t, plan, row)} onClose={() => ctx.open(null)} />
+      <BackHead title={name} line={rowLine(t, plan, row)} />
       {said != null && <Added>{said}</Added>}
       {ctx.notice != null && <Said>{ctx.notice}</Said>}
       <Line>{t('seating.faces')}</Line>
       <SeatStrip t={t} row={row} chosen={seat} onPick={pick} />
       {seat != null && <ChosenSeat ctx={ctx} row={row} seat={seat} />}
       <div className="st-fields">
-        <Field
-          fieldKey="label"
-          label={t('seating.label')}
-          value={row.label}
-          maxLength={SEATING_LIMITS.rowLabelMaximum}
-          onCommit={label}
-        />
+        <Field fieldKey="label" label={t('seating.label')} value={row.label} onCommit={label} />
         <Select
           fieldKey="section"
           label={t('seating.section')}
@@ -456,7 +465,7 @@ export function RowPanel({
           label={t('seating.duplicate')}
           onClick={() => {
             void ctx
-              .place(() => api.duplicateSeatingRow(ctx.event.id, row.id, row.version))
+              .place(() => api.duplicateSeatingRow(ctx.event.id, row.id, ctx.newest(row).version))
               .then((copy) => {
                 if (copy == null) return;
                 ctx.open({
@@ -542,18 +551,20 @@ function ChosenSeat({ ctx, row, seat }: { ctx: PlanApi; row: SeatingRow; seat: n
           <TextAction
             label={t(unusable ? 'seating.markUsable' : 'seating.markUnusable')}
             onClick={() =>
-              void ctx.send(() =>
-                api.changeSeatingRow(
+              void ctx.send(() => {
+                const now = ctx.newest(row);
+
+                return api.changeSeatingRow(
                   ctx.event.id,
                   row.id,
                   {
                     unusableSeats: unusable
-                      ? row.unusableSeats.filter((one) => one !== seat)
-                      : [...row.unusableSeats, seat].sort((a, b) => a - b),
+                      ? now.unusableSeats.filter((one) => one !== seat)
+                      : [...new Set([...now.unusableSeats, seat])].sort((a, b) => a - b),
                   },
-                  row.version,
-                ),
-              )
+                  now.version,
+                );
+              })
             }
           />
         </div>
@@ -579,13 +590,16 @@ export function SingleSeatPanel({
   });
 
   const change = (changes: Parameters<typeof api.changeSingleSeat>[2], field?: string) =>
-    ctx.send(() => api.changeSingleSeat(ctx.event.id, seat.id, changes, seat.version), field);
+    ctx.send(
+      () => api.changeSingleSeat(ctx.event.id, seat.id, changes, ctx.newest(seat).version),
+      field,
+    );
 
   function name(text: string): Promise<string | null> | string {
     const typed = text.trim();
 
     if (typed === '') return t('seating.seatBlank');
-    if (typed.length > SEATING_LIMITS.seatNameMaximum)
+    if (visibleLength(typed) > SEATING_LIMITS.seatNameMaximum)
       return t('seating.tableLong', { max: SEATING_LIMITS.seatNameMaximum });
     const holder = holdingName(plan.singleSeats, typed, seat.id);
 
@@ -603,7 +617,7 @@ export function SingleSeatPanel({
   if (ctx.readOnly)
     return (
       <div className="st-stack">
-        <BackHead title={seat.name} line={line} onClose={() => ctx.open(null)} />
+        <BackHead title={seat.name} line={line} />
         {state}
         <Line>{t('seating.readOnly')}</Line>
       </div>
@@ -611,17 +625,11 @@ export function SingleSeatPanel({
 
   return (
     <div className="st-stack is-tight">
-      <BackHead title={seat.name} line={line} onClose={() => ctx.open(null)} />
+      <BackHead title={seat.name} line={line} />
       {said != null && <Added>{said}</Added>}
       {ctx.notice != null && <Said>{ctx.notice}</Said>}
       <div className="st-fields">
-        <Field
-          fieldKey="name"
-          label={t('seating.name')}
-          value={seat.name}
-          maxLength={SEATING_LIMITS.seatNameMaximum}
-          onCommit={name}
-        />
+        <Field fieldKey="name" label={t('seating.name')} value={seat.name} onCommit={name} />
         <Select
           fieldKey="section"
           label={t('seating.section')}

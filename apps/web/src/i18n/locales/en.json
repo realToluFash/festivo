@@ -2756,7 +2756,13 @@
     "deleteRow": "Delete row",
     "deleteSeat": "Delete seat",
     "changedRow": "{{name}} just changed this row. Your change was not saved.",
-    "changedSeat": "{{name}} just changed this seat. Your change was not saved."
+    "changedSeat": "{{name}} just changed this seat. Your change was not saved.",
+    "zoomIn": "Zoom in",
+    "zoomOut": "Zoom out",
+    "zoomIs": "Zoom {{pct, number}}%",
+    "percent": "{{pct, number}}%",
+    "fit": "Fit the room",
+    "takenOf": "{{taken, number}} of {{seats, number}}"
   },
   "onboarding": {
     "step": "Step {{step, number}} of 2",

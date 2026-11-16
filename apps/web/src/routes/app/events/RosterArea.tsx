@@ -778,7 +778,6 @@ function PersonForm({
               id={FIELD_IDS.name}
               type="text"
               value={draft.name}
-              maxLength={STAFF_NAME_MAXIMUM}
               autoComplete="off"
               aria-invalid={problems.name != null}
               aria-describedby={told(FIELD_IDS.name, problems.name, true)}

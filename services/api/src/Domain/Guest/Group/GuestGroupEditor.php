@@ -14,6 +14,7 @@ use App\Enum\Actor;
 use App\Enum\ErrorCode;
 use App\Http\Exception\ApiException;
 use App\Locale\NameNormaliser;
+use App\Locale\VisibleText;
 use App\Repository\GuestGroupRepository;
 use App\Repository\GuestRepository;
 use Doctrine\DBAL\LockMode;
@@ -151,7 +152,7 @@ final readonly class GuestGroupEditor
             throw ApiException::validation([self::violation($path, 'validation.guest_group_name_required')]);
         }
 
-        if (Str\length($name) > GuestGroup::NAME_MAXIMUM) {
+        if (VisibleText::tooLong($name, GuestGroup::NAME_MAXIMUM)) {
             throw ApiException::validation([self::violation($path, 'validation.guest_group_name_too_long')]);
         }
 

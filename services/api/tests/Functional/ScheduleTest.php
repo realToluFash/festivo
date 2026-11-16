@@ -132,6 +132,16 @@ final class ScheduleTest extends ApiTestCase
         yield 'an owner over 120' => [['ownerName' => Str\repeat('a', 121)], 'ownerName', 'That name is 121 characters. Use 120 or fewer.'];
         yield 'a role over 40' => [['ownerRole' => Str\repeat('a', 41)], 'ownerRole', 'That role is 41 characters. Use 40 or fewer.'];
         yield 'a note over 500' => [['note' => Str\repeat('a', 501)], 'note', 'That note is 501 characters. Use 500 or fewer.'];
+        yield 'a title over 120 marked letters' => [['title' => Str\repeat("e\u{0323}\u{0300}", 121)], 'title', 'That title is 121 characters. Use 120 or fewer.'];
+        yield 'a title of one letter of many marks' => [['title' => 'a' . Str\repeat("\u{0301}", 480)], 'title', 'That title is 1 characters. Use 120 or fewer.'];
+        yield 'a place over 60 marked letters' => [['place' => Str\repeat("e\u{0323}\u{0300}", 61)], 'place', 'That place is 61 characters. Use 60 or fewer.'];
+        yield 'a place of one letter of many marks' => [['place' => 'a' . Str\repeat("\u{0301}", 240)], 'place', 'That place is 1 characters. Use 60 or fewer.'];
+        yield 'an owner over 120 marked letters' => [['ownerName' => Str\repeat("e\u{0323}\u{0300}", 121)], 'ownerName', 'That name is 121 characters. Use 120 or fewer.'];
+        yield 'an owner of one letter of many marks' => [['ownerName' => 'a' . Str\repeat("\u{0301}", 480)], 'ownerName', 'That name is 1 characters. Use 120 or fewer.'];
+        yield 'a role over 40 marked letters' => [['ownerRole' => Str\repeat("e\u{0323}\u{0300}", 41)], 'ownerRole', 'That role is 41 characters. Use 40 or fewer.'];
+        yield 'a role of one letter of many marks' => [['ownerRole' => 'a' . Str\repeat("\u{0301}", 160)], 'ownerRole', 'That role is 1 characters. Use 40 or fewer.'];
+        yield 'a note over 500 marked letters' => [['note' => Str\repeat("e\u{0323}\u{0300}", 501)], 'note', 'That note is 501 characters. Use 500 or fewer.'];
+        yield 'a note of one letter of many marks' => [['note' => 'a' . Str\repeat("\u{0301}", 2000)], 'note', 'That note is 1 characters. Use 500 or fewer.'];
     }
 
     /** @param array<string, mixed> $wrong */
@@ -154,6 +164,24 @@ final class ScheduleTest extends ApiTestCase
 
         $this->add(['title' => 'Last song', 'startsAt' => '2027-03-07T02:00', 'lengthMinutes' => 0]);
         self::assertSame(201, $this->statusCode());
+    }
+
+    #[Test]
+    public function eachLimitInLettersWithADotAndAToneIsReadBackAsTyped(): void
+    {
+        foreach (['19:00' => "\u{1EB9}\u{0300}", '20:00' => "e\u{0323}\u{0300}"] as $time => $letter) {
+            $typed = ['title' => Str\repeat($letter, 120), 'place' => Str\repeat($letter, 60), 'ownerName' => Str\repeat($letter, 120), 'ownerRole' => Str\repeat($letter, 40), 'note' => Str\repeat($letter, 500)];
+            $this->add([...$typed, 'startsAt' => '2027-03-06T' . $time]);
+            self::assertSame(201, $this->statusCode(), Json\encode($this->last()));
+        }
+
+        foreach ($this->schedule()['items'] as $index => $item) {
+            $letter = 0 === $index ? "\u{1EB9}\u{0300}" : "e\u{0323}\u{0300}";
+            self::assertSame(
+                [Str\repeat($letter, 120), Str\repeat($letter, 60), Str\repeat($letter, 120), Str\repeat($letter, 40), Str\repeat($letter, 500)],
+                [$item['title'], $item['place'], $item['ownerName'], $item['ownerRole'], $item['note']],
+            );
+        }
     }
 
     #[Test]

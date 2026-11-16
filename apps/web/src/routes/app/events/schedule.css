@@ -336,6 +336,10 @@
   border-top: 1px solid var(--colorAttentionBorder);
   text-align: left;
   vertical-align: top;
+  overflow-wrap: break-word;
+}
+
+.ro-diff td {
   overflow-wrap: anywhere;
 }
 
@@ -666,6 +670,10 @@
 
 /* At 40rem and under (WCAG 2.2 1.4.10): one column, one place at a time, the table folded to Starts and Item, the form as its own page. */
 @media (width <= 40rem) {
+  .ro.desk-page {
+    padding: var(--spaceLg) var(--spaceMd) var(--space3xl);
+  }
+
   .ro .ev-crumb ol {
     flex-wrap: wrap;
   }

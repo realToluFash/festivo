@@ -69,4 +69,10 @@ describe('the demo counts as the screens show it', () => {
   it('counts a message against 500', () => {
     expect(messageCount('Hi Ade, it’s Folake from the Lagos team.')).toBe('40 of 500 characters.');
   });
+
+  it('counts the letters a reader sees, marks and emoji alike (sc-54292)', () => {
+    expect(messageCount('e\u0323\u0300'.repeat(500))).toBe('500 of 500 characters.');
+    expect(messageCount('Ẹ̀gbẹ́ Ọ̀rẹ́ Ìyàwó Àgbà'.normalize('NFD'))).toBe('19 of 500 characters.');
+    expect(messageCount('👨‍👩‍👧 🇳🇬')).toBe('3 of 500 characters.');
+  });
 });

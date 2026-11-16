@@ -24,12 +24,17 @@ import {
   type Plan,
   type Point,
   AT_100,
+  CRUMB_WORDS,
+  type CrumbLang,
   EVENT_ID,
+  LONG_NAME,
+  QA_NAME,
   PRIYA,
   SW,
   ZOOMS,
   bounds,
   copyOf,
+  crumbOf,
   deletePlanWords,
   detailOf,
   filled,
@@ -96,6 +101,7 @@ export function SeatingPage() {
 
 function SeatingAt({ id, raw }: { id: string | undefined; raw: string | null }) {
   const [event] = useState(() => sampleEvent(id));
+  const state = seatingStateOf(raw);
   const [first] = useState<Ui>(() => {
     const seeded = seedOf(seatingStateOf(raw));
 
@@ -106,6 +112,8 @@ function SeatingAt({ id, raw }: { id: string | undefined; raw: string | null }) 
 
   if (event == null) return <Navigate to="/demo/events" replace />;
   if (first.paper != null) return <PaperPage paper={first.paper} plan={first.plan} />;
+  if (state === 'crumbWidths') return <CrumbWidths id={event.id} />;
+  const named = crumbOf(state, event.name);
 
   return (
     <EventsShell
@@ -120,8 +128,67 @@ function SeatingAt({ id, raw }: { id: string | undefined; raw: string | null }) 
         />
       )}
     >
-      {(tell) => <Seating first={first} event={event} tell={tell} />}
+      {(tell) => <Seating first={first} event={event} named={named} tell={tell} />}
     </EventsShell>
+  );
+}
+
+type Named = { name: string; lang: CrumbLang };
+
+/** Events › the event › Seating (sc-55300): only the event name gives way, cut short with an ellipsis; its link keeps the full name. */
+function SeatingCrumb({ id, named }: { id: string; named: Named }) {
+  const words = CRUMB_WORDS[named.lang];
+
+  return (
+    <nav className="st-crumb" aria-label={words.crumb} lang={named.lang}>
+      <ol>
+        <li>
+          <Link to="/demo/events">{words.events}</Link>
+        </li>
+        <li className="st-crumb-event">
+          <Icon name="chevron" size={14} weight={2.3} />
+          <Link to={`/demo/events/${id}`}>
+            <span className="st-crumb-name">{named.name}</span>
+          </Link>
+        </li>
+        <li aria-current="page">
+          <Icon name="chevron" size={14} weight={2.3} />
+          <h1 tabIndex={-1}>{words.area}</h1>
+        </li>
+      </ol>
+    </nav>
+  );
+}
+
+const WIDTHS: readonly { w: 320 | 375; named: Named; label: string }[] = [
+  { w: 320, named: { name: LONG_NAME, lang: 'en' }, label: SW.longLabel },
+  { w: 375, named: { name: LONG_NAME, lang: 'en' }, label: SW.longLabel },
+  { w: 320, named: { name: LONG_NAME, lang: 'fr' }, label: SW.longLabel },
+  { w: 375, named: { name: LONG_NAME, lang: 'fr' }, label: SW.longLabel },
+  { w: 375, named: { name: QA_NAME, lang: 'fr' }, label: QA_NAME },
+];
+
+/** ?state=crumbWidths: the header band in frames as wide as a 320 and a 375 window, since the demo's desk keeps its sidebar there. */
+function CrumbWidths({ id }: { id: string }) {
+  return (
+    <main className="st-widths">
+      <h1>{SW.widthsTitle}</h1>
+      <p className="st-widths-line">{SW.widthsLine}</p>
+      {WIDTHS.map(({ w, named, label }) => (
+        <figure key={`${w}|${named.lang}|${label}`} className={`st-width is-${w}`}>
+          <figcaption>
+            {say(SW.widthAt, {
+              w,
+              lang: named.lang === 'fr' ? SW.french : SW.english,
+              name: label,
+            })}
+          </figcaption>
+          <header className="st-top">
+            <SeatingCrumb id={id} named={named} />
+          </header>
+        </figure>
+      ))}
+    </main>
   );
 }
 
@@ -181,7 +248,17 @@ function shapeWords(kind: Kind): string {
   }[kind];
 }
 
-function Seating({ first, event, tell }: { first: Ui; event: SampleEvent; tell: Tell }) {
+function Seating({
+  first,
+  event,
+  named,
+  tell,
+}: {
+  first: Ui;
+  event: SampleEvent;
+  named: Named;
+  tell: Tell;
+}) {
   const [ui, setUi] = useState<Ui>(first);
   const [setCanvas, size] = useSize();
   const canvas = useRef<HTMLDivElement | null>(null);
@@ -1336,21 +1413,7 @@ function Seating({ first, event, tell }: { first: Ui; event: SampleEvent; tell: 
 
   const crumb = (
     <header className="st-top">
-      <nav className="st-crumb" aria-label={SW.crumb}>
-        <ol>
-          <li>
-            <Link to="/demo/events">{SW.events}</Link>
-          </li>
-          <li>
-            <Icon name="chevron" size={14} weight={2.3} />
-            <Link to={`/demo/events/${event.id}`}>{event.name}</Link>
-          </li>
-          <li aria-current="page">
-            <Icon name="chevron" size={14} weight={2.3} />
-            <h1 tabIndex={-1}>{SW.area}</h1>
-          </li>
-        </ol>
-      </nav>
+      <SeatingCrumb id={event.id} named={named} />
       <Presence />
       <DemoBell tell={tell} />
     </header>

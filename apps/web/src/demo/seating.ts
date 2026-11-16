@@ -1,10 +1,10 @@
 import { writtenTime } from './clock.ts';
 import { demoWords } from './demoWords.ts';
-import { SW } from './seatingWords.ts';
+import { CRUMB_WORDS, type CrumbLang, LONG_NAME, QA_NAME, SW } from './seatingWords.ts';
 import type { DemoLink } from './settings.ts';
 
 /** Seating · A · The room (page e31, board/seating-a-spec.md): the sample, the room's geometry and the plan's rules; the words are in seatingWords.ts. */
-export { SW };
+export { CRUMB_WORDS, type CrumbLang, LONG_NAME, QA_NAME, SW };
 
 const WORDS = demoWords(SW);
 
@@ -587,29 +587,90 @@ export function snapTo(value: number, units: Units, on = true): number {
   return on ? Math.round(value / step) * step : Math.round(value);
 }
 
+export const PLACE_CLEAR = 46;
+export const SEAT_NAME_ROOM = 160;
+
+function placingBox(item: Item, at: Point = [item.x, item.y]) {
+  const box = bounds(item, at);
+
+  return item.kind === 'single' ? { ...box, x1: box.x1 + SEAT_NAME_ROOM } : box;
+}
+
+type Box = { x0: number; y0: number; x1: number; y1: number };
+
+function apart(a: Box, b: Box, clear: number): boolean {
+  return (
+    a.x1 + clear <= b.x0 || b.x1 + clear <= a.x0 || a.y1 + clear <= b.y0 || b.y1 + clear <= a.y0
+  );
+}
+
+function shifted(box: Box, x: number, y: number): Box {
+  return { x0: box.x0 + x, y0: box.y0 + y, x1: box.x1 + x, y1: box.y1 + y };
+}
+
+export function keepsClear(item: Item, items: readonly Item[], clear = PLACE_CLEAR): boolean {
+  const a = placingBox(item);
+
+  return items.every((other) => other.id === item.id || apart(a, placingBox(other), clear));
+}
+
+function preferred([dx, dy]: Point): number {
+  if (Math.abs(dy) > Math.abs(dx)) return dy > 0 ? 0 : 1;
+  return dx > 0 ? 2 : 3;
+}
+
+const RING_STEP = 10;
+const CLEAR_REACH = Math.ceil((PLACE_CLEAR + SEAT_NAME_ROOM) / RING_STEP);
+const rings: Point[][] = [];
+
+function ringOf(ring: number): Point[] {
+  const known = rings[ring];
+
+  if (known != null) return known;
+  const tries: Point[] = [];
+
+  for (let dx = -ring; dx <= ring; dx += 1)
+    for (let dy = -ring; dy <= ring; dy += 1)
+      if (Math.max(Math.abs(dx), Math.abs(dy)) === ring)
+        tries.push([dx * RING_STEP, dy * RING_STEP]);
+  tries.sort((a, b) => Math.hypot(...a) - Math.hypot(...b) || preferred(a) - preferred(b));
+  rings[ring] = tries;
+
+  return tries;
+}
+
 export function nearestFree(item: Item, items: readonly Item[], room: Room, from: Point): Point {
-  const step = 20;
-  const limit = Math.max(room.w, room.l);
+  const others = items.filter((other) => other.id !== item.id);
+  const spaces = others.map((other) => placingBox(other));
+  const bodies = others.map((other) => bounds(other));
+  const space = placingBox(item, [0, 0]);
+  const body = bounds(item, [0, 0]);
+  const last = Math.ceil(Math.max(room.w, room.l) / RING_STEP);
+  let free: Point | null = null;
+  let freeRing = 0;
 
-  for (let ring = 0; ring * step <= limit; ring += 1) {
-    const tries: Point[] = [];
+  for (let ring = 0; ring <= last; ring += 1) {
+    if (free != null && ring > freeRing + CLEAR_REACH) return free;
+    for (const [dx, dy] of ringOf(ring)) {
+      const x = Math.round((from[0] + dx) / 10) * 10;
+      const y = Math.round((from[1] + dy) / 10) * 10;
+      const at = shifted(body, x, y);
 
-    for (let dx = -ring; dx <= ring; dx += 1)
-      for (let dy = -ring; dy <= ring; dy += 1)
-        if (Math.max(Math.abs(dx), Math.abs(dy)) === ring)
-          tries.push([from[0] + dx * step, from[1] + dy * step]);
-    tries.sort(
-      (a, b) =>
-        Math.hypot(a[0] - from[0], a[1] - from[1]) - Math.hypot(b[0] - from[0], b[1] - from[1]),
-    );
-    for (const at of tries) {
-      const moved = { ...item, x: Math.round(at[0] / 10) * 10, y: Math.round(at[1] / 10) * 10 };
+      if (at.x0 < -0.5 || at.y0 < -0.5 || at.x1 > room.w + 0.5 || at.y1 > room.l + 0.5) continue;
+      const mine = shifted(space, x, y);
 
-      if (inside(moved, room) && overlapsOf(moved, items).length === 0) return [moved.x, moved.y];
+      if (spaces.every((other) => apart(mine, other, PLACE_CLEAR))) return [x, y];
+      if (free != null) continue;
+      const moved = { ...item, x, y };
+
+      if (others.every((other, i) => apart(at, bodies[i]!, 0) || !overlap(moved, other))) {
+        free = [x, y];
+        freeRing = ring;
+      }
     }
   }
 
-  return within(item, room, from);
+  return free ?? within(item, room, from);
 }
 
 export function readingOrder(items: readonly Item[]): Item[] {
@@ -1352,9 +1413,28 @@ export const SEATING_STATES = [
   { key: 'paperNobody', name: 'Paper: table lists, nobody seated', group: 'Print and paper' },
   { key: 'paperCard', name: 'Paper: a table card', group: 'Print and paper' },
   { key: 'paperCardTop', name: 'Paper: the head table’s card', group: 'Print and paper' },
+  { key: 'longName', name: 'A 120-character event name', group: 'The breadcrumb' },
+  { key: 'longNameFr', name: 'A 120-character event name, in French', group: 'The breadcrumb' },
+  {
+    key: 'crumbWidths',
+    name: 'The header band at 320 and 375, English and French',
+    group: 'The breadcrumb',
+  },
 ] as const;
 
 export type SeatingState = (typeof SEATING_STATES)[number]['key'];
+
+const LONG_STATES: readonly (SeatingState | null)[] = ['longName', 'longNameFr'];
+
+export function crumbOf(
+  state: SeatingState | null,
+  name: string,
+): { name: string; lang: CrumbLang } {
+  return {
+    name: LONG_STATES.includes(state) ? LONG_NAME : name,
+    lang: state === 'longNameFr' ? 'fr' : 'en',
+  };
+}
 
 export function seatingStateOf(raw: string | null): SeatingState | null {
   return SEATING_STATES.find((one) => one.key === raw)?.key ?? null;

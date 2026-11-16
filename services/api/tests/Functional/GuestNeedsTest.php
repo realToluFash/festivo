@@ -90,7 +90,11 @@ final class GuestNeedsTest extends ApiTestCase
         yield 'Other allergy ticked with no words' => [['needs' => ['allergies' => ['other'], 'otherAllergy' => '   ']], ['needs.otherAllergy' => 'Say which']];
         yield 'Other diet too long' => [['needs' => ['diet' => ['other'], 'otherDiet' => Str\repeat('é', 101)]], ['needs.otherDiet' => 'Shorten it to 100 characters or fewer.']];
         yield 'Other access ticked with no words, on a companion' => [['companions' => [[], ['needs' => ['access' => ['other']]]]], ['companions[1].needs.otherAccess' => 'Say which']];
+        yield 'Other diet too long in marked letters' => [['needs' => ['diet' => ['other'], 'otherDiet' => Str\repeat("e\u{0323}\u{0300}", 101)]], ['needs.otherDiet' => 'Shorten it to 100 characters or fewer.']];
+        yield 'Other diet of one letter of many marks' => [['needs' => ['diet' => ['other'], 'otherDiet' => 'a' . Str\repeat("\u{0301}", 400)]], ['needs.otherDiet' => 'Shorten it to 100 characters or fewer.']];
         yield 'a note too long' => [['needs' => ['note' => Str\repeat('n', 501)]], ['needs.note' => 'Shorten the note to 500 characters or fewer.']];
+        yield 'a note too long in marked letters' => [['needs' => ['note' => Str\repeat("e\u{0323}\u{0300}", 501)]], ['needs.note' => 'Shorten the note to 500 characters or fewer.']];
+        yield 'a note of one letter of many marks' => [['needs' => ['note' => 'a' . Str\repeat("\u{0301}", 2000)]], ['needs.note' => 'Shorten the note to 500 characters or fewer.']];
         yield 'an allergen not in the list' => [['needs' => ['allergies' => ['peanuts', 'shellfish']]], ['needs.allergies' => 'Choose from the list.']];
         yield 'a diet not in the list' => [['needs' => ['diet' => ['keto']]], ['needs.diet' => 'Choose from the list.']];
         yield 'an access need not in the list' => [['needs' => ['access' => ['lift']]], ['needs.access' => 'Choose from the list.']];
@@ -112,6 +116,25 @@ final class GuestNeedsTest extends ApiTestCase
         self::assertSame($expected, $this->violations());
         self::assertSame(0, $this->rows('guests'));
         self::assertSame(0, $this->rows('guest_needs'));
+    }
+
+    #[Test]
+    public function otherWordsAndANoteAtTheLimitInLettersWithADotAndAToneAreReadBackAsTyped(): void
+    {
+        $composed = "\u{1EB9}\u{0300}";
+        $decomposed = "e\u{0323}\u{0300}";
+        $needs = [
+            'allergies' => ['other'],
+            'diet' => ['other'],
+            'access' => ['other'],
+            'otherAllergy' => Str\repeat($composed, 100),
+            'otherDiet' => Str\repeat($decomposed, 100),
+            'otherAccess' => Str\repeat('a', 97) . "👨\u{200D}👩\u{200D}👧 🇳🇬",
+            'note' => Str\repeat($decomposed, 500),
+        ];
+        $guest = $this->add(['fullName' => 'Bisi', 'needs' => $needs]);
+
+        self::assertSame([$needs], $this->needsOf($this->details($this->as($this->owner, 'GET', $this->guest($guest)))));
     }
 
     #[Test]

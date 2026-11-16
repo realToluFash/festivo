@@ -18,6 +18,7 @@ import {
   tableExtent,
   TABLE_MAXIMUM_CM,
   TABLE_MINIMUM_CM,
+  visibleLength,
 } from '@soirely/domain';
 import { type KeyboardEvent, type ReactNode, useEffect, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
@@ -232,8 +233,14 @@ export function TableDrawing({
       </g>
     );
 
+  const out = s < CHAIRS_FROM_SCALE;
   const body = round ? (
-    <circle className="st-body" cx={f(cx)} cy={f(cy)} r={f((table.widthCm / 2) * s)} />
+    <circle
+      className={out ? 'st-body is-out' : 'st-body'}
+      cx={f(cx)}
+      cy={f(cy)}
+      r={f((table.widthCm / 2) * s)}
+    />
   ) : (
     <g transform={rot}>
       <rect
@@ -249,7 +256,7 @@ export function TableDrawing({
 
   const chairs: ReactNode[] = [];
 
-  if (s >= CHAIRS_FROM_SCALE)
+  if (!out)
     chairsOf(table).forEach((chair) => {
       const [px, py] = turned([chair.x, chair.y], table.rotation);
       const x = cx + px * s;
@@ -269,11 +276,11 @@ export function TableDrawing({
             square={table.shape === 'cocktail'}
             label={near ? String(chair.seat) : undefined}
           />
-          {chosen && (
+          {(chosen || near) && (
             <circle
               className={near ? 'st-chair-hit' : 'st-chair-hit is-keys'}
               role="button"
-              tabIndex={0}
+              tabIndex={chosen ? 0 : -1}
               aria-label={t('seating.chairName', {
                 table: table.name,
                 seat: chair.seat,
@@ -331,16 +338,82 @@ export function TableDrawing({
         {body}
         {chairs}
       </g>
-      <text
-        className="st-name"
-        x={f(cx)}
-        y={f(inside ? cy : cy + ey * s + 10)}
-        textAnchor="middle"
-        dominantBaseline="central"
-      >
-        {table.name}
-      </text>
+      {out ? (
+        <OutWords
+          x={cx}
+          y={round ? cy + Math.max(ey, 40) * s * 0.55 + 12 : cy + (table.lengthCm / 2) * s + 12}
+          name={table.name}
+          taken={0}
+          seats={table.seats - table.unusableSeats.length}
+        />
+      ) : (
+        <text
+          className="st-name"
+          x={f(cx)}
+          y={f(inside ? cy : cy + ey * s + 10)}
+          textAnchor="middle"
+          dominantBaseline="central"
+        >
+          {table.name}
+        </text>
+      )}
       {outside && box(6, 'st-overlap', 'outside')}
+    </g>
+  );
+}
+
+const BAR_WIDTH = 44;
+
+/** Under 50% an item is its outline, its name and how full it is: a bar and "{taken} of {seats}". */
+export function OutWords({
+  x,
+  y,
+  name,
+  taken,
+  seats,
+}: {
+  x: number;
+  y: number;
+  name: string;
+  taken: number;
+  seats: number | null;
+}) {
+  const { t } = useTranslation();
+
+  return (
+    <g aria-hidden="true">
+      <text className="st-name" x={f(x)} y={f(y)} textAnchor="middle" dominantBaseline="central">
+        {name}
+      </text>
+      {seats != null && (
+        <>
+          <rect
+            className="st-fill-track"
+            x={f(x - BAR_WIDTH / 2)}
+            y={f(y + 10)}
+            width={BAR_WIDTH}
+            height="5"
+            rx="2.5"
+          />
+          <rect
+            className="st-fill"
+            x={f(x - BAR_WIDTH / 2)}
+            y={f(y + 10)}
+            width={f((BAR_WIDTH * taken) / Math.max(1, seats))}
+            height="5"
+            rx="2.5"
+          />
+          <text
+            className="st-of"
+            x={f(x)}
+            y={f(y + 25)}
+            textAnchor="middle"
+            dominantBaseline="central"
+          >
+            {t('seating.takenOf', { taken, seats })}
+          </text>
+        </>
+      )}
     </g>
   );
 }
@@ -463,7 +536,10 @@ export function TablePanel({
   const unit = ctx.system === 'us' ? undefined : centimetreUnit(locale);
 
   const change = (changes: Parameters<typeof api.changeSeatingTable>[2], field?: string) =>
-    ctx.send(() => api.changeSeatingTable(ctx.event.id, table.id, changes, table.version), field);
+    ctx.send(
+      () => api.changeSeatingTable(ctx.event.id, table.id, changes, ctx.newest(table).version),
+      field,
+    );
 
   function size(key: 'widthCm' | 'lengthCm', text: string): Promise<string | null> | string {
     const read = readSize(t, locale, text, ctx.system);
@@ -487,10 +563,7 @@ export function TablePanel({
     const typed = text.trim();
 
     if (typed === '') return t('seating.tableBlank');
-    if (
-      [...new Intl.Segmenter().segment(typed)].length > SEATING_LIMITS.tableNameMaximum ||
-      [...typed].length > SEATING_LIMITS.tableNameCodePoints
-    )
+    if (visibleLength(typed) > SEATING_LIMITS.tableNameMaximum)
       return t('seating.tableLong', { max: SEATING_LIMITS.tableNameMaximum });
     const holder = holdingName(plan.tables, typed, table.id);
 
@@ -625,7 +698,9 @@ export function TablePanel({
           label={t('seating.duplicate')}
           onClick={() => {
             void ctx
-              .place(() => api.duplicateSeatingTable(ctx.event.id, table.id, table.version))
+              .place(() =>
+                api.duplicateSeatingTable(ctx.event.id, table.id, ctx.newest(table).version),
+              )
               .then((copy) => {
                 if (copy == null) return;
                 ctx.open({
@@ -712,18 +787,20 @@ export function ChairPanel({
           <TextAction
             label={t(unusable ? 'seating.markUsable' : 'seating.markUnusable')}
             onClick={() =>
-              void ctx.send(() =>
-                api.changeSeatingTable(
+              void ctx.send(() => {
+                const now = ctx.newest(table);
+
+                return api.changeSeatingTable(
                   ctx.event.id,
                   table.id,
                   {
                     unusableSeats: unusable
-                      ? table.unusableSeats.filter((one) => one !== seat)
-                      : [...table.unusableSeats, seat].sort((a, b) => a - b),
+                      ? now.unusableSeats.filter((one) => one !== seat)
+                      : [...new Set([...now.unusableSeats, seat])].sort((a, b) => a - b),
                   },
-                  table.version,
-                ),
-              )
+                  now.version,
+                );
+              })
             }
           />
         </div>
