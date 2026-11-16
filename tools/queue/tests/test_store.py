@@ -124,6 +124,47 @@ class Claims(unittest.TestCase):
         store.record(self.db, [item("a", ["dev"])], NOW + 60)
         self.assertIsNone(store.claim(self.db, "dev", NOW + 60))
 
+    def finish_review(self, at):
+        row = store.claim(self.db, "lead", at)
+        store.finish(self.db, row["id"], "read, not posted", at)
+
+    def test_a_finished_review_still_due_comes_back_after_half_an_hour(self):
+        review = item("lead:review:#40@abc", ["lead"], "review")
+        store.record(self.db, [review], NOW)
+        self.finish_review(NOW)
+        store.record(self.db, [review], NOW + 29 * 60)
+        self.assertEqual(store.waiting(self.db, "lead"), [])
+        store.record(self.db, [review], NOW + 30 * 60)
+        self.assertIsNotNone(store.claim(self.db, "lead", NOW + 30 * 60))
+
+    def test_a_finished_review_comes_back_three_times_each_wait_twice_the_last(self):
+        review = item("lead:review:#40@abc", ["lead"], "review")
+        store.record(self.db, [review], NOW)
+        at = NOW
+        for minutes in (30, 60, 120):
+            self.finish_review(at)
+            store.record(self.db, [review], at + (minutes - 1) * 60)
+            self.assertEqual(store.waiting(self.db, "lead"), [])
+            at += minutes * 60
+            store.record(self.db, [review], at)
+            self.assertEqual(len(store.waiting(self.db, "lead")), 1)
+        self.finish_review(at)
+        store.record(self.db, [review], at + 24 * 60 * 60)
+        self.assertEqual(store.waiting(self.db, "lead"), [])
+
+    def test_a_finished_review_no_longer_due_stays_finished(self):
+        store.record(self.db, [item("lead:review:#40@abc", ["lead"], "review")], NOW)
+        self.finish_review(NOW)
+        store.record(self.db, [], NOW + 60 * 60)
+        self.assertEqual(store.waiting(self.db, "lead"), [])
+
+    def test_finished_work_other_than_a_review_stays_finished_while_still_derived(self):
+        inbox = item("lead:inbox", ["lead"], "inbox", [11])
+        store.record(self.db, [inbox], NOW)
+        store.finish(self.db, store.claim(self.db, "lead", NOW)["id"], None, NOW)
+        store.record(self.db, [inbox], NOW + 60 * 60)
+        self.assertEqual(store.waiting(self.db, "lead"), [])
+
     def test_work_that_no_longer_applies_is_retired(self):
         store.record(self.db, [item("a", ["dev"])], NOW)
         store.record(self.db, [], NOW + 60)
