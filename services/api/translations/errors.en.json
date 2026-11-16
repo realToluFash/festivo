@@ -113,5 +113,8 @@
     "schedule_item_limit": "This schedule has {max} items, the most an event can hold. Delete one to add another.",
     "item_started": "This item has already started.",
     "item_not_started": "This item has not started yet, so it cannot be done.",
-    "item_finished": "This item is already done."
+    "item_finished": "This item is already done.",
+    "track_busy": "Another item on this track is on. Finish it first.",
+    "idempotency_key_required": "Send an Idempotency-Key with each press.",
+    "idempotency_key_reused": "This Idempotency-Key was sent with a different press."
 }

@@ -3,6 +3,7 @@ import {
   type OrganisationEvent,
   type Schedule,
   type ScheduleItem,
+  pressedAtOf,
   realtimeTopic,
 } from '@soirely/api-client';
 import {
@@ -18,10 +19,12 @@ import {
   nextWords,
   runItemOf,
   runShown,
+  serverClock,
   timeSlot,
   wallOfZoned,
   zonedAt,
 } from '@soirely/domain';
+import { randomUUID } from 'expo-crypto';
 import type { TFunction } from 'i18next';
 import { useEffect, useState } from 'react';
 import { Pressable, StyleSheet, View } from 'react-native';
@@ -176,21 +179,26 @@ function Loaded({
   const mark = (item: RunItem, how: 'start' | 'finish') => {
     setBusy(item.id);
     setFailed(null);
-    api.markScheduleItem(eventId, item.id, how).then(
-      (next) => {
-        setBusy(null);
-        onSchedule(next);
-      },
-      (error: unknown) => {
-        setBusy(null);
-        if (error instanceof ApiError && error.status === 409) {
-          setFailed(error.problem.title);
-          api.schedule(eventId).then(onSchedule, () => undefined);
-        } else {
-          setFailed(t('runView.markFailed'));
-        }
-      },
-    );
+    api
+      .pressScheduleItem(eventId, item.id, how === 'finish' ? 'done' : 'start', {
+        key: randomUUID(),
+        pressedAt: pressedAtOf(serverClock.now()),
+      })
+      .then(
+        (next) => {
+          setBusy(null);
+          onSchedule(next);
+        },
+        (error: unknown) => {
+          setBusy(null);
+          if (error instanceof ApiError && error.status === 409) {
+            setFailed(error.problem.title);
+            api.schedule(eventId).then(onSchedule, () => undefined);
+          } else {
+            setFailed(t('runView.markFailed'));
+          }
+        },
+      );
   };
   const act = { manage, busy, onMark: mark };
 

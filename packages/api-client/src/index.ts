@@ -18,3 +18,4 @@ export * from './staff.ts';
 export * from './dishes.ts';
 export * from './menu.ts';
 export * from './schedule.ts';
+export * from './pressQueue.ts';

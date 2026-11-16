@@ -5,6 +5,15 @@ export function inPlace(eventId: string, part: Part) {
   return { to: `/app/events/${encodeURIComponent(eventId)}`, state: { open: part } } as const;
 }
 
+/** The event's page with End now's confirmation already open, as the night's end card leads there (sc-3895). */
+export function endingNow(eventId: string) {
+  return { to: `/app/events/${encodeURIComponent(eventId)}`, state: { ask: 'endNow' } } as const;
+}
+
+export function asksEndNow(state: unknown): boolean {
+  return typeof state === 'object' && state != null && 'ask' in state && state.ask === 'endNow';
+}
+
 export function arrivingPart(state: unknown): Part | null {
   const open = typeof state === 'object' && state != null && 'open' in state ? state.open : null;
 

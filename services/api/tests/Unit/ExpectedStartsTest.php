@@ -65,11 +65,11 @@ final class ExpectedStartsTest extends TestCase
             $item->describe($row['id'], $item->getStartsAt(), $row['lengthMinutes'], null, null, null, null, $row['fixedTime'], false, $by);
 
             if (null !== $row['startedAt']) {
-                $item->start(new DateTimeImmutable($row['startedAt']), $by);
+                $item->setStartedAt(new DateTimeImmutable($row['startedAt']));
             }
 
             if (null !== $row['endedAt']) {
-                $item->finish(new DateTimeImmutable($row['endedAt']), $by);
+                $item->setEndedAt(new DateTimeImmutable($row['endedAt']));
             }
 
             $items[$item->getId()->toRfc4122()] = $item;

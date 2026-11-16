@@ -113,5 +113,8 @@
     "schedule_item_limit": "Ce programme compte {max} éléments, le maximum pour un événement. Supprimez-en un pour en ajouter un autre.",
     "item_started": "Cet élément a déjà commencé.",
     "item_not_started": "Cet élément n’a pas encore commencé, il ne peut donc pas être terminé.",
-    "item_finished": "Cet élément est déjà terminé."
+    "item_finished": "Cet élément est déjà terminé.",
+    "track_busy": "Un autre élément est en cours dans cet espace. Terminez-le d’abord.",
+    "idempotency_key_required": "Envoyez l’en-tête Idempotency-Key à chaque appui.",
+    "idempotency_key_reused": "Cette Idempotency-Key a déjà été envoyée avec un autre appui."
 }

@@ -8,9 +8,11 @@ export interface RunTimesItem {
   fixedTime: boolean;
   startedAt: string | null;
   endedAt: string | null;
+  /** Marked as not happening (sc-3895): it takes no time, and the items after it continue from the one before. */
+  skipped?: boolean;
 }
 
-export type RunPhase = 'waiting' | 'now' | 'done';
+export type RunPhase = 'waiting' | 'now' | 'done' | 'skipped';
 
 export type RunFigure =
   { kind: 'onTime' } | { kind: 'behind'; minutes: number } | { kind: 'last' } | { kind: 'done' };
@@ -65,6 +67,8 @@ function minutesOf(rfc3339: string): number {
 }
 
 export function phaseOf(item: RunTimesItem): RunPhase {
+  if (item.skipped === true) return 'skipped';
+
   return item.endedAt != null ? 'done' : item.startedAt != null ? 'now' : 'waiting';
 }
 
@@ -82,7 +86,7 @@ export function runTrack<I extends RunTimesItem>(
   const at = minutesOf(now);
   const ordered = inPlannedOrder(items);
   const lastStarted = ordered.reduce(
-    (last, item, index) => (phaseOf(item) === 'waiting' ? last : index),
+    (last, item, index) => (phaseOf(item) === 'now' || phaseOf(item) === 'done' ? index : last),
     -1,
   );
   const starts = new Map<string, number>();
@@ -94,6 +98,7 @@ export function runTrack<I extends RunTimesItem>(
     const phase = phaseOf(item);
     const planned = minutesOf(item.planned);
 
+    if (phase === 'skipped') return;
     if (phase === 'done') {
       end = minutesOf(item.endedAt ?? item.planned);
       ends.set(item.id, end);
@@ -121,7 +126,7 @@ export function runTrack<I extends RunTimesItem>(
       phase,
       expected: start != null && start !== minutesOf(item.planned) ? zonedOf(start) : null,
       startedBefore:
-        phase === 'waiting'
+        phase === 'waiting' || phase === 'skipped'
           ? null
           : (ordered.slice(0, index).find((one) => phaseOf(one) === 'waiting') ?? null),
     };
@@ -140,7 +145,7 @@ export function runTrack<I extends RunTimesItem>(
     const before = ordered[index - 1];
 
     if (!item.fixedTime || phaseOf(item) !== 'waiting' || before == null) return [];
-    if (phaseOf(before) === 'done') return [];
+    if (phaseOf(before) === 'done' || phaseOf(before) === 'skipped') return [];
 
     return (ends.get(before.id) ?? 0) > minutesOf(item.planned) ? [{ before, fixed: item }] : [];
   });
@@ -152,9 +157,11 @@ function figureOf<I extends RunTimesItem>(
   ordered: readonly I[],
   next: { item: I; expected: string } | null,
 ): RunFigure {
-  if (ordered.every((item) => phaseOf(item) === 'done')) return { kind: 'done' };
+  if (ordered.every((item) => phaseOf(item) === 'done' || phaseOf(item) === 'skipped'))
+    return { kind: 'done' };
   if (next == null) return { kind: 'last' };
-  if (ordered.every((item) => phaseOf(item) === 'waiting')) return { kind: 'onTime' };
+  if (ordered.every((item) => phaseOf(item) === 'waiting' || phaseOf(item) === 'skipped'))
+    return { kind: 'onTime' };
 
   const behind = minutesOf(next.expected) - minutesOf(next.item.planned);
 
