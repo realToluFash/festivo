@@ -876,8 +876,13 @@ const PAGES: readonly { page: string; boards: readonly Board[] }[] = [
       },
       {
         title: 'Members · more failed',
-        what: '12,345 people, the rows kept, Try again',
+        what: '12,345 people, Soirely answered with an error: the rows kept, Try again, no band',
         href: '/demo/settings/members?state=moreFailed',
+      },
+      {
+        title: 'Members · more offline',
+        what: '12,345 people, the next page not answered: the offline band above the rows kept',
+        href: '/demo/settings/members?state=moreOffline',
       },
       {
         title: 'Members · loading',
@@ -2383,6 +2388,26 @@ const PAGES: readonly { page: string; boards: readonly Board[] }[] = [
         title: 'Join link · signed in',
         what: 'A message of up to 500 characters',
         href: '/demo/join-message',
+      },
+      {
+        title: 'Join link · a long message',
+        what: 'Longer than its box: it scrolls inside, under its label',
+        href: '/demo/join-message?message=long',
+      },
+      {
+        title: 'Join link · 40 short lines',
+        what: 'One word a line: the label stays clear',
+        href: '/demo/join-message?message=lines',
+      },
+      {
+        title: 'Join link · past 500',
+        what: '501 letters, keys up: Ask to join refuses above them',
+        href: '/demo/join-message?message=over',
+      },
+      {
+        title: 'Join link · past 500, French',
+        what: 'The longest refusal, for the iPhone SE',
+        href: '/demo/join-message?message=over&lang=fr',
       },
     ],
   },

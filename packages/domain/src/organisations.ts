@@ -51,6 +51,17 @@ export function roleHolds(
   return permission !== '' && membership.permissions.includes(permission);
 }
 
+/** Whether the role holds it, or a role on at least one event does: how the API lets a Member into an organisation's page such as the Menu library (sc-3901). */
+export function holdsAnywhere(
+  membership: { permissions: readonly string[]; onAnEvent: readonly string[] },
+  permission: string,
+): boolean {
+  return (
+    roleHolds(membership, permission) ||
+    (permission !== '' && membership.onAnEvent.includes(permission))
+  );
+}
+
 export type CardStepAction = 'makeLive' | 'changeDates' | 'resume' | 'duplicate';
 
 /** Whether the role can take an event card's step (sc-30413, 8 Nov): Duplicate is creating an event, the rest are managing one. */

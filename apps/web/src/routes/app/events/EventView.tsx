@@ -27,6 +27,7 @@ import { OutcomeLine } from './OutcomeLine.tsx';
 import { EventPeople } from './EventPeople.tsx';
 import { GuestsArea, GuestsGone } from './GuestsArea.tsx';
 import { RunArea } from './RunArea.tsx';
+import { MenuArea } from './MenuArea.tsx';
 import { ScheduleArea } from './ScheduleArea.tsx';
 import { SeatingArea } from './SeatingArea.tsx';
 import { RosterArea } from './RosterArea.tsx';
@@ -182,6 +183,9 @@ function EventOf({
       <Withheld />
     );
 
+  if (page === 'menu' && load.kind === 'loaded')
+    return canOn(load.event, PAGE_NEEDS.menu) ? <MenuArea event={load.event} /> : <Withheld />;
+
   if (page === 'schedule' && load.kind === 'loaded')
     return canOn(load.event, PAGE_NEEDS.schedule) ? (
       <ScheduleArea event={load.event} />
@@ -271,29 +275,34 @@ function EventOf({
     );
 
   return (
-    <div className="event-page">
-      <EventCrumb name={load.kind === 'loaded' ? load.event.name : null}>
-        {refreshing && <Refreshing />}
-      </EventCrumb>
+    <AskHost>
+      {(covered) => (
+        <div className="event-page" inert={covered}>
+          <EventCrumb name={load.kind === 'loaded' ? load.event.name : null}>
+            {refreshing && <Refreshing />}
+          </EventCrumb>
 
-      {states}
+          {states}
 
-      {load.kind === 'loaded' && (
-        <Arrived>
-          <EventTop
-            event={load.event}
-            tag={load.tag}
-            heading={heading}
-            onChange={(event, tag) => setLoad({ kind: 'loaded', event, tag })}
-          />
-          {page === 'dates' && <AllDatesPage event={load.event} heading={heading} />}
-          {page === 'people' && <PeoplePage event={load.event} />}
-          {isPlaceholderEventArea(page) && page !== 'seating' && page !== 'schedule' && (
-            <AreaComing event={load.event} area={page} />
+          {load.kind === 'loaded' && (
+            <Arrived>
+              <EventTop
+                event={load.event}
+                tag={load.tag}
+                heading={heading}
+                onChange={(event, tag) => setLoad({ kind: 'loaded', event, tag })}
+              />
+              {page === 'dates' && <AllDatesPage event={load.event} heading={heading} />}
+              {page === 'people' && <PeoplePage event={load.event} />}
+              {isPlaceholderEventArea(page) &&
+                page !== 'menu' &&
+                page !== 'seating' &&
+                page !== 'schedule' && <AreaComing event={load.event} area={page} />}
+            </Arrived>
           )}
-        </Arrived>
+        </div>
       )}
-    </div>
+    </AskHost>
   );
 }
 
@@ -442,6 +451,18 @@ function EventDesk({ children }: { children: (covered: boolean) => ReactNode }) 
         {children(covered)}
         <div ref={setHost} className="desk-layers" />
       </div>
+    </LayersContext>
+  );
+}
+
+/** Where Make live asks from the row heading an area (sc-48603): the desk's dialog over a page that keeps its own look. */
+function AskHost({ children }: { children: (covered: boolean) => ReactNode }) {
+  const { layers, covered, setHost } = useDeskLayers();
+
+  return (
+    <LayersContext value={layers}>
+      {children(covered)}
+      <div ref={setHost} className="desk desk-layers" />
     </LayersContext>
   );
 }

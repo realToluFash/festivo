@@ -43,6 +43,7 @@ import {
   RefreshControl,
   StyleSheet,
   View,
+  useWindowDimensions,
   type TextInputInstance,
   type ViewInstance,
 } from 'react-native';
@@ -61,7 +62,7 @@ import {
   markOf,
   phaseCardOf,
 } from '../kit/guestRows.ts';
-import { pasteShown, waiting, whoseRows } from '../kit/pasteReply.ts';
+import { pasteBeside, pasteShown, waiting, whoseRows } from '../kit/pasteReply.ts';
 import { type GuestReplies, guestRepliesOf, guestReplyBy } from '../kit/replyBy.ts';
 import { type ScreenOffline, useHandOffline, useOffline } from '../offline.ts';
 import { useSignedIn } from '../signedIn.ts';
@@ -87,6 +88,7 @@ import {
   PasteRow,
   WhoseReply,
   usePaste,
+  usePasteHeight,
 } from './PasteReply.tsx';
 import { MarkSlot } from './ReplyMark.tsx';
 import { FailedBlock, type StepProps } from './Summary.tsx';
@@ -111,6 +113,9 @@ interface Pasted {
   all: boolean;
   typed: string;
 }
+
+/** Which Replace link… a replace was started from, so a failure shows under it (sc-55558). */
+type ReplacedFrom = 'notice' | 'replace';
 
 type Load =
   | { kind: 'loading' }
@@ -200,7 +205,8 @@ export function EventGuests({
   const [fromMessage, setFromMessage] = useState<Guest | null>(null);
   const [flagged, setFlagged] = useState<ReadonlySet<string>>(new Set());
   const [copyFailed, setCopyFailed] = useState(false);
-  const [notReplaced, setNotReplaced] = useState(false);
+  const [notReplaced, setNotReplaced] = useState<ReplacedFrom | null>(null);
+  const replaceFrom = useRef<ReplacedFrom>('replace');
   const [replacedOn, setReplacedOn] = useState<Readonly<Record<string, string>>>({});
   const [asking, setAsking] = useState(false);
   const [replacing, setReplacing] = useState(false);
@@ -332,7 +338,7 @@ export function EventGuests({
 
   const forgetLink = useCallback(() => {
     setCopyFailed(false);
-    setNotReplaced(false);
+    setNotReplaced(null);
     setAsking(false);
   }, []);
   const openGuest = (guestId: string) => {
@@ -358,6 +364,7 @@ export function EventGuests({
     setTimeout(() => moveScreenReaderFocus(whoseTitle.current), FOCUS_AFTER_MS);
   }, []);
   const paste = usePaste(openWhose);
+  const beside = pasteBeside(kind, useWindowDimensions().fontScale);
   const closeWhose = useCallback(() => {
     setPasted(null);
     setTimeout(() => moveScreenReaderFocus(searchField.current), FOCUS_AFTER_MS);
@@ -483,9 +490,10 @@ export function EventGuests({
         },
       );
   };
-  const askReplace = (from: ViewInstance | null) => {
+  const askReplace = (from: ViewInstance | null, where: ReplacedFrom) => {
     replaceOpener.current = from;
-    setNotReplaced(false);
+    replaceFrom.current = where;
+    setNotReplaced(null);
     setAsking(true);
   };
   const replace = (guestId: string) => {
@@ -502,7 +510,7 @@ export function EventGuests({
       () => {
         setReplacing(false);
         setAsking(false);
-        setNotReplaced(true);
+        setNotReplaced(replaceFrom.current);
       },
     );
   };
@@ -616,9 +624,9 @@ export function EventGuests({
         locale={locale}
         manages={manages}
         replies={replies}
-        pasteInRow={kind === 'tabletPortrait' ? <PasteButton onText={paste.onText} inRow /> : null}
+        pasteInRow={beside ? <PasteButton onText={paste.onText} inRow /> : null}
         pasteUnder={
-          kind === 'tabletPortrait' ? (
+          beside ? (
             paste.nothing ? (
               <PasteNotice />
             ) : null
@@ -683,16 +691,17 @@ export function EventGuests({
         invitation={invitationOfferOf(phase, manages, t)}
         link={{
           flagged: flagged.has(open),
-          notReplaced,
-          onReplaceFromNotice: () => askReplace(noticeReplace.current),
+          notReplaced: notReplaced === 'notice',
+          onReplaceFromNotice: () => askReplace(noticeReplace.current, 'notice'),
           rows: {
             replacedOn:
               replacedOn[open] == null ? null : replyDate(replacedOn[open], timeZone, locale),
             copyFailed,
+            notReplaced: notReplaced === 'replace',
             onCopy: () => {
               if (pane.kind === 'guest') copy(pane.guest);
             },
-            onReplace: () => askReplace(replaceButton.current),
+            onReplace: () => askReplace(replaceButton.current, 'replace'),
           },
         }}
         noticeRef={noticeReplace}
@@ -755,7 +764,7 @@ export function EventGuests({
       />
       {open != null && (
         <MarkInvited
-          key={marking.round}
+          key={`mark.${marking.round}`}
           open={markOpen}
           sending={marking.sending}
           refusal={marking.refusal}
@@ -788,7 +797,7 @@ export function EventGuests({
       )}
       {pasted != null && fromMessage != null && (
         <GuestRecord
-          key={round}
+          key={`whose.${round}`}
           open
           guest={fromMessage}
           message={{ quote: pasted.quote }}
@@ -810,7 +819,7 @@ export function EventGuests({
       )}
       {recording != null && (
         <GuestRecord
-          key={round}
+          key={`record.${round}`}
           open
           guest={recording.guest}
           eventId={eventId}
@@ -823,19 +832,20 @@ export function EventGuests({
             readList(watch);
           }}
           onSaved={(tagged) => {
-            opener.current =
-              shownReply(recording.guest) === 'notYetInvited'
-                ? recordButton.current
-                : guestName.current;
+            const invites = shownReply(recording.guest) === 'notYetInvited';
+            opener.current = guestName.current;
             setRecording(null);
             setNotice({ kind: 'recorded' });
             showGuest(tagged);
+            // The sheet unmounts rather than closing, and the Reply section's Record a reply mounts only with this save.
+            if (invites)
+              setTimeout(() => moveScreenReaderFocus(recordButton.current), FOCUS_AFTER_MS);
           }}
         />
       )}
       {form != null && (
         <GuestForm
-          key={round}
+          key={`form.${round}`}
           open
           mode={form}
           eventId={eventId}
@@ -915,7 +925,7 @@ function GuestRows({
   /** The allergy mark is for people who manage guests (sc-3777). */
   manages: boolean;
   replies: GuestReplies;
-  /** sc-54450's Paste a reply: in the search row on an upright iPad, under it on a phone and in the list pane. */
+  /** sc-54450's Paste a reply: in the search row on an upright iPad below AX1, under it otherwise. */
   pasteInRow: ReactNode;
   pasteUnder: ReactNode;
 }) {
@@ -928,6 +938,7 @@ function GuestRows({
     onChoice('all');
   };
   const pastes = pasteShown(manages, replies.closedOn, counts.invited);
+  const fieldHeight = usePasteHeight();
   const says =
     counts.invited === 0 || phaseCard?.onList === true
       ? t('guestList.onTheList', { count: counts.all })
@@ -1011,6 +1022,7 @@ function GuestRows({
           onSearch={() => undefined}
           onClear={() => onTyped('')}
           label={t('guestList.find')}
+          height={fieldHeight}
           testID="guests.search"
           ref={searchRef}
         />

@@ -24,6 +24,7 @@ import { TwoFactorOverdue } from '../../components/TwoFactorOverdue.tsx';
 import { SearchRow, ShellSearch } from '../../components/ShellSearch.tsx';
 import { SkipLink } from '../../components/SkipLink.tsx';
 import {
+  canAnywhere,
   joinOrganisation,
   landingFor,
   onMovedOn,
@@ -452,10 +453,16 @@ function useArrivesFromHandoff(handoff: Handoff): void {
 
 type ShownInside = Omit<InsideEvent, 'area'> & { area: InsideEvent['area'] | null };
 
-const PLACES: readonly (readonly [string, 'today' | 'events' | 'calendar', GlyphName])[] = [
-  ['/app', 'today', 'today'],
-  ['/app/events', 'events', 'events'],
-  ['/app/calendar', 'calendar', 'calendar'],
+const PLACES: readonly (readonly [
+  string,
+  'today' | 'events' | 'calendar' | 'menuLibrary',
+  GlyphName,
+  string | null,
+])[] = [
+  ['/app', 'today', 'today', null],
+  ['/app/events', 'events', 'events', null],
+  ['/app/calendar', 'calendar', 'calendar', null],
+  ['/app/menu-library', 'menuLibrary', 'menu', 'menu.read'],
 ];
 
 function placeLook({ isActive }: { isActive: boolean }): string {
@@ -471,6 +478,7 @@ function ShellLinks({
   shown?: ShownInside | undefined;
 }) {
   const { t } = useTranslation();
+  const session = useSession();
   const routed = useInsideEvent();
   const inside = shown ?? routed;
 
@@ -478,14 +486,16 @@ function ShellLinks({
 
   return (
     <ul className="today-places">
-      {PLACES.map(([to, word, glyph]) => (
-        <li key={to}>
-          <NavLink className={placeLook} to={to} end={to === '/app'} onClick={onFollow}>
-            <Glyph name={glyph} />
-            {t(`nav.${word}`)}
-          </NavLink>
-        </li>
-      ))}
+      {PLACES.filter(([, , , needs]) => needs == null || canAnywhere(session, needs)).map(
+        ([to, word, glyph]) => (
+          <li key={to}>
+            <NavLink className={placeLook} to={to} end={to === '/app'} onClick={onFollow}>
+              <Glyph name={glyph} />
+              {t(`nav.${word}`)}
+            </NavLink>
+          </li>
+        ),
+      )}
     </ul>
   );
 }
@@ -547,6 +557,8 @@ function Destination() {
 
   if (inside != null) return eventName ?? t(`eventNav.${inside.area}`);
   if (pathname.startsWith('/app/account')) return t('nav.account');
+
+  if (pathname.startsWith('/app/menu-library')) return t('nav.menuLibrary');
 
   const section = ['events', 'calendar', 'settings'].find((name) =>
     pathname.startsWith(`/app/${name}`),

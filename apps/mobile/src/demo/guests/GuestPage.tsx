@@ -127,7 +127,8 @@ export function GuestPage({
   locale: string;
   replies: 'closed' | 'reopened' | null;
   replaced: boolean;
-  notReplaced: boolean;
+  /** sc-55558: the button the failed replace started from; its line goes under that button. */
+  notReplaced: 'replace' | 'notice' | null;
   /** sc-55558: someone told us this guest's link reached the wrong person. */
   flagged: boolean;
   /** sc-55558: the last Copy invitation link put nothing on the clipboard. */
@@ -187,7 +188,9 @@ export function GuestPage({
           onReplace={actions.onReplaceFromNotice}
         />
       )}
-      {notReplaced && <AlertLine text={W.notReplaced} />}
+      {notReplaced === 'notice' && owner && flagged && (
+        <UnderRow text={W.notReplaced} testID="guest.flagged.notReplaced" />
+      )}
       {unmarked === 'notSaved' && <AlertLine text={W.unmarkNotSaved} />}
       {unmarked === 'refused' && g.when != null && (
         <AlertLine text={say.unmarkRefused(g.name, REPLY_WORD[kind], dayWords(g.when, locale))} />
@@ -390,7 +393,9 @@ export function GuestPage({
                             onPress={actions.onCopy}
                             testID="guest.copy"
                           />
-                          {copyFailed != null && <NotCopied text={copyFailed} />}
+                          {copyFailed != null && (
+                            <UnderRow text={copyFailed} testID="guest.notCopied" />
+                          )}
                         </View>
                       ),
                     },
@@ -402,16 +407,21 @@ export function GuestPage({
                       key: 'replace',
                       inset: 40,
                       row: (
-                        <Row
-                          ref={refFor('replace')}
-                          title={W.replaceLink}
-                          line={W.replaceLinkLine}
-                          lead={<LineIcon name="refresh" />}
-                          accent
-                          weight="medium"
-                          onPress={actions.onReplace}
-                          testID="guest.replace"
-                        />
+                        <View>
+                          <Row
+                            ref={refFor('replace')}
+                            title={W.replaceLink}
+                            line={W.replaceLinkLine}
+                            lead={<LineIcon name="refresh" />}
+                            accent
+                            weight="medium"
+                            onPress={actions.onReplace}
+                            testID="guest.replace"
+                          />
+                          {notReplaced === 'replace' && (
+                            <UnderRow text={W.notReplaced} testID="guest.notReplaced" />
+                          )}
+                        </View>
                       ),
                     },
                   ]
@@ -524,12 +534,12 @@ function WrongPerson({
   );
 }
 
-/** sc-55558: no connection, a server error or a refused clipboard; read out as it appears, the row above is the retry. */
-function NotCopied({ text }: { text: string }) {
+/** sc-55558: a failed copy or replace, read out as it appears; the button above is the retry. */
+function UnderRow({ text, testID }: { text: string; testID: string }) {
   useReadOut(text, { interrupts: true });
 
   return (
-    <View style={styles.agree} testID="guest.notCopied">
+    <View style={styles.agree} testID={testID}>
       <AlertLine text={text} small />
     </View>
   );

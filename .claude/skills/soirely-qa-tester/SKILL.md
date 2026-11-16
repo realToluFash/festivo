@@ -408,6 +408,7 @@ node .qa/bin/qa-env.mjs account --two-factor             # the same, two-factor 
 node .qa/bin/qa-env.mjs account --no-organisation        # profile complete, in no organisation
 node .qa/bin/qa-env.mjs batch <name> <check>… EMAIL=… PASSWORD=… [TOTP_SECRET=…] [--lang en,es] [--ipad | --se | --android]
 node .qa/bin/qa-env.mjs batch <name>-<check> <check> --cold EMAIL=… PASSWORD=…   # one check alone, cold
+node .qa/bin/qa-env.mjs code EMAIL=… TOTP_SECRET=…        # the next code, for a two-factor sign-in on the web
 ```
 
 A check is a file in `apps/mobile/.maestro/checks/` (its README says how one is written).
@@ -420,6 +421,8 @@ passed or failed, with every screenshot in `.qa/<name>/`. **Re-run a failure alo
 sign-in. A two-factor account is signed in with codes the harness makes as they are typed:
 pass its `TOTP_SECRET` as you pass its password, and compute and type none yourself. Two
 sign-ins inside one 30-second step wait for the next, as the API refuses a code it has used.
+On the web, where no batch types for you, `code` prints the next code to type, waiting for
+a fresh step if a batch has just used this one; type it at once, as it lasts the rest of its step.
 
 Flows live in `~/Projects/soirely-qa<n>/apps/mobile/.maestro`, one per outcome, reach the bundler as `${METRO_URL}`
 and Mailpit as `${MAILPIT_URL}` (the harness passes both), and **target `testID`** rather than

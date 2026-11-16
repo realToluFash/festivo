@@ -48,6 +48,7 @@ import {
 } from './seating.ts';
 import { useSeating } from './seatingContext.ts';
 import { StateMark } from './SeatingRoom.tsx';
+import { SelectionPanel } from './SeatingSelection.tsx';
 import { Mark, TextAction } from '../components/SettingsParts.tsx';
 
 export function Line({
@@ -1575,7 +1576,8 @@ export function SeatingPanel() {
     body = <SectionForm key={ui.panel.id} id={ui.panel.id} />;
   else if (chair != null && ui.chair != null && chair.kind !== 'row')
     body = <ChairFields item={chair} index={ui.chair.i} />;
-  else if (chosen.length > 1) body = <Several items={chosen} />;
+  else if (chosen.length > 1)
+    body = ui.readOnly ? <Several items={chosen} /> : <SelectionPanel items={chosen} />;
   else if (chosen.length === 1 && chosen[0] != null) {
     const item = chosen[0];
 

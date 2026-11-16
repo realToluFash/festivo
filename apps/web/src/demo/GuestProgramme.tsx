@@ -47,12 +47,14 @@ export function Programme({ visit }: { visit: Visit }) {
       {days.length === 1 ? (
         <Items items={items} places={places} locale={locale} />
       ) : (
-        days.map((one) => (
-          <div key={one.day} className="gp-prog-day">
-            <h3 className="gp-prog-h3">{dayOf(one.day, visit.lang)}</h3>
-            <Items items={one.items} places={places} locale={locale} />
-          </div>
-        ))
+        <div className="gp-prog-days">
+          {days.map((one) => (
+            <div key={one.day} className="gp-prog-day">
+              <h3 className="gp-prog-h3">{dayOf(one.day, visit.lang)}</h3>
+              <Items items={one.items} places={places} locale={locale} />
+            </div>
+          ))}
+        </div>
       )}
       {live != null && (
         <div className="gp-prog-demo">

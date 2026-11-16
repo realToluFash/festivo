@@ -23,6 +23,8 @@ import { api } from '../../../api.ts';
 import { TextAction } from '../../../components/SettingsParts.tsx';
 import { currentLocale } from '../../../i18n/index.ts';
 import { Added, BackHead, Field, Line, type PlanApi, Said, Select } from './SeatingParts.tsx';
+import { Overlaps, PositionFields } from './SeatingArrange.tsx';
+import { placementOf } from './seatingItems.ts';
 import {
   CHAIRS_FROM_SCALE,
   f,
@@ -31,6 +33,7 @@ import {
   rotations,
   sectionOf,
   turned,
+  usableSeats,
 } from './seatingDraw.ts';
 import { ChairMark, OutWords, StateMark } from './SeatingTables.tsx';
 import {
@@ -53,7 +56,7 @@ function rowLine(t: T, plan: SeatingPlan, row: SeatingRow): string {
     shape: t('seating.rowOf', { count: row.seats }),
     section: sectionOf(plan, row)?.name ?? t('seating.noSection'),
     taken: 0,
-    seats: row.seats - row.unusableSeats.length,
+    seats: usableSeats(row),
   });
 }
 
@@ -79,32 +82,15 @@ function onKeys(onChoose: () => void) {
   };
 }
 
-/** Add row and Add seat, for the floating bar or the folded Add menu: each lands in the nearest free space. */
+/** Add row and Add seat, for the floating bar or the folded Add menu: each starts placing, and a click on the floor puts it there (sc-5028). */
 export function useAddRowAndSeat(ctx: PlanApi): {
   addRow: () => Promise<void>;
   addSeat: () => Promise<void>;
 } {
-  const { t } = useTranslation();
-
-  async function addRow(): Promise<void> {
-    const added = await ctx.place(() => api.addSeatingRow(ctx.event.id));
-
-    if (added != null)
-      ctx.open({
-        kind: 'row',
-        id: added.id,
-        said: t('seating.rowAdded', { label: added.name, count: added.seats }),
-      });
-  }
-
-  async function addSeat(): Promise<void> {
-    const added = await ctx.place(() => api.addSingleSeat(ctx.event.id));
-
-    if (added != null)
-      ctx.open({ kind: 'seat', id: added.id, said: t('seating.added', { name: added.name }) });
-  }
-
-  return { addRow, addSeat };
+  return {
+    addRow: () => Promise.resolve(ctx.startPlacing({ kind: 'row' })),
+    addSeat: () => Promise.resolve(ctx.startPlacing({ kind: 'seat' })),
+  };
 }
 
 /** A row at s px per cm, as the demo draws it: its label in a tab past seat 1, then its seats, numbered once near. */
@@ -207,11 +193,12 @@ export function RowDrawing({
       );
     });
 
+  const lit = chosen && chosenSeat == null;
   const said = t('seating.tableName', {
     name,
     shape: t('seating.kindRow', { count: row.seats }),
     taken: 0,
-    count: row.seats,
+    count: usableSeats(row),
   });
 
   return (
@@ -222,12 +209,12 @@ export function RowDrawing({
       aria-label={
         section == null ? said : t('seating.inSection', { name: said, section: section.name })
       }
-      aria-pressed={chosen}
+      aria-pressed={lit}
       data-row={row.id}
       onClick={onChoose}
       onKeyDown={onKeys(onChoose)}
     >
-      {chosen && box(10, 'st-lit')}
+      {lit && box(10, 'st-lit')}
       {box(0, 'st-hit')}
       <g className="st-item-body">
         <rect
@@ -255,7 +242,7 @@ export function RowDrawing({
           y={cy + Math.max(ey, 40) * s + 12}
           name={name}
           taken={0}
-          seats={row.seats - row.unusableSeats.length}
+          seats={usableSeats(row)}
         />
       )}
       {outside && box(6, 'st-overlap')}
@@ -451,15 +438,19 @@ export function RowPanel({
             onCommit={spacing}
           />
         </div>
+        <PositionFields ctx={ctx} item={{ kind: 'row', one: row }} />
         {ctx.system === 'us' && <Line>{t('seating.usHint')}</Line>}
         <Select
           fieldKey="rotation"
           label={t('seating.rotation')}
           value={String(row.rotation)}
           options={rotations()}
-          onPick={(value) => void change({ rotation: Number(value) })}
+          onPick={(value) =>
+            ctx.arrange([{ ...placementOf({ kind: 'row', one: row }), rotation: Number(value) }])
+          }
         />
       </div>
+      <Overlaps plan={plan} id={row.id} />
       <div className="st-acts">
         <TextAction
           label={t('seating.duplicate')}
@@ -644,7 +635,10 @@ export function SingleSeatPanel({
           options={sectionOptions(t, plan)}
           onPick={(value) => void change({ sectionId: value === '' ? null : value })}
         />
+        <PositionFields ctx={ctx} item={{ kind: 'seat', one: seat }} />
+        {ctx.system === 'us' && <Line>{t('seating.usHint')}</Line>}
       </div>
+      <Overlaps plan={plan} id={seat.id} />
       <div className="st-block">
         {state}
         <div className="st-acts">

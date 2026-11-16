@@ -2,9 +2,11 @@
 appId: host.exp.Exponent
 ---
 - openLink: ${METRO_URL}/--/settings
-- extendedWaitUntil:
-    visible: { id: 'settings.members' }
+- scrollUntilVisible:
+    element: { id: 'settings.members' }
+    direction: DOWN
     timeout: 30000
+    centerElement: true
 - startRecording: tap-members
 - tapOn: { id: 'settings.members' }
 - extendedWaitUntil:

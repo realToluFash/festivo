@@ -325,13 +325,13 @@ date. Ops never applies permissions: only the owner does (below). So ops is spli
 in `sq status` and the journal, and the other roles and the self-update carry on. Each minute, with no model, `sq run` checks the machine and files what it finds as
 ops work of its own kind, `machine`, in the queue `ops@<machine>`:
 
-| Check                                                   | Becomes                                                                                                  |
-| ------------------------------------------------------- | -------------------------------------------------------------------------------------------------------- |
-| free disk under `minFreeGb`                             | urgent: free space so workers can start                                                                  |
-| Docker's build cache over 20 GB (read every 30 minutes) | urgent: `just prune-build-cache`                                                                         |
-| once a day                                              | the sweep: disk, Docker, the stacks, the manager                                                         |
-| Docker Desktop's socket not answering, on a Mac         | no work: the tick runs `open -a Docker` itself, at most every 5 minutes, and says so in the journal      |
-| free disk under twice `minFreeGb`                       | not urgent: the five largest workspace folders, the simulators and `~/.android/avd`, measured once a day |
+| Check                                                   | Becomes                                                                                                                                                               |
+| ------------------------------------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| free disk under `minFreeGb`                             | urgent: free space so workers can start                                                                                                                               |
+| Docker's build cache over 20 GB (read every 30 minutes) | urgent: `just prune-build-cache`                                                                                                                                      |
+| once a day                                              | the sweep: disk, Docker, the stacks, the manager                                                                                                                      |
+| Docker Desktop's socket not answering                   | no work: the tick starts it itself (`open -a Docker` on a Mac, `systemctl --user start docker-desktop` on Linux), at most every 5 minutes, and says so in the journal |
+| free disk under twice `minFreeGb`                       | not urgent: the five largest workspace folders, the simulators and `~/.android/avd`, measured once a day                                                              |
 
 - **Testers' `.qa/` is cleared once a day, with no model.** In each `soirely-qa<n>` here,
   an entry nothing has changed in for 3 days goes (14 days under a megabyte). Kept: the

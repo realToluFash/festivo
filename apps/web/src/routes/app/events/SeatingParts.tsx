@@ -16,6 +16,7 @@ import { type KeyboardEvent, type ReactNode, useEffect, useId, useRef, useState 
 import { useTranslation } from 'react-i18next';
 
 import { Glyph } from '../../../components/Glyph.tsx';
+import { type Placement, type Placing } from './seatingItems.ts';
 
 export type Panel =
   | { kind: 'start' }
@@ -32,7 +33,8 @@ export type Asking =
   | { kind: 'deleteSection'; id: string }
   | { kind: 'deleteTable'; id: string }
   | { kind: 'deleteRow'; id: string }
-  | { kind: 'deleteSeat'; id: string };
+  | { kind: 'deleteSeat'; id: string }
+  | { kind: 'deleteItems'; ids: string[] };
 
 /** A room size refused because these tables would sit outside it (sc-4000): they are outlined, the new wall dashed. */
 export interface Outside {
@@ -42,6 +44,11 @@ export interface Outside {
 }
 
 export type Placed = SeatingWithTable | SeatingWithRow | SeatingWithSeat;
+
+export interface TableNote {
+  id: string;
+  line: string;
+}
 
 export interface PlanApi {
   event: OrganisationEvent;
@@ -68,9 +75,16 @@ export interface PlanApi {
   /** Counts the 412s: a form keyed on it reloads what a colleague saved. */
   reloads: number;
   notice: string | null;
+  /** A table's line after a shape change, until the next change saved to that table, a move or a turn among them. */
+  note: TableNote | null;
+  keepNote: (note: TableNote | null) => void;
   open: (panel: Panel | null) => void;
   ask: (asking: Asking) => void;
   showOutside: (outside: Outside | null) => void;
+  /** Moves, turns or resizes as one step, kept on screen until it is saved (sc-5028). */
+  arrange: (items: Placement[]) => void;
+  /** Add, then a click on the floor places it. */
+  startPlacing: (placing: Placing) => void;
 }
 
 export function Line({
@@ -291,5 +305,15 @@ export function Added({ children }: { children: ReactNode }) {
       <Glyph name="tick" size={16} weight={2.4} />
       <span>{children}</span>
     </p>
+  );
+}
+
+export type ShapeGlyph = 'round' | 'rect' | 'head' | 'cocktail' | 'row' | 'seat1';
+
+export function ShapeTile({ glyph }: { glyph: ShapeGlyph }) {
+  return (
+    <span className="st-shape-tile is-36" aria-hidden="true">
+      <Glyph name={glyph} size={22} weight={1.9} />
+    </span>
   );
 }

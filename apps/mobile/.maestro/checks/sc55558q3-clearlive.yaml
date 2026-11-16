@@ -1,0 +1,53 @@
+# sc-55558: a flagged guest open on the host's phone; told elsewhere a second time the flag stays, then the link replaced elsewhere clears it live. Pass ORIENT, METRO_URL, EVENT_ID, GUEST_ID (a guest already flagged), API_URL, WEB_URL, LINKTOKEN (that guest's link token) and TOKEN (the host's).
+appId: host.exp.Exponent
+---
+- setOrientation: ${ORIENT}
+- openLink: ${METRO_URL}/--/events/${EVENT_ID}?area=guests
+- extendedWaitUntil:
+    visible:
+      id: 'guests.showAll.*|guests.row.${GUEST_ID}'
+    timeout: 30000
+- runFlow:
+    when:
+      notVisible:
+        id: 'guests.row.${GUEST_ID}'
+    commands:
+      - tapOn:
+          id: 'guests.showAll.*'
+- scrollUntilVisible:
+    element:
+      id: 'guests.row.${GUEST_ID}'
+    timeout: 20000
+- tapOn:
+    id: 'guests.row.${GUEST_ID}'
+- extendedWaitUntil:
+    visible:
+      id: 'guest.${GUEST_ID}'
+    timeout: 20000
+- waitForAnimationToEnd
+- assertVisible:
+    id: 'guest.flagged'
+- runScript:
+    file: ../scripts/flag-elsewhere.js
+    env:
+      TARGET_URL: ${API_URL}/api/guest-links/wrong-person
+      LINKTOKEN: ${LINKTOKEN}
+      ORIGIN: ${WEB_URL}
+- assertTrue: ${output.flagged == 204}
+- waitForAnimationToEnd:
+    timeout: 5000
+- assertVisible:
+    id: 'guest.flagged'
+- takeScreenshot: second-tell
+- runScript:
+    file: ../scripts/replace-elsewhere.js
+    env:
+      TARGET_URL: ${API_URL}/api/events/${EVENT_ID}/guests/${GUEST_ID}/link/replace
+      TOKEN: ${TOKEN}
+      ORIGIN: ${WEB_URL}
+- assertTrue: ${output.replaced == 204}
+- extendedWaitUntil:
+    notVisible:
+      id: 'guest.flagged'
+    timeout: 15000
+- takeScreenshot: cleared

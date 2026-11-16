@@ -128,7 +128,6 @@ export function CoverEdit<Saved>({
         setPosition(COVER_MIDDLE);
         setDescription('');
         setTooLong(false);
-        setSaveRefused(null);
         setPickRefused(null);
         setUploading(false);
       },

@@ -1182,6 +1182,7 @@ describe('a browser never holds the refresh token', () => {
               withheldUntilTwoFactor: ['members.manage'],
               readOnlyUntilLinked: true,
               withheldUntilLinked: ['events.manage', 'organisation.manage'],
+              onAnEvent: [],
               signInRules: {
                 providerOnly: true,
                 inactivityTimeoutDays: 7,
@@ -2938,6 +2939,7 @@ describe('events (sc-1486)', () => {
     venue: null,
     arrivalNote: null,
     hosts: ['Funmi Adeyemi', 'Tayo Adeyemi'],
+    thankYou: null,
     madeLiveAt: null,
     pausedAt: null,
     phase: 'draft',
@@ -3352,6 +3354,46 @@ describe('events (sc-1486)', () => {
     expect(sent).toEqual([{ line: `POST /api/events/${EVENT.id}/end`, body: null }]);
   });
 
+  test('a thank-you goes with End now, and is saved or removed by its own PUT (sc-6476)', async () => {
+    const thanked = {
+      ...EVENT,
+      status: 'ended',
+      phase: 'finished',
+      concludedAt: '2026-11-13T10:00:00+01:00',
+      thankYou: 'Thank you for coming.',
+    };
+    const sent: { line: string; body: unknown }[] = [];
+    const api = new ApiClient({
+      baseUrl: () => 'http://api.test',
+      fetch: async (url, init) => {
+        sent.push({
+          line: `${init?.method ?? 'GET'} ${new URL(String(url)).pathname}`,
+          body: init?.body ?? null,
+        });
+
+        return new Response(JSON.stringify({ event: thanked }), {
+          status: 200,
+          headers: { 'Content-Type': 'application/json', ETag: '"5"' },
+        });
+      },
+    });
+
+    expect(await api.endEvent(EVENT.id, 'Thank you for coming.')).toEqual({
+      event: thanked,
+      tag: '"5"',
+    });
+    await api.endEvent(EVENT.id, '   ');
+    await api.setThankYou(EVENT.id, '');
+    expect(sent).toEqual([
+      {
+        line: `POST /api/events/${EVENT.id}/end`,
+        body: JSON.stringify({ thankYou: 'Thank you for coming.' }),
+      },
+      { line: `POST /api/events/${EVENT.id}/end`, body: null },
+      { line: `PUT /api/events/${EVENT.id}/thank-you`, body: JSON.stringify({ thankYou: '' }) },
+    ]);
+  });
+
   test.each([
     ['a phase nobody declared', { phase: 'over' }],
     ['no phase', { phase: undefined }],
@@ -3588,6 +3630,7 @@ describe("an event's venue (sc-3589)", () => {
     cover: null,
     arrivalNote: null,
     hosts: [],
+    thankYou: null,
     madeLiveAt: null,
     pausedAt: null,
     phase: 'draft',
@@ -3863,6 +3906,7 @@ describe("the guest's calendar on their page (sc-3627)", () => {
       type: 'party',
       cover: null,
       hosts: ['Funmi'],
+      thankYou: null,
       startsAt: '2030-11-14T16:00:00+01:00',
       timeZone: 'Africa/Lagos',
       venue: null,

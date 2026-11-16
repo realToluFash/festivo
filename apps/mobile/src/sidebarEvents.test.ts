@@ -39,6 +39,7 @@ function event(name: string, rest: Partial<ListedEvent> = {}): ListedEvent {
     venue: null,
     arrivalNote: null,
     hosts: [],
+    thankYou: null,
     madeLiveAt: '2026-10-01T00:00:00Z',
     pausedAt: null,
     concludedAt: null,

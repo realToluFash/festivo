@@ -42,8 +42,20 @@ import {
   rotations,
   sectionOf,
   turned,
+  usableSeats,
 } from './seatingDraw.ts';
-import { Added, BackHead, Field, Line, type PlanApi, Said, Select } from './SeatingParts.tsx';
+import {
+  Added,
+  BackHead,
+  Field,
+  Line,
+  type PlanApi,
+  Said,
+  Select,
+  ShapeTile,
+} from './SeatingParts.tsx';
+import { Overlaps, PositionFields } from './SeatingArrange.tsx';
+import { placementOf } from './seatingItems.ts';
 import {
   centimetreUnit,
   tableLengthWords,
@@ -102,7 +114,7 @@ function tableLine(t: T, plan: SeatingPlan, table: SeatingTable): string {
     shape: t(SHAPE_WORDS[table.shape].whole),
     section: sectionOf(plan, table)?.name ?? t('seating.noSection'),
     taken: 0,
-    seats: table.seats - table.unusableSeats.length,
+    seats: usableSeats(table),
   });
 }
 
@@ -112,15 +124,17 @@ function chairWord(t: T, table: SeatingTable, seat: number): string {
 
 const FLOAT_MARGINS = 3 * 12;
 
-/** The floating add bar: Add table's menu, Add row and Add seat; when the bar and the zoom do not fit the floor side by side, the two fold into one Add menu (sc-55937). */
+/** The floating add bar: Add table's menu, Add row and Add seat; when the bar and the zoom do not fit the floor side by side, the two fold into one Add menu, and when even the folded bar does not fit, the zoom steps up a line (sc-55937). */
 export function AddTable({
   ctx,
   floor,
+  placing,
   onRow,
   onSeat,
 }: {
   ctx: PlanApi;
   floor: number;
+  placing: boolean;
   onRow: () => Promise<void>;
   onSeat: () => Promise<void>;
 }) {
@@ -128,7 +142,9 @@ export function AddTable({
   const locale = currentLocale();
   const [menu, setMenu] = useState(false);
   const [folded, setFolded] = useState(false);
-  const [adding, setAdding] = useState(false);
+  const [crowded, setCrowded] = useState(false);
+  const [fromMenu, setFromMenu] = useState<'table' | 'other' | null>(null);
+  const [wasPlacing, setWasPlacing] = useState(placing);
   const first = useRef<HTMLButtonElement>(null);
   const bar = useRef<HTMLDivElement>(null);
   const unfolded = useRef(0);
@@ -142,30 +158,30 @@ export function AddTable({
       box.parentElement?.querySelector<HTMLElement>('.st-zoom')?.getBoundingClientRect().width ?? 0;
 
     setFolded(unfolded.current + zoom + FLOAT_MARGINS > floor);
+    setCrowded(folded && box.getBoundingClientRect().width + zoom + FLOAT_MARGINS > floor);
   }, [floor, folded, locale]);
 
   useEffect(() => {
     if (menu) first.current?.focus();
   }, [menu]);
 
-  async function adds(change: () => Promise<void>): Promise<void> {
+  function adds(change: () => Promise<void>, chosen: 'table' | 'other' | null): Promise<void> {
     setMenu(false);
-    setAdding(true);
-    try {
-      await change();
-    } finally {
-      setAdding(false);
-    }
+    setFromMenu(chosen);
+    return change();
   }
 
-  async function add(shape: TableShape): Promise<void> {
-    const added = await ctx.place(() => api.addSeatingTable(ctx.event.id, shape));
-
-    if (added != null)
-      ctx.open({ kind: 'table', id: added.id, said: t('seating.added', { name: added.name }) });
+  function add(shape: TableShape): Promise<void> {
+    ctx.startPlacing({ kind: 'table', shape });
+    return Promise.resolve();
   }
 
-  const on = menu || (folded && adding);
+  if (placing !== wasPlacing) {
+    setWasPlacing(placing);
+    if (!placing) setFromMenu(null);
+  }
+
+  const on = menu || (placing && (folded ? fromMenu != null : fromMenu === 'table'));
 
   return (
     <>
@@ -191,7 +207,7 @@ export function AddTable({
                 type="button"
                 role="menuitem"
                 className="st-menu-row"
-                onClick={() => void adds(() => add(shape))}
+                onClick={() => void adds(() => add(shape), 'table')}
               >
                 <ShapeTile glyph={shape === 'rectangular' ? 'rect' : shape} />
                 {t(SHAPE_WORDS[shape].menu, {
@@ -207,7 +223,7 @@ export function AddTable({
                 type="button"
                 role="menuitem"
                 className="st-menu-row"
-                onClick={() => void adds(onRow)}
+                onClick={() => void adds(onRow, 'other')}
               >
                 <ShapeTile glyph="row" />
                 {t('seating.menuRow')}
@@ -216,7 +232,7 @@ export function AddTable({
                 type="button"
                 role="menuitem"
                 className="st-menu-row"
-                onClick={() => void adds(onSeat)}
+                onClick={() => void adds(onSeat, 'other')}
               >
                 <ShapeTile glyph="seat1" />
                 {t('seating.singleSeat')}
@@ -225,7 +241,12 @@ export function AddTable({
           )}
         </div>
       )}
-      <div className="st-float st-add" role="group" aria-label={t('seating.addBar')} ref={bar}>
+      <div
+        className={crowded ? 'st-float st-add is-crowded' : 'st-float st-add'}
+        role="group"
+        aria-label={t('seating.addBar')}
+        ref={bar}
+      >
         <button
           type="button"
           className={on ? 'st-tool is-on' : 'st-tool'}
@@ -239,11 +260,11 @@ export function AddTable({
         </button>
         {!folded && (
           <>
-            <button type="button" className="st-tool" onClick={() => void adds(onRow)}>
+            <button type="button" className="st-tool" onClick={() => void adds(onRow, null)}>
               <Glyph name="row" size={18} weight={2.2} />
               {t('seating.addRow')}
             </button>
-            <button type="button" className="st-tool" onClick={() => void adds(onSeat)}>
+            <button type="button" className="st-tool" onClick={() => void adds(onSeat, null)}>
               <Glyph name="seat1" size={18} weight={2.2} />
               {t('seating.addSeat')}
             </button>
@@ -251,14 +272,6 @@ export function AddTable({
         )}
       </div>
     </>
-  );
-}
-
-function ShapeTile({ glyph }: { glyph: 'round' | 'rect' | 'head' | 'cocktail' | 'row' | 'seat1' }) {
-  return (
-    <span className="st-shape-tile is-36" aria-hidden="true">
-      <Glyph name={glyph} size={22} weight={1.9} />
-    </span>
   );
 }
 
@@ -384,6 +397,7 @@ export function TableDrawing({
       );
     });
 
+  const lit = chosen && chosenSeat == null;
   const bodyW = table.widthCm * s;
   const bodyH = table.lengthCm * s;
   const inside = table.name.length * 6.2 <= bodyW - 3 && bodyH >= 15;
@@ -391,7 +405,7 @@ export function TableDrawing({
     name: table.name,
     shape: t(SHAPE_WORDS[table.shape].kind),
     taken: 0,
-    count: table.seats,
+    count: usableSeats(table),
   });
 
   return (
@@ -400,7 +414,7 @@ export function TableDrawing({
       role="button"
       tabIndex={0}
       aria-label={section == null ? name : t('seating.inSection', { name, section: section.name })}
-      aria-pressed={chosen}
+      aria-pressed={lit}
       data-table={table.id}
       onClick={onChoose}
       onKeyDown={(event: KeyboardEvent) => {
@@ -410,7 +424,7 @@ export function TableDrawing({
         onChoose();
       }}
     >
-      {chosen && box(10, 'st-lit', 'lit')}
+      {lit && box(10, 'st-lit', 'lit')}
       {box(0, 'st-hit', 'hit')}
       <g className="st-item-body">
         {body}
@@ -422,7 +436,7 @@ export function TableDrawing({
           y={round ? cy + Math.max(ey, 40) * s * 0.55 + 12 : cy + (table.lengthCm / 2) * s + 12}
           name={table.name}
           taken={0}
-          seats={table.seats - table.unusableSeats.length}
+          seats={usableSeats(table)}
         />
       ) : (
         <text
@@ -609,16 +623,32 @@ export function TablePanel({
   const { t } = useTranslation();
   const leave = () => ctx.open(null);
   const locale = currentLocale();
-  const [note, setNote] = useState<string | null>(null);
+  const note = ctx.note?.id === table.id ? ctx.note.line : null;
   const round = isRoundShape(table.shape);
   const cocktail = table.shape === 'cocktail';
   const unit = ctx.system === 'us' ? undefined : centimetreUnit(locale);
 
-  const change = (changes: Parameters<typeof api.changeSeatingTable>[2], field?: string) =>
-    ctx.send(
-      () => api.changeSeatingTable(ctx.event.id, table.id, changes, ctx.newest(table).version),
-      field,
-    );
+  const change = async (
+    changes: Parameters<typeof api.changeSeatingTable>[2],
+    field?: string,
+    line: string | null = null,
+  ) => {
+    let saved = false;
+    const refused = await ctx.send(async () => {
+      const answer = await api.changeSeatingTable(
+        ctx.event.id,
+        table.id,
+        changes,
+        ctx.newest(table).version,
+      );
+
+      saved = true;
+      return answer;
+    }, field);
+
+    if (saved) ctx.keepNote(line == null ? null : { id: table.id, line });
+    return refused;
+  };
 
   function size(key: 'widthCm' | 'lengthCm', text: string): Promise<string | null> | string {
     const read = readSize(t, locale, text, ctx.system);
@@ -696,15 +726,14 @@ export function TablePanel({
             const shape = TABLE_SHAPES.find((one) => one === value);
 
             if (shape == null) return;
-            void change({ shape }).then((refused) => {
-              if (refused != null) return;
-              setNote(
-                t(SIZE_RESET[shape], {
-                  size: tableSizeWords(t, locale, { shape, ...TABLE_DEFAULTS[shape] }, ctx.system),
-                  count: table.seats,
-                }),
-              );
-            });
+            void change(
+              { shape },
+              undefined,
+              t(SIZE_RESET[shape], {
+                size: tableSizeWords(t, locale, { shape, ...TABLE_DEFAULTS[shape] }, ctx.system),
+                count: table.seats,
+              }),
+            );
           }}
         />
         {round ? (
@@ -773,6 +802,7 @@ export function TablePanel({
             <Line>{endsLine(t, table)}</Line>
           </>
         )}
+        <PositionFields ctx={ctx} item={{ kind: 'table', one: table }} />
         {ctx.system === 'us' && <Line>{t('seating.usHint')}</Line>}
         {!round && (
           <Select
@@ -780,10 +810,15 @@ export function TablePanel({
             label={t('seating.rotation')}
             value={String(table.rotation)}
             options={rotations()}
-            onPick={(value) => void change({ rotation: Number(value) })}
+            onPick={(value) =>
+              ctx.arrange([
+                { ...placementOf({ kind: 'table', one: table }), rotation: Number(value) },
+              ])
+            }
           />
         )}
       </div>
+      <Overlaps plan={plan} id={table.id} />
       <div className="st-acts">
         <TextAction
           label={t('seating.duplicate')}

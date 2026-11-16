@@ -18,6 +18,7 @@ export type Handoff =
 /** What each event page needs before EventView shows it; a page missing here needs only the event. */
 export const PAGE_NEEDS = {
   guests: 'guests.read',
+  menu: 'menu.read',
   seating: 'seating.read',
   schedule: 'run_of_show.read',
   run: 'run_of_show.read',

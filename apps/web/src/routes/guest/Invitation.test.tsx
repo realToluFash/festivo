@@ -1045,6 +1045,44 @@ describe('when the event is paused, called off or over (sc-3591)', () => {
     expect(screen.getByRole('button', { name: `Not ${ADAEZE}? Tell us` })).toBeDefined();
   });
 
+  it('shows the hosts’ thank-you under the notice and above the answer, as typed and outside the status region', async () => {
+    const line = 'Thank you all! Photos at https://amara.example <b>soon</b>';
+    const page = answered('coming');
+    api({
+      '/api/guest-links/page': [
+        {
+          status: 200,
+          body: at('finished', true, { ...page, event: { ...page.event, thankYou: line } }),
+        },
+      ],
+    });
+    open();
+
+    const quote = await screen.findByText(line);
+    const notice = screen.getByText(
+      'This event has taken place. This page stays here as a keepsake.',
+    );
+    const reply = screen.getByText(/You answered Coming on/);
+    expect(quote.tagName).toBe('BLOCKQUOTE');
+    expect(quote.querySelector('a, b')).toBeNull();
+    expect(quote.closest('[role="status"], [aria-live]')).toBeNull();
+    expect(quote.closest('figure')?.querySelector('figcaption')?.textContent).toBe(
+      'Amara and Tobi',
+    );
+    expect(notice.compareDocumentPosition(quote) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
+    expect(quote.compareDocumentPosition(reply) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
+  });
+
+  it('leaves no slot on a finished page without a thank-you', async () => {
+    api({
+      '/api/guest-links/page': [{ status: 200, body: at('finished', true, answered('coming')) }],
+    });
+    open();
+
+    await screen.findByText(/You answered Coming on/);
+    expect(document.querySelector('.gp-thanks')).toBeNull();
+  });
+
   it.each([
     ['paused before the start', 'paused', false],
     ['paused after the start', 'paused', true],

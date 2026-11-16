@@ -59,7 +59,11 @@ import { ApiError, ApiUnreachableError, type Problem, toProblem } from './proble
 import {
   asSeating,
   type Seating,
+  type SeatingArrangement,
+  type SeatingItemRef,
+  type SeatingRestoredItem,
   type SeatingRoom,
+  type SeatingWithChosen,
   type SeatingRowChanges,
   type SeatingTableChanges,
   type SingleSeatChanges,
@@ -74,6 +78,22 @@ import {
   asStaffEntry,
   asStaffRoster,
 } from './staff.ts';
+import {
+  type Dish,
+  type DishDetails,
+  type DishLibrary,
+  type VariantDetails,
+  asDish,
+  asDishLibrary,
+} from './dishes.ts';
+import {
+  type EventMenu,
+  type MenuAnswer,
+  type MenuChange,
+  type MenuCourseDetails,
+  asEventMenu,
+  asUnwarnedPickers,
+} from './menu.ts';
 import {
   type Schedule,
   type ScheduleItemDetails,
@@ -490,6 +510,8 @@ export interface OrganisationEvent {
   arrivalNote: string | null;
   /** The names guests read, in order; none until somebody adds one, and Make live waits for one (sc-6713). */
   hosts: string[];
+  /** The hosts' thank-you, in their own words; null until one is saved on the Finished event (sc-6476). */
+  thankYou: string | null;
   /** Null while it is a Draft. */
   madeLiveAt: string | null;
   /** Null unless its phase is Paused (sc-3586). */
@@ -641,6 +663,8 @@ export interface Membership extends Organisation {
   readOnlyUntilLinked: boolean;
   /** The changes the role holds that the read-only rule keeps back, empty unless `readOnlyUntilLinked` (sc-16265). */
   withheldUntilLinked: string[];
+  /** What a Member's roles on events allow beyond this role, each held on at least one event (sc-3901). */
+  onAnEvent: string[];
   /** While this organisation requires two-factor of everyone and this account has none (sc-609). */
   twoFactorDue: TwoFactorDue | null;
   signInRules: OrganisationSignInRules;
@@ -996,6 +1020,9 @@ export interface RequestOptions {
   /** Skip the Authorization header — for sign-in and guest routes. */
   anonymous?: boolean;
 }
+
+const DISH_SHAPE =
+  'The API answered the menu library in a shape this client does not know. Check DishSerialiser in services/api.';
 
 export class ApiClient {
   /** Bumped whenever the session changes hands, so an answer meant for an earlier one is let go (sc-16226). */
@@ -2238,6 +2265,72 @@ export class ApiClient {
     );
   }
 
+  /** Moves, turns and resizes, saved all or nothing; 412 with `stale` naming each item a colleague changed since its `version`, and `validation_failed` beside `items[n]` for one left outside the room. */
+  async arrangeSeating(eventId: string, items: SeatingArrangement[]): Promise<Seating> {
+    return this.seatingOf(
+      await this.patch<{ seating?: unknown }>(`${this.seatingPath(eventId)}/furniture`, { items }),
+    );
+  }
+
+  /** Renames tables in one step, all or nothing (sc-4717's Renumber); `validation_failed` beside `items[n].name` for a name a table outside the step keeps, 412 with `stale` as for a move. */
+  async renameSeatingTables(
+    eventId: string,
+    items: { id: string; version: number; name: string }[],
+  ): Promise<Seating> {
+    return this.seatingOf(
+      await this.patch<{ seating?: unknown }>(`${this.seatingPath(eventId)}/furniture/names`, {
+        items,
+      }),
+    );
+  }
+
+  /** Sets each item's section in one step, all or nothing (sc-4717). */
+  async sectionSeatingItems(
+    eventId: string,
+    items: (SeatingItemRef & { sectionId: string | null })[],
+  ): Promise<Seating> {
+    return this.seatingOf(
+      await this.patch<{ seating?: unknown }>(`${this.seatingPath(eventId)}/furniture/sections`, {
+        items,
+      }),
+    );
+  }
+
+  /** Copies 50 cm down and to the right, with nobody seated, all or nothing; `chosen` is the copies in reading order (sc-4717). */
+  async duplicateSeatingItems(
+    eventId: string,
+    items: SeatingItemRef[],
+  ): Promise<SeatingWithChosen> {
+    return this.seatingWithChosen(
+      await this.post<{ seating?: unknown; chosen?: unknown }>(
+        `${this.seatingPath(eventId)}/furniture/duplicate`,
+        { items },
+      ),
+    );
+  }
+
+  /** Deletes in one step, all or nothing (sc-4717). */
+  async deleteSeatingItems(eventId: string, items: SeatingItemRef[]): Promise<Seating> {
+    return this.seatingOf(
+      await this.post<{ seating?: unknown }>(`${this.seatingPath(eventId)}/furniture/delete`, {
+        items,
+      }),
+    );
+  }
+
+  /** Puts deleted items back, all or nothing: Undo after a Delete (sc-4717). `chosen` is their new ids in the order sent. */
+  async restoreSeatingItems(
+    eventId: string,
+    items: SeatingRestoredItem[],
+  ): Promise<SeatingWithChosen> {
+    return this.seatingWithChosen(
+      await this.post<{ seating?: unknown; chosen?: unknown }>(
+        `${this.seatingPath(eventId)}/furniture/restore`,
+        { items },
+      ),
+    );
+  }
+
   /** Of the shape's default size and seats, named "Table {n}"; `tableId` is the one added. Refused 422 on a shape outside the four. */
   async addSeatingTable(eventId: string, shape: TableShape): Promise<SeatingWithTable> {
     return this.seatingWithTable(
@@ -2451,6 +2544,224 @@ export class ApiClient {
     }
 
     return { staff, member: typeof record.member === 'string' ? record.member : null };
+  }
+
+  /** The organisation's menu library, archived dishes included; refused 403 without menu.read (sc-3901). */
+  async dishes(organisationId: string): Promise<DishLibrary> {
+    const library = asDishLibrary(await this.get<unknown>(this.dishesPath(organisationId)));
+
+    if (library == null) throw new Error(DISH_SHAPE);
+
+    return library;
+  }
+
+  /** Refused `validation_failed` beside each field, and 409 `dish_name_shared` naming `sharedWith` and whether it is `archived`, until `allowShared`. */
+  async addDish(organisationId: string, details: DishDetails): Promise<Dish> {
+    return this.dishOf(await this.post<unknown>(this.dishesPath(organisationId), details));
+  }
+
+  /** As `addDish`, asking only when the name changed; without `lastPrice` the price stays as it was. */
+  async editDish(organisationId: string, dishId: string, details: DishDetails): Promise<Dish> {
+    return this.dishOf(await this.put<unknown>(this.dishPath(organisationId, dishId), details));
+  }
+
+  async archiveDish(organisationId: string, dishId: string): Promise<Dish> {
+    return this.dishOf(
+      await this.post<unknown>(`${this.dishPath(organisationId, dishId)}/archive`),
+    );
+  }
+
+  async restoreDish(organisationId: string, dishId: string): Promise<Dish> {
+    return this.dishOf(
+      await this.post<unknown>(`${this.dishPath(organisationId, dishId)}/restore`),
+    );
+  }
+
+  /** Refused 409 `dish_in_use` once an event has used it. */
+  async deleteDish(organisationId: string, dishId: string): Promise<void> {
+    await this.delete<unknown>(this.dishPath(organisationId, dishId));
+  }
+
+  /** Two at once on a dish without variants, then one at a time; refused `validation_failed` under `variants.{n}.`, and 409 `variant_limit` past six (sc-3903). */
+  async addDishVariants(
+    organisationId: string,
+    dishId: string,
+    variants: VariantDetails[],
+  ): Promise<Dish> {
+    return this.dishOf(
+      await this.post<unknown>(`${this.dishPath(organisationId, dishId)}/variants`, { variants }),
+    );
+  }
+
+  /** Without `lastPrice` the price stays as it was. */
+  async editDishVariant(
+    organisationId: string,
+    dishId: string,
+    variantId: string,
+    details: VariantDetails,
+  ): Promise<Dish> {
+    return this.dishOf(
+      await this.put<unknown>(this.dishVariantPath(organisationId, dishId, variantId), details),
+    );
+  }
+
+  /** From two, the one left folds into the dish; refused 409 `variant_last_everyone` for the only one for Everyone. */
+  async removeDishVariant(
+    organisationId: string,
+    dishId: string,
+    variantId: string,
+  ): Promise<Dish> {
+    return this.dishOf(
+      await this.delete<unknown>(this.dishVariantPath(organisationId, dishId, variantId)),
+    );
+  }
+
+  private dishVariantPath(organisationId: string, dishId: string, variantId: string): string {
+    return `${this.dishPath(organisationId, dishId)}/variants/${encodeURIComponent(variantId)}`;
+  }
+
+  private dishOf(body: unknown): Dish {
+    const dish = asDish(
+      typeof body === 'object' && body != null ? (body as { dish?: unknown }).dish : null,
+    );
+
+    if (dish == null) throw new Error(DISH_SHAPE);
+
+    return dish;
+  }
+
+  private dishesPath(organisationId: string): string {
+    return `/api/orgs/${encodeURIComponent(organisationId)}/dishes`;
+  }
+
+  private dishPath(organisationId: string, dishId: string): string {
+    return `${this.dishesPath(organisationId)}/${encodeURIComponent(dishId)}`;
+  }
+
+  /** The event's menu, its courses in order; refused 403 without menu.read (sc-3902). */
+  async menu(eventId: string): Promise<EventMenu> {
+    return this.menuOf(await this.get<unknown>(this.menuPath(eventId))).menu;
+  }
+
+  /** Goes last. Refused `validation_failed` beside each field, and 409 `menu_course_limit` at 10 courses. */
+  async addMenuCourse(eventId: string, details: MenuCourseDetails): Promise<MenuChange> {
+    return this.menuOf(await this.post<unknown>(`${this.menuPath(eventId)}/courses`, details));
+  }
+
+  /** The whole course; `same` is refused 409 `menu_same_one_dish` unless it has exactly one dish. */
+  async changeMenuCourse(
+    eventId: string,
+    courseId: string,
+    details: MenuCourseDetails & { answer: MenuAnswer; skippable: boolean },
+  ): Promise<MenuChange> {
+    return this.menuOf(await this.put<unknown>(this.menuCoursePath(eventId, courseId), details));
+  }
+
+  async moveMenuCourse(eventId: string, courseId: string, to: number): Promise<MenuChange> {
+    return this.menuOf(
+      await this.post<unknown>(`${this.menuCoursePath(eventId, courseId)}/move`, { to }),
+    );
+  }
+
+  /** Refused 409 `menu_course_picked` once a guest has picked from it. */
+  async deleteMenuCourse(eventId: string, courseId: string): Promise<MenuChange> {
+    return this.menuOf(await this.delete<unknown>(this.menuCoursePath(eventId, courseId)));
+  }
+
+  /** A library dish copied as it is now, or a new dish: saved to the library too, and refused as `addDish` is, unless `onlyForEvent`. */
+  async addMenuDish(
+    eventId: string,
+    courseId: string,
+    dish: { libraryDishId: string } | (DishDetails & { onlyForEvent: boolean }),
+  ): Promise<MenuChange> {
+    return this.menuOf(
+      await this.post<unknown>(`${this.menuCoursePath(eventId, courseId)}/dishes`, dish),
+    );
+  }
+
+  /** The event's copy only, never refused for picks; `unwarned` counts who picked it and has an allergen just added recorded. */
+  async changeMenuDish(
+    eventId: string,
+    dishId: string,
+    details: Omit<DishDetails, 'lastPrice' | 'allowShared'>,
+  ): Promise<MenuChange> {
+    return this.menuOf(await this.put<unknown>(this.menuDishPath(eventId, dishId), details));
+  }
+
+  /** Refused 409 `menu_dish_picked` once a guest has picked it. */
+  async removeMenuDish(eventId: string, dishId: string): Promise<MenuChange> {
+    return this.menuOf(await this.delete<unknown>(this.menuDishPath(eventId, dishId)));
+  }
+
+  /** Two at once on a dish without variants, then one at a time; refused as `addDishVariants`, and 409 `menu_dish_picked` on a picked dish without variants (sc-3903). */
+  async addMenuVariants(
+    eventId: string,
+    dishId: string,
+    variants: VariantDetails[],
+  ): Promise<MenuChange> {
+    return this.menuOf(
+      await this.post<unknown>(`${this.menuDishPath(eventId, dishId)}/variants`, { variants }),
+    );
+  }
+
+  /** Never refused for picks; `unwarned` as for a dish. Without `cost` the cost stays as it was. */
+  async changeMenuVariant(
+    eventId: string,
+    variantId: string,
+    details: VariantDetails,
+  ): Promise<MenuChange> {
+    return this.menuOf(await this.put<unknown>(this.menuVariantPath(eventId, variantId), details));
+  }
+
+  /** From two, the one left folds into the dish; refused 409 `variant_picked`, and 409 `variant_last_everyone`. */
+  async removeMenuVariant(eventId: string, variantId: string): Promise<MenuChange> {
+    return this.menuOf(await this.delete<unknown>(this.menuVariantPath(eventId, variantId)));
+  }
+
+  private menuVariantPath(eventId: string, variantId: string): string {
+    return `${this.menuPath(eventId)}/variants/${encodeURIComponent(variantId)}`;
+  }
+
+  /** A hub token for this event's menu topic alone. */
+  async menuSubscription(eventId: string): Promise<RealtimeSubscription> {
+    const body = await this.post<{ token?: unknown; expiresAt?: unknown }>(
+      `${this.menuPath(eventId)}/subscriptions`,
+    );
+
+    return {
+      token: typeof body.token === 'string' ? body.token : '',
+      expiresAt: typeof body.expiresAt === 'string' ? body.expiresAt : '',
+    };
+  }
+
+  private menuOf(body: unknown): MenuChange {
+    const record =
+      typeof body === 'object' && body != null ? (body as Record<string, unknown>) : {};
+    const menu = asEventMenu(record.menu);
+
+    if (menu == null)
+      throw new Error(
+        'The API answered the menu in a shape this client does not know. Check MenuSerialiser in services/api.',
+      );
+
+    return {
+      menu,
+      courseId: typeof record.courseId === 'string' ? record.courseId : null,
+      dishId: typeof record.dishId === 'string' ? record.dishId : null,
+      unwarned: asUnwarnedPickers(record.unwarned),
+    };
+  }
+
+  private menuPath(eventId: string): string {
+    return `/api/events/${encodeURIComponent(eventId)}/menu`;
+  }
+
+  private menuCoursePath(eventId: string, courseId: string): string {
+    return `${this.menuPath(eventId)}/courses/${encodeURIComponent(courseId)}`;
+  }
+
+  private menuDishPath(eventId: string, dishId: string): string {
+    return `${this.menuPath(eventId)}/dishes/${encodeURIComponent(dishId)}`;
   }
 
   /** The event's running order, sorted by start; refused 403 without run_of_show.read (sc-3893). */
@@ -2982,6 +3293,16 @@ export class ApiClient {
     return { seating, tableId };
   }
 
+  private seatingWithChosen(
+    body: { seating?: unknown; chosen?: unknown } | null | undefined,
+  ): SeatingWithChosen {
+    const chosen = Array.isArray(body?.chosen)
+      ? body.chosen.filter((id): id is string => typeof id === 'string')
+      : [];
+
+    return { seating: this.seatingOf(body), chosen };
+  }
+
   private seatingOf(body: { seating?: unknown } | null | undefined): Seating {
     const seating = asSeating(body?.seating);
 
@@ -3094,12 +3415,23 @@ export class ApiClient {
     );
   }
 
-  /** Calls it off before its start, ends it after: refused 409 `event_state_invalid` unless Live or Paused, and 409 `event_concluded` once its end has passed. */
-  async endEvent(eventId: string): Promise<TaggedEvent> {
+  /** Calls it off before its start, ends it after: refused 409 `event_state_invalid` unless Live or Paused, or on a call-off with a `thankYou`, and 409 `event_concluded` once its end has passed. */
+  async endEvent(eventId: string, thankYou?: string): Promise<TaggedEvent> {
     return this.tagged(
       await this.exchange<{ event?: unknown }>(`/api/events/${encodeURIComponent(eventId)}/end`, {
         method: 'POST',
+        ...(thankYou == null || thankYou.trim() === '' ? {} : { body: { thankYou } }),
       }),
+    );
+  }
+
+  /** Saved empty, the line is removed (sc-6476). Refused 409 `event_state_invalid` unless Finished and not called off, and 422 `validation_failed` on `thankYou` over 280 characters. */
+  async setThankYou(eventId: string, thankYou: string): Promise<TaggedEvent> {
+    return this.tagged(
+      await this.exchange<{ event?: unknown }>(
+        `/api/events/${encodeURIComponent(eventId)}/thank-you`,
+        { method: 'PUT', body: { thankYou } },
+      ),
     );
   }
 
@@ -4355,6 +4687,7 @@ function asOrganisationEvent(raw: unknown): OrganisationEvent | null {
   const venue = candidate.venue === null ? null : asEventVenue(candidate.venue);
   const arrivalNote = candidate.arrivalNote;
   const hosts = candidate.hosts;
+  const thankYou = candidate.thankYou ?? null;
   const madeLiveAt = candidate.madeLiveAt;
   const pausedAt = candidate.pausedAt;
   const phase = oneOf(candidate.phase, EVENT_PHASES);
@@ -4371,6 +4704,7 @@ function asOrganisationEvent(raw: unknown): OrganisationEvent | null {
     phase == null ||
     !isStringOrNull(concludedAt) ||
     deleteRefusedBecause === undefined ||
+    !isStringOrNull(thankYou) ||
     !isStringOrNull(madeLiveAt) ||
     !isStringOrNull(pausedAt) ||
     type == null ||
@@ -4404,6 +4738,7 @@ function asOrganisationEvent(raw: unknown): OrganisationEvent | null {
     venue,
     arrivalNote,
     hosts: hosts as string[],
+    thankYou,
     madeLiveAt,
     pausedAt,
     phase,
@@ -4518,6 +4853,7 @@ function asGuestPage(raw: unknown): GuestPage | null {
       hosts: Array.isArray(what.hosts)
         ? what.hosts.filter((host): host is string => typeof host === 'string')
         : [],
+      thankYou: typeof what.thankYou === 'string' ? what.thankYou : null,
       startsAt: what.startsAt,
       timeZone: what.timeZone,
       venue:
@@ -4938,6 +5274,7 @@ function asMembership(raw: unknown): Membership | null {
     withheldUntilTwoFactor: stringList(candidate.withheldUntilTwoFactor) ?? [],
     readOnlyUntilLinked: candidate.readOnlyUntilLinked === true,
     withheldUntilLinked: stringList(candidate.withheldUntilLinked) ?? [],
+    onAnEvent: stringList(candidate.onAnEvent) ?? [],
     twoFactorDue: asTwoFactorDue(candidate.twoFactorDue),
     signInRules: asOrganisationSignInRules(candidate.signInRules) ?? {
       providerOnly: false,

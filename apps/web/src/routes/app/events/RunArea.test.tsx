@@ -5,6 +5,9 @@ import { RouterProvider, createMemoryRouter } from 'react-router';
 import { __setSessionState, type Session } from '../../../session.ts';
 import { OWNER_PERMISSIONS, membership } from '../../../test-memberships.ts';
 import { routes } from '../../index.tsx';
+import { cssRule, stylesheet } from '../../../test-styles.ts';
+
+const EVENTS_DESK_CSS = stylesheet(import.meta.dirname, '../../../components/eventsDesk.css');
 
 const IRE = membership({ id: 'org_1', name: 'Ìrè Events' });
 
@@ -229,6 +232,24 @@ describe('The run view (sc-1404)', () => {
     const bell = await screen.findByRole('button', { name: /^Notifications/ });
     expect(bell.closest('.ev-crumb-row')).not.toBeNull();
     expect(screen.getAllByRole('button', { name: /^Notifications/ })).toHaveLength(1);
+  });
+
+  it("starts where the event's other pages do at a desk, inside the card's one padding", async () => {
+    await onRun([DINNER, SPEECHES]);
+
+    const main = screen.getByRole('table', { name: 'Main' });
+    expect(main.closest('.shell-content .ev-page.desk-page')).not.toBeNull();
+  });
+
+  it("is no wider than the event's other pages at a wide desk (sc-58278)", async () => {
+    await onRun([DINNER, SPEECHES]);
+
+    const main = screen.getByRole('table', { name: 'Main' });
+    expect(main.closest('.ev .ev-wide')).not.toBeNull();
+    expect(cssRule('.ev-column,\n.ev-wide', EVENTS_DESK_CSS)).toContain(
+      'max-width: var(--evWide);',
+    );
+    expect(cssRule('.ev', EVENTS_DESK_CSS)).toContain('--evWide: 938px;');
   });
 
   it('goes back up to the Schedule from the breadcrumb', async () => {

@@ -34,6 +34,8 @@ import { GetBackInBoard } from './GetBackIn.tsx';
 import { GuestPage } from './Guest.tsx';
 import { HandoffPage } from './Handoff.tsx';
 import { HANDOFF_PAGES, forgetAnyway } from './handoff.ts';
+import { PHONE_FIT_PAGES } from './longName.ts';
+import { DESK_FIT_PAGES } from './deskFit.ts';
 import { GUEST_PAGES } from './guest.ts';
 import { GUEST_KITCHEN_PAGES } from './guestKitchen.ts';
 import { GUEST_PARTY_PAGES } from './guestCompanions.ts';
@@ -51,6 +53,9 @@ import { MANY_PAGES } from './guestsMany.ts';
 import { KitchenPage } from './Kitchen.tsx';
 import { MenuPage } from './MenuServed.tsx';
 import { MENU_PAGES } from './menuServed.ts';
+import { COURSES_PAGES } from './menuCourses.ts';
+import { MenuLibraryPage } from './MenuLibrary.tsx';
+import { LIBRARY_PAGES } from './menuLibrary.ts';
 import { CHANGES_PAGES, KITCHEN_PAGES, PARTS_PAGES } from './kitchen.ts';
 import { LegalPage } from './Legal.tsx';
 import { LEGAL_PAGES } from './legal.ts';
@@ -227,6 +232,7 @@ export default function Demo() {
       <Route path="events/:id/night" element={<NightPage />} />
       <Route path="handoff" element={<HandoffPage />} />
       <Route path="calendar" element={<Calendar />} />
+      <Route path="menu-library" element={<MenuLibraryPage />} />
       <Route path="settings" element={<Settings />} />
       <Route path="settings/members" element={<Settings />} />
       <Route path="settings/account" element={<Settings open="account" />} />
@@ -331,6 +337,10 @@ function DemoHome({ from }: { from: string }) {
         <BoardPages pages={EVENTS_PAGES} />
         <h3>An event in a phone browser hands over to the app · 390 and 320 px</h3>
         <BoardPages pages={HANDOFF_PAGES} />
+        <h3>Today, Events and Calendar fit a phone’s window (sc-57468) · 390 and 320 px</h3>
+        <BoardPages pages={PHONE_FIT_PAGES} />
+        <h3>Today fits a narrow desk window (sc-57575) · 641 to 1439 px</h3>
+        <BoardPages pages={DESK_FIT_PAGES} />
         <h3>The organisation switcher in B · Places · desktop</h3>
         <BoardPages pages={SWITCHER_PAGES} />
         <h3>The Calendar in B · A · Weeks as lanes · desktop</h3>
@@ -373,8 +383,18 @@ function DemoHome({ from }: { from: string }) {
 
       <section className="demo-home-page" aria-labelledby="demo-page-32">
         <h2 id="demo-page-32">32 · Menu</h2>
+        <h3>
+          Courses in order, and the dishes on each · sc-3902 · desktop, and a web window down to 320
+          px (tweaks: &amp;format=fr or pt for the allergen names, &amp;budget=no)
+        </h3>
+        <BoardPages pages={COURSES_PAGES} />
         <h3>How a course is served, and a dish’s parts · sc-34230 · desktop</h3>
         <BoardPages pages={MENU_PAGES} />
+      </section>
+      <section className="demo-home-page" aria-labelledby="demo-page-32-library">
+        <h2 id="demo-page-32-library">32 · Menu · the Menu library</h2>
+        <h3>The organisation’s dishes and what each contains · sc-3901 · desktop</h3>
+        <BoardPages pages={LIBRARY_PAGES} />
       </section>
       <section className="demo-home-page" aria-labelledby="demo-page-32-kitchen">
         <h2 id="demo-page-32-kitchen">32 · Menu · the kitchen sheet’s parts</h2>

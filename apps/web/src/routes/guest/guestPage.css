@@ -1075,6 +1075,14 @@
   margin-top: 6px;
 }
 
+:where(.guest-page) .gp-ended > .gp-sub {
+  margin-top: 16px;
+}
+
+:where(.guest-page) .gp-ended > .gp-sub:first-child {
+  margin-top: 0;
+}
+
 /* ── Under the answer: when, where and who, then the foot; at 64rem the details move left and the foot follows the answer ── */
 
 :where(.guest-page) .gp-columns > .gp-details,

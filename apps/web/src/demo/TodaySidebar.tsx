@@ -15,6 +15,7 @@ const PLACES: readonly (readonly [string, GlyphName])[] = [
   ['Today', 'today'],
   ['Events', 'events'],
   ['Calendar', 'calendar'],
+  ['Menu library', 'menu'],
 ];
 
 const FOLAKE: DeskPerson = { name: SAMPLE.name, initials: 'FA', role: 'Owner' };
@@ -35,8 +36,11 @@ export function TodaySidebar({
   settings = false,
   listing = false,
   calendar = false,
+  library = false,
+  hideLibrary = false,
   person = FOLAKE,
   inert = false,
+  phone = false,
 }: {
   events: readonly EventKey[];
   tell: Tell;
@@ -44,8 +48,12 @@ export function TodaySidebar({
   settings?: boolean;
   listing?: boolean;
   calendar?: boolean;
+  library?: boolean;
+  hideLibrary?: boolean;
   person?: DeskPerson | undefined;
   inert?: boolean;
+  /** At 40rem and under the sidebar is the phone's bar: the switcher and Menu (sc-13413), as on Today, Events and Calendar (sc-57468). */
+  phone?: boolean;
 }) {
   const [params] = useSearchParams();
   const listed = sideEvents(events, params.get('sidebar'));
@@ -76,48 +84,77 @@ export function TodaySidebar({
         </>
       }
     >
+      {phone && (
+        <button
+          type="button"
+          className="dp-menu"
+          onClick={() => tell('Menu has its own design (sc-13413).')}
+        >
+          <svg
+            viewBox="0 0 16 16"
+            fill="none"
+            stroke="currentColor"
+            strokeWidth="1.5"
+            aria-hidden="true"
+          >
+            <path d="M2 4h12M2 8h12M2 12h12" strokeLinecap="round" />
+          </svg>
+          Menu
+        </button>
+      )}
       <SearchRow />
       <ul className="today-places">
-        {PLACES.map(([label, glyph]) => (
-          <li key={label}>
-            {label === 'Events' ? (
-              <Link
-                className={listing ? 'today-place is-on' : 'today-place'}
-                to="/demo/events"
-                aria-current={listing ? 'page' : undefined}
-              >
-                <Glyph name={glyph} />
-                {label}
-              </Link>
-            ) : label === 'Calendar' ? (
-              <Link
-                className={calendar ? 'today-place is-on' : 'today-place'}
-                to="/demo/calendar"
-                aria-current={calendar ? 'page' : undefined}
-              >
-                <Glyph name={glyph} />
-                {label}
-              </Link>
-            ) : (settings || listing || calendar) && label === 'Today' ? (
-              <Link className="today-place" to="/demo/today">
-                <Glyph name={glyph} />
-                {label}
-              </Link>
-            ) : (
-              <button
-                type="button"
-                className={label === 'Today' ? 'today-place is-on' : 'today-place'}
-                aria-current={label === 'Today' ? 'page' : undefined}
-                onClick={() =>
-                  label === 'Today' ? onToday?.() : tell(`${label} has its own design.`)
-                }
-              >
-                <Glyph name={glyph} />
-                {label}
-              </button>
-            )}
-          </li>
-        ))}
+        {PLACES.filter(([label]) => !hideLibrary || label !== 'Menu library').map(
+          ([label, glyph]) => (
+            <li key={label}>
+              {label === 'Events' ? (
+                <Link
+                  className={listing ? 'today-place is-on' : 'today-place'}
+                  to="/demo/events"
+                  aria-current={listing ? 'page' : undefined}
+                >
+                  <Glyph name={glyph} />
+                  {label}
+                </Link>
+              ) : label === 'Calendar' ? (
+                <Link
+                  className={calendar ? 'today-place is-on' : 'today-place'}
+                  to="/demo/calendar"
+                  aria-current={calendar ? 'page' : undefined}
+                >
+                  <Glyph name={glyph} />
+                  {label}
+                </Link>
+              ) : label === 'Menu library' ? (
+                <Link
+                  className={library ? 'today-place is-on' : 'today-place'}
+                  to="/demo/menu-library"
+                  aria-current={library ? 'page' : undefined}
+                >
+                  <Glyph name={glyph} />
+                  {label}
+                </Link>
+              ) : (settings || listing || calendar || library) && label === 'Today' ? (
+                <Link className="today-place" to="/demo/today">
+                  <Glyph name={glyph} />
+                  {label}
+                </Link>
+              ) : (
+                <button
+                  type="button"
+                  className={label === 'Today' ? 'today-place is-on' : 'today-place'}
+                  aria-current={label === 'Today' ? 'page' : undefined}
+                  onClick={() =>
+                    label === 'Today' ? onToday?.() : tell(`${label} has its own design.`)
+                  }
+                >
+                  <Glyph name={glyph} />
+                  {label}
+                </button>
+              )}
+            </li>
+          ),
+        )}
       </ul>
       <DeskEvents heading="Your events" events={listed} to={(id) => `/demo/events/${id}`} />
     </DeskSidebar>

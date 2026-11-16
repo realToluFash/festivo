@@ -215,6 +215,14 @@ describe('The Roster on the Staff page (sc-3906)', () => {
     ).toContain('flex-basis: 12rem;');
   });
 
+  it("starts where the event's other pages do at a desk, inside the card's one padding", async () => {
+    signedIn();
+    await onRoster({ 'GET /api/events/ev_1/staff': () => json({ staff: [] }) });
+
+    const add = await screen.findByRole('button', { name: 'Add a person' });
+    expect(add.closest('.shell-content .ev-page.desk-page')).not.toBeNull();
+  });
+
   it('adds a person by name alone, refusing a blank name beside its field', async () => {
     signedIn();
     const sent = await onRoster({

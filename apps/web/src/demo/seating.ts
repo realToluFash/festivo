@@ -375,6 +375,8 @@ const GAP_COCKTAIL = 24;
 const ROW_TAB = 52;
 export const AT_100 = 0.5;
 export const ZOOMS: readonly number[] = [25, 40, 50, 75, 100, 150, 200, 300, 400];
+export const SMALLEST_SCALE = 0.25 * AT_100;
+export const LARGEST_SCALE = 4 * AT_100;
 export const FIT_PAD = { top: 84, right: 16, bottom: 84, left: 16 } as const;
 
 export type Point = readonly [number, number];
@@ -476,6 +478,16 @@ export function extent(item: Item): Point {
 
 export function isRound(item: Item): boolean {
   return item.kind === 'round' || item.kind === 'cocktail' || item.kind === 'single';
+}
+
+/** How far past its box a focused item's ring and halo reach once turned with it, in screen px: the halo's 17.5 offset and half its 5 px stroke (sc-57361). */
+export function focusReach(item: Item): number {
+  const reach = 17.5 + 5 / 2;
+
+  if (isRound(item)) return reach;
+  const angle = (item.rot * Math.PI) / 180;
+
+  return reach * (Math.abs(Math.cos(angle)) + Math.abs(Math.sin(angle)));
 }
 
 export function turns(item: Item): boolean {
@@ -684,13 +696,97 @@ export function fitOf(
 ): { s: number; ox: number; oy: number } {
   const w = width - FIT_PAD.left - FIT_PAD.right;
   const h = height - FIT_PAD.top - FIT_PAD.bottom;
-  const s = Math.max(0.05, Math.min(w / room.w, h / room.l));
+
+  return centred(width, height, room, Math.max(0.05, Math.min(w / room.w, h / room.l)));
+}
+
+export function clampScale(s: number): number {
+  return Math.min(LARGEST_SCALE, Math.max(SMALLEST_SCALE, s));
+}
+
+/** The plan's Fit the room, held to the zoom bar's 25% to 400%: a room too large to fit at 25% shows its centre (sc-57678). */
+export function planFitOf(
+  width: number,
+  height: number,
+  room: Room,
+): { s: number; ox: number; oy: number } {
+  return centred(width, height, room, clampScale(fitOf(width, height, room).s));
+}
+
+function centred(width: number, height: number, room: Room, s: number) {
+  const w = width - FIT_PAD.left - FIT_PAD.right;
+  const h = height - FIT_PAD.top - FIT_PAD.bottom;
 
   return { s, ox: FIT_PAD.left + (w - room.w * s) / 2, oy: FIT_PAD.top + (h - room.l * s) / 2 };
 }
 
+/** How far to slide the picture, in screen px, so a focused box (canvas px) shows clear of the floating bars (WCAG 2.2 2.4.11). Each axis is decided on its own: one where the box is larger than the view lines up with its top or left edge, and the bars are cleared along the other (sc-57361). */
+export function intoView(
+  box: Box,
+  width: number,
+  height: number,
+  bars: readonly Box[] = [],
+  margin = 8,
+): Point {
+  const left = FIT_PAD.left + margin;
+  const right = width - FIT_PAD.right - margin;
+  const top = FIT_PAD.top + margin;
+  const bottom = height - FIT_PAD.bottom - margin;
+  const slide = (from: number, to: number, lo: number, hi: number): number => {
+    if (to - from > hi - lo || from < lo) return lo - from;
+    if (to > hi) return hi - to;
+    return 0;
+  };
+  const wide = box.x1 - box.x0 > right - left;
+  const tall = box.y1 - box.y0 > bottom - top;
+  let dx = slide(box.x0, box.x1, left, right);
+  let dy = slide(box.y0, box.y1, top, bottom);
+
+  for (const bar of bars) {
+    if (wide && tall) break;
+    const x0 = box.x0 + dx;
+    const x1 = box.x1 + dx;
+    const y0 = box.y0 + dy;
+    const y1 = box.y1 + dy;
+
+    if (x1 <= bar.x0 - margin || x0 >= bar.x1 + margin) continue;
+    if (y1 <= bar.y0 - margin || y0 >= bar.y1 + margin) continue;
+    const across: Point[] = [
+      [bar.x0 - margin - x1, 0],
+      [bar.x1 + margin - x0, 0],
+    ];
+    const along: Point[] = [
+      [0, bar.y0 - margin - y1],
+      [0, bar.y1 + margin - y0],
+    ];
+    const ways = wide ? along : tall ? across : [...across, ...along];
+    const shortest = ways
+      .filter(
+        ([mx, my]) =>
+          (wide || (x0 + mx >= left && x1 + mx <= right)) &&
+          (tall || (y0 + my >= top && y1 + my <= bottom)),
+      )
+      .sort((a, b) => Math.abs(a[0]) + Math.abs(a[1]) - Math.abs(b[0]) - Math.abs(b[1]))[0];
+
+    if (shortest != null) {
+      dx += shortest[0];
+      dy += shortest[1];
+    } else if (wide) {
+      dy = top - box.y0;
+    } else if (tall) {
+      dx = left - box.x0;
+    }
+  }
+
+  return [dx, dy];
+}
+
 export function percentOf(s: number): number {
   return Math.round((s / AT_100) * 100);
+}
+
+export function percentWritten(pct: number, locale = 'en'): string {
+  return new Intl.NumberFormat(locale, { style: 'percent' }).format(pct / 100);
 }
 
 /** Under 50% a table is its outline, name and how full; from 50% its chairs; from 150% each chair is a 44 target. */
@@ -1315,6 +1411,21 @@ export const SEATING_STATES = [
   { key: 'placing', name: 'Placing a round table', group: 'Tables, rows and seats' },
   { key: 'placed', name: 'Placed, its fields open', group: 'Tables, rows and seats' },
   {
+    key: 'zoomAbove',
+    name: 'The zoom above the folded bar, as in pt at 1024',
+    group: 'Tables, rows and seats',
+  },
+  {
+    key: 'zoomAboveMap',
+    name: 'The zoom above the folded bar, the small map above it',
+    group: 'Tables, rows and seats',
+  },
+  {
+    key: 'rowStepped',
+    name: 'Saved and Print a line down, as at 1024',
+    group: 'Tables, rows and seats',
+  },
+  {
     key: 'tapChooses',
     name: 'A click chooses a table for Arrange',
     group: 'Tables, rows and seats',
@@ -1382,6 +1493,40 @@ export const SEATING_STATES = [
     name: 'A screen reader entering the room',
     group: 'Moving and the keyboard',
   },
+  { key: 'boxDrawing', name: 'A box drawn on empty floor, tables joining', group: 'Choosing many' },
+  { key: 'addOff', name: 'Add to choice off, Table 1 chosen', group: 'Choosing many' },
+  { key: 'addOn', name: 'Add to choice on, its hint and rules', group: 'Choosing many' },
+  {
+    key: 'addBox',
+    name: 'Add to choice on, a box adding a row and a seat',
+    group: 'Choosing many',
+  },
+  { key: 'addMixed', name: 'Add to choice on, a mixed choice of 6', group: 'Choosing many' },
+  { key: 'selectAll', name: 'Select all', group: 'Choosing many' },
+  { key: 'kindMenu', name: 'Select all of a kind', group: 'Choosing many' },
+  { key: 'selection', name: 'Six tables chosen, the Selection panel', group: 'Choosing many' },
+  { key: 'spaceTwo', name: 'Two chosen, Space evenly off', group: 'Choosing many' },
+  { key: 'aligned', name: 'Lined up on their top edges, with Undo', group: 'Choosing many' },
+  { key: 'gridOpen', name: 'Arrange in a grid, the outline', group: 'Choosing many' },
+  { key: 'gridWall', name: 'A grid crossing the wall, amber', group: 'Choosing many' },
+  { key: 'gridEdge', name: 'A grid refused at the wall', group: 'Choosing many' },
+  { key: 'gridWide', name: 'A grid wider than the room', group: 'Choosing many' },
+  { key: 'gridFields', name: 'Columns and Gap out of range', group: 'Choosing many' },
+  { key: 'gridFeet', name: 'A gap out of range, in feet', group: 'Choosing many' },
+  { key: 'renumberOpen', name: 'Renumber, a row in the choice', group: 'Choosing many' },
+  { key: 'renumberClash', name: 'Renumber, a name already taken', group: 'Choosing many' },
+  { key: 'renumberBlank', name: 'Renumber, Start at blank', group: 'Choosing many' },
+  { key: 'sectionOpen', name: 'Section for five tables', group: 'Choosing many' },
+  { key: 'duplicatedMany', name: 'Duplicate, the copies chosen', group: 'Choosing many' },
+  { key: 'deleteMany', name: 'Delete 6 tables, guests seated', group: 'Choosing many' },
+  { key: 'deleteManyEmpty', name: 'Delete 3 tables, nobody seated', group: 'Choosing many' },
+  { key: 'deleteMixed', name: 'Delete 3 items, mixed kinds', group: 'Choosing many' },
+  { key: 'toolChanged', name: 'A colleague changed one first (412)', group: 'Choosing many' },
+  {
+    key: 'readOnlyMany',
+    name: 'Read only, nothing to choose for changing',
+    group: 'Choosing many',
+  },
   { key: 'presenceOne', name: 'Priya Shah is here', group: 'Who else is here' },
   { key: 'presenceChose', name: 'Priya Shah has chosen Table 7', group: 'Who else is here' },
   { key: 'presenceBoth', name: 'You and Priya Shah chose Table 7', group: 'Who else is here' },
@@ -1430,6 +1575,7 @@ export const SEATING_STATES = [
     name: 'The header band at 320 and 375, English and French',
     group: 'The breadcrumb',
   },
+  { key: 'crumbFocus', name: 'A focused link, its ring whole', group: 'The breadcrumb' },
 ] as const;
 
 export type SeatingState = (typeof SEATING_STATES)[number]['key'];

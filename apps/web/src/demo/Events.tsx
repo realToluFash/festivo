@@ -64,6 +64,7 @@ import { EventCard, EventRow, EventsShell } from './EventParts.tsx';
 import { TextAction } from '../components/SettingsParts.tsx';
 import type { Tell } from '../components/SettingsParts.tsx';
 import { TodaySidebar } from './TodaySidebar.tsx';
+import { isLong, nameSample } from './longName.ts';
 import { AccessPaused, Switched } from './OrgSwitcher.tsx';
 import { SIDEBAR_EVENTS, VIEWERS } from './settings.ts';
 import type { EventKey } from './today.ts';
@@ -84,6 +85,7 @@ export function Events() {
 
     return listStart(state);
   });
+  nameSample(isLong(params));
 
   useEffect(() => {
     if (location.state == null) return;
@@ -93,9 +95,11 @@ export function Events() {
 
   return (
     <EventsShell
+      fit
       told={told}
       renderSide={(tell, covered) => (
         <TodaySidebar
+          phone
           events={start.first || fresh ? [] : sidebarEvents(start.emptied)}
           tell={tell}
           listing

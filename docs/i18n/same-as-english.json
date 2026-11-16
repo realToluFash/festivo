@@ -30,10 +30,14 @@
     "web:schedule.minutes_one",
     "web:schedule.minutes_other",
     "mobile:runView.minutes_one",
-    "mobile:runView.minutes_other"
+    "mobile:runView.minutes_other",
+    "web:seating.keyShiftUs",
+    "web:seating.keyName.esc",
+    "web:seating.keyName.ctrl"
   ],
   "fr": [
     "web:nav.menu",
+    "web:menuLibrary.desc",
     "mobile:app.name",
     "mobile:devices.everywhereCode",
     "mobile:frame.organisation",
@@ -135,7 +139,14 @@
     "web:schedule.minutes_other",
     "mobile:runView.minutes_one",
     "mobile:runView.minutes_other",
-    "web:schedule.date"
+    "web:schedule.date",
+    "web:guest.programme",
+    "web:seating.keyName.ctrl",
+    "web:seating.alignCentre",
+    "web:seating.tableNumbered",
+    "web:eventMenu.title",
+    "web:eventMenu.suggestions",
+    "web:eventMenu.dessert"
   ],
   "pt": [
     "web:seating.shapeCocktailShort",
@@ -167,6 +178,13 @@
     "mobile:runView.minutes_other",
     "web:schedule.items_one",
     "web:schedule.item",
-    "mobile:runView.item"
+    "mobile:runView.item",
+    "web:seating.keyShiftUs",
+    "web:seating.keyMove",
+    "web:seating.keyName.shift",
+    "web:seating.keyName.delete",
+    "web:seating.keyName.esc",
+    "web:seating.keyName.ctrl",
+    "web:eventMenu.title"
   ]
 }

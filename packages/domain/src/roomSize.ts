@@ -79,23 +79,46 @@ export function readRowSpacing(text: string, units: RoomUnits, locale: string): 
 export const ROW_SPACING_MINIMUM_CM = 40;
 export const ROW_SPACING_MAXIMUM_CM = 100;
 
+/** Where an item stands on the floor (sc-5028): metres, "m" or "cm" written or not, or feet and inches with the unit written, since a bare number could be either; inches are stored whole. */
+export function readFloorPosition(text: string, units: RoomUnits, locale: string): RoomSideReading {
+  return readLength(text, units, locale, 100, [0, ROOM_MAXIMUM_CM], {
+    metricWords: { m: 100, cm: 1 },
+    bareFeet: false,
+    wholeInches: true,
+  });
+}
+
 function readLength(
   text: string,
   units: RoomUnits,
   locale: string,
   cmPerMetricUnit: number,
   [minimum, maximum]: [number, number],
+  {
+    metricWords = {},
+    bareFeet = true,
+    wholeInches = false,
+  }: { metricWords?: Record<string, number>; bareFeet?: boolean; wholeInches?: boolean } = {},
 ): RoomSideReading {
   if (text.trim() === '') return { kind: 'blank' };
 
   let cm: number | null;
 
   if (units === 'us') {
-    const inches = readFeetAndInches(text, locale);
-    cm = inches == null ? null : Math.round(inches * CM_PER_INCH);
+    const bare = new RegExp(`^${NUMBER}$`, 'u').test(text.trim());
+    const inches = !bareFeet && bare ? null : readFeetAndInches(text, locale);
+
+    cm =
+      inches == null ? null : Math.round((wholeInches ? Math.round(inches) : inches) * CM_PER_INCH);
   } else {
-    const typed = new RegExp(`^${NUMBER}$`, 'u').exec(text.trim());
-    cm = typed?.[1] == null ? null : Math.round(decimal(typed[1]) * cmPerMetricUnit);
+    const words = Object.keys(metricWords).map(escaped).join('|');
+    const typed = new RegExp(`^${NUMBER}${words === '' ? '' : `\\s?(${words})?`}$`, 'u').exec(
+      text.trim().toLowerCase(),
+    );
+    const perUnit =
+      typed?.[2] == null ? cmPerMetricUnit : (metricWords[typed[2]] ?? cmPerMetricUnit);
+
+    cm = typed?.[1] == null ? null : Math.round(decimal(typed[1]) * perUnit);
   }
 
   if (cm == null || !Number.isFinite(cm)) return { kind: 'unreadable' };

@@ -1,30 +1,37 @@
 import { shownReply } from '@soirely/domain';
 import * as Clipboard from 'expo-clipboard';
 import { type RefObject, memo, useCallback, useState } from 'react';
-import { Platform, Pressable, StyleSheet, View } from 'react-native';
+import { Platform, Pressable, StyleSheet, View, useWindowDimensions } from 'react-native';
 import { useTranslation } from 'react-i18next';
 
 import { markOf } from '../kit/guestRows.ts';
 import { LIST_EDGES } from './listFrame.ts';
+import { pasteHeight } from '../layout/textSize.ts';
 import type { LayoutKind } from '../layout/useLayout.ts';
-import { type WhoseRow, hasText } from '../kit/pasteReply.ts';
+import { QUOTE_LINES, type WhoseRow, clipQuote, hasText } from '../kit/pasteReply.ts';
 import { tokens } from '../theme/tokens.ts';
 import { SearchField } from './EventsSearch.tsx';
 import { Glyph } from './Glyph.tsx';
 import { readOut, useReadOut } from './ReadOut.tsx';
+import { useRebuiltPaste } from './rebuiltPaste.ts';
 import { MarkSlot } from './ReplyMark.tsx';
 import { Row, RowList, TextAction } from './SummaryRows.tsx';
 import { Text, type TextHandle } from './Text.tsx';
 
 const FIELD_HEIGHT = 48;
 const RING = 1.5;
-const QUOTE_LINES = 6;
 const PLAIN_TEXT: Clipboard.AcceptedContentType[] = ['plain-text'];
+
+/** Paste's height, which Find a guest on Guests takes too: 48 below the accessibility sizes, as tall as Apple's word from them on. */
+export function usePasteHeight(): number {
+  return pasteHeight(FIELD_HEIGHT, useWindowDimensions().fontScale);
+}
 
 /** Soirely's own secondary button: Android's, and iOS's before 16. It reads the clipboard only when pressed. */
 function OwnPaste({ onText }: { onText: (text: string) => void }) {
   const { t } = useTranslation();
   const label = t('guestList.paste.button');
+  const height = usePasteHeight();
   const press = () => {
     Clipboard.getStringAsync().then(onText, () => onText(''));
   };
@@ -32,7 +39,11 @@ function OwnPaste({ onText }: { onText: (text: string) => void }) {
   return (
     <Pressable
       onPress={press}
-      style={({ pressed }) => [styles.own, pressed && styles.pressed]}
+      style={({ pressed }) => [
+        styles.own,
+        { height, borderRadius: height / 2 },
+        pressed && styles.pressed,
+      ]}
       accessibilityRole="button"
       accessibilityLabel={label}
       testID="guests.paste"
@@ -45,7 +56,7 @@ function OwnPaste({ onText }: { onText: (text: string) => void }) {
   );
 }
 
-/** iOS 16 on: Apple's Paste, memoised because expo-clipboard rebuilds it on every prop update, and a press on a rebuilt one does nothing. */
+/** iOS 16 on: Apple's Paste, memoised because expo-clipboard rebuilds it on every prop update, and a press during a rebuild does nothing. */
 const ApplePaste = memo(function ApplePaste({
   onText,
   inRow,
@@ -57,12 +68,21 @@ const ApplePaste = memo(function ApplePaste({
     (data: Clipboard.PasteEventPayload) => onText(data.type === 'text' ? data.text : ''),
     [onText],
   );
+  const imageOptions = useRebuiltPaste();
+  const height = usePasteHeight();
 
   return (
-    <View style={[styles.appleRing, inRow ? styles.appleInRow : styles.appleAlone]}>
+    <View
+      style={[
+        styles.appleRing,
+        { height, borderRadius: height / 2 },
+        inRow ? styles.appleInRow : styles.appleAlone,
+      ]}
+    >
       <Clipboard.ClipboardPasteButton
         onPress={onPress}
         acceptedContentTypes={PLAIN_TEXT}
+        imageOptions={imageOptions}
         displayMode="iconAndLabel"
         cornerStyle="capsule"
         backgroundColor={tokens.colorCard}
@@ -154,8 +174,8 @@ export function Quote({
   onShowAll: () => void;
 }) {
   const { t } = useTranslation();
-  const [lines, setLines] = useState(0);
-  const clipped = !all && lines > QUOTE_LINES;
+  const [lines, setLines] = useState<readonly string[]>([]);
+  const cut = all ? null : clipQuote(lines);
 
   return (
     <View style={styles.quoteBlock} testID="paste.quote">
@@ -172,7 +192,7 @@ export function Quote({
             style={styles.quoteText}
             testID="paste.quote.text"
           >
-            {text}
+            {cut ?? text}
           </Text>
           <View
             style={styles.measure}
@@ -185,14 +205,14 @@ export function Quote({
               weight="medium"
               style={styles.quoteText}
               accessible={false}
-              onTextLayout={(event) => setLines(event.nativeEvent.lines.length)}
+              onTextLayout={(event) => setLines(event.nativeEvent.lines.map((line) => line.text))}
             >
               {text}
             </Text>
           </View>
         </View>
       </View>
-      {clipped && (
+      {cut !== null && (
         <TextAction
           label={t('guestList.paste.showAll')}
           onPress={onShowAll}
@@ -344,21 +364,17 @@ const styles = StyleSheet.create({
   lines: { lineHeight: 15 * 1.45 },
   pressed: { opacity: tokens.opacityPressed },
   own: {
-    height: FIELD_HEIGHT,
     alignSelf: 'flex-start',
     flexDirection: 'row',
     alignItems: 'center',
     gap: tokens.spaceXs,
     paddingHorizontal: tokens.spaceLg,
-    borderRadius: FIELD_HEIGHT / 2,
     borderWidth: RING,
     borderColor: tokens.colorBorder,
     backgroundColor: tokens.colorCard,
   },
   appleRing: {
-    height: FIELD_HEIGHT,
     padding: RING,
-    borderRadius: FIELD_HEIGHT / 2,
     backgroundColor: tokens.colorBorder,
   },
   appleAlone: { width: '100%' },

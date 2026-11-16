@@ -22,6 +22,8 @@ import {
   feet,
   filled,
   fitOf,
+  focusReach,
+  intoView,
   inside,
   keepSeats,
   leastUsed,
@@ -31,7 +33,9 @@ import {
   nextName,
   overlap,
   percentOf,
+  percentWritten,
   planCounts,
+  planFitOf,
   readFeet,
   readItemSize,
   readEnds,
@@ -185,6 +189,82 @@ describe('the room to scale (sc-4007)', () => {
 
     expect(percentOf(fit.s)).toBe(57);
     expect(fit.ox).toBe(16);
+  });
+
+  it('fits a 100 × 80 m room at 25%, its centre at the centre of the floor (sc-57678)', () => {
+    const fit = planFitOf(718, 719, { name: '', w: 10000, l: 8000 });
+
+    expect(percentOf(fit.s)).toBe(25);
+    expect(fit.ox + (10000 * fit.s) / 2).toBe(359);
+    expect(fit.oy + (8000 * fit.s) / 2).toBe(359.5);
+  });
+
+  it('fits a 2 × 2 m room at 400%, whole and centred (sc-57678)', () => {
+    const fit = planFitOf(718, 719, { name: '', w: 200, l: 200 });
+
+    expect(percentOf(fit.s)).toBe(400);
+    expect(fit.ox + (200 * fit.s) / 2).toBe(359);
+    expect(fit.oy + (200 * fit.s) / 2).toBe(359.5);
+  });
+
+  it('fits a room between 25% and 400% as the whole-room fit does (sc-57678)', () => {
+    const room = samplePlan().room!;
+
+    expect(planFitOf(718, 719, room)).toEqual(fitOf(718, 719, room));
+  });
+
+  it.each([
+    ['en', /^150%$/],
+    ['es', /^150\s%$/],
+    ['fr', /^150\s%$/],
+    ['pt', /^150%$/],
+  ])('writes the zoom percent the way %s does, as the product does (#2559)', (locale, shown) => {
+    expect(percentWritten(150, locale)).toMatch(shown);
+  });
+
+  it('slides the picture just enough to show a focused item clear of the bars, and not at all when it shows', () => {
+    expect(intoView({ x0: 200, y0: 300, x1: 300, y1: 400 }, 718, 719)).toEqual([0, 0]);
+    expect(intoView({ x0: 800, y0: 300, x1: 900, y1: 400 }, 718, 719)).toEqual([-206, 0]);
+    expect(intoView({ x0: -400, y0: -50, x1: -300, y1: 50 }, 718, 719)).toEqual([424, 142]);
+    expect(intoView({ x0: 100, y0: 600, x1: 200, y1: 700 }, 718, 719)).toEqual([0, -73]);
+    expect(intoView({ x0: -900, y0: 300, x1: 900, y1: 400 }, 718, 719)).toEqual([924, 0]);
+  });
+
+  it('slides a focused item out from under the small map by the shorter way that stays in view', () => {
+    const smallMap = { x0: 530, y0: 507, x1: 702, y1: 639 };
+
+    expect(intoView({ x0: 600, y0: 540, x1: 660, y1: 600 }, 718, 719, [smallMap])).toEqual([
+      0, -101,
+    ]);
+    expect(intoView({ x0: 300, y0: 540, x1: 360, y1: 600 }, 718, 719, [smallMap])).toEqual([0, 0]);
+  });
+
+  it('slides a row wider than the view up from under the small map, keeping its left edge, as the product does (sc-57361)', () => {
+    const smallMap = { x0: 534, y0: 499, x1: 706, y1: 639 };
+
+    expect(intoView({ x0: -900, y0: 550, x1: 900, y1: 600 }, 718, 719, [smallMap])).toEqual([
+      924, -109,
+    ]);
+  });
+
+  it('slides a box taller than the view sideways clear of a bar, keeping its top edge (sc-57361)', () => {
+    const bar = { x0: 24, y0: 200, x1: 80, y1: 500 };
+
+    expect(intoView({ x0: 50, y0: 500, x1: 100, y1: 1400 }, 718, 719, [bar])).toEqual([38, -408]);
+  });
+
+  it('lines a wide row up with its top edge when no pan up or down clears the bar (sc-57361)', () => {
+    const bar = { x0: 534, y0: 100, x1: 706, y1: 600 };
+
+    expect(intoView({ x0: -900, y0: 300, x1: 900, y1: 400 }, 718, 719, [bar])).toEqual([924, -208]);
+  });
+
+  it('reaches 20 px past a focused item for its ring and halo, further once it is turned (sc-57361)', () => {
+    const row = { ...newItem('row', [], [0, 0]), rot: 0 };
+
+    expect(focusReach(row)).toBe(20);
+    expect(focusReach({ ...row, rot: 90 })).toBeCloseTo(20);
+    expect(focusReach({ ...row, rot: 45 })).toBeCloseTo(20 * Math.SQRT2);
   });
 
   it('draws outlines under 50%, chairs from 50%, and 44 targets from 150%', () => {
@@ -464,10 +544,10 @@ describe('dates on paper (sc-4024)', () => {
 });
 
 describe('the states (§6)', () => {
-  it('links every state from the demo’s home, in eight groups', () => {
+  it('links every state from the demo’s home, in nine groups', () => {
     const links = SEATING_PAGES.flatMap((page) => page.states);
 
-    expect(SEATING_PAGES).toHaveLength(8);
+    expect(SEATING_PAGES).toHaveLength(9);
     expect(links).toHaveLength(SEATING_STATES.length);
     expect(links[0]?.to).toBe('/demo/events/evt-wed-4/seating');
   });

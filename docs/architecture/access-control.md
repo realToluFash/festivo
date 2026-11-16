@@ -76,6 +76,11 @@ Owner or an Admin starts, duplicates or deletes an event. `EventRole::permission
 table above, and `EventRoleTest` holds it to it. Can check guests in reads what Can view
 reads; marking a guest arrived joins it with sc-1454.
 
+An organisation's page that a role on any one event opens, such as the Menu library
+(`#[InOrganisation(…, orOnAnEvent: true)]`), is offered the same way: the organisation read
+lists in `onAnEvent` what a Member's event roles allow beyond their organisation role, and
+the web's `canAnywhere` reads both (sc-3901).
+
 People (`/api/events/{eventId}/people`) is read by everyone on the event. An Owner, an Admin
 or the event's Lead adds, changes and removes people (`people.manage`); nobody changes or
 removes their own role (`403 own_event_role`). People adds members of the organisation only:

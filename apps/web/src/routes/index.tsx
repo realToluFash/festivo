@@ -9,6 +9,7 @@ import { NotificationSettings } from './app/account/NotificationSettings.tsx';
 import { Personalisation } from './app/account/Personalisation.tsx';
 import { AppLayout } from './app/AppLayout.tsx';
 import { Calendar } from './app/calendar/Calendar.tsx';
+import { MenuLibrary } from './app/menu/MenuLibrary.tsx';
 import { EditRedirect } from './app/events/EditRedirect.tsx';
 import {
   EventAreaPage,
@@ -100,6 +101,7 @@ export const routes = [
           { path: 'events/:eventId/run', element: <EventRun /> },
           { path: 'events/:eventId/:area', element: <EventAreaPage /> },
           { path: 'calendar', element: <Calendar /> },
+          { path: 'menu-library', element: <MenuLibrary /> },
           { path: 'guests', element: <Navigate to="/app" replace /> },
           {
             element: <SettingsDesk />,

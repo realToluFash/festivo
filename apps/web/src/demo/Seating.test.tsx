@@ -168,7 +168,7 @@ describe('the plan and the room (sc-3998, sc-4007)', () => {
 
     expect(links).toHaveLength(SEATING_STATES.length);
     expect(links[0]?.getAttribute('href')).toBe(AT);
-    expect(links.at(-1)?.getAttribute('href')).toBe(`${AT}?state=crumbWidths`);
+    expect(links.at(-1)?.getAttribute('href')).toBe(`${AT}?state=crumbFocus`);
   });
 
   it('is the event’s own Seating entry, lit while it is open', SLOW, async () => {
@@ -358,6 +358,150 @@ describe('the plan and the room (sc-3998, sc-4007)', () => {
     expect(screen.getByText('150%')).toBeDefined();
     fireEvent.click(screen.getByRole('button', { name: 'Fit the room' }));
     expect(screen.getByText('57%')).toBeDefined();
+  });
+
+  it(
+    'holds − at 25% and + at 400% aria-disabled, as the product does (sc-57678)',
+    SLOW,
+    async () => {
+      await seating('corner');
+      const zoomIn = screen.getByRole('button', { name: 'Zoom in' });
+      const zoomOut = screen.getByRole('button', { name: 'Zoom out' });
+
+      expect(zoomIn.getAttribute('aria-disabled')).toBe('false');
+      fireEvent.click(zoomIn);
+      fireEvent.click(zoomIn);
+      expect(screen.getByText('400%')).toBeDefined();
+      expect(zoomIn.getAttribute('aria-disabled')).toBe('true');
+      fireEvent.click(zoomIn);
+      expect(screen.getByText('400%')).toBeDefined();
+      for (let step = 0; step < 8; step++) fireEvent.click(zoomOut);
+      expect(screen.getByText('25%')).toBeDefined();
+      expect(zoomOut.getAttribute('aria-disabled')).toBe('true');
+      expect(zoomIn.getAttribute('aria-disabled')).toBe('false');
+    },
+  );
+
+  describe('the view follows keyboard focus (sc-4007, WCAG 2.2 2.4.11)', () => {
+    type Rect = [number, number, number, number];
+
+    function measure(boxes: (node: Element) => Rect | null) {
+      return vi.spyOn(Element.prototype, 'getBoundingClientRect').mockImplementation(function (
+        this: Element,
+      ) {
+        const [left, top, right, bottom] = this.classList.contains('st-canvas')
+          ? [0, 0, 718, 719]
+          : (boxes(this) ?? [0, 0, 0, 0]);
+
+        return {
+          left,
+          top,
+          right,
+          bottom,
+          x: left,
+          y: top,
+          width: right - left,
+          height: bottom - top,
+        } as DOMRect;
+      });
+    }
+
+    function view(): string {
+      const box = document.querySelector('.st-view-box');
+
+      return `${box?.getAttribute('x')} ${box?.getAttribute('y')}`;
+    }
+
+    async function table4(boxes: (node: Element, table: Element) => Rect | null) {
+      await seating('corner');
+      const table = item(/^Table 4,/u);
+
+      return { table, measured: measure((node) => boxes(node, table)) };
+    }
+
+    it('slides the plan to an item Tab reaches out of view', SLOW, async () => {
+      const { table, measured } = await table4((node, t) =>
+        node === t ? [800, 300, 900, 400] : null,
+      );
+
+      try {
+        const before = view();
+
+        table.focus();
+        await waitFor(() => expect(view()).not.toBe(before), WAIT);
+      } finally {
+        measured.mockRestore();
+      }
+    });
+
+    it('slides an item out from under the small map', SLOW, async () => {
+      const { table, measured } = await table4((node, t) =>
+        node === t
+          ? [600, 540, 660, 600]
+          : node.classList.contains('st-minimap')
+            ? [530, 507, 702, 639]
+            : null,
+      );
+
+      try {
+        const before = view();
+
+        table.focus();
+        await waitFor(() => expect(view()).not.toBe(before), WAIT);
+      } finally {
+        measured.mockRestore();
+      }
+    });
+
+    it(
+      'slides an item up until its focus halo, drawn after the focus, clears the small map (sc-57361)',
+      SLOW,
+      async () => {
+        const { table, measured } = await table4((node, t) =>
+          node === t
+            ? [600, 560, 660, 590]
+            : node.classList.contains('st-minimap')
+              ? [530, 607, 702, 739]
+              : null,
+        );
+        const top = () => Number(document.querySelector('.st-floor[y]')?.getAttribute('y'));
+
+        try {
+          const before = top();
+
+          table.focus();
+          // 590 + 20 of ring and halo + 8 clear - 607 of map: 11 px up.
+          await waitFor(() => expect(before - top()).toBeCloseTo(11, 1), WAIT);
+        } finally {
+          measured.mockRestore();
+        }
+      },
+    );
+
+    it('leaves the view where it is when a click puts the focus there', SLOW, async () => {
+      const { table, measured } = await table4((node, t) =>
+        node === t ? [800, 300, 900, 400] : null,
+      );
+      const matches = Element.prototype.matches;
+      const pointer = vi.spyOn(Element.prototype, 'matches').mockImplementation(function (
+        this: Element,
+        selector: string,
+      ) {
+        return selector === ':focus-visible' ? false : matches.call(this, selector);
+      });
+
+      try {
+        const before = view();
+
+        press(table);
+        table.focus();
+        await new Promise((done) => window.setTimeout(done, 50));
+        expect(view()).toBe(before);
+      } finally {
+        pointer.mockRestore();
+        measured.mockRestore();
+      }
+    });
   });
 });
 
@@ -691,6 +835,35 @@ describe('tables, rows and seats (sc-4000, sc-4003)', () => {
     ).toBeDefined();
   });
 
+  it('keeps the reset line on a refused change and clears it on a saved one', SLOW, async () => {
+    const reset = 'Size reset to the rectangular default, 180 × 76 cm. Seats kept at 10.';
+
+    await seating('tapChooses');
+    fireEvent.change(within(panel()).getByLabelText('Shape'), { target: { value: 'rect' } });
+    expect(await within(panel()).findByText(reset)).toBeDefined();
+
+    const seats = within(panel()).getByLabelText('Seats');
+
+    fireEvent.change(seats, { target: { value: '31' } });
+    key(seats, 'Enter');
+    expect(await within(panel()).findByText('Enter a number of seats from 1 to 30.')).toBeDefined();
+    expect(within(panel()).getByText(reset)).toBeDefined();
+
+    fireEvent.change(seats, { target: { value: '10' } });
+    key(seats, 'Enter');
+    await waitFor(() =>
+      expect(within(panel()).queryByText('Enter a number of seats from 1 to 30.')).toBeNull(),
+    );
+    expect(within(panel()).getByText(reset)).toBeDefined();
+
+    fireEvent.change(seats, { target: { value: '8' } });
+    key(seats, 'Enter');
+    await waitFor(() => expect(within(panel()).queryByText(reset)).toBeNull());
+
+    fireEvent.change(within(panel()).getByLabelText('Shape'), { target: { value: 'round' } });
+    expect(await within(panel()).findByText(/^Size reset to the round default/u)).toBeDefined();
+  });
+
   it('marks a chair unusable and back, and refuses a taken one', SLOW, async () => {
     await seating('chair');
     fireEvent.click(within(panel()).getByRole('button', { name: 'Mark unusable' }));
@@ -784,6 +957,129 @@ describe('tables, rows and seats (sc-4000, sc-4003)', () => {
       measured.mockRestore();
     }
   });
+
+  it.each([
+    [300, false],
+    [460, true],
+  ])(
+    'with the folded bar %i px wide, the zoom steps up above it: %s',
+    SLOW,
+    async (foldedWidth, up) => {
+      const measured = vi
+        .spyOn(HTMLElement.prototype, 'getBoundingClientRect')
+        .mockImplementation(function (this: HTMLElement) {
+          const width = this.classList.contains('st-add')
+            ? this.childElementCount > 1
+              ? 520
+              : foldedWidth
+            : this.classList.contains('st-zoom')
+              ? 240
+              : 0;
+
+          return {
+            width,
+            height: 0,
+            top: 0,
+            left: 0,
+            right: width,
+            bottom: 0,
+            x: 0,
+            y: 0,
+          } as DOMRect;
+        });
+
+      try {
+        await seating();
+        await screen.findByRole('button', { name: 'Add' }, WAIT);
+        await waitFor(() =>
+          expect(screen.getByRole('group', { name: /^Zoom/ }).closest('.is-zoom-up') != null).toBe(
+            up,
+          ),
+        );
+      } finally {
+        measured.mockRestore();
+      }
+    },
+  );
+
+  it.each([
+    ['zoomAbove', false],
+    ['zoomAboveMap', true],
+  ])(
+    'shows the zoom above the folded bar in English at any width: %s',
+    SLOW,
+    async (state, map) => {
+      await seating(state);
+      const zoom = await screen.findByRole('group', { name: /^Zoom/ }, WAIT);
+
+      expect(zoom.closest('.is-zoom-up')).not.toBeNull();
+      expect(screen.getByRole('button', { name: 'Add' })).toBeDefined();
+      expect(screen.queryByRole('button', { name: 'Add seat' })).toBeNull();
+      expect(document.querySelector('.is-zoom-up .st-minimap') !== null).toBe(map);
+    },
+  );
+
+  it.each([
+    [282, false],
+    [283, true],
+  ])(
+    'on a 718 px floor with the views 400 px wide and Saved · Print %i px, Saved · Print step down: %s',
+    SLOW,
+    async (rightWidth, down) => {
+      const measured = vi
+        .spyOn(HTMLElement.prototype, 'getBoundingClientRect')
+        .mockImplementation(function (this: HTMLElement) {
+          const width = this.classList.contains('st-views')
+            ? 400
+            : this.classList.contains('st-top-right')
+              ? rightWidth
+              : 0;
+
+          return {
+            width,
+            height: 0,
+            top: 0,
+            left: 0,
+            right: width,
+            bottom: 0,
+            x: 0,
+            y: 0,
+          } as DOMRect;
+        });
+
+      try {
+        await seating();
+        const print = await screen.findByRole('button', { name: 'Print' }, WAIT);
+
+        await waitFor(() => expect(print.closest('.is-row-down') != null).toBe(down));
+      } finally {
+        measured.mockRestore();
+      }
+    },
+  );
+
+  it('shows Saved · Print a line down in English at any width', SLOW, async () => {
+    await seating('rowStepped');
+    const print = await screen.findByRole('button', { name: 'Print' }, WAIT);
+
+    expect(print.closest('.is-row-down')).not.toBeNull();
+    expect(screen.getByRole('button', { name: 'Stop placing' })).toBeDefined();
+  });
+
+  it(
+    "puts the placing bar's words, Place at the centre and Stop placing in one wrapping row, in that order",
+    SLOW,
+    async () => {
+      await seating('placing');
+      const stop = await screen.findByRole('button', { name: 'Stop placing' }, WAIT);
+      const body = stop.closest('.st-bar-body');
+      const order = [...(body?.querySelectorAll('p, button') ?? [])].map((node) =>
+        node.tagName === 'P' ? 'words' : node.textContent,
+      );
+
+      expect(order).toEqual(['words', 'Place at the centre', 'Stop placing']);
+    },
+  );
 
   it('Esc in a field undoes the typing first, then leaves the table', SLOW, async () => {
     await seating('tapChooses');
@@ -906,11 +1202,11 @@ describe('moving without dragging, and the save line (sc-5028, WCAG 2.2 SC 2.5.7
         'Shift and click adds or takes one away. Esc lets go of all of them.',
       ),
     ).toBeDefined();
-    fireEvent.click(within(panel()).getByRole('button', { name: 'Delete these' }));
-    const ask = screen.getByRole('alertdialog', { name: 'Delete Table 6, Table 7 and Table 8?' });
+    fireEvent.click(within(panel()).getByRole('button', { name: 'Delete' }));
+    const ask = screen.getByRole('alertdialog', { name: 'Delete 3 tables?' });
 
-    expect(ask.textContent).toContain('Their guests go back to Without a seat.');
-    fireEvent.click(within(ask).getByRole('button', { name: 'Keep it' }));
+    expect(ask.textContent).toContain('22 guests will be moved to Without a seat.');
+    fireEvent.click(within(ask).getByRole('button', { name: 'Keep them' }));
     key(item(/^Table 8,/u), 'Escape');
     expect(within(panel()).getByRole('heading', { name: 'Room' })).toBeDefined();
   });
@@ -967,6 +1263,27 @@ describe('moving without dragging, and the save line (sc-5028, WCAG 2.2 SC 2.5.7
         ),
       );
       expect(await screen.findByRole('note', { name: 'Keys for the chosen item' })).toBeDefined();
+    },
+  );
+
+  it(
+    'writes the duplicate key as the computer does, ⌘ D on a Mac and Ctrl D off one',
+    SLOW,
+    async () => {
+      const platform = vi.spyOn(navigator, 'platform', 'get');
+
+      for (const [system, label] of [
+        ['MacIntel', '⌘ D'],
+        ['Win32', 'Ctrl D'],
+      ] as const) {
+        platform.mockReturnValue(system);
+        await seating('tabOrder');
+        const strip = await screen.findByRole('note', { name: 'Keys for the chosen item' });
+
+        expect(within(strip).getByText(label)).toBeDefined();
+        cleanup();
+      }
+      platform.mockRestore();
     },
   );
 });
@@ -1263,5 +1580,30 @@ describe('the breadcrumb (sc-55300)', () => {
     expect(screen.getAllByRole('navigation', { name: 'Breadcrumb' })).toHaveLength(2);
     expect(screen.getAllByRole('navigation', { name: 'Fil d’Ariane' })).toHaveLength(3);
     expect(screen.getByRole('link', { name: 'Seating words QA' })).toBeDefined();
+  });
+
+  it('rings one link in each frame, each link at each width (sc-57088)', SLOW, async () => {
+    open(`${AT}?state=crumbFocus`);
+    await screen.findByRole(
+      'heading',
+      { level: 1, name: 'A focused link in the breadcrumb' },
+      WAIT,
+    );
+    const frames = screen.getAllByRole('figure');
+    const ringed = frames.map((frame) => {
+      const rings = frame.querySelectorAll('a.is-ring');
+
+      expect(rings).toHaveLength(1);
+      return `${frame.className} ${rings[0]?.textContent ?? ''}`;
+    });
+
+    expect(frames).toHaveLength(13);
+    expect(ringed).toContain('st-width is-1280 Events');
+    expect(ringed).toContain('st-width is-1280 Événements');
+    expect(ringed).toContain(`st-width is-320 ${LONG}`);
+    expect(ringed).toContain('st-width is-375 Seating words QA');
+    expect(frames[2]?.querySelector('figcaption')?.textContent).toMatch(
+      /^1280 px · French · .+ · focus on Événements$/u,
+    );
   });
 });

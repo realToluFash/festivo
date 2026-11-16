@@ -905,7 +905,6 @@ function CoverEdit(props: PartEditProps) {
       if (staged.current != null) discardCoverUpload(event.organisationId, staged.current);
       staged.current = signed.key;
       setPhoto({ kind: 'ready', uri: chosen.uri, width: chosen.width, key: signed.key });
-      setFailed(null);
     } catch (error) {
       if (mine !== attempt.current) return;
       setPhoto(saved == null ? { kind: 'none' } : { kind: 'saved', cover: saved });

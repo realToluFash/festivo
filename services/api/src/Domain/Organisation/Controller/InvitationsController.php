@@ -81,6 +81,7 @@ final readonly class InvitationsController
             $membership,
             $this->membershipDirectory->grantsIn($membership->getUser(), $membership->getOrganisation()->getId()) ?? Grants::only([]),
             $this->signInRules->twoFactorDue($membership),
+            $this->membershipDirectory->eventScopeIn($membership->getUser(), $membership->getOrganisation()->getId())?->onAnEvent() ?? [],
         )]);
     }
 

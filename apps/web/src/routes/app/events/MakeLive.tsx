@@ -11,17 +11,13 @@ import {
 } from '@soirely/domain';
 import { type ReactNode, type RefObject, useEffect, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { Link } from 'react-router';
+import { Link, useNavigate } from 'react-router';
 
 import { api } from '../../../api.ts';
+import { MakeLiveDialog } from '../../../components/MakeLiveDialog.tsx';
+import { AskAlert } from '../../../components/SettingsParts.tsx';
 import { StatusChip } from '../../../components/StatusChip.tsx';
-import { useDialogKeys } from '../../../dialogFocus.ts';
-import { offButton } from '../../../offButton.ts';
-import { FieldError } from './EventFields.tsx';
-import { describedBy } from './eventFieldOrder.ts';
 import { PHASE_WORD } from './eventWords.ts';
-import { LifecycleDialog } from './LifecycleDialog.tsx';
-import { type Refused } from './useLifecycleAction.ts';
 import { inPlace } from './openInPlace.ts';
 
 /** A word and a shape of its own, never colour alone (WCAG 2.2 §1.4.1). */
@@ -42,9 +38,13 @@ interface Confirming {
   failed: boolean;
 }
 
-type Focus = 'host' | 'hostsNow' | 'go';
-
-const HOST_ID = 'make-live-host';
+/** A refusal that ends the question: Close, and Change dates when the end has passed. */
+interface Told {
+  kind: 'told';
+  title: string;
+  line: string;
+  changeDates: boolean;
+}
 
 /** Make live's question and its refusals, asked from whichever button `opener` holds (sc-3584, sc-22143). */
 export function useMakeLive({
@@ -64,7 +64,7 @@ export function useMakeLive({
 }): { start: () => void; dialogs: ReactNode } {
   const { t } = useTranslation();
   const [opened, setOpened] = useState<TaggedEvent>({ event, tag });
-  const [asking, setAsking] = useState<Confirming | Refused | null>(null);
+  const [asking, setAsking] = useState<Confirming | Told | null>(null);
 
   function close(): void {
     setAsking(null);
@@ -76,8 +76,8 @@ export function useMakeLive({
     onChange(latest.event, latest.tag);
   }
 
-  function refused(refusal: Omit<Refused, 'kind'>): void {
-    setAsking({ kind: 'refused', ...refusal });
+  function refused(title: string, line: string, changeDates = false): void {
+    setAsking({ kind: 'told', title, line, changeDates });
   }
 
   async function reread(): Promise<TaggedEvent | null> {
@@ -129,7 +129,7 @@ export function useMakeLive({
         setAsking({ ...settled, askHost: false, typed: '', notice: 'nowHosted' });
       } else {
         const [title, line] = changedWords(latest.event);
-        refused({ title: t(title), lines: [t(line)] });
+        refused(t(title), t(line));
       }
       return;
     }
@@ -139,21 +139,17 @@ export function useMakeLive({
     const problem = step.error instanceof ApiError ? step.error : null;
 
     if (problem?.is('plan_limit') === true) {
-      refused({
-        title: t('eventLive.planLimit', {
+      refused(
+        t('eventLive.planLimit', {
           plan: problem.problem.plan ?? '',
           limit: problem.problem.limit ?? 0,
           count: problem.problem.limit ?? 0,
         }),
-        lines: [t('eventLive.planLimitStays')],
-      });
+        t('eventLive.planLimitStays'),
+      );
     } else if (problem?.is('event_concluded') === true) {
       await reread();
-      refused({
-        title: t('eventLive.notMadeLive'),
-        lines: [t('eventLive.endPassed')],
-        link: { label: t('eventLive.changeDates'), ...inPlace(event.id, 'dates') },
-      });
+      refused(t('eventLive.notMadeLive'), t('eventLive.endPassed'), true);
     } else {
       setAsking({
         ...settled,
@@ -176,34 +172,15 @@ export function useMakeLive({
     });
   }
 
-  const dialogs = (
-    <>
-      {asking?.kind === 'refused' && (
-        <LifecycleDialog
-          id="make-live"
-          asking={asking}
-          title=""
-          lines={[]}
-          failed=""
-          keep=""
-          confirm=""
-          sending=""
-          tone="primary"
-          onGo={() => undefined}
-          onClose={close}
-          onFollow={() => setAsking(null)}
-        />
-      )}
-      {asking?.kind === 'confirm' && (
-        <MakeLiveDialog
-          asking={asking}
-          event={opened.event}
-          onType={(typed) => setAsking({ ...asking, typed, error: null })}
-          onGo={() => void go(asking)}
-          onClose={close}
-        />
-      )}
-    </>
+  const dialogs = asking != null && (
+    <MakeLiveAsking
+      asking={asking}
+      event={opened.event}
+      onType={(typed) => asking.kind === 'confirm' && setAsking({ ...asking, typed, error: null })}
+      onGo={() => asking.kind === 'confirm' && void go(asking)}
+      onClose={close}
+      onChangeDates={() => setAsking(null)}
+    />
   );
 
   return { start, dialogs };
@@ -260,157 +237,98 @@ export function DraftRow({
   );
 }
 
-/** Make live's confirmation (sc-3584); on a draft with no host it asks for one in Host 1 (sc-22143). */
-function MakeLiveDialog({
+/** Make live's question and what it turns into, in the demo's dialog (sc-3584, sc-22143, sc-48603). */
+function MakeLiveAsking({
   asking,
   event,
   onType,
   onGo,
   onClose,
+  onChangeDates,
 }: {
-  asking: Confirming;
+  asking: Confirming | Told;
   event: OrganisationEvent;
   onType: (typed: string) => void;
   onGo: () => void;
   onClose: () => void;
+  onChangeDates: () => void;
 }) {
   const { t } = useTranslation();
-  const dialog = useRef<HTMLDivElement>(null);
-  const keep = useRef<HTMLButtonElement>(null);
-  const host = useRef<HTMLTextAreaElement>(null);
+  const navigate = useNavigate();
+  const field = useRef<HTMLInputElement>(null);
   const hostsNow = useRef<HTMLDivElement>(null);
-  const go = useRef<HTMLButtonElement>(null);
-  const { askHost, typed, error, notice, pending, failed } = asking;
-  const focus: Focus | null = pending
-    ? null
-    : notice === 'nowHosted'
-      ? 'hostsNow'
-      : failed
-        ? 'go'
-        : askHost
-          ? 'host'
-          : null;
-
-  useDialogKeys(dialog, onClose, pending);
-
-  useEffect(() => keep.current?.focus(), []);
+  const confirm = asking.kind === 'confirm' ? asking : null;
+  const error = confirm?.error ?? null;
+  const notice = confirm?.notice ?? null;
 
   useEffect(() => {
-    const target =
-      focus === 'host' ? host.current : focus === 'hostsNow' ? hostsNow.current : go.current;
-    if (focus != null) target?.focus();
-  }, [focus, error, notice, failed]);
+    if (error != null) field.current?.focus();
+  }, [confirm, error]);
+
+  useEffect(() => {
+    if (notice === 'nowHosted') hostsNow.current?.focus();
+    if (notice === 'stillNoHost') field.current?.focus();
+  }, [notice]);
+
+  if (confirm == null) {
+    const told = asking as Told;
+
+    return (
+      <MakeLiveDialog
+        title={told.title}
+        line={told.line}
+        told
+        keep={t('eventLive.close')}
+        go={told.changeDates ? t('eventLive.changeDates') : undefined}
+        onKeep={onClose}
+        onGo={() => {
+          onChangeDates();
+          const { to, state } = inPlace(event.id, 'dates');
+          void navigate(to, { state });
+        }}
+      />
+    );
+  }
+
+  const { askHost, typed, pending, failed } = confirm;
 
   return (
-    <>
-      <div className="dialog-scrim" aria-hidden="true" />
-      <div
-        ref={dialog}
-        className="dialog event-live-dialog"
-        role="dialog"
-        aria-modal="true"
-        aria-labelledby="make-live-title"
-        aria-describedby="make-live-body"
-      >
-        <div className="dialog-heading">
-          <h2 id="make-live-title">{t('eventLive.confirmTitle', { name: event.name })}</h2>
-          <div id="make-live-body">
-            <p>{t('eventLive.confirmGuests')}</p>
-            <p>{t('eventLive.confirmFinal')}</p>
-          </div>
+    <MakeLiveDialog
+      title={t('eventLive.confirmTitle', { name: event.name })}
+      line={`${t('eventLive.confirmGuests')} ${t('eventLive.confirmFinal')}`}
+      host={
+        askHost
+          ? {
+              label: t('eventHosts.label', { position: 1 }),
+              value: typed,
+              wrong: error,
+              help: t('eventLive.hostExplainer'),
+              onType,
+            }
+          : undefined
+      }
+      field={field}
+      failed={failed ? t('eventLive.failed') : undefined}
+      keep={t('eventLive.notYet')}
+      go={t('eventLive.makeLive')}
+      busy={pending ? t('eventLive.making') : undefined}
+      onKeep={onClose}
+      onGo={() => {
+        if (!pending) onGo();
+      }}
+    >
+      {notice === 'nowHosted' && (
+        <div ref={hostsNow} className="event-live-hosts-now" role="group" tabIndex={-1}>
+          <AskAlert>{t('eventLive.notSavedChanged')}</AskAlert>
+          <p id="make-live-hosts-now">{t('eventLive.hostsNow')}</p>
+          <ul aria-labelledby="make-live-hosts-now">
+            {event.hosts.map((name) => (
+              <li key={name}>{name}</li>
+            ))}
+          </ul>
         </div>
-
-        {notice === 'nowHosted' && (
-          <div ref={hostsNow} className="event-live-hosts-now" role="group" tabIndex={-1}>
-            <p className="notice-title">{t('eventLive.notSavedChanged')}</p>
-            <p id="make-live-hosts-now">{t('eventLive.hostsNow')}</p>
-            <ul aria-labelledby="make-live-hosts-now">
-              {event.hosts.map((name) => (
-                <li key={name}>{name}</li>
-              ))}
-            </ul>
-          </div>
-        )}
-
-        {askHost && (
-          <div className="field">
-            {notice === 'stillNoHost' && (
-              <div className="notice notice-broken" role="alert">
-                <span className="mark mark-broken" aria-hidden="true">
-                  ✕
-                </span>
-                <p className="notice-title">{t('eventEdit.changedElsewhere')}</p>
-              </div>
-            )}
-            <label htmlFor={HOST_ID}>{t('eventHosts.label', { position: 1 })}</label>
-            <textarea
-              ref={host}
-              id={HOST_ID}
-              className={
-                error == null ? 'input event-host-name' : 'input event-host-name input-wrong'
-              }
-              rows={1}
-              value={typed}
-              autoComplete="off"
-              spellCheck={false}
-              enterKeyHint="go"
-              readOnly={pending}
-              aria-invalid={error != null}
-              aria-describedby={describedBy(
-                error == null ? null : `${HOST_ID}-error`,
-                `${HOST_ID}-help`,
-              )}
-              onChange={(change) => onType(change.target.value.replace(/[\r\n]+/g, ' '))}
-              onKeyDown={(key) => {
-                if (key.key !== 'Enter' || key.nativeEvent.isComposing) return;
-
-                key.preventDefault();
-                if (!pending) onGo();
-              }}
-            />
-            <FieldError id={`${HOST_ID}-error`} message={error ?? undefined} />
-            <p className="field-help" id={`${HOST_ID}-help`}>
-              {t('eventLive.hostExplainer')}
-            </p>
-          </div>
-        )}
-
-        {failed && (
-          <div className="notice notice-broken" role="alert">
-            <span className="mark mark-broken" aria-hidden="true">
-              ✕
-            </span>
-            <p className="notice-title">{t('eventLive.failed')}</p>
-          </div>
-        )}
-
-        <div className="dialog-actions">
-          <button
-            ref={keep}
-            type="button"
-            className="button"
-            {...offButton(pending, { dim: false })}
-            onClick={onClose}
-          >
-            {t('eventLive.notYet')}
-          </button>
-          <button
-            ref={go}
-            type="button"
-            className="button button-primary"
-            {...offButton(pending, { dim: false })}
-            aria-busy={pending}
-            onClick={onGo}
-          >
-            {pending ? t('eventLive.making') : t('eventLive.makeLive')}
-          </button>
-          {pending && (
-            <p className="visually-hidden" role="status">
-              {t('eventLive.making')}
-            </p>
-          )}
-        </div>
-      </div>
-    </>
+      )}
+      {notice === 'stillNoHost' && <AskAlert>{t('eventEdit.changedElsewhere')}</AskAlert>}
+    </MakeLiveDialog>
   );
 }

@@ -22,9 +22,88 @@ interface Kept extends Camera {
 export function fitOf(width: number, height: number, room: { w: number; l: number }) {
   const w = width - FIT_PAD.left - FIT_PAD.right;
   const h = height - FIT_PAD.top - FIT_PAD.bottom;
-  const s = Math.max(0.05, Math.min(w / room.w, h / room.l));
+
+  return centred(width, height, room, Math.max(0.05, Math.min(w / room.w, h / room.l)));
+}
+
+/** The plan's Fit the room, held to the zoom bar's 25% to 400%: a room too large to fit at 25% shows its centre (sc-57678). */
+export function planFitOf(width: number, height: number, room: { w: number; l: number }) {
+  return centred(width, height, room, clampScale(fitOf(width, height, room).s));
+}
+
+function centred(width: number, height: number, room: { w: number; l: number }, s: number) {
+  const w = width - FIT_PAD.left - FIT_PAD.right;
+  const h = height - FIT_PAD.top - FIT_PAD.bottom;
 
   return { s, ox: FIT_PAD.left + (w - room.w * s) / 2, oy: FIT_PAD.top + (h - room.l * s) / 2 };
+}
+
+export interface Box {
+  x0: number;
+  y0: number;
+  x1: number;
+  y1: number;
+}
+
+/** How far the picture slides, in screen px, to show a focused box (canvas px) whole and clear of the bars floating over the room (WCAG 2.2 SC 2.4.11). Each axis is decided on its own: one where the box is larger than the view lines up with its top or left edge, and the bars are cleared along the other (sc-57361). */
+export function intoView(
+  box: Box,
+  width: number,
+  height: number,
+  bars: readonly Box[] = [],
+  margin = 8,
+): Point {
+  const left = FIT_PAD.left + margin;
+  const right = width - FIT_PAD.right - margin;
+  const top = FIT_PAD.top + margin;
+  const bottom = height - FIT_PAD.bottom - margin;
+  const slide = (from: number, to: number, lo: number, hi: number): number => {
+    if (to - from > hi - lo || from < lo) return lo - from;
+    if (to > hi) return hi - to;
+    return 0;
+  };
+  const wide = box.x1 - box.x0 > right - left;
+  const tall = box.y1 - box.y0 > bottom - top;
+  let dx = slide(box.x0, box.x1, left, right);
+  let dy = slide(box.y0, box.y1, top, bottom);
+
+  for (const bar of bars) {
+    if (wide && tall) break;
+    const x0 = box.x0 + dx;
+    const x1 = box.x1 + dx;
+    const y0 = box.y0 + dy;
+    const y1 = box.y1 + dy;
+
+    if (x1 <= bar.x0 - margin || x0 >= bar.x1 + margin) continue;
+    if (y1 <= bar.y0 - margin || y0 >= bar.y1 + margin) continue;
+    const across: Point[] = [
+      [bar.x0 - margin - x1, 0],
+      [bar.x1 + margin - x0, 0],
+    ];
+    const along: Point[] = [
+      [0, bar.y0 - margin - y1],
+      [0, bar.y1 + margin - y0],
+    ];
+    const ways = wide ? along : tall ? across : [...across, ...along];
+    const shortest = ways
+      .filter(
+        ([mx, my]) =>
+          (wide || (x0 + mx >= left && x1 + mx <= right)) &&
+          (tall || (y0 + my >= top && y1 + my <= bottom)),
+      )
+      .sort((a, b) => Math.abs(a[0]) + Math.abs(a[1]) - Math.abs(b[0]) - Math.abs(b[1]))[0];
+
+    if (shortest != null) {
+      dx += shortest[0];
+      dy += shortest[1];
+    } else if (wide) {
+      dy = top - box.y0;
+    } else if (tall) {
+      dx = left - box.x0;
+    }
+  }
+
+  return [dx, dy];
 }
 
 export function clampScale(s: number): number {
@@ -82,7 +161,7 @@ export function useCamera(
   const [camera, setCamera] = useState<Camera | null>(() =>
     room == null ? null : keptView(eventId, room),
   );
-  const fit = fitOf(size.w, size.h, { w: w || 1, l: l || 1 });
+  const fit = planFitOf(size.w, size.h, { w: w || 1, l: l || 1 });
   const s = camera?.s ?? fit.s;
   const ox = camera == null ? fit.ox : size.w / 2 - camera.cx * s;
   const oy = camera == null ? fit.oy : size.h / 2 - camera.cy * s;

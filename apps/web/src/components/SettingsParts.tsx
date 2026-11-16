@@ -463,6 +463,7 @@ export function Choices({
   picked,
   onPick,
   foot,
+  footLive = false,
 }: {
   legend: string;
   hideLegend?: boolean;
@@ -470,6 +471,7 @@ export function Choices({
   picked: string;
   onPick: (name: string) => void;
   foot?: string;
+  footLive?: boolean;
 }) {
   const { t } = useTranslation();
   const name = useId();
@@ -501,7 +503,11 @@ export function Choices({
           </li>
         ))}
       </ul>
-      {foot != null && <p className="desk-foot">{foot}</p>}
+      {foot != null && (
+        <p className="desk-foot" aria-live={footLive ? 'polite' : undefined}>
+          {foot}
+        </p>
+      )}
     </fieldset>
   );
 }
@@ -619,7 +625,7 @@ interface AskProps {
   failed?: string | undefined;
   /** Where the focus starts, when not on the way back. */
   first?: RefObject<HTMLElement | null> | undefined;
-  /** The focus starts on the title, as a dialog that has turned into another question does. */
+  /** The focus starts on the title, as a dialog that has turned into another question does, and moves there when it turns while open. */
   titleFirst?: boolean | undefined;
   /** More of the body under the line, which stays its description. */
   children?: ReactNode;
@@ -674,6 +680,12 @@ function AskBox(props: AskProps) {
     onKeep,
     waits,
   );
+
+  const [titleFirstOpening] = useState(titleFirst);
+
+  useEffect(() => {
+    if (titleFirst && !titleFirstOpening) heading.current?.focus();
+  }, [titleFirst, titleFirstOpening]);
 
   return (
     <>
@@ -747,7 +759,7 @@ function AskBox(props: AskProps) {
   );
 }
 
-function AskAlert({ id, children }: { id?: string; children: ReactNode }) {
+export function AskAlert({ id, children }: { id?: string; children: ReactNode }) {
   return (
     <p id={id} className="desk-ask-alert" role="alert">
       <Glyph name="alert" size={18} weight={2.2} />

@@ -283,7 +283,7 @@ def cmd_comments(s, a):
 def cmd_pr(s, a):
     pr = store.pr(s.db, a.pr)
     if not pr:
-        sys.exit(f"PR #{a.pr} is neither open nor recently merged")
+        sys.exit(f"PR #{a.pr} is neither open nor among the 15 most recently merged")
     if a.section:
         V.pr_section(s.printer, pr, a.section)
     else:
@@ -296,7 +296,7 @@ def cmd_pr(s, a):
 def cmd_diff(s, a):
     pr = store.pr(s.db, a.pr)
     if not pr:
-        sys.exit(f"PR #{a.pr} is neither open nor recently merged")
+        sys.exit(f"PR #{a.pr} is neither open nor among the 15 most recently merged")
     files = V.diff_files(payloads.cached_diff(s.cache, pr))
     p = s.printer
     if not a.paths and not a.all:

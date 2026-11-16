@@ -14,7 +14,7 @@ export interface GuestItem {
   place: string | null;
 }
 
-export type ProgrammeSet = 'none' | 'days' | 'oneDay' | 'onePlace';
+export type ProgrammeSet = 'none' | 'days' | 'daysLate' | 'oneDay' | 'onePlace';
 
 export interface Mark {
   started: string;
@@ -37,6 +37,8 @@ export function scheduleOf(set: ProgrammeSet): Item[] {
       return WITH(items, () => false);
     case 'days':
       return items;
+    case 'daysLate':
+      return WITH(items, (one) => one.id === 'late' || one.guests);
     case 'oneDay':
       return WITH(items, (one) => (one.id === 'late' ? true : one.id !== 'drinks' && one.guests));
     case 'onePlace':
@@ -277,6 +279,10 @@ export const GUEST_PROGRAMME_STATES = {
   programmeBefore: {
     name: 'Before the event: planned times under the event’s details, two event days, Programme',
     starts: { programme: 'days', ...COMING, ...RECORDED },
+  },
+  programmeDaysLate: {
+    name: 'Two event days, the last item at Sat 00:30: one time column across the days',
+    starts: { programme: 'daysLate', ...COMING, ...RECORDED },
   },
   programmeOneDay: {
     name: 'One event day, its last item at 00:30: The day',

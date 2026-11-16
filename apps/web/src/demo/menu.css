@@ -354,12 +354,24 @@
   white-space: nowrap;
   box-shadow: 0 8px 24px rgb(20 22 28 / 14%);
   transform: translateX(-50%);
-  pointer-events: none;
 }
 
-.mn-icon-button:hover + .mn-hint,
+.mn-hint::after {
+  position: absolute;
+  top: 100%;
+  right: 0;
+  left: 0;
+  height: 8px;
+  content: '';
+}
+
+.mn-icon:hover > .mn-hint,
 .mn-icon-button:focus-visible + .mn-hint {
   display: block;
+}
+
+.mn-icon.is-dismissed > .mn-hint {
+  display: none;
 }
 
 .mn-panel {

@@ -134,7 +134,7 @@ final readonly class SeatingRules
 
         if ($shape->isRound() && 0 !== $endSeats) {
             $violations[] = $this->violation('endSeats', 'validation.seating_table_no_ends');
-        } elseif ($endSeats < 0 || $endSeats > $seats) {
+        } elseif ($endSeats < 0 || $endSeats > Math\maxva(0, $seats)) {
             $violations[] = $this->violation('endSeats', 'validation.seating_table_ends_between', ['{max}' => (string) Math\maxva(0, $seats)]);
         }
 
@@ -244,6 +244,16 @@ final readonly class SeatingRules
     public function unknownSection(): ApiException
     {
         return ApiException::validation([$this->violation('sectionId', 'validation.seating_table_section_unknown')]);
+    }
+
+    /**
+     * @param array<string, string> $parameters
+     *
+     * @return array{propertyPath: string, message: string, code: string}
+     */
+    public function arrangeViolation(string $path, string $key, array $parameters = []): array
+    {
+        return $this->violation($path, $key, $parameters);
     }
 
     /**

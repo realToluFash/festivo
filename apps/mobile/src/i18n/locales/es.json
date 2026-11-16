@@ -1828,6 +1828,26 @@
     "ending": "Finalizando…",
     "callOffFailed": "No se ha cancelado. Vuelva a intentarlo en un momento."
   },
+  "thankYou": {
+    "title": "Un agradecimiento para sus invitados",
+    "hint": "Cada invitado lo verá en su página, firmado con los nombres de los anfitriones.",
+    "add": "Añadir un agradecimiento",
+    "edit": "Editar el agradecimiento",
+    "placeholder": "Dé las gracias a sus invitados con sus propias palabras.",
+    "remove": "Para quitarlo, guarde el campo vacío.",
+    "count": "{{count, number}}/{{max, number}}",
+    "tooLong": "Un agradecimiento puede tener {{max, number}} caracteres como máximo.",
+    "signed": "{{hosts}}",
+    "save": "Guardar",
+    "notSaved": "No se ha guardado. Compruebe su conexión e inténtelo de nuevo. Su texto sigue aquí.",
+    "notEnded": "No se ha finalizado. Compruebe su conexión e inténtelo de nuevo. Su agradecimiento sigue aquí.",
+    "saved": "Agradecimiento guardado.",
+    "removed": "Agradecimiento quitado.",
+    "done": "Su agradecimiento aparece en la página de cada invitado.",
+    "discardTitle": "¿Descartar el cambio?",
+    "discardLine": "Lo que ha cambiado aquí no se ha guardado.",
+    "discard": "Descartar"
+  },
   "eventPause": {
     "pause": "Pausar",
     "title": "¿Pausar {{name}}?",
@@ -2582,9 +2602,9 @@
     "notReplaced": "No se ha sustituido. El enlace anterior sigue funcionando. Inténtelo de nuevo.",
     "flaggedTitle": "Puede que el enlace haya llegado a otra persona",
     "flaggedLine": "Quien abrió el enlace de {{name}} nos ha avisado de que le llegó por error. La respuesta no ha cambiado. Sustituya el enlace para que el anterior deje de funcionar y envíe el nuevo a {{name}}.",
-    "notCopied": "Not copied. The link is not on your clipboard. Try again.",
-    "linkReplacedOn": "Link replaced {{date}}",
-    "linkReplacedLine": "They still hold the old one until you send the new link.",
+    "notCopied": "No se ha copiado. El enlace no está en el portapapeles. Inténtelo de nuevo.",
+    "linkReplacedOn": "Enlace sustituido el {{date}}",
+    "linkReplacedLine": "Esta persona solo tiene el enlace anterior hasta que le envíe el nuevo.",
     "withGroup": "{{reply}} · {{group}}",
     "repliesClosedManage": "El plazo para responder terminó el {{date}}. «Registrar respuesta» vuelve a estar disponible si permite cambiar la respuesta.",
     "repliesClosedOn": "El plazo para responder terminó el {{date}}.",
@@ -2742,13 +2762,13 @@
   "search": {
     "row": "Buscar",
     "field": {
-      "egm": "Buscar eventos, invitados y miembros",
-      "eg": "Buscar eventos e invitados",
-      "em": "Buscar eventos y miembros",
-      "gm": "Buscar invitados y miembros",
-      "e": "Buscar eventos",
-      "g": "Buscar invitados",
-      "m": "Buscar miembros"
+      "egm": "Buscar",
+      "eg": "Buscar",
+      "em": "Buscar",
+      "gm": "Buscar",
+      "e": "Buscar",
+      "g": "Buscar",
+      "m": "Buscar"
     },
     "hint": {
       "egm": "Encuentre un evento, un invitado o un miembro.",
