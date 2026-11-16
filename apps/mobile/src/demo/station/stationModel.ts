@@ -74,7 +74,7 @@ export interface StationState {
 }
 
 export const EVENT = 'Adaeze & Tunde’s wedding';
-export const UNDO_MS = 2;
+export const UNDO_MINUTES = 2;
 export const HELD_UP_NO_TIME = 15;
 export const ETAS: readonly Eta[] = [5, 10, 15, null];
 
@@ -112,6 +112,7 @@ export const DISHES: Readonly<Record<string, readonly string[]>> = {
   'Jollof rice with chicken': ['Jollof rice', 'Chicken', 'Moin moin', 'Plantain'],
   'Fried rice with grilled fish': ['Fried rice', 'Grilled fish', 'Plantain'],
   'Chef’s choice': ['Chef’s choice'],
+  'Mixed grill': ['Chicken', 'Grilled fish'],
 };
 
 export function hm(minutes: number): string {
@@ -186,6 +187,12 @@ export function hereSince(tray: Tray, st: StationId): number | null {
   return Math.min(firstHere, doneBefore);
 }
 
+export function hereLine(tray: Tray, st: StationId): string {
+  const since = hereSince(tray, st);
+  const plates = `${tray.waiter} · ${plural(tray.plates.length, 'plate', 'plates')}`;
+  return since == null ? plates : `${plates} · here since ${hm(since)}`;
+}
+
 function stillHere(tray: Tray, st: StationId): boolean {
   return !tray.taken && tray.plates.some((p) => needsFrom(p, st).length > 0 && !markedAt(p, st));
 }
@@ -227,7 +234,7 @@ export interface FacedPlate {
   variant: string;
   course: string;
   flags: readonly string[];
-  mark: 'on' | 'off' | 'some' | 'none';
+  marked: Readonly<Record<string, Mark>>;
   preparing: readonly string[];
   pos: number;
   owed: boolean;
@@ -242,16 +249,11 @@ export function faced(s: StationState, tray: Tray): readonly FacedPlate[] {
     .reverse()
     .map((p, i) => {
       const its = needsFrom(p, st);
-      const ons = its.filter((x) => p.marks[x.name]?.v === 'on').length;
-      const offs = its.filter((x) => p.marks[x.name]?.v === 'off').length;
-      const mark =
-        its.length === 0 || ons + offs === 0
-          ? 'none'
-          : ons === its.length
-            ? 'on'
-            : offs === its.length
-              ? 'off'
-              : 'some';
+      const marked: Record<string, Mark> = {};
+      for (const x of its) {
+        const m = p.marks[x.name];
+        if (m != null) marked[x.name] = m.v;
+      }
       const course = courseOf(p);
       return {
         seat: p.seat,
@@ -259,7 +261,7 @@ export function faced(s: StationState, tray: Tray): readonly FacedPlate[] {
         variant: p.variant ?? '',
         course: latest != null && course !== latest ? course : '',
         flags: p.flags,
-        mark,
+        marked,
         preparing: its.filter((x) => s.items[x.name]?.kind === 'preparing').map((x) => x.name),
         pos: i + 1,
         owed: p.owed === true,
@@ -334,7 +336,7 @@ export function stateLine(s: StationState, item: string): StateLine {
 
 export function canUndo(s: StationState, item: string): boolean {
   const u = s.undo[item];
-  return u != null && s.now - u.at < UNDO_MS;
+  return u != null && s.now - u.at < UNDO_MINUTES;
 }
 
 function setItem(s: StationState, item: string, to: ItemState): StationState {
@@ -490,7 +492,15 @@ export function openPick(s: StationState, open: boolean): StationState {
 
 /** Opens that station on this device; nobody's station changes (Team does that, sc-36034). */
 export function pick(s: StationState, id: StationId): StationState {
-  return { ...s, station: id, picking: false, choosing: null, moved: '', say: '' };
+  return { ...s, station: id, picking: false, choosing: null, moved: pickedLine(id), say: '' };
+}
+
+export function pickedLine(id: StationId): string {
+  return `${nameOf(id)} is open on this tablet. Nobody’s station changed.`;
+}
+
+export function undoLine(was: 'Ready' | 'Preparing', when: number): string {
+  return `Marked ${was} at ${hm(when)} · for ${plural(UNDO_MINUTES, 'minute', 'minutes')}`;
 }
 
 export function movedTo(s: StationState, id: StationId): StationState {

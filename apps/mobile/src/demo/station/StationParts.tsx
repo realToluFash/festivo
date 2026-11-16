@@ -16,6 +16,32 @@ export const GLYPH = {
   info: ['M12 11v6', 'M12 7.5h.01'],
 } as const;
 
+/** The house quiet action at this view's target: 44 px, and 48 on the phone (sc-4015). */
+export function Quiet({
+  label,
+  side,
+  onPress,
+  testID,
+}: {
+  label: string;
+  side: number;
+  onPress: () => void;
+  testID: string;
+}) {
+  return (
+    <Pressable
+      onPress={onPress}
+      accessibilityRole="button"
+      style={[styles.quiet, { minHeight: side, minWidth: side }]}
+      testID={testID}
+    >
+      <Text size={tokens.typeButton.size} weight="semibold" style={styles.quietInk}>
+        {label}
+      </Text>
+    </Pressable>
+  );
+}
+
 export type Status = 'on' | 'off' | 'ready' | 'preparing' | 'heldUp' | 'paused' | 'kept';
 
 const STATUS: Record<Status, { word: string; ink: string; fill: string; edge: string }> = {
@@ -347,6 +373,8 @@ const styles = StyleSheet.create({
     borderColor: tokens.colorAccent,
     backgroundColor: tokens.colorAccentTint,
   },
+  quiet: { alignItems: 'center', justifyContent: 'center' },
+  quietInk: { color: tokens.colorAccentText },
   openNow: { flexDirection: 'row', alignItems: 'center', gap: 5 },
   radio: {
     width: 22,

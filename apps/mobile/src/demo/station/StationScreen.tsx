@@ -3,7 +3,7 @@ import { useEffect, useRef, useState } from 'react';
 import { Pressable, ScrollView, StyleSheet, View, type ViewInstance } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
-import { QuietButton, SecondaryButton } from '../../components/Buttons.tsx';
+import { SecondaryButton } from '../../components/Buttons.tsx';
 import { readOut } from '../../components/ReadOut.tsx';
 import { Sheet } from '../../components/Sheet.tsx';
 import { Text } from '../../components/Text.tsx';
@@ -28,8 +28,8 @@ import {
   giveTray,
   goOnline,
   headingTrays,
+  hereLine,
   hereTrays,
-  hm,
   isKept,
   leftToDish,
   markPreparing,
@@ -48,6 +48,7 @@ import {
   takeToTable,
   trayCounts,
   undo,
+  undoLine,
   wait,
   waiterMarks,
   walkHere,
@@ -57,6 +58,7 @@ import {
   FlagLine,
   FlaggedCount,
   GLYPH,
+  Quiet,
   Segments,
   StationList,
   Times,
@@ -94,15 +96,16 @@ function KitchenStation({ start }: { start: StationStateName }) {
   useEffect(() => (s.say === '' ? undefined : readOut(s.say)), [s.say]);
   useEffect(() => (s.moved === '' ? undefined : readOut(s.moved)), [s.moved]);
 
-  if (s.access !== 'pass') return <Refused s={s} insets={insets.top} />;
+  if (s.access !== 'pass') return <Refused s={s} insets={insets.top} side={z.side} />;
 
+  const side = z.side;
   const page = (children: React.ReactNode) => (
     <View style={[styles.page, { paddingTop: insets.top }]}>
       <ScrollView contentContainerStyle={[styles.body, phone && styles.bodyPhone]}>
         <Pressable
           onPress={goBack}
           accessibilityRole="button"
-          style={styles.back}
+          style={[styles.back, { minHeight: side }]}
           testID="station.back"
         >
           <Text size={15} weight="semibold" style={styles.accent}>
@@ -157,8 +160,9 @@ function KitchenStation({ start }: { start: StationStateName }) {
                   {notSentLine(s, r)}
                 </Text>
               ))}
-              <QuietButton
+              <Quiet
                 label="Got it"
+                side={z.side}
                 onPress={() => setS(dismissNotSent(s))}
                 testID="station.notSent.ok"
               />
@@ -208,8 +212,9 @@ function KitchenStation({ start }: { start: StationStateName }) {
             side={z.side}
             onPick={(id) => setS(pick(s, id))}
           />
-          <QuietButton
+          <Quiet
             label="Close"
+            side={z.side}
             onPress={() => setS(openPick(s, false))}
             testID="station.sheet.close"
           />
@@ -323,7 +328,7 @@ function trayReading(s: StationState, tray: Tray): string {
       .join(', '),
   );
   return [
-    `${tray.label}, ${tray.waiter}, ${plural(tray.plates.length, 'plate', 'plates')}`,
+    `${tray.label}, ${hereLine(tray, s.station ?? 'pass').replaceAll(' · ', ', ')}`,
     flagged.length > 0 ? `Flagged: ${flagged.join('; ')}` : '',
     `From your left: ${plates.join('; ')}`,
   ]
@@ -340,20 +345,32 @@ function Facing({ s, z }: { s: StationState; z: Sizes }) {
       ) : trays.length === 0 ? (
         <Empty words={EMPTY.noTray} />
       ) : (
-        trays.map((t) => <TrayHere key={t.id} s={s} tray={t} z={z} />)
+        trays.map((t, i) => (
+          <TrayHere key={t.id} s={s} tray={t} z={z} first={i === 0 && trays.length > 1} />
+        ))
       )}
     </Section>
   );
 }
 
-function TrayHere({ s, tray, z }: { s: StationState; tray: Tray; z: Sizes }) {
+function TrayHere({
+  s,
+  tray,
+  z,
+  first,
+}: {
+  s: StationState;
+  tray: Tray;
+  z: Sizes;
+  first: boolean;
+}) {
   const rows = faced(s, tray);
   const flagged = flaggedCount(tray);
   return (
     <View
-      style={styles.tray}
+      style={[styles.tray, first && styles.trayFirst]}
       accessible
-      accessibilityLabel={trayReading(s, tray)}
+      accessibilityLabel={`${first ? 'Arrived first. ' : ''}${trayReading(s, tray)}`}
       testID={`station.here.${tray.id}`}
     >
       <View style={styles.trayHead}>
@@ -362,7 +379,7 @@ function TrayHere({ s, tray, z }: { s: StationState; tray: Tray; z: Sizes }) {
             {tray.label}
           </Text>
           <Text size={z.line} weight="medium" style={styles.secondary}>
-            {`${tray.waiter} · ${plural(tray.plates.length, 'plate', 'plates')} · your left at the top`}
+            {hereLine(tray, s.station ?? 'pass')}
           </Text>
         </View>
         {flagged > 0 && <FlaggedCount n={flagged} />}
@@ -385,14 +402,15 @@ function TrayHere({ s, tray, z }: { s: StationState; tray: Tray; z: Sizes }) {
             ) : (
               r.items.map((it) => {
                 const prep = r.preparing.includes(it);
+                const mark = r.marked[it];
                 return (
                   <View key={it} style={styles.itemLine}>
                     <Text size={z.item} weight="bold" style={styles.grow}>
                       {r.course === '' ? it : `${r.course} · ${it}`}
                     </Text>
-                    {r.mark === 'on' && <Chip status="on" big={!z.phone} />}
-                    {r.mark === 'off' && <Chip status="off" big={!z.phone} />}
-                    {prep && r.mark === 'none' && <Chip status="preparing" big={!z.phone} />}
+                    {mark === 'on' && <Chip status="on" big={!z.phone} />}
+                    {mark === 'off' && <Chip status="off" big={!z.phone} />}
+                    {prep && mark == null && <Chip status="preparing" big={!z.phone} />}
                   </View>
                 );
               })
@@ -483,10 +501,11 @@ function Left({
                 {u != null && canUndo(s, l.item) && (
                   <View style={styles.undo}>
                     <Text size={14} style={[styles.secondary, styles.grow]}>
-                      {`Marked ${stateLine(s, l.item).word === 'Ready' ? 'Ready' : 'Preparing'} at ${hm(u.at)}`}
+                      {undoLine(sl.word === 'Ready' ? 'Ready' : 'Preparing', u.at)}
                     </Text>
-                    <QuietButton
+                    <Quiet
                       label="Undo"
+                      side={z.side}
                       onPress={() => setS(undo(s, l.item))}
                       testID={`station.undo.${l.item}`}
                     />
@@ -549,7 +568,7 @@ function Heading({ s, z }: { s: StationState; z: Sizes }) {
   );
 }
 
-function Refused({ s, insets }: { s: StationState; insets: number }) {
+function Refused({ s, insets, side }: { s: StationState; insets: number; side: number }) {
   const r = s.access === 'floor' ? REFUSED.floor : REFUSED.none;
   return (
     <View style={[styles.page, { paddingTop: insets }]}>
@@ -557,7 +576,7 @@ function Refused({ s, insets }: { s: StationState; insets: number }) {
         <Pressable
           onPress={goBack}
           accessibilityRole="button"
-          style={styles.back}
+          style={[styles.back, { minHeight: side }]}
           testID="station.back"
         >
           <Text size={15} weight="semibold" style={styles.accent}>
@@ -571,7 +590,12 @@ function Refused({ s, insets }: { s: StationState; insets: number }) {
           <Text size={16} style={styles.secondary}>
             {r.line}
           </Text>
-          <QuietButton label="Back to the event" onPress={goBack} testID="station.refused.back" />
+          <Quiet
+            label="Back to the event"
+            side={side}
+            onPress={goBack}
+            testID="station.refused.back"
+          />
         </View>
         <DemoOnly title="Demo only">
           <Text size={14} style={styles.secondary}>
@@ -760,6 +784,7 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     borderColor: tokens.colorBorder,
   },
+  trayFirst: { borderWidth: 2, borderColor: tokens.colorAccent },
   trayHead: {
     flexDirection: 'row',
     alignItems: 'flex-start',

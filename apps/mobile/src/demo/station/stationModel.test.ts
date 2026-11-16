@@ -13,6 +13,7 @@ import {
   giveTray,
   goOnline,
   headingTrays,
+  hereLine,
   hereSince,
   hereTrays,
   leftToDish,
@@ -21,6 +22,7 @@ import {
   movedTo,
   notSentLine,
   pick,
+  pickedLine,
   route,
   seed,
   stateLine,
@@ -28,6 +30,7 @@ import {
   takeToTable,
   trayCounts,
   undo,
+  undoLine,
   wait,
   waiterMarks,
   walkHere,
@@ -118,6 +121,10 @@ describe('Ready or Preparing', () => {
     expect(canUndo(wait(s, 2), 'Plantain')).toBe(false);
     expect(stateLine(undo(wait(s, 2), 'Plantain'), 'Plantain').word).toBe('Preparing');
   });
+
+  it('says how long Undo lasts beside it', () => {
+    expect(undoLine('Preparing', at(19, 42))).toBe('Marked Preparing at 19:42 · for 2 minutes');
+  });
 });
 
 describe('Heading here', () => {
@@ -161,6 +168,14 @@ describe('when a tray is here', () => {
     if (t7 == null) throw new Error('Table 7');
     expect(hereSince(t7, 'grill')).toBeNull();
     expect(hereSince(t7, 'fryer')).toBe(at(19, 40));
+  });
+
+  it('reads each tray with its arrival, the first here on top', () => {
+    const s = seed('twoHere');
+    const [first, second] = hereTrays(s);
+    if (first == null || second == null) throw new Error('two trays here');
+    expect(hereLine(first, 'fryer')).toBe('Kunle Ajayi · 3 plates · here since 19:36');
+    expect(hereLine(second, 'fryer')).toBe('Funmi Bakare · 3 plates · here since 19:40');
   });
 
   it('is here at the Pass as it starts', () => {
@@ -207,13 +222,41 @@ describe('As you face it', () => {
   it('shows the waiter’s On and Not on, and Preparing on each plate that needs it', () => {
     const t7 = fresh().trays[1];
     if (t7 == null) throw new Error('Table 7');
-    expect(faced(fresh(), t7).map((r) => r.mark)).toEqual(['none', 'off', 'on']);
+    expect(faced(fresh(), t7).map((r) => r.marked)).toEqual([
+      {},
+      { Plantain: 'off' },
+      { Plantain: 'on' },
+    ]);
     const s = markPreparing(fresh(), 'Plantain', 10);
     expect(faced(s, t7).map((r) => r.preparing)).toEqual([
       ['Plantain'],
       ['Plantain'],
       ['Plantain'],
     ]);
+  });
+
+  it('marks each item on a plate by itself, so an unmarked one still shows Preparing', () => {
+    const tray = {
+      id: 'tg',
+      label: 'Table 5',
+      waiter: 'Kunle Ajayi',
+      startedAt: at(19, 40),
+      paused: false,
+      taken: false,
+      plates: [
+        {
+          seat: 'Seat 1',
+          dish: 'Mixed grill',
+          flags: [],
+          stage: 'Dishing' as const,
+          marks: { Chicken: { v: 'on' as const, at: at(19, 41) } },
+        },
+      ],
+    };
+    const s = markPreparing({ ...fresh(), station: 'grill', trays: [tray] }, 'Grilled fish', 10);
+    const [row] = faced(s, tray);
+    expect(row?.marked).toEqual({ Chicken: 'on' });
+    expect(row?.preparing).toEqual(['Grilled fish']);
   });
 
   it('never carries a guest’s name: seats and flags only', () => {
@@ -292,6 +335,12 @@ describe('picking a station', () => {
     const s = pick(seed('noStation'), 'grill');
     expect(s.station).toBe('grill');
     expect(JSON.stringify(ROSTER)).toBe(before);
+  });
+
+  it('says once that the station is open here and nobody’s station changed', () => {
+    const s = pick(seed('pick'), 'grill');
+    expect(s.moved).toBe('Grill is open on this tablet. Nobody’s station changed.');
+    expect(pickedLine('pass')).toBe('Pass is open on this tablet. Nobody’s station changed.');
   });
 
   it('follows a move by Team with one line', () => {
