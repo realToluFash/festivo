@@ -12,7 +12,7 @@ export const SW = {
   longLabel: '120-character name',
   focusTitle: 'A focused link in the breadcrumb',
   focusLine:
-    'Each link in the Seating breadcrumb as the keyboard reaches it: the ring every control on the page wears, a 2-pixel line in the accent colour on the link and a soft halo 3 pixels beyond it, whole on all four sides at 1280, 375 and 320, beside a chevron and at the ellipsis. The breadcrumb still clips what does not fit, with room for the ring.',
+    'Each link in the Seating breadcrumb as the keyboard reaches it: the ring every control on the page wears, a 2-pixel line in the accent colour on the link and a soft accent halo reaching 5 pixels out from the link, whole on all four sides at 1280, 375 and 320, beside a chevron and at the ellipsis. The breadcrumb still clips what does not fit, with room for the ring.',
   ringAt: '{{w}} px · {{lang}} · {{name}} · focus on {{link}}',
   theName: 'the name',
   floorPlan: 'Floor plan',
