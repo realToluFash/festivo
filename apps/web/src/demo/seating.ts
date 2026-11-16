@@ -742,6 +742,10 @@ export function percentOf(s: number): number {
   return Math.round((s / AT_100) * 100);
 }
 
+export function percentWritten(pct: number, locale = 'en'): string {
+  return new Intl.NumberFormat(locale, { style: 'percent' }).format(pct / 100);
+}
+
 /** Under 50% a table is its outline, name and how full; from 50% its chairs; from 150% each chair is a 44 target. */
 export type Detail = 'out' | 'fit' | 'near';
 

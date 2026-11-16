@@ -52,6 +52,7 @@ import {
   overlap,
   peopleIn,
   percentOf,
+  percentWritten,
   readRoom,
   readingOrder,
   say,
@@ -1653,7 +1654,7 @@ function Seating({
               <div
                 className="st-float st-zoom"
                 role="group"
-                aria-label={say(SW.zoomIs, { pct: `${percentOf(s)}%` })}
+                aria-label={say(SW.zoomIs, { pct: percentWritten(percentOf(s)) })}
               >
                 <button
                   type="button"
@@ -1664,7 +1665,7 @@ function Seating({
                   <Icon name="minus" size={19} weight={2.2} />
                 </button>
                 <span className="st-pct" role="status">
-                  {percentOf(s)}%
+                  {percentWritten(percentOf(s))}
                 </span>
                 <button
                   type="button"
