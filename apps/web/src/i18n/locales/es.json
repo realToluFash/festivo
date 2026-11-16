@@ -366,7 +366,8 @@
     "saved": "Thank-you saved.",
     "removed": "Thank-you removed.",
     "onEveryPage": "Your thank-you is on every guest’s page.",
-    "signed": "{{hosts}}"
+    "signed": "{{hosts}}",
+    "saving": "Guardando…"
   },
   "eventPause": {
     "pause": "Pausar",

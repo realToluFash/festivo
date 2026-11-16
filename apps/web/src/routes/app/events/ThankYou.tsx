@@ -15,7 +15,7 @@ import './thankYou.css';
 /** The field in the card and in End now: the count sits in its description and is not read out while typing. */
 export function ThankYouField({
   id,
-  label,
+  labelShown,
   optional,
   help,
   value,
@@ -24,7 +24,8 @@ export function ThankYouField({
   onChange,
 }: {
   id: string;
-  label: 'shown' | 'unseen';
+  /** False where the card's own heading already names the field. */
+  labelShown: boolean;
   optional: boolean;
   help: string;
   value: string;
@@ -37,7 +38,7 @@ export function ThankYouField({
 
   return (
     <div className="desk-field">
-      <label htmlFor={id} className={label === 'shown' ? 'desk-label' : 'desk-unseen'}>
+      <label htmlFor={id} className={labelShown ? 'desk-label' : 'desk-unseen'}>
         {t('thankYou.title')}
         {optional && <span className="ev-optional">{` · ${t('thankYou.optional')}`}</span>}
       </label>
@@ -157,14 +158,14 @@ export function ThankYouCard({
         <Opened
           label={t('thankYou.title')}
           changed={draft !== line}
-          verb={busy ? t('eventEdit.saving') : t('eventPage.save')}
+          verb={busy ? t('thankYou.saving') : t('eventPage.save')}
           busy={busy}
           onCancel={closed}
           onSave={save}
         >
           <ThankYouField
             id={`${id}-field`}
-            label="unseen"
+            labelShown={false}
             optional={false}
             help={line === '' ? t('thankYou.hint') : t('thankYou.removeHint')}
             value={draft}

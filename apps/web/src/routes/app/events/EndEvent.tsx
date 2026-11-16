@@ -121,7 +121,7 @@ export function EndButton({
             {!callOff && (
               <ThankYouField
                 id={`${id}-thank-you`}
-                label="shown"
+                labelShown
                 optional
                 help={t('thankYou.hint')}
                 value={draft}
