@@ -816,7 +816,7 @@ function Plan({
     return version;
   };
 
-  const sendStep = async (items: Placement[], tool: boolean): Promise<void> => {
+  const sendStep = async (items: Placement[], tool: boolean, saved?: () => void): Promise<void> => {
     const versioned = items.map((item) => ({ ...item, version: baseOf(item) }));
 
     for (let tries = 1; ; tries += 1) {
@@ -834,6 +834,7 @@ function Plan({
         settle(items);
         setNote((was) => (was != null && items.some((item) => item.id === was.id) ? null : was));
         setSave('saved');
+        saved?.();
         return;
       } catch (error) {
         if (error instanceof ApiError && error.status === 412 && tool) {
@@ -879,12 +880,12 @@ function Plan({
     }
   };
 
-  const arrange = (items: Placement[], tool = false) => {
+  const arrange = (items: Placement[], tool = false, saved?: () => void) => {
     if (items.length === 0) return;
     setPlacements((was) => ({ ...was, ...Object.fromEntries(items.map((one) => [one.id, one])) }));
     unsaved.current = null;
     setSave('saving');
-    queue.current = queue.current.then(() => sendStep(items, tool));
+    queue.current = queue.current.then(() => sendStep(items, tool, saved));
   };
 
   const tryAgain = () => {
@@ -915,7 +916,10 @@ function Plan({
     setBar({ tone: 'undo', words, undo });
     setHeard(words);
   };
-  const refuseStep = (words: string) => setBar({ tone: 'amber', words });
+  const refuseStep = (words: string) => {
+    setBar({ tone: 'amber', words });
+    setHeard('');
+  };
   const undone = () => setHeard(t('seating.undone'));
   const undo = () => {
     const back = bar?.undo;
@@ -973,11 +977,8 @@ function Plan({
       return item == null ? [] : [placementOf(item)];
     });
 
-    arrange(moved, true);
-    stepDone(words, () => {
-      arrange(back, true);
-      undone();
-    });
+    arrange(moved, true, () => setHeard(words));
+    setBar({ tone: 'undo', words, undo: () => arrange(back, true, undone) });
   };
 
   const renameStep = (names: { id: string; name: string }[], words: string) => {

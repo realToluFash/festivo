@@ -3408,6 +3408,8 @@ describe('Choosing many and the Selection tools (sc-4717)', () => {
     );
     expect(screen.getByRole('heading', { level: 2, name: '2 chosen' })).toBeDefined();
     expect(screen.queryByRole('button', { name: 'Undo' })).toBeNull();
+    for (const live of document.querySelectorAll('[aria-live]'))
+      expect(live.textContent).not.toContain('lined up');
   });
 
   it('offers none of this without seating.manage', async () => {
