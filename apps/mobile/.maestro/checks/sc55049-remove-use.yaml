@@ -1,0 +1,39 @@
+# sc-55049: an event's existing cover changed, the new photo removed, then saved; screenshots up to 12 s on the page, for the store check. Needs ${METRO_URL}, ${EVENT_ID}.
+appId: host.exp.Exponent
+---
+- runFlow: ../checks/sc52652/open.yaml
+- takeScreenshot: before
+- scrollUntilVisible:
+    element:
+      id: 'event.edit.cover.change'
+    direction: DOWN
+- tapOn:
+    id: 'event.edit.cover.change'
+- extendedWaitUntil:
+    visible: 'Photos'
+    timeout: 15000
+- tapOn:
+    point: '16%,25%'
+- extendedWaitUntil:
+    visible: 'never.there'
+    timeout: 12000
+    optional: true
+- takeScreenshot: uploaded
+- scrollUntilVisible:
+    element:
+      id: 'event.edit.cover.remove'
+    direction: DOWN
+- tapOn:
+    id: 'event.edit.cover.remove'
+- takeScreenshot: removed
+- tapOn:
+    id: 'event.edit.cover.save'
+- extendedWaitUntil:
+    visible: 'Saved'
+    timeout: 10000
+- takeScreenshot: saved
+- extendedWaitUntil:
+    visible: 'never.there'
+    timeout: 12000
+    optional: true
+- takeScreenshot: page-12s
