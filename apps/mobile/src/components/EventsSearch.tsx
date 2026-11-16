@@ -380,15 +380,32 @@ export function EventsFilterMenu({
   const { t } = useTranslation();
   const [level, setLevel] = useState<Level>('top');
   const [picking, setPicking] = useState<Picking | null>(null);
+  const [cameFrom, setCameFrom] = useState<Exclude<Level, 'top'> | null>(null);
   const first = useRef<ViewInstance>(null);
+  const whenRow = useRef<ViewInstance>(null);
+  const hostsRow = useRef<ViewInstance>(null);
   const { locale } = calendar;
   const types = filters.types.map((type) => t(`eventTypes.${type}`));
   const whenNamed = whenWords(filters.when, locale, t);
   const offered = [...hosts, ...filters.hosts.filter((host) => !hosts.includes(host))];
   const close = () => {
     setLevel('top');
+    setCameFrom(null);
     onClose();
   };
+  const back = (from: Exclude<Level, 'top'>) => {
+    setCameFrom(from);
+    setLevel('top');
+  };
+
+  // The back row under TalkBack's focus is gone with its level, so focus goes back to the row that opened it rather than wherever TalkBack picks (sc-53520).
+  useEffect(() => {
+    if (Platform.OS !== 'android' || level !== 'top' || cameFrom == null) return;
+    const row = { type: first, when: whenRow, hosts: hostsRow }[cameFrom];
+    const wait = setTimeout(() => moveScreenReaderFocus(row.current));
+
+    return () => clearTimeout(wait);
+  }, [level, cameFrom]);
   const between = filters.when.kind === 'between' ? filters.when : null;
   const pickDay = (end: 'from' | 'to') => {
     if (between == null) return;
@@ -439,6 +456,7 @@ export function EventsFilterMenu({
             testID="events.filter.type"
           />
           <TopRow
+            ref={whenRow}
             title={t('eventsSearch.when')}
             picks={[whenNamed]}
             value={whenNamed}
@@ -446,6 +464,7 @@ export function EventsFilterMenu({
             testID="events.filter.when"
           />
           <TopRow
+            ref={hostsRow}
             title={t('eventsSearch.hostedBy')}
             picks={filters.hosts}
             value={
@@ -473,7 +492,7 @@ export function EventsFilterMenu({
         </>
       )}
       {level === 'type' && (
-        <Drilled title={t('eventsSearch.type')} onBack={() => setLevel('top')}>
+        <Drilled title={t('eventsSearch.type')} onBack={() => back('type')}>
           {EVENT_TYPES.map((type) => (
             <Check
               key={type}
@@ -486,7 +505,7 @@ export function EventsFilterMenu({
         </Drilled>
       )}
       {level === 'when' && (
-        <Drilled title={t('eventsSearch.when')} onBack={() => setLevel('top')}>
+        <Drilled title={t('eventsSearch.when')} onBack={() => back('when')}>
           {WHENS.map(({ kind, word }) => (
             <Radio
               key={kind}
@@ -520,7 +539,7 @@ export function EventsFilterMenu({
         </Drilled>
       )}
       {level === 'hosts' && (
-        <Drilled title={t('eventsSearch.hostedBy')} onBack={() => setLevel('top')}>
+        <Drilled title={t('eventsSearch.hostedBy')} onBack={() => back('hosts')}>
           {offered.map((host) => (
             <Check
               key={host}

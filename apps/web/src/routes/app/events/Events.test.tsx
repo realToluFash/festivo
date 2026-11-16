@@ -298,16 +298,6 @@ describe('Events', () => {
     );
     expect(screen.queryByRole('alert')).toBeNull();
   });
-
-  it("counts the organisation's events on the dashboard", async () => {
-    signedIn();
-    answering({
-      'GET /api/orgs/org_1/events': listed([event()], [event({ id: 'ev_2' })]),
-    });
-    at('/app/guests');
-
-    expect(await screen.findByText('2 events')).toBeDefined();
-  });
 });
 
 describe('Events Home (sc-3594)', () => {
@@ -1176,7 +1166,7 @@ describe('New event', () => {
     await form();
 
     fill('event-name', 'Owambe');
-    fireEvent.click(document.querySelector('.event-back')!);
+    fireEvent.click(document.querySelector('.ev-crumb a')!);
 
     const dialog = await screen.findByRole('alertdialog', { name: 'Leave without saving?' });
     expect(within(dialog).getByText('What you typed for this event will be lost.')).toBeDefined();
@@ -1214,7 +1204,7 @@ describe('New event', () => {
     answering({ 'GET /api/orgs/org_1/events': listed([]) });
     await form();
 
-    fireEvent.click(document.querySelector('.event-back')!);
+    fireEvent.click(document.querySelector('.ev-crumb a')!);
 
     expect(await screen.findByRole('heading', { level: 1, name: 'Events' })).toBeDefined();
     expect(screen.queryByRole('alertdialog')).toBeNull();
@@ -1627,21 +1617,22 @@ describe("Inside an event, the navigation menu is the event's (sc-22103)", () =>
     at('/app/events/ev_1');
     await screen.findByRole('heading', { level: 1, name: 'Adaeze and Tunde' });
 
-    fireEvent.click(eventNav().getByRole('link', { name: 'Menu' }));
+    fireEvent.click(eventNav().getByRole('link', { name: 'Messages' }));
 
-    const panel = (await screen.findByRole('heading', { level: 2, name: 'Menu' })).closest(
+    const panel = (await screen.findByRole('heading', { level: 2, name: 'Messages' })).closest(
       'section',
     )!;
-    expect(within(panel).getByText('The menu for this event is coming.')).toBeDefined();
+    expect(within(panel).getByText('Messages for this event are coming.')).toBeDefined();
     expect(within(panel).queryAllByRole('button')).toHaveLength(0);
     expect(within(panel).queryAllByRole('link')).toHaveLength(0);
     expect(screen.getByRole('heading', { level: 1, name: 'Adaeze and Tunde' })).toBeDefined();
-    expect(current()).toBe('Menu');
+    expect(current()).toBe('Messages');
   });
 
   it.each([
     ['/app/events/ev_1/guests', 'Guests'],
     ['/app/events/ev_1/dates', 'Overview'],
+    ['/app/events/ev_1/run', 'Schedule'],
   ])('marks the area of %s as current', async (path, area) => {
     signedIn();
     answering({ 'GET /api/events/ev_1': () => json({ event: event({ milestones: [] }) }) });
@@ -1686,8 +1677,8 @@ describe("Inside an event, the navigation menu is the event's (sc-22103)", () =>
     render(<RouterProvider router={router} />);
     await screen.findByRole('heading', { level: 1, name: 'Adaeze and Tunde' });
 
-    fireEvent.click(eventNav().getByRole('link', { name: 'Menu' }));
-    await screen.findByRole('heading', { level: 2, name: 'Menu' });
+    fireEvent.click(eventNav().getByRole('link', { name: 'Messages' }));
+    await screen.findByRole('heading', { level: 2, name: 'Messages' });
     fireEvent.click(eventNav().getByRole('link', { name: 'Staff' }));
     await screen.findByRole('heading', { level: 1, name: 'Staff' });
     fireEvent.click(eventNav().getByRole('link', { name: 'Reports' }));
@@ -2022,10 +2013,10 @@ describe("An event's Overview (sc-22103)", () => {
     const ahead = { startsAt: '2030-11-14T16:00:00+01:00', endsAt: '2030-11-15T02:00:00+01:00' };
     signedIn();
     answering({ 'GET /api/events/ev_1': () => json({ event: event(ahead) }) });
-    at('/app/events/ev_1/menu');
+    at('/app/events/ev_1/messages');
 
     await screen.findByRole('heading', { level: 1, name: 'Adaeze and Tunde' });
-    expect(screen.getByRole('heading', { level: 2, name: 'Menu' })).toBeDefined();
+    expect(screen.getByRole('heading', { level: 2, name: 'Messages' })).toBeDefined();
     expect(screen.getByRole('button', { name: 'Make live' })).toBeDefined();
     expect(screen.queryByRole('region', { name: 'Details' })).toBeNull();
   });
@@ -2691,12 +2682,12 @@ describe('Change dates opens Dates in place, and Edit details is gone (sc-48602)
   it('opens from the row atop the event’s other areas, and Back returns to the area', async () => {
     signedIn();
     answering({ 'GET /api/events/ev_1': () => json({ event: event(PAST) }) });
-    from('/app/events/ev_1/menu');
+    from('/app/events/ev_1/messages');
     fireEvent.click(await screen.findByRole('link', { name: 'Change dates' }));
 
     await datesOpened();
     await act(() => router.navigate(-1));
-    expect(router.state.location.pathname).toBe('/app/events/ev_1/menu');
+    expect(router.state.location.pathname).toBe('/app/events/ev_1/messages');
   });
 
   it('opens from Make live’s refusal when the end passed meanwhile, on the event’s own page', async () => {
@@ -3777,7 +3768,7 @@ describe('The cover (sc-3590)', () => {
 
   beforeEach(() => {
     nextImage = { width: 2400, height: 1600 };
-    URL.createObjectURL = () => 'blob:chosen';
+    URL.createObjectURL = (chosen: Blob | MediaSource) => `blob:${(chosen as File).name}`;
     URL.revokeObjectURL = () => undefined;
     vi.stubGlobal(
       'Image',
@@ -3892,7 +3883,7 @@ describe('The cover (sc-3590)', () => {
     fireEvent.click(within(dialog).getByRole('button', { name: 'Use this photo' }));
     await screen.findByRole('button', { name: 'Change photo' });
 
-    fireEvent.click(document.querySelector('.event-back')!);
+    fireEvent.click(document.querySelector('.ev-crumb a')!);
     fireEvent.click(
       within(await screen.findByRole('alertdialog', { name: 'Leave without saving?' })).getByRole(
         'button',
@@ -3993,7 +3984,7 @@ describe('The cover (sc-3590)', () => {
 
       pick(file());
       const slider = await within(part()).findByLabelText('Photo position');
-      expect(part().querySelector('.ev-preview img')?.getAttribute('src')).toBe('blob:chosen');
+      expect(part().querySelector('.ev-preview img')?.getAttribute('src')).toBe('blob:arch.jpg');
       fireEvent.change(slider, { target: { value: '80' } });
       expect(slider.getAttribute('aria-valuetext')).toBe('Showing the bottom of the photo');
       expect(within(part()).getByText('Showing the bottom of the photo')).toBeDefined();
@@ -4155,6 +4146,29 @@ describe('The cover (sc-3590)', () => {
       );
       expect(within(part()).queryByText(/Try again/u)).toBeNull();
       expect(part().querySelector('.ev-preview.is-photo')).not.toBeNull();
+    });
+
+    it('a photo that uploads after a refused save keeps the refusal at the top (sc-53442)', async () => {
+      const { sent } = await opened(null, {
+        'PUT /api/events/ev_1/cover': () => problem(403, 'permission_required'),
+      });
+      const refusal = 'Nothing was changed. Your role does not include the permission this needs.';
+
+      pick(file());
+      await within(part()).findByLabelText('Photo position');
+      fireEvent.click(within(part()).getByRole('button', { name: 'Use this photo' }));
+      expect((await within(part()).findByRole('alert')).textContent).toContain(refusal);
+
+      pick(file('two.jpg'));
+      await waitFor(() =>
+        expect(
+          sent.filter(({ line }) => line === 'POST /api/orgs/org_1/event-cover-uploads/preview'),
+        ).toHaveLength(2),
+      );
+      await waitFor(() => expect(off('Use this photo')).toBe(false));
+
+      expect(within(part()).getByRole('alert').textContent).toContain(refusal);
+      expect(part().querySelector('.ev-preview img')?.getAttribute('src')).toBe('blob:two.jpg');
     });
 
     it('refuses a description over 250 characters and saves nothing', async () => {

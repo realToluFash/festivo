@@ -1,4 +1,4 @@
-/** Where a table's chairs sit (sc-4000); the API's TableGeometry holds the same gaps for the floor a table takes. */
+/** Where a table's chairs sit (sc-4000); the API's FloorGeometry holds the same gaps for the floor a table takes. */
 
 export type TableShapeName = 'round' | 'rectangular' | 'head' | 'cocktail';
 

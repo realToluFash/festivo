@@ -5,6 +5,7 @@ import {
   formatDay,
   formatTimeOfDay,
   lockLiftsAt,
+  requestMessageLength,
 } from '@soirely/domain';
 import { Redirect, router, useLocalSearchParams } from 'expo-router';
 import { type ReactNode, useEffect, useRef, useState } from 'react';
@@ -30,8 +31,8 @@ import { PageFrame } from '../../src/components/Welcome.tsx';
 import { holdLink } from '../../src/heldLink.ts';
 import { dateLocale } from '../../src/i18n/index.ts';
 import { useFormChecks } from '../../src/kit/formChecks.ts';
-import { InsideField } from '../../src/steps/InsideField.tsx';
-import { Heading, Plain, Says, stepTitle, useStepTitleSize } from '../../src/steps/Lines.tsx';
+import { Heading, Plain, stepTitle, useStepTitleSize } from '../../src/steps/Lines.tsx';
+import { MessageBox } from '../../src/steps/MessageBox.tsx';
 import { NavBar, StepScreen } from '../../src/steps/StepScreen.tsx';
 import { tokens } from '../../src/theme/tokens.ts';
 import { unreachableFrom } from '../../src/unreachable.ts';
@@ -335,7 +336,7 @@ function Ask({
   const checks = useFormChecks(
     ['message'] as const,
     (_, value) =>
-      Array.from(value.trim()).length > REQUEST_MESSAGE_MAXIMUM
+      requestMessageLength(value) > REQUEST_MESSAGE_MAXIMUM
         ? t('requestToJoin.messageLong', { count: REQUEST_MESSAGE_MAXIMUM })
         : null,
     () => focusChecked(input),
@@ -443,7 +444,7 @@ function Ask({
         </View>
       )}
       <View style={styles.below}>
-        <InsideField
+        <MessageBox
           ref={input}
           label={t('requestToJoin.messageOptional')}
           value={message}
@@ -453,21 +454,15 @@ function Ask({
             checks.edited('message', text);
           }}
           onBlur={() => checks.left('message', message)}
-          state={error != null ? 'blank' : 'plain'}
           line={error}
+          count={t('requestToJoin.messageHelp', {
+            count: REQUEST_MESSAGE_MAXIMUM,
+            length: requestMessageLength(message),
+          })}
           submitting={busy}
-          multiline
-          autoCapitalize="sentences"
           testID="requestToJoin.message"
         />
-        {error != null && <Says words={error} />}
       </View>
-      <Plain>
-        {t('requestToJoin.messageHelp', {
-          count: REQUEST_MESSAGE_MAXIMUM,
-          length: Array.from(message.trim()).length,
-        })}
-      </Plain>
       <Plain top={tokens.spaceXl} ink>
         {t('requestToJoin.whatTheySee', { organisation })}
       </Plain>

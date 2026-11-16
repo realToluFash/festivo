@@ -1,0 +1,5 @@
+# sc-1404: leaves the run view for the demo index, so the next openLink of the run view mounts it afresh.
+appId: host.exp.Exponent
+---
+- openLink: ${METRO_URL}/--/demo
+- extendedWaitUntil: { visible: { id: 'never.there' }, timeout: 3000, optional: true }

@@ -39,6 +39,10 @@ enum ErrorCode: string
     case SeatingPlanExists = 'seating_plan_exists';
     case SeatingSectionLimit = 'seating_section_limit';
     case SeatingItemsOutside = 'seating_items_outside';
+    case ScheduleItemLimit = 'schedule_item_limit';
+    case ItemStarted = 'item_started';
+    case ItemNotStarted = 'item_not_started';
+    case ItemFinished = 'item_finished';
     case GuestAlreadyListed = 'guest_already_listed';
     case StaffNumberShared = 'staff_number_shared';
     case RepliesClosed = 'replies_closed';
@@ -46,6 +50,12 @@ enum ErrorCode: string
     case GuestReplied = 'guest_replied';
     case ReplyIsTheirs = 'reply_is_theirs';
     case GuestNotMarkedByHand = 'guest_not_marked_by_hand';
+    case DishNameShared = 'dish_name_shared';
+    case DishInUse = 'dish_in_use';
+    case MenuCourseLimit = 'menu_course_limit';
+    case MenuCoursePicked = 'menu_course_picked';
+    case MenuDishPicked = 'menu_dish_picked';
+    case MenuSameOneDish = 'menu_same_one_dish';
 
     case AlreadyAMember = 'already_a_member';
     case EmailTaken = 'email_taken';
@@ -140,7 +150,7 @@ enum ErrorCode: string
             self::PreconditionRequired => 428,
             self::EventCurrencyInUse, self::EventStateInvalid, self::EventConcluded, self::EventPaused, self::EventHostRequired, self::EventCallOffFirst => 409,
             self::PlanLimit => 403,
-            self::SeatingPlanExists, self::SeatingSectionLimit, self::SeatingItemsOutside, self::GuestAlreadyListed, self::StaffNumberShared, self::RepliesClosed, self::RepliesOpen, self::GuestReplied, self::ReplyIsTheirs, self::GuestNotMarkedByHand => 409,
+            self::SeatingPlanExists, self::SeatingSectionLimit, self::SeatingItemsOutside, self::ScheduleItemLimit, self::ItemStarted, self::ItemNotStarted, self::ItemFinished, self::GuestAlreadyListed, self::StaffNumberShared, self::RepliesClosed, self::RepliesOpen, self::GuestReplied, self::ReplyIsTheirs, self::GuestNotMarkedByHand, self::DishNameShared, self::DishInUse, self::MenuCourseLimit, self::MenuCoursePicked, self::MenuDishPicked, self::MenuSameOneDish => 409,
             self::Unauthenticated, self::InvalidCredentials, self::InvalidRefreshToken, self::OAuthTokenInvalid, self::TwoFactorChallengeInvalid, self::SessionTimedOut => 401,
             self::Forbidden, self::PermissionRequired, self::GrantNotHeld, self::OwnEventRole, self::AccountUnverified, self::ProfileIncomplete, self::TwoFactorRequired, self::ProofRequired => 403,
             self::OAuthOnly, self::OAuthOnlyUnlinked, self::OrganisationTwoFactorRequired, self::OrganisationTwoFactorOverdue, self::OwnerRequired => 403,

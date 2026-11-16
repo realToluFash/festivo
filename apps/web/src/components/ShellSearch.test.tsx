@@ -75,7 +75,7 @@ describe('Search (sc-39534)', () => {
 
     const field = screen.getByRole('combobox', { name: 'Search' });
     expect(document.activeElement).toBe(field);
-    await waitFor(() => expect(field.getAttribute('placeholder')).toBe('Search events and guests'));
+    await waitFor(() => expect(field.getAttribute('placeholder')).toBe('Search'));
     expect(screen.getByText('Find an event or a guest.')).toBeTruthy();
   });
 
@@ -116,7 +116,7 @@ describe('Search (sc-39534)', () => {
     fireEvent.change(screen.getByRole('combobox'), { target: { value: 'ines' } });
 
     const guests = await screen.findByRole('group', { name: 'Guests, 23 matches' });
-    expect(search).toHaveBeenCalledWith('org_1', 'ines', expect.any(AbortSignal));
+    expect(search).toHaveBeenCalledWith('org_1', 'ines', { signal: expect.any(AbortSignal) });
     expect(within(guests).getAllByRole('option')).toHaveLength(2);
     expect(screen.queryByRole('group', { name: /^Events/ })).toBeNull();
     expect(
@@ -172,7 +172,7 @@ describe('Search (sc-39534)', () => {
     expect(screen.getByRole('status').textContent).toBe('Searching…');
     expect(await screen.findByRole('group', { name: 'Guests, 23 matches' })).toBeTruthy();
     expect(search).toHaveBeenCalledTimes(2);
-    expect(search).toHaveBeenLastCalledWith('org_1', 'ines', expect.any(AbortSignal));
+    expect(search).toHaveBeenLastCalledWith('org_1', 'ines', { signal: expect.any(AbortSignal) });
   });
 
   it('says Search needs a connection, with no Try again, when the API cannot be reached', async () => {

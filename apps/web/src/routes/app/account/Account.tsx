@@ -2,6 +2,7 @@ import { useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 
 import { AccountHeader } from '../../../components/AccountHeader.tsx';
+import { LanguageBlock } from '../../../components/AccountParts.tsx';
 import { Refreshing } from '../../../components/OfflineBand.tsx';
 import { useOffline } from '../../../offline.ts';
 import { usePhoneWidth } from '../../../phoneWidth.ts';
@@ -23,6 +24,7 @@ function PhoneAccount() {
   const title = useRef<HTMLHeadingElement>(null);
   const [loaded, setLoaded] = useState(false);
   const [refresh, setRefresh] = useState(0);
+  const [chosen, setChosen] = useState<string | null>(null);
   const { watch, refreshing } = useOffline({
     loaded,
     reload: () => setRefresh((n) => n + 1),
@@ -45,6 +47,13 @@ function PhoneAccount() {
       />
 
       <TimeZoneCard timezone={session.timezone} onSaved={() => refreshAccount()} />
+
+      <div className="desk">
+        <LanguageBlock
+          onChosen={setChosen}
+          said={chosen == null ? null : t('account.languageSaved', { language: chosen })}
+        />
+      </div>
     </div>
   );
 }

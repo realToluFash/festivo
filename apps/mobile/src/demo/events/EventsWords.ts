@@ -150,8 +150,7 @@ export const W = {
   lastHost:
     'Guests can see this event, so it needs at least one host. You can still change this name.',
   hostBlank: 'Enter a name or remove this host.',
-  searchTypes: 'Search types',
-  currencyInUse: 'The currency cannot change once amounts are recorded against this event.',
+  searchCurrencies: 'Search currencies',
   nameBlank: 'Give the event a name.',
   coverPhoto: 'Cover photo',
   useThisPhoto: 'Use this photo',
@@ -254,6 +253,7 @@ export const COMING: Record<Exclude<AreaKey, 'overview' | 'people'>, string> = {
 };
 
 export const say = {
+  noCurrency: (typed: string) => `No currency matches “${typed}”.`,
   inDays: (count: number) => (count === 1 ? 'in 1 day' : `in ${count} days`),
   daysAgo: (count: number) => (count === 1 ? '1 day ago' : `${count} days ago`),
   days: (first: string, last: string) => `${first} to ${last}`,

@@ -84,5 +84,21 @@
     "validation.seating_table_does_not_turn": "Seules les tables rectangulaires et d’honneur peuvent pivoter.",
     "validation.seating_table_rotation_steps": "Choisissez une rotation par pas de 15°, de 0° à 345°.",
     "validation.seating_table_no_such_seat": "Choisissez des places de 1 à {max, number}, chacune une seule fois.",
-    "validation.seating_table_section_unknown": "Choisissez l’une des zones de ce plan, ou aucune zone."
+    "validation.seating_table_section_unknown": "Choisissez l’une des zones de ce plan, ou aucune zone.",
+    "run_of_show.item_limit": "Ce programme compte {max, number, ::group-auto} éléments, le maximum pour un événement. Supprimez-en un pour en ajouter un autre. Rien n’a été enregistré.",
+    "seating.seat_default_name": "Place {n}",
+    "validation.seating_row_label_required": "Indiquez un libellé pour la rangée.",
+    "validation.seating_row_label_taken": "Ce plan a déjà une rangée avec le libellé {label}.",
+    "validation.seating_row_spacing_between": "Indiquez un espacement compris entre {min} et {max}.",
+    "validation.seating_seat_name_required": "Indiquez un nom pour la place.",
+    "validation.seating_seat_name_taken": "Ce plan a déjà une place nommée {name}.",
+    "validation.seating_arrange_nothing": "Envoyez au moins une table, une rangée ou une place à déplacer.",
+    "validation.seating_arrange_table_only": "Ici, seule une table change de taille.",
+    "validation.seating_arrange_twice": "Choisissez chaque élément une seule fois.",
+    "validation.seating_seat_does_not_turn": "Une place isolée ne pivote pas.",
+    "validation.seating_outside_room": "{name} se trouverait hors de la salle.",
+    "validation.seating_renumber_taken": "{name} est déjà le nom d’une table que vous n’avez pas choisie.",
+    "validation.seating_copy_outside_room": "La copie de {name} se trouverait hors de la salle : rien n’a été ajouté.",
+    "validation.seating_row_outside_room": "La rangée {label} se trouverait hors de la salle.",
+    "seating.no_such_item": "Cette table, rangée ou place ne figure pas sur le plan."
 }

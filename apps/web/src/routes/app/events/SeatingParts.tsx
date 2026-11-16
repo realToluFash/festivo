@@ -4,12 +4,19 @@ import {
   type OrganisationEvent,
   type Seating,
   type SeatingPlan,
+  type SeatingRow,
+  type SeatingSection,
+  type SeatingTable,
+  type SeatingWithRow,
+  type SeatingWithSeat,
   type SeatingWithTable,
+  type SingleSeat,
 } from '@soirely/api-client';
 import { type KeyboardEvent, type ReactNode, useEffect, useId, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 
 import { Glyph } from '../../../components/Glyph.tsx';
+import { type Placement, type Placing } from './seatingItems.ts';
 
 export type Panel =
   | { kind: 'start' }
@@ -17,12 +24,17 @@ export type Panel =
   | { kind: 'sectionAdd' }
   | { kind: 'sectionEdit'; id: string }
   | { kind: 'table'; id: string; said?: string }
-  | { kind: 'chair'; id: string; seat: number };
+  | { kind: 'chair'; id: string; seat: number }
+  | { kind: 'row'; id: string; said?: string; seat?: number }
+  | { kind: 'seat'; id: string; said?: string };
 
 export type Asking =
   | { kind: 'deletePlan' }
   | { kind: 'deleteSection'; id: string }
-  | { kind: 'deleteTable'; id: string };
+  | { kind: 'deleteTable'; id: string }
+  | { kind: 'deleteRow'; id: string }
+  | { kind: 'deleteSeat'; id: string }
+  | { kind: 'deleteItems'; ids: string[] };
 
 /** A room size refused because these tables would sit outside it (sc-4000): they are outlined, the new wall dashed. */
 export interface Outside {
@@ -31,28 +43,48 @@ export interface Outside {
   cm: number;
 }
 
+export type Placed = SeatingWithTable | SeatingWithRow | SeatingWithSeat;
+
+export interface TableNote {
+  id: string;
+  line: string;
+}
+
 export interface PlanApi {
   event: OrganisationEvent;
   system: MeasurementSystem;
   plan: SeatingPlan | null;
   readOnly: boolean;
-  /** Sends one change; a 412 reloads the plan and says who changed it first. Returns the field's refusal, if any. */
+  /** Sends one change once the ones before it have answered; a 412 reloads the plan and says who changed it first. Returns the field's refusal, if any. */
   send: (
-    change: () => Promise<Seating | SeatingWithTable>,
+    change: () => Promise<Seating | Placed>,
     field?: string,
     refusal?: (error: ApiError) => string | null,
   ) => Promise<string | null>;
-  /** Adds or copies a table: the one saved, or null with the notice saying why. */
-  place: (change: () => Promise<SeatingWithTable>) => Promise<{ id: string; name: string } | null>;
+  /** The item as the newest answer has it, so a change sent after another carries its version. */
+  newest: <T extends SeatingPlan | SeatingSection | SeatingTable | SeatingRow | SingleSeat>(
+    item: T,
+  ) => T;
+  /** Adds or copies a table, a row or a seat: the one saved (a row named by its label), or null with the notice saying why. */
+  place: (
+    change: () => Promise<Placed>,
+  ) => Promise<{ id: string; name: string; seats: number } | null>;
   /** True once deleted; otherwise the notice says why, on the panel the ask was opened from. */
   remove: (change: () => Promise<Seating>) => Promise<boolean>;
   adopt: (seating: Seating) => void;
   /** Counts the 412s: a form keyed on it reloads what a colleague saved. */
   reloads: number;
   notice: string | null;
+  /** A table's line after a shape change, until the next change saved to that table, a move or a turn among them. */
+  note: TableNote | null;
+  keepNote: (note: TableNote | null) => void;
   open: (panel: Panel | null) => void;
   ask: (asking: Asking) => void;
   showOutside: (outside: Outside | null) => void;
+  /** Moves, turns or resizes as one step, kept on screen until it is saved (sc-5028). */
+  arrange: (items: Placement[]) => void;
+  /** Add, then a click on the floor places it. */
+  startPlacing: (placing: Placing) => void;
 }
 
 export function Line({
@@ -90,7 +122,7 @@ export function BackHead({
 }: {
   title: string;
   line?: string;
-  onClose: () => void;
+  onClose?: () => void;
 }) {
   const { t } = useTranslation();
 
@@ -100,21 +132,23 @@ export function BackHead({
         <h2 data-focus="title" tabIndex={-1}>
           {title}
         </h2>
-        <button
-          type="button"
-          className="st-icon-button"
-          aria-label={t('seating.close')}
-          onClick={onClose}
-        >
-          <Glyph name="clear" size={19} weight={2.2} />
-        </button>
+        {onClose != null && (
+          <button
+            type="button"
+            className="st-icon-button"
+            aria-label={t('seating.close')}
+            onClick={onClose}
+          >
+            <Glyph name="clear" size={19} weight={2.2} />
+          </button>
+        )}
       </div>
       {line != null && <p className="st-line">{line}</p>}
     </div>
   );
 }
 
-/** A labelled field that applies on Enter or on leaving it (pm, 7 Nov 2026): a refusal is said beside it and nothing is saved. */
+/** A labelled field that applies on Enter or on leaving it (pm, 7 Nov 2026): a refusal is said beside it and nothing is saved. Esc undoes first, then calls `onLeave` (sc-55937). */
 export function Field({
   fieldKey,
   label,
@@ -122,9 +156,9 @@ export function Field({
   unit,
   optional = false,
   hint,
-  maxLength,
   inputMode = 'text',
   onCommit,
+  onLeave,
 }: {
   fieldKey: string;
   label: string;
@@ -132,9 +166,9 @@ export function Field({
   unit?: string | undefined;
   optional?: boolean;
   hint?: string | undefined;
-  maxLength?: number;
   inputMode?: 'text' | 'decimal';
   onCommit: (text: string) => Promise<string | null> | string | null;
+  onLeave?: (() => void) | undefined;
 }) {
   const { t } = useTranslation();
   const id = useId();
@@ -168,6 +202,10 @@ export function Field({
     } else if (event.key === 'Escape') {
       event.stopPropagation();
       editing.current = false;
+      if (onLeave != null && draft === value && error == null) {
+        onLeave();
+        return;
+      }
       setDraft(value);
       setError(null);
     }
@@ -190,7 +228,6 @@ export function Field({
           type="text"
           inputMode={inputMode}
           value={draft}
-          maxLength={maxLength}
           spellCheck={false}
           autoComplete="off"
           aria-invalid={error != null}
@@ -268,5 +305,15 @@ export function Added({ children }: { children: ReactNode }) {
       <Glyph name="tick" size={16} weight={2.4} />
       <span>{children}</span>
     </p>
+  );
+}
+
+export type ShapeGlyph = 'round' | 'rect' | 'head' | 'cocktail' | 'row' | 'seat1';
+
+export function ShapeTile({ glyph }: { glyph: ShapeGlyph }) {
+  return (
+    <span className="st-shape-tile is-36" aria-hidden="true">
+      <Glyph name={glyph} size={22} weight={1.9} />
+    </span>
   );
 }

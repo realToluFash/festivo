@@ -45,7 +45,7 @@ final class AccountNameTest extends ApiTestCase
     {
         $user = $this->registered('zoe@example.com', 'Zoe');
 
-        foreach (["Zoë O'Brien-Núñez", '李小龍', Str\repeat('a', User::NAME_MAXIMUM)] as $name) {
+        foreach (["Zoë O'Brien-Núñez", '李小龍', Str\repeat('a', User::NAME_MAXIMUM), Str\repeat("\u{1EB9}\u{0300}", User::NAME_MAXIMUM), Str\repeat("e\u{0323}\u{0300}", User::NAME_MAXIMUM), Str\repeat('a', User::NAME_MAXIMUM - 3) . "👨\u{200D}👩\u{200D}👧 🇳🇬"] as $name) {
             self::assertSame(['name' => $name], $this->call('PUT', '/api/auth/name', ['name' => $name], $user));
             self::assertSame($name, $this->fresh($user)->getName());
         }
@@ -65,7 +65,10 @@ final class AccountNameTest extends ApiTestCase
     {
         $user = $this->registered('blank@example.com', 'Folake');
 
-        foreach (['   ' => 'Enter your name.', Str\repeat('é', User::NAME_MAXIMUM + 1) => 'Shorten your name to 180 characters or fewer.'] as $typed => $message) {
+        $tooLong = 'Shorten your name to 180 characters or fewer.';
+        $refusals = ['   ' => 'Enter your name.', Str\repeat('é', User::NAME_MAXIMUM + 1) => $tooLong, Str\repeat("e\u{0323}\u{0300}", User::NAME_MAXIMUM + 1) => $tooLong, 'a' . Str\repeat("\u{0301}", 4 * User::NAME_MAXIMUM) => $tooLong];
+
+        foreach ($refusals as $typed => $message) {
             $body = $this->call('PUT', '/api/auth/name', ['name' => $typed], $user);
 
             self::assertSame(422, $this->client->getResponse()->getStatusCode());

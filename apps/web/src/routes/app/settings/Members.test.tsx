@@ -24,7 +24,6 @@ function role(id: string, seededAs: string, permissions: string[]) {
     removable: false,
     permissions,
     holders: 1,
-    holderNames: [{ name: 'Folake Adeyemi', suspended: false }],
   };
 }
 
@@ -2040,5 +2039,45 @@ describe('People a page at a time (sc-49170)', () => {
 
     expect(await page().findByRole('button', { name: /^Guest 51/ })).toBeDefined();
     expect(page().queryByRole('alert')).toBeNull();
+  });
+
+  it('starts a change of option from its first page, whatever Show more had shown before', async () => {
+    signedIn();
+    const FORMER = member({
+      id: 'm_gone',
+      user: { id: 'u_gone', name: 'Zara Gone', email: null },
+      role: ADMIN,
+      self: false,
+      status: 'left_or_removed',
+      former: 'removed',
+    });
+    answering({
+      ...READS,
+      'GET /api/orgs/org_1/members': () => json({ ...CROWD, members: [...CROWD.members, FORMER] }),
+    });
+    const showMore = async () => {
+      fireEvent.click(await page().findByRole('button', { name: 'Show more' }));
+      return (await page().findByRole('button', { name: /^Guest 51/ })).closest('ul');
+    };
+    open();
+
+    await showMore();
+    fireEvent.click(page().getByRole('button', { name: 'All · 53' }));
+    fireEvent.click(page().getByRole('menuitemradio', { name: /^Invited/ }));
+    fireEvent.click(page().getByRole('button', { name: /^Invited/ }));
+    fireEvent.click(page().getByRole('menuitemradio', { name: /^All/ }));
+
+    expect(await page().findByText('Showing 50 of 53')).toBeDefined();
+    expect(page().queryByRole('button', { name: /^Guest 51/ })).toBeNull();
+
+    const people = await showMore();
+    fireEvent.click(page().getByRole('button', { name: 'All · 53' }));
+    fireEvent.click(page().getByRole('menuitemradio', { name: /^Former/ }));
+
+    expect(await page().findByText('Zara Gone')).toBeDefined();
+    expect(page().getByText('Zara Gone').closest('ul')).not.toBe(people);
+    expect(String(vi.mocked(globalThis.fetch).mock.calls.at(-1)?.[0])).toMatch(
+      /\/members\?show=former$/,
+    );
   });
 });

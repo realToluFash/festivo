@@ -41,7 +41,7 @@
   height: var(--sizeHit);
 }
 
-.ev .ev-field input {
+.ev-field input {
   flex: 1;
   min-width: 0;
   height: 100%;
@@ -54,11 +54,11 @@
   appearance: none;
 }
 
-.ev .ev-field input:focus-visible {
+.ev-field input:focus-visible {
   box-shadow: none;
 }
 
-.ev .ev-field input::placeholder {
+.ev-field input::placeholder {
   color: var(--colorInkSecondary);
   opacity: 1;
 }

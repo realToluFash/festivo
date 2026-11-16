@@ -1096,7 +1096,6 @@ describe('a browser never holds the refresh token', () => {
               seededAs: 'administrator',
               permissions: ['members.read'],
               holders: 1,
-              holderNames: [{ name: 'Julien Moreau', suspended: false }],
             },
           ],
           areas: [],
@@ -1126,10 +1125,6 @@ describe('a browser never holds the refresh token', () => {
       removable: true,
       permissions: ['events.read'],
       holders: 2,
-      holderNames: [
-        { name: 'Ada Okeke', suspended: false },
-        { name: 'Émeka Obi', suspended: true },
-      ],
     };
 
     const client = new ApiClient({
@@ -1155,7 +1150,7 @@ describe('a browser never holds the refresh token', () => {
     await client.deleteRole('org_1', 'role_6', 'role_5');
 
     expect(catalogue.roles[0]?.name).toBe('Door team');
-    expect(catalogue.roles[0]?.holderNames).toEqual(door.holderNames);
+    expect(catalogue.roles[0]?.holders).toBe(2);
     expect(catalogue.areas).toEqual([{ area: 'events', permissions: ['events.read'] }]);
     expect(sent.slice(1)).toEqual([
       {
@@ -1187,6 +1182,7 @@ describe('a browser never holds the refresh token', () => {
               withheldUntilTwoFactor: ['members.manage'],
               readOnlyUntilLinked: true,
               withheldUntilLinked: ['events.manage', 'organisation.manage'],
+              onAnEvent: [],
               signInRules: {
                 providerOnly: true,
                 inactivityTimeoutDays: 7,
@@ -3144,6 +3140,9 @@ describe('events (sc-1486)', () => {
       members: null,
     });
     expect(urls).toEqual(['/api/orgs/org_1/search?q=in%C3%AAs']);
+
+    await api.search('org_1', 'ines', { invitations: false });
+    expect(urls.at(-1)).toBe('/api/orgs/org_1/search?q=ines&invitations=false');
 
     const { api: members } = client(() =>
       json({ events: null, guests: null, members: { total: 1, matches: [invited] } }),

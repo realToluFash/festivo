@@ -16,7 +16,7 @@ import { dateLocale } from '../../../i18n/index.ts';
 export type Copy =
   { kind: 'none' } | { kind: 'copied' } | { kind: 'byHand'; url: string } | { kind: 'failed' };
 
-/** A guest's Invitation at a desk: the line, Copy invitation link, Send on WhatsApp with its question, Replace link… and Mark as invited, which opens an inset. */
+/** A guest's Invitation at a desk: the line, Copy invitation link, Send on WhatsApp with its question, Replace link…, Mark as invited, which opens an inset, and Record a reply. */
 export function Invitation({
   guest,
   timeZone,
@@ -38,6 +38,7 @@ export function Invitation({
   onMarking,
   onMark,
   onUnmark,
+  onRecord,
 }: {
   guest: GuestDetails;
   timeZone: string;
@@ -60,6 +61,8 @@ export function Invitation({
   onMarking: (marking: boolean) => void;
   onMark: (how: GuestInvitationHow) => void;
   onUnmark: () => void;
+  /** sc-52829: the guest's reply, which invites them. */
+  onRecord: () => void;
 }) {
   const { t } = useTranslation();
   const notYet = shownReply(guest) === 'notYetInvited';
@@ -173,6 +176,22 @@ export function Invitation({
               >
                 <IconLead name="tick" />
                 <RowWords title={t('guestList.markAsInvited')} lines={[t('guestList.markLine')]} />
+              </button>
+            </li>
+          )}
+          {manages && notYet && invites && !asked && (
+            <li>
+              <button
+                type="button"
+                className="desk-row gs-do"
+                data-focus="record-not-yet"
+                onClick={onRecord}
+              >
+                <IconLead name="message" />
+                <RowWords
+                  title={t('guestList.recordReply')}
+                  lines={[t('guestList.recordNotYetLine')]}
+                />
               </button>
             </li>
           )}

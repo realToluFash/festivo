@@ -78,7 +78,7 @@ import { SearchAndBell } from './SearchButton.tsx';
 import { SEARCH_HREF } from '../kit/searchLinks.ts';
 import { CreateWalkWindow, type WalkOpening, deviceNow } from './CreateWalkWindow.tsx';
 import { Sheet } from './Sheet.tsx';
-import type { GlyphName } from './Glyph.tsx';
+import { Glyph, type GlyphName } from './Glyph.tsx';
 import { Notice } from './Notice.tsx';
 import {
   type Tab,
@@ -112,6 +112,7 @@ import {
 import { OrgDropDown } from './OrgDropDown.tsx';
 import { AREA_GLYPH } from './areaGlyph.ts';
 import { ReadOut } from './ReadOut.tsx';
+import { Row, RowList } from './SummaryRows.tsx';
 import { Back } from './SettingsParts.tsx';
 import { SETTLED_MS, useFocusOnAnswer, useWindowOrigin } from './Screen.tsx';
 import type { ScreenReaderTarget } from './screenReaderFocus.ts';
@@ -198,33 +199,6 @@ export function useHeaderWithoutBack(hidden: boolean): void {
   }, [hide, hidden]);
 }
 
-type IconPaths = readonly [string, string];
-
-const AREA_ICONS: Record<EventPlace, IconPaths> = {
-  overview: ['M3 3h7v7H3zM14 3h7v7h-7z', 'M14 14h7v7h-7zM3 14h7v7H3z'],
-  guests: [
-    'M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2M9 11a4 4 0 1 0 0-8 4 4 0 0 0 0 8z',
-    'M22 21v-2a4 4 0 0 0-3-3.87M16 3.13a4 4 0 0 1 0 7.75',
-  ],
-  menu: [
-    'M3 2v7a2 2 0 0 0 2 2h4a2 2 0 0 0 2-2V2M7 2v20',
-    'M21 15V2a5 5 0 0 0-5 5v6a2 2 0 0 0 2 2h3v7',
-  ],
-  seating: ['M4 10h16v4H4z', 'M6 14v6M18 14v6M8 6h8'],
-  messages: ['M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z', 'M8 9h8M8 13h5'],
-  schedule: ['M12 22a10 10 0 1 0 0-20 10 10 0 0 0 0 20z', 'M12 6v6l4 2'],
-  staff: ['M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2', 'M12 11a4 4 0 1 0 0-8 4 4 0 0 0 0 8z'],
-  people: [
-    'M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2M9 11a4 4 0 1 0 0-8 4 4 0 0 0 0 8z',
-    'M22 21v-2a4 4 0 0 0-3-3.87M16 3.13a4 4 0 0 1 0 7.75',
-  ],
-  budget: [
-    'M21 12V7H5a2 2 0 0 1 0-4h14v4',
-    'M3 5v14a2 2 0 0 0 2 2h16v-5M18 12a2 2 0 0 0 0 4h4v-4z',
-  ],
-  reports: ['M3 3v18h18', 'M8 17v-5M13 17V8M18 17v-9'],
-};
-
 /** Inside an event the navigation is the event's areas, in each layout's own form (sc-22103, #24878). */
 export interface InsideEvent {
   area: EventPlace;
@@ -238,7 +212,7 @@ export interface InsideEvent {
 interface NavEntry {
   key: string;
   label: string;
-  icon: IconPaths;
+  glyph: GlyphName;
   on: boolean;
   onPress: () => void;
   testID: string;
@@ -248,7 +222,7 @@ function areaEntry(t: (key: string) => string, inside: InsideEvent, area: EventP
   return {
     key: area,
     label: t(`eventNav.${area}`),
-    icon: AREA_ICONS[area],
+    glyph: AREA_GLYPH[area],
     on: area === inside.area,
     onPress: () => inside.onArea(area),
     testID: `event.nav.${area}`,
@@ -1269,43 +1243,74 @@ function TabBar({ inEvent }: { inEvent: InsideEvent }) {
         opener={moreTab}
         testID="event.nav.moreSheet"
       >
-        <View style={styles.moreSheet}>
-          <Title size={tokens.typeTitleDialog.size} accessibilityRole="header">
-            {t('eventNav.more')}
-          </Title>
-          <View accessibilityRole="tablist" style={styles.moreList}>
-            {MORE_PLACES.map((area) => {
-              const on = area === inEvent.area;
+        <View style={[styles.moreSheet, { paddingBottom: Math.max(MORE_FOOT - insets.bottom, 0) }]}>
+          <View style={styles.moreHead}>
+            <Text
+              size={22}
+              weight="bold"
+              accessibilityRole="header"
+              style={[styles.fill, styles.moreTitle]}
+            >
+              {t('eventNav.more')}
+            </Text>
+            <Pressable
+              onPress={() => setMore(false)}
+              style={({ pressed }) => [styles.moreClose, pressed && styles.closePressed]}
+              accessibilityRole="button"
+              accessibilityLabel={t('eventNav.closeMore')}
+              testID="event.nav.moreSheet.close"
+            >
+              <Glyph name="x" size={18} ink={tokens.colorInk} weight={2.4} />
+            </Pressable>
+          </View>
+          <View accessibilityRole="tablist">
+            <RowList
+              items={MORE_PLACES.map((area) => {
+                const on = area === inEvent.area;
 
-              return (
-                <Pressable
-                  key={area}
-                  style={[styles.railItem, on && styles.railItemOn]}
-                  onPress={() => {
-                    setMore(false);
-                    inEvent.onArea(area);
-                  }}
-                  accessibilityRole="tab"
-                  accessibilityState={{ selected: on }}
-                  testID={`event.nav.more.${area}`}
-                >
-                  <Icon paths={AREA_ICONS[area]} on={on} size={tokens.sizeMark} />
-                  <Text
-                    size={tokens.typeBodyPhone.size}
-                    weight={on ? 'semibold' : 'medium'}
-                    style={on ? styles.ink : styles.secondaryInk}
-                  >
-                    {t(`eventNav.${area}`)}
-                  </Text>
-                </Pressable>
-              );
-            })}
+                return {
+                  key: area,
+                  inset: 40,
+                  selected: on,
+                  row: (
+                    <Row
+                      title={t(`eventNav.${area}`)}
+                      lead={<MoreGlyph name={AREA_GLYPH[area]} on={on} />}
+                      opens
+                      selected={on}
+                      onPress={() => {
+                        setMore(false);
+                        inEvent.onArea(area);
+                      }}
+                      accessibilityRole="tab"
+                      testID={`event.nav.more.${area}`}
+                    />
+                  ),
+                };
+              })}
+            />
           </View>
         </View>
       </Sheet>
     </>
   );
 }
+
+/** A More row's glyph, 20 pt, in its name's colour, as the demo's MoreSheet draws it (sc-56935). */
+function MoreGlyph({ name, on }: { name: GlyphName; on: boolean }) {
+  return (
+    <View style={styles.moreGlyph}>
+      <Glyph
+        name={name}
+        size={tokens.sizeMark}
+        ink={on ? tokens.colorAccentText : tokens.colorInkSecondary}
+        weight={2}
+      />
+    </View>
+  );
+}
+
+const MORE_FOOT = 116;
 
 /** The header band's pills in tablet portrait; inside an event they scroll sideways, so no area's name is cut. */
 function Pills({ entries, scrolls }: { entries: readonly NavEntry[]; scrolls: boolean }) {
@@ -1333,17 +1338,12 @@ function Pills({ entries, scrolls }: { entries: readonly NavEntry[]; scrolls: bo
       accessibilityState={{ selected: entry.on }}
       testID={entry.testID}
     >
-      <Icon
-        paths={entry.icon}
-        on={entry.on}
-        onInk={tokens.colorAccentText}
-        size={tokens.sizeMark}
+      <Glyph
+        name={entry.glyph}
+        size={18}
+        ink={entry.on ? tokens.colorAccentText : tokens.colorInkSecondary}
       />
-      <Text
-        size={tokens.typeBody.size}
-        weight="semibold"
-        style={entry.on ? styles.accentInk : styles.secondaryInk}
-      >
+      <Text size={15} weight="semibold" style={entry.on ? styles.accentInk : styles.secondaryInk}>
         {entry.label}
       </Text>
     </Pressable>
@@ -1417,7 +1417,7 @@ function FrameSidebar({
         <SidebarPlace
           key={entry.key}
           label={entry.label}
-          glyph={AREA_GLYPH[entry.key as EventPlace]}
+          glyph={entry.glyph}
           on={entry.on}
           onPress={entry.onPress}
           testID={entry.testID}
@@ -1439,16 +1439,17 @@ function FrameSidebar({
   return (
     <TodayShellProvider value={shell}>
       <SidebarColumn>
-        <SidebarHead org={false} />
-        {organisation != null && (
-          <OrgPill
-            organisation={organisation}
-            waiting={waiting}
-            onSwitch={onSwitch}
-            sidebar
-            ref={pill}
-          />
-        )}
+        <SidebarHead>
+          {organisation != null && (
+            <OrgPill
+              organisation={organisation}
+              waiting={waiting}
+              onSwitch={onSwitch}
+              sidebar
+              ref={pill}
+            />
+          )}
+        </SidebarHead>
         {inEvent && (
           <SidebarBack
             label={up?.label ?? t('todayScreen.tab.events')}
@@ -1527,27 +1528,6 @@ function OrgPill({
 
 const STROKE = { strokeWidth: 2, strokeLinecap: 'round', strokeLinejoin: 'round' } as const;
 
-function Icon({
-  paths,
-  on,
-  onInk = tokens.colorInk,
-  size,
-}: {
-  paths: IconPaths;
-  on: boolean;
-  onInk?: string;
-  size: number;
-}) {
-  const stroke = on ? onInk : tokens.colorInkSecondary;
-
-  return (
-    <Svg width={size} height={size} viewBox="0 0 24 24" fill="none">
-      <Path d={paths[0]} {...STROKE} stroke={stroke} />
-      <Path d={paths[1]} {...STROKE} stroke={stroke} />
-    </Svg>
-  );
-}
-
 const styles = StyleSheet.create({
   root: { flex: 1, backgroundColor: tokens.colorPage },
   edgeSwipe: { position: 'absolute', top: 0, bottom: 0, left: 0, width: EDGE_SWIPE_WIDTH },
@@ -1556,7 +1536,6 @@ const styles = StyleSheet.create({
   fill: { flex: 1 },
   titled: { gap: tokens.spaceXxs, flexShrink: 1 },
   shrink: { flexShrink: 1, minWidth: 0 },
-  ink: { color: tokens.colorInk },
   secondaryInk: { color: tokens.colorInkSecondary },
   accentInk: { color: tokens.colorAccentText },
   titleRow: { flexDirection: 'row', alignItems: 'center', gap: tokens.spaceSm },
@@ -1604,14 +1583,24 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     gap: tokens.spaceSm,
-    paddingLeft: tokens.spaceLg,
+    paddingLeft: 14,
     paddingRight: tokens.spaceXl,
     borderRadius: tokens.sizeHit / 2,
   },
-  pillOn: { backgroundColor: tokens.colorCard },
-  moreSheet: { gap: tokens.spaceLg, padding: tokens.space3xl },
-  // The rows keep their own 12 pt padding, so their icons start on the title's line.
-  moreList: { gap: tokens.spaceHair, marginHorizontal: -tokens.spaceLg },
+  pillOn: { backgroundColor: tokens.colorCard, ...tokens.elevationNative.raised.ios },
+  moreSheet: { gap: tokens.spaceXl, paddingHorizontal: tokens.spaceXxl, paddingTop: 31 },
+  moreTitle: { letterSpacing: 22 * -0.015, lineHeight: 22 * 1.2 },
+  moreHead: { minHeight: tokens.sizeHit, flexDirection: 'row', alignItems: 'center' },
+  moreClose: {
+    width: tokens.sizeHit,
+    height: tokens.sizeHit,
+    borderRadius: tokens.sizeHit / 2,
+    alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: tokens.colorInset,
+  },
+  closePressed: { opacity: tokens.opacityPressed },
+  moreGlyph: { width: 28, height: 28, alignItems: 'center', justifyContent: 'center' },
   pillsBar: { flexGrow: 0, borderRadius: 26, backgroundColor: tokens.colorInset },
   pillsInEvent: {
     minHeight: 52,
@@ -1625,15 +1614,6 @@ const styles = StyleSheet.create({
     paddingHorizontal: tokens.space5xl,
     paddingBottom: tokens.spaceXl,
   },
-  railItem: {
-    minHeight: tokens.sizeHit,
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: tokens.spaceLg,
-    paddingHorizontal: tokens.spaceLg,
-    borderRadius: tokens.radiusRow,
-  },
-  railItemOn: { backgroundColor: tokens.colorNeutralFill },
   whitePill: { flexDirection: 'row', flexShrink: 1, minWidth: 0 },
   created: { paddingTop: tokens.spaceLg, paddingHorizontal: tokens.spaceXl },
   switchedUnderTitle: { marginTop: 18 },

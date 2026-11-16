@@ -46,6 +46,8 @@ export interface Problem {
   permission?: string;
   /** On a seating plan's `precondition_failed`: who changed it since (sc-3998). */
   changedBy?: string;
+  /** On a Floor plan step's `precondition_failed`: every item a colleague changed since, so the whole step was refused (sc-5028). */
+  stale?: string[];
   /** On `seating_items_outside`: the tables the refused room size would leave outside it (sc-4000). */
   outside?: string[];
   /** On `guest_replied`: the reply that keeps them invited and when, in the event's zone (sc-3788). */
@@ -53,6 +55,10 @@ export interface Problem {
   repliedAt?: string;
   /** On `staff_number_shared`: the first roster entry already on that number (sc-3906). */
   sharedWith?: string;
+  /** On `dish_name_shared`: whether the only dish holding the name is archived (sc-3901). */
+  archived?: boolean;
+  /** On a schedule item's `precondition_failed`: the item as it is stored now, which `asScheduleItem` reads (sc-3893). */
+  current?: unknown;
 }
 
 /**

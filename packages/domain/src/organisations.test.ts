@@ -10,9 +10,11 @@ import {
   organisationProblem,
   keptBackBy,
   roleHolds,
+  requestMessageLength,
   roleName,
   takesCardStep,
   withCurrent,
+  REQUEST_MESSAGE_MAXIMUM,
 } from './organisations.ts';
 
 const ire = { id: 'org_ire' };
@@ -197,6 +199,7 @@ describe('keptBackBy', () => {
   it('names each rule keeping it back, Google or Apple first', () => {
     const both = {
       withheldUntilLinked: ['organisation.manage'],
+      onAnEvent: [],
       withheldUntilTwoFactor: ['members.manage', 'organisation.manage'],
     };
 
@@ -222,5 +225,31 @@ describe('takesCardStep', () => {
     for (const action of ['makeLive', 'changeDates', 'resume', 'duplicate'] as const) {
       expect(takesCardStep({ permissions: ['events.read'] }, action)).toBe(false);
     }
+  });
+});
+
+describe('requestMessageLength', () => {
+  const yoruba = 'Ẹ̀gbẹ́ Ọ̀rẹ́ Ìyàwó Àgbà';
+
+  it('counts the letters a person sees, composed or decomposed', () => {
+    expect(requestMessageLength(yoruba.normalize('NFC'))).toBe(19);
+    expect(requestMessageLength(yoruba.normalize('NFD'))).toBe(19);
+  });
+
+  it('counts a family and a flag as one each', () => {
+    expect(requestMessageLength('👨‍👩‍👧 🇳🇬')).toBe(3);
+  });
+
+  it('holds the limit in dotted and toned letters, one more is past it', () => {
+    const letters = (count: number): string => 'Ẹ̀'.normalize('NFD').repeat(count);
+
+    expect(requestMessageLength(letters(REQUEST_MESSAGE_MAXIMUM))).toBe(REQUEST_MESSAGE_MAXIMUM);
+    expect(requestMessageLength(letters(REQUEST_MESSAGE_MAXIMUM + 1))).toBeGreaterThan(
+      REQUEST_MESSAGE_MAXIMUM,
+    );
+  });
+
+  it('leaves out the space around the words', () => {
+    expect(requestMessageLength('  Hello  ')).toBe(5);
   });
 });

@@ -1,3 +1,4 @@
+import { visibleLength } from './visibleText.ts';
 import { emailProblem } from './forms.ts';
 
 /** The one remembered on this device while the account still belongs to it, else the first. */
@@ -50,6 +51,17 @@ export function roleHolds(
   return permission !== '' && membership.permissions.includes(permission);
 }
 
+/** Whether the role holds it, or a role on at least one event does: how the API lets a Member into an organisation's page such as the Menu library (sc-3901). */
+export function holdsAnywhere(
+  membership: { permissions: readonly string[]; onAnEvent: readonly string[] },
+  permission: string,
+): boolean {
+  return (
+    roleHolds(membership, permission) ||
+    (permission !== '' && membership.onAnEvent.includes(permission))
+  );
+}
+
 export type CardStepAction = 'makeLive' | 'changeDates' | 'resume' | 'duplicate';
 
 /** Whether the role can take an event card's step (sc-30413, 8 Nov): Duplicate is creating an event, the rest are managing one. */
@@ -93,6 +105,11 @@ export const ORGANISATION_NAME_MAXIMUM = 100;
 
 /** What a request to join through the request link may say, in characters, as the API counts them (sc-562). */
 export const REQUEST_MESSAGE_MAXIMUM = 500;
+
+/** A request's message in visible characters, as its counter shows and its limit refuses (sc-54292). */
+export function requestMessageLength(message: string): number {
+  return visibleLength(message.trim());
+}
 
 /** What a client checks before saving. Country, time zone and language come from pickers, so they cannot be wrong; a currency can still be unchosen (sc-909). */
 export function organisationProblem(
@@ -144,7 +161,7 @@ export function newOrganisationProblem(
   if (field === 'countryCode') return value === '' ? { kind: 'countryBlank' } : null;
 
   const name = value.trim();
-  const length = Array.from(name).length;
+  const length = visibleLength(name);
 
   if (length === 0) return { kind: 'nameBlank' };
 

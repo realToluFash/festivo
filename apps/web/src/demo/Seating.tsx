@@ -16,6 +16,7 @@ import { EventSidebar } from './EventSidebar.tsx';
 import { clockOf, sampleEvent, type SampleEvent } from './events.ts';
 import { Icon, type IconName } from './SeatingGlyph.tsx';
 import { keptInbox, waitingLine } from './messages.ts';
+import { browserPlatform, onApple } from './search.ts';
 import {
   type Item,
   type Kind,
@@ -24,33 +25,46 @@ import {
   type Plan,
   type Point,
   AT_100,
+  CRUMB_WORDS,
+  LARGEST_SCALE,
+  type CrumbLang,
   EVENT_ID,
+  LONG_NAME,
+  QA_NAME,
   PRIYA,
+  SMALLEST_SCALE,
   SW,
   ZOOMS,
   bounds,
+  clampScale,
   copyOf,
+  crumbOf,
   deletePlanWords,
   detailOf,
   filled,
   firstFree,
   fitOf,
+  focusReach,
   free,
+  intoView,
   isTable,
   itemName,
   lengthOf,
   listed,
   many,
   nearestFree,
+  planFitOf,
   newItem,
   overlap,
   peopleIn,
   percentOf,
+  percentWritten,
   readRoom,
   readingOrder,
   say,
   seatAt as seatChairs,
   seatingStateOf,
+  sectionDeleteWords,
   sectionLine,
   snapTo,
   turn,
@@ -71,6 +85,19 @@ import { SeatingPanel, ShapeTile } from './SeatingPanel.tsx';
 import { PaperPage, PrintPanel } from './SeatingPrint.tsx';
 import { type Handle, type Look, MiniMap, RoomDrawing } from './SeatingRoom.tsx';
 import { ListView, TablesView } from './SeatingViews.tsx';
+import { ChooseBar, RulesStrip } from './SeatingSelection.tsx';
+import {
+  type Outline,
+  chosenItems,
+  gridOf,
+  outlinesOf,
+  readColumns,
+  readGap,
+  rectOf,
+  seatedOf,
+  thingsOf,
+  touched,
+} from './selection.ts';
 import { DemoBell } from './DemoBell.tsx';
 import { Ask, CardStep, Mark, OnCard, Says } from '../components/SettingsParts.tsx';
 import { useSwitcherStart } from './switcher.ts';
@@ -82,6 +109,7 @@ const LOAD_MS = 1800;
 const PRINT_MS = 1500;
 const ARRIVES_MS = 1500;
 const DEFAULT_SIZE = { w: 718, h: 719 };
+const FLOAT_MARGINS = 3 * 12;
 
 /** Seating at a desk in A · The room (page e31, Seating-A-Desk-1 to -4): the room is the page, the panel at its right. */
 export function SeatingPage() {
@@ -95,6 +123,7 @@ export function SeatingPage() {
 
 function SeatingAt({ id, raw }: { id: string | undefined; raw: string | null }) {
   const [event] = useState(() => sampleEvent(id));
+  const state = seatingStateOf(raw);
   const [first] = useState<Ui>(() => {
     const seeded = seedOf(seatingStateOf(raw));
 
@@ -105,6 +134,20 @@ function SeatingAt({ id, raw }: { id: string | undefined; raw: string | null }) 
 
   if (event == null) return <Navigate to="/demo/events" replace />;
   if (first.paper != null) return <PaperPage paper={first.paper} plan={first.plan} />;
+  if (state === 'crumbWidths')
+    return (
+      <CrumbFrames id={event.id} title={SW.widthsTitle} line={SW.widthsLine} frames={WIDTHS} />
+    );
+  if (state === 'crumbFocus')
+    return (
+      <CrumbFrames
+        id={event.id}
+        title={SW.focusTitle}
+        line={SW.focusLine}
+        frames={ringFrames(event.name)}
+      />
+    );
+  const named = crumbOf(state, event.name);
 
   return (
     <EventsShell
@@ -119,8 +162,111 @@ function SeatingAt({ id, raw }: { id: string | undefined; raw: string | null }) 
         />
       )}
     >
-      {(tell) => <Seating first={first} event={event} tell={tell} />}
+      {(tell) => <Seating first={first} event={event} named={named} tell={tell} />}
     </EventsShell>
+  );
+}
+
+type Named = { name: string; lang: CrumbLang };
+type Ring = 'events' | 'name';
+
+/** Events › the event › Seating (sc-55300): only the event name gives way, cut short with an ellipsis; its link keeps the full name. */
+function SeatingCrumb({ id, named, ring }: { id: string; named: Named; ring?: Ring | undefined }) {
+  const words = CRUMB_WORDS[named.lang];
+  const ringOn = (link: Ring) => (ring === link ? 'is-ring' : undefined);
+
+  return (
+    <nav className="st-crumb" aria-label={words.crumb} lang={named.lang}>
+      <ol>
+        <li>
+          <Link to="/demo/events" className={ringOn('events')}>
+            {words.events}
+          </Link>
+        </li>
+        <li className="st-crumb-event">
+          <Icon name="chevron" size={14} weight={2.3} />
+          <Link to={`/demo/events/${id}`} className={ringOn('name')}>
+            <span className="st-crumb-name">{named.name}</span>
+          </Link>
+        </li>
+        <li aria-current="page">
+          <Icon name="chevron" size={14} weight={2.3} />
+          <h1 tabIndex={-1}>{words.area}</h1>
+        </li>
+      </ol>
+    </nav>
+  );
+}
+
+type Frame = { w: 320 | 375 | 1280; named: Named; label: string; ring?: Ring | undefined };
+
+const WIDTHS: readonly Frame[] = [
+  { w: 320, named: { name: LONG_NAME, lang: 'en' }, label: SW.longLabel },
+  { w: 375, named: { name: LONG_NAME, lang: 'en' }, label: SW.longLabel },
+  { w: 320, named: { name: LONG_NAME, lang: 'fr' }, label: SW.longLabel },
+  { w: 375, named: { name: LONG_NAME, lang: 'fr' }, label: SW.longLabel },
+  { w: 375, named: { name: QA_NAME, lang: 'fr' }, label: QA_NAME },
+];
+
+/** sc-57088's frames: each link focused at 1280 on a name that fits, then at 375 and 320 on the 120-character one, and the French QA name at 375. */
+function ringFrames(name: string): Frame[] {
+  const narrow = ([375, 320] as const).flatMap((w) =>
+    (['en', 'fr'] as const).flatMap((lang) =>
+      (['events', 'name'] as const).map((ring) => ({
+        w,
+        named: { name: LONG_NAME, lang },
+        label: SW.longLabel,
+        ring,
+      })),
+    ),
+  );
+
+  return [
+    { w: 1280, named: { name, lang: 'en' }, label: name, ring: 'events' },
+    { w: 1280, named: { name, lang: 'en' }, label: name, ring: 'name' },
+    { w: 1280, named: { name, lang: 'fr' }, label: name, ring: 'events' },
+    { w: 1280, named: { name, lang: 'fr' }, label: name, ring: 'name' },
+    ...narrow,
+    { w: 375, named: { name: QA_NAME, lang: 'fr' }, label: QA_NAME, ring: 'name' },
+  ];
+}
+
+/** ?state=crumbWidths and ?state=crumbFocus: the header band in a window of each width, the narrow ones inside the page's 16 px gutters as the product draws them, since the demo's desk keeps its sidebar there. */
+function CrumbFrames({
+  id,
+  title,
+  line,
+  frames,
+}: {
+  id: string;
+  title: string;
+  line: string;
+  frames: readonly Frame[];
+}) {
+  return (
+    <main className="desk st-widths">
+      <h1>{title}</h1>
+      <p className="st-widths-line">{line}</p>
+      {frames.map(({ w, named, label, ring }) => {
+        const lang = named.lang === 'fr' ? SW.french : SW.english;
+        const link = ring === 'events' ? CRUMB_WORDS[named.lang].events : SW.theName;
+
+        return (
+          <figure key={`${w}|${named.lang}|${label}|${ring ?? ''}`} className={`st-width is-${w}`}>
+            <figcaption>
+              {ring == null
+                ? say(SW.widthAt, { w: String(w), lang, name: label })
+                : say(SW.ringAt, { w: String(w), lang, name: label, link })}
+            </figcaption>
+            <div className="st-window">
+              <header className="st-top">
+                <SeatingCrumb id={id} named={named} ring={ring} />
+              </header>
+            </div>
+          </figure>
+        );
+      })}
+    </main>
   );
 }
 
@@ -162,6 +308,7 @@ type Press =
   | { kind: 'resize'; id: string; handle: Handle; item: Item; moved: boolean; pointer: number }
   | { kind: 'pan'; from: Point; cx: number; cy: number; moved: boolean; pointer: number }
   | { kind: 'click'; id: string; shift: boolean; pointer: number }
+  | { kind: 'box'; from: Point; at: Point; base: string[]; moved: boolean; pointer: number }
   | { kind: 'seat'; id: string; pointer: number };
 
 function keyStep(units: 'metric' | 'us', big: boolean): number {
@@ -180,12 +327,27 @@ function shapeWords(kind: Kind): string {
   }[kind];
 }
 
-function Seating({ first, event, tell }: { first: Ui; event: SampleEvent; tell: Tell }) {
+function Seating({
+  first,
+  event,
+  named,
+  tell,
+}: {
+  first: Ui;
+  event: SampleEvent;
+  named: Named;
+  tell: Tell;
+}) {
   const [ui, setUi] = useState<Ui>(first);
   const [setCanvas, size] = useSize();
+  const [crowded, setCrowded] = useState(false);
+  const [rowMet, setRowMet] = useState(false);
   const canvas = useRef<HTMLDivElement | null>(null);
   const press = useRef<Press | null>(null);
   const held = useRef<string | null>(null);
+  const spaceHeld = useRef(false);
+  const spacePanned = useRef(false);
+  const touches = useRef(new Set<number>());
   const [focusId, setFocusId] = useState<string | null>(null);
   const [keyboard, setKeyboard] = useState(first.focus?.startsWith('item:') === true);
   const [placingAt, setPlacingAt] = useState<Point | null>(
@@ -195,7 +357,7 @@ function Seating({ first, event, tell }: { first: Ui; event: SampleEvent; tell: 
 
   ui$.current = ui;
   const room = ui.plan.room;
-  const fit = room == null ? { s: 0.3, ox: 0, oy: 0 } : fitOf(size.w, size.h, room);
+  const fit = room == null ? { s: 0.3, ox: 0, oy: 0 } : planFitOf(size.w, size.h, room);
   const s = ui.camera?.s ?? fit.s;
   const ox = ui.camera == null ? fit.ox : size.w / 2 - ui.camera.cx * s;
   const oy = ui.camera == null ? fit.oy : size.h / 2 - ui.camera.cy * s;
@@ -369,7 +531,7 @@ function Seating({ first, event, tell }: { first: Ui; event: SampleEvent; tell: 
           ...plan,
           items: plan.items.map((item) => (item.id === id ? { ...item, ...change } : item)),
         }),
-        { notice: null, ...after },
+        { notice: null, note: null, ...after },
       ),
     [commit],
   );
@@ -869,7 +1031,8 @@ function Seating({ first, event, tell }: { first: Ui; event: SampleEvent; tell: 
       press.current = { kind: 'click', id, shift: event.shiftKey, pointer: event.pointerId };
       return;
     }
-    const ids = ui.chosen.includes(id) && !event.shiftKey ? ui.chosen : [id];
+    const shift = event.shiftKey || ui.adding;
+    const ids = ui.chosen.includes(id) && !shift ? ui.chosen : [id];
     const origins = Object.fromEntries(
       ui.plan.items
         .filter((item) => ids.includes(item.id))
@@ -883,7 +1046,7 @@ function Seating({ first, event, tell }: { first: Ui; event: SampleEvent; tell: 
       from: [event.clientX, event.clientY],
       origins,
       moved: false,
-      shift: event.shiftKey,
+      shift,
       pointer: event.pointerId,
     };
   }
@@ -903,6 +1066,25 @@ function Seating({ first, event, tell }: { first: Ui; event: SampleEvent; tell: 
     if (event.button !== 0) return;
     if (ui.placing != null) {
       place(toCm(event.clientX, event.clientY));
+      return;
+    }
+    if (event.pointerType === 'touch') touches.current.add(event.pointerId);
+    const now = press.current;
+
+    if (now?.kind === 'box' && touches.current.size > 1) {
+      set((ui_) => ({ ...ui_, chosen: now.base, box: null }));
+    }
+    if (!ui.readOnly && ui.picked == null && !spaceHeld.current && touches.current.size < 2) {
+      const at = toCm(event.clientX, event.clientY);
+
+      press.current = {
+        kind: 'box',
+        from: at,
+        at: [event.clientX, event.clientY],
+        base: event.shiftKey || ui.adding ? ui.chosen : [],
+        moved: false,
+        pointer: event.pointerId,
+      };
       return;
     }
     press.current = {
@@ -939,11 +1121,38 @@ function Seating({ first, event, tell }: { first: Ui; event: SampleEvent; tell: 
       } else if (now.kind === 'resize') {
         now.moved = true;
         resizeTo(now, event.clientX, event.clientY);
+      } else if (now.kind === 'box') {
+        if (!now.moved && Math.hypot(event.clientX - now.at[0], event.clientY - now.at[1]) < 4)
+          return;
+        now.moved = true;
+        const to = toCmLive(event.clientX, event.clientY);
+
+        if (to == null) return;
+        const box = rectOf(now.from, to);
+        const hits = touched(ui$.current.plan.items, box);
+
+        set((ui_) => ({
+          ...ui_,
+          box,
+          chosen: [...now.base, ...hits.filter((id) => !now.base.includes(id))],
+          chair: null,
+          panel: null,
+          notice: null,
+          kindMenu: false,
+          tab: 'arrange',
+        }));
       } else if (now.kind === 'pan') {
         const dx = event.clientX - now.from[0];
         const dy = event.clientY - now.from[1];
 
         if (!now.moved && Math.hypot(dx, dy) < 4) return;
+        if (!now.moved && spaceHeld.current) {
+          spacePanned.current = true;
+          const focused = document.activeElement;
+
+          if (focused instanceof HTMLElement && focused.closest('.st-canvas svg') == null)
+            focused.blur();
+        }
         now.moved = true;
         set((ui_) => ({
           ...ui_,
@@ -958,6 +1167,7 @@ function Seating({ first, event, tell }: { first: Ui; event: SampleEvent; tell: 
     const up = (event: PointerEvent) => {
       const now = press.current;
 
+      touches.current.delete(event.pointerId);
       if (now == null || now.pointer !== event.pointerId) return;
       press.current = null;
       const kept = held.current;
@@ -980,6 +1190,23 @@ function Seating({ first, event, tell }: { first: Ui; event: SampleEvent; tell: 
         else choose([now.lead]);
       } else if (now.kind === 'resize') {
         if (now.moved) settle([now.id], now.id);
+      } else if (now.kind === 'box') {
+        if (now.moved) {
+          set((ui_) => ({ ...ui_, box: null }));
+          say$(say(SW.chosen, { n: ui$.current.chosen.length }));
+        } else if (kept != null) focusField(kept);
+        else if (ui$.current.adding) set((ui_) => ({ ...ui_, kindMenu: false, menu: false }));
+        else
+          set((ui_) => ({
+            ...ui_,
+            chosen: [],
+            chair: null,
+            menu: false,
+            kindMenu: false,
+            pop: null,
+            notice: null,
+            note: null,
+          }));
       } else if (now.kind === 'pan') {
         if (!now.moved && kept != null) focusField(kept);
         else if (!now.moved) {
@@ -1216,27 +1443,68 @@ function Seating({ first, event, tell }: { first: Ui; event: SampleEvent; tell: 
     if (event.key === 'Escape') {
       event.preventDefault();
       if (now.picked != null) pick(null);
+      else if (now.adding) set((ui_) => ({ ...ui_, adding: false }));
       else set((ui_) => ({ ...ui_, chosen: [], chair: null, notice: null, note: null }));
     }
   }
 
   useEffect(() => {
+    const typing = (target: EventTarget | null) =>
+      target instanceof HTMLElement && target.closest('input, textarea, select') != null;
+    const control = (target: EventTarget | null) =>
+      target instanceof Element &&
+      target.closest('button, a[href], [role="menuitem"], [role="option"], summary') != null;
     const keys = (event: KeyboardEvent) => {
-      if (event.key !== 'Escape') return;
       const now = ui$.current;
+
+      if (event.key === ' ' && !typing(event.target) && !event.defaultPrevented) {
+        spaceHeld.current = true;
+        if (!control(event.target)) event.preventDefault();
+      }
+      if (
+        (event.key === 'a' || event.key === 'A') &&
+        (event.metaKey || event.ctrlKey) &&
+        !typing(event.target) &&
+        now.view === 'plan' &&
+        now.plan.room != null &&
+        !now.readOnly &&
+        now.asking == null
+      ) {
+        event.preventDefault();
+        choose(now.plan.items.map((item) => item.id));
+        set((ui_) => ({ ...ui_, tab: 'arrange', kindMenu: false }));
+        return;
+      }
+      if (event.key !== 'Escape') return;
 
       if (now.placing != null) stopPlacing();
       else if (now.menu) set((ui_) => ({ ...ui_, menu: false }));
+      else if (now.kindMenu) set((ui_) => ({ ...ui_, kindMenu: false }));
       else if (now.pop != null) set((ui_) => ({ ...ui_, pop: null }));
       else if (now.picked != null && now.asking == null) pick(null);
+      else if (event.defaultPrevented || now.asking != null) return;
+      else if (now.adding) set((ui_) => ({ ...ui_, adding: false }));
+      else if (now.chosen.length > 1)
+        set((ui_) => ({ ...ui_, chosen: [], chair: null, notice: null, note: null }));
+    };
+    const lift = (event: KeyboardEvent) => {
+      if (event.key !== ' ') return;
+      if (spacePanned.current || (spaceHeld.current && !control(event.target)))
+        event.preventDefault();
+      spaceHeld.current = false;
+      spacePanned.current = false;
     };
 
     window.addEventListener('keydown', keys);
-    return () => window.removeEventListener('keydown', keys);
+    window.addEventListener('keyup', lift);
+    return () => {
+      window.removeEventListener('keydown', keys);
+      window.removeEventListener('keyup', lift);
+    };
   });
 
   function zoomTo(next: number, anchor: Point = [size.w / 2, size.h / 2]): void {
-    const clamped = Math.min(4 * AT_100, Math.max(0.25 * AT_100, next));
+    const clamped = clampScale(next);
     const at: Point = [(anchor[0] - ox) / s, (anchor[1] - oy) / s];
 
     set((now) => ({
@@ -1284,6 +1552,55 @@ function Seating({ first, event, tell }: { first: Ui; event: SampleEvent; tell: 
     return () => node.removeEventListener('wheel', wheel);
   });
 
+  useEffect(() => {
+    const node = canvas.current;
+
+    if (node == null) return;
+    const follow = (event: FocusEvent) => {
+      const target = event.target;
+
+      if (!(target instanceof Element) || target.closest('[data-item]') == null) return;
+      if (!target.matches(':focus-visible')) return;
+      if (ui$.current.view !== 'plan' || ui$.current.plan.room == null) return;
+      const box = node.getBoundingClientRect();
+      const at = target.getBoundingClientRect();
+      // The ring and halo are drawn once this focus renders, so the box does not hold them yet.
+      const ringed = ui$.current.plan.items.find(
+        (item) => item.id === target.getAttribute('data-item'),
+      );
+      const reach = ringed == null ? 0 : focusReach(ringed);
+      const [dx, dy] = intoView(
+        {
+          x0: at.left - box.left - reach,
+          y0: at.top - box.top - reach,
+          x1: at.right - box.left + reach,
+          y1: at.bottom - box.top + reach,
+        },
+        size.w,
+        size.h,
+        [...node.querySelectorAll('.st-float')].map((bar) => {
+          const on = bar.getBoundingClientRect();
+
+          return {
+            x0: on.left - box.left,
+            y0: on.top - box.top,
+            x1: on.right - box.left,
+            y1: on.bottom - box.top,
+          };
+        }),
+      );
+
+      if (dx === 0 && dy === 0) return;
+      const cx = (size.w / 2 - oRef.current[0] - dx) / sRef.current;
+      const cy = (size.h / 2 - oRef.current[1] - dy) / sRef.current;
+
+      set((now) => ({ ...now, camera: { s: sRef.current, cx, cy } }));
+    };
+
+    node.addEventListener('focusin', follow);
+    return () => node.removeEventListener('focusin', follow);
+  });
+
   const items = ui.plan.items;
   const overlaps = useMemo(() => {
     const out = new Set<string>(ui.shrink?.outside ?? []);
@@ -1329,27 +1646,35 @@ function Seating({ first, event, tell }: { first: Ui; event: SampleEvent; tell: 
     ui.placing != null && placingAt != null
       ? { ...newItem(ui.placing.kind, items, placingAt), id: 'placing' }
       : null;
+  const zoomUp = !ui.readOnly && (ui.zoomStep || crowded);
+  const atSmallest = s <= SMALLEST_SCALE + 1e-9;
+  const atLargest = s >= LARGEST_SCALE - 1e-9;
+  const rowDown = ui.rowStep || rowMet;
   const keysShown =
-    keyboard && focusId != null && ui.chosen.length > 0 && !ui.readOnly && ui.view === 'plan';
+    keyboard &&
+    focusId != null &&
+    ui.chosen.length > 0 &&
+    !ui.readOnly &&
+    !ui.adding &&
+    ui.view === 'plan';
+  const outlines = gridOutlines(ui);
   const showSave = room != null || ui.panel?.kind !== 'start';
+
+  useLayoutEffect(() => {
+    const views = canvas.current?.querySelector<HTMLElement>('.st-views');
+    const right = canvas.current?.querySelector<HTMLElement>('.st-top-right');
+
+    setRowMet(
+      views != null &&
+        right != null &&
+        views.getBoundingClientRect().width + right.getBoundingClientRect().width + FLOAT_MARGINS >
+          size.w,
+    );
+  }, [size.w, ui.load, ui.view, ui.save, room, showSave]);
 
   const crumb = (
     <header className="st-top">
-      <nav className="st-crumb" aria-label={SW.crumb}>
-        <ol>
-          <li>
-            <Link to="/demo/events">{SW.events}</Link>
-          </li>
-          <li>
-            <Icon name="chevron" size={14} weight={2.3} />
-            <Link to={`/demo/events/${event.id}`}>{event.name}</Link>
-          </li>
-          <li aria-current="page">
-            <Icon name="chevron" size={14} weight={2.3} />
-            <h1 tabIndex={-1}>{SW.area}</h1>
-          </li>
-        </ol>
-      </nav>
+      <SeatingCrumb id={event.id} named={named} />
       <Presence />
       <DemoBell tell={tell} />
     </header>
@@ -1423,7 +1748,10 @@ function Seating({ first, event, tell }: { first: Ui; event: SampleEvent; tell: 
   else
     main = (
       <div className="st-main">
-        <div className={`st-canvas is-${ui.view}`} ref={placeCanvas}>
+        <div
+          className={`st-canvas is-${ui.view}${zoomUp ? ' is-zoom-up' : ''}${rowDown ? ' is-row-down' : ''}`}
+          ref={placeCanvas}
+        >
           <ViewSwitch />
           {showSave && (
             <div className="st-float st-top-right">
@@ -1449,8 +1777,16 @@ function Seating({ first, event, tell }: { first: Ui; event: SampleEvent; tell: 
               onClose={() => set((now) => ({ ...now, print: { ...now.print, open: false } }))}
             />
           )}
-          {ui.view === 'plan' && room != null && ui.bar != null && (
+          {ui.view === 'plan' && room != null && ui.bar?.at === 'floor' && (
             <MessageBar onPlace={placeAtCentre} onStop={stopPlacing} />
+          )}
+          {ui.view === 'plan' && room != null && (
+            <div className="st-float st-under-views">
+              {!ui.readOnly && ui.placing == null && ui.picked == null && <ChooseBar />}
+              {ui.bar != null && ui.bar.at !== 'floor' && (
+                <MessageBar inline onPlace={placeAtCentre} onStop={stopPlacing} />
+              )}
+            </div>
           )}
           {ui.view === 'plan' ? (
             room == null ? (
@@ -1471,6 +1807,8 @@ function Seating({ first, event, tell }: { first: Ui; event: SampleEvent; tell: 
                 shrinkTo={ui.shrink?.width ?? null}
                 tip={ui.tip}
                 ghostAt={placingGhost}
+                box={ui.box}
+                outlines={outlines}
                 onFloor={onFloor}
                 hands={{
                   onItemDown,
@@ -1506,6 +1844,7 @@ function Seating({ first, event, tell }: { first: Ui; event: SampleEvent; tell: 
           {ui.view === 'plan' && room != null && (
             <>
               {keysShown && <KeysStrip />}
+              {ui.adding && !ui.readOnly && <RulesStrip />}
               {ui.placing != null && (
                 <div className="st-float st-another">
                   <label>
@@ -1529,6 +1868,9 @@ function Seating({ first, event, tell }: { first: Ui; event: SampleEvent; tell: 
               )}
               {!ui.readOnly && (
                 <AddBar
+                  floor={size.w}
+                  forced={ui.zoomStep}
+                  onCrowded={setCrowded}
                   menu={ui.menu}
                   placing={ui.placing?.kind ?? null}
                   onMenu={() => set((now) => ({ ...now, menu: !now.menu }))}
@@ -1540,24 +1882,30 @@ function Seating({ first, event, tell }: { first: Ui; event: SampleEvent; tell: 
               <div
                 className="st-float st-zoom"
                 role="group"
-                aria-label={say(SW.zoomIs, { pct: `${percentOf(s)}%` })}
+                aria-label={say(SW.zoomIs, { pct: percentWritten(percentOf(s)) })}
               >
                 <button
                   type="button"
                   className="st-round-button"
                   aria-label={SW.zoomOut}
-                  onClick={() => stepZoom(-1)}
+                  aria-disabled={atSmallest}
+                  onClick={() => {
+                    if (!atSmallest) stepZoom(-1);
+                  }}
                 >
                   <Icon name="minus" size={19} weight={2.2} />
                 </button>
                 <span className="st-pct" role="status">
-                  {percentOf(s)}%
+                  {percentWritten(percentOf(s))}
                 </span>
                 <button
                   type="button"
                   className="st-round-button"
                   aria-label={SW.zoomIn}
-                  onClick={() => stepZoom(1)}
+                  aria-disabled={atLargest}
+                  onClick={() => {
+                    if (!atLargest) stepZoom(1);
+                  }}
                 >
                   <Icon name="plus" size={19} weight={2.2} />
                 </button>
@@ -1596,6 +1944,15 @@ function Seating({ first, event, tell }: { first: Ui; event: SampleEvent; tell: 
       </div>
     </SeatingContext>
   );
+}
+
+function gridOutlines(ui: Ui): Outline[] {
+  if (ui.fold !== 'grid' || ui.chosen.length < 2 || ui.readOnly) return [];
+  const columns = readColumns(ui.grid.columns);
+  const gap = readGap(ui.grid.gap, ui.units);
+
+  if (columns == null || gap == null) return [];
+  return outlinesOf(ui.plan, gridOf(chosenItems(ui), columns, gap).moved);
 }
 
 function ViewSwitch() {
@@ -1760,59 +2117,67 @@ function MessageBar({
       aria-live="polite"
     >
       <Icon name={glyph} size={17} weight={2.2} />
-      <p>{bar.words}</p>
-      {bar.does === 'placing' && (
-        <span className="st-bar-acts">
-          <button type="button" className="desk-text" onClick={onPlace}>
-            {SW.placeCentre}
-          </button>
-          <button type="button" className="desk-text" onClick={onStop}>
-            {SW.stopPlacing}
-          </button>
-        </span>
-      )}
-      {bar.does === 'pick' && (
-        <span className="st-bar-acts">
-          <button type="button" className="desk-text" onClick={() => pick(null)}>
-            {SW.cancel}
-          </button>
-        </span>
-      )}
-      {bar.does === 'undo' && (
-        <span className="st-bar-acts">
-          <button
-            type="button"
-            className="desk-text"
-            onClick={() =>
-              set((now) =>
-                now.undo == null
-                  ? { ...now, bar: null }
-                  : {
-                      ...now,
-                      plan: now.undo.plan,
-                      tray: now.undo.tray,
-                      undo: null,
-                      bar: null,
-                      hover: null,
-                      save: 'saving',
-                    },
-              )
-            }
-          >
-            {SW.undo}
-          </button>
-        </span>
-      )}
+      <div className="st-bar-body">
+        <p>{bar.words}</p>
+        {bar.does === 'placing' && (
+          <span className="st-bar-acts">
+            <button type="button" className="desk-text" onClick={onPlace}>
+              {SW.placeCentre}
+            </button>
+            <button type="button" className="desk-text" onClick={onStop}>
+              {SW.stopPlacing}
+            </button>
+          </span>
+        )}
+        {bar.does === 'pick' && (
+          <span className="st-bar-acts">
+            <button type="button" className="desk-text" onClick={() => pick(null)}>
+              {SW.cancel}
+            </button>
+          </span>
+        )}
+        {bar.does === 'undo' && (
+          <span className="st-bar-acts">
+            <button
+              type="button"
+              className="desk-text"
+              onClick={() => {
+                const undoing = ui.undo != null;
+
+                set((now) =>
+                  now.undo == null
+                    ? { ...now, bar: null }
+                    : {
+                        ...now,
+                        plan: now.undo.plan,
+                        tray: now.undo.tray,
+                        undo: null,
+                        bar: null,
+                        hover: null,
+                        save: 'saving',
+                        spoken: '',
+                      },
+                );
+                if (undoing)
+                  window.setTimeout(() => set((now) => ({ ...now, spoken: SW.undone })), 60);
+              }}
+            >
+              {SW.undo}
+            </button>
+          </span>
+        )}
+      </div>
     </div>
   );
 }
 
 function KeysStrip() {
+  const mac = typeof navigator !== 'undefined' && onApple(browserPlatform());
   const keys: readonly [string, string][] = [
     ['← ↑ → ↓', SW.keyMove],
     ['Shift', SW.keyShift],
     ['R', SW.keyTurn],
-    ['⌘ D', SW.keyDuplicate],
+    [mac ? '⌘ D' : 'Ctrl D', SW.keyDuplicate],
     ['Delete', SW.keyDelete],
     ['Esc', SW.keyEsc],
   ];
@@ -1830,6 +2195,9 @@ function KeysStrip() {
 }
 
 function AddBar({
+  floor,
+  forced,
+  onCrowded,
   menu,
   placing,
   onMenu,
@@ -1837,6 +2205,9 @@ function AddBar({
   onRow,
   onSeat,
 }: {
+  floor: number;
+  forced: boolean;
+  onCrowded: (crowded: boolean) => void;
   menu: boolean;
   placing: Kind | null;
   onMenu: () => void;
@@ -1851,15 +2222,32 @@ function AddBar({
     ['cocktail', SW.menuCocktail],
   ];
   const first = useRef<HTMLButtonElement>(null);
+  const bar = useRef<HTMLDivElement>(null);
+  const unfolded = useRef(0);
+  const [folded, setFolded] = useState(false);
+
+  useLayoutEffect(() => {
+    const box = bar.current;
+
+    if (box == null) return;
+    if (!folded) unfolded.current = box.getBoundingClientRect().width;
+    const zoom =
+      box.parentElement?.querySelector<HTMLElement>('.st-zoom')?.getBoundingClientRect().width ?? 0;
+
+    setFolded(forced || unfolded.current + zoom + FLOAT_MARGINS > floor);
+    onCrowded(folded && box.getBoundingClientRect().width + zoom + FLOAT_MARGINS > floor);
+  }, [floor, folded, forced, onCrowded]);
 
   useEffect(() => {
     if (menu) first.current?.focus();
   }, [menu]);
 
+  const tableOn = placing != null && placing !== 'row' && placing !== 'single';
+
   return (
     <>
       {menu && (
-        <div className="st-float st-menu" role="menu" aria-label={SW.addTable}>
+        <div className="st-float st-menu" role="menu" aria-label={folded ? SW.add : SW.addTable}>
           {shapes.map(([kind, words], index) => (
             <button
               key={kind}
@@ -1873,32 +2261,60 @@ function AddBar({
               {words}
             </button>
           ))}
+          {folded && (
+            <>
+              <button
+                type="button"
+                role="menuitem"
+                className="st-menu-row"
+                onClick={() => {
+                  onMenu();
+                  onRow();
+                }}
+              >
+                <ShapeTile kind="row" />
+                {SW.menuRow}
+              </button>
+              <button
+                type="button"
+                role="menuitem"
+                className="st-menu-row"
+                onClick={() => {
+                  onMenu();
+                  onSeat();
+                }}
+              >
+                <ShapeTile kind="single" />
+                {SW.singleSeat}
+              </button>
+            </>
+          )}
         </div>
       )}
-      <div className="st-float st-add" role="group" aria-label={SW.addBar}>
+      <div className="st-float st-add" role="group" aria-label={SW.addBar} ref={bar}>
         <button
           type="button"
-          className={
-            menu || (placing != null && placing !== 'row' && placing !== 'single')
-              ? 'st-tool is-on'
-              : 'st-tool'
-          }
+          className={menu || (placing != null && (folded || tableOn)) ? 'st-tool is-on' : 'st-tool'}
           aria-haspopup="menu"
           aria-expanded={menu}
           onClick={onMenu}
         >
           <Icon name="plus" size={18} weight={2.2} />
-          {SW.addTable}
+          {folded ? SW.add : SW.addTable}
           <Icon name="chevdown" size={15} weight={2.4} />
         </button>
-        <button type="button" className="st-tool" onClick={onRow}>
-          <Icon name="row" size={18} weight={2.2} />
-          {SW.addRow}
-        </button>
-        <button type="button" className="st-tool" onClick={onSeat}>
-          <Icon name="seat1" size={18} weight={2.2} />
-          {SW.addSeat}
-        </button>
+        {!folded && (
+          <>
+            <button type="button" className="st-tool" onClick={onRow}>
+              <Icon name="row" size={18} weight={2.2} />
+              {SW.addRow}
+            </button>
+            <button type="button" className="st-tool" onClick={onSeat}>
+              <Icon name="seat1" size={18} weight={2.2} />
+              {SW.addSeat}
+            </button>
+          </>
+        )}
       </div>
     </>
   );
@@ -2052,13 +2468,12 @@ function Asking() {
     );
   if (asking.kind === 'deleteSection') {
     const section = ui.plan.sections.find((one) => one.id === asking.id);
-    const n = ui.plan.items.filter((item) => item.sec === asking.id && isTable(item)).length;
 
     if (section == null) return null;
     return (
       <Ask
         title={say(SW.deleteNamed, { name: section.name })}
-        line={n === 0 ? '' : many('sectionDeleteBody', n)}
+        line={sectionDeleteWords(ui.plan.items, section.id)}
         keep={SW.keepIt}
         go={SW.deleteSection}
         onKeep={keep}
@@ -2082,6 +2497,53 @@ function Asking() {
     );
   }
   const doomed = ui.plan.items.filter((item) => asking.ids.includes(item.id));
+  const freed: Party[] = doomed.flatMap((item) =>
+    item.chairs
+      .filter((chair) => chair.state === 'taken' && chair.who != null)
+      .map((chair) => ({
+        id: `back-${chair.who}`,
+        name: chair.who!,
+        companions: [],
+        group: null,
+        reply: 'coming' as const,
+      })),
+  );
+
+  if (doomed.length > 1) {
+    const seated = seatedOf(doomed);
+    const tables = doomed.every(isTable);
+    const things = thingsOf(doomed);
+    const words =
+      seated === 0 ? say(SW.deletedEmpty, { things }) : many('deletedMany', seated, { things });
+
+    return (
+      <Ask
+        title={many(tables ? 'deleteTablesAsk' : 'deleteItemsAsk', doomed.length)}
+        line={seated === 0 ? SW.nobodyInThem : many('movedToTray', seated)}
+        keep={SW.keepThem}
+        go={many(tables ? 'deleteTablesGo' : 'deleteItemsGo', doomed.length)}
+        red={false}
+        onKeep={keep}
+        onGo={() =>
+          set((now) => ({
+            ...now,
+            plan: {
+              ...now.plan,
+              items: now.plan.items.filter((item) => !asking.ids.includes(item.id)),
+            },
+            tray: [...now.tray, ...freed],
+            undo: { plan: now.plan, tray: now.tray },
+            bar: { kind: 'undo', words, does: 'undo' },
+            asking: null,
+            chosen: [],
+            chair: null,
+            notice: null,
+            save: 'saving',
+          }))
+        }
+      />
+    );
+  }
   const n = doomed.reduce(
     (sum, item) => sum + item.chairs.filter((chair) => chair.state === 'taken').length,
     0,
@@ -2103,25 +2565,13 @@ function Asking() {
         );
       }}
       onGo={() => {
-        const back: Party[] = doomed.flatMap((item) =>
-          item.chairs
-            .filter((chair) => chair.state === 'taken' && chair.who != null)
-            .map((chair) => ({
-              id: `back-${chair.who}`,
-              name: chair.who!,
-              companions: [],
-              group: null,
-              reply: 'coming' as const,
-            })),
-        );
-
         commit(
           null,
           (plan) => ({
             ...plan,
             items: plan.items.filter((item) => !asking.ids.includes(item.id)),
           }),
-          { asking: null, chosen: [], chair: null, notice: null, tray: [...ui.tray, ...back] },
+          { asking: null, chosen: [], chair: null, notice: null, tray: [...ui.tray, ...freed] },
         );
       }}
     />

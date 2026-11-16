@@ -1,3 +1,4 @@
+import { RW as SCHEDULE_WORDS } from './schedule.ts';
 import type { DemoLink } from './settings.ts';
 
 /** The run view (sc-1404, RunOfShow.dc.html on page e33): each track's planned and expected times, how far behind it runs, fixed times and their collisions. */
@@ -61,11 +62,13 @@ export const RW = {
   now: 'Now',
   done: 'Done',
   next: 'Next',
-  then: 'Then',
+  then: 'Later',
   nothingNow: 'Nothing is on',
   nothingThen: 'Nothing after this.',
   allDone: 'Every item on this track is done.',
   nextStep: 'Next step: start it when it begins.',
+  lock: SCHEDULE_WORDS.lock,
+  openRun: 'Run view',
   later: 'Move the clock on 5 min',
   demoOnly: 'Demo only: the clock stands still here, so this moves it on to show times recompute.',
 } as const;
@@ -155,7 +158,13 @@ export function figureWords(figure: Figure): string {
 export function figureSaid(name: string, figure: Figure): string {
   return figure.kind === 'behind'
     ? `${name}, ${figure.minutes} ${figure.minutes === 1 ? 'minute' : 'minutes'} behind`
-    : `${name}, ${figureWords(figure).toLowerCase().replace(/\.$/, '')}`;
+    : figure.kind === 'done'
+      ? `${name}, every item is done`
+      : `${name}, ${figureWords(figure).toLowerCase()}`;
+}
+
+function firstStart(items: readonly RunItem[]): number {
+  return Math.min(...items.map((item) => minutesOf(item.planned)));
 }
 
 /** "Cake cutting would run into Fireworks at 22:00", for each fixed-time item the one before it would still be running at. */
@@ -182,13 +191,14 @@ export function lastsOf(item: RunItem): string {
 }
 
 /** The line under a track's table: "Next: Welcome speech at about 19:40. Next step: start it when it begins." */
-export function nextLine(view: TrackView): string {
+export function nextLine(view: TrackView, manage = true): string {
   if (view.figure.kind === 'done') return RW.allDone;
   if (view.next == null) return RW.nothingThen;
 
   const { item, expected: at } = view.next;
+  const next = `Next: ${item.title} at ${at === item.planned ? at : `about ${at}`}.`;
 
-  return `Next: ${item.title} at ${at === item.planned ? at : `about ${at}`}. ${RW.nextStep}`;
+  return manage ? `${next} ${RW.nextStep}` : next;
 }
 
 export function trackView(track: Track, clock: string): TrackView {
@@ -349,6 +359,11 @@ export const RUN_STATES = {
     clock: '21:32',
     marks: { ...DINED, speeches: ['20:05', '21:05'], dance: ['21:25'] },
   },
+  twoRunning: {
+    name: 'Two at once: Welcome speech started while Guests arrive is still on',
+    clock: '18:38',
+    marks: { arrive: ['18:02'], welcome: ['18:33'] },
+  },
   outOfOrder: {
     name: 'Out of order: Dinner started before Welcome speech',
     clock: '18:55',
@@ -385,12 +400,17 @@ export function runAt(raw: string | null): Run {
     tracks: [
       { id: 'hall', name: 'Main hall', items: marked(HALL, state.marks) },
       { id: 'terrace', name: 'Garden terrace', items: onPlan(TERRACE, state.clock) },
-    ],
+    ].sort((a, b) => firstStart(a.items) - firstStart(b.items)),
   };
 }
 
-export function runViewAt(state?: RunStateName): string {
-  return `/demo/events/${RUN_EVENT}/run${state == null ? '' : `?state=${state}`}`;
+/** `reader` opens it as someone with run_of_show.read and not run_of_show.manage: no Start or Finish. */
+export function runViewAt(state?: RunStateName, reader = false): string {
+  const query = [state == null ? '' : `state=${state}`, reader ? 'as=reader' : '']
+    .filter((part) => part !== '')
+    .join('&');
+
+  return `/demo/events/${RUN_EVENT}/run${query === '' ? '' : `?${query}`}`;
 }
 
 export const RUN_PAGES: readonly { name: string; states: readonly DemoLink[] }[] = [
@@ -399,6 +419,13 @@ export const RUN_PAGES: readonly { name: string; states: readonly DemoLink[] }[]
     states: (Object.keys(RUN_STATES) as RunStateName[]).map((state) => ({
       to: runViewAt(state),
       name: RUN_STATES[state].name,
+    })),
+  },
+  {
+    name: 'Read only, without run_of_show.manage: no Start or Finish',
+    states: (['behind', 'outOfOrder', 'last'] as const).map((state) => ({
+      to: runViewAt(state, true),
+      name: `Read only · ${RUN_STATES[state].name}`,
     })),
   },
 ];

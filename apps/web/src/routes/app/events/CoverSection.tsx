@@ -6,6 +6,7 @@ import {
   coverTypeOf,
   draggedPosition,
   positionPart,
+  visibleLength,
 } from '@soirely/domain';
 import {
   type ChangeEvent,
@@ -422,7 +423,7 @@ function CoverDialog({
         ? { ...saved, position }
         : 'choose';
   const ready = !holding && shown !== 'choose';
-  const count = [...description].length;
+  const count = visibleLength(description);
 
   async function use(): Promise<void> {
     if (!ready || pending) return;

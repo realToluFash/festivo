@@ -3,6 +3,7 @@ import {
   ApiUnreachableError,
   GUEST_ANSWERS,
   GUEST_REPLY_HOWS,
+  type Guest,
   type GuestAnswer,
   type GuestReplyHow,
   type TaggedGuest,
@@ -22,16 +23,18 @@ import { Glyph } from './Glyph.tsx';
 import { RadioMark } from './RadioMark.tsx';
 import { ReplyMark } from './ReplyMark.tsx';
 import { type ScreenReaderTarget, moveScreenReaderFocus } from './screenReaderFocus.ts';
+import { Quote } from './PasteReply.tsx';
 import { Pill } from './SettingsParts.tsx';
 import { FocusedScreen } from './SummaryOverlays.tsx';
 import { Text } from './Text.tsx';
 
 type Refusal = 'offline' | 'notSaved' | null;
 
-/** Record a reply (sc-3787): nothing chosen when it opens, both answers needed before Save, the guest's own reply replaced only once asked. */
+/** Record a reply (sc-3787): nothing chosen when it opens, both answers needed before Save, the guest's own reply replaced only once asked. From a copied message, By message is chosen. */
 export function GuestRecord({
   open,
-  tagged,
+  guest: given,
+  message = null,
   eventId,
   timeZone,
   opener,
@@ -40,7 +43,9 @@ export function GuestRecord({
   onSaved,
 }: {
   open: boolean;
-  tagged: TaggedGuest;
+  guest: Guest;
+  /** sc-54450: the copied message it was opened from, shown above the form, with ‹ Whose reply is this? at the left. */
+  message?: { quote: string } | null;
   eventId: string;
   timeZone: string;
   opener: RefObject<ScreenReaderTarget | null>;
@@ -49,10 +54,11 @@ export function GuestRecord({
   onSaved: (tagged: TaggedGuest) => void;
 }) {
   const { t } = useTranslation();
-  const [guest, setGuest] = useState(tagged.guest);
+  const [guest, setGuest] = useState<Guest>(given);
   const [answer, setAnswer] = useState<GuestAnswer | null>(null);
-  const [how, setHow] = useState<GuestReplyHow | null>(null);
-  const [ticked, setTicked] = useState(() => startTicks(tagged.guest));
+  const [how, setHow] = useState<GuestReplyHow | null>(message == null ? null : 'message');
+  const [ticked, setTicked] = useState(() => startTicks(given));
+  const [all, setAll] = useState(false);
   const [tried, setTried] = useState(false);
   const [asking, setAsking] = useState(false);
   const [refusal, setRefusal] = useState<Refusal>(null);
@@ -123,6 +129,7 @@ export function GuestRecord({
         onPress: save,
         testID: 'guest.record.save',
       }}
+      back={message == null ? undefined : t('guestList.paste.whose')}
       waits={sending}
       onCancel={onClose}
       cancelTestID="guest.record.cancel"
@@ -189,6 +196,7 @@ export function GuestRecord({
         </View>
       )}
       {refusal === 'notSaved' && <AlertLine text={t('guestList.notSaved')} />}
+      {message != null && <Quote text={message.quote} all={all} onShowAll={() => setAll(true)} />}
       <Text size={15} weight="medium" style={[styles.secondary, styles.lines]}>
         {t('guestList.recordFor', { name: guest.fullName })}
       </Text>

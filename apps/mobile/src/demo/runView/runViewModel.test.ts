@@ -117,14 +117,18 @@ describe('the track’s figure', () => {
     expect(nextLine(hall('allDone'))).toBe('Every item on this track is done.');
   });
 
+  it('gives a reader the next item without the step only a manager can take', () => {
+    expect(nextLine(hall('behind'), false)).toBe('Next: Speeches at about 20:13.');
+    expect(nextLine(hall('last'), false)).toBe('Nothing after this.');
+    expect(nextLine(hall('allDone'), false)).toBe('Every item on this track is done.');
+  });
+
   it('is said with the track’s name, in words', () => {
     expect(figureSaid('Main hall', { kind: 'behind', minutes: 1 })).toBe(
       'Main hall, 1 minute behind',
     );
     expect(figureSaid('Main hall', { kind: 'onTime' })).toBe('Main hall, on time');
-    expect(figureSaid('Main hall', { kind: 'done' })).toBe(
-      'Main hall, every item on this track is done',
-    );
+    expect(figureSaid('Main hall', { kind: 'done' })).toBe('Main hall, every item is done');
   });
 
   it('never goes below On time when the night runs early', () => {
@@ -167,16 +171,41 @@ describe('the rows', () => {
     expect(speeches?.lasts).toBe('No length set');
   });
 
+  it('lists the tracks in the order their first items start, as the product does', () => {
+    expect(runAt('onTime').tracks.map((one) => one.name)).toEqual(['Garden terrace', 'Main hall']);
+  });
+
   it('starts and finishes an item at the clock, and the clock moves on', () => {
     let run = runAt('notStarted');
     run = startItem(later(run, 45), 'hall', 'arrive');
     expect(run.clock).toBe('18:05');
-    const arrive = run.tracks[0]?.items.find((one) => one.id === 'arrive');
+    const arrive = run.tracks
+      .find((one) => one.id === 'hall')
+      ?.items.find((one) => one.id === 'arrive');
     expect(arrive).toMatchObject({ phase: 'now', started: '18:05' });
     run = finishItem(later(run, 30), 'hall', 'arrive');
-    expect(run.tracks[0]?.items.find((one) => one.id === 'arrive')).toMatchObject({
+    expect(
+      run.tracks.find((one) => one.id === 'hall')?.items.find((one) => one.id === 'arrive'),
+    ).toMatchObject({
       phase: 'done',
       ended: '18:35',
     });
+  });
+});
+
+describe('two items under way at once', () => {
+  it('puts both on Now in track order, and the next item waits on the later end', () => {
+    const view = hall('twoRunning');
+    expect(view.now.map((row) => row.item.id)).toEqual(['arrive', 'welcome']);
+    expect(view.next).toMatchObject({ item: { id: 'dinner' }, expected: '18:43' });
+    expect(view.figure).toEqual({ kind: 'behind', minutes: 3 });
+    expect(view.then.map((row) => row.item.id)).not.toContain('welcome');
+  });
+
+  it('keeps the other on Now once one is finished', () => {
+    const run = finishItem(runAt('twoRunning'), 'hall', 'arrive');
+    const track = run.tracks.find((one) => one.id === 'hall');
+    if (track == null) throw new Error('no hall');
+    expect(trackView(track, run.clock).now.map((row) => row.item.id)).toEqual(['welcome']);
   });
 });

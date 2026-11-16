@@ -449,6 +449,8 @@ export interface Choice {
   /** What a pick answers with, when two choices could share a name. */
   id?: string;
   name: string;
+  /** The language the name is in, where it is not the page's (WCAG 2.2, 3.1.2). */
+  lang?: string;
   line?: string | null;
   now?: boolean;
 }
@@ -461,6 +463,7 @@ export function Choices({
   picked,
   onPick,
   foot,
+  footLive = false,
 }: {
   legend: string;
   hideLegend?: boolean;
@@ -468,6 +471,7 @@ export function Choices({
   picked: string;
   onPick: (name: string) => void;
   foot?: string;
+  footLive?: boolean;
 }) {
   const { t } = useTranslation();
   const name = useId();
@@ -482,7 +486,9 @@ export function Choices({
               className={(choice.id ?? choice.name) === picked ? 'desk-row is-picked' : 'desk-row'}
             >
               <RowWords
-                title={choice.name}
+                title={
+                  choice.lang == null ? choice.name : <span lang={choice.lang}>{choice.name}</span>
+                }
                 tag={choice.now === true && <Tag kind="now" word={t('settings.choiceNow')} />}
                 lines={choice.line == null ? [] : [choice.line]}
               />
@@ -497,7 +503,11 @@ export function Choices({
           </li>
         ))}
       </ul>
-      {foot != null && <p className="desk-foot">{foot}</p>}
+      {foot != null && (
+        <p className="desk-foot" aria-live={footLive ? 'polite' : undefined}>
+          {foot}
+        </p>
+      )}
     </fieldset>
   );
 }

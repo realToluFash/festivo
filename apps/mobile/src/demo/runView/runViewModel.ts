@@ -1,5 +1,5 @@
 /** The run view (sc-1404, RunOfShow.dc.html on page e33): each track's planned and expected times, how far behind it runs, fixed times and their collisions. */
-export const RUN_EVENT_NAME = 'Adaeze & Tunde’s wedding';
+export const RUN_EVENT = 'evt-wed-4';
 
 export type Phase = 'waiting' | 'now' | 'done';
 
@@ -42,7 +42,8 @@ export interface TrackView {
   rows: readonly Row[];
   figure: Figure;
   collisions: readonly string[];
-  now: RunItem | null;
+  /** Every item under way, in track order: two can run at once when one starts before the other is finished. */
+  now: readonly Row[];
   next: { item: RunItem; expected: string } | null;
   then: readonly Row[];
 }
@@ -59,11 +60,13 @@ export const RW = {
   now: 'Now',
   done: 'Done',
   next: 'Next',
-  then: 'Then',
+  then: 'Later',
   nothingNow: 'Nothing is on',
   nothingThen: 'Nothing after this.',
   allDone: 'Every item on this track is done.',
   nextStep: 'Next step: start it when it begins.',
+  lock: 'You can see this schedule. Ask whoever runs the event to change it.',
+  openRun: 'Run view',
   later: 'Move the clock on 5 min',
   demoOnly: 'Demo only: the clock stands still here, so this moves it on to show times recompute.',
 } as const;
@@ -153,7 +156,13 @@ export function figureWords(figure: Figure): string {
 export function figureSaid(name: string, figure: Figure): string {
   return figure.kind === 'behind'
     ? `${name}, ${figure.minutes} ${figure.minutes === 1 ? 'minute' : 'minutes'} behind`
-    : `${name}, ${figureWords(figure).toLowerCase().replace(/\.$/, '')}`;
+    : figure.kind === 'done'
+      ? `${name}, every item is done`
+      : `${name}, ${figureWords(figure).toLowerCase()}`;
+}
+
+function firstStart(items: readonly RunItem[]): number {
+  return Math.min(...items.map((item) => minutesOf(item.planned)));
 }
 
 /** "Cake cutting would run into Fireworks at 22:00", for each fixed-time item the one before it would still be running at. */
@@ -180,13 +189,14 @@ export function lastsOf(item: RunItem): string {
 }
 
 /** The line under a track's table: "Next: Welcome speech at about 19:40. Next step: start it when it begins." */
-export function nextLine(view: TrackView): string {
+export function nextLine(view: TrackView, manage = true): string {
   if (view.figure.kind === 'done') return RW.allDone;
   if (view.next == null) return RW.nothingThen;
 
   const { item, expected: at } = view.next;
+  const next = `Next: ${item.title} at ${at === item.planned ? at : `about ${at}`}.`;
 
-  return `Next: ${item.title} at ${at === item.planned ? at : `about ${at}`}. ${RW.nextStep}`;
+  return manage ? `${next} ${RW.nextStep}` : next;
 }
 
 export function trackView(track: Track, clock: string): TrackView {
@@ -209,11 +219,6 @@ export function trackView(track: Track, clock: string): TrackView {
         item.phase !== 'waiting' && skipped != null ? `Started before ${skipped.title}.` : null,
     };
   });
-  const now =
-    ordered
-      .filter((item) => item.phase === 'now')
-      .sort((a, b) => minutesOf(a.started ?? a.planned) - minutesOf(b.started ?? b.planned))[0] ??
-    null;
   const next = ordered.find((item) => item.phase === 'waiting') ?? null;
 
   return {
@@ -221,7 +226,7 @@ export function trackView(track: Track, clock: string): TrackView {
     rows,
     figure: figureOf(track.items, clock),
     collisions: collisionsOf(track.items, clock),
-    now,
+    now: rows.filter((row) => row.item.phase === 'now'),
     next: next == null ? null : { item: next, expected: clockOf(starts.get(next.id) ?? 0) },
     then: rows.filter((row) => row.item.phase === 'waiting' && row.item !== next),
   };
@@ -347,6 +352,11 @@ export const RUN_STATES = {
     clock: '21:32',
     marks: { ...DINED, speeches: ['20:05', '21:05'], dance: ['21:25'] },
   },
+  twoRunning: {
+    name: 'Two at once: Welcome speech started while Guests arrive is still on',
+    clock: '18:38',
+    marks: { arrive: ['18:02'], welcome: ['18:33'] },
+  },
   outOfOrder: {
     name: 'Out of order: Dinner started before Welcome speech',
     clock: '18:55',
@@ -383,12 +393,19 @@ export function runAt(raw: string | null | undefined): Run {
     tracks: [
       { id: 'hall', name: 'Main hall', items: marked(HALL, state.marks) },
       { id: 'terrace', name: 'Garden terrace', items: onPlan(TERRACE, state.clock) },
-    ],
+    ].sort((a, b) => firstStart(a.items) - firstStart(b.items)),
   };
 }
 
 export const RUN_BOARDS = (Object.keys(RUN_STATES) as RunStateName[]).map((state) => ({
   title: `Run view · ${RUN_STATES[state].name}`,
-  what: 'Tablet: one table per track. Phone: Now, Next, Then, one track at a time',
+  what: 'Tablet: one table per track. Phone: Now, Next, Later, one track at a time',
   href: `/demo/run-view?state=${state}`,
+}));
+
+/** Opened by someone with run_of_show.read and not run_of_show.manage: no Start or Finish, and the Schedule's lock line. */
+export const RUN_READ_BOARDS = (['behind', 'outOfOrder', 'last'] as const).map((state) => ({
+  title: `Run view · read only · ${RUN_STATES[state].name}`,
+  what: 'Without run_of_show.manage: the same times and figures, no Start or Finish',
+  href: `/demo/run-view?state=${state}&as=reader`,
 }));

@@ -10,7 +10,6 @@ import { type ReactNode, type RefObject, useEffect, useRef, useState } from 'rea
 import { useTranslation } from 'react-i18next';
 import { Navigate, useParams } from 'react-router';
 
-import { BackControl } from '../../../components/BackControl.tsx';
 import { api } from '../../../api.ts';
 import { Refreshing } from '../../../components/OfflineBand.tsx';
 import { keepsWhatLoaded, useOffline } from '../../../offline.ts';
@@ -27,8 +26,12 @@ import { PausedRow } from './PauseEvent.tsx';
 import { OutcomeLine } from './OutcomeLine.tsx';
 import { EventPeople } from './EventPeople.tsx';
 import { GuestsArea, GuestsGone } from './GuestsArea.tsx';
+import { RunArea } from './RunArea.tsx';
+import { MenuArea } from './MenuArea.tsx';
+import { ScheduleArea } from './ScheduleArea.tsx';
 import { SeatingArea } from './SeatingArea.tsx';
 import { RosterArea } from './RosterArea.tsx';
+import { PAGE_NEEDS } from './handoff.ts';
 import { typeLabel } from './eventTypes.ts';
 import { AllDates } from './Timeline.tsx';
 import { EventCrumb, Overview, PhaseChange } from './EventOverview.tsx';
@@ -42,7 +45,7 @@ type Load =
   | { kind: 'notFound' }
   | { kind: 'loaded'; event: OrganisationEvent; tag: string };
 
-type Page = 'event' | 'guests' | 'dates' | 'people' | PlaceholderEventArea;
+type Page = 'event' | 'guests' | 'dates' | 'people' | 'run' | PlaceholderEventArea;
 
 export function EventView() {
   return <ForEvent page="event" />;
@@ -60,6 +63,11 @@ export function EventPeoplePage() {
   return <ForEvent page="people" />;
 }
 
+/** The run view: the schedule as the night runs (sc-1404). */
+export function EventRun() {
+  return <ForEvent page="run" />;
+}
+
 export function EventRoster() {
   return <ForEvent page="staff" />;
 }
@@ -75,7 +83,7 @@ export function EventStaff() {
 export function EventAreaPage() {
   const { area = '' } = useParams();
 
-  return isPlaceholderEventArea(area) ? <ForEvent page={area} /> : <NotFound />;
+  return isPlaceholderEventArea(area) ? <ForEvent page={area} /> : <Withheld />;
 }
 
 function ForEvent({ page }: { page: Page }) {
@@ -92,6 +100,15 @@ function ForEvent({ page }: { page: Page }) {
       eventId={eventId}
       page={page}
     />
+  );
+}
+
+function Withheld() {
+  return (
+    <div className="event-page">
+      <EventCrumb name={null} />
+      <NotFound />
+    </div>
   );
 }
 
@@ -152,16 +169,38 @@ function EventOf({
   useShowEvent(eventId, load.kind === 'loaded' ? load.event : undefined);
   useGoneEvent(eventId, page === 'guests' && load.kind === 'notFound');
 
-  if (page === 'guests' && load.kind === 'notFound') return <GuestsGone heading={heading} />;
+  if (page === 'guests' && load.kind === 'notFound')
+    return (
+      <GuestsGone heading={heading}>
+        <EventCrumb name={null} />
+      </GuestsGone>
+    );
 
   if (page === 'seating' && load.kind === 'loaded')
-    return canOn(load.event, 'seating.read') ? <SeatingArea event={load.event} /> : <NotFound />;
+    return canOn(load.event, PAGE_NEEDS.seating) ? (
+      <SeatingArea event={load.event} />
+    ) : (
+      <Withheld />
+    );
+
+  if (page === 'menu' && load.kind === 'loaded')
+    return canOn(load.event, PAGE_NEEDS.menu) ? <MenuArea event={load.event} /> : <Withheld />;
+
+  if (page === 'schedule' && load.kind === 'loaded')
+    return canOn(load.event, PAGE_NEEDS.schedule) ? (
+      <ScheduleArea event={load.event} />
+    ) : (
+      <Withheld />
+    );
+
+  if (page === 'run' && load.kind === 'loaded')
+    return canOn(load.event, PAGE_NEEDS.run) ? <RunArea event={load.event} /> : <Withheld />;
 
   if (page === 'staff' && load.kind === 'loaded')
-    return canOn(load.event, 'staff.read') ? <RosterArea event={load.event} /> : <NotFound />;
+    return canOn(load.event, PAGE_NEEDS.staff) ? <RosterArea event={load.event} /> : <Withheld />;
 
   if (page === 'guests' && load.kind === 'loaded')
-    return canOn(load.event, 'guests.read') ? (
+    return canOn(load.event, PAGE_NEEDS.guests) ? (
       <GuestsArea
         event={load.event}
         tag={load.tag}
@@ -169,7 +208,7 @@ function EventOf({
         onChange={(event, tag) => setLoad({ kind: 'loaded', event, tag })}
       />
     ) : (
-      <NotFound />
+      <Withheld />
     );
 
   const states = (
@@ -237,14 +276,9 @@ function EventOf({
 
   return (
     <div className="event-page">
-      <div className="event-crumbs">
-        <BackControl
-          className="event-back"
-          label={t('eventPage.backToEvent')}
-          to={`/app/events/${encodeURIComponent(eventId)}`}
-        />
+      <EventCrumb name={load.kind === 'loaded' ? load.event.name : null}>
         {refreshing && <Refreshing />}
-      </div>
+      </EventCrumb>
 
       {states}
 
@@ -258,9 +292,10 @@ function EventOf({
           />
           {page === 'dates' && <AllDatesPage event={load.event} heading={heading} />}
           {page === 'people' && <PeoplePage event={load.event} />}
-          {isPlaceholderEventArea(page) && page !== 'seating' && (
-            <AreaComing event={load.event} area={page} />
-          )}
+          {isPlaceholderEventArea(page) &&
+            page !== 'menu' &&
+            page !== 'seating' &&
+            page !== 'schedule' && <AreaComing event={load.event} area={page} />}
         </Arrived>
       )}
     </div>

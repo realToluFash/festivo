@@ -58,7 +58,7 @@ describe('/demo/events/evt-wed-4/run (sc-1404)', () => {
 
   it('shows no figure on a track with every item done, and says so under its table', async () => {
     await open('allDone');
-    expect(said()).toContain('Main hall, every item on this track is done');
+    expect(said()).toContain('Main hall, every item is done');
     expect(said()).not.toContain('verything done');
     expect(screen.queryByText('Everything done')).toBeNull();
     expect(screen.getAllByText('Every item on this track is done.').length).toBeGreaterThan(0);
@@ -90,5 +90,27 @@ describe('/demo/events/evt-wed-4/run (sc-1404)', () => {
     expect(document.querySelector('.rv-clock')?.textContent).toBe('Now 20:10 at the venue');
     expect(within(hall()).getByText('about 20:10')).toBeTruthy();
     expect(said()).toContain('Main hall, 15 minutes behind15 min behind');
+  });
+
+  it('opens without Start, Finish or the Mark column for a reader, and says why', async () => {
+    await open('behind&as=reader');
+    const heads = within(hall())
+      .getAllByRole('columnheader')
+      .map((one) => one.textContent);
+    expect(heads).toEqual(['Starts', 'Lasts', 'Item', 'Owner']);
+    expect(screen.queryByRole('button', { name: /^(Start|Finish) / })).toBeNull();
+    expect(
+      screen.getByText('You can see this schedule. Ask whoever runs the event to change it.'),
+    ).toBeTruthy();
+    expect(screen.getAllByText('Next: Speeches at about 20:13.').length).toBeGreaterThan(0);
+    expect(within(hall()).getByText('about 20:13')).toBeTruthy();
+  });
+
+  it('goes back up to the Schedule from the breadcrumb', async () => {
+    await open('onTime');
+    const crumb = within(screen.getByRole('navigation', { name: 'Breadcrumb' })).getByRole('link', {
+      name: 'Schedule',
+    });
+    expect(crumb.getAttribute('href')).toBe('/demo/events/evt-wed-4/schedule');
   });
 });

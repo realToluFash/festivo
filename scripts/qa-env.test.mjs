@@ -19,7 +19,7 @@ import { fileURLToPath } from 'node:url';
 import { runInNewContext } from 'node:vm';
 import { inflateSync } from 'node:zlib';
 
-import { describe, expect, it } from 'vitest';
+import { describe, expect, it, vi } from 'vitest';
 
 import {
   allowCleartext,
@@ -71,6 +71,8 @@ import {
   composeBatch,
   localise,
   parseBatch,
+  parseCode,
+  parseVars,
   readyReport,
   accountKind,
   REBUILD,
@@ -125,6 +127,7 @@ import {
   missingCmdlineTools,
   setupAgain,
   unauthorizedWarning,
+  setUpLocalEmulators,
   withAvdRam,
   parseTarget,
   hardwareKeyboardOff,
@@ -1739,7 +1742,7 @@ describe('the QA testers', () => {
     ]);
     expect([c.chromePort, c.driverPort, c.helperPort]).toEqual([9227, 22093, 22196]);
     expect(c.emulators).toMatchObject({
-      phone: { name: 'Soirely_QA5_Phone' },
+      phone: { name: 'Soirely_QA5_Phone', ramMb: 4096 },
       tablet: { name: 'Soirely_QA5_Tablet', ramMb: 4096 },
     });
     expect(testerOf('/Users/x/Projects/soirely-qa5')).toBe(5);
@@ -1967,6 +1970,34 @@ describe('the step a code is made in', () => {
 
   it('is now, when the last was long ago', () => {
     expect(codeStep(10 * STEP_MS, 3)).toEqual({ step: 10, waitMs: 0 });
+  });
+});
+
+describe('an account line', () => {
+  it('keeps an = inside a value and leaves lowercase words alone', () => {
+    expect(parseVars(['tour', 'PASSWORD=a=b', 'email=x', '--cold'])).toEqual({ PASSWORD: 'a=b' });
+  });
+
+  it('reads the same for batch and code', () => {
+    const line = ['EMAIL=a@b.test', 'TOTP_SECRET=GEZDGNBV'];
+    expect(parseBatch(['tour', 'home', ...line]).vars).toEqual(parseVars(line));
+  });
+});
+
+describe('the code command', () => {
+  it('reads whose code from the account line', () => {
+    expect(parseCode(['EMAIL=a@b.test', 'TOTP_SECRET=GEZDGNBV'])).toEqual({
+      email: 'a@b.test',
+      secret: 'GEZDGNBV',
+    });
+  });
+
+  it('refuses without a secret', () => {
+    expect(() => parseCode(['EMAIL=a@b.test'])).toThrow('TOTP_SECRET');
+  });
+
+  it('refuses a secret that is not base32 before waiting for a step', () => {
+    expect(() => parseCode(['EMAIL=a@b.test', 'TOTP_SECRET=nope!'])).toThrow('base32');
   });
 });
 
@@ -4342,6 +4373,39 @@ describe('madeAccount', () => {
 
   it('falls back to the exit status when qa-account said nothing', () => {
     expect(() => madeAccount({ status: 2, stdout: '', stderr: '' })).toThrow('exited 2');
+  });
+});
+
+describe('setUpLocalEmulators', () => {
+  it("raises an existing AVD's RAM when avdmanager is missing", () => {
+    const home = mkdtempSync(join(tmpdir(), 'avd-'));
+    mkdirSync(join(home, 'Soirely_QA_Phone.avd'));
+    writeFileSync(join(home, 'Soirely_QA_Phone.avd/config.ini'), 'hw.ramSize=2048\n');
+    const tools = {
+      sdk: join(home, 'sdk'),
+      avdmanager: join(home, 'sdk/cmdline-tools/latest/bin/avdmanager'),
+      vars: { ANDROID_AVD_HOME: home },
+      env: {},
+    };
+    const phone = { name: 'Soirely_QA_Phone', device: 'pixel_8', ramMb: 4096 };
+    const tablet = { name: 'Soirely_QA_Tablet', device: 'pixel_tablet', ramMb: 4096 };
+
+    const printed = [];
+    const log = vi
+      .spyOn(console, 'log')
+      .mockImplementation((...args) => printed.push(args.join(' ')));
+    try {
+      setUpLocalEmulators(tools, [phone, tablet], ['Soirely_QA_Phone']);
+    } finally {
+      log.mockRestore();
+    }
+
+    expect(printed).toContain(missingCmdlineTools(tools));
+    expect(printed.filter((line) => line.includes('Soirely_QA_Tablet'))).toEqual([]);
+    expect(readFileSync(join(home, 'Soirely_QA_Phone.avd/config.ini'), 'utf8')).toBe(
+      'hw.ramSize=4096\n',
+    );
+    expect(existsSync(join(home, 'Soirely_QA_Tablet.avd'))).toBe(false);
   });
 });
 

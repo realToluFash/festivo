@@ -9,14 +9,15 @@ The code is `App\Domain\Event\Timeline`, served at `GET /api/events/<id>/timelin
 
 ## The pieces
 
-| Piece                      | What it is                                                                            |
-| -------------------------- | ------------------------------------------------------------------------------------- |
-| `MilestoneSourceInterface` | one area's milestones for one event, read on every request                            |
-| `Milestone`                | a key, a date-time, a title, an optional note, an owner, the area, an optional action |
-| `EventTimeline`            | merges every source, drops the areas the reader cannot see, sorts earliest first      |
-| `EventDates`               | the first source: the event's own dates, as they happened                             |
-| `ReplyByDates`             | **Replies close**, at the end of the event's Reply by, owner Automatic (sc-3780)      |
-| `nextUp()`                 | `packages/domain`: the one rule for which milestone is **Next up**, on every client   |
+| Piece                      | What it is                                                                               |
+| -------------------------- | ---------------------------------------------------------------------------------------- |
+| `MilestoneSourceInterface` | one area's milestones for one event, read on every request                               |
+| `Milestone`                | a key, a date-time, a title, an optional note, an owner, the area, an optional action    |
+| `EventTimeline`            | merges every source, drops the areas the reader cannot see, sorts earliest first         |
+| `EventDates`               | the first source: the event's own dates, as they happened                                |
+| `ReplyByDates`             | **Replies close**, at the end of the event's Reply by, owner Automatic (sc-3780)         |
+| `RunOfShowDates`           | each event day's **Run of show begins** and every fixed-time item, owner Event (sc-3893) |
+| `nextUp()`                 | `packages/domain`: the one rule for which milestone is **Next up**, on every client      |
 
 ## Adding an area's milestones
 

@@ -84,5 +84,21 @@
     "validation.seating_table_does_not_turn": "Only a rectangular or head table turns.",
     "validation.seating_table_rotation_steps": "Choose a rotation in 15° steps, from 0° to 345°.",
     "validation.seating_table_no_such_seat": "Choose seats from 1 to {max, number}, each once.",
-    "validation.seating_table_section_unknown": "Choose one of this plan's sections, or no section."
+    "validation.seating_table_section_unknown": "Choose one of this plan's sections, or no section.",
+    "run_of_show.item_limit": "This schedule has {max, number, ::group-auto} items, the most an event can hold. Delete one to add another. Nothing was saved.",
+    "seating.seat_default_name": "Seat {n}",
+    "validation.seating_row_label_required": "Enter a label for the row.",
+    "validation.seating_row_label_taken": "This plan already has a row labelled {label}.",
+    "validation.seating_row_spacing_between": "Enter a spacing from {min} to {max}.",
+    "validation.seating_seat_name_required": "Enter a name for the seat.",
+    "validation.seating_seat_name_taken": "This plan already has a seat called {name}.",
+    "validation.seating_arrange_nothing": "Send at least one table, row or seat to move.",
+    "validation.seating_arrange_table_only": "Only a table changes its size here.",
+    "validation.seating_arrange_twice": "Choose each item only once.",
+    "validation.seating_seat_does_not_turn": "A single seat does not turn.",
+    "validation.seating_outside_room": "{name} would sit outside the room.",
+    "validation.seating_renumber_taken": "{name} is already taken by a table you did not choose.",
+    "validation.seating_copy_outside_room": "The copy of {name} would sit outside the room, so nothing was added.",
+    "validation.seating_row_outside_room": "Row {label} would sit outside the room.",
+    "seating.no_such_item": "This table, row or seat is not on the plan."
 }

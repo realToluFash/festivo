@@ -15,6 +15,7 @@ import { keptInbox, waitingLine } from './messages.ts';
 import {
   type Errors,
   type Field,
+  type Failure,
   type Form,
   type Item,
   type Panel,
@@ -52,6 +53,7 @@ import {
   windowLine,
   zoneNamed,
 } from './schedule.ts';
+import { RW as RUN_WORDS, runViewAt } from './runView.ts';
 import { useSwitcherStart } from './switcher.ts';
 import './guests.css';
 import './menu.css';
@@ -145,7 +147,9 @@ function ScheduleView({
   const [stale, setStale] = useState(first.conflict != null);
   const [asking, setAsking] = useState(first.asking);
   const [deleted, setDeleted] = useState<Item | null>(first.deleted);
+  const [unrestored, setUnrestored] = useState(first.unrestored);
   const [picking, setPicking] = useState(first.picking);
+  const [failed, setFailed] = useState(first.failed);
   const [picked, setPicked] = useState<string | null>(null);
   const [said, setSaid] = useState('');
   const focusAfter = useRef<string | null>(null);
@@ -157,11 +161,13 @@ function ScheduleView({
         ? 'ro-limit'
         : first.focus === 'conflict'
           ? 'ro-conflict'
-          : first.focus === 'ask'
-            ? 'ro-keep'
-            : first.focus == null
-              ? null
-              : FIELD_IDS[first.focus];
+          : first.focus === 'failed'
+            ? FAILED_IDS[first.failed ?? 'save']
+            : first.focus === 'ask'
+              ? 'ro-keep'
+              : first.focus == null
+                ? null
+                : FIELD_IDS[first.focus];
     if (at != null) document.getElementById(at)?.focus();
   }, [first]);
 
@@ -199,6 +205,7 @@ function ScheduleView({
     setLimit(false);
     setConflict(null);
     setAsking(false);
+    setFailed(null);
   }
 
   function close(back?: string) {
@@ -206,7 +213,8 @@ function ScheduleView({
     setPanel(null);
     setForm(null);
     reset();
-    focusAfter.current = back ?? (was?.kind === 'edit' ? `ro-open-${was.id}` : 'ro-add');
+    const there = was?.kind === 'edit' && items.some((one) => one.id === was.id);
+    focusAfter.current = back ?? (there ? `ro-open-${was.id}` : 'ro-add');
   }
 
   function keep(saved: Item, words: string) {
@@ -214,12 +222,14 @@ function ScheduleView({
     setDay(dayOf(saved.starts));
     setPicked(placeOf(saved));
     setSaid(words);
+    setUnrestored(null);
     close(`ro-open-${saved.id}`);
   }
 
   function save() {
     if (form == null) return;
-    if (panel?.kind === 'add' && items.length >= MOST_ITEMS) {
+    const adding = panel?.kind === 'add' || failed === 'gone';
+    if (adding && items.length >= MOST_ITEMS) {
       setLimit(true);
       focusAfter.current = 'ro-limit';
       return;
@@ -235,7 +245,7 @@ function ScheduleView({
       focusAfter.current = 'ro-conflict';
       return;
     }
-    if (panel?.kind === 'edit') {
+    if (panel?.kind === 'edit' && !adding) {
       keep(itemOf(panel.id, form, formPlaces(items, form)), RW.saved(form.title.trim()));
       return;
     }
@@ -267,6 +277,7 @@ function ScheduleView({
     if (editing == null) return;
     setItems((was) => was.filter((one) => one.id !== editing.id));
     setDeleted(editing);
+    setUnrestored(null);
     setSaid('');
     close('ro-add');
   }
@@ -323,6 +334,12 @@ function ScheduleView({
             <h1 className="gs-title">{`${RW.title} · ${dayWord}`}</h1>
             {line != null && <p className="mn-sub">{line}</p>}
           </div>
+          {items.length > 0 && (
+            <Link className="gs-pill is-secondary ro-run" to={runViewAt(undefined, !manage)}>
+              <Glyph name="clock" size={17} weight={2.2} />
+              {RUN_WORDS.openRun}
+            </Link>
+          )}
           {manage && (
             <button
               id="ro-add"
@@ -377,6 +394,12 @@ function ScheduleView({
             </>
           )}
         </p>
+        {unrestored != null && (
+          <p id="ro-unsaid" className="ro-limit ro-unsaid ro-chrome" role="alert" tabIndex={-1}>
+            <Broken />
+            {RW.notRestored(unrestored)}
+          </p>
+        )}
         <div className="mn-split">
           <div
             id="ro-tables"
@@ -434,12 +457,14 @@ function ScheduleView({
               limit={limit}
               conflict={conflict}
               asking={asking}
+              failed={failed}
               onChange={(next) => setForm({ ...form, ...next })}
               onSave={save}
               onClose={() => close()}
               onTheirs={useTheirs}
               onMine={keepMine}
               onAsk={() => {
+                setFailed(null);
                 setAsking(true);
                 focusAfter.current = 'ro-keep';
               }}
@@ -632,6 +657,7 @@ function ItemPanel({
   limit,
   conflict,
   asking,
+  failed,
   onChange,
   onSave,
   onClose,
@@ -649,6 +675,7 @@ function ItemPanel({
   limit: boolean;
   conflict: Item | null;
   asking: boolean;
+  failed: Failure | null;
   onChange: (next: Partial<Form>) => void;
   onSave: () => void;
   onClose: () => void;
@@ -665,7 +692,7 @@ function ItemPanel({
   const dayPlaces = formDay == null ? [] : placesOn(items, formDay);
   const startsWrong = errors.date ?? errors.time ?? null;
   const ends = lastsHelp(form, reader);
-  const title = editing == null ? RW.addItem : RW.editItem;
+  const title = editing == null && failed !== 'gone' ? RW.addItem : RW.editItem;
 
   return (
     <aside className="mn-panel ro-panel" aria-labelledby="ro-panel-title">
@@ -691,10 +718,20 @@ function ItemPanel({
       <div className="mn-panel-body">
         {limit && (
           <div id="ro-limit" className="ro-limit" role="alert" tabIndex={-1}>
-            <span className="ro-ring" aria-hidden="true">
-              <Glyph name="clear" size={14} weight={2.6} />
-            </span>
+            <Broken />
             <p>{RW.limit}</p>
+          </div>
+        )}
+        {(failed === 'save' || failed === 'delete') && (
+          <div id="ro-failed" className="ro-limit" role="alert" tabIndex={-1}>
+            <Broken />
+            <p>{failed === 'save' ? RW.notSaved : RW.notDeleted}</p>
+          </div>
+        )}
+        {failed === 'gone' && (
+          <div id="ro-gone" className="sn-alert ro-gone" role="alert" tabIndex={-1}>
+            <Glyph name="warn" size={18} weight={2.2} />
+            <p>{RW.gone}</p>
           </div>
         )}
         {conflict != null && (
@@ -906,16 +943,33 @@ function ItemPanel({
                 {`${RW.deleteItem}…`}
               </button>
             )}
-            <button type="button" className="desk-text ro-cancel" onClick={onClose}>
-              {RW.cancel}
-            </button>
-            <button type="button" className="gs-pill is-primary ro-save" onClick={onSave}>
-              {RW.save}
-            </button>
+            <div className="ro-acts-end">
+              <button type="button" className="desk-text ro-cancel" onClick={onClose}>
+                {RW.cancel}
+              </button>
+              <button type="button" className="gs-pill is-primary ro-save" onClick={onSave}>
+                {failed === 'gone' ? RW.addAgain : RW.save}
+              </button>
+            </div>
           </div>
         )}
       </div>
     </aside>
+  );
+}
+
+const FAILED_IDS: Record<Failure, string> = {
+  save: 'ro-failed',
+  delete: 'ro-failed',
+  undo: 'ro-unsaid',
+  gone: 'ro-gone',
+};
+
+function Broken() {
+  return (
+    <span className="ro-ring" aria-hidden="true">
+      <Glyph name="clear" size={14} weight={2.6} />
+    </span>
   );
 }
 

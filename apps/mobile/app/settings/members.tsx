@@ -13,11 +13,12 @@ import {
   rereadLimit,
   roleHolds,
   withChanged,
+  withPagesSince,
   withNextPage,
   withheldRoles,
 } from '@soirely/domain';
 import { Redirect, router, useLocalSearchParams } from 'expo-router';
-import { type Ref, type RefObject, useEffect, useMemo, useRef, useState } from 'react';
+import { type Ref, type RefObject, useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { StyleSheet, View, type ViewInstance } from 'react-native';
 import { useTranslation } from 'react-i18next';
 
@@ -127,6 +128,9 @@ export default function MembersScreen() {
   const [switchAttempt, setSwitchAttempt] = useState(0);
   const [seen, setSeen] = useState<Members['members'][number] | null>(null);
   const shownFilter = useRef<MembersFilter>('all');
+  const shown = useRef<{ in: string | undefined; list: Members; listed: MembersFilter } | null>(
+    null,
+  );
   const [view, setView] = useState<{
     in: string | undefined;
     open: string | null;
@@ -157,6 +161,16 @@ export default function MembersScreen() {
     }),
     [],
   );
+  // Kept the same from render to render, so a page arriving under People draws only its own rows (sc-49170).
+  const rowRef = useCallback(
+    (id: string): Ref<ViewInstance> =>
+      (view) => {
+        rows.current[id] = view;
+      },
+    [],
+  );
+  const opens = useRef<(id: string) => void>(() => undefined);
+  const openRow = useCallback((id: string) => opens.current(id), []);
   const language = useShownLanguage();
   const load = held.in === organisationId ? held.load : LOADING;
   const setLoad = (next: Load) => setHeld({ in: organisationId, load: next });
@@ -183,28 +197,39 @@ export default function MembersScreen() {
   useEffect(() => {
     if (organisationId == null) return;
     let live = true;
+    // Asked again, as the app comes back online, it reads every row the pages brought, so the person keeps their place (sc-49170).
+    const again = shown.current?.in === organisationId ? shown.current : null;
+    const listed = again?.listed ?? shownFilter.current;
 
     // Members and its requests to get back in load, and fail, as one (pm, Decided 8 Nov).
     watch(
       Promise.all([
-        api.members(organisationId, { show: shownFilter.current }),
+        again == null
+          ? api.members(organisationId, { show: listed })
+          : api.members(organisationId, { show: listed, limit: rereadLimit(again.list) }),
         api.roles(organisationId),
         manages ? api.recoveryRequests() : Promise.resolve([]),
       ]),
     ).then(
       ([list, catalogue, requests]) =>
         live &&
-        setHeld({
+        setHeld((before) => ({
           in: organisationId,
           load: {
             kind: 'loaded',
-            list,
-            listed: shownFilter.current,
+            list:
+              again != null &&
+              before.in === organisationId &&
+              before.load.kind === 'loaded' &&
+              before.load.listed === listed
+                ? withPagesSince(list, before.load.list)
+                : list,
+            listed,
             more: 'idle',
             roles: catalogue.roles,
             recovery: recoveryShownIn(requests, organisationId),
           },
-        }),
+        })),
       () =>
         live &&
         setHeld((before) =>
@@ -222,6 +247,13 @@ export default function MembersScreen() {
   useEffect(() => {
     shownFilter.current = current.filter;
   }, [current.filter]);
+
+  useEffect(() => {
+    shown.current =
+      held.load.kind === 'loaded'
+        ? { in: held.in, list: held.load.list, listed: held.load.listed }
+        : null;
+  }, [held]);
 
   const switchTo = load.kind === 'loaded' && load.listed !== current.filter ? current.filter : null;
 
@@ -274,6 +306,10 @@ export default function MembersScreen() {
     return () => clearTimeout(focus);
   }, [searched, load.kind]);
 
+  useEffect(() => {
+    opens.current = openPerson;
+  });
+
   if (organisation != null && !roleHolds(organisation, 'members.read')) {
     return <Redirect href={DESTINATION_HREF.settings} />;
   }
@@ -297,11 +333,6 @@ export default function MembersScreen() {
     recoveryAsk == null ? null : (recovery.find((one) => one.id === recoveryAsk.id) ?? null);
   const listBehind = !landscape && member != null;
   const day = (at: string) => formatDay(at, dateLocale());
-  const rowRef =
-    (id: string): Ref<ViewInstance> =>
-    (view) => {
-      rows.current[id] = view;
-    };
 
   function moveOn(): void {
     owner.moveOn();
@@ -504,7 +535,7 @@ export default function MembersScreen() {
           manages,
           rowRef,
           more,
-          onOpen: (id) => openPerson(id),
+          onOpen: openRow,
           onTryAgain: loadMore,
           onEndNear: loadMore,
         })

@@ -22,10 +22,13 @@ use DateTimeImmutable;
 use Lexik\Bundle\JWTAuthenticationBundle\Services\JWTTokenManagerInterface;
 use PHPUnit\Framework\Attributes\Test;
 use Psl\Dict;
+use Psl\Iter;
 use Psl\Json;
+use Psl\Math;
 use Psl\Str;
 use Psl\Type;
 use Psl\Vec;
+use Symfony\Bridge\Doctrine\Middleware\Debug\DebugDataHolder;
 
 /** Settings › Members a page at a time (sc-49170): every person reached once, and the counts always the whole organisation's. */
 final class MembersPagingTest extends ApiTestCase
@@ -89,6 +92,16 @@ final class MembersPagingTest extends ApiTestCase
             Type\vec(Type\shape(['user' => Type\shape(['email' => Type\string()], true)], true))->coerce($page['waiting']),
             static fn (array $member): string => $member['user']['email'],
         ));
+    }
+
+    #[Test]
+    public function aPageOfFiftyReadsNoMoreThanAPageOfFive(): void
+    {
+        $this->list();
+        $five = $this->queriesFor('?limit=5');
+
+        self::assertGreaterThan(0, $five, 'the query log is empty, so this proves nothing');
+        self::assertSame($five, $this->queriesFor('?limit=50'), 'a query a row is back on the Members page');
     }
 
     #[Test]
@@ -161,6 +174,14 @@ final class MembersPagingTest extends ApiTestCase
         self::assertSame($status, $this->client->getResponse()->getStatusCode(), Json\encode($body));
 
         return $body;
+    }
+
+    private function queriesFor(string $query): int
+    {
+        $this->list($query);
+        $queries = Type\instance_of(DebugDataHolder::class)->coerce(self::getContainer()->get('test.doctrine.debug_data_holder'))->getData();
+
+        return Math\sum(Vec\map($queries, Iter\count(...)));
     }
 
     /**

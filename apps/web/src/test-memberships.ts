@@ -15,6 +15,7 @@ export function membership(overrides: Partial<Membership> = {}): Membership {
     withheldUntilTwoFactor: [],
     readOnlyUntilLinked: false,
     withheldUntilLinked: [],
+    onAnEvent: [],
     twoFactorDue: null,
     signInRules: {
       providerOnly: false,

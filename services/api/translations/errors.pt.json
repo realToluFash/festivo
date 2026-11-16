@@ -30,6 +30,12 @@
     "seating_section_limit": "Um plano pode ter até 30 zonas. Elimine uma para adicionar outra.",
     "guest_already_listed": "Esse nome já está na lista.",
     "staff_number_shared": "Esse número já está na lista da equipa.",
+    "dish_name_shared": "Já existe um prato com esse nome.",
+    "dish_in_use": "Um evento usa este prato, por isso não pode ser eliminado. Arquive-o em vez disso.",
+    "menu_course_limit": "Um menu pode ter, no máximo, {max} serviços.",
+    "menu_course_picked": "Os convidados já escolheram pratos deste serviço.",
+    "menu_dish_picked": "Os convidados já escolheram este prato.",
+    "menu_same_one_dish": "«Todos recebem o mesmo» só é possível com um único prato.",
     "replies_closed": "O prazo de resposta terminou.",
     "replies_open": "As respostas continuam abertas.",
     "reply_is_theirs": "Esta pessoa já respondeu por conta própria. Confirme que quer substituir a resposta.",
@@ -99,5 +105,9 @@
     "owner_claim_unavailable": "Já há alguém ativo com a função Proprietário nesta organização.",
     "owner_claim_own": "Não pode interromper o seu próprio pedido.",
     "team_seats_in_use": "Todos os lugares de equipa do plano desta organização estão ocupados.",
-    "seating_items_outside": "Algo na sala ficaria fora dela."
+    "seating_items_outside": "Algo na sala ficaria fora dela.",
+    "schedule_item_limit": "Este programa tem {max} itens, o máximo que um evento pode ter. Elimine um para adicionar outro.",
+    "item_started": "Este item já começou.",
+    "item_not_started": "Este item ainda não começou, por isso não pode ser concluído.",
+    "item_finished": "Este item já foi concluído."
 }

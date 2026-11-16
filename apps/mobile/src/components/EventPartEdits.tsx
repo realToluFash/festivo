@@ -17,7 +17,7 @@ import {
   roleHolds,
   arrivalNoteTooLong,
   coverTypeOf,
-  currencyChoices,
+  heldFirstCurrencyChoices,
   draftOf,
   endMovedLine,
   formatWallDay,
@@ -37,9 +37,10 @@ import {
   startMoved,
   venueDraftOf,
   withCurrent,
+  visibleLength,
 } from '@soirely/domain';
 import { launchImageLibraryAsync } from 'expo-image-picker';
-import { type RefObject, useEffect, useMemo, useRef, useState } from 'react';
+import { type RefObject, useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import {
   Pressable,
   StyleSheet,
@@ -293,10 +294,7 @@ function CurrencyEdit(props: PartEditProps) {
   const [inUse, setInUse] = useState(false);
   const { busy, save, elsewhere, failed } = usePartSave('currency', props);
   const choices = useMemo(
-    () =>
-      currencyChoices(event.currency, locale, (held) =>
-        t('orgGeneral.currencyRetired', { code: held }),
-      ),
+    () => heldFirstCurrencyChoices(event.currency, locale, t('eventEdit.currencyRetired')),
     [event.currency, locale, t],
   );
 
@@ -855,6 +853,7 @@ function CoverEdit(props: PartEditProps) {
   const [busy, setBusy] = useState(false);
   const describe = useRef<TextInputInstance>(null);
   const staged = useRef<string | null>(null);
+  const attempt = useRef(0);
   const has = photo.kind !== 'none';
   const changed =
     photo.kind === 'ready' ||
@@ -862,14 +861,20 @@ function CoverEdit(props: PartEditProps) {
     (photo.kind === 'none' && saved != null) ||
     (has && position !== savedPosition) ||
     (has && described !== (saved?.description ?? ''));
-  const count = [...described].length;
+  const count = visibleLength(described);
 
-  useEffect(
-    () => () => {
-      if (staged.current != null) discardCoverUpload(event.organisationId, staged.current);
-    },
-    [event.organisationId],
-  );
+  const letGo = useCallback((): void => {
+    attempt.current += 1;
+    if (staged.current != null) discardCoverUpload(event.organisationId, staged.current);
+    staged.current = null;
+  }, [event.organisationId]);
+
+  useEffect(() => letGo, [letGo]);
+
+  function close(): void {
+    letGo();
+    props.onClose();
+  }
 
   async function choose(): Promise<void> {
     const picked = await launchImageLibraryAsync({ mediaTypes: ['images'], quality: 1 });
@@ -882,6 +887,7 @@ function CoverEdit(props: PartEditProps) {
       return;
     }
 
+    const mine = ++attempt.current;
     setRefused(null);
     setPhoto({ kind: 'uploading', uri: chosen.uri, width: chosen.width });
     setPosition('middle');
@@ -895,11 +901,12 @@ function CoverEdit(props: PartEditProps) {
         filename: file.name,
       });
       await api.uploadTo(signed, await pickedBytes(chosen.uri));
+      if (mine !== attempt.current) return discardCoverUpload(event.organisationId, signed.key);
       if (staged.current != null) discardCoverUpload(event.organisationId, staged.current);
       staged.current = signed.key;
       setPhoto({ kind: 'ready', uri: chosen.uri, width: chosen.width, key: signed.key });
-      setFailed(null);
     } catch (error) {
+      if (mine !== attempt.current) return;
       setPhoto(saved == null ? { kind: 'none' } : { kind: 'saved', cover: saved });
       setRefused(coverRefusalOf(error, t));
     }
@@ -952,6 +959,7 @@ function CoverEdit(props: PartEditProps) {
   return (
     <EditShell
       {...useShellProps('cover', props)}
+      onClose={close}
       verb={t('eventCover.use')}
       changed={changed && photo.kind !== 'uploading'}
       busy={busy}
@@ -973,7 +981,7 @@ function CoverEdit(props: PartEditProps) {
             described={described}
             onDescribed={(next) => {
               setDescribed(next);
-              if ([...next].length <= COVER_DESCRIPTION_MAXIMUM) setDescribeError(null);
+              if (visibleLength(next) <= COVER_DESCRIPTION_MAXIMUM) setDescribeError(null);
             }}
             count={count}
             most={COVER_DESCRIPTION_MAXIMUM}
@@ -981,6 +989,7 @@ function CoverEdit(props: PartEditProps) {
             describeRef={describe}
             onChange={() => void choose()}
             onRemove={() => {
+              letGo();
               setPhoto({ kind: 'none' });
               setDescribed('');
               setRefused(null);

@@ -17,12 +17,14 @@ import { LineIcon } from './AccountCard.tsx';
 import { AlertLine } from './AlertLine.tsx';
 import { EventField as ProductField } from './EventField.tsx';
 import { EventMesh } from './EventMesh.tsx';
+import { currencyMatches } from './currencyMatches.ts';
 import { EventNotice } from './EventNotice.tsx';
 import { SearchField } from './EventsSearch.tsx';
 import { TextField, type TextFieldProps } from './Field.tsx';
 import { Glyph } from './Glyph.tsx';
 import { BoxField, MomentBox, type Picking, PickerLayer } from './MomentPick.tsx';
 import { RadioMark } from './RadioMark.tsx';
+import { useReadOut } from './ReadOut.tsx';
 import { type ScreenReaderTarget } from './screenReaderFocus.ts';
 import { useShellLayout } from './settingsShell.ts';
 import { Pill } from './SettingsParts.tsx';
@@ -864,16 +866,42 @@ export function CurrencyView({
   onPick: (code: string) => void;
 }) {
   const { t } = useTranslation();
+  const [typed, setTyped] = useState('');
+  const { shown, unmatched } = currencyMatches(choices, typed);
+  const none = unmatched == null ? null : t('eventEdit.noCurrency', { typed: unmatched });
+
+  useReadOut(none);
 
   return (
     <>
       {refused && <EventNotice tone="broken" words={t('eventEdit.currencyInUse')} interrupts />}
-      <Choices
-        items={choices.map((one) => ({ key: one.code, title: `${one.code} · ${one.name}` }))}
-        on={code}
-        onPick={onPick}
-        testID="event.edit.currency"
-      />
+      <View style={styles.searchRow}>
+        <SearchField
+          typed={typed}
+          off={false}
+          width={null}
+          onTyped={setTyped}
+          onSearch={() => undefined}
+          onClear={() => setTyped('')}
+          label={t('orgGeneral.searchCurrency')}
+          testID="event.edit.currency.search"
+        />
+      </View>
+      {none == null ? (
+        <Choices
+          items={shown.map((one) => ({ key: one.code, title: `${one.code} · ${one.name}` }))}
+          on={code}
+          onPick={onPick}
+          testID="event.edit.currency"
+        />
+      ) : (
+        <View style={styles.none} testID="event.edit.currency.none">
+          <Text size={15} weight="medium">
+            {none}
+          </Text>
+          <TextAction label={t('eventsSearch.clearSearch')} onPress={() => setTyped('')} />
+        </View>
+      )}
     </>
   );
 }
@@ -906,7 +934,6 @@ export function NameView({
         value={name}
         wrong={error != null}
         autoFocus
-        maxLength={most}
         onChangeText={onName}
         accessibilityLabel={t('eventForm.name')}
         testID="event.edit.name.field"
@@ -1130,6 +1157,7 @@ const NOTE_LINE = 24;
 const styles = StyleSheet.create({
   grow: { flex: 1, minWidth: 0 },
   searchRow: { flexDirection: 'row' },
+  none: { gap: tokens.spaceSm, paddingVertical: tokens.spaceMd },
   secondary: { color: tokens.colorInkSecondary },
   pressed: { opacity: tokens.opacityPressed },
   figures: { fontVariant: ['tabular-nums'] },

@@ -34,6 +34,7 @@ const organisation: Membership = {
   withheldUntilTwoFactor: [],
   readOnlyUntilLinked: false,
   withheldUntilLinked: [],
+  onAnEvent: [],
   twoFactorDue: null,
   signInRules: {
     providerOnly: false,

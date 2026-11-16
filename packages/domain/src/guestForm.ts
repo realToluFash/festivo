@@ -1,3 +1,4 @@
+import { visibleLength } from './visibleText.ts';
 import type { Companion, Guest, GuestList, NewGuest, Violation } from '@soirely/api-client';
 
 import { emailProblem } from './forms.ts';
@@ -32,9 +33,8 @@ export function isListed(guests: readonly Guest[], name: string): boolean {
   );
 }
 
-/** In code points, as the API counts them. */
 export function nameLength(name: string): number {
-  return [...name.trim()].length;
+  return visibleLength(name.trim());
 }
 
 export interface Typed {

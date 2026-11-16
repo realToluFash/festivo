@@ -25,10 +25,19 @@
     "mobile:guestList.how.whatsapp",
     "mobile:guestNeeds.dietName.halal",
     "mobile:guestNeeds.dietName.kosher",
-    "web:seating.kindRectangular"
+    "web:seating.kindRectangular",
+    "web:seating.shapeRectangularShort",
+    "web:schedule.minutes_one",
+    "web:schedule.minutes_other",
+    "mobile:runView.minutes_one",
+    "mobile:runView.minutes_other",
+    "web:seating.keyShiftUs",
+    "web:seating.keyName.esc",
+    "web:seating.keyName.ctrl"
   ],
   "fr": [
     "web:nav.menu",
+    "web:menuLibrary.desc",
     "mobile:app.name",
     "mobile:devices.everywhereCode",
     "mobile:frame.organisation",
@@ -125,9 +134,22 @@
     "mobile:guestNeeds.allergen.lupin",
     "mobile:guestNeeds.dietName.halal",
     "web:seating.rotation",
-    "messagesCounts:seating.table_default_name"
+    "messagesCounts:seating.table_default_name",
+    "web:schedule.minutes_one",
+    "web:schedule.minutes_other",
+    "mobile:runView.minutes_one",
+    "mobile:runView.minutes_other",
+    "web:schedule.date",
+    "web:guest.programme",
+    "web:seating.keyName.ctrl",
+    "web:seating.alignCentre",
+    "web:seating.tableNumbered",
+    "web:eventMenu.title",
+    "web:eventMenu.suggestions",
+    "web:eventMenu.dessert"
   ],
   "pt": [
+    "web:seating.shapeCocktailShort",
     "web:nav.menu",
     "web:app.name",
     "mobile:app.name",
@@ -149,6 +171,20 @@
     "web:guestNeeds.dietName.kosher",
     "mobile:guestList.how.whatsapp",
     "mobile:guestNeeds.dietName.halal",
-    "mobile:guestNeeds.dietName.kosher"
+    "mobile:guestNeeds.dietName.kosher",
+    "web:schedule.minutes_one",
+    "web:schedule.minutes_other",
+    "mobile:runView.minutes_one",
+    "mobile:runView.minutes_other",
+    "web:schedule.items_one",
+    "web:schedule.item",
+    "mobile:runView.item",
+    "web:seating.keyShiftUs",
+    "web:seating.keyMove",
+    "web:seating.keyName.shift",
+    "web:seating.keyName.delete",
+    "web:seating.keyName.esc",
+    "web:seating.keyName.ctrl",
+    "web:eventMenu.title"
   ]
 }

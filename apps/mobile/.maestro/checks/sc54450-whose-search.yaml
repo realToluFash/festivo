@@ -1,0 +1,43 @@
+# sc-54450: Find a guest on Whose reply is this? finds a guest who has replied (${REPLIED}), by mobile number, never a Not yet invited guest, and says No guests match.
+appId: host.exp.Exponent
+---
+- openLink: ${METRO_URL}/--/events/${EVENT_ID}?area=guests
+- extendedWaitUntil:
+    visible:
+      id: 'guests.search'
+    timeout: 30000
+- tapOn:
+    id: 'guests.paste'
+- extendedWaitUntil:
+    visible:
+      id: 'paste.search'
+    timeout: 10000
+- tapOn:
+    id: 'paste.search'
+- inputText: 'Tolu'
+- extendedWaitUntil:
+    visible:
+      id: 'paste.row.${REPLIED}'
+    timeout: 5000
+- takeScreenshot: replied-found
+- eraseText: 40
+- inputText: '9876543'
+- extendedWaitUntil:
+    visible:
+      id: 'paste.row.${BY_NUMBER}'
+    timeout: 5000
+- takeScreenshot: number-found
+- eraseText: 40
+- inputText: 'Not Invited'
+- extendedWaitUntil:
+    visible:
+      id: 'paste.noMatch'
+    timeout: 5000
+- takeScreenshot: notinvited-nomatch
+- eraseText: 40
+- inputText: 'Zzqx'
+- extendedWaitUntil:
+    visible:
+      id: 'paste.noMatch'
+    timeout: 5000
+- takeScreenshot: nomatch

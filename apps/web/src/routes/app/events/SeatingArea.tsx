@@ -1,13 +1,19 @@
 import {
   ApiError,
   type MeasurementSystem,
+  type SeatingTable as Table,
   type OrganisationEvent,
   SEATING_LIMITS,
   SECTION_COLOURS,
   type Seating,
   type SeatingPlan,
-  type SeatingWithTable,
+  type SeatingSection,
+  type SeatingRow,
+  type SeatingTable,
+  type SeatingWithChosen,
   type SectionColour,
+  type SectionContents,
+  type SingleSeat,
   asSeating,
   realtimeTopic,
 } from '@soirely/api-client';
@@ -17,13 +23,33 @@ import {
   leastUsedColour,
   readRoomSide,
   holdingName,
+  type FloorBox,
+  floorBox,
+  insideRoom,
+  isRoundShape,
+  keyStep,
   listFormat,
+  rowExtent,
+  shiftWithin,
+  snapToGrid,
+  visibleLength,
 } from '@soirely/domain';
-import { type ReactNode, useCallback, useEffect, useId, useRef, useState } from 'react';
+import {
+  type KeyboardEvent as ReactKeyboardEvent,
+  type PointerEvent as ReactPointerEvent,
+  type ReactNode,
+  useCallback,
+  useEffect,
+  useEffectEvent,
+  useId,
+  useRef,
+  useState,
+} from 'react';
 import { useTranslation } from 'react-i18next';
 import { Link } from 'react-router';
 
 import { api } from '../../../api.ts';
+import { useDeskTop } from '../../../deskTop.ts';
 import { config } from '../../../config.ts';
 import { Glyph } from '../../../components/Glyph.tsx';
 import {
@@ -45,12 +71,69 @@ import {
   Line,
   type Outside,
   type Panel,
+  type Placed,
   type PlanApi,
   Refused,
   Said,
+  type TableNote,
 } from './SeatingParts.tsx';
+import {
+  RowDrawing,
+  RowPanel,
+  SingleSeatDrawing,
+  SingleSeatPanel,
+  useAddRowAndSeat,
+} from './SeatingRows.tsx';
 import { AddTable, ChairPanel, TableDrawing, TablePanel } from './SeatingTables.tsx';
-import { lengthField, lengthWords } from './seatingUnits.ts';
+import {
+  KeysStrip,
+  PlacingBars,
+  SaveLine,
+  SnapToGrid,
+  TableHandles,
+  Tip,
+} from './SeatingArrange.tsx';
+import {
+  type FloorItem,
+  type Handle,
+  type Placement,
+  type Placing,
+  type SaveState,
+  floorItems,
+  footprintOf,
+  itemName,
+  overlappingIds,
+  placementOf,
+  pressedHandle,
+  withPlacements,
+} from './seatingItems.ts';
+import { fitOf, intoView, useCamera } from './seatingCamera.ts';
+import {
+  type Fold,
+  type GridDraft,
+  type SelectionSteps,
+  type StepBar,
+  ChooseBar,
+  DeleteItemsAsk,
+  RulesStrip,
+  SelectionPanel,
+  StepLine,
+} from './SeatingSelection.tsx';
+import {
+  COLUMNS_MAX,
+  gridOf,
+  inReadingOrder,
+  onlyTables,
+  outlinesOf,
+  readGap,
+  readWhole,
+  rectOf,
+  restoredOf,
+  seatingIn,
+  touchedBy,
+} from './seatingSelection.ts';
+import { SMALL_MAP_FROM_SCALE, f, percentOf, sectionOf, turned } from './seatingDraw.ts';
+import { lengthField, lengthWords, tableSizeWords } from './seatingUnits.ts';
 import '../../../components/SettingsParts.css';
 import './seating.css';
 
@@ -58,7 +141,23 @@ type Load = { kind: 'loading' } | { kind: 'failed' } | { kind: 'loaded'; seating
 
 const RETRY_MS = 5_000;
 const RENEW_BEFORE_MS = 60_000;
-const FIT_PAD = { top: 84, right: 16, bottom: 84, left: 16 } as const;
+const PAN_FROM_PX = 4;
+const STEP_TRIES = 3;
+const STEP_RETRY_MS = 1_000;
+const SIZE_STEP_CM = 10;
+
+type Drag =
+  | {
+      kind: 'move';
+      lead: string;
+      from: [number, number];
+      origins: FloorItem[];
+      moved: boolean;
+      pointer: number;
+      last: Placement[];
+    }
+  | { kind: 'resize'; table: Table; handle: Handle; pointer: number; last: Placement | null };
+const WHEEL_ZOOM = 300;
 
 /** The room as the API holds it, published to every page open on it (sc-3998). */
 function useLiveSeating(eventId: string, onSeating: (seating: Seating) => void, onGap: () => void) {
@@ -124,6 +223,56 @@ function useLiveSeating(eventId: string, onSeating: (seating: Seating) => void, 
   }, [eventId]);
 }
 
+const LOADING_ROOM = { w: 2400, l: 1800 } as const;
+const LOADING_TABLES = [
+  [420, 620],
+  [810, 620],
+  [1200, 620],
+  [1590, 620],
+  [1980, 620],
+  [420, 1020],
+  [810, 1020],
+  [1200, 1020],
+  [1980, 1020],
+] as const;
+
+function LoadingRoom({ label }: { label: string }) {
+  const [placeCanvas, size] = useCanvasSize();
+  const { s, ox, oy } = fitOf(size.w, size.h, LOADING_ROOM);
+
+  return (
+    <div className="st-canvas" ref={placeCanvas} role="status" aria-label={label}>
+      <svg
+        className="st-room"
+        width={size.w}
+        height={size.h}
+        viewBox={`0 0 ${size.w} ${size.h}`}
+        aria-hidden="true"
+      >
+        <rect
+          className="st-skeleton-room"
+          x={f(ox)}
+          y={f(oy)}
+          width={f(LOADING_ROOM.w * s)}
+          height={f(LOADING_ROOM.l * s)}
+          rx="4"
+        />
+        {LOADING_TABLES.map(([x, y]) => (
+          <rect
+            key={`${x}-${y}`}
+            className="st-skeleton-block"
+            x={f(ox + x * s - 25)}
+            y={f(oy + y * s - 25)}
+            width="50"
+            height="50"
+            rx="25"
+          />
+        ))}
+      </svg>
+    </div>
+  );
+}
+
 function useCanvasSize(): [(node: HTMLDivElement | null) => void, { w: number; h: number }] {
   const [size, setSize] = useState({ w: 718, h: 719 });
   const observer = useRef<ResizeObserver | null>(null);
@@ -140,16 +289,9 @@ function useCanvasSize(): [(node: HTMLDivElement | null) => void, { w: number; h
   return [place, size];
 }
 
-function fitOf(width: number, height: number, room: { w: number; l: number }) {
-  const w = width - FIT_PAD.left - FIT_PAD.right;
-  const h = height - FIT_PAD.top - FIT_PAD.bottom;
-  const s = Math.max(0.05, Math.min(w / room.w, h / room.l));
-
-  return { s, ox: FIT_PAD.left + (w - room.w * s) / 2, oy: FIT_PAD.top + (h - room.l * s) / 2 };
-}
-
 export function SeatingArea({ event }: { event: OrganisationEvent }) {
   const { t } = useTranslation();
+  const desk = useDeskTop();
   const [load, setLoad] = useState<Load>({ kind: 'loading' });
   const [attempt, setAttempt] = useState(0);
 
@@ -181,9 +323,11 @@ export function SeatingArea({ event }: { event: OrganisationEvent }) {
           <li>
             <Link to="/app/events">{t('seating.events')}</Link>
           </li>
-          <li>
+          <li className="st-crumb-event">
             <Glyph name="chevron" size={14} weight={2.3} />
-            <Link to={`/app/events/${encodeURIComponent(event.id)}`}>{event.name}</Link>
+            <Link to={`/app/events/${encodeURIComponent(event.id)}`}>
+              <span className="st-crumb-name">{event.name}</span>
+            </Link>
           </li>
           <li aria-current="page">
             <Glyph name="chevron" size={14} weight={2.3} />
@@ -191,6 +335,7 @@ export function SeatingArea({ event }: { event: OrganisationEvent }) {
           </li>
         </ol>
       </nav>
+      {desk.bell}
     </header>
   );
 
@@ -199,7 +344,7 @@ export function SeatingArea({ event }: { event: OrganisationEvent }) {
       <div className="desk st">
         {crumb}
         <div className="st-main">
-          <div className="st-canvas" role="status" aria-label={t('seating.loading')} />
+          <LoadingRoom label={t('seating.loading')} />
           <div className="st-panel is-skeleton" aria-hidden="true">
             {[44, 24, 18, 44, 24, 52, 52, 52, 52].map((h, index) => (
               <span key={index} className={`st-sunk is-${h} n${index}`} />
@@ -263,8 +408,11 @@ function Plan({
   const { layers, covered, setHost } = useDeskLayers();
   const [panel, setPanel] = useState<Panel | null>(null);
   const opener = useRef<string | null>(null);
+  const newest = useRef(seating.plan);
+  const queue = useRef<Promise<unknown>>(Promise.resolve());
   const [asking, setAsking] = useState<Asking | null>(null);
   const [notice, setNotice] = useState<string | null>(null);
+  const [note, setNote] = useState<TableNote | null>(null);
   const [sectionsRefused, setSectionsRefused] = useState(false);
   const [reloads, setReloads] = useState(0);
   const [outside, setOutside] = useState<Outside | null>(null);
@@ -274,22 +422,85 @@ function Plan({
   const system = seating.measurementSystem;
   const readOnly = !canOn(event, 'seating.manage');
   const locale = currentLocale();
+  const camera = useCamera(
+    event.id,
+    plan == null ? null : { w: plan.widthCm, l: plan.lengthCm },
+    size,
+  );
+  const canvasNode = useRef<HTMLDivElement | null>(null);
+  const press = useRef<{ from: [number, number]; moved: boolean; pointer: number } | null>(null);
+  const panned = useRef(false);
+  const [several, setSeveral] = useState<string[]>([]);
+  const [placements, setPlacements] = useState<Record<string, Placement>>({});
+  const [save, setSave] = useState<SaveState>('saved');
+  const [snap, setSnap] = useState(true);
+  const [placing, setPlacing] = useState<Placing | null>(null);
+  const [another, setAnother] = useState(true);
+  const [tip, setTip] = useState<{ id: string; words: string } | null>(null);
+  const [focusId, setFocusId] = useState<string | null>(null);
+  const [keyboard, setKeyboard] = useState(false);
+  const [heard, setHeard] = useState('');
+  const unsaved = useRef<Placement[] | null>(null);
+  const ownSteps = useRef(new Map<string, number>());
+  const drag = useRef<Drag | null>(null);
+  const dragged = useRef(false);
+  const shown = plan == null ? null : withPlacements(plan, placements);
+  const overlaps = shown == null ? new Set<string>() : overlappingIds(shown);
+  const where = useRef({ s: 1, ox: 0, oy: 0, snap: true });
+  const [adding, setAdding] = useState(false);
+  const [kindMenu, setKindMenu] = useState(false);
+  const [fold, setFold] = useState<Fold | null>(null);
+  const [grid, setGrid] = useState<GridDraft>({ columns: '3', gap: '1' });
+  const [bar, setBar] = useState<StepBar | null>(null);
+  const [boxDrawn, setBoxDrawn] = useState<FloorBox | null>(null);
+  const boxing = useRef<{
+    from: [number, number];
+    at: [number, number];
+    base: string[];
+    moved: boolean;
+    pointer: number;
+  } | null>(null);
+  const spaceHeld = useRef(false);
+  const spacePanned = useRef(false);
+  const touches = useRef(new Set<number>());
+
+  useEffect(() => {
+    where.current = { s: camera.s, ox: camera.ox, oy: camera.oy, snap };
+  });
 
   const gone =
     (panel?.kind === 'sectionEdit' && !plan?.sections.some((one) => one.id === panel.id)) ||
     ((panel?.kind === 'table' || panel?.kind === 'chair') &&
-      !plan?.tables.some((one) => one.id === panel.id));
+      !plan?.tables.some((one) => one.id === panel.id)) ||
+    (panel?.kind === 'row' && !plan?.rows.some((one) => one.id === panel.id)) ||
+    (panel?.kind === 'seat' && !plan?.singleSeats.some((one) => one.id === panel.id));
   const shownPanel = gone || (plan == null && panel?.kind !== 'start') ? null : panel;
-  const chosenTable =
-    shownPanel?.kind === 'table' || shownPanel?.kind === 'chair' ? shownPanel.id : null;
+  const chosenItem =
+    shownPanel?.kind === 'table' ||
+    shownPanel?.kind === 'chair' ||
+    shownPanel?.kind === 'row' ||
+    shownPanel?.kind === 'seat'
+      ? shownPanel.id
+      : null;
+  const chosenAttribute = shownPanel == null ? null : itemAttribute(shownPanel.kind);
 
-  const open = (next: Panel | null) => {
+  const single =
+    chosenItem != null && shownPanel?.kind !== 'chair' && several.length < 2 ? [chosenItem] : [];
+  const chosenIds = several.length > 1 ? several : single;
+  const itemOf = (id: string, from: SeatingPlan | null = shown): FloorItem | null =>
+    from == null ? null : (floorItems(from).find((item) => item.one.id === id) ?? null);
+  const chosenItems = several.length > 1 ? several.flatMap((id) => itemOf(id) ?? []) : [];
+
+  const dropRefusal = () => setBar((was) => (was?.tone === 'amber' ? null : was));
+  const open = (next: Panel | null, onItem = false) => {
     if (next == null) {
       const back = opener.current;
+      const item = chosenAttribute == null ? null : `[${chosenAttribute}="${chosenItem}"]`;
 
       opener.current = null;
       focusWhenFree(
         () =>
+          (item == null ? null : document.querySelector<SVGElement>(`.st-room ${item}`)) ??
           [
             ...document.querySelectorAll<HTMLElement | SVGElement>(
               '.st-panel button, .st-room [role="button"]',
@@ -302,15 +513,219 @@ function Plan({
 
       if (panel == null && (active instanceof HTMLElement || active instanceof SVGElement))
         opener.current = nameOf(active);
-      focusWhenFree(() => document.querySelector('.st-panel [data-focus="title"]'));
+      const id = onItem && 'id' in next ? next.id : null;
+      const attribute = id == null ? null : itemAttribute(next.kind);
+      const item = attribute == null ? null : `.st-room [${attribute}="${id}"]`;
+
+      focusWhenFree(() =>
+        document.querySelector<HTMLElement | SVGElement>(item ?? '.st-panel [data-focus="title"]'),
+      );
     }
     setPanel(next);
+    setSeveral([]);
     setNotice(null);
+    dropRefusal();
+    setNote(null);
     setSectionsRefused(false);
     setOutside(null);
   };
 
-  const attempt = async <A,>(
+  /** Chooses these without moving the focus, as a box, Select all and the kind menu do. */
+  const pick = (ids: string[]) => {
+    const only = ids.length === 1 ? itemOf(ids[0]!, newest.current) : null;
+
+    setPanel(only == null ? null : { kind: only.kind, id: only.one.id });
+    setSeveral(ids.length > 1 ? ids : []);
+    setNotice(null);
+    dropRefusal();
+    setOutside(null);
+    setKindMenu(false);
+  };
+
+  useEffect(() => {
+    newest.current = plan;
+  }, [plan]);
+
+  const hasRoom = plan != null;
+  const { zoomTo, panBy, view } = camera;
+
+  useEffect(() => {
+    const node = canvasNode.current;
+
+    if (node == null || !hasRoom) return;
+    const wheel = (event: WheelEvent) => {
+      event.preventDefault();
+      if (event.ctrlKey || event.metaKey) {
+        const box = node.getBoundingClientRect();
+
+        zoomTo(view.current.s * Math.exp(-event.deltaY / WHEEL_ZOOM), [
+          event.clientX - box.left,
+          event.clientY - box.top,
+        ]);
+      } else panBy(event.deltaX, event.deltaY);
+    };
+
+    node.addEventListener('wheel', wheel, { passive: false });
+    return () => node.removeEventListener('wheel', wheel);
+  }, [hasRoom, zoomTo, panBy, view]);
+
+  useEffect(() => {
+    const node = canvasNode.current;
+
+    if (node == null || !hasRoom) return;
+    let byKey = false;
+    const key = (event: KeyboardEvent) => {
+      byKey = event.key === 'Tab';
+    };
+    const point = () => {
+      byKey = false;
+    };
+    const follow = (event: FocusEvent) => {
+      const target = event.target;
+
+      if (!byKey || !(target instanceof Element) || target.closest('.st-room') == null) return;
+      const box = node.getBoundingClientRect();
+      const at = target.getBoundingClientRect();
+      const [dx, dy] = intoView(
+        {
+          x0: at.left - box.left,
+          y0: at.top - box.top,
+          x1: at.right - box.left,
+          y1: at.bottom - box.top,
+        },
+        view.current.size.w,
+        view.current.size.h,
+        [...node.querySelectorAll(':scope > .st-float')].map((bar) => {
+          const at = bar.getBoundingClientRect();
+
+          return {
+            x0: at.left - box.left,
+            y0: at.top - box.top,
+            x1: at.right - box.left,
+            y1: at.bottom - box.top,
+          };
+        }),
+      );
+
+      if (dx !== 0 || dy !== 0) panBy(-dx, -dy);
+    };
+
+    window.addEventListener('keydown', key, true);
+    window.addEventListener('pointerdown', point, true);
+    node.addEventListener('focusin', follow);
+    return () => {
+      window.removeEventListener('keydown', key, true);
+      window.removeEventListener('pointerdown', point, true);
+      node.removeEventListener('focusin', follow);
+    };
+  }, [hasRoom, panBy, view]);
+
+  useEffect(() => {
+    const move = (event: PointerEvent) => {
+      const now = press.current;
+
+      if (now == null || now.pointer !== event.pointerId) return;
+      const dx = event.clientX - now.from[0];
+      const dy = event.clientY - now.from[1];
+
+      if (!now.moved && Math.hypot(dx, dy) < PAN_FROM_PX) return;
+      if (!now.moved && spaceHeld.current) {
+        spacePanned.current = true;
+        const focused = document.activeElement;
+
+        if (focused instanceof HTMLElement && focused.closest('.st-canvas svg') == null)
+          focused.blur();
+      }
+      now.moved = true;
+      now.from = [event.clientX, event.clientY];
+      panBy(-dx, -dy);
+    };
+    const up = (event: PointerEvent) => {
+      if (press.current?.pointer !== event.pointerId) return;
+      panned.current = event.type === 'pointerup' && press.current.moved;
+      press.current = null;
+    };
+
+    window.addEventListener('pointermove', move);
+    window.addEventListener('pointerup', up);
+    window.addEventListener('pointercancel', up);
+    return () => {
+      window.removeEventListener('pointermove', move);
+      window.removeEventListener('pointerup', up);
+      window.removeEventListener('pointercancel', up);
+    };
+  }, [panBy]);
+
+  const onKey = useEffectEvent((event: KeyboardEvent) => {
+    if (covered) return;
+    if (event.key === ' ' && plan != null && !typing(event.target) && !event.defaultPrevented) {
+      spaceHeld.current = true;
+      if (!control(event.target)) event.preventDefault();
+    }
+    if (
+      (event.key === 'a' || event.key === 'A') &&
+      (event.metaKey || event.ctrlKey) &&
+      !typing(event.target) &&
+      plan != null &&
+      !readOnly &&
+      placing == null &&
+      asking == null
+    ) {
+      event.preventDefault();
+      pick(floorItems(plan).map((item) => item.one.id));
+      return;
+    }
+    if (event.key !== 'Escape') return;
+    if (placing != null) {
+      event.preventDefault();
+      setPlacing(null);
+    } else if (kindMenu) {
+      event.preventDefault();
+      setKindMenu(false);
+    } else if (event.defaultPrevented || asking != null) return;
+    else if (adding) {
+      event.preventDefault();
+      setAdding(false);
+    } else if (several.length > 1) {
+      event.preventDefault();
+      setSeveral([]);
+    } else if (chosenAttribute != null) {
+      event.preventDefault();
+      open(null);
+    }
+  });
+
+  useEffect(() => {
+    const keys = (event: KeyboardEvent) => onKey(event);
+    const lift = (event: KeyboardEvent) => {
+      if (event.key !== ' ') return;
+      if (spacePanned.current || (spaceHeld.current && !control(event.target)))
+        event.preventDefault();
+      spaceHeld.current = false;
+      spacePanned.current = false;
+    };
+
+    window.addEventListener('keydown', keys);
+    window.addEventListener('keyup', lift);
+    return () => {
+      window.removeEventListener('keydown', keys);
+      window.removeEventListener('keyup', lift);
+    };
+  }, []);
+
+  const attempt = <A,>(
+    change: () => Promise<A>,
+    seatingOf: (answer: A) => Seating,
+    field?: string,
+    refusal?: (error: ApiError) => string | null,
+  ): Promise<{ answer: A } | { refused: string | null }> => {
+    const turn = queue.current.then(() => attemptNow(change, seatingOf, field, refusal));
+
+    queue.current = turn;
+    return turn;
+  };
+
+  const attemptNow = async <A,>(
     change: () => Promise<A>,
     seatingOf: (answer: A) => Seating,
     field?: string,
@@ -318,22 +733,19 @@ function Plan({
   ): Promise<{ answer: A } | { refused: string | null }> => {
     try {
       const answer = await change();
+      const now = seatingOf(answer);
 
-      onSeating(seatingOf(answer));
+      newest.current = now.plan;
+      onSeating(now);
       setNotice(null);
       return { answer };
     } catch (error) {
       if (error instanceof ApiError && error.status === 412) {
         const name = error.problem.changedBy;
 
-        const onTable = panel?.kind === 'table' || panel?.kind === 'chair';
-
-        setNotice(
-          name == null
-            ? t('seating.notSaved')
-            : t(onTable ? 'seating.changedTable' : 'seating.changedFirst', { name }),
-        );
+        setNotice(name == null ? t('seating.notSaved') : t(changedKey(panel), { name }));
         setReloads((n) => n + 1);
+        setNote(null);
         reload();
         return { refused: null };
       }
@@ -355,8 +767,8 @@ function Plan({
     }
   };
 
-  const seatingOf = (answer: Seating | SeatingWithTable): Seating =>
-    'tableId' in answer ? answer.seating : answer;
+  const seatingOf = (answer: Seating | Placed): Seating =>
+    'seating' in answer ? answer.seating : answer;
 
   const send: PlanApi['send'] = async (change, field, refusal) => {
     const result = await attempt(change, seatingOf, field, refusal);
@@ -367,15 +779,650 @@ function Plan({
   const place: PlanApi['place'] = async (change) => {
     const result = await attempt(change, (answer) => answer.seating);
 
-    if (!('answer' in result)) return null;
-    const { seating: saved, tableId } = result.answer;
-    const table = saved.plan?.tables.find((one) => one.id === tableId);
-
-    return table == null ? null : { id: table.id, name: table.name };
+    return 'answer' in result ? placedIn(result.answer) : null;
   };
 
   const remove = async (change: () => Promise<Seating>) =>
     'answer' in (await attempt(change, (answer) => answer));
+
+  const newestOf: PlanApi['newest'] = <
+    T extends SeatingPlan | SeatingSection | SeatingTable | SeatingRow | SingleSeat,
+  >(
+    item: T,
+  ) =>
+    [
+      ...(newest.current == null ? [] : [newest.current]),
+      ...(newest.current?.sections ?? []),
+      ...(newest.current?.tables ?? []),
+      ...(newest.current?.rows ?? []),
+      ...(newest.current?.singleSeats ?? []),
+    ].find((one): one is T => one.id === item.id) ?? item;
+
+  const lengths = (cm: number, display: 'short' | 'long' = 'short') =>
+    lengthWords(t, locale, cm, system, { display });
+
+  const settle = (items: Placement[]) =>
+    setPlacements((was) => {
+      const next = { ...was };
+
+      for (const item of items) if (next[item.id] === item) delete next[item.id];
+      return next;
+    });
+
+  const baseOf = (item: Placement): number => {
+    let version = item.version;
+
+    for (let to = ownSteps.current.get(`${item.id}@${version}`); to != null;) {
+      version = to;
+      to = ownSteps.current.get(`${item.id}@${version}`);
+    }
+    return version;
+  };
+
+  const sendStep = async (items: Placement[], tool: boolean): Promise<void> => {
+    const versioned = items.map((item) => ({ ...item, version: baseOf(item) }));
+
+    for (let tries = 1; ; tries += 1) {
+      try {
+        const now = await api.arrangeSeating(event.id, versioned);
+
+        for (const item of versioned) {
+          const saved = itemOf(item.id, now.plan);
+
+          if (saved != null && saved.one.version !== item.version)
+            ownSteps.current.set(`${item.id}@${item.version}`, saved.one.version);
+        }
+        newest.current = now.plan;
+        onSeating(now);
+        settle(items);
+        setNote((was) => (was != null && items.some((item) => item.id === was.id) ? null : was));
+        setSave('saved');
+        return;
+      } catch (error) {
+        if (error instanceof ApiError && error.status === 412 && tool) {
+          settle(items);
+          setSave('saved');
+          staleStep(error);
+          return;
+        }
+        if (error instanceof ApiError && error.status === 412) {
+          const stale = error.problem.stale?.[0];
+          const item = stale == null ? null : itemOf(stale, newest.current);
+          const name = error.problem.changedBy;
+
+          settle(items);
+          setSave('saved');
+          refuseStep(
+            name == null || item == null
+              ? t('seating.notSaved')
+              : t('seating.stepRefused', { name, item: itemName(t, item) }),
+          );
+          setReloads((n) => n + 1);
+          setNote(null);
+          reload();
+          return;
+        }
+        if (error instanceof ApiError && error.status < 500) {
+          const said = Object.values(error.fieldErrors())[0] ?? t('seating.notSaved');
+
+          settle(items);
+          setSave('saved');
+          if (tool) refuseStep(said);
+          else setNotice(said);
+          return;
+        }
+        if (tries >= STEP_TRIES) {
+          unsaved.current = items;
+          setSave('notSaved');
+          return;
+        }
+        setSave('retrying');
+        await new Promise((done) => setTimeout(done, STEP_RETRY_MS * tries));
+      }
+    }
+  };
+
+  const arrange = (items: Placement[], tool = false) => {
+    if (items.length === 0) return;
+    setPlacements((was) => ({ ...was, ...Object.fromEntries(items.map((one) => [one.id, one])) }));
+    unsaved.current = null;
+    setSave('saving');
+    dropRefusal();
+    queue.current = queue.current.then(() => sendStep(items, tool));
+  };
+
+  const tryAgain = () => {
+    const items = unsaved.current;
+
+    if (items != null) arrange(items);
+  };
+
+  const toggle = (id: string) => {
+    const next = chosenIds.includes(id)
+      ? chosenIds.filter((one) => one !== id)
+      : [...chosenIds, id];
+    const only = next.length === 1 ? itemOf(next[0]!) : null;
+
+    if (only != null) open({ kind: only.kind, id: only.one.id }, true);
+    else if (next.length === 0) open(null);
+    else {
+      setPanel(null);
+      setSeveral(next);
+      setNotice(null);
+    }
+  };
+
+  const versionNow = (id: string): number => itemOf(id, newest.current)?.one.version ?? 0;
+  const refNow = (kind: FloorItem['kind'], id: string) => ({ kind, id, version: versionNow(id) });
+
+  const stepDone = (words: string, undo: () => void) => {
+    setBar({ tone: 'undo', words, undo });
+    setHeard(words);
+  };
+  const refuseStep = (words: string) => setBar({ tone: 'amber', words });
+  const undone = () => setHeard(t('seating.undone'));
+  const undo = () => {
+    const back = bar?.undo;
+
+    setBar(null);
+    back?.();
+  };
+
+  const staleStep = (error: ApiError) => {
+    const stale = error.problem.stale?.[0];
+    const item = stale == null ? null : itemOf(stale, newest.current);
+    const name = error.problem.changedBy;
+
+    refuseStep(
+      name == null || item == null
+        ? t('seating.notSaved')
+        : t('seating.stepChanged', { name, table: itemName(t, item) }),
+    );
+    setReloads((n) => n + 1);
+    reload();
+  };
+
+  /** One step through the queue, all or nothing; a 412 keeps the choice and says who changed what. */
+  const runStep = <A extends Seating | SeatingWithChosen>(
+    change: () => Promise<A>,
+    done: (answer: A) => void,
+  ) => {
+    setSave('saving');
+    queue.current = queue.current.then(async () => {
+      try {
+        const answer = await change();
+        const now = seatingIn(answer);
+
+        newest.current = now.plan;
+        onSeating(now);
+        setSave('saved');
+        done(answer);
+      } catch (error) {
+        setSave('saved');
+        if (error instanceof ApiError && error.status === 412) staleStep(error);
+        else
+          refuseStep(
+            error instanceof ApiError
+              ? (Object.values(error.fieldErrors())[0] ?? t('seating.notSaved'))
+              : t('seating.notSaved'),
+          );
+      }
+    });
+  };
+
+  const moveStep = (moved: Placement[], words: string) => {
+    const back = moved.flatMap((to) => {
+      const item = itemOf(to.id);
+
+      return item == null ? [] : [placementOf(item)];
+    });
+
+    arrange(moved, true);
+    stepDone(words, () => {
+      arrange(back, true);
+      undone();
+    });
+  };
+
+  const renameStep = (names: { id: string; name: string }[], words: string) => {
+    const before = names.flatMap((one) => {
+      const table = plan?.tables.find((other) => other.id === one.id);
+
+      return table == null ? [] : [{ id: table.id, name: table.name }];
+    });
+    const rename = (list: { id: string; name: string }[], done: () => void) =>
+      runStep(
+        () =>
+          api.renameSeatingTables(
+            event.id,
+            list.map((one) => ({ id: one.id, name: one.name, version: versionNow(one.id) })),
+          ),
+        done,
+      );
+
+    rename(names, () => stepDone(words, () => rename(before, undone)));
+  };
+
+  const sectionStep = (sectionId: string | null, words: string) => {
+    const before = chosenItems.map((item) => ({
+      kind: item.kind,
+      id: item.one.id,
+      sectionId: item.one.sectionId,
+    }));
+    const section = (list: typeof before, done: () => void) =>
+      runStep(
+        () =>
+          api.sectionSeatingItems(
+            event.id,
+            list.map((one) => ({ ...refNow(one.kind, one.id), sectionId: one.sectionId })),
+          ),
+        done,
+      );
+
+    section(
+      before.map((one) => ({ ...one, sectionId })),
+      () => stepDone(words, () => section(before, undone)),
+    );
+  };
+
+  const duplicateStep = () => {
+    const items = chosenItems;
+
+    runStep(
+      () =>
+        api.duplicateSeatingItems(
+          event.id,
+          items.map((item) => refNow(item.kind, item.one.id)),
+        ),
+      (answer) => {
+        pick(answer.chosen);
+        stepDone(t('seating.duplicatedMany', { count: answer.chosen.length }), () =>
+          runStep(
+            () =>
+              api.deleteSeatingItems(
+                event.id,
+                answer.chosen.flatMap((id) => {
+                  const copy = itemOf(id, newest.current);
+
+                  return copy == null ? [] : [refNow(copy.kind, id)];
+                }),
+              ),
+            () => {
+              pick(items.map((item) => item.one.id));
+              undone();
+            },
+          ),
+        );
+      },
+    );
+  };
+
+  const deleteStep = (items: FloorItem[]) => {
+    const restored = items.map(restoredOf);
+
+    runStep(
+      () =>
+        api.deleteSeatingItems(
+          event.id,
+          items.map((item) => refNow(item.kind, item.one.id)),
+        ),
+      () => {
+        pick([]);
+        stepDone(
+          t(onlyTables(items) ? 'seating.deletedEmptyTables' : 'seating.deletedEmptyItems', {
+            count: items.length,
+          }),
+          () =>
+            runStep(
+              () => api.restoreSeatingItems(event.id, restored),
+              (answer) => {
+                pick(answer.chosen);
+                undone();
+              },
+            ),
+        );
+      },
+    );
+  };
+
+  const steps: SelectionSteps = {
+    move: moveStep,
+    refuse: refuseStep,
+    rename: renameStep,
+    section: sectionStep,
+    duplicate: duplicateStep,
+    askDelete: () =>
+      setAsking({ kind: 'deleteItems', ids: chosenItems.map((item) => item.one.id) }),
+  };
+
+  const startPlacing = (next: Placing) => {
+    setPanel(null);
+    setSeveral([]);
+    setNotice(null);
+    setPlacing(next);
+  };
+
+  const placeAt = async ([x, y]: [number, number]): Promise<void> => {
+    const kind = placing;
+
+    if (kind == null || plan == null) return;
+    if (!another) setPlacing(null);
+    const added = await place(() =>
+      kind.kind === 'table'
+        ? api.addSeatingTable(event.id, kind.shape)
+        : kind.kind === 'row'
+          ? api.addSeatingRow(event.id)
+          : api.addSingleSeat(event.id),
+    );
+    const item = added == null ? null : itemOf(added.id, newest.current);
+
+    if (item == null) return;
+    const at: [number, number] = [
+      snapToGrid(x, system, where.current.snap),
+      snapToGrid(y, system, where.current.snap),
+    ];
+    const box = floorBox(footprintOf(item), at);
+    const xCm = Math.round(at[0] + Math.max(0, -box.x0) - Math.max(0, box.x1 - plan.widthCm));
+    const yCm = Math.round(at[1] + Math.max(0, -box.y0) - Math.max(0, box.y1 - plan.lengthCm));
+
+    arrange([{ ...placementOf(item), xCm, yCm }]);
+    if (!another) open({ kind: item.kind, id: item.one.id });
+  };
+
+  const duplicate = (item: FloorItem) => {
+    if (item.kind === 'seat') return;
+    const copying =
+      item.kind === 'table'
+        ? () => api.duplicateSeatingTable(event.id, item.one.id, newestOf(item.one).version)
+        : () => api.duplicateSeatingRow(event.id, item.one.id, newestOf(item.one).version);
+
+    void place(copying).then((copy) => {
+      if (copy == null) return;
+      open(
+        {
+          kind: item.kind,
+          id: copy.id,
+          said: t('seating.duplicated', {
+            name: item.kind === 'row' ? t('seating.rowName', { label: copy.name }) : copy.name,
+            of: itemName(t, item),
+          }),
+        },
+        true,
+      );
+    });
+  };
+
+  const onItemKey = (event: ReactKeyboardEvent<SVGGElement>, item: FloorItem) => {
+    if (readOnly || plan == null) return;
+    const target = event.target as Element;
+
+    if (!target.matches('[data-table], [data-row], [data-seat]')) return;
+    const id = item.one.id;
+    const chosen = chosenIds.includes(id);
+    const arrows: Record<string, [number, number]> = {
+      ArrowLeft: [-1, 0],
+      ArrowRight: [1, 0],
+      ArrowUp: [0, -1],
+      ArrowDown: [0, 1],
+    };
+    const arrow = arrows[event.key];
+
+    if (arrow != null) {
+      if (!chosen) return;
+      event.preventDefault();
+      const step = keyStep(system, event.shiftKey);
+      const moving = chosenIds.flatMap((one) => itemOf(one) ?? []);
+      const [mx, my] = shiftWithin(moving.map(footprintOf), plan, [
+        arrow[0] * step,
+        arrow[1] * step,
+      ]);
+
+      if (mx === 0 && my === 0) return;
+      arrange(
+        moving.map((one) => ({
+          ...placementOf(one),
+          xCm: Math.round(one.one.xCm + mx),
+          yCm: Math.round(one.one.yCm + my),
+        })),
+      );
+      setHeard(
+        t('seating.movedTo', {
+          name: itemName(t, item),
+          across: lengths(Math.round(item.one.xCm + mx)),
+          down: lengths(Math.round(item.one.yCm + my)),
+        }),
+      );
+      return;
+    }
+    if ((event.key === 'r' || event.key === 'R') && !event.metaKey && !event.ctrlKey) {
+      if (!chosen || chosenIds.length !== 1 || item.kind === 'seat') return;
+      if (item.kind === 'table' && isRoundShape(item.one.shape)) return;
+      event.preventDefault();
+      const rotation = (item.one.rotation + SEATING_LIMITS.rotationStep) % 360;
+
+      if (!insideRoom({ ...footprintOf(item), rotation }, plan)) {
+        setNotice(t('seating.outside', { name: itemName(t, item) }));
+        return;
+      }
+      arrange([{ ...placementOf(item), rotation }]);
+      setHeard(t('seating.turnedTo', { name: itemName(t, item), degrees: rotation }));
+      return;
+    }
+    if ((event.key === 'd' || event.key === 'D') && (event.metaKey || event.ctrlKey)) {
+      event.preventDefault();
+      if (chosen && chosenIds.length === 1) duplicate(item);
+      else if (chosen && chosenIds.length > 1) duplicateStep();
+      return;
+    }
+    if ((event.key === 'Delete' || event.key === 'Backspace') && chosen && chosenIds.length > 1) {
+      event.preventDefault();
+      setAsking({ kind: 'deleteItems', ids: chosenIds });
+      return;
+    }
+    if ((event.key === 'Delete' || event.key === 'Backspace') && chosen && chosenIds.length === 1) {
+      event.preventDefault();
+      setAsking({
+        kind:
+          item.kind === 'table' ? 'deleteTable' : item.kind === 'row' ? 'deleteRow' : 'deleteSeat',
+        id,
+      });
+    }
+  };
+
+  const onItemDown = (event: ReactPointerEvent<Element>, item: FloorItem) => {
+    if (readOnly || placing != null || event.button !== 0) return;
+    dragged.current = false;
+    const id = item.one.id;
+    const ids = chosenIds.includes(id) && !event.shiftKey && !adding ? chosenIds : [id];
+
+    drag.current = {
+      kind: 'move',
+      lead: id,
+      from: [event.clientX, event.clientY],
+      origins: ids.flatMap((one) => itemOf(one) ?? []),
+      moved: false,
+      pointer: event.pointerId,
+      last: [],
+    };
+  };
+
+  const onHandleDown = (
+    event: ReactPointerEvent<SVGRectElement>,
+    table: Table,
+    pressed: Handle,
+  ) => {
+    if (event.button !== 0) return;
+    const at = toCm(event.clientX, event.clientY);
+    const handle =
+      at == null
+        ? pressed
+        : pressedHandle(
+            table,
+            pressed,
+            turned([at[0] - table.xCm, at[1] - table.yCm], -table.rotation),
+          );
+
+    if (handle == null) onItemDown(event, { kind: 'table', one: table });
+    else drag.current = { kind: 'resize', table, handle, pointer: event.pointerId, last: null };
+  };
+
+  const toCm = (clientX: number, clientY: number): [number, number] | null => {
+    const box = canvasNode.current?.getBoundingClientRect();
+    const { s, ox, oy } = where.current;
+
+    return box == null ? null : [(clientX - box.left - ox) / s, (clientY - box.top - oy) / s];
+  };
+
+  useEffect(() => {
+    const move = (pointer: PointerEvent) => {
+      const now = drag.current;
+
+      if (now == null || now.pointer !== pointer.pointerId || plan == null) return;
+      if (now.kind === 'move') {
+        const dx = pointer.clientX - now.from[0];
+        const dy = pointer.clientY - now.from[1];
+        const lead = now.origins.find((one) => one.one.id === now.lead);
+
+        if (lead == null || (!now.moved && Math.hypot(dx, dy) < PAN_FROM_PX)) return;
+        now.moved = true;
+        const { s, snap: snapping } = where.current;
+        const [mx, my] = shiftWithin(now.origins.map(footprintOf), plan, [
+          snapToGrid(lead.one.xCm + dx / s, system, snapping) - lead.one.xCm,
+          snapToGrid(lead.one.yCm + dy / s, system, snapping) - lead.one.yCm,
+        ]);
+
+        now.last = now.origins.map((one) => ({
+          ...placementOf(one),
+          xCm: Math.round(one.one.xCm + mx),
+          yCm: Math.round(one.one.yCm + my),
+        }));
+        setPlacements((was) => ({
+          ...was,
+          ...Object.fromEntries(now.last.map((one) => [one.id, one])),
+        }));
+        setTip({
+          id: now.lead,
+          words: t('seating.tip', {
+            across: lengths(Math.round(lead.one.xCm + mx)),
+            down: lengths(Math.round(lead.one.yCm + my)),
+          }),
+        });
+        return;
+      }
+      const at = toCm(pointer.clientX, pointer.clientY);
+
+      if (at == null) return;
+      const table = now.table;
+      const [lx, ly] = turned([at[0] - table.xCm, at[1] - table.yCm], -table.rotation);
+      const sized = (cm: number) =>
+        Math.min(
+          SEATING_LIMITS.tableSizeMaximumCm,
+          Math.max(SEATING_LIMITS.tableSizeMinimumCm, Math.round(cm / SIZE_STEP_CM) * SIZE_STEP_CM),
+        );
+      const round = isRoundShape(table.shape);
+      const across = now.handle.includes('e') || now.handle.includes('w');
+      const along = now.handle.includes('n') || now.handle.includes('s');
+      const widthCm = round
+        ? sized(2 * Math.max(Math.abs(lx), Math.abs(ly)))
+        : across
+          ? sized(2 * Math.abs(lx))
+          : table.widthCm;
+      const lengthCm = round ? widthCm : along ? sized(2 * Math.abs(ly)) : table.lengthCm;
+      const resized = { ...table, widthCm, lengthCm };
+
+      if (!insideRoom(footprintOf({ kind: 'table', one: resized }), plan)) return;
+      const placement: Placement = {
+        ...placementOf({ kind: 'table', one: table }),
+        widthCm,
+        lengthCm,
+      };
+
+      now.last = placement;
+      setPlacements((was) => ({ ...was, [table.id]: placement }));
+      setTip({ id: table.id, words: tableSizeWords(t, locale, resized, system) });
+    };
+    const up = (pointer: PointerEvent) => {
+      const now = drag.current;
+
+      if (now == null || now.pointer !== pointer.pointerId) return;
+      drag.current = null;
+      setTip(null);
+      if (now.kind === 'resize') {
+        if (now.last != null) arrange([now.last]);
+        return;
+      }
+      if (!now.moved) return;
+      dragged.current = true;
+      arrange(now.last);
+      const lead = now.origins.find((one) => one.one.id === now.lead);
+
+      if (lead != null && now.origins.length === 1 && !chosenIds.includes(now.lead))
+        open({ kind: lead.kind, id: lead.one.id }, true);
+    };
+
+    window.addEventListener('pointermove', move);
+    window.addEventListener('pointerup', up);
+    window.addEventListener('pointercancel', up);
+    return () => {
+      window.removeEventListener('pointermove', move);
+      window.removeEventListener('pointerup', up);
+      window.removeEventListener('pointercancel', up);
+    };
+  });
+
+  useEffect(() => {
+    const move = (pointer: PointerEvent) => {
+      const now = boxing.current;
+
+      if (now == null || now.pointer !== pointer.pointerId || shown == null) return;
+      if (
+        !now.moved &&
+        Math.hypot(pointer.clientX - now.at[0], pointer.clientY - now.at[1]) < PAN_FROM_PX
+      )
+        return;
+      now.moved = true;
+      const to = toCm(pointer.clientX, pointer.clientY);
+
+      if (to == null) return;
+      const box = rectOf(now.from, to);
+      const hits = touchedBy(floorItems(shown), box);
+
+      setBoxDrawn(box);
+      pick([...now.base, ...hits.filter((id) => !now.base.includes(id))]);
+    };
+    const up = (pointer: PointerEvent) => {
+      touches.current.delete(pointer.pointerId);
+      const now = boxing.current;
+
+      if (now == null || now.pointer !== pointer.pointerId) return;
+      boxing.current = null;
+      if (!now.moved) return;
+      panned.current = true;
+      setBoxDrawn(null);
+      setHeard(t('seating.chosenCount', { count: chosenIds.length }));
+    };
+
+    window.addEventListener('pointermove', move);
+    window.addEventListener('pointerup', up);
+    window.addEventListener('pointercancel', up);
+    return () => {
+      window.removeEventListener('pointermove', move);
+      window.removeEventListener('pointerup', up);
+      window.removeEventListener('pointercancel', up);
+    };
+  });
+
+  useEffect(() => {
+    const keys = () => setKeyboard(true);
+    const pointer = () => setKeyboard(false);
+
+    window.addEventListener('keydown', keys);
+    window.addEventListener('pointerdown', pointer);
+    return () => {
+      window.removeEventListener('keydown', keys);
+      window.removeEventListener('pointerdown', pointer);
+    };
+  }, []);
 
   const ctx: PlanApi = {
     event,
@@ -383,23 +1430,26 @@ function Plan({
     plan,
     readOnly,
     send,
+    newest: newestOf,
     place,
     remove,
     adopt: onSeating,
     reloads,
     notice,
+    note,
+    keepNote: setNote,
     open,
     ask: setAsking,
     showOutside: setOutside,
+    arrange,
+    startPlacing,
   };
-
-  const lengths = (cm: number, display: 'short' | 'long' = 'short') =>
-    lengthWords(t, locale, cm, system, { display });
+  const { addRow, addSeat } = useAddRowAndSeat(ctx);
 
   let canvas: ReactNode = null;
 
   if (plan != null) {
-    const { s, ox, oy } = fitOf(size.w, size.h, { w: plan.widthCm, l: plan.lengthCm });
+    const { s, ox, oy } = camera;
     const rw = plan.widthCm * s;
     const rl = plan.lengthCm * s;
     const step = 100 * s;
@@ -431,13 +1481,42 @@ function Plan({
     }
     const words = { width: lengths(plan.widthCm), roomLength: lengths(plan.lengthCm) };
     const empty = plan.counts.tables + plan.counts.rows + plan.counts.singleSeats === 0;
+    const drawn = shown ?? plan;
+    const handled =
+      !readOnly && shownPanel?.kind === 'table' && several.length < 2
+        ? (drawn.tables.find((one) => one.id === shownPanel.id) ?? null)
+        : null;
+    const tipped = tip == null ? null : itemOf(tip.id, drawn);
+    const columns = readWhole(grid.columns, COLUMNS_MAX);
+    const gap = readGap(grid.gap, system, locale);
+    const gridOutlines =
+      fold === 'grid' && chosenItems.length > 1 && columns != null && gap != null && !readOnly
+        ? outlinesOf(drawn, chosenItems, gridOf(chosenItems, columns, gap).moved)
+        : [];
 
     canvas = (
       <>
-        {empty && !readOnly && (
+        {empty && !readOnly && placing == null && bar == null ? (
           <div className="st-float st-bar is-tint" role="status" aria-live="polite">
             <Glyph name="info" size={17} weight={2.2} />
             <p>{t('seating.firstItem')}</p>
+          </div>
+        ) : (
+          <div className="st-float st-under-views">
+            {!readOnly && !empty && placing == null && (
+              <ChooseBar
+                plan={plan}
+                adding={adding}
+                kindMenu={kindMenu}
+                onChoose={pick}
+                onAdding={(on) => {
+                  setAdding(on);
+                  setKindMenu(false);
+                }}
+                onKindMenu={setKindMenu}
+              />
+            )}
+            {bar != null && <StepLine bar={bar} onUndo={undo} />}
           </div>
         )}
         <svg
@@ -446,6 +1525,41 @@ function Plan({
           height={size.h}
           viewBox={`0 0 ${size.w} ${size.h}`}
           role="group"
+          onPointerDown={(event) => {
+            panned.current = false;
+            if (event.button !== 0 || !isFloor(event.target)) return;
+            if (placing != null) {
+              const at = toCm(event.clientX, event.clientY);
+
+              if (at != null) void placeAt(at);
+              return;
+            }
+            if (event.pointerType === 'touch') touches.current.add(event.pointerId);
+            const box = boxing.current;
+
+            if (box != null && touches.current.size > 1) {
+              boxing.current = null;
+              setBoxDrawn(null);
+              if (box.moved) pick(box.base);
+            }
+            const at = toCm(event.clientX, event.clientY);
+
+            if (!readOnly && !spaceHeld.current && touches.current.size < 2 && at != null) {
+              boxing.current = {
+                from: at,
+                at: [event.clientX, event.clientY],
+                base: event.shiftKey || adding ? chosenIds : [],
+                moved: false,
+                pointer: event.pointerId,
+              };
+              return;
+            }
+            press.current = {
+              from: [event.clientX, event.clientY],
+              moved: false,
+              pointer: event.pointerId,
+            };
+          }}
           aria-label={
             plan.roomName == null
               ? t('seating.roomGroupUnnamed', {
@@ -459,7 +1573,19 @@ function Plan({
                 })
           }
         >
-          <rect className="st-floor" x={ox} y={oy} width={rw} height={rl} />
+          <rect
+            className="st-floor"
+            x={ox}
+            y={oy}
+            width={rw}
+            height={rl}
+            onClick={() => {
+              if (panned.current) panned.current = false;
+              else if (adding) setKindMenu(false);
+              else if (several.length > 1) setSeveral([]);
+              else if (chosenAttribute != null) open(null);
+            }}
+          />
           {lines}
           <rect className="st-walls" x={ox} y={oy} width={rw} height={rl} />
           {outside != null &&
@@ -480,23 +1606,128 @@ function Plan({
                 y2={oy + outside.cm * s}
               />
             ))}
-          {plan.tables.map((table) => (
-            <TableDrawing
-              key={table.id}
-              plan={plan}
-              table={table}
+          {inReadingOrder(floorItems(drawn)).map((item) => {
+            const id = item.one.id;
+            const lit = chosenIds.includes(id) || chosenItem === id;
+            const outlined = (outside?.ids.includes(id) ?? false) || overlaps.has(id);
+            const drawing =
+              item.kind === 'table' ? (
+                <TableDrawing
+                  plan={drawn}
+                  table={item.one}
+                  s={s}
+                  ox={ox}
+                  oy={oy}
+                  chosen={lit}
+                  chosenSeat={
+                    shownPanel?.kind === 'chair' && shownPanel.id === id ? shownPanel.seat : null
+                  }
+                  outside={outlined}
+                  onChoose={() => open({ kind: 'table', id }, true)}
+                  onChair={(seat) => open({ kind: 'chair', id, seat })}
+                />
+              ) : item.kind === 'row' ? (
+                <RowDrawing
+                  plan={drawn}
+                  row={item.one}
+                  s={s}
+                  ox={ox}
+                  oy={oy}
+                  chosen={lit}
+                  chosenSeat={
+                    shownPanel?.kind === 'row' && shownPanel.id === id
+                      ? (shownPanel.seat ?? null)
+                      : null
+                  }
+                  outside={outlined}
+                  onChoose={() => open({ kind: 'row', id }, true)}
+                  onChair={(seat) => open({ kind: 'row', id, seat })}
+                />
+              ) : (
+                <SingleSeatDrawing
+                  plan={drawn}
+                  seat={item.one}
+                  s={s}
+                  ox={ox}
+                  oy={oy}
+                  chosen={lit}
+                  outside={outlined}
+                  onChoose={() => open({ kind: 'seat', id }, true)}
+                />
+              );
+
+            return (
+              <g
+                key={id}
+                className={readOnly ? undefined : 'st-movable'}
+                onPointerDown={(event) => onItemDown(event, item)}
+                onClickCapture={(event) => {
+                  if (dragged.current) {
+                    dragged.current = false;
+                    event.stopPropagation();
+                  } else if ((event.shiftKey || adding) && !readOnly) {
+                    event.stopPropagation();
+                    toggle(id);
+                  }
+                }}
+                onKeyDownCapture={(event) => {
+                  if (event.key !== 'Enter' && event.key !== ' ') return;
+                  if (!(event.target as Element).matches('[data-table], [data-row], [data-seat]'))
+                    return;
+                  if ((event.shiftKey || adding) && !readOnly) {
+                    event.preventDefault();
+                    event.stopPropagation();
+                    toggle(id);
+                  }
+                }}
+                onKeyDown={(event) => onItemKey(event, item)}
+                onFocus={(event) => {
+                  if ((event.target as Element).matches('[data-table], [data-row], [data-seat]'))
+                    setFocusId(id);
+                }}
+                onBlur={() => setFocusId(null)}
+              >
+                {drawing}
+              </g>
+            );
+          })}
+          {gridOutlines.map((one) => (
+            <rect
+              key={`${one.x0}-${one.y0}`}
+              className={one.amber ? 'st-outline is-amber' : 'st-outline'}
+              x={ox + one.x0 * s}
+              y={oy + one.y0 * s}
+              width={(one.x1 - one.x0) * s}
+              height={(one.y1 - one.y0) * s}
+              aria-hidden="true"
+            />
+          ))}
+          {boxDrawn != null && (
+            <rect
+              className="st-box-drawn"
+              x={ox + boxDrawn.x0 * s}
+              y={oy + boxDrawn.y0 * s}
+              width={(boxDrawn.x1 - boxDrawn.x0) * s}
+              height={(boxDrawn.y1 - boxDrawn.y0) * s}
+              aria-hidden="true"
+            />
+          )}
+          {handled != null && (
+            <TableHandles
+              table={handled}
               s={s}
               ox={ox}
               oy={oy}
-              chosen={chosenTable === table.id}
-              chosenSeat={
-                shownPanel?.kind === 'chair' && shownPanel.id === table.id ? shownPanel.seat : null
-              }
-              outside={outside?.ids.includes(table.id) ?? false}
-              onChoose={() => open({ kind: 'table', id: table.id })}
-              onChair={(seat) => open({ kind: 'chair', id: table.id, seat })}
+              onDown={(event, handle) => onHandleDown(event, handled, handle)}
             />
-          ))}
+          )}
+          {tipped != null && tip != null && (
+            <Tip
+              x={ox + tipped.one.xCm * s + 26}
+              y={oy + tipped.one.yCm * s + 30}
+              words={tip.words}
+            />
+          )}
           <text
             className="st-room-line"
             x={ox}
@@ -509,7 +1740,28 @@ function Plan({
               : t('seating.roomLine', { name: plan.roomName, ...words })}
           </text>
         </svg>
-        {!readOnly && <AddTable ctx={ctx} />}
+        {!readOnly && <SaveLine state={save} onTryAgain={tryAgain} />}
+        {placing != null && (
+          <PlacingBars
+            placing={placing}
+            another={another}
+            onAnother={setAnother}
+            onCentre={() => void placeAt([(size.w / 2 - ox) / s, (size.h / 2 - oy) / s])}
+            onStop={() => setPlacing(null)}
+          />
+        )}
+        {keyboard && focusId != null && chosenIds.includes(focusId) && !readOnly && !adding && (
+          <KeysStrip system={system} />
+        )}
+        {adding && !readOnly && <RulesStrip />}
+        <p className="visually-hidden" aria-live="polite">
+          {heard}
+        </p>
+        {!readOnly && <AddTable ctx={ctx} floor={size.w} onRow={addRow} onSeat={addSeat} />}
+        <ZoomControls camera={camera} />
+        {s >= SMALL_MAP_FROM_SCALE - 1e-9 && (
+          <SmallMap plan={plan} view={{ x: -ox / s, y: -oy / s, w: size.w / s, h: size.h / s }} />
+        )}
       </>
     );
   } else if (shownPanel?.kind === 'start') {
@@ -586,26 +1838,75 @@ function Plan({
     body = (
       <SectionForm key={`${shownPanel.id}-${reloads}`} ctx={ctx} plan={plan} id={shownPanel.id} />
     );
+  else if (several.length > 1)
+    body = (
+      <>
+        {notice != null && <Said>{notice}</Said>}
+        <SelectionPanel
+          plan={shown ?? plan}
+          system={system}
+          items={chosenItems}
+          adding={adding}
+          fold={fold}
+          onFold={setFold}
+          grid={grid}
+          onGrid={setGrid}
+          steps={steps}
+        />
+      </>
+    );
   else if (shownPanel?.kind === 'table' || shownPanel?.kind === 'chair') {
-    const table = plan.tables.find((one) => one.id === shownPanel.id);
+    const table = (shown ?? plan).tables.find((one) => one.id === shownPanel.id);
 
     body =
       table == null ? null : shownPanel.kind === 'table' ? (
         <TablePanel
           key={`${table.id}-${reloads}`}
           ctx={ctx}
-          plan={plan}
+          plan={shown ?? plan}
           table={table}
           said={shownPanel.said}
         />
       ) : (
         <ChairPanel ctx={ctx} plan={plan} table={table} seat={shownPanel.seat} />
       );
+  } else if (shownPanel?.kind === 'row') {
+    const row = (shown ?? plan).rows.find((one) => one.id === shownPanel.id);
+
+    body =
+      row == null ? null : (
+        <RowPanel
+          key={`${row.id}-${reloads}`}
+          ctx={ctx}
+          plan={shown ?? plan}
+          row={row}
+          said={shownPanel.said}
+          seat={shownPanel.seat ?? null}
+        />
+      );
+  } else if (shownPanel?.kind === 'seat') {
+    const seat = (shown ?? plan).singleSeats.find((one) => one.id === shownPanel.id);
+
+    body =
+      seat == null ? null : (
+        <SingleSeatPanel
+          key={`${seat.id}-${reloads}`}
+          ctx={ctx}
+          plan={shown ?? plan}
+          seat={seat}
+          said={shownPanel.said}
+        />
+      );
   } else
     body = (
       <>
         <RoomHead ctx={ctx} plan={plan} />
-        {readOnly && <Line>{t('seating.readOnly')}</Line>}
+        {notice != null && <Said>{notice}</Said>}
+        {readOnly ? (
+          <Line>{t('seating.readOnly')}</Line>
+        ) : (
+          <SnapToGrid on={snap} onChange={setSnap} />
+        )}
         <SectionsBlock
           ctx={ctx}
           plan={plan}
@@ -618,7 +1919,13 @@ function Plan({
   return (
     <LayersContext value={layers}>
       <div className="st-main" inert={covered}>
-        <div className="st-canvas is-plan" ref={placeCanvas}>
+        <div
+          className="st-canvas is-plan"
+          ref={(node) => {
+            canvasNode.current = node;
+            placeCanvas(node);
+          }}
+        >
           {canvas}
         </div>
         <aside className="st-panel" aria-label={t('seating.panel')}>
@@ -626,7 +1933,17 @@ function Plan({
         </aside>
       </div>
       <div ref={setHost} className="desk-layers" />
-      {asking != null && plan != null && (
+      {asking?.kind === 'deleteItems' && plan != null && (
+        <DeleteItemsAsk
+          items={asking.ids.flatMap((id) => itemOf(id) ?? [])}
+          onKeep={() => setAsking(null)}
+          onGo={(items) => {
+            setAsking(null);
+            deleteStep(items);
+          }}
+        />
+      )}
+      {asking != null && asking.kind !== 'deleteItems' && plan != null && (
         <AskFor
           ctx={ctx}
           plan={plan}
@@ -640,6 +1957,187 @@ function Plan({
       )}
     </LayersContext>
   );
+}
+
+function itemAttribute(kind: Panel['kind']): string | null {
+  return kind === 'table' || kind === 'chair'
+    ? 'data-table'
+    : kind === 'row'
+      ? 'data-row'
+      : kind === 'seat'
+        ? 'data-seat'
+        : null;
+}
+
+function typing(target: EventTarget | null): boolean {
+  return target instanceof HTMLElement && target.closest('input, textarea, select') != null;
+}
+
+function control(target: EventTarget | null): boolean {
+  return (
+    target instanceof Element &&
+    target.closest('button, a[href], [role="menuitem"], [role="option"], summary') != null
+  );
+}
+
+function isFloor(target: EventTarget): boolean {
+  return (
+    target instanceof SVGElement &&
+    ['st-room', 'st-floor', 'st-grid', 'st-walls'].some((name) => target.classList.contains(name))
+  );
+}
+
+/** +, − and Fit the room: the steps stop at 25% and 400%, and a button at its limit stays in the Tab order. */
+function ZoomControls({ camera }: { camera: ReturnType<typeof useCamera> }) {
+  const { t } = useTranslation();
+  const pct = percentOf(camera.s);
+
+  return (
+    <div
+      className="st-float st-zoom"
+      role="group"
+      aria-label={t('seating.zoomIs', { share: pct / 100 })}
+    >
+      <button
+        type="button"
+        className="st-round-button"
+        aria-label={t('seating.zoomOut')}
+        aria-disabled={camera.atSmallest}
+        onClick={() => {
+          if (!camera.atSmallest) camera.step(-1);
+        }}
+      >
+        <Glyph name="minus" size={19} weight={2.2} />
+      </button>
+      <span className="st-pct" role="status">
+        {t('seating.percent', { share: pct / 100 })}
+      </span>
+      <button
+        type="button"
+        className="st-round-button"
+        aria-label={t('seating.zoomIn')}
+        aria-disabled={camera.atLargest}
+        onClick={() => {
+          if (!camera.atLargest) camera.step(1);
+        }}
+      >
+        <Glyph name="plus" size={19} weight={2.2} />
+      </button>
+      <button type="button" className="st-tool" onClick={camera.fitRoom}>
+        <Glyph name="fit" size={18} weight={2.2} />
+        {t('seating.fit')}
+      </button>
+    </div>
+  );
+}
+
+const SMALL_MAP_WIDTH = 160;
+const SMALL_MAP_SEAT_CM = 44;
+
+/** From 200%, the whole room small at the bottom right, with the part on screen as a rectangle. */
+function SmallMap({
+  plan,
+  view,
+}: {
+  plan: SeatingPlan;
+  view: { x: number; y: number; w: number; h: number };
+}) {
+  const s = SMALL_MAP_WIDTH / plan.widthCm;
+  const h = Math.round(plan.lengthCm * s);
+  const shape = (
+    item: { id: string; sectionId: string | null; xCm: number; yCm: number; rotation: number },
+    w: number,
+    l: number,
+    round: boolean,
+  ) => {
+    const section = sectionOf(plan, item);
+    const className = section == null ? 'st-body is-out' : `st-body is-out is-${section.colour}`;
+    const x = item.xCm * s;
+    const y = item.yCm * s;
+
+    return round ? (
+      <circle
+        key={item.id}
+        className={className}
+        cx={f(x)}
+        cy={f(y)}
+        r={f(Math.max(1.5, (w / 2) * s))}
+      />
+    ) : (
+      <g key={item.id} transform={`translate(${f(x)} ${f(y)}) rotate(${item.rotation})`}>
+        <rect
+          className={className}
+          x={f((-w / 2) * s)}
+          y={f((-l / 2) * s)}
+          width={f(w * s)}
+          height={f(Math.max(1.5, l * s))}
+        />
+      </g>
+    );
+  };
+
+  return (
+    <div className="st-float st-minimap" aria-hidden="true">
+      <svg
+        className="st-small-map"
+        width={SMALL_MAP_WIDTH}
+        height={h}
+        viewBox={`0 0 ${SMALL_MAP_WIDTH} ${h}`}
+        focusable="false"
+      >
+        <rect className="st-floor" width={SMALL_MAP_WIDTH} height={h} />
+        {plan.tables.map((one) => shape(one, one.widthCm, one.lengthCm, isRoundShape(one.shape)))}
+        {plan.rows.map((one) => {
+          const [ex, ey] = rowExtent(one);
+
+          return shape(one, 2 * ex, 2 * ey, false);
+        })}
+        {plan.singleSeats.map((one) =>
+          shape({ ...one, rotation: 0 }, SMALL_MAP_SEAT_CM, SMALL_MAP_SEAT_CM, true),
+        )}
+        <rect
+          className="st-walls is-thin"
+          x="0.75"
+          y="0.75"
+          width={SMALL_MAP_WIDTH - 1.5}
+          height={h - 1.5}
+        />
+        <rect
+          className="st-view-box"
+          x={f(view.x * s)}
+          y={f(view.y * s)}
+          width={f(view.w * s)}
+          height={f(view.h * s)}
+        />
+      </svg>
+    </div>
+  );
+}
+
+/** Who changed it first, said of what the panel shows. */
+function changedKey(panel: Panel | null): string {
+  if (panel?.kind === 'table' || panel?.kind === 'chair') return 'seating.changedTable';
+  if (panel?.kind === 'row') return 'seating.changedRow';
+  if (panel?.kind === 'seat') return 'seating.changedSeat';
+  return 'seating.changedFirst';
+}
+
+function placedIn(answer: Placed): { id: string; name: string; seats: number } | null {
+  const plan = answer.seating.plan;
+
+  if ('tableId' in answer) {
+    const table = plan?.tables.find((one) => one.id === answer.tableId);
+
+    return table == null ? null : { id: table.id, name: table.name, seats: table.seats };
+  }
+  if ('rowId' in answer) {
+    const row = plan?.rows.find((one) => one.id === answer.rowId);
+
+    return row == null ? null : { id: row.id, name: row.label, seats: row.seats };
+  }
+  const seat = plan?.singleSeats.find((one) => one.id === answer.seatId);
+
+  return seat == null ? null : { id: seat.id, name: seat.name, seats: 1 };
 }
 
 /** A panel's buttons are drawn again as it closes, so the one that opened it is found again by its name. */
@@ -671,8 +2169,8 @@ function useRoomSide(system: MeasurementSystem) {
       return { refused: t(side === 'width' ? 'seating.enterWidth' : 'seating.enterLength') };
     return {
       refused: t('seating.roomRange', {
-        min: lengthWords(t, locale, ROOM_MINIMUM_CM, system, { grouping: false }),
-        max: lengthWords(t, locale, ROOM_MAXIMUM_CM, system, { grouping: false }),
+        min: lengthWords(t, locale, ROOM_MINIMUM_CM, system, { grouping: false, rounding: 'up' }),
+        max: lengthWords(t, locale, ROOM_MAXIMUM_CM, system, { grouping: false, rounding: 'down' }),
       }),
     };
   };
@@ -776,7 +2274,6 @@ function StartForm({
         label={t('seating.roomName')}
         optional
         value={draft.name}
-        maxLength={SEATING_LIMITS.roomNameMaximum}
         error={errors.name}
         onChange={(text) => onDraft({ ...draft, name: text })}
         fieldKey="startName"
@@ -819,7 +2316,6 @@ function StartField({
   value,
   unit,
   optional = false,
-  maxLength,
   error,
   fieldKey,
   onChange,
@@ -828,7 +2324,6 @@ function StartField({
   value: string;
   unit?: string | undefined;
   optional?: boolean;
-  maxLength?: number;
   error?: string | undefined;
   fieldKey: string;
   onChange: (text: string) => void;
@@ -849,7 +2344,6 @@ function StartField({
           type="text"
           inputMode={optional ? 'text' : 'decimal'}
           value={value}
-          maxLength={maxLength}
           spellCheck={false}
           autoComplete="off"
           aria-invalid={error != null}
@@ -912,7 +2406,7 @@ function RoomSettings({ ctx, plan }: { ctx: PlanApi; plan: SeatingPlan }) {
     if ('refused' in read) return read.refused;
     ctx.showOutside(null);
     return ctx.send(
-      () => api.changeSeatingRoom(ctx.event.id, { [key]: read.cm }, plan.version),
+      () => api.changeSeatingRoom(ctx.event.id, { [key]: read.cm }, ctx.newest(plan).version),
       key,
       (error) => {
         if (!error.is('seating_items_outside')) return null;
@@ -942,7 +2436,6 @@ function RoomSettings({ ctx, plan }: { ctx: PlanApi; plan: SeatingPlan }) {
         fieldKey="roomName"
         label={t('seating.roomName')}
         optional
-        maxLength={SEATING_LIMITS.roomNameMaximum}
         value={plan.roomName ?? ''}
         onCommit={(text) => {
           const name = text.trim();
@@ -952,7 +2445,7 @@ function RoomSettings({ ctx, plan }: { ctx: PlanApi; plan: SeatingPlan }) {
               api.changeSeatingRoom(
                 ctx.event.id,
                 { roomName: name === '' ? null : name },
-                plan.version,
+                ctx.newest(plan).version,
               ),
             'roomName',
           );
@@ -992,12 +2485,13 @@ function RoomSettings({ ctx, plan }: { ctx: PlanApi; plan: SeatingPlan }) {
 function sectionLine(
   t: ReturnType<typeof useTranslation>['t'],
   colour: SectionColour | null,
-  tables: number,
-  seats: number,
+  { tables, rows, singleSeats, seats }: SectionContents,
 ): string {
   return [
     colour == null ? null : t(`seating.colours.${colour}`),
-    t('seating.countTables', { count: tables }),
+    tables > 0 || colour != null ? t('seating.countTables', { count: tables }) : null,
+    rows > 0 ? t('seating.countRows', { count: rows }) : null,
+    singleSeats > 0 ? t('seating.countSingleSeats', { count: singleSeats }) : null,
     seats > 0 ? t('seating.countSeats', { count: seats }) : null,
   ]
     .filter((part): part is string => part != null)
@@ -1017,7 +2511,8 @@ function SectionsBlock({
 }) {
   const { t } = useTranslation();
   const full = plan.sections.length >= SEATING_LIMITS.sectionsMaximum;
-  const unsorted = plan.withoutSection.tables > 0 || plan.withoutSection.seats > 0;
+  const { tables, rows, singleSeats } = plan.withoutSection;
+  const unsorted = tables + rows + singleSeats > 0;
 
   return (
     <section className="st-block" aria-labelledby="st-sections">
@@ -1045,9 +2540,7 @@ function SectionsBlock({
               <Swatch colour={section.colour} />
               <span className="st-row-words">
                 <span className="st-row-name">{section.name}</span>
-                <span className="st-row-line">
-                  {sectionLine(t, section.colour, section.tables, section.seats)}
-                </span>
+                <span className="st-row-line">{sectionLine(t, section.colour, section)}</span>
               </span>
               {!ctx.readOnly && (
                 <button
@@ -1066,9 +2559,7 @@ function SectionsBlock({
               <Swatch colour={null} />
               <span className="st-row-words">
                 <span className="st-row-name">{t('seating.noSection')}</span>
-                <span className="st-row-line">
-                  {sectionLine(t, null, plan.withoutSection.tables, plan.withoutSection.seats)}
-                </span>
+                <span className="st-row-line">{sectionLine(t, null, plan.withoutSection)}</span>
               </span>
             </li>
           )}
@@ -1097,7 +2588,7 @@ function SectionForm({ ctx, plan, id }: { ctx: PlanApi; plan: SeatingPlan; id: s
     const name = text.trim();
 
     if (name === '') return t('seating.sectionBlank');
-    if (name.length > SEATING_LIMITS.sectionNameMaximum) return t('seating.sectionLong');
+    if (visibleLength(name) > SEATING_LIMITS.sectionNameMaximum) return t('seating.sectionLong');
     const holder = holdingName(plan.sections, name, id);
 
     return holder == null ? null : t('seating.sectionTaken', { name: holder.name });
@@ -1138,7 +2629,7 @@ function SectionForm({ ctx, plan, id }: { ctx: PlanApi; plan: SeatingPlan; id: s
                     ctx.event.id,
                     section.id,
                     { colour: one },
-                    section.version,
+                    ctx.newest(section).version,
                   ),
                 );
             }}
@@ -1218,7 +2709,7 @@ function SectionForm({ ctx, plan, id }: { ctx: PlanApi; plan: SeatingPlan; id: s
                 ctx.event.id,
                 section.id,
                 { name: text.trim() },
-                section.version,
+                ctx.newest(section).version,
               ),
             'name',
           );
@@ -1237,26 +2728,56 @@ function SectionForm({ ctx, plan, id }: { ctx: PlanApi; plan: SeatingPlan; id: s
   );
 }
 
+/** The furniture named as one list, each kind counted, zeros left out, joined with no serial comma; both delete asks read from it (sc-54060). */
+function furnitureList(
+  t: ReturnType<typeof useTranslation>['t'],
+  locale: string,
+  {
+    sections = 0,
+    tables,
+    rows,
+    singleSeats,
+  }: Pick<SectionContents, 'tables' | 'rows' | 'singleSeats'> & { sections?: number },
+): string | undefined {
+  const parts = [
+    sections > 0 ? t('seating.countSections', { count: sections }) : null,
+    tables > 0 ? t('seating.countTables', { count: tables }) : null,
+    rows > 0 ? t('seating.countRows', { count: rows }) : null,
+    singleSeats > 0 ? t('seating.countSingleSeats', { count: singleSeats }) : null,
+  ].filter((part): part is string => part != null);
+
+  if (parts.length === 0) return undefined;
+  return listFormat(locale, { style: 'long', type: 'conjunction' }).format(parts);
+}
+
+/** Deleting a section names each kind of furniture it leaves with no section, the verb from their total; an empty section says nothing (sc-54060). */
+export function sectionDeleteWords(
+  t: ReturnType<typeof useTranslation>['t'],
+  locale: string,
+  contents: SectionContents,
+): string | undefined {
+  const counts = furnitureList(t, locale, contents);
+
+  if (counts == null) return undefined;
+  return t('seating.sectionDeleteBody', {
+    count: contents.tables + contents.rows + contents.singleSeats,
+    counts,
+  });
+}
+
 /** Delete the plan's ask (pm, 8 Nov 2026): what it deletes, sections counted, then who loses a seat; a sentence with nothing to say is left out. */
 export function deletePlanWords(
   t: ReturnType<typeof useTranslation>['t'],
   locale: string,
   counts: SeatingPlan['counts'],
 ): string {
-  const parts = [
-    counts.sections > 0 ? t('seating.countSections', { count: counts.sections }) : null,
-    counts.tables > 0 ? t('seating.countTables', { count: counts.tables }) : null,
-    counts.rows > 0 ? t('seating.countRows', { count: counts.rows }) : null,
-    counts.singleSeats > 0 ? t('seating.countSingleSeats', { count: counts.singleSeats }) : null,
-  ].filter((part): part is string => part != null);
+  const listed = furnitureList(t, locale, counts);
   const guests =
     counts.seatedGuests === 0
       ? t('seating.deletePlanNobody')
       : t('seating.deletePlanSeated', { count: counts.seatedGuests });
 
-  if (parts.length === 0) return guests;
-  const listed = listFormat(locale, { style: 'long', type: 'conjunction' }).format(parts);
-
+  if (listed == null) return guests;
   return `${t('seating.deletePlanDeletes', { counts: listed })} ${guests}`;
 }
 
@@ -1276,6 +2797,7 @@ function AskFor({
   const { t } = useTranslation();
   const [busy, setBusy] = useState(false);
 
+  if (asking.kind === 'deleteItems') return null;
   if (asking.kind === 'deletePlan')
     return (
       <Ask
@@ -1309,7 +2831,41 @@ function AskFor({
         onGo={() => {
           setBusy(true);
           void ctx
-            .remove(() => api.deleteSeatingTable(ctx.event.id, table.id, table.version))
+            .remove(() => api.deleteSeatingTable(ctx.event.id, table.id, ctx.newest(table).version))
+            .then((deleted) => (deleted ? onDone() : onKeep()));
+        }}
+      />
+    );
+  }
+
+  if (asking.kind === 'deleteRow' || asking.kind === 'deleteSeat') {
+    const row = asking.kind === 'deleteRow' ? plan.rows.find((one) => one.id === asking.id) : null;
+    const seat =
+      asking.kind === 'deleteSeat' ? plan.singleSeats.find((one) => one.id === asking.id) : null;
+    const name =
+      row != null ? t('seating.rowName', { label: row.label }) : seat != null ? seat.name : null;
+
+    if (name == null) return null;
+    return (
+      <Ask
+        title={t('seating.deleteNamed', { name })}
+        line={t('seating.nobodyHere')}
+        keep={t('seating.keepIt')}
+        go={t('seating.deleteNamedGo', { name })}
+        busy={busy ? t('seating.deleteNamedGo', { name }) : undefined}
+        onKeep={onKeep}
+        onGo={() => {
+          setBusy(true);
+          void ctx
+            .remove(() =>
+              row != null
+                ? api.deleteSeatingRow(ctx.event.id, row.id, ctx.newest(row).version)
+                : api.deleteSingleSeat(
+                    ctx.event.id,
+                    seat?.id ?? '',
+                    seat == null ? 0 : ctx.newest(seat).version,
+                  ),
+            )
             .then((deleted) => (deleted ? onDone() : onKeep()));
         }}
       />
@@ -1323,9 +2879,7 @@ function AskFor({
   return (
     <Ask
       title={t('seating.deleteNamed', { name: section.name })}
-      line={
-        section.tables === 0 ? undefined : t('seating.sectionDeleteBody', { count: section.tables })
-      }
+      line={sectionDeleteWords(t, currentLocale(), section)}
       keep={t('seating.keepIt')}
       go={t('seating.deleteSection')}
       busy={busy ? t('seating.deleteSection') : undefined}

@@ -88,6 +88,10 @@
   border-bottom: 1px solid var(--colorBorder);
 }
 
+.st-top > .notifications {
+  margin-inline-start: auto;
+}
+
 .st-crumb {
   flex: 1;
   min-width: 0;
@@ -97,8 +101,8 @@
   display: flex;
   align-items: center;
   gap: var(--spaceMd);
-  margin: 0;
-  padding: 0;
+  margin: calc(-1 * var(--spaceXs));
+  padding: var(--spaceXs);
   overflow: hidden;
   color: var(--colorInkSecondary);
   font: 500 15px/1.3 var(--fontFamily);
@@ -108,9 +112,28 @@
 
 .st-crumb li {
   display: flex;
+  flex: none;
   align-items: center;
   gap: var(--spaceMd);
+}
+
+.st-crumb svg {
+  flex: none;
+}
+
+/* Only the event name gives way (sc-55300): the chevrons, Events and Seating keep their size. */
+.st-crumb .st-crumb-event {
+  flex: 0 1 auto;
   min-width: 0;
+}
+
+.st-crumb-event a {
+  min-width: 0;
+}
+
+.st-crumb-name {
+  overflow: hidden;
+  text-overflow: ellipsis;
 }
 
 .st-crumb a {
@@ -128,9 +151,22 @@
 
 .st-crumb h1 {
   margin: 0;
+  white-space: nowrap;
   outline: none;
   color: var(--colorInk);
   font: 600 15px/1.3 var(--fontFamily);
+}
+
+/* At 60rem and under the page's 16 px gutters already inset the band, so it keeps no padding of its own, and the name and the item that flexes around it both stop at 44 px (sc-55300). */
+@media (width <= 60rem) {
+  .st-top {
+    padding-inline: 0;
+  }
+
+  .st-crumb .st-crumb-event,
+  .st-crumb-event a {
+    min-width: var(--sizeHit);
+  }
 }
 
 /* The demo's room is 719 tall at a desk; the product's shell lets a page grow but not stretch. */
@@ -262,6 +298,20 @@
   width: auto;
 }
 
+/* sc-57282: the placing bar fits the floor; its actions step together under the words when, as drawn in the page's language, they would leave the words less than a 13em measure. */
+.st-bar.is-placing {
+  width: min(520px, calc(100% - 2 * var(--spaceLg)));
+}
+
+.st-bar-body {
+  display: flex;
+  flex: 1;
+  flex-wrap: wrap;
+  align-items: center;
+  column-gap: 10px;
+  min-width: 0;
+}
+
 .st-bar p {
   flex: 1;
   min-width: 0;
@@ -269,6 +319,10 @@
   padding: var(--spaceLg) 0;
   color: var(--colorInk);
   font: 600 14.5px/1.4 var(--fontFamily);
+}
+
+.st-bar-body p {
+  flex: 1 1 13em;
 }
 
 .st-bar.is-tint {
@@ -289,6 +343,7 @@
 
 .st-bar-acts {
   display: flex;
+  flex: none;
   gap: 18px;
 }
 
@@ -657,6 +712,11 @@
   margin-top: 2px;
 }
 
+.st-box.is-select select {
+  padding-right: 28px;
+  text-overflow: ellipsis;
+}
+
 .st-box.is-select svg {
   position: absolute;
   right: 12px;
@@ -741,6 +801,22 @@
   fill: var(--colorCard);
   stroke: var(--sec, var(--colorInkTertiary));
   stroke-width: 2.2;
+}
+
+.st-body.is-single {
+  stroke-width: 1.6;
+  stroke-dasharray: 3 2.5;
+}
+
+.st-row-tab {
+  fill: var(--stSunk);
+  stroke: var(--sec, var(--colorInkTertiary));
+  stroke-width: 1.6;
+}
+
+.st-tab-text {
+  fill: var(--colorInk);
+  font: 700 12px var(--fontFamily);
 }
 
 .st-chair {
@@ -849,6 +925,7 @@
   display: flex;
   flex-direction: column;
   width: 380px;
+  max-width: calc(100% - 2 * var(--spaceLg));
   box-sizing: border-box;
   padding: 6px;
   border-radius: 18px;
@@ -867,6 +944,7 @@
   background: none;
   color: var(--colorInk);
   font: 600 15px/1.3 var(--fontFamily);
+  white-space: normal;
   text-align: left;
   cursor: pointer;
 }
@@ -941,4 +1019,611 @@
   margin: 0;
   padding: 0;
   border: 0;
+}
+
+.st-name.is-quiet {
+  fill: var(--colorInkSecondary);
+}
+
+.st-strip {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 4px;
+}
+
+.st-strip-seat {
+  display: flex;
+  flex: none;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 2px;
+  width: 44px;
+  height: 52px;
+  padding: 0;
+  border: 0;
+  border-radius: 12px;
+  background: none;
+  color: var(--colorInkSecondary);
+  font: 600 12px/1 var(--fontFamily);
+  font-variant-numeric: tabular-nums;
+  cursor: pointer;
+}
+
+.st-strip-seat.is-on {
+  background: var(--colorAccentTint);
+}
+
+.st-strip-more {
+  color: var(--colorInkSecondary);
+  font: 500 13px/1.3 var(--fontFamily);
+  white-space: nowrap;
+}
+
+/* Zoomed out below 50% (sc-4007): a table's outline, its name and how full it is. */
+.st-body.is-out {
+  stroke-width: 2;
+}
+
+.st-fill-track {
+  fill: var(--stSunk);
+}
+
+.st-fill {
+  fill: var(--colorInkSecondary);
+}
+
+.st-of {
+  fill: var(--colorInkSecondary);
+  font: 500 12px var(--fontFamily);
+  font-variant-numeric: tabular-nums;
+}
+
+.st-zoom,
+.st-minimap {
+  display: flex;
+  align-items: center;
+  gap: 2px;
+  padding: 4px;
+  border-radius: 26px;
+  background: var(--colorCard);
+  box-shadow: var(--stShadow);
+}
+
+.st-zoom {
+  right: var(--spaceLg);
+  bottom: var(--spaceLg);
+}
+
+.st-pct {
+  min-width: 52px;
+  color: var(--colorInk);
+  font: 600 14px/1 var(--fontFamily);
+  font-variant-numeric: tabular-nums;
+  text-align: center;
+}
+
+.st-minimap {
+  right: var(--spaceLg);
+  bottom: 80px;
+  padding: 6px;
+  border-radius: 14px;
+}
+
+.st-small-map {
+  display: block;
+}
+
+.st-view-box {
+  fill: color-mix(in srgb, var(--colorAccent) 12%, transparent);
+  stroke: var(--colorAccent);
+  stroke-width: 2;
+}
+
+/* Moving, turning and resizing on the Floor plan (sc-5028), as the demo draws them: the save line, the keys strip, Place another, a chosen table's handles and the tip while dragging. */
+.st-movable {
+  cursor: grab;
+}
+
+.st-top-right {
+  top: var(--spaceLg);
+  right: var(--spaceLg);
+  display: flex;
+  align-items: center;
+  gap: 14px;
+}
+
+.st-save {
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  color: var(--colorInkSecondary);
+  font: 600 13.5px/1.3 var(--fontFamily);
+  white-space: nowrap;
+}
+
+.st-save.is-retrying {
+  color: var(--colorAttentionText);
+}
+
+.st-save.is-not-saved {
+  color: var(--colorBrokenText);
+}
+
+.st-no {
+  display: inline-flex;
+  flex: none;
+  align-items: center;
+  justify-content: center;
+  width: 16px;
+  height: 16px;
+  border-radius: 50%;
+  background: var(--colorBroken);
+  color: var(--colorInkOnDark);
+}
+
+.st-turning {
+  display: inline-block;
+  flex: none;
+  box-sizing: border-box;
+  width: 15px;
+  height: 15px;
+  border: 2px solid var(--stSunk);
+  border-top-color: var(--colorInkSecondary);
+  border-right-color: var(--colorInkSecondary);
+  border-radius: 50%;
+  animation: spin 900ms linear infinite;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .st-turning {
+    animation: none;
+  }
+}
+
+.st-keys {
+  right: var(--spaceLg);
+  bottom: 78px;
+  left: var(--spaceLg);
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--spaceMd) 14px;
+  padding: 10px 14px;
+  border-radius: var(--spaceLg);
+  background: var(--stSurface);
+  box-shadow: 0 0 0 1px var(--colorBorder);
+}
+
+/* When even the folded bar meets the zoom, the zoom steps up one line at the floor's right, and whatever stood on that line steps up with it (sc-55937, the demo's is-zoom-up). */
+.st-canvas:has(> .st-add.is-crowded) .st-zoom {
+  bottom: 80px;
+}
+
+.st-canvas:has(> .st-add.is-crowded) :is(.st-minimap, .st-another) {
+  bottom: 144px;
+}
+
+.st-canvas:has(> .st-add.is-crowded) .st-keys {
+  bottom: 142px;
+}
+
+.st-key {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  color: var(--colorInkSecondary);
+  font: 500 13px/1.3 var(--fontFamily);
+  white-space: nowrap;
+}
+
+.st-key kbd {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  box-sizing: border-box;
+  min-width: 26px;
+  height: 26px;
+  padding: 0 7px;
+  border-radius: 7px;
+  background: var(--colorCard);
+  box-shadow:
+    inset 0 0 0 1px var(--colorBorder),
+    0 1px 0 var(--colorBorder);
+  color: var(--colorInk);
+  font: 600 12.5px/1 var(--fontFamily);
+}
+
+.st-another {
+  bottom: 80px;
+  left: var(--spaceLg);
+  display: flex;
+  align-items: center;
+  gap: 2px;
+  padding: 4px;
+  border-radius: 26px;
+  background: var(--colorCard);
+  box-shadow: var(--stShadow);
+}
+
+.st-another label {
+  display: flex;
+  align-items: center;
+  gap: var(--spaceMd);
+  height: var(--sizeHit);
+  padding: 0 10px;
+  color: var(--colorInk);
+  font: 600 14px/1 var(--fontFamily);
+  cursor: pointer;
+}
+
+.st-another input {
+  width: 20px;
+  height: 20px;
+  margin: 0;
+  accent-color: var(--colorAccent);
+}
+
+.st-handle {
+  fill: var(--colorCard);
+  stroke: var(--colorAccent);
+  stroke-width: 2.4;
+  pointer-events: none;
+}
+
+.st-handle-box {
+  fill: none;
+  stroke: var(--colorAccent);
+  stroke-width: 1.5;
+  pointer-events: none;
+}
+
+.st-handle-hit {
+  fill: transparent;
+}
+
+.st-handle-hit.is-nw,
+.st-handle-hit.is-se {
+  cursor: nwse-resize;
+}
+
+.st-handle-hit.is-ne,
+.st-handle-hit.is-sw {
+  cursor: nesw-resize;
+}
+
+.st-handle-hit.is-n,
+.st-handle-hit.is-s {
+  cursor: ns-resize;
+}
+
+.st-handle-hit.is-e,
+.st-handle-hit.is-w {
+  cursor: ew-resize;
+}
+
+.st-tip {
+  pointer-events: none;
+}
+
+.st-tip rect {
+  fill: var(--colorInk);
+}
+
+.st-tip text {
+  fill: var(--colorInkOnDark);
+  font: 600 13px var(--fontFamily);
+  font-variant-numeric: tabular-nums;
+}
+
+.st-switch-row {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  min-height: var(--sizeHit);
+}
+
+.st-switch-row > span {
+  flex: 1;
+  color: var(--colorInk);
+  font: 600 15px/1.3 var(--fontFamily);
+}
+
+.st-switch {
+  display: inline-flex;
+  flex: none;
+  align-items: center;
+  min-height: var(--sizeHit);
+  padding: 0 var(--spaceXxs);
+  border: 0;
+  border-radius: var(--radiusSmall);
+  background: none;
+  cursor: pointer;
+}
+
+.st-switch-track {
+  position: relative;
+  flex: none;
+  width: var(--sizeToggleW);
+  height: var(--sizeToggleH);
+  border-radius: var(--radiusPill);
+  background: var(--colorTrack);
+  transition: background var(--motionBase) var(--motionEase);
+}
+
+.st-switch-knob {
+  position: absolute;
+  top: var(--spaceHair);
+  left: var(--spaceHair);
+  width: var(--sizeToggleKnob);
+  height: var(--sizeToggleKnob);
+  border-radius: var(--radiusPill);
+  background: var(--colorCard);
+  box-shadow: var(--shadowKnob);
+  transition: transform var(--motionBase) var(--motionEase);
+}
+
+.st-switch[aria-checked='true'] .st-switch-track {
+  background: var(--colorAccent);
+}
+
+.st-switch[aria-checked='true'] .st-switch-knob {
+  transform: translateX(calc(var(--sizeToggleW) - var(--sizeToggleKnob) - var(--spaceHair) * 2));
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .st-switch-track,
+  .st-switch-knob {
+    transition: none;
+  }
+}
+
+/* Choosing many (sc-4717): the toolbar at the top left, the box, the grid's outline and the Selection panel. */
+.st-under-views {
+  top: 72px;
+  left: var(--spaceLg);
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: var(--spaceMd);
+  width: min(520px, calc(100% - 2 * var(--spaceLg)));
+  pointer-events: none;
+}
+
+.st-under-views > * {
+  pointer-events: auto;
+}
+
+.st-under-views .st-bar.is-inline {
+  align-self: stretch;
+}
+
+.st-choose {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 2px;
+  padding: 4px;
+  border-radius: 26px;
+  background: var(--colorCard);
+  box-shadow: var(--stShadow);
+}
+
+.st-choice {
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  box-sizing: border-box;
+  height: var(--sizeHit);
+  padding: 0 14px;
+  border: 1px solid var(--colorBorder);
+  border-radius: 22px;
+  background: var(--colorCard);
+  color: var(--colorInk);
+  font: 500 14px/1 var(--fontFamily);
+  white-space: nowrap;
+  cursor: pointer;
+}
+
+.st-choice.is-on {
+  padding: 0 13px;
+  border: 2px solid var(--deskGreen);
+  background: color-mix(in srgb, var(--deskGreen) 12%, var(--colorCard));
+  font-weight: 600;
+}
+
+.st-choice.is-on svg {
+  color: var(--deskGreen);
+}
+
+.st-hint {
+  margin: 0;
+  padding: var(--spaceMd) 14px;
+  border-radius: var(--spaceLg);
+  background: color-mix(in srgb, var(--deskGreen) 12%, var(--colorCard));
+  color: var(--colorInk);
+  font: 500 13.5px/1.4 var(--fontFamily);
+}
+
+.st-kind-menu {
+  z-index: 7;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  width: 320px;
+  max-width: 100%;
+  box-sizing: border-box;
+  padding: 6px;
+  border-radius: 18px;
+  background: var(--colorCard);
+  box-shadow: var(--stLift);
+}
+
+.st-menu-head {
+  margin: 0;
+  padding: var(--spaceMd) var(--spaceLg) 4px;
+  color: var(--colorInkSecondary);
+  font: 600 12.5px/1.3 var(--fontFamily);
+}
+
+.st-kind-row {
+  justify-content: space-between;
+  width: 100%;
+  min-height: var(--sizeHit);
+}
+
+.st-kind-row:disabled {
+  color: var(--colorInkTertiary);
+  cursor: default;
+}
+
+.st-kind-count {
+  color: var(--colorInkSecondary);
+  font: 500 14px/1 var(--fontFamily);
+  font-variant-numeric: tabular-nums;
+}
+
+.st-rules .st-key svg {
+  flex: none;
+  color: var(--deskGreen);
+}
+
+.st-key.is-touch {
+  display: none;
+}
+
+@media (any-pointer: coarse), (width < 1280px) {
+  .st-key.is-touch {
+    display: flex;
+  }
+}
+
+.st-box-drawn {
+  fill: color-mix(in srgb, var(--deskGreen) 10%, transparent);
+  stroke: var(--deskGreen);
+  stroke-width: 1.5;
+  stroke-dasharray: 6 4;
+  pointer-events: none;
+}
+
+.st-outline {
+  fill: none;
+  stroke: var(--colorInkSecondary);
+  stroke-width: 1.5;
+  stroke-dasharray: 5 4;
+  pointer-events: none;
+}
+
+.st-outline.is-amber {
+  stroke: var(--colorAttention);
+  stroke-width: 2.5;
+}
+
+.st-tool-group {
+  display: flex;
+  flex-direction: column;
+  gap: var(--spaceMd);
+}
+
+.st-tool-head {
+  margin: 0;
+  color: var(--colorInk);
+  font: 600 14px/1.3 var(--fontFamily);
+}
+
+.st-align {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 6px;
+}
+
+.st-align-one {
+  position: relative;
+  display: flex;
+}
+
+.st-align-button {
+  display: flex;
+  flex: 1;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 3px;
+  min-height: 52px;
+  padding: 6px 4px;
+  border: 1px solid var(--colorBorder);
+  border-radius: var(--radiusRow);
+  background: var(--colorCard);
+  color: var(--colorInk);
+  font: 600 13px/1.2 var(--fontFamily);
+  cursor: pointer;
+}
+
+.st-align-button:disabled {
+  color: var(--colorInkTertiary);
+  cursor: default;
+}
+
+.st-align-button:hover:not(:disabled) {
+  background: var(--stSurface);
+}
+
+.st-tooltip {
+  position: absolute;
+  bottom: calc(100% + 6px);
+  left: 50%;
+  z-index: 8;
+  display: none;
+  width: max-content;
+  max-width: 200px;
+  padding: 6px 10px;
+  border-radius: 8px;
+  background: var(--colorInk);
+  color: var(--colorInkOnDark);
+  font: 500 12.5px/1.35 var(--fontFamily);
+  text-align: center;
+  transform: translateX(-50%);
+  pointer-events: none;
+}
+
+.st-align-one:hover .st-tooltip,
+.st-align-one:focus-within .st-tooltip {
+  display: block;
+}
+
+.st-folds {
+  display: flex;
+  flex-direction: column;
+  border-top: 1px solid var(--colorBorder);
+}
+
+.st-fold {
+  border-bottom: 1px solid var(--colorBorder);
+}
+
+.st-fold-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  width: 100%;
+  min-height: var(--sizeHit);
+  padding: 0;
+  border: 0;
+  background: none;
+  color: var(--colorInk);
+  font: 600 14.5px/1.3 var(--fontFamily);
+  text-align: left;
+  cursor: pointer;
+}
+
+.st-fold.is-open .st-fold-head svg {
+  transform: rotate(180deg);
+}
+
+.st-fold-body {
+  display: flex;
+  flex-direction: column;
+  align-items: stretch;
+  gap: var(--spaceMd);
+  padding: 0 0 var(--spaceLg);
 }

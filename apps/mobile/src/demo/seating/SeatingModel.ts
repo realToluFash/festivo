@@ -45,6 +45,7 @@ export const SEATING_STATES = [
   'sectionLimit',
   'sectionEdit',
   'sectionDelete',
+  'sectionDeleteRows',
   'sectionDeleteEmpty',
   'sparse',
   'addMenu',
@@ -395,6 +396,15 @@ export function noSectionLine(m: Seating): string {
       'seats',
     ),
   ].join(' · ');
+}
+
+export function sectionDeleteLine(m: Seating, key: string): string {
+  const its = m.items.filter((it) => it.sec === key);
+  return say.sectionDeleteBody(
+    its.filter(isTable).length,
+    its.filter((it) => it.kind === 'row').length,
+    its.filter((it) => it.kind === 'single').length,
+  );
 }
 
 /** The least-used colour, the first in order on a tie (sc-3998). */

@@ -16,6 +16,7 @@ import {
   memberIsShown,
   recoveryEndedByRemoval,
   recoveryShownIn,
+  MEMBERS_PAGE,
   type MembersMore,
   rereadLimit,
   roleName,
@@ -23,7 +24,15 @@ import {
   withNextPage,
   withPagesSince,
 } from '@soirely/domain';
-import { type ReactNode, type RefObject, useCallback, useEffect, useRef, useState } from 'react';
+import {
+  memo,
+  type ReactNode,
+  type RefObject,
+  useCallback,
+  useEffect,
+  useRef,
+  useState,
+} from 'react';
 import { Trans, useTranslation } from 'react-i18next';
 import { useSearchParams } from 'react-router';
 
@@ -322,9 +331,11 @@ function MembersLoaded({
   const granted = grantableRoles(roles, organisation);
   const [more, setMore] = useState<More>('idle');
   const [switched, setSwitched] = useState(0);
+  // A pick made with more than a page held reads its option again from the first page, so its time does not grow with the rows shown before.
+  const [restart, setRestart] = useState(false);
   const rows = useRef<HTMLUListElement>(null);
   const wanted: MembersShow | null = filter === 'invited' || filter === 'waiting' ? null : filter;
-  const switching = wanted != null && wanted !== listed;
+  const switching = wanted != null && (wanted !== listed || restart);
   const held = [...list.members, ...list.waiting, ...list.faces];
   const found = open == null ? null : (held.find((one) => one.id === open) ?? null);
   // A change can take an open person out of the option being read; their page stays as last read.
@@ -346,6 +357,7 @@ function MembersLoaded({
       (page) => {
         if (!current) return;
         setMore('idle');
+        setRestart(false);
         onChange(page, wanted);
       },
       () => current && setMore('failed'),
@@ -387,6 +399,8 @@ function MembersLoaded({
   };
   const pick = (next: MemberFilter) => {
     setMore('idle');
+    if (next === filter) return;
+    setRestart(next !== 'invited' && next !== 'waiting' && list.members.length > MEMBERS_PAGE);
     setFilter(next);
   };
 
@@ -400,16 +414,16 @@ function MembersLoaded({
     toSays.current = false;
   }, [open, split]);
 
-  const openPerson = (id: string) => {
+  const openPerson = useCallback((id: string) => {
     moved.current = true;
     setOpen(id);
     setNotice(null);
-  };
+  }, []);
   const back = () => {
     moved.current = true;
     setOpen(null);
   };
-  const answer = (id: string) => setDialog({ kind: 'request', id });
+  const answer = useCallback((id: string) => setDialog({ kind: 'request', id }), []);
   const step = (does: CardStep) => {
     switch (does.does) {
       case 'answer':
@@ -671,10 +685,9 @@ function MembersBlocks(props: BlocksProps) {
   const waiting = waitingMembers(list, manages);
   const invitations = list.invitations.filter((one) => one.status !== 'accepted');
   const { switching, more } = props;
+  const listed = list.members.filter((one) => memberIsShown(one.status, filter));
   const shown =
-    filter === 'waiting'
-      ? list.waiting
-      : list.members.filter((one) => memberIsShown(one.status, filter));
+    filter === 'waiting' ? list.waiting : switching ? listed.slice(0, MEMBERS_PAGE) : listed;
   const count = (one: MemberFilter) =>
     one === 'invited'
       ? invitations.filter((invitation) => invitation.status === 'pending').length
@@ -742,7 +755,7 @@ function MembersBlocks(props: BlocksProps) {
           </>
         ) : filter !== 'invited' && (shown.length > 0 || moreToShow) ? (
           <>
-            {shown.length > 0 && <PeopleRows {...props} shown={shown} />}
+            {shown.length > 0 && <PeopleRows key={filter} {...props} shown={shown} />}
             {moreToShow && (
               <MorePeople shown={shown.length} total={total} more={more} onMore={props.onMore} />
             )}
@@ -860,41 +873,65 @@ function PeopleRows({
   onPerson,
   onAnswer,
 }: BlocksProps & { shown: readonly OrganisationMember[] }) {
-  const { t } = useTranslation();
-
   return (
     <ul className="desk-rows has-lead" ref={rowsRef}>
-      {shown.map((one, tone) => {
-        const tag = one.status === 'active' ? undefined : <Tag {...memberTag(t, one)} />;
-        const line = [
-          memberHeldNoRole(one) ? t('membersScreen.noRoleYet') : roleName(t, one.role),
-          ...(one.self ? [t('membersScreen.you')] : []),
-        ].join(' · ');
-        const on = column && one.id === picked;
-
-        return (
-          <li key={one.id}>
-            {one.status === 'pending_approval' ? (
-              <WaitingRow member={one} tone={tone} onAnswer={onAnswer} />
-            ) : (
-              <MemberRow
-                member={one.id}
-                initials={initials(one.user.name)}
-                tone={tone}
-                name={one.user.name}
-                tag={tag}
-                line={line}
-                {...(one.status === 'left_or_removed'
-                  ? {}
-                  : { size: column ? 'small' : 'row', on, onPress: () => onPerson(one.id) })}
-              />
-            )}
-          </li>
-        );
-      })}
+      {shown.map((one, tone) => (
+        <li key={one.id}>
+          <PersonRow
+            member={one}
+            tone={tone}
+            column={column}
+            on={column && one.id === picked}
+            onPerson={onPerson}
+            onAnswer={onAnswer}
+          />
+        </li>
+      ))}
     </ul>
   );
 }
+
+/** Drawn again only when its props change, so a page added under thousands of rows costs its own 50 (sc-49170). */
+const PersonRow = memo(function PersonRow({
+  member,
+  tone,
+  column,
+  on,
+  onPerson,
+  onAnswer,
+}: {
+  member: OrganisationMember;
+  tone: number;
+  column: boolean;
+  on: boolean;
+  onPerson: (id: string) => void;
+  onAnswer: (id: string) => void;
+}) {
+  const { t } = useTranslation();
+
+  if (member.status === 'pending_approval') {
+    return <WaitingRow member={member} tone={tone} onAnswer={onAnswer} />;
+  }
+
+  const line = [
+    memberHeldNoRole(member) ? t('membersScreen.noRoleYet') : roleName(t, member.role),
+    ...(member.self ? [t('membersScreen.you')] : []),
+  ].join(' · ');
+
+  return (
+    <MemberRow
+      member={member.id}
+      initials={initials(member.user.name)}
+      tone={tone}
+      name={member.user.name}
+      tag={member.status === 'active' ? undefined : <Tag {...memberTag(t, member)} />}
+      line={line}
+      {...(member.status === 'left_or_removed'
+        ? {}
+        : { size: column ? 'small' : 'row', on, onPress: () => onPerson(member.id) })}
+    />
+  );
+});
 
 /** An invitation's address, its role and sender, when it was sent and ends; Revoke while it is pending, Invite again after. */
 function InvitationRows({

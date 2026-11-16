@@ -1,7 +1,9 @@
+import i18next from 'i18next';
 import { fireEvent, render, screen, waitFor, within } from '@testing-library/react';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { RouterProvider, createMemoryRouter } from 'react-router';
 
+import { setLanguage } from '../../../i18n/index.ts';
 import { __setSessionState, type Session } from '../../../session.ts';
 import { membership } from '../../../test-memberships.ts';
 import { tokens } from '../../../tokens.ts';
@@ -848,5 +850,63 @@ describe('a Verify dialog opened on a spent code (sc-38970)', () => {
     expect(within(dialog()).queryByText('That code has expired')).toBeNull();
     expect(field.value).toBe('');
     await waitFor(() => expect(document.activeElement).toBe(field));
+  });
+});
+
+describe('Your account’s language (sc-39509)', () => {
+  afterEach(async () => {
+    await setLanguage(null);
+  });
+
+  function radio(name: string): HTMLInputElement {
+    return within(screen.getByRole('group', { name: /^(Language|Langue|Idioma)$/ })).getByRole(
+      'radio',
+      { name: new RegExp(name) },
+    );
+  }
+
+  function pick(name: string): void {
+    const choice = radio(name);
+    choice.focus();
+    fireEvent.click(choice);
+  }
+
+  it('saves a pick to the account and redraws the page in it, saying so, with focus kept on the pick', async () => {
+    const sent = answering({ 'PUT /api/auth/locale': () => new Response(null, { status: 204 }) });
+    open();
+    await screen.findByText('folake.adeyemi@gmail.com');
+
+    pick('Français');
+
+    expect(await screen.findByRole('heading', { name: 'À propos de vous' })).toBeDefined();
+    expect(sent.filter((one) => one.call === 'PUT /api/auth/locale')).toEqual([
+      { call: 'PUT /api/auth/locale', body: { locale: 'fr' } },
+    ]);
+    expect(document.documentElement.lang).toBe('fr');
+    expect(
+      within(card()).getByText(i18next.t('account.languageSaved', { language: 'Français' })),
+    ).toBeDefined();
+    expect(radio('Français').checked).toBe(true);
+    expect(document.activeElement).toBe(radio('Français'));
+  });
+
+  it('keeps the last of several quick picks, as arrowing from English to Português does', async () => {
+    const sent = answering({ 'PUT /api/auth/locale': () => new Response(null, { status: 204 }) });
+    open();
+    await screen.findByText('folake.adeyemi@gmail.com');
+
+    pick('Español');
+    pick('Français');
+    pick('Português');
+
+    expect(await screen.findByRole('heading', { name: 'Sobre si' })).toBeDefined();
+    await waitFor(() =>
+      expect(sent.filter((one) => one.call === 'PUT /api/auth/locale').at(-1)?.body).toEqual({
+        locale: 'pt',
+      }),
+    );
+    expect(radio('Português').checked).toBe(true);
+    expect(radio('Français').checked).toBe(false);
+    expect(document.activeElement).toBe(radio('Português'));
   });
 });

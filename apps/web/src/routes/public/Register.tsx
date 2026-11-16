@@ -1,6 +1,5 @@
 import { ApiError } from '@soirely/api-client';
 import {
-  ACCOUNT_NAME_MAXIMUM,
   formatTimeOfDay,
   PASSWORD_MINIMUM_LENGTH,
   lockLiftsAt,
@@ -174,7 +173,6 @@ export function Register() {
               autoComplete="name"
               autoCorrect="off"
               spellCheck={false}
-              maxLength={ACCOUNT_NAME_MAXIMUM}
               defaultValue={carried?.name}
               {...offField(busy)}
               aria-invalid={fields.name != null}

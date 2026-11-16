@@ -18,6 +18,7 @@ import {
   handlePoints,
   handleReach,
   inside,
+  keepsClear,
   detailOf,
   feetInches,
   fit,
@@ -45,7 +46,9 @@ import {
   freeCount,
   handlesLive,
   itemOf,
+  isTable,
   noSectionLine,
+  sectionDeleteLine,
   nobodyComing,
   placedCount,
   roomLine,
@@ -79,7 +82,7 @@ const item = (m: Seating, id: string) => {
 
 describe('the states', () => {
   it('are seating-a-spec §6’s, by the names both demos use', () => {
-    expect(SEATING_STATES).toHaveLength(109);
+    expect(SEATING_STATES).toHaveLength(110);
     expect(new Set(SEATING_STATES).size).toBe(SEATING_STATES.length);
     expect(SEATING_STATES.slice(0, 5)).toEqual([
       'plan',
@@ -420,6 +423,34 @@ describe('the room to scale', () => {
     const at = nearestFree(item(pad, 't10'), pad.items, ROOM, { x: 1200, y: 1020 });
     expect(overlapping({ ...item(pad, 't10'), ...at }, pad.items)).toEqual([]);
   });
+});
+
+describe('new rows and seats land clear of each other (sc-4003)', () => {
+  const empty = { ...pad, items: [] };
+
+  it('puts rows 90 cm apart and a single seat clear of the last one and its name', () => {
+    const rows = run(empty, { type: 'addRow' }, { type: 'addRow' }).items;
+    expect((rows[1]?.y ?? 0) - (rows[0]?.y ?? 0)).toBe(90);
+
+    const seats = run(empty, { type: 'addSeat' }, { type: 'addSeat' }).items;
+    expect(seats[0]).toMatchObject({ x: 1200, y: 900 });
+    expect(seats[1]).toMatchObject({ x: 1200, y: 990 });
+    expect(keepsClear(seats[1]!, seats)).toBe(true);
+    expect(keepsClear({ ...seats[1]!, x: 1260, y: 900 }, seats)).toBe(false);
+  });
+
+  it('places every add quickly, even once the hall is full', () => {
+    let m: Seating = empty;
+    let slowest = 0;
+    for (let n = 0; n < 120; n += 1) {
+      const began = performance.now();
+      m = run(m, { type: n % 3 === 2 ? 'addSeat' : 'addRow' });
+      slowest = Math.max(slowest, performance.now() - began);
+    }
+    expect(m.items).toHaveLength(120);
+    expect(m.items.every((it) => inside(it, ROOM))).toBe(true);
+    expect(slowest).toBeLessThan(500);
+  }, 30_000);
 });
 
 describe('a tap', () => {
@@ -869,16 +900,59 @@ describe('sections', () => {
     expect(item(m, 't1').sec).toBeNull();
   });
 
-  it('asks with its tables counted, and with no line when it has none (pm, 9 Nov)', () => {
-    expect(say.sectionDeleteBody(5)).toBe('Its 5 tables stay where they are, with no section.');
-    expect(say.sectionDeleteBody(1)).toBe('Its 1 table stays where it is, with no section.');
-    expect(say.sectionDeleteBody(0)).toBe('');
+  it('names each kind it leaves with no section, the verb from the total (sc-54060)', () => {
+    expect(say.sectionDeleteBody(5, 0, 0)).toBe(
+      'Its 5 tables stay where they are, with no section.',
+    );
+    expect(say.sectionDeleteBody(1, 0, 0)).toBe('Its 1 table stays where it is, with no section.');
+    expect(say.sectionDeleteBody(0, 1, 0)).toBe('Its 1 row stays where it is, with no section.');
+    expect(say.sectionDeleteBody(0, 0, 1)).toBe(
+      'Its 1 single seat stays where it is, with no section.',
+    );
+    expect(say.sectionDeleteBody(0, 0, 2)).toBe(
+      'Its 2 single seats stay where they are, with no section.',
+    );
+    expect(say.sectionDeleteBody(3, 2, 1)).toBe(
+      'Its 3 tables, 2 rows and 1 single seat stay where they are, with no section.',
+    );
+    expect(say.sectionDeleteBody(1, 1, 0)).toBe(
+      'Its 1 table and 1 row stay where they are, with no section.',
+    );
+    expect(say.sectionDeleteBody(0, 0, 0)).toBe('');
+    expect(W.sectionStays).toBe(
+      'Its tables, rows and single seats stay where they are, with no section.',
+    );
   });
 
-  it('asks about Quiet corner, a section holding rows and no tables, with its state', () => {
+  it('asks about Quiet corner, a section of a row and a single seat, which keep their places', () => {
+    const m = startOf('sectionDeleteRows', 'landscape');
+    expect(m.ask).toEqual({ kind: 'deleteSection', key: 'quiet' });
+    expect(m.items.filter((it) => it.sec === 'quiet').map((it) => it.id)).toEqual(['rowA', 'door']);
+    expect(sectionDeleteLine(m, 'quiet')).toBe(
+      'Its 1 row and 1 single seat stay where they are, with no section.',
+    );
+    const t = m.items.find((it) => isTable(it) && it.sec !== 'quiet');
+    const more = {
+      ...m,
+      items: [
+        ...m.items.map((it) => (it === t ? { ...it, sec: 'quiet' } : it)),
+        { ...item(m, 'door'), id: 'door2' },
+      ],
+    };
+    expect(sectionDeleteLine(more, 'quiet')).toBe(
+      'Its 1 table, 1 row and 2 single seats stay where they are, with no section.',
+    );
+    const done = run(m, { type: 'confirm' });
+    expect(done.sections.map((s) => s.key)).not.toContain('quiet');
+    expect(item(done, 'rowA').sec).toBeNull();
+    expect(item(done, 'door').sec).toBeNull();
+    expect(item(done, 'rowA').chairs).toEqual(item(m, 'rowA').chairs);
+  });
+
+  it('asks about Quiet corner, an empty section, with its state (pm, 9 Nov)', () => {
     const m = startOf('sectionDeleteEmpty', 'landscape');
     expect(m.ask).toEqual({ kind: 'deleteSection', key: 'quiet' });
-    expect(m.items.some((it) => it.sec === 'quiet' && it.kind === 'row')).toBe(true);
+    expect(m.items.some((it) => it.sec === 'quiet')).toBe(false);
     const done = run(m, { type: 'confirm' });
     expect(done.sections.map((s) => s.key)).not.toContain('quiet');
   });

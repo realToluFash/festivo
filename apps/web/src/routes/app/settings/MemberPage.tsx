@@ -506,7 +506,6 @@ function RoleDialog({
           removable: false,
           permissions: [],
           holders: 0,
-          holderNames: [],
         },
         ...roles,
       ];

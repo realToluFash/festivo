@@ -45,6 +45,11 @@
   min-height: var(--sizeHit);
 }
 
+/* The bell ends the row (sc-39509). */
+.ev-crumb-row > .notifications {
+  margin-inline-start: auto;
+}
+
 .ev-crumb {
   flex: 1;
   min-width: 0;

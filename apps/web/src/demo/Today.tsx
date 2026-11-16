@@ -8,20 +8,31 @@ import { NoOrganisation } from './NoOrganisation.tsx';
 import { VIEWERS } from './settings.ts';
 import { AccessPaused, Switched } from './OrgSwitcher.tsx';
 import { inNone, isFresh, useSwitcherStart, useWhere } from './switcher.ts';
-import { INVITES_NOT_SENT, keyOf, MOMENTS, type MomentName, momentOf, sayIn } from './today.ts';
+import {
+  EVENTS,
+  INVITES_NOT_SENT,
+  keyOf,
+  MOMENTS,
+  type MomentName,
+  momentOf,
+  sayIn,
+} from './today.ts';
 import type { Tell } from '../components/SettingsParts.tsx';
 import type { Open } from '../components/today.ts';
 import { Banner, type BannerActions, NowBanner } from '../components/TodayBanner.tsx';
 import { FirstRun, ThisWeek, YourEvents } from '../components/TodayParts.tsx';
 import { NeedsYou } from './TodayParts.tsx';
 import { TodaySidebar } from './TodaySidebar.tsx';
+import { isLong, LONG_NAME, renamed } from './longName.ts';
 import { DeskSearch } from './Search.tsx';
 import { REACHES, reachOfRole, type SearchStart } from './search.ts';
 import type { DeskPerson } from '../components/DeskSidebar.tsx';
 import './today.css';
+import './phone.css';
+import './deskFit.css';
 
 /** The demo's bell, with its sample's three unread. */
-const ACTIONS: BannerActions = { create: true, unread: 3 };
+const ACTIONS: BannerActions = { create: true, bell: { unread: 3 } };
 
 function isMoment(name: string | null): name is MomentName {
   return MOMENTS.some((moment) => moment === name);
@@ -47,15 +58,20 @@ export function Today({ search = null }: { search?: SearchStart | null }) {
   const notSent = name === 'plan' && params.get('invites') === 'none';
   const later = name === 'plan' && params.get('starts') === 'later';
   const rows = name === 'plan' && params.get('week') === 'rows';
+  const long = isLong(params);
   const moment = useMemo(
     () =>
-      momentOf(name, sayIn(formattingLocale('en', navigator.language)), {
-        guests: notSent ? INVITES_NOT_SENT : undefined,
-        first: asks ? VIEWERS.ana.name.split(' ')[0] : undefined,
-        later,
-        rows,
-      }),
-    [name, notSent, asks, later, rows],
+      renamed(
+        momentOf(name, sayIn(formattingLocale('en', navigator.language)), {
+          guests: notSent ? INVITES_NOT_SENT : undefined,
+          first: asks ? VIEWERS.ana.name.split(' ')[0] : undefined,
+          later,
+          rows,
+        }),
+        EVENTS.ireti.name,
+        long ? LONG_NAME : EVENTS.ireti.name,
+      ),
+    [name, notSent, asks, later, rows, long],
   );
   const [told, setTold] = useState<string | null>(null);
   const tell = useCallback<Tell>((words) => setTold(words), []);
@@ -83,13 +99,14 @@ export function Today({ search = null }: { search?: SearchStart | null }) {
 
   return (
     <LayersContext value={layers}>
-      <div className="today">
+      <div className="today dp-fit">
         <DeskSearch
           first={search}
           reach={asks ? reachOfRole(VIEWERS.ana.role) : REACHES.owner}
           tell={tell}
         >
           <TodaySidebar
+            phone
             events={moment.events.map(({ event }) => keyOf(event.id))}
             person={asks ? VIEWERS.ana : search == null ? undefined : SEARCHERS.get(search.reach)}
             tell={tell}

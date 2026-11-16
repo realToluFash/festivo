@@ -18,9 +18,7 @@ export function searchRowHref(row: SearchRow): string {
   if (row.kind === 'guest')
     return `${eventHref(row.event)}?${EVENT_AREA}=guests&${OPENED_GUEST}=${encodeURIComponent(row.id)}`;
 
-  return row.invitation
-    ? '/settings/members'
-    : `/settings/members?${SEARCHED_MEMBER}=${encodeURIComponent(row.id)}`;
+  return `/settings/members?${SEARCHED_MEMBER}=${encodeURIComponent(row.id)}`;
 }
 
 export function eventsSearchHref(term: string): string {

@@ -15,6 +15,7 @@ import {
 } from './ChangedSince.ts';
 import {
   changedRows,
+  notCopiedLine,
   filterWord,
   DOOR_STATES,
   countAfter,
@@ -86,7 +87,7 @@ describe('the states, as guests-a-spec §15 names them', () => {
     expect(
       GUESTS_STATES.filter((state) => (DOOR_STATES as readonly string[]).includes(state)),
     ).toEqual([]);
-    expect(GUESTS_STATES).toHaveLength(154);
+    expect(GUESTS_STATES).toHaveLength(179);
     expect(DOOR_STATES).toHaveLength(13);
   });
 
@@ -115,6 +116,50 @@ describe('the states, as guests-a-spec §15 names them', () => {
     expect(areaStart('markRefused').overlay).toBe('mark');
     expect(areaStart('filterNone')).toMatchObject({ filter: 'held', typed: 'marta' });
     expect(areaStart('contactsAdded')).toMatchObject({ added: 23, toast: 'manyAdded' });
+  });
+
+  it('opens sc-55558’s link states on their guest, event and start', () => {
+    expect(guestOf('flagged')).toBe('emeka');
+    expect(guestOf('flaggedViewer')).toBe('emeka');
+    expect(roleOf('flaggedViewer')).toBe('viewer');
+    expect(guestOf('copyFailed')).toBe('bisi');
+    expect(guestOf('draftLink')).toBe('funke');
+    expect(eventOf('draftLink')).toBe('evt-draft-4');
+    expect(guestsAt('draftLink')).toEqual(DRAFT_GUESTS);
+    expect(guestOf('pausedLink')).toBe('daniel');
+    expect(eventOf('pausedLink')).toBe('evt-party-2');
+    expect(guestsAt('pausedLink')).toEqual(PAUSED_GUESTS);
+    expect(areaStart('flagged')).toMatchObject({ flagged: ['emeka'], overlay: null });
+    expect(areaStart('flaggedReplaceAsk')).toMatchObject({
+      flagged: ['emeka'],
+      overlay: 'replace',
+      focus: 'flagReplace',
+    });
+    expect(areaStart('flaggedReplaced')).toMatchObject({
+      flagged: [],
+      replaced: true,
+      focus: 'replace',
+    });
+    expect(areaStart('flaggedNotReplaced')).toMatchObject({
+      flagged: ['emeka'],
+      notReplaced: 'notice',
+    });
+    expect(areaStart('copyFailed')).toMatchObject({ copyFailed: true, focus: 'copy' });
+    expect(areaStart('copyFailedPt')).toMatchObject({ copyFailed: true, focus: 'copy' });
+    expect(guestOf('copyFailedPt')).toBe('bisi');
+    expect(areaStart('notYetInvited')).toMatchObject({ flagged: [], copyFailed: false });
+  });
+
+  it('words the notice with the guest’s full name, twice', () => {
+    expect(say.flaggedLine('Dr Emeka Nwosu')).toBe(
+      'Someone who opened Dr Emeka Nwosu’s link told us it was not meant for them. The reply is unchanged. Replace the link so the old one stops working, then send Dr Emeka Nwosu the new one.',
+    );
+    expect(notCopiedLine('copyFailed')).toBe(
+      'Not copied. The link is not on your clipboard. Try again.',
+    );
+    expect(notCopiedLine('copyFailedPt')).toBe(
+      'Não foi possível copiar. A ligação não está na área de transferência. Tente novamente.',
+    );
   });
 
   it('reads as door staff or Can view only where the spec says', () => {
@@ -832,5 +877,28 @@ describe('Changed since you looked (sc-4331)', () => {
     expect(areaStart('changedRow')).toMatchObject({ filter: 'all', menu: true, looked: null });
     expect(areaStart('changedNone')).toMatchObject({ filter: 'changed', since: CLOCKS.reader });
     expect(filterWord('changed')).toBe('Changed since you looked');
+  });
+});
+
+describe('a reply from a guest nobody invited yet (sc-52829)', () => {
+  it('invites them when it is recorded, counts them straight away, and offers no undo', () => {
+    const bisi = recorded(byKey('bisi'), 'coming', 'By phone', [], '2026-11-03');
+    const after = GUESTS.map((g) => (g.key === 'bisi' ? bisi : g));
+    const was = countsOf(GUESTS);
+
+    expect(invitationWords(bisi, EN)).toBe('Invited when they replied, Nov 3');
+    expect(handMarked(bisi)).toBe(false);
+    expect(countsOf(after)).toMatchObject({
+      invited: was.invited + 1,
+      coming: was.coming + 1,
+      notyet: was.notyet - 1,
+    });
+  });
+
+  it('opens its states on Bisi Adewale: the form, then the guest after saving', () => {
+    expect(guestOf('recordNotYet')).toBe('bisi');
+    expect(areaStart('recordNotYet')).toMatchObject({ open: 'bisi', overlay: 'record' });
+    expect(areaStart('recordedNotYet')).toMatchObject({ open: 'bisi', recorded: true });
+    expect(guestsAt('recordedNotYet').find((g) => g.key === 'bisi')?.kind).toBe('coming');
   });
 });

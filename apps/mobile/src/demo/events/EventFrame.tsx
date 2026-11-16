@@ -28,12 +28,13 @@ import {
 import { TodayShellProvider } from '../../components/todayShell.ts';
 import { AREA_GLYPH } from '../../components/areaGlyph.ts';
 import { demoShell } from '../demoShell.ts';
-import { LineIcon } from '../../components/AccountCard.tsx';
 import { Bell, Landscape } from '../settings/Frame.tsx';
 import { EventThumb } from '../../components/EventThumb.tsx';
 import { type Shown, rowLine } from './EventsModel.ts';
 import { AREAS, type AreaKey, MORE_AREAS, PHONE_TABS } from './EventsSample.ts';
 import { AREA_WORDS, COMING, W } from './EventsWords.ts';
+import { SecondaryButton } from '../../components/Buttons.tsx';
+import { RUN_EVENT, RW as RUN_WORDS } from '../runView/runViewModel.ts';
 import { useShell } from '../../components/settingsShell.ts';
 import { Back } from '../../components/SettingsParts.tsx';
 import { PageToast, Row, RowList } from '../../components/Summary.tsx';
@@ -307,7 +308,7 @@ function MoreSheet({
             row: (
               <Row
                 title={AREA_WORDS[one]}
-                lead={<LineIcon name={AREA_GLYPH[one]} />}
+                lead={<MoreGlyph name={AREA_GLYPH[one]} on={one === area} />}
                 opens
                 selected={one === area}
                 onPress={() => {
@@ -321,6 +322,20 @@ function MoreSheet({
         />
       </View>
     </Sheet>
+  );
+}
+
+/** A More row's glyph, 20 pt, in its name's colour: accent on the chosen area, as in the sidebar. */
+function MoreGlyph({ name, on }: { name: GlyphName; on: boolean }) {
+  return (
+    <View style={styles.moreGlyph}>
+      <Glyph
+        name={name}
+        size={20}
+        ink={on ? tokens.colorAccentText : tokens.colorInkSecondary}
+        weight={2}
+      />
+    </View>
   );
 }
 
@@ -598,6 +613,16 @@ export function AreaPage({
         <Text size={15} weight="medium" style={[styles.secondary, styles.comingLine]}>
           {COMING[area]}
         </Text>
+        {area === 'schedule' && event.id === RUN_EVENT && (
+          <View style={styles.comingAct}>
+            <SecondaryButton
+              label={RUN_WORDS.openRun}
+              link
+              onPress={() => router.push('/demo/run-view')}
+              testID="event.schedule.run"
+            />
+          </View>
+        )}
       </View>
     </>
   );
@@ -670,6 +695,7 @@ const styles = StyleSheet.create({
   },
   page: { flex: 1, backgroundColor: tokens.colorCard },
   secondary: { color: tokens.colorInkSecondary },
+  moreGlyph: { width: 28, height: 28, alignItems: 'center', justifyContent: 'center' },
   pressed: { opacity: tokens.opacityPressed },
   title: { letterSpacing: -0.6 },
   top: { flexDirection: 'row', alignItems: 'center' },
@@ -717,6 +743,7 @@ const styles = StyleSheet.create({
   stripLine: { lineHeight: 14 * 1.4 },
   comingTitle: { lineHeight: 17 * 1.3 },
   comingLine: { lineHeight: 15 * 1.45 },
+  comingAct: { paddingTop: tokens.spaceMd, alignItems: 'flex-start' },
   coming: {
     gap: tokens.spaceXxs,
     paddingVertical: 18,

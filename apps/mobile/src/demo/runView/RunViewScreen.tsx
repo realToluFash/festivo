@@ -17,7 +17,6 @@ import {
   type Run,
   type RunItem,
   type TrackView,
-  RUN_EVENT_NAME,
   RW,
   figureSaid,
   figureWords,
@@ -43,12 +42,19 @@ const PATHS = {
 } as const;
 
 export function RunViewRoute() {
-  const params = useLocalSearchParams<{ state?: string }>();
+  const params = useLocalSearchParams<{ state?: string; as?: string }>();
+  const manage = params.as !== 'reader';
 
-  return <RunViewBody key={params.state ?? ''} first={runAt(params.state)} />;
+  return (
+    <RunViewBody
+      key={`${params.state ?? ''}|${manage}`}
+      first={runAt(params.state)}
+      manage={manage}
+    />
+  );
 }
 
-function RunViewBody({ first }: { first: Run }) {
+function RunViewBody({ first, manage }: { first: Run; manage: boolean }) {
   const insets = useSafeAreaInsets();
   const { kind } = useLayout();
   const [run, setRun] = useState(first);
@@ -82,15 +88,13 @@ function RunViewBody({ first }: { first: Run }) {
             Back
           </Text>
         </Pressable>
+        <Text size={phone ? 28 : 30} weight="bold" accessibilityRole="header">
+          {RW.title}
+        </Text>
         <View style={styles.head}>
-          <View style={styles.grow}>
-            <Text size={phone ? 28 : 30} weight="bold" accessibilityRole="header">
-              {RW.title}
-            </Text>
-            <Text size={15} weight="medium" style={styles.secondary}>
-              {RUN_EVENT_NAME}
-            </Text>
-          </View>
+          <Text size={15} style={[styles.secondary, styles.grow]}>
+            {RW.sub}
+          </Text>
           <View style={styles.clock}>
             <Glyph paths={PATHS.clock} ink={tokens.colorInk} side={16} circle />
             <Text size={14} weight="semibold" style={styles.num}>
@@ -98,6 +102,14 @@ function RunViewBody({ first }: { first: Run }) {
             </Text>
           </View>
         </View>
+        {!manage && (
+          <View style={styles.lock}>
+            <Glyph paths={PATHS.lock} ink={tokens.colorInkSecondary} side={16} />
+            <Text size={14} style={[styles.secondary, styles.grow]}>
+              {RW.lock}
+            </Text>
+          </View>
+        )}
         <DemoOnly title={RW.demoOnly}>
           <SecondaryButton
             label={RW.later}
@@ -110,6 +122,7 @@ function RunViewBody({ first }: { first: Run }) {
             views={views}
             trackId={trackId}
             onTrack={setTrackId}
+            manage={manage}
             onStart={start}
             onFinish={finish}
           />
@@ -119,6 +132,7 @@ function RunViewBody({ first }: { first: Run }) {
               key={view.track.id}
               view={view}
               narrow={kind === 'tabletPortrait'}
+              manage={manage}
               onStart={(item) => start(view.track.id, item)}
               onFinish={(item) => finish(view.track.id, item)}
             />
@@ -188,11 +202,13 @@ function TrackTop({ view }: { view: TrackView }) {
 function TabletTrack({
   view,
   narrow,
+  manage,
   onStart,
   onFinish,
 }: {
   view: TrackView;
   narrow: boolean;
+  manage: boolean;
   onStart: (id: string) => void;
   onFinish: (id: string) => void;
 }) {
@@ -219,19 +235,20 @@ function TabletTrack({
             {column}
           </Text>
         ))}
-        <View style={styles.actCol} />
+        {manage && <View style={styles.actCol} />}
       </View>
       {view.rows.map((row) => (
         <TableRow
           key={row.item.id}
           row={row}
           narrow={narrow}
+          manage={manage}
           onStart={onStart}
           onFinish={onFinish}
         />
       ))}
       <Text size={14} style={[styles.secondary, styles.nextLine]}>
-        {nextLine(view)}
+        {nextLine(view, manage)}
       </Text>
     </View>
   );
@@ -240,11 +257,13 @@ function TabletTrack({
 function TableRow({
   row,
   narrow,
+  manage,
   onStart,
   onFinish,
 }: {
   row: Row;
   narrow: boolean;
+  manage: boolean;
   onStart: (id: string) => void;
   onFinish: (id: string) => void;
 }) {
@@ -279,9 +298,11 @@ function TableRow({
       >
         {item.owner ?? RW.noOwner}
       </Text>
-      <View style={styles.actCol}>
-        <Act item={item} onStart={onStart} onFinish={onFinish} />
-      </View>
+      {manage && (
+        <View style={styles.actCol}>
+          <Act item={item} onStart={onStart} onFinish={onFinish} />
+        </View>
+      )}
     </View>
   );
 }
@@ -374,12 +395,14 @@ function PhoneTrack({
   views,
   trackId,
   onTrack,
+  manage,
   onStart,
   onFinish,
 }: {
   views: readonly TrackView[];
   trackId: string;
   onTrack: (id: string) => void;
+  manage: boolean;
   onStart: (track: string, item: string) => void;
   onFinish: (track: string, item: string) => void;
 }) {
@@ -388,7 +411,6 @@ function PhoneTrack({
   if (view == null) return null;
 
   const id = view.track.id;
-  const nowRow = view.rows.find((row) => row.item === view.now);
 
   return (
     <>
@@ -419,30 +441,30 @@ function PhoneTrack({
         <Text size={13} weight="semibold" style={styles.secondary}>
           {RW.now.toUpperCase()}
         </Text>
-        {view.now == null || nowRow == null ? (
+        {view.now.length === 0 ? (
           <Text size={18} weight="semibold" style={styles.secondary}>
             {view.figure.kind === 'done' ? RW.allDone : RW.nothingNow}
           </Text>
         ) : (
-          <>
-            <ItemLine item={view.now} />
-            <Text size={14} style={styles.secondary}>
-              {`Started ${view.now.started ?? view.now.planned} · planned ${view.now.planned} · ${lastsOf(view.now)}`}
-            </Text>
-            {nowRow.before != null && (
+          view.now.map(({ item, before }, index) => (
+            <View key={item.id} style={[styles.nowItem, index > 0 && styles.nowAlso]}>
+              <ItemLine item={item} />
               <Text size={14} style={styles.secondary}>
-                {nowRow.before}
+                {`Started ${item.started ?? item.planned} · planned ${item.planned} · ${lastsOf(item)}`}
               </Text>
-            )}
-            <Text size={14} style={view.now.owner == null ? styles.none : styles.secondary}>
-              {view.now.owner ?? RW.noOwner}
-            </Text>
-            <Act
-              item={view.now}
-              onStart={() => undefined}
-              onFinish={(item) => onFinish(id, item)}
-            />
-          </>
+              {before != null && (
+                <Text size={14} style={styles.secondary}>
+                  {before}
+                </Text>
+              )}
+              <Text size={14} style={item.owner == null ? styles.none : styles.secondary}>
+                {item.owner ?? RW.noOwner}
+              </Text>
+              {manage && (
+                <Act item={item} onStart={() => undefined} onFinish={(one) => onFinish(id, one)} />
+              )}
+            </View>
+          ))
         )}
       </View>
       {view.next != null && (
@@ -464,11 +486,13 @@ function PhoneTrack({
           <Text size={14} style={styles.secondary}>
             {`${lastsOf(view.next.item)} · ${view.next.item.owner ?? RW.noOwner}`}
           </Text>
-          <Act
-            item={view.next.item}
-            onStart={(item) => onStart(id, item)}
-            onFinish={() => undefined}
-          />
+          {manage && (
+            <Act
+              item={view.next.item}
+              onStart={(item) => onStart(id, item)}
+              onFinish={() => undefined}
+            />
+          )}
         </View>
       )}
       {view.figure.kind !== 'done' && (
@@ -628,7 +652,14 @@ const styles = StyleSheet.create({
     borderTopColor: tokens.colorBorder,
   },
   thenTime: { width: 112 },
+  nowItem: { gap: tokens.spaceMd },
+  nowAlso: {
+    paddingTop: tokens.spaceMd,
+    borderTopWidth: 1,
+    borderTopColor: tokens.colorBorder,
+  },
   nextLine: { paddingTop: tokens.spaceSm },
+  lock: { flexDirection: 'row', alignItems: 'center', gap: tokens.spaceSm },
 });
 
 const COLUMN = [styles.startsCol, styles.lastsCol, styles.grow, styles.ownerCol];

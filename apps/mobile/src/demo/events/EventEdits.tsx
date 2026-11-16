@@ -17,13 +17,14 @@ import {
 } from 'react-native';
 
 import { AlertLine } from '../../components/AlertLine.tsx';
+import { SearchField } from '../../components/EventsSearch.tsx';
 import {
   ArrivalNoteField,
   Choices,
   CoverPhotoFields,
+  CurrencyView,
   CoverPreview as PartPreview,
   CoverUpload as PartUpload,
-  CurrencyView,
   DatePair,
   DatesView,
   EditShell,
@@ -41,6 +42,7 @@ import {
   useEditTitle,
 } from '../../components/EventEdits.tsx';
 import { PhotoFill } from '../../components/EventThumb.tsx';
+import { currencyMatches } from '../../components/currencyMatches.ts';
 import { Glyph } from '../../components/Glyph.tsx';
 import { MomentBox, type Picking, pick } from '../../components/MomentPick.tsx';
 import { useReadOut } from '../../components/ReadOut.tsx';
@@ -68,13 +70,13 @@ import {
   todayIn,
 } from './ReplyBy.ts';
 import {
-  CURRENCIES,
   PHOTO_DESCRIPTION,
   SIX_HOSTS,
   SUGGESTIONS,
   type SampleEvent,
   type Suggestion,
   ZONES,
+  currencyRows,
 } from './EventsSample.ts';
 import { W, say, t } from './EventsWords.ts';
 import { hostErrorWords } from './hostErrors.ts';
@@ -693,7 +695,9 @@ function HostsEdit(edit: EditProps) {
       ? ['Adaeze Obi', 'Tunde Bakare', 'Adaeze Obi']
       : start === 'hostsSix'
         ? [...SIX_HOSTS]
-        : [...event.hosts]
+        : start === 'lastHost'
+          ? event.hosts.slice(0, 1)
+          : [...event.hosts]
     ).map((name, key) => ({ key, name })),
   );
   const [tried, setTried] = useState(false);
@@ -755,8 +759,63 @@ function CurrencyEdit(edit: EditProps) {
       onSave={() => (refused ? setRefusal(true) : edit.onSaved({ ...edit.event, currency: code }))}
       edit={edit}
     >
-      <CurrencyView code={code} choices={CURRENCIES} refused={refusal} onPick={setCode} />
+      <CurrencyView
+        code={code}
+        choices={currencyRows(edit.event.currency)}
+        refused={refusal}
+        onPick={setCode}
+      />
     </Shell>
+  );
+}
+
+/** New event's search, list and empty line; the Edit uses the product's CurrencyView, and both match through currencyMatches. */
+export function CurrencySearch({
+  code,
+  rows,
+  onPick,
+  testID,
+}: {
+  code: string;
+  rows: readonly { code: string; name: string }[];
+  onPick: (code: string) => void;
+  testID: string;
+}) {
+  const [typed, setTyped] = useState('');
+  const { shown, unmatched } = currencyMatches(rows, typed);
+
+  useReadOut(unmatched == null ? null : say.noCurrency(unmatched));
+
+  return (
+    <>
+      <View style={styles.searchRow}>
+        <SearchField
+          typed={typed}
+          off={false}
+          width={null}
+          onTyped={setTyped}
+          onSearch={() => undefined}
+          onClear={() => setTyped('')}
+          label={W.searchCurrencies}
+          testID={`${testID}.search`}
+        />
+      </View>
+      {unmatched != null ? (
+        <View style={styles.none} testID={`${testID}.none`}>
+          <Text size={15} weight="medium">
+            {say.noCurrency(unmatched)}
+          </Text>
+          <TextAction label={W.clearSearch} onPress={() => setTyped('')} />
+        </View>
+      ) : (
+        <Choices
+          items={shown.map((one) => ({ key: one.code, title: `${one.code} · ${one.name}` }))}
+          on={code === '' ? null : code}
+          onPick={onPick}
+          testID={testID}
+        />
+      )}
+    </>
   );
 }
 
@@ -884,6 +943,8 @@ function CoverEdit(edit: EditProps) {
 }
 
 const styles = StyleSheet.create({
+  searchRow: { flexDirection: 'row' },
+  none: { gap: tokens.spaceSm, paddingVertical: tokens.spaceMd },
   secondary: { color: tokens.colorInkSecondary },
   pressed: { opacity: tokens.opacityPressed },
   acPill: {

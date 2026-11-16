@@ -19,6 +19,7 @@ use App\Enum\EventRole;
 use App\Enum\MembershipStatus;
 use App\Enum\SeededRole;
 use App\Tests\ApiTestCase;
+use App\Tests\Double\Messaging\RecordingHub;
 use App\Tests\Double\RefusingRateLimiterFactory;
 use App\Tests\Traits\OnboardsAccounts;
 use App\Tests\Traits\PutsPeopleOnEvents;
@@ -27,6 +28,7 @@ use Doctrine\DBAL\Connection;
 use Lexik\Bundle\JWTAuthenticationBundle\Services\JWTTokenManagerInterface;
 use PHPUnit\Framework\Attributes\DataProvider;
 use PHPUnit\Framework\Attributes\Test;
+use Psl\Iter;
 use Psl\Json;
 use Psl\Str;
 use Psl\Type;
@@ -137,6 +139,7 @@ final class GuestLinksTest extends ApiTestCase
             'answersOpen' => true,
             'answersClosedOn' => null,
             'calendarFeed' => null,
+            'programme' => [],
         ], $page);
         self::assertSame('no-store, private', $this->client->getResponse()->headers->get('Cache-Control'));
         self::assertSame($audited, $this->auditRows());
@@ -263,6 +266,27 @@ final class GuestLinksTest extends ApiTestCase
 
         $this->anonymous('/api/guest-links/wrong-person', $this->token($guest));
         self::assertSame(['guests' => [$guest]], $this->as($this->owner, 'GET', $this->guests() . '/flagged'));
+    }
+
+    #[Test]
+    public function aTellAndAReplaceArePublishedToThisEventsListSoAnOpenListReadsTheFlagsAgain(): void
+    {
+        $guest = $this->add('Bisi Adewale');
+        $token = $this->token($guest);
+        $hub = self::service(RecordingHub::class);
+        $topic = 'events/' . $this->eventId . '/guests';
+
+        $before = Iter\count($hub->published);
+        $this->anonymous('/api/guest-links/wrong-person', $token);
+        self::assertNotNull($hub->lastOn($topic));
+        $afterTell = Iter\count($hub->published);
+        self::assertGreaterThan($before, $afterTell);
+
+        $this->anonymous('/api/guest-links/wrong-person', $token);
+        self::assertSame($afterTell, Iter\count($hub->published));
+
+        $this->as($this->owner, 'POST', $this->guests() . '/' . $guest . '/link/replace');
+        self::assertGreaterThan($afterTell, Iter\count($hub->published));
     }
 
     #[Test]
