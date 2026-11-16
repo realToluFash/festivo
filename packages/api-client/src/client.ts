@@ -2668,7 +2668,7 @@ export class ApiClient {
     return this.menuOf(await this.delete<unknown>(this.menuCoursePath(eventId, courseId)));
   }
 
-  /** A library dish copied as it is now, or a new dish: saved to the library too, and refused as `addDish` is, unless `onlyForEvent`. */
+  /** A library dish copied as it is now, refused 409 `menu_dish_on_course` when the course holds a copy of it, or a new dish: saved to the library too, and refused as `addDish` is, unless `onlyForEvent`. */
   async addMenuDish(
     eventId: string,
     courseId: string,

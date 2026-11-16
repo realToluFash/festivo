@@ -184,6 +184,41 @@ final class EventMenuTest extends ApiTestCase
     }
 
     #[Test]
+    public function aSecondCopyOfALibraryDishOnOneCourseIsRefusedEvenAfterTheCopyIsEdited(): void
+    {
+        $main = $this->course('Main');
+        $library = $this->libraryDish('Jollof rice', ['celery']);
+        $this->as($this->owner, 'POST', $this->path('/courses/' . $main['id'] . '/dishes'), ['libraryDishId' => $library->getId()->toRfc4122()]);
+        $copy = $this->dishes($this->courses()[0])[0];
+        $this->as($this->owner, 'PUT', $this->path('/dishes/' . $copy['id']), ['name' => 'Party jollof', 'allergens' => ['celery']]);
+
+        $this->as($this->owner, 'POST', $this->path('/courses/' . $main['id'] . '/dishes'), ['libraryDishId' => $library->getId()->toRfc4122()]);
+
+        self::assertSame(409, $this->statusCode());
+        self::assertSame('https://soirely.com/errors/menu_dish_on_course', $this->last()['type'] ?? null);
+        self::assertSame(['Party jollof'], Vec\map($this->dishes($this->courses()[0]), static fn (array $dish): string => $dish['name']));
+    }
+
+    #[Test]
+    public function theSameLibraryDishMayBeOnAnotherCourseAndAgainOnceItsCopyIsRemoved(): void
+    {
+        $starter = $this->course('Starter');
+        $main = $this->course('Main');
+        $library = $this->libraryDish('Jollof rice', ['celery']);
+        $this->as($this->owner, 'POST', $this->path('/courses/' . $starter['id'] . '/dishes'), ['libraryDishId' => $library->getId()->toRfc4122()]);
+
+        $this->as($this->owner, 'POST', $this->path('/courses/' . $main['id'] . '/dishes'), ['libraryDishId' => $library->getId()->toRfc4122()]);
+        self::assertSame(201, $this->statusCode());
+
+        $this->as($this->owner, 'DELETE', $this->path('/dishes/' . $this->dishes($this->courses()[0])[0]['id']));
+        self::assertSame(200, $this->statusCode());
+        $this->as($this->owner, 'POST', $this->path('/courses/' . $starter['id'] . '/dishes'), ['libraryDishId' => $library->getId()->toRfc4122()]);
+        self::assertSame(201, $this->statusCode());
+
+        self::assertSame([['Jollof rice'], ['Jollof rice']], Vec\map($this->courses(), fn (array $course): array => Vec\map($this->dishes($course), static fn (array $dish): string => $dish['name'])));
+    }
+
+    #[Test]
     public function anArchivedLibraryDishIsNotFoundAndNothingIsAdded(): void
     {
         $main = $this->course('Main');

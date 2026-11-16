@@ -174,6 +174,10 @@ final readonly class MenuEditor
     public function addFromLibrary(Event $event, MenuCourse $course, Dish $dish, User $by): MenuDish
     {
         return $this->addDish($event, $course, $by, function (int $position) use ($event, $course, $dish): MenuDish {
+            if (null !== $this->menuDishRepository->findOneBy(['course' => $course, 'libraryDish' => $dish])) {
+                throw new ApiException(ErrorCode::MenuDishOnCourse, 'menu.dish_on_course');
+            }
+
             $dish->setUsedByEvent(true);
             $copy = MenuDish::copyOf($dish, $course, $position);
 
