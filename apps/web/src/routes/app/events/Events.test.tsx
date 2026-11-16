@@ -2051,7 +2051,7 @@ describe("A request one test leaves unanswered, in the next test's 20 s (sc-2811
 
     await act(() => vi.advanceTimersByTimeAsync(20_000));
     fireEvent.click(screen.getByRole('button', { name: 'Make live' }));
-    const dialog = await screen.findByRole('dialog', { name: 'Make Adaeze and Tunde live?' });
+    const dialog = await screen.findByRole('alertdialog', { name: 'Make Adaeze and Tunde live?' });
     fireEvent.click(within(dialog).getByRole('button', { name: 'Make live' }));
     await waitFor(() => expect(screen.getByRole('status').textContent).toBe('✓ Live'));
 
@@ -2705,10 +2705,10 @@ describe('Change dates opens Dates in place, and Edit details is gone (sc-48602)
     });
     from('/app/events/ev_1');
     fireEvent.click(await screen.findByRole('button', { name: 'Make live' }));
-    const dialog = await screen.findByRole('dialog', { name: 'Make Adaeze and Tunde live?' });
+    const dialog = await screen.findByRole('alertdialog', { name: 'Make Adaeze and Tunde live?' });
     fireEvent.click(within(dialog).getByRole('button', { name: 'Make live' }));
     const refused = await screen.findByRole('alertdialog', { name: /^Not made live\./u });
-    fireEvent.click(within(refused).getByRole('link', { name: 'Change dates' }));
+    fireEvent.click(within(refused).getByRole('button', { name: 'Change dates' }));
 
     await waitFor(() => expect(screen.queryByRole('alertdialog')).toBeNull());
     await datesOpened();
@@ -2726,10 +2726,10 @@ describe('Change dates opens Dates in place, and Edit details is gone (sc-48602)
     fireEvent.click(within(details).getByRole('button', { name: /^.*Dates/u }));
     await screen.findByRole('group', { name: 'Starts' });
     fireEvent.click(screen.getByRole('button', { name: 'Make live' }));
-    const dialog = await screen.findByRole('dialog', { name: 'Make Adaeze and Tunde live?' });
+    const dialog = await screen.findByRole('alertdialog', { name: 'Make Adaeze and Tunde live?' });
     fireEvent.click(within(dialog).getByRole('button', { name: 'Make live' }));
     const refused = await screen.findByRole('alertdialog', { name: /^Not made live\./u });
-    fireEvent.click(within(refused).getByRole('link', { name: 'Change dates' }));
+    fireEvent.click(within(refused).getByRole('button', { name: 'Change dates' }));
 
     await waitFor(() => expect(screen.queryByRole('alertdialog')).toBeNull());
     await datesOpened();
@@ -2757,10 +2757,10 @@ describe('Change dates opens Dates in place, and Edit details is gone (sc-48602)
     });
     from('/app/events/ev_1/guests');
     fireEvent.click(await screen.findByRole('button', { name: 'Make live' }));
-    const dialog = await screen.findByRole('dialog', { name: 'Make Adaeze and Tunde live?' });
+    const dialog = await screen.findByRole('alertdialog', { name: 'Make Adaeze and Tunde live?' });
     fireEvent.click(within(dialog).getByRole('button', { name: 'Make live' }));
     const refused = await screen.findByRole('alertdialog', { name: /^Not made live\./u });
-    fireEvent.click(within(refused).getByRole('link', { name: 'Change dates' }));
+    fireEvent.click(within(refused).getByRole('button', { name: 'Change dates' }));
 
     await datesOpened();
     await act(() => router.navigate(-1));
@@ -2874,7 +2874,7 @@ describe('Make live (sc-3584)', () => {
 
     return {
       sent,
-      dialog: await screen.findByRole('dialog', { name: 'Make Adaeze and Tunde live?' }),
+      dialog: await screen.findByRole('alertdialog', { name: 'Make Adaeze and Tunde live?' }),
     };
   }
 
@@ -2899,11 +2899,14 @@ describe('Make live (sc-3584)', () => {
     signedIn();
     const { sent, dialog } = await confirming();
 
-    expect(within(dialog).getByText('Guests can be invited, and they can see it.')).toBeDefined();
-    expect(within(dialog).getByText("It can't go back to being a draft.")).toBeDefined();
+    expect(
+      within(dialog).getByText(
+        "Guests can be invited, and they can see it. It can't go back to being a draft.",
+      ),
+    ).toBeDefined();
     fireEvent.click(within(dialog).getByRole('button', { name: 'Not yet' }));
 
-    expect(screen.queryByRole('dialog')).toBeNull();
+    expect(screen.queryByRole('alertdialog')).toBeNull();
     await waitFor(() =>
       expect(document.activeElement).toBe(screen.getByRole('button', { name: 'Make live' })),
     );
@@ -2918,7 +2921,7 @@ describe('Make live (sc-3584)', () => {
 
     fireEvent.click(within(dialog).getByRole('button', { name: 'Make live' }));
 
-    await waitFor(() => expect(screen.queryByRole('dialog')).toBeNull());
+    await waitFor(() => expect(screen.queryByRole('alertdialog')).toBeNull());
     expect(screen.getByText('Live')).toBeDefined();
     await waitFor(() => expect(screen.getByRole('status').textContent).toBe('✓ Live'));
     expect(screen.queryByRole('button', { name: 'Make live' })).toBeNull();
@@ -2965,6 +2968,7 @@ describe('Make live (sc-3584)', () => {
         'This event stays a draft. Finish or call off another event, or change plan.',
       ),
     ).toBeDefined();
+    expect(within(refused).queryByRole('button', { name: 'Change dates' })).toBeNull();
     fireEvent.click(within(refused).getByRole('button', { name: 'Close' }));
     expect(screen.getByText('Draft')).toBeDefined();
   });
@@ -3135,15 +3139,16 @@ describe('The phase, End now and Call off (sc-3585)', () => {
     const sent = await onThePage(live());
 
     fireEvent.click(screen.getByRole('button', { name: 'Call off…' }));
-    const dialog = await screen.findByRole('dialog', { name: 'Call off Adaeze and Tunde?' });
+    const dialog = await screen.findByRole('alertdialog', { name: 'Call off Adaeze and Tunde?' });
 
     expect(
-      within(dialog).getByText("It won't go ahead. Guests following their link will be told."),
+      within(dialog).getByText(
+        "It won't go ahead. Guests following their link will be told. You can't undo this.",
+      ),
     ).toBeDefined();
-    expect(within(dialog).getByText("You can't undo this.")).toBeDefined();
     fireEvent.click(within(dialog).getByRole('button', { name: 'Keep it on' }));
 
-    expect(screen.queryByRole('dialog')).toBeNull();
+    expect(screen.queryByRole('alertdialog')).toBeNull();
     await waitFor(() =>
       expect(document.activeElement).toBe(screen.getByRole('button', { name: 'Call off…' })),
     );
@@ -3164,10 +3169,10 @@ describe('The phase, End now and Call off (sc-3585)', () => {
     });
 
     fireEvent.click(screen.getByRole('button', { name: 'Call off…' }));
-    const dialog = await screen.findByRole('dialog', { name: 'Call off Adaeze and Tunde?' });
+    const dialog = await screen.findByRole('alertdialog', { name: 'Call off Adaeze and Tunde?' });
     fireEvent.click(within(dialog).getByRole('button', { name: 'Call off' }));
 
-    await waitFor(() => expect(screen.queryByRole('dialog')).toBeNull());
+    await waitFor(() => expect(screen.queryByRole('alertdialog')).toBeNull());
     expect(screen.getByText('Called off', { selector: '.desk-glass' })).toBeDefined();
     await waitFor(() => expect(screen.getByRole('status').textContent).toBe('Finished'));
     expect(screen.getAllByText(/^Called off on .*Oct 13, 2030, before it started\./)).toHaveLength(
@@ -3193,8 +3198,10 @@ describe('The phase, End now and Call off (sc-3585)', () => {
     });
 
     fireEvent.click(screen.getByRole('button', { name: 'End now…' }));
-    const dialog = await screen.findByRole('dialog', { name: 'End Adaeze and Tunde now?' });
-    expect(within(dialog).getByText('It will be over for everybody.')).toBeDefined();
+    const dialog = await screen.findByRole('alertdialog', { name: 'End Adaeze and Tunde now?' });
+    expect(
+      within(dialog).getByText("It will be over for everybody. You can't undo this."),
+    ).toBeDefined();
     fireEvent.click(within(dialog).getByRole('button', { name: 'End now' }));
 
     await waitFor(() =>
@@ -3218,13 +3225,14 @@ describe('The phase, End now and Call off (sc-3585)', () => {
     });
 
     fireEvent.click(screen.getByRole('button', { name: 'Call off…' }));
-    const dialog = await screen.findByRole('dialog', { name: 'Call off Adaeze and Tunde?' });
+    const dialog = await screen.findByRole('alertdialog', { name: 'Call off Adaeze and Tunde?' });
     fireEvent.click(within(dialog).getByRole('button', { name: 'Call off' }));
 
-    await waitFor(() =>
-      expect(within(dialog).getByRole('status').textContent).toBe('Calling off…'),
-    );
-    expect(within(dialog).getByRole('button', { name: 'Calling off…' })).toBeDefined();
+    expect(
+      (await within(dialog).findByRole('button', { name: 'Calling off…' })).getAttribute(
+        'aria-busy',
+      ),
+    ).toBe('true');
 
     fail(problem(500, 'internal'));
 
@@ -3244,7 +3252,7 @@ describe('The phase, End now and Call off (sc-3585)', () => {
 
     fireEvent.click(screen.getByRole('button', { name: 'Call off…' }));
     fireEvent.click(
-      within(await screen.findByRole('dialog')).getByRole('button', { name: 'Call off' }),
+      within(await screen.findByRole('alertdialog')).getByRole('button', { name: 'Call off' }),
     );
 
     const refused = await screen.findByRole('alertdialog', { name: 'Not ended.' });
@@ -3268,7 +3276,7 @@ describe('The phase, End now and Call off (sc-3585)', () => {
 
     fireEvent.click(screen.getByRole('button', { name: 'Call off…' }));
     fireEvent.click(
-      within(await screen.findByRole('dialog')).getByRole('button', { name: 'Call off' }),
+      within(await screen.findByRole('alertdialog')).getByRole('button', { name: 'Call off' }),
     );
 
     const refused = await screen.findByRole('alertdialog', {
@@ -3445,7 +3453,7 @@ describe("The hosts' thank-you (sc-6476)", () => {
     });
 
     fireEvent.click(screen.getByRole('button', { name: 'End now…' }));
-    const dialog = await screen.findByRole('dialog', { name: 'End Adaeze and Tunde now?' });
+    const dialog = await screen.findByRole('alertdialog', { name: 'End Adaeze and Tunde now?' });
     const box = typed(dialog, line);
     fireEvent.click(within(dialog).getByRole('button', { name: 'End now' }));
 
@@ -3468,7 +3476,7 @@ describe("The hosts' thank-you (sc-6476)", () => {
     });
 
     fireEvent.click(screen.getByRole('button', { name: 'End now…' }));
-    const dialog = await screen.findByRole('dialog', { name: 'End Adaeze and Tunde now?' });
+    const dialog = await screen.findByRole('alertdialog', { name: 'End Adaeze and Tunde now?' });
     const box = typed(dialog, 'a'.repeat(281));
     fireEvent.click(within(dialog).getByRole('button', { name: 'End now' }));
 
@@ -3523,16 +3531,15 @@ describe('Pause and Resume (sc-3586)', () => {
     const sent = await onThePage(served);
 
     fireEvent.click(screen.getByRole('button', { name: 'Pause' }));
-    const dialog = await screen.findByRole('dialog', { name: 'Pause Adaeze and Tunde?' });
+    const dialog = await screen.findByRole('alertdialog', { name: 'Pause Adaeze and Tunde?' });
     expect(
-      within(dialog).getByText("Guests can't reply or change anything until you resume it."),
-    ).toBeDefined();
-    expect(
-      within(dialog).getByText('Nothing is lost. Check-in and service keep working.'),
+      within(dialog).getByText(
+        "Guests can't reply or change anything until you resume it. Nothing is lost. Check-in and service keep working.",
+      ),
     ).toBeDefined();
     fireEvent.click(within(dialog).getByRole('button', { name: 'Keep it live' }));
 
-    expect(screen.queryByRole('dialog')).toBeNull();
+    expect(screen.queryByRole('alertdialog')).toBeNull();
     expect(sent.some(({ line }) => line.startsWith('POST'))).toBe(false);
     await waitFor(() =>
       expect(document.activeElement).toBe(screen.getByRole('button', { name: 'Pause' })),
@@ -3547,7 +3554,7 @@ describe('Pause and Resume (sc-3586)', () => {
 
     fireEvent.click(screen.getByRole('button', { name: 'Pause' }));
     fireEvent.click(
-      within(await screen.findByRole('dialog')).getByRole('button', { name: 'Pause' }),
+      within(await screen.findByRole('alertdialog')).getByRole('button', { name: 'Pause' }),
     );
 
     await waitFor(() =>
@@ -3576,7 +3583,7 @@ describe('Pause and Resume (sc-3586)', () => {
     await waitFor(() =>
       expect(screen.getByText('Happening now', { selector: '.desk-glass' })).toBeDefined(),
     );
-    expect(screen.queryByRole('dialog')).toBeNull();
+    expect(screen.queryByRole('alertdialog')).toBeNull();
     expect(sent.filter(({ line }) => line === 'POST /api/events/ev_1/resume')).toHaveLength(1);
     expect(screen.queryByText(/^Paused\. Guests/)).toBeNull();
     expect(screen.getByRole('button', { name: 'Pause' })).toBeDefined();
@@ -3639,7 +3646,7 @@ describe('Pause and Resume (sc-3586)', () => {
 
     fireEvent.click(screen.getByRole('button', { name: 'Pause' }));
     fireEvent.click(
-      within(await screen.findByRole('dialog')).getByRole('button', { name: 'Pause' }),
+      within(await screen.findByRole('alertdialog')).getByRole('button', { name: 'Pause' }),
     );
 
     const refused = await screen.findByRole('alertdialog', {
@@ -3665,7 +3672,7 @@ describe('Pause and Resume (sc-3586)', () => {
 
     fireEvent.click(screen.getByRole('button', { name: 'Pause' }));
     fireEvent.click(
-      within(await screen.findByRole('dialog')).getByRole('button', { name: 'Pause' }),
+      within(await screen.findByRole('alertdialog')).getByRole('button', { name: 'Pause' }),
     );
 
     const refused = await screen.findByRole('alertdialog', {
@@ -3762,7 +3769,7 @@ describe('An older copy never replaces the change the page made (sc-28121)', () 
 
   function confirm(opener: string, button: string): void {
     fireEvent.click(screen.getByRole('button', { name: opener }));
-    fireEvent.click(within(screen.getByRole('dialog')).getByRole('button', { name: button }));
+    fireEvent.click(within(screen.getByRole('alertdialog')).getByRole('button', { name: button }));
   }
 
   it.each([
@@ -4514,7 +4521,7 @@ describe('Make live asks for a missing host (sc-22143)', () => {
     at('/app/events/ev_1');
     await screen.findByRole('heading', { level: 1, name: 'Adaeze and Tunde' });
     fireEvent.click(screen.getByRole('button', { name: 'Make live' }));
-    const dialog = await screen.findByRole('dialog', { name: 'Make Adaeze and Tunde live?' });
+    const dialog = await screen.findByRole('alertdialog', { name: 'Make Adaeze and Tunde live?' });
 
     return { sent, dialog, host: within(dialog).getByLabelText<HTMLTextAreaElement>('Host 1') };
   }
@@ -4563,7 +4570,7 @@ describe('Make live asks for a missing host (sc-22143)', () => {
     fireEvent.change(host, { target: { value: ' Funmi Adeyemi ' } });
     press(dialog);
 
-    await waitFor(() => expect(screen.queryByRole('dialog')).toBeNull());
+    await waitFor(() => expect(screen.queryByRole('alertdialog')).toBeNull());
     expect(linesOf(sent)).toEqual([SAVE, LIVE]);
     expect(sent.find(({ line }) => line === SAVE)?.body).toEqual({ hosts: ['Funmi Adeyemi'] });
     await waitFor(() => expect(screen.getByRole('status').textContent).toBe('✓ Live'));
@@ -4592,7 +4599,9 @@ describe('Make live asks for a missing host (sc-22143)', () => {
     await waitFor(() => expect(document.activeElement).toBe(host));
     expect(within(dialog).getByText('Enter who is hosting to make this event live.')).toBeDefined();
     expect(host.getAttribute('aria-invalid')).toBe('true');
-    expect(host.getAttribute('aria-describedby')).toBe('make-live-host-error make-live-host-help');
+    expect(document.getElementById(host.getAttribute('aria-describedby')!)?.textContent).toBe(
+      'Enter who is hosting to make this event live.',
+    );
     expect(linesOf(sent)).toEqual([]);
     expect(screen.getByText('Draft')).toBeDefined();
   });
@@ -4630,7 +4639,7 @@ describe('Make live asks for a missing host (sc-22143)', () => {
     expect(linesOf(sent)).toEqual([SAVE, LIVE]);
 
     fireEvent.click(screen.getByRole('button', { name: 'Make live' }));
-    const again = await screen.findByRole('dialog', { name: 'Make Adaeze and Tunde live?' });
+    const again = await screen.findByRole('alertdialog', { name: 'Make Adaeze and Tunde live?' });
     expect(within(again).queryByLabelText('Host 1')).toBeNull();
   });
 
@@ -4659,7 +4668,7 @@ describe('Make live asks for a missing host (sc-22143)', () => {
     );
     press(dialog);
 
-    await waitFor(() => expect(screen.queryByRole('dialog')).toBeNull());
+    await waitFor(() => expect(screen.queryByRole('alertdialog')).toBeNull());
     expect(linesOf(sent)).toEqual([SAVE, LIVE, LIVE]);
   });
 
@@ -4699,7 +4708,7 @@ describe('Make live asks for a missing host (sc-22143)', () => {
 
       press(dialog);
 
-      await waitFor(() => expect(screen.queryByRole('dialog')).toBeNull());
+      await waitFor(() => expect(screen.queryByRole('alertdialog')).toBeNull());
       expect(linesOf(sent)).toEqual([SAVE, SAVE, LIVE]);
     });
 
@@ -4728,7 +4737,7 @@ describe('Make live asks for a missing host (sc-22143)', () => {
 
       press(dialog);
 
-      await waitFor(() => expect(screen.queryByRole('dialog')).toBeNull());
+      await waitFor(() => expect(screen.queryByRole('alertdialog')).toBeNull());
       expect(linesOf(sent)).toEqual([SAVE, LIVE]);
     });
 
@@ -4760,7 +4769,7 @@ describe('Make live asks for a missing host (sc-22143)', () => {
     at('/app/events/ev_1');
     await screen.findByRole('heading', { level: 1, name: 'Adaeze and Tunde' });
     fireEvent.click(screen.getByRole('button', { name: 'Make live' }));
-    const dialog = await screen.findByRole('dialog', { name: 'Make Adaeze and Tunde live?' });
+    const dialog = await screen.findByRole('alertdialog', { name: 'Make Adaeze and Tunde live?' });
     expect(within(dialog).queryByLabelText('Host 1')).toBeNull();
 
     press(dialog);
@@ -5028,7 +5037,7 @@ describe("An event's timeline: Coming up and All dates (sc-3624)", () => {
 
     vi.setSystemTime(new Date('2030-10-13T09:00:04.200Z'));
     fireEvent.click(screen.getByRole('button', { name: 'Call off…' }));
-    const dialog = await screen.findByRole('dialog', { name: 'Call off Adaeze and Tunde?' });
+    const dialog = await screen.findByRole('alertdialog', { name: 'Call off Adaeze and Tunde?' });
     fireEvent.click(within(dialog).getByRole('button', { name: 'Call off' }));
     // The ended event offers nothing from the first read, so the empty text shows before the second goes out.
     await waitFor(() => expect(read).toHaveBeenCalledTimes(2));
@@ -5224,6 +5233,59 @@ describe('Someone who can only view an event is never told to change its dates o
 
       await screen.findByRole('heading', { level: 1, name: 'Adaeze and Tunde' });
       expect(screen.getByText('Guests can’t be invited until this event is live.')).toBeDefined();
+    },
+  );
+});
+
+describe('Make live, Pause, Call off and End now keep the keyboard in their dialog (sc-48603)', () => {
+  const AHEAD = { startsAt: '2030-11-14T16:00:00+01:00', endsAt: '2030-11-15T02:00:00+01:00' };
+  const HAPPENING = { startsAt: '2020-11-14T16:00:00+01:00', endsAt: '2030-11-15T02:00:00+01:00' };
+
+  it.each([
+    ['Make live', event(AHEAD), 'Make live', 'Make Adaeze and Tunde live?'],
+    [
+      'Pause',
+      event({ ...AHEAD, status: 'live', phase: 'live' }),
+      'Pause',
+      'Pause Adaeze and Tunde?',
+    ],
+    [
+      'Call off',
+      event({ ...AHEAD, status: 'live', phase: 'live' }),
+      'Call off…',
+      'Call off Adaeze and Tunde?',
+    ],
+    [
+      'End now',
+      event({ ...HAPPENING, status: 'live', phase: 'happening_now' }),
+      'End now…',
+      'End Adaeze and Tunde now?',
+    ],
+  ])(
+    '%s takes focus, keeps Tab inside, and Escape closes it, sending nothing, back on its opener',
+    async (_, served, opens, title) => {
+      signedIn();
+      const sent = answering({ 'GET /api/events/ev_1': () => json({ event: served }) });
+      at('/app/events/ev_1');
+      await screen.findByRole('heading', { level: 1, name: 'Adaeze and Tunde' });
+
+      const opener = screen.getByRole('button', { name: opens });
+      opener.focus();
+      fireEvent.click(opener);
+      const dialog = await screen.findByRole('alertdialog', { name: title });
+      await waitFor(() => expect(dialog.contains(document.activeElement)).toBe(true));
+
+      const buttons = within(dialog).getAllByRole('button');
+      const last = buttons[buttons.length - 1]!;
+      last.focus();
+      fireEvent.keyDown(last, { key: 'Tab' });
+      expect(document.activeElement).not.toBe(last);
+      expect(dialog.contains(document.activeElement)).toBe(true);
+
+      fireEvent.keyDown(document.activeElement!, { key: 'Escape' });
+      await waitFor(() => expect(screen.queryByRole('alertdialog')).toBeNull());
+      await waitFor(() => expect(document.activeElement).toBe(opener));
+      expect(sent.some(({ line }) => line.startsWith('POST'))).toBe(false);
     },
   );
 });

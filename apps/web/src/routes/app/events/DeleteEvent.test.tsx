@@ -626,9 +626,9 @@ describe('Delete event refused while a guest is Invited (sc-14445)', () => {
     const { sent, dialog } = await refused(live(), 'Call off Adaeze and Tunde first?');
 
     fireEvent.click(within(dialog).getByRole('button', { name: 'Call off' }));
-    const question = await screen.findByRole('dialog', { name: 'Call off Adaeze and Tunde?' });
+    const question = await screen.findByRole('alertdialog', { name: 'Call off Adaeze and Tunde?' });
 
-    expect(screen.queryByRole('alertdialog')).toBeNull();
+    expect(screen.getAllByRole('alertdialog')).toEqual([question]);
     fireEvent.click(within(question).getByRole('button', { name: 'Keep it on' }));
     await waitFor(() =>
       expect(document.activeElement).toBe(screen.getByRole('button', { name: 'Call off…' })),
@@ -644,7 +644,7 @@ describe('Delete event refused while a guest is Invited (sc-14445)', () => {
     const { sent, dialog } = await refused(live(), 'End Adaeze and Tunde first?');
 
     fireEvent.click(within(dialog).getByRole('button', { name: 'End now' }));
-    const question = await screen.findByRole('dialog', { name: 'End Adaeze and Tunde now?' });
+    const question = await screen.findByRole('alertdialog', { name: 'End Adaeze and Tunde now?' });
     fireEvent.click(within(question).getByRole('button', { name: 'End now' }));
 
     await waitFor(() =>
