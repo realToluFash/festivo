@@ -96,6 +96,26 @@
     padding: var(--spaceXl);
   }
 
+  /* The event day's banner: its chips over its actions, then its words over what is next. */
+  .fits-phone .today-now {
+    padding: var(--spaceXl);
+  }
+
+  .fits-phone .today-now-top {
+    flex-wrap: wrap;
+    row-gap: var(--spaceSm);
+  }
+
+  .fits-phone .today-now-mid {
+    flex-direction: column;
+    align-items: stretch;
+    gap: var(--spaceXl);
+  }
+
+  .fits-phone .today-now-side {
+    width: auto;
+  }
+
   .fits-phone .today-columns {
     flex-direction: column;
     align-items: stretch;
