@@ -145,7 +145,7 @@
     "validation.dish_vegan_both": "Vegan dishes cannot contain milk, eggs, fish, crustaceans or molluscs.",
     "validation.dish_price_invalid": "Enter the last price as a number, like {example}.",
     "dish.name_shared": "There is already a dish called {name}.",
-    "dish.in_use": "An event uses this dish, so it is archived instead of deleted.",
+    "dish.in_use": "An event uses this dish, so it cannot be deleted. Archive it instead.",
     "guest.version_required": "Envie a versão que está a alterar, no cabeçalho If-Match.",
     "guest.changed_since": "Outra pessoa alterou os dados deste convidado desde que os abriu. A sua alteração não foi guardada.",
     "guest.replies_closed": "O prazo de resposta terminou. Se algo mudou, contacte quem organiza o evento.",

@@ -65,7 +65,7 @@ final readonly class DishLibraryController
         $organisation = $this->organisation($organisationId);
         $body = Input::body($request, self::shape());
         $withPrice = $this->pricing($organisation, $body);
-        $dish = $this->dishLibrary->add($organisation, $this->details($body, null), $this->user(), $body['allowShared'] ?? false);
+        $dish = $this->dishLibrary->add($organisation, $this->detailsOf($body, null), $this->user(), $body['allowShared'] ?? false);
 
         return new JsonResponse(['dish' => DishSerialiser::dish($dish, $withPrice)], Response::HTTP_CREATED);
     }
@@ -80,7 +80,7 @@ final readonly class DishLibraryController
         $body = Input::body($request, self::shape());
         $withPrice = $this->pricing($organisation, $body);
         $sent = Iter\contains_key($body, 'lastPrice');
-        $this->dishLibrary->edit($dish, $this->details($body, $dish->getLastPriceCurrency()), $sent, $this->user(), $body['allowShared'] ?? false);
+        $this->dishLibrary->edit($dish, $this->detailsOf($body, $dish->getLastPriceCurrency()), $sent, $this->user(), $body['allowShared'] ?? false);
 
         return new JsonResponse(['dish' => DishSerialiser::dish($dish, $withPrice)]);
     }
@@ -132,7 +132,7 @@ final readonly class DishLibraryController
     }
 
     /** @param array{name: string, description?: ?string, allergens?: list<string>, containsNone?: bool, diets?: list<string>, lastPrice?: ?array{amount: string, currency: string}, allowShared?: bool} $body */
-    private function details(array $body, ?string $heldCurrency): DishDetails
+    private function detailsOf(array $body, ?string $heldCurrency): DishDetails
     {
         return $this->dishRules->details(
             $body['name'],

@@ -111,7 +111,7 @@ final readonly class DishLibrary
         return $dish;
     }
 
-    /** Refused 409 `dish_in_use` once an event has used it: it is archived instead, and the event keeps its copy either way. */
+    /** Refused 409 `dish_in_use` once an event has used it: archiving is the way out, and the event keeps its copy either way. */
     public function delete(Dish $dish, User $by): void
     {
         if ($dish->isUsedByEvent()) {
