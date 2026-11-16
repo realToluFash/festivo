@@ -1055,6 +1055,10 @@ export interface ColumnRows<Item> {
   onEndNear?: () => void;
 }
 
+// Thousands of rows scrolled through hold only a few screens mounted at once: the default window of 21 screens ran a 2 GB phone out of memory at 12,345 people (sc-49170).
+const ROWS_FIRST = 12;
+const ROWS_WINDOW = 5;
+
 /** A scrolling column inside a Screen that does not scroll, so what it holds can bring itself into view. */
 export function ScrollColumn<Item>({
   children,
@@ -1124,6 +1128,10 @@ export function ScrollColumn<Item>({
           renderItem={({ item, index }) => rows.render(item, index)}
           onEndReached={rows.onEndNear}
           onEndReachedThreshold={1}
+          initialNumToRender={ROWS_FIRST}
+          maxToRenderPerBatch={ROWS_FIRST}
+          windowSize={ROWS_WINDOW}
+          removeClippedSubviews
           onContentSizeChange={(_, height) => {
             contentSized(height);
             restore();
