@@ -2846,7 +2846,13 @@
     "deleteRow": "Eliminar fila",
     "deleteSeat": "Eliminar lugar",
     "changedRow": "{{name}} acabou de alterar esta fila. A sua alteração não foi guardada.",
-    "changedSeat": "{{name}} acabou de alterar este lugar. A sua alteração não foi guardada."
+    "changedSeat": "{{name}} acabou de alterar este lugar. A sua alteração não foi guardada.",
+    "zoomIn": "Zoom in",
+    "zoomOut": "Zoom out",
+    "zoomIs": "Zoom {{pct, number}}%",
+    "percent": "{{pct, number}}%",
+    "fit": "Fit the room",
+    "takenOf": "{{taken, number}} of {{seats, number}}"
   },
   "onboarding": {
     "step": "Passo {{step, number}} de 2",
@@ -3636,7 +3642,7 @@
     "close": "Fechar",
     "back": "Voltar ao programa",
     "save": "Guardar item",
-    "addAgain": "Adicionar de novo",
+    "addAgain": "Restaurar",
     "cancel": "Cancelar",
     "optional": "Opcional",
     "titleLabel": "Título",
@@ -3657,7 +3663,7 @@
     "window": "Escolha uma hora entre {{earliest}} e {{end}}.",
     "dayAndTime": "{{day}}, {{time}}",
     "weekdayAndTime": "{{weekday}} {{time}}",
-    "zoneLine": "Os horários estão em {{zone}}.",
+    "zoneLine": "Fuso horário · {{zone}}",
     "newPlace": "Espaço novo. {{name}} passa a ter a sua própria tabela neste dia.",
     "moves": "Passa para a tabela de {{place}} e mantém a hora de início.",
     "blankTitle": "Introduza um título.",
@@ -3738,5 +3744,9 @@
     "saidBehind_many": "{{track}}, {{count, number}} minutos de atraso",
     "saidLast": "{{track}}, último item a decorrer",
     "saidDone": "{{track}}, todos os itens concluídos"
+  },
+  "handoff": {
+    "line": "This page is made for a wider window. On a phone or a tablet, it is in the Soirely app.",
+    "anyway": "Show this page anyway"
   }
 }

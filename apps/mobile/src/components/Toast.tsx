@@ -8,17 +8,26 @@ import { tokens } from '../theme/tokens.ts';
 import { useReadOut } from './ReadOut.tsx';
 import { Text } from './Text.tsx';
 
+export interface ToastAction {
+  label: string;
+  onPress: () => void;
+}
+
 /** With a screen reader on it stays until closed, and it waits while touched, so nobody loses Undo reaching for it. */
 export function Toast({
   words,
   onUndo,
+  action,
   onClose,
 }: {
   words: string;
   onUndo?: () => void;
+  /** The one step the toast offers in Undo's place, such as Mark as invited after Link copied (sc-55558). */
+  action?: ToastAction | null | undefined;
   onClose: () => void;
 }) {
   const { t } = useTranslation();
+  const step = action ?? (onUndo == null ? null : { label: t('toast.undo'), onPress: onUndo });
   const reduced = useReducedMotion();
   const [shown] = useState(() => new Animated.Value(0));
   const [rise] = useState(() => new Animated.Value(tokens.motionRise));
@@ -71,12 +80,12 @@ export function Toast({
           {words}
         </Text>
       </View>
-      {onUndo != null && (
+      {step != null && (
         <Pressable
           style={({ pressed }) => [styles.action, pressed && styles.pressed]}
           accessibilityRole="button"
           onPress={() => {
-            onUndo();
+            step.onPress();
             onClose();
           }}
         >
@@ -85,7 +94,7 @@ export function Toast({
             weight="semibold"
             style={[styles.onDark, styles.undo]}
           >
-            {t('toast.undo')}
+            {step.label}
           </Text>
         </Pressable>
       )}

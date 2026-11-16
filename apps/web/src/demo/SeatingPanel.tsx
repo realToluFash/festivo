@@ -135,8 +135,15 @@ export function Field({
   readOnly?: boolean;
   onCommit: (text: string) => string | null;
 }) {
-  const { ui, hold } = useSeating();
+  const { ui, set, hold } = useSeating();
   const id = useId();
+
+  function leave(item: string): void {
+    set((now) => ({ ...now, chosen: [], chair: null, notice: null, note: null }));
+    requestAnimationFrame(() =>
+      document.querySelector<SVGElement>(`[data-item="${item}"]`)?.focus(),
+    );
+  }
   const seed = ui.seed?.key === fieldKey ? ui.seed : null;
   const [draft, setDraft] = useState(seed?.value ?? value);
   const [error, setError] = useState<string | null>(seed?.error ?? null);
@@ -174,8 +181,12 @@ export function Field({
     } else if (event.key === 'Escape') {
       event.stopPropagation();
       editing.current = false;
-      setDraft(value);
-      setError(null);
+      if (draft !== value || error != null || ui.panel != null || ui.chosen[0] == null) {
+        setDraft(value);
+        setError(null);
+        return;
+      }
+      leave(ui.chosen[0]);
     }
   }
 

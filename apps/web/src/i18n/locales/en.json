@@ -2753,7 +2753,13 @@
     "deleteRow": "Delete row",
     "deleteSeat": "Delete seat",
     "changedRow": "{{name}} just changed this row. Your change was not saved.",
-    "changedSeat": "{{name}} just changed this seat. Your change was not saved."
+    "changedSeat": "{{name}} just changed this seat. Your change was not saved.",
+    "zoomIn": "Zoom in",
+    "zoomOut": "Zoom out",
+    "zoomIs": "Zoom {{pct, number}}%",
+    "percent": "{{pct, number}}%",
+    "fit": "Fit the room",
+    "takenOf": "{{taken, number}} of {{seats, number}}"
   },
   "onboarding": {
     "step": "Step {{step, number}} of 2",
@@ -3578,5 +3584,9 @@
     "saidBehind_other": "{{track}}, {{count, number}} minutes behind",
     "saidLast": "{{track}}, last item under way",
     "saidDone": "{{track}}, every item is done"
+  },
+  "handoff": {
+    "line": "This page is made for a wider window. On a phone or a tablet, it is in the Soirely app.",
+    "anyway": "Show this page anyway"
   }
 }

@@ -1,8 +1,9 @@
-import { fireEvent, render, screen, waitFor, within } from '@testing-library/react';
+import { act, fireEvent, render, screen, waitFor, within } from '@testing-library/react';
 import i18next from 'i18next';
-import { afterEach, describe, expect, it, vi } from 'vitest';
+import { afterEach, beforeAll, beforeEach, describe, expect, it, vi } from 'vitest';
 import { RouterProvider, createMemoryRouter } from 'react-router';
 
+import { __setConfig, config } from '../../../config.ts';
 import { __setSessionState, type Session } from '../../../session.ts';
 import { OWNER_PERMISSIONS, membership } from '../../../test-memberships.ts';
 import { routes } from '../../index.tsx';
@@ -107,6 +108,16 @@ async function onSeating(
   answers: Record<string, Answer>,
   permissions: string[] = OWNER_PERMISSIONS,
 ): Promise<{ line: string; body: unknown; ifMatch: string | null }[]> {
+  return (await onSeatingMounted(answers, permissions)).sent;
+}
+
+async function onSeatingMounted(
+  answers: Record<string, Answer>,
+  permissions: string[] = OWNER_PERMISSIONS,
+): Promise<{
+  sent: { line: string; body: unknown; ifMatch: string | null }[];
+  unmount: () => void;
+}> {
   const sent: { line: string; body: unknown; ifMatch: string | null }[] = [];
 
   vi.spyOn(globalThis, 'fetch').mockImplementation(async (input, init) => {
@@ -121,14 +132,14 @@ async function onSeating(
 
     return json({});
   });
-  render(
+  const { unmount } = render(
     <RouterProvider
       router={createMemoryRouter(routes, { initialEntries: ['/app/events/ev_1/seating'] })}
     />,
   );
   await screen.findByRole('heading', { level: 1, name: i18next.t('seating.area') });
 
-  return sent;
+  return { sent, unmount };
 }
 
 afterEach(() => {
@@ -1423,5 +1434,356 @@ describe('Rows and single seats at a desk (sc-4003)', () => {
     const facts = [...document.querySelectorAll('.st-facts div')].map((one) => one.textContent);
 
     expect(facts).toEqual(['SectionNo section', 'Seats10', 'Spacing50\u00a0cm']);
+  });
+});
+
+class StubSource {
+  static readonly CLOSED = 2;
+  static made: StubSource[] = [];
+
+  readyState = 0;
+  onopen: (() => void) | null = null;
+  onmessage: ((message: { data: string }) => void) | null = null;
+  onerror: (() => void) | null = null;
+
+  readonly url: string;
+
+  constructor(url: string | URL) {
+    this.url = String(url);
+    StubSource.made.push(this);
+  }
+
+  close(): void {
+    this.readyState = StubSource.CLOSED;
+  }
+
+  publish(data: unknown): void {
+    act(() => this.onmessage?.({ data: JSON.stringify(data) }));
+  }
+}
+
+const TABLE_1 = 'Table 1, round, 0 of 10 seats taken';
+
+function percent(): string {
+  return document.querySelector('.st-pct')?.textContent ?? '';
+}
+
+function press(name: 'Zoom in' | 'Zoom out' | 'Fit the room', times = 1): void {
+  for (let n = 0; n < times; n += 1) fireEvent.click(screen.getByRole('button', { name }));
+}
+
+function chairTargets(id: string): Element[] {
+  return [...document.querySelectorAll(`[data-table="${id}"] .st-chair-hit`)];
+}
+
+function centreOf(id: string): number {
+  return Number(document.querySelector(`[data-table="${id}"] .st-body`)?.getAttribute('cx'));
+}
+
+describe('The room to scale (sc-4007)', () => {
+  const before = config();
+
+  beforeAll(() => {
+    if (!('PointerEvent' in window)) {
+      class StandIn extends MouseEvent {
+        pointerId: number;
+
+        constructor(type: string, init: PointerEventInit = {}) {
+          super(type, init);
+          this.pointerId = init.pointerId ?? 1;
+        }
+      }
+      Object.defineProperty(window, 'PointerEvent', { value: StandIn, configurable: true });
+    }
+  });
+
+  beforeEach(() => {
+    localStorage.clear();
+  });
+
+  afterEach(() => {
+    localStorage.clear();
+    __setConfig(before);
+    vi.unstubAllGlobals();
+  });
+
+  it('opens fitted, steps through the zoom levels, stops at 25% and 400%, and fits the room again', async () => {
+    signedIn();
+    await onSeating({ 'GET /api/events/ev_1/seating-plan': () => seating(withTables(table())) });
+
+    await screen.findByRole('group', { name: 'Zoom 57%' });
+    press('Zoom in');
+    expect(percent()).toBe('75%');
+    press('Zoom in', 3);
+    expect(percent()).toBe('200%');
+    press('Zoom in', 3);
+    expect(percent()).toBe('400%');
+    expect(screen.getByRole('button', { name: 'Zoom in' }).getAttribute('aria-disabled')).toBe(
+      'true',
+    );
+
+    press('Fit the room');
+    expect(percent()).toBe('57%');
+    press('Zoom out', 5);
+    expect(percent()).toBe('25%');
+    expect(screen.getByRole('button', { name: 'Zoom out' }).getAttribute('aria-disabled')).toBe(
+      'true',
+    );
+    expect(screen.getByRole('button', { name: 'Zoom in' }).getAttribute('aria-disabled')).toBe(
+      'false',
+    );
+  });
+
+  it('zooms with Ctrl or Cmd and the wheel, as a trackpad pinch sends it, and moves the view without', async () => {
+    signedIn();
+    await onSeating({ 'GET /api/events/ev_1/seating-plan': () => seating(withTables(table())) });
+    const canvas = await waitFor(() => document.querySelector('.st-canvas.is-plan')!);
+
+    fireEvent.wheel(canvas, { deltaY: -300, ctrlKey: true });
+    const zoomed = Number(percent().replace('%', ''));
+
+    expect(zoomed).toBeGreaterThan(57);
+    fireEvent.wheel(canvas, { deltaY: 600, metaKey: true });
+    expect(Number(percent().replace('%', ''))).toBeLessThan(zoomed);
+
+    const was = centreOf('t1');
+
+    fireEvent.wheel(canvas, { deltaX: 100, deltaY: 0 });
+    expect(centreOf('t1')).toBeCloseTo(was - 100, 0);
+  });
+
+  it('ends a pan of the floor wherever the button comes up, and the next click on the floor still counts', async () => {
+    signedIn();
+    await onSeating({ 'GET /api/events/ev_1/seating-plan': () => seating(withTables(table())) });
+    await screen.findByRole('button', { name: TABLE_1 });
+    press('Zoom in', 3);
+    const floor = document.querySelector('.st-floor')!;
+    const room = document.querySelector('.st-room')!;
+    const at = { button: 0, pointerId: 1 };
+    const was = centreOf('t1');
+
+    fireEvent.pointerDown(floor, { ...at, clientX: 100, clientY: 100 });
+    fireEvent.pointerMove(room, { ...at, clientX: 160, clientY: 100 });
+    expect(centreOf('t1')).toBeCloseTo(was + 60, 0);
+    fireEvent.pointerUp(document.body, { ...at, clientX: 160, clientY: 100 });
+    fireEvent.pointerMove(room, { ...at, clientX: 260, clientY: 100 });
+    expect(centreOf('t1')).toBeCloseTo(was + 60, 0);
+
+    fireEvent.click(screen.getByRole('button', { name: TABLE_1 }));
+    expect(screen.getByRole('heading', { level: 2, name: 'Table 1' })).toBeDefined();
+    fireEvent.pointerDown(floor, { ...at, clientX: 100, clientY: 100 });
+    fireEvent.pointerUp(floor, { ...at, clientX: 100, clientY: 100 });
+    fireEvent.click(floor);
+    expect(screen.queryByRole('heading', { level: 2, name: 'Table 1' })).toBeNull();
+  });
+
+  it('draws each item as its outline, name and how full it is under 50%, and its chairs from 50%', async () => {
+    signedIn();
+    await onSeating({
+      'GET /api/events/ev_1/seating-plan': () =>
+        seating({
+          ...withTables(table({ unusableSeats: [2] })),
+          rows: [row()],
+          singleSeats: [single()],
+        }),
+    });
+
+    await screen.findByRole('button', { name: TABLE_1 });
+    press('Zoom out');
+    expect(percent()).toBe('50%');
+    expect(document.querySelectorAll('[data-table="t1"] .st-chair')).toHaveLength(10);
+    expect(document.querySelector('.st-of')).toBeNull();
+
+    press('Zoom out');
+    expect(percent()).toBe('40%');
+    expect(document.querySelectorAll('.st-room .st-chair')).toHaveLength(0);
+    expect(document.querySelector('[data-table="t1"] .st-body.is-out')).not.toBeNull();
+    expect([...document.querySelectorAll('.st-of')].map((one) => one.textContent)).toEqual([
+      '0 of 10',
+      '0 of 9',
+    ]);
+    expect(document.querySelector('[data-seat="s1"] .st-fill')).toBeNull();
+    expect(screen.getByRole('button', { name: TABLE_1 })).toBeDefined();
+  });
+
+  it('makes every chair a pointer target from 150%, so a click opens it with Mark unusable', async () => {
+    signedIn();
+    await onSeating({
+      'GET /api/events/ev_1/seating-plan': () =>
+        seating(withTables(table(), table({ id: 't2', name: 'Table 2', xCm: 400 }))),
+    });
+
+    await screen.findByRole('button', { name: TABLE_1 });
+    expect(chairTargets('t1')).toHaveLength(0);
+    press('Zoom in', 2);
+    expect(percent()).toBe('100%');
+    expect(chairTargets('t1')).toHaveLength(0);
+    press('Zoom in');
+    expect(percent()).toBe('150%');
+    expect(chairTargets('t1')).toHaveLength(10);
+    expect(chairTargets('t1').every((one) => one.getAttribute('tabindex') === '-1')).toBe(true);
+
+    fireEvent.click(screen.getByRole('button', { name: 'Table 2, Seat 4, Empty' }));
+    expect(await screen.findByRole('button', { name: 'Mark unusable' })).toBeDefined();
+    expect(percent()).toBe('150%');
+  });
+
+  it('shows the small map with the view on it from 200%', async () => {
+    signedIn();
+    await onSeating({ 'GET /api/events/ev_1/seating-plan': () => seating(withTables(table())) });
+
+    await screen.findByRole('button', { name: TABLE_1 });
+    press('Zoom in', 3);
+    expect(percent()).toBe('150%');
+    expect(document.querySelector('.st-minimap')).toBeNull();
+    press('Zoom in');
+    expect(document.querySelector('.st-minimap .st-view-box')).not.toBeNull();
+    expect(document.querySelectorAll('.st-minimap .st-body')).toHaveLength(1);
+  });
+
+  it('keeps the zoom and view when the page is opened again, and fits a room that changed size since', async () => {
+    signedIn();
+    const answers = { 'GET /api/events/ev_1/seating-plan': () => seating(withTables(table())) };
+    const { unmount } = await onSeatingMounted(answers);
+
+    await screen.findByRole('button', { name: TABLE_1 });
+    press('Zoom in', 4);
+    expect(percent()).toBe('200%');
+    const at = centreOf('t1');
+
+    unmount();
+    vi.restoreAllMocks();
+    const again = await onSeatingMounted(answers);
+
+    await screen.findByRole('button', { name: TABLE_1 });
+    expect(percent()).toBe('200%');
+    expect(centreOf('t1')).toBe(at);
+
+    again.unmount();
+    vi.restoreAllMocks();
+    await onSeatingMounted({
+      'GET /api/events/ev_1/seating-plan': () =>
+        seating({ ...withTables(table()), widthCm: 2000, lengthCm: 1600 }),
+    });
+    await screen.findByRole('button', { name: TABLE_1 });
+    expect(percent()).toBe('69%');
+  });
+
+  it('lets Tab reach the items top to bottom, then left to right, whatever their kind', async () => {
+    signedIn();
+    await onSeating({
+      'GET /api/events/ev_1/seating-plan': () =>
+        seating({
+          ...withTables(
+            table({ id: 't1', name: 'Table 1', xCm: 2000, yCm: 1500 }),
+            table({ id: 't2', name: 'Table 2', xCm: 400, yCm: 1500 }),
+          ),
+          rows: [row({ xCm: 1200, yCm: 400 })],
+          singleSeats: [single({ xCm: 300, yCm: 380 })],
+        }),
+    });
+
+    await screen.findByRole('button', { name: TABLE_1 });
+    const order = [
+      ...document.querySelectorAll(
+        '.st-room [data-table], .st-room [data-row], .st-room [data-seat]',
+      ),
+    ].map((one) => one.getAttribute('aria-label'));
+
+    expect(order).toEqual([
+      'Seat 1, single seat, Empty',
+      'Row A, row of 10, 0 of 10 seats taken',
+      'Table 2, round, 0 of 10 seats taken',
+      TABLE_1,
+    ]);
+  });
+
+  it('draws a colleague’s saved change without moving the view or clearing the choice', async () => {
+    __setConfig({ ...before, mercureUrl: 'http://hub.test/.well-known/mercure' });
+    StubSource.made = [];
+    vi.stubGlobal('EventSource', StubSource);
+    signedIn();
+    await onSeating({
+      'GET /api/events/ev_1/seating-plan': () => seating(withTables(table())),
+      'POST /api/events/ev_1/seating-plan/subscriptions': () =>
+        json({ token: 'tok', expiresAt: new Date(Date.now() + 3_600_000).toISOString() }),
+    });
+    const seatingSource = () =>
+      StubSource.made.find((one) => decodeURIComponent(one.url).includes('/seating'));
+
+    await waitFor(() => expect(seatingSource()).toBeDefined());
+
+    press('Zoom in', 2);
+    await chooseTable(TABLE_1);
+    const at = centreOf('t1');
+
+    seatingSource()!.publish({
+      measurementSystem: 'metric',
+      plan: withTables(table(), table({ id: 't2', name: 'Table 2', xCm: 400 })),
+    });
+
+    await screen.findByRole('button', { name: 'Table 2, round, 0 of 10 seats taken' });
+    expect(percent()).toBe('100%');
+    expect(centreOf('t1')).toBe(at);
+    expect(screen.getByRole('heading', { level: 2, name: 'Table 1' })).toBeDefined();
+  });
+
+  it('reads the room in feet and inches where the organisation is US customary', async () => {
+    signedIn();
+    await onSeating({
+      'GET /api/events/ev_1/seating-plan': () =>
+        json({ seating: { measurementSystem: 'us', plan: withTables(table()) } }),
+    });
+
+    expect(
+      await screen.findByRole('group', { name: /^Floor plan, Main hall, 78 feet 9 inches by/u }),
+    ).toBeDefined();
+  });
+
+  it('zooms and reads the room without seating.manage, with nothing to add', async () => {
+    signedIn();
+    await onSeating(
+      { 'GET /api/events/ev_1/seating-plan': () => seating(withTables(table())) },
+      OWNER_PERMISSIONS.filter((one) => one !== 'seating.manage'),
+    );
+
+    await screen.findByRole('button', { name: TABLE_1 });
+    press('Zoom in', 3);
+    expect(percent()).toBe('150%');
+    expect(screen.queryByRole('button', { name: 'Add table' })).toBeNull();
+  });
+
+  it('sends nothing about the room when the plan opens, zooms and fits', async () => {
+    signedIn();
+    const sent = await onSeating({
+      'GET /api/events/ev_1/seating-plan': () => seating(withTables(table())),
+    });
+
+    await screen.findByRole('button', { name: TABLE_1 });
+    press('Zoom in', 4);
+    press('Fit the room');
+    expect(sent.filter((one) => !one.line.startsWith('GET '))).toEqual([]);
+  });
+});
+
+describe('The breadcrumb (sc-55300)', () => {
+  it('cuts only the event name, whose link still carries it in full', async () => {
+    signedIn();
+    await onSeating({
+      'GET /api/events/ev_1/seating-plan': () =>
+        json({ seating: { measurementSystem: 'metric', plan: plan() } }),
+    });
+    const crumb = screen.getByRole('navigation', { name: i18next.t('seating.crumb') });
+    const event = within(crumb).getByRole('link', { name: 'Adaeze and Tunde' });
+
+    expect(event.getAttribute('href')).toBe('/app/events/ev_1');
+    expect(event.querySelector('.st-crumb-name')?.textContent).toBe('Adaeze and Tunde');
+    expect(event.closest('li')?.classList.contains('st-crumb-event')).toBe(true);
+    expect(
+      within(crumb)
+        .getByRole('link', { name: i18next.t('seating.events') })
+        .closest('li')
+        ?.classList.contains('st-crumb-event'),
+    ).toBe(false);
   });
 });

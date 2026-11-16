@@ -1,0 +1,19 @@
+# sc-1404: the app's design demo of the run view in each state the product shows, phone or tablet.
+appId: host.exp.Exponent
+---
+- openLink: ${METRO_URL}/--/demo/run-view?state=behind${AS}
+- extendedWaitUntil: { visible: { id: 'never.there' }, timeout: 6000, optional: true }
+- waitForAnimationToEnd
+- takeScreenshot: behind
+- scroll
+- takeScreenshot: behind-2
+- scroll
+- takeScreenshot: behind-3
+- openLink: ${METRO_URL}/--/demo/run-view?state=outOfOrder${AS}
+- extendedWaitUntil: { visible: { id: 'never.there' }, timeout: 5000, optional: true }
+- takeScreenshot: outoforder
+- openLink: ${METRO_URL}/--/demo/run-view?state=last${AS}
+- extendedWaitUntil: { visible: { id: 'never.there' }, timeout: 5000, optional: true }
+- takeScreenshot: last
+- tapOn: { text: 'Garden.*', optional: true }
+- takeScreenshot: last-garden-alldone

@@ -414,7 +414,6 @@ function PhoneTrack({
   if (view == null) return null;
 
   const id = view.track.id;
-  const nowRow = view.rows.find((row) => row.item === view.now);
 
   return (
     <>
@@ -445,32 +444,30 @@ function PhoneTrack({
         <Text size={13} weight="semibold" style={styles.secondary}>
           {RW.now.toUpperCase()}
         </Text>
-        {view.now == null || nowRow == null ? (
+        {view.now.length === 0 ? (
           <Text size={18} weight="semibold" style={styles.secondary}>
             {view.figure.kind === 'done' ? RW.allDone : RW.nothingNow}
           </Text>
         ) : (
-          <>
-            <ItemLine item={view.now} />
-            <Text size={14} style={styles.secondary}>
-              {`Started ${view.now.started ?? view.now.planned} · planned ${view.now.planned} · ${lastsOf(view.now)}`}
-            </Text>
-            {nowRow.before != null && (
+          view.now.map(({ item, before }, index) => (
+            <View key={item.id} style={[styles.nowItem, index > 0 && styles.nowAlso]}>
+              <ItemLine item={item} />
               <Text size={14} style={styles.secondary}>
-                {nowRow.before}
+                {`Started ${item.started ?? item.planned} · planned ${item.planned} · ${lastsOf(item)}`}
               </Text>
-            )}
-            <Text size={14} style={view.now.owner == null ? styles.none : styles.secondary}>
-              {view.now.owner ?? RW.noOwner}
-            </Text>
-            {manage && (
-              <Act
-                item={view.now}
-                onStart={() => undefined}
-                onFinish={(item) => onFinish(id, item)}
-              />
-            )}
-          </>
+              {before != null && (
+                <Text size={14} style={styles.secondary}>
+                  {before}
+                </Text>
+              )}
+              <Text size={14} style={item.owner == null ? styles.none : styles.secondary}>
+                {item.owner ?? RW.noOwner}
+              </Text>
+              {manage && (
+                <Act item={item} onStart={() => undefined} onFinish={(one) => onFinish(id, one)} />
+              )}
+            </View>
+          ))
         )}
       </View>
       {view.next != null && (
@@ -658,6 +655,12 @@ const styles = StyleSheet.create({
     borderTopColor: tokens.colorBorder,
   },
   thenTime: { width: 112 },
+  nowItem: { gap: tokens.spaceMd },
+  nowAlso: {
+    paddingTop: tokens.spaceMd,
+    borderTopWidth: 1,
+    borderTopColor: tokens.colorBorder,
+  },
   nextLine: { paddingTop: tokens.spaceSm },
   lock: { flexDirection: 'row', alignItems: 'center', gap: tokens.spaceSm },
 });

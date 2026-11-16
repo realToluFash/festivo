@@ -4,7 +4,7 @@ import type { TFunction } from 'i18next';
 import { describe, expect, it } from 'vitest';
 
 import { sidebarCardOf } from './eventTop.ts';
-import { filterChoices, phaseCardOf } from './guestRows.ts';
+import { filterChoices, invitationOfferOf, phaseCardOf } from './guestRows.ts';
 
 const counts = {
   all: 12,
@@ -132,5 +132,32 @@ describe("the Guests card's phase", () => {
   it('puts nothing on the card of a Live event, or before the phase is known', () => {
     expect(cardOf({ ...gala, status: 'live', phase: 'live' }, 'live', BEFORE)).toBeNull();
     expect(phaseCardOf(t, gala, null, null, BEFORE)).toBeNull();
+  });
+});
+
+describe("a guest's Invitation by phase (sc-55558)", () => {
+  const say = ((key: string) => key) as unknown as TFunction;
+
+  it('offers copying only while the phase invites', () => {
+    expect(invitationOfferOf('live', true, say)?.invites).toBe(true);
+    expect(invitationOfferOf('happening_now', true, say)?.invites).toBe(true);
+    for (const phase of ['draft', 'paused', 'finished'] as const)
+      expect(invitationOfferOf(phase, true, say)?.invites).toBe(false);
+  });
+
+  it('gives a Draft an Invitation for those who manage guests, and none for the rest', () => {
+    expect(invitationOfferOf('draft', true, say)).toEqual({
+      manages: true,
+      invites: false,
+      draft: true,
+      notInviting: null,
+    });
+    expect(invitationOfferOf('draft', false, say)).toBeNull();
+  });
+
+  it("says why nobody can be invited on Paused and Finished, in the web's words", () => {
+    expect(invitationOfferOf('paused', true, say)?.notInviting).toBe('guestList.pausedLine');
+    expect(invitationOfferOf('finished', true, say)?.notInviting).toBe('guestList.finishedLine');
+    expect(invitationOfferOf('live', true, say)?.notInviting).toBeNull();
   });
 });

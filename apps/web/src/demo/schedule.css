@@ -374,8 +374,21 @@
   margin-top: var(--spaceSm);
 }
 
+.ro-acts {
+  flex-wrap: wrap;
+}
+
 .ro-acts .ro-delete {
   margin-right: auto;
+}
+
+.ro-acts-end {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+  align-items: center;
+  gap: var(--spaceMd);
+  margin-left: auto;
 }
 
 .ro-ask {
@@ -550,9 +563,14 @@
   }
 
   .ro-acts,
+  .ro-acts-end,
   .ro-ask-acts {
     flex-direction: column-reverse;
     align-items: stretch;
+  }
+
+  .ro-acts-end {
+    margin-left: 0;
   }
 
   .ro-acts .gs-pill,

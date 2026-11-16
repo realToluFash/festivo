@@ -35,6 +35,7 @@ import { useServerNow } from '../kit/serverNow.ts';
 import type { LayoutKind } from '../layout/classify.ts';
 import { tokens } from '../theme/tokens.ts';
 import { PrimaryButton, SecondaryButton } from './Buttons.tsx';
+import { Glyph as KitGlyph } from './Glyph.tsx';
 import { useReadOut } from './ReadOut.tsx';
 import { Text } from './Text.tsx';
 
@@ -50,11 +51,6 @@ const PATHS = {
   clock: ['M12 7v5l3 2'],
   arrow: ['M5 12h14', 'm13 6 6 6-6 6'],
   lock: ['M5 11h14v10H5z', 'M8 11V7a4 4 0 0 1 8 0v4'],
-  warn: [
-    'M10.3 3.9 1.8 18a2 2 0 0 0 1.7 3h17a2 2 0 0 0 1.7-3L13.7 3.9a2 2 0 0 0-3.4 0z',
-    'M12 9v4',
-    'M12 17h.01',
-  ],
 } as const;
 
 function said(t: TFunction, [key, values]: RunWords): string {
@@ -329,7 +325,7 @@ function TrackTop({ view }: { view: TrackView }) {
       </View>
       {view.track.collisions.map(({ before, fixed }) => (
         <View key={`${before.id}|${fixed.id}`} style={styles.collision}>
-          <Glyph paths={PATHS.warn} ink={tokens.colorAttentionText} side={16} />
+          <KitGlyph name="warn" ink={tokens.colorAttentionText} size={16} weight={2.4} />
           <Text size={14} weight="semibold" style={[styles.grow, styles.attention]}>
             {said(t, collisionWords(before, fixed, locale))}
           </Text>
@@ -565,14 +561,7 @@ function PhoneTrack({
   if (view == null) return null;
 
   const { track } = view;
-  const nowRow =
-    track.rows
-      .filter((row) => row.phase === 'now')
-      .sort(
-        (a, b) =>
-          Date.parse(a.item.startedAt ?? a.item.planned) -
-          Date.parse(b.item.startedAt ?? b.item.planned),
-      )[0] ?? null;
+  const nowRows = track.rows.filter((row) => row.phase === 'now');
   const nextRow =
     track.next == null ? null : (track.rows.find((row) => row.item === track.next?.item) ?? null);
   const then = track.rows.filter((row) => row.phase === 'waiting' && row !== nextRow);
@@ -609,33 +598,38 @@ function PhoneTrack({
         <Text size={13} weight="semibold" style={styles.secondary}>
           {upper('runView.now')}
         </Text>
-        {nowRow == null ? (
+        {nowRows.length === 0 ? (
           <Text size={18} weight="semibold" style={styles.secondary}>
             {track.figure.kind === 'done' ? t('runView.allDone') : t('runView.nothingNow')}
           </Text>
         ) : (
-          <>
-            <ItemLine row={nowRow} />
-            <Text size={14} style={styles.secondary}>
-              {t('runView.nowLine', {
-                started: formatWallClock(
-                  wallOfZoned(nowRow.item.startedAt ?? nowRow.item.planned),
-                  locale,
-                ),
-                planned: formatWallClock(wallOfZoned(nowRow.item.planned), locale),
-                lasts: lastsOf(nowRow.item, t),
-              })}
-            </Text>
-            {nowRow.startedBefore != null && (
+          nowRows.map((nowRow, index) => (
+            <View key={nowRow.item.id} style={[styles.nowItem, index > 0 && styles.nowAlso]}>
+              <ItemLine row={nowRow} />
               <Text size={14} style={styles.secondary}>
-                {t('runView.startedBefore', { title: nowRow.startedBefore.title })}
+                {t('runView.nowLine', {
+                  started: formatWallClock(
+                    wallOfZoned(nowRow.item.startedAt ?? nowRow.item.planned),
+                    locale,
+                  ),
+                  planned: formatWallClock(wallOfZoned(nowRow.item.planned), locale),
+                  lasts: lastsOf(nowRow.item, t),
+                })}
               </Text>
-            )}
-            <Text size={14} style={nowRow.item.ownerName == null ? styles.none : styles.secondary}>
-              {nowRow.item.ownerName ?? t('runView.noOwner')}
-            </Text>
-            <Act row={nowRow} act={act} />
-          </>
+              {nowRow.startedBefore != null && (
+                <Text size={14} style={styles.secondary}>
+                  {t('runView.startedBefore', { title: nowRow.startedBefore.title })}
+                </Text>
+              )}
+              <Text
+                size={14}
+                style={nowRow.item.ownerName == null ? styles.none : styles.secondary}
+              >
+                {nowRow.item.ownerName ?? t('runView.noOwner')}
+              </Text>
+              <Act row={nowRow} act={act} />
+            </View>
+          ))
         )}
       </View>
       {nextRow != null && track.next != null && (
@@ -818,6 +812,12 @@ const styles = StyleSheet.create({
     borderTopColor: tokens.colorBorder,
   },
   thenTime: { width: 112 },
+  nowItem: { gap: tokens.spaceMd },
+  nowAlso: {
+    paddingTop: tokens.spaceMd,
+    borderTopWidth: 1,
+    borderTopColor: tokens.colorBorder,
+  },
   nextLine: { paddingTop: tokens.spaceSm },
   lock: { flexDirection: 'row', alignItems: 'center', gap: tokens.spaceSm },
 });

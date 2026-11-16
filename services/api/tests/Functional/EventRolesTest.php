@@ -423,6 +423,35 @@ final class EventRolesTest extends ApiTestCase
         self::assertNotNull(self::service(MemberAudienceResolver::class)->recipient($audience, $onIt->getId()));
     }
 
+    /** sc-18317: each page starts after its cursor, so walking the pages reaches every member exactly once. */
+    #[Test]
+    public function anAudiencePageStartsAfterItsCursor(): void
+    {
+        $people = [$this->owner];
+        foreach (['ada', 'bayo', 'chidi', 'dupe'] as $name) {
+            $people[] = $this->member($name . '@ire.events', SeededRole::Member);
+        }
+
+        $ids = Vec\sort(Vec\map($people, static fn (User $user): string => $user->getId()->toRfc4122()));
+        $audience = Audience::members($this->organisation->getId(), Vec\map($people, static fn (User $user): Uuid => $user->getId()));
+        $resolver = self::service(MemberAudienceResolver::class);
+        $page = static fn (?string $after): array => Vec\map(
+            $resolver->resolve($audience, null === $after ? null : Uuid::fromString($after), 2),
+            static fn (Uuid $id): string => $id->toRfc4122(),
+        );
+
+        self::assertSame([$ids[2], $ids[3]], $page($ids[1]));
+
+        $walked = [];
+        $next = $page(null);
+        for ($pages = 0; [] !== $next && $pages < 5; ++$pages) {
+            $walked = [...$walked, ...$next];
+            $next = $page($next[1] ?? $next[0]);
+        }
+
+        self::assertSame($ids, $walked);
+    }
+
     /** @return list<string> the names of the unfinished events listed */
     private function listed(User $who): array
     {

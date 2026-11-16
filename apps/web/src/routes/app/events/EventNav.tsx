@@ -90,7 +90,7 @@ function useGone(): string | null {
   );
 }
 
-/** Inside an event: its page, an area, All dates, its Guests page and Edit details (sc-22103); not one found gone. */
+/** Inside an event: its page, an area, All dates, its Guests page, Edit details (sc-22103) and the Schedule's run view (sc-1404); not one found gone. */
 export function useInsideEvent(): InsideEvent | null {
   const inside = useRoutedEvent();
   const goneId = useGone();
@@ -111,6 +111,7 @@ function useRoutedEvent(): InsideEvent | null {
 
   if (eventId == null) return null;
   if (name === 'edit' || name === 'dates') return { eventId, area: 'overview', onPage: false };
+  if (name === 'run') return { eventId, area: 'schedule', onPage: false };
   if (name === 'guests' || name === 'people' || isPlaceholderEventArea(name)) {
     return { eventId, area: name, onPage: false };
   }
@@ -123,7 +124,7 @@ export function EventNav({
   inside,
   onFollow,
 }: {
-  inside: InsideEvent;
+  inside: Omit<InsideEvent, 'area'> & { area: SideArea | null };
   onFollow: (() => void) | undefined;
 }) {
   const { t } = useTranslation();
