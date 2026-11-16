@@ -23,7 +23,16 @@ final class FloorGeometry
 
     private const int ROW_TAB_CM = 52;
 
-    private const int SEARCH_STEP_CM = 20;
+    private const int SEARCH_STEP_CM = 10;
+
+    /** What automatic placement keeps between the placing boxes of any two items: a 36-inch row pitch, rows 22 + 46 + 22 cm apart. */
+    public const int PLACE_CLEAR_CM = 46;
+
+    /** A single seat's name, drawn to its right, counted in its placing box. */
+    public const int SEAT_NAME_ROOM_CM = 160;
+
+    /** How many rings past the nearest spot with no overlap the search still looks for one that keeps the clearance. */
+    private const int CLEAR_REACH_RINGS = 21;
 
     /** Where a copy goes before it looks for free floor: below and to the right of its original. */
     public const array COPY_OFFSET_CM = [60, 420];
@@ -84,44 +93,114 @@ final class FloorGeometry
     /**
      * @param list<SeatingTable|SeatingRow|SeatingSeat> $others
      *
-     * @return array{0: int, 1: int} the nearest spot to the one given, in rings of 20 cm, inside the room and clear of the others; the spot given when none is
+     * @return array{0: int, 1: int} the nearest spot to the one given, in rings of 10 cm, inside the room and 46 cm clear of the others;
+     *                               the nearest with no overlap when none is clear within a seat's name and the clearance of it; the spot given, moved into the room, when neither is
      */
     public static function nearestFree(SeatingTable|SeatingRow|SeatingSeat $item, array $others, SeatingPlan $plan, int $fromX, int $fromY): array
     {
-        $limit = Math\maxva($plan->getWidthCm(), $plan->getLengthCm());
-        $taken = Vec\map(Vec\filter($others, static fn (SeatingTable|SeatingRow|SeatingSeat $other): bool => !$other->getId()->equals($item->getId())), self::bounds(...));
+        $theirs = Vec\filter($others, static fn (SeatingTable|SeatingRow|SeatingSeat $other): bool => !$other->getId()->equals($item->getId()));
+        $spaces = Vec\map($theirs, self::placingBox(...));
+        $bodies = Vec\map($theirs, self::bounds(...));
+        $last = Math\maxva($plan->getWidthCm(), $plan->getLengthCm()) / self::SEARCH_STEP_CM;
+        $free = null;
+        $freeRing = 0;
 
-        for ($ring = 0; $ring * self::SEARCH_STEP_CM <= $limit; ++$ring) {
-            $tries = [];
-
-            for ($dx = -$ring; $dx <= $ring; ++$dx) {
-                for ($dy = -$ring; $dy <= $ring; ++$dy) {
-                    if (Math\maxva(Math\abs($dx), Math\abs($dy)) === $ring) {
-                        $tries[] = [$fromX + $dx * self::SEARCH_STEP_CM, $fromY + $dy * self::SEARCH_STEP_CM];
-                    }
-                }
+        for ($ring = 0; $ring <= $last; ++$ring) {
+            if (null !== $free && $ring > $freeRing + self::CLEAR_REACH_RINGS) {
+                return $free;
             }
 
-            $nearestFirst = Vec\sort_by($tries, static fn (array $at): int => ($at[0] - $fromX) ** 2 + ($at[1] - $fromY) ** 2);
+            foreach (self::ring($ring) as [$dx, $dy]) {
+                $x = (int) Math\round(($fromX + $dx) / 10) * 10;
+                $y = (int) Math\round(($fromY + $dy) / 10) * 10;
 
-            foreach ($nearestFirst as [$x, $y]) {
-                if (self::inside($item, $plan->getWidthCm(), $plan->getLengthCm(), $x, $y) && !self::overlapsAny(self::bounds($item, $x, $y), $taken)) {
+                if (!self::inside($item, $plan->getWidthCm(), $plan->getLengthCm(), $x, $y)) {
+                    continue;
+                }
+
+                if (!self::nearAny(self::placingBox($item, $x, $y), $spaces, self::PLACE_CLEAR_CM)) {
                     return [$x, $y];
+                }
+
+                if (null === $free && !self::nearAny(self::bounds($item, $x, $y), $bodies, 0)) {
+                    $free = [$x, $y];
+                    $freeRing = $ring;
                 }
             }
         }
 
-        return [$fromX, $fromY];
+        return $free ?? self::within($item, $plan, $fromX, $fromY);
+    }
+
+    /** @return array{0: int, 1: int} the spot moved the least way that puts the item inside the room */
+    private static function within(SeatingTable|SeatingRow|SeatingSeat $item, SeatingPlan $plan, int $xCm, int $yCm): array
+    {
+        $box = self::bounds($item, $xCm, $yCm);
+        $halfX = ($box['x1'] - $box['x0']) / 2;
+        $halfY = ($box['y1'] - $box['y0']) / 2;
+
+        return [
+            (int) Math\round(Math\minva(Math\maxva($xCm, $halfX), $plan->getWidthCm() - $halfX)),
+            (int) Math\round(Math\minva(Math\maxva($yCm, $halfY), $plan->getLengthCm() - $halfY)),
+        ];
+    }
+
+    /** @return Box its bounds, and a single seat's name to its right */
+    private static function placingBox(SeatingTable|SeatingRow|SeatingSeat $item, ?int $xCm = null, ?int $yCm = null): array
+    {
+        $box = self::bounds($item, $xCm, $yCm);
+
+        return $item instanceof SeatingSeat ? [...$box, 'x1' => $box['x1'] + self::SEAT_NAME_ROOM_CM] : $box;
+    }
+
+    /**
+     * Nearest first; at equal distance below, then above, then right, then left.
+     *
+     * @return list<array{0: int, 1: int}>
+     */
+    private static function ring(int $ring): array
+    {
+        static $rings = [];
+
+        if (isset($rings[$ring])) {
+            return $rings[$ring];
+        }
+
+        $tries = [];
+
+        for ($dx = -$ring; $dx <= $ring; ++$dx) {
+            for ($dy = -$ring; $dy <= $ring; ++$dy) {
+                if (Math\maxva(Math\abs($dx), Math\abs($dy)) === $ring) {
+                    $tries[] = [$dx * self::SEARCH_STEP_CM, $dy * self::SEARCH_STEP_CM];
+                }
+            }
+        }
+
+        $rings[$ring] = Vec\sort($tries, static fn (array $a, array $b): int => [$a[0] ** 2 + $a[1] ** 2, self::side($a)] <=> [$b[0] ** 2 + $b[1] ** 2, self::side($b)]);
+
+        return $rings[$ring];
+    }
+
+    /** @param array{0: int, 1: int} $offset */
+    private static function side(array $offset): int
+    {
+        [$dx, $dy] = $offset;
+
+        if (Math\abs($dy) > Math\abs($dx)) {
+            return $dy > 0 ? 0 : 1;
+        }
+
+        return $dx > 0 ? 2 : 3;
     }
 
     /**
      * @param Box       $box
      * @param list<Box> $taken
      */
-    private static function overlapsAny(array $box, array $taken): bool
+    private static function nearAny(array $box, array $taken, int $clearCm): bool
     {
         foreach ($taken as $theirs) {
-            if ($box['x0'] < $theirs['x1'] && $theirs['x0'] < $box['x1'] && $box['y0'] < $theirs['y1'] && $theirs['y0'] < $box['y1']) {
+            if ($box['x0'] < $theirs['x1'] + $clearCm && $theirs['x0'] < $box['x1'] + $clearCm && $box['y0'] < $theirs['y1'] + $clearCm && $theirs['y0'] < $box['y1'] + $clearCm) {
                 return true;
             }
         }
