@@ -34,6 +34,8 @@ import { offersEdit } from '../kit/eventEdit.ts';
 import { closesOnLatest, partLocked } from '../kit/eventOverview.ts';
 import { DUPLICATING, backToOriginal } from '../kit/eventDuplicate.ts';
 import {
+  EDIT_AT_PARAM,
+  EDIT_LEAVES,
   type EditPart,
   EVENT_AREA,
   type EventPlace,
@@ -115,6 +117,8 @@ export function EventScreen({
       [EVENT_AREA]?: EventPlace;
       [GUESTS_FILTER]?: Choice | undefined;
       [DUPLICATING]?: string | undefined;
+      [EDIT_AT_PARAM]?: string | undefined;
+      [EDIT_LEAVES]?: string | undefined;
     }): void;
     getState(): { routes: readonly { params?: unknown }[]; index: number } | undefined;
   }>();
@@ -234,15 +238,19 @@ export function EventScreen({
       was == null ? was : { ...was, open: false, ...(opener == null ? {} : { opener }) },
     );
   const onEdit = manages ? openEdit : undefined;
-  const fromLink = useRef(opensEdit);
+  const [linked, setLinked] = useState<EditPart | undefined>();
+
+  if (event != null && opensEdit !== linked) {
+    setLinked(opensEdit);
+    if (opensEdit != null && manages && !partLocked(opensEdit, phase ?? event.phase))
+      openEdit(opensEdit, partRef(opensEdit), editLeaves);
+  }
+  const loaded = event != null;
 
   useEffect(() => {
-    const part = fromLink.current;
-    if (part == null || event == null) return;
-    fromLink.current = undefined;
-    if (manages && !partLocked(part, phase ?? event.phase))
-      openEdit(part, partRef(part), editLeaves);
-  });
+    if (opensEdit != null && loaded)
+      navigation.setParams({ [EDIT_AT_PARAM]: undefined, [EDIT_LEAVES]: undefined });
+  }, [opensEdit, loaded, navigation]);
   const onDuplicate = creates
     ? (opener: RefObject<ScreenReaderTarget | null>) =>
         setDuplicating((now) => ({ opener, count: (now?.count ?? 0) + 1, open: true }))
