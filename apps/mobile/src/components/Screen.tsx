@@ -1055,6 +1055,9 @@ export interface ColumnRows<Item> {
   onEndNear?: () => void;
 }
 
+/** Screens of rows kept mounted around the one in view: React Native's 21 kept rows nobody could see in memory (sc-49170). */
+const ROWS_WINDOW = 5;
+
 /** A scrolling column inside a Screen that does not scroll, so what it holds can bring itself into view. */
 export function ScrollColumn<Item>({
   children,
@@ -1122,6 +1125,8 @@ export function ScrollColumn<Item>({
           data={rows.data}
           keyExtractor={rows.keyOf}
           renderItem={({ item, index }) => rows.render(item, index)}
+          windowSize={ROWS_WINDOW}
+          removeClippedSubviews
           onEndReached={rows.onEndNear}
           onEndReachedThreshold={1}
           onContentSizeChange={(_, height) => {
