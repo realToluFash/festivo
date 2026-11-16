@@ -5,6 +5,9 @@ import { RouterProvider, createMemoryRouter } from 'react-router';
 import { __setSessionState, type Session } from '../../../session.ts';
 import { OWNER_PERMISSIONS, membership } from '../../../test-memberships.ts';
 import { routes } from '../../index.tsx';
+import { cssRule, stylesheet } from '../../../test-styles.ts';
+
+const MENU_CSS = stylesheet(import.meta.dirname, 'menu.css');
 
 const IRE = membership({ id: 'org_1', name: 'Ìrè Events' });
 
@@ -152,6 +155,14 @@ describe('The event’s Menu (sc-3902)', () => {
       within(cards[1] as HTMLElement).getAllByText('Contains: Celery', { selector: 'p' }),
     ).toHaveLength(2);
     expect(within(cards[1] as HTMLElement).getByText('Halal')).toBeDefined();
+  });
+
+  it('spaces its crumbs, header and panel 12 px apart as the demo does, not the event area’s 18', async () => {
+    await onMenu({ 'GET /api/events/ev_1/menu': menuOf(STARTER, MAIN) });
+
+    const counts = await screen.findByText('2 courses · 3 dishes');
+    expect(counts.closest('.mc .ev-wide.mn-page')).not.toBeNull();
+    expect(cssRule('.mc .mn-page', MENU_CSS)).toContain('gap: var(--spaceLg);');
   });
 
   it('has no ready line once every course has a dish', async () => {
