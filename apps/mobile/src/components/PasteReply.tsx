@@ -1,7 +1,7 @@
 import { shownReply } from '@soirely/domain';
 import * as Clipboard from 'expo-clipboard';
-import { type RefObject, memo, useCallback, useEffect, useState } from 'react';
-import { AppState, Platform, Pressable, StyleSheet, View } from 'react-native';
+import { type RefObject, memo, useCallback, useState } from 'react';
+import { Platform, Pressable, StyleSheet, View } from 'react-native';
 import { useTranslation } from 'react-i18next';
 
 import { markOf } from '../kit/guestRows.ts';
@@ -12,6 +12,7 @@ import { tokens } from '../theme/tokens.ts';
 import { SearchField } from './EventsSearch.tsx';
 import { Glyph } from './Glyph.tsx';
 import { readOut, useReadOut } from './ReadOut.tsx';
+import { useRebuiltPaste } from './rebuiltPaste.ts';
 import { MarkSlot } from './ReplyMark.tsx';
 import { Row, RowList, TextAction } from './SummaryRows.tsx';
 import { Text, type TextHandle } from './Text.tsx';
@@ -20,28 +21,6 @@ const FIELD_HEIGHT = 48;
 const RING = 1.5;
 const QUOTE_LINES = 6;
 const PLAIN_TEXT: Clipboard.AcceptedContentType[] = ['plain-text'];
-const EVEN_BUILD: Clipboard.GetImageOptions = { format: 'png', jpegQuality: 1 };
-const ODD_BUILD: Clipboard.GetImageOptions = { format: 'png', jpegQuality: 0.99 };
-
-/** expo-clipboard sets the control's target before its paste configuration; a later prop change rebuilds it with both in place. */
-function useRebuiltPaste() {
-  const [build, setBuild] = useState(0);
-  useEffect(() => {
-    const again = () => setBuild((was) => was + 1);
-    again();
-    const resumed = AppState.addEventListener('change', (state) => {
-      if (state === 'active') again();
-    });
-    const copied = Clipboard.addClipboardListener(again);
-    return () => {
-      resumed.remove();
-      copied.remove();
-    };
-  }, []);
-
-  return build % 2 === 0 ? EVEN_BUILD : ODD_BUILD;
-}
-
 /** Soirely's own secondary button: Android's, and iOS's before 16. It reads the clipboard only when pressed. */
 function OwnPaste({ onText }: { onText: (text: string) => void }) {
   const { t } = useTranslation();
