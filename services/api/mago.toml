@@ -157,6 +157,7 @@ domain_messaging = ["App\\Domain\\Messaging\\**"]
 domain_seating = ["App\\Domain\\Seating\\**"]
 domain_guest = ["App\\Domain\\Guest\\**"]
 domain_staff = ["App\\Domain\\Staff\\**"]
+domain_menu = ["App\\Domain\\Menu\\**"]
 domain_run_of_show = ["App\\Domain\\RunOfShow\\**"]
 
 # Capabilities. Each is its own layer so an edge between two of them has to be
@@ -353,6 +354,21 @@ permit = [
     "@layer:repository",
     "@layer:audit",
     "@layer:realtime",
+    "@layer:locale",
+]
+
+# Menu: the organisation's dish library (sc-3901). A last price's currency is one of
+# the organisation's offered currencies; each change is audited.
+[[guard.perimeter.rules]]
+namespace = "App\\Domain\\Menu\\"
+permit = [
+    "@layer:native",
+    "@layer:external",
+    "@layer:shared",
+    "@layer:domain_menu",
+    "@layer:domain_organisation",
+    "@layer:repository",
+    "@layer:audit",
     "@layer:locale",
 ]
 
