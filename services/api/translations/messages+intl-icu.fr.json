@@ -92,10 +92,10 @@
     "validation.seating_row_spacing_between": "Indiquez un espacement compris entre {min} et {max}.",
     "validation.seating_seat_name_required": "Indiquez un nom pour la place.",
     "validation.seating_seat_name_taken": "Ce plan a déjà une place nommée {name}.",
-    "validation.seating_arrange_nothing": "Send at least one table, row or seat to move.",
-    "validation.seating_arrange_table_only": "Only a table changes its size here.",
-    "validation.seating_seat_does_not_turn": "A single seat does not turn.",
-    "validation.seating_outside_room": "{name} would sit outside the room.",
-    "validation.seating_row_outside_room": "Row {label} would sit outside the room.",
-    "seating.no_such_item": "This table, row or seat is not on the plan."
+    "validation.seating_arrange_nothing": "Envoyez au moins une table, une rangée ou une place à déplacer.",
+    "validation.seating_arrange_table_only": "Ici, seule une table change de taille.",
+    "validation.seating_seat_does_not_turn": "Une place isolée ne pivote pas.",
+    "validation.seating_outside_room": "{name} se trouverait hors de la salle.",
+    "validation.seating_row_outside_room": "Rangée {label} se trouverait hors de la salle.",
+    "seating.no_such_item": "Cette table, rangée ou place ne figure pas sur le plan."
 }
