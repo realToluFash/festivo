@@ -885,7 +885,11 @@ function ZoomControls({ camera }: { camera: ReturnType<typeof useCamera> }) {
   const pct = percentOf(camera.s);
 
   return (
-    <div className="st-float st-zoom" role="group" aria-label={t('seating.zoomIs', { pct })}>
+    <div
+      className="st-float st-zoom"
+      role="group"
+      aria-label={t('seating.zoomIs', { share: pct / 100 })}
+    >
       <button
         type="button"
         className="st-round-button"
@@ -898,7 +902,7 @@ function ZoomControls({ camera }: { camera: ReturnType<typeof useCamera> }) {
         <Glyph name="minus" size={19} weight={2.2} />
       </button>
       <span className="st-pct" role="status">
-        {t('seating.percent', { pct })}
+        {t('seating.percent', { share: pct / 100 })}
       </span>
       <button
         type="button"
