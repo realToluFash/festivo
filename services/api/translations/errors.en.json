@@ -35,7 +35,7 @@
     "menu_course_limit": "A menu can have at most {max} courses.",
     "menu_course_picked": "Guests have picked from this course.",
     "menu_dish_picked": "Guests have picked this dish.",
-    "menu_same_one_dish": "Everyone gets the same needs exactly one dish.",
+    "menu_same_one_dish": "“Everyone gets the same” needs exactly one dish.",
     "replies_closed": "Answers have closed.",
     "replies_open": "Replies are still open.",
     "reply_is_theirs": "They replied themselves. Confirm to replace their reply.",

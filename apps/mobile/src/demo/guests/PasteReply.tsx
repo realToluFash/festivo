@@ -18,6 +18,7 @@ import {
   QUOTE_LINES,
   SAMPLE_QUOTE,
   type WhoseRow,
+  clipQuote,
   hasText,
 } from './PasteReplyModel.ts';
 
@@ -165,8 +166,9 @@ export function Quote({
   all: boolean;
   onShowAll: () => void;
 }) {
-  const [lines, setLines] = useState(0);
-  const clipped = !all && lines > QUOTE_LINES;
+  const [lines, setLines] = useState<string[]>([]);
+  const cut = all ? null : clipQuote(lines);
+  const clipped = cut !== null;
 
   return (
     <View style={styles.quoteBlock} testID="paste.quote">
@@ -183,7 +185,7 @@ export function Quote({
             style={styles.quoteText}
             testID="paste.quote.text"
           >
-            {text}
+            {cut ?? text}
           </Text>
           <View
             style={styles.measure}
@@ -196,7 +198,7 @@ export function Quote({
               weight="medium"
               style={styles.quoteText}
               accessible={false}
-              onTextLayout={(event) => setLines(event.nativeEvent.lines.length)}
+              onTextLayout={(event) => setLines(event.nativeEvent.lines.map((line) => line.text))}
             >
               {text}
             </Text>

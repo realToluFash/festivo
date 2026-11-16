@@ -491,6 +491,7 @@ function Plan({
     from == null ? null : (floorItems(from).find((item) => item.one.id === id) ?? null);
   const chosenItems = several.length > 1 ? several.flatMap((id) => itemOf(id) ?? []) : [];
 
+  const dropRefusal = () => setBar((was) => (was?.tone === 'amber' ? null : was));
   const open = (next: Panel | null, onItem = false) => {
     if (next == null) {
       const back = opener.current;
@@ -523,6 +524,7 @@ function Plan({
     setPanel(next);
     setSeveral([]);
     setNotice(null);
+    dropRefusal();
     setNote(null);
     setSectionsRefused(false);
     setOutside(null);
@@ -535,6 +537,7 @@ function Plan({
     setPanel(only == null ? null : { kind: only.kind, id: only.one.id });
     setSeveral(ids.length > 1 ? ids : []);
     setNotice(null);
+    dropRefusal();
     setOutside(null);
     setKindMenu(false);
   };
@@ -850,7 +853,7 @@ function Plan({
 
           settle(items);
           setSave('saved');
-          setNotice(
+          refuseStep(
             name == null || item == null
               ? t('seating.notSaved')
               : t('seating.stepRefused', { name, item: itemName(t, item) }),
@@ -885,6 +888,7 @@ function Plan({
     setPlacements((was) => ({ ...was, ...Object.fromEntries(items.map((one) => [one.id, one])) }));
     unsaved.current = null;
     setSave('saving');
+    dropRefusal();
     queue.current = queue.current.then(() => sendStep(items, tool, saved));
   };
 
