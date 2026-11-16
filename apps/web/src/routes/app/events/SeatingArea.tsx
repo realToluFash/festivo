@@ -58,11 +58,11 @@ import {
   Said,
 } from './SeatingParts.tsx';
 import {
-  AddRowAndSeat,
   RowDrawing,
   RowPanel,
   SingleSeatDrawing,
   SingleSeatPanel,
+  useAddRowAndSeat,
 } from './SeatingRows.tsx';
 import { AddTable, ChairPanel, TableDrawing, TablePanel } from './SeatingTables.tsx';
 import { fitOf, useCamera } from './seatingCamera.ts';
@@ -516,6 +516,7 @@ function Plan({
     ask: setAsking,
     showOutside: setOutside,
   };
+  const { addRow, addSeat } = useAddRowAndSeat(ctx);
 
   const lengths = (cm: number, display: 'short' | 'long' = 'short') =>
     lengthWords(t, locale, cm, system, { display });
@@ -698,7 +699,7 @@ function Plan({
               : t('seating.roomLine', { name: plan.roomName, ...words })}
           </text>
         </svg>
-        {!readOnly && <AddTable ctx={ctx} more={<AddRowAndSeat ctx={ctx} />} />}
+        {!readOnly && <AddTable ctx={ctx} floor={size.w} onRow={addRow} onSeat={addSeat} />}
         <ZoomControls camera={camera} />
         {s >= SMALL_MAP_FROM_SCALE - 1e-9 && (
           <SmallMap plan={plan} view={{ x: -ox / s, y: -oy / s, w: size.w / s, h: size.h / s }} />

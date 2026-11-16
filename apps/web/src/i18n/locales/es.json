@@ -2754,6 +2754,7 @@
       "teal": "Verde petróleo"
     },
     "addTable": "Añadir mesa",
+    "add": "Add",
     "addBar": "Añadir a la sala",
     "shapeRound": "Mesa redonda",
     "shapeRectangular": "Mesa rectangular",
@@ -2771,6 +2772,7 @@
     "menuRectangular": "Mesa rectangular · {{size}} · {{seats}}",
     "menuHead": "Mesa presidencial · {{size}} · {{seats}}",
     "menuCocktail": "Mesa de cóctel · {{size}} · {{seats}}",
+    "menuRow": "Row of chairs",
     "tableSize": "{{width}} × {{tableLength}}",
     "countPlaces_one": "{{count, number}} plaza de pie",
     "countPlaces_other": "{{count, number}} plazas de pie",
