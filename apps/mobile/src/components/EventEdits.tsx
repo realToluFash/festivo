@@ -17,6 +17,7 @@ import { LineIcon } from './AccountCard.tsx';
 import { AlertLine } from './AlertLine.tsx';
 import { EventField as ProductField } from './EventField.tsx';
 import { EventMesh } from './EventMesh.tsx';
+import { currencyMatches } from './currencyMatches.ts';
 import { EventNotice } from './EventNotice.tsx';
 import { SearchField } from './EventsSearch.tsx';
 import { TextField, type TextFieldProps } from './Field.tsx';
@@ -866,13 +867,8 @@ export function CurrencyView({
 }) {
   const { t } = useTranslation();
   const [typed, setTyped] = useState('');
-  const shown = choices.filter((one) =>
-    foldedName(`${one.code} ${one.name}`).includes(foldedName(typed)),
-  );
-  const none =
-    shown.length === 0 && typed.trim() !== ''
-      ? t('eventEdit.noCurrency', { typed: typed.trim() })
-      : null;
+  const { shown, unmatched } = currencyMatches(choices, typed);
+  const none = unmatched == null ? null : t('eventEdit.noCurrency', { typed: unmatched });
 
   useReadOut(none);
 
