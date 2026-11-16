@@ -360,6 +360,28 @@ describe('the plan and the room (sc-3998, sc-4007)', () => {
     expect(screen.getByText('57%')).toBeDefined();
   });
 
+  it(
+    'holds − at 25% and + at 400% aria-disabled, as the product does (sc-57678)',
+    SLOW,
+    async () => {
+      await seating('corner');
+      const zoomIn = screen.getByRole('button', { name: 'Zoom in' });
+      const zoomOut = screen.getByRole('button', { name: 'Zoom out' });
+
+      expect(zoomIn.getAttribute('aria-disabled')).toBe('false');
+      fireEvent.click(zoomIn);
+      fireEvent.click(zoomIn);
+      expect(screen.getByText('400%')).toBeDefined();
+      expect(zoomIn.getAttribute('aria-disabled')).toBe('true');
+      fireEvent.click(zoomIn);
+      expect(screen.getByText('400%')).toBeDefined();
+      for (let step = 0; step < 8; step++) fireEvent.click(zoomOut);
+      expect(screen.getByText('25%')).toBeDefined();
+      expect(zoomOut.getAttribute('aria-disabled')).toBe('true');
+      expect(zoomIn.getAttribute('aria-disabled')).toBe('false');
+    },
+  );
+
   describe('the view follows keyboard focus (sc-4007, WCAG 2.2 2.4.11)', () => {
     type Rect = [number, number, number, number];
 
