@@ -415,4 +415,115 @@ describe('the Menu library (sc-3901)', () => {
 
     expect(await screen.findByText('You do not have access to this', {}, WAIT)).toBeTruthy();
   });
+
+  describe('variants of a dish (sc-3903)', () => {
+    const variant = (id: string, name: string, chosen: 'everyone' | 'children') => ({
+      id,
+      name,
+      for: chosen,
+      allergens: ['fish'],
+      diets: [],
+      lastPrice: { amount: '12.00', currency: 'GBP' },
+    });
+    const COCONUT = {
+      id: 'd_coconut',
+      name: 'Coconut rice',
+      description: null,
+      allergens: ['fish'],
+      diets: [],
+      usedByEvent: false,
+      archivedAt: null,
+      lastPrice: null,
+      variants: [variant('v_fish', 'Fish', 'everyone'), variant('v_hen', 'Chicken', 'everyone')],
+    };
+    const PEPPER = {
+      ...COCONUT,
+      id: 'd_pepper',
+      name: 'Pepper soup',
+      variants: [
+        variant('v_full', 'Full bowl', 'everyone'),
+        variant('v_small', 'Children’s portion', 'children'),
+        variant('v_plain', 'Children’s plain', 'children'),
+      ],
+    };
+    const library = (dishes: unknown[]) => (one: Sent) =>
+      one.method === 'GET'
+        ? new Response(JSON.stringify({ dishes, canManage: true, seesPrices: true }), {
+            status: 200,
+          })
+        : null;
+
+    it('refuses two Children only variants beside each For, and sends nothing', SLOW, async () => {
+      signedIn();
+      const sent = answering(
+        {},
+        library([{ ...COCONUT, id: 'd_asun', name: 'Asun', variants: [] }]),
+      );
+      at('/app/menu-library');
+      await loaded();
+
+      fireEvent.click(screen.getByRole('button', { name: 'Add variant to Asun' }));
+      const panel = await screen.findByRole('complementary', { name: 'Add variants to Asun' });
+      const names = within(panel).getAllByLabelText('Name');
+      fireEvent.change(names[0]!, { target: { value: 'Small' } });
+      fireEvent.change(names[1]!, { target: { value: 'Plain' } });
+      for (const radio of within(panel).getAllByLabelText('Children only')) fireEvent.click(radio);
+      for (const none of within(panel).getAllByLabelText('Contains none of these'))
+        fireEvent.click(none);
+      fireEvent.click(within(panel).getByRole('button', { name: 'Add variants' }));
+
+      expect(within(panel).getAllByText('At least one variant must be for Everyone.')).toHaveLength(
+        2,
+      );
+      expect(sent.some((one) => one.path.endsWith('/variants'))).toBe(false);
+    });
+
+    it('opens nothing on Remove… of the last Everyone variant, and says why', SLOW, async () => {
+      signedIn();
+      const sent = answering({}, library([PEPPER]));
+      at('/app/menu-library');
+      await loaded();
+
+      expect(screen.getByRole('heading', { name: 'Pepper soup · 3 ways' })).toBeTruthy();
+      fireEvent.click(screen.getByRole('button', { name: 'Remove Full bowl…' }));
+
+      expect(
+        await screen.findByText(
+          'Full bowl is the only variant for Everyone. Make another variant for Everyone first.',
+        ),
+      ).toBeTruthy();
+      expect(sent.some((one) => one.method === 'DELETE')).toBe(false);
+    });
+
+    it('folds two into a single dish with the last price it will take', SLOW, async () => {
+      signedIn();
+      const sent = answering({}, (one) =>
+        one.method === 'DELETE'
+          ? new Response(
+              JSON.stringify({
+                dish: { ...COCONUT, variants: [], lastPrice: { amount: '12.00', currency: 'GBP' } },
+              }),
+              { status: 200 },
+            )
+          : library([COCONUT])(one),
+      );
+      at('/app/menu-library');
+      await loaded();
+
+      fireEvent.click(screen.getByRole('button', { name: 'Remove Chicken…' }));
+      expect(await screen.findByText('GBP 12.00, from Fish')).toBeTruthy();
+      fireEvent.click(screen.getByRole('button', { name: 'Make it a single dish' }));
+
+      expect(
+        await screen.findByText(
+          'Coconut rice is a single dish again, with Fish’s allergens, diets and last price.',
+          {},
+          WAIT,
+        ),
+      ).toBeTruthy();
+      expect(
+        sent.some((one) => one.method === 'DELETE' && one.path.endsWith('/variants/v_hen')),
+      ).toBe(true);
+    });
+  });
 });
