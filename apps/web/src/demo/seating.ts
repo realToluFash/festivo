@@ -689,13 +689,6 @@ export function fitOf(
   return { s, ox: FIT_PAD.left + (w - room.w * s) / 2, oy: FIT_PAD.top + (h - room.l * s) / 2 };
 }
 
-export interface Box {
-  x0: number;
-  y0: number;
-  x1: number;
-  y1: number;
-}
-
 /** How far to slide the picture, in screen px, so a focused box (canvas px) shows clear of the floating bars (WCAG 2.2 2.4.11). */
 export function intoView(
   box: Box,
