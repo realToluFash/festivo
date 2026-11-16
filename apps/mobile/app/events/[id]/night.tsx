@@ -8,7 +8,7 @@ import { AppFrame, BackButton } from '../../../src/components/AppFrame.tsx';
 import { NightView } from '../../../src/components/NightView.tsx';
 import { useSidebarCard } from '../../../src/components/sidebarCard.ts';
 import { type TextHandle } from '../../../src/components/Text.tsx';
-import { goToArea, goUpToEvent } from '../../../src/kit/upToEvent.ts';
+import { goToArea, goToEndNow, goUpToEvent } from '../../../src/kit/upToEvent.ts';
 import { useLayout } from '../../../src/layout/useLayout.ts';
 import { tokens } from '../../../src/theme/tokens.ts';
 
@@ -48,7 +48,7 @@ export default function EventNight() {
         }
         contentStyle={phone ? styles.phone : styles.tablet}
         onEvent={setEvent}
-        onEndNow={() => goUpToEvent(navigation, router, id)}
+        onEndNow={() => goToEndNow(navigation, router, id)}
       />
     </AppFrame>
   );

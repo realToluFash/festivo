@@ -44,7 +44,7 @@ import {
 } from '../kit/eventNav.ts';
 import { markDeleted, takeCoverRefused } from '../kit/eventSaved.ts';
 import { type Opened, openedOf, openedWithoutAsking } from '../kit/eventsOpen.ts';
-import { SHOWN_EVENT, goUpToEvent } from '../kit/upToEvent.ts';
+import { ASKS_END, SHOWN_EVENT, goUpToEvent } from '../kit/upToEvent.ts';
 import { useServerNow } from '../kit/serverNow.ts';
 import { useLayout } from '../layout/useLayout.ts';
 import { useSignedIn } from '../signedIn.ts';
@@ -88,6 +88,7 @@ export function EventScreen({
   editLeaves = false,
   keepsTab,
   opensGuest,
+  opensEndNow = false,
 }: {
   eventId: string;
   area: EventPlace;
@@ -105,6 +106,8 @@ export function EventScreen({
   keepsTab: boolean;
   /** The guest whose details Guests opens on, as a match in Search opens them (sc-39534). */
   opensGuest?: string | undefined;
+  /** Opened by the night's End now, so End now's confirmation is over the page as it opens (sc-3895). */
+  opensEndNow?: boolean;
 }) {
   const { t } = useTranslation();
   const { kind } = useLayout();
@@ -119,6 +122,7 @@ export function EventScreen({
       [DUPLICATING]?: string | undefined;
       [EDIT_AT_PARAM]?: string | undefined;
       [EDIT_LEAVES]?: string | undefined;
+      [ASKS_END]?: string | undefined;
     }): void;
     getState(): { routes: readonly { params?: unknown }[]; index: number } | undefined;
   }>();
@@ -287,6 +291,8 @@ export function EventScreen({
             onDuplicate={onDuplicate}
             onDeleted={onDeleted}
             tell={(words) => setToast({ eventId, area, words })}
+            opensEndNow={opensEndNow}
+            onEndNowOpened={() => navigation.setParams({ [ASKS_END]: undefined })}
           />
           {coverRefused?.eventId === eventId && (
             <View style={styles.stack}>

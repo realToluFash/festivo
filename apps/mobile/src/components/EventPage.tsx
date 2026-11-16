@@ -67,6 +67,8 @@ export function EventPage({
   onDeleted,
   onGuests,
   tell,
+  opensEndNow = false,
+  onEndNowOpened,
 }: {
   kind: LayoutKind;
   event: OrganisationEvent;
@@ -88,6 +90,9 @@ export function EventPage({
   onDeleted?: ((event: OrganisationEvent) => void) | undefined;
   /** Says a toast at the foot of the page. */
   tell?: ((words: string) => void) | undefined;
+  /** Arrived from the night's End now: End now's confirmation opens over the page, where it is offered (sc-3895). */
+  opensEndNow?: boolean;
+  onEndNowOpened?: () => void;
 }) {
   const { t } = useTranslation();
   const locale = dateLocale();
@@ -164,6 +169,16 @@ export function EventPage({
   const offered = manageOf(event, phase, now).filter((key) =>
     key === 'duplicate' ? onDuplicate != null : key === 'delete' ? onDeleted != null : manages,
   );
+  const endsNow = opensEndNow && offered.includes('endNow');
+  const askedEnd = useRef(false);
+
+  useEffect(() => {
+    if (!endsNow || askedEnd.current) return;
+    askedEnd.current = true;
+    askEnd('endNow');
+    onEndNowOpened?.();
+  }, [endsNow, askEnd, onEndNowOpened]);
+
   const resumeSays =
     resume.state === 'failed'
       ? t('eventPause.resumeFailed')
