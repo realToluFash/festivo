@@ -4049,7 +4049,7 @@ describe('The cover (sc-3590)', () => {
 
     choose(file());
     await screen.findByRole('button', { name: 'Remove photo' });
-    expect(document.querySelector('.ev-new-cover img')?.getAttribute('src')).toBe('blob:chosen');
+    expect(document.querySelector('.ev-new-cover img')?.getAttribute('src')).toBe('blob:arch.jpg');
     expect(sent.map(({ line }) => line)).not.toContain('POST /api/orgs/org_1/event-cover-uploads');
 
     fireEvent.change(document.getElementById('event-name')!, { target: { value: 'Owambe' } });
@@ -4079,7 +4079,7 @@ describe('The cover (sc-3590)', () => {
 
     choose(file());
     await screen.findByRole('button', { name: 'Remove photo' });
-    expect(document.querySelector('.ev-new-cover img')?.getAttribute('src')).toBe('blob:chosen');
+    expect(document.querySelector('.ev-new-cover img')?.getAttribute('src')).toBe('blob:arch.jpg');
     expect(sent.map(({ line }) => line)).not.toContain('POST /api/orgs/org_1/event-cover-uploads');
 
     fireEvent.click(document.querySelector('.ev-crumb a')!);
@@ -4117,7 +4117,7 @@ describe('The cover (sc-3590)', () => {
 
     choose(file());
     await screen.findByRole('button', { name: 'Remove photo' });
-    expect(document.querySelector('.ev-new-cover img')?.getAttribute('src')).toBe('blob:chosen');
+    expect(document.querySelector('.ev-new-cover img')?.getAttribute('src')).toBe('blob:arch.jpg');
     expect(sent.map(({ line }) => line)).not.toContain('POST /api/orgs/org_1/event-cover-uploads');
 
     fireEvent.change(document.getElementById('event-name')!, { target: { value: 'Owambe' } });
@@ -4395,13 +4395,6 @@ describe('A HEIC the browser cannot show, and a cover that will not load (sc-138
   };
   const COPY = 'data:image/webp;base64,UklGRg==';
   const PREVIEW = 'POST /api/orgs/org_1/event-cover-uploads/preview';
-
-  function refusedWith(message: string): Answer {
-    return () =>
-      problem(422, 'validation_failed', {
-        violations: [{ propertyPath: 'file', message, code: 'validation_failed' }],
-      });
-  }
 
   function serving(cover: unknown, answers: Record<string, Answer> = {}) {
     const sent: { line: string; body: unknown }[] = [];
