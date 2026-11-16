@@ -16,6 +16,7 @@ import { EventSidebar } from './EventSidebar.tsx';
 import { clockOf, sampleEvent, type SampleEvent } from './events.ts';
 import { Icon, type IconName } from './SeatingGlyph.tsx';
 import { keptInbox, waitingLine } from './messages.ts';
+import { browserPlatform, onApple } from './search.ts';
 import {
   type Item,
   type Kind,
@@ -2171,11 +2172,12 @@ function MessageBar({
 }
 
 function KeysStrip() {
+  const mac = typeof navigator !== 'undefined' && onApple(browserPlatform());
   const keys: readonly [string, string][] = [
     ['← ↑ → ↓', SW.keyMove],
     ['Shift', SW.keyShift],
     ['R', SW.keyTurn],
-    ['⌘ D', SW.keyDuplicate],
+    [mac ? '⌘ D' : 'Ctrl D', SW.keyDuplicate],
     ['Delete', SW.keyDelete],
     ['Esc', SW.keyEsc],
   ];

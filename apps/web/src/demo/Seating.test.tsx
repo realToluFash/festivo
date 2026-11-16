@@ -1265,6 +1265,27 @@ describe('moving without dragging, and the save line (sc-5028, WCAG 2.2 SC 2.5.7
       expect(await screen.findByRole('note', { name: 'Keys for the chosen item' })).toBeDefined();
     },
   );
+
+  it(
+    'writes the duplicate key as the computer does, ⌘ D on a Mac and Ctrl D off one',
+    SLOW,
+    async () => {
+      const platform = vi.spyOn(navigator, 'platform', 'get');
+
+      for (const [system, label] of [
+        ['MacIntel', '⌘ D'],
+        ['Win32', 'Ctrl D'],
+      ] as const) {
+        platform.mockReturnValue(system);
+        await seating('tabOrder');
+        const strip = await screen.findByRole('note', { name: 'Keys for the chosen item' });
+
+        expect(within(strip).getByText(label)).toBeDefined();
+        cleanup();
+      }
+      platform.mockRestore();
+    },
+  );
 });
 
 describe('who else is here (sc-4719)', () => {
