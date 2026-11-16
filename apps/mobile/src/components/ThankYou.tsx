@@ -14,7 +14,6 @@ import { useTranslation } from 'react-i18next';
 import { api } from '../api.ts';
 import { dateLocale } from '../i18n/index.ts';
 import { refusalSaid } from '../kit/refusal.ts';
-
 import { weight } from '../theme/fonts.ts';
 import { tokens } from '../theme/tokens.ts';
 import { AlertLine } from './AlertLine.tsx';
