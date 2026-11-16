@@ -43,7 +43,8 @@ export interface TrackView {
   rows: readonly Row[];
   figure: Figure;
   collisions: readonly string[];
-  now: RunItem | null;
+  /** Every item under way, in track order: two can run at once when one starts before the other is finished. */
+  now: readonly Row[];
   next: { item: RunItem; expected: string } | null;
   then: readonly Row[];
 }
@@ -213,11 +214,6 @@ export function trackView(track: Track, clock: string): TrackView {
         item.phase !== 'waiting' && skipped != null ? `Started before ${skipped.title}.` : null,
     };
   });
-  const now =
-    ordered
-      .filter((item) => item.phase === 'now')
-      .sort((a, b) => minutesOf(a.started ?? a.planned) - minutesOf(b.started ?? b.planned))[0] ??
-    null;
   const next = ordered.find((item) => item.phase === 'waiting') ?? null;
 
   return {
@@ -225,7 +221,7 @@ export function trackView(track: Track, clock: string): TrackView {
     rows,
     figure: figureOf(track.items, clock),
     collisions: collisionsOf(track.items, clock),
-    now,
+    now: rows.filter((row) => row.item.phase === 'now'),
     next: next == null ? null : { item: next, expected: clockOf(starts.get(next.id) ?? 0) },
     then: rows.filter((row) => row.item.phase === 'waiting' && row.item !== next),
   };
@@ -350,6 +346,11 @@ export const RUN_STATES = {
     name: 'Collision: Cake cutting would run into Fireworks at 22:00',
     clock: '21:32',
     marks: { ...DINED, speeches: ['20:05', '21:05'], dance: ['21:25'] },
+  },
+  twoRunning: {
+    name: 'Two at once: Welcome speech started while Guests arrive is still on',
+    clock: '18:38',
+    marks: { arrive: ['18:02'], welcome: ['18:33'] },
   },
   outOfOrder: {
     name: 'Out of order: Dinner started before Welcome speech',
