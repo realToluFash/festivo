@@ -135,7 +135,8 @@
     "web:schedule.minutes_other",
     "mobile:runView.minutes_one",
     "mobile:runView.minutes_other",
-    "web:schedule.date"
+    "web:schedule.date",
+    "web:guest.programme"
   ],
   "pt": [
     "web:seating.shapeCocktailShort",

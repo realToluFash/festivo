@@ -400,6 +400,9 @@ def demo_missing(story):
     if not numbers:
         return "its Demo: line names no pull request"
     states = {n: pr_state(n) for n in dict.fromkeys(numbers)}
+    states = {n: state for n, state in states.items() if state != NOT_A_PR}
+    if not states:
+        return "its Demo: line names no pull request"
     unread = [f"#{n}" for n, state in states.items() if state is None]
     if unread:
         return f"GitHub did not answer for {', '.join(unread)}, so its demo is not known merged"
@@ -411,11 +414,16 @@ def demo_missing(story):
     return None
 
 
+NOT_A_PR = "NOT_A_PR"
+
+
 def pr_state(number):
+    """A number GitHub has no pull request for, such as a comment cited beside the demo, is
+    NOT_A_PR rather than unread, so it is skipped instead of blocking the claim."""
     try:
         return github.live(number)["state"]
-    except github.GitHubError:
-        return None
+    except github.GitHubError as error:
+        return NOT_A_PR if github.http_status(error) == 404 else None
 
 
 def claim(c, a):

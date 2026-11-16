@@ -359,6 +359,103 @@ describe('the plan and the room (sc-3998, sc-4007)', () => {
     fireEvent.click(screen.getByRole('button', { name: 'Fit the room' }));
     expect(screen.getByText('57%')).toBeDefined();
   });
+
+  describe('the view follows keyboard focus (sc-4007, WCAG 2.2 2.4.11)', () => {
+    type Rect = [number, number, number, number];
+
+    function measure(boxes: (node: Element) => Rect | null) {
+      return vi.spyOn(Element.prototype, 'getBoundingClientRect').mockImplementation(function (
+        this: Element,
+      ) {
+        const [left, top, right, bottom] = this.classList.contains('st-canvas')
+          ? [0, 0, 718, 719]
+          : (boxes(this) ?? [0, 0, 0, 0]);
+
+        return {
+          left,
+          top,
+          right,
+          bottom,
+          x: left,
+          y: top,
+          width: right - left,
+          height: bottom - top,
+        } as DOMRect;
+      });
+    }
+
+    function view(): string {
+      const box = document.querySelector('.st-view-box');
+
+      return `${box?.getAttribute('x')} ${box?.getAttribute('y')}`;
+    }
+
+    async function table4(boxes: (node: Element, table: Element) => Rect | null) {
+      await seating('corner');
+      const table = item(/^Table 4,/u);
+
+      return { table, measured: measure((node) => boxes(node, table)) };
+    }
+
+    it('slides the plan to an item Tab reaches out of view', SLOW, async () => {
+      const { table, measured } = await table4((node, t) =>
+        node === t ? [800, 300, 900, 400] : null,
+      );
+
+      try {
+        const before = view();
+
+        table.focus();
+        await waitFor(() => expect(view()).not.toBe(before), WAIT);
+      } finally {
+        measured.mockRestore();
+      }
+    });
+
+    it('slides an item out from under the small map', SLOW, async () => {
+      const { table, measured } = await table4((node, t) =>
+        node === t
+          ? [600, 540, 660, 600]
+          : node.classList.contains('st-minimap')
+            ? [530, 507, 702, 639]
+            : null,
+      );
+
+      try {
+        const before = view();
+
+        table.focus();
+        await waitFor(() => expect(view()).not.toBe(before), WAIT);
+      } finally {
+        measured.mockRestore();
+      }
+    });
+
+    it('leaves the view where it is when a click puts the focus there', SLOW, async () => {
+      const { table, measured } = await table4((node, t) =>
+        node === t ? [800, 300, 900, 400] : null,
+      );
+      const matches = Element.prototype.matches;
+      const pointer = vi.spyOn(Element.prototype, 'matches').mockImplementation(function (
+        this: Element,
+        selector: string,
+      ) {
+        return selector === ':focus-visible' ? false : matches.call(this, selector);
+      });
+
+      try {
+        const before = view();
+
+        press(table);
+        table.focus();
+        await new Promise((done) => window.setTimeout(done, 50));
+        expect(view()).toBe(before);
+      } finally {
+        pointer.mockRestore();
+        measured.mockRestore();
+      }
+    });
+  });
 });
 
 describe('Room settings and sections (sc-3998)', () => {
@@ -689,6 +786,35 @@ describe('tables, rows and seats (sc-4000, sc-4003)', () => {
     expect(
       within(panel()).getByText('10 seats will be tight at a 180 × 76 cm table.'),
     ).toBeDefined();
+  });
+
+  it('keeps the reset line on a refused change and clears it on a saved one', SLOW, async () => {
+    const reset = 'Size reset to the rectangular default, 180 × 76 cm. Seats kept at 10.';
+
+    await seating('tapChooses');
+    fireEvent.change(within(panel()).getByLabelText('Shape'), { target: { value: 'rect' } });
+    expect(await within(panel()).findByText(reset)).toBeDefined();
+
+    const seats = within(panel()).getByLabelText('Seats');
+
+    fireEvent.change(seats, { target: { value: '31' } });
+    key(seats, 'Enter');
+    expect(await within(panel()).findByText('Enter a number of seats from 1 to 30.')).toBeDefined();
+    expect(within(panel()).getByText(reset)).toBeDefined();
+
+    fireEvent.change(seats, { target: { value: '10' } });
+    key(seats, 'Enter');
+    await waitFor(() =>
+      expect(within(panel()).queryByText('Enter a number of seats from 1 to 30.')).toBeNull(),
+    );
+    expect(within(panel()).getByText(reset)).toBeDefined();
+
+    fireEvent.change(seats, { target: { value: '8' } });
+    key(seats, 'Enter');
+    await waitFor(() => expect(within(panel()).queryByText(reset)).toBeNull());
+
+    fireEvent.change(within(panel()).getByLabelText('Shape'), { target: { value: 'round' } });
+    expect(await within(panel()).findByText(/^Size reset to the round default/u)).toBeDefined();
   });
 
   it('marks a chair unusable and back, and refuses a taken one', SLOW, async () => {

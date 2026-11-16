@@ -250,6 +250,12 @@ class RestCalls(unittest.TestCase):
                     self.assertRaises(type(error)):
                 github.same_change("b" * 40, HEAD)
 
+    def test_http_status_reads_the_status_gh_printed_or_none(self):
+        not_found = github.GitHubError("gh api x: Not Found (HTTP 404)")
+        self.assertEqual(github.http_status(not_found), 404)
+        self.assertEqual(github.http_status(github.GitHubError("HTTP 422: Unprocessable")), 422)
+        self.assertIsNone(github.http_status(github.GitHubError("gh: connection reset")))
+
     def test_merge_sends_the_head_it_was_passed_at_and_deletes_the_branch(self):
         fake = FakeGh(routes({"repos/o/n/pulls/7/merge": {"merged": True},
                               "repos/o/n/git/refs/heads/feature/x": ""}))

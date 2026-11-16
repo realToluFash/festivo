@@ -644,9 +644,9 @@
     "refused": "No se ha enviado: las respuestas se cerraron antes de que llegara. Todo lo que eligió sigue aquí.",
     "languageSwitched": "Esta página está ahora en español.",
     "languageNotSaved": "Su idioma no se ha guardado. Esta página sigue en español en este dispositivo, pero puede abrirse en otro idioma en otros dispositivos.",
-    "theDay": "The day",
-    "programme": "Programme",
-    "timesIn": "Times in {{timeZone}}."
+    "theDay": "Programa del día",
+    "programme": "Programa",
+    "timesIn": "Horas en {{timeZone}}."
   },
   "signIn": {
     "title": "Iniciar sesión",

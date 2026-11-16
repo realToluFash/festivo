@@ -644,9 +644,9 @@
     "refused": "Non envoyé : les réponses ont été closes entre-temps. Tous vos choix sont conservés.",
     "languageSwitched": "Cette page est maintenant en français.",
     "languageNotSaved": "Votre langue n’a pas été enregistrée. Cette page reste en français sur cet appareil, mais elle peut s’ouvrir dans une autre langue sur vos autres appareils.",
-    "theDay": "The day",
+    "theDay": "Le jour J",
     "programme": "Programme",
-    "timesIn": "Times in {{timeZone}}."
+    "timesIn": "Heures dans le fuseau {{timeZone}}."
   },
   "signIn": {
     "title": "Se connecter",

@@ -425,7 +425,14 @@ def live(number):
 
 
 HUNK = re.compile(r"^@@[^\n]*", re.M)
-UNCOMPARABLE = re.compile(r"HTTP 4(04|22)")
+HTTP_STATUS = re.compile(r"HTTP (\d{3})")
+
+
+def http_status(error):
+    """The HTTP status gh printed in an error, or None. The one place an error's text is read
+    for its status, so a change in how gh prints it is fixed once."""
+    match = HTTP_STATUS.search(str(error))
+    return int(match.group(1)) if match else None
 
 
 def change_key(files):
@@ -447,7 +454,7 @@ def same_change(before, after):
     except RateLimited:
         raise
     except GitHubError as error:
-        if UNCOMPARABLE.search(str(error)):
+        if http_status(error) in (404, 422):
             return False
         raise
     return keys[0] is not None and keys[0] == keys[1]
