@@ -219,14 +219,11 @@ export function InvitationBlock({
         </Text>
       </View>
       {offer.manages && offer.notInviting != null && (
-        <Text
-          size={15}
-          weight="medium"
-          style={[styles.secondary, styles.lines, styles.above]}
-          testID="guest.notInviting"
-        >
-          {offer.notInviting}
-        </Text>
+        <View style={[styles.inset, styles.above]} testID="guest.notInviting">
+          <Text size={15} weight="medium" style={[styles.secondary, styles.lines]}>
+            {offer.notInviting}
+          </Text>
+        </View>
       )}
       {rows.length > 0 && <RowList items={rows} />}
       {!offer.manages && (
@@ -366,6 +363,12 @@ const styles = StyleSheet.create({
   headTitle: { letterSpacing: -0.18, lineHeight: 18 * 1.25 },
   under: { paddingLeft: 40, paddingBottom: tokens.spaceSm, alignItems: 'flex-start' },
   above: { marginBottom: tokens.spaceSm },
+  inset: {
+    paddingVertical: 14,
+    paddingHorizontal: tokens.spaceXl,
+    borderRadius: 18,
+    backgroundColor: tokens.colorInset,
+  },
   notCopied: { paddingLeft: 40, paddingBottom: tokens.spaceSm },
   sheet: { gap: 14, paddingHorizontal: tokens.spaceXxl, paddingTop: 20, paddingBottom: 34 },
   sheetHead: { flexDirection: 'row', alignItems: 'center', gap: tokens.spaceSm },
