@@ -291,9 +291,9 @@ export function venueDraftOf(venue: SavedVenue | null, note: string | null = nul
   };
 }
 
-/** The note as it is saved, as the API's ArrivalNote has it: trimmed and in NFC; only spaces or blank lines is no note. */
+/** The note as it is saved, as the API's ArrivalNote has it: trimmed and otherwise as typed; only spaces or blank lines is no note. */
 export function arrivalNoteSent(typed: string): string | null {
-  const kept = typed.trim().normalize('NFC');
+  const kept = typed.trim();
 
   return kept === '' ? null : kept;
 }

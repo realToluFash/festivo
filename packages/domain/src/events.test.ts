@@ -428,6 +428,15 @@ describe("the host's arrival note (sc-24385)", () => {
     expect(arrivalNoteTooLong(`${fiveHundred}x`)).toBe(true);
   });
 
+  it('saves the note trimmed and as typed, and only spaces as no note (sc-54292)', () => {
+    const decomposed = 'o\u0323\u0301'.repeat(500);
+
+    expect(arrivalNoteSent(` ${decomposed}\n`)).toBe(decomposed);
+    expect(arrivalNoteTooLong(decomposed)).toBe(false);
+    expect(arrivalNoteSent(' \n \t ')).toBeNull();
+    expect(arrivalNoteSent('')).toBeNull();
+  });
+
   it('refuses a note past 500, and nothing else about it', () => {
     expect(venueProblems({ ...venueDraftOf(null), note: `${fiveHundred} ` })).toEqual([]);
     expect(venueProblems({ ...venueDraftOf(null), note: `${fiveHundred}!` })).toEqual([
