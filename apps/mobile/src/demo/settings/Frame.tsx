@@ -52,15 +52,24 @@ export function Landscape({
   overlay,
   at = 'Settings',
   sidebar,
+  band,
 }: {
   column: ReactNode;
   children: ReactNode;
   overlay?: ReactNode;
   at?: Tab;
   sidebar?: ReactNode;
+  /** The offline band, across the column and the pane beside it. */
+  band?: ReactNode;
 }) {
   const shell = useShell();
   const side = useSideFrame();
+  const columns = (
+    <>
+      {column != null && <View style={styles.column}>{column}</View>}
+      <View style={styles.grow}>{children}</View>
+    </>
+  );
 
   return (
     <View style={[styles.grow, side.chrome]}>
@@ -80,10 +89,14 @@ export function Landscape({
           />
         </TodayShellProvider>
       )}
-      <View style={[styles.main, side.card]}>
-        {column != null && <View style={styles.column}>{column}</View>}
-        <View style={styles.grow}>{children}</View>
-      </View>
+      {band == null ? (
+        <View style={[styles.main, side.card]}>{columns}</View>
+      ) : (
+        <View style={[styles.grow, side.card]}>
+          {band}
+          <View style={styles.main}>{columns}</View>
+        </View>
+      )}
       {overlay}
     </View>
   );
