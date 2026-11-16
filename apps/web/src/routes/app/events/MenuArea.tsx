@@ -508,7 +508,7 @@ function Courses({
       onMenu(changed.menu);
     } catch (error) {
       if (gone(error)) return;
-      if (error instanceof ApiError && error.is('menu_same_needs_one')) {
+      if (error instanceof ApiError && error.is('menu_same_one_dish')) {
         api.menu(event.id).then(onMenu, () => undefined);
         return;
       }

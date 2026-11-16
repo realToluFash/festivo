@@ -152,7 +152,7 @@
     "menu.course_limit": "A menu can have at most {max} courses.",
     "menu.course_picked": "Guests have picked from this course.",
     "menu.dish_picked": "Guests have picked this dish.",
-    "menu.same_needs_one": "Everyone gets the same needs exactly one dish.",
+    "menu.same_one_dish": "Everyone gets the same needs exactly one dish.",
     "guest.version_required": "Send the version you are changing, as If-Match.",
     "guest.changed_since": "Someone else changed this guest since you opened it. Your change was not saved.",
     "guest.replies_closed": "Answers have closed. Contact your host if something has changed.",

@@ -83,14 +83,14 @@ final readonly class MenuEditor
         return $course;
     }
 
-    /** Everyone gets the same (`$guestsChoose` false) is refused 409 `menu_same_needs_one` unless the course has exactly one dish. */
+    /** Everyone gets the same (`$guestsChoose` false) is refused 409 `menu_same_one_dish` unless the course has exactly one dish. */
     public function changeCourse(Event $event, MenuCourse $course, CourseDetails $details, bool $guestsChoose, bool $skippable, User $by): void
     {
         $this->locked($event, function () use ($course, $details, $guestsChoose, $skippable, $by): void {
             $this->entityManager->refresh($course);
 
             if (!$guestsChoose && 1 !== Iter\count($this->menuDishRepository->findOnCourse($course))) {
-                throw new ApiException(ErrorCode::MenuSameNeedsOne, 'menu.same_needs_one');
+                throw new ApiException(ErrorCode::MenuSameOneDish, 'menu.same_one_dish');
             }
 
             $before = self::recordedCourse($course);

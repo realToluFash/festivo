@@ -35,7 +35,7 @@
     "menu_course_limit": "Un menú puede tener como máximo {max} tiempos.",
     "menu_course_picked": "Los invitados ya han elegido de este tiempo.",
     "menu_dish_picked": "Los invitados ya han elegido este plato.",
-    "menu_same_needs_one": "«Todos reciben lo mismo» necesita exactamente un plato.",
+    "menu_same_one_dish": "«Todos reciben lo mismo» necesita exactamente un plato.",
     "replies_closed": "El plazo para responder ha terminado.",
     "replies_open": "Las respuestas siguen abiertas.",
     "reply_is_theirs": "Esta persona ya ha respondido por su cuenta. Confirme que quiere sustituir esa respuesta.",

@@ -35,7 +35,7 @@
     "menu_course_limit": "Um menu pode ter, no máximo, {max} serviços.",
     "menu_course_picked": "Os convidados já escolheram deste serviço.",
     "menu_dish_picked": "Os convidados já escolheram este prato.",
-    "menu_same_needs_one": "«Todos recebem o mesmo» precisa de exatamente um prato.",
+    "menu_same_one_dish": "«Todos recebem o mesmo» precisa de exatamente um prato.",
     "replies_closed": "O prazo de resposta terminou.",
     "replies_open": "As respostas continuam abertas.",
     "reply_is_theirs": "Esta pessoa já respondeu por conta própria. Confirme que quer substituir a resposta.",

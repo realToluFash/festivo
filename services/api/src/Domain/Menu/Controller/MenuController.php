@@ -70,7 +70,7 @@ final readonly class MenuController
         return $this->menu($event, Response::HTTP_CREATED, ['courseId' => $course->getId()->toRfc4122()]);
     }
 
-    /** The whole course. `answer` "same" is refused 409 `menu_same_needs_one` unless it has exactly one dish. */
+    /** The whole course. `answer` "same" is refused 409 `menu_same_one_dish` unless it has exactly one dish. */
     #[Route('/api/events/{eventId}/menu/courses/{courseId}', name: 'menu_courses_change', methods: ['PUT'])]
     #[InEvent(Permission::MenuManage)]
     public function changeCourse(Request $request, string $eventId, #[InThisEvent('courseId')] MenuCourse $course): JsonResponse

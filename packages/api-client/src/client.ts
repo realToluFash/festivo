@@ -2539,7 +2539,7 @@ export class ApiClient {
     return this.menuOf(await this.post<unknown>(`${this.menuPath(eventId)}/courses`, details));
   }
 
-  /** The whole course; `same` is refused 409 `menu_same_needs_one` unless it has exactly one dish. */
+  /** The whole course; `same` is refused 409 `menu_same_one_dish` unless it has exactly one dish. */
   async changeMenuCourse(
     eventId: string,
     courseId: string,

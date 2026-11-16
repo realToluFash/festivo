@@ -245,7 +245,7 @@ final class EventMenuTest extends ApiTestCase
         $starter = $this->course('Starter');
         $this->change($starter['id'], ['answer' => 'same']);
         self::assertSame(409, $this->statusCode());
-        self::assertSame('https://soirely.com/errors/menu_same_needs_one', $this->last()['type'] ?? null);
+        self::assertSame('https://soirely.com/errors/menu_same_one_dish', $this->last()['type'] ?? null);
 
         $this->newDish($starter['id'], ['name' => 'Pepper soup', 'allergens' => ['fish'], 'onlyForEvent' => true]);
         $this->change($starter['id'], ['answer' => 'same', 'skippable' => true]);
