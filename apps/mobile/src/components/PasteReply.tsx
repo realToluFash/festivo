@@ -1,7 +1,7 @@
 import { shownReply } from '@soirely/domain';
 import * as Clipboard from 'expo-clipboard';
-import { type RefObject, memo, useCallback, useState } from 'react';
-import { Platform, Pressable, StyleSheet, View } from 'react-native';
+import { type RefObject, memo, useCallback, useEffect, useState } from 'react';
+import { AppState, Platform, Pressable, StyleSheet, View } from 'react-native';
 import { useTranslation } from 'react-i18next';
 
 import { markOf } from '../kit/guestRows.ts';
@@ -20,6 +20,27 @@ const FIELD_HEIGHT = 48;
 const RING = 1.5;
 const QUOTE_LINES = 6;
 const PLAIN_TEXT: Clipboard.AcceptedContentType[] = ['plain-text'];
+const EVEN_BUILD: Clipboard.GetImageOptions = { format: 'png', jpegQuality: 1 };
+const ODD_BUILD: Clipboard.GetImageOptions = { format: 'png', jpegQuality: 0.99 };
+
+/** expo-clipboard sets the control's target before its paste configuration; a later prop change rebuilds it with both in place. */
+function useRebuiltPaste() {
+  const [build, setBuild] = useState(0);
+  useEffect(() => {
+    const again = () => setBuild((was) => was + 1);
+    again();
+    const resumed = AppState.addEventListener('change', (state) => {
+      if (state === 'active') again();
+    });
+    const copied = Clipboard.addClipboardListener(again);
+    return () => {
+      resumed.remove();
+      copied.remove();
+    };
+  }, []);
+
+  return build % 2 === 0 ? EVEN_BUILD : ODD_BUILD;
+}
 
 /** Soirely's own secondary button: Android's, and iOS's before 16. It reads the clipboard only when pressed. */
 function OwnPaste({ onText }: { onText: (text: string) => void }) {
@@ -45,7 +66,7 @@ function OwnPaste({ onText }: { onText: (text: string) => void }) {
   );
 }
 
-/** iOS 16 on: Apple's Paste, memoised because expo-clipboard rebuilds it on every prop update, and a press on a rebuilt one does nothing. */
+/** iOS 16 on: Apple's Paste, memoised because expo-clipboard rebuilds it on every prop update, and a press during a rebuild does nothing. */
 const ApplePaste = memo(function ApplePaste({
   onText,
   inRow,
@@ -57,12 +78,14 @@ const ApplePaste = memo(function ApplePaste({
     (data: Clipboard.PasteEventPayload) => onText(data.type === 'text' ? data.text : ''),
     [onText],
   );
+  const imageOptions = useRebuiltPaste();
 
   return (
     <View style={[styles.appleRing, inRow ? styles.appleInRow : styles.appleAlone]}>
       <Clipboard.ClipboardPasteButton
         onPress={onPress}
         acceptedContentTypes={PLAIN_TEXT}
+        imageOptions={imageOptions}
         displayMode="iconAndLabel"
         cornerStyle="capsule"
         backgroundColor={tokens.colorCard}
