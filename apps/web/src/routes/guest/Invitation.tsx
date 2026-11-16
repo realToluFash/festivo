@@ -21,6 +21,7 @@ import { useWideWidth } from '../../phoneWidth.ts';
 import { useServerNow } from '../../serverNow.ts';
 import { Filled, Notice, TextAction, dayOf, format, readerZone, wallDayOf } from './GuestParts.tsx';
 import { InvalidInvitation } from './InvalidInvitation.tsx';
+import { Programme } from './Programme.tsx';
 import { KITCHEN_SAVED_ID, KitchenCheck, KitchenSaved, KitchenStep } from './Kitchen.tsx';
 import { openIn, saveAgain, useGuestLanguage } from './guestLanguage.ts';
 import {
@@ -1451,6 +1452,7 @@ function Details({ page, hosts }: { page: GuestPage; hosts: string }) {
       {named && (
         <Row lead={<Glyph name="users" size={22} />} title={hosts} line={t('eventHosts.heading')} />
       )}
+      <Programme page={page} />
     </div>
   );
 }

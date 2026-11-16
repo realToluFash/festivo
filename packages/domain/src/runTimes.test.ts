@@ -1,3 +1,5 @@
+import { readFileSync } from 'node:fs';
+
 import { describe, expect, it } from 'vitest';
 
 import { type RunTimesItem, runTrack as runTrackIn, runTracks, zonedAt } from './runTimes.ts';
@@ -205,5 +207,31 @@ describe('the tracks of a schedule (sc-1404)', () => {
       [DAY, 'Terrace', ['c']],
       [NEXT, null, ['d']],
     ]);
+  });
+});
+
+describe("the server's expected starts (sc-3899)", () => {
+  it('reads every case in the table the API suite reads', () => {
+    const table: Record<
+      string,
+      { zone: string; now: string; items: RunTimesItem[]; expected: Record<string, string> }
+    > = JSON.parse(
+      readFileSync(
+        new URL(
+          '../../../services/api/tests/Fixtures/RunOfShow/expected-starts.json',
+          import.meta.url,
+        ),
+        'utf8',
+      ),
+    );
+
+    for (const [name, { zone, now, items, expected }] of Object.entries(table)) {
+      const rows = runTrackIn(items, now, zone).rows.filter((row) => row.phase === 'waiting');
+
+      expect(
+        Object.fromEntries(rows.map((row) => [row.item.id, row.expected ?? row.item.planned])),
+        name,
+      ).toEqual(expected);
+    }
   });
 });

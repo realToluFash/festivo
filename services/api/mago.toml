@@ -322,7 +322,8 @@ permit = [
 
 # Guests: an event's list and adding to it (sc-1468). A mobile number is checked by the
 # account's parser, a name folded by the shared rule; each add is audited and published.
-# A guest's own page shows the event's cover as the event's page serialises it (sc-1526).
+# A guest's own page shows the event's cover as the event's page serialises it (sc-1526),
+# and the items the hosts show to guests as the running order works them out (sc-3899).
 [[guard.perimeter.rules]]
 namespace = "App\\Domain\\Guest\\"
 permit = [
@@ -331,6 +332,7 @@ permit = [
     "@layer:shared",
     "@layer:domain_guest",
     "@layer:domain_event",
+    "@layer:domain_run_of_show",
     "@layer:domain_user",
     "@layer:repository",
     "@layer:audit",
