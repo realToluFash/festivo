@@ -1,7 +1,8 @@
+import { visibleLength } from './visibleText.ts';
 import { eventTransition, type EventState } from './eventStates.ts';
 import { listFormat } from './locales.ts';
 
-/** The API's limits on an event's hosts (sc-6713): a name in code points after trimming, and how many. */
+/** The API's limits on an event's hosts (sc-6713): a name in visible characters after trimming, and how many. */
 export const HOST_NAME_MAXIMUM = 60;
 export const HOSTS_MAXIMUM = 6;
 
@@ -16,7 +17,7 @@ export function hostNameOf(typed: string): string {
 }
 
 export function hostNameLength(typed: string): number {
-  return Array.from(hostNameOf(typed)).length;
+  return visibleLength(hostNameOf(typed));
 }
 
 /** One entry per row, null where the name is fine; a repeat is refused on the later row, naming the earlier as typed. */
@@ -25,7 +26,7 @@ export function hostProblems(typed: readonly string[]): (HostProblem | null)[] {
 
   return typed.map((one) => {
     const name = hostNameOf(one);
-    const length = Array.from(name).length;
+    const length = visibleLength(name);
     const folded = name.toLowerCase();
     const earlier = seen.get(folded);
 

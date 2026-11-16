@@ -16,6 +16,7 @@ use App\Enum\EventAction;
 use App\Enum\EventPhase;
 use App\Enum\UploadPurpose;
 use App\Http\Exception\ApiException;
+use App\Locale\VisibleText;
 use App\Repository\EventCoverRepository;
 use App\Storage\Model\SignedUpload;
 use App\Storage\ObjectStore;
@@ -70,7 +71,7 @@ final readonly class EventCoverEditor
             $violations[] = $this->violation('position', 'validation.cover_position_invalid');
         }
 
-        if (null !== $description && Str\length($description) > EventCover::DESCRIPTION_MAXIMUM) {
+        if (null !== $description && VisibleText::tooLong($description, EventCover::DESCRIPTION_MAXIMUM)) {
             $violations[] = $this->violation('description', 'validation.cover_description_too_long', ['{count}' => (string) EventCover::DESCRIPTION_MAXIMUM]);
         }
 

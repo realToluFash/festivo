@@ -14,6 +14,7 @@ import {
   formatWallClock,
   wallOfZoned,
   wallPlusMinutes,
+  visibleLength,
 } from '@soirely/domain';
 import type { TFunction } from 'i18next';
 
@@ -282,8 +283,11 @@ export function check(form: Form, schedule: Schedule, reader: Reader, t: TFuncti
   const errors: Errors = {};
   const title = form.title.trim();
   if (title === '') errors.title = t('schedule.blankTitle');
-  else if (title.length > SCHEDULE_TITLE_MAXIMUM)
-    errors.title = t('schedule.longTitle', { n: title.length, max: SCHEDULE_TITLE_MAXIMUM });
+  else if (visibleLength(title) > SCHEDULE_TITLE_MAXIMUM)
+    errors.title = t('schedule.longTitle', {
+      n: visibleLength(title),
+      max: SCHEDULE_TITLE_MAXIMUM,
+    });
 
   if (form.date === '') errors.date = t('schedule.noStart');
   else if (form.time === '') errors.time = t('schedule.noStart');
@@ -298,13 +302,19 @@ export function check(form: Form, schedule: Schedule, reader: Reader, t: TFuncti
     errors.lasts = t('schedule.badLength', { max: SCHEDULE_LENGTH_MAXIMUM });
 
   const owner = form.owner.trim();
-  if (owner.length > SCHEDULE_OWNER_MAXIMUM)
-    errors.owner = t('schedule.longOwner', { n: owner.length, max: SCHEDULE_OWNER_MAXIMUM });
+  if (visibleLength(owner) > SCHEDULE_OWNER_MAXIMUM)
+    errors.owner = t('schedule.longOwner', {
+      n: visibleLength(owner),
+      max: SCHEDULE_OWNER_MAXIMUM,
+    });
   const role = form.role.trim();
-  if (role.length > SCHEDULE_ROLE_MAXIMUM)
-    errors.role = t('schedule.longRole', { n: role.length, max: SCHEDULE_ROLE_MAXIMUM });
-  if (form.note.length > SCHEDULE_NOTE_MAXIMUM)
-    errors.note = t('schedule.longNote', { n: form.note.length, max: SCHEDULE_NOTE_MAXIMUM });
+  if (visibleLength(role) > SCHEDULE_ROLE_MAXIMUM)
+    errors.role = t('schedule.longRole', { n: visibleLength(role), max: SCHEDULE_ROLE_MAXIMUM });
+  if (visibleLength(form.note) > SCHEDULE_NOTE_MAXIMUM)
+    errors.note = t('schedule.longNote', {
+      n: visibleLength(form.note),
+      max: SCHEDULE_NOTE_MAXIMUM,
+    });
 
   return errors;
 }

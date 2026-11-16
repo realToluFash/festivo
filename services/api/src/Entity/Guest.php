@@ -42,7 +42,7 @@ class Guest
     private ?Guest $host;
 
     /** Exactly as typed, title and all; null only for a companion left unnamed. */
-    #[ORM\Column(type: Types::STRING, length: 200, nullable: true)]
+    #[ORM\Column(type: Types::STRING, length: 800, nullable: true)]
     private ?string $fullName;
 
     /** The name without case or accents, for "already on the list". */
@@ -121,13 +121,13 @@ class Guest
     private ?string $chosenLanguage = null;
 
     /** The words of each ticked Other (sc-3777), keyed by NeedKind::otherField(); its code is a GuestNeed. */
-    #[ORM\Column(type: Types::STRING, length: 100, nullable: true)]
+    #[ORM\Column(type: Types::STRING, length: 400, nullable: true)]
     private ?string $otherAllergy = null;
 
-    #[ORM\Column(type: Types::STRING, length: 100, nullable: true)]
+    #[ORM\Column(type: Types::STRING, length: 400, nullable: true)]
     private ?string $otherDiet = null;
 
-    #[ORM\Column(type: Types::STRING, length: 100, nullable: true)]
+    #[ORM\Column(type: Types::STRING, length: 400, nullable: true)]
     private ?string $otherAccess = null;
 
     /** For those who manage guests only: never the kitchen, the floor or the guest. */

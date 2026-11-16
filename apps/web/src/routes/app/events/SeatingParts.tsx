@@ -142,7 +142,6 @@ export function Field({
   unit,
   optional = false,
   hint,
-  maxLength,
   inputMode = 'text',
   onCommit,
 }: {
@@ -152,7 +151,6 @@ export function Field({
   unit?: string | undefined;
   optional?: boolean;
   hint?: string | undefined;
-  maxLength?: number;
   inputMode?: 'text' | 'decimal';
   onCommit: (text: string) => Promise<string | null> | string | null;
 }) {
@@ -210,7 +208,6 @@ export function Field({
           type="text"
           inputMode={inputMode}
           value={draft}
-          maxLength={maxLength}
           spellCheck={false}
           autoComplete="off"
           aria-invalid={error != null}

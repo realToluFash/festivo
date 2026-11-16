@@ -13,6 +13,7 @@ use App\Http\Access\Policy\Authenticated;
 use App\Http\Access\Policy\PublicAccess;
 use App\Http\Exception\ApiException;
 use App\Http\Input;
+use App\Locale\VisibleText;
 use Psl\Str;
 use Psl\Type;
 use Symfony\Bundle\SecurityBundle\Security;
@@ -70,7 +71,7 @@ final readonly class RequestLinksController
 
         $message = $body['message'] ?? null;
 
-        if (null !== $message && Str\length(Str\trim($message)) > LinkRequester::MESSAGE_MOST) {
+        if (null !== $message && VisibleText::tooLong(Str\trim($message), LinkRequester::MESSAGE_MOST)) {
             throw ApiException::validation([[
                 'propertyPath' => 'message',
                 'message' => $this->translator->trans('request_link.message_long', ['{count}' => (string) LinkRequester::MESSAGE_MOST]),
