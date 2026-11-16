@@ -1112,7 +1112,7 @@ function DishFields({
                 >
                   {currencyChoices(held, form.currency, i18n.language, t).map((choice) => (
                     <option key={choice.value} value={choice.value}>
-                      {choice.label}
+                      {choice.value === '' ? choice.label : choice.value}
                     </option>
                   ))}
                 </select>

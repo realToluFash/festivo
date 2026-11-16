@@ -290,7 +290,10 @@ describe('the Menu library (sc-3901)', () => {
     type('Name', 'Ofada stew');
     fireEvent.click(screen.getByLabelText('Celery'));
     type('Amount', '12,50');
-    fireEvent.change(screen.getByLabelText('Currency'), { target: { value: 'GBP' } });
+    const currency = screen.getByLabelText<HTMLSelectElement>('Currency');
+    expect(currency.selectedOptions[0]?.textContent).toBe('NGN');
+    fireEvent.change(currency, { target: { value: 'GBP' } });
+    expect(currency.selectedOptions[0]?.textContent).toBe('GBP');
     fireEvent.click(screen.getByRole('button', { name: 'Save dish' }));
 
     expect(screen.getByText('Enter the last price as a number, like 12.50.')).toBeTruthy();
