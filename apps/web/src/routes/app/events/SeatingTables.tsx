@@ -385,6 +385,7 @@ export function TableDrawing({
       );
     });
 
+  const lit = chosen && chosenSeat == null;
   const bodyW = table.widthCm * s;
   const bodyH = table.lengthCm * s;
   const inside = table.name.length * 6.2 <= bodyW - 3 && bodyH >= 15;
@@ -401,7 +402,7 @@ export function TableDrawing({
       role="button"
       tabIndex={0}
       aria-label={section == null ? name : t('seating.inSection', { name, section: section.name })}
-      aria-pressed={chosen}
+      aria-pressed={lit}
       data-table={table.id}
       onClick={onChoose}
       onKeyDown={(event: KeyboardEvent) => {
@@ -411,7 +412,7 @@ export function TableDrawing({
         onChoose();
       }}
     >
-      {chosen && box(10, 'st-lit', 'lit')}
+      {lit && box(10, 'st-lit', 'lit')}
       {box(0, 'st-hit', 'hit')}
       <g className="st-item-body">
         {body}

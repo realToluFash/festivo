@@ -192,6 +192,7 @@ export function RowDrawing({
       );
     });
 
+  const lit = chosen && chosenSeat == null;
   const said = t('seating.tableName', {
     name,
     shape: t('seating.kindRow', { count: row.seats }),
@@ -207,12 +208,12 @@ export function RowDrawing({
       aria-label={
         section == null ? said : t('seating.inSection', { name: said, section: section.name })
       }
-      aria-pressed={chosen}
+      aria-pressed={lit}
       data-row={row.id}
       onClick={onChoose}
       onKeyDown={onKeys(onChoose)}
     >
-      {chosen && box(10, 'st-lit')}
+      {lit && box(10, 'st-lit')}
       {box(0, 'st-hit')}
       <g className="st-item-body">
         <rect
