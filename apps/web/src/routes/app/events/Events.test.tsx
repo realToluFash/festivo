@@ -3387,6 +3387,33 @@ describe("The hosts' thank-you (sc-6476)", () => {
     expect((box as HTMLTextAreaElement).value).toBe('Thanks again.');
   });
 
+  it('Cancel on a changed line asks first, and Discard keeps the line and focuses Edit', async () => {
+    signedIn();
+    // jsdom focuses inside an `[inert]` subtree; a browser does not.
+    const focus = HTMLElement.prototype.focus;
+    vi.spyOn(HTMLElement.prototype, 'focus').mockImplementation(function (
+      this: HTMLElement,
+      options?: FocusOptions,
+    ) {
+      if (this.closest('[inert]') == null) focus.call(this, options);
+    });
+    const sent = await onThePage(finished({ thankYou: LINE }));
+
+    fireEvent.click(within(card()).getByRole('button', { name: 'Edit thank-you' }));
+    typed(card(), 'Thanks again.');
+    fireEvent.click(within(card()).getByRole('button', { name: 'Cancel' }));
+    const ask = await screen.findByRole('alertdialog', { name: 'Discard your change?' });
+    fireEvent.click(within(ask).getByRole('button', { name: 'Discard' }));
+
+    expect(await within(card()).findByText(LINE)).toBeDefined();
+    expect(puts(sent)).toEqual([]);
+    await waitFor(() =>
+      expect(document.activeElement).toBe(
+        within(card()).getByRole('button', { name: 'Edit thank-you' }),
+      ),
+    );
+  });
+
   it('sends nothing for a line over the limit, and says so under the field', async () => {
     signedIn();
     const sent = await onThePage(finished());
@@ -3418,6 +3445,35 @@ describe("The hosts' thank-you (sc-6476)", () => {
     await onThePage(finished({ concludedAt: '2020-11-13T09:00:00+01:00' }));
 
     expect(screen.queryByRole('region', { name: 'A thank-you for your guests' })).toBeNull();
+  });
+
+  it.each([
+    [
+      'with a line',
+      'Thanks for coming.',
+      'Not ended. Check your connection and try again. Your thank-you is still here.',
+    ],
+    ['with none', '', 'Not ended. Try again in a moment.'],
+  ])('says End now failed %s under the field, marked, above the actions', async (_, line, said) => {
+    signedIn();
+    await onThePage(event({ ...HAPPENING, status: 'live', phase: 'happening_now' }), {
+      'POST /api/events/ev_1/end': () => problem(500, 'internal'),
+    });
+
+    fireEvent.click(screen.getByRole('button', { name: 'End now…' }));
+    const dialog = await screen.findByRole('dialog', { name: 'End Adaeze and Tunde now?' });
+    const box = typed(dialog, line);
+    fireEvent.click(within(dialog).getByRole('button', { name: 'End now' }));
+
+    const alert = await within(dialog).findByRole('alert');
+    expect(alert.textContent).toBe(said);
+    expect(alert.querySelector('svg')).not.toBeNull();
+    expect(box.compareDocumentPosition(alert) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
+    expect(
+      alert.compareDocumentPosition(within(dialog).getByRole('button', { name: 'Keep it on' })) &
+        Node.DOCUMENT_POSITION_FOLLOWING,
+    ).toBeTruthy();
+    expect(within(dialog).getAllByText(said)).toHaveLength(1);
   });
 
   it("keeps End now's dialog open over the limit, sending nothing, and sends the cleaned line once it fits", async () => {

@@ -78,7 +78,14 @@ import {
   asStaffEntry,
   asStaffRoster,
 } from './staff.ts';
-import { type Dish, type DishDetails, type DishLibrary, asDish, asDishLibrary } from './dishes.ts';
+import {
+  type Dish,
+  type DishDetails,
+  type DishLibrary,
+  type VariantDetails,
+  asDish,
+  asDishLibrary,
+} from './dishes.ts';
 import {
   type EventMenu,
   type MenuAnswer,
@@ -2577,6 +2584,44 @@ export class ApiClient {
     await this.delete<unknown>(this.dishPath(organisationId, dishId));
   }
 
+  /** Two at once on a dish without variants, then one at a time; refused `validation_failed` under `variants.{n}.`, and 409 `variant_limit` past six (sc-3903). */
+  async addDishVariants(
+    organisationId: string,
+    dishId: string,
+    variants: VariantDetails[],
+  ): Promise<Dish> {
+    return this.dishOf(
+      await this.post<unknown>(`${this.dishPath(organisationId, dishId)}/variants`, { variants }),
+    );
+  }
+
+  /** Without `lastPrice` the price stays as it was. */
+  async editDishVariant(
+    organisationId: string,
+    dishId: string,
+    variantId: string,
+    details: VariantDetails,
+  ): Promise<Dish> {
+    return this.dishOf(
+      await this.put<unknown>(this.dishVariantPath(organisationId, dishId, variantId), details),
+    );
+  }
+
+  /** From two, the one left folds into the dish; refused 409 `variant_last_everyone` for the only one for Everyone. */
+  async removeDishVariant(
+    organisationId: string,
+    dishId: string,
+    variantId: string,
+  ): Promise<Dish> {
+    return this.dishOf(
+      await this.delete<unknown>(this.dishVariantPath(organisationId, dishId, variantId)),
+    );
+  }
+
+  private dishVariantPath(organisationId: string, dishId: string, variantId: string): string {
+    return `${this.dishPath(organisationId, dishId)}/variants/${encodeURIComponent(variantId)}`;
+  }
+
   private dishOf(body: unknown): Dish {
     const dish = asDish(
       typeof body === 'object' && body != null ? (body as { dish?: unknown }).dish : null,
@@ -2648,6 +2693,35 @@ export class ApiClient {
   /** Refused 409 `menu_dish_picked` once a guest has picked it. */
   async removeMenuDish(eventId: string, dishId: string): Promise<MenuChange> {
     return this.menuOf(await this.delete<unknown>(this.menuDishPath(eventId, dishId)));
+  }
+
+  /** Two at once on a dish without variants, then one at a time; refused as `addDishVariants`, and 409 `menu_dish_picked` on a picked dish without variants (sc-3903). */
+  async addMenuVariants(
+    eventId: string,
+    dishId: string,
+    variants: VariantDetails[],
+  ): Promise<MenuChange> {
+    return this.menuOf(
+      await this.post<unknown>(`${this.menuDishPath(eventId, dishId)}/variants`, { variants }),
+    );
+  }
+
+  /** Never refused for picks; `unwarned` as for a dish. Without `cost` the cost stays as it was. */
+  async changeMenuVariant(
+    eventId: string,
+    variantId: string,
+    details: VariantDetails,
+  ): Promise<MenuChange> {
+    return this.menuOf(await this.put<unknown>(this.menuVariantPath(eventId, variantId), details));
+  }
+
+  /** From two, the one left folds into the dish; refused 409 `variant_picked`, and 409 `variant_last_everyone`. */
+  async removeMenuVariant(eventId: string, variantId: string): Promise<MenuChange> {
+    return this.menuOf(await this.delete<unknown>(this.menuVariantPath(eventId, variantId)));
+  }
+
+  private menuVariantPath(eventId: string, variantId: string): string {
+    return `${this.menuPath(eventId)}/variants/${encodeURIComponent(variantId)}`;
   }
 
   /** A hub token for this event's menu topic alone. */

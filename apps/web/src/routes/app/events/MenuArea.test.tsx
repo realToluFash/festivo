@@ -78,6 +78,7 @@ function dish(id: string, name: string, more: Record<string, unknown> = {}) {
     diets: [],
     libraryDishId: null,
     picked: false,
+    variants: [],
     ...more,
   };
 }
@@ -375,5 +376,153 @@ describe('The event’s Menu (sc-3902)', () => {
       await screen.findByRole('heading', { level: 1, name: 'This page does not exist' }),
     ).toBeDefined();
     expect(sent.some((one) => one.line === 'GET /api/events/ev_1/menu')).toBe(false);
+  });
+
+  describe('variants of a dish (sc-3903)', () => {
+    const variant = (id: string, name: string, chosen: 'everyone' | 'children') => ({
+      id,
+      name,
+      for: chosen,
+      allergens: ['celery'],
+      diets: [],
+      picked: false,
+    });
+    const WAYS = dish('d_ways', 'Jollof rice', {
+      variants: [
+        variant('v_chicken', 'Chicken', 'everyone'),
+        variant('v_portion', 'Children’s portion', 'children'),
+        variant('v_plain', 'Children’s plain', 'children'),
+      ],
+    });
+    const TWO = dish('d_two', 'Coconut rice', {
+      variants: [variant('v_fish', 'Fish', 'everyone'), variant('v_hen', 'Chicken', 'everyone')],
+    });
+
+    it('asks for two at once, and refuses both Children only beside each For before sending', async () => {
+      const sent = await onMenu({
+        'GET /api/events/ev_1/menu': menuOf(course('c_main', 'Main', [dish('d_asun', 'Asun')])),
+      });
+
+      fireEvent.click(await screen.findByRole('button', { name: 'Add variant to Asun' }));
+      const panel = await screen.findByRole('complementary', { name: 'Add variants to Asun' });
+      const names = within(panel).getAllByLabelText('Name');
+      fireEvent.change(names[0]!, { target: { value: 'Small' } });
+      fireEvent.change(names[1]!, { target: { value: 'Plain' } });
+      for (const radio of within(panel).getAllByLabelText('Children only')) fireEvent.click(radio);
+      for (const none of within(panel).getAllByLabelText('Contains none of these'))
+        fireEvent.click(none);
+      fireEvent.click(within(panel).getByRole('button', { name: 'Add variants' }));
+
+      expect(within(panel).getAllByText('At least one variant must be for Everyone.')).toHaveLength(
+        2,
+      );
+      await waitFor(() => expect(document.activeElement?.id).toBe('vb0-for-children'));
+      expect(sent.some((one) => one.line.includes('/variants'))).toBe(false);
+    });
+
+    it('adds the first two and says the dish now comes two ways', async () => {
+      const sent = await onMenu({
+        'GET /api/events/ev_1/menu': menuOf(course('c_main', 'Main', [dish('d_asun', 'Asun')])),
+        'POST /api/events/ev_1/menu/dishes/d_asun/variants': () =>
+          json({ menu: { courses: [course('c_main', 'Main', [TWO])] } }, 201),
+      });
+
+      fireEvent.click(await screen.findByRole('button', { name: 'Add variant to Asun' }));
+      const panel = await screen.findByRole('complementary', { name: 'Add variants to Asun' });
+      const names = within(panel).getAllByLabelText('Name');
+      fireEvent.change(names[0]!, { target: { value: 'Goat' } });
+      fireEvent.change(names[1]!, { target: { value: 'Beef' } });
+      for (const none of within(panel).getAllByLabelText('Contains none of these'))
+        fireEvent.click(none);
+      fireEvent.click(within(panel).getByRole('button', { name: 'Add variants' }));
+
+      expect(await screen.findByText('Asun now comes 2 ways: Goat and Beef.')).toBeDefined();
+      expect(
+        sent.find((one) => one.line === 'POST /api/events/ev_1/menu/dishes/d_asun/variants')?.body,
+      ).toEqual({
+        variants: [
+          expect.objectContaining({ name: 'Goat', for: 'everyone', containsNone: true }),
+          expect.objectContaining({ name: 'Beef', for: 'everyone', containsNone: true }),
+        ],
+      });
+    });
+
+    it('opens nothing on a picked dish without variants and says why under the row', async () => {
+      const sent = await onMenu({ 'GET /api/events/ev_1/menu': menuOf(MAIN) });
+
+      fireEvent.click(await screen.findByRole('button', { name: 'Add variant to Jollof rice' }));
+
+      expect(await screen.findByText('Guests have picked this dish.')).toBeDefined();
+      expect(
+        screen.queryByRole('complementary', { name: 'Add variants to Jollof rice' }),
+      ).toBeNull();
+      expect(sent.some((one) => one.line.includes('/variants'))).toBe(false);
+    });
+
+    it('reads the dish as its ways, and refuses Remove… on the last Everyone variant under its row', async () => {
+      const sent = await onMenu({
+        'GET /api/events/ev_1/menu': menuOf(course('c_main', 'Main', [WAYS])),
+      });
+
+      expect(await screen.findByRole('heading', { name: 'Jollof rice · 3 ways' })).toBeDefined();
+      const remove = screen.getByRole('button', { name: 'Remove Chicken…' });
+      fireEvent.click(remove);
+
+      expect(
+        await screen.findByText(
+          'Chicken is the only variant for Everyone. Make another variant for Everyone first.',
+        ),
+      ).toBeDefined();
+      expect(sent.some((one) => one.line.startsWith('DELETE'))).toBe(false);
+    });
+
+    it('folds the last two into a single dish once asked', async () => {
+      const sent = await onMenu({
+        'GET /api/events/ev_1/menu': menuOf(course('c_main', 'Main', [TWO])),
+        'DELETE /api/events/ev_1/menu/variants/v_hen': () =>
+          json({ menu: { courses: [course('c_main', 'Main', [dish('d_two', 'Coconut rice')])] } }),
+      });
+
+      fireEvent.click(await screen.findByRole('button', { name: 'Remove Chicken…' }));
+      expect(await screen.findByText('Make this a single dish?')).toBeDefined();
+      fireEvent.click(screen.getByRole('button', { name: 'Make it a single dish' }));
+
+      expect(
+        await screen.findByText(
+          'Coconut rice is a single dish again, with Fish’s allergens, diets and cost.',
+        ),
+      ).toBeDefined();
+      expect(sent.some((one) => one.line === 'DELETE /api/events/ev_1/menu/variants/v_hen')).toBe(
+        true,
+      );
+    });
+
+    it('closes the fold question when it fails and says so in the status line', async () => {
+      await onMenu({
+        'GET /api/events/ev_1/menu': menuOf(course('c_main', 'Main', [TWO])),
+        'DELETE /api/events/ev_1/menu/variants/v_hen': () => json({ title: 'No' }, 500),
+      });
+
+      fireEvent.click(await screen.findByRole('button', { name: 'Remove Chicken…' }));
+      fireEvent.click(await screen.findByRole('button', { name: 'Make it a single dish' }));
+
+      const line = await screen.findByText(
+        'Nothing was changed: Coconut rice still comes 2 ways. Check your connection, then try again.',
+      );
+      expect(line.closest('[role="status"]')).not.toBeNull();
+      expect(screen.queryByText('Make this a single dish?')).toBeNull();
+    });
+
+    it('keeps Everyone gets the same on a set course and says guests pick the way', async () => {
+      await onMenu({
+        'GET /api/events/ev_1/menu': menuOf(course('c_main', 'Main', [TWO], { answer: 'same' })),
+      });
+
+      expect(
+        await screen.findByText('Everyone gets Coconut rice. Guests pick the way.'),
+      ).toBeDefined();
+      const same = screen.getByRole('radio', { name: 'Everyone gets the same' });
+      expect((same as HTMLInputElement).checked).toBe(true);
+    });
   });
 });

@@ -16,6 +16,7 @@ import { Glyph } from '../../../components/Glyph.tsx';
 import { Head } from '../../../components/SettingsParts.tsx';
 import { Thanks } from '../../../components/Thanks.tsx';
 import { currentLocale } from '../../../i18n/index.ts';
+import { focusWhenFree } from '../../../layers.ts';
 
 import './thankYou.css';
 
@@ -112,7 +113,7 @@ export function ThankYouCard({
   useEffect(() => {
     if (!moved) return;
     if (open) box.current?.focus();
-    else action.current?.focus();
+    else focusWhenFree(() => action.current);
   }, [open, moved]);
 
   const shows = thankYouCardOf(event.thankYou, manages);

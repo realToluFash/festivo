@@ -467,6 +467,8 @@ export function AppFrame({
     floatingTabs && listUnderTabs && standIn == null ? phoneTabBarClearance(insets.bottom) : 0;
   // A top that stays sits outside any Screen, so it and the body under it clear the side bars here, as a Screen does for Events (sc-52423).
   const sides = ownTop && top === 'stays' ? sideInsets(kind, insets) : null;
+  // A phone's header sits outside the body's Screen, so its back, pill and bell clear the side bars here, where Events' do (sc-54891).
+  const headerSides = kind === 'phone' ? sideInsets(kind, insets) : null;
   const switchedRead = created?.takesFocus !== true;
   // A body with its own top, as Today, draws it where its demo does, under its cover, while the frame says it once whatever the body shows (sc-44087, sc-46032).
   const inBody = !framed;
@@ -543,7 +545,11 @@ export function AppFrame({
             />
           )}
           <View style={[styles.column, sidebar && side.card]}>
-            {framed && !ownTop && <FrameHeader {...header} />}
+            {framed && !ownTop && (
+              <View style={headerSides}>
+                <FrameHeader {...header} />
+              </View>
+            )}
             {ownTop && <FixedTop {...header} />}
             {ownTop && top === 'stays' && (
               <View style={sides}>

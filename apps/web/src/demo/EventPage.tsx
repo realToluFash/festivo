@@ -1146,7 +1146,7 @@ const MANAGE_WORDS: Record<Manage, readonly [string, string, boolean]> = {
   duplicate: [W.duplicate, W.duplicateLine, false],
   pause: [W.pause, W.pauseLine, false],
   callOff: [W.callOffOpen, W.callOffLine, true],
-  endNow: [W.endNowOpen, W.endLine, true],
+  endNow: [W.endNowOpen, `${W.endBody} ${W.endFinal}`, true],
   delete: [W.deleteOpen, W.deleteLine, true],
 };
 
