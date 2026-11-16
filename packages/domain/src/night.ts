@@ -231,3 +231,10 @@ function endOf<I extends NightItem>(ordered: readonly I[], timeZone: string): Ni
 
   return { minutesLate: actual - planned, actualEnd: zoned(actual), plannedEnd: zoned(planned) };
 }
+
+/** The weekday a night's `YYYY-MM-DD` falls on, in the reader's language. */
+export function weekdayOf(day: string, locale: string): string {
+  return new Intl.DateTimeFormat(locale, { weekday: 'long', timeZone: 'UTC' }).format(
+    new Date(`${day}T12:00:00Z`),
+  );
+}

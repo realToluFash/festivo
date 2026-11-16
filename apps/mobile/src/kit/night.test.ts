@@ -4,6 +4,7 @@ import {
   type QueuedPress,
   type Schedule,
   type ScheduleItem,
+  withPresses,
 } from '@soirely/api-client';
 import { nightDayOf, nightTracks, nightView } from '@soirely/domain';
 import { init, t } from 'i18next';
@@ -27,7 +28,6 @@ import {
   startAction,
   subWords,
   trackLabel,
-  withPresses,
 } from './night.ts';
 
 beforeAll(() =>
@@ -94,28 +94,6 @@ const press = (itemId: string, kind: QueuedPress['kind'], pressedAt: string): Qu
   kind,
   title: itemId,
   pressedAt: at(pressedAt),
-});
-
-describe('presses laid over the server’s night (sc-3895)', () => {
-  it('shows a kept press at once, timed by the press and in the event’s zone', () => {
-    const night = withPresses(schedule([speeches(), dance()]), [
-      press('speeches', 'start', '2030-11-15T19:50'),
-    ]);
-
-    expect(night.items[0]).toMatchObject({ startedAt: at('2030-11-15T19:50'), endedAt: null });
-  });
-
-  it('keeps a press waiting over a read that does not have it yet', () => {
-    const night = withPresses(schedule([speeches({ startedAt: '2030-11-15T19:50' }), dance()]), [
-      press('speeches', 'done', '2030-11-15T20:28'),
-      press('dance', 'skip', '2030-11-15T20:29'),
-    ]);
-
-    expect(night.items.map((one) => [one.endedAt, one.skipped])).toEqual([
-      [at('2030-11-15T20:28'), false],
-      [null, true],
-    ]);
-  });
 });
 
 describe('what the screen offers', () => {

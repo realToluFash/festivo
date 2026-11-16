@@ -1,5 +1,7 @@
+import { zonedAt } from '@soirely/domain';
+
 import { ApiError } from './problem.ts';
-import type { PressSent, Schedule, ScheduleItemPress } from './schedule.ts';
+import type { PressSent, Schedule, ScheduleItem, ScheduleItemPress } from './schedule.ts';
 
 /** A press kept until the API has it (sc-3895): saved before the screen updates, so closing the app loses nothing. */
 export interface QueuedPress extends PressSent {
@@ -97,4 +99,29 @@ export function asQueuedPresses(raw: unknown): QueuedPress[] {
       typeof (one as QueuedPress).pressedAt === 'string' &&
       typeof (one as QueuedPress).title === 'string',
   );
+}
+
+/** A press as the API's replay applies it, so the screen shows what the send will make of it. */
+function pressed(item: ScheduleItem, press: QueuedPress, at: string): ScheduleItem {
+  if (press.kind === 'start') return { ...item, startedAt: at, endedAt: null, skipped: false };
+  if (press.kind === 'skip') return { ...item, startedAt: null, endedAt: null, skipped: true };
+
+  const startedAt = item.startedAt ?? at;
+
+  return { ...item, startedAt, endedAt: Date.parse(startedAt) > Date.parse(at) ? startedAt : at };
+}
+
+/** The server's schedule with every press still waiting to send laid over it, oldest first. */
+export function withPresses(schedule: Schedule, queue: readonly QueuedPress[]): Schedule {
+  const items = queue.reduce(
+    (all, press) =>
+      all.map((item) =>
+        item.id === press.itemId
+          ? pressed(item, press, zonedAt(new Date(press.pressedAt), schedule.timeZone))
+          : item,
+      ),
+    schedule.items,
+  );
+
+  return { ...schedule, items };
 }

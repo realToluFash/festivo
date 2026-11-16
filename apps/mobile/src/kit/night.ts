@@ -14,6 +14,7 @@ import {
   runItemOf,
   timeSlot,
   wallOfZoned,
+  weekdayOf,
   zonedAt,
 } from '@soirely/domain';
 import type { TFunction } from 'i18next';
@@ -29,40 +30,12 @@ export interface NightLost {
   said: string;
 }
 
-function pressed(item: ScheduleItem, press: QueuedPress, at: string): ScheduleItem {
-  if (press.kind === 'start') return { ...item, startedAt: at, endedAt: null, skipped: false };
-  if (press.kind === 'done') return { ...item, startedAt: item.startedAt ?? at, endedAt: at };
-
-  return { ...item, startedAt: null, endedAt: null, skipped: true };
-}
-
-/** The server's schedule with every press still waiting to send laid over it, oldest first. */
-export function withPresses(schedule: Schedule, queue: readonly QueuedPress[]): Schedule {
-  const items = queue.reduce(
-    (all, press) =>
-      all.map((item) =>
-        item.id === press.itemId
-          ? pressed(item, press, zonedAt(new Date(press.pressedAt), schedule.timeZone))
-          : item,
-      ),
-    schedule.items,
-  );
-
-  return { ...schedule, items };
-}
-
 export function nightItemsOf(schedule: Schedule): NightShownItem[] {
   return schedule.items.map(runItemOf);
 }
 
 export function clockOf(time: string, locale: string): string {
   return formatWallClock(wallOfZoned(time), locale);
-}
-
-export function weekdayOf(day: string, locale: string): string {
-  return new Intl.DateTimeFormat(locale, { weekday: 'long', timeZone: 'UTC' }).format(
-    new Date(`${day}T12:00:00Z`),
-  );
 }
 
 export function trackLabel(

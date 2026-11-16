@@ -9,6 +9,7 @@ import {
   pressedAtOf,
   realtimeTopic,
   sendQueue,
+  withPresses,
 } from '@soirely/api-client';
 import {
   type LaterRow,
@@ -24,6 +25,7 @@ import {
   shownPhase,
   timeSlot,
   wallOfZoned,
+  weekdayOf,
   zonedAt,
 } from '@soirely/domain';
 import type { TFunction } from 'i18next';
@@ -40,14 +42,7 @@ import { useLoadedAt, useServerNow } from '../../../serverNow.ts';
 import { canOn } from '../../../session.ts';
 import { NightSwitch } from './NightSwitch.tsx';
 import { endingNow } from './openInPlace.ts';
-import {
-  durationWords,
-  keptPresses,
-  pressStoreOf,
-  scheduleViewPath,
-  weekdayOf,
-  withPresses,
-} from './nightArea.ts';
+import { durationWords, keptPresses, pressStoreOf, scheduleViewPath } from './nightArea.ts';
 import type { RunItem } from './runArea.ts';
 import { ScheduleArea } from './ScheduleArea.tsx';
 import { useHubTopics } from './useHubTopics.ts';
@@ -193,7 +188,7 @@ function NightArea({ event }: { event: OrganisationEvent }) {
         {load.kind === 'loaded' ? (
           <Night
             event={event}
-            schedule={withPresses(load.schedule, event.id, queue)}
+            schedule={withPresses(load.schedule, queue)}
             queued={queue.length}
             offline={offline}
             syncedAt={syncedAt}
