@@ -79,8 +79,7 @@ final class FloorGeometry
     }
 
     /**
-     * Top to bottom, then left to right: items whose centres sit within half the first one's depth of it share a line, so tables a few centimetres out of line don't read in a zigzag (sc-4717).
-     * The web's inReadingOrder in seatingSelection.ts is the same rule, and Tab follows it.
+     * Top to bottom, then left to right, as the web's inReadingOrder: items whose centres sit within half the first one's depth of it share a line, so tables a few centimetres out of line don't read in a zigzag.
      *
      * @template T of SeatingTable|SeatingRow|SeatingSeat
      *

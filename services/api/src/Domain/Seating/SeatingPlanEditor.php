@@ -1026,11 +1026,7 @@ final readonly class SeatingPlanEditor
         return $table;
     }
 
-    /**
-     * Everything of the original but its name and its guests, at the spot given: the one copy for a single duplicate and a group's.
-     *
-     * @param list<SeatingTable> $tables the plan's tables before this one
-     */
+    /** @param list<SeatingTable> $tables the plan's tables before this one */
     private function tableCopy(SeatingPlan $plan, array $tables, SeatingTable $original, int $xCm, int $yCm, User $by): SeatingTable
     {
         $named = $this->nextTableName($tables);

@@ -43,7 +43,7 @@ export function touchedBy(items: readonly FloorItem[], box: FloorBox): string[] 
     .map((item) => item.one.id);
 }
 
-/** The one reading order, as the API's FloorGeometry::inReadingOrder, for Tab on the floor, the grid and Renumber: a line holds the items whose centres sit within half the first one's depth of it, so tables a few centimetres out of line don't number in a zigzag. */
+/** As the API's FloorGeometry::inReadingOrder, for Tab, the grid and Renumber: a line holds the items whose centres sit within half the first one's depth of it, so tables a few centimetres out of line don't number in a zigzag. */
 export function inReadingOrder(items: readonly FloorItem[]): FloorItem[] {
   const left = [...items].sort((a, b) => a.one.yCm - b.one.yCm || a.one.xCm - b.one.xCm);
   const out: FloorItem[] = [];
@@ -305,7 +305,6 @@ export function restoredOf(item: FloorItem): SeatingRestoredItem {
   return { kind: 'seat', name: item.one.name, ...at, unusable: item.one.unusable };
 }
 
-/** A status line says "tables" for a choice of tables only and "items" otherwise, as its own key, so each language can make the rest of the sentence agree. */
 export function onlyTables(items: readonly FloorItem[]): boolean {
   return items.every((item) => item.kind === 'table');
 }
