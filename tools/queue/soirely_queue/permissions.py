@@ -100,6 +100,9 @@ def denied(sq, claude_folder):
     # Some accounts get this server in place of the built-in Artifact tools, which the
     # workers need and artifact_guard keeps read-only. Denying it brings those back.
     rules.append("mcp__claude-artifacts")
+    # A worker starts in its own checkout; asking to enter a worktree is a prompt nobody
+    # answers (sc-56743).
+    rules += ["EnterWorktree", "ExitWorktree"]
     for folder in (machine.config_dir(), claude_folder):
         if folder:
             rules += [f"Edit({as_path(folder)}/**)", f"Write({as_path(folder)}/**)"]

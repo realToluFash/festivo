@@ -103,3 +103,8 @@ class Permissions(unittest.TestCase):
     def test_no_worker_gets_the_artifacts_server_in_place_of_the_built_in_tools(self):
         denied = permissions.denied(self.home / "sq" / "sq", pathlib.Path("~/.claude-b"))
         self.assertIn("mcp__claude-artifacts", denied)
+
+    def test_no_worker_gets_the_worktree_tools(self):
+        denied = permissions.denied(self.home / "sq" / "sq", pathlib.Path("~/.claude-b"))
+        self.assertIn("EnterWorktree", denied)
+        self.assertIn("ExitWorktree", denied)
