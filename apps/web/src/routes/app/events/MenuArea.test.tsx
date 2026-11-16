@@ -308,7 +308,7 @@ describe('The event’s Menu (sc-3902)', () => {
     const radios = await screen.findAllByRole('radio', { name: 'Everyone gets the same' });
     expect(radios[0]?.getAttribute('aria-disabled')).toBeNull();
     expect(radios[1]?.getAttribute('aria-disabled')).toBe('true');
-    expect(screen.getAllByText('Everyone gets the same needs exactly one dish.')).toHaveLength(1);
+    expect(screen.getAllByText('“Everyone gets the same” needs exactly one dish.')).toHaveLength(1);
   });
 
   it('saves an allergen added to a picked dish with the line counting who has it recorded', async () => {
