@@ -3196,7 +3196,9 @@ describe('The phase, End now and Call off (sc-3585)', () => {
       />,
     );
 
-    expect(await screen.findByRole('dialog', { name: 'End Adaeze and Tunde now?' })).toBeDefined();
+    expect(
+      await screen.findByRole('alertdialog', { name: 'End Adaeze and Tunde now?' }),
+    ).toBeDefined();
   });
 
   it('ends it early once it is happening', async () => {
