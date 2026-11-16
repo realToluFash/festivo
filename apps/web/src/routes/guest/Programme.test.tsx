@@ -70,7 +70,7 @@ const BRUNCH = {
 function openWith(
   programme: object[] | undefined,
   zone = 'Africa/Lagos',
-  language = PAGE.language,
+  language: { chosen: string | null; host: string | null; organisation: string } = PAGE.language,
 ) {
   const resolved = Intl.DateTimeFormat.prototype.resolvedOptions;
   vi.spyOn(Intl.DateTimeFormat.prototype, 'resolvedOptions').mockImplementation(function (
