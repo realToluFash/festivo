@@ -1,3 +1,4 @@
+# sc-55558: a flagged guest open on the host's phone; told elsewhere a second time the flag stays, then the link replaced elsewhere clears it live. Pass ORIENT, METRO_URL, EVENT_ID, GUEST_ID (a guest already flagged), API_URL, WEB_URL, LINKTOKEN (that guest's link token) and TOKEN (the host's).
 appId: host.exp.Exponent
 ---
 - setOrientation: ${ORIENT}
@@ -29,7 +30,7 @@ appId: host.exp.Exponent
 - runScript:
     file: ../scripts/flag-elsewhere.js
     env:
-      URL: ${API_URL}/api/guest-links/wrong-person
+      TARGET_URL: ${API_URL}/api/guest-links/wrong-person
       LINKTOKEN: ${LINKTOKEN}
       ORIGIN: ${WEB_URL}
 - assertTrue: ${output.flagged == 204}
@@ -41,7 +42,7 @@ appId: host.exp.Exponent
 - runScript:
     file: ../scripts/replace-elsewhere.js
     env:
-      URL: ${API_URL}/api/events/${EVENT_ID}/guests/${GUEST_ID}/link/replace
+      TARGET_URL: ${API_URL}/api/events/${EVENT_ID}/guests/${GUEST_ID}/link/replace
       TOKEN: ${TOKEN}
       ORIGIN: ${WEB_URL}
 - assertTrue: ${output.replaced == 204}
