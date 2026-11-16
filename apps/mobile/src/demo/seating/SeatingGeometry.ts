@@ -565,21 +565,81 @@ export function overlapping(it: Item, items: readonly Item[]): Item[] {
   return items.filter((other) => overlaps(it, other));
 }
 
-/** The nearest free space to a point: the point itself, else rings outward on the 10 cm grid. */
+export const PLACE_CLEAR = 46;
+export const SEAT_NAME_ROOM = 160;
+
+interface Span {
+  x0: number;
+  y0: number;
+  x1: number;
+  y1: number;
+}
+
+function spanAt(it: Item, x: number, y: number, named: boolean): Span {
+  const b = bounds(it);
+  const name = named && it.kind === 'single' ? SEAT_NAME_ROOM : 0;
+  return { x0: x - b.x, y0: y - b.y, x1: x + b.x + name, y1: y + b.y };
+}
+
+function apart(a: Span, b: Span, clear: number): boolean {
+  return (
+    a.x1 + clear <= b.x0 || b.x1 + clear <= a.x0 || a.y1 + clear <= b.y0 || b.y1 + clear <= a.y0
+  );
+}
+
+export function keepsClear(it: Item, items: readonly Item[], clear = PLACE_CLEAR): boolean {
+  const a = spanAt(it, it.x, it.y, true);
+  return items.every((o) => o.id === it.id || apart(a, spanAt(o, o.x, o.y, true), clear));
+}
+
+function preferred(p: Point): number {
+  if (Math.abs(p.y) > Math.abs(p.x)) return p.y > 0 ? 0 : 1;
+  return p.x > 0 ? 2 : 3;
+}
+
+const RING_STEP = 10;
+const CLEAR_REACH = Math.ceil((PLACE_CLEAR + SEAT_NAME_ROOM) / RING_STEP);
+const rings: Point[][] = [];
+
+function ringOf(ring: number): Point[] {
+  const known = rings[ring];
+  if (known != null) return known;
+  const tries: Point[] = [];
+  for (let dx = -ring; dx <= ring; dx += 1)
+    for (let dy = -ring; dy <= ring; dy += 1)
+      if (Math.max(Math.abs(dx), Math.abs(dy)) === ring)
+        tries.push({ x: dx * RING_STEP, y: dy * RING_STEP });
+  tries.sort((a, b) => Math.hypot(a.x, a.y) - Math.hypot(b.x, b.y) || preferred(a) - preferred(b));
+  rings[ring] = tries;
+  return tries;
+}
+
+/** The nearest spot 46 cm clear of everything, a single seat's name included, below first; else the nearest that only does not overlap. sc-4003, the same rule as the web demo. */
 export function nearestFree(it: Item, items: readonly Item[], room: Room, from: Point): Point {
-  for (let r = 0; r <= Math.max(room.w, room.l); r += 40) {
-    const tries = r === 0 ? 1 : Math.max(8, Math.round((2 * Math.PI * r) / 40));
-    for (let k = 0; k < tries; k += 1) {
-      const a = (2 * Math.PI * k) / tries;
-      const p = {
-        x: snapped(from.x + r * Math.cos(a), true),
-        y: snapped(from.y + r * Math.sin(a), true),
-      };
+  const others = items.filter((o) => o.id !== it.id);
+  const spaces = others.map((o) => spanAt(o, o.x, o.y, true));
+  const bodies = others.map((o) => spanAt(o, o.x, o.y, false));
+  const b = bounds(it);
+  const last = Math.ceil(Math.max(room.w, room.l) / RING_STEP);
+  let free: Point | null = null;
+  let freeRing = 0;
+  for (let ring = 0; ring <= last; ring += 1) {
+    if (free != null && ring > freeRing + CLEAR_REACH) return free;
+    for (const d of ringOf(ring)) {
+      const p = { x: snapped(from.x + d.x, true), y: snapped(from.y + d.y, true) };
+      if (p.x < b.x || p.y < b.y || p.x + b.x > room.w || p.y + b.y > room.l) continue;
+      const mine = spanAt(it, p.x, p.y, true);
+      if (spaces.every((o) => apart(mine, o, PLACE_CLEAR))) return p;
+      if (free != null) continue;
+      const body = spanAt(it, p.x, p.y, false);
       const placed = { ...it, ...p };
-      if (inside(placed, room) && overlapping(placed, items).length === 0) return p;
+      if (others.every((o, i) => apart(body, bodies[i]!, 0) || !overlaps(placed, o))) {
+        free = p;
+        freeRing = ring;
+      }
     }
   }
-  return from;
+  return free ?? from;
 }
 
 export function itemAt(items: readonly Item[], p: Point, slop: number): Item | null {

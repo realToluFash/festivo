@@ -2,6 +2,9 @@ import { describe, expect, it } from 'vitest';
 
 import {
   type Item,
+  type Point,
+  keepsClear,
+  newItem,
   EVENT_DAY,
   MADE_AT,
   asOf,
@@ -242,6 +245,55 @@ describe('moving and overlapping (sc-5028)', () => {
     expect(plan.items.some((item) => overlap(placed, item))).toBe(false);
     expect(inside(placed, plan.room!)).toBe(true);
   });
+
+  it('keeps rows 90 cm apart and a single seat clear of the last one and its name', () => {
+    const room = { name: 'Hall', w: 2400, l: 1800 };
+    const centre: Point = [1200, 900];
+    const rowA = { ...newItem('row', [], centre), x: 1200, y: 900 };
+    const rowB = newItem('row', [rowA], centre);
+    const [, by] = nearestFree(rowB, [rowA], room, centre);
+
+    expect(by - rowA.y).toBe(90);
+
+    const one = { ...newItem('single', [], centre), x: 1200, y: 900 };
+    const two = newItem('single', [one], centre);
+    const [tx, ty] = nearestFree(two, [one], room, centre);
+    const placed = { ...two, x: tx, y: ty };
+
+    expect([tx, ty]).toEqual([1200, 990]);
+    expect(keepsClear(placed, [one])).toBe(true);
+    expect(keepsClear({ ...placed, x: 1260, y: 900 }, [one])).toBe(false);
+  });
+
+  it('falls back to no overlap when nothing keeps the clearance', () => {
+    const room = { name: 'Box', w: 140, l: 60 };
+    const one = { ...newItem('single', [], [30, 30]), x: 30, y: 30 };
+    const [x, y] = nearestFree(newItem('single', [one], [30, 30]), [one], room, [30, 30]);
+    const placed = { ...newItem('single', [one], [30, 30]), x, y };
+
+    expect(overlap(placed, one)).toBe(false);
+    expect(inside(placed, room)).toBe(true);
+  });
+
+  it('places every new row and seat quickly, even once the hall is full', () => {
+    const room = { name: 'Hall', w: 2400, l: 1800 };
+    const centre: Point = [1200, 900];
+    const items: Item[] = [];
+    let slowest = 0;
+
+    for (let n = 0; n < 120; n += 1) {
+      const draft = newItem(n % 3 === 2 ? 'single' : 'row', items, centre);
+      const began = performance.now();
+      const [x, y] = nearestFree(draft, items, room, centre);
+
+      slowest = Math.max(slowest, performance.now() - began);
+      items.push({ ...draft, x, y });
+    }
+
+    expect(items.some((item) => !keepsClear(item, items))).toBe(true);
+    expect(items.every((item) => inside(item, room))).toBe(true);
+    expect(slowest).toBeLessThan(500);
+  }, 30_000);
 
   it('names the next table, row and seat by the first free number or letter', () => {
     const items = sampleItems();
