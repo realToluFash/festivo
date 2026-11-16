@@ -24,6 +24,7 @@ import {
 } from './handoff.ts';
 import { OrgSwitcher } from './OrgSwitcher.tsx';
 import { VIEWERS, settingsPath } from './settings.ts';
+import '../components/eventSide.css';
 import './handoff.css';
 
 const PLACES = [
