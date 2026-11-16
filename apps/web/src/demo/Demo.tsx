@@ -66,6 +66,8 @@ import { RosterPage } from './Roster.tsx';
 import { ROSTER_PAGES } from './roster.ts';
 import { RunViewPage } from './RunView.tsx';
 import { RUN_PAGES } from './runView.ts';
+import { NightPage } from './Night.tsx';
+import { NIGHT_PAGES } from './night.ts';
 import { StationsPage } from './Stations.tsx';
 import { STATIONS_PAGES } from './stations.ts';
 import { TeamPage } from './Team.tsx';
@@ -220,6 +222,7 @@ export default function Demo() {
       <Route path="events/:id/staff/roster" element={<RosterPage />} />
       <Route path="events/:id/schedule" element={<SchedulePage />} />
       <Route path="events/:id/run" element={<RunViewPage />} />
+      <Route path="events/:id/night" element={<NightPage />} />
       <Route path="calendar" element={<Calendar />} />
       <Route path="settings" element={<Settings />} />
       <Route path="settings/members" element={<Settings />} />
@@ -377,6 +380,8 @@ function DemoHome({ from }: { from: string }) {
         <BoardPages pages={SCHEDULE_PAGES} />
         <h3>The run view: expected times, how far behind, fixed times (sc-1404) · desktop</h3>
         <BoardPages pages={RUN_PAGES} />
+        <h3>The night: Done, Skip and Start now, even with no signal (sc-3895) · desktop</h3>
+        <BoardPages pages={NIGHT_PAGES} />
         <h3>The day on the guest’s page (sc-3899) · phone, tablet and desk</h3>
         <BoardPages pages={GUEST_PROGRAMME_PAGES} />
       </section>
