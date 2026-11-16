@@ -86,7 +86,7 @@ describe('the states, as guests-a-spec §15 names them', () => {
     expect(
       GUESTS_STATES.filter((state) => (DOOR_STATES as readonly string[]).includes(state)),
     ).toEqual([]);
-    expect(GUESTS_STATES).toHaveLength(170);
+    expect(GUESTS_STATES).toHaveLength(179);
     expect(DOOR_STATES).toHaveLength(13);
   });
 
@@ -855,5 +855,36 @@ describe('a reply from a guest nobody invited yet (sc-52829)', () => {
     expect(areaStart('recordNotYet')).toMatchObject({ open: 'bisi', overlay: 'record' });
     expect(areaStart('recordedNotYet')).toMatchObject({ open: 'bisi', recorded: true });
     expect(guestsAt('recordedNotYet').find((g) => g.key === 'bisi')?.kind).toBe('coming');
+  });
+});
+
+describe('a guest’s own link in the app (sc-55558)', () => {
+  it('opens the wrong-person notice on Dr Emeka Nwosu, and its replace from there', () => {
+    expect(areaStart('flagged')).toMatchObject({ open: 'emeka', flagged: true, replaced: false });
+    expect(areaStart('flaggedAsk')).toMatchObject({ flagged: true, overlay: 'replace' });
+    expect(areaStart('flaggedReplaced')).toMatchObject({ flagged: false, replaced: true });
+    expect(areaStart('flaggedNotReplaced')).toMatchObject({ flagged: true, notReplaced: true });
+  });
+
+  it('shows Can view a flagged guest with no notice to act on', () => {
+    expect(roleOf('flaggedViewer')).toBe('viewer');
+    expect(areaStart('flaggedViewer').flagged).toBe(true);
+  });
+
+  it('opens a Draft’s and a Paused event’s guest on that event, its list and its card', () => {
+    expect(eventOf('draftGuest')).toBe(eventOf('draft'));
+    expect(eventOf('draftReplaced')).toBe(eventOf('draft'));
+    expect(eventOf('pausedGuest')).toBe(eventOf('paused'));
+    expect(guestsAt('draftGuest').some((g) => g.key === guestOf('draftGuest'))).toBe(true);
+    expect(guestsAt('pausedGuest').some((g) => g.key === guestOf('pausedGuest'))).toBe(true);
+    expect(areaStart('draftReplaced').replaced).toBe(true);
+    const card = (state: 'draftGuest' | 'pausedGuest', on: 'draft' | 'paused') =>
+      cardWords(state, 'owner', guestsOpening(on, eventOf(on), EN).counts, false, EN, null);
+    expect(card('draftGuest', 'draft').line).toBe(W.draftLine);
+    expect(card('pausedGuest', 'paused').line).toBe(W.pausedLine);
+  });
+
+  it('opens a failed copy on Bisi Adewale, the guest not yet invited', () => {
+    expect(areaStart('copyFailed')).toMatchObject({ open: 'bisi', copyFailed: true, toast: null });
   });
 });

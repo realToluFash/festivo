@@ -21,6 +21,7 @@ import {
   replyParts,
 } from './GuestsModel.ts';
 import { GreetAsRow } from './GuestGreetAs.tsx';
+import { WrongPerson } from './GuestLinkNotice.tsx';
 import { GW, NW } from './GuestNeeds.ts';
 import { NeedsRows } from './GuestNeedsParts.tsx';
 import { ChoseNote } from './GuestLanguage.tsx';
@@ -47,6 +48,8 @@ export interface GuestActions {
   onEdit: () => void;
   onCopy: () => void;
   onReplace: () => void;
+  /** sc-55558: Replace link… from the wrong-person notice. */
+  onFlagReplace: () => void;
   onMark: () => void;
   onUnmark: () => void;
   onAgree: () => void;
@@ -102,6 +105,8 @@ export function GuestPage({
   replies,
   replaced,
   notReplaced,
+  flagged,
+  copyFailed,
   unmarked,
   status,
   replyBy,
@@ -118,6 +123,10 @@ export function GuestPage({
   replies: 'closed' | 'reopened' | null;
   replaced: boolean;
   notReplaced: boolean;
+  /** sc-55558: the wrong-person notice shows under the cover card, for a host who manages guests. */
+  flagged: boolean;
+  /** sc-55558: the last copy failed; the line shows under Copy invitation link. */
+  copyFailed: boolean;
   /** sc-3788: Mark as not invited landed, the guest replied first (409), or it failed (sc-46879). */
   unmarked: 'done' | 'refused' | 'notSaved' | null;
   status: string | null;
@@ -132,6 +141,8 @@ export function GuestPage({
 
   const owner = role === 'owner';
   const invites = eventAllows(event.phase, 'invite');
+  const whyNot =
+    event.phase === 'paused' ? W.pausedLine : event.phase === 'finished' ? W.finishedLine : null;
   const card = cardOf(g, role, replies, locale, actions, invites, replyBy);
   const invitation = invitationWords(g, locale);
   const readOnly = (
@@ -163,7 +174,15 @@ export function GuestPage({
         layout={layout}
         nameRef={nameRef}
       />
-      {notReplaced && <AlertLine text={W.notReplaced} />}
+      {owner && flagged && (
+        <WrongPerson
+          name={g.name}
+          notReplaced={notReplaced}
+          replaceRef={refFor('flagReplace')}
+          onReplace={actions.onFlagReplace}
+        />
+      )}
+      {notReplaced && !(owner && flagged) && <AlertLine text={W.notReplaced} />}
       {unmarked === 'notSaved' && <AlertLine text={W.unmarkNotSaved} />}
       {unmarked === 'refused' && g.when != null && (
         <AlertLine text={say.unmarkRefused(g.name, REPLY_WORD[kind], dayWords(g.when, locale))} />
@@ -295,8 +314,8 @@ export function GuestPage({
         </View>
       )}
       {!owner && event.phase === 'draft' && readOnly}
-      {event.phase !== 'draft' && (
-        <View>
+      {(event.phase !== 'draft' || owner) && (
+        <View testID="guest.invitation">
           <BlockHead title={W.invitation} />
           <RowList
             items={[
@@ -348,16 +367,23 @@ export function GuestPage({
                       key: 'copy',
                       inset: 40,
                       row: (
-                        <Row
-                          ref={refFor('copy')}
-                          title={W.copyLink}
-                          line={W.copyLinkLine}
-                          lead={<LineIcon name="link" />}
-                          accent
-                          weight="medium"
-                          onPress={actions.onCopy}
-                          testID="guest.copy"
-                        />
+                        <View>
+                          <Row
+                            ref={refFor('copy')}
+                            title={W.copyLink}
+                            line={W.copyLinkLine}
+                            lead={<LineIcon name="link" />}
+                            accent
+                            weight="medium"
+                            onPress={actions.onCopy}
+                            testID="guest.copy"
+                          />
+                          {copyFailed && (
+                            <View style={styles.failed} testID="guest.copyFailed">
+                              <AlertLine text={W.copyFailed} small />
+                            </View>
+                          )}
+                        </View>
                       ),
                     },
                   ]
@@ -424,6 +450,16 @@ export function GuestPage({
                 : []),
             ]}
           />
+          {owner && whyNot != null && (
+            <Text
+              size={14}
+              weight="medium"
+              style={[styles.secondary, styles.why]}
+              testID="guest.whyNot"
+            >
+              {whyNot}
+            </Text>
+          )}
           {!owner && <View style={styles.below}>{readOnly}</View>}
         </View>
       )}
@@ -617,6 +653,8 @@ const styles = StyleSheet.create({
     backgroundColor: tokens.colorInset,
   },
   below: { marginTop: tokens.spaceSm },
+  failed: { paddingLeft: 40, paddingBottom: tokens.spaceSm },
+  why: { marginTop: tokens.spaceXs, paddingLeft: tokens.spaceXl, lineHeight: 14 * 1.45 },
   secondary: { color: tokens.colorInkSecondary },
   lines: { lineHeight: 15 * 1.45 },
   sunkCard: { height: 190, borderRadius: 26, backgroundColor: tokens.colorNeutralFill },

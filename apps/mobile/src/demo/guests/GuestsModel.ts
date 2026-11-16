@@ -82,6 +82,15 @@ export const GUEST_STATES = [
   'replaceAsk',
   'replaced',
   'notReplaced',
+  'copyFailed',
+  'flagged',
+  'flaggedAsk',
+  'flaggedReplaced',
+  'flaggedNotReplaced',
+  'flaggedViewer',
+  'draftGuest',
+  'draftReplaced',
+  'pausedGuest',
   'markAsInvited',
   'markRefused',
   'marked',
@@ -296,6 +305,7 @@ export function roleOf(state: GuestsState | null): Role {
     state === 'viewer' ||
     state === 'emptyDraftViewer' ||
     state === 'guestViewer' ||
+    state === 'flaggedViewer' ||
     state === 'guestNeedsViewer' ||
     state === 'repliesClosedViewer' ||
     state === 'overviewViewer' ||
@@ -313,6 +323,21 @@ export function roleOf(state: GuestsState | null): Role {
 /** The states that open on an event's own sample, and that event: the one table they all read. */
 const OWN_SAMPLE = { draft: 'evt-draft-4', paused: 'evt-party-2' } as const;
 type OwnState = keyof typeof OWN_SAMPLE;
+
+/** sc-55558: a guest's details on the Draft and the Paused sample open on that event and its list. */
+export function ownPhaseOf(state: GuestsState | null): OwnState | null {
+  switch (state) {
+    case 'draft':
+    case 'draftGuest':
+    case 'draftReplaced':
+      return 'draft';
+    case 'paused':
+    case 'pausedGuest':
+      return 'paused';
+    default:
+      return null;
+  }
+}
 
 function ownStateOf(event: string): OwnState | null {
   return (Object.keys(OWN_SAMPLE) as OwnState[]).find((key) => OWN_SAMPLE[key] === event) ?? null;
@@ -348,7 +373,8 @@ const PHASE_LINE: Record<Phase, string> = {
 };
 
 export function eventOf(state: GuestsState | null): string {
-  if (state === 'draft' || state === 'paused') return OWN_SAMPLE[state];
+  const own = ownPhaseOf(state);
+  if (own != null) return OWN_SAMPLE[own];
   if (isIn(EMPTY_PHASE_STATES, state)) return EMPTY_PHASE[state].event;
   if (isIn(PLAN_STATES, state)) return PLAN.ireti;
   return WEDDING;
@@ -842,7 +868,7 @@ export function cardWords(
   const owner = role === 'owner';
 
   if (empty) return emptyCard(state, owner);
-  switch (state) {
+  switch (ownPhaseOf(state) ?? state) {
     case 'draft':
       return {
         tags: [PHASE_TAG.draft],
@@ -1191,13 +1217,11 @@ export function guestsAt(state: GuestsState | null): SampleGuest[] {
   const swap = (key: string, change: (g: SampleGuest) => SampleGuest) =>
     GUESTS.map((g) => (g.key === key ? change(g) : g));
   if (isIn(EMPTY_PHASE_STATES, state)) return [];
+  const own = ownPhaseOf(state);
+  if (own != null) return own === 'draft' ? [...DRAFT_GUESTS] : [...PAUSED_GUESTS];
   switch (state) {
     case 'first':
       return [];
-    case 'draft':
-      return [...DRAFT_GUESTS];
-    case 'paused':
-      return [...PAUSED_GUESTS];
     case 'contactsAdded':
       return [...GUESTS, ...FROM_CONTACTS_ADDED].sort((a, b) => a.name.localeCompare(b.name));
     case 'recorded':
@@ -1302,6 +1326,10 @@ export interface AreaStart {
   replies: 'closed' | 'reopened' | null;
   replaced: boolean;
   notReplaced: boolean;
+  /** sc-55558: someone who opened the guest's link told us it was not meant for them. */
+  flagged: boolean;
+  /** sc-55558: the last copy failed; nothing went on the clipboard. */
+  copyFailed: boolean;
   recorded: boolean;
   /** sc-3788: Mark as not invited landed, was refused because the guest replied first (409), or failed on a server error. */
   unmarked: 'done' | 'refused' | 'notSaved' | null;
@@ -1325,6 +1353,8 @@ const QUIET: AreaStart = {
   replies: null,
   replaced: false,
   notReplaced: false,
+  flagged: false,
+  copyFailed: false,
   recorded: false,
   unmarked: null,
   marked: false,
@@ -1357,6 +1387,19 @@ export function guestOf(state: GuestsState | null): string | null {
     case 'invitedByMessage':
       return 'marta';
     case 'finished':
+      return 'bisi';
+    case 'flagged':
+    case 'flaggedAsk':
+    case 'flaggedReplaced':
+    case 'flaggedNotReplaced':
+    case 'flaggedViewer':
+      return 'emeka';
+    case 'draftGuest':
+    case 'draftReplaced':
+      return 'leila';
+    case 'pausedGuest':
+      return 'yemi';
+    case 'copyFailed':
       return 'bisi';
     case 'notYetInvited':
     case 'recordNotYet':
@@ -1484,6 +1527,18 @@ export function areaStart(state: GuestsState | null): AreaStart {
       return { ...base, replaced: true };
     case 'notReplaced':
       return { ...base, notReplaced: true };
+    case 'copyFailed':
+      return { ...base, copyFailed: true };
+    case 'flagged':
+    case 'flaggedViewer':
+      return { ...base, flagged: true };
+    case 'flaggedAsk':
+      return { ...base, flagged: true, overlay: 'replace' };
+    case 'flaggedReplaced':
+    case 'draftReplaced':
+      return { ...base, replaced: true };
+    case 'flaggedNotReplaced':
+      return { ...base, flagged: true, notReplaced: true };
     case 'markAsInvited':
     case 'markRefused':
     case 'markNotSaved':

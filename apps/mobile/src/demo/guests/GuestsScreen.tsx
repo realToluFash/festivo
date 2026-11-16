@@ -158,6 +158,8 @@ export function GuestsScreen({
   const [replies, setReplies] = useState(start.replies);
   const [replaced, setReplaced] = useState(start.replaced);
   const [notReplaced, setNotReplaced] = useState(start.notReplaced);
+  const [flaggedKey, setFlaggedKey] = useState(start.flagged ? start.open : null);
+  const [copyFailed, setCopyFailed] = useState(start.copyFailed);
   const [unmarked, setUnmarked] = useState(start.unmarked);
   const [status, setStatus] = useState<string | null>(start.recorded ? W.recorded : null);
   const exported = useMemo(() => exportStart(state), [state]);
@@ -207,6 +209,7 @@ export function GuestsScreen({
     setPaste(null);
     setStatus(null);
     setNotReplaced(false);
+    setCopyFailed(false);
     setUnmarked(null);
     setReplies(null);
     setReplaced(false);
@@ -457,6 +460,8 @@ export function GuestsScreen({
         replies={replies}
         replaced={replaced}
         notReplaced={notReplaced}
+        flagged={guest != null && guest.key === flaggedKey}
+        copyFailed={copyFailed}
         unmarked={unmarked}
         status={status}
         nameRef={nameRef}
@@ -466,9 +471,11 @@ export function GuestsScreen({
           onEdit: () => show('edit', 'edit'),
           onCopy: () => {
             from.current = 'copy';
+            setCopyFailed(false);
             setToast({ words: W.linkCopied, mark: guest?.kind === 'notyet' });
           },
           onReplace: () => show('replace', 'replace'),
+          onFlagReplace: () => show('replace', 'flagReplace'),
           onMark: () => show('mark', 'mark'),
           onUnmark: () => {
             if (guest == null) return;
@@ -602,8 +609,10 @@ export function GuestsScreen({
             confirm={{ label: W.replaceDo, testID: 'guest.replace.do' }}
             onKeep={close}
             onConfirm={() => {
+              from.current = 'replace';
               close();
               setNotReplaced(false);
+              setFlaggedKey(null);
               setReplaced(true);
             }}
             width={340}
