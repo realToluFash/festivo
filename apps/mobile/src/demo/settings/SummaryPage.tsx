@@ -16,7 +16,7 @@ import { Text } from '../../components/Text.tsx';
 import { PHONE_TAB_BAR, TabBarFade } from '../../components/TodayCover.tsx';
 import { tokens } from '../../theme/tokens.ts';
 import { PAGE_TITLE, PANE_TITLE, pageTitle, paneTitle } from '../../components/topTitle.ts';
-import { Landscape, OrgPill, PortraitTop, SearchAndBell, SettingsTabBar } from './Frame.tsx';
+import { Bell, Landscape, OrgPill, PortraitTop, SettingsTabBar } from './Frame.tsx';
 
 /** A section page in B, summary first: back and the bell on top, the title, then the card and the lists. */
 export function SummaryPage({
@@ -95,7 +95,7 @@ export function SummaryPage({
           {backTo != null && <Back {...backTo} />}
           {phone && backTo == null && <OrgPill />}
           <View style={styles.grow} />
-          {phone && <SearchAndBell tell={shell.tell} />}
+          {phone && <Bell tell={shell.tell} />}
         </View>
         {title == null ? (
           <View style={styles.untitled} />

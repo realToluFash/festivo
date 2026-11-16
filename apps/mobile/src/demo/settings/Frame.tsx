@@ -177,8 +177,8 @@ export function Bell({
   );
 }
 
-/** Search left of the bell, as the product's top has it on a phone and an upright iPad (sc-39534). */
-export function SearchAndBell({ tell }: { tell: Tell }) {
+/** Search left of the bell, as the product's upright top has it (sc-39534); a phone page with a Back has the bell alone. */
+function SearchAndBell({ tell }: { tell: Tell }) {
   return (
     <View style={styles.ends}>
       <SearchButton />
