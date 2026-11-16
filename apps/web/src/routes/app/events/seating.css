@@ -1132,6 +1132,18 @@
   color: var(--colorBrokenText);
 }
 
+.st-no {
+  display: inline-flex;
+  flex: none;
+  align-items: center;
+  justify-content: center;
+  width: 16px;
+  height: 16px;
+  border-radius: 50%;
+  background: var(--colorBroken);
+  color: var(--colorInkOnDark);
+}
+
 .st-turning {
   display: inline-block;
   flex: none;
