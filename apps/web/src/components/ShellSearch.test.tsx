@@ -75,7 +75,7 @@ describe('Search (sc-39534)', () => {
 
     const field = screen.getByRole('combobox', { name: 'Search' });
     expect(document.activeElement).toBe(field);
-    await waitFor(() => expect(field.getAttribute('placeholder')).toBe('Search events and guests'));
+    await waitFor(() => expect(field.getAttribute('placeholder')).toBe('Search'));
     expect(screen.getByText('Find an event or a guest.')).toBeTruthy();
   });
 

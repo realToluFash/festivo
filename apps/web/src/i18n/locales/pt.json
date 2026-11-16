@@ -3532,13 +3532,13 @@
   "search": {
     "row": "Pesquisar",
     "field": {
-      "egm": "Pesquisar eventos, convidados e membros",
-      "eg": "Pesquisar eventos e convidados",
-      "em": "Pesquisar eventos e membros",
-      "gm": "Pesquisar convidados e membros",
-      "e": "Pesquisar eventos",
-      "g": "Pesquisar convidados",
-      "m": "Pesquisar membros"
+      "egm": "Pesquisar",
+      "eg": "Pesquisar",
+      "em": "Pesquisar",
+      "gm": "Pesquisar",
+      "e": "Pesquisar",
+      "g": "Pesquisar",
+      "m": "Pesquisar"
     },
     "hint": {
       "egm": "Encontre um evento, um convidado ou um membro.",
