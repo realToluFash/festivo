@@ -28,7 +28,17 @@ import {
   usable,
   filled,
 } from './seating.ts';
-import { type Fold, type Rect, aligned, copiesOf, thingsOf, withMoved } from './selection.ts';
+import {
+  type Fold,
+  type Rect,
+  aligned,
+  copiesOf,
+  gridOf,
+  outsider,
+  thingsOf,
+  tooBig,
+  withMoved,
+} from './selection.ts';
 
 export type View = 'plan' | 'tables' | 'list';
 export type Tab = 'arrange' | 'seat';
@@ -1042,23 +1052,29 @@ function choosingSeed(state: SeatingState, ui: Ui): Ui {
     case 'gridWall':
     case 'gridEdge': {
       const chosen = ['t3', 't4', 't5', 't9', 't10'];
+      const out = outsider(plan, gridOf(of(chosen), 5, 100).moved);
 
       return {
         ...ui,
         chosen,
         fold: 'grid',
         grid: { columns: '5', gap: '1', errors: {} },
-        refused: state === 'gridEdge' ? say(SW.edgeRefused, { name: byId(plan, 't9').name }) : null,
+        refused:
+          state === 'gridEdge' && out != null ? say(SW.edgeRefused, { name: out.name }) : null,
       };
     }
-    case 'gridWide':
+    case 'gridWide': {
+      const chosen = plan.items.filter((item) => /^t\d+$/u.test(item.id)).map((item) => item.id);
+      const { w, l } = gridOf(of(chosen), 10, 100);
+
       return {
         ...ui,
-        chosen: plan.items.filter((item) => /^t\d+$/u.test(item.id)).map((item) => item.id),
+        chosen,
         fold: 'grid',
         grid: { columns: '10', gap: '1', errors: {} },
-        refused: say(SW.gridWide, { size: '43 m', room: '24 m' }),
+        refused: tooBig(plan, w, l, ui.units),
       };
+    }
     case 'gridFields':
       return {
         ...ui,

@@ -17,6 +17,7 @@ import {
   sameName,
   say,
 } from './seating.ts';
+import type { Ui } from './seatingSeed.ts';
 
 export type Edge = 'left' | 'centre' | 'right' | 'top' | 'middle' | 'bottom';
 export type Fold = 'grid' | 'renumber' | 'section';
@@ -38,6 +39,12 @@ const GAP_MAX_CM = 1000;
 const GAP_MAX_FT = 32;
 const COLUMNS_MAX = 20;
 const START_MAX = 999;
+
+export function chosenItems(ui: Ui): Item[] {
+  return ui.chosen
+    .map((id) => ui.plan.items.find((item) => item.id === id))
+    .filter((item): item is Item => item != null);
+}
 
 export function rectOf(from: readonly [number, number], to: readonly [number, number]): Rect {
   return {
