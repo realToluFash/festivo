@@ -6,10 +6,9 @@ import { __setConfig, config } from '../../../config.ts';
 import { __setSessionState, type Session } from '../../../session.ts';
 import { OWNER_PERMISSIONS, membership } from '../../../test-memberships.ts';
 import { routes } from '../../index.tsx';
-import { cssRule, stylesheet } from '../../../test-styles.ts';
+import { STYLES, cssRule, stylesheet } from '../../../test-styles.ts';
 
 const SCHEDULE_CSS = stylesheet(import.meta.dirname, 'schedule.css');
-const EVENT_PAGE_CSS = stylesheet(import.meta.dirname, '../../../components/eventPage.css');
 
 const IRE = membership({ id: 'org_1', name: 'Ìrè Events' });
 
@@ -232,10 +231,7 @@ describe('The event’s Schedule (sc-3893)', () => {
     const tab = (await screen.findAllByRole('tab'))[0] as HTMLElement;
     expect(tab.closest('.shell-content .ev-page.desk-page')).not.toBeNull();
     expect(
-      cssRule(
-        '.shell-content.is-card .ev-page.desk-page',
-        EVENT_PAGE_CSS.slice(EVENT_PAGE_CSS.indexOf('(width > 60rem)')),
-      ),
+      cssRule('.shell-content.is-card .desk-page', STYLES.slice(STYLES.indexOf('(width > 60rem)'))),
     ).toContain('padding: 0;');
   });
 

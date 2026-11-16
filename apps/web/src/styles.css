@@ -401,6 +401,11 @@ span {
     flex: 1;
     height: auto;
   }
+
+  /* The card already pads the page, so a page that borrows Settings' padded .desk-page is padded once (sc-57523). */
+  .shell-content.is-card .desk-page {
+    padding: 0;
+  }
 }
 
 .shell-sidebar :is(a, button):focus-visible {

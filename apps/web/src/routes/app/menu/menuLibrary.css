@@ -632,13 +632,6 @@
   }
 }
 
-/* At a desk the shell's card already pads the page (sc-57523), so the title sits where the demo puts it. */
-@media (width > 60rem) {
-  .shell-content.is-card .lib-page.desk-page {
-    padding: 0;
-  }
-}
-
 /* At 400% zoom (320 CSS px) the desk reflows into one column, and an open form comes before the list (WCAG 2.2 1.4.10, sc-3901 Decided 15 Nov). */
 @media (width <= 720px) {
   .today.desk:has(.lib-page) {
