@@ -43,7 +43,16 @@ import { useTwoFactorStanding } from '../../twoFactorStanding.ts';
 import { useDialogKeys } from '../../dialogFocus.ts';
 import { PHONE_WIDTH, useDeskWidth } from '../../phoneWidth.ts';
 import { DeskTopContext, placesItsNotices } from '../../deskTop.ts';
-import { EventNav, useInsideEvent, useShownEventName } from './events/EventNav.tsx';
+import {
+  EventNav,
+  type InsideEvent,
+  useInsideEvent,
+  useShownEventName,
+} from './events/EventNav.tsx';
+import { EventHandoff } from './events/EventHandoff.tsx';
+import { type Handoff, useHandoff } from './events/handoff.ts';
+import { Skeleton } from '../../components/Skeleton.tsx';
+import { arriveAt, pageStart } from '../../pageArrival.ts';
 
 /**
  * The signed-in shell, built for a desk.
@@ -219,6 +228,9 @@ function Shell() {
       <TwoFactorOverdue organisation={organisation} />
     ) : null;
 
+  const { handoff, showAnyway } = useHandoff(pathname, organisation?.id ?? null, standIn == null);
+  useArrivesFromHandoff(handoff);
+
   // Said on the page it happened on, and gone once the person moves on.
   const said = switched != null && switched.at === pathname && switched.id === organisation?.id && (
     <Switched name={switched.name} takesFocus={switched.takesFocus === true} />
@@ -346,7 +358,7 @@ function Shell() {
         )}
 
         <main
-          id="content"
+          id={handoff.kind === 'shown' ? undefined : 'content'}
           className={bandless ? 'shell-content is-card' : 'shell-content'}
           inert={menuOpen}
         >
@@ -369,7 +381,11 @@ function Shell() {
             }
           >
             <ErrorBoundary>
-              {standIn != null && !atSettings ? (
+              {handoff.kind === 'shown' ? (
+                <EventHandoff page={handoff.page} name={handoff.name} onShowAnyway={showAnyway} />
+              ) : handoff.kind === 'loading' ? (
+                <Skeleton words={t('eventPage.loading')} shape="rows" rowHeight={56} />
+              ) : standIn != null && !atSettings ? (
                 <>
                   {bandless && ownNotices && (
                     <>
@@ -386,7 +402,14 @@ function Shell() {
           </DeskTopContext>
         </main>
 
-        {menuOpen && <ShellMenu id={menuId} onClose={closeMenu} returnFocus={returnFromMenu} />}
+        {menuOpen && (
+          <ShellMenu
+            id={menuId}
+            onClose={closeMenu}
+            returnFocus={returnFromMenu}
+            inside={handoffInside(handoff)}
+          />
+        )}
 
         {creating && (
           <CreateOrganisation
@@ -406,6 +429,29 @@ function Shell() {
 
 const NO_DESK_TOP = { bell: null, said: null, offline: null };
 
+/** The run page marks no area, and its handoff's Menu still lists the event's areas, none lit (`EventHandoff.dc.html`). */
+function handoffInside(handoff: Handoff): ShownInside | undefined {
+  if (handoff.kind !== 'shown' || handoff.page.kind !== 'event' || handoff.page.area != null)
+    return undefined;
+
+  return { eventId: handoff.page.eventId, area: null, onPage: false };
+}
+
+/** The page that takes the handoff's place, on Show this page anyway or a wider window, is arrived at as one opened from a link. */
+function useArrivesFromHandoff(handoff: Handoff): void {
+  const was = useRef(handoff.kind);
+
+  useEffect(() => {
+    const before = was.current;
+    was.current = handoff.kind;
+    if (before !== 'shown' || handoff.kind !== 'none') return;
+
+    return arriveAt(pageStart, () => undefined);
+  }, [handoff.kind]);
+}
+
+type ShownInside = Omit<InsideEvent, 'area'> & { area: InsideEvent['area'] | null };
+
 const PLACES: readonly (readonly [string, 'today' | 'events' | 'calendar', GlyphName])[] = [
   ['/app', 'today', 'today'],
   ['/app/events', 'events', 'events'],
@@ -417,9 +463,16 @@ function placeLook({ isActive }: { isActive: boolean }): string {
 }
 
 /** The sidebar's places, or inside an event its own: in the sidebar on a desk, in the menu on a phone. */
-function ShellLinks({ onFollow }: { onFollow?: () => void }) {
+function ShellLinks({
+  onFollow,
+  shown,
+}: {
+  onFollow?: () => void;
+  shown?: ShownInside | undefined;
+}) {
   const { t } = useTranslation();
-  const inside = useInsideEvent();
+  const routed = useInsideEvent();
+  const inside = shown ?? routed;
 
   if (inside != null) return <EventNav inside={inside} onFollow={onFollow} />;
 
@@ -507,10 +560,12 @@ function ShellMenu({
   id,
   onClose,
   returnFocus,
+  inside,
 }: {
   id: string;
   onClose: () => void;
   returnFocus: (opener: HTMLElement | null) => void;
+  inside: ShownInside | undefined;
 }) {
   const { t } = useTranslation();
   const dialog = useRef<HTMLDivElement>(null);
@@ -554,7 +609,7 @@ function ShellMenu({
           ✕
         </button>
         <Brand />
-        <ShellLinks onFollow={onClose} />
+        <ShellLinks onFollow={onClose} shown={inside} />
         <div className="today-places">
           <ShellFoot onFollow={onClose} />
         </div>

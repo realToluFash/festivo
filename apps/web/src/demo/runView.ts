@@ -353,6 +353,11 @@ export const RUN_STATES = {
     clock: '21:32',
     marks: { ...DINED, speeches: ['20:05', '21:05'], dance: ['21:25'] },
   },
+  twoRunning: {
+    name: 'Two at once: Welcome speech started while Guests arrive is still on',
+    clock: '18:38',
+    marks: { arrive: ['18:02'], welcome: ['18:33'] },
+  },
   outOfOrder: {
     name: 'Out of order: Dinner started before Welcome speech',
     clock: '18:55',

@@ -7636,3 +7636,57 @@ button.members-row {
   font: 600 15.5px/1.2 var(--fontFamily);
   overflow-wrap: break-word;
 }
+
+/* sc-55397: at 640 px or narrower an event's page opens on its handoff to the app, under the shell's phone bar. */
+.ho-card {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: var(--spaceMd);
+  width: 100%;
+  max-width: 30rem;
+  margin-inline: auto;
+  padding-top: var(--spaceXl);
+}
+
+.ho-glyph {
+  display: grid;
+  place-items: center;
+  width: var(--sizeHit);
+  height: var(--sizeHit);
+  margin-bottom: var(--spaceSm);
+  border-radius: var(--radiusPill);
+  background: var(--colorAccentTint);
+  color: var(--colorAccentText);
+}
+
+.ho-area {
+  margin: 0;
+  color: var(--colorInkSecondary);
+  font: var(--typeLabel);
+  letter-spacing: var(--typeLabelTracking);
+}
+
+.ho-title {
+  margin: 0;
+  color: var(--colorInk);
+  font: var(--typeTitlePhone);
+  letter-spacing: var(--typeTitlePhoneTracking);
+  overflow-wrap: anywhere;
+}
+
+.ho-title:focus {
+  outline: none;
+}
+
+.ho-line {
+  margin: 0 0 var(--spaceMd);
+  color: var(--colorInkSecondary);
+  font: var(--typeBody);
+  letter-spacing: var(--typeBodyTracking);
+}
+
+.ho-anyway {
+  width: 100%;
+  min-height: var(--sizeHit);
+}

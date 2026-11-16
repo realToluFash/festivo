@@ -228,6 +228,7 @@
   background: var(--colorCard);
   color: var(--colorInk);
   font: var(--typeSmallStrong);
+  white-space: nowrap;
   cursor: pointer;
 }
 

@@ -32,6 +32,7 @@ import { RunArea } from './RunArea.tsx';
 import { ScheduleArea } from './ScheduleArea.tsx';
 import { SeatingArea } from './SeatingArea.tsx';
 import { RosterArea } from './RosterArea.tsx';
+import { PAGE_NEEDS } from './handoff.ts';
 import { typeLabel } from './eventTypes.ts';
 import { AllDates } from './Timeline.tsx';
 import { EventCrumb, Overview, PhaseChange } from './EventOverview.tsx';
@@ -164,23 +165,27 @@ function EventOf({
   if (page === 'guests' && load.kind === 'notFound') return <GuestsGone heading={heading} />;
 
   if (page === 'seating' && load.kind === 'loaded')
-    return canOn(load.event, 'seating.read') ? <SeatingArea event={load.event} /> : <NotFound />;
+    return canOn(load.event, PAGE_NEEDS.seating) ? (
+      <SeatingArea event={load.event} />
+    ) : (
+      <NotFound />
+    );
 
   if (page === 'schedule' && load.kind === 'loaded')
-    return canOn(load.event, 'run_of_show.read') ? (
+    return canOn(load.event, PAGE_NEEDS.schedule) ? (
       <ScheduleArea event={load.event} />
     ) : (
       <NotFound />
     );
 
   if (page === 'run' && load.kind === 'loaded')
-    return canOn(load.event, 'run_of_show.read') ? <RunArea event={load.event} /> : <NotFound />;
+    return canOn(load.event, PAGE_NEEDS.run) ? <RunArea event={load.event} /> : <NotFound />;
 
   if (page === 'staff' && load.kind === 'loaded')
-    return canOn(load.event, 'staff.read') ? <RosterArea event={load.event} /> : <NotFound />;
+    return canOn(load.event, PAGE_NEEDS.staff) ? <RosterArea event={load.event} /> : <NotFound />;
 
   if (page === 'guests' && load.kind === 'loaded')
-    return canOn(load.event, 'guests.read') ? (
+    return canOn(load.event, PAGE_NEEDS.guests) ? (
       <GuestsArea
         event={load.event}
         tag={load.tag}

@@ -1,7 +1,7 @@
 import type { OrganisationMember } from '@soirely/api-client';
 import type { MembersMore } from '@soirely/domain';
 import type { TFunction } from 'i18next';
-import type { Ref } from 'react';
+import { memo, type Ref } from 'react';
 import { useTranslation } from 'react-i18next';
 import { StyleSheet, View, type ViewInstance } from 'react-native';
 
@@ -212,6 +212,48 @@ export function People({
   );
 }
 
+/** Drawn again only when its person or its place changes, so a page arriving under People does not draw every row mounted (sc-49170). */
+const PersonRow = memo(function PersonRow({
+  t,
+  member,
+  ruled,
+  selected,
+  dense,
+  rowRef,
+  onOpen,
+}: {
+  t: TFunction;
+  member: OrganisationMember;
+  ruled: boolean;
+  selected: boolean;
+  dense: boolean;
+  rowRef: (id: string) => Ref<ViewInstance>;
+  onOpen: (id: string) => void;
+}) {
+  const side = dense ? 36 : 40;
+  const gutter = dense ? 10 : 0;
+  const former = member.status === 'left_or_removed';
+  const face = faceOf(member);
+
+  return (
+    <View style={dense && styles.bleed}>
+      {ruled && <RowRule inset={side + tokens.spaceLg + gutter} />}
+      <Row
+        ref={former ? undefined : rowRef(member.id)}
+        title={member.user.name}
+        line={memberLine(t, member)}
+        lead={<Avatar initials={face.initials} side={side} tone={face.tone} />}
+        tag={memberTag(t, member)}
+        opens={!former}
+        selected={selected}
+        gutter={gutter}
+        onPress={former ? undefined : () => onOpen(member.id)}
+        testID={`members.row.${member.id}`}
+      />
+    </View>
+  );
+});
+
 /** People's rows, mounted only near the screen, and what stands under them (sc-49170). */
 export function peopleRows({
   t,
@@ -237,36 +279,23 @@ export function peopleRows({
   onTryAgain: () => void;
   onEndNear: () => void;
 }): ColumnRows<OrganisationMember> {
-  const side = dense ? 36 : 40;
-  const gutter = dense ? 10 : 0;
-
   return {
     data: listed,
     keyOf: (member) => member.id,
     render: (member, index) => {
       const before = listed[index - 1];
       const selected = member.id === open;
-      const former = member.status === 'left_or_removed';
-      const face = faceOf(member);
 
       return (
-        <View style={dense && styles.bleed}>
-          {before != null && before.id !== open && !selected && (
-            <RowRule inset={side + tokens.spaceLg + gutter} />
-          )}
-          <Row
-            ref={former ? undefined : rowRef(member.id)}
-            title={member.user.name}
-            line={memberLine(t, member)}
-            lead={<Avatar initials={face.initials} side={side} tone={face.tone} />}
-            tag={memberTag(t, member)}
-            opens={!former}
-            selected={selected}
-            gutter={gutter}
-            onPress={former ? undefined : () => onOpen(member.id)}
-            testID={`members.row.${member.id}`}
-          />
-        </View>
+        <PersonRow
+          t={t}
+          member={member}
+          ruled={before != null && before.id !== open && !selected}
+          selected={selected}
+          dense={dense}
+          rowRef={rowRef}
+          onOpen={onOpen}
+        />
       );
     },
     foot: (

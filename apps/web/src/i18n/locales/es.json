@@ -3742,5 +3742,9 @@
     "saidBehind_many": "{{track}}, {{count, number}} minutos de retraso",
     "saidLast": "{{track}}, último elemento en curso",
     "saidDone": "{{track}}, todos los elementos terminados"
+  },
+  "handoff": {
+    "line": "Esta página está pensada para una ventana más ancha. En un móvil o una tableta, la encontrará en la app de Soirely.",
+    "anyway": "Mostrar esta página de todos modos"
   }
 }
