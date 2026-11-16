@@ -10,6 +10,7 @@ import {
 } from '@soirely/domain';
 import { type ReactNode, type Ref, useContext, useEffect } from 'react';
 import { StyleSheet, View, type ViewInstance } from 'react-native';
+import Svg, { Path } from 'react-native-svg';
 import { useTranslation } from 'react-i18next';
 
 import { dateLocale } from '../i18n/index.ts';
@@ -23,7 +24,7 @@ import { Glyph } from './Glyph.tsx';
 import { ChoseNote } from './GuestLanguage.tsx';
 import { GuestCover } from './GuestsCard.tsx';
 import { NeedsRows } from './GuestNeeds.tsx';
-import { type InvitationOffer, InvitationBlock } from './GuestInvitation.tsx';
+import { type InvitationOffer, InvitationBlock, type LinkRows } from './GuestInvitation.tsx';
 import { AlertLine } from './AlertLine.tsx';
 import { MarkSlot } from './ReplyMark.tsx';
 import { Row, RowList, TextAction } from './SummaryRows.tsx';
@@ -31,6 +32,21 @@ import { FailedBlock } from './Summary.tsx';
 import { useReadOut } from './ReadOut.tsx';
 import { ScreenScroll } from './Screen.tsx';
 import { Text, type TextHandle } from './Text.tsx';
+
+const TRIANGLE = [
+  'M10.3 3.9 1.8 18a2 2 0 0 0 1.7 3h17a2 2 0 0 0 1.7-3L13.7 3.9a2 2 0 0 0-3.4 0z',
+  'M12 9v4',
+  'M12 17h.01',
+] as const;
+
+/** sc-55558: the wrong-person notice, the replace that failed, and the guest's own link rows. */
+export interface GuestLink {
+  /** Someone who opened this guest's link pressed Tell them (GET …/guests/flagged). */
+  flagged: boolean;
+  notReplaced: boolean;
+  onReplaceFromNotice: () => void;
+  rows: LinkRows;
+}
 
 export type GuestPane =
   | { kind: 'loading' }
@@ -59,6 +75,10 @@ export function GuestDetails({
   saved,
   notice,
   invitation,
+  link,
+  noticeRef,
+  copyRef,
+  replaceRef,
   nameRef,
   editRef,
   markRef,
@@ -86,8 +106,12 @@ export function GuestDetails({
   reopen: { busy: boolean; failed: boolean; ref: Ref<ViewInstance>; onPress: () => void };
   saved: boolean;
   notice: GuestNotice;
-  /** Null on a Draft, where nobody can be invited yet. */
+  /** Null on a Draft for those who can't manage guests, where nobody can be invited yet. */
   invitation: InvitationOffer | null;
+  link: GuestLink;
+  noticeRef: Ref<ViewInstance>;
+  copyRef: Ref<ViewInstance>;
+  replaceRef: Ref<ViewInstance>;
   nameRef: Ref<TextHandle>;
   editRef: Ref<ViewInstance>;
   markRef: Ref<ViewInstance>;
@@ -253,7 +277,7 @@ export function GuestDetails({
           after.card ??
           guestRepliedLine(guest, word, after.reply, timeZone, locale, t) ??
           (shown === 'notYetInvited'
-            ? invitation == null
+            ? invitation == null || invitation.draft
               ? null
               : t('guestList.copyFirst')
             : invitationLine(t, guest, timeZone, locale))
@@ -285,6 +309,14 @@ export function GuestDetails({
         }
         nameRef={nameRef}
       />
+      {manages && link.flagged && (
+        <WrongPerson
+          name={guest.fullName}
+          replaceRef={noticeRef}
+          onReplace={link.onReplaceFromNotice}
+        />
+      )}
+      {link.notReplaced && <NotReplaced />}
       {reopen.failed && <AlertLine text={t('guestList.reopenNotSaved')} />}
       {notice?.kind === 'refused' && <AlertLine text={notice.line} />}
       {notice?.kind === 'offline' && <AlertLine text={t('guestList.offlineRefused')} />}
@@ -359,6 +391,9 @@ export function GuestDetails({
           onUnmark={onUnmark}
           recordRef={recordNotYetRef}
           onRecord={onRecord}
+          link={link.rows}
+          copyRef={copyRef}
+          replaceRef={replaceRef}
         />
       ) : (
         !manages && (
@@ -367,6 +402,67 @@ export function GuestDetails({
           </Text>
         )
       )}
+    </View>
+  );
+}
+
+/** sc-55558: Tell them was pressed on the guest's own page. Already there when the details open, so not read out; the triangle and the words mark it, not the amber alone. */
+function WrongPerson({
+  name,
+  replaceRef,
+  onReplace,
+}: {
+  name: string;
+  replaceRef: Ref<ViewInstance>;
+  onReplace: () => void;
+}) {
+  const { t } = useTranslation();
+
+  return (
+    <View style={styles.wrongPerson} testID="guest.flagged">
+      <View style={styles.flagHead}>
+        <View style={styles.flagMark}>
+          <Svg width={18} height={18} viewBox="0 0 24 24" fill="none">
+            {TRIANGLE.map((d) => (
+              <Path
+                key={d}
+                d={d}
+                stroke={tokens.colorAttentionText}
+                strokeWidth={2.2}
+                strokeLinecap="round"
+                strokeLinejoin="round"
+              />
+            ))}
+          </Svg>
+        </View>
+        <Text size={16} weight="bold" accessibilityRole="header" style={styles.flagTitle}>
+          {t('guestList.flaggedTitle')}
+        </Text>
+      </View>
+      <Text size={15} weight="medium" style={[styles.secondary, styles.lines]}>
+        {t('guestList.flaggedLine', { name })}
+      </Text>
+      <View style={styles.flagAction}>
+        <TextAction
+          ref={replaceRef}
+          label={t('guestList.replaceLink')}
+          onPress={onReplace}
+          testID="guest.flagged.replace"
+        />
+      </View>
+    </View>
+  );
+}
+
+/** A replace that failed: the old link still works, read out as it appears (sc-55558). */
+function NotReplaced() {
+  const { t } = useTranslation();
+  const said = t('guestList.notReplaced');
+  useReadOut(said, { interrupts: true });
+
+  return (
+    <View testID="guest.notReplaced">
+      <AlertLine text={said} />
     </View>
   );
 }
@@ -471,6 +567,21 @@ function GuestLoading() {
 const styles = StyleSheet.create({
   grow: { flex: 1, minWidth: 0 },
   secondary: { color: tokens.colorInkSecondary },
+  lines: { lineHeight: 15 * 1.45 },
+  wrongPerson: {
+    gap: tokens.spaceSm,
+    paddingTop: 14,
+    paddingHorizontal: tokens.spaceXl,
+    paddingBottom: tokens.spaceXs,
+    borderRadius: 18,
+    borderWidth: 1.5,
+    borderColor: tokens.colorAttentionBorder,
+    backgroundColor: tokens.colorAttentionTint,
+  },
+  flagHead: { flexDirection: 'row', alignItems: 'flex-start', gap: tokens.spaceSm },
+  flagMark: { paddingTop: 2 },
+  flagTitle: { flex: 1, minWidth: 0, lineHeight: 16 * 1.35 },
+  flagAction: { alignItems: 'flex-start' },
   blocks: { gap: 18 },
   head: { minHeight: tokens.sizeHit, flexDirection: 'row', alignItems: 'center', gap: 10 },
   headTitle: { letterSpacing: -0.18, lineHeight: 18 * 1.25 },

@@ -62,6 +62,7 @@ import { Notice } from './Notice.tsx';
 import { Refreshing } from './Refreshing.tsx';
 import { Screen } from './Screen.tsx';
 import { LoadingBlock, PageToast } from './Summary.tsx';
+import type { ToastAction } from './Toast.tsx';
 import { phoneTabBarClearance } from './TodayCover.tsx';
 import { Arrived } from './Skeleton.tsx';
 import { type ScreenReaderTarget, moveScreenReaderFocus } from './screenReaderFocus.ts';
@@ -143,6 +144,7 @@ export function EventScreen({
     eventId: string;
     area: EventPlace;
     words: string;
+    action?: ToastAction | null | undefined;
   } | null>(null);
   const [duplicating, setDuplicating] = useState<{
     opener: RefObject<ScreenReaderTarget | null>;
@@ -408,6 +410,7 @@ export function EventScreen({
           onEventChange={change}
           onEventStale={reload}
           addRef={guestsAdd}
+          tell={(words, action) => setToast({ eventId, area, words, action })}
           onTop={setGuestsTop}
           heading={
             <View style={styles.titleRow}>
@@ -501,6 +504,7 @@ export function EventScreen({
       {toast?.eventId === eventId && toast.area === area && (
         <PageToast
           words={toast.words}
+          action={toast.action}
           onClose={() => setToast(null)}
           bottom={
             phone
