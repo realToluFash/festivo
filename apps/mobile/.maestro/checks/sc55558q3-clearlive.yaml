@@ -1,0 +1,50 @@
+appId: host.exp.Exponent
+---
+- setOrientation: ${ORIENT}
+- openLink: ${METRO_URL}/--/events/${EVENT_ID}?area=guests
+- extendedWaitUntil:
+    visible:
+      id: 'guests.showAll.*|guests.row.${GUEST_ID}'
+    timeout: 30000
+- runFlow:
+    when:
+      notVisible:
+        id: 'guests.row.${GUEST_ID}'
+    commands:
+      - tapOn:
+          id: 'guests.showAll.*'
+- scrollUntilVisible:
+    element:
+      id: 'guests.row.${GUEST_ID}'
+    timeout: 20000
+- tapOn:
+    id: 'guests.row.${GUEST_ID}'
+- extendedWaitUntil:
+    visible:
+      id: 'guest.${GUEST_ID}'
+    timeout: 20000
+- waitForAnimationToEnd
+- assertVisible:
+    id: 'guest.flagged'
+- runScript:
+    file: ../batch/flag-elsewhere.js
+    env:
+      URL: ${API_URL}/api/guest-links/wrong-person
+      LINKTOKEN: ${LINKTOKEN}
+- assertTrue: ${output.flagged == 204}
+- waitForAnimationToEnd:
+    timeout: 5000
+- assertVisible:
+    id: 'guest.flagged'
+- takeScreenshot: second-tell
+- runScript:
+    file: ../batch/replace-elsewhere.js
+    env:
+      URL: ${API_URL}/api/events/${EVENT_ID}/guests/${GUEST_ID}/link/replace
+      TOKEN: ${TOKEN}
+- assertTrue: ${output.replaced == 204}
+- extendedWaitUntil:
+    notVisible:
+      id: 'guest.flagged'
+    timeout: 15000
+- takeScreenshot: cleared
