@@ -8,6 +8,7 @@ import {
   type DishDetails,
   type DishDiet,
 } from '@soirely/api-client';
+import { numberFormat } from './locales.ts';
 import { nameKey } from './nameKey.ts';
 import { visibleLength } from './visibleText.ts';
 
@@ -30,8 +31,8 @@ export function dishLanguage(locale: string): DishLanguage {
 export function minorDigits(currency: string): number {
   try {
     return (
-      new Intl.NumberFormat('en', { style: 'currency', currency }).resolvedOptions()
-        .maximumFractionDigits ?? 2
+      numberFormat('en', { style: 'currency', currency }).resolvedOptions().maximumFractionDigits ??
+      2
     );
   } catch {
     return 2;

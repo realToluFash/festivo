@@ -3647,7 +3647,7 @@
     "emptyBody": "Add each dish once, with what it contains. Every event’s menu then picks from this library.",
     "noArchived": "Nothing is archived. A dish an event has used is archived instead of deleted.",
     "addDish": "Add dish",
-    "contains": "Contains {{names}}",
+    "contains": "Contains: {{names}}",
     "containsNone": "Contains none of the 14 allergens",
     "notStated": "Allergens not stated",
     "usedBy": "Used by an event",

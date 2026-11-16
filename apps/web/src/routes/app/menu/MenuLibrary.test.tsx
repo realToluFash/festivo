@@ -185,7 +185,7 @@ describe('the Menu library (sc-3901)', () => {
     ).toEqual(['Asun', 'Chin chin', 'Jollof rice', 'Zobo sorbet']);
     expect(panel.textContent).toContain('Allergens not stated');
     expect(panel.textContent).toContain('Contains none of the 14 allergens');
-    expect(panel.textContent).toContain('Contains Cereals containing gluten · Eggs · Milk');
+    expect(panel.textContent).toContain('Contains: Cereals containing gluten · Eggs · Milk');
     expect(panel.textContent).toContain('Used by an event');
     expect(screen.getByRole('button', { name: 'Archive Jollof rice' })).toBeTruthy();
     expect(screen.getByRole('button', { name: 'Delete Chin chin…' })).toBeTruthy();
