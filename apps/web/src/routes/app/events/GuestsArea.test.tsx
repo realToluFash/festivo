@@ -868,7 +868,7 @@ describe('Finding a guest (sc-3772)', () => {
     ).toBeDefined();
     fireEvent.click(within(card).getByRole('button', { name: 'Make live' }));
 
-    expect(await screen.findByRole('dialog')).toBeDefined();
+    expect(await screen.findByRole('alertdialog')).toBeDefined();
   });
 
   it.each([
@@ -4906,7 +4906,7 @@ describe('Nobody on the list yet, in each phase (sc-50409)', () => {
     expect(within(header()).queryByRole('button', { name: 'Add guest' })).toBeNull();
 
     fireEvent.click(within(card).getByRole('button', { name: 'Make live' }));
-    expect(await screen.findByRole('dialog')).toBeDefined();
+    expect(await screen.findByRole('alertdialog')).toBeDefined();
   });
 
   it('returns focus to Make live, not Add guest, when its question is put off', async () => {
@@ -4915,7 +4915,7 @@ describe('Nobody on the list yet, in each phase (sc-50409)', () => {
 
     fireEvent.click(makeLive);
     fireEvent.click(
-      within(await screen.findByRole('dialog')).getByRole('button', { name: 'Not yet' }),
+      within(await screen.findByRole('alertdialog')).getByRole('button', { name: 'Not yet' }),
     );
 
     await waitFor(() => expect(document.activeElement).toBe(makeLive));
