@@ -169,7 +169,7 @@ const WIDTHS: readonly { w: 320 | 375; named: Named; label: string }[] = [
   { w: 375, named: { name: QA_NAME, lang: 'fr' }, label: QA_NAME },
 ];
 
-/** ?state=crumbWidths: the header band in frames as wide as a 320 and a 375 window, since the demo's desk keeps its sidebar there. */
+/** ?state=crumbWidths: a 320 and a 375 window, the band inside the page's 16 px gutters as the product draws it, since the demo's desk keeps its sidebar there. */
 function CrumbWidths({ id }: { id: string }) {
   return (
     <main className="st-widths">
@@ -184,9 +184,11 @@ function CrumbWidths({ id }: { id: string }) {
               name: label,
             })}
           </figcaption>
-          <header className="st-top">
-            <SeatingCrumb id={id} named={named} />
-          </header>
+          <div className="st-window">
+            <header className="st-top">
+              <SeatingCrumb id={id} named={named} />
+            </header>
+          </div>
         </figure>
       ))}
     </main>

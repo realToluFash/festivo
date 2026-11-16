@@ -2852,12 +2852,12 @@
     "deleteSeat": "Eliminar lugar",
     "changedRow": "{{name}} acabou de alterar esta fila. A sua alteração não foi guardada.",
     "changedSeat": "{{name}} acabou de alterar este lugar. A sua alteração não foi guardada.",
-    "zoomIn": "Zoom in",
-    "zoomOut": "Zoom out",
-    "zoomIs": "Zoom {{pct, number}}%",
+    "zoomIn": "Aumentar o zoom",
+    "zoomOut": "Diminuir o zoom",
+    "zoomIs": "Zoom a {{pct, number}}%",
     "percent": "{{pct, number}}%",
-    "fit": "Fit the room",
-    "takenOf": "{{taken, number}} of {{seats, number}}"
+    "fit": "Ver a sala inteira",
+    "takenOf": "{{taken, number}} de {{seats, number}}"
   },
   "onboarding": {
     "step": "Passo {{step, number}} de 2",
@@ -3098,7 +3098,7 @@
     "copyFirst": "Copiar a ligação não conta como convite. Registe-o depois de enviar a ligação.",
     "markAsInvited": "Registar convite",
     "markLine": "Como foi feito o convite, para que conte",
-    "recordNotYetLine": "What they told you, so they count as invited",
+    "recordNotYetLine": "O que esta pessoa lhe disse, para que o convite conte",
     "howInvited": "Como fez o convite?",
     "howInvitedBlank": "Escolha como fez o convite.",
     "markNotSaved": "Não foi guardado. O estado continua «Sem convite». Tente novamente.",

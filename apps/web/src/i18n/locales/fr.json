@@ -2852,12 +2852,12 @@
     "deleteSeat": "Supprimer la place",
     "changedRow": "{{name}} vient de modifier cette rangée. Votre modification n’a pas été enregistrée.",
     "changedSeat": "{{name}} vient de modifier cette place. Votre modification n’a pas été enregistrée.",
-    "zoomIn": "Zoom in",
-    "zoomOut": "Zoom out",
-    "zoomIs": "Zoom {{pct, number}}%",
-    "percent": "{{pct, number}}%",
-    "fit": "Fit the room",
-    "takenOf": "{{taken, number}} of {{seats, number}}"
+    "zoomIn": "Zoom avant",
+    "zoomOut": "Zoom arrière",
+    "zoomIs": "Zoom à {{pct, number}} %",
+    "percent": "{{pct, number}} %",
+    "fit": "Voir toute la salle",
+    "takenOf": "{{taken, number}} sur {{seats, number}}"
   },
   "onboarding": {
     "step": "Étape {{step, number}} sur 2",
@@ -3098,7 +3098,7 @@
     "copyFirst": "Copier le lien ne compte pas comme une invitation. Enregistrez-la une fois le lien envoyé.",
     "markAsInvited": "Enregistrer l’invitation",
     "markLine": "Comment l’invitation a été faite, pour qu’elle soit comptée",
-    "recordNotYetLine": "What they told you, so they count as invited",
+    "recordNotYetLine": "Ce que cette personne vous a dit, pour que l’invitation soit comptée",
     "howInvited": "Comment avez-vous fait l’invitation ?",
     "howInvitedBlank": "Choisissez comment vous avez fait l’invitation.",
     "markNotSaved": "Non enregistré. Le statut reste « Sans invitation ». Réessayez.",
