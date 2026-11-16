@@ -1,17 +1,17 @@
-/* The demo's own frame for Today, Events and Calendar in a phone's browser (sc-57468); the pages' rules are `components/phoneFit.css`, the product's frame is the shell's. */
+/* The demo's own frame for Today, Events and Calendar in a phone's browser (sc-57468); the pages' rules are `components/phoneFit.css`, the product's frame is the shell's; the demo's frame carries both classes. */
 
 .dp-menu {
   display: none;
 }
 
 @media (width <= 40rem) {
-  .fits-phone.today {
+  .dp-fit.today {
     flex-direction: column;
     height: auto;
     min-height: 100vh;
   }
 
-  .fits-phone .today-side {
+  .dp-fit .today-side {
     flex-direction: row;
     align-items: center;
     gap: var(--spaceMd);
@@ -23,16 +23,16 @@
     background: var(--colorCard);
   }
 
-  .fits-phone .today-side > :not(.sw, .dp-menu) {
+  .dp-fit .today-side > :not(.sw, .dp-menu) {
     display: none;
   }
 
-  .fits-phone .today-side > .sw {
+  .dp-fit .today-side > .sw {
     flex: 1;
     min-width: 0;
   }
 
-  .fits-phone .dp-menu {
+  .dp-fit .dp-menu {
     display: flex;
     flex: none;
     align-items: center;
@@ -49,12 +49,12 @@
     cursor: pointer;
   }
 
-  .fits-phone .dp-menu svg {
+  .dp-fit .dp-menu svg {
     width: 16px;
     height: 16px;
   }
 
-  .fits-phone :is(.today-main, .desk-main) {
+  .dp-fit :is(.today-main, .desk-main) {
     margin: 0;
     padding: var(--spaceXl) var(--spaceLg) var(--space3xl);
     overflow: visible;
@@ -64,11 +64,11 @@
   }
 
   /* Calendar keeps the window's height, so its weeks scroll inside the page and the month's name follows them. */
-  .fits-phone.today:has(.cal-page) {
+  .dp-fit.today:has(.cal-page) {
     height: 100dvh;
   }
 
-  .fits-phone .desk-main:has(> .cal-page) {
+  .dp-fit .desk-main:has(> .cal-page) {
     flex: 1;
     min-height: 0;
     padding-bottom: 0;

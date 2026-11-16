@@ -98,7 +98,7 @@ export function Today({ search = null }: { search?: SearchStart | null }) {
 
   return (
     <LayersContext value={layers}>
-      <div className="today fits-phone">
+      <div className="today dp-fit fits-phone">
         <DeskSearch
           first={search}
           reach={asks ? reachOfRole(VIEWERS.ana.role) : REACHES.owner}
