@@ -25,11 +25,13 @@ import {
   type Point,
   AT_100,
   CRUMB_WORDS,
+  LARGEST_SCALE,
   type CrumbLang,
   EVENT_ID,
   LONG_NAME,
   QA_NAME,
   PRIYA,
+  SMALLEST_SCALE,
   SW,
   ZOOMS,
   bounds,
@@ -1644,6 +1646,8 @@ function Seating({
       ? { ...newItem(ui.placing.kind, items, placingAt), id: 'placing' }
       : null;
   const zoomUp = !ui.readOnly && (ui.zoomStep || crowded);
+  const atSmallest = s <= SMALLEST_SCALE + 1e-9;
+  const atLargest = s >= LARGEST_SCALE - 1e-9;
   const rowDown = ui.rowStep || rowMet;
   const keysShown =
     keyboard &&
@@ -1883,7 +1887,10 @@ function Seating({
                   type="button"
                   className="st-round-button"
                   aria-label={SW.zoomOut}
-                  onClick={() => stepZoom(-1)}
+                  aria-disabled={atSmallest}
+                  onClick={() => {
+                    if (!atSmallest) stepZoom(-1);
+                  }}
                 >
                   <Icon name="minus" size={19} weight={2.2} />
                 </button>
@@ -1894,7 +1901,10 @@ function Seating({
                   type="button"
                   className="st-round-button"
                   aria-label={SW.zoomIn}
-                  onClick={() => stepZoom(1)}
+                  aria-disabled={atLargest}
+                  onClick={() => {
+                    if (!atLargest) stepZoom(1);
+                  }}
                 >
                   <Icon name="plus" size={19} weight={2.2} />
                 </button>
