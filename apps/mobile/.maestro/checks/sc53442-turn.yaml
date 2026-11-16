@@ -1,0 +1,43 @@
+# sc-53442: a refused save's words in Cover stay at the top when the tablet turns.
+appId: host.exp.Exponent
+---
+- setOrientation: PORTRAIT
+- runScript:
+    file: ../scripts/event-role-elsewhere.js
+    env:
+      ROLE: can_edit
+- runFlow: ../checks/sc52652/open.yaml
+- scrollUntilVisible:
+    element:
+      id: 'event.edit.cover.remove'
+    direction: DOWN
+- tapOn:
+    id: 'event.edit.cover.remove'
+- runScript:
+    file: ../scripts/event-role-elsewhere.js
+    env:
+      ROLE: can_view
+- tapOn:
+    id: 'event.edit.cover.save'
+- extendedWaitUntil:
+    visible: 'Nothing was changed.*'
+    timeout: 20000
+- takeScreenshot: refused-portrait
+- setOrientation: LANDSCAPE_LEFT
+- extendedWaitUntil:
+    visible: 'never.there'
+    timeout: 3000
+    optional: true
+- assertVisible: 'Nothing was changed.*'
+- takeScreenshot: refused-landscape
+- setOrientation: PORTRAIT
+- extendedWaitUntil:
+    visible: 'never.there'
+    timeout: 3000
+    optional: true
+- assertVisible: 'Nothing was changed.*'
+- takeScreenshot: refused-portrait-again
+- runScript:
+    file: ../scripts/event-role-elsewhere.js
+    env:
+      ROLE: can_edit
