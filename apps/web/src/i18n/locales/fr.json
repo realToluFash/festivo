@@ -2757,7 +2757,7 @@
       "teal": "Bleu canard"
     },
     "addTable": "Ajouter une table",
-    "add": "Add",
+    "add": "Ajouter",
     "addBar": "Ajouter à la salle",
     "shapeRound": "Table ronde",
     "shapeRectangular": "Table rectangulaire",
@@ -2775,7 +2775,7 @@
     "menuRectangular": "Table rectangulaire · {{size}} · {{seats}}",
     "menuHead": "Table d’honneur · {{size}} · {{seats}}",
     "menuCocktail": "Mange-debout · {{size}} · {{seats}}",
-    "menuRow": "Row of chairs",
+    "menuRow": "Rangée de places",
     "tableSize": "{{width}} × {{tableLength}}",
     "countPlaces_one": "{{count, number}} place debout",
     "countPlaces_other": "{{count, number}} places debout",
