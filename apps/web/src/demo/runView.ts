@@ -62,7 +62,7 @@ export const RW = {
   now: 'Now',
   done: 'Done',
   next: 'Next',
-  then: 'Then',
+  then: 'Later',
   nothingNow: 'Nothing is on',
   nothingThen: 'Nothing after this.',
   allDone: 'Every item on this track is done.',
