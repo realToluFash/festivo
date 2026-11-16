@@ -21,6 +21,8 @@ export interface TopPrimaryProps {
   label: string;
   onPress: () => void;
   testID: string;
+  /** Where focus comes back to once what it opened closes. */
+  ref?: Ref<ViewInstance>;
 }
 
 /** The primary at the end of a top's title row, as the demos draw it: the round violet + on a phone, the + and its label wider (sc-39471). */

@@ -1654,6 +1654,11 @@
   },
   "eventForm": {
     "title": "Novo evento",
+    "aboutHeading": "Sobre o evento",
+    "coverHeading": "Cover photo",
+    "whenHeading": "Quando",
+    "venueHeading": "Local",
+    "zoneHeading": "Fuso horário e moeda",
     "name": "Nome do evento",
     "nameCount": "{{count, number}} de {{most, number}} caracteres",
     "type": "Tipo",
