@@ -2968,6 +2968,7 @@ describe('Make live (sc-3584)', () => {
         'This event stays a draft. Finish or call off another event, or change plan.',
       ),
     ).toBeDefined();
+    expect(within(refused).queryByRole('button', { name: 'Change dates' })).toBeNull();
     fireEvent.click(within(refused).getByRole('button', { name: 'Close' }));
     expect(screen.getByText('Draft')).toBeDefined();
   });
