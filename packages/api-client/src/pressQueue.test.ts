@@ -71,7 +71,14 @@ describe('the offline press queue (sc-3895)', () => {
       return SCHEDULE;
     });
 
-    expect(result.lost).toEqual([{ press: press('a'), code: 'item_started', by: superseded_by }]);
+    expect(result.lost).toEqual([
+      {
+        press: press('a'),
+        code: 'item_started',
+        by: superseded_by,
+        said: 'This item has already started.',
+      },
+    ]);
     expect(result.left).toEqual([]);
   });
 

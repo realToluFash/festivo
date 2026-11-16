@@ -143,7 +143,7 @@ export function useNight(eventId: string) {
         const last = result.lost.at(-1);
 
         if (last != null) {
-          setLost({ title: last.press.title, by: last.by });
+          setLost({ title: last.press.title, by: last.by, said: last.said });
           read();
         }
         if (result.left.length > 0) {

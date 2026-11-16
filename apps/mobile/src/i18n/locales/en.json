@@ -2829,7 +2829,6 @@
     "tryNow": "Try now",
     "alreadyStarted": "Already started by {{name}} at {{time}}.",
     "alreadyStarted_hour1": "Already started by {{name}} at {{time}}.",
-    "notApplied": "[Someone else changed this first.]",
     "dismiss": "Dismiss",
     "viewOnly": "View only",
     "viewOnlyLine": "You can follow the night here, not change it.",

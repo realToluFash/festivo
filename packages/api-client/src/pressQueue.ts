@@ -15,11 +15,12 @@ export interface PressStore {
   save(queue: QueuedPress[]): Promise<void>;
 }
 
-/** A press the API answered without applying it, with the earlier press it lost to when there is one. */
+/** A press the API answered without applying it, with the earlier press it lost to when there is one, and the 409's own title for when there is none. */
 export interface PressLost {
   press: QueuedPress;
   code: string;
   by: { name: string; at: string } | null;
+  said: string;
 }
 
 export interface QueueSent {
@@ -56,7 +57,12 @@ export async function sendQueue(store: PressStore, send: SendPress): Promise<Que
     } catch (error) {
       if (!(error instanceof ApiError) || error.status >= 500 || error.status === 429) break;
 
-      lost.push({ press, code: error.code, by: error.problem.superseded_by ?? null });
+      lost.push({
+        press,
+        code: error.code,
+        by: error.problem.superseded_by ?? null,
+        said: error.problem.title,
+      });
     }
 
     await store.save((await store.load()).filter((one) => one.key !== press.key));

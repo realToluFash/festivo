@@ -106,7 +106,9 @@ describe('sending the queue', () => {
       return SCHEDULE;
     });
 
-    expect(result.lost).toEqual([{ press: press('a', 'dance'), code: 'item_started', by }]);
+    expect(result.lost).toEqual([
+      { press: press('a', 'dance'), code: 'item_started', by, said: 'item_started' },
+    ]);
     expect(await queue.load()).toEqual([]);
   });
 

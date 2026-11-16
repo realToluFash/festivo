@@ -290,12 +290,31 @@ describe('what the live region reads, and the losing replay', () => {
   it('says who started it first, at what time in the event’s zone', () => {
     expect(
       lostWords(
-        { title: 'First dance', by: { name: 'Ifeoma Nduka', at: '2030-11-15T20:31:00Z' } },
+        {
+          title: 'First dance',
+          by: { name: 'Ifeoma Nduka', at: '2030-11-15T20:31:00Z' },
+          said: 'This item has already started.',
+        },
         ZONE,
         'en-US',
         t,
       ),
     ).toBe('Already started by Ifeoma Nduka at 20:31.');
+  });
+
+  it('says the refusal’s own words when it names nobody', () => {
+    expect(
+      lostWords(
+        {
+          title: 'First dance',
+          by: null,
+          said: 'This item has not started yet, so it cannot be done.',
+        },
+        ZONE,
+        'en-US',
+        t,
+      ),
+    ).toBe('This item has not started yet, so it cannot be done.');
   });
 
   it('keeps a press for a network error or a failing server, not for a refusal', () => {

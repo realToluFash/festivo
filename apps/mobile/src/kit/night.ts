@@ -25,6 +25,8 @@ export type NightAction = 'startNow' | 'finishFirst' | 'none';
 export interface NightLost {
   title: string;
   by: { name: string; at: string } | null;
+  /** The 409's own title, said when it names nobody (sc-3895). */
+  said: string;
 }
 
 function pressed(item: ScheduleItem, press: QueuedPress, at: string): ScheduleItem {
@@ -166,7 +168,7 @@ export function endWords(
 }
 
 export function lostWords(lost: NightLost, timeZone: string, locale: string, t: TFunction): string {
-  if (lost.by == null) return t('night.notApplied');
+  if (lost.by == null) return lost.said;
 
   return t('night.alreadyStarted', {
     name: lost.by.name,

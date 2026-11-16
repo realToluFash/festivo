@@ -138,7 +138,7 @@ function NightArea({ event }: { event: OrganisationEvent }) {
 
         if (sent.schedule != null) loaded(sent.schedule);
         else if (sent.lost.length > 0) api.schedule(event.id).then(loaded, () => undefined);
-        const last = sent.lost.filter((one) => one.by != null).at(-1);
+        const last = sent.lost.at(-1);
         if (last != null) setLost(last);
         setQueue(kept.read());
         setOffline(stuck);
@@ -427,12 +427,17 @@ function Night({
           <span>{t('night.viewOnlyLine')}</span>
         </p>
       )}
-      {lost?.by != null && (
+      {lost != null && (
         <div className="nt-alert" role="alert">
           <p className="nt-alert-words">
             <strong>{lost.press.title}</strong>
             <span>
-              {t('night.alreadyStarted', { name: lost.by.name, ...timeSlot(lost.by.at, locale) })}
+              {lost.by == null
+                ? lost.said
+                : t('night.alreadyStarted', {
+                    name: lost.by.name,
+                    ...timeSlot(lost.by.at, locale),
+                  })}
             </span>
           </p>
           <button type="button" className="rv-act" onClick={onDismiss}>

@@ -412,6 +412,26 @@ describe('Run of show on the night (sc-3895)', () => {
     expect(screen.queryByRole('alert')).toBeNull();
   });
 
+  it('says the refusal’s own title for a losing replay that names nobody', async () => {
+    await onNight(NIGHT, {
+      now: '20:20',
+      answers: {
+        [PRESS_SPEECHES]: refused('item_not_started', {
+          title: 'This item has not started yet, so it cannot be done.',
+        }),
+      },
+    });
+
+    fireEvent.click(await screen.findByRole('button', { name: 'Done: Speeches' }));
+
+    const alert = await screen.findByRole('alert');
+    expect(within(alert).getByText('Speeches')).toBeDefined();
+    expect(
+      within(alert).getByText('This item has not started yet, so it cannot be done.'),
+    ).toBeDefined();
+    expect(kept()).toEqual([]);
+  });
+
   describe('the end of the night', () => {
     const last = (ended: string) => [{ ...ARRIVE, startedAt: at('18:02'), endedAt: at(ended) }];
 
