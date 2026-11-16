@@ -45,6 +45,7 @@ import {
   RECORD_STATES,
   REVIEW_STATES,
   cardWords,
+  copyFailedLine,
   countsAt,
   guestsOpening,
   groupRows,
@@ -461,7 +462,7 @@ export function GuestsScreen({
         replaced={replaced}
         notReplaced={notReplaced}
         flagged={guest != null && guest.key === flaggedKey}
-        copyFailed={copyFailed}
+        copyFailed={copyFailed ? copyFailedLine(state) : null}
         unmarked={unmarked}
         status={status}
         nameRef={nameRef}

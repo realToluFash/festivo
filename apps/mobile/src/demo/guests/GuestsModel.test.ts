@@ -15,6 +15,7 @@ import {
 } from './ChangedSince.ts';
 import {
   changedRows,
+  copyFailedLine,
   filterWord,
   DOOR_STATES,
   countAfter,
@@ -86,7 +87,7 @@ describe('the states, as guests-a-spec §15 names them', () => {
     expect(
       GUESTS_STATES.filter((state) => (DOOR_STATES as readonly string[]).includes(state)),
     ).toEqual([]);
-    expect(GUESTS_STATES).toHaveLength(179);
+    expect(GUESTS_STATES).toHaveLength(180);
     expect(DOOR_STATES).toHaveLength(13);
   });
 
@@ -886,5 +887,15 @@ describe('a guest’s own link in the app (sc-55558)', () => {
 
   it('opens a failed copy on Bisi Adewale, the guest not yet invited', () => {
     expect(areaStart('copyFailed')).toMatchObject({ open: 'bisi', copyFailed: true, toast: null });
+    expect(copyFailedLine('copyFailed')).toBe(
+      'Not copied. The link is not on your clipboard. Try again.',
+    );
+  });
+
+  it('opens the failed copy in Portuguese, the line that wraps', () => {
+    expect(areaStart('copyFailedPt')).toMatchObject({ open: 'bisi', copyFailed: true });
+    expect(copyFailedLine('copyFailedPt')).toBe(
+      'Não foi possível copiar. A ligação não está na área de transferência. Tente novamente.',
+    );
   });
 });

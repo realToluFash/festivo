@@ -83,6 +83,7 @@ export const GUEST_STATES = [
   'replaced',
   'notReplaced',
   'copyFailed',
+  'copyFailedPt',
   'flagged',
   'flaggedAsk',
   'flaggedReplaced',
@@ -1338,6 +1339,9 @@ export interface AreaStart {
   walkIn: boolean;
 }
 
+export const copyFailedLine = (state: GuestsState | null): string =>
+  state === 'copyFailedPt' ? W.copyFailedPt : W.copyFailed;
+
 const QUIET: AreaStart = {
   filter: 'all',
   since: null,
@@ -1400,6 +1404,7 @@ export function guestOf(state: GuestsState | null): string | null {
     case 'pausedGuest':
       return 'yemi';
     case 'copyFailed':
+    case 'copyFailedPt':
       return 'bisi';
     case 'notYetInvited':
     case 'recordNotYet':
@@ -1528,6 +1533,7 @@ export function areaStart(state: GuestsState | null): AreaStart {
     case 'notReplaced':
       return { ...base, notReplaced: true };
     case 'copyFailed':
+    case 'copyFailedPt':
       return { ...base, copyFailed: true };
     case 'flagged':
     case 'flaggedViewer':

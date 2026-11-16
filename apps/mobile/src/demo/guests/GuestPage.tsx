@@ -125,8 +125,8 @@ export function GuestPage({
   notReplaced: boolean;
   /** sc-55558: the wrong-person notice shows under the cover card, for a host who manages guests. */
   flagged: boolean;
-  /** sc-55558: the last copy failed; the line shows under Copy invitation link. */
-  copyFailed: boolean;
+  /** sc-55558: the last copy failed; its line shows under Copy invitation link. */
+  copyFailed: string | null;
   /** sc-3788: Mark as not invited landed, the guest replied first (409), or it failed (sc-46879). */
   unmarked: 'done' | 'refused' | 'notSaved' | null;
   status: string | null;
@@ -378,9 +378,9 @@ export function GuestPage({
                             onPress={actions.onCopy}
                             testID="guest.copy"
                           />
-                          {copyFailed && (
+                          {copyFailed != null && (
                             <View style={styles.failed} testID="guest.copyFailed">
-                              <AlertLine text={W.copyFailed} small />
+                              <AlertLine text={copyFailed} small />
                             </View>
                           )}
                         </View>

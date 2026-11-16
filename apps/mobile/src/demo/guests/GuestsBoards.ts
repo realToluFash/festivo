@@ -64,6 +64,10 @@ const GUESTS: Record<GuestsState, Board> = {
   replaced: ['link replaced', 'They still hold the old one'],
   notReplaced: ['replace failed', 'The old link still works'],
   copyFailed: ['copy failed', 'sc-55558: Not copied, and Copy invitation link to try again'],
+  copyFailedPt: [
+    'copy failed, in Portuguese',
+    'sc-55558: the longest line wraps to two lines and never truncates',
+  ],
   flagged: [
     'link may have reached the wrong person',
     'sc-55558: the notice under the cover card, with Replace link…',

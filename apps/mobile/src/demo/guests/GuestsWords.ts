@@ -71,7 +71,9 @@ export const W = {
   replaceDo: 'Replace link',
   replaceLine: 'The old link will stop working straight away.',
   notReplaced: 'Not replaced. The old link still works. Try again.',
-  copyFailed: 'Not copied. Check your connection and try again.',
+  copyFailed: 'Not copied. The link is not on your clipboard. Try again.',
+  copyFailedPt:
+    'Não foi possível copiar. A ligação não está na área de transferência. Tente novamente.',
   flaggedTitle: 'Their link may have reached the wrong person',
   howInvited: 'How did you invite them?',
   howInvitedBlank: 'Choose how you invited them.',
