@@ -94,11 +94,11 @@
     "validation.seating_seat_name_taken": "Este plano já tem um lugar chamado {name}.",
     "validation.seating_arrange_nothing": "Envie pelo menos uma mesa, fila ou lugar a mover.",
     "validation.seating_arrange_table_only": "Aqui, só uma mesa muda de tamanho.",
-    "validation.seating_arrange_twice": "Choose each item only once.",
+    "validation.seating_arrange_twice": "Escolha cada elemento só uma vez.",
     "validation.seating_seat_does_not_turn": "Um lugar individual não roda.",
     "validation.seating_outside_room": "{name} ficaria fora da sala.",
-    "validation.seating_renumber_taken": "{name} is already taken by a table you didn’t choose.",
-    "validation.seating_copy_outside_room": "The copy of {name} would sit outside the room, so nothing was added.",
+    "validation.seating_renumber_taken": "{name} já é o nome de uma mesa que não escolheu.",
+    "validation.seating_copy_outside_room": "A cópia de {name} ficaria fora da sala, por isso nada foi adicionado.",
     "validation.seating_row_outside_room": "A fila {label} ficaria fora da sala.",
     "seating.no_such_item": "Esta mesa, fila ou lugar não está no plano."
 }

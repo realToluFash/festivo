@@ -24,6 +24,7 @@ function PhoneAccount() {
   const title = useRef<HTMLHeadingElement>(null);
   const [loaded, setLoaded] = useState(false);
   const [refresh, setRefresh] = useState(0);
+  const [chosen, setChosen] = useState<string | null>(null);
   const { watch, refreshing } = useOffline({
     loaded,
     reload: () => setRefresh((n) => n + 1),
@@ -47,7 +48,12 @@ function PhoneAccount() {
 
       <TimeZoneCard timezone={session.timezone} onSaved={() => refreshAccount()} />
 
-      <LanguageBlock onChosen={() => {}} />
+      <div className="desk">
+        <LanguageBlock
+          onChosen={setChosen}
+          said={chosen == null ? null : t('account.languageSaved', { language: chosen })}
+        />
+      </div>
     </div>
   );
 }

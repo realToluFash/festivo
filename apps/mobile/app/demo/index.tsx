@@ -876,8 +876,13 @@ const PAGES: readonly { page: string; boards: readonly Board[] }[] = [
       },
       {
         title: 'Members · more failed',
-        what: '12,345 people, the rows kept, Try again',
+        what: '12,345 people, Soirely answered with an error: the rows kept, Try again, no band',
         href: '/demo/settings/members?state=moreFailed',
+      },
+      {
+        title: 'Members · more offline',
+        what: '12,345 people, the next page not answered: the offline band above the rows kept',
+        href: '/demo/settings/members?state=moreOffline',
       },
       {
         title: 'Members · loading',

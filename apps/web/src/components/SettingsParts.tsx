@@ -463,6 +463,7 @@ export function Choices({
   picked,
   onPick,
   foot,
+  footLive = false,
 }: {
   legend: string;
   hideLegend?: boolean;
@@ -470,6 +471,7 @@ export function Choices({
   picked: string;
   onPick: (name: string) => void;
   foot?: string;
+  footLive?: boolean;
 }) {
   const { t } = useTranslation();
   const name = useId();
@@ -501,7 +503,11 @@ export function Choices({
           </li>
         ))}
       </ul>
-      {foot != null && <p className="desk-foot">{foot}</p>}
+      {foot != null && (
+        <p className="desk-foot" aria-live={footLive ? 'polite' : undefined}>
+          {foot}
+        </p>
+      )}
     </fieldset>
   );
 }

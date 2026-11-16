@@ -321,6 +321,7 @@ export const MEMBERS_STATES = [
   'largest',
   'moreLoading',
   'moreFailed',
+  'moreOffline',
   'loading',
   'failed',
   'approving',
@@ -424,6 +425,8 @@ export interface MembersStart {
   viewer: MembersViewer;
   load: Load;
   more: More;
+  /** sc-49170: the next page did not load because Soirely did not answer, so the offline band shows above the rows (sc-22586). */
+  offline: boolean;
   people: Person[];
   filter: Filter;
   open: string | null;
@@ -858,6 +861,7 @@ export function membersStart(
     viewer: VIEWERS.folake,
     load: 'loaded',
     more: 'idle',
+    offline: false,
     people,
     filter: 'all',
     open: null,
@@ -963,6 +967,8 @@ export function membersStart(
         people: crowdOf(people, CROWDS.largest),
         more: state === 'moreLoading' ? 'loading' : 'failed',
       };
+    case 'moreOffline':
+      return { ...base, people: crowdOf(people, CROWDS.largest), more: 'failed', offline: true };
     case 'loading':
     case 'failed':
       return { ...base, load: state };
