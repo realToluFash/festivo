@@ -42,6 +42,7 @@ import {
   rotations,
   sectionOf,
   turned,
+  usableSeats,
 } from './seatingDraw.ts';
 import { Added, BackHead, Field, Line, type PlanApi, Said, Select } from './SeatingParts.tsx';
 import {
@@ -102,7 +103,7 @@ function tableLine(t: T, plan: SeatingPlan, table: SeatingTable): string {
     shape: t(SHAPE_WORDS[table.shape].whole),
     section: sectionOf(plan, table)?.name ?? t('seating.noSection'),
     taken: 0,
-    seats: table.seats - table.unusableSeats.length,
+    seats: usableSeats(table),
   });
 }
 
@@ -391,7 +392,7 @@ export function TableDrawing({
     name: table.name,
     shape: t(SHAPE_WORDS[table.shape].kind),
     taken: 0,
-    count: table.seats - table.unusableSeats.length,
+    count: usableSeats(table),
   });
 
   return (
@@ -422,7 +423,7 @@ export function TableDrawing({
           y={round ? cy + Math.max(ey, 40) * s * 0.55 + 12 : cy + (table.lengthCm / 2) * s + 12}
           name={table.name}
           taken={0}
-          seats={table.seats - table.unusableSeats.length}
+          seats={usableSeats(table)}
         />
       ) : (
         <text
