@@ -1,4 +1,11 @@
-import { type ReactNode, useEffect, useId, useRef } from 'react';
+import {
+  type KeyboardEvent,
+  type ReactNode,
+  type RefObject,
+  useEffect,
+  useId,
+  useRef,
+} from 'react';
 
 import { Icon, type IconName } from './SeatingGlyph.tsx';
 import { type Item, type Plan, SW, isTable, many, say } from './seating.ts';
@@ -56,6 +63,7 @@ function refusedAtWall(now: Ui, name: string): Ui {
 export function ChooseBar() {
   const { ui, set, choose } = useSeating();
   const hint = useId();
+  const kindButton = useRef<HTMLButtonElement>(null);
 
   return (
     <>
@@ -72,6 +80,7 @@ export function ChooseBar() {
           {SW.selectAll}
         </button>
         <button
+          ref={kindButton}
           type="button"
           className={ui.kindMenu ? 'st-tool is-on' : 'st-tool'}
           aria-haspopup="menu"
@@ -97,12 +106,12 @@ export function ChooseBar() {
           {SW.addHint}
         </p>
       )}
-      {ui.kindMenu && <KindMenu />}
+      {ui.kindMenu && <KindMenu back={kindButton} />}
     </>
   );
 }
 
-function KindMenu() {
+function KindMenu({ back }: { back: RefObject<HTMLButtonElement | null> }) {
   const { ui, set, choose } = useSeating();
   const first = useRef<HTMLButtonElement>(null);
   const { kinds, sections } = kindLines(ui.plan);
@@ -112,7 +121,36 @@ function KindMenu() {
   };
   const firstOn = [...kinds, ...sections].find((line) => line.ids.length > 0)?.key;
 
-  useEffect(() => first.current?.focus(), []);
+  useEffect(() => {
+    const toggle = back.current;
+
+    first.current?.focus();
+    return () => {
+      const focused = document.activeElement;
+
+      if (focused == null || focused === document.body || !focused.isConnected) toggle?.focus();
+    };
+  }, [back]);
+
+  const step = (event: KeyboardEvent<HTMLDivElement>) => {
+    const rows = [
+      ...event.currentTarget.querySelectorAll<HTMLButtonElement>(
+        '[role="menuitem"]:not(:disabled)',
+      ),
+    ];
+    const at = rows.indexOf(document.activeElement as HTMLButtonElement);
+    const to: Record<string, number> = {
+      ArrowDown: (at + 1) % rows.length,
+      ArrowUp: (at - 1 + rows.length) % rows.length,
+      Home: 0,
+      End: rows.length - 1,
+    };
+    const next = rows[to[event.key] ?? -1];
+
+    if (next == null) return;
+    event.preventDefault();
+    next.focus();
+  };
 
   const lines = (group: typeof kinds) =>
     group.map((line) => (
@@ -131,7 +169,13 @@ function KindMenu() {
     ));
 
   return (
-    <div className="st-kind-menu" role="menu" aria-label={SW.selectKind}>
+    <div
+      className="st-kind-menu"
+      role="menu"
+      aria-label={SW.selectKind}
+      tabIndex={-1}
+      onKeyDown={step}
+    >
       <div role="group" aria-labelledby="st-kinds-head">
         <p id="st-kinds-head" className="st-menu-head">
           {SW.kindsGroup}
@@ -421,7 +465,9 @@ const FOLDS: readonly [Fold, string][] = [
 export function SelectionPanel({ items }: { items: Item[] }) {
   const { ui, set, ask } = useSeating();
   const spaceNote = useId();
+  const renumberNote = useId();
   const few = items.length < 3;
+  const noTables = !items.some(isTable);
 
   function align(edge: Edge): void {
     const moved = aligned(items, edge);
@@ -525,7 +571,8 @@ export function SelectionPanel({ items }: { items: Item[] }) {
       </Section>
       <div className="st-folds">
         {FOLDS.map(([fold, word]) => {
-          const open = ui.fold === fold;
+          const shut = fold === 'renumber' && noTables;
+          const open = ui.fold === fold && !shut;
 
           return (
             <div key={fold} className={open ? 'st-fold is-open' : 'st-fold'}>
@@ -534,11 +581,18 @@ export function SelectionPanel({ items }: { items: Item[] }) {
                 className="st-fold-head"
                 aria-expanded={open}
                 aria-controls={`st-fold-${fold}`}
+                disabled={shut}
+                aria-describedby={shut ? renumberNote : undefined}
                 onClick={() => set((now) => ({ ...now, fold: open ? null : fold, refused: null }))}
               >
                 {word}
                 <Icon name="chevdown" size={16} weight={2.3} />
               </button>
+              {shut && (
+                <p id={renumberNote} className="st-line">
+                  {SW.renumberTables}
+                </p>
+              )}
               <div id={`st-fold-${fold}`} hidden={!open}>
                 {open && fold === 'grid' && <GridFold items={items} />}
                 {open && fold === 'renumber' && <RenumberFold items={items} />}

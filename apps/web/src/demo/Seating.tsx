@@ -283,6 +283,7 @@ function Seating({
   const press = useRef<Press | null>(null);
   const held = useRef<string | null>(null);
   const spaceHeld = useRef(false);
+  const spacePanned = useRef(false);
   const touches = useRef(new Set<number>());
   const [focusId, setFocusId] = useState<string | null>(null);
   const [keyboard, setKeyboard] = useState(first.focus?.startsWith('item:') === true);
@@ -1082,6 +1083,13 @@ function Seating({
         const dy = event.clientY - now.from[1];
 
         if (!now.moved && Math.hypot(dx, dy) < 4) return;
+        if (!now.moved && spaceHeld.current) {
+          spacePanned.current = true;
+          const focused = document.activeElement;
+
+          if (focused instanceof HTMLElement && focused.closest('.st-canvas svg') == null)
+            focused.blur();
+        }
         now.moved = true;
         set((ui_) => ({
           ...ui_,
@@ -1380,10 +1388,16 @@ function Seating({
   useEffect(() => {
     const typing = (target: EventTarget | null) =>
       target instanceof HTMLElement && target.closest('input, textarea, select') != null;
+    const control = (target: EventTarget | null) =>
+      target instanceof Element &&
+      target.closest('button, a[href], [role="menuitem"], [role="option"], summary') != null;
     const keys = (event: KeyboardEvent) => {
       const now = ui$.current;
 
-      if (event.key === ' ' && !typing(event.target)) spaceHeld.current = true;
+      if (event.key === ' ' && !typing(event.target) && !event.defaultPrevented) {
+        spaceHeld.current = true;
+        if (!control(event.target)) event.preventDefault();
+      }
       if (
         (event.key === 'a' || event.key === 'A') &&
         (event.metaKey || event.ctrlKey) &&
@@ -1411,7 +1425,11 @@ function Seating({
         set((ui_) => ({ ...ui_, chosen: [], chair: null, notice: null, note: null }));
     };
     const lift = (event: KeyboardEvent) => {
-      if (event.key === ' ') spaceHeld.current = false;
+      if (event.key !== ' ') return;
+      if (spacePanned.current || (spaceHeld.current && !control(event.target)))
+        event.preventDefault();
+      spaceHeld.current = false;
+      spacePanned.current = false;
     };
 
     window.addEventListener('keydown', keys);
@@ -2027,7 +2045,9 @@ function MessageBar({
           <button
             type="button"
             className="desk-text"
-            onClick={() =>
+            onClick={() => {
+              const undoing = ui.undo != null;
+
               set((now) =>
                 now.undo == null
                   ? { ...now, bar: null }
@@ -2039,9 +2059,12 @@ function MessageBar({
                       bar: null,
                       hover: null,
                       save: 'saving',
+                      spoken: '',
                     },
-              )
-            }
+              );
+              if (undoing)
+                window.setTimeout(() => set((now) => ({ ...now, spoken: SW.undone })), 60);
+            }}
           >
             {SW.undo}
           </button>

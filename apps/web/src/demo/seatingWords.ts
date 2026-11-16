@@ -378,6 +378,7 @@ export const SW = {
   startRange: 'Enter a number from 1 to 999.',
   renumberOrder: 'Tables are named in reading order: top to bottom, then left to right.',
   renumberKeeps: 'Rows and single seats in the choice keep their names.',
+  renumberTables: 'Choose a table to renumber. Rows and single seats keep their names.',
   renumberClash: '{{name}} is already taken by a table you didn’t choose.',
   renumbered_one: '1 table renamed {{from}}. Guests kept their seats.',
   renumbered_other:
@@ -406,7 +407,7 @@ export const SW = {
   deletedEmpty: '{{things}} deleted.',
   stepChanged:
     '{{name}} changed {{table}} after you chose it, so nothing moved. The plan now shows the change; try again.',
-  undone: 'Undone. Every item is back where it was.',
+  undone: 'Undone. Everything is back as it was.',
 } as const;
 
 export type SeatingWord = keyof typeof SW;

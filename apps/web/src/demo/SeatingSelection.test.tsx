@@ -1,4 +1,4 @@
-import { cleanup, fireEvent, render, screen, within } from '@testing-library/react';
+import { cleanup, fireEvent, render, screen, waitFor, within } from '@testing-library/react';
 import { RouterProvider, createMemoryRouter } from 'react-router';
 import { afterEach, beforeAll, beforeEach, describe, expect, it, vi } from 'vitest';
 
@@ -278,6 +278,73 @@ describe('choosing many (sc-4717)', () => {
     expect(said()).toContain('2 copies added 50 cm down and to the right');
     expect(chosen()).toBe('2 chosen');
     expect(item(/^Table 11, round, 0 of 10 seats taken, Garden side$/u)).toBeDefined();
+  });
+
+  it('pans with Space held over a focused tool without pressing it again', SLOW, async () => {
+    await seating();
+    press(item(/^Table 6,/u));
+    press(item(/^Table 7,/u), { shiftKey: true });
+    const copy = within(panel()).getByRole('button', { name: 'Duplicate' });
+
+    fireEvent.click(copy);
+    copy.focus();
+    fireEvent.keyDown(copy, { key: ' ' });
+    fireEvent.pointerDown(room(), { button: 0, pointerId: 1, clientX: 300, clientY: 300 });
+    fireEvent.pointerMove(window, { pointerId: 1, clientX: 360, clientY: 340 });
+    fireEvent.pointerUp(window, { pointerId: 1, clientX: 360, clientY: 340 });
+    expect(document.activeElement).not.toBe(copy);
+    const target = document.activeElement ?? document.body;
+    const clicks = fireEvent.keyUp(target, { key: ' ' });
+
+    expect(clicks).toBe(false);
+    if (clicks && target === copy) fireEvent.click(copy);
+    expect(within(room()).queryAllByRole('button', { name: /^Table 13,/u })).toHaveLength(0);
+    expect(fireEvent.keyDown(document.body, { key: ' ' })).toBe(false);
+    fireEvent.keyUp(document.body, { key: ' ' });
+  });
+
+  it(
+    'gives focus back to Select all of a kind and moves through it with arrows',
+    SLOW,
+    async () => {
+      await seating();
+      const toggle = screen.getByRole('button', { name: 'Select all of a kind' });
+
+      fireEvent.click(toggle);
+      const menu = screen.getByRole('menu', { name: 'Select all of a kind' });
+
+      expect(document.activeElement?.textContent).toBe('Round tables9');
+      fireEvent.keyDown(document.activeElement!, { key: 'ArrowDown' });
+      expect(document.activeElement?.textContent).toBe('Rectangular tables1');
+      fireEvent.keyDown(document.activeElement!, { key: 'End' });
+      expect(document.activeElement?.textContent).toBe('By the bar2');
+      fireEvent.keyDown(document.activeElement!, { key: 'ArrowDown' });
+      expect(document.activeElement?.textContent).toBe('Round tables9');
+      expect(within(menu).getAllByRole('menuitem')).toHaveLength(10);
+      fireEvent.keyDown(document.activeElement!, { key: 'Escape' });
+      expect(screen.queryByRole('menu')).toBeNull();
+      expect(document.activeElement).toBe(toggle);
+    },
+  );
+
+  it('shuts Renumber when no chosen item is a table', SLOW, async () => {
+    await seating();
+    fireEvent.click(screen.getByRole('button', { name: 'Select all of a kind' }));
+    fireEvent.click(screen.getByRole('menuitem', { name: /Single seats/u }));
+    expect(chosen()).toBe('2 chosen');
+    const fold = within(panel()).getByRole('button', { name: 'Renumber' });
+
+    expect(fold.hasAttribute('disabled')).toBe(true);
+    expect(document.getElementById(fold.getAttribute('aria-describedby') ?? '')?.textContent).toBe(
+      'Choose a table to renumber. Rows and single seats keep their names.',
+    );
+  });
+
+  it('says Undone once Undo has put the step back', SLOW, async () => {
+    await seating('selection');
+    fireEvent.click(within(panel()).getByRole('button', { name: 'Left' }));
+    fireEvent.click(screen.getByRole('button', { name: 'Undo' }));
+    await waitFor(() => expect(said()).toContain('Undone. Everything is back as it was.'));
   });
 
   it('asks before deleting many, frees their guests, and undoes', SLOW, async () => {
