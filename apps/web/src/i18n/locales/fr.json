@@ -2852,12 +2852,12 @@
     "deleteSeat": "Supprimer la place",
     "changedRow": "{{name}} vient de modifier cette rangée. Votre modification n’a pas été enregistrée.",
     "changedSeat": "{{name}} vient de modifier cette place. Votre modification n’a pas été enregistrée.",
-    "zoomIn": "Zoom in",
-    "zoomOut": "Zoom out",
-    "zoomIs": "Zoom {{pct, number}}%",
-    "percent": "{{pct, number}}%",
-    "fit": "Fit the room",
-    "takenOf": "{{taken, number}} of {{seats, number}}"
+    "zoomIn": "Zoom avant",
+    "zoomOut": "Zoom arrière",
+    "zoomIs": "Zoom à {{pct, number}} %",
+    "percent": "{{pct, number}} %",
+    "fit": "Voir toute la salle",
+    "takenOf": "{{taken, number}} sur {{seats, number}}"
   },
   "onboarding": {
     "step": "Étape {{step, number}} sur 2",
