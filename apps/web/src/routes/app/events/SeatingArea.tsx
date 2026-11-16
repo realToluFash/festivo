@@ -410,6 +410,8 @@ function Plan({
   const opener = useRef<string | null>(null);
   const newest = useRef(seating.plan);
   const queue = useRef<Promise<unknown>>(Promise.resolve());
+  const pressedStep = useRef(0);
+  const runningStep = useRef(0);
   const [asking, setAsking] = useState<Asking | null>(null);
   const [notice, setNotice] = useState<string | null>(null);
   const [note, setNote] = useState<TableNote | null>(null);
@@ -819,7 +821,11 @@ function Plan({
     return version;
   };
 
-  const sendStep = async (items: Placement[], tool: boolean): Promise<void> => {
+  const sendStep = async (
+    items: Placement[],
+    tool: boolean,
+    onSaved?: () => void,
+  ): Promise<void> => {
     const versioned = items.map((item) => ({ ...item, version: baseOf(item) }));
 
     for (let tries = 1; ; tries += 1) {
@@ -837,6 +843,7 @@ function Plan({
         settle(items);
         setNote((was) => (was != null && items.some((item) => item.id === was.id) ? null : was));
         setSave('saved');
+        onSaved?.();
         return;
       } catch (error) {
         if (error instanceof ApiError && error.status === 412 && tool) {
@@ -882,13 +889,19 @@ function Plan({
     }
   };
 
-  const arrange = (items: Placement[], tool = false) => {
+  const arrange = (items: Placement[], tool = false, onSaved?: () => void) => {
     if (items.length === 0) return;
     setPlacements((was) => ({ ...was, ...Object.fromEntries(items.map((one) => [one.id, one])) }));
     unsaved.current = null;
     setSave('saving');
-    dropRefusal();
-    queue.current = queue.current.then(() => sendStep(items, tool));
+    if (tool) setBar(null);
+    else dropRefusal();
+    const mine = tool ? (pressedStep.current += 1) : 0;
+
+    queue.current = queue.current.then(() => {
+      runningStep.current = mine;
+      return sendStep(items, tool, onSaved);
+    });
   };
 
   const tryAgain = () => {
@@ -916,10 +929,13 @@ function Plan({
   const refNow = (kind: FloorItem['kind'], id: string) => ({ kind, id, version: versionNow(id) });
 
   const stepDone = (words: string, undo: () => void) => {
-    setBar({ tone: 'undo', words, undo });
+    if (runningStep.current === pressedStep.current) setBar({ tone: 'undo', words, undo });
     setHeard(words);
   };
-  const refuseStep = (words: string) => setBar({ tone: 'amber', words });
+  const refuseStep = (words: string) => {
+    setBar({ tone: 'amber', words });
+    setHeard('');
+  };
   const undone = () => setHeard(t('seating.undone'));
   const undo = () => {
     const back = bar?.undo;
@@ -942,15 +958,27 @@ function Plan({
     reload();
   };
 
-  /** One step through the queue, all or nothing; a 412 keeps the choice and says who changed what. */
+  /** One step through the queue, all or nothing; a 412 keeps the choice and says who changed what.
+   *  Queuing it takes the last step's Undo down, which would otherwise act on a plan this step changes,
+   *  and an earlier step saved while this one waits puts no Undo up. */
   const runStep = <A extends Seating | SeatingWithChosen>(
-    change: () => Promise<A>,
+    change: () => Promise<A> | null,
     done: (answer: A) => void,
   ) => {
     setSave('saving');
+    setBar(null);
+    const mine = (pressedStep.current += 1);
+
     queue.current = queue.current.then(async () => {
+      runningStep.current = mine;
       try {
-        const answer = await change();
+        const sending = change();
+
+        if (sending == null) {
+          setSave('saved');
+          return;
+        }
+        const answer = await sending;
         const now = seatingIn(answer);
 
         newest.current = now.plan;
@@ -977,11 +1005,7 @@ function Plan({
       return item == null ? [] : [placementOf(item)];
     });
 
-    arrange(moved, true);
-    stepDone(words, () => {
-      arrange(back, true);
-      undone();
-    });
+    arrange(moved, true, () => stepDone(words, () => arrange(back, true, undone)));
   };
 
   const renameStep = (names: { id: string; name: string }[], words: string) => {
@@ -1038,15 +1062,15 @@ function Plan({
         pick(answer.chosen);
         stepDone(t('seating.duplicatedMany', { count: answer.chosen.length }), () =>
           runStep(
-            () =>
-              api.deleteSeatingItems(
-                event.id,
-                answer.chosen.flatMap((id) => {
-                  const copy = itemOf(id, newest.current);
+            () => {
+              const copies = answer.chosen.flatMap((id) => {
+                const copy = itemOf(id, newest.current);
 
-                  return copy == null ? [] : [refNow(copy.kind, id)];
-                }),
-              ),
+                return copy == null ? [] : [refNow(copy.kind, id)];
+              });
+
+              return copies.length === 0 ? null : api.deleteSeatingItems(event.id, copies);
+            },
             () => {
               pick(items.map((item) => item.one.id));
               undone();
