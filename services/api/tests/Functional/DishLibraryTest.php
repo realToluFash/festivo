@@ -276,6 +276,21 @@ final class DishLibraryTest extends ApiTestCase
     }
 
     #[Test]
+    public function theOrganisationReadSaysWhatARoleOnAnEventOpens(): void
+    {
+        $lead = $this->member('ngozi@ire.events', 'Ngozi Eze', EventRole::Lead);
+        $outside = $this->member('ada@ire.events', 'Ada Obi', null);
+
+        $read = fn (User $user): array => Type\shape(['onAnEvent' => Type\vec(Type\string()), 'permissions' => Type\vec(Type\string())], true)
+            ->coerce(Type\vec(Type\mixed())->coerce($this->as($user, 'GET', '/api/orgs')['organisations'] ?? null)[0] ?? null);
+
+        self::assertContains('menu.read', $read($lead)['onAnEvent']);
+        self::assertNotContains('menu.read', $read($lead)['permissions']);
+        self::assertSame([], $read($outside)['onAnEvent']);
+        self::assertSame([], $read($this->owner)['onAnEvent']);
+    }
+
+    #[Test]
     public function withoutMenuManageNothingCanBeChanged(): void
     {
         $jollof = $this->add(['name' => 'Jollof rice', 'allergens' => ['celery']]);

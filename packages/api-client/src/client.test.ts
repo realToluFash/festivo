@@ -1182,6 +1182,7 @@ describe('a browser never holds the refresh token', () => {
               withheldUntilTwoFactor: ['members.manage'],
               readOnlyUntilLinked: true,
               withheldUntilLinked: ['events.manage', 'organisation.manage'],
+              onAnEvent: [],
               signInRules: {
                 providerOnly: true,
                 inactivityTimeoutDays: 7,

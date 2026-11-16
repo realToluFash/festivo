@@ -643,6 +643,8 @@ export interface Membership extends Organisation {
   readOnlyUntilLinked: boolean;
   /** The changes the role holds that the read-only rule keeps back, empty unless `readOnlyUntilLinked` (sc-16265). */
   withheldUntilLinked: string[];
+  /** What a Member's roles on events allow beyond this role, each held on at least one event (sc-3901). */
+  onAnEvent: string[];
   /** While this organisation requires two-factor of everyone and this account has none (sc-609). */
   twoFactorDue: TwoFactorDue | null;
   signInRules: OrganisationSignInRules;
@@ -5004,6 +5006,7 @@ function asMembership(raw: unknown): Membership | null {
     withheldUntilTwoFactor: stringList(candidate.withheldUntilTwoFactor) ?? [],
     readOnlyUntilLinked: candidate.readOnlyUntilLinked === true,
     withheldUntilLinked: stringList(candidate.withheldUntilLinked) ?? [],
+    onAnEvent: stringList(candidate.onAnEvent) ?? [],
     twoFactorDue: asTwoFactorDue(candidate.twoFactorDue),
     signInRules: asOrganisationSignInRules(candidate.signInRules) ?? {
       providerOnly: false,

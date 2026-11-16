@@ -24,7 +24,7 @@ import { TwoFactorOverdue } from '../../components/TwoFactorOverdue.tsx';
 import { SearchRow, ShellSearch } from '../../components/ShellSearch.tsx';
 import { SkipLink } from '../../components/SkipLink.tsx';
 import {
-  can,
+  canAnywhere,
   joinOrganisation,
   landingFor,
   onMovedOn,
@@ -486,7 +486,7 @@ function ShellLinks({
 
   return (
     <ul className="today-places">
-      {PLACES.filter(([, , , needs]) => needs == null || can(session, needs)).map(
+      {PLACES.filter(([, , , needs]) => needs == null || canAnywhere(session, needs)).map(
         ([to, word, glyph]) => (
           <li key={to}>
             <NavLink className={placeLook} to={to} end={to === '/app'} onClick={onFollow}>

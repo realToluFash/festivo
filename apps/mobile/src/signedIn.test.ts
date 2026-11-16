@@ -57,6 +57,7 @@ const organisation = {
   withheldUntilTwoFactor: [],
   readOnlyUntilLinked: false,
   withheldUntilLinked: [],
+  onAnEvent: [],
   twoFactorDue: null,
   signInRules: {
     providerOnly: false,

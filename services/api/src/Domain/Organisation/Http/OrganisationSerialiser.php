@@ -30,10 +30,11 @@ final readonly class OrganisationSerialiser
 
     /**
      * @param ?array{at: string, written: string, overdue: bool} $twoFactorDue SignInRules::twoFactorDue()
+     * @param list<Permission>                                   $onAnEvent    EventScope::onAnEvent()
      *
      * @return array<string, mixed> a seeded role is named by its key, which each client words itself
      */
-    public static function membership(Membership $membership, Grants $grants, ?array $twoFactorDue): array
+    public static function membership(Membership $membership, Grants $grants, ?array $twoFactorDue, array $onAnEvent): array
     {
         $role = $membership->getRole();
         $organisation = $membership->getOrganisation();
@@ -46,6 +47,8 @@ final readonly class OrganisationSerialiser
             ],
             // The same as GET /api/orgs/{id}/permissions, so a client hides what it cannot use without asking twice.
             'permissions' => Vec\map(Vec\filter($role->getPermissions(), $grants->allows(...)), $name),
+            // sc-3901: a page an event role opens, such as the Menu library, is reached the way the API lets the member in.
+            'onAnEvent' => Vec\map($onAnEvent, $name),
             // sc-69: what waits on two-factor, and whether only reading is open until Google or Apple is linked.
             'withheldUntilTwoFactor' => Vec\map($grants->withheld(), $name),
             'readOnlyUntilLinked' => $grants->isReadOnly(),
