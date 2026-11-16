@@ -75,6 +75,10 @@ const GUESTS: Record<GuestsState, Board> = {
   flaggedNotReplaced: ['replace from the notice failed', 'The line under the notice, which stays'],
   flaggedViewer: ['wrong person, Can view', 'No notice, no link rows'],
   copyFailed: ['copy failed', 'Not copied, under Copy invitation link, to try again'],
+  copyFailedPt: [
+    'copy failed, in Portuguese',
+    'The longest line wraps under Copy invitation link and is never cut',
+  ],
   draftLink: ['a Draft event’s guest', 'Invitation with Replace link… alone'],
   pausedLink: ['a Paused event’s guest', 'Why nobody can be invited, and Replace link…'],
   markAsInvited: ['Mark as invited', 'How did you invite them?, nothing chosen'],

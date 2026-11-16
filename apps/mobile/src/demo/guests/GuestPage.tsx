@@ -131,7 +131,7 @@ export function GuestPage({
   /** sc-55558: someone told us this guest's link reached the wrong person. */
   flagged: boolean;
   /** sc-55558: the last Copy invitation link put nothing on the clipboard. */
-  copyFailed: boolean;
+  copyFailed: string | null;
   /** sc-3788: Mark as not invited landed, the guest replied first (409), or it failed (sc-46879). */
   unmarked: 'done' | 'refused' | 'notSaved' | null;
   status: string | null;
@@ -390,7 +390,7 @@ export function GuestPage({
                             onPress={actions.onCopy}
                             testID="guest.copy"
                           />
-                          {copyFailed && <NotCopied />}
+                          {copyFailed != null && <NotCopied text={copyFailed} />}
                         </View>
                       ),
                     },
@@ -525,12 +525,12 @@ function WrongPerson({
 }
 
 /** sc-55558: no connection, a server error or a refused clipboard; read out as it appears, the row above is the retry. */
-function NotCopied() {
-  useReadOut(W.notCopied, { interrupts: true });
+function NotCopied({ text }: { text: string }) {
+  useReadOut(text, { interrupts: true });
 
   return (
     <View style={styles.agree} testID="guest.notCopied">
-      <AlertLine text={W.notCopied} small />
+      <AlertLine text={text} small />
     </View>
   );
 }
