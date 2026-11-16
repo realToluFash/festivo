@@ -35,6 +35,7 @@ import { GuestPage } from './Guest.tsx';
 import { HandoffPage } from './Handoff.tsx';
 import { HANDOFF_PAGES, forgetAnyway } from './handoff.ts';
 import { PHONE_FIT_PAGES } from './longName.ts';
+import { DESK_FIT_PAGES } from './deskFit.ts';
 import { GUEST_PAGES } from './guest.ts';
 import { GUEST_KITCHEN_PAGES } from './guestKitchen.ts';
 import { GUEST_PARTY_PAGES } from './guestCompanions.ts';
@@ -338,6 +339,8 @@ function DemoHome({ from }: { from: string }) {
         <BoardPages pages={HANDOFF_PAGES} />
         <h3>Today, Events and Calendar fit a phone’s window (sc-57468) · 390 and 320 px</h3>
         <BoardPages pages={PHONE_FIT_PAGES} />
+        <h3>Today fits a narrow desk window (sc-57575) · 641 to 1439 px</h3>
+        <BoardPages pages={DESK_FIT_PAGES} />
         <h3>The organisation switcher in B · Places · desktop</h3>
         <BoardPages pages={SWITCHER_PAGES} />
         <h3>The Calendar in B · A · Weeks as lanes · desktop</h3>

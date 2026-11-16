@@ -29,6 +29,7 @@ import { REACHES, reachOfRole, type SearchStart } from './search.ts';
 import type { DeskPerson } from '../components/DeskSidebar.tsx';
 import './today.css';
 import './phone.css';
+import './deskFit.css';
 
 /** The demo's bell, with its sample's three unread. */
 const ACTIONS: BannerActions = { create: true, bell: { unread: 3 } };
