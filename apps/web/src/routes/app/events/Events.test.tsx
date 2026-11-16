@@ -5179,3 +5179,56 @@ describe('Someone who can only view an event is never told to change its dates o
     },
   );
 });
+
+describe('Make live, Pause, Call off and End now keep the keyboard in their dialog (sc-48603)', () => {
+  const AHEAD = { startsAt: '2030-11-14T16:00:00+01:00', endsAt: '2030-11-15T02:00:00+01:00' };
+  const HAPPENING = { startsAt: '2020-11-14T16:00:00+01:00', endsAt: '2030-11-15T02:00:00+01:00' };
+
+  it.each([
+    ['Make live', event(AHEAD), 'Make live', 'Make Adaeze and Tunde live?'],
+    [
+      'Pause',
+      event({ ...AHEAD, status: 'live', phase: 'live' }),
+      'Pause',
+      'Pause Adaeze and Tunde?',
+    ],
+    [
+      'Call off',
+      event({ ...AHEAD, status: 'live', phase: 'live' }),
+      'Call off…',
+      'Call off Adaeze and Tunde?',
+    ],
+    [
+      'End now',
+      event({ ...HAPPENING, status: 'live', phase: 'happening_now' }),
+      'End now…',
+      'End Adaeze and Tunde now?',
+    ],
+  ])(
+    '%s takes focus, keeps Tab inside, and Escape closes it, sending nothing, back on its opener',
+    async (_, served, opens, title) => {
+      signedIn();
+      const sent = answering({ 'GET /api/events/ev_1': () => json({ event: served }) });
+      at('/app/events/ev_1');
+      await screen.findByRole('heading', { level: 1, name: 'Adaeze and Tunde' });
+
+      const opener = screen.getByRole('button', { name: opens });
+      opener.focus();
+      fireEvent.click(opener);
+      const dialog = await screen.findByRole('alertdialog', { name: title });
+      await waitFor(() => expect(dialog.contains(document.activeElement)).toBe(true));
+
+      const buttons = within(dialog).getAllByRole('button');
+      const last = buttons[buttons.length - 1]!;
+      last.focus();
+      fireEvent.keyDown(last, { key: 'Tab' });
+      expect(document.activeElement).not.toBe(last);
+      expect(dialog.contains(document.activeElement)).toBe(true);
+
+      fireEvent.keyDown(document.activeElement!, { key: 'Escape' });
+      await waitFor(() => expect(screen.queryByRole('alertdialog')).toBeNull());
+      await waitFor(() => expect(document.activeElement).toBe(opener));
+      expect(sent.some(({ line }) => line.startsWith('POST'))).toBe(false);
+    },
+  );
+});
