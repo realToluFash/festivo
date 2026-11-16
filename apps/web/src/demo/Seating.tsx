@@ -2155,11 +2155,12 @@ function MessageBar({
 }
 
 function KeysStrip() {
+  const mac = typeof navigator !== 'undefined' && /Mac|iPhone|iPad/u.test(navigator.platform);
   const keys: readonly [string, string][] = [
     ['← ↑ → ↓', SW.keyMove],
     ['Shift', SW.keyShift],
     ['R', SW.keyTurn],
-    ['⌘ D', SW.keyDuplicate],
+    [mac ? '⌘ D' : 'Ctrl D', SW.keyDuplicate],
     ['Delete', SW.keyDelete],
     ['Esc', SW.keyEsc],
   ];
