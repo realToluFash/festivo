@@ -178,10 +178,10 @@ export function Bell({
 }
 
 /** Search left of the bell, as the product's upright top has it (sc-39534); a phone page with a Back has the bell alone. */
-function SearchAndBell({ tell }: { tell: Tell }) {
+function SearchAndBell({ tell, role }: { tell: Tell; role: string | null }) {
   return (
     <View style={styles.ends}>
-      <SearchButton />
+      <SearchButton role={role} />
       <Bell tell={tell} />
     </View>
   );
@@ -259,7 +259,7 @@ export function PortraitTop({ at = 'Settings' }: { at?: Tab }) {
   return (
     <ProductPortraitTop
       renderPill={(room, givesWay) => <OrgPill room={room} givesWay={givesWay} />}
-      bell={<SearchAndBell tell={shell.tell} />}
+      bell={<SearchAndBell tell={shell.tell} role={shell.looking.role} />}
       tabLabels={tabs.map(([tab, glyph]) => say(tab, glyph))}
       renderTabs={(labelSize) => (
         <WhiteCapsule tabs={tabs} at={at} onTab={shell.onTab} say={say} labelSize={labelSize} />
