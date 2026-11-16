@@ -2199,7 +2199,7 @@ describe("An event's page", () => {
 
       expect(heading.closest('.event-page')).not.toBeNull();
       expect(heading.closest('.ev')).toBeNull();
-      expect(cssRule('.event-page', EVENTS_DESK_CSS)).toContain('max-width: var(--evWide);');
+      expect(EVENTS_DESK_CSS).toContain('\n.event-page {\n  max-width: var(--evWide);\n}');
       expect(cssRule('.ev,\n.event-page', EVENTS_DESK_CSS)).toContain('--evWide: 938px;');
       expect(cssRule('.event-page')).not.toContain('max-width');
       expect(cssRule('.event-form-page')).toContain('max-width: 72rem;');
