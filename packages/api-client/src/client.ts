@@ -60,7 +60,10 @@ import {
   asSeating,
   type Seating,
   type SeatingArrangement,
+  type SeatingItemRef,
+  type SeatingRestoredItem,
   type SeatingRoom,
+  type SeatingWithChosen,
   type SeatingRowChanges,
   type SeatingTableChanges,
   type SingleSeatChanges,
@@ -2246,6 +2249,65 @@ export class ApiClient {
     );
   }
 
+  /** Renames tables in one step, all or nothing (sc-4717's Renumber); `validation_failed` beside `items[n].name` for a name a table outside the step keeps, 412 with `stale` as for a move. */
+  async renameSeatingTables(
+    eventId: string,
+    items: { id: string; version: number; name: string }[],
+  ): Promise<Seating> {
+    return this.seatingOf(
+      await this.patch<{ seating?: unknown }>(`${this.seatingPath(eventId)}/furniture/names`, {
+        items,
+      }),
+    );
+  }
+
+  /** Sets each item's section in one step, all or nothing (sc-4717). */
+  async sectionSeatingItems(
+    eventId: string,
+    items: (SeatingItemRef & { sectionId: string | null })[],
+  ): Promise<Seating> {
+    return this.seatingOf(
+      await this.patch<{ seating?: unknown }>(`${this.seatingPath(eventId)}/furniture/sections`, {
+        items,
+      }),
+    );
+  }
+
+  /** Copies 50 cm down and to the right, with nobody seated, all or nothing; `chosen` is the copies in reading order (sc-4717). */
+  async duplicateSeatingItems(
+    eventId: string,
+    items: SeatingItemRef[],
+  ): Promise<SeatingWithChosen> {
+    return this.seatingWithChosen(
+      await this.post<{ seating?: unknown; chosen?: unknown }>(
+        `${this.seatingPath(eventId)}/furniture/duplicate`,
+        { items },
+      ),
+    );
+  }
+
+  /** Deletes in one step, all or nothing; their guests go back to Without a seat (sc-4717). */
+  async deleteSeatingItems(eventId: string, items: SeatingItemRef[]): Promise<Seating> {
+    return this.seatingOf(
+      await this.post<{ seating?: unknown }>(`${this.seatingPath(eventId)}/furniture/delete`, {
+        items,
+      }),
+    );
+  }
+
+  /** Puts deleted items back, all or nothing: Undo after a Delete (sc-4717). `chosen` is their new ids in the order sent. */
+  async restoreSeatingItems(
+    eventId: string,
+    items: SeatingRestoredItem[],
+  ): Promise<SeatingWithChosen> {
+    return this.seatingWithChosen(
+      await this.post<{ seating?: unknown; chosen?: unknown }>(
+        `${this.seatingPath(eventId)}/furniture/restore`,
+        { items },
+      ),
+    );
+  }
+
   /** Of the shape's default size and seats, named "Table {n}"; `tableId` is the one added. Refused 422 on a shape outside the four. */
   async addSeatingTable(eventId: string, shape: TableShape): Promise<SeatingWithTable> {
     return this.seatingWithTable(
@@ -2988,6 +3050,16 @@ export class ApiClient {
     const tableId = typeof body?.tableId === 'string' ? body.tableId : '';
 
     return { seating, tableId };
+  }
+
+  private seatingWithChosen(
+    body: { seating?: unknown; chosen?: unknown } | null | undefined,
+  ): SeatingWithChosen {
+    const chosen = Array.isArray(body?.chosen)
+      ? body.chosen.filter((id): id is string => typeof id === 'string')
+      : [];
+
+    return { seating: this.seatingOf(body), chosen };
   }
 
   private seatingOf(body: { seating?: unknown } | null | undefined): Seating {

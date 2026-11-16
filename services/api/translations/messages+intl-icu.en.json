@@ -96,6 +96,8 @@
     "validation.seating_arrange_table_only": "Only a table changes its size here.",
     "validation.seating_seat_does_not_turn": "A single seat does not turn.",
     "validation.seating_outside_room": "{name} would sit outside the room.",
+    "validation.seating_renumber_taken": "{name} is already taken by a table you didn’t choose.",
+    "validation.seating_copy_outside_room": "The copy of {name} would sit outside the room, so nothing was added.",
     "validation.seating_row_outside_room": "Row {label} would sit outside the room.",
     "seating.no_such_item": "This table, row or seat is not on the plan."
 }

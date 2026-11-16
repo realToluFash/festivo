@@ -96,6 +96,8 @@
     "validation.seating_arrange_table_only": "Aqui, só uma mesa muda de tamanho.",
     "validation.seating_seat_does_not_turn": "Um lugar individual não roda.",
     "validation.seating_outside_room": "{name} ficaria fora da sala.",
+    "validation.seating_renumber_taken": "{name} is already taken by a table you didn’t choose.",
+    "validation.seating_copy_outside_room": "The copy of {name} would sit outside the room, so nothing was added.",
     "validation.seating_row_outside_room": "Fila {label} ficaria fora da sala.",
     "seating.no_such_item": "Esta mesa, fila ou lugar não está no plano."
 }

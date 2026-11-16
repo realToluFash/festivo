@@ -86,6 +86,37 @@ export interface SeatingArrangement {
   lengthCm?: number;
 }
 
+/** A chosen item as a step names it: which one, and the version it was chosen at (sc-4717). */
+export interface SeatingItemRef {
+  kind: 'table' | 'row' | 'seat';
+  id: string;
+  version: number;
+}
+
+/** A deleted item put back by Undo, as the plan served it: a row's label as `name` (sc-4717). */
+export interface SeatingRestoredItem {
+  kind: 'table' | 'row' | 'seat';
+  name: string;
+  sectionId: string | null;
+  xCm: number;
+  yCm: number;
+  shape?: TableShape;
+  seats?: number;
+  widthCm?: number;
+  lengthCm?: number;
+  endSeats?: number;
+  rotation?: number;
+  spacingCm?: number;
+  unusableSeats?: number[];
+  unusable?: boolean;
+}
+
+/** The plan after a step that made items, and their ids to choose. */
+export interface SeatingWithChosen {
+  seating: Seating;
+  chosen: string[];
+}
+
 /** A straight line of numbered seats: seat 1 on the left of a guest sitting in it and facing the front, its number staying with it as the row turns. */
 export interface SeatingRow {
   id: string;

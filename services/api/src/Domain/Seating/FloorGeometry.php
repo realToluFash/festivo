@@ -9,6 +9,7 @@ use App\Entity\SeatingRow;
 use App\Entity\SeatingSeat;
 use App\Entity\SeatingTable;
 use App\Enum\TableShape;
+use Psl\Iter;
 use Psl\Math;
 use Psl\Vec;
 
@@ -36,6 +37,9 @@ final class FloorGeometry
 
     /** Where a copy goes before it looks for free floor: below and to the right of its original. */
     public const array COPY_OFFSET_CM = [60, 420];
+
+    /** Where each copy of a chosen group goes, exactly, so the copies keep the group's arrangement (sc-4717). */
+    public const int GROUP_COPY_OFFSET_CM = 50;
 
     /** @return array{0: float, 1: float} half the table's width and length, chairs included, before it turns */
     public static function extent(TableShape $shape, int $widthCm, int $lengthCm, int $endSeats): array
@@ -72,6 +76,32 @@ final class FloorGeometry
         $y = $yCm ?? $item->getYCm();
 
         return ['x0' => $x - $halfX, 'y0' => $y - $halfY, 'x1' => $x + $halfX, 'y1' => $y + $halfY];
+    }
+
+    /**
+     * Top to bottom, then left to right: items whose centres sit within half the first one's depth of it share a line, so tables a few centimetres out of line don't read in a zigzag (sc-4717).
+     *
+     * @template T of SeatingTable|SeatingRow|SeatingSeat
+     *
+     * @param list<T> $items
+     *
+     * @return list<T>
+     */
+    public static function inReadingOrder(array $items): array
+    {
+        $left = Vec\sort($items, static fn (SeatingTable|SeatingRow|SeatingSeat $a, SeatingTable|SeatingRow|SeatingSeat $b): int => [$a->getYCm(), $a->getXCm()] <=> [$b->getYCm(), $b->getXCm()]);
+        $ordered = [];
+
+        while ([] !== $left) {
+            $first = $left[0];
+            $box = self::bounds($first);
+            $reach = ($box['y1'] - $box['y0']) / 2;
+            $line = Vec\filter($left, static fn (SeatingTable|SeatingRow|SeatingSeat $item): bool => Math\abs($item->getYCm() - $first->getYCm()) <= $reach);
+            $ordered = [...$ordered, ...Vec\sort($line, static fn (SeatingTable|SeatingRow|SeatingSeat $a, SeatingTable|SeatingRow|SeatingSeat $b): int => $a->getXCm() <=> $b->getXCm())];
+            $left = Vec\filter($left, static fn (SeatingTable|SeatingRow|SeatingSeat $item): bool => !Iter\contains($line, $item));
+        }
+
+        return $ordered;
     }
 
     /** Half a centimetre of rounding either way is still inside. */

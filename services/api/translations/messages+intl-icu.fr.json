@@ -96,6 +96,8 @@
     "validation.seating_arrange_table_only": "Ici, seule une table change de taille.",
     "validation.seating_seat_does_not_turn": "Une place isolée ne pivote pas.",
     "validation.seating_outside_room": "{name} se trouverait hors de la salle.",
+    "validation.seating_renumber_taken": "{name} is already taken by a table you didn’t choose.",
+    "validation.seating_copy_outside_room": "The copy of {name} would sit outside the room, so nothing was added.",
     "validation.seating_row_outside_room": "Rangée {label} se trouverait hors de la salle.",
     "seating.no_such_item": "Cette table, rangée ou place ne figure pas sur le plan."
 }
