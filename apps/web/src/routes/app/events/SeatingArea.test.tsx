@@ -8,6 +8,7 @@ import { __setConfig, config } from '../../../config.ts';
 import fr from '../../../i18n/locales/fr.json';
 import { __setSessionState, type Session } from '../../../session.ts';
 import { OWNER_PERMISSIONS, membership } from '../../../test-memberships.ts';
+import { cssRule, stylesheet } from '../../../test-styles.ts';
 import { routes } from '../../index.tsx';
 import { deletePlanWords, sectionDeleteWords } from './SeatingArea.tsx';
 import { KeysStrip, Overlaps } from './SeatingArrange.tsx';
@@ -2340,6 +2341,20 @@ describe('The breadcrumb (sc-55300)', () => {
         ?.classList.contains('st-crumb-event'),
     ).toBe(false);
   });
+
+  it('pads its list at least as wide as the desk halo, so a focused link shows it whole (sc-57088)', () => {
+    const list = cssRule('.st-crumb ol', stylesheet(import.meta.dirname, 'seating.css'));
+    const space = stylesheet(import.meta.dirname, '../../../tokens.css').match(
+      /--spaceXs: (\d+)px;/u,
+    );
+    const halo = stylesheet(import.meta.dirname, '../../../components/SettingsParts.css').match(
+      /--deskRing:[^;]*0 0 0 (\d+)px color-mix/u,
+    );
+
+    expect(list).toMatch(/padding: var\(--spaceXs\);/u);
+    expect(list).toMatch(/margin: calc\(-1 \* var\(--spaceXs\)\);/u);
+    expect(Number(space?.[1])).toBeGreaterThanOrEqual(Number(halo?.[1]));
+  });
 });
 
 function furniture(sent: { line: string; body: unknown }[]) {
@@ -3176,7 +3191,7 @@ describe('Choosing many and the Selection tools (sc-4717)', () => {
     fireEvent.change(panel().getByLabelText('Start at'), { target: { value: '2' } });
     fireEvent.click(panel().getByRole('button', { name: 'Apply' }));
     expect(
-      panel().getByText('Table 3 is already taken by a table you didn’t choose.'),
+      panel().getByText('Table 3 is already taken by a table you did not choose.'),
     ).toBeDefined();
     expect(posted(sent, 'names')).toEqual([]);
 

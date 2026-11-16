@@ -77,7 +77,7 @@ export const LW = {
     'Add each dish once, with what it contains. Every event’s menu then picks from this library.',
   noArchived: 'Nothing is archived. A dish an event has used is archived instead of deleted.',
   addDish: 'Add dish',
-  contains: (names: string) => `Contains ${names}`,
+  contains: (names: string) => `Contains: ${names}`,
   containsNone: 'Contains none of the 14 allergens',
   notStated: 'Allergens not stated',
   usedBy: 'Used by an event',

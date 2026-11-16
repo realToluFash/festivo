@@ -255,7 +255,7 @@ describe('choosing many (sc-4717)', () => {
     await seating('renumberClash');
     apply();
     expect(
-      within(panel()).getByText('Table 7 is already taken by a table you didn’t choose.'),
+      within(panel()).getByText('Table 7 is already taken by a table you did not choose.'),
     ).toBeDefined();
     fireEvent.change(within(panel()).getByLabelText('Start at'), { target: { value: '21' } });
     apply();

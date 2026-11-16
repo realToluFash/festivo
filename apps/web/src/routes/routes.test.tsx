@@ -862,6 +862,11 @@ describe('the application tree', () => {
     );
   });
 
+  it('lets Seating fill its card at a desk, as its demo does (sc-58064)', () => {
+    expect(cssRule('.shell-content.is-card:has(> .st)')).toMatch(/padding: 0;/u);
+    expect(cssRule('.shell-content.is-card > .st .st-main')).toMatch(/min-height: 0;/u);
+  });
+
   it('keeps the shell usable when a screen throws', () => {
     vi.spyOn(console, 'error').mockImplementation(() => {});
 

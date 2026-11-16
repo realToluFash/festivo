@@ -406,6 +406,28 @@ span {
   .shell-content.is-card .desk-page {
     padding: 0;
   }
+
+  /* Seating fills its card edge to edge, as its demo's desk-main does (sc-58064): the room is the card's, not a band inside it. */
+  .shell-content.is-card:has(> .st) {
+    display: flex;
+    flex-direction: column;
+    padding: 0;
+    overflow: hidden;
+  }
+
+  .shell-content.is-card > .st .st-main {
+    min-height: 0;
+  }
+
+  /* What the shell puts above Seating keeps the card's padding the room gave up. */
+  .shell-content.is-card:has(> .st) > :not(.st) {
+    flex-shrink: 0;
+    margin-inline: var(--space6xl);
+  }
+
+  .shell-content.is-card:has(> .st) > :not(.st):first-child {
+    margin-top: var(--space3xl);
+  }
 }
 
 .shell-sidebar :is(a, button):focus-visible {

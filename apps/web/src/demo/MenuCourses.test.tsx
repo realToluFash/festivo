@@ -234,7 +234,13 @@ describe('the event Menu (sc-3902)', () => {
   });
 
   it('refuses without menu.read, and for another organisation’s event', SLOW, async () => {
-    await menu('noAccess', '', CW.noAccessTitle);
+    await menu('noAccess', '', 'This page does not exist');
+    const crumb = screen.getByRole('navigation', { name: CW.crumb });
+    expect(
+      within(crumb)
+        .getAllByRole('link')
+        .map((one) => one.textContent),
+    ).toEqual([CW.events]);
     await menu('gone', '', CW.gone);
     await menu('cannotReach', '', CW.cannotReach);
     fireEvent.click(screen.getByRole('button', { name: CW.tryAgain }));
@@ -244,6 +250,6 @@ describe('the event Menu (sc-3902)', () => {
   it('names the allergens in the language picked', SLOW, async () => {
     await menu('menu', '&format=fr');
 
-    expect(within(card('Starter')).getByText('Contains Poissons · Céleri')).toBeTruthy();
+    expect(within(card('Starter')).getByText('Contains: Poissons · Céleri')).toBeTruthy();
   });
 });
