@@ -374,6 +374,35 @@ function Plan({
   }, [hasRoom, zoomTo, panBy, view]);
 
   useEffect(() => {
+    const move = (event: PointerEvent) => {
+      const now = press.current;
+
+      if (now == null || now.pointer !== event.pointerId) return;
+      const dx = event.clientX - now.from[0];
+      const dy = event.clientY - now.from[1];
+
+      if (!now.moved && Math.hypot(dx, dy) < PAN_FROM_PX) return;
+      now.moved = true;
+      now.from = [event.clientX, event.clientY];
+      panBy(-dx, -dy);
+    };
+    const up = (event: PointerEvent) => {
+      if (press.current?.pointer !== event.pointerId) return;
+      panned.current = event.type === 'pointerup' && press.current.moved;
+      press.current = null;
+    };
+
+    window.addEventListener('pointermove', move);
+    window.addEventListener('pointerup', up);
+    window.addEventListener('pointercancel', up);
+    return () => {
+      window.removeEventListener('pointermove', move);
+      window.removeEventListener('pointerup', up);
+      window.removeEventListener('pointercancel', up);
+    };
+  }, [panBy]);
+
+  useEffect(() => {
     const keys = (event: KeyboardEvent) => {
       if (event.key !== 'Escape' || chosenAttribute == null || covered) return;
       event.preventDefault();
@@ -539,29 +568,13 @@ function Plan({
           viewBox={`0 0 ${size.w} ${size.h}`}
           role="group"
           onPointerDown={(event) => {
+            panned.current = false;
             if (event.button !== 0 || !isFloor(event.target)) return;
             press.current = {
               from: [event.clientX, event.clientY],
               moved: false,
               pointer: event.pointerId,
             };
-          }}
-          onPointerMove={(event) => {
-            const now = press.current;
-
-            if (now == null || now.pointer !== event.pointerId) return;
-            const dx = event.clientX - now.from[0];
-            const dy = event.clientY - now.from[1];
-
-            if (!now.moved && Math.hypot(dx, dy) < PAN_FROM_PX) return;
-            now.moved = true;
-            now.from = [event.clientX, event.clientY];
-            panBy(-dx, -dy);
-          }}
-          onPointerUp={(event) => {
-            if (press.current?.pointer !== event.pointerId) return;
-            panned.current = press.current.moved;
-            press.current = null;
           }}
           aria-label={
             plan.roomName == null

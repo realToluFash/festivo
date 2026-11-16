@@ -1,6 +1,6 @@
 import { act, fireEvent, render, screen, waitFor, within } from '@testing-library/react';
 import i18next from 'i18next';
-import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
+import { afterEach, beforeAll, beforeEach, describe, expect, it, vi } from 'vitest';
 import { RouterProvider, createMemoryRouter } from 'react-router';
 
 import { __setConfig, config } from '../../../config.ts';
@@ -1409,6 +1409,20 @@ function centreOf(id: string): number {
 describe('The room to scale (sc-4007)', () => {
   const before = config();
 
+  beforeAll(() => {
+    if (!('PointerEvent' in window)) {
+      class StandIn extends MouseEvent {
+        pointerId: number;
+
+        constructor(type: string, init: PointerEventInit = {}) {
+          super(type, init);
+          this.pointerId = init.pointerId ?? 1;
+        }
+      }
+      Object.defineProperty(window, 'PointerEvent', { value: StandIn, configurable: true });
+    }
+  });
+
   beforeEach(() => {
     localStorage.clear();
   });
@@ -1462,6 +1476,31 @@ describe('The room to scale (sc-4007)', () => {
 
     fireEvent.wheel(canvas, { deltaX: 100, deltaY: 0 });
     expect(centreOf('t1')).toBeCloseTo(was - 100, 0);
+  });
+
+  it('ends a pan of the floor wherever the button comes up, and the next click on the floor still counts', async () => {
+    signedIn();
+    await onSeating({ 'GET /api/events/ev_1/seating-plan': () => seating(withTables(table())) });
+    await screen.findByRole('button', { name: TABLE_1 });
+    press('Zoom in', 3);
+    const floor = document.querySelector('.st-floor')!;
+    const room = document.querySelector('.st-room')!;
+    const at = { button: 0, pointerId: 1 };
+    const was = centreOf('t1');
+
+    fireEvent.pointerDown(floor, { ...at, clientX: 100, clientY: 100 });
+    fireEvent.pointerMove(room, { ...at, clientX: 160, clientY: 100 });
+    expect(centreOf('t1')).toBeCloseTo(was + 60, 0);
+    fireEvent.pointerUp(document.body, { ...at, clientX: 160, clientY: 100 });
+    fireEvent.pointerMove(room, { ...at, clientX: 260, clientY: 100 });
+    expect(centreOf('t1')).toBeCloseTo(was + 60, 0);
+
+    fireEvent.click(screen.getByRole('button', { name: TABLE_1 }));
+    expect(screen.getByRole('heading', { level: 2, name: 'Table 1' })).toBeDefined();
+    fireEvent.pointerDown(floor, { ...at, clientX: 100, clientY: 100 });
+    fireEvent.pointerUp(floor, { ...at, clientX: 100, clientY: 100 });
+    fireEvent.click(floor);
+    expect(screen.queryByRole('heading', { level: 2, name: 'Table 1' })).toBeNull();
   });
 
   it('draws each item as its outline, name and how full it is under 50%, and its chairs from 50%', async () => {
