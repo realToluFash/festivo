@@ -20,3 +20,9 @@ appId: host.exp.Exponent
       id: 'event.edit.venue.save'
     timeout: 20000
 - takeScreenshot: at-venue-after-name-cancel
+- tapOn:
+    id: 'event.edit.venue.cancel'
+- extendedWaitUntil:
+    visible:
+      id: 'events.page'
+    timeout: 10000
