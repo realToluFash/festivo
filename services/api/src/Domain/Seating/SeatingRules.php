@@ -134,7 +134,7 @@ final readonly class SeatingRules
 
         if ($shape->isRound() && 0 !== $endSeats) {
             $violations[] = $this->violation('endSeats', 'validation.seating_table_no_ends');
-        } elseif ($endSeats < 0 || $endSeats > $seats) {
+        } elseif ($endSeats < 0 || $endSeats > Math\maxva(0, $seats)) {
             $violations[] = $this->violation('endSeats', 'validation.seating_table_ends_between', ['{max}' => (string) Math\maxva(0, $seats)]);
         }
 
