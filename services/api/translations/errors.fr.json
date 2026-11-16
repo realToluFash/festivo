@@ -110,7 +110,7 @@
     "item_started": "Cet élément a déjà commencé.",
     "item_not_started": "Cet élément n’a pas encore commencé, il ne peut donc pas être terminé.",
     "item_finished": "Cet élément est déjà terminé.",
-    "track_busy": "Another item on this track is on. Finish it first.",
-    "idempotency_key_required": "Send an Idempotency-Key with each press.",
-    "idempotency_key_reused": "This Idempotency-Key was sent with a different press."
+    "track_busy": "Un autre élément est en cours dans cet espace. Terminez-le d’abord.",
+    "idempotency_key_required": "Envoyez l’en-tête Idempotency-Key à chaque appui.",
+    "idempotency_key_reused": "Cette Idempotency-Key a déjà été envoyée avec un autre appui."
 }

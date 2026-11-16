@@ -110,7 +110,7 @@
     "item_started": "Este elemento ya ha empezado.",
     "item_not_started": "Este elemento aún no ha empezado, así que no puede terminarse.",
     "item_finished": "Este elemento ya ha terminado.",
-    "track_busy": "Another item on this track is on. Finish it first.",
-    "idempotency_key_required": "Send an Idempotency-Key with each press.",
-    "idempotency_key_reused": "This Idempotency-Key was sent with a different press."
+    "track_busy": "Ya hay otro elemento en curso en este espacio. Termínelo primero.",
+    "idempotency_key_required": "Envíe la cabecera Idempotency-Key con cada pulsación.",
+    "idempotency_key_reused": "Esta Idempotency-Key ya se envió con otra pulsación."
 }
