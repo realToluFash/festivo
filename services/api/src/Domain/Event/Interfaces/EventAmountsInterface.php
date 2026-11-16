@@ -7,7 +7,7 @@ namespace App\Domain\Event\Interfaces;
 use App\Entity\Event;
 use Symfony\Component\DependencyInjection\Attribute\AutoconfigureTag;
 
-/** Something that records amounts in an event's currency: a dish cost (sc-100), a cost or a payment (Budget & costs). */
+/** Something that records amounts in an event's currency: a menu cost (sc-3903, sc-100), a cost or a payment (Budget & costs). */
 #[AutoconfigureTag(self::TAG)]
 interface EventAmountsInterface
 {

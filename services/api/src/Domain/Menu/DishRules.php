@@ -43,19 +43,9 @@ final readonly class DishRules
      */
     public function details(string $name, ?string $description, array $allergens, bool $containsNone, array $diets, ?array $lastPrice, ?string $heldCurrency): DishDetails
     {
-        $violations = [];
         $name = NameNormaliser::name($name);
         $description = Str\trim($description ?? '');
-
-        if ('' === $name) {
-            $violations[] = $this->violation('name', 'validation.dish_name_required');
-        } elseif (VisibleText::tooLong($name, Dish::NAME_MAXIMUM)) {
-            $violations[] = $this->violation('name', 'validation.dish_name_too_long', max: (string) Dish::NAME_MAXIMUM);
-        }
-
-        if (VisibleText::tooLong($description, Dish::DESCRIPTION_MAXIMUM)) {
-            $violations[] = $this->violation('description', 'validation.dish_description_too_long', max: (string) Dish::DESCRIPTION_MAXIMUM);
-        }
+        $violations = $this->naming($name, $description);
 
         $known = self::allergenCodes();
         $allergens = Vec\filter($known, static fn (string $code): bool => Iter\contains($allergens, $code));
@@ -93,6 +83,20 @@ final readonly class DishRules
         }
 
         return new DishDetails($name, '' === $description ? null : $description, $allergens, $diets, $price);
+    }
+
+    /** Edit on a dish with variants asks only its Name and Description (sc-3903): each variant has its own allergens and diets. */
+    public function named(string $name, ?string $description): DishDetails
+    {
+        $name = NameNormaliser::name($name);
+        $description = Str\trim($description ?? '');
+        $violations = $this->naming($name, $description);
+
+        if ([] !== $violations) {
+            throw ApiException::validation($violations);
+        }
+
+        return new DishDetails($name, '' === $description ? null : $description, [], [], null);
     }
 
     /** @return list<string> the 14 of EU 1169/2011 Annex II, in its order: sc-3777's codes without Other */
@@ -171,7 +175,7 @@ final readonly class DishRules
         return Str\format('%d.%s', Math\div($minor, $scale), Str\pad_left((string) ($minor % $scale), $digits, '0'));
     }
 
-    private function example(string $currency): string
+    public function example(string $currency): string
     {
         $digits = self::minorDigits($currency);
         $formatter = new NumberFormatter($this->translator->getLocale(), NumberFormatter::DECIMAL);
@@ -179,6 +183,24 @@ final readonly class DishRules
         $formatter->setAttribute(NumberFormatter::MAX_FRACTION_DIGITS, $digits);
 
         return (string) $formatter->format(0 === $digits ? 12 : 12.5);
+    }
+
+    /** @return list<array{propertyPath: string, message: string, code: string}> */
+    private function naming(string $name, string $description): array
+    {
+        $violations = [];
+
+        if ('' === $name) {
+            $violations[] = $this->violation('name', 'validation.dish_name_required');
+        } elseif (VisibleText::tooLong($name, Dish::NAME_MAXIMUM)) {
+            $violations[] = $this->violation('name', 'validation.dish_name_too_long', max: (string) Dish::NAME_MAXIMUM);
+        }
+
+        if (VisibleText::tooLong($description, Dish::DESCRIPTION_MAXIMUM)) {
+            $violations[] = $this->violation('description', 'validation.dish_description_too_long', max: (string) Dish::DESCRIPTION_MAXIMUM);
+        }
+
+        return $violations;
     }
 
     /** @return array{propertyPath: string, message: string, code: string} */

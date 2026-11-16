@@ -9,9 +9,11 @@ use App\Domain\Menu\DishRules;
 use App\Domain\Menu\Http\MenuSerialiser;
 use App\Domain\Menu\MenuEditor;
 use App\Domain\Menu\Model\UnwarnedPickers;
+use App\Domain\Menu\VariantRules;
 use App\Entity\Event;
 use App\Entity\MenuCourse;
 use App\Entity\MenuDish;
+use App\Entity\MenuDishVariant;
 use App\Entity\User;
 use App\Enum\ErrorCode;
 use App\Enum\Permission;
@@ -23,6 +25,7 @@ use App\Http\Input;
 use App\Realtime\SubscriberTokenIssuer;
 use App\Repository\DishRepository;
 use App\Repository\EventRepository;
+use App\Repository\MenuDishVariantRepository;
 use Psl\Iter;
 use Psl\Type;
 use Symfony\Bundle\SecurityBundle\Security;
@@ -43,6 +46,7 @@ final readonly class MenuController
         private DishRules $dishRules,
         private MenuEditor $menuEditor,
         private MenuSerialiser $menuSerialiser,
+        private MenuDishVariantRepository $menuDishVariantRepository,
         private MembershipDirectoryInterface $membershipDirectory,
         private SubscriberTokenIssuer $subscriberTokenIssuer,
     ) {
@@ -174,7 +178,9 @@ final readonly class MenuController
             'containsNone' => Type\optional(Type\bool()),
             'diets' => Type\optional(Type\vec(Type\string())),
         ]));
-        $details = $this->dishRules->details($body['name'], $body['description'] ?? null, $body['allergens'] ?? [], $body['containsNone'] ?? false, $body['diets'] ?? [], null, null);
+        $details = [] === $this->menuDishVariantRepository->findOnDish($dish)
+            ? $this->dishRules->details($body['name'], $body['description'] ?? null, $body['allergens'] ?? [], $body['containsNone'] ?? false, $body['diets'] ?? [], null, null)
+            : $this->dishRules->named($body['name'], $body['description'] ?? null);
         $unwarned = $this->menuEditor->changeDish($event, $dish, $details, $this->user());
 
         return $this->menu($event, Response::HTTP_OK, ['dishId' => $dish->getId()->toRfc4122(), 'unwarned' => self::unwarned($unwarned)]);
@@ -186,6 +192,41 @@ final readonly class MenuController
     {
         $event = $this->event($eventId);
         $this->menuEditor->removeDish($event, $dish, $this->user());
+
+        return $this->menu($event);
+    }
+
+    /** Two at once on a dish without variants, then one. 409 `menu_dish_picked` on a picked dish without variants, until sc-3913. */
+    #[Route('/api/events/{eventId}/menu/dishes/{dishId}/variants', name: 'menu_variants_add', methods: ['POST'])]
+    #[InEvent(Permission::MenuManage)]
+    public function addVariants(Request $request, string $eventId, #[InThisEvent('dishId')] MenuDish $dish): JsonResponse
+    {
+        $event = $this->event($eventId);
+        $body = Input::body($request, Type\shape(['variants' => Type\vec(VariantRules::sent())]));
+        $this->refuseCostUnseen($event, $body['variants']);
+        $this->menuEditor->addVariants($event, $dish, $body['variants'], $this->user());
+
+        return $this->menu($event, Response::HTTP_CREATED);
+    }
+
+    #[Route('/api/events/{eventId}/menu/variants/{variantId}', name: 'menu_variants_change', methods: ['PUT'])]
+    #[InEvent(Permission::MenuManage)]
+    public function changeVariant(Request $request, string $eventId, #[InThisEvent('variantId')] MenuDishVariant $variant): JsonResponse
+    {
+        $event = $this->event($eventId);
+        $body = Input::body($request, VariantRules::sent());
+        $this->refuseCostUnseen($event, [$body]);
+        $unwarned = $this->menuEditor->changeVariant($event, $variant, $body, Iter\contains_key($body, 'cost'), $this->user());
+
+        return $this->menu($event, Response::HTTP_OK, ['variantId' => $variant->getId()->toRfc4122(), 'unwarned' => self::unwarned($unwarned)]);
+    }
+
+    #[Route('/api/events/{eventId}/menu/variants/{variantId}', name: 'menu_variants_remove', methods: ['DELETE'])]
+    #[InEvent(Permission::MenuManage)]
+    public function removeVariant(string $eventId, #[InThisEvent('variantId')] MenuDishVariant $variant): JsonResponse
+    {
+        $event = $this->event($eventId);
+        $this->menuEditor->removeVariant($event, $variant, $this->user());
 
         return $this->menu($event);
     }
@@ -211,7 +252,15 @@ final readonly class MenuController
     /** @param array<string, mixed> $more */
     private function menu(Event $event, int $status = Response::HTTP_OK, array $more = []): JsonResponse
     {
-        return new JsonResponse(['menu' => $this->menuSerialiser->menu($event)] + $more, $status);
+        return new JsonResponse(['menu' => $this->menuSerialiser->menu($event, $this->seesPrices($event))] + $more, $status);
+    }
+
+    /** @param list<array<string, mixed>> $variants */
+    private function refuseCostUnseen(Event $event, array $variants): void
+    {
+        if (Iter\any($variants, static fn (array $one): bool => Iter\contains_key($one, 'cost')) && !$this->seesPrices($event)) {
+            throw ApiException::permissionRequired(Permission::BudgetRead);
+        }
     }
 
     private function seesPrices(Event $event): bool
