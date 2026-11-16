@@ -138,13 +138,13 @@
   min-width: 0;
 }
 
-/* The list still clips what does not fit, but its padding gives a focused link's 2 px ring, set 2 px off, room on all four sides; the negative margin keeps the band's layout as it was (sc-57088). */
+/* The list still clips what does not fit, but its padding gives a focused link's desk ring (2 px line, halo reaching 5 px) room on all four sides; the negative margin keeps the band's layout as it was (sc-57088). */
 .st-crumb ol {
   display: flex;
   align-items: center;
   gap: var(--spaceMd);
-  margin: calc(-1 * var(--spaceXxs));
-  padding: var(--spaceXxs);
+  margin: calc(-1 * var(--spaceXs));
+  padding: var(--spaceXs);
   overflow: hidden;
   color: var(--colorInkSecondary);
   font: 500 15px/1.3 var(--fontFamily);
@@ -192,8 +192,7 @@
 }
 
 .st-crumb a.is-ring {
-  outline: 2px solid var(--colorAccent);
-  outline-offset: 2px;
+  box-shadow: var(--deskRing);
 }
 
 .st-crumb h1 {

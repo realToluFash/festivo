@@ -240,7 +240,7 @@ function CrumbFrames({
   frames: readonly Frame[];
 }) {
   return (
-    <main className="st-widths">
+    <main className="desk st-widths">
       <h1>{title}</h1>
       <p className="st-widths-line">{line}</p>
       {frames.map(({ w, named, label, ring }) => {
