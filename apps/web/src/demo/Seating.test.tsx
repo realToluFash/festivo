@@ -635,6 +635,13 @@ describe('tables, rows and seats (sc-4000, sc-4003)', () => {
     expect(await within(panel()).findByText('Enter a number of seats from 1 to 30.')).toBeDefined();
     expect(within(panel()).getByText(reset)).toBeDefined();
 
+    fireEvent.change(seats, { target: { value: '10' } });
+    key(seats, 'Enter');
+    await waitFor(() =>
+      expect(within(panel()).queryByText('Enter a number of seats from 1 to 30.')).toBeNull(),
+    );
+    expect(within(panel()).getByText(reset)).toBeDefined();
+
     fireEvent.change(seats, { target: { value: '8' } });
     key(seats, 'Enter');
     await waitFor(() => expect(within(panel()).queryByText(reset)).toBeNull());
