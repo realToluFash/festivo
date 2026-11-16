@@ -10,7 +10,7 @@ appId: host.exp.Exponent
 - tapOn:
     id: 'event.edit.cover.describe'
 - inputText: ' changed'
-- tapOn: 'Photo position'
+- hideKeyboard
 - takeScreenshot: described
 - tapOn:
     id: 'event.edit.cover.cancel'

@@ -29,7 +29,8 @@ appId: host.exp.Exponent
 - tapOn:
     id: 'event.edit.cover.save'
 - extendedWaitUntil:
-    visible: 'Saved'
+    visible:
+      id: 'events.page'
     timeout: 10000
 - takeScreenshot: saved
 - extendedWaitUntil:
