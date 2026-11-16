@@ -37,6 +37,8 @@ import {
   turned,
 } from './seatingDraw.ts';
 import { Added, BackHead, Field, Line, type PlanApi, Said, Select } from './SeatingParts.tsx';
+import { Overlaps, PositionFields } from './SeatingArrange.tsx';
+import { placementOf } from './seatingItems.ts';
 import {
   centimetreUnit,
   tableLengthWords,
@@ -114,12 +116,9 @@ export function AddTable({ ctx, more }: { ctx: PlanApi; more?: ReactNode }) {
     if (menu) first.current?.focus();
   }, [menu]);
 
-  async function add(shape: TableShape): Promise<void> {
+  function add(shape: TableShape): void {
     setMenu(false);
-    const added = await ctx.place(() => api.addSeatingTable(ctx.event.id, shape));
-
-    if (added != null)
-      ctx.open({ kind: 'table', id: added.id, said: t('seating.added', { name: added.name }) });
+    ctx.startPlacing({ kind: 'table', shape });
   }
 
   return (
@@ -146,7 +145,7 @@ export function AddTable({ ctx, more }: { ctx: PlanApi; more?: ReactNode }) {
                 type="button"
                 role="menuitem"
                 className="st-menu-row"
-                onClick={() => void add(shape)}
+                onClick={() => add(shape)}
               >
                 <ShapeTile shape={shape} />
                 {t(SHAPE_WORDS[shape].menu, {
@@ -682,6 +681,7 @@ export function TablePanel({
             <Line>{endsLine(t, table)}</Line>
           </>
         )}
+        <PositionFields ctx={ctx} item={{ kind: 'table', one: table }} />
         {ctx.system === 'us' && <Line>{t('seating.usHint')}</Line>}
         {!round && (
           <Select
@@ -689,10 +689,15 @@ export function TablePanel({
             label={t('seating.rotation')}
             value={String(table.rotation)}
             options={rotations()}
-            onPick={(value) => void change({ rotation: Number(value) })}
+            onPick={(value) =>
+              ctx.arrange([
+                { ...placementOf({ kind: 'table', one: table }), rotation: Number(value) },
+              ])
+            }
           />
         )}
       </div>
+      <Overlaps plan={plan} id={table.id} />
       <div className="st-acts">
         <TextAction
           label={t('seating.duplicate')}

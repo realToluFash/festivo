@@ -16,6 +16,7 @@ import { type KeyboardEvent, type ReactNode, useEffect, useId, useRef, useState 
 import { useTranslation } from 'react-i18next';
 
 import { Glyph } from '../../../components/Glyph.tsx';
+import { type Placement, type Placing } from './seatingItems.ts';
 
 export type Panel =
   | { kind: 'start' }
@@ -71,6 +72,10 @@ export interface PlanApi {
   open: (panel: Panel | null) => void;
   ask: (asking: Asking) => void;
   showOutside: (outside: Outside | null) => void;
+  /** Moves, turns or resizes as one step, kept on screen until it is saved (sc-5028). */
+  arrange: (items: Placement[]) => void;
+  /** Add, then a click on the floor places it. */
+  startPlacing: (placing: Placing) => void;
 }
 
 export function Line({

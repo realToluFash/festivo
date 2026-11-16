@@ -24,6 +24,8 @@ import { Glyph } from '../../../components/Glyph.tsx';
 import { TextAction } from '../../../components/SettingsParts.tsx';
 import { currentLocale } from '../../../i18n/index.ts';
 import { Added, BackHead, Field, Line, type PlanApi, Said, Select } from './SeatingParts.tsx';
+import { Overlaps, PositionFields } from './SeatingArrange.tsx';
+import { placementOf } from './seatingItems.ts';
 import {
   CHAIRS_FROM_SCALE,
   f,
@@ -84,31 +86,13 @@ function onKeys(onChoose: () => void) {
 export function AddRowAndSeat({ ctx }: { ctx: PlanApi }) {
   const { t } = useTranslation();
 
-  async function addRow(): Promise<void> {
-    const added = await ctx.place(() => api.addSeatingRow(ctx.event.id));
-
-    if (added != null)
-      ctx.open({
-        kind: 'row',
-        id: added.id,
-        said: t('seating.rowAdded', { label: added.name, count: added.seats }),
-      });
-  }
-
-  async function addSeat(): Promise<void> {
-    const added = await ctx.place(() => api.addSingleSeat(ctx.event.id));
-
-    if (added != null)
-      ctx.open({ kind: 'seat', id: added.id, said: t('seating.added', { name: added.name }) });
-  }
-
   return (
     <>
-      <button type="button" className="st-tool" onClick={() => void addRow()}>
+      <button type="button" className="st-tool" onClick={() => ctx.startPlacing({ kind: 'row' })}>
         <Glyph name="row" size={18} weight={2.2} />
         {t('seating.addRow')}
       </button>
-      <button type="button" className="st-tool" onClick={() => void addSeat()}>
+      <button type="button" className="st-tool" onClick={() => ctx.startPlacing({ kind: 'seat' })}>
         <Glyph name="seat1" size={18} weight={2.2} />
         {t('seating.addSeat')}
       </button>
@@ -451,15 +435,19 @@ export function RowPanel({
             onCommit={spacing}
           />
         </div>
+        <PositionFields ctx={ctx} item={{ kind: 'row', one: row }} />
         {ctx.system === 'us' && <Line>{t('seating.usHint')}</Line>}
         <Select
           fieldKey="rotation"
           label={t('seating.rotation')}
           value={String(row.rotation)}
           options={rotations()}
-          onPick={(value) => void change({ rotation: Number(value) })}
+          onPick={(value) =>
+            ctx.arrange([{ ...placementOf({ kind: 'row', one: row }), rotation: Number(value) }])
+          }
         />
       </div>
+      <Overlaps plan={plan} id={row.id} />
       <div className="st-acts">
         <TextAction
           label={t('seating.duplicate')}
@@ -637,7 +625,10 @@ export function SingleSeatPanel({
           options={sectionOptions(t, plan)}
           onPick={(value) => void change({ sectionId: value === '' ? null : value })}
         />
+        <PositionFields ctx={ctx} item={{ kind: 'seat', one: seat }} />
+        {ctx.system === 'us' && <Line>{t('seating.usHint')}</Line>}
       </div>
+      <Overlaps plan={plan} id={seat.id} />
       <div className="st-block">
         {state}
         <div className="st-acts">
