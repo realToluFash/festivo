@@ -35,6 +35,7 @@ function event(overrides: Record<string, unknown> = {}) {
     venue: null,
     arrivalNote: null,
     hosts: ['Funmi Adeyemi'],
+    thankYou: null,
     madeLiveAt: null,
     pausedAt: null,
     phase: 'draft',
@@ -3289,6 +3290,144 @@ describe('The phase, End now and Call off (sc-3585)', () => {
 
     expect(screen.queryByRole('button', { name: 'Call off…' })).toBeNull();
     expect(screen.queryByRole('button', { name: 'End now…' })).toBeNull();
+  });
+});
+
+describe("The hosts' thank-you (sc-6476)", () => {
+  const OVER = { startsAt: '2020-11-14T16:00:00+01:00', endsAt: '2020-11-15T02:00:00+01:00' };
+  const HAPPENING = { startsAt: '2020-11-14T16:00:00+01:00', endsAt: '2030-11-15T02:00:00+01:00' };
+  const LINE = 'Thank you for dancing with us.';
+
+  function finished(overrides: Record<string, unknown> = {}) {
+    return event({
+      ...OVER,
+      status: 'ended',
+      phase: 'finished',
+      concludedAt: OVER.endsAt,
+      ...overrides,
+    });
+  }
+
+  async function onThePage(served: unknown, answers: Record<string, Answer> = {}) {
+    const sent = answering({ 'GET /api/events/ev_1': () => json({ event: served }), ...answers });
+    at('/app/events/ev_1');
+    await screen.findByRole('heading', { level: 1, name: 'Adaeze and Tunde' });
+
+    return sent;
+  }
+
+  function card(): HTMLElement {
+    return screen.getByRole('region', { name: 'A thank-you for your guests' });
+  }
+
+  function typed(where: HTMLElement, value: string): HTMLElement {
+    const box = within(where).getByRole('textbox');
+    fireEvent.change(box, { target: { value } });
+
+    return box;
+  }
+
+  function puts(sent: { line: string; body: unknown }[]): unknown[] {
+    return sent
+      .filter(({ line }) => line === 'PUT /api/events/ev_1/thank-you')
+      .map(({ body }) => body);
+  }
+
+  it('adds a line from Add, sending it cleaned, then shows it signed with Edit', async () => {
+    signedIn();
+    const sent = await onThePage(finished(), {
+      'PUT /api/events/ev_1/thank-you': () => json({ event: finished({ thankYou: LINE }) }),
+    });
+
+    expect(
+      within(card()).getByText('Every guest sees it on their page, signed with the hosts’ names.'),
+    ).toBeDefined();
+    fireEvent.click(within(card()).getByRole('button', { name: 'Add a thank-you' }));
+    typed(card(), `  Thank you for\n\n dancing with us.  `);
+    fireEvent.click(within(card()).getByRole('button', { name: 'Save' }));
+
+    expect(await within(card()).findByText(LINE)).toBeDefined();
+    expect(puts(sent)).toEqual([{ thankYou: LINE }]);
+    expect(within(card()).getByText('Funmi Adeyemi')).toBeDefined();
+    expect(within(card()).getByRole('button', { name: 'Edit thank-you' })).toBeDefined();
+    expect(await screen.findByText('Thank-you saved.')).toBeDefined();
+  });
+
+  it('keeps the field open and says the line is too long when the API refuses it 422', async () => {
+    signedIn();
+    await onThePage(finished({ thankYou: LINE }), {
+      'PUT /api/events/ev_1/thank-you': () =>
+        problem(422, 'validation_failed', { violations: [{ propertyPath: 'thankYou' }] }),
+    });
+
+    fireEvent.click(within(card()).getByRole('button', { name: 'Edit thank-you' }));
+    const box = typed(card(), 'Thanks again.');
+    fireEvent.click(within(card()).getByRole('button', { name: 'Save' }));
+
+    expect(
+      await within(card()).findByText('A thank-you can be at most 280 characters.'),
+    ).toBeDefined();
+    expect(box.getAttribute('aria-invalid')).toBe('true');
+    expect((box as HTMLTextAreaElement).value).toBe('Thanks again.');
+  });
+
+  it('sends nothing for a line over the limit, and says so under the field', async () => {
+    signedIn();
+    const sent = await onThePage(finished());
+
+    fireEvent.click(within(card()).getByRole('button', { name: 'Add a thank-you' }));
+    typed(card(), 'a'.repeat(281));
+    fireEvent.click(within(card()).getByRole('button', { name: 'Save' }));
+
+    expect(within(card()).getByText('A thank-you can be at most 280 characters.')).toBeDefined();
+    expect(puts(sent)).toEqual([]);
+  });
+
+  it('shows the line with no Edit to a member without events.manage, and no card without a line', async () => {
+    signedIn(READER);
+    await onThePage(finished({ thankYou: LINE, permissions: READER.permissions }));
+
+    expect(within(card()).getByText(LINE)).toBeDefined();
+    expect(within(card()).queryByRole('button')).toBeNull();
+
+    cleanup();
+    await onThePage(finished({ permissions: READER.permissions }));
+
+    expect(screen.queryByRole('region', { name: 'A thank-you for your guests' })).toBeNull();
+    expect(screen.queryByRole('button', { name: 'Add a thank-you' })).toBeNull();
+  });
+
+  it('offers no card on a called-off event', async () => {
+    signedIn();
+    await onThePage(finished({ concludedAt: '2020-11-13T09:00:00+01:00' }));
+
+    expect(screen.queryByRole('region', { name: 'A thank-you for your guests' })).toBeNull();
+  });
+
+  it("keeps End now's dialog open over the limit, sending nothing, and sends the cleaned line once it fits", async () => {
+    signedIn();
+    const sent = await onThePage(event({ ...HAPPENING, status: 'live', phase: 'happening_now' }), {
+      'POST /api/events/ev_1/end': () =>
+        json({ event: finished({ ...HAPPENING, thankYou: LINE }) }),
+    });
+
+    fireEvent.click(screen.getByRole('button', { name: 'End now…' }));
+    const dialog = await screen.findByRole('dialog', { name: 'End Adaeze and Tunde now?' });
+    const box = typed(dialog, 'a'.repeat(281));
+    fireEvent.click(within(dialog).getByRole('button', { name: 'End now' }));
+
+    expect(within(dialog).getByText('A thank-you can be at most 280 characters.')).toBeDefined();
+    expect(box.getAttribute('aria-invalid')).toBe('true');
+    expect(document.activeElement).toBe(box);
+    expect(sent.filter(({ line }) => line === 'POST /api/events/ev_1/end')).toEqual([]);
+
+    typed(dialog, `  Thank you for\n dancing with us. `);
+    fireEvent.click(within(dialog).getByRole('button', { name: 'End now' }));
+
+    expect(await screen.findByText('Your thank-you is on every guest’s page.')).toBeDefined();
+    expect(sent.filter(({ line }) => line === 'POST /api/events/ev_1/end')).toEqual([
+      { line: 'POST /api/events/ev_1/end', body: { thankYou: LINE } },
+    ]);
   });
 });
 
