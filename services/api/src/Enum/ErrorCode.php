@@ -43,6 +43,9 @@ enum ErrorCode: string
     case ItemStarted = 'item_started';
     case ItemNotStarted = 'item_not_started';
     case ItemFinished = 'item_finished';
+    case TrackBusy = 'track_busy';
+    case IdempotencyKeyRequired = 'idempotency_key_required';
+    case IdempotencyKeyReused = 'idempotency_key_reused';
     case GuestAlreadyListed = 'guest_already_listed';
     case StaffNumberShared = 'staff_number_shared';
     case RepliesClosed = 'replies_closed';
@@ -129,7 +132,7 @@ enum ErrorCode: string
     public function status(): int
     {
         return match ($this) {
-            self::BadRequest => 400,
+            self::BadRequest, self::IdempotencyKeyRequired => 400,
             self::ValidationFailed => 422,
             self::MethodNotAllowed => 405,
             self::NotFound, self::ResetLinkInvalid => 404,
@@ -150,7 +153,7 @@ enum ErrorCode: string
             self::PreconditionRequired => 428,
             self::EventCurrencyInUse, self::EventStateInvalid, self::EventConcluded, self::EventPaused, self::EventHostRequired, self::EventCallOffFirst => 409,
             self::PlanLimit => 403,
-            self::SeatingPlanExists, self::SeatingSectionLimit, self::SeatingItemsOutside, self::ScheduleItemLimit, self::ItemStarted, self::ItemNotStarted, self::ItemFinished, self::GuestAlreadyListed, self::StaffNumberShared, self::RepliesClosed, self::RepliesOpen, self::GuestReplied, self::ReplyIsTheirs, self::GuestNotMarkedByHand, self::DishNameShared, self::DishInUse, self::MenuCourseLimit, self::MenuCoursePicked, self::MenuDishPicked, self::MenuSameOneDish => 409,
+            self::SeatingPlanExists, self::SeatingSectionLimit, self::SeatingItemsOutside, self::ScheduleItemLimit, self::ItemStarted, self::ItemNotStarted, self::ItemFinished, self::TrackBusy, self::GuestAlreadyListed, self::StaffNumberShared, self::RepliesClosed, self::RepliesOpen, self::GuestReplied, self::ReplyIsTheirs, self::GuestNotMarkedByHand, self::DishNameShared, self::DishInUse, self::MenuCourseLimit, self::MenuCoursePicked, self::MenuDishPicked, self::MenuSameOneDish => 409,
             self::Unauthenticated, self::InvalidCredentials, self::InvalidRefreshToken, self::OAuthTokenInvalid, self::TwoFactorChallengeInvalid, self::SessionTimedOut => 401,
             self::Forbidden, self::PermissionRequired, self::GrantNotHeld, self::OwnEventRole, self::AccountUnverified, self::ProfileIncomplete, self::TwoFactorRequired, self::ProofRequired => 403,
             self::OAuthOnly, self::OAuthOnlyUnlinked, self::OrganisationTwoFactorRequired, self::OrganisationTwoFactorOverdue, self::OwnerRequired => 403,
@@ -162,7 +165,7 @@ enum ErrorCode: string
             self::ServiceUnavailable => 503,
             self::AssistantUnavailable, self::AssistantBusy => 503,
 
-            self::AssistantRefused => 422,
+            self::AssistantRefused, self::IdempotencyKeyReused => 422,
         };
     }
 

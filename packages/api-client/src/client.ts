@@ -91,6 +91,8 @@ import {
   type Schedule,
   type ScheduleItemDetails,
   type ScheduleWithItem,
+  type ScheduleItemPress,
+  type PressSent,
   asSchedule,
 } from './schedule.ts';
 
@@ -2726,16 +2728,18 @@ export class ApiClient {
     );
   }
 
-  /** Marks the item started or done now, by the server's clock (sc-1404). 409 `item_started`, `item_not_started` or `item_finished` when it is not in a state to. */
-  async markScheduleItem(
+  /** The same key again answers as the first time (sc-3895); 409 with `superseded_by` when it changes nothing, 422 for the key with another press. */
+  async pressScheduleItem(
     eventId: string,
     itemId: string,
-    mark: 'start' | 'finish',
+    kind: ScheduleItemPress,
+    sent: PressSent,
   ): Promise<Schedule> {
     return this.scheduleOf(
       await this.post<unknown>(
-        `${this.schedulePath(eventId)}/items/${encodeURIComponent(itemId)}/${mark}`,
-        {},
+        `${this.schedulePath(eventId)}/items/${encodeURIComponent(itemId)}/presses`,
+        { kind, pressedAt: sent.pressedAt },
+        { headers: { 'Idempotency-Key': sent.key } },
       ),
     );
   }

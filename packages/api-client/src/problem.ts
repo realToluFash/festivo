@@ -59,6 +59,8 @@ export interface Problem {
   archived?: boolean;
   /** On a schedule item's `precondition_failed`: the item as it is stored now, which `asScheduleItem` reads (sc-3893). */
   current?: unknown;
+  /** On a night-screen press that changed nothing: the earlier press it lost to, its presser's name and when, in the event's zone (sc-3895). */
+  superseded_by?: { name: string; at: string };
 }
 
 /**

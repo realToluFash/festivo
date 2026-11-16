@@ -292,5 +292,9 @@
     "run_of_show.item_started": "Este item já começou. Nada foi alterado.",
     "run_of_show.item_not_started": "Comece este item antes de o marcar como concluído.",
     "run_of_show.item_finished": "Este item já está concluído. Nada foi alterado.",
+    "run_of_show.track_busy": "Finish the current item first.",
+    "run_of_show.idempotency_key_required": "Send an Idempotency-Key with each press.",
+    "run_of_show.idempotency_key_reused": "This Idempotency-Key was already used for a different press. Nothing was changed.",
+    "run_of_show.pressed_at_invalid": "Send pressedAt as a date and time with its offset, such as 2027-03-06T21:50:00+01:00.",
     "timeline.run_of_show_begins": "Início do programa"
 }

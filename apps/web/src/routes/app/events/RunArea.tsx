@@ -3,6 +3,7 @@ import {
   type OrganisationEvent,
   type Schedule,
   asSchedule,
+  pressedAtOf,
   realtimeTopic,
 } from '@soirely/api-client';
 import {
@@ -14,6 +15,7 @@ import {
   figureWords,
   formatWallClock,
   nextWords,
+  serverClock,
   timeSlot,
   wallOfZoned,
   zonedAt,
@@ -180,7 +182,12 @@ function RunView({
     setBusy(item.id);
     setFailed(null);
     try {
-      onSchedule(await api.markScheduleItem(event.id, item.id, how));
+      onSchedule(
+        await api.pressScheduleItem(event.id, item.id, how === 'finish' ? 'done' : 'start', {
+          key: crypto.randomUUID(),
+          pressedAt: pressedAtOf(serverClock.now()),
+        }),
+      );
     } catch (error) {
       if (error instanceof ApiError && error.status === 409) {
         setFailed(error.problem.title);

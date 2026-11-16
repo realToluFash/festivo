@@ -8,6 +8,8 @@ export interface ScheduleItem {
   /** When it was marked started and done, RFC 3339 in the event zone's offset (sc-1404); null until then. */
   startedAt: string | null;
   endedAt: string | null;
+  /** Marked as not happening on the night screen (sc-3895); it takes no time and has no start or end. */
+  skipped: boolean;
   /** The event day it sits on, `YYYY-MM-DD`: an event day runs from 05:00 to 05:00 in the event's zone. */
   day: string;
   lengthMinutes: number | null;
@@ -43,6 +45,20 @@ export interface ScheduleItemDetails {
   showToGuests: boolean;
 }
 
+/** Done, Start now or Skip on the night screen (sc-3895). */
+export type ScheduleItemPress = 'start' | 'done' | 'skip';
+
+/** One press as it is kept until the API has it: the key made when it was pressed, and the moment by the corrected clock. */
+export interface PressSent {
+  key: string;
+  pressedAt: string;
+}
+
+/** A moment as the API reads a press's `pressedAt`: RFC 3339 to the second, in UTC. */
+export function pressedAtOf(moment: Date): string {
+  return `${moment.toISOString().slice(0, 19)}+00:00`;
+}
+
 export interface ScheduleWithItem {
   schedule: Schedule;
   itemId: string;
@@ -70,6 +86,7 @@ export function asScheduleItem(raw: unknown): ScheduleItem | null {
     startsAt,
     startedAt,
     endedAt,
+    skipped,
     day,
     lengthMinutes,
     place,
@@ -87,6 +104,7 @@ export function asScheduleItem(raw: unknown): ScheduleItem | null {
     typeof startsAt !== 'string' ||
     !text(startedAt) ||
     !text(endedAt) ||
+    typeof skipped !== 'boolean' ||
     typeof day !== 'string' ||
     !(lengthMinutes === null || typeof lengthMinutes === 'number') ||
     !text(place) ||
@@ -105,6 +123,7 @@ export function asScheduleItem(raw: unknown): ScheduleItem | null {
     startsAt,
     startedAt,
     endedAt,
+    skipped,
     day,
     lengthMinutes,
     place,

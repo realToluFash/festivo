@@ -72,6 +72,10 @@ final class ExpectedStarts
             $startedAt = $item->getStartedAt();
             $endedAt = $item->getEndedAt();
 
+            if ($item->isSkipped()) {
+                continue;
+            }
+
             if (null !== $endedAt) {
                 $end = self::minutes($endedAt);
 
