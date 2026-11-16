@@ -3371,6 +3371,33 @@ describe("The hosts' thank-you (sc-6476)", () => {
     expect((box as HTMLTextAreaElement).value).toBe('Thanks again.');
   });
 
+  it('Cancel on a changed line asks first, and Discard keeps the line and focuses Edit', async () => {
+    signedIn();
+    // jsdom focuses inside an `[inert]` subtree; a browser does not.
+    const focus = HTMLElement.prototype.focus;
+    vi.spyOn(HTMLElement.prototype, 'focus').mockImplementation(function (
+      this: HTMLElement,
+      options?: FocusOptions,
+    ) {
+      if (this.closest('[inert]') == null) focus.call(this, options);
+    });
+    const sent = await onThePage(finished({ thankYou: LINE }));
+
+    fireEvent.click(within(card()).getByRole('button', { name: 'Edit thank-you' }));
+    typed(card(), 'Thanks again.');
+    fireEvent.click(within(card()).getByRole('button', { name: 'Cancel' }));
+    const ask = await screen.findByRole('alertdialog', { name: 'Discard your change?' });
+    fireEvent.click(within(ask).getByRole('button', { name: 'Discard' }));
+
+    expect(await within(card()).findByText(LINE)).toBeDefined();
+    expect(puts(sent)).toEqual([]);
+    await waitFor(() =>
+      expect(document.activeElement).toBe(
+        within(card()).getByRole('button', { name: 'Edit thank-you' }),
+      ),
+    );
+  });
+
   it('sends nothing for a line over the limit, and says so under the field', async () => {
     signedIn();
     const sent = await onThePage(finished());
