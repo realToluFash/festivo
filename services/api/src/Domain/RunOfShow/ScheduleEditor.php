@@ -144,7 +144,12 @@ final readonly class ScheduleEditor
             $zone = new DateTimeZone($event->getTimeZone());
             $to = $loss->to;
 
-            throw new ApiException($loss->code, 'run_of_show.' . $loss->code->value, members: null === $to ? [] : ['superseded_by' => [
+            throw new ApiException($loss->code, match ($loss->code) {
+                ErrorCode::ItemFinished => 'run_of_show.item_finished',
+                ErrorCode::ItemStarted => 'run_of_show.item_started',
+                ErrorCode::TrackBusy => 'run_of_show.track_busy',
+                default => 'run_of_show.item_not_started',
+            }, members: null === $to ? [] : ['superseded_by' => [
                 'name' => $to->getPressedByName(),
                 'at' => $to->getPressedAt()->setTimezone($zone)->format(\DATE_ATOM),
             ]]);
