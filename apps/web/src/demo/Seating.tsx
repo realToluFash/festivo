@@ -448,7 +448,7 @@ function Seating({
           ...plan,
           items: plan.items.map((item) => (item.id === id ? { ...item, ...change } : item)),
         }),
-        { notice: null, ...after },
+        { notice: null, note: null, ...after },
       ),
     [commit],
   );

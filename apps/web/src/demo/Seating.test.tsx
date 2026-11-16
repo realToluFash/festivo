@@ -621,6 +621,28 @@ describe('tables, rows and seats (sc-4000, sc-4003)', () => {
     ).toBeDefined();
   });
 
+  it('keeps the reset line on a refused change and clears it on a saved one', SLOW, async () => {
+    const reset = 'Size reset to the rectangular default, 180 × 76 cm. Seats kept at 10.';
+
+    await seating('tapChooses');
+    fireEvent.change(within(panel()).getByLabelText('Shape'), { target: { value: 'rect' } });
+    expect(await within(panel()).findByText(reset)).toBeDefined();
+
+    const seats = within(panel()).getByLabelText('Seats');
+
+    fireEvent.change(seats, { target: { value: '31' } });
+    key(seats, 'Enter');
+    expect(await within(panel()).findByText('Enter a number of seats from 1 to 30.')).toBeDefined();
+    expect(within(panel()).getByText(reset)).toBeDefined();
+
+    fireEvent.change(seats, { target: { value: '8' } });
+    key(seats, 'Enter');
+    await waitFor(() => expect(within(panel()).queryByText(reset)).toBeNull());
+
+    fireEvent.change(within(panel()).getByLabelText('Shape'), { target: { value: 'round' } });
+    expect(await within(panel()).findByText(/^Size reset to the round default/u)).toBeDefined();
+  });
+
   it('marks a chair unusable and back, and refuses a taken one', SLOW, async () => {
     await seating('chair');
     fireEvent.click(within(panel()).getByRole('button', { name: 'Mark unusable' }));
