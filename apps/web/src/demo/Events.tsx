@@ -93,9 +93,11 @@ export function Events() {
 
   return (
     <EventsShell
+      fit
       told={told}
       renderSide={(tell, covered) => (
         <TodaySidebar
+          phone
           events={start.first || fresh ? [] : sidebarEvents(start.emptied)}
           tell={tell}
           listing

@@ -75,8 +75,10 @@ function CalendarAt({ raw }: { raw: string | null }) {
 
   return (
     <EventsShell
+      fit
       renderSide={(tell, covered) => (
         <TodaySidebar
+          phone
           events={
             start.none ? [] : SIDEBAR_EVENTS.filter((key) => sampleEvent(TODAY_IDS[key]) != null)
           }

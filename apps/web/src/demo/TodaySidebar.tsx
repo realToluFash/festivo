@@ -40,6 +40,7 @@ export function TodaySidebar({
   hideLibrary = false,
   person = FOLAKE,
   inert = false,
+  phone = false,
 }: {
   events: readonly EventKey[];
   tell: Tell;
@@ -51,6 +52,8 @@ export function TodaySidebar({
   hideLibrary?: boolean;
   person?: DeskPerson | undefined;
   inert?: boolean;
+  /** At 40rem and under the sidebar is the phone's bar: the switcher and Menu (sc-13413), as on Today, Events and Calendar (sc-57468). */
+  phone?: boolean;
 }) {
   const [params] = useSearchParams();
   const listed = sideEvents(events, params.get('sidebar'));
@@ -81,6 +84,24 @@ export function TodaySidebar({
         </>
       }
     >
+      {phone && (
+        <button
+          type="button"
+          className="dp-menu"
+          onClick={() => tell('Menu has its own design (sc-13413).')}
+        >
+          <svg
+            viewBox="0 0 16 16"
+            fill="none"
+            stroke="currentColor"
+            strokeWidth="1.5"
+            aria-hidden="true"
+          >
+            <path d="M2 4h12M2 8h12M2 12h12" strokeLinecap="round" />
+          </svg>
+          Menu
+        </button>
+      )}
       <SearchRow />
       <ul className="today-places">
         {PLACES.filter(([label]) => !hideLibrary || label !== 'Menu library').map(

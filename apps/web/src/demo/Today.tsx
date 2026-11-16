@@ -19,6 +19,7 @@ import { DeskSearch } from './Search.tsx';
 import { REACHES, reachOfRole, type SearchStart } from './search.ts';
 import type { DeskPerson } from '../components/DeskSidebar.tsx';
 import './today.css';
+import './phone.css';
 
 /** The demo's bell, with its sample's three unread. */
 const ACTIONS: BannerActions = { create: true, bell: { unread: 3 } };
@@ -83,13 +84,14 @@ export function Today({ search = null }: { search?: SearchStart | null }) {
 
   return (
     <LayersContext value={layers}>
-      <div className="today">
+      <div className="today dp-fit">
         <DeskSearch
           first={search}
           reach={asks ? reachOfRole(VIEWERS.ana.role) : REACHES.owner}
           tell={tell}
         >
           <TodaySidebar
+            phone
             events={moment.events.map(({ event }) => keyOf(event.id))}
             person={asks ? VIEWERS.ana : search == null ? undefined : SEARCHERS.get(search.reach)}
             tell={tell}
