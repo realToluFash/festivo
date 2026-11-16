@@ -290,7 +290,7 @@ final readonly class SeatingPlanEditor
             $seats = $fields['seats'] ?? $table->getSeats();
             $widthCm = $fields['widthCm'] ?? ($reshaped ? $defaults['widthCm'] : $table->getWidthCm());
             $lengthCm = $shape->isRound() ? $widthCm : ($fields['lengthCm'] ?? ($reshaped ? $defaults['lengthCm'] : $table->getLengthCm()));
-            $endSeats = $fields['endSeats'] ?? ($reshaped ? 0 : Math\minva($table->getEndSeats(), $seats));
+            $endSeats = $fields['endSeats'] ?? ($reshaped ? 0 : Math\maxva(0, Math\minva($table->getEndSeats(), $seats)));
             $rotation = $fields['rotation'] ?? ($reshaped ? 0 : $table->getRotation());
             $unusable = $fields['unusableSeats'] ?? Vec\filter($table->getUnusableSeats(), static fn (int $seat): bool => $seat <= $seats);
             $this->seatingRules->tableLayout($shape, $seats, $widthCm, $lengthCm, $endSeats, $rotation, $unusable, self::systemOf($event));
