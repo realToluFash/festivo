@@ -169,6 +169,7 @@
     "mobile:runView.minutes_other",
     "web:schedule.items_one",
     "web:schedule.item",
-    "mobile:runView.item"
+    "mobile:runView.item",
+    "web:seating.keyShiftUs"
   ]
 }
