@@ -341,6 +341,40 @@ describe('the Menu library (sc-3901)', () => {
     ).toBe(true);
   });
 
+  it(
+    'says why, and offers Archive, when an event took the dish since the page loaded',
+    SLOW,
+    async () => {
+      signedIn();
+      answering({}, (one) =>
+        one.method === 'DELETE'
+          ? new Response(
+              JSON.stringify({
+                type: 'dish_in_use',
+                status: 409,
+                title: 'An event uses this dish, so it cannot be deleted. Archive it instead.',
+              }),
+              { status: 409, headers: { 'Content-Type': 'application/problem+json' } },
+            )
+          : null,
+      );
+      at('/app/menu-library');
+      await loaded();
+
+      fireEvent.click(screen.getByRole('button', { name: 'Delete Chin chin…' }));
+      fireEvent.click(screen.getByRole('button', { name: 'Delete dish' }));
+
+      expect(
+        await screen.findByText(
+          'An event uses this dish, so it cannot be deleted. Archive it instead.',
+        ),
+      ).toBeTruthy();
+      expect(screen.queryByText(/Check your connection/u)).toBeNull();
+      expect(screen.getByRole('button', { name: 'Archive Chin chin' })).toBeTruthy();
+      expect(screen.queryByRole('button', { name: 'Delete Chin chin…' })).toBeNull();
+    },
+  );
+
   it('shows the lock note and no changes without menu.manage', SLOW, async () => {
     signedIn();
     answering({ canManage: false });

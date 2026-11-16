@@ -10,16 +10,16 @@ import {
 } from '@soirely/api-client';
 import {
   type DishForm,
-  type DishLanguage,
+  type MoneyLanguage,
   type DishProblems,
   blankDishForm,
   dishDetailsOf,
   dishFormOf,
-  dishLanguage,
+  moneyLanguage,
   dishLength,
   dishProblems,
   firstDishProblem,
-  priceExample,
+  amountExample,
   roleName,
   sameNamedDish,
   shownDishes,
@@ -89,7 +89,7 @@ function Library({
 }) {
   const { t, i18n } = useTranslation();
   const desk = useDeskTop();
-  const language = dishLanguage(i18n.language);
+  const language = moneyLanguage(i18n.language);
   const [load, setLoad] = useState<Load>({ kind: 'loading' });
   const [refresh, setRefresh] = useState(0);
   const [tab, setTab] = useState<'dishes' | 'archived'>('dishes');
@@ -284,8 +284,13 @@ function Library({
           ? t('menuLibrary.archivedLine', { name: dish.name })
           : t('menuLibrary.restored', { name: dish.name }),
       );
-    } catch {
+    } catch (error) {
       setAskDelete(null);
+      if (kind === 'delete' && error instanceof ApiError && error.is('dish_in_use')) {
+        replace({ ...dish, usedByEvent: true });
+        say(error.problem.title, true);
+        return;
+      }
       say(
         t(
           kind === 'archive'
@@ -911,7 +916,7 @@ function DishFields({
   notStated: boolean;
   editing: Dish | null;
   prices: boolean;
-  language: DishLanguage;
+  language: MoneyLanguage;
   onPatch: (next: Partial<DishForm>) => void;
 }) {
   const { t, i18n } = useTranslation();
@@ -1137,7 +1142,7 @@ function DishFields({
           )}
           {problems?.amount != null && (
             <Wrong id="lib-amount-error">
-              {t('menuLibrary.priceWrong', { example: priceExample(language, form.currency) })}
+              {t('menuLibrary.priceWrong', { example: amountExample(language, form.currency) })}
             </Wrong>
           )}
           <p id="lib-price-help" className="desk-help">
