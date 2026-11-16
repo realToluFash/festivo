@@ -20,7 +20,6 @@ import {
   heldFirstCurrencyChoices,
   draftOf,
   endMovedLine,
-  foldedName,
   formatWallDay,
   eventChanges,
   eventFormErrors,
@@ -76,7 +75,6 @@ import { tokens } from '../theme/tokens.ts';
 import { discardCoverUpload } from './CoverField.tsx';
 import { EventCover } from './EventCover.tsx';
 import { EventNotice } from './EventNotice.tsx';
-import { SearchField } from './EventsSearch.tsx';
 import {
   ArrivalNoteField,
   CoverPhotoFields,
@@ -294,13 +292,9 @@ function CurrencyEdit(props: PartEditProps) {
   const [code, setCode] = useState(event.currency);
   const [inUse, setInUse] = useState(false);
   const { busy, save, elsewhere, failed } = usePartSave('currency', props);
-  const [typed, setTyped] = useState('');
   const choices = useMemo(
     () => heldFirstCurrencyChoices(event.currency, locale, t('eventEdit.currencyRetired')),
     [event.currency, locale, t],
-  );
-  const shown = choices.filter((one) =>
-    foldedName(`${one.code} ${one.name}`).includes(foldedName(typed)),
   );
 
   return (
@@ -316,23 +310,10 @@ function CurrencyEdit(props: PartEditProps) {
         )
       }
     >
-      {inUse && <EventNotice tone="broken" words={t('eventEdit.currencyInUse')} interrupts />}
-      <View style={styles.searchRow}>
-        <SearchField
-          typed={typed}
-          off={false}
-          width={null}
-          onTyped={setTyped}
-          onSearch={() => undefined}
-          onClear={() => setTyped('')}
-          label={t('orgGeneral.searchCurrency')}
-          testID="event.edit.currency.search"
-        />
-      </View>
       <CurrencyView
         code={code}
-        choices={shown}
-        refused={false}
+        choices={choices}
+        refused={inUse}
         onPick={(picked) => {
           setCode(picked);
           setInUse(false);
@@ -1029,7 +1010,6 @@ function CoverEdit(props: PartEditProps) {
 }
 
 const styles = StyleSheet.create({
-  searchRow: { flexDirection: 'row' },
   pressed: { opacity: tokens.opacityPressed },
   lines: { lineHeight: 15 * 1.45 },
   start: { alignItems: 'flex-start' },

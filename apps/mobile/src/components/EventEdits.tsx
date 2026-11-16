@@ -23,6 +23,7 @@ import { TextField, type TextFieldProps } from './Field.tsx';
 import { Glyph } from './Glyph.tsx';
 import { BoxField, MomentBox, type Picking, PickerLayer } from './MomentPick.tsx';
 import { RadioMark } from './RadioMark.tsx';
+import { useReadOut } from './ReadOut.tsx';
 import { type ScreenReaderTarget } from './screenReaderFocus.ts';
 import { useShellLayout } from './settingsShell.ts';
 import { Pill } from './SettingsParts.tsx';
@@ -864,16 +865,47 @@ export function CurrencyView({
   onPick: (code: string) => void;
 }) {
   const { t } = useTranslation();
+  const [typed, setTyped] = useState('');
+  const shown = choices.filter((one) =>
+    foldedName(`${one.code} ${one.name}`).includes(foldedName(typed)),
+  );
+  const none =
+    shown.length === 0 && typed.trim() !== ''
+      ? t('eventEdit.noCurrency', { typed: typed.trim() })
+      : null;
+
+  useReadOut(none);
 
   return (
     <>
       {refused && <EventNotice tone="broken" words={t('eventEdit.currencyInUse')} interrupts />}
-      <Choices
-        items={choices.map((one) => ({ key: one.code, title: `${one.code} · ${one.name}` }))}
-        on={code}
-        onPick={onPick}
-        testID="event.edit.currency"
-      />
+      <View style={styles.searchRow}>
+        <SearchField
+          typed={typed}
+          off={false}
+          width={null}
+          onTyped={setTyped}
+          onSearch={() => undefined}
+          onClear={() => setTyped('')}
+          label={t('orgGeneral.searchCurrency')}
+          testID="event.edit.currency.search"
+        />
+      </View>
+      {none == null ? (
+        <Choices
+          items={shown.map((one) => ({ key: one.code, title: `${one.code} · ${one.name}` }))}
+          on={code}
+          onPick={onPick}
+          testID="event.edit.currency"
+        />
+      ) : (
+        <View style={styles.none} testID="event.edit.currency.none">
+          <Text size={15} weight="medium">
+            {none}
+          </Text>
+          <TextAction label={t('eventsSearch.clearSearch')} onPress={() => setTyped('')} />
+        </View>
+      )}
     </>
   );
 }
@@ -1130,6 +1162,7 @@ const NOTE_LINE = 24;
 const styles = StyleSheet.create({
   grow: { flex: 1, minWidth: 0 },
   searchRow: { flexDirection: 'row' },
+  none: { gap: tokens.spaceSm, paddingVertical: tokens.spaceMd },
   secondary: { color: tokens.colorInkSecondary },
   pressed: { opacity: tokens.opacityPressed },
   figures: { fontVariant: ['tabular-nums'] },
