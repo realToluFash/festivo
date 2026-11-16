@@ -823,13 +823,14 @@ export function EventGuests({
             readList(watch);
           }}
           onSaved={(tagged) => {
-            opener.current =
-              shownReply(recording.guest) === 'notYetInvited'
-                ? recordButton.current
-                : guestName.current;
+            const invites = shownReply(recording.guest) === 'notYetInvited';
+            opener.current = guestName.current;
             setRecording(null);
             setNotice({ kind: 'recorded' });
             showGuest(tagged);
+            // The sheet unmounts rather than closing, and the Reply section's Record a reply mounts only with this save.
+            if (invites)
+              setTimeout(() => moveScreenReaderFocus(recordButton.current), FOCUS_AFTER_MS);
           }}
         />
       )}
