@@ -328,7 +328,9 @@ describe('Run of show on the night (sc-3895)', () => {
     await onNight(NIGHT, { permissions: ['run_of_show.read', 'events.read'] });
 
     expect(await screen.findByText('View only')).toBeDefined();
-    expect(screen.getByText('You can follow the night here, not change it.')).toBeDefined();
+    expect(
+      screen.getByText('You can follow the run of show here, but not change it.'),
+    ).toBeDefined();
     expect(screen.queryByRole('button', { name: /^(Done|Skip|Start now|Move):/ })).toBeNull();
     expect(screen.queryByRole('button', { name: /Cake cutting/ })).toBeNull();
     expect(screen.getByText('Cake cutting')).toBeDefined();
@@ -499,8 +501,8 @@ describe('Run of show on the night (sc-3895)', () => {
   it('says a day with nothing on it has nothing planned, and links to the Schedule', async () => {
     await onNight([{ ...DANCE, startsAt: '2030-11-17T20:30:00+00:00', day: '2030-11-17' }]);
 
-    expect(await screen.findByText('[Nothing is planned for today.]')).toBeDefined();
-    expect(screen.getByRole('link', { name: '[Open the Schedule]' }).getAttribute('href')).toBe(
+    expect(await screen.findByText('Nothing is planned for today.')).toBeDefined();
+    expect(screen.getByRole('link', { name: 'Open the schedule' }).getAttribute('href')).toBe(
       '/app/events/ev_1/schedule?view=schedule',
     );
   });
