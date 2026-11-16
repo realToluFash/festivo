@@ -17,7 +17,7 @@ import {
   roleHolds,
   arrivalNoteTooLong,
   coverTypeOf,
-  currencyChoices,
+  heldFirstCurrencyChoices,
   draftOf,
   endMovedLine,
   formatWallDay,
@@ -294,7 +294,7 @@ function CurrencyEdit(props: PartEditProps) {
   const { busy, save, elsewhere, failed } = usePartSave('currency', props);
   const choices = useMemo(
     () =>
-      currencyChoices(event.currency, locale, (held) =>
+      heldFirstCurrencyChoices(event.currency, locale, (held) =>
         t('orgGeneral.currencyRetired', { code: held }),
       ),
     [event.currency, locale, t],

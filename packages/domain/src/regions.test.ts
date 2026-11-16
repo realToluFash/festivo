@@ -7,6 +7,7 @@ import {
   countryChoices,
   currencyChoices,
   currencyLabel,
+  heldFirstCurrencyChoices,
   deviceCountry,
   heldCurrencyLabel,
   deviceRegion,
@@ -77,6 +78,21 @@ describe('currencies', () => {
     expect(offered).toContain('XOF');
     for (const code of ['SLL', 'ZWL', 'HRK', 'XXX', 'XTS', 'XAU', 'XDR', 'BOV'])
       expect(offered).not.toContain(code);
+  });
+
+  it("opens an event's currency list on the event's own currency, named without its code", () => {
+    const choices = heldFirstCurrencyChoices('GBP', 'en', retired);
+
+    expect(choices[0]).toEqual({ code: 'GBP', name: 'British Pound' });
+    expect(choices[1]?.code).toBe('AFN');
+    expect(choices.filter(({ code }) => code === 'GBP')).toHaveLength(1);
+  });
+
+  it('keeps a retired currency an event holds first, under its retired words', () => {
+    expect(heldFirstCurrencyChoices('HRK', 'en', retired)[0]).toEqual({
+      code: 'HRK',
+      name: 'HRK (no longer in use)',
+    });
   });
 
   describe('on an engine that names SLE, ZWG, XCG and VED by their codes, as Chrome does', () => {
