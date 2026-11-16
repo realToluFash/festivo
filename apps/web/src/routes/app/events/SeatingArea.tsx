@@ -1753,7 +1753,15 @@ function Plan({
         <p className="visually-hidden" aria-live="polite">
           {heard}
         </p>
-        {!readOnly && <AddTable ctx={ctx} floor={size.w} onRow={addRow} onSeat={addSeat} />}
+        {!readOnly && (
+          <AddTable
+            ctx={ctx}
+            floor={size.w}
+            placing={placing != null}
+            onRow={addRow}
+            onSeat={addSeat}
+          />
+        )}
         <ZoomControls camera={camera} />
         {s >= SMALL_MAP_FROM_SCALE - 1e-9 && (
           <SmallMap plan={plan} view={{ x: -ox / s, y: -oy / s, w: size.w / s, h: size.h / s }} />

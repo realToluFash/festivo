@@ -1692,6 +1692,57 @@ describe('At a narrow desk (sc-55937)', () => {
     }
   });
 
+  it('keeps Add on from a folded menu choice until placing stops', async () => {
+    signedIn();
+    const measured = barMeetsZoom();
+
+    try {
+      await onSeating({ 'GET /api/events/ev_1/seating-plan': () => seating(plan()) });
+
+      const add = await screen.findByRole('button', { name: 'Add' });
+
+      for (const choice of [
+        'Row of chairs',
+        'Single seat',
+        'Round table · 180\u00a0cm · 10 seats',
+      ]) {
+        fireEvent.click(add);
+        fireEvent.click(
+          within(screen.getByRole('menu', { name: 'Add' })).getByRole('menuitem', { name: choice }),
+        );
+        expect(screen.queryByRole('menu')).toBeNull();
+        expect(add.classList.contains('is-on')).toBe(true);
+        expect(add.hasAttribute('aria-pressed')).toBe(false);
+        fireEvent.click(screen.getByRole('button', { name: 'Stop placing' }));
+        expect(add.classList.contains('is-on')).toBe(false);
+      }
+    } finally {
+      measured.mockRestore();
+    }
+  });
+
+  it('keeps Add table on while a table is placed unfolded, and leaves Add row as it is', async () => {
+    signedIn();
+    await onSeating({ 'GET /api/events/ev_1/seating-plan': () => seating(plan()) });
+
+    const addTable = await screen.findByRole('button', { name: 'Add table' });
+
+    fireEvent.click(addTable);
+    fireEvent.click(
+      within(screen.getByRole('menu', { name: 'Add table' })).getByRole('menuitem', {
+        name: 'Round table · 180\u00a0cm · 10 seats',
+      }),
+    );
+    expect(addTable.classList.contains('is-on')).toBe(true);
+
+    fireEvent.click(screen.getByRole('button', { name: 'Add row' }));
+    expect(addTable.classList.contains('is-on')).toBe(false);
+    expect(screen.getByRole('button', { name: 'Add row' }).classList.contains('is-on')).toBe(false);
+
+    fireEvent.click(screen.getByRole('button', { name: 'Stop placing' }));
+    expect(addTable.classList.contains('is-on')).toBe(false);
+  });
+
   it('unfolds Add row and Add seat again once the floor is wide enough', async () => {
     signedIn();
     const measured = barMeetsZoom();
