@@ -27,6 +27,25 @@ export function fitOf(width: number, height: number, room: { w: number; l: numbe
   return { s, ox: FIT_PAD.left + (w - room.w * s) / 2, oy: FIT_PAD.top + (h - room.l * s) / 2 };
 }
 
+/** How far the picture slides, in screen px, to show a focused box (canvas px) whole and clear of the bars floating over the room (WCAG 2.2 SC 2.4.11). */
+export function intoView(
+  box: { x0: number; y0: number; x1: number; y1: number },
+  width: number,
+  height: number,
+  margin = 8,
+): Point {
+  const slide = (from: number, to: number, lo: number, hi: number): number => {
+    if (to - from > hi - lo || from < lo) return lo - from;
+    if (to > hi) return hi - to;
+    return 0;
+  };
+
+  return [
+    slide(box.x0, box.x1, FIT_PAD.left + margin, width - FIT_PAD.right - margin),
+    slide(box.y0, box.y1, FIT_PAD.top + margin, height - FIT_PAD.bottom - margin),
+  ];
+}
+
 export function clampScale(s: number): number {
   return Math.min(LARGEST_SCALE, Math.max(SMALLEST_SCALE, s));
 }

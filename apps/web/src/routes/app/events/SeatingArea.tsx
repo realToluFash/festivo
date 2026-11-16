@@ -65,7 +65,7 @@ import {
   useAddRowAndSeat,
 } from './SeatingRows.tsx';
 import { AddTable, ChairPanel, TableDrawing, TablePanel } from './SeatingTables.tsx';
-import { fitOf, useCamera } from './seatingCamera.ts';
+import { fitOf, intoView, useCamera } from './seatingCamera.ts';
 import { SMALL_MAP_FROM_SCALE, f, percentOf, readingOrder, sectionOf } from './seatingDraw.ts';
 import { lengthField, lengthWords } from './seatingUnits.ts';
 import '../../../components/SettingsParts.css';
@@ -425,6 +425,47 @@ function Plan({
     node.addEventListener('wheel', wheel, { passive: false });
     return () => node.removeEventListener('wheel', wheel);
   }, [hasRoom, zoomTo, panBy, view]);
+
+  useEffect(() => {
+    const node = canvasNode.current;
+
+    if (node == null || !hasRoom) return;
+    let byKey = false;
+    const key = (event: KeyboardEvent) => {
+      if (event.key === 'Tab') byKey = true;
+    };
+    const point = () => {
+      byKey = false;
+    };
+    const follow = (event: FocusEvent) => {
+      const target = event.target;
+
+      if (!byKey || !(target instanceof Element) || target.closest('.st-room') == null) return;
+      const box = node.getBoundingClientRect();
+      const at = target.getBoundingClientRect();
+      const [dx, dy] = intoView(
+        {
+          x0: at.left - box.left,
+          y0: at.top - box.top,
+          x1: at.right - box.left,
+          y1: at.bottom - box.top,
+        },
+        view.current.size.w,
+        view.current.size.h,
+      );
+
+      if (dx !== 0 || dy !== 0) panBy(-dx, -dy);
+    };
+
+    window.addEventListener('keydown', key, true);
+    window.addEventListener('pointerdown', point, true);
+    node.addEventListener('focusin', follow);
+    return () => {
+      window.removeEventListener('keydown', key, true);
+      window.removeEventListener('pointerdown', point, true);
+      node.removeEventListener('focusin', follow);
+    };
+  }, [hasRoom, panBy, view]);
 
   useEffect(() => {
     const move = (event: PointerEvent) => {

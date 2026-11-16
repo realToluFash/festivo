@@ -1752,6 +1752,57 @@ describe('The room to scale (sc-4007)', () => {
     expect(centreOf('t1')).toBeCloseTo(was - 100, 0);
   });
 
+  it('pans an item Tab lands on into view by the least distance, and not for a click or an item in view', async () => {
+    signedIn();
+    await onSeating({ 'GET /api/events/ev_1/seating-plan': () => seating(withTables(table())) });
+    const item = await screen.findByRole('button', { name: TABLE_1 });
+
+    press('Zoom in', 6);
+    expect(percent()).toBe('400%');
+    let left = 2000;
+    const measured = vi
+      .spyOn(Element.prototype, 'getBoundingClientRect')
+      .mockImplementation(function (this: Element) {
+        const at = this.getAttribute('data-table') === 't1' ? left : 0;
+        const size = at === 0 ? 0 : 100;
+
+        return {
+          width: size,
+          height: size,
+          top: 300,
+          left: at,
+          right: at + size,
+          bottom: 300 + size,
+          x: at,
+          y: 300,
+        } as DOMRect;
+      });
+
+    try {
+      const was = centreOf('t1');
+
+      fireEvent.pointerDown(item, { button: 0, pointerId: 1 });
+      act(() => item.focus());
+      expect(centreOf('t1')).toBeCloseTo(was, 0);
+      act(() => item.blur());
+
+      fireEvent.keyDown(window, { key: 'Tab' });
+      act(() => item.focus());
+      expect(percent()).toBe('400%');
+      expect(centreOf('t1')).toBeCloseTo(was - (2100 - (718 - 16 - 8)), 0);
+      act(() => item.blur());
+
+      const moved = centreOf('t1');
+
+      left = 300;
+      fireEvent.keyDown(window, { key: 'Tab', shiftKey: true });
+      act(() => item.focus());
+      expect(centreOf('t1')).toBeCloseTo(moved, 0);
+    } finally {
+      measured.mockRestore();
+    }
+  });
+
   it('ends a pan of the floor wherever the button comes up, and the next click on the floor still counts', async () => {
     signedIn();
     await onSeating({ 'GET /api/events/ev_1/seating-plan': () => seating(withTables(table())) });
