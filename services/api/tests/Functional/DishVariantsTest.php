@@ -272,6 +272,20 @@ final class DishVariantsTest extends ApiTestCase
     }
 
     #[Test]
+    public function aFoldIsRefusedWhenTheVariantThatStaysIsPicked(): void
+    {
+        $jollof = $this->jollof();
+        $this->addVariants($jollof, [self::sent('Chicken'), self::sent('Fish', 'fish')]);
+        $this->picks(Type\string()->coerce($this->variants()[0]['id']), $this->guest('Tolu Adeyemi', []));
+
+        $this->as($this->owner, 'DELETE', $this->path('/variants/' . Type\string()->coerce($this->variants()[1]['id'])));
+
+        self::assertSame(409, $this->statusCode());
+        self::assertSame('https://soirely.com/errors/variant_picked', $this->last()['type'] ?? null);
+        self::assertSame(['Chicken', 'Fish'], Vec\map($this->variants(), static fn (array $one): mixed => $one['name']));
+    }
+
+    #[Test]
     public function anAllergenAddedToAPickedVariantSavesAndCountsWhoHasItRecorded(): void
     {
         $chicken = $this->pickedChicken();
@@ -433,7 +447,6 @@ final class DishVariantsTest extends ApiTestCase
         self::assertSame([600, 900], Vec\map($kept, static fn (DishVariant $one): ?int => $one->getLastPriceMinor()));
     }
 
-    /** Tolu has peanuts and sesame, a companion sesame: both counted. Bisi's peanuts is an Other allergy, and Dayo has nothing recorded. */
     #[Test]
     public function aVariantsCostHoldsTheEventsCurrencyUntilItIsClearedOrRemoved(): void
     {
@@ -468,6 +481,21 @@ final class DishVariantsTest extends ApiTestCase
         self::assertSame(200, $this->changeCurrency('EUR'));
     }
 
+    #[Test]
+    public function aDishGivenVariantsAgainLetsGoOfTheCostAFoldGaveIt(): void
+    {
+        $jollof = $this->jollof();
+        $this->addVariants($jollof, [self::sent('Chicken'), [...self::sent('Fish'), 'cost' => '15.50']]);
+        $this->as($this->owner, 'DELETE', $this->path('/variants/' . Type\string()->coerce($this->variants()[0]['id'])));
+        self::assertSame(200, $this->statusCode(), Json\encode($this->last()));
+
+        $this->addVariants($jollof, [self::sent('Chicken'), self::sent('Fish')]);
+
+        self::assertNull($this->dish()['cost']);
+        self::assertSame(200, $this->changeCurrency('EUR'));
+    }
+
+    /** Tolu has peanuts and sesame, a companion sesame: both counted. Bisi's peanuts is an Other allergy, and Dayo has nothing recorded. */
     private function pickedChicken(): string
     {
         $jollof = $this->jollof();

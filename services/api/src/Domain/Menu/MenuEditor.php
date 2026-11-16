@@ -258,6 +258,13 @@ final readonly class MenuEditor
             }
 
             $details = $this->variantRules->details($sent, $variants, $event->getCurrency());
+
+            if ([] === $variants && null !== $dish->getCostMinor()) {
+                $before = self::recordedDish($dish);
+                $dish->takeVariants();
+                $this->audit(self::DISH_CHANGED, 'MenuDish', $dish->getId(), $by, Auditor::diff($before, self::recordedDish($dish)));
+            }
+
             $next = [] === $variants ? 0 : Math\max(Vec\map($variants, static fn (MenuDishVariant $one): int => $one->getPosition())) + 1;
             foreach ($details as $at => $one) {
                 $variant = new MenuDishVariant($dish, $one->name, $one->forChildren, $one->allergens, $one->diets, $one->price?->minor, $next + $at);
@@ -305,7 +312,10 @@ final readonly class MenuEditor
             $dish = $variant->getDish();
             $left = Vec\filter($this->menuDishVariantRepository->findOnDish($dish), static fn (MenuDishVariant $one): bool => $one !== $variant);
 
-            if ([] !== $this->menuPicks->pickersOfVariant($variant)) {
+            $folding = 1 === Iter\count($left);
+            $picked = $folding ? [$variant, ...$left] : [$variant];
+
+            if (Iter\any($picked, fn (MenuDishVariant $one): bool => [] !== $this->menuPicks->pickersOfVariant($one))) {
                 throw new ApiException(ErrorCode::VariantPicked, 'menu.variant_picked');
             }
 
@@ -316,7 +326,7 @@ final readonly class MenuEditor
             $this->audit(self::VARIANT_REMOVED, 'MenuDishVariant', $variant->getId(), $by, Auditor::diff(self::recordedVariant($variant), []));
             $this->entityManager->remove($variant);
 
-            if (1 === Iter\count($left)) {
+            if ($folding) {
                 $staying = Vec\values($left)[0];
                 $before = self::recordedDish($dish);
                 $dish->foldFrom($staying);

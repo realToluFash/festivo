@@ -135,6 +135,12 @@ class MenuDish
         $this->costMinor = null === $variant->getCostMinor() ? null : (string) $variant->getCostMinor();
     }
 
+    /** Its variants carry the cost from here on, so the dish lets go of the one a fold gave it. */
+    public function takeVariants(): void
+    {
+        $this->costMinor = null;
+    }
+
     public function rename(string $name, ?string $description): void
     {
         $this->name = $name;
