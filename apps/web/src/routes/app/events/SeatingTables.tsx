@@ -128,11 +128,13 @@ const FLOAT_MARGINS = 3 * 12;
 export function AddTable({
   ctx,
   floor,
+  placing,
   onRow,
   onSeat,
 }: {
   ctx: PlanApi;
   floor: number;
+  placing: boolean;
   onRow: () => Promise<void>;
   onSeat: () => Promise<void>;
 }) {
@@ -141,7 +143,8 @@ export function AddTable({
   const [menu, setMenu] = useState(false);
   const [folded, setFolded] = useState(false);
   const [crowded, setCrowded] = useState(false);
-  const [adding, setAdding] = useState(false);
+  const [fromMenu, setFromMenu] = useState<'table' | 'other' | null>(null);
+  const [wasPlacing, setWasPlacing] = useState(placing);
   const first = useRef<HTMLButtonElement>(null);
   const bar = useRef<HTMLDivElement>(null);
   const unfolded = useRef(0);
@@ -162,14 +165,10 @@ export function AddTable({
     if (menu) first.current?.focus();
   }, [menu]);
 
-  async function adds(change: () => Promise<void>): Promise<void> {
+  function adds(change: () => Promise<void>, chosen: 'table' | 'other' | null): Promise<void> {
     setMenu(false);
-    setAdding(true);
-    try {
-      await change();
-    } finally {
-      setAdding(false);
-    }
+    setFromMenu(chosen);
+    return change();
   }
 
   function add(shape: TableShape): Promise<void> {
@@ -177,7 +176,12 @@ export function AddTable({
     return Promise.resolve();
   }
 
-  const on = menu || (folded && adding);
+  if (placing !== wasPlacing) {
+    setWasPlacing(placing);
+    if (!placing) setFromMenu(null);
+  }
+
+  const on = menu || (placing && (folded ? fromMenu != null : fromMenu === 'table'));
 
   return (
     <>
@@ -203,7 +207,7 @@ export function AddTable({
                 type="button"
                 role="menuitem"
                 className="st-menu-row"
-                onClick={() => void adds(() => add(shape))}
+                onClick={() => void adds(() => add(shape), 'table')}
               >
                 <ShapeTile glyph={shape === 'rectangular' ? 'rect' : shape} />
                 {t(SHAPE_WORDS[shape].menu, {
@@ -219,7 +223,7 @@ export function AddTable({
                 type="button"
                 role="menuitem"
                 className="st-menu-row"
-                onClick={() => void adds(onRow)}
+                onClick={() => void adds(onRow, 'other')}
               >
                 <ShapeTile glyph="row" />
                 {t('seating.menuRow')}
@@ -228,7 +232,7 @@ export function AddTable({
                 type="button"
                 role="menuitem"
                 className="st-menu-row"
-                onClick={() => void adds(onSeat)}
+                onClick={() => void adds(onSeat, 'other')}
               >
                 <ShapeTile glyph="seat1" />
                 {t('seating.singleSeat')}
@@ -256,11 +260,11 @@ export function AddTable({
         </button>
         {!folded && (
           <>
-            <button type="button" className="st-tool" onClick={() => void adds(onRow)}>
+            <button type="button" className="st-tool" onClick={() => void adds(onRow, null)}>
               <Glyph name="row" size={18} weight={2.2} />
               {t('seating.addRow')}
             </button>
-            <button type="button" className="st-tool" onClick={() => void adds(onSeat)}>
+            <button type="button" className="st-tool" onClick={() => void adds(onSeat, null)}>
               <Glyph name="seat1" size={18} weight={2.2} />
               {t('seating.addSeat')}
             </button>
