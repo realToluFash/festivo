@@ -12,7 +12,7 @@ import { __setSessionState, type Session } from '../session.ts';
 import { routes } from './index.tsx';
 import { membership } from '../test-memberships.ts';
 import { STYLES, cssRule, stylesheet } from '../test-styles.ts';
-import { atStackedWidth } from '../test-widths.ts';
+import { atPhoneWidth, atStackedWidth } from '../test-widths.ts';
 
 const MEMBERSHIP = membership({ id: 'org_1', name: 'Okonkwo Events' });
 
@@ -541,6 +541,50 @@ describe('the application tree', () => {
         expect(document.querySelector('.shell-content.is-card')).toBeNull();
         const bell = await screen.findByRole('button', { name: /^Notifications/ });
         expect(bell.closest('.shell-band')).toBeTruthy();
+      },
+    );
+
+    it.each(['/app/events', '/app/calendar'])(
+      "puts the bell in %s's title row under the phone's bar, with no band (sc-57468)",
+      async (place) => {
+        atPhoneWidth();
+        at(place);
+
+        const bell = await screen.findByRole('button', { name: /^Notifications/ });
+        expect(bell.closest('header.desk-top')?.querySelector('h1')).toBeTruthy();
+        expect(document.querySelector('header.shell-band')).toBeNull();
+        expect(document.querySelector('.shell.fits-phone')).toBeTruthy();
+        expect(screen.getAllByRole('button', { name: /^Notifications/ })).toHaveLength(1);
+      },
+    );
+
+    it("draws no band above Today under the phone's bar, and puts the bell in its banner (sc-57468)", async () => {
+      vi.spyOn(globalThis, 'fetch').mockImplementation(async (input) =>
+        new URL(String(input)).pathname === '/api/orgs/org_1/events'
+          ? new Response(JSON.stringify({ events: [], total: 0 }), {
+              headers: { 'Content-Type': 'application/json' },
+            })
+          : new Promise<Response>(() => {}),
+      );
+      atPhoneWidth();
+      at('/app');
+
+      const bell = await screen.findByRole('button', { name: /^Notifications/ });
+      expect(bell.closest('.today-actions')).toBeTruthy();
+      expect(document.querySelector('header.shell-band')).toBeNull();
+      expect(document.querySelector('.shell.fits-phone')).toBeTruthy();
+      expect(screen.getAllByRole('button', { name: /^Notifications/ })).toHaveLength(1);
+    });
+
+    it.each(['/app/settings', '/app/account', '/app/events/new'])(
+      'keeps the band with the bell above %s at a phone (sc-13413)',
+      async (place) => {
+        atPhoneWidth();
+        at(place);
+
+        const bell = await screen.findByRole('button', { name: /^Notifications/ });
+        expect(bell.closest('.shell-band')).toBeTruthy();
+        expect(document.querySelector('.shell.fits-phone')).toBeNull();
       },
     );
 

@@ -32,6 +32,7 @@ import { Glyph } from './Glyph.tsx';
 import { SearchField } from './SearchField.tsx';
 import { Head, TextAction } from './SettingsParts.tsx';
 import './EventsSearch.css';
+import './phoneFit.css';
 
 /** How long typing rests before it searches; Return searches at once. */
 const TYPING_PAUSE = 300;

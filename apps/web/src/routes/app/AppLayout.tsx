@@ -42,8 +42,8 @@ import { NoOrganisation } from './NoOrganisation.tsx';
 import { heldRegistration } from '../../pendingRegistration.ts';
 import { useTwoFactorStanding } from '../../twoFactorStanding.ts';
 import { useDialogKeys } from '../../dialogFocus.ts';
-import { PHONE_WIDTH, useDeskWidth } from '../../phoneWidth.ts';
-import { DeskTopContext, placesItsNotices } from '../../deskTop.ts';
+import { PHONE_WIDTH, useDeskWidth, usePhoneWidth } from '../../phoneWidth.ts';
+import { DeskTopContext, fitsPhone, placesItsNotices } from '../../deskTop.ts';
 import {
   EventNav,
   type InsideEvent,
@@ -144,8 +144,11 @@ function Shell() {
   const offer = useDomainOffer();
   const overdue = useTwoFactorStanding(organisation) === 'overdue';
   const switchTo = switchOf(location.state);
-  // At a desk no page has the band: each page's own top carries the bell (sc-39509).
-  const bandless = useDeskWidth();
+  const atDesk = useDeskWidth();
+  const atPhone = usePhoneWidth();
+  const fits = fitsPhone(pathname);
+  // At a desk no page has the band: each page's own top carries the bell (sc-39509), as Today, Events and Calendar do in a phone's window (sc-57468).
+  const bandless = atDesk || (atPhone && fits);
   const ownNotices = placesItsNotices(pathname);
 
   // Before the first paint, so the first signed-in screen is already in the account's language.
@@ -289,7 +292,11 @@ function Shell() {
 
   return (
     <OfflineProvider>
-      <div className={bandless ? 'shell is-bandless' : 'shell'}>
+      <div
+        className={['shell', bandless && 'is-bandless', fits && 'fits-phone']
+          .filter(Boolean)
+          .join(' ')}
+      >
         <SkipLink inert={menuOpen} />
 
         <aside ref={sidebar} className="shell-sidebar" inert={menuOpen}>
