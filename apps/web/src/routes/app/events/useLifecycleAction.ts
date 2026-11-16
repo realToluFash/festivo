@@ -7,12 +7,11 @@ import { api } from '../../../api.ts';
 
 export type Confirming<C> = { kind: 'confirm'; pending: boolean; failed: boolean } & C;
 
-/** What a refusal says once the dialog has turned into one: a title, its lines, and Close. */
+/** What a refusal says once the dialog has turned into one: a title, its line, and Close. */
 export interface Refused {
   kind: 'refused';
   title: string;
-  lines: string[];
-  link?: { label: string; to: string; state?: object };
+  line: string;
 }
 
 export type Asking<C> = Confirming<C> | Refused;
@@ -53,7 +52,7 @@ export function useLifecycleAction<C extends object>({
     then: (latest) => {
       const [title, line] = changedWords(latest);
 
-      return { title: t(title), lines: [t(line)] };
+      return { title: t(title), line: t(line) };
     },
   };
 

@@ -4,7 +4,7 @@ import { type RefObject, useEffect, useId, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 
 import { api } from '../../../api.ts';
-import { InManage, LifecycleDialog } from './LifecycleDialog.tsx';
+import { InManage, LifecycleAsk } from './LifecycleAsk.tsx';
 import { ThankYouField } from './ThankYou.tsx';
 import { useLifecycleAction } from './useLifecycleAction.ts';
 
@@ -47,15 +47,27 @@ export function EndButton({
       error.is('event_concluded')
         ? {
             reload: true,
-            then: () => ({ title: t('eventEnd.notEnded'), lines: [t('eventEnd.alreadyOver')] }),
+            then: () => ({ title: t('eventEnd.notEnded'), line: t('eventEnd.alreadyOver') }),
           }
         : null,
   });
   const callOff = asking?.kind === 'confirm' && asking.label === 'callOff';
+  const asksLater = useRef<number | undefined>(undefined);
+
+  useEffect(() => () => window.clearTimeout(asksLater.current), []);
 
   useEffect(() => {
     if (askRef == null) return;
-    askRef.current = label == null ? null : () => ask({ label });
+    askRef.current =
+      label == null
+        ? null
+        : () => {
+            // After the closing dialog has handed focus back, so this one returns it to Call off… or End now….
+            asksLater.current = window.setTimeout(() => {
+              opener.current?.focus();
+              ask({ label });
+            }, 0);
+          };
 
     return () => {
       askRef.current = null;
@@ -89,11 +101,10 @@ export function EndButton({
       )}
       {asking != null && (
         <InManage on={inManage}>
-          <LifecycleDialog
-            id="end-event"
+          <LifecycleAsk
             asking={asking}
             title={t(callOff ? 'eventEnd.callOffTitle' : 'eventEnd.endTitle', { name: event.name })}
-            lines={[t(callOff ? 'eventEnd.callOffBody' : 'eventEnd.endBody'), t('eventEnd.final')]}
+            line={`${t(callOff ? 'eventEnd.callOffBody' : 'eventEnd.endBody')} ${t('eventEnd.final')}`}
             failed={t(
               callOff
                 ? 'eventEnd.callOffFailed'
@@ -104,8 +115,6 @@ export function EndButton({
             keep={t('eventEnd.keepItOn')}
             confirm={t(callOff ? 'eventEnd.callOff' : 'eventEnd.endNow')}
             sending={t(callOff ? 'eventEnd.callingOff' : 'eventEnd.ending')}
-            tone="danger"
-            failsUnder={!callOff}
             onGo={() => {
               if (asking.kind !== 'confirm') return;
               if (!callOff && thankYouOver(draft)) {
@@ -134,7 +143,7 @@ export function EndButton({
                 }}
               />
             )}
-          </LifecycleDialog>
+          </LifecycleAsk>
         </InManage>
       )}
     </>

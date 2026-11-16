@@ -275,30 +275,34 @@ function EventOf({
     );
 
   return (
-    <div className="event-page">
-      <EventCrumb name={load.kind === 'loaded' ? load.event.name : null}>
-        {refreshing && <Refreshing />}
-      </EventCrumb>
+    <AskHost>
+      {(covered) => (
+        <div className="event-page" inert={covered}>
+          <EventCrumb name={load.kind === 'loaded' ? load.event.name : null}>
+            {refreshing && <Refreshing />}
+          </EventCrumb>
 
-      {states}
+          {states}
 
-      {load.kind === 'loaded' && (
-        <Arrived>
-          <EventTop
-            event={load.event}
-            tag={load.tag}
-            heading={heading}
-            onChange={(event, tag) => setLoad({ kind: 'loaded', event, tag })}
-          />
-          {page === 'dates' && <AllDatesPage event={load.event} heading={heading} />}
-          {page === 'people' && <PeoplePage event={load.event} />}
-          {isPlaceholderEventArea(page) &&
-            page !== 'menu' &&
-            page !== 'seating' &&
-            page !== 'schedule' && <AreaComing event={load.event} area={page} />}
-        </Arrived>
+          {load.kind === 'loaded' && (
+            <Arrived>
+              <EventTop
+                event={load.event}
+                tag={load.tag}
+                heading={heading}
+                onChange={(event, tag) => setLoad({ kind: 'loaded', event, tag })}
+              />
+              {page === 'dates' && <AllDatesPage event={load.event} heading={heading} />}
+              {page === 'people' && <PeoplePage event={load.event} />}
+              {isPlaceholderEventArea(page) &&
+                page !== 'menu' &&
+                page !== 'seating' &&
+                page !== 'schedule' && <AreaComing event={load.event} area={page} />}
+            </Arrived>
+          )}
+        </div>
       )}
-    </div>
+    </AskHost>
   );
 }
 
@@ -447,6 +451,18 @@ function EventDesk({ children }: { children: (covered: boolean) => ReactNode }) 
         {children(covered)}
         <div ref={setHost} className="desk-layers" />
       </div>
+    </LayersContext>
+  );
+}
+
+/** Where Make live asks from the row heading an area (sc-48603): the desk's dialog over a page that keeps its own look. */
+function AskHost({ children }: { children: (covered: boolean) => ReactNode }) {
+  const { layers, covered, setHost } = useDeskLayers();
+
+  return (
+    <LayersContext value={layers}>
+      {children(covered)}
+      <div ref={setHost} className="desk desk-layers" />
     </LayersContext>
   );
 }
