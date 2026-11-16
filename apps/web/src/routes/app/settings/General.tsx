@@ -417,7 +417,6 @@ function Text({
   busy,
   type = 'text',
   autoComplete,
-  maxLength,
   onChange,
 }: {
   field: Field;
@@ -427,7 +426,6 @@ function Text({
   busy: boolean;
   type?: 'text' | 'email';
   autoComplete: string;
-  maxLength?: number;
   onChange: (field: Field, value: string) => void;
 }) {
   const id = `organisation-${field}`;
@@ -436,7 +434,6 @@ function Text({
     <div className="field">
       <label htmlFor={id}>{label}</label>
       <input
-        maxLength={maxLength}
         className={error == null ? 'input' : 'input input-wrong'}
         id={id}
         type={type}

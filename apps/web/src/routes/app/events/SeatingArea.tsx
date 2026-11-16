@@ -977,7 +977,6 @@ function StartField({
   value,
   unit,
   optional = false,
-  maxLength,
   error,
   fieldKey,
   onChange,
@@ -986,7 +985,6 @@ function StartField({
   value: string;
   unit?: string | undefined;
   optional?: boolean;
-  maxLength?: number;
   error?: string | undefined;
   fieldKey: string;
   onChange: (text: string) => void;
@@ -1007,7 +1005,6 @@ function StartField({
           type="text"
           inputMode={optional ? 'text' : 'decimal'}
           value={value}
-          maxLength={maxLength}
           spellCheck={false}
           autoComplete="off"
           aria-invalid={error != null}
