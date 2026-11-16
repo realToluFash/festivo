@@ -450,6 +450,7 @@
 
   .ro .mn-split {
     flex-direction: column;
+    align-items: stretch;
   }
 
   .ro .mn-page > .mn-lock,
