@@ -1,0 +1,71 @@
+# sc-20824 on Android: Events' New event with ${NAME}, a wedding, start and end through the system's date and time dialogs (end on day ${TOMORROW}); Create event opens the new event's page within 3 seconds, and back shows Events, not New event.
+appId: host.exp.Exponent
+---
+- openLink: ${METRO_URL}/--/events
+- extendedWaitUntil:
+    visible:
+      id: 'events.new'
+    timeout: 30000
+- tapOn:
+    id: 'events.new'
+- extendedWaitUntil:
+    visible:
+      id: 'eventForm.name'
+    timeout: 20000
+- tapOn:
+    id: 'eventForm.name'
+- inputText: ${NAME}
+- hideKeyboard
+- tapOn:
+    id: 'eventForm.type'
+- runFlow:
+    file: ../scroll-tap.yaml
+    env:
+      ID: eventForm.type.wedding
+- scrollUntilVisible:
+    element:
+      id: 'eventForm.start.date'
+    direction: DOWN
+    centerElement: true
+- tapOn:
+    id: 'eventForm.start.date'
+- tapOn: 'OK'
+- tapOn:
+    id: 'eventForm.start.time'
+- tapOn: 'OK'
+- scrollUntilVisible:
+    element:
+      id: 'eventForm.end.date'
+    direction: DOWN
+    centerElement: true
+- tapOn:
+    id: 'eventForm.end.date'
+- tapOn: '${TOMORROW}'
+- tapOn: 'OK'
+- tapOn:
+    id: 'eventForm.end.time'
+- tapOn: 'OK'
+- takeScreenshot: filled
+- scrollUntilVisible:
+    element:
+      id: 'eventForm.send'
+    direction: DOWN
+    centerElement: true
+- tapOn:
+    id: 'eventForm.send'
+- takeScreenshot: creating
+- extendedWaitUntil:
+    visible:
+      id: 'events.page'
+    timeout: 3000
+- assertVisible: '.*${NAME}.*'
+- takeScreenshot: created
+- back
+- waitForAnimationToEnd
+- extendedWaitUntil:
+    visible:
+      id: 'events.new'
+    timeout: 10000
+- assertNotVisible:
+    id: 'eventForm.name'
+- takeScreenshot: back-to-events

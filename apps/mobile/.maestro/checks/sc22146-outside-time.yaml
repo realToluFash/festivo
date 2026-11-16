@@ -1,0 +1,42 @@
+# sc-22146: on iOS, New event's Starts time sheet, the wheel scrolled to a new time and the sheet closed by a tap outside it; Starts' time shows a time, not its empty Time, as Done would.
+appId: host.exp.Exponent
+---
+- openLink: ${METRO_URL}/--/events/new
+- extendedWaitUntil:
+    visible:
+      id: 'eventForm.name'
+    timeout: 30000
+- scrollUntilVisible:
+    element:
+      id: 'eventForm.start.time'
+    direction: DOWN
+    centerElement: true
+- swipe:
+    start: 50%, 45%
+    end: 50%, 57%
+- waitForAnimationToEnd
+- assertVisible:
+    id: 'eventForm.start.time'
+- assertNotVisible:
+    id: 'eventForm.start.time'
+    text: '.*\d.*'
+- tapOn:
+    id: 'eventForm.start.time'
+- extendedWaitUntil:
+    visible:
+      id: 'eventForm.start.done'
+    timeout: 10000
+- swipe:
+    start: 35%, 80%
+    end: 35%, 70%
+- waitForAnimationToEnd
+- takeScreenshot: scrolled
+- tapOn:
+    point: '50%,8%'
+- waitForAnimationToEnd
+- assertNotVisible:
+    id: 'eventForm.start.done'
+- assertVisible:
+    id: 'eventForm.start.time'
+    text: '.*\d.*'
+- takeScreenshot: kept

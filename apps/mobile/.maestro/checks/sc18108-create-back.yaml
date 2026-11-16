@@ -1,0 +1,99 @@
+# Android only. sc-18108: Events > New event, ${NAME} a wedding today 12:00 to tomorrow 12:00, Create event; Back shows the Events list, a second Back shows Home.
+appId: host.exp.Exponent
+---
+- runFlow: ../return-home.yaml
+- tapOn:
+    id: 'frame.events'
+- extendedWaitUntil:
+    visible:
+      id: 'events.new'
+    timeout: 30000
+- tapOn:
+    id: 'events.new'
+- extendedWaitUntil:
+    visible:
+      id: 'eventForm.name'
+    timeout: 20000
+- tapOn:
+    id: 'eventForm.name'
+- inputText: ${NAME}
+- hideKeyboard
+- tapOn:
+    id: 'eventForm.type'
+- runFlow:
+    file: ../scroll-tap.yaml
+    env:
+      ID: eventForm.type.wedding
+- scrollUntilVisible:
+    element:
+      id: 'eventForm.start.date'
+    direction: DOWN
+- tapOn:
+    id: 'eventForm.start.date'
+- runFlow:
+    when:
+      visible: 'Dismiss'
+    commands:
+      - tapOn: 'Dismiss'
+- tapOn: 'OK'
+- waitForAnimationToEnd
+- tapOn:
+    id: 'eventForm.start.time'
+- runFlow:
+    when:
+      visible: 'Dismiss'
+    commands:
+      - tapOn: 'Dismiss'
+- tapOn: 'OK'
+- waitForAnimationToEnd
+- scrollUntilVisible:
+    element:
+      id: 'eventForm.end.date'
+    direction: DOWN
+- tapOn:
+    id: 'eventForm.end.date'
+- tapOn: '${TOMORROW}'
+- runFlow:
+    when:
+      visible: 'Dismiss'
+    commands:
+      - tapOn: 'Dismiss'
+- tapOn: 'OK'
+- waitForAnimationToEnd
+- tapOn:
+    id: 'eventForm.end.time'
+- runFlow:
+    when:
+      visible: 'Dismiss'
+    commands:
+      - tapOn: 'Dismiss'
+- tapOn: 'OK'
+- waitForAnimationToEnd
+- takeScreenshot: filled
+- scrollUntilVisible:
+    element:
+      id: 'eventForm.send'
+    direction: DOWN
+- tapOn:
+    id: 'eventForm.send'
+- extendedWaitUntil:
+    visible:
+      id: 'events.page'
+    timeout: 20000
+- takeScreenshot: created
+- back
+- extendedWaitUntil:
+    visible:
+      id: 'events.new'
+    timeout: 10000
+- assertNotVisible:
+    id: 'events.page'
+- assertNotVisible:
+    id: 'eventForm.name'
+- takeScreenshot: after-back
+- back
+- extendedWaitUntil:
+    visible:
+      id: 'home.openSettings'
+    timeout: 10000
+- takeScreenshot: after-second-back

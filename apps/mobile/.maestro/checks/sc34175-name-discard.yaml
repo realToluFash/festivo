@@ -1,0 +1,34 @@
+# sc-34175: an edited name left unsaved asks to discard it, and Keep editing keeps the sheet.
+appId: host.exp.Exponent
+---
+- openLink: ${METRO_URL}/--/settings/account
+- scrollUntilVisible:
+    element:
+      id: 'account.name'
+    timeout: 30000
+- waitForAnimationToEnd
+- tapOn:
+    id: 'account.name'
+- extendedWaitUntil:
+    visible:
+      id: 'account.name.field'
+    timeout: 15000
+- takeScreenshot: name-sheet
+- inputText: ' Adébáyọ̀'
+- tapOn:
+    id: 'account.name.cancel'
+- extendedWaitUntil:
+    visible:
+      id: 'account.name.discard'
+    timeout: 10000
+- waitForAnimationToEnd
+- takeScreenshot: name-discard-ask
+- tapOn:
+    id: 'account.name.keep'
+- waitForAnimationToEnd
+- assertVisible:
+    id: 'account.name.field'
+- tapOn:
+    id: 'account.name.cancel'
+- tapOn:
+    id: 'account.name.discard'
