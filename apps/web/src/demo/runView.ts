@@ -158,7 +158,13 @@ export function figureWords(figure: Figure): string {
 export function figureSaid(name: string, figure: Figure): string {
   return figure.kind === 'behind'
     ? `${name}, ${figure.minutes} ${figure.minutes === 1 ? 'minute' : 'minutes'} behind`
-    : `${name}, ${figureWords(figure).toLowerCase().replace(/\.$/, '')}`;
+    : figure.kind === 'done'
+      ? `${name}, every item is done`
+      : `${name}, ${figureWords(figure).toLowerCase()}`;
+}
+
+function firstStart(items: readonly RunItem[]): number {
+  return Math.min(...items.map((item) => minutesOf(item.planned)));
 }
 
 /** "Cake cutting would run into Fireworks at 22:00", for each fixed-time item the one before it would still be running at. */
@@ -394,7 +400,7 @@ export function runAt(raw: string | null): Run {
     tracks: [
       { id: 'hall', name: 'Main hall', items: marked(HALL, state.marks) },
       { id: 'terrace', name: 'Garden terrace', items: onPlan(TERRACE, state.clock) },
-    ],
+    ].sort((a, b) => firstStart(a.items) - firstStart(b.items)),
   };
 }
 

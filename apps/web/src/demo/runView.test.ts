@@ -134,9 +134,7 @@ describe('the track’s figure', () => {
       'Main hall, 1 minute behind',
     );
     expect(figureSaid('Main hall', { kind: 'onTime' })).toBe('Main hall, on time');
-    expect(figureSaid('Main hall', { kind: 'done' })).toBe(
-      'Main hall, every item on this track is done',
-    );
+    expect(figureSaid('Main hall', { kind: 'done' })).toBe('Main hall, every item is done');
   });
 
   it('never goes below On time when the night runs early', () => {
@@ -179,14 +177,22 @@ describe('the rows', () => {
     expect(speeches?.lasts).toBe('No length set');
   });
 
+  it('lists the tracks in the order their first items start, as the product does', () => {
+    expect(runAt('onTime').tracks.map((one) => one.name)).toEqual(['Garden terrace', 'Main hall']);
+  });
+
   it('starts and finishes an item at the clock, and the clock moves on', () => {
     let run = runAt('notStarted');
     run = startItem(later(run, 45), 'hall', 'arrive');
     expect(run.clock).toBe('18:05');
-    const arrive = run.tracks[0]?.items.find((one) => one.id === 'arrive');
+    const arrive = run.tracks
+      .find((one) => one.id === 'hall')
+      ?.items.find((one) => one.id === 'arrive');
     expect(arrive).toMatchObject({ phase: 'now', started: '18:05' });
     run = finishItem(later(run, 30), 'hall', 'arrive');
-    expect(run.tracks[0]?.items.find((one) => one.id === 'arrive')).toMatchObject({
+    expect(
+      run.tracks.find((one) => one.id === 'hall')?.items.find((one) => one.id === 'arrive'),
+    ).toMatchObject({
       phase: 'done',
       ended: '18:35',
     });
