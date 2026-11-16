@@ -6,10 +6,29 @@ import {
   type DishForm,
   type Lang,
   type LibDish,
+  type Price,
   DISH_ALLERGENS,
   SAMPLE_DISHES,
   allergenName,
 } from './menuLibrary.ts';
+import {
+  type Variant,
+  type VariantAsk,
+  type VariantForm,
+  type VariantMode,
+  EVENT_CURRENCY,
+  VW,
+  beefWays,
+  childrenFold,
+  copiedVariants,
+  jollofVariants,
+  libraryJollof,
+  sixWays,
+  twoWays,
+  variantAllergenLine,
+  variantPicked,
+  variantsOf,
+} from './dishVariants.ts';
 import { MENU_EVENT, moved } from './menuServed.ts';
 import type { DemoLink } from './settings.ts';
 
@@ -31,6 +50,10 @@ export interface EvDish {
   /** The library dish this is a copy of; null when it was added only for this event. */
   libraryId: string | null;
   pickers: readonly Picker[];
+  /** sc-3903: a dish with variants; its picks are on them. */
+  variants?: readonly Variant[];
+  /** The Cost a fold leaves the dish with, from the variant that stays. */
+  cost?: Price | null;
 }
 
 export interface EvCourse {
@@ -199,7 +222,8 @@ export const canAddCourse = (courses: readonly EvCourse[]): boolean => courses.l
 
 export const isReady = (course: EvCourse): boolean => course.dishes.length > 0;
 
-export const isPicked = (dish: EvDish): boolean => dish.pickers.length > 0;
+export const isPicked = (dish: EvDish): boolean =>
+  dish.pickers.length > 0 || variantsOf(dish).some(variantPicked);
 
 export const coursePicked = (course: EvCourse): boolean => course.dishes.some(isPicked);
 
@@ -269,6 +293,9 @@ export function copyOf(dish: LibDish): EvDish {
     diets: dish.diets.slice(),
     libraryId: dish.id,
     pickers: [],
+    ...(dish.variants == null || dish.variants.length === 0
+      ? {}
+      : { variants: copiedVariants(dish.variants, EVENT_CURRENCY) }),
   };
 }
 
@@ -409,6 +436,64 @@ export function tastingCourses(): EvCourse[] {
   );
 }
 
+type DishChange = (dish: EvDish) => EvDish;
+
+/** The sample menu with some dishes changed, by id. */
+function changed(changes: Record<string, DishChange>, courses = sampleCourses()): EvCourse[] {
+  return courses.map((one) => ({
+    ...one,
+    dishes: one.dishes.map((dish) => changes[dish.id]?.(dish) ?? dish),
+  }));
+}
+
+const ways =
+  (variants: readonly Variant[]): DishChange =>
+  (dish) => ({ ...dish, pickers: [], variants });
+
+/** sc-3903's sample: a set starter of two ways, one for children; Jollof rice · 3 ways, its picks on its variants; Coconut rice and Suya wrap · 2 ways. */
+export function variantCourses(): EvCourse[] {
+  return changed({
+    'k1-pepper': ways(childrenFold()),
+    'k2-jollof': ways(jollofVariants()),
+    'k2-coconut': ways(twoWays()),
+    'ev-wrap': ways(beefWays()),
+  });
+}
+
+/** Main as a set course of Jollof rice alone, nobody having picked it. */
+function setMain(variants: readonly Variant[]): EvCourse[] {
+  return changed(
+    { 'k2-jollof': ways(variants) },
+    sampleCourses().map((one) =>
+      one.id === 'k2'
+        ? { ...one, answer: 'same', dishes: one.dishes.filter((d) => d.id === 'k2-jollof') }
+        : one,
+    ),
+  );
+}
+
+const unpicked = (variants: readonly Variant[]): Variant[] =>
+  variants.map((one) => ({ ...one, pickers: [] }));
+
+export function libraryWithJollof(currency: string): LibDish[] {
+  return SAMPLE_DISHES.filter((one) => !one.archived).map((one) =>
+    one.id === 'd-jollof' ? { ...one, variants: libraryJollof(currency) } : one,
+  );
+}
+
+/** The library's Jollof rice · 3 ways as Late-night bites took it, last priced in the currency given. */
+function lateJollof(currency: string): EvCourse[] {
+  const lib = libraryWithJollof(currency).find((one) => one.id === 'd-jollof') as LibDish;
+  const copy: EvDish = { ...copyOf(lib), id: 'k4-jollof' };
+
+  return sampleCourses().map((one) => (one.id === 'k4' ? { ...one, dishes: [copy] } : one));
+}
+
+const TWO_FISH: readonly Partial<VariantForm>[] = [
+  { name: 'Chicken', allergens: ['celery'], diets: ['halal'], amount: '14.00' },
+  { name: 'Fish', allergens: ['fish', 'celery'], diets: ['pescatarian'], amount: '15.50' },
+];
+
 export type Opened =
   | { kind: 'addCourse'; form?: CourseForm; press?: boolean; serverFull?: boolean }
   | { kind: 'editCourse'; courseId: string }
@@ -426,14 +511,27 @@ export type Opened =
       dishId: string;
       form?: Partial<DishForm>;
       press?: boolean;
+    }
+  | {
+      kind: 'variants';
+      courseId: string;
+      dishId: string;
+      mode: VariantMode;
+      variantId?: string;
+      forms?: readonly Partial<VariantForm>[];
+      press?: boolean;
     };
 
-export type Asking = { kind: 'dish'; dishId: string } | { kind: 'course'; courseId: string };
+export type Asking =
+  | { kind: 'dish'; dishId: string }
+  | { kind: 'course'; courseId: string }
+  | { kind: 'variant'; dishId: string; ask: VariantAsk };
 
 export type Refused =
   | { kind: 'dish'; dishId: string }
   | { kind: 'course'; courseId: string }
-  | { kind: 'limit'; at: 'top' | 'end' };
+  | { kind: 'limit'; at: 'top' | 'end' }
+  | { kind: 'addVariant'; dishId: string; why: 'limit' | 'picked' };
 
 export interface CoursesStart {
   name: string;
@@ -448,6 +546,8 @@ export interface CoursesStart {
   system: 'none' | 'loading' | 'refreshing' | 'offline' | 'cannotReach' | 'noAccess' | 'gone';
   /** The next save or action fails: no connection, or a role that lost menu.manage. */
   failing: 'none' | 'network' | 'forbidden';
+  /** The menu library Add dish lists, when a state needs one with variants. */
+  library?: readonly LibDish[];
 }
 
 function start(over: Partial<CoursesStart> & { name: string; note: string }): CoursesStart {
@@ -692,6 +792,341 @@ const STATES = {
       note: 'This event is not available.',
       system: 'gone',
     }),
+  variants: () =>
+    start({
+      name: 'The menu with variants',
+      note: 'Jollof rice · 3 ways, each variant in an inset with its Contains, Suitable for and picks; Add variant on every dish row; a dish with variants counts once.',
+      courses: variantCourses(),
+    }),
+  variantsReadOnly: () =>
+    start({
+      name: 'Variants, read only',
+      note: 'The insets with no Add variant, Edit or Remove….',
+      courses: variantCourses(),
+      manage: false,
+    }),
+  addFirst: () =>
+    start({
+      name: 'Add variant, the first two',
+      note: 'Add variant on Coconut rice: two blocks, each blank, beside what the dish said until now.',
+      opened: { kind: 'variants', courseId: MAIN, dishId: 'k2-coconut', mode: 'addFirst' },
+    }),
+  addFirstBlank: () =>
+    start({
+      name: 'Add variants, pressed blank',
+      note: 'Checked before it sends, across both blocks: focus on the first variant’s Name.',
+      opened: {
+        kind: 'variants',
+        courseId: MAIN,
+        dishId: 'k2-coconut',
+        mode: 'addFirst',
+        press: true,
+      },
+    }),
+  addFirstConflict: () =>
+    start({
+      name: 'Add variants, a diet conflict',
+      note: 'Fish ticked as Vegetarian in the second block: sc-3901’s line, and focus on the diet.',
+      opened: {
+        kind: 'variants',
+        courseId: MAIN,
+        dishId: 'k2-coconut',
+        mode: 'addFirst',
+        forms: [TWO_FISH[0] ?? {}, { ...TWO_FISH[1], diets: ['vegetarian'] }],
+        press: true,
+      },
+    }),
+  addFirstSameName: () =>
+    start({
+      name: 'Add variants, the same name twice',
+      note: 'Chicken and chicken: each variant needs its own name, ignoring case.',
+      opened: {
+        kind: 'variants',
+        courseId: MAIN,
+        dishId: 'k2-coconut',
+        mode: 'addFirst',
+        forms: [TWO_FISH[0] ?? {}, { ...TWO_FISH[1], name: 'chicken' }],
+        press: true,
+      },
+    }),
+  addFirstNoEveryone: () =>
+    start({
+      name: 'Add variants, no variant for Everyone',
+      note: 'Both blocks Children only: the line under each For, focus on the first block’s Children only. Set either to Everyone and both lines clear.',
+      opened: {
+        kind: 'variants',
+        courseId: MAIN,
+        dishId: 'k2-coconut',
+        mode: 'addFirst',
+        forms: [
+          { ...TWO_FISH[0], name: 'Children’s portion', for: 'children' },
+          { ...TWO_FISH[1], name: 'Children’s plain', for: 'children' },
+        ],
+        press: true,
+      },
+    }),
+  addFirstPicked: () =>
+    start({
+      name: 'Add variant on a picked dish',
+      note: 'Until sc-3913 is built, Add variant on Jollof rice, which guests have picked, opens nothing and says so under the row.',
+      refused: { kind: 'addVariant', dishId: 'k2-jollof', why: 'picked' },
+    }),
+  addedTwo: () =>
+    start({
+      name: 'Added, the first two',
+      note: 'Coconut rice · 2 ways, and the status line.',
+      courses: changed({ 'k2-coconut': ways(twoWays().reverse()) }),
+      said: VW.addedTwo('Coconut rice', 'Chicken', 'Fish'),
+    }),
+  addVariant: () =>
+    start({
+      name: 'Add variant, a dish with variants',
+      note: 'One block, on Jollof rice · 3 ways, whatever its picks.',
+      courses: variantCourses(),
+      opened: { kind: 'variants', courseId: MAIN, dishId: 'k2-jollof', mode: 'add' },
+    }),
+  addVariantLong: () =>
+    start({
+      name: 'Add variant, the name too long',
+      note: 'Over 60 characters, counted in red.',
+      courses: variantCourses(),
+      opened: {
+        kind: 'variants',
+        courseId: MAIN,
+        dishId: 'k2-jollof',
+        mode: 'add',
+        forms: [
+          {
+            name: 'Smoked turkey with fried plantain and a side of peppered gizzard',
+            none: true,
+          },
+        ],
+        press: true,
+      },
+    }),
+  atLimitVariants: () =>
+    start({
+      name: 'Variants at the limit',
+      note: 'Jollof rice · 6 ways: Add variant opens nothing, and says why under the row.',
+      courses: changed({ 'k2-jollof': ways(sixWays()) }),
+      refused: { kind: 'addVariant', dishId: 'k2-jollof', why: 'limit' },
+    }),
+  childrenOnly: () =>
+    start({
+      name: 'Edit variant, Children only',
+      note: 'Edit on Children’s portion: the variant form, filled, with For Children only.',
+      courses: variantCourses(),
+      opened: {
+        kind: 'variants',
+        courseId: MAIN,
+        dishId: 'k2-jollof',
+        mode: 'edit',
+        variantId: 'v-kids',
+      },
+    }),
+  editNoEveryone: () =>
+    start({
+      name: 'Edit variant, no variant left for Everyone',
+      note: 'Chicken, the only one for Everyone, set to Children only: nothing is sent, and focus is on For.',
+      courses: variantCourses(),
+      opened: {
+        kind: 'variants',
+        courseId: MAIN,
+        dishId: 'k2-jollof',
+        mode: 'edit',
+        variantId: 'v-chicken',
+        forms: [{ for: 'children' }],
+        press: true,
+      },
+    }),
+  editVariantAllergen: () =>
+    start({
+      name: 'Edit variant, an allergen added to a picked variant',
+      note: 'Sesame ticked on Chicken, which guests have picked. Press Save variant: never refused, and the line counts who has Sesame recorded.',
+      courses: variantCourses(),
+      opened: {
+        kind: 'variants',
+        courseId: MAIN,
+        dishId: 'k2-jollof',
+        mode: 'edit',
+        variantId: 'v-chicken',
+        forms: [{ allergens: ['celery', 'sesame'] }],
+      },
+    }),
+  editVariantAllergenSaved: () => {
+    const chicken = jollofVariants()[0] as Variant;
+    const contains: DishAllergen[] = ['celery', 'sesame'];
+
+    return start({
+      name: 'Edit variant, saved with the picked-guests line',
+      note: 'Each person counts once, and the Other allergy is not matched.',
+      courses: changed(
+        {
+          'k2-jollof': ways(
+            jollofVariants().map((one) => (one.id === chicken.id ? { ...one, contains } : one)),
+          ),
+        },
+        variantCourses(),
+      ),
+      said: VW.saved(chicken.name),
+      saidMore: variantAllergenLine('Jollof rice', chicken, chicken.contains, contains),
+    });
+  },
+  editDishVariants: () =>
+    start({
+      name: 'Edit dish, a dish with variants',
+      note: 'Only Name and Description: the variants hold its allergens and diets.',
+      courses: variantCourses(),
+      opened: { kind: 'editDish', courseId: MAIN, dishId: 'k2-jollof' },
+    }),
+  removeVariant: () =>
+    start({
+      name: 'Remove… a variant, asked first',
+      note: 'From 3 or more: asked inline; Keep it puts focus back on Remove….',
+      courses: variantCourses(),
+      asking: { kind: 'variant', dishId: 'k2-jollof', ask: { variantId: 'v-plain', kind: 'ask' } },
+    }),
+  removeVariantPicked: () =>
+    start({
+      name: 'Remove… a variant guests have picked',
+      note: 'Refused at once until sc-3913 is built.',
+      courses: variantCourses(),
+      asking: {
+        kind: 'variant',
+        dishId: 'k2-jollof',
+        ask: { variantId: 'v-kids', kind: 'refused', lines: ['picked'] },
+      },
+    }),
+  removeLastEveryone: () =>
+    start({
+      name: 'Remove… the last variant for Everyone',
+      note: 'Chicken stays enabled and opens nothing. Guests have picked it, so that line comes first.',
+      courses: variantCourses(),
+      asking: {
+        kind: 'variant',
+        dishId: 'k2-jollof',
+        ask: { variantId: 'v-chicken', kind: 'refused', lines: ['picked', 'lastEveryone'] },
+      },
+    }),
+  foldToOne: () =>
+    start({
+      name: 'Fold to one',
+      note: 'Remove… on Chicken, from Coconut rice · 2 ways: Make this a single dish?, with Fish’s Cost.',
+      courses: variantCourses(),
+      asking: {
+        kind: 'variant',
+        dishId: 'k2-coconut',
+        ask: { variantId: 'v-chicken2', kind: 'fold' },
+      },
+    }),
+  foldChildren: () =>
+    start({
+      name: 'Fold to one, Children only stays',
+      note: 'Remove… on Full bowl: the dish is no longer for children only.',
+      courses: variantCourses(),
+      asking: { kind: 'variant', dishId: 'k1-pepper', ask: { variantId: 'v-full', kind: 'fold' } },
+    }),
+  foldNoCost: () =>
+    start({
+      name: 'Fold to one, no cost',
+      note: 'Remove… on Chicken, from Suya wrap: Beef has no cost, so the dish has none.',
+      courses: variantCourses(),
+      asking: {
+        kind: 'variant',
+        dishId: 'ev-wrap',
+        ask: { variantId: 'v-chicken3', kind: 'fold' },
+      },
+    }),
+  setCourseWay: () =>
+    start({
+      name: 'Set course, guests pick the way',
+      note: 'Main is Everyone gets the same, its one dish with two variants for Everyone: the hint under the radios. Add variant opens on the Starter’s soup, and adds no line.',
+      courses: setMain(
+        unpicked(sixWays().filter((one) => ['v-chicken', 'v-fish6', 'v-kids'].includes(one.id))),
+      ),
+    }),
+  setCourseChildren: () =>
+    start({
+      name: 'Set course, a children’s portion',
+      note: 'One variant for Everyone and one Children only: guests are asked nothing, and there is no hint.',
+      courses: setMain(unpicked(jollofVariants().slice(0, 2))),
+    }),
+  libAdded: () =>
+    start({
+      name: 'From the library, with variants',
+      note: 'Jollof rice · 3 ways copied to Late-night bites, last priced in EUR like the event: Children’s portion’s Cost arrives filled.',
+      courses: lateJollof('EUR'),
+      library: libraryWithJollof('EUR'),
+      said: CW.addedTo('Jollof rice', 'Late-night bites'),
+      opened: {
+        kind: 'variants',
+        courseId: 'k4',
+        dishId: 'k4-jollof',
+        mode: 'edit',
+        variantId: 'lv-kids-ev-1',
+      },
+    }),
+  libAddedOther: () =>
+    start({
+      name: 'From the library, another currency',
+      note: 'Last priced in GBP: the Cost stays blank and says so until one is saved. Nothing is converted.',
+      courses: lateJollof('GBP'),
+      library: libraryWithJollof('GBP'),
+      said: CW.addedTo('Jollof rice', 'Late-night bites'),
+      opened: {
+        kind: 'variants',
+        courseId: 'k4',
+        dishId: 'k4-jollof',
+        mode: 'edit',
+        variantId: 'lv-kids-ev-1',
+      },
+    }),
+  libToAdd: () =>
+    start({
+      name: 'Add dish, a library dish with variants',
+      note: 'The library lists Jollof rice · 3 ways; Add copies every variant.',
+      library: libraryWithJollof('EUR'),
+      opened: { kind: 'addDish', courseId: 'k4', tab: 'library' },
+    }),
+  variantSaveFailed: () =>
+    start({
+      name: 'Add variants, a save that fails',
+      note: 'Press Add variants: nothing is saved, and the form says so.',
+      opened: {
+        kind: 'variants',
+        courseId: MAIN,
+        dishId: 'k2-coconut',
+        mode: 'addFirst',
+        forms: TWO_FISH,
+      },
+      failing: 'network',
+    }),
+  variantForbidden: () =>
+    start({
+      name: 'Save variant, a 403',
+      note: 'The role lost menu.manage while the form was open: press Save variant.',
+      courses: variantCourses(),
+      opened: {
+        kind: 'variants',
+        courseId: MAIN,
+        dishId: 'k2-jollof',
+        mode: 'edit',
+        variantId: 'v-kids',
+      },
+      failing: 'forbidden',
+    }),
+  foldFailed: () =>
+    start({
+      name: 'Fold to one, that fails',
+      note: 'Press Make it a single dish: nothing changes, and the status line says so.',
+      courses: variantCourses(),
+      asking: {
+        kind: 'variant',
+        dishId: 'k2-coconut',
+        ask: { variantId: 'v-chicken2', kind: 'fold' },
+      },
+      failing: 'network',
+    }),
 } satisfies Record<string, () => CoursesStart>;
 
 export type CoursesStateName = keyof typeof STATES;
@@ -750,6 +1185,60 @@ export const COURSES_PAGES: readonly { name: string; states: readonly DemoLink[]
         'deleteCoursePicked',
       ] as const
     ).map(link),
+  },
+  {
+    name: 'Variants of a dish (sc-3903): the rows',
+    states: (
+      ['variants', 'variantsReadOnly', 'addFirstPicked', 'atLimitVariants', 'addedTwo'] as const
+    ).map(link),
+  },
+  {
+    name: 'Variants: Add variant and Edit',
+    states: (
+      [
+        'addFirst',
+        'addFirstBlank',
+        'addFirstConflict',
+        'addFirstSameName',
+        'addFirstNoEveryone',
+        'addVariant',
+        'addVariantLong',
+        'childrenOnly',
+        'editNoEveryone',
+        'editVariantAllergen',
+        'editVariantAllergenSaved',
+        'editDishVariants',
+      ] as const
+    ).map(link),
+  },
+  {
+    name: 'Variants: Remove… and fold to one',
+    states: [
+      ...(
+        [
+          'removeVariant',
+          'removeVariantPicked',
+          'removeLastEveryone',
+          'foldToOne',
+          'foldChildren',
+          'foldNoCost',
+        ] as const
+      ).map(link),
+      { to: coursesAt('foldToOne', '&budget=no'), name: 'Fold to one, without budget.read' },
+    ],
+  },
+  {
+    name: 'Variants: a set course, and the library',
+    states: (
+      ['setCourseWay', 'setCourseChildren', 'libToAdd', 'libAdded', 'libAddedOther'] as const
+    ).map(link),
+  },
+  {
+    name: 'Variants: the system’s states',
+    states: [
+      ...(['variantSaveFailed', 'variantForbidden', 'foldFailed'] as const).map(link),
+      { to: coursesAt('addFirst', '&budget=no'), name: 'Add variants, without budget.read' },
+    ],
   },
   {
     name: 'The system’s states',

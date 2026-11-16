@@ -1,4 +1,5 @@
 import { type Allergen, type Diet, DIETS, GUEST_KITCHEN_NAMES } from './guestKitchenWords.ts';
+import type { Variant } from './dishVariants.ts';
 import type { DemoLink } from './settings.ts';
 
 /** sc-3901's Menu library at a desk (board MenuLibrary, page e32): the organisation's dishes and what each contains. */
@@ -48,6 +49,8 @@ export interface LibDish {
   used: boolean;
   archived: boolean;
   price: Price | null;
+  /** sc-3903: a dish with variants; each has its own allergens, diets and Last price. */
+  variants?: readonly Variant[];
 }
 
 export const CURRENCIES = ['NGN', 'GHS', 'GBP', 'EUR', 'USD', 'JPY', 'XOF', 'KWD'] as const;
