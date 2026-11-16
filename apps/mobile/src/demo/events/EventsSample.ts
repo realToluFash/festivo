@@ -382,19 +382,8 @@ function named(code: string): { code: string; name: string } {
   return OFFERED.find((one) => one.code === code) ?? { code, name: code };
 }
 
-export const CURRENCIES: readonly { code: string; name: string }[] = [
-  'GBP',
-  'EUR',
-  'USD',
-  'CAD',
-  'NGN',
-  'GHS',
-  'BRL',
-  'MXN',
-].map(named);
-
 export function currencyRows(held: string): readonly { code: string; name: string }[] {
-  return [named(held), ...OFFERED.filter((one) => one.code !== held)];
+  return held === '' ? OFFERED : [named(held), ...OFFERED.filter((one) => one.code !== held)];
 }
 
 export function currencyWords(code: string): string {

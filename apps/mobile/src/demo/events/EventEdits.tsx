@@ -25,7 +25,6 @@ import {
   CoverPhotoFields,
   CoverPreview as PartPreview,
   CoverUpload as PartUpload,
-  CurrencyView,
   DatePair,
   DatesView,
   EditShell,
@@ -751,10 +750,6 @@ function CurrencyEdit(edit: EditProps) {
   const refused = edit.start === 'currencyRefused';
   const [code, setCode] = useState(refused ? 'EUR' : edit.event.currency);
   const [refusal, setRefusal] = useState(refused);
-  const [typed, setTyped] = useState('');
-  const shown = currencyRows(edit.event.currency).filter((one) =>
-    folded(`${one.code} ${one.name}`).includes(folded(typed)),
-  );
 
   return (
     <Shell
@@ -764,6 +759,36 @@ function CurrencyEdit(edit: EditProps) {
       edit={edit}
     >
       {refusal && <EventNotice tone="broken" words={W.currencyInUse} interrupts />}
+      <CurrencySearch
+        code={code}
+        rows={currencyRows(edit.event.currency)}
+        onPick={setCode}
+        testID="event.edit.currency"
+      />
+    </Shell>
+  );
+}
+
+/** Edit and New event draw the same search, list and empty line; the product puts all three in CurrencyView. */
+export function CurrencySearch({
+  code,
+  rows,
+  onPick,
+  testID,
+}: {
+  code: string;
+  rows: readonly { code: string; name: string }[];
+  onPick: (code: string) => void;
+  testID: string;
+}) {
+  const [typed, setTyped] = useState('');
+  const shown = rows.filter((one) => folded(`${one.code} ${one.name}`).includes(folded(typed)));
+  const none = shown.length === 0;
+
+  useReadOut(none && typed !== '' ? say.noCurrency(typed.trim()) : null);
+
+  return (
+    <>
       <View style={styles.searchRow}>
         <SearchField
           typed={typed}
@@ -773,11 +798,25 @@ function CurrencyEdit(edit: EditProps) {
           onSearch={() => undefined}
           onClear={() => setTyped('')}
           label={W.searchCurrencies}
-          testID="event.edit.currency.search"
+          testID={`${testID}.search`}
         />
       </View>
-      <CurrencyView code={code} choices={shown} refused={false} onPick={setCode} />
-    </Shell>
+      {none ? (
+        <View style={styles.none} testID={`${testID}.none`}>
+          <Text size={15} weight="medium">
+            {say.noCurrency(typed.trim())}
+          </Text>
+          <TextAction label={W.clearSearch} onPress={() => setTyped('')} />
+        </View>
+      ) : (
+        <Choices
+          items={shown.map((one) => ({ key: one.code, title: `${one.code} · ${one.name}` }))}
+          on={code === '' ? null : code}
+          onPick={onPick}
+          testID={testID}
+        />
+      )}
+    </>
   );
 }
 
@@ -906,6 +945,7 @@ function CoverEdit(edit: EditProps) {
 
 const styles = StyleSheet.create({
   searchRow: { flexDirection: 'row' },
+  none: { gap: tokens.spaceSm, paddingVertical: tokens.spaceMd },
   secondary: { color: tokens.colorInkSecondary },
   pressed: { opacity: tokens.opacityPressed },
   acPill: {
