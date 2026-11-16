@@ -6,6 +6,8 @@ doctrine:
         # the Postgres image in compose.yaml.
         server_version: '17'
         profiling_collect_backtrace: '%kernel.debug%'
+        types:
+            datetime_ms_immutable: App\Doctrine\Type\MillisecondDateTimeType
     orm:
         naming_strategy: doctrine.orm.naming_strategy.underscore_number_aware
         identity_generation_preferences:

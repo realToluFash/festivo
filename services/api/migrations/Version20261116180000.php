@@ -22,7 +22,7 @@ final class Version20261116180000 extends AbstractMigration
                 event_id         UUID NOT NULL,
                 item_id          UUID NOT NULL,
                 kind             VARCHAR(8) NOT NULL,
-                pressed_at       TIMESTAMP(0) WITHOUT TIME ZONE NOT NULL,
+                pressed_at       TIMESTAMP(3) WITHOUT TIME ZONE NOT NULL,
                 idempotency_key  VARCHAR(255) NOT NULL,
                 fingerprint      VARCHAR(64) NOT NULL,
                 pressed_by_id    UUID DEFAULT NULL,

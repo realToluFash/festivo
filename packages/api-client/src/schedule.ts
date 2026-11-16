@@ -54,9 +54,9 @@ export interface PressSent {
   pressedAt: string;
 }
 
-/** A moment as the API reads a press's `pressedAt`: RFC 3339 to the second, in UTC. */
+/** A moment as the API reads a press's `pressedAt`: RFC 3339 to the millisecond, in UTC, so two presses in one second keep their order. */
 export function pressedAtOf(moment: Date): string {
-  return `${moment.toISOString().slice(0, 19)}+00:00`;
+  return moment.toISOString();
 }
 
 export interface ScheduleWithItem {

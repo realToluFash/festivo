@@ -93,7 +93,7 @@ final readonly class ScheduleController
             'pressedAt' => Type\optional(Type\nullable(Type\string())),
         ]));
         $sentAt = $body['pressedAt'] ?? null;
-        $pressedAt = null === $sentAt ? $this->clock->now() : (DateTimeImmutable::createFromFormat(\DATE_ATOM, $sentAt) ?: throw new ApiException(ErrorCode::BadRequest, 'run_of_show.pressed_at_invalid'));
+        $pressedAt = null === $sentAt ? $this->clock->now() : (DateTimeImmutable::createFromFormat(\DATE_RFC3339_EXTENDED, $sentAt) ?: DateTimeImmutable::createFromFormat(\DATE_ATOM, $sentAt) ?: throw new ApiException(ErrorCode::BadRequest, 'run_of_show.pressed_at_invalid'));
         $fingerprint = Hash\hash($item->getId()->toRfc4122() . "\0" . $body['kind']->value . "\0" . ($sentAt ?? ''), Hash\Algorithm::Sha256);
 
         $this->scheduleEditor->press($event, $item, $body['kind'], $pressedAt, $key, $fingerprint, $this->user());

@@ -23,6 +23,7 @@ use App\Tests\Traits\PutsPeopleOnEvents;
 use DateTimeImmutable;
 use Lexik\Bundle\JWTAuthenticationBundle\Services\JWTTokenManagerInterface;
 use PHPUnit\Framework\Attributes\Test;
+use PHPUnit\Framework\Attributes\TestWith;
 use Psl\Json;
 use Psl\Type;
 use Psl\Vec;
@@ -111,6 +112,24 @@ final class SchedulePressTest extends ApiTestCase
         $this->press($this->owner, $speeches, 'done', '2027-03-06T19:25:00+01:00');
         $this->press($this->colleague, $dance, 'start', '2027-03-06T19:26:00+01:00');
         self::assertSame(200, $this->statusCode());
+    }
+
+    #[Test]
+    #[TestWith(['a-done', 'z-start'])]
+    #[TestWith(['z-done', 'a-start'])]
+    public function aDoneAndAStartInOneSecondKeepTheirOrderWhicheverKeySortsFirst(string $doneKey, string $startKey): void
+    {
+        $speeches = $this->add('Speeches', '2027-03-06T19:00', 'Ballroom');
+        $dance = $this->add('First dance', '2027-03-06T19:30', 'Ballroom');
+        $this->press($this->owner, $speeches, 'start', '2027-03-06T19:05:00.000+01:00');
+
+        $this->press($this->owner, $speeches, 'done', '2027-03-06T19:25:00.100+01:00', $doneKey);
+        self::assertSame(200, $this->statusCode());
+        $this->press($this->owner, $dance, 'start', '2027-03-06T19:25:00.400+01:00', $startKey);
+        self::assertSame(200, $this->statusCode());
+
+        self::assertSame('2027-03-06T19:25:00+01:00', $this->item($speeches)['endedAt']);
+        self::assertSame('2027-03-06T19:25:00+01:00', $this->item($dance)['startedAt']);
     }
 
     #[Test]

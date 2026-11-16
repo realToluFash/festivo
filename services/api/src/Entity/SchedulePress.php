@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\Entity;
 
 use App\Doctrine\Traits\Timestampable;
+use App\Doctrine\Type\MillisecondDateTimeType;
 use App\Enum\PressKind;
 use DateTimeImmutable;
 use Doctrine\DBAL\Types\Types;
@@ -38,8 +39,8 @@ class SchedulePress
     #[ORM\Column(type: Types::STRING, length: 8, enumType: PressKind::class)]
     private PressKind $kind;
 
-    /** UTC, as the presser's corrected clock read it, clamped by the server. */
-    #[ORM\Column(type: Types::DATETIME_IMMUTABLE)]
+    /** UTC to the millisecond, as the presser's corrected clock read it, clamped by the server. */
+    #[ORM\Column(type: MillisecondDateTimeType::NAME)]
     private DateTimeImmutable $pressedAt;
 
     #[ORM\Column(type: Types::STRING, length: self::KEY_MAXIMUM)]

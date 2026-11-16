@@ -251,7 +251,10 @@ describe('Run of show on the night (sc-3895)', () => {
     expect(await screen.findByRole('button', { name: 'Start now: First dance' })).toBeDefined();
     const press = sent.find((one) => one.line === PRESS_SPEECHES);
     expect(press?.key).toMatch(/^[0-9a-f-]{36}$/);
-    expect(press?.body).toEqual({ kind: 'done', pressedAt: '2030-11-15T20:02:00+00:00' });
+    expect(press?.body).toEqual({
+      kind: 'done',
+      pressedAt: expect.stringMatching(/^2030-11-15T20:02:00\.\d{3}Z$/),
+    });
     expect(screen.getByText('Nothing is on')).toBeDefined();
     expect(screen.getByText('Speeches finished at 20:28.')).toBeDefined();
     expect(liveRegion()?.textContent).toBe('Speeches done. Next: First dance.');
