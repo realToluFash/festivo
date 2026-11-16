@@ -6,6 +6,7 @@ import { TextAction, TitleRow, type Tell } from '../components/SettingsParts.tsx
 import { DemoBell } from './DemoBell.tsx';
 import { DemoOffline } from './DemoOffline.tsx';
 import { EventsShell } from './EventParts.tsx';
+import { HintButton } from './HintButton.tsx';
 import { Pill } from './GuestsParts.tsx';
 import {
   type Diet,
@@ -359,7 +360,14 @@ function Library({
               aria-labelledby={`lib-tab-${tab}`}
               className="lib-tabpanel"
             >
-              <Toolbar q={q} diets={diets} chips={tab === 'dishes'} onQ={setQ} onDiets={setDiets} />
+              <Toolbar
+                q={q}
+                diets={diets}
+                chips={tab === 'dishes'}
+                lang={lang}
+                onQ={setQ}
+                onDiets={setDiets}
+              />
               <div className="lib-count-row">
                 <p className="lib-count" role="status">
                   {looking ? LW.countOf(shown.length, inTab.length) : LW.count(inTab.length)}
@@ -385,6 +393,7 @@ function Library({
                     <DishRow
                       key={dish.id}
                       dish={dish}
+                      lang={lang}
                       manage={manage}
                       lit={editing?.id === dish.id}
                       asking={askDelete === dish.id}
@@ -535,10 +544,12 @@ function Toolbar({
   q,
   diets,
   chips,
+  lang,
   onQ,
   onDiets,
 }: {
   q: string;
+  lang: Lang;
   diets: readonly Diet[];
   chips: boolean;
   onQ: (q: string) => void;
@@ -604,7 +615,7 @@ function Toolbar({
                   }
                 >
                   {on && <Glyph name="tick" size={16} weight={2.6} />}
-                  {dietName(diet)}
+                  {dietName(diet, lang)}
                 </button>
               );
             })}
@@ -615,7 +626,7 @@ function Toolbar({
   );
 }
 
-function ContainsMark({ dish }: { dish: LibDish }) {
+function ContainsMark({ dish, lang }: { dish: LibDish; lang: Lang }) {
   const kind = dish.contains == null ? 'unknown' : dish.contains === 'none' ? 'none' : 'some';
 
   return (
@@ -623,13 +634,14 @@ function ContainsMark({ dish }: { dish: LibDish }) {
       <span className="lib-mark" aria-hidden="true">
         {kind === 'unknown' ? '?' : kind === 'none' ? '0' : '!'}
       </span>
-      {containsLine(dish.contains)}
+      {containsLine(dish.contains, lang)}
     </p>
   );
 }
 
 function DishRow({
   dish,
+  lang,
   manage,
   lit,
   asking,
@@ -641,6 +653,7 @@ function DishRow({
   onDelete,
 }: {
   dish: LibDish;
+  lang: Lang;
   manage: boolean;
   lit: boolean;
   asking: boolean;
@@ -661,14 +674,14 @@ function DishRow({
             {dish.used && <p className="lib-used">{LW.usedBy}</p>}
           </div>
           <div className="lib-col-contains">
-            <ContainsMark dish={dish} />
+            <ContainsMark dish={dish} lang={lang} />
           </div>
           <div className="lib-col-diets">
             {dish.diets.length > 0 && (
               <ul className="lib-tags" aria-label={`${LW.suitableFor} · ${dish.name}`}>
                 {dish.diets.map((diet) => (
                   <li key={diet} className="lib-tag">
-                    {dietName(diet)}
+                    {dietName(diet, lang)}
                   </li>
                 ))}
               </ul>
@@ -678,38 +691,46 @@ function DishRow({
         {manage && (
           <div className="lib-acts" role="group" aria-label={LW.actionsFor(dish.name)}>
             {dish.archived ? (
-              <RowAction
+              <HintButton
                 id={`lib-restore-${dish.id}`}
-                icon="restore"
                 label={LW.restoreAria(dish.name)}
                 hint={LW.restore}
+                className="lib-act"
                 onClick={onRestore}
-              />
+              >
+                <ActionGlyph icon="restore" />
+              </HintButton>
             ) : (
               <>
-                <RowAction
+                <HintButton
                   id={`lib-edit-${dish.id}`}
-                  icon="edit"
                   label={LW.editAria(dish.name)}
                   hint={LW.edit}
+                  className="lib-act"
                   onClick={onEdit}
-                />
+                >
+                  <ActionGlyph icon="edit" />
+                </HintButton>
                 {dish.used ? (
-                  <RowAction
+                  <HintButton
                     id={`lib-archive-${dish.id}`}
-                    icon="archive"
                     label={LW.archiveAria(dish.name)}
                     hint={LW.archive}
+                    className="lib-act"
                     onClick={onArchive}
-                  />
+                  >
+                    <ActionGlyph icon="archive" />
+                  </HintButton>
                 ) : (
-                  <RowAction
+                  <HintButton
                     id={`lib-delete-${dish.id}`}
-                    icon="bin"
                     label={LW.deleteAria(dish.name)}
                     hint={LW.delete}
+                    className="lib-act"
                     onClick={onAskDelete}
-                  />
+                  >
+                    <ActionGlyph icon="bin" />
+                  </HintButton>
                 )}
               </>
             )}
@@ -766,37 +787,6 @@ function ActionGlyph({ icon }: { icon: ActionIcon }) {
         <path key={d} d={d} />
       ))}
     </svg>
-  );
-}
-
-function RowAction({
-  id,
-  icon,
-  label,
-  hint,
-  onClick,
-}: {
-  id: string;
-  icon: ActionIcon;
-  label: string;
-  hint: string;
-  onClick: () => void;
-}) {
-  return (
-    <span className="mn-icon">
-      <button
-        id={id}
-        type="button"
-        className="ev-round mn-icon-button lib-act"
-        aria-label={label}
-        onClick={onClick}
-      >
-        <ActionGlyph icon={icon} />
-      </button>
-      <span className="mn-hint" aria-hidden="true">
-        {hint}
-      </span>
-    </span>
   );
 }
 
@@ -928,7 +918,7 @@ function DishFields({
                   })
                 }
               />
-              {allergenName(code)}
+              {allergenName(code, lang)}
             </label>
           ))}
         </div>
@@ -969,7 +959,7 @@ function DishFields({
                   })
                 }
               />
-              {dietName(diet)}
+              {dietName(diet, lang)}
             </label>
           ))}
         </div>

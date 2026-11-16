@@ -28,8 +28,9 @@ export type DishAllergen = (typeof DISH_ALLERGENS)[number];
 export { DIETS };
 export type { Diet };
 
-export const allergenName = (code: DishAllergen): string => GUEST_KITCHEN_NAMES.en.allergens[code];
-export const dietName = (code: Diet): string => GUEST_KITCHEN_NAMES.en.diets[code];
+export const allergenName = (code: DishAllergen, lang: Lang): string =>
+  GUEST_KITCHEN_NAMES[lang].allergens[code];
+export const dietName = (code: Diet, lang: Lang): string => GUEST_KITCHEN_NAMES[lang].diets[code];
 
 export type Contains = readonly DishAllergen[] | 'none' | null;
 
@@ -177,13 +178,13 @@ export function noMatchLine(q: string, diets: readonly Diet[]): string {
   return diets.length === 0 ? LW.noMatch(q.trim()) : LW.noMatchBoth(q.trim());
 }
 
-export function containsLine(contains: Contains): string {
+export function containsLine(contains: Contains, lang: Lang): string {
   if (contains == null) return LW.notStated;
   if (contains === 'none') return LW.containsNone;
 
   return LW.contains(
     DISH_ALLERGENS.filter((code) => contains.includes(code))
-      .map(allergenName)
+      .map((code) => allergenName(code, lang))
       .join(' · '),
   );
 }

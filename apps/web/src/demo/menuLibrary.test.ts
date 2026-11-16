@@ -4,10 +4,12 @@ import {
   LIBRARY_PAGES,
   LW,
   SAMPLE_DISHES,
+  allergenName,
   blankForm,
   checkDish,
   containsLine,
   dietClashes,
+  dietName,
   duplicateLine,
   duplicateOf,
   firstProblem,
@@ -138,9 +140,15 @@ describe('the list', () => {
   });
 
   it('writes Contains as a shape’s words', () => {
-    expect(containsLine(['sesame', 'peanuts'])).toBe('Contains Peanuts · Sesame');
-    expect(containsLine('none')).toBe(LW.containsNone);
-    expect(containsLine(null)).toBe(LW.notStated);
+    expect(containsLine(['sesame', 'peanuts'], 'en')).toBe('Contains Peanuts · Sesame');
+    expect(containsLine('none', 'en')).toBe(LW.containsNone);
+    expect(containsLine(null, 'en')).toBe(LW.notStated);
+  });
+
+  it('names allergens and diets in the page’s language', () => {
+    expect(containsLine(['sesame', 'peanuts'], 'fr')).toBe('Contains Arachides · Sésame');
+    expect(allergenName('mustard', 'fr')).toBe('Moutarde');
+    expect(dietName('vegetarian', 'en')).toBe('Vegetarian');
   });
 });
 
