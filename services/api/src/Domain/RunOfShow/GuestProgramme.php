@@ -6,6 +6,7 @@ namespace App\Domain\RunOfShow;
 
 use App\Entity\Event;
 use App\Entity\ScheduleItem;
+use App\Enum\EventPhase;
 use App\Enum\GuestPagePhase;
 use App\Repository\ScheduleItemRepository;
 use DateTimeImmutable;
@@ -25,7 +26,7 @@ final readonly class GuestProgramme
     }
 
     /**
-     * Planned times, except while the event is happening: then each item's start as the run view expects it, worked out over every item, shown or not, and rounded down to 5 minutes as the room screen (sc-3897) rounds it.
+     * Planned times, except while the event is Happening now (a Paused one keeps its planned times): then each item's start as the run view expects it, worked out over every item, shown or not, and rounded down to 5 minutes as the room screen (sc-3897) rounds it.
      *
      * @return list<array{title: string, startsAt: string, day: string, place: ?string}> by the time shown
      */
@@ -38,7 +39,7 @@ final readonly class GuestProgramme
         $zone = new DateTimeZone($event->getTimeZone());
         $now = $this->clock->now();
         $items = $this->scheduleItemRepository->findOnEvent($event);
-        $happening = GuestPagePhase::Finished !== $phase && $now >= $event->getStartsAt() && $now < $event->getEndsAt();
+        $happening = EventPhase::HappeningNow === EventPhase::of($event->getStatus(), $event->getStartsAt(), $event->getEndsAt(), $now);
         $starts = $happening ? ExpectedStarts::of($items, $now, $zone) : [];
         $shown = Vec\map(
             Vec\filter($items, static fn (ScheduleItem $item): bool => $item->isShownToGuests()),

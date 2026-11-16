@@ -98,6 +98,23 @@ final class GuestProgrammeTest extends ApiTestCase
     }
 
     #[Test]
+    public function whilePausedTheProgrammeKeepsItsPlannedTimes(): void
+    {
+        $this->sample();
+        $token = $this->token($this->guest());
+        self::mockTime(new DateTimeImmutable('2027-03-06T13:12:40Z'));
+        $this->as($this->owner, 'POST', $this->path($this->items['Ceremony']) . '/start');
+        $this->as($this->owner, 'POST', '/api/events/' . $this->eventId . '/pause');
+        self::assertSame(200, $this->statusCode(), Json\encode($this->last()));
+
+        self::mockTime(new DateTimeImmutable('2027-03-06T13:30:00Z'));
+        $programme = $this->programme($token);
+
+        self::assertSame('paused', $this->last()['phase'] ?? null);
+        self::assertSame(['14:00', '15:30', '17:00'], Vec\map($programme, static fn (array $item): string => Str\slice($item['startsAt'], 11, 5)));
+    }
+
+    #[Test]
     public function afterTheEndTheProgrammeStaysWithItsPlannedTimes(): void
     {
         $this->sample();
