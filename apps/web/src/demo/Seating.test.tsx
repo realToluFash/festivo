@@ -332,6 +332,23 @@ describe('the plan and the room (sc-3998, sc-4007)', () => {
     },
   );
 
+  it(
+    'reads a default rectangular table in feet and inches for Can view (sc-56437)',
+    SLOW,
+    async () => {
+      await seating('readOnlyTableUs');
+      const facts = new Map(
+        Array.from(panel().querySelectorAll('dl.st-facts > div')).map((row) => [
+          row.querySelector('dt')?.textContent ?? '',
+          row.querySelector('dd')?.textContent ?? '',
+        ]),
+      );
+
+      expect(facts.get('Width')).toBe('5 ft 11 in');
+      expect(facts.get('Length')).toBe('2 ft 6 in');
+    },
+  );
+
   it('zooms in steps, fits the room again, and shows a chosen chair at 200%', SLOW, async () => {
     await seating('corner');
     expect(screen.getByText('200%')).toBeDefined();

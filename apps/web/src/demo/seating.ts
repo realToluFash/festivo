@@ -1278,6 +1278,11 @@ export const SEATING_STATES = [
     name: 'Read only, a rectangular table chosen',
     group: 'The plan',
   },
+  {
+    key: 'readOnlyTableUs',
+    name: 'Read only, a default rectangular table in feet',
+    group: 'The plan',
+  },
   { key: 'zoomOut', name: 'Zoomed out, 40%', group: 'The plan' },
   { key: 'corner', name: 'One corner at 200%, seat 9 chosen', group: 'The plan' },
   { key: 'sparse', name: 'The sparse plan, one table', group: 'The plan' },
