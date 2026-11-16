@@ -85,6 +85,17 @@ describe('a number in a sentence (sc-15361)', () => {
     ]).toEqual([thousand, tenThousand, million]);
   });
 
+  it.each([
+    ['en', '150%'],
+    ['es', '150 %'],
+    ['fr', '150 %'],
+    ['pt', '150%'],
+  ])('writes a percent the way %s does', async (locale, shown) => {
+    await setLanguage(locale);
+
+    expect(i18next.t('seating.percent', { share: 1.5 })).toBe(shown);
+  });
+
   it('reads as before under 1000', async () => {
     await setLanguage('fr');
 
