@@ -112,6 +112,9 @@ interface Pasted {
   typed: string;
 }
 
+/** Which Replace link… a replace was started from, so a failure shows under it (sc-55558). */
+type ReplacedFrom = 'notice' | 'replace';
+
 type Load =
   | { kind: 'loading' }
   | { kind: 'failed' }
@@ -200,7 +203,8 @@ export function EventGuests({
   const [fromMessage, setFromMessage] = useState<Guest | null>(null);
   const [flagged, setFlagged] = useState<ReadonlySet<string>>(new Set());
   const [copyFailed, setCopyFailed] = useState(false);
-  const [notReplaced, setNotReplaced] = useState(false);
+  const [notReplaced, setNotReplaced] = useState<ReplacedFrom | null>(null);
+  const replaceFrom = useRef<ReplacedFrom>('replace');
   const [replacedOn, setReplacedOn] = useState<Readonly<Record<string, string>>>({});
   const [asking, setAsking] = useState(false);
   const [replacing, setReplacing] = useState(false);
@@ -332,7 +336,7 @@ export function EventGuests({
 
   const forgetLink = useCallback(() => {
     setCopyFailed(false);
-    setNotReplaced(false);
+    setNotReplaced(null);
     setAsking(false);
   }, []);
   const openGuest = (guestId: string) => {
@@ -483,9 +487,10 @@ export function EventGuests({
         },
       );
   };
-  const askReplace = (from: ViewInstance | null) => {
+  const askReplace = (from: ViewInstance | null, where: ReplacedFrom) => {
     replaceOpener.current = from;
-    setNotReplaced(false);
+    replaceFrom.current = where;
+    setNotReplaced(null);
     setAsking(true);
   };
   const replace = (guestId: string) => {
@@ -502,7 +507,7 @@ export function EventGuests({
       () => {
         setReplacing(false);
         setAsking(false);
-        setNotReplaced(true);
+        setNotReplaced(replaceFrom.current);
       },
     );
   };
@@ -683,16 +688,17 @@ export function EventGuests({
         invitation={invitationOfferOf(phase, manages, t)}
         link={{
           flagged: flagged.has(open),
-          notReplaced,
-          onReplaceFromNotice: () => askReplace(noticeReplace.current),
+          notReplaced: notReplaced === 'notice',
+          onReplaceFromNotice: () => askReplace(noticeReplace.current, 'notice'),
           rows: {
             replacedOn:
               replacedOn[open] == null ? null : replyDate(replacedOn[open], timeZone, locale),
             copyFailed,
+            notReplaced: notReplaced === 'replace',
             onCopy: () => {
               if (pane.kind === 'guest') copy(pane.guest);
             },
-            onReplace: () => askReplace(replaceButton.current),
+            onReplace: () => askReplace(replaceButton.current, 'replace'),
           },
         }}
         noticeRef={noticeReplace}

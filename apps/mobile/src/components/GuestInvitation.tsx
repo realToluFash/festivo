@@ -37,6 +37,8 @@ export interface LinkRows {
   /** The day this session replaced it, as words. */
   replacedOn: string | null;
   copyFailed: boolean;
+  /** A replace started from this block's Replace link… failed. */
+  notReplaced: boolean;
   onCopy: () => void;
   onReplace: () => void;
 }
@@ -118,16 +120,19 @@ export function InvitationBlock({
           key: 'replace',
           inset: 40,
           row: (
-            <Row
-              ref={replaceRef}
-              title={t('guestList.replaceLink')}
-              line={t('guestList.replaceLinkLine')}
-              lead={<LineIcon name="refresh" />}
-              accent
-              weight="medium"
-              onPress={link.onReplace}
-              testID="guest.replace"
-            />
+            <View>
+              <Row
+                ref={replaceRef}
+                title={t('guestList.replaceLink')}
+                line={t('guestList.replaceLinkLine')}
+                lead={<LineIcon name="refresh" />}
+                accent
+                weight="medium"
+                onPress={link.onReplace}
+                testID="guest.replace"
+              />
+              {link.notReplaced && <NotReplaced />}
+            </View>
           ),
         },
       ]
@@ -248,6 +253,19 @@ function NotCopied() {
 
   return (
     <View style={styles.notCopied} testID="guest.notCopied">
+      <AlertLine text={said} small />
+    </View>
+  );
+}
+
+/** A replace that failed: the old link still works, read out as it appears (sc-55558). */
+function NotReplaced() {
+  const { t } = useTranslation();
+  const said = t('guestList.notReplaced');
+  useReadOut(said, { interrupts: true });
+
+  return (
+    <View style={styles.notCopied} testID="guest.notReplaced">
       <AlertLine text={said} small />
     </View>
   );

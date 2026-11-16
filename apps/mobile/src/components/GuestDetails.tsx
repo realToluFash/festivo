@@ -36,6 +36,7 @@ import { Text, type TextHandle } from './Text.tsx';
 export interface GuestLink {
   /** Someone who opened this guest's link pressed Tell them (GET …/guests/flagged). */
   flagged: boolean;
+  /** A replace started from the notice's Replace link… failed. */
   notReplaced: boolean;
   onReplaceFromNotice: () => void;
   rows: LinkRows;
@@ -309,7 +310,7 @@ export function GuestDetails({
           onReplace={link.onReplaceFromNotice}
         />
       )}
-      {link.notReplaced && <NotReplaced />}
+      {manages && link.flagged && link.notReplaced && <NotReplaced />}
       {reopen.failed && <AlertLine text={t('guestList.reopenNotSaved')} />}
       {notice?.kind === 'refused' && <AlertLine text={notice.line} />}
       {notice?.kind === 'offline' && <AlertLine text={t('guestList.offlineRefused')} />}
@@ -443,7 +444,7 @@ function NotReplaced() {
   useReadOut(said, { interrupts: true });
 
   return (
-    <View testID="guest.notReplaced">
+    <View testID="guest.flagged.notReplaced">
       <AlertLine text={said} />
     </View>
   );
