@@ -755,7 +755,7 @@ export function EventGuests({
       />
       {open != null && (
         <MarkInvited
-          key={marking.round}
+          key={`mark.${marking.round}`}
           open={markOpen}
           sending={marking.sending}
           refusal={marking.refusal}
@@ -788,7 +788,7 @@ export function EventGuests({
       )}
       {pasted != null && fromMessage != null && (
         <GuestRecord
-          key={round}
+          key={`whose.${round}`}
           open
           guest={fromMessage}
           message={{ quote: pasted.quote }}
@@ -810,7 +810,7 @@ export function EventGuests({
       )}
       {recording != null && (
         <GuestRecord
-          key={round}
+          key={`record.${round}`}
           open
           guest={recording.guest}
           eventId={eventId}
@@ -835,7 +835,7 @@ export function EventGuests({
       )}
       {form != null && (
         <GuestForm
-          key={round}
+          key={`form.${round}`}
           open
           mode={form}
           eventId={eventId}
