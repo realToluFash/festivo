@@ -63,7 +63,10 @@ describe('The day on the guest’s page (sc-3899)', () => {
 
     expect(rows(lists[0] as HTMLElement)).toEqual(['18:00Welcome drinks']);
     expect(rows(lists[1] as HTMLElement).at(-1)).toBe('Sat 00:30Late food · Ballroom');
-    expect(new Set(lists.map((one) => one.closest('.gp-prog-days'))).size).toBe(1);
+    const column = lists[0]?.closest('.gp-prog-days');
+
+    expect(column).not.toBeNull();
+    expect(lists[1]?.closest('.gp-prog-days')).toBe(column);
   });
 
   it('sits under the event’s details', SLOW, async () => {
