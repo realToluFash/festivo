@@ -101,7 +101,6 @@ export function asQueuedPresses(raw: unknown): QueuedPress[] {
   );
 }
 
-/** A press as the API's replay applies it, so the screen shows what the send will make of it. */
 function pressed(item: ScheduleItem, press: QueuedPress, at: string): ScheduleItem {
   if (press.kind === 'start') return { ...item, startedAt: at, endedAt: null, skipped: false };
   if (press.kind === 'skip') return { ...item, startedAt: null, endedAt: null, skipped: true };
@@ -111,7 +110,6 @@ function pressed(item: ScheduleItem, press: QueuedPress, at: string): ScheduleIt
   return { ...item, startedAt, endedAt: Date.parse(startedAt) > Date.parse(at) ? startedAt : at };
 }
 
-/** The server's schedule with every press still waiting to send laid over it, oldest first. */
 export function withPresses(schedule: Schedule, queue: readonly QueuedPress[]): Schedule {
   const items = queue.reduce(
     (all, press) =>
