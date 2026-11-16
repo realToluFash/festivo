@@ -33,7 +33,8 @@ create table if not exists work (
   first_seen real not null,
   done_at real,
   note text,
-  solo integer not null default 0
+  solo integer not null default 0,
+  reopened integer not null default 0
 );
 create index if not exists work_open on work (status, priority, first_seen);
 create table if not exists runs (role text primary key, last_done real);
@@ -63,6 +64,9 @@ create table if not exists moves (
 """
 
 LEASE_MINUTES = 90
+# A review finished while its head still has no verdict was never posted (sc-56909).
+REVIEW_RETRY_MINUTES = 30
+REVIEW_RETRIES = 3
 
 
 def connect(path, threads=False):
@@ -78,6 +82,8 @@ def connect(path, threads=False):
         db.execute("alter table work add column worker text")
     if "solo" not in columns:
         db.execute("alter table work add column solo integer not null default 0")
+    if "reopened" not in columns:
+        db.execute("alter table work add column reopened integer not null default 0")
     if not get_meta(db, "linguists_merged"):
         db.execute("begin immediate")
         merge_linguists(db)
@@ -155,7 +161,8 @@ def record(db, items, now=None):
     """Adds new work and retires open work that no longer applies.
 
     Open work follows the roles it is now derived for. Claimed work is left alone: the run
-    holding it finishes or its lease runs out.
+    holding it finishes or its lease runs out. A finished review still derived comes back
+    after 30 minutes, then 1 hour, then 2, and no more.
     """
     now = now or time.time()
     db.execute("begin immediate")
@@ -177,6 +184,13 @@ def record(db, items, now=None):
                 db.execute("update work set status = 'gone' where id = ?", (row["id"],))
         db.execute("update work set status = 'open', claimed_by = null, worker = null, "
                    "lease_until = null where status = 'claimed' and lease_until < ?", (now,))
+        for row in db.execute("select id, fingerprint from work where status = 'done' "
+                              "and kind = 'review' and reopened < ? "
+                              "and done_at <= ? - ? * (1 << reopened)",
+                              (REVIEW_RETRIES, now, REVIEW_RETRY_MINUTES * 60)).fetchall():
+            if row["fingerprint"] in current:
+                db.execute("update work set status = 'open', claimed_by = null, worker = null, "
+                           "done_at = null, reopened = reopened + 1 where id = ?", (row["id"],))
         db.execute("commit")
     except BaseException:
         db.execute("rollback")
