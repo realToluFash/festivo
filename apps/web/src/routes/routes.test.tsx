@@ -496,6 +496,17 @@ describe('the application tree', () => {
       expect(screen.getAllByRole('button', { name: /^Notifications/ })).toHaveLength(1);
     });
 
+    it.each(['/app/events/e1', '/app/events/e1/dates', '/app/events/e1/people'])(
+      'ends the crumb row of %s with the one bell at a desk (sc-39509)',
+      async (place) => {
+        at(place);
+
+        const bell = await screen.findByRole('button', { name: /^Notifications/ });
+        expect(bell.closest('.ev-crumb-row')).toBeTruthy();
+        expect(screen.getAllByRole('button', { name: /^Notifications/ })).toHaveLength(1);
+      },
+    );
+
     it.each([
       ['the overdue screen', overdueSession],
       ['a paused organisation', pausedSession],

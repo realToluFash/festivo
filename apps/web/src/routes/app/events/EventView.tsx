@@ -10,8 +10,6 @@ import { type ReactNode, type RefObject, useEffect, useRef, useState } from 'rea
 import { useTranslation } from 'react-i18next';
 import { Navigate, useParams } from 'react-router';
 
-import { BackControl } from '../../../components/BackControl.tsx';
-import { useDeskTop } from '../../../deskTop.ts';
 import { api } from '../../../api.ts';
 import { Refreshing } from '../../../components/OfflineBand.tsx';
 import { keepsWhatLoaded, useOffline } from '../../../offline.ts';
@@ -114,7 +112,6 @@ function EventOf({
   page: Page;
 }) {
   const { t } = useTranslation();
-  const desk = useDeskTop();
   const [load, setLoad] = useState<Load>({ kind: 'loading' });
   const [attempt, setAttempt] = useState(0);
   const [refresh, setRefresh] = useState(0);
@@ -261,15 +258,9 @@ function EventOf({
 
   return (
     <div className="event-page">
-      <div className="event-crumbs">
-        <BackControl
-          className="event-back"
-          label={t('eventPage.backToEvent')}
-          to={`/app/events/${encodeURIComponent(eventId)}`}
-        />
+      <EventCrumb name={load.kind === 'loaded' ? load.event.name : null}>
         {refreshing && <Refreshing />}
-        {desk.bell}
-      </div>
+      </EventCrumb>
 
       {states}
 

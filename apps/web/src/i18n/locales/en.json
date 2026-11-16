@@ -256,7 +256,6 @@
     "loading": "Loading the event…",
     "failed": "The event did not load. Try again in a moment.",
     "notFound": "This event is not available",
-    "backToEvent": "Event",
     "venue": "Venue",
     "venueToBeConfirmed": "Venue to be confirmed",
     "addVenue": "Add the venue",

@@ -269,7 +269,6 @@
     "loading": "Cargando el evento…",
     "failed": "No se ha podido cargar el evento. Vuelva a intentarlo en un momento.",
     "notFound": "Este evento no está disponible",
-    "backToEvent": "Evento",
     "venue": "Lugar",
     "venueToBeConfirmed": "Lugar por confirmar",
     "addVenue": "Añadir el lugar",
