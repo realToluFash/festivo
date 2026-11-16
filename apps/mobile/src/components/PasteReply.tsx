@@ -22,10 +22,17 @@ const FIELD_HEIGHT = 48;
 const RING = 1.5;
 const QUOTE_LINES = 6;
 const PLAIN_TEXT: Clipboard.AcceptedContentType[] = ['plain-text'];
+
+/** Paste's height, which Find a guest on Guests takes too: 48 below the accessibility sizes, as tall as Apple's word from them on. */
+export function usePasteHeight(): number {
+  return pasteHeight(FIELD_HEIGHT, useWindowDimensions().fontScale);
+}
+
 /** Soirely's own secondary button: Android's, and iOS's before 16. It reads the clipboard only when pressed. */
 function OwnPaste({ onText }: { onText: (text: string) => void }) {
   const { t } = useTranslation();
   const label = t('guestList.paste.button');
+  const height = usePasteHeight();
   const press = () => {
     Clipboard.getStringAsync().then(onText, () => onText(''));
   };
@@ -33,7 +40,11 @@ function OwnPaste({ onText }: { onText: (text: string) => void }) {
   return (
     <Pressable
       onPress={press}
-      style={({ pressed }) => [styles.own, pressed && styles.pressed]}
+      style={({ pressed }) => [
+        styles.own,
+        { height, borderRadius: height / 2 },
+        pressed && styles.pressed,
+      ]}
       accessibilityRole="button"
       accessibilityLabel={label}
       testID="guests.paste"
@@ -59,7 +70,7 @@ const ApplePaste = memo(function ApplePaste({
     [onText],
   );
   const imageOptions = useRebuiltPaste();
-  const height = pasteHeight(FIELD_HEIGHT, useWindowDimensions().fontScale);
+  const height = usePasteHeight();
 
   return (
     <View
@@ -354,13 +365,11 @@ const styles = StyleSheet.create({
   lines: { lineHeight: 15 * 1.45 },
   pressed: { opacity: tokens.opacityPressed },
   own: {
-    height: FIELD_HEIGHT,
     alignSelf: 'flex-start',
     flexDirection: 'row',
     alignItems: 'center',
     gap: tokens.spaceXs,
     paddingHorizontal: tokens.spaceLg,
-    borderRadius: FIELD_HEIGHT / 2,
     borderWidth: RING,
     borderColor: tokens.colorBorder,
     backgroundColor: tokens.colorCard,

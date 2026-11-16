@@ -87,6 +87,7 @@ import {
   PasteRow,
   WhoseReply,
   usePaste,
+  usePasteHeight,
 } from './PasteReply.tsx';
 import { MarkSlot } from './ReplyMark.tsx';
 import { FailedBlock, type StepProps } from './Summary.tsx';
@@ -935,6 +936,7 @@ function GuestRows({
     onChoice('all');
   };
   const pastes = pasteShown(manages, replies.closedOn, counts.invited);
+  const fieldHeight = usePasteHeight();
   const says =
     counts.invited === 0 || phaseCard?.onList === true
       ? t('guestList.onTheList', { count: counts.all })
@@ -1018,6 +1020,7 @@ function GuestRows({
           onSearch={() => undefined}
           onClear={() => onTyped('')}
           label={t('guestList.find')}
+          height={fieldHeight}
           testID="guests.search"
           ref={searchRef}
         />
