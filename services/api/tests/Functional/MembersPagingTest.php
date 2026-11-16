@@ -19,14 +19,16 @@ use App\Repository\MembershipRepository;
 use App\Tests\ApiTestCase;
 use App\Tests\Traits\OnboardsAccounts;
 use DateTimeImmutable;
-use Doctrine\Bundle\DoctrineBundle\DataCollector\DoctrineDataCollector;
 use Lexik\Bundle\JWTAuthenticationBundle\Services\JWTTokenManagerInterface;
 use PHPUnit\Framework\Attributes\Test;
 use Psl\Dict;
+use Psl\Iter;
 use Psl\Json;
+use Psl\Math;
 use Psl\Str;
 use Psl\Type;
 use Psl\Vec;
+use Symfony\Bridge\Doctrine\Middleware\Debug\DebugDataHolder;
 
 /** Settings › Members a page at a time (sc-49170): every person reached once, and the counts always the whole organisation's. */
 final class MembersPagingTest extends ApiTestCase
@@ -96,8 +98,10 @@ final class MembersPagingTest extends ApiTestCase
     public function aPageOfFiftyReadsNoMoreThanAPageOfFive(): void
     {
         $this->list();
+        $five = $this->queriesFor('?limit=5');
 
-        self::assertSame($this->queriesFor('?limit=5'), $this->queriesFor('?limit=50'), 'a query a row is back on the Members page');
+        self::assertGreaterThan(0, $five, 'the query log is empty, so this proves nothing');
+        self::assertSame($five, $this->queriesFor('?limit=50'), 'a query a row is back on the Members page');
     }
 
     #[Test]
@@ -174,12 +178,10 @@ final class MembersPagingTest extends ApiTestCase
 
     private function queriesFor(string $query): int
     {
-        $this->client->enableProfiler();
         $this->list($query);
-        $profile = $this->client->getProfile();
-        self::assertNotFalse($profile, 'no profile for ' . $query);
+        $queries = Type\instance_of(DebugDataHolder::class)->coerce(self::getContainer()->get('test.doctrine.debug_data_holder'))->getData();
 
-        return Type\instance_of(DoctrineDataCollector::class)->coerce($profile->getCollector('db'))->getQueryCount();
+        return Math\sum(Vec\map($queries, Iter\count(...)));
     }
 
     /**
