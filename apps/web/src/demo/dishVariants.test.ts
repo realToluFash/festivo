@@ -4,6 +4,7 @@ import {
   type Variant,
   type VariantForm,
   EVENT_CURRENCY,
+  ROOM,
   VW,
   addOutcome,
   blankVariant,
@@ -14,6 +15,7 @@ import {
   foldWords,
   jollofVariants,
   libraryJollof,
+  picksOf,
   removeOutcome,
   sameHint,
   sixWays,
@@ -217,11 +219,11 @@ describe('a set course and the library copy', () => {
   });
 
   it('fills an event Cost from a Last price in the same currency only, converting nothing', () => {
-    const same = copiedVariants(libraryJollof('EUR'), 'EUR');
+    const same = copiedVariants(libraryJollof('EUR'), 'EUR', 'ev-a');
     expect(same[1]?.price).toEqual({ minor: 600, currency: 'EUR' });
     expect(same[1]?.pricedIn).toBeNull();
 
-    const other = copiedVariants(libraryJollof('GBP'), 'EUR');
+    const other = copiedVariants(libraryJollof('GBP'), 'EUR', 'ev-a');
     expect(other[1]?.price).toBeNull();
     expect(other[1]?.pricedIn).toBe('GBP');
     expect(other[2]?.pricedIn).toBeNull();
@@ -230,5 +232,22 @@ describe('a set course and the library copy', () => {
       ['Children’s portion', 'children'],
       ['Children’s plain', 'children'],
     ]);
+  });
+
+  it('ties each copied variant to its dish copy, so two copies share no id', () => {
+    const one = copiedVariants(libraryJollof('EUR'), 'EUR', 'ev-a').map((v) => v.id);
+    const two = copiedVariants(libraryJollof('EUR'), 'EUR', 'ev-b').map((v) => v.id);
+
+    expect(one.filter((id) => two.includes(id))).toEqual([]);
+  });
+});
+
+describe('a variant’s picks', () => {
+  it('reads its count and its share of the room, as the board’s dish rows do', () => {
+    const [chicken, kids, plain] = jollofVariants() as [Variant, Variant, Variant];
+
+    expect(picksOf(chicken)).toEqual({ count: '31', share: `${Math.round((31 / ROOM) * 100)}%` });
+    expect(picksOf(kids).count).toBe('9');
+    expect(picksOf(plain)).toEqual({ count: '0', share: '0%' });
   });
 });

@@ -20,6 +20,8 @@ import {
 export const VARIANT_MAX = 6;
 export const VARIANT_NAME_MAX = 60;
 export const EVENT_CURRENCY = 'EUR';
+/** The sample event's guests: a variant's share is of the room, as the board's dish rows measure it. */
+export const ROOM = 120;
 
 export type VariantFor = 'everyone' | 'children';
 export type Where = 'event' | 'library';
@@ -73,7 +75,7 @@ export const VW = {
   actionsFor: (variant: string) => `Actions for ${variant}`,
   edit: 'Edit',
   remove: 'Remove…',
-  picks: (n: number, share: number) => (n === 0 ? 'No picks yet' : `${n} picked · ${share}%`),
+  containsHelp: 'Tick every allergen in this variant, or Contains none of these.',
   nameBlank: 'Enter the variant’s name.',
   nameLong: 'Shorten the name to 60 characters or fewer.',
   nameTwice: 'Each variant needs its own name.',
@@ -121,11 +123,10 @@ export const variantPicked = (variant: Variant): boolean => variant.pickers.leng
 export const waysName = (dish: WithVariants): string =>
   hasVariants(dish) ? VW.ways(dish.name, variantsOf(dish).length) : dish.name;
 
-export function picksLine(dish: WithVariants, variant: Variant): string {
-  const all = variantsOf(dish).reduce((sum, one) => sum + one.pickers.length, 0);
-  const share = all === 0 ? 0 : Math.round((variant.pickers.length / all) * 100);
+export function picksOf(variant: Variant): { count: string; share: string } {
+  const n = variant.pickers.length;
 
-  return VW.picks(variant.pickers.length, share);
+  return { count: `${n}`, share: `${Math.round((n / ROOM) * 100)}%` };
 }
 
 export function moneyLine(price: Price, lang: Lang): string {
@@ -418,12 +419,16 @@ export function sameHint(dishes: readonly WithVariants[]): string | null {
 }
 
 /** A library dish's variants as an event copies them: Name, For, Contains and Suitable for; a Last price fills Cost only in the event's currency, and nothing is converted. */
-export function copiedVariants(variants: readonly Variant[], eventCurrency: string): Variant[] {
-  return variants.map((one, at) => {
+export function copiedVariants(
+  variants: readonly Variant[],
+  eventCurrency: string,
+  dishId: string,
+): Variant[] {
+  return variants.map((one) => {
     const same = one.price != null && one.price.currency === eventCurrency;
 
     return {
-      id: `${one.id}-ev-${at}`,
+      id: `${dishId}-${one.id}`,
       name: one.name,
       for: one.for,
       contains: Array.isArray(one.contains) ? one.contains.slice() : one.contains,

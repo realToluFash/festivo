@@ -43,7 +43,9 @@ describe('variants on the event Menu (sc-3903)', () => {
       expect(screen.getByText('4 courses · 6 dishes')).toBeTruthy();
       const ways = screen.getByRole('list', { name: 'Jollof rice · 3 ways' });
       expect(within(ways).getAllByText(VW.childrenOnly)).toHaveLength(2);
-      expect(within(ways).getByText('31 picked · 78%')).toBeTruthy();
+      expect(within(ways).getByText('31')).toBeTruthy();
+      expect(within(ways).getByText('26%')).toBeTruthy();
+      expect(within(ways).queryByText(/picked ·|No picks yet/)).toBeNull();
       expect(screen.getByRole('button', { name: 'Add variant to Coconut rice' })).toBeTruthy();
     },
   );
@@ -135,6 +137,8 @@ describe('variants on the event Menu (sc-3903)', () => {
   it('copies a library Cost only in the event’s currency', SLOW, async () => {
     await menu('libAdded');
     expect((document.getElementById('vb0-amount') as HTMLInputElement).value).toBe('6.00');
+    expect(within(panel()).getByText(VW.containsHelp)).toBeTruthy();
+    expect(within(panel()).queryByText(LW.containsHelp)).toBeNull();
 
     await menu('libAddedOther');
     expect((document.getElementById('vb0-amount') as HTMLInputElement).value).toBe('');

@@ -282,11 +282,12 @@ export function withDishes(
 let copies = 0;
 
 /** The event's own copy of a library dish: what it is now, and nothing that later changes the library reaches it. */
-export function copyOf(dish: LibDish): EvDish {
+export function copyOf(dish: LibDish, id?: string): EvDish {
   copies += 1;
+  const copyId = id ?? `ev-${dish.id}-${copies}`;
 
   return {
-    id: `ev-${dish.id}-${copies}`,
+    id: copyId,
     name: dish.name,
     desc: dish.desc,
     contains: Array.isArray(dish.contains) ? dish.contains.slice() : dish.contains,
@@ -295,7 +296,7 @@ export function copyOf(dish: LibDish): EvDish {
     pickers: [],
     ...(dish.variants == null || dish.variants.length === 0
       ? {}
-      : { variants: copiedVariants(dish.variants, EVENT_CURRENCY) }),
+      : { variants: copiedVariants(dish.variants, EVENT_CURRENCY, copyId) }),
   };
 }
 
@@ -484,7 +485,7 @@ export function libraryWithJollof(currency: string): LibDish[] {
 /** The library's Jollof rice · 3 ways as Late-night bites took it, last priced in the currency given. */
 function lateJollof(currency: string): EvCourse[] {
   const lib = libraryWithJollof(currency).find((one) => one.id === 'd-jollof') as LibDish;
-  const copy: EvDish = { ...copyOf(lib), id: 'k4-jollof' };
+  const copy = copyOf(lib, 'k4-jollof');
 
   return sampleCourses().map((one) => (one.id === 'k4' ? { ...one, dishes: [copy] } : one));
 }
@@ -1063,7 +1064,7 @@ const STATES = {
         courseId: 'k4',
         dishId: 'k4-jollof',
         mode: 'edit',
-        variantId: 'lv-kids-ev-1',
+        variantId: 'k4-jollof-lv-kids',
       },
     }),
   libAddedOther: () =>
@@ -1078,7 +1079,7 @@ const STATES = {
         courseId: 'k4',
         dishId: 'k4-jollof',
         mode: 'edit',
-        variantId: 'lv-kids-ev-1',
+        variantId: 'k4-jollof-lv-kids',
       },
     }),
   libToAdd: () =>

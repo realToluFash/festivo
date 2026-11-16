@@ -15,7 +15,7 @@ import {
   VW,
   blockPrefix,
   foldWords,
-  picksLine,
+  picksOf,
   refusalLine,
   variantsOf,
 } from './dishVariants.ts';
@@ -121,6 +121,17 @@ export function ChildrenTag() {
 }
 
 /** A dish with variants: the line that says so, then one inset per variant with its own Contains, Suitable for, and on the event its picks. */
+function Picks({ variant }: { variant: Variant }) {
+  const { count, share } = picksOf(variant);
+
+  return (
+    <p className="vr-picks">
+      <span>{count}</span>
+      <span>{share}</span>
+    </p>
+  );
+}
+
 export function VariantInsets({
   dish,
   where,
@@ -182,7 +193,7 @@ export function VariantInsets({
                     label={`${LW.suitableFor} · ${variant.name}`}
                     lang={lang}
                   />
-                  {where === 'event' && <p className="vr-picks">{picksLine(dish, variant)}</p>}
+                  {where === 'event' && <Picks variant={variant} />}
                 </div>
                 {manage && (
                   <div
@@ -409,7 +420,7 @@ function VariantBlock({
       >
         <legend className="desk-label gs-label">{LW.containsLegend}</legend>
         <p id={`${p}contains-help`} className="desk-help">
-          {LW.containsHelp}
+          {VW.containsHelp}
         </p>
         <div className="lib-ticks">
           {DISH_ALLERGENS.map((code: DishAllergen) => (
