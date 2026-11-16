@@ -33,6 +33,7 @@ import {
   SW,
   ZOOMS,
   bounds,
+  clampScale,
   copyOf,
   crumbOf,
   deletePlanWords,
@@ -48,6 +49,7 @@ import {
   listed,
   many,
   nearestFree,
+  planFitOf,
   newItem,
   overlap,
   peopleIn,
@@ -351,7 +353,7 @@ function Seating({
 
   ui$.current = ui;
   const room = ui.plan.room;
-  const fit = room == null ? { s: 0.3, ox: 0, oy: 0 } : fitOf(size.w, size.h, room);
+  const fit = room == null ? { s: 0.3, ox: 0, oy: 0 } : planFitOf(size.w, size.h, room);
   const s = ui.camera?.s ?? fit.s;
   const ox = ui.camera == null ? fit.ox : size.w / 2 - ui.camera.cx * s;
   const oy = ui.camera == null ? fit.oy : size.h / 2 - ui.camera.cy * s;
@@ -1498,7 +1500,7 @@ function Seating({
   });
 
   function zoomTo(next: number, anchor: Point = [size.w / 2, size.h / 2]): void {
-    const clamped = Math.min(4 * AT_100, Math.max(0.25 * AT_100, next));
+    const clamped = clampScale(next);
     const at: Point = [(anchor[0] - ox) / s, (anchor[1] - oy) / s];
 
     set((now) => ({
