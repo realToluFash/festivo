@@ -3746,7 +3746,7 @@
     "saidDone": "{{track}}, tous les éléments sont terminés"
   },
   "handoff": {
-    "line": "This page is made for a wider window. On a phone or a tablet, it is in the Soirely app.",
-    "anyway": "Show this page anyway"
+    "line": "Cette page est conçue pour une fenêtre plus large. Sur un téléphone ou une tablette, vous la trouverez dans l’application Soirely.",
+    "anyway": "Afficher cette page quand même"
   }
 }
