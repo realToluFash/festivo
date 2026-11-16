@@ -2851,8 +2851,8 @@
     "changedSeat": "{{name}} acaba de cambiar este asiento. Su cambio no se ha guardado.",
     "zoomIn": "Acercar",
     "zoomOut": "Alejar",
-    "zoomIs": "Zoom al {{pct, number}} %",
-    "percent": "{{pct, number}} %",
+    "zoomIs": "Zoom al {{share, number(style: percent)}}",
+    "percent": "{{share, number(style: percent)}}",
     "fit": "Ver toda la sala",
     "takenOf": "{{taken, number}} de {{seats, number}}"
   },

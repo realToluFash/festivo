@@ -2851,8 +2851,8 @@
     "changedSeat": "{{name}} acabou de alterar este lugar. A sua alteração não foi guardada.",
     "zoomIn": "Aumentar o zoom",
     "zoomOut": "Diminuir o zoom",
-    "zoomIs": "Zoom a {{pct, number}}%",
-    "percent": "{{pct, number}}%",
+    "zoomIs": "Zoom a {{share, number(style: percent)}}",
+    "percent": "{{share, number(style: percent)}}",
     "fit": "Ver a sala inteira",
     "takenOf": "{{taken, number}} de {{seats, number}}"
   },
