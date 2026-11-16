@@ -1,4 +1,10 @@
-import { EVENT_AREAS, type EventArea, type EventState, type EventType } from '@soirely/domain';
+import {
+  EVENT_AREAS,
+  type EventArea,
+  type EventState,
+  type EventType,
+  currencyChoices,
+} from '@soirely/domain';
 
 import { ORGANISATION } from '../settings/MembersSample.ts';
 import type { EventKey } from '../today.ts';
@@ -366,21 +372,35 @@ export const TYPE_WORDS: Record<EventType, string> = {
   other: 'Other',
 };
 
+const OFFERED: readonly { code: string; name: string }[] = currencyChoices(
+  '',
+  'en',
+  (code) => code,
+).map(({ code, name }) => ({ code, name: name.replace(` (${code})`, '') }));
+
+function named(code: string): { code: string; name: string } {
+  return OFFERED.find((one) => one.code === code) ?? { code, name: code };
+}
+
 export const CURRENCIES: readonly { code: string; name: string }[] = [
-  { code: 'GBP', name: 'Pound sterling' },
-  { code: 'EUR', name: 'Euro' },
-  { code: 'USD', name: 'US dollar' },
-  { code: 'CAD', name: 'Canadian dollar' },
-  { code: 'NGN', name: 'Nigerian naira' },
-  { code: 'GHS', name: 'Ghanaian cedi' },
-  { code: 'BRL', name: 'Brazilian real' },
-  { code: 'MXN', name: 'Mexican peso' },
-];
+  'GBP',
+  'EUR',
+  'USD',
+  'CAD',
+  'NGN',
+  'GHS',
+  'BRL',
+  'MXN',
+].map(named);
+
+export function currencyRows(held: string): readonly { code: string; name: string }[] {
+  return [named(held), ...OFFERED.filter((one) => one.code !== held)];
+}
 
 export function currencyWords(code: string): string {
-  const named = CURRENCIES.find((currency) => currency.code === code);
+  const { name } = named(code);
 
-  return named == null ? code : `${named.code} · ${named.name}`;
+  return name === code ? code : `${code} · ${name}`;
 }
 
 /** The zones the sample's events are in, for the Dates edit's picker. */

@@ -821,7 +821,7 @@ export function EventScreen({
             onSaid={setTold}
           />
           <EndNowAsk
-            key={ending}
+            key={`end:${ending}`}
             open={ask === 'endNow'}
             name={event.name}
             start={endFieldOf(ending === 0 ? state : null)}
@@ -866,7 +866,7 @@ export function EventScreen({
             onDeleted={pressDelete}
           />
           <DuplicateScreen
-            key={copies}
+            key={`copy:${copies}`}
             open={duplicating}
             event={event}
             locale={locale}

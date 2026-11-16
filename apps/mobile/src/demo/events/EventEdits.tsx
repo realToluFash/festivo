@@ -17,6 +17,8 @@ import {
 } from 'react-native';
 
 import { AlertLine } from '../../components/AlertLine.tsx';
+import { EventNotice } from '../../components/EventNotice.tsx';
+import { SearchField } from '../../components/EventsSearch.tsx';
 import {
   ArrivalNoteField,
   Choices,
@@ -68,13 +70,13 @@ import {
   todayIn,
 } from './ReplyBy.ts';
 import {
-  CURRENCIES,
   PHOTO_DESCRIPTION,
   SIX_HOSTS,
   SUGGESTIONS,
   type SampleEvent,
   type Suggestion,
   ZONES,
+  currencyRows,
 } from './EventsSample.ts';
 import { W, say, t } from './EventsWords.ts';
 import { hostErrorWords } from './hostErrors.ts';
@@ -693,7 +695,9 @@ function HostsEdit(edit: EditProps) {
       ? ['Adaeze Obi', 'Tunde Bakare', 'Adaeze Obi']
       : start === 'hostsSix'
         ? [...SIX_HOSTS]
-        : [...event.hosts]
+        : start === 'lastHost'
+          ? event.hosts.slice(0, 1)
+          : [...event.hosts]
     ).map((name, key) => ({ key, name })),
   );
   const [tried, setTried] = useState(false);
@@ -747,6 +751,10 @@ function CurrencyEdit(edit: EditProps) {
   const refused = edit.start === 'currencyRefused';
   const [code, setCode] = useState(refused ? 'EUR' : edit.event.currency);
   const [refusal, setRefusal] = useState(refused);
+  const [typed, setTyped] = useState('');
+  const shown = currencyRows(edit.event.currency).filter((one) =>
+    folded(`${one.code} ${one.name}`).includes(folded(typed)),
+  );
 
   return (
     <Shell
@@ -755,7 +763,20 @@ function CurrencyEdit(edit: EditProps) {
       onSave={() => (refused ? setRefusal(true) : edit.onSaved({ ...edit.event, currency: code }))}
       edit={edit}
     >
-      <CurrencyView code={code} choices={CURRENCIES} refused={refusal} onPick={setCode} />
+      {refusal && <EventNotice tone="broken" words={W.currencyInUse} interrupts />}
+      <View style={styles.searchRow}>
+        <SearchField
+          typed={typed}
+          off={false}
+          width={null}
+          onTyped={setTyped}
+          onSearch={() => undefined}
+          onClear={() => setTyped('')}
+          label={W.searchCurrencies}
+          testID="event.edit.currency.search"
+        />
+      </View>
+      <CurrencyView code={code} choices={shown} refused={false} onPick={setCode} />
     </Shell>
   );
 }
@@ -884,6 +905,7 @@ function CoverEdit(edit: EditProps) {
 }
 
 const styles = StyleSheet.create({
+  searchRow: { flexDirection: 'row' },
   secondary: { color: tokens.colorInkSecondary },
   pressed: { opacity: tokens.opacityPressed },
   acPill: {
