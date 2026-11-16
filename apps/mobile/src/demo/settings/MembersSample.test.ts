@@ -338,6 +338,7 @@ describe('Requests to get back in, in the app’s Members (sc-30893)', () => {
       'largest',
       'moreLoading',
       'moreFailed',
+      'moreOffline',
       'loading',
       'failed',
       'approving',
@@ -713,6 +714,13 @@ describe('People a page at a time at 12,345 (sc-49170)', () => {
     expect(membersStart('moreFailed')).toMatchObject({ more: 'failed', load: 'loaded' });
     expect(counts(membersStart('moreFailed').people).all).toBe(12345);
     expect(membersStart('largest').more).toBe('idle');
+  });
+
+  it('shows the offline band only when Soirely did not answer for the next page', () => {
+    expect(membersStart('moreOffline')).toMatchObject({ more: 'failed', offline: true });
+    expect(counts(membersStart('moreOffline').people).all).toBe(12345);
+    expect(membersStart('moreFailed').offline).toBe(false);
+    expect(membersStart('largest').offline).toBe(false);
   });
 
   it('asks for the next page once the end is within a screen of the view', () => {

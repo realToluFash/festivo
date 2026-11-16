@@ -18,6 +18,7 @@ import {
 } from '../../components/screenReaderFocus.ts';
 import { tokens } from '../../theme/tokens.ts';
 
+import { OfflineBand } from '../events/EventsList.tsx';
 import { Landscape, SeenBy } from './Frame.tsx';
 import { ClaimScreen, ClaimUnderCard, useOwnerClaim } from './MembersClaim.tsx';
 import { useLoad } from './MembersLoading.tsx';
@@ -104,6 +105,7 @@ function MembersScreen({ start }: { start: MembersStart }) {
   const [filter, setFilter] = useState<Filter>(start.filter);
   const [paging, setPaging] = useState({ filter: start.filter, pages: 1, more: start.more });
   const [moreAsked, setMoreAsked] = useState(0);
+  const [offline, setOffline] = useState(start.offline);
   const page = paging.filter === filter ? paging : { filter, pages: 1, more: 'idle' as More };
   const [request, setRequest] = useState<Request>(start.request);
   const [requestVisit, setRequestVisit] = useState(0);
@@ -183,10 +185,10 @@ function MembersScreen({ start }: { start: MembersStart }) {
 
   useEffect(() => {
     if (moreAsked === 0) return;
-    const timer = setTimeout(
-      () => setPaging((now) => ({ ...now, pages: now.pages + 1, more: 'idle' })),
-      MORE_MS,
-    );
+    const timer = setTimeout(() => {
+      setPaging((now) => ({ ...now, pages: now.pages + 1, more: 'idle' }));
+      setOffline(false);
+    }, MORE_MS);
 
     return () => clearTimeout(timer);
   }, [moreAsked]);
@@ -412,6 +414,9 @@ function MembersScreen({ start }: { start: MembersStart }) {
     </>
   );
 
+  // The band's Try again reloads what is shown: the rows and the place stay, and the failure block keeps its own Try again for the next page.
+  const band = offline ? <OfflineBand onRetry={() => setOffline(false)} /> : null;
+
   if (load !== 'loaded') {
     const block =
       load === 'failed' ? (
@@ -482,11 +487,16 @@ function MembersScreen({ start }: { start: MembersStart }) {
   return (
     <>
       {landscape ? (
-        <Landscape column={column}>
+        <Landscape column={column} band={band}>
           <NobodyPicked />
         </Landscape>
       ) : (
-        <SummaryPage title={t('settings.members')} scrollRef={listScroll} onScroll={onScroll}>
+        <SummaryPage
+          title={t('settings.members')}
+          scrollRef={listScroll}
+          onScroll={onScroll}
+          band={band}
+        >
           {list}
         </SummaryPage>
       )}
