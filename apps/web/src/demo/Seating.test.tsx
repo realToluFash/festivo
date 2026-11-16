@@ -442,12 +442,14 @@ describe('the plan and the room (sc-3998, sc-4007)', () => {
               ? [530, 607, 702, 739]
               : null,
         );
+        const top = () => Number(document.querySelector('.st-floor[y]')?.getAttribute('y'));
 
         try {
-          const before = view();
+          const before = top();
 
           table.focus();
-          await waitFor(() => expect(view()).not.toBe(before), WAIT);
+          // 590 + 20 of ring and halo + 8 clear - 607 of map: 11 px up.
+          await waitFor(() => expect(before - top()).toBeCloseTo(11, 1), WAIT);
         } finally {
           measured.mockRestore();
         }
