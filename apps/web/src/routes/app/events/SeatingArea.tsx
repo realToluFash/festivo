@@ -10,6 +10,7 @@ import {
   type SeatingSection,
   type SeatingRow,
   type SeatingTable,
+  type SeatingWithChosen,
   type SectionColour,
   type SectionContents,
   type SingleSeat,
@@ -22,6 +23,7 @@ import {
   leastUsedColour,
   readRoomSide,
   holdingName,
+  type FloorBox,
   floorBox,
   insideRoom,
   isRoundShape,
@@ -85,7 +87,6 @@ import {
   KeysStrip,
   PlacingBars,
   SaveLine,
-  SeveralPanel,
   SnapToGrid,
   TableHandles,
   Tip,
@@ -104,6 +105,29 @@ import {
   withPlacements,
 } from './seatingItems.ts';
 import { fitOf, intoView, useCamera } from './seatingCamera.ts';
+import {
+  type Fold,
+  type GridDraft,
+  type SelectionSteps,
+  type StepBar,
+  ChooseBar,
+  DeleteItemsAsk,
+  RulesStrip,
+  SelectionPanel,
+  StepLine,
+} from './SeatingSelection.tsx';
+import {
+  COLUMNS_MAX,
+  gridOf,
+  outlinesOf,
+  readGap,
+  readWhole,
+  rectOf,
+  restoredOf,
+  seatingIn,
+  thingsOf,
+  touchedBy,
+} from './seatingSelection.ts';
 import {
   SMALL_MAP_FROM_SCALE,
   f,
@@ -425,6 +449,22 @@ function Plan({
   const shown = plan == null ? null : withPlacements(plan, placements);
   const overlaps = shown == null ? new Set<string>() : overlappingIds(shown);
   const where = useRef({ s: 1, ox: 0, oy: 0, snap: true });
+  const [adding, setAdding] = useState(false);
+  const [kindMenu, setKindMenu] = useState(false);
+  const [fold, setFold] = useState<Fold | null>(null);
+  const [grid, setGrid] = useState<GridDraft>({ columns: '3', gap: '1' });
+  const [bar, setBar] = useState<StepBar | null>(null);
+  const [boxDrawn, setBoxDrawn] = useState<FloorBox | null>(null);
+  const boxing = useRef<{
+    from: [number, number];
+    at: [number, number];
+    base: string[];
+    moved: boolean;
+    pointer: number;
+  } | null>(null);
+  const spaceHeld = useRef(false);
+  const spacePanned = useRef(false);
+  const touches = useRef(new Set<number>());
 
   useEffect(() => {
     where.current = { s: camera.s, ox: camera.ox, oy: camera.oy, snap };
@@ -458,6 +498,7 @@ function Plan({
   const chosenIds = several.length > 1 ? several : single;
   const itemOf = (id: string, from: SeatingPlan | null = shown): FloorItem | null =>
     from == null ? null : (floorItems(from).find((item) => item.one.id === id) ?? null);
+  const chosenItems = several.length > 1 ? several.flatMap((id) => itemOf(id) ?? []) : [];
 
   const open = (next: Panel | null) => {
     if (next == null) {
@@ -487,6 +528,17 @@ function Plan({
     setNotice(null);
     setSectionsRefused(false);
     setOutside(null);
+  };
+
+  /** Chooses these without moving the focus, as a box, Select all and the kind menu do. */
+  const pick = (ids: string[]) => {
+    const only = ids.length === 1 ? itemOf(ids[0]!, newest.current) : null;
+
+    setPanel(only == null ? null : { kind: only.kind, id: only.one.id });
+    setSeveral(ids.length > 1 ? ids : []);
+    setNotice(null);
+    setOutside(null);
+    setKindMenu(false);
   };
 
   useEffect(() => {
@@ -576,6 +628,13 @@ function Plan({
       const dy = event.clientY - now.from[1];
 
       if (!now.moved && Math.hypot(dx, dy) < PAN_FROM_PX) return;
+      if (!now.moved && spaceHeld.current) {
+        spacePanned.current = true;
+        const focused = document.activeElement;
+
+        if (focused instanceof HTMLElement && focused.closest('.st-canvas svg') == null)
+          focused.blur();
+      }
       now.moved = true;
       now.from = [event.clientX, event.clientY];
       panBy(-dx, -dy);
@@ -597,11 +656,41 @@ function Plan({
   }, [panBy]);
 
   useEffect(() => {
+    const typing = (target: EventTarget | null) =>
+      target instanceof HTMLElement && target.closest('input, textarea, select') != null;
+    const control = (target: EventTarget | null) =>
+      target instanceof Element &&
+      target.closest('button, a[href], [role="menuitem"], [role="option"], summary') != null;
     const keys = (event: KeyboardEvent) => {
-      if (event.key !== 'Escape' || covered) return;
+      if (covered) return;
+      if (event.key === ' ' && plan != null && !typing(event.target) && !event.defaultPrevented) {
+        spaceHeld.current = true;
+        if (!control(event.target)) event.preventDefault();
+      }
+      if (
+        (event.key === 'a' || event.key === 'A') &&
+        (event.metaKey || event.ctrlKey) &&
+        !typing(event.target) &&
+        plan != null &&
+        !readOnly &&
+        placing == null &&
+        asking == null
+      ) {
+        event.preventDefault();
+        pick(floorItems(plan).map((item) => item.one.id));
+        return;
+      }
+      if (event.key !== 'Escape') return;
       if (placing != null) {
         event.preventDefault();
         setPlacing(null);
+      } else if (kindMenu) {
+        event.preventDefault();
+        setKindMenu(false);
+      } else if (event.defaultPrevented || asking != null) return;
+      else if (adding) {
+        event.preventDefault();
+        setAdding(false);
       } else if (several.length > 1) {
         event.preventDefault();
         setSeveral([]);
@@ -610,9 +699,20 @@ function Plan({
         open(null);
       }
     };
+    const lift = (event: KeyboardEvent) => {
+      if (event.key !== ' ') return;
+      if (spacePanned.current || (spaceHeld.current && !control(event.target)))
+        event.preventDefault();
+      spaceHeld.current = false;
+      spacePanned.current = false;
+    };
 
     window.addEventListener('keydown', keys);
-    return () => window.removeEventListener('keydown', keys);
+    window.addEventListener('keyup', lift);
+    return () => {
+      window.removeEventListener('keydown', keys);
+      window.removeEventListener('keyup', lift);
+    };
   });
 
   const attempt = <A,>(
@@ -720,7 +820,7 @@ function Plan({
     return version;
   };
 
-  const sendStep = async (items: Placement[]): Promise<void> => {
+  const sendStep = async (items: Placement[], tool: boolean): Promise<void> => {
     const versioned = items.map((item) => ({ ...item, version: baseOf(item) }));
 
     for (let tries = 1; ; tries += 1) {
@@ -739,6 +839,12 @@ function Plan({
         setSave('saved');
         return;
       } catch (error) {
+        if (error instanceof ApiError && error.status === 412 && tool) {
+          settle(items);
+          setSave('idle');
+          staleStep(error);
+          return;
+        }
         if (error instanceof ApiError && error.status === 412) {
           const stale = error.problem.stale?.[0];
           const item = stale == null ? null : itemOf(stale, newest.current);
@@ -756,9 +862,12 @@ function Plan({
           return;
         }
         if (error instanceof ApiError && error.status < 500) {
+          const said = Object.values(error.fieldErrors())[0] ?? t('seating.notSaved');
+
           settle(items);
           setSave('idle');
-          setNotice(Object.values(error.fieldErrors())[0] ?? t('seating.notSaved'));
+          if (tool) refuseStep(said);
+          else setNotice(said);
           return;
         }
         if (tries >= STEP_TRIES) {
@@ -772,12 +881,12 @@ function Plan({
     }
   };
 
-  const arrange = (items: Placement[]) => {
+  const arrange = (items: Placement[], tool = false) => {
     if (items.length === 0) return;
     setPlacements((was) => ({ ...was, ...Object.fromEntries(items.map((one) => [one.id, one])) }));
     unsaved.current = null;
     setSave('saving');
-    queue.current = queue.current.then(() => sendStep(items));
+    queue.current = queue.current.then(() => sendStep(items, tool));
   };
 
   const tryAgain = () => {
@@ -799,6 +908,185 @@ function Plan({
       setSeveral(next);
       setNotice(null);
     }
+  };
+
+  const versionNow = (id: string): number => itemOf(id, newest.current)?.one.version ?? 0;
+  const refNow = (kind: FloorItem['kind'], id: string) => ({ kind, id, version: versionNow(id) });
+
+  const stepDone = (words: string, undo: () => void) => {
+    setBar({ tone: 'undo', words, undo });
+    setHeard(words);
+  };
+  const refuseStep = (words: string) => setBar({ tone: 'amber', words });
+  const undone = () => setHeard(t('seating.undone'));
+  const undo = () => {
+    const back = bar?.undo;
+
+    setBar(null);
+    back?.();
+  };
+
+  const staleStep = (error: ApiError) => {
+    const stale = error.problem.stale?.[0];
+    const item = stale == null ? null : itemOf(stale, newest.current);
+    const name = error.problem.changedBy;
+
+    refuseStep(
+      name == null || item == null
+        ? t('seating.notSaved')
+        : t('seating.stepChanged', { name, table: itemName(t, item) }),
+    );
+    setReloads((n) => n + 1);
+    reload();
+  };
+
+  /** One step through the queue, all or nothing; a 412 keeps the choice and says who changed what. */
+  const runStep = <A extends Seating | SeatingWithChosen>(
+    change: () => Promise<A>,
+    done: (answer: A) => void,
+  ) => {
+    setSave('saving');
+    queue.current = queue.current.then(async () => {
+      try {
+        const answer = await change();
+        const now = seatingIn(answer);
+
+        newest.current = now.plan;
+        onSeating(now);
+        setSave('saved');
+        done(answer);
+      } catch (error) {
+        setSave('idle');
+        if (error instanceof ApiError && error.status === 412) staleStep(error);
+        else
+          refuseStep(
+            error instanceof ApiError
+              ? (Object.values(error.fieldErrors())[0] ?? t('seating.notSaved'))
+              : t('seating.notSaved'),
+          );
+      }
+    });
+  };
+
+  const moveStep = (moved: Placement[], words: string) => {
+    const back = moved.flatMap((to) => {
+      const item = itemOf(to.id);
+
+      return item == null ? [] : [placementOf(item)];
+    });
+
+    arrange(moved, true);
+    stepDone(words, () => {
+      arrange(back, true);
+      undone();
+    });
+  };
+
+  const renameStep = (names: { id: string; name: string }[], words: string) => {
+    const before = names.flatMap((one) => {
+      const table = plan?.tables.find((other) => other.id === one.id);
+
+      return table == null ? [] : [{ id: table.id, name: table.name }];
+    });
+    const rename = (list: { id: string; name: string }[], done: () => void) =>
+      runStep(
+        () =>
+          api.renameSeatingTables(
+            event.id,
+            list.map((one) => ({ id: one.id, name: one.name, version: versionNow(one.id) })),
+          ),
+        done,
+      );
+
+    rename(names, () => stepDone(words, () => rename(before, undone)));
+  };
+
+  const sectionStep = (sectionId: string | null, words: string) => {
+    const before = chosenItems.map((item) => ({
+      kind: item.kind,
+      id: item.one.id,
+      sectionId: item.one.sectionId,
+    }));
+    const section = (list: typeof before, done: () => void) =>
+      runStep(
+        () =>
+          api.sectionSeatingItems(
+            event.id,
+            list.map((one) => ({ ...refNow(one.kind, one.id), sectionId: one.sectionId })),
+          ),
+        done,
+      );
+
+    section(
+      before.map((one) => ({ ...one, sectionId })),
+      () => stepDone(words, () => section(before, undone)),
+    );
+  };
+
+  const duplicateStep = () => {
+    const items = chosenItems;
+
+    runStep(
+      () =>
+        api.duplicateSeatingItems(
+          event.id,
+          items.map((item) => refNow(item.kind, item.one.id)),
+        ),
+      (answer) => {
+        pick(answer.chosen);
+        stepDone(t('seating.duplicatedMany', { count: answer.chosen.length }), () =>
+          runStep(
+            () =>
+              api.deleteSeatingItems(
+                event.id,
+                answer.chosen.flatMap((id) => {
+                  const copy = itemOf(id, newest.current);
+
+                  return copy == null ? [] : [refNow(copy.kind, id)];
+                }),
+              ),
+            () => {
+              pick(items.map((item) => item.one.id));
+              undone();
+            },
+          ),
+        );
+      },
+    );
+  };
+
+  const deleteStep = (items: FloorItem[]) => {
+    const restored = items.map(restoredOf);
+
+    runStep(
+      () =>
+        api.deleteSeatingItems(
+          event.id,
+          items.map((item) => refNow(item.kind, item.one.id)),
+        ),
+      () => {
+        pick([]);
+        stepDone(t('seating.deletedEmpty', { things: thingsOf(t, items) }), () =>
+          runStep(
+            () => api.restoreSeatingItems(event.id, restored),
+            (answer) => {
+              pick(answer.chosen);
+              undone();
+            },
+          ),
+        );
+      },
+    );
+  };
+
+  const steps: SelectionSteps = {
+    move: moveStep,
+    refuse: refuseStep,
+    rename: renameStep,
+    section: sectionStep,
+    duplicate: duplicateStep,
+    askDelete: () =>
+      setAsking({ kind: 'deleteItems', ids: chosenItems.map((item) => item.one.id) }),
   };
 
   const startPlacing = (next: Placing) => {
@@ -914,6 +1202,12 @@ function Plan({
     if ((event.key === 'd' || event.key === 'D') && (event.metaKey || event.ctrlKey)) {
       event.preventDefault();
       if (chosen && chosenIds.length === 1) duplicate(item);
+      else if (chosen && chosenIds.length > 1) duplicateStep();
+      return;
+    }
+    if ((event.key === 'Delete' || event.key === 'Backspace') && chosen && chosenIds.length > 1) {
+      event.preventDefault();
+      setAsking({ kind: 'deleteItems', ids: chosenIds });
       return;
     }
     if ((event.key === 'Delete' || event.key === 'Backspace') && chosen && chosenIds.length === 1) {
@@ -929,7 +1223,7 @@ function Plan({
   const onItemDown = (event: ReactPointerEvent<SVGGElement>, item: FloorItem) => {
     if (readOnly || placing != null || event.button !== 0) return;
     const id = item.one.id;
-    const ids = chosenIds.includes(id) && !event.shiftKey ? chosenIds : [id];
+    const ids = chosenIds.includes(id) && !event.shiftKey && !adding ? chosenIds : [id];
 
     drag.current = {
       kind: 'move',
@@ -1052,6 +1346,48 @@ function Plan({
   });
 
   useEffect(() => {
+    const move = (pointer: PointerEvent) => {
+      const now = boxing.current;
+
+      if (now == null || now.pointer !== pointer.pointerId || shown == null) return;
+      if (
+        !now.moved &&
+        Math.hypot(pointer.clientX - now.at[0], pointer.clientY - now.at[1]) < PAN_FROM_PX
+      )
+        return;
+      now.moved = true;
+      const to = toCm(pointer.clientX, pointer.clientY);
+
+      if (to == null) return;
+      const box = rectOf(now.from, to);
+      const hits = touchedBy(floorItems(shown), box);
+
+      setBoxDrawn(box);
+      pick([...now.base, ...hits.filter((id) => !now.base.includes(id))]);
+    };
+    const up = (pointer: PointerEvent) => {
+      touches.current.delete(pointer.pointerId);
+      const now = boxing.current;
+
+      if (now == null || now.pointer !== pointer.pointerId) return;
+      boxing.current = null;
+      if (!now.moved) return;
+      panned.current = true;
+      setBoxDrawn(null);
+      setHeard(t('seating.chosenCount', { count: chosenIds.length }));
+    };
+
+    window.addEventListener('pointermove', move);
+    window.addEventListener('pointerup', up);
+    window.addEventListener('pointercancel', up);
+    return () => {
+      window.removeEventListener('pointermove', move);
+      window.removeEventListener('pointerup', up);
+      window.removeEventListener('pointercancel', up);
+    };
+  });
+
+  useEffect(() => {
     const keys = () => setKeyboard(true);
     const pointer = () => setKeyboard(false);
 
@@ -1124,13 +1460,36 @@ function Plan({
         ? (drawn.tables.find((one) => one.id === shownPanel.id) ?? null)
         : null;
     const tipped = tip == null ? null : itemOf(tip.id, drawn);
+    const columns = readWhole(grid.columns, COLUMNS_MAX);
+    const gap = readGap(grid.gap, system, locale);
+    const gridOutlines =
+      fold === 'grid' && chosenItems.length > 1 && columns != null && gap != null && !readOnly
+        ? outlinesOf(drawn, chosenItems, gridOf(chosenItems, columns, gap).moved)
+        : [];
 
     canvas = (
       <>
-        {empty && !readOnly && placing == null && (
+        {empty && !readOnly && placing == null && bar == null ? (
           <div className="st-float st-bar is-tint" role="status" aria-live="polite">
             <Glyph name="info" size={17} weight={2.2} />
             <p>{t('seating.firstItem')}</p>
+          </div>
+        ) : (
+          <div className="st-float st-under-views">
+            {!readOnly && !empty && placing == null && (
+              <ChooseBar
+                plan={plan}
+                adding={adding}
+                kindMenu={kindMenu}
+                onChoose={pick}
+                onAdding={(on) => {
+                  setAdding(on);
+                  setKindMenu(false);
+                }}
+                onKindMenu={setKindMenu}
+              />
+            )}
+            {bar != null && <StepLine bar={bar} onUndo={undo} />}
           </div>
         )}
         <svg
@@ -1146,6 +1505,26 @@ function Plan({
               const at = toCm(event.clientX, event.clientY);
 
               if (at != null) void placeAt(at);
+              return;
+            }
+            if (event.pointerType === 'touch') touches.current.add(event.pointerId);
+            const box = boxing.current;
+
+            if (box != null && touches.current.size > 1) {
+              boxing.current = null;
+              setBoxDrawn(null);
+              if (box.moved) pick(box.base);
+            }
+            const at = toCm(event.clientX, event.clientY);
+
+            if (!readOnly && !spaceHeld.current && touches.current.size < 2 && at != null) {
+              boxing.current = {
+                from: at,
+                at: [event.clientX, event.clientY],
+                base: event.shiftKey || adding ? chosenIds : [],
+                moved: false,
+                pointer: event.pointerId,
+              };
               return;
             }
             press.current = {
@@ -1175,6 +1554,8 @@ function Plan({
             height={rl}
             onClick={() => {
               if (panned.current) panned.current = false;
+              else if (adding) setKindMenu(false);
+              else if (several.length > 1) setSeveral([]);
               else if (chosenAttribute != null) open(null);
             }}
           />
@@ -1259,7 +1640,7 @@ function Plan({
                   if (dragged.current) {
                     dragged.current = false;
                     event.stopPropagation();
-                  } else if (event.shiftKey && !readOnly) {
+                  } else if ((event.shiftKey || adding) && !readOnly) {
                     event.stopPropagation();
                     toggle(id);
                   }
@@ -1275,6 +1656,27 @@ function Plan({
               </g>
             );
           })}
+          {gridOutlines.map((one) => (
+            <rect
+              key={`${one.x0}-${one.y0}`}
+              className={one.amber ? 'st-outline is-amber' : 'st-outline'}
+              x={ox + one.x0 * s}
+              y={oy + one.y0 * s}
+              width={(one.x1 - one.x0) * s}
+              height={(one.y1 - one.y0) * s}
+              aria-hidden="true"
+            />
+          ))}
+          {boxDrawn != null && (
+            <rect
+              className="st-box-drawn"
+              x={ox + boxDrawn.x0 * s}
+              y={oy + boxDrawn.y0 * s}
+              width={(boxDrawn.x1 - boxDrawn.x0) * s}
+              height={(boxDrawn.y1 - boxDrawn.y0) * s}
+              aria-hidden="true"
+            />
+          )}
           {handled != null && (
             <TableHandles
               table={handled}
@@ -1313,9 +1715,10 @@ function Plan({
             onStop={() => setPlacing(null)}
           />
         )}
-        {keyboard && focusId != null && chosenIds.includes(focusId) && !readOnly && (
+        {keyboard && focusId != null && chosenIds.includes(focusId) && !readOnly && !adding && (
           <KeysStrip system={system} />
         )}
+        {adding && !readOnly && <RulesStrip />}
         <p className="visually-hidden" aria-live="polite">
           {heard}
         </p>
@@ -1404,12 +1807,16 @@ function Plan({
     body = (
       <>
         {notice != null && <Said>{notice}</Said>}
-        <SeveralPanel
-          items={several.flatMap((id) => {
-            const item = itemOf(id);
-
-            return item == null ? [] : [item];
-          })}
+        <SelectionPanel
+          plan={shown ?? plan}
+          system={system}
+          items={chosenItems}
+          adding={adding}
+          fold={fold}
+          onFold={setFold}
+          grid={grid}
+          onGrid={setGrid}
+          steps={steps}
         />
       </>
     );
@@ -1491,7 +1898,17 @@ function Plan({
         </aside>
       </div>
       <div ref={setHost} className="desk-layers" />
-      {asking != null && plan != null && (
+      {asking?.kind === 'deleteItems' && plan != null && (
+        <DeleteItemsAsk
+          items={asking.ids.flatMap((id) => itemOf(id) ?? [])}
+          onKeep={() => setAsking(null)}
+          onGo={(items) => {
+            setAsking(null);
+            deleteStep(items);
+          }}
+        />
+      )}
+      {asking != null && asking.kind !== 'deleteItems' && plan != null && (
         <AskFor
           ctx={ctx}
           plan={plan}
@@ -2324,6 +2741,7 @@ function AskFor({
   const { t } = useTranslation();
   const [busy, setBusy] = useState(false);
 
+  if (asking.kind === 'deleteItems') return null;
   if (asking.kind === 'deletePlan')
     return (
       <Ask

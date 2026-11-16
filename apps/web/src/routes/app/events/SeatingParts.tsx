@@ -33,7 +33,8 @@ export type Asking =
   | { kind: 'deleteSection'; id: string }
   | { kind: 'deleteTable'; id: string }
   | { kind: 'deleteRow'; id: string }
-  | { kind: 'deleteSeat'; id: string };
+  | { kind: 'deleteSeat'; id: string }
+  | { kind: 'deleteItems'; ids: string[] };
 
 /** A room size refused because these tables would sit outside it (sc-4000): they are outlined, the new wall dashed. */
 export interface Outside {
