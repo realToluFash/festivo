@@ -6,6 +6,9 @@ import { __setConfig, config } from '../../../config.ts';
 import { __setSessionState, type Session } from '../../../session.ts';
 import { OWNER_PERMISSIONS, membership } from '../../../test-memberships.ts';
 import { routes } from '../../index.tsx';
+import { cssRule, stylesheet } from '../../../test-styles.ts';
+
+const SCHEDULE_CSS = stylesheet(import.meta.dirname, 'schedule.css');
 
 const IRE = membership({ id: 'org_1', name: 'Ìrè Events' });
 
@@ -184,6 +187,18 @@ describe('The event’s Schedule (sc-3893)', () => {
     expect(main.textContent).toContain('18:00');
     expect(main.textContent).toContain('120 min');
     expect(main.textContent).toContain('Shown to guests');
+  });
+
+  it("sits inside the desk's button and field resets, and gives the narrow page its own padding", async () => {
+    await onSchedule({
+      'GET /api/events/ev_1/schedule': () => json({ schedule: schedule([DRINKS, BRUNCH]) }),
+    });
+
+    const tab = (await screen.findAllByRole('tab'))[0] as HTMLElement;
+    expect(tab.closest('.desk.ev')).not.toBeNull();
+    expect(
+      cssRule('.ro.desk-page', SCHEDULE_CSS.slice(SCHEDULE_CSS.indexOf('(width <= 40rem)'))),
+    ).toContain('padding: var(--spaceLg) var(--spaceMd) var(--space3xl);');
   });
 
   it('moves between days with the arrow keys', async () => {
