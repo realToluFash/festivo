@@ -539,6 +539,11 @@ function Courses({
       );
     } catch (error) {
       if (gone(error)) return;
+      if (error instanceof ApiError && error.is('menu_dish_on_course')) {
+        api.menu(event.id).then(onMenu, () => undefined);
+        setOpen((then) => (then?.kind === 'addDish' ? { ...then, busy: false } : then));
+        return;
+      }
       setOpen((then) =>
         then?.kind === 'addDish'
           ? { ...then, busy: false, failed: failedLine(error, t('eventMenu.add')) }

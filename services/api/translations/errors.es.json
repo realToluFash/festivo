@@ -35,6 +35,7 @@
     "menu_course_limit": "Un menú puede tener como máximo {max} pases.",
     "menu_course_picked": "Los invitados ya han elegido platos de este pase.",
     "menu_dish_picked": "Los invitados ya han elegido este plato.",
+    "menu_dish_on_course": "Este plato ya está en este pase.",
     "menu_same_one_dish": "«Todos reciben lo mismo» requiere exactamente un plato.",
     "replies_closed": "El plazo para responder ha terminado.",
     "replies_open": "Las respuestas siguen abiertas.",

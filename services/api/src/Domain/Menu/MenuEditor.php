@@ -158,7 +158,11 @@ final readonly class MenuEditor
     /** Marks the library dish used, so the library archives it rather than deleting it. */
     public function addFromLibrary(Event $event, MenuCourse $course, Dish $dish, User $by): MenuDish
     {
-        return $this->addDish($event, $course, $by, static function (int $position) use ($course, $dish): MenuDish {
+        return $this->addDish($event, $course, $by, function (int $position) use ($course, $dish): MenuDish {
+            if (null !== $this->menuDishRepository->findOneBy(['course' => $course, 'libraryDish' => $dish])) {
+                throw new ApiException(ErrorCode::MenuDishOnCourse, 'menu.dish_on_course');
+            }
+
             $dish->setUsedByEvent(true);
 
             return MenuDish::copyOf($dish, $course, $position);

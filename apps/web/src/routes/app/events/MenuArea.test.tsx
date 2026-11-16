@@ -302,6 +302,47 @@ describe('The event’s Menu (sc-3902)', () => {
     expect(screen.getByRole('button', { name: 'Delete course' })).toBeDefined();
   });
 
+  it('shows the menu as it now stands, with no failure line, when another page added the library dish first', async () => {
+    const library = {
+      id: 'lib_suya',
+      name: 'Suya wrap',
+      description: null,
+      allergens: ['peanuts'],
+      diets: [],
+      usedByEvent: true,
+      archivedAt: null,
+      lastPrice: null,
+    };
+    let menu = menuOf(LATE);
+    const sent = await onMenu({
+      'GET /api/events/ev_1/menu': () => menu(),
+      'GET /api/orgs/org_1/dishes': () =>
+        json({ dishes: [library], canManage: true, seesPrices: false }),
+      'POST /api/events/ev_1/menu/courses/c_late/dishes': () => {
+        menu = menuOf({
+          ...LATE,
+          dishes: [dish('d_suya', 'Suya wrap', { libraryDishId: 'lib_suya' })],
+        });
+        return problem('menu_dish_on_course', 409);
+      },
+    });
+
+    fireEvent.click(await screen.findByRole('button', { name: 'Add dish' }));
+    fireEvent.click(await screen.findByRole('button', { name: 'Add Suya wrap' }));
+
+    expect(await screen.findByText('On this course')).toBeDefined();
+    expect(screen.queryByRole('button', { name: 'Add Suya wrap' })).toBeNull();
+    expect(screen.queryByText(/Nothing was saved/)).toBeNull();
+    expect(
+      sent.filter((one) => one.line === 'POST /api/events/ev_1/menu/courses/c_late/dishes'),
+    ).toEqual([
+      {
+        line: 'POST /api/events/ev_1/menu/courses/c_late/dishes',
+        body: { libraryDishId: 'lib_suya' },
+      },
+    ]);
+  });
+
   it('offers Everyone gets the same only with exactly one dish', async () => {
     await onMenu({ 'GET /api/events/ev_1/menu': menuOf(STARTER, MAIN) });
 

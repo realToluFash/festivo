@@ -152,6 +152,7 @@
     "menu.course_limit": "Un menu peut compter au plus {max} services.",
     "menu.course_picked": "Des invités ont déjà choisi dans ce service.",
     "menu.dish_picked": "Des invités ont déjà choisi ce plat.",
+    "menu.dish_on_course": "Ce plat figure déjà dans ce service.",
     "menu.same_one_dish": "« Le même plat pour tous » n’est possible qu’avec un seul plat.",
     "guest.version_required": "Envoyez la version que vous modifiez, dans l’en-tête If-Match.",
     "guest.changed_since": "Quelqu’un d’autre a modifié les informations de cet invité depuis que vous les avez ouvertes. Votre modification n’a pas été enregistrée.",
