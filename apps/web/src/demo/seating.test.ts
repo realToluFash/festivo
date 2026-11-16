@@ -22,6 +22,7 @@ import {
   feet,
   filled,
   fitOf,
+  focusReach,
   intoView,
   inside,
   keepSeats,
@@ -256,6 +257,14 @@ describe('the room to scale (sc-4007)', () => {
     const bar = { x0: 534, y0: 100, x1: 706, y1: 600 };
 
     expect(intoView({ x0: -900, y0: 300, x1: 900, y1: 400 }, 718, 719, [bar])).toEqual([924, -208]);
+  });
+
+  it('reaches 20 px past a focused item for its ring and halo, further once it is turned (sc-57361)', () => {
+    const row = { ...newItem('row', [], [0, 0]), rot: 0 };
+
+    expect(focusReach(row)).toBe(20);
+    expect(focusReach({ ...row, rot: 90 })).toBeCloseTo(20);
+    expect(focusReach({ ...row, rot: 45 })).toBeCloseTo(20 * Math.SQRT2);
   });
 
   it('draws outlines under 50%, chairs from 50%, and 44 targets from 150%', () => {

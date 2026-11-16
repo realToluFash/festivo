@@ -41,6 +41,7 @@ import {
   filled,
   firstFree,
   fitOf,
+  focusReach,
   free,
   intoView,
   isTable,
@@ -1560,12 +1561,17 @@ function Seating({
       if (ui$.current.view !== 'plan' || ui$.current.plan.room == null) return;
       const box = node.getBoundingClientRect();
       const at = target.getBoundingClientRect();
+      // The ring and halo are drawn once this focus renders, so the box does not hold them yet.
+      const ringed = ui$.current.plan.items.find(
+        (item) => item.id === target.getAttribute('data-item'),
+      );
+      const reach = ringed == null ? 0 : focusReach(ringed);
       const [dx, dy] = intoView(
         {
-          x0: at.left - box.left,
-          y0: at.top - box.top,
-          x1: at.right - box.left,
-          y1: at.bottom - box.top,
+          x0: at.left - box.left - reach,
+          y0: at.top - box.top - reach,
+          x1: at.right - box.left + reach,
+          y1: at.bottom - box.top + reach,
         },
         size.w,
         size.h,
