@@ -128,3 +128,8 @@ export function todayRunOf<I extends NightItem>(
     })),
   };
 }
+
+/** A track as a link names it, its day and place, so Open run of show opens the night on the track Today followed. */
+export function todayTrackParam(track: { day: string; place: string | null }): string {
+  return `${track.day}|${track.place ?? ''}`;
+}
