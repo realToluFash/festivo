@@ -1,4 +1,4 @@
-# sc-51754: ${EVENT_ID}'s Venue address erased and saved: Open in maps disappears from the page. Needs ${METRO_URL}, ${EVENT_ID}.
+# sc-51754: ${EVENT_ID}'s Venue address erased and saved: Open in maps disappears from the page. Needs ${METRO_URL}, ${EVENT_ID} (a venue with a name).
 appId: host.exp.Exponent
 ---
 - openLink: ${METRO_URL}/--/events/${EVENT_ID}
@@ -16,10 +16,13 @@ appId: host.exp.Exponent
 - extendedWaitUntil:
     visible: 'Address.*'
     timeout: 20000
-- tapOn:
-    id: 'event.edit.venue.address'
-- eraseText: 200
-- hideKeyboard
+- repeat:
+    times: 3
+    commands:
+      - tapOn:
+          id: 'event.edit.venue.address'
+          point: '97%,50%'
+      - eraseText: 200
 - tapOn:
     id: 'event.edit.venue.save'
 - extendedWaitUntil:
@@ -35,3 +38,4 @@ appId: host.exp.Exponent
 - takeScreenshot: removed
 - assertNotVisible:
     id: 'events.maps'
+- assertNotVisible: '.*Venue · .*'

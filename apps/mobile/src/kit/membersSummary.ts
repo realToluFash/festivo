@@ -1,4 +1,9 @@
-import type { OrganisationMember, OwnerClaimBanner, RecoveryRequest } from '@soirely/api-client';
+import type {
+  MembersList,
+  OrganisationMember,
+  OwnerClaimBanner,
+  RecoveryRequest,
+} from '@soirely/api-client';
 import {
   initials,
   type MemberFilter,
@@ -26,21 +31,23 @@ export function membersShown(
   return members.filter((member) => memberIsShown(member.status, filter));
 }
 
-export function membersCounts(
-  members: readonly OrganisationMember[],
-): Record<MembersFilter, number> {
-  const count = (filter: MembersFilter) => membersShown(members, filter).length;
-
+/** The counts under Show, always of the whole organisation (sc-49170). */
+export function membersCounts({ counts }: MembersList): Record<MembersFilter, number> {
   return {
-    all: count('all'),
-    active: count('active'),
-    suspended: count('suspended'),
-    former: count('former'),
+    all: counts.all,
+    active: counts.active,
+    suspended: counts.suspended,
+    former: counts.former,
   };
 }
 
-export function waitingToJoin(members: readonly OrganisationMember[]): OrganisationMember[] {
-  return members.filter((member) => member.status === 'pending_approval');
+/** Someone on Members by id, among the rows, Waiting and the card's faces held. */
+export function memberIn(list: MembersList, id: string): OrganisationMember | null {
+  return [...list.members, ...list.waiting, ...list.faces].find((one) => one.id === id) ?? null;
+}
+
+export function waitingToJoin(list: MembersList): OrganisationMember[] {
+  return list.waiting;
 }
 
 export interface MemberFace {
@@ -242,7 +249,7 @@ function claimCard(
 /** How Members stands, summary first (sc-29710): an answer or a removal just made, an owner claim, or the headcount. */
 export function membersCard({
   t,
-  members,
+  list,
   manages,
   organisation,
   said,
@@ -250,7 +257,7 @@ export function membersCard({
   recovery = [],
 }: {
   t: TFunction;
-  members: readonly OrganisationMember[];
+  list: MembersList;
   manages: boolean;
   organisation: string;
   said: MembersSaid | null;
@@ -259,7 +266,7 @@ export function membersCard({
   recovery?: readonly RecoveryRequest[];
 }): MembersCard {
   const quiet = { line: null, faces: [], more: 0, readsOut: true, takesFocus: false };
-  const waiting = manages ? waitingToJoin(members) : [];
+  const waiting = manages ? waitingToJoin(list) : [];
   const back = manages ? recovery : [];
   const answer = answerStep(t, back, waiting);
   const seeFormer = {
@@ -320,9 +327,9 @@ export function membersCard({
 
   if (claim != null) return { ...quiet, ...claimCard(t, claim, organisation, become) };
 
-  const all = membersShown(members, 'all');
-  const faces = all.slice(0, 5).map(faceOf);
-  const headcount = t('membersScreen.card.people', { count: all.length });
+  const all = list.counts.all;
+  const faces = list.faces.slice(0, 5).map(faceOf);
+  const headcount = t('membersScreen.card.people', { count: all });
   const count = back.length + waiting.length;
 
   return {
@@ -336,7 +343,7 @@ export function membersCard({
     line: waitingKinds(t, back.length, waiting.length),
     step: answer,
     faces,
-    more: all.length - faces.length,
+    more: all - faces.length,
     readsOut: false,
     takesFocus: false,
   };

@@ -136,7 +136,7 @@ export function MemberRow({
 
   if (onPress == null)
     return (
-      <div className="desk-row" data-member={member}>
+      <div className="desk-row" data-member={member} tabIndex={member == null ? undefined : -1}>
         {words}
       </div>
     );
@@ -178,18 +178,24 @@ export function MembersEmpty({
 
 /** An invitation's address, its tag once it has ended, its lines, and what can be done with it. */
 export function InvitationLine({
+  invitation,
   email,
   ended,
   lines,
   children,
 }: {
+  invitation?: string;
   email: string;
   ended?: string | undefined;
   lines: readonly ReactNode[];
   children?: ReactNode;
 }) {
   return (
-    <li className="desk-row">
+    <li
+      className="desk-row"
+      data-invitation={invitation}
+      tabIndex={invitation == null ? undefined : -1}
+    >
       <RowWords
         title={email}
         tag={ended == null ? undefined : <Tag kind="ended" word={ended} />}

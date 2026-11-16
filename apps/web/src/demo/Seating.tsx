@@ -24,18 +24,24 @@ import {
   type Plan,
   type Point,
   AT_100,
+  CRUMB_WORDS,
+  type CrumbLang,
   EVENT_ID,
+  LONG_NAME,
+  QA_NAME,
   PRIYA,
   SW,
   ZOOMS,
   bounds,
   copyOf,
+  crumbOf,
   deletePlanWords,
   detailOf,
   filled,
   firstFree,
   fitOf,
   free,
+  intoView,
   isTable,
   itemName,
   lengthOf,
@@ -46,11 +52,13 @@ import {
   overlap,
   peopleIn,
   percentOf,
+  percentWritten,
   readRoom,
   readingOrder,
   say,
   seatAt as seatChairs,
   seatingStateOf,
+  sectionDeleteWords,
   sectionLine,
   snapTo,
   turn,
@@ -82,6 +90,7 @@ const LOAD_MS = 1800;
 const PRINT_MS = 1500;
 const ARRIVES_MS = 1500;
 const DEFAULT_SIZE = { w: 718, h: 719 };
+const FLOAT_MARGINS = 3 * 12;
 
 /** Seating at a desk in A · The room (page e31, Seating-A-Desk-1 to -4): the room is the page, the panel at its right. */
 export function SeatingPage() {
@@ -95,6 +104,7 @@ export function SeatingPage() {
 
 function SeatingAt({ id, raw }: { id: string | undefined; raw: string | null }) {
   const [event] = useState(() => sampleEvent(id));
+  const state = seatingStateOf(raw);
   const [first] = useState<Ui>(() => {
     const seeded = seedOf(seatingStateOf(raw));
 
@@ -105,6 +115,8 @@ function SeatingAt({ id, raw }: { id: string | undefined; raw: string | null }) 
 
   if (event == null) return <Navigate to="/demo/events" replace />;
   if (first.paper != null) return <PaperPage paper={first.paper} plan={first.plan} />;
+  if (state === 'crumbWidths') return <CrumbWidths id={event.id} />;
+  const named = crumbOf(state, event.name);
 
   return (
     <EventsShell
@@ -119,8 +131,69 @@ function SeatingAt({ id, raw }: { id: string | undefined; raw: string | null }) 
         />
       )}
     >
-      {(tell) => <Seating first={first} event={event} tell={tell} />}
+      {(tell) => <Seating first={first} event={event} named={named} tell={tell} />}
     </EventsShell>
+  );
+}
+
+type Named = { name: string; lang: CrumbLang };
+
+/** Events › the event › Seating (sc-55300): only the event name gives way, cut short with an ellipsis; its link keeps the full name. */
+function SeatingCrumb({ id, named }: { id: string; named: Named }) {
+  const words = CRUMB_WORDS[named.lang];
+
+  return (
+    <nav className="st-crumb" aria-label={words.crumb} lang={named.lang}>
+      <ol>
+        <li>
+          <Link to="/demo/events">{words.events}</Link>
+        </li>
+        <li className="st-crumb-event">
+          <Icon name="chevron" size={14} weight={2.3} />
+          <Link to={`/demo/events/${id}`}>
+            <span className="st-crumb-name">{named.name}</span>
+          </Link>
+        </li>
+        <li aria-current="page">
+          <Icon name="chevron" size={14} weight={2.3} />
+          <h1 tabIndex={-1}>{words.area}</h1>
+        </li>
+      </ol>
+    </nav>
+  );
+}
+
+const WIDTHS: readonly { w: 320 | 375; named: Named; label: string }[] = [
+  { w: 320, named: { name: LONG_NAME, lang: 'en' }, label: SW.longLabel },
+  { w: 375, named: { name: LONG_NAME, lang: 'en' }, label: SW.longLabel },
+  { w: 320, named: { name: LONG_NAME, lang: 'fr' }, label: SW.longLabel },
+  { w: 375, named: { name: LONG_NAME, lang: 'fr' }, label: SW.longLabel },
+  { w: 375, named: { name: QA_NAME, lang: 'fr' }, label: QA_NAME },
+];
+
+/** ?state=crumbWidths: a 320 and a 375 window, the band inside the page's 16 px gutters as the product draws it, since the demo's desk keeps its sidebar there. */
+function CrumbWidths({ id }: { id: string }) {
+  return (
+    <main className="st-widths">
+      <h1>{SW.widthsTitle}</h1>
+      <p className="st-widths-line">{SW.widthsLine}</p>
+      {WIDTHS.map(({ w, named, label }) => (
+        <figure key={`${w}|${named.lang}|${label}`} className={`st-width is-${w}`}>
+          <figcaption>
+            {say(SW.widthAt, {
+              w,
+              lang: named.lang === 'fr' ? SW.french : SW.english,
+              name: label,
+            })}
+          </figcaption>
+          <div className="st-window">
+            <header className="st-top">
+              <SeatingCrumb id={id} named={named} />
+            </header>
+          </div>
+        </figure>
+      ))}
+    </main>
   );
 }
 
@@ -180,7 +253,17 @@ function shapeWords(kind: Kind): string {
   }[kind];
 }
 
-function Seating({ first, event, tell }: { first: Ui; event: SampleEvent; tell: Tell }) {
+function Seating({
+  first,
+  event,
+  named,
+  tell,
+}: {
+  first: Ui;
+  event: SampleEvent;
+  named: Named;
+  tell: Tell;
+}) {
   const [ui, setUi] = useState<Ui>(first);
   const [setCanvas, size] = useSize();
   const canvas = useRef<HTMLDivElement | null>(null);
@@ -369,7 +452,7 @@ function Seating({ first, event, tell }: { first: Ui; event: SampleEvent; tell: 
           ...plan,
           items: plan.items.map((item) => (item.id === id ? { ...item, ...change } : item)),
         }),
-        { notice: null, ...after },
+        { notice: null, note: null, ...after },
       ),
     [commit],
   );
@@ -1284,6 +1367,50 @@ function Seating({ first, event, tell }: { first: Ui; event: SampleEvent; tell: 
     return () => node.removeEventListener('wheel', wheel);
   });
 
+  useEffect(() => {
+    const node = canvas.current;
+
+    if (node == null) return;
+    const follow = (event: FocusEvent) => {
+      const target = event.target;
+
+      if (!(target instanceof Element) || target.closest('[data-item]') == null) return;
+      if (!target.matches(':focus-visible')) return;
+      if (ui$.current.view !== 'plan' || ui$.current.plan.room == null) return;
+      const box = node.getBoundingClientRect();
+      const at = target.getBoundingClientRect();
+      const [dx, dy] = intoView(
+        {
+          x0: at.left - box.left,
+          y0: at.top - box.top,
+          x1: at.right - box.left,
+          y1: at.bottom - box.top,
+        },
+        size.w,
+        size.h,
+        [...node.querySelectorAll('.st-float')].map((bar) => {
+          const on = bar.getBoundingClientRect();
+
+          return {
+            x0: on.left - box.left,
+            y0: on.top - box.top,
+            x1: on.right - box.left,
+            y1: on.bottom - box.top,
+          };
+        }),
+      );
+
+      if (dx === 0 && dy === 0) return;
+      const cx = (size.w / 2 - oRef.current[0] - dx) / sRef.current;
+      const cy = (size.h / 2 - oRef.current[1] - dy) / sRef.current;
+
+      set((now) => ({ ...now, camera: { s: sRef.current, cx, cy } }));
+    };
+
+    node.addEventListener('focusin', follow);
+    return () => node.removeEventListener('focusin', follow);
+  });
+
   const items = ui.plan.items;
   const overlaps = useMemo(() => {
     const out = new Set<string>(ui.shrink?.outside ?? []);
@@ -1335,21 +1462,7 @@ function Seating({ first, event, tell }: { first: Ui; event: SampleEvent; tell: 
 
   const crumb = (
     <header className="st-top">
-      <nav className="st-crumb" aria-label={SW.crumb}>
-        <ol>
-          <li>
-            <Link to="/demo/events">{SW.events}</Link>
-          </li>
-          <li>
-            <Icon name="chevron" size={14} weight={2.3} />
-            <Link to={`/demo/events/${event.id}`}>{event.name}</Link>
-          </li>
-          <li aria-current="page">
-            <Icon name="chevron" size={14} weight={2.3} />
-            <h1 tabIndex={-1}>{SW.area}</h1>
-          </li>
-        </ol>
-      </nav>
+      <SeatingCrumb id={event.id} named={named} />
       <Presence />
       <DemoBell tell={tell} />
     </header>
@@ -1529,6 +1642,7 @@ function Seating({ first, event, tell }: { first: Ui; event: SampleEvent; tell: 
               )}
               {!ui.readOnly && (
                 <AddBar
+                  floor={size.w}
                   menu={ui.menu}
                   placing={ui.placing?.kind ?? null}
                   onMenu={() => set((now) => ({ ...now, menu: !now.menu }))}
@@ -1540,7 +1654,7 @@ function Seating({ first, event, tell }: { first: Ui; event: SampleEvent; tell: 
               <div
                 className="st-float st-zoom"
                 role="group"
-                aria-label={say(SW.zoomIs, { pct: `${percentOf(s)}%` })}
+                aria-label={say(SW.zoomIs, { pct: percentWritten(percentOf(s)) })}
               >
                 <button
                   type="button"
@@ -1551,7 +1665,7 @@ function Seating({ first, event, tell }: { first: Ui; event: SampleEvent; tell: 
                   <Icon name="minus" size={19} weight={2.2} />
                 </button>
                 <span className="st-pct" role="status">
-                  {percentOf(s)}%
+                  {percentWritten(percentOf(s))}
                 </span>
                 <button
                   type="button"
@@ -1830,6 +1944,7 @@ function KeysStrip() {
 }
 
 function AddBar({
+  floor,
   menu,
   placing,
   onMenu,
@@ -1837,6 +1952,7 @@ function AddBar({
   onRow,
   onSeat,
 }: {
+  floor: number;
   menu: boolean;
   placing: Kind | null;
   onMenu: () => void;
@@ -1851,15 +1967,31 @@ function AddBar({
     ['cocktail', SW.menuCocktail],
   ];
   const first = useRef<HTMLButtonElement>(null);
+  const bar = useRef<HTMLDivElement>(null);
+  const unfolded = useRef(0);
+  const [folded, setFolded] = useState(false);
+
+  useLayoutEffect(() => {
+    const box = bar.current;
+
+    if (box == null) return;
+    if (!folded) unfolded.current = box.getBoundingClientRect().width;
+    const zoom =
+      box.parentElement?.querySelector<HTMLElement>('.st-zoom')?.getBoundingClientRect().width ?? 0;
+
+    setFolded(unfolded.current + zoom + FLOAT_MARGINS > floor);
+  }, [floor, folded]);
 
   useEffect(() => {
     if (menu) first.current?.focus();
   }, [menu]);
 
+  const tableOn = placing != null && placing !== 'row' && placing !== 'single';
+
   return (
     <>
       {menu && (
-        <div className="st-float st-menu" role="menu" aria-label={SW.addTable}>
+        <div className="st-float st-menu" role="menu" aria-label={folded ? SW.add : SW.addTable}>
           {shapes.map(([kind, words], index) => (
             <button
               key={kind}
@@ -1873,32 +2005,60 @@ function AddBar({
               {words}
             </button>
           ))}
+          {folded && (
+            <>
+              <button
+                type="button"
+                role="menuitem"
+                className="st-menu-row"
+                onClick={() => {
+                  onMenu();
+                  onRow();
+                }}
+              >
+                <ShapeTile kind="row" />
+                {SW.menuRow}
+              </button>
+              <button
+                type="button"
+                role="menuitem"
+                className="st-menu-row"
+                onClick={() => {
+                  onMenu();
+                  onSeat();
+                }}
+              >
+                <ShapeTile kind="single" />
+                {SW.singleSeat}
+              </button>
+            </>
+          )}
         </div>
       )}
-      <div className="st-float st-add" role="group" aria-label={SW.addBar}>
+      <div className="st-float st-add" role="group" aria-label={SW.addBar} ref={bar}>
         <button
           type="button"
-          className={
-            menu || (placing != null && placing !== 'row' && placing !== 'single')
-              ? 'st-tool is-on'
-              : 'st-tool'
-          }
+          className={menu || (placing != null && (folded || tableOn)) ? 'st-tool is-on' : 'st-tool'}
           aria-haspopup="menu"
           aria-expanded={menu}
           onClick={onMenu}
         >
           <Icon name="plus" size={18} weight={2.2} />
-          {SW.addTable}
+          {folded ? SW.add : SW.addTable}
           <Icon name="chevdown" size={15} weight={2.4} />
         </button>
-        <button type="button" className="st-tool" onClick={onRow}>
-          <Icon name="row" size={18} weight={2.2} />
-          {SW.addRow}
-        </button>
-        <button type="button" className="st-tool" onClick={onSeat}>
-          <Icon name="seat1" size={18} weight={2.2} />
-          {SW.addSeat}
-        </button>
+        {!folded && (
+          <>
+            <button type="button" className="st-tool" onClick={onRow}>
+              <Icon name="row" size={18} weight={2.2} />
+              {SW.addRow}
+            </button>
+            <button type="button" className="st-tool" onClick={onSeat}>
+              <Icon name="seat1" size={18} weight={2.2} />
+              {SW.addSeat}
+            </button>
+          </>
+        )}
       </div>
     </>
   );
@@ -2052,13 +2212,12 @@ function Asking() {
     );
   if (asking.kind === 'deleteSection') {
     const section = ui.plan.sections.find((one) => one.id === asking.id);
-    const n = ui.plan.items.filter((item) => item.sec === asking.id && isTable(item)).length;
 
     if (section == null) return null;
     return (
       <Ask
         title={say(SW.deleteNamed, { name: section.name })}
-        line={n === 0 ? '' : many('sectionDeleteBody', n)}
+        line={sectionDeleteWords(ui.plan.items, section.id)}
         keep={SW.keepIt}
         go={SW.deleteSection}
         onKeep={keep}
@@ -2095,7 +2254,13 @@ function Asking() {
       line={name.length > 1 ? SW.theirGuestsGo : n > 0 ? say(SW.seatedHere, { n }) : SW.nobodyHere}
       keep={SW.keepIt}
       go={name.length === 1 ? say(SW.deleteName, { name: name[0] ?? '' }) : SW.deleteThese}
-      onKeep={keep}
+      onKeep={() => {
+        keep();
+        window.setTimeout(
+          () => document.querySelector<SVGElement>(`[data-item="${asking.ids[0]}"]`)?.focus(),
+          0,
+        );
+      }}
       onGo={() => {
         const back: Party[] = doomed.flatMap((item) =>
           item.chairs

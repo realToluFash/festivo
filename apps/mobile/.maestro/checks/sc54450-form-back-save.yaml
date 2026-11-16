@@ -1,0 +1,71 @@
+# sc-54450: from Whose reply is this?, ${GUEST_ID}'s Record a reply opens with By message chosen and no reply; Back keeps the quote; Back again is Guests; Save returns to Guests with Reply recorded.
+appId: host.exp.Exponent
+---
+- openLink: ${METRO_URL}/--/events/${EVENT_ID}?area=guests
+- extendedWaitUntil:
+    visible:
+      id: 'guests.search'
+    timeout: 30000
+- tapOn:
+    id: 'guests.paste'
+- extendedWaitUntil:
+    visible:
+      id: 'paste.row.${GUEST_ID}'
+    timeout: 10000
+- tapOn:
+    id: 'paste.row.${GUEST_ID}'
+- extendedWaitUntil:
+    visible:
+      id: 'guest.record.save'
+    timeout: 10000
+- takeScreenshot: form
+- tapOn:
+    id: 'guest.record.save'
+- takeScreenshot: save-nothing-chosen
+- tapOn:
+    id: 'guest.record.cancel'
+- extendedWaitUntil:
+    visible:
+      id: 'paste.whose'
+    timeout: 10000
+- assertVisible:
+    id: 'paste.quote'
+- takeScreenshot: back-to-whose
+- tapOn:
+    id: 'frame.back'
+- extendedWaitUntil:
+    visible:
+      id: 'guests.search'
+    timeout: 10000
+- assertNotVisible:
+    id: 'paste.whose'
+- takeScreenshot: back-to-guests
+- tapOn:
+    id: 'guests.paste'
+- extendedWaitUntil:
+    visible:
+      id: 'paste.row.${GUEST_ID}'
+    timeout: 10000
+- tapOn:
+    id: 'paste.row.${GUEST_ID}'
+- extendedWaitUntil:
+    visible:
+      id: 'guest.record.save'
+    timeout: 10000
+- tapOn:
+    id: 'guest.record.coming'
+- runFlow:
+    when:
+      visible:
+        id: 'guest.record.companion.0'
+    commands:
+      - tapOn:
+          id: 'guest.record.companion.0'
+- takeScreenshot: form-filled
+- tapOn:
+    id: 'guest.record.save'
+- extendedWaitUntil:
+    visible:
+      id: 'guests.recorded'
+    timeout: 15000
+- takeScreenshot: saved

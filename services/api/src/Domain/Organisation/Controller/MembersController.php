@@ -27,14 +27,18 @@ use App\Enum\Permission;
 use App\Http\Access\Interfaces\MembershipDirectoryInterface;
 use App\Http\Access\Policy\InOrganisation;
 use App\Http\Exception\ApiException;
+use App\Http\Exception\ShapeRefusal;
 use App\Http\Input;
 use App\Repository\InvitationRepository;
 use App\Repository\MembershipRepository;
 use App\Repository\MembershipTransitionRepository;
 use App\Repository\OrganisationRepository;
+use Closure;
 use DateTimeImmutable;
 use Psl\Dict;
 use Psl\Iter;
+use Psl\Math;
+use Psl\Str;
 use Psl\Type;
 use Psl\Vec;
 use Symfony\Bundle\SecurityBundle\Security;
@@ -45,9 +49,23 @@ use Symfony\Component\Routing\Attribute\Route;
 use Symfony\Component\Uid\Uuid;
 use Symfony\Contracts\Translation\TranslatorInterface;
 
-/** Settings > Organisation > Members (sc-67): every membership in every state, the invitations, and the moves on them (sc-68). */
+/** Settings > Organisation > Members (sc-67): its memberships a page at a time (sc-49170), the invitations, and the moves on them (sc-68). */
 final readonly class MembersController
 {
+    private const array SHOWN = [
+        'all' => [MembershipStatus::Active, MembershipStatus::Suspended],
+        'active' => [MembershipStatus::Active],
+        'waiting' => [MembershipStatus::PendingApproval],
+        'suspended' => [MembershipStatus::Suspended],
+        'former' => [MembershipStatus::LeftOrRemoved],
+    ];
+
+    private const int PAGE = 50;
+
+    private const int MOST = 500;
+
+    private const int FACES = 5;
+
     public function __construct(
         private Security $security,
         private OrganisationRepository $organisationRepository,
@@ -69,54 +87,69 @@ final readonly class MembersController
     ) {
     }
 
+    /** The counts, the card's faces and Waiting are the whole organisation's on every page, the invitations only on a first page (sc-49170). */
     #[Route('/api/orgs/{organisationId}/members', name: 'orgs_members', methods: ['GET'])]
     #[InOrganisation(Permission::MembersRead)]
-    public function list(string $organisationId): JsonResponse
+    public function list(Request $request, string $organisationId): JsonResponse
     {
         $organisation = $this->organisation($organisationId);
         $caller = $this->user();
+        $query = Input::query($request, Type\shape([
+            'show' => Type\optional(Type\string()),
+            'after' => Type\optional(Type\string()),
+            'limit' => Type\optional(Type\string()),
+        ]));
+        $statuses = self::SHOWN[$query['show'] ?? 'all'] ?? throw new ShapeRefusal('show');
+        $limit = Str\to_int($query['limit'] ?? (string) self::PAGE) ?? throw new ShapeRefusal('limit');
+
+        if ($limit < 1 || $limit > self::MOST) {
+            throw new ShapeRefusal('limit');
+        }
+
         $this->joinRequests->expireDue($organisation);
         $this->domainSuspender->removeExpired($organisation);
         $this->ownerClaimHandler->settleDue($organisation);
-        $history = Dict\group_by(
-            $this->membershipTransitionRepository->findInOrganisation($organisation),
-            static fn (MembershipTransition $step): string => $step->getMembership()->getId()->toRfc4122(),
-        );
-        $invitations = $this->invitationRepository->findForOrganisation($organisation);
-        $accepted = Dict\group_by(
-            Vec\filter($invitations, static fn (Invitation $invitation): bool => null !== $invitation->getAcceptedBy()),
-            static fn (Invitation $invitation): string => $invitation->getAcceptedBy()?->getId()->toRfc4122() ?? '',
-        );
-        $now = new DateTimeImmutable();
-        $sentAt = $this->invitationDeliveries->sentAt($invitations);
-        $undelivered = $this->invitationDeliveries->undelivered($invitations);
-        $locale = $this->userMailer->shownLocaleFor($caller);
-        $written = fn (DateTimeImmutable $at): string => $this->userMailer->deadline($at, $caller, $locale);
         $decides = true === $this->membershipDirectory->grantsIn($caller, $organisation->getId())?->holds(Permission::MembersManage);
-
-        // Somebody who asked to join and was never let in is shown only to the people who decide on them (sc-392, sc-8168).
-        $shown = static fn (Membership $membership): bool => $decides || MembershipStatus::PendingApproval !== $membership->getStatus() && $membership->hasBeenActive();
+        $after = null === ($query['after'] ?? null) ? null : $this->listedMember($organisation, $query['after'], $decides);
+        $page = $this->membershipRepository->findListedPage($organisation, $statuses, $decides, $after, $limit);
+        $counts = $this->membershipRepository->countListedByStatus($organisation, $decides);
+        $rows = $this->memberRows($organisation, $caller);
+        $last = Iter\last($page);
+        $whole = null === $after
+            ? ['invitations' => $this->invitationRows($this->invitationRepository->findForOrganisation($organisation))]
+            : [];
 
         return new JsonResponse([
-            'members' => Vec\map(
-                Vec\filter($this->membershipRepository->findInOrganisation($organisation), $shown),
-                fn (Membership $membership): array => MemberSerialiser::member(
-                    $membership,
-                    $history[$membership->getId()->toRfc4122()] ?? [],
-                    $accepted[$membership->getUser()->getId()->toRfc4122()] ?? [],
-                    $caller,
-                    $written,
-                    $this->memberSuspension->describe($membership, $caller),
-                    $sentAt,
-                ),
-            ),
-            'invitations' => Vec\map($invitations, static fn (Invitation $invitation): array => MemberSerialiser::invitation(
-                $invitation,
-                $now,
-                $sentAt[$invitation->getId()->toRfc4122()] ?? null,
-                Iter\contains($undelivered, $invitation->getId()->toRfc4122()),
-            )),
+            'members' => $rows($page),
+            'next' => $limit === Iter\count($page) && null !== $last ? $last->getId()->toRfc4122() : null,
+            'counts' => Dict\map(self::SHOWN, static fn (array $shown): int => Math\sum(Vec\map(
+                $shown,
+                static fn (MembershipStatus $status): int => $counts[$status->value] ?? 0,
+            ))),
+            'owners' => $this->membershipRepository->countActiveOwnersIn($organisation),
+            'faces' => $rows($this->membershipRepository->findListedPage($organisation, self::SHOWN['all'], $decides, null, self::FACES)),
+            'waiting' => $decides
+                ? $rows($this->membershipRepository->findListedPage($organisation, self::SHOWN['waiting'], true, null, null))
+                : [],
+            ...$whole,
         ]);
+    }
+
+    /** One person's row as it now is, for a change to somebody past the rows a read again brings (sc-49170). */
+    #[Route('/api/orgs/{organisationId}/members/{membershipId}', name: 'orgs_members_one', methods: ['GET'])]
+    #[InOrganisation(Permission::MembersRead)]
+    public function one(string $organisationId, string $membershipId): JsonResponse
+    {
+        $organisation = $this->organisation($organisationId);
+        $caller = $this->user();
+        $decides = true === $this->membershipDirectory->grantsIn($caller, $organisation->getId())?->holds(Permission::MembersManage);
+        $membership = Uuid::isValid($membershipId) ? $this->membershipRepository->findOneBy(['id' => $membershipId, 'organisation' => $organisation]) : null;
+
+        if (null === $membership || !$membership->isListedTo($decides)) {
+            throw ApiException::notFound('access.not_found');
+        }
+
+        return new JsonResponse(['member' => $this->memberRows($organisation, $caller)([$membership])[0]]);
     }
 
     /** Sending to an address with one pending re-sends it: a new link, and the old one stops working. Into Owner, `proof` comes from /api/auth/proof. */
@@ -246,6 +279,63 @@ final readonly class MembersController
         $this->ownershipTransfer->transfer($this->organisation($organisationId), $this->user(), $body['membershipId'], $body['proof'] ?? null, $request->getLocale());
 
         return new Response(null, Response::HTTP_NO_CONTENT);
+    }
+
+    /** @return Closure(list<Membership>): list<array<string, mixed>> */
+    private function memberRows(Organisation $organisation, User $caller): Closure
+    {
+        $locale = $this->userMailer->shownLocaleFor($caller);
+        $written = fn (DateTimeImmutable $at): string => $this->userMailer->deadline($at, $caller, $locale);
+
+        return /** @param list<Membership> $memberships */ function (array $memberships) use ($organisation, $caller, $written): array {
+            // Who invited each of these, from their invitations only: an organisation grown by invitation has one per member.
+            $invitations = $this->invitationRepository->findAcceptedBy($organisation, Vec\map($memberships, static fn (Membership $membership): User => $membership->getUser()));
+            $accepted = Dict\group_by(
+                $invitations,
+                static fn (Invitation $invitation): string => $invitation->getAcceptedBy()?->getId()->toRfc4122() ?? '',
+            );
+            $sentAt = $this->invitationDeliveries->sentAt($invitations);
+            $history = Dict\group_by(
+                $this->membershipTransitionRepository->findForMemberships($memberships),
+                static fn (MembershipTransition $step): string => $step->getMembership()->getId()->toRfc4122(),
+            );
+
+            return Vec\map($memberships, fn (Membership $membership): array => MemberSerialiser::member(
+                $membership,
+                $history[$membership->getId()->toRfc4122()] ?? [],
+                $accepted[$membership->getUser()->getId()->toRfc4122()] ?? [],
+                $caller,
+                $written,
+                $this->memberSuspension->describe($membership, $caller),
+                $sentAt,
+            ));
+        };
+    }
+
+    /**
+     * @param list<Invitation> $invitations
+     *
+     * @return list<array<string, mixed>>
+     */
+    private function invitationRows(array $invitations): array
+    {
+        $now = new DateTimeImmutable();
+        $sentAt = $this->invitationDeliveries->sentAt($invitations);
+        $undelivered = $this->invitationDeliveries->undelivered($invitations);
+
+        return Vec\map($invitations, static fn (Invitation $invitation): array => MemberSerialiser::invitation(
+            $invitation,
+            $now,
+            $sentAt[$invitation->getId()->toRfc4122()] ?? null,
+            Iter\contains($undelivered, $invitation->getId()->toRfc4122()),
+        ));
+    }
+
+    private function listedMember(Organisation $organisation, string $id, bool $decides): Membership
+    {
+        $membership = Uuid::isValid($id) ? $this->membershipRepository->findOneBy(['id' => $id, 'organisation' => $organisation]) : null;
+
+        return null !== $membership && $membership->isListedTo($decides) ? $membership : throw new ShapeRefusal('after');
     }
 
     private function role(Organisation $organisation, string $roleId): Role

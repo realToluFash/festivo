@@ -119,6 +119,8 @@ export interface Companion {
   /** Null when the host left it blank: shown as "Guest of <host>". */
   fullName: string | null;
   state: CompanionState;
+  /** What the guest, or a host recording for them, last chose for this place; kept while the place is held (sc-3787). */
+  coming: boolean;
   /** The guest gave this name on their own page; the host changing it clears it. */
   namedByGuest: boolean;
   /** Sent only with guests.manage; null for anyone else. */
@@ -337,6 +339,28 @@ export interface GuestPage {
   answersOpen: boolean;
   /** The guest's own calendar feed for Add to calendar (sc-3627): only for Coming while the event is Live. */
   calendar: GuestCalendarLink | null;
+  /** The items the hosts show to guests, by the time shown (sc-3899); none once called off. */
+  programme: GuestProgrammeItem[];
+}
+
+/** Planned, or while the event happens its expected start rounded down to 5 minutes, with the event zone's offset. `day` is the event day it is planned on. */
+export interface GuestProgrammeItem {
+  title: string;
+  startsAt: string;
+  day: string;
+  place: string | null;
+}
+
+export function asGuestProgrammeItem(value: unknown): GuestProgrammeItem | null {
+  if (value == null || typeof value !== 'object') return null;
+  const row = value as Record<string, unknown>;
+  const title = text(row.title);
+  const startsAt = text(row.startsAt);
+  const day = text(row.day);
+
+  return title == null || startsAt == null || day == null
+    ? null
+    : { title, startsAt, day, place: text(row.place) };
 }
 
 export const GUEST_PAGE_PHASES = ['live', 'paused', 'calledOff', 'finished'] as const;
@@ -463,12 +487,13 @@ function asCompanion(value: unknown): Companion | null {
   const row = value as Record<string, unknown>;
   const id = text(row.id);
   const state = COMPANION_STATES.find((known) => known === row.state);
-  if (id == null || state == null) return null;
+  if (id == null || state == null || typeof row.coming !== 'boolean') return null;
 
   return {
     id,
     fullName: text(row.fullName),
     state,
+    coming: row.coming,
     namedByGuest: row.namedByGuest === true,
     needs: asNeeds(row.needs),
   };

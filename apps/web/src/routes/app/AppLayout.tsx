@@ -21,6 +21,7 @@ import { SignInRulesNotices } from '../../components/SignInRulesNotices.tsx';
 import { AccessPaused } from '../../components/AccessPaused.tsx';
 import { Switched } from '../../components/Switched.tsx';
 import { TwoFactorOverdue } from '../../components/TwoFactorOverdue.tsx';
+import { SearchRow, ShellSearch } from '../../components/ShellSearch.tsx';
 import { SkipLink } from '../../components/SkipLink.tsx';
 import {
   joinOrganisation,
@@ -41,8 +42,17 @@ import { heldRegistration } from '../../pendingRegistration.ts';
 import { useTwoFactorStanding } from '../../twoFactorStanding.ts';
 import { useDialogKeys } from '../../dialogFocus.ts';
 import { PHONE_WIDTH, useDeskWidth } from '../../phoneWidth.ts';
-import { DeskTopContext, isBandless } from '../../deskTop.ts';
-import { EventNav, useInsideEvent, useShownEventName } from './events/EventNav.tsx';
+import { DeskTopContext, placesItsNotices } from '../../deskTop.ts';
+import {
+  EventNav,
+  type InsideEvent,
+  useInsideEvent,
+  useShownEventName,
+} from './events/EventNav.tsx';
+import { EventHandoff } from './events/EventHandoff.tsx';
+import { type Handoff, useHandoff } from './events/handoff.ts';
+import { Skeleton } from '../../components/Skeleton.tsx';
+import { arriveAt, pageStart } from '../../pageArrival.ts';
 
 /**
  * The signed-in shell, built for a desk.
@@ -90,7 +100,13 @@ export function AppLayout() {
   const landing = landingFor(state.session.awaiting);
   if (landing !== '/app') return <Navigate to={landing} replace />;
 
-  return <Shell />;
+  const { organisation, pausedIn } = state.session;
+
+  return (
+    <ShellSearch organisationId={pausedIn == null ? (organisation?.id ?? null) : null}>
+      <Shell />
+    </ShellSearch>
+  );
 }
 
 function Shell() {
@@ -127,7 +143,9 @@ function Shell() {
   const offer = useDomainOffer();
   const overdue = useTwoFactorStanding(organisation) === 'overdue';
   const switchTo = switchOf(location.state);
-  const bandless = useDeskWidth() && isBandless(pathname);
+  // At a desk no page has the band: each page's own top carries the bell (sc-39509).
+  const bandless = useDeskWidth();
+  const ownNotices = placesItsNotices(pathname);
 
   // Before the first paint, so the first signed-in screen is already in the account's language.
   useLayoutEffect(() => {
@@ -209,6 +227,9 @@ function Shell() {
     ) : organisation != null && overdue && !atAccount ? (
       <TwoFactorOverdue organisation={organisation} />
     ) : null;
+
+  const { handoff, showAnyway } = useHandoff(pathname, organisation?.id ?? null, standIn == null);
+  useArrivesFromHandoff(handoff);
 
   // Said on the page it happened on, and gone once the person moves on.
   const said = switched != null && switched.at === pathname && switched.id === organisation?.id && (
@@ -311,6 +332,7 @@ function Shell() {
             </button>
 
             <div className="shell-links">
+              <SearchRow />
               <ShellLinks />
             </div>
             <ShellEvents organisationId={organisation?.id ?? null} />
@@ -332,37 +354,40 @@ function Shell() {
               )}
             </p>
             <NotificationsBell userId={session.userId} />
-            <LanguagePicker automatic={false} pill />
           </header>
         )}
 
         <main
-          id="content"
+          id={handoff.kind === 'shown' ? undefined : 'content'}
           className={bandless ? 'shell-content is-card' : 'shell-content'}
           inert={menuOpen}
         >
-          {!bandless && <OfflineBand />}
+          {!(bandless && ownNotices) && <OfflineBand />}
           <LinkedNotice />
           {organisation != null && session.pausedIn == null && (
             <SignInRulesNotices key={organisation.id} organisation={organisation} />
           )}
-          {!bandless && said}
+          {!(bandless && ownNotices) && said}
 
           <DeskTopContext
             value={
               bandless
                 ? {
-                    bell: <NotificationsBell userId={session.userId} desk />,
-                    said,
-                    offline: <OfflineBox />,
+                    bell: <NotificationsBell userId={session.userId} look="desk" />,
+                    said: ownNotices ? said : null,
+                    offline: ownNotices ? <OfflineBox /> : null,
                   }
                 : NO_DESK_TOP
             }
           >
             <ErrorBoundary>
-              {standIn != null && !atSettings ? (
+              {handoff.kind === 'shown' ? (
+                <EventHandoff page={handoff.page} name={handoff.name} onShowAnyway={showAnyway} />
+              ) : handoff.kind === 'loading' ? (
+                <Skeleton words={t('eventPage.loading')} shape="rows" rowHeight={56} />
+              ) : standIn != null && !atSettings ? (
                 <>
-                  {bandless && (
+                  {bandless && ownNotices && (
                     <>
                       <OfflineBox />
                       {said}
@@ -377,7 +402,14 @@ function Shell() {
           </DeskTopContext>
         </main>
 
-        {menuOpen && <ShellMenu id={menuId} onClose={closeMenu} returnFocus={returnFromMenu} />}
+        {menuOpen && (
+          <ShellMenu
+            id={menuId}
+            onClose={closeMenu}
+            returnFocus={returnFromMenu}
+            inside={handoffInside(handoff)}
+          />
+        )}
 
         {creating && (
           <CreateOrganisation
@@ -397,6 +429,29 @@ function Shell() {
 
 const NO_DESK_TOP = { bell: null, said: null, offline: null };
 
+/** The run page marks no area, and its handoff's Menu still lists the event's areas, none lit (`EventHandoff.dc.html`). */
+function handoffInside(handoff: Handoff): ShownInside | undefined {
+  if (handoff.kind !== 'shown' || handoff.page.kind !== 'event' || handoff.page.area != null)
+    return undefined;
+
+  return { eventId: handoff.page.eventId, area: null, onPage: false };
+}
+
+/** The page that takes the handoff's place, on Show this page anyway or a wider window, is arrived at as one opened from a link. */
+function useArrivesFromHandoff(handoff: Handoff): void {
+  const was = useRef(handoff.kind);
+
+  useEffect(() => {
+    const before = was.current;
+    was.current = handoff.kind;
+    if (before !== 'shown' || handoff.kind !== 'none') return;
+
+    return arriveAt(pageStart, () => undefined);
+  }, [handoff.kind]);
+}
+
+type ShownInside = Omit<InsideEvent, 'area'> & { area: InsideEvent['area'] | null };
+
 const PLACES: readonly (readonly [string, 'today' | 'events' | 'calendar', GlyphName])[] = [
   ['/app', 'today', 'today'],
   ['/app/events', 'events', 'events'],
@@ -408,9 +463,16 @@ function placeLook({ isActive }: { isActive: boolean }): string {
 }
 
 /** The sidebar's places, or inside an event its own: in the sidebar on a desk, in the menu on a phone. */
-function ShellLinks({ onFollow }: { onFollow?: () => void }) {
+function ShellLinks({
+  onFollow,
+  shown,
+}: {
+  onFollow?: () => void;
+  shown?: ShownInside | undefined;
+}) {
   const { t } = useTranslation();
-  const inside = useInsideEvent();
+  const routed = useInsideEvent();
+  const inside = shown ?? routed;
 
   if (inside != null) return <EventNav inside={inside} onFollow={onFollow} />;
 
@@ -498,10 +560,12 @@ function ShellMenu({
   id,
   onClose,
   returnFocus,
+  inside,
 }: {
   id: string;
   onClose: () => void;
   returnFocus: (opener: HTMLElement | null) => void;
+  inside: ShownInside | undefined;
 }) {
   const { t } = useTranslation();
   const dialog = useRef<HTMLDivElement>(null);
@@ -545,7 +609,7 @@ function ShellMenu({
           ✕
         </button>
         <Brand />
-        <ShellLinks onFollow={onClose} />
+        <ShellLinks onFollow={onClose} shown={inside} />
         <div className="today-places">
           <ShellFoot onFollow={onClose} />
         </div>

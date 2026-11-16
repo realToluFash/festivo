@@ -62,6 +62,7 @@ import { Notice } from './Notice.tsx';
 import { Refreshing } from './Refreshing.tsx';
 import { Screen } from './Screen.tsx';
 import { LoadingBlock, PageToast } from './Summary.tsx';
+import type { ToastAction } from './Toast.tsx';
 import { phoneTabBarClearance } from './TodayCover.tsx';
 import { Arrived } from './Skeleton.tsx';
 import { type ScreenReaderTarget, moveScreenReaderFocus } from './screenReaderFocus.ts';
@@ -84,6 +85,7 @@ export function EventScreen({
   opensEdit,
   editLeaves = false,
   keepsTab,
+  opensGuest,
 }: {
   eventId: string;
   area: EventPlace;
@@ -99,6 +101,8 @@ export function EventScreen({
   editLeaves?: boolean;
   /** Opened from Happening now, so Back returns to the tab that was showing. */
   keepsTab: boolean;
+  /** The guest whose details Guests opens on, as a match in Search opens them (sc-39534). */
+  opensGuest?: string | undefined;
 }) {
   const { t } = useTranslation();
   const { kind } = useLayout();
@@ -130,13 +134,22 @@ export function EventScreen({
   );
   const coverNotice = useRef<ViewInstance>(null);
   const [guestsOffline, setGuestsOffline] = useState<ScreenOffline>(NOT_OFFLINE);
-  const [guestsTop, setGuestsTop] = useState<GuestsTop>({ add: null, back: null });
+  const [guestsTop, setGuestsTop] = useState<GuestsTop>({
+    add: null,
+    back: null,
+    toSearch: false,
+  });
   const guestsAdd = useRef<ViewInstance>(null);
   const [toast, setToast] = useState<{
     eventId: string;
     area: EventPlace;
     words: string;
+    action?: ToastAction | null | undefined;
   } | null>(null);
+  const withdrawToastAction = useCallback(
+    () => setToast((was) => (was == null ? null : { ...was, action: null })),
+    [],
+  );
   const [duplicating, setDuplicating] = useState<{
     opener: RefObject<ScreenReaderTarget | null>;
     count: number;
@@ -195,9 +208,11 @@ export function EventScreen({
     else if (router.canGoBack()) router.back();
     else router.replace(DESTINATION_HREF.events);
   };
-  const back = areaBack(area) === 'overview' ? () => chooseArea('overview') : leave;
-  const backLabel =
-    area !== 'overview'
+  const fromSearch = phone && opensGuest != null;
+  const back = !fromSearch && areaBack(area) === 'overview' ? () => chooseArea('overview') : leave;
+  const backLabel = fromSearch
+    ? t('todayScreen.search')
+    : area !== 'overview'
       ? t('eventNav.overview')
       : original != null
         ? t('timeline.backToEvent')
@@ -291,7 +306,10 @@ export function EventScreen({
           tell={(words) => setToast(words == null ? null : { eventId, area, words })}
         />
       ) : (
-        <PlaceholderArea area={area}>
+        <PlaceholderArea
+          area={area}
+          action={area === 'schedule' ? <RunViewEntry event={event} /> : null}
+        >
           <EventTop
             kind={kind}
             event={event}
@@ -347,7 +365,10 @@ export function EventScreen({
   const titledInList = areaTitled || guests;
   const frameBack =
     guestBack != null
-      ? { label: t('eventNav.guests'), onPress: guestBack }
+      ? {
+          label: guestsTop.toSearch ? t('todayScreen.search') : t('eventNav.guests'),
+          onPress: guestBack,
+        }
       : top.frameBack === 'area'
         ? { label: backLabel, onPress: back }
         : top.frameBack === 'events'
@@ -386,11 +407,15 @@ export function EventScreen({
           key={`${event.id}.${filter}`}
           event={event}
           filter={filter}
+          opens={opensGuest}
+          leave={fromSearch ? leave : undefined}
           phase={phase}
           now={now}
           onEventChange={change}
           onEventStale={reload}
           addRef={guestsAdd}
+          tell={(words, action) => setToast({ eventId, area, words, action })}
+          withdrawAction={withdrawToastAction}
           onTop={setGuestsTop}
           heading={
             <View style={styles.titleRow}>
@@ -484,6 +509,7 @@ export function EventScreen({
       {toast?.eventId === eventId && toast.area === area && (
         <PageToast
           words={toast.words}
+          action={toast.action}
           onClose={() => setToast(null)}
           bottom={
             phone
@@ -499,9 +525,12 @@ export function EventScreen({
 /** An area no epic has built yet: under the Top, its own name and a line saying it is coming, and nothing to press. */
 function PlaceholderArea({
   area,
+  action,
   children,
 }: {
   area: Exclude<EventArea, 'overview'>;
+  /** What the area already offers before it is built, under the line saying it is coming. */
+  action: ReactNode;
   children: ReactNode;
 }) {
   const { t } = useTranslation();
@@ -517,7 +546,42 @@ function PlaceholderArea({
         <Text size={tokens.typeBody.size} muted>
           {t(`eventNav.${area}Coming`)}
         </Text>
+        {action}
       </View>
+    </View>
+  );
+}
+
+/** The Schedule's way into the run view (sc-1404), for anyone who can read the run of show once it holds an item. */
+function RunViewEntry({ event }: { event: OrganisationEvent }) {
+  const { t } = useTranslation();
+  const reads = event.permissions.includes('run_of_show.read');
+  const [items, setItems] = useState<{ for: string; count: number } | null>(null);
+
+  useEffect(() => {
+    if (!reads) return undefined;
+    let current = true;
+
+    api.schedule(event.id).then(
+      (schedule) => current && setItems({ for: event.id, count: schedule.items.length }),
+      () => undefined,
+    );
+
+    return () => {
+      current = false;
+    };
+  }, [event.id, reads]);
+
+  if (!reads || items?.for !== event.id || items.count === 0) return null;
+
+  return (
+    <View style={styles.runEntry}>
+      <SecondaryButton
+        label={t('runView.open')}
+        link
+        onPress={() => router.push({ pathname: '/events/[id]/run', params: { id: event.id } })}
+        testID="events.schedule.run"
+      />
     </View>
   );
 }
@@ -598,6 +662,7 @@ function useOpened(
 
 const styles = StyleSheet.create({
   stack: { gap: tokens.spaceMd },
+  runEntry: { paddingTop: tokens.spaceMd, alignItems: 'flex-start' },
   secondary: { color: tokens.colorInkSecondary },
   fill: { flex: 1 },
   titleRow: { flexDirection: 'row', alignItems: 'center', gap: tokens.spaceSm },

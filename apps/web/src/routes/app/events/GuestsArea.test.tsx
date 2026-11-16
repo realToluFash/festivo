@@ -72,9 +72,9 @@ const NGOZI = guest('g_1', 'Ngozi Eze', {
   mobile: '+2348035550142',
   reply: 'coming',
   companions: [
-    { id: 'c_1', fullName: 'Obi Eze', state: 'coming', namedByGuest: false },
-    { id: 'c_2', fullName: null, state: 'coming', namedByGuest: false },
-    { id: 'c_3', fullName: null, state: 'coming', namedByGuest: false },
+    { id: 'c_1', fullName: 'Obi Eze', state: 'coming', coming: true, namedByGuest: false },
+    { id: 'c_2', fullName: null, state: 'coming', coming: true, namedByGuest: false },
+    { id: 'c_3', fullName: null, state: 'coming', coming: true, namedByGuest: false },
   ],
 });
 const AMAKA = guest('g_2', 'Chief Amaka Obi', { reply: 'maybe' });
@@ -247,7 +247,7 @@ describe('Guests (sc-1468)', () => {
     signedIn();
     const bisi = guest('g_3', 'Bisi Adewale', {
       invitation: INVITED,
-      companions: [{ id: 'c_9', fullName: null, state: 'held', namedByGuest: false }],
+      companions: [{ id: 'c_9', fullName: null, state: 'held', coming: true, namedByGuest: false }],
     });
     await onGuests({ 'GET /api/events/ev_1/guests': () => json(listOf([NGOZI, AMAKA, bisi])) });
 
@@ -271,7 +271,7 @@ describe('Guests (sc-1468)', () => {
     signedIn();
     const bisi = guest('g_3', 'Bisi Adewale', {
       invitation: INVITED,
-      companions: [{ id: 'c_9', fullName: null, state: 'held', namedByGuest: false }],
+      companions: [{ id: 'c_9', fullName: null, state: 'held', coming: true, namedByGuest: false }],
     });
     await onGuests(
       { 'GET /api/events/ev_1/guests': () => json(listOf([bisi])) },
@@ -433,7 +433,13 @@ describe('Guests (sc-1468)', () => {
                     NGOZI,
                     guest('g_9', 'Bimpe', {
                       companions: [
-                        { id: 'c_9', fullName: null, state: 'notYetInvited', namedByGuest: false },
+                        {
+                          id: 'c_9',
+                          fullName: null,
+                          state: 'notYetInvited',
+                          coming: true,
+                          namedByGuest: false,
+                        },
                       ],
                     }),
                   ]
@@ -450,7 +456,13 @@ describe('Guests (sc-1468)', () => {
               email: 'bimpe@example.com',
               mobile: '+447700900123',
               companions: [
-                { id: 'c_9', fullName: null, state: 'notYetInvited', namedByGuest: false },
+                {
+                  id: 'c_9',
+                  fullName: null,
+                  state: 'notYetInvited',
+                  coming: true,
+                  namedByGuest: false,
+                },
               ],
             }),
           },
@@ -624,6 +636,9 @@ describe('Guests (sc-1468)', () => {
     await waitFor(() => expect(document.activeElement).toBe(heading));
     expect(screen.queryByRole('navigation', { name: 'Event' })).toBeNull();
     expect(screen.queryByRole('link', { name: /Event$/u })).toBeNull();
+    const bell = await screen.findByRole('button', { name: /^Notifications/ });
+    expect(bell.closest('.ev-crumb-row')).not.toBeNull();
+    expect(screen.getAllByRole('button', { name: /^Notifications/ })).toHaveLength(1);
   });
 
   it('asks the same when the server answers guest_already_listed', async () => {
@@ -789,7 +804,9 @@ describe('Finding a guest (sc-3772)', () => {
     guest('g_3', 'Bola Ade', { invitation }),
     guest('g_4', 'José Ávila', {
       invitation,
-      companions: [{ id: 'c_4', fullName: 'Rui Ávila', state: 'held', namedByGuest: false }],
+      companions: [
+        { id: 'c_4', fullName: 'Rui Ávila', state: 'held', coming: true, namedByGuest: false },
+      ],
     }),
     guest('g_5', 'Dayo Kalu', { invitation, mobile: '+2348031234567' }),
   ];
@@ -990,7 +1007,13 @@ describe('Finding a guest (sc-3772)', () => {
     signedIn();
     const BISI = guest('g_6', 'Bisi Adewale', {
       companions: [
-        { id: 'c_6', fullName: 'Tunde Adewale', state: 'notYetInvited', namedByGuest: false },
+        {
+          id: 'c_6',
+          fullName: 'Tunde Adewale',
+          state: 'notYetInvited',
+          coming: true,
+          namedByGuest: false,
+        },
       ],
     });
     const counts = headcountOf(listOf(EVERYONE)).headcount.counts;
@@ -1065,7 +1088,9 @@ describe('Finding a guest (sc-3772)', () => {
             listOf([
               guest('g_6', 'Kemi Bello', {
                 invitation: INVITED,
-                companions: [{ id: 'c_6', fullName: null, state: 'held', namedByGuest: false }],
+                companions: [
+                  { id: 'c_6', fullName: null, state: 'held', coming: true, namedByGuest: false },
+                ],
               }),
             ]),
           ),
@@ -1087,7 +1112,13 @@ describe('Finding a guest (sc-3772)', () => {
             guest('g_6', 'Kemi Bello', {
               invitation: INVITED,
               companions: [
-                { id: 'c_6', fullName: 'Tunde Bello', state: 'held', namedByGuest: false },
+                {
+                  id: 'c_6',
+                  fullName: 'Tunde Bello',
+                  state: 'held',
+                  coming: true,
+                  namedByGuest: false,
+                },
               ],
             }),
           ]),
@@ -1262,7 +1293,9 @@ function tagged(body: unknown, tag: string, status = 200): Response {
 
 const DETAILS = {
   ...NGOZI,
-  companions: [{ id: 'c_1', fullName: 'Obi Eze', state: 'coming', namedByGuest: false }],
+  companions: [
+    { id: 'c_1', fullName: 'Obi Eze', state: 'coming', coming: true, namedByGuest: false },
+  ],
   added: { at: '2026-09-14T10:00:00+00:00', by: 'Kemi Bankole' },
 };
 
@@ -1328,8 +1361,14 @@ describe('A guest’s details, and correcting them (sc-3773)', () => {
           {
             ...DETAILS,
             companions: [
-              { id: 'c_1', fullName: 'Obi Eze', state: 'notComing', namedByGuest: true },
-              { id: 'c_2', fullName: null, state: 'coming', namedByGuest: false },
+              {
+                id: 'c_1',
+                fullName: 'Obi Eze',
+                state: 'notComing',
+                coming: false,
+                namedByGuest: true,
+              },
+              { id: 'c_2', fullName: null, state: 'coming', coming: true, namedByGuest: false },
             ],
           },
           '"1"',
@@ -1663,8 +1702,20 @@ describe('A guest’s details, and correcting them (sc-3773)', () => {
               {
                 ...theirs,
                 companions: [
-                  { id: 'c_2', fullName: 'Obi Eze', state: 'coming', namedByGuest: false },
-                  { id: 'c_3', fullName: 'Tolu Bankole', state: 'coming', namedByGuest: false },
+                  {
+                    id: 'c_2',
+                    fullName: 'Obi Eze',
+                    state: 'coming',
+                    coming: true,
+                    namedByGuest: false,
+                  },
+                  {
+                    id: 'c_3',
+                    fullName: 'Tolu Bankole',
+                    state: 'coming',
+                    coming: true,
+                    namedByGuest: false,
+                  },
                 ],
               },
               '"3"',
@@ -1865,7 +1916,9 @@ describe('A guest’s details, and correcting them (sc-3773)', () => {
         tagged(
           {
             ...DETAILS,
-            companions: [{ id: 'c_1', fullName: null, state: 'coming', namedByGuest: false }],
+            companions: [
+              { id: 'c_1', fullName: null, state: 'coming', coming: true, namedByGuest: false },
+            ],
           },
           '"1"',
         ),
@@ -2215,14 +2268,22 @@ describe('the Guests top at 320 (sc-3773, ux #44604)', () => {
 describe('Not yet invited, and Mark as invited (sc-3788)', () => {
   const BISI = guest('g_4', 'Bisi Adewale', {
     companions: [
-      { id: 'c_4', fullName: 'Tunde Adewale', state: 'notYetInvited', namedByGuest: false },
+      {
+        id: 'c_4',
+        fullName: 'Tunde Adewale',
+        state: 'notYetInvited',
+        coming: true,
+        namedByGuest: false,
+      },
     ],
   });
   const BISI_DETAILS = { ...BISI, added: { at: '2026-09-14T10:00:00+00:00', by: 'Kemi Bankole' } };
   const MARKED = {
     ...BISI_DETAILS,
     invitation: { at: '2026-11-13T10:00:00+01:00', how: 'whatsapp', by: 'Folake Adeyemi' },
-    companions: [{ id: 'c_4', fullName: 'Tunde Adewale', state: 'held', namedByGuest: false }],
+    companions: [
+      { id: 'c_4', fullName: 'Tunde Adewale', state: 'held', coming: true, namedByGuest: false },
+    ],
   };
 
   async function openBisi(
@@ -2252,6 +2313,10 @@ describe('Not yet invited, and Mark as invited (sc-3788)', () => {
 
   function invitation(): HTMLElement {
     return screen.getByRole('region', { name: 'Invitation' });
+  }
+
+  function bisi(): HTMLElement {
+    return screen.getByRole('region', { name: 'Bisi Adewale' });
   }
 
   function listed(): (string | null)[] {
@@ -2394,6 +2459,83 @@ describe('Not yet invited, and Mark as invited (sc-3788)', () => {
     expect(screen.queryByRole('button', { name: /^Mark as invited/u })).toBeNull();
   });
 
+  it('records the reply of a guest nobody invited, which invites them (sc-52829)', async () => {
+    const REPLIED = {
+      ...BISI_DETAILS,
+      reply: 'coming',
+      repliedAt: '2026-11-13T10:00:00+01:00',
+      replySource: 'host',
+      replyRecorded: { by: 'Kemi Bankole', how: 'phone' },
+      invitation: { at: '2026-11-13T10:00:00+01:00', how: 'reply', by: null },
+      companions: [
+        {
+          id: 'c_4',
+          fullName: 'Tunde Adewale',
+          state: 'coming',
+          coming: true,
+          namedByGuest: false,
+        },
+      ],
+    };
+    let saved = false;
+    const sent = await openBisi({
+      'GET /api/events/ev_1/guests/g_4': () =>
+        saved ? tagged(REPLIED, '"2"') : tagged(BISI_DETAILS, '"1"'),
+      'POST /api/events/ev_1/guests/g_4/record-reply': () => {
+        saved = true;
+        return tagged(REPLIED, '"2"');
+      },
+    });
+
+    const offers = within(invitation())
+      .getAllByRole('button')
+      .map((one) => one.textContent);
+    expect(offers.slice(-2)).toEqual([
+      'Mark as invitedHow you invited them, so they count as invited',
+      'Record a replyWhat they told you, so they count as invited',
+    ]);
+    fireEvent.click(within(invitation()).getByRole('button', { name: /^Record a reply/u }));
+    fireEvent.click(await within(bisi()).findByRole('radio', { name: 'Coming' }));
+    fireEvent.click(within(bisi()).getByRole('radio', { name: 'By phone' }));
+    fireEvent.click(within(bisi()).getByRole('button', { name: 'Save' }));
+
+    expect(
+      await within(bisi()).findByText('Reply recorded. It counts like any other reply.'),
+    ).toBeDefined();
+    expect(within(invitation()).getByText('Invited when they replied, Nov 13')).toBeDefined();
+    expect(screen.queryByRole('button', { name: 'Mark as not invited' })).toBeNull();
+    expect(screen.queryByRole('button', { name: /^Mark as invited/u })).toBeNull();
+    expect(sent.filter((one) => one.line.endsWith('/record-reply')).map((one) => one.body)).toEqual(
+      [
+        {
+          answer: 'coming',
+          how: 'phone',
+          companions: [{ id: 'c_4', coming: true }],
+          replace: false,
+        },
+      ],
+    );
+  });
+
+  it('returns Cancel to the Record a reply of a guest nobody invited (sc-52829)', async () => {
+    await openBisi();
+
+    fireEvent.click(within(invitation()).getByRole('button', { name: /^Record a reply/u }));
+    fireEvent.click(await within(bisi()).findByRole('button', { name: 'Cancel' }));
+
+    await waitFor(() =>
+      expect(document.activeElement).toBe(
+        within(invitation()).getByRole('button', { name: /^Record a reply/u }),
+      ),
+    );
+  });
+
+  it('offers no Record a reply on a Draft (sc-52829)', async () => {
+    await openBisi({}, { status: 'draft', phase: 'draft', madeLiveAt: null });
+
+    expect(screen.queryByRole('button', { name: /Record a reply/u })).toBeNull();
+  });
+
   it('offers no Mark as invited on a Paused event, and says why', async () => {
     await openBisi(
       {},
@@ -2419,6 +2561,7 @@ describe('Not yet invited, and Mark as invited (sc-3788)', () => {
     ).toBeDefined();
     expect(screen.queryByRole('button', { name: 'Mark as not invited' })).toBeNull();
     expect(screen.queryByRole('button', { name: /^Mark as invited/u })).toBeNull();
+    expect(screen.queryByRole('button', { name: /Record a reply/u })).toBeNull();
   });
 });
 
@@ -2427,7 +2570,13 @@ describe('Send on WhatsApp (sc-26025)', () => {
   const YUSUF = guest('g_4', 'Yusuf Ibrahim', {
     mobile: '+2348035550199',
     companions: [
-      { id: 'c_4', fullName: 'Amina Ibrahim', state: 'notYetInvited', namedByGuest: false },
+      {
+        id: 'c_4',
+        fullName: 'Amina Ibrahim',
+        state: 'notYetInvited',
+        coming: true,
+        namedByGuest: false,
+      },
     ],
   });
   const CHUKA = guest('g_5', 'Chuka Nwankwo', { mobile: '+2348035550111' });
@@ -2439,7 +2588,9 @@ describe('Send on WhatsApp (sc-26025)', () => {
   const MARKED = {
     ...YUSUF_DETAILS,
     invitation: { at: '2026-11-13T10:00:00+01:00', how: 'whatsapp', by: 'Folake Adeyemi' },
-    companions: [{ id: 'c_4', fullName: 'Amina Ibrahim', state: 'held', namedByGuest: false }],
+    companions: [
+      { id: 'c_4', fullName: 'Amina Ibrahim', state: 'held', coming: true, namedByGuest: false },
+    ],
   };
   const SEND = 'Send on WhatsApp to Yusuf Ibrahim';
   const QUESTION = 'Sent to Yusuf Ibrahim on WhatsApp?';
@@ -2519,7 +2670,13 @@ describe('Send on WhatsApp (sc-26025)', () => {
       within(invitation())
         .getAllByRole('listitem')
         .map((row) => row.querySelector('.desk-row-name')?.textContent),
-    ).toEqual(['Copy invitation link', 'Send on WhatsApp', 'Replace link…', 'Mark as invited']);
+    ).toEqual([
+      'Copy invitation link',
+      'Send on WhatsApp',
+      'Replace link…',
+      'Mark as invited',
+      'Record a reply',
+    ]);
   });
 
   it('is not offered to a guest with no mobile number', async () => {
@@ -2868,7 +3025,13 @@ describe('A guest’s needs (sc-3777)', () => {
     reply: 'coming',
     needs: needs({ allergies: ['peanuts', 'tree_nuts'], diet: ['halal'] }),
     companions: [
-      { id: 'c_5', fullName: 'Tunde Adewale', state: 'coming', needs: needs({ diet: ['vegan'] }) },
+      {
+        id: 'c_5',
+        fullName: 'Tunde Adewale',
+        state: 'coming',
+        coming: true,
+        needs: needs({ diet: ['vegan'] }),
+      },
     ],
   });
   const FOLA = guest('g_4', 'Fola Bello', {
@@ -3056,6 +3219,7 @@ describe('A guest’s needs (sc-3777)', () => {
                 id: 'c_2',
                 fullName: 'Ada Eze',
                 state: 'coming',
+                coming: true,
                 namedByGuest: false,
                 needs: needs({
                   diet: ['vegan'],
@@ -3169,7 +3333,9 @@ describe('Groups (sc-3775)', () => {
   const SADE = guest('g_4', 'Sade Ojo', {
     reply: 'coming',
     group: BRIDE,
-    companions: [{ id: 'c_4', fullName: 'Femi Ojo', state: 'coming', namedByGuest: false }],
+    companions: [
+      { id: 'c_4', fullName: 'Femi Ojo', state: 'coming', coming: true, namedByGuest: false },
+    ],
   });
 
   function grouped(
@@ -3421,8 +3587,8 @@ describe('Remove from the list, with a short undo (sc-3774)', () => {
   const NGOZI_TWO = {
     ...DETAILS,
     companions: [
-      { id: 'c_1', fullName: 'Obi Eze', state: 'coming', namedByGuest: false },
-      { id: 'c_2', fullName: null, state: 'held', namedByGuest: false },
+      { id: 'c_1', fullName: 'Obi Eze', state: 'coming', coming: true, namedByGuest: false },
+      { id: 'c_2', fullName: null, state: 'held', coming: true, namedByGuest: false },
     ],
   };
   const NGOZI_ROW = { ...NGOZI, companions: NGOZI_TWO.companions };
@@ -4129,7 +4295,9 @@ describe('Mark many guests as invited from the selection bar (sc-46880)', () => 
   const KEMI = guest('g_3', 'Kemi Bello', { reply: 'noReply', invitation: INVITED });
   const BISI = guest('g_4', 'Bisi Adewale');
   const TOMI = guest('g_5', 'Tomi Ade', {
-    companions: [{ id: 'c_9', fullName: 'Ife Ade', state: 'notYetInvited', namedByGuest: false }],
+    companions: [
+      { id: 'c_9', fullName: 'Ife Ade', state: 'notYetInvited', coming: true, namedByGuest: false },
+    ],
   });
   const PAUSED = { status: 'paused', phase: 'paused', pausedAt: '2026-11-13T10:00:00+00:00' };
 
@@ -4622,6 +4790,48 @@ describe('Record a reply (sc-3787)', () => {
       __setConfig(before);
       vi.unstubAllGlobals();
     }
+  });
+
+  it('starts each companion as they are, so a quick save keeps one who is not coming', async () => {
+    const AS_THEY_ARE = {
+      ...OWN,
+      replyRecorded: { by: 'Kemi Bankole', how: 'phone' },
+      companions: [
+        { id: 'c_1', fullName: 'Obi Eze', state: 'notComing', coming: false, namedByGuest: false },
+        { id: 'c_2', fullName: 'Dele Lawal', state: 'coming', coming: true, namedByGuest: false },
+      ],
+    };
+    const sent = await openNgozi({
+      'GET /api/events/ev_1/guests/g_1': () => tagged(AS_THEY_ARE, '"1"'),
+      'POST /api/events/ev_1/guests/g_1/record-reply': () => tagged(AS_THEY_ARE, '"2"'),
+    });
+
+    fireEvent.click(within(column()).getByRole('button', { name: 'Record a reply' }));
+    fireEvent.click(within(column()).getByRole('radio', { name: 'Coming' }));
+
+    expect(
+      (within(column()).getByRole('checkbox', { name: /Obi Eze/u }) as HTMLInputElement).checked,
+    ).toBe(false);
+    expect(
+      (within(column()).getByRole('checkbox', { name: /Dele Lawal/u }) as HTMLInputElement).checked,
+    ).toBe(true);
+    fireEvent.click(within(column()).getByRole('radio', { name: 'By phone' }));
+    fireEvent.click(within(column()).getByRole('button', { name: 'Save' }));
+
+    await within(column()).findByText('Reply recorded. It counts like any other reply.');
+    expect(sent.filter((one) => one.line.endsWith('/record-reply')).map((one) => one.body)).toEqual(
+      [
+        {
+          answer: 'coming',
+          how: 'phone',
+          companions: [
+            { id: 'c_1', coming: false },
+            { id: 'c_2', coming: true },
+          ],
+          replace: false,
+        },
+      ],
+    );
   });
 
   it('keeps their reply, sending nothing', async () => {

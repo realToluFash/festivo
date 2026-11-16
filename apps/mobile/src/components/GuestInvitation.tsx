@@ -16,18 +16,32 @@ import { AlertLine } from './AlertLine.tsx';
 import { RadioMark } from './RadioMark.tsx';
 import { MarkSlot } from './ReplyMark.tsx';
 import { type ScreenReaderTarget, moveScreenReaderFocus } from './screenReaderFocus.ts';
+import { useReadOut } from './ReadOut.tsx';
 import { Pill } from './SettingsParts.tsx';
 import { Sheet } from './Sheet.tsx';
 import { Row, RowList, TextAction } from './SummaryRows.tsx';
 import { Text } from './Text.tsx';
 
-/** What the guest's Invitation offers: marking needs guests.manage and a phase that invites (sc-46879). */
+/** What the guest's Invitation offers: marking and copying need guests.manage and a phase that invites (sc-46879, sc-55558); replacing needs guests.manage alone. */
 export interface InvitationOffer {
   manages: boolean;
   invites: boolean;
+  /** A Draft's Invitation holds Replace link… alone, for those who manage guests (sc-55558). */
+  draft: boolean;
+  /** Paused's or Finished's reason nobody can be invited, above the rows. */
+  notInviting: string | null;
 }
 
-/** A guest's Invitation (sc-46879): their one line, or Not yet invited with Mark as invited under it; Mark as not invited under a mark made by hand. */
+/** sc-55558: the guest's own link — Copy invitation link, Replace link…, and what the last of each left. */
+export interface LinkRows {
+  /** The day this session replaced it, as words. */
+  replacedOn: string | null;
+  copyFailed: boolean;
+  onCopy: () => void;
+  onReplace: () => void;
+}
+
+/** A guest's Invitation (sc-46879): their one line, or Not yet invited with Mark as invited and Record a reply under it; Mark as not invited under a mark made by hand. */
 export function InvitationBlock({
   guest,
   timeZone,
@@ -36,20 +50,91 @@ export function InvitationBlock({
   unmarkRef,
   onMark,
   onUnmark,
+  recordRef,
+  onRecord,
+  link,
+  copyRef,
+  replaceRef,
 }: {
   guest: GuestDetails;
   timeZone: string;
   offer: InvitationOffer;
+  link: LinkRows;
+  copyRef: Ref<ViewInstance>;
+  replaceRef: Ref<ViewInstance>;
   markRef: Ref<ViewInstance>;
   unmarkRef: Ref<ViewInstance>;
   onMark: () => void;
   onUnmark: () => void;
+  /** sc-52829: Record a reply on a guest not yet invited, which invites them. */
+  recordRef: Ref<ViewInstance>;
+  onRecord: () => void;
 }) {
   const { t } = useTranslation();
   const line = invitationLine(t, guest, timeZone, dateLocale());
   const notYet = shownReply(guest) === 'notYetInvited';
-  const rows =
-    line != null
+  const linkRows = offer.manages
+    ? [
+        ...(link.replacedOn != null
+          ? [
+              {
+                key: 'replaced',
+                inset: 40,
+                row: (
+                  <Row
+                    title={t('guestList.linkReplacedOn', { date: link.replacedOn })}
+                    line={t('guestList.linkReplacedLine')}
+                    lead={<LineIcon name="refresh" />}
+                    testID="guest.replaced"
+                  />
+                ),
+              },
+            ]
+          : []),
+        ...(offer.invites
+          ? [
+              {
+                key: 'copy',
+                inset: 40,
+                row: (
+                  <View>
+                    <Row
+                      ref={copyRef}
+                      title={t('guestList.copyLink')}
+                      line={t('guestList.copyLinkLine')}
+                      lead={<LineIcon name="link" />}
+                      accent
+                      weight="medium"
+                      onPress={link.onCopy}
+                      testID="guest.copy"
+                    />
+                    {link.copyFailed && <NotCopied />}
+                  </View>
+                ),
+              },
+            ]
+          : []),
+        {
+          key: 'replace',
+          inset: 40,
+          row: (
+            <Row
+              ref={replaceRef}
+              title={t('guestList.replaceLink')}
+              line={t('guestList.replaceLinkLine')}
+              lead={<LineIcon name="refresh" />}
+              accent
+              weight="medium"
+              onPress={link.onReplace}
+              testID="guest.replace"
+            />
+          ),
+        },
+      ]
+    : [];
+  const rows = offer.draft
+    ? linkRows
+    : line != null
       ? [
           {
             key: 'invited',
@@ -70,6 +155,7 @@ export function InvitationBlock({
               </View>
             ),
           },
+          ...linkRows,
         ]
       : notYet
         ? [
@@ -85,6 +171,7 @@ export function InvitationBlock({
                 />
               ),
             },
+            ...linkRows,
             ...(offer.manages && offer.invites
               ? [
                   {
@@ -103,10 +190,26 @@ export function InvitationBlock({
                       />
                     ),
                   },
+                  {
+                    key: 'recordNotYet',
+                    inset: 40,
+                    row: (
+                      <Row
+                        ref={recordRef}
+                        title={t('guestList.recordReply')}
+                        line={t('guestList.recordNotYetLine')}
+                        lead={<LineIcon name="chat" />}
+                        accent
+                        weight="medium"
+                        onPress={onRecord}
+                        testID="guest.recordNotYet"
+                      />
+                    ),
+                  },
                 ]
               : []),
           ]
-        : [];
+        : linkRows;
 
   return (
     <View testID="guest.invitation">
@@ -115,6 +218,13 @@ export function InvitationBlock({
           {t('guestList.invitation')}
         </Text>
       </View>
+      {offer.manages && offer.notInviting != null && (
+        <View style={[styles.inset, styles.above]} testID="guest.notInviting">
+          <Text size={15} weight="medium" style={[styles.secondary, styles.lines]}>
+            {offer.notInviting}
+          </Text>
+        </View>
+      )}
       {rows.length > 0 && <RowList items={rows} />}
       {!offer.manages && (
         <Text
@@ -126,6 +236,19 @@ export function InvitationBlock({
           {t('guestList.readOnlyInvited')}
         </Text>
       )}
+    </View>
+  );
+}
+
+/** No connection, a server error or a refused clipboard, in one line read out as it appears; the row above is the retry (sc-55558). */
+function NotCopied() {
+  const { t } = useTranslation();
+  const said = t('guestList.notCopied');
+  useReadOut(said, { interrupts: true });
+
+  return (
+    <View style={styles.notCopied} testID="guest.notCopied">
+      <AlertLine text={said} small />
     </View>
   );
 }
@@ -239,6 +362,14 @@ const styles = StyleSheet.create({
   head: { minHeight: tokens.sizeHit, flexDirection: 'row', alignItems: 'center' },
   headTitle: { letterSpacing: -0.18, lineHeight: 18 * 1.25 },
   under: { paddingLeft: 40, paddingBottom: tokens.spaceSm, alignItems: 'flex-start' },
+  above: { marginBottom: tokens.spaceSm },
+  inset: {
+    paddingVertical: 14,
+    paddingHorizontal: tokens.spaceXl,
+    borderRadius: 18,
+    backgroundColor: tokens.colorInset,
+  },
+  notCopied: { paddingLeft: 40, paddingBottom: tokens.spaceSm },
   sheet: { gap: 14, paddingHorizontal: tokens.spaceXxl, paddingTop: 20, paddingBottom: 34 },
   sheetHead: { flexDirection: 'row', alignItems: 'center', gap: tokens.spaceSm },
   tight: { gap: 6 },

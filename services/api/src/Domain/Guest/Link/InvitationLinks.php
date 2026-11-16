@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\Domain\Guest\Link;
 
 use App\Audit\Auditor;
+use App\Domain\Guest\GuestListPublisher;
 use App\Domain\Guest\Invitation\GuestInvitations;
 use App\Entity\Event;
 use App\Entity\Guest;
@@ -34,6 +35,7 @@ final readonly class InvitationLinks
         private EntityManagerInterface $entityManager,
         private Auditor $auditor,
         private GuestInvitations $guestInvitations,
+        private GuestListPublisher $guestListPublisher,
     ) {
     }
 
@@ -63,6 +65,7 @@ final readonly class InvitationLinks
         $guest->replaceLink(self::token());
         $this->auditor->record(self::REPLACED, 'Guest', $guest->getId(), Actor::User, $by->getId(), $by->getName());
         $this->entityManager->flush();
+        $this->guestListPublisher->publish($guest->getEvent());
     }
 
     /** The guest a token opens: null for an unknown or replaced token and for a deleted event's, so all three answer alike. */
@@ -71,7 +74,7 @@ final readonly class InvitationLinks
         return '' === $token ? null : $this->guestRepository->findOneByLink($token);
     }
 
-    /** One flag per guest until a replace clears it; a second tell changes nothing. */
+    /** One flag per guest until a replace clears it; a second tell changes nothing. The flag is never in the list, so publishing the list is what tells an open list to read the flags again. */
     public function flag(Guest $guest): void
     {
         if ($guest->isLinkFlagged()) {
@@ -81,6 +84,7 @@ final readonly class InvitationLinks
         $guest->flagLink();
         $this->auditor->record(self::FLAGGED, 'Guest', $guest->getId());
         $this->entityManager->flush();
+        $this->guestListPublisher->publish($guest->getEvent());
     }
 
     /** @return list<string> */

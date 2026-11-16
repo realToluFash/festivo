@@ -60,27 +60,80 @@ export function readFeetAndInches(text: string, locale: string): number | null {
 
 /** "." and "," are both the decimal point in every language: 2 to 500 needs no thousands separator. */
 export function readRoomSide(text: string, units: RoomUnits, locale: string): RoomSideReading {
+  return readLength(text, units, locale, 100, [ROOM_MINIMUM_CM, ROOM_MAXIMUM_CM]);
+}
+
+/** A table's width, length or diameter (sc-4000): whole centimetres, or feet and inches. */
+export function readTableSide(text: string, units: RoomUnits, locale: string): RoomSideReading {
+  return readLength(text, units, locale, 1, [TABLE_MINIMUM_CM, TABLE_MAXIMUM_CM]);
+}
+
+export const TABLE_MINIMUM_CM = 40;
+export const TABLE_MAXIMUM_CM = 1000;
+
+/** A row's spacing, centre to centre (sc-4003). */
+export function readRowSpacing(text: string, units: RoomUnits, locale: string): RoomSideReading {
+  return readLength(text, units, locale, 1, [ROW_SPACING_MINIMUM_CM, ROW_SPACING_MAXIMUM_CM]);
+}
+
+export const ROW_SPACING_MINIMUM_CM = 40;
+export const ROW_SPACING_MAXIMUM_CM = 100;
+
+/** Where an item stands on the floor (sc-5028): metres, "m" or "cm" written or not, or feet and inches with the unit written, since a bare number could be either; inches are stored whole. */
+export function readFloorPosition(text: string, units: RoomUnits, locale: string): RoomSideReading {
+  return readLength(text, units, locale, 100, [0, ROOM_MAXIMUM_CM], {
+    metricWords: { m: 100, cm: 1 },
+    bareFeet: false,
+    wholeInches: true,
+  });
+}
+
+function readLength(
+  text: string,
+  units: RoomUnits,
+  locale: string,
+  cmPerMetricUnit: number,
+  [minimum, maximum]: [number, number],
+  {
+    metricWords = {},
+    bareFeet = true,
+    wholeInches = false,
+  }: { metricWords?: Record<string, number>; bareFeet?: boolean; wholeInches?: boolean } = {},
+): RoomSideReading {
   if (text.trim() === '') return { kind: 'blank' };
 
   let cm: number | null;
 
   if (units === 'us') {
-    const inches = readFeetAndInches(text, locale);
-    cm = inches == null ? null : Math.round(inches * CM_PER_INCH);
+    const bare = new RegExp(`^${NUMBER}$`, 'u').test(text.trim());
+    const inches = !bareFeet && bare ? null : readFeetAndInches(text, locale);
+
+    cm =
+      inches == null ? null : Math.round((wholeInches ? Math.round(inches) : inches) * CM_PER_INCH);
   } else {
-    const metres = new RegExp(`^${NUMBER}$`, 'u').exec(text.trim());
-    cm = metres?.[1] == null ? null : Math.round(decimal(metres[1]) * 100);
+    const words = Object.keys(metricWords).map(escaped).join('|');
+    const typed = new RegExp(`^${NUMBER}${words === '' ? '' : `\\s?(${words})?`}$`, 'u').exec(
+      text.trim().toLowerCase(),
+    );
+    const perUnit =
+      typed?.[2] == null ? cmPerMetricUnit : (metricWords[typed[2]] ?? cmPerMetricUnit);
+
+    cm = typed?.[1] == null ? null : Math.round(decimal(typed[1]) * perUnit);
   }
 
   if (cm == null || !Number.isFinite(cm)) return { kind: 'unreadable' };
-  if (cm < ROOM_MINIMUM_CM || cm > ROOM_MAXIMUM_CM) return { kind: 'outOfRange' };
+  if (cm < minimum || cm > maximum) return { kind: 'outOfRange' };
 
   return { kind: 'cm', cm };
 }
 
-/** Whole feet and the inches left over, rounded to the whole inch. */
-export function feetAndInchesOf(cm: number): { feet: number; inches: number } {
-  const total = Math.round(cm / CM_PER_INCH);
+/** Whole feet and the inches left over; a limit rounds inward so the size it states is accepted. */
+export function feetAndInchesOf(
+  cm: number,
+  rounding: 'nearest' | 'up' | 'down' = 'nearest',
+): { feet: number; inches: number } {
+  const round = { nearest: Math.round, up: Math.ceil, down: Math.floor }[rounding];
+  const total = round(cm / CM_PER_INCH);
 
   return { feet: Math.floor(total / 12), inches: total % 12 };
 }

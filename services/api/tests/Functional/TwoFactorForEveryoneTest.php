@@ -92,7 +92,7 @@ final class TwoFactorForEveryoneTest extends ApiTestCase
         self::assertSame(200, $this->statusCode(), Json\encode($body));
         self::assertTrue($body['everyoneNeedsTwoFactor'] ?? null);
         self::assertSame(['Bisi Adeyemi'], Vec\map(
-            Type\vec(Type\shape(['name' => Type\string()], true))->coerce($body['withoutTwoFactor'] ?? null),
+            Type\shape(['named' => Type\vec(Type\shape(['name' => Type\string()], true))], true)->coerce($body['withoutTwoFactor'] ?? null)['named'],
             static fn (array $member): string => $member['name'],
         ));
         $mails = $this->mails();

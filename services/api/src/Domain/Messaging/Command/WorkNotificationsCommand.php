@@ -15,6 +15,7 @@ use Symfony\Component\Console\Input\InputInterface;
 use Symfony\Component\Console\Input\InputOption;
 use Symfony\Component\Console\Output\OutputInterface;
 use Symfony\Component\DependencyInjection\Attribute\Autowire;
+use Symfony\Contracts\Service\ResetInterface;
 
 /** Exits after its limits, on SIGTERM and when the database goes; the container's restart is the reconnect and picks up new code. */
 #[AsCommand(name: self::NAME, description: 'Send the notifications that are due, most urgent first')]
@@ -30,6 +31,8 @@ final class WorkNotificationsCommand extends Command implements SignalableComman
     public function __construct(
         private readonly NotificationWorker $notificationWorker,
         private readonly EntityManagerInterface $entityManager,
+        #[Autowire(service: 'services_resetter')]
+        private readonly ResetInterface $servicesResetter,
         #[Autowire('%kernel.project_dir%/var/notifications-worker.heartbeat')]
         private readonly string $heartbeatPath,
     ) {
@@ -61,13 +64,15 @@ final class WorkNotificationsCommand extends Command implements SignalableComman
         while (!$this->stopping) {
             \touch($heartbeat);
             $didWork = $this->notificationWorker->step();
-            $this->entityManager->clear();
 
             if (!$this->entityManager->isOpen()) {
                 $output->writeln('<error>The entity manager closed after an error; exiting for a restart.</error>');
 
                 return Command::FAILURE;
             }
+
+            // As messenger:consume does between messages: in debug, Doctrine keeps every query with its backtrace until reset (sc-18317).
+            $this->servicesResetter->reset();
 
             $handled += $didWork ? 1 : 0;
 

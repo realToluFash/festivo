@@ -1,5 +1,10 @@
 import { type EventCover } from '@soirely/api-client';
-import { COVER_DESCRIPTION_MAXIMUM, COVER_MIDDLE, positionPart } from '@soirely/domain';
+import {
+  COVER_DESCRIPTION_MAXIMUM,
+  COVER_MIDDLE,
+  positionPart,
+  visibleLength,
+} from '@soirely/domain';
 import { useEffect, useId, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 
@@ -88,7 +93,7 @@ export function CoverEdit<Saved>({
       : removed || saved == null || savedFailed
         ? null
         : { ...saved, position };
-  const count = Array.from(description).length;
+  const count = visibleLength(description);
   const changed =
     chosen != null ||
     (removed && saved != null) ||

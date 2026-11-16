@@ -1,6 +1,8 @@
 import { type ReactNode, type Ref, type RefObject, useContext, useState } from 'react';
 import {
   type DimensionValue,
+  type NativeScrollEvent,
+  type NativeSyntheticEvent,
   Pressable,
   ScrollView,
   type ScrollViewInstance,
@@ -17,7 +19,7 @@ import { AnswerHeading } from './AnswerHeading.tsx';
 import { FrameSwitched } from './AppFrame.tsx';
 import { useTappedSwitch } from '../tappedSwitch.ts';
 import { type TextHandle, Text } from './Text.tsx';
-import { Toast } from './Toast.tsx';
+import { Toast, type ToastAction } from './Toast.tsx';
 import { tokens } from '../theme/tokens.ts';
 import type { Box } from '../kit/confettiClearance.ts';
 import { CARD_PIECES, Confetti, Cover } from './Cover.tsx';
@@ -44,8 +46,10 @@ export {
   Line,
   Row,
   RowList,
+  RowRule,
   type RowTag,
   Section,
+  SectionFoot,
   SectionHead,
   SELECTED_ROW,
   TITLE_BESIDE_TAG,
@@ -79,13 +83,14 @@ const hidden = {
 
 export interface PageToastProps {
   words: string;
+  action?: ToastAction | null | undefined;
   onClose: () => void;
 }
 
-export function PageToast({ words, onClose, bottom }: PageToastProps & { bottom: number }) {
+export function PageToast({ words, action, onClose, bottom }: PageToastProps & { bottom: number }) {
   return (
     <View style={[styles.toast, { bottom }]}>
-      <Toast key={words} words={words} onClose={onClose} />
+      <Toast key={words} words={words} action={action} onClose={onClose} />
     </View>
   );
 }
@@ -94,10 +99,12 @@ export function PageToast({ words, onClose, bottom }: PageToastProps & { bottom:
 export function SummaryColumn({
   title,
   scrollRef,
+  onScroll,
   children,
 }: {
   title: string;
   scrollRef?: Ref<ScrollViewInstance>;
+  onScroll?: (event: NativeSyntheticEvent<NativeScrollEvent>) => void;
   children: ReactNode;
 }) {
   const shell = useShell();
@@ -105,6 +112,8 @@ export function SummaryColumn({
   return (
     <ScrollView
       ref={scrollRef}
+      onScroll={onScroll}
+      scrollEventThrottle={onScroll == null ? undefined : 64}
       contentContainerStyle={COLUMN}
       keyboardShouldPersistTaps="handled"
       showsVerticalScrollIndicator={false}

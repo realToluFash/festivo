@@ -3,6 +3,7 @@ import type {
   Membership,
   SignInRuleChange,
   SignInRulesChanges,
+  RulesShort,
   SignInRulesPage,
 } from '@soirely/api-client';
 import { keptBackBy, listFormat, roleName } from '@soirely/domain';
@@ -165,12 +166,12 @@ function twoFactor(page: SignInRulesPage, hold: Hold, reader: Reader): RuleRow {
 
   if (page.everyoneNeedsTwoFactor) {
     const title = t('signInRules.everyoneTitle');
-    const others = page.withoutTwoFactor ?? [];
+    const others = page.withoutTwoFactor?.count ?? 0;
     const count =
-      hold == null && others.length > 0
+      hold == null && others > 0
         ? [
             t('signInRules.everyoneStillWithout', {
-              count: others.length,
+              count: others,
               organisation: organisation.name,
             }),
           ]
@@ -487,7 +488,7 @@ export const REFUSALS: Record<Refusal, { title: string; line: string; step: Step
   },
 };
 
-/** What saving this pick does, in the product's lines, with the names of who it leaves short. */
+/** What saving this pick does, in the product's lines, naming who it leaves short up to three and counting them past that. */
 export function effectsOf(
   t: TFunction,
   page: SignInRulesPage,
@@ -495,16 +496,20 @@ export function effectsOf(
   language: string,
 ): string[] {
   const before = rulesOf(page);
-  const names = (people: readonly { name: string }[]) =>
-    listFormat(language, { type: 'conjunction' }).format(people.map(({ name }) => name));
+  const names = (short: RulesShort) =>
+    listFormat(language, { type: 'conjunction' }).format(short.named.map(({ name }) => name));
   const said: string[] = [];
 
   if (after.providerOnly !== before.providerOnly) {
     if (after.providerOnly) {
-      const stranded = page.passwordOnly ?? [];
+      const stranded = page.passwordOnly;
       said.push(t('signInRules.effectProviderOnly'));
-      if (stranded.length > 0)
-        said.push(t('signInRules.effectStranded', { names: names(stranded) }));
+      if (stranded != null && stranded.count > 0)
+        said.push(
+          stranded.named.length === stranded.count
+            ? t('signInRules.effectStranded', { names: names(stranded) })
+            : t('signInRules.effectStrandedCounted', { count: stranded.count }),
+        );
     } else said.push(t('signInRules.effectAnyMethod'));
   }
   if (after.inactivityTimeoutDays !== before.inactivityTimeoutDays)
@@ -523,10 +528,14 @@ export function effectsOf(
     );
   if (after.everyoneNeedsTwoFactor !== before.everyoneNeedsTwoFactor) {
     if (after.everyoneNeedsTwoFactor) {
-      const without = page.withoutTwoFactor ?? [];
+      const without = page.withoutTwoFactor;
       said.push(t('signInRules.effectEveryoneOn'));
-      if (without.length > 0)
-        said.push(t('signInRules.effectWithout', { count: without.length, names: names(without) }));
+      if (without != null && without.count > 0)
+        said.push(
+          without.named.length === without.count
+            ? t('signInRules.effectWithout', { count: without.count, names: names(without) })
+            : t('signInRules.effectWithoutCounted', { count: without.count }),
+        );
     } else said.push(t('signInRules.effectEveryoneOff'));
   }
 

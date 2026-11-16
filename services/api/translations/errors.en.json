@@ -29,6 +29,7 @@
     "seating_plan_exists": "This event already has a seating plan.",
     "seating_section_limit": "A plan can have up to 30 sections. Delete one to add another.",
     "guest_already_listed": "That name is already on the list.",
+    "staff_number_shared": "That number is already on the roster.",
     "replies_closed": "Answers have closed.",
     "replies_open": "Replies are still open.",
     "reply_is_theirs": "They replied themselves. Confirm to replace their reply.",
@@ -97,5 +98,10 @@
     "owner_claim_ended": "This claim has already ended.",
     "owner_claim_unavailable": "This organisation has an active owner.",
     "owner_claim_own": "You cannot stop your own claim.",
-    "team_seats_in_use": "Every team seat on this organisation's plan is in use."
+    "team_seats_in_use": "Every team seat on this organisation's plan is in use.",
+    "seating_items_outside": "Something in the room would sit outside it.",
+    "schedule_item_limit": "This schedule has {max} items, the most an event can hold. Delete one to add another.",
+    "item_started": "This item has already started.",
+    "item_not_started": "This item has not started yet, so it cannot be done.",
+    "item_finished": "This item is already done."
 }

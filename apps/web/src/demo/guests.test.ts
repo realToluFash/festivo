@@ -332,6 +332,17 @@ describe('Record a reply starts from the companions as they are (sc-3787)', () =
     expect(startTicks(notComing)).toEqual(new Set());
   });
 
+  it('lists a recorded reply as any other: the word and the day, never who recorded it', () => {
+    const list = sampleGuests(WEDDING);
+    const after = recordReply(list, 'emeka', 'coming', 'By phone', NONE, '2026-11-03');
+    const { view } = viewOf(after, 'all', 'emeka', NONE, replyByOf(WEDDING));
+
+    if (view.kind !== 'rows') throw new Error('rows');
+    const row = view.rows.find((one) => one.person.name === 'Dr Emeka Nwosu');
+    expect(row?.line).toMatch(/^Coming · replied Nov 3/u);
+    expect(row?.line).not.toContain('recorded');
+  });
+
   it('keeps a Held companion at their last choice (sc-3779)', () => {
     const emeka = sampleGuests(WEDDING).find((one) => one.id === 'emeka');
     if (emeka == null) throw new Error('emeka');
@@ -655,5 +666,20 @@ describe('a companion field (sc-43267)', () => {
     expect(readFileSync(join(import.meta.dirname, 'guests.css'), 'utf8')).toMatch(
       /\.desk \.gs-companion \.desk-box input \{\s*overflow: hidden;\s*text-overflow: ellipsis;\s*white-space: nowrap;\s*\}/u,
     );
+  });
+});
+
+describe('a reply from a guest nobody invited yet (sc-52829)', () => {
+  it('invites them when it is recorded, counts them straight away, and offers no undo', () => {
+    const before = sampleGuests(WEDDING);
+    const list = recordReply(before, 'bisi', 'coming', 'By phone', NONE, '2026-11-03');
+    const bisi = list.find((one) => one.id === 'bisi');
+
+    if (bisi == null) throw new Error('bisi');
+    expect(invitationLine(bisi)).toBe(GW.invitedWhenReplied('Nov 3'));
+    expect(handMarked(bisi)).toBe(false);
+    expect(countsOf(list).invited).toBe(countsOf(before).invited + 1);
+    expect(countsOf(list).coming).toBe(countsOf(before).coming + 1);
+    expect(countsOf(list).notYet).toBe(countsOf(before).notYet - 1);
   });
 });

@@ -120,7 +120,7 @@ export function useDeskDialog(
       const to = opener.current;
       if (open.current) return;
       const lost = document.activeElement == null || document.activeElement === document.body;
-      if (!(to instanceof HTMLElement) || !to.isConnected) {
+      if (!(to instanceof HTMLElement || to instanceof SVGElement) || !to.isConnected) {
         if (lost) document.querySelector<HTMLElement>('.desk-main h1')?.focus();
       } else if (to.closest('[inert]') == null) to.focus();
       else if (tries > 0) window.requestAnimationFrame(() => back(tries - 1));
@@ -144,7 +144,7 @@ export function useDeskDialog(
 }
 
 /** Focus once the closing layer's inert has lifted from the page, waiting a few frames at most. */
-export function focusWhenFree(target: () => HTMLElement | null): void {
+export function focusWhenFree(target: () => HTMLElement | SVGElement | null): void {
   const attempt = (tries: number): void => {
     const to = target();
     if (to?.isConnected === true && to.closest('[inert]') == null) to.focus();

@@ -149,7 +149,7 @@ describe('Search as a command palette (sc-39534)', () => {
     const dialog = await board('member');
 
     expect(groupNames(dialog)).toEqual(['Events1', 'Guests7']);
-    expect(field(dialog).getAttribute('placeholder')).toBe('Search events and guests');
+    expect(field(dialog).getAttribute('placeholder')).toBe('Search');
   });
 
   it(
@@ -159,7 +159,7 @@ describe('Search as a command palette (sc-39534)', () => {
       const dialog = await board('no-guests');
 
       expect(groupNames(dialog)).toEqual(['Events1', 'Members3']);
-      expect(field(dialog).getAttribute('placeholder')).toBe('Search events and members');
+      expect(field(dialog).getAttribute('placeholder')).toBe('Search');
       expect(within(dialog).queryByText('Awaiting approval')).toBeNull();
     },
   );
@@ -180,7 +180,8 @@ describe('Search as a command palette (sc-39534)', () => {
 
       fireEvent.keyDown(window, { key: 'k', metaKey: true });
       const dialog = screen.getByRole('dialog', { name: 'Search' });
-      expect(field(dialog).getAttribute('placeholder')).toBe('Search events and guests');
+      expect(field(dialog).getAttribute('placeholder')).toBe('Search');
+      expect(within(dialog).getByText('Find an event or a guest.')).toBeDefined();
     },
   );
 
@@ -190,7 +191,8 @@ describe('Search as a command palette (sc-39534)', () => {
 
     fireEvent.keyDown(window, { key: 'k', metaKey: true });
     const dialog = screen.getByRole('dialog', { name: 'Search' });
-    expect(field(dialog).getAttribute('placeholder')).toBe('Search events and guests');
+    expect(field(dialog).getAttribute('placeholder')).toBe('Search');
+    expect(within(dialog).getByText('Find an event or a guest.')).toBeDefined();
   });
 
   it('draws one guest on two events as two rows', SLOW, async () => {
@@ -240,6 +242,28 @@ describe('Search as a command palette (sc-39534)', () => {
     expect(within(dialog).getByText('Search needs a connection.')).toBeDefined();
     expect((field(dialog) as HTMLInputElement).value).toBe('ines');
     expect(within(dialog).queryAllByRole('option')).toHaveLength(0);
+  });
+
+  it('says Search did not work online, and Try again searches the same term', SLOW, async () => {
+    const dialog = await board('failed');
+
+    expect(
+      within(dialog).getByText('Search did not work. Try again in a moment.', {
+        selector: '.search-nothing',
+      }),
+    ).toBeDefined();
+    expect(within(dialog).queryByText('Search needs a connection.')).toBeNull();
+    expect(within(dialog).queryAllByRole('option')).toHaveLength(0);
+    expect(within(dialog).getByRole('status').textContent).toBe(
+      'Search did not work. Try again in a moment.',
+    );
+
+    fireEvent.click(within(dialog).getByRole('button', { name: 'Try again' }));
+    expect((field(dialog) as HTMLInputElement).value).toBe('ines');
+    expect(document.activeElement).toBe(field(dialog));
+    expect(within(dialog).getByRole('status').textContent).toBe('Searching…');
+    expect(within(dialog).queryAllByRole('option')).toHaveLength(0);
+    expect((await within(dialog).findAllByRole('option', {}, WAIT)).length).toBeGreaterThan(0);
   });
 
   it('moves the lit row with the arrows, Home and End', SLOW, async () => {

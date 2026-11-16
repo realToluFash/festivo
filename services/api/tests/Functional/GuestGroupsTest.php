@@ -152,6 +152,8 @@ final class GuestGroupsTest extends ApiTestCase
     {
         yield 'blank' => ['   ', 'Enter a name for the group.'];
         yield 'over 60 characters' => [Str\repeat('é', 61), 'A group name can be up to 60 characters.'];
+        yield 'over 60 marked letters' => [Str\repeat("e\u{0323}\u{0300}", 61), 'A group name can be up to 60 characters.'];
+        yield 'one letter of many marks' => ['a' . Str\repeat("\u{0301}", 240), 'A group name can be up to 60 characters.'];
         yield 'a name already used, case and accents aside' => ['WÖRK', 'There is already a group called Work.'];
     }
 
@@ -170,6 +172,20 @@ final class GuestGroupsTest extends ApiTestCase
         self::assertSame(['name' => $message], $this->violations());
         self::assertSame(['Family', 'Work'], $this->names());
         self::assertNotSame('', $work);
+    }
+
+    #[Test]
+    public function sixtyLettersWithADotAndAToneEachNameAGroupAndReadBack(): void
+    {
+        $composed = Str\repeat("\u{1EB9}\u{0300}", 60);
+        $decomposed = Str\repeat("e\u{0323}\u{0300}", 60);
+        $id = $this->make($composed);
+        self::assertSame([$composed], $this->names());
+
+        $this->as($this->owner, 'PUT', $this->groupsPath() . '/' . $id, ['name' => $decomposed]);
+
+        self::assertSame(200, $this->statusCode(), Json\encode($this->last()));
+        self::assertSame([$decomposed], $this->names());
     }
 
     #[Test]

@@ -6,7 +6,10 @@
 export type paths = Record<string, never>;
 export type webhooks = Record<string, never>;
 export interface components {
-  schemas: never;
+  schemas: {
+    /** @enum {string} */
+    TableShape: 'round' | 'rectangular' | 'head' | 'cocktail';
+  };
   responses: never;
   parameters: never;
   requestBodies: never;

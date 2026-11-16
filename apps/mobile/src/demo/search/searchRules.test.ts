@@ -133,23 +133,17 @@ describe('what Search finds in the sample (sc-39534)', () => {
 });
 
 describe('what the field says', () => {
-  it('names only what the person can find, a whole sentence for each', () => {
-    expect([SEARCH_WORDS.placeholder(REACHES.owner), SEARCH_WORDS.idle(REACHES.owner)]).toEqual([
-      'Search events, guests and members',
-      'Find an event, a guest or a member.',
-    ]);
-    expect([SEARCH_WORDS.placeholder(REACHES.member), SEARCH_WORDS.idle(REACHES.member)]).toEqual([
-      'Search events and guests',
-      'Find an event or a guest.',
-    ]);
-    expect(SEARCH_WORDS.placeholder(REACHES.planner)).toBe('Search events and members');
-    expect(
-      SEARCH_WORDS.placeholder({ events: false, guests: false, members: true, manage: false }),
-    ).toBe('Search members');
+  it('reads Search for everyone, and the hint names only what the person can find', () => {
+    expect(SEARCH_WORDS.search).toBe('Search');
+    expect(SEARCH_WORDS.idle(REACHES.owner)).toBe('Find an event, a guest or a member.');
+    expect(SEARCH_WORDS.idle(REACHES.member)).toBe('Find an event or a guest.');
+    expect(SEARCH_WORDS.idle(REACHES.planner)).toBe('Find an event or a member.');
+    expect(SEARCH_WORDS.idle({ events: false, guests: false, members: true, manage: false })).toBe(
+      'Find a member.',
+    );
   });
 
-  it('is "Search" with no hint for a person who can find nothing', () => {
-    expect(SEARCH_WORDS.placeholder(REACHES.nobody)).toBe('Search');
+  it('has no hint for a person who can find nothing', () => {
     expect(SEARCH_WORDS.idle(REACHES.nobody)).toBeNull();
   });
 
@@ -175,6 +169,7 @@ describe('the demo’s states', () => {
       'two-events',
       'long',
       'offline',
+      'failed',
     ]);
     expect(searchStart('idle')).toMatchObject({ term: '', phase: 'idle' });
     expect(searchStart('short')).toMatchObject({ term: 'i', phase: 'short' });
@@ -184,6 +179,7 @@ describe('the demo’s states', () => {
     expect(searchStart('nothing-to-find').reach).toBe(REACHES.nobody);
     expect(searchStart(null, REACHES.member).reach).toBe(REACHES.member);
     expect(searchStart('offline')).toMatchObject({ term: 'ines', phase: 'offline' });
+    expect(searchStart('failed')).toMatchObject({ term: 'ines', phase: 'failed' });
     expect(searchStateOf('nope')).toBeNull();
   });
 
@@ -201,8 +197,8 @@ describe('Search as the person a screen shows', () => {
   it('carries a Member to the route, and searches events and guests only', () => {
     expect(searchHref('Member')).toBe('/demo/search?as=member');
     expect(reachOfParam('member')).toEqual(REACHES.member);
-    expect(SEARCH_WORDS.placeholder(searchStart(null, reachOfParam('member')).reach)).toBe(
-      'Search events and guests',
+    expect(SEARCH_WORDS.idle(searchStart(null, reachOfParam('member')).reach)).toBe(
+      'Find an event or a guest.',
     );
   });
 

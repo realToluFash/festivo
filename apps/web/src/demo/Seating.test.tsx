@@ -1,4 +1,4 @@
-import { cleanup, fireEvent, render, screen, within } from '@testing-library/react';
+import { cleanup, fireEvent, render, screen, waitFor, within } from '@testing-library/react';
 import { RouterProvider, createMemoryRouter } from 'react-router';
 import { afterEach, beforeAll, beforeEach, describe, expect, it, vi } from 'vitest';
 
@@ -168,7 +168,7 @@ describe('the plan and the room (sc-3998, sc-4007)', () => {
 
     expect(links).toHaveLength(SEATING_STATES.length);
     expect(links[0]?.getAttribute('href')).toBe(AT);
-    expect(links.at(-1)?.getAttribute('href')).toBe(`${AT}?state=paperCardTop`);
+    expect(links.at(-1)?.getAttribute('href')).toBe(`${AT}?state=crumbWidths`);
   });
 
   it('is the event’s own Seating entry, lit while it is open', SLOW, async () => {
@@ -279,6 +279,76 @@ describe('the plan and the room (sc-3998, sc-4007)', () => {
     },
   );
 
+  it(
+    'reads a rectangular or head table’s length, ends and rotation for Can view (sc-56437)',
+    SLOW,
+    async () => {
+      await seating('readOnlyTable');
+      const facts = (): [string, string][] =>
+        Array.from(panel().querySelectorAll('dl.st-facts > div')).map((row) => [
+          row.querySelector('dt')?.textContent ?? '',
+          row.querySelector('dd')?.textContent ?? '',
+        ]);
+
+      expect(facts()).toEqual([
+        ['Section', 'Garden side'],
+        ['Shape', 'Rectangular table'],
+        ['Seats', '8'],
+        ['Width', '240 cm'],
+        ['Length', '76 cm'],
+        ['Seats on the ends', '2'],
+        ['Rotation', '15°'],
+        ['Across', expect.any(String)],
+        ['Down', expect.any(String)],
+      ]);
+      press(item(/^Top table,/u));
+      expect(facts().slice(0, 7)).toEqual([
+        ['Section', 'No section'],
+        ['Shape', expect.any(String)],
+        ['Seats', '6'],
+        ['Width', '360 cm'],
+        ['Length', '76 cm'],
+        ['Seats on the ends', '0'],
+        ['Rotation', '0°'],
+      ]);
+      press(item(/^Table 4,/u));
+      expect(facts().map(([key]) => key)).toEqual([
+        'Section',
+        'Shape',
+        'Seats',
+        'Diameter',
+        'Across',
+        'Down',
+      ]);
+      press(item(/^Bar 1,/u));
+      expect(facts().map(([key]) => key)).toEqual([
+        'Section',
+        'Shape',
+        'Places',
+        'Diameter',
+        'Across',
+        'Down',
+      ]);
+    },
+  );
+
+  it(
+    'reads a default rectangular table in feet and inches for Can view (sc-56437)',
+    SLOW,
+    async () => {
+      await seating('readOnlyTableUs');
+      const facts = new Map(
+        Array.from(panel().querySelectorAll('dl.st-facts > div')).map((row) => [
+          row.querySelector('dt')?.textContent ?? '',
+          row.querySelector('dd')?.textContent ?? '',
+        ]),
+      );
+
+      expect(facts.get('Width')).toBe('5 ft 11 in');
+      expect(facts.get('Length')).toBe('2 ft 6 in');
+    },
+  );
+
   it('zooms in steps, fits the room again, and shows a chosen chair at 200%', SLOW, async () => {
     await seating('corner');
     expect(screen.getByText('200%')).toBeDefined();
@@ -288,6 +358,103 @@ describe('the plan and the room (sc-3998, sc-4007)', () => {
     expect(screen.getByText('150%')).toBeDefined();
     fireEvent.click(screen.getByRole('button', { name: 'Fit the room' }));
     expect(screen.getByText('57%')).toBeDefined();
+  });
+
+  describe('the view follows keyboard focus (sc-4007, WCAG 2.2 2.4.11)', () => {
+    type Rect = [number, number, number, number];
+
+    function measure(boxes: (node: Element) => Rect | null) {
+      return vi.spyOn(Element.prototype, 'getBoundingClientRect').mockImplementation(function (
+        this: Element,
+      ) {
+        const [left, top, right, bottom] = this.classList.contains('st-canvas')
+          ? [0, 0, 718, 719]
+          : (boxes(this) ?? [0, 0, 0, 0]);
+
+        return {
+          left,
+          top,
+          right,
+          bottom,
+          x: left,
+          y: top,
+          width: right - left,
+          height: bottom - top,
+        } as DOMRect;
+      });
+    }
+
+    function view(): string {
+      const box = document.querySelector('.st-view-box');
+
+      return `${box?.getAttribute('x')} ${box?.getAttribute('y')}`;
+    }
+
+    async function table4(boxes: (node: Element, table: Element) => Rect | null) {
+      await seating('corner');
+      const table = item(/^Table 4,/u);
+
+      return { table, measured: measure((node) => boxes(node, table)) };
+    }
+
+    it('slides the plan to an item Tab reaches out of view', SLOW, async () => {
+      const { table, measured } = await table4((node, t) =>
+        node === t ? [800, 300, 900, 400] : null,
+      );
+
+      try {
+        const before = view();
+
+        table.focus();
+        await waitFor(() => expect(view()).not.toBe(before), WAIT);
+      } finally {
+        measured.mockRestore();
+      }
+    });
+
+    it('slides an item out from under the small map', SLOW, async () => {
+      const { table, measured } = await table4((node, t) =>
+        node === t
+          ? [600, 540, 660, 600]
+          : node.classList.contains('st-minimap')
+            ? [530, 507, 702, 639]
+            : null,
+      );
+
+      try {
+        const before = view();
+
+        table.focus();
+        await waitFor(() => expect(view()).not.toBe(before), WAIT);
+      } finally {
+        measured.mockRestore();
+      }
+    });
+
+    it('leaves the view where it is when a click puts the focus there', SLOW, async () => {
+      const { table, measured } = await table4((node, t) =>
+        node === t ? [800, 300, 900, 400] : null,
+      );
+      const matches = Element.prototype.matches;
+      const pointer = vi.spyOn(Element.prototype, 'matches').mockImplementation(function (
+        this: Element,
+        selector: string,
+      ) {
+        return selector === ':focus-visible' ? false : matches.call(this, selector);
+      });
+
+      try {
+        const before = view();
+
+        press(table);
+        table.focus();
+        await new Promise((done) => window.setTimeout(done, 50));
+        expect(view()).toBe(before);
+      } finally {
+        pointer.mockRestore();
+        measured.mockRestore();
+      }
+    });
   });
 });
 
@@ -403,18 +570,34 @@ describe('Room settings and sections (sc-3998)', () => {
   });
 
   it(
-    'asks only "Delete {name}?" for a section with a row but no tables (pm, 9 Nov)',
+    'names the rows and single seats a section leaves with no section (sc-54060)',
     SLOW,
     async () => {
-      await seating('sectionDeleteEmpty');
+      await seating('sectionDeleteRows');
       const ask = screen.getByRole('alertdialog', { name: 'Delete Quiet corner?' });
 
-      expect(ask.textContent).not.toContain('stay where they are');
-      expect(ask.querySelector('p')?.textContent).toBe('');
+      expect(ask.textContent).toContain(
+        'Its 1 row and 1 single seat stay where they are, with no section.',
+      );
+      expect(
+        within(panel()).getByText(
+          'Its tables, rows and single seats stay where they are, with no section.',
+        ),
+      ).toBeDefined();
       fireEvent.click(within(ask).getByRole('button', { name: 'Delete section' }));
       expect(screen.queryByRole('alertdialog')).toBeNull();
     },
   );
+
+  it('asks only "Delete {name}?" for an empty section (pm, 9 Nov)', SLOW, async () => {
+    await seating('sectionDeleteEmpty');
+    const ask = screen.getByRole('alertdialog', { name: 'Delete Quiet corner?' });
+
+    expect(ask.textContent).not.toContain('stay where they are');
+    expect(ask.querySelector('p')?.textContent).toBe('');
+    fireEvent.click(within(ask).getByRole('button', { name: 'Delete section' }));
+    expect(screen.queryByRole('alertdialog')).toBeNull();
+  });
 });
 
 describe('tables, rows and seats (sc-4000, sc-4003)', () => {
@@ -461,6 +644,21 @@ describe('tables, rows and seats (sc-4000, sc-4003)', () => {
   );
 
   it(
+    'gives Section and Shape a full row each, so a long name is never clipped (qa5 #54266)',
+    SLOW,
+    async () => {
+      await seating('placed');
+      for (const label of ['Section', 'Shape']) {
+        expect(within(panel()).getByLabelText(label).closest('.st-two')).toBeNull();
+      }
+      await seating('rowAdded');
+      for (const label of ['Label', 'Section']) {
+        expect(within(panel()).getByLabelText(label).closest('.st-two')).toBeNull();
+      }
+    },
+  );
+
+  it(
     'refuses a used name and fewer seats than guests beside the field, nothing saved',
     SLOW,
     async () => {
@@ -489,7 +687,7 @@ describe('tables, rows and seats (sc-4000, sc-4003)', () => {
       diameter.focus();
       fireEvent.change(diameter, { target: { value: 'wide' } });
       tapAway(room());
-      expect(await within(panel()).findByText('Use 30 cm or more.')).toBeDefined();
+      expect(await within(panel()).findByText('Enter a size from 40 cm to 10 m.')).toBeDefined();
       expect(within(panel()).getByRole('heading', { name: 'Table 4' })).toBeDefined();
       await vi.waitFor(() => expect(document.activeElement).toBe(diameter));
       fireEvent.change(diameter, { target: { value: '20' } });
@@ -507,19 +705,74 @@ describe('tables, rows and seats (sc-4000, sc-4003)', () => {
     diameter.focus();
     fireEvent.change(diameter, { target: { value: 'wide' } });
     tapAway(item(/^Table 8,/u));
-    expect(await within(panel()).findByText('Use 30 cm or more.')).toBeDefined();
+    expect(await within(panel()).findByText('Enter a size from 40 cm to 10 m.')).toBeDefined();
     expect(within(panel()).getByRole('heading', { name: 'Table 4' })).toBeDefined();
     await vi.waitFor(() => expect(document.activeElement).toBe(diameter));
   });
 
-  it('refuses a size under a foot, or one it can’t read, on a plan in feet', SLOW, async () => {
+  it('refuses a size out of range, or one it can’t read, on a plan in feet', SLOW, async () => {
     await seating('usCustomary');
-    typeIn('Diameter', '11 in');
-    expect(await within(panel()).findByText('Use 1 ft or more.')).toBeDefined();
+    typeIn('Diameter', '15 in');
+    expect(
+      await within(panel()).findByText('Enter a size from 1 ft 4 in to 32 ft 9 in.'),
+    ).toBeDefined();
     typeIn('Diameter', 'wide');
     expect(
       await within(panel()).findAllByText('Type 12′ 4″, 12 ft 4 in, 12.5 ft or 148 in.'),
     ).toHaveLength(2);
+  });
+
+  it(
+    'refuses a blank name, seats past 30, a size past 10 m or not a number, and ends past the seats',
+    SLOW,
+    async () => {
+      await seating('tapChooses');
+      typeIn('Name', '');
+      expect(await within(panel()).findByText('Enter a name for the table.')).toBeDefined();
+      typeIn('Seats', '31');
+      expect(
+        await within(panel()).findByText('Enter a number of seats from 1 to 30.'),
+      ).toBeDefined();
+      typeIn('Seats', '0');
+      expect(
+        await within(panel()).findByText('Enter a number of seats from 1 to 30.'),
+      ).toBeDefined();
+      expect(within(panel()).getByRole('heading', { name: 'Table 4' })).toBeDefined();
+      expect(item(/^Table 4, round, 8 of 10 seats taken/u)).toBeDefined();
+      await seating('rect');
+      typeIn('Width', '1001');
+      expect(await within(panel()).findByText('Enter a size from 40 cm to 10 m.')).toBeDefined();
+      typeIn('Length', 'long');
+      expect(await within(panel()).findAllByText('Enter a size from 40 cm to 10 m.')).toHaveLength(
+        2,
+      );
+      typeIn('Seats on the ends', '9');
+      expect(
+        await within(panel()).findByText('Enter 0 to 8, no more than the table has seats.'),
+      ).toBeDefined();
+      expect(within(panel()).getByRole('heading', { name: 'Table 9' })).toBeDefined();
+      for (let tries = 0; tries < 2; tries++) press(item(/^Table 8,/u));
+      press(item(/^Table 9,/u));
+      expect(within(panel()).getByLabelText('Width')).toHaveProperty('value', '240');
+      expect(within(panel()).getByLabelText('Length')).toHaveProperty('value', '76');
+      expect(within(panel()).getByLabelText('Seats on the ends')).toHaveProperty('value', '2');
+      expect(item(/^Table 9, [a-z]+, \d+ of 8 seats taken/u)).toBeDefined();
+    },
+  );
+
+  it('opens each field refusal from its own state', SLOW, async () => {
+    await seating('fieldBlank');
+    expect(await within(panel()).findByText('Enter a name for the table.')).toBeDefined();
+    await seating('seatsRange');
+    expect(await within(panel()).findByText('Enter a number of seats from 1 to 30.')).toBeDefined();
+    await seating('sizeRange');
+    expect(await within(panel()).findByText('Enter a size from 40 cm to 10 m.')).toBeDefined();
+    await seating('notNumber');
+    expect(await within(panel()).findByText('Enter a size from 40 cm to 10 m.')).toBeDefined();
+    await seating('endsRange');
+    expect(
+      await within(panel()).findByText('Enter 0 to 8, no more than the table has seats.'),
+    ).toBeDefined();
   });
 
   it('resets the size on a shape change, and warns when the seats are tight', SLOW, async () => {
@@ -533,6 +786,35 @@ describe('tables, rows and seats (sc-4000, sc-4003)', () => {
     expect(
       within(panel()).getByText('10 seats will be tight at a 180 × 76 cm table.'),
     ).toBeDefined();
+  });
+
+  it('keeps the reset line on a refused change and clears it on a saved one', SLOW, async () => {
+    const reset = 'Size reset to the rectangular default, 180 × 76 cm. Seats kept at 10.';
+
+    await seating('tapChooses');
+    fireEvent.change(within(panel()).getByLabelText('Shape'), { target: { value: 'rect' } });
+    expect(await within(panel()).findByText(reset)).toBeDefined();
+
+    const seats = within(panel()).getByLabelText('Seats');
+
+    fireEvent.change(seats, { target: { value: '31' } });
+    key(seats, 'Enter');
+    expect(await within(panel()).findByText('Enter a number of seats from 1 to 30.')).toBeDefined();
+    expect(within(panel()).getByText(reset)).toBeDefined();
+
+    fireEvent.change(seats, { target: { value: '10' } });
+    key(seats, 'Enter');
+    await waitFor(() =>
+      expect(within(panel()).queryByText('Enter a number of seats from 1 to 30.')).toBeNull(),
+    );
+    expect(within(panel()).getByText(reset)).toBeDefined();
+
+    fireEvent.change(seats, { target: { value: '8' } });
+    key(seats, 'Enter');
+    await waitFor(() => expect(within(panel()).queryByText(reset)).toBeNull());
+
+    fireEvent.change(within(panel()).getByLabelText('Shape'), { target: { value: 'round' } });
+    expect(await within(panel()).findByText(/^Size reset to the round default/u)).toBeDefined();
   });
 
   it('marks a chair unusable and back, and refuses a taken one', SLOW, async () => {
@@ -590,6 +872,59 @@ describe('tables, rows and seats (sc-4000, sc-4003)', () => {
     ).toBeDefined();
   });
 
+  it('folds Add row and Add seat into one Add menu when the bar meets the zoom', SLOW, async () => {
+    const measured = vi
+      .spyOn(HTMLElement.prototype, 'getBoundingClientRect')
+      .mockImplementation(function (this: HTMLElement) {
+        const width = this.classList.contains('st-add')
+          ? 520
+          : this.classList.contains('st-zoom')
+            ? 240
+            : 0;
+
+        return {
+          width,
+          height: 0,
+          top: 0,
+          left: 0,
+          right: width,
+          bottom: 0,
+          x: 0,
+          y: 0,
+        } as DOMRect;
+      });
+
+    try {
+      await seating();
+      fireEvent.click(await screen.findByRole('button', { name: 'Add' }, WAIT));
+      expect(screen.queryByRole('button', { name: 'Add seat' })).toBeNull();
+      const menu = screen.getByRole('menu', { name: 'Add' });
+
+      expect(within(menu).getAllByRole('menuitem')).toHaveLength(6);
+      fireEvent.click(within(menu).getByRole('menuitem', { name: 'Row of chairs' }));
+      expect(
+        await within(panel()).findByText('Row B added in the nearest free space, with 10 seats.'),
+      ).toBeDefined();
+      expect(screen.queryByRole('menu')).toBeNull();
+    } finally {
+      measured.mockRestore();
+    }
+  });
+
+  it('Esc in a field undoes the typing first, then leaves the table', SLOW, async () => {
+    await seating('tapChooses');
+    const field = within(panel()).getByLabelText('Seats', { exact: false }) as HTMLInputElement;
+    const was = field.value;
+
+    fireEvent.change(field, { target: { value: '3' } });
+    key(field, 'Escape');
+    expect(field.value).toBe(was);
+    expect(within(panel()).getByLabelText('Seats', { exact: false })).toBe(field);
+    key(field, 'Escape');
+    expect(within(panel()).queryByLabelText('Name', { exact: false })).toBeNull();
+    await waitFor(() => expect(document.activeElement).toBe(item(/^Table 4,/u)), WAIT);
+  });
+
   it('refuses a row shortened past a guest, and a seat name already used', SLOW, async () => {
     await seating('rowBelowSeated');
     expect(
@@ -601,6 +936,36 @@ describe('tables, rows and seats (sc-4000, sc-4003)', () => {
     ).toBeDefined();
   });
 
+  it('refuses a blank or too long name and label, and keeps the old one', SLOW, async () => {
+    await seating();
+    press(item(/^Table 4,/u));
+    expect(typeIn('Name', '').getAttribute('aria-invalid')).toBe('true');
+    expect(within(panel()).getByText('Enter a name for the table.')).toBeDefined();
+    expect(within(panel()).getByRole('heading', { name: 'Table 4' })).toBeDefined();
+    typeIn('Name', 'T'.repeat(31));
+    expect(within(panel()).getByText('Use 30 characters or fewer.')).toBeDefined();
+    expect(within(panel()).getByRole('heading', { name: 'Table 4' })).toBeDefined();
+    press(item(/^Row A,/u));
+    typeIn('Label', 'ABCDEFGHIJK');
+    expect(within(panel()).getByText('Use 10 characters or fewer.')).toBeDefined();
+    typeIn('Label', '');
+    expect(within(panel()).getByText('Enter a label for the row.')).toBeDefined();
+    press(item(/^By the door,/u));
+    typeIn('Name', 'S'.repeat(31));
+    expect(within(panel()).getByText('Use 30 characters or fewer.')).toBeDefined();
+    typeIn('Name', '');
+    expect(within(panel()).getByText('Enter a name for the seat.')).toBeDefined();
+    expect(within(panel()).getByRole('heading', { name: 'By the door' })).toBeDefined();
+  });
+
+  it('gives focus back to the table when Delete’s ask is kept', SLOW, async () => {
+    await seating('deleteTable');
+    const ask = screen.getByRole('alertdialog', { name: /^Delete Table 4/u });
+
+    fireEvent.click(within(ask).getByRole('button', { name: 'Keep it' }));
+    await waitFor(() => expect(document.activeElement).toBe(item(/^Table 4,/u)));
+  });
+
   it('says a colleague changed the table first (412)', SLOW, async () => {
     await seating('tableChanged');
     expect(
@@ -609,6 +974,19 @@ describe('tables, rows and seats (sc-4000, sc-4003)', () => {
     expect(
       item(/^Table 7, round, 8 of 10 seats taken, Garden side, chosen by Priya Shah$/u),
     ).toBeDefined();
+  });
+
+  it('says a colleague changed the row or the seat first (412)', SLOW, async () => {
+    await seating('rowChanged');
+    expect(
+      within(panel()).getByText('Priya Shah just changed this row. Your change was not saved.'),
+    ).toBeDefined();
+    expect(item(/^Row A,.*chosen by Priya Shah$/u)).toBeDefined();
+    await seating('seatChanged');
+    expect(
+      within(panel()).getByText('Priya Shah just changed this seat. Your change was not saved.'),
+    ).toBeDefined();
+    expect(item(/^By the door,.*chosen by Priya Shah$/u)).toBeDefined();
   });
 });
 
@@ -971,5 +1349,45 @@ describe('Print and its paper (sc-4024, sc-5032)', () => {
     open(`${AT}?state=paperCardTop`);
     expect(await screen.findAllByText('Top table', undefined, WAIT)).toHaveLength(2);
     expect(screen.getByText('Page 13 of 13')).toBeDefined();
+  });
+});
+
+describe('the breadcrumb (sc-55300)', () => {
+  const LONG =
+    'Adaeze & Tunde’s wedding weekend, with both families from Lagos, London and Accra, the church, the dinner and the brunch';
+
+  it('names the long event in full to the link, the cut being only drawn', SLOW, async () => {
+    await seating('longName');
+    const crumb = screen.getByRole('navigation', { name: 'Breadcrumb' });
+    const event = within(crumb).getByRole('link', { name: LONG });
+
+    expect(event.getAttribute('href')).toBe('/demo/events/evt-wed-4');
+    expect(event.querySelector('.st-crumb-name')).not.toBeNull();
+    expect(within(crumb).getByRole('link', { name: 'Events' }).getAttribute('href')).toBe(
+      '/demo/events',
+    );
+  });
+
+  it('speaks French in French, Plan de table still the heading', SLOW, async () => {
+    open(`${AT}?state=longNameFr`);
+    await screen.findByRole('heading', { level: 1, name: 'Plan de table' }, WAIT);
+    const crumb = screen.getByRole('navigation', { name: 'Fil d’Ariane' });
+
+    expect(crumb.getAttribute('lang')).toBe('fr');
+    expect(within(crumb).getByRole('link', { name: 'Événements' })).toBeDefined();
+    expect(within(crumb).getByRole('link', { name: LONG })).toBeDefined();
+  });
+
+  it('draws the header band at 320 and 375 in English and French', SLOW, async () => {
+    open(`${AT}?state=crumbWidths`);
+    await screen.findByRole(
+      'heading',
+      { level: 1, name: 'The header band in a narrow window' },
+      WAIT,
+    );
+
+    expect(screen.getAllByRole('navigation', { name: 'Breadcrumb' })).toHaveLength(2);
+    expect(screen.getAllByRole('navigation', { name: 'Fil d’Ariane' })).toHaveLength(3);
+    expect(screen.getByRole('link', { name: 'Seating words QA' })).toBeDefined();
   });
 });

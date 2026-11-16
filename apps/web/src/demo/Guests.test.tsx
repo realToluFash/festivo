@@ -625,7 +625,7 @@ describe('Guests, Record a reply in place (sc-3787)', () => {
       ).toBeDefined();
       expect(
         within(group(/^Coming/u)).getByRole('link', {
-          name: /^Dr Emeka Nwosu, Coming · recorded by Folake Adeyemi/u,
+          name: /^Dr Emeka Nwosu, Coming · replied /u,
         }),
       ).toBeDefined();
       expect(within(group(/^Coming/u)).queryByRole('link', { name: /^Adanna Nwosu/u })).toBeNull();
@@ -1094,6 +1094,65 @@ describe('Guests, the link and Mark as invited (sc-1526, sc-3788)', () => {
     await guests('flaggedViewer');
 
     expect(screen.queryByText('Their link may have reached the wrong person')).toBeNull();
+  });
+
+  it(
+    'records the reply of a guest not yet invited, which invites them (sc-52829)',
+    SLOW,
+    async () => {
+      await guests('notYetFilter');
+
+      const invitation = within(column()).getByRole('region', { name: 'Invitation' });
+
+      expect(within(invitation).getByRole('button', { name: /Mark as invited/u })).toBeDefined();
+      fireEvent.click(within(invitation).getByRole('button', { name: /^Record a reply/u }));
+      fireEvent.click(await screen.findByRole('radio', { name: 'Coming' }));
+      fireEvent.click(screen.getByRole('radio', { name: 'By phone' }));
+      fireEvent.click(within(column()).getByRole('button', { name: 'Save' }));
+
+      expect(
+        await screen.findByText('Reply recorded. It counts like any other reply.', {}, WAIT),
+      ).toBeDefined();
+      expect(within(column()).getByText('Invited when they replied, Nov 3')).toBeDefined();
+      expect(within(column()).queryByRole('button', { name: 'Mark as not invited' })).toBeNull();
+      expect(within(main()).queryByRole('link', { name: /^Bisi Adewale/u })).toBeNull();
+    },
+  );
+
+  it(
+    'returns Cancel to the Record a reply row of a guest not yet invited (sc-52829)',
+    SLOW,
+    async () => {
+      await guests('notYetFilter');
+
+      const row = within(within(column()).getByRole('region', { name: 'Invitation' })).getByRole(
+        'button',
+        { name: /^Record a reply/u },
+      );
+
+      fireEvent.click(row);
+      fireEvent.click(await within(column()).findByRole('button', { name: 'Cancel' }));
+
+      const invitation = await within(column()).findByRole('region', { name: 'Invitation' });
+      const back = within(invitation).getByRole('button', { name: /^Record a reply/u });
+
+      await waitFor(() => expect(document.activeElement).toBe(back), WAIT);
+    },
+  );
+
+  it("lists them in their reply's group once recorded (sc-52829)", SLOW, async () => {
+    await guests('recordedNotYet');
+
+    expect(within(column()).getByText('Invited when they replied, Nov 3')).toBeDefined();
+    expect(
+      await within(main()).findByRole('link', { name: /^Bisi Adewale, Coming · replied /u }),
+    ).toBeDefined();
+  });
+
+  it('offers no Record a reply on a Draft guest not yet invited (sc-52829)', SLOW, async () => {
+    await guests('draftGuest');
+
+    expect(within(column()).queryByRole('button', { name: /Record a reply/u })).toBeNull();
   });
 
   it('keeps Replace link… on a Draft, with no Copy invitation link', SLOW, async () => {

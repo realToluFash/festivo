@@ -22,6 +22,7 @@ import {
   samplePlan,
   sampleTray,
   say,
+  tableSizeRefusal,
   seatAt,
   sideBySide,
   usable,
@@ -258,6 +259,9 @@ export function seedOf(state: SeatingState | null): Ui {
   switch (state) {
     case null:
     case 'plan':
+    case 'longName':
+    case 'longNameFr':
+    case 'crumbWidths':
       return ui;
     case 'presenceOne':
       return { ...ui, people: [], joining: PRIYA };
@@ -294,6 +298,23 @@ export function seedOf(state: SeatingState | null): Ui {
       return { ...ui, load: 'failed', people: [] };
     case 'readOnly':
       return { ...ui, readOnly: true, people: [YOU, PRIYA] };
+    case 'readOnlyTable':
+      return {
+        ...ui,
+        readOnly: true,
+        people: [YOU, PRIYA],
+        plan: moved(plan, 't9', { rot: 15 }),
+        chosen: ['t9'],
+      };
+    case 'readOnlyTableUs':
+      return {
+        ...ui,
+        readOnly: true,
+        units: 'us',
+        people: [YOU, PRIYA],
+        plan: moved(plan, 't9', { w: undefined, l: undefined }),
+        chosen: ['t9'],
+      };
     case 'zoomOut':
       return { ...ui, camera: at(0.2, 1200, 1100) };
     case 'corner':
@@ -317,7 +338,7 @@ export function seedOf(state: SeatingState | null): Ui {
         seed: {
           key: 'roomWidth',
           value: '20',
-          error: say(SW.shrinkRefused, { n: 3, width: '20 m', length: '18 m' }),
+          error: many('shrinkRefused', 3, { width: '20 m', length: '18 m' }),
         },
         focus: 'roomWidth',
       };
@@ -393,13 +414,25 @@ export function seedOf(state: SeatingState | null): Ui {
         panel: { kind: 'sectionEdit', id: 'stage' },
         asking: { kind: 'deleteSection', id: 'stage' },
       };
+    case 'sectionDeleteRows':
+      return {
+        ...ui,
+        plan: {
+          ...plan,
+          sections: [...plan.sections, { id: 'quiet', name: 'Quiet corner', colour: 'Blue' }],
+          items: plan.items.map((item) =>
+            item.id === 'rowA' || item.id === 'door' ? { ...item, sec: 'quiet' } : item,
+          ),
+        },
+        panel: { kind: 'sectionEdit', id: 'quiet' },
+        asking: { kind: 'deleteSection', id: 'quiet' },
+      };
     case 'sectionDeleteEmpty':
       return {
         ...ui,
         plan: {
           ...plan,
           sections: [...plan.sections, { id: 'quiet', name: 'Quiet corner', colour: 'Blue' }],
-          items: plan.items.map((item) => (item.id === 'rowA' ? { ...item, sec: 'quiet' } : item)),
         },
         panel: { kind: 'sectionEdit', id: 'quiet' },
         asking: { kind: 'deleteSection', id: 'quiet' },
@@ -451,6 +484,41 @@ export function seedOf(state: SeatingState | null): Ui {
         chosen: ['t4'],
         seed: { key: 'seats', value: '6', error: say(SW.belowSeated, { n: 8, m: 8 }) },
         focus: 'seats',
+      };
+    case 'fieldBlank':
+      return {
+        ...ui,
+        chosen: ['t10'],
+        seed: { key: 'name', value: '', error: SW.tableBlank },
+        focus: 'name',
+      };
+    case 'seatsRange':
+      return {
+        ...ui,
+        chosen: ['t10'],
+        seed: { key: 'seats', value: '40', error: SW.seatsRange },
+        focus: 'seats',
+      };
+    case 'sizeRange':
+      return {
+        ...ui,
+        chosen: ['t10'],
+        seed: { key: 'diameter', value: '1200', error: tableSizeRefusal('metric') },
+        focus: 'diameter',
+      };
+    case 'notNumber':
+      return {
+        ...ui,
+        chosen: ['t9'],
+        seed: { key: 'width', value: 'two metres', error: tableSizeRefusal('metric') },
+        focus: 'width',
+      };
+    case 'endsRange':
+      return {
+        ...ui,
+        chosen: ['t9'],
+        seed: { key: 'ends', value: '10', error: say(SW.endsRange, { max: 8 }) },
+        focus: 'ends',
       };
     case 'chair':
       return { ...ui, camera: at(0.75, 1590, 620), chair: { id: 't4', i: 8 } };
@@ -504,6 +572,19 @@ export function seedOf(state: SeatingState | null): Ui {
         people: [PRIYA, SADE],
         notice: { tone: 'amber', words: say(SW.tableChanged, { name: PRIYA.name }) },
       };
+    case 'rowChanged':
+    case 'seatChanged': {
+      const id = state === 'rowChanged' ? 'rowA' : 'door';
+      const words = state === 'rowChanged' ? SW.rowChanged : SW.seatChanged;
+
+      return {
+        ...ui,
+        chosen: [id],
+        rings: { [id]: PRIYA },
+        people: [PRIYA, SADE],
+        notice: { tone: 'amber', words: say(words, { name: PRIYA.name }) },
+      };
+    }
     case 'rowAdded':
     case 'rowLabelTaken': {
       const row = newAt(plan, 'row', [1590, 1440], 'rowB');

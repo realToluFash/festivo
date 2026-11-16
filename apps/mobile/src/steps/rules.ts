@@ -1,3 +1,4 @@
+import { visibleLength } from '@soirely/domain';
 /** The client checks and shaping the demo's screens use, kept apart from React Native so they can be tested. */
 
 export const PASSWORD_LEAST = 15;
@@ -30,5 +31,5 @@ export function minutesSeconds(seconds: number): string {
 }
 
 export function messageCount(message: string): string {
-  return `${[...message].length} of ${MESSAGE_MOST} characters.`;
+  return `${visibleLength(message)} of ${MESSAGE_MOST} characters.`;
 }

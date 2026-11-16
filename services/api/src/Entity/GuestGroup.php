@@ -30,7 +30,7 @@ class GuestGroup
     #[ORM\JoinColumn(nullable: false, onDelete: 'CASCADE')]
     private Event $event;
 
-    #[ORM\Column(type: Types::STRING, length: 60)]
+    #[ORM\Column(type: Types::STRING, length: 240)]
     private string $name;
 
     /** The name without case or accents, so "Bride's side" and "BRIDE'S SIDE" are one group. */

@@ -106,7 +106,15 @@ function SidebarOrg() {
   );
 }
 
-export function SidebarHead({ search, org = true }: { search?: boolean; org?: boolean }) {
+export function SidebarHead({
+  search,
+  org = true,
+  children,
+}: {
+  search?: boolean;
+  org?: boolean;
+  children?: ReactNode;
+}) {
   const { t } = useTranslation();
   const shell = useTodayShell();
   const { open } = shell;
@@ -116,7 +124,7 @@ export function SidebarHead({ search, org = true }: { search?: boolean; org?: bo
       <View style={styles.logo}>
         <Brand lockup height={24} />
       </View>
-      {org && <SidebarOrg />}
+      {org && (children ?? <SidebarOrg />)}
       {(search ?? shell.search) && (
         <Pressable
           onPress={() => open({ to: 'search' })}
@@ -133,11 +141,6 @@ export function SidebarHead({ search, org = true }: { search?: boolean; org?: bo
           >
             {t('todayScreen.search')}
           </Text>
-          <View style={styles.key}>
-            <Text size={12} weight="medium" accessible={false} style={styles.secondary}>
-              ⌘K
-            </Text>
-          </View>
         </Pressable>
       )}
     </>
@@ -398,13 +401,6 @@ const styles = StyleSheet.create({
     paddingHorizontal: tokens.spaceLg,
     borderRadius: tokens.radiusRow,
     backgroundColor: tokens.colorCard,
-  },
-  key: {
-    paddingHorizontal: tokens.spaceXs,
-    paddingVertical: tokens.spaceHair,
-    borderRadius: tokens.spaceXs,
-    borderWidth: 1,
-    borderColor: tokens.colorBorder,
   },
   places: { gap: tokens.spaceHair },
   back: {

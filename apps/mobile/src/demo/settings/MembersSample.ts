@@ -1,4 +1,4 @@
-import { memberStanding, type MemberStanding } from '@soirely/domain';
+import { activeOwners, memberStanding, type MemberStanding } from '@soirely/domain';
 
 import { writtenTime } from '../clock.ts';
 import { crowdName } from '../sampleNames.ts';
@@ -285,7 +285,7 @@ export function standingOf(
   });
   const withheld = ORG_ROLES.filter((role) => !grantable(viewer).includes(role));
 
-  return memberStanding(shaped(person), people.map(shaped), {
+  return memberStanding(shaped(person), activeOwners(people.map(shaped)), {
     owns: viewer.owns,
     manages: viewer.manages,
     withholds: withheld.map((id) => ({ id })),
@@ -318,6 +318,9 @@ export const MEMBERS_STATES = [
   'nobodyLeft',
   'ninetyNine',
   'crowd',
+  'largest',
+  'moreLoading',
+  'moreFailed',
   'loading',
   'failed',
   'approving',
@@ -420,6 +423,7 @@ export interface Removal {
 export interface MembersStart {
   viewer: MembersViewer;
   load: Load;
+  more: More;
   people: Person[];
   filter: Filter;
   open: string | null;
@@ -755,7 +759,21 @@ const MORE_PEOPLE: readonly (readonly [string, string, string])[] = [
 ];
 
 /** All at 104 shows +99 beside the faces, the chip's widest figure; at 1,326 it shows 99+ (sc-48825). */
-export const CROWDS = { ninetyNine: 104, crowd: 1326 } as const;
+export const CROWDS = { ninetyNine: 104, crowd: 1326, largest: 12345 } as const;
+
+/** People arrive a page at a time as the list's end nears; the build picks its own page (sc-49170). */
+export const PEOPLE_PAGE = 50;
+
+/** The next page of People: on its way as the end nears, or failed with the rows already shown kept. */
+export type More = 'idle' | 'loading' | 'failed';
+
+export { nearsEnd } from '@soirely/domain';
+
+export const MORE_WORDS = {
+  loading: 'Loading more people…',
+  failed: 'More people did not load.',
+  failedLine: 'Check your connection and try again.',
+} as const;
 
 /** Ire Events grown to `total` on All, so the card's chip has more beyond its five faces than its circle holds (sc-48825). */
 export function crowdOf(people: readonly Person[], total: number): Person[] {
@@ -839,6 +857,7 @@ export function membersStart(
   const base: MembersStart = {
     viewer: VIEWERS.folake,
     load: 'loaded',
+    more: 'idle',
     people,
     filter: 'all',
     open: null,
@@ -935,7 +954,15 @@ export function membersStart(
       return { ...base, people: people.filter(({ id }) => id !== DANIEL), filter: 'former' };
     case 'ninetyNine':
     case 'crowd':
+    case 'largest':
       return { ...base, people: crowdOf(people, CROWDS[state]) };
+    case 'moreLoading':
+    case 'moreFailed':
+      return {
+        ...base,
+        people: crowdOf(people, CROWDS.largest),
+        more: state === 'moreLoading' ? 'loading' : 'failed',
+      };
     case 'loading':
     case 'failed':
       return { ...base, load: state };

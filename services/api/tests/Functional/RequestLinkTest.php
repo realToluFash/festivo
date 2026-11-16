@@ -170,7 +170,7 @@ final class RequestLinkTest extends ApiTestCase
 
         $this->signIn($owner);
         $members = Type\vec(Type\shape(['status' => Type\string(), 'channel' => Type\nullable(Type\string()), 'message' => Type\nullable(Type\string())], true))
-            ->coerce($this->send('GET', Str\format('/api/orgs/%s/members', $organisation->getId()->toRfc4122()))['members']);
+            ->coerce($this->send('GET', Str\format('/api/orgs/%s/members', $organisation->getId()->toRfc4122()))['waiting']);
         $waiting = Vec\filter($members, static fn (array $member): bool => 'pending_approval' === $member['status']);
         self::assertSame([['request', 'I run the Abuja office.']], Vec\map($waiting, static fn (array $member): array => [$member['channel'], $member['message']]));
     }
@@ -289,6 +289,49 @@ final class RequestLinkTest extends ApiTestCase
 
         $this->send('POST', '/api/request-links/ask', ['token' => $token, 'message' => Str\repeat('è', 500)]);
         self::assertResponseStatusCodeSame(201);
+    }
+
+    /** @return iterable<string, array{string}> */
+    public static function messagesOver500Letters(): iterable
+    {
+        yield 'marked letters' => [Str\repeat("e\u{0323}\u{0300}", 501)];
+        yield 'one letter of many marks' => ['a' . Str\repeat("\u{0301}", 2000)];
+    }
+
+    #[Test]
+    #[DataProvider('messagesOver500Letters')]
+    public function aMessageOver500LettersIsRefused(string $message): void
+    {
+        [, $organisation] = $this->organisation('folake@ire.events', 'Ìrè Events');
+        $token = $this->turnOn($organisation);
+        $this->signIn($this->outsider('ada@gmail.com'));
+
+        $body = $this->send('POST', '/api/request-links/ask', ['token' => $token, 'message' => $message]);
+
+        self::assertResponseStatusCodeSame(422);
+        self::assertSame([['message', 'Keep your message to 500 characters or fewer.']], $this->violations($body));
+    }
+
+    /** @return iterable<string, array{string}> */
+    public static function messagesOf500Letters(): iterable
+    {
+        yield 'composed' => [Str\repeat("\u{1EB9}\u{0300}", 500)];
+        yield 'decomposed' => [Str\repeat("e\u{0323}\u{0300}", 500)];
+    }
+
+    #[Test]
+    #[DataProvider('messagesOf500Letters')]
+    public function aMessageOf500LettersWithADotAndAToneEachIsKeptAsTyped(string $message): void
+    {
+        [, $organisation] = $this->organisation('folake@ire.events', 'Ìrè Events');
+        $token = $this->turnOn($organisation);
+        $ada = $this->outsider('ada@gmail.com');
+        $this->signIn($ada);
+
+        $this->send('POST', '/api/request-links/ask', ['token' => $token, 'message' => $message]);
+
+        self::assertResponseStatusCodeSame(201);
+        self::assertSame($message, $this->membershipOf($ada, $organisation)->getRequestMessage());
     }
 
     #[Test]

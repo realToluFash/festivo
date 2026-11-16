@@ -1,0 +1,54 @@
+# sc-52829 (list settled first): Save that cannot reach the server says offline, and the guest stays Not yet invited.
+appId: host.exp.Exponent
+onFlowComplete:
+  - runScript:
+      file: ../batch/helper.js
+      env:
+        ASK: /api?to=up
+---
+- openLink: ${METRO_URL}/--/events/${EVENT_ID}?area=guests
+- extendedWaitUntil:
+    visible:
+      id: 'guests.search'
+    timeout: 30000
+- waitForAnimationToEnd:
+    timeout: 6000
+- waitForAnimationToEnd:
+    timeout: 6000
+- scrollUntilVisible:
+    element:
+      id: 'guests.row.${G_OFF}'
+    direction: DOWN
+    timeout: 30000
+    centerElement: true
+- tapOn:
+    id: 'guests.row.${G_OFF}'
+- extendedWaitUntil:
+    visible:
+      id: 'guest.${G_OFF}'
+    timeout: 30000
+- scrollUntilVisible:
+    element:
+      id: 'guest.recordNotYet'
+    direction: DOWN
+- tapOn:
+    id: 'guest.recordNotYet'
+- extendedWaitUntil:
+    visible:
+      id: 'guest.record.coming'
+    timeout: 10000
+- tapOn:
+    id: 'guest.record.coming'
+- tapOn:
+    id: 'guest.record.how.phone'
+- runScript:
+    file: ../batch/helper.js
+    env:
+      ASK: /api?to=stopped
+- tapOn:
+    id: 'guest.record.save'
+- extendedWaitUntil:
+    visible:
+      id: 'guest.record.offline'
+    timeout: 60000
+- takeScreenshot: offline-refused

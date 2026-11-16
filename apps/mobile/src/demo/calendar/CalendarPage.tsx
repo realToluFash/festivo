@@ -47,6 +47,7 @@ import { CW } from './CalendarWords.ts';
 import { kindOf, useShell } from '../../components/settingsShell.ts';
 import { SwitchedNotice } from '../../components/SwitchedNotice.tsx';
 import { ListTop } from '../../components/ListTop.tsx';
+import { sideInsets } from '../../components/bodyEdges.ts';
 import { LIST_EDGES } from '../../components/listFrame.ts';
 import { dateLocale } from '../../i18n/index.ts';
 
@@ -241,7 +242,9 @@ export function CalendarPage({ state }: { state: CalendarState | null }) {
   return (
     <View style={styles.page}>
       <View style={{ height: insets.top }} />
-      <View style={[styles.grow, LIST_EDGES.phone]}>{board}</View>
+      <View style={[styles.grow, sideInsets('phone', insets)]}>
+        <View style={[styles.grow, LIST_EDGES.phone]}>{board}</View>
+      </View>
       <TabBarFade />
       <PhoneTabBar bottom={foot} onTab={shell.onTab} at="Calendar" />
       {feedPanel}

@@ -132,14 +132,14 @@ describe("the account's name", () => {
     expect(regions[0]).toBe('name-title');
   });
 
-  it('opens a Full name field holding the name, which autofill knows as a name and stops at 180', async () => {
+  it('opens a Full name field holding the name, which autofill knows as a name and never stops typing', async () => {
     answering();
     open();
     await change();
 
     expect(field().value).toBe('Folake Ire');
     expect(field().getAttribute('autocomplete')).toBe('name');
-    expect(field().maxLength).toBe(180);
+    expect(field().maxLength).toBe(-1);
     expect(document.activeElement).toBe(field());
     expect(within(card()).getByRole('button', { name: 'Save name' })).toBeDefined();
   });

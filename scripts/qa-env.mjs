@@ -157,7 +157,7 @@ export function qaConfig(tester = 1, address = undefined) {
   };
   const avd = label.replace(/ /g, '_');
   const emulators = {
-    phone: { name: `${avd}_Phone`, device: 'pixel_8' },
+    phone: { name: `${avd}_Phone`, device: 'pixel_8', ramMb: 4096 },
     tablet: { name: `${avd}_Tablet`, device: 'pixel_tablet', ramMb: 4096 },
   };
   // Inside 5554–5584, the only consoles adb finds, and clear of 5554, where one started by hand lands.
@@ -1251,16 +1251,18 @@ function createEmulators() {
     return;
   }
   const tools = androidTools();
-  if (!existsSync(tools.avdmanager)) {
-    console.log(missingCmdlineTools(tools));
-    return;
-  }
-  const image = playImage(tools.sdk);
   const existing = (capture(tools.emulator, ['-list-avds'], { env: tools.env }) ?? '').split('\n');
-  for (const avd of Object.values(CONFIG.emulators)) {
+  setUpLocalEmulators(tools, Object.values(CONFIG.emulators), existing);
+}
+
+export function setUpLocalEmulators(tools, emulators, existing) {
+  const canCreate = existsSync(tools.avdmanager);
+  if (!canCreate) console.log(missingCmdlineTools(tools));
+  const image = canCreate ? playImage(tools.sdk) : null;
+  for (const avd of emulators) {
     if (existing.includes(avd.name)) {
       console.log(`  ${avd.name}: already there`);
-    } else {
+    } else if (canCreate) {
       const created = spawnSync(
         tools.avdmanager,
         ['create', 'avd', '-n', avd.name, '-k', image, '-d', avd.device],
@@ -1276,7 +1278,8 @@ function createEmulators() {
   }
 }
 
-// At avdmanager's 2 GB the Pixel Tablet's launcher and System UI stop answering mid-batch (sc-43225).
+// At avdmanager's 2 GB the Pixel Tablet's launcher and System UI stop answering mid-batch (sc-43225),
+// and the phone with Expo Go loaded keeps stopping TalkBack (sc-52641).
 export function withAvdRam(config, mb) {
   const current = Number(/^hw\.ramSize\s*=\s*(\d+)/m.exec(config)?.[1] ?? 0);
   if (current >= mb) return config;
@@ -3148,17 +3151,24 @@ export function composeBatch(
   if (!cold) writeFileSync(join(target, '_batch.yaml'), finish(batchFlow({ checks, languages })));
 }
 
+const isVar = (arg) => /^[A-Z][A-Z0-9_]*=/.test(arg);
+
+export function parseVars(args) {
+  return Object.fromEntries(
+    args
+      .filter(isVar)
+      .map((arg) => [arg.slice(0, arg.indexOf('=')), arg.slice(arg.indexOf('=') + 1)]),
+  );
+}
+
 export function parseBatch(args) {
   const positional = [];
-  const vars = {};
   let languages = ['any'];
   for (let i = 0; i < args.length; i++) {
     const arg = args[i];
     if (arg === '--lang') languages = (args[++i] ?? '').split(',').filter(Boolean);
     else if (arg.startsWith('--')) continue;
-    else if (/^[A-Z][A-Z0-9_]*=/.test(arg))
-      vars[arg.slice(0, arg.indexOf('='))] = arg.slice(arg.indexOf('=') + 1);
-    else positional.push(arg);
+    else if (!isVar(arg)) positional.push(arg);
   }
   const [name, ...checks] = positional;
   if (!name || checks.length === 0 || languages.length === 0) {
@@ -3166,7 +3176,7 @@ export function parseBatch(args) {
       'which batch? `batch <name> <check>… EMAIL=… PASSWORD=… [--lang en,es] [--cold]`',
     );
   }
-  return { name, checks, languages, vars, cold: args.includes('--cold') };
+  return { name, checks, languages, vars: parseVars(args), cold: args.includes('--cold') };
 }
 
 async function api(path, { method = 'POST', body, token } = {}) {
@@ -3204,6 +3214,22 @@ async function nextCode(email, secret) {
   mkdirSync(dirname(file), { recursive: true });
   writeFileSync(file, JSON.stringify({ ...used, [email]: step }, null, 2));
   return totp(secret, step);
+}
+
+// The web has no batch to type a code into, so a tester signs in there with this one.
+export function parseCode(args) {
+  const { EMAIL: email, TOTP_SECRET: secret } = parseVars(args);
+  if (!email || !secret) throw new Error('whose code? EMAIL=… TOTP_SECRET=…, from `account`');
+  totp(secret, 0);
+  return { email, secret };
+}
+
+async function code(args) {
+  const { email, secret } = parseCode(args);
+  const value = await nextCode(email, secret);
+  const left = Math.round((STEP_MS - (Date.now() % STEP_MS)) / 1000);
+  process.stderr.write(`valid for about ${left}s; batches for ${email} skip past it\n`);
+  console.log(value);
 }
 
 async function signIn(email, password, secret) {
@@ -4272,6 +4298,7 @@ const COMMANDS = {
   batch,
   hierarchy,
   account,
+  code,
   chrome,
 };
 

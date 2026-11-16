@@ -112,6 +112,8 @@ final class EventsTest extends ApiTestCase
         yield 'a type outside the list' => [['type' => 'burial'], 'type', 'Choose what kind of event it is.'];
         yield 'a type by its label' => [['type' => 'Wedding'], 'type', 'Choose what kind of event it is.'];
         yield 'a name past 120' => [['name' => Str\repeat('a', 121)], 'name', 'Shorten the name to 120 characters or fewer.'];
+        yield 'a name past 120 marked letters' => [['name' => Str\repeat("e\u{0323}\u{0300}", 121)], 'name', 'Shorten the name to 120 characters or fewer.'];
+        yield 'a name of one letter of many marks' => [['name' => 'a' . Str\repeat("\u{0301}", 480)], 'name', 'Shorten the name to 120 characters or fewer.'];
         yield 'no start' => [['startsAt' => ''], 'startsAt', 'Choose when the event starts.'];
         yield 'no end' => [['endsAt' => ''], 'endsAt', 'Choose when the event ends.'];
         yield 'an end before the start' => [['endsAt' => '2026-11-14T15:59'], 'endsAt', 'The end is before the start. Choose a later end.'];
@@ -1429,6 +1431,10 @@ final class EventsTest extends ApiTestCase
     {
         yield 'a venue name past 120' => [['name' => Str\repeat('a', 121)], 'venueName', 'Shorten the venue name to 120 characters or fewer.'];
         yield 'an address past 300' => [['address' => Str\repeat('a', 301)], 'venueAddress', 'Shorten the address to 300 characters or fewer.'];
+        yield 'a venue name past 120 marked letters' => [['name' => Str\repeat("e\u{0323}\u{0300}", 121)], 'venueName', 'Shorten the venue name to 120 characters or fewer.'];
+        yield 'a venue name of one letter of many marks' => [['name' => 'a' . Str\repeat("\u{0301}", 480)], 'venueName', 'Shorten the venue name to 120 characters or fewer.'];
+        yield 'an address past 300 marked letters' => [['address' => Str\repeat("e\u{0323}\u{0300}", 301)], 'venueAddress', 'Shorten the address to 300 characters or fewer.'];
+        yield 'an address of one letter of many marks' => [['address' => 'a' . Str\repeat("\u{0301}", 1200)], 'venueAddress', 'Shorten the address to 300 characters or fewer.'];
     }
 
     /** @param array<string, string> $venue */
@@ -1446,6 +1452,22 @@ final class EventsTest extends ApiTestCase
 
         self::assertSame(422, $this->statusCode());
         self::assertSame([$field => $message], $this->violations());
+    }
+
+    #[Test]
+    public function theLimitInLettersWithADotAndAToneEachIsSavedAndReadBack(): void
+    {
+        $id = $this->create('Owambe', '2026-11-14T16:00');
+
+        foreach (["\u{1EB9}\u{0300}", "e\u{0323}\u{0300}"] as $letter) {
+            $this->edit($id, ['name' => Str\repeat($letter, 120), 'venue' => ['name' => Str\repeat($letter, 120), 'address' => Str\repeat($letter, 300)], 'arrivalNote' => Str\repeat($letter, 500)], $this->tagOf($id));
+            self::assertSame(200, $this->statusCode(), Json\encode($this->last()));
+
+            $event = $this->event($this->as($this->owner, 'GET', '/api/events/' . $id));
+            $venue = Type\shape(['name' => Type\string(), 'address' => Type\shape(['formatted' => Type\string()], true)])->coerce($event['venue']);
+            self::assertSame([Str\repeat($letter, 120), Str\repeat($letter, 120), Str\repeat($letter, 300)], [$event['name'], $venue['name'], $venue['address']['formatted']]);
+            self::assertSame(Str\repeat($letter, 500), $event['arrivalNote']);
+        }
     }
 
     #[Test]
@@ -1573,6 +1595,18 @@ final class EventsTest extends ApiTestCase
     }
 
     #[Test]
+    public function anArrivalNoteOf500DecomposedLettersIsSavedAsTyped(): void
+    {
+        $note = Str\repeat("o\u{0323}\u{0301}", 500);
+        $id = $this->create('Owambe', '2026-11-14T16:00');
+
+        $this->edit($id, ['arrivalNote' => " {$note}\n"], $this->tagOf($id));
+
+        self::assertSame(200, $this->statusCode(), Json\encode($this->last()));
+        self::assertSame($note, $this->event($this->as($this->owner, 'GET', '/api/events/' . $id))['arrivalNote']);
+    }
+
+    #[Test]
     public function anEditLeavingTheArrivalNoteOutKeepsIt(): void
     {
         $id = $this->create('Owambe', '2026-11-14T16:00');
@@ -1604,6 +1638,23 @@ final class EventsTest extends ApiTestCase
         self::assertSame(422, $this->statusCode());
     }
 
+    /** @return iterable<string, array{string}> */
+    public static function arrivalNotesPast500Letters(): iterable
+    {
+        yield 'marked letters' => [Str\repeat("e\u{0323}\u{0300}", 501)];
+        yield 'one letter of many marks' => ['a' . Str\repeat("\u{0301}", 2001)];
+    }
+
+    #[Test]
+    #[DataProvider('arrivalNotesPast500Letters')]
+    public function anArrivalNotePast500LettersIsRefused(string $note): void
+    {
+        $this->as($this->owner, 'POST', $this->path('events'), [...self::valid(), 'arrivalNote' => $note]);
+
+        self::assertSame(422, $this->statusCode());
+        self::assertSame(['arrivalNote' => 'Shorten the arrival note to 500 characters or fewer.'], $this->violations());
+    }
+
     #[Test]
     public function aNoteOf500EndingInSpacesTheClientsTrimIsSaved(): void
     {
@@ -1623,7 +1674,7 @@ final class EventsTest extends ApiTestCase
         $body = $this->as($this->owner, 'POST', $this->path('events'), [...self::valid(), 'arrivalNote' => $note]);
 
         self::assertSame(201, $this->statusCode(), Json\encode($body));
-        self::assertSame(Str\repeat('é', 500), $this->event($body)['arrivalNote']);
+        self::assertSame($note, $this->event($body)['arrivalNote']);
     }
 
     #[Test]
@@ -1722,6 +1773,8 @@ final class EventsTest extends ApiTestCase
     {
         yield 'blank' => [['Funmi Adeyemi', " \n "], 'hosts[1]', 'Enter a name or remove this host.'];
         yield 'over 60 characters' => [[Str\repeat('é', 61)], 'hosts[0]', "A host's name can be at most 60 characters. This one has 61."];
+        yield 'over 60 marked letters' => [[Str\repeat("e\u{0323}\u{0300}", 61)], 'hosts[0]', "A host's name can be at most 60 characters. This one has 61."];
+        yield 'one letter of many marks' => [['a' . Str\repeat("\u{0301}", 240)], 'hosts[0]', "A host's name can be at most 60 characters. This one has 1."];
         yield 'a repeat, regardless of case' => [['Funmi Adeyemi', 'Tayo', ' funmi ADEYEMI'], 'hosts[2]', 'Funmi Adeyemi is already a host.'];
         yield 'a seventh' => [['A', 'B', 'C', 'D', 'E', 'F', 'G'], 'hosts', 'An event can have at most 6 hosts.'];
     }
@@ -1751,6 +1804,18 @@ final class EventsTest extends ApiTestCase
 
         self::assertSame(200, $this->statusCode(), Json\encode($this->last()));
         self::assertSame($hosts, $this->event($this->last())['hosts']);
+    }
+
+    #[Test]
+    public function hostsOf60LettersWithADotAndAToneOrOfEmojiAreTaken(): void
+    {
+        $hosts = [Str\repeat("\u{1EB9}\u{0300}", 60), Str\repeat("e\u{0323}\u{0300}", 59) . 'a', Str\repeat('a', 57) . "👨\u{200D}👩\u{200D}👧 🇳🇬"];
+        $id = $this->create('Owambe', self::AHEAD);
+
+        $this->edit($id, ['hosts' => $hosts], $this->tagOf($id));
+
+        self::assertSame(200, $this->statusCode(), Json\encode($this->last()));
+        self::assertSame($hosts, $this->event($this->as($this->owner, 'GET', '/api/events/' . $id))['hosts']);
     }
 
     #[Test]

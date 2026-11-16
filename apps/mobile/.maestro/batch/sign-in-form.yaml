@@ -19,8 +19,9 @@ appId: host.exp.Exponent
     file: to-settings.yaml
 # The two-factor overdue screen names no account, and counts as signed in. sc-28435.
 # An account in no organisation with an invitation lands on You're invited, named on its invitation. sc-32120.
+# An account that signed up but has no profile yet lands on its organisation step, which names no account. sc-44356.
 - scrollUntilVisible:
     element:
-      text: '{{t:any:settings.signedInAs|email}}|{{t:any:settings.personLabel|email}}|{{t:any:settings.personLabelWithRole|email}}|{{t:any:noOrganisation.signedInAs|email}}|{{t:any:steps.invitationFor|email}}|{{t:any:signInRules.overdueTitle}}'
+      text: '{{t:any:settings.signedInAs|email}}|{{t:any:settings.personLabel|email}}|{{t:any:settings.personLabelWithRole|email}}|{{t:any:noOrganisation.signedInAs|email}}|{{t:any:steps.invitationFor|email}}|{{t:any:signInRules.overdueTitle}}|{{t:any:steps.organisationTitle}}'
     direction: DOWN
     timeout: 30000

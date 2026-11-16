@@ -421,6 +421,23 @@ class DemoFirst(Base):
                      mock.patch("soirely_queue.github.live",
                                 side_effect=github.GitHubError("gh api: 502")))
 
+    def test_a_comment_cited_on_the_demo_line_is_skipped(self):
+        self.drawn("**Demo:** `It` in the app's demo · PR #1386 (pm, #55333)")
+
+        def live(number):
+            if number == 55333:
+                raise github.GitHubError("gh api repos/o/r/pulls/55333: Not Found (HTTP 404)")
+            return {"state": "MERGED"}
+        with mock.patch("soirely_queue.github.live", side_effect=live):
+            actions.claim(self.as_("dev"), args(story="sc-1"))
+        self.assertEqual(self.state(1), "In Progress")
+
+    def test_a_demo_line_citing_only_comments_names_no_pull_request(self):
+        self.drawn("**Demo:** `It` in the app's demo (pm, #55333)")
+        self.refused("names no pull request",
+                     mock.patch("soirely_queue.github.live",
+                                side_effect=github.GitHubError("gh api: Not Found (HTTP 404)")))
+
     def test_a_merged_demo_is_claimed(self):
         self.drawn("**Demo:** `It` in the app's demo · PR #1386, superseding #1300")
         states = {1386: {"state": "MERGED"}, 1300: {"state": "CLOSED"}}

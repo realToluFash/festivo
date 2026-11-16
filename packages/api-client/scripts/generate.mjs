@@ -39,4 +39,12 @@ if (result.status !== 0) {
   process.exit(result.status ?? 1);
 }
 
+// Formatted as the repository formats every file, or check-current compares
+// openapi-typescript's own style with the committed one and never passes.
+const formatted = spawnSync('npx', ['prettier', '--write', out], { stdio: 'inherit' });
+
+if (formatted.status !== 0) {
+  process.exit(formatted.status ?? 1);
+}
+
 console.log(`Wrote ${out}`);

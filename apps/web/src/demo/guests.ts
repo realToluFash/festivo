@@ -865,6 +865,11 @@ export function needsOfPerson(person: Person): Needs | undefined {
   return person.companion == null ? person.guest.needs : person.companion.needs;
 }
 
+/** sc-3787: the list's reply is the same word as any other; who recorded it shows only in the details. */
+function asOwnReply(one: Guest): Guest {
+  return one.recorded == null ? one : { ...one, recorded: null, replied: one.recorded.on };
+}
+
 function rowOf(
   person: Person,
   indent: boolean,
@@ -889,7 +894,7 @@ function rowOf(
     const short =
       person.reply === 'noReply' || person.reply === 'notYet'
         ? word
-        : replyLine(person.guest, replyBy);
+        : replyLine(asOwnReply(person.guest), replyBy);
     const many = person.guest.companions.length;
 
     line =
@@ -1335,6 +1340,7 @@ export function recordReply(
           ...one,
           reply: answer,
           recorded: { by: READER, how, on },
+          replied: one.reply === 'notYet' ? on : one.replied,
           reopened: null,
           companions: one.companions.map((companion) => ({
             ...companion,
@@ -1794,6 +1800,8 @@ export const GUESTS_STATES = [
   { key: 'recordComing', name: 'Coming, by phone, with their companion' },
   { key: 'recordReplace', name: 'Replacing their own reply' },
   { key: 'recordNotSaved', name: 'Record a reply failed' },
+  { key: 'recordNotYet', name: 'Record a reply for a guest not yet invited (sc-52829)' },
+  { key: 'recordedNotYet', name: 'Recorded: invited when they replied (sc-52829)' },
   { key: 'add', name: 'Add guest, in place' },
   { key: 'addRefused', name: 'Add guest refused before sending' },
   { key: 'addDuplicate', name: 'The name is already on the list' },
@@ -2259,6 +2267,13 @@ export function guestsStart(state: GuestsState | null, params: URLSearchParams):
       return record('ngozi', { answer: 'coming', how: 'By phone', replace: true });
     case 'recordNotSaved':
       return record('emeka', { answer: 'coming', how: 'By phone', notSaved: true });
+    case 'recordNotYet':
+      return { ...record('bisi'), choice: 'notYet' };
+    case 'recordedNotYet':
+      return column(guestPane('bisi', { note: 'recorded' }), {
+        choice: 'coming',
+        list: recordReply(start.list, 'bisi', 'coming', 'By phone', new Set(), TODAY),
+      });
     case 'add':
       return add();
     case 'addRefused':
@@ -2821,6 +2836,8 @@ export const GUESTS_PAGES: readonly { name: string; states: readonly DemoLink[] 
     'recordComing',
     'recordReplace',
     'recordNotSaved',
+    'recordNotYet',
+    'recordedNotYet',
   ]),
   group('Add guest, in place', ['add', 'addRefused', 'addDuplicate', 'added', 'addNotAdded']),
   group('The guest’s language (sc-3790)', [
@@ -2986,6 +3003,8 @@ export const GUESTS_PAGES: readonly { name: string; states: readonly DemoLink[] 
     'marked',
     'markNotSaved',
     'notYetFilter',
+    'recordNotYet',
+    'recordedNotYet',
     'invitedByMessage',
     'invitedWhenReplied',
     'unmarked',

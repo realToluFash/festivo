@@ -5,6 +5,7 @@ import {
   formatDay,
   formatTimeOfDay,
   lockLiftsAt,
+  requestMessageLength,
 } from '@soirely/domain';
 import { type FormEvent, type RefObject, useEffect, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
@@ -249,7 +250,7 @@ function Ask({
   const checks = useFormChecks(
     ['message'] as const,
     (_, value) =>
-      Array.from(value.trim()).length > REQUEST_MESSAGE_MAXIMUM
+      requestMessageLength(value) > REQUEST_MESSAGE_MAXIMUM
         ? t('requestToJoin.messageLong', { count: REQUEST_MESSAGE_MAXIMUM })
         : null,
     () => document.getElementById('request-message')?.focus(),
@@ -362,7 +363,7 @@ function Ask({
           <p className="field-help" id="request-message-help">
             {t('requestToJoin.messageHelp', {
               count: REQUEST_MESSAGE_MAXIMUM,
-              length: Array.from(message.trim()).length,
+              length: requestMessageLength(message),
             })}
           </p>
         </div>

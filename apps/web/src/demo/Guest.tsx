@@ -64,6 +64,7 @@ import { PartyCheckRow, WithYou } from './GuestCompanions.tsx';
 import { hasStep, holdsCompanions, partyLine } from './guestCompanions.ts';
 import { type PartyActions, partyActions, withPartyBack } from './guestPartyActions.ts';
 import { DayAnswer, DayWaiting, WhereBlock, YourCode } from './GuestDay.tsx';
+import { Programme, YourTableSlot } from './GuestProgramme.tsx';
 import { inDayOrder } from './guestDay.ts';
 import { KeptOut, YourMessages } from './GuestMessages.tsx';
 import { plusDays } from './dataControl.ts';
@@ -616,6 +617,8 @@ function Under({
       <div className="gp-under is-day">
         <YourCode visit={visit} words={words} />
         <WhereBlock visit={visit} words={words} />
+        {visit.tables && <YourTableSlot />}
+        <Programme visit={visit} />
         <DayAnswer
           visit={visit}
           words={words}

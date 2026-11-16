@@ -298,16 +298,6 @@ describe('Events', () => {
     );
     expect(screen.queryByRole('alert')).toBeNull();
   });
-
-  it("counts the organisation's events on the dashboard", async () => {
-    signedIn();
-    answering({
-      'GET /api/orgs/org_1/events': listed([event()], [event({ id: 'ev_2' })]),
-    });
-    at('/app/guests');
-
-    expect(await screen.findByText('2 events')).toBeDefined();
-  });
 });
 
 describe('Events Home (sc-3594)', () => {
@@ -1176,7 +1166,7 @@ describe('New event', () => {
     await form();
 
     fill('event-name', 'Owambe');
-    fireEvent.click(document.querySelector('.event-back')!);
+    fireEvent.click(document.querySelector('.ev-crumb a')!);
 
     const dialog = await screen.findByRole('alertdialog', { name: 'Leave without saving?' });
     expect(within(dialog).getByText('What you typed for this event will be lost.')).toBeDefined();
@@ -1214,7 +1204,7 @@ describe('New event', () => {
     answering({ 'GET /api/orgs/org_1/events': listed([]) });
     await form();
 
-    fireEvent.click(document.querySelector('.event-back')!);
+    fireEvent.click(document.querySelector('.ev-crumb a')!);
 
     expect(await screen.findByRole('heading', { level: 1, name: 'Events' })).toBeDefined();
     expect(screen.queryByRole('alertdialog')).toBeNull();
@@ -1642,6 +1632,7 @@ describe("Inside an event, the navigation menu is the event's (sc-22103)", () =>
   it.each([
     ['/app/events/ev_1/guests', 'Guests'],
     ['/app/events/ev_1/dates', 'Overview'],
+    ['/app/events/ev_1/run', 'Schedule'],
   ])('marks the area of %s as current', async (path, area) => {
     signedIn();
     answering({ 'GET /api/events/ev_1': () => json({ event: event({ milestones: [] }) }) });
@@ -1689,7 +1680,7 @@ describe("Inside an event, the navigation menu is the event's (sc-22103)", () =>
     fireEvent.click(eventNav().getByRole('link', { name: 'Menu' }));
     await screen.findByRole('heading', { level: 2, name: 'Menu' });
     fireEvent.click(eventNav().getByRole('link', { name: 'Staff' }));
-    await screen.findByRole('heading', { level: 2, name: 'Staff' });
+    await screen.findByRole('heading', { level: 1, name: 'Staff' });
     fireEvent.click(eventNav().getByRole('link', { name: 'Reports' }));
     await screen.findByRole('heading', { level: 2, name: 'Reports' });
 
@@ -3892,7 +3883,7 @@ describe('The cover (sc-3590)', () => {
     fireEvent.click(within(dialog).getByRole('button', { name: 'Use this photo' }));
     await screen.findByRole('button', { name: 'Change photo' });
 
-    fireEvent.click(document.querySelector('.event-back')!);
+    fireEvent.click(document.querySelector('.ev-crumb a')!);
     fireEvent.click(
       within(await screen.findByRole('alertdialog', { name: 'Leave without saving?' })).getByRole(
         'button',

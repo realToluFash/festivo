@@ -5,10 +5,9 @@ import { AREAS, type Area, type Card, type SampleEvent, cardOf } from './events.
 import { EventSideCard } from '../components/EventSideCard.tsx';
 import { Glyph } from '../components/Glyph.tsx';
 import { SIDE_AREA_GLYPHS } from '../components/eventSideAreas.ts';
-import { guestsAt, hasGuests } from './guests.ts';
+import { areaPath } from './handoff.ts';
 import { OrgSwitcher } from './OrgSwitcher.tsx';
 import { SAMPLE } from './rules.ts';
-import { STATIONS_EVENT } from './stations.ts';
 import type { Tell } from '../components/SettingsParts.tsx';
 import { SearchRow } from './Search.tsx';
 
@@ -72,19 +71,7 @@ export function EventSidebar({
               ]
                 .filter(Boolean)
                 .join(' ')}
-              to={
-                one.area === 'people'
-                  ? '/demo/people'
-                  : one.area === 'overview'
-                    ? `/demo/events/${event.id}`
-                    : one.area === 'messages' ||
-                        one.area === 'seating' ||
-                        (one.area === 'staff' && event.id === STATIONS_EVENT)
-                      ? `/demo/events/${event.id}/${one.area}`
-                      : one.area === 'guests' && hasGuests(event.id)
-                        ? guestsAt(event.id)
-                        : `/demo/events/${event.id}?area=${one.area}`
-              }
+              to={areaPath(event.id, one.area)}
               aria-current={one.area === area ? 'page' : undefined}
               aria-label={one.area === 'messages' && waiting != null ? waiting.name : undefined}
             >

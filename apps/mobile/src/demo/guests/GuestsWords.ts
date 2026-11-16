@@ -56,6 +56,7 @@ export const W = {
   replaceLinkLine: 'The old link stops working straight away',
   markAsInvited: 'Mark as invited',
   markLine: 'How you invited them, so they count as invited',
+  recordNotYetLine: 'What they told you, so they count as invited',
   linkReplacedLine: 'They still hold the old one until you send the new link.',
   conversationTitle: '2 messages',
   conversationLine: 'Parking at The Landmark · SMS · Delivered',
@@ -70,6 +71,10 @@ export const W = {
   replaceDo: 'Replace link',
   replaceLine: 'The old link will stop working straight away.',
   notReplaced: 'Not replaced. The old link still works. Try again.',
+  notCopied: 'Not copied. The link is not on your clipboard. Try again.',
+  notCopiedPt:
+    'Não foi possível copiar. A ligação não está na área de transferência. Tente novamente.',
+  flaggedTitle: 'Their link may have reached the wrong person',
   howInvited: 'How did you invite them?',
   howInvitedBlank: 'Choose how you invited them.',
   markNotSaved: 'Not saved. They are still Not yet invited. Try again.',
@@ -323,6 +328,8 @@ export const say = {
     `Reply reopened by ${who}, ${date}. They can answer until the event starts.`,
   linkReplaced: (date: string) => `Link replaced ${date}`,
   replaceTitle: (name: string) => `Replace ${name}’s link?`,
+  flaggedLine: (name: string) =>
+    `Someone who opened ${name}’s link told us it was not meant for them. The reply is unchanged. Replace the link so the old one stops working, then send ${name} the new one.`,
   added: (name: string) => `${name} added.`,
   tooShort: (country: string) =>
     `That number looks too short for ${country}. Check it and try again.`,
