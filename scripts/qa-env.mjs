@@ -3151,17 +3151,24 @@ export function composeBatch(
   if (!cold) writeFileSync(join(target, '_batch.yaml'), finish(batchFlow({ checks, languages })));
 }
 
+const isVar = (arg) => /^[A-Z][A-Z0-9_]*=/.test(arg);
+
+export function parseVars(args) {
+  return Object.fromEntries(
+    args
+      .filter(isVar)
+      .map((arg) => [arg.slice(0, arg.indexOf('=')), arg.slice(arg.indexOf('=') + 1)]),
+  );
+}
+
 export function parseBatch(args) {
   const positional = [];
-  const vars = {};
   let languages = ['any'];
   for (let i = 0; i < args.length; i++) {
     const arg = args[i];
     if (arg === '--lang') languages = (args[++i] ?? '').split(',').filter(Boolean);
     else if (arg.startsWith('--')) continue;
-    else if (/^[A-Z][A-Z0-9_]*=/.test(arg))
-      vars[arg.slice(0, arg.indexOf('='))] = arg.slice(arg.indexOf('=') + 1);
-    else positional.push(arg);
+    else if (!isVar(arg)) positional.push(arg);
   }
   const [name, ...checks] = positional;
   if (!name || checks.length === 0 || languages.length === 0) {
@@ -3169,7 +3176,7 @@ export function parseBatch(args) {
       'which batch? `batch <name> <check>… EMAIL=… PASSWORD=… [--lang en,es] [--cold]`',
     );
   }
-  return { name, checks, languages, vars, cold: args.includes('--cold') };
+  return { name, checks, languages, vars: parseVars(args), cold: args.includes('--cold') };
 }
 
 async function api(path, { method = 'POST', body, token } = {}) {
@@ -3207,6 +3214,22 @@ async function nextCode(email, secret) {
   mkdirSync(dirname(file), { recursive: true });
   writeFileSync(file, JSON.stringify({ ...used, [email]: step }, null, 2));
   return totp(secret, step);
+}
+
+// The web has no batch to type a code into, so a tester signs in there with this one.
+export function parseCode(args) {
+  const { EMAIL: email, TOTP_SECRET: secret } = parseVars(args);
+  if (!email || !secret) throw new Error('whose code? EMAIL=… TOTP_SECRET=…, from `account`');
+  totp(secret, 0);
+  return { email, secret };
+}
+
+async function code(args) {
+  const { email, secret } = parseCode(args);
+  const value = await nextCode(email, secret);
+  const left = Math.round((STEP_MS - (Date.now() % STEP_MS)) / 1000);
+  process.stderr.write(`valid for about ${left}s; batches for ${email} skip past it\n`);
+  console.log(value);
 }
 
 async function signIn(email, password, secret) {
@@ -4275,6 +4298,7 @@ const COMMANDS = {
   batch,
   hierarchy,
   account,
+  code,
   chrome,
 };
 
