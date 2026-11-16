@@ -17,7 +17,7 @@ import { type ReactNode } from 'react';
 import { useTranslation } from 'react-i18next';
 
 import { Glyph } from '../../../components/Glyph.tsx';
-import { currencyChoices } from '../../../zoneAndCurrencyChoices.ts';
+import { currencyCodeChoices } from '../../../zoneAndCurrencyChoices.ts';
 import { describedBy } from '../events/eventFieldOrder.ts';
 
 /** What a dish contains, as a shape with words: the red "!", the grey "0" or the dashed amber "?" (sc-3901). */
@@ -303,7 +303,7 @@ export function DishFields({
                   aria-describedby={problems?.currency == null ? undefined : 'lib-currency-error'}
                   onChange={(event) => onPatch({ currency: event.target.value })}
                 >
-                  {currencyChoices(held, form.currency, i18n.language, t).map((choice) => (
+                  {currencyCodeChoices(held, form.currency, i18n.language, t).map((choice) => (
                     <option key={choice.value} value={choice.value}>
                       {choice.label}
                     </option>

@@ -4,6 +4,7 @@ import { RouterProvider, createMemoryRouter } from 'react-router';
 
 import { __setSessionState, type Session } from '../../../session.ts';
 import { membership } from '../../../test-memberships.ts';
+import { STYLES, cssRule } from '../../../test-styles.ts';
 import { routes } from '../../index.tsx';
 
 const IRE = membership({ id: 'org_1', name: 'Ìrè Events', currency: 'NGN' });
@@ -192,6 +193,18 @@ describe('the Menu library (sc-3901)', () => {
     expect(screen.queryByText('4,500.00')).toBeNull();
   });
 
+  it("starts where its demo does at a desk, the card's padding its only one", SLOW, async () => {
+    signedIn();
+    answering();
+    at('/app/menu-library');
+    const panel = await loaded();
+
+    expect(panel.closest('.shell-content .lib-page.desk-page')).not.toBeNull();
+    expect(
+      cssRule('.shell-content.is-card .desk-page', STYLES.slice(STYLES.indexOf('(width > 60rem)'))),
+    ).toContain('padding: 0;');
+  });
+
   it('finds a dish ignoring case and accents, and filters by diet', SLOW, async () => {
     signedIn();
     answering();
@@ -290,7 +303,10 @@ describe('the Menu library (sc-3901)', () => {
     type('Name', 'Ofada stew');
     fireEvent.click(screen.getByLabelText('Celery'));
     type('Amount', '12,50');
-    fireEvent.change(screen.getByLabelText('Currency'), { target: { value: 'GBP' } });
+    const currency = screen.getByLabelText<HTMLSelectElement>('Currency');
+    expect(currency.selectedOptions[0]?.textContent).toBe('NGN');
+    fireEvent.change(currency, { target: { value: 'GBP' } });
+    expect(currency.selectedOptions[0]?.textContent).toBe('GBP');
     fireEvent.click(screen.getByRole('button', { name: 'Save dish' }));
 
     expect(screen.getByText('Enter the last price as a number, like 12.50.')).toBeTruthy();

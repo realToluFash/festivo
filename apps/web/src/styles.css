@@ -402,6 +402,11 @@ span {
     height: auto;
   }
 
+  /* The card already pads the page, so a page that borrows Settings' padded .desk-page is padded once (sc-57523). */
+  .shell-content.is-card .desk-page {
+    padding: 0;
+  }
+
   /* Seating fills its card edge to edge, as its demo's desk-main does (sc-58064): the room is the card's, not a band inside it. */
   .shell-content.is-card:has(> .st) {
     display: flex;

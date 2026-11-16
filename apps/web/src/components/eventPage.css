@@ -463,10 +463,3 @@
   color: var(--colorInkSecondary);
   font: 500 13px/1.3 var(--fontFamily);
 }
-
-/* At a desk the card already pads the page (sc-57523), so Staff, Run and Schedule, which borrow Settings' padded page, start where the event's other pages do. */
-@media (width > 60rem) {
-  .shell-content.is-card .ev-page.desk-page {
-    padding: 0;
-  }
-}
