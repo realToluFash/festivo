@@ -1,4 +1,4 @@
-# sc-52829: on an invited guest with no reply, Mark as not invited shows the Unmarked Done line with the house done mark, as Reply recorded does.
+# sc-52829: on an invited guest with no reply, Mark as not invited shows the Unmarked Done line (guest.saved). The house done mark inside it has no testID, so the mark is read from the `unmarked` screenshot; a green run alone does not prove it.
 appId: host.exp.Exponent
 ---
 - openLink: ${METRO_URL}/--/events/${EVENT_ID}?area=guests
