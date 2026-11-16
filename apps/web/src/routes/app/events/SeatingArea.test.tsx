@@ -1736,7 +1736,9 @@ describe('The room to scale (sc-4007)', () => {
     });
 
     expect(
-      await screen.findByRole('group', { name: /^Floor plan, Main hall, 78 feet 9 inches by/u }),
+      await screen.findByRole('group', {
+        name: /^Floor plan, Main hall, 78\u00a0feet 9\u00a0inches by/u,
+      }),
     ).toBeDefined();
   });
 
