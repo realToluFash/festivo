@@ -464,8 +464,9 @@ export function variantAllergenLine(
   return `[${who} ${listOf(named)} recorded, and nobody has told them.]`;
 }
 
-const many = (n: number, picker: VariantPicker): VariantPicker[] =>
-  Array.from({ length: n }, () => picker);
+function many(n: number, picker: VariantPicker): VariantPicker[] {
+  return Array.from({ length: n }, () => picker);
+}
 
 export function variant(
   id: string,
@@ -479,33 +480,51 @@ export function variant(
   return { id, name, for: chosen, contains, diets, price, pickers, pricedIn: null };
 }
 
-const HALAL: readonly Diet[] = ['halal', 'no_pork', 'no_alcohol'];
-const eur = (minor: number): Price => ({ minor, currency: 'EUR' });
+function halal(): Diet[] {
+  return ['halal', 'no_pork', 'no_alcohol'];
+}
+function eur(minor: number): Price {
+  return { minor, currency: 'EUR' };
+}
 
 export function jollofVariants(): Variant[] {
   return [
-    variant('v-chicken', 'Chicken', 'everyone', ['celery'], HALAL, eur(1800), [
+    variant('v-chicken', 'Chicken', 'everyone', ['celery'], halal(), eur(1800), [
       ...many(3, ['sesame']),
       ['sesame', 'peanuts'],
       ['other'],
       ...many(26, []),
     ]),
-    variant('v-kids', 'Children’s portion', 'children', ['celery'], HALAL, eur(600), many(9, [])),
-    variant('v-plain', 'Children’s plain', 'children', 'none', [...HALAL, 'vegetarian']),
+    variant('v-kids', 'Children’s portion', 'children', ['celery'], halal(), eur(600), many(9, [])),
+    variant('v-plain', 'Children’s plain', 'children', 'none', [...halal(), 'vegetarian']),
   ];
 }
 
 export function twoWays(): Variant[] {
   return [
-    variant('v-fish', 'Fish', 'everyone', ['fish', 'celery'], ['pescatarian', ...HALAL], eur(1550)),
-    variant('v-chicken2', 'Chicken', 'everyone', ['celery'], HALAL, eur(1400)),
+    variant(
+      'v-fish',
+      'Fish',
+      'everyone',
+      ['fish', 'celery'],
+      ['pescatarian', ...halal()],
+      eur(1550),
+    ),
+    variant('v-chicken2', 'Chicken', 'everyone', ['celery'], halal(), eur(1400)),
   ];
 }
 
 export function beefWays(): Variant[] {
   return [
-    variant('v-beef', 'Beef', 'everyone', ['gluten', 'peanuts', 'sesame'], HALAL),
-    variant('v-chicken3', 'Chicken', 'everyone', ['gluten', 'peanuts', 'sesame'], HALAL, eur(1200)),
+    variant('v-beef', 'Beef', 'everyone', ['gluten', 'peanuts', 'sesame'], halal()),
+    variant(
+      'v-chicken3',
+      'Chicken',
+      'everyone',
+      ['gluten', 'peanuts', 'sesame'],
+      halal(),
+      eur(1200),
+    ),
   ];
 }
 
@@ -527,18 +546,27 @@ export function sixWays(): Variant[] {
   return [
     ...jollofVariants(),
     variant('v-fish6', 'Fish', 'everyone', ['fish', 'celery'], ['pescatarian'], eur(1550)),
-    variant('v-beef6', 'Beef', 'everyone', ['celery'], HALAL),
+    variant('v-beef6', 'Beef', 'everyone', ['celery'], halal()),
     variant('v-veg6', 'Vegetable', 'everyone', ['celery'], ['vegetarian', 'vegan'], eur(1200)),
   ];
 }
 
-const priced = (minor: number, currency: string): Price => ({ minor, currency });
+function priced(minor: number, currency: string): Price {
+  return { minor, currency };
+}
 
 export function libraryJollof(currency: string): Variant[] {
   return [
-    variant('lv-chicken', 'Chicken', 'everyone', ['celery'], HALAL, priced(1800, currency)),
-    variant('lv-kids', 'Children’s portion', 'children', ['celery'], HALAL, priced(600, currency)),
-    variant('lv-plain', 'Children’s plain', 'children', 'none', [...HALAL, 'vegetarian']),
+    variant('lv-chicken', 'Chicken', 'everyone', ['celery'], halal(), priced(1800, currency)),
+    variant(
+      'lv-kids',
+      'Children’s portion',
+      'children',
+      ['celery'],
+      halal(),
+      priced(600, currency),
+    ),
+    variant('lv-plain', 'Children’s plain', 'children', 'none', [...halal(), 'vegetarian']),
   ];
 }
 
@@ -549,22 +577,22 @@ export function libraryCoconut(): Variant[] {
       'Fish',
       'everyone',
       ['fish'],
-      ['pescatarian', ...HALAL],
+      ['pescatarian', ...halal()],
       priced(1200, 'GBP'),
     ),
-    variant('lv-chicken2', 'Chicken', 'everyone', 'none', HALAL, priced(1050, 'GBP')),
+    variant('lv-chicken2', 'Chicken', 'everyone', 'none', halal(), priced(1050, 'GBP')),
   ];
 }
 
 export function libraryMoiMoi(): Variant[] {
   return [
-    variant('lv-beef', 'Beef', 'everyone', ['crustaceans', 'eggs'], HALAL),
+    variant('lv-beef', 'Beef', 'everyone', ['crustaceans', 'eggs'], halal()),
     variant(
       'lv-plain2',
       'Plain',
       'everyone',
       ['eggs'],
-      ['vegetarian', ...HALAL],
+      ['vegetarian', ...halal()],
       priced(150000, 'NGN'),
     ),
   ];
