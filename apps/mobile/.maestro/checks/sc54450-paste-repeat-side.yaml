@@ -1,4 +1,4 @@
-# sc-54450: Paste a reply pressed many times on ${EVENT_ID}'s Guests; each press that opens Whose reply is this? is shot as hit-N, each that does not as miss-N. Presses 1-6 keep the clipboard, 7-10 set a new message first.
+# sc-54450: Paste a reply pressed ten times on ${EVENT_ID}'s Guests, in landscape, leaving by Whose reply's own back; each press that opens Whose reply is this? is shot as hit-N, each that does not as miss-N. Presses 7-10 call setClipboard first, but Maestro's setClipboard does not reach the simulator's own clipboard, so they read the same message as 1-6 and prove nothing about a fresh one. Pass EVENT_ID, an event with invited guests, and put a reply on the simulator's clipboard with xcrun simctl pbcopy before the run.
 appId: host.exp.Exponent
 ---
 - setOrientation: LANDSCAPE_LEFT
@@ -7,258 +7,58 @@ appId: host.exp.Exponent
     visible:
       id: 'guests.paste'
     timeout: 30000
-- tapOn:
-    id: 'guests.paste'
-- extendedWaitUntil:
-    visible:
-      id: 'paste.whose'
-    timeout: 5000
-    optional: true
 - runFlow:
-    when:
-      notVisible:
-        id: 'paste.whose'
-    commands:
-      - takeScreenshot: miss-1
+    file: ../checks/sc54450/press.yaml
+    env:
+      N: '1'
+      BACK: 'paste.whose.back'
 - runFlow:
-    when:
-      visible:
-        id: 'paste.whose'
-    commands:
-      - takeScreenshot: hit-1
-      - tapOn:
-          id: 'paste.whose.back'
-      - extendedWaitUntil:
-          visible:
-            id: 'guests.paste'
-          timeout: 10000
-- tapOn:
-    id: 'guests.paste'
-- extendedWaitUntil:
-    visible:
-      id: 'paste.whose'
-    timeout: 5000
-    optional: true
+    file: ../checks/sc54450/press.yaml
+    env:
+      N: '2'
+      BACK: 'paste.whose.back'
 - runFlow:
-    when:
-      notVisible:
-        id: 'paste.whose'
-    commands:
-      - takeScreenshot: miss-2
+    file: ../checks/sc54450/press.yaml
+    env:
+      N: '3'
+      BACK: 'paste.whose.back'
 - runFlow:
-    when:
-      visible:
-        id: 'paste.whose'
-    commands:
-      - takeScreenshot: hit-2
-      - tapOn:
-          id: 'paste.whose.back'
-      - extendedWaitUntil:
-          visible:
-            id: 'guests.paste'
-          timeout: 10000
-- tapOn:
-    id: 'guests.paste'
-- extendedWaitUntil:
-    visible:
-      id: 'paste.whose'
-    timeout: 5000
-    optional: true
+    file: ../checks/sc54450/press.yaml
+    env:
+      N: '4'
+      BACK: 'paste.whose.back'
 - runFlow:
-    when:
-      notVisible:
-        id: 'paste.whose'
-    commands:
-      - takeScreenshot: miss-3
+    file: ../checks/sc54450/press.yaml
+    env:
+      N: '5'
+      BACK: 'paste.whose.back'
 - runFlow:
-    when:
-      visible:
-        id: 'paste.whose'
-    commands:
-      - takeScreenshot: hit-3
-      - tapOn:
-          id: 'paste.whose.back'
-      - extendedWaitUntil:
-          visible:
-            id: 'guests.paste'
-          timeout: 10000
-- tapOn:
-    id: 'guests.paste'
-- extendedWaitUntil:
-    visible:
-      id: 'paste.whose'
-    timeout: 5000
-    optional: true
-- runFlow:
-    when:
-      notVisible:
-        id: 'paste.whose'
-    commands:
-      - takeScreenshot: miss-4
-- runFlow:
-    when:
-      visible:
-        id: 'paste.whose'
-    commands:
-      - takeScreenshot: hit-4
-      - tapOn:
-          id: 'paste.whose.back'
-      - extendedWaitUntil:
-          visible:
-            id: 'guests.paste'
-          timeout: 10000
-- tapOn:
-    id: 'guests.paste'
-- extendedWaitUntil:
-    visible:
-      id: 'paste.whose'
-    timeout: 5000
-    optional: true
-- runFlow:
-    when:
-      notVisible:
-        id: 'paste.whose'
-    commands:
-      - takeScreenshot: miss-5
-- runFlow:
-    when:
-      visible:
-        id: 'paste.whose'
-    commands:
-      - takeScreenshot: hit-5
-      - tapOn:
-          id: 'paste.whose.back'
-      - extendedWaitUntil:
-          visible:
-            id: 'guests.paste'
-          timeout: 10000
-- tapOn:
-    id: 'guests.paste'
-- extendedWaitUntil:
-    visible:
-      id: 'paste.whose'
-    timeout: 5000
-    optional: true
-- runFlow:
-    when:
-      notVisible:
-        id: 'paste.whose'
-    commands:
-      - takeScreenshot: miss-6
-- runFlow:
-    when:
-      visible:
-        id: 'paste.whose'
-    commands:
-      - takeScreenshot: hit-6
-      - tapOn:
-          id: 'paste.whose.back'
-      - extendedWaitUntil:
-          visible:
-            id: 'guests.paste'
-          timeout: 10000
+    file: ../checks/sc54450/press.yaml
+    env:
+      N: '6'
+      BACK: 'paste.whose.back'
 - setClipboard: 'Yes we are coming, Tolu 7'
-- tapOn:
-    id: 'guests.paste'
-- extendedWaitUntil:
-    visible:
-      id: 'paste.whose'
-    timeout: 5000
-    optional: true
 - runFlow:
-    when:
-      notVisible:
-        id: 'paste.whose'
-    commands:
-      - takeScreenshot: miss-7
-- runFlow:
-    when:
-      visible:
-        id: 'paste.whose'
-    commands:
-      - takeScreenshot: hit-7
-      - tapOn:
-          id: 'paste.whose.back'
-      - extendedWaitUntil:
-          visible:
-            id: 'guests.paste'
-          timeout: 10000
+    file: ../checks/sc54450/press.yaml
+    env:
+      N: '7'
+      BACK: 'paste.whose.back'
 - setClipboard: 'Yes we are coming, Tolu 8'
-- tapOn:
-    id: 'guests.paste'
-- extendedWaitUntil:
-    visible:
-      id: 'paste.whose'
-    timeout: 5000
-    optional: true
 - runFlow:
-    when:
-      notVisible:
-        id: 'paste.whose'
-    commands:
-      - takeScreenshot: miss-8
-- runFlow:
-    when:
-      visible:
-        id: 'paste.whose'
-    commands:
-      - takeScreenshot: hit-8
-      - tapOn:
-          id: 'paste.whose.back'
-      - extendedWaitUntil:
-          visible:
-            id: 'guests.paste'
-          timeout: 10000
+    file: ../checks/sc54450/press.yaml
+    env:
+      N: '8'
+      BACK: 'paste.whose.back'
 - setClipboard: 'Yes we are coming, Tolu 9'
-- tapOn:
-    id: 'guests.paste'
-- extendedWaitUntil:
-    visible:
-      id: 'paste.whose'
-    timeout: 5000
-    optional: true
 - runFlow:
-    when:
-      notVisible:
-        id: 'paste.whose'
-    commands:
-      - takeScreenshot: miss-9
-- runFlow:
-    when:
-      visible:
-        id: 'paste.whose'
-    commands:
-      - takeScreenshot: hit-9
-      - tapOn:
-          id: 'paste.whose.back'
-      - extendedWaitUntil:
-          visible:
-            id: 'guests.paste'
-          timeout: 10000
+    file: ../checks/sc54450/press.yaml
+    env:
+      N: '9'
+      BACK: 'paste.whose.back'
 - setClipboard: 'Yes we are coming, Tolu 10'
-- tapOn:
-    id: 'guests.paste'
-- extendedWaitUntil:
-    visible:
-      id: 'paste.whose'
-    timeout: 5000
-    optional: true
 - runFlow:
-    when:
-      notVisible:
-        id: 'paste.whose'
-    commands:
-      - takeScreenshot: miss-10
-- runFlow:
-    when:
-      visible:
-        id: 'paste.whose'
-    commands:
-      - takeScreenshot: hit-10
-      - tapOn:
-          id: 'paste.whose.back'
-      - extendedWaitUntil:
-          visible:
-            id: 'guests.paste'
-          timeout: 10000
+    file: ../checks/sc54450/press.yaml
+    env:
+      N: '10'
+      BACK: 'paste.whose.back'
 - setOrientation: PORTRAIT
