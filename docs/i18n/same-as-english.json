@@ -30,7 +30,8 @@
     "web:schedule.minutes_one",
     "web:schedule.minutes_other",
     "mobile:runView.minutes_one",
-    "mobile:runView.minutes_other"
+    "mobile:runView.minutes_other",
+    "web:seating.keyShiftUs"
   ],
   "fr": [
     "web:nav.menu",
@@ -168,6 +169,8 @@
     "mobile:runView.minutes_other",
     "web:schedule.items_one",
     "web:schedule.item",
-    "mobile:runView.item"
+    "mobile:runView.item",
+    "web:seating.keyShiftUs",
+    "web:seating.keyMove"
   ]
 }
