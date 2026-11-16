@@ -154,7 +154,7 @@ describe('The day on the guest’s page (sc-3899)', () => {
     ).toEqual(['17:20Ceremony', 'Fri 00:30Last dance · Ballroom', '11:00Brunch · Ballroom']);
   });
 
-  it('puts every day’s list in one time column, so a past-midnight time moves no other day’s titles', async () => {
+  it('puts every day’s list in one grid', async () => {
     openWith([CEREMONY, AFTER_MIDNIGHT, BRUNCH]);
 
     const section = await screen.findByRole('region', { name: 'Programme' });
