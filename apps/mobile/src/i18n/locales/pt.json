@@ -1713,7 +1713,7 @@
     "cancel": "Cancelar",
     "currencyInUse": "A moeda não pode ser alterada depois de haver montantes registados neste evento.",
     "currencyRetired": "Já não é usada",
-    "noCurrency": "No currency matches “{{typed}}”.",
+    "noCurrency": "Nenhuma moeda corresponde a «{{typed}}».",
     "notSaved": "Não foi guardado. As suas alterações continuam aqui. Tente novamente.",
     "forbidden": "Nada foi alterado. A sua função não inclui a permissão necessária.",
     "changedElsewhere": "Não foi guardado. Outra pessoa alterou este evento desde que o abriu. O que escreveu continua aqui.",
