@@ -3191,7 +3191,7 @@ describe('Choosing many and the Selection tools (sc-4717)', () => {
     fireEvent.change(panel().getByLabelText('Start at'), { target: { value: '2' } });
     fireEvent.click(panel().getByRole('button', { name: 'Apply' }));
     expect(
-      panel().getByText('Table 3 is already taken by a table you didn’t choose.'),
+      panel().getByText('Table 3 is already taken by a table you did not choose.'),
     ).toBeDefined();
     expect(posted(sent, 'names')).toEqual([]);
 

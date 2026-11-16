@@ -84,7 +84,7 @@ final class SeatingSelectionStepsTest extends ApiTestCase
         ]);
 
         self::assertSame(422, $this->statusCode());
-        self::assertSame('Table 3 is already taken by a table you didn’t choose.', $this->violation('items[1].name'));
+        self::assertSame('Table 3 is already taken by a table you did not choose.', $this->violation('items[1].name'));
         self::assertSame(['Table 1', 'Table 2', 'Table 3'], $this->names());
     }
 

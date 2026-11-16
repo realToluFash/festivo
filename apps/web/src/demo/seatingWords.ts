@@ -384,7 +384,7 @@ export const SW = {
   renumberOrder: 'Tables are named in reading order: top to bottom, then left to right.',
   renumberKeeps: 'Rows and single seats in the choice keep their names.',
   renumberTables: 'Choose a table to renumber. Rows and single seats keep their names.',
-  renumberClash: '{{name}} is already taken by a table you didn’t choose.',
+  renumberClash: '{{name}} is already taken by a table you did not choose.',
   renumbered_one: '1 table renamed {{from}}. Guests kept their seats.',
   renumbered_other:
     '{{count}} tables renumbered from {{from}} to {{to}}, top to bottom, left to right. Guests kept their seats.',
