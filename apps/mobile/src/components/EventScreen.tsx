@@ -146,6 +146,10 @@ export function EventScreen({
     words: string;
     action?: ToastAction | null | undefined;
   } | null>(null);
+  const withdrawToastAction = useCallback(
+    () => setToast((was) => (was == null ? null : { ...was, action: null })),
+    [],
+  );
   const [duplicating, setDuplicating] = useState<{
     opener: RefObject<ScreenReaderTarget | null>;
     count: number;
@@ -411,6 +415,7 @@ export function EventScreen({
           onEventStale={reload}
           addRef={guestsAdd}
           tell={(words, action) => setToast({ eventId, area, words, action })}
+          withdrawAction={withdrawToastAction}
           onTop={setGuestsTop}
           heading={
             <View style={styles.titleRow}>

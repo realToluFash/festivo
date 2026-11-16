@@ -150,6 +150,7 @@ export function EventGuests({
   onEventChange,
   onEventStale,
   tell,
+  withdrawAction,
 }: {
   event: OrganisationEvent;
   /** The choice it opens on: a figure elsewhere opens the guests it counts (sc-3786). */
@@ -170,6 +171,8 @@ export function EventGuests({
   onEventStale: () => void;
   /** The event's toast: Link copied, with Mark as invited for a guest not yet invited (sc-55558). */
   tell: (words: string, action?: ToastAction | null) => void;
+  /** Takes the toast's step away and leaves its words, once the guest it was for is no longer open. */
+  withdrawAction: () => void;
 }) {
   const { t, i18n } = useTranslation();
   const { account } = useSignedIn();
@@ -202,6 +205,8 @@ export function EventGuests({
   const [asking, setAsking] = useState(false);
   const [replacing, setReplacing] = useState(false);
   const copying = useRef(false);
+  const openNow = useRef(open);
+  const offeredFor = useRef<string | null>(null);
   const copyButton = useRef<ViewInstance>(null);
   const replaceButton = useRef<ViewInstance>(null);
   const noticeReplace = useRef<ViewInstance>(null);
@@ -317,11 +322,19 @@ export function EventGuests({
     [eventId],
   );
 
-  const forgetLink = () => {
+  useEffect(() => {
+    openNow.current = open;
+    if (offeredFor.current != null && offeredFor.current !== open) {
+      offeredFor.current = null;
+      withdrawAction();
+    }
+  }, [open, withdrawAction]);
+
+  const forgetLink = useCallback(() => {
     setCopyFailed(false);
     setNotReplaced(false);
     setAsking(false);
-  };
+  }, []);
   const openGuest = (guestId: string) => {
     setPasted(null);
     setSaved(false);
@@ -335,11 +348,9 @@ export function EventGuests({
     setOpen(null);
     setSaved(false);
     setNotice(null);
-    setCopyFailed(false);
-    setNotReplaced(false);
-    setAsking(false);
+    forgetLink();
     setReopening({ busy: false, failed: false });
-  }, []);
+  }, [forgetLink]);
   const openWhose = (quote: string) => {
     setOpen(null);
     setDone(null);
@@ -435,6 +446,7 @@ export function EventGuests({
       );
   };
   // Each press reads the guest's current link, so a replace made elsewhere is what goes on the clipboard (sc-55558).
+  // An answer that lands once another guest is open is dropped, so it never speaks for that guest.
   const copy = (guest: Details) => {
     if (copying.current) return;
     copying.current = true;
@@ -449,19 +461,25 @@ export function EventGuests({
         copying.current = false;
       })
       .then(
-        () =>
+        () => {
+          if (openNow.current !== guest.id) return;
+          const offers = manages && invites && shownReply(guest) === 'notYetInvited';
+          offeredFor.current = offers ? guest.id : null;
           tell(
             t('guestList.linkCopied'),
-            manages && invites && shownReply(guest) === 'notYetInvited'
+            offers
               ? {
                   label: t('guestList.markAsInvited'),
-                  onPress: () => startMark(copyButton.current),
+                  onPress: () => {
+                    if (openNow.current === guest.id) startMark(copyButton.current);
+                  },
                 }
               : null,
-          ),
+          );
+        },
         (error: unknown) => {
-          setCopyFailed(true);
           if (error instanceof ApiError && error.is('event_state_invalid')) onEventStale();
+          if (openNow.current === guest.id) setCopyFailed(true);
         },
       );
   };
