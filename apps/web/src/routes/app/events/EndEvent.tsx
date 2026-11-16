@@ -52,6 +52,9 @@ export function EndButton({
         : null,
   });
   const callOff = asking?.kind === 'confirm' && asking.label === 'callOff';
+  const asksLater = useRef<number | undefined>(undefined);
+
+  useEffect(() => () => window.clearTimeout(asksLater.current), []);
 
   useEffect(() => {
     if (askRef == null) return;
@@ -60,7 +63,7 @@ export function EndButton({
         ? null
         : () => {
             // After the closing dialog has handed focus back, so this one returns it to Call off… or End now….
-            window.setTimeout(() => {
+            asksLater.current = window.setTimeout(() => {
               opener.current?.focus();
               ask({ label });
             }, 0);
