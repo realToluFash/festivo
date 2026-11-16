@@ -18,6 +18,8 @@ import {
   type Handle,
   type Placing,
   type SaveState,
+  LONG_HANDLES,
+  ROUND_HANDLES,
   floorItems,
   footprintOf,
   itemName,
@@ -124,15 +126,14 @@ export function SaveLine({ state, onTryAgain }: { state: SaveState; onTryAgain: 
       {state === 'saving' && <span className="st-turning" aria-hidden="true" />}
       {state === 'retrying' && <Glyph name="alert" size={16} weight={2.2} />}
       {state === 'notSaved' && <Glyph name="alert" size={16} weight={2.2} />}
-      {state !== 'idle' &&
-        t(
-          {
-            saved: 'seating.saved',
-            saving: 'seating.saving',
-            retrying: 'seating.retrying',
-            notSaved: 'seating.notSaved',
-          }[state],
-        )}
+      {t(
+        {
+          saved: 'seating.saved',
+          saving: 'seating.saving',
+          retrying: 'seating.retrying',
+          notSaved: 'seating.notSaved',
+        }[state],
+      )}
       {state === 'notSaved' && (
         <button type="button" className="desk-text" onClick={onTryAgain}>
           {t('seating.tryAgain')}
@@ -219,23 +220,6 @@ export function PlacingBars({
     </>
   );
 }
-
-const ROUND_HANDLES: readonly [Handle, number, number][] = [
-  ['nw', -1, -1],
-  ['ne', 1, -1],
-  ['se', 1, 1],
-  ['sw', -1, 1],
-];
-const LONG_HANDLES: readonly [Handle, number, number][] = [
-  ['nw', -1, -1],
-  ['n', 0, -1],
-  ['ne', 1, -1],
-  ['e', 1, 0],
-  ['se', 1, 1],
-  ['s', 0, 1],
-  ['sw', -1, 1],
-  ['w', -1, 0],
-];
 
 /** A chosen table's handles: drawn 24 at a desk, each a 44 target; four on a round or cocktail table, eight on a long one. */
 export function TableHandles({

@@ -30,15 +30,19 @@ import '../components/SettingsParts.css';
 import '../components/eventPage.css';
 import './events.css';
 import './kitchen.css';
+import './phone.css';
 
 /** The desk Events sits in: a sidebar, the main card, the layers dialogs open on, and a toast. */
 export function EventsShell({
   renderSide,
   told: first = null,
+  fit = false,
   children,
 }: {
   renderSide: (tell: Tell, covered: boolean) => ReactNode;
   told?: string | Told | null;
+  /** Fits a phone's window at 40rem and under (sc-57468): Events and Calendar. */
+  fit?: boolean;
   children: (tell: Tell, show: (told: Told) => void) => ReactNode;
 }) {
   const [told, setTold] = useState<Told | null>(() =>
@@ -58,7 +62,7 @@ export function EventsShell({
 
   return (
     <LayersContext value={layers}>
-      <div className="today desk ev">
+      <div className={fit ? 'today desk ev dp-fit' : 'today desk ev'}>
         <DeskSearch tell={tell}>
           {renderSide(tell, covered)}
           <main id="content" className="desk-main" inert={covered}>

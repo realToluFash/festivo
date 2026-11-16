@@ -335,6 +335,7 @@ function Seating({
   const [ui, setUi] = useState<Ui>(first);
   const [setCanvas, size] = useSize();
   const [crowded, setCrowded] = useState(false);
+  const [rowMet, setRowMet] = useState(false);
   const canvas = useRef<HTMLDivElement | null>(null);
   const press = useRef<Press | null>(null);
   const held = useRef<string | null>(null);
@@ -1635,6 +1636,7 @@ function Seating({
       ? { ...newItem(ui.placing.kind, items, placingAt), id: 'placing' }
       : null;
   const zoomUp = !ui.readOnly && (ui.zoomStep || crowded);
+  const rowDown = ui.rowStep || rowMet;
   const keysShown =
     keyboard &&
     focusId != null &&
@@ -1644,6 +1646,18 @@ function Seating({
     ui.view === 'plan';
   const outlines = gridOutlines(ui);
   const showSave = room != null || ui.panel?.kind !== 'start';
+
+  useLayoutEffect(() => {
+    const views = canvas.current?.querySelector<HTMLElement>('.st-views');
+    const right = canvas.current?.querySelector<HTMLElement>('.st-top-right');
+
+    setRowMet(
+      views != null &&
+        right != null &&
+        views.getBoundingClientRect().width + right.getBoundingClientRect().width + FLOAT_MARGINS >
+          size.w,
+    );
+  }, [size.w, ui.load, ui.view, ui.save, room, showSave]);
 
   const crumb = (
     <header className="st-top">
@@ -1721,7 +1735,10 @@ function Seating({
   else
     main = (
       <div className="st-main">
-        <div className={`st-canvas is-${ui.view}${zoomUp ? ' is-zoom-up' : ''}`} ref={placeCanvas}>
+        <div
+          className={`st-canvas is-${ui.view}${zoomUp ? ' is-zoom-up' : ''}${rowDown ? ' is-row-down' : ''}`}
+          ref={placeCanvas}
+        >
           <ViewSwitch />
           {showSave && (
             <div className="st-float st-top-right">
@@ -2081,54 +2098,56 @@ function MessageBar({
       aria-live="polite"
     >
       <Icon name={glyph} size={17} weight={2.2} />
-      <p>{bar.words}</p>
-      {bar.does === 'placing' && (
-        <span className="st-bar-acts">
-          <button type="button" className="desk-text" onClick={onPlace}>
-            {SW.placeCentre}
-          </button>
-          <button type="button" className="desk-text" onClick={onStop}>
-            {SW.stopPlacing}
-          </button>
-        </span>
-      )}
-      {bar.does === 'pick' && (
-        <span className="st-bar-acts">
-          <button type="button" className="desk-text" onClick={() => pick(null)}>
-            {SW.cancel}
-          </button>
-        </span>
-      )}
-      {bar.does === 'undo' && (
-        <span className="st-bar-acts">
-          <button
-            type="button"
-            className="desk-text"
-            onClick={() => {
-              const undoing = ui.undo != null;
+      <div className="st-bar-body">
+        <p>{bar.words}</p>
+        {bar.does === 'placing' && (
+          <span className="st-bar-acts">
+            <button type="button" className="desk-text" onClick={onPlace}>
+              {SW.placeCentre}
+            </button>
+            <button type="button" className="desk-text" onClick={onStop}>
+              {SW.stopPlacing}
+            </button>
+          </span>
+        )}
+        {bar.does === 'pick' && (
+          <span className="st-bar-acts">
+            <button type="button" className="desk-text" onClick={() => pick(null)}>
+              {SW.cancel}
+            </button>
+          </span>
+        )}
+        {bar.does === 'undo' && (
+          <span className="st-bar-acts">
+            <button
+              type="button"
+              className="desk-text"
+              onClick={() => {
+                const undoing = ui.undo != null;
 
-              set((now) =>
-                now.undo == null
-                  ? { ...now, bar: null }
-                  : {
-                      ...now,
-                      plan: now.undo.plan,
-                      tray: now.undo.tray,
-                      undo: null,
-                      bar: null,
-                      hover: null,
-                      save: 'saving',
-                      spoken: '',
-                    },
-              );
-              if (undoing)
-                window.setTimeout(() => set((now) => ({ ...now, spoken: SW.undone })), 60);
-            }}
-          >
-            {SW.undo}
-          </button>
-        </span>
-      )}
+                set((now) =>
+                  now.undo == null
+                    ? { ...now, bar: null }
+                    : {
+                        ...now,
+                        plan: now.undo.plan,
+                        tray: now.undo.tray,
+                        undo: null,
+                        bar: null,
+                        hover: null,
+                        save: 'saving',
+                        spoken: '',
+                      },
+                );
+                if (undoing)
+                  window.setTimeout(() => set((now) => ({ ...now, spoken: SW.undone })), 60);
+              }}
+            >
+              {SW.undo}
+            </button>
+          </span>
+        )}
+      </div>
     </div>
   );
 }

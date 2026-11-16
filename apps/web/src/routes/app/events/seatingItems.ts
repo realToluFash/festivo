@@ -26,11 +26,51 @@ export type FloorItem =
 /** What one step changes of an item: where it stands, a table's or row's turn and a table's size, and the item's version when the step began. */
 export type Placement = SeatingArrangement;
 
-export type SaveState = 'idle' | 'saving' | 'saved' | 'retrying' | 'notSaved';
+export type SaveState = 'saved' | 'saving' | 'retrying' | 'notSaved';
 
 export type Placing = { kind: 'table'; shape: TableShape } | { kind: 'row' } | { kind: 'seat' };
 
 export type Handle = 'nw' | 'n' | 'ne' | 'e' | 'se' | 's' | 'sw' | 'w';
+
+export const ROUND_HANDLES: readonly [Handle, number, number][] = [
+  ['nw', -1, -1],
+  ['ne', 1, -1],
+  ['se', 1, 1],
+  ['sw', -1, 1],
+];
+export const LONG_HANDLES: readonly [Handle, number, number][] = [
+  ['nw', -1, -1],
+  ['n', 0, -1],
+  ['ne', 1, -1],
+  ['e', 1, 0],
+  ['se', 1, 1],
+  ['s', 0, 1],
+  ['sw', -1, 1],
+  ['w', -1, 0],
+];
+
+/** Where targets overlap on a short table, the press goes to the nearest handle, or moves the table (null) when its centre is nearer still. */
+export function pressedHandle(
+  table: SeatingTable,
+  pressed: Handle,
+  [x, y]: [number, number],
+): Handle | null {
+  const round = isRoundShape(table.shape);
+  const hw = table.widthCm / 2;
+  const hl = (round ? table.widthCm : table.lengthCm) / 2;
+  let nearest: Handle | null = null;
+  let distance = Math.hypot(x, y);
+
+  for (const [name, sx, sy] of round ? ROUND_HANDLES : LONG_HANDLES) {
+    const from = Math.hypot(x - sx * hw, y - sy * hl);
+
+    if (from < distance || (from === distance && name === pressed)) {
+      nearest = name;
+      distance = from;
+    }
+  }
+  return nearest;
+}
 
 export function floorItems(plan: SeatingPlan): FloorItem[] {
   return [

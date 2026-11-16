@@ -1,0 +1,63 @@
+# sc-54450: Paste a reply pressed ten times on ${EVENT_ID}'s Guests, in portrait, leaving by the frame's back; each press that opens Whose reply is this? is shot as hit-N, each that does not as miss-N. Presses 7-10 call setClipboard first, but Maestro's setClipboard does not reach the simulator's own clipboard, so they read the same message as 1-6 and prove nothing about a fresh one. Pass EVENT_ID, an event with invited guests, and put a reply on the simulator's clipboard with xcrun simctl pbcopy before the run.
+appId: host.exp.Exponent
+---
+- setOrientation: PORTRAIT
+- openLink: ${METRO_URL}/--/events/${EVENT_ID}?area=guests
+- extendedWaitUntil:
+    visible:
+      id: 'guests.paste'
+    timeout: 30000
+- runFlow:
+    file: ../checks/sc54450/press.yaml
+    env:
+      N: '1'
+      BACK: 'frame.back'
+- runFlow:
+    file: ../checks/sc54450/press.yaml
+    env:
+      N: '2'
+      BACK: 'frame.back'
+- runFlow:
+    file: ../checks/sc54450/press.yaml
+    env:
+      N: '3'
+      BACK: 'frame.back'
+- runFlow:
+    file: ../checks/sc54450/press.yaml
+    env:
+      N: '4'
+      BACK: 'frame.back'
+- runFlow:
+    file: ../checks/sc54450/press.yaml
+    env:
+      N: '5'
+      BACK: 'frame.back'
+- runFlow:
+    file: ../checks/sc54450/press.yaml
+    env:
+      N: '6'
+      BACK: 'frame.back'
+- setClipboard: 'Yes we are coming, Tolu 7'
+- runFlow:
+    file: ../checks/sc54450/press.yaml
+    env:
+      N: '7'
+      BACK: 'frame.back'
+- setClipboard: 'Yes we are coming, Tolu 8'
+- runFlow:
+    file: ../checks/sc54450/press.yaml
+    env:
+      N: '8'
+      BACK: 'frame.back'
+- setClipboard: 'Yes we are coming, Tolu 9'
+- runFlow:
+    file: ../checks/sc54450/press.yaml
+    env:
+      N: '9'
+      BACK: 'frame.back'
+- setClipboard: 'Yes we are coming, Tolu 10'
+- runFlow:
+    file: ../checks/sc54450/press.yaml
+    env:
+      N: '10'
+      BACK: 'frame.back'

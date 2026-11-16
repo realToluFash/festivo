@@ -48,6 +48,7 @@ import { AccessPaused, Switched } from './OrgSwitcher.tsx';
 import { SIDEBAR_EVENTS } from './settings.ts';
 import { usePaused, useSwitcherStart, useWhere } from './switcher.ts';
 import { TodaySidebar } from './TodaySidebar.tsx';
+import { isLong, nameSample } from './longName.ts';
 
 const FRAME: CalendarFrame = {
   now: CLOCKS.rest,
@@ -72,11 +73,15 @@ function CalendarAt({ raw }: { raw: string | null }) {
 
     return calendarStart(calendarStateOf(raw), readKept());
   });
+  const [params] = useSearchParams();
+  nameSample(isLong(params));
 
   return (
     <EventsShell
+      fit
       renderSide={(tell, covered) => (
         <TodaySidebar
+          phone
           events={
             start.none ? [] : SIDEBAR_EVENTS.filter((key) => sampleEvent(TODAY_IDS[key]) != null)
           }

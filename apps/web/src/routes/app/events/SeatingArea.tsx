@@ -40,6 +40,7 @@ import {
   type ReactNode,
   useCallback,
   useEffect,
+  useEffectEvent,
   useId,
   useRef,
   useState,
@@ -102,6 +103,7 @@ import {
   itemName,
   overlappingIds,
   placementOf,
+  pressedHandle,
   withPlacements,
 } from './seatingItems.ts';
 import { fitOf, intoView, useCamera } from './seatingCamera.ts';
@@ -428,7 +430,7 @@ function Plan({
   const panned = useRef(false);
   const [several, setSeveral] = useState<string[]>([]);
   const [placements, setPlacements] = useState<Record<string, Placement>>({});
-  const [save, setSave] = useState<SaveState>('idle');
+  const [save, setSave] = useState<SaveState>('saved');
   const [snap, setSnap] = useState(true);
   const [placing, setPlacing] = useState<Placing | null>(null);
   const [another, setAnother] = useState(true);
@@ -478,14 +480,7 @@ function Plan({
     shownPanel?.kind === 'seat'
       ? shownPanel.id
       : null;
-  const chosenAttribute =
-    shownPanel?.kind === 'table' || shownPanel?.kind === 'chair'
-      ? 'data-table'
-      : shownPanel?.kind === 'row'
-        ? 'data-row'
-        : shownPanel?.kind === 'seat'
-          ? 'data-seat'
-          : null;
+  const chosenAttribute = shownPanel == null ? null : itemAttribute(shownPanel.kind);
 
   const single =
     chosenItem != null && shownPanel?.kind !== 'chair' && several.length < 2 ? [chosenItem] : [];
@@ -494,7 +489,7 @@ function Plan({
     from == null ? null : (floorItems(from).find((item) => item.one.id === id) ?? null);
   const chosenItems = several.length > 1 ? several.flatMap((id) => itemOf(id) ?? []) : [];
 
-  const open = (next: Panel | null) => {
+  const open = (next: Panel | null, onItem = false) => {
     if (next == null) {
       const back = opener.current;
       const item = chosenAttribute == null ? null : `[${chosenAttribute}="${chosenItem}"]`;
@@ -515,7 +510,13 @@ function Plan({
 
       if (panel == null && (active instanceof HTMLElement || active instanceof SVGElement))
         opener.current = nameOf(active);
-      focusWhenFree(() => document.querySelector('.st-panel [data-focus="title"]'));
+      const id = onItem && 'id' in next ? next.id : null;
+      const attribute = id == null ? null : itemAttribute(next.kind);
+      const item = attribute == null ? null : `.st-room [${attribute}="${id}"]`;
+
+      focusWhenFree(() =>
+        document.querySelector<HTMLElement | SVGElement>(item ?? '.st-panel [data-focus="title"]'),
+      );
     }
     setPanel(next);
     setSeveral([]);
@@ -649,50 +650,47 @@ function Plan({
     };
   }, [panBy]);
 
+  const onKey = useEffectEvent((event: KeyboardEvent) => {
+    if (covered) return;
+    if (event.key === ' ' && plan != null && !typing(event.target) && !event.defaultPrevented) {
+      spaceHeld.current = true;
+      if (!control(event.target)) event.preventDefault();
+    }
+    if (
+      (event.key === 'a' || event.key === 'A') &&
+      (event.metaKey || event.ctrlKey) &&
+      !typing(event.target) &&
+      plan != null &&
+      !readOnly &&
+      placing == null &&
+      asking == null
+    ) {
+      event.preventDefault();
+      pick(floorItems(plan).map((item) => item.one.id));
+      return;
+    }
+    if (event.key !== 'Escape') return;
+    if (placing != null) {
+      event.preventDefault();
+      setPlacing(null);
+    } else if (kindMenu) {
+      event.preventDefault();
+      setKindMenu(false);
+    } else if (event.defaultPrevented || asking != null) return;
+    else if (adding) {
+      event.preventDefault();
+      setAdding(false);
+    } else if (several.length > 1) {
+      event.preventDefault();
+      setSeveral([]);
+    } else if (chosenAttribute != null) {
+      event.preventDefault();
+      open(null);
+    }
+  });
+
   useEffect(() => {
-    const typing = (target: EventTarget | null) =>
-      target instanceof HTMLElement && target.closest('input, textarea, select') != null;
-    const control = (target: EventTarget | null) =>
-      target instanceof Element &&
-      target.closest('button, a[href], [role="menuitem"], [role="option"], summary') != null;
-    const keys = (event: KeyboardEvent) => {
-      if (covered) return;
-      if (event.key === ' ' && plan != null && !typing(event.target) && !event.defaultPrevented) {
-        spaceHeld.current = true;
-        if (!control(event.target)) event.preventDefault();
-      }
-      if (
-        (event.key === 'a' || event.key === 'A') &&
-        (event.metaKey || event.ctrlKey) &&
-        !typing(event.target) &&
-        plan != null &&
-        !readOnly &&
-        placing == null &&
-        asking == null
-      ) {
-        event.preventDefault();
-        pick(floorItems(plan).map((item) => item.one.id));
-        return;
-      }
-      if (event.key !== 'Escape') return;
-      if (placing != null) {
-        event.preventDefault();
-        setPlacing(null);
-      } else if (kindMenu) {
-        event.preventDefault();
-        setKindMenu(false);
-      } else if (event.defaultPrevented || asking != null) return;
-      else if (adding) {
-        event.preventDefault();
-        setAdding(false);
-      } else if (several.length > 1) {
-        event.preventDefault();
-        setSeveral([]);
-      } else if (chosenAttribute != null) {
-        event.preventDefault();
-        open(null);
-      }
-    };
+    const keys = (event: KeyboardEvent) => onKey(event);
     const lift = (event: KeyboardEvent) => {
       if (event.key !== ' ') return;
       if (spacePanned.current || (spaceHeld.current && !control(event.target)))
@@ -707,7 +705,7 @@ function Plan({
       window.removeEventListener('keydown', keys);
       window.removeEventListener('keyup', lift);
     };
-  });
+  }, []);
 
   const attempt = <A,>(
     change: () => Promise<A>,
@@ -835,7 +833,7 @@ function Plan({
       } catch (error) {
         if (error instanceof ApiError && error.status === 412 && tool) {
           settle(items);
-          setSave('idle');
+          setSave('saved');
           staleStep(error);
           return;
         }
@@ -845,7 +843,7 @@ function Plan({
           const name = error.problem.changedBy;
 
           settle(items);
-          setSave('idle');
+          setSave('saved');
           setNotice(
             name == null || item == null
               ? t('seating.notSaved')
@@ -859,7 +857,7 @@ function Plan({
           const said = Object.values(error.fieldErrors())[0] ?? t('seating.notSaved');
 
           settle(items);
-          setSave('idle');
+          setSave('saved');
           if (tool) refuseStep(said);
           else setNotice(said);
           return;
@@ -895,7 +893,7 @@ function Plan({
       : [...chosenIds, id];
     const only = next.length === 1 ? itemOf(next[0]!) : null;
 
-    if (only != null) open({ kind: only.kind, id: only.one.id });
+    if (only != null) open({ kind: only.kind, id: only.one.id }, true);
     else if (next.length === 0) open(null);
     else {
       setPanel(null);
@@ -950,7 +948,7 @@ function Plan({
         setSave('saved');
         done(answer);
       } catch (error) {
-        setSave('idle');
+        setSave('saved');
         if (error instanceof ApiError && error.status === 412) staleStep(error);
         else
           refuseStep(
@@ -1130,14 +1128,17 @@ function Plan({
 
     void place(copying).then((copy) => {
       if (copy == null) return;
-      open({
-        kind: item.kind,
-        id: copy.id,
-        said: t('seating.duplicated', {
-          name: item.kind === 'row' ? t('seating.rowName', { label: copy.name }) : copy.name,
-          of: itemName(t, item),
-        }),
-      });
+      open(
+        {
+          kind: item.kind,
+          id: copy.id,
+          said: t('seating.duplicated', {
+            name: item.kind === 'row' ? t('seating.rowName', { label: copy.name }) : copy.name,
+            of: itemName(t, item),
+          }),
+        },
+        true,
+      );
     });
   };
 
@@ -1218,8 +1219,9 @@ function Plan({
     }
   };
 
-  const onItemDown = (event: ReactPointerEvent<SVGGElement>, item: FloorItem) => {
+  const onItemDown = (event: ReactPointerEvent<Element>, item: FloorItem) => {
     if (readOnly || placing != null || event.button !== 0) return;
+    dragged.current = false;
     const id = item.one.id;
     const ids = chosenIds.includes(id) && !event.shiftKey && !adding ? chosenIds : [id];
 
@@ -1234,9 +1236,24 @@ function Plan({
     };
   };
 
-  const onHandleDown = (event: ReactPointerEvent<SVGRectElement>, table: Table, handle: Handle) => {
+  const onHandleDown = (
+    event: ReactPointerEvent<SVGRectElement>,
+    table: Table,
+    pressed: Handle,
+  ) => {
     if (event.button !== 0) return;
-    drag.current = { kind: 'resize', table, handle, pointer: event.pointerId, last: null };
+    const at = toCm(event.clientX, event.clientY);
+    const handle =
+      at == null
+        ? pressed
+        : pressedHandle(
+            table,
+            pressed,
+            turned([at[0] - table.xCm, at[1] - table.yCm], -table.rotation),
+          );
+
+    if (handle == null) onItemDown(event, { kind: 'table', one: table });
+    else drag.current = { kind: 'resize', table, handle, pointer: event.pointerId, last: null };
   };
 
   const toCm = (clientX: number, clientY: number): [number, number] | null => {
@@ -1330,7 +1347,7 @@ function Plan({
       const lead = now.origins.find((one) => one.one.id === now.lead);
 
       if (lead != null && now.origins.length === 1 && !chosenIds.includes(now.lead))
-        open({ kind: lead.kind, id: lead.one.id });
+        open({ kind: lead.kind, id: lead.one.id }, true);
     };
 
     window.addEventListener('pointermove', move);
@@ -1594,7 +1611,7 @@ function Plan({
                     shownPanel?.kind === 'chair' && shownPanel.id === id ? shownPanel.seat : null
                   }
                   outside={outlined}
-                  onChoose={() => open({ kind: 'table', id })}
+                  onChoose={() => open({ kind: 'table', id }, true)}
                   onChair={(seat) => open({ kind: 'chair', id, seat })}
                 />
               ) : item.kind === 'row' ? (
@@ -1611,7 +1628,7 @@ function Plan({
                       : null
                   }
                   outside={outlined}
-                  onChoose={() => open({ kind: 'row', id })}
+                  onChoose={() => open({ kind: 'row', id }, true)}
                   onChair={(seat) => open({ kind: 'row', id, seat })}
                 />
               ) : (
@@ -1623,7 +1640,7 @@ function Plan({
                   oy={oy}
                   chosen={lit}
                   outside={outlined}
-                  onChoose={() => open({ kind: 'seat', id })}
+                  onChoose={() => open({ kind: 'seat', id }, true)}
                 />
               );
 
@@ -1917,6 +1934,27 @@ function Plan({
         />
       )}
     </LayersContext>
+  );
+}
+
+function itemAttribute(kind: Panel['kind']): string | null {
+  return kind === 'table' || kind === 'chair'
+    ? 'data-table'
+    : kind === 'row'
+      ? 'data-row'
+      : kind === 'seat'
+        ? 'data-seat'
+        : null;
+}
+
+function typing(target: EventTarget | null): boolean {
+  return target instanceof HTMLElement && target.closest('input, textarea, select') != null;
+}
+
+function control(target: EventTarget | null): boolean {
+  return (
+    target instanceof Element &&
+    target.closest('button, a[href], [role="menuitem"], [role="option"], summary') != null
   );
 }
 
