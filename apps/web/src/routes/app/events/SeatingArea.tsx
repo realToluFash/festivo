@@ -73,6 +73,7 @@ import {
   type PlanApi,
   Refused,
   Said,
+  type TableNote,
 } from './SeatingParts.tsx';
 import {
   RowDrawing,
@@ -393,6 +394,7 @@ function Plan({
   const queue = useRef<Promise<unknown>>(Promise.resolve());
   const [asking, setAsking] = useState<Asking | null>(null);
   const [notice, setNotice] = useState<string | null>(null);
+  const [note, setNote] = useState<TableNote | null>(null);
   const [sectionsRefused, setSectionsRefused] = useState(false);
   const [reloads, setReloads] = useState(0);
   const [outside, setOutside] = useState<Outside | null>(null);
@@ -486,6 +488,7 @@ function Plan({
     setPanel(next);
     setSeveral([]);
     setNotice(null);
+    setNote(null);
     setSectionsRefused(false);
     setOutside(null);
   };
@@ -650,6 +653,7 @@ function Plan({
 
         setNotice(name == null ? t('seating.notSaved') : t(changedKey(panel), { name }));
         setReloads((n) => n + 1);
+        setNote(null);
         reload();
         return { refused: null };
       }
@@ -739,6 +743,7 @@ function Plan({
         newest.current = now.plan;
         onSeating(now);
         settle(items);
+        setNote((was) => (was != null && items.some((item) => item.id === was.id) ? null : was));
         setSave('saved');
         return;
       } catch (error) {
@@ -755,6 +760,7 @@ function Plan({
               : t('seating.stepRefused', { name, item: itemName(t, item) }),
           );
           setReloads((n) => n + 1);
+          setNote(null);
           reload();
           return;
         }
@@ -1097,6 +1103,8 @@ function Plan({
     adopt: onSeating,
     reloads,
     notice,
+    note,
+    keepNote: setNote,
     open,
     ask: setAsking,
     showOutside: setOutside,

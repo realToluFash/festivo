@@ -612,7 +612,7 @@ export function TablePanel({
   const { t } = useTranslation();
   const leave = () => ctx.open(null);
   const locale = currentLocale();
-  const [note, setNote] = useState<string | null>(null);
+  const note = ctx.note?.id === table.id ? ctx.note.line : null;
   const round = isRoundShape(table.shape);
   const cocktail = table.shape === 'cocktail';
   const unit = ctx.system === 'us' ? undefined : centimetreUnit(locale);
@@ -635,7 +635,7 @@ export function TablePanel({
       return answer;
     }, field);
 
-    if (saved) setNote(line);
+    if (saved) ctx.keepNote(line == null ? null : { id: table.id, line });
     return refused;
   };
 
