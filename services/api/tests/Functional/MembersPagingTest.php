@@ -19,6 +19,7 @@ use App\Repository\MembershipRepository;
 use App\Tests\ApiTestCase;
 use App\Tests\Traits\OnboardsAccounts;
 use DateTimeImmutable;
+use Doctrine\Bundle\DoctrineBundle\DataCollector\DoctrineDataCollector;
 use Lexik\Bundle\JWTAuthenticationBundle\Services\JWTTokenManagerInterface;
 use PHPUnit\Framework\Attributes\Test;
 use Psl\Dict;
@@ -92,6 +93,14 @@ final class MembersPagingTest extends ApiTestCase
     }
 
     #[Test]
+    public function aPageOfFiftyReadsNoMoreThanAPageOfFive(): void
+    {
+        $this->list();
+
+        self::assertSame($this->queriesFor('?limit=5'), $this->queriesFor('?limit=50'), 'a query a row is back on the Members page');
+    }
+
+    #[Test]
     public function anOptionTheFilterLacksOrAPageOutOfRangeIsRefused(): void
     {
         $refused = [
@@ -161,6 +170,16 @@ final class MembersPagingTest extends ApiTestCase
         self::assertSame($status, $this->client->getResponse()->getStatusCode(), Json\encode($body));
 
         return $body;
+    }
+
+    private function queriesFor(string $query): int
+    {
+        $this->client->enableProfiler();
+        $this->list($query);
+        $profile = $this->client->getProfile();
+        self::assertNotFalse($profile, 'no profile for ' . $query);
+
+        return Type\instance_of(DoctrineDataCollector::class)->coerce($profile->getCollector('db'))->getQueryCount();
     }
 
     /**
