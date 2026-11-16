@@ -106,9 +106,13 @@ final class GuestsTest extends ApiTestCase
     {
         yield 'a blank name' => [['fullName' => '   '], ['fullName' => 'Enter their full name.']];
         yield 'a name too long' => [['fullName' => Str\repeat('a', 201)], ['fullName' => 'Shorten the name to 200 characters or fewer.']];
+        yield 'a name too long in marked letters' => [['fullName' => Str\repeat("e\u{0323}\u{0300}", 201)], ['fullName' => 'Shorten the name to 200 characters or fewer.']];
+        yield 'a name of one letter of many marks' => [['fullName' => 'a' . Str\repeat("\u{0301}", 800)], ['fullName' => 'Shorten the name to 200 characters or fewer.']];
         yield 'not an email address' => [['fullName' => 'Bisi', 'email' => 'bisi.example.com'], ['email' => 'That does not look like an email address. Check it has an @ and a domain.']];
         yield 'a number too short' => [['fullName' => 'Bisi', 'mobile' => ['countryCode' => 'NG', 'number' => '0803']], ['mobile' => 'That number looks too short for Nigeria. Check it and try again.']];
         yield 'a companion named too long' => [['fullName' => 'Bisi', 'companions' => [['fullName' => 'Obi'], ['fullName' => Str\repeat('b', 201)]]], ['companions[1].fullName' => 'Shorten the name to 200 characters or fewer.']];
+        yield 'a companion named too long in marked letters' => [['fullName' => 'Bisi', 'companions' => [['fullName' => Str\repeat("e\u{0323}\u{0300}", 201)]]], ['companions[0].fullName' => 'Shorten the name to 200 characters or fewer.']];
+        yield 'a companion named with one letter of many marks' => [['fullName' => 'Bisi', 'companions' => [['fullName' => 'a' . Str\repeat("\u{0301}", 800)]]], ['companions[0].fullName' => 'Shorten the name to 200 characters or fewer.']];
         yield 'a language Soirely does not offer' => [['fullName' => 'Bisi', 'language' => 'de'], ['language' => 'Choose English, Español, Français or Português, or leave it as Not set.']];
         yield 'eleven companions' => [['fullName' => 'Bisi', 'companions' => Vec\fill(11, [])], ['companions' => '10 companions is the most one guest can bring.']];
         yield 'everything at once' => [['fullName' => '', 'email' => 'nope', 'mobile' => ['countryCode' => 'NG', 'number' => '0803']], [
@@ -131,6 +135,20 @@ final class GuestsTest extends ApiTestCase
         self::assertSame(422, $this->statusCode(), Json\encode($this->last()));
         self::assertSame($expected, $this->violations());
         self::assertSame(0, $this->people());
+    }
+
+    #[Test]
+    public function namesOf200LettersWithADotAndAToneOrOfEmojiAreReadBackAsTyped(): void
+    {
+        $composed = Str\repeat("\u{1EB9}\u{0300}", 200);
+        $decomposed = Str\repeat("e\u{0323}\u{0300}", 200);
+        $emoji = Str\repeat('a', 197) . "👨\u{200D}👩\u{200D}👧 🇳🇬";
+        $guest = $this->add(['fullName' => $composed, 'companions' => [['fullName' => $decomposed], ['fullName' => $emoji]]]);
+
+        $read = Type\shape(['fullName' => Type\string(), 'companions' => Type\vec(Type\shape(['fullName' => Type\nullable(Type\string())], true))], true)
+            ->coerce($this->details($this->as($this->owner, 'GET', $this->guest($guest))));
+
+        self::assertSame([$composed, $decomposed, $emoji], [$read['fullName'], ...Vec\map($read['companions'], static fn (array $companion): ?string => $companion['fullName'])]);
     }
 
     #[Test]

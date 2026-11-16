@@ -11,6 +11,7 @@ use App\Entity\ScheduleItem;
 use App\Enum\ErrorCode;
 use App\Http\Exception\ApiException;
 use App\Locale\SupportedLocales;
+use App\Locale\VisibleText;
 use DateTimeImmutable;
 use DateTimeZone;
 use IntlDateFormatter;
@@ -40,8 +41,8 @@ final readonly class ScheduleRules
 
         if ('' === $title) {
             $violations[] = $this->violation('title', 'validation.schedule_title_required');
-        } elseif (Str\length($title) > ScheduleItem::TITLE_MAXIMUM) {
-            $violations[] = $this->violation('title', 'validation.schedule_title_too_long', ['{n}' => Str\length($title), '{max}' => ScheduleItem::TITLE_MAXIMUM]);
+        } elseif (VisibleText::tooLong($title, ScheduleItem::TITLE_MAXIMUM)) {
+            $violations[] = $this->violation('title', 'validation.schedule_title_too_long', ['{n}' => VisibleText::length($title), '{max}' => ScheduleItem::TITLE_MAXIMUM]);
         }
 
         $startsAt = $this->start($event, $body['startsAt'], $violations);
@@ -122,8 +123,8 @@ final readonly class ScheduleRules
             return null;
         }
 
-        if (Str\length($value) > $maximum) {
-            $violations[] = $this->violation($path, $tooLong, ['{n}' => Str\length($value), '{max}' => $maximum]);
+        if (VisibleText::tooLong($value, $maximum)) {
+            $violations[] = $this->violation($path, $tooLong, ['{n}' => VisibleText::length($value), '{max}' => $maximum]);
         }
 
         return $value;

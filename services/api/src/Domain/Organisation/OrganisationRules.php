@@ -9,6 +9,7 @@ use App\Domain\User\TimeZone\AccountTimeZone;
 use App\Enum\ErrorCode;
 use App\Http\Exception\ApiException;
 use App\Locale\SupportedLocales;
+use App\Locale\VisibleText;
 use Psl\Str;
 use Symfony\Contracts\Translation\TranslatorInterface;
 
@@ -43,9 +44,9 @@ final readonly class OrganisationRules
 
         if ('' === $checked['name']) {
             $violations[] = $this->violation('name', 'validation.organisation_name_required');
-        } elseif (Str\length($checked['name']) > self::NAME_MAXIMUM) {
+        } elseif (VisibleText::tooLong($checked['name'], self::NAME_MAXIMUM)) {
             $violations[] = $this->violation('name', 'validation.organisation_name_too_long', [
-                '{length}' => (string) Str\length($checked['name']),
+                '{length}' => (string) VisibleText::length($checked['name']),
                 '{count}' => (string) self::NAME_MAXIMUM,
             ]);
         }

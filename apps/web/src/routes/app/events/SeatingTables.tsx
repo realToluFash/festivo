@@ -18,6 +18,7 @@ import {
   tableExtent,
   TABLE_MAXIMUM_CM,
   TABLE_MINIMUM_CM,
+  visibleLength,
 } from '@soirely/domain';
 import { type KeyboardEvent, type ReactNode, useEffect, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
@@ -562,10 +563,7 @@ export function TablePanel({
     const typed = text.trim();
 
     if (typed === '') return t('seating.tableBlank');
-    if (
-      [...new Intl.Segmenter().segment(typed)].length > SEATING_LIMITS.tableNameMaximum ||
-      [...typed].length > SEATING_LIMITS.tableNameCodePoints
-    )
+    if (visibleLength(typed) > SEATING_LIMITS.tableNameMaximum)
       return t('seating.tableLong', { max: SEATING_LIMITS.tableNameMaximum });
     const holder = holdingName(plan.tables, typed, table.id);
 

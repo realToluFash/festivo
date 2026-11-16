@@ -14,6 +14,7 @@ import {
   rowExtent,
   rowSeatsOf,
   rowTabAt,
+  visibleLength,
 } from '@soirely/domain';
 import { type KeyboardEvent, type ReactNode } from 'react';
 import { useTranslation } from 'react-i18next';
@@ -361,7 +362,7 @@ export function RowPanel({
     const typed = text.trim().toUpperCase();
 
     if (typed === '') return t('seating.rowBlank');
-    if (typed.length > SEATING_LIMITS.rowLabelMaximum)
+    if (visibleLength(typed) > SEATING_LIMITS.rowLabelMaximum)
       return t('seating.tableLong', { max: SEATING_LIMITS.rowLabelMaximum });
     const labelled = plan.rows.map((one) => ({ id: one.id, name: one.label }));
 
@@ -426,13 +427,7 @@ export function RowPanel({
       <SeatStrip t={t} row={row} chosen={seat} onPick={pick} />
       {seat != null && <ChosenSeat ctx={ctx} row={row} seat={seat} />}
       <div className="st-fields">
-        <Field
-          fieldKey="label"
-          label={t('seating.label')}
-          value={row.label}
-          maxLength={SEATING_LIMITS.rowLabelMaximum}
-          onCommit={label}
-        />
+        <Field fieldKey="label" label={t('seating.label')} value={row.label} onCommit={label} />
         <Select
           fieldKey="section"
           label={t('seating.section')}
@@ -604,7 +599,7 @@ export function SingleSeatPanel({
     const typed = text.trim();
 
     if (typed === '') return t('seating.seatBlank');
-    if (typed.length > SEATING_LIMITS.seatNameMaximum)
+    if (visibleLength(typed) > SEATING_LIMITS.seatNameMaximum)
       return t('seating.tableLong', { max: SEATING_LIMITS.seatNameMaximum });
     const holder = holdingName(plan.singleSeats, typed, seat.id);
 
@@ -634,13 +629,7 @@ export function SingleSeatPanel({
       {said != null && <Added>{said}</Added>}
       {ctx.notice != null && <Said>{ctx.notice}</Said>}
       <div className="st-fields">
-        <Field
-          fieldKey="name"
-          label={t('seating.name')}
-          value={seat.name}
-          maxLength={SEATING_LIMITS.seatNameMaximum}
-          onCommit={name}
-        />
+        <Field fieldKey="name" label={t('seating.name')} value={seat.name} onCommit={name} />
         <Select
           fieldKey="section"
           label={t('seating.section')}

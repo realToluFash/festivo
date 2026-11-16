@@ -34,7 +34,7 @@ class User implements UserInterface, PasswordAuthenticatedUserInterface
     #[ORM\Column(type: Types::STRING, length: 255, nullable: true)]
     private ?string $passwordHash = null;
 
-    #[ORM\Column(type: Types::STRING, length: 180)]
+    #[ORM\Column(type: Types::STRING, length: 720)]
     private string $name;
 
     #[ORM\Column(type: Types::STRING, length: 180, nullable: true)]

@@ -305,7 +305,6 @@ export function EditText({
   help,
   error,
   inputRef,
-  maxLength,
   onChange,
   input,
 }: {
@@ -315,7 +314,6 @@ export function EditText({
   help?: string | null;
   error?: string | null;
   inputRef?: RefObject<HTMLInputElement | null>;
-  maxLength?: number;
   onChange: (value: string) => void;
   input?: Partial<InputHTMLAttributes<HTMLInputElement>>;
 }) {
@@ -337,7 +335,6 @@ export function EditText({
           id={id}
           type="text"
           value={value}
-          maxLength={maxLength}
           spellCheck={false}
           aria-invalid={error != null}
           aria-describedby={told === '' ? undefined : told}

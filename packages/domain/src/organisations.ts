@@ -1,3 +1,4 @@
+import { visibleLength } from './visibleText.ts';
 import { emailProblem } from './forms.ts';
 
 /** The one remembered on this device while the account still belongs to it, else the first. */
@@ -144,7 +145,7 @@ export function newOrganisationProblem(
   if (field === 'countryCode') return value === '' ? { kind: 'countryBlank' } : null;
 
   const name = value.trim();
-  const length = Array.from(name).length;
+  const length = visibleLength(name);
 
   if (length === 0) return { kind: 'nameBlank' };
 

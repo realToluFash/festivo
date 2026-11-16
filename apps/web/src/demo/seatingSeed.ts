@@ -259,6 +259,9 @@ export function seedOf(state: SeatingState | null): Ui {
   switch (state) {
     case null:
     case 'plan':
+    case 'longName':
+    case 'longNameFr':
+    case 'crumbWidths':
       return ui;
     case 'presenceOne':
       return { ...ui, people: [], joining: PRIYA };

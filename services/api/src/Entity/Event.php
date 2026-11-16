@@ -44,7 +44,7 @@ class Event implements SoftDeletableInterface
     #[ORM\JoinColumn(nullable: false, onDelete: 'CASCADE')]
     private Organisation $organisation;
 
-    #[ORM\Column(type: Types::STRING, length: 120)]
+    #[ORM\Column(type: Types::STRING, length: 480)]
     private string $name;
 
     #[ORM\Column(type: Types::STRING, length: 20, enumType: EventType::class)]
@@ -90,10 +90,10 @@ class Event implements SoftDeletableInterface
     #[ORM\Column(type: Types::STRING, length: 3)]
     private string $currency;
 
-    #[ORM\Column(type: Types::STRING, length: 120, nullable: true)]
+    #[ORM\Column(type: Types::STRING, length: 480, nullable: true)]
     private ?string $venueName = null;
 
-    #[ORM\Column(type: Types::STRING, length: 300, nullable: true)]
+    #[ORM\Column(type: Types::STRING, length: 1200, nullable: true)]
     private ?string $venueAddress = null;
 
     #[ORM\Column(type: Types::STRING, length: 255, nullable: true)]

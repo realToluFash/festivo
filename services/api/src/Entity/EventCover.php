@@ -31,7 +31,7 @@ class EventCover
     #[ORM\Column(type: Types::SMALLINT)]
     private int $position;
 
-    #[ORM\Column(type: Types::STRING, length: 250, nullable: true)]
+    #[ORM\Column(type: Types::STRING, length: 1000, nullable: true)]
     private ?string $description;
 
     public function __construct(Event $event, string $photoKey, int $position, ?string $description)

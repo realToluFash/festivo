@@ -44,7 +44,7 @@ class SeatingRow
     #[ORM\JoinColumn(nullable: true, onDelete: 'SET NULL')]
     private ?SeatingSection $section;
 
-    #[ORM\Column(type: Types::STRING, length: 10)]
+    #[ORM\Column(type: Types::STRING, length: 40)]
     private string $label;
 
     /** The label without case or accents, so "a" and "A" are one row. */

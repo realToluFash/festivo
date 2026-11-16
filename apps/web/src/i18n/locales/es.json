@@ -3663,7 +3663,7 @@
     "window": "Elija una hora entre {{earliest}} y {{end}}.",
     "dayAndTime": "{{day}}, {{time}}",
     "weekdayAndTime": "{{weekday}} {{time}}",
-    "zoneLine": "Zona horaria: {{zone}}.",
+    "zoneLine": "Los horarios se indican en {{zone}}.",
     "newPlace": "Espacio nuevo. {{name}} tendrá su propia tabla en este día.",
     "moves": "Pasa a la tabla de {{place}} y conserva su hora de inicio.",
     "blankTitle": "Indique un título.",

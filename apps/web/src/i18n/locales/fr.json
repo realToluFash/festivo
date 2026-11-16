@@ -3663,7 +3663,7 @@
     "window": "Choisissez une heure entre {{earliest}} et {{end}}.",
     "dayAndTime": "{{day}}, {{time}}",
     "weekdayAndTime": "{{weekday}} {{time}}",
-    "zoneLine": "Fuseau horaire : {{zone}}.",
+    "zoneLine": "Les horaires sont indiqués en {{zone}}.",
     "newPlace": "Nouvel espace. {{name}} aura son propre tableau ce jour-là.",
     "moves": "Il passe dans le tableau de l’espace {{place}} et garde son heure de début.",
     "blankTitle": "Saisissez un titre.",

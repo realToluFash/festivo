@@ -41,7 +41,7 @@ class ScheduleItem
     #[ORM\JoinColumn(nullable: false, onDelete: 'CASCADE')]
     private Event $event;
 
-    #[ORM\Column(type: Types::STRING, length: 120)]
+    #[ORM\Column(type: Types::STRING, length: 480)]
     private string $title;
 
     /** Wall-clock, stored as if UTC; read only with the event's zone. */
@@ -52,16 +52,16 @@ class ScheduleItem
     private ?int $lengthMinutes = null;
 
     /** Null is the event's one track, Main. */
-    #[ORM\Column(type: Types::STRING, length: 60, nullable: true)]
+    #[ORM\Column(type: Types::STRING, length: 240, nullable: true)]
     private ?string $place = null;
 
-    #[ORM\Column(type: Types::STRING, length: 120, nullable: true)]
+    #[ORM\Column(type: Types::STRING, length: 480, nullable: true)]
     private ?string $ownerName = null;
 
-    #[ORM\Column(type: Types::STRING, length: 40, nullable: true)]
+    #[ORM\Column(type: Types::STRING, length: 160, nullable: true)]
     private ?string $ownerRole = null;
 
-    #[ORM\Column(type: Types::STRING, length: 500, nullable: true)]
+    #[ORM\Column(type: Types::STRING, length: 2000, nullable: true)]
     private ?string $note = null;
 
     #[ORM\Column(type: Types::BOOLEAN, options: ['default' => false])]
