@@ -996,6 +996,20 @@
   box-shadow: 0 0 0 1px var(--colorBorder);
 }
 
+/* sc-55937: when even the folded bar meets the zoom, the zoom steps up one line at the floor's right, and whatever stood on that line steps up with it. */
+.is-zoom-up .st-zoom {
+  bottom: 80px;
+}
+
+.is-zoom-up .st-minimap,
+.is-zoom-up .st-another {
+  bottom: 144px;
+}
+
+.is-zoom-up .st-keys {
+  bottom: 142px;
+}
+
 .st-key {
   display: flex;
   align-items: center;
