@@ -946,11 +946,13 @@ describe('Tables at a desk (sc-4000)', () => {
     await waitFor(() => expect(screen.queryByText(/^Size reset to/u)).toBeNull());
   });
 
-  it('clears the reset line once a turn or a move of that table saves', async () => {
+  it('clears the reset line once a turn or a move of that table saves, and not another table’s', async () => {
     signedIn();
     let version = 1;
     let shape = 'round';
     let placedAs: Record<string, unknown> = {};
+    let other = table({ id: 't2', name: 'Table 2', xCm: 600 });
+    let fails = 3;
     const now = () =>
       table({
         shape,
@@ -960,27 +962,47 @@ describe('Tables at a desk (sc-4000)', () => {
         version,
       });
     await onSeating({
-      'GET /api/events/ev_1/seating-plan': () => seating(withTables(now())),
+      'GET /api/events/ev_1/seating-plan': () => seating(withTables(now(), other)),
       'PATCH /api/events/ev_1/seating-plan/tables/t1': (body) => {
         const changes = body as Record<string, unknown>;
 
         if (typeof changes.shape === 'string') shape = changes.shape;
         version += 1;
-        return seating(withTables(now()), 't1');
+        return seating(withTables(now(), other), 't1');
       },
       'PATCH /api/events/ev_1/seating-plan/furniture': (body) => {
         const [item] = (body as { items: Record<string, unknown>[] }).items;
+        const placed = { xCm: item?.xCm, yCm: item?.yCm, rotation: item?.rotation ?? 0 };
 
-        version += 1;
-        placedAs = { xCm: item?.xCm, yCm: item?.yCm, rotation: item?.rotation ?? 0 };
-        return seating(withTables(now()));
+        if (item?.id === 't2') {
+          if (fails > 0) {
+            fails -= 1;
+            return problem('internal', 500);
+          }
+          other = { ...other, ...placed, version: other.version + 1 };
+        } else {
+          version += 1;
+          placedAs = placed;
+        }
+        return seating(withTables(now(), other));
       },
     });
     const reset = 'Size reset to the rectangular default, 180 × 76 cm. Seats kept at 10.';
 
+    await chooseTable('Table 2, round, 0 of 10 seats taken');
+    fireEvent.keyDown(document.querySelector('[data-table="t2"]')!, { key: 'ArrowRight' });
+    expect(await screen.findByText('Saving…')).toBeDefined();
+    expect(
+      await screen.findByText('This change was not saved.', {}, { timeout: 6000 }),
+    ).toBeDefined();
+
     await chooseTable('Table 1, round, 0 of 10 seats taken');
     fireEvent.change(screen.getByLabelText('Shape'), { target: { value: 'rectangular' } });
     expect(await screen.findByText(reset)).toBeDefined();
+    fireEvent.click(screen.getByRole('button', { name: 'Try again' }));
+    expect(await screen.findByText('Saved')).toBeDefined();
+    expect(screen.getByText(reset)).toBeDefined();
+
     fireEvent.change(screen.getByLabelText('Rotation'), { target: { value: '45' } });
     await waitFor(() => expect(screen.queryByText(reset)).toBeNull());
 
@@ -988,7 +1010,7 @@ describe('Tables at a desk (sc-4000)', () => {
     expect(await screen.findByText(/^Size reset to the round default, /u)).toBeDefined();
     leave('Across', '6 m');
     await waitFor(() => expect(screen.queryByText(/^Size reset to/u)).toBeNull());
-  });
+  }, 15_000);
 
   it('counts only usable chairs in a table’s name, and follows a chair marked unusable', async () => {
     signedIn();
