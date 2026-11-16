@@ -164,6 +164,12 @@ export function waitingCount(guests: readonly SampleGuest[]): number {
 
 export const QUOTE_LINES = 6;
 
+/** The quote's first six laid-out lines, ending in "…", however the sixth line ends; null when it fits whole. */
+export function clipQuote(lines: readonly string[]): string | null {
+  if (lines.length <= QUOTE_LINES) return null;
+  return `${lines.slice(0, QUOTE_LINES).join('').trimEnd()}…`;
+}
+
 /** The demo's two copied messages; the long one names a companion and an allergy, and Soirely reads neither. */
 export const SAMPLE_QUOTE = 'Yes, we’ll be there, the two of us. Thank you for having us!';
 export const LONG_QUOTE = [
