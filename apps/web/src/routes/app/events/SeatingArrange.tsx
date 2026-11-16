@@ -43,10 +43,13 @@ export function PositionFields({ ctx, item }: { ctx: PlanApi; item: FloorItem })
   const name = itemName(t, item);
 
   function place(axis: 'xCm' | 'yCm', text: string): string | null {
-    const cm = readFloorPosition(text, ctx.system, locale);
+    const read = readFloorPosition(text, ctx.system, locale);
 
-    if (cm == null)
-      return ctx.system === 'us' ? t('seating.lengthLike') : t('seating.outside', { name });
+    if (read.kind === 'blank' || read.kind === 'unreadable')
+      return t(ctx.system === 'us' ? 'seating.lengthLike' : 'seating.lengthLikeMetric');
+    if (read.kind === 'outOfRange') return t('seating.outside', { name });
+    const cm = read.cm;
+
     if (plan == null) return null;
     const at: [number, number] = axis === 'xCm' ? [cm, item.one.yCm] : [item.one.xCm, cm];
 

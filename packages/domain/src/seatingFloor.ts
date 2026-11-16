@@ -1,4 +1,4 @@
-import { readFeetAndInches, type RoomUnits } from './roomSize.ts';
+import { type RoomUnits } from './roomSize.ts';
 
 /** An item as the floor sees it: its middle, its turn, and half its width and length with chairs and a row's tab, before it turns. */
 export interface Footprint {
@@ -136,22 +136,4 @@ export function overlapping(a: Footprint, b: Footprint): boolean {
 
     return a1 - gap > b0 && b1 - gap > a0;
   });
-}
-
-/** A bare number in feet and inches is refused, since it could be either; inches are stored whole. */
-export function readFloorPosition(text: string, units: RoomUnits, locale: string): number | null {
-  const typed = text.trim().replace(',', '.');
-
-  if (units === 'us') {
-    if (/^\d+(?:\.\d+)?$/u.test(typed)) return null;
-    const inches = readFeetAndInches(typed, locale);
-
-    return inches == null ? null : Math.round(Math.round(inches) * CM_PER_INCH);
-  }
-  const cm = /^(\d+(?:\.\d+)?)\s*cm$/u.exec(typed);
-
-  if (cm?.[1] != null) return Math.round(Number(cm[1]));
-  const metres = /^(\d+(?:\.\d+)?)\s*m?$/u.exec(typed);
-
-  return metres?.[1] == null ? null : Math.round(Number(metres[1]) * 100);
 }

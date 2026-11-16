@@ -3,6 +3,7 @@ import { describe, expect, it } from 'vitest';
 import {
   feetAndInchesOf,
   readFeetAndInches,
+  readFloorPosition,
   readRoomSide,
   readRowSpacing,
   readTableSide,
@@ -97,5 +98,33 @@ describe('readRowSpacing', () => {
     expect(readRowSpacing('101', 'metric', 'en')).toEqual({ kind: 'outOfRange' });
     expect(readRowSpacing('1 ft 8 in', 'us', 'en')).toEqual({ kind: 'cm', cm: 51 });
     expect(readRowSpacing('3 ft 4 in', 'us', 'en')).toEqual({ kind: 'outOfRange' });
+  });
+});
+
+describe('a position on the floor', () => {
+  it('reads metres or centimetres, with or without the unit', () => {
+    expect(readFloorPosition('3.75', 'metric', 'en')).toEqual({ kind: 'cm', cm: 375 });
+    expect(readFloorPosition('3,75 m', 'metric', 'fr')).toEqual({ kind: 'cm', cm: 375 });
+    expect(readFloorPosition('375 cm', 'metric', 'en')).toEqual({ kind: 'cm', cm: 375 });
+    expect(readFloorPosition('12\u00a0m', 'metric', 'en')).toEqual({ kind: 'cm', cm: 1200 });
+  });
+
+  it('reads feet and inches only with their units, in whole inches', () => {
+    expect(readFloorPosition('12 ft 4 in', 'us', 'en')).toEqual({ kind: 'cm', cm: 376 });
+    expect(readFloorPosition('12′ 4″', 'us', 'en')).toEqual({ kind: 'cm', cm: 376 });
+    expect(readFloorPosition('148 in', 'us', 'en')).toEqual({ kind: 'cm', cm: 376 });
+    expect(readFloorPosition('12.5 ft', 'us', 'en')).toEqual({ kind: 'cm', cm: 381 });
+  });
+
+  it('is unreadable as a typo, a bare number in feet and inches, or the other system', () => {
+    for (const [typed, units] of [
+      ['three', 'metric'],
+      ['3 ft', 'metric'],
+      ['', 'metric'],
+      ['12', 'us'],
+    ] as const)
+      expect(readFloorPosition(typed, units, 'en').kind).not.toBe('cm');
+    expect(readFloorPosition('abc', 'metric', 'en')).toEqual({ kind: 'unreadable' });
+    expect(readFloorPosition('12', 'us', 'en')).toEqual({ kind: 'unreadable' });
   });
 });

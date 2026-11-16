@@ -2771,6 +2771,7 @@
     "overlaps": "Overlaps {{name}}",
     "outside": "{{name}} would sit outside the room.",
     "lengthLike": "Enter a length like 12 ft 4 in or 148 in.",
+    "lengthLikeMetric": "Enter a length like 3.75 m or 375 cm.",
     "stepRefused": "{{name}} just moved {{item}}. Your change was not saved.",
     "movedTo": "{{name}}, {{across}} across, {{down}} down.",
     "turnedTo": "{{name}}, turned {{degrees}}°.",

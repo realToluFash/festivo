@@ -2125,6 +2125,8 @@ describe('Moving, turning and resizing on the Floor plan (sc-5028)', () => {
 
     leave('Across', '23.5');
     expect(await screen.findByText('Table 1 would sit outside the room.')).toBeDefined();
+    leave('Across', 'abc');
+    expect(await screen.findByText('Enter a length like 3.75 m or 375 cm.')).toBeDefined();
     expect(furniture(sent)).toEqual([]);
 
     leave('Across', '3.75');

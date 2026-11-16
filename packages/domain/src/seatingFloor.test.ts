@@ -5,7 +5,6 @@ import {
   insideRoom,
   keyStep,
   overlapping,
-  readFloorPosition,
   shiftWithin,
   snapToGrid,
   type Footprint,
@@ -67,17 +66,5 @@ describe('the floor', () => {
     expect(overlapping(round(300, 300), long(600, 300))).toBe(false);
     expect(overlapping(long(300, 300, 45), long(470, 300, 45))).toBe(true);
     expect(overlapping(long(300, 300), long(481, 300))).toBe(false);
-  });
-
-  it('reads a position in metres or centimetres, and in feet and inches with their units only', () => {
-    expect(readFloorPosition('3.75', 'metric', 'en')).toBe(375);
-    expect(readFloorPosition('3,75 m', 'metric', 'fr')).toBe(375);
-    expect(readFloorPosition('375 cm', 'metric', 'en')).toBe(375);
-    expect(readFloorPosition('three', 'metric', 'en')).toBeNull();
-    expect(readFloorPosition('12 ft 4 in', 'us', 'en')).toBe(376);
-    expect(readFloorPosition('12′ 4″', 'us', 'en')).toBe(376);
-    expect(readFloorPosition('148 in', 'us', 'en')).toBe(376);
-    expect(readFloorPosition('12.5 ft', 'us', 'en')).toBe(381);
-    expect(readFloorPosition('12', 'us', 'en')).toBeNull();
   });
 });
