@@ -3744,5 +3744,9 @@
     "saidBehind_many": "{{track}}, {{count, number}} minutos de atraso",
     "saidLast": "{{track}}, último item a decorrer",
     "saidDone": "{{track}}, todos os itens concluídos"
+  },
+  "handoff": {
+    "line": "This page is made for a wider window. On a phone or a tablet, it is in the Soirely app.",
+    "anyway": "Show this page anyway"
   }
 }
