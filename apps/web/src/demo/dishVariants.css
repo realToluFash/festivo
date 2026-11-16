@@ -115,6 +115,15 @@
   min-width: 0;
 }
 
+.vr-fold .mn-ask-acts {
+  flex-wrap: wrap;
+  justify-content: flex-end;
+}
+
+.vr-fold .vr-fold-words p {
+  flex: none;
+}
+
 .vr-fold .vr-fold-title {
   font: 600 15px/1.35 var(--fontFamily);
 }
@@ -163,8 +172,7 @@
 }
 
 .desk-radio.vr-radio.is-wrong:checked {
-  background: radial-gradient(circle, var(--colorBroken) 0 5px, transparent 5.5px)
-    var(--colorCard);
+  background: radial-gradient(circle, var(--colorBroken) 0 5px, transparent 5.5px) var(--colorCard);
 }
 
 .vr-for .desk-error {

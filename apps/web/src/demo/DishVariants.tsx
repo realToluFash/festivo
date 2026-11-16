@@ -154,7 +154,7 @@ export function VariantInsets({
 
   return (
     <div className="vr-box">
-      <p className="mn-quiet vr-each">{VW.eachOwn}</p>
+      {where === 'event' && <p className="mn-quiet vr-each">{VW.eachOwn}</p>}
       <ul className="vr-insets" aria-label={VW.ways(dish.name, variants.length)}>
         {variants.map((variant) => {
           const here = asking?.variantId === variant.id ? asking : null;
