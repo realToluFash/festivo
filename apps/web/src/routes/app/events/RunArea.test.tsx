@@ -231,6 +231,13 @@ describe('The run view (sc-1404)', () => {
     expect(screen.getAllByRole('button', { name: /^Notifications/ })).toHaveLength(1);
   });
 
+  it("starts where the event's other pages do at a desk, inside the card's one padding", async () => {
+    await onRun([DINNER, SPEECHES]);
+
+    const main = screen.getByRole('table', { name: 'Main' });
+    expect(main.closest('.shell-content .ev-page.desk-page')).not.toBeNull();
+  });
+
   it('goes back up to the Schedule from the breadcrumb', async () => {
     await onRun([DINNER, SPEECHES]);
     const crumbs = screen.getByRole('navigation', { name: 'Breadcrumb' });

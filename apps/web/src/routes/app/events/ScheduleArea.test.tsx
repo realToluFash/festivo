@@ -9,6 +9,7 @@ import { routes } from '../../index.tsx';
 import { cssRule, stylesheet } from '../../../test-styles.ts';
 
 const SCHEDULE_CSS = stylesheet(import.meta.dirname, 'schedule.css');
+const EVENT_PAGE_CSS = stylesheet(import.meta.dirname, '../../../components/eventPage.css');
 
 const IRE = membership({ id: 'org_1', name: 'Ìrè Events' });
 
@@ -221,6 +222,21 @@ describe('The event’s Schedule (sc-3893)', () => {
     expect(
       cssRule('.ro.desk-page', SCHEDULE_CSS.slice(SCHEDULE_CSS.indexOf('(width <= 40rem)'))),
     ).toContain('padding: var(--spaceLg) var(--spaceMd) var(--space3xl);');
+  });
+
+  it("starts where the event's other pages do at a desk, the card's padding its only one", async () => {
+    await onSchedule({
+      'GET /api/events/ev_1/schedule': () => json({ schedule: schedule([DRINKS, BRUNCH]) }),
+    });
+
+    const tab = (await screen.findAllByRole('tab'))[0] as HTMLElement;
+    expect(tab.closest('.shell-content .ev-page.desk-page')).not.toBeNull();
+    expect(
+      cssRule(
+        '.shell-content.is-card .ev-page.desk-page',
+        EVENT_PAGE_CSS.slice(EVENT_PAGE_CSS.indexOf('(width > 60rem)')),
+      ),
+    ).toContain('padding: 0;');
   });
 
   it('moves between days with the arrow keys', async () => {
