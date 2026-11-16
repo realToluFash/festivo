@@ -121,7 +121,10 @@ export function Arrived({ children, style }: { children: ReactNode; style?: View
   const still = reduced || settled;
 
   useEffect(() => {
-    if (still) return;
+    if (still) {
+      shown.setValue(1);
+      return;
+    }
     const run = Animated.timing(shown, {
       toValue: 1,
       duration: tokens.motionBase,
