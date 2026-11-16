@@ -366,6 +366,7 @@ function Plan({
   const [keyboard, setKeyboard] = useState(false);
   const [heard, setHeard] = useState('');
   const unsaved = useRef<Placement[] | null>(null);
+  const ownSteps = useRef(new Map<string, number>());
   const drag = useRef<Drag | null>(null);
   const dragged = useRef(false);
   const shown = plan == null ? null : withPlacements(plan, placements);
@@ -605,19 +606,29 @@ function Plan({
       return next;
     });
 
-  const versionOf = (item: Placement): number => {
-    const found = newest.current == null ? null : itemOf(item.id, newest.current);
+  const baseOf = (item: Placement): number => {
+    let version = item.version;
 
-    return found?.kind === item.kind ? found.one.version : 0;
+    for (let to = ownSteps.current.get(`${item.id}@${version}`); to != null;) {
+      version = to;
+      to = ownSteps.current.get(`${item.id}@${version}`);
+    }
+    return version;
   };
 
   const sendStep = async (items: Placement[]): Promise<void> => {
-    const versioned = items.map((item) => ({ ...item, version: versionOf(item) }));
+    const versioned = items.map((item) => ({ ...item, version: baseOf(item) }));
 
     for (let tries = 1; ; tries += 1) {
       try {
         const now = await api.arrangeSeating(event.id, versioned);
 
+        for (const item of versioned) {
+          const saved = itemOf(item.id, now.plan);
+
+          if (saved != null && saved.one.version !== item.version)
+            ownSteps.current.set(`${item.id}@${item.version}`, saved.one.version);
+        }
         newest.current = now.plan;
         onSeating(now);
         settle(items);

@@ -1949,6 +1949,47 @@ describe('The room to scale (sc-4007)', () => {
     expect(screen.getByRole('heading', { level: 2, name: 'Table 1' })).toBeDefined();
   });
 
+  it('refuses a drag whose table a colleague moved between pointer-down and release', async () => {
+    __setConfig({ ...before, mercureUrl: 'http://hub.test/.well-known/mercure' });
+    StubSource.made = [];
+    vi.stubGlobal('EventSource', StubSource);
+    signedIn();
+    const sent = await onSeating({
+      'GET /api/events/ev_1/seating-plan': () => seating(withTables(table())),
+      'POST /api/events/ev_1/seating-plan/subscriptions': () =>
+        json({ token: 'tok', expiresAt: new Date(Date.now() + 3_600_000).toISOString() }),
+      'PATCH /api/events/ev_1/seating-plan/furniture': (body) => {
+        const [item] = (body as { items: { version: number }[] }).items;
+
+        return item!.version === 2
+          ? seating(withTables(table({ version: 3 })))
+          : problem('precondition_failed', 412, { stale: ['t1'], changedBy: 'Bola Ade' });
+      },
+    });
+    const seatingSource = () =>
+      StubSource.made.find((one) => decodeURIComponent(one.url).includes('/seating'));
+
+    await waitFor(() => expect(seatingSource()).toBeDefined());
+    await screen.findByRole('button', { name: TABLE_1 });
+    const drawn = document.querySelector('[data-table="t1"]')!;
+    const room = document.querySelector('.st-room')!;
+    const at = { pointerId: 1, button: 0 };
+
+    fireEvent.pointerDown(drawn, { ...at, clientX: 100, clientY: 100 });
+    fireEvent.pointerMove(room, { ...at, clientX: 133, clientY: 117 });
+    seatingSource()!.publish({
+      measurementSystem: 'metric',
+      plan: withTables(table({ xCm: 600, version: 2 })),
+    });
+    fireEvent.pointerUp(room, { ...at, clientX: 133, clientY: 117 });
+
+    await waitFor(() => expect(furniture(sent)).toHaveLength(1));
+    expect((furniture(sent)[0] as { version: number }[])[0]!.version).toBe(1);
+    expect(
+      await screen.findByText('Bola Ade just moved Table 1. Your change was not saved.'),
+    ).toBeDefined();
+  });
+
   it('reads the room in feet and inches where the organisation is US customary', async () => {
     signedIn();
     await onSeating({
@@ -2305,6 +2346,33 @@ describe('Moving, turning and resizing on the Floor plan (sc-5028)', () => {
     await waitFor(() =>
       expect(screen.getByLabelText('Across')).toHaveProperty('value', '6\u00a0m'),
     );
+  });
+
+  it('sends a queued step on from the version its own earlier step saved', async () => {
+    signedIn();
+    let current = 1;
+    const sent = await onSeating({
+      'GET /api/events/ev_1/seating-plan': () => seating(withTables(table())),
+      'PATCH /api/events/ev_1/seating-plan/furniture': (body) => {
+        const [item] = (body as { items: { xCm: number; version: number }[] }).items;
+
+        if (item!.version !== current)
+          return problem('precondition_failed', 412, { stale: ['t1'], changedBy: 'Bola Ade' });
+        current += 1;
+        return seating(withTables(table({ xCm: item!.xCm, version: current })));
+      },
+    });
+
+    await chooseTable(TABLE_1);
+    fireEvent.keyDown(document.querySelector('[data-table="t1"]')!, { key: 'ArrowRight' });
+    fireEvent.keyDown(document.querySelector('[data-table="t1"]')!, { key: 'ArrowRight' });
+
+    expect(await screen.findByText('Saved')).toBeDefined();
+    await waitFor(() => expect(furniture(sent)).toHaveLength(2));
+    expect(furniture(sent).map((items) => (items as { version: number }[])[0]!.version)).toEqual([
+      1, 2,
+    ]);
+    expect(screen.queryByText(/just moved/u)).toBeNull();
   });
 
   it('places by a click on the floor, snapped, and keeps placing with Place another until Esc', async () => {

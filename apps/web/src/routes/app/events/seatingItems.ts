@@ -23,8 +23,8 @@ export type FloorItem =
   | { kind: 'row'; one: SeatingRow }
   | { kind: 'seat'; one: SingleSeat };
 
-/** What one step changes of an item: where it stands, and a table's or row's turn and a table's size. */
-export type Placement = Omit<SeatingArrangement, 'version'>;
+/** What one step changes of an item: where it stands, a table's or row's turn and a table's size, and the item's version when the step began. */
+export type Placement = SeatingArrangement;
 
 export type SaveState = 'idle' | 'saving' | 'saved' | 'retrying' | 'notSaved';
 
@@ -84,7 +84,13 @@ export function withPlacements(
 }
 
 export function placementOf(item: FloorItem): Placement {
-  return { kind: item.kind, id: item.one.id, xCm: item.one.xCm, yCm: item.one.yCm };
+  return {
+    kind: item.kind,
+    id: item.one.id,
+    xCm: item.one.xCm,
+    yCm: item.one.yCm,
+    version: item.one.version,
+  };
 }
 
 /** Every item that overlaps another, outlined on the floor. */
