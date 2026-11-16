@@ -425,6 +425,17 @@
 
   .mc .ev-crumb-row {
     flex-wrap: wrap;
+    justify-content: space-between;
+    row-gap: var(--spaceMd);
+  }
+
+  .mc .ev-crumb {
+    flex: 1 0 100%;
+    order: 1;
+  }
+
+  .mc .lib-acts {
+    flex-direction: row;
   }
 
   .mc .ev-crumb ol {
@@ -444,6 +455,10 @@
 
   .mc .gs-pill {
     min-height: 48px;
+  }
+
+  .mn-page:has(.mc-split.is-open) .mc-top .mc-add-wrap {
+    display: none;
   }
 
   .mc-split {

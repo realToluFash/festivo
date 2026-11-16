@@ -345,8 +345,8 @@ function from(id: string, eventId: string, pickers: readonly Picker[] = []): EvD
 const many = (n: number, picker: Picker): Picker[] => Array.from({ length: n }, () => picker);
 
 const MAIN_PICKERS: readonly Picker[] = [
-  ...many(3, ['milk']),
-  ['milk', 'eggs'],
+  ...many(3, ['sesame']),
+  ['sesame', 'peanuts'],
   ['other'],
   ...many(40, []),
 ];
@@ -406,7 +406,7 @@ const TASTING: readonly [string, string | null, string | null][] = [
 export function tastingCourses(): EvCourse[] {
   return TASTING.map(([name, at, dish], index) =>
     course(`t${index + 1}`, name, at, dish == null ? [] : [from(dish, `t${index + 1}-d`)], {
-      answer: 'same',
+      answer: dish == null ? 'choose' : 'same',
     }),
   );
 }
@@ -593,19 +593,19 @@ const STATES = {
   editDishAllergen: () =>
     start({
       name: 'Edit dish, an allergen added to a picked dish',
-      note: 'Milk ticked on Jollof rice, which guests have picked. Press Save changes: never refused, and the line counts who has Milk recorded.',
+      note: 'Sesame ticked on Jollof rice, which guests have picked. Press Save changes: never refused, and the line counts who has Sesame recorded.',
       opened: {
         kind: 'editDish',
         courseId: MAIN,
         dishId: 'k2-jollof',
-        form: { allergens: ['milk', 'celery'] },
+        form: { allergens: ['celery', 'sesame'] },
       },
     }),
   editDishAllergenSaved: () => {
     const all = sampleCourses();
     const main = all[1] as EvCourse;
     const jollof = main.dishes[0] as EvDish;
-    const contains: DishAllergen[] = ['milk', 'celery'];
+    const contains: DishAllergen[] = ['celery', 'sesame'];
 
     return start({
       name: 'Edit dish, saved with the picked-guests line',
