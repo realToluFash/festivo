@@ -194,9 +194,11 @@ export function SeatingArea({ event }: { event: OrganisationEvent }) {
           <li>
             <Link to="/app/events">{t('seating.events')}</Link>
           </li>
-          <li>
+          <li className="st-crumb-event">
             <Glyph name="chevron" size={14} weight={2.3} />
-            <Link to={`/app/events/${encodeURIComponent(event.id)}`}>{event.name}</Link>
+            <Link to={`/app/events/${encodeURIComponent(event.id)}`}>
+              <span className="st-crumb-name">{event.name}</span>
+            </Link>
           </li>
           <li aria-current="page">
             <Glyph name="chevron" size={14} weight={2.3} />
