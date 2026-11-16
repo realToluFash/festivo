@@ -152,8 +152,6 @@ export const CW = {
   cannotReach: 'Cannot reach Soirely',
   cannotReachBody: 'The menu did not load. Check your connection, then try again.',
   tryAgain: 'Try again',
-  noAccessTitle: 'You do not have access to this',
-  noAccessBody: 'Your role does not include the permission this page needs.',
   gone: 'This event is not available',
   goneBody: 'It may have been deleted, or it belongs to another organisation.',
   backToEvents: 'Back to events',
@@ -683,7 +681,11 @@ const STATES = {
       failing: 'forbidden',
     }),
   noAccess: () =>
-    start({ name: 'Without menu.read, 403', note: 'The page is refused.', system: 'noAccess' }),
+    start({
+      name: 'Without menu.read',
+      note: 'The page is withheld, as Guests, Seating and Schedule are.',
+      system: 'noAccess',
+    }),
   gone: () =>
     start({
       name: 'Another organisation’s event, 404',
