@@ -32,7 +32,7 @@ import { inputFaced } from '../theme/fonts.ts';
 import { tokens } from '../theme/tokens.ts';
 
 const HEIGHT = 56;
-const LABEL_LARGE = 17;
+export const LABEL_LARGE = 17;
 const LABEL_SMALL = tokens.typeSmall.size;
 
 export type FieldState = 'plain' | 'blank';

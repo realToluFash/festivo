@@ -18,14 +18,13 @@ import { FIELD_DEFAULTS, fieldName, refusedHint, refusedName, withInvalid } from
 import { useBoldText } from '../theme/boldText.ts';
 import { inputFaced } from '../theme/fonts.ts';
 import { tokens } from '../theme/tokens.ts';
+import { LABEL_LARGE } from './InsideField.tsx';
 import { Plain, Says } from './Lines.tsx';
 
 /** The box's height at the default text size: about four lines under its label, and with the label, refusal and count it still fits above the keys and the button on an iPhone SE. It scrolls inside rather than growing. */
 export const MESSAGE_BOX = 132;
 /** Larger Text grows the box with it up to here, then it scrolls sooner. */
 export const MESSAGE_BOX_MOST_SCALE = 1.5;
-/** InsideField's LABEL_LARGE. */
-const TEXT_LARGE = 17;
 
 /** A message of many lines: its label a band of its own over the text, which scrolls below it. One focused group, so the keys lift the refusal and the count above the button with the box. */
 export function MessageBox({
@@ -145,7 +144,7 @@ const styles = StyleSheet.create({
     paddingBottom: tokens.spaceSm,
     paddingHorizontal: tokens.spaceXl - 1,
     color: tokens.colorInk,
-    fontSize: TEXT_LARGE,
+    fontSize: LABEL_LARGE,
     textAlignVertical: 'top',
   },
 });
