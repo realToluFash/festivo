@@ -293,6 +293,30 @@ final readonly class SeatingPlanController
         return $this->seating($event, $plan);
     }
 
+    /** One step of moves, turns and resizes, saved all or nothing: each item with its `kind`, `id`, `version`, `xCm` and `yCm`, and a table's or row's `rotation`, a table's `widthCm` and `lengthCm` (sc-5028). A stale item refuses the whole step with 412, its problem naming every stale item in `stale`. */
+    #[Route('/api/events/{eventId}/seating-plan/furniture', name: 'seating_furniture_arrange', methods: ['PATCH'])]
+    #[InEvent(Permission::SeatingManage)]
+    public function arrange(Request $request, string $eventId): JsonResponse
+    {
+        $event = $this->event($eventId);
+        $body = Input::body($request, Type\shape([
+            'items' => Type\vec(Type\shape([
+                'kind' => Type\union(Type\literal_scalar('table'), Type\literal_scalar('row'), Type\literal_scalar('seat')),
+                'id' => Type\string(),
+                'version' => Type\int(),
+                'xCm' => Type\int(),
+                'yCm' => Type\int(),
+                'rotation' => Type\optional(Type\int()),
+                'widthCm' => Type\optional(Type\int()),
+                'lengthCm' => Type\optional(Type\int()),
+            ])),
+        ]));
+        $plan = $this->plan($event);
+        $this->seatingPlanEditor->arrange($event, $plan, $this->user(), $body['items']);
+
+        return $this->seating($event, $plan);
+    }
+
     /** A hub token for this event's seating alone; every change to the plan is published there whole. */
     #[Route('/api/events/{eventId}/seating-plan/subscriptions', name: 'seating_plan_subscribe', methods: ['POST'])]
     #[InEvent(Permission::SeatingRead)]

@@ -783,11 +783,13 @@ function leave(label: string, value: string): void {
 }
 
 describe('Tables at a desk (sc-4000)', () => {
-  it('offers the four shapes as whole phrases and adds one, opening its panel', async () => {
+  it('offers the four shapes as whole phrases and places one at the centre, opening its panel', async () => {
     signedIn();
     const sent = await onSeating({
       'GET /api/events/ev_1/seating-plan': () => seating(plan()),
       'POST /api/events/ev_1/seating-plan/tables': () => seating(withTables(table()), 't1'),
+      'PATCH /api/events/ev_1/seating-plan/furniture': () =>
+        seating(withTables(table({ version: 2 }))),
     });
 
     fireEvent.click(await screen.findByRole('button', { name: 'Add table' }));
@@ -804,8 +806,13 @@ describe('Tables at a desk (sc-4000)', () => {
       'Cocktail table · 60\u00a0cm · 4 places',
     ]);
     fireEvent.click(within(menu).getAllByRole('menuitem')[0]!);
+    expect(
+      screen.getByText('Click the floor to place a round table. It snaps to the grid. Esc stops.'),
+    ).toBeDefined();
+    fireEvent.click(screen.getByRole('checkbox', { name: 'Place another' }));
+    fireEvent.click(screen.getByRole('button', { name: 'Place at the centre' }));
 
-    expect(await screen.findByText('Table 1 added in the nearest free space.')).toBeDefined();
+    await screen.findByRole('heading', { level: 2, name: 'Table 1' });
     expect(sent.find((one) => one.line.startsWith('POST'))?.body).toEqual({ shape: 'round' });
     expect(screen.getByLabelText('Diameter')).toHaveProperty('value', '180');
     expect(screen.getByLabelText('Seats')).toHaveProperty('value', '10');
@@ -1163,19 +1170,21 @@ function placed(planned: unknown, ids: { rowId?: string; seatId?: string }) {
 }
 
 describe('Rows and single seats at a desk (sc-4003)', () => {
-  it('adds a row of ten in the nearest free space, opening it with five seats shown', async () => {
+  it('places a row of ten, opening it with five seats shown', async () => {
     signedIn();
     const sent = await onSeating({
       'GET /api/events/ev_1/seating-plan': () => seating(plan()),
       'POST /api/events/ev_1/seating-plan/rows': () =>
         placed(withRowsAndSeats([row()], []), { rowId: 'r1' }),
+      'PATCH /api/events/ev_1/seating-plan/furniture': () =>
+        seating(withRowsAndSeats([row({ version: 2 })], [])),
     });
 
     fireEvent.click(await screen.findByRole('button', { name: 'Add row' }));
+    fireEvent.click(screen.getByRole('checkbox', { name: 'Place another' }));
+    fireEvent.click(screen.getByRole('button', { name: 'Place at the centre' }));
 
-    expect(
-      await screen.findByText('Row A added in the nearest free space, with 10 seats.'),
-    ).toBeDefined();
+    await screen.findByRole('heading', { level: 2, name: 'Row A' });
     expect(sent.some((one) => one.line === 'POST /api/events/ev_1/seating-plan/rows')).toBe(true);
     expect(screen.getByText('Faces the front · seat 1 on the left')).toBeDefined();
     expect(document.querySelectorAll('.st-strip-seat')).toHaveLength(5);
@@ -1399,19 +1408,27 @@ describe('Rows and single seats at a desk (sc-4003)', () => {
           seatId: 's1',
         }),
       'DELETE /api/events/ev_1/seating-plan/seats/s1': () => seating(withRowsAndSeats([], [other])),
+      'PATCH /api/events/ev_1/seating-plan/furniture': () =>
+        seating(withRowsAndSeats([], [other, single()])),
     });
 
     fireEvent.click(await screen.findByRole('button', { name: 'Add seat' }));
-    expect(await screen.findByText('Seat 1 added in the nearest free space.')).toBeDefined();
+    fireEvent.click(screen.getByRole('checkbox', { name: 'Place another' }));
+    fireEvent.click(screen.getByRole('button', { name: 'Place at the centre' }));
+    await screen.findByRole('heading', { level: 2, name: 'Seat 1' });
     expect(screen.getByText('Single seat · No section')).toBeDefined();
 
     leave('Name', 'usher');
     expect(await screen.findByText('This plan already has a seat called Usher.')).toBeDefined();
-    expect(sent.some((one) => one.line.startsWith('PATCH'))).toBe(false);
+    expect(
+      sent.some((one) => one.line.startsWith('PATCH /api/events/ev_1/seating-plan/seats')),
+    ).toBe(false);
 
     fireEvent.click(screen.getByRole('button', { name: 'Mark unusable' }));
     await screen.findByRole('button', { name: 'Mark usable' });
-    expect(sent.find((one) => one.line.startsWith('PATCH'))?.body).toEqual({ unusable: true });
+    expect(
+      sent.find((one) => one.line.startsWith('PATCH /api/events/ev_1/seating-plan/seats'))?.body,
+    ).toEqual({ unusable: true });
 
     fireEvent.click(screen.getByRole('button', { name: 'Delete seat' }));
     const ask = await screen.findByRole('alertdialog');
@@ -1463,6 +1480,8 @@ describe('At a narrow desk (sc-55937)', () => {
         'GET /api/events/ev_1/seating-plan': () => seating(plan()),
         'POST /api/events/ev_1/seating-plan/rows': () =>
           placed(withRowsAndSeats([row()], []), { rowId: 'r1' }),
+        'PATCH /api/events/ev_1/seating-plan/furniture': () =>
+          seating(withRowsAndSeats([row({ version: 2 })], [])),
       });
 
       fireEvent.click(await screen.findByRole('button', { name: 'Add' }));
@@ -1486,10 +1505,9 @@ describe('At a narrow desk (sc-55937)', () => {
         expect(document.activeElement).toBe(within(menu).getAllByRole('menuitem')[0]),
       );
       fireEvent.click(within(menu).getByRole('menuitem', { name: 'Row of chairs' }));
+      fireEvent.click(await screen.findByRole('button', { name: 'Place at the centre' }));
 
-      expect(
-        await screen.findByText('Row A added in the nearest free space, with 10 seats.'),
-      ).toBeDefined();
+      await waitFor(() => expect(furniture(sent)).toHaveLength(1));
       expect(sent.some((one) => one.line === 'POST /api/events/ev_1/seating-plan/rows')).toBe(true);
       expect(screen.queryByRole('menu')).toBeNull();
     } finally {
@@ -1680,22 +1698,23 @@ function centreOf(id: string): number {
   return Number(document.querySelector(`[data-table="${id}"] .st-body`)?.getAttribute('cx'));
 }
 
+function standInPointerEvents(): void {
+  if ('PointerEvent' in window) return;
+  class StandIn extends MouseEvent {
+    pointerId: number;
+
+    constructor(type: string, init: PointerEventInit = {}) {
+      super(type, init);
+      this.pointerId = init.pointerId ?? 1;
+    }
+  }
+  Object.defineProperty(window, 'PointerEvent', { value: StandIn, configurable: true });
+}
+
 describe('The room to scale (sc-4007)', () => {
   const before = config();
 
-  beforeAll(() => {
-    if (!('PointerEvent' in window)) {
-      class StandIn extends MouseEvent {
-        pointerId: number;
-
-        constructor(type: string, init: PointerEventInit = {}) {
-          super(type, init);
-          this.pointerId = init.pointerId ?? 1;
-        }
-      }
-      Object.defineProperty(window, 'PointerEvent', { value: StandIn, configurable: true });
-    }
-  });
+  beforeAll(standInPointerEvents);
 
   beforeEach(() => {
     localStorage.clear();
@@ -2022,6 +2041,47 @@ describe('The room to scale (sc-4007)', () => {
     expect(screen.getByRole('heading', { level: 2, name: 'Table 1' })).toBeDefined();
   });
 
+  it('refuses a drag whose table a colleague moved between pointer-down and release', async () => {
+    __setConfig({ ...before, mercureUrl: 'http://hub.test/.well-known/mercure' });
+    StubSource.made = [];
+    vi.stubGlobal('EventSource', StubSource);
+    signedIn();
+    const sent = await onSeating({
+      'GET /api/events/ev_1/seating-plan': () => seating(withTables(table())),
+      'POST /api/events/ev_1/seating-plan/subscriptions': () =>
+        json({ token: 'tok', expiresAt: new Date(Date.now() + 3_600_000).toISOString() }),
+      'PATCH /api/events/ev_1/seating-plan/furniture': (body) => {
+        const [item] = (body as { items: { version: number }[] }).items;
+
+        return item!.version === 2
+          ? seating(withTables(table({ version: 3 })))
+          : problem('precondition_failed', 412, { stale: ['t1'], changedBy: 'Bola Ade' });
+      },
+    });
+    const seatingSource = () =>
+      StubSource.made.find((one) => decodeURIComponent(one.url).includes('/seating'));
+
+    await waitFor(() => expect(seatingSource()).toBeDefined());
+    await screen.findByRole('button', { name: TABLE_1 });
+    const drawn = document.querySelector('[data-table="t1"]')!;
+    const room = document.querySelector('.st-room')!;
+    const at = { pointerId: 1, button: 0 };
+
+    fireEvent.pointerDown(drawn, { ...at, clientX: 100, clientY: 100 });
+    fireEvent.pointerMove(room, { ...at, clientX: 133, clientY: 117 });
+    seatingSource()!.publish({
+      measurementSystem: 'metric',
+      plan: withTables(table({ xCm: 600, version: 2 })),
+    });
+    fireEvent.pointerUp(room, { ...at, clientX: 133, clientY: 117 });
+
+    await waitFor(() => expect(furniture(sent)).toHaveLength(1));
+    expect((furniture(sent)[0] as { version: number }[])[0]!.version).toBe(1);
+    expect(
+      await screen.findByText('Bola Ade just moved Table 1. Your change was not saved.'),
+    ).toBeDefined();
+  });
+
   it('reads the room in feet and inches where the organisation is US customary', async () => {
     signedIn();
     await onSeating({
@@ -2081,5 +2141,425 @@ describe('The breadcrumb (sc-55300)', () => {
         .closest('li')
         ?.classList.contains('st-crumb-event'),
     ).toBe(false);
+  });
+});
+
+function furniture(sent: { line: string; body: unknown }[]) {
+  return sent
+    .filter((one) => one.line === 'PATCH /api/events/ev_1/seating-plan/furniture')
+    .map((one) => (one.body as { items: unknown[] }).items);
+}
+
+function usSeating(planned: unknown, tableId?: string) {
+  return json({ seating: { measurementSystem: 'us', plan: planned }, tableId });
+}
+
+describe('Moving, turning and resizing on the Floor plan (sc-5028)', () => {
+  beforeAll(standInPointerEvents);
+
+  it('moves a chosen table 10 cm with an arrow and 1 m with Shift, each a step with its version', async () => {
+    signedIn();
+    const sent = await onSeating({
+      'GET /api/events/ev_1/seating-plan': () => seating(withTables(table())),
+      'PATCH /api/events/ev_1/seating-plan/furniture': (body) => {
+        const [item] = (body as { items: { xCm: number; yCm: number }[] }).items;
+
+        return seating(withTables(table({ xCm: item!.xCm, yCm: item!.yCm, version: 2 })));
+      },
+    });
+
+    await chooseTable('Table 1, round, 0 of 10 seats taken');
+    const drawn = document.querySelector('[data-table="t1"]')!;
+
+    fireEvent.keyDown(drawn, { key: 'ArrowRight' });
+    expect(await screen.findByText('Saved')).toBeDefined();
+    fireEvent.keyDown(drawn, { key: 'ArrowDown', shiftKey: true });
+
+    await waitFor(() => expect(furniture(sent)).toHaveLength(2));
+    expect(furniture(sent)).toEqual([
+      [{ kind: 'table', id: 't1', xCm: 1210, yCm: 900, version: 1 }],
+      [{ kind: 'table', id: 't1', xCm: 1210, yCm: 1000, version: 2 }],
+    ]);
+    expect(screen.getByText('Table 1, 12.1 m across, 10 m down.')).toBeDefined();
+  });
+
+  it('stops an arrow at the room’s edge and sends nothing past it', async () => {
+    signedIn();
+    const sent = await onSeating({
+      'GET /api/events/ev_1/seating-plan': () => seating(withTables(table({ xCm: 145 }))),
+      'PATCH /api/events/ev_1/seating-plan/furniture': () =>
+        seating(withTables(table({ xCm: 140, version: 2 }))),
+    });
+
+    await chooseTable('Table 1, round, 0 of 10 seats taken');
+    const drawn = document.querySelector('[data-table="t1"]')!;
+
+    fireEvent.keyDown(drawn, { key: 'ArrowLeft' });
+    await waitFor(() => expect(furniture(sent)).toHaveLength(1));
+    expect(furniture(sent)[0]).toEqual([
+      { kind: 'table', id: 't1', xCm: 140, yCm: 900, version: 1 },
+    ]);
+    await screen.findByText('Saved');
+    fireEvent.keyDown(drawn, { key: 'ArrowLeft' });
+    expect(furniture(sent)).toHaveLength(1);
+  });
+
+  it('places a table exactly from Across and Down, refusing a spot outside the room beside the field', async () => {
+    signedIn();
+    const sent = await onSeating({
+      'GET /api/events/ev_1/seating-plan': () => seating(withTables(table())),
+      'PATCH /api/events/ev_1/seating-plan/furniture': () =>
+        seating(withTables(table({ xCm: 375, version: 2 }))),
+    });
+
+    await chooseTable('Table 1, round, 0 of 10 seats taken');
+    expect(screen.getByLabelText('Across')).toHaveProperty('value', '12\u00a0m');
+
+    leave('Across', '23.5');
+    expect(await screen.findByText('Table 1 would sit outside the room.')).toBeDefined();
+    leave('Across', 'abc');
+    expect(await screen.findByText('Enter a length like 3.75 m or 375 cm.')).toBeDefined();
+    expect(furniture(sent)).toEqual([]);
+
+    leave('Across', '3.75');
+    await waitFor(() => expect(furniture(sent)).toHaveLength(1));
+    expect(furniture(sent)[0]).toEqual([
+      { kind: 'table', id: 't1', xCm: 375, yCm: 900, version: 1 },
+    ]);
+    await waitFor(() =>
+      expect(screen.getByLabelText('Across')).toHaveProperty('value', '3.75\u00a0m'),
+    );
+  });
+
+  it('works in feet and inches where the organisation is US customary: 3 in arrows, typed lengths and no bare numbers', async () => {
+    signedIn();
+    const sent = await onSeating({
+      'GET /api/events/ev_1/seating-plan': () => usSeating(withTables(table())),
+      'PATCH /api/events/ev_1/seating-plan/furniture': (body) => {
+        const [item] = (body as { items: { xCm: number; yCm: number }[] }).items;
+
+        return usSeating(withTables(table({ xCm: item!.xCm, yCm: item!.yCm, version: 2 })));
+      },
+    });
+
+    await chooseTable('Table 1, round, 0 of 10 seats taken');
+    expect(screen.getByLabelText('Across')).toHaveProperty('value', '39\u00a0ft 4\u00a0in');
+    expect(screen.getByLabelText('Across').getAttribute('inputmode')).toBe('text');
+
+    leave('Down', '12');
+    expect(await screen.findByText('Enter a length like 12 ft 4 in or 148 in.')).toBeDefined();
+    expect(furniture(sent)).toEqual([]);
+
+    leave('Down', '12′ 4″');
+    await waitFor(() => expect(furniture(sent)).toHaveLength(1));
+    expect(furniture(sent)[0]).toEqual([
+      { kind: 'table', id: 't1', xCm: 1200, yCm: 376, version: 1 },
+    ]);
+    await screen.findByText('Saved');
+
+    fireEvent.keyDown(document.querySelector('[data-table="t1"]')!, { key: 'ArrowRight' });
+    await waitFor(() => expect(furniture(sent)).toHaveLength(2));
+    expect(furniture(sent)[1]).toEqual([
+      { kind: 'table', id: 't1', xCm: 1208, yCm: 376, version: 2 },
+    ]);
+  });
+
+  it('turns a long table 15° with R, duplicates it with Ctrl+D and asks before Delete', async () => {
+    signedIn();
+    const long = table({ shape: 'rectangular', seats: 6, widthCm: 180, lengthCm: 76 });
+    const sent = await onSeating({
+      'GET /api/events/ev_1/seating-plan': () => seating(withTables(long)),
+      'PATCH /api/events/ev_1/seating-plan/furniture': () =>
+        seating(withTables({ ...long, rotation: 15, version: 2 })),
+      'POST /api/events/ev_1/seating-plan/tables/t1/duplicate': () =>
+        seating(
+          withTables(
+            { ...long, rotation: 15, version: 2 },
+            { ...long, id: 't2', name: 'Table 2', yCm: 1320 },
+          ),
+          't2',
+        ),
+    });
+
+    await chooseTable('Table 1, rectangular, 0 of 6 seats taken');
+    const drawn = document.querySelector('[data-table="t1"]')!;
+
+    fireEvent.keyDown(drawn, { key: 'r' });
+    await waitFor(() => expect(furniture(sent)).toHaveLength(1));
+    expect(furniture(sent)[0]).toEqual([
+      { kind: 'table', id: 't1', xCm: 1200, yCm: 900, rotation: 15, version: 1 },
+    ]);
+    await screen.findByText('Saved');
+
+    fireEvent.keyDown(drawn, { key: 'Delete' });
+    const ask = await screen.findByRole('alertdialog');
+    expect(within(ask).getByRole('button', { name: 'Delete Table 1' })).toBeDefined();
+    fireEvent.keyDown(ask, { key: 'Escape' });
+    await waitFor(() => expect(screen.queryByRole('alertdialog')).toBeNull());
+
+    fireEvent.keyDown(document.querySelector('[data-table="t1"]')!, { key: 'd', ctrlKey: true });
+    expect(
+      await screen.findByText('Table 2 added, a copy of Table 1 with nobody seated.'),
+    ).toBeDefined();
+    expect(
+      sent.find((one) => one.line === 'POST /api/events/ev_1/seating-plan/tables/t1/duplicate')
+        ?.ifMatch,
+    ).toBe('"2"');
+  });
+
+  it('does not turn a round table with R', async () => {
+    signedIn();
+    const sent = await onSeating({
+      'GET /api/events/ev_1/seating-plan': () => seating(withTables(table())),
+    });
+
+    await chooseTable('Table 1, round, 0 of 10 seats taken');
+    fireEvent.keyDown(document.querySelector('[data-table="t1"]')!, { key: 'R' });
+    expect(furniture(sent)).toEqual([]);
+  });
+
+  it('chooses several with Shift and click, moves them as one step, and lets go with Esc', async () => {
+    signedIn();
+    const second = table({ id: 't2', name: 'Table 2', xCm: 600 });
+    const sent = await onSeating({
+      'GET /api/events/ev_1/seating-plan': () => seating(withTables(table(), second)),
+      'PATCH /api/events/ev_1/seating-plan/furniture': () =>
+        seating(withTables(table({ xCm: 1300, version: 2 }), { ...second, xCm: 700, version: 2 })),
+    });
+
+    await chooseTable('Table 1, round, 0 of 10 seats taken');
+    fireEvent.click(screen.getByRole('button', { name: 'Table 2, round, 0 of 10 seats taken' }), {
+      shiftKey: true,
+    });
+    expect(await screen.findByRole('heading', { level: 2, name: '2 chosen' })).toBeDefined();
+    expect(screen.getByText('They move together, saved as one step.')).toBeDefined();
+    const rows = [...document.querySelectorAll('.st-stack .st-row')];
+    expect(rows.map((row) => row.textContent)).toEqual(['Table 1', 'Table 2']);
+    expect(rows.every((row) => row.querySelector('.st-shape-tile svg') != null)).toBe(true);
+
+    fireEvent.keyDown(document.querySelector('[data-table="t2"]')!, {
+      key: 'ArrowRight',
+      shiftKey: true,
+    });
+    await waitFor(() => expect(furniture(sent)).toHaveLength(1));
+    expect(furniture(sent)[0]).toEqual([
+      { kind: 'table', id: 't1', xCm: 1300, yCm: 900, version: 1 },
+      { kind: 'table', id: 't2', xCm: 700, yCm: 900, version: 1 },
+    ]);
+
+    fireEvent.keyDown(window, { key: 'Escape' });
+    await waitFor(() => expect(screen.queryByRole('heading', { name: '2 chosen' })).toBeNull());
+    expect(document.querySelectorAll('[aria-pressed="true"][data-table]')).toHaveLength(0);
+  });
+
+  it('drags a table, snapping to the grid, and saves it on release', async () => {
+    signedIn();
+    const sent = await onSeating({
+      'GET /api/events/ev_1/seating-plan': () => seating(withTables(table())),
+      'PATCH /api/events/ev_1/seating-plan/furniture': (body) => {
+        const [item] = (body as { items: { xCm: number; yCm: number }[] }).items;
+
+        return seating(withTables(table({ xCm: item!.xCm, yCm: item!.yCm, version: 2 })));
+      },
+    });
+    await screen.findByRole('button', { name: 'Table 1, round, 0 of 10 seats taken' });
+    const drawn = document.querySelector('[data-table="t1"]')!;
+    const room = document.querySelector('.st-room')!;
+    const at = { pointerId: 1, button: 0 };
+
+    fireEvent.pointerDown(drawn, { ...at, clientX: 100, clientY: 100 });
+    fireEvent.pointerMove(room, { ...at, clientX: 133, clientY: 117 });
+    fireEvent.pointerUp(room, { ...at, clientX: 133, clientY: 117 });
+    fireEvent.click(drawn);
+
+    await waitFor(() => expect(furniture(sent)).toHaveLength(1));
+    const [moved] = furniture(sent)[0] as { xCm: number; yCm: number }[];
+
+    expect(moved!.xCm % 10).toBe(0);
+    expect(moved!.yCm % 10).toBe(0);
+    expect(moved!.xCm).toBeGreaterThan(1200);
+    expect(await screen.findByRole('heading', { level: 2, name: 'Table 1' })).toBeDefined();
+  });
+
+  it('outlines overlapping tables and says so in the panel', async () => {
+    signedIn();
+    await onSeating({
+      'GET /api/events/ev_1/seating-plan': () =>
+        seating(withTables(table(), table({ id: 't2', name: 'Table 2', xCm: 1350 }))),
+    });
+
+    await chooseTable('Table 1, round, 0 of 10 seats taken');
+    expect(screen.getByText('Overlaps Table 2')).toBeDefined();
+    expect(document.querySelectorAll('[data-table] .st-overlap')).toHaveLength(2);
+  });
+
+  it('says Saving…, then Couldn’t save and tries again, and after three tries keeps the change with Try again', async () => {
+    signedIn();
+    let fails = 3;
+    const sent = await onSeating({
+      'GET /api/events/ev_1/seating-plan': () => seating(withTables(table())),
+      'PATCH /api/events/ev_1/seating-plan/furniture': () => {
+        if (fails > 0) {
+          fails -= 1;
+          return problem('internal', 500);
+        }
+        return seating(withTables(table({ xCm: 1210, version: 2 })));
+      },
+    });
+
+    await chooseTable('Table 1, round, 0 of 10 seats taken');
+    fireEvent.keyDown(document.querySelector('[data-table="t1"]')!, { key: 'ArrowRight' });
+    expect(await screen.findByText('Saving…')).toBeDefined();
+    expect(await screen.findByText('Couldn’t save. Trying again…')).toBeDefined();
+    expect(
+      await screen.findByText('This change was not saved.', {}, { timeout: 6000 }),
+    ).toBeDefined();
+    expect(document.querySelector('.st-save')?.textContent).toContain('Try again');
+    expect(screen.getByLabelText('Across')).toHaveProperty('value', '12.1\u00a0m');
+
+    fireEvent.click(screen.getByRole('button', { name: 'Try again' }));
+    expect(await screen.findByText('Saved')).toBeDefined();
+    expect(furniture(sent)).toHaveLength(4);
+  }, 15_000);
+
+  it('refuses a step a colleague got to first, naming them, and snaps back to where they put it', async () => {
+    signedIn();
+    let reads = 0;
+    await onSeating({
+      'GET /api/events/ev_1/seating-plan': () => {
+        reads += 1;
+        return seating(withTables(table(reads > 1 ? { xCm: 600, version: 2 } : {})));
+      },
+      'PATCH /api/events/ev_1/seating-plan/furniture': () =>
+        problem('precondition_failed', 412, { stale: ['t1'], changedBy: 'Bola Ade' }),
+    });
+
+    await chooseTable('Table 1, round, 0 of 10 seats taken');
+    fireEvent.keyDown(document.querySelector('[data-table="t1"]')!, { key: 'ArrowRight' });
+
+    expect(
+      await screen.findByText('Bola Ade just moved Table 1. Your change was not saved.'),
+    ).toBeDefined();
+    await waitFor(() =>
+      expect(screen.getByLabelText('Across')).toHaveProperty('value', '6\u00a0m'),
+    );
+  });
+
+  it('sends a queued step on from the version its own earlier step saved', async () => {
+    signedIn();
+    let current = 1;
+    const sent = await onSeating({
+      'GET /api/events/ev_1/seating-plan': () => seating(withTables(table())),
+      'PATCH /api/events/ev_1/seating-plan/furniture': (body) => {
+        const [item] = (body as { items: { xCm: number; version: number }[] }).items;
+
+        if (item!.version !== current)
+          return problem('precondition_failed', 412, { stale: ['t1'], changedBy: 'Bola Ade' });
+        current += 1;
+        return seating(withTables(table({ xCm: item!.xCm, version: current })));
+      },
+    });
+
+    await chooseTable(TABLE_1);
+    fireEvent.keyDown(document.querySelector('[data-table="t1"]')!, { key: 'ArrowRight' });
+    fireEvent.keyDown(document.querySelector('[data-table="t1"]')!, { key: 'ArrowRight' });
+
+    expect(await screen.findByText('Saved')).toBeDefined();
+    await waitFor(() => expect(furniture(sent)).toHaveLength(2));
+    expect(furniture(sent).map((items) => (items as { version: number }[])[0]!.version)).toEqual([
+      1, 2,
+    ]);
+    expect(screen.queryByText(/just moved/u)).toBeNull();
+  });
+
+  it('places by a click on the floor, snapped, and keeps placing with Place another until Esc', async () => {
+    signedIn();
+    const sent = await onSeating({
+      'GET /api/events/ev_1/seating-plan': () => seating(plan()),
+      'POST /api/events/ev_1/seating-plan/seats': () =>
+        placed(withRowsAndSeats([], [single({ xCm: 1200, yCm: 900 })]), { seatId: 's1' }),
+      'PATCH /api/events/ev_1/seating-plan/furniture': (body) => {
+        const [item] = (body as { items: { xCm: number; yCm: number }[] }).items;
+
+        return seating(withRowsAndSeats([], [single({ ...item, version: 2 })]));
+      },
+    });
+
+    fireEvent.click(await screen.findByRole('button', { name: 'Add seat' }));
+    expect(screen.getByRole('checkbox', { name: 'Place another' })).toHaveProperty('checked', true);
+    const floor = document.querySelector('.st-floor')!;
+
+    fireEvent.pointerDown(floor, { pointerId: 1, button: 0, clientX: 203, clientY: 147 });
+    await waitFor(() => expect(furniture(sent)).toHaveLength(1));
+    const [put] = furniture(sent)[0] as { xCm: number; yCm: number }[];
+
+    expect([put!.xCm % 10, put!.yCm % 10]).toEqual([0, 0]);
+    expect(
+      screen.getByText('Click the floor to place a seat. It snaps to the grid. Esc stops.'),
+    ).toBeDefined();
+
+    fireEvent.keyDown(window, { key: 'Escape' });
+    await waitFor(() =>
+      expect(screen.queryByRole('checkbox', { name: 'Place another' })).toBeNull(),
+    );
+  });
+
+  it('offers Snap to grid, on at first, and none of this without seating.manage', async () => {
+    signedIn();
+    await onSeating({
+      'GET /api/events/ev_1/seating-plan': () => seating(withTables(table())),
+    });
+    const snap = await screen.findByRole('switch', { name: 'Snap to grid' });
+
+    expect(snap.getAttribute('aria-checked')).toBe('true');
+    fireEvent.click(snap);
+    expect(snap.getAttribute('aria-checked')).toBe('false');
+  });
+
+  it('moves nothing for a viewer, and shows no handles or Snap to grid', async () => {
+    signedIn();
+    const sent = await onSeating(
+      { 'GET /api/events/ev_1/seating-plan': () => seating(withTables(table())) },
+      OWNER_PERMISSIONS.filter((one) => one !== 'seating.manage'),
+    );
+
+    await chooseTable('Table 1, round, 0 of 10 seats taken');
+    fireEvent.keyDown(document.querySelector('[data-table="t1"]')!, { key: 'ArrowRight' });
+    expect(screen.queryByRole('switch', { name: 'Snap to grid' })).toBeNull();
+    expect(document.querySelector('.st-handle-hit')).toBeNull();
+    expect(screen.queryByLabelText('Across')).toBeNull();
+    expect(furniture(sent)).toEqual([]);
+  });
+
+  it('gives a chosen table 44 px handles and resizes it from one, saved on release', async () => {
+    signedIn();
+    const sent = await onSeating({
+      'GET /api/events/ev_1/seating-plan': () => seating(withTables(table())),
+      'PATCH /api/events/ev_1/seating-plan/furniture': (body) => {
+        const [item] = (body as { items: { widthCm: number }[] }).items;
+
+        return seating(
+          withTables(table({ widthCm: item!.widthCm, lengthCm: item!.widthCm, version: 2 })),
+        );
+      },
+    });
+
+    await chooseTable('Table 1, round, 0 of 10 seats taken');
+    const hits = document.querySelectorAll('.st-handle-hit');
+
+    expect(hits).toHaveLength(4);
+    expect([hits[0]!.getAttribute('width'), hits[0]!.getAttribute('height')]).toEqual(['44', '44']);
+    const room = document.querySelector('.st-room')!;
+    const at = { pointerId: 2, button: 0 };
+
+    fireEvent.pointerDown(hits[2]!, { ...at, clientX: 0, clientY: 0 });
+    fireEvent.pointerMove(room, { ...at, clientX: 400, clientY: 300 });
+    fireEvent.pointerUp(room, { ...at, clientX: 400, clientY: 300 });
+
+    await waitFor(() => expect(furniture(sent)).toHaveLength(1));
+    const [sized] = furniture(sent)[0] as { widthCm: number; lengthCm: number }[];
+
+    expect(sized!.widthCm).toBe(sized!.lengthCm);
+    expect(sized!.widthCm % 10).toBe(0);
   });
 });

@@ -91,5 +91,11 @@
     "validation.seating_row_label_taken": "Este plano ya tiene una fila con la etiqueta {label}.",
     "validation.seating_row_spacing_between": "Indique una separación entre {min} y {max}.",
     "validation.seating_seat_name_required": "Indique un nombre para el asiento.",
-    "validation.seating_seat_name_taken": "Este plano ya tiene un asiento llamado {name}."
+    "validation.seating_seat_name_taken": "Este plano ya tiene un asiento llamado {name}.",
+    "validation.seating_arrange_nothing": "Send at least one table, row or seat to move.",
+    "validation.seating_arrange_table_only": "Only a table changes its size here.",
+    "validation.seating_seat_does_not_turn": "A single seat does not turn.",
+    "validation.seating_outside_room": "{name} would sit outside the room.",
+    "validation.seating_row_outside_room": "Row {label} would sit outside the room.",
+    "seating.no_such_item": "This table, row or seat is not on the plan."
 }
