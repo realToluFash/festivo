@@ -1437,7 +1437,9 @@ function barMeetsZoom() {
     this: HTMLElement,
   ) {
     const width = this.classList.contains('st-add')
-      ? 520
+      ? this.childElementCount > 1
+        ? 520
+        : 200
       : this.classList.contains('st-zoom')
         ? 240
         : 0;
@@ -1487,6 +1489,51 @@ describe('At a narrow desk (sc-55937)', () => {
       expect(screen.queryByRole('menu')).toBeNull();
     } finally {
       measured.mockRestore();
+    }
+  });
+
+  it('unfolds Add row and Add seat again once the floor is wide enough', async () => {
+    signedIn();
+    const measured = barMeetsZoom();
+    const resized: ResizeObserverCallback[] = [];
+
+    vi.stubGlobal(
+      'ResizeObserver',
+      class {
+        constructor(callback: ResizeObserverCallback) {
+          resized.push(callback);
+        }
+        observe() {}
+        disconnect() {}
+      },
+    );
+
+    try {
+      await onSeating({ 'GET /api/events/ev_1/seating-plan': () => seating(plan()) });
+
+      expect(await screen.findByRole('button', { name: 'Add' })).toBeDefined();
+      expect(screen.queryByRole('button', { name: 'Add row' })).toBeNull();
+
+      const widen = (width: number) =>
+        act(() => {
+          for (const callback of resized)
+            callback(
+              [{ contentRect: { width, height: 719 } } as ResizeObserverEntry],
+              {} as ResizeObserver,
+            );
+        });
+
+      widen(780);
+      expect(screen.getByRole('button', { name: 'Add' })).toBeDefined();
+      expect(screen.queryByRole('button', { name: 'Add row' })).toBeNull();
+
+      widen(1200);
+      expect(await screen.findByRole('button', { name: 'Add row' })).toBeDefined();
+      expect(screen.getByRole('button', { name: 'Add seat' })).toBeDefined();
+      expect(screen.getByRole('button', { name: 'Add table' })).toBeDefined();
+    } finally {
+      measured.mockRestore();
+      vi.unstubAllGlobals();
     }
   });
 
