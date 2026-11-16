@@ -3404,6 +3404,35 @@ describe("The hosts' thank-you (sc-6476)", () => {
     expect(screen.queryByRole('region', { name: 'A thank-you for your guests' })).toBeNull();
   });
 
+  it.each([
+    [
+      'with a line',
+      'Thanks for coming.',
+      'Not ended. Check your connection and try again. Your thank-you is still here.',
+    ],
+    ['with none', '', 'Not ended. Try again in a moment.'],
+  ])('says End now failed %s under the field, marked, above the actions', async (_, line, said) => {
+    signedIn();
+    await onThePage(event({ ...HAPPENING, status: 'live', phase: 'happening_now' }), {
+      'POST /api/events/ev_1/end': () => problem(500, 'internal'),
+    });
+
+    fireEvent.click(screen.getByRole('button', { name: 'End now…' }));
+    const dialog = await screen.findByRole('dialog', { name: 'End Adaeze and Tunde now?' });
+    const box = typed(dialog, line);
+    fireEvent.click(within(dialog).getByRole('button', { name: 'End now' }));
+
+    const alert = await within(dialog).findByRole('alert');
+    expect(alert.textContent).toBe(said);
+    expect(alert.querySelector('svg')).not.toBeNull();
+    expect(box.compareDocumentPosition(alert) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
+    expect(
+      alert.compareDocumentPosition(within(dialog).getByRole('button', { name: 'Keep it on' })) &
+        Node.DOCUMENT_POSITION_FOLLOWING,
+    ).toBeTruthy();
+    expect(within(dialog).getAllByText(said)).toHaveLength(1);
+  });
+
   it("keeps End now's dialog open over the limit, sending nothing, and sends the cleaned line once it fits", async () => {
     signedIn();
     const sent = await onThePage(event({ ...HAPPENING, status: 'live', phase: 'happening_now' }), {
