@@ -123,7 +123,7 @@ export function EventNav({
   inside,
   onFollow,
 }: {
-  inside: InsideEvent;
+  inside: Omit<InsideEvent, 'area'> & { area: SideArea | null };
   onFollow: (() => void) | undefined;
 }) {
   const { t } = useTranslation();
