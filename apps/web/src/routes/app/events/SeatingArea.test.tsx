@@ -3064,6 +3064,10 @@ describe('Choosing many and the Selection tools (sc-4717)', () => {
     return document.querySelector('.st-under-views .st-bar p')?.textContent ?? '';
   }
 
+  function heard(): string {
+    return document.querySelector('p.visually-hidden[aria-live]')?.textContent ?? '';
+  }
+
   function panel() {
     return within(document.querySelector<HTMLElement>('.st-panel')!);
   }
@@ -3228,17 +3232,17 @@ describe('Choosing many and the Selection tools (sc-4717)', () => {
     expect(await screen.findByRole('heading', { level: 2, name: 'Table 1' })).toBeDefined();
   });
 
-  it('aligns as one step that Undo puts back', async () => {
+  it('aligns as one step that Undo puts back, announcing each once it is saved', async () => {
     signedIn();
     let steps = 0;
+    let answer: (response: Response) => void = () => {};
     const sent = await onSeating({
       'GET /api/events/ev_1/seating-plan': () => seating(withTables(table(), second())),
-      'PATCH /api/events/ev_1/seating-plan/furniture': () => {
-        steps += 1;
-        return steps === 1
-          ? seating(withTables(table({ xCm: 600, version: 2 }), second({ version: 2 })))
-          : seating(withTables(table({ version: 3 }), second({ version: 3 })));
-      },
+      'PATCH /api/events/ev_1/seating-plan/furniture': () =>
+        new Promise<Response>((done) => {
+          steps += 1;
+          answer = done;
+        }),
     });
 
     await chooseBoth();
@@ -3250,7 +3254,10 @@ describe('Choosing many and the Selection tools (sc-4717)', () => {
       { kind: 'table', id: 't1', xCm: 600, yCm: 900, version: 1 },
       { kind: 'table', id: 't2', xCm: 600, yCm: 900, version: 1 },
     ]);
-    await waitFor(() => expect(stepLine()).toBe('2 tables lined up on their left edges.'));
+    expect(heard()).toBe('');
+    answer(seating(withTables(table({ xCm: 600, version: 2 }), second({ version: 2 }))));
+    await waitFor(() => expect(heard()).toBe('2 tables lined up on their left edges.'));
+    expect(stepLine()).toBe('2 tables lined up on their left edges.');
 
     fireEvent.click(screen.getByRole('button', { name: 'Undo' }));
     await waitFor(() => expect(furniture(sent)).toHaveLength(2));
@@ -3258,9 +3265,10 @@ describe('Choosing many and the Selection tools (sc-4717)', () => {
       { kind: 'table', id: 't1', xCm: 1200, yCm: 900, version: 2 },
       { kind: 'table', id: 't2', xCm: 600, yCm: 900, version: 2 },
     ]);
-    await waitFor(() =>
-      expect(screen.getByText('Undone. Everything is back as it was.')).toBeDefined(),
-    );
+    expect(heard()).toBe('2 tables lined up on their left edges.');
+    answer(seating(withTables(table({ version: 3 }), second({ version: 3 }))));
+    await waitFor(() => expect(heard()).toBe('Undone. Everything is back as it was.'));
+    expect(steps).toBe(2);
   });
 
   it('refuses a grid too wide for the room or out of range, beside its fields', async () => {
@@ -3415,7 +3423,7 @@ describe('Choosing many and the Selection tools (sc-4717)', () => {
     ]);
   });
 
-  it("sends nothing for a copy's Undo once a delete has taken the copies, and keeps the delete's Undo", async () => {
+  it("takes the copy's Undo down while a delete is saving, and offers the delete's Undo once it lands", async () => {
     signedIn();
     const copies = [
       table({ id: 't3', name: 'Table 3', xCm: 650, yCm: 950 }),
@@ -3450,12 +3458,51 @@ describe('Choosing many and the Selection tools (sc-4717)', () => {
 
     fireEvent.click(ask.getByRole('button', { name: 'Delete 4 tables' }));
     await waitFor(() => expect(posted(sent, 'delete')).toHaveLength(1));
-    fireEvent.click(screen.getByRole('button', { name: 'Undo' }));
+    expect(screen.queryByRole('button', { name: 'Undo' })).toBeNull();
     deleted(seating(withTables()));
 
     await waitFor(() => expect(stepLine()).toBe('4 tables deleted.'));
     expect(screen.getByRole('button', { name: 'Undo' })).toBeDefined();
     expect(posted(sent, 'delete')).toHaveLength(1);
+  });
+
+  it("takes a section step's Undo down while a delete is saving, so it is never sent for deleted tables", async () => {
+    signedIn();
+    const sections = [{ id: 's1', name: 'Terrace', colour: 'teal' }];
+    let deleted: (answer: Response) => void = () => {};
+    const sent = await onSeating({
+      'GET /api/events/ev_1/seating-plan': () =>
+        seating({ ...withTables(table(), second()), sections: plan(sections).sections }),
+      'PATCH /api/events/ev_1/seating-plan/furniture/sections': () =>
+        seating({
+          ...withTables(
+            table({ sectionId: 's1', version: 2 }),
+            second({ sectionId: 's1', version: 2 }),
+          ),
+          sections: plan(sections).sections,
+        }),
+      'POST /api/events/ev_1/seating-plan/furniture/delete': () =>
+        new Promise<Response>((done) => {
+          deleted = done;
+        }),
+    });
+
+    await chooseBoth();
+    fireEvent.click(panel().getByRole('button', { name: 'Section' }));
+    fireEvent.click(panel().getByRole('button', { name: 'Apply' }));
+    await waitFor(() => expect(stepLine()).toBe('2 tables now in Terrace.'));
+    fireEvent.click(screen.getByRole('button', { name: 'Select all' }));
+    fireEvent.click(panel().getByRole('button', { name: 'Delete' }));
+    const ask = within(await screen.findByRole('alertdialog'));
+
+    fireEvent.click(ask.getByRole('button', { name: 'Delete 2 tables' }));
+    await waitFor(() => expect(posted(sent, 'delete')).toHaveLength(1));
+    expect(screen.queryByRole('button', { name: 'Undo' })).toBeNull();
+    deleted(seating({ ...withTables(), sections: plan(sections).sections }));
+
+    await waitFor(() => expect(stepLine()).toBe('2 tables deleted.'));
+    expect(screen.getByRole('button', { name: 'Undo' })).toBeDefined();
+    expect(posted(sent, 'sections')).toHaveLength(1);
   });
 
   it('asks before deleting the chosen, and Undo puts them back', async () => {

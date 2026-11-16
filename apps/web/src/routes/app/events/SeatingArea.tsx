@@ -819,7 +819,11 @@ function Plan({
     return version;
   };
 
-  const sendStep = async (items: Placement[], tool: boolean, saved?: () => void): Promise<void> => {
+  const sendStep = async (
+    items: Placement[],
+    tool: boolean,
+    onSaved?: () => void,
+  ): Promise<void> => {
     const versioned = items.map((item) => ({ ...item, version: baseOf(item) }));
 
     for (let tries = 1; ; tries += 1) {
@@ -837,7 +841,7 @@ function Plan({
         settle(items);
         setNote((was) => (was != null && items.some((item) => item.id === was.id) ? null : was));
         setSave('saved');
-        saved?.();
+        onSaved?.();
         return;
       } catch (error) {
         if (error instanceof ApiError && error.status === 412 && tool) {
@@ -883,13 +887,14 @@ function Plan({
     }
   };
 
-  const arrange = (items: Placement[], tool = false, saved?: () => void) => {
+  const arrange = (items: Placement[], tool = false, onSaved?: () => void) => {
     if (items.length === 0) return;
     setPlacements((was) => ({ ...was, ...Object.fromEntries(items.map((one) => [one.id, one])) }));
     unsaved.current = null;
     setSave('saving');
-    dropRefusal();
-    queue.current = queue.current.then(() => sendStep(items, tool, saved));
+    if (tool) setBar(null);
+    else dropRefusal();
+    queue.current = queue.current.then(() => sendStep(items, tool, onSaved));
   };
 
   const tryAgain = () => {
@@ -946,12 +951,14 @@ function Plan({
     reload();
   };
 
-  /** One step through the queue, all or nothing; a 412 keeps the choice and says who changed what. */
+  /** One step through the queue, all or nothing; a 412 keeps the choice and says who changed what.
+   *  Queuing it takes the last step's Undo down, which would otherwise act on a plan this step changes. */
   const runStep = <A extends Seating | SeatingWithChosen>(
     change: () => Promise<A> | null,
     done: (answer: A) => void,
   ) => {
     setSave('saving');
+    setBar(null);
     queue.current = queue.current.then(async () => {
       try {
         const sending = change();
