@@ -423,7 +423,7 @@ def pr_state(number):
     try:
         return github.live(number)["state"]
     except github.GitHubError as error:
-        return NOT_A_PR if "HTTP 404" in str(error) else None
+        return NOT_A_PR if github.http_status(error) == 404 else None
 
 
 def claim(c, a):
