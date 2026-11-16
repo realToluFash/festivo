@@ -614,11 +614,27 @@ export function TablePanel({
   const cocktail = table.shape === 'cocktail';
   const unit = ctx.system === 'us' ? undefined : centimetreUnit(locale);
 
-  const change = (changes: Parameters<typeof api.changeSeatingTable>[2], field?: string) =>
-    ctx.send(
-      () => api.changeSeatingTable(ctx.event.id, table.id, changes, ctx.newest(table).version),
-      field,
-    );
+  const change = async (
+    changes: Parameters<typeof api.changeSeatingTable>[2],
+    field?: string,
+    line: string | null = null,
+  ) => {
+    let saved = false;
+    const refused = await ctx.send(async () => {
+      const answer = await api.changeSeatingTable(
+        ctx.event.id,
+        table.id,
+        changes,
+        ctx.newest(table).version,
+      );
+
+      saved = true;
+      return answer;
+    }, field);
+
+    if (saved) setNote(line);
+    return refused;
+  };
 
   function size(key: 'widthCm' | 'lengthCm', text: string): Promise<string | null> | string {
     const read = readSize(t, locale, text, ctx.system);
@@ -696,15 +712,14 @@ export function TablePanel({
             const shape = TABLE_SHAPES.find((one) => one === value);
 
             if (shape == null) return;
-            void change({ shape }).then((refused) => {
-              if (refused != null) return;
-              setNote(
-                t(SIZE_RESET[shape], {
-                  size: tableSizeWords(t, locale, { shape, ...TABLE_DEFAULTS[shape] }, ctx.system),
-                  count: table.seats,
-                }),
-              );
-            });
+            void change(
+              { shape },
+              undefined,
+              t(SIZE_RESET[shape], {
+                size: tableSizeWords(t, locale, { shape, ...TABLE_DEFAULTS[shape] }, ctx.system),
+                count: table.seats,
+              }),
+            );
           }}
         />
         {round ? (

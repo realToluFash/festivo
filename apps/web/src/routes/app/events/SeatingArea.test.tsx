@@ -890,6 +890,52 @@ describe('Tables at a desk (sc-4000)', () => {
     });
   });
 
+  it('clears the reset line on the next saved change, and keeps it through a refused one', async () => {
+    signedIn();
+    let answered = 1;
+    let shape = 'round';
+    await onSeating({
+      'GET /api/events/ev_1/seating-plan': () => seating(withTables(table())),
+      'PATCH /api/events/ev_1/seating-plan/tables/t1': (body) => {
+        answered += 1;
+        const changes = body as Record<string, unknown>;
+
+        if (typeof changes.shape === 'string') shape = changes.shape;
+        return seating(
+          withTables(
+            table({
+              ...changes,
+              shape,
+              widthCm: shape === 'round' ? 150 : 180,
+              lengthCm: shape === 'round' ? 150 : 76,
+              version: answered,
+            }),
+          ),
+          't1',
+        );
+      },
+    });
+    const reset = 'Size reset to the rectangular default, 180 × 76 cm. Seats kept at 10.';
+
+    await chooseTable('Table 1, round, 0 of 10 seats taken');
+    fireEvent.change(screen.getByLabelText('Shape'), { target: { value: 'rectangular' } });
+    expect(await screen.findByText(reset)).toBeDefined();
+
+    leave('Seats', '31');
+    expect(await screen.findByText('Enter a number of seats from 1 to 30.')).toBeDefined();
+    expect(screen.getByText(reset)).toBeDefined();
+
+    leave('Seats', '10');
+    expect(screen.getByText(reset)).toBeDefined();
+
+    fireEvent.change(screen.getByLabelText('Shape'), { target: { value: 'round' } });
+    expect(await screen.findByText(/^Size reset to the round default, /u)).toBeDefined();
+    expect(screen.queryByText(reset)).toBeNull();
+
+    leave('Name', 'Top table');
+    await waitFor(() => expect(screen.queryByText(/^Size reset to/u)).toBeNull());
+  });
+
   it('counts only usable chairs in a table’s name, and follows a chair marked unusable', async () => {
     signedIn();
     await onSeating({
