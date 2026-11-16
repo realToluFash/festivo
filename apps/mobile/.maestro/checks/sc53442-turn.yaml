@@ -1,4 +1,4 @@
-# sc-53442: a refused save's words in Cover stay at the top when the tablet turns.
+# sc-53442: a refused save's words in Cover show through a turn, and sit above Upload a photo before and after it.
 appId: host.exp.Exponent
 ---
 - setOrientation: PORTRAIT
@@ -20,22 +20,29 @@ appId: host.exp.Exponent
 - tapOn:
     id: 'event.edit.cover.save'
 - extendedWaitUntil:
-    visible: 'Nothing was changed.*'
+    visible: '{{t:eventEdit.forbidden}}'
     timeout: 20000
+- assertVisible:
+    text: '{{t:eventEdit.forbidden}}'
+    above:
+      id: 'event.edit.cover.upload'
 - takeScreenshot: refused-portrait
 - setOrientation: LANDSCAPE_LEFT
 - extendedWaitUntil:
     visible: 'never.there'
     timeout: 3000
     optional: true
-- assertVisible: 'Nothing was changed.*'
+- assertVisible: '{{t:eventEdit.forbidden}}'
 - takeScreenshot: refused-landscape
 - setOrientation: PORTRAIT
 - extendedWaitUntil:
     visible: 'never.there'
     timeout: 3000
     optional: true
-- assertVisible: 'Nothing was changed.*'
+- assertVisible:
+    text: '{{t:eventEdit.forbidden}}'
+    above:
+      id: 'event.edit.cover.upload'
 - takeScreenshot: refused-portrait-again
 - runScript:
     file: ../scripts/event-role-elsewhere.js
