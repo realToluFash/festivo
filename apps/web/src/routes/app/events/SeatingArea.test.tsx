@@ -3134,6 +3134,36 @@ describe('Choosing many and the Selection tools (sc-4717)', () => {
     expect(await screen.findByRole('heading', { level: 2, name: '3 chosen' })).toBeDefined();
   });
 
+  it('adds and takes out by Enter and Space while Add to choice is on, and by Shift+Enter and Shift+Space while it is off', async () => {
+    signedIn();
+    await onSeating({
+      'GET /api/events/ev_1/seating-plan': () =>
+        seating(withTables(table(), second(), table({ id: 't3', name: 'Table 3', xCm: 1800 }))),
+    });
+    await screen.findByRole('button', { name: TABLE_1 });
+    const TABLE_3 = 'Table 3, round, 0 of 10 seats taken';
+    const item = (name: string) => screen.getByRole('button', { name });
+
+    fireEvent.click(screen.getByRole('button', { name: 'Add to choice' }));
+    fireEvent.keyDown(item(TABLE_1), { key: 'Enter' });
+    fireEvent.keyDown(item(TABLE_2), { key: ' ' });
+    expect(await screen.findByRole('heading', { level: 2, name: '2 chosen' })).toBeDefined();
+    fireEvent.keyDown(item(TABLE_3), { key: 'Enter' });
+    expect(await screen.findByRole('heading', { level: 2, name: '3 chosen' })).toBeDefined();
+    fireEvent.keyDown(item(TABLE_3), { key: ' ' });
+    expect(await screen.findByRole('heading', { level: 2, name: '2 chosen' })).toBeDefined();
+
+    fireEvent.keyDown(window, { key: 'Escape' });
+    expect(screen.getByRole('heading', { level: 2, name: '2 chosen' })).toBeDefined();
+    fireEvent.keyDown(item(TABLE_3), { key: 'Enter', shiftKey: true });
+    expect(await screen.findByRole('heading', { level: 2, name: '3 chosen' })).toBeDefined();
+    fireEvent.keyDown(item(TABLE_1), { key: ' ', shiftKey: true });
+    expect(await screen.findByRole('heading', { level: 2, name: '2 chosen' })).toBeDefined();
+
+    fireEvent.keyDown(item(TABLE_1), { key: 'Enter' });
+    expect(await screen.findByRole('heading', { level: 2, name: 'Table 1' })).toBeDefined();
+  });
+
   it('aligns as one step that Undo puts back', async () => {
     signedIn();
     let steps = 0;

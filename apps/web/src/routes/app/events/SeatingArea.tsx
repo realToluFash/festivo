@@ -1666,6 +1666,16 @@ function Plan({
                     toggle(id);
                   }
                 }}
+                onKeyDownCapture={(event) => {
+                  if (event.key !== 'Enter' && event.key !== ' ') return;
+                  if (!(event.target as Element).matches('[data-table], [data-row], [data-seat]'))
+                    return;
+                  if ((event.shiftKey || adding) && !readOnly) {
+                    event.preventDefault();
+                    event.stopPropagation();
+                    toggle(id);
+                  }
+                }}
                 onKeyDown={(event) => onItemKey(event, item)}
                 onFocus={(event) => {
                   if ((event.target as Element).matches('[data-table], [data-row], [data-seat]'))
