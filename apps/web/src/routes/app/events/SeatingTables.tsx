@@ -144,6 +144,7 @@ export function AddTable({
   const [folded, setFolded] = useState(false);
   const [crowded, setCrowded] = useState(false);
   const [fromMenu, setFromMenu] = useState(false);
+  const [wasPlacing, setWasPlacing] = useState(placing);
   const first = useRef<HTMLButtonElement>(null);
   const bar = useRef<HTMLDivElement>(null);
   const unfolded = useRef(0);
@@ -164,10 +165,6 @@ export function AddTable({
     if (menu) first.current?.focus();
   }, [menu]);
 
-  useEffect(() => {
-    if (!placing) setFromMenu(false);
-  }, [placing]);
-
   function adds(change: () => Promise<void>, chosen: boolean): Promise<void> {
     setMenu(false);
     setFromMenu(chosen);
@@ -177,6 +174,11 @@ export function AddTable({
   function add(shape: TableShape): Promise<void> {
     ctx.startPlacing({ kind: 'table', shape });
     return Promise.resolve();
+  }
+
+  if (placing !== wasPlacing) {
+    setWasPlacing(placing);
+    if (!placing) setFromMenu(false);
   }
 
   const on = menu || (placing && fromMenu);
