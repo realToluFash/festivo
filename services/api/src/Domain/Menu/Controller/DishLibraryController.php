@@ -8,7 +8,9 @@ use App\Domain\Menu\DishLibrary;
 use App\Domain\Menu\DishRules;
 use App\Domain\Menu\Http\DishSerialiser;
 use App\Domain\Menu\Model\DishDetails;
+use App\Domain\Menu\VariantRules;
 use App\Entity\Dish;
+use App\Entity\DishVariant;
 use App\Entity\Organisation;
 use App\Entity\User;
 use App\Enum\ErrorCode;
@@ -18,7 +20,9 @@ use App\Http\Access\Policy\InOrganisation;
 use App\Http\Exception\ApiException;
 use App\Http\Input;
 use App\Repository\DishRepository;
+use App\Repository\DishVariantRepository;
 use App\Repository\OrganisationRepository;
+use Psl\Dict;
 use Psl\Iter;
 use Psl\Type;
 use Psl\Vec;
@@ -36,6 +40,7 @@ final readonly class DishLibraryController
         private Security $security,
         private OrganisationRepository $organisationRepository,
         private DishRepository $dishRepository,
+        private DishVariantRepository $dishVariantRepository,
         private DishRules $dishRules,
         private DishLibrary $dishLibrary,
         private MembershipDirectoryInterface $membershipDirectory,
@@ -51,7 +56,7 @@ final readonly class DishLibraryController
         $withPrice = true === $scope?->anywhere(Permission::BudgetRead);
 
         return new JsonResponse([
-            'dishes' => Vec\map($this->dishRepository->findInOrganisation($organisation), static fn (Dish $dish): array => DishSerialiser::dish($dish, $withPrice)),
+            'dishes' => $this->dishes($organisation, $withPrice),
             'canManage' => true === $scope?->anywhere(Permission::MenuManage) && !$scope->organisation->isReadOnly(),
             'seesPrices' => $withPrice,
         ]);
@@ -67,7 +72,7 @@ final readonly class DishLibraryController
         $withPrice = $this->pricing($organisation, $body);
         $dish = $this->dishLibrary->add($organisation, $this->detailsOf($body, null), $this->user(), $body['allowShared'] ?? false);
 
-        return new JsonResponse(['dish' => DishSerialiser::dish($dish, $withPrice)], Response::HTTP_CREATED);
+        return new JsonResponse(['dish' => $this->serialised($dish, $withPrice)], Response::HTTP_CREATED);
     }
 
     /** The whole dish. Without `lastPrice`, the last price stays as it was; null clears it. */
@@ -80,9 +85,54 @@ final readonly class DishLibraryController
         $body = Input::body($request, self::shape());
         $withPrice = $this->pricing($organisation, $body);
         $sent = Iter\contains_key($body, 'lastPrice');
-        $this->dishLibrary->edit($dish, $this->detailsOf($body, $dish->getLastPriceCurrency()), $sent, $this->user(), $body['allowShared'] ?? false);
+        $details = [] === $this->dishVariantRepository->findOnDish($dish)
+            ? $this->detailsOf($body, $dish->getLastPriceCurrency())
+            : $this->dishRules->named($body['name'], $body['description'] ?? null);
+        $this->dishLibrary->edit($dish, $details, $sent, $this->user(), $body['allowShared'] ?? false);
 
-        return new JsonResponse(['dish' => DishSerialiser::dish($dish, $withPrice)]);
+        return new JsonResponse(['dish' => $this->serialised($dish, $withPrice)]);
+    }
+
+    #[Route('/api/orgs/{organisationId}/dishes/{dishId}/variants', name: 'dish_variants_add', methods: ['POST'])]
+    #[InOrganisation(Permission::MenuManage, orOnAnEvent: true)]
+    public function addVariants(Request $request, string $organisationId, string $dishId): JsonResponse
+    {
+        $organisation = $this->organisation($organisationId);
+        $dish = $this->active($organisation, $dishId);
+        $body = Input::body($request, Type\shape(['variants' => Type\vec(VariantRules::sent())]));
+        $withPrice = $this->seesPrices($organisation);
+
+        if (!$withPrice && Iter\any($body['variants'], static fn (array $one): bool => Iter\contains_key($one, 'lastPrice'))) {
+            throw ApiException::permissionRequired(Permission::BudgetRead);
+        }
+
+        $this->dishLibrary->addVariants($dish, $body['variants'], $this->user());
+
+        return new JsonResponse(['dish' => $this->serialised($dish, $withPrice)], Response::HTTP_CREATED);
+    }
+
+    #[Route('/api/orgs/{organisationId}/dishes/{dishId}/variants/{variantId}', name: 'dish_variants_edit', methods: ['PUT'])]
+    #[InOrganisation(Permission::MenuManage, orOnAnEvent: true)]
+    public function editVariant(Request $request, string $organisationId, string $dishId, string $variantId): JsonResponse
+    {
+        $organisation = $this->organisation($organisationId);
+        $variant = $this->variant($this->active($organisation, $dishId), $variantId);
+        $body = Input::body($request, VariantRules::sent());
+        $withPrice = $this->pricing($organisation, $body);
+        $this->dishLibrary->editVariant($variant, $body, Iter\contains_key($body, 'lastPrice'), $this->user());
+
+        return new JsonResponse(['dish' => $this->serialised($variant->getDish(), $withPrice)]);
+    }
+
+    #[Route('/api/orgs/{organisationId}/dishes/{dishId}/variants/{variantId}', name: 'dish_variants_remove', methods: ['DELETE'])]
+    #[InOrganisation(Permission::MenuManage, orOnAnEvent: true)]
+    public function removeVariant(string $organisationId, string $dishId, string $variantId): JsonResponse
+    {
+        $organisation = $this->organisation($organisationId);
+        $dish = $this->active($organisation, $dishId);
+        $this->dishLibrary->removeVariant($this->variant($dish, $variantId), $this->user());
+
+        return new JsonResponse(['dish' => $this->serialised($dish, $this->seesPrices($organisation))]);
     }
 
     #[Route('/api/orgs/{organisationId}/dishes/{dishId}/archive', name: 'dishes_archive', methods: ['POST'])]
@@ -92,7 +142,7 @@ final readonly class DishLibraryController
         $organisation = $this->organisation($organisationId);
         $dish = $this->dishLibrary->archive($this->dish($organisation, $dishId), $this->user());
 
-        return new JsonResponse(['dish' => DishSerialiser::dish($dish, $this->seesPrices($organisation))]);
+        return new JsonResponse(['dish' => $this->serialised($dish, $this->seesPrices($organisation))]);
     }
 
     #[Route('/api/orgs/{organisationId}/dishes/{dishId}/restore', name: 'dishes_restore', methods: ['POST'])]
@@ -102,7 +152,7 @@ final readonly class DishLibraryController
         $organisation = $this->organisation($organisationId);
         $dish = $this->dishLibrary->restore($this->dish($organisation, $dishId), $this->user());
 
-        return new JsonResponse(['dish' => DishSerialiser::dish($dish, $this->seesPrices($organisation))]);
+        return new JsonResponse(['dish' => $this->serialised($dish, $this->seesPrices($organisation))]);
     }
 
     #[Route('/api/orgs/{organisationId}/dishes/{dishId}', name: 'dishes_delete', methods: ['DELETE'])]
@@ -160,6 +210,35 @@ final readonly class DishLibraryController
     private function seesPrices(Organisation $organisation): bool
     {
         return true === $this->membershipDirectory->eventScopeIn($this->user(), $organisation->getId())?->anywhere(Permission::BudgetRead);
+    }
+
+    /** @return list<array<string, mixed>> */
+    private function dishes(Organisation $organisation, bool $withPrice): array
+    {
+        $variants = Dict\group_by($this->dishVariantRepository->findInOrganisation($organisation), static fn (DishVariant $variant): string => $variant->getDish()->getId()->toRfc4122());
+
+        return Vec\map($this->dishRepository->findInOrganisation($organisation), static fn (Dish $dish): array => DishSerialiser::dish($dish, $withPrice, $variants[$dish->getId()->toRfc4122()] ?? []));
+    }
+
+    /** @return array<string, mixed> */
+    private function serialised(Dish $dish, bool $withPrice): array
+    {
+        return DishSerialiser::dish($dish, $withPrice, $this->dishVariantRepository->findOnDish($dish));
+    }
+
+    /** An archived dish is read only, so its variants are not found. */
+    private function active(Organisation $organisation, string $id): Dish
+    {
+        $dish = $this->dish($organisation, $id);
+
+        return null === $dish->getArchivedAt() ? $dish : throw ApiException::notFound('access.not_found');
+    }
+
+    private function variant(Dish $dish, string $id): DishVariant
+    {
+        $variant = Uuid::isValid($id) ? $this->dishVariantRepository->findOneOnDish($dish, Uuid::fromString($id)) : null;
+
+        return $variant ?? throw ApiException::notFound('access.not_found');
     }
 
     private function dish(Organisation $organisation, string $id): Dish

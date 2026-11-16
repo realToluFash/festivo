@@ -19,3 +19,14 @@ export function sideInsets(
     paddingRight: edges.includes('right') ? insets.right : 0,
   };
 }
+
+/** How far the phone's floating tab bar sits in from each side of the page. */
+const TAB_BAR_SIDE = 18;
+
+/** The phone's floating tab bar's ends, past a navigation bar or the Dynamic Island on its side as Events' edges are (sc-54891). */
+export function tabBarSides(insets: { left: number; right: number }): {
+  left: number;
+  right: number;
+} {
+  return { left: TAB_BAR_SIDE + insets.left, right: TAB_BAR_SIDE + insets.right };
+}

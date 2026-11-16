@@ -45,6 +45,10 @@ class MenuDish
     #[ORM\Column(type: Types::JSON)]
     private array $diets;
 
+    /** In the event's currency's minor unit, taken from the variant a dish folded back from (sc-3903); null is unpriced. */
+    #[ORM\Column(type: Types::BIGINT, nullable: true)]
+    private ?string $costMinor = null;
+
     #[ORM\Column(type: Types::SMALLINT)]
     private int $position;
 
@@ -116,6 +120,31 @@ class MenuDish
         $this->description = $description;
         $this->allergens = $allergens;
         $this->diets = $diets;
+    }
+
+    public function getCostMinor(): ?int
+    {
+        return null === $this->costMinor ? null : (int) $this->costMinor;
+    }
+
+    /** The dish becomes the one variant left: its allergens, diets and cost, which may be none. */
+    public function foldFrom(MenuDishVariant $variant): void
+    {
+        $this->allergens = $variant->getAllergens();
+        $this->diets = $variant->getDiets();
+        $this->costMinor = null === $variant->getCostMinor() ? null : (string) $variant->getCostMinor();
+    }
+
+    /** Its variants carry the cost from here on, so the dish lets go of the one a fold gave it. */
+    public function takeVariants(): void
+    {
+        $this->costMinor = null;
+    }
+
+    public function rename(string $name, ?string $description): void
+    {
+        $this->name = $name;
+        $this->description = $description;
     }
 
     public function getPosition(): int
