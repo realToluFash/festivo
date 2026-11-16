@@ -1737,6 +1737,48 @@ describe('At a narrow desk (sc-55937)', () => {
     }
   });
 
+  it('steps the zoom up a line while even the folded bar meets it, and back once they fit', async () => {
+    signedIn();
+    const measured = barMeetsZoom();
+    const resized: ResizeObserverCallback[] = [];
+
+    vi.stubGlobal(
+      'ResizeObserver',
+      class {
+        constructor(callback: ResizeObserverCallback) {
+          resized.push(callback);
+        }
+        observe() {}
+        disconnect() {}
+      },
+    );
+
+    try {
+      await onSeating({ 'GET /api/events/ev_1/seating-plan': () => seating(plan()) });
+      const bar = (await screen.findByRole('group', { name: 'Add to the room' })) as HTMLElement;
+      const widen = (width: number) =>
+        act(() => {
+          for (const callback of resized)
+            callback(
+              [{ contentRect: { width, height: 719 } } as ResizeObserverEntry],
+              {} as ResizeObserver,
+            );
+        });
+
+      widen(460);
+      await waitFor(() => expect(bar.classList.contains('is-crowded')).toBe(true));
+      expect(screen.getByRole('button', { name: 'Add' })).toBeDefined();
+
+      widen(780);
+      await waitFor(() => expect(bar.classList.contains('is-crowded')).toBe(false));
+      expect(screen.getByRole('button', { name: 'Add' })).toBeDefined();
+      expect(screen.queryByRole('button', { name: 'Add row' })).toBeNull();
+    } finally {
+      measured.mockRestore();
+      vi.unstubAllGlobals();
+    }
+  });
+
   it('keeps Add row and Add seat on the bar, and the menu to the four tables, when they fit', async () => {
     signedIn();
     await onSeating({ 'GET /api/events/ev_1/seating-plan': () => seating(plan()) });

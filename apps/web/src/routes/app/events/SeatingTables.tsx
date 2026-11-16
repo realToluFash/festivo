@@ -124,7 +124,7 @@ function chairWord(t: T, table: SeatingTable, seat: number): string {
 
 const FLOAT_MARGINS = 3 * 12;
 
-/** The floating add bar: Add table's menu, Add row and Add seat; when the bar and the zoom do not fit the floor side by side, the two fold into one Add menu (sc-55937). */
+/** The floating add bar: Add table's menu, Add row and Add seat; when the bar and the zoom do not fit the floor side by side, the two fold into one Add menu, and when even the folded bar does not fit, the zoom steps up a line (sc-55937). */
 export function AddTable({
   ctx,
   floor,
@@ -140,6 +140,7 @@ export function AddTable({
   const locale = currentLocale();
   const [menu, setMenu] = useState(false);
   const [folded, setFolded] = useState(false);
+  const [crowded, setCrowded] = useState(false);
   const [adding, setAdding] = useState(false);
   const first = useRef<HTMLButtonElement>(null);
   const bar = useRef<HTMLDivElement>(null);
@@ -154,6 +155,7 @@ export function AddTable({
       box.parentElement?.querySelector<HTMLElement>('.st-zoom')?.getBoundingClientRect().width ?? 0;
 
     setFolded(unfolded.current + zoom + FLOAT_MARGINS > floor);
+    setCrowded(folded && box.getBoundingClientRect().width + zoom + FLOAT_MARGINS > floor);
   }, [floor, folded, locale]);
 
   useEffect(() => {
@@ -235,7 +237,12 @@ export function AddTable({
           )}
         </div>
       )}
-      <div className="st-float st-add" role="group" aria-label={t('seating.addBar')} ref={bar}>
+      <div
+        className={crowded ? 'st-float st-add is-crowded' : 'st-float st-add'}
+        role="group"
+        aria-label={t('seating.addBar')}
+        ref={bar}
+      >
         <button
           type="button"
           className={on ? 'st-tool is-on' : 'st-tool'}
