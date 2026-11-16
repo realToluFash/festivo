@@ -218,7 +218,7 @@ export function GuestsScreen({
     from.current = row;
     setPaste(null);
     setStatus(null);
-    setNotReplaced(false);
+    setNotReplaced(null);
     setCopyFailed(false);
     setUnmarked(null);
     setReplies(null);
@@ -621,7 +621,7 @@ export function GuestsScreen({
             onConfirm={() => {
               from.current = 'replace';
               close();
-              setNotReplaced(false);
+              setNotReplaced(null);
               setReplaced(true);
               setFlagged((keys) => keys.filter((key) => key !== guest.key));
             }}
