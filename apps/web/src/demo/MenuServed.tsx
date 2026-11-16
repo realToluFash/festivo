@@ -43,6 +43,9 @@ import {
   shownName,
   withoutChoice,
 } from './menuServed.ts';
+import { CoursesAt } from './MenuCourses.tsx';
+import { type CoursesStateName, coursesStart, isCoursesState } from './menuCourses.ts';
+import { type Lang, LANGS } from './menuLibrary.ts';
 import { useSwitcherStart } from './switcher.ts';
 import './guests.css';
 import './menu.css';
@@ -52,9 +55,45 @@ export function MenuPage() {
   const { id } = useParams();
   const [params] = useSearchParams();
   const raw = params.get('state');
+  const format = params.get('format');
+  const lang: Lang = LANGS.includes(format as Lang) ? (format as Lang) : 'en';
+  const budget = params.get('budget') !== 'no';
   useSwitcherStart();
 
+  if (isCoursesState(raw)) {
+    return (
+      <CoursesStarted
+        key={`${id ?? ''}|${raw}|${lang}|${String(budget)}`}
+        id={id}
+        raw={raw}
+        lang={lang}
+        budget={budget}
+      />
+    );
+  }
+
   return <MenuAt key={`${id ?? ''}|${raw ?? ''}`} id={id} raw={raw} />;
+}
+
+function CoursesStarted({
+  id,
+  raw,
+  lang,
+  budget,
+}: {
+  id: string | undefined;
+  raw: CoursesStateName;
+  lang: Lang;
+  budget: boolean;
+}) {
+  const [event] = useState(() => sampleEvent(id));
+  const [first] = useState(() => coursesStart(raw));
+
+  if (event == null) return <Navigate to="/demo/events" replace />;
+  if (event.id !== MENU_EVENT)
+    return <Navigate to={`/demo/events/${event.id}?area=menu`} replace />;
+
+  return <CoursesAt event={event} first={first} lang={lang} budget={budget} />;
 }
 
 function MenuAt({ id, raw }: { id: string | undefined; raw: string | null }) {

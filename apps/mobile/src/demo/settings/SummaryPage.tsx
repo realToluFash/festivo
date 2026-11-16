@@ -26,6 +26,7 @@ export function SummaryPage({
   scrollRef,
   onScroll,
   toast,
+  band,
   children,
 }: {
   title?: string;
@@ -34,6 +35,8 @@ export function SummaryPage({
   scrollRef?: Ref<ScrollViewInstance>;
   onScroll?: (event: NativeSyntheticEvent<NativeScrollEvent>) => void;
   toast?: PageToastProps | null | undefined;
+  /** The offline band, under the top and across the page, as the product's AppFrame places it. */
+  band?: ReactNode;
   children: ReactNode;
 }) {
   const shell = useShell();
@@ -42,7 +45,7 @@ export function SummaryPage({
 
   if (shell.layout === 'landscape')
     return (
-      <Landscape column={column ?? shell.listColumn}>
+      <Landscape column={column ?? shell.listColumn} band={band}>
         <ScrollView
           ref={scrollRef}
           onScroll={onScroll}
@@ -65,6 +68,8 @@ export function SummaryPage({
   return (
     <View style={styles.page}>
       {!phone && <PortraitTop />}
+      {phone && band != null && <View style={{ height: insets.top }} />}
+      {band}
       <ScrollView
         ref={scrollRef}
         onScroll={onScroll}
@@ -73,7 +78,7 @@ export function SummaryPage({
         contentContainerStyle={
           phone
             ? {
-                paddingTop: insets.top + tokens.spaceXxs,
+                paddingTop: (band == null ? insets.top : 0) + tokens.spaceXxs,
                 paddingHorizontal: tokens.spaceXxl,
                 paddingBottom: foot + PHONE_TAB_BAR + tokens.space6xl * 2,
               }

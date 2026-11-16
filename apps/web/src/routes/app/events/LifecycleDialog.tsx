@@ -2,7 +2,7 @@ import { type ReactNode, useEffect, useRef } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Link } from 'react-router';
 
-import { ManageItem } from '../../../components/EventPageParts.tsx';
+import { Alert, ManageItem } from '../../../components/EventPageParts.tsx';
 import { useDialogKeys } from '../../../dialogFocus.ts';
 import { offButton } from '../../../offButton.ts';
 import { type Asking } from './useLifecycleAction.ts';
@@ -18,6 +18,8 @@ export function LifecycleDialog<C>({
   confirm,
   sending,
   tone,
+  children,
+  failsUnder = false,
   onGo,
   onClose,
   onFollow,
@@ -31,6 +33,10 @@ export function LifecycleDialog<C>({
   confirm: string;
   sending: string;
   tone: 'primary' | 'danger';
+  /** Under the lines while it asks, as End now's thank-you (sc-6476). */
+  children?: ReactNode;
+  /** The failure shows under `children`, marked, above the actions, rather than as another line (sc-6476). */
+  failsUnder?: boolean;
   onGo: () => void;
   onClose: () => void;
   /** The refusal's link was followed: the dialog closes without taking focus back, as the link's page places it. */
@@ -46,7 +52,7 @@ export function LifecycleDialog<C>({
 
   const [shownTitle, shownLines] =
     asking.kind === 'confirm'
-      ? [title, asking.failed ? [...lines, failed] : lines]
+      ? [title, asking.failed && !failsUnder ? [...lines, failed] : lines]
       : [asking.title, asking.lines];
 
   return (
@@ -67,7 +73,9 @@ export function LifecycleDialog<C>({
               <p key={line}>{line}</p>
             ))}
           </div>
+          {asking.kind === 'confirm' && children}
         </div>
+        {asking.kind === 'confirm' && asking.failed && failsUnder && <Alert>{failed}</Alert>}
         <div className="dialog-actions">
           {asking.kind === 'confirm' ? (
             <>

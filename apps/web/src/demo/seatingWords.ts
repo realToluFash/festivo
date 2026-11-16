@@ -12,7 +12,7 @@ export const SW = {
   longLabel: '120-character name',
   focusTitle: 'A focused link in the breadcrumb',
   focusLine:
-    'Each link in the Seating breadcrumb as the keyboard reaches it: the web’s one focus ring, 2 pixels in the accent colour and 2 pixels off the link, whole on all four sides at 1280, 375 and 320, beside a chevron and at the ellipsis. The breadcrumb still clips what does not fit, with room for the ring.',
+    'Each link in the Seating breadcrumb as the keyboard reaches it: the ring every control on the page wears, a 2-pixel line in the accent colour on the link and a soft accent halo reaching 5 pixels out from the link, whole on all four sides at 1280, 375 and 320, beside a chevron and at the ellipsis. The breadcrumb still clips what does not fit, with room for the ring.',
   ringAt: '{{w}} px · {{lang}} · {{name}} · focus on {{link}}',
   theName: 'the name',
   floorPlan: 'Floor plan',
@@ -384,7 +384,7 @@ export const SW = {
   renumberOrder: 'Tables are named in reading order: top to bottom, then left to right.',
   renumberKeeps: 'Rows and single seats in the choice keep their names.',
   renumberTables: 'Choose a table to renumber. Rows and single seats keep their names.',
-  renumberClash: '{{name}} is already taken by a table you didn’t choose.',
+  renumberClash: '{{name}} is already taken by a table you did not choose.',
   renumbered_one: '1 table renamed {{from}}. Guests kept their seats.',
   renumbered_other:
     '{{count}} tables renumbered from {{from}} to {{to}}, top to bottom, left to right. Guests kept their seats.',

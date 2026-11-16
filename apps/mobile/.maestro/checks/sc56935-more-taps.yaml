@@ -1,0 +1,100 @@
+# sc-56935, phone: each More row, tapped, opens its area, and the sheet then shows it chosen; then the four bar tabs open theirs. Pass EVENT_ID, an event the signed-in host owns; English is enough.
+appId: host.exp.Exponent
+---
+- openLink: ${METRO_URL}/--/events/${EVENT_ID}
+- extendedWaitUntil: { visible: { id: 'event.nav.more' }, timeout: 30000 }
+- runFlow: ../developer-menu-close.yaml
+- tapOn: { id: 'event.nav.more' }
+- extendedWaitUntil: { visible: { id: 'event.nav.more.seating' }, timeout: 10000 }
+- waitForAnimationToEnd: { timeout: 3000 }
+- tapOn: { id: 'event.nav.more.seating' }
+- extendedWaitUntil: { notVisible: { id: 'event.nav.moreSheet.close' }, timeout: 10000 }
+- waitForAnimationToEnd: { timeout: 3000 }
+- takeScreenshot: opened-seating
+- tapOn: { id: 'event.nav.more' }
+- extendedWaitUntil: { visible: { id: 'event.nav.more.seating', selected: true }, timeout: 10000 }
+- waitForAnimationToEnd: { timeout: 3000 }
+- takeScreenshot: chosen-seating
+- tapOn: { id: 'event.nav.moreSheet.close' }
+- extendedWaitUntil: { notVisible: { id: 'event.nav.moreSheet.close' }, timeout: 10000 }
+- tapOn: { id: 'event.nav.more' }
+- extendedWaitUntil: { visible: { id: 'event.nav.more.schedule' }, timeout: 10000 }
+- waitForAnimationToEnd: { timeout: 3000 }
+- tapOn: { id: 'event.nav.more.schedule' }
+- extendedWaitUntil: { notVisible: { id: 'event.nav.moreSheet.close' }, timeout: 10000 }
+- waitForAnimationToEnd: { timeout: 3000 }
+- takeScreenshot: opened-schedule
+- tapOn: { id: 'event.nav.more' }
+- extendedWaitUntil: { visible: { id: 'event.nav.more.schedule', selected: true }, timeout: 10000 }
+- waitForAnimationToEnd: { timeout: 3000 }
+- takeScreenshot: chosen-schedule
+- tapOn: { id: 'event.nav.moreSheet.close' }
+- extendedWaitUntil: { notVisible: { id: 'event.nav.moreSheet.close' }, timeout: 10000 }
+- tapOn: { id: 'event.nav.more' }
+- extendedWaitUntil: { visible: { id: 'event.nav.more.staff' }, timeout: 10000 }
+- waitForAnimationToEnd: { timeout: 3000 }
+- tapOn: { id: 'event.nav.more.staff' }
+- extendedWaitUntil: { notVisible: { id: 'event.nav.moreSheet.close' }, timeout: 10000 }
+- waitForAnimationToEnd: { timeout: 3000 }
+- takeScreenshot: opened-staff
+- tapOn: { id: 'event.nav.more' }
+- extendedWaitUntil: { visible: { id: 'event.nav.more.staff', selected: true }, timeout: 10000 }
+- waitForAnimationToEnd: { timeout: 3000 }
+- takeScreenshot: chosen-staff
+- tapOn: { id: 'event.nav.moreSheet.close' }
+- extendedWaitUntil: { notVisible: { id: 'event.nav.moreSheet.close' }, timeout: 10000 }
+- tapOn: { id: 'event.nav.more' }
+- extendedWaitUntil: { visible: { id: 'event.nav.more.people' }, timeout: 10000 }
+- waitForAnimationToEnd: { timeout: 3000 }
+- tapOn: { id: 'event.nav.more.people' }
+- extendedWaitUntil: { notVisible: { id: 'event.nav.moreSheet.close' }, timeout: 10000 }
+- waitForAnimationToEnd: { timeout: 3000 }
+- takeScreenshot: opened-people
+- tapOn: { id: 'event.nav.more' }
+- extendedWaitUntil: { visible: { id: 'event.nav.more.people', selected: true }, timeout: 10000 }
+- waitForAnimationToEnd: { timeout: 3000 }
+- takeScreenshot: chosen-people
+- tapOn: { id: 'event.nav.moreSheet.close' }
+- extendedWaitUntil: { notVisible: { id: 'event.nav.moreSheet.close' }, timeout: 10000 }
+- tapOn: { id: 'event.nav.more' }
+- extendedWaitUntil: { visible: { id: 'event.nav.more.budget' }, timeout: 10000 }
+- waitForAnimationToEnd: { timeout: 3000 }
+- tapOn: { id: 'event.nav.more.budget' }
+- extendedWaitUntil: { notVisible: { id: 'event.nav.moreSheet.close' }, timeout: 10000 }
+- waitForAnimationToEnd: { timeout: 3000 }
+- takeScreenshot: opened-budget
+- tapOn: { id: 'event.nav.more' }
+- extendedWaitUntil: { visible: { id: 'event.nav.more.budget', selected: true }, timeout: 10000 }
+- waitForAnimationToEnd: { timeout: 3000 }
+- takeScreenshot: chosen-budget
+- tapOn: { id: 'event.nav.moreSheet.close' }
+- extendedWaitUntil: { notVisible: { id: 'event.nav.moreSheet.close' }, timeout: 10000 }
+- tapOn: { id: 'event.nav.more' }
+- extendedWaitUntil: { visible: { id: 'event.nav.more.reports' }, timeout: 10000 }
+- waitForAnimationToEnd: { timeout: 3000 }
+- tapOn: { id: 'event.nav.more.reports' }
+- extendedWaitUntil: { notVisible: { id: 'event.nav.moreSheet.close' }, timeout: 10000 }
+- waitForAnimationToEnd: { timeout: 3000 }
+- takeScreenshot: opened-reports
+- tapOn: { id: 'event.nav.more' }
+- extendedWaitUntil: { visible: { id: 'event.nav.more.reports', selected: true }, timeout: 10000 }
+- waitForAnimationToEnd: { timeout: 3000 }
+- takeScreenshot: chosen-reports
+- tapOn: { id: 'event.nav.moreSheet.close' }
+- extendedWaitUntil: { notVisible: { id: 'event.nav.moreSheet.close' }, timeout: 10000 }
+- tapOn: { id: 'event.nav.guests' }
+- extendedWaitUntil: { visible: { id: 'event.nav.guests', selected: true }, timeout: 10000 }
+- waitForAnimationToEnd: { timeout: 3000 }
+- takeScreenshot: bar-guests
+- tapOn: { id: 'event.nav.menu' }
+- extendedWaitUntil: { visible: { id: 'event.nav.menu', selected: true }, timeout: 10000 }
+- waitForAnimationToEnd: { timeout: 3000 }
+- takeScreenshot: bar-menu
+- tapOn: { id: 'event.nav.messages' }
+- extendedWaitUntil: { visible: { id: 'event.nav.messages', selected: true }, timeout: 10000 }
+- waitForAnimationToEnd: { timeout: 3000 }
+- takeScreenshot: bar-messages
+- tapOn: { id: 'event.nav.overview' }
+- extendedWaitUntil: { visible: { id: 'event.nav.overview', selected: true }, timeout: 10000 }
+- waitForAnimationToEnd: { timeout: 3000 }
+- takeScreenshot: bar-overview

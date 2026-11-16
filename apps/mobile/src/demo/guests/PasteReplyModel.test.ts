@@ -14,6 +14,7 @@ import {
 import { GUESTS, REPLY_BY, TODAY } from './GuestsSample.ts';
 import {
   LONG_QUOTE,
+  clipQuote,
   type PasteInputs,
   QUOTE_LINES,
   hasText,
@@ -150,6 +151,14 @@ describe('Whose reply is this? (sc-54450)', () => {
     expect(LONG_QUOTE.split('\n').length).toBeGreaterThan(QUOTE_LINES);
     expect(pasteStart('whoseLong').flow?.all).toBe(false);
     expect(pasteStart('whoseAll').flow?.all).toBe(true);
+  });
+
+  it('ends the clipped quote with … however its sixth line ends', () => {
+    const mid = ['one ', 'two ', 'three ', 'four ', 'five ', 'six and ', 'seven'];
+    expect(clipQuote(mid)).toBe('one two three four five six and…');
+    const atBreak = ['one\n', 'two\n', 'three\n', 'four\n', 'five\n', 'six\n', 'seven'];
+    expect(clipQuote(atBreak)).toBe('one\ntwo\nthree\nfour\nfive\nsix…');
+    expect(clipQuote(atBreak.slice(0, QUOTE_LINES))).toBeNull();
   });
 });
 

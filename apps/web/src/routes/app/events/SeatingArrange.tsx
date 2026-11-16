@@ -10,22 +10,17 @@ import { type PointerEvent as ReactPointerEvent, useId } from 'react';
 import { useTranslation } from 'react-i18next';
 
 import { Glyph } from '../../../components/Glyph.tsx';
+import { Mark } from '../../../components/SettingsParts.tsx';
 import { currentLocale } from '../../../i18n/index.ts';
-import {
-  BackHead,
-  Field,
-  Line,
-  type PlanApi,
-  Said,
-  type ShapeGlyph,
-  ShapeTile,
-} from './SeatingParts.tsx';
+import { Field, type PlanApi, Said } from './SeatingParts.tsx';
 import { f, turned } from './seatingDraw.ts';
 import {
   type FloorItem,
   type Handle,
   type Placing,
   type SaveState,
+  LONG_HANDLES,
+  ROUND_HANDLES,
   floorItems,
   footprintOf,
   itemName,
@@ -128,19 +123,22 @@ export function SaveLine({ state, onTryAgain }: { state: SaveState; onTryAgain: 
       role="status"
       aria-live="polite"
     >
-      {state === 'saved' && <Glyph name="tick" size={16} weight={2.4} />}
+      {state === 'saved' && <Mark kind="yes" />}
       {state === 'saving' && <span className="st-turning" aria-hidden="true" />}
       {state === 'retrying' && <Glyph name="alert" size={16} weight={2.2} />}
-      {state === 'notSaved' && <Glyph name="alert" size={16} weight={2.2} />}
-      {state !== 'idle' &&
-        t(
-          {
-            saved: 'seating.saved',
-            saving: 'seating.saving',
-            retrying: 'seating.retrying',
-            notSaved: 'seating.notSaved',
-          }[state],
-        )}
+      {state === 'notSaved' && (
+        <span className="st-no" aria-hidden="true">
+          <Glyph name="clear" size={10} weight={3.4} />
+        </span>
+      )}
+      {t(
+        {
+          saved: 'seating.saved',
+          saving: 'seating.saving',
+          retrying: 'seating.retrying',
+          notSaved: 'seating.notSaved',
+        }[state],
+      )}
       {state === 'notSaved' && (
         <button type="button" className="desk-text" onClick={onTryAgain}>
           {t('seating.tryAgain')}
@@ -202,17 +200,19 @@ export function PlacingBars({
 
   return (
     <>
-      <div className="st-float st-bar is-tint" role="status" aria-live="polite">
+      <div className="st-float st-bar is-tint is-placing" role="status" aria-live="polite">
         <Glyph name="info" size={17} weight={2.2} />
-        <p>{t(PLACING_WORDS[placing.kind === 'table' ? placing.shape : placing.kind])}</p>
-        <span className="st-bar-acts">
-          <button type="button" className="desk-text" onClick={onCentre}>
-            {t('seating.placeCentre')}
-          </button>
-          <button type="button" className="desk-text" onClick={onStop}>
-            {t('seating.stopPlacing')}
-          </button>
-        </span>
+        <div className="st-bar-body">
+          <p>{t(PLACING_WORDS[placing.kind === 'table' ? placing.shape : placing.kind])}</p>
+          <span className="st-bar-acts">
+            <button type="button" className="desk-text" onClick={onCentre}>
+              {t('seating.placeCentre')}
+            </button>
+            <button type="button" className="desk-text" onClick={onStop}>
+              {t('seating.stopPlacing')}
+            </button>
+          </span>
+        </div>
       </div>
       <div className="st-float st-another">
         <label>
@@ -227,51 +227,6 @@ export function PlacingBars({
     </>
   );
 }
-
-export function SeveralPanel({ items }: { items: FloorItem[] }) {
-  const { t } = useTranslation();
-
-  return (
-    <div className="st-stack">
-      <BackHead
-        title={t('seating.chosenCount', { count: items.length })}
-        line={t('seating.moveTogether')}
-      />
-      <ul className="st-rows">
-        {items.map((item) => (
-          <li key={item.one.id} className="st-row is-dense">
-            <ShapeTile glyph={shapeGlyph(item)} />
-            <span className="st-row-name">{itemName(t, item)}</span>
-          </li>
-        ))}
-      </ul>
-      <Line>{t('seating.shiftClick')}</Line>
-    </div>
-  );
-}
-
-function shapeGlyph(item: FloorItem): ShapeGlyph {
-  if (item.kind === 'row') return 'row';
-  if (item.kind === 'seat') return 'seat1';
-  return item.one.shape === 'rectangular' ? 'rect' : item.one.shape;
-}
-
-const ROUND_HANDLES: readonly [Handle, number, number][] = [
-  ['nw', -1, -1],
-  ['ne', 1, -1],
-  ['se', 1, 1],
-  ['sw', -1, 1],
-];
-const LONG_HANDLES: readonly [Handle, number, number][] = [
-  ['nw', -1, -1],
-  ['n', 0, -1],
-  ['ne', 1, -1],
-  ['e', 1, 0],
-  ['se', 1, 1],
-  ['s', 0, 1],
-  ['sw', -1, 1],
-  ['w', -1, 0],
-];
 
 /** A chosen table's handles: drawn 24 at a desk, each a 44 target; four on a round or cocktail table, eight on a long one. */
 export function TableHandles({

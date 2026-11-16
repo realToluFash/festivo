@@ -1,31 +1,35 @@
 import {
   ApiError,
-  DISH_ALLERGENS,
-  DISH_DESCRIPTION_MAXIMUM,
   DISH_DIETS,
-  DISH_NAME_MAXIMUM,
   type Dish,
-  type DishAllergen,
   type DishDiet,
+  VARIANTS_PER_DISH_MAXIMUM,
 } from '@soirely/api-client';
 import {
   type DishForm,
-  type MoneyLanguage,
   type DishProblems,
+  type VariantForm,
+  type VariantMode,
+  addVariantOutcome,
+  blankVariantForm,
+  firstVariantProblem,
+  hasProblem,
+  removeVariantOutcome,
+  variantDetailsOf,
+  variantFormOf,
+  variantProblems,
   blankDishForm,
   dishDetailsOf,
   dishFormOf,
   moneyLanguage,
-  dishLength,
   dishProblems,
   firstDishProblem,
-  amountExample,
   roleName,
   sameNamedDish,
   shownDishes,
 } from '@soirely/domain';
 import { type TFunction } from 'i18next';
-import { type ReactNode, useEffect, useRef, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 
 import { api } from '../../../api.ts';
@@ -36,8 +40,17 @@ import { TitleRow } from '../../../components/SettingsParts.tsx';
 import { useDeskTop } from '../../../deskTop.ts';
 import { keepsWhatLoaded, useOffline } from '../../../offline.ts';
 import { useSession } from '../../../session.ts';
-import { currencyChoices } from '../../../zoneAndCurrencyChoices.ts';
 import { Forbidden } from '../Forbidden.tsx';
+import { ActionGlyph, ContainsMark, DishFields } from './DishParts.tsx';
+import {
+  AddVariantButton,
+  NameDescFields,
+  RowLine,
+  type ShownVariant,
+  type VariantAsk,
+  VariantFields,
+  VariantInsets,
+} from './VariantParts.tsx';
 import '../../../components/desk.css';
 import '../../../components/SettingsParts.css';
 import '../../../components/EventsSearch.css';
@@ -68,7 +81,39 @@ type Load =
   | { kind: 'failed' }
   | { kind: 'loaded'; dishes: Dish[]; manage: boolean; prices: boolean };
 
-type Panel = { kind: 'add' } | { kind: 'edit'; id: string } | { kind: 'gone' };
+type Panel =
+  | { kind: 'add' }
+  | { kind: 'edit'; id: string }
+  | { kind: 'gone' }
+  | {
+      kind: 'variant';
+      mode: VariantMode;
+      dishId: string;
+      variantId: string | null;
+      forms: VariantForm[];
+      pressed: boolean;
+      failed: boolean;
+      busy: boolean;
+    };
+
+interface RowVariants {
+  prices: boolean;
+  ask: VariantAsk | null;
+  limit: boolean;
+  lit: string | null;
+  onAdd: () => void;
+  onEdit: (variant: ShownVariant) => void;
+  onRemove: (variant: ShownVariant) => void;
+  onKeep: (variant: ShownVariant) => void;
+  onConfirm: (variant: ShownVariant) => void;
+}
+
+const shownOf = (dish: Dish): ShownVariant[] =>
+  dish.variants.map((one) => ({ ...one, price: one.lastPrice ?? null }));
+
+function withoutContains(problems: DishProblems): DishProblems {
+  return { ...problems, contains: null, clashes: [], currency: null, amount: null };
+}
 
 interface FormState {
   form: DishForm;
@@ -98,6 +143,8 @@ function Library({
   const [panel, setPanel] = useState<Panel | null>(null);
   const [state, setState] = useState<FormState | null>(null);
   const [askDelete, setAskDelete] = useState<string | null>(null);
+  const [variantAsk, setVariantAsk] = useState<VariantAsk | null>(null);
+  const [limitAt, setLimitAt] = useState<string | null>(null);
   const [said, setSaid] = useState<{ line: string; failed: boolean } | null>(null);
   const focusAfter = useRef<string | null>(null);
   const title = useRef<HTMLHeadingElement>(null);
@@ -154,7 +201,23 @@ function Library({
   const looking = query.trim() !== '' || chips.length > 0;
   const editing =
     panel?.kind === 'edit' ? (dishes.find((one) => one.id === panel.id) ?? null) : null;
-  const problems = state?.pressed === true ? dishProblems(state.form, language, prices) : null;
+  const plain = editing == null || editing.variants.length === 0;
+  const checked = (form: DishForm) => {
+    const found = dishProblems(form, language, prices);
+
+    return plain ? found : withoutContains(found);
+  };
+  const problems = state?.pressed === true ? checked(state.form) : null;
+  const variantDish =
+    panel?.kind === 'variant' ? (dishes.find((one) => one.id === panel.dishId) ?? null) : null;
+  const variantButton =
+    panel?.kind !== 'variant'
+      ? ''
+      : panel.mode === 'addFirst'
+        ? t('dishVariants.addVariants')
+        : panel.mode === 'add'
+          ? t('dishVariants.addVariant')
+          : t('dishVariants.saveVariant');
 
   function replace(next: Dish) {
     setLoad((was) =>
@@ -183,10 +246,28 @@ function Library({
   }
 
   function close(back?: string) {
-    const from = panel?.kind === 'edit' ? `lib-edit-${panel.id}` : 'lib-add';
+    const from =
+      panel?.kind === 'edit'
+        ? `lib-edit-${panel.id}`
+        : panel?.kind === 'variant'
+          ? panel.variantId == null
+            ? `lib-addv-${panel.dishId}`
+            : `lib-vedit-${panel.variantId}`
+          : 'lib-add';
     setPanel(null);
     setState(null);
     focusAfter.current = back ?? from;
+  }
+
+  function dishGone(dishId: string) {
+    setLoad((was) =>
+      was.kind === 'loaded'
+        ? { ...was, dishes: was.dishes.filter((one) => one.id !== dishId) }
+        : was,
+    );
+    setPanel({ kind: 'gone' });
+    setState(null);
+    focusAfter.current = 'lib-panel-title';
   }
 
   function say(line: string, failed = false) {
@@ -196,8 +277,7 @@ function Library({
 
   async function save(anyway = false) {
     if (state == null || panel == null || panel.kind === 'gone' || state.busy) return;
-    const found = dishProblems(state.form, language, prices);
-    const problem = firstDishProblem(found);
+    const problem = firstDishProblem(checked(state.form));
     if (problem != null) {
       setState({ ...state, pressed: true, asking: null });
       focusAfter.current = problem;
@@ -216,7 +296,7 @@ function Library({
       return;
     }
     setState({ ...state, pressed: true, busy: true, failed: false });
-    const details = dishDetailsOf(state.form, language, prices, anyway);
+    const details = dishDetailsOf(state.form, language, prices && plain, anyway);
 
     try {
       const saved =
@@ -246,14 +326,7 @@ function Library({
         return;
       }
       if (error instanceof ApiError && error.status === 404 && selfId != null) {
-        setLoad((was) =>
-          was.kind === 'loaded'
-            ? { ...was, dishes: was.dishes.filter((one) => one.id !== selfId) }
-            : was,
-        );
-        setPanel({ kind: 'gone' });
-        setState(null);
-        focusAfter.current = 'lib-panel-title';
+        dishGone(selfId);
         return;
       }
       setState((now) => (now == null ? now : { ...now, busy: false, failed: true }));
@@ -303,6 +376,163 @@ function Library({
         true,
       );
     }
+  }
+
+  function openVariant(dish: Dish, mode: VariantMode, variant: ShownVariant | null) {
+    setVariantAsk(null);
+    setLimitAt(null);
+    setAskDelete(null);
+    setSaid(null);
+    setState(null);
+    const blank = blankVariantForm(currency);
+    setPanel({
+      kind: 'variant',
+      mode,
+      dishId: dish.id,
+      variantId: variant?.id ?? null,
+      forms:
+        variant != null
+          ? [variantFormOf(variant, variant.price, language, currency)]
+          : mode === 'addFirst'
+            ? [blank, blank]
+            : [blank],
+      pressed: false,
+      failed: false,
+      busy: false,
+    });
+    focusAfter.current = 'lib-panel-title';
+  }
+
+  function addVariant(dish: Dish) {
+    if (addVariantOutcome(dish.variants, false) === 'limit') {
+      setVariantAsk(null);
+      setSaid(null);
+      setLimitAt(dish.id);
+      return;
+    }
+    openVariant(dish, dish.variants.length === 0 ? 'addFirst' : 'add', null);
+  }
+
+  function othersOf(dish: Dish | null, mode: VariantMode, variantId: string | null) {
+    if (dish == null || mode === 'addFirst') return [];
+
+    return dish.variants.filter((one) => one.id !== variantId);
+  }
+
+  async function saveVariants() {
+    if (panel?.kind !== 'variant' || variantDish == null || panel.busy) return;
+    const found = variantProblems(
+      panel.forms,
+      othersOf(variantDish, panel.mode, panel.variantId),
+      language,
+      prices,
+    );
+    if (hasProblem(found)) {
+      setPanel({ ...panel, pressed: true, failed: false });
+      focusAfter.current = firstVariantProblem(found, panel.forms);
+      return;
+    }
+    const details = panel.forms.map((form) => variantDetailsOf(form, 'library', language, prices));
+    const [first, second] = details;
+    setPanel({ ...panel, pressed: true, busy: true, failed: false });
+
+    try {
+      const saved =
+        panel.variantId == null || first == null
+          ? await api.addDishVariants(organisationId, panel.dishId, details)
+          : await api.editDishVariant(organisationId, panel.dishId, panel.variantId, first);
+      replace(saved);
+      setPanel(null);
+      if (panel.mode === 'addFirst' && first != null && second != null)
+        say(
+          t('dishVariants.addedTwo', {
+            count: 2,
+            dish: saved.name,
+            first: first.name,
+            second: second.name,
+          }),
+        );
+      else if (panel.mode === 'add' && first != null)
+        say(t('dishVariants.added', { variant: first.name, dish: saved.name }));
+      else if (first != null) say(t('dishVariants.saved', { variant: first.name }));
+    } catch (error) {
+      if (error instanceof ApiError && error.is('variant_limit')) {
+        setPanel(null);
+        setLimitAt(panel.dishId);
+        return;
+      }
+      if (error instanceof ApiError && error.status === 404) {
+        dishGone(panel.dishId);
+        return;
+      }
+      setPanel((now) => (now?.kind === 'variant' ? { ...now, busy: false, failed: true } : now));
+      focusAfter.current = 'lib-failed';
+    }
+  }
+
+  function askRemoveVariant(dish: Dish, variant: ShownVariant) {
+    setLimitAt(null);
+    setSaid(null);
+    const outcome = removeVariantOutcome(dish.variants, variant);
+    if (outcome.kind === 'refused') {
+      setVariantAsk({ variantId: variant.id, kind: 'refused', lines: outcome.lines });
+      return;
+    }
+    setVariantAsk({ variantId: variant.id, kind: outcome.kind });
+    focusAfter.current = `lib-vask-${variant.id}`;
+  }
+
+  async function confirmVariant(dish: Dish, variant: ShownVariant) {
+    const staying = dish.variants.find((one) => one.id !== variant.id) ?? null;
+    const folding = dish.variants.length <= 2;
+
+    try {
+      replace(await api.removeDishVariant(organisationId, dish.id, variant.id));
+      setVariantAsk(null);
+      if (panel?.kind === 'variant' && panel.dishId === dish.id) setPanel(null);
+      if (folding && staying != null)
+        say(
+          t(prices ? 'dishVariants.foldedPrice' : 'dishVariants.folded', {
+            dish: dish.name,
+            variant: staying.name,
+          }),
+        );
+      else say(t('dishVariants.removed', { variant: variant.name, dish: dish.name }));
+    } catch (error) {
+      if (error instanceof ApiError && error.is('variant_last_everyone')) {
+        setVariantAsk({ variantId: variant.id, kind: 'refused', lines: ['lastEveryone'] });
+        return;
+      }
+      if (error instanceof ApiError && error.status === 404) {
+        setVariantAsk(null);
+        dishGone(dish.id);
+        return;
+      }
+      setVariantAsk(null);
+      say(
+        error instanceof ApiError && error.status === 403
+          ? t('eventMenu.forbidden')
+          : t('dishVariants.failedChange', { dish: dish.name, count: dish.variants.length }),
+        true,
+      );
+    }
+  }
+
+  function rowVariants(dish: Dish): RowVariants {
+    return {
+      prices,
+      ask: variantAsk,
+      limit: limitAt === dish.id,
+      lit: panel?.kind === 'variant' ? panel.variantId : null,
+      onAdd: () => addVariant(dish),
+      onEdit: (variant) => openVariant(dish, 'edit', variant),
+      onRemove: (variant) => askRemoveVariant(dish, variant),
+      onKeep: (variant) => {
+        setVariantAsk(null);
+        focusAfter.current = `lib-vremove-${variant.id}`;
+      },
+      onConfirm: (variant) => void confirmVariant(dish, variant),
+    };
   }
 
   function clearAll() {
@@ -430,7 +660,9 @@ function Library({
                       key={dish.id}
                       dish={dish}
                       manage={manage}
-                      lit={editing?.id === dish.id}
+                      lit={editing?.id === dish.id || variantDish?.id === dish.id}
+                      language={language}
+                      variants={rowVariants(dish)}
                       asking={askDelete === dish.id}
                       onEdit={() =>
                         open({ kind: 'edit', id: dish.id }, dishFormOf(dish, language, currency))
@@ -464,7 +696,74 @@ function Library({
               </div>
             </aside>
           )}
-          {panel != null && panel.kind !== 'gone' && state != null && (
+          {panel?.kind === 'variant' && variantDish != null && (
+            <aside className="mn-panel lib-panel" aria-labelledby="lib-panel-title">
+              <PanelTop
+                eyebrow={null}
+                title={
+                  panel.mode === 'addFirst'
+                    ? t('dishVariants.addFirstTitle', { dish: variantDish.name })
+                    : panel.mode === 'add'
+                      ? t('dishVariants.addTitle', { dish: variantDish.name })
+                      : t('dishVariants.editTitle', {
+                          variant:
+                            variantDish.variants.find((one) => one.id === panel.variantId)?.name ??
+                            '',
+                        })
+                }
+                onClose={() => close()}
+              />
+              <div className="mn-panel-body">
+                <VariantFields
+                  mode={panel.mode}
+                  dish={variantDish}
+                  forms={panel.forms}
+                  problems={
+                    panel.pressed
+                      ? variantProblems(
+                          panel.forms,
+                          othersOf(variantDish, panel.mode, panel.variantId),
+                          language,
+                          prices,
+                        )
+                      : null
+                  }
+                  where="library"
+                  prices={prices}
+                  language={language}
+                  heldCurrency={
+                    variantDish.variants.find((one) => one.id === panel.variantId)?.lastPrice
+                      ?.currency ?? ''
+                  }
+                  onPatch={(at, next) =>
+                    setPanel({
+                      ...panel,
+                      forms: panel.forms.map((form, i) => (i === at ? { ...form, ...next } : form)),
+                    })
+                  }
+                />
+              </div>
+              <div className="mn-panel-foot">
+                {panel.failed && (
+                  <p id="lib-failed" className="mn-failed" role="alert" tabIndex={-1}>
+                    <Glyph name="alert" size={16} weight={2.2} />
+                    {t('eventMenu.failedSave', { button: variantButton })}
+                  </p>
+                )}
+                <div className="mn-panel-acts">
+                  <button type="button" className="desk-text" onClick={() => close()}>
+                    {t('menuLibrary.cancel')}
+                  </button>
+                  <Pill
+                    label={variantButton}
+                    busy={panel.busy}
+                    onClick={() => void saveVariants()}
+                  />
+                </div>
+              </div>
+            </aside>
+          )}
+          {panel != null && panel.kind !== 'gone' && panel.kind !== 'variant' && state != null && (
             <aside className="mn-panel lib-panel" aria-labelledby="lib-panel-title">
               <PanelTop
                 eyebrow={panel.kind === 'edit' ? t('menuLibrary.edit') : null}
@@ -472,15 +771,19 @@ function Library({
                 onClose={() => close()}
               />
               <div className="mn-panel-body">
-                <DishFields
-                  form={state.form}
-                  problems={problems}
-                  notStated={editing != null && editing.allergens == null}
-                  editing={editing}
-                  prices={prices}
-                  language={language}
-                  onPatch={patch}
-                />
+                {plain ? (
+                  <DishFields
+                    form={state.form}
+                    problems={problems}
+                    notStated={editing != null && editing.allergens == null}
+                    editing={editing}
+                    prices={prices}
+                    language={language}
+                    onPatch={patch}
+                  />
+                ) : (
+                  <NameDescFields form={state.form} problems={problems} onPatch={patch} />
+                )}
               </div>
               <div className="mn-panel-foot">
                 {state.asking != null && (
@@ -709,29 +1012,6 @@ function Toolbar({
   );
 }
 
-function ContainsMark({ dish }: { dish: Dish }) {
-  const { t } = useTranslation();
-  const contains = dish.allergens;
-  const kind = contains == null ? 'unknown' : contains.length === 0 ? 'none' : 'some';
-
-  return (
-    <p className={`lib-contains is-${kind}`}>
-      <span className="lib-mark" aria-hidden="true">
-        {kind === 'unknown' ? '?' : kind === 'none' ? '0' : '!'}
-      </span>
-      {contains == null
-        ? t('menuLibrary.notStated')
-        : contains.length === 0
-          ? t('menuLibrary.containsNone')
-          : t('menuLibrary.contains', {
-              names: DISH_ALLERGENS.filter((code) => contains.includes(code))
-                .map((code) => t(`guestNeeds.allergen.${code}`))
-                .join(' · '),
-            })}
-    </p>
-  );
-}
-
 function DishRow({
   dish,
   manage,
@@ -743,11 +1023,15 @@ function DishRow({
   onAskDelete,
   onKeep,
   onDelete,
+  language,
+  variants,
 }: {
   dish: Dish;
   manage: boolean;
   lit: boolean;
   asking: boolean;
+  language: ReturnType<typeof moneyLanguage>;
+  variants: RowVariants;
   onEdit: () => void;
   onArchive: () => void;
   onRestore: () => void;
@@ -757,21 +1041,28 @@ function DishRow({
 }) {
   const { t } = useTranslation();
   const name = dish.name;
+  const ways = dish.variants.length > 0;
 
   return (
     <li className={lit ? 'lib-row is-lit' : 'lib-row'}>
       <div className="lib-row-main">
         <div className="lib-cols">
           <div className="lib-col-name">
-            <h3>{name}</h3>
+            <h3>
+              {ways ? t('dishVariants.ways', { dish: name, count: dish.variants.length }) : name}
+            </h3>
             {dish.description != null && <p className="mn-quiet">{dish.description}</p>}
             {dish.usedByEvent && <p className="lib-used">{t('menuLibrary.usedBy')}</p>}
           </div>
           <div className="lib-col-contains">
-            <ContainsMark dish={dish} />
+            {ways ? (
+              <p className="mn-quiet">{t('dishVariants.eachOwn')}</p>
+            ) : (
+              <ContainsMark dish={dish} />
+            )}
           </div>
           <div className="lib-col-diets">
-            {dish.diets.length > 0 && (
+            {!ways && dish.diets.length > 0 && (
               <ul className="lib-tags" aria-label={t('menuLibrary.tagsFor', { name })}>
                 {dish.diets.map((diet) => (
                   <li key={diet} className="lib-tag">
@@ -796,6 +1087,7 @@ function DishRow({
               </HintButton>
             ) : (
               <>
+                <AddVariantButton id={`lib-addv-${dish.id}`} dish={name} onClick={variants.onAdd} />
                 <HintButton
                   id={`lib-edit-${dish.id}`}
                   label={t('menuLibrary.editAria', { name })}
@@ -831,6 +1123,29 @@ function DishRow({
           </div>
         )}
       </div>
+      {variants.limit && (
+        <RowLine
+          id={`lib-vrow-${dish.id}`}
+          words={[t('dishVariants.limit', { most: VARIANTS_PER_DISH_MAXIMUM })]}
+        />
+      )}
+      {ways && (
+        <VariantInsets
+          dish={name}
+          variants={shownOf(dish)}
+          where="library"
+          ids="lib"
+          manage={manage && dish.archivedAt == null}
+          prices={variants.prices}
+          language={language}
+          asking={variants.ask}
+          lit={variants.lit}
+          onEdit={variants.onEdit}
+          onRemove={variants.onRemove}
+          onKeep={variants.onKeep}
+          onConfirm={variants.onConfirm}
+        />
+      )}
       {asking && (
         <div className="mn-ask">
           <p id={`lib-ask-${dish.id}`} tabIndex={-1}>
@@ -847,310 +1162,5 @@ function DishRow({
         </div>
       )}
     </li>
-  );
-}
-
-type ActionIcon = 'edit' | 'archive' | 'restore' | 'bin';
-
-const ACTION_PATHS: Record<Exclude<ActionIcon, 'edit'>, readonly string[]> = {
-  archive: ['M3 4h18v4H3z', 'M5 8v11a1 1 0 0 0 1 1h12a1 1 0 0 0 1-1V8', 'M10 12h4'],
-  restore: [
-    'M3 4h18v4H3z',
-    'M5 8v11a1 1 0 0 0 1 1h12a1 1 0 0 0 1-1V8',
-    'M12 17v-6',
-    'm9 13 3-3 3 3',
-  ],
-  bin: ['M3 6h18', 'M8 6V4h8v2', 'M19 6l-1 14H6L5 6', 'M10 11v6', 'M14 11v6'],
-};
-
-/** Archive, Restore and Delete… have no glyph in the web's set; these are drawn in its 24 px stroke, each a different shape. */
-function ActionGlyph({ icon }: { icon: ActionIcon }) {
-  if (icon === 'edit') return <Glyph name="pen" size={20} weight={2} />;
-
-  return (
-    <svg
-      width={20}
-      height={20}
-      viewBox="0 0 24 24"
-      aria-hidden="true"
-      focusable="false"
-      fill="none"
-      stroke="currentColor"
-      strokeWidth={2}
-      strokeLinecap="round"
-      strokeLinejoin="round"
-    >
-      {ACTION_PATHS[icon].map((d) => (
-        <path key={d} d={d} />
-      ))}
-    </svg>
-  );
-}
-
-function Wrong({ id, children }: { id: string; children: ReactNode }) {
-  return (
-    <p id={id} className="desk-error">
-      <Glyph name="alert" size={15} weight={2.2} />
-      {children}
-    </p>
-  );
-}
-
-function described(...ids: (string | null)[]): string | undefined {
-  const kept = ids.filter((id): id is string => id != null);
-
-  return kept.length === 0 ? undefined : kept.join(' ');
-}
-
-function DishFields({
-  form,
-  problems,
-  notStated,
-  editing,
-  prices,
-  language,
-  onPatch,
-}: {
-  form: DishForm;
-  problems: DishProblems | null;
-  notStated: boolean;
-  editing: Dish | null;
-  prices: boolean;
-  language: MoneyLanguage;
-  onPatch: (next: Partial<DishForm>) => void;
-}) {
-  const { t, i18n } = useTranslation();
-  const nameLength = dishLength(form.name);
-  const descLength = dishLength(form.description);
-  const clashing = new Set(problems?.clashes.map((one) => one.diet) ?? []);
-  const optional = <span className="gs-optional">{t('menuLibrary.optional')}</span>;
-  const held = editing?.lastPrice?.currency ?? '';
-
-  return (
-    <>
-      <div className="desk-field">
-        <label htmlFor="lib-name" className="desk-label gs-label">
-          {t('menuLibrary.name')}
-        </label>
-        <div className={problems?.name == null ? 'desk-box' : 'desk-box is-wrong'}>
-          <input
-            id="lib-name"
-            type="text"
-            value={form.name}
-            spellCheck={false}
-            autoComplete="off"
-            aria-invalid={problems?.name != null}
-            aria-describedby={described(
-              'lib-name-count',
-              problems?.name == null ? null : 'lib-name-error',
-            )}
-            onChange={(event) => onPatch({ name: event.target.value })}
-          />
-        </div>
-        <p
-          id="lib-name-count"
-          className={nameLength > DISH_NAME_MAXIMUM ? 'lib-counter is-over' : 'lib-counter'}
-        >
-          {t('menuLibrary.counter', { count: nameLength, most: DISH_NAME_MAXIMUM })}
-        </p>
-        {problems?.name != null && (
-          <Wrong id="lib-name-error">
-            {problems.name === 'blank'
-              ? t('menuLibrary.nameBlank')
-              : t('menuLibrary.nameLong', { most: DISH_NAME_MAXIMUM })}
-          </Wrong>
-        )}
-      </div>
-      <div className="desk-field">
-        <label htmlFor="lib-desc" className="desk-label gs-label">
-          {t('menuLibrary.desc')}
-          {optional}
-        </label>
-        <div
-          className={
-            problems?.description == null ? 'desk-box lib-area' : 'desk-box lib-area is-wrong'
-          }
-        >
-          <textarea
-            id="lib-desc"
-            rows={3}
-            value={form.description}
-            aria-invalid={problems?.description != null}
-            aria-describedby={described(
-              'lib-desc-count',
-              problems?.description == null ? null : 'lib-desc-error',
-            )}
-            onChange={(event) => onPatch({ description: event.target.value })}
-          />
-        </div>
-        <p
-          id="lib-desc-count"
-          className={descLength > DISH_DESCRIPTION_MAXIMUM ? 'lib-counter is-over' : 'lib-counter'}
-        >
-          {t('menuLibrary.counter', { count: descLength, most: DISH_DESCRIPTION_MAXIMUM })}
-        </p>
-        {problems?.description != null && (
-          <Wrong id="lib-desc-error">
-            {t('menuLibrary.descLong', { most: DISH_DESCRIPTION_MAXIMUM })}
-          </Wrong>
-        )}
-      </div>
-      <fieldset
-        className="lib-set"
-        aria-describedby={described(
-          'lib-contains-help',
-          problems?.contains == null ? null : 'lib-contains-error',
-        )}
-        aria-invalid={problems?.contains != null || undefined}
-      >
-        <legend className="desk-label gs-label">{t('menuLibrary.containsLegend')}</legend>
-        <p id="lib-contains-help" className="desk-help">
-          {t('menuLibrary.containsHelp')}
-        </p>
-        {notStated && form.allergens.length === 0 && !form.none && (
-          <p className="lib-contains is-unknown lib-not-stated">
-            <span className="lib-mark" aria-hidden="true">
-              ?
-            </span>
-            {t('menuLibrary.notStatedLine')}
-          </p>
-        )}
-        <div className="lib-ticks">
-          {DISH_ALLERGENS.map((code: DishAllergen) => (
-            <label key={code} className="gs-tick lib-tick">
-              <input
-                id={`lib-has-${code}`}
-                type="checkbox"
-                className="gs-box"
-                checked={form.allergens.includes(code)}
-                onChange={() =>
-                  onPatch({
-                    none: false,
-                    allergens: form.allergens.includes(code)
-                      ? form.allergens.filter((one) => one !== code)
-                      : DISH_ALLERGENS.filter(
-                          (one) => one === code || form.allergens.includes(one),
-                        ),
-                  })
-                }
-              />
-              {t(`guestNeeds.allergen.${code}`)}
-            </label>
-          ))}
-        </div>
-        <label className="gs-tick lib-tick lib-none-tick">
-          <input
-            id="lib-none"
-            type="checkbox"
-            className="gs-box"
-            checked={form.none}
-            onChange={() => onPatch({ none: !form.none, allergens: [] })}
-          />
-          {t('menuLibrary.none')}
-        </label>
-        {problems?.contains != null && (
-          <Wrong id="lib-contains-error">{t('menuLibrary.containsBlank')}</Wrong>
-        )}
-      </fieldset>
-      <fieldset
-        className="lib-set"
-        aria-describedby={clashing.size > 0 ? 'lib-diets-error' : undefined}
-      >
-        <legend className="desk-label gs-label">
-          {t('menuLibrary.dietsLegend')}
-          {optional}
-        </legend>
-        <div className="lib-ticks">
-          {DISH_DIETS.map((diet) => (
-            <label key={diet} className="gs-tick lib-tick">
-              <input
-                id={`lib-diet-${diet}`}
-                type="checkbox"
-                className="gs-box"
-                checked={form.diets.includes(diet)}
-                aria-invalid={clashing.has(diet) || undefined}
-                onChange={() =>
-                  onPatch({
-                    diets: form.diets.includes(diet)
-                      ? form.diets.filter((one) => one !== diet)
-                      : DISH_DIETS.filter((one) => one === diet || form.diets.includes(one)),
-                  })
-                }
-              />
-              {t(`guestNeeds.dietName.${diet}`)}
-            </label>
-          ))}
-        </div>
-        {problems != null && problems.clashes.length > 0 && (
-          <div id="lib-diets-error" className="lib-clashes">
-            {problems.clashes.map((one) => (
-              <Wrong key={one.diet} id={`lib-clash-${one.diet}`}>
-                {t(`menuLibrary.clash.${one.clash}`)}
-              </Wrong>
-            ))}
-          </div>
-        )}
-      </fieldset>
-      {prices && (
-        <fieldset className="lib-set" aria-describedby="lib-price-help">
-          <legend className="desk-label gs-label">
-            {t('menuLibrary.price')}
-            {optional}
-          </legend>
-          <div className="lib-price">
-            <div className="desk-field lib-currency">
-              <label htmlFor="lib-currency" className="desk-unseen">
-                {t('menuLibrary.currency')}
-              </label>
-              <div className={problems?.currency == null ? 'desk-box' : 'desk-box is-wrong'}>
-                <select
-                  id="lib-currency"
-                  value={form.currency}
-                  aria-invalid={problems?.currency != null}
-                  aria-describedby={problems?.currency == null ? undefined : 'lib-currency-error'}
-                  onChange={(event) => onPatch({ currency: event.target.value })}
-                >
-                  {currencyChoices(held, form.currency, i18n.language, t).map((choice) => (
-                    <option key={choice.value} value={choice.value}>
-                      {choice.label}
-                    </option>
-                  ))}
-                </select>
-              </div>
-            </div>
-            <div className="desk-field lib-amount">
-              <label htmlFor="lib-amount" className="desk-unseen">
-                {t('menuLibrary.amount')}
-              </label>
-              <div className={problems?.amount == null ? 'desk-box' : 'desk-box is-wrong'}>
-                <input
-                  id="lib-amount"
-                  type="text"
-                  inputMode="decimal"
-                  lang={language}
-                  value={form.amount}
-                  autoComplete="off"
-                  aria-invalid={problems?.amount != null}
-                  aria-describedby={problems?.amount == null ? undefined : 'lib-amount-error'}
-                  onChange={(event) => onPatch({ amount: event.target.value })}
-                />
-              </div>
-            </div>
-          </div>
-          {problems?.currency != null && (
-            <Wrong id="lib-currency-error">{t('orgGeneral.currencyBlank')}</Wrong>
-          )}
-          {problems?.amount != null && (
-            <Wrong id="lib-amount-error">
-              {t('menuLibrary.priceWrong', { example: amountExample(language, form.currency) })}
-            </Wrong>
-          )}
-          <p id="lib-price-help" className="desk-help">
-            {t('menuLibrary.priceHint')}
-          </p>
-        </fieldset>
-      )}
-      {editing != null && <p className="lib-own-copy">{t('menuLibrary.ownCopy')}</p>}
-    </>
   );
 }

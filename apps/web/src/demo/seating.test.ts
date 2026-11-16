@@ -22,6 +22,7 @@ import {
   feet,
   filled,
   fitOf,
+  focusReach,
   intoView,
   inside,
   keepSeats,
@@ -34,6 +35,7 @@ import {
   percentOf,
   percentWritten,
   planCounts,
+  planFitOf,
   readFeet,
   readItemSize,
   readEnds,
@@ -189,6 +191,28 @@ describe('the room to scale (sc-4007)', () => {
     expect(fit.ox).toBe(16);
   });
 
+  it('fits a 100 × 80 m room at 25%, its centre at the centre of the floor (sc-57678)', () => {
+    const fit = planFitOf(718, 719, { name: '', w: 10000, l: 8000 });
+
+    expect(percentOf(fit.s)).toBe(25);
+    expect(fit.ox + (10000 * fit.s) / 2).toBe(359);
+    expect(fit.oy + (8000 * fit.s) / 2).toBe(359.5);
+  });
+
+  it('fits a 2 × 2 m room at 400%, whole and centred (sc-57678)', () => {
+    const fit = planFitOf(718, 719, { name: '', w: 200, l: 200 });
+
+    expect(percentOf(fit.s)).toBe(400);
+    expect(fit.ox + (200 * fit.s) / 2).toBe(359);
+    expect(fit.oy + (200 * fit.s) / 2).toBe(359.5);
+  });
+
+  it('fits a room between 25% and 400% as the whole-room fit does (sc-57678)', () => {
+    const room = samplePlan().room!;
+
+    expect(planFitOf(718, 719, room)).toEqual(fitOf(718, 719, room));
+  });
+
   it.each([
     ['en', /^150%$/],
     ['es', /^150\s%$/],
@@ -233,6 +257,14 @@ describe('the room to scale (sc-4007)', () => {
     const bar = { x0: 534, y0: 100, x1: 706, y1: 600 };
 
     expect(intoView({ x0: -900, y0: 300, x1: 900, y1: 400 }, 718, 719, [bar])).toEqual([924, -208]);
+  });
+
+  it('reaches 20 px past a focused item for its ring and halo, further once it is turned (sc-57361)', () => {
+    const row = { ...newItem('row', [], [0, 0]), rot: 0 };
+
+    expect(focusReach(row)).toBe(20);
+    expect(focusReach({ ...row, rot: 90 })).toBeCloseTo(20);
+    expect(focusReach({ ...row, rot: 45 })).toBeCloseTo(20 * Math.SQRT2);
   });
 
   it('draws outlines under 50%, chairs from 50%, and 44 targets from 150%', () => {

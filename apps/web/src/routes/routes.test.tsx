@@ -896,6 +896,20 @@ describe('the application tree', () => {
     );
   });
 
+  it('lets Seating fill its card at a desk, as its demo does (sc-58064)', () => {
+    expect(cssRule('.shell-content.is-card:has(> .st)')).toMatch(/padding: 0;/u);
+    expect(cssRule('.shell-content.is-card > .st .st-main')).toMatch(/min-height: 0;/u);
+    expect(
+      cssRule(
+        [
+          '.shell-content.is-card:has(> .st)',
+          '    > :not(.st):first-child:not(:has(> .visually-hidden:only-child)),',
+          '  .shell-content.is-card:has(> .st) > :first-child:has(> .visually-hidden:only-child) + :not(.st)',
+        ].join('\n'),
+      ),
+    ).toMatch(/margin-top: var\(--space3xl\);/u);
+  });
+
   it('keeps the shell usable when a screen throws', () => {
     vi.spyOn(console, 'error').mockImplementation(() => {});
 

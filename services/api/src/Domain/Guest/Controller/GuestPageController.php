@@ -193,6 +193,8 @@ final readonly class GuestPageController
                 'type' => $event->getType()->value,
                 'cover' => $this->eventSerialiser->coverOf($event),
                 'hosts' => $event->getHosts(),
+                // The hosts' own words, shown only once it is over and never translated (sc-6476).
+                'thankYou' => GuestPagePhase::Finished === $phase ? $event->getThankYou() : null,
                 'startsAt' => $event->getStartsAt()->format(\DATE_ATOM),
                 'timeZone' => $event->getTimeZone(),
                 'venue' => null === $venue ? null : ['name' => $venue->name, 'address' => $venue->address?->formatted],

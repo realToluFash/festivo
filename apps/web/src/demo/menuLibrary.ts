@@ -1,4 +1,15 @@
 import { type Allergen, type Diet, DIETS, GUEST_KITCHEN_NAMES } from './guestKitchenWords.ts';
+import {
+  type Variant,
+  type VariantAsk,
+  type VariantForm,
+  type VariantMode,
+  libraryCoconut,
+  libraryJollof,
+  libraryMoiMoi,
+  libraryPepper,
+  sixWays,
+} from './dishVariants.ts';
 import type { DemoLink } from './settings.ts';
 
 /** sc-3901's Menu library at a desk (board MenuLibrary, page e32): the organisation's dishes and what each contains. */
@@ -48,6 +59,8 @@ export interface LibDish {
   used: boolean;
   archived: boolean;
   price: Price | null;
+  /** sc-3903: a dish with variants; each has its own allergens, diets and Last price. */
+  variants?: readonly Variant[];
 }
 
 export const CURRENCIES = ['NGN', 'GHS', 'GBP', 'EUR', 'USD', 'JPY', 'XOF', 'KWD'] as const;
@@ -77,7 +90,7 @@ export const LW = {
     'Add each dish once, with what it contains. Every event’s menu then picks from this library.',
   noArchived: 'Nothing is archived. A dish an event has used is archived instead of deleted.',
   addDish: 'Add dish',
-  contains: (names: string) => `Contains ${names}`,
+  contains: (names: string) => `Contains: ${names}`,
   containsNone: 'Contains none of the 14 allergens',
   notStated: 'Allergens not stated',
   usedBy: 'Used by an event',
@@ -469,7 +482,15 @@ export const SAMPLE_DISHES: readonly LibDish[] = [
 export type Opened =
   | { kind: 'add'; form?: Partial<DishForm>; press?: boolean }
   | { kind: 'edit'; id: string; form?: Partial<DishForm>; press?: boolean }
-  | { kind: 'gone'; name: string };
+  | { kind: 'gone'; name: string }
+  | {
+      kind: 'variants';
+      id: string;
+      mode: VariantMode;
+      variantId?: string;
+      forms?: readonly Partial<VariantForm>[];
+      press?: boolean;
+    };
 
 export interface LibraryStart {
   name: string;
@@ -488,6 +509,8 @@ export interface LibraryStart {
   said: string;
   failedSave: boolean;
   budget: boolean;
+  variantAsk?: { dishId: string; ask: VariantAsk } | null;
+  variantLimit?: string | null;
 }
 
 function start(over: Partial<LibraryStart> & { name: string }): LibraryStart {
@@ -509,6 +532,30 @@ function start(over: Partial<LibraryStart> & { name: string }): LibraryStart {
     ...over,
   };
 }
+
+const withWays = (ways: Record<string, readonly Variant[]>, dishes = SAMPLE_DISHES): LibDish[] =>
+  dishes.map((one) => {
+    const variants = ways[one.id];
+
+    return variants == null ? one : { ...one, variants };
+  });
+
+export function libraryVariants(): LibDish[] {
+  return withWays({
+    'd-jollof': libraryJollof('EUR'),
+    'd-coconut': libraryCoconut(),
+    'd-moimoi': libraryMoiMoi(),
+    'd-pepper': libraryPepper(),
+  });
+}
+
+const LIB_TWO: readonly Partial<VariantForm>[] = [
+  { name: 'Beef', allergens: ['peanuts', 'sesame'], diets: ['halal'], amount: '3,500' },
+  { name: 'Chicken', allergens: ['peanuts', 'sesame'], diets: ['halal'], amount: '3,000' },
+];
+
+const vstart = (name: string, note: string, over: Partial<LibraryStart> = {}) =>
+  start({ name, note, dishes: libraryVariants(), ...over });
 
 const LONG =
   'Slow-roasted whole lamb shoulder with yaji spice, charred onions, and pepper sauce, carved at the table for the party, served with a side of fried yam and dodo, and a small dish of extra yaji';
@@ -643,6 +690,155 @@ const STATES = {
     }),
   gone: () =>
     start({ name: 'Edit, the dish is gone', opened: { kind: 'gone', name: 'Chin chin' } }),
+  libVariants: () =>
+    vstart(
+      'Variants',
+      'Jollof rice · 3 ways and three dishes of 2 ways: each variant in an inset with Edit and Remove… on its first line; Add variant on every active row.',
+    ),
+  libVariantsReadOnly: () =>
+    vstart('Variants, read only', 'The insets with no Add variant, Edit or Remove….', {
+      manage: false,
+    }),
+  libVariantsArchived: () =>
+    vstart(
+      'Variants, archived',
+      'Catfish pepper soup · 2 ways under Archived: its insets read only.',
+      {
+        dishes: libraryVariants().map((one) =>
+          one.id === 'd-pepper' ? { ...one, used: true, archived: true } : one,
+        ),
+        tab: 'archived',
+      },
+    ),
+  libAddFirst: () =>
+    vstart('Add variant, the first two', 'Add variant on Beef suya skewers: two blank blocks.', {
+      opened: { kind: 'variants', id: 'd-suya', mode: 'addFirst' },
+    }),
+  libAddFirstBlank: () =>
+    vstart('Add variants, pressed blank', 'Focus on the first variant’s Name.', {
+      opened: { kind: 'variants', id: 'd-suya', mode: 'addFirst', press: true },
+    }),
+  libAddFirstConflict: () =>
+    vstart('Add variants, a diet conflict', 'Crustaceans ticked as Vegetarian.', {
+      opened: {
+        kind: 'variants',
+        id: 'd-suya',
+        mode: 'addFirst',
+        forms: [
+          LIB_TWO[0] ?? {},
+          { name: 'Prawn', allergens: ['crustaceans'], diets: ['vegetarian'] },
+        ],
+        press: true,
+      },
+    }),
+  libAddFirstSameName: () =>
+    vstart('Add variants, the same name twice', 'Beef and beef, ignoring case.', {
+      opened: {
+        kind: 'variants',
+        id: 'd-suya',
+        mode: 'addFirst',
+        forms: [LIB_TWO[0] ?? {}, { ...LIB_TWO[1], name: 'beef' }],
+        press: true,
+      },
+    }),
+  libAddFirstNoEveryone: () =>
+    vstart(
+      'Add variants, no variant for Everyone',
+      'Both blocks Children only: the line under each For.',
+      {
+        opened: {
+          kind: 'variants',
+          id: 'd-suya',
+          mode: 'addFirst',
+          forms: [
+            { ...LIB_TWO[0], name: 'Children’s portion', for: 'children' },
+            { ...LIB_TWO[1], name: 'Children’s plain', for: 'children' },
+          ],
+          press: true,
+        },
+      },
+    ),
+  libAddVariant: () =>
+    vstart('Add variant, a dish with variants', 'One block, on Jollof rice · 3 ways.', {
+      opened: { kind: 'variants', id: 'd-jollof', mode: 'add' },
+    }),
+  libVariantPrice: () =>
+    vstart('Add variant, Last price not a number', 'sc-3901’s rule, in the currency picked.', {
+      opened: {
+        kind: 'variants',
+        id: 'd-jollof',
+        mode: 'add',
+        forms: [{ name: 'Fish', allergens: ['fish'], amount: '15 euros', currency: 'EUR' }],
+        press: true,
+      },
+    }),
+  libEditVariant: () =>
+    vstart('Edit variant', 'Edit on Chicken, filled; Save variant says Chicken saved.', {
+      opened: { kind: 'variants', id: 'd-jollof', mode: 'edit', variantId: 'lv-chicken' },
+    }),
+  libEditVariantNoEveryone: () =>
+    vstart(
+      'Edit variant, no variant left for Everyone',
+      'Chicken set to Children only: nothing is sent, focus on For.',
+      {
+        opened: {
+          kind: 'variants',
+          id: 'd-jollof',
+          mode: 'edit',
+          variantId: 'lv-chicken',
+          forms: [{ for: 'children' }],
+          press: true,
+        },
+      },
+    ),
+  libAtLimit: () =>
+    vstart('Variants at the limit', 'Jollof rice · 6 ways: Add variant opens nothing.', {
+      dishes: withWays(
+        { 'd-jollof': sixWays().map((one) => ({ ...one, pickers: [] })) },
+        libraryVariants(),
+      ),
+      variantLimit: 'd-jollof',
+    }),
+  libRemoveConfirm: () =>
+    vstart('Remove… a variant, asked first', 'From 3 or more: asked inline.', {
+      variantAsk: { dishId: 'd-jollof', ask: { variantId: 'lv-plain', kind: 'ask' } },
+    }),
+  libRemoveLastEveryone: () =>
+    vstart(
+      'Remove… the last variant for Everyone',
+      'Chicken stays enabled and opens nothing; the line goes with the next action.',
+      {
+        variantAsk: {
+          dishId: 'd-jollof',
+          ask: { variantId: 'lv-chicken', kind: 'refused', lines: ['lastEveryone'] },
+        },
+      },
+    ),
+  libFoldToOne: () =>
+    vstart('Fold to one', 'Remove… on Chicken: the dish takes Fish’s Last price, GBP 12.00.', {
+      variantAsk: { dishId: 'd-coconut', ask: { variantId: 'lv-chicken2', kind: 'fold' } },
+    }),
+  libFoldChildren: () =>
+    vstart('Fold to one, Children only stays', 'Remove… on Full bowl.', {
+      variantAsk: { dishId: 'd-pepper', ask: { variantId: 'lv-full', kind: 'fold' } },
+    }),
+  libFoldNoCost: () =>
+    vstart('Fold to one, no last price', 'Remove… on Plain: Beef has no last price.', {
+      variantAsk: { dishId: 'd-moimoi', ask: { variantId: 'lv-plain2', kind: 'fold' } },
+    }),
+  libEditDishVariants: () =>
+    vstart('Edit, a dish with variants', 'Only Name and Description, and no Last price.', {
+      opened: { kind: 'edit', id: 'd-jollof' },
+    }),
+  libVariantGone: () =>
+    vstart('Edit variant, the dish is gone', 'Someone deleted Jollof rice while it was open.', {
+      opened: { kind: 'gone', name: 'Jollof rice' },
+    }),
+  libVariantFailed: () =>
+    vstart('Save variant, a save that fails', 'Press Save variant.', {
+      opened: { kind: 'variants', id: 'd-jollof', mode: 'edit', variantId: 'lv-kids' },
+      failedSave: true,
+    }),
 } satisfies Record<string, () => LibraryStart>;
 
 export type LibraryStateName = keyof typeof STATES;
@@ -714,6 +910,51 @@ export const LIBRARY_PAGES: readonly { name: string; states: readonly DemoLink[]
     states: (
       ['deleteConfirm', 'saved', 'archivedSaid', 'restored', 'deleted', 'failedAction'] as const
     ).map(link),
+  },
+  {
+    name: 'Variants of a dish (sc-3903)',
+    states: (
+      [
+        'libVariants',
+        'libVariantsReadOnly',
+        'libVariantsArchived',
+        'libAtLimit',
+        'libEditDishVariants',
+      ] as const
+    ).map(link),
+  },
+  {
+    name: 'Variants: Add variant and Edit',
+    states: (
+      [
+        'libAddFirst',
+        'libAddFirstBlank',
+        'libAddFirstConflict',
+        'libAddFirstSameName',
+        'libAddFirstNoEveryone',
+        'libAddVariant',
+        'libVariantPrice',
+        'libEditVariant',
+        'libEditVariantNoEveryone',
+        'libVariantGone',
+        'libVariantFailed',
+      ] as const
+    ).map(link),
+  },
+  {
+    name: 'Variants: Remove… and fold to one',
+    states: [
+      ...(
+        [
+          'libRemoveConfirm',
+          'libRemoveLastEveryone',
+          'libFoldToOne',
+          'libFoldChildren',
+          'libFoldNoCost',
+        ] as const
+      ).map(link),
+      { to: libraryAt('libFoldToOne', 'budget=no'), name: 'Fold to one, without budget.read' },
+    ],
   },
   {
     name: 'Tweaks on any state',

@@ -33,7 +33,8 @@ export type Asking =
   | { kind: 'deleteSection'; id: string }
   | { kind: 'deleteTable'; id: string }
   | { kind: 'deleteRow'; id: string }
-  | { kind: 'deleteSeat'; id: string };
+  | { kind: 'deleteSeat'; id: string }
+  | { kind: 'deleteItems'; ids: string[] };
 
 /** A room size refused because these tables would sit outside it (sc-4000): they are outlined, the new wall dashed. */
 export interface Outside {
@@ -43,6 +44,11 @@ export interface Outside {
 }
 
 export type Placed = SeatingWithTable | SeatingWithRow | SeatingWithSeat;
+
+export interface TableNote {
+  id: string;
+  line: string;
+}
 
 export interface PlanApi {
   event: OrganisationEvent;
@@ -69,6 +75,9 @@ export interface PlanApi {
   /** Counts the 412s: a form keyed on it reloads what a colleague saved. */
   reloads: number;
   notice: string | null;
+  /** A table's line after a shape change, until the next change saved to that table, a move or a turn among them. */
+  note: TableNote | null;
+  keepNote: (note: TableNote | null) => void;
   open: (panel: Panel | null) => void;
   ask: (asking: Asking) => void;
   showOutside: (outside: Outside | null) => void;

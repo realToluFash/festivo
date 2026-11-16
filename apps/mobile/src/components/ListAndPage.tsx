@@ -171,9 +171,10 @@ export function ListAndPage<Item = never>({
           <ScrollColumn
             key={pageKey}
             style={styles.fill}
-            contentContainerStyle={
-              inColumn ? [LIST_EDGES.tabletLandscape, column] : (ruled?.page ?? column)
-            }
+            contentContainerStyle={[
+              styles.grow,
+              inColumn ? [LIST_EDGES.tabletLandscape, column] : (ruled?.page ?? column),
+            ]}
           >
             {!landscape && pageInFront && <FrameTop />}
             {kind === 'tabletPortrait' && !backInFrame && (
@@ -192,6 +193,7 @@ export function ListAndPage<Item = never>({
 const styles = StyleSheet.create({
   rule: { borderRightWidth: 1, borderRightColor: tokens.colorBorder },
   fill: { flex: 1, minWidth: 0 },
+  grow: { flexGrow: 1 },
   bare: { padding: 0, gap: 0 },
   behind: { display: 'none' },
   start: { alignSelf: 'flex-start' },

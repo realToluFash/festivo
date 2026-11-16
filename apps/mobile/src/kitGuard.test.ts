@@ -906,6 +906,22 @@ describe('Ask to join holds its message rather than disabling it (sc-9674)', () 
     expect(text.match(/\bfocusChecked\(input\)/gu), 'the Message check').toHaveLength(1);
   });
 
+  it('lifts its MessageBox again as a refusal or the count grows it (sc-57219)', () => {
+    const box = readFileSync(join('src', 'steps', 'MessageBox.tsx'), 'utf8');
+    const lift = /const \{ ref: (\w+), onLayout(?:: (\w+))? \} = useAboveKeyboard\(\);/u.exec(box);
+    const group = lift?.[1] ?? '';
+    const onLayout = lift?.[2] ?? 'onLayout';
+    const outer = /return \(\s*<View\b([\s\S]*?)\n\s*>/u.exec(box)?.[1] ?? '';
+
+    expect(lift, 'MessageBox takes both ref and onLayout from useAboveKeyboard').not.toBeNull();
+    expect(outer, 'its group carries the ref').toMatch(
+      new RegExp(String.raw`\bref=\{${group}\}`, 'u'),
+    );
+    expect(outer, 'and the onLayout that re-lifts it as it grows').toMatch(
+      new RegExp(String.raw`\bonLayout=\{${onLayout}\}`, 'u'),
+    );
+  });
+
   it('drops the keys only when the link is dead, which no message can fix (sc-11741)', () => {
     const lines = text.split('\n');
 

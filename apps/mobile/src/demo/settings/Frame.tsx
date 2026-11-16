@@ -14,7 +14,7 @@ import { DemoSidebar } from '../Sidebar.tsx';
 import { SIDEBAR_EVENTS } from '../sideEvents.ts';
 import { TodayShellProvider } from '../../components/todayShell.ts';
 import { demoShell } from '../demoShell.ts';
-import { openSearch } from '../search/SearchHeader.tsx';
+import { openSearch, SearchButton } from '../search/SearchHeader.tsx';
 import { viewerOfRole } from './sample.ts';
 import { underSavedName, useSavedName } from './savedName.ts';
 import {
@@ -52,15 +52,24 @@ export function Landscape({
   overlay,
   at = 'Settings',
   sidebar,
+  band,
 }: {
   column: ReactNode;
   children: ReactNode;
   overlay?: ReactNode;
   at?: Tab;
   sidebar?: ReactNode;
+  /** The offline band, across the column and the pane beside it. */
+  band?: ReactNode;
 }) {
   const shell = useShell();
   const side = useSideFrame();
+  const columns = (
+    <>
+      {column != null && <View style={styles.column}>{column}</View>}
+      <View style={styles.grow}>{children}</View>
+    </>
+  );
 
   return (
     <View style={[styles.grow, side.chrome]}>
@@ -80,10 +89,14 @@ export function Landscape({
           />
         </TodayShellProvider>
       )}
-      <View style={[styles.main, side.card]}>
-        {column != null && <View style={styles.column}>{column}</View>}
-        <View style={styles.grow}>{children}</View>
-      </View>
+      {band == null ? (
+        <View style={[styles.main, side.card]}>{columns}</View>
+      ) : (
+        <View style={[styles.grow, side.card]}>
+          {band}
+          <View style={styles.main}>{columns}</View>
+        </View>
+      )}
       {overlay}
     </View>
   );
@@ -164,6 +177,16 @@ export function Bell({
   );
 }
 
+/** Search left of the bell, as the product's upright top has it (sc-39534); a phone page with a Back has the bell alone. */
+function SearchAndBell({ tell, role }: { tell: Tell; role: string | null }) {
+  return (
+    <View style={styles.ends}>
+      <SearchButton role={role} />
+      <Bell tell={tell} />
+    </View>
+  );
+}
+
 /** The product's pill, opening the demo's switcher. */
 export function OrgPill({
   room,
@@ -236,7 +259,7 @@ export function PortraitTop({ at = 'Settings' }: { at?: Tab }) {
   return (
     <ProductPortraitTop
       renderPill={(room, givesWay) => <OrgPill room={room} givesWay={givesWay} />}
-      bell={<Bell tell={shell.tell} />}
+      bell={<SearchAndBell tell={shell.tell} role={shell.looking.role} />}
       tabLabels={tabs.map(([tab, glyph]) => say(tab, glyph))}
       renderTabs={(labelSize) => (
         <WhiteCapsule tabs={tabs} at={at} onTab={shell.onTab} say={say} labelSize={labelSize} />
@@ -247,6 +270,7 @@ export function PortraitTop({ at = 'Settings' }: { at?: Tab }) {
 
 const styles = StyleSheet.create({
   pill: { flexDirection: 'row', flexShrink: 1, minWidth: 0 },
+  ends: { flexDirection: 'row', alignItems: 'center', gap: tokens.spaceSm },
   grow: { flex: 1, minWidth: 0 },
   page: { flex: 1, backgroundColor: tokens.colorCard },
   title: { letterSpacing: -0.5 },

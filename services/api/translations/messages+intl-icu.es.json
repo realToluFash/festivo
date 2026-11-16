@@ -32,6 +32,7 @@
     "validation.seating_room_name_too_long": "Acorte el nombre de la sala a {count, number, ::group-auto} caracteres como máximo.",
     "validation.seating_section_name_taken": "Este plano ya tiene una zona llamada {name}.",
     "validation.event_host_too_long": "El nombre de un anfitrión puede tener {count, number, ::group-auto} caracteres como máximo. Este tiene {length, number, ::group-auto}.",
+    "validation.event_thank_you_too_long": "A thank-you can be at most {count, number, ::group-auto} characters.",
     "validation.event_hosts_too_many": "Un evento puede tener {count, number, ::group-auto} anfitriones como máximo.",
     "eventChanges.title.made_live": "{name} ha publicado el evento",
     "eventChanges.title.paused": "{name} ha pausado el evento",
@@ -94,8 +95,11 @@
     "validation.seating_seat_name_taken": "Este plano ya tiene un asiento llamado {name}.",
     "validation.seating_arrange_nothing": "Envíe al menos una mesa, fila o asiento que mover.",
     "validation.seating_arrange_table_only": "Aquí solo se puede cambiar el tamaño de una mesa.",
+    "validation.seating_arrange_twice": "Elija cada elemento una sola vez.",
     "validation.seating_seat_does_not_turn": "Un asiento suelto no gira.",
     "validation.seating_outside_room": "{name} quedaría fuera de la sala.",
+    "validation.seating_renumber_taken": "{name} ya es el nombre de una mesa que no ha elegido.",
+    "validation.seating_copy_outside_room": "La copia de {name} quedaría fuera de la sala, así que no se ha añadido nada.",
     "validation.seating_row_outside_room": "La fila {label} quedaría fuera de la sala.",
     "seating.no_such_item": "Esta mesa, fila o asiento no está en el plano."
 }

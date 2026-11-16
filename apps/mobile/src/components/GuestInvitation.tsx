@@ -12,11 +12,10 @@ import { useTranslation } from 'react-i18next';
 import { dateLocale } from '../i18n/index.ts';
 import { tokens } from '../theme/tokens.ts';
 import { LineIcon } from './AccountCard.tsx';
-import { AlertLine } from './AlertLine.tsx';
+import { AlertLine, ReadOutAlertLine } from './AlertLine.tsx';
 import { RadioMark } from './RadioMark.tsx';
 import { MarkSlot } from './ReplyMark.tsx';
 import { type ScreenReaderTarget, moveScreenReaderFocus } from './screenReaderFocus.ts';
-import { useReadOut } from './ReadOut.tsx';
 import { Pill } from './SettingsParts.tsx';
 import { Sheet } from './Sheet.tsx';
 import { Row, RowList, TextAction } from './SummaryRows.tsx';
@@ -37,6 +36,8 @@ export interface LinkRows {
   /** The day this session replaced it, as words. */
   replacedOn: string | null;
   copyFailed: boolean;
+  /** A replace started from this block's Replace link… failed. */
+  notReplaced: boolean;
   onCopy: () => void;
   onReplace: () => void;
 }
@@ -118,16 +119,19 @@ export function InvitationBlock({
           key: 'replace',
           inset: 40,
           row: (
-            <Row
-              ref={replaceRef}
-              title={t('guestList.replaceLink')}
-              line={t('guestList.replaceLinkLine')}
-              lead={<LineIcon name="refresh" />}
-              accent
-              weight="medium"
-              onPress={link.onReplace}
-              testID="guest.replace"
-            />
+            <View>
+              <Row
+                ref={replaceRef}
+                title={t('guestList.replaceLink')}
+                line={t('guestList.replaceLinkLine')}
+                lead={<LineIcon name="refresh" />}
+                accent
+                weight="medium"
+                onPress={link.onReplace}
+                testID="guest.replace"
+              />
+              {link.notReplaced && <NotReplaced testID="guest.notReplaced" />}
+            </View>
           ),
         },
       ]
@@ -240,16 +244,31 @@ export function InvitationBlock({
   );
 }
 
-/** No connection, a server error or a refused clipboard, in one line read out as it appears; the row above is the retry (sc-55558). */
+/** No connection, a server error or a refused clipboard; the row above is the retry (sc-55558). */
 function NotCopied() {
   const { t } = useTranslation();
-  const said = t('guestList.notCopied');
-  useReadOut(said, { interrupts: true });
 
   return (
-    <View style={styles.notCopied} testID="guest.notCopied">
-      <AlertLine text={said} small />
-    </View>
+    <ReadOutAlertLine
+      text={t('guestList.notCopied')}
+      small
+      testID="guest.notCopied"
+      style={styles.underRow}
+    />
+  );
+}
+
+/** A replace that failed: the old link still works. Small and indented to the row text, under the Replace row and under the notice alike (sc-55558). */
+export function NotReplaced({ testID }: { testID: string }) {
+  const { t } = useTranslation();
+
+  return (
+    <ReadOutAlertLine
+      text={t('guestList.notReplaced')}
+      small
+      testID={testID}
+      style={styles.underRow}
+    />
   );
 }
 
@@ -369,7 +388,7 @@ const styles = StyleSheet.create({
     borderRadius: 18,
     backgroundColor: tokens.colorInset,
   },
-  notCopied: { paddingLeft: 40, paddingBottom: tokens.spaceSm },
+  underRow: { paddingLeft: 40, paddingBottom: tokens.spaceSm },
   sheet: { gap: 14, paddingHorizontal: tokens.spaceXxl, paddingTop: 20, paddingBottom: 34 },
   sheetHead: { flexDirection: 'row', alignItems: 'center', gap: tokens.spaceSm },
   tight: { gap: 6 },

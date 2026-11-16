@@ -375,6 +375,8 @@ const GAP_COCKTAIL = 24;
 const ROW_TAB = 52;
 export const AT_100 = 0.5;
 export const ZOOMS: readonly number[] = [25, 40, 50, 75, 100, 150, 200, 300, 400];
+export const SMALLEST_SCALE = 0.25 * AT_100;
+export const LARGEST_SCALE = 4 * AT_100;
 export const FIT_PAD = { top: 84, right: 16, bottom: 84, left: 16 } as const;
 
 export type Point = readonly [number, number];
@@ -476,6 +478,16 @@ export function extent(item: Item): Point {
 
 export function isRound(item: Item): boolean {
   return item.kind === 'round' || item.kind === 'cocktail' || item.kind === 'single';
+}
+
+/** How far past its box a focused item's ring and halo reach once turned with it, in screen px: the halo's 17.5 offset and half its 5 px stroke (sc-57361). */
+export function focusReach(item: Item): number {
+  const reach = 17.5 + 5 / 2;
+
+  if (isRound(item)) return reach;
+  const angle = (item.rot * Math.PI) / 180;
+
+  return reach * (Math.abs(Math.cos(angle)) + Math.abs(Math.sin(angle)));
 }
 
 export function turns(item: Item): boolean {
@@ -684,7 +696,26 @@ export function fitOf(
 ): { s: number; ox: number; oy: number } {
   const w = width - FIT_PAD.left - FIT_PAD.right;
   const h = height - FIT_PAD.top - FIT_PAD.bottom;
-  const s = Math.max(0.05, Math.min(w / room.w, h / room.l));
+
+  return centred(width, height, room, Math.max(0.05, Math.min(w / room.w, h / room.l)));
+}
+
+export function clampScale(s: number): number {
+  return Math.min(LARGEST_SCALE, Math.max(SMALLEST_SCALE, s));
+}
+
+/** The plan's Fit the room, held to the zoom bar's 25% to 400%: a room too large to fit at 25% shows its centre (sc-57678). */
+export function planFitOf(
+  width: number,
+  height: number,
+  room: Room,
+): { s: number; ox: number; oy: number } {
+  return centred(width, height, room, clampScale(fitOf(width, height, room).s));
+}
+
+function centred(width: number, height: number, room: Room, s: number) {
+  const w = width - FIT_PAD.left - FIT_PAD.right;
+  const h = height - FIT_PAD.top - FIT_PAD.bottom;
 
   return { s, ox: FIT_PAD.left + (w - room.w * s) / 2, oy: FIT_PAD.top + (h - room.l * s) / 2 };
 }

@@ -1,4 +1,4 @@
-import { type Ref, useEffect, useId, useRef, useState } from 'react';
+import { type Ref, useEffect, useId, useState } from 'react';
 import {
   Platform,
   StyleSheet,
@@ -6,12 +6,12 @@ import {
   type TextInputInstance,
   useWindowDimensions,
   View,
-  type ViewInstance,
 } from 'react-native';
 import { useTranslation } from 'react-i18next';
 
 import { FocusEdge, useHeld } from '../components/Field.tsx';
 import { fieldFocused, fieldLeft } from '../components/focusedField.ts';
+import { useAboveKeyboard } from '../components/Screen.tsx';
 import { Text } from '../components/Text.tsx';
 import { UnseenName } from '../components/UnseenName.tsx';
 import { FIELD_DEFAULTS, fieldName, refusedHint, refusedName, withInvalid } from '../kit/fields.ts';
@@ -26,7 +26,7 @@ export const MESSAGE_BOX = 132;
 /** Larger Text grows the box with it up to here, then it scrolls sooner. */
 export const MESSAGE_BOX_MOST_SCALE = 1.5;
 
-/** A message of many lines: its label a band of its own over the text, which scrolls below it. One focused group, so the keys lift the refusal and the count above the button with the box. */
+/** A message of many lines: its label a band of its own over the text, which scrolls below it. One focused group that lifts again as it grows, so a refusal or a longer count shown while typing comes above the button and the keys with the box. */
 export function MessageBox({
   label,
   value,
@@ -57,7 +57,7 @@ export function MessageBox({
   const { fontScale } = useWindowDimensions();
   const bold = useBoldText();
   const [focused, setFocused] = useState(false);
-  const group = useRef<ViewInstance>(null);
+  const { ref: group, onLayout } = useAboveKeyboard();
   const refused = line == null ? null : { word: t('forms.invalid'), line, nameID: invalidNameID };
   const holding = useHeld(submitting, value, undefined, onChangeText);
   const height = MESSAGE_BOX * Math.min(Math.max(fontScale, 1), MESSAGE_BOX_MOST_SCALE);
@@ -66,11 +66,12 @@ export function MessageBox({
     const mounted = group.current;
 
     return () => fieldLeft(mounted);
-  }, []);
+  }, [group]);
 
   return (
     <View
       ref={group}
+      onLayout={onLayout}
       onFocus={() => fieldFocused(group.current)}
       onBlur={() => fieldLeft(group.current)}
     >

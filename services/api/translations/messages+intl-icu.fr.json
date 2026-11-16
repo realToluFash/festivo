@@ -32,6 +32,7 @@
     "validation.seating_room_name_too_long": "Raccourcissez le nom de la salle à {count, number, ::group-auto} caractères maximum.",
     "validation.seating_section_name_taken": "Ce plan a déjà une zone nommée {name}.",
     "validation.event_host_too_long": "Le nom d’un hôte ne peut pas dépasser {count, number, ::group-auto} caractères. Celui-ci en compte {length, number, ::group-auto}.",
+    "validation.event_thank_you_too_long": "A thank-you can be at most {count, number, ::group-auto} characters.",
     "validation.event_hosts_too_many": "Un événement peut avoir {count, number, ::group-auto} hôtes au maximum.",
     "eventChanges.title.made_live": "{name} a publié l’événement",
     "eventChanges.title.paused": "{name} a mis l’événement en pause",
@@ -94,8 +95,11 @@
     "validation.seating_seat_name_taken": "Ce plan a déjà une place nommée {name}.",
     "validation.seating_arrange_nothing": "Envoyez au moins une table, une rangée ou une place à déplacer.",
     "validation.seating_arrange_table_only": "Ici, seule une table change de taille.",
+    "validation.seating_arrange_twice": "Choisissez chaque élément une seule fois.",
     "validation.seating_seat_does_not_turn": "Une place isolée ne pivote pas.",
     "validation.seating_outside_room": "{name} se trouverait hors de la salle.",
+    "validation.seating_renumber_taken": "{name} est déjà le nom d’une table que vous n’avez pas choisie.",
+    "validation.seating_copy_outside_room": "La copie de {name} se trouverait hors de la salle : rien n’a été ajouté.",
     "validation.seating_row_outside_room": "La rangée {label} se trouverait hors de la salle.",
     "seating.no_such_item": "Cette table, rangée ou place ne figure pas sur le plan."
 }

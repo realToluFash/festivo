@@ -6,20 +6,20 @@ namespace App\Domain\Menu\Http;
 
 use App\Domain\Menu\DishRules;
 use App\Entity\Dish;
+use App\Entity\DishVariant;
 use DateTimeInterface;
+use Psl\Vec;
 
-/** A library dish as the clients read it (sc-3901). `lastPrice` is there only for a caller who holds budget.read. */
+/** A library dish as the clients read it (sc-3901), its variants inside it (sc-3903). `lastPrice` is there only for a caller who holds budget.read. */
 final class DishSerialiser
 {
-    /** @return array<string, mixed> `allergens` null is never stated, empty is none of the 14 */
-    public static function dish(Dish $dish, bool $withPrice): array
+    /**
+     * @param list<DishVariant> $variants
+     *
+     * @return array<string, mixed> `allergens` null is never stated, empty is none of the 14
+     */
+    public static function dish(Dish $dish, bool $withPrice, array $variants): array
     {
-        $minor = $dish->getLastPriceMinor();
-        $currency = $dish->getLastPriceCurrency();
-        $price = $withPrice
-            ? ['lastPrice' => null === $minor || null === $currency ? null : ['amount' => DishRules::written($minor, $currency), 'currency' => $currency]]
-            : [];
-
         return [
             'id' => $dish->getId()->toRfc4122(),
             'name' => $dish->getName(),
@@ -28,7 +28,21 @@ final class DishSerialiser
             'diets' => $dish->getDiets(),
             'usedByEvent' => $dish->isUsedByEvent(),
             'archivedAt' => $dish->getArchivedAt()?->format(DateTimeInterface::ATOM),
-            ...$price,
+            'variants' => Vec\map($variants, static fn (DishVariant $variant): array => [
+                'id' => $variant->getId()->toRfc4122(),
+                'name' => $variant->getName(),
+                'for' => $variant->isForChildren() ? 'children' : 'everyone',
+                'allergens' => $variant->getAllergens(),
+                'diets' => $variant->getDiets(),
+                ...($withPrice ? ['lastPrice' => self::price($variant->getLastPriceMinor(), $variant->getLastPriceCurrency())] : []),
+            ]),
+            ...($withPrice ? ['lastPrice' => self::price($dish->getLastPriceMinor(), $dish->getLastPriceCurrency())] : []),
         ];
+    }
+
+    /** @return ?array{amount: string, currency: string} */
+    private static function price(?int $minor, ?string $currency): ?array
+    {
+        return null === $minor || null === $currency ? null : ['amount' => DishRules::written($minor, $currency), 'currency' => $currency];
     }
 }

@@ -401,6 +401,36 @@ span {
     flex: 1;
     height: auto;
   }
+
+  /* The card already pads the page, so a page that borrows Settings' padded .desk-page is padded once (sc-57523). */
+  .shell-content.is-card .desk-page {
+    padding: 0;
+  }
+
+  /* Seating fills its card edge to edge, as its demo's desk-main does (sc-58064): the room is the card's, not a band inside it. */
+  .shell-content.is-card:has(> .st) {
+    display: flex;
+    flex-direction: column;
+    padding: 0;
+    overflow: hidden;
+  }
+
+  .shell-content.is-card > .st .st-main {
+    min-height: 0;
+  }
+
+  /* What the shell puts above Seating keeps the card's padding the room gave up. */
+  .shell-content.is-card:has(> .st) > :not(.st) {
+    flex-shrink: 0;
+    margin-inline: var(--space6xl);
+  }
+
+  /* The offline band's wrapper stays in the page while online, holding only its hidden announcer: it takes no room, so the first notice after it does. */
+  .shell-content.is-card:has(> .st)
+    > :not(.st):first-child:not(:has(> .visually-hidden:only-child)),
+  .shell-content.is-card:has(> .st) > :first-child:has(> .visually-hidden:only-child) + :not(.st) {
+    margin-top: var(--space3xl);
+  }
 }
 
 .shell-sidebar :is(a, button):focus-visible {

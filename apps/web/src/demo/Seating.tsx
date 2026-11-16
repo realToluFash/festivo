@@ -16,6 +16,7 @@ import { EventSidebar } from './EventSidebar.tsx';
 import { clockOf, sampleEvent, type SampleEvent } from './events.ts';
 import { Icon, type IconName } from './SeatingGlyph.tsx';
 import { keptInbox, waitingLine } from './messages.ts';
+import { browserPlatform, onApple } from './search.ts';
 import {
   type Item,
   type Kind,
@@ -25,14 +26,17 @@ import {
   type Point,
   AT_100,
   CRUMB_WORDS,
+  LARGEST_SCALE,
   type CrumbLang,
   EVENT_ID,
   LONG_NAME,
   QA_NAME,
   PRIYA,
+  SMALLEST_SCALE,
   SW,
   ZOOMS,
   bounds,
+  clampScale,
   copyOf,
   crumbOf,
   deletePlanWords,
@@ -40,6 +44,7 @@ import {
   filled,
   firstFree,
   fitOf,
+  focusReach,
   free,
   intoView,
   isTable,
@@ -48,6 +53,7 @@ import {
   listed,
   many,
   nearestFree,
+  planFitOf,
   newItem,
   overlap,
   peopleIn,
@@ -238,7 +244,7 @@ function CrumbFrames({
   frames: readonly Frame[];
 }) {
   return (
-    <main className="st-widths">
+    <main className="desk st-widths">
       <h1>{title}</h1>
       <p className="st-widths-line">{line}</p>
       {frames.map(({ w, named, label, ring }) => {
@@ -351,7 +357,7 @@ function Seating({
 
   ui$.current = ui;
   const room = ui.plan.room;
-  const fit = room == null ? { s: 0.3, ox: 0, oy: 0 } : fitOf(size.w, size.h, room);
+  const fit = room == null ? { s: 0.3, ox: 0, oy: 0 } : planFitOf(size.w, size.h, room);
   const s = ui.camera?.s ?? fit.s;
   const ox = ui.camera == null ? fit.ox : size.w / 2 - ui.camera.cx * s;
   const oy = ui.camera == null ? fit.oy : size.h / 2 - ui.camera.cy * s;
@@ -1361,7 +1367,7 @@ function Seating({
     if (event.key === 'Enter' || event.key === ' ') {
       event.preventDefault();
       if (now.picked != null) seatAt(id);
-      else if (event.shiftKey && event.key === ' ')
+      else if (event.shiftKey || now.adding)
         set((ui_) => ({
           ...ui_,
           chosen: ui_.chosen.includes(id)
@@ -1369,6 +1375,7 @@ function Seating({
             : [...ui_.chosen, id],
           panel: null,
           chair: null,
+          notice: null,
         }));
       else choose([id]);
       return;
@@ -1498,7 +1505,7 @@ function Seating({
   });
 
   function zoomTo(next: number, anchor: Point = [size.w / 2, size.h / 2]): void {
-    const clamped = Math.min(4 * AT_100, Math.max(0.25 * AT_100, next));
+    const clamped = clampScale(next);
     const at: Point = [(anchor[0] - ox) / s, (anchor[1] - oy) / s];
 
     set((now) => ({
@@ -1558,12 +1565,17 @@ function Seating({
       if (ui$.current.view !== 'plan' || ui$.current.plan.room == null) return;
       const box = node.getBoundingClientRect();
       const at = target.getBoundingClientRect();
+      // The ring and halo are drawn once this focus renders, so the box does not hold them yet.
+      const ringed = ui$.current.plan.items.find(
+        (item) => item.id === target.getAttribute('data-item'),
+      );
+      const reach = ringed == null ? 0 : focusReach(ringed);
       const [dx, dy] = intoView(
         {
-          x0: at.left - box.left,
-          y0: at.top - box.top,
-          x1: at.right - box.left,
-          y1: at.bottom - box.top,
+          x0: at.left - box.left - reach,
+          y0: at.top - box.top - reach,
+          x1: at.right - box.left + reach,
+          y1: at.bottom - box.top + reach,
         },
         size.w,
         size.h,
@@ -1636,6 +1648,8 @@ function Seating({
       ? { ...newItem(ui.placing.kind, items, placingAt), id: 'placing' }
       : null;
   const zoomUp = !ui.readOnly && (ui.zoomStep || crowded);
+  const atSmallest = s <= SMALLEST_SCALE + 1e-9;
+  const atLargest = s >= LARGEST_SCALE - 1e-9;
   const rowDown = ui.rowStep || rowMet;
   const keysShown =
     keyboard &&
@@ -1875,7 +1889,10 @@ function Seating({
                   type="button"
                   className="st-round-button"
                   aria-label={SW.zoomOut}
-                  onClick={() => stepZoom(-1)}
+                  aria-disabled={atSmallest}
+                  onClick={() => {
+                    if (!atSmallest) stepZoom(-1);
+                  }}
                 >
                   <Icon name="minus" size={19} weight={2.2} />
                 </button>
@@ -1886,7 +1903,10 @@ function Seating({
                   type="button"
                   className="st-round-button"
                   aria-label={SW.zoomIn}
-                  onClick={() => stepZoom(1)}
+                  aria-disabled={atLargest}
+                  onClick={() => {
+                    if (!atLargest) stepZoom(1);
+                  }}
                 >
                   <Icon name="plus" size={19} weight={2.2} />
                 </button>
@@ -2153,11 +2173,12 @@ function MessageBar({
 }
 
 function KeysStrip() {
+  const mac = typeof navigator !== 'undefined' && onApple(browserPlatform());
   const keys: readonly [string, string][] = [
     ['← ↑ → ↓', SW.keyMove],
     ['Shift', SW.keyShift],
     ['R', SW.keyTurn],
-    ['⌘ D', SW.keyDuplicate],
+    [mac ? '⌘ D' : 'Ctrl D', SW.keyDuplicate],
     ['Delete', SW.keyDelete],
     ['Esc', SW.keyEsc],
   ];

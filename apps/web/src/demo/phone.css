@@ -1,4 +1,4 @@
-/* The demo's own frame for Today, Events and Calendar in a phone's browser (sc-57468); the pages' rules are `components/phoneFit.css`, the product's frame is the shell's; the demo's frame carries both classes. */
+/* The demo's own frame for Today, Events and Calendar in a phone's browser (sc-57468): the pages' rules are `components/phoneFit.css`, which the product's shell shares, and Today's narrow arrangement at a desk is deskFit.css. */
 
 .dp-menu {
   display: none;

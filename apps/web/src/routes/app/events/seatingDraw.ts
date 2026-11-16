@@ -13,13 +13,6 @@ export function percentOf(s: number): number {
   return Math.round((s / AT_100) * 100);
 }
 
-/** Top to bottom in bands of 1.2 m, then left to right: the order Tab reaches the items in. */
-export function readingOrder<T extends { xCm: number; yCm: number }>(items: readonly T[]): T[] {
-  return [...items].sort(
-    (a, b) => Math.round(a.yCm / 120) - Math.round(b.yCm / 120) || a.xCm - b.xCm,
-  );
-}
-
 export function sectionOf(plan: SeatingPlan, item: { sectionId: string | null }) {
   return plan.sections.find((one) => one.id === item.sectionId) ?? null;
 }
