@@ -689,6 +689,25 @@ export function fitOf(
   return { s, ox: FIT_PAD.left + (w - room.w * s) / 2, oy: FIT_PAD.top + (h - room.l * s) / 2 };
 }
 
+/** How far to slide the picture, in screen px, so a focused box (canvas px) shows clear of the floating bars (WCAG 2.2 2.4.11). */
+export function intoView(
+  box: { x0: number; y0: number; x1: number; y1: number },
+  width: number,
+  height: number,
+  margin = 8,
+): Point {
+  const slide = (from: number, to: number, lo: number, hi: number): number => {
+    if (to - from > hi - lo || from < lo) return lo - from;
+    if (to > hi) return hi - to;
+    return 0;
+  };
+
+  return [
+    slide(box.x0, box.x1, FIT_PAD.left + margin, width - FIT_PAD.right - margin),
+    slide(box.y0, box.y1, FIT_PAD.top + margin, height - FIT_PAD.bottom - margin),
+  ];
+}
+
 export function percentOf(s: number): number {
   return Math.round((s / AT_100) * 100);
 }

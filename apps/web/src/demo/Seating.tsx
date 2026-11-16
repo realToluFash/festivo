@@ -41,6 +41,7 @@ import {
   firstFree,
   fitOf,
   free,
+  intoView,
   isTable,
   itemName,
   lengthOf,
@@ -1361,6 +1362,40 @@ function Seating({
 
     node.addEventListener('wheel', wheel, { passive: false });
     return () => node.removeEventListener('wheel', wheel);
+  });
+
+  useEffect(() => {
+    const node = canvas.current;
+
+    if (node == null) return;
+    const follow = (event: FocusEvent) => {
+      const target = event.target;
+
+      if (!(target instanceof Element) || target.closest('[data-item]') == null) return;
+      if (!target.matches(':focus-visible')) return;
+      if (ui$.current.view !== 'plan' || ui$.current.plan.room == null) return;
+      const box = node.getBoundingClientRect();
+      const at = target.getBoundingClientRect();
+      const [dx, dy] = intoView(
+        {
+          x0: at.left - box.left,
+          y0: at.top - box.top,
+          x1: at.right - box.left,
+          y1: at.bottom - box.top,
+        },
+        size.w,
+        size.h,
+      );
+
+      if (dx === 0 && dy === 0) return;
+      const cx = (size.w / 2 - oRef.current[0] - dx) / sRef.current;
+      const cy = (size.h / 2 - oRef.current[1] - dy) / sRef.current;
+
+      set((now) => ({ ...now, camera: { s: sRef.current, cx, cy } }));
+    };
+
+    node.addEventListener('focusin', follow);
+    return () => node.removeEventListener('focusin', follow);
   });
 
   const items = ui.plan.items;
