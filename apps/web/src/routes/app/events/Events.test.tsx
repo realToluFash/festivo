@@ -9,6 +9,9 @@ import { __setSessionState, type Session, switchOrganisation } from '../../../se
 import { OWNER_PERMISSIONS, membership } from '../../../test-memberships.ts';
 import { breaksAnywhere } from '../../../test-wrapping.ts';
 import { routes } from '../../index.tsx';
+import { cssRule, stylesheet } from '../../../test-styles.ts';
+
+const EVENTS_DESK_CSS = stylesheet(import.meta.dirname, '../../../components/eventsDesk.css');
 
 const IRE = membership({ id: 'org_1', name: 'Ìrè Events' });
 
@@ -2184,6 +2187,24 @@ describe("An event's page", () => {
     expect(elsewhere.closest('.event-page')!.innerHTML).toBe(missingPage);
     expect(screen.queryByText('Not yours')).toBeNull();
   });
+
+  it.each(['dates', 'people', 'messages', 'budget', 'reports'])(
+    'ends where Overview ends at a wide desk, on /%s (sc-59375)',
+    async (area) => {
+      signedIn();
+      answering({ 'GET /api/events/ev_1': () => json({ event: event() }) });
+      at(`/app/events/ev_1/${area}`);
+
+      const heading = await screen.findByRole('heading', { level: 1, name: 'Adaeze and Tunde' });
+
+      expect(heading.closest('.event-page')).not.toBeNull();
+      expect(heading.closest('.ev')).toBeNull();
+      expect(EVENTS_DESK_CSS).toContain('\n.event-page {\n  max-width: var(--evWide);\n}');
+      expect(cssRule('.ev,\n.event-page', EVENTS_DESK_CSS)).toContain('--evWide: 938px;');
+      expect(cssRule('.event-page')).not.toContain('max-width');
+      expect(cssRule('.event-form-page')).toContain('max-width: 72rem;');
+    },
+  );
 });
 
 describe("An event's venue (sc-3589)", () => {
