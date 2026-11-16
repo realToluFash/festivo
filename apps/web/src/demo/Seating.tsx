@@ -1385,6 +1385,16 @@ function Seating({
         },
         size.w,
         size.h,
+        [...node.querySelectorAll('.st-float')].map((bar) => {
+          const on = bar.getBoundingClientRect();
+
+          return {
+            x0: on.left - box.left,
+            y0: on.top - box.top,
+            x1: on.right - box.left,
+            y1: on.bottom - box.top,
+          };
+        }),
       );
 
       if (dx === 0 && dy === 0) return;

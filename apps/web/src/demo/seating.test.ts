@@ -196,6 +196,15 @@ describe('the room to scale (sc-4007)', () => {
     expect(intoView({ x0: -900, y0: 300, x1: 900, y1: 400 }, 718, 719)).toEqual([924, 0]);
   });
 
+  it('slides a focused item out from under the small map by the shorter way that stays in view', () => {
+    const smallMap = { x0: 530, y0: 507, x1: 702, y1: 639 };
+
+    expect(intoView({ x0: 600, y0: 540, x1: 660, y1: 600 }, 718, 719, [smallMap])).toEqual([
+      0, -101,
+    ]);
+    expect(intoView({ x0: 300, y0: 540, x1: 360, y1: 600 }, 718, 719, [smallMap])).toEqual([0, 0]);
+  });
+
   it('draws outlines under 50%, chairs from 50%, and 44 targets from 150%', () => {
     expect(detailOf(0.2)).toBe('out');
     expect(detailOf(0.25)).toBe('fit');
