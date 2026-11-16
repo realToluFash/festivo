@@ -35,7 +35,7 @@ describe('the Menu library (sc-3901)', () => {
 
     expect(rows()[0]).toBe('Asun');
     expect(screen.getByText('8 dishes')).toBeTruthy();
-    expect(screen.getByText('Contains Peanuts · Sesame')).toBeTruthy();
+    expect(screen.getByText('Contains: Peanuts · Sesame')).toBeTruthy();
     expect(screen.getAllByText(LW.containsNone).length).toBeGreaterThan(0);
     expect(screen.getByText(LW.notStated)).toBeTruthy();
     expect(screen.queryByText('Puff puff')).toBeNull();

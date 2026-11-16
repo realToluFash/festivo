@@ -244,6 +244,6 @@ describe('the event Menu (sc-3902)', () => {
   it('names the allergens in the language picked', SLOW, async () => {
     await menu('menu', '&format=fr');
 
-    expect(within(card('Starter')).getByText('Contains Poissons · Céleri')).toBeTruthy();
+    expect(within(card('Starter')).getByText('Contains: Poissons · Céleri')).toBeTruthy();
   });
 });
