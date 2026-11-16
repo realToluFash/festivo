@@ -2545,7 +2545,7 @@
     "copyFirst": "Copier le lien ne compte pas comme une invitation. Enregistrez-la une fois le lien envoyé.",
     "markAsInvited": "Enregistrer l’invitation",
     "markLine": "Comment l’invitation a été faite, pour qu’elle soit comptée",
-    "recordNotYetLine": "What they told you, so they count as invited",
+    "recordNotYetLine": "Ce que cette personne vous a dit, pour que l’invitation soit comptée",
     "howInvited": "Comment avez-vous fait l’invitation ?",
     "howInvitedBlank": "Choisissez comment vous avez fait l’invitation.",
     "markNotSaved": "Non enregistré. Le statut reste « Sans invitation ». Réessayez.",
