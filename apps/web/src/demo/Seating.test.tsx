@@ -955,16 +955,20 @@ describe('tables, rows and seats (sc-4000, sc-4003)', () => {
     },
   );
 
-  it.each(['zoomAbove', 'zoomAboveMap'])(
+  it.each([
+    ['zoomAbove', false],
+    ['zoomAboveMap', true],
+  ])(
     'shows the zoom above the folded bar in English at any width: %s',
     SLOW,
-    async (state) => {
+    async (state, map) => {
       await seating(state);
       const zoom = await screen.findByRole('group', { name: /^Zoom/ }, WAIT);
 
       expect(zoom.closest('.is-zoom-up')).not.toBeNull();
       expect(screen.getByRole('button', { name: 'Add' })).toBeDefined();
       expect(screen.queryByRole('button', { name: 'Add seat' })).toBeNull();
+      expect(document.querySelector('.is-zoom-up .st-minimap') !== null).toBe(map);
     },
   );
 
