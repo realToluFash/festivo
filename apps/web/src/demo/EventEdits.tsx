@@ -15,7 +15,7 @@ import {
   formatWallDay,
   timezoneLabel,
 } from '@soirely/domain';
-import { type Ref, type RefObject, useEffect, useId, useRef, useState } from 'react';
+import { type RefObject, useEffect, useId, useRef, useState } from 'react';
 
 import {
   type Currency,
@@ -56,6 +56,7 @@ import {
   Radios,
 } from '../components/EventPageParts.tsx';
 import { type CoverStart, type CoverUploaded, CoverEdit } from '../components/CoverEdit.tsx';
+import { Select } from '../components/EventFormParts.tsx';
 import { Glyph } from '../components/Glyph.tsx';
 import { Ask, RowWords, TextAction } from '../components/SettingsParts.tsx';
 
@@ -294,75 +295,6 @@ export function ZoneSelect({
 }
 
 const ZONE_CHOICES = ZONES.map((one) => [one, timezoneLabel(one)] as const);
-
-export function Select({
-  refTo,
-  label,
-  value,
-  placeholder,
-  choices,
-  error,
-  help,
-  off = false,
-  onChange,
-}: {
-  refTo?: RefObject<HTMLDivElement | null> | undefined;
-  label: string;
-  value: string;
-  placeholder?: string;
-  choices: readonly (readonly [string, string])[];
-  error?: string | undefined;
-  help?: string;
-  off?: boolean;
-  onChange: (value: string) => void;
-}) {
-  const id = useId();
-  const told = [error == null ? null : `${id}-error`, help == null ? null : `${id}-help`]
-    .filter(Boolean)
-    .join(' ');
-
-  return (
-    <div ref={refTo} className="desk-field">
-      <label htmlFor={id} className="desk-label">
-        {label}
-      </label>
-      <div className={error == null ? 'desk-box ev-select' : 'desk-box ev-select is-wrong'}>
-        <select
-          id={id}
-          value={value}
-          disabled={off}
-          aria-invalid={error != null}
-          aria-describedby={told === '' ? undefined : told}
-          className={value === '' ? 'is-empty' : undefined}
-          onChange={(change) => onChange(change.target.value)}
-        >
-          {placeholder != null && (
-            <option value="" disabled>
-              {placeholder}
-            </option>
-          )}
-          {choices.map(([one, words]) => (
-            <option key={one} value={one}>
-              {words}
-            </option>
-          ))}
-        </select>
-        <Glyph name="chevdown" size={18} weight={2.3} />
-      </div>
-      {error != null && (
-        <p id={`${id}-error`} className="desk-error">
-          <Glyph name="alert" size={15} weight={2.2} />
-          {error}
-        </p>
-      )}
-      {help != null && (
-        <p id={`${id}-help`} className="desk-help">
-          {help}
-        </p>
-      )}
-    </div>
-  );
-}
 
 function movedDay(end: Wall): string {
   const noon = new Date(`${end.date}T12:00:00Z`);
@@ -1001,57 +933,6 @@ export function NamePart({ event, state, onDirty, onClose, onSave }: PartProps) 
       />
       <OnceSaved />
     </Opened>
-  );
-}
-
-/** The cover as it will show: the photo, or Soirely's cover in the event's own colours. */
-export function CoverPreview({
-  photo,
-  mesh,
-  className = '',
-}: {
-  photo: boolean;
-  mesh: string;
-  className?: string;
-}) {
-  return (
-    <div
-      className={`ev-preview ${className} ${photo ? 'is-photo' : `today-cover is-${mesh}`}`}
-      aria-hidden="true"
-    >
-      <span className="ev-scrim" />
-      {photo ? (
-        <Glyph name="photo" size={56} weight={1.6} />
-      ) : (
-        [1, 2, 3, 4, 5, 6].map((piece) => <span key={piece} className={`desk-piece p${piece}`} />)
-      )}
-    </div>
-  );
-}
-
-/** With no photo yet: what the cover is, Upload (gone while held), and what is accepted. */
-export function CoverUpload({
-  refusal = null,
-  off = false,
-  buttonRef,
-  onUpload,
-}: {
-  refusal?: string | null;
-  off?: boolean;
-  buttonRef?: Ref<HTMLButtonElement>;
-  onUpload: () => void;
-}) {
-  return (
-    <>
-      {refusal != null ? <Broken>{refusal}</Broken> : <p className="desk-line">{W.coverLine}</p>}
-      {!off && (
-        <button ref={buttonRef} type="button" className="ev-upload" onClick={onUpload}>
-          <Glyph name="photo" size={19} weight={2.2} />
-          {W.upload}
-        </button>
-      )}
-      <p className="desk-help">{W.accepted}</p>
-    </>
   );
 }
 

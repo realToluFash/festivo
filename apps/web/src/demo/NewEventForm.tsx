@@ -21,15 +21,14 @@ import { useNavigate } from 'react-router';
 
 import { Broken, DateTime, EditText as Text } from '../components/EventPageParts.tsx';
 import { Glyph } from '../components/Glyph.tsx';
-import { Ask, Head, RedAction } from '../components/SettingsParts.tsx';
+import { Ask, RedAction } from '../components/SettingsParts.tsx';
 import {
   CoverPreview,
   CoverUpload,
-  HostFields,
+  FormBlock as Block,
   Select,
-  VenueFields,
-  ZoneSelect,
-} from './EventEdits.tsx';
+} from '../components/EventFormParts.tsx';
+import { HostFields, VenueFields, ZoneSelect } from './EventEdits.tsx';
 import { CURRENCY_CHOICES, EVENT_WORDS as W, TYPE_WORDS, type Wall } from './events.ts';
 import { meshFor } from '../mesh.ts';
 import {
@@ -48,7 +47,6 @@ import {
 } from './newEvent.ts';
 import { useCoverPick } from './useCoverPick.tsx';
 import { useLeaveAsk } from './useLeaveAsk.ts';
-import './newEvent.css';
 
 const LOCALE = 'en-US';
 const ORGANISATION = 'Ire Events';
@@ -258,7 +256,7 @@ export function NewEventForm({ state }: { state: NewEventState | null }) {
 
       <Block title={W.coverPhoto}>
         <CoverPreview
-          photo={typed.photo}
+          photo={typed.photo ? <Glyph name="photo" size={56} weight={1.6} /> : null}
           mesh={meshFor(typed.type === '' ? 'new-event' : typed.type)}
           className="ev-new-cover"
         />
@@ -272,7 +270,12 @@ export function NewEventForm({ state }: { state: NewEventState | null }) {
             />
           )
         ) : (
-          <CoverUpload refusal={cover.refusal} off={busy} onUpload={cover.pick} />
+          <CoverUpload
+            words={{ line: W.coverLine, upload: W.upload, accepted: W.accepted }}
+            refusal={cover.refusal}
+            off={busy}
+            onUpload={cover.pick}
+          />
         )}
       </Block>
 
@@ -411,15 +414,4 @@ function targetOf(typed: NewTyped, server: Refusals): Target | null {
   const first = firstRefused(check.refusals, check.hosts);
 
   return first == null ? null : { ...first };
-}
-
-function Block({ title, children }: { title: string; children: ReactNode }) {
-  const id = useId();
-
-  return (
-    <section className="desk-block ev-new-block" aria-labelledby={id}>
-      <Head title={<span id={id}>{title}</span>} />
-      <div className="ev-new-fields">{children}</div>
-    </section>
-  );
 }

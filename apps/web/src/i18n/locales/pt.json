@@ -227,6 +227,8 @@
     "problems_other": "{{count, number}} campos precisam de ser corrigidos, por isso nada foi enviado.",
     "problems_many": "{{count, number}} de campos precisam de ser corrigidos, por isso nada foi enviado.",
     "notCreated": "O evento não foi criado e nada foi guardado. Tente novamente.",
+    "coverHeading": "Cover photo",
+    "created": "Created. Opening the event.",
     "venueHeading": "Local",
     "venueName": "Nome do local",
     "optional": "Opcional",

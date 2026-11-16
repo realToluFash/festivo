@@ -11,6 +11,7 @@ import {
 import { useTranslation } from 'react-i18next';
 import { Link } from 'react-router';
 
+import { offField } from '../offField.ts';
 import { LayersContext } from '../layers.ts';
 import { Glyph, type GlyphName } from './Glyph.tsx';
 import { Ask, Chevron, Head, RowWords, TextAction } from './SettingsParts.tsx';
@@ -240,23 +241,29 @@ export interface Wall {
 
 /** A date and a time in the event's zone, one label for the two. */
 export function DateTime({
+  id: given,
   legend,
   wall,
   wrong = false,
   told,
   focus = 0,
+  off = false,
   onChange,
 }: {
+  /** Its inputs are `{id}-date` and `{id}-time`. */
+  id?: string;
   legend: string;
   wall: Wall;
   wrong?: boolean;
   told?: string | undefined;
   /** Its date takes focus whenever this count moves past 0, at mount too. */
   focus?: number;
+  off?: boolean;
   onChange: (wall: Wall) => void;
 }) {
   const { t } = useTranslation();
-  const id = useId();
+  const made = useId();
+  const id = given ?? made;
   const date = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
@@ -276,6 +283,7 @@ export function DateTime({
           type="date"
           className={wrong ? 'ev-input is-wrong' : 'ev-input'}
           value={wall.date}
+          {...offField(off)}
           aria-invalid={wrong}
           aria-describedby={told}
           onChange={(event) => onChange({ ...wall, date: event.target.value })}
@@ -288,6 +296,7 @@ export function DateTime({
           type="time"
           className={wrong ? 'ev-input is-time is-wrong' : 'ev-input is-time'}
           value={wall.time}
+          {...offField(off)}
           aria-invalid={wrong}
           aria-describedby={told}
           onChange={(event) => onChange({ ...wall, time: event.target.value })}
@@ -299,6 +308,7 @@ export function DateTime({
 
 /** One line of text in an edit: its label, Optional where it is, its help, and what is wrong with it. */
 export function EditText({
+  id: given,
   label,
   optional = false,
   value,
@@ -308,6 +318,7 @@ export function EditText({
   onChange,
   input,
 }: {
+  id?: string;
   label: string;
   optional?: boolean;
   value: string;
@@ -318,7 +329,8 @@ export function EditText({
   input?: Partial<InputHTMLAttributes<HTMLInputElement>>;
 }) {
   const { t } = useTranslation();
-  const id = useId();
+  const made = useId();
+  const id = given ?? made;
   const told = [help == null ? null : `${id}-help`, error == null ? null : `${id}-error`]
     .filter(Boolean)
     .join(' ');
