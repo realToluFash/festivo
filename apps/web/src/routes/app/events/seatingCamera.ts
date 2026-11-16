@@ -27,6 +27,62 @@ export function fitOf(width: number, height: number, room: { w: number; l: numbe
   return { s, ox: FIT_PAD.left + (w - room.w * s) / 2, oy: FIT_PAD.top + (h - room.l * s) / 2 };
 }
 
+export interface Box {
+  x0: number;
+  y0: number;
+  x1: number;
+  y1: number;
+}
+
+/** How far the picture slides, in screen px, to show a focused box (canvas px) whole and clear of the bars floating over the room (WCAG 2.2 SC 2.4.11). */
+export function intoView(
+  box: Box,
+  width: number,
+  height: number,
+  bars: readonly Box[] = [],
+  margin = 8,
+): Point {
+  const left = FIT_PAD.left + margin;
+  const right = width - FIT_PAD.right - margin;
+  const top = FIT_PAD.top + margin;
+  const bottom = height - FIT_PAD.bottom - margin;
+  const slide = (from: number, to: number, lo: number, hi: number): number => {
+    if (to - from > hi - lo || from < lo) return lo - from;
+    if (to > hi) return hi - to;
+    return 0;
+  };
+  let dx = slide(box.x0, box.x1, left, right);
+  let dy = slide(box.y0, box.y1, top, bottom);
+
+  for (const bar of bars) {
+    const x0 = box.x0 + dx;
+    const x1 = box.x1 + dx;
+    const y0 = box.y0 + dy;
+    const y1 = box.y1 + dy;
+
+    if (x1 <= bar.x0 - margin || x0 >= bar.x1 + margin) continue;
+    if (y1 <= bar.y0 - margin || y0 >= bar.y1 + margin) continue;
+    const ways: Point[] = [
+      [bar.x0 - margin - x1, 0],
+      [bar.x1 + margin - x0, 0],
+      [0, bar.y0 - margin - y1],
+      [0, bar.y1 + margin - y0],
+    ];
+    const shortest = ways
+      .filter(
+        ([mx, my]) => x0 + mx >= left && x1 + mx <= right && y0 + my >= top && y1 + my <= bottom,
+      )
+      .sort((a, b) => Math.abs(a[0]) + Math.abs(a[1]) - Math.abs(b[0]) - Math.abs(b[1]))[0];
+
+    if (shortest != null) {
+      dx += shortest[0];
+      dy += shortest[1];
+    }
+  }
+
+  return [dx, dy];
+}
+
 export function clampScale(s: number): number {
   return Math.min(LARGEST_SCALE, Math.max(SMALLEST_SCALE, s));
 }

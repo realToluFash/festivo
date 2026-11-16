@@ -66,7 +66,7 @@ import {
   useAddRowAndSeat,
 } from './SeatingRows.tsx';
 import { AddTable, ChairPanel, TableDrawing, TablePanel } from './SeatingTables.tsx';
-import { fitOf, useCamera } from './seatingCamera.ts';
+import { fitOf, intoView, useCamera } from './seatingCamera.ts';
 import { SMALL_MAP_FROM_SCALE, f, percentOf, readingOrder, sectionOf } from './seatingDraw.ts';
 import { lengthField, lengthWords } from './seatingUnits.ts';
 import '../../../components/SettingsParts.css';
@@ -143,6 +143,56 @@ function useLiveSeating(eventId: string, onSeating: (seating: Seating) => void, 
   }, [eventId]);
 }
 
+const LOADING_ROOM = { w: 2400, l: 1800 } as const;
+const LOADING_TABLES = [
+  [420, 620],
+  [810, 620],
+  [1200, 620],
+  [1590, 620],
+  [1980, 620],
+  [420, 1020],
+  [810, 1020],
+  [1200, 1020],
+  [1980, 1020],
+] as const;
+
+function LoadingRoom({ label }: { label: string }) {
+  const [placeCanvas, size] = useCanvasSize();
+  const { s, ox, oy } = fitOf(size.w, size.h, LOADING_ROOM);
+
+  return (
+    <div className="st-canvas" ref={placeCanvas} role="status" aria-label={label}>
+      <svg
+        className="st-room"
+        width={size.w}
+        height={size.h}
+        viewBox={`0 0 ${size.w} ${size.h}`}
+        aria-hidden="true"
+      >
+        <rect
+          className="st-skeleton-room"
+          x={f(ox)}
+          y={f(oy)}
+          width={f(LOADING_ROOM.w * s)}
+          height={f(LOADING_ROOM.l * s)}
+          rx="4"
+        />
+        {LOADING_TABLES.map(([x, y]) => (
+          <rect
+            key={`${x}-${y}`}
+            className="st-skeleton-block"
+            x={f(ox + x * s - 25)}
+            y={f(oy + y * s - 25)}
+            width="50"
+            height="50"
+            rx="25"
+          />
+        ))}
+      </svg>
+    </div>
+  );
+}
+
 function useCanvasSize(): [(node: HTMLDivElement | null) => void, { w: number; h: number }] {
   const [size, setSize] = useState({ w: 718, h: 719 });
   const observer = useRef<ResizeObserver | null>(null);
@@ -214,7 +264,7 @@ export function SeatingArea({ event }: { event: OrganisationEvent }) {
       <div className="desk st">
         {crumb}
         <div className="st-main">
-          <div className="st-canvas" role="status" aria-label={t('seating.loading')} />
+          <LoadingRoom label={t('seating.loading')} />
           <div className="st-panel is-skeleton" aria-hidden="true">
             {[44, 24, 18, 44, 24, 52, 52, 52, 52].map((h, index) => (
               <span key={index} className={`st-sunk is-${h} n${index}`} />
@@ -378,6 +428,57 @@ function Plan({
     node.addEventListener('wheel', wheel, { passive: false });
     return () => node.removeEventListener('wheel', wheel);
   }, [hasRoom, zoomTo, panBy, view]);
+
+  useEffect(() => {
+    const node = canvasNode.current;
+
+    if (node == null || !hasRoom) return;
+    let byKey = false;
+    const key = (event: KeyboardEvent) => {
+      byKey = event.key === 'Tab';
+    };
+    const point = () => {
+      byKey = false;
+    };
+    const follow = (event: FocusEvent) => {
+      const target = event.target;
+
+      if (!byKey || !(target instanceof Element) || target.closest('.st-room') == null) return;
+      const box = node.getBoundingClientRect();
+      const at = target.getBoundingClientRect();
+      const [dx, dy] = intoView(
+        {
+          x0: at.left - box.left,
+          y0: at.top - box.top,
+          x1: at.right - box.left,
+          y1: at.bottom - box.top,
+        },
+        view.current.size.w,
+        view.current.size.h,
+        [...node.querySelectorAll(':scope > .st-float')].map((bar) => {
+          const at = bar.getBoundingClientRect();
+
+          return {
+            x0: at.left - box.left,
+            y0: at.top - box.top,
+            x1: at.right - box.left,
+            y1: at.bottom - box.top,
+          };
+        }),
+      );
+
+      if (dx !== 0 || dy !== 0) panBy(-dx, -dy);
+    };
+
+    window.addEventListener('keydown', key, true);
+    window.addEventListener('pointerdown', point, true);
+    node.addEventListener('focusin', follow);
+    return () => {
+      window.removeEventListener('keydown', key, true);
+      window.removeEventListener('pointerdown', point, true);
+      node.removeEventListener('focusin', follow);
+    };
+  }, [hasRoom, panBy, view]);
 
   useEffect(() => {
     const move = (event: PointerEvent) => {

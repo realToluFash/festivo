@@ -1752,6 +1752,57 @@ describe('The room to scale (sc-4007)', () => {
     expect(centreOf('t1')).toBeCloseTo(was - 100, 0);
   });
 
+  it('pans an item Tab lands on into view by the least distance, and not for a click or an item in view', async () => {
+    signedIn();
+    await onSeating({ 'GET /api/events/ev_1/seating-plan': () => seating(withTables(table())) });
+    const item = await screen.findByRole('button', { name: TABLE_1 });
+
+    press('Zoom in', 6);
+    expect(percent()).toBe('400%');
+    let left = 2000;
+    const measured = vi
+      .spyOn(Element.prototype, 'getBoundingClientRect')
+      .mockImplementation(function (this: Element) {
+        const at = this.getAttribute('data-table') === 't1' ? left : 0;
+        const size = at === 0 ? 0 : 100;
+
+        return {
+          width: size,
+          height: size,
+          top: 300,
+          left: at,
+          right: at + size,
+          bottom: 300 + size,
+          x: at,
+          y: 300,
+        } as DOMRect;
+      });
+
+    try {
+      const was = centreOf('t1');
+
+      fireEvent.pointerDown(item, { button: 0, pointerId: 1 });
+      act(() => item.focus());
+      expect(centreOf('t1')).toBeCloseTo(was, 0);
+      act(() => item.blur());
+
+      fireEvent.keyDown(window, { key: 'Tab' });
+      act(() => item.focus());
+      expect(percent()).toBe('400%');
+      expect(centreOf('t1')).toBeCloseTo(was - (2100 - (718 - 16 - 8)), 0);
+      act(() => item.blur());
+
+      const moved = centreOf('t1');
+
+      left = 300;
+      fireEvent.keyDown(window, { key: 'Tab', shiftKey: true });
+      act(() => item.focus());
+      expect(centreOf('t1')).toBeCloseTo(moved, 0);
+    } finally {
+      measured.mockRestore();
+    }
+  });
+
   it('ends a pan of the floor wherever the button comes up, and the next click on the floor still counts', async () => {
     signedIn();
     await onSeating({ 'GET /api/events/ev_1/seating-plan': () => seating(withTables(table())) });
@@ -1828,6 +1879,47 @@ describe('The room to scale (sc-4007)', () => {
     fireEvent.click(screen.getByRole('button', { name: 'Table 2, Seat 4, Empty' }));
     expect(await screen.findByRole('button', { name: 'Mark unusable' })).toBeDefined();
     expect(percent()).toBe('150%');
+
+    const room = document.querySelector('.st-room [data-table="t2"]')!;
+    expect(room.getAttribute('aria-pressed')).toBe('false');
+    expect(room.querySelectorAll('.st-lit')).toHaveLength(1);
+    expect(room.querySelector('.st-lit')?.tagName).toBe('circle');
+    expect(
+      screen.getByRole('button', { name: 'Table 2, Seat 4, Empty' }).getAttribute('aria-pressed'),
+    ).toBe('true');
+  });
+
+  it('lights only the chosen seat of a row, not the row, once a seat is open', async () => {
+    signedIn();
+    await onSeating({
+      'GET /api/events/ev_1/seating-plan': () => seating(withRowsAndSeats([row()], [])),
+    });
+
+    await screen.findByRole('button', { name: /^Row A/ });
+    press('Zoom in', 3);
+    expect(percent()).toBe('150%');
+
+    fireEvent.click(screen.getByRole('button', { name: 'Row A, seat 4, Empty' }));
+    expect(await screen.findByRole('button', { name: 'Mark unusable' })).toBeDefined();
+
+    const drawn = document.querySelector('.st-room [data-row="r1"]')!;
+    expect(drawn.getAttribute('aria-pressed')).toBe('false');
+    expect(drawn.querySelectorAll('.st-lit')).toHaveLength(1);
+    expect(drawn.querySelector('.st-lit')?.tagName).toBe('circle');
+    expect(
+      within(drawn as HTMLElement)
+        .getByRole('button', { name: 'Row A, seat 4, Empty' })
+        .getAttribute('aria-pressed'),
+    ).toBe('true');
+  });
+
+  it('draws the room’s floor with its tables still to come while the plan loads', async () => {
+    signedIn();
+    await onSeating({ 'GET /api/events/ev_1/seating-plan': () => new Promise<Response>(() => {}) });
+
+    const loading = await screen.findByRole('status', { name: 'Loading the seating plan' });
+    expect(loading.querySelectorAll('.st-skeleton-room')).toHaveLength(1);
+    expect(loading.querySelectorAll('.st-skeleton-block')).toHaveLength(9);
   });
 
   it('shows the small map with the view on it from 200%', async () => {
