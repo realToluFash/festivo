@@ -34,6 +34,8 @@ import { type RunItem, type RunTrackView, runViews, said } from './runArea.ts';
 import { dayName } from './scheduleArea.ts';
 import { useHubTopics } from './useHubTopics.ts';
 import { useDeskTop } from '../../../deskTop.ts';
+import '../../../components/SettingsParts.css';
+import '../../../components/eventsDesk.css';
 import '../../../components/eventPage.css';
 import './guests.css';
 import './schedule.css';
@@ -75,7 +77,7 @@ export function RunArea({ event }: { event: OrganisationEvent }) {
   );
 
   return (
-    <div className="desk-page ev-page gs mn ro rv">
+    <div className="desk ev desk-page ev-page gs mn ro rv">
       <div className="ev-wide mn-page">
         <Crumbs event={event} />
         {load.kind === 'loaded' ? (
