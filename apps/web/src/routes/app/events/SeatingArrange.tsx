@@ -1,5 +1,11 @@
 import { type MeasurementSystem, type SeatingPlan, type SeatingTable } from '@soirely/api-client';
-import { insideRoom, isRoundShape, overlapping, readFloorPosition } from '@soirely/domain';
+import {
+  insideRoom,
+  isRoundShape,
+  listFormat,
+  overlapping,
+  readFloorPosition,
+} from '@soirely/domain';
 import { type PointerEvent as ReactPointerEvent, useId } from 'react';
 import { useTranslation } from 'react-i18next';
 
@@ -38,9 +44,10 @@ export function Overlaps({ plan, id }: { plan: SeatingPlan; id: string }) {
     .filter((other) => other.one.id !== id && overlapping(at, footprintOf(other)))
     .map((other) => itemName(t, other));
 
-  return names.length === 0 ? null : (
-    <Said>{t('seating.overlaps', { name: names.join(', ') })}</Said>
-  );
+  if (names.length === 0) return null;
+  const name = listFormat(currentLocale(), { type: 'conjunction' }).format(names);
+
+  return <Said>{t('seating.overlaps', { name })}</Said>;
 }
 
 /** Across and Down, in the organisation's units: applied as entered, refused beside the field when it would leave the item outside the room. */
@@ -149,11 +156,11 @@ export function KeysStrip({ system }: { system: MeasurementSystem }) {
   const mac = typeof navigator !== 'undefined' && /Mac|iPhone|iPad/u.test(navigator.platform);
   const keys: [string, string][] = [
     ['← ↑ → ↓', t(system === 'us' ? 'seating.keyMoveUs' : 'seating.keyMove')],
-    ['Shift', t(system === 'us' ? 'seating.keyShiftUs' : 'seating.keyShift')],
+    [t('seating.keyName.shift'), t(system === 'us' ? 'seating.keyShiftUs' : 'seating.keyShift')],
     ['R', t('seating.keyTurn')],
-    [mac ? '⌘ D' : 'Ctrl D', t('seating.keyDuplicate')],
-    ['Delete', t('seating.keyDelete')],
-    ['Esc', t('seating.keyEsc')],
+    [mac ? '⌘ D' : `${t('seating.keyName.ctrl')} D`, t('seating.keyDuplicate')],
+    [t('seating.keyName.delete'), t('seating.keyDelete')],
+    [t('seating.keyName.esc'), t('seating.keyEsc')],
   ];
 
   return (

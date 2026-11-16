@@ -2,12 +2,15 @@ import { act, fireEvent, render, screen, waitFor, within } from '@testing-librar
 import i18next from 'i18next';
 import { afterEach, beforeAll, beforeEach, describe, expect, it, vi } from 'vitest';
 import { RouterProvider, createMemoryRouter } from 'react-router';
+import { type SeatingPlan } from '@soirely/api-client';
 
 import { __setConfig, config } from '../../../config.ts';
+import fr from '../../../i18n/locales/fr.json';
 import { __setSessionState, type Session } from '../../../session.ts';
 import { OWNER_PERMISSIONS, membership } from '../../../test-memberships.ts';
 import { routes } from '../../index.tsx';
 import { deletePlanWords, sectionDeleteWords } from './SeatingArea.tsx';
+import { KeysStrip, Overlaps } from './SeatingArrange.tsx';
 
 const IRE = membership({ id: 'org_1', name: 'Ìrè Events' });
 
@@ -2654,5 +2657,66 @@ describe('Moving, turning and resizing on the Floor plan (sc-5028)', () => {
 
     expect(sized!.widthCm).toBe(sized!.lengthCm);
     expect(sized!.widthCm % 10).toBe(0);
+  });
+});
+
+describe('The keys strip and the overlap line in the viewer’s language (sc-56839)', () => {
+  const near = withTables(
+    table(),
+    table({ id: 't2', name: 'Table 2', xCm: 1350 }),
+    table({ id: 't3', name: 'Table 3', xCm: 1050 }),
+    table({ id: 't4', name: 'Table 4', yCm: 1050 }),
+  );
+  const firstOf = (count: number) =>
+    ({ ...near, tables: near.tables.slice(0, count + 1) }) as unknown as SeatingPlan;
+
+  afterEach(async () => {
+    await act(() => i18next.changeLanguage('en'));
+  });
+
+  it('names the keys as the catalogue does', async () => {
+    const { container } = render(<KeysStrip system="metric" />);
+    const keys = () => [...container.querySelectorAll('kbd')].map((key) => key.textContent);
+
+    expect(keys()).toEqual(['← ↑ → ↓', 'Shift', 'R', 'Ctrl D', 'Delete', 'Esc']);
+
+    i18next.addResourceBundle(
+      'fr',
+      'translation',
+      {
+        seating: { keyName: { shift: 'Maj', delete: 'Suppr', esc: 'Échap', ctrl: 'Ctrl' } },
+      },
+      true,
+      true,
+    );
+    try {
+      await act(() => i18next.changeLanguage('fr'));
+      expect(keys()).toEqual(['← ↑ → ↓', 'Maj', 'R', 'Ctrl D', 'Suppr', 'Échap']);
+    } finally {
+      i18next.addResourceBundle('fr', 'translation', fr, true, true);
+    }
+  });
+
+  it('joins one, two and three overlapping names as a list in English', () => {
+    const line = (count: number) =>
+      render(<Overlaps plan={firstOf(count)} id="t1" />).container.textContent;
+
+    expect(line(1)).toBe('Overlaps Table 2');
+    expect(line(2)).toBe('Overlaps Table 2 and Table 3');
+    expect(line(3)).toBe('Overlaps Table 2, Table 3 and Table 4');
+  });
+
+  it('joins them with the language’s own word in Spanish', async () => {
+    await act(() => i18next.changeLanguage('es'));
+    const line = (count: number) =>
+      render(<Overlaps plan={firstOf(count)} id="t1" />).container.textContent;
+
+    expect(line(1)).toBe('Se solapa con Table 2');
+    expect(line(2)).toBe('Se solapa con Table 2 y Table 3');
+    expect(line(3)).toBe('Se solapa con Table 2, Table 3 y Table 4');
+  });
+
+  it('says nothing for an item that overlaps nothing', () => {
+    expect(render(<Overlaps plan={firstOf(0)} id="t1" />).container.textContent).toBe('');
   });
 });

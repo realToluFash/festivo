@@ -115,8 +115,12 @@
   justify-content: center;
   width: var(--sizeHit);
   height: var(--sizeHit);
+  padding: 0;
+  border: 0;
   border-radius: var(--radiusPill);
   background: var(--colorNeutralFill);
+  color: inherit;
+  cursor: pointer;
 }
 
 .desk-bell:hover {

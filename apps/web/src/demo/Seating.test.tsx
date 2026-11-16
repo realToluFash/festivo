@@ -168,7 +168,7 @@ describe('the plan and the room (sc-3998, sc-4007)', () => {
 
     expect(links).toHaveLength(SEATING_STATES.length);
     expect(links[0]?.getAttribute('href')).toBe(AT);
-    expect(links.at(-1)?.getAttribute('href')).toBe(`${AT}?state=crumbWidths`);
+    expect(links.at(-1)?.getAttribute('href')).toBe(`${AT}?state=crumbFocus`);
   });
 
   it('is the event’s own Seating entry, lit while it is open', SLOW, async () => {
@@ -1032,11 +1032,11 @@ describe('moving without dragging, and the save line (sc-5028, WCAG 2.2 SC 2.5.7
         'Shift and click adds or takes one away. Esc lets go of all of them.',
       ),
     ).toBeDefined();
-    fireEvent.click(within(panel()).getByRole('button', { name: 'Delete these' }));
-    const ask = screen.getByRole('alertdialog', { name: 'Delete Table 6, Table 7 and Table 8?' });
+    fireEvent.click(within(panel()).getByRole('button', { name: 'Delete' }));
+    const ask = screen.getByRole('alertdialog', { name: 'Delete 3 tables?' });
 
-    expect(ask.textContent).toContain('Their guests go back to Without a seat.');
-    fireEvent.click(within(ask).getByRole('button', { name: 'Keep it' }));
+    expect(ask.textContent).toContain('22 guests will be moved to Without a seat.');
+    fireEvent.click(within(ask).getByRole('button', { name: 'Keep them' }));
     key(item(/^Table 8,/u), 'Escape');
     expect(within(panel()).getByRole('heading', { name: 'Room' })).toBeDefined();
   });
@@ -1389,5 +1389,30 @@ describe('the breadcrumb (sc-55300)', () => {
     expect(screen.getAllByRole('navigation', { name: 'Breadcrumb' })).toHaveLength(2);
     expect(screen.getAllByRole('navigation', { name: 'Fil d’Ariane' })).toHaveLength(3);
     expect(screen.getByRole('link', { name: 'Seating words QA' })).toBeDefined();
+  });
+
+  it('rings one link in each frame, each link at each width (sc-57088)', SLOW, async () => {
+    open(`${AT}?state=crumbFocus`);
+    await screen.findByRole(
+      'heading',
+      { level: 1, name: 'A focused link in the breadcrumb' },
+      WAIT,
+    );
+    const frames = screen.getAllByRole('figure');
+    const ringed = frames.map((frame) => {
+      const rings = frame.querySelectorAll('a.is-ring');
+
+      expect(rings).toHaveLength(1);
+      return `${frame.className} ${rings[0]?.textContent ?? ''}`;
+    });
+
+    expect(frames).toHaveLength(13);
+    expect(ringed).toContain('st-width is-1280 Events');
+    expect(ringed).toContain('st-width is-1280 Événements');
+    expect(ringed).toContain(`st-width is-320 ${LONG}`);
+    expect(ringed).toContain('st-width is-375 Seating words QA');
+    expect(frames[2]?.querySelector('figcaption')?.textContent).toMatch(
+      /^1280 px · French · .+ · focus on Événements$/u,
+    );
   });
 });

@@ -28,6 +28,17 @@ import {
   usable,
   filled,
 } from './seating.ts';
+import {
+  type Fold,
+  type Rect,
+  aligned,
+  copiesOf,
+  gridOf,
+  outsider,
+  thingsOf,
+  tooBig,
+  withMoved,
+} from './selection.ts';
 
 export type View = 'plan' | 'tables' | 'list';
 export type Tab = 'arrange' | 'seat';
@@ -126,6 +137,14 @@ export interface Ui {
     length: string;
     errors: { width?: string; length?: string };
   };
+  adding: boolean;
+  box: Rect | null;
+  kindMenu: boolean;
+  fold: Fold | null;
+  grid: { columns: string; gap: string; errors: { columns?: string; gap?: string } };
+  refused: string | null;
+  renumber: { start: string; error: string | null };
+  sectionPick: string;
 }
 
 const NO_DOCS: Record<Doc, DocState> = {
@@ -183,6 +202,14 @@ export function freshUi(): Ui {
     contest: null,
     paper: null,
     start: { name: 'Main hall', width: '24', length: '', errors: {} },
+    adding: false,
+    box: null,
+    kindMenu: false,
+    fold: null,
+    grid: { columns: '3', gap: '1', errors: {} },
+    refused: null,
+    renumber: { start: '1', error: null },
+    sectionPick: '',
   };
 }
 
@@ -262,6 +289,7 @@ export function seedOf(state: SeatingState | null): Ui {
     case 'longName':
     case 'longNameFr':
     case 'crumbWidths':
+    case 'crumbFocus':
       return ui;
     case 'presenceOne':
       return { ...ui, people: [], joining: PRIYA };
@@ -959,5 +987,182 @@ export function seedOf(state: SeatingState | null): Ui {
       return { ...ui, paper: 'card' };
     case 'paperCardTop':
       return { ...ui, paper: 'cardTop' };
+    default:
+      return choosingSeed(state, ui);
+  }
+}
+
+const SIX_TABLES = ['t1', 't2', 't3', 't4', 't5', 't6'];
+const SCATTERED = ['t1', 't5', 't6', 't10'];
+const MIXED = [...SCATTERED, 'rowA', 'door'];
+const GARDEN = ['t6', 't7', 't8', 't9', 't10'];
+
+/** The Selection panel's states (sc-4717): the box, Add to choice, Select all, and each tool. */
+function choosingSeed(state: SeatingState, ui: Ui): Ui {
+  const plan = ui.plan;
+  const of = (ids: readonly string[]) => ids.map((id) => byId(plan, id));
+
+  switch (state) {
+    case 'boxDrawing':
+      return {
+        ...ui,
+        chosen: ['t1', 't2', 't6', 't7'],
+        box: { x0: 250, y0: 450, x1: 960, y1: 1100 },
+      };
+    case 'addOff':
+      return { ...ui, chosen: ['t1'] };
+    case 'addOn':
+      return { ...ui, chosen: ['t1'], adding: true };
+    case 'addBox':
+      return {
+        ...ui,
+        chosen: MIXED,
+        adding: true,
+        box: { x0: 120, y0: 1400, x1: 900, y1: 1740 },
+      };
+    case 'addMixed':
+      return { ...ui, chosen: MIXED, adding: true };
+    case 'selectAll':
+      return { ...ui, chosen: plan.items.map((item) => item.id) };
+    case 'kindMenu':
+      return { ...ui, kindMenu: true };
+    case 'selection':
+      return { ...ui, chosen: SIX_TABLES };
+    case 'spaceTwo':
+      return { ...ui, chosen: ['t6', 't7'] };
+    case 'aligned': {
+      const before = withMoved(plan, [
+        { ...byId(plan, 't6'), y: 990 },
+        { ...byId(plan, 't7'), y: 1060 },
+        { ...byId(plan, 't8'), y: 1010 },
+      ]);
+      const chosen = ['t6', 't7', 't8'].map((id) => byId(before, id));
+      const words = say(SW.doneTop, { things: thingsOf(chosen) });
+
+      return {
+        ...ui,
+        plan: withMoved(before, aligned(chosen, 'top')),
+        chosen: ['t6', 't7', 't8'],
+        undo: { plan: before, tray: ui.tray },
+        bar: { kind: 'undo', words, does: 'undo' },
+        spoken: words,
+      };
+    }
+    case 'gridOpen':
+      return { ...ui, chosen: SIX_TABLES, fold: 'grid', grid: { ...ui.grid, gap: '1.5' } };
+    case 'gridWall':
+    case 'gridEdge': {
+      const chosen = ['t3', 't4', 't5', 't9', 't10'];
+      const out = outsider(plan, gridOf(of(chosen), 5, 100).moved);
+
+      return {
+        ...ui,
+        chosen,
+        fold: 'grid',
+        grid: { columns: '5', gap: '1', errors: {} },
+        refused:
+          state === 'gridEdge' && out != null ? say(SW.edgeRefused, { name: out.name }) : null,
+      };
+    }
+    case 'gridWide': {
+      const chosen = plan.items.filter((item) => /^t\d+$/u.test(item.id)).map((item) => item.id);
+      const { w, l } = gridOf(of(chosen), 10, 100);
+
+      return {
+        ...ui,
+        chosen,
+        fold: 'grid',
+        grid: { columns: '10', gap: '1', errors: {} },
+        refused: tooBig(plan, w, l, ui.units),
+      };
+    }
+    case 'gridFields':
+      return {
+        ...ui,
+        chosen: SIX_TABLES,
+        fold: 'grid',
+        grid: { columns: '0', gap: '12', errors: { columns: SW.columnsRange, gap: SW.gapRange } },
+        focus: 'gridColumns',
+      };
+    case 'gridFeet':
+      return {
+        ...ui,
+        units: 'us',
+        chosen: SIX_TABLES,
+        fold: 'grid',
+        grid: { columns: '3', gap: '40', errors: { gap: SW.gapRangeFeet } },
+        focus: 'gridGap',
+      };
+    case 'renumberOpen':
+      return {
+        ...ui,
+        chosen: [...GARDEN, 'rowA'],
+        fold: 'renumber',
+        renumber: { start: '11', error: null },
+      };
+    case 'renumberClash':
+      return {
+        ...ui,
+        chosen: ['t1', 't2', 't3', 't4', 't5'],
+        fold: 'renumber',
+        renumber: { start: '7', error: say(SW.renumberClash, { name: 'Table 7' }) },
+        focus: 'renumberStart',
+      };
+    case 'renumberBlank':
+      return {
+        ...ui,
+        chosen: ['t1', 't2', 't3', 't4', 't5'],
+        fold: 'renumber',
+        renumber: { start: '', error: SW.startRange },
+        focus: 'renumberStart',
+      };
+    case 'sectionOpen':
+      return { ...ui, chosen: GARDEN, fold: 'section', sectionPick: 'stage' };
+    case 'duplicatedMany': {
+      const made = copiesOf(plan, of(['t6', 't7', 't8']));
+
+      if (!('copies' in made)) return ui;
+      const words = many('duplicatedMany', made.copies.length);
+
+      return {
+        ...ui,
+        plan: { ...plan, items: [...plan.items, ...made.copies] },
+        chosen: made.copies.map((item) => item.id),
+        undo: { plan, tray: ui.tray },
+        bar: { kind: 'undo', words, does: 'undo' },
+        spoken: words,
+      };
+    }
+    case 'deleteMany':
+      return { ...ui, chosen: SIX_TABLES, asking: { kind: 'deleteItems', ids: SIX_TABLES } };
+    case 'deleteManyEmpty': {
+      const ids = ['t10', 'bar1', 'bar2'];
+
+      return { ...ui, chosen: ids, asking: { kind: 'deleteItems', ids } };
+    }
+    case 'deleteMixed': {
+      const ids = ['t8', 'rowA', 'door'];
+
+      return { ...ui, chosen: ids, asking: { kind: 'deleteItems', ids } };
+    }
+    case 'toolChanged': {
+      const chosen = ['t1', 't2', 't3', 't4', 't5'];
+
+      return {
+        ...ui,
+        plan: moved(plan, 't5', { y: 660 }),
+        chosen,
+        rings: { t5: PRIYA },
+        people: [PRIYA, SADE],
+        bar: {
+          kind: 'amber',
+          words: say(SW.stepChanged, { name: PRIYA.name, table: 'Table 5' }),
+        },
+      };
+    }
+    case 'readOnlyMany':
+      return { ...ui, readOnly: true, people: [YOU, PRIYA] };
+    default:
+      return ui;
   }
 }

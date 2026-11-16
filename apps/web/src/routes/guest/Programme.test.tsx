@@ -154,6 +154,17 @@ describe('The day on the guest’s page (sc-3899)', () => {
     ).toEqual(['17:20Ceremony', 'Fri 00:30Last dance · Ballroom', '11:00Brunch · Ballroom']);
   });
 
+  it('puts every day’s list in one grid', async () => {
+    openWith([CEREMONY, AFTER_MIDNIGHT, BRUNCH]);
+
+    const section = await screen.findByRole('region', { name: 'Programme' });
+    const [first, second] = within(section).getAllByRole('list');
+    const column = first?.closest('.gp-prog-days');
+
+    expect(column).not.toBeNull();
+    expect(second?.closest('.gp-prog-days')).toBe(column);
+  });
+
   it('names the event’s zone when the device is in another, and keeps the event’s times', async () => {
     openWith([CEREMONY], 'America/Sao_Paulo');
 

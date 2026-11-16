@@ -79,6 +79,19 @@ import { SeatingPanel, ShapeTile } from './SeatingPanel.tsx';
 import { PaperPage, PrintPanel } from './SeatingPrint.tsx';
 import { type Handle, type Look, MiniMap, RoomDrawing } from './SeatingRoom.tsx';
 import { ListView, TablesView } from './SeatingViews.tsx';
+import { ChooseBar, RulesStrip } from './SeatingSelection.tsx';
+import {
+  type Outline,
+  chosenItems,
+  gridOf,
+  outlinesOf,
+  readColumns,
+  readGap,
+  rectOf,
+  seatedOf,
+  thingsOf,
+  touched,
+} from './selection.ts';
 import { DemoBell } from './DemoBell.tsx';
 import { Ask, CardStep, Mark, OnCard, Says } from '../components/SettingsParts.tsx';
 import { useSwitcherStart } from './switcher.ts';
@@ -115,7 +128,19 @@ function SeatingAt({ id, raw }: { id: string | undefined; raw: string | null }) 
 
   if (event == null) return <Navigate to="/demo/events" replace />;
   if (first.paper != null) return <PaperPage paper={first.paper} plan={first.plan} />;
-  if (state === 'crumbWidths') return <CrumbWidths id={event.id} />;
+  if (state === 'crumbWidths')
+    return (
+      <CrumbFrames id={event.id} title={SW.widthsTitle} line={SW.widthsLine} frames={WIDTHS} />
+    );
+  if (state === 'crumbFocus')
+    return (
+      <CrumbFrames
+        id={event.id}
+        title={SW.focusTitle}
+        line={SW.focusLine}
+        frames={ringFrames(event.name)}
+      />
+    );
   const named = crumbOf(state, event.name);
 
   return (
@@ -137,20 +162,24 @@ function SeatingAt({ id, raw }: { id: string | undefined; raw: string | null }) 
 }
 
 type Named = { name: string; lang: CrumbLang };
+type Ring = 'events' | 'name';
 
 /** Events › the event › Seating (sc-55300): only the event name gives way, cut short with an ellipsis; its link keeps the full name. */
-function SeatingCrumb({ id, named }: { id: string; named: Named }) {
+function SeatingCrumb({ id, named, ring }: { id: string; named: Named; ring?: Ring | undefined }) {
   const words = CRUMB_WORDS[named.lang];
+  const ringOn = (link: Ring) => (ring === link ? 'is-ring' : undefined);
 
   return (
     <nav className="st-crumb" aria-label={words.crumb} lang={named.lang}>
       <ol>
         <li>
-          <Link to="/demo/events">{words.events}</Link>
+          <Link to="/demo/events" className={ringOn('events')}>
+            {words.events}
+          </Link>
         </li>
         <li className="st-crumb-event">
           <Icon name="chevron" size={14} weight={2.3} />
-          <Link to={`/demo/events/${id}`}>
+          <Link to={`/demo/events/${id}`} className={ringOn('name')}>
             <span className="st-crumb-name">{named.name}</span>
           </Link>
         </li>
@@ -163,7 +192,9 @@ function SeatingCrumb({ id, named }: { id: string; named: Named }) {
   );
 }
 
-const WIDTHS: readonly { w: 320 | 375; named: Named; label: string }[] = [
+type Frame = { w: 320 | 375 | 1280; named: Named; label: string; ring?: Ring | undefined };
+
+const WIDTHS: readonly Frame[] = [
   { w: 320, named: { name: LONG_NAME, lang: 'en' }, label: SW.longLabel },
   { w: 375, named: { name: LONG_NAME, lang: 'en' }, label: SW.longLabel },
   { w: 320, named: { name: LONG_NAME, lang: 'fr' }, label: SW.longLabel },
@@ -171,28 +202,64 @@ const WIDTHS: readonly { w: 320 | 375; named: Named; label: string }[] = [
   { w: 375, named: { name: QA_NAME, lang: 'fr' }, label: QA_NAME },
 ];
 
-/** ?state=crumbWidths: a 320 and a 375 window, the band inside the page's 16 px gutters as the product draws it, since the demo's desk keeps its sidebar there. */
-function CrumbWidths({ id }: { id: string }) {
+/** sc-57088's frames: each link focused at 1280 on a name that fits, then at 375 and 320 on the 120-character one, and the French QA name at 375. */
+function ringFrames(name: string): Frame[] {
+  const narrow = ([375, 320] as const).flatMap((w) =>
+    (['en', 'fr'] as const).flatMap((lang) =>
+      (['events', 'name'] as const).map((ring) => ({
+        w,
+        named: { name: LONG_NAME, lang },
+        label: SW.longLabel,
+        ring,
+      })),
+    ),
+  );
+
+  return [
+    { w: 1280, named: { name, lang: 'en' }, label: name, ring: 'events' },
+    { w: 1280, named: { name, lang: 'en' }, label: name, ring: 'name' },
+    { w: 1280, named: { name, lang: 'fr' }, label: name, ring: 'events' },
+    { w: 1280, named: { name, lang: 'fr' }, label: name, ring: 'name' },
+    ...narrow,
+    { w: 375, named: { name: QA_NAME, lang: 'fr' }, label: QA_NAME, ring: 'name' },
+  ];
+}
+
+/** ?state=crumbWidths and ?state=crumbFocus: the header band in a window of each width, the narrow ones inside the page's 16 px gutters as the product draws them, since the demo's desk keeps its sidebar there. */
+function CrumbFrames({
+  id,
+  title,
+  line,
+  frames,
+}: {
+  id: string;
+  title: string;
+  line: string;
+  frames: readonly Frame[];
+}) {
   return (
     <main className="st-widths">
-      <h1>{SW.widthsTitle}</h1>
-      <p className="st-widths-line">{SW.widthsLine}</p>
-      {WIDTHS.map(({ w, named, label }) => (
-        <figure key={`${w}|${named.lang}|${label}`} className={`st-width is-${w}`}>
-          <figcaption>
-            {say(SW.widthAt, {
-              w,
-              lang: named.lang === 'fr' ? SW.french : SW.english,
-              name: label,
-            })}
-          </figcaption>
-          <div className="st-window">
-            <header className="st-top">
-              <SeatingCrumb id={id} named={named} />
-            </header>
-          </div>
-        </figure>
-      ))}
+      <h1>{title}</h1>
+      <p className="st-widths-line">{line}</p>
+      {frames.map(({ w, named, label, ring }) => {
+        const lang = named.lang === 'fr' ? SW.french : SW.english;
+        const link = ring === 'events' ? CRUMB_WORDS[named.lang].events : SW.theName;
+
+        return (
+          <figure key={`${w}|${named.lang}|${label}|${ring ?? ''}`} className={`st-width is-${w}`}>
+            <figcaption>
+              {ring == null
+                ? say(SW.widthAt, { w: String(w), lang, name: label })
+                : say(SW.ringAt, { w: String(w), lang, name: label, link })}
+            </figcaption>
+            <div className="st-window">
+              <header className="st-top">
+                <SeatingCrumb id={id} named={named} ring={ring} />
+              </header>
+            </div>
+          </figure>
+        );
+      })}
     </main>
   );
 }
@@ -235,6 +302,7 @@ type Press =
   | { kind: 'resize'; id: string; handle: Handle; item: Item; moved: boolean; pointer: number }
   | { kind: 'pan'; from: Point; cx: number; cy: number; moved: boolean; pointer: number }
   | { kind: 'click'; id: string; shift: boolean; pointer: number }
+  | { kind: 'box'; from: Point; at: Point; base: string[]; moved: boolean; pointer: number }
   | { kind: 'seat'; id: string; pointer: number };
 
 function keyStep(units: 'metric' | 'us', big: boolean): number {
@@ -269,6 +337,9 @@ function Seating({
   const canvas = useRef<HTMLDivElement | null>(null);
   const press = useRef<Press | null>(null);
   const held = useRef<string | null>(null);
+  const spaceHeld = useRef(false);
+  const spacePanned = useRef(false);
+  const touches = useRef(new Set<number>());
   const [focusId, setFocusId] = useState<string | null>(null);
   const [keyboard, setKeyboard] = useState(first.focus?.startsWith('item:') === true);
   const [placingAt, setPlacingAt] = useState<Point | null>(
@@ -952,7 +1023,8 @@ function Seating({
       press.current = { kind: 'click', id, shift: event.shiftKey, pointer: event.pointerId };
       return;
     }
-    const ids = ui.chosen.includes(id) && !event.shiftKey ? ui.chosen : [id];
+    const shift = event.shiftKey || ui.adding;
+    const ids = ui.chosen.includes(id) && !shift ? ui.chosen : [id];
     const origins = Object.fromEntries(
       ui.plan.items
         .filter((item) => ids.includes(item.id))
@@ -966,7 +1038,7 @@ function Seating({
       from: [event.clientX, event.clientY],
       origins,
       moved: false,
-      shift: event.shiftKey,
+      shift,
       pointer: event.pointerId,
     };
   }
@@ -986,6 +1058,25 @@ function Seating({
     if (event.button !== 0) return;
     if (ui.placing != null) {
       place(toCm(event.clientX, event.clientY));
+      return;
+    }
+    if (event.pointerType === 'touch') touches.current.add(event.pointerId);
+    const now = press.current;
+
+    if (now?.kind === 'box' && touches.current.size > 1) {
+      set((ui_) => ({ ...ui_, chosen: now.base, box: null }));
+    }
+    if (!ui.readOnly && ui.picked == null && !spaceHeld.current && touches.current.size < 2) {
+      const at = toCm(event.clientX, event.clientY);
+
+      press.current = {
+        kind: 'box',
+        from: at,
+        at: [event.clientX, event.clientY],
+        base: event.shiftKey || ui.adding ? ui.chosen : [],
+        moved: false,
+        pointer: event.pointerId,
+      };
       return;
     }
     press.current = {
@@ -1022,11 +1113,38 @@ function Seating({
       } else if (now.kind === 'resize') {
         now.moved = true;
         resizeTo(now, event.clientX, event.clientY);
+      } else if (now.kind === 'box') {
+        if (!now.moved && Math.hypot(event.clientX - now.at[0], event.clientY - now.at[1]) < 4)
+          return;
+        now.moved = true;
+        const to = toCmLive(event.clientX, event.clientY);
+
+        if (to == null) return;
+        const box = rectOf(now.from, to);
+        const hits = touched(ui$.current.plan.items, box);
+
+        set((ui_) => ({
+          ...ui_,
+          box,
+          chosen: [...now.base, ...hits.filter((id) => !now.base.includes(id))],
+          chair: null,
+          panel: null,
+          notice: null,
+          kindMenu: false,
+          tab: 'arrange',
+        }));
       } else if (now.kind === 'pan') {
         const dx = event.clientX - now.from[0];
         const dy = event.clientY - now.from[1];
 
         if (!now.moved && Math.hypot(dx, dy) < 4) return;
+        if (!now.moved && spaceHeld.current) {
+          spacePanned.current = true;
+          const focused = document.activeElement;
+
+          if (focused instanceof HTMLElement && focused.closest('.st-canvas svg') == null)
+            focused.blur();
+        }
         now.moved = true;
         set((ui_) => ({
           ...ui_,
@@ -1041,6 +1159,7 @@ function Seating({
     const up = (event: PointerEvent) => {
       const now = press.current;
 
+      touches.current.delete(event.pointerId);
       if (now == null || now.pointer !== event.pointerId) return;
       press.current = null;
       const kept = held.current;
@@ -1063,6 +1182,23 @@ function Seating({
         else choose([now.lead]);
       } else if (now.kind === 'resize') {
         if (now.moved) settle([now.id], now.id);
+      } else if (now.kind === 'box') {
+        if (now.moved) {
+          set((ui_) => ({ ...ui_, box: null }));
+          say$(say(SW.chosen, { n: ui$.current.chosen.length }));
+        } else if (kept != null) focusField(kept);
+        else if (ui$.current.adding) set((ui_) => ({ ...ui_, kindMenu: false, menu: false }));
+        else
+          set((ui_) => ({
+            ...ui_,
+            chosen: [],
+            chair: null,
+            menu: false,
+            kindMenu: false,
+            pop: null,
+            notice: null,
+            note: null,
+          }));
       } else if (now.kind === 'pan') {
         if (!now.moved && kept != null) focusField(kept);
         else if (!now.moved) {
@@ -1299,23 +1435,64 @@ function Seating({
     if (event.key === 'Escape') {
       event.preventDefault();
       if (now.picked != null) pick(null);
+      else if (now.adding) set((ui_) => ({ ...ui_, adding: false }));
       else set((ui_) => ({ ...ui_, chosen: [], chair: null, notice: null, note: null }));
     }
   }
 
   useEffect(() => {
+    const typing = (target: EventTarget | null) =>
+      target instanceof HTMLElement && target.closest('input, textarea, select') != null;
+    const control = (target: EventTarget | null) =>
+      target instanceof Element &&
+      target.closest('button, a[href], [role="menuitem"], [role="option"], summary') != null;
     const keys = (event: KeyboardEvent) => {
-      if (event.key !== 'Escape') return;
       const now = ui$.current;
+
+      if (event.key === ' ' && !typing(event.target) && !event.defaultPrevented) {
+        spaceHeld.current = true;
+        if (!control(event.target)) event.preventDefault();
+      }
+      if (
+        (event.key === 'a' || event.key === 'A') &&
+        (event.metaKey || event.ctrlKey) &&
+        !typing(event.target) &&
+        now.view === 'plan' &&
+        now.plan.room != null &&
+        !now.readOnly &&
+        now.asking == null
+      ) {
+        event.preventDefault();
+        choose(now.plan.items.map((item) => item.id));
+        set((ui_) => ({ ...ui_, tab: 'arrange', kindMenu: false }));
+        return;
+      }
+      if (event.key !== 'Escape') return;
 
       if (now.placing != null) stopPlacing();
       else if (now.menu) set((ui_) => ({ ...ui_, menu: false }));
+      else if (now.kindMenu) set((ui_) => ({ ...ui_, kindMenu: false }));
       else if (now.pop != null) set((ui_) => ({ ...ui_, pop: null }));
       else if (now.picked != null && now.asking == null) pick(null);
+      else if (event.defaultPrevented || now.asking != null) return;
+      else if (now.adding) set((ui_) => ({ ...ui_, adding: false }));
+      else if (now.chosen.length > 1)
+        set((ui_) => ({ ...ui_, chosen: [], chair: null, notice: null, note: null }));
+    };
+    const lift = (event: KeyboardEvent) => {
+      if (event.key !== ' ') return;
+      if (spacePanned.current || (spaceHeld.current && !control(event.target)))
+        event.preventDefault();
+      spaceHeld.current = false;
+      spacePanned.current = false;
     };
 
     window.addEventListener('keydown', keys);
-    return () => window.removeEventListener('keydown', keys);
+    window.addEventListener('keyup', lift);
+    return () => {
+      window.removeEventListener('keydown', keys);
+      window.removeEventListener('keyup', lift);
+    };
   });
 
   function zoomTo(next: number, anchor: Point = [size.w / 2, size.h / 2]): void {
@@ -1457,7 +1634,13 @@ function Seating({
       ? { ...newItem(ui.placing.kind, items, placingAt), id: 'placing' }
       : null;
   const keysShown =
-    keyboard && focusId != null && ui.chosen.length > 0 && !ui.readOnly && ui.view === 'plan';
+    keyboard &&
+    focusId != null &&
+    ui.chosen.length > 0 &&
+    !ui.readOnly &&
+    !ui.adding &&
+    ui.view === 'plan';
+  const outlines = gridOutlines(ui);
   const showSave = room != null || ui.panel?.kind !== 'start';
 
   const crumb = (
@@ -1562,8 +1745,16 @@ function Seating({
               onClose={() => set((now) => ({ ...now, print: { ...now.print, open: false } }))}
             />
           )}
-          {ui.view === 'plan' && room != null && ui.bar != null && (
+          {ui.view === 'plan' && room != null && ui.bar?.at === 'floor' && (
             <MessageBar onPlace={placeAtCentre} onStop={stopPlacing} />
+          )}
+          {ui.view === 'plan' && room != null && (
+            <div className="st-float st-under-views">
+              {!ui.readOnly && ui.placing == null && ui.picked == null && <ChooseBar />}
+              {ui.bar != null && ui.bar.at !== 'floor' && (
+                <MessageBar inline onPlace={placeAtCentre} onStop={stopPlacing} />
+              )}
+            </div>
           )}
           {ui.view === 'plan' ? (
             room == null ? (
@@ -1584,6 +1775,8 @@ function Seating({
                 shrinkTo={ui.shrink?.width ?? null}
                 tip={ui.tip}
                 ghostAt={placingGhost}
+                box={ui.box}
+                outlines={outlines}
                 onFloor={onFloor}
                 hands={{
                   onItemDown,
@@ -1619,6 +1812,7 @@ function Seating({
           {ui.view === 'plan' && room != null && (
             <>
               {keysShown && <KeysStrip />}
+              {ui.adding && !ui.readOnly && <RulesStrip />}
               {ui.placing != null && (
                 <div className="st-float st-another">
                   <label>
@@ -1710,6 +1904,15 @@ function Seating({
       </div>
     </SeatingContext>
   );
+}
+
+function gridOutlines(ui: Ui): Outline[] {
+  if (ui.fold !== 'grid' || ui.chosen.length < 2 || ui.readOnly) return [];
+  const columns = readColumns(ui.grid.columns);
+  const gap = readGap(ui.grid.gap, ui.units);
+
+  if (columns == null || gap == null) return [];
+  return outlinesOf(ui.plan, gridOf(chosenItems(ui), columns, gap).moved);
 }
 
 function ViewSwitch() {
@@ -1897,7 +2100,9 @@ function MessageBar({
           <button
             type="button"
             className="desk-text"
-            onClick={() =>
+            onClick={() => {
+              const undoing = ui.undo != null;
+
               set((now) =>
                 now.undo == null
                   ? { ...now, bar: null }
@@ -1909,9 +2114,12 @@ function MessageBar({
                       bar: null,
                       hover: null,
                       save: 'saving',
+                      spoken: '',
                     },
-              )
-            }
+              );
+              if (undoing)
+                window.setTimeout(() => set((now) => ({ ...now, spoken: SW.undone })), 60);
+            }}
           >
             {SW.undo}
           </button>
@@ -2241,6 +2449,53 @@ function Asking() {
     );
   }
   const doomed = ui.plan.items.filter((item) => asking.ids.includes(item.id));
+  const freed: Party[] = doomed.flatMap((item) =>
+    item.chairs
+      .filter((chair) => chair.state === 'taken' && chair.who != null)
+      .map((chair) => ({
+        id: `back-${chair.who}`,
+        name: chair.who!,
+        companions: [],
+        group: null,
+        reply: 'coming' as const,
+      })),
+  );
+
+  if (doomed.length > 1) {
+    const seated = seatedOf(doomed);
+    const tables = doomed.every(isTable);
+    const things = thingsOf(doomed);
+    const words =
+      seated === 0 ? say(SW.deletedEmpty, { things }) : many('deletedMany', seated, { things });
+
+    return (
+      <Ask
+        title={many(tables ? 'deleteTablesAsk' : 'deleteItemsAsk', doomed.length)}
+        line={seated === 0 ? SW.nobodyInThem : many('movedToTray', seated)}
+        keep={SW.keepThem}
+        go={many(tables ? 'deleteTablesGo' : 'deleteItemsGo', doomed.length)}
+        red={false}
+        onKeep={keep}
+        onGo={() =>
+          set((now) => ({
+            ...now,
+            plan: {
+              ...now.plan,
+              items: now.plan.items.filter((item) => !asking.ids.includes(item.id)),
+            },
+            tray: [...now.tray, ...freed],
+            undo: { plan: now.plan, tray: now.tray },
+            bar: { kind: 'undo', words, does: 'undo' },
+            asking: null,
+            chosen: [],
+            chair: null,
+            notice: null,
+            save: 'saving',
+          }))
+        }
+      />
+    );
+  }
   const n = doomed.reduce(
     (sum, item) => sum + item.chairs.filter((chair) => chair.state === 'taken').length,
     0,
@@ -2262,25 +2517,13 @@ function Asking() {
         );
       }}
       onGo={() => {
-        const back: Party[] = doomed.flatMap((item) =>
-          item.chairs
-            .filter((chair) => chair.state === 'taken' && chair.who != null)
-            .map((chair) => ({
-              id: `back-${chair.who}`,
-              name: chair.who!,
-              companions: [],
-              group: null,
-              reply: 'coming' as const,
-            })),
-        );
-
         commit(
           null,
           (plan) => ({
             ...plan,
             items: plan.items.filter((item) => !asking.ids.includes(item.id)),
           }),
-          { asking: null, chosen: [], chair: null, notice: null, tray: [...ui.tray, ...back] },
+          { asking: null, chosen: [], chair: null, notice: null, tray: [...ui.tray, ...freed] },
         );
       }}
     />

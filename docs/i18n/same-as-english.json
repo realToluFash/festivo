@@ -31,7 +31,9 @@
     "web:schedule.minutes_other",
     "mobile:runView.minutes_one",
     "mobile:runView.minutes_other",
-    "web:seating.keyShiftUs"
+    "web:seating.keyShiftUs",
+    "web:seating.keyName.esc",
+    "web:seating.keyName.ctrl"
   ],
   "fr": [
     "web:nav.menu",
@@ -137,7 +139,8 @@
     "mobile:runView.minutes_one",
     "mobile:runView.minutes_other",
     "web:schedule.date",
-    "web:guest.programme"
+    "web:guest.programme",
+    "web:seating.keyName.ctrl"
   ],
   "pt": [
     "web:seating.shapeCocktailShort",
@@ -171,6 +174,10 @@
     "web:schedule.item",
     "mobile:runView.item",
     "web:seating.keyShiftUs",
-    "web:seating.keyMove"
+    "web:seating.keyMove",
+    "web:seating.keyName.shift",
+    "web:seating.keyName.delete",
+    "web:seating.keyName.esc",
+    "web:seating.keyName.ctrl"
   ]
 }

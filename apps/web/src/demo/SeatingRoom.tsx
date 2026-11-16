@@ -24,6 +24,7 @@ import {
   turn,
   usable,
 } from './seating.ts';
+import type { Outline, Rect } from './selection.ts';
 
 export type Handle = 'nw' | 'n' | 'ne' | 'e' | 'se' | 's' | 'sw' | 'w';
 
@@ -729,6 +730,8 @@ export function RoomDrawing({
   shrinkTo = null,
   tip = null,
   ghostAt = null,
+  box = null,
+  outlines = [],
   onFloor,
 }: {
   width: number;
@@ -746,6 +749,8 @@ export function RoomDrawing({
   shrinkTo?: number | null;
   tip?: { at: Point; words: string } | null;
   ghostAt?: Item | null;
+  box?: Rect | null;
+  outlines?: readonly Outline[];
   onFloor?: (event: PointerEvent<SVGSVGElement>) => void;
 }) {
   const room = plan.room;
@@ -867,6 +872,28 @@ export function RoomDrawing({
             tabbable={false}
           />
         </g>
+      )}
+      {outlines.map((one, index) => (
+        <rect
+          key={`outline-${index}`}
+          className={one.amber ? 'st-outline is-amber' : 'st-outline'}
+          x={f(ox + one.x0 * s)}
+          y={f(oy + one.y0 * s)}
+          width={f((one.x1 - one.x0) * s)}
+          height={f((one.y1 - one.y0) * s)}
+          rx="6"
+          aria-hidden="true"
+        />
+      ))}
+      {box != null && (
+        <rect
+          className="st-box-drawn"
+          x={f(ox + box.x0 * s)}
+          y={f(oy + box.y0 * s)}
+          width={f((box.x1 - box.x0) * s)}
+          height={f((box.y1 - box.y0) * s)}
+          aria-hidden="true"
+        />
       )}
       {tip != null && (
         <Tip x={ox + tip.at[0] * s + 26} y={oy + tip.at[1] * s + 30} words={tip.words} />
