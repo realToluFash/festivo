@@ -166,7 +166,10 @@ export function VariantInsets({
   return (
     <div className="vr-box">
       {where === 'event' && <p className="mn-quiet vr-each">{t('dishVariants.eachOwn')}</p>}
-      <ul className="vr-insets" aria-label={t('dishVariants.ways', { dish, n: variants.length })}>
+      <ul
+        className="vr-insets"
+        aria-label={t('dishVariants.ways', { dish, count: variants.length })}
+      >
         {variants.map((variant) => {
           const here = asking?.variantId === variant.id ? asking : null;
           const staying = variants.find((one) => one.id !== variant.id) ?? null;

@@ -478,7 +478,9 @@ function DishRow({
     <li className={lit ? 'mn-dish mc-dish is-lit' : 'mn-dish mc-dish'}>
       <div className="mn-dish-top">
         <div className="mn-dish-words">
-          <h3>{ways ? t('dishVariants.ways', { dish: name, n: dish.variants.length }) : name}</h3>
+          <h3>
+            {ways ? t('dishVariants.ways', { dish: name, count: dish.variants.length }) : name}
+          </h3>
           {dish.description != null && <p className="mn-quiet">{dish.description}</p>}
           {!ways && <ContainsMark dish={dish} />}
           {!ways && <Tags dish={dish} />}

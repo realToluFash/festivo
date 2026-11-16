@@ -828,7 +828,12 @@ function Courses({
       const [first, second] = details;
       if (open.mode === 'addFirst' && first != null && second != null)
         tellDone(
-          t('dishVariants.addedTwo', { dish: dishName, first: first.name, second: second.name }),
+          t('dishVariants.addedTwo', {
+            count: 2,
+            dish: dishName,
+            first: first.name,
+            second: second.name,
+          }),
         );
       else if (open.mode === 'add' && first != null)
         tellDone(t('dishVariants.added', { variant: first.name, dish: dishName }));
@@ -918,7 +923,10 @@ function Courses({
               failed:
                 error instanceof ApiError && error.status === 403
                   ? t('eventMenu.forbidden')
-                  : t('dishVariants.failedChange', { dish: dish.name, n: dish.variants.length }),
+                  : t('dishVariants.failedChange', {
+                      dish: dish.name,
+                      count: dish.variants.length,
+                    }),
             }
           : was,
       );

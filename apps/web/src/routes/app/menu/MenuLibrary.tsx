@@ -433,7 +433,12 @@ function Library({
       setPanel(null);
       if (panel.mode === 'addFirst' && first != null && second != null)
         say(
-          t('dishVariants.addedTwo', { dish: saved.name, first: first.name, second: second.name }),
+          t('dishVariants.addedTwo', {
+            count: 2,
+            dish: saved.name,
+            first: first.name,
+            second: second.name,
+          }),
         );
       else if (panel.mode === 'add' && first != null)
         say(t('dishVariants.added', { variant: first.name, dish: saved.name }));
@@ -486,7 +491,10 @@ function Library({
         was?.variantId === variant.id && was.kind !== 'refused'
           ? {
               ...was,
-              failed: t('dishVariants.failedChange', { dish: dish.name, n: dish.variants.length }),
+              failed: t('dishVariants.failedChange', {
+                dish: dish.name,
+                count: dish.variants.length,
+              }),
             }
           : was,
       );
@@ -1030,7 +1038,9 @@ function DishRow({
       <div className="lib-row-main">
         <div className="lib-cols">
           <div className="lib-col-name">
-            <h3>{ways ? t('dishVariants.ways', { dish: name, n: dish.variants.length }) : name}</h3>
+            <h3>
+              {ways ? t('dishVariants.ways', { dish: name, count: dish.variants.length }) : name}
+            </h3>
             {dish.description != null && <p className="mn-quiet">{dish.description}</p>}
             {dish.usedByEvent && <p className="lib-used">{t('menuLibrary.usedBy')}</p>}
           </div>
