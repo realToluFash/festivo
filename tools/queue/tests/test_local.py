@@ -443,9 +443,28 @@ class WakeDocker(unittest.TestCase):
         self.assertEqual(self.started, [DAY, DAY + local.WAKE_SECONDS])
         self.assertIn("started Docker Desktop", self.said[0])
 
+    def test_a_linux_machine_whose_docker_desktop_is_down_starts_it_too(self):
+        self.assertTrue(self.wake(system="linux"))
+        self.assertIn("started Docker Desktop", self.said[0])
+
+    def test_each_platform_probes_its_own_socket_and_starts_docker_its_own_way(self):
+        for system, sock, command in (
+                ("darwin", "~/.docker/run/docker.sock", ["open", "-a", "Docker"]),
+                ("linux", "~/.docker/desktop/docker.sock",
+                 ["systemctl", "--user", "start", "docker-desktop"])):
+            with self.subTest(system), \
+                    mock.patch("soirely_queue.local.docker_answers",
+                               return_value=False) as answers, \
+                    mock.patch("soirely_queue.local.open_docker") as start:
+                db = store.connect(":memory:")
+                self.assertTrue(local.wake_docker(db, DAY, self.said.append, system=system,
+                                                  app=mock.Mock(exists=lambda: True)))
+                answers.assert_called_once_with(sock)
+                start.assert_called_once_with(command)
+
     def test_nothing_is_started_when_docker_answers_or_cannot_be_started_here(self):
         self.assertFalse(self.wake(answers=True))
-        self.assertFalse(self.wake(system="linux"))
+        self.assertFalse(self.wake(system="win32"))
         self.assertFalse(self.wake(installed=False))
         self.assertEqual(self.started, [])
 
