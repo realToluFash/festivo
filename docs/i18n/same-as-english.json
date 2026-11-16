@@ -170,6 +170,7 @@
     "web:schedule.items_one",
     "web:schedule.item",
     "mobile:runView.item",
-    "web:seating.keyShiftUs"
+    "web:seating.keyShiftUs",
+    "web:seating.keyMove"
   ]
 }
