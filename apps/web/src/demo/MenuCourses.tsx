@@ -2,6 +2,7 @@ import { useEffect, useRef, useState } from 'react';
 import { Link } from 'react-router';
 
 import { Glyph } from '../components/Glyph.tsx';
+import { NotFound } from '../routes/public/NotFound.tsx';
 import { Switch } from '../components/GeneralParts.tsx';
 import { HintButton } from '../components/HintButton.tsx';
 import type { Tell } from '../components/SettingsParts.tsx';
@@ -100,6 +101,7 @@ export function CoursesAt({
               tell={tell}
               navOpen={navOpen}
               onNav={() => setNavOpen((now) => !now)}
+              withheld={first.system === 'noAccess'}
             />
             <Body first={first} lang={lang} budget={budget} tell={tell} />
           </div>
@@ -114,11 +116,13 @@ function Crumbs({
   tell,
   navOpen,
   onNav,
+  withheld,
 }: {
   event: SampleEvent;
   tell: Tell;
   navOpen: boolean;
   onNav: () => void;
+  withheld: boolean;
 }) {
   return (
     <div className="ev-crumb-row">
@@ -137,16 +141,20 @@ function Crumbs({
           <li className="ev-crumb-part">
             <Link to="/demo/events">{CW.events}</Link>
           </li>
-          <li className="ev-crumb-part">
-            <Glyph name="chevron" size={15} weight={2.4} className="desk-chevron" />
-            <Link className="ev-crumb-name" to={`/demo/events/${event.id}`}>
-              {event.name}
-            </Link>
-          </li>
-          <li className="ev-crumb-part" aria-current="page">
-            <Glyph name="chevron" size={15} weight={2.4} className="desk-chevron" />
-            <span className="ev-crumb-name">{CW.title}</span>
-          </li>
+          {!withheld && (
+            <>
+              <li className="ev-crumb-part">
+                <Glyph name="chevron" size={15} weight={2.4} className="desk-chevron" />
+                <Link className="ev-crumb-name" to={`/demo/events/${event.id}`}>
+                  {event.name}
+                </Link>
+              </li>
+              <li className="ev-crumb-part" aria-current="page">
+                <Glyph name="chevron" size={15} weight={2.4} className="desk-chevron" />
+                <span className="ev-crumb-name">{CW.title}</span>
+              </li>
+            </>
+          )}
         </ol>
       </nav>
       <DemoBell tell={tell} />
@@ -166,10 +174,7 @@ function Body({
   tell: Tell;
 }) {
   const [retried, setRetried] = useState(false);
-  if (first.system === 'noAccess')
-    return (
-      <Refusal title={CW.noAccessTitle} body={CW.noAccessBody} action={null} onAction={() => {}} />
-    );
+  if (first.system === 'noAccess') return <NotFound />;
   if (first.system === 'gone')
     return (
       <Refusal
