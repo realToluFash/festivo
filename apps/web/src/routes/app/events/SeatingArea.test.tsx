@@ -11,6 +11,7 @@ import { OWNER_PERMISSIONS, membership } from '../../../test-memberships.ts';
 import { routes } from '../../index.tsx';
 import { deletePlanWords, sectionDeleteWords } from './SeatingArea.tsx';
 import { KeysStrip, Overlaps } from './SeatingArrange.tsx';
+import { pressedHandle } from './seatingItems.ts';
 
 const IRE = membership({ id: 'org_1', name: 'Ìrè Events' });
 
@@ -1125,24 +1126,34 @@ describe('Tables at a desk (sc-4000)', () => {
     expect(screen.getByLabelText<HTMLInputElement>('Width').value).toBe('13');
   });
 
-  it('gives focus back to the room’s table when the panel it opened closes', async () => {
+  it('keeps focus on the room’s table it chooses, and one Esc lets it go', async () => {
     signedIn();
     await onSeating({
       'GET /api/events/ev_1/seating-plan': () => seating(withTables(table())),
     });
 
     const item = await screen.findByRole('button', { name: 'Table 1, round, 0 of 10 seats taken' });
-    item.focus();
     fireEvent.click(item);
-    await waitFor(() => expect(document.activeElement?.getAttribute('data-focus')).toBe('title'));
+    await screen.findByRole('heading', { level: 2, name: 'Table 1' });
+    await waitFor(() => expect(document.activeElement).toBe(item));
 
     expect(screen.queryByRole('button', { name: 'Close' })).toBeNull();
-    fireEvent.keyDown(document.activeElement as HTMLElement, { key: 'Escape' });
+    fireEvent.keyDown(item, { key: 'Escape' });
+    await waitFor(() =>
+      expect(screen.queryByRole('heading', { level: 2, name: 'Table 1' })).toBeNull(),
+    );
+    expect(document.activeElement).toBe(item);
+
+    fireEvent.keyDown(item, { key: 'Enter' });
+    await screen.findByRole('heading', { level: 2, name: 'Table 1' });
     await waitFor(() => expect(document.activeElement).toBe(item));
-    expect(screen.queryByRole('heading', { level: 2, name: 'Table 1' })).toBeNull();
+    fireEvent.keyDown(item, { key: 'Escape' });
+    await waitFor(() =>
+      expect(screen.queryByRole('heading', { level: 2, name: 'Table 1' })).toBeNull(),
+    );
 
     fireEvent.click(item);
-    await waitFor(() => expect(document.activeElement?.getAttribute('data-focus')).toBe('title'));
+    await screen.findByRole('heading', { level: 2, name: 'Table 1' });
     fireEvent.click(document.querySelector('.st-floor') as Element);
     await waitFor(() => expect(document.activeElement).toBe(item));
   });
@@ -1406,15 +1417,17 @@ describe('Rows and single seats at a desk (sc-4003)', () => {
       name: 'Row A, row of 10, 0 of 10 seats taken',
     });
     fireEvent.click(rowItem);
-    await waitFor(() => expect(document.activeElement?.getAttribute('data-focus')).toBe('title'));
-    expect(screen.queryByRole('button', { name: 'Close' })).toBeNull();
-    fireEvent.keyDown(document.activeElement as HTMLElement, { key: 'Escape' });
     await waitFor(() => expect(document.activeElement).toBe(rowItem));
-    expect(screen.queryByRole('heading', { level: 2, name: 'Row A' })).toBeNull();
+    expect(screen.queryByRole('button', { name: 'Close' })).toBeNull();
+    fireEvent.keyDown(rowItem, { key: 'Escape' });
+    await waitFor(() =>
+      expect(screen.queryByRole('heading', { level: 2, name: 'Row A' })).toBeNull(),
+    );
+    expect(document.activeElement).toBe(rowItem);
 
     const seatItem = screen.getByRole('button', { name: 'Seat 1, single seat, Empty' });
     fireEvent.click(seatItem);
-    await waitFor(() => expect(document.activeElement?.getAttribute('data-focus')).toBe('title'));
+    await waitFor(() => expect(document.activeElement).toBe(seatItem));
     expect(screen.queryByRole('button', { name: 'Close' })).toBeNull();
     fireEvent.click(document.querySelector('.st-floor') as Element);
     await waitFor(() => expect(document.activeElement).toBe(seatItem));
@@ -2657,6 +2670,113 @@ describe('Moving, turning and resizing on the Floor plan (sc-5028)', () => {
 
     expect(sized!.widthCm).toBe(sized!.lengthCm);
     expect(sized!.widthCm % 10).toBe(0);
+  });
+
+  it('moves a chosen long table pressed at its middle, though its s handle’s target covers it', async () => {
+    signedIn();
+    const long = { shape: 'rectangular', seats: 6, widthCm: 240, lengthCm: 80 };
+    const sent = await onSeating({
+      'GET /api/events/ev_1/seating-plan': () => seating(withTables(table(long))),
+      'PATCH /api/events/ev_1/seating-plan/furniture': (body) => {
+        const [item] = (body as { items: { xCm: number; yCm: number }[] }).items;
+
+        return seating(withTables(table({ ...long, xCm: item!.xCm, yCm: item!.yCm, version: 2 })));
+      },
+    });
+
+    await chooseTable('Table 1, rectangular, 0 of 6 seats taken');
+    const middle = (name: string) => {
+      const hit = document.querySelector(`.st-handle-hit[data-handle="${name}"]`)!;
+
+      return [Number(hit.getAttribute('x')) + 22, Number(hit.getAttribute('y')) + 22];
+    };
+    const [x, north] = middle('n');
+    const [, south] = middle('s');
+    const at = { pointerId: 3, button: 0, clientX: x!, clientY: (north! + south!) / 2 };
+    const room = document.querySelector('.st-room')!;
+
+    fireEvent.pointerDown(document.querySelector('.st-handle-hit[data-handle="s"]')!, at);
+    fireEvent.pointerMove(room, { ...at, clientX: at.clientX + 40, clientY: at.clientY + 30 });
+    fireEvent.pointerUp(room, { ...at, clientX: at.clientX + 40, clientY: at.clientY + 30 });
+
+    await waitFor(() => expect(furniture(sent)).toHaveLength(1));
+    const [moved] = furniture(sent)[0] as Record<string, number>[];
+
+    expect([moved!.xCm, moved!.yCm]).not.toEqual([1200, 900]);
+    expect(moved).not.toHaveProperty('widthCm');
+    expect(moved).not.toHaveProperty('lengthCm');
+  });
+
+  it('moves a table by arrow straight after a click chooses it, focus staying on the table', async () => {
+    signedIn();
+    const sent = await onSeating({
+      'GET /api/events/ev_1/seating-plan': () => seating(withTables(table())),
+      'PATCH /api/events/ev_1/seating-plan/furniture': () =>
+        seating(withTables(table({ xCm: 1210, version: 2 }))),
+    });
+
+    await chooseTable('Table 1, round, 0 of 10 seats taken');
+    await waitFor(() => expect(document.activeElement?.getAttribute('data-table')).toBe('t1'));
+    fireEvent.keyDown(document.activeElement!, { key: 'ArrowRight' });
+
+    await waitFor(() => expect(furniture(sent)).toHaveLength(1));
+    expect(furniture(sent)[0]).toEqual([
+      { kind: 'table', id: 't1', xCm: 1210, yCm: 900, version: 1 },
+    ]);
+  });
+
+  it('stops placing a table picked from Add table’s menu with one Esc', async () => {
+    signedIn();
+    await onSeating({ 'GET /api/events/ev_1/seating-plan': () => seating(plan()) });
+
+    fireEvent.click(await screen.findByRole('button', { name: 'Add table' }));
+    const menu = screen.getByRole('menu', { name: 'Add table' });
+
+    fireEvent.click(within(menu).getAllByRole('menuitem')[0]!);
+    await screen.findByRole('checkbox', { name: 'Place another' });
+    fireEvent.keyDown(document.body, { key: 'Escape' });
+
+    await waitFor(() =>
+      expect(screen.queryByRole('checkbox', { name: 'Place another' })).toBeNull(),
+    );
+  });
+
+  it('reads Saved from the moment the plan opens for a host who can arrange it, and nothing for a viewer', async () => {
+    signedIn();
+    const { unmount } = await onSeatingMounted({
+      'GET /api/events/ev_1/seating-plan': () => seating(withTables(table())),
+    });
+
+    await screen.findByRole('button', { name: 'Table 1, round, 0 of 10 seats taken' });
+    expect(document.querySelector('.st-save')?.textContent).toBe('Saved');
+    unmount();
+
+    await onSeating(
+      { 'GET /api/events/ev_1/seating-plan': () => seating(withTables(table())) },
+      OWNER_PERMISSIONS.filter((one) => one !== 'seating.manage'),
+    );
+    await screen.findByRole('button', { name: 'Table 1, round, 0 of 10 seats taken' });
+    expect(document.querySelector('.st-save')).toBeNull();
+  });
+});
+
+describe('A press where a short table’s handle targets overlap (sc-5028)', () => {
+  const long = table({ shape: 'rectangular', seats: 6, widthCm: 240, lengthCm: 80 }) as never;
+
+  it('moves the table from its middle, though the n and s targets cover it', () => {
+    expect(pressedHandle(long, 's', [0, 5])).toBeNull();
+    expect(pressedHandle(long, 'n', [-30, -8])).toBeNull();
+  });
+
+  it('gives the drawn e handle to e, and each corner to its corner', () => {
+    expect(pressedHandle(long, 'se', [120, 4])).toBe('e');
+    expect(pressedHandle(long, 'e', [118, 36])).toBe('se');
+    expect(pressedHandle(long, 'w', [-121, -38])).toBe('nw');
+    expect(pressedHandle(long, 'sw', [-119, 2])).toBe('w');
+  });
+
+  it('keeps the edge handle a press near the edge’s middle meant', () => {
+    expect(pressedHandle(long, 'n', [3, -42])).toBe('n');
   });
 });
 
