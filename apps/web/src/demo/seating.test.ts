@@ -32,6 +32,7 @@ import {
   nextName,
   overlap,
   percentOf,
+  percentWritten,
   planCounts,
   readFeet,
   readItemSize,
@@ -186,6 +187,15 @@ describe('the room to scale (sc-4007)', () => {
 
     expect(percentOf(fit.s)).toBe(57);
     expect(fit.ox).toBe(16);
+  });
+
+  it.each([
+    ['en', /^150%$/],
+    ['es', /^150\s%$/],
+    ['fr', /^150\s%$/],
+    ['pt', /^150%$/],
+  ])('writes the zoom percent the way %s does, as the product does (#2559)', (locale, shown) => {
+    expect(percentWritten(150, locale)).toMatch(shown);
   });
 
   it('slides the picture just enough to show a focused item clear of the bars, and not at all when it shows', () => {
