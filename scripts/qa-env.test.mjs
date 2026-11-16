@@ -72,6 +72,7 @@ import {
   localise,
   parseBatch,
   parseCode,
+  parseVars,
   readyReport,
   accountKind,
   REBUILD,
@@ -1969,6 +1970,17 @@ describe('the step a code is made in', () => {
 
   it('is now, when the last was long ago', () => {
     expect(codeStep(10 * STEP_MS, 3)).toEqual({ step: 10, waitMs: 0 });
+  });
+});
+
+describe('an account line', () => {
+  it('keeps an = inside a value and leaves lowercase words alone', () => {
+    expect(parseVars(['tour', 'PASSWORD=a=b', 'email=x', '--cold'])).toEqual({ PASSWORD: 'a=b' });
+  });
+
+  it('reads the same for batch and code', () => {
+    const line = ['EMAIL=a@b.test', 'TOTP_SECRET=GEZDGNBV'];
+    expect(parseBatch(['tour', 'home', ...line]).vars).toEqual(parseVars(line));
   });
 });
 
