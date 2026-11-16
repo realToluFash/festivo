@@ -298,6 +298,23 @@ export function seedOf(state: SeatingState | null): Ui {
       return { ...ui, load: 'failed', people: [] };
     case 'readOnly':
       return { ...ui, readOnly: true, people: [YOU, PRIYA] };
+    case 'readOnlyTable':
+      return {
+        ...ui,
+        readOnly: true,
+        people: [YOU, PRIYA],
+        plan: moved(plan, 't9', { rot: 15 }),
+        chosen: ['t9'],
+      };
+    case 'readOnlyTableUs':
+      return {
+        ...ui,
+        readOnly: true,
+        units: 'us',
+        people: [YOU, PRIYA],
+        plan: moved(plan, 't9', { w: undefined, l: undefined }),
+        chosen: ['t9'],
+      };
     case 'zoomOut':
       return { ...ui, camera: at(0.2, 1200, 1100) };
     case 'corner':
