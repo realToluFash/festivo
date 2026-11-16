@@ -1367,7 +1367,7 @@ function Seating({
     if (event.key === 'Enter' || event.key === ' ') {
       event.preventDefault();
       if (now.picked != null) seatAt(id);
-      else if (event.shiftKey && event.key === ' ')
+      else if (event.shiftKey || now.adding)
         set((ui_) => ({
           ...ui_,
           chosen: ui_.chosen.includes(id)
@@ -1375,6 +1375,7 @@ function Seating({
             : [...ui_.chosen, id],
           panel: null,
           chair: null,
+          notice: null,
         }));
       else choose([id]);
       return;

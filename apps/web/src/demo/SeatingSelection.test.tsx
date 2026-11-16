@@ -153,6 +153,27 @@ describe('choosing many (sc-4717)', () => {
     expect(chosen()).toBeNull();
   });
 
+  it('adds and takes out with Enter and Space as a click does (sc-4717)', SLOW, async () => {
+    await seating();
+    const toggle = screen.getByRole('button', { name: 'Add to choice' });
+
+    fireEvent.keyDown(item(/^Table 1,/u), { key: 'Enter' });
+    fireEvent.keyDown(item(/^Table 5,/u), { key: 'Enter', shiftKey: true });
+    fireEvent.keyDown(item(/^Table 6,/u), { key: ' ', shiftKey: true });
+    expect(chosen()).toBe('3 chosen');
+    fireEvent.keyDown(item(/^Table 6,/u), { key: 'Enter', shiftKey: true });
+    expect(chosen()).toBe('2 chosen');
+    fireEvent.click(toggle);
+    fireEvent.keyDown(item(/^Table 6,/u), { key: 'Enter' });
+    fireEvent.keyDown(item(/^Table 7,/u), { key: ' ' });
+    expect(chosen()).toBe('4 chosen');
+    fireEvent.keyDown(item(/^Table 1,/u), { key: 'Enter' });
+    expect(chosen()).toBe('3 chosen');
+    fireEvent.click(toggle);
+    fireEvent.keyDown(item(/^Table 5,/u), { key: 'Enter' });
+    expect(chosen()).toBeNull();
+  });
+
   it('chooses everything with Select all and Ctrl+A, and by kind', SLOW, async () => {
     await seating();
     fireEvent.click(screen.getByRole('button', { name: 'Select all' }));
