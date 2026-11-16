@@ -1,0 +1,57 @@
+# sc-39407 regression: on a tablet, upright and on its side, the Calendar's month title sits beside Previous, Today and Next on one line, in the product and the demo, at September 2026.
+appId: host.exp.Exponent
+---
+- setOrientation: PORTRAIT
+- openLink: ${METRO_URL}/--/calendar
+- extendedWaitUntil:
+    visible:
+      id: calendar.view.month
+    timeout: 30000
+- tapOn:
+    id: calendar.view.month
+- tapOn:
+    id: calendar.today
+- waitForAnimationToEnd:
+    timeout: 4000
+- repeat:
+    times: 6
+    while:
+      notVisible:
+        id: calendar.day.2026-09-15
+    commands:
+      - tapOn:
+          id: calendar.previous
+      - waitForAnimationToEnd:
+          timeout: 4000
+- takeScreenshot: up-month-sep
+- tapOn:
+    id: calendar.view.agenda
+- waitForAnimationToEnd:
+    timeout: 6000
+- takeScreenshot: up-agenda-sep
+- tapOn:
+    id: calendar.view.month
+- setOrientation: LANDSCAPE_LEFT
+- waitForAnimationToEnd:
+    timeout: 6000
+- takeScreenshot: side-month-sep
+- openLink: ${METRO_URL}/--/demo/calendar?state=populated
+- extendedWaitUntil:
+    visible:
+      id: calendar.previous
+    timeout: 30000
+- repeat:
+    times: 6
+    while:
+      notVisible:
+        id: calendar.day.2026-09-15
+    commands:
+      - tapOn:
+          id: calendar.previous
+      - waitForAnimationToEnd:
+          timeout: 4000
+- takeScreenshot: side-demo-month-sep
+- setOrientation: PORTRAIT
+- waitForAnimationToEnd:
+    timeout: 6000
+- takeScreenshot: up-demo-month-sep

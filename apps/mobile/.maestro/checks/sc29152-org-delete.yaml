@@ -1,0 +1,16 @@
+# sc-29152: the design demo's Settings in B Confetti, /organisation?state=delete. Needs ${METRO_URL}; run under EXPO_PUBLIC_SCHEME=violet.
+appId: host.exp.Exponent
+---
+- openLink: ${METRO_URL}/--/demo/settings/organisation?state=delete
+- scrollUntilVisible:
+    element:
+      id: 'demo.organisation.delete.name'
+    timeout: 30000
+- waitForAnimationToEnd:
+    timeout: 8000
+- takeScreenshot: org-delete
+- swipe:
+    start: 85%, 80%
+    end: 85%, 30%
+- waitForAnimationToEnd
+- takeScreenshot: org-delete-scrolled

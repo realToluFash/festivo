@@ -1,0 +1,25 @@
+# sc-46879: the Live list's filter open, then Not yet invited chosen, beside the demo's filterOpen.
+appId: host.exp.Exponent
+---
+- setOrientation: ${ORIENT}
+- openLink: ${METRO_URL}/--/events/${LIVE}?area=guests
+- extendedWaitUntil:
+    visible:
+      id: 'guests.card'
+    timeout: 30000
+- waitForAnimationToEnd:
+    timeout: 4000
+- tapOn:
+    id: 'guests.filter'
+- waitForAnimationToEnd:
+    timeout: 3000
+- takeScreenshot: filter-open
+- tapOn:
+    id: 'guests.filter.notYetInvited'
+- waitForAnimationToEnd:
+    timeout: 3000
+- takeScreenshot: filter-notyet
+- openLink: ${METRO_URL}/--/demo/guests?state=filterOpen
+- waitForAnimationToEnd:
+    timeout: 8000
+- takeScreenshot: demo-filterOpen

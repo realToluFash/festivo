@@ -1,0 +1,12 @@
+# sc-23301 regression: an account in no organisation sees You are not in an organisation in Home's place.
+appId: host.exp.Exponent
+---
+- setOrientation: PORTRAIT
+- openLink: ${METRO_URL}/--/
+- extendedWaitUntil:
+    visible:
+      id: 'noOrganisation'
+    timeout: 30000
+- takeScreenshot: noorg
+- assertNotVisible:
+    id: 'home.openSettings'

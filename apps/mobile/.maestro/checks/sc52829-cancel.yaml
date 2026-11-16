@@ -1,0 +1,41 @@
+# sc-52829: Cancel on Record a reply for a Not yet invited guest leaves them Not yet invited with both rows.
+appId: host.exp.Exponent
+---
+- openLink: ${METRO_URL}/--/events/${EVENT_ID}?area=guests
+- extendedWaitUntil:
+    visible:
+      id: 'guests.search'
+    timeout: 30000
+- tapOn:
+    id: 'guests.search'
+- inputText: ${G_OPEN_NAME}
+- hideKeyboard
+- extendedWaitUntil:
+    visible:
+      id: 'guests.row.${G_OPEN}'
+    timeout: 15000
+- tapOn:
+    id: 'guests.row.${G_OPEN}'
+- extendedWaitUntil:
+    visible:
+      id: 'guest.${G_OPEN}'
+    timeout: 30000
+- scrollUntilVisible:
+    element:
+      id: 'guest.recordNotYet'
+    direction: DOWN
+- tapOn:
+    id: 'guest.recordNotYet'
+- extendedWaitUntil:
+    visible:
+      id: 'guest.record.coming'
+    timeout: 10000
+- tapOn:
+    id: 'guest.record.cancel'
+- extendedWaitUntil:
+    visible:
+      id: 'guest.recordNotYet'
+    timeout: 10000
+- assertVisible:
+    id: 'guest.mark'
+- takeScreenshot: cancelled

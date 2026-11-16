@@ -1,0 +1,47 @@
+# sc-43907: New event in an organisation whose saved currency the app no longer offers, every other field filled (end on day ${TOMORROW}), scrolled to the foot so Currency and Create event both show; the run then turns TalkBack on and taps Create event.
+appId: host.exp.Exponent
+---
+- openLink: ${METRO_URL}/--/events/new
+- extendedWaitUntil:
+    visible:
+      id: 'eventForm.name'
+    timeout: 30000
+- tapOn:
+    id: 'eventForm.type'
+- runFlow:
+    file: ../scroll-tap.yaml
+    env:
+      ID: eventForm.type.wedding
+- tapOn:
+    id: 'eventForm.name'
+- inputText: 'TalkBack check'
+- hideKeyboard
+- scrollUntilVisible:
+    element:
+      id: 'eventForm.start.date'
+    direction: DOWN
+    centerElement: true
+- tapOn:
+    id: 'eventForm.start.date'
+- tapOn: 'OK'
+- tapOn:
+    id: 'eventForm.start.time'
+- tapOn: 'OK'
+- scrollUntilVisible:
+    element:
+      id: 'eventForm.end.date'
+    direction: DOWN
+    centerElement: true
+- tapOn:
+    id: 'eventForm.end.date'
+- tapOn: '${TOMORROW}'
+- tapOn: 'OK'
+- tapOn:
+    id: 'eventForm.end.time'
+- tapOn: 'OK'
+- hideKeyboard
+- scrollUntilVisible:
+    element:
+      id: 'eventForm.send'
+    direction: DOWN
+- takeScreenshot: ready
