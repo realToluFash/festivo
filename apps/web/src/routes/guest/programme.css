@@ -17,7 +17,7 @@
 :where(.guest-page) .gp-prog-days {
   display: grid;
   grid-template-columns: max-content minmax(0, 1fr);
-  gap: 12px 16px;
+  gap: 24px 16px;
   align-self: stretch;
   min-width: 0;
 }
@@ -28,10 +28,6 @@
   grid-template-columns: subgrid;
   row-gap: 4px;
   min-width: 0;
-}
-
-:where(.guest-page) .gp-prog-day + .gp-prog-day {
-  margin-top: 12px;
 }
 
 :where(.guest-page) .gp-prog-h3 {
