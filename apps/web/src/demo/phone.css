@@ -63,13 +63,31 @@
     box-shadow: none;
   }
 
+  /* The title and the bell share the first line; the page's own button starts the next. */
   .dp-fit .ev-top {
     flex-wrap: wrap;
+    row-gap: 0;
   }
 
-  .dp-fit .ev-top .desk-title {
-    flex: 1 0 100%;
+  .dp-fit .ev-top::after {
+    flex-basis: 100%;
+    order: 3;
+    content: '';
+  }
+
+  .dp-fit .ev-top > .desk-title {
+    flex: 1 1 auto;
+    order: 1;
     font-size: 30px;
+  }
+
+  .dp-fit .ev-top > .desk-bell {
+    order: 2;
+  }
+
+  .dp-fit .ev-top > :not(.desk-title, .desk-bell) {
+    order: 4;
+    margin-top: var(--spaceMd);
   }
 
   .dp-fit .ev-row {
@@ -249,5 +267,69 @@
   .dp-fit .today-bar-name {
     overflow: visible;
     overflow-wrap: break-word;
+  }
+
+  /* Calendar: the month and the steps wrap to their own line when both cannot fit; the views and Show take the next. */
+  .dp-fit .cal-tools {
+    flex-wrap: wrap;
+  }
+
+  .dp-fit .cal-month-row {
+    flex: 1 0 100%;
+    flex-wrap: wrap;
+    justify-content: space-between;
+    row-gap: var(--spaceSm);
+  }
+
+  .dp-fit .cal-choices {
+    position: relative;
+    flex: 1 0 100%;
+    flex-wrap: wrap;
+    justify-content: space-between;
+    row-gap: var(--spaceSm);
+  }
+
+  .dp-fit .cal-more.is-from-6 {
+    right: var(--spaceXxs);
+    left: auto;
+  }
+
+  /* Show wraps under the views when its choice is long, and its menu spans the row as Filter's does. */
+  .dp-fit .cal-show-at {
+    position: static;
+  }
+
+  .dp-fit .cal-menu {
+    left: 0;
+    width: auto;
+  }
+
+  /* Calendar keeps the window's height, so its weeks scroll inside the page and the month's name follows them. */
+  .dp-fit.today:has(.cal-page) {
+    height: 100dvh;
+  }
+
+  .dp-fit .desk-main:has(> .cal-page) {
+    flex: 1;
+    min-height: 0;
+    padding-bottom: 0;
+    overflow: hidden;
+  }
+
+  .dp-fit .cal-page {
+    padding-bottom: var(--spaceLg);
+  }
+
+  /* A day opened sits above the weeks, the window's width. */
+  .dp-fit .cal-body {
+    flex-direction: column;
+    gap: var(--spaceLg);
+  }
+
+  .dp-fit .cal-panel {
+    order: -1;
+    align-self: stretch;
+    width: auto;
+    max-height: 55%;
   }
 }
