@@ -1838,6 +1838,15 @@ describe('The room to scale (sc-4007)', () => {
     ).toBe('true');
   });
 
+  it('draws the room’s floor with its tables still to come while the plan loads', async () => {
+    signedIn();
+    await onSeating({ 'GET /api/events/ev_1/seating-plan': () => new Promise<Response>(() => {}) });
+
+    const loading = await screen.findByRole('status', { name: 'Loading the seating plan' });
+    expect(loading.querySelectorAll('.st-skeleton-room')).toHaveLength(1);
+    expect(loading.querySelectorAll('.st-skeleton-block')).toHaveLength(9);
+  });
+
   it('shows the small map with the view on it from 200%', async () => {
     signedIn();
     await onSeating({ 'GET /api/events/ev_1/seating-plan': () => seating(withTables(table())) });

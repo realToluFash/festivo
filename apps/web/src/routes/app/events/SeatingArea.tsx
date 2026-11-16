@@ -142,6 +142,56 @@ function useLiveSeating(eventId: string, onSeating: (seating: Seating) => void, 
   }, [eventId]);
 }
 
+const LOADING_ROOM = { w: 2400, l: 1800 } as const;
+const LOADING_TABLES = [
+  [420, 620],
+  [810, 620],
+  [1200, 620],
+  [1590, 620],
+  [1980, 620],
+  [420, 1020],
+  [810, 1020],
+  [1200, 1020],
+  [1980, 1020],
+] as const;
+
+function LoadingRoom({ label }: { label: string }) {
+  const [placeCanvas, size] = useCanvasSize();
+  const { s, ox, oy } = fitOf(size.w, size.h, LOADING_ROOM);
+
+  return (
+    <div className="st-canvas" ref={placeCanvas} role="status" aria-label={label}>
+      <svg
+        className="st-room"
+        width={size.w}
+        height={size.h}
+        viewBox={`0 0 ${size.w} ${size.h}`}
+        aria-hidden="true"
+      >
+        <rect
+          className="st-skeleton-room"
+          x={f(ox)}
+          y={f(oy)}
+          width={f(LOADING_ROOM.w * s)}
+          height={f(LOADING_ROOM.l * s)}
+          rx="4"
+        />
+        {LOADING_TABLES.map(([x, y]) => (
+          <rect
+            key={`${x}-${y}`}
+            className="st-skeleton-block"
+            x={f(ox + x * s - 25)}
+            y={f(oy + y * s - 25)}
+            width="50"
+            height="50"
+            rx="25"
+          />
+        ))}
+      </svg>
+    </div>
+  );
+}
+
 function useCanvasSize(): [(node: HTMLDivElement | null) => void, { w: number; h: number }] {
   const [size, setSize] = useState({ w: 718, h: 719 });
   const observer = useRef<ResizeObserver | null>(null);
@@ -211,7 +261,7 @@ export function SeatingArea({ event }: { event: OrganisationEvent }) {
       <div className="desk st">
         {crumb}
         <div className="st-main">
-          <div className="st-canvas" role="status" aria-label={t('seating.loading')} />
+          <LoadingRoom label={t('seating.loading')} />
           <div className="st-panel is-skeleton" aria-hidden="true">
             {[44, 24, 18, 44, 24, 52, 52, 52, 52].map((h, index) => (
               <span key={index} className={`st-sunk is-${h} n${index}`} />
