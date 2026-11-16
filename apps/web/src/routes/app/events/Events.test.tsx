@@ -9,6 +9,7 @@ import { __setSessionState, type Session, switchOrganisation } from '../../../se
 import { OWNER_PERMISSIONS, membership } from '../../../test-memberships.ts';
 import { breaksAnywhere } from '../../../test-wrapping.ts';
 import { routes } from '../../index.tsx';
+import { endingNow } from './openInPlace.ts';
 import { cssRule, stylesheet } from '../../../test-styles.ts';
 
 const EVENTS_DESK_CSS = stylesheet(import.meta.dirname, '../../../components/eventsDesk.css');
@@ -3202,6 +3203,23 @@ describe('The phase, End now and Call off (sc-3585)', () => {
     expect(screen.queryByRole('button', { name: 'Call off…' })).toBeNull();
     expect(screen.queryByRole('button', { name: 'End now…' })).toBeNull();
     expect(sent.filter(({ line }) => line === 'POST /api/events/ev_1/end')).toHaveLength(1);
+  });
+
+  it('opens End now’s confirmation at once when the night’s end card leads here (sc-3895)', async () => {
+    signedIn();
+    answering({
+      'GET /api/events/ev_1': () => json({ event: live({ ...HAPPENING, phase: 'happening_now' }) }),
+    });
+    const { to, state } = endingNow('ev_1');
+    render(
+      <RouterProvider
+        router={createMemoryRouter(routes, { initialEntries: [{ pathname: to, state }] })}
+      />,
+    );
+
+    expect(
+      await screen.findByRole('alertdialog', { name: 'End Adaeze and Tunde now?' }),
+    ).toBeDefined();
   });
 
   it('ends it early once it is happening', async () => {

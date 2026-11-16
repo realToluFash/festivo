@@ -113,5 +113,8 @@
     "schedule_item_limit": "Este programa tem {max} itens, o máximo que um evento pode ter. Elimine um para adicionar outro.",
     "item_started": "Este item já começou.",
     "item_not_started": "Este item ainda não começou, por isso não pode ser concluído.",
-    "item_finished": "Este item já foi concluído."
+    "item_finished": "Este item já foi concluído.",
+    "track_busy": "Já está outro item em curso neste espaço. Conclua-o primeiro.",
+    "idempotency_key_required": "Envie o cabeçalho Idempotency-Key em cada ação.",
+    "idempotency_key_reused": "Esta Idempotency-Key já foi enviada com outra ação."
 }

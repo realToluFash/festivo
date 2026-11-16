@@ -18,11 +18,12 @@
     font-size: 30px;
   }
 
-  .fits-phone .ev-top > .desk-bell {
+  /* The product's bell sits in its panel's `.notifications`; the demo's is the bare button. */
+  .fits-phone .ev-top > :is(.desk-bell, .notifications) {
     order: 2;
   }
 
-  .fits-phone .ev-top > :not(.desk-title, .desk-bell) {
+  .fits-phone .ev-top > :not(.desk-title, .desk-bell, .notifications) {
     order: 4;
     margin-top: var(--spaceMd);
   }
@@ -65,9 +66,10 @@
     flex-wrap: wrap;
   }
 
+  /* The whole row is Filter's room, so its picks end in "+N more" inside the window. */
   .fits-phone .ev-filter-at {
     position: static;
-    flex: none;
+    flex: 1 0 100%;
   }
 
   .fits-phone .ev-menu {

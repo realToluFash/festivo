@@ -7,6 +7,9 @@ export type UpToEvent = 'back' | 'open';
 /** The route param through which Events says which event it shows, for the screens over it to read. */
 export const SHOWN_EVENT = 'shown';
 
+/** The route param through which the night's end card asks the event's page to open End now's confirmation (sc-3895). */
+export const ASKS_END = 'ask';
+
 /** All dates' ‹ Event (sc-18776) and a save on Edit details (sc-21336) end on the event's page, not wherever history leads: back only when the screen directly behind shows this event; otherwise the event is opened in their place. */
 export function upToEvent(
   routes: readonly { params?: unknown }[],
@@ -79,4 +82,20 @@ export function goToArea(
   const { routes, index } = navigation.getState() ?? { routes: [], index: 0 };
 
   router.dismissTo({ pathname: '/events/[id]', params: areaParams(routes, index, eventId, area) });
+}
+
+/** The night's End now: the event's Overview with End now's own confirmation already open (sc-3895). */
+export function goToEndNow(
+  navigation: {
+    getState: () => { routes: readonly { params?: unknown }[]; index: number } | undefined;
+  },
+  router: { dismissTo: (href: Href) => void },
+  eventId: string,
+): void {
+  const { routes, index } = navigation.getState() ?? { routes: [], index: 0 };
+
+  router.dismissTo({
+    pathname: '/events/[id]',
+    params: { ...areaParams(routes, index, eventId, 'overview'), [ASKS_END]: 'endNow' },
+  });
 }

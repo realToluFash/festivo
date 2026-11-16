@@ -303,5 +303,9 @@
     "run_of_show.item_started": "Este elemento ya ha empezado. No se ha cambiado nada.",
     "run_of_show.item_not_started": "Empiece este elemento antes de marcarlo como terminado.",
     "run_of_show.item_finished": "Este elemento ya está terminado. No se ha cambiado nada.",
+    "run_of_show.track_busy": "Termine primero el elemento en curso.",
+    "run_of_show.idempotency_key_required": "Envíe la cabecera Idempotency-Key con cada pulsación.",
+    "run_of_show.idempotency_key_reused": "Esta Idempotency-Key ya se usó con otra pulsación. No se ha cambiado nada.",
+    "run_of_show.pressed_at_invalid": "Envíe pressedAt como fecha y hora con su desfase horario, por ejemplo 2027-03-06T21:50:00+01:00.",
     "timeline.run_of_show_begins": "Empieza el programa"
 }

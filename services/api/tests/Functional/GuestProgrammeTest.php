@@ -90,7 +90,7 @@ final class GuestProgrammeTest extends ApiTestCase
         $this->sample();
 
         self::mockTime(new DateTimeImmutable($startedAt));
-        $this->as($this->owner, 'POST', $this->path($this->items['Ceremony']) . '/start');
+        $this->started('Ceremony');
         self::assertSame(200, $this->statusCode(), Json\encode($this->last()));
         self::mockTime(new DateTimeImmutable('2027-03-06T13:30:00Z'));
 
@@ -103,7 +103,7 @@ final class GuestProgrammeTest extends ApiTestCase
         $this->sample();
         $token = $this->token($this->guest());
         self::mockTime(new DateTimeImmutable('2027-03-06T13:12:40Z'));
-        $this->as($this->owner, 'POST', $this->path($this->items['Ceremony']) . '/start');
+        $this->started('Ceremony');
         $this->as($this->owner, 'POST', '/api/events/' . $this->eventId . '/pause');
         self::assertSame(200, $this->statusCode(), Json\encode($this->last()));
 
@@ -120,7 +120,7 @@ final class GuestProgrammeTest extends ApiTestCase
         $this->sample();
         $token = $this->token($this->guest());
         self::mockTime(new DateTimeImmutable('2027-03-06T13:12:00Z'));
-        $this->as($this->owner, 'POST', $this->path($this->items['Ceremony']) . '/start');
+        $this->started('Ceremony');
 
         self::mockTime(new DateTimeImmutable('2027-03-07T03:00:00Z'));
         $programme = $this->programme($token);
@@ -222,19 +222,25 @@ final class GuestProgrammeTest extends ApiTestCase
         return $user;
     }
 
+    /** Start now, pressed on the night screen at the test's clock (sc-3895). */
+    private function started(string $title): void
+    {
+        $this->as($this->owner, 'POST', $this->path($this->items[$title]) . '/presses', ['kind' => 'start'], 'start-' . $title);
+    }
+
     /**
      * @param array<string, mixed>|null $body
      *
      * @return array<string, mixed>
      */
-    private function as(User $user, string $method, string $path, ?array $body = null): array
+    private function as(User $user, string $method, string $path, ?array $body = null, ?string $key = null): array
     {
         $who = self::em()->find(User::class, $user->getId()) ?? self::fail('no user');
         $this->client->request($method, $path, server: [
             'CONTENT_TYPE' => 'application/json',
             'HTTP_AUTHORIZATION' => 'Bearer ' . self::service(JWTTokenManagerInterface::class)->create($who),
             'HTTP_ACCEPT_LANGUAGE' => 'en',
-        ], content: null === $body ? null : Json\encode($body));
+        ] + (null === $key ? [] : ['HTTP_IDEMPOTENCY_KEY' => $key]), content: null === $body ? null : Json\encode($body));
 
         return $this->last();
     }

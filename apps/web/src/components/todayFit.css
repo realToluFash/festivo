@@ -238,6 +238,17 @@
 
   .fits-phone .today-weekday {
     letter-spacing: 0.02em;
+    white-space: nowrap;
+  }
+
+  .fits-phone .today-date {
+    width: auto;
+    height: 32px;
+    font-size: 17px;
+  }
+
+  .fits-phone .today-day.is-today .today-date {
+    width: 32px;
   }
 
   .fits-phone .today-agenda {

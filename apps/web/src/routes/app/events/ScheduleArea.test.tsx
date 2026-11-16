@@ -86,6 +86,7 @@ function item(
     startsAt,
     startedAt: null,
     endedAt: null,
+    skipped: false,
     day,
     lengthMinutes: null,
     place: null,

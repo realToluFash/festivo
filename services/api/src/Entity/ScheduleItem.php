@@ -77,6 +77,10 @@ class ScheduleItem
     #[ORM\Column(type: Types::DATETIME_IMMUTABLE, nullable: true)]
     private ?DateTimeImmutable $endedAt = null;
 
+    /** Marked as not happening; it takes no time and has no start or end (sc-3895). */
+    #[ORM\Column(type: Types::BOOLEAN, options: ['default' => false])]
+    private bool $skipped = false;
+
     /** Who last changed it, named in a colleague's refused save. */
     #[ORM\ManyToOne(targetEntity: User::class)]
     #[ORM\JoinColumn(nullable: true, onDelete: 'SET NULL')]
@@ -161,16 +165,30 @@ class ScheduleItem
         return $this->endedAt;
     }
 
-    public function start(DateTimeImmutable $at, User $by): void
+    /** Written only by replaying the item's presses (sc-3895). */
+    public function setStartedAt(?DateTimeImmutable $startedAt): void
     {
-        $this->startedAt = $at;
-        $this->changedBy = $by;
+        $this->startedAt = $startedAt;
     }
 
-    public function finish(DateTimeImmutable $at, User $by): void
+    public function setEndedAt(?DateTimeImmutable $endedAt): void
     {
-        $this->endedAt = $at;
-        $this->changedBy = $by;
+        $this->endedAt = $endedAt;
+    }
+
+    public function isSkipped(): bool
+    {
+        return $this->skipped;
+    }
+
+    public function setSkipped(bool $skipped): void
+    {
+        $this->skipped = $skipped;
+    }
+
+    public function setChangedBy(?User $changedBy): void
+    {
+        $this->changedBy = $changedBy;
     }
 
     public function getChangedBy(): ?User
