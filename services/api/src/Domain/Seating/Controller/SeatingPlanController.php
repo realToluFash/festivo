@@ -363,6 +363,7 @@ final readonly class SeatingPlanController
     {
         $event = $this->event($eventId);
         $plan = $this->plan($event);
+        /** @var list<string> $copies */
         $copies = $this->seatingPlanEditor->duplicateFurniture($event, $plan, $this->user(), $this->chosenItems($request));
 
         return $this->seating($event, $plan, Response::HTTP_CREATED, ['chosen' => $copies]);
@@ -405,6 +406,7 @@ final readonly class SeatingPlanController
             ])),
         ]));
         $plan = $this->plan($event);
+        /** @var list<string> $restored */
         $restored = $this->seatingPlanEditor->restoreFurniture($event, $plan, $this->user(), $body['items']);
 
         return $this->seating($event, $plan, Response::HTTP_CREATED, ['chosen' => $restored]);
