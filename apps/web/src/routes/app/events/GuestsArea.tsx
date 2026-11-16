@@ -71,6 +71,7 @@ import { Link, useBlocker, useNavigate, useSearchParams } from 'react-router';
 
 import { api } from '../../../api.ts';
 import { GlassMark } from '../../../components/EventCard.tsx';
+import { useDeskTop } from '../../../deskTop.ts';
 import { Glyph } from '../../../components/Glyph.tsx';
 import { SearchField } from '../../../components/SearchField.tsx';
 import {
@@ -194,7 +195,13 @@ function useFocusKeys(root: RefObject<HTMLElement | null>) {
 }
 
 /** A deleted event's Guests answers as an event that never existed does, its heading focused (sc-1468). */
-export function GuestsGone({ heading }: { heading: RefObject<HTMLHeadingElement | null> }) {
+export function GuestsGone({
+  heading,
+  children,
+}: {
+  heading: RefObject<HTMLHeadingElement | null>;
+  children: ReactNode;
+}) {
   const { t } = useTranslation();
 
   usePageTitle(pageTitle(t, [t('eventPage.notFound')]));
@@ -203,6 +210,7 @@ export function GuestsGone({ heading }: { heading: RefObject<HTMLHeadingElement 
   return (
     <div className="desk ev gs">
       <div className="ev-wide gs-page">
+        {children}
         <header className="gs-top">
           <h1 ref={heading} className="gs-title" tabIndex={-1}>
             {t('eventPage.notFound')}
@@ -229,6 +237,7 @@ export function GuestsArea({
   onChange: (event: OrganisationEvent, tag: string) => void;
 }) {
   const { t } = useTranslation();
+  const desk = useDeskTop();
   const { layers, covered, setHost } = useDeskLayers();
   const now = useServerNow();
   const phase = shownPhase(event, useLoadedAt(event), now);
@@ -931,6 +940,7 @@ export function GuestsArea({
                 </li>
               </ol>
             </nav>
+            {desk.bell}
           </div>
           <header className="gs-top">
             <h1 ref={heading} className="gs-title" tabIndex={-1} data-focus="title">

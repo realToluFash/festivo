@@ -10,7 +10,6 @@ import { type ReactNode, type RefObject, useEffect, useRef, useState } from 'rea
 import { useTranslation } from 'react-i18next';
 import { Navigate, useParams } from 'react-router';
 
-import { BackControl } from '../../../components/BackControl.tsx';
 import { api } from '../../../api.ts';
 import { Refreshing } from '../../../components/OfflineBand.tsx';
 import { keepsWhatLoaded, useOffline } from '../../../offline.ts';
@@ -83,7 +82,7 @@ export function EventStaff() {
 export function EventAreaPage() {
   const { area = '' } = useParams();
 
-  return isPlaceholderEventArea(area) ? <ForEvent page={area} /> : <NotFound />;
+  return isPlaceholderEventArea(area) ? <ForEvent page={area} /> : <Withheld />;
 }
 
 function ForEvent({ page }: { page: Page }) {
@@ -100,6 +99,15 @@ function ForEvent({ page }: { page: Page }) {
       eventId={eventId}
       page={page}
     />
+  );
+}
+
+function Withheld() {
+  return (
+    <div className="event-page">
+      <EventCrumb name={null} />
+      <NotFound />
+    </div>
   );
 }
 
@@ -160,27 +168,32 @@ function EventOf({
   useShowEvent(eventId, load.kind === 'loaded' ? load.event : undefined);
   useGoneEvent(eventId, page === 'guests' && load.kind === 'notFound');
 
-  if (page === 'guests' && load.kind === 'notFound') return <GuestsGone heading={heading} />;
+  if (page === 'guests' && load.kind === 'notFound')
+    return (
+      <GuestsGone heading={heading}>
+        <EventCrumb name={null} />
+      </GuestsGone>
+    );
 
   if (page === 'seating' && load.kind === 'loaded')
     return canOn(load.event, PAGE_NEEDS.seating) ? (
       <SeatingArea event={load.event} />
     ) : (
-      <NotFound />
+      <Withheld />
     );
 
   if (page === 'schedule' && load.kind === 'loaded')
     return canOn(load.event, PAGE_NEEDS.schedule) ? (
       <ScheduleArea event={load.event} />
     ) : (
-      <NotFound />
+      <Withheld />
     );
 
   if (page === 'run' && load.kind === 'loaded')
-    return canOn(load.event, PAGE_NEEDS.run) ? <RunArea event={load.event} /> : <NotFound />;
+    return canOn(load.event, PAGE_NEEDS.run) ? <RunArea event={load.event} /> : <Withheld />;
 
   if (page === 'staff' && load.kind === 'loaded')
-    return canOn(load.event, PAGE_NEEDS.staff) ? <RosterArea event={load.event} /> : <NotFound />;
+    return canOn(load.event, PAGE_NEEDS.staff) ? <RosterArea event={load.event} /> : <Withheld />;
 
   if (page === 'guests' && load.kind === 'loaded')
     return canOn(load.event, PAGE_NEEDS.guests) ? (
@@ -191,7 +204,7 @@ function EventOf({
         onChange={(event, tag) => setLoad({ kind: 'loaded', event, tag })}
       />
     ) : (
-      <NotFound />
+      <Withheld />
     );
 
   const states = (
@@ -259,14 +272,9 @@ function EventOf({
 
   return (
     <div className="event-page">
-      <div className="event-crumbs">
-        <BackControl
-          className="event-back"
-          label={t('eventPage.backToEvent')}
-          to={`/app/events/${encodeURIComponent(eventId)}`}
-        />
+      <EventCrumb name={load.kind === 'loaded' ? load.event.name : null}>
         {refreshing && <Refreshing />}
-      </div>
+      </EventCrumb>
 
       {states}
 

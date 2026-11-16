@@ -636,6 +636,9 @@ describe('Guests (sc-1468)', () => {
     await waitFor(() => expect(document.activeElement).toBe(heading));
     expect(screen.queryByRole('navigation', { name: 'Event' })).toBeNull();
     expect(screen.queryByRole('link', { name: /Event$/u })).toBeNull();
+    const bell = await screen.findByRole('button', { name: /^Notifications/ });
+    expect(bell.closest('.ev-crumb-row')).not.toBeNull();
+    expect(screen.getAllByRole('button', { name: /^Notifications/ })).toHaveLength(1);
   });
 
   it('asks the same when the server answers guest_already_listed', async () => {
