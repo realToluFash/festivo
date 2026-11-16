@@ -971,10 +971,11 @@ describe('Tables at a desk (sc-4000)', () => {
         return seating(withTables(now(), other), 't1');
       },
       'PATCH /api/events/ev_1/seating-plan/furniture': (body) => {
-        const [item] = (body as { items: Record<string, unknown>[] }).items;
-        const placed = { xCm: item?.xCm, yCm: item?.yCm, rotation: item?.rotation ?? 0 };
+        type Step = { id: string; xCm: number; yCm: number; rotation?: number };
+        const [item] = (body as { items: Step[] }).items;
+        const placed = { xCm: item!.xCm, yCm: item!.yCm, rotation: item!.rotation ?? 0 };
 
-        if (item?.id === 't2') {
+        if (item!.id === 't2') {
           if (fails > 0) {
             fails -= 1;
             return problem('internal', 500);
