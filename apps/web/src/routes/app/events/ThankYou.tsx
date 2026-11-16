@@ -1,5 +1,12 @@
 import { ApiError, type OrganisationEvent } from '@soirely/api-client';
-import { THANK_YOU_MOST, cleanThankYou, thankYouLength, thankYouOver } from '@soirely/domain';
+import {
+  THANK_YOU_MOST,
+  cleanThankYou,
+  thankYouCardOf,
+  thankYouLength,
+  thankYouOver,
+  thankYouSaid,
+} from '@soirely/domain';
 import { type RefObject, useEffect, useId, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 
@@ -108,7 +115,9 @@ export function ThankYouCard({
     else action.current?.focus();
   }, [open, moved]);
 
-  if (!manages && line === '') return null;
+  const shows = thankYouCardOf(event.thankYou, manages);
+
+  if (shows == null) return null;
 
   function opened(): void {
     setMoved(true);
@@ -140,8 +149,8 @@ export function ThankYouCard({
         setMoved(true);
         setOpen(false);
         onChange(saved.event, saved.tag);
-        if (saved.event.thankYou != null) onSaid(t('thankYou.saved'));
-        else if (line !== '') onSaid(t('thankYou.removed'));
+        const said = thankYouSaid(event.thankYou, draft);
+        if (said != null) onSaid(t(said));
       },
       (error: unknown) => {
         setBusy(false);
@@ -178,7 +187,7 @@ export function ThankYouCard({
           />
           {failed && <Alert>{t('thankYou.notSaved')}</Alert>}
         </Opened>
-      ) : line === '' ? (
+      ) : shows === 'add' ? (
         <>
           <p className="desk-line">{t('thankYou.hint')}</p>
           <ActionButton button={action} label={t('thankYou.add')} plus onPress={opened} />
@@ -186,7 +195,9 @@ export function ThankYouCard({
       ) : (
         <>
           <Thanks line={line} hosts={event.hosts} locale={currentLocale()} small />
-          {manages && <ActionButton button={action} label={t('thankYou.edit')} onPress={opened} />}
+          {shows === 'edit' && (
+            <ActionButton button={action} label={t('thankYou.edit')} onPress={opened} />
+          )}
         </>
       )}
     </section>

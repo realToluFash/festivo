@@ -1,5 +1,12 @@
 import type { OrganisationEvent } from '@soirely/api-client';
-import { THANK_YOU_MOST, hostsLine, thankYouLength, thankYouOver } from '@soirely/domain';
+import {
+  THANK_YOU_MOST,
+  hostsLine,
+  thankYouCardOf,
+  thankYouLength,
+  thankYouOver,
+  thankYouSaid,
+} from '@soirely/domain';
 import { type Ref, type RefObject, useState } from 'react';
 import { StyleSheet, View, type ViewInstance } from 'react-native';
 import { useTranslation } from 'react-i18next';
@@ -7,7 +14,7 @@ import { useTranslation } from 'react-i18next';
 import { api } from '../api.ts';
 import { dateLocale } from '../i18n/index.ts';
 import { refusalSaid } from '../kit/refusal.ts';
-import { thankYouCardOf, thankYouSaid } from '../kit/thankYou.ts';
+
 import { weight } from '../theme/fonts.ts';
 import { tokens } from '../theme/tokens.ts';
 import { AlertLine } from './AlertLine.tsx';

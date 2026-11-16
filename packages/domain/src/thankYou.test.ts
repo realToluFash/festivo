@@ -4,8 +4,10 @@ import {
   THANK_YOU_MOST,
   cleanThankYou,
   takesThankYou,
+  thankYouCardOf,
   thankYouLength,
   thankYouOver,
+  thankYouSaid,
 } from './thankYou.ts';
 
 describe('the hosts’ thank-you (sc-6476)', () => {
@@ -43,5 +45,22 @@ describe('the hosts’ thank-you (sc-6476)', () => {
         'happening_now',
       ),
     ).toBe(false);
+  });
+
+  test('offers Add with no line and Edit with one to a member who can end the event', () => {
+    expect(thankYouCardOf(null, true)).toBe('add');
+    expect(thankYouCardOf('Thank you.', true)).toBe('edit');
+  });
+
+  test('shows the line read-only, and nothing without one, to a member who cannot', () => {
+    expect(thankYouCardOf('Thank you.', false)).toBe('readOnly');
+    expect(thankYouCardOf(null, false)).toBeNull();
+  });
+
+  test('says saved for a line and removed for an emptied one, and nothing over nothing', () => {
+    expect(thankYouSaid(null, ' Thank you. ')).toBe('thankYou.saved');
+    expect(thankYouSaid('Thank you.', 'Thanks again.')).toBe('thankYou.saved');
+    expect(thankYouSaid('Thank you.', ' \n ')).toBe('thankYou.removed');
+    expect(thankYouSaid(null, '   ')).toBeNull();
   });
 });
