@@ -2849,7 +2849,7 @@
     "zoomOut": "Alejar",
     "zoomIs": "Zoom al {{share, number(style: percent)}}",
     "percent": "{{share, number(style: percent)}}",
-    "fit": "Ver toda la sala",
+    "fit": "Toda la sala",
     "takenOf": "{{taken, number}} de {{seats, number}}",
     "saved": "Guardado",
     "saving": "Guardando…",
@@ -2875,8 +2875,8 @@
     "keyDelete": "pregunta antes",
     "keyEsc": "suelta",
     "keyName": {
-      "shift": "Shift",
-      "delete": "Delete",
+      "shift": "Mayús",
+      "delete": "Supr",
       "esc": "Esc",
       "ctrl": "Ctrl"
     },
@@ -2892,7 +2892,7 @@
     "chosenCount_one": "{{count, number}} elemento elegido",
     "chosenCount_many": "{{count, number}} de elementos elegidos",
     "chosenCount_other": "{{count, number}} elementos elegidos",
-    "shiftClick": "Con Shift y clic, se añade o se quita uno. Con Esc, se sueltan todos.",
+    "shiftClick": "Con Mayús y clic, se añade o se quita uno. Con Esc, se sueltan todos.",
     "countItems_one": "{{count, number}} item",
     "countItems_other": "{{count, number}} items",
     "guestsSeated_one": "{{count, number}} guest seated",

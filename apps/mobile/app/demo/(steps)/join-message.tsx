@@ -1,23 +1,41 @@
-import { useState } from 'react';
-import { StyleSheet, View } from 'react-native';
+import { useLocalSearchParams } from 'expo-router';
+import { useRef, useState } from 'react';
+import { StyleSheet, type TextInputInstance, View } from 'react-native';
 
 import { PrimaryButton } from '../../../src/components/Buttons.tsx';
+import { focusChecked } from '../../../src/components/Field.tsx';
 import { OrgTile } from '../../../src/components/OrgTile.tsx';
 import { Text } from '../../../src/components/Text.tsx';
+import { useFormChecks } from '../../../src/kit/formChecks.ts';
 import { DemoScreen, NavBar, finish } from '../../../src/demo/DemoScreen.tsx';
-import { InsideField } from '../../../src/steps/InsideField.tsx';
+import {
+  JOIN_COPY,
+  joinLanguage,
+  joinStart,
+  messageTooLong,
+  startingMessage,
+} from '../../../src/demo/joinMessage.ts';
+import { MessageBox } from '../../../src/demo/MessageBox.tsx';
 import { Plain } from '../../../src/steps/Lines.tsx';
-import { MESSAGE_MOST, messageCount } from '../../../src/steps/rules.ts';
 import { SAMPLE } from '../../../src/demo/samples.ts';
 import { tokens } from '../../../src/theme/tokens.ts';
 
-/** A join link signed in: one screen, an optional message, who sees what, and Ask to join. */
+/** A join link signed in: one screen, an optional message that scrolls inside its box, who sees what, and Ask to join. Typing past 500 is not stopped; Ask to join refuses it above the keys. */
 export default function JoinMessage() {
-  const [message, setMessage] = useState('');
+  const params = useLocalSearchParams<{ message?: string; lang?: string }>();
+  const copy = JOIN_COPY[joinLanguage(params.lang)];
+  const start = joinStart(params.message);
+  const [message, setMessage] = useState(() => startingMessage(start));
   const [busy, setBusy] = useState(false);
+  const input = useRef<TextInputInstance>(null);
+  const checks = useFormChecks(
+    ['message'] as const,
+    (_, value) => (messageTooLong(value) ? copy.tooLong : null),
+    () => focusChecked(input),
+  );
 
   function ask(): void {
-    if (busy) return;
+    if (busy || !checks.passes({ message })) return;
     setBusy(true);
     setTimeout(
       () => finish(`Asked to join ${SAMPLE.organisation}. We’ll email you when they answer.`),
@@ -30,7 +48,7 @@ export default function JoinMessage() {
       nav={<NavBar left="close" />}
       foot={
         <PrimaryButton
-          label={busy ? 'Asking…' : 'Ask to join'}
+          label={busy ? copy.asking : copy.ask}
           busy={busy}
           onPress={ask}
           testID="demo.ask"
@@ -45,24 +63,27 @@ export default function JoinMessage() {
           accessibilityRole="header"
           style={styles.title}
         >
-          {`Ask to join ${SAMPLE.organisation}`}
+          {copy.title}
         </Text>
       </View>
       <View style={styles.field}>
-        <InsideField
-          label="Message · optional"
+        <MessageBox
+          ref={input}
+          label={copy.label}
           value={message}
-          onChangeText={setMessage}
-          multiline
-          maxLength={MESSAGE_MOST}
-          autoCapitalize="sentences"
-          placeholder={SAMPLE.joinMessage}
+          onChangeText={(text) => {
+            setMessage(text);
+            checks.edited('message', text);
+          }}
+          onBlur={() => checks.left('message', message)}
+          line={checks.errors.message ?? null}
+          count={copy.count(message)}
+          autoFocus={start !== 'empty'}
           testID="demo.message"
         />
       </View>
-      <Plain>{messageCount(message)}</Plain>
       <Plain top={tokens.spaceXl} ink>
-        {`${SAMPLE.organisation} sees your name, your email address and your message.`}
+        {copy.whatTheySee}
       </Plain>
     </DemoScreen>
   );
