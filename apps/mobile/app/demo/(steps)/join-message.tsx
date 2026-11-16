@@ -15,8 +15,8 @@ import {
   messageTooLong,
   startingMessage,
 } from '../../../src/demo/joinMessage.ts';
-import { MessageBox } from '../../../src/demo/MessageBox.tsx';
 import { Plain } from '../../../src/steps/Lines.tsx';
+import { MessageBox } from '../../../src/steps/MessageBox.tsx';
 import { SAMPLE } from '../../../src/demo/samples.ts';
 import { tokens } from '../../../src/theme/tokens.ts';
 

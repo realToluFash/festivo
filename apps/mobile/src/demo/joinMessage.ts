@@ -3,11 +3,6 @@ import { visibleLength } from '@soirely/domain';
 import { MESSAGE_MOST, messageCount } from '../steps/rules.ts';
 import { SAMPLE } from './samples.ts';
 
-/** The Message box's height at the default text size: about four lines under its label, and with the label, refusal and count it still fits above the keys and Ask to join on an iPhone SE. It scrolls inside rather than growing. */
-export const MESSAGE_BOX = 132;
-/** Larger Text grows the box with it up to here, then it scrolls sooner. */
-export const MESSAGE_BOX_MOST_SCALE = 1.5;
-
 export type JoinLanguage = 'en' | 'fr';
 export type JoinMessageStart = 'empty' | 'long' | 'lines' | 'over';
 
