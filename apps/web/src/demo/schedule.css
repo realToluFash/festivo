@@ -569,7 +569,13 @@
     align-items: stretch;
   }
 
+  .ro-acts,
   .ro-acts-end {
+    flex-wrap: nowrap;
+  }
+
+  .ro-acts-end {
+    align-self: stretch;
     margin-left: 0;
   }
 
