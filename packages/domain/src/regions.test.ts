@@ -81,17 +81,17 @@ describe('currencies', () => {
   });
 
   it("opens an event's currency list on the event's own currency, named without its code", () => {
-    const choices = heldFirstCurrencyChoices('GBP', 'en', retired);
+    const choices = heldFirstCurrencyChoices('GBP', 'en', 'No longer in use');
 
     expect(choices[0]).toEqual({ code: 'GBP', name: 'British Pound' });
     expect(choices[1]?.code).toBe('AFN');
     expect(choices.filter(({ code }) => code === 'GBP')).toHaveLength(1);
   });
 
-  it('keeps a retired currency an event holds first, under its retired words', () => {
-    expect(heldFirstCurrencyChoices('HRK', 'en', retired)[0]).toEqual({
+  it('keeps a retired currency an event holds first, under its retired words and not its code again', () => {
+    expect(heldFirstCurrencyChoices('HRK', 'en', 'No longer in use')[0]).toEqual({
       code: 'HRK',
-      name: 'HRK (no longer in use)',
+      name: 'No longer in use',
     });
   });
 

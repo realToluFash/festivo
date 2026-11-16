@@ -1712,6 +1712,7 @@
     "saving": "Guardando…",
     "cancel": "Cancelar",
     "currencyInUse": "La moneda no puede cambiar una vez que hay importes registrados en este evento.",
+    "currencyRetired": "Ya no se usa",
     "notSaved": "No se ha guardado. Sus cambios siguen aquí. Vuelva a intentarlo.",
     "forbidden": "No se ha cambiado nada. Su rol no incluye el permiso necesario.",
     "changedElsewhere": "No se ha guardado. Otra persona ha cambiado este evento desde que lo abrió. Lo que escribió sigue aquí.",

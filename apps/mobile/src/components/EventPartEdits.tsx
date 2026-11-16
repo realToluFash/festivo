@@ -293,10 +293,7 @@ function CurrencyEdit(props: PartEditProps) {
   const [inUse, setInUse] = useState(false);
   const { busy, save, elsewhere, failed } = usePartSave('currency', props);
   const choices = useMemo(
-    () =>
-      heldFirstCurrencyChoices(event.currency, locale, (held) =>
-        t('orgGeneral.currencyRetired', { code: held }),
-      ),
+    () => heldFirstCurrencyChoices(event.currency, locale, t('eventEdit.currencyRetired')),
     [event.currency, locale, t],
   );
 

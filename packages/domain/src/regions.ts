@@ -504,11 +504,11 @@ export function currencyChoices(
 export function heldFirstCurrencyChoices(
   held: string,
   locale: string,
-  retired: (code: string) => string,
+  retired: string,
 ): { code: string; name: string }[] {
-  const named = currencyChoices(held, locale, retired).map(({ code, name }) => ({
+  const named = currencyChoices(held, locale, () => retired).map(({ code }) => ({
     code,
-    name: CURRENCY_CODES.includes(code) ? (currencyName(code, locale) ?? code) : name,
+    name: CURRENCY_CODES.includes(code) ? (currencyName(code, locale) ?? code) : retired,
   }));
 
   return [
