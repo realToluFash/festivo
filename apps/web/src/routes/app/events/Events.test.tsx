@@ -1617,16 +1617,16 @@ describe("Inside an event, the navigation menu is the event's (sc-22103)", () =>
     at('/app/events/ev_1');
     await screen.findByRole('heading', { level: 1, name: 'Adaeze and Tunde' });
 
-    fireEvent.click(eventNav().getByRole('link', { name: 'Menu' }));
+    fireEvent.click(eventNav().getByRole('link', { name: 'Messages' }));
 
-    const panel = (await screen.findByRole('heading', { level: 2, name: 'Menu' })).closest(
+    const panel = (await screen.findByRole('heading', { level: 2, name: 'Messages' })).closest(
       'section',
     )!;
-    expect(within(panel).getByText('The menu for this event is coming.')).toBeDefined();
+    expect(within(panel).getByText('Messages for this event are coming.')).toBeDefined();
     expect(within(panel).queryAllByRole('button')).toHaveLength(0);
     expect(within(panel).queryAllByRole('link')).toHaveLength(0);
     expect(screen.getByRole('heading', { level: 1, name: 'Adaeze and Tunde' })).toBeDefined();
-    expect(current()).toBe('Menu');
+    expect(current()).toBe('Messages');
   });
 
   it.each([
@@ -1677,8 +1677,8 @@ describe("Inside an event, the navigation menu is the event's (sc-22103)", () =>
     render(<RouterProvider router={router} />);
     await screen.findByRole('heading', { level: 1, name: 'Adaeze and Tunde' });
 
-    fireEvent.click(eventNav().getByRole('link', { name: 'Menu' }));
-    await screen.findByRole('heading', { level: 2, name: 'Menu' });
+    fireEvent.click(eventNav().getByRole('link', { name: 'Messages' }));
+    await screen.findByRole('heading', { level: 2, name: 'Messages' });
     fireEvent.click(eventNav().getByRole('link', { name: 'Staff' }));
     await screen.findByRole('heading', { level: 1, name: 'Staff' });
     fireEvent.click(eventNav().getByRole('link', { name: 'Reports' }));
@@ -2013,10 +2013,10 @@ describe("An event's Overview (sc-22103)", () => {
     const ahead = { startsAt: '2030-11-14T16:00:00+01:00', endsAt: '2030-11-15T02:00:00+01:00' };
     signedIn();
     answering({ 'GET /api/events/ev_1': () => json({ event: event(ahead) }) });
-    at('/app/events/ev_1/menu');
+    at('/app/events/ev_1/messages');
 
     await screen.findByRole('heading', { level: 1, name: 'Adaeze and Tunde' });
-    expect(screen.getByRole('heading', { level: 2, name: 'Menu' })).toBeDefined();
+    expect(screen.getByRole('heading', { level: 2, name: 'Messages' })).toBeDefined();
     expect(screen.getByRole('button', { name: 'Make live' })).toBeDefined();
     expect(screen.queryByRole('region', { name: 'Details' })).toBeNull();
   });
@@ -2682,12 +2682,12 @@ describe('Change dates opens Dates in place, and Edit details is gone (sc-48602)
   it('opens from the row atop the event’s other areas, and Back returns to the area', async () => {
     signedIn();
     answering({ 'GET /api/events/ev_1': () => json({ event: event(PAST) }) });
-    from('/app/events/ev_1/menu');
+    from('/app/events/ev_1/messages');
     fireEvent.click(await screen.findByRole('link', { name: 'Change dates' }));
 
     await datesOpened();
     await act(() => router.navigate(-1));
-    expect(router.state.location.pathname).toBe('/app/events/ev_1/menu');
+    expect(router.state.location.pathname).toBe('/app/events/ev_1/messages');
   });
 
   it('opens from Make live’s refusal when the end passed meanwhile, on the event’s own page', async () => {

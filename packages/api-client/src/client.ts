@@ -77,6 +77,14 @@ import {
 } from './staff.ts';
 import { type Dish, type DishDetails, type DishLibrary, asDish, asDishLibrary } from './dishes.ts';
 import {
+  type EventMenu,
+  type MenuAnswer,
+  type MenuChange,
+  type MenuCourseDetails,
+  asEventMenu,
+  asUnwarnedPickers,
+} from './menu.ts';
+import {
   type Schedule,
   type ScheduleItemDetails,
   type ScheduleWithItem,
@@ -2519,6 +2527,103 @@ export class ApiClient {
 
   private dishPath(organisationId: string, dishId: string): string {
     return `${this.dishesPath(organisationId)}/${encodeURIComponent(dishId)}`;
+  }
+
+  /** The event's menu, its courses in order; refused 403 without menu.read (sc-3902). */
+  async menu(eventId: string): Promise<EventMenu> {
+    return this.menuOf(await this.get<unknown>(this.menuPath(eventId))).menu;
+  }
+
+  /** Goes last. Refused `validation_failed` beside each field, and 409 `menu_course_limit` at 10 courses. */
+  async addMenuCourse(eventId: string, details: MenuCourseDetails): Promise<MenuChange> {
+    return this.menuOf(await this.post<unknown>(`${this.menuPath(eventId)}/courses`, details));
+  }
+
+  /** The whole course; `same` is refused 409 `menu_same_needs_one` unless it has exactly one dish. */
+  async changeMenuCourse(
+    eventId: string,
+    courseId: string,
+    details: MenuCourseDetails & { answer: MenuAnswer; skippable: boolean },
+  ): Promise<MenuChange> {
+    return this.menuOf(await this.put<unknown>(this.menuCoursePath(eventId, courseId), details));
+  }
+
+  async moveMenuCourse(eventId: string, courseId: string, to: number): Promise<MenuChange> {
+    return this.menuOf(
+      await this.post<unknown>(`${this.menuCoursePath(eventId, courseId)}/move`, { to }),
+    );
+  }
+
+  /** Refused 409 `menu_course_picked` once a guest has picked from it. */
+  async deleteMenuCourse(eventId: string, courseId: string): Promise<MenuChange> {
+    return this.menuOf(await this.delete<unknown>(this.menuCoursePath(eventId, courseId)));
+  }
+
+  /** A library dish copied as it is now, or a new dish: saved to the library too, and refused as `addDish` is, unless `onlyForEvent`. */
+  async addMenuDish(
+    eventId: string,
+    courseId: string,
+    dish: { libraryDishId: string } | (DishDetails & { onlyForEvent: boolean }),
+  ): Promise<MenuChange> {
+    return this.menuOf(
+      await this.post<unknown>(`${this.menuCoursePath(eventId, courseId)}/dishes`, dish),
+    );
+  }
+
+  /** The event's copy only, never refused for picks; `unwarned` counts who picked it and has an allergen just added recorded. */
+  async changeMenuDish(
+    eventId: string,
+    dishId: string,
+    details: Omit<DishDetails, 'lastPrice' | 'allowShared'>,
+  ): Promise<MenuChange> {
+    return this.menuOf(await this.put<unknown>(this.menuDishPath(eventId, dishId), details));
+  }
+
+  /** Refused 409 `menu_dish_picked` once a guest has picked it. */
+  async removeMenuDish(eventId: string, dishId: string): Promise<MenuChange> {
+    return this.menuOf(await this.delete<unknown>(this.menuDishPath(eventId, dishId)));
+  }
+
+  /** A hub token for this event's menu topic alone. */
+  async menuSubscription(eventId: string): Promise<RealtimeSubscription> {
+    const body = await this.post<{ token?: unknown; expiresAt?: unknown }>(
+      `${this.menuPath(eventId)}/subscriptions`,
+    );
+
+    return {
+      token: typeof body.token === 'string' ? body.token : '',
+      expiresAt: typeof body.expiresAt === 'string' ? body.expiresAt : '',
+    };
+  }
+
+  private menuOf(body: unknown): MenuChange {
+    const record =
+      typeof body === 'object' && body != null ? (body as Record<string, unknown>) : {};
+    const menu = asEventMenu(record.menu);
+
+    if (menu == null)
+      throw new Error(
+        'The API answered the menu in a shape this client does not know. Check MenuSerialiser in services/api.',
+      );
+
+    return {
+      menu,
+      courseId: typeof record.courseId === 'string' ? record.courseId : null,
+      dishId: typeof record.dishId === 'string' ? record.dishId : null,
+      unwarned: asUnwarnedPickers(record.unwarned),
+    };
+  }
+
+  private menuPath(eventId: string): string {
+    return `/api/events/${encodeURIComponent(eventId)}/menu`;
+  }
+
+  private menuCoursePath(eventId: string, courseId: string): string {
+    return `${this.menuPath(eventId)}/courses/${encodeURIComponent(courseId)}`;
+  }
+
+  private menuDishPath(eventId: string, dishId: string): string {
+    return `${this.menuPath(eventId)}/dishes/${encodeURIComponent(dishId)}`;
   }
 
   /** The event's running order, sorted by start; refused 403 without run_of_show.read (sc-3893). */
