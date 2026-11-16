@@ -22,7 +22,18 @@ interface Kept extends Camera {
 export function fitOf(width: number, height: number, room: { w: number; l: number }) {
   const w = width - FIT_PAD.left - FIT_PAD.right;
   const h = height - FIT_PAD.top - FIT_PAD.bottom;
-  const s = Math.max(0.05, Math.min(w / room.w, h / room.l));
+
+  return centred(width, height, room, Math.max(0.05, Math.min(w / room.w, h / room.l)));
+}
+
+/** The plan's Fit the room, held to the zoom bar's 25% to 400%: a room too large to fit at 25% shows its centre (sc-57678). */
+export function planFitOf(width: number, height: number, room: { w: number; l: number }) {
+  return centred(width, height, room, clampScale(fitOf(width, height, room).s));
+}
+
+function centred(width: number, height: number, room: { w: number; l: number }, s: number) {
+  const w = width - FIT_PAD.left - FIT_PAD.right;
+  const h = height - FIT_PAD.top - FIT_PAD.bottom;
 
   return { s, ox: FIT_PAD.left + (w - room.w * s) / 2, oy: FIT_PAD.top + (h - room.l * s) / 2 };
 }
@@ -150,7 +161,7 @@ export function useCamera(
   const [camera, setCamera] = useState<Camera | null>(() =>
     room == null ? null : keptView(eventId, room),
   );
-  const fit = fitOf(size.w, size.h, { w: w || 1, l: l || 1 });
+  const fit = planFitOf(size.w, size.h, { w: w || 1, l: l || 1 });
   const s = camera?.s ?? fit.s;
   const ox = camera == null ? fit.ox : size.w / 2 - camera.cx * s;
   const oy = camera == null ? fit.oy : size.h / 2 - camera.cy * s;

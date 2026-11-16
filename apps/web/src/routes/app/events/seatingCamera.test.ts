@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest';
 
-import { intoView } from './seatingCamera.ts';
+import { fitOf, intoView, planFitOf } from './seatingCamera.ts';
+import { percentOf } from './seatingDraw.ts';
 
 describe('the view following keyboard focus (sc-4007)', () => {
   it('slides by the least distance that shows a box whole and clear of the bars, and not at all when it shows', () => {
@@ -44,5 +45,29 @@ describe('a box larger than the view on one axis only (sc-57361)', () => {
     const bar = { x0: 534, y0: 100, x1: 706, y1: 600 };
 
     expect(intoView({ x0: -900, y0: 300, x1: 900, y1: 400 }, 718, 719, [bar])).toEqual([924, -208]);
+  });
+});
+
+describe('Fit the room, held to the zoom bar’s range (sc-57678)', () => {
+  it('fits a 100 × 80 m room at 25%, its centre at the centre of the floor', () => {
+    const fit = planFitOf(718, 719, { w: 10000, l: 8000 });
+
+    expect(percentOf(fit.s)).toBe(25);
+    expect(fit.ox + (10000 * fit.s) / 2).toBe(359);
+    expect(fit.oy + (8000 * fit.s) / 2).toBe(359.5);
+  });
+
+  it('fits a 2 × 2 m room at 400%, whole and centred', () => {
+    const fit = planFitOf(718, 719, { w: 200, l: 200 });
+
+    expect(percentOf(fit.s)).toBe(400);
+    expect(fit.ox + (200 * fit.s) / 2).toBe(359);
+    expect(fit.oy + (200 * fit.s) / 2).toBe(359.5);
+  });
+
+  it('fits a room between 25% and 400% exactly as before', () => {
+    expect(planFitOf(718, 719, { w: 2400, l: 1800 })).toEqual(
+      fitOf(718, 719, { w: 2400, l: 1800 }),
+    );
   });
 });
