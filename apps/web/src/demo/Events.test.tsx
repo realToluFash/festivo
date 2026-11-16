@@ -639,6 +639,15 @@ describe('A thank-you for your guests, on a Finished event (sc-6476)', () => {
       'Not ended. Check your connection and try again. Your thank-you is still here.',
     );
     expect((within(ask).getByRole('textbox') as HTMLTextAreaElement).value).not.toBe('');
+
+    const field = within(ask).getByRole('textbox');
+    const alert = within(ask).getByRole('alert');
+    const keep = within(ask).getByRole('button', { name: 'Keep it on' });
+    const end = within(ask).getByRole('button', { name: 'End now' });
+    expect(field.compareDocumentPosition(alert) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
+    expect(alert.compareDocumentPosition(keep) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
+    expect(keep.classList.contains('link-button')).toBe(true);
+    expect(end.classList.contains('button-danger')).toBe(true);
   });
 
   it('opens End now a second time empty, as the app does', SLOW, async () => {
