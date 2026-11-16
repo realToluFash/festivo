@@ -943,12 +943,14 @@ function ItemPanel({
                 {`${RW.deleteItem}…`}
               </button>
             )}
-            <button type="button" className="desk-text ro-cancel" onClick={onClose}>
-              {RW.cancel}
-            </button>
-            <button type="button" className="gs-pill is-primary ro-save" onClick={onSave}>
-              {failed === 'gone' ? RW.addAgain : RW.save}
-            </button>
+            <div className="ro-acts-end">
+              <button type="button" className="desk-text ro-cancel" onClick={onClose}>
+                {RW.cancel}
+              </button>
+              <button type="button" className="gs-pill is-primary ro-save" onClick={onSave}>
+                {failed === 'gone' ? RW.addAgain : RW.save}
+              </button>
+            </div>
           </div>
         )}
       </div>
