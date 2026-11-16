@@ -2874,6 +2874,12 @@
     "keyDuplicate": "duplica",
     "keyDelete": "pergunta antes",
     "keyEsc": "larga",
+    "keyName": {
+      "shift": "Shift",
+      "delete": "Delete",
+      "esc": "Esc",
+      "ctrl": "Ctrl"
+    },
     "placingRound": "Clique no plano para colocar uma mesa redonda. Ajusta-se à grelha. Prima Esc para parar.",
     "placingRectangular": "Clique no plano para colocar uma mesa retangular. Ajusta-se à grelha. Prima Esc para parar.",
     "placingHead": "Clique no plano para colocar uma mesa de honra. Ajusta-se à grelha. Prima Esc para parar.",

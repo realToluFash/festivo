@@ -2874,6 +2874,12 @@
     "keyDuplicate": "duplique",
     "keyDelete": "demande d’abord",
     "keyEsc": "relâche",
+    "keyName": {
+      "shift": "Shift",
+      "delete": "Delete",
+      "esc": "Esc",
+      "ctrl": "Ctrl"
+    },
     "placingRound": "Cliquez sur le plan pour placer une table ronde. Elle s’aligne sur la grille. Appuyez sur Esc pour arrêter.",
     "placingRectangular": "Cliquez sur le plan pour placer une table rectangulaire. Elle s’aligne sur la grille. Appuyez sur Esc pour arrêter.",
     "placingHead": "Cliquez sur le plan pour placer une table d’honneur. Elle s’aligne sur la grille. Appuyez sur Esc pour arrêter.",

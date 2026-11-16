@@ -2874,6 +2874,12 @@
     "keyDuplicate": "duplica",
     "keyDelete": "pregunta antes",
     "keyEsc": "suelta",
+    "keyName": {
+      "shift": "Shift",
+      "delete": "Delete",
+      "esc": "Esc",
+      "ctrl": "Ctrl"
+    },
     "placingRound": "Haga clic en el plano para colocar una mesa redonda. Se ajusta a la cuadrícula. Pulse Esc para terminar.",
     "placingRectangular": "Haga clic en el plano para colocar una mesa rectangular. Se ajusta a la cuadrícula. Pulse Esc para terminar.",
     "placingHead": "Haga clic en el plano para colocar una mesa presidencial. Se ajusta a la cuadrícula. Pulse Esc para terminar.",
