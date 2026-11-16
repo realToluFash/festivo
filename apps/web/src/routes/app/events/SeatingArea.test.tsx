@@ -1889,6 +1889,28 @@ describe('The room to scale (sc-4007)', () => {
     ).toBe('true');
   });
 
+  it('lights only the chosen seat of a row, not the row, once a seat is open', async () => {
+    signedIn();
+    await onSeating({
+      'GET /api/events/ev_1/seating-plan': () => seating(withRowsAndSeats([row()], [])),
+    });
+
+    await screen.findByRole('button', { name: /^Row A/ });
+    press('Zoom in', 3);
+    expect(percent()).toBe('150%');
+
+    fireEvent.click(screen.getByRole('button', { name: 'Row A, seat 4, Empty' }));
+    expect(await screen.findByRole('button', { name: 'Mark unusable' })).toBeDefined();
+
+    const drawn = document.querySelector('.st-room [data-row="r1"]')!;
+    expect(drawn.getAttribute('aria-pressed')).toBe('false');
+    expect(drawn.querySelectorAll('.st-lit')).toHaveLength(1);
+    expect(drawn.querySelector('.st-lit')?.tagName).toBe('circle');
+    expect(
+      screen.getByRole('button', { name: 'Row A, seat 4, Empty' }).getAttribute('aria-pressed'),
+    ).toBe('true');
+  });
+
   it('draws the room’s floor with its tables still to come while the plan loads', async () => {
     signedIn();
     await onSeating({ 'GET /api/events/ev_1/seating-plan': () => new Promise<Response>(() => {}) });
