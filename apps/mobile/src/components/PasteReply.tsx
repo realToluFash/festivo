@@ -8,7 +8,7 @@ import { markOf } from '../kit/guestRows.ts';
 import { LIST_EDGES } from './listFrame.ts';
 import { pasteHeight } from '../layout/textSize.ts';
 import type { LayoutKind } from '../layout/useLayout.ts';
-import { type WhoseRow, hasText } from '../kit/pasteReply.ts';
+import { QUOTE_LINES, type WhoseRow, clipQuote, hasText } from '../kit/pasteReply.ts';
 import { tokens } from '../theme/tokens.ts';
 import { SearchField } from './EventsSearch.tsx';
 import { Glyph } from './Glyph.tsx';
@@ -20,7 +20,6 @@ import { Text, type TextHandle } from './Text.tsx';
 
 const FIELD_HEIGHT = 48;
 const RING = 1.5;
-const QUOTE_LINES = 6;
 const PLAIN_TEXT: Clipboard.AcceptedContentType[] = ['plain-text'];
 
 /** Paste's height, which Find a guest on Guests takes too: 48 below the accessibility sizes, as tall as Apple's word from them on. */
@@ -175,8 +174,8 @@ export function Quote({
   onShowAll: () => void;
 }) {
   const { t } = useTranslation();
-  const [lines, setLines] = useState(0);
-  const clipped = !all && lines > QUOTE_LINES;
+  const [lines, setLines] = useState<readonly string[]>([]);
+  const cut = all ? null : clipQuote(lines);
 
   return (
     <View style={styles.quoteBlock} testID="paste.quote">
@@ -193,7 +192,7 @@ export function Quote({
             style={styles.quoteText}
             testID="paste.quote.text"
           >
-            {text}
+            {cut ?? text}
           </Text>
           <View
             style={styles.measure}
@@ -206,14 +205,14 @@ export function Quote({
               weight="medium"
               style={styles.quoteText}
               accessible={false}
-              onTextLayout={(event) => setLines(event.nativeEvent.lines.length)}
+              onTextLayout={(event) => setLines(event.nativeEvent.lines.map((line) => line.text))}
             >
               {text}
             </Text>
           </View>
         </View>
       </View>
-      {clipped && (
+      {cut !== null && (
         <TextAction
           label={t('guestList.paste.showAll')}
           onPress={onShowAll}

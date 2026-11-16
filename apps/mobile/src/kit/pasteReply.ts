@@ -13,6 +13,15 @@ export function hasText(text: string | null | undefined): text is string {
   return text != null && text.trim() !== '';
 }
 
+export const QUOTE_LINES = 6;
+
+/** The quote's first six laid-out lines, ending in "…" however the sixth line ends, a line break included; null when it fits whole. */
+export function clipQuote(lines: readonly string[]): string | null {
+  if (lines.length <= QUOTE_LINES) return null;
+
+  return `${lines.slice(0, QUOTE_LINES).join('').trimEnd()}…`;
+}
+
 /** sc-54450: on a list with guests in it, Paste a reply shows with guests.manage while replies are open, once somebody has been invited. */
 export function pasteShown(
   manages: boolean,
