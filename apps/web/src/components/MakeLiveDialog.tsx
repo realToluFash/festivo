@@ -64,6 +64,7 @@ function MakeLiveBox({
   const box = useRef<HTMLDivElement>(null);
   const heading = useRef<HTMLHeadingElement>(null);
   const keepButton = useRef<HTMLButtonElement>(null);
+  const goButton = useRef<HTMLButtonElement>(null);
   const toldFirst = useRef(told);
   const waits = busy != null;
 
@@ -77,6 +78,13 @@ function MakeLiveBox({
   useEffect(() => {
     if (turned || (told && !toldFirst.current)) heading.current?.focus();
   }, [turned, told]);
+
+  const asksHost = host != null;
+
+  useEffect(() => {
+    const inside = box.current?.contains(document.activeElement) ?? true;
+    if (!asksHost && !inside) goButton.current?.focus();
+  }, [asksHost]);
 
   const describedBy = [`${id}-line`, host == null ? null : `${id}-help`].filter(Boolean).join(' ');
   const alert = failed != null && <AskAlert>{failed}</AskAlert>;
@@ -130,6 +138,7 @@ function MakeLiveBox({
           confirm={
             go != null && (
               <button
+                ref={goButton}
                 type="button"
                 className={waits ? 'desk-text is-busy' : 'desk-text'}
                 aria-busy={waits || undefined}
