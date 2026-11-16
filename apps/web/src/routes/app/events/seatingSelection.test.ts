@@ -88,12 +88,27 @@ describe('Choosing many (sc-4717)', () => {
     ]);
   });
 
-  it('aligns on the group’s left edge and centre, sending every chosen item', () => {
-    const plan = planOf([table('t1', 1200, 900), table('t2', 600, 500)]);
+  it('aligns on each of the group’s edges and centre lines, sending every chosen item', () => {
+    const plan = planOf([
+      table('t1', 1200, 900),
+      table('t2', 600, 500, { widthCm: 240, lengthCm: 120, shape: 'rectangular' }),
+    ]);
+    const ys = (moved: { id: string; yCm: number }[]) =>
+      Object.fromEntries(moved.map((one) => [one.id, one.yCm]));
+    const [w2, l2] = tableExtent(plan.tables[1]!);
 
-    expect(xs(aligned(items(plan), 'left'))).toEqual({ t1: 600, t2: 600 });
-    expect(xs(aligned(items(plan), 'centre'))).toEqual({ t1: 900, t2: 900 });
-    expect(aligned(items(plan), 'top').map((one) => one.yCm)).toEqual([500, 500]);
+    expect(xs(aligned(items(plan), 'left'))).toEqual({ t1: Math.round(600 - w2 + R), t2: 600 });
+    expect(xs(aligned(items(plan), 'right'))).toEqual({ t1: 1200, t2: Math.round(1200 + R - w2) });
+    expect(xs(aligned(items(plan), 'centre'))).toEqual({
+      t1: Math.round((600 - w2 + 1200 + R) / 2),
+      t2: Math.round((600 - w2 + 1200 + R) / 2),
+    });
+    expect(ys(aligned(items(plan), 'top'))).toEqual({ t1: Math.round(500 - l2 + R), t2: 500 });
+    expect(ys(aligned(items(plan), 'bottom'))).toEqual({ t1: 900, t2: Math.round(900 + R - l2) });
+    expect(ys(aligned(items(plan), 'middle'))).toEqual({
+      t1: Math.round((500 - l2 + 900 + R) / 2),
+      t2: Math.round((500 - l2 + 900 + R) / 2),
+    });
   });
 
   it('spaces evenly between the outer two, which stay', () => {

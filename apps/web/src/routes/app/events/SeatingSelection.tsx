@@ -26,13 +26,13 @@ import {
   aligned,
   gridOf,
   kindLines,
+  onlyTables,
   outsider,
   readGap,
   readWhole,
   renumbered,
   spaced,
   summaryOf,
-  thingsOf,
 } from './seatingSelection.ts';
 import { lengthWords } from './seatingUnits.ts';
 
@@ -355,6 +355,15 @@ function GridFold({
   const [refused, setRefused] = useState<string | null>(null);
   const lengths = (cm: number) => lengthWords(t, locale, cm, system);
 
+  function gridWords(columns: number): string {
+    const tables = onlyTables(items);
+    const count = items.length;
+
+    return columns === 1
+      ? t(tables ? 'seating.gridColumnTables' : 'seating.gridColumnItems', { count })
+      : t(tables ? 'seating.gridDoneTables' : 'seating.gridDoneItems', { count, columns });
+  }
+
   function apply(): void {
     const columns = readWhole(draft.columns, COLUMNS_MAX);
     const gap = readGap(draft.gap, system, locale);
@@ -384,13 +393,7 @@ function GridFold({
       setRefused(t('seating.edgeRefused', { name: itemName(t, out) }));
       return;
     }
-    steps.move(
-      moved,
-      t('seating.gridDone', {
-        count: Math.min(columns, items.length),
-        things: thingsOf(t, items),
-      }),
-    );
+    steps.move(moved, gridWords(Math.min(columns, items.length)));
   }
 
   return (
@@ -503,13 +506,17 @@ function SectionFold({
 
   function apply(): void {
     const section = plan.sections.find((one) => one.id === pick) ?? null;
-    const things = thingsOf(t, items);
+    const tables = onlyTables(items);
+    const count = items.length;
 
     steps.section(
       section?.id ?? null,
       section == null
-        ? t('seating.unsectioned', { things })
-        : t('seating.sectioned', { things, section: section.name }),
+        ? t(tables ? 'seating.unsectionedTables' : 'seating.unsectionedItems', { count })
+        : t(tables ? 'seating.sectionedTables' : 'seating.sectionedItems', {
+            count,
+            section: section.name,
+          }),
     );
   }
 
@@ -566,7 +573,8 @@ export function SelectionPanel({
   const tips = useId();
   const few = items.length < 3;
   const noTables = !items.some((item) => item.kind === 'table');
-  const things = thingsOf(t, items);
+  const tables = onlyTables(items);
+  const count = items.length;
 
   const moveOrRefuse = (moved: Placement[], words: string) => {
     const out = outsider(plan, items, moved);
@@ -576,12 +584,17 @@ export function SelectionPanel({
   };
 
   const align = (edge: Edge) =>
-    moveOrRefuse(aligned(items, edge), t(`seating.done${EDGE_KEYS[edge]}`, { things }));
+    moveOrRefuse(
+      aligned(items, edge),
+      t(`seating.done${EDGE_KEYS[edge]}${tables ? 'Tables' : 'Items'}`, { count }),
+    );
 
   const space = (axis: Axis) =>
     moveOrRefuse(
       spaced(items, axis),
-      t(axis === 'across' ? 'seating.spacedAcross' : 'seating.spacedDown', { things }),
+      axis === 'across'
+        ? t(tables ? 'seating.spacedAcrossTables' : 'seating.spacedAcrossItems', { count })
+        : t(tables ? 'seating.spacedDownTables' : 'seating.spacedDownItems', { count }),
     );
 
   return (

@@ -2109,6 +2109,26 @@ describe('The room to scale (sc-4007)', () => {
     ]);
   });
 
+  it('lets Tab keep tables a little out of line on one line, as Renumber reads them', async () => {
+    signedIn();
+    await onSeating({
+      'GET /api/events/ev_1/seating-plan': () =>
+        seating(
+          withTables(
+            table({ id: 't1', name: 'Table 1', xCm: 1000, yCm: 170 }),
+            table({ id: 't2', name: 'Table 2', xCm: 200, yCm: 190 }),
+          ),
+        ),
+    });
+
+    await screen.findByRole('button', { name: TABLE_1 });
+    const order = [...document.querySelectorAll('.st-room [data-table]')].map((one) =>
+      one.getAttribute('aria-label'),
+    );
+
+    expect(order).toEqual(['Table 2, round, 0 of 10 seats taken', TABLE_1]);
+  });
+
   it('draws a colleague’s saved change without moving the view or clearing the choice', async () => {
     __setConfig({ ...before, mercureUrl: 'http://hub.test/.well-known/mercure' });
     StubSource.made = [];
@@ -2835,6 +2855,39 @@ describe('Choosing many and the Selection tools (sc-4717)', () => {
     await waitFor(() => expect(screen.queryByRole('heading', { name: '2 chosen' })).toBeNull());
   });
 
+  it('takes a chosen item out, adds what a box touches and keeps the choice on empty floor, while Add to choice is on', async () => {
+    signedIn();
+    await onSeating({
+      'GET /api/events/ev_1/seating-plan': () =>
+        seating(withTables(table(), second(), table({ id: 't3', name: 'Table 3', xCm: 1800 }))),
+    });
+    await screen.findByRole('button', { name: TABLE_1 });
+    const TABLE_3 = 'Table 3, round, 0 of 10 seats taken';
+
+    fireEvent.click(screen.getByRole('button', { name: 'Add to choice' }));
+    fireEvent.click(screen.getByRole('button', { name: TABLE_1 }));
+    fireEvent.click(screen.getByRole('button', { name: TABLE_2 }));
+    fireEvent.click(screen.getByRole('button', { name: TABLE_3 }));
+    expect(await screen.findByRole('heading', { level: 2, name: '3 chosen' })).toBeDefined();
+
+    fireEvent.click(screen.getByRole('button', { name: TABLE_3 }));
+    expect(await screen.findByRole('heading', { level: 2, name: '2 chosen' })).toBeDefined();
+
+    const floor = document.querySelector('.st-floor')!;
+
+    fireEvent.click(floor);
+    expect(screen.getByRole('heading', { level: 2, name: '2 chosen' })).toBeDefined();
+
+    const body = document.querySelector('[data-table="t3"] .st-body')!;
+    const [x, y] = [Number(body.getAttribute('cx')), Number(body.getAttribute('cy'))];
+    const pointer = { button: 0, pointerId: 1 };
+
+    fireEvent.pointerDown(floor, { ...pointer, clientX: x - 4, clientY: y - 4 });
+    fireEvent.pointerMove(window, { ...pointer, clientX: x + 4, clientY: y + 4 });
+    fireEvent.pointerUp(window, { ...pointer, clientX: x + 4, clientY: y + 4 });
+    expect(await screen.findByRole('heading', { level: 2, name: '3 chosen' })).toBeDefined();
+  });
+
   it('aligns as one step that Undo puts back', async () => {
     signedIn();
     let steps = 0;
@@ -2891,6 +2944,33 @@ describe('Choosing many and the Selection tools (sc-4717)', () => {
     fireEvent.click(panel().getByRole('button', { name: 'Apply' }));
     expect(panel().getByRole('alert').textContent).toMatch(
       /^This grid is .+ wide; the room is 14/u,
+    );
+    expect(furniture(sent)).toEqual([]);
+  });
+
+  it('refuses a grid too wide for a room in feet, in feet', async () => {
+    signedIn();
+    const sent = await onSeating({
+      'GET /api/events/ev_1/seating-plan': () =>
+        json({
+          seating: {
+            measurementSystem: 'us',
+            plan: { ...withTables(table({ xCm: 900 }), second({ xCm: 300 })), widthCm: 1200 },
+          },
+        }),
+    });
+
+    await chooseBoth();
+    fireEvent.click(panel().getByRole('button', { name: 'Arrange in a grid' }));
+    fireEvent.change(panel().getByLabelText('Columns'), { target: { value: '2' } });
+    fireEvent.change(panel().getByLabelText('Gap (ft)'), { target: { value: '33' } });
+    fireEvent.click(panel().getByRole('button', { name: 'Apply' }));
+    expect(panel().getByText('Enter a gap from 0 to 32 ft.')).toBeDefined();
+
+    fireEvent.change(panel().getByLabelText('Gap (ft)'), { target: { value: '32' } });
+    fireEvent.click(panel().getByRole('button', { name: 'Apply' }));
+    expect(panel().getByRole('alert').textContent).toMatch(
+      /^This grid is 50\sft\s4\sin wide; the room is 39\sft\s4\sin\.$/u,
     );
     expect(furniture(sent)).toEqual([]);
   });

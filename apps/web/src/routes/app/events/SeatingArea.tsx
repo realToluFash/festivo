@@ -119,23 +119,17 @@ import {
 import {
   COLUMNS_MAX,
   gridOf,
+  inReadingOrder,
+  onlyTables,
   outlinesOf,
   readGap,
   readWhole,
   rectOf,
   restoredOf,
   seatingIn,
-  thingsOf,
   touchedBy,
 } from './seatingSelection.ts';
-import {
-  SMALL_MAP_FROM_SCALE,
-  f,
-  percentOf,
-  readingOrder,
-  sectionOf,
-  turned,
-} from './seatingDraw.ts';
+import { SMALL_MAP_FROM_SCALE, f, percentOf, sectionOf, turned } from './seatingDraw.ts';
 import { lengthField, lengthWords, tableSizeWords } from './seatingUnits.ts';
 import '../../../components/SettingsParts.css';
 import './seating.css';
@@ -1066,14 +1060,18 @@ function Plan({
         ),
       () => {
         pick([]);
-        stepDone(t('seating.deletedEmpty', { things: thingsOf(t, items) }), () =>
-          runStep(
-            () => api.restoreSeatingItems(event.id, restored),
-            (answer) => {
-              pick(answer.chosen);
-              undone();
-            },
-          ),
+        stepDone(
+          t(onlyTables(items) ? 'seating.deletedEmptyTables' : 'seating.deletedEmptyItems', {
+            count: items.length,
+          }),
+          () =>
+            runStep(
+              () => api.restoreSeatingItems(event.id, restored),
+              (answer) => {
+                pick(answer.chosen);
+                undone();
+              },
+            ),
         );
       },
     );
@@ -1579,9 +1577,7 @@ function Plan({
                 y2={oy + outside.cm * s}
               />
             ))}
-          {readingOrder(
-            floorItems(drawn).map((item) => ({ item, xCm: item.one.xCm, yCm: item.one.yCm })),
-          ).map(({ item }) => {
+          {inReadingOrder(floorItems(drawn)).map((item) => {
             const id = item.one.id;
             const lit = chosenIds.includes(id) || chosenItem === id;
             const outlined = (outside?.ids.includes(id) ?? false) || overlaps.has(id);
