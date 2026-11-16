@@ -62,4 +62,20 @@ final class MenuDishVariantRepository extends ServiceEntityRepository implements
     {
         return $this->findBy(['dish' => $dish], ['position' => 'ASC', 'id' => 'ASC']);
     }
+
+    public function anyCostOnEvent(Event $event): bool
+    {
+        $found = $this->createQueryBuilder('variant')
+            ->select('1')
+            ->join('variant.dish', 'dish')
+            ->join('dish.course', 'course')
+            ->where('course.event = :event')
+            ->andWhere('variant.costMinor IS NOT NULL')
+            ->setParameter('event', $event->getId(), 'uuid')
+            ->setMaxResults(1)
+            ->getQuery()
+            ->getOneOrNullResult();
+
+        return null !== $found;
+    }
 }

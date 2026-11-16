@@ -16,6 +16,7 @@ use App\Entity\Membership;
 use App\Entity\Organisation;
 use App\Entity\Role;
 use App\Entity\User;
+use App\Enum\ErrorCode;
 use App\Enum\EventRole;
 use App\Enum\MembershipStatus;
 use App\Enum\NeedKind;
@@ -433,6 +434,40 @@ final class DishVariantsTest extends ApiTestCase
     }
 
     /** Tolu has peanuts and sesame, a companion sesame: both counted. Bisi's peanuts is an Other allergy, and Dayo has nothing recorded. */
+    #[Test]
+    public function aVariantsCostHoldsTheEventsCurrencyUntilItIsClearedOrRemoved(): void
+    {
+        $jollof = $this->jollof();
+        $this->addVariants($jollof, [[...self::sent('Chicken'), 'cost' => '0'], self::sent('Fish')]);
+        $this->addVariants($jollof, [[...self::sent('Beef'), 'cost' => '12.00']]);
+
+        self::assertSame(409, $this->changeCurrency('EUR'));
+        self::assertSame(ErrorCode::EventCurrencyInUse->type(), $this->last()['type'] ?? null);
+
+        $this->as($this->owner, 'PUT', $this->path('/variants/' . Type\string()->coerce($this->variants()[0]['id'])), [...self::sent('Chicken'), 'cost' => null]);
+        self::assertSame(200, $this->statusCode(), Json\encode($this->last()));
+        self::assertSame(409, $this->changeCurrency('EUR'));
+
+        $this->as($this->owner, 'DELETE', $this->path('/variants/' . Type\string()->coerce($this->variants()[2]['id'])));
+        self::assertSame(200, $this->statusCode(), Json\encode($this->last()));
+        self::assertSame(200, $this->changeCurrency('EUR'));
+    }
+
+    #[Test]
+    public function aDishsCostFromAFoldHoldsTheEventsCurrencyUntilTheDishIsRemoved(): void
+    {
+        $jollof = $this->jollof();
+        $this->addVariants($jollof, [self::sent('Chicken'), [...self::sent('Fish'), 'cost' => '15.50']]);
+        $this->as($this->owner, 'DELETE', $this->path('/variants/' . Type\string()->coerce($this->variants()[0]['id'])));
+        self::assertSame(200, $this->statusCode(), Json\encode($this->last()));
+
+        self::assertSame(409, $this->changeCurrency('EUR'));
+
+        $this->as($this->owner, 'DELETE', $this->path('/dishes/' . $jollof));
+        self::assertSame(200, $this->statusCode(), Json\encode($this->last()));
+        self::assertSame(200, $this->changeCurrency('EUR'));
+    }
+
     private function pickedChicken(): string
     {
         $jollof = $this->jollof();
@@ -651,18 +686,28 @@ final class DishVariantsTest extends ApiTestCase
         return $user;
     }
 
+    private function changeCurrency(string $currency): int
+    {
+        $this->as($this->owner, 'GET', '/api/events/' . $this->eventId);
+        $tag = (string) $this->client->getResponse()->headers->get('ETag');
+        $this->as($this->owner, 'PATCH', '/api/events/' . $this->eventId, ['currency' => $currency], $tag);
+
+        return $this->statusCode();
+    }
+
     /**
      * @param array<string, mixed>|null $body
      *
      * @return array<string, mixed>
      */
-    private function as(User $user, string $method, string $path, ?array $body = null): array
+    private function as(User $user, string $method, string $path, ?array $body = null, ?string $ifMatch = null): array
     {
         $who = self::em()->find(User::class, $user->getId()) ?? self::fail('no user');
         $this->client->request($method, $path, server: [
             'CONTENT_TYPE' => 'application/json',
             'HTTP_AUTHORIZATION' => 'Bearer ' . self::service(JWTTokenManagerInterface::class)->create($who),
             'HTTP_ACCEPT_LANGUAGE' => 'en',
+            ...(null === $ifMatch ? [] : ['HTTP_IF_MATCH' => $ifMatch]),
         ], content: null === $body ? null : Json\encode($body));
 
         return $this->last();
