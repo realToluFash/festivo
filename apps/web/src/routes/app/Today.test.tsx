@@ -275,6 +275,24 @@ describe('Today at a desk (sc-30413)', () => {
     }
   });
 
+  it('puts the one bell in the banner at a desk, with its unread count (sc-39509)', async () => {
+    signedIn(membership({ id: 'org_1' }));
+    const events = serving([]).getMockImplementation();
+    vi.spyOn(globalThis, 'fetch').mockImplementation(async (input, init) =>
+      new URL(String(input)).pathname === '/api/notifications'
+        ? new Response(JSON.stringify({ items: [], unreadCount: 3, next: null }), {
+            status: 200,
+            headers: { 'Content-Type': 'application/json' },
+          })
+        : events!(input, init),
+    );
+    open();
+
+    const bell = await screen.findByRole('button', { name: 'Notifications, 3 unread' });
+    expect(bell.closest('.today-banner')).not.toBeNull();
+    expect(screen.getAllByRole('button', { name: /^Notifications/ })).toHaveLength(1);
+  });
+
   it('keeps New event off the banner for a role without Create events', async () => {
     signedIn(
       membership({

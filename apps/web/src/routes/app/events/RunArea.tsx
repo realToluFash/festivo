@@ -33,6 +33,7 @@ import { eventAreaPath } from './EventNav.tsx';
 import { type RunItem, type RunTrackView, runViews, said } from './runArea.ts';
 import { dayName } from './scheduleArea.ts';
 import { useHubTopics } from './useHubTopics.ts';
+import { useDeskTop } from '../../../deskTop.ts';
 import '../../../components/eventPage.css';
 import './guests.css';
 import './schedule.css';
@@ -122,6 +123,7 @@ export function RunArea({ event }: { event: OrganisationEvent }) {
 
 function Crumbs({ event }: { event: OrganisationEvent }) {
   const { t } = useTranslation();
+  const desk = useDeskTop();
 
   return (
     <div className="ev-crumb-row">
@@ -148,6 +150,7 @@ function Crumbs({ event }: { event: OrganisationEvent }) {
           </li>
         </ol>
       </nav>
+      {desk.bell}
     </div>
   );
 }

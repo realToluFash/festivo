@@ -67,7 +67,11 @@ const BRUNCH = {
   place: 'Ballroom',
 };
 
-function openWith(programme: object[] | undefined, zone = 'Africa/Lagos') {
+function openWith(
+  programme: object[] | undefined,
+  zone = 'Africa/Lagos',
+  language: { chosen: string | null; host: string | null; organisation: string } = PAGE.language,
+) {
   const resolved = Intl.DateTimeFormat.prototype.resolvedOptions;
   vi.spyOn(Intl.DateTimeFormat.prototype, 'resolvedOptions').mockImplementation(function (
     this: Intl.DateTimeFormat,
@@ -76,10 +80,13 @@ function openWith(programme: object[] | undefined, zone = 'Africa/Lagos') {
   });
   vi.spyOn(globalThis, 'fetch').mockImplementation(
     async () =>
-      new Response(JSON.stringify({ ...PAGE, ...(programme == null ? {} : { programme }) }), {
-        status: 200,
-        headers: { 'Content-Type': 'application/json' },
-      }),
+      new Response(
+        JSON.stringify({ ...PAGE, language, ...(programme == null ? {} : { programme }) }),
+        {
+          status: 200,
+          headers: { 'Content-Type': 'application/json' },
+        },
+      ),
   );
 
   render(
@@ -158,7 +165,7 @@ describe('The day on the guest’s page (sc-3899)', () => {
 
   it('writes the 24-hour clock with the digits of the guest’s language', async () => {
     await i18next.changeLanguage('fr');
-    openWith([CEREMONY]);
+    openWith([CEREMONY], 'Africa/Lagos', { ...PAGE.language, chosen: 'fr' });
 
     const section = await screen.findByRole('region', { name: i18next.t('guest.theDay') });
 

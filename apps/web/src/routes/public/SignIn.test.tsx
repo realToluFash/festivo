@@ -224,12 +224,12 @@ describe('signing in, for real', () => {
         '/api/auth/login',
         '/api/orgs',
         '/api/orgs/org_1/events',
-        '/api/notifications',
         '/api/orgs/org_1/events',
         '/api/invitations',
         '/api/join-offers',
         '/api/orgs/org_1/events',
         '/api/orgs/org_1/events',
+        '/api/notifications',
       ]),
     );
   });

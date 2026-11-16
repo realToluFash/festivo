@@ -223,6 +223,14 @@ describe('The run view (sc-1404)', () => {
     expect(screen.getByText('Next: Speeches at about 20:13.')).toBeDefined();
   });
 
+  it('ends its crumb row with the one bell at a desk (sc-39509)', async () => {
+    await onRun([DINNER, SPEECHES]);
+
+    const bell = await screen.findByRole('button', { name: /^Notifications/ });
+    expect(bell.closest('.ev-crumb-row')).not.toBeNull();
+    expect(screen.getAllByRole('button', { name: /^Notifications/ })).toHaveLength(1);
+  });
+
   it('goes back up to the Schedule from the breadcrumb', async () => {
     await onRun([DINNER, SPEECHES]);
     const crumbs = screen.getByRole('navigation', { name: 'Breadcrumb' });

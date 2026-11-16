@@ -158,6 +158,28 @@ afterEach(() => {
 });
 
 describe('The event’s Schedule (sc-3893)', () => {
+  it('ends its crumb row with the one bell at a desk (sc-39509)', async () => {
+    await onSchedule({
+      'GET /api/events/ev_1/schedule': () => json({ schedule: schedule([DRINKS]) }),
+    });
+
+    await screen.findByRole('heading', { level: 1, name: /^Schedule · / });
+    const bell = await screen.findByRole('button', { name: /^Notifications/ });
+    expect(bell.closest('.ev-crumb-row')).not.toBeNull();
+    expect(screen.getAllByRole('button', { name: /^Notifications/ })).toHaveLength(1);
+  });
+
+  it('answers a member without the schedule permission as a page that does not exist, under the crumb row and its one bell (sc-39509)', async () => {
+    await onSchedule({}, ['events.read']);
+
+    expect(
+      await screen.findByRole('heading', { level: 1, name: 'This page does not exist' }),
+    ).toBeDefined();
+    const bell = await screen.findByRole('button', { name: /^Notifications/ });
+    expect(bell.closest('.ev-crumb-row')).not.toBeNull();
+    expect(screen.getAllByRole('button', { name: /^Notifications/ })).toHaveLength(1);
+  });
+
   it('shows a tab per event day and a table per place, sorted by start, with an item after midnight on the day before', async () => {
     await onSchedule({
       'GET /api/events/ev_1/schedule': () =>

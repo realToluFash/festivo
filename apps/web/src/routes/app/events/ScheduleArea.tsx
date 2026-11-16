@@ -52,6 +52,7 @@ import {
   zoneNamed,
 } from './scheduleArea.ts';
 import { useHubTopics } from './useHubTopics.ts';
+import { useDeskTop } from '../../../deskTop.ts';
 import '../../../components/SettingsParts.css';
 import '../../../components/eventsDesk.css';
 import '../../../components/eventPage.css';
@@ -157,6 +158,7 @@ export function ScheduleArea({ event }: { event: OrganisationEvent }) {
 
 function Crumbs({ event, chrome = false }: { event: OrganisationEvent; chrome?: boolean }) {
   const { t } = useTranslation();
+  const desk = useDeskTop();
 
   return (
     <div className={chrome ? 'ev-crumb-row ro-chrome' : 'ev-crumb-row'}>
@@ -177,6 +179,7 @@ function Crumbs({ event, chrome = false }: { event: OrganisationEvent; chrome?: 
           </li>
         </ol>
       </nav>
+      {desk.bell}
     </div>
   );
 }
