@@ -1,0 +1,17 @@
+# sc-57219: 204 letters with the keys up; the count under the box shows whole above Ask to join and the keys while typing. TOKEN.
+appId: host.exp.Exponent
+---
+- openLink: ${METRO_URL}/--/join/${TOKEN}
+- extendedWaitUntil:
+    visible:
+      id: requestToJoin.message
+    timeout: 30000
+- waitForAnimationToEnd
+- tapOn:
+    id: requestToJoin.message
+- inputText: 'aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa'
+- waitForAnimationToEnd
+- takeScreenshot: count-204
+- inputText: 'b'
+- waitForAnimationToEnd
+- takeScreenshot: count-205
