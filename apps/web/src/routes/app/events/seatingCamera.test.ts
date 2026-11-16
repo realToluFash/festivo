@@ -24,3 +24,25 @@ describe('the view following keyboard focus (sc-4007)', () => {
     expect(intoView({ x0: 300, y0: 550, x1: 350, y1: 600 }, 718, 719, [smallMap])).toEqual([0, 0]);
   });
 });
+
+describe('a box larger than the view on one axis only (sc-57361)', () => {
+  it('slides a row wider than the view up from under the small map, keeping its left edge', () => {
+    const smallMap = { x0: 534, y0: 499, x1: 706, y1: 639 };
+
+    expect(intoView({ x0: -900, y0: 550, x1: 900, y1: 600 }, 718, 719, [smallMap])).toEqual([
+      924, -109,
+    ]);
+  });
+
+  it('slides a box taller than the view sideways clear of a bar, keeping its top edge', () => {
+    const bar = { x0: 24, y0: 200, x1: 80, y1: 500 };
+
+    expect(intoView({ x0: 50, y0: 500, x1: 100, y1: 1400 }, 718, 719, [bar])).toEqual([38, -408]);
+  });
+
+  it('lines the box up with its top edge too when no pan up or down clears the bar', () => {
+    const bar = { x0: 534, y0: 100, x1: 706, y1: 600 };
+
+    expect(intoView({ x0: -900, y0: 300, x1: 900, y1: 400 }, 718, 719, [bar])).toEqual([924, -208]);
+  });
+});

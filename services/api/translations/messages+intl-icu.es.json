@@ -98,6 +98,6 @@
     "validation.seating_outside_room": "{name} quedaría fuera de la sala.",
     "validation.seating_renumber_taken": "{name} is already taken by a table you didn’t choose.",
     "validation.seating_copy_outside_room": "The copy of {name} would sit outside the room, so nothing was added.",
-    "validation.seating_row_outside_room": "Fila {label} quedaría fuera de la sala.",
+    "validation.seating_row_outside_room": "La fila {label} quedaría fuera de la sala.",
     "seating.no_such_item": "Esta mesa, fila o asiento no está en el plano."
 }

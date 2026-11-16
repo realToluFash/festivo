@@ -11,7 +11,13 @@ import {
   awaiting,
   primaryEmailAddress,
 } from '@soirely/api-client';
-import { chooseOrganisation, choosePaused, forgetEventsTab, roleHolds } from '@soirely/domain';
+import {
+  chooseOrganisation,
+  choosePaused,
+  forgetEventsTab,
+  holdsAnywhere,
+  roleHolds,
+} from '@soirely/domain';
 import i18next from 'i18next';
 import { useSyncExternalStore } from 'react';
 
@@ -94,6 +100,11 @@ export function useSession(): Session {
 
 export function can(session: Session, permission: string): boolean {
   return session.organisation != null && roleHolds(session.organisation, permission);
+}
+
+/** Held by the organisation role or by a role on any one event: who reaches a page the API opens either way (sc-3901). */
+export function canAnywhere(session: Session, permission: string): boolean {
+  return session.organisation != null && holdsAnywhere(session.organisation, permission);
 }
 
 /** On one event, a Member holds what their role on it gives, not the organisation's: the event read says which (sc-29915). */

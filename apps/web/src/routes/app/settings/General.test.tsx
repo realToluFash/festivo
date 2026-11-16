@@ -344,6 +344,7 @@ describe('Settings > General', () => {
         permissions: ['events.read', 'members.read'],
         readOnlyUntilLinked: true,
         withheldUntilLinked: ['events.manage', 'organisation.manage'],
+        onAnEvent: [],
       }),
     );
     settings();
@@ -370,6 +371,7 @@ describe('Settings > General', () => {
         permissions: ['events.read'],
         readOnlyUntilLinked: true,
         withheldUntilLinked: ['events.manage', 'organisation.manage'],
+        onAnEvent: [],
         withheldUntilTwoFactor: ['members.read', 'organisation.manage'],
       }),
     );
@@ -395,6 +397,7 @@ describe('Settings > General', () => {
         permissions: ['events.read'],
         readOnlyUntilLinked: true,
         withheldUntilLinked: ['events.manage'],
+        onAnEvent: [],
       }),
     );
     settings();
@@ -409,6 +412,7 @@ describe('Settings > General', () => {
       permissions: ['events.read'],
       readOnlyUntilLinked: true,
       withheldUntilLinked: ['organisation.manage'],
+      onAnEvent: [],
     });
     const refusal = {
       type: 'https://soirely.com/errors/oauth_only_unlinked',

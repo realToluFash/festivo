@@ -199,6 +199,7 @@ describe('keptBackBy', () => {
   it('names each rule keeping it back, Google or Apple first', () => {
     const both = {
       withheldUntilLinked: ['organisation.manage'],
+      onAnEvent: [],
       withheldUntilTwoFactor: ['members.manage', 'organisation.manage'],
     };
 

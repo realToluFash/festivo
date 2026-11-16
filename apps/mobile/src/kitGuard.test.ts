@@ -898,7 +898,7 @@ describe('Ask to join holds its message rather than disabling it (sc-9674)', () 
   const text = readFileSync(join('app', 'join', '[token].tsx'), 'utf8');
 
   it('in join/[token].tsx', () => {
-    const fields = selfClosing('InsideField', text);
+    const fields = selfClosing('MessageBox', text);
 
     expect(fields).toHaveLength(1);
     expect(fields.filter((tag) => /\beditable=/u.test(tag.markup))).toEqual([]);

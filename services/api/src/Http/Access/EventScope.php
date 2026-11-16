@@ -31,6 +31,12 @@ final readonly class EventScope
         return $this->organisation->holds($permission) || Iter\any($this->byEvent, static fn (Grants $grants): bool => $grants->holds($permission));
     }
 
+    /** @return list<Permission> what the member's roles on events allow beyond the organisation's, each held on at least one (sc-3901) */
+    public function onAnEvent(): array
+    {
+        return Vec\filter(Permission::cases(), fn (Permission $permission): bool => !$this->organisation->allows($permission) && Iter\any($this->byEvent, static fn (Grants $grants): bool => $grants->allows($permission)));
+    }
+
     /**
      * The events where the member holds it, for a query to narrow to (sc-39534).
      *

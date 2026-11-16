@@ -10,21 +10,23 @@ import {
 } from 'react-native';
 import { useTranslation } from 'react-i18next';
 
-import { FocusEdge } from '../components/Field.tsx';
+import { FocusEdge, useHeld } from '../components/Field.tsx';
 import { fieldFocused, fieldLeft } from '../components/focusedField.ts';
 import { Text } from '../components/Text.tsx';
 import { UnseenName } from '../components/UnseenName.tsx';
 import { FIELD_DEFAULTS, fieldName, refusedHint, refusedName, withInvalid } from '../kit/fields.ts';
-import { Plain, Says } from '../steps/Lines.tsx';
 import { useBoldText } from '../theme/boldText.ts';
 import { inputFaced } from '../theme/fonts.ts';
 import { tokens } from '../theme/tokens.ts';
-import { MESSAGE_BOX, MESSAGE_BOX_MOST_SCALE } from './joinMessage.ts';
+import { LABEL_LARGE } from './InsideField.tsx';
+import { Plain, Says } from './Lines.tsx';
 
-/** InsideField's LABEL_LARGE: the two multi-line fields share one constant once this moves into the kit. */
-const TEXT_LARGE = 17;
+/** The box's height at the default text size: about four lines under its label, and with the label, refusal and count it still fits above the keys and the button on an iPhone SE. It scrolls inside rather than growing. */
+export const MESSAGE_BOX = 132;
+/** Larger Text grows the box with it up to here, then it scrolls sooner. */
+export const MESSAGE_BOX_MOST_SCALE = 1.5;
 
-/** One focused group, so the keys lift the refusal and the count above Ask to join with the box. */
+/** A message of many lines: its label a band of its own over the text, which scrolls below it. One focused group, so the keys lift the refusal and the count above the button with the box. */
 export function MessageBox({
   label,
   value,
@@ -32,6 +34,7 @@ export function MessageBox({
   onBlur,
   line,
   count,
+  submitting = false,
   autoFocus = false,
   ref,
   testID,
@@ -42,6 +45,8 @@ export function MessageBox({
   onBlur: () => void;
   line: string | null;
   count: string;
+  /** A request runs: what was typed is held, and the focus and the keys stay. */
+  submitting?: boolean;
   autoFocus?: boolean;
   ref?: Ref<TextInputInstance> | undefined;
   testID: string;
@@ -54,6 +59,7 @@ export function MessageBox({
   const [focused, setFocused] = useState(false);
   const group = useRef<ViewInstance>(null);
   const refused = line == null ? null : { word: t('forms.invalid'), line, nameID: invalidNameID };
+  const holding = useHeld(submitting, value, undefined, onChangeText);
   const height = MESSAGE_BOX * Math.min(Math.max(fontScale, 1), MESSAGE_BOX_MOST_SCALE);
 
   useEffect(() => {
@@ -89,9 +95,8 @@ export function MessageBox({
               label,
             )}
             accessibilityHint={refusedHint(refused, undefined)}
+            {...holding}
             ref={ref}
-            value={value}
-            onChangeText={onChangeText}
             multiline
             scrollEnabled
             autoFocus={autoFocus}
@@ -139,7 +144,7 @@ const styles = StyleSheet.create({
     paddingBottom: tokens.spaceSm,
     paddingHorizontal: tokens.spaceXl - 1,
     color: tokens.colorInk,
-    fontSize: TEXT_LARGE,
+    fontSize: LABEL_LARGE,
     textAlignVertical: 'top',
   },
 });
