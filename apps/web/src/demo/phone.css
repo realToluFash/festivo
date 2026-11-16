@@ -63,7 +63,6 @@
     box-shadow: none;
   }
 
-  /* The title and the bell share the first line; the page's own button starts the next. */
   .dp-fit .ev-top {
     flex-wrap: wrap;
     row-gap: 0;
@@ -269,7 +268,6 @@
     overflow-wrap: break-word;
   }
 
-  /* Calendar: the month and the steps wrap to their own line when both cannot fit; the views and Show take the next. */
   .dp-fit .cal-tools {
     flex-wrap: wrap;
   }
@@ -294,7 +292,6 @@
     left: auto;
   }
 
-  /* Show wraps under the views when its choice is long, and its menu spans the row as Filter's does. */
   .dp-fit .cal-show-at {
     position: static;
   }
@@ -320,7 +317,6 @@
     padding-bottom: var(--spaceLg);
   }
 
-  /* A day opened sits above the weeks, the window's width. */
   .dp-fit .cal-body {
     flex-direction: column;
     gap: var(--spaceLg);
