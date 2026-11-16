@@ -2849,7 +2849,7 @@
     "zoomOut": "Alejar",
     "zoomIs": "Zoom al {{share, number(style: percent)}}",
     "percent": "{{share, number(style: percent)}}",
-    "fit": "Ver toda la sala",
+    "fit": "Toda la sala",
     "takenOf": "{{taken, number}} de {{seats, number}}",
     "saved": "Guardado",
     "saving": "Guardando…",
@@ -2875,8 +2875,8 @@
     "keyDelete": "pregunta antes",
     "keyEsc": "suelta",
     "keyName": {
-      "shift": "Shift",
-      "delete": "Delete",
+      "shift": "Mayús",
+      "delete": "Supr",
       "esc": "Esc",
       "ctrl": "Ctrl"
     },
@@ -2893,7 +2893,7 @@
     "chosenCount_many": "{{count, number}} de elementos elegidos",
     "chosenCount_other": "{{count, number}} elementos elegidos",
     "moveTogether": "Se mueven juntos y se guardan en un solo paso.",
-    "shiftClick": "Con Shift y clic, se añade o se quita uno. Con Esc, se sueltan todos."
+    "shiftClick": "Con Mayús y clic, se añade o se quita uno. Con Esc, se sueltan todos."
   },
   "onboarding": {
     "step": "Paso {{step, number}} de 2",

@@ -29,12 +29,14 @@ export function Programme({ page }: { page: GuestPage }) {
       {days.length === 1 ? (
         <Items items={items} places={places} />
       ) : (
-        days.map((one) => (
-          <div key={one.day} className="gp-prog-day">
-            <h3 className="gp-prog-h3">{wallDayOf(one.day)}</h3>
-            <Items items={one.items} places={places} />
-          </div>
-        ))
+        <div className="gp-prog-days">
+          {days.map((one) => (
+            <div key={one.day} className="gp-prog-day">
+              <h3 className="gp-prog-h3">{wallDayOf(one.day)}</h3>
+              <Items items={one.items} places={places} />
+            </div>
+          ))}
+        </div>
       )}
     </section>
   );
