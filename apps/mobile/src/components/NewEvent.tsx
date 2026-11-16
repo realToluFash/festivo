@@ -41,7 +41,9 @@ import { coverRefusalOf, pickedFile, pickedRefusal } from '../kit/coverUpload.ts
 import {
   type EventErrors,
   type EventTyped,
+  type StagedCover,
   blankEvent,
+  coverAfterCreate,
   isDirty,
   newEventOf,
   sendOutcome,
@@ -83,7 +85,7 @@ type Status = 'editing' | 'sending' | 'failed' | 'created';
 type ListOpen = 'type' | 'zone' | 'currency';
 
 type Photo =
-  { kind: 'none' } | { kind: 'chosen'; uri: string; width: number; upload: Promise<string | null> };
+  { kind: 'none' } | { kind: 'chosen'; uri: string; width: number; upload: Promise<StagedCover> };
 
 interface FocusOn {
   field: EventFormField;
@@ -266,7 +268,7 @@ export function NewEventScreen({
 
     const mine = ++attempt.current;
     const file = pickedFile(chosen);
-    const upload = (async (): Promise<string | null> => {
+    const upload = (async (): Promise<StagedCover> => {
       try {
         const signed = await api.signEventCoverUpload(organisation.id, {
           contentType: coverTypeOf(file) ?? file.type,
@@ -280,13 +282,14 @@ export function NewEventScreen({
         }
         staged.current = signed.key;
 
-        return signed.key;
+        return { key: signed.key };
       } catch (error) {
+        const refused = coverRefusalOf(error, t);
         if (mine === attempt.current) {
           setPhoto({ kind: 'none' });
-          setCoverRefused(coverRefusalOf(error, t));
+          setCoverRefused(refused);
         }
-        return null;
+        return { refused };
       }
     })();
 
@@ -332,14 +335,16 @@ export function NewEventScreen({
 
     try {
       const created = await api.createEvent(organisation.id, body);
-      const uploadKey = photo.kind === 'chosen' ? await photo.upload : null;
+      const upload = photo.kind === 'chosen' ? await photo.upload : null;
       staged.current = null;
 
-      // The event exists either way, so a refused or failed cover is said on its page rather than here.
-      if (uploadKey != null)
-        await api
-          .setEventCover(created.id, { uploadKey, position: COVER_MIDDLE, description: null })
-          .catch((error: unknown) => markCoverRefused(created.id, coverRefusalOf(error, t)));
+      await coverAfterCreate(
+        upload,
+        (uploadKey) =>
+          api.setEventCover(created.id, { uploadKey, position: COVER_MIDDLE, description: null }),
+        (words) => markCoverRefused(created.id, words),
+        (error) => coverRefusalOf(error, t),
+      );
 
       setStatus('created');
       onCreated(created.id);
