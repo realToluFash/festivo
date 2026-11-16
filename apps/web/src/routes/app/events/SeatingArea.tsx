@@ -38,6 +38,7 @@ import {
   type ReactNode,
   useCallback,
   useEffect,
+  useEffectEvent,
   useId,
   useRef,
   useState,
@@ -101,6 +102,7 @@ import {
   itemName,
   overlappingIds,
   placementOf,
+  pressedHandle,
   withPlacements,
 } from './seatingItems.ts';
 import { fitOf, intoView, useCamera } from './seatingCamera.ts';
@@ -410,7 +412,7 @@ function Plan({
   const panned = useRef(false);
   const [several, setSeveral] = useState<string[]>([]);
   const [placements, setPlacements] = useState<Record<string, Placement>>({});
-  const [save, setSave] = useState<SaveState>('idle');
+  const [save, setSave] = useState<SaveState>('saved');
   const [snap, setSnap] = useState(true);
   const [placing, setPlacing] = useState<Placing | null>(null);
   const [another, setAnother] = useState(true);
@@ -459,7 +461,7 @@ function Plan({
   const itemOf = (id: string, from: SeatingPlan | null = shown): FloorItem | null =>
     from == null ? null : (floorItems(from).find((item) => item.one.id === id) ?? null);
 
-  const open = (next: Panel | null) => {
+  const open = (next: Panel | null, onItem = false) => {
     if (next == null) {
       const back = opener.current;
       const item = chosenAttribute == null ? null : `[${chosenAttribute}="${chosenItem}"]`;
@@ -480,7 +482,11 @@ function Plan({
 
       if (panel == null && (active instanceof HTMLElement || active instanceof SVGElement))
         opener.current = nameOf(active);
-      focusWhenFree(() => document.querySelector('.st-panel [data-focus="title"]'));
+      const item = onItem && 'id' in next ? itemSelector(next.kind, next.id) : null;
+
+      focusWhenFree(() =>
+        document.querySelector<HTMLElement | SVGElement>(item ?? '.st-panel [data-focus="title"]'),
+      );
     }
     setPanel(next);
     setSeveral([]);
@@ -596,24 +602,26 @@ function Plan({
     };
   }, [panBy]);
 
+  const onEscape = useEffectEvent((event: KeyboardEvent) => {
+    if (event.key !== 'Escape' || covered) return;
+    if (placing != null) {
+      event.preventDefault();
+      setPlacing(null);
+    } else if (several.length > 1) {
+      event.preventDefault();
+      setSeveral([]);
+    } else if (chosenAttribute != null) {
+      event.preventDefault();
+      open(null);
+    }
+  });
+
   useEffect(() => {
-    const keys = (event: KeyboardEvent) => {
-      if (event.key !== 'Escape' || covered) return;
-      if (placing != null) {
-        event.preventDefault();
-        setPlacing(null);
-      } else if (several.length > 1) {
-        event.preventDefault();
-        setSeveral([]);
-      } else if (chosenAttribute != null) {
-        event.preventDefault();
-        open(null);
-      }
-    };
+    const keys = (event: KeyboardEvent) => onEscape(event);
 
     window.addEventListener('keydown', keys);
     return () => window.removeEventListener('keydown', keys);
-  });
+  }, []);
 
   const attempt = <A,>(
     change: () => Promise<A>,
@@ -745,7 +753,7 @@ function Plan({
           const name = error.problem.changedBy;
 
           settle(items);
-          setSave('idle');
+          setSave('saved');
           setNotice(
             name == null || item == null
               ? t('seating.notSaved')
@@ -757,7 +765,7 @@ function Plan({
         }
         if (error instanceof ApiError && error.status < 500) {
           settle(items);
-          setSave('idle');
+          setSave('saved');
           setNotice(Object.values(error.fieldErrors())[0] ?? t('seating.notSaved'));
           return;
         }
@@ -792,7 +800,7 @@ function Plan({
       : [...chosenIds, id];
     const only = next.length === 1 ? itemOf(next[0]!) : null;
 
-    if (only != null) open({ kind: only.kind, id: only.one.id });
+    if (only != null) open({ kind: only.kind, id: only.one.id }, true);
     else if (next.length === 0) open(null);
     else {
       setPanel(null);
@@ -844,14 +852,17 @@ function Plan({
 
     void place(copying).then((copy) => {
       if (copy == null) return;
-      open({
-        kind: item.kind,
-        id: copy.id,
-        said: t('seating.duplicated', {
-          name: item.kind === 'row' ? t('seating.rowName', { label: copy.name }) : copy.name,
-          of: itemName(t, item),
-        }),
-      });
+      open(
+        {
+          kind: item.kind,
+          id: copy.id,
+          said: t('seating.duplicated', {
+            name: item.kind === 'row' ? t('seating.rowName', { label: copy.name }) : copy.name,
+            of: itemName(t, item),
+          }),
+        },
+        true,
+      );
     });
   };
 
@@ -926,8 +937,9 @@ function Plan({
     }
   };
 
-  const onItemDown = (event: ReactPointerEvent<SVGGElement>, item: FloorItem) => {
+  const onItemDown = (event: ReactPointerEvent<Element>, item: FloorItem) => {
     if (readOnly || placing != null || event.button !== 0) return;
+    dragged.current = false;
     const id = item.one.id;
     const ids = chosenIds.includes(id) && !event.shiftKey ? chosenIds : [id];
 
@@ -942,9 +954,24 @@ function Plan({
     };
   };
 
-  const onHandleDown = (event: ReactPointerEvent<SVGRectElement>, table: Table, handle: Handle) => {
+  const onHandleDown = (
+    event: ReactPointerEvent<SVGRectElement>,
+    table: Table,
+    pressed: Handle,
+  ) => {
     if (event.button !== 0) return;
-    drag.current = { kind: 'resize', table, handle, pointer: event.pointerId, last: null };
+    const at = toCm(event.clientX, event.clientY);
+    const handle =
+      at == null
+        ? pressed
+        : pressedHandle(
+            table,
+            pressed,
+            turned([at[0] - table.xCm, at[1] - table.yCm], -table.rotation),
+          );
+
+    if (handle == null) onItemDown(event, { kind: 'table', one: table });
+    else drag.current = { kind: 'resize', table, handle, pointer: event.pointerId, last: null };
   };
 
   const toCm = (clientX: number, clientY: number): [number, number] | null => {
@@ -1038,7 +1065,7 @@ function Plan({
       const lead = now.origins.find((one) => one.one.id === now.lead);
 
       if (lead != null && now.origins.length === 1 && !chosenIds.includes(now.lead))
-        open({ kind: lead.kind, id: lead.one.id });
+        open({ kind: lead.kind, id: lead.one.id }, true);
     };
 
     window.addEventListener('pointermove', move);
@@ -1217,7 +1244,7 @@ function Plan({
                     shownPanel?.kind === 'chair' && shownPanel.id === id ? shownPanel.seat : null
                   }
                   outside={outlined}
-                  onChoose={() => open({ kind: 'table', id })}
+                  onChoose={() => open({ kind: 'table', id }, true)}
                   onChair={(seat) => open({ kind: 'chair', id, seat })}
                 />
               ) : item.kind === 'row' ? (
@@ -1234,7 +1261,7 @@ function Plan({
                       : null
                   }
                   outside={outlined}
-                  onChoose={() => open({ kind: 'row', id })}
+                  onChoose={() => open({ kind: 'row', id }, true)}
                   onChair={(seat) => open({ kind: 'row', id, seat })}
                 />
               ) : (
@@ -1246,7 +1273,7 @@ function Plan({
                   oy={oy}
                   chosen={lit}
                   outside={outlined}
-                  onChoose={() => open({ kind: 'seat', id })}
+                  onChoose={() => open({ kind: 'seat', id }, true)}
                 />
               );
 
@@ -1505,6 +1532,19 @@ function Plan({
       )}
     </LayersContext>
   );
+}
+
+function itemSelector(kind: Panel['kind'], id: string): string | null {
+  const attribute =
+    kind === 'table'
+      ? 'data-table'
+      : kind === 'row'
+        ? 'data-row'
+        : kind === 'seat'
+          ? 'data-seat'
+          : null;
+
+  return attribute == null ? null : `.st-room [${attribute}="${id}"]`;
 }
 
 function isFloor(target: EventTarget): boolean {
