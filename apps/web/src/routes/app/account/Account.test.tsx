@@ -533,6 +533,7 @@ describe('the Language row at phone width (sc-57225)', () => {
     const group = await screen.findByRole('group', { name: 'Language' });
     expect(within(group).getByText(/^Every device you sign in on/)).toBeDefined();
     expect(group.closest('.desk')).not.toBeNull();
+    expect(group.querySelector('.desk-foot')?.getAttribute('aria-live')).toBe('polite');
 
     fireEvent.click(within(group).getByRole('radio', { name: /Français/ }));
 
