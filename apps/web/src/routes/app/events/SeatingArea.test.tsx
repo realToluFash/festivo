@@ -1907,7 +1907,9 @@ describe('The room to scale (sc-4007)', () => {
     expect(drawn.querySelectorAll('.st-lit')).toHaveLength(1);
     expect(drawn.querySelector('.st-lit')?.tagName).toBe('circle');
     expect(
-      screen.getByRole('button', { name: 'Row A, seat 4, Empty' }).getAttribute('aria-pressed'),
+      within(drawn as HTMLElement)
+        .getByRole('button', { name: 'Row A, seat 4, Empty' })
+        .getAttribute('aria-pressed'),
     ).toBe('true');
   });
 
