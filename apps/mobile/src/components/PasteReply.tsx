@@ -5,6 +5,7 @@ import { Platform, Pressable, StyleSheet, View } from 'react-native';
 import { useTranslation } from 'react-i18next';
 
 import { markOf } from '../kit/guestRows.ts';
+import { LIST_EDGES } from './listFrame.ts';
 import type { LayoutKind } from '../layout/useLayout.ts';
 import { type WhoseRow, hasText } from '../kit/pasteReply.ts';
 import { tokens } from '../theme/tokens.ts';
@@ -279,7 +280,7 @@ export function WhoseReply({
   const looking = typed.trim() !== '';
 
   return (
-    <View style={styles.page} testID="paste.whose">
+    <View style={[styles.page, kind === 'phone' && styles.flushPhone]} testID="paste.whose">
       {wide && (
         <TextAction
           label={t('guestList.backToGuests')}
@@ -382,6 +383,8 @@ const styles = StyleSheet.create({
   quoteText: { lineHeight: 16 * 1.45 },
   measure: { position: 'absolute', top: 0, left: 0, right: 0, opacity: 0 },
   page: { gap: 18 },
+  /** The demo starts this page flush under the top bar; the page column's top edge is the list's. */
+  flushPhone: { marginTop: -LIST_EDGES.phone.paddingTop },
   none: { gap: 6, paddingTop: tokens.spaceXs },
   groupHead: { minHeight: tokens.sizeHit, flexDirection: 'row', alignItems: 'center' },
   headTitle: { letterSpacing: -0.18, lineHeight: 18 * 1.25 },
