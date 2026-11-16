@@ -151,7 +151,6 @@ export const W = {
     'Guests can see this event, so it needs at least one host. You can still change this name.',
   hostBlank: 'Enter a name or remove this host.',
   searchCurrencies: 'Search currencies',
-  currencyInUse: 'The currency cannot change once amounts are recorded against this event.',
   nameBlank: 'Give the event a name.',
   coverPhoto: 'Cover photo',
   useThisPhoto: 'Use this photo',

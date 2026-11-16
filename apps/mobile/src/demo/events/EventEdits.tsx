@@ -17,12 +17,12 @@ import {
 } from 'react-native';
 
 import { AlertLine } from '../../components/AlertLine.tsx';
-import { EventNotice } from '../../components/EventNotice.tsx';
 import { SearchField } from '../../components/EventsSearch.tsx';
 import {
   ArrivalNoteField,
   Choices,
   CoverPhotoFields,
+  CurrencyView,
   CoverPreview as PartPreview,
   CoverUpload as PartUpload,
   DatePair,
@@ -42,6 +42,7 @@ import {
   useEditTitle,
 } from '../../components/EventEdits.tsx';
 import { PhotoFill } from '../../components/EventThumb.tsx';
+import { currencyMatches } from '../../components/currencyMatches.ts';
 import { Glyph } from '../../components/Glyph.tsx';
 import { MomentBox, type Picking, pick } from '../../components/MomentPick.tsx';
 import { useReadOut } from '../../components/ReadOut.tsx';
@@ -758,18 +759,17 @@ function CurrencyEdit(edit: EditProps) {
       onSave={() => (refused ? setRefusal(true) : edit.onSaved({ ...edit.event, currency: code }))}
       edit={edit}
     >
-      {refusal && <EventNotice tone="broken" words={W.currencyInUse} interrupts />}
-      <CurrencySearch
+      <CurrencyView
         code={code}
-        rows={currencyRows(edit.event.currency)}
+        choices={currencyRows(edit.event.currency)}
+        refused={refusal}
         onPick={setCode}
-        testID="event.edit.currency"
       />
     </Shell>
   );
 }
 
-/** Edit and New event draw the same search, list and empty line; the product puts all three in CurrencyView. */
+/** New event's search, list and empty line; the Edit uses the product's CurrencyView, and both match through currencyMatches. */
 export function CurrencySearch({
   code,
   rows,
@@ -782,10 +782,9 @@ export function CurrencySearch({
   testID: string;
 }) {
   const [typed, setTyped] = useState('');
-  const shown = rows.filter((one) => folded(`${one.code} ${one.name}`).includes(folded(typed)));
-  const none = shown.length === 0;
+  const { shown, unmatched } = currencyMatches(rows, typed);
 
-  useReadOut(none && typed !== '' ? say.noCurrency(typed.trim()) : null);
+  useReadOut(unmatched == null ? null : say.noCurrency(unmatched));
 
   return (
     <>
@@ -801,10 +800,10 @@ export function CurrencySearch({
           testID={`${testID}.search`}
         />
       </View>
-      {none ? (
+      {unmatched != null ? (
         <View style={styles.none} testID={`${testID}.none`}>
           <Text size={15} weight="medium">
-            {say.noCurrency(typed.trim())}
+            {say.noCurrency(unmatched)}
           </Text>
           <TextAction label={W.clearSearch} onPress={() => setTyped('')} />
         </View>
