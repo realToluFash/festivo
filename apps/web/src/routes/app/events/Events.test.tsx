@@ -3768,7 +3768,7 @@ describe('The cover (sc-3590)', () => {
 
   beforeEach(() => {
     nextImage = { width: 2400, height: 1600 };
-    URL.createObjectURL = () => 'blob:chosen';
+    URL.createObjectURL = (chosen: Blob | MediaSource) => `blob:${(chosen as File).name}`;
     URL.revokeObjectURL = () => undefined;
     vi.stubGlobal(
       'Image',
@@ -3984,7 +3984,7 @@ describe('The cover (sc-3590)', () => {
 
       pick(file());
       const slider = await within(part()).findByLabelText('Photo position');
-      expect(part().querySelector('.ev-preview img')?.getAttribute('src')).toBe('blob:chosen');
+      expect(part().querySelector('.ev-preview img')?.getAttribute('src')).toBe('blob:arch.jpg');
       fireEvent.change(slider, { target: { value: '80' } });
       expect(slider.getAttribute('aria-valuetext')).toBe('Showing the bottom of the photo');
       expect(within(part()).getByText('Showing the bottom of the photo')).toBeDefined();
@@ -4168,7 +4168,7 @@ describe('The cover (sc-3590)', () => {
       await waitFor(() => expect(off('Use this photo')).toBe(false));
 
       expect(within(part()).getByRole('alert').textContent).toContain(refusal);
-      expect(part().querySelector('.ev-preview img')?.getAttribute('src')).toBe('blob:chosen');
+      expect(part().querySelector('.ev-preview img')?.getAttribute('src')).toBe('blob:two.jpg');
     });
 
     it('refuses a description over 250 characters and saves nothing', async () => {
