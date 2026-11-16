@@ -51,6 +51,8 @@ export interface ListAndPageProps<Item = never> {
   /** Rows under the list, mounted only near the screen, for a list as long as an organisation (sc-49170). */
   listRows?: ColumnRows<Item> | undefined;
   page: ReactNode;
+  /** In the page's place while none is open, filling the pane without the column's padding or scroll, as the demo's pane holds it. */
+  nothingOpen?: ReactNode;
   /** Changes with the page, so a page opened after a longer one shows from its top. */
   pageKey: string;
   /** Wherever the two show one at a time, whether the page shows in place of the list. */
@@ -99,6 +101,7 @@ export function ListAndPage<Item = never>({
   listRefresh,
   listRows,
   page,
+  nothingOpen,
   pageKey,
   pageInFront,
   pageless = false,
@@ -168,22 +171,25 @@ export function ListAndPage<Item = never>({
             swipe.taking && { transform: [{ translateX: swipe.shift }] },
           ]}
         >
-          <ScrollColumn
-            key={pageKey}
-            style={styles.fill}
-            contentContainerStyle={[
-              styles.grow,
-              inColumn ? [LIST_EDGES.tabletLandscape, column] : (ruled?.page ?? column),
-            ]}
-          >
-            {!landscape && pageInFront && <FrameTop />}
-            {kind === 'tabletPortrait' && !backInFrame && (
-              <View style={styles.start}>
-                <QuietButton label={back.label} onPress={back.onPress} testID={back.testID} />
-              </View>
-            )}
-            {page}
-          </ScrollColumn>
+          {page == null && nothingOpen != null ? (
+            <View style={styles.fill}>{nothingOpen}</View>
+          ) : (
+            <ScrollColumn
+              key={pageKey}
+              style={styles.fill}
+              contentContainerStyle={
+                inColumn ? [LIST_EDGES.tabletLandscape, column] : (ruled?.page ?? column)
+              }
+            >
+              {!landscape && pageInFront && <FrameTop />}
+              {kind === 'tabletPortrait' && !backInFrame && (
+                <View style={styles.start}>
+                  <QuietButton label={back.label} onPress={back.onPress} testID={back.testID} />
+                </View>
+              )}
+              {page}
+            </ScrollColumn>
+          )}
         </Animated.View>
       </View>
     </Screen>
@@ -193,7 +199,6 @@ export function ListAndPage<Item = never>({
 const styles = StyleSheet.create({
   rule: { borderRightWidth: 1, borderRightColor: tokens.colorBorder },
   fill: { flex: 1, minWidth: 0 },
-  grow: { flexGrow: 1 },
   bare: { padding: 0, gap: 0 },
   behind: { display: 'none' },
   start: { alignSelf: 'flex-start' },

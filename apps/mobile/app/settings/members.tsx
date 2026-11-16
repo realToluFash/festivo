@@ -683,7 +683,8 @@ export default function MembersScreen() {
             heading={heading}
             list={list}
             listRows={people}
-            page={page ?? (landscape && load.kind === 'loaded' && <NobodyPicked />)}
+            page={page || undefined}
+            nothingOpen={landscape && load.kind === 'loaded' ? <NobodyPicked /> : undefined}
             pageKey={member?.id ?? ''}
             pageInFront={listBehind}
             back={{
