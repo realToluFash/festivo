@@ -33,7 +33,10 @@
     "mobile:runView.minutes_other",
     "web:seating.keyShiftUs",
     "web:seating.keyName.esc",
-    "web:seating.keyName.ctrl"
+    "web:seating.keyName.ctrl",
+    "web:night.minutes_one",
+    "web:night.minutes_other",
+    "web:night.hoursMinutes"
   ],
   "fr": [
     "web:nav.menu",
