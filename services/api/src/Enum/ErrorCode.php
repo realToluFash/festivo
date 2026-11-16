@@ -50,6 +50,8 @@ enum ErrorCode: string
     case GuestReplied = 'guest_replied';
     case ReplyIsTheirs = 'reply_is_theirs';
     case GuestNotMarkedByHand = 'guest_not_marked_by_hand';
+    case DishNameShared = 'dish_name_shared';
+    case DishInUse = 'dish_in_use';
 
     case AlreadyAMember = 'already_a_member';
     case EmailTaken = 'email_taken';
@@ -144,7 +146,7 @@ enum ErrorCode: string
             self::PreconditionRequired => 428,
             self::EventCurrencyInUse, self::EventStateInvalid, self::EventConcluded, self::EventPaused, self::EventHostRequired, self::EventCallOffFirst => 409,
             self::PlanLimit => 403,
-            self::SeatingPlanExists, self::SeatingSectionLimit, self::SeatingItemsOutside, self::ScheduleItemLimit, self::ItemStarted, self::ItemNotStarted, self::ItemFinished, self::GuestAlreadyListed, self::StaffNumberShared, self::RepliesClosed, self::RepliesOpen, self::GuestReplied, self::ReplyIsTheirs, self::GuestNotMarkedByHand => 409,
+            self::SeatingPlanExists, self::SeatingSectionLimit, self::SeatingItemsOutside, self::ScheduleItemLimit, self::ItemStarted, self::ItemNotStarted, self::ItemFinished, self::GuestAlreadyListed, self::StaffNumberShared, self::RepliesClosed, self::RepliesOpen, self::GuestReplied, self::ReplyIsTheirs, self::GuestNotMarkedByHand, self::DishNameShared, self::DishInUse => 409,
             self::Unauthenticated, self::InvalidCredentials, self::InvalidRefreshToken, self::OAuthTokenInvalid, self::TwoFactorChallengeInvalid, self::SessionTimedOut => 401,
             self::Forbidden, self::PermissionRequired, self::GrantNotHeld, self::OwnEventRole, self::AccountUnverified, self::ProfileIncomplete, self::TwoFactorRequired, self::ProofRequired => 403,
             self::OAuthOnly, self::OAuthOnlyUnlinked, self::OrganisationTwoFactorRequired, self::OrganisationTwoFactorOverdue, self::OwnerRequired => 403,

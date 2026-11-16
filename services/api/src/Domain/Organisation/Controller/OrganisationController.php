@@ -68,6 +68,7 @@ final readonly class OrganisationController
                 $membership,
                 $this->membershipDirectory->grantsIn($membership->getUser(), $membership->getOrganisation()->getId()) ?? Grants::only([]),
                 $this->signInRules->twoFactorDue($membership),
+                $this->membershipDirectory->eventScopeIn($membership->getUser(), $membership->getOrganisation()->getId())?->onAnEvent() ?? [],
             )),
             'paused' => Vec\map(
                 $user instanceof User ? $this->membershipRepository->findPausedFor($user) : [],
@@ -105,6 +106,7 @@ final readonly class OrganisationController
             $membership,
             $this->membershipDirectory->grantsIn($user, $organisation->getId()) ?? Grants::only([]),
             $this->signInRules->twoFactorDue($membership),
+            [],
         )], Response::HTTP_CREATED);
     }
 

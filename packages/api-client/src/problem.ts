@@ -55,6 +55,8 @@ export interface Problem {
   repliedAt?: string;
   /** On `staff_number_shared`: the first roster entry already on that number (sc-3906). */
   sharedWith?: string;
+  /** On `dish_name_shared`: whether the only dish holding the name is archived (sc-3901). */
+  archived?: boolean;
   /** On a schedule item's `precondition_failed`: the item as it is stored now, which `asScheduleItem` reads (sc-3893). */
   current?: unknown;
 }

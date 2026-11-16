@@ -6,7 +6,7 @@ import { TextAction, TitleRow, type Tell } from '../components/SettingsParts.tsx
 import { DemoBell } from './DemoBell.tsx';
 import { DemoOffline } from './DemoOffline.tsx';
 import { EventsShell } from './EventParts.tsx';
-import { HintButton } from './HintButton.tsx';
+import { HintButton } from '../components/HintButton.tsx';
 import { Pill } from './GuestsParts.tsx';
 import {
   type Diet,

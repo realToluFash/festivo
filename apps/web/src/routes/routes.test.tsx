@@ -597,16 +597,42 @@ describe('the application tree', () => {
         'Today',
         'Events',
         'Calendar',
+        'Menu library',
         'Settings',
         'Ada Okonkwo, Owner',
       ]);
-      expect(links[3]!.getAttribute('aria-current')).toBe('page');
+      expect(links[4]!.getAttribute('aria-current')).toBe('page');
       expect(dialog.textContent).not.toContain('ada@example.com');
       expect(dialog.querySelector('select[aria-label="Language"]')).not.toBeNull();
       expect(document.activeElement).toBe(
         within(dialog).getByRole('button', { name: 'Close menu' }),
       );
     });
+
+    it.each([
+      ['a Member with menu.read through a role on an event', ['menu.read'], true],
+      ['a Member with no role on any event', [], false],
+    ])(
+      'offers the Menu library to %s, as the API lets them in (sc-3901)',
+      (_, onAnEvent, shown) => {
+        const member = membership({
+          id: 'org_1',
+          name: 'Okonkwo Events',
+          role: { id: 'role_3', seededAs: 'member', name: null },
+          permissions: [],
+          onAnEvent,
+        });
+        __setSessionState({
+          status: 'signedIn',
+          session: { ...ADA, organisation: member, organisations: [member] },
+        });
+        at('/app/settings');
+
+        const links = [...openMenu().querySelectorAll('a')].map((link) => link.textContent);
+
+        expect(links.includes('Menu library')).toBe(shown);
+      },
+    );
 
     it('draws the person at the foot as the demo draws its button, with no underline', () => {
       const desk = readFileSync(join(import.meta.dirname, '../components/desk.css'), 'utf8');
