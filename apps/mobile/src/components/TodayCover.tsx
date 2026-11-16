@@ -10,8 +10,10 @@ import {
   type ViewInstance,
   type ViewStyle,
 } from 'react-native';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import Svg, { Circle, Defs, LinearGradient, Rect, Stop } from 'react-native-svg';
 
+import { tabBarSides } from './bodyEdges.ts';
 import { Text } from './Text.tsx';
 import { useWholeWords } from './Title.tsx';
 import { CAPSULE_LABEL } from '../layout/capsuleFit.ts';
@@ -879,6 +881,7 @@ export function TabBar<T extends string>({
   refs?: Partial<Record<T, Ref<ViewInstance>>>;
 }) {
   const { fontScale } = useWindowDimensions();
+  const insets = useSafeAreaInsets();
   const words = useWholeWords(
     TAB_LABEL,
     Math.min(TAB_LABEL * fontScale, TAB_LABEL_MOST),
@@ -887,7 +890,7 @@ export function TabBar<T extends string>({
   );
 
   return (
-    <View style={[styles.tabBar, { bottom }]} accessibilityRole="tablist">
+    <View style={[styles.tabBar, tabBarSides(insets), { bottom }]} accessibilityRole="tablist">
       {words.measure}
       {tabs.map(([label, glyph], index) => {
         const on = label === at;
@@ -1247,8 +1250,6 @@ const styles = StyleSheet.create({
   },
   tabBar: {
     position: 'absolute',
-    left: 18,
-    right: 18,
     height: PHONE_TAB_BAR,
     padding: 5,
     borderRadius: tokens.space5xl,
