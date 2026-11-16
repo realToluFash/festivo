@@ -52,6 +52,7 @@ import { MANY_PAGES } from './guestsMany.ts';
 import { KitchenPage } from './Kitchen.tsx';
 import { MenuPage } from './MenuServed.tsx';
 import { MENU_PAGES } from './menuServed.ts';
+import { COURSES_PAGES } from './menuCourses.ts';
 import { MenuLibraryPage } from './MenuLibrary.tsx';
 import { LIBRARY_PAGES } from './menuLibrary.ts';
 import { CHANGES_PAGES, KITCHEN_PAGES, PARTS_PAGES } from './kitchen.ts';
@@ -379,6 +380,11 @@ function DemoHome({ from }: { from: string }) {
 
       <section className="demo-home-page" aria-labelledby="demo-page-32">
         <h2 id="demo-page-32">32 · Menu</h2>
+        <h3>
+          Courses in order, and the dishes on each · sc-3902 · desktop, and a web window down to 320
+          px (tweaks: &amp;format=fr or pt for the allergen names, &amp;budget=no)
+        </h3>
+        <BoardPages pages={COURSES_PAGES} />
         <h3>How a course is served, and a dish’s parts · sc-34230 · desktop</h3>
         <BoardPages pages={MENU_PAGES} />
       </section>

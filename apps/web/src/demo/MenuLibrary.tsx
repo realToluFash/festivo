@@ -626,7 +626,7 @@ function Toolbar({
   );
 }
 
-function ContainsMark({ dish, lang }: { dish: LibDish; lang: Lang }) {
+export function ContainsMark({ dish, lang }: { dish: Pick<LibDish, 'contains'>; lang: Lang }) {
   const kind = dish.contains == null ? 'unknown' : dish.contains === 'none' ? 'none' : 'some';
 
   return (
@@ -754,10 +754,10 @@ function DishRow({
   );
 }
 
-type ActionIcon = 'edit' | 'archive' | 'restore' | 'bin';
+export type ActionIcon = 'edit' | 'archive' | 'restore' | 'bin' | 'remove';
 
-/** Archive, Restore and Delete… have no glyph in the web's set; these three are drawn in its 24 px stroke, each a different shape. */
-function ActionGlyph({ icon }: { icon: ActionIcon }) {
+/** Archive, Restore, Delete… and Remove… have no glyph in the web's set; these are drawn in its 24 px stroke, each a different shape. */
+export function ActionGlyph({ icon }: { icon: ActionIcon }) {
   if (icon === 'edit') return <Glyph name="pen" size={20} weight={2} />;
   const paths: Record<Exclude<ActionIcon, 'edit'>, readonly string[]> = {
     archive: ['M3 4h18v4H3z', 'M5 8v11a1 1 0 0 0 1 1h12a1 1 0 0 0 1-1V8', 'M10 12h4'],
@@ -768,6 +768,7 @@ function ActionGlyph({ icon }: { icon: ActionIcon }) {
       'm9 13 3-3 3 3',
     ],
     bin: ['M3 6h18', 'M8 6V4h8v2', 'M19 6l-1 14H6L5 6', 'M10 11v6', 'M14 11v6'],
+    remove: ['M12 3a9 9 0 1 0 0 18a9 9 0 1 0 0-18', 'M8 12h8'],
   };
 
   return (
@@ -803,13 +804,14 @@ function Optional() {
   return <span className="gs-optional">{LW.optional}</span>;
 }
 
-function DishFields({
+export function DishFields({
   form,
   errors,
   notStated,
   editing,
   budget,
   lang,
+  beforePrice = null,
   onPatch,
 }: {
   form: DishForm;
@@ -818,6 +820,7 @@ function DishFields({
   editing: boolean;
   budget: boolean;
   lang: Lang;
+  beforePrice?: ReactNode;
   onPatch: (next: Partial<DishForm>) => void;
 }) {
   const nameLength = lengthOf(form.name);
@@ -973,6 +976,7 @@ function DishFields({
           </div>
         )}
       </fieldset>
+      {beforePrice}
       {budget && (
         <fieldset className="lib-set" aria-describedby="lib-price-help">
           <legend className="desk-label gs-label">
