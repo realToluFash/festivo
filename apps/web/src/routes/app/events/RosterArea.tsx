@@ -29,6 +29,9 @@ import { canOn, useSession } from '../../../session.ts';
 import { FieldWrong } from './GuestFields.tsx';
 import { useHubTopics } from './useHubTopics.ts';
 import { useStartingCountry } from './useStartingCountry.ts';
+import '../../../components/SettingsParts.css';
+import '../../../components/eventsDesk.css';
+import '../../../components/eventPage.css';
 import './guests.css';
 import './roster.css';
 
@@ -116,7 +119,7 @@ export function RosterArea({ event }: { event: OrganisationEvent }) {
   );
 
   return (
-    <div className="desk-page ev-page gs mn sn rs">
+    <div className="desk ev desk-page ev-page gs mn sn rs">
       <div className="ev-wide mn-page">
         <div className="ev-crumb-row">
           <nav className="ev-crumb" aria-label={t('roster.crumb')}>
@@ -775,7 +778,6 @@ function PersonForm({
               id={FIELD_IDS.name}
               type="text"
               value={draft.name}
-              maxLength={STAFF_NAME_MAXIMUM}
               autoComplete="off"
               aria-invalid={problems.name != null}
               aria-describedby={told(FIELD_IDS.name, problems.name, true)}

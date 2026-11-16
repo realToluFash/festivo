@@ -650,6 +650,19 @@ function Invitation({
               </button>
             </li>
           )}
+          {notYet && invites && !asked && (
+            <li>
+              <button
+                type="button"
+                className="desk-row gs-do"
+                data-focus="record-not-yet"
+                onClick={actions.onRecord}
+              >
+                <IconLead name="message" />
+                <RowWords title={GW.recordReply} lines={[GW.recordNotYetLine]} />
+              </button>
+            </li>
+          )}
         </ul>
       )}
       {acts && marking && notYet && (

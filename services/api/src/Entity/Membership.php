@@ -75,7 +75,7 @@ class Membership
     private ?DateTimeImmutable $removesAt = null;
 
     /** What the person wrote when asking through the request link (sc-562), for whoever answers. */
-    #[ORM\Column(type: Types::STRING, length: 500, nullable: true)]
+    #[ORM\Column(type: Types::STRING, length: 2000, nullable: true)]
     private ?string $requestMessage = null;
 
     /** The instant a request to join nobody answered is removed (sc-392): set on asking, and cleared once it is answered. */

@@ -14,6 +14,7 @@ enum RealtimeTopic: string
     case EventGuests = 'events/{id}/guests';
     case EventHeadcount = 'events/{id}/headcount';
     case EventStaff = 'events/{id}/staff';
+    case EventSchedule = 'events/{id}/schedule';
 
     public function for(string $id): string
     {

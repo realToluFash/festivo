@@ -1,6 +1,5 @@
 import { ApiError, type JoinOffers, type JoinRequest } from '@soirely/api-client';
 import {
-  ACCOUNT_NAME_MAXIMUM,
   answeringInvitation,
   countryChoices,
   deviceCountry,
@@ -439,7 +438,6 @@ function Details({
             autoComplete="name"
             autoCorrect="off"
             spellCheck={false}
-            maxLength={ACCOUNT_NAME_MAXIMUM}
             value={values.name}
             {...offField(saving)}
             aria-invalid={errors.name != null}
@@ -559,7 +557,6 @@ function Details({
                 autoComplete="organization"
                 autoCorrect="off"
                 spellCheck={false}
-                maxLength={100}
                 value={values.organisationName}
                 {...offField(saving)}
                 aria-invalid={errors.organisationName != null}

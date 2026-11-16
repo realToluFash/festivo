@@ -27,7 +27,7 @@ class Organisation implements SoftDeletableInterface
     #[ORM\Column(type: 'uuid')]
     private Uuid $id;
 
-    #[ORM\Column(type: Types::STRING, length: 100)]
+    #[ORM\Column(type: Types::STRING, length: 400)]
     private string $name;
 
     #[ORM\Column(type: Types::STRING, length: 2)]

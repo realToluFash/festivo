@@ -3,6 +3,13 @@ export const SW = {
   area: 'Seating',
   events: 'Events',
   crumb: 'Breadcrumb',
+  widthsTitle: 'The header band in a narrow window',
+  widthsLine:
+    'The Seating header band as it sits in a browser window 320 and 375 pixels wide. The event name gives way first; the chevrons, Events and Seating never shrink.',
+  widthAt: '{{w}} px · {{lang}} · {{name}}',
+  english: 'English',
+  french: 'French',
+  longLabel: '120-character name',
   floorPlan: 'Floor plan',
   tables: 'Tables',
   list: 'List',
@@ -18,6 +25,7 @@ export const SW = {
   notSaved: 'This change was not saved.',
   tryAgain: 'Try again',
   addTable: 'Add table',
+  add: 'Add',
   addRow: 'Add row',
   addSeat: 'Add seat',
   addBar: 'Add to the room',
@@ -86,10 +94,10 @@ export const SW = {
   cancel: 'Cancel',
   addSection: 'Add section',
   deleteSectionDots: 'Delete section…',
-  sectionStays: 'Its tables stay where they are, with no section.',
+  sectionStays: 'Its tables, rows and single seats stay where they are, with no section.',
   deleteNamed: 'Delete {{name}}?',
-  sectionDeleteBody_one: 'Its {{count}} table stays where it is, with no section.',
-  sectionDeleteBody_other: 'Its {{count}} tables stay where they are, with no section.',
+  sectionDeleteBody_one: 'Its {{counts}} stays where it is, with no section.',
+  sectionDeleteBody_other: 'Its {{counts}} stay where they are, with no section.',
   keepIt: 'Keep it',
   deleteSection: 'Delete section',
   sectionTaken: 'This plan already has a section called {{name}}.',
@@ -124,6 +132,7 @@ export const SW = {
   menuRound: 'Round table · 180 cm · 10 seats',
   menuRect: 'Rectangular table · 180 × 76 cm · 6 seats',
   menuHead: 'Head table · 240 × 76 cm · 4 seats',
+  menuRow: 'Row of chairs',
   menuCocktail: 'Cocktail table · 60 cm · 4 places',
   endsLine: '{{left}} on the left end, {{right}} on the right, {{a}} and {{b}} down the sides.',
   headLine: '{{n}} along the side facing the room.',
@@ -300,3 +309,18 @@ export const SW = {
 } as const;
 
 export type SeatingWord = keyof typeof SW;
+
+/** The breadcrumb's words in the two locales QA checks it in (sc-55300): French has the longest fixed labels, so English and French cover Spanish and Portuguese. */
+export const CRUMB_WORDS = {
+  en: { crumb: 'Breadcrumb', events: 'Events', area: 'Seating' },
+  fr: { crumb: 'Fil d’Ariane', events: 'Événements', area: 'Plan de table' },
+} as const;
+
+export type CrumbLang = keyof typeof CRUMB_WORDS;
+
+/** 120 characters, the longest an event name may be (`Event.name`). */
+export const LONG_NAME =
+  'Adaeze & Tunde’s wedding weekend, with both families from Lagos, London and Accra, the church, the dinner and the brunch';
+
+/** The event qa5 found the fault on (sc-54391). */
+export const QA_NAME = 'Seating words QA';

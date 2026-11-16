@@ -1,8 +1,24 @@
 import { SEATING_LIMITS, type SeatingPlan } from '@soirely/api-client';
 
-/** From 25% a table shows its chairs, and from 75% each chair is a 44 target for a pointer (the demo's zoom levels). */
+/** 100% draws 1 m of room as 50 px; from 50% a table shows its chairs, and from 150% each chair is a 44 target for a pointer. */
+export const AT_100 = 0.5;
 export const CHAIRS_FROM_SCALE = 0.25;
 export const POINTER_CHAIRS_FROM_SCALE = 0.75;
+export const ZOOMS: readonly number[] = [25, 40, 50, 75, 100, 150, 200, 300, 400];
+export const SMALLEST_SCALE = 0.25 * AT_100;
+export const LARGEST_SCALE = 4 * AT_100;
+export const SMALL_MAP_FROM_SCALE = 2 * AT_100;
+
+export function percentOf(s: number): number {
+  return Math.round((s / AT_100) * 100);
+}
+
+/** Top to bottom in bands of 1.2 m, then left to right: the order Tab reaches the items in. */
+export function readingOrder<T extends { xCm: number; yCm: number }>(items: readonly T[]): T[] {
+  return [...items].sort(
+    (a, b) => Math.round(a.yCm / 120) - Math.round(b.yCm / 120) || a.xCm - b.xCm,
+  );
+}
 
 export function sectionOf(plan: SeatingPlan, item: { sectionId: string | null }) {
   return plan.sections.find((one) => one.id === item.sectionId) ?? null;

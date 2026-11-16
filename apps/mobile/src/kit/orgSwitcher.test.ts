@@ -143,7 +143,9 @@ describe('Today’s openers', () => {
   });
 
   it('leave the iPad sidebar’s switcher out for someone in no organisation', () => {
-    expect(read('components', 'TodaySidebar.tsx')).toMatch(/\{org && <SidebarOrg \/>\}/u);
+    expect(read('components', 'TodaySidebar.tsx')).toMatch(
+      /\{org && \(children \?\? <SidebarOrg \/>\)\}/u,
+    );
     expect(read('demo', 'settings', 'Frame.tsx')).toMatch(/org=\{shell\.viewer !== 'noOrg'\}/u);
   });
 });

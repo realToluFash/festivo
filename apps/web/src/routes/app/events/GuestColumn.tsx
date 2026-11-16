@@ -396,7 +396,7 @@ export function GuestColumn({
         onCancel={(dirty) => {
           const leave = () => {
             back(pane.tagged, false);
-            focus('record', 'step');
+            focus('record', 'record-not-yet', 'step');
           };
 
           if (dirty) onAsk(leave);
@@ -981,6 +981,7 @@ function GuestView({
           }}
           onMark={marked}
           onUnmark={unmarked}
+          onRecord={onRecord}
         />
       ) : (
         <p className="gs-inset gs-read-only">{t('guestList.readOnlyInvited')}</p>

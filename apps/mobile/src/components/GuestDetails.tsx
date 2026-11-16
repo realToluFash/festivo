@@ -19,6 +19,7 @@ import { markOf } from '../kit/guestRows.ts';
 import type { LayoutKind } from '../layout/useLayout.ts';
 import { tokens } from '../theme/tokens.ts';
 import { LineIcon } from './AccountCard.tsx';
+import { Glyph } from './Glyph.tsx';
 import { ChoseNote } from './GuestLanguage.tsx';
 import { GuestCover } from './GuestsCard.tsx';
 import { NeedsRows } from './GuestNeeds.tsx';
@@ -64,6 +65,7 @@ export function GuestDetails({
   coverMarkRef,
   unmarkRef,
   recordRef,
+  recordNotYetRef,
   onEdit,
   onMark,
   onCoverMark,
@@ -92,6 +94,7 @@ export function GuestDetails({
   coverMarkRef: Ref<ViewInstance>;
   unmarkRef: Ref<ViewInstance>;
   recordRef: Ref<ViewInstance>;
+  recordNotYetRef: Ref<ViewInstance>;
   onEdit: () => void;
   onMark: () => void;
   onCoverMark: () => void;
@@ -250,7 +253,9 @@ export function GuestDetails({
           after.card ??
           guestRepliedLine(guest, word, after.reply, timeZone, locale, t) ??
           (shown === 'notYetInvited'
-            ? t('guestList.copyFirst')
+            ? invitation == null
+              ? null
+              : t('guestList.copyFirst')
             : invitationLine(t, guest, timeZone, locale))
         }
         step={
@@ -352,6 +357,8 @@ export function GuestDetails({
           unmarkRef={unmarkRef}
           onMark={onMark}
           onUnmark={onUnmark}
+          recordRef={recordNotYetRef}
+          onRecord={onRecord}
         />
       ) : (
         !manages && (
@@ -371,8 +378,10 @@ function SavedLine({ words }: { words?: string }) {
 
   return (
     <View style={styles.saved} testID="guest.saved">
-      <LineIcon name="tick" />
-      <Text size={15} weight="semibold">
+      <View style={styles.savedMark}>
+        <Glyph name="tick" size={17} ink={tokens.marks.done.fill} weight={2.6} />
+      </View>
+      <Text size={15} weight="semibold" style={styles.savedWords}>
         {said}
       </Text>
     </View>
@@ -466,7 +475,9 @@ const styles = StyleSheet.create({
   head: { minHeight: tokens.sizeHit, flexDirection: 'row', alignItems: 'center', gap: 10 },
   headTitle: { letterSpacing: -0.18, lineHeight: 18 * 1.25 },
   chose: { paddingLeft: 40, paddingBottom: tokens.spaceSm },
-  saved: { flexDirection: 'row', alignItems: 'center', gap: tokens.spaceXs },
+  saved: { flexDirection: 'row', alignItems: 'flex-start', gap: tokens.spaceSm },
+  savedMark: { paddingTop: 1 },
+  savedWords: { flex: 1, minWidth: 0, lineHeight: 21 },
   notFound: { gap: 6, paddingTop: tokens.spaceXs },
   sunkHead: { height: 28, width: '60%', borderRadius: 8, backgroundColor: tokens.colorNeutralFill },
   sunkRow: { height: 56, borderRadius: 12, backgroundColor: tokens.colorNeutralFill },

@@ -168,7 +168,7 @@ describe('the plan and the room (sc-3998, sc-4007)', () => {
 
     expect(links).toHaveLength(SEATING_STATES.length);
     expect(links[0]?.getAttribute('href')).toBe(AT);
-    expect(links.at(-1)?.getAttribute('href')).toBe(`${AT}?state=paperCardTop`);
+    expect(links.at(-1)?.getAttribute('href')).toBe(`${AT}?state=crumbWidths`);
   });
 
   it('is the event’s own Seating entry, lit while it is open', SLOW, async () => {
@@ -403,18 +403,34 @@ describe('Room settings and sections (sc-3998)', () => {
   });
 
   it(
-    'asks only "Delete {name}?" for a section with a row but no tables (pm, 9 Nov)',
+    'names the rows and single seats a section leaves with no section (sc-54060)',
     SLOW,
     async () => {
-      await seating('sectionDeleteEmpty');
+      await seating('sectionDeleteRows');
       const ask = screen.getByRole('alertdialog', { name: 'Delete Quiet corner?' });
 
-      expect(ask.textContent).not.toContain('stay where they are');
-      expect(ask.querySelector('p')?.textContent).toBe('');
+      expect(ask.textContent).toContain(
+        'Its 1 row and 1 single seat stay where they are, with no section.',
+      );
+      expect(
+        within(panel()).getByText(
+          'Its tables, rows and single seats stay where they are, with no section.',
+        ),
+      ).toBeDefined();
       fireEvent.click(within(ask).getByRole('button', { name: 'Delete section' }));
       expect(screen.queryByRole('alertdialog')).toBeNull();
     },
   );
+
+  it('asks only "Delete {name}?" for an empty section (pm, 9 Nov)', SLOW, async () => {
+    await seating('sectionDeleteEmpty');
+    const ask = screen.getByRole('alertdialog', { name: 'Delete Quiet corner?' });
+
+    expect(ask.textContent).not.toContain('stay where they are');
+    expect(ask.querySelector('p')?.textContent).toBe('');
+    fireEvent.click(within(ask).getByRole('button', { name: 'Delete section' }));
+    expect(screen.queryByRole('alertdialog')).toBeNull();
+  });
 });
 
 describe('tables, rows and seats (sc-4000, sc-4003)', () => {
@@ -457,6 +473,21 @@ describe('tables, rows and seats (sc-4000, sc-4003)', () => {
       press(item(/^Bar 1,/u));
       expect(within(panel()).getByLabelText('Places')).toBeDefined();
       expect(within(panel()).queryByLabelText('Rotation')).toBeNull();
+    },
+  );
+
+  it(
+    'gives Section and Shape a full row each, so a long name is never clipped (qa5 #54266)',
+    SLOW,
+    async () => {
+      await seating('placed');
+      for (const label of ['Section', 'Shape']) {
+        expect(within(panel()).getByLabelText(label).closest('.st-two')).toBeNull();
+      }
+      await seating('rowAdded');
+      for (const label of ['Label', 'Section']) {
+        expect(within(panel()).getByLabelText(label).closest('.st-two')).toBeNull();
+      }
     },
   );
 
@@ -643,6 +674,59 @@ describe('tables, rows and seats (sc-4000, sc-4003)', () => {
     expect(
       await within(panel()).findByText('Seat 1 added in the nearest free space.'),
     ).toBeDefined();
+  });
+
+  it('folds Add row and Add seat into one Add menu when the bar meets the zoom', SLOW, async () => {
+    const measured = vi
+      .spyOn(HTMLElement.prototype, 'getBoundingClientRect')
+      .mockImplementation(function (this: HTMLElement) {
+        const width = this.classList.contains('st-add')
+          ? 520
+          : this.classList.contains('st-zoom')
+            ? 240
+            : 0;
+
+        return {
+          width,
+          height: 0,
+          top: 0,
+          left: 0,
+          right: width,
+          bottom: 0,
+          x: 0,
+          y: 0,
+        } as DOMRect;
+      });
+
+    try {
+      await seating();
+      fireEvent.click(await screen.findByRole('button', { name: 'Add' }, WAIT));
+      expect(screen.queryByRole('button', { name: 'Add seat' })).toBeNull();
+      const menu = screen.getByRole('menu', { name: 'Add' });
+
+      expect(within(menu).getAllByRole('menuitem')).toHaveLength(6);
+      fireEvent.click(within(menu).getByRole('menuitem', { name: 'Row of chairs' }));
+      expect(
+        await within(panel()).findByText('Row B added in the nearest free space, with 10 seats.'),
+      ).toBeDefined();
+      expect(screen.queryByRole('menu')).toBeNull();
+    } finally {
+      measured.mockRestore();
+    }
+  });
+
+  it('Esc in a field undoes the typing first, then leaves the table', SLOW, async () => {
+    await seating('tapChooses');
+    const field = within(panel()).getByLabelText('Seats', { exact: false }) as HTMLInputElement;
+    const was = field.value;
+
+    fireEvent.change(field, { target: { value: '3' } });
+    key(field, 'Escape');
+    expect(field.value).toBe(was);
+    expect(within(panel()).getByLabelText('Seats', { exact: false })).toBe(field);
+    key(field, 'Escape');
+    expect(within(panel()).queryByLabelText('Name', { exact: false })).toBeNull();
+    await waitFor(() => expect(document.activeElement).toBe(item(/^Table 4,/u)), WAIT);
   });
 
   it('refuses a row shortened past a guest, and a seat name already used', SLOW, async () => {
@@ -1069,5 +1153,45 @@ describe('Print and its paper (sc-4024, sc-5032)', () => {
     open(`${AT}?state=paperCardTop`);
     expect(await screen.findAllByText('Top table', undefined, WAIT)).toHaveLength(2);
     expect(screen.getByText('Page 13 of 13')).toBeDefined();
+  });
+});
+
+describe('the breadcrumb (sc-55300)', () => {
+  const LONG =
+    'Adaeze & Tunde’s wedding weekend, with both families from Lagos, London and Accra, the church, the dinner and the brunch';
+
+  it('names the long event in full to the link, the cut being only drawn', SLOW, async () => {
+    await seating('longName');
+    const crumb = screen.getByRole('navigation', { name: 'Breadcrumb' });
+    const event = within(crumb).getByRole('link', { name: LONG });
+
+    expect(event.getAttribute('href')).toBe('/demo/events/evt-wed-4');
+    expect(event.querySelector('.st-crumb-name')).not.toBeNull();
+    expect(within(crumb).getByRole('link', { name: 'Events' }).getAttribute('href')).toBe(
+      '/demo/events',
+    );
+  });
+
+  it('speaks French in French, Plan de table still the heading', SLOW, async () => {
+    open(`${AT}?state=longNameFr`);
+    await screen.findByRole('heading', { level: 1, name: 'Plan de table' }, WAIT);
+    const crumb = screen.getByRole('navigation', { name: 'Fil d’Ariane' });
+
+    expect(crumb.getAttribute('lang')).toBe('fr');
+    expect(within(crumb).getByRole('link', { name: 'Événements' })).toBeDefined();
+    expect(within(crumb).getByRole('link', { name: LONG })).toBeDefined();
+  });
+
+  it('draws the header band at 320 and 375 in English and French', SLOW, async () => {
+    open(`${AT}?state=crumbWidths`);
+    await screen.findByRole(
+      'heading',
+      { level: 1, name: 'The header band in a narrow window' },
+      WAIT,
+    );
+
+    expect(screen.getAllByRole('navigation', { name: 'Breadcrumb' })).toHaveLength(2);
+    expect(screen.getAllByRole('navigation', { name: 'Fil d’Ariane' })).toHaveLength(3);
+    expect(screen.getByRole('link', { name: 'Seating words QA' })).toBeDefined();
   });
 });

@@ -4,9 +4,13 @@ import {
   type OrganisationEvent,
   type Seating,
   type SeatingPlan,
+  type SeatingRow,
+  type SeatingSection,
+  type SeatingTable,
   type SeatingWithRow,
   type SeatingWithSeat,
   type SeatingWithTable,
+  type SingleSeat,
 } from '@soirely/api-client';
 import { type KeyboardEvent, type ReactNode, useEffect, useId, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
@@ -44,12 +48,16 @@ export interface PlanApi {
   system: MeasurementSystem;
   plan: SeatingPlan | null;
   readOnly: boolean;
-  /** Sends one change; a 412 reloads the plan and says who changed it first. Returns the field's refusal, if any. */
+  /** Sends one change once the ones before it have answered; a 412 reloads the plan and says who changed it first. Returns the field's refusal, if any. */
   send: (
     change: () => Promise<Seating | Placed>,
     field?: string,
     refusal?: (error: ApiError) => string | null,
   ) => Promise<string | null>;
+  /** The item as the newest answer has it, so a change sent after another carries its version. */
+  newest: <T extends SeatingPlan | SeatingSection | SeatingTable | SeatingRow | SingleSeat>(
+    item: T,
+  ) => T;
   /** Adds or copies a table, a row or a seat: the one saved (a row named by its label), or null with the notice saying why. */
   place: (
     change: () => Promise<Placed>,
@@ -100,7 +108,7 @@ export function BackHead({
 }: {
   title: string;
   line?: string;
-  onClose: () => void;
+  onClose?: () => void;
 }) {
   const { t } = useTranslation();
 
@@ -110,14 +118,16 @@ export function BackHead({
         <h2 data-focus="title" tabIndex={-1}>
           {title}
         </h2>
-        <button
-          type="button"
-          className="st-icon-button"
-          aria-label={t('seating.close')}
-          onClick={onClose}
-        >
-          <Glyph name="clear" size={19} weight={2.2} />
-        </button>
+        {onClose != null && (
+          <button
+            type="button"
+            className="st-icon-button"
+            aria-label={t('seating.close')}
+            onClick={onClose}
+          >
+            <Glyph name="clear" size={19} weight={2.2} />
+          </button>
+        )}
       </div>
       {line != null && <p className="st-line">{line}</p>}
     </div>
@@ -132,7 +142,6 @@ export function Field({
   unit,
   optional = false,
   hint,
-  maxLength,
   inputMode = 'text',
   onCommit,
 }: {
@@ -142,7 +151,6 @@ export function Field({
   unit?: string | undefined;
   optional?: boolean;
   hint?: string | undefined;
-  maxLength?: number;
   inputMode?: 'text' | 'decimal';
   onCommit: (text: string) => Promise<string | null> | string | null;
 }) {
@@ -200,7 +208,6 @@ export function Field({
           type="text"
           inputMode={inputMode}
           value={draft}
-          maxLength={maxLength}
           spellCheck={false}
           autoComplete="off"
           aria-invalid={error != null}

@@ -43,7 +43,7 @@ class SeatingTable
     #[ORM\JoinColumn(nullable: true, onDelete: 'SET NULL')]
     private ?SeatingSection $section;
 
-    #[ORM\Column(type: Types::STRING, length: 30)]
+    #[ORM\Column(type: Types::STRING, length: 120)]
     private string $name;
 
     /** The name without case or accents, so "Table 1" and "table 1" are one table. */

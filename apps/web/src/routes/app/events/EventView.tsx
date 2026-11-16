@@ -28,6 +28,8 @@ import { PausedRow } from './PauseEvent.tsx';
 import { OutcomeLine } from './OutcomeLine.tsx';
 import { EventPeople } from './EventPeople.tsx';
 import { GuestsArea, GuestsGone } from './GuestsArea.tsx';
+import { RunArea } from './RunArea.tsx';
+import { ScheduleArea } from './ScheduleArea.tsx';
 import { SeatingArea } from './SeatingArea.tsx';
 import { RosterArea } from './RosterArea.tsx';
 import { typeLabel } from './eventTypes.ts';
@@ -43,7 +45,7 @@ type Load =
   | { kind: 'notFound' }
   | { kind: 'loaded'; event: OrganisationEvent; tag: string };
 
-type Page = 'event' | 'guests' | 'dates' | 'people' | PlaceholderEventArea;
+type Page = 'event' | 'guests' | 'dates' | 'people' | 'run' | PlaceholderEventArea;
 
 export function EventView() {
   return <ForEvent page="event" />;
@@ -59,6 +61,11 @@ export function EventDates() {
 
 export function EventPeoplePage() {
   return <ForEvent page="people" />;
+}
+
+/** The run view: the schedule as the night runs (sc-1404). */
+export function EventRun() {
+  return <ForEvent page="run" />;
 }
 
 export function EventRoster() {
@@ -158,6 +165,16 @@ function EventOf({
 
   if (page === 'seating' && load.kind === 'loaded')
     return canOn(load.event, 'seating.read') ? <SeatingArea event={load.event} /> : <NotFound />;
+
+  if (page === 'schedule' && load.kind === 'loaded')
+    return canOn(load.event, 'run_of_show.read') ? (
+      <ScheduleArea event={load.event} />
+    ) : (
+      <NotFound />
+    );
+
+  if (page === 'run' && load.kind === 'loaded')
+    return canOn(load.event, 'run_of_show.read') ? <RunArea event={load.event} /> : <NotFound />;
 
   if (page === 'staff' && load.kind === 'loaded')
     return canOn(load.event, 'staff.read') ? <RosterArea event={load.event} /> : <NotFound />;
@@ -261,7 +278,7 @@ function EventOf({
           />
           {page === 'dates' && <AllDatesPage event={load.event} heading={heading} />}
           {page === 'people' && <PeoplePage event={load.event} />}
-          {isPlaceholderEventArea(page) && page !== 'seating' && (
+          {isPlaceholderEventArea(page) && page !== 'seating' && page !== 'schedule' && (
             <AreaComing event={load.event} area={page} />
           )}
         </Arrived>

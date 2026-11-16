@@ -41,9 +41,11 @@ import {
   ADD_STATES,
   AGREE_STATES,
   EDIT_STATES,
+  PASTE_STATES,
   RECORD_STATES,
   REVIEW_STATES,
   cardWords,
+  notCopiedLine,
   countsAt,
   guestsOpening,
   groupRows,
@@ -63,6 +65,21 @@ import { GuestsFailed, GuestsLoading, GuestsRows } from './GuestsList.tsx';
 import { GuestToast, GuestsCard, GuestsTitle, type Layout } from './GuestsParts.tsx';
 import { type SampleGuest, TODAY, WEDDING } from './GuestsSample.ts';
 import { W, say } from './GuestsWords.ts';
+import {
+  PasteButton,
+  PasteDemo,
+  PasteNotice,
+  PasteRow,
+  WhoseReply,
+  usePaste,
+} from './PasteReply.tsx';
+import {
+  type PasteFlow,
+  pasteShown,
+  pasteStart,
+  waitingCount,
+  whoseRows,
+} from './PasteReplyModel.ts';
 
 const SEARCH_PAUSE_MS = 300;
 const FOCUS_AFTER_MS = 450;
@@ -108,7 +125,9 @@ export function GuestsScreen({
   const locale = formattingLocale('en', getLocales()[0]?.languageTag);
   const opening = useMemo(() => guestsOpening(given, event.id, locale), [given, event.id, locale]);
   const { state, start, role, replyBy } = opening;
-  const { i18n } = useTranslation();
+  const pasted = useMemo(() => pasteStart(state), [state]);
+  const [paste, setPaste] = useState<PasteFlow | null>(pasted.flow);
+  const { t, i18n } = useTranslation();
   const inPortuguese = state === 'titlePt';
   const portuguese = useMemo(() => i18n.getFixedT('pt'), [i18n]);
   const [guests, setGuests] = useState(opening.guests);
@@ -127,17 +146,21 @@ export function GuestsScreen({
   const [empty, setEmpty] = useState(start.empty);
   const [expanded, setExpanded] = useState<GroupKey[]>([]);
   const [toast, setToast] = useState<{ words: string; mark?: boolean } | null>(
-    start.toast === 'saved'
-      ? { words: W.saved }
-      : start.toast === 'copied'
-        ? { words: W.linkCopied, mark: true }
-        : start.toast === 'manyAdded'
-          ? { words: say.manyAdded(start.added) }
-          : null,
+    pasted.recorded
+      ? { words: W.recorded }
+      : start.toast === 'saved'
+        ? { words: W.saved }
+        : start.toast === 'copied'
+          ? { words: W.linkCopied, mark: true }
+          : start.toast === 'manyAdded'
+            ? { words: say.manyAdded(start.added) }
+            : null,
   );
   const [replies, setReplies] = useState(start.replies);
   const [replaced, setReplaced] = useState(start.replaced);
   const [notReplaced, setNotReplaced] = useState(start.notReplaced);
+  const [flagged, setFlagged] = useState(start.flagged);
+  const [copyFailed, setCopyFailed] = useState(start.copyFailed);
   const [unmarked, setUnmarked] = useState(start.unmarked);
   const [status, setStatus] = useState<string | null>(start.recorded ? W.recorded : null);
   const exported = useMemo(() => exportStart(state), [state]);
@@ -147,8 +170,9 @@ export function GuestsScreen({
   const fileFor = (format: 'xlsx' | 'csv') => fileName(event.name, day, format);
   const [sharing, setSharing] = useState<string | null>(exported.share ? fileFor('xlsx') : null);
   const refs = useRef<Partial<Record<string, ViewInstance | null>>>({});
-  const from = useRef<string>('card');
+  const from = useRef<string>(start.focus ?? 'card');
   const nameRef = useRef<TextHandle>(null);
+  const whoseRef = useRef<TextHandle>(null);
   const fieldRef = useRef<TextInputInstance>(null);
   const scroll = useRef<ScrollViewInstance>(null);
   const opener = useMemo(
@@ -175,6 +199,15 @@ export function GuestsScreen({
     return () => clearTimeout(wait);
   }, [typed, searched]);
 
+  useEffect(() => {
+    if (start.focus == null || start.overlay != null) return;
+    const wait = setTimeout(
+      () => moveScreenReaderFocus(refs.current[start.focus ?? ''] ?? null),
+      FOCUS_AFTER_MS,
+    );
+    return () => clearTimeout(wait);
+  }, [start.focus, start.overlay]);
+
   const refFor = useCallback(
     (key: string) => (node: ViewInstance | null) => {
       refs.current[key] = node;
@@ -183,8 +216,10 @@ export function GuestsScreen({
   );
   const openGuest = (key: string, row: string) => {
     from.current = row;
+    setPaste(null);
     setStatus(null);
     setNotReplaced(false);
+    setCopyFailed(false);
     setUnmarked(null);
     setReplies(null);
     setReplaced(false);
@@ -193,6 +228,24 @@ export function GuestsScreen({
     setOpen(key);
     if (layout !== 'landscape') scroll.current?.scrollTo({ y: 0, animated: false });
     setTimeout(() => moveScreenReaderFocus(nameRef.current), FOCUS_AFTER_MS);
+  };
+  const openWhose = (quote: string) => {
+    setOpen(null);
+    setExporting(false);
+    setPaste({ step: 'whose', quote, all: false, typed: '', guest: null, start: null });
+    if (layout !== 'landscape') scroll.current?.scrollTo({ y: 0, animated: false });
+    setTimeout(() => moveScreenReaderFocus(whoseRef.current), FOCUS_AFTER_MS);
+  };
+  const { nothing, onText } = usePaste(openWhose, pasted.nothing);
+  const closeWhose = () => {
+    setPaste(null);
+    setTimeout(() => moveScreenReaderFocus(fieldRef.current), FOCUS_AFTER_MS);
+  };
+  const pickWhose = (key: string) => {
+    if (paste == null) return;
+    from.current = `paste.${key}`;
+    setRound((count) => count + 1);
+    setPaste({ ...paste, step: 'record', guest: key, start: null });
   };
   const closeGuest = () => {
     const back = from.current;
@@ -292,6 +345,45 @@ export function GuestsScreen({
     },
   };
 
+  const showPaste = pasteShown({
+    phase,
+    empty,
+    role,
+    replies,
+    replyBy,
+    today: TODAY,
+    invited: counts.invited,
+  });
+  const demoPaste = isIn(PASTE_STATES, state);
+  const pasteBelow = !showPaste ? null : layout === 'portrait' ? (
+    nothing || demoPaste ? (
+      <View style={styles.pasteBelow}>
+        {nothing && <PasteNotice />}
+        {demoPaste && <PasteDemo onText={onText} />}
+      </View>
+    ) : null
+  ) : (
+    <PasteRow nothing={nothing} onText={onText} demo={demoPaste} />
+  );
+  const pasteGuest = guests.find((g) => g.key === paste?.guest) ?? null;
+  const whose =
+    paste == null ? null : (
+      <WhoseReply
+        layout={layout}
+        quote={paste.quote}
+        all={paste.all}
+        onShowAll={() => setPaste({ ...paste, all: true })}
+        typed={paste.typed}
+        onTyped={(typed) => setPaste({ ...paste, typed })}
+        rows={whoseRows(guests, paste.typed, locale, t)}
+        waiting={waitingCount(guests)}
+        onPick={pickWhose}
+        onBack={closeWhose}
+        refFor={refFor}
+        titleRef={whoseRef}
+      />
+    );
+
   const list = (
     <>
       <GuestsTitle
@@ -354,6 +446,10 @@ export function GuestsScreen({
               onOpen={openGuest}
               refFor={refFor}
               fieldRef={fieldRef}
+              pasteInRow={
+                showPaste && layout === 'portrait' ? <PasteButton onText={onText} inRow /> : null
+              }
+              paste={pasteBelow}
             />
           )}
         </>
@@ -374,18 +470,22 @@ export function GuestsScreen({
         replies={replies}
         replaced={replaced}
         notReplaced={notReplaced}
+        flagged={guest != null && flagged.includes(guest.key)}
+        copyFailed={copyFailed ? notCopiedLine(state) : null}
         unmarked={unmarked}
         status={status}
         nameRef={nameRef}
         refFor={refFor}
         actions={{
-          onRecord: () => show('record', 'record'),
+          onRecord: () => show('record', guest?.kind === 'notyet' ? 'recordNotYet' : 'record'),
           onEdit: () => show('edit', 'edit'),
           onCopy: () => {
             from.current = 'copy';
+            setCopyFailed(false);
             setToast({ words: W.linkCopied, mark: guest?.kind === 'notyet' });
           },
           onReplace: () => show('replace', 'replace'),
+          onReplaceFromNotice: () => show('replace', 'flagReplace'),
           onMark: () => show('mark', 'mark'),
           onUnmark: () => {
             if (guest == null) return;
@@ -431,6 +531,23 @@ export function GuestsScreen({
     overlay === 'add' || overlay === 'picker' || overlay === 'android' || overlay === 'review';
   const overlays = (
     <>
+      {paste != null && pasteGuest != null && (
+        <RecordReply
+          locale={locale}
+          key={`fromMessage:${pasteGuest.key}:${round}`}
+          open={paste.step === 'record'}
+          guest={pasteGuest}
+          start={null}
+          opener={opener}
+          message={{ quote: paste.quote, offline, start: paste.start }}
+          onClose={() => setPaste({ ...paste, step: 'whose', start: null })}
+          onSaved={(next) => {
+            replace(next);
+            setPaste(null);
+            setToast({ words: W.recorded });
+          }}
+        />
+      )}
       {guest != null && (
         <>
           <EditGuest
@@ -457,6 +574,7 @@ export function GuestsScreen({
             onClose={close}
             onSaved={(next) => {
               replace(next);
+              from.current = 'record';
               close();
               setReplies(null);
               setStatus(W.recorded);
@@ -501,9 +619,11 @@ export function GuestsScreen({
             confirm={{ label: W.replaceDo, testID: 'guest.replace.do' }}
             onKeep={close}
             onConfirm={() => {
+              from.current = 'replace';
               close();
               setNotReplaced(false);
               setReplaced(true);
+              setFlagged((keys) => keys.filter((key) => key !== guest.key));
             }}
             width={340}
           />
@@ -598,7 +718,7 @@ export function GuestsScreen({
               contentContainerStyle={styles.guestBody}
               showsVerticalScrollIndicator={false}
             >
-              {page ?? <Nobody />}
+              {whose ?? page ?? <Nobody />}
             </ScrollView>
           )}
         </View>
@@ -615,16 +735,31 @@ export function GuestsScreen({
       onMore={onMore}
       badge={badge}
       scrollRef={scroll}
-      back={page != null ? { label: W.guests, onPress: closeGuest } : null}
+      back={
+        whose != null
+          ? { label: W.guests, onPress: closeWhose }
+          : page != null
+            ? { label: W.guests, onPress: closeGuest }
+            : null
+      }
       overlay={overlays}
     >
-      {page ?? (
+      {whose != null ? (
         <>
           {band && (
             <View style={layout === 'phone' ? styles.bandPhone : styles.bandWide}>{band}</View>
           )}
-          {list}
+          {whose}
         </>
+      ) : (
+        (page ?? (
+          <>
+            {band && (
+              <View style={layout === 'phone' ? styles.bandPhone : styles.bandWide}>{band}</View>
+            )}
+            {list}
+          </>
+        ))
       )}
     </EventFrame>
   );
@@ -650,4 +785,5 @@ const styles = StyleSheet.create({
   bandPhone: { marginHorizontal: -tokens.spaceXxl },
   bandWide: { marginHorizontal: -tokens.space5xl },
   nobody: { paddingTop: 120, alignItems: 'center' },
+  pasteBelow: { gap: tokens.spaceSm },
 });

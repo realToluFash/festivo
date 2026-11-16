@@ -30,7 +30,7 @@ class StaffMember
     private Event $event;
 
     /** As the organiser typed it, never split into first and last. */
-    #[ORM\Column(type: Types::STRING, length: 200)]
+    #[ORM\Column(type: Types::STRING, length: 800)]
     private string $fullName;
 
     /** E.164. */

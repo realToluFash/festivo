@@ -14,6 +14,7 @@ use App\Enum\MeasurementSystem;
 use App\Enum\TableShape;
 use App\Http\Exception\ApiException;
 use App\Locale\NameNormaliser;
+use App\Locale\VisibleText;
 use Psl\Iter;
 use Psl\Math;
 use Psl\Str;
@@ -34,7 +35,7 @@ final readonly class SeatingRules
         $violations = [];
         $name = null === $roomName ? '' : NameNormaliser::name($roomName);
 
-        if (Str\length($name) > SeatingPlan::ROOM_NAME_MAXIMUM) {
+        if (VisibleText::tooLong($name, SeatingPlan::ROOM_NAME_MAXIMUM)) {
             $violations[] = $this->violation('roomName', 'validation.seating_room_name_too_long', ['{count}' => (string) SeatingPlan::ROOM_NAME_MAXIMUM]);
         }
 
@@ -70,7 +71,7 @@ final readonly class SeatingRules
             throw ApiException::validation([$this->violation('name', 'validation.seating_section_name_required')]);
         }
 
-        if (Str\length($name) > SeatingSection::NAME_MAXIMUM) {
+        if (VisibleText::tooLong($name, SeatingSection::NAME_MAXIMUM) || Str\length($key) > VisibleText::codePoints(SeatingSection::NAME_MAXIMUM)) {
             throw ApiException::validation([$this->violation('name', 'validation.seating_section_name_too_long')]);
         }
 
@@ -97,7 +98,7 @@ final readonly class SeatingRules
             throw ApiException::validation([$this->violation('name', 'validation.seating_table_name_required')]);
         }
 
-        if (Str\length($name) > SeatingTable::NAME_MAXIMUM) {
+        if (VisibleText::tooLong($name, SeatingTable::NAME_MAXIMUM) || Str\length($key) > VisibleText::codePoints(SeatingTable::NAME_MAXIMUM)) {
             throw ApiException::validation([$this->violation('name', 'validation.seating_table_name_too_long', ['{count}' => (string) SeatingTable::NAME_MAXIMUM])]);
         }
 
@@ -168,7 +169,7 @@ final readonly class SeatingRules
             throw ApiException::validation([$this->violation('label', 'validation.seating_row_label_required')]);
         }
 
-        if (Str\length($label) > SeatingRow::LABEL_MAXIMUM) {
+        if (VisibleText::tooLong($label, SeatingRow::LABEL_MAXIMUM) || Str\length($key) > VisibleText::codePoints(SeatingRow::LABEL_MAXIMUM)) {
             throw ApiException::validation([$this->violation('label', 'validation.seating_table_name_too_long', ['{count}' => (string) SeatingRow::LABEL_MAXIMUM])]);
         }
 
@@ -195,7 +196,7 @@ final readonly class SeatingRules
             throw ApiException::validation([$this->violation('name', 'validation.seating_seat_name_required')]);
         }
 
-        if (Str\length($name) > SeatingSeat::NAME_MAXIMUM) {
+        if (VisibleText::tooLong($name, SeatingSeat::NAME_MAXIMUM) || Str\length($key) > VisibleText::codePoints(SeatingSeat::NAME_MAXIMUM)) {
             throw ApiException::validation([$this->violation('name', 'validation.seating_table_name_too_long', ['{count}' => (string) SeatingSeat::NAME_MAXIMUM])]);
         }
 

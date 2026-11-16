@@ -15,11 +15,9 @@ use App\Enum\Permission;
 use App\Enum\SeededRole;
 use App\Http\Access\Interfaces\MembershipDirectoryInterface;
 use App\Http\Exception\ApiException;
-use Collator;
 use Doctrine\ORM\EntityManagerInterface;
 use Psl\Dict;
 use Psl\Iter;
-use Psl\Type;
 use Psl\Vec;
 use Symfony\Component\Uid\Uuid;
 use Symfony\Contracts\Translation\TranslatorInterface;
@@ -62,26 +60,6 @@ final readonly class RoleManager
             'role' => $role,
             'status' => MembershipStatus::holding(),
         ]);
-    }
-
-    /** @return list<Membership> whom `holders` counts, by name in the root collation, then by email (sc-6447) */
-    public function holdersOf(Role $role): array
-    {
-        $memberships = Type\vec(Type\instance_of(Membership::class))->coerce($this->entityManager->createQuery(
-            'SELECT m, u, e FROM ' . Membership::class . ' m JOIN m.user u LEFT JOIN u.emailAddresses e WHERE m.role = :role AND m.status IN (:holding)',
-        )
-            ->setParameter('role', $role)
-            ->setParameter('holding', Vec\map(MembershipStatus::holding(), static fn (MembershipStatus $status): string => $status->value))
-            ->getResult());
-        $collator = new Collator('root');
-        $collator->setStrength(Collator::PRIMARY);
-        $email = static fn (Membership $membership): string => $membership->getUser()->getPrimaryEmailAddress()?->getAddress() ?? '';
-
-        return Vec\sort($memberships, static function (Membership $a, Membership $b) use ($collator, $email): int {
-            $byName = (int) $collator->compare($a->getUser()->getName(), $b->getUser()->getName());
-
-            return 0 !== $byName ? $byName : $email($a) <=> $email($b);
-        });
     }
 
     /** Whoever puts somebody in a role, by invitation, approval or a change, is held to this one rule: an Admin makes Admins and Members, and only an Owner makes an Owner. */

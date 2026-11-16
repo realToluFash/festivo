@@ -27,6 +27,7 @@ use Lexik\Bundle\JWTAuthenticationBundle\Services\JWTTokenManagerInterface;
 use PHPUnit\Framework\Attributes\DataProvider;
 use PHPUnit\Framework\Attributes\Test;
 use Psl\Json;
+use Psl\Str;
 use Psl\Type;
 use Psl\Vec;
 use SensitiveParameter;
@@ -180,6 +181,47 @@ final class EventRolesTest extends ApiTestCase
         }
         self::assertNotContains(Permission::EventsManage->value, $byName['Owambe'], 'the list says the same');
         self::assertContains(Permission::EventsManage->value, $byName['Naming']);
+    }
+
+    /** @return iterable<string, array{string}> */
+    public static function jobLabelsPast60Letters(): iterable
+    {
+        yield 'latin letters' => [Str\repeat('a', 61)];
+        yield 'marked letters' => [Str\repeat("e\u{0323}\u{0300}", 61)];
+        yield 'one letter of many marks' => ['a' . Str\repeat("\u{0301}", 240)];
+    }
+
+    #[Test]
+    #[DataProvider('jobLabelsPast60Letters')]
+    public function aJobLabelPast60LettersIsRefused(string $label): void
+    {
+        $tunde = $this->member('tunde@ire.events', SeededRole::Member, 'Tunde Bello');
+
+        $this->as($this->owner, 'POST', '/api/events/' . $this->owambe . '/people', ['membershipId' => $this->membershipOf($tunde), 'role' => 'can_view', 'jobLabel' => $label]);
+
+        self::assertSame(422, $this->statusCode());
+        self::assertSame([['propertyPath' => 'jobLabel', 'message' => 'Shorten the job label to 60 characters or fewer.']], Vec\map(
+            Type\vec(Type\shape(['propertyPath' => Type\string(), 'message' => Type\string()], true))->coerce($this->last()['violations'] ?? null),
+            static fn (array $violation): array => ['propertyPath' => $violation['propertyPath'], 'message' => $violation['message']],
+        ));
+        self::assertNull($this->personOf($tunde, $this->owambe));
+    }
+
+    #[Test]
+    public function aJobLabelOf60LettersWithADotAndAToneEachIsSavedAndReadBack(): void
+    {
+        $composed = Str\repeat("\u{1EB9}\u{0300}", 60);
+        $decomposed = Str\repeat("e\u{0323}\u{0300}", 60);
+        $tunde = $this->member('tunde@ire.events', SeededRole::Member, 'Tunde Bello');
+
+        $added = $this->as($this->owner, 'POST', '/api/events/' . $this->owambe . '/people', ['membershipId' => $this->membershipOf($tunde), 'role' => 'can_view', 'jobLabel' => $composed]);
+        self::assertSame(201, $this->statusCode(), Json\encode($added));
+        $person = Type\shape(['id' => Type\string(), 'jobLabel' => Type\nullable(Type\string())], true)->coerce($added['person']);
+        self::assertSame($composed, $person['jobLabel']);
+
+        $this->as($this->owner, 'PATCH', '/api/events/' . $this->owambe . '/people/' . $person['id'], ['jobLabel' => $decomposed]);
+        self::assertSame(200, $this->statusCode(), Json\encode($this->last()));
+        self::assertSame($decomposed, $this->personOf($tunde, $this->owambe)?->getJobLabel());
     }
 
     #[Test]
@@ -379,6 +421,35 @@ final class EventRolesTest extends ApiTestCase
         self::assertEqualsCanonicalizing($expected, Vec\map($resolved, static fn (Uuid $id): string => $id->toRfc4122()));
         self::assertNull(self::service(MemberAudienceResolver::class)->recipient($audience, $elsewhere->getId()));
         self::assertNotNull(self::service(MemberAudienceResolver::class)->recipient($audience, $onIt->getId()));
+    }
+
+    /** sc-18317: each page starts after its cursor, so walking the pages reaches every member exactly once. */
+    #[Test]
+    public function anAudiencePageStartsAfterItsCursor(): void
+    {
+        $people = [$this->owner];
+        foreach (['ada', 'bayo', 'chidi', 'dupe'] as $name) {
+            $people[] = $this->member($name . '@ire.events', SeededRole::Member);
+        }
+
+        $ids = Vec\sort(Vec\map($people, static fn (User $user): string => $user->getId()->toRfc4122()));
+        $audience = Audience::members($this->organisation->getId(), Vec\map($people, static fn (User $user): Uuid => $user->getId()));
+        $resolver = self::service(MemberAudienceResolver::class);
+        $page = static fn (?string $after): array => Vec\map(
+            $resolver->resolve($audience, null === $after ? null : Uuid::fromString($after), 2),
+            static fn (Uuid $id): string => $id->toRfc4122(),
+        );
+
+        self::assertSame([$ids[2], $ids[3]], $page($ids[1]));
+
+        $walked = [];
+        $next = $page(null);
+        for ($pages = 0; [] !== $next && $pages < 5; ++$pages) {
+            $walked = [...$walked, ...$next];
+            $next = $page($next[1] ?? $next[0]);
+        }
+
+        self::assertSame($ids, $walked);
     }
 
     /** @return list<string> the names of the unfinished events listed */

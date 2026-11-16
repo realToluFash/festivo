@@ -720,6 +720,38 @@ final class GuestAnswersTest extends ApiTestCase
     }
 
     #[Test]
+    public function aReplyRecordedForAGuestNotYetInvitedInvitesThemAndTheirCompanionsAndCountsThemStraightAway(): void
+    {
+        $guest = $this->add(self::ADAEZE, ['Chidi Okonkwo-Williams']);
+        self::assertSame([2, 0], $this->invitedCounts());
+        self::assertNull($this->row($guest)['invitation'] ?? null);
+
+        $this->record($guest, ['answer' => 'coming', 'how' => 'phone']);
+
+        self::assertSame(200, $this->statusCode(), Json\encode($this->last()));
+        self::assertSame(['at' => '2026-10-17T14:20:00+01:00', 'how' => 'reply', 'by' => null], $this->row($guest)['invitation'] ?? null);
+        self::assertSame(['coming'], $this->states($guest));
+        self::assertSame([0, 2], $this->invitedCounts());
+
+        $this->as($this->owner, 'DELETE', $this->guests() . '/' . $guest . '/invitation');
+        self::assertSame([409, ErrorCode::GuestReplied->type()], [$this->statusCode(), $this->last()['type'] ?? null]);
+        self::assertNotNull($this->row($guest)['invitation'] ?? null);
+    }
+
+    #[Test]
+    public function onADraftNoReplyIsRecordedForAGuestNotYetInvited409(): void
+    {
+        $draft = $this->draft('Draft party');
+        $bisi = Type\string()->coerce(self::service(Connection::class)->fetchOne('SELECT id FROM guests WHERE event_id = :id', ['id' => $draft]));
+
+        $this->as($this->owner, 'POST', $this->guests($draft) . '/' . $bisi . '/record-reply', ['answer' => 'coming', 'how' => 'phone']);
+
+        self::assertSame([409, ErrorCode::EventStateInvalid->type(), 'draft'], [$this->statusCode(), $this->last()['type'] ?? null, $this->last()['phase'] ?? null]);
+        $list = Type\vec(Type\dict(Type\string(), Type\mixed()))->coerce($this->as($this->owner, 'GET', $this->guests($draft))['guests'] ?? null);
+        self::assertSame([['noReply', null]], Vec\map($list, static fn (array $row): array => [$row['reply'] ?? null, $row['invitation'] ?? null]));
+    }
+
+    #[Test]
     #[DataProvider('rolesThatCannotManage')]
     public function withoutGuestsManageNoReplyIsRecorded(EventRole $role): void
     {
@@ -761,6 +793,14 @@ final class GuestAnswersTest extends ApiTestCase
     private function unnamedOn(#[SensitiveParameter] string $token): array
     {
         return Type\vec(Type\dict(Type\string(), Type\mixed()))->coerce($this->open($token)['guest']['unnamed'] ?? null);
+    }
+
+    /** @return array{mixed, mixed} the event's Not yet invited and invited, from sc-99's headcount */
+    private function invitedCounts(): array
+    {
+        $counts = Type\dict(Type\string(), Type\mixed())->coerce($this->as($this->owner, 'GET', '/api/events/' . $this->eventId . '/headcount')['headcount']['counts'] ?? null);
+
+        return [$counts['notYetInvited'] ?? null, $counts['invited'] ?? null];
     }
 
     /** @return list<array{mixed, mixed}> */

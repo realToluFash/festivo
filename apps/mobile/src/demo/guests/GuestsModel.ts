@@ -69,6 +69,7 @@ export const GUEST_STATES = [
   'needsSaved',
   'guestComing',
   'recorded',
+  'recordedNotYet',
   'notYetInvited',
   'guestViewer',
   'guestLoading',
@@ -81,6 +82,15 @@ export const GUEST_STATES = [
   'replaceAsk',
   'replaced',
   'notReplaced',
+  'flagged',
+  'flaggedReplaceAsk',
+  'flaggedReplaced',
+  'flaggedNotReplaced',
+  'flaggedViewer',
+  'copyFailed',
+  'copyFailedPt',
+  'draftLink',
+  'pausedLink',
   'markAsInvited',
   'markRefused',
   'marked',
@@ -149,6 +159,7 @@ export const RECORD_STATES = [
   'recordComing',
   'recordReplace',
   'recordNotSaved',
+  'recordNotYet',
 ] as const;
 
 /** sc-3950: the change that records the guest agreed to WhatsApp, open. */
@@ -209,6 +220,24 @@ export const OVER_LIMIT_STATES = [
 /** Someone who can't change the plan: Ask an owner in the plan line's place. */
 export const ASK_OWNER_STATES = ['overLimitAsk', 'ownerAsked'] as const;
 
+/** sc-54450: Paste a reply on Guests, Whose reply is this?, and Record a reply from the copied message. */
+export const PASTE_STATES = [
+  'paste',
+  'pasteNothing',
+  'pasteClosed',
+  'whose',
+  'whoseLong',
+  'whoseAll',
+  'whoseSearch',
+  'whoseNone',
+  'whoseEveryone',
+  'whoseOffline',
+  'fromMessage',
+  'fromMessageBlank',
+  'fromMessageOffline',
+  'fromMessageSaved',
+] as const;
+
 export const OVERVIEW_STATES = [
   'overview',
   'overviewLoading',
@@ -227,6 +256,7 @@ export const GUESTS_STATES = [
   ...REVIEW_STATES,
   ...OVERVIEW_STATES,
   ...EXPORT_STATES,
+  ...PASTE_STATES,
 ] as const;
 
 export type GuestsState = (typeof GUESTS_STATES)[number];
@@ -237,6 +267,7 @@ export type RecordState = (typeof RECORD_STATES)[number];
 export type AgreeState = (typeof AGREE_STATES)[number];
 export type AddState = (typeof ADD_STATES)[number];
 export type ReviewState = (typeof REVIEW_STATES)[number];
+export type PasteState = (typeof PASTE_STATES)[number];
 
 export const DOOR_STATES = [
   'door',
@@ -280,6 +311,7 @@ export function roleOf(state: GuestsState | null): Role {
     state === 'greetAsViewer' ||
     state === 'whatsAppViewer' ||
     state === 'optOutViewer' ||
+    state === 'flaggedViewer' ||
     state === 'exportGrantView'
   )
     return 'viewer';
@@ -290,6 +322,8 @@ export function roleOf(state: GuestsState | null): Role {
 
 /** The states that open on an event's own sample, and that event: the one table they all read. */
 const OWN_SAMPLE = { draft: 'evt-draft-4', paused: 'evt-party-2' } as const;
+/** sc-55558: a guest's Invitation on a Draft and on a Paused event, each on that event's own sample. */
+const LINK_PHASE = { draftLink: 'draft', pausedLink: 'paused' } as const;
 type OwnState = keyof typeof OWN_SAMPLE;
 
 function ownStateOf(event: string): OwnState | null {
@@ -327,6 +361,7 @@ const PHASE_LINE: Record<Phase, string> = {
 
 export function eventOf(state: GuestsState | null): string {
   if (state === 'draft' || state === 'paused') return OWN_SAMPLE[state];
+  if (state === 'draftLink' || state === 'pausedLink') return OWN_SAMPLE[LINK_PHASE[state]];
   if (isIn(EMPTY_PHASE_STATES, state)) return EMPTY_PHASE[state].event;
   if (isIn(PLAN_STATES, state)) return PLAN.ireti;
   return WEDDING;
@@ -1173,15 +1208,23 @@ export function guestsAt(state: GuestsState | null): SampleGuest[] {
     case 'first':
       return [];
     case 'draft':
+    case 'draftLink':
       return [...DRAFT_GUESTS];
     case 'paused':
+    case 'pausedLink':
       return [...PAUSED_GUESTS];
     case 'contactsAdded':
       return [...GUESTS, ...FROM_CONTACTS_ADDED].sort((a, b) => a.name.localeCompare(b.name));
     case 'recorded':
       return swap('emeka', (g) => recorded(g, 'coming', 'By phone', [true], TODAY));
+    case 'fromMessageSaved':
+      return swap('emeka', (g) => recorded(g, 'coming', 'By message', [true], TODAY));
+    case 'whoseEveryone':
+      return GUESTS.map((g) => (g.kind === 'noreply' ? { ...g, kind: 'coming', when: TODAY } : g));
     case 'marked':
       return swap('bisi', (g) => markedInvited(g, 'WhatsApp', TODAY));
+    case 'recordedNotYet':
+      return swap('bisi', (g) => recorded(g, 'coming', 'By phone', [], TODAY));
     case 'unmarked':
       return swap('emeka', markedNotInvited);
     case 'unmarkRefused':
@@ -1274,6 +1317,12 @@ export interface AreaStart {
   replies: 'closed' | 'reopened' | null;
   replaced: boolean;
   notReplaced: boolean;
+  /** sc-55558: the guests whose link someone told us reached the wrong person (GET …/guests/flagged). */
+  flagged: readonly string[];
+  /** sc-55558: Copy invitation link was pressed and nothing reached the clipboard. */
+  copyFailed: boolean;
+  /** Where screen reader focus starts, when the state stands for the moment after a press. */
+  focus: string | null;
   recorded: boolean;
   /** sc-3788: Mark as not invited landed, was refused because the guest replied first (409), or failed on a server error. */
   unmarked: 'done' | 'refused' | 'notSaved' | null;
@@ -1281,6 +1330,9 @@ export interface AreaStart {
   added: number;
   walkIn: boolean;
 }
+
+export const notCopiedLine = (state: GuestsState | null): string =>
+  state === 'copyFailedPt' ? W.notCopiedPt : W.notCopied;
 
 const QUIET: AreaStart = {
   filter: 'all',
@@ -1297,6 +1349,9 @@ const QUIET: AreaStart = {
   replies: null,
   replaced: false,
   notReplaced: false,
+  flagged: [],
+  copyFailed: false,
+  focus: null,
   recorded: false,
   unmarked: null,
   marked: false,
@@ -1317,7 +1372,16 @@ export function guestOf(state: GuestsState | null): string | null {
     case 'recordNotSaved':
     case 'guestLoading':
     case 'notFound':
+    case 'flagged':
+    case 'flaggedReplaceAsk':
+    case 'flaggedReplaced':
+    case 'flaggedNotReplaced':
+    case 'flaggedViewer':
       return 'emeka';
+    case 'draftLink':
+      return 'funke';
+    case 'pausedLink':
+      return 'daniel';
     case 'recordReplace':
     case 'invitedWhenReplied':
       return 'ngozi';
@@ -1331,7 +1395,11 @@ export function guestOf(state: GuestsState | null): string | null {
     case 'finished':
       return 'bisi';
     case 'notYetInvited':
+    case 'recordNotYet':
+    case 'recordedNotYet':
     case 'linkCopied':
+    case 'copyFailed':
+    case 'copyFailedPt':
     case 'markAsInvited':
     case 'markRefused':
     case 'marked':
@@ -1414,6 +1482,8 @@ export function areaStart(state: GuestsState | null): AreaStart {
     case 'failed':
       return { ...base, phase: 'failed' };
     case 'offline':
+    case 'whoseOffline':
+    case 'fromMessageOffline':
     case 'exportOffline':
     case 'exportDropped':
       return { ...base, offline: true };
@@ -1431,9 +1501,11 @@ export function areaStart(state: GuestsState | null): AreaStart {
     case 'notFound':
       return { ...base, guestPhase: 'notFound' };
     case 'recorded':
+    case 'recordedNotYet':
       return { ...base, recorded: true };
     case 'repliesClosed':
     case 'repliesClosedViewer':
+    case 'pasteClosed':
       return { ...base, replies: 'closed' };
     case 'reopened':
       return { ...base, replies: 'reopened' };
@@ -1450,6 +1522,18 @@ export function areaStart(state: GuestsState | null): AreaStart {
       return { ...base, replaced: true };
     case 'notReplaced':
       return { ...base, notReplaced: true };
+    case 'flagged':
+    case 'flaggedViewer':
+      return { ...base, flagged: ['emeka'] };
+    case 'flaggedReplaceAsk':
+      return { ...base, flagged: ['emeka'], overlay: 'replace', focus: 'flagReplace' };
+    case 'flaggedReplaced':
+      return { ...base, replaced: true, focus: 'replace' };
+    case 'flaggedNotReplaced':
+      return { ...base, flagged: ['emeka'], notReplaced: true };
+    case 'copyFailed':
+    case 'copyFailedPt':
+      return { ...base, copyFailed: true, focus: 'copy' };
     case 'markAsInvited':
     case 'markRefused':
     case 'markNotSaved':

@@ -1,3 +1,4 @@
+import { visibleLength } from './visibleText.ts';
 import {
   GUEST_GROUPS_MOST,
   GUEST_GROUP_NAME_MAXIMUM,
@@ -16,9 +17,8 @@ export function foldedName(name: string): string {
     .toLowerCase();
 }
 
-/** Counted in code points after trimming, as the API counts it. */
 export function groupNameLength(name: string): number {
-  return [...name.trim().replaceAll(/\s+/gu, ' ')].length;
+  return visibleLength(name.trim().replaceAll(/\s+/gu, ' '));
 }
 
 export function sortedGroups<T extends GuestGroup>(groups: readonly T[]): T[] {

@@ -141,7 +141,7 @@ export function GuestCover({
   kind: MarkKind;
   word: string;
   name: string;
-  line: string;
+  line: string | null;
   step: { label: string; onPress: () => void } | null;
   layout: Layout;
   nameRef?: Ref<TextHandle>;
@@ -160,7 +160,7 @@ export function GuestCover({
         />
       </View>
       <CardSays text={name} heading ref={nameRef} />
-      <OnCard text={line} />
+      {line != null && <OnCard text={line} />}
       {step != null && (
         <View style={styles.foot}>
           <StepButton label={step.label} onPress={step.onPress} testID="guest.card.step" />

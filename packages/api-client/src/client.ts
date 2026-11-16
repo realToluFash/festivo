@@ -73,6 +73,12 @@ import {
   asStaffEntry,
   asStaffRoster,
 } from './staff.ts';
+import {
+  type Schedule,
+  type ScheduleItemDetails,
+  type ScheduleWithItem,
+  asSchedule,
+} from './schedule.ts';
 
 /** A table call's answer: the plan whole, and the table it added or changed. */
 export interface SeatingWithTable {
@@ -426,14 +432,6 @@ export interface OrganisationRole extends MemberRole {
   removable: boolean;
   permissions: string[];
   holders: number;
-  /** Whom `holders` counts, alphabetical by name, ties by email (sc-6447). */
-  holderNames: RoleHolder[];
-}
-
-/** A name as its person wrote it, never translated; a suspended holder still holds the role. */
-export interface RoleHolder {
-  name: string;
-  suspended: boolean;
 }
 
 /** Every role, and every registered permission grouped by area, in the order the grid shows them. */
@@ -1948,10 +1946,17 @@ export class ApiClient {
     return { events: body.events, guests: body.guests, members: body.members };
   }
 
-  /** The sidebar's Search (sc-39534): each kind's first five matches and the count of all, only what the caller may open. */
-  async search(organisationId: string, term: string, signal?: AbortSignal): Promise<SearchFound> {
+  /** The sidebar's Search (sc-39534): each kind's first five matches and the count of all, only what the caller may open. Without invitations, no invited person is matched or counted. */
+  async search(
+    organisationId: string,
+    term: string,
+    { invitations = true, signal }: { invitations?: boolean; signal?: AbortSignal } = {},
+  ): Promise<SearchFound> {
+    const query = new URLSearchParams({ q: term });
+    if (!invitations) query.set('invitations', 'false');
+
     const body = await this.get<Record<string, unknown> | null>(
-      `/api/orgs/${encodeURIComponent(organisationId)}/search?${new URLSearchParams({ q: term }).toString()}`,
+      `/api/orgs/${encodeURIComponent(organisationId)}/search?${query.toString()}`,
       signal == null ? undefined : { signal },
     );
     const events = asSearchKind(body?.events, asOrganisationEvent);
@@ -2445,6 +2450,100 @@ export class ApiClient {
     }
 
     return { staff, member: typeof record.member === 'string' ? record.member : null };
+  }
+
+  /** The event's running order, sorted by start; refused 403 without run_of_show.read (sc-3893). */
+  async schedule(eventId: string): Promise<Schedule> {
+    return this.scheduleOf(await this.get<unknown>(this.schedulePath(eventId)));
+  }
+
+  /** Refused `validation_failed` beside each field, and 409 `schedule_item_limit` once the event holds its most. */
+  async addScheduleItem(eventId: string, details: ScheduleItemDetails): Promise<ScheduleWithItem> {
+    return this.scheduleWithItem(
+      await this.post<unknown>(`${this.schedulePath(eventId)}/items`, details),
+    );
+  }
+
+  /** The whole item. Refused as `addScheduleItem`, and 412 with `current` and `changedBy` when a colleague changed it since `version`. */
+  async changeScheduleItem(
+    eventId: string,
+    itemId: string,
+    details: ScheduleItemDetails,
+    version: number,
+  ): Promise<ScheduleWithItem> {
+    return this.scheduleWithItem(
+      await this.put<unknown>(
+        `${this.schedulePath(eventId)}/items/${encodeURIComponent(itemId)}`,
+        details,
+        { headers: { 'If-Match': versionTag(version) } },
+      ),
+    );
+  }
+
+  async deleteScheduleItem(eventId: string, itemId: string): Promise<Schedule> {
+    return this.scheduleOf(
+      await this.delete<unknown>(
+        `${this.schedulePath(eventId)}/items/${encodeURIComponent(itemId)}`,
+      ),
+    );
+  }
+
+  /** Marks the item started or done now, by the server's clock (sc-1404). 409 `item_started`, `item_not_started` or `item_finished` when it is not in a state to. */
+  async markScheduleItem(
+    eventId: string,
+    itemId: string,
+    mark: 'start' | 'finish',
+  ): Promise<Schedule> {
+    return this.scheduleOf(
+      await this.post<unknown>(
+        `${this.schedulePath(eventId)}/items/${encodeURIComponent(itemId)}/${mark}`,
+        {},
+      ),
+    );
+  }
+
+  /** A hub token for this event's schedule topic alone. */
+  async scheduleSubscription(eventId: string): Promise<RealtimeSubscription> {
+    const body = await this.post<{ token?: unknown; expiresAt?: unknown }>(
+      `${this.schedulePath(eventId)}/subscriptions`,
+    );
+
+    return {
+      token: typeof body.token === 'string' ? body.token : '',
+      expiresAt: typeof body.expiresAt === 'string' ? body.expiresAt : '',
+    };
+  }
+
+  private scheduleOf(body: unknown): Schedule {
+    const record =
+      typeof body === 'object' && body != null ? (body as Record<string, unknown>) : {};
+
+    return (
+      asSchedule(record.schedule) ??
+      (() => {
+        throw new Error(
+          'The API answered the schedule in a shape this client does not know. Check ScheduleSerialiser in services/api.',
+        );
+      })()
+    );
+  }
+
+  private scheduleWithItem(body: unknown): ScheduleWithItem {
+    const record =
+      typeof body === 'object' && body != null ? (body as Record<string, unknown>) : {};
+    const itemId = record.itemId;
+
+    if (typeof itemId !== 'string') {
+      throw new Error(
+        'The API answered a schedule item without its id. Check the schedule controller in services/api.',
+      );
+    }
+
+    return { schedule: this.scheduleOf(body), itemId };
+  }
+
+  private schedulePath(eventId: string): string {
+    return `/api/events/${encodeURIComponent(eventId)}/schedule`;
   }
 
   private staffPath(eventId: string): string {
@@ -4126,15 +4225,8 @@ function asOrganisationRole(raw: unknown): OrganisationRole | null {
 
   const role = raw as Record<string, unknown>;
   const permissions = stringList(role.permissions);
-  const holderNames = Array.isArray(role.holderNames) ? role.holderNames.map(asRoleHolder) : null;
 
-  if (
-    typeof role.id !== 'string' ||
-    typeof role.holders !== 'number' ||
-    permissions == null ||
-    holderNames == null ||
-    !holderNames.every((holder) => holder != null)
-  )
+  if (typeof role.id !== 'string' || typeof role.holders !== 'number' || permissions == null)
     return null;
 
   return {
@@ -4146,16 +4238,7 @@ function asOrganisationRole(raw: unknown): OrganisationRole | null {
     removable: role.removable === true,
     permissions,
     holders: role.holders,
-    holderNames,
   };
-}
-
-function asRoleHolder(raw: unknown): RoleHolder | null {
-  if (typeof raw !== 'object' || raw == null) return null;
-
-  const { name, suspended } = raw as Record<string, unknown>;
-
-  return typeof name === 'string' && typeof suspended === 'boolean' ? { name, suspended } : null;
 }
 
 function asRolesCatalogue(raw: unknown): RolesCatalogue | null {

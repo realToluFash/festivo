@@ -3,8 +3,13 @@
   align-items: flex-start;
 }
 
-.ro-add {
+.ro-add,
+.ro-run {
   gap: var(--spaceXs);
+}
+
+.ro-run {
+  text-decoration: none;
 }
 
 .ro-day {
@@ -62,6 +67,10 @@
   border-top: 1px solid var(--colorAttentionBorder);
   text-align: left;
   vertical-align: top;
+  overflow-wrap: break-word;
+}
+
+.ro-diff td {
   overflow-wrap: anywhere;
 }
 
@@ -365,8 +374,21 @@
   margin-top: var(--spaceSm);
 }
 
+.ro-acts {
+  flex-wrap: wrap;
+}
+
 .ro-acts .ro-delete {
   margin-right: auto;
+}
+
+.ro-acts-end {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+  align-items: center;
+  gap: var(--spaceMd);
+  margin-left: auto;
 }
 
 .ro-ask {
@@ -437,7 +459,8 @@
     order: 2;
   }
 
-  .ro-add {
+  .ro-add,
+  .ro-run {
     order: 1;
     align-self: stretch;
     height: 48px;
@@ -540,9 +563,14 @@
   }
 
   .ro-acts,
+  .ro-acts-end,
   .ro-ask-acts {
     flex-direction: column-reverse;
     align-items: stretch;
+  }
+
+  .ro-acts-end {
+    margin-left: 0;
   }
 
   .ro-acts .gs-pill,
