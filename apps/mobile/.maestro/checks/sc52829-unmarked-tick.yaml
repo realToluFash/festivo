@@ -1,0 +1,36 @@
+# sc-52829: on an invited guest with no reply, Mark as not invited shows the Unmarked Done line with the house done mark, as Reply recorded does.
+appId: host.exp.Exponent
+---
+- openLink: ${METRO_URL}/--/events/${EVENT_ID}?area=guests
+- extendedWaitUntil:
+    visible:
+      id: 'guests.search'
+    timeout: 30000
+- waitForAnimationToEnd:
+    timeout: 6000
+- scrollUntilVisible:
+    element:
+      id: 'guests.row.${G_MARK}'
+    direction: DOWN
+    timeout: 30000
+    centerElement: true
+- tapOn:
+    id: 'guests.row.${G_MARK}'
+- extendedWaitUntil:
+    visible:
+      id: 'guest.${G_MARK}'
+    timeout: 30000
+- scrollUntilVisible:
+    element:
+      id: 'guest.unmark'
+    direction: DOWN
+- tapOn:
+    id: 'guest.unmark'
+- waitForAnimationToEnd:
+    timeout: 4000
+- scrollUntilVisible:
+    element:
+      id: 'guest.saved'
+    direction: UP
+    timeout: 15000
+- takeScreenshot: unmarked
