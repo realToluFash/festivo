@@ -162,7 +162,7 @@ def record(db, items, now=None):
 
     Open work follows the roles it is now derived for. Claimed work is left alone: the run
     holding it finishes or its lease runs out. A finished review still derived comes back
-    after 30 minutes, then 1 hour, then 2, and no more.
+    up to `REVIEW_RETRIES` times, each wait twice the last.
     """
     now = now or time.time()
     db.execute("begin immediate")

@@ -158,6 +158,13 @@ class Claims(unittest.TestCase):
         store.record(self.db, [], NOW + 60 * 60)
         self.assertEqual(store.waiting(self.db, "lead"), [])
 
+    def test_finished_work_other_than_a_review_stays_finished_while_still_derived(self):
+        inbox = item("lead:inbox", ["lead"], "inbox", [11])
+        store.record(self.db, [inbox], NOW)
+        store.finish(self.db, store.claim(self.db, "lead", NOW)["id"], None, NOW)
+        store.record(self.db, [inbox], NOW + 60 * 60)
+        self.assertEqual(store.waiting(self.db, "lead"), [])
+
     def test_work_that_no_longer_applies_is_retired(self):
         store.record(self.db, [item("a", ["dev"])], NOW)
         store.record(self.db, [], NOW + 60)
