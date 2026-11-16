@@ -96,6 +96,6 @@
     "validation.seating_arrange_table_only": "Aquí solo se puede cambiar el tamaño de una mesa.",
     "validation.seating_seat_does_not_turn": "Un asiento suelto no gira.",
     "validation.seating_outside_room": "{name} quedaría fuera de la sala.",
-    "validation.seating_row_outside_room": "Fila {label} quedaría fuera de la sala.",
+    "validation.seating_row_outside_room": "La fila {label} quedaría fuera de la sala.",
     "seating.no_such_item": "Esta mesa, fila o asiento no está en el plano."
 }
