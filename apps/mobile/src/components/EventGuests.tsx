@@ -1,5 +1,6 @@
 import {
   type Guest,
+  type GuestDetails as Details,
   type GuestInvitationHow,
   type GuestList,
   type Headcount,
@@ -45,6 +46,7 @@ import {
   type TextInputInstance,
   type ViewInstance,
 } from 'react-native';
+import { setStringAsync } from 'expo-clipboard';
 import { useTranslation } from 'react-i18next';
 
 import { api } from '../api.ts';
@@ -52,7 +54,13 @@ import { followReadingAgain } from '../followTopic.ts';
 import { dateLocale } from '../i18n/index.ts';
 import type { Shown } from '../kit/eventsList.ts';
 import { sidebarCardOf } from '../kit/eventTop.ts';
-import { type PhaseCard, filterChoices, markOf, phaseCardOf } from '../kit/guestRows.ts';
+import {
+  type PhaseCard,
+  filterChoices,
+  invitationOfferOf,
+  markOf,
+  phaseCardOf,
+} from '../kit/guestRows.ts';
 import { pasteShown, waiting, whoseRows } from '../kit/pasteReply.ts';
 import { type GuestReplies, guestRepliesOf, guestReplyBy } from '../kit/replyBy.ts';
 import { type ScreenOffline, useHandOffline, useOffline } from '../offline.ts';
@@ -85,11 +93,13 @@ import { FailedBlock, type StepProps } from './Summary.tsx';
 import {
   type Anchor,
   AnchoredMenu,
+  Ask,
   anchorUnder,
   useAnchorFollowsTurn,
 } from './SummaryOverlays.tsx';
 import { Row, RowList, TextAction } from './SummaryRows.tsx';
 import { Text, type TextHandle } from './Text.tsx';
+import type { ToastAction } from './Toast.tsx';
 
 /** How often the list is read again while open with no live line to the hub: changes from others show within 10 seconds. */
 const READ_AGAIN_MS = 10_000;
@@ -139,6 +149,8 @@ export function EventGuests({
   onOffline,
   onEventChange,
   onEventStale,
+  tell,
+  withdrawAction,
 }: {
   event: OrganisationEvent;
   /** The choice it opens on: a figure elsewhere opens the guests it counts (sc-3786). */
@@ -157,6 +169,10 @@ export function EventGuests({
   onEventChange: (event: OrganisationEvent) => void;
   /** A refusal said the event's phase moved on, so the event is read again for its line. */
   onEventStale: () => void;
+  /** The event's toast: Link copied, with Mark as invited for a guest not yet invited (sc-55558). */
+  tell: (words: string, action?: ToastAction | null) => void;
+  /** Takes the toast's step away and leaves its words, once the guest it was for is no longer open. */
+  withdrawAction: () => void;
 }) {
   const { t, i18n } = useTranslation();
   const { account } = useSignedIn();
@@ -182,6 +198,19 @@ export function EventGuests({
   const [recording, setRecording] = useState<TaggedGuest | null>(null);
   const [pasted, setPasted] = useState<Pasted | null>(null);
   const [fromMessage, setFromMessage] = useState<Guest | null>(null);
+  const [flagged, setFlagged] = useState<ReadonlySet<string>>(new Set());
+  const [copyFailed, setCopyFailed] = useState(false);
+  const [notReplaced, setNotReplaced] = useState(false);
+  const [replacedOn, setReplacedOn] = useState<Readonly<Record<string, string>>>({});
+  const [asking, setAsking] = useState(false);
+  const [replacing, setReplacing] = useState(false);
+  const copying = useRef(false);
+  const openNow = useRef(open);
+  const offeredFor = useRef<string | null>(null);
+  const copyButton = useRef<ViewInstance>(null);
+  const replaceButton = useRef<ViewInstance>(null);
+  const noticeReplace = useRef<ViewInstance>(null);
+  const replaceOpener = useRef<ScreenReaderTarget | null>(null);
   const whoseTitle = useRef<TextHandle>(null);
   const recordButton = useRef<ViewInstance>(null);
   const recordNotYet = useRef<ViewInstance>(null);
@@ -216,8 +245,16 @@ export function EventGuests({
             setLoad((was) => (was.kind === 'loaded' ? was : { kind: 'failed' }));
         },
       );
+      // The wrong-person notice is read with the list, never in it: Can view reads the list (sc-1526).
+      if (manages)
+        api.flaggedGuests(eventId).then(
+          (ids) => {
+            if (mine === reading.current.list) setFlagged(new Set(ids));
+          },
+          () => undefined,
+        );
     },
-    [eventId],
+    [eventId, manages],
   );
 
   const reloadRef = useRef<() => void>(() => undefined);
@@ -285,11 +322,25 @@ export function EventGuests({
     [eventId],
   );
 
+  useEffect(() => {
+    openNow.current = open;
+    if (offeredFor.current != null && offeredFor.current !== open) {
+      offeredFor.current = null;
+      withdrawAction();
+    }
+  }, [open, withdrawAction]);
+
+  const forgetLink = useCallback(() => {
+    setCopyFailed(false);
+    setNotReplaced(false);
+    setAsking(false);
+  }, []);
   const openGuest = (guestId: string) => {
     setPasted(null);
     setSaved(false);
     setDone(null);
     setNotice(null);
+    forgetLink();
     setOpen(guestId);
     readGuest(guestId, false);
   };
@@ -297,8 +348,9 @@ export function EventGuests({
     setOpen(null);
     setSaved(false);
     setNotice(null);
+    forgetLink();
     setReopening({ busy: false, failed: false });
-  }, []);
+  }, [forgetLink]);
   const openWhose = useCallback((quote: string) => {
     setOpen(null);
     setDone(null);
@@ -392,6 +444,67 @@ export function EventGuests({
           } else setNotice({ kind: 'failed' });
         },
       );
+  };
+  // Each press reads the guest's current link, so a replace made elsewhere is what goes on the clipboard (sc-55558).
+  // An answer that lands once another guest is open is dropped, so it never speaks for that guest.
+  const copy = (guest: Details) => {
+    if (copying.current) return;
+    copying.current = true;
+    setCopyFailed(false);
+    api
+      .guestLink(eventId, guest.id)
+      .then((url) => setStringAsync(url))
+      .then((put) => {
+        if (!put) throw new Error('The phone refused the clipboard.');
+      })
+      .finally(() => {
+        copying.current = false;
+      })
+      .then(
+        () => {
+          if (openNow.current !== guest.id) return;
+          const offers = manages && invites && shownReply(guest) === 'notYetInvited';
+          offeredFor.current = offers ? guest.id : null;
+          tell(
+            t('guestList.linkCopied'),
+            offers
+              ? {
+                  label: t('guestList.markAsInvited'),
+                  onPress: () => {
+                    if (openNow.current === guest.id) startMark(copyButton.current);
+                  },
+                }
+              : null,
+          );
+        },
+        (error: unknown) => {
+          if (error instanceof ApiError && error.is('event_state_invalid')) onEventStale();
+          if (openNow.current === guest.id) setCopyFailed(true);
+        },
+      );
+  };
+  const askReplace = (from: ViewInstance | null) => {
+    replaceOpener.current = from;
+    setNotReplaced(false);
+    setAsking(true);
+  };
+  const replace = (guestId: string) => {
+    setReplacing(true);
+    api.replaceGuestLink(eventId, guestId).then(
+      () => {
+        // The notice's Replace link… goes with the notice, so focus lands on Invitation's.
+        replaceOpener.current = replaceButton.current;
+        setReplacing(false);
+        setAsking(false);
+        setFlagged((was) => new Set([...was].filter((id) => id !== guestId)));
+        setReplacedOn((was) => ({ ...was, [guestId]: new Date().toISOString() }));
+      },
+      () => {
+        setReplacing(false);
+        setAsking(false);
+        setNotReplaced(true);
+      },
+    );
   };
   const openForm = useCallback((mode: GuestFormMode, from: ViewInstance | null) => {
     opener.current = from;
@@ -567,7 +680,24 @@ export function EventGuests({
         }}
         saved={saved}
         notice={notice}
-        invitation={phase === 'draft' ? null : { manages, invites }}
+        invitation={invitationOfferOf(phase, manages, t)}
+        link={{
+          flagged: flagged.has(open),
+          notReplaced,
+          onReplaceFromNotice: () => askReplace(noticeReplace.current),
+          rows: {
+            replacedOn:
+              replacedOn[open] == null ? null : replyDate(replacedOn[open], timeZone, locale),
+            copyFailed,
+            onCopy: () => {
+              if (pane.kind === 'guest') copy(pane.guest);
+            },
+            onReplace: () => askReplace(replaceButton.current),
+          },
+        }}
+        noticeRef={noticeReplace}
+        copyRef={copyButton}
+        replaceRef={replaceButton}
         nameRef={guestName}
         editRef={editButton}
         markRef={markButton}
@@ -632,6 +762,28 @@ export function EventGuests({
           opener={markOpener}
           onClose={() => setMarkOpen(false)}
           onMark={(how) => mark(open, how)}
+        />
+      )}
+      {open != null && manages && (
+        <Ask
+          open={asking}
+          opener={replaceOpener}
+          title={t('guestList.replaceTitle', {
+            name: pane.kind === 'guest' ? pane.guest.fullName : '',
+          })}
+          line={t('guestList.replaceLine')}
+          keep={{ label: t('guestList.keepIt'), testID: 'guest.replace.keep', off: replacing }}
+          confirm={{
+            label: t('guestList.replace'),
+            testID: 'guest.replace.do',
+            busy: replacing ? t('guestList.replace') : undefined,
+          }}
+          onKeep={() => {
+            if (!replacing) setAsking(false);
+          }}
+          onConfirm={() => {
+            if (!replacing) replace(open);
+          }}
         />
       )}
       {pasted != null && fromMessage != null && (

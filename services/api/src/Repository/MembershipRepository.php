@@ -76,6 +76,9 @@ final class MembershipRepository extends ServiceEntityRepository
     public function findListedPage(Organisation $organisation, array $statuses, bool $decides, ?Membership $after, ?int $limit): array
     {
         $query = $this->listed($organisation, $decides)
+            ->addSelect('u', 'r')
+            ->innerJoin('m.user', 'u')
+            ->innerJoin('m.role', 'r')
             ->andWhere('m.status IN (:statuses)')
             ->setParameter('statuses', Vec\map($statuses, static fn (MembershipStatus $status): string => $status->value))
             ->orderBy('m.createdAt', 'ASC')
@@ -88,7 +91,21 @@ final class MembershipRepository extends ServiceEntityRepository
                 ->setParameter('afterId', $after->getId(), 'uuid');
         }
 
-        return Type\vec(Type\instance_of(Membership::class))->coerce($query->getQuery()->getResult());
+        $page = Type\vec(Type\instance_of(Membership::class))->coerce($query->getQuery()->getResult());
+
+        if ([] !== $page) {
+            // Each row shows its person's primary address: read them all in one query rather than one per row.
+            $this->getEntityManager()->createQueryBuilder()
+                ->select('u', 'e')
+                ->from(User::class, 'u')
+                ->leftJoin('u.emailAddresses', 'e')
+                ->andWhere('u IN (:users)')
+                ->setParameter('users', Vec\map($page, static fn (Membership $membership): User => $membership->getUser()))
+                ->getQuery()
+                ->getResult();
+        }
+
+        return $page;
     }
 
     /** @return array<string, int> how many of each status Settings › Members shows the caller, by status value */

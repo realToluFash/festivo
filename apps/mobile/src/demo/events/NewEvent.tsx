@@ -30,6 +30,7 @@ import {
   Choices,
   CoverPreview,
   CoverUpload,
+  CurrencySearch,
   DatePair,
   EventField,
   type Host,
@@ -39,7 +40,7 @@ import {
   VenueFields,
   useEditGap,
 } from './EventEdits.tsx';
-import { CURRENCIES, ORGANISATION, TYPE_WORDS, ZONES, currencyWords } from './EventsSample.ts';
+import { ORGANISATION, TYPE_WORDS, ZONES, currencyRows, currencyWords } from './EventsSample.ts';
 import { W, say, t } from './EventsWords.ts';
 import {
   FILLED,
@@ -291,12 +292,9 @@ export function NewEventScreen({
                       testID="events.new.zone"
                     />
                   ) : (
-                    <Choices
-                      items={CURRENCIES.map((one) => ({
-                        key: one.code,
-                        title: `${one.code} · ${one.name}`,
-                      }))}
-                      on={typed.currency === '' ? null : typed.currency}
+                    <CurrencySearch
+                      code={typed.currency}
+                      rows={currencyRows('')}
                       onPick={(currency) => {
                         change({ currency });
                         closeList();

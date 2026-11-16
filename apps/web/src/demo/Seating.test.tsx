@@ -676,6 +676,59 @@ describe('tables, rows and seats (sc-4000, sc-4003)', () => {
     ).toBeDefined();
   });
 
+  it('folds Add row and Add seat into one Add menu when the bar meets the zoom', SLOW, async () => {
+    const measured = vi
+      .spyOn(HTMLElement.prototype, 'getBoundingClientRect')
+      .mockImplementation(function (this: HTMLElement) {
+        const width = this.classList.contains('st-add')
+          ? 520
+          : this.classList.contains('st-zoom')
+            ? 240
+            : 0;
+
+        return {
+          width,
+          height: 0,
+          top: 0,
+          left: 0,
+          right: width,
+          bottom: 0,
+          x: 0,
+          y: 0,
+        } as DOMRect;
+      });
+
+    try {
+      await seating();
+      fireEvent.click(await screen.findByRole('button', { name: 'Add' }, WAIT));
+      expect(screen.queryByRole('button', { name: 'Add seat' })).toBeNull();
+      const menu = screen.getByRole('menu', { name: 'Add' });
+
+      expect(within(menu).getAllByRole('menuitem')).toHaveLength(6);
+      fireEvent.click(within(menu).getByRole('menuitem', { name: 'Row of chairs' }));
+      expect(
+        await within(panel()).findByText('Row B added in the nearest free space, with 10 seats.'),
+      ).toBeDefined();
+      expect(screen.queryByRole('menu')).toBeNull();
+    } finally {
+      measured.mockRestore();
+    }
+  });
+
+  it('Esc in a field undoes the typing first, then leaves the table', SLOW, async () => {
+    await seating('tapChooses');
+    const field = within(panel()).getByLabelText('Seats', { exact: false }) as HTMLInputElement;
+    const was = field.value;
+
+    fireEvent.change(field, { target: { value: '3' } });
+    key(field, 'Escape');
+    expect(field.value).toBe(was);
+    expect(within(panel()).getByLabelText('Seats', { exact: false })).toBe(field);
+    key(field, 'Escape');
+    expect(within(panel()).queryByLabelText('Name', { exact: false })).toBeNull();
+    await waitFor(() => expect(document.activeElement).toBe(item(/^Table 4,/u)), WAIT);
+  });
+
   it('refuses a row shortened past a guest, and a seat name already used', SLOW, async () => {
     await seating('rowBelowSeated');
     expect(

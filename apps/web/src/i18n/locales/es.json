@@ -2846,7 +2846,13 @@
     "deleteRow": "Eliminar fila",
     "deleteSeat": "Eliminar asiento",
     "changedRow": "{{name}} acaba de cambiar esta fila. Su cambio no se ha guardado.",
-    "changedSeat": "{{name}} acaba de cambiar este asiento. Su cambio no se ha guardado."
+    "changedSeat": "{{name}} acaba de cambiar este asiento. Su cambio no se ha guardado.",
+    "zoomIn": "Zoom in",
+    "zoomOut": "Zoom out",
+    "zoomIs": "Zoom {{pct, number}}%",
+    "percent": "{{pct, number}}%",
+    "fit": "Fit the room",
+    "takenOf": "{{taken, number}} of {{seats, number}}"
   },
   "onboarding": {
     "step": "Paso {{step, number}} de 2",
@@ -3738,5 +3744,9 @@
     "saidBehind_many": "{{track}}, {{count, number}} minutos de retraso",
     "saidLast": "{{track}}, último elemento en curso",
     "saidDone": "{{track}}, todos los elementos terminados"
+  },
+  "handoff": {
+    "line": "This page is made for a wider window. On a phone or a tablet, it is in the Soirely app.",
+    "anyway": "Show this page anyway"
   }
 }

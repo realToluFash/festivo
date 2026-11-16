@@ -1642,6 +1642,7 @@ describe("Inside an event, the navigation menu is the event's (sc-22103)", () =>
   it.each([
     ['/app/events/ev_1/guests', 'Guests'],
     ['/app/events/ev_1/dates', 'Overview'],
+    ['/app/events/ev_1/run', 'Schedule'],
   ])('marks the area of %s as current', async (path, area) => {
     signedIn();
     answering({ 'GET /api/events/ev_1': () => json({ event: event({ milestones: [] }) }) });

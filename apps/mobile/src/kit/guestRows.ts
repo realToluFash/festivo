@@ -1,7 +1,15 @@
 import type { OrganisationEvent } from '@soirely/api-client';
-import { CHOICES, type Choice, type EventPhase, type ReplyWord, roleHolds } from '@soirely/domain';
+import {
+  CHOICES,
+  type Choice,
+  type EventPhase,
+  type ReplyWord,
+  eventAllows,
+  roleHolds,
+} from '@soirely/domain';
 import type { TFunction } from 'i18next';
 
+import type { InvitationOffer } from '../components/GuestInvitation.tsx';
 import type { ReplyKind } from '../components/ReplyMark.tsx';
 import { type CardTag, type Shown, cardTags } from './eventsList.ts';
 import { draftRowOf } from './makeLive.ts';
@@ -65,5 +73,26 @@ export function phaseCardOf(
     onList: false,
     line: t(phase === 'paused' ? 'guestList.pausedLine' : 'guestList.finishedLine'),
     offersMakeLive: false,
+  };
+}
+
+/** A guest's Invitation by phase (sc-55558): none on a Draft for those who can't manage guests, Replace link… alone on a Draft for those who can, and Paused's or Finished's reason above the rows. */
+export function invitationOfferOf(
+  phase: EventPhase | null,
+  manages: boolean,
+  t: TFunction,
+): InvitationOffer | null {
+  if (phase === 'draft' && !manages) return null;
+
+  return {
+    manages,
+    invites: phase != null && eventAllows(phase, 'invite'),
+    draft: phase === 'draft',
+    notInviting:
+      phase === 'paused'
+        ? t('guestList.pausedLine')
+        : phase === 'finished'
+          ? t('guestList.finishedLine')
+          : null,
   };
 }
