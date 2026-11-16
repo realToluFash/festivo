@@ -1164,6 +1164,19 @@
   box-shadow: 0 0 0 1px var(--colorBorder);
 }
 
+/* When even the folded bar meets the zoom, the zoom steps up one line at the floor's right, and whatever stood on that line steps up with it (sc-55937, the demo's is-zoom-up). */
+.st-canvas:has(> .st-add.is-crowded) .st-zoom {
+  bottom: 80px;
+}
+
+.st-canvas:has(> .st-add.is-crowded) :is(.st-minimap, .st-another) {
+  bottom: 144px;
+}
+
+.st-canvas:has(> .st-add.is-crowded) .st-keys {
+  bottom: 142px;
+}
+
 .st-key {
   display: flex;
   align-items: center;
