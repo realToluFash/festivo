@@ -23,7 +23,12 @@ import { Glyph } from './Glyph.tsx';
 import { ChoseNote } from './GuestLanguage.tsx';
 import { GuestCover } from './GuestsCard.tsx';
 import { NeedsRows } from './GuestNeeds.tsx';
-import { type InvitationOffer, InvitationBlock, type LinkRows } from './GuestInvitation.tsx';
+import {
+  type InvitationOffer,
+  InvitationBlock,
+  type LinkRows,
+  NotReplaced,
+} from './GuestInvitation.tsx';
 import { AlertLine } from './AlertLine.tsx';
 import { MarkSlot } from './ReplyMark.tsx';
 import { Row, RowList, TextAction } from './SummaryRows.tsx';
@@ -310,7 +315,9 @@ export function GuestDetails({
           onReplace={link.onReplaceFromNotice}
         />
       )}
-      {manages && link.flagged && link.notReplaced && <NotReplaced />}
+      {manages && link.flagged && link.notReplaced && (
+        <NotReplaced testID="guest.flagged.notReplaced" />
+      )}
       {reopen.failed && <AlertLine text={t('guestList.reopenNotSaved')} />}
       {notice?.kind === 'refused' && <AlertLine text={notice.line} />}
       {notice?.kind === 'offline' && <AlertLine text={t('guestList.offlineRefused')} />}
@@ -433,19 +440,6 @@ function WrongPerson({
           testID="guest.flagged.replace"
         />
       </View>
-    </View>
-  );
-}
-
-/** A replace that failed: the old link still works, read out as it appears (sc-55558). */
-function NotReplaced() {
-  const { t } = useTranslation();
-  const said = t('guestList.notReplaced');
-  useReadOut(said, { interrupts: true });
-
-  return (
-    <View testID="guest.flagged.notReplaced">
-      <AlertLine text={said} />
     </View>
   );
 }
