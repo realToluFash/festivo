@@ -368,12 +368,14 @@ describe('The event’s Menu (sc-3902)', () => {
     expect(screen.getByText('Guests choose')).toBeDefined();
   });
 
-  it('answers a member without menu.read as a page that does not exist', async () => {
+  it('answers a member without menu.read as a page that does not exist, under a crumb that stops at Events', async () => {
     const sent = await onMenu({}, ['events.read']);
 
     expect(
       await screen.findByRole('heading', { level: 1, name: 'This page does not exist' }),
     ).toBeDefined();
+    const crumb = within(screen.getByRole('navigation', { name: 'Breadcrumb' }));
+    expect(crumb.getAllByRole('listitem').map((part) => part.textContent)).toEqual(['Events']);
     expect(sent.some((one) => one.line === 'GET /api/events/ev_1/menu')).toBe(false);
   });
 });
