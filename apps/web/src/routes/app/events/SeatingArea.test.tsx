@@ -1721,6 +1721,120 @@ describe('At a narrow desk (sc-55937)', () => {
     }
   });
 
+  it('turns Add off when Esc ends placing that its menu began', async () => {
+    signedIn();
+    const measured = barMeetsZoom();
+
+    try {
+      await onSeating({ 'GET /api/events/ev_1/seating-plan': () => seating(plan()) });
+
+      const add = await screen.findByRole('button', { name: 'Add' });
+
+      fireEvent.click(add);
+      fireEvent.click(
+        within(screen.getByRole('menu', { name: 'Add' })).getByRole('menuitem', {
+          name: 'Single seat',
+        }),
+      );
+      expect(add.classList.contains('is-on')).toBe(true);
+
+      fireEvent.keyDown(window, { key: 'Escape' });
+      await waitFor(() =>
+        expect(screen.queryByRole('checkbox', { name: 'Place another' })).toBeNull(),
+      );
+      expect(add.classList.contains('is-on')).toBe(false);
+    } finally {
+      measured.mockRestore();
+    }
+  });
+
+  it('keeps Add on through each click with Place another, and off once the last is placed', async () => {
+    signedIn();
+    const measured = barMeetsZoom();
+
+    try {
+      const sent = await onSeating({
+        'GET /api/events/ev_1/seating-plan': () => seating(plan()),
+        'POST /api/events/ev_1/seating-plan/seats': () =>
+          placed(withRowsAndSeats([], [single({ xCm: 1200, yCm: 900 })]), { seatId: 's1' }),
+        'PATCH /api/events/ev_1/seating-plan/furniture': (body) => {
+          const [item] = (body as { items: { xCm: number; yCm: number }[] }).items;
+
+          return seating(withRowsAndSeats([], [single({ ...item, version: 2 })]));
+        },
+      });
+
+      const add = await screen.findByRole('button', { name: 'Add' });
+
+      fireEvent.click(add);
+      fireEvent.click(
+        within(screen.getByRole('menu', { name: 'Add' })).getByRole('menuitem', {
+          name: 'Single seat',
+        }),
+      );
+      const floor = document.querySelector('.st-floor')!;
+
+      fireEvent.pointerDown(floor, { pointerId: 1, button: 0, clientX: 203, clientY: 147 });
+      await waitFor(() => expect(furniture(sent)).toHaveLength(1));
+      expect(screen.getByRole('checkbox', { name: 'Place another' })).toBeDefined();
+      expect(add.classList.contains('is-on')).toBe(true);
+
+      fireEvent.click(screen.getByRole('checkbox', { name: 'Place another' }));
+      fireEvent.pointerDown(floor, { pointerId: 2, button: 0, clientX: 303, clientY: 147 });
+      await waitFor(() =>
+        expect(screen.queryByRole('checkbox', { name: 'Place another' })).toBeNull(),
+      );
+      expect(add.classList.contains('is-on')).toBe(false);
+    } finally {
+      measured.mockRestore();
+    }
+  });
+
+  it('turns Add table off when the bar unfolds while a row from the folded Add is placed', async () => {
+    signedIn();
+    const measured = barMeetsZoom();
+    const resized: ResizeObserverCallback[] = [];
+
+    vi.stubGlobal(
+      'ResizeObserver',
+      class {
+        constructor(callback: ResizeObserverCallback) {
+          resized.push(callback);
+        }
+        observe() {}
+        disconnect() {}
+      },
+    );
+
+    try {
+      await onSeating({ 'GET /api/events/ev_1/seating-plan': () => seating(plan()) });
+
+      fireEvent.click(await screen.findByRole('button', { name: 'Add' }));
+      fireEvent.click(
+        within(screen.getByRole('menu', { name: 'Add' })).getByRole('menuitem', {
+          name: 'Row of chairs',
+        }),
+      );
+      expect(screen.getByRole('button', { name: 'Add' }).classList.contains('is-on')).toBe(true);
+
+      act(() => {
+        for (const callback of resized)
+          callback(
+            [{ contentRect: { width: 1200, height: 719 } } as ResizeObserverEntry],
+            {} as ResizeObserver,
+          );
+      });
+
+      const addTable = await screen.findByRole('button', { name: 'Add table' });
+
+      expect(screen.getByRole('button', { name: 'Stop placing' })).toBeDefined();
+      expect(addTable.classList.contains('is-on')).toBe(false);
+    } finally {
+      measured.mockRestore();
+      vi.unstubAllGlobals();
+    }
+  });
+
   it('keeps Add table on while a table is placed unfolded, and leaves Add row as it is', async () => {
     signedIn();
     await onSeating({ 'GET /api/events/ev_1/seating-plan': () => seating(plan()) });

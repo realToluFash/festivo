@@ -143,7 +143,7 @@ export function AddTable({
   const [menu, setMenu] = useState(false);
   const [folded, setFolded] = useState(false);
   const [crowded, setCrowded] = useState(false);
-  const [fromMenu, setFromMenu] = useState(false);
+  const [fromMenu, setFromMenu] = useState<'table' | 'other' | null>(null);
   const [wasPlacing, setWasPlacing] = useState(placing);
   const first = useRef<HTMLButtonElement>(null);
   const bar = useRef<HTMLDivElement>(null);
@@ -165,7 +165,7 @@ export function AddTable({
     if (menu) first.current?.focus();
   }, [menu]);
 
-  function adds(change: () => Promise<void>, chosen: boolean): Promise<void> {
+  function adds(change: () => Promise<void>, chosen: 'table' | 'other' | null): Promise<void> {
     setMenu(false);
     setFromMenu(chosen);
     return change();
@@ -178,10 +178,10 @@ export function AddTable({
 
   if (placing !== wasPlacing) {
     setWasPlacing(placing);
-    if (!placing) setFromMenu(false);
+    if (!placing) setFromMenu(null);
   }
 
-  const on = menu || (placing && fromMenu);
+  const on = menu || (placing && (folded ? fromMenu != null : fromMenu === 'table'));
 
   return (
     <>
@@ -207,7 +207,7 @@ export function AddTable({
                 type="button"
                 role="menuitem"
                 className="st-menu-row"
-                onClick={() => void adds(() => add(shape), true)}
+                onClick={() => void adds(() => add(shape), 'table')}
               >
                 <ShapeTile glyph={shape === 'rectangular' ? 'rect' : shape} />
                 {t(SHAPE_WORDS[shape].menu, {
@@ -223,7 +223,7 @@ export function AddTable({
                 type="button"
                 role="menuitem"
                 className="st-menu-row"
-                onClick={() => void adds(onRow, true)}
+                onClick={() => void adds(onRow, 'other')}
               >
                 <ShapeTile glyph="row" />
                 {t('seating.menuRow')}
@@ -232,7 +232,7 @@ export function AddTable({
                 type="button"
                 role="menuitem"
                 className="st-menu-row"
-                onClick={() => void adds(onSeat, true)}
+                onClick={() => void adds(onSeat, 'other')}
               >
                 <ShapeTile glyph="seat1" />
                 {t('seating.singleSeat')}
@@ -260,11 +260,11 @@ export function AddTable({
         </button>
         {!folded && (
           <>
-            <button type="button" className="st-tool" onClick={() => void adds(onRow, false)}>
+            <button type="button" className="st-tool" onClick={() => void adds(onRow, null)}>
               <Glyph name="row" size={18} weight={2.2} />
               {t('seating.addRow')}
             </button>
-            <button type="button" className="st-tool" onClick={() => void adds(onSeat, false)}>
+            <button type="button" className="st-tool" onClick={() => void adds(onSeat, null)}>
               <Glyph name="seat1" size={18} weight={2.2} />
               {t('seating.addSeat')}
             </button>
