@@ -120,7 +120,6 @@ export function ChildrenTag() {
   );
 }
 
-/** A dish with variants: the line that says so, then one inset per variant with its own Contains, Suitable for, and on the event its picks. */
 function Picks({ variant }: { variant: Variant }) {
   const { count, share } = picksOf(variant);
 
@@ -132,6 +131,7 @@ function Picks({ variant }: { variant: Variant }) {
   );
 }
 
+/** A dish with variants: the line that says so, then one inset per variant with its own Contains, Suitable for, and on the event its picks. */
 export function VariantInsets({
   dish,
   where,
