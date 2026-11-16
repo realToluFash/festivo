@@ -503,6 +503,8 @@ export interface OrganisationEvent {
   arrivalNote: string | null;
   /** The names guests read, in order; none until somebody adds one, and Make live waits for one (sc-6713). */
   hosts: string[];
+  /** The hosts' thank-you, in their own words; null until one is saved on the Finished event (sc-6476). */
+  thankYou: string | null;
   /** Null while it is a Draft. */
   madeLiveAt: string | null;
   /** Null unless its phase is Paused (sc-3586). */
@@ -3339,12 +3341,23 @@ export class ApiClient {
     );
   }
 
-  /** Calls it off before its start, ends it after: refused 409 `event_state_invalid` unless Live or Paused, and 409 `event_concluded` once its end has passed. */
-  async endEvent(eventId: string): Promise<TaggedEvent> {
+  /** Calls it off before its start, ends it after: refused 409 `event_state_invalid` unless Live or Paused, or on a call-off with a `thankYou`, and 409 `event_concluded` once its end has passed. */
+  async endEvent(eventId: string, thankYou?: string): Promise<TaggedEvent> {
     return this.tagged(
       await this.exchange<{ event?: unknown }>(`/api/events/${encodeURIComponent(eventId)}/end`, {
         method: 'POST',
+        ...(thankYou == null || thankYou.trim() === '' ? {} : { body: { thankYou } }),
       }),
+    );
+  }
+
+  /** Saved empty, the line is removed (sc-6476). Refused 409 `event_state_invalid` unless Finished and not called off, and 422 `validation_failed` on `thankYou` over 280 characters. */
+  async setThankYou(eventId: string, thankYou: string): Promise<TaggedEvent> {
+    return this.tagged(
+      await this.exchange<{ event?: unknown }>(
+        `/api/events/${encodeURIComponent(eventId)}/thank-you`,
+        { method: 'PUT', body: { thankYou } },
+      ),
     );
   }
 
@@ -4600,6 +4613,7 @@ function asOrganisationEvent(raw: unknown): OrganisationEvent | null {
   const venue = candidate.venue === null ? null : asEventVenue(candidate.venue);
   const arrivalNote = candidate.arrivalNote;
   const hosts = candidate.hosts;
+  const thankYou = candidate.thankYou ?? null;
   const madeLiveAt = candidate.madeLiveAt;
   const pausedAt = candidate.pausedAt;
   const phase = oneOf(candidate.phase, EVENT_PHASES);
@@ -4616,6 +4630,7 @@ function asOrganisationEvent(raw: unknown): OrganisationEvent | null {
     phase == null ||
     !isStringOrNull(concludedAt) ||
     deleteRefusedBecause === undefined ||
+    !isStringOrNull(thankYou) ||
     !isStringOrNull(madeLiveAt) ||
     !isStringOrNull(pausedAt) ||
     type == null ||
@@ -4649,6 +4664,7 @@ function asOrganisationEvent(raw: unknown): OrganisationEvent | null {
     venue,
     arrivalNote,
     hosts: hosts as string[],
+    thankYou,
     madeLiveAt,
     pausedAt,
     phase,
@@ -4763,6 +4779,7 @@ function asGuestPage(raw: unknown): GuestPage | null {
       hosts: Array.isArray(what.hosts)
         ? what.hosts.filter((host): host is string => typeof host === 'string')
         : [],
+      thankYou: typeof what.thankYou === 'string' ? what.thankYou : null,
       startsAt: what.startsAt,
       timeZone: what.timeZone,
       venue:
