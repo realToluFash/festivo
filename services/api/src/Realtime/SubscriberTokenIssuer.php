@@ -51,6 +51,12 @@ final readonly class SubscriberTokenIssuer
         return $this->issue([RealtimeTopic::EventSchedule->for($eventId->toRfc4122())]);
     }
 
+    /** One event's menu, for someone the route has already found holds menu.read on it (sc-3902). */
+    public function issueForEventMenu(Uuid $eventId): IssuedSubscriberToken
+    {
+        return $this->issue([RealtimeTopic::EventMenu->for($eventId->toRfc4122())]);
+    }
+
     /** One event's guest list and its headcount, for someone the route has already found holds guests.read on it (sc-1468, sc-99). */
     public function issueForEventGuests(Uuid $eventId): IssuedSubscriberToken
     {

@@ -357,8 +357,10 @@ permit = [
     "@layer:locale",
 ]
 
-# Menu: the organisation's dish library (sc-3901). A last price's currency is one of
-# the organisation's offered currencies; each change is audited.
+# Menu: the organisation's dish library (sc-3901) and each event's menu (sc-3902). A
+# last price's currency is one of the organisation's offered currencies; each change is
+# audited. An event's menu is published whole on its topic, and an allergen added to a
+# picked dish is counted against the allergies its pickers have recorded (sc-3777).
 [[guard.perimeter.rules]]
 namespace = "App\\Domain\\Menu\\"
 permit = [
@@ -367,8 +369,10 @@ permit = [
     "@layer:shared",
     "@layer:domain_menu",
     "@layer:domain_organisation",
+    "@layer:domain_guest",
     "@layer:repository",
     "@layer:audit",
+    "@layer:realtime",
     "@layer:locale",
 ]
 
