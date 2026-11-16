@@ -1,0 +1,68 @@
+/* sc-6476: the hosts' thank-you on a Finished event's Overview and in End now. */
+
+.desk-box.ty-box {
+  align-items: stretch;
+  height: auto;
+  padding: 0;
+}
+
+.ty-box textarea {
+  flex: 1;
+  box-sizing: border-box;
+  min-width: 0;
+  min-height: calc(6em + 24px);
+  max-height: calc(15em + 24px);
+  padding: 12px var(--spaceLg) 12px var(--spaceXl);
+  border: 0;
+  outline: none;
+  background: none;
+  color: var(--colorInk);
+  font: 500 16px/1.5 var(--fontFamily);
+  resize: vertical;
+  field-sizing: content;
+}
+
+.ty-box textarea[style*='height'] {
+  max-height: none;
+}
+
+.ty-box textarea:focus-visible {
+  box-shadow: none;
+}
+
+.ty-action {
+  display: flex;
+  margin-top: 4px;
+}
+
+.ty-under {
+  display: flex;
+  align-items: flex-start;
+  gap: var(--spaceLg);
+}
+
+.ty-under .desk-help:first-child {
+  flex: 1;
+  min-width: 0;
+}
+
+.ty-count {
+  flex: none;
+  font-variant-numeric: tabular-nums;
+}
+
+.ty-count.is-over {
+  color: var(--colorBrokenText);
+  font-weight: 700;
+}
+
+.ty .ev-opened {
+  margin: 0;
+  padding: 0;
+  border-left: 0;
+}
+
+.event-live-dialog .desk-field {
+  margin-top: var(--spaceLg);
+  text-align: start;
+}
