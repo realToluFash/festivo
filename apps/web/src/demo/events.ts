@@ -526,6 +526,8 @@ export const EVENT_WORDS = {
   endNowOpen: 'End now…',
   endNow: 'End now',
   endLine: 'It will be over for everybody. You can’t undo this.',
+  endBody: 'It will be over for everybody.',
+  endFinal: 'You can’t undo this.',
   endTitle: (name: string) => `End ${name} now?`,
   keepItOn: 'Keep it on',
   deleteOpen: 'Delete event…',
