@@ -2849,7 +2849,7 @@
     "zoomOut": "Diminuir o zoom",
     "zoomIs": "Zoom a {{share, number(style: percent)}}",
     "percent": "{{share, number(style: percent)}}",
-    "fit": "Ver a sala inteira",
+    "fit": "Toda a sala",
     "takenOf": "{{taken, number}} de {{seats, number}}",
     "saved": "Guardado",
     "saving": "A guardar…",
