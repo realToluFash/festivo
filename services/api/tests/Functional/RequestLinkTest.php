@@ -291,6 +291,49 @@ final class RequestLinkTest extends ApiTestCase
         self::assertResponseStatusCodeSame(201);
     }
 
+    /** @return iterable<string, array{string}> */
+    public static function messagesOver500Letters(): iterable
+    {
+        yield 'marked letters' => [Str\repeat("e\u{0323}\u{0300}", 501)];
+        yield 'one letter of many marks' => ['a' . Str\repeat("\u{0301}", 2000)];
+    }
+
+    #[Test]
+    #[DataProvider('messagesOver500Letters')]
+    public function aMessageOver500LettersIsRefused(string $message): void
+    {
+        [, $organisation] = $this->organisation('folake@ire.events', 'Ìrè Events');
+        $token = $this->turnOn($organisation);
+        $this->signIn($this->outsider('ada@gmail.com'));
+
+        $body = $this->send('POST', '/api/request-links/ask', ['token' => $token, 'message' => $message]);
+
+        self::assertResponseStatusCodeSame(422);
+        self::assertSame([['message', 'Keep your message to 500 characters or fewer.']], $this->violations($body));
+    }
+
+    /** @return iterable<string, array{string}> */
+    public static function messagesOf500Letters(): iterable
+    {
+        yield 'composed' => [Str\repeat("\u{1EB9}\u{0300}", 500)];
+        yield 'decomposed' => [Str\repeat("e\u{0323}\u{0300}", 500)];
+    }
+
+    #[Test]
+    #[DataProvider('messagesOf500Letters')]
+    public function aMessageOf500LettersWithADotAndAToneEachIsKeptAsTyped(string $message): void
+    {
+        [, $organisation] = $this->organisation('folake@ire.events', 'Ìrè Events');
+        $token = $this->turnOn($organisation);
+        $ada = $this->outsider('ada@gmail.com');
+        $this->signIn($ada);
+
+        $this->send('POST', '/api/request-links/ask', ['token' => $token, 'message' => $message]);
+
+        self::assertResponseStatusCodeSame(201);
+        self::assertSame($message, $this->membershipOf($ada, $organisation)->getRequestMessage());
+    }
+
     #[Test]
     public function anAccountMakesAtMostFiveRequestsADayAcrossOrganisations(): void
     {

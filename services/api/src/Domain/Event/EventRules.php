@@ -11,6 +11,7 @@ use App\Entity\Event;
 use App\Enum\ErrorCode;
 use App\Enum\EventType;
 use App\Http\Exception\ApiException;
+use App\Locale\VisibleText;
 use DateTimeImmutable;
 use DateTimeZone;
 use Psl\Iter;
@@ -47,7 +48,7 @@ final readonly class EventRules
 
         if ('' === $name) {
             $violations[] = $this->violation('name', 'validation.event_name_required');
-        } elseif (Str\length($name) > Event::NAME_MAXIMUM) {
+        } elseif (VisibleText::tooLong($name, Event::NAME_MAXIMUM)) {
             $violations[] = $this->violation('name', 'validation.event_name_too_long', ['{count}' => (string) Event::NAME_MAXIMUM]);
         }
 
@@ -70,17 +71,17 @@ final readonly class EventRules
 
         $venue = Iter\contains_key($fields, 'venue') ? $this->venueResolver->resolve($fields['venue'], $heldVenue) : null;
 
-        if (null !== $venue?->name && Str\length($venue->name) > Venue::NAME_MAXIMUM) {
+        if (null !== $venue?->name && VisibleText::tooLong($venue->name, Venue::NAME_MAXIMUM)) {
             $violations[] = $this->violation('venueName', 'validation.event_venue_name_too_long', ['{count}' => (string) Venue::NAME_MAXIMUM]);
         }
 
-        if (null !== $venue?->address && Str\length($venue->address->formatted) > Venue::ADDRESS_MAXIMUM) {
+        if (null !== $venue?->address && VisibleText::tooLong($venue->address->formatted, Venue::ADDRESS_MAXIMUM)) {
             $violations[] = $this->violation('venueAddress', 'validation.event_venue_address_too_long', ['{count}' => (string) Venue::ADDRESS_MAXIMUM]);
         }
 
         $note = Iter\contains_key($fields, 'arrivalNote') ? ArrivalNote::saved($fields['arrivalNote']) : null;
 
-        if (null !== $note && ArrivalNote::length($note) > Event::ARRIVAL_NOTE_MAXIMUM) {
+        if (null !== $note && VisibleText::tooLong($note, Event::ARRIVAL_NOTE_MAXIMUM)) {
             $violations[] = $this->violation('arrivalNote', 'validation.event_arrival_note_too_long', ['{count}' => (string) Event::ARRIVAL_NOTE_MAXIMUM]);
         }
 
@@ -165,12 +166,12 @@ final readonly class EventRules
 
         foreach ($hosts as $index => $host) {
             $path = 'hosts[' . $index . ']';
-            $length = Str\length($host);
+            $length = VisibleText::length($host);
             $folded = Str\lowercase($host);
 
             if ('' === $host) {
                 $violations[] = $this->violation($path, 'validation.event_host_blank');
-            } elseif ($length > Event::HOST_NAME_MAXIMUM) {
+            } elseif (VisibleText::tooLong($host, Event::HOST_NAME_MAXIMUM)) {
                 $violations[] = $this->violation($path, 'validation.event_host_too_long', ['{count}' => (string) Event::HOST_NAME_MAXIMUM, '{length}' => (string) $length]);
             } elseif (Iter\contains_key($seen, $folded)) {
                 $violations[] = $this->violation($path, 'validation.event_host_duplicate', ['{name}' => $seen[$folded]]);

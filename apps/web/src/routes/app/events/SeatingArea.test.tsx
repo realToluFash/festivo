@@ -286,6 +286,35 @@ describe('Seating at a desk (sc-3998)', () => {
     ).toEqual({ name: 'Main floor', colour: 'plum' });
   });
 
+  it('counts a section name’s letters as a reader sees them (sc-54292)', async () => {
+    signedIn();
+    const forty = 'e\u0323\u0300'.repeat(40);
+    const sent = await onSeating({
+      'GET /api/events/ev_1/seating-plan': () =>
+        json({ seating: { measurementSystem: 'metric', plan: plan([]) } }),
+      'POST /api/events/ev_1/seating-plan/sections': () =>
+        json({
+          seating: {
+            measurementSystem: 'metric',
+            plan: plan([{ id: 's1', name: forty, colour: 'blue' }]),
+          },
+        }),
+    });
+
+    fireEvent.click(await screen.findByRole('button', { name: 'Add a section' }));
+    fireEvent.change(screen.getByLabelText('Name'), { target: { value: `${forty}e\u0323\u0300` } });
+    fireEvent.click(screen.getByRole('button', { name: 'Add section' }));
+    expect(screen.getByText('Use 40 characters or fewer.')).toBeDefined();
+
+    fireEvent.change(screen.getByLabelText('Name'), { target: { value: forty } });
+    fireEvent.click(screen.getByRole('button', { name: 'Add section' }));
+    await waitFor(() =>
+      expect(
+        sent.find((one) => one.line === 'POST /api/events/ev_1/seating-plan/sections')?.body,
+      ).toMatchObject({ name: forty }),
+    );
+  });
+
   it('refuses a 31st section when Add a section is pressed', async () => {
     signedIn();
     const full = Array.from({ length: 30 }, (_, index) => ({
@@ -1284,6 +1313,46 @@ describe('Rows and single seats at a desk (sc-4003)', () => {
     expect(
       await screen.findByText('Ngozi Eze just changed this row. Your change was not saved.'),
     ).toBeDefined();
+  });
+
+  it('counts a row label’s and a seat name’s letters as a reader sees them (sc-54292)', async () => {
+    signedIn();
+    const ten = 'E\u0323\u0300'.repeat(10);
+    const thirty = 'e\u0323\u0300'.repeat(30);
+    const sent = await onSeating({
+      'GET /api/events/ev_1/seating-plan': () => seating(withRowsAndSeats([row()], [single()])),
+      'PATCH /api/events/ev_1/seating-plan/rows/r1': () =>
+        placed(withRowsAndSeats([row({ label: ten, version: 2 })], [single()]), { rowId: 'r1' }),
+      'PATCH /api/events/ev_1/seating-plan/seats/s1': () =>
+        placed(
+          withRowsAndSeats(
+            [row({ label: ten, version: 2 })],
+            [single({ name: thirty, version: 2 })],
+          ),
+          {
+            seatId: 's1',
+          },
+        ),
+    });
+
+    await chooseTable('Row A, row of 10, 0 of 10 seats taken');
+    expect(screen.getByLabelText<HTMLInputElement>('Label').maxLength).toBe(-1);
+    leave('Label', `${ten}E\u0323\u0300`);
+    expect(await screen.findByText('Use 10 characters or fewer.')).toBeDefined();
+    expect(sent.some((one) => one.line.startsWith('PATCH'))).toBe(false);
+    leave('Label', ten);
+    await waitFor(() =>
+      expect(sent.find((one) => one.line.endsWith('/rows/r1'))?.body).toEqual({ label: ten }),
+    );
+
+    await chooseTable('Seat 1, single seat, Empty');
+    expect(screen.getByLabelText<HTMLInputElement>('Name').maxLength).toBe(-1);
+    leave('Name', `${thirty}e\u0323\u0300`);
+    expect(await screen.findByText('Use 30 characters or fewer.')).toBeDefined();
+    leave('Name', thirty);
+    await waitFor(() =>
+      expect(sent.find((one) => one.line.endsWith('/seats/s1'))?.body).toEqual({ name: thirty }),
+    );
   });
 
   it('says who changed a single seat first when a save comes back 412', async () => {

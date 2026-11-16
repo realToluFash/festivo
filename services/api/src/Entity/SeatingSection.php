@@ -29,7 +29,7 @@ class SeatingSection
     #[ORM\JoinColumn(nullable: false, onDelete: 'CASCADE')]
     private SeatingPlan $plan;
 
-    #[ORM\Column(type: Types::STRING, length: 40)]
+    #[ORM\Column(type: Types::STRING, length: 160)]
     private string $name;
 
     /** The name without case or accents, so "Terrasse" and "terrassé" are one section. */

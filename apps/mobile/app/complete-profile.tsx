@@ -6,7 +6,6 @@ import {
   awaiting,
 } from '@soirely/api-client';
 import {
-  ACCOUNT_NAME_MAXIMUM,
   answeringInvitation,
   deviceRegion,
   formatDay,
@@ -48,9 +47,6 @@ import { InsideField } from '../src/steps/InsideField.tsx';
 import { Heading, Plain, Says } from '../src/steps/Lines.tsx';
 import { NavBar, StepScreen } from '../src/steps/StepScreen.tsx';
 import { tokens } from '../src/theme/tokens.ts';
-
-/** The API's OrganisationRules::NAME_MAXIMUM. */
-const ORGANISATION_NAME_MAXIMUM = 100;
 
 type Errors = Partial<
   Record<'name' | 'organisationName' | 'countryCode' | 'timezone', string | undefined>
@@ -310,7 +306,6 @@ function FoundOrganisation() {
             wrong={errors.organisationName != null}
             submitting={saving}
             value={name}
-            maxLength={ORGANISATION_NAME_MAXIMUM}
             onChangeText={(text) => {
               setName(text);
               setErrors((previous) => ({ ...previous, organisationName: undefined }));
@@ -626,7 +621,6 @@ function Details({
               autoComplete="name"
               textContentType="name"
               autoCapitalize="words"
-              maxLength={ACCOUNT_NAME_MAXIMUM}
               returnKeyType="next"
               submitBehavior="submit"
               onSubmitEditing={() => organisationInput.current?.focus()}
@@ -733,7 +727,6 @@ function Details({
                 state={errors.organisationName != null ? 'blank' : 'plain'}
                 line={errors.organisationName}
                 submitting={saving}
-                maxLength={ORGANISATION_NAME_MAXIMUM}
                 autoComplete="organization"
                 textContentType="organizationName"
                 autoCapitalize="words"

@@ -18,6 +18,9 @@ use Symfony\Component\Console\Tester\CommandTester;
 
 final class WorkNotificationsCommandTest extends MessagingTestCase
 {
+    /** The memory limit reads the whole suite's process, past the 128 MB default long before this class runs, and would stop the worker after its first step. */
+    private const array ONCE = ['--once' => true, '--memory-limit' => '4096'];
+
     #[Test]
     public function onceSendsEverythingDueThenExitsLeavingWhatIsNotYetDue(): void
     {
@@ -27,7 +30,7 @@ final class WorkNotificationsCommandTest extends MessagingTestCase
         self::scheduler()->schedule('test.notice', 'tomorrow', 'tomorrow', Trigger::at(new DateTimeImmutable('+1 day')), $members);
 
         $tester = new CommandTester(new Application(self::$kernel ?? throw new LogicException('No kernel.'))->find(WorkNotificationsCommand::NAME));
-        $exit = $tester->execute(['--once' => true]);
+        $exit = $tester->execute(self::ONCE);
 
         self::assertSame(0, $exit);
         self::assertSame(['test.urgent', 'test.notice'], [self::sender()->sent[0]['notification']->subject, self::sender()->sent[1]['notification']->subject]);
@@ -41,7 +44,7 @@ final class WorkNotificationsCommandTest extends MessagingTestCase
         $heartbeat = $kernel->getProjectDir() . '/var/notifications-worker-' . SecureRandom\string(12) . '.heartbeat';
         $command = new Application($kernel)->find(WorkNotificationsCommand::NAME);
 
-        new CommandTester($command)->execute(['--once' => true, '--heartbeat' => $heartbeat]);
+        new CommandTester($command)->execute([...self::ONCE, '--heartbeat' => $heartbeat]);
 
         self::assertFileExists($heartbeat);
         \unlink($heartbeat);
@@ -56,7 +59,7 @@ final class WorkNotificationsCommandTest extends MessagingTestCase
         $queries = self::getContainer()->get('doctrine.debug_data_holder');
         self::assertInstanceOf(BacktraceDebugDataHolder::class, $queries);
 
-        new CommandTester(new Application(self::$kernel ?? throw new LogicException('No kernel.'))->find(WorkNotificationsCommand::NAME))->execute(['--once' => true]);
+        new CommandTester(new Application(self::$kernel ?? throw new LogicException('No kernel.'))->find(WorkNotificationsCommand::NAME))->execute(self::ONCE);
 
         self::assertNotEmpty(self::sender()->sent);
         self::assertSame([], $queries->getData(), 'A worker that keeps them exits at its memory limit every few thousand rows (sc-18317).');

@@ -1,3 +1,4 @@
+import { visibleLength } from './visibleText.ts';
 /** The API's event name limit, counted in characters after trimming. */
 export const EVENT_NAME_MAXIMUM = 120;
 
@@ -45,7 +46,7 @@ export function eventNameOf(typed: string): string {
 }
 
 export function eventNameLength(typed: string): number {
-  return Array.from(eventNameOf(typed)).length;
+  return visibleLength(eventNameOf(typed));
 }
 
 /** ISO 8601 with no offset, as the API takes it: the time is local to the event's zone. */
@@ -297,9 +298,9 @@ export function arrivalNoteSent(typed: string): string | null {
   return kept === '' ? null : kept;
 }
 
-/** In code points of what is saved, so é, ñ, ç and 🚗 count one each, as the API counts. */
+/** Counted on what is saved, as the API counts it. */
 export function arrivalNoteLength(typed: string): number {
-  return Array.from(arrivalNoteSent(typed) ?? '').length;
+  return visibleLength(arrivalNoteSent(typed) ?? '');
 }
 
 export function arrivalNoteTooLong(typed: string): boolean {
@@ -309,9 +310,9 @@ export function arrivalNoteTooLong(typed: string): boolean {
 export function venueProblems(draft: VenueDraft): { field: VenueField; problem: VenueProblem }[] {
   const problems: { field: VenueField; problem: VenueProblem }[] = [];
 
-  if (Array.from(draft.name.trim()).length > VENUE_NAME_MAXIMUM)
+  if (visibleLength(draft.name.trim()) > VENUE_NAME_MAXIMUM)
     problems.push({ field: 'venueName', problem: 'venueNameTooLong' });
-  if (Array.from(draft.address.trim()).length > VENUE_ADDRESS_MAXIMUM)
+  if (visibleLength(draft.address.trim()) > VENUE_ADDRESS_MAXIMUM)
     problems.push({ field: 'venueAddress', problem: 'venueAddressTooLong' });
   if (arrivalNoteTooLong(draft.note))
     problems.push({ field: 'arrivalNote', problem: 'arrivalNoteTooLong' });
