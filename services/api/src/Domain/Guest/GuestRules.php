@@ -18,6 +18,7 @@ use App\Enum\NeedKind;
 use App\Http\Exception\ApiException;
 use App\Locale\NameNormaliser;
 use App\Locale\SupportedLocales;
+use App\Locale\VisibleText;
 use Psl\Iter;
 use Psl\Str;
 use Psl\Vec;
@@ -56,7 +57,7 @@ final readonly class GuestRules
 
         if ('' === $name) {
             $violations[] = $this->violation('fullName', 'validation.guest_name_required');
-        } elseif (Str\length($name) > Guest::NAME_MAXIMUM) {
+        } elseif (VisibleText::tooLong($name, Guest::NAME_MAXIMUM)) {
             $violations[] = $this->violation('fullName', 'validation.guest_name_too_long');
         }
 
@@ -85,7 +86,7 @@ final readonly class GuestRules
         foreach ($companions as $index => $typed) {
             $companion = null === $typed ? '' : Str\trim($typed);
 
-            if (Str\length($companion) > Guest::NAME_MAXIMUM) {
+            if (VisibleText::tooLong($companion, Guest::NAME_MAXIMUM)) {
                 $violations[] = $this->violation("companions[{$index}].fullName", 'validation.guest_name_too_long');
             }
 
@@ -104,7 +105,7 @@ final readonly class GuestRules
             $theirNeeds[] = null === $typed ? null : $this->needs($typed, "companions[{$index}].needs", $violations);
         }
 
-        if (null !== $group?->name && Str\length(NameNormaliser::name($group->name)) > GuestGroup::NAME_MAXIMUM) {
+        if (null !== $group?->name && VisibleText::tooLong(NameNormaliser::name($group->name), GuestGroup::NAME_MAXIMUM)) {
             $violations[] = $this->violation('group.name', 'validation.guest_group_name_too_long');
         }
 
@@ -142,7 +143,7 @@ final readonly class GuestRules
 
             if ($ticked && '' === $words) {
                 $violations[] = $this->violation("{$path}.{$kind->otherField()}", 'validation.guest_need_other_required');
-            } elseif ($ticked && Str\length($words) > self::OTHER_MAXIMUM) {
+            } elseif ($ticked && VisibleText::tooLong($words, self::OTHER_MAXIMUM)) {
                 $violations[] = $this->violation("{$path}.{$kind->otherField()}", 'validation.guest_need_other_too_long');
             }
 
@@ -151,7 +152,7 @@ final readonly class GuestRules
 
         $note = Str\trim($typed['note'] ?? '');
 
-        if (Str\length($note) > self::NOTE_MAXIMUM) {
+        if (VisibleText::tooLong($note, self::NOTE_MAXIMUM)) {
             $violations[] = $this->violation("{$path}.note", 'validation.guest_need_note_too_long');
         }
 
@@ -223,7 +224,7 @@ final readonly class GuestRules
                 continue;
             }
 
-            if (Str\length($name) > Guest::NAME_MAXIMUM) {
+            if (VisibleText::tooLong($name, Guest::NAME_MAXIMUM)) {
                 $violations[] = $this->violation("companions[{$index}].fullName", 'validation.guest_name_too_long');
                 continue;
             }

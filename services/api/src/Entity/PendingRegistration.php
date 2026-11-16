@@ -34,7 +34,7 @@ class PendingRegistration
     #[ORM\Column(type: Types::STRING, length: 180)]
     private string $email;
 
-    #[ORM\Column(type: Types::STRING, length: 255)]
+    #[ORM\Column(type: Types::STRING, length: 720)]
     private string $name;
 
     /** Null for a taken address: nothing is ever created from it. */

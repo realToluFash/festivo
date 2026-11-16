@@ -1,6 +1,7 @@
 import { eventAllows } from '@soirely/domain';
 import type { Ref } from 'react';
 import { StyleSheet, View, type ViewInstance } from 'react-native';
+import Svg, { Path } from 'react-native-svg';
 
 import { useReadOut } from '../../components/ReadOut.tsx';
 import type { TextHandle } from '../../components/Text.tsx';
@@ -40,6 +41,11 @@ import { MarkSlot } from '../../components/ReplyMark.tsx';
 import { type WhatsAppRow, whatsAppRowOf } from './WhatsAppConsent.ts';
 
 const REOPENED_ON = '2026-11-05';
+const TRIANGLE = [
+  'M10.3 3.9 1.8 18a2 2 0 0 0 1.7 3h17a2 2 0 0 0 1.7-3L13.7 3.9a2 2 0 0 0-3.4 0z',
+  'M12 9v4',
+  'M12 17h.01',
+] as const;
 const ADDED_ON = '2026-09-14';
 
 export interface GuestActions {
@@ -47,6 +53,7 @@ export interface GuestActions {
   onEdit: () => void;
   onCopy: () => void;
   onReplace: () => void;
+  onReplaceFromNotice: () => void;
   onMark: () => void;
   onUnmark: () => void;
   onAgree: () => void;
@@ -64,7 +71,8 @@ function cardOf(
   actions: GuestActions,
   invites: boolean,
   replyBy: string | null,
-): { line: string; step: { label: string; onPress: () => void } | null } {
+  draft: boolean,
+): { line: string | null; step: { label: string; onPress: () => void } | null } {
   const owner = role === 'owner';
   if (replies === 'closed' && replyBy != null)
     return {
@@ -85,7 +93,7 @@ function cardOf(
     };
   if (g.kind === 'notyet')
     return {
-      line: W.copyFirst,
+      line: draft ? null : W.copyFirst,
       step: owner && invites ? { label: W.markAsInvited, onPress: actions.onMark } : null,
     };
   return { line: replyLine(g, locale, replyBy), step: null };
@@ -102,6 +110,8 @@ export function GuestPage({
   replies,
   replaced,
   notReplaced,
+  flagged,
+  copyFailed,
   unmarked,
   status,
   replyBy,
@@ -118,6 +128,10 @@ export function GuestPage({
   replies: 'closed' | 'reopened' | null;
   replaced: boolean;
   notReplaced: boolean;
+  /** sc-55558: someone told us this guest's link reached the wrong person. */
+  flagged: boolean;
+  /** sc-55558: the last Copy invitation link put nothing on the clipboard. */
+  copyFailed: string | null;
   /** sc-3788: Mark as not invited landed, the guest replied first (409), or it failed (sc-46879). */
   unmarked: 'done' | 'refused' | 'notSaved' | null;
   status: string | null;
@@ -132,7 +146,10 @@ export function GuestPage({
 
   const owner = role === 'owner';
   const invites = eventAllows(event.phase, 'invite');
-  const card = cardOf(g, role, replies, locale, actions, invites, replyBy);
+  const draft = event.phase === 'draft';
+  const card = cardOf(g, role, replies, locale, actions, invites, replyBy, draft);
+  const notInviting =
+    event.phase === 'paused' ? W.pausedLine : event.phase === 'finished' ? W.finishedLine : null;
   const invitation = invitationWords(g, locale);
   const readOnly = (
     <View style={styles.readOnly} testID="guest.readOnly">
@@ -163,6 +180,13 @@ export function GuestPage({
         layout={layout}
         nameRef={nameRef}
       />
+      {owner && flagged && (
+        <WrongPerson
+          name={g.name}
+          replaceRef={refFor('flagReplace')}
+          onReplace={actions.onReplaceFromNotice}
+        />
+      )}
       {notReplaced && <AlertLine text={W.notReplaced} />}
       {unmarked === 'notSaved' && <AlertLine text={W.unmarkNotSaved} />}
       {unmarked === 'refused' && g.when != null && (
@@ -294,10 +318,17 @@ export function GuestPage({
           />
         </View>
       )}
-      {!owner && event.phase === 'draft' && readOnly}
-      {event.phase !== 'draft' && (
+      {!owner && draft && readOnly}
+      {(owner || !draft) && (
         <View>
           <BlockHead title={W.invitation} />
+          {owner && notInviting != null && (
+            <View style={[styles.readOnly, styles.above]} testID="guest.notInviting">
+              <Text size={15} weight="medium" style={[styles.secondary, styles.lines]}>
+                {notInviting}
+              </Text>
+            </View>
+          )}
           <RowList
             items={[
               ...(invitation != null
@@ -348,16 +379,19 @@ export function GuestPage({
                       key: 'copy',
                       inset: 40,
                       row: (
-                        <Row
-                          ref={refFor('copy')}
-                          title={W.copyLink}
-                          line={W.copyLinkLine}
-                          lead={<LineIcon name="link" />}
-                          accent
-                          weight="medium"
-                          onPress={actions.onCopy}
-                          testID="guest.copy"
-                        />
+                        <View>
+                          <Row
+                            ref={refFor('copy')}
+                            title={W.copyLink}
+                            line={W.copyLinkLine}
+                            lead={<LineIcon name="link" />}
+                            accent
+                            weight="medium"
+                            onPress={actions.onCopy}
+                            testID="guest.copy"
+                          />
+                          {copyFailed != null && <NotCopied text={copyFailed} />}
+                        </View>
                       ),
                     },
                   ]
@@ -440,6 +474,63 @@ export function GuestPage({
           />
         </View>
       )}
+    </View>
+  );
+}
+
+/** sc-55558: Tell them was pressed on the guest's own page. Already there when the details open, so not read out; the triangle and the words mark it, not the amber alone. */
+function WrongPerson({
+  name,
+  replaceRef,
+  onReplace,
+}: {
+  name: string;
+  replaceRef: Ref<ViewInstance>;
+  onReplace: () => void;
+}) {
+  return (
+    <View style={styles.wrongPerson} testID="guest.flagged">
+      <View style={styles.flagHead}>
+        <View style={styles.flagMark}>
+          <Svg width={18} height={18} viewBox="0 0 24 24" fill="none">
+            {TRIANGLE.map((d) => (
+              <Path
+                key={d}
+                d={d}
+                stroke={tokens.colorAttentionText}
+                strokeWidth={2.2}
+                strokeLinecap="round"
+                strokeLinejoin="round"
+              />
+            ))}
+          </Svg>
+        </View>
+        <Text size={16} weight="bold" accessibilityRole="header" style={styles.flagTitle}>
+          {W.flaggedTitle}
+        </Text>
+      </View>
+      <Text size={15} weight="medium" style={[styles.secondary, styles.lines]}>
+        {say.flaggedLine(name)}
+      </Text>
+      <View style={styles.flagAction}>
+        <TextAction
+          ref={replaceRef}
+          label={W.replaceLink}
+          onPress={onReplace}
+          testID="guest.flagged.replace"
+        />
+      </View>
+    </View>
+  );
+}
+
+/** sc-55558: no connection, a server error or a refused clipboard; read out as it appears, the row above is the retry. */
+function NotCopied({ text }: { text: string }) {
+  useReadOut(text, { interrupts: true });
+
+  return (
+    <View style={styles.agree} testID="guest.notCopied">
+      <AlertLine text={text} small />
     </View>
   );
 }
@@ -617,6 +708,21 @@ const styles = StyleSheet.create({
     backgroundColor: tokens.colorInset,
   },
   below: { marginTop: tokens.spaceSm },
+  above: { marginBottom: tokens.spaceSm },
+  wrongPerson: {
+    gap: tokens.spaceSm,
+    paddingTop: 14,
+    paddingHorizontal: tokens.spaceXl,
+    paddingBottom: tokens.spaceXs,
+    borderRadius: 18,
+    borderWidth: 1.5,
+    borderColor: tokens.colorAttentionBorder,
+    backgroundColor: tokens.colorAttentionTint,
+  },
+  flagHead: { flexDirection: 'row', alignItems: 'flex-start', gap: tokens.spaceSm },
+  flagMark: { paddingTop: 2 },
+  flagTitle: { flex: 1, minWidth: 0, lineHeight: 16 * 1.35 },
+  flagAction: { alignItems: 'flex-start' },
   secondary: { color: tokens.colorInkSecondary },
   lines: { lineHeight: 15 * 1.45 },
   sunkCard: { height: 190, borderRadius: 26, backgroundColor: tokens.colorNeutralFill },

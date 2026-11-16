@@ -45,6 +45,7 @@ import {
   RECORD_STATES,
   REVIEW_STATES,
   cardWords,
+  notCopiedLine,
   countsAt,
   guestsOpening,
   groupRows,
@@ -158,6 +159,8 @@ export function GuestsScreen({
   const [replies, setReplies] = useState(start.replies);
   const [replaced, setReplaced] = useState(start.replaced);
   const [notReplaced, setNotReplaced] = useState(start.notReplaced);
+  const [flagged, setFlagged] = useState(start.flagged);
+  const [copyFailed, setCopyFailed] = useState(start.copyFailed);
   const [unmarked, setUnmarked] = useState(start.unmarked);
   const [status, setStatus] = useState<string | null>(start.recorded ? W.recorded : null);
   const exported = useMemo(() => exportStart(state), [state]);
@@ -167,7 +170,7 @@ export function GuestsScreen({
   const fileFor = (format: 'xlsx' | 'csv') => fileName(event.name, day, format);
   const [sharing, setSharing] = useState<string | null>(exported.share ? fileFor('xlsx') : null);
   const refs = useRef<Partial<Record<string, ViewInstance | null>>>({});
-  const from = useRef<string>('card');
+  const from = useRef<string>(start.focus ?? 'card');
   const nameRef = useRef<TextHandle>(null);
   const whoseRef = useRef<TextHandle>(null);
   const fieldRef = useRef<TextInputInstance>(null);
@@ -196,6 +199,15 @@ export function GuestsScreen({
     return () => clearTimeout(wait);
   }, [typed, searched]);
 
+  useEffect(() => {
+    if (start.focus == null || start.overlay != null) return;
+    const wait = setTimeout(
+      () => moveScreenReaderFocus(refs.current[start.focus ?? ''] ?? null),
+      FOCUS_AFTER_MS,
+    );
+    return () => clearTimeout(wait);
+  }, [start.focus, start.overlay]);
+
   const refFor = useCallback(
     (key: string) => (node: ViewInstance | null) => {
       refs.current[key] = node;
@@ -207,6 +219,7 @@ export function GuestsScreen({
     setPaste(null);
     setStatus(null);
     setNotReplaced(false);
+    setCopyFailed(false);
     setUnmarked(null);
     setReplies(null);
     setReplaced(false);
@@ -457,6 +470,8 @@ export function GuestsScreen({
         replies={replies}
         replaced={replaced}
         notReplaced={notReplaced}
+        flagged={guest != null && flagged.includes(guest.key)}
+        copyFailed={copyFailed ? notCopiedLine(state) : null}
         unmarked={unmarked}
         status={status}
         nameRef={nameRef}
@@ -466,9 +481,11 @@ export function GuestsScreen({
           onEdit: () => show('edit', 'edit'),
           onCopy: () => {
             from.current = 'copy';
+            setCopyFailed(false);
             setToast({ words: W.linkCopied, mark: guest?.kind === 'notyet' });
           },
           onReplace: () => show('replace', 'replace'),
+          onReplaceFromNotice: () => show('replace', 'flagReplace'),
           onMark: () => show('mark', 'mark'),
           onUnmark: () => {
             if (guest == null) return;
@@ -602,9 +619,11 @@ export function GuestsScreen({
             confirm={{ label: W.replaceDo, testID: 'guest.replace.do' }}
             onKeep={close}
             onConfirm={() => {
+              from.current = 'replace';
               close();
               setNotReplaced(false);
               setReplaced(true);
+              setFlagged((keys) => keys.filter((key) => key !== guest.key));
             }}
             width={340}
           />

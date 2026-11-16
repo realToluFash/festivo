@@ -6,6 +6,9 @@ import { __setConfig, config } from '../../../config.ts';
 import { __setSessionState, type Session } from '../../../session.ts';
 import { OWNER_PERMISSIONS, membership } from '../../../test-memberships.ts';
 import { routes } from '../../index.tsx';
+import { cssRule, stylesheet } from '../../../test-styles.ts';
+
+const SCHEDULE_CSS = stylesheet(import.meta.dirname, 'schedule.css');
 
 const IRE = membership({ id: 'org_1', name: 'Ìrè Events' });
 
@@ -186,6 +189,18 @@ describe('The event’s Schedule (sc-3893)', () => {
     expect(main.textContent).toContain('Shown to guests');
   });
 
+  it("sits inside the desk's button and field resets, and gives the narrow page its own padding", async () => {
+    await onSchedule({
+      'GET /api/events/ev_1/schedule': () => json({ schedule: schedule([DRINKS, BRUNCH]) }),
+    });
+
+    const tab = (await screen.findAllByRole('tab'))[0] as HTMLElement;
+    expect(tab.closest('.desk.ev')).not.toBeNull();
+    expect(
+      cssRule('.ro.desk-page', SCHEDULE_CSS.slice(SCHEDULE_CSS.indexOf('(width <= 40rem)'))),
+    ).toContain('padding: var(--spaceLg) var(--spaceMd) var(--space3xl);');
+  });
+
   it('moves between days with the arrow keys', async () => {
     await onSchedule({
       'GET /api/events/ev_1/schedule': () => json({ schedule: schedule([DRINKS, BRUNCH]) }),
@@ -276,6 +291,26 @@ describe('The event’s Schedule (sc-3893)', () => {
     );
     expect(
       screen.getByText('Enter a length from 0 to 720 minutes, or leave it empty.'),
+    ).toBeDefined();
+    expect(sent.filter(({ line }) => line.startsWith('POST'))).toEqual([]);
+  });
+
+  it('counts a title’s letters as a reader sees them, and quotes them (sc-54292)', async () => {
+    const sent = await onSchedule({
+      'GET /api/events/ev_1/schedule': () => json({ schedule: schedule([DRINKS]) }),
+    });
+    fireEvent.click(await screen.findByRole('button', { name: 'Add item' }));
+    const title = screen.getByLabelText('Title');
+
+    fireEvent.change(title, { target: { value: 'e\u0323\u0300'.repeat(120) } });
+    expect(screen.getByText('120 of 120')).toBeDefined();
+    fireEvent.change(title, { target: { value: '👨‍👩‍👧 🇳🇬' } });
+    expect(screen.getByText('3 of 120')).toBeDefined();
+
+    fireEvent.change(title, { target: { value: 'e\u0323\u0300'.repeat(121) } });
+    fireEvent.click(screen.getByRole('button', { name: 'Save item' }));
+    expect(
+      await screen.findByText('That title is 121 characters. Use 120 or fewer.'),
     ).toBeDefined();
     expect(sent.filter(({ line }) => line.startsWith('POST'))).toEqual([]);
   });

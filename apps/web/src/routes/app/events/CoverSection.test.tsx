@@ -358,6 +358,24 @@ describe('The cover (sc-3590)', () => {
     ).toBeDefined();
     expect(sent.filter(({ line }) => line.includes('/cover'))).toEqual([]);
   });
+
+  it('counts a description’s letters as a reader sees them (sc-54292)', async () => {
+    const sent = serving(PHOTO);
+    await editing();
+
+    fireEvent.click(screen.getByRole('button', { name: 'Change photo' }));
+    const dialog = await screen.findByRole('dialog', { name: 'Cover photo' });
+    const describe = within(dialog).getByLabelText(/Describe the image/);
+    fireEvent.change(describe, { target: { value: 'e\u0323\u0300'.repeat(250) } });
+    expect(within(dialog).getByText(/250 of 250 characters/)).toBeDefined();
+
+    fireEvent.change(describe, { target: { value: 'e\u0323\u0300'.repeat(251) } });
+    fireEvent.click(within(dialog).getByRole('button', { name: 'Use this photo' }));
+    expect(
+      within(dialog).getByText('Shorten the description to 250 characters or fewer.'),
+    ).toBeDefined();
+    expect(sent.filter(({ line }) => line.includes('/cover'))).toEqual([]);
+  });
 });
 
 describe('A HEIC the browser cannot show, and a cover that will not load (sc-13861)', () => {

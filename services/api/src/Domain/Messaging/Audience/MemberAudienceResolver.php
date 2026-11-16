@@ -21,6 +21,7 @@ use Doctrine\DBAL\ParameterType;
 use Doctrine\DBAL\Types\Types;
 use Doctrine\ORM\EntityManagerInterface;
 use InvalidArgumentException;
+use Psl\Str;
 use Psl\Type;
 use Psl\Vec;
 use Symfony\Component\Uid\Uuid;
@@ -82,7 +83,7 @@ final readonly class MemberAudienceResolver implements AudienceResolverInterface
         $organisationId = $audience->organisationId ?? throw new InvalidArgumentException('A member audience names its organisation.');
 
         $ids = $this->connection->fetchFirstColumn(
-            <<<'SQL'
+            Str\format(<<<'SQL'
                 SELECT m.user_id
                 FROM memberships m
                 JOIN roles r ON r.id = m.role_id
@@ -101,12 +102,11 @@ final readonly class MemberAudienceResolver implements AudienceResolverInterface
                   AND (CAST(:role AS UUID) IS NULL OR r.id = CAST(:role AS UUID))
                   AND (:anyNamed = 0 OR m.user_id IN (:named))
                   AND m.user_id NOT IN (:except)
-                  AND (CAST(:after AS UUID) IS NULL OR m.user_id > CAST(:after AS UUID))
-                  AND (CAST(:one AS UUID) IS NULL OR m.user_id = CAST(:one AS UUID))
+                  %s
                   AND (CAST(:joinedBy AS TIMESTAMP) IS NULL OR m.joined_at IS NULL OR m.joined_at <= CAST(:joinedBy AS TIMESTAMP))
                 ORDER BY m.user_id
                 LIMIT :limit
-                SQL,
+                SQL, self::page($after, $only)),
             [
                 'organisation' => $organisationId->toRfc4122(),
                 'active' => MembershipStatus::Active->value,
@@ -119,8 +119,8 @@ final readonly class MemberAudienceResolver implements AudienceResolverInterface
                 'anyNamed' => [] === $audience->only ? 0 : 1,
                 'named' => self::ids($audience->only),
                 'except' => self::ids($audience->except),
-                'after' => $after?->toRfc4122(),
-                'one' => $only?->toRfc4122(),
+                ...(null === $after ? [] : ['after' => $after->toRfc4122()]),
+                ...(null === $only ? [] : ['one' => $only->toRfc4122()]),
                 'joinedBy' => $audience->joinedBy,
                 'limit' => $limit,
             ],
@@ -136,6 +136,16 @@ final readonly class MemberAudienceResolver implements AudienceResolverInterface
         );
 
         return Vec\map($ids, static fn (mixed $id): Uuid => Uuid::fromString(Type\string()->coerce($id)));
+    }
+
+    /** A literal bound on both ids, never `:after IS NULL OR …`, so the scan starts at the cursor rather than at the first member on every page. */
+    private static function page(?Uuid $after, ?Uuid $only): string
+    {
+        return match (true) {
+            null !== $only => 'AND m.user_id = CAST(:one AS UUID)',
+            null !== $after => 'AND m.user_id > CAST(:after AS UUID) AND u.id > CAST(:after AS UUID)',
+            default => '',
+        };
     }
 
     /**

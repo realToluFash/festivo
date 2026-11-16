@@ -22,6 +22,7 @@ import {
   readRoomSide,
   holdingName,
   listFormat,
+  visibleLength,
 } from '@soirely/domain';
 import { type ReactNode, useCallback, useEffect, useId, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
@@ -193,9 +194,11 @@ export function SeatingArea({ event }: { event: OrganisationEvent }) {
           <li>
             <Link to="/app/events">{t('seating.events')}</Link>
           </li>
-          <li>
+          <li className="st-crumb-event">
             <Glyph name="chevron" size={14} weight={2.3} />
-            <Link to={`/app/events/${encodeURIComponent(event.id)}`}>{event.name}</Link>
+            <Link to={`/app/events/${encodeURIComponent(event.id)}`}>
+              <span className="st-crumb-name">{event.name}</span>
+            </Link>
           </li>
           <li aria-current="page">
             <Glyph name="chevron" size={14} weight={2.3} />
@@ -934,7 +937,6 @@ function StartForm({
         label={t('seating.roomName')}
         optional
         value={draft.name}
-        maxLength={SEATING_LIMITS.roomNameMaximum}
         error={errors.name}
         onChange={(text) => onDraft({ ...draft, name: text })}
         fieldKey="startName"
@@ -977,7 +979,6 @@ function StartField({
   value,
   unit,
   optional = false,
-  maxLength,
   error,
   fieldKey,
   onChange,
@@ -986,7 +987,6 @@ function StartField({
   value: string;
   unit?: string | undefined;
   optional?: boolean;
-  maxLength?: number;
   error?: string | undefined;
   fieldKey: string;
   onChange: (text: string) => void;
@@ -1007,7 +1007,6 @@ function StartField({
           type="text"
           inputMode={optional ? 'text' : 'decimal'}
           value={value}
-          maxLength={maxLength}
           spellCheck={false}
           autoComplete="off"
           aria-invalid={error != null}
@@ -1100,7 +1099,6 @@ function RoomSettings({ ctx, plan }: { ctx: PlanApi; plan: SeatingPlan }) {
         fieldKey="roomName"
         label={t('seating.roomName')}
         optional
-        maxLength={SEATING_LIMITS.roomNameMaximum}
         value={plan.roomName ?? ''}
         onCommit={(text) => {
           const name = text.trim();
@@ -1253,7 +1251,7 @@ function SectionForm({ ctx, plan, id }: { ctx: PlanApi; plan: SeatingPlan; id: s
     const name = text.trim();
 
     if (name === '') return t('seating.sectionBlank');
-    if (name.length > SEATING_LIMITS.sectionNameMaximum) return t('seating.sectionLong');
+    if (visibleLength(name) > SEATING_LIMITS.sectionNameMaximum) return t('seating.sectionLong');
     const holder = holdingName(plan.sections, name, id);
 
     return holder == null ? null : t('seating.sectionTaken', { name: holder.name });

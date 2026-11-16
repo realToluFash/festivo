@@ -9,6 +9,7 @@ use App\Entity\User;
 use App\Enum\Actor;
 use App\Enum\ErrorCode;
 use App\Http\Exception\ApiException;
+use App\Locale\VisibleText;
 use Psl\Str;
 use Symfony\Contracts\Translation\TranslatorInterface;
 
@@ -28,7 +29,7 @@ final readonly class AccountName
             return [$this->nameViolation('validation.name_required')];
         }
 
-        if (Str\length($trimmed) > User::NAME_MAXIMUM) {
+        if (VisibleText::tooLong($trimmed, User::NAME_MAXIMUM)) {
             return [$this->nameViolation('validation.name_too_long', ['{count}' => (string) User::NAME_MAXIMUM])];
         }
 

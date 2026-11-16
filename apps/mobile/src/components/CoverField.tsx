@@ -7,6 +7,7 @@ import {
   coverTypeOf,
   draggedPosition,
   positionPart,
+  visibleLength,
 } from '@soirely/domain';
 import { launchImageLibraryAsync } from 'expo-image-picker';
 import { useEffect, useRef, useState } from 'react';
@@ -252,7 +253,7 @@ function CoverDialog({
   const dragFrom = useRef<{ y: number; start: number } | null>(null);
 
   const ready = upload.kind === 'saved' || upload.kind === 'ready';
-  const count = [...description].length;
+  const count = visibleLength(description);
 
   async function use(): Promise<void> {
     if (!ready || pending) return;
