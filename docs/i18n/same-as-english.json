@@ -37,6 +37,7 @@
   ],
   "fr": [
     "web:nav.menu",
+    "web:menuLibrary.desc",
     "mobile:app.name",
     "mobile:devices.everywhereCode",
     "mobile:frame.organisation",
