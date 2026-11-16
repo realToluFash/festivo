@@ -33,7 +33,7 @@ class SeatingSeat
     private ?SeatingSection $section;
 
     /** Stored as typed, in the creator's language, so everyone sees it as written. */
-    #[ORM\Column(type: Types::STRING, length: 30)]
+    #[ORM\Column(type: Types::STRING, length: 120)]
     private string $name;
 
     /** The name without case or accents, so "By the door" and "by the door" are one seat. */

@@ -179,6 +179,23 @@ describe('a request link (sc-562)', () => {
     expect(sent.map((one) => one.line)).toEqual([LINK]);
   });
 
+  it('counts a message’s letters as a reader sees them (sc-54292)', async () => {
+    signedIn();
+    const sent = answering({ [LINK]: () => json(PREVIEW) });
+    open();
+    const message = await screen.findByLabelText(/Message/);
+
+    fireEvent.change(message, { target: { value: 'e\u0323\u0300'.repeat(500) } });
+    expect(screen.getByText('500 of 500 characters.')).toBeDefined();
+    fireEvent.change(message, { target: { value: '👨‍👩‍👧 🇳🇬' } });
+    expect(screen.getByText('3 of 500 characters.')).toBeDefined();
+
+    fireEvent.change(message, { target: { value: 'e\u0323\u0300'.repeat(501) } });
+    fireEvent.click(screen.getByRole('button', { name: 'Ask to join' }));
+    expect(screen.getByText('Keep your message to 500 characters or fewer.')).toBeDefined();
+    expect(sent.map((one) => one.line)).toEqual([LINK]);
+  });
+
   it('tells somebody who belongs, rather than asking', async () => {
     signedIn();
     answering({ [LINK]: () => json({ ...PREVIEW, standing: 'member' }) });

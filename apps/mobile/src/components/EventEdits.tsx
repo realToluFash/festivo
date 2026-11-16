@@ -906,7 +906,6 @@ export function NameView({
         value={name}
         wrong={error != null}
         autoFocus
-        maxLength={most}
         onChangeText={onName}
         accessibilityLabel={t('eventForm.name')}
         testID="event.edit.name.field"

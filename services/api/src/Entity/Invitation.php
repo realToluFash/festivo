@@ -33,7 +33,7 @@ class Invitation
     #[ORM\JoinColumn(nullable: true, onDelete: 'SET NULL')]
     private ?Organisation $organisation;
 
-    #[ORM\Column(type: Types::STRING, length: 100)]
+    #[ORM\Column(type: Types::STRING, length: 400)]
     private string $organisationName;
 
     #[ORM\Column(type: Types::STRING, length: 180)]

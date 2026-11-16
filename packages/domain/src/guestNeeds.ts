@@ -1,3 +1,4 @@
+import { visibleLength } from './visibleText.ts';
 import {
   type AccessNeed,
   type Allergen,
@@ -52,9 +53,8 @@ export function needsTypedOf(needs: GuestNeeds | null | undefined): NeedsTyped {
   };
 }
 
-/** Counted in code points after trimming the ends, as the API counts it. */
 export function needsLength(text: string): number {
-  return [...text.trim()].length;
+  return visibleLength(text.trim());
 }
 
 function ticked(needs: NeedsTyped, field: keyof typeof OTHER_OF): boolean {

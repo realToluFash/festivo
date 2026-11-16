@@ -98,6 +98,8 @@ final class SeatingRowsTest extends ApiTestCase
     {
         yield 'a blank label' => [['label' => '  '], 'label', 'Enter a label for the row.'];
         yield 'a label too long' => [['label' => 'Balcony row'], 'label', 'Use 10 characters or fewer.'];
+        yield 'a label of marked letters too long' => [['label' => Str\repeat("e\u{0323}\u{0300}", 11)], 'label', 'Use 10 characters or fewer.'];
+        yield 'a label of one letter of many marks' => [['label' => 'a' . Str\repeat("\u{0301}", 40)], 'label', 'Use 10 characters or fewer.'];
         yield 'no seats' => [['seats' => 0], 'seats', 'Enter a number of seats from 1 to 60.'];
         yield 'too many seats' => [['seats' => 61], 'seats', 'Enter a number of seats from 1 to 60.'];
         yield 'too close' => [['spacingCm' => 39], 'spacingCm', 'Enter a spacing from 40 cm to 1 m.'];
@@ -243,6 +245,34 @@ final class SeatingRowsTest extends ApiTestCase
     }
 
     #[Test]
+    public function tenLettersWithADotAndAToneEachLabelARowAndReadBack(): void
+    {
+        $composed = Str\repeat("\u{1EB9}\u{0300}", 10);
+        $decomposed = Str\repeat("e\u{0323}\u{0300}", 10);
+        $row = $this->addRow();
+
+        $row = $this->change($row, ['label' => $composed]);
+        self::assertSame($composed, $row['label']);
+
+        $this->change($row, ['label' => $decomposed]);
+        self::assertSame($decomposed, $this->rowsNow()[0]['label']);
+    }
+
+    #[Test]
+    public function thirtyLettersWithADotAndAToneEachNameASeatAndReadBack(): void
+    {
+        $composed = Str\repeat("\u{1EB9}\u{0300}", 30);
+        $decomposed = Str\repeat("e\u{0323}\u{0300}", 30);
+        $seat = $this->addSeat();
+
+        $seat = $this->change($seat, ['name' => $composed]);
+        self::assertSame($composed, $seat['name']);
+
+        $this->change($seat, ['name' => $decomposed]);
+        self::assertSame($decomposed, $this->seatsNow()[0]['name']);
+    }
+
+    #[Test]
     public function aSeatsNameIsStoredAsTyped(): void
     {
         $seat = $this->change($this->addSeat(), ['name' => '  Intérprete  ']);
@@ -256,6 +286,8 @@ final class SeatingRowsTest extends ApiTestCase
     {
         yield 'blank' => ['', 'Enter a name for the seat.'];
         yield 'too long' => [Str\repeat('x', 31), 'Use 30 characters or fewer.'];
+        yield 'too long in marked letters' => [Str\repeat("e\u{0323}\u{0300}", 31), 'Use 30 characters or fewer.'];
+        yield 'one letter of many marks' => ['a' . Str\repeat("\u{0301}", 120), 'Use 30 characters or fewer.'];
         yield 'already used' => ['seat 1', 'This plan already has a seat called Seat 1.'];
     }
 
