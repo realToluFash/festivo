@@ -118,25 +118,23 @@ export function Arrived({ children, style }: { children: ReactNode; style?: View
   const reduced = useReducedMotion();
   const [shown] = useState(() => new Animated.Value(0));
   const [settled, setSettled] = useState(false);
-  const still = reduced || settled;
 
   useEffect(() => {
-    if (still) {
-      shown.setValue(1);
-      return;
-    }
+    if (settled) return;
     const run = Animated.timing(shown, {
       toValue: 1,
-      duration: tokens.motionBase,
+      duration: reduced ? 0 : tokens.motionBase,
       useNativeDriver: true,
     });
-    run.start(() => setSettled(true));
+    run.start(({ finished }) => {
+      if (finished) setSettled(true);
+    });
 
     return () => run.stop();
-  }, [still, shown]);
+  }, [settled, reduced, shown]);
 
-  // A native fade's end never reaches the view's committed props, so a window opening over the page as it arrives could commit it back to unseen (sc-48600): once the fade ends, the opacity goes.
-  return <Animated.View style={[style, !still && { opacity: shown }]}>{children}</Animated.View>;
+  // A native opacity never reaches the view's committed props, so letting go of it short of 1 leaves the page unseen until something re-commits it (sc-48600): it goes only once a run has carried it to 1, the reduced-motion run included.
+  return <Animated.View style={[style, !settled && { opacity: shown }]}>{children}</Animated.View>;
 }
 
 function usePulse(running: boolean): Animated.Value {

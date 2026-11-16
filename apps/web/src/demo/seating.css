@@ -2627,8 +2627,19 @@
   pointer-events: none;
 }
 
+.st-align-one:nth-child(3n + 1) .st-tooltip {
+  left: 0;
+  transform: none;
+}
+
+.st-align-one:nth-child(3n) .st-tooltip {
+  right: 0;
+  left: auto;
+  transform: none;
+}
+
 .st-align-one:hover .st-tooltip,
-.st-align-one:focus-within .st-tooltip {
+.st-align-one:has(:focus-visible) .st-tooltip {
   display: block;
 }
 

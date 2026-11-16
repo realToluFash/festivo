@@ -600,6 +600,7 @@ export default function MembersScreen() {
           listed={listed}
           counts={membersCounts(load.kind === 'loaded' ? load.list : EMPTY)}
           filter={current.filter}
+          switching={switchTo != null}
           organisation={organisation.name}
           onFilter={(filter) => {
             moveOn();

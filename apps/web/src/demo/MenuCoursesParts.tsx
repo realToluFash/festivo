@@ -19,6 +19,8 @@ import {
   shownDishes,
 } from './menuLibrary.ts';
 import { ContainsMark, DishFields } from './MenuLibrary.tsx';
+import { VW, hasVariants, waysName } from './dishVariants.ts';
+import { NameDescFields } from './DishVariants.tsx';
 import type { Open } from './MenuCourses.tsx';
 
 export interface Told {
@@ -245,9 +247,13 @@ export function AddDishPanel({
                 {shown.map((dish) => (
                   <li key={dish.id} className="mc-pick">
                     <div className="mc-pick-words">
-                      <h3>{dish.name}</h3>
-                      <ContainsMark dish={dish} lang={lang} />
-                      {dish.diets.length > 0 && (
+                      <h3>{waysName(dish)}</h3>
+                      {hasVariants(dish) ? (
+                        <p className="mn-quiet">{VW.eachOwn}</p>
+                      ) : (
+                        <ContainsMark dish={dish} lang={lang} />
+                      )}
+                      {!hasVariants(dish) && dish.diets.length > 0 && (
                         <ul className="lib-tags" aria-label={`${LW.suitableFor} · ${dish.name}`}>
                           {dish.diets.map((diet) => (
                             <li key={diet} className="lib-tag">
@@ -324,6 +330,14 @@ export function EditDishFields({
   errors: FormErrors | null;
   onPatch: (next: Partial<DishForm>) => void;
 }) {
+  if (dish != null && hasVariants(dish))
+    return (
+      <>
+        <NameDescFields form={form} errors={errors} onPatch={onPatch} />
+        <p className="lib-own-copy">{dish.libraryId == null ? CW.eventOnly : CW.copyOnly}</p>
+      </>
+    );
+
   return (
     <>
       <DishFields
