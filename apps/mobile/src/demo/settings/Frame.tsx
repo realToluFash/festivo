@@ -14,7 +14,7 @@ import { DemoSidebar } from '../Sidebar.tsx';
 import { SIDEBAR_EVENTS } from '../sideEvents.ts';
 import { TodayShellProvider } from '../../components/todayShell.ts';
 import { demoShell } from '../demoShell.ts';
-import { openSearch } from '../search/SearchHeader.tsx';
+import { openSearch, SearchButton } from '../search/SearchHeader.tsx';
 import { viewerOfRole } from './sample.ts';
 import { underSavedName, useSavedName } from './savedName.ts';
 import {
@@ -177,6 +177,16 @@ export function Bell({
   );
 }
 
+/** Search left of the bell, as the product's top has it on a phone and an upright iPad (sc-39534). */
+export function SearchAndBell({ tell }: { tell: Tell }) {
+  return (
+    <View style={styles.ends}>
+      <SearchButton />
+      <Bell tell={tell} />
+    </View>
+  );
+}
+
 /** The product's pill, opening the demo's switcher. */
 export function OrgPill({
   room,
@@ -249,7 +259,7 @@ export function PortraitTop({ at = 'Settings' }: { at?: Tab }) {
   return (
     <ProductPortraitTop
       renderPill={(room, givesWay) => <OrgPill room={room} givesWay={givesWay} />}
-      bell={<Bell tell={shell.tell} />}
+      bell={<SearchAndBell tell={shell.tell} />}
       tabLabels={tabs.map(([tab, glyph]) => say(tab, glyph))}
       renderTabs={(labelSize) => (
         <WhiteCapsule tabs={tabs} at={at} onTab={shell.onTab} say={say} labelSize={labelSize} />
@@ -260,6 +270,7 @@ export function PortraitTop({ at = 'Settings' }: { at?: Tab }) {
 
 const styles = StyleSheet.create({
   pill: { flexDirection: 'row', flexShrink: 1, minWidth: 0 },
+  ends: { flexDirection: 'row', alignItems: 'center', gap: tokens.spaceSm },
   grow: { flex: 1, minWidth: 0 },
   page: { flex: 1, backgroundColor: tokens.colorCard },
   title: { letterSpacing: -0.5 },
