@@ -79,6 +79,7 @@ export interface Ui {
   plan: Plan;
   tray: Party[];
   readOnly: boolean;
+  zoomStep: boolean;
   units: 'metric' | 'us';
   view: View;
   tab: Tab;
@@ -141,6 +142,7 @@ export function freshUi(): Ui {
     plan: samplePlan(),
     tray: sampleTray(),
     readOnly: false,
+    zoomStep: false,
     units: 'metric',
     view: 'plan',
     tab: 'arrange',
@@ -458,6 +460,10 @@ export function seedOf(state: SeatingState | null): Ui {
     }
     case 'tapChooses':
       return { ...ui, chosen: ['t4'] };
+    case 'zoomAbove':
+      return { ...ui, zoomStep: true, chosen: ['t4'] };
+    case 'zoomAboveMap':
+      return { ...ui, zoomStep: true, chosen: ['t4'], camera: at(1, 1785, 620) };
     case 'rect':
       return { ...ui, chosen: ['t9'] };
     case 'head':

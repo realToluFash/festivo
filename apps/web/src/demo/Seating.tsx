@@ -266,6 +266,7 @@ function Seating({
 }) {
   const [ui, setUi] = useState<Ui>(first);
   const [setCanvas, size] = useSize();
+  const [crowded, setCrowded] = useState(false);
   const canvas = useRef<HTMLDivElement | null>(null);
   const press = useRef<Press | null>(null);
   const held = useRef<string | null>(null);
@@ -1456,6 +1457,7 @@ function Seating({
     ui.placing != null && placingAt != null
       ? { ...newItem(ui.placing.kind, items, placingAt), id: 'placing' }
       : null;
+  const zoomUp = !ui.readOnly && (ui.zoomStep || crowded);
   const keysShown =
     keyboard && focusId != null && ui.chosen.length > 0 && !ui.readOnly && ui.view === 'plan';
   const showSave = room != null || ui.panel?.kind !== 'start';
@@ -1536,7 +1538,7 @@ function Seating({
   else
     main = (
       <div className="st-main">
-        <div className={`st-canvas is-${ui.view}`} ref={placeCanvas}>
+        <div className={`st-canvas is-${ui.view}${zoomUp ? ' is-zoom-up' : ''}`} ref={placeCanvas}>
           <ViewSwitch />
           {showSave && (
             <div className="st-float st-top-right">
@@ -1643,6 +1645,8 @@ function Seating({
               {!ui.readOnly && (
                 <AddBar
                   floor={size.w}
+                  forced={ui.zoomStep}
+                  onCrowded={setCrowded}
                   menu={ui.menu}
                   placing={ui.placing?.kind ?? null}
                   onMenu={() => set((now) => ({ ...now, menu: !now.menu }))}
@@ -1945,6 +1949,8 @@ function KeysStrip() {
 
 function AddBar({
   floor,
+  forced,
+  onCrowded,
   menu,
   placing,
   onMenu,
@@ -1953,6 +1959,8 @@ function AddBar({
   onSeat,
 }: {
   floor: number;
+  forced: boolean;
+  onCrowded: (crowded: boolean) => void;
   menu: boolean;
   placing: Kind | null;
   onMenu: () => void;
@@ -1979,8 +1987,9 @@ function AddBar({
     const zoom =
       box.parentElement?.querySelector<HTMLElement>('.st-zoom')?.getBoundingClientRect().width ?? 0;
 
-    setFolded(unfolded.current + zoom + FLOAT_MARGINS > floor);
-  }, [floor, folded]);
+    setFolded(forced || unfolded.current + zoom + FLOAT_MARGINS > floor);
+    onCrowded(folded && box.getBoundingClientRect().width + zoom + FLOAT_MARGINS > floor);
+  }, [floor, folded, forced, onCrowded]);
 
   useEffect(() => {
     if (menu) first.current?.focus();

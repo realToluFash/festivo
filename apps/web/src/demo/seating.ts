@@ -1368,6 +1368,16 @@ export const SEATING_STATES = [
   { key: 'placing', name: 'Placing a round table', group: 'Tables, rows and seats' },
   { key: 'placed', name: 'Placed, its fields open', group: 'Tables, rows and seats' },
   {
+    key: 'zoomAbove',
+    name: 'The zoom above the folded bar, as in pt at 1024',
+    group: 'Tables, rows and seats',
+  },
+  {
+    key: 'zoomAboveMap',
+    name: 'The zoom above the folded bar, the small map above it',
+    group: 'Tables, rows and seats',
+  },
+  {
     key: 'tapChooses',
     name: 'A click chooses a table for Arrange',
     group: 'Tables, rows and seats',

@@ -911,6 +911,63 @@ describe('tables, rows and seats (sc-4000, sc-4003)', () => {
     }
   });
 
+  it.each([
+    [300, false],
+    [460, true],
+  ])(
+    'with the folded bar %i px wide, the zoom steps up above it: %s',
+    SLOW,
+    async (foldedWidth, up) => {
+      const measured = vi
+        .spyOn(HTMLElement.prototype, 'getBoundingClientRect')
+        .mockImplementation(function (this: HTMLElement) {
+          const width = this.classList.contains('st-add')
+            ? this.childElementCount > 1
+              ? 520
+              : foldedWidth
+            : this.classList.contains('st-zoom')
+              ? 240
+              : 0;
+
+          return {
+            width,
+            height: 0,
+            top: 0,
+            left: 0,
+            right: width,
+            bottom: 0,
+            x: 0,
+            y: 0,
+          } as DOMRect;
+        });
+
+      try {
+        await seating();
+        await screen.findByRole('button', { name: 'Add' }, WAIT);
+        await waitFor(() =>
+          expect(screen.getByRole('group', { name: /^Zoom/ }).closest('.is-zoom-up') != null).toBe(
+            up,
+          ),
+        );
+      } finally {
+        measured.mockRestore();
+      }
+    },
+  );
+
+  it.each(['zoomAbove', 'zoomAboveMap'])(
+    'shows the zoom above the folded bar in English at any width: %s',
+    SLOW,
+    async (state) => {
+      await seating(state);
+      const zoom = await screen.findByRole('group', { name: /^Zoom/ }, WAIT);
+
+      expect(zoom.closest('.is-zoom-up')).not.toBeNull();
+      expect(screen.getByRole('button', { name: 'Add' })).toBeDefined();
+      expect(screen.queryByRole('button', { name: 'Add seat' })).toBeNull();
+    },
+  );
+
   it('Esc in a field undoes the typing first, then leaves the table', SLOW, async () => {
     await seating('tapChooses');
     const field = within(panel()).getByLabelText('Seats', { exact: false }) as HTMLInputElement;
