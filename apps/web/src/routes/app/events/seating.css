@@ -312,10 +312,6 @@
   min-width: 0;
 }
 
-.st-bar-body p {
-  flex: 1 1 13em;
-}
-
 .st-bar p {
   flex: 1;
   min-width: 0;
@@ -323,6 +319,10 @@
   padding: var(--spaceLg) 0;
   color: var(--colorInk);
   font: 600 14.5px/1.4 var(--fontFamily);
+}
+
+.st-bar-body p {
+  flex: 1 1 13em;
 }
 
 .st-bar.is-tint {
