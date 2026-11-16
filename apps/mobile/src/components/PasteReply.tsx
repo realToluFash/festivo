@@ -1,6 +1,6 @@
 import { shownReply } from '@soirely/domain';
 import * as Clipboard from 'expo-clipboard';
-import { type RefObject, useState } from 'react';
+import { type RefObject, memo, useCallback, useState } from 'react';
 import { Platform, Pressable, StyleSheet, View } from 'react-native';
 import { useTranslation } from 'react-i18next';
 
@@ -18,6 +18,7 @@ import { Text, type TextHandle } from './Text.tsx';
 const FIELD_HEIGHT = 48;
 const RING = 1.5;
 const QUOTE_LINES = 6;
+const PLAIN_TEXT: Clipboard.AcceptedContentType[] = ['plain-text'];
 
 /** Soirely's own secondary button: Android's, and iOS's before 16. It reads the clipboard only when pressed. */
 function OwnPaste({ onText }: { onText: (text: string) => void }) {
@@ -43,13 +44,24 @@ function OwnPaste({ onText }: { onText: (text: string) => void }) {
   );
 }
 
-/** iOS 16 on: Apple's Paste, which asks nothing before pasting. Its word follows the phone's language, so it is never given a fixed width. */
-function ApplePaste({ onText, inRow }: { onText: (text: string) => void; inRow: boolean }) {
+/** iOS 16 on: Apple's Paste, memoised because expo-clipboard rebuilds it on every prop update, and a press on a rebuilt one does nothing. */
+const ApplePaste = memo(function ApplePaste({
+  onText,
+  inRow,
+}: {
+  onText: (text: string) => void;
+  inRow: boolean;
+}) {
+  const onPress = useCallback(
+    (data: Clipboard.PasteEventPayload) => onText(data.type === 'text' ? data.text : ''),
+    [onText],
+  );
+
   return (
     <View style={[styles.appleRing, inRow ? styles.appleInRow : styles.appleAlone]}>
       <Clipboard.ClipboardPasteButton
-        onPress={(data) => onText(data.type === 'text' ? data.text : '')}
-        acceptedContentTypes={['plain-text']}
+        onPress={onPress}
+        acceptedContentTypes={PLAIN_TEXT}
         displayMode="iconAndLabel"
         cornerStyle="capsule"
         backgroundColor={tokens.colorCard}
@@ -59,7 +71,7 @@ function ApplePaste({ onText, inRow }: { onText: (text: string) => void; inRow: 
       />
     </View>
   );
-}
+});
 
 export function PasteButton({
   onText,
@@ -94,15 +106,18 @@ export function PasteNotice() {
 export function usePaste(onQuote: (quote: string) => void) {
   const { t } = useTranslation();
   const [nothing, setNothing] = useState(false);
-  const onText = (text: string) => {
-    if (hasText(text)) {
-      setNothing(false);
-      onQuote(text);
-      return;
-    }
-    setNothing(true);
-    readOut(t('guestList.paste.nothing'), { interrupts: true });
-  };
+  const onText = useCallback(
+    (text: string) => {
+      if (hasText(text)) {
+        setNothing(false);
+        onQuote(text);
+        return;
+      }
+      setNothing(true);
+      readOut(t('guestList.paste.nothing'), { interrupts: true });
+    },
+    [onQuote, t],
+  );
 
   return { nothing, onText, forget: () => setNothing(false) };
 }
