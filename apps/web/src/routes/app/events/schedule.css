@@ -288,9 +288,10 @@
   border-radius: calc(var(--sizeHit) / 2 + var(--spaceHair));
 }
 
-.ro-day {
+.ro .ro-day {
   flex: 1 0 auto;
   flex-wrap: wrap;
+  border-radius: calc(var(--sizeHit) / 2);
   gap: var(--spaceXxs);
   max-width: 100%;
   overflow-wrap: normal;
@@ -726,6 +727,7 @@
     flex-direction: column;
     min-height: var(--roDayStack);
     padding: var(--spaceXs) var(--spaceSm);
+    border-radius: calc(var(--roDayStack) / 2);
     line-height: 1.25;
   }
 
