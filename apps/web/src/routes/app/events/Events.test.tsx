@@ -3878,12 +3878,12 @@ describe('An older copy never replaces the change the page made (sc-28121)', () 
       await waitFor(() =>
         expect(screen.getByText(shown, { selector: '.desk-glass' })).toBeDefined(),
       );
-      expect(document.querySelector('.offline-band')).not.toBeNull();
+      expect(document.querySelector('.offline-box .ev-offline')).not.toBeNull();
       await release(tagged({ event: before }, '"1"'));
 
       expect(screen.getByText(shown, { selector: '.desk-glass' })).toBeDefined();
       expect(screen.queryByRole('button', { name: gone })).toBeNull();
-      await waitFor(() => expect(document.querySelector('.offline-band')).toBeNull());
+      await waitFor(() => expect(document.querySelector('.offline-box .ev-offline')).toBeNull());
     },
   );
 

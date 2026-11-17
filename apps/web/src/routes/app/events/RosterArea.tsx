@@ -20,6 +20,7 @@ import { useTranslation } from 'react-i18next';
 import { Link } from 'react-router';
 
 import { api } from '../../../api.ts';
+import { keptKeys, keptLoad, useAnsweredAgain } from '../../../tabKept.ts';
 import { Glyph } from '../../../components/Glyph.tsx';
 import { Skeleton } from '../../../components/Skeleton.tsx';
 import { currentLocale } from '../../../i18n/index.ts';
@@ -92,13 +93,14 @@ export function RosterArea({ event }: { event: OrganisationEvent }) {
   const desk = useDeskTop();
   const [load, setLoad] = useState<Load>({ kind: 'loading' });
   const [attempt, setAttempt] = useState(0);
+  const answeredAgain = useAnsweredAgain();
 
   usePageTitle(pageTitle(t, [t('roster.title'), event.name]));
 
   useEffect(() => {
     let current = true;
 
-    api.staff(event.id).then(
+    keptLoad(keptKeys.staff(event.id), api.staff(event.id)).then(
       (staff) => current && setLoad({ kind: 'loaded', staff }),
       () => current && setLoad((was) => (was.kind === 'loaded' ? was : { kind: 'failed' })),
     );
@@ -106,7 +108,7 @@ export function RosterArea({ event }: { event: OrganisationEvent }) {
     return () => {
       current = false;
     };
-  }, [event.id, attempt]);
+  }, [event.id, attempt, answeredAgain]);
 
   const topics = useMemo(() => [realtimeTopic('EventStaff', event.id)], [event.id]);
   useHubTopics(

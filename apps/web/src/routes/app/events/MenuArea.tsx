@@ -63,6 +63,7 @@ import { useTranslation } from 'react-i18next';
 import { Link } from 'react-router';
 
 import { api } from '../../../api.ts';
+import { keepLoaded, keptFor, keptKeys, useAnsweredAgain } from '../../../tabKept.ts';
 import { Glyph } from '../../../components/Glyph.tsx';
 import { Refreshing } from '../../../components/OfflineBand.tsx';
 import { useDeskTop } from '../../../deskTop.ts';
@@ -181,7 +182,8 @@ export function MenuArea({ event }: { event: OrganisationEvent }) {
   const [load, setLoad] = useState<Load>({ kind: 'loading' });
   const [attempt, setAttempt] = useState(0);
   const title = useRef<HTMLHeadingElement>(null);
-  const { watch, refreshing } = useOffline({
+  const answeredAgain = useAnsweredAgain();
+  const { watch, keep, refreshing } = useOffline({
     loaded: load.kind === 'loaded',
     reload: () => setAttempt((n) => n + 1),
     title,
@@ -193,18 +195,32 @@ export function MenuArea({ event }: { event: OrganisationEvent }) {
     let current = true;
 
     watch(api.menu(event.id)).then(
-      (menu) => current && setLoad({ kind: 'loaded', menu }),
-      (error: unknown) =>
-        current &&
+      (menu) => {
+        if (!current) return;
+        keepLoaded(keptKeys.menu(event.id), menu);
+        setLoad({ kind: 'loaded', menu });
+      },
+      (error: unknown) => {
+        if (!current) return;
+        const kept = keepsWhatLoaded(error)
+          ? keptFor<EventMenu>(keptKeys.menu(event.id), error)
+          : null;
+
+        if (kept != null) keep(kept.at);
         setLoad((was) =>
-          was.kind === 'loaded' && keepsWhatLoaded(error) ? was : { kind: 'failed' },
-        ),
+          was.kind === 'loaded' && keepsWhatLoaded(error)
+            ? was
+            : kept != null
+              ? { kind: 'loaded', menu: kept.value }
+              : { kind: 'failed' },
+        );
+      },
     );
 
     return () => {
       current = false;
     };
-  }, [event.id, attempt, watch]);
+  }, [event.id, attempt, watch, keep, answeredAgain]);
 
   const topics = useMemo(() => [realtimeTopic('EventMenu', event.id)], [event.id]);
   useHubTopics(

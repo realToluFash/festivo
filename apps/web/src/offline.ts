@@ -47,9 +47,13 @@ export function useOffline(screen: {
   title: RefObject<HTMLElement | null>;
   /** The minute of what the screen shows, where a load that answers does not replace it: Edit details. */
   since?: Date | null;
-}): { watch: <T>(load: Promise<T>) => Promise<T>; refreshing: boolean } {
+}): {
+  watch: <T>(load: Promise<T>) => Promise<T>;
+  keep: (at: Date) => void;
+  refreshing: boolean;
+} {
   const { show } = useContext(StaleScreen);
-  const { watch, stale, refreshing } = useStaleWatch(screen);
+  const { watch, keep, stale, refreshing } = useStaleWatch(screen);
   const at = stale == null ? undefined : (screen.since ?? stale.at);
   const unanswered = stale?.unanswered;
   const retry = stale?.retry;
@@ -60,7 +64,7 @@ export function useOffline(screen: {
 
   useLayoutEffect(() => () => show(null), [show]);
 
-  return { watch, refreshing };
+  return { watch, keep, refreshing };
 }
 
 /** A load of its own, with its own band: the bell's feed, which ages apart from the page under it (sc-27096). */
@@ -72,7 +76,12 @@ export function useStaleWatch({
   loaded: boolean;
   reload: () => void;
   title: RefObject<HTMLElement | null>;
-}): { watch: <T>(load: Promise<T>) => Promise<T>; stale: Stale | null; refreshing: boolean } {
+}): {
+  watch: <T>(load: Promise<T>) => Promise<T>;
+  keep: (at: Date) => void;
+  stale: Stale | null;
+  refreshing: boolean;
+} {
   const [offline] = useState(() => createOfflineWatch({ connection }));
   const state = useSyncExternalStore(offline.subscribe, offline.state);
 
@@ -104,5 +113,5 @@ export function useStaleWatch({
     [state.stale, loaded, at, offline, unanswered],
   );
 
-  return { watch: offline.watch, stale, refreshing: state.out > 0 && loaded };
+  return { watch: offline.watch, keep: offline.keep, stale, refreshing: state.out > 0 && loaded };
 }

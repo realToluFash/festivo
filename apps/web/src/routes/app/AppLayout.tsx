@@ -146,6 +146,8 @@ function Shell() {
   // Wider than a phone no page has the band (sc-39509, sc-60699): each page's own top carries the bell, as Today, Events and Calendar do in a phone's window (sc-57468).
   const bandless = !atPhone || fits;
   const ownNotices = placesItsNotices(pathname);
+  // An event's areas at a desk say they are offline in Events' amber box, above their crumb row (sc-65646).
+  const boxed = bandless && !ownNotices && pathname.startsWith('/app/events/');
 
   // Before the first paint, so the first signed-in screen is already in the account's language.
   useLayoutEffect(() => {
@@ -354,7 +356,7 @@ function Shell() {
           className={bandless ? 'shell-content is-card' : 'shell-content'}
           inert={menuOpen}
         >
-          {!(bandless && ownNotices) && <OfflineBand />}
+          {boxed ? <OfflineBox /> : !(bandless && ownNotices) && <OfflineBand />}
           <LinkedNotice />
           {organisation != null && session.pausedIn == null && (
             <SignInRulesNotices key={organisation.id} organisation={organisation} />

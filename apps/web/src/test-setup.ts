@@ -12,6 +12,7 @@ import { __freshConnection } from '@soirely/domain';
 import { __setConfig } from './config.ts';
 import { initI18n } from './i18n/index.ts';
 import { __setSessionState } from './session.ts';
+import { __forgetTab } from './tabKept.ts';
 
 __setConfig({
   apiBaseUrl: 'http://api.test',
@@ -54,4 +55,5 @@ afterEach(() => {
   cleanup();
   __setSessionState({ status: 'unknown' });
   __freshConnection();
+  __forgetTab();
 });
