@@ -105,6 +105,11 @@ export const SHOW_WORDS = {
   keep: 'Keep this link',
   replacedAt: (time: string) => `Replaced at ${time}. The old link shows nothing.`,
   replacedSaid: (place: string) => `Screen link for ${place} replaced.`,
+  notReplaced: (place: string) =>
+    `The link for ${place} was not replaced, so the old link still works. Try again.`,
+  loading: 'Loading the screen links…',
+  notLoaded: 'The screen links did not load.',
+  tryAgain: 'Try again',
 } as const;
 
 /** The 128-bit token stands in as a fixed sample; the product mints it on the server. */
@@ -129,6 +134,7 @@ interface ScreenStart {
   finished: boolean;
   replaced: boolean;
   projector: boolean;
+  connecting: boolean;
 }
 
 const BETWEEN: Readonly<Record<string, Mark>> = {
@@ -145,12 +151,17 @@ function at(over: Partial<ScreenStart> & { name: string }): ScreenStart {
     finished: false,
     replaced: false,
     projector: false,
+    connecting: false,
     ...over,
   };
 }
 
 export const SCREEN_STATES = {
   now: at({ name: 'Ballroom at 17:25: Now and Coming up, three items' }),
+  connecting: at({
+    name: 'Before its first answer: the blank field and Full screen, asking every 10 s',
+    connecting: true,
+  }),
   between: at({
     name: 'Between items: Grand entrance done, Dinner not started, no Now',
     marks: BETWEEN,

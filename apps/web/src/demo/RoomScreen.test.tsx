@@ -93,6 +93,15 @@ describe('the room screen (sc-3897)', () => {
     expect(finished.textContent).toContain('Adaeze & Tunde’s wedding');
   });
 
+  it('is blank but for Full screen before its first answer', SLOW, async () => {
+    const shown = await room('connecting');
+
+    expect(within(shown).queryByRole('heading')).toBeNull();
+    expect(within(shown).getByRole('button', { name: 'Full screen' })).toBeDefined();
+    fireEvent.click(screen.getByRole('button', { name: 'The first answer arrives' }));
+    expect(screen.getByText('Grand entrance')).toBeDefined();
+  });
+
   it('shows the event’s name only with nothing left', SLOW, async () => {
     const shown = await room('nothingLeft', 'garden');
 
@@ -155,6 +164,44 @@ describe('Show on a screen on the Schedule (sc-3897)', () => {
       'Could not copy here. The link for Ballroom is selected: press Ctrl+C or Command+C.',
     );
     expect(window.getSelection()?.toString()).toBe('https://soirely.app/s/w3E6rT9yU2iO5pA8sD1fG4');
+  });
+
+  it('holds three rows while the links load', SLOW, async () => {
+    await open('/demo/events/evt-wed-4/schedule?state=screensLoading');
+    const dialog = await screen.findByRole('dialog', { name: 'Show on a screen' }, SLOW);
+
+    expect(within(dialog).queryAllByRole('listitem')).toHaveLength(0);
+    expect(dialog.querySelectorAll('.skeleton-row')).toHaveLength(3);
+    expect(within(dialog).getByRole('status').textContent).toBe('Loading the screen links…');
+  });
+
+  it('says the links did not load, and Try again loads them', SLOW, async () => {
+    await open('/demo/events/evt-wed-4/schedule?state=screensFailed');
+    const dialog = await screen.findByRole('dialog', { name: 'Show on a screen' }, SLOW);
+
+    expect(within(dialog).getByRole('status').textContent).toBe('The screen links did not load.');
+    fireEvent.click(within(dialog).getByRole('button', { name: 'Try again' }));
+    expect(within(dialog).getByRole('status').textContent).toBe('Loading the screen links…');
+    expect(
+      await within(dialog).findAllByRole('button', { name: 'Copy screen link' }, SLOW),
+    ).toHaveLength(3);
+  });
+
+  it('keeps the old link when Replace link fails', SLOW, async () => {
+    await open('/demo/events/evt-wed-4/schedule?state=screensReplaceFailed');
+    const dialog = await screen.findByRole('dialog', { name: 'Show on a screen' }, SLOW);
+    const ballroom = within(dialog).getAllByRole('listitem')[2] as HTMLElement;
+
+    expect(within(dialog).getByRole('status').textContent).toBe(
+      'The link for Ballroom was not replaced, so the old link still works. Try again.',
+    );
+    expect(
+      within(ballroom).getByText('https://soirely.app/s/w3E6rT9yU2iO5pA8sD1fG4'),
+    ).toBeDefined();
+    expect(within(ballroom).queryByText(/Replaced at/)).toBeNull();
+    expect(document.activeElement).toBe(
+      within(ballroom).getByRole('button', { name: 'Replace link' }),
+    );
   });
 
   it('is not offered without run_of_show.manage', SLOW, async () => {

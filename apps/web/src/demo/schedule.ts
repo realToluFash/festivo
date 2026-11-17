@@ -518,8 +518,12 @@ export interface ScheduleStart {
   picking: boolean;
   failed: Failure | null;
   focus: Field | 'limit' | 'conflict' | 'ask' | 'failed' | null;
-  screens: 'list' | 'replace' | 'replaced' | 'refused' | null;
+  screens: ScreensStart | null;
 }
+
+/** Where Show on a screen opens (sc-3897). */
+export type ScreensStart =
+  'list' | 'replace' | 'replaced' | 'refused' | 'loading' | 'failed' | 'replaceFailed';
 
 const FRIDAY = DAYS[1];
 
@@ -686,6 +690,11 @@ const STATES = {
   screensReplaced: () => start({ name: 'The Ballroom’s link replaced', screens: 'replaced' }),
   screensRefused: () =>
     start({ name: 'Copy refused by the browser: the link selected', screens: 'refused' }),
+  screensLoading: () =>
+    start({ name: 'The links loading: three rows held at their height', screens: 'loading' }),
+  screensFailed: () => start({ name: 'The links did not load, with Try again', screens: 'failed' }),
+  screensReplaceFailed: () =>
+    start({ name: 'Replace link failed: the old link kept', screens: 'replaceFailed' }),
 } satisfies Record<string, () => ScheduleStart>;
 
 export type ScheduleStateName = keyof typeof STATES;
@@ -749,7 +758,17 @@ export const SCHEDULE_PAGES: readonly { name: string; states: readonly DemoLink[
   },
   {
     name: 'Show on a screen, the room screen’s links (sc-3897)',
-    states: (['screens', 'screensReplace', 'screensReplaced', 'screensRefused'] as const).map(link),
+    states: (
+      [
+        'screens',
+        'screensReplace',
+        'screensReplaced',
+        'screensRefused',
+        'screensLoading',
+        'screensFailed',
+        'screensReplaceFailed',
+      ] as const
+    ).map(link),
   },
   {
     name: 'At 40rem and under (narrow the window)',
