@@ -37,9 +37,13 @@ appId: host.exp.Exponent
 - extendedWaitUntil: { visible: { id: 'lostTwoFactor.send' }, timeout: 30000 }
 - waitForAnimationToEnd
 - takeScreenshot: tf-lost-start
+- runScript: ../scripts/mail-count.js
 - tapOn: { id: 'lostTwoFactor.send' }
 - extendedWaitUntil: { visible: { id: 'lostTwoFactor.emailCode' }, timeout: 60000 }
-- runScript: ../scripts/latest-code.js
+- runScript:
+    file: ../scripts/latest-code.js
+    env:
+      AFTER: ${output.mailCount}
 - tapOn: { id: 'lostTwoFactor.emailCode' }
 - inputText: ${output.code}
 - runFlow:
