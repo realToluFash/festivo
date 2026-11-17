@@ -2,7 +2,7 @@
 
 declare(strict_types=1);
 
-// A live event with a seating plan, committed so other processes see it, for SeatingRaceTest; prints its ids and an owner's token as JSON.
+// A live event with a seating plan, committed so other processes see it, for SeatingRaceTest, which deletes it again; prints its ids and an owner's token as JSON.
 // php seat-race-setup.php <seats> <guests' companions, comma separated>
 
 use App\Domain\Organisation\OrganisationFounder;
@@ -67,4 +67,4 @@ $guests = Vec\map(Str\split($parties, ','), static fn (string $companions): stri
     'companions' => Vec\fill(Type\uint()->coerce((int) $companions), ['fullName' => null]),
 ]))['guest']['id']);
 
-IO\write(Json\encode(['token' => $token, 'eventId' => $event, 'tableId' => $table, 'guests' => $guests]));
+IO\write(Json\encode(['token' => $token, 'userId' => $user->getId()->toRfc4122(), 'organisationId' => $organisation->getId()->toRfc4122(), 'eventId' => $event, 'tableId' => $table, 'guests' => $guests]));

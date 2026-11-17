@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\Tests\Functional;
 
 use App\Tests\FunctionalTestCase;
+use Doctrine\DBAL\DriverManager;
 use PHPUnit\Framework\Attributes\Test;
 use Psl\Iter;
 use Psl\Json;
@@ -18,6 +19,28 @@ final class SeatingRaceTest extends FunctionalTestCase
     private const string SETUP = __DIR__ . '/../Fixtures/Concurrency/seat-race-setup.php';
 
     private const string SEAT = __DIR__ . '/../Fixtures/Concurrency/seat-race.php';
+
+    /** @var list<array{userId: string, organisationId: string, eventId: string}> */
+    private static array $made = [];
+
+    /** The setup committed its rows in another process, out of reach of the rollback every other test relies on: left, they would count in the tests after this one. */
+    protected function tearDown(): void
+    {
+        $elsewhere = DriverManager::getConnection(self::em()->getConnection()->getParams());
+
+        foreach (self::$made as $made) {
+            $notifications = 'SELECT id FROM scheduled_notifications WHERE organisation_id = :organisation OR audience -> \'conditions\' ->> \'address\' IN (SELECT address FROM email_addresses WHERE user_id = :user)';
+            $ids = ['organisation' => $made['organisationId'], 'user' => $made['userId'], 'event' => $made['eventId']];
+            $elsewhere->executeStatement('DELETE FROM notification_deliveries WHERE event_id = :event OR scheduled_notification_id IN (' . $notifications . ')', $ids);
+            $elsewhere->executeStatement('DELETE FROM scheduled_notifications WHERE id IN (' . $notifications . ')', $ids);
+            $elsewhere->executeStatement('DELETE FROM audit_entries WHERE actor_id = ? OR subject_id IN (?, ?, ?)', [$made['userId'], $made['userId'], $made['organisationId'], $made['eventId']]);
+            $elsewhere->executeStatement('DELETE FROM organisations WHERE id = ?', [$made['organisationId']]);
+            $elsewhere->executeStatement('DELETE FROM users WHERE id = ?', [$made['userId']]);
+        }
+        self::$made = [];
+        $elsewhere->close();
+        parent::tearDown();
+    }
 
     #[Test]
     public function twoGuestsSentToOneChairTogetherSeatOneAndTellTheOtherItWasTaken(): void
@@ -44,17 +67,20 @@ final class SeatingRaceTest extends FunctionalTestCase
     /**
      * @param list<int> $companions each guest's
      *
-     * @return array{token: string, eventId: string, tableId: string, guests: list<string>}
+     * @return array{token: string, userId: string, organisationId: string, eventId: string, tableId: string, guests: list<string>}
      */
     private static function setUpPlan(int $seats, array $companions): array
     {
         $out = \shell_exec(\escapeshellcmd('php ' . self::SETUP . ' ' . $seats . ' ' . Str\join(Vec\map($companions, static fn (int $n): string => (string) $n), ',')) . ' 2>/dev/null');
 
-        return Type\shape(['token' => Type\string(), 'eventId' => Type\string(), 'tableId' => Type\string(), 'guests' => Type\vec(Type\string())])->coerce(Json\decode((string) $out));
+        $plan = Type\shape(['token' => Type\string(), 'userId' => Type\string(), 'organisationId' => Type\string(), 'eventId' => Type\string(), 'tableId' => Type\string(), 'guests' => Type\vec(Type\string())])->coerce(Json\decode((string) $out));
+        self::$made[] = ['userId' => $plan['userId'], 'organisationId' => $plan['organisationId'], 'eventId' => $plan['eventId']];
+
+        return $plan;
     }
 
     /**
-     * @param list<array{0: array{token: string, eventId: string, tableId: string, guests: list<string>}, 1: string, 2: int}> $attempts
+     * @param list<array{0: array{token: string, userId: string, organisationId: string, eventId: string, tableId: string, guests: list<string>}, 1: string, 2: int}> $attempts
      *
      * @return list<string> each answer, sorted
      */
