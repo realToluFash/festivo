@@ -333,7 +333,7 @@ function PressField({
   );
 }
 
-function focusField(key: string): void {
+export function focusField(key: string): void {
   focusWhenFree(() => document.querySelector(`.st-panel [data-focus="${key}"]`));
 }
 

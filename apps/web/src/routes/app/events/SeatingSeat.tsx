@@ -1,25 +1,24 @@
 import type { SeatingPlan } from '@soirely/api-client';
-import { useId } from 'react';
+import { type ReactNode, useId } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Glyph } from '../../../components/Glyph.tsx';
-import { Line } from './SeatingParts.tsx';
+import { TextAction } from '../../../components/SettingsParts.tsx';
+import { sectionOf, usableSeats } from './seatingDraw.ts';
 import {
   type TrayFilter,
   type WaitingParty,
+  chairStateOf,
   groupOf,
+  initialsOf,
   peopleIn,
   shownParties,
+  takenAt,
   waitingParties,
 } from './seatingGuests.ts';
-
-function initials(name: string): string {
-  return name
-    .split(/\s+/u)
-    .filter(Boolean)
-    .slice(0, 2)
-    .map((word) => [...word][0]?.toLocaleUpperCase() ?? '')
-    .join('');
-}
+import { type FloorItem, itemName } from './seatingItems.ts';
+import { BackHead, Line, ShapeTile } from './SeatingParts.tsx';
+import { rowLine } from './SeatingRows.tsx';
+import { SeatLegend, StateMark, chairStateWord, tableLine } from './SeatingTables.tsx';
 
 /** The Seat tab's Without a seat: the switch, the count, search, a chip per group and a row per party (sc-4013). */
 export function SeatTray({
@@ -29,6 +28,7 @@ export function SeatTray({
   picked,
   onPick,
   readOnly,
+  chips = true,
 }: {
   plan: SeatingPlan;
   filter: TrayFilter;
@@ -36,6 +36,7 @@ export function SeatTray({
   picked: string | null;
   onPick: (id: string | null) => void;
   readOnly: boolean;
+  chips?: boolean;
 }) {
   const { t } = useTranslation();
   const switchId = useId();
@@ -112,7 +113,7 @@ export function SeatTray({
               onChange={(event) => onFilter({ ...filter, search: event.target.value })}
             />
           </div>
-          {groups.length > 1 && (
+          {chips && groups.length > 1 && (
             <div className="st-chips">
               {groups.map(({ group, n }) => (
                 <button
@@ -172,7 +173,7 @@ export function SeatTray({
                       onClick={() => onPick(on ? null : party.lead.id)}
                     >
                       <span className="st-avatar" aria-hidden="true">
-                        {initials(party.lead.fullName ?? '')}
+                        {initialsOf(party.lead.fullName ?? '')}
                       </span>
                       <span className="st-row-words">
                         <span className="st-row-name">{title(party)}</span>
@@ -190,6 +191,121 @@ export function SeatTray({
           )}
         </>
       )}
+    </div>
+  );
+}
+
+/** A table or row chosen in Seat: its chairs in order with their states in words, and what can be done with everyone at it (sc-4013). */
+export function PlaceGuests({
+  plan,
+  item,
+  readOnly,
+  tray,
+  onUnseatAll,
+  onMoveAll,
+  onRename,
+}: {
+  plan: SeatingPlan;
+  item: Extract<FloorItem, { kind: 'table' | 'row' }>;
+  readOnly: boolean;
+  tray: ReactNode;
+  onUnseatAll: () => void;
+  onMoveAll: () => void;
+  onRename: (item: FloorItem) => void;
+}) {
+  const { t } = useTranslation();
+  const place = item.one;
+  const line = item.kind === 'table' ? tableLine(t, plan, item.one) : rowLine(t, plan, item.one);
+
+  return (
+    <div className="st-stack">
+      <BackHead title={itemName(t, item)} line={line} />
+      {takenAt(plan, place.id) === 0 ? (
+        <>
+          <Line>{t('seating.emptyTable')}</Line>
+          {tray}
+        </>
+      ) : (
+        <>
+          <ul className="st-rows is-dense">
+            {Array.from({ length: place.seats }, (_, index) => index + 1).map((seat) => {
+              const { state, guest } = chairStateOf(
+                plan,
+                place.id,
+                seat,
+                place.unusableSeats.includes(seat),
+              );
+
+              return (
+                <li key={seat} className="st-row is-dense">
+                  <StateMark
+                    state={state}
+                    square={item.kind === 'table' && item.one.shape === 'cocktail'}
+                  />
+                  <span className="st-row-words">
+                    <span className="st-row-name">{t('seating.seatN', { n: seat })}</span>
+                    <span className="st-row-line">{chairStateWord(t, state, guest)}</span>
+                  </span>
+                </li>
+              );
+            })}
+          </ul>
+          {!readOnly && (
+            <div className="st-acts">
+              <TextAction label={t('seating.unseatAll')} onClick={onUnseatAll} />
+              <TextAction label={t('seating.moveAll')} onClick={onMoveAll} />
+              <TextAction label={t('seating.rename')} onClick={() => onRename(item)} />
+            </div>
+          )}
+        </>
+      )}
+      <SeatLegend />
+    </div>
+  );
+}
+
+/** Move everyone to…: only the tables with room for everyone at `from`. */
+export function MoveAllPop({
+  plan,
+  from,
+  onMove,
+}: {
+  plan: SeatingPlan;
+  from: FloorItem;
+  onMove: (to: Extract<FloorItem, { kind: 'table' }>) => void;
+}) {
+  const { t } = useTranslation();
+  const n = takenAt(plan, from.one.id);
+  const room = plan.tables.filter(
+    (one) => one.id !== from.one.id && usableSeats(one) - takenAt(plan, one.id) >= n,
+  );
+
+  return (
+    <div className="st-float st-pop is-move-all" role="dialog" aria-label={t('seating.moveAll')}>
+      <h2>{t('seating.moveAll')}</h2>
+      <p className="st-line">{t('seating.roomForAll', { n })}</p>
+      <ul className="st-rows is-dense">
+        {room.map((one) => (
+          <li key={one.id}>
+            <button
+              type="button"
+              className="st-party"
+              onClick={() => onMove({ kind: 'table', one })}
+            >
+              <ShapeTile glyph={one.shape === 'rectangular' ? 'rect' : one.shape} />
+              <span className="st-row-words">
+                <span className="st-row-name">{one.name}</span>
+                <span className="st-row-line">
+                  {t('seating.freeLine', {
+                    section: sectionOf(plan, one)?.name ?? t('seating.noSection'),
+                    n: usableSeats(one) - takenAt(plan, one.id),
+                  })}
+                </span>
+              </span>
+            </button>
+          </li>
+        ))}
+      </ul>
     </div>
   );
 }

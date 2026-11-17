@@ -121,7 +121,7 @@ import {
 } from './seatingItems.ts';
 import { fitOf, intoView, useCamera } from './seatingCamera.ts';
 import { type TrayFilter, pickedParty, seatedAt } from './seatingGuests.ts';
-import { SeatTray } from './SeatingSeat.tsx';
+import { MoveAllPop, PlaceGuests, SeatTray } from './SeatingSeat.tsx';
 import { Presence } from './SeatingPresence.tsx';
 import {
   BEAT_MS,
@@ -149,6 +149,7 @@ import {
   type StepBar,
   ChooseBar,
   DeleteItemsAsk,
+  focusField,
   RulesStrip,
   SelectionPanel,
   StepLine,
@@ -662,6 +663,7 @@ function Plan({
   const [bar, setBar] = useState<StepBar | null>(null);
   const [tab, setTab] = useState<'arrange' | 'seat'>('arrange');
   const [pickedGuest, setPickedGuest] = useState<string | null>(null);
+  const [moveFrom, setMoveFrom] = useState<string | null>(null);
   const [tray, setTray] = useState<TrayFilter>({ unsure: false, search: '', groups: [] });
   const party = plan == null || readOnly ? null : pickedParty(plan, pickedGuest);
   const dropPick = () => {
@@ -995,7 +997,10 @@ function Plan({
       return;
     }
     if (event.key !== 'Escape') return;
-    if (pickedGuest != null) {
+    if (moveFrom != null) {
+      event.preventDefault();
+      setMoveFrom(null);
+    } else if (pickedGuest != null) {
       event.preventDefault();
       dropPick();
     } else if (placing != null) {
@@ -1289,7 +1294,60 @@ function Plan({
 
   const pickGuest = (id: string | null) => {
     setPickedGuest(id);
+    setMoveFrom(null);
     setBar(null);
+  };
+  /** In Seat, a guest on a chair is picked from it, to move them; true when there was one. */
+  const pickFrom = (item: FloorItem, seat: number): boolean => {
+    const there =
+      tab === 'seat' && !readOnly && plan != null ? seatedAt(plan, item.one.id, seat) : null;
+
+    if (there == null) return false;
+    pickGuest(there.id);
+    return true;
+  };
+  const unseatAll = (item: FloorItem) => {
+    const place = itemName(t, item);
+
+    setBar(null);
+    api.unseatGuests(event.id, { kind: item.kind, placeId: item.one.id }).then(
+      (moved) => {
+        onSeating(moved.seating);
+        stepDone(t('seating.tableEmpty', { table: place }), () => undoMoves(moved.moves));
+      },
+      () => refuseStep(t('seating.notSaved')),
+    );
+  };
+  const rename = (item: FloorItem) => {
+    setTab('arrange');
+    open({ kind: item.kind, id: item.one.id }, true);
+    focusField(item.kind === 'row' ? 'label' : 'name');
+  };
+  const moveAll = (from: FloorItem, to: FloorItem) => {
+    const place = itemName(t, to);
+
+    setMoveFrom(null);
+    setBar(null);
+    api
+      .moveEveryone(
+        event.id,
+        { kind: from.kind, id: from.one.id },
+        { kind: to.kind, id: to.one.id },
+      )
+      .then(
+        (moved) => {
+          onSeating(moved.seating);
+          stepDone(t('seating.movedAll', { count: moved.moves.length, table: place }), () =>
+            undoMoves(moved.moves),
+          );
+        },
+        (error: unknown) =>
+          refuseStep(
+            error instanceof ApiError && error.is('seating_table_full')
+              ? t('seating.tableFull', { table: place })
+              : t('seating.notSaved'),
+          ),
+      );
   };
   const undoMoves = (moves: SeatingMove[]) => {
     api.undoSeating(event.id, moves).then(
@@ -2030,6 +2088,13 @@ function Plan({
             {shownBar != null && <StepLine bar={shownBar} onUndo={undo} />}
           </div>
         )}
+        {moveFrom != null && itemOf(moveFrom) != null && (
+          <MoveAllPop
+            plan={plan}
+            from={itemOf(moveFrom)!}
+            onMove={(to) => moveAll(itemOf(moveFrom)!, to)}
+          />
+        )}
         <svg
           className="st-room"
           width={size.w}
@@ -2131,7 +2196,9 @@ function Plan({
                     party != null ? seatAt(item) : open({ kind: 'table', id }, true)
                   }
                   onChair={(seat) =>
-                    party != null ? seatAt(item, seat) : open({ kind: 'chair', id, seat })
+                    party != null
+                      ? seatAt(item, seat)
+                      : pickFrom(item, seat) || open({ kind: 'chair', id, seat })
                   }
                 />
               ) : item.kind === 'row' ? (
@@ -2150,7 +2217,9 @@ function Plan({
                   outside={outlined}
                   onChoose={() => (party != null ? seatAt(item) : open({ kind: 'row', id }, true))}
                   onChair={(seat) =>
-                    party != null ? seatAt(item, seat) : open({ kind: 'row', id, seat })
+                    party != null
+                      ? seatAt(item, seat)
+                      : pickFrom(item, seat) || open({ kind: 'row', id, seat })
                   }
                 />
               ) : (
@@ -2163,7 +2232,9 @@ function Plan({
                   chosen={lit}
                   outside={outlined}
                   onChoose={() =>
-                    party != null ? seatAt(item, 1) : open({ kind: 'seat', id }, true)
+                    party != null
+                      ? seatAt(item, 1)
+                      : pickFrom(item, 1) || open({ kind: 'seat', id }, true)
                   }
                 />
               );
@@ -2439,6 +2510,38 @@ function Plan({
       </>
     );
 
+  function seatBody(plan: SeatingPlan) {
+    const trayOf = (chips: boolean) => (
+      <SeatTray
+        plan={plan}
+        filter={tray}
+        onFilter={setTray}
+        picked={pickedGuest}
+        onPick={pickGuest}
+        readOnly={readOnly}
+        chips={chips}
+      />
+    );
+    const item =
+      party == null &&
+      (shownPanel?.kind === 'table' || shownPanel?.kind === 'chair' || shownPanel?.kind === 'row')
+        ? itemOf(shownPanel.id)
+        : null;
+
+    if (item == null || item.kind === 'seat') return trayOf(true);
+    return (
+      <PlaceGuests
+        plan={plan}
+        item={item}
+        readOnly={readOnly}
+        tray={trayOf(false)}
+        onUnseatAll={() => unseatAll(item)}
+        onMoveAll={() => setMoveFrom(item.one.id)}
+        onRename={rename}
+      />
+    );
+  }
+
   return (
     <LayersContext value={layers}>
       <RingsContext value={rings}>
@@ -2482,18 +2585,9 @@ function Plan({
                 plan != null && shownPanel?.kind !== 'start' ? `st-tab-${tab}` : undefined
               }
             >
-              {tab === 'seat' && plan != null && shownPanel?.kind !== 'start' ? (
-                <SeatTray
-                  plan={plan}
-                  filter={tray}
-                  onFilter={setTray}
-                  picked={pickedGuest}
-                  onPick={pickGuest}
-                  readOnly={readOnly}
-                />
-              ) : (
-                body
-              )}
+              {tab === 'seat' && plan != null && shownPanel?.kind !== 'start'
+                ? seatBody(plan)
+                : body}
             </div>
           </aside>
         </div>
