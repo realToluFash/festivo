@@ -3923,6 +3923,20 @@ describe('A second finger on a box pans and keeps the choice (sc-60666)', () => 
     expect(onFloor()).toBeCloseTo(was, 0);
   });
 
+  it('pans from a second finger on a resize handle without resizing the table', async () => {
+    const sent = await onThree();
+
+    await chooseTable(TABLE_1);
+    const at = await boxOverTable3();
+
+    expect(await screen.findByRole('heading', { level: 2, name: 'Table 3' })).toBeDefined();
+    const handle = document.querySelector('.st-handle-hit[data-handle="se"]')!;
+
+    secondFingerPans(at, handle);
+    expect(await screen.findByRole('heading', { level: 2, name: 'Table 1' })).toBeDefined();
+    expect(sent.some((one) => one.line.includes('/seating-plan/furniture'))).toBe(false);
+  });
+
   it('pans and keeps the choice when both fingers land together', async () => {
     await onThree();
     await chooseOneAndTwo();
