@@ -772,7 +772,7 @@ function Plan({
   }, [focusBack]);
   const dropPick = () => {
     const from = document.activeElement;
-    const place = from?.closest(ITEM_ATTRIBUTES.map((one) => `[${one}]`).join(', '));
+    const place = from?.closest(ITEM);
     const attribute = ITEM_ATTRIBUTES.find((one) => place?.hasAttribute(one));
 
     if (place !== from && attribute != null)
