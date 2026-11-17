@@ -689,7 +689,11 @@ const STATES = {
       failedSave: true,
     }),
   gone: () =>
-    start({ name: 'Edit, the dish is gone', opened: { kind: 'gone', name: 'Chin chin' } }),
+    start({
+      name: 'Edit, the dish is gone',
+      dishes: SAMPLE_DISHES.filter((one) => one.id !== 'd-chinchin'),
+      opened: { kind: 'gone', name: 'Chin chin' },
+    }),
   libVariants: () =>
     vstart(
       'Variants',
@@ -832,6 +836,7 @@ const STATES = {
     }),
   libVariantGone: () =>
     vstart('Edit variant, the dish is gone', 'Someone deleted Jollof rice while it was open.', {
+      dishes: libraryVariants().filter((one) => one.id !== 'd-jollof'),
       opened: { kind: 'gone', name: 'Jollof rice' },
     }),
   libVariantFailed: () =>
