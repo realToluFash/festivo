@@ -1846,6 +1846,14 @@ describe('the Tables and List views (sc-4013, sc-4016)', () => {
       expect(screen.getByRole('button', { name: /^Table 1/u, expanded: false })).toBeDefined();
     },
   );
+
+  it('writes a seated chair’s guest alone in the List, with no reply (sc-5030)', SLOW, async () => {
+    await seating('listOpen');
+    const seat1 = screen.getAllByRole('row').find((row) => row.textContent?.startsWith('Seat 1'));
+
+    expect(within(seat1!).getByText('Amara Diallo')).toBeDefined();
+    expect(within(seat1!).queryByText(/, Coming$/u)).toBeNull();
+  });
 });
 
 describe('Print and its paper (sc-4024, sc-5032)', () => {

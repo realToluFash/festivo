@@ -1,6 +1,8 @@
 import { describe, expect, it } from 'vitest';
 
 import {
+  chairSaid,
+  chairWord,
   chairsTakePointer,
   type Item,
   type Point,
@@ -275,6 +277,15 @@ describe('the room to scale (sc-4007)', () => {
     expect(detailOf(0.25)).toBe('fit');
     expect(detailOf(0.5)).toBe('fit');
     expect(detailOf(0.75)).toBe('near');
+  });
+
+  it('adds the reply only to the chair on the picture (sc-5030)', () => {
+    const chair = { state: 'taken' as const, who: 'Chidi Obi' };
+
+    expect(chairWord(chair)).toBe('Chidi Obi');
+    expect(chairSaid(chair)).toBe('Chidi Obi, Coming');
+    expect(chairSaid({ ...chair, reply: 'notSure' as const })).toBe('Chidi Obi, Not sure yet');
+    expect(chairSaid({ state: 'empty' })).toBe(chairWord({ state: 'empty' }));
   });
 
   it('gives a chair the pointer only once it is a 44 target, table by table', () => {

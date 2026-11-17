@@ -11,7 +11,7 @@ import {
   CHAIR_R,
   chairsTakePointer,
   SW,
-  chairWord,
+  chairSaid,
   free,
   chairsOf,
   chosenWords,
@@ -406,7 +406,7 @@ function ItemDrawing({
               role="button"
               tabIndex={look.chairsFor === item.id ? 0 : -1}
               aria-label={
-                say(SW.chairName, { table: item.name, n: index + 1, word: chairWord(chair) }) +
+                say(SW.chairName, { table: item.name, n: index + 1, word: chairSaid(chair) }) +
                 chosenWords(seated.map(({ who }) => ({ who })))
               }
               aria-pressed={picked}
@@ -680,10 +680,15 @@ function ItemDrawing({
   );
 }
 
+/** One guess at 12 px words, so the tip, the label and the free tag grow together in every locale. */
+function wordsWide(words: string): number {
+  return words.length * 7;
+}
+
 /** While a guest is picked: "{n} free" on a green dashed outline, or "Full" on a grey one (sc-5030). */
 function FreeTag({ x, y, n }: { x: number; y: number; n: number }) {
   const words = n === 0 ? SW.fullTab : say(SW.freeTag, { n });
-  const w = words.length * 7 + 16;
+  const w = wordsWide(words) + 16;
 
   return (
     <g className={n === 0 ? 'st-free is-full' : 'st-free'} aria-hidden="true">
@@ -1003,9 +1008,9 @@ function ChairLabel({
   const y = oy + (item.y + py) * s;
   const words = say(SW.seatLabel, {
     n: spot.i + 1,
-    word: chairWord(item.chairs[spot.i] ?? { state: 'empty' }),
+    word: chairSaid(item.chairs[spot.i] ?? { state: 'empty' }),
   });
-  const w = words.length * 7 + 20;
+  const w = wordsWide(words) + 20;
 
   return (
     <g className="st-tip" aria-hidden="true">
@@ -1018,7 +1023,7 @@ function ChairLabel({
 }
 
 function Tip({ x, y, words }: { x: number; y: number; words: string }) {
-  const w = words.length * 7 + 20;
+  const w = wordsWide(words) + 20;
 
   return (
     <g className="st-tip" aria-hidden="true">

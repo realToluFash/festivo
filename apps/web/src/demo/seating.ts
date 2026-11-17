@@ -959,11 +959,16 @@ const REPLY_WORD: Record<Reply, string> = {
   noReply: SW.noReply,
 };
 
-/** A taken chair says its guest and their reply, Coming included (sc-5030); the rest use sc-4013's words. */
 export function chairWord(chair: Chair): string {
-  if (chair.state === 'taken')
-    return chair.who == null ? SW.taken : `${chair.who}, ${REPLY_WORD[chair.reply ?? 'coming']}`;
+  if (chair.state === 'taken') return chair.who ?? SW.taken;
   return { held: SW.held, empty: SW.empty, unusable: SW.unusable }[chair.state];
+}
+
+/** Only the chair on the picture adds its guest's reply, Coming included (sc-5030); Tables and the List keep chairWord. */
+export function chairSaid(chair: Chair): string {
+  if (chair.state === 'taken' && chair.who != null)
+    return `${chair.who}, ${REPLY_WORD[chair.reply ?? 'coming']}`;
+  return chairWord(chair);
 }
 
 export function stateWord(state: ChairState): string {
