@@ -6,6 +6,7 @@ const NARROW = stylesheet(import.meta.dirname, 'narrowDesk.css');
 const LIBRARY = stylesheet(`${import.meta.dirname}/menu`, 'menuLibrary.css');
 const SCHEDULE = stylesheet(`${import.meta.dirname}/events`, 'schedule.css');
 const SEATING = stylesheet(`${import.meta.dirname}/events`, 'seating.css');
+const MENU = stylesheet(`${import.meta.dirname}/events`, 'menu.css');
 
 describe('a desk window from 641 to 960 px (sc-60699)', () => {
   it('fits the pages beside the sidebar there and nowhere else', () => {
@@ -35,6 +36,20 @@ describe('a desk window from 641 to 960 px (sc-60699)', () => {
         LIBRARY.slice(LIBRARY.indexOf('(width <= 40rem)')),
       ),
     ).toContain('order: -1;');
+  });
+
+  it("puts a Menu course's and dish's actions under a name short of 12rem", () => {
+    expect(cssRule('.mc-course-top', MENU)).toContain('flex-wrap: wrap;');
+    expect(cssRule('.mc-course-top > .mn-course-names,\n.mc-dish .mn-dish-words', MENU)).toContain(
+      'flex-basis: 12rem;',
+    );
+    expect(cssRule('.mc-acts,\n.mc-dish .lib-acts', MENU)).toContain('margin-left: auto;');
+  });
+
+  it("stacks the Menu's open form above the courses from 961 to 1199 px", () => {
+    expect(
+      cssRule('.shell .mc-split > .mc-panel', MENU.slice(MENU.indexOf('(60rem < width < 75rem)'))),
+    ).toMatch(/position: static;\s+order: -1;/u);
   });
 
   it("folds the Schedule's table to Starts and Item from 720 px", () => {
