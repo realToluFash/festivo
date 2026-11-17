@@ -18,7 +18,7 @@ import {
 import { type FloorItem, itemName } from './seatingItems.ts';
 import { BackHead, Line, ShapeTile } from './SeatingParts.tsx';
 import { rowLine } from './SeatingRows.tsx';
-import { SeatLegend, StateMark, chairStateWord, tableLine } from './SeatingTables.tsx';
+import { StateMark, chairStateWord, tableLine } from './SeatingTables.tsx';
 
 /** The Seat tab's Without a seat: the switch, the count, search, a chip per group and a row per party (sc-4013). */
 export function SeatTray({
@@ -292,7 +292,6 @@ export function PlaceGuests({
           )}
         </>
       )}
-      <SeatLegend />
     </div>
   );
 }
@@ -340,7 +339,7 @@ export function SeatChoicePop({
   );
 }
 
-/** Move everyone to…: only the tables with room for everyone at `from`. */
+/** Move everyone to…: only the tables with room for everyone at `from`, or a line saying none has (sc-5030). */
 export function MoveAllPop({
   plan,
   from,
@@ -359,29 +358,33 @@ export function MoveAllPop({
   return (
     <div className="st-float st-pop is-move-all" role="dialog" aria-label={t('seating.moveAll')}>
       <h2>{t('seating.moveAll')}</h2>
-      <p className="st-line">{t('seating.roomForAll', { count: n })}</p>
-      <ul className="st-rows is-dense">
-        {room.map((one) => (
-          <li key={one.id}>
-            <button
-              type="button"
-              className="st-party"
-              onClick={() => onMove({ kind: 'table', one })}
-            >
-              <ShapeTile glyph={one.shape === 'rectangular' ? 'rect' : one.shape} />
-              <span className="st-row-words">
-                <span className="st-row-name">{one.name}</span>
-                <span className="st-row-line">
-                  {t('seating.freeLine', {
-                    section: sectionOf(plan, one)?.name ?? t('seating.noSection'),
-                    n: usableSeats(one) - takenAt(plan, one.id),
-                  })}
+      <p className="st-line">
+        {t(room.length === 0 ? 'seating.roomForNone' : 'seating.roomForAll', { count: n })}
+      </p>
+      {room.length > 0 && (
+        <ul className="st-rows is-dense">
+          {room.map((one) => (
+            <li key={one.id}>
+              <button
+                type="button"
+                className="st-party"
+                onClick={() => onMove({ kind: 'table', one })}
+              >
+                <ShapeTile glyph={one.shape === 'rectangular' ? 'rect' : one.shape} />
+                <span className="st-row-words">
+                  <span className="st-row-name">{one.name}</span>
+                  <span className="st-row-line">
+                    {t('seating.freeLine', {
+                      section: sectionOf(plan, one)?.name ?? t('seating.noSection'),
+                      n: usableSeats(one) - takenAt(plan, one.id),
+                    })}
+                  </span>
                 </span>
-              </span>
-            </button>
-          </li>
-        ))}
-      </ul>
+              </button>
+            </li>
+          ))}
+        </ul>
+      )}
     </div>
   );
 }

@@ -103,6 +103,7 @@ import {
   ChairPanel,
   type ChairTip,
   ChairTipDrawing,
+  FreeTag,
   TableDrawing,
   TablePanel,
 } from './SeatingTables.tsx';
@@ -187,6 +188,7 @@ import {
   sectionOf,
   turned,
 } from './seatingDraw.ts';
+import { freeTags, freeTagWords } from './seatingFreeTags.ts';
 import { lengthField, lengthWords, tableSizeWords } from './seatingUnits.ts';
 import '../../../components/SettingsParts.css';
 import './seating.css';
@@ -485,6 +487,50 @@ function LoadingRoom({ label }: { label: string }) {
   );
 }
 
+/** Where the bar floating over the room covers it, in the room's own pixels, so a chair's label can keep clear of it (sc-5030). */
+function useCover(): [(node: HTMLDivElement | null) => void, FloorBox | null] {
+  const [node, setNode] = useState<HTMLDivElement | null>(null);
+  const [cover, setCover] = useState<FloorBox | null>(null);
+
+  useLayoutEffect(() => {
+    if (node == null) return;
+    const measure = () => {
+      const room = node.parentElement?.getBoundingClientRect();
+      const box = node.getBoundingClientRect();
+      const next =
+        room == null || box.height === 0
+          ? null
+          : {
+              x0: box.left - room.left,
+              y0: box.top - room.top,
+              x1: box.right - room.left,
+              y1: box.bottom - room.top,
+            };
+
+      setCover((now) =>
+        now != null &&
+        next != null &&
+        now.x0 === next.x0 &&
+        now.y0 === next.y0 &&
+        now.x1 === next.x1 &&
+        now.y1 === next.y1
+          ? now
+          : next,
+      );
+    };
+
+    measure();
+    if (typeof ResizeObserver === 'undefined') return;
+    const watch = new ResizeObserver(measure);
+
+    watch.observe(node);
+    if (node.parentElement != null) watch.observe(node.parentElement);
+    return () => watch.disconnect();
+  }, [node]);
+
+  return [setNode, cover];
+}
+
 function useCanvasSize(): [(node: HTMLDivElement | null) => void, { w: number; h: number }] {
   const [size, setSize] = useState({ w: 718, h: 719 });
   const observer = useRef<ResizeObserver | null>(null);
@@ -651,6 +697,7 @@ function Plan({
     size,
   );
   const canvasNode = useRef<HTMLDivElement | null>(null);
+  const [placeFloat, cover] = useCover();
   const press = useRef<{
     from: [number, number];
     moved: boolean;
@@ -691,12 +738,15 @@ function Plan({
   const [cardSection, setCardSection] = useState<string | null>(null);
   const [tray, setTray] = useState<TrayFilter>({ unsure: false, search: '', groups: [] });
   const party = plan == null || readOnly ? null : pickedParty(plan, pickedGuest);
+  const dropChoice = () => {
+    choiceFrom.current = null;
+    setChoice(null);
+  };
   const closeChoice = () => {
     const back = choiceFrom.current;
     const at = choice == null ? null : `.st-room [${choice.attribute}="${choice.id}"]`;
 
-    choiceFrom.current = null;
-    setChoice(null);
+    dropChoice();
     focusWhenFree(() =>
       back instanceof SVGElement && back.closest('.st-room') != null
         ? back
@@ -1424,8 +1474,18 @@ function Plan({
           count: others,
           table: place,
         });
+  /** A chair stops being a target once the pick drops, so focus seated from it goes back to its table, not to the page's start. */
+  const focusAfterSeat = (item: FloorItem, from: Element | null) => {
+    if (!(from instanceof SVGElement) || from.closest('.st-room') == null) return;
+    const at = `.st-room [${itemAttribute(item.kind) ?? 'data-table'}="${item.one.id}"]`;
+
+    focusWhenFree(() => (from.isConnected ? from : document.querySelector<SVGElement>(at)));
+  };
   const seatAt = (item: FloorItem, seat: number | null = null, justGuest = false): void => {
     if (party == null || plan == null) return;
+    const from = (choice == null ? null : choiceFrom.current) ?? document.activeElement;
+
+    choiceFrom.current = null;
     const lead = party.lead;
     const name = lead.fullName ?? '';
     const place = itemName(t, item);
@@ -1459,7 +1519,7 @@ function Plan({
         go: {
           ...go,
           run: () => {
-            setChoice(null);
+            dropChoice();
             go.run();
           },
         },
@@ -1481,6 +1541,7 @@ function Plan({
               onSeating(moved.seating);
               setPickedGuest(null);
               stepDone(seatedWords(name, 0, false, place), () => undoMoves(moved.moves));
+              focusAfterSeat(item, from);
             },
             () => refuseStep(t('seating.race', { name })),
           ),
@@ -1488,7 +1549,7 @@ function Plan({
       return;
     }
     setBar(null);
-    setChoice(null);
+    dropChoice();
     api.seatGuest(event.id, lead.id, { kind, id: item.one.id }, { seat, justGuest }).then(
       (moved) => {
         onSeating(moved.seating);
@@ -1497,6 +1558,7 @@ function Plan({
 
         setBar({ tone: 'undo', words, undo: () => undoMoves(moved.moves), lit: item.one.id });
         setHeard(words);
+        focusAfterSeat(item, from);
       },
       (error: unknown) => {
         if (!(error instanceof ApiError)) refuseStep(t('seating.notSaved'));
@@ -1796,7 +1858,7 @@ function Plan({
 
     if (arrow != null && party != null) {
       event.preventDefault();
-      const order = inReadingOrder(floorItems(plan).filter((one) => one.kind === 'table'));
+      const order = inReadingOrder(floorItems(plan));
       const back = arrow[0] + arrow[1] < 0;
       const at = order.findIndex((one) => one.one.id === id);
       const next =
@@ -1805,7 +1867,9 @@ function Plan({
           : order[(at + (back ? -1 : 1) + order.length) % order.length];
 
       if (next != null)
-        document.querySelector<SVGElement>(`[data-table="${next.one.id}"]`)?.focus();
+        document
+          .querySelector<SVGElement>(`.st-room [${itemAttribute(next.kind)}="${next.one.id}"]`)
+          ?.focus();
       return;
     }
     if (arrow != null) {
@@ -2159,7 +2223,7 @@ function Plan({
     const empty = plan.counts.tables + plan.counts.rows + plan.counts.singleSeats === 0;
     const drawn = shown ?? plan;
     const handled =
-      !readOnly && shownPanel?.kind === 'table' && several.length < 2
+      !readOnly && tab === 'arrange' && shownPanel?.kind === 'table' && several.length < 2
         ? (drawn.tables.find((one) => one.id === shownPanel.id) ?? null)
         : null;
     const tipped = tip == null ? null : itemOf(tip.id, drawn);
@@ -2229,8 +2293,8 @@ function Plan({
             <p>{t('seating.firstItem')}</p>
           </div>
         ) : (
-          <div className="st-float st-under-views">
-            {!readOnly && !empty && placing == null && (
+          <div className="st-float st-under-views" ref={placeFloat}>
+            {!readOnly && !empty && placing == null && party == null && (
               <ChooseBar
                 plan={plan}
                 adding={adding}
@@ -2486,8 +2550,12 @@ function Plan({
               onDown={(event, handle) => onHandleDown(event, handled, handle)}
             />
           )}
+          {party != null &&
+            freeTags(drawn, floorItems(drawn), s, ox, oy, (n) => freeTagWords(t, n)).map((tag) => (
+              <FreeTag key={`free-${tag.id}`} x={tag.x} y={tag.y} n={tag.n} />
+            ))}
           {party != null && chairTip?.pick === party.lead.id && s >= CHAIRS_FROM_SCALE && (
-            <ChairTipDrawing tip={chairTip.tip} />
+            <ChairTipDrawing tip={chairTip.tip} cover={cover} />
           )}
           {tipped != null && tip != null && (
             <Tip
@@ -2744,7 +2812,7 @@ function Plan({
               <ViewSwitch
                 view={seatingView}
                 onView={(view) => {
-                  setChoice(null);
+                  dropChoice();
                   setSeatingView(view);
                 }}
               />

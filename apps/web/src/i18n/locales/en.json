@@ -3046,6 +3046,8 @@
     "rename": "Rename",
     "roomForAll_one": "Tables with a free seat for them.",
     "roomForAll_other": "Tables with room for all {{count, number}}.",
+    "roomForNone_one": "No other table has a free seat for them.",
+    "roomForNone_other": "No other table has room for all {{count, number}}. Move them one at a time.",
     "freeLine": "{{section}} · {{n, number}} free",
     "emptyTable": "Nobody here yet. Pick a guest in Seat, then this table.",
     "floorPlan": "Floor plan",

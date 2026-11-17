@@ -5354,6 +5354,23 @@ describe('A table’s guests in Seat, and the chairs in their states (sc-4013)',
     expect(within(pop).getByText('Tables with a free seat for them.')).toBeDefined();
   });
 
+  it('says no other table has room in Move everyone to…, with no list under it', async () => {
+    signedIn();
+    await onSeating({
+      'GET /api/events/ev_1/seating-plan': () => seating(withGuests(AT_T1, table(), T3)),
+    });
+
+    fireEvent.click(await screen.findByRole('tab', { name: 'Seat' }));
+    await chooseTable('Table 1, round, 2 of 10 seats taken');
+    fireEvent.click(screen.getByRole('button', { name: 'Move everyone to…' }));
+    const pop = screen.getByRole('dialog', { name: 'Move everyone to…' });
+
+    expect(
+      within(pop).getByText('No other table has room for all 2. Move them one at a time.'),
+    ).toBeDefined();
+    expect(within(pop).queryByRole('list')).toBeNull();
+  });
+
   it('picks a seated guest from their chair in Seat, and moves just them to the next table', async () => {
     signedIn();
     const sent = await onSeating({
@@ -6115,6 +6132,161 @@ describe('Seating on the Floor plan (sc-5030)', () => {
 
     press('Zoom out', 2);
     expect(document.querySelectorAll('.st-room [data-table] [tabindex="0"]')).toHaveLength(0);
+  });
+
+  it('makes no target of a held or an unusable chair, so a click there seats at the table', async () => {
+    signedIn();
+    const held = guest({
+      id: 'g_sofia2',
+      fullName: null,
+      leadId: 'g_sofia',
+      position: 3,
+      seat: { kind: 'table', id: 't1', seat: 2 },
+    });
+    const sent = await onSeating({
+      'GET /api/events/ev_1/seating-plan': () =>
+        seating({
+          ...withGuests([guest(), SEATED, held], table(), T2),
+          rows: [row({ seats: 4, unusableSeats: [2] })],
+        }),
+      'POST /api/events/ev_1/seating-plan/guests/seat': () => seatedAt(3),
+    });
+
+    fireEvent.click(await screen.findByRole('tab', { name: 'Seat' }));
+    fireEvent.click(screen.getByRole('button', { name: /Ada Obi/ }));
+    press('Zoom in', 3);
+    expect(percent()).toBe('150%');
+    expect(screen.queryByRole('button', { name: /^Table 1, Seat 2,/ })).toBeNull();
+    expect(screen.queryByRole('button', { name: /^Table 2, Seat 1,/ })).toBeNull();
+    expect(screen.queryByRole('button', { name: /^Row A, seat 2,/ })).toBeNull();
+    expect(screen.getByRole('button', { name: 'Table 1, Seat 3, Empty' })).toBeDefined();
+    expect(screen.getByRole('button', { name: /^Row A, seat 3,/ })).toBeDefined();
+
+    fireEvent.click(document.querySelectorAll('[data-table="t1"] .st-chair')[1]!);
+    await screen.findAllByText('Ada Obi is at Table 1.');
+    expect(seatSent(sent)).toMatchObject({ placeId: 't1', seat: null });
+  });
+
+  it('keeps focus on the table after Enter on one of its chairs seats the guest', async () => {
+    signedIn();
+    await pickAda();
+
+    const t1 = screen.getByRole('button', { name: /^Table 1, (?!Seat)/ });
+    const chair = screen.getByRole('button', { name: 'Table 1, Seat 3, Empty' });
+
+    chair.focus();
+    fireEvent.keyDown(chair, { key: 'Enter' });
+    await screen.findAllByText('Ada Obi is at Table 1.');
+    await waitFor(() => expect(document.activeElement).toBe(t1));
+  });
+
+  it('keeps focus on the table it seats at after a Swap with from a chair', async () => {
+    signedIn();
+    const bea = guest({ id: 'g_bea', fullName: 'Bea Lane', position: 2 });
+    const swapped = guest({ seat: { kind: 'table', id: 't1', seat: 1 } });
+    const sofiaOut = { ...SEATED, seat: null };
+    const atT2 = { ...bea, seat: { kind: 'table', id: 't2', seat: 2 } };
+    const after = [swapped, sofiaOut, bea];
+
+    await onSeating({
+      'GET /api/events/ev_1/seating-plan': () =>
+        seating(withGuests([guest(), SEATED, bea], table(), T2)),
+      'POST /api/events/ev_1/seating-plan/guests/swap': () =>
+        moved(withGuests(after, table(), T2), [
+          { guestId: 'g_ada', from: null, to: { kind: 'table', id: 't1', seat: 1 } },
+          { guestId: 'g_sofia', from: { kind: 'table', id: 't1', seat: 1 }, to: null },
+        ]),
+      'POST /api/events/ev_1/seating-plan/guests/seat': () =>
+        moved(withGuests([swapped, sofiaOut, atT2], table(), T2), [
+          { guestId: 'g_bea', from: null, to: { kind: 'table', id: 't2', seat: 2 } },
+        ]),
+    });
+
+    fireEvent.click(await screen.findByRole('tab', { name: 'Seat' }));
+    fireEvent.click(screen.getByRole('button', { name: /Ada Obi/ }));
+    press('Zoom in', 3);
+    const sofia = screen.getByRole('button', {
+      name: 'Table 1, Seat 1, Sofia Rossi, Not sure yet',
+    });
+
+    sofia.focus();
+    fireEvent.keyDown(sofia, { key: 'Enter' });
+    fireEvent.click(await screen.findByRole('button', { name: 'Swap with Sofia Rossi' }));
+    await screen.findAllByText('Ada Obi is at Table 1.');
+
+    fireEvent.click(screen.getByRole('button', { name: /Bea Lane/ }));
+    const t2 = screen.getByRole('button', { name: /^Table 2, (?!Seat)/ });
+
+    t2.focus();
+    fireEvent.keyDown(t2, { key: 'Enter' });
+    await screen.findAllByText('Bea Lane is at Table 2.');
+    await waitFor(() => expect(document.activeElement).toBe(t2));
+  });
+
+  it('steps the arrows through tables, rows and single seats in reading order, and Enter on a row seats there', async () => {
+    signedIn();
+    const sent = await onSeating({
+      'GET /api/events/ev_1/seating-plan': () =>
+        seating({
+          ...withRowsAndSeats([row()], [single()]),
+          tables: [table()],
+          guests: [guest()],
+        }),
+      'POST /api/events/ev_1/seating-plan/guests/seat': () =>
+        moved(
+          {
+            ...withRowsAndSeats([row()], [single()]),
+            tables: [table()],
+            guests: [guest({ seat: { kind: 'row', id: 'r1', seat: 1 } })],
+          },
+          [{ guestId: 'g_ada', from: null, to: { kind: 'row', id: 'r1', seat: 1 } }],
+        ),
+    });
+
+    fireEvent.click(await screen.findByRole('tab', { name: 'Seat' }));
+    fireEvent.click(screen.getByRole('button', { name: /Ada Obi/ }));
+    const one = (at: string) => document.querySelector<SVGElement>(`.st-room ${at}`)!;
+
+    one('[data-seat="s1"]').focus();
+    fireEvent.keyDown(one('[data-seat="s1"]'), { key: 'ArrowRight' });
+    expect(document.activeElement).toBe(one('[data-row="r1"]'));
+    fireEvent.keyDown(one('[data-row="r1"]'), { key: 'ArrowDown' });
+    expect(document.activeElement).toBe(one('[data-table="t1"]'));
+    fireEvent.keyDown(one('[data-table="t1"]'), { key: 'ArrowRight' });
+    expect(document.activeElement).toBe(one('[data-seat="s1"]'));
+    fireEvent.keyDown(one('[data-seat="s1"]'), { key: 'ArrowLeft' });
+    expect(document.activeElement).toBe(one('[data-table="t1"]'));
+    fireEvent.keyDown(one('[data-table="t1"]'), { key: 'ArrowUp' });
+    expect(document.activeElement).toBe(one('[data-row="r1"]'));
+
+    fireEvent.keyDown(one('[data-row="r1"]'), { key: 'Enter' });
+    await screen.findAllByText('Ada Obi is at Row A.');
+    expect(seatSent(sent)).toMatchObject({ guestId: 'g_ada', placeId: 'r1', seat: null });
+  });
+
+  it('takes the choose bar down while a guest is picked, as the demo does', async () => {
+    signedIn();
+    await pickAda();
+
+    expect(screen.queryByRole('group', { name: /choose/i })).toBeNull();
+    expect(screen.queryByRole('button', { name: 'Select all' })).toBeNull();
+    fireEvent.keyDown(window, { key: 'Escape' });
+    expect(screen.getByRole('button', { name: 'Select all' })).toBeDefined();
+  });
+
+  it('draws no resize handles and no legend for a table chosen in Seat', async () => {
+    signedIn();
+    await onSeating({
+      'GET /api/events/ev_1/seating-plan': () => seating(withGuests([SEATED], table())),
+    });
+
+    fireEvent.click(await screen.findByRole('tab', { name: 'Seat' }));
+    await chooseTable('Table 1, round, 1 of 10 seats taken');
+    expect(document.querySelectorAll('.st-handles')).toHaveLength(0);
+    expect(screen.queryByRole('list', { name: 'What the seats show' })).toBeNull();
+
+    fireEvent.click(screen.getByRole('tab', { name: 'Arrange' }));
+    expect(document.querySelectorAll('.st-handles')).toHaveLength(1);
   });
 
   it('picks nobody and outlines nothing without seating.manage', async () => {
