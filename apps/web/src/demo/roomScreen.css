@@ -46,7 +46,7 @@
   margin: 0;
 }
 
-.rs-name {
+.rs-event-name {
   margin: 0;
   color: var(--colorInkOnDarkSecondary);
   font-size: var(--rsMid);

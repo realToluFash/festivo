@@ -58,8 +58,7 @@
   letter-spacing: var(--typeTitleDialogTracking);
 }
 
-.rout-title:focus-visible,
-.hig-card-title:focus-visible {
+.rout-title:focus-visible {
   outline: 2px solid var(--colorAccent);
   outline-offset: 2px;
 }
@@ -222,7 +221,7 @@
   font: var(--typeSmallStrong);
 }
 
-.rout-now .hig-glyph {
+.rout-now > svg {
   color: var(--colorAccentText);
 }
 
@@ -242,7 +241,7 @@
   gap: var(--spaceXs);
 }
 
-.rout-not-for .hig-glyph,
+.rout-not-for > svg,
 .rout-not-for strong {
   color: var(--colorBrokenText);
 }
@@ -260,7 +259,7 @@
   padding: 0;
 }
 
-.rout-kitchen-row > .hig-alert-icon {
+.rout-kitchen-row > .rout-kitchen-icon {
   margin: var(--spaceMd) 0;
 }
 
@@ -279,23 +278,8 @@
   cursor: pointer;
 }
 
-.rout-kitchen-line:hover .hig-title {
+.rout-kitchen-line:hover .rout-kitchen-title {
   text-decoration: underline;
-}
-
-.hig-count[data-kind='choice'] {
-  border: var(--borderControl);
-  background: var(--colorCard);
-}
-
-.hig-bar-part[data-kind='choice'] {
-  background: var(--colorInkSecondary);
-}
-
-.sr-ring-seat[data-word='choice'] {
-  fill: var(--colorCard);
-  stroke: var(--colorInk);
-  stroke-dasharray: 4 3;
 }
 
 @media (prefers-reduced-motion: reduce) {
