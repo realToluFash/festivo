@@ -11,6 +11,8 @@ import {
   type SeatingRow,
   type SeatingTable,
   type SeatingWithChosen,
+  type SeatingMove,
+  type SeatingPlaceKind,
   type SectionColour,
   type SectionContents,
   type SingleSeat,
@@ -108,6 +110,8 @@ import {
   withPlacements,
 } from './seatingItems.ts';
 import { fitOf, intoView, useCamera } from './seatingCamera.ts';
+import { type TrayFilter, pickedParty, seatedAt } from './seatingGuests.ts';
+import { SeatTray } from './SeatingSeat.tsx';
 import {
   type Fold,
   type GridDraft,
@@ -459,6 +463,14 @@ function Plan({
   const [fold, setFold] = useState<Fold | null>(null);
   const [grid, setGrid] = useState<GridDraft>({ columns: '3', gap: '1' });
   const [bar, setBar] = useState<StepBar | null>(null);
+  const [tab, setTab] = useState<'arrange' | 'seat'>('arrange');
+  const [pickedGuest, setPickedGuest] = useState<string | null>(null);
+  const [tray, setTray] = useState<TrayFilter>({ unsure: false, search: '', groups: [] });
+  const party = plan == null || readOnly ? null : pickedParty(plan, pickedGuest);
+  const dropPick = () => {
+    setPickedGuest(null);
+    setBar((was) => (was?.tone === 'undo' ? was : null));
+  };
   const [boxDrawn, setBoxDrawn] = useState<FloorBox | null>(null);
   const boxing = useRef<{
     from: [number, number];
@@ -684,7 +696,10 @@ function Plan({
       return;
     }
     if (event.key !== 'Escape') return;
-    if (placing != null) {
+    if (pickedGuest != null) {
+      event.preventDefault();
+      dropPick();
+    } else if (placing != null) {
       event.preventDefault();
       setPlacing(null);
     } else if (kindMenu) {
@@ -955,6 +970,100 @@ function Plan({
 
     setBar(null);
     back?.();
+  };
+
+  const pickGuest = (id: string | null) => {
+    setPickedGuest(id);
+    setBar(null);
+  };
+  const undoMoves = (moves: SeatingMove[]) => {
+    api.undoSeating(event.id, moves).then(
+      (moved) => {
+        onSeating(moved.seating);
+        undone();
+      },
+      (error: unknown) =>
+        refuseStep(
+          error instanceof ApiError && error.is('seating_undo_stale')
+            ? t('seating.undoRefused')
+            : t('seating.notSaved'),
+        ),
+    );
+  };
+  const seatedWords = (name: string, others: number, apart: boolean, place: string) =>
+    others === 0
+      ? t('seating.seatedOne', { name, table: place })
+      : t(apart ? 'seating.seatedApart' : 'seating.seatedParty', {
+          name,
+          count: others,
+          table: place,
+        });
+  const seatAt = (item: FloorItem, seat: number | null = null, justGuest = false): void => {
+    if (party == null || plan == null) return;
+    const lead = party.lead;
+    const name = lead.fullName ?? '';
+    const place = itemName(t, item);
+    const kind: SeatingPlaceKind = item.kind;
+    const there = seat == null ? null : seatedAt(plan, item.one.id, seat);
+
+    if (there != null && there.id !== lead.id) {
+      const theirs = there.fullName ?? '';
+
+      setBar({
+        tone: 'pick',
+        words: t('seating.swapLine', { table: place, n: seat, name: theirs }),
+        acts: [
+          {
+            label: t('seating.swapWith', { name: theirs }),
+            run: () => {
+              setBar(null);
+              api.swapGuests(event.id, lead.id, there.id).then(
+                (moved) => {
+                  onSeating(moved.seating);
+                  setPickedGuest(null);
+                  stepDone(seatedWords(name, 0, false, place), () => undoMoves(moved.moves));
+                },
+                () => refuseStep(t('seating.race', { name })),
+              );
+            },
+          },
+          { label: t('seating.cancel'), run: () => setBar(null) },
+        ],
+      });
+      return;
+    }
+    setBar(null);
+    api.seatGuest(event.id, lead.id, { kind, id: item.one.id }, { seat, justGuest }).then(
+      (moved) => {
+        onSeating(moved.seating);
+        setPickedGuest(null);
+        const words = seatedWords(name, moved.moves.length - 1, moved.apart, place);
+
+        setBar({ tone: 'undo', words, undo: () => undoMoves(moved.moves) });
+        setHeard(words);
+      },
+      (error: unknown) => {
+        if (!(error instanceof ApiError)) refuseStep(t('seating.notSaved'));
+        else if (error.is('seating_table_full'))
+          refuseStep(t('seating.tableFull', { table: place }));
+        else if (error.is('seating_table_short'))
+          setBar({
+            tone: 'amber',
+            words: t('seating.tableShort', {
+              table: place,
+              count: error.problem.free ?? 0,
+              name,
+              party: error.problem.party ?? party.companions.length + 1,
+            }),
+            acts: [
+              { label: t('seating.cancel'), run: () => setBar(null) },
+              { label: t('seating.seatJust', { name }), run: () => seatAt(item, seat, true) },
+            ],
+          });
+        else if (error.is('seating_seat_taken')) refuseStep(t('seating.race', { name }));
+        else refuseStep(t('seating.notSaved'));
+      },
+    );
   };
 
   const staleStep = (error: ApiError) => {
@@ -1295,7 +1404,7 @@ function Plan({
 
   const onItemDown = (event: ReactPointerEvent<Element>, item: FloorItem) => {
     if (joinsBox(event)) return;
-    if (readOnly || placing != null || event.button !== 0) return;
+    if (readOnly || placing != null || pickedGuest != null || event.button !== 0) return;
     dragged.current = false;
     const id = item.one.id;
     const ids = chosenIds.includes(id) && !event.shiftKey && !adding ? chosenIds : [id];
@@ -1559,6 +1668,22 @@ function Plan({
         ? outlinesOf(drawn, chosenItems, gridOf(chosenItems, columns, gap).moved)
         : [];
 
+    const pickBar: StepBar | null =
+      party == null
+        ? null
+        : {
+            tone: 'pick',
+            words:
+              party.companions.length === 0
+                ? t('seating.pickOne', { name: party.lead.fullName ?? '' })
+                : t('seating.pickParty', {
+                    name: party.lead.fullName ?? '',
+                    count: party.companions.length,
+                  }),
+            acts: [{ label: t('seating.cancel'), run: dropPick }],
+          };
+    const shownBar = bar ?? pickBar;
+
     canvas = (
       <>
         {empty && !readOnly && placing == null && bar == null ? (
@@ -1581,7 +1706,7 @@ function Plan({
                 onKindMenu={setKindMenu}
               />
             )}
-            {bar != null && <StepLine bar={bar} onUndo={undo} />}
+            {shownBar != null && <StepLine bar={shownBar} onUndo={undo} />}
           </div>
         )}
         <svg
@@ -1678,8 +1803,12 @@ function Plan({
                     shownPanel?.kind === 'chair' && shownPanel.id === id ? shownPanel.seat : null
                   }
                   outside={outlined}
-                  onChoose={() => open({ kind: 'table', id }, true)}
-                  onChair={(seat) => open({ kind: 'chair', id, seat })}
+                  onChoose={() =>
+                    party != null ? seatAt(item) : open({ kind: 'table', id }, true)
+                  }
+                  onChair={(seat) =>
+                    party != null ? seatAt(item, seat) : open({ kind: 'chair', id, seat })
+                  }
                 />
               ) : item.kind === 'row' ? (
                 <RowDrawing
@@ -1695,8 +1824,10 @@ function Plan({
                       : null
                   }
                   outside={outlined}
-                  onChoose={() => open({ kind: 'row', id }, true)}
-                  onChair={(seat) => open({ kind: 'row', id, seat })}
+                  onChoose={() => (party != null ? seatAt(item) : open({ kind: 'row', id }, true))}
+                  onChair={(seat) =>
+                    party != null ? seatAt(item, seat) : open({ kind: 'row', id, seat })
+                  }
                 />
               ) : (
                 <SingleSeatDrawing
@@ -1707,7 +1838,9 @@ function Plan({
                   oy={oy}
                   chosen={lit}
                   outside={outlined}
-                  onChoose={() => open({ kind: 'seat', id }, true)}
+                  onChoose={() =>
+                    party != null ? seatAt(item, 1) : open({ kind: 'seat', id }, true)
+                  }
                 />
               );
 
@@ -1992,7 +2125,48 @@ function Plan({
           {canvas}
         </div>
         <aside className="st-panel" aria-label={t('seating.panel')}>
-          <div className="st-panel-body">{body}</div>
+          {plan != null && shownPanel?.kind !== 'start' && (
+            <div className="st-tabs" role="tablist" aria-label={t('seating.panel')}>
+              {(['arrange', 'seat'] as const).map((one) => (
+                <button
+                  key={one}
+                  type="button"
+                  role="tab"
+                  id={`st-tab-${one}`}
+                  aria-selected={tab === one}
+                  aria-controls="st-panel-body"
+                  className={tab === one ? 'st-tab is-on' : 'st-tab'}
+                  onClick={() => {
+                    setTab(one);
+                    if (one === 'arrange') dropPick();
+                  }}
+                >
+                  {t(one === 'arrange' ? 'seating.arrangeTab' : 'seating.seatTab')}
+                </button>
+              ))}
+            </div>
+          )}
+          <div
+            className="st-panel-body"
+            id="st-panel-body"
+            role={plan != null && shownPanel?.kind !== 'start' ? 'tabpanel' : undefined}
+            aria-labelledby={
+              plan != null && shownPanel?.kind !== 'start' ? `st-tab-${tab}` : undefined
+            }
+          >
+            {tab === 'seat' && plan != null && shownPanel?.kind !== 'start' ? (
+              <SeatTray
+                plan={plan}
+                filter={tray}
+                onFilter={setTray}
+                picked={pickedGuest}
+                onPick={pickGuest}
+                readOnly={readOnly}
+              />
+            ) : (
+              body
+            )}
+          </div>
         </aside>
       </div>
       <div ref={setHost} className="desk-layers" />
