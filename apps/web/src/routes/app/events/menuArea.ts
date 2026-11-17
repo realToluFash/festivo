@@ -3,7 +3,7 @@ import {
   MENU_COURSE_MAXIMUM,
   MENU_COURSE_NAME_MAXIMUM,
 } from '@soirely/api-client';
-import { visibleLength } from '@soirely/domain';
+import { courseReady, visibleLength } from '@soirely/domain';
 
 /** The event's Menu page (sc-3902): what it checks before sending, and what it counts. */
 
@@ -49,7 +49,7 @@ export function servedTime(typed: string): string | null {
 export const canAddCourse = (courses: readonly MenuCourse[]): boolean =>
   courses.length < MENU_COURSE_MAXIMUM;
 
-export const isReady = (course: MenuCourse): boolean => course.dishes.length > 0;
+export const isReady = (course: MenuCourse): boolean => courseReady(course);
 
 export const coursePicked = (course: MenuCourse): boolean =>
   course.dishes.some((dish) => dish.picked);

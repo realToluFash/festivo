@@ -1,16 +1,19 @@
 import {
+  CHOICES_PER_DISH_MAXIMUM,
   type Dish,
   type DishDiet,
   MENU_COURSE_NAME_MAXIMUM,
   type MenuAnswer,
   type MenuCourse,
   type MenuDish,
+  type MenuDishChoice,
   VARIANTS_PER_DISH_MAXIMUM,
 } from '@soirely/api-client';
 import {
   type DishForm,
   type DishProblems,
   type MoneyLanguage,
+  guestsAnswerItsChoices,
   guestsPickTheWay,
   shownDishes,
 } from '@soirely/domain';
@@ -30,6 +33,7 @@ import {
   VariantInsets,
 } from '../menu/VariantParts.tsx';
 import { shownVariants } from '../menu/variants.ts';
+import { AddChoiceButton, type ChoiceAsk, ChoiceInsets, NotOffered } from './ChoiceParts.tsx';
 import { describedBy } from './eventFieldOrder.ts';
 import {
   type CourseForm,
@@ -53,10 +57,21 @@ export interface VariantHandlers {
   onConfirm: (dish: MenuDish, variant: ShownVariant) => void;
 }
 
+export interface ChoiceHandlers {
+  ask: ChoiceAsk | null;
+  addRefused: { dishId: string; outcome: 'limit' | 'picked' } | null;
+  lit: string | null;
+  onAdd: (dish: MenuDish) => void;
+  onEdit: (dish: MenuDish, choice: MenuDishChoice) => void;
+  onRemove: (dish: MenuDish, choice: MenuDishChoice) => void;
+  onKeep: (choice: MenuDishChoice) => void;
+  onConfirm: (dish: MenuDish, choice: MenuDishChoice) => void;
+}
+
 export interface Told {
   words: string;
-  /** A second line under it, beside the amber ring: who picked a dish and has an allergen just added. */
-  more?: string | null;
+  /** Lines under it, beside the amber ring: who picked a dish or an option and has an allergen just added. */
+  more?: string | readonly string[] | null;
   tone?: 'done' | 'fail';
 }
 
@@ -70,14 +85,14 @@ export function Said({ said }: { said: Told | null }) {
             <Glyph name={said.tone === 'fail' ? 'alert' : 'tick'} size={17} weight={2.6} />
             {said.words}
           </p>
-          {said.more != null && (
-            <p className="mc-said-more">
+          {(typeof said.more === 'string' ? [said.more] : (said.more ?? [])).map((line) => (
+            <p key={line} className="mc-said-more">
               <span className="mc-ring is-warn" aria-hidden="true">
                 !
               </span>
-              {said.more}
+              {line}
             </p>
-          )}
+          ))}
         </>
       )}
     </div>
@@ -192,6 +207,7 @@ export function CourseCard({
   onAskRemove,
   onRemove,
   variants,
+  choices,
 }: {
   course: MenuCourse;
   index: number;
@@ -218,13 +234,19 @@ export function CourseCard({
   onAskRemove: (dish: MenuDish) => void;
   onRemove: (dish: MenuDish) => void;
   variants: VariantHandlers;
+  choices: ChoiceHandlers;
 }) {
   const { t, i18n } = useTranslation();
   const ready = isReady(course);
+  const only = course.dishes[0]?.name ?? '';
   const pickTheWay =
-    course.answer === 'same' && guestsPickTheWay(course.dishes)
-      ? t('dishVariants.guestsPickTheWay', { dish: course.dishes[0]?.name ?? '' })
-      : null;
+    course.answer !== 'same'
+      ? null
+      : guestsPickTheWay(course.dishes)
+        ? t('dishVariants.guestsPickTheWay', { dish: only })
+        : guestsAnswerItsChoices(course.dishes)
+          ? t('dishChoices.answerChoices', { dish: only })
+          : null;
   const sameOk = canSame(course);
   const name = course.name;
   const line =
@@ -270,7 +292,11 @@ export function CourseCard({
             <span className={ready ? 'mc-ring is-ready' : 'mc-ring is-empty'} aria-hidden="true">
               {ready && <Glyph name="tick" size={12} weight={3} />}
             </span>
-            {ready ? t('eventMenu.readyTag') : t('eventMenu.emptyTag')}
+            {ready
+              ? t('eventMenu.readyTag')
+              : course.dishes.length > 0
+                ? t('dishChoices.noFinishedDish')
+                : t('eventMenu.emptyTag')}
           </p>
         </div>
         {manage && (
@@ -362,6 +388,7 @@ export function CourseCard({
               onKeep={() => onKeep(`mc-remove-${dish.id}`)}
               onRemove={() => onRemove(dish)}
               variants={variants}
+              choices={choices}
             />
           ))}
         </ul>
@@ -462,6 +489,7 @@ function DishRow({
   onKeep,
   onRemove,
   variants,
+  choices,
 }: {
   dish: MenuDish;
   course: MenuCourse;
@@ -475,11 +503,14 @@ function DishRow({
   onKeep: () => void;
   onRemove: () => void;
   variants: VariantHandlers;
+  choices: ChoiceHandlers;
 }) {
   const { t } = useTranslation();
   const name = dish.name;
   const ways = dish.variants.length > 0;
+  const asks = dish.choices.length > 0;
   const addRefused = variants.addRefused?.dishId === dish.id ? variants.addRefused.outcome : null;
+  const choiceRefused = choices.addRefused?.dishId === dish.id ? choices.addRefused.outcome : null;
 
   return (
     <li className={lit ? 'mn-dish mc-dish is-lit' : 'mn-dish mc-dish'}>
@@ -488,9 +519,15 @@ function DishRow({
           <h3>
             {ways ? t('dishVariants.ways', { dish: name, count: dish.variants.length }) : name}
           </h3>
+          {!dish.offered && <NotOffered variants={dish.variants.length} />}
           {dish.description != null && <p className="mn-quiet">{dish.description}</p>}
           {!ways && <ContainsMark dish={dish} />}
           {!ways && <Tags dish={dish} />}
+          {asks && (
+            <p className="mn-quiet">
+              {ways ? t('dishChoices.plusVariantOptions') : t('dishChoices.plusOptions')}
+            </p>
+          )}
         </div>
         {manage && (
           <div className="lib-acts" role="group" aria-label={t('eventMenu.actionsFor', { name })}>
@@ -498,6 +535,11 @@ function DishRow({
               id={`mc-addv-${dish.id}`}
               dish={name}
               onClick={() => variants.onAdd(dish)}
+            />
+            <AddChoiceButton
+              id={`mc-addch-${dish.id}`}
+              dish={name}
+              onClick={() => choices.onAdd(dish)}
             />
             <HintButton
               id={`mc-edit-${dish.id}`}
@@ -530,6 +572,17 @@ function DishRow({
           ]}
         />
       )}
+      {choiceRefused != null && (
+        <RowLine
+          id={`mc-chrow-${dish.id}`}
+          words={[
+            choiceRefused === 'limit'
+              ? t('dishChoices.choicesLimit', { most: CHOICES_PER_DISH_MAXIMUM })
+              : t('dishChoices.dishPicked'),
+          ]}
+        />
+      )}
+      {ways && asks && <p className="ch-head">{t('dishChoices.variantsHead')}</p>}
       {ways && (
         <VariantInsets
           dish={name}
@@ -545,6 +598,18 @@ function DishRow({
           onRemove={(variant) => variants.onRemove(dish, variant)}
           onKeep={variants.onKeep}
           onConfirm={(variant) => variants.onConfirm(dish, variant)}
+        />
+      )}
+      {asks && (
+        <ChoiceInsets
+          dish={dish}
+          manage={manage}
+          asking={choices.ask}
+          lit={choices.lit}
+          onEdit={(choice) => choices.onEdit(dish, choice)}
+          onRemove={(choice) => choices.onRemove(dish, choice)}
+          onKeep={choices.onKeep}
+          onConfirm={(choice) => choices.onConfirm(dish, choice)}
         />
       )}
       {refused && <Refused words={t('eventMenu.dishPicked')} />}
