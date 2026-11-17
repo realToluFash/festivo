@@ -281,12 +281,23 @@ export function CheckInScreen({
         const row = (
           <Row
             title={p.name}
-            line={seat ?? line}
+            line={seat == null ? line : undefined}
             below={
               seat == null ? undefined : (
-                <Text size={14} weight="medium" accessible={false} style={styles.below}>
-                  {line}
-                </Text>
+                <>
+                  <Text
+                    size={14}
+                    weight="semibold"
+                    accessible={false}
+                    style={styles.seat}
+                    testID={`door.seat.${p.key}`}
+                  >
+                    {seat}
+                  </Text>
+                  <Text size={14} weight="medium" accessible={false} style={styles.below}>
+                    {line}
+                  </Text>
+                </>
               )
             }
             lead={
@@ -609,6 +620,7 @@ const styles = StyleSheet.create({
   grow: { flex: 1, minWidth: 0 },
   page: { flex: 1, backgroundColor: tokens.colorCard },
   secondary: { color: tokens.colorInkSecondary },
+  seat: { lineHeight: 14 * 1.4 },
   below: { color: tokens.colorInkSecondary, lineHeight: 14 * 1.4 },
   accent: { color: tokens.colorAccentText },
   figures: { fontVariant: ['tabular-nums'] },

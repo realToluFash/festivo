@@ -1,3 +1,5 @@
+import { say } from '../seating/SeatingWords.ts';
+
 /** sc-60684: the door names each person's own seat, in sc-4022's words, from the plan as it is now. */
 export type Seat =
   | { kind: 'table'; table: string; section: string | null }
@@ -14,12 +16,12 @@ export const seatingOf = (value: string | undefined): Seating =>
 
 /** The host's own names, never translated; a seat in no section drops " · {section}". */
 export function seatWords(seat: Seat): string {
-  const place =
-    seat.kind === 'table'
-      ? seat.table
-      : seat.kind === 'row'
-        ? `Row ${seat.row}, seat ${seat.n}`
-        : seat.seat;
+  if (seat.kind === 'row') {
+    return seat.section == null
+      ? `Row ${seat.row}, seat ${seat.n}`
+      : say.rowSeat(seat.row, seat.n, seat.section);
+  }
+  const place = seat.kind === 'table' ? seat.table : seat.seat;
   return seat.section == null ? place : `${place} · ${seat.section}`;
 }
 
