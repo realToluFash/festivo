@@ -524,8 +524,9 @@ function useCover(): [(node: HTMLDivElement | null) => void, FloorBox | null] {
     const watch = new ResizeObserver(measure);
 
     watch.observe(node);
+    if (node.parentElement != null) watch.observe(node.parentElement);
     return () => watch.disconnect();
-  });
+  }, [node]);
 
   return [setNode, cover];
 }
