@@ -145,11 +145,8 @@ function TableCard({
   const s = Math.min((w - 16) / (2 * e.x), 120 / (2 * e.y), 0.45);
   const sec = sectionOf(m, it.sec);
   const choices = choicesOn(m, it.id);
-  const reach = RING_STEP * choices.length;
   return (
-    <View
-      style={choices.length === 0 ? undefined : { margin: reach, marginTop: reach + PILL_H / 2 }}
-    >
+    <View style={styles.cardRoom}>
       <Pressable
         onPress={onPress}
         style={({ pressed }) => [styles.card, lit && styles.cardLit, pressed && styles.pressed]}
@@ -194,6 +191,7 @@ function TableCard({
 }
 
 const RING_STEP = 5;
+const RING_ROOM = RING_STEP * 3;
 const PILL_W = 30;
 const PILL_H = 22;
 const CARD_RADIUS = tokens.spaceXxl;
@@ -631,7 +629,8 @@ const styles = StyleSheet.create({
     borderColor: tokens.colorBorder,
   },
   chipOn: { backgroundColor: tokens.colorInk, borderColor: tokens.colorInk },
-  cards: { flexDirection: 'row', flexWrap: 'wrap', gap: tokens.spaceLg },
+  cards: { flexDirection: 'row', flexWrap: 'wrap' },
+  cardRoom: { margin: RING_ROOM, marginTop: RING_ROOM + PILL_H / 2 },
   card: {
     width: 212,
     padding: tokens.spaceLg,

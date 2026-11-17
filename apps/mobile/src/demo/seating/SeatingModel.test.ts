@@ -1301,7 +1301,7 @@ describe('a colleague’s choice on Tables and the List (sc-60717)', () => {
     const two = startOf('presenceTwoList', 'portrait');
     expect(accName(two, item(two, 't7'))).toMatch(/, chosen by Priya Shah and Ana Souza$/u);
     expect(accName(two, item(two, 't9'))).toMatch(
-      /, chosen by Julien Moreau, Tom Baker, and Ngozi Eze$/u,
+      /, chosen by Julien Moreau, Tom Baker and Ngozi Eze$/u,
     );
     const seat = startOf('presenceSeatList', 'landscape');
     expect(accName(seat, item(seat, 't9'))).toMatch(/, seat 2 chosen by Julien Moreau$/u);

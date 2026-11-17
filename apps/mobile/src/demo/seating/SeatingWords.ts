@@ -142,7 +142,6 @@ export const W = {
   loading: 'Loading the seating plan',
 } as const;
 
-const NAMES = new Intl.ListFormat('en', { type: 'conjunction', style: 'long' });
 const plural = (n: number, one: string, many: string) => `${n} ${n === 1 ? one : many}`;
 
 export const say = {
@@ -229,7 +228,8 @@ export const say = {
     `${name} has chosen this too. You can still change it. If you both save, the later change is refused and says why.`,
   chosenBy: (name: string) => `, chosen by ${name}`,
   seatChosenBy: (n: number, name: string) => `, seat ${n} chosen by ${name}`,
-  names: (names: readonly string[]) => NAMES.format(names),
+  names: (names: readonly string[]) =>
+    listFormat('en', { style: 'long', type: 'conjunction' }).format(names),
   left: (name: string) => `${name} left the plan.`,
   party: (lead: string, plus: number) => (plus > 0 ? `${lead} + ${plus}` : lead),
   guestOf: (name: string) => `Guest of ${name}`,
