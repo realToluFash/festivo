@@ -11,6 +11,7 @@ import { inNone, isFresh, useSwitcherStart, useWhere } from './switcher.ts';
 import {
   EVENTS,
   INVITES_NOT_SENT,
+  isNeedsState,
   keyOf,
   MOMENTS,
   type MomentName,
@@ -58,6 +59,8 @@ export function Today({ search = null }: { search?: SearchStart | null }) {
   const later = name === 'plan' && params.get('starts') === 'later';
   const rows = name === 'plan' && params.get('week') === 'rows';
   const long = isLong(params);
+  const rawNeeds = params.get('needs');
+  const needing = name === 'plan' && isNeedsState(rawNeeds) ? rawNeeds : undefined;
   const moment = useMemo(
     () =>
       renamed(
@@ -66,11 +69,12 @@ export function Today({ search = null }: { search?: SearchStart | null }) {
           first: asks ? VIEWERS.ana.name.split(' ')[0] : undefined,
           later,
           rows,
+          needing,
         }),
         EVENTS.ireti.name,
         long ? LONG_NAME : EVENTS.ireti.name,
       ),
-    [name, notSent, asks, later, rows, long],
+    [name, notSent, asks, later, rows, long, needing],
   );
   const [told, setTold] = useState<string | null>(null);
   const tell = useCallback<Tell>((words) => setTold(words), []);
@@ -128,7 +132,7 @@ export function Today({ search = null }: { search?: SearchStart | null }) {
                 ) : (
                   <div className="today-columns">
                     <div className="today-left">
-                      <NeedsYou moment={moment} tell={tell} />
+                      <NeedsYou moment={moment} />
                       <ThisWeek moment={moment} open={open} />
                     </div>
                     <div className="today-right">

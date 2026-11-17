@@ -1,13 +1,16 @@
 import { describe, expect, it } from 'vitest';
 
 import {
+  actionWords,
   addDays,
   dueWords,
+  headWords,
   INVITES_NOT_SENT,
   lanesOf,
   momentOf,
   railAt,
   repliesOf,
+  rowWords,
   sayIn,
   shown,
 } from './today.ts';
@@ -45,14 +48,15 @@ describe('Your events writes Events’ words for its days', () => {
 describe('a planning day', () => {
   const plan = momentOf('plan', us);
 
-  it('puts the late item first, and says how late', () => {
+  it('puts the overdue row first, and says it is overdue in words (sc-61015)', () => {
     expect(plan.needs?.map(({ due, late }) => [due, late])).toEqual([
-      ['3 days late', true],
+      ['3 days overdue', true],
       ['Due tomorrow', false],
-      ['Due Thu, Nov 5', false],
-      ['Replies close Fri, Nov 6', false],
+      ['Due tomorrow', false],
+      ['Due Fri, Nov 6', false],
+      ['Due Mon, Jan 4, 2027', false],
     ]);
-    expect(plan.lead).toBe('4 things need you.');
+    expect(plan.lead).toBe('5 things need you.');
     expect(plan.sub).toBe('The wedding starts on Thursday.');
   });
 
@@ -124,12 +128,6 @@ describe('the event day', () => {
       { words: '20 coming · 58% replied', percent: 58 },
       null,
     ]);
-    expect(plan.needs?.map(({ title }) => title)).toEqual([
-      'Chase 19 replies',
-      'Final numbers to the caterer',
-      'Seat the last 12 guests',
-      'Chase 22 replies',
-    ]);
     expect(day.events[0]?.ready).toEqual({ words: '87 of 99 arrived', percent: 87 });
     expect(day.now).toMatchObject({ arrived: 87, expected: 99 });
     expect(day.eyebrow).toBe('Friday, November 6');
@@ -152,17 +150,8 @@ describe('the planning day before the party’s invitations go out (?invites=non
     });
   });
 
-  it('asks for the invitations, late, where the party sent them asks to chase replies', () => {
-    expect(notSent.needs?.[0]).toMatchObject({
-      title: 'Send the invitations',
-      due: '3 days late',
-      late: true,
-      action: 'Send',
-    });
-    expect(momentOf('plan', us).needs?.[0]).toMatchObject({
-      title: 'Chase 19 replies',
-      action: 'Chase',
-    });
+  it('changes only the party’s line: Needs you is the timeline’s, whoever has been invited', () => {
+    expect(notSent.needs).toEqual(momentOf('plan', us).needs);
   });
 });
 
@@ -283,10 +272,10 @@ describe('events sharing days take rows (?week=rows, sc-37302)', () => {
   });
 
   it('gives the rows state a Needs you its own dates agree with', () => {
-    expect(rows.needs?.map(({ event, title, due }) => [event, title, due])).toEqual([
-      ['party', 'Chase 19 replies', '3 days late'],
-      ['wed', 'Final numbers to the caterer', 'Due today'],
-      ['ireti', 'Chase 22 replies', 'Replies close Wed, Nov 4'],
+    expect(rows.needs?.map(({ event, due }) => [event.mesh, due])).toEqual([
+      ['party', '3 days overdue'],
+      ['wed', 'Due today'],
+      ['ireti', 'Due tomorrow'],
     ]);
   });
 
@@ -300,6 +289,8 @@ describe('the quiet states', () => {
     const quiet = momentOf('quiet', us);
 
     expect(quiet.needs).toEqual([]);
+    expect(quiet.lead).toBeNull();
+    expect(quiet.sub).toBe('Ire Events end-of-year party starts on Sat, Nov 28.');
     expect(quiet.bars).toEqual([]);
     expect(quiet.nextUp?.when).toBe('Sat, Nov 28 · in 10 days');
     expect(quiet.events.map(({ event }) => event.mesh)).toEqual(['party', 'draft']);
@@ -314,15 +305,82 @@ describe('the quiet states', () => {
 });
 
 describe('the small rules', () => {
-  it('words a due date', () => {
-    expect(dueWords('2026-11-03', '2026-11-02', us)).toEqual({ words: '1 day late', late: true });
-    expect(dueWords('2026-11-03', '2026-11-03', us).words).toBe('Due today');
+  it('words a due date in the event’s zone, whatever zone the reader is in', () => {
+    const now = new Date('2026-11-03T23:30:00Z');
+
+    expect(dueWords('2026-11-02T23:59:00Z', 'Europe/London', now, us)).toEqual({
+      words: '1 day overdue',
+      late: true,
+    });
+    expect(dueWords('2026-11-03T23:59:00Z', 'Europe/London', now, us).words).toBe('Due today');
+    // Half past midnight in Lagos: its 23:59 on the 3rd was yesterday there.
+    expect(dueWords('2026-11-03T22:59:00Z', 'Africa/Lagos', now, us).words).toBe('1 day overdue');
+    expect(dueWords('2026-11-05T23:59:00Z', 'Europe/London', now, us).words).toBe('Due Thu, Nov 5');
+    expect(dueWords('2026-11-05T23:59:00Z', 'Europe/London', now, gb).words).toBe('Due Thu 5 Nov');
   });
 
   it('keeps Now on the rail before the first stop and after the last', () => {
     expect(railAt(['10:00', '12:00'], '09:00')).toBe(0);
     expect(railAt(['10:00', '12:00'], '13:00')).toBe(1);
     expect(railAt(['10:00', '12:00'], '11:00')).toBe(0.5);
+  });
+});
+
+describe('Needs you lists the timeline’s You milestones (sc-61015)', () => {
+  const rows = (needing: 'one' | 'overdue' | 'none') => momentOf('plan', us, { needing });
+
+  it('gives a kitchen row its button, read with its event, and the stand-in none', () => {
+    const { needs } = momentOf('plan', us);
+    const kitchen = needs?.[0];
+    const band = needs?.find(({ title }) => title === 'Pay the band’s balance');
+
+    expect(kitchen?.action).toEqual({
+      label: 'Open the kitchen sheet',
+      link: '/demo/events/evt-party-2/kitchen',
+    });
+    expect(kitchen && actionWords(kitchen)).toBe(
+      'Open the kitchen sheet, Ire Events end-of-year party',
+    );
+    expect(kitchen && rowWords(kitchen)).toBe(
+      'Give final numbers to the kitchen, Ire Events end-of-year party, 3 days overdue',
+    );
+    expect(band?.action).toBeNull();
+    expect(band && actionWords(band)).toBeNull();
+  });
+
+  it('draws every overdue form first, at 23:59 on the due day', () => {
+    const overdue = rows('overdue');
+
+    expect(overdue.needs?.map(({ event, due, late }) => [event.mesh, due, late])).toEqual([
+      ['party', '2 days overdue', true],
+      ['ireti', '1 day overdue', true],
+      ['draft', 'Overdue', true],
+      ['wed', 'Due tomorrow', false],
+      ['wed', 'Due Thu, Nov 5', false],
+    ]);
+    expect(overdue.lead).toBe('5 things need you.');
+  });
+
+  it('says one thing in the singular', () => {
+    const one = rows('one');
+
+    expect(one.needs?.map(({ due }) => due)).toEqual(['Due today']);
+    expect(one.lead).toBe('1 thing needs you.');
+    expect(headWords(1)).toBe('Needs you, 1 thing');
+    expect(headWords(5)).toBe('Needs you, 5 things');
+  });
+
+  it('with no rows, the tick’s empty list and no line about Needs you on the cover', () => {
+    const none = rows('none');
+
+    expect(none.needs).toEqual([]);
+    expect(none.lead).toBeNull();
+    expect(none.sub).toBe('The wedding starts on Thursday.');
+  });
+
+  it('has no section on a first run, or built now', () => {
+    expect(momentOf('first', us).needs).toBeNull();
+    expect(momentOf('planNow', us).needs).toBeNull();
   });
 });
 
