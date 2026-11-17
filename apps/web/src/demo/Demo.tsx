@@ -32,10 +32,12 @@ import { SchedulePage } from './Schedule.tsx';
 import { SCHEDULE_PAGES } from './schedule.ts';
 import { GetBackInBoard } from './GetBackIn.tsx';
 import { GuestPage } from './Guest.tsx';
+import { MealStepPage } from './MealStep.tsx';
 import { HandoffPage } from './Handoff.tsx';
 import { HANDOFF_PAGES, forgetAnyway } from './handoff.ts';
 import { PHONE_FIT_PAGES } from './longName.ts';
 import { DESK_FIT_PAGES } from './deskFit.ts';
+import { NOW_STATE_NAMES, NOW_STATES } from './todayRun.ts';
 import { GUEST_PAGES } from './guest.ts';
 import { GUEST_KITCHEN_PAGES } from './guestKitchen.ts';
 import { GUEST_PARTY_PAGES } from './guestCompanions.ts';
@@ -54,6 +56,7 @@ import { KitchenPage } from './Kitchen.tsx';
 import { MenuPage } from './MenuServed.tsx';
 import { MENU_PAGES } from './menuServed.ts';
 import { COURSES_PAGES } from './menuCourses.ts';
+import { MEAL_PAGES } from './mealStep.ts';
 import { MenuLibraryPage } from './MenuLibrary.tsx';
 import { LIBRARY_PAGES } from './menuLibrary.ts';
 import { CHANGES_PAGES, KITCHEN_PAGES, PARTS_PAGES } from './kitchen.ts';
@@ -139,8 +142,19 @@ const TODAY_MOMENTS: { key: string; name: string }[] = [
   { key: 'plan&invites=none', name: 'A planning day, invitations not sent' },
   { key: 'plan&starts=later', name: 'A planning day, the event starts later today' },
   { key: 'plan&week=rows', name: 'A planning day, events sharing days in rows' },
+  { key: 'plan&needs=one', name: 'A planning day, one thing needs you' },
+  { key: 'plan&needs=overdue', name: 'A planning day, overdue rows first' },
+  { key: 'plan&needs=none', name: 'A planning day, nothing needs you' },
+  {
+    key: 'plan&needs=overdue&name=long',
+    name: 'A planning day, an overdue row for an event name of 120 characters',
+  },
   { key: 'planNow', name: 'A planning day, built now' },
-  { key: 'day', name: 'The event day' },
+  { key: 'day', name: 'The event day, Now as the run of show' },
+  ...NOW_STATES.filter((state) => state !== 'on').map((state) => ({
+    key: `day&now=${state}`,
+    name: `The event day, ${NOW_STATE_NAMES[state]}`,
+  })),
   { key: 'dayNow', name: 'The event day, built now' },
   { key: 'quiet', name: 'A quiet week' },
   { key: 'first', name: 'A first run' },
@@ -279,6 +293,7 @@ export default function Demo() {
       <Route path="share/:scope" element={<ShareRecipient />} />
       <Route path="unsubscribe" element={<Unsubscribe />} />
       <Route path="guest" element={<GuestPage />} />
+      <Route path="guest/meal" element={<MealStepPage />} />
       <Route path="guests" element={<Guests />} />
       <Route path="guests/select" element={<GuestsMark />} />
       <Route path="guests/many" element={<GuestsMany />} />
@@ -391,6 +406,8 @@ function DemoHome({ from }: { from: string }) {
           px (tweaks: &amp;format=fr or pt for the allergen names, &amp;budget=no)
         </h3>
         <BoardPages pages={COURSES_PAGES} />
+        <h3>The guest’s questions inside a dish · sc-3904 · phone, tablet and desk</h3>
+        <BoardPages pages={MEAL_PAGES} />
         <h3>How a course is served, and a dish’s parts · sc-34230 · desktop</h3>
         <BoardPages pages={MENU_PAGES} />
       </section>

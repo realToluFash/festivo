@@ -21,7 +21,7 @@ import { useNavigate } from 'react-router';
 
 import { Broken, DateTime, EditText as Text } from '../components/EventPageParts.tsx';
 import { Glyph } from '../components/Glyph.tsx';
-import { Ask } from '../components/SettingsParts.tsx';
+import { Ask, RedAction } from '../components/SettingsParts.tsx';
 import {
   CoverPreview,
   CoverUpload,
@@ -40,12 +40,14 @@ import {
   type NewEventState,
   type NewTyped,
   type Refusals,
+  SENDING_STATES,
   checkOf,
   coverRefusalOf,
   draftOf,
   firstRefused,
   hostWords,
   refusalsOf,
+  sentForCopy,
   typedFor,
   typedSomething,
 } from './newEvent.ts';
@@ -58,11 +60,13 @@ const ORGANISATION = 'Ire Events';
 export const CREATED_ID = 'evt-draft-4';
 const CREATING_MS = 1200;
 const OPENING_MS = 1600;
+/** How long a HEIC's copy takes on the demo's slow line (sc-60915). */
+const SENDING_MS = 3000;
 
 type Status = 'editing' | 'creating' | 'failed' | 'created';
 
 function statusOf(state: NewEventState | null): Status {
-  if (state === 'creating') return 'creating';
+  if (state === 'creating' || state === 'photoSendingCreating') return 'creating';
   if (state === 'notCreated' || state === 'offline') return 'failed';
   if (state === 'created') return 'created';
   return 'editing';
@@ -90,7 +94,13 @@ export function NewEventForm({ state }: { state: NewEventState | null }) {
   const [typed, setTyped] = useState<NewTyped>(() => typedFor(state));
   const [tried, setTried] = useState(state === 'refused');
   const [status, setStatus] = useState<Status>(() => statusOf(state));
-  const cover = useCoverPick(() => change(CHOSEN));
+  const cover = useCoverPick(chosen, state === 'photoSendFailed' ? W.uploadFailed : null);
+  const [sending, setSending] = useState(() => state != null && SENDING_STATES.includes(state));
+  const [lost, setLost] = useState<string | null>(null);
+  const sends = useRef(0);
+  const timers = useRef<number[]>([]);
+  const slowFirst = useRef(state === 'photoSending' || state === 'photoSendLost');
+  const pressed = useRef(state === 'photoSendingCreating');
   const [server, setServer] = useState<Refusals>(
     state === 'server' ? { timeZone: N.zoneRefused } : {},
   );
@@ -107,7 +117,7 @@ export function NewEventForm({ state }: { state: NewEventState | null }) {
   const [target, setTarget] = useState<Target | null>(() =>
     state === 'refused' ? targetOf(typedFor(state), {}) : null,
   );
-  const away = useLeaveAsk(typedSomething(typed) && status !== 'created');
+  const away = useLeaveAsk((typedSomething(typed) || sending) && status !== 'created');
   const id = useId();
   const noteId = `${id}-note`;
   const typeRef = useRef<HTMLDivElement>(null);
@@ -151,8 +161,10 @@ export function NewEventForm({ state }: { state: NewEventState | null }) {
     (field?.querySelector<HTMLElement>('input, select') ?? field)?.focus();
   }, [target, noteId]);
 
+  useEffect(() => () => timers.current.forEach((one) => window.clearTimeout(one)), []);
+
   useEffect(() => {
-    if (status === 'creating' && state !== 'creating') {
+    if (status === 'creating' && statusOf(state) !== 'creating' && !sending) {
       const later = setTimeout(() => setStatus('created'), CREATING_MS);
 
       return () => clearTimeout(later);
@@ -164,18 +176,53 @@ export function NewEventForm({ state }: { state: NewEventState | null }) {
           `/demo/events/${CREATED_ID}`,
           state === 'photoRefused'
             ? { state: { noPhoto: N.createdWithout(W.refusedDimensions) } }
-            : undefined,
+            : lost != null
+              ? { state: { noPhoto: N.createdWithout(lost) } }
+              : undefined,
         ),
       OPENING_MS,
     );
 
     return () => clearTimeout(later);
-  }, [status, state, navigate]);
+  }, [status, state, navigate, sending, lost]);
 
   function change(next: Partial<NewTyped>): void {
     setTyped((was) => ({ ...was, ...next }));
     setSummary(null);
     if (status === 'failed') setStatus('editing');
+  }
+
+  /** A photo that shows goes in the frame at once; a HEIC waits for its copy, and only the last one picked may land. */
+  function chosen(file: File): void {
+    if (sentForCopy(file)) return send(state !== 'photoSendLost');
+    sends.current += 1;
+    setSending(false);
+    change(CHOSEN);
+  }
+
+  function send(lands: boolean): void {
+    const mine = ++sends.current;
+    slowFirst.current = false;
+    setSending(true);
+    change(NO_PHOTO);
+    timers.current.push(window.setTimeout(() => settle(mine, lands), SENDING_MS));
+  }
+
+  /** An earlier copy than the last one picked never takes the frame: the product discards it. */
+  function settle(mine: number, lands: boolean): void {
+    if (mine !== sends.current) return;
+    setSending(false);
+    if (lands) cover.setRefusal(null);
+    if (lands) return pressed.current ? setTyped((was) => ({ ...was, ...CHOSEN })) : change(CHOSEN);
+    if (pressed.current) return setLost(W.uploadFailed);
+    cover.setRefusal(W.uploadFailed);
+  }
+
+  function stopSending(): void {
+    sends.current += 1;
+    setSending(false);
+    cover.setRefusal(null);
+    change(NO_PHOTO);
   }
 
   function moveStart(next: Wall): void {
@@ -203,6 +250,14 @@ export function NewEventForm({ state }: { state: NewEventState | null }) {
     }
     setSummary(null);
     setStatus('creating');
+    pressed.current = true;
+    if (sending && slowFirst.current) {
+      const mine = sends.current;
+      slowFirst.current = false;
+      timers.current.push(
+        window.setTimeout(() => settle(mine, state !== 'photoSendLost'), SENDING_MS),
+      );
+    }
   }
 
   function leave(): void {
@@ -255,13 +310,30 @@ export function NewEventForm({ state }: { state: NewEventState | null }) {
       </Block>
 
       <Block title={W.coverPhoto}>
-        <CoverPreview
-          photo={typed.photo ? <Glyph name="photo" size={56} weight={1.6} /> : null}
-          mesh={meshFor(typed.type === '' ? 'new-event' : typed.type)}
-          className="ev-new-cover"
-        />
+        <div className="ev-new-frame">
+          <CoverPreview
+            photo={typed.photo ? <Glyph name="photo" size={56} weight={1.6} /> : null}
+            mesh={meshFor(typed.type === '' ? 'new-event' : typed.type)}
+            className="ev-new-cover"
+          />
+          {sending && (
+            <p className="ev-cover-uploading" role="status">
+              {W.uploading}
+            </p>
+          )}
+        </div>
         {cover.input}
-        {typed.photo ? (
+        {sending ? (
+          <>
+            {cover.refusal != null && <Broken>{cover.refusal}</Broken>}
+            <button type="button" className="desk-text" disabled={busy} onClick={cover.pick}>
+              {W.changePhoto}
+            </button>
+            {!busy && (
+              <RedAction label={W.removePhoto} line={W.removePhotoLine} onClick={stopSending} />
+            )}
+          </>
+        ) : typed.photo ? (
           <CoverPhotoFields
             position={typed.position}
             onPosition={(position) => change({ position })}

@@ -1,0 +1,144 @@
+/* sc-3904's meal step on the guest's page (board MealStep, page e32), in the kitchen step's parts. */
+.ms-set {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+  min-width: 0;
+  margin: 0;
+  padding: 0;
+  border: 0;
+}
+
+.ms-legend {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  padding: 0;
+}
+
+.ms-legend .gk-h2 {
+  margin: 0;
+}
+
+.ms-options {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  min-width: 0;
+}
+
+.ms-option {
+  display: flex;
+  align-items: flex-start;
+  gap: 14px;
+  min-width: 0;
+  min-height: var(--sizeHit);
+  padding: var(--gkCard, 20px);
+  border: 1.5px solid var(--colorFieldBorder);
+  border-radius: 16px;
+  background: var(--colorCard);
+  cursor: pointer;
+}
+
+.ms-option:has(input:checked) {
+  border-color: var(--colorAccent);
+  box-shadow: inset 0 0 0 1px var(--colorAccent);
+}
+
+.ms-option:has(input:focus-visible) {
+  box-shadow: var(--deskRing);
+}
+
+.ms-option.is-plain {
+  align-items: center;
+  padding-block: 12px;
+}
+
+.ms-option.is-out {
+  border-style: dashed;
+  background: var(--colorInset);
+  color: var(--colorInkSecondary);
+  cursor: not-allowed;
+}
+
+.ms-options.is-wrong .ms-option:not(.is-out, .is-plain) {
+  border-color: var(--colorBroken);
+}
+
+.ms-option input {
+  margin-top: 1px;
+}
+
+.ms-box {
+  flex: none;
+  width: 22px;
+  height: 22px;
+  margin: 0;
+  accent-color: var(--colorAccent);
+}
+
+.ms-option-words {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  min-width: 0;
+}
+
+.ms-option-name {
+  margin: 0;
+  font: 600 17px/1.35 var(--fontFamily);
+  overflow-wrap: anywhere;
+}
+
+.ms-contains,
+.ms-quiet {
+  margin: 0;
+  font: 400 15px/1.45 var(--fontFamily);
+  overflow-wrap: anywhere;
+}
+
+.ms-quiet {
+  color: var(--colorInkSecondary);
+}
+
+.ms-out-line {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 6px 8px;
+  margin: 0;
+  color: var(--colorInk);
+  font: 500 15px/1.45 var(--fontFamily);
+  overflow-wrap: anywhere;
+}
+
+.ms-dish {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  padding: var(--gkCard, 20px);
+  border-radius: 16px;
+  background: var(--colorInset);
+}
+
+.ms-rule {
+  width: 100%;
+  margin: 4px 0;
+  border: 0;
+  border-top: 1px solid var(--colorBorder);
+}
+
+.ms-refused {
+  margin: 0;
+  font-size: 15px;
+}
+
+.ms-done {
+  margin: 0;
+  font: 600 19px/1.4 var(--fontFamily);
+  overflow-wrap: anywhere;
+}
+
+.ms-done:focus {
+  outline: none;
+}

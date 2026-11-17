@@ -66,6 +66,7 @@ function RoomScreen({ place, raw }: { place: ScreenPlace; raw: string | null }) 
   const [held, setHeld] = useState<Shown | null>(() =>
     first.offline ? { answer: answerOf(world, place), asOf: clockAt(world.moved) } : null,
   );
+  const [waiting, setWaiting] = useState(first.connecting);
   const online = held == null;
   const shown = held ?? { answer: answerOf(world, place), asOf: clockAt(world.moved) };
 
@@ -81,15 +82,20 @@ function RoomScreen({ place, raw }: { place: ScreenPlace; raw: string | null }) 
     <main className={first.projector ? 'rs-room is-projector' : 'rs-room'}>
       <div className="rs-stage">
         <div className="rs-fill" data-testid="room-screen">
-          <Screen shown={shown} offline={!online} />
-          {shown.answer.kind !== 'replaced' && <FullScreen />}
+          {!waiting && <Screen shown={shown} offline={!online} />}
+          {(waiting || shown.answer.kind !== 'replaced') && <FullScreen />}
         </div>
       </div>
       <details className="rv-demo-only rs-demo">
         <summary>Demo only: what the night does</summary>
-        <p>{`The clock reads ${screenTime(clock, LOCALE)}. The screen updates at once here; the product within 10 seconds of a press, and within 60 when an item overruns.`}</p>
+        <p>{`The clock reads ${screenTime(clock, LOCALE)}. The screen updates at once here; the product within 10 seconds of a press, and within 60 when an item overruns. Before its first answer the screen is blank but for Full screen, and asks again every 10 seconds.`}</p>
         <div className="rs-demo-acts">
-          {running != null && (
+          {waiting && (
+            <button type="button" className="rv-act" onClick={() => setWaiting(false)}>
+              The first answer arrives
+            </button>
+          )}
+          {!waiting && running != null && (
             <button
               type="button"
               className="rv-act"
@@ -103,7 +109,7 @@ function RoomScreen({ place, raw }: { place: ScreenPlace; raw: string | null }) 
               {`Done on ${running.title}`}
             </button>
           )}
-          {running == null && next != null && (
+          {!waiting && running == null && next != null && (
             <button
               type="button"
               className="rv-act"

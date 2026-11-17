@@ -12,9 +12,9 @@ import {
   screenLinkOf,
   screenTime,
 } from './roomScreen.ts';
+import type { ScreensStart } from './schedule.ts';
+import { useLoad } from './useDataControl.ts';
 import './showOnScreen.css';
-
-export type ScreensStart = 'list' | 'replace' | 'replaced' | 'refused';
 
 interface Said {
   words: string;
@@ -32,15 +32,20 @@ export function ShowOnScreen({ start, onClose }: { start: ScreensStart; onClose:
   const [said, setSaid] = useState<Said | null>(() => {
     if (start === 'replaced') return { words: W.replacedSaid('Ballroom'), copied: true };
     if (start === 'refused') return { words: W.copyRefused('Ballroom'), copied: false };
+    if (start === 'replaceFailed') return { words: W.notReplaced('Ballroom'), copied: false };
 
     return null;
   });
+  const [load, retry] = useLoad(
+    start === 'loading' ? 'loading' : start === 'failed' ? 'failed' : 'loaded',
+  );
 
   useDialogKeys(dialog, onClose, false);
   const keep = useRef<HTMLButtonElement>(null);
 
   useEffect(() => {
-    title.current?.focus();
+    if (start === 'replaceFailed') document.getElementById('ss-ballroom-replace')?.focus();
+    else title.current?.focus();
     if (start === 'refused') selectLink('Ballroom');
   }, [start]);
   useEffect(() => {
@@ -83,88 +88,119 @@ export function ShowOnScreen({ start, onClose }: { start: ScreensStart; onClose:
             {W.line}
           </p>
         </div>
-        <ul className="ss-rows">
-          {SCREEN_PLACES.map((place) => {
-            const round = rounds[place] ?? 0;
-            const id = `ss-${place.toLowerCase()}`;
+        {load === 'loading' && (
+          <ul className="ss-rows skeleton-rows" aria-hidden="true">
+            {SCREEN_PLACES.map((place) => (
+              <li key={place} className="skeleton-row skeleton-row-76">
+                <span className="skeleton-row-bars">
+                  <span className="skeleton-bar skeleton-bar-first" />
+                  <span className="skeleton-bar skeleton-bar-second" />
+                </span>
+              </li>
+            ))}
+          </ul>
+        )}
+        {load === 'loaded' && (
+          <ul className="ss-rows">
+            {SCREEN_PLACES.map((place) => {
+              const round = rounds[place] ?? 0;
+              const id = `ss-${place.toLowerCase()}`;
 
-            return (
-              <li key={place} className="ss-row" aria-labelledby={id}>
-                <div className="ss-what">
-                  <h3 id={id} className="ss-place">
-                    {place}
-                  </h3>
-                  <p id={`${id}-link`} className="ss-link">
-                    {screenLinkOf(place, round)}
-                  </p>
-                  {round > 0 && (
-                    <p className="ss-replaced">
-                      <Glyph name="tick" size={15} weight={2.6} />
-                      {W.replacedAt(screenTime(SCREEN_START, 'en-GB'))}
+              return (
+                <li key={place} className="ss-row" aria-labelledby={id}>
+                  <div className="ss-what">
+                    <h3 id={id} className="ss-place">
+                      {place}
+                    </h3>
+                    <p id={`${id}-link`} className="ss-link">
+                      {screenLinkOf(place, round)}
                     </p>
-                  )}
-                </div>
-                {asking === place ? (
-                  <div className="ss-ask" role="group" aria-labelledby={`${id}-ask`}>
-                    <p id={`${id}-ask`} className="ss-ask-title">
-                      {W.replaceTitle(place)}
-                    </p>
-                    <p className="ss-line">{W.replaceBody}</p>
+                    {round > 0 && (
+                      <p className="ss-replaced">
+                        <Glyph name="tick" size={15} weight={2.6} />
+                        {W.replacedAt(screenTime(SCREEN_START, 'en-GB'))}
+                      </p>
+                    )}
+                  </div>
+                  {asking === place ? (
+                    <div className="ss-ask" role="group" aria-labelledby={`${id}-ask`}>
+                      <p id={`${id}-ask`} className="ss-ask-title">
+                        {W.replaceTitle(place)}
+                      </p>
+                      <p className="ss-line">{W.replaceBody}</p>
+                      <div className="ss-acts">
+                        <button
+                          type="button"
+                          className="link-button"
+                          ref={keep}
+                          onClick={() => setAsking(null)}
+                        >
+                          {W.keep}
+                        </button>
+                        <button
+                          type="button"
+                          className="gs-pill is-secondary"
+                          onClick={() => replace(place)}
+                        >
+                          {W.replace}
+                        </button>
+                      </div>
+                    </div>
+                  ) : (
                     <div className="ss-acts">
                       <button
                         type="button"
-                        className="link-button"
-                        ref={keep}
-                        onClick={() => setAsking(null)}
+                        className="gs-pill is-secondary"
+                        onClick={() => copy(place)}
                       >
-                        {W.keep}
+                        <Glyph name="copy" size={16} weight={2.2} />
+                        {W.copy}
                       </button>
+                      <Link className="gs-pill is-secondary" to={screenAt(place)}>
+                        {W.openHere}
+                      </Link>
                       <button
                         type="button"
+                        id={`${id}-replace`}
                         className="gs-pill is-secondary"
-                        onClick={() => replace(place)}
+                        onClick={() => {
+                          setSaid(null);
+                          setAsking(place);
+                        }}
                       >
                         {W.replace}
                       </button>
                     </div>
-                  </div>
-                ) : (
-                  <div className="ss-acts">
-                    <button
-                      type="button"
-                      className="gs-pill is-secondary"
-                      onClick={() => copy(place)}
-                    >
-                      <Glyph name="copy" size={16} weight={2.2} />
-                      {W.copy}
-                    </button>
-                    <Link className="gs-pill is-secondary" to={screenAt(place)}>
-                      {W.openHere}
-                    </Link>
-                    <button
-                      type="button"
-                      className="gs-pill is-secondary"
-                      onClick={() => {
-                        setSaid(null);
-                        setAsking(place);
-                      }}
-                    >
-                      {W.replace}
-                    </button>
-                  </div>
-                )}
-              </li>
-            );
-          })}
-        </ul>
-        <p className={said?.copied === false ? 'ss-said is-ink' : 'ss-said'} role="status">
-          {said != null && (
-            <>
-              {said.copied && <Glyph name="tick" size={17} weight={2.6} />}
-              {said.words}
-            </>
+                  )}
+                </li>
+              );
+            })}
+          </ul>
+        )}
+        <div className="ss-status">
+          <p className={saidClass(load, said)} role="status">
+            {load === 'loading' && W.loading}
+            {load === 'failed' && W.notLoaded}
+            {load === 'loaded' && said != null && (
+              <>
+                {said.copied && <Glyph name="tick" size={17} weight={2.6} />}
+                {said.words}
+              </>
+            )}
+          </p>
+          {load === 'failed' && (
+            <button
+              type="button"
+              className="link-button"
+              onClick={() => {
+                retry();
+                title.current?.focus();
+              }}
+            >
+              {W.tryAgain}
+            </button>
           )}
-        </p>
+        </div>
         <div className="dialog-actions">
           <button type="button" className="gs-pill is-secondary" onClick={onClose}>
             {W.close}
@@ -173,6 +209,13 @@ export function ShowOnScreen({ start, onClose }: { start: ScreensStart; onClose:
       </div>
     </>
   );
+}
+
+function saidClass(load: 'loaded' | 'loading' | 'failed', said: Said | null): string {
+  if (load === 'loading') return 'ss-said is-quiet';
+  if (load === 'failed' || said?.copied === false) return 'ss-said is-ink';
+
+  return 'ss-said';
 }
 
 /** A refused clipboard leaves the link selected, so Ctrl+C or Command+C copies it (as Share does). */
