@@ -72,6 +72,8 @@ import { QUEUE_STATES, type QueueStateName } from './queue.ts';
 import { RosterPage } from './Roster.tsx';
 import { ROSTER_PAGES } from './roster.ts';
 import { RunViewPage } from './RunView.tsx';
+import { RoomScreenPage } from './RoomScreen.tsx';
+import { SCREEN_PAGES } from './roomScreen.ts';
 import { RUN_PAGES } from './runView.ts';
 import { NightPage } from './Night.tsx';
 import { NIGHT_PAGES } from './night.ts';
@@ -230,6 +232,7 @@ export default function Demo() {
       <Route path="events/:id/schedule" element={<SchedulePage />} />
       <Route path="events/:id/run" element={<RunViewPage />} />
       <Route path="events/:id/night" element={<NightPage />} />
+      <Route path="screen/:place" element={<RoomScreenPage />} />
       <Route path="handoff" element={<HandoffPage />} />
       <Route path="calendar" element={<Calendar />} />
       <Route path="menu-library" element={<MenuLibraryPage />} />
@@ -412,6 +415,8 @@ function DemoHome({ from }: { from: string }) {
         <BoardPages pages={NIGHT_PAGES} />
         <h3>The day on the guest’s page (sc-3899) · phone, tablet and desk</h3>
         <BoardPages pages={GUEST_PROGRAMME_PAGES} />
+        <h3>A screen in the room: what is on and what is coming (sc-3897) · 16:9 and 4:3</h3>
+        <BoardPages pages={SCREEN_PAGES} />
       </section>
 
       <section className="demo-home-page" aria-labelledby="demo-page-34">
