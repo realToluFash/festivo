@@ -86,6 +86,7 @@ final class GuestExportTest extends ApiTestCase
             ['', 'Bísí Adéwálé', 'Family', 'Not yet invited', '', '', '', '', '', '', '', $added],
             ['Zoë Martin', '', '', 'Not yet invited', '', '', '', '', '', '', '1', $added],
         ], $rows);
+        self::assertSame(['14', '14', '10', '17', '12', '18', '15', '15', '10', '18', '10', '12'], $this->widths());
         self::assertSame('application/vnd.openxmlformats-officedocument.spreadsheetml.sheet', $this->client->getResponse()->headers->get('Content-Type'));
         self::assertStringContainsString("filename*=utf-8''Owambe%20%E2%80%93%20guests%20%E2%80%93%20" . $this->today() . '.xlsx', (string) $this->client->getResponse()->headers->get('Content-Disposition'));
     }
@@ -162,6 +163,17 @@ final class GuestExportTest extends ApiTestCase
         self::assertSame(['Full name', 'Guest of', 'Group', 'Reply', 'Replied on', 'Email', 'Mobile number', 'Places', 'Added on'], $rows[0]);
         self::assertSame(['Bisi', '', '', 'Not yet invited', '', 'bisi@example.com', '', '1', $this->today()], $rows[1]);
         self::assertSame(false, $this->audited()['needs'][1]);
+    }
+
+    #[Test]
+    public function withoutGuestsManageTheWorkbookHasNoWidthsForTheNeedsColumns(): void
+    {
+        $guest = $this->add(['fullName' => 'Bisi', 'email' => 'bisi@example.com', 'needs' => ['allergies' => ['milk']]]);
+        self::service(WithholdingMembershipDirectory::class)->withhold(Permission::GuestsManage);
+
+        $this->export('xlsx', [$this->id($guest)]);
+
+        self::assertSame(['11', '10', '10', '17', '12', '18', '15', '10', '12'], $this->widths());
     }
 
     #[Test]
@@ -322,6 +334,29 @@ final class GuestExportTest extends ApiTestCase
         }
 
         return $rows;
+    }
+
+    /** @return list<string> each column's width in the last export's workbook, in characters */
+    private function widths(): array
+    {
+        $path = Filesystem\create_temporary_file();
+        File\write($path, (string) $this->client->getResponse()->getContent(), File\WriteMode::Truncate);
+        $zip = new ZipArchive();
+        self::assertTrue($zip->open($path));
+        $sheet = $zip->getFromName('xl/worksheets/sheet1.xml');
+        $zip->close();
+        Filesystem\delete_file($path);
+        self::assertIsString($sheet);
+
+        $document = new DOMDocument();
+        self::assertTrue($document->loadXML($sheet));
+        $widths = [];
+        foreach ($document->getElementsByTagName('col') as $at => $column) {
+            self::assertSame((string) ($at + 1), $column->getAttribute('min'));
+            $widths[] = $column->getAttribute('width');
+        }
+
+        return $widths;
     }
 
     /** @param array<string, mixed> $guest */
