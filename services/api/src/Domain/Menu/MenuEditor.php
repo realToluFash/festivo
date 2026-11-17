@@ -11,7 +11,9 @@ use App\Domain\Menu\Interfaces\MenuPicksInterface;
 use App\Domain\Menu\Model\ChoiceAnswers;
 use App\Domain\Menu\Model\CourseDetails;
 use App\Domain\Menu\Model\DishDetails;
+use App\Domain\Menu\Model\DishItems;
 use App\Domain\Menu\Model\OptionDetails;
+use App\Domain\Menu\Model\OwnItems;
 use App\Domain\Menu\Model\UnwarnedOption;
 use App\Domain\Menu\Model\UnwarnedPickers;
 use App\Entity\Dish;
@@ -116,9 +118,9 @@ final readonly class MenuEditor
     }
 
     /** Everyone gets the same (`$guestsChoose` false) is refused 409 `menu_same_one_dish` unless the course has exactly one dish. */
-    public function changeCourse(Event $event, MenuCourse $course, CourseDetails $details, bool $guestsChoose, bool $skippable, User $by): void
+    public function changeCourse(Event $event, MenuCourse $course, CourseDetails $details, bool $guestsChoose, bool $skippable, ?OwnItems $ownItems, User $by): void
     {
-        $this->locked($event, function () use ($course, $details, $guestsChoose, $skippable, $by): void {
+        $this->locked($event, function () use ($course, $details, $guestsChoose, $skippable, $ownItems, $by): void {
             $this->entityManager->refresh($course);
 
             if (!$guestsChoose && 1 !== Iter\count($this->menuDishRepository->findOnCourse($course))) {
@@ -129,6 +131,11 @@ final readonly class MenuEditor
             $course->describe($details->name, $details->servedAt);
             $course->setGuestsChoose($guestsChoose);
             $course->setSkippable($skippable);
+
+            if (null !== $ownItems) {
+                $course->listOwnItems($ownItems->names);
+            }
+
             $changes = Auditor::diff($before, self::recordedCourse($course));
 
             if ([] !== $changes) {
@@ -218,13 +225,18 @@ final readonly class MenuEditor
         });
     }
 
-    public function changeDish(Event $event, MenuDish $dish, DishDetails $details, User $by): ?UnwarnedPickers
+    public function changeDish(Event $event, MenuDish $dish, DishDetails $details, ?DishItems $items, User $by): ?UnwarnedPickers
     {
-        $unwarned = $this->locked($event, function () use ($dish, $details, $by): ?UnwarnedPickers {
+        $unwarned = $this->locked($event, function () use ($dish, $details, $items, $by): ?UnwarnedPickers {
             $this->entityManager->refresh($dish);
             $before = self::recordedDish($dish);
 
             $plain = [] === $this->menuDishVariantRepository->findOnDish($dish);
+
+            if (null !== $items) {
+                $dish->listItems($items->items);
+            }
+
             $added = $plain ? Vec\filter($details->allergens, static fn (string $code): bool => !Iter\contains($dish->getAllergens() ?? [], $code)) : [];
 
             if ($plain) {
@@ -349,6 +361,7 @@ final readonly class MenuEditor
                 $staying = Vec\values($left)[0];
                 $before = self::recordedDish($dish);
                 $dish->foldFrom($staying);
+                $dish->dropItem(null);
                 $this->audit(self::DISH_FOLDED, 'MenuDish', $dish->getId(), $by, Auditor::diff($before, [...self::recordedDish($dish), 'from' => $staying->getName()]));
                 $this->entityManager->remove($staying);
             }
@@ -457,6 +470,16 @@ final readonly class MenuEditor
             }
 
             $this->audit(self::CHOICE_REMOVED, 'MenuDishChoice', $choice->getId(), $by, Auditor::diff(self::recordedChoice($choice, $options), []));
+            $dish = $choice->getDish();
+            $id = $choice->getId()->toRfc4122();
+            $before = self::recordedDish($dish);
+            $dish->dropItem($id);
+            $changes = Auditor::diff($before, self::recordedDish($dish));
+
+            if ([] !== $changes) {
+                $this->audit(self::DISH_CHANGED, 'MenuDish', $dish->getId(), $by, $changes);
+            }
+
             $this->entityManager->remove($choice);
         });
 
@@ -595,6 +618,7 @@ final readonly class MenuEditor
             'servedAt' => $course->getServedAt(),
             'answer' => $course->guestsChoose() ? 'choose' : 'same',
             'skippable' => $course->isSkippable(),
+            'ownItems' => $course->getOwnItems(),
         ];
     }
 
@@ -607,6 +631,7 @@ final readonly class MenuEditor
             'allergens' => $dish->getAllergens(),
             'diets' => $dish->getDiets(),
             'cost' => $dish->getCostMinor(),
+            'items' => $dish->getItems(),
         ];
     }
 }

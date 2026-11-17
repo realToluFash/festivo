@@ -23,6 +23,7 @@ const dish = (id: string, picked = false): MenuDish => ({
   variants: [],
   choices: [],
   offered: true,
+  items: [],
   picked,
 });
 
@@ -33,6 +34,8 @@ const course = (id: string, dishes: MenuDish[] = []): MenuCourse => ({
   answer: 'choose',
   skippable: false,
   dishes,
+  ownItems: [],
+  items: [],
 });
 
 describe('the course form', () => {

@@ -149,6 +149,7 @@ export function VariantInsets({
   onRemove,
   onKeep,
   onConfirm,
+  foldItem = null,
 }: {
   dish: string;
   variants: readonly ShownVariant[];
@@ -163,6 +164,8 @@ export function VariantInsets({
   onRemove: (variant: ShownVariant) => void;
   onKeep: (variant: ShownVariant) => void;
   onConfirm: (variant: ShownVariant) => void;
+  /** sc-34230: the fold question's line when the variants are one of the dish's items. */
+  foldItem?: string | null;
 }) {
   const { t } = useTranslation();
 
@@ -250,6 +253,7 @@ export function VariantInsets({
               )}
               {here?.kind === 'fold' && staying != null && (
                 <FoldAsk
+                  foldItem={foldItem}
                   id={`${ids}-vask-${variant.id}`}
                   dish={dish}
                   staying={staying}
@@ -269,6 +273,7 @@ export function VariantInsets({
 }
 
 function FoldAsk({
+  foldItem,
   id,
   dish,
   staying,
@@ -278,6 +283,7 @@ function FoldAsk({
   onKeep,
   onFold,
 }: {
+  foldItem: string | null;
   id: string;
   dish: string;
   staying: ShownVariant;
@@ -323,6 +329,7 @@ function FoldAsk({
           )}
         </div>
         {staying.for === 'children' && <p>{t('dishVariants.foldChildren')}</p>}
+        {foldItem != null && <p>{foldItem}</p>}
       </div>
       <div className="mn-ask-acts">
         <button type="button" className="desk-text" onClick={onKeep}>

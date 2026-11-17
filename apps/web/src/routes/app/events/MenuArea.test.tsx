@@ -84,12 +84,23 @@ function dish(id: string, name: string, more: Record<string, unknown> = {}) {
     variants: [],
     choices: [],
     offered: true,
+    items: [],
     ...more,
   };
 }
 
 function course(id: string, name: string, dishes: unknown[], more: Record<string, unknown> = {}) {
-  return { id, name, servedAt: null, answer: 'choose', skippable: false, dishes, ...more };
+  return {
+    id,
+    name,
+    servedAt: null,
+    answer: 'choose',
+    skippable: false,
+    dishes,
+    ownItems: [],
+    items: [],
+    ...more,
+  };
 }
 
 const JOLLOF = dish('d_jollof', 'Jollof rice', { picked: true, diets: ['halal'] });
@@ -848,6 +859,263 @@ describe('The event’s Menu (sc-3902)', () => {
           '2 guests who picked Garden salad have celery recorded, and nobody has told them.',
         ),
       ).toBeDefined();
+    });
+  });
+
+  describe('a dish’s items and Served with this course (sc-34230)', () => {
+    const SIDE = {
+      id: 'ch_side',
+      question: 'And a side?',
+      pick: 1,
+      required: true,
+      draft: false,
+      noneAnswers: 0,
+      options: [{ id: 'o_plantain', name: 'Plantain', allergens: [], picks: 0 }],
+    };
+    const fixedItem = (name: string) => ({ kind: 'fixed', name });
+    const WITH_ITEMS = dish('d_jollof', 'Jollof rice', {
+      choices: [SIDE],
+      items: [fixedItem('Rice'), fixedItem('Chicken'), { kind: 'choice', choiceId: 'ch_side' }],
+    });
+    const PLAIN = dish('d_jollof', 'Jollof rice', { choices: [SIDE] });
+    const saved =
+      (dishes: unknown[], more: Record<string, unknown> = {}) =>
+      () =>
+        json({ menu: { courses: [course('c_main', 'Main', dishes, more)] }, dishId: 'd_jollof' });
+
+    async function editJollof() {
+      fireEvent.click(await screen.findByRole('button', { name: 'Edit Jollof rice' }));
+      return screen.findByRole('complementary', { name: 'Edit dish' });
+    }
+
+    it('shows a dish’s items as numbered chips, and nothing new for a dish with none', async () => {
+      await onMenu({
+        'GET /api/events/ev_1/menu': menuOf(
+          course('c_main', 'Main', [WITH_ITEMS, dish('d_asun', 'Asun')], {
+            ownItems: ['Bread roll'],
+          }),
+        ),
+      });
+
+      const chips = await screen.findByRole('list', { name: 'Items · Jollof rice' });
+      expect(
+        within(chips)
+          .getAllByRole('listitem')
+          .map((one) => one.textContent),
+      ).toEqual(['Rice', 'Chicken', 'And a side?']);
+      expect(screen.queryByRole('list', { name: 'Items · Asun' })).toBeNull();
+      expect(screen.getByText('Served with this course')).toBeDefined();
+      expect(screen.getByText('Bread roll')).toBeDefined();
+    });
+
+    it('adds fixed items and a choice, and saves them in order', async () => {
+      const sent = await onMenu({
+        'GET /api/events/ev_1/menu': menuOf(course('c_main', 'Main', [PLAIN])),
+        'PUT /api/events/ev_1/menu/dishes/d_jollof': saved([WITH_ITEMS]),
+      });
+
+      const panel = await editJollof();
+      expect(within(panel).getByText(/Items add nothing to Contains\./)).toBeDefined();
+      fireEvent.click(within(panel).getByRole('button', { name: 'Add an item' }));
+      fireEvent.change(within(panel).getByLabelText('Item 1'), { target: { value: ' Rice ' } });
+      fireEvent.click(within(panel).getByRole('button', { name: 'Add an item' }));
+      fireEvent.change(within(panel).getByLabelText('Item 2'), { target: { value: 'Chicken' } });
+      fireEvent.click(within(panel).getByRole('button', { name: /And a side\?/ }));
+      expect(within(panel).queryByText('Or add one from this dish')).toBeNull();
+      fireEvent.click(within(panel).getByRole('button', { name: 'Save changes' }));
+
+      expect(await screen.findByText('Jollof rice saved.')).toBeDefined();
+      expect(
+        sent.find((one) => one.line === 'PUT /api/events/ev_1/menu/dishes/d_jollof')?.body,
+      ).toEqual(
+        expect.objectContaining({
+          items: [
+            { kind: 'fixed', name: 'Rice' },
+            { kind: 'fixed', name: 'Chicken' },
+            { kind: 'choice', choiceId: 'ch_side' },
+          ],
+        }),
+      );
+    });
+
+    it('refuses a single item on Save beside the list, and sends nothing', async () => {
+      const sent = await onMenu({
+        'GET /api/events/ev_1/menu': menuOf(course('c_main', 'Main', [PLAIN])),
+      });
+
+      const panel = await editJollof();
+      fireEvent.click(within(panel).getByRole('button', { name: 'Add an item' }));
+      fireEvent.change(within(panel).getByLabelText('Item 1'), { target: { value: 'Rice' } });
+      fireEvent.click(within(panel).getByRole('button', { name: 'Save changes' }));
+
+      expect(await within(panel).findByText('List 2 items or more, or none.')).toBeDefined();
+      expect(document.activeElement?.id).toBe('mc-add-item');
+      expect(sent.some((one) => one.line.startsWith('PUT'))).toBe(false);
+    });
+
+    it('refuses the later of two same names, a blank and one over 40 beside each row', async () => {
+      await onMenu({ 'GET /api/events/ev_1/menu': menuOf(course('c_main', 'Main', [PLAIN])) });
+
+      const panel = await editJollof();
+      for (const name of ['Rice', ' rice ', '', 'x'.repeat(41)]) {
+        fireEvent.click(within(panel).getByRole('button', { name: 'Add an item' }));
+        const rows = within(panel).getAllByLabelText(/^Item \d$/);
+        fireEvent.change(rows[rows.length - 1] as HTMLElement, { target: { value: name } });
+      }
+      fireEvent.click(within(panel).getByRole('button', { name: 'Save changes' }));
+
+      expect(await within(panel).findByText('Each item needs its own name.')).toBeDefined();
+      expect(within(panel).getByText('Give each item a name.')).toBeDefined();
+      expect(within(panel).getByText('An item’s name can be at most 40 characters.')).toBeDefined();
+      expect(document.activeElement).toBe(within(panel).getByLabelText('Item 2'));
+    });
+
+    it('refuses a 7th item beside Add and adds nothing', async () => {
+      const six = dish('d_jollof', 'Jollof rice', {
+        items: ['A', 'B', 'C', 'D', 'E', 'F'].map(fixedItem),
+      });
+      await onMenu({ 'GET /api/events/ev_1/menu': menuOf(course('c_main', 'Main', [six])) });
+
+      const panel = await editJollof();
+      fireEvent.click(within(panel).getByRole('button', { name: 'Add an item' }));
+
+      expect(within(panel).getByText('A dish can have at most 6 items.')).toBeDefined();
+      expect(within(panel).getAllByLabelText(/^Item \d$/)).toHaveLength(6);
+    });
+
+    it('moves an item and says where it went, with the first Move up greyed', async () => {
+      await onMenu({ 'GET /api/events/ev_1/menu': menuOf(course('c_main', 'Main', [WITH_ITEMS])) });
+
+      const panel = await editJollof();
+      expect(
+        within(panel).getByRole('button', { name: 'Move Rice up' }).getAttribute('aria-disabled'),
+      ).toBe('true');
+      fireEvent.click(within(panel).getByRole('button', { name: 'Move Chicken up' }));
+
+      expect(within(panel).getByText('Chicken moved to item 1 of 3')).toBeDefined();
+      expect((within(panel).getByLabelText('Item 1') as HTMLInputElement).value).toBe('Chicken');
+    });
+
+    it('offers the variants by their names as an or list', async () => {
+      const ways = dish('d_jollof', 'Grilled fish', {
+        variants: [
+          { id: 'v_c', name: 'Croaker', for: 'everyone', allergens: [], diets: [], picked: false },
+          { id: 'v_t', name: 'Tilapia', for: 'everyone', allergens: [], diets: [], picked: false },
+        ],
+      });
+      await onMenu({ 'GET /api/events/ev_1/menu': menuOf(course('c_main', 'Main', [ways])) });
+
+      fireEvent.click(await screen.findByRole('button', { name: 'Edit Grilled fish' }));
+      const panel = await screen.findByRole('complementary', { name: 'Edit dish' });
+      expect(within(panel).getByText(/These items are the same for every variant\./)).toBeDefined();
+      expect(within(panel).getByRole('button', { name: /Croaker or Tilapia/ })).toBeDefined();
+    });
+
+    it('does not offer a choice with no question, and names an item whose choice lost it', async () => {
+      const draft = { ...SIDE, id: 'ch_draft', question: '', draft: true };
+      const kept = dish('d_jollof', 'Jollof rice', {
+        choices: [draft],
+        items: [fixedItem('Rice'), { kind: 'choice', choiceId: 'ch_draft' }],
+      });
+      await onMenu({ 'GET /api/events/ev_1/menu': menuOf(course('c_main', 'Main', [kept])) });
+
+      const chips = await screen.findByRole('list', { name: 'Items · Jollof rice' });
+      expect(within(chips).getByText(/Choice 1, no question yet/)).toBeDefined();
+      const panel = await editJollof();
+      expect(within(panel).queryByText('Or add one from this dish')).toBeNull();
+    });
+
+    it('asks to remove a choice that is an item with the added line', async () => {
+      await onMenu({ 'GET /api/events/ev_1/menu': menuOf(course('c_main', 'Main', [WITH_ITEMS])) });
+
+      fireEvent.click(await screen.findByRole('button', { name: 'Remove “And a side?”…' }));
+
+      expect(
+        await screen.findByText(
+          'Remove “And a side?” from Jollof rice? “And a side?” is also one of Jollof rice’s items.',
+        ),
+      ).toBeDefined();
+    });
+
+    it.each([
+      [[{ kind: 'variants' }, fixedItem('Rice')], true],
+      [[], false],
+    ] as const)(
+      'asks to fold the variants with the added line only when they are an item',
+      async (items, added) => {
+        const two = dish('d_two', 'Coconut rice', {
+          variants: [
+            {
+              id: 'v_fish',
+              name: 'Fish',
+              for: 'everyone',
+              allergens: [],
+              diets: [],
+              picked: false,
+            },
+            {
+              id: 'v_hen',
+              name: 'Chicken',
+              for: 'everyone',
+              allergens: [],
+              diets: [],
+              picked: false,
+            },
+          ],
+          items: [...items],
+        });
+        await onMenu({ 'GET /api/events/ev_1/menu': menuOf(course('c_main', 'Main', [two])) });
+
+        fireEvent.click(await screen.findByRole('button', { name: 'Remove Chicken…' }));
+        expect(await screen.findByText('Make this a single dish?')).toBeDefined();
+
+        expect(
+          screen.queryByText('The variants are also one of Coconut rice’s items.') != null,
+        ).toBe(added);
+      },
+    );
+
+    it('saves Served with this course on Edit course, and refuses a 4th beside Add', async () => {
+      const sent = await onMenu({
+        'GET /api/events/ev_1/menu': menuOf(course('c_main', 'Main', [PLAIN])),
+        'PUT /api/events/ev_1/menu/courses/c_main': () =>
+          json({ menu: { courses: [course('c_main', 'Main', [PLAIN])] }, courseId: 'c_main' }),
+      });
+
+      fireEvent.click(await screen.findByRole('button', { name: 'Edit Main' }));
+      const panel = await screen.findByRole('complementary', { name: 'Edit course' });
+      for (const name of ['Bread roll', 'Water', 'Side salad']) {
+        fireEvent.click(within(panel).getByRole('button', { name: 'Add a course item' }));
+        const rows = within(panel).getAllByLabelText(/^Course item \d$/);
+        fireEvent.change(rows[rows.length - 1] as HTMLElement, { target: { value: name } });
+      }
+      fireEvent.click(within(panel).getByRole('button', { name: 'Add a course item' }));
+      expect(
+        within(panel).getByText('A course can have at most 3 items of its own.'),
+      ).toBeDefined();
+      fireEvent.click(within(panel).getByRole('button', { name: 'Move Water up' }));
+      expect(within(panel).getByText('Water moved to item 1 of 3')).toBeDefined();
+      fireEvent.click(within(panel).getByRole('button', { name: 'Save changes' }));
+
+      expect(await screen.findByText('Main saved.')).toBeDefined();
+      expect(
+        sent.find((one) => one.line === 'PUT /api/events/ev_1/menu/courses/c_main')?.body,
+      ).toEqual(expect.objectContaining({ ownItems: ['Water', 'Bread roll', 'Side salad'] }));
+    });
+
+    it('reads only without menu.manage: the items as text and no item controls', async () => {
+      await onMenu(
+        {
+          'GET /api/events/ev_1/menu': menuOf(
+            course('c_main', 'Main', [WITH_ITEMS], { ownItems: ['Bread roll'] }),
+          ),
+        },
+        OWNER_PERMISSIONS.filter((one) => one !== 'menu.manage'),
+      );
+
+      expect(await screen.findByRole('list', { name: 'Items · Jollof rice' })).toBeDefined();
+      expect(screen.getByText('Bread roll')).toBeDefined();
+      expect(screen.queryByRole('button', { name: 'Edit Jollof rice' })).toBeNull();
     });
   });
 });

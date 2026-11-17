@@ -82,6 +82,7 @@ export function DishFields({
   prices,
   language,
   beforePrice,
+  containsHelp,
   onPatch,
 }: {
   form: DishForm;
@@ -92,6 +93,7 @@ export function DishFields({
   language: MoneyLanguage;
   /** Sits between Suitable for and Last price: the event's Only for this event (sc-3902). */
   beforePrice?: ReactNode;
+  containsHelp?: string;
   onPatch: (next: Partial<DishForm>) => void;
 }) {
   const { t } = useTranslation();
@@ -110,7 +112,7 @@ export function DishFields({
       />
       <ContainsField
         prefix="lib-"
-        help={t('menuLibrary.containsHelp')}
+        help={containsHelp ?? t('menuLibrary.containsHelp')}
         allergens={form.allergens}
         none={form.none}
         notStated={notStated}

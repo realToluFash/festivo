@@ -92,6 +92,7 @@ import {
   type MenuAnswer,
   type MenuChange,
   type MenuCourseDetails,
+  type MenuItem,
   asEventMenu,
   asUnwarnedOptions,
   asUnwarnedPickers,
@@ -2672,7 +2673,7 @@ export class ApiClient {
   async changeMenuCourse(
     eventId: string,
     courseId: string,
-    details: MenuCourseDetails & { answer: MenuAnswer; skippable: boolean },
+    details: MenuCourseDetails & { answer: MenuAnswer; skippable: boolean; ownItems?: string[] },
   ): Promise<MenuChange> {
     return this.menuOf(await this.put<unknown>(this.menuCoursePath(eventId, courseId), details));
   }
@@ -2703,7 +2704,7 @@ export class ApiClient {
   async changeMenuDish(
     eventId: string,
     dishId: string,
-    details: Omit<DishDetails, 'lastPrice' | 'allowShared'>,
+    details: Omit<DishDetails, 'lastPrice' | 'allowShared'> & { items?: MenuItem[] },
   ): Promise<MenuChange> {
     return this.menuOf(await this.put<unknown>(this.menuDishPath(eventId, dishId), details));
   }
