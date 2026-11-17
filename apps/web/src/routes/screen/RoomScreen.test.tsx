@@ -1,4 +1,4 @@
-import { type RoomScreen } from '@soirely/api-client';
+import { type RoomScreen, realtimeTopic } from '@soirely/api-client';
 import { act, render, screen, waitFor } from '@testing-library/react';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { RouterProvider, createMemoryRouter } from 'react-router';
@@ -170,7 +170,9 @@ describe('A screen in the room (sc-3897)', () => {
     await waitFor(() => expect(StubSource.made).toHaveLength(1));
     const source = StubSource.made[0]!;
 
-    expect(new URL(source.url).searchParams.getAll('topic')).toEqual(['events/ev_1/screens']);
+    expect(new URL(source.url).searchParams.getAll('topic')).toEqual([
+      realtimeTopic('EventScreens', 'ev_1'),
+    ]);
     act(() => source.onmessage?.({ data: '[]' }));
 
     await screen.findByText('Dinner');
