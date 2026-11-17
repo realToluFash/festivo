@@ -98,7 +98,14 @@ import {
   SingleSeatPanel,
   useAddRowAndSeat,
 } from './SeatingRows.tsx';
-import { AddTable, ChairPanel, TableDrawing, TablePanel } from './SeatingTables.tsx';
+import {
+  AddTable,
+  ChairPanel,
+  type ChairTip,
+  ChairTipDrawing,
+  TableDrawing,
+  TablePanel,
+} from './SeatingTables.tsx';
 import {
   KeysStrip,
   PlacingBars,
@@ -170,7 +177,14 @@ import {
   seatingIn,
   touchedBy,
 } from './seatingSelection.ts';
-import { SMALL_MAP_FROM_SCALE, f, percentOf, sectionOf, turned } from './seatingDraw.ts';
+import {
+  CHAIRS_FROM_SCALE,
+  SMALL_MAP_FROM_SCALE,
+  f,
+  percentOf,
+  sectionOf,
+  turned,
+} from './seatingDraw.ts';
 import { lengthField, lengthWords, tableSizeWords } from './seatingUnits.ts';
 import '../../../components/SettingsParts.css';
 import './seating.css';
@@ -666,6 +680,7 @@ function Plan({
   const [bar, setBar] = useState<StepBar | null>(null);
   const [tab, setTab] = useState<'arrange' | 'seat'>('arrange');
   const [pickedGuest, setPickedGuest] = useState<string | null>(null);
+  const [chairTip, setChairTip] = useState<{ pick: string; tip: ChairTip } | null>(null);
   const [moveFrom, setMoveFrom] = useState<string | null>(null);
   const [seatingView, setSeatingView] = useState<SeatingView>('plan');
   const [cardSection, setCardSection] = useState<string | null>(null);
@@ -2094,6 +2109,10 @@ function Plan({
         ? outlinesOf(drawn, chosenItems, gridOf(chosenItems, columns, gap).moved)
         : [];
 
+    const showChairTip = (shownTip: ChairTip | null) =>
+      setChairTip(
+        party == null || shownTip == null ? null : { pick: party.lead.id, tip: shownTip },
+      );
     const pickBar: StepBar | null =
       party == null
         ? null
@@ -2266,6 +2285,8 @@ function Plan({
                     shownPanel?.kind === 'chair' && shownPanel.id === id ? shownPanel.seat : null
                   }
                   outside={outlined}
+                  picking={party != null}
+                  onChairTip={showChairTip}
                   onChoose={() =>
                     party != null ? seatAt(item) : open({ kind: 'table', id }, true)
                   }
@@ -2289,6 +2310,8 @@ function Plan({
                       : null
                   }
                   outside={outlined}
+                  picking={party != null}
+                  onChairTip={showChairTip}
                   onChoose={() => (party != null ? seatAt(item) : open({ kind: 'row', id }, true))}
                   onChair={(seat) =>
                     party != null
@@ -2382,6 +2405,9 @@ function Plan({
               oy={oy}
               onDown={(event, handle) => onHandleDown(event, handled, handle)}
             />
+          )}
+          {party != null && chairTip?.pick === party.lead.id && s >= CHAIRS_FROM_SCALE && (
+            <ChairTipDrawing tip={chairTip.tip} />
           )}
           {tipped != null && tip != null && (
             <Tip

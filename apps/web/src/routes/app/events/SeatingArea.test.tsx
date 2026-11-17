@@ -2309,8 +2309,8 @@ describe('The room to scale (sc-4007)', () => {
     });
 
     await screen.findByRole('button', { name: /^Row A/ });
-    press('Zoom in', 3);
-    expect(percent()).toBe('150%');
+    press('Zoom in', 4);
+    expect(percent()).toBe('200%');
 
     fireEvent.click(screen.getByRole('button', { name: 'Row A, seat 4, Empty' }));
     expect(await screen.findByRole('button', { name: 'Mark unusable' })).toBeDefined();
@@ -4553,7 +4553,7 @@ describe('Seating a guest at a desk (sc-4013)', () => {
     expect(screen.getByRole('button', { name: /Ada Obi \+ 2/, pressed: true })).toBeDefined();
     expect(screen.getByText('Now pick a table for Ada Obi and 2 guests.')).toBeDefined();
 
-    fireEvent.click(screen.getByRole('button', { name: /^Table 1,/ }));
+    fireEvent.click(screen.getByRole('button', { name: /^Table 1, (?!Seat)/ }));
     expect(await screen.findAllByText('Ada Obi and 2 guests are at Table 1.')).not.toHaveLength(0);
     expect(sent.find((one) => one.line.endsWith('/guests/seat'))?.body).toEqual({
       guestId: 'g_ada',
@@ -4597,13 +4597,13 @@ describe('Seating a guest at a desk (sc-4013)', () => {
     fireEvent.click(await screen.findByRole('tab', { name: 'Seat' }));
     fireEvent.click(screen.getByRole('button', { name: /Funmi Adeyemi/ }));
     press('Zoom in', 6);
-    fireEvent.click(screen.getByRole('button', { name: 'Table 1, Seat 2, Kemi Ade' }));
+    fireEvent.click(screen.getByRole('button', { name: 'Table 1, Seat 2, Kemi Ade, Coming' }));
     expect(await screen.findByText('Table 1, seat 2 is Kemi Ade’s.')).toBeDefined();
     fireEvent.click(screen.getByRole('button', { name: 'Cancel' }));
     expect(screen.queryByText('Table 1, seat 2 is Kemi Ade’s.')).toBeNull();
     expect(sent.some((one) => one.line.endsWith('/guests/swap'))).toBe(false);
 
-    fireEvent.click(screen.getByRole('button', { name: 'Table 1, Seat 3, Ada Obi' }));
+    fireEvent.click(screen.getByRole('button', { name: 'Table 1, Seat 3, Ada Obi, Coming' }));
     fireEvent.click(await screen.findByRole('button', { name: 'Swap with Ada Obi' }));
     expect(await screen.findAllByText('Funmi Adeyemi is at Table 1.')).not.toHaveLength(0);
     expect(sent.find((one) => one.line.endsWith('/guests/swap'))?.body).toEqual({
@@ -4644,7 +4644,7 @@ describe('Seating a guest at a desk (sc-4013)', () => {
 
     fireEvent.click(await screen.findByRole('tab', { name: 'Seat' }));
     fireEvent.click(screen.getByRole('button', { name: /Ada Obi \+ 2/ }));
-    fireEvent.click(screen.getByRole('button', { name: /^Table 13,/ }));
+    fireEvent.click(screen.getByRole('button', { name: /^Table 13, (?!Seat)/ }));
     expect(
       await screen.findByText(
         'Table 13 is full. Pick another table, or move someone off it first.',
@@ -4652,7 +4652,7 @@ describe('Seating a guest at a desk (sc-4013)', () => {
     ).toBeDefined();
     expect(screen.queryByRole('button', { name: 'Undo' })).toBeNull();
 
-    fireEvent.click(screen.getByRole('button', { name: /^Table 1,/ }));
+    fireEvent.click(screen.getByRole('button', { name: /^Table 1, (?!Seat)/ }));
     expect(
       await screen.findByText('Table 1 has 2 free seats. Ada Obi’s party is 3.'),
     ).toBeDefined();
@@ -4673,7 +4673,7 @@ describe('Seating a guest at a desk (sc-4013)', () => {
     fireEvent.click(await screen.findByRole('tab', { name: 'Seat' }));
     fireEvent.click(screen.getByRole('button', { name: /Ada Obi/ }));
     expect(screen.getByText('Now pick a table for Ada Obi.')).toBeDefined();
-    fireEvent.click(screen.getByRole('button', { name: /^Table 1,/ }));
+    fireEvent.click(screen.getByRole('button', { name: /^Table 1, (?!Seat)/ }));
     expect(
       await screen.findByText('Someone just took that seat. Ada Obi is still without a seat.'),
     ).toBeDefined();
@@ -5223,14 +5223,16 @@ describe('A table’s guests in Seat, and the chairs in their states (sc-4013)',
     });
 
     await chooseTable('Table 1, round, 2 of 10 seats taken');
-    expect(screen.getByRole('button', { name: 'Table 1, Seat 1, Ada Obi' })).toBeDefined();
+    expect(
+      screen.getByRole('button', { name: 'Table 1, Seat 1, Ada Obi, Not sure yet' }),
+    ).toBeDefined();
     expect(
       screen.getByRole('button', { name: 'Table 1, Seat 2, Held for a companion' }),
     ).toBeDefined();
     expect(document.querySelectorAll('.st-chair.is-taken')).toHaveLength(1);
     expect(document.querySelectorAll('.st-chair.is-held')).toHaveLength(1);
 
-    fireEvent.click(screen.getByRole('button', { name: 'Table 1, Seat 1, Ada Obi' }));
+    fireEvent.click(screen.getByRole('button', { name: 'Table 1, Seat 1, Ada Obi, Not sure yet' }));
     expect(
       within(await screen.findByRole('list', { name: 'What the seats show' }))
         .getAllByRole('listitem')
@@ -5357,10 +5359,10 @@ describe('A table’s guests in Seat, and the chairs in their states (sc-4013)',
 
     fireEvent.click(await screen.findByRole('tab', { name: 'Seat' }));
     await chooseTable('Table 1, round, 2 of 10 seats taken');
-    fireEvent.click(screen.getByRole('button', { name: 'Table 1, Seat 1, Ada Obi' }));
+    fireEvent.click(screen.getByRole('button', { name: 'Table 1, Seat 1, Ada Obi, Not sure yet' }));
     expect(screen.getByText('Now pick a table for Ada Obi.')).toBeDefined();
 
-    fireEvent.click(screen.getByRole('button', { name: /^Table 2,/ }));
+    fireEvent.click(screen.getByRole('button', { name: /^Table 2, (?!Seat)/ }));
     expect(await screen.findAllByText('Ada Obi is at Table 2.')).not.toHaveLength(0);
     expect(sent.find((one) => one.line.endsWith('/guests/seat'))?.body).toMatchObject({
       guestId: 'g_ada',
@@ -5388,8 +5390,8 @@ describe('A table’s guests in Seat, and the chairs in their states (sc-4013)',
     expect(screen.queryByText('Now pick a table for Ada Obi.')).toBeNull();
 
     fireEvent.click(ada);
-    const t2 = screen.getByRole('button', { name: /^Table 2,/ });
-    const t1 = screen.getByRole('button', { name: /^Table 1,/ });
+    const t2 = screen.getByRole('button', { name: /^Table 2, (?!Seat)/ });
+    const t1 = screen.getByRole('button', { name: /^Table 1, (?!Seat)/ });
 
     t2.focus();
     fireEvent.keyDown(t2, { key: 'ArrowRight' });
@@ -5571,7 +5573,7 @@ describe('Deleting many with guests in them (sc-57680)', () => {
   }
 
   async function chooseTwo(second: RegExp): Promise<void> {
-    fireEvent.click(await screen.findByRole('button', { name: /^Table 1,/ }));
+    fireEvent.click(await screen.findByRole('button', { name: /^Table 1, (?!Seat)/ }));
     fireEvent.click(screen.getByRole('button', { name: second }), { shiftKey: true });
     await screen.findByRole('heading', { level: 2, name: '2 chosen' });
   }
@@ -5605,7 +5607,7 @@ describe('Deleting many with guests in them (sc-57680)', () => {
         ),
     });
 
-    await chooseTwo(/^Table 2,/);
+    await chooseTwo(/^Table 2, (?!Seat)/);
     expect(panel().getByText('2 tables · 3 guests seated')).toBeDefined();
     fireEvent.click(panel().getByRole('button', { name: 'Delete' }));
     const ask = within(await screen.findByRole('alertdialog'));
@@ -5672,7 +5674,7 @@ describe('Deleting many with guests in them (sc-57680)', () => {
         ),
     });
 
-    await chooseTwo(/^Table 2,/);
+    await chooseTwo(/^Table 2, (?!Seat)/);
     const remove = panel().getByRole('button', { name: 'Delete' });
 
     remove.focus();
@@ -5695,7 +5697,7 @@ describe('Deleting many with guests in them (sc-57680)', () => {
         problem('seating_undo_stale', 409),
     });
 
-    await chooseTwo(/^Table 2,/);
+    await chooseTwo(/^Table 2, (?!Seat)/);
     fireEvent.click(panel().getByRole('button', { name: 'Delete' }));
     fireEvent.click(
       within(await screen.findByRole('alertdialog')).getByRole('button', {
@@ -5735,7 +5737,7 @@ describe('Deleting many with guests in them (sc-57680)', () => {
         problem('seating_undo_stale', 409),
     });
 
-    await chooseTwo(/^Table 2,/);
+    await chooseTwo(/^Table 2, (?!Seat)/);
     fireEvent.click(panel().getByRole('button', { name: 'Duplicate' }));
     await waitFor(() => expect(stepLine()).toContain('2 copies added'));
     fireEvent.click(screen.getByRole('button', { name: 'Undo' }));
@@ -5743,5 +5745,216 @@ describe('Deleting many with guests in them (sc-57680)', () => {
     await waitFor(() => expect(stepLine()).toBe('These seats changed since. Nothing was undone.'));
     expect(bodies(sent, 'delete')[0]?.emptyOnly).toBe(true);
     expect(screen.queryByRole('button', { name: 'Undo' })).toBeNull();
+  });
+});
+
+describe('Seating on the Floor plan (sc-5030)', () => {
+  beforeAll(standInPointerEvents);
+
+  beforeEach(() => {
+    localStorage.clear();
+  });
+
+  const SEATED = guest({
+    id: 'g_sofia',
+    fullName: 'Sofia Rossi',
+    reply: 'maybe',
+    seat: { kind: 'table', id: 't1', seat: 1 },
+  });
+  const T2 = table({ id: 't2', name: 'Table 2', seats: 2, unusableSeats: [1], xCm: 400 });
+  const AT_T2 = guest({
+    id: 'g_kemi',
+    fullName: 'Kemi Ade',
+    seat: { kind: 'table', id: 't2', seat: 2 },
+  });
+
+  function seatedAt(seat: number | null) {
+    return moved(
+      withGuests(
+        [guest({ seat: { kind: 'table', id: 't1', seat: seat ?? 2 } }), SEATED, AT_T2],
+        table(),
+        T2,
+      ),
+      [{ guestId: 'g_ada', from: null, to: { kind: 'table', id: 't1', seat: seat ?? 2 } }],
+    );
+  }
+
+  async function pickAda() {
+    const sent = await onSeating({
+      'GET /api/events/ev_1/seating-plan': () =>
+        seating(withGuests([guest(), SEATED, AT_T2], table(), T2)),
+      'POST /api/events/ev_1/seating-plan/guests/seat': () => seatedAt(3),
+    });
+
+    fireEvent.click(await screen.findByRole('tab', { name: 'Seat' }));
+    fireEvent.click(screen.getByRole('button', { name: /Ada Obi/ }));
+    expect(screen.getByText('Now pick a table for Ada Obi.')).toBeDefined();
+    return sent;
+  }
+
+  function tags(): string[] {
+    return [...document.querySelectorAll('.st-free text')].map((one) => one.textContent ?? '');
+  }
+
+  function seatSent(sent: Awaited<ReturnType<typeof onSeating>>) {
+    return sent.find((one) => one.line.endsWith('/guests/seat'))?.body;
+  }
+
+  it('outlines every table while a guest is picked: "{n} free" in green, or Full in grey', async () => {
+    signedIn();
+    await pickAda();
+
+    expect(tags()).toEqual(['Full', '9 free']);
+    expect(document.querySelectorAll('[data-table="t1"] .st-room-for:not(.is-full)')).toHaveLength(
+      1,
+    );
+    expect(document.querySelectorAll('[data-table="t2"] .st-room-for.is-full')).toHaveLength(1);
+
+    fireEvent.keyDown(window, { key: 'Escape' });
+    expect(tags()).toEqual([]);
+    expect(document.querySelectorAll('.st-room-for')).toHaveLength(0);
+  });
+
+  it('below 50% draws no chairs, puts the tag in place of the bar, and seats at the table clicked', async () => {
+    signedIn();
+    const sent = await pickAda();
+
+    press('Zoom out', 2);
+    expect(percent()).toBe('40%');
+    expect(document.querySelectorAll('[data-table="t1"] .st-chair')).toHaveLength(0);
+    expect(document.querySelectorAll('[data-table="t1"] .st-chair-hit')).toHaveLength(0);
+    expect(document.querySelectorAll('.st-fill')).toHaveLength(0);
+    expect(tags()).toEqual(['Full', '9 free']);
+
+    fireEvent.click(screen.getByRole('button', { name: /^Table 1, (?!Seat)/ }));
+    await screen.findAllByText('Ada Obi is at Table 1.');
+    expect(seatSent(sent)).toMatchObject({ guestId: 'g_ada', placeId: 't1', seat: null });
+  });
+
+  it('gives a chair’s click to its table until its closest two chairs are 44 px apart', async () => {
+    signedIn();
+    const sent = await pickAda();
+
+    press('Zoom in', 2);
+    expect(percent()).toBe('100%');
+    expect(chairTargets('t1')).toHaveLength(10);
+    expect(chairTargets('t1').every((one) => one.classList.contains('is-keys'))).toBe(true);
+
+    fireEvent.click(document.querySelectorAll('[data-table="t1"] .st-chair')[3]!);
+    await screen.findAllByText('Ada Obi is at Table 1.');
+    expect(seatSent(sent)).toMatchObject({ placeId: 't1', seat: null });
+  });
+
+  it('from the zoom where the closest two chairs are 44 px apart, each chair takes its own click', async () => {
+    signedIn();
+    const sent = await pickAda();
+
+    press('Zoom in', 3);
+    expect(percent()).toBe('150%');
+    expect(chairTargets('t1').some((one) => one.classList.contains('is-keys'))).toBe(false);
+    expect(chairTargets('t1').every((one) => one.getAttribute('r') === '22')).toBe(true);
+
+    fireEvent.click(screen.getByRole('button', { name: 'Table 1, Seat 3, Empty' }));
+    await screen.findAllByText('Ada Obi is at Table 1.');
+    expect(seatSent(sent)).toMatchObject({ placeId: 't1', seat: 3 });
+  });
+
+  it('holds a row’s chairs back until its 50 cm spacing measures 44 px, at 200%', async () => {
+    signedIn();
+    await onSeating({
+      'GET /api/events/ev_1/seating-plan': () =>
+        seating({ ...withRowsAndSeats([row()], []), guests: [guest()] }),
+    });
+
+    fireEvent.click(await screen.findByRole('tab', { name: 'Seat' }));
+    fireEvent.click(screen.getByRole('button', { name: /Ada Obi/ }));
+    const rowTargets = () => [...document.querySelectorAll('[data-row="r1"] .st-chair-hit')];
+
+    press('Zoom in', 3);
+    expect(percent()).toBe('150%');
+    expect(rowTargets().every((one) => one.classList.contains('is-keys'))).toBe(true);
+    press('Zoom in');
+    expect(percent()).toBe('200%');
+    expect(rowTargets().some((one) => one.classList.contains('is-keys'))).toBe(false);
+  });
+
+  it('keeps every table’s hit area at least 44 × 44 px at 25%', async () => {
+    signedIn();
+    await pickAda();
+
+    press('Zoom out', 4);
+    expect(percent()).toBe('25%');
+    const hit = document.querySelector('[data-table="t2"] .st-hit')!;
+
+    expect(Number(hit.getAttribute('r'))).toBeGreaterThanOrEqual(22);
+  });
+
+  it('names each chair with its seat, guest and reply, and shows that label on hover or focus', async () => {
+    signedIn();
+    await pickAda();
+
+    press('Zoom in', 3);
+    const sofia = screen.getByRole('button', {
+      name: 'Table 1, Seat 1, Sofia Rossi, Not sure yet',
+    });
+
+    fireEvent.pointerEnter(sofia);
+    expect(document.querySelector('.st-tip text')?.textContent).toBe(
+      'Seat 1, Sofia Rossi, Not sure yet',
+    );
+    fireEvent.pointerLeave(sofia);
+    expect(document.querySelector('.st-tip')).toBeNull();
+
+    const empty = screen.getByRole('button', { name: 'Table 1, Seat 2, Empty' });
+
+    fireEvent.focus(empty);
+    expect(document.querySelector('.st-tip text')?.textContent).toBe('Seat 2, Empty');
+    fireEvent.keyDown(window, { key: 'Escape' });
+    expect(document.querySelector('.st-tip')).toBeNull();
+  });
+
+  it('by keyboard from 50%, Tab goes from a table to its chairs, Seat 1 first, and Enter on a chair seats there', async () => {
+    signedIn();
+    const sent = await pickAda();
+
+    const t1 = screen.getByRole('button', { name: /^Table 1, (?!Seat)/ });
+    const reachable = [...t1.querySelectorAll('[tabindex="0"]')];
+
+    expect(reachable.map((one) => one.getAttribute('aria-label'))).toEqual(
+      Array.from({ length: 10 }, (_, index) =>
+        index === 0
+          ? 'Table 1, Seat 1, Sofia Rossi, Not sure yet'
+          : `Table 1, Seat ${index + 1}, Empty`,
+      ),
+    );
+    fireEvent.keyDown(reachable[2]!, { key: 'Enter' });
+    await screen.findAllByText('Ada Obi is at Table 1.');
+    expect(seatSent(sent)).toMatchObject({ placeId: 't1', seat: 3 });
+  });
+
+  it('below 50% Tab reaches no chairs', async () => {
+    signedIn();
+    await pickAda();
+
+    press('Zoom out', 2);
+    expect(document.querySelectorAll('.st-room [data-table] [tabindex="0"]')).toHaveLength(0);
+  });
+
+  it('picks nobody and outlines nothing without seating.manage', async () => {
+    signedIn();
+    await onSeating(
+      {
+        'GET /api/events/ev_1/seating-plan': () => seating(withGuests([guest(), SEATED], table())),
+      },
+      OWNER_PERMISSIONS.filter((one) => one !== 'seating.manage'),
+    );
+
+    fireEvent.click(await screen.findByRole('tab', { name: 'Seat' }));
+    const ada = screen.getByRole('button', { name: /Ada Obi/ });
+
+    expect((ada as HTMLButtonElement).disabled).toBe(true);
+    fireEvent.click(ada);
+    expect(screen.queryByText('Now pick a table for Ada Obi.')).toBeNull();
+    expect(tags()).toEqual([]);
   });
 });
