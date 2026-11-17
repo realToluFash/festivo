@@ -1,25 +1,3 @@
-.na-line {
-  display: flex;
-  align-items: flex-start;
-  gap: var(--spaceXs);
-  margin: var(--spaceXxs) 0 0;
-  color: var(--colorInkOnDark);
-  font: 600 14px/1.35 var(--fontFamily);
-}
-
-/* Out of the flow while empty, so the column's gap is not taken; display: none would silence the live region. */
-.na-line:empty {
-  position: absolute;
-  margin: 0;
-}
-
-.na-mark {
-  flex: none;
-  width: 16px;
-  height: 16px;
-  margin-top: 2px;
-}
-
 /* The demo's mark, dashed as the app's DemoOnly box is: it never reaches the product. */
 .na-demo-only {
   display: flex;

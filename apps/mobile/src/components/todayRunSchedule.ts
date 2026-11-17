@@ -1,5 +1,6 @@
 import type { Schedule } from '@soirely/api-client';
-import { useEffect, useState } from 'react';
+import { type NowShown, serverClock, watchNowReads } from '@soirely/domain';
+import { useEffect, useRef, useState } from 'react';
 
 import { api } from '../api.ts';
 import { runScheduleFor } from '../kit/todayRun.ts';
@@ -7,34 +8,46 @@ import { runScheduleFor } from '../kit/todayRun.ts';
 /** Today is a glance: a press shows within a minute, the slow read again sc-3897 settled (pm, 5 Nov), with room left for the read itself. */
 export const RUN_AGAIN_MS = 50_000;
 
-/** The running order of the event under way, for a role that reads it; read again every 50 s and whenever `refresh` changes. */
+const NOTHING_SHOWN: NowShown<Schedule> = { schedule: null, asOf: null };
+
+/** The running order of the event under way, for a role that reads it: read every 50 s and whenever `refresh` changes; with the last landed read's time once Now is past keeping up (sc-62416). */
 export function useRunSchedule(
   event: { id: string; permissions: readonly string[] } | null,
   refresh: number,
-): Schedule | null {
+): NowShown<Schedule> {
   const id = runScheduleFor(event);
-  const [read, setRead] = useState<{ id: string; schedule: Schedule } | null>(null);
+  const [read, setRead] = useState<{ id: string; shown: NowShown<Schedule> } | null>(null);
+  const watching = useRef<{ id: string; readNow: () => void } | null>(null);
   const [, setMinute] = useState(0);
 
   useEffect(() => {
     if (id == null) return undefined;
 
-    let live = true;
-    const readNow = () =>
-      api.schedule(id).then(
-        (schedule) => live && setRead({ id, schedule }),
-        // Kept as last read, and the clock still moves "until" and the figure on.
-        () => live && setMinute((n) => n + 1),
-      );
-
-    void readNow();
-    const timer = setInterval(() => void readNow(), RUN_AGAIN_MS);
+    const watch = watchNowReads({
+      read: () =>
+        api.schedule(id).catch((error: unknown) => {
+          // The clock still moves "until" and the figure on.
+          setMinute((n) => n + 1);
+          throw error;
+        }),
+      every: RUN_AGAIN_MS,
+      clock: () => serverClock.now(),
+      show: (shown) => setRead({ id, shown }),
+    });
+    watching.current = { id, readNow: watch.readNow };
 
     return () => {
-      live = false;
-      clearInterval(timer);
+      watching.current = null;
+      watch.stop();
     };
-  }, [id, refresh]);
+  }, [id]);
 
-  return read?.id === id ? read.schedule : null;
+  const first = useRef(refresh);
+
+  useEffect(() => {
+    if (refresh === first.current) return;
+    watching.current?.readNow();
+  }, [refresh]);
+
+  return read?.id === id ? read.shown : NOTHING_SHOWN;
 }

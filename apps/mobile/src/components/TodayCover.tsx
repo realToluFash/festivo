@@ -481,6 +481,7 @@ export function NowBlock({ moment, wide }: { moment: Moment; wide: boolean }) {
       <RunNowBlock
         now={now}
         run={run}
+        asOf={moment.asOf ?? null}
         wide={wide}
         onOpen={() =>
           go({ to: 'runOfShow', id: now.event.id, name: now.name, track: run.track ?? null })

@@ -1,10 +1,12 @@
-import { type ReactNode, useState } from 'react';
+import { type ReactNode, useEffect, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Pressable, type StyleProp, StyleSheet, View, type ViewStyle } from 'react-native';
+import Svg, { Path } from 'react-native-svg';
 
 import { Text } from './Text.tsx';
 import { Glass } from './Glass.tsx';
 import { Glyph } from './Glyph.tsx';
+import { readOut } from './ReadOut.tsx';
 import { tokens } from '../theme/tokens.ts';
 import type { Now } from '../kit/today.ts';
 import { railLabels, type RunNow } from '../kit/todayRun.ts';
@@ -156,7 +158,45 @@ function NextRow({ run, aside }: { run: RunNow; aside: ReactNode }) {
   );
 }
 
-function Head({ name, run, wide }: { name: string; run: RunNow; wide: boolean }) {
+/** sc-4028's crossed-out signal, so one state has one shape. Its words are said once as it appears, never again while they stay the same. */
+function AsOfLine({ words }: { words: string }) {
+  useEffect(() => readOut(words), [words]);
+
+  return (
+    <View style={styles.asOf}>
+      <Svg
+        width={16}
+        height={16}
+        viewBox="0 0 16 16"
+        fill="none"
+        stroke={tokens.colorInkOnDark}
+        strokeWidth={1.5}
+        strokeLinecap="round"
+        style={styles.asOfMark}
+        accessibilityElementsHidden
+        importantForAccessibility="no-hide-descendants"
+      >
+        <Path d="M1.5 6a9.5 9.5 0 0 1 13 0M3.8 8.6a6.2 6.2 0 0 1 8.4 0M6.1 11.1a2.9 2.9 0 0 1 3.8 0" />
+        <Path d="M2 2l12 12" />
+      </Svg>
+      <Text size={14} weight="semibold" style={[styles.white, styles.shrink]}>
+        {words}
+      </Text>
+    </View>
+  );
+}
+
+function Head({
+  name,
+  run,
+  wide,
+  asOf,
+}: {
+  name: string;
+  run: RunNow;
+  wide: boolean;
+  asOf: string | null;
+}) {
   const long = run.headline.length > LONG;
   const size = wide ? (long ? 40 : 58) : long ? 30 : 44;
 
@@ -199,20 +239,24 @@ function Head({ name, run, wide }: { name: string; run: RunNow; wide: boolean })
           )}
         </View>
       )}
+      {asOf != null && <AsOfLine words={asOf} />}
     </View>
   );
 }
 
-/** Now on the day from the run of show (sc-29875): what is on and until when, the figure, the rail, Next and Open run of show. */
+/** Now on the day from the run of show (sc-29875): what is on and until when, the figure, the rail, Next and Open run of show; and how old it is once its reads stop landing (sc-62416). */
 export function RunNowBlock({
   now,
   run,
+  asOf = null,
   wide,
   aside,
   onOpen,
 }: {
   now: Now;
   run: RunNow;
+  /** "Offline · as of 16:38", or null while the last landed read is 60 seconds old or less, or none has failed since. */
+  asOf?: string | null;
   wide: boolean;
   /** Beside Next: sc-29978's arrived figure, where it shows one. */
   aside?: ReactNode;
@@ -226,7 +270,7 @@ export function RunNowBlock({
       <View style={styles.wideRow}>
         <View style={[styles.grow, styles.gapLg]}>
           <Chips now={now} />
-          <Head name={now.name} run={run} wide />
+          <Head name={now.name} run={run} wide asOf={asOf} />
         </View>
         <View style={styles.right}>
           <NextRow run={run} aside={aside} />
@@ -238,7 +282,7 @@ export function RunNowBlock({
   ) : (
     <View style={styles.gapLg}>
       <Chips now={now} />
-      <Head name={now.name} run={run} wide={false} />
+      <Head name={now.name} run={run} wide={false} asOf={asOf} />
       <Rail run={run} />
       <NextRow run={run} aside={aside} />
       {open}
@@ -247,6 +291,8 @@ export function RunNowBlock({
 }
 
 const styles = StyleSheet.create({
+  asOf: { flexDirection: 'row', alignItems: 'flex-start', gap: tokens.spaceXs },
+  asOfMark: { marginTop: 2 },
   grow: { flex: 1, minWidth: 0 },
   shrink: { flexShrink: 1 },
   white: { color: tokens.colorInkOnDark },

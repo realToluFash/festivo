@@ -24,7 +24,6 @@ import type { Tell } from '../components/SettingsParts.tsx';
 import type { Open } from '../components/today.ts';
 import { Banner, type BannerActions, NowBanner } from '../components/TodayBanner.tsx';
 import { RunNowBanner } from '../components/TodayRunBanner.tsx';
-import { RunNowAsOfBanner } from './TodayRunAsOf.tsx';
 import { isReadsState, useNowReads } from './NowReads.tsx';
 import { FirstRun, ThisWeek, YourEvents } from '../components/TodayParts.tsx';
 import { NeedsYou } from './TodayParts.tsx';
@@ -153,17 +152,13 @@ export function Today({ search = null }: { search?: SearchStart | null }) {
             ) : (
               <>
                 {moment.now != null && moment.full && !reads.built ? (
-                  readsState == null ? (
-                    <RunNowBanner now={moment.now} run={run} actions={ACTIONS} open={open} />
-                  ) : (
-                    <RunNowAsOfBanner
-                      now={moment.now}
-                      run={run}
-                      asOf={reads.asOf}
-                      actions={ACTIONS}
-                      open={open}
-                    />
-                  )
+                  <RunNowBanner
+                    now={moment.now}
+                    run={run}
+                    asOf={readsState == null ? null : reads.asOf}
+                    actions={ACTIONS}
+                    open={open}
+                  />
                 ) : moment.now != null ? (
                   <NowBanner now={moment.now} full={false} actions={ACTIONS} open={open} />
                 ) : (

@@ -48,7 +48,7 @@ describe("Now's line once its reads stop landing (sc-62416)", () => {
   it('is not there without a failed read, and Now is as sc-61017 left it', SLOW, async () => {
     await today('moment=day');
 
-    expect(screen.queryByRole('status')).toBeNull();
+    expect(screen.getByRole('status').textContent).toBe('');
     expect(screen.getByRole('button', { name: 'Open run of show' })).toBeDefined();
   });
 
