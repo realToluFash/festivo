@@ -32,7 +32,7 @@ import { useTranslation } from 'react-i18next';
 import { useNavigate } from 'react-router';
 
 import { api } from '../../../api.ts';
-import { checkCoverPick } from '../../../coverPick.ts';
+import { type CoverSent, useCoverSending } from '../../../coverPick.ts';
 import {
   CoverPreview,
   CoverUpload,
@@ -89,8 +89,8 @@ function NewEventPage({ organisation }: { organisation: Membership }) {
 /** A photo chosen for the cover; one this browser cannot show is `sent` at once, so the server's copy stands in. */
 type Chosen = { file: File; url: string; sent: string | null };
 
-/** The server's viewable copy of a photo sent for one, or the words of its refusal. */
-type Copy = (Chosen & { sent: string }) | string;
+/** The server's viewable copy of a photo sent for one. */
+type Copy = Chosen & { sent: string };
 
 type Status = 'editing' | 'creating' | 'failed' | 'created';
 
@@ -132,9 +132,7 @@ function EventForm({ organisation }: { organisation: Membership }) {
   const describe = useRef<HTMLInputElement>(null);
   const preview = useRef<HTMLImageElement>(null);
   const taken = useRef<string | null>(null);
-  const picks = useRef(0);
-  const sends = useRef(0);
-  const copying = useRef<Promise<Copy> | null>(null);
+  const copying = useCoverSending<Copy>();
   const currencies = useMemo(() => currencyChoices('', currency, locale, t), [currency, locale, t]);
   const zones = useMemo(
     () => timeZoneChoices(organisation.timezone, timeZone),
@@ -171,13 +169,6 @@ function EventForm({ organisation }: { organisation: Membership }) {
       else if (taken.current !== was.sent) discardCoverUpload(organisation.id, was.sent);
     };
   }, [chosen, organisation.id]);
-
-  useEffect(
-    () => () => {
-      sends.current += 1;
-    },
-    [],
-  );
 
   const { moveStart, moveEnd } = useStartCarriesEnd({
     draft,
@@ -237,16 +228,14 @@ function EventForm({ organisation }: { organisation: Membership }) {
     if (fileInput.current != null) fileInput.current.value = '';
     if (file == null) return;
 
-    const picked = ++picks.current;
-    const checked = await checkCoverPick(file);
-    if (picked !== picks.current) return;
+    const checked = await copying.check(file);
+    if (checked == null) return;
 
     if (checked.refusal != null) {
       setCoverRefusal(t(`eventCover.refused_${checked.refusal}`));
       return;
     }
 
-    const mine = ++sends.current;
     setCoverRefusal(null);
     setPosition(COVER_MIDDLE);
     setDescription('');
@@ -254,37 +243,30 @@ function EventForm({ organisation }: { organisation: Membership }) {
     touched();
 
     if (checked.shows) {
-      copying.current = null;
+      copying.stop();
       setSending(false);
       setChosen({ file, url: URL.createObjectURL(file), sent: null });
       return;
     }
 
-    const copy = sendForCopy(file).then(
-      (sent): Copy => ({ file, ...sent }),
-      (error: unknown) => refusalOf(error, t),
+    const copy = copying.send(
+      sendForCopy(file).then((sent): Copy => ({ file, ...sent })),
+      (stale) => discardCoverUpload(organisation.id, stale.sent),
     );
-    copying.current = copy;
     setChosen(null);
     setSending(true);
 
     const landed = await copy;
+    if (landed == null) return;
 
-    if (mine !== sends.current) {
-      if (typeof landed !== 'string') discardCoverUpload(organisation.id, landed.sent);
-      return;
-    }
-
-    copying.current = null;
     setSending(false);
-    if (typeof landed === 'string') return setCoverRefusal(landed);
+    if ('refused' in landed) return setCoverRefusal(refusalOf(landed.refused, t));
     setCoverRefusal(null);
-    setChosen(landed);
+    setChosen(landed.landed);
   }
 
   function stopSending(): void {
-    sends.current += 1;
-    copying.current = null;
+    copying.stop();
     setSending(false);
     setCoverRefusal(null);
     touched();
@@ -365,7 +347,7 @@ function EventForm({ organisation }: { organisation: Membership }) {
 
     setUnsent(0);
     setStatus('creating');
-    const copy = copying.current;
+    const copy = copying.onItsWay();
     const land = focusWhereSent();
     const sentVenue = venueSent(venue);
     const sentNote = arrivalNoteSent(venue.note);
@@ -415,9 +397,14 @@ function EventForm({ organisation }: { organisation: Membership }) {
   }
 
   /** Created is said only once the copy on its way has landed and is the cover, or has been refused (sc-60915). */
-  async function waited(eventId: string, copy: Promise<Copy>): Promise<string | null> {
+  async function waited(eventId: string, copy: Promise<CoverSent<Copy>>): Promise<string | null> {
     const landed = await copy;
-    const refused = typeof landed === 'string' ? landed : await sendCover(eventId, landed);
+    const refused =
+      landed == null
+        ? null
+        : 'refused' in landed
+          ? refusalOf(landed.refused, t)
+          : await sendCover(eventId, landed.landed);
     setStatus('created');
 
     return refused;

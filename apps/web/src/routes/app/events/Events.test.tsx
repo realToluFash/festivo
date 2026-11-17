@@ -4853,6 +4853,69 @@ describe('A HEIC the browser cannot show, and a cover that will not load (sc-138
         expect(discarded(sent)).toEqual([{ uploadKey: 'event_cover/org_1/2026/10/1.heic' }]),
       );
     });
+
+    it('asks before going back with only a photo on its way', async () => {
+      signedIn();
+      slowCopies();
+      const router = createMemoryRouter(routes, {
+        initialEntries: ['/app/events', '/app/events/new'],
+        initialIndex: 1,
+      });
+      render(<RouterProvider router={router} />);
+      await screen.findByRole('heading', { level: 1, name: 'New event' });
+      chooseHeic();
+      await screen.findByText('Uploading…');
+
+      await act(() => router.navigate(-1));
+
+      const dialog = await screen.findByRole('alertdialog', { name: 'Leave without saving?' });
+      expect(within(dialog).getByText('What you typed for this event will be lost.')).toBeDefined();
+      expect(router.state.location.pathname).toBe('/app/events/new');
+    });
+
+    it('sends nothing for a HEIC picked just before leaving, while its pick check is still running', async () => {
+      signedIn();
+      const { sent } = slowCopies();
+      at('/app/events/new');
+      await screen.findByRole('heading', { level: 1, name: 'New event' });
+
+      chooseHeic();
+      fireEvent.click(document.querySelector('.ev-crumb a')!);
+      await waitFor(() =>
+        expect(screen.queryByRole('heading', { level: 1, name: 'New event' })).toBeNull(),
+      );
+      await act(async () => new Promise((settle) => setTimeout(settle, 0)));
+
+      expect(sent.map(({ line }) => line)).not.toContain(SIGN);
+    });
+
+    it('discards the copy when setting it as the cover is refused after Create event', async () => {
+      const { sent, copies } = await waiting({
+        'POST /api/orgs/org_1/events': () => json({ event: event() }, 201),
+        'PUT /api/events/ev_1/cover': () =>
+          problem(422, 'validation_failed', {
+            violations: [
+              {
+                propertyPath: 'uploadKey',
+                message: 'The photo did not upload. Try again.',
+                code: 'validation_failed',
+              },
+            ],
+          }),
+      });
+      fillIn();
+      fireEvent.click(screen.getByRole('button', { name: 'Create event' }));
+      await screen.findByRole('button', { name: 'Creating…' });
+
+      await act(async () => copies[0]!.land());
+
+      expect(
+        await screen.findByText(
+          'The event is saved without its photo. The photo did not upload. Try again.',
+        ),
+      ).toBeDefined();
+      expect(discarded(sent)).toEqual([{ uploadKey: 'event_cover/org_1/2026/10/1.heic' }]);
+    });
   });
 });
 
