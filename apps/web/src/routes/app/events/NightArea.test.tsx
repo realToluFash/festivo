@@ -275,6 +275,17 @@ describe('Run of show on the night (sc-3895)', () => {
     expect(liveRegion()?.textContent).toBe('First dance started.');
   });
 
+  it('keeps focus on the night after a press replaces the pressed button', async () => {
+    await onNight(NIGHT, { answers: { [PRESS_SPEECHES]: answered(GAP) } });
+    const done = await screen.findByRole('button', { name: 'Done: Speeches' });
+
+    done.focus();
+    fireEvent.click(done);
+
+    const start = await screen.findByRole('button', { name: 'Start now: First dance' });
+    await waitFor(() => expect(document.activeElement).toBe(start));
+  });
+
   it('docks a chosen Later row with Start now, Skip and Move, and Move offers Leave it', async () => {
     await onNight(GAP, { now: '20:29' });
 

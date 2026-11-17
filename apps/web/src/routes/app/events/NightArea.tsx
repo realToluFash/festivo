@@ -287,6 +287,8 @@ interface Acts {
 
 type View = NightView<RunItem>;
 
+const REFOCUS_MS = 5000;
+
 function Night({
   event,
   schedule,
@@ -322,6 +324,8 @@ function Night({
   const [chosen, setChosen] = useState<string | null>(null);
   const [moving, setMoving] = useState(false);
   const [rows] = useState(() => new Map<string, HTMLButtonElement>());
+  const cards = useRef<HTMLDivElement>(null);
+  const [refocus, setRefocus] = useState<{ row: string | null } | null>(null);
   const track = tracks.find((one) => one.key === trackKey) ?? tracks[0] ?? null;
   const view = track == null ? null : nightView(track, now, zone);
   const chosenRow =
@@ -339,12 +343,37 @@ function Night({
     manage,
   });
 
+  // A press replaces the button it was made with, so focus would fall to the page; it goes to the night's next control instead.
+  useEffect(() => {
+    if (refocus == null) return;
+    const active = document.activeElement;
+    if (active != null && active !== document.body) {
+      if (!cards.current?.contains(active)) setRefocus(null);
+      return;
+    }
+    const target =
+      (refocus.row == null ? undefined : rows.get(refocus.row)) ??
+      cards.current?.querySelector<HTMLElement>('button.nt-big, a, button') ??
+      cards.current;
+    target?.focus();
+  }, [refocus, schedule, rows]);
+
+  useEffect(() => {
+    if (refocus == null) return undefined;
+    const late = setTimeout(() => setRefocus(null), REFOCUS_MS);
+
+    return () => clearTimeout(late);
+  }, [refocus]);
+
   const settle = () => {
     setChosen(null);
     setMoving(false);
   };
+  const pressed = (item: RunItem, kind: ScheduleItemPress) =>
+    setRefocus({ row: kind === 'skip' && item.id === chosen ? item.id : null });
   const acts: Acts = {
     done: (item) => {
+      pressed(item, 'done');
       settle();
       onPress(
         item,
@@ -355,10 +384,12 @@ function Night({
       );
     },
     skip: (item) => {
+      pressed(item, 'skip');
       settle();
       onPress(item, 'skip', t('night.saidSkipped', { title: item.title }));
     },
     start: (item) => {
+      pressed(item, 'start');
       settle();
       onPress(item, 'start', t('night.saidStarted', { title: item.title }));
     },
@@ -442,7 +473,7 @@ function Night({
         </div>
       )}
       <div className="nt-split">
-        <div className="nt-cards">
+        <div className="nt-cards" ref={cards} tabIndex={-1}>
           <Cards
             eventId={event.id}
             view={view}
