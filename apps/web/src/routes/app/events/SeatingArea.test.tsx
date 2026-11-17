@@ -3971,7 +3971,9 @@ describe('Who else is on the plan (sc-4719)', () => {
     );
     expect(outer! - inner!).toBe(5);
 
-    const seat = document.querySelector('[data-table="t1"] .st-ring:last-child circle');
+    const seat = [...document.querySelectorAll('[data-table="t1"] .st-ring')]
+      .at(-1)
+      ?.querySelector('circle');
     const chair = document.querySelectorAll('[data-table="t1"] .st-chair')[1];
     expect(seat?.getAttribute('cx')).toBe(chair?.getAttribute('cx'));
 
