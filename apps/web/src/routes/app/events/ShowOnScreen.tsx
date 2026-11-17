@@ -28,7 +28,6 @@ export function ShowOnScreen({ eventId, onClose }: { eventId: string; onClose: (
   const [links, setLinks] = useState<ScreenLink[]>([]);
   const [load, setLoad] = useState<'loading' | 'failed' | 'loaded'>('loading');
   const [round, setRound] = useState(0);
-  const [back, setBack] = useState<string | null>(null);
   const [asking, setAsking] = useState<string | null>(null);
   const [replacing, setReplacing] = useState(false);
   const [said, setSaid] = useState<Said | null>(null);
@@ -61,13 +60,13 @@ export function ShowOnScreen({ eventId, onClose }: { eventId: string; onClose: (
     };
   }, [eventId, round]);
 
-  useEffect(() => {
-    if (asking != null) keep.current?.focus();
-  }, [asking]);
+  const asked = useRef<string | null>(null);
 
   useEffect(() => {
-    if (back != null) document.getElementById(replaceId(back))?.focus();
-  }, [back]);
+    if (asking != null) keep.current?.focus();
+    else if (asked.current != null) document.getElementById(replaceId(asked.current))?.focus();
+    asked.current = asking;
+  }, [asking]);
 
   function tryAgain() {
     setLoad('loading');
@@ -101,7 +100,6 @@ export function ShowOnScreen({ eventId, onClose }: { eventId: string; onClose: (
       () => {
         setReplacing(false);
         setAsking(null);
-        setBack(keyOf(link));
         setSaid({ words: t('showOnScreen.replaceFailed', { place }), done: false });
       },
     );
@@ -206,7 +204,6 @@ export function ShowOnScreen({ eventId, onClose }: { eventId: string; onClose: (
                         className="gs-pill is-secondary"
                         onClick={() => {
                           setSaid(null);
-                          setBack(null);
                           setAsking(keyOf(link));
                         }}
                       >
