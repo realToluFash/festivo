@@ -7,6 +7,7 @@ import { afterEach, describe, expect, it, vi } from 'vitest';
 import { RouterProvider, createMemoryRouter } from 'react-router';
 
 import { __setSessionState, type Session } from '../../../session.ts';
+import { __forgetTab } from '../../../tabKept.ts';
 import { OWNER_PERMISSIONS, membership } from '../../../test-memberships.ts';
 import { routes } from '../../index.tsx';
 
@@ -151,6 +152,7 @@ function people(): HTMLElement {
 
 afterEach(() => {
   vi.restoreAllMocks();
+  __forgetTab();
 });
 
 describe('People on an event, at a desk (sc-29915)', () => {
@@ -683,5 +685,48 @@ describe('People on an event, at a desk (sc-29915)', () => {
     fireEvent.click(await screen.findByRole('button', { name: 'Try again' }));
 
     await waitFor(() => expect(within(people()).getByText('Tom Becker')).toBeDefined());
+  });
+});
+
+describe('coming back to People while offline (sc-65646)', () => {
+  it('shows the people as this tab last loaded them, a change made since included', async () => {
+    signedIn();
+    let online = true;
+    vi.spyOn(globalThis, 'fetch').mockImplementation(async (input, init) => {
+      const line = `${init?.method ?? 'GET'} ${new URL(String(input)).pathname}`;
+      if (!online) throw new TypeError('Failed to fetch');
+      if (line === 'GET /api/events/ev_1') return json({ event: EVENT });
+      if (line === 'GET /api/events/ev_1/people')
+        return json({ people: [TOM], owners: ['Folake Adeyemi'], admins: ['Julien Moreau'] });
+      if (line === 'GET /api/events/ev_1/people/addable') return json({ members: [] });
+      if (line === 'PATCH /api/events/ev_1/people/p_tom')
+        return json({ person: { ...TOM, role: 'can_edit' } });
+
+      return json({});
+    });
+    const router = createMemoryRouter(routes, { initialEntries: ['/app/events/ev_1/people'] });
+    render(<RouterProvider router={router} />);
+    await screen.findByRole('heading', { level: 2, name: 'People' });
+
+    fireEvent.click(within(people()).getByRole('button', { name: /Tom Becker/ }));
+    const dialog = screen.getByRole('dialog', { name: 'Role on this event' });
+    fireEvent.click(within(dialog).getByRole('radio', { name: /Can edit/ }));
+    await waitFor(() =>
+      expect(
+        (within(dialog).getByRole('radio', { name: /Can edit/ }) as HTMLInputElement).checked,
+      ).toBe(true),
+    );
+
+    await act(() => router.navigate('/app/events/ev_1/guests'));
+    online = false;
+    await act(() => router.navigate('/app/events/ev_1/people'));
+
+    expect(await within(people()).findByText(/^Can edit/)).toBeDefined();
+    expect(within(people()).getByRole('button', { name: /Tom Becker/ })).toBeDefined();
+    expect(
+      screen.queryByText(
+        'We could not load the people on this event. Check your connection and try again.',
+      ),
+    ).toBeNull();
   });
 });

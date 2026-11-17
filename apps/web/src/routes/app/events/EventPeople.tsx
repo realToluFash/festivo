@@ -28,6 +28,7 @@ import { Toast } from '../../../components/Toast.tsx';
 import { currentLocale } from '../../../i18n/index.ts';
 import { focusWhenFree, LayersContext, useDeskLayers } from '../../../layers.ts';
 import { canOn, useSession } from '../../../session.ts';
+import { keptKeys, keptLoad, rekeep, useAnsweredAgain } from '../../../tabKept.ts';
 import '../../../components/SettingsParts.css';
 import './people.css';
 
@@ -59,6 +60,7 @@ export function EventPeople({ event }: { event: OrganisationEvent }) {
   const organisationName = session.organisation?.name ?? '';
   const [load, setLoad] = useState<Load>({ kind: 'loading' });
   const [attempt, setAttempt] = useState(0);
+  const answeredAgain = useAnsweredAgain();
   const [open, setOpen] = useState<Open>(null);
   const [lit, setLit] = useState<{ id: string; held: boolean } | null>(null);
   const [toast, setToast] = useState<string | null>(null);
@@ -71,20 +73,30 @@ export function EventPeople({ event }: { event: OrganisationEvent }) {
   useEffect(() => {
     let current = true;
 
-    (async () => {
-      const read = await api.eventPeople(event.id);
-      const addable = manages ? await api.addableEventMembers(event.id) : null;
+    keptLoad(
+      keptKeys.people(event.id),
+      (async () => {
+        const read = await api.eventPeople(event.id);
+        const addable = manages ? await api.addableEventMembers(event.id) : null;
 
-      return { ...read, addable };
-    })().then(
+        return { ...read, addable };
+      })(),
+    ).then(
       (loaded) => current && setLoad({ kind: 'loaded', ...loaded }),
-      () => current && setLoad({ kind: 'failed' }),
+      () => current && setLoad((was) => (was.kind === 'loaded' ? was : { kind: 'failed' })),
     );
 
     return () => {
       current = false;
     };
-  }, [event.id, attempt, manages]);
+  }, [event.id, attempt, manages, answeredAgain]);
+
+  useEffect(() => {
+    if (load.kind !== 'loaded') return;
+    const { kind: _loaded, ...shown } = load;
+
+    rekeep(keptKeys.people(event.id), shown);
+  }, [event.id, load]);
 
   useEffect(() => {
     if (lit == null || lit.held) return;

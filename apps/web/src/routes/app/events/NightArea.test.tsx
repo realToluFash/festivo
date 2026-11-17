@@ -583,6 +583,22 @@ describe('Run of show on the night (sc-3895)', () => {
 });
 
 describe('moving to another area of an event while offline (sc-65646)', () => {
+  const HEADCOUNT = {
+    counts: {
+      onList: 20,
+      notYetInvited: 0,
+      invited: 20,
+      accepted: 12,
+      maybe: 2,
+      awaitingReply: 4,
+      held: 0,
+      declined: 2,
+      heldBy: { hostNoReply: 0, hostMaybe: 0, hostNotComing: 0 },
+    },
+    byGroup: [],
+    byDietaryNeed: { addsUp: false, needs: [] },
+  };
+
   async function loadedThenOffline() {
     let online = true;
     const sent: string[] = [];
@@ -595,11 +611,14 @@ describe('moving to another area of an event while offline (sc-65646)', () => {
       if (line === 'GET /api/events/ev_1') return json({ event: EVENT });
       if (line === 'GET /api/events/ev_1/schedule') return json({ schedule: schedule(NIGHT) });
       if (line === PRESS_SPEECHES) return json({ schedule: schedule(GAP) });
+      if (line === 'GET /api/events/ev_1/headcount') return json({ headcount: HEADCOUNT });
 
       return json({});
     });
-    const router = createMemoryRouter(routes, { initialEntries: ['/app/events/ev_1/schedule'] });
+    const router = createMemoryRouter(routes, { initialEntries: ['/app/events/ev_1'] });
     render(<RouterProvider router={router} />);
+    await screen.findByText('12 coming of 20 invited. Each number opens the guests it counts.');
+    await act(() => router.navigate('/app/events/ev_1/schedule'));
     await screen.findByRole('button', { name: 'Done: Speeches' });
 
     online = false;
@@ -634,6 +653,10 @@ describe('moving to another area of an event while offline (sc-65646)', () => {
 
     expect(await screen.findByText(/^Offline · as of \d\d:\d\d$/)).toBeDefined();
     expect(screen.getAllByText('Adaeze and Tunde').length).toBeGreaterThan(0);
+    expect(
+      await screen.findByText('12 coming of 20 invited. Each number opens the guests it counts.'),
+    ).toBeDefined();
+    expect(screen.queryByText('Guest numbers did not load.')).toBeNull();
     expect(screen.queryByText('The event did not load. Try again in a moment.')).toBeNull();
   });
 

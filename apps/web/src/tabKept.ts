@@ -86,10 +86,12 @@ export const keptKeys = {
   menu: (eventId: string) => `menu:${eventId}`,
   staff: (eventId: string) => `staff:${eventId}`,
   schedule: (eventId: string) => `schedule:${eventId}`,
+  people: (eventId: string) => `people:${eventId}`,
 };
 
 /** Tests only: a fresh tab. */
 export function __forgetTab(): void {
   kept = new Map();
   standingIn = false;
+  answers = 0;
 }
