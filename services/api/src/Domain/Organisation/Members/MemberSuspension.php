@@ -38,7 +38,7 @@ final readonly class MemberSuspension
             return null;
         }
 
-        $locale = $this->userMailer->shownLocaleFor($reader);
+        $locale = $this->userMailer->formattingLocaleFor($reader);
         $written = fn (DateTimeImmutable $at): array => [
             'at' => $at->format(DateTimeInterface::ATOM),
             'written' => $this->userMailer->deadline($at, $reader, $locale),

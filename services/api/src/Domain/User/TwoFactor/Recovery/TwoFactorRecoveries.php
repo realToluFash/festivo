@@ -354,7 +354,7 @@ final readonly class TwoFactorRecoveries
             return null;
         }
 
-        $locale = $this->userMailer->answeredLocale();
+        $locale = $this->userMailer->answeredFormattingLocale();
 
         return ApiException::tooManyAttemptsUntil(
             'limits.recoveries_per_day',

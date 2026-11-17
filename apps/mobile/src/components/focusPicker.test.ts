@@ -22,7 +22,7 @@ vi.mock('react-native', () => ({
   codegenNativeCommands: () => ({}),
 }));
 vi.mock('react-i18next', () => ({ useTranslation: () => ({ t: (key: string) => key }) }));
-vi.mock('../i18n/index.ts', () => ({ currentLocale: () => 'en' }));
+vi.mock('../i18n/index.ts', () => ({ currentLocale: () => 'en', dateLocale: () => 'en' }));
 vi.mock('./ListPicker.tsx', () => ({ ListPicker: () => null }));
 vi.mock('./Screen.tsx', () => ({ SETTLED_MS: 500 }));
 vi.mock('./screenReaderFocus.ts', () => ({ moveScreenReaderFocus: vi.fn() }));

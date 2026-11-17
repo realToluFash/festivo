@@ -284,7 +284,7 @@ final readonly class MembersController
     /** @return Closure(list<Membership>): list<array<string, mixed>> */
     private function memberRows(Organisation $organisation, User $caller): Closure
     {
-        $locale = $this->userMailer->shownLocaleFor($caller);
+        $locale = $this->userMailer->formattingLocaleFor($caller);
         $written = fn (DateTimeImmutable $at): string => $this->userMailer->deadline($at, $caller, $locale);
 
         return /** @param list<Membership> $memberships */ function (array $memberships) use ($organisation, $caller, $written): array {
