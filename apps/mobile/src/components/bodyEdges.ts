@@ -1,4 +1,5 @@
 import { type LayoutKind } from '../layout/useLayout.ts';
+import { tokens } from '../theme/tokens.ts';
 
 /** The edges a signed-in screen's own `Screen` insets: the frame's header, rail, tab bar and, on its side, card take the rest. */
 export function bodyEdges(kind: LayoutKind): readonly ('top' | 'bottom' | 'left' | 'right')[] {
@@ -28,5 +29,35 @@ export function tabBarSides(insets: { left: number; right: number }): {
   left: number;
   right: number;
 } {
-  return { left: TAB_BAR_SIDE + insets.left, right: TAB_BAR_SIDE + insets.right };
+  return pastSides(TAB_BAR_SIDE, insets);
+}
+
+/** How far Today's top row on a phone sits in from each side while no bar takes one. */
+const COVER_ROW_SIDE = tokens.spaceXl;
+
+/** How far Events' header sits in from each side of a phone. */
+const HEADER_SIDE = tokens.spaceXxl;
+
+/** Today's top row on a phone: its cover's own edge while nothing takes a side, and Events' edge past a navigation bar or the Dynamic Island once one does (sc-62018). */
+export function coverRowSides(insets: { left: number; right: number }): {
+  paddingLeft: number;
+  paddingRight: number;
+} {
+  return sidePadding(insets.left > 0 || insets.right > 0 ? HEADER_SIDE : COVER_ROW_SIDE, insets);
+}
+
+/** A phone's `side` padding, moved in past a navigation bar or the Dynamic Island on its side (sc-62018). */
+export function sidePadding(
+  side: number,
+  insets: { left: number; right: number },
+): { paddingLeft: number; paddingRight: number } {
+  return { paddingLeft: side + insets.left, paddingRight: side + insets.right };
+}
+
+/** A phone's `side` inset for an absolute view, moved in past a navigation bar or the Dynamic Island on its side (sc-62018). */
+export function pastSides(
+  side: number,
+  insets: { left: number; right: number },
+): { left: number; right: number } {
+  return { left: side + insets.left, right: side + insets.right };
 }
