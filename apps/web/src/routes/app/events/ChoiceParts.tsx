@@ -31,7 +31,7 @@ import { Glyph } from '../../../components/Glyph.tsx';
 import { HintButton } from '../../../components/HintButton.tsx';
 import { ActionGlyph } from '../menu/DishParts.tsx';
 import { Wrong } from '../menu/MenuFields.tsx';
-import { RowLine } from '../menu/VariantParts.tsx';
+import { LayersGlyph, RowLine } from '../menu/VariantParts.tsx';
 import { choiceName, draftWords } from './choiceWords.ts';
 import './choices.css';
 
@@ -224,7 +224,10 @@ export function ChoiceInsets({
                     {named}
                     {choice.draft && <DraftTag />}
                     {withVariants && (
-                      <span className="vr-children">{t('dishChoices.everyVariant')}</span>
+                      <span className="vr-children">
+                        <LayersGlyph />
+                        {t('dishChoices.everyVariant')}
+                      </span>
                     )}
                   </h4>
                   <p className="mn-quiet">
