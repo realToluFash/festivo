@@ -406,6 +406,7 @@ class Scratch(unittest.TestCase):
     def test_a_machine_without_maestro_runs_says_nothing_of_them(self):
         (self.root / "soirely-ops").mkdir()
         self.sweep()
+        self.assertEqual([s for s in self.said if "Maestro runs" in s], [])
         self.assertFalse((self.home / ".maestro").exists())
 
     def test_a_machine_without_testers_sweeps_nothing(self):
