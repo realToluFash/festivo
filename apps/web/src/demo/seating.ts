@@ -495,6 +495,25 @@ export function chairsOf(item: Item): Point[] {
   }
 }
 
+export const POINTER_TARGET = 44;
+
+/** The closest two of a table's chairs, in cm: a chair takes a pointer once this is a 44 target on screen (sc-5030). */
+export function chairGap(item: Item): number {
+  const points = chairsOf(item);
+  let gap = Infinity;
+
+  points.forEach(([ax, ay], a) => {
+    points.slice(a + 1).forEach(([bx, by]) => {
+      gap = Math.min(gap, Math.hypot(ax - bx, ay - by));
+    });
+  });
+  return gap;
+}
+
+export function chairsTakePointer(item: Item, s: number): boolean {
+  return chairGap(item) * s >= POINTER_TARGET - 1e-9;
+}
+
 export function extent(item: Item): Point {
   switch (item.kind) {
     case 'round':
@@ -830,7 +849,7 @@ export function percentWritten(pct: number, locale = 'en'): string {
   return new Intl.NumberFormat(locale, { style: 'percent' }).format(pct / 100);
 }
 
-/** Under 50% a table is its outline, name and how full; from 50% its chairs; from 150% each chair is a 44 target. */
+/** Under 50% a table is its outline, name and how full; from 50% its chairs; from 150% their numbers. */
 export type Detail = 'out' | 'fit' | 'near';
 
 export function detailOf(s: number): Detail {

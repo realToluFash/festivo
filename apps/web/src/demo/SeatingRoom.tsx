@@ -9,6 +9,7 @@ import {
   type Presence,
   type Rings,
   CHAIR_R,
+  chairsTakePointer,
   SW,
   chairWord,
   free,
@@ -343,6 +344,7 @@ function ItemDrawing({
 
   if (detail !== 'out') {
     const r = CHAIR_R * s;
+    const pointer = chairsTakePointer(item, s);
 
     chairsOf(item).forEach((point, index) => {
       const chair = item.chairs[index] ?? { state: 'empty' };
@@ -357,7 +359,7 @@ function ItemDrawing({
       const picked = look.chair?.id === item.id && look.chair.i === index;
       const seated = onSeat.filter((one) => one.seat === index);
       // From 50% the keyboard reaches the chosen table's chairs; a pointer only once each is a 44 target (sc-5030).
-      const target = (near && look.chairsFor != null) || look.chairsFor === item.id;
+      const target = (pointer && look.chairsFor != null) || look.chairsFor === item.id;
 
       if (item.kind === 'single') {
         body.push(
@@ -400,7 +402,7 @@ function ItemDrawing({
           />
           {target && (
             <circle
-              className={near ? 'st-chair-hit' : 'st-chair-hit is-keys'}
+              className={pointer ? 'st-chair-hit' : 'st-chair-hit is-keys'}
               role="button"
               tabIndex={look.chairsFor === item.id ? 0 : -1}
               aria-label={
