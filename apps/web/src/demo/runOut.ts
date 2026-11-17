@@ -247,7 +247,6 @@ export function bulkRows(ro: RunOut): BulkRow[] {
   }));
 }
 
-/** The confirmation's question: a count of the guests it covers now, or for guests still to come, never 0. */
 export function confirmTitle(ro: RunOut, bulk: Bulk): string {
   const n = covered(ro, bulk).length;
   if (bulk.kind === 'serve')

@@ -1,5 +1,3 @@
-/** An item run out for the event (sc-59384, RunOutChoice.dc.html and RunOutRoom.dc.html on page 35): who waits, who a choice covers, and the counts. */
-
 export const ITEM = 'Chicken';
 export const STATION = 'Grill';
 export const MARKED_BY = 'Tayo Bamidele';
