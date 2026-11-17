@@ -1,7 +1,18 @@
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { Link, Navigate, useParams, useSearchParams } from 'react-router';
 
 import { Glyph } from '../components/Glyph.tsx';
+import { TextAction } from '../components/SettingsParts.tsx';
+import { EventNotLoaded } from './KeptOffline.tsx';
+import {
+  type Kept,
+  type TabStart,
+  keepNight,
+  loseConnection,
+  nightOpened,
+  tabStartOf,
+  useKept,
+} from './tabKept.ts';
 import { DemoBell } from './DemoBell.tsx';
 import { EventsShell } from './EventParts.tsx';
 import { EventSidebar } from './EventSidebar.tsx';
@@ -44,30 +55,47 @@ export function NightPage() {
   const locale = params.get('locale') ?? 'en-US';
   useSwitcherStart();
 
+  const tab = params.get('tab');
+
   return (
     <NightAt
-      key={`${id ?? ''}|${raw ?? ''}|${tracks ?? ''}|${as ?? ''}|${locale}`}
+      key={`${id ?? ''}|${raw ?? ''}|${tracks ?? ''}|${as ?? ''}|${locale}|${tab ?? ''}`}
       id={id}
       first={nightAt(raw, { oneTrack: tracks === 'one', as })}
       locale={locale}
+      start={tabStartOf(raw, tab)}
     />
   );
 }
 
 function NightAt({
   id,
-  first,
+  first: loaded,
   locale,
+  start,
 }: {
   id: string | undefined;
   first: NightStart;
   locale: string;
+  start: TabStart;
 }) {
   const [event] = useState(() => sampleEvent(id));
+  const [first] = useState(() => {
+    const night = nightOpened(loaded.night, start);
+
+    return night === loaded.night ? loaded : { ...loaded, night };
+  });
+  const kept = useKept(id ?? '', 'night', timeIn(locale, first.night.clock), start);
+
+  useEffect(() => {
+    if (!first.night.online) loseConnection();
+  }, [first]);
 
   if (event == null) return <Navigate to="/demo/events" replace />;
   if (event.id !== NIGHT_EVENT)
     return <Navigate to={`/demo/events/${event.id}?area=schedule`} replace />;
+  if (kept.offline && kept.asOf == null)
+    return <EventNotLoaded id={event.id} onRetry={kept.retry} />;
 
   return (
     <EventsShell
@@ -83,7 +111,14 @@ function NightAt({
       )}
     >
       {(tell) => (
-        <NightBody first={first} eventId={event.id} name={event.name} locale={locale} tell={tell} />
+        <NightBody
+          first={first}
+          eventId={event.id}
+          name={event.name}
+          locale={locale}
+          tell={tell}
+          kept={kept}
+        />
       )}
     </EventsShell>
   );
@@ -102,14 +137,25 @@ function NightBody({
   name,
   locale,
   tell,
+  kept,
 }: {
   first: NightStart;
   eventId: string;
   name: string;
   locale: string;
   tell: (words: string) => void;
+  kept: Kept;
 }) {
-  const [night, setNight] = useState<Night>(first.night);
+  const [night, setKept] = useState<Night>(() => {
+    if (kept.areaKept) keepNight(first.night, false);
+
+    return first.night;
+  });
+  const setNight = (next: Night) => {
+    setKept(next);
+    keepNight(next);
+  };
+  const failed = kept.offline && !kept.areaKept;
   const [trackId, setTrackId] = useState(first.trackId);
   const [chosen, setChosen] = useState<string | null>(first.chosen);
   const [moving, setMoving] = useState(false);
@@ -203,7 +249,21 @@ function NightBody({
             })}
           </ul>
         )}
-        {!first.loading && <Strip night={night} onTry={() => setNight(tryNow(night))} />}
+        {failed && (
+          <div className="desk-failed" role="alert">
+            <p className="desk-line">{NW.failed}</p>
+            <TextAction label={NW.tryAgain} onClick={kept.retry} />
+          </div>
+        )}
+        {!first.loading && !failed && (
+          <Strip
+            night={night}
+            onTry={() => {
+              setNight(tryNow(night));
+              kept.retry();
+            }}
+          />
+        )}
         {!first.loading && !night.manage && (
           <p className="nt-view-only">
             <span className="nt-pill">
@@ -228,32 +288,34 @@ function NightBody({
             </button>
           </div>
         )}
-        <div className="nt-split">
-          <div className="nt-cards">
-            <Cards
-              first={first}
-              night={night}
-              view={view}
-              locale={locale}
-              chosen={chosen}
-              acts={acts}
-              rows={rows}
-            />
-          </div>
-          {chosenRow != null && (
-            <aside className="nt-panel" aria-label={chosenRow.item.title}>
-              <Chosen
-                row={chosenRow}
-                busy={view?.now != null}
-                manage={night.manage}
-                moving={moving}
-                onMove={setMoving}
-                onClose={close}
+        {!failed && (
+          <div className="nt-split">
+            <div className="nt-cards">
+              <Cards
+                first={first}
+                night={night}
+                view={view}
+                locale={locale}
+                chosen={chosen}
                 acts={acts}
+                rows={rows}
               />
-            </aside>
-          )}
-        </div>
+            </div>
+            {chosenRow != null && (
+              <aside className="nt-panel" aria-label={chosenRow.item.title}>
+                <Chosen
+                  row={chosenRow}
+                  busy={view?.now != null}
+                  manage={night.manage}
+                  moving={moving}
+                  onMove={setMoving}
+                  onClose={close}
+                  acts={acts}
+                />
+              </aside>
+            )}
+          </div>
+        )}
         <div className="visually-hidden" aria-live="polite">
           {night.said}
         </div>
@@ -264,7 +326,10 @@ function NightBody({
             <button
               type="button"
               className="rv-act"
-              onClick={() => setNight({ ...night, online: false, age: 1 })}
+              onClick={() => {
+                setNight({ ...night, online: false, age: 1 });
+                loseConnection();
+              }}
             >
               Lose the connection
             </button>

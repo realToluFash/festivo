@@ -81,7 +81,7 @@ import { RoomScreenPage } from './RoomScreen.tsx';
 import { SCREEN_PAGES } from './roomScreen.ts';
 import { RUN_PAGES } from './runView.ts';
 import { NightPage } from './Night.tsx';
-import { NIGHT_PAGES } from './night.ts';
+import { NIGHT_KEPT_PAGES, NIGHT_PAGES } from './night.ts';
 import { StationsPage } from './Stations.tsx';
 import { STATIONS_PAGES } from './stations.ts';
 import { TeamPage } from './Team.tsx';
@@ -445,6 +445,8 @@ function DemoHome({ from }: { from: string }) {
         <BoardPages pages={RUN_PAGES} />
         <h3>The night: Done, Skip and Start now, even with no signal (sc-3895) · desktop</h3>
         <BoardPages pages={NIGHT_PAGES} />
+        <h3>Offline, another area keeps the event and the night its count (sc-65646) · desktop</h3>
+        <BoardPages pages={NIGHT_KEPT_PAGES} />
         <h3>The day on the guest’s page (sc-3899) · phone, tablet and desk</h3>
         <BoardPages pages={GUEST_PROGRAMME_PAGES} />
         <h3>A screen in the room: what is on and what is coming (sc-3897) · 16:9 and 4:3</h3>

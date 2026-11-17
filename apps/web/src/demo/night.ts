@@ -65,6 +65,8 @@ export const NW = {
   everything: 'That’s everything.',
   endNow: 'End now',
   tryNow: 'Try now',
+  failed: 'The run of show did not load.',
+  tryAgain: 'Try again',
   dismiss: 'Dismiss',
   viewOnly: 'View only',
   viewOnlyLine: 'You can follow the night here, not change it.',
@@ -729,6 +731,27 @@ export const NIGHT_PAGES: readonly { name: string; states: readonly DemoLink[] }
       {
         to: nightAtUrl('end_behind', 'as=no-events-manage'),
         name: 'end_behind without events.manage: no End now',
+      },
+    ],
+  },
+];
+
+/** sc-65646: offline, moving to another area keeps the event this tab loaded, and coming back keeps the night and its count. */
+export const NIGHT_KEPT_PAGES: readonly { name: string; states: readonly DemoLink[] }[] = [
+  {
+    name: 'Offline, another area keeps the event, and the night keeps its count',
+    states: [
+      {
+        to: nightAtUrl(undefined, 'tab=fresh'),
+        name: 'Online: Lose the connection, press Done, open Guests, then Schedule > Run of show. Guests shows its list if it loaded first in this tab, its own failure line if not',
+      },
+      {
+        to: nightAtUrl('offline'),
+        name: 'Loaded, then offline with 2 presses waiting: open Overview or Guests, come back',
+      },
+      {
+        to: `/demo/events/${NIGHT_EVENT}?tab=offline`,
+        name: 'A link opened offline, never loaded in this tab: The event did not load',
       },
     ],
   },

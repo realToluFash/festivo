@@ -1,4 +1,6 @@
 import { DemoBell } from './DemoBell.tsx';
+import { EventNotLoaded, KeptBox } from './KeptOffline.tsx';
+import { type Kept, type TabStart, clockWords, tabStartOf, useKept } from './tabKept.ts';
 import { calledOff, eventPhase, formatEventRange, hostsLine } from '@soirely/domain';
 import { type ComponentType, type ReactNode, useEffect, useState } from 'react';
 import { Link, Navigate, useLocation, useNavigate, useParams, useSearchParams } from 'react-router';
@@ -245,6 +247,7 @@ export function EventPage({
   const { id } = useParams();
   const [params] = useSearchParams();
   const raw = params.get('state');
+  const tabStart = params.get('tab');
   useSwitcherStart();
   const noOrg = noOrgStateOf(raw);
 
@@ -252,9 +255,10 @@ export function EventPage({
 
   return (
     <EventAt
-      key={`${id ?? ''}|${raw ?? ''}|${messages}`}
+      key={`${id ?? ''}|${raw ?? ''}|${messages}|${tabStart ?? ''}`}
       id={id}
       raw={raw}
+      keptStart={tabStartOf(raw, tabStart)}
       dates={dates}
       messages={messages}
     />
@@ -264,11 +268,13 @@ export function EventPage({
 function EventAt({
   id,
   raw,
+  keptStart,
   dates,
   messages,
 }: {
   id: string | undefined;
   raw: string | null;
+  keptStart: TabStart;
   dates: boolean;
   messages: boolean;
 }) {
@@ -308,6 +314,12 @@ function EventAt({
 
     return { event: shown, state, seed };
   });
+  const kept = useKept(
+    id ?? '',
+    'overview',
+    clockWords(clockOf(first.state), first.event?.timeZone ?? 'UTC'),
+    keptStart,
+  );
 
   useEffect(() => {
     if (location.state == null) return;
@@ -316,6 +328,8 @@ function EventAt({
   }, [location, navigate]);
 
   if (first.event == null) return <Navigate to="/demo/events" replace />;
+  if (kept.offline && kept.asOf == null)
+    return <EventNotLoaded id={first.event.id} onRetry={kept.retry} />;
 
   const said = messages ? messagesStateOf(raw) : null;
   const seed = first.seed;
@@ -353,6 +367,7 @@ function EventAt({
       }
       clock={seed == null ? null : clockOfPage(seed.page)}
       said={seed?.said ?? null}
+      tab={kept}
     />
   );
 }
@@ -386,6 +401,7 @@ function EventView({
   telling: tellingFirst = null,
   clock = null,
   said = null,
+  tab,
 }: {
   initial: SampleEvent;
   state: EventStateName | null;
@@ -396,6 +412,7 @@ function EventView({
   telling?: Telling | null;
   clock?: Date | null;
   said?: string | null;
+  tab: Kept;
 }) {
   const [params] = useSearchParams();
   const navigate = useNavigate();
@@ -496,6 +513,7 @@ function EventView({
       {(tell, show) => (
         <div className="desk-page ev-page">
           <div className="ev-wide">
+            <KeptBox kept={tab} />
             <Crumb to="/demo/events" back={W.back} name={event.name}>
               <DemoBell tell={tell} />
             </Crumb>
