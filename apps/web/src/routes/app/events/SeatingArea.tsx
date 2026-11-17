@@ -2109,6 +2109,7 @@ function Plan({
             }
           />
         </div>
+        {!readOnly && <SaveLine state={save} onTryAgain={tryAgain} />}
         {moveFrom != null && itemOf(moveFrom) != null && (
           <MoveAllPop
             plan={plan}

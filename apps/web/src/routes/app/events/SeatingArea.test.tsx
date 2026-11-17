@@ -5480,6 +5480,9 @@ describe('The Tables view (sc-4013)', () => {
     expect(await screen.findAllByText('Bo Ade is at Table 3.')).not.toHaveLength(0);
     expect(screen.getByRole('button', { name: 'Undo' })).toBeDefined();
     expect(screen.getByRole('button', { name: 'Table 3, 0 of 10' }).className).toContain('is-lit');
+    expect((await screen.findByText('Saved')).closest('.st-canvas')?.className).toContain(
+      'is-tables',
+    );
     expect(sent.find((one) => one.line.endsWith('/guests/seat'))?.body).toMatchObject({
       guestId: 'g_bo',
       kind: 'table',
