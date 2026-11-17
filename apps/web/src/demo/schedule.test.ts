@@ -12,6 +12,7 @@ import {
   atLimit,
   blankForm,
   check,
+  dayCount,
   dayOf,
   differences,
   firstWrong,
@@ -22,6 +23,7 @@ import {
   placeHelp,
   readerOf,
   sampleItems,
+  sevenDayItems,
   scheduleAt,
   startsCell,
   tablesOn,
@@ -147,5 +149,22 @@ describe('the schedule’s rules (sc-3893)', () => {
   it('links every state from the demo’s home', () => {
     const linked = SCHEDULE_PAGES.flatMap((page) => page.states.map((one) => one.to));
     for (const state of SCHEDULE_STATES) expect(linked).toContain(scheduleAt(state));
+  });
+});
+
+describe('the day tabs’ words (sc-64803)', () => {
+  it('counts a day in each of the four languages, as the product’s schedule.items does', () => {
+    expect([1, 12].map((n) => dayCount(n, 'en-GB'))).toEqual(['1 item', '12 items']);
+    expect([1, 12].map((n) => dayCount(n, 'es-ES'))).toEqual(['1 elemento', '12 elementos']);
+    expect([1, 12].map((n) => dayCount(n, 'fr-FR'))).toEqual(['1 élément', '12 éléments']);
+    expect([1, 12].map((n) => dayCount(n, 'pt-BR'))).toEqual(['1 item', '12 itens']);
+  });
+
+  it('gives the seven-day event a day of 1 item and a day of 12', () => {
+    const counts = new Map<string, number>();
+    for (const one of sevenDayItems())
+      counts.set(dayOf(one.starts), (counts.get(dayOf(one.starts)) ?? 0) + 1);
+    expect(counts.get('2026-11-07')).toBe(1);
+    expect(counts.get('2026-11-08')).toBe(12);
   });
 });

@@ -7,6 +7,16 @@ export const EVENT_ZONE = 'Europe/London';
 export const EARLIEST = '2026-11-05T06:00';
 export const LATEST = '2026-11-07T15:00';
 export const DAYS = ['2026-11-05', '2026-11-06', '2026-11-07'] as const;
+/** The unmatched value of sc-64803: an event of seven days, Thursday to Wednesday. */
+export const SEVEN_DAYS = [
+  '2026-11-05',
+  '2026-11-06',
+  '2026-11-07',
+  '2026-11-08',
+  '2026-11-09',
+  '2026-11-10',
+  '2026-11-11',
+] as const;
 export const MAIN = 'Main';
 export const MOST_ITEMS = 200;
 export const TITLE_MAX = 120;
@@ -204,6 +214,48 @@ export function sampleItems(): Item[] {
     item('dancing', 'Dancing', '2026-11-06T20:15', 240, 'Ballroom', 'Femi Ade', 'DJ'),
     item('late', 'Late food', '2026-11-07T00:30', 30, 'Ballroom', 'Amara Eze', 'Kitchen'),
   ];
+}
+
+/** Seven days: Saturday holds 1 item and Sunday 12, the two counts sc-64803 reads in every language. */
+export function sevenDayItems(): Item[] {
+  const sunday = Array.from({ length: 12 }, (_, at) =>
+    item(
+      `sun-${at + 1}`,
+      `Sunday item ${at + 1}`,
+      `2026-11-08T${String(9 + at).padStart(2, '0')}:00`,
+      30,
+      null,
+    ),
+  );
+
+  return [
+    ...sampleItems(),
+    item('brunch', 'Brunch', '2026-11-07T11:00', 90, 'Garden', 'Ebele Nwosu', 'Venue'),
+    ...sunday,
+    item('golf', 'Golf', '2026-11-09T10:00', 240, null, 'Tunde Bakare', 'Groom'),
+    item('market', 'Market walk', '2026-11-10T10:00', 120, null),
+    item('market-lunch', 'Lunch by the river', '2026-11-10T13:00', 90, null),
+    item('farewell', 'Farewell breakfast', '2026-11-11T09:00', 60, null, 'Ngozi Obi', 'Aunt'),
+  ];
+}
+
+type CountWords = readonly [one: string, other: string];
+
+const ENGLISH_COUNT: CountWords = ['item', 'items'];
+
+const DAY_COUNT_WORDS: Partial<Record<string, CountWords>> = {
+  en: ENGLISH_COUNT,
+  es: ['elemento', 'elementos'],
+  fr: ['élément', 'éléments'],
+  pt: ['item', 'itens'],
+};
+
+/** A day tab's count in the reader's language, the product's schedule.items words in en, es, fr and pt (sc-64803). */
+export function dayCount(n: number, locale: string): string {
+  const [one, other] = DAY_COUNT_WORDS[locale.slice(0, 2)] ?? ENGLISH_COUNT;
+  const word = new Intl.PluralRules(locale).select(n) === 'one' ? one : other;
+
+  return `${new Intl.NumberFormat(locale).format(n)} ${word}`;
 }
 
 export function atLimit(): Item[] {
@@ -513,6 +565,7 @@ export type Panel = { kind: 'add' } | { kind: 'edit'; id: string } | null;
 export interface ScheduleStart {
   name: string;
   items: Item[];
+  days: readonly string[];
   day: string;
   manage: boolean;
   panel: Panel;
@@ -538,6 +591,7 @@ const FRIDAY = DAYS[1];
 function start(over: Partial<ScheduleStart> & { name: string }): ScheduleStart {
   return {
     items: sampleItems(),
+    days: DAYS,
     day: FRIDAY,
     manage: true,
     panel: null,
@@ -703,6 +757,12 @@ const STATES = {
       focus: 'limit',
     }),
   readOnly: () => start({ name: 'Read only, without run_of_show.manage', manage: false }),
+  sevenDays: () =>
+    start({
+      name: 'Seven days, the tabs wrap to a second row',
+      items: sevenDayItems(),
+      days: SEVEN_DAYS,
+    }),
   placePicker: () => start({ name: 'The place picker open (at 40rem and under)', picking: true }),
   formPage: () =>
     start({
@@ -801,6 +861,17 @@ export const SCHEDULE_PAGES: readonly { name: string; states: readonly DemoLink[
   {
     name: 'At 40rem and under (narrow the window)',
     states: (['placePicker', 'formPage'] as const).map(link),
+  },
+  {
+    name: 'The day tabs keep their words whole, from 375 to 1440 (sc-64803)',
+    states: [
+      { to: scheduleAt('populated', 'locale=fr-FR'), name: 'Three days, read in fr-FR' },
+      { to: scheduleAt('editing', 'locale=fr-FR'), name: 'Three days, Edit item open, in fr-FR' },
+      { to: scheduleAt('populated', 'locale=es-ES'), name: 'Three days, read in es-ES' },
+      { to: scheduleAt('populated', 'locale=pt-BR'), name: 'Three days, read in pt-BR' },
+      { to: scheduleAt('sevenDays'), name: STATES.sevenDays().name },
+      { to: scheduleAt('sevenDays', 'locale=fr-FR'), name: 'Seven days, read in fr-FR' },
+    ],
   },
   {
     name: 'Times in the reader’s locale and zone',
