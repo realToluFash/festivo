@@ -416,7 +416,7 @@
   width: 100%;
 }
 
-/* At 40rem and under (WCAG 2.2 1.4.10): one column, one place at a time, the table folded to Starts and Item, the form as its own page. */
+/* At 720px and under the page beside the sidebar is narrower than a phone's, so the day tabs stack and the table folds to Starts and Item (sc-60699). */
 @media (width <= 720px) {
   .ro-days {
     align-self: stretch;
@@ -456,6 +456,7 @@
   }
 }
 
+/* At 40rem and under (WCAG 2.2 1.4.10): one column, one place at a time, the form as its own page. */
 @media (width <= 40rem) {
   .today.desk:has(.ro) {
     flex-direction: column;
