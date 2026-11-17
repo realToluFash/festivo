@@ -1042,6 +1042,7 @@ function Courses({ first, lang, budget }: { first: CoursesStart; lang: Lang; bud
                   lang={lang}
                   budget={budget}
                   library={library}
+                  loading={first.libraryLoading === true}
                   errors={
                     open.pressed ? checkDish(open.form, lang, budget && !open.onlyEvent) : null
                   }
