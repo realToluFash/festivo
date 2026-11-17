@@ -4,6 +4,7 @@ import { type RefObject, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 
 import { api } from '../../../api.ts';
+import { focusWhenFree } from '../../../layers.ts';
 
 export type Confirming<C> = { kind: 'confirm'; pending: boolean; failed: boolean } & C;
 
@@ -72,7 +73,7 @@ export function useLifecycleAction<C extends object>({
         setAsking(null);
         onChange(moved.event, moved.tag);
         onDone();
-        window.setTimeout(() => heading.current?.focus(), 0);
+        focusWhenFree(() => heading.current);
       },
       (error: unknown) => {
         const refusal = !(error instanceof ApiError)

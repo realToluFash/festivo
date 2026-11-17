@@ -901,7 +901,7 @@ function Courses({ first, lang, budget }: { first: CoursesStart; lang: Lang; bud
       {!manage && (
         <p className="mn-lock">
           <Glyph name="lock" size={16} weight={2.2} />
-          {CW.lock}
+          {first.lock}
         </p>
       )}
       <Said said={said} />
@@ -1042,6 +1042,7 @@ function Courses({ first, lang, budget }: { first: CoursesStart; lang: Lang; bud
                   lang={lang}
                   budget={budget}
                   library={library}
+                  loading={first.libraryLoading === true}
                   errors={
                     open.pressed ? checkDish(open.form, lang, budget && !open.onlyEvent) : null
                   }

@@ -14,6 +14,7 @@ import {
   roleHolds,
   serverClock,
   timeSlot,
+  todayTrackParam,
   zonedAt,
 } from '@soirely/domain';
 import { randomUUID } from 'expo-crypto';
@@ -242,6 +243,7 @@ export function NightView({
   contentStyle,
   onEvent,
   onEndNow,
+  track,
 }: {
   eventId: string;
   kind: LayoutKind;
@@ -250,6 +252,8 @@ export function NightView({
   contentStyle: ViewStyle;
   onEvent: (event: OrganisationEvent) => void;
   onEndNow: () => void;
+  /** The track shown first, as Today's Open run of show names it (sc-29875). */
+  track?: string | undefined;
 }) {
   const { t } = useTranslation();
   const night = useNight(eventId);
@@ -277,6 +281,7 @@ export function NightView({
       top={top}
       contentStyle={contentStyle}
       onEndNow={onEndNow}
+      track={track}
     />
   );
 }
@@ -288,6 +293,7 @@ function Shown({
   top,
   contentStyle,
   onEndNow,
+  track: first,
 }: {
   night: ReturnType<typeof useNight>;
   schedule: Schedule | null;
@@ -295,6 +301,7 @@ function Shown({
   top: ReactNode;
   contentStyle: ViewStyle;
   onEndNow: () => void;
+  track?: string | undefined;
 }) {
   const { t } = useTranslation();
   const locale = dateLocale();
@@ -315,7 +322,11 @@ function Shown({
   const [said, setSaid] = useState<{ words: string; count: number } | null>(null);
   const [back, setBack] = useState<{ id: string } | null>(null);
   const rows = useRef(new Map<string, ViewInstance>());
-  const track = tracks.find((one) => one.key === trackKey) ?? tracks[0] ?? null;
+  const track =
+    tracks.find((one) => one.key === trackKey) ??
+    tracks.find((one) => todayTrackParam(one) === first) ??
+    tracks[0] ??
+    null;
   const view = track == null ? null : nightView(track, now, timeZone);
   const label = track == null ? '' : trackLabel(track, today, locale, t);
   const chosenRow = view?.later.find((row) => row.item.id === chosen) ?? null;

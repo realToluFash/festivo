@@ -29,6 +29,7 @@ import { isReasonState } from '../../src/demo/messages/TrySms.ts';
 import { SEATING_BOARDS } from '../../src/demo/seating/SeatingBoards.ts';
 import { RUN_BOARDS, RUN_READ_BOARDS } from '../../src/demo/runView/runViewModel.ts';
 import { NIGHT_BOARDS } from '../../src/demo/night/nightModel.ts';
+import { STATION_BOARDS } from '../../src/demo/station/StationBoards.ts';
 import { MOVED_BOARDS, TEAM_BOARDS } from '../../src/demo/team/TeamBoards.ts';
 import { tokens } from '../../src/theme/tokens.ts';
 
@@ -2179,6 +2180,10 @@ const PAGES: readonly { page: string; boards: readonly Board[] }[] = [
   {
     page: 'Service · guest requests from the table (sc-4023) · phone, tablet portrait and landscape',
     boards: REQUEST_BOARDS.map(({ title, what, href }) => ({ title, what, href: href as Href })),
+  },
+  {
+    page: 'Service · Kitchen station, the tray model (sc-4015) · tablet landscape, tablet portrait and phone',
+    boards: STATION_BOARDS.map(({ title, what, href }) => ({ title, what, href: href as Href })),
   },
   {
     page: 'Service · the whole room as a plan or a list (sc-4026) · tablet landscape',

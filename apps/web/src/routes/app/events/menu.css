@@ -469,7 +469,7 @@
 
 .mc .lib-tags,
 .mc .lib-contains {
-  overflow-wrap: anywhere;
+  overflow-wrap: break-word;
 }
 
 @media (prefers-reduced-motion: no-preference) {
@@ -493,6 +493,10 @@
 
 /* Up to 40rem (390 and 320 px windows, WCAG 2.2 1.4.10): one column, and an open form in the menu's place. */
 @media (width <= 40rem) {
+  .shell-content:has(.mc.desk-page) {
+    padding-inline: var(--spaceSm);
+  }
+
   .mc.desk-page {
     padding: var(--spaceLg) var(--spaceMd) var(--space3xl);
     overflow: visible;
@@ -573,6 +577,10 @@
 
   .mc-dish .mn-dish-top {
     flex-wrap: wrap;
+  }
+
+  .mc-dish .mn-dish-words {
+    flex-basis: 12rem;
   }
 
   .mc-pick {

@@ -827,7 +827,7 @@ function NextCard({
             {next.expected != null && (
               <span className="nt-about" aria-hidden="true">
                 <Glyph name="arrow" size={16} weight={2.4} />
-                {t('runView.about', { time: clock(next.expected) })}
+                {t('runView.about', timeSlot(next.expected, dateLocale()))}
               </span>
             )}
           </p>

@@ -430,7 +430,12 @@ function Plan({
     size,
   );
   const canvasNode = useRef<HTMLDivElement | null>(null);
-  const press = useRef<{ from: [number, number]; moved: boolean; pointer: number } | null>(null);
+  const press = useRef<{
+    from: [number, number];
+    moved: boolean;
+    fingers: boolean;
+    pointer: number;
+  } | null>(null);
   const panned = useRef(false);
   const [several, setSeveral] = useState<string[]>([]);
   const [placements, setPlacements] = useState<Record<string, Placement>>({});
@@ -459,6 +464,7 @@ function Plan({
     from: [number, number];
     at: [number, number];
     base: string[];
+    before: { panel: Panel | null; several: string[] };
     moved: boolean;
     pointer: number;
   } | null>(null);
@@ -644,7 +650,7 @@ function Plan({
     };
     const up = (event: PointerEvent) => {
       if (press.current?.pointer !== event.pointerId) return;
-      panned.current = event.type === 'pointerup' && press.current.moved;
+      panned.current = event.type === 'pointerup' && (press.current.moved || press.current.fingers);
       press.current = null;
     };
 
@@ -1260,7 +1266,35 @@ function Plan({
     }
   };
 
+  const panWith = (event: ReactPointerEvent<Element>) => {
+    const box = boxing.current;
+    const fingers = touches.current.size > 1;
+
+    if (box != null && fingers) {
+      boxing.current = null;
+      setBoxDrawn(null);
+      setPanel(box.before.panel);
+      setSeveral(box.before.several);
+    }
+    press.current = {
+      from: [event.clientX, event.clientY],
+      moved: false,
+      fingers,
+      pointer: event.pointerId,
+    };
+  };
+
+  const joinsBox = (event: ReactPointerEvent<Element>) => {
+    if (event.pointerType !== 'touch' || boxing.current == null || touches.current.size === 0)
+      return false;
+    touches.current.add(event.pointerId);
+    dragged.current = true;
+    panWith(event);
+    return true;
+  };
+
   const onItemDown = (event: ReactPointerEvent<Element>, item: FloorItem) => {
+    if (joinsBox(event)) return;
     if (readOnly || placing != null || event.button !== 0) return;
     dragged.current = false;
     const id = item.one.id;
@@ -1282,7 +1316,7 @@ function Plan({
     table: Table,
     pressed: Handle,
   ) => {
-    if (event.button !== 0) return;
+    if (joinsBox(event) || event.button !== 0) return;
     const at = toCm(event.clientX, event.clientY);
     const handle =
       at == null
@@ -1566,13 +1600,6 @@ function Plan({
               return;
             }
             if (event.pointerType === 'touch') touches.current.add(event.pointerId);
-            const box = boxing.current;
-
-            if (box != null && touches.current.size > 1) {
-              boxing.current = null;
-              setBoxDrawn(null);
-              if (box.moved) pick(box.base);
-            }
             const at = toCm(event.clientX, event.clientY);
 
             if (!readOnly && !spaceHeld.current && touches.current.size < 2 && at != null) {
@@ -1580,16 +1607,13 @@ function Plan({
                 from: at,
                 at: [event.clientX, event.clientY],
                 base: event.shiftKey || adding ? chosenIds : [],
+                before: { panel, several },
                 moved: false,
                 pointer: event.pointerId,
               };
               return;
             }
-            press.current = {
-              from: [event.clientX, event.clientY],
-              moved: false,
-              pointer: event.pointerId,
-            };
+            panWith(event);
           }}
           aria-label={
             plan.roomName == null

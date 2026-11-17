@@ -16,7 +16,7 @@ import { tokens } from '../../../src/theme/tokens.ts';
 export default function EventNight() {
   const { t } = useTranslation();
   const { kind } = useLayout();
-  const { id = '' } = useLocalSearchParams<{ id?: string }>();
+  const { id = '', track } = useLocalSearchParams<{ id?: string; track?: string }>();
   const navigation = useNavigation();
   const phone = kind === 'phone';
   const back = () => goToArea(navigation, router, id, 'schedule');
@@ -49,6 +49,7 @@ export default function EventNight() {
         contentStyle={phone ? styles.phone : styles.tablet}
         onEvent={setEvent}
         onEndNow={() => goToEndNow(navigation, router, id)}
+        track={track}
       />
     </AppFrame>
   );

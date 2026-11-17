@@ -1,8 +1,6 @@
 import { ApiError, type OrganisationEvent, type TaggedEvent } from '@soirely/api-client';
 import {
   EVENT_NAME_MAXIMUM,
-  HOSTS_MAXIMUM,
-  NOTHING_SEEN,
   type EventDraft,
   type EventSaveRefusal,
   type EventFormField,
@@ -10,7 +8,6 @@ import {
   type HostErrors,
   type HostRow,
   type VenueDraft,
-  addressLookup,
   arrivalNoteTooLong,
   coverTypeOf,
   draftOf,
@@ -19,13 +16,10 @@ import {
   eventFormErrors,
   eventNameLength,
   formatWallDay,
-  hostCalled,
   hostErrorsOf,
   hostsChanged,
   hostsSent,
   keepsLastHost,
-  movedHost,
-  removedHost,
   replyByAfterStart,
   replyByAsk,
   skippedLine,
@@ -36,24 +30,21 @@ import { useEffect, useId, useLayoutEffect, useMemo, useRef, useState } from 're
 import { useTranslation } from 'react-i18next';
 
 import { api } from '../../../api.ts';
-import { useComboboxKeys } from '../../../comboboxKeys.ts';
 import {
-  Alert,
   Broken,
   DateTime,
   EditText,
   Opened,
-  Quiet,
   Radios,
   type Wall,
 } from '../../../components/EventPageParts.tsx';
 import { type CoverEdited, type CoverUploaded, CoverEdit } from '../../../components/CoverEdit.tsx';
 import { Glyph } from '../../../components/Glyph.tsx';
-import { RowWords, TextAction } from '../../../components/SettingsParts.tsx';
 import { currentLocale, dateLocale } from '../../../i18n/index.ts';
 import { meshFor } from '../../../mesh.ts';
 import { currencyChoices, timeZoneChoices } from '../../../zoneAndCurrencyChoices.ts';
 import { discardCoverUpload, refusalOf } from './coverPhoto.ts';
+import { HostFields, VenueFields } from './EventFormFields.tsx';
 import { typeChoices } from './eventTypes.ts';
 import { useStartCarriesEnd } from './useStartCarriesEnd.ts';
 import { ReplyByAsk } from './ReplyByPart.tsx';
@@ -526,32 +517,10 @@ export function VenuePart({
   const savedVenue = venueDraftOf(event.venue, event.arrivalNote);
   const [venue, setVenue] = useState(savedVenue);
   const [zone, setZone] = useState(event.timeZone);
-  const [zoneSet, setZoneSet] = useState<string | null>(null);
   const [errors, setErrors] = useState<Errors>({});
   const [said, setSaid] = useState('');
-  const [seen, setSeen] = useState(NOTHING_SEEN);
-  const field = useRef<HTMLInputElement>(null);
-  const noteBox = useRef<HTMLTextAreaElement>(null);
   const { busy, save, latest } = useSave({ event, tag, onSaved });
   const outcome = useOutcome(onLatest, latest);
-  const [lookup] = useState(() =>
-    addressLookup({
-      suggest: (query) => api.addressSuggestions(query),
-      resolve: (address) => api.address(address),
-      onVenue: (change) => setVenue((was) => ({ ...was, ...change })),
-      onSeen: setSeen,
-    }),
-  );
-  const { suggestions, down } = seen;
-  const { active, setActive, onKeyDown } = useComboboxKeys({
-    count: suggestions.length,
-    onPick: (index) => {
-      const chosen = suggestions[index];
-      if (chosen != null) void lookup.pick(chosen, zone);
-    },
-    onEscape: () => lookup.dismiss(),
-  });
-  const offer = seen.offered != null && seen.offered.zone !== zone && !over ? seen.offered : null;
   const changed =
     venue.name !== savedVenue.name ||
     venue.address !== savedVenue.address ||
@@ -559,14 +528,13 @@ export function VenuePart({
     zone !== event.timeZone;
 
   useDirty(changed, onDirty);
-  useEffect(() => () => lookup.stop(), [lookup]);
 
   function refused(found: Errors): void {
     const count = Object.keys(found).length;
 
     setErrors(found);
     setSaid(count === 0 ? '' : t('eventForm.problems', { count }));
-    if (found.arrivalNote != null) noteBox.current?.focus();
+    if (found.arrivalNote != null) document.getElementById(`${id}-note`)?.focus();
   }
 
   async function send(): Promise<void> {
@@ -593,161 +561,28 @@ export function VenuePart({
       onSave={() => void send()}
     >
       {outcome.failed}
-      <EditText
-        label={t('eventForm.venueName')}
-        optional
-        value={venue.name}
-        error={errors.venueName ?? null}
-        input={{ autoComplete: 'off' }}
-        onChange={(name) => {
-          setVenue((was) => ({ ...was, name }));
-          setErrors((was) => ({ ...was, venueName: undefined }));
+      <VenueFields
+        venue={venue}
+        errors={errors}
+        zone={zone}
+        over={over}
+        ids={{ name: `${id}-name`, address: id, note: `${id}-note` }}
+        onVenue={(change) => {
+          setVenue((was) => ({ ...was, ...change }));
+          setErrors((was) => ({
+            ...was,
+            ...('name' in change ? { venueName: undefined } : {}),
+            ...('address' in change ? { venueAddress: undefined } : {}),
+            ...(change.note != null && !arrivalNoteTooLong(change.note)
+              ? { arrivalNote: undefined }
+              : {}),
+          }));
         }}
+        onUseZone={setZone}
       />
-      <div className="desk-field ev-combo">
-        <label htmlFor={id} className="desk-label">
-          {t('eventForm.venueAddress')}
-          <span className="ev-optional">{` · ${t('eventForm.optional')}`}</span>
-        </label>
-        <div className={errors.venueAddress == null ? 'desk-box' : 'desk-box is-wrong'}>
-          <input
-            ref={field}
-            id={id}
-            type="text"
-            role="combobox"
-            value={venue.address}
-            spellCheck={false}
-            autoComplete="off"
-            aria-autocomplete="list"
-            aria-expanded={suggestions.length > 0}
-            aria-controls={suggestions.length > 0 ? `${id}-list` : undefined}
-            aria-activedescendant={active >= 0 ? `${id}-option-${active}` : undefined}
-            aria-invalid={errors.venueAddress != null}
-            aria-describedby={`${id}-help`}
-            onChange={(change) => {
-              setActive(-1);
-              setZoneSet(null);
-              setErrors((was) => ({ ...was, venueAddress: undefined }));
-              lookup.type(change.target.value);
-            }}
-            onKeyDown={onKeyDown}
-            onBlur={() => lookup.dismiss()}
-          />
-        </div>
-        {errors.venueAddress != null && <Alert>{errors.venueAddress}</Alert>}
-        {down ? (
-          <Alert>{t('eventForm.venueLookupDown')}</Alert>
-        ) : suggestions.length > 0 ? (
-          <p id={`${id}-help`} className="desk-help" role="status">
-            {t('eventForm.venueSuggestionsFound', { count: suggestions.length })}
-          </p>
-        ) : (
-          <p id={`${id}-help`} className="desk-help">
-            {t('eventForm.venueAddressHint')}
-          </p>
-        )}
-        {suggestions.length > 0 && (
-          <ul
-            id={`${id}-list`}
-            className="desk-rows ev-options"
-            role="listbox"
-            aria-label={t('eventForm.venueSuggestions')}
-          >
-            {suggestions.map((one, index) => (
-              <li
-                key={one.id}
-                id={`${id}-option-${index}`}
-                role="option"
-                aria-selected={index === active}
-                className={index === active ? 'desk-row ev-option is-active' : 'desk-row ev-option'}
-                onPointerDown={(pointer) => pointer.preventDefault()}
-                onClick={() => void lookup.pick(one, zone)}
-                onKeyDown={(key) => {
-                  if (key.key === 'Enter') void lookup.pick(one, zone);
-                }}
-              >
-                <Glyph name="pin" size={20} />
-                <RowWords
-                  title={one.text}
-                  lines={one.secondaryText == null ? [] : [one.secondaryText]}
-                />
-              </li>
-            ))}
-          </ul>
-        )}
-      </div>
-      <div className="desk-field">
-        <label htmlFor={`${id}-note`} className="desk-label">
-          {t('eventForm.arrivalNote')}
-          <span className="ev-optional">{` · ${t('eventForm.optional')}`}</span>
-        </label>
-        <div
-          className={
-            errors.arrivalNote == null ? 'desk-box ev-note-box' : 'desk-box ev-note-box is-wrong'
-          }
-        >
-          <textarea
-            ref={noteBox}
-            id={`${id}-note`}
-            rows={4}
-            value={venue.note}
-            aria-invalid={errors.arrivalNote != null}
-            aria-describedby={
-              errors.arrivalNote == null ? `${id}-note-help` : `${id}-note-error ${id}-note-help`
-            }
-            onChange={(change) => {
-              const note = change.target.value;
-
-              setVenue((was) => ({ ...was, note }));
-              if (!arrivalNoteTooLong(note))
-                setErrors((was) => ({ ...was, arrivalNote: undefined }));
-            }}
-          />
-        </div>
-        {errors.arrivalNote != null && (
-          <p id={`${id}-note-error`} className="desk-error">
-            <Glyph name="alert" size={15} weight={2.2} />
-            {errors.arrivalNote}
-          </p>
-        )}
-        <p id={`${id}-note-help`} className="desk-help">
-          {t('eventForm.arrivalNoteHint')}
-        </p>
-      </div>
       <p className="visually-hidden" role="status">
         {said}
       </p>
-      {offer != null && (
-        <Quiet
-          action={
-            <div className="ev-pair">
-              <TextAction
-                label={t('eventForm.venueZoneUse', { zone: offer.zone })}
-                onClick={() => {
-                  setZone(offer.zone);
-                  setZoneSet(offer.zone);
-                  lookup.answered();
-                  field.current?.focus();
-                }}
-              />
-              <TextAction
-                label={t('eventForm.venueZoneKeep', { zone: offer.keep })}
-                onClick={() => {
-                  lookup.answered();
-                  field.current?.focus();
-                }}
-              />
-            </div>
-          }
-        >
-          {t('eventForm.venueZoneOffer', { zone: offer.zone })}
-        </Quiet>
-      )}
-      {zoneSet != null && (
-        <p className="ev-said" role="status">
-          {t('eventForm.venueZoneSet', { zone: zoneSet })}
-        </p>
-      )}
     </Opened>
   );
 }
@@ -761,8 +596,6 @@ export function HostsPart({ event, tag, onDirty, onClose, onSaved, onLatest }: P
       : event.hosts.map((name, key) => ({ key, name })),
   );
   const [errors, setErrors] = useState<HostErrors>({});
-  const [said, setSaid] = useState('');
-  const nextKey = useRef(Math.max(0, event.hosts.length) + 1);
   const focusNext = useRef<string | null>(null);
   const { busy, save, latest } = useSave({ event, tag, onSaved });
   const outcome = useOutcome(onLatest, latest);
@@ -778,7 +611,7 @@ export function HostsPart({ event, tag, onDirty, onClose, onSaved, onLatest }: P
     focusNext.current = null;
   });
 
-  function inputId(row: HostRow): string {
+  function inputId(row: { key: number }): string {
     return `ev-host-${row.key}`;
   }
 
@@ -814,126 +647,14 @@ export function HostsPart({ event, tag, onDirty, onClose, onSaved, onLatest }: P
       onSave={() => void send()}
     >
       {outcome.failed}
-      <p className="desk-line">{t('eventHosts.explainer')}</p>
-      <ol className="ev-hosts">
-        {rows.map((row, index) => {
-          const error = errors[row.key] ?? null;
-          const alone = rows.length === 1;
-          const called = hostCalled(row, index, t);
-
-          return (
-            <li key={row.key} className="ev-host">
-              <div className="ev-host-head">
-                <label htmlFor={inputId(row)} className="desk-label">
-                  {t('eventHosts.label', { position: index + 1 })}
-                </label>
-                {!(alone && keep) && (
-                  <button
-                    type="button"
-                    className="desk-text"
-                    aria-label={t('eventHosts.removeNamed', { name: called })}
-                    onClick={() => {
-                      const change = alone ? null : removedHost(rows, index, t);
-
-                      if (change == null) {
-                        setRows([{ key: nextKey.current++, name: '' }]);
-                        setSaid(t('eventHosts.removed', { name: called }));
-                      } else {
-                        setRows(change.rows);
-                        setSaid(change.said);
-                      }
-                      const before = rows[Math.max(0, index - 1)];
-                      focusNext.current =
-                        alone || before == null
-                          ? null
-                          : inputId(index === 0 ? (rows[1] ?? before) : before);
-                    }}
-                  >
-                    {t('eventHosts.remove')}
-                  </button>
-                )}
-              </div>
-              <div className="ev-host-line">
-                <div className={error == null ? 'desk-box' : 'desk-box is-wrong'}>
-                  <input
-                    id={inputId(row)}
-                    type="text"
-                    value={row.name}
-                    spellCheck={false}
-                    autoComplete="off"
-                    aria-invalid={error != null}
-                    aria-describedby={error == null ? undefined : `${inputId(row)}-error`}
-                    onChange={(change) => {
-                      setRows(
-                        rows.map((one) =>
-                          one.key === row.key ? { ...one, name: change.target.value } : one,
-                        ),
-                      );
-                      setErrors((was) => ({ ...was, [row.key]: undefined }));
-                    }}
-                  />
-                </div>
-                {!alone && (
-                  <>
-                    <button
-                      type="button"
-                      className="ev-round"
-                      aria-label={t('eventHosts.moveUp', { name: called })}
-                      aria-disabled={index === 0}
-                      onClick={() => {
-                        const change = index > 0 ? movedHost(rows, index, -1, t) : null;
-                        if (change == null) return;
-                        setRows(change.rows);
-                        setSaid(change.said);
-                      }}
-                    >
-                      <Glyph name="chevup" size={18} weight={2.4} />
-                    </button>
-                    <button
-                      type="button"
-                      className="ev-round"
-                      aria-label={t('eventHosts.moveDown', { name: called })}
-                      aria-disabled={index === rows.length - 1}
-                      onClick={() => {
-                        const change =
-                          index < rows.length - 1 ? movedHost(rows, index, 1, t) : null;
-                        if (change == null) return;
-                        setRows(change.rows);
-                        setSaid(change.said);
-                      }}
-                    >
-                      <Glyph name="chevdown" size={18} weight={2.4} />
-                    </button>
-                  </>
-                )}
-              </div>
-              {error != null && (
-                <p id={`${inputId(row)}-error`} className="desk-error">
-                  <Glyph name="alert" size={15} weight={2.2} />
-                  {error}
-                </p>
-              )}
-            </li>
-          );
-        })}
-      </ol>
-      {rows.length === 1 && keep && <p className="desk-note">{t('eventHosts.lastHost')}</p>}
-      {rows.length >= HOSTS_MAXIMUM ? (
-        <p className="desk-note">{t('eventHosts.most', { most: HOSTS_MAXIMUM })}</p>
-      ) : (
-        <TextAction
-          label={t('eventHosts.add')}
-          before="plus"
-          onClick={() => {
-            const key = nextKey.current++;
-            setRows([...rows, { key, name: '' }]);
-            focusNext.current = inputId({ key, name: '' });
-          }}
-        />
-      )}
-      <p className="desk-unseen" role="status">
-        {said}
-      </p>
+      <HostFields
+        rows={rows}
+        errors={errors}
+        keep={keep}
+        inputId={inputId}
+        onRows={setRows}
+        onEdited={(key) => setErrors((was) => ({ ...was, [key]: undefined }))}
+      />
     </Opened>
   );
 }

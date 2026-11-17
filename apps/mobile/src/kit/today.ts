@@ -1,5 +1,7 @@
 import type { EventCover } from '@soirely/api-client';
 import type { EventType } from '@soirely/domain';
+
+import type { RunNow } from './todayRun.ts';
 /** An event's colour on Today until it has a photo. */
 export type MeshKey = 'rose' | 'teal' | 'accent' | 'amber';
 export type MomentName = 'plan' | 'planNow' | 'day' | 'dayNow' | 'quiet' | 'first';
@@ -130,4 +132,6 @@ export interface Moment {
   nextUp: { event: ShownEvent; name: string; when: string } | null;
   events: EventCard[];
   now: Now | null;
+  /** Now from the run of show (sc-29875): absent, or null, keeps sc-29090's Now. */
+  run?: RunNow | null;
 }

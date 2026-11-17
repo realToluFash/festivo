@@ -1033,9 +1033,11 @@ function Courses({
       {!manage && (
         <p className="mn-lock">
           <Glyph name="lock" size={16} weight={2.2} />
-          {t('eventMenu.lock', {
-            role: organisation == null ? '' : roleName(t, organisation.role),
-          })}
+          {event.roleOnEvent == null
+            ? t('eventMenu.lock', {
+                role: organisation == null ? '' : roleName(t, organisation.role),
+              })
+            : t('eventMenu.lockOnEvent', { role: t(`eventPeople.role.${event.roleOnEvent}`) })}
         </p>
       )}
       <Said said={said} />
@@ -1069,9 +1071,7 @@ function Courses({
                   all={courses.length}
                   manage={manage}
                   lit={open?.courseId === course.id}
-                  litDish={
-                    open?.kind === 'editDish' || open?.kind === 'variant' ? open.dishId : null
-                  }
+                  litDish={open?.kind === 'editDish' ? open.dishId : null}
                   asking={
                     asking == null
                       ? null
@@ -1185,6 +1185,7 @@ function Courses({
                   onlyEvent={open.onlyEvent}
                   course={openCourse}
                   library={shownLibrary}
+                  loading={library == null}
                   prices={library?.prices === true}
                   language={language}
                   problems={

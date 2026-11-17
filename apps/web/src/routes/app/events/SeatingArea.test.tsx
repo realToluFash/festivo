@@ -2088,10 +2088,12 @@ function standInPointerEvents(): void {
   if ('PointerEvent' in window) return;
   class StandIn extends MouseEvent {
     pointerId: number;
+    pointerType: string;
 
     constructor(type: string, init: PointerEventInit = {}) {
       super(type, init);
       this.pointerId = init.pointerId ?? 1;
+      this.pointerType = init.pointerType ?? 'mouse';
     }
   }
   Object.defineProperty(window, 'PointerEvent', { value: StandIn, configurable: true });
@@ -3773,5 +3775,184 @@ describe('Choosing many and the Selection tools (sc-4717)', () => {
     expect(screen.queryByRole('button', { name: 'Add to choice' })).toBeNull();
     fireEvent.keyDown(window, { key: 'a', ctrlKey: true });
     expect(screen.queryByRole('heading', { name: '2 chosen' })).toBeNull();
+  });
+});
+
+describe('A second finger on a box pans and keeps the choice (sc-60666)', () => {
+  beforeAll(standInPointerEvents);
+
+  const TABLE_2 = 'Table 2, round, 0 of 10 seats taken';
+  const threeTables = () =>
+    seating(
+      withTables(
+        table(),
+        table({ id: 't2', name: 'Table 2', xCm: 600 }),
+        table({ id: 't3', name: 'Table 3', xCm: 1800 }),
+      ),
+    );
+
+  function finger(
+    kind: 'down' | 'move' | 'up',
+    id: number,
+    [clientX, clientY]: readonly [number, number],
+    on: Element | Window = window,
+  ): void {
+    const init = { button: 0, pointerId: id, pointerType: 'touch', clientX, clientY };
+
+    if (kind === 'down') fireEvent.pointerDown(on, init);
+    else if (kind === 'move') fireEvent.pointerMove(on, init);
+    else fireEvent.pointerUp(on, init);
+  }
+
+  function centre(id: string): [number, number] {
+    const body = document.querySelector(`[data-table="${id}"] .st-body`)!;
+
+    return [Number(body.getAttribute('cx')), Number(body.getAttribute('cy'))];
+  }
+
+  function floorAt(): [string | null, string | null] {
+    const floor = document.querySelector('.st-floor');
+
+    return [floor?.getAttribute('x') ?? null, floor?.getAttribute('y') ?? null];
+  }
+
+  function heard(): string {
+    return document.querySelector('p.visually-hidden[aria-live]')?.textContent ?? '';
+  }
+
+  async function onThree(): Promise<{ line: string; body: unknown }[]> {
+    signedIn();
+    const sent = await onSeating({ 'GET /api/events/ev_1/seating-plan': threeTables });
+
+    await screen.findByRole('button', { name: TABLE_1 });
+    fireEvent.click(screen.getByRole('button', { name: 'Zoom in' }));
+    return sent;
+  }
+
+  async function chooseOneAndTwo(): Promise<void> {
+    await chooseTable(TABLE_1);
+    fireEvent.click(screen.getByRole('button', { name: TABLE_2 }), { shiftKey: true });
+    await screen.findByRole('heading', { level: 2, name: '2 chosen' });
+  }
+
+  async function boxOverTable3(): Promise<[number, number]> {
+    const [x, y] = centre('t3');
+
+    finger('down', 1, [x - 4, y - 4], document.querySelector('.st-floor')!);
+    finger('move', 1, [x + 4, y + 4]);
+    expect(document.querySelector('.st-box-drawn')).not.toBeNull();
+    return [x + 4, y + 4];
+  }
+
+  function secondFingerPans(at: readonly [number, number], on: Element): void {
+    finger('down', 2, [at[0] + 40, at[1]], on);
+    expect(document.querySelector('.st-box-drawn')).toBeNull();
+    const was = floorAt();
+
+    finger('move', 1, [at[0] + 30, at[1] + 30]);
+    finger('move', 2, [at[0] + 70, at[1] + 30]);
+    expect(floorAt()).not.toEqual(was);
+    finger('up', 1, [at[0] + 30, at[1] + 30]);
+    finger('up', 2, [at[0] + 70, at[1] + 30]);
+    fireEvent.click(document.querySelector('.st-floor')!);
+  }
+
+  it('puts back the choice from before the box, and lifting after the pan neither clears it nor announces it', async () => {
+    await onThree();
+    await chooseOneAndTwo();
+    const said = heard();
+    const at = await boxOverTable3();
+
+    expect(await screen.findByRole('heading', { level: 2, name: 'Table 3' })).toBeDefined();
+    secondFingerPans(at, document.querySelector('.st-floor')!);
+    expect(await screen.findByRole('heading', { level: 2, name: '2 chosen' })).toBeDefined();
+    expect(heard()).toBe(said);
+  });
+
+  it('opens the one item’s panel again when one was chosen before the box', async () => {
+    await onThree();
+    await chooseTable(TABLE_1);
+    const at = await boxOverTable3();
+
+    expect(await screen.findByRole('heading', { level: 2, name: 'Table 3' })).toBeDefined();
+    secondFingerPans(at, document.querySelector('.st-floor')!);
+    expect(await screen.findByRole('heading', { level: 2, name: 'Table 1' })).toBeDefined();
+  });
+
+  it('takes out what the box added while Add to choice is on, and leaves Add to choice on', async () => {
+    await onThree();
+    const add = screen.getByRole('button', { name: 'Add to choice' });
+
+    fireEvent.click(add);
+    fireEvent.click(screen.getByRole('button', { name: TABLE_1 }));
+    fireEvent.click(screen.getByRole('button', { name: TABLE_2 }));
+    await screen.findByRole('heading', { level: 2, name: '2 chosen' });
+    const at = await boxOverTable3();
+
+    expect(await screen.findByRole('heading', { level: 2, name: '3 chosen' })).toBeDefined();
+    secondFingerPans(at, document.querySelector('.st-floor')!);
+    expect(await screen.findByRole('heading', { level: 2, name: '2 chosen' })).toBeDefined();
+    expect(add.getAttribute('aria-pressed')).toBe('true');
+  });
+
+  it('ends with nothing chosen when nothing was chosen before the box', async () => {
+    await onThree();
+    const at = await boxOverTable3();
+
+    expect(await screen.findByRole('heading', { level: 2, name: 'Table 3' })).toBeDefined();
+    secondFingerPans(at, document.querySelector('.st-floor')!);
+    await waitFor(() =>
+      expect(screen.queryByRole('heading', { level: 2, name: 'Table 3' })).toBeNull(),
+    );
+    expect(screen.getByRole('heading', { level: 2, name: 'Room' })).toBeDefined();
+  });
+
+  it('pans from a second finger on an item without moving it, choosing it or taking it out', async () => {
+    const sent = await onThree();
+
+    await chooseOneAndTwo();
+    const onFloor = () => centre('t1')[0] - Number(floorAt()[0]);
+    const was = onFloor();
+    const at = await boxOverTable3();
+    const item = screen.getByRole('button', { name: TABLE_1 });
+
+    secondFingerPans(at, item);
+    fireEvent.click(item);
+    expect(await screen.findByRole('heading', { level: 2, name: '2 chosen' })).toBeDefined();
+    expect(sent.some((one) => one.line.includes('/seating-plan/furniture'))).toBe(false);
+    expect(onFloor()).toBeCloseTo(was, 0);
+  });
+
+  it('pans from a second finger on a resize handle without resizing the table', async () => {
+    const sent = await onThree();
+
+    await chooseTable(TABLE_1);
+    const at = await boxOverTable3();
+
+    expect(await screen.findByRole('heading', { level: 2, name: 'Table 3' })).toBeDefined();
+    const handle = document.querySelector('.st-handle-hit[data-handle="se"]')!;
+
+    secondFingerPans(at, handle);
+    expect(await screen.findByRole('heading', { level: 2, name: 'Table 1' })).toBeDefined();
+    expect(sent.some((one) => one.line.includes('/seating-plan/furniture'))).toBe(false);
+  });
+
+  it('pans and keeps the choice when both fingers land together', async () => {
+    await onThree();
+    await chooseOneAndTwo();
+    const [x, y] = centre('t3');
+    const floor = document.querySelector('.st-floor')!;
+
+    finger('down', 1, [x, y + 200], floor);
+    finger('down', 2, [x + 40, y + 200], floor);
+    const was = floorAt();
+
+    finger('move', 1, [x + 30, y + 230]);
+    finger('move', 2, [x + 70, y + 230]);
+    expect(floorAt()).not.toEqual(was);
+    finger('up', 1, [x + 30, y + 230]);
+    finger('up', 2, [x + 70, y + 230]);
+    fireEvent.click(floor);
+    expect(screen.getByRole('heading', { level: 2, name: '2 chosen' })).toBeDefined();
   });
 });
