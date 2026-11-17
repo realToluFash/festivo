@@ -804,6 +804,39 @@ export function seedOf(state: SeatingState | null): Ui {
           t9: [{ who: SIX[3]!, seat: 1 }],
         },
       };
+    case 'presenceSeatTables':
+    case 'presenceSeatList':
+      return {
+        ...ui,
+        people: [PRIYA, SIX[3]!],
+        rings: { t9: [{ who: SIX[3]!, seat: 1 }] },
+        ...(state === 'presenceSeatTables'
+          ? { view: 'tables' as const }
+          : { view: 'list' as const, listTab: 'all' as const, listOpen: 't9' }),
+      };
+    case 'presenceTwoTables':
+    case 'presenceTwoList':
+      return {
+        ...ui,
+        people: [...SIX],
+        presence: 'overflow',
+        rings: {
+          t7: [{ who: PRIYA }, { who: SIX[2]! }],
+          t4: [{ who: SIX[3]! }, { who: SIX[5]! }, { who: PRIYA }],
+          t2: [{ who: SADE }],
+        },
+        ...(state === 'presenceTwoTables'
+          ? { view: 'tables' as const }
+          : { view: 'list' as const, listTab: 'all' as const }),
+      };
+    case 'presenceBothTables':
+      return {
+        ...ui,
+        view: 'tables',
+        chosen: ['t7'],
+        rings: { t7: [{ who: PRIYA }] },
+        people: [PRIYA, SADE],
+      };
     case 'presenceViewer':
       return { ...ui, people: [PRIYA, SADE] };
     case 'reconnecting':

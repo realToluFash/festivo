@@ -1972,7 +1972,7 @@
 .st-cards {
   display: grid;
   grid-template-columns: repeat(auto-fill, 212px);
-  gap: 12px;
+  gap: 24px;
   margin: 0;
   padding: 0;
   list-style: none;
@@ -1995,6 +1995,82 @@
 
 .st-card.is-lit {
   background: var(--colorAccentTint);
+}
+
+.st-whos {
+  display: inline-flex;
+  gap: 4px;
+}
+
+.st-who {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  box-sizing: border-box;
+  min-width: 30px;
+  height: 22px;
+  padding: 0 6px;
+  border-radius: 11px;
+  background: var(--ring);
+  color: var(--colorInkOnDark);
+  font: 700 12px/1 var(--fontFamily);
+}
+
+/* sc-60717: a colleague's ring outside the card, as on the plan: 2 px white, then 3 px in their colour, each further colleague 5 px out. */
+.st-card-slot {
+  position: relative;
+}
+
+.st-card.is-marked:focus-visible {
+  outline-offset: -6px;
+}
+
+.st-card-ring {
+  position: absolute;
+  border: 3px solid var(--ring);
+  box-shadow: inset 0 0 0 2px var(--colorCard);
+  pointer-events: none;
+}
+
+.st-card-ring.is-k0 {
+  inset: -5px;
+  border-radius: 25px;
+}
+
+.st-card-ring.is-k1 {
+  inset: -10px;
+  border-radius: 30px;
+}
+
+.st-card-ring.is-k2 {
+  inset: -15px;
+  border-radius: 35px;
+}
+
+.st-card-ring.is-k3 {
+  inset: -20px;
+  border-radius: 40px;
+}
+
+.st-card-ring .st-who {
+  position: absolute;
+  top: -12px;
+}
+
+.st-card-ring.is-k0 .st-who {
+  left: 14px;
+}
+
+.st-card-ring.is-k1 .st-who {
+  left: 58px;
+}
+
+.st-card-ring.is-k2 .st-who {
+  left: 102px;
+}
+
+.st-card-ring.is-k3 .st-who {
+  left: 146px;
 }
 
 .st-card-top {
@@ -2032,6 +2108,7 @@
 
 .st-card-art {
   display: block;
+  overflow: visible;
 }
 
 .st-seg.is-list {
@@ -2073,7 +2150,7 @@
   display: flex;
   align-items: center;
   gap: 10px;
-  width: 180px;
+  min-width: 180px;
   min-height: 56px;
   padding: 0;
   border: 0;

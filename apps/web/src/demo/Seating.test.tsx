@@ -1360,6 +1360,115 @@ describe('who else is here (sc-4719)', () => {
   });
 });
 
+describe('a colleague’s choice on Tables and the List (sc-60717)', () => {
+  const view = (name: 'Floor plan' | 'Tables' | 'List') =>
+    fireEvent.click(
+      within(screen.getByRole('group', { name: 'View' })).getByRole('button', { name }),
+    );
+  const card = (name: string) => {
+    const found = within(document.querySelector<HTMLElement>('.st-cards')!).getAllByRole('button', {
+      name: new RegExp(`^${name}, `, 'u'),
+    });
+
+    expect(found).toHaveLength(1);
+    return found[0]!;
+  };
+  const ringsOn = (button: HTMLElement) =>
+    [...(button.closest('li')?.querySelectorAll('.st-card-ring') ?? [])].map(
+      (ring) => ring.textContent,
+    );
+  const listRow = (name: RegExp) =>
+    within(screen.getByRole('table', { name: 'Tables, rows and seats' })).getByRole('button', {
+      name,
+    });
+
+  it('rings a card in each colleague’s colour, in the order they chose it', SLOW, async () => {
+    await seating('presenceTwoTables');
+    expect(ringsOn(card('Table 7'))).toEqual(['PS', 'AS']);
+    expect(card('Table 7').getAttribute('aria-label')).toMatch(
+      /, chosen by Priya Shah and Ana Souza$/u,
+    );
+    expect(ringsOn(card('Table 4'))).toEqual(['JM', 'TB', 'PS']);
+    expect(card('Table 4').getAttribute('aria-label')).toMatch(
+      /, chosen by Julien Moreau, Tom Baker and Priya Shah$/u,
+    );
+    expect(ringsOn(card('Table 2'))).toEqual([]);
+    expect(card('Table 2').getAttribute('aria-label')).not.toMatch(/chosen by/u);
+  });
+
+  it('marks a colleague’s seat on the card and on its drawing', SLOW, async () => {
+    await seating('presenceSeatTables');
+    const table = card('Table 9');
+
+    expect(ringsOn(table)).toEqual(['JM']);
+    expect(table.getAttribute('aria-label')).toMatch(/, seat 2 chosen by Julien Moreau$/u);
+    expect(table.querySelector('.st-card-art .st-ring')?.textContent).toBe('JM');
+  });
+
+  it('shows your Tint and a colleague’s ring on one card', SLOW, async () => {
+    await seating('presenceBothTables');
+    const table = card('Table 7');
+
+    expect(table.getAttribute('aria-pressed')).toBe('true');
+    expect(table.className).toContain('is-lit');
+    expect(ringsOn(table)).toEqual(['PS']);
+  });
+
+  it('puts the initials on a List row, and on the chair once it is open', SLOW, async () => {
+    await seating('presenceTwoList');
+    const row = listRow(/^Table 7.*, chosen by Priya Shah and Ana Souza$/u);
+
+    expect([...row.querySelectorAll('.st-who')].map((one) => one.textContent)).toEqual([
+      'PS',
+      'AS',
+    ]);
+    expect(listRow(/^Table 2/u).textContent).not.toMatch(/chosen by/u);
+    await seating('presenceSeatList');
+    const open = listRow(/^Table 9.*, seat 2 chosen by Julien Moreau$/u);
+
+    expect(open.getAttribute('aria-expanded')).toBe('true');
+    const chairs = screen.getAllByText(/^Seat \d+$/u).map((one) => one.closest('tr')!);
+
+    expect(chairs[1]!.textContent).toMatch(/JM.*, chosen by Julien Moreau$/u);
+    expect(chairs[0]!.textContent).not.toMatch(/chosen by/u);
+  });
+
+  it('keeps every colleague’s choice across View, and behind a filter', SLOW, async () => {
+    await seating('presenceChose');
+    view('Tables');
+    expect(ringsOn(card('Table 7'))).toEqual(['PS']);
+    fireEvent.click(screen.getByRole('button', { name: 'Stage side' }));
+    expect(screen.queryByRole('button', { name: /^Table 7, /u })).toBeNull();
+    fireEvent.click(screen.getByRole('button', { name: 'All sections' }));
+    expect(ringsOn(card('Table 7'))).toEqual(['PS']);
+    view('List');
+    fireEvent.click(screen.getByRole('button', { name: /^All · /u }));
+    expect(listRow(/^Table 7.*, chosen by Priya Shah$/u)).toBeDefined();
+    view('Floor plan');
+    expect(item(/^Table 7, .*chosen by Priya Shah$/u)).toBeDefined();
+  });
+
+  it('takes a card chosen on Tables as a choice, and an open row as none', SLOW, async () => {
+    await seating('presenceChose');
+    view('Tables');
+    fireEvent.click(card('Table 3'));
+    view('List');
+    fireEvent.click(screen.getByRole('button', { name: /^All · /u }));
+    fireEvent.click(listRow(/^Table 5/u));
+    view('Floor plan');
+    expect(item(/^Table 3, /u).getAttribute('aria-pressed')).toBe('true');
+    expect(item(/^Table 5, /u).getAttribute('aria-pressed')).toBe('false');
+  });
+
+  it('shows no colleague’s mark on either view for a viewer’s choice', SLOW, async () => {
+    await seating('presenceViewer');
+    view('Tables');
+    expect(document.querySelector('.st-card-ring')).toBeNull();
+    view('List');
+    expect(document.querySelector('.st-who')).toBeNull();
+  });
+});
+
 describe('seating guests (sc-4013, sc-4016, sc-5030)', () => {
   it('picks a party and seats it side by side, with Undo', SLOW, async () => {
     await seating('seat');

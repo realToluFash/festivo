@@ -642,7 +642,7 @@ function ItemDrawing({
   );
 }
 
-function Pill({ x, y, words }: { x: number; y: number; words: string }) {
+export function Pill({ x, y, words }: { x: number; y: number; words: string }) {
   return (
     <g className="st-pill" aria-hidden="true">
       <rect x={f(x - 4)} y={f(y - 11)} width="30" height="22" rx="11" />
