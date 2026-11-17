@@ -11,7 +11,7 @@ export interface Milestone {
   owner: MilestoneOwner;
   area: string;
   action: { label: string; link: string } | null;
-  /** A "You" milestone its area has seen through: passed, never overdue (sc-4022). The API always sends it; a milestone made on a client may leave it out. */
+  /** A "You" milestone its area has seen through: passed, never overdue (sc-4022). */
   done?: boolean;
 }
 
