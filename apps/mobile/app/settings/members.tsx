@@ -758,4 +758,5 @@ const SPACING: ListAndPageSpacing = {
   column: styles.column,
   listWidth: SETTINGS_LIST_WIDTH,
   between: 0,
+  settingsTitle: true,
 };

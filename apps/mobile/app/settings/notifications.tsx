@@ -5,7 +5,7 @@ import { useTranslation } from 'react-i18next';
 import { AppFrame, FrameTop, besideRow } from '../../src/components/AppFrame.tsx';
 import { Refreshing } from '../../src/components/Refreshing.tsx';
 import { bodyEdges } from '../../src/components/bodyEdges.ts';
-import { SETTINGS_PAGE } from '../../src/components/listFrame.ts';
+import { SETTINGS_PAGE, titleFoot } from '../../src/components/listFrame.ts';
 import { NotificationsPage } from '../../src/components/NotificationsPage.tsx';
 import { Screen } from '../../src/components/Screen.tsx';
 import { SettingsSplit, useBackToSettings } from '../../src/components/SettingsList.tsx';
@@ -48,7 +48,7 @@ export default function Notifications() {
     >
       <SettingsSplit open="notifications">
         <Screen edges={bodyEdges(kind)} contentStyle={SETTINGS_PAGE[kind]}>
-          {alone && <FrameTop />}
+          {alone && <FrameTop style={titleFoot(SETTINGS_PAGE[kind])} />}
           {!alone && (
             <View style={besideRow.row}>
               <View style={styles.shrink}>

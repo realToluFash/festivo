@@ -5,7 +5,7 @@ import { useTranslation } from 'react-i18next';
 import { AppFrame, FrameTop, besideRow } from '../../src/components/AppFrame.tsx';
 import { Refreshing } from '../../src/components/Refreshing.tsx';
 import { bodyEdges } from '../../src/components/bodyEdges.ts';
-import { SETTINGS_PAGE } from '../../src/components/listFrame.ts';
+import { SETTINGS_PAGE, titleFoot } from '../../src/components/listFrame.ts';
 import { Screen } from '../../src/components/Screen.tsx';
 import { SecurityPage } from '../../src/components/SecurityPage.tsx';
 import { SettingsSplit, useBackToSettings } from '../../src/components/SettingsList.tsx';
@@ -54,7 +54,7 @@ export default function Security() {
     >
       <SettingsSplit open="security">
         <Screen edges={bodyEdges(kind)} contentStyle={SETTINGS_PAGE[kind]}>
-          {alone && <FrameTop />}
+          {alone && <FrameTop style={titleFoot(SETTINGS_PAGE[kind])} />}
           {!alone && (
             <View style={besideRow.row}>
               <View style={styles.shrink}>

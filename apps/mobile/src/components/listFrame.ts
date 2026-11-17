@@ -1,5 +1,5 @@
 import { useMemo } from 'react';
-import { StyleSheet } from 'react-native';
+import { type StyleProp, StyleSheet, type ViewStyle } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import type { LayoutKind } from '../layout/classify.ts';
@@ -21,6 +21,13 @@ export const SETTINGS_COLUMN = {
   borderRightWidth: 1,
   borderRightColor: tokens.colorBorder,
 } as const;
+
+/** Under a Settings page's title, 16 to its first block as the demo's `SummaryPage` draws it, whatever gap the page keeps between its blocks (sc-49170). */
+export function titleFoot(page: StyleProp<ViewStyle>): ViewStyle {
+  const gap = StyleSheet.flatten(page)?.gap;
+
+  return { marginBottom: tokens.spaceXl - (typeof gap === 'number' ? gap : 0) };
+}
 
 /** Where a Settings page's body starts and ends in each layout, as the demo's `SummaryPage` draws it: 2 × 6xl past its last block (sc-39471). */
 export const SETTINGS_PAGE = StyleSheet.create({
