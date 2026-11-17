@@ -8,6 +8,7 @@ use App\Domain\Menu\ChoiceRules;
 use App\Domain\Menu\CourseRules;
 use App\Domain\Menu\DishRules;
 use App\Domain\Menu\Http\MenuSerialiser;
+use App\Domain\Menu\ItemRules;
 use App\Domain\Menu\MenuEditor;
 use App\Domain\Menu\Model\UnwarnedOption;
 use App\Domain\Menu\Model\UnwarnedPickers;
@@ -28,6 +29,7 @@ use App\Http\Input;
 use App\Realtime\SubscriberTokenIssuer;
 use App\Repository\DishRepository;
 use App\Repository\EventRepository;
+use App\Repository\MenuDishChoiceRepository;
 use App\Repository\MenuDishVariantRepository;
 use Psl\Iter;
 use Psl\Type;
@@ -51,6 +53,8 @@ final readonly class MenuController
         private MenuEditor $menuEditor,
         private MenuSerialiser $menuSerialiser,
         private MenuDishVariantRepository $menuDishVariantRepository,
+        private MenuDishChoiceRepository $menuDishChoiceRepository,
+        private ItemRules $itemRules,
         private MembershipDirectoryInterface $membershipDirectory,
         private SubscriberTokenIssuer $subscriberTokenIssuer,
     ) {
@@ -78,7 +82,7 @@ final readonly class MenuController
         return $this->menu($event, Response::HTTP_CREATED, ['courseId' => $course->getId()->toRfc4122()]);
     }
 
-    /** The whole course. `answer` "same" is refused 409 `menu_same_one_dish` unless it has exactly one dish. */
+    /** The whole course; `ownItems` (sc-34230) left out keeps them. `answer` "same" is refused 409 `menu_same_one_dish` unless it has exactly one dish. */
     #[Route('/api/events/{eventId}/menu/courses/{courseId}', name: 'menu_courses_change', methods: ['PUT'])]
     #[InEvent(Permission::MenuManage)]
     public function changeCourse(Request $request, string $eventId, #[InThisEvent('courseId')] MenuCourse $course): JsonResponse
@@ -89,9 +93,11 @@ final readonly class MenuController
             'servedAt' => Type\optional(Type\nullable(Type\string())),
             'answer' => Type\union(Type\literal_scalar('choose'), Type\literal_scalar('same')),
             'skippable' => Type\bool(),
+            'ownItems' => Type\optional(Type\vec(Type\string())),
         ]));
         $details = $this->courseRules->details($body['name'], $body['servedAt'] ?? null);
-        $this->menuEditor->changeCourse($event, $course, $details, 'choose' === $body['answer'], $body['skippable'], $this->user());
+        $own = Iter\contains_key($body, 'ownItems') ? $this->itemRules->ownItems($body['ownItems']) : null;
+        $this->menuEditor->changeCourse($event, $course, $details, 'choose' === $body['answer'], $body['skippable'], $own, $this->user());
 
         return $this->menu($event, Response::HTTP_OK, ['courseId' => $course->getId()->toRfc4122()]);
     }
@@ -169,7 +175,7 @@ final readonly class MenuController
         return $this->menu($event, Response::HTTP_CREATED, ['dishId' => $added->getId()->toRfc4122()]);
     }
 
-    /** Never refused for picks. `unwarned` counts who picked it and has an allergen just added recorded, until sc-3913. */
+    /** `items` (sc-34230) left out keeps them. Never refused for picks. `unwarned` counts who picked it and has an allergen just added recorded, until sc-3913. */
     #[Route('/api/events/{eventId}/menu/dishes/{dishId}', name: 'menu_dishes_change', methods: ['PUT'])]
     #[InEvent(Permission::MenuManage)]
     public function changeDish(Request $request, string $eventId, #[InThisEvent('dishId')] MenuDish $dish): JsonResponse
@@ -181,11 +187,15 @@ final readonly class MenuController
             'allergens' => Type\optional(Type\vec(Type\string())),
             'containsNone' => Type\optional(Type\bool()),
             'diets' => Type\optional(Type\vec(Type\string())),
+            'items' => Type\optional(ItemRules::sent()),
         ]));
         $details = [] === $this->menuDishVariantRepository->findOnDish($dish)
             ? $this->dishRules->details($body['name'], $body['description'] ?? null, $body['allergens'] ?? [], $body['containsNone'] ?? false, $body['diets'] ?? [], null, null)
             : $this->dishRules->named($body['name'], $body['description'] ?? null);
-        $unwarned = $this->menuEditor->changeDish($event, $dish, $details, $this->user());
+        $items = Iter\contains_key($body, 'items')
+            ? $this->itemRules->dishItems($body['items'], $dish, [] !== $this->menuDishVariantRepository->findOnDish($dish), ...$this->menuDishChoiceRepository->findOnDish($dish))
+            : null;
+        $unwarned = $this->menuEditor->changeDish($event, $dish, $details, $items, $this->user());
 
         return $this->menu($event, Response::HTTP_OK, ['dishId' => $dish->getId()->toRfc4122(), 'unwarned' => self::unwarned($unwarned)]);
     }
