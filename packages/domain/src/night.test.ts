@@ -95,6 +95,22 @@ describe('Now, Next and Later on one track (sc-3895)', () => {
     expect(view.lastFinished).toEqual({ item: items[2], at: at('2030-11-15T19:58') });
   });
 
+  it('ends about after an item passed over, not at the end of the out-of-order one', () => {
+    const items = [
+      SPEECHES({ startedAt: '2030-11-15T19:30', endedAt: '2030-11-15T19:50' }),
+      DANCE(),
+      CAKE({ startedAt: '2030-11-15T19:52', endedAt: '2030-11-15T20:08' }),
+    ];
+    const view = nightView(
+      nightTracks(items, at('2030-11-15T20:09'))[0]!,
+      at('2030-11-15T20:09'),
+      ZONE,
+    );
+
+    expect(view.next).toMatchObject({ item: { id: 'dance' }, expected: at('2030-11-15T20:09') });
+    expect(view.endsAbout).toBe(at('2030-11-15T20:19'));
+  });
+
   it('marks a skipped Later item and takes no time for it', () => {
     const items = [
       SPEECHES({ startedAt: '2030-11-15T19:30' }),
