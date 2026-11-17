@@ -406,13 +406,15 @@ function Menu({ first, event, tell }: { first: MenuStart; event: SampleEvent; te
 
   function makeSingle(dishId: string) {
     const target = findDish(courses, dishId);
-    if (target == null) return;
+    const gone = asking?.kind === 'variant' ? asking.name : null;
+    const stays = target?.variants.find((name) => name !== gone);
+    if (target == null || stays == null) return;
 
     setCourses(mapDish(courses, dishId, asSingleDish));
     changeOpenDish(dishId, asSingleDish);
     setAsking(null);
-    setSaid(mw(MW.folded, { dish: target.name }));
-    focusAfter.current = `mn-edit-${dishId}`;
+    setSaid(mw(MW.folded, { dish: target.name, variant: stays }));
+    focusAfter.current = 'mn-said';
   }
 
   return (
@@ -454,7 +456,7 @@ function Menu({ first, event, tell }: { first: MenuStart; event: SampleEvent; te
             {MW.lock}
           </p>
         )}
-        <p className="mn-said" role="status">
+        <p id="mn-said" className="mn-said" role="status" tabIndex={-1}>
           {said !== '' && (
             <>
               <Glyph name="tick" size={17} weight={2.6} />

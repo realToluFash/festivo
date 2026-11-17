@@ -149,7 +149,7 @@ describe('removing a choice that is an item, and making a dish single', () => {
   });
 
   it('names a choice with no question as The choice once it is removed', () => {
-    expect(removedLine(DISH, DISH.choices[0]!)).toBe('And a side? removed from Jollof rice.');
+    expect(removedLine(DISH, DISH.choices[0]!)).toBe('“And a side?” removed from Jollof rice.');
     expect(removedLine(DISH, DISH.choices[2]!)).toBe('The choice removed from Jollof rice.');
   });
 

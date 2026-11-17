@@ -211,7 +211,11 @@ describe('removing a choice or the variants, and read only', () => {
       ),
     ).toBeTruthy();
     fireEvent.click(screen.getByRole('button', { name: MW.makeSingle }));
-    expect(screen.getByText('Grilled fish is now a single dish.')).toBeTruthy();
+    const said = screen.getByText(
+      'Grilled fish is a single dish again, with Croaker’s allergens, diets and cost.',
+    );
+    expect(said).toBeTruthy();
+    expect(document.activeElement).toBe(said.closest('p'));
     expect(within(panel()).getAllByRole('listitem')).toHaveLength(2);
     expect(screen.queryByText('Croaker or Tilapia')).toBeNull();
   });
