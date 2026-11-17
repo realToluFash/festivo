@@ -68,6 +68,21 @@ describe('New event in the demo (sc-48607)', () => {
     );
   });
 
+  it('refuses an arrival note over 500 characters, under the venue and before the time zone', () => {
+    expect(refusalsOf({ ...FILLED, note: 'a'.repeat(500) }).arrivalNote).toBeUndefined();
+    expect(refusalsOf({ ...FILLED, note: 'a'.repeat(501) }).arrivalNote).toBe(
+      'Shorten the arrival note to 500 characters or fewer.',
+    );
+    expect(firstRefused({ arrivalNote: 'x', timeZone: 'y' }, [null])).toEqual({
+      field: 'arrivalNote',
+    });
+  });
+
+  it('opens a chosen photo at the middle with no description, as the cover edit does', () => {
+    expect(typedFor('newPhoto')).toMatchObject({ photo: true, position: 'middle', described: '' });
+    expect(typedSomething({ ...BLANK, note: 'Side door' })).toBe(true);
+  });
+
   it('puts focus on Event name first, a host before the start, and a host after nothing else', () => {
     expect(firstRefused({ name: 'x', endsAt: 'y' }, [null, 'z'])).toEqual({ field: 'name' });
     expect(firstRefused({ endsAt: 'y' }, [null, 'z'])).toEqual({ host: 1 });
