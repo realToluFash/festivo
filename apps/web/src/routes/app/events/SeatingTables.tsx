@@ -1,6 +1,7 @@
 import {
   type MeasurementSystem,
   SEATING_LIMITS,
+  type SeatingGuest,
   type SeatingPlan,
   type SeatingTable,
   TABLE_DEFAULTS,
@@ -58,6 +59,7 @@ import { Overlaps, PositionFields } from './SeatingArrange.tsx';
 import { ColleagueNote, ColleagueOutline } from './SeatingPresence.tsx';
 import { chosenBy, useRings } from './seatingPresence.ts';
 import { placementOf } from './seatingItems.ts';
+import { type ChairState, chairStateOf, initialsOf, takenAt } from './seatingGuests.ts';
 import {
   centimetreUnit,
   tableLengthWords,
@@ -111,17 +113,21 @@ function seatsWords(t: T, shape: TableShape, count: number): string {
     : t('seating.countSeats', { count });
 }
 
-function tableLine(t: T, plan: SeatingPlan, table: SeatingTable): string {
+export function tableLine(t: T, plan: SeatingPlan, table: SeatingTable): string {
   return t('seating.tableLine', {
     shape: t(SHAPE_WORDS[table.shape].whole),
     section: sectionOf(plan, table)?.name ?? t('seating.noSection'),
-    taken: 0,
+    taken: takenAt(plan, table.id),
     seats: usableSeats(table),
   });
 }
 
-function chairWord(t: T, table: SeatingTable, seat: number): string {
-  return table.unusableSeats.includes(seat) ? t('seating.unusable') : t('seating.empty');
+export function chairStateWord(t: T, state: ChairState, guest: SeatingGuest | null): string {
+  if (state === 'taken') return guest?.fullName ?? t('seating.taken');
+  return t(
+    { held: 'seating.held', empty: 'seating.empty', unusable: 'seating.unusable' }[state] as
+      'seating.held' | 'seating.empty' | 'seating.unusable',
+  );
 }
 
 const FLOAT_MARGINS = 3 * 12;
@@ -357,7 +363,12 @@ export function TableDrawing({
       const [px, py] = turned([chair.x, chair.y], table.rotation);
       const x = cx + px * s;
       const y = cy + py * s;
-      const unusable = table.unusableSeats.includes(chair.seat);
+      const { state, guest } = chairStateOf(
+        plan,
+        table.id,
+        chair.seat,
+        table.unusableSeats.includes(chair.seat),
+      );
       const seated = rings.filter((ring) => ring.chair === chair.seat);
 
       seated.forEach((ring, step) =>
@@ -386,9 +397,9 @@ export function TableDrawing({
             x={x}
             y={y}
             r={r}
-            unusable={unusable}
+            state={state}
             square={table.shape === 'cocktail'}
-            label={near ? String(chair.seat) : undefined}
+            label={near ? chairLabel(state, guest, chair.seat) : undefined}
           />
           {(chosen || near) && (
             <circle
@@ -400,7 +411,7 @@ export function TableDrawing({
                 t('seating.chairName', {
                   table: table.name,
                   seat: chair.seat,
-                  state: chairWord(t, table, chair.seat),
+                  state: chairStateWord(t, state, guest),
                 }),
                 seated.map((ring) => ({ ...ring, chair: null })),
               )}
@@ -431,7 +442,7 @@ export function TableDrawing({
   const name = t('seating.tableName', {
     name: table.name,
     shape: t(SHAPE_WORDS[table.shape].kind),
-    taken: 0,
+    taken: takenAt(plan, table.id),
     count: usableSeats(table),
   });
 
@@ -465,7 +476,7 @@ export function TableDrawing({
           x={cx}
           y={round ? cy + Math.max(ey, 40) * s * 0.55 + 12 : cy + (table.lengthCm / 2) * s + 12}
           name={table.name}
-          taken={0}
+          taken={takenAt(plan, table.id)}
           seats={usableSeats(table)}
         />
       ) : (
@@ -555,24 +566,24 @@ export function OutWords({
   );
 }
 
-/** A chair in its state: an empty one an outline, an unusable one grey with a cross; a cocktail table's standing places are rounded squares. */
+/** A chair in its state, a shape each: Taken filled ink, Held half filled, Empty an outline, Unusable grey with a cross; a cocktail table's standing places are rounded squares. */
 export function ChairMark({
   x,
   y,
   r,
-  unusable,
+  state,
   square,
   label,
 }: {
   x: number;
   y: number;
   r: number;
-  unusable: boolean;
+  state: ChairState;
   square: boolean;
   label: string | undefined;
 }) {
   const near = label != null ? ' is-near' : '';
-  const className = `st-chair ${unusable ? 'is-unusable' : 'is-empty'}${near}`;
+  const className = `st-chair is-${state}${near}`;
   const k = r * 0.45;
 
   return (
@@ -589,15 +600,23 @@ export function ChairMark({
       ) : (
         <circle className={className} cx={f(x)} cy={f(y)} r={f(r)} />
       )}
-      {unusable ? (
+      {state === 'held' && (
+        <path
+          className="st-chair-half"
+          d={`M${f(x)} ${f(y - r)} A${f(r)} ${f(r)} 0 0 0 ${f(x)} ${f(y + r)} Z`}
+        />
+      )}
+      {state === 'unusable' ? (
         <path
           className={`st-chair-cross${near}`}
           d={`M${f(x - k)} ${f(y - k)}L${f(x + k)} ${f(y + k)}M${f(x + k)} ${f(y - k)}L${f(x - k)} ${f(y + k)}`}
         />
       ) : (
-        label != null && (
+        label != null &&
+        label !== '' &&
+        state !== 'held' && (
           <text
-            className="st-chair-text"
+            className={state === 'taken' ? 'st-chair-text is-on-dark' : 'st-chair-text'}
             x={f(x)}
             y={f(y)}
             textAnchor="middle"
@@ -611,11 +630,61 @@ export function ChairMark({
   );
 }
 
-export function StateMark({ unusable, square }: { unusable: boolean; square: boolean }) {
+/** Up close a taken chair shows its guest's initials, any other its number. */
+export function chairLabel(state: ChairState, guest: SeatingGuest | null, seat: number): string {
+  return state === 'taken' && guest?.fullName != null ? initialsOf(guest.fullName) : String(seat);
+}
+
+export function StateMark({
+  state,
+  square = false,
+  size = 22,
+}: {
+  state: ChairState;
+  square?: boolean;
+  size?: number;
+}) {
   return (
-    <svg className="st-state-mark" width="22" height="22" viewBox="0 0 22 22" aria-hidden="true">
-      <ChairMark x={11} y={11} r={9.5} unusable={unusable} square={square} label="" />
+    <svg
+      className="st-state-mark"
+      width={size}
+      height={size}
+      viewBox={`0 0 ${size} ${size}`}
+      aria-hidden="true"
+    >
+      <ChairMark
+        x={size / 2}
+        y={size / 2}
+        r={size / 2 - 1.5}
+        state={state}
+        square={square}
+        label=""
+      />
     </svg>
+  );
+}
+
+/** What the seats show: each state's shape beside its word (sc-4013). */
+export function SeatLegend() {
+  const { t } = useTranslation();
+  const states: ChairState[] = ['taken', 'held', 'empty', 'unusable'];
+
+  return (
+    <ul className="st-legend" aria-label={t('seating.legend')}>
+      {states.map((state) => (
+        <li key={state}>
+          <StateMark state={state} size={16} />
+          {t(
+            {
+              taken: 'seating.taken',
+              held: 'seating.held',
+              empty: 'seating.empty',
+              unusable: 'seating.unusable',
+            }[state] as 'seating.taken',
+          )}
+        </li>
+      ))}
+    </ul>
   );
 }
 
@@ -943,6 +1012,7 @@ export function ChairPanel({
 }) {
   const { t } = useTranslation();
   const unusable = table.unusableSeats.includes(seat);
+  const { state, guest } = chairStateOf(plan, table.id, seat, unusable);
 
   return (
     <div className="st-stack">
@@ -951,8 +1021,8 @@ export function ChairPanel({
         line={`${t(SHAPE_WORDS[table.shape].whole)} · ${sectionOf(plan, table)?.name ?? t('seating.noSection')}`}
       />
       <p className="st-state-line is-big">
-        <StateMark unusable={unusable} square={table.shape === 'cocktail'} />
-        {chairWord(t, table, seat)}
+        <StateMark state={state} square={table.shape === 'cocktail'} />
+        {chairStateWord(t, state, guest)}
       </p>
       {!ctx.readOnly && (
         <div className="st-acts">
@@ -978,6 +1048,7 @@ export function ChairPanel({
         </div>
       )}
       {ctx.notice != null && <Said>{ctx.notice}</Said>}
+      <SeatLegend />
     </div>
   );
 }

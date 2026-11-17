@@ -125,6 +125,13 @@ export interface Companion {
   namedByGuest: boolean;
   /** Sent only with guests.manage; null for anyone else. */
   needs?: GuestNeeds | null;
+  /** Where they sit (sc-4013): a table or a single seat by its name, a row by its label. */
+  seat?: CompanionSeat | null;
+}
+
+export interface CompanionSeat {
+  kind: 'table' | 'row' | 'seat';
+  name: string;
 }
 
 /** A named companion as the guest's own page shows them, with what the guest last chose for them. */
@@ -498,7 +505,16 @@ function asCompanion(value: unknown): Companion | null {
     coming: row.coming,
     namedByGuest: row.namedByGuest === true,
     needs: asNeeds(row.needs),
+    seat: asCompanionSeat(row.seat),
   };
+}
+
+function asCompanionSeat(value: unknown): CompanionSeat | null {
+  if (typeof value !== 'object' || value == null) return null;
+  const { kind, name } = value as Record<string, unknown>;
+  if ((kind !== 'table' && kind !== 'row' && kind !== 'seat') || typeof name !== 'string')
+    return null;
+  return { kind, name };
 }
 
 export function asGuestPageCompanion(value: unknown): GuestPageCompanion | null {

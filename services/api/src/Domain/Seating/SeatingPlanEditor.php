@@ -7,6 +7,7 @@ namespace App\Domain\Seating;
 use App\Audit\Auditor;
 use App\Domain\Seating\Http\SeatingSerialiser;
 use App\Entity\Event;
+use App\Entity\SeatAssignment;
 use App\Entity\SeatingPlan;
 use App\Entity\SeatingRow;
 use App\Entity\SeatingSeat;
@@ -23,6 +24,7 @@ use App\Http\EntityTag;
 use App\Http\Exception\ApiException;
 use App\Locale\NameNormaliser;
 use App\Realtime\RealtimePublisher;
+use App\Repository\SeatAssignmentRepository;
 use App\Repository\SeatingPlanRepository;
 use App\Repository\SeatingRowRepository;
 use App\Repository\SeatingSeatRepository;
@@ -85,6 +87,8 @@ final readonly class SeatingPlanEditor
         private Auditor $auditor,
         private RealtimePublisher $realtimePublisher,
         private TranslatorInterface $translator,
+        private SeatAssignmentRepository $seatAssignmentRepository,
+        private GuestSeater $guestSeater,
     ) {
     }
 
@@ -295,6 +299,7 @@ final readonly class SeatingPlanEditor
             $rotation = $fields['rotation'] ?? ($reshaped ? 0 : $table->getRotation());
             $unusable = $fields['unusableSeats'] ?? Vec\filter($table->getUnusableSeats(), static fn (int $seat): bool => $seat <= $seats);
             $this->seatingRules->tableLayout($shape, $seats, $widthCm, $lengthCm, $endSeats, $rotation, $unusable, self::systemOf($event));
+            $this->keepTheSeated($table, $seats, $unusable);
             $table->lay($shape, $seats, $widthCm, $lengthCm, $endSeats, $rotation, Vec\sort($unusable));
 
             $changes = Auditor::diff($before, self::tableRecorded($table));
@@ -395,6 +400,7 @@ final readonly class SeatingPlanEditor
             $rotation = $fields['rotation'] ?? $row->getRotation();
             $unusable = $fields['unusableSeats'] ?? Vec\filter($row->getUnusableSeats(), static fn (int $seat): bool => $seat <= $seats);
             $this->seatingRules->rowLayout($seats, $spacingCm, $rotation, $unusable, self::systemOf($event));
+            $this->keepTheSeated($row, $seats, $unusable);
             $row->lay($seats, $spacingCm, $rotation, Vec\sort($unusable));
 
             $changes = Auditor::diff($before, self::rowRecorded($row));
@@ -486,6 +492,7 @@ final readonly class SeatingPlanEditor
             }
 
             if (Iter\contains_key($fields, 'unusable')) {
+                $this->keepTheSeated($seat, 1, $fields['unusable'] ? [1] : []);
                 $seat->setUnusable($fields['unusable']);
             }
 
@@ -1104,6 +1111,64 @@ final readonly class SeatingPlanEditor
             members: ['outside' => Vec\map($outside, static fn (SeatingTable|SeatingRow|SeatingSeat $item): string => $item->getId()->toRfc4122())],
             parameters: ['{count}' => Iter\count($outside), '{width}' => $system->written($widthCm, $locale), '{roomLength}' => $system->written($lengthCm, $locale)],
         );
+    }
+
+    /**
+     * Refuses, 409, seats lowered below the guests seated there or an unusable mark on a taken chair (sc-4013); at a table, guests in chairs a lower count takes away move into its first run of free chairs, in order and side by side where they fit.
+     *
+     * @param list<int> $unusable
+     */
+    private function keepTheSeated(SeatingTable|SeatingRow|SeatingSeat $place, int $seats, array $unusable): void
+    {
+        $there = $this->seatAssignmentRepository->findAt($place->getId());
+
+        foreach ($there as $at) {
+            if (Iter\contains($unusable, $at->getSeat())) {
+                throw new ApiException(ErrorCode::SeatingGuestsSeated, 'seating.seat_in_use', members: ['field' => $place instanceof SeatingSeat ? 'unusable' : 'unusableSeats'], parameters: ['{name}' => $this->guestSeater->nameOf($at->getGuest())]);
+            }
+        }
+
+        $past = Vec\filter($there, static fn (SeatAssignment $at): bool => $at->getSeat() > $seats);
+
+        if ([] === $past) {
+            return;
+        }
+
+        if ($place instanceof SeatingRow) {
+            $last = $there[Iter\count($there) - 1];
+
+            throw new ApiException(ErrorCode::SeatingGuestsSeated, 'seating.row_below_seated', members: ['field' => 'seats'], parameters: ['{name}' => $this->guestSeater->nameOf($last->getGuest()), '{seat}' => $last->getSeat(), '{keep}' => $last->getSeat()]);
+        }
+
+        $usable = Vec\filter(Vec\range(1, $seats), static fn (int $seat): bool => !Iter\contains($unusable, $seat));
+        $count = Iter\count($there);
+
+        if ($count > Iter\count($usable)) {
+            $keep = $count;
+            while (Iter\count(Vec\filter(Vec\range(1, $keep), static fn (int $seat): bool => !Iter\contains($unusable, $seat))) < $count) {
+                ++$keep;
+            }
+
+            throw new ApiException(ErrorCode::SeatingGuestsSeated, 'seating.table_below_seated', members: ['field' => 'seats'], parameters: ['{count}' => $count, '{keep}' => $keep]);
+        }
+
+        $taken = Vec\map(Vec\filter($there, static fn (SeatAssignment $at): bool => $at->getSeat() <= $seats), static fn (SeatAssignment $at): int => $at->getSeat());
+        $free = Vec\filter($usable, static fn (int $seat): bool => !Iter\contains($taken, $seat));
+
+        $moving = Iter\count($past);
+        $chairs = Vec\take($free, $moving);
+        foreach (Vec\range(1, $seats) as $start) {
+            $run = Vec\map(Vec\range(0, $moving - 1), static fn (int $step): int => (($start - 1 + $step) % $seats) + 1);
+
+            if (Iter\all($run, static fn (int $seat): bool => Iter\contains($free, $seat))) {
+                $chairs = $run;
+                break;
+            }
+        }
+
+        foreach (Vec\values($past) as $index => $at) {
+            $at->renumber($chairs[$index]);
+        }
     }
 
     public static function systemOf(Event $event): MeasurementSystem
