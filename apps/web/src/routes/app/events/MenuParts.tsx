@@ -679,9 +679,11 @@ export function AddDishPanel({
   course,
   library,
   loading,
+  failed,
   problems,
   prices,
   language,
+  onRetry,
   onTab,
   onFind,
   onAdd,
@@ -697,9 +699,11 @@ export function AddDishPanel({
   course: MenuCourse;
   library: readonly Dish[];
   loading: boolean;
+  failed: boolean;
   problems: DishProblems | null;
   prices: boolean;
   language: MoneyLanguage;
+  onRetry: () => void;
   onTab: (tab: 'library' | 'new') => void;
   onFind: (query: string) => void;
   onAdd: (dish: Dish) => void;
@@ -750,9 +754,11 @@ export function AddDishPanel({
               <p id="mc-found" className="desk-help" role="status">
                 {loading
                   ? t('menuLibrary.loading')
-                  : looking
-                    ? t('eventMenu.foundOf', { shown: shown.length, count: library.length })
-                    : t('eventMenu.inLibrary', { count: library.length })}
+                  : failed
+                    ? t('eventMenu.libraryFailed')
+                    : looking
+                      ? t('eventMenu.foundOf', { shown: shown.length, count: library.length })
+                      : t('eventMenu.inLibrary', { count: library.length })}
               </p>
             </div>
             <p className="mc-added" role="status">
@@ -768,6 +774,13 @@ export function AddDishPanel({
                 {[0, 1, 2].map((one) => (
                   <div key={one} className="lib-bone" aria-hidden="true" />
                 ))}
+              </div>
+            ) : failed ? (
+              <div className="mc-no-match">
+                <p>{t('eventMenu.libraryFailedBody')}</p>
+                <button type="button" className="gs-pill is-secondary" onClick={onRetry}>
+                  {t('eventMenu.tryAgain')}
+                </button>
               </div>
             ) : shown.length === 0 ? (
               <div className="mc-no-match">

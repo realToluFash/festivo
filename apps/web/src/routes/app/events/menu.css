@@ -255,6 +255,7 @@
   align-items: flex-start;
 }
 
+/* A title or dish name keeps 12rem beside the panel (sc-3902, 961 to 1279 px); short of it, the actions go under. */
 .mc-course-top > .mn-course-names,
 .mc-dish .mn-dish-words {
   flex-basis: 12rem;
@@ -506,7 +507,7 @@
   }
 }
 
-/* Up to 40rem (390 and 320 px windows, WCAG 2.2 1.4.10): one column, and an open form in the menu's place. */
+/* 961 to 1199 px: docked, the panel leaves a course card under 26rem, so it stacks above the menu. */
 @media (60rem < width < 75rem) {
   .shell .mc-split:has(> .mc-panel) {
     flex-direction: column;
@@ -525,6 +526,7 @@
   }
 }
 
+/* Up to 40rem (390 and 320 px windows, WCAG 2.2 1.4.10): one column, and an open form in the menu's place. */
 @media (width <= 40rem) {
   .shell-content:has(.mc.desk-page) {
     padding-inline: var(--spaceSm);

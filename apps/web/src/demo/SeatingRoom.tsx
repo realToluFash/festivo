@@ -1,4 +1,4 @@
-import type { KeyboardEvent, PointerEvent, ReactNode } from 'react';
+import type { KeyboardEvent, MouseEvent, PointerEvent, ReactNode } from 'react';
 
 import {
   type Chair,
@@ -755,6 +755,7 @@ export function RoomDrawing({
   box = null,
   outlines = [],
   onFloor,
+  onFloorMouse,
 }: {
   width: number;
   height: number;
@@ -774,6 +775,7 @@ export function RoomDrawing({
   box?: Rect | null;
   outlines?: readonly Outline[];
   onFloor?: (event: PointerEvent<SVGSVGElement>) => void;
+  onFloorMouse?: (event: MouseEvent<SVGSVGElement>) => void;
 }) {
   const room = plan.room;
 
@@ -823,6 +825,7 @@ export function RoomDrawing({
         length: lengthOf(room.l, units),
       })}
       onPointerDown={onFloor}
+      onMouseDown={onFloorMouse}
     >
       <rect className="st-floor" x={f(ox)} y={f(oy)} width={f(rw)} height={f(rl)} />
       {lines}
