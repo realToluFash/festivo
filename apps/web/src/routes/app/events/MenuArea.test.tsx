@@ -1033,6 +1033,44 @@ describe('The event’s Menu (sc-3902)', () => {
       ).toBeDefined();
     });
 
+    it.each([
+      [[{ kind: 'variants' }, fixedItem('Rice')], true],
+      [[], false],
+    ] as const)(
+      'asks to fold the variants with the added line only when they are an item',
+      async (items, added) => {
+        const two = dish('d_two', 'Coconut rice', {
+          variants: [
+            {
+              id: 'v_fish',
+              name: 'Fish',
+              for: 'everyone',
+              allergens: [],
+              diets: [],
+              picked: false,
+            },
+            {
+              id: 'v_hen',
+              name: 'Chicken',
+              for: 'everyone',
+              allergens: [],
+              diets: [],
+              picked: false,
+            },
+          ],
+          items: [...items],
+        });
+        await onMenu({ 'GET /api/events/ev_1/menu': menuOf(course('c_main', 'Main', [two])) });
+
+        fireEvent.click(await screen.findByRole('button', { name: 'Remove Chicken…' }));
+        expect(await screen.findByText('Make this a single dish?')).toBeDefined();
+
+        expect(
+          screen.queryByText('The variants are also one of Coconut rice’s items.') != null,
+        ).toBe(added);
+      },
+    );
+
     it('saves Served with this course on Edit course, and refuses a 4th beside Add', async () => {
       const sent = await onMenu({
         'GET /api/events/ev_1/menu': menuOf(course('c_main', 'Main', [PLAIN])),
