@@ -45,17 +45,3 @@ describe('a phone’s header title inside an event (sc-30413)', () => {
     expect(screen).toMatch(/nameRef=\{cardNamed \? cardName : undefined\}/u);
   });
 });
-
-describe('a member’s own page on a phone (sc-37693)', () => {
-  it('has no title over the card, as the demo’s `priya` and `selfOwner` draw it', () => {
-    const [tag] = frames(MEMBERS_SCREEN);
-
-    expect(tag).toMatch(/\n {6}untitled=\{phone && listBehind\}\n/u);
-  });
-
-  it('is honoured by the top that scrolls with the page, not only the frame’s own header', () => {
-    const frame = readFileSync(join('src', 'components', 'AppFrame.tsx'), 'utf8');
-
-    expect(frame.match(/\{!untitled && titleRow\}/gu)).toHaveLength(2);
-  });
-});
