@@ -581,3 +581,107 @@ describe('Run of show on the night (sc-3895)', () => {
     });
   });
 });
+
+describe('moving to another area of an event while offline (sc-65646)', () => {
+  async function loadedThenOffline() {
+    let online = true;
+    const sent: string[] = [];
+    clock = '20:02';
+    signedIn();
+    vi.spyOn(globalThis, 'fetch').mockImplementation(async (input, init) => {
+      const line = `${init?.method ?? 'GET'} ${new URL(String(input)).pathname}`;
+      sent.push(line);
+      if (!online) throw new TypeError('Failed to fetch');
+      if (line === 'GET /api/events/ev_1') return json({ event: EVENT });
+      if (line === 'GET /api/events/ev_1/schedule') return json({ schedule: schedule(NIGHT) });
+      if (line === PRESS_SPEECHES) return json({ schedule: schedule(GAP) });
+
+      return json({});
+    });
+    const router = createMemoryRouter(routes, { initialEntries: ['/app/events/ev_1/schedule'] });
+    render(<RouterProvider router={router} />);
+    await screen.findByRole('button', { name: 'Done: Speeches' });
+
+    online = false;
+    act(() => connection.deviceOffline());
+    fireEvent.click(screen.getByRole('button', { name: 'Done: Speeches' }));
+    expect(await screen.findByText('1 press waiting to send.')).toBeDefined();
+
+    return {
+      sent,
+      go: (to: string) => act(() => router.navigate(to)),
+      reconnect: () => {
+        online = true;
+      },
+    };
+  }
+
+  it('keeps the event over an area whose own list never loaded, under the box, with its own failure line', async () => {
+    const { go } = await loadedThenOffline();
+
+    await go('/app/events/ev_1/guests');
+
+    expect(await screen.findByText('We could not load the guests.')).toBeDefined();
+    expect(screen.getByText(/^Offline · as of \d\d:\d\d$/)).toBeDefined();
+    expect(screen.getAllByText('Adaeze and Tunde').length).toBeGreaterThan(0);
+    expect(screen.queryByText('The event did not load. Try again in a moment.')).toBeNull();
+  });
+
+  it('shows Overview as last loaded, under the box', async () => {
+    const { go } = await loadedThenOffline();
+
+    await go('/app/events/ev_1');
+
+    expect(await screen.findByText(/^Offline · as of \d\d:\d\d$/)).toBeDefined();
+    expect(screen.getAllByText('Adaeze and Tunde').length).toBeGreaterThan(0);
+    expect(screen.queryByText('The event did not load. Try again in a moment.')).toBeNull();
+  });
+
+  it('comes back to the night as last loaded, with its count and its presses applied, and no box', async () => {
+    const { go } = await loadedThenOffline();
+
+    await go('/app/events/ev_1/guests');
+    await screen.findByText('We could not load the guests.');
+    await go('/app/events/ev_1/schedule');
+
+    expect(await screen.findByText('1 press waiting to send.')).toBeDefined();
+    expect(screen.getByText('Nothing is on')).toBeDefined();
+    expect(screen.getByRole('button', { name: 'Try now' })).toBeDefined();
+    expect(screen.getByRole('button', { name: 'Start now: First dance' })).toBeDefined();
+    expect(screen.queryByText('The run of show did not load.')).toBeNull();
+    expect(screen.queryByText(/^Offline · as of/)).toBeNull();
+  });
+
+  it('loads the event and the night afresh and sends the press when Try now answers', async () => {
+    const { go, sent, reconnect } = await loadedThenOffline();
+
+    await go('/app/events/ev_1/guests');
+    await screen.findByText('We could not load the guests.');
+    await go('/app/events/ev_1/schedule');
+    await screen.findByText('1 press waiting to send.');
+    const before = sent.length;
+
+    reconnect();
+    fireEvent.click(screen.getByRole('button', { name: 'Try now' }));
+
+    expect(await screen.findByText('Live · updated just now')).toBeDefined();
+    await waitFor(() =>
+      expect(sent.slice(before)).toEqual(
+        expect.arrayContaining([
+          'GET /api/events/ev_1',
+          PRESS_SPEECHES,
+          'GET /api/events/ev_1/schedule',
+        ]),
+      ),
+    );
+    expect(kept()).toEqual([]);
+  });
+
+  it('still says the event did not load for one this tab never loaded', async () => {
+    const { go } = await loadedThenOffline();
+
+    await go('/app/events/ev_2');
+
+    expect(await screen.findByText('The event did not load. Try again in a moment.')).toBeDefined();
+  });
+});

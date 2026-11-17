@@ -1,4 +1,4 @@
-import { ApiError } from '@soirely/api-client';
+import { ApiUnreachableError } from '@soirely/api-client';
 import { keepsWhatLoaded } from '@soirely/domain';
 import { useSyncExternalStore } from 'react';
 
@@ -31,9 +31,18 @@ export function rekeep<T>(key: string, value: T): void {
   if (was != null) kept.set(key, { value, at: was.at });
 }
 
+/** A 5xx on the token refresh is an answer, as the offline watch counts it: only a request with no answer at all is unreached. */
+function unreached(error: unknown): boolean {
+  return (
+    keepsWhatLoaded(error) ||
+    error instanceof TypeError ||
+    (error instanceof ApiUnreachableError && error.cause != null)
+  );
+}
+
 /** What this tab kept for a load that never reached Soirely; a load Soirely refused keeps nothing. */
 export function keptFor<T>(key: string, error: unknown): Kept<T> | null {
-  if (!(keepsWhatLoaded(error) || !(error instanceof ApiError))) return null;
+  if (!unreached(error)) return null;
 
   const found = kept.get(key) as Kept<T> | undefined;
   if (found == null) return null;
