@@ -1,4 +1,4 @@
-# sc-4022: Events Home's Upcoming tab with an event whose tables are shared: the card's Next up line is never Tables shared.
+# sc-4022: Events Home's Upcoming tab with an event whose tables are shared: the card's Next up line is never Tables shared. Pass EV_NAME, an upcoming event with Tables shared done, and run in English.
 appId: host.exp.Exponent
 ---
 - openLink: ${METRO_URL}/--/events
@@ -6,4 +6,5 @@ appId: host.exp.Exponent
     visible: '${EV_NAME}'
     timeout: 30000
 - takeScreenshot: events-home
+- assertVisible: '.*Next up: .*'
 - assertNotVisible: '.*Tables shared.*'
