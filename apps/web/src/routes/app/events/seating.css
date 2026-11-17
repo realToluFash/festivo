@@ -661,6 +661,7 @@
 @media (width < 960px) {
   .st-main:not(.is-none) {
     flex-direction: column;
+    overflow-y: auto;
   }
 
   .st-main:not(.is-none) .st-canvas {
