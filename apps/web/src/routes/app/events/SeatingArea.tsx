@@ -1416,7 +1416,7 @@ function Plan({
         setPickedGuest(null);
         const words = seatedWords(name, moved.moves.length - 1, moved.apart, place);
 
-        setBar({ tone: 'undo', words, undo: () => undoMoves(moved.moves) });
+        setBar({ tone: 'undo', words, undo: () => undoMoves(moved.moves), lit: item.one.id });
         setHeard(words);
       },
       (error: unknown) => {
@@ -2083,19 +2083,21 @@ function Plan({
     const shownBar = bar ?? pickBar;
 
     cards = (
-      <div className="st-view-wrap">
-        {shownBar != null && <StepLine bar={shownBar} onUndo={undo} />}
-        <TablesView
-          plan={plan}
-          section={cardSection}
-          onSection={setCardSection}
-          lit={(item) => chosenIds.includes(item.one.id)}
-          onCard={(item) =>
-            party != null
-              ? seatAt(item, item.kind === 'seat' ? 1 : null)
-              : open({ kind: item.kind, id: item.one.id }, true)
-          }
-        />
+      <>
+        <div className="st-view-wrap">
+          {shownBar != null && <StepLine bar={shownBar} onUndo={undo} />}
+          <TablesView
+            plan={plan}
+            section={cardSection}
+            onSection={setCardSection}
+            lit={(item) => chosenIds.includes(item.one.id) || shownBar?.lit === item.one.id}
+            onCard={(item) =>
+              party != null
+                ? seatAt(item, item.kind === 'seat' ? 1 : null)
+                : open({ kind: item.kind, id: item.one.id }, true)
+            }
+          />
+        </div>
         {moveFrom != null && itemOf(moveFrom) != null && (
           <MoveAllPop
             plan={plan}
@@ -2103,7 +2105,7 @@ function Plan({
             onMove={(to) => moveAll(itemOf(moveFrom)!, to)}
           />
         )}
-      </div>
+      </>
     );
 
     canvas = (

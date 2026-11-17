@@ -7,6 +7,7 @@ import {
   rowSeatsOf,
   tableExtent,
 } from '@soirely/domain';
+import type { KeyboardEvent } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Glyph } from '../../../components/Glyph.tsx';
 import { f, sectionOf, turned, usableSeats } from './seatingDraw.ts';
@@ -17,7 +18,24 @@ import { ChairMark } from './SeatingTables.tsx';
 
 export type SeatingView = 'plan' | 'tables';
 
+const BACK = new Set(['ArrowLeft', 'ArrowUp']);
+const ON = new Set(['ArrowRight', 'ArrowDown']);
+
 const CARD_W = 188;
+
+/** The arrow keys move between the cards in their order, round from the last to the first. */
+function stepCard(event: KeyboardEvent<HTMLButtonElement>) {
+  const back = BACK.has(event.key);
+
+  if (!back && !ON.has(event.key)) return;
+  const all = event.currentTarget.closest('.st-cards')?.querySelectorAll<HTMLElement>('.st-card');
+  const cards = [...(all ?? [])];
+  const at = cards.indexOf(event.currentTarget);
+
+  if (at < 0) return;
+  event.preventDefault();
+  cards[(at + (back ? -1 : 1) + cards.length) % cards.length]?.focus();
+}
 const CARD_H = 132;
 
 /** Floor plan or Tables; the List view comes with sc-4016. */
@@ -199,6 +217,7 @@ export function TablesView({
                 aria-label={at == null ? name : t('seating.inSection', { name, section: at.name })}
                 aria-pressed={on}
                 onClick={() => onCard(item)}
+                onKeyDown={stepCard}
               >
                 <span className="st-card-top">
                   <span className="st-card-name">{itemName(t, item)}</span>

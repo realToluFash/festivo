@@ -50,6 +50,8 @@ export interface StepBar {
   undo?: () => void;
   /** Choices said beside the words, such as Seat just {name} and Cancel (sc-4013). */
   acts?: { label: string; run: () => void }[];
+  /** The place the step seated, lit on Tables while its message stands. */
+  lit?: string;
 }
 
 const EDGE_GLYPHS: Record<Edge, GlyphName> = {
@@ -247,7 +249,7 @@ export function StepLine({ bar, onUndo }: { bar: StepBar; onUndo: () => void }) 
 
   return (
     <div
-      className={`st-bar is-inline is-${bar.tone === 'pick' ? 'undo' : bar.tone}`}
+      className={`st-bar is-inline is-${bar.tone === 'pick' ? 'tint' : bar.tone}`}
       role="status"
       aria-live="polite"
     >
