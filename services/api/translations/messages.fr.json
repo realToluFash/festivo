@@ -327,9 +327,9 @@
     "run_of_show.idempotency_key_reused": "Cette Idempotency-Key a déjà été utilisée pour un autre appui. Rien n’a été modifié.",
     "run_of_show.pressed_at_invalid": "Envoyez pressedAt sous forme de date et d’heure avec le décalage horaire, par exemple 2027-03-06T21:50:00+01:00.",
     "timeline.run_of_show_begins": "Début du déroulé",
-    "timeline.share_tables": "Share tables",
-    "timeline.tables_shared": "Tables shared",
-    "validation.share_by_invalid": "Choose a valid date.",
-    "validation.share_by_past": "Choose today or a later date.",
-    "validation.share_by_not_before_event": "Choose a date before the event."
+    "timeline.share_tables": "Partage des tables",
+    "timeline.tables_shared": "Tables partagées",
+    "validation.share_by_invalid": "Choisissez une date valide.",
+    "validation.share_by_past": "Choisissez aujourd’hui ou une date ultérieure.",
+    "validation.share_by_not_before_event": "Choisissez une date antérieure à l’événement."
 }
