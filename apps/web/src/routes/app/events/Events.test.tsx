@@ -4242,8 +4242,13 @@ describe('The cover (sc-3590)', () => {
       ),
     ).toBeDefined();
     expect(screen.getByRole('heading', { level: 1, name: 'Adaeze and Tunde' })).toBeDefined();
+    const notice = screen
+      .getByText(/The event is saved without its photo/)
+      .closest<HTMLElement>('[role="alert"]')!;
+    expect(notice.closest('.ev-left')).not.toBeNull();
 
-    fireEvent.click(screen.getByRole('button', { name: 'Edit details' }));
+    fireEvent.click(within(notice).getByRole('button', { name: 'Upload a photo' }));
+    expect(screen.queryByText(/The event is saved without its photo/)).toBeNull();
     const opened = screen.getByRole('group', { name: 'Cover' });
     expect(within(opened).getByRole('button', { name: 'Upload a photo' })).toBeDefined();
     expect(screen.queryByRole('dialog')).toBeNull();
