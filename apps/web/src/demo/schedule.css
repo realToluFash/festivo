@@ -182,7 +182,22 @@
 
 .ro-owner-name {
   display: block;
+}
+
+/* The cap is what Starts (64), Lasts (72), two cell paddings and 6rem kept for the title leave a word (sc-63743). */
+.ro-fit {
+  --roWordCap: calc(100cqw - 136px - 2 * var(--spaceMd) - 6rem);
+
+  container-type: inline-size;
+}
+
+/* One box per word, so a name never breaks at a hyphen unless the word is wider than the cap (sc-63743). */
+.ro-word {
+  display: inline-block;
+  width: max-content;
+  max-width: var(--roWordCap);
   overflow-wrap: anywhere;
+  vertical-align: top;
 }
 
 .ro-quiet {
@@ -453,6 +468,11 @@
 
   .ro-under {
     display: block;
+  }
+
+  /* The owner is on the line under the title, so a word may take the whole Item column. */
+  .ro-fit {
+    --roWordCap: calc(100cqw - 72px - var(--spaceMd));
   }
 }
 

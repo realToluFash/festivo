@@ -1,5 +1,6 @@
 import { writtenTime } from './clock.ts';
 import type { Visit } from './guest.ts';
+import { TABLE_4 } from './guestTable.ts';
 import { type RunItem, expected } from './runView.ts';
 import { type Item, dayOf as eventDayOf, sampleItems } from './schedule.ts';
 import type { DemoLink } from './settings.ts';
@@ -255,12 +256,6 @@ export const DEMO_CLOCK = {
   move: 'Move the clock on 5 min',
 } as const;
 
-export const TABLE_SLOT = {
-  heading: 'Your table',
-  line: 'Table 4 · Ballroom',
-  notBuilt: 'AC, not yet built · sc-4022',
-} as const;
-
 const DAY_NOW = '2026-11-05T09:00:00Z';
 const COMING = { recorded: { answer: 'coming', on: '2026-10-27' } } as const;
 const RECORDED = { view: { kind: 'recorded', same: false } } as const;
@@ -309,8 +304,14 @@ export const GUEST_PROGRAMME_STATES = {
     starts: { programme: 'days', ...ON_THE_DAY, ...COMING, ...RECORDED },
   },
   programmeOnTheDayTable: {
-    name: 'On the day, Coming, tables shared: Your table (sc-4022’s slot) above it',
-    starts: { programme: 'days', tables: true, ...ON_THE_DAY, ...COMING, ...RECORDED },
+    name: 'On the day, Coming, tables shared: Your table (sc-4022) above it',
+    starts: {
+      programme: 'days',
+      seating: { seat: TABLE_4, elsewhere: [] },
+      ...ON_THE_DAY,
+      ...COMING,
+      ...RECORDED,
+    },
   },
   programmeNotComing: {
     name: 'On the day, Not coming: still shown, the usual order',

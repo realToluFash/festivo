@@ -1,4 +1,4 @@
-import { type KeyboardEvent, useEffect, useRef, useState } from 'react';
+import { Fragment, type KeyboardEvent, useEffect, useRef, useState } from 'react';
 import { Link, Navigate, useParams, useSearchParams } from 'react-router';
 
 import { Glyph } from '../components/Glyph.tsx';
@@ -600,74 +600,94 @@ function PlaceTable({
         </h2>
         <p className="mn-sub ro-place-count">{RW.items(items.length)}</p>
       </div>
-      <table className="ro-table" aria-labelledby={id}>
-        <thead>
-          <tr>
-            <th scope="col" className="ro-starts">
-              {RW.starts}
-            </th>
-            <th scope="col" className="ro-wide ro-lasts">
-              {RW.lasts}
-            </th>
-            <th scope="col">{RW.item}</th>
-            <th scope="col" className="ro-wide ro-owner">
-              {RW.owner}
-            </th>
-          </tr>
-        </thead>
-        <tbody>
-          {items.map((one) => (
-            <tr key={one.id} className={lit === one.id ? 'is-lit' : undefined}>
-              <td className="ro-starts">{startsCell(one, day, reader)}</td>
-              <td className="ro-wide ro-lasts">{lastsCell(one)}</td>
-              <td>
-                <div className="ro-item">
-                  {manage ? (
-                    <button
-                      id={`ro-open-${one.id}`}
-                      type="button"
-                      className="ro-open"
-                      onClick={() => onOpen(one)}
-                    >
-                      {one.title}
-                    </button>
-                  ) : (
-                    <span className="ro-plain">{one.title}</span>
-                  )}
-                  <span className="ro-under">{underLine(one)}</span>
-                  {(one.fixed || one.guests) && (
-                    <span className="ro-pills">
-                      {one.fixed && (
-                        <span className="ro-pill">
-                          <Glyph name="lock" size={13} weight={2.4} />
-                          {RW.fixed}
-                        </span>
-                      )}
-                      {one.guests && (
-                        <span className="ro-pill">
-                          <Glyph name="eye" size={13} weight={2.4} />
-                          {RW.shown}
-                        </span>
-                      )}
-                    </span>
-                  )}
-                </div>
-              </td>
-              <td className="ro-wide ro-owner">
-                {one.owner == null ? (
-                  <span className="ro-quiet">{RW.noOwner}</span>
-                ) : (
-                  <>
-                    <span className="ro-owner-name">{one.owner}</span>
-                    {one.role != null && <span className="ro-quiet">{one.role}</span>}
-                  </>
-                )}
-              </td>
+      <div className="ro-fit">
+        <table className="ro-table" aria-labelledby={id}>
+          <thead>
+            <tr>
+              <th scope="col" className="ro-starts">
+                {RW.starts}
+              </th>
+              <th scope="col" className="ro-wide ro-lasts">
+                {RW.lasts}
+              </th>
+              <th scope="col">{RW.item}</th>
+              <th scope="col" className="ro-wide ro-owner">
+                {RW.owner}
+              </th>
             </tr>
-          ))}
-        </tbody>
-      </table>
+          </thead>
+          <tbody>
+            {items.map((one) => (
+              <tr key={one.id} className={lit === one.id ? 'is-lit' : undefined}>
+                <td className="ro-starts">{startsCell(one, day, reader)}</td>
+                <td className="ro-wide ro-lasts">{lastsCell(one)}</td>
+                <td>
+                  <div className="ro-item">
+                    {manage ? (
+                      <button
+                        id={`ro-open-${one.id}`}
+                        type="button"
+                        className="ro-open"
+                        onClick={() => onOpen(one)}
+                      >
+                        {one.title}
+                      </button>
+                    ) : (
+                      <span className="ro-plain">{one.title}</span>
+                    )}
+                    <span className="ro-under">
+                      <Words text={underLine(one)} />
+                    </span>
+                    {(one.fixed || one.guests) && (
+                      <span className="ro-pills">
+                        {one.fixed && (
+                          <span className="ro-pill">
+                            <Glyph name="lock" size={13} weight={2.4} />
+                            {RW.fixed}
+                          </span>
+                        )}
+                        {one.guests && (
+                          <span className="ro-pill">
+                            <Glyph name="eye" size={13} weight={2.4} />
+                            {RW.shown}
+                          </span>
+                        )}
+                      </span>
+                    )}
+                  </div>
+                </td>
+                <td className="ro-wide ro-owner">
+                  {one.owner == null ? (
+                    <span className="ro-quiet">{RW.noOwner}</span>
+                  ) : (
+                    <>
+                      <span className="ro-owner-name">
+                        <Words text={one.owner} />
+                      </span>
+                      {one.role != null && <span className="ro-quiet">{one.role}</span>}
+                    </>
+                  )}
+                </td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </div>
     </section>
+  );
+}
+
+/** Each word of an owner's name on one line, wrapping at its spaces only: "Okonkwo-Williams" is one word (sc-63743). */
+function Words({ text }: { text: string }) {
+  return (
+    <>
+      {text.split(' ').map((word, at) => (
+        <Fragment key={at}>
+          {at > 0 && ' '}
+          <span className="ro-word">{word}</span>
+        </Fragment>
+      ))}
+    </>
   );
 }
 

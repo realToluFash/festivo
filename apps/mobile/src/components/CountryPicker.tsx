@@ -96,6 +96,7 @@ export function focusPicker(
   watch.settled();
   let later: ReturnType<typeof setTimeout> | undefined;
   let moved = false;
+  let keysDown = () => {};
   const held = holdFocus(() => moveScreenReaderFocus(picker.current), cancel);
   const move = () => {
     if (moved) return;
@@ -112,7 +113,6 @@ export function focusPicker(
     later = setTimeout(held.hold, SETTLED_MS);
     fieldChecked(true, field.current, held.hold, saidFirst != null);
   };
-  let keysDown = () => {};
   if (saidMs === 0) scroll();
   else if (keyboardClosing) keysDown = onceKeysDownThen(scroll, saidMs);
   else later = setTimeout(scroll, saidMs);

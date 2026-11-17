@@ -7,7 +7,7 @@ import unittest
 from contextlib import redirect_stdout
 from unittest import mock
 
-from soirely_queue import cli, ledger, permissions, shared, store
+from soirely_queue import cli, github, ledger, permissions, shared, store
 
 from .fakes import FakeRefs
 
@@ -277,6 +277,48 @@ class Checks(unittest.TestCase):
             "  pending: Pull request / api",
         ])
         self.assertEqual((code, slept), (1, 2))
+
+
+class OlderPullRequests(unittest.TestCase):
+    """`pr` and `diff` read from GitHub a pull request the sync's window has passed (sc-63909)."""
+
+    def setUp(self):
+        self.db = store.connect(":memory:")
+        self.cache = pathlib.Path(tempfile.mkdtemp())
+        self.found = {"number": 4100, "title": "fix: old (sc-41)", "url": "u", "state": "merged",
+                      "draft": False, "branch": "feature/sc-41/old", "story_id": 41,
+                      "head_sha": "b" * 40, "checks": "green", "mergeable": "unknown",
+                      "merged_at": "2026-10-01T10:00:00Z", "merge_sha": "c" * 40,
+                      "body": "## Risks\n\nNone.", "lead": [], "threads": [], "carried": None}
+
+    def run_cmd(self, cmd, **args):
+        session = mock.Mock(db=self.db, cache=self.cache)
+        session.printer = ledger.Printer(self.db, "ops", now=1000)
+        cmd(session, mock.Mock(pr=4100, section=None, paths=[], all=False, **args))
+        return "\n".join(session.printer.lines)
+
+    def test_pr_reads_one_the_sync_has_passed_from_github(self):
+        with mock.patch("soirely_queue.github.pull", return_value=self.found) as pull:
+            out = self.run_cmd(cli.cmd_pr)
+        pull.assert_called_once_with(4100)
+        self.assertIn("PR #4100", out)
+        self.assertIn("Body sections: Risks", out)
+
+    def test_diff_reads_one_the_sync_has_passed_from_github(self):
+        patch = "diff --git a/x.py b/x.py\n--- a/x.py\n+++ b/x.py\n@@ -1 +1 @@\n-a\n+b\n"
+        with mock.patch("soirely_queue.github.pull", return_value=self.found), \
+                mock.patch("soirely_queue.github.diff", return_value=patch):
+            out = self.run_cmd(cli.cmd_diff)
+        self.assertIn("PR #4100 at bbbbbbb, 1 files:", out)
+
+    def test_a_github_failure_exits_with_why(self):
+        for cmd in (cli.cmd_pr, cli.cmd_diff):
+            with mock.patch("soirely_queue.github.pull",
+                            side_effect=github.GitHubError("HTTP 404")), \
+                    self.assertRaises(SystemExit) as stopped:
+                self.run_cmd(cmd)
+            self.assertEqual(str(stopped.exception.code), "PR #4100 is not in the last sync "
+                             "and GitHub did not give it: HTTP 404")
 
 
 class PauseEverywhere(unittest.TestCase):

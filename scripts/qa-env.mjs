@@ -5,6 +5,7 @@ import { createHash, createHmac, randomBytes, X509Certificate } from 'node:crypt
 import { createServer } from 'node:http';
 import {
   chmodSync,
+  closeSync,
   copyFileSync,
   cpSync,
   createWriteStream,
@@ -14,6 +15,7 @@ import {
   openSync,
   readdirSync,
   readFileSync,
+  readSync,
   renameSync,
   rmSync,
   statSync,
@@ -3033,8 +3035,33 @@ async function maestro(args) {
   );
   helper?.close();
   spawnSync('sh', ['-c', `find "${out}" -mindepth 2 -name '*.png' -exec cp {} "${out}/" \\;`]);
+  trimMaestroLogs(out, { failed: !ok });
   console.log(`\nEvidence in ${out}`);
   if (!ok) process.exitCode = 1;
+}
+
+export const KEPT_LOG_BYTES = 5 * 1024 * 1024;
+
+// Maestro's debug log runs to about 200 MB a run (sc-63635). Only a failed run keeps one, its tail.
+export function trimMaestroLogs(out, { since = 0, failed = false } = {}) {
+  if (!existsSync(out)) return;
+  const logs = readdirSync(out, { recursive: true, withFileTypes: true })
+    .filter((entry) => entry.isFile() && entry.name === 'maestro.log')
+    .map((entry) => join(entry.parentPath, entry.name))
+    .map((path) => ({ path, stat: statSync(path) }))
+    .filter((log) => log.stat.mtimeMs >= since)
+    .sort((a, b) => b.stat.mtimeMs - a.stat.mtimeMs);
+  const kept = failed ? logs.shift() : null;
+  for (const log of logs) rmSync(log.path, { force: true });
+  if (!kept || kept.stat.size <= KEPT_LOG_BYTES) return;
+  const tail = Buffer.alloc(KEPT_LOG_BYTES);
+  const fd = openSync(kept.path, 'r');
+  try {
+    readSync(fd, tail, 0, KEPT_LOG_BYTES, kept.stat.size - KEPT_LOG_BYTES);
+  } finally {
+    closeSync(fd);
+  }
+  writeFileSync(kept.path, tail);
 }
 
 const BASE32 = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ234567';
@@ -4025,34 +4052,42 @@ async function batch(args) {
   };
   const test = async (flow, held) => {
     await apiState.move('up');
-    return runHeld(held, {
-      begun,
-      passed,
-      crashed,
-      unstarted,
-      heard,
-      watchdog,
-      device,
-      onAndroid,
-      run: (stall) =>
-        runAsync(
-          maestroBin() ?? 'maestro',
-          [
-            ...maestroTarget(device, onAndroid, CONFIG.driverPort),
-            'test',
-            '--debug-output',
-            out,
-            ...Object.entries(env).flatMap(([key, value]) => ['-e', `${key}=${value}`]),
-            flow,
-          ],
-          {
-            cwd: root,
-            env: onAndroid ? androidTools().env : {},
-            timeoutMs: runBudgetMs(held.length),
-            stall,
-          },
-        ),
-    });
+    const since = Date.now();
+    let failed = true;
+    try {
+      const after = await runHeld(held, {
+        begun,
+        passed,
+        crashed,
+        unstarted,
+        heard,
+        watchdog,
+        device,
+        onAndroid,
+        run: (stall) =>
+          runAsync(
+            maestroBin() ?? 'maestro',
+            [
+              ...maestroTarget(device, onAndroid, CONFIG.driverPort),
+              'test',
+              '--debug-output',
+              out,
+              ...Object.entries(env).flatMap(([key, value]) => ['-e', `${key}=${value}`]),
+              flow,
+            ],
+            {
+              cwd: root,
+              env: onAndroid ? androidTools().env : {},
+              timeoutMs: runBudgetMs(held.length),
+              stall,
+            },
+          ),
+      });
+      failed = held.some((run) => !passed.has(runId(run)));
+      return after;
+    } finally {
+      trimMaestroLogs(out, { since, failed });
+    }
   };
 
   const started = Date.now();
