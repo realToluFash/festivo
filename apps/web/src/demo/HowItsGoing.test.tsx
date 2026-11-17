@@ -148,7 +148,7 @@ describe('/demo/how-its-going with Chicken run out (sc-59384)', () => {
     choose.focus();
     fireEvent.click(choose);
     expect(within(panel()).getByText('Marked by Tayo Bamidele on Grill at 20:06')).toBeTruthy();
-    expect(document.activeElement?.id).toBe('ro-title');
+    expect(document.activeElement?.id).toBe('rout-title');
     fireEvent.click(within(panel()).getByRole('button', { name: 'Close' }));
     expect(screen.queryByRole('dialog')).toBeNull();
     expect(document.activeElement).toBe(within(alerts()).getByRole('button', { name: 'Choose' }));
