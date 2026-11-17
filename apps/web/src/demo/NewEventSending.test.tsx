@@ -183,6 +183,7 @@ describe('New event with a HEIC still on its way (sc-60915)', () => {
 
     choose(HEIC());
     await within(cover()).findByRole('status');
+    await act(async () => new Promise((done) => setTimeout(done, 50)));
     const crumb = screen.getByRole('navigation', { name: 'Breadcrumb' });
     fireEvent.click(within(crumb).getByRole('link', { name: 'Events' }));
     expect(router.state.location.pathname).toBe('/demo/events/new');
