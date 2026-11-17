@@ -310,12 +310,16 @@ function movedDay(end: Wall): string {
   return `${day}, ${writtenTime(end.time, LOCALE)}`;
 }
 
-/** The product's Venue fields over the sample's suggestions from 3 characters, shared by the Venue part and New event; a venue in another zone offers it. */
+/** The product's Venue fields and arrival note over the sample's suggestions from 3 characters, shared by the Venue part and New event; a venue in another zone offers it. */
 export function VenueFields({
   name,
   onName,
   address,
   onAddress,
+  note,
+  onNote,
+  noteError = null,
+  noteId,
   zone,
   onZone,
   down,
@@ -333,6 +337,11 @@ export function VenueFields({
   onName: (name: string) => void;
   address: string;
   onAddress: (address: string) => void;
+  note: string;
+  onNote: (note: string) => void;
+  noteError?: string | null;
+  /** Where focus lands when the note is refused. */
+  noteId: string;
   zone: string;
   onZone: (zone: string) => void;
   down: boolean;
@@ -346,6 +355,7 @@ export function VenueFields({
   off?: boolean;
   onPicked?: (venue: SampleVenue | null) => void;
 }) {
+  const made = useId();
   const own = useRef<HTMLInputElement>(null);
   const field = addressRef ?? own;
   const [listOpen, setListOpen] = useState(listing);
@@ -359,13 +369,14 @@ export function VenueFields({
 
   return (
     <VenueFieldsView
-      venue={{ name, address, addressId: null, note: '' }}
+      venue={{ name, address, addressId: null, note }}
       errors={{
         ...(nameError == null ? {} : { venueName: nameError }),
         ...(addressError == null ? {} : { venueAddress: addressError }),
+        ...(noteError == null ? {} : { arrivalNote: noteError }),
       }}
       off={off}
-      withNote={false}
+      ids={{ name: `${made}-name`, address: `${made}-address`, note: noteId }}
       {...(nameRef == null ? {} : { nameRef })}
       addressRef={field}
       suggestions={shown.map((one) => ({ id: one.name, text: one.name, secondaryText: one.line }))}
@@ -375,6 +386,7 @@ export function VenueFields({
       onVenue={(change) => {
         if (change.name != null) onName(change.name);
         if (change.address != null) onAddress(change.address);
+        if (change.note != null) onNote(change.note);
       }}
       onType={(typed) => {
         onAddress(typed);
@@ -404,7 +416,6 @@ export function VenueFields({
 
 /** Venue: its name and address, suggestions from 3 characters, and the zone it is in when that differs. */
 export function VenuePart({ event, state, onDirty, onClose, onSave }: PartProps) {
-  const id = useId();
   const typing = state === 'venueSuggestions' || state === 'venueDown';
   const [name, setName] = useState(
     typing ? '' : state === 'venueZone' ? 'Eko Hotel' : (event.venue?.name ?? ''),
@@ -421,7 +432,7 @@ export function VenuePart({ event, state, onDirty, onClose, onSave }: PartProps)
   const [picked, setPicked] = useState<SampleVenue | null>(null);
   const [zone, setZone] = useState(event.timeZone);
   const down = state === 'venueDown';
-  const noteBox = useRef<HTMLTextAreaElement>(null);
+  const noteId = useId();
   const refusedNote = state === 'venueNoteTooLong' || state === 'venueNoteRefused';
   const [note, setNote] = useState(
     refusedNote
@@ -445,8 +456,8 @@ export function VenuePart({ event, state, onDirty, onClose, onSave }: PartProps)
 
   useDirty(changed, onDirty);
   useEffect(() => {
-    if (state === 'venueNote' || refusedNote) noteBox.current?.focus();
-  }, [state, refusedNote]);
+    if (state === 'venueNote' || refusedNote) document.getElementById(noteId)?.focus();
+  }, [state, refusedNote, noteId]);
 
   return (
     <Opened
@@ -460,7 +471,7 @@ export function VenuePart({ event, state, onDirty, onClose, onSave }: PartProps)
         if (noteTooLong(note)) {
           setNoteError(NOTE_WORDS.tooLong);
           setSaid(NOTE_WORDS.oneField);
-          noteBox.current?.focus();
+          document.getElementById(noteId)?.focus();
           return;
         }
         if (state === 'venueNoteForbidden') {
@@ -491,42 +502,16 @@ export function VenuePart({ event, state, onDirty, onClose, onSave }: PartProps)
         listing={state === 'venueSuggestions'}
         offering={state === 'venueZone' ? 'Africa/Lagos' : null}
         focus={typing}
+        note={note}
+        onNote={(typed) => {
+          setNote(typed);
+          setForbidden(false);
+          if (!noteTooLong(typed)) setNoteError(null);
+        }}
+        noteError={noteError}
+        noteId={noteId}
         onPicked={setPicked}
       />
-      <div className="desk-field">
-        <label htmlFor={`${id}-note`} className="desk-label">
-          {NOTE_WORDS.label}
-          <span className="ev-optional">{` · ${W.optional}`}</span>
-        </label>
-        <div
-          className={noteError == null ? 'desk-box ev-note-box' : 'desk-box ev-note-box is-wrong'}
-        >
-          <textarea
-            ref={noteBox}
-            id={`${id}-note`}
-            rows={4}
-            value={note}
-            aria-invalid={noteError != null}
-            aria-describedby={
-              noteError == null ? `${id}-note-help` : `${id}-note-error ${id}-note-help`
-            }
-            onChange={(change) => {
-              setNote(change.target.value);
-              setForbidden(false);
-              if (!noteTooLong(change.target.value)) setNoteError(null);
-            }}
-          />
-        </div>
-        {noteError != null && (
-          <p id={`${id}-note-error`} className="desk-error">
-            <Glyph name="alert" size={15} weight={2.2} />
-            {noteError}
-          </p>
-        )}
-        <p id={`${id}-note-help`} className="desk-help">
-          {NOTE_WORDS.hint}
-        </p>
-      </div>
       <p className="visually-hidden" role="status">
         {said}
       </p>
