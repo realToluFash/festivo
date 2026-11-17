@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest';
 
+import { variant as made } from './dishVariants.ts';
 import {
   type Dish,
   type Item,
@@ -8,7 +9,7 @@ import {
   checkItems,
   checkOwn,
   courseItems,
-  foldLine,
+  foldItemLine,
   itemName,
   menuStart,
   moved,
@@ -42,7 +43,10 @@ const FISH: Dish = {
   ...DISH,
   id: 'f',
   name: 'Grilled fish',
-  variants: ['Chicken', 'Fish'],
+  variants: [
+    made('v1', 'Chicken', 'everyone', ['celery'], []),
+    made('v2', 'Fish', 'everyone', ['fish'], []),
+  ],
   choices: [],
   items: [variant('v'), fixed('a', 'Pepper sauce'), fixed('b', 'Yam chips')],
 };
@@ -161,10 +165,8 @@ describe('removing a choice that is an item, and making a dish single', () => {
   });
 
   it('adds that the variants are an item to the fold question, only when they are', () => {
-    expect(foldLine(FISH)).toBe(
-      'Make this a single dish? The variants are also one of Grilled fish’s items.',
-    );
-    expect(foldLine({ ...FISH, items: [] })).toBe('Make this a single dish?');
+    expect(foldItemLine(FISH)).toBe('The variants are also one of Grilled fish’s items.');
+    expect(foldItemLine({ ...FISH, items: [] })).toBeNull();
   });
 
   it('takes the variant out of the items, leaving 2, and a single item left too', () => {

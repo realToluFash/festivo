@@ -5,6 +5,7 @@ import { beforeEach, describe, expect, it } from 'vitest';
 import { __setConfig, config } from '../config.ts';
 import { routes } from '../routes/index.tsx';
 import { resetSample } from './events.ts';
+import { VW } from './dishVariants.ts';
 import { MW } from './menuServed.ts';
 
 const tested = config();
@@ -204,16 +205,13 @@ describe('removing a choice or the variants, and read only', () => {
   it('asks to make a dish single with the variants’ line, and takes the item', SLOW, async () => {
     await menu('variantItem');
 
-    fireEvent.click(screen.getByRole('button', { name: 'Remove the variant Tilapia…' }));
+    fireEvent.click(screen.getByRole('button', { name: VW.removeAria('Tilapia') }));
+    const ask = screen.getByRole('group', { name: VW.foldTitle });
     expect(
-      screen.getByText(
-        'Make this a single dish? The variants are also one of Grilled fish’s items.',
-      ),
+      within(ask).getByText('The variants are also one of Grilled fish’s items.'),
     ).toBeTruthy();
-    fireEvent.click(screen.getByRole('button', { name: MW.makeSingle }));
-    const said = screen.getByText(
-      'Grilled fish is a single dish again, with Croaker’s allergens, diets and cost.',
-    );
+    fireEvent.click(within(ask).getByRole('button', { name: VW.makeSingle }));
+    const said = screen.getByText(VW.folded('Grilled fish', 'Croaker', 'event'));
     expect(said).toBeTruthy();
     expect(document.activeElement).toBe(said.closest('p'));
     expect(within(panel()).getAllByRole('listitem')).toHaveLength(2);
@@ -223,22 +221,29 @@ describe('removing a choice or the variants, and read only', () => {
   it('keeps the variants, and focus on the Remove pressed', SLOW, async () => {
     await menu('fold');
 
-    fireEvent.click(screen.getByRole('button', { name: MW.keepVariants }));
+    fireEvent.click(screen.getByRole('button', { name: VW.keepBoth }));
     expect(document.activeElement).toBe(
-      screen.getByRole('button', { name: 'Remove the variant Tilapia…' }),
+      screen.getByRole('button', { name: VW.removeAria('Tilapia') }),
     );
   });
 
-  it('draws the variants as sc-3903’s cards, each with its Remove', SLOW, async () => {
+  it('draws the variants and the fold as sc-3903’s cards', SLOW, async () => {
     await menu('fold');
 
-    const list = screen.getByRole('list', { name: 'Variants · guests pick one · Grilled fish' });
+    expect(screen.getByText(VW.eachOwn)).toBeTruthy();
+    const list = screen.getByRole('list', { name: VW.ways('Grilled fish', 2) });
     expect(
       within(list)
         .getAllByRole('heading', { level: 4 })
         .map((one) => one.textContent),
     ).toEqual(['Croaker', 'Tilapia']);
-    expect(list.querySelectorAll('.vr-inset')).toHaveLength(2);
+    expect(within(list).getByRole('group', { name: VW.actionsFor('Croaker') })).toBeTruthy();
+    expect(within(list).getByRole('button', { name: VW.editAria('Croaker') })).toBeTruthy();
+    const ask = within(list).getByRole('group', { name: VW.foldTitle });
+    expect(within(ask).getByText(VW.foldBody('Grilled fish', 'Croaker', true))).toBeTruthy();
+    expect(within(ask).getByRole('button', { name: VW.makeSingle }).className).toContain(
+      'is-primary',
+    );
   });
 
   it('quotes the question in the removed states, as Remove does', SLOW, async () => {

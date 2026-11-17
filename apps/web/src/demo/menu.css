@@ -597,13 +597,6 @@
   clip-path: inset(50%);
 }
 
-.mn-variants-box {
-  display: flex;
-  flex-direction: column;
-  gap: var(--spaceXs);
-  margin-left: var(--spaceXl);
-}
-
 .mn-offer-button .mn-tag {
   margin-left: var(--spaceXxs);
 }

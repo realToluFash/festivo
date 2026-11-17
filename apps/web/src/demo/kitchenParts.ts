@@ -304,7 +304,10 @@ function fromMenu(dish: MenuDish): Dish {
   return {
     id: dish.id,
     name: dish.name,
-    variants: dish.variants.map((name, index) => ({ id: `${dish.id}-v${index + 1}`, name })),
+    variants: dish.variants.map((one, index) => ({
+      id: `${dish.id}-v${index + 1}`,
+      name: one.name,
+    })),
     parts: dish.items.flatMap((part): Part[] => {
       if (part.kind === 'fixed') return [{ kind: 'fixed', name: part.name }];
       if (part.kind === 'variant') return [];
