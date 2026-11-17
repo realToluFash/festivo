@@ -1092,8 +1092,29 @@ final readonly class SeatingPlanEditor
     }
 
     /** A room may not shrink past anything in it, chairs included, nor further past an item already through that wall (sc-4000, 409: the size is valid, the furniture is in the way); each table, row and single seat counts once (sc-4003). */
+    private function refuseShrinkingPast(SeatingPlan $plan, int $widthCm, int $lengthCm, MeasurementSystem $system): void
+    {
+        $outside = Vec\filter(
+            $this->furniture($plan),
+            static fn (SeatingTable|SeatingRow|SeatingSeat $item): bool => FloorGeometry::cutByShrinking($item, $plan->getWidthCm(), $plan->getLengthCm(), $widthCm, $lengthCm),
+        );
+
+        if ([] === $outside) {
+            return;
+        }
+
+        $locale = $this->translator->getLocale();
+
+        throw new ApiException(
+            ErrorCode::SeatingItemsOutside,
+            'seating.items_outside',
+            members: ['outside' => Vec\map($outside, static fn (SeatingTable|SeatingRow|SeatingSeat $item): string => $item->getId()->toRfc4122())],
+            parameters: ['{count}' => Iter\count($outside), '{width}' => $system->written($widthCm, $locale), '{roomLength}' => $system->written($lengthCm, $locale)],
+        );
+    }
+
     /**
-     * Refuses, 409, seats lowered below the guests seated there or an unusable mark on a taken chair (sc-4013); at a table, guests in chairs a lower count takes away move into its free chairs, in order.
+     * Refuses, 409, seats lowered below the guests seated there or an unusable mark on a taken chair (sc-4013); at a table, guests in chairs a lower count takes away move into its first run of free chairs, in order and side by side where they fit.
      *
      * @param list<int> $unusable
      */
@@ -1134,30 +1155,20 @@ final readonly class SeatingPlanEditor
         $taken = Vec\map(Vec\filter($there, static fn (SeatAssignment $at): bool => $at->getSeat() <= $seats), static fn (SeatAssignment $at): int => $at->getSeat());
         $free = Vec\filter($usable, static fn (int $seat): bool => !Iter\contains($taken, $seat));
 
+        $moving = Iter\count($past);
+        $chairs = Vec\take($free, $moving);
+        foreach (Vec\range(1, $seats) as $start) {
+            $run = Vec\map(Vec\range(0, $moving - 1), static fn (int $step): int => (($start - 1 + $step) % $seats) + 1);
+
+            if (Iter\all($run, static fn (int $seat): bool => Iter\contains($free, $seat))) {
+                $chairs = $run;
+                break;
+            }
+        }
+
         foreach (Vec\values($past) as $index => $at) {
-            $at->renumber($free[$index]);
+            $at->renumber($chairs[$index]);
         }
-    }
-
-    private function refuseShrinkingPast(SeatingPlan $plan, int $widthCm, int $lengthCm, MeasurementSystem $system): void
-    {
-        $outside = Vec\filter(
-            $this->furniture($plan),
-            static fn (SeatingTable|SeatingRow|SeatingSeat $item): bool => FloorGeometry::cutByShrinking($item, $plan->getWidthCm(), $plan->getLengthCm(), $widthCm, $lengthCm),
-        );
-
-        if ([] === $outside) {
-            return;
-        }
-
-        $locale = $this->translator->getLocale();
-
-        throw new ApiException(
-            ErrorCode::SeatingItemsOutside,
-            'seating.items_outside',
-            members: ['outside' => Vec\map($outside, static fn (SeatingTable|SeatingRow|SeatingSeat $item): string => $item->getId()->toRfc4122())],
-            parameters: ['{count}' => Iter\count($outside), '{width}' => $system->written($widthCm, $locale), '{roomLength}' => $system->written($lengthCm, $locale)],
-        );
     }
 
     public static function systemOf(Event $event): MeasurementSystem

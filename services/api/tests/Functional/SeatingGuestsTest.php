@@ -375,7 +375,7 @@ final class SeatingGuestsTest extends ApiTestCase
         self::assertSame('Bola Ade is in this seat. Move them first.', $this->last()['detail'] ?? null);
 
         $this->changeTable($table, ['seats' => 4]);
-        self::assertSame([[1, 'Bola Ade'], [2, 'Ada Obi'], [3, 'Kemi Ade']], $this->namesAt($table), 'chairs the lower count takes away move into its free ones');
+        self::assertSame([[2, 'Ada Obi'], [3, 'Bola Ade'], [4, 'Kemi Ade']], $this->namesAt($table), 'chairs the lower count takes away move, side by side, into its first run of free ones');
     }
 
     #[Test]
