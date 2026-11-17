@@ -4224,10 +4224,11 @@ describe('Who else is on the plan (sc-4719)', () => {
   it('neither leaves nor reconnects when its timers wake a minute late, and says it is here at once', async () => {
     vi.useFakeTimers({ shouldAdvanceTime: true });
     const { sent, source } = await onPlanWith([ME, PRIYA]);
+    const heard = () => document.querySelector('.st-top [aria-live="polite"]')?.textContent ?? '';
     await waitFor(() => expect(beatsSent(sent)).toBe(1));
 
     vi.setSystemTime(Date.now() + 60_000);
-    source.publish({ userId: 'u_priya', here: true });
+    act(() => vi.advanceTimersByTime(1_000));
     act(() => vi.advanceTimersByTime(1_000));
 
     await waitFor(() => expect(beatsSent(sent)).toBeGreaterThanOrEqual(2));
@@ -4235,6 +4236,7 @@ describe('Who else is on the plan (sc-4719)', () => {
     expect(source.readyState).not.toBe(StubSource.CLOSED);
     expect(seatingSources()).toHaveLength(1);
     expect(screen.getByRole('button', { name: 'Priya Shah' })).toBeDefined();
+    expect(heard()).not.toContain('left the plan');
   });
 
   it('shows no email address', async () => {

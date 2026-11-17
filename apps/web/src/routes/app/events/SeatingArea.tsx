@@ -135,6 +135,7 @@ import {
   listed,
   quieted,
   ringsOf,
+  woke,
 } from './seatingPresence.ts';
 import {
   type Fold,
@@ -348,11 +349,13 @@ function usePresence(event: OrganisationEvent) {
 
   useEffect(() => {
     const say = (key: 'joinedPlan' | 'leftPlan', name: string) => t(`seating.${key}`, { name });
-    const quieting = setInterval(
-      () => setPresence((was) => quieted(was, Date.now(), me, say)),
-      1_000,
-    );
-    return () => clearInterval(quieting);
+    let tickedAt = Date.now();
+    return steadyTicks(WATCH_MS, () => {
+      const now = Date.now();
+      const heldBack = now - tickedAt > BEAT_MS;
+      tickedAt = now;
+      setPresence((was) => (heldBack ? woke(was, now) : quieted(was, now, me, say)));
+    });
   }, [me, t]);
 
   const tell = useCallback(

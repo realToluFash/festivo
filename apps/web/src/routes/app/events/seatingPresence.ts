@@ -151,6 +151,15 @@ export function quieted(
   return { ...state, quiet: [...state.quiet, ...gone], spoken };
 }
 
+/** A page held back past a beat, by sleep or a hidden tab, heard nobody while it was held: everyone not already quiet is given {@link QUIET_MS} afresh, as on a listing. */
+export function woke(state: PresenceState, now: number): PresenceState {
+  const heard = { ...state.heard };
+  for (const tab of Object.values(state.tabs))
+    if (!state.quiet.includes(tab.userId)) heard[tab.userId] = now;
+
+  return { ...state, heard };
+}
+
 /** A closed tab nobody renewed in time: its person leaves, unless another of their tabs is still here. */
 export function departed(
   state: PresenceState,

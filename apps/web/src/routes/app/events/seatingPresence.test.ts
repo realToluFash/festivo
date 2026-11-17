@@ -11,6 +11,7 @@ import {
   listed,
   quieted,
   ringsOf,
+  woke,
 } from './seatingPresence.ts';
 
 const ME = 'u_me';
@@ -99,6 +100,16 @@ describe('a connection that dies without a word (sc-4719, #62200)', () => {
     expect(colleaguesOf(quieted(relisted, 50_000, ME, say), ME).map((one) => one.name)).toEqual([
       'Kemi Adeyemi',
     ]);
+  });
+
+  it('lets nobody go on waking from a held-back page, and gives everyone not already quiet the quiet time again', () => {
+    const kemiQuiet = quieted(listed(NOBODY_ELSE, [SELF, KEMI], 0), 20_000, ME, say);
+    const withPriya = listed(kemiQuiet, [SELF, KEMI, PRIYA], 20_000);
+    const awake = woke(withPriya, 80_000);
+
+    expect(awake.spoken).toBe(withPriya.spoken);
+    expect(quieted(awake, 80_000 + QUIET_MS, ME, say)).toBe(awake);
+    expect(colleaguesOf(awake, ME).map((one) => one.name)).toEqual(['Priya Shah']);
   });
 
   it('never lets yourself go', () => {
