@@ -40,7 +40,6 @@ export const KEY: readonly { word: Word; label: string }[] = WORD_ORDER.map((w) 
 export type Stage = 'To serve' | 'Dishing' | 'Checked' | 'On its way' | 'Served';
 export type SeatState =
   | Stage
-  | 'Waiting for a choice'
   | 'Waiting on the kitchen'
   | 'Not here yet'
   | 'Nothing for this course'

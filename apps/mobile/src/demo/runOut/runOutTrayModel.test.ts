@@ -237,6 +237,14 @@ describe('the Floor and the states', () => {
     expect(after?.waiting).toBe(false);
   });
 
+  it('says Without Chicken from the floor lead’s choice, and for nobody else', () => {
+    const s = leadChooses(seed('runOutAtStop'), 'tb', null);
+    const now = (seat: number) => floorSeats(s).find((x) => x.guest.seat === seat)?.now;
+    expect(now(4)).toBe('Without Chicken');
+    expect(now(3)).toBe('');
+    expect(now(1)).toBe('');
+  });
+
   it('reads every state from the address, and counts with plurals', () => {
     for (const name of RUN_OUT_STATES) expect(runOutStateOf(name)).toBe(name);
     expect(runOutStateOf('nonsense')).toBe('runOutAtStop');

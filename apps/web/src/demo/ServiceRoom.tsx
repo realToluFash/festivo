@@ -591,7 +591,6 @@ export function AlertRow({ a, onGo }: { a: Alert; onGo: () => void }) {
 }
 
 const SEAT_SHAPE: Partial<Record<SeatState, Word>> = {
-  'Waiting for a choice': 'choice',
   'To serve': 'serve',
   Dishing: 'tray',
   Checked: 'tray',

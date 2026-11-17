@@ -250,6 +250,17 @@ describe('Plan and List with Chicken run out', () => {
     expect(word(4)).toBe('kitchen');
   });
 
+  it('a waiting guest’s seat keeps its own stage, To serve, while the table reads Waiting for a choice', () => {
+    const ro = runOutSample();
+    const nine = runOutTables(room(), ro).find((t) => t.n === 9)!;
+    expect(wordOf(nine)).toBe('choice');
+    const theirs = nine.seats.filter((s) =>
+      waiting(ro).some((x) => x.table === 9 && x.seat === s.n),
+    );
+    expect(theirs.length).toBeGreaterThan(0);
+    for (const s of theirs) expect(s.state).toBe('To serve');
+  });
+
   it('puts Waiting for a choice second, after Behind (pm, 17 Nov)', () => {
     expect(WORD_ORDER.slice(0, 3)).toEqual(['behind', 'choice', 'serve']);
     const nine = runOutTables(room(), runOutSample()).find((t) => t.n === 9)!;

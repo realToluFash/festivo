@@ -561,7 +561,7 @@ export function runOutTables(tables: readonly RoomTable[], ro: RunOut): RoomTabl
         name: x.name,
         flags: x.flags.map((fl) => fl.words),
         dish: plateNow(ro, x).join(' · '),
-        state: f.status === 'waiting' && !ro.available ? 'Waiting for a choice' : f.stage,
+        state: f.stage,
       };
     });
     const choice = here.some((x) => fateOf(ro, x.id).status === 'waiting') && !ro.available;

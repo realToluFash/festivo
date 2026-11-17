@@ -94,6 +94,8 @@ export interface Order {
   lines: readonly Line[];
   follow: readonly string[];
   choice: HeldChoice;
+  /** The run-out item the floor lead chose to serve this guest without. */
+  without: string | null;
 }
 
 export interface Tray {
@@ -199,7 +201,7 @@ export const OFFLINE_LEAD =
 const line = (item: string, mark: Mark = 'unmarked'): Line => ({ item, mark, instead: null });
 
 function order(guest: string, where: Where, lines: readonly Line[]): Order {
-  return { guest, where, lines, follow: [], choice: null };
+  return { guest, where, lines, follow: [], choice: null, without: null };
 }
 
 const JOLLOF_ON = line('Jollof rice', 'on');
@@ -579,7 +581,7 @@ export function leadChooses(s: RunOutState, guest: string, to: string | null): R
     ];
   });
   const follow = o.follow.flatMap((i) => (i !== RUN_OUT ? [i] : to == null ? [] : [to]));
-  const changed: Order = { ...o, lines, follow };
+  const changed: Order = { ...o, lines, follow, without: to == null ? RUN_OUT : null };
   const placed = lines.find((l) => l.instead === RUN_OUT && l.mark === 'unmarked');
   const atStation = placed == null ? null : DISHED_AT[placed.item];
   const tray =
@@ -606,8 +608,6 @@ export interface FloorSeat {
   now: string;
 }
 
-const GUEST_HAD_RUN_OUT = new Set(['fa', 'hs', 'tb', 'ya', 'ae', 'eo', 'bo']);
-
 const STAGE: Record<Where, string> = {
   toServe: 'To serve',
   tray: 'Dishing',
@@ -623,8 +623,6 @@ export function floorSeats(s: RunOutState): readonly FloorSeat[] {
     .map(({ o, g }) => {
       const items = [...o.lines.map((l) => l.item), ...o.follow.map((i) => `${i} to follow`)];
       const swapped = o.lines.find((l) => l.instead === RUN_OUT);
-      const without = !isWaiting(o) && !o.lines.some((l) => l.item === RUN_OUT) && swapped == null;
-      const wasRunOut = GUEST_HAD_RUN_OUT.has(g.id);
       return {
         guest: g,
         plate: items.join(' · '),
@@ -633,7 +631,7 @@ export function floorSeats(s: RunOutState): readonly FloorSeat[] {
         now:
           swapped != null
             ? `Now ${swapped.item}`
-            : without && wasRunOut
+            : o.without === RUN_OUT
               ? `Without ${RUN_OUT}`
               : '',
       };
