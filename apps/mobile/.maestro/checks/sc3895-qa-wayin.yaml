@@ -1,0 +1,11 @@
+# sc-3895: the event's Schedule area while EVENT is happening shows Run of show above Run view.
+appId: host.exp.Exponent
+---
+- openLink: ${METRO_URL}/--/events/${EVENT}?area=schedule
+- extendedWaitUntil: { visible: { id: 'events.schedule.night' }, timeout: 15000, optional: true }
+- waitForAnimationToEnd
+- takeScreenshot: wayin
+- tapOn: { id: 'events.schedule.night' }
+- extendedWaitUntil: { visible: { id: 'night.next' }, timeout: 15000 }
+- waitForAnimationToEnd
+- takeScreenshot: night-from-wayin
