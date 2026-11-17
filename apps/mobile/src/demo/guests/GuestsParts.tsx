@@ -24,6 +24,7 @@ import type { GuestsCardWords } from './GuestsModel.ts';
 import { W, say } from './GuestsWords.ts';
 import { labelFits } from '../../layout/titleFit.ts';
 import { type MarkKind, ReplyMark } from '../../components/ReplyMark.tsx';
+import { DoneLine } from '../../components/FormLayers.tsx';
 
 export type Layout = 'phone' | 'portrait' | 'landscape';
 
@@ -239,21 +240,6 @@ export function Choices({
         onPress={second.onPress}
         testID={second.testID}
       />
-    </View>
-  );
-}
-
-export function DoneLine({ text, size = 15 }: { text: string; size?: number }) {
-  useReadOut(text);
-
-  return (
-    <View style={styles.done}>
-      <View style={styles.doneMark}>
-        <Glyph name="tick" size={17} ink={tokens.marks.done.fill} weight={2.6} />
-      </View>
-      <Text size={size} weight="semibold" style={[styles.grow, { lineHeight: size * 1.4 }]}>
-        {text}
-      </Text>
     </View>
   );
 }
@@ -488,6 +474,8 @@ export function useLayoutKind(): Layout {
   return useShell().layout;
 }
 
+export { DoneLine };
+
 const styles = StyleSheet.create({
   grow: { flex: 1, minWidth: 0 },
   white: { color: tokens.colorInkOnDark },
@@ -514,8 +502,6 @@ const styles = StyleSheet.create({
   amberTitle: { lineHeight: 15.5 * 1.35 },
   lines: { lineHeight: 14 * 1.45 },
   choices: { flexDirection: 'row', flexWrap: 'wrap', gap: 10 },
-  done: { flexDirection: 'row', alignItems: 'flex-start', gap: tokens.spaceSm },
-  doneMark: { paddingTop: 1 },
   toast: {
     position: 'absolute',
     left: 16,

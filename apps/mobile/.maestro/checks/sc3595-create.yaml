@@ -50,53 +50,53 @@ appId: host.exp.Exponent
       ID: eventForm.type.wedding
 - scrollUntilVisible:
     element:
-      id: 'eventForm.start.date'
+      id: 'eventForm.startDate'
     direction: DOWN
 - tapOn:
-    id: 'eventForm.start.date'
+    id: 'eventForm.startDate'
 - extendedWaitUntil:
     visible:
-      id: 'eventForm.start.done'
+      id: 'events.pick.done'
     timeout: 10000
 - takeScreenshot: start-date-picker
 - tapOn:
-    id: 'eventForm.start.done'
+    id: 'events.pick.done'
 - waitForAnimationToEnd
 - tapOn:
-    id: 'eventForm.start.time'
+    id: 'eventForm.startTime'
 - extendedWaitUntil:
     visible:
-      id: 'eventForm.start.done'
+      id: 'events.pick.done'
     timeout: 10000
 - takeScreenshot: start-time-picker
 - tapOn:
-    id: 'eventForm.start.done'
+    id: 'events.pick.done'
 - waitForAnimationToEnd
 - scrollUntilVisible:
     element:
-      id: 'eventForm.end.date'
+      id: 'eventForm.endDate'
     direction: DOWN
 - tapOn:
-    id: 'eventForm.end.date'
+    id: 'eventForm.endDate'
 - extendedWaitUntil:
     visible:
-      id: 'eventForm.end.done'
+      id: 'events.pick.done'
     timeout: 10000
 - tapOn:
     text: '${TOMORROW}'
     optional: true
 - takeScreenshot: end-date-picker
 - tapOn:
-    id: 'eventForm.end.done'
+    id: 'events.pick.done'
 - waitForAnimationToEnd
 - tapOn:
-    id: 'eventForm.end.time'
+    id: 'eventForm.endTime'
 - extendedWaitUntil:
     visible:
-      id: 'eventForm.end.done'
+      id: 'events.pick.done'
     timeout: 10000
 - tapOn:
-    id: 'eventForm.end.done'
+    id: 'events.pick.done'
 - waitForAnimationToEnd
 - takeScreenshot: filled
 - scrollUntilVisible:

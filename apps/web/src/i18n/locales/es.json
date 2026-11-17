@@ -228,6 +228,8 @@
     "problems_other": "{{count, number}} campos necesitan corrección, así que no se ha enviado nada.",
     "problems_many": "{{count, number}} de campos necesitan corrección, así que no se ha enviado nada.",
     "notCreated": "No se ha creado el evento ni se ha guardado nada. Vuelva a intentarlo.",
+    "coverHeading": "Cover photo",
+    "created": "Created. Opening the event.",
     "venueHeading": "Lugar",
     "venueName": "Nombre del lugar",
     "optional": "Opcional",

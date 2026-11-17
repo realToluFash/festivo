@@ -89,6 +89,7 @@ import {
   HostRows,
   NameView,
   type Position,
+  POSITION_AT,
   type Suggested,
   TypeChoices,
   VenueFieldsView,
@@ -827,8 +828,6 @@ function HostsEdit(props: PartEditProps) {
     </EditShell>
   );
 }
-
-const POSITION_AT: Record<Position, number> = { top: 0, middle: COVER_MIDDLE, bottom: 100 };
 
 type Photo =
   | { kind: 'saved'; cover: Cover }

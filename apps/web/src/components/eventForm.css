@@ -41,3 +41,11 @@
 .ev .ev-select select.is-empty {
   color: var(--colorInkSecondary);
 }
+
+.ev-new-cover img {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}

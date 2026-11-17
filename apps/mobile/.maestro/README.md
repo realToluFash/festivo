@@ -286,7 +286,7 @@ link, which in Expo Go lands on Home (sc-22740): each starts from Home or from a
   view, and `centerElement` pushes it under the page's opaque header. The name row opens Edit
   details at the name; the page's other rows are `events.details.<part>`.
 - **On Android, New event's dates and times are the system's dialogs**, closed with `OK`, not
-  the sheet's `eventForm.start.done`. `checks/sc20824-create-android.yaml` is the Android copy of
+  the sheet's `events.pick.done`. `checks/sc20824-create-android.yaml` is the Android copy of
   `checks/sc20824-create.yaml`.
 - **A `runScript` reaches the stack through `${API_URL}` and `${WEB_URL}`**, which the harness
   passes to every flow and batch, as it does `${METRO_URL}`.
