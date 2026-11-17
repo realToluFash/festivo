@@ -647,8 +647,8 @@
   }
 }
 
-/* At 400% zoom (320 CSS px) the desk reflows into one column, and an open form comes before the list (WCAG 2.2 1.4.10, sc-3901 Decided 15 Nov). */
-@media (width <= 720px) {
+/* At 400% zoom (320 CSS px) the desk reflows into one column, and an open form comes before the list (WCAG 2.2 1.4.10, sc-3901 Decided 15 Nov). From 641 px the sidebar stays beside the page, as on every desk page (sc-60699). */
+@media (width <= 40rem) {
   .today.desk:has(.lib-page) {
     flex-direction: column;
     height: auto;
