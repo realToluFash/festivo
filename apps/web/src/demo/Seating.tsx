@@ -1871,6 +1871,9 @@ function Seating({
                 box={ui.box}
                 outlines={outlines}
                 onFloor={onFloor}
+                onFloorMouse={(event) => {
+                  if (spaceHeld.current) event.preventDefault();
+                }}
                 hands={{
                   onItemDown,
                   onItemKey,

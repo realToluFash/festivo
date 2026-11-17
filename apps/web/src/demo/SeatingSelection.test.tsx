@@ -111,6 +111,10 @@ function spacePan(on: Element): void {
 
   fireEvent.keyDown(on, { key: ' ' });
   fireEvent.keyDown(on, { key: ' ', repeat: true });
+  expect(
+    fireEvent.mouseDown(room(), { button: 0, clientX: at[0], clientY: at[1] }),
+    'a press on the floor with Space held moves no focus',
+  ).toBe(false);
   fireEvent.pointerDown(room(), { button: 0, pointerId: 1, clientX: at[0], clientY: at[1] });
   fireEvent.pointerMove(window, { pointerId: 1, clientX: at[0] + 60, clientY: at[1] + 40 });
   fireEvent.pointerUp(window, { pointerId: 1, clientX: at[0] + 60, clientY: at[1] + 40 });
@@ -451,6 +455,21 @@ describe('choosing many (sc-4717)', () => {
       expect(chosen()).toBe('2 chosen');
       fireEvent.keyDown(t8, { key: 'Enter', shiftKey: true });
       expect(chosen()).toBe('3 chosen');
+
+      await seating('seat');
+      fireEvent.click(within(panel()).getByRole('button', { name: /^Kwame Mensah \+ 1/u }));
+      const asking = 'Now pick a table for Kwame Mensah and 1 guest.';
+      const table = item(/^Table 8,/u);
+
+      table.focus();
+      spacePan(table);
+      expect(screen.getByText(asking)).toBeDefined();
+      expect(screen.queryByText('Kwame Mensah and 1 guest are at Table 8.')).toBeNull();
+
+      fireEvent.keyDown(table, { key: ' ' });
+      expect(screen.getByText(asking)).toBeDefined();
+      fireEvent.keyUp(table, { key: ' ' });
+      expect(await screen.findByText('Kwame Mensah and 1 guest are at Table 8.')).toBeDefined();
     },
   );
 
