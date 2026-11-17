@@ -5,7 +5,6 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { BackButton } from '../../components/AppFrame.tsx';
 import { Bell } from '../../components/BellButton.tsx';
-import { sidePadding } from '../../components/bodyEdges.ts';
 import { PrimaryButton, QuietButton } from '../../components/Buttons.tsx';
 import { OrgPill } from '../../components/OrgPill.tsx';
 import { PageToast } from '../../components/Summary.tsx';
@@ -23,7 +22,14 @@ import { DemoOnly } from '../../steps/Lines.tsx';
 import { tokens } from '../../theme/tokens.ts';
 import { goBack } from '../DemoScreen.tsx';
 import { SAMPLE } from '../samples.ts';
-import { type BellStart, listRoom, topScrolls } from './bellRules.ts';
+import {
+  type BellStart,
+  fixedAboveOnSide,
+  listRoom,
+  listSides,
+  topScrolls,
+  topSides,
+} from './bellRules.ts';
 
 interface Item {
   id: string;
@@ -109,7 +115,7 @@ export function BellScreen({ start }: { start: BellStart }) {
   const unread = items.filter((item) => !item.read).length;
   const foot = tabBarFoot(insets.bottom);
   const clearance = phoneTabBarClearance(insets.bottom);
-  const room = listRoom(frame.height, onSide ? insets.top : fixedAbove, clearance);
+  const room = listRoom(frame.height, onSide ? fixedAboveOnSide(insets) : fixedAbove, clearance);
 
   useEffect(() => {
     if (start.at !== 'scrolled' || headHeight == null || scrolledOnce.current) return;
@@ -128,7 +134,7 @@ export function BellScreen({ start }: { start: BellStart }) {
     );
 
   const top = (
-    <View style={[styles.top, sidePadding(tokens.spaceXxl, insets)]}>
+    <View style={[styles.top, topSides(onSide, insets)]}>
       <View style={styles.pillRow}>
         <OrgPill
           id="demo-org"
@@ -201,7 +207,10 @@ export function BellScreen({ start }: { start: BellStart }) {
   return (
     <View style={styles.page}>
       {onSide ? (
-        <View style={[styles.statusStrip, { height: insets.top }]} pointerEvents="none" />
+        <View
+          style={[styles.statusStrip, { height: fixedAboveOnSide(insets) }]}
+          pointerEvents="none"
+        />
       ) : (
         <View
           style={{ paddingTop: insets.top + tokens.spaceXxs }}
@@ -247,9 +256,9 @@ export function BellScreen({ start }: { start: BellStart }) {
         }
         contentContainerStyle={[
           styles.feed,
-          sidePadding(tokens.spaceXl, insets),
+          listSides(insets),
           onSide
-            ? { paddingTop: insets.top, paddingBottom: clearance + tokens.space3xl }
+            ? { paddingTop: fixedAboveOnSide(insets), paddingBottom: clearance + tokens.space3xl }
             : styles.feedUpright,
         ]}
         showsVerticalScrollIndicator={false}
@@ -376,10 +385,7 @@ const styles = StyleSheet.create({
     backgroundColor: tokens.colorCard,
   },
   top: { gap: tokens.spaceLg, paddingBottom: tokens.spaceXl },
-  topInList: {
-    paddingTop: tokens.spaceXxs,
-    marginHorizontal: tokens.spaceXl - tokens.spaceXxl,
-  },
+  topInList: { paddingTop: tokens.spaceXxs },
   pillRow: { flexDirection: 'row' },
   titleRow: { flexDirection: 'row', alignItems: 'center', gap: tokens.spaceSm },
   feed: { paddingBottom: tokens.space3xl },

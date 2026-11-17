@@ -1,3 +1,6 @@
+import { sidePadding } from '../../components/bodyEdges.ts';
+import { tokens } from '../../theme/tokens.ts';
+
 export type BellAt = 'top' | 'scrolled';
 
 export interface BellStart {
@@ -14,8 +17,35 @@ export function topScrolls(window: { width: number; height: number }): boolean {
   return window.width > window.height;
 }
 
-/** How far up from the screen's foot the fade under the phone's tab bar reaches, as `TabBarFade` draws it. */
+/** How far up from the screen's foot the fade under the phone's tab bar reaches, as `TabBarFade` draws it; its test reads the height from `TodayCover.tsx`. */
 export const FADE_REACH = 150;
+
+/** How far the list's cards sit in from each side, past a navigation bar or the Dynamic Island. */
+const LIST_SIDE = tokens.spaceXl;
+
+/** How far the top's content sits in from each side, as Events' header does. */
+const TOP_SIDE = tokens.spaceXxl;
+
+type Sides = { left: number; right: number };
+
+export function listSides(insets: Sides): { paddingLeft: number; paddingRight: number } {
+  return sidePadding(LIST_SIDE, insets);
+}
+
+/** On its side the top sits inside the list, which has already moved in past the bars, so it adds only the step from the list's edge to its own. */
+export function topSides(
+  onSide: boolean,
+  insets: Sides,
+): { paddingLeft: number; paddingRight: number } {
+  return onSide
+    ? sidePadding(TOP_SIDE - LIST_SIDE, { left: 0, right: 0 })
+    : sidePadding(TOP_SIDE, insets);
+}
+
+/** On its side only the status strip stays above the list. */
+export function fixedAboveOnSide(insets: { top: number }): number {
+  return insets.top;
+}
 
 export interface ListRoom {
   /** From the foot of what stays above the list to the top of the tab bar, as the AC measures it. */
