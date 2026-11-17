@@ -1,10 +1,9 @@
-/* A desk window from 641 to 960 px (sc-60699): the sidebar stays beside the page at 252 px, so the page is 379 to 698 px wide and every page holds there with no sideways scroll and no word broken. 961 and up, and 640 and down, are as on main. */
+/* 641 to 960 px only (sc-60699): 961 and up, and 640 and down, stay as on main. */
 @media (40rem < width <= 60rem) {
   .today.desk .desk-page {
     padding-inline: var(--spaceXxl);
   }
 
-  /* A title keeps its words whole; what sits beside it goes under it once both do not fit. */
   .today.desk :is(.desk-top, .gs-top) {
     flex-shrink: 0;
     flex-wrap: wrap;
@@ -24,7 +23,7 @@
     overflow-wrap: normal;
   }
 
-  /* Settings puts its list above the page, as the product does up to 60rem, and the two scroll as one. */
+  /* Mirrors the product's Settings, which stacks its list above the page up to 60rem. */
   .today.desk .desk-main:has(> .desk-list) {
     flex-direction: column;
     overflow-y: auto;
@@ -42,7 +41,6 @@
     overflow: visible;
   }
 
-  /* Events: the search gives up room to Filter, which keeps its word. */
   .today.desk .ev-search {
     flex: 1 1 0;
   }
@@ -51,7 +49,6 @@
     flex: none;
   }
 
-  /* Calendar: the month and its steps keep a line, and Month, Agenda and Show go under them once both do not fit. */
   .today.desk .cal-tools {
     flex-wrap: wrap;
     row-gap: var(--spaceLg);
@@ -69,12 +66,10 @@
     left: auto;
   }
 
-  /* Menu library: a dish's name, what it contains and what it suits stack in one column beside its actions, as with a dish open. */
   .today.desk .lib-cols {
     grid-template-columns: minmax(0, 1fr);
   }
 
-  /* An open Add dish or Edit comes before the list, as at 720 px and under, rather than beside it. */
   .today.desk .lib-split.is-docked {
     flex-direction: column;
     align-items: stretch;
@@ -87,7 +82,6 @@
     max-height: none;
   }
 
-  /* An event's Menu and Schedule: an open dish or item comes before the list in the same way. */
   .today.desk .mn-split:has(> .mn-panel) {
     flex-direction: column;
     align-items: stretch;
@@ -104,7 +98,6 @@
     overflow: visible;
   }
 
-  /* A choice among a dish's items keeps its name whole, and Choice goes under it once both do not fit. */
   .today.desk .mn-choice-item {
     flex-wrap: wrap;
     padding-block: var(--spaceXs);
@@ -116,12 +109,10 @@
     overflow-wrap: normal;
   }
 
-  /* An event's Overview: Details, then Guests and the rest, in one column. */
   .today.desk .ev-columns {
     grid-template-columns: minmax(0, 1fr);
   }
 
-  /* Guests: one column, and an open guest or form comes before the list, which has no side to wait on. */
   .today.desk .gs-cols {
     grid-template-columns: minmax(0, 1fr);
   }
@@ -140,7 +131,7 @@
   }
 }
 
-/* Menu library's sidebar stays beside it from 641 px; the page inside keeps its one-column reflow up to 720 px. The product's routes/app/menu/menuLibrary.css still stacks the shell at 720 px and loads here too, so this puts the shell back until that line moves to 40rem. */
+/* Undoes routes/app/menu/menuLibrary.css, which stacks the shell at 720px and loads in the demo too; drop this once that line moves to 40rem. */
 @media (40rem < width <= 720px) {
   :root .today.desk:has(.lib-page) {
     flex-direction: row;
@@ -165,7 +156,6 @@
   }
 }
 
-/* Schedule, while the page is narrower than a phone's: each day's count goes under its date, and the table folds to Starts and Item with Lasts and Owner under the item, as at 40rem and under. */
 @media (40rem < width <= 720px) {
   .today.desk .ro-days {
     align-self: stretch;
