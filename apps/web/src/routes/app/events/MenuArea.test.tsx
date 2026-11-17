@@ -568,6 +568,18 @@ describe('The event’s Menu (sc-3902)', () => {
       expect(sent.some((one) => one.line.startsWith('DELETE'))).toBe(false);
     });
 
+    it('lights only the variant on Edit variant, never its dish row', async () => {
+      await onMenu({
+        'GET /api/events/ev_1/menu': menuOf(course('c_main', 'Main', [WAYS])),
+      });
+
+      fireEvent.click(await screen.findByRole('button', { name: 'Edit Chicken' }));
+      await screen.findByRole('complementary', { name: 'Edit Chicken' });
+
+      expect(document.querySelector('.mn-dish.is-lit')).toBeNull();
+      expect(document.querySelectorAll('.vr-inset.is-lit')).toHaveLength(1);
+    });
+
     it('folds the last two into a single dish once asked', async () => {
       const sent = await onMenu({
         'GET /api/events/ev_1/menu': menuOf(course('c_main', 'Main', [TWO])),
