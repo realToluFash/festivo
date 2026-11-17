@@ -26,6 +26,7 @@ import {
   eventNameLength,
   type EventSaveRefusal,
   hostErrorsOf,
+  hostErrorsShownOf,
   hostsChanged,
   keepsLastHost,
   positionPart,
@@ -790,9 +791,8 @@ function HostsEdit(props: PartEditProps) {
   const { busy, save, elsewhere, failed } = usePartSave('hosts', props);
   const names = hosts.map((host) => host.name);
   const found = hostErrorsOf(hosts, t);
-  const errors = hosts.map(
-    (host) => (tried ? found[host.key] : undefined) ?? refused[host.key] ?? null,
-  );
+  const shown = hostErrorsShownOf(hosts, t, tried);
+  const errors = hosts.map((host) => shown[host.key] ?? refused[host.key] ?? null);
 
   useReadOut(said);
 
