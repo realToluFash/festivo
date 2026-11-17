@@ -25,7 +25,8 @@ export interface PresenceState {
   tabs: Record<string, PlanSubscriber>;
   /** Everyone seen, in the order they arrived, for their colour. */
   arrived: string[];
-  chosen: Record<string, ColleagueChoice['chosen']>;
+  /** Each editor's latest choice, the earliest chosen first. */
+  chosen: ColleagueChoice[];
   /** Tabs closed but still counted, until {@link departed} lets them go. */
   leaving: string[];
   /** Lost only once a connection has failed, so a page still opening says nothing. */
@@ -36,7 +37,7 @@ export interface PresenceState {
 export const NOBODY_ELSE: PresenceState = {
   tabs: {},
   arrived: [],
-  chosen: {},
+  chosen: [],
   leaving: [],
   connection: 'opening',
   spoken: '',
@@ -56,9 +57,7 @@ export function listed(state: PresenceState, list: PlanSubscriber[]): PresenceSt
     (order, tab) => arrive({ ...state, arrived: order }, tab.userId),
     state.arrived,
   );
-  const chosen = Object.fromEntries(
-    Object.entries(state.chosen).filter(([userId]) => hereNow(tabs, userId) != null),
-  );
+  const chosen = state.chosen.filter((choice) => hereNow(tabs, choice.userId) != null);
 
   return { ...state, tabs, arrived, chosen, leaving: [], connection: 'open' };
 }
@@ -119,8 +118,7 @@ function without(
   else delete tabs[tab.subscriber];
 
   const isHere = hereNow(tabs, tab.userId) != null;
-  const chosen = { ...next.chosen };
-  if (!isHere) delete chosen[tab.userId];
+  const chosen = isHere ? next.chosen : next.chosen.filter((one) => one.userId !== tab.userId);
   const spoken =
     tab.userId === me || wasHere === isHere
       ? next.spoken
@@ -134,9 +132,9 @@ export function chose(state: PresenceState, choice: ColleagueChoice): PresenceSt
   const by = hereNow(state.tabs, choice.userId);
   if (by != null && !by.editor) return state;
 
-  const { [choice.userId]: _was, ...others } = state.chosen;
+  const others = state.chosen.filter((one) => one.userId !== choice.userId);
 
-  return { ...state, chosen: { ...others, [choice.userId]: choice.chosen } };
+  return { ...state, chosen: [...others, choice] };
 }
 
 export function colleaguesOf(state: PresenceState, me: string): Colleague[] {
@@ -167,7 +165,7 @@ export function ringsOf(state: PresenceState, me: string): Record<string, Collea
   );
   const rings: Record<string, ColleagueRing[]> = {};
 
-  for (const [userId, chosen] of Object.entries(state.chosen)) {
+  for (const { userId, chosen } of state.chosen) {
     const colleague = editors.get(userId);
     if (colleague == null || chosen == null) continue;
     (rings[chosen.id] ??= []).push({ ...colleague, chair: chosen.chair });

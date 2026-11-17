@@ -3956,6 +3956,43 @@ describe('Who else is on the plan (sc-4719)', () => {
     expect(new Set(rings).size).toBe(1);
   });
 
+  it('moves a colleague who chooses again to the outside ring, after the later choice (#60848)', async () => {
+    const KEMI = tab('urn:uuid:k1', 'u_kemi', 'Kemi Adeyemi');
+    const { source } = await onPlanWith([ME, PRIYA, KEMI], OWNER_PERMISSIONS, {
+      'GET /api/events/ev_1/seating-plan': () =>
+        seating(withTables(table(), table({ id: 't2', name: 'Table 2', xCm: 400 }))),
+    });
+    const pills = () =>
+      [...document.querySelectorAll('[data-table="t1"] .st-ring .st-initials')].map(
+        (one) => one.textContent,
+      );
+
+    source.publish({ userId: 'u_kemi', chosen: { kind: 'table', id: 't1', chair: null } });
+    source.publish({ userId: 'u_priya', chosen: { kind: 'table', id: 't1', chair: null } });
+    source.publish({ userId: 'u_kemi', chosen: { kind: 'table', id: 't2', chair: null } });
+    await waitFor(() => expect(pills()).toEqual(['PS']));
+    source.publish({ userId: 'u_kemi', chosen: { kind: 'table', id: 't1', chair: null } });
+
+    await screen.findByRole('button', {
+      name: `${TABLE_1}, chosen by Priya Shah and Kemi Adeyemi`,
+    });
+    expect(pills()).toEqual(['PS', 'KA']);
+  });
+
+  it('names who chose a seat on the chair itself (#60848)', async () => {
+    const JULIEN = tab('urn:uuid:j1', 'u_julien', 'Julien Moreau');
+    const { source } = await onPlanWith([ME, JULIEN]);
+
+    source.publish({ userId: 'u_julien', chosen: { kind: 'table', id: 't1', chair: 2 } });
+    await screen.findByRole('button', { name: `${TABLE_1}, seat 2 chosen by Julien Moreau` });
+    while (Number(percent().replace('%', '')) < 150) press('Zoom in');
+
+    expect(
+      screen.getByRole('button', { name: 'Table 1, Seat 2, Empty, chosen by Julien Moreau' }),
+    ).toBeDefined();
+    expect(screen.getByRole('button', { name: 'Table 1, Seat 3, Empty' })).toBeDefined();
+  });
+
   it('drops a colleague’s outline when they close the plan', async () => {
     const { source } = await onPlanWith([ME, PRIYA]);
 
