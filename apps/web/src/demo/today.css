@@ -190,3 +190,53 @@
   background: var(--colorAccentTint);
   color: var(--colorAccentText);
 }
+
+/* This week at 360 px and narrower, and in Portuguese at every width: each day but today writes its narrow weekday, and a screen reader hears its full name (sc-61548). */
+.today-weekday-narrow,
+.today-weekday-spoken {
+  display: none;
+}
+
+.today-weekday-spoken {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+  clip-path: inset(50%);
+  white-space: nowrap;
+}
+
+@media (width <= 22.5rem) {
+  .today-weekday-short {
+    display: none;
+  }
+
+  .today-weekday-narrow {
+    display: inline;
+  }
+
+  .today-weekday-spoken {
+    display: block;
+  }
+}
+
+.today-days.has-letters .today-weekday-short {
+  display: none;
+}
+
+.today-days.has-letters .today-weekday-narrow {
+  display: inline;
+}
+
+.today-days.has-letters .today-weekday-spoken {
+  display: block;
+}
+
+/* A desk window whose page is under 620 px, as at 641 px with the sidebar beside it: the strip's sides give 12 px to the six days, so French's MER. and JEU. keep 4 px apart (sc-61548). */
+@media (width > 40rem) {
+  @container today (width < 620px) {
+    .fits-phone .today-strip {
+      padding-inline: var(--spaceXxs);
+    }
+  }
+}
