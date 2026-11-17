@@ -5,16 +5,22 @@
   }
 
   /* A title keeps its words whole; what sits beside it goes under it once both do not fit. */
-  .today.desk .desk-top {
+  .today.desk :is(.desk-top, .gs-top) {
+    flex-shrink: 0;
     flex-wrap: wrap;
     row-gap: var(--spaceLg);
   }
 
-  .today.desk .desk-title {
+  .today.desk :is(.desk-title, .gs-title) {
     min-width: auto;
   }
 
-  .today.desk :is(.desk-title, .desk-title *) {
+  .today.desk .gs-top > .mn-head {
+    flex: 1 1 auto;
+    min-width: auto;
+  }
+
+  .today.desk :is(.desk-title, .desk-title *, .gs-title, .gs-title *) {
     overflow-wrap: normal;
   }
 
@@ -61,5 +67,140 @@
   .today.desk .cal-more.is-from-6 {
     right: 0;
     left: auto;
+  }
+
+  /* Menu library: a dish's name, what it contains and what it suits stack in one column beside its actions, as with a dish open. */
+  .today.desk .lib-cols {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  /* An open Add dish or Edit comes before the list, as at 720 px and under, rather than beside it. */
+  .today.desk .lib-split.is-docked {
+    flex-direction: column;
+    align-items: stretch;
+  }
+
+  .today.desk .lib-split.is-docked .lib-panel {
+    position: static;
+    order: -1;
+    width: auto;
+    max-height: none;
+  }
+
+  /* An event's Menu and Schedule: an open dish or item comes before the list in the same way. */
+  .today.desk .mn-split:has(> .mn-panel) {
+    flex-direction: column;
+    align-items: stretch;
+  }
+
+  .today.desk .mn-split > .mn-panel {
+    position: static;
+    order: -1;
+    width: auto;
+    max-height: none;
+  }
+
+  .today.desk :is(.lib-split.is-docked .lib-panel, .mn-split > .mn-panel) .mn-panel-body {
+    overflow: visible;
+  }
+
+  /* A choice among a dish's items keeps its name whole, and Choice goes under it once both do not fit. */
+  .today.desk .mn-choice-item {
+    flex-wrap: wrap;
+    padding-block: var(--spaceXs);
+  }
+
+  .today.desk .mn-choice-item-name {
+    flex: 1 0 auto;
+    min-width: auto;
+    overflow-wrap: normal;
+  }
+
+  /* An event's Overview: Details, then Guests and the rest, in one column. */
+  .today.desk .ev-columns {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  /* Guests: one column, and an open guest or form comes before the list, which has no side to wait on. */
+  .today.desk .gs-cols {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .today.desk .gs-column {
+    position: static;
+    order: -1;
+    max-height: none;
+    margin: 0;
+    padding: 0;
+    overflow: visible;
+  }
+
+  .today.desk .gs-column:has(> .gs-pick) {
+    display: none;
+  }
+}
+
+/* Menu library's sidebar stays beside it from 641 px; the page inside keeps its one-column reflow up to 720 px. The product's routes/app/menu/menuLibrary.css still stacks the shell at 720 px and loads here too, so this puts the shell back until that line moves to 40rem. */
+@media (40rem < width <= 720px) {
+  :root .today.desk:has(.lib-page) {
+    flex-direction: row;
+    height: 100vh;
+    min-height: 0;
+  }
+
+  :root .today.desk:has(.lib-page) .today-side {
+    width: var(--todaySide);
+    height: 100%;
+    overflow-y: auto;
+  }
+
+  :root .today.desk:has(.lib-page) .desk-main {
+    margin: var(--spaceMd) var(--spaceMd) var(--spaceMd) 0;
+    overflow: hidden;
+  }
+
+  :root .today.desk .lib-page.desk-page {
+    padding-block: var(--space3xl) 48px;
+    overflow-y: auto;
+  }
+}
+
+/* Schedule, while the page is narrower than a phone's: each day's count goes under its date, and the table folds to Starts and Item with Lasts and Owner under the item, as at 40rem and under. */
+@media (40rem < width <= 720px) {
+  .today.desk .ro-days {
+    align-self: stretch;
+  }
+
+  .today.desk .ro-day {
+    flex: 1;
+    flex-direction: column;
+    min-height: 56px;
+    padding: var(--spaceXs) var(--spaceSm);
+    line-height: 1.25;
+  }
+
+  .today.desk .ro-day-sep {
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    overflow: hidden;
+    clip-path: inset(50%);
+  }
+
+  .today.desk .ro-day-count {
+    font-weight: 400;
+  }
+
+  .today.desk .ro-table .ro-wide {
+    display: none;
+  }
+
+  .today.desk .ro-table .ro-starts {
+    width: 72px;
+    padding-left: var(--spaceXs);
+  }
+
+  .today.desk .ro-under {
+    display: block;
   }
 }
