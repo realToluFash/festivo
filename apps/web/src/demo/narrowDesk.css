@@ -10,7 +10,6 @@
 
   .today.desk .gs-top > .mn-head {
     flex: 1 1 auto;
-    min-width: auto;
   }
 
   /* Mirrors the product's Settings, which stacks its list above the page up to 60rem. */

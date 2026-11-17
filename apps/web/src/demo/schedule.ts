@@ -161,7 +161,15 @@ export function sampleItems(): Item[] {
       guests: true,
     }),
     item('families', 'The families meet', '2026-11-05T20:00', 60, null, 'Ngozi Obi', 'Aunt'),
-    item('seated', 'Guests seated', '2026-11-06T13:30', 30, null, 'Ebele Nwosu', 'Venue'),
+    item(
+      'seated',
+      'Guests seated',
+      '2026-11-06T13:30',
+      30,
+      null,
+      'Chief Mrs Folasade Okonkwo-Williams',
+      'Aunt',
+    ),
     item('ceremony', 'Ceremony', '2026-11-06T14:00', 45, null, 'Father Okafor', 'Officiant', {
       fixed: true,
       guests: true,

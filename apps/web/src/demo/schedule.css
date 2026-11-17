@@ -180,9 +180,13 @@
   white-space: nowrap;
 }
 
+/* A name wraps at its spaces only, never at a hyphen, so the owner column is as wide as its longest word (sc-61150). */
 .ro-owner-name {
   display: block;
-  overflow-wrap: anywhere;
+}
+
+.ro-owner-word {
+  white-space: nowrap;
 }
 
 .ro-quiet {

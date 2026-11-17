@@ -1,4 +1,4 @@
-import { type KeyboardEvent, useEffect, useRef, useState } from 'react';
+import { Fragment, type KeyboardEvent, useEffect, useRef, useState } from 'react';
 import { Link, Navigate, useParams, useSearchParams } from 'react-router';
 
 import { Glyph } from '../components/Glyph.tsx';
@@ -658,7 +658,14 @@ function PlaceTable({
                   <span className="ro-quiet">{RW.noOwner}</span>
                 ) : (
                   <>
-                    <span className="ro-owner-name">{one.owner}</span>
+                    <span className="ro-owner-name">
+                      {one.owner.split(' ').map((word, at) => (
+                        <Fragment key={at}>
+                          {at > 0 && ' '}
+                          <span className="ro-owner-word">{word}</span>
+                        </Fragment>
+                      ))}
+                    </span>
                     {one.role != null && <span className="ro-quiet">{one.role}</span>}
                   </>
                 )}
