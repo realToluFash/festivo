@@ -243,6 +243,43 @@ final class DishItemsTest extends ApiTestCase
         self::assertSame(404, $this->statusCode());
     }
 
+    /** @param list<array<string, string>> $items */
+    #[Test]
+    #[DataProvider('namedLikeTheVariants')]
+    public function aFixedItemNamedLikeTheVariantItemIsRefused(array $items, string $field): void
+    {
+        $this->course('Main');
+        $dish = $this->dish('Main', 'Grilled fish');
+        $this->variants($dish, ['Croaker', 'Tilapia']);
+        $this->variants($dish, ['Catfish']);
+
+        $this->items($dish, $items);
+
+        self::assertSame(422, $this->statusCode());
+        self::assertSame('Each item needs its own name.', $this->violation($field));
+    }
+
+    /** @return iterable<string, array{list<array<string, string>>, string}> */
+    public static function namedLikeTheVariants(): iterable
+    {
+        yield 'after it, in English' => [[self::variantItem(), self::fixed('croaker, Tilapia, or Catfish')], 'items.1.name'];
+        yield 'before it, in French' => [[self::fixed('Croaker, Tilapia ou Catfish'), self::variantItem()], 'items.1.kind'];
+        yield 'in Spanish' => [[self::variantItem(), self::fixed('Croaker, Tilapia o Catfish')], 'items.1.name'];
+    }
+
+    #[Test]
+    public function aFixedItemNamedLikeOneVariantOrSomeIsAllowed(): void
+    {
+        $this->course('Main');
+        $dish = $this->dish('Main', 'Grilled fish');
+        $this->variants($dish, ['Croaker', 'Tilapia']);
+        $this->variants($dish, ['Catfish']);
+
+        $this->items($dish, [self::variantItem(), self::fixed('Croaker'), self::fixed('Croaker or Tilapia')]);
+
+        self::assertSame(200, $this->statusCode());
+    }
+
     #[Test]
     public function oneNameIsOneItemOnACourseInTheOrderItFirstAppears(): void
     {

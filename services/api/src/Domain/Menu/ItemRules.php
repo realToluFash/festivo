@@ -15,8 +15,10 @@ use App\Locale\NameNormaliser;
 use App\Locale\VisibleText;
 use Psl\Dict;
 use Psl\Iter;
+use Psl\Regex;
 use Psl\Str;
 use Psl\Type;
+use Psl\Vec;
 use Symfony\Contracts\Translation\TranslatorInterface;
 
 /** @phpstan-type SentItem array{kind: 'fixed'|'choice'|'variants', name?: string, choiceId?: string} */
@@ -37,9 +39,13 @@ final readonly class ItemRules
         ]));
     }
 
-    /** @param list<SentItem> $sent a choice already an item stays one without its question */
-    public function dishItems(array $sent, MenuDish $dish, bool $hasVariants, MenuDishChoice ...$choices): DishItems
+    /**
+     * @param list<SentItem> $sent     a choice already an item stays one without its question
+     * @param list<string>   $variants the dish's variant names, in order
+     */
+    public function dishItems(array $sent, MenuDish $dish, array $variants, MenuDishChoice ...$choices): DishItems
     {
+        $variantsName = self::orListPattern($variants);
         $violations = [];
         $byId = Dict\reindex($choices, static fn (MenuDishChoice $one): string => $one->getId()->toRfc4122());
         $already = [];
@@ -57,7 +63,7 @@ final readonly class ItemRules
             $path = Str\format('items.%d.', $at);
 
             if ('variants' === $one['kind']) {
-                if (!$hasVariants) {
+                if ([] === $variants) {
                     throw ApiException::notFound('access.not_found');
                 }
 
@@ -90,13 +96,14 @@ final readonly class ItemRules
             }
 
             $name = NameNormaliser::name($one['name'] ?? '');
-            $problem = $this->nameProblem($name, Iter\contains($taken, NameNormaliser::key($name)));
+            $key = null !== $variantsName && Regex\matches(NameNormaliser::key($name), $variantsName) ? 'variants' : NameNormaliser::key($name);
+            $problem = $this->nameProblem($name, Iter\contains($taken, $key));
 
             if (null !== $problem) {
                 $violations[] = $this->violation($path . 'name', $problem);
             }
 
-            $taken[] = NameNormaliser::key($name);
+            $taken[] = $key;
             $items[] = ['kind' => 'fixed', 'name' => $name];
         }
 
@@ -141,6 +148,24 @@ final readonly class ItemRules
         }
 
         return new OwnItems($items);
+    }
+
+    /**
+     * The variant item's name is its variants as an "or" list in the reader's language, so any of the four locales' lists counts.
+     *
+     * @param list<string> $variants
+     *
+     * @return ?non-empty-string
+     */
+    private static function orListPattern(array $variants): ?string
+    {
+        if ([] === $variants) {
+            return null;
+        }
+
+        $names = Vec\map($variants, static fn (string $name): string => \preg_quote(NameNormaliser::key($name), '/'));
+
+        return '/^' . Str\join($names, '(?:\s*,\s*(?:(?:or|ou|o|u)\s+)?|\s+(?:or|ou|o|u)\s+)') . '$/u';
     }
 
     private function nameProblem(string $name, bool $taken): ?string

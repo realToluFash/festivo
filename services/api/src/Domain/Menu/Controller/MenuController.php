@@ -193,7 +193,7 @@ final readonly class MenuController
             ? $this->dishRules->details($body['name'], $body['description'] ?? null, $body['allergens'] ?? [], $body['containsNone'] ?? false, $body['diets'] ?? [], null, null)
             : $this->dishRules->named($body['name'], $body['description'] ?? null);
         $items = Iter\contains_key($body, 'items')
-            ? $this->itemRules->dishItems($body['items'], $dish, [] !== $this->menuDishVariantRepository->findOnDish($dish), ...$this->menuDishChoiceRepository->findOnDish($dish))
+            ? $this->itemRules->dishItems($body['items'], $dish, Vec\map($this->menuDishVariantRepository->findOnDish($dish), static fn (MenuDishVariant $one): string => $one->getName()), ...$this->menuDishChoiceRepository->findOnDish($dish))
             : null;
         $unwarned = $this->menuEditor->changeDish($event, $dish, $details, $items, $this->user());
 
