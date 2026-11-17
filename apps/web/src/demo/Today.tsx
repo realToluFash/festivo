@@ -92,7 +92,7 @@ export function Today({ search = null }: { search?: SearchStart | null }) {
   const navigate = useNavigate();
   const open = useCallback<Open>(
     (opens) =>
-      // Open run of show lands on sc-3895's Run of show, with Start now and Done: the web demo's night page stands in for the Schedule while the event is on.
+      // The night page (sc-3895) only stands in for where Open run of show lands: its sample event and track are its own, so its Now is not Today's. In the product both read one track.
       opens.to === 'runOfShow' && moment.full
         ? void navigate(nightAtUrl())
         : tell(

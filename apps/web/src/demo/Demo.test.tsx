@@ -1669,6 +1669,18 @@ describe('Today at a desk (sc-29092)', () => {
     expect(screen.getByRole('button', { name: 'Open run of show' })).toBeDefined();
   });
 
+  it('draws Now long, the 120-character title whole in the heading', async () => {
+    await today('day&now=long');
+
+    expect(
+      screen.getByRole('heading', {
+        level: 1,
+        name: 'Drinks reception on the garden terrace with the string quartet, canapés from the Lagos kitchen and the first photographs',
+      }),
+    ).toBeDefined();
+    expect(screen.getByRole('button', { name: 'Open run of show' })).toBeDefined();
+  });
+
   it('opens the run of show from Now on the event day', async () => {
     const router = await today('day');
 

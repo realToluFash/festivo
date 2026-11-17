@@ -12,17 +12,17 @@ type Words = ReturnType<typeof nowWordsIn>;
 /** Each stop a shape as well as a place: filled once done, the large ringed dot Now, a ring Next, a small ring still to come. */
 function Rail({ rail, said, words }: { rail: readonly RunStop[]; said: string; words: Words }) {
   return (
-    <ol className="tn-rail" role="img" aria-label={said}>
+    <div className="tn-rail" role="img" aria-label={said}>
       {rail.map((stop) => (
-        <li key={stop.time} className={`tn-stop is-${stop.state}`}>
+        <span key={stop.time} className={`tn-stop is-${stop.state}`}>
           <span className="tn-stop-line" aria-hidden="true">
             <span className="tn-stop-node" />
           </span>
           <span className="tn-stop-time">{words.clock(stop.time)}</span>
           <span className="tn-stop-title">{stop.title}</span>
-        </li>
+        </span>
       ))}
-    </ol>
+    </div>
   );
 }
 

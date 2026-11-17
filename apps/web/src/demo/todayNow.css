@@ -15,7 +15,6 @@
   grid-auto-flow: column;
   margin: 0;
   padding: var(--spaceXxs) 0 0;
-  list-style: none;
 }
 
 .tn-stop {
