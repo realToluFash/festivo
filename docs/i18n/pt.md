@@ -41,6 +41,7 @@ One way to say each recurring thing, everywhere. Seeded from the catalogues as t
 
 ## Decided phrasings
 
+- **17 Nov 2026. Exportar a lista de convidados como folha de cálculo** (sc-63653 para sc-3784, `web:guestExport.*`, `mobile:guestExport.*`, `guest_export.*` da API). As respostas, alergénios, dietas e necessidades de acessibilidade do ficheiro são as palavras do ecrã (`guestList.reply.*`, `guestNeeds.*`), sem alterações. As colunas reutilizam as etiquetas da ficha: "Acompanha", "Entrada na lista", "Número de telemóvel"; Places é "Lugares". O nome do ficheiro, "{evento} – convidados – {dia}", é o mesmo na web e na API. O botão é "Transferir" na web (nunca "descarregar") e "Partilhar" na app; sem ligação, "É preciso Internet para exportar", como `offlineRefusedLine`, que não concorda com ninguém. Filter é "Filtro:" no singular, e a pesquisa vai entre «».
 - **17 Nov 2026. A linha por cima das mesas com lugar, ao mudar todos** (sc-64380 para sc-4013, `web:seating.roomForAll_*`). Para uma pessoa: «Mesas com um lugar livre.», sem «para ele» nem «para ela», que obrigaria a concordar. Para várias: «Mesas com lugar para as 3 pessoas.»; `_many` sem artigo e com «de»: «Mesas com lugar para 1 000 000 de pessoas.». «Pessoas», não «convidados», porque a mesa pode ter acompanhantes.
   Dated, newest first: the wording, where it is used, and why it won over the alternative.
 
