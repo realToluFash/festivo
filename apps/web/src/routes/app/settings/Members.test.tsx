@@ -7,6 +7,7 @@ import { holdProof } from '../../../recentProof.ts';
 import { __setSessionState, type Session } from '../../../session.ts';
 import { OWNER_PERMISSIONS, membership } from '../../../test-memberships.ts';
 import { oneMember, pagedMembers } from '../../../test-members.ts';
+import { cssRule, stylesheet } from '../../../test-styles.ts';
 import { routes } from '../../index.tsx';
 
 const IRE = membership({ id: 'org_1', name: 'Ìrè Events' });
@@ -2079,5 +2080,14 @@ describe('People a page at a time (sc-49170)', () => {
     expect(String(vi.mocked(globalThis.fetch).mock.calls.at(-1)?.[0])).toMatch(
       /\/members\?show=former$/,
     );
+  });
+});
+
+describe('the Members title from 961 px (sc-61150)', () => {
+  it('stays whole, the bell going under it when both do not fit', () => {
+    const MEMBERS_CSS = stylesheet(import.meta.dirname, 'members.css');
+
+    expect(cssRule('.members-desk .desk-top', MEMBERS_CSS)).toContain('flex-wrap: wrap;');
+    expect(cssRule('.members-desk .desk-title', MEMBERS_CSS)).toContain('min-width: auto;');
   });
 });
