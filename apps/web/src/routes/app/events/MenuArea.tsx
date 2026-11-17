@@ -1071,9 +1071,7 @@ function Courses({
                   all={courses.length}
                   manage={manage}
                   lit={open?.courseId === course.id}
-                  litDish={
-                    open?.kind === 'editDish' || open?.kind === 'variant' ? open.dishId : null
-                  }
+                  litDish={open?.kind === 'editDish' ? open.dishId : null}
                   asking={
                     asking == null
                       ? null
