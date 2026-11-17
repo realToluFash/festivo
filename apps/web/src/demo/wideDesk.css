@@ -56,3 +56,23 @@
     overflow: visible;
   }
 }
+
+/* Up to 1040 px an open guest or form comes before the list, as it does at 641 to 960. */
+@media (60rem < width <= 65rem) {
+  .today.desk .gs-cols {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .today.desk .gs-column {
+    position: static;
+    order: -1;
+    max-height: none;
+    margin: 0;
+    padding: 0;
+    overflow: visible;
+  }
+
+  .today.desk .gs-column:has(> .gs-pick) {
+    display: none;
+  }
+}
