@@ -7,11 +7,11 @@ namespace App\Domain\Event\CalendarFeed\Controller;
 use App\Deletion\RestoreWindow;
 use App\Domain\Event\CalendarFeed\CalendarFeedResponse;
 use App\Domain\Event\CalendarFeed\CalendarFeedWriter;
-use App\Domain\Event\CalendarFeed\FeedLinkIssuer;
 use App\Domain\User\Mail\AccountLanguage;
 use App\Http\Access\Interfaces\MembershipDirectoryInterface;
 use App\Http\Access\Policy\PublicAccess;
 use App\Http\Exception\ApiException;
+use App\Http\LinkTokens;
 use App\Repository\CalendarFeedRepository;
 use App\Repository\EventRepository;
 use Psr\Clock\ClockInterface;
@@ -44,7 +44,7 @@ final readonly class CalendarFeedFetchController
     #[Route('/api/calendar-feeds/{token}.ics', name: 'calendar_feed', requirements: ['token' => '[A-Za-z0-9_-]{43}'], methods: ['GET'])]
     public function fetch(Request $request, #[SensitiveParameter] string $token): Response
     {
-        $hash = FeedLinkIssuer::hash($token);
+        $hash = LinkTokens::hash($token);
         $limit = $this->calendarFeedTokenLimiter->create($hash)->consume();
 
         if (!$limit->isAccepted()) {

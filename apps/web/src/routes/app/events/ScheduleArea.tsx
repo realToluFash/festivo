@@ -52,6 +52,7 @@ import {
   zoneNamed,
 } from './scheduleArea.ts';
 import { NightSwitch } from './NightSwitch.tsx';
+import { ShowOnScreen } from './ShowOnScreen.tsx';
 import { useHubTopics } from './useHubTopics.ts';
 import { useDeskTop } from '../../../deskTop.ts';
 import '../../../components/SettingsParts.css';
@@ -234,6 +235,7 @@ function ScheduleView({
   const [gone, setGone] = useState(false);
   const [unrestored, setUnrestored] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
+  const [screens, setScreens] = useState(false);
   const focusAfter = useRef<string | null>(null);
 
   useEffect(() => {
@@ -465,6 +467,17 @@ function ScheduleView({
               {t('runView.open')}
             </Link>
           )}
+          {manage && items.length > 0 && (
+            <button
+              id="ro-screens"
+              type="button"
+              className="gs-pill is-secondary ro-run"
+              onClick={() => setScreens(true)}
+            >
+              <Glyph name="device" size={17} weight={2.2} />
+              {t('showOnScreen.open')}
+            </button>
+          )}
           {manage && (
             <button
               id="ro-add"
@@ -617,6 +630,15 @@ function ScheduleView({
           )}
         </div>
       </div>
+      {screens && (
+        <ShowOnScreen
+          eventId={event.id}
+          onClose={() => {
+            setScreens(false);
+            focusAfter.current = 'ro-screens';
+          }}
+        />
+      )}
       {deleted != null && (
         <Toast
           key={deleted.id}

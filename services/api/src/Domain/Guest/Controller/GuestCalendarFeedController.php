@@ -10,6 +10,7 @@ use App\Domain\Event\CalendarFeed\FeedLinkIssuer;
 use App\Domain\Guest\Calendar\GuestCalendarWriter;
 use App\Http\Access\Policy\PublicAccess;
 use App\Http\Exception\ApiException;
+use App\Http\LinkTokens;
 use App\Repository\GuestRepository;
 use Psr\Clock\ClockInterface;
 use SensitiveParameter;
@@ -38,7 +39,7 @@ final readonly class GuestCalendarFeedController
     #[Route(self::PATH . '{token}' . FeedLinkIssuer::SUFFIX, name: 'guest_calendar_feed', requirements: ['token' => '[A-Za-z0-9_-]{43}'], methods: ['GET'])]
     public function fetch(Request $request, #[SensitiveParameter] string $token): Response
     {
-        $limit = $this->calendarFeedTokenLimiter->create('guest:' . FeedLinkIssuer::hash($token))->consume();
+        $limit = $this->calendarFeedTokenLimiter->create('guest:' . LinkTokens::hash($token))->consume();
 
         if (!$limit->isAccepted()) {
             throw ApiException::tooManyAttempts('limits.calendar_feed', $limit->getRetryAfter());
