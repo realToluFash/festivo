@@ -1,4 +1,10 @@
-import { EVENT_TYPES, type EventType, HOSTS_MAXIMUM, foldedName } from '@soirely/domain';
+import {
+  COVER_MIDDLE,
+  EVENT_TYPES,
+  type EventType,
+  HOSTS_MAXIMUM,
+  foldedName,
+} from '@soirely/domain';
 import { type ComponentProps, type ReactNode, type RefObject, useState } from 'react';
 import {
   Pressable,
@@ -943,6 +949,12 @@ export function NameView({
 }
 
 export type Position = 'top' | 'middle' | 'bottom';
+
+export const POSITION_AT: Record<Position, number> = {
+  top: 0,
+  middle: COVER_MIDDLE,
+  bottom: 100,
+};
 
 export function CoverPreview({ photo, meshKey }: { photo: ReactNode | null; meshKey: string }) {
   return (

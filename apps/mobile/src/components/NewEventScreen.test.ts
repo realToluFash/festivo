@@ -84,3 +84,27 @@ describe("the app's New event cover, after the event exists (sc-48607)", () => {
     expect(refuse).not.toHaveBeenCalled();
   });
 });
+
+describe("the app's New event keeps today's arrival note and cover fields (sc-48607)", () => {
+  it('draws the venue part’s arrival note under the address, with its refusal', () => {
+    const venue = screen.slice(
+      screen.indexOf('<VenueFieldsView'),
+      screen.indexOf('</Part>', screen.indexOf('<VenueFieldsView')),
+    );
+
+    expect(venue).toMatch(/<ArrivalNoteField[\s\S]*error=\{errors\.arrivalNote \?\? null\}/u);
+    expect(screen).toContain('arrivalNote: noteInput,');
+  });
+
+  it('sends the chosen position and description up with the photo', () => {
+    expect(send).toContain('position: POSITION_AT[position],');
+    expect(send).toContain("description: described.trim() === '' ? null : described.trim(),");
+    expect(screen).toMatch(/<CoverPhotoFields[\s\S]*onRemove=\{removePhoto\}/u);
+  });
+
+  it('refuses a description over its limit before anything is created', () => {
+    const before = send.slice(0, send.indexOf('api.createEvent'));
+
+    expect(before).toMatch(/describeWrong[\s\S]*eventCover\.describeTooLong[\s\S]*return;/u);
+  });
+});

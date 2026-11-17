@@ -1,6 +1,6 @@
 import { type EventCover as Cover, type Membership } from '@soirely/api-client';
 import {
-  COVER_MIDDLE,
+  COVER_DESCRIPTION_MAXIMUM,
   EVENT_NAME_MAXIMUM,
   NOTHING_SEEN,
   type EventFormField,
@@ -20,6 +20,7 @@ import {
   skippedLine,
   startMoved,
   timezoneLabel,
+  visibleLength,
   withCurrent,
 } from '@soirely/domain';
 import { launchImageLibraryAsync } from 'expo-image-picker';
@@ -56,7 +57,9 @@ import { focusPicker } from './CountryPicker.tsx';
 import { discardCoverUpload } from './CoverField.tsx';
 import { EventCover } from './EventCover.tsx';
 import {
+  ArrivalNoteField,
   Choices,
+  CoverPhotoFields,
   CoverPreview,
   CoverUpload,
   CurrencyView,
@@ -64,6 +67,8 @@ import {
   EventField,
   Hint,
   HostRows,
+  POSITION_AT,
+  type Position,
   type Suggested,
   SelectBox,
   TypeChoices,
@@ -79,7 +84,7 @@ import { ReadOut, useReadOut } from './ReadOut.tsx';
 import { type FormSection, keysGoDownFor, sectionQuiet, typedIn } from './refusedField.ts';
 import { type ScreenReaderTarget, useScreenReaderOn } from './screenReaderFocus.ts';
 import { Pill } from './SettingsParts.tsx';
-import { ASK_WIDTH, type AskProps, FocusedScreen, TextAction } from './Summary.tsx';
+import { ASK_WIDTH, type AskProps, FocusedScreen } from './Summary.tsx';
 
 type Status = 'editing' | 'sending' | 'failed' | 'created';
 type ListOpen = 'type' | 'zone' | 'currency';
@@ -126,6 +131,10 @@ export function NewEventScreen({
   const [said, setSaid] = useState<string | null>(null);
   const [photo, setPhoto] = useState<Photo>({ kind: 'none' });
   const [coverRefused, setCoverRefused] = useState<string | null>(null);
+  const [position, setPosition] = useState<Position>('middle');
+  const [described, setDescribed] = useState('');
+  const [describeError, setDescribeError] = useState<string | null>(null);
+  const [focusDescribe, setFocusDescribe] = useState(0);
   const [seen, setSeen] = useState(NOTHING_SEEN);
   const [focusOn, setFocusOn] = useState<FocusOn | null>(null);
   const [quietOn, setQuietOn] = useState<FocusOn | null>(null);
@@ -136,6 +145,8 @@ export function NewEventScreen({
   const nameInput = useRef<TextInputInstance>(null);
   const venueNameInput = useRef<TextInputInstance>(null);
   const venueAddressInput = useRef<TextInputInstance>(null);
+  const noteInput = useRef<TextInputInstance>(null);
+  const describeInput = useRef<TextInputInstance>(null);
   const hostInputs = useRef(new Map<number, TextInputInstance>());
   const pickers = {
     type: useRef<ViewInstance>(null),
@@ -179,6 +190,10 @@ export function NewEventScreen({
   );
 
   useEffect(() => {
+    if (focusDescribe > 0) focusChecked(describeInput);
+  }, [focusDescribe]);
+
+  useEffect(() => {
     if (focusHost == null) return;
     const input = hostInputs.current.get(focusHost.key);
     if (input != null) focusChecked({ current: input });
@@ -193,6 +208,7 @@ export function NewEventScreen({
         name: nameInput,
         venueName: venueNameInput,
         venueAddress: venueAddressInput,
+        arrivalNote: noteInput,
       };
       const input = typedIns[field];
       if (input != null) focusChecked(input);
@@ -231,6 +247,7 @@ export function NewEventScreen({
     setTyped((was) => ({ ...was, venue: { ...was.venue, ...next } }));
     if ('name' in next) setErrors((was) => cleared(was, 'venueName'));
     if ('address' in next) setErrors((was) => cleared(was, 'venueAddress'));
+    if ('note' in next) setErrors((was) => cleared(was, 'arrivalNote'));
     edited();
   }
 
@@ -241,10 +258,22 @@ export function NewEventScreen({
   }
 
   /** Returns whether the keys go down for the field it focuses: only a field not typed in puts them down. */
-  function refuse(found: EventErrors, hostFound: HostErrors = {}, saidFirst?: string): boolean {
+  function refuse(
+    found: EventErrors,
+    hostFound: HostErrors = {},
+    saidFirst?: string,
+    describeWrong = false,
+  ): boolean {
     setErrors(found);
     setHostErrors(hostFound);
     const first = firstRefusedOf(found, hostFound, hosts);
+    if (describeWrong && !aboveCover(first)) {
+      setFocusOn(null);
+      setQuietOn(null);
+      setFocusHost(null);
+      setFocusDescribe((was) => was + 1);
+      return false;
+    }
     const onField = first != null && 'field' in first ? first.field : null;
     const quiet = Platform.OS === 'android' && saidFirst != null && keysGoDownFor(onField);
     const on = onField != null ? { field: onField, saidFirst } : null;
@@ -267,6 +296,9 @@ export function NewEventScreen({
     }
 
     const mine = ++attempt.current;
+    setPosition('middle');
+    setDescribed('');
+    setDescribeError(null);
     const file = pickedFile(chosen);
     const upload = (async (): Promise<StagedCover> => {
       try {
@@ -303,6 +335,8 @@ export function NewEventScreen({
     staged.current = null;
     setPhoto({ kind: 'none' });
     setCoverRefused(null);
+    setDescribed('');
+    setDescribeError(null);
   }
 
   async function send(): Promise<void> {
@@ -310,17 +344,24 @@ export function NewEventScreen({
 
     const found = eventFormErrors(typed, t);
     const hostFound = hostErrorsOf(newEventHosts(hosts), t);
-    const count = Object.keys(found).length + Object.keys(hostFound).length;
+    const describeWrong =
+      photo.kind === 'chosen' && visibleLength(described) > COVER_DESCRIPTION_MAXIMUM;
+    const count =
+      Object.keys(found).length + Object.keys(hostFound).length + (describeWrong ? 1 : 0);
 
     setHostsChecked(true);
 
     if (count > 0) {
       setStatus('editing');
       const summary = t('eventForm.problems', { count });
+      setDescribeError(
+        describeWrong ? t('eventCover.describeTooLong', { most: COVER_DESCRIPTION_MAXIMUM }) : null,
+      );
       const keysGoDown = refuse(
         found,
         hostFound,
         Platform.OS !== 'android' || readerOn ? summary : undefined,
+        describeWrong,
       );
       setUnsent({ count, keysGoDown });
       return;
@@ -341,7 +382,11 @@ export function NewEventScreen({
       await coverAfterCreate(
         upload,
         (uploadKey) =>
-          api.setEventCover(created.id, { uploadKey, position: COVER_MIDDLE, description: null }),
+          api.setEventCover(created.id, {
+            uploadKey,
+            position: POSITION_AT[position],
+            description: described.trim() === '' ? null : described.trim(),
+          }),
         (words) => markCoverRefused(created.id, words),
         (error) => coverRefusalOf(error, t),
       );
@@ -515,7 +560,7 @@ export function NewEventScreen({
     photo.kind === 'chosen'
       ? {
           sizes: [{ width: photo.width, url: photo.uri }],
-          position: COVER_MIDDLE,
+          position: POSITION_AT[position],
           description: null,
         }
       : null;
@@ -605,15 +650,23 @@ export function NewEventScreen({
             meshKey={draft.type === '' ? 'new-event' : draft.type}
           />
           {photo.kind === 'chosen' ? (
-            !busy && (
-              <TextAction
-                label={t('eventCover.remove')}
-                removes
-                consequence={t('eventCover.removeLine')}
-                onPress={removePhoto}
-                testID="eventForm.cover.remove"
-              />
-            )
+            <CoverPhotoFields
+              position={position}
+              onPosition={setPosition}
+              described={described}
+              onDescribed={(next) => {
+                setDescribed(next);
+                if (visibleLength(next) <= COVER_DESCRIPTION_MAXIMUM) setDescribeError(null);
+                edited();
+              }}
+              count={visibleLength(described)}
+              most={COVER_DESCRIPTION_MAXIMUM}
+              describeError={describeError}
+              describeRef={describeInput}
+              onChange={() => void choosePhoto()}
+              onRemove={removePhoto}
+              off={busy}
+            />
           ) : (
             <CoverUpload
               refused={coverRefused}
@@ -689,6 +742,13 @@ export function NewEventScreen({
             addressRef={venueAddressInput}
             off={busy}
             testID="eventForm.venue"
+          />
+          <ArrivalNoteField
+            note={venue.note}
+            onNote={(note) => changeVenue({ note })}
+            error={errors.arrivalNote ?? null}
+            noteRef={noteInput}
+            testID="eventForm.arrivalNote"
           />
         </Part>
 
@@ -778,6 +838,14 @@ function Lines({ quiet, children }: { quiet: boolean; children: ReactNode }) {
       {children}
     </View>
   );
+}
+
+/** Whether the first refusal sits above the cover's Description in the form: Event name, Type or a host. */
+function aboveCover(first: ReturnType<typeof firstRefusedOf>): boolean {
+  if (first == null) return false;
+  if ('host' in first) return true;
+
+  return first.field === 'name' || first.field === 'type';
 }
 
 function cleared(was: EventErrors, field: EventFormField): EventErrors {
