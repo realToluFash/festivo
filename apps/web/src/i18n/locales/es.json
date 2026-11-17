@@ -4302,6 +4302,7 @@
     "unwarned_other": "{{count, number}} invitados que han elegido {{dish}} tienen anotado: {{allergens}}. Nadie se lo ha comunicado todavía.",
     "unwarned_many": "{{count, number}} de invitados que han elegido {{dish}} tienen anotado: {{allergens}}. Nadie se lo ha comunicado todavía.",
     "lock": "Su rol, {{role}}, puede ver este menú pero no cambiarlo. Pueden hacerlo quienes tienen un rol que permite modificar Menú.",
+    "lockOnEvent": "Su rol en este evento, {{role}}, permite ver este menú pero no cambiarlo. Pueden hacerlo quienes tienen un rol que permite modificar Menú.",
     "loading": "Cargando el menú…",
     "forbidden": "No se ha cambiado nada. Su rol no incluye el permiso necesario.",
     "failedSave": "No se ha guardado nada. Compruebe su conexión y vuelva a pulsar {{button}}.",
