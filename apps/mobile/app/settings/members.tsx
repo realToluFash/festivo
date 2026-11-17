@@ -649,6 +649,7 @@ export default function MembersScreen() {
       listUnderTabs
       offline={stale}
       besideTitle={alone ? refreshingWords : undefined}
+      untitled={phone && listBehind}
       title={
         phone
           ? listBehind

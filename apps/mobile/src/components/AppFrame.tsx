@@ -261,7 +261,7 @@ export function AppFrame({
   besideBack?: ReactNode;
   /** Inside an event, its areas take the navigation's place. */
   inEvent?: InsideEvent | undefined;
-  /** Inside an event, the body names the page itself (an Overview's card, an area's heading upright), so the frame draws no title (sc-30413). */
+  /** The body names the page itself (an event's Overview card, a member's own card on a phone), so the frame draws no title (sc-30413, sc-37693). */
   untitled?: boolean;
   title: string;
   /** The title on a phone, where it stands for the page's own heading. */
@@ -712,7 +712,7 @@ interface FrameHeaderProps {
   pill: Ref<ViewInstance>;
   /** "Now working in …", under the title of a screen with its own top (sc-39471). */
   switched: ReactNode;
-  /** Inside an event, a page whose body names it (an Overview's card, an area's own heading upright), so the frame draws no title. */
+  /** A page whose body names it (an event's Overview card, a member's own card on a phone), so the frame draws no title. */
   untitled: boolean;
 }
 
@@ -792,6 +792,7 @@ function ScreenTop({
   besideTitle,
   besideBack,
   switched,
+  untitled,
   stays = false,
   style,
   rowStyle,
@@ -865,7 +866,7 @@ function ScreenTop({
           <View style={styles.fill}>{backView}</View>
           <BellButton />
         </View>
-        {titleRow}
+        {!untitled && titleRow}
         {under}
       </View>
     );
@@ -873,7 +874,7 @@ function ScreenTop({
   return (
     <View style={[staysStyle, style]}>
       {kind === 'tabletPortrait' && backView}
-      {titleRow}
+      {!untitled && titleRow}
       {under}
     </View>
   );
