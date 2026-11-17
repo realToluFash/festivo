@@ -50,6 +50,7 @@ import {
   useEffect,
   useEffectEvent,
   useId,
+  useLayoutEffect,
   useRef,
   useState,
 } from 'react';
@@ -783,23 +784,14 @@ function Plan({
     return () => node.removeEventListener('wheel', wheel);
   }, [hasRoom, zoomTo, panBy, view]);
 
-  useEffect(() => {
-    const node = canvasNode.current;
+  const keepClear = useCallback(
+    (target: Element) => {
+      const node = canvasNode.current;
 
-    if (node == null || !hasRoom) return;
-    let byKey = false;
-    const key = (event: KeyboardEvent) => {
-      byKey = event.key === 'Tab';
-    };
-    const point = () => {
-      byKey = false;
-    };
-    const follow = (event: FocusEvent) => {
-      const target = event.target;
-
-      if (!byKey || !(target instanceof Element) || target.closest('.st-room') == null) return;
+      if (node == null) return;
       const box = node.getBoundingClientRect();
       const at = target.getBoundingClientRect();
+
       const [dx, dy] = intoView(
         {
           x0: at.left - box.left,
@@ -822,6 +814,96 @@ function Plan({
       );
 
       if (dx !== 0 || dy !== 0) panBy(-dx, -dy);
+    },
+    [panBy, view],
+  );
+
+  const keyed = useRef<string | null>(null);
+  const keysShown =
+    keyboard && focusId != null && chosenIds.includes(focusId) && !readOnly && !adding;
+  const focusedItem = useCallback((): Element | null => {
+    const active = document.activeElement;
+
+    return active != null &&
+      canvasNode.current?.contains(active) === true &&
+      active.matches('[data-table], [data-row], [data-seat]')
+      ? active
+      : null;
+  }, []);
+
+  useLayoutEffect(() => {
+    const id = keyed.current;
+
+    keyed.current = null;
+    if (id == null) return;
+    const target = focusedItem();
+
+    if (target == null) return;
+    if (['data-table', 'data-row', 'data-seat'].some((one) => target.getAttribute(one) === id))
+      keepClear(target);
+  });
+
+  useLayoutEffect(() => {
+    const target = keysShown ? focusedItem() : null;
+
+    if (target != null) keepClear(target);
+  }, [keysShown, focusedItem, keepClear]);
+
+  const keyFocus = keyboard && focusId != null;
+
+  useEffect(() => {
+    const node = canvasNode.current;
+
+    if (!keyFocus || node == null || typeof ResizeObserver === 'undefined') return;
+    const tall = new WeakMap<Element, number>();
+    const grows = new ResizeObserver((entries) => {
+      const grew = entries.some((entry) => {
+        const was = tall.get(entry.target);
+        const now = entry.target.getBoundingClientRect().height;
+
+        tall.set(entry.target, now);
+        return was != null && now > was;
+      });
+      const target = grew ? focusedItem() : null;
+
+      if (target != null) keepClear(target);
+    });
+    const watch = () =>
+      node.querySelectorAll(':scope > .st-float').forEach((bar) => grows.observe(bar));
+    const shows = new MutationObserver((changes) => {
+      watch();
+      const shown = changes.some((change) =>
+        [...change.addedNodes].some((one) => one instanceof Element && one.matches('.st-float')),
+      );
+      const target = shown ? focusedItem() : null;
+
+      if (target != null) keepClear(target);
+    });
+
+    watch();
+    shows.observe(node, { childList: true });
+    return () => {
+      grows.disconnect();
+      shows.disconnect();
+    };
+  }, [keyFocus, focusedItem, keepClear]);
+
+  useEffect(() => {
+    const node = canvasNode.current;
+
+    if (node == null || !hasRoom) return;
+    let byKey = false;
+    const key = (event: KeyboardEvent) => {
+      byKey = event.key === 'Tab';
+    };
+    const point = () => {
+      byKey = false;
+    };
+    const follow = (event: FocusEvent) => {
+      const target = event.target;
+
+      if (!byKey || !(target instanceof Element) || target.closest('.st-room') == null) return;
+      keepClear(target);
     };
 
     window.addEventListener('keydown', key, true);
@@ -832,7 +914,7 @@ function Plan({
       window.removeEventListener('pointerdown', point, true);
       node.removeEventListener('focusin', follow);
     };
-  }, [hasRoom, panBy, view]);
+  }, [hasRoom, keepClear]);
 
   useEffect(() => {
     const move = (event: PointerEvent) => {
@@ -1413,7 +1495,11 @@ function Plan({
         arrow[1] * step,
       ]);
 
-      if (mx === 0 && my === 0) return;
+      if (mx === 0 && my === 0) {
+        keepClear(target);
+        return;
+      }
+      keyed.current = id;
       arrange(
         moving.map((one) => ({
           ...placementOf(one),
@@ -1438,8 +1524,10 @@ function Plan({
 
       if (!insideRoom({ ...footprintOf(item), rotation }, plan)) {
         setNotice(t('seating.outside', { name: itemName(t, item) }));
+        keepClear(target);
         return;
       }
+      keyed.current = id;
       arrange([{ ...placementOf(item), rotation }]);
       setHeard(t('seating.turnedTo', { name: itemName(t, item), degrees: rotation }));
       return;
@@ -2004,9 +2092,7 @@ function Plan({
             onStop={() => setPlacing(null)}
           />
         )}
-        {keyboard && focusId != null && chosenIds.includes(focusId) && !readOnly && !adding && (
-          <KeysStrip system={system} />
-        )}
+        {keysShown && <KeysStrip system={system} />}
         {adding && !readOnly && <RulesStrip />}
         <p className="visually-hidden" aria-live="polite">
           {heard}
