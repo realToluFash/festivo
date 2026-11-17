@@ -11,6 +11,8 @@ import {
 } from 'react';
 import { Link, Navigate, useParams, useSearchParams } from 'react-router';
 
+import { KeptArea, KeptHere } from './KeptOffline.tsx';
+import { clockWords } from './tabKept.ts';
 import { EventsShell } from './EventParts.tsx';
 import { EventSidebar } from './EventSidebar.tsx';
 import { clockOf, sampleEvent, type SampleEvent } from './events.ts';
@@ -155,20 +157,22 @@ function SeatingAt({ id, raw }: { id: string | undefined; raw: string | null }) 
   const named = crumbOf(state, event.name);
 
   return (
-    <EventsShell
-      renderSide={(tell, covered) => (
-        <EventSidebar
-          event={event}
-          area="seating"
-          now={clockOf(null)}
-          tell={tell}
-          inert={covered}
-          waiting={event.id === EVENT_ID ? waitingLine(keptInbox()) : null}
-        />
-      )}
-    >
-      {(tell) => <Seating first={first} event={event} named={named} tell={tell} />}
-    </EventsShell>
+    <KeptArea eventId={event.id} area="seating" at={clockWords(clockOf(null), event.timeZone)}>
+      <EventsShell
+        renderSide={(tell, covered) => (
+          <EventSidebar
+            event={event}
+            area="seating"
+            now={clockOf(null)}
+            tell={tell}
+            inert={covered}
+            waiting={event.id === EVENT_ID ? waitingLine(keptInbox()) : null}
+          />
+        )}
+      >
+        {(tell) => <Seating first={first} event={event} named={named} tell={tell} />}
+      </EventsShell>
+    </KeptArea>
   );
 }
 
@@ -1920,11 +1924,14 @@ function Seating({
   }, [size.w, ui.load, ui.view, ui.save, room, showSave]);
 
   const crumb = (
-    <header className="st-top">
-      <SeatingCrumb id={event.id} named={named} />
-      <Presence />
-      <DemoBell tell={tell} />
-    </header>
+    <>
+      <KeptHere className="st-kept" />
+      <header className="st-top">
+        <SeatingCrumb id={event.id} named={named} />
+        <Presence />
+        <DemoBell tell={tell} />
+      </header>
+    </>
   );
 
   let main: ReactNode;

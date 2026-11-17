@@ -4,6 +4,8 @@ import { Link, Navigate, useParams, useSearchParams } from 'react-router';
 import { Glyph, type GlyphName } from '../components/Glyph.tsx';
 import type { Tell } from '../components/SettingsParts.tsx';
 import { DemoBell } from './DemoBell.tsx';
+import { KeptArea, KeptHere } from './KeptOffline.tsx';
+import { clockWords } from './tabKept.ts';
 import { EventsShell } from './EventParts.tsx';
 import { EventSidebar } from './EventSidebar.tsx';
 import { HintButton } from '../components/HintButton.tsx';
@@ -105,20 +107,22 @@ function MenuAt({ id, raw }: { id: string | undefined; raw: string | null }) {
     return <Navigate to={`/demo/events/${event.id}?area=menu`} replace />;
 
   return (
-    <EventsShell
-      renderSide={(tell, covered) => (
-        <EventSidebar
-          event={event}
-          area="menu"
-          now={clockOfKitchen()}
-          tell={tell}
-          inert={covered}
-          waiting={waitingLine(keptInbox())}
-        />
-      )}
-    >
-      {(tell) => <Menu first={first} event={event} tell={tell} />}
-    </EventsShell>
+    <KeptArea eventId={event.id} area="menu" at={clockWords(clockOfKitchen(), event.timeZone)}>
+      <EventsShell
+        renderSide={(tell, covered) => (
+          <EventSidebar
+            event={event}
+            area="menu"
+            now={clockOfKitchen()}
+            tell={tell}
+            inert={covered}
+            waiting={waitingLine(keptInbox())}
+          />
+        )}
+      >
+        {(tell) => <Menu first={first} event={event} tell={tell} />}
+      </EventsShell>
+    </KeptArea>
   );
 }
 
@@ -420,6 +424,7 @@ function Menu({ first, event, tell }: { first: MenuStart; event: SampleEvent; te
   return (
     <div className="desk-page ev-page gs mn">
       <div className="ev-wide mn-page">
+        <KeptHere />
         <div className="ev-crumb-row">
           <nav className="ev-crumb" aria-label={MW.crumb}>
             <ol>

@@ -71,6 +71,7 @@ export type Errors = Partial<Record<Field, string>>;
 
 export const RW = {
   title: 'Schedule',
+  failed: 'The schedule did not load.',
   items: (n: number) => `${n} ${n === 1 ? 'item' : 'items'}`,
   addItem: 'Add item',
   empty: 'Nothing scheduled yet',

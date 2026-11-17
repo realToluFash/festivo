@@ -67,6 +67,8 @@ import {
   NotOffered,
 } from './DishChoices.tsx';
 import { DemoOffline } from './DemoOffline.tsx';
+import { KeptArea, KeptHere } from './KeptOffline.tsx';
+import { clockWords } from './tabKept.ts';
 import { EventsShell } from './EventParts.tsx';
 import { EventSidebar } from './EventSidebar.tsx';
 import { type SampleEvent } from './events.ts';
@@ -142,36 +144,39 @@ export function CoursesAt({
   const [menuReady, setMenuReady] = useState<string | null>(null);
 
   return (
-    <EventsShell
-      renderSide={(tell, covered) => (
-        <div className={navOpen ? 'mc-nav is-open' : 'mc-nav'} id="mc-nav">
-          <EventSidebar
-            event={event}
-            area="menu"
-            now={clockOfKitchen()}
-            tell={tell}
-            inert={covered}
-            waiting={waitingLine(keptInbox())}
-            menuLine={menuReady}
-          />
-        </div>
-      )}
-    >
-      {(tell) => (
-        <div className="desk-page ev-page gs mn mc">
-          <div className="ev-wide mn-page">
-            <Crumbs
+    <KeptArea eventId={event.id} area="menu" at={clockWords(clockOfKitchen(), event.timeZone)}>
+      <EventsShell
+        renderSide={(tell, covered) => (
+          <div className={navOpen ? 'mc-nav is-open' : 'mc-nav'} id="mc-nav">
+            <EventSidebar
               event={event}
+              area="menu"
+              now={clockOfKitchen()}
               tell={tell}
-              navOpen={navOpen}
-              onNav={() => setNavOpen((now) => !now)}
-              withheld={first.system === 'noAccess'}
+              inert={covered}
+              waiting={waitingLine(keptInbox())}
+              menuLine={menuReady}
             />
-            <Body first={first} lang={lang} budget={budget} tell={tell} onReady={setMenuReady} />
           </div>
-        </div>
-      )}
-    </EventsShell>
+        )}
+      >
+        {(tell) => (
+          <div className="desk-page ev-page gs mn mc">
+            <div className="ev-wide mn-page">
+              <KeptHere />
+              <Crumbs
+                event={event}
+                tell={tell}
+                navOpen={navOpen}
+                onNav={() => setNavOpen((now) => !now)}
+                withheld={first.system === 'noAccess'}
+              />
+              <Body first={first} lang={lang} budget={budget} tell={tell} onReady={setMenuReady} />
+            </div>
+          </div>
+        )}
+      </EventsShell>
+    </KeptArea>
   );
 }
 

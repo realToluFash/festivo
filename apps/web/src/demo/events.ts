@@ -471,6 +471,7 @@ export const EVENT_WORDS = {
   ],
   offline: (time: string) => `Offline · as of ${time}`,
   retry: 'Try again',
+  eventFailed: 'The event did not load. Try again in a moment.',
   phase: {
     draft: 'Draft',
     live: 'Live',
