@@ -71,6 +71,34 @@ function drawBox(from: Point, to: Point, options: { shiftKey?: boolean } = {}): 
   fireEvent.pointerUp(window, { pointerId: 1, clientX: x1, clientY: y1 });
 }
 
+function finger(
+  kind: 'down' | 'move' | 'up',
+  id: number,
+  [x, y]: Point,
+  target: Element | Window = window,
+): void {
+  const init = { button: 0, pointerId: id, pointerType: 'touch', clientX: x, clientY: y };
+
+  if (kind === 'down') fireEvent.pointerDown(target, init);
+  else if (kind === 'move') fireEvent.pointerMove(window, init);
+  else fireEvent.pointerUp(window, init);
+}
+
+function boxThenSecondFinger(on: Element = room()): void {
+  const from = onScreen([250, 450]);
+  const to = onScreen([960, 1100]);
+
+  finger('down', 1, from, room());
+  finger('move', 1, to);
+  expect(document.querySelector('.st-box-drawn')).not.toBeNull();
+  finger('down', 2, [to[0] + 40, to[1]], on);
+  expect(document.querySelector('.st-box-drawn')).toBeNull();
+  finger('move', 1, [to[0] + 30, to[1] + 30]);
+  finger('move', 2, [to[0] + 70, to[1] + 30]);
+  finger('up', 1, [to[0] + 30, to[1] + 30]);
+  finger('up', 2, [to[0] + 70, to[1] + 30]);
+}
+
 function apply(): void {
   fireEvent.click(within(panel()).getByRole('button', { name: 'Apply' }));
 }
@@ -398,6 +426,87 @@ describe('choosing many (sc-4717)', () => {
     expect(screen.queryByRole('button', { name: 'Select all' })).toBeNull();
     expect(screen.queryByRole('button', { name: 'Add to choice' })).toBeNull();
     fireEvent.keyDown(document.body, { key: 'a', ctrlKey: true });
+    expect(chosen()).toBeNull();
+  });
+});
+
+describe('a second finger turns a box into a pan and keeps the choice (sc-60666)', () => {
+  it('puts back the choice from before the box, with Add to choice off', SLOW, async () => {
+    await seating();
+    press(item(/^Table 6,/u));
+    press(item(/^Table 7,/u), { shiftKey: true });
+    expect(chosen()).toBe('2 chosen');
+    const before = said();
+
+    boxThenSecondFinger();
+    expect(chosen()).toBe('2 chosen');
+    expect(said()).toBe(before);
+  });
+
+  it('opens the one chosen item’s panel again', SLOW, async () => {
+    await seating();
+    press(item(/^Table 10,/u));
+    expect(within(panel()).getByLabelText('Across')).toBeDefined();
+    boxThenSecondFinger();
+    expect(within(panel()).getByLabelText('Across')).toBeDefined();
+  });
+
+  it('takes out what the box added, with Add to choice on, and leaves it on', SLOW, async () => {
+    await seating();
+    const toggle = screen.getByRole('button', { name: 'Add to choice' });
+
+    fireEvent.click(toggle);
+    press(item(/^Table 1,/u));
+    press(item(/^Table 5,/u));
+    expect(chosen()).toBe('2 chosen');
+    boxThenSecondFinger();
+    expect(chosen()).toBe('2 chosen');
+    expect(toggle.getAttribute('aria-pressed')).toBe('true');
+  });
+
+  it('ends with nothing chosen when nothing was chosen before', SLOW, async () => {
+    await seating();
+    boxThenSecondFinger();
+    expect(chosen()).toBeNull();
+  });
+
+  it('pans from a second finger on an item without moving or choosing it', SLOW, async () => {
+    await seating();
+    const was = across(/^Table 10,/u);
+
+    press(item(/^Table 6,/u));
+    press(item(/^Table 7,/u), { shiftKey: true });
+    boxThenSecondFinger(item(/^Table 10,/u));
+    expect(chosen()).toBe('2 chosen');
+    expect(across(/^Table 10,/u)).toBe(was);
+  });
+
+  it('keeps the choice when both fingers land together, moved or not', SLOW, async () => {
+    await seating();
+    press(item(/^Table 6,/u));
+    press(item(/^Table 7,/u), { shiftKey: true });
+    const at = onScreen([250, 450]);
+
+    finger('down', 1, at, room());
+    finger('down', 2, [at[0] + 40, at[1]], room());
+    finger('up', 1, at);
+    finger('up', 2, [at[0] + 40, at[1]]);
+    expect(chosen()).toBe('2 chosen');
+    finger('down', 1, at, room());
+    finger('down', 2, [at[0] + 40, at[1]], room());
+    finger('move', 2, [at[0] + 90, at[1] + 50]);
+    finger('up', 2, [at[0] + 90, at[1] + 50]);
+    finger('up', 1, at);
+    expect(chosen()).toBe('2 chosen');
+  });
+
+  it('still clears the choice on a one-finger tap on empty floor', SLOW, async () => {
+    await seating();
+    press(item(/^Table 6,/u));
+    const at = onScreen([250, 450]);
+
+    finger('down', 1, at, room());
+    finger('up', 1, at);
     expect(chosen()).toBeNull();
   });
 });
