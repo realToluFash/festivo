@@ -153,6 +153,8 @@ export interface SeatingRestoredItem {
   spacingCm?: number;
   unusableSeats?: number[];
   unusable?: boolean;
+  /** Who the Delete freed from it, back in the chairs they had (sc-57680). */
+  guests?: { guestId: string; seat: number }[];
 }
 
 /** The plan after a step that made items, and their ids to choose. */
