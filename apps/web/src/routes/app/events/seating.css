@@ -531,8 +531,10 @@
 
 .st-bar-acts {
   display: flex;
-  flex: none;
-  gap: 18px;
+  flex: 0 1 auto;
+  flex-wrap: wrap;
+  gap: 0 18px;
+  min-width: 0;
 }
 
 .st-pair {
