@@ -375,6 +375,52 @@ describe('The event’s Menu (sc-3902)', () => {
     expect(screen.getByRole('searchbox', { name: 'Find a dish' })).toBeDefined();
   });
 
+  it('says a library that did not load did not, never that it is empty, and Try again loads it, failing back as often as it fails', async () => {
+    const tries: Answer[] = [
+      () => problem('internal_error', 500),
+      () => problem('internal_error', 500),
+      () =>
+        json({
+          dishes: [
+            {
+              id: 'lib_suya',
+              name: 'Suya wrap',
+              description: null,
+              allergens: [],
+              diets: [],
+              usedByEvent: false,
+              archivedAt: null,
+              lastPrice: null,
+              variants: [],
+            },
+          ],
+          canManage: true,
+          seesPrices: false,
+        }),
+    ];
+    await onMenu({
+      'GET /api/events/ev_1/menu': menuOf(LATE),
+      'GET /api/orgs/org_1/dishes': (body) => (tries.shift() ?? tries[0]!)(body),
+    });
+
+    fireEvent.click(await screen.findByRole('button', { name: 'Add dish' }));
+
+    expect(await screen.findByText('Check your connection, then try again.')).toBeDefined();
+    expect(document.getElementById('mc-found')?.textContent).toBe('The menu library did not load.');
+    expect(screen.queryByText('The menu library has no dishes yet.')).toBeNull();
+    expect(screen.queryByRole('button', { name: /Start a new dish/ })).toBeNull();
+    expect(screen.getByRole('searchbox', { name: 'Find a dish' })).toBeDefined();
+
+    fireEvent.click(screen.getByRole('button', { name: 'Try again' }));
+    expect(document.activeElement?.id).toBe('mc-find');
+    expect(await screen.findByText('Check your connection, then try again.')).toBeDefined();
+
+    fireEvent.click(screen.getByRole('button', { name: 'Try again' }));
+    expect(document.getElementById('mc-found')?.textContent).toBe('Loading the menu library…');
+    expect(await screen.findByText('Suya wrap')).toBeDefined();
+    expect(screen.queryByText('The menu library did not load.')).toBeNull();
+  });
+
   it('says an empty library has no dishes, and starts a new dish with no name', async () => {
     await onMenu({ 'GET /api/events/ev_1/menu': menuOf(LATE) });
 

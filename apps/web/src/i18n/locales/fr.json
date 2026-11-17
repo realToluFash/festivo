@@ -4340,6 +4340,8 @@
     "foundOf_many": "{{shown, number}} sur {{count, number}} de plats",
     "noMatch": "Aucun plat n’a « {{query}} » dans son nom.",
     "libraryEmpty": "La bibliothèque ne contient encore aucun plat.",
+    "libraryFailed": "The menu library did not load.",
+    "libraryFailedBody": "Check your connection, then try again.",
     "startNew": "Créer un nouveau plat nommé « {{query}} »",
     "startNewBlank": "Créer un nouveau plat",
     "add": "Ajouter",

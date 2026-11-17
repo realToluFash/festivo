@@ -4340,6 +4340,8 @@
     "foundOf_many": "{{shown, number}} de {{count, number}} de platos",
     "noMatch": "Ningún plato tiene «{{query}}» en el nombre.",
     "libraryEmpty": "Todavía no hay platos en la biblioteca.",
+    "libraryFailed": "The menu library did not load.",
+    "libraryFailedBody": "Check your connection, then try again.",
     "startNew": "Crear un plato nuevo llamado «{{query}}»",
     "startNewBlank": "Crear un plato nuevo",
     "add": "Añadir",
