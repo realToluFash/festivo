@@ -23,7 +23,6 @@ final class SeatingRaceTest extends FunctionalTestCase
     /** @var list<array{userId: string, organisationId: string, eventId: string}> */
     private static array $made = [];
 
-    /** The setup committed its rows in another process, out of reach of the rollback every other test relies on: left, they would count in the tests after this one. */
     protected function tearDown(): void
     {
         $elsewhere = DriverManager::getConnection(self::em()->getConnection()->getParams());
