@@ -2,6 +2,7 @@
 export const REALTIME_TOPICS = {
   UserNotifications: 'users/{id}/notifications',
   EventSeating: 'events/{id}/seating',
+  EventSeatingChoices: 'events/{id}/seating/choices',
   EventGuests: 'events/{id}/guests',
   EventHeadcount: 'events/{id}/headcount',
   EventStaff: 'events/{id}/staff',

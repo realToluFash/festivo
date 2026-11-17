@@ -53,6 +53,7 @@ import {
   type Seating,
   accName,
   arrangeable,
+  choicesOn,
   chairWord,
   handlesLive,
   hexOf,
@@ -735,7 +736,10 @@ export function looksOf(
       lit: true,
       ...(handles != null && handlesLive(m) ? { handles } : {}),
     });
-  Object.entries(m.rings).forEach(([id, person]) => !person.viewer && add(id, { ring: person }));
+  Object.keys(m.rings).forEach((id) => {
+    const first = choicesOn(m, id)[0];
+    if (first != null) add(id, { ring: first.who });
+  });
   m.outside.forEach((id) => add(id, { overlap: true }));
   const chosen = itemOf(m, m.chosen);
   if (chosen != null) {

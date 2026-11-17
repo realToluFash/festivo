@@ -1,5 +1,4 @@
 import {
-  COVER_MIDDLE,
   EVENT_NAME_MAXIMUM,
   EVENT_TYPES,
   type EventFormField,
@@ -34,13 +33,16 @@ import { HostFields, VenueFields, ZoneSelect } from './EventEdits.tsx';
 import { CURRENCY_CHOICES, EVENT_WORDS as W, TYPE_WORDS, type Wall } from './events.ts';
 import { meshFor } from '../mesh.ts';
 import {
+  CHOSEN,
   FILLED,
   NEW_WORDS as N,
+  NO_PHOTO,
   type NewEventState,
   type NewTyped,
   type Refusals,
   SENDING_STATES,
   checkOf,
+  coverRefusalOf,
   draftOf,
   firstRefused,
   hostWords,
@@ -95,8 +97,6 @@ export function NewEventForm({ state }: { state: NewEventState | null }) {
   const cover = useCoverPick(chosen, state === 'photoSendFailed' ? W.uploadFailed : null);
   const [sending, setSending] = useState(() => state != null && SENDING_STATES.includes(state));
   const [lost, setLost] = useState<string | null>(null);
-  const [position, setPosition] = useState(COVER_MIDDLE);
-  const [description, setDescription] = useState('');
   const sends = useRef(0);
   const timers = useRef<number[]>([]);
   const slowFirst = useRef(state === 'photoSending' || state === 'photoSendLost');
@@ -119,6 +119,7 @@ export function NewEventForm({ state }: { state: NewEventState | null }) {
   );
   const away = useLeaveAsk((typedSomething(typed) || sending) && status !== 'created');
   const id = useId();
+  const noteId = `${id}-note`;
   const typeRef = useRef<HTMLDivElement>(null);
   const startRef = useRef<HTMLFieldSetElement>(null);
   const endRef = useRef<HTMLFieldSetElement>(null);
@@ -141,6 +142,10 @@ export function NewEventForm({ state }: { state: NewEventState | null }) {
       hostFields.current[target.host]?.focus();
       return;
     }
+    if ('cover' in target) {
+      describeRef.current?.focus();
+      return;
+    }
     const at: Record<EventFormField, RefObject<HTMLElement | null>> = {
       name: nameRef,
       type: typeRef,
@@ -148,13 +153,13 @@ export function NewEventForm({ state }: { state: NewEventState | null }) {
       endsAt: endRef,
       venueName: venueNameRef,
       venueAddress: addressRef,
-      arrivalNote: addressRef,
+      arrivalNote: { current: document.getElementById(noteId) },
       timeZone: zoneRef,
       currency: currencyRef,
     };
     const field = at[target.field].current;
     (field?.querySelector<HTMLElement>('input, select') ?? field)?.focus();
-  }, [target]);
+  }, [target, noteId]);
 
   useEffect(() => () => timers.current.forEach((one) => window.clearTimeout(one)), []);
 
@@ -192,20 +197,14 @@ export function NewEventForm({ state }: { state: NewEventState | null }) {
     if (sentForCopy(file)) return send(state !== 'photoSendLost');
     sends.current += 1;
     setSending(false);
-    landed();
-  }
-
-  function landed(): void {
-    change({ photo: true });
-    setPosition(COVER_MIDDLE);
-    setDescription('');
+    change(CHOSEN);
   }
 
   function send(lands: boolean): void {
     const mine = ++sends.current;
     slowFirst.current = false;
     setSending(true);
-    change({ photo: false });
+    change(NO_PHOTO);
     timers.current.push(window.setTimeout(() => settle(mine, lands), SENDING_MS));
   }
 
@@ -213,7 +212,7 @@ export function NewEventForm({ state }: { state: NewEventState | null }) {
   function settle(mine: number, lands: boolean): void {
     if (mine !== sends.current) return;
     setSending(false);
-    if (lands) return pressed.current ? setTyped((was) => ({ ...was, photo: true })) : landed();
+    if (lands) return pressed.current ? setTyped((was) => ({ ...was, ...CHOSEN })) : change(CHOSEN);
     if (pressed.current) return setLost(W.uploadFailed);
     cover.setRefusal(W.uploadFailed);
   }
@@ -221,7 +220,7 @@ export function NewEventForm({ state }: { state: NewEventState | null }) {
   function stopSending(): void {
     sends.current += 1;
     setSending(false);
-    change({ photo: false });
+    change(NO_PHOTO);
   }
 
   function moveStart(next: Wall): void {
@@ -334,15 +333,15 @@ export function NewEventForm({ state }: { state: NewEventState | null }) {
           </>
         ) : typed.photo ? (
           <CoverPhotoFields
-            position={position}
-            onPosition={setPosition}
-            description={description}
-            onDescription={setDescription}
-            tooLong={false}
+            position={typed.position}
+            onPosition={(position) => change({ position })}
+            description={typed.described}
+            onDescription={(described) => change({ described })}
+            tooLong={tried && coverRefusalOf(typed) != null}
             describeRef={describeRef}
-            off={busy}
             onChange={cover.pick}
-            onRemove={() => change({ photo: false })}
+            onRemove={() => change(NO_PHOTO)}
+            off={busy}
           />
         ) : (
           <CoverUpload
@@ -412,6 +411,10 @@ export function NewEventForm({ state }: { state: NewEventState | null }) {
           addressError={shown.venueAddress ?? null}
           nameRef={venueNameRef}
           addressRef={addressRef}
+          note={typed.note}
+          onNote={(note) => change({ note })}
+          noteError={shown.arrivalNote ?? null}
+          noteId={noteId}
           off={busy}
         />
       </Block>
@@ -479,11 +482,11 @@ export function NewEventForm({ state }: { state: NewEventState | null }) {
   );
 }
 
-type Target = { field: EventFormField } | { host: number };
+type Target = { field: EventFormField } | { host: number } | { cover: true };
 
 function targetOf(typed: NewTyped, server: Refusals): Target | null {
   const check = checkOf(typed, server);
-  const first = firstRefused(check.refusals, check.hosts);
+  const first = firstRefused(check.refusals, check.hosts, check.cover);
 
   return first == null ? null : { ...first };
 }

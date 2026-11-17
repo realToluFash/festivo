@@ -17,6 +17,7 @@ use App\Enum\ErrorCode;
 use App\Enum\Permission;
 use App\Enum\SectionColour;
 use App\Enum\TableShape;
+use App\Http\Access\Interfaces\MembershipDirectoryInterface;
 use App\Http\Access\InThisEvent;
 use App\Http\Access\Policy\InEvent;
 use App\Http\EntityTag;
@@ -42,6 +43,7 @@ final readonly class SeatingPlanController
         private SeatingPlanEditor $seatingPlanEditor,
         private SeatingSerialiser $seatingSerialiser,
         private SubscriberTokenIssuer $subscriberTokenIssuer,
+        private MembershipDirectoryInterface $membershipDirectory,
     ) {
     }
 
@@ -412,17 +414,39 @@ final readonly class SeatingPlanController
         return $this->seating($event, $plan, Response::HTTP_CREATED, ['chosen' => $restored]);
     }
 
-    /** A hub token for this event's seating alone; every change to the plan is published there whole. */
+    /** A hub token for this event's seating alone: every change to the plan, published there whole, what its editors have chosen, and who else has it open (sc-4719). */
     #[Route('/api/events/{eventId}/seating-plan/subscriptions', name: 'seating_plan_subscribe', methods: ['POST'])]
     #[InEvent(Permission::SeatingRead)]
     public function subscribe(string $eventId): JsonResponse
     {
-        $issued = $this->subscriberTokenIssuer->issueForEventSeating($this->event($eventId)->getId());
+        $event = $this->event($eventId);
+        $user = $this->user();
+        $editor = $this->membershipDirectory->grantsOnEvent($user, $event->getOrganisation()->getId(), $event->getId())?->allows(Permission::SeatingManage) ?? false;
+        $issued = $this->subscriberTokenIssuer->issueForEventSeating($event->getId(), $user, $editor);
 
         return new JsonResponse([
             'token' => $issued->token,
             'expiresAt' => $issued->expiresAt->format(\DATE_ATOM),
         ]);
+    }
+
+    /** What an editor has chosen, a table, row or seat, with `chair` for one of a table's chairs, or null for nothing; told to everyone with the plan open and kept nowhere (sc-4719). A viewer's choice is not shared, so this is refused them. */
+    #[Route('/api/events/{eventId}/seating-plan/chosen', name: 'seating_plan_choose', methods: ['PUT'])]
+    #[InEvent(Permission::SeatingManage)]
+    public function choose(Request $request, string $eventId): Response
+    {
+        $event = $this->event($eventId);
+        $body = Input::body($request, Type\shape([
+            'chosen' => Type\nullable(Type\shape([
+                'kind' => self::kind(),
+                'id' => Type\string(),
+                'chair' => Type\optional(Type\nullable(Type\uint())),
+            ])),
+        ]));
+
+        $this->seatingPlanEditor->announceChoice($event, $this->plan($event), $this->user(), $body['chosen']);
+
+        return new Response(status: Response::HTTP_NO_CONTENT);
     }
 
     /** @param array<string, string|list<string>> $chosen a table's, row's or seat's id as `tableId`, `rowId` or `seatId`, so a client opens the one it added, or the ids it should choose as `chosen` */

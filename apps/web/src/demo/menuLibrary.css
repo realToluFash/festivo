@@ -448,7 +448,7 @@
 }
 
 .lib-empty p {
-  color: var(--colorInkSecondary);
+  color: var(--colorInkOnDark);
   font: 400 15px/1.45 var(--fontFamily);
 }
 

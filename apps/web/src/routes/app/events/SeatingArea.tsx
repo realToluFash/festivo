@@ -14,8 +14,15 @@ import {
   type SectionColour,
   type SectionContents,
   type SingleSeat,
+  asColleagueChoice,
+  asPlanSubscriber,
+  asPlanSubscribers,
   asSeating,
+  type ColleagueChoice,
+  type PlanSubscriber,
   realtimeTopic,
+  subscribersTopic,
+  subscribersUrl,
 } from '@soirely/api-client';
 import {
   ROOM_MAXIMUM_CM,
@@ -108,6 +115,21 @@ import {
   withPlacements,
 } from './seatingItems.ts';
 import { fitOf, intoView, useCamera } from './seatingCamera.ts';
+import { Presence } from './SeatingPresence.tsx';
+import {
+  type ColleagueRing,
+  NOBODY_ELSE,
+  type OwnChoice,
+  LEAVING_HOLD_MS,
+  type PresenceState,
+  RingsContext,
+  changed,
+  chose,
+  colleaguesOf,
+  departed,
+  listed,
+  ringsOf,
+} from './seatingPresence.ts';
 import {
   type Fold,
   type GridDraft,
@@ -159,20 +181,31 @@ type Drag =
   | { kind: 'resize'; table: Table; handle: Handle; pointer: number; last: Placement | null };
 const WHEEL_ZOOM = 300;
 
-/** The room as the API holds it, published to every page open on it (sc-3998). */
-function useLiveSeating(eventId: string, onSeating: (seating: Seating) => void, onGap: () => void) {
-  const latest = useRef({ onSeating, onGap });
+interface LiveHandlers {
+  onSeating: (seating: Seating) => void;
+  onGap: () => void;
+  onSubscribers: (list: PlanSubscriber[]) => void;
+  onSubscriber: (tab: PlanSubscriber) => void;
+  onChoice: (choice: ColleagueChoice) => void;
+  onLost: () => void;
+}
+
+/** The room as the API holds it, published to every page open on it (sc-3998), with who else has it open and what its editors have chosen (sc-4719). */
+function useLiveSeating(eventId: string, handlers: LiveHandlers) {
+  const latest = useRef(handlers);
 
   useEffect(() => {
-    latest.current = { onSeating, onGap };
+    latest.current = handlers;
   });
 
   useEffect(() => {
     const hub = config().mercureUrl;
     if (hub === '') return;
 
+    const topic = realtimeTopic('EventSeating', eventId);
     let source: EventSource | null = null;
     let timer: ReturnType<typeof setTimeout> | undefined;
+    let listing: ReturnType<typeof setTimeout> | undefined;
     let stopped = false;
 
     const connect = async (): Promise<void> => {
@@ -180,30 +213,60 @@ function useLiveSeating(eventId: string, onSeating: (seating: Seating) => void, 
       try {
         subscription = await api.seatingSubscription(eventId);
       } catch {
+        latest.current.onLost();
         if (!stopped) timer = setTimeout(() => void connect(), RETRY_MS);
         return;
       }
       if (stopped) return;
 
       const url = new URL(hub);
-      url.searchParams.append('topic', realtimeTopic('EventSeating', eventId));
+      url.searchParams.append('topic', topic);
+      url.searchParams.append('topic', realtimeTopic('EventSeatingChoices', eventId));
+      url.searchParams.append('topic', subscribersTopic(topic));
       url.searchParams.append('authorization', subscription.token);
+      const token = subscription.token;
 
       source?.close();
+      clearTimeout(listing);
       source = new EventSource(url);
-      source.onopen = () => latest.current.onGap();
+      const opened = source;
+      const list = (): void => {
+        clearTimeout(listing);
+        fetch(subscribersUrl(hub, topic), { headers: { Authorization: `Bearer ${token}` } })
+          .then((response) => (response.ok ? response.json() : Promise.reject(new Error())))
+          .then(
+            (body: unknown) =>
+              !stopped && latest.current.onSubscribers(asPlanSubscribers(body, topic)),
+            () => {
+              if (stopped || source !== opened) return;
+              latest.current.onLost();
+              listing = setTimeout(list, RETRY_MS);
+            },
+          );
+      };
+      source.onopen = () => {
+        latest.current.onGap();
+        list();
+      };
       source.onmessage = (message: MessageEvent<string>) => {
-        let seating: Seating | null = null;
+        let data: unknown = null;
         try {
-          seating = asSeating(JSON.parse(message.data));
+          data = JSON.parse(message.data);
         } catch {
-          seating = null;
+          data = null;
         }
+        const tab = asPlanSubscriber(data, topic);
+        if (tab != null) return latest.current.onSubscriber(tab);
+        const choice = asColleagueChoice(data);
+        if (choice != null) return latest.current.onChoice(choice);
+        const seating = asSeating(data);
         if (seating == null) latest.current.onGap();
         else latest.current.onSeating(seating);
       };
       source.onerror = () => {
-        if (source?.readyState !== EventSource.CLOSED || stopped) return;
+        if (stopped) return;
+        latest.current.onLost();
+        if (source?.readyState !== EventSource.CLOSED) return;
         clearTimeout(timer);
         timer = setTimeout(() => void connect(), RETRY_MS);
       };
@@ -218,9 +281,72 @@ function useLiveSeating(eventId: string, onSeating: (seating: Seating) => void, 
     return () => {
       stopped = true;
       clearTimeout(timer);
+      clearTimeout(listing);
       source?.close();
     };
   }, [eventId]);
+}
+
+/** Who else has the plan open, and telling them what you have chosen: when it changes, when you (re)connect, and when someone arrives. */
+function usePresence(event: OrganisationEvent) {
+  const { t } = useTranslation();
+  const me = useSession().userId;
+  const editor = canOn(event, 'seating.manage');
+  const [presence, setPresence] = useState<PresenceState>(NOBODY_ELSE);
+  const mine = useRef<OwnChoice | null>(null);
+  const told = useRef<string>('null');
+  const holds = useRef<ReturnType<typeof setTimeout>[]>([]);
+
+  useEffect(() => {
+    const pending = holds.current;
+    return () => pending.forEach(clearTimeout);
+  }, []);
+
+  const tell = useCallback(
+    (chosen: OwnChoice | null, again = false) => {
+      mine.current = chosen;
+      const key = JSON.stringify(chosen);
+      if (!editor || (!again && key === told.current)) return;
+      told.current = key;
+      api.chooseOnPlan(event.id, chosen).catch(() => {
+        told.current = 'unsent';
+      });
+    },
+    [editor, event.id],
+  );
+  const say = (key: 'joinedPlan' | 'leftPlan', name: string) => t(`seating.${key}`, { name });
+
+  const handlers: Omit<LiveHandlers, 'onSeating' | 'onGap'> = {
+    onSubscribers: (list) => {
+      setPresence((was) => listed(was, list));
+      if (mine.current != null) tell(mine.current, true);
+    },
+    onSubscriber: (tab) => {
+      setPresence((was) => changed(was, tab, me, say));
+      if (!tab.active)
+        holds.current.push(
+          setTimeout(
+            () => setPresence((was) => departed(was, tab.subscriber, me, say)),
+            LEAVING_HOLD_MS,
+          ),
+        );
+      if (tab.active && tab.userId !== me && mine.current != null) tell(mine.current, true);
+    },
+    onChoice: (choice) => {
+      if (choice.userId !== me) setPresence((was) => chose(was, choice));
+    },
+    onLost: () =>
+      setPresence((was) => (was.connection === 'lost' ? was : { ...was, connection: 'lost' })),
+  };
+
+  return {
+    handlers,
+    tell,
+    people: colleaguesOf(presence, me),
+    rings: ringsOf(presence, me),
+    lost: presence.connection === 'lost',
+    spoken: presence.spoken,
+  };
 }
 
 const LOADING_ROOM = { w: 2400, l: 1800 } as const;
@@ -310,11 +436,13 @@ export function SeatingArea({ event }: { event: OrganisationEvent }) {
     };
   }, [event.id, attempt]);
 
-  useLiveSeating(
-    event.id,
-    (seating) => setLoad({ kind: 'loaded', seating }),
-    () => setAttempt((n) => n + 1),
-  );
+  const presence = usePresence(event);
+
+  useLiveSeating(event.id, {
+    onSeating: (seating) => setLoad({ kind: 'loaded', seating }),
+    onGap: () => setAttempt((n) => n + 1),
+    ...presence.handlers,
+  });
 
   const crumb = (
     <header className="st-top">
@@ -335,6 +463,7 @@ export function SeatingArea({ event }: { event: OrganisationEvent }) {
           </li>
         </ol>
       </nav>
+      <Presence people={presence.people} lost={presence.lost} spoken={presence.spoken} />
       {desk.bell}
     </header>
   );
@@ -388,6 +517,8 @@ export function SeatingArea({ event }: { event: OrganisationEvent }) {
         seating={load.seating}
         onSeating={(seating) => setLoad({ kind: 'loaded', seating })}
         reload={() => setAttempt((n) => n + 1)}
+        rings={presence.rings}
+        onChosen={presence.tell}
       />
     </div>
   );
@@ -398,11 +529,15 @@ function Plan({
   seating,
   onSeating,
   reload,
+  rings,
+  onChosen,
 }: {
   event: OrganisationEvent;
   seating: Seating;
   onSeating: (seating: Seating) => void;
   reload: () => void;
+  rings: Record<string, ColleagueRing[]>;
+  onChosen: (chosen: OwnChoice | null) => void;
 }) {
   const { t } = useTranslation();
   const { layers, covered, setHost } = useDeskLayers();
@@ -430,7 +565,12 @@ function Plan({
     size,
   );
   const canvasNode = useRef<HTMLDivElement | null>(null);
-  const press = useRef<{ from: [number, number]; moved: boolean; pointer: number } | null>(null);
+  const press = useRef<{
+    from: [number, number];
+    moved: boolean;
+    fingers: boolean;
+    pointer: number;
+  } | null>(null);
   const panned = useRef(false);
   const [several, setSeveral] = useState<string[]>([]);
   const [placements, setPlacements] = useState<Record<string, Placement>>({});
@@ -459,6 +599,7 @@ function Plan({
     from: [number, number];
     at: [number, number];
     base: string[];
+    before: { panel: Panel | null; several: string[] };
     moved: boolean;
     pointer: number;
   } | null>(null);
@@ -492,6 +633,18 @@ function Plan({
   const itemOf = (id: string, from: SeatingPlan | null = shown): FloorItem | null =>
     from == null ? null : (floorItems(from).find((item) => item.one.id === id) ?? null);
   const chosenItems = several.length > 1 ? several.flatMap((id) => itemOf(id) ?? []) : [];
+  const ownLead = shownPanel?.kind === 'chair' ? null : (chosenIds[0] ?? null);
+  const ownKind = ownLead == null ? null : (itemOf(ownLead)?.kind ?? null);
+  const ownChoice: OwnChoice | null =
+    shownPanel?.kind === 'chair'
+      ? { kind: 'table', id: shownPanel.id, chair: shownPanel.seat }
+      : ownLead == null || ownKind == null
+        ? null
+        : { kind: ownKind, id: ownLead, chair: null };
+  const ownKey = JSON.stringify(ownChoice);
+  const tellChosen = useEffectEvent(() => onChosen(ownChoice));
+
+  useEffect(() => tellChosen(), [ownKey]);
 
   const dropRefusal = () => setBar((was) => (was?.tone === 'amber' ? null : was));
   const open = (next: Panel | null, onItem = false) => {
@@ -644,7 +797,7 @@ function Plan({
     };
     const up = (event: PointerEvent) => {
       if (press.current?.pointer !== event.pointerId) return;
-      panned.current = event.type === 'pointerup' && press.current.moved;
+      panned.current = event.type === 'pointerup' && (press.current.moved || press.current.fingers);
       press.current = null;
     };
 
@@ -1253,7 +1406,35 @@ function Plan({
     }
   };
 
+  const panWith = (event: ReactPointerEvent<Element>) => {
+    const box = boxing.current;
+    const fingers = touches.current.size > 1;
+
+    if (box != null && fingers) {
+      boxing.current = null;
+      setBoxDrawn(null);
+      setPanel(box.before.panel);
+      setSeveral(box.before.several);
+    }
+    press.current = {
+      from: [event.clientX, event.clientY],
+      moved: false,
+      fingers,
+      pointer: event.pointerId,
+    };
+  };
+
+  const joinsBox = (event: ReactPointerEvent<Element>) => {
+    if (event.pointerType !== 'touch' || boxing.current == null || touches.current.size === 0)
+      return false;
+    touches.current.add(event.pointerId);
+    dragged.current = true;
+    panWith(event);
+    return true;
+  };
+
   const onItemDown = (event: ReactPointerEvent<Element>, item: FloorItem) => {
+    if (joinsBox(event)) return;
     if (readOnly || placing != null || event.button !== 0) return;
     dragged.current = false;
     const id = item.one.id;
@@ -1275,7 +1456,7 @@ function Plan({
     table: Table,
     pressed: Handle,
   ) => {
-    if (event.button !== 0) return;
+    if (joinsBox(event) || event.button !== 0) return;
     const at = toCm(event.clientX, event.clientY);
     const handle =
       at == null
@@ -1559,13 +1740,6 @@ function Plan({
               return;
             }
             if (event.pointerType === 'touch') touches.current.add(event.pointerId);
-            const box = boxing.current;
-
-            if (box != null && touches.current.size > 1) {
-              boxing.current = null;
-              setBoxDrawn(null);
-              if (box.moved) pick(box.base);
-            }
             const at = toCm(event.clientX, event.clientY);
 
             if (!readOnly && !spaceHeld.current && touches.current.size < 2 && at != null) {
@@ -1573,16 +1747,13 @@ function Plan({
                 from: at,
                 at: [event.clientX, event.clientY],
                 base: event.shiftKey || adding ? chosenIds : [],
+                before: { panel, several },
                 moved: false,
                 pointer: event.pointerId,
               };
               return;
             }
-            press.current = {
-              from: [event.clientX, event.clientY],
-              moved: false,
-              pointer: event.pointerId,
-            };
+            panWith(event);
           }}
           aria-label={
             plan.roomName == null
@@ -1950,43 +2121,45 @@ function Plan({
 
   return (
     <LayersContext value={layers}>
-      <div className="st-main" inert={covered}>
-        <div
-          className="st-canvas is-plan"
-          ref={(node) => {
-            canvasNode.current = node;
-            placeCanvas(node);
-          }}
-        >
-          {canvas}
+      <RingsContext value={rings}>
+        <div className="st-main" inert={covered}>
+          <div
+            className="st-canvas is-plan"
+            ref={(node) => {
+              canvasNode.current = node;
+              placeCanvas(node);
+            }}
+          >
+            {canvas}
+          </div>
+          <aside className="st-panel" aria-label={t('seating.panel')}>
+            <div className="st-panel-body">{body}</div>
+          </aside>
         </div>
-        <aside className="st-panel" aria-label={t('seating.panel')}>
-          <div className="st-panel-body">{body}</div>
-        </aside>
-      </div>
-      <div ref={setHost} className="desk-layers" />
-      {asking?.kind === 'deleteItems' && plan != null && (
-        <DeleteItemsAsk
-          items={asking.ids.flatMap((id) => itemOf(id) ?? [])}
-          onKeep={() => setAsking(null)}
-          onGo={(items) => {
-            setAsking(null);
-            deleteStep(items);
-          }}
-        />
-      )}
-      {asking != null && asking.kind !== 'deleteItems' && plan != null && (
-        <AskFor
-          ctx={ctx}
-          plan={plan}
-          asking={asking}
-          onDone={() => {
-            setAsking(null);
-            open(null);
-          }}
-          onKeep={() => setAsking(null)}
-        />
-      )}
+        <div ref={setHost} className="desk-layers" />
+        {asking?.kind === 'deleteItems' && plan != null && (
+          <DeleteItemsAsk
+            items={asking.ids.flatMap((id) => itemOf(id) ?? [])}
+            onKeep={() => setAsking(null)}
+            onGo={(items) => {
+              setAsking(null);
+              deleteStep(items);
+            }}
+          />
+        )}
+        {asking != null && asking.kind !== 'deleteItems' && plan != null && (
+          <AskFor
+            ctx={ctx}
+            plan={plan}
+            asking={asking}
+            onDone={() => {
+              setAsking(null);
+              open(null);
+            }}
+            onKeep={() => setAsking(null)}
+          />
+        )}
+      </RingsContext>
     </LayersContext>
   );
 }

@@ -10,7 +10,7 @@ import { AnswerHeading } from '../../src/components/AnswerHeading.tsx';
 import { AppFrame, FrameTop, besideRow } from '../../src/components/AppFrame.tsx';
 import { Refreshing } from '../../src/components/Refreshing.tsx';
 import { bodyEdges } from '../../src/components/bodyEdges.ts';
-import { LIST_GAP, SETTINGS_PAGE } from '../../src/components/listFrame.ts';
+import { LIST_GAP, SETTINGS_PAGE, titleFoot } from '../../src/components/listFrame.ts';
 import { Screen } from '../../src/components/Screen.tsx';
 import { SettingsSplit, useBackToSettings } from '../../src/components/SettingsList.tsx';
 import { StandChanges, StandRules } from '../../src/components/SignInRulesStand.tsx';
@@ -212,7 +212,7 @@ export default function SignInRules() {
     >
       <SettingsSplit open="signInRules">
         <Screen edges={bodyEdges(kind)} contentStyle={CONTENT[kind]}>
-          {alone && <FrameTop />}
+          {alone && <FrameTop style={titleFoot(CONTENT[kind])} />}
           {!alone && (
             <View style={besideRow.row}>
               <View style={styles.shrink}>

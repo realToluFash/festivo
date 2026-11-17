@@ -678,6 +678,7 @@ export function AddDishPanel({
   onlyEvent,
   course,
   library,
+  loading,
   problems,
   prices,
   language,
@@ -695,6 +696,7 @@ export function AddDishPanel({
   onlyEvent: boolean;
   course: MenuCourse;
   library: readonly Dish[];
+  loading: boolean;
   problems: DishProblems | null;
   prices: boolean;
   language: MoneyLanguage;
@@ -746,9 +748,11 @@ export function AddDishPanel({
                 />
               </div>
               <p id="mc-found" className="desk-help" role="status">
-                {looking
-                  ? t('eventMenu.foundOf', { shown: shown.length, count: library.length })
-                  : t('eventMenu.inLibrary', { count: library.length })}
+                {loading
+                  ? t('menuLibrary.loading')
+                  : looking
+                    ? t('eventMenu.foundOf', { shown: shown.length, count: library.length })
+                    : t('eventMenu.inLibrary', { count: library.length })}
               </p>
             </div>
             <p className="mc-added" role="status">
@@ -759,15 +763,27 @@ export function AddDishPanel({
                 </>
               )}
             </p>
-            {shown.length === 0 ? (
+            {loading ? (
+              <div className="lib-loading" aria-busy="true">
+                {[0, 1, 2].map((one) => (
+                  <div key={one} className="lib-bone" aria-hidden="true" />
+                ))}
+              </div>
+            ) : shown.length === 0 ? (
               <div className="mc-no-match">
-                <p>{t('eventMenu.noMatch', { query: query.trim() })}</p>
+                <p>
+                  {looking
+                    ? t('eventMenu.noMatch', { query: query.trim() })
+                    : t('eventMenu.libraryEmpty')}
+                </p>
                 <button
                   type="button"
                   className="gs-pill is-secondary"
                   onClick={() => onStartNew(query.trim())}
                 >
-                  {t('eventMenu.startNew', { query: query.trim() })}
+                  {looking
+                    ? t('eventMenu.startNew', { query: query.trim() })
+                    : t('eventMenu.startNewBlank')}
                 </button>
               </div>
             ) : (
