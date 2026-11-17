@@ -310,5 +310,15 @@ export const GUESTS_BOARDS: readonly { title: string; what: string; href: string
     what: 'Offline since 18:31 alone',
     href: '/demo/guests/scan?state=offline&waiting=0',
   },
+  {
+    title: 'Check-in · nobody seated yet',
+    what: 'No seat line on any row, as before seating (sc-60684)',
+    href: '/demo/guests/check-in?state=door&seats=none',
+  },
+  {
+    title: 'Scan a code · nobody seated yet',
+    what: 'Inês and Rui with no seat line (sc-60684)',
+    href: '/demo/guests/scan?state=valid&seats=none',
+  },
   ...EVENTS.map(([state, title, what]) => ({ title, what, href: `/demo/events?state=${state}` })),
 ];
