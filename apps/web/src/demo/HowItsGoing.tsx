@@ -23,6 +23,7 @@ import {
   lineKind,
   nobodyElse,
   openGive,
+  openingView,
   pause,
   people,
   sectionName,
@@ -33,7 +34,24 @@ import {
   waitersOn,
 } from './howItsGoing.ts';
 import './howItsGoing.css';
+import { RunOutPanel } from './RunOutPanel.tsx';
+import { RunOutRoom } from './RunOutRoom.tsx';
 import {
+  ITEM,
+  type RunOut,
+  closePanel as closeRunOut,
+  earlierLine,
+  kitchenLine,
+  lateArrival,
+  markRunOutAgain,
+  openPanel as openRunOut,
+  waiting,
+  waitingWord,
+  withRunOut,
+} from './runOut.ts';
+import {
+  BAN_GLYPH,
+  CHEVRON_GLYPH,
   OFFLINE_GLYPH,
   INFO_GLYPH,
   FLAG_GLYPH,
@@ -60,6 +78,7 @@ const ALERT_GLYPH: Record<AlertKind, readonly string[]> = {
   station: NOBODY_GLYPH,
   request: ['M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z'],
   nobody: NOBODY_GLYPH,
+  runOut: BAN_GLYPH,
 };
 
 /** /demo/how-its-going (sc-34107): the floor lead's How it's going at 1280 × 800, by ?state=. */
@@ -72,13 +91,17 @@ export function HowItsGoingPage() {
 
 function HowItsGoing({ name }: { name: ServiceStateName }) {
   const [state, setState] = useState(() => seed(name));
-  const [view, setView] = useState<View>(() => (seed(name).manage ? 'going' : 'plan'));
+  const [view, setView] = useState<View>(() => openingView(name));
   const [note, setNote] = useState('');
   const focusTo = useRef('');
 
   useEffect(() => {
     if (focusTo.current === '') return;
-    document.querySelector<HTMLElement>(focusTo.current)?.focus();
+    const first = focusTo.current
+      .split(' | ')
+      .map((selector) => document.querySelector<HTMLElement>(selector))
+      .find((node) => node != null);
+    first?.focus();
     focusTo.current = '';
   });
 
@@ -92,6 +115,18 @@ function HowItsGoing({ name }: { name: ServiceStateName }) {
   function act(next: ServiceState): void {
     setNote('');
     setState(next);
+  }
+
+  const access = { online: state.online, manage: state.manage };
+  const ro = state.runOut;
+
+  function actRunOut(next: RunOut): void {
+    if (ro?.panel === true && !next.panel) setFocusTo(afterPanel(ro, next));
+    act({ ...state, runOut: next });
+  }
+
+  function choose(from: 'choose' | 'kitchen'): void {
+    if (ro != null) actRunOut(openRunOut(ro, from, access));
   }
 
   return (
@@ -158,25 +193,55 @@ function HowItsGoing({ name }: { name: ServiceStateName }) {
           </div>
           <div className="hig-scroll">
             {showing !== 'going' ? (
-              <section className="hig-card hig-placeholder" aria-label={VIEW_WORDS[showing]}>
-                <h2 className="hig-card-title">{VIEW_WORDS[showing]}</h2>
-                <p className="hig-meta">
-                  {VIEW_WORDS[showing]} is sc-4026’s, drawn on its own board. It is unchanged here.
-                </p>
-              </section>
+              ro != null ? (
+                <>
+                  {ro.refused !== '' && !ro.panel && (
+                    <RunOutRefused ro={ro} online={state.online} />
+                  )}
+                  <RunOutRoom
+                    view={showing}
+                    ro={ro}
+                    manage={state.manage}
+                    online={state.online}
+                    onChoose={() => choose('choose')}
+                  />
+                </>
+              ) : (
+                <section className="hig-card hig-placeholder" aria-label={VIEW_WORDS[showing]}>
+                  <h2 className="hig-card-title">{VIEW_WORDS[showing]}</h2>
+                  <p className="hig-meta">
+                    {VIEW_WORDS[showing]} is sc-4026’s, drawn on its own board. It is unchanged
+                    here.
+                  </p>
+                </section>
+              )
             ) : !state.started ? (
               <NotStarted note={note} setNote={setNote} />
             ) : (
-              <Going state={state} act={act} note={note} setNote={setNote} />
+              <Going state={state} act={act} note={note} setNote={setNote} choose={choose} />
             )}
           </div>
         </main>
+        {ro?.panel === true && (
+          <RunOutPanel
+            ro={ro}
+            access={access}
+            strip={
+              state.online ? `Connected · up to date ${NOW}` : `No connection · as of ${AS_OF}`
+            }
+            act={actRunOut}
+            close={() => actRunOut(closeRunOut(ro))}
+          />
+        )}
       </div>
       {state.give != null && (
         <GiveDialog state={state} act={act} setNote={setNote} setFocusTo={setFocusTo} />
       )}
       <div className="visually-hidden" aria-live="polite">
         {state.say}
+      </div>
+      <div className="visually-hidden" aria-live="polite">
+        {ro?.say ?? ''}
       </div>
       <section className="hig-demo" aria-labelledby="hig-demo-heading">
         <h2 id="hig-demo-heading" className="hig-label">
@@ -188,7 +253,7 @@ function HowItsGoing({ name }: { name: ServiceStateName }) {
             type="button"
             onClick={() => {
               act(seed(name));
-              setView(seed(name).manage ? 'going' : 'plan');
+              setView(openingView(name));
             }}
           >
             Start again
@@ -196,7 +261,15 @@ function HowItsGoing({ name }: { name: ServiceStateName }) {
           <button
             className="button demo-dense"
             type="button"
-            onClick={() => act({ ...state, online: !state.online, refused: '', say: '' })}
+            onClick={() =>
+              act({
+                ...state,
+                online: !state.online,
+                refused: '',
+                say: '',
+                runOut: ro == null ? null : { ...ro, refused: '' },
+              })
+            }
           >
             {state.online ? 'Go offline' : 'Back online'}
           </button>
@@ -218,6 +291,47 @@ function HowItsGoing({ name }: { name: ServiceStateName }) {
             {state.manage ? 'View without service.manage' : 'View with service.manage'}
           </button>
         </div>
+        {ro != null && (
+          <div className="hig-demo-buttons" role="group" aria-label="Elsewhere in the room">
+            <button
+              className="button demo-dense"
+              type="button"
+              onClick={() => actRunOut(lateArrival(ro))}
+            >
+              A guest arrives late and starts waiting
+            </button>
+            {ro.available ? (
+              <button
+                className="button demo-dense"
+                type="button"
+                onClick={() => actRunOut(markRunOutAgain(ro))}
+              >
+                {ITEM} is marked run out again on the Grill
+              </button>
+            ) : (
+              <button
+                className="button demo-dense"
+                type="button"
+                aria-pressed={ro.race === 'sm'}
+                onClick={() => actRunOut({ ...ro, race: ro.race === 'sm' ? null : 'sm' })}
+              >
+                Sola Martins’s plate goes Dishing before a new choice lands
+              </button>
+            )}
+            {!ro.available && (
+              <button className="button demo-dense" type="button" onClick={() => choose('choose')}>
+                Open the choice panel by link
+              </button>
+            )}
+          </div>
+        )}
+        {ro?.earlier != null && state.manage && (
+          <p className="hig-meta">
+            In the product, {earlierLine(ro.earlier)} opens {ro.earlier.item}’s own choice panel,
+            with the {ro.earlier.course}’s items, as {ITEM}’s line opens {ITEM}’s. The demo plays{' '}
+            {ITEM}’s.
+          </p>
+        )}
       </section>
     </div>
   );
@@ -250,15 +364,21 @@ function Going({
   act,
   note,
   setNote,
+  choose,
 }: {
   state: ServiceState;
   act: (next: ServiceState) => void;
   note: string;
   setNote: (n: string) => void;
+  choose: (from: 'choose' | 'kitchen') => void;
 }) {
-  const s = state.summary;
+  const ro = state.runOut;
+  const s = withRunOut(state.summary, ro);
   const c = s.course;
   const counts = [
+    ...(c.choice == null || c.choice === 0
+      ? []
+      : [{ key: 'choice', word: 'Waiting for a choice', n: c.choice }]),
     { key: 'tray', word: 'On a tray', n: c.onTray },
     { key: 'kitchen', word: 'Waiting on the kitchen', n: c.kitchen },
     { key: 'serve', word: 'To serve', n: c.toServe },
@@ -278,6 +398,9 @@ function Going({
           {note}
         </p>
       )}
+      {ro != null && ro.refused !== '' && !ro.panel && (
+        <RunOutRefused ro={ro} online={state.online} />
+      )}
       <div className="hig-grid">
         <section className="hig-card hig-course" aria-labelledby="hig-course-line">
           <h2 id="hig-course-line" className="hig-course-line">
@@ -287,8 +410,12 @@ function Going({
           <div className="hig-counts">
             <ul className="hig-count-list">
               {counts.map((x) => (
-                <li key={x.key} className="hig-count">
-                  <span className="hig-swatch" data-kind={x.key} aria-hidden="true" />
+                <li key={x.key} className="hig-count" data-kind={x.key}>
+                  {x.key === 'choice' ? (
+                    <Glyph paths={BAN_GLYPH} size={16} />
+                  ) : (
+                    <span className="hig-swatch" data-kind={x.key} aria-hidden="true" />
+                  )}
                   <span className="hig-count-word">{x.word}</span>
                   <span className="hig-count-n">{x.n}</span>
                 </li>
@@ -314,15 +441,26 @@ function Going({
         </section>
 
         <section className="hig-card hig-kitchen" aria-labelledby="hig-kitchen-heading">
-          <h2 id="hig-kitchen-heading" className="hig-card-title">
+          <h2 id="hig-kitchen-heading" className="hig-card-title" tabIndex={-1}>
             The kitchen
           </h2>
           <ul className="hig-rows">
             {kitchenRows(s)
               .filter((k) => k.station != null)
-              .map((k) => (
-                <KitchenRow key={k.item} k={k} />
-              ))}
+              .map((k) =>
+                ro?.earlier != null && k.course != null ? (
+                  <EarlierKitchenRow key={k.item} line={earlierLine(ro.earlier)} n={k.waiting} />
+                ) : ro != null && !ro.available && k.item === ITEM ? (
+                  <RunOutKitchenRow
+                    key={k.item}
+                    ro={ro}
+                    manage={state.manage}
+                    onOpen={() => choose('kitchen')}
+                  />
+                ) : (
+                  <KitchenRow key={k.item} k={k} />
+                ),
+              )}
           </ul>
           {kitchenRows(s).some((k) => k.station == null) && (
             <>
@@ -349,7 +487,14 @@ function Going({
           ) : (
             <ul className="hig-rows">
               {s.alerts.map((a) => (
-                <AlertRow key={a.id} a={a} state={state} act={act} setNote={setNote} />
+                <AlertRow
+                  key={a.id}
+                  a={a}
+                  state={state}
+                  act={act}
+                  setNote={setNote}
+                  choose={choose}
+                />
               ))}
             </ul>
           )}
@@ -507,16 +652,93 @@ function KitchenRow({ k }: { k: KitchenItem }) {
   );
 }
 
+function RunOutKitchenRow({
+  ro,
+  manage,
+  onOpen,
+}: {
+  ro: RunOut;
+  manage: boolean;
+  onOpen: () => void;
+}) {
+  const n = waiting(ro).length;
+  const words = (
+    <span className="hig-kitchen-words">
+      <span className="hig-title">
+        <strong>{kitchenLine()}</strong>
+      </span>
+      {n > 0 && <span className="hig-waiting">{waitingWord(n)}</span>}
+    </span>
+  );
+
+  return (
+    <li className="hig-kitchen-row ro-kitchen-row">
+      {manage ? (
+        <button className="ro-kitchen-line" type="button" data-run-out="kitchen" onClick={onOpen}>
+          <span className="hig-alert-icon" aria-hidden="true">
+            <Glyph paths={BAN_GLYPH} size={18} />
+          </span>
+          {words}
+          <Glyph paths={CHEVRON_GLYPH} size={18} />
+        </button>
+      ) : (
+        <>
+          <span className="hig-alert-icon" aria-hidden="true">
+            <Glyph paths={BAN_GLYPH} size={18} />
+          </span>
+          {words}
+        </>
+      )}
+    </li>
+  );
+}
+
+function EarlierKitchenRow({ line, n }: { line: string; n: number }) {
+  return (
+    <li className="hig-kitchen-row ro-kitchen-row">
+      <span className="hig-alert-icon" aria-hidden="true">
+        <Glyph paths={BAN_GLYPH} size={18} />
+      </span>
+      <span className="hig-kitchen-words">
+        <span className="hig-title">
+          <strong>{line}</strong>
+        </span>
+        {n > 0 && <span className="hig-waiting">{waitingWord(n)}</span>}
+      </span>
+    </li>
+  );
+}
+
+function RunOutRefused({ ro, online }: { ro: RunOut; online: boolean }) {
+  return (
+    <div className="hig-refused" role="status">
+      <Glyph paths={online ? INFO_GLYPH : OFFLINE_GLYPH} size={18} />
+      <span>{ro.refused}</span>
+    </div>
+  );
+}
+
+/** Focus goes back to what opened the panel, or to the kitchen line, or to the kitchen's heading. */
+function afterPanel(before: RunOut, after: RunOut): string {
+  const opener = `[data-run-out="${before.openedFrom}"]`;
+  const still = after.available ? '' : opener;
+  return [still, after.available ? '' : '[data-run-out="kitchen"]', '#hig-kitchen-heading']
+    .filter((x) => x !== '')
+    .join(' | ');
+}
+
 function AlertRow({
   a,
   state,
   act,
   setNote,
+  choose,
 }: {
   a: Alert;
   state: ServiceState;
   act: (next: ServiceState) => void;
   setNote: (n: string) => void;
+  choose: (from: 'choose' | 'kitchen') => void;
 }) {
   const button = buttonOf(state, a);
   const teamFor =
@@ -545,6 +767,16 @@ function AlertRow({
           onClick={() => act(openGive(state, a.id))}
         >
           Give to…
+        </button>
+      )}
+      {button === 'Choose' && (
+        <button
+          className="button button-primary hig-alert-button"
+          type="button"
+          data-run-out="choose"
+          onClick={() => choose('choose')}
+        >
+          Choose
         </button>
       )}
       {button === 'Go to table' && (
