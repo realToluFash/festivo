@@ -3,7 +3,7 @@ import { useId, useRef } from 'react';
 import { Glyph } from '../components/Glyph.tsx';
 import { Ask, Mark, TextAction } from '../components/SettingsParts.tsx';
 import { sampleEvent } from './events.ts';
-import { EVENT_ID } from './seating.ts';
+import { EVENT_ID, sampleTray } from './seating.ts';
 import { useSeating } from './seatingContext.ts';
 import {
   SHARE_TODAY,
@@ -19,6 +19,7 @@ import '../components/eventPage.css';
 import './shareTables.css';
 
 const WEDDING = sampleEvent(EVENT_ID);
+const PARTIES = sampleTray();
 const TIME_ZONE = WEDDING?.timeZone ?? 'Europe/London';
 const STARTS_AT = WEDDING?.startsAt ?? '2026-11-05T18:00:00Z';
 const EVENT_DAY = new Intl.DateTimeFormat('en-CA', {
@@ -30,7 +31,7 @@ const EVENT_DAY = new Intl.DateTimeFormat('en-CA', {
 export function ShareTables() {
   const { ui, set } = useSeating();
   const { share, readOnly } = ui;
-  const n = seatedComing(ui.plan);
+  const n = seatedComing(ui.plan, PARTIES);
   const u = unseatedComing(ui.tray);
   const change = (next: (was: Share) => Share) =>
     set((now) => ({ ...now, share: next(now.share) }));

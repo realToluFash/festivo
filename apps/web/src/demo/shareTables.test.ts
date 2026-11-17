@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 
-import { samplePlan, sampleTray } from './seating.ts';
+import { samplePlan, sampleTray, seatAt } from './seating.ts';
 import {
   SHARE_STATES,
   SHARE_WORDS,
@@ -51,9 +51,26 @@ describe('the counts in the ask', () => {
     const plan = samplePlan();
     const taken = plan.items.flatMap((item) => item.chairs).filter((one) => one.state === 'taken');
 
-    expect(seatedComing(plan)).toBe(taken.filter((one) => one.who != null).length);
+    expect(seatedComing(plan, sampleTray())).toBe(taken.filter((one) => one.who != null).length);
     expect(unseatedComing(sampleTray())).toBe(12);
     expect(unseatedComing(sampleTray().filter((party) => party.reply !== 'coming'))).toBe(0);
+  });
+
+  it('leaves out a Not sure yet party seated from the tray, and counts a Coming one', () => {
+    const plan = samplePlan();
+    const before = seatedComing(plan, sampleTray());
+    const hugo = sampleTray().find((party) => party.id === 'hugo');
+    const marta = sampleTray().find((party) => party.id === 'marta');
+    const empty = plan.items.findIndex((item) => item.id === 't10');
+
+    expect(hugo?.reply).toBe('notSure');
+    if (hugo == null || marta == null) return;
+
+    const t10 = plan.items[empty];
+    if (t10 == null) return;
+    plan.items[empty] = seatAt(seatAt(t10, hugo, [0]), marta, [1]);
+
+    expect(seatedComing(plan, sampleTray())).toBe(before + 1);
   });
 
   it('says one guest in the singular', () => {

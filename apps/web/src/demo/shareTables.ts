@@ -44,10 +44,6 @@ export function shareDay(date: string, locale: string = LOCALE): string {
   }).format(new Date(`${date}T12:00:00Z`));
 }
 
-export function todayIn(now: Date, timeZone: string): string {
-  return localDay(now, timeZone);
-}
-
 /** Share by is a day from today up to the day before the event, both in the event's time zone (pm, #5094, 20 Oct). */
 export function shareByRefusal(
   typed: string,
@@ -65,11 +61,21 @@ export function isPassed(share: Pick<Share, 'by' | 'shared'>, today: string): bo
   return share.shared == null && share.by != null && share.by < today;
 }
 
-/** {n}: Coming guests with a taken seat; a held (proposed) chair is not a seat yet (sc-4016's counts). */
-export function seatedComing(plan: Plan): number {
+/** {n}: Coming guests with a taken seat; a held (proposed) chair is not a seat yet (sc-4016's counts), and a Not sure yet party seated from the tray is not Coming. */
+export function seatedComing(plan: Plan, parties: readonly Party[]): number {
+  const notComing = new Set(
+    parties.filter((party) => party.reply !== 'coming').map((party) => party.id),
+  );
+
   return plan.items.reduce(
     (sum, item) =>
-      sum + item.chairs.filter((chair) => chair.state === 'taken' && chair.who != null).length,
+      sum +
+      item.chairs.filter(
+        (chair) =>
+          chair.state === 'taken' &&
+          chair.who != null &&
+          (chair.party == null || !notComing.has(chair.party)),
+      ).length,
     0,
   );
 }
@@ -123,7 +129,6 @@ export const SHARE_WORDS = {
   stopGo: 'Stop sharing',
   keepSharing: 'Keep sharing',
   readOnly: 'You can see this. Changing it needs the Manage seating permission.',
-  sharedText: 'Shared',
   notSharedText: 'Not shared',
 } as const;
 
