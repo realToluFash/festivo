@@ -3,6 +3,7 @@ import { describe, expect, it } from 'vitest';
 
 import {
   NOBODY_ELSE,
+  type PresenceState,
   QUIET_MS,
   beat,
   changed,
@@ -25,12 +26,12 @@ const KEMI = tab('k1', 'u_kemi', 'Kemi Adeyemi');
 const PRIYA = tab('p1', 'u_priya', 'Priya Shah');
 const SELF = tab('m1', ME, 'Ngozi Eze');
 
-function withKemiChoosing(at: number) {
+function withKemiChoosing(at: number): PresenceState {
   const here = listed(NOBODY_ELSE, [SELF, KEMI], at);
 
   return {
     ...here,
-    chosen: [{ userId: 'u_kemi', chosen: { kind: 'table' as const, id: 't1', chair: null } }],
+    chosen: [{ userId: 'u_kemi', chosen: { kind: 'table', id: 't1', chair: null } }],
   };
 }
 
