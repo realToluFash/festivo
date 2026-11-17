@@ -19,6 +19,7 @@ export * from './guestRows.ts';
 export * from './userAgent.ts';
 export * from './contacts.ts';
 export * from './connection.ts';
+export * from './nowReads.ts';
 export * from './offlineWatch.ts';
 export * from './datetime.ts';
 export * from './devices.ts';

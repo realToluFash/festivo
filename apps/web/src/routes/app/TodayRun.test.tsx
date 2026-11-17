@@ -238,3 +238,117 @@ describe('Now on the web’s Today from the run of show (sc-61017)', () => {
     expect(await screen.findByRole('heading', { level: 1, name: 'Nothing is on' })).toBeDefined();
   });
 });
+
+describe('Now says how old its run of show is once its reads stop landing (sc-62416)', () => {
+  /** Today's events, and each read of the running order answered as `answer` says at that moment. */
+  function reading(answer: () => 'order' | 'down' | 'hang' | number) {
+    const events = serving(READS, [ARRIVE, DINNER, SPEECHES, DANCE]);
+    const order = events.getMockImplementation()!;
+
+    events.mockImplementation(async (input, init) => {
+      if (!String(input).includes('/api/events/ev_1/schedule')) return order(input, init);
+
+      const now = answer();
+      if (now === 'order') return order(input, init);
+      if (now === 'down') throw new TypeError('Failed to fetch');
+      if (now === 'hang') return new Promise<Response>(() => {});
+
+      return new Response(
+        JSON.stringify({ type: 'https://soirely.app/errors/x', title: 'No', status: now }),
+        { status: now, headers: { 'Content-Type': 'application/problem+json' } },
+      );
+    });
+  }
+
+  async function after(ms: number) {
+    await act(() => vi.advanceTimersByTimeAsync(ms));
+  }
+
+  /** Now's own line, apart from Today's offline band, which ages Today's read and may show beside it. */
+  const line = () => {
+    const status = document.querySelector('header [role="status"]');
+
+    return status?.textContent === '' ? null : (status ?? null);
+  };
+
+  beforeEach(() => {
+    vi.useFakeTimers({
+      toFake: ['Date', 'setTimeout', 'clearTimeout', 'setInterval', 'clearInterval'],
+    });
+    vi.setSystemTime(new Date(NOW));
+  });
+
+  it('counts a read with no answer after 10 seconds as failed, and shows the line once the last landed read is past 60 seconds', async () => {
+    let answer: 'order' | 'hang' = 'order';
+    reading(() => answer);
+    open();
+    await after(0);
+    expect(screen.getByRole('heading', { level: 1, name: 'Speeches' })).toBeDefined();
+
+    answer = 'hang';
+    await after(60_000);
+    expect(line()).toBeNull();
+
+    await after(1);
+    expect(line()?.textContent).toBe('Offline · as of 20:02');
+    expect(screen.getByRole('heading', { level: 1, name: 'Speeches' })).toBeDefined();
+    expect(screen.getByRole('button', { name: 'Open run of show' })).toBeDefined();
+  });
+
+  it('shows no line on a failed read while the last landed read is 60 seconds old or less, and drops it once a read lands', async () => {
+    let answer: 'order' | number = 'order';
+    reading(() => answer);
+    open();
+    await after(0);
+
+    answer = 500;
+    await after(50_000);
+    expect(line()).toBeNull();
+
+    await after(10_001);
+    expect(line()?.textContent).toBe('Offline · as of 20:02');
+
+    answer = 'order';
+    await after(40_000);
+    expect(line()).toBeNull();
+    expect(screen.getByRole('heading', { level: 1, name: 'Speeches' })).toBeDefined();
+  });
+
+  it.each([403, 404])('goes back to the built Now with no line after a %i', async (status) => {
+    let answer: 'order' | 'down' | number = 'order';
+    reading(() => answer);
+    open();
+    await after(0);
+
+    answer = 'down';
+    await after(61_000);
+    expect(line()).not.toBeNull();
+
+    answer = status;
+    await after(50_000);
+    expect(line()).toBeNull();
+    expect(screen.getByRole('heading', { level: 1, name: 'Adaeze and Tunde' })).toBeDefined();
+    expect(screen.getByRole('button', { name: 'Open the event' })).toBeDefined();
+  });
+
+  it('keeps the built Now with no line when the first read fails', async () => {
+    reading(() => 'down');
+    open();
+    await after(120_000);
+
+    expect(line()).toBeNull();
+    expect(screen.getByRole('heading', { level: 1, name: 'Adaeze and Tunde' })).toBeDefined();
+  });
+
+  it("names the day once the last landed read was on an earlier day in the event's zone", async () => {
+    vi.setSystemTime(new Date('2030-11-15T23:59:30Z'));
+    let answer: 'order' | 'down' = 'order';
+    reading(() => answer);
+    open();
+    await after(0);
+
+    answer = 'down';
+    await after(61_000);
+    expect(line()?.textContent).toBe('Offline · as of Friday, Nov 15 at 23:59');
+  });
+});

@@ -75,13 +75,16 @@ import {
 } from './seating.ts';
 import { SeatingContext, type SeatingApi, useSeating } from './seatingContext.ts';
 import {
+  MOVING,
   type Pop,
   type Ui,
   freshUi,
+  movedSeat,
   pickWords,
   seated,
   seatedWords,
   seedOf,
+  swappedSeats,
 } from './seatingSeed.ts';
 import { SeatingPanel, ShapeTile } from './SeatingPanel.tsx';
 import { PaperPage, PrintPanel } from './SeatingPrint.tsx';
@@ -345,6 +348,62 @@ function shapeWords(kind: Kind): string {
   }[kind];
 }
 
+/** A seated guest picked and a table or chair tapped (sc-4013): they move, and only they; a taken chair asks Swap with; their own chair drops the pick. */
+function moveTo(now: Ui, tableId: string, chair?: number): Ui {
+  const from = now.moving;
+  const item = now.plan.items.find((one) => one.id === tableId);
+
+  if (from == null || item == null) return now;
+  const at = chair == null ? null : item.chairs[chair];
+
+  if (tableId === from.table && chair === from.chair)
+    return { ...now, picked: null, moving: null, hoverChair: null, bar: null };
+  if (chair != null && at?.state === 'taken')
+    return { ...now, hover: tableId, pop: { kind: 'swap', table: tableId, chair, party: MOVING } };
+  if (chair == null && tableId === from.table) return now;
+  const next = movedSeat(now.plan, from, tableId, chair);
+
+  if (next == null)
+    return chair == null
+      ? { ...now, hover: null, bar: { kind: 'amber', words: say(SW.full, { table: item.name }) } }
+      : now;
+  return afterMove(
+    now,
+    next.plan,
+    tableId,
+    say(SW.seatedOne, { name: next.name, table: item.name }),
+  );
+}
+
+function swapMoving(now: Ui, tableId: string, chair: number): Ui {
+  const from = now.moving;
+  const item = now.plan.items.find((one) => one.id === tableId);
+  const name = now.plan.items.find((one) => one.id === from?.table)?.chairs[from?.chair ?? -1]?.who;
+
+  if (from == null || item == null || name == null) return now;
+  return afterMove(
+    now,
+    swappedSeats(now.plan, from, { table: tableId, chair }),
+    tableId,
+    say(SW.seatedOne, { name, table: item.name }),
+  );
+}
+
+function afterMove(now: Ui, plan: Plan, tableId: string, words: string): Ui {
+  return {
+    ...now,
+    plan,
+    picked: null,
+    moving: null,
+    hoverChair: null,
+    pop: null,
+    hover: tableId,
+    save: now.save === 'retrying' ? 'retrying' : 'saving',
+    undo: { plan: now.plan, tray: now.tray },
+    bar: { kind: 'undo', words, does: 'undo' },
+  };
+}
+
 function Seating({
   first,
   event,
@@ -582,6 +641,8 @@ function Seating({
         return {
           ...now,
           picked: party?.id ?? null,
+          moving: null,
+          hoverChair: null,
           chosen: [],
           chair: null,
           pop: null,
@@ -592,9 +653,34 @@ function Seating({
     [set],
   );
 
+  const pickSeated = useCallback(
+    (tableId: string, chair: number) =>
+      set((now) => {
+        const who = now.plan.items.find((one) => one.id === tableId)?.chairs[chair];
+        const again = now.moving?.table === tableId && now.moving.chair === chair;
+
+        if (now.readOnly || who?.state !== 'taken' || who.who == null) return now;
+        return {
+          ...now,
+          picked: again ? null : MOVING,
+          moving: again ? null : { table: tableId, chair },
+          hoverChair: null,
+          chosen: [],
+          chair: null,
+          pop: null,
+          hover: null,
+          bar: again
+            ? null
+            : { kind: 'tint', words: say(SW.pickOne, { name: who.who }), does: 'pick' },
+        };
+      }),
+    [set],
+  );
+
   const seatAt = useCallback(
     (tableId: string, chair?: number) =>
       set((now) => {
+        if (now.moving != null) return moveTo(now, tableId, chair);
         const party = now.tray.find((one) => one.id === now.picked);
         const item = now.plan.items.find((one) => one.id === tableId);
 
@@ -639,6 +725,7 @@ function Seating({
           plan: next.plan,
           tray: next.tray,
           picked: null,
+          hoverChair: null,
           pop: null,
           hover: tableId,
           save: now.save === 'retrying' ? 'retrying' : 'saving',
@@ -685,6 +772,7 @@ function Seating({
   const swap = useCallback(
     (tableId: string, chair: number, partyId: string) =>
       set((now) => {
+        if (partyId === MOVING) return swapMoving(now, tableId, chair);
         const party = now.tray.find((one) => one.id === partyId);
         const item = now.plan.items.find((one) => one.id === tableId);
         const was = item?.chairs[chair];
@@ -702,6 +790,7 @@ function Seating({
           },
           tray: [...now.tray.filter((one) => one.id !== partyId), moved],
           picked: null,
+          hoverChair: null,
           pop: null,
           hover: tableId,
           save: 'saving',
@@ -891,6 +980,7 @@ function Seating({
         })),
       ask: (asking) => set((now) => ({ ...now, asking })),
       pick,
+      pickSeated,
       seatAt,
       seatJust,
       swap,
@@ -908,6 +998,7 @@ function Seating({
       edit,
       choose,
       pick,
+      pickSeated,
       seatAt,
       seatJust,
       swap,
@@ -1946,8 +2037,11 @@ function Seating({
             )
           ) : (
             <div className="st-view-wrap">
-              {ui.bar != null && (
-                <MessageBar inline onPlace={() => undefined} onStop={stopPlacing} />
+              {(ui.bar != null || ui.pop != null) && (
+                <div className="st-view-top">
+                  <MessageBar inline onPlace={() => undefined} onStop={stopPlacing} />
+                  {ui.pop != null && <PopOver pop={ui.pop} inline />}
+                </div>
               )}
               {ui.view === 'tables' ? <TablesView /> : <ListView />}
             </div>
@@ -2453,13 +2547,29 @@ function AddBar({
 }
 
 /** A dark-free place for an answer by the table: Seat just {name}, Swap with {name}, Move everyone to…. */
-function PopOver({ pop, s, ox, oy }: { pop: Pop; s: number; ox: number; oy: number }) {
+function PopOver({
+  pop,
+  s = 1,
+  ox = 0,
+  oy = 0,
+  inline = false,
+}: {
+  pop: Pop;
+  s?: number;
+  ox?: number;
+  oy?: number;
+  inline?: boolean;
+}) {
   const { ui, set, seatJust, swap, moveAll } = useSeating();
   const box = useRef<HTMLDivElement>(null);
   const item = ui.plan.items.find((one) => one.id === pop.table);
 
   useLayoutEffect(() => {
     if (box.current == null || item == null) return;
+    if (inline) {
+      box.current.querySelector<HTMLElement>('button')?.focus();
+      return;
+    }
     const x = ox + item.x * s;
     const y = oy + item.y * s;
     const left =
@@ -2469,7 +2579,7 @@ function PopOver({ pop, s, ox, oy }: { pop: Pop; s: number; ox: number; oy: numb
     box.current.style.setProperty('left', `${Math.round(left)}px`);
     box.current.style.setProperty('top', `${Math.round(top)}px`);
     box.current.querySelector<HTMLElement>('button')?.focus();
-  }, [item, s, ox, oy, pop.kind]);
+  }, [item, s, ox, oy, pop.kind, inline]);
 
   if (item == null) return null;
   const close = () => set((now) => ({ ...now, pop: null }));
@@ -2563,7 +2673,7 @@ function PopOver({ pop, s, ox, oy }: { pop: Pop; s: number; ox: number; oy: numb
   return (
     <div
       ref={box}
-      className={`st-float st-pop is-${pop.kind === 'moveAll' ? 'move-all' : pop.kind}`}
+      className={`${inline ? 'st-pop is-inline' : 'st-float st-pop'} is-${pop.kind === 'moveAll' ? 'move-all' : pop.kind}`}
       role="dialog"
       aria-label={itemName(ui.plan, item)}
     >

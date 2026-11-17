@@ -2,6 +2,7 @@ import { writtenTime } from './clock.ts';
 import { demoWords } from './demoWords.ts';
 import { CRUMB_WORDS, type CrumbLang, LONG_NAME, QA_NAME, SW } from './seatingWords.ts';
 import type { DemoLink } from './settings.ts';
+import { SHARE_STATES } from './shareTables.ts';
 
 /** Seating · A · The room (page e31, board/seating-a-spec.md): the sample, the room's geometry and the plan's rules; the words are in seatingWords.ts. */
 export { CRUMB_WORDS, type CrumbLang, LONG_NAME, QA_NAME, SW };
@@ -521,6 +522,32 @@ export function extent(item: Item): Point {
     default:
       return [CHAIR_R, CHAIR_R];
   }
+}
+
+/** A Tables card's drawing (sc-4013), and its chairs as targets: 24 px each, the web's floor (WCAG 2.2 SC 2.5.8). */
+export const CARD_SIZE = { w: 188, h: 132 } as const;
+export const CHAIR_HIT = 24;
+
+/** How much smaller than the room a card draws its table: as large as the card holds, never above 0.45. */
+export function cardScale(item: Item): number {
+  const [ex, ey] = extent(item);
+  const turned = item.rot % 180 !== 0 ? [ey, ex] : [ex, ey];
+
+  return Math.min(
+    (CARD_SIZE.w - 16) / (2 * turned[0]!),
+    (CARD_SIZE.h - 12) / (2 * turned[1]!),
+    0.45,
+  );
+}
+
+/** Whether a card draws its chairs far enough apart for each to be a 24 px target (WCAG 2.2 SC 2.5.8); a long row does not, and is one target. */
+export function chairsFit(item: Item): boolean {
+  const s = cardScale(item);
+  const at = chairsOf(item).map((point) => turn(point, item.rot));
+
+  return at.every(([x, y], i) =>
+    at.slice(i + 1).every(([x2, y2]) => Math.hypot(x - x2, y - y2) * s >= CHAIR_HIT),
+  );
 }
 
 export function isRound(item: Item): boolean {
@@ -1407,6 +1434,8 @@ export function seatAt(item: Item, party: Party, chairs: readonly number[]): Ite
   };
 }
 
+const SHARE_GROUP = 'Share tables with guests (sc-4022)';
+
 export const SEATING_STATES = [
   { key: 'plan', name: 'The plan in use, nothing chosen', group: 'The plan' },
   { key: 'noPlan', name: 'No seating plan yet', group: 'The plan' },
@@ -1630,6 +1659,22 @@ export const SEATING_STATES = [
   { key: 'notSureYet', name: 'Not sure yet and no reply too', group: 'Seating guests' },
   { key: 'tables', name: 'The Tables view', group: 'Seating guests' },
   { key: 'tablesPicked', name: 'The Tables view, a party picked', group: 'Seating guests' },
+  {
+    key: 'tablesChair',
+    name: 'The Tables view, a guest picked and a free chair under the pointer',
+    group: 'Seating guests',
+  },
+  {
+    key: 'tablesSwap',
+    name: 'The Tables view, a taken chair tapped: Swap with',
+    group: 'Seating guests',
+  },
+  {
+    key: 'tablesMoving',
+    name: 'The Tables view, a seated guest picked to move',
+    group: 'Seating guests',
+  },
+  { key: 'tablesMoved', name: 'The Tables view, a seated guest moved', group: 'Seating guests' },
   { key: 'list', name: 'The List view', group: 'Seating guests' },
   { key: 'listOpen', name: 'The List, Table 8 opened', group: 'Seating guests' },
   { key: 'print', name: 'Print', group: 'Print and paper' },
@@ -1645,6 +1690,20 @@ export const SEATING_STATES = [
   { key: 'paperNobody', name: 'Paper: table lists, nobody seated', group: 'Print and paper' },
   { key: 'paperCard', name: 'Paper: a table card', group: 'Print and paper' },
   { key: 'paperCardTop', name: 'Paper: the head table’s card', group: 'Print and paper' },
+  { key: 'shareNotShared', name: SHARE_STATES.shareNotShared.name, group: SHARE_GROUP },
+  { key: 'shareAllSeated', name: SHARE_STATES.shareAllSeated.name, group: SHARE_GROUP },
+  { key: 'shareBySet', name: SHARE_STATES.shareBySet.name, group: SHARE_GROUP },
+  { key: 'shareByBlank', name: SHARE_STATES.shareByBlank.name, group: SHARE_GROUP },
+  { key: 'shareByAfterEvent', name: SHARE_STATES.shareByAfterEvent.name, group: SHARE_GROUP },
+  { key: 'shareByPast', name: SHARE_STATES.shareByPast.name, group: SHARE_GROUP },
+  { key: 'shareByPassed', name: SHARE_STATES.shareByPassed.name, group: SHARE_GROUP },
+  { key: 'shareConfirm', name: SHARE_STATES.shareConfirm.name, group: SHARE_GROUP },
+  { key: 'shareFailed', name: SHARE_STATES.shareFailed.name, group: SHARE_GROUP },
+  { key: 'shareShared', name: SHARE_STATES.shareShared.name, group: SHARE_GROUP },
+  { key: 'shareConfirmStop', name: SHARE_STATES.shareConfirmStop.name, group: SHARE_GROUP },
+  { key: 'shareStopped', name: SHARE_STATES.shareStopped.name, group: SHARE_GROUP },
+  { key: 'shareReadOnly', name: SHARE_STATES.shareReadOnly.name, group: SHARE_GROUP },
+  { key: 'shareReadOnlyShared', name: SHARE_STATES.shareReadOnlyShared.name, group: SHARE_GROUP },
   { key: 'longName', name: 'A 120-character event name', group: 'The breadcrumb' },
   { key: 'longNameFr', name: 'A 120-character event name, in French', group: 'The breadcrumb' },
   {

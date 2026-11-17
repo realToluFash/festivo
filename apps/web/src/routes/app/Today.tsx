@@ -1,5 +1,5 @@
 import type { ListedEvent } from '@soirely/api-client';
-import { firstName, serverClock, todayView } from '@soirely/domain';
+import { firstName, nowAsOfLine, serverClock, todayView } from '@soirely/domain';
 import { useEffect, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useNavigate } from 'react-router';
@@ -89,9 +89,13 @@ function Today({ organisationId }: { organisationId: string }) {
   };
   const underWay =
     load.kind === 'loaded' ? (todayView(load, now, reader).now?.event ?? null) : null;
-  const schedule = useRunSchedule(underWay);
+  const { schedule, asOf } = useRunSchedule(underWay);
   const run =
     underWay == null || schedule == null ? null : runNowOf(schedule, now, reader.locale, t);
+  const asOfLine =
+    schedule == null || asOf == null
+      ? null
+      : nowAsOfLine(asOf, serverClock.now(), schedule.timeZone, reader.locale);
   const runPath = underWay == null ? null : nightTrackPath(underWay.id, run?.track ?? null);
 
   const open: Open = (opens) => {
@@ -149,7 +153,14 @@ function Today({ organisationId }: { organisationId: string }) {
   return (
     <div className="today-page">
       {moment.now != null && run != null ? (
-        <RunNowBanner now={moment.now} run={run} actions={actions} open={open} titleRef={title} />
+        <RunNowBanner
+          now={moment.now}
+          run={run}
+          asOf={asOfLine == null ? null : t(asOfLine.key, asOfLine.values)}
+          actions={actions}
+          open={open}
+          titleRef={title}
+        />
       ) : moment.now != null ? (
         <NowBanner now={moment.now} full={false} actions={actions} open={open} titleRef={title} />
       ) : (

@@ -134,4 +134,6 @@ export interface Moment {
   now: Now | null;
   /** Now from the run of show (sc-29875): absent, or null, keeps sc-29090's Now. */
   run?: RunNow | null;
+  /** sc-62416's line under the run of show's figure, "Offline · as of 16:38"; absent or null when it does not show. */
+  asOf?: string | null;
 }

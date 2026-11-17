@@ -13,6 +13,7 @@ import {
   READ_GIVES_UP_MS,
   type Reads,
 } from './nowAge.ts';
+import './nowAge.css';
 
 /** `?reads=` on the event day (sc-62416): the line drawn as it stands, in its day form, or the reads running live with the demo's own answers. */
 export const READS_STATES = ['asOf', 'asOfDay', 'live'] as const;

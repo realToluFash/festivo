@@ -16,6 +16,7 @@ import {
   SEATING_STATES,
   SW,
   bounds,
+  chairsFit,
   chairsOf,
   deletePlanWords,
   extent,
@@ -60,6 +61,7 @@ import {
   usable,
   detailOf,
   endsLine,
+  isTable,
 } from './seating.ts';
 import { seedOf } from './seatingSeed.ts';
 
@@ -547,10 +549,10 @@ describe('dates on paper (sc-4024)', () => {
 });
 
 describe('the states (§6)', () => {
-  it('links every state from the demo’s home, in nine groups', () => {
+  it('links every state from the demo’s home, in ten groups', () => {
     const links = SEATING_PAGES.flatMap((page) => page.states);
 
-    expect(SEATING_PAGES).toHaveLength(9);
+    expect(SEATING_PAGES).toHaveLength(10);
     expect(links).toHaveLength(SEATING_STATES.length);
     expect(links[0]?.to).toBe('/demo/events/evt-wed-4/seating');
   });
@@ -620,5 +622,14 @@ describe('the guests a deleted or emptied item frees', () => {
       { id: 'back-Ines Duarte', name: 'Ines Duarte', companions: [], group: null, reply: 'coming' },
       { id: 'back-Kofi Mensah', name: 'Kofi Mensah', companions: [], group: null, reply: 'coming' },
     ]);
+  });
+});
+
+describe('a Tables card’s chairs (sc-4013)', () => {
+  it('gives each chair a 24 px target where the card leaves room, and a long row none', () => {
+    const tight = samplePlan().items.filter((item) => !chairsFit(item));
+
+    expect(tight.map((item) => item.name)).toEqual(['Row A']);
+    expect(samplePlan().items.filter(isTable).every(chairsFit)).toBe(true);
   });
 });

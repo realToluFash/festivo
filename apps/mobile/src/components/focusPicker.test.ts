@@ -119,3 +119,32 @@ describe('a refused picker on Android waits for the summary to be said (sc-43907
     expect(ended).toHaveBeenCalledOnce();
   });
 });
+
+describe('a refused picker on iOS (sc-48607)', () => {
+  beforeEach(() => {
+    vi.useFakeTimers();
+    native.platform.OS = 'ios';
+  });
+
+  afterEach(() => {
+    native.platform.OS = 'android';
+    vi.useRealTimers();
+  });
+
+  it('can be cancelled before its move, as a field focused meanwhile does', () => {
+    const ended = vi.fn();
+    const cancel = focusPicker({ current: null }, { current: null }, 'Type is required.', ended);
+
+    expect(() => cancel()).not.toThrow();
+    expect(ended).toHaveBeenCalledOnce();
+  });
+
+  it('moves once its wait is over, and says so', () => {
+    const ended = vi.fn();
+    focusPicker({ current: null }, { current: null }, 'Type is required.', ended);
+
+    vi.advanceTimersByTime(saidInFullMs('ios', 'Type is required.'));
+    vi.advanceTimersByTime(500);
+    expect(ended).toHaveBeenCalledOnce();
+  });
+});

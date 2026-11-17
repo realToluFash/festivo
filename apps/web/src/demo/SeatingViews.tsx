@@ -1,15 +1,18 @@
 import { Fragment } from 'react';
 
 import {
+  CARD_SIZE,
+  CHAIR_HIT,
   type Choice,
   type Item,
   type Party,
   type Plan,
   SW,
+  cardScale,
   chairWord,
+  chairsFit,
   chairsOf,
   chosenWords,
-  extent,
   filled,
   inSectionOrder,
   isRound,
@@ -57,16 +60,16 @@ function CardDrawing({
   item,
   colour,
   choices,
+  chairs,
 }: {
   item: Item;
   colour: string;
   choices: readonly Choice[];
+  chairs: CardChairs | null;
 }) {
-  const w = 188;
-  const h = 132;
-  const [ex, ey] = extent(item);
-  const turned = item.rot % 180 !== 0 ? [ey, ex] : [ex, ey];
-  const s = Math.min((w - 16) / (2 * turned[0]!), (h - 12) / (2 * turned[1]!), 0.45);
+  const w = CARD_SIZE.w;
+  const h = CARD_SIZE.h;
+  const s = cardScale(item);
   const cx = w / 2;
   const cy = h / 2;
   const r = 22 * s;
@@ -77,68 +80,148 @@ function CardDrawing({
       width={w}
       height={h}
       viewBox={`0 0 ${w} ${h}`}
-      aria-hidden="true"
+      aria-hidden={chairs == null ? true : undefined}
       focusable="false"
     >
-      {isRound(item) && item.kind !== 'single' ? (
-        <circle className="st-body" cx={cx} cy={cy} r={((item.d ?? 180) / 2) * s} />
-      ) : item.kind === 'rect' || item.kind === 'head' ? (
-        <g transform={`translate(${cx} ${cy}) rotate(${item.rot})`}>
-          <rect
-            className="st-body"
-            x={(-(item.w ?? 180) / 2) * s}
-            y={(-(item.l ?? 76) / 2) * s}
-            width={(item.w ?? 180) * s}
-            height={(item.l ?? 76) * s}
-            rx="3"
-          />
-        </g>
-      ) : null}
-      {chairsOf(item).map((point, index) => {
-        const [px, py] = turn(point, item.rot);
+      <g aria-hidden="true">
+        {isRound(item) && item.kind !== 'single' ? (
+          <circle className="st-body" cx={cx} cy={cy} r={((item.d ?? 180) / 2) * s} />
+        ) : item.kind === 'rect' || item.kind === 'head' ? (
+          <g transform={`translate(${cx} ${cy}) rotate(${item.rot})`}>
+            <rect
+              className="st-body"
+              x={(-(item.w ?? 180) / 2) * s}
+              y={(-(item.l ?? 76) / 2) * s}
+              width={(item.w ?? 180) * s}
+              height={(item.l ?? 76) * s}
+              rx="3"
+            />
+          </g>
+        ) : null}
+        {chairsOf(item).map((point, index) => {
+          const [px, py] = turn(point, item.rot);
+          const lit = chairs?.lit === index || chairs?.on === index;
 
-        return (
-          <ChairMark
-            key={index}
-            x={cx + px * s}
-            y={cy + py * s}
-            r={r}
-            chair={item.chairs[index] ?? { state: 'empty' }}
-            square={item.kind === 'cocktail'}
-          />
-        );
-      })}
-      {chairsOf(item).flatMap((point, index) => {
-        const [px, py] = turn(point, item.rot);
-        const x = cx + px * s;
-        const y = cy + py * s;
+          return lit ? (
+            <g key={index}>
+              <circle
+                className="st-lit"
+                cx={cx + px * s}
+                cy={cy + py * s}
+                r={Math.max(r + 5, CHAIR_HIT / 2 + 2)}
+              />
+              <ChairMark
+                x={cx + px * s}
+                y={cy + py * s}
+                r={r}
+                chair={item.chairs[index] ?? { state: 'empty' }}
+                square={item.kind === 'cocktail'}
+              />
+            </g>
+          ) : (
+            <ChairMark
+              key={index}
+              x={cx + px * s}
+              y={cy + py * s}
+              r={r}
+              chair={item.chairs[index] ?? { state: 'empty' }}
+              square={item.kind === 'cocktail'}
+            />
+          );
+        })}
+        {chairsOf(item).flatMap((point, index) => {
+          const [px, py] = turn(point, item.rot);
+          const x = cx + px * s;
+          const y = cy + py * s;
 
-        return choices
-          .filter((one) => one.seat === index)
-          .map(({ who }, k) => {
-            const rr = r + 5.5 + RING_STEP * k;
+          return choices
+            .filter((one) => one.seat === index)
+            .map(({ who }, k) => {
+              const rr = r + 5.5 + RING_STEP * k;
 
-            return (
-              <g key={`seat${index}.${k}`} className={`st-ring p${who.tone}`}>
-                <circle className="st-ring-gap" cx={x} cy={y} r={rr} />
-                <circle className="st-ring-line" cx={x} cy={y} r={rr + 1.5} />
-                <Pill x={x - rr * 0.72} y={y - rr * 0.72 - PILL_STEP * k} words={who.initials} />
-              </g>
-            );
-          });
-      })}
+              return (
+                <g key={`seat${index}.${k}`} className={`st-ring p${who.tone}`}>
+                  <circle className="st-ring-gap" cx={x} cy={y} r={rr} />
+                  <circle className="st-ring-line" cx={x} cy={y} r={rr + 1.5} />
+                  <Pill x={x - rr * 0.72} y={y - rr * 0.72 - PILL_STEP * k} words={who.initials} />
+                </g>
+              );
+            });
+        })}
+      </g>
+      {chairs != null &&
+        chairsOf(item).map((point, index) => {
+          const chair = item.chairs[index] ?? { state: 'empty' as const };
+
+          if (!chairs.target(chair, index)) return null;
+          const [px, py] = turn(point, item.rot);
+
+          return (
+            <circle
+              key={`hit${index}`}
+              className="st-chair-hit is-card"
+              role="button"
+              tabIndex={chairs.keys ? 0 : -1}
+              aria-label={say(SW.chairName, {
+                table: item.name,
+                n: index + 1,
+                word: chairWord(chair),
+              })}
+              aria-pressed={chairs.on === index}
+              cx={cx + px * s}
+              cy={cy + py * s}
+              r={CHAIR_HIT / 2}
+              onPointerEnter={() => chairs.onHover(index)}
+              onPointerLeave={() => chairs.onHover(null)}
+              onFocus={() => chairs.onHover(index)}
+              onBlur={() => chairs.onHover(null)}
+              onClick={() => chairs.onChair(index)}
+              onKeyDown={(event) => {
+                if (event.key !== 'Enter' && event.key !== ' ') return;
+                event.preventDefault();
+                chairs.onChair(index);
+              }}
+            />
+          );
+        })}
     </svg>
   );
 }
 
+interface CardChairs {
+  target: (chair: Item['chairs'][number], index: number) => boolean;
+  /** In the tab order: the lit card's chairs only, as the plan's `chairsFor`. */
+  keys: boolean;
+  lit: number | null;
+  on: number | null;
+  onHover: (index: number | null) => void;
+  onChair: (index: number) => void;
+}
+
 /** The Tables view (sc-4013): a card per table, by section then name, with All sections and a chip per section. */
 export function TablesView() {
-  const { ui, set, seatAt, choose } = useSeating();
+  const { ui, set, seatAt, choose, pickSeated } = useSeating();
   const plan = ui.plan;
   const items = inSectionOrder(plan).filter(
     (item) => ui.tablesSection == null || item.sec === ui.tablesSection,
   );
-  const picked = partyOf(ui.tray, ui.picked);
+  const picking = ui.picked != null;
+  const chairsOn = (item: Item): CardChairs | null =>
+    ui.readOnly || !chairsFit(item)
+      ? null
+      : {
+          target: (chair) => chair.state === 'taken' || (picking && chair.state === 'empty'),
+          keys: ui.hover === item.id || ui.moving?.table === item.id || ui.chosen.includes(item.id),
+          lit: ui.hover === item.id ? ui.hoverChair : null,
+          on: ui.moving?.table === item.id ? ui.moving.chair : null,
+          onHover: (index) =>
+            set((now) =>
+              now.picked == null
+                ? now
+                : { ...now, hover: index == null ? now.hover : item.id, hoverChair: index },
+            ),
+          onChair: (index) => (picking ? seatAt(item.id, index) : pickSeated(item.id, index)),
+        };
 
   return (
     <div className="st-view is-tables">
@@ -172,20 +255,29 @@ export function TablesView() {
 
           return (
             <li key={item.id} className="st-card-slot">
-              <button
-                type="button"
+              <div
                 className={['st-card', lit && 'is-lit', marks.length > 0 && 'is-marked']
                   .filter(Boolean)
                   .join(' ')}
-                aria-label={itemName(plan, item, chosenWords(marks))}
-                aria-pressed={ui.chosen.includes(item.id)}
-                onPointerEnter={() => picked != null && set((now) => ({ ...now, hover: item.id }))}
-                onClick={() => (picked != null ? seatAt(item.id) : choose([item.id]))}
               >
-                <span className="st-card-top">
-                  <span className="st-card-name">{item.name}</span>
-                  <span className="st-card-of">{ofWords(item)}</span>
-                </span>
+                <button
+                  type="button"
+                  className="st-card-hit"
+                  aria-label={itemName(plan, item, chosenWords(marks))}
+                  aria-pressed={ui.chosen.includes(item.id)}
+                  onPointerEnter={() =>
+                    picking && set((now) => ({ ...now, hover: item.id, hoverChair: null }))
+                  }
+                  onFocus={() =>
+                    picking && set((now) => ({ ...now, hover: item.id, hoverChair: null }))
+                  }
+                  onClick={() => (picking ? seatAt(item.id) : choose([item.id]))}
+                >
+                  <span className="st-card-top">
+                    <span className="st-card-name">{item.name}</span>
+                    <span className="st-card-of">{ofWords(item)}</span>
+                  </span>
+                </button>
                 <span className="st-sec-chip">
                   <Swatch colour={section?.colour ?? null} size={12} />
                   {section?.name ?? SW.noSection}
@@ -194,8 +286,9 @@ export function TablesView() {
                   item={item}
                   colour={section?.colour.toLowerCase() ?? 'none'}
                   choices={marks}
+                  chairs={chairsOn(item)}
                 />
-              </button>
+              </div>
               {marks.map(({ who }, k) => (
                 <span
                   key={k}
@@ -274,7 +367,10 @@ export function ListView() {
         <tbody>
           {rows.map((item) => {
             const open = ui.listOpen === item.id;
-            const room = picked != null && usable(item) - filled(item) >= peopleIn(picked);
+            const room =
+              ui.moving != null
+                ? item.id !== ui.moving.table && usable(item) > filled(item)
+                : picked != null && usable(item) - filled(item) >= peopleIn(picked);
             const marks = marksOf(ui.rings, ui.presence, item.id);
 
             return (
