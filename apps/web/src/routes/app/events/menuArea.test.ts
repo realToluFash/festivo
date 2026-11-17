@@ -21,6 +21,8 @@ const dish = (id: string, picked = false): MenuDish => ({
   diets: [],
   libraryDishId: null,
   variants: [],
+  choices: [],
+  offered: true,
   picked,
 });
 

@@ -87,11 +87,13 @@ import {
   asDishLibrary,
 } from './dishes.ts';
 import {
+  type ChoiceDetails,
   type EventMenu,
   type MenuAnswer,
   type MenuChange,
   type MenuCourseDetails,
   asEventMenu,
+  asUnwarnedOptions,
   asUnwarnedPickers,
 } from './menu.ts';
 import {
@@ -2734,6 +2736,35 @@ export class ApiClient {
     return `${this.menuPath(eventId)}/variants/${encodeURIComponent(variantId)}`;
   }
 
+  /** A question inside the dish (sc-3904), saved as a draft while unfinished; refused 409 `choice_limit` at 3, and `menu_dish_picked` on a picked dish until sc-3913. */
+  async addMenuChoice(
+    eventId: string,
+    dishId: string,
+    details: ChoiceDetails,
+  ): Promise<MenuChange> {
+    return this.menuOf(
+      await this.post<unknown>(`${this.menuDishPath(eventId, dishId)}/choices`, details),
+    );
+  }
+
+  /** On an answered choice, refused under `pick`, `required` and `draft`, and 409 `choice_option_picked` for a picked option left out; `unwarnedOptions` has a line per picked option given an allergen. */
+  async changeMenuChoice(
+    eventId: string,
+    choiceId: string,
+    details: ChoiceDetails,
+  ): Promise<MenuChange> {
+    return this.menuOf(await this.put<unknown>(this.menuChoicePath(eventId, choiceId), details));
+  }
+
+  /** Refused 409 `choice_answered` once guests have answered it. */
+  async removeMenuChoice(eventId: string, choiceId: string): Promise<MenuChange> {
+    return this.menuOf(await this.delete<unknown>(this.menuChoicePath(eventId, choiceId)));
+  }
+
+  private menuChoicePath(eventId: string, choiceId: string): string {
+    return `${this.menuPath(eventId)}/choices/${encodeURIComponent(choiceId)}`;
+  }
+
   /** A hub token for this event's menu topic alone. */
   async menuSubscription(eventId: string): Promise<RealtimeSubscription> {
     const body = await this.post<{ token?: unknown; expiresAt?: unknown }>(
@@ -2760,7 +2791,9 @@ export class ApiClient {
       menu,
       courseId: typeof record.courseId === 'string' ? record.courseId : null,
       dishId: typeof record.dishId === 'string' ? record.dishId : null,
+      choiceId: typeof record.choiceId === 'string' ? record.choiceId : null,
       unwarned: asUnwarnedPickers(record.unwarned),
+      unwarnedOptions: asUnwarnedOptions(record.unwarnedOptions),
     };
   }
 
