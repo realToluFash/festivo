@@ -61,7 +61,7 @@ import { useTranslation } from 'react-i18next';
 import { Link } from 'react-router';
 
 import { api } from '../../../api.ts';
-import { keptKeys, keptLoad, useAnsweredAgain } from '../../../tabKept.ts';
+import { keptKeys, keptLoad, rekeep, useAnsweredAgain } from '../../../tabKept.ts';
 import { useDeskTop } from '../../../deskTop.ts';
 import { config } from '../../../config.ts';
 import { Glyph } from '../../../components/Glyph.tsx';
@@ -569,6 +569,10 @@ export function SeatingArea({ event }: { event: OrganisationEvent }) {
       current = false;
     };
   }, [event.id, attempt, answeredAgain]);
+
+  useEffect(() => {
+    if (load.kind === 'loaded') rekeep(keptKeys.seating(event.id), load.seating);
+  }, [event.id, load]);
 
   const presence = usePresence(event);
 
