@@ -4504,6 +4504,10 @@ describe('An item moved by keys stays clear of the keys strip (sc-61042)', () =>
     return { drawn, sent, was };
   }
 
+  async function nextFrame() {
+    await act(() => new Promise<void>((done) => requestAnimationFrame(() => done())));
+  }
+
   function watchShows() {
     const shows: MutationCallback[] = [];
 
@@ -4619,6 +4623,53 @@ describe('An item moved by keys stays clear of the keys strip (sc-61042)', () =>
       below = 520 - was;
       STRIP.top = 600;
       grow();
+      await nextFrame();
+      expect(floorTop()).toBeCloseTo(was - 28, 0);
+    } finally {
+      STRIP.top = 600;
+      vi.unstubAllGlobals();
+      measured.mockRestore();
+    }
+  });
+
+  it('pans for where the item lies once a resize that grew the strip has been drawn', async () => {
+    const measured = measure();
+    const watched: { callback: ResizeObserverCallback; targets: Element[] }[] = [];
+
+    vi.stubGlobal(
+      'ResizeObserver',
+      class {
+        targets: Element[] = [];
+        constructor(callback: ResizeObserverCallback) {
+          watched.push({ callback, targets: this.targets });
+        }
+        observe(target: Element) {
+          this.targets.push(target);
+        }
+        disconnect() {}
+      },
+    );
+
+    try {
+      await keyed();
+      const was = floorTop();
+      const strip = document.querySelector('.st-keys')!;
+      const grow = () =>
+        act(() => {
+          for (const one of watched)
+            if (one.targets.includes(strip))
+              one.callback(
+                [{ target: strip, contentRect: strip.getBoundingClientRect() }] as never,
+                {} as ResizeObserver,
+              );
+        });
+
+      STRIP.top = 640;
+      grow();
+      STRIP.top = 600;
+      grow();
+      below = 520 - was;
+      await nextFrame();
       expect(floorTop()).toBeCloseTo(was - 28, 0);
     } finally {
       STRIP.top = 600;
@@ -4654,7 +4705,30 @@ describe('An item moved by keys stays clear of the keys strip (sc-61042)', () =>
         for (const show of shows)
           show([{ addedNodes: [strip] as unknown as NodeList } as MutationRecord], {} as never);
       });
+      await nextFrame();
       expect(floorTop()).toBeCloseTo(was - 28, 0);
+    } finally {
+      vi.unstubAllGlobals();
+      measured.mockRestore();
+    }
+  });
+
+  it('does not pan when the small map a zoom brings in shows while the item has focus', async () => {
+    const measured = measure();
+    const shows = watchShows();
+
+    try {
+      const { was } = await keyed();
+      const small = document.createElement('div');
+
+      small.className = 'st-float st-minimap';
+      below = 520 - was;
+      act(() => {
+        for (const show of shows)
+          show([{ addedNodes: [small] as unknown as NodeList } as MutationRecord], {} as never);
+      });
+      await nextFrame();
+      expect(floorTop()).toBe(was);
     } finally {
       vi.unstubAllGlobals();
       measured.mockRestore();

@@ -856,6 +856,15 @@ function Plan({
 
     if (!keyFocus || node == null || typeof ResizeObserver === 'undefined') return;
     const tall = new WeakMap<Element, number>();
+    let frame = 0;
+    const clearSettled = () => {
+      cancelAnimationFrame(frame);
+      frame = requestAnimationFrame(() => {
+        const target = focusedItem();
+
+        if (target != null) keepClear(target);
+      });
+    };
     const grows = new ResizeObserver((entries) => {
       const grew = entries.some((entry) => {
         const was = tall.get(entry.target);
@@ -864,25 +873,24 @@ function Plan({
         tall.set(entry.target, now);
         return was != null && now > was;
       });
-      const target = grew ? focusedItem() : null;
 
-      if (target != null) keepClear(target);
+      if (grew) clearSettled();
     });
     const watch = () =>
-      node.querySelectorAll(':scope > .st-float').forEach((bar) => grows.observe(bar));
+      node.querySelectorAll(`:scope > ${BY_KEYS_BAR}`).forEach((bar) => grows.observe(bar));
     const shows = new MutationObserver((changes) => {
       watch();
       const shown = changes.some((change) =>
-        [...change.addedNodes].some((one) => one instanceof Element && one.matches('.st-float')),
+        [...change.addedNodes].some((one) => one instanceof Element && one.matches(BY_KEYS_BAR)),
       );
-      const target = shown ? focusedItem() : null;
 
-      if (target != null) keepClear(target);
+      if (shown) clearSettled();
     });
 
     watch();
     shows.observe(node, { childList: true });
     return () => {
+      cancelAnimationFrame(frame);
       grows.disconnect();
       shows.disconnect();
     };
@@ -2380,6 +2388,9 @@ function ZoomControls({ camera }: { camera: ReturnType<typeof useCamera> }) {
     </div>
   );
 }
+
+/** The bars whose showing or growing pans the plan for a focused item: the small map comes only with a zoom, and a zoom never pans (sc-61042). */
+const BY_KEYS_BAR = '.st-float:not(.st-minimap)';
 
 const SMALL_MAP_WIDTH = 160;
 const SMALL_MAP_SEAT_CM = 44;
