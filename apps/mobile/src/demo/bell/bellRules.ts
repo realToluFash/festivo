@@ -20,10 +20,8 @@ export function topScrolls(window: { width: number; height: number }): boolean {
 /** How far up from the screen's foot the fade under the phone's tab bar reaches, as `TabBarFade` draws it; its test reads the height from `TodayCover.tsx`. */
 export const FADE_REACH = 150;
 
-/** How far the list's cards sit in from each side, past a navigation bar or the Dynamic Island. */
 const LIST_SIDE = tokens.spaceXl;
 
-/** How far the top's content sits in from each side, as Events' header does. */
 const TOP_SIDE = tokens.spaceXxl;
 
 type Sides = { left: number; right: number };
