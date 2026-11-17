@@ -1,6 +1,9 @@
 import { type ColleagueChoice, type PlanSubscriber } from '@soirely/api-client';
-import { initials } from '@soirely/domain';
+import { initials, listFormat } from '@soirely/domain';
+import { type TFunction } from 'i18next';
 import { createContext, useContext } from 'react';
+
+import { currentLocale } from '../../../i18n/index.ts';
 
 const TONES = 6;
 /** A renewed connection is a new subscriber, often published after the old one leaves; a departure waits this long for it. */
@@ -131,7 +134,9 @@ export function chose(state: PresenceState, choice: ColleagueChoice): PresenceSt
   const by = hereNow(state.tabs, choice.userId);
   if (by != null && !by.editor) return state;
 
-  return { ...state, chosen: { ...state.chosen, [choice.userId]: choice.chosen } };
+  const { [choice.userId]: _was, ...others } = state.chosen;
+
+  return { ...state, chosen: { ...others, [choice.userId]: choice.chosen } };
 }
 
 export function colleaguesOf(state: PresenceState, me: string): Colleague[] {
@@ -153,23 +158,48 @@ export function colleaguesOf(state: PresenceState, me: string): Colleague[] {
   });
 }
 
-/** Each item an editor here has chosen, with the first of them to have arrived. */
-export function ringsOf(state: PresenceState, me: string): Record<string, ColleagueRing> {
-  const rings: Record<string, ColleagueRing> = {};
+/** Each item editors here have chosen, with each of them in the order they chose it. */
+export function ringsOf(state: PresenceState, me: string): Record<string, ColleagueRing[]> {
+  const editors = new Map(
+    colleaguesOf(state, me)
+      .filter((colleague) => colleague.editor)
+      .map((colleague) => [colleague.userId, colleague]),
+  );
+  const rings: Record<string, ColleagueRing[]> = {};
 
-  for (const colleague of colleaguesOf(state, me)) {
-    const chosen = state.chosen[colleague.userId];
-    if (!colleague.editor || chosen == null || rings[chosen.id] != null) continue;
-    rings[chosen.id] = { ...colleague, chair: chosen.chair };
+  for (const [userId, chosen] of Object.entries(state.chosen)) {
+    const colleague = editors.get(userId);
+    if (colleague == null || chosen == null) continue;
+    (rings[chosen.id] ??= []).push({ ...colleague, chair: chosen.chair });
   }
 
   return rings;
 }
 
-export const RingsContext = createContext<Readonly<Record<string, ColleagueRing>>>({});
+const NO_RINGS: readonly ColleagueRing[] = [];
 
-export function useRing(id: string): ColleagueRing | null {
-  return useContext(RingsContext)[id] ?? null;
+export const RingsContext = createContext<Readonly<Record<string, readonly ColleagueRing[]>>>({});
+
+export function useRings(id: string): readonly ColleagueRing[] {
+  return useContext(RingsContext)[id] ?? NO_RINGS;
+}
+
+/** An item's name, then who chose it whole and who chose each of its seats, in the order they chose. */
+export function chosenBy(t: TFunction, name: string, rings: readonly ColleagueRing[]): string {
+  const names = (some: readonly ColleagueRing[]) =>
+    listFormat(currentLocale(), { type: 'conjunction' }).format(some.map((one) => one.name));
+  const whole = rings.filter((one) => one.chair == null);
+  const seats = [...new Set(rings.flatMap((one) => (one.chair == null ? [] : [one.chair])))];
+
+  return seats.reduce(
+    (said, seat) =>
+      t('seating.seatChosenBy', {
+        name: said,
+        seat,
+        by: names(rings.filter((one) => one.chair === seat)),
+      }),
+    whole.length === 0 ? name : t('seating.chosenBy', { name, by: names(whole) }),
+  );
 }
 
 export interface OwnChoice {

@@ -3922,6 +3922,40 @@ describe('Who else is on the plan (sc-4719)', () => {
     expect(document.querySelector('.st-ring')).toBeNull();
   });
 
+  it('rings two colleagues on one table in the order they chose it, and a chosen seat on its chair (#60871)', async () => {
+    const KEMI = tab('urn:uuid:k1', 'u_kemi', 'Kemi Adeyemi');
+    const JULIEN = tab('urn:uuid:j1', 'u_julien', 'Julien Moreau');
+    const { source } = await onPlanWith([ME, PRIYA, KEMI, JULIEN]);
+    const pills = () =>
+      [...document.querySelectorAll('[data-table="t1"] .st-ring .st-initials')].map(
+        (one) => one.textContent,
+      );
+
+    source.publish({ userId: 'u_kemi', chosen: { kind: 'table', id: 't1', chair: null } });
+    source.publish({ userId: 'u_priya', chosen: { kind: 'table', id: 't1', chair: null } });
+    source.publish({ userId: 'u_julien', chosen: { kind: 'table', id: 't1', chair: 2 } });
+    await screen.findByRole('button', {
+      name: `${TABLE_1}, chosen by Kemi Adeyemi and Priya Shah, seat 2 chosen by Julien Moreau`,
+    });
+    expect(pills()).toEqual(['KA', 'PS', 'JM']);
+    const [inner, outer] = [...document.querySelectorAll('[data-table="t1"] .st-ring-gap')].map(
+      (one) => Number(one.getAttribute('r')),
+    );
+    expect(outer! - inner!).toBe(5);
+
+    const seat = document.querySelector('[data-table="t1"] .st-ring:last-child circle');
+    const chair = document.querySelectorAll('[data-table="t1"] .st-chair')[1];
+    expect(seat?.getAttribute('cx')).toBe(chair?.getAttribute('cx'));
+
+    while (Number(percent().replace('%', '')) >= 50) press('Zoom out');
+    expect(document.querySelectorAll('.st-room .st-chair')).toHaveLength(0);
+    expect(pills()).toEqual(['KA', 'PS', 'JM']);
+    const rings = [...document.querySelectorAll('[data-table="t1"] .st-ring-gap')].map((one) =>
+      one.getAttribute('cx'),
+    );
+    expect(new Set(rings).size).toBe(1);
+  });
+
   it('drops a colleague’s outline when they close the plan', async () => {
     const { source } = await onPlanWith([ME, PRIYA]);
 

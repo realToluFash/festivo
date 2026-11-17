@@ -3,7 +3,11 @@ import { useTranslation } from 'react-i18next';
 
 import { Glyph } from '../../../components/Glyph.tsx';
 import { f } from './seatingDraw.ts';
-import { type Colleague, type ColleagueRing, useRing } from './seatingPresence.ts';
+import { type Colleague, type ColleagueRing, useRings } from './seatingPresence.ts';
+
+/** Each further colleague's ring sits outside the last: its 2 px white gap, then its 3 px line. */
+const RING_STEP = 5;
+const PILL_STEP = 24;
 
 /** Who else is on the plan, by the page title: their chips and a line saying so, or that we cannot tell. */
 export function Presence({
@@ -106,18 +110,20 @@ export function Face({ person, size = 32 }: { person: Colleague; size?: 24 | 28 
   );
 }
 
-/** A colleague's ring outside a white gap, with their initials at its top left; fixed screen px at every zoom. */
+/** A colleague's ring outside a white gap, with their initials at its top left; fixed screen px at every zoom. The `step`th colleague on an item rings outside the ones before. */
 export function ColleagueOutline({
   ring,
+  step,
   round,
   cx,
   cy,
   ex,
   ey,
   rotation,
-  pad,
+  pad: inner,
 }: {
   ring: ColleagueRing;
+  step: number;
   round: boolean;
   cx: number;
   cy: number;
@@ -126,6 +132,9 @@ export function ColleagueOutline({
   rotation: number;
   pad: number;
 }) {
+  const pad = inner + RING_STEP * step;
+  const lift = PILL_STEP * step;
+
   if (round) {
     const rr = ex + pad + 3.5;
 
@@ -133,7 +142,7 @@ export function ColleagueOutline({
       <g className={`st-ring p${ring.tone}`} aria-hidden="true">
         <circle className="st-ring-gap" cx={f(cx)} cy={f(cy)} r={f(rr)} />
         <circle className="st-ring-line" cx={f(cx)} cy={f(cy)} r={f(rr + 1.5)} />
-        <InitialsPill x={cx - rr * 0.72} y={cy - rr * 0.72} words={ring.initials} />
+        <InitialsPill x={cx - rr * 0.72} y={cy - rr * 0.72 - lift} words={ring.initials} />
       </g>
     );
   }
@@ -164,7 +173,7 @@ export function ColleagueOutline({
           rx="10"
         />
       </g>
-      <InitialsPill x={cx + px} y={cy + py} words={ring.initials} />
+      <InitialsPill x={cx + px} y={cy + py - lift} words={ring.initials} />
     </g>
   );
 }
@@ -180,16 +189,15 @@ function InitialsPill({ x, y, words }: { x: number; y: number; words: string }) 
   );
 }
 
-/** In the side panel, when you have chosen what a colleague has: never a lock, only a warning. */
+/** In the side panel, when you have chosen what colleagues have: never a lock, only a warning, one for each of them. */
 export function ColleagueNote({ id }: { id: string }) {
   const { t } = useTranslation();
-  const ring = useRing(id);
+  const whole = useRings(id).filter((ring) => ring.chair == null);
 
-  if (ring == null) return null;
-  return (
-    <div className="st-colleague">
+  return whole.map((ring) => (
+    <div key={ring.userId} className="st-colleague">
       <Face person={ring} size={24} />
       <p>{t('seating.choseToo', { name: ring.name })}</p>
     </div>
-  );
+  ));
 }

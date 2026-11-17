@@ -536,7 +536,7 @@ function Plan({
   seating: Seating;
   onSeating: (seating: Seating) => void;
   reload: () => void;
-  rings: Record<string, ColleagueRing>;
+  rings: Record<string, ColleagueRing[]>;
   onChosen: (chosen: OwnChoice | null) => void;
 }) {
   const { t } = useTranslation();

@@ -56,7 +56,7 @@ import {
 } from './SeatingParts.tsx';
 import { Overlaps, PositionFields } from './SeatingArrange.tsx';
 import { ColleagueNote, ColleagueOutline } from './SeatingPresence.tsx';
-import { useRing } from './seatingPresence.ts';
+import { chosenBy, useRings } from './seatingPresence.ts';
 import { placementOf } from './seatingItems.ts';
 import {
   centimetreUnit,
@@ -310,9 +310,7 @@ export function TableDrawing({
   const near = s >= POINTER_CHAIRS_FROM_SCALE;
   const r = CHAIR_RADIUS_CM * s;
   const section = sectionOf(plan, table);
-  const ring = useRing(table.id);
-  const chosenBy = (name: string) =>
-    ring == null ? name : t('seating.chosenBy', { name, by: ring.name });
+  const rings = useRings(table.id);
   const box = (pad: number, className: string, key: string) =>
     round ? (
       <circle key={key} className={className} cx={f(cx)} cy={f(cy)} r={f(ex * s + pad)} />
@@ -330,6 +328,8 @@ export function TableDrawing({
     );
 
   const out = s < CHAIRS_FROM_SCALE;
+  const onTable = rings.filter((ring) => ring.chair == null || out);
+  const seatRings: ReactNode[] = [];
   const body = round ? (
     <circle
       className={out ? 'st-body is-out' : 'st-body'}
@@ -358,6 +358,24 @@ export function TableDrawing({
       const x = cx + px * s;
       const y = cy + py * s;
       const unusable = table.unusableSeats.includes(chair.seat);
+      const seated = rings.filter((ring) => ring.chair === chair.seat);
+
+      seated.forEach((ring, step) =>
+        seatRings.push(
+          <ColleagueOutline
+            key={`${chair.seat}:${ring.userId}`}
+            ring={ring}
+            step={step}
+            round
+            cx={x}
+            cy={y}
+            ex={r}
+            ey={r}
+            rotation={0}
+            pad={2}
+          />,
+        ),
+      );
 
       chairs.push(
         <g key={chair.seat}>
@@ -377,12 +395,14 @@ export function TableDrawing({
               className={near ? 'st-chair-hit' : 'st-chair-hit is-keys'}
               role="button"
               tabIndex={chosen ? 0 : -1}
-              aria-label={((name: string) => (ring?.chair === chair.seat ? chosenBy(name) : name))(
+              aria-label={chosenBy(
+                t,
                 t('seating.chairName', {
                   table: table.name,
                   seat: chair.seat,
                   state: chairWord(t, table, chair.seat),
                 }),
+                seated.map((ring) => ({ ...ring, chair: null })),
               )}
               aria-pressed={chosenSeat === chair.seat}
               cx={f(x)}
@@ -421,7 +441,9 @@ export function TableDrawing({
       role="button"
       tabIndex={0}
       aria-label={chosenBy(
+        t,
         section == null ? name : t('seating.inSection', { name, section: section.name }),
+        rings,
       )}
       aria-pressed={lit}
       data-table={table.id}
@@ -458,9 +480,11 @@ export function TableDrawing({
           {table.name}
         </text>
       )}
-      {ring != null && (
+      {onTable.map((ring, step) => (
         <ColleagueOutline
+          key={ring.userId}
           ring={ring}
+          step={step}
           round={round}
           cx={cx}
           cy={cy}
@@ -469,7 +493,8 @@ export function TableDrawing({
           rotation={table.rotation}
           pad={lit ? 10 : 2}
         />
-      )}
+      ))}
+      {seatRings}
       {outside && box(6, 'st-overlap', 'outside')}
     </g>
   );

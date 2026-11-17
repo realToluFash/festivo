@@ -25,7 +25,7 @@ import { currentLocale } from '../../../i18n/index.ts';
 import { Added, BackHead, Field, Line, type PlanApi, Said, Select } from './SeatingParts.tsx';
 import { Overlaps, PositionFields } from './SeatingArrange.tsx';
 import { ColleagueNote, ColleagueOutline } from './SeatingPresence.tsx';
-import { useRing } from './seatingPresence.ts';
+import { chosenBy, useRings } from './seatingPresence.ts';
 import { placementOf } from './seatingItems.ts';
 import {
   CHAIRS_FROM_SCALE,
@@ -126,9 +126,7 @@ export function RowDrawing({
   const near = s >= POINTER_CHAIRS_FROM_SCALE;
   const r = CHAIR_RADIUS_CM * s;
   const section = sectionOf(plan, row);
-  const ring = useRing(row.id);
-  const chosenBy = (name: string) =>
-    ring == null ? name : t('seating.chosenBy', { name, by: ring.name });
+  const rings = useRings(row.id);
   const name = t('seating.rowName', { label: row.label });
   const box = (pad: number, className: string) => (
     <g transform={`translate(${f(cx)} ${f(cy)}) rotate(${row.rotation})`}>
@@ -212,7 +210,9 @@ export function RowDrawing({
       role="button"
       tabIndex={0}
       aria-label={chosenBy(
+        t,
         section == null ? said : t('seating.inSection', { name: said, section: section.name }),
+        rings,
       )}
       aria-pressed={lit}
       data-row={row.id}
@@ -250,9 +250,11 @@ export function RowDrawing({
           seats={usableSeats(row)}
         />
       )}
-      {ring != null && (
+      {rings.map((ring, step) => (
         <ColleagueOutline
+          key={ring.userId}
           ring={ring}
+          step={step}
           round={false}
           cx={cx}
           cy={cy}
@@ -261,7 +263,7 @@ export function RowDrawing({
           rotation={row.rotation}
           pad={lit ? 10 : 2}
         />
-      )}
+      ))}
       {outside && box(6, 'st-overlap')}
     </g>
   );
@@ -292,9 +294,7 @@ export function SingleSeatDrawing({
   const cy = oy + seat.yCm * s;
   const r = Math.max(5, CHAIR_RADIUS_CM * s);
   const section = sectionOf(plan, seat);
-  const ring = useRing(seat.id);
-  const chosenBy = (name: string) =>
-    ring == null ? name : t('seating.chosenBy', { name, by: ring.name });
+  const rings = useRings(seat.id);
   const said = t('seating.singleSeatName', {
     name: seat.name,
     state: stateWord(t, seat.unusable),
@@ -306,7 +306,9 @@ export function SingleSeatDrawing({
       role="button"
       tabIndex={0}
       aria-label={chosenBy(
+        t,
         section == null ? said : t('seating.inSection', { name: said, section: section.name }),
+        rings,
       )}
       aria-pressed={chosen}
       data-seat={seat.id}
@@ -328,9 +330,11 @@ export function SingleSeatDrawing({
       ) : (
         <OutWords x={cx} y={cy + 40 * s * 0.55 + 12} name={seat.name} taken={0} seats={null} />
       )}
-      {ring != null && (
+      {rings.map((ring, step) => (
         <ColleagueOutline
+          key={ring.userId}
           ring={ring}
+          step={step}
           round
           cx={cx}
           cy={cy}
@@ -339,7 +343,7 @@ export function SingleSeatDrawing({
           rotation={0}
           pad={chosen ? 10 : 2}
         />
-      )}
+      ))}
       {outside && <circle className="st-overlap" cx={f(cx)} cy={f(cy)} r={f(r + 6)} />}
     </g>
   );

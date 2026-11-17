@@ -2653,6 +2653,7 @@
     "reconnecting": "Can’t see who else is here. Reconnecting…",
     "choseToo": "{{name}} has chosen this too. You can still change it. If you both save, the later change is refused and says why.",
     "chosenBy": "{{name}}, chosen by {{by}}",
+    "seatChosenBy": "{{name}}, seat {{seat, number}} chosen by {{by}}",
     "joinedPlan": "{{name}} joined the plan.",
     "leftPlan": "{{name}} left the plan.",
     "countSections_one": "{{count, number}} section",
