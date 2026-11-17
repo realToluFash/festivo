@@ -158,11 +158,11 @@ final readonly class ItemRules
     {
         return [
             'propertyPath' => $path,
-            'message' => $this->translator->trans($key, [
-                '{max}' => (string) MenuDish::ITEMS_MAXIMUM,
-                '{length}' => (string) MenuDish::ITEM_NAME_MAXIMUM,
-                '{own}' => (string) MenuCourse::OWN_ITEMS_MAXIMUM,
-            ]),
+            'message' => $this->translator->trans($key, ['{max}' => (string) match ($key) {
+                'validation.item_name_too_long' => MenuDish::ITEM_NAME_MAXIMUM,
+                'validation.own_items_limit' => MenuCourse::OWN_ITEMS_MAXIMUM,
+                default => MenuDish::ITEMS_MAXIMUM,
+            }]),
             'code' => ErrorCode::ValidationFailed->value,
         ];
     }
