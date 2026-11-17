@@ -3984,6 +3984,32 @@
     "saidLast": "{{track}}, dernier élément en cours",
     "saidDone": "{{track}}, tous les éléments sont terminés"
   },
+  "roomScreen": {
+    "now": "Now",
+    "comingUp": "Coming up",
+    "asOf": "Times as of {{time}}",
+    "replaced": "This screen link has been replaced",
+    "thanks": "Thank you for coming",
+    "fullScreen": "Full screen"
+  },
+  "showOnScreen": {
+    "open": "Show on a screen",
+    "title": "Show on a screen",
+    "line": "One link for each place. Open it in the browser on the TV or projector there. It needs no sign-in, and shows only what guests see.",
+    "copy": "Copy screen link",
+    "openHere": "Open here",
+    "replace": "Replace link",
+    "close": "Close",
+    "copied": "Screen link for {{place}} copied.",
+    "copyRefused": "Could not copy here. The link for {{place}} is selected: press Ctrl+C or Command+C.",
+    "replaceTitle": "Replace the screen link for {{place}}?",
+    "replaceBody": "A screen showing the old link stops within a minute and shows that its link was replaced, with nothing about the event on it. Copy the new link to that screen.",
+    "keep": "Keep this link",
+    "replacedAt": "Replaced at {{time}}. The old link shows nothing.",
+    "replacedSaid": "Screen link for {{place}} replaced.",
+    "failed": "The screen links did not load.",
+    "replaceFailed": "The link for {{place}} was not replaced. Try again."
+  },
   "night": {
     "minutes_one": "{{count, number}} min",
     "minutes_other": "{{count, number}} min",
