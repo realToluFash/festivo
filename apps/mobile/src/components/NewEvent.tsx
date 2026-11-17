@@ -818,9 +818,7 @@ export function NewEventScreen({
             <AlertLine text={problems} />
           </ReadOut>
         )}
-        {status === 'created' && (
-          <DoneLine text={t('eventForm.created')} size={14.5} reads={false} />
-        )}
+        {status === 'created' && <DoneLine text={t('eventForm.created')} size={14.5} />}
         <Pill
           label={status === 'sending' ? t('eventForm.creating') : t('eventForm.create')}
           busy={busy}
