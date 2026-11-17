@@ -2524,7 +2524,7 @@ function PopOver({ pop, s, ox, oy }: { pop: Pop; s: number; ox: number; oy: numb
     body = (
       <>
         <h2>{SW.moveAll}</h2>
-        <p className="st-line">{say(SW.roomForAll, { n })}</p>
+        <p className="st-line">{many('roomForAll', n)}</p>
         <ul className="st-rows is-dense">
           {room.map((one) => (
             <li key={one.id}>

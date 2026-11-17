@@ -252,7 +252,8 @@ export const say = {
   emptyNow: (table: string) => `${table} is empty now.`,
   movedAll: (n: number, table: string) => `${plural(n, 'guest', 'guests')} moved to ${table}.`,
   race: (lead: string) => `Someone just took that seat. ${lead} is still without a seat.`,
-  roomForAll: (n: number) => `Tables with room for all ${n}.`,
+  roomForAll: (n: number) =>
+    n === 1 ? 'Tables with a free seat for them.' : `Tables with room for all ${n}.`,
   moreNotYet: (n: number) => `${n} more: Not sure yet or No reply`,
   tab: (word: string, n: number) => `${word} · ${n}`,
   summary: (tables: number, seated: number, coming: number, free: number) =>
