@@ -1,0 +1,58 @@
+/* 961 px and up (sc-61150): each rule changes nothing where the page already fits, so 1440 stays as on main. */
+@media (width > 60rem) {
+  .today.desk :is(.desk-top, .gs-top) {
+    flex-wrap: wrap;
+    row-gap: var(--spaceLg);
+  }
+
+  .today.desk :is(.desk-title, .gs-title) {
+    min-width: auto;
+  }
+
+  .today.desk :is(.desk-title, .desk-title *, .gs-title, .gs-title *) {
+    overflow-wrap: normal;
+  }
+
+  /* Shrinks the list and the open guest in the boards' 520 : 380, up to their widths. */
+  .today.desk .gs-cols {
+    grid-template-columns: minmax(0, 520fr) minmax(0, 380fr);
+    max-width: calc(var(--gsList) + var(--gsGuest) + var(--gsGap));
+  }
+}
+
+/* Up to 1200 px the Schedule's open item, and up to 1120 px Menu library's open dish, come before the list, as they do at 641 to 960. */
+@media (60rem < width <= 75rem) {
+  .today.desk .ro .mn-split:has(> .mn-panel) {
+    flex-direction: column;
+    align-items: stretch;
+  }
+
+  .today.desk .ro .mn-split > .mn-panel {
+    position: static;
+    order: -1;
+    width: auto;
+    max-height: none;
+  }
+
+  .today.desk .ro .mn-split > .mn-panel .mn-panel-body {
+    overflow: visible;
+  }
+}
+
+@media (60rem < width <= 70rem) {
+  .today.desk .lib-split.is-docked {
+    flex-direction: column;
+    align-items: stretch;
+  }
+
+  .today.desk .lib-split.is-docked .lib-panel {
+    position: static;
+    order: -1;
+    width: auto;
+    max-height: none;
+  }
+
+  .today.desk .lib-split.is-docked .lib-panel .mn-panel-body {
+    overflow: visible;
+  }
+}
