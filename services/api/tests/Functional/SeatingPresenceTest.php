@@ -105,7 +105,7 @@ final class SeatingPresenceTest extends ApiTestCase
         $issued = Type\instance_of(DateTimeImmutable::class)->coerce($token->claims()->get('iat'));
         $expires = Type\instance_of(DateTimeImmutable::class)->coerce($token->claims()->get('exp'));
 
-        self::assertSame(600, SubscriberTokenIssuer::LIFETIME_SECONDS);
+        self::assertSame(600, SubscriberTokenIssuer::SEATING_LIFETIME_SECONDS);
         self::assertSame(600, $expires->getTimestamp() - $issued->getTimestamp());
     }
 

@@ -19,7 +19,10 @@ use Symfony\Component\Uid\Uuid;
 /** A hub subscriber token naming only topics the caller may read, signed with the key the hub accepts for subscribing and never for publishing. */
 final readonly class SubscriberTokenIssuer
 {
-    public const int LIFETIME_SECONDS = 600;
+    public const int LIFETIME_SECONDS = 900;
+
+    /** Someone who loses seating.read stops receiving the plan and its presence within this (sc-4719). */
+    public const int SEATING_LIFETIME_SECONDS = 600;
 
     public function __construct(
         #[SensitiveParameter]
@@ -41,6 +44,7 @@ final readonly class SubscriberTokenIssuer
         return $this->issue(
             [$seating, RealtimeTopic::EventSeatingChoices->for($eventId->toRfc4122()), self::subscribersOf($seating)],
             ['userId' => $user->getId()->toRfc4122(), 'name' => $user->getName(), 'editor' => $editor],
+            self::SEATING_LIFETIME_SECONDS,
         );
     }
 
@@ -88,11 +92,11 @@ final readonly class SubscriberTokenIssuer
      * @param list<string>              $topics
      * @param array<string, mixed>|null $payload
      */
-    private function issue(array $topics, ?array $payload = null): IssuedSubscriberToken
+    private function issue(array $topics, ?array $payload = null, int $lifetimeSeconds = self::LIFETIME_SECONDS): IssuedSubscriberToken
     {
         $configuration = Configuration::forSymmetricSigner(new Sha256(), InMemory::plainText(Type\non_empty_string()->coerce($this->mercureSubscriberKey)));
         $now = DateTimeImmutable::createFromInterface($this->clock->now());
-        $expiresAt = $now->modify('+' . self::LIFETIME_SECONDS . ' seconds');
+        $expiresAt = $now->modify('+' . $lifetimeSeconds . ' seconds');
 
         $token = $configuration->builder()
             ->issuedAt($now)
