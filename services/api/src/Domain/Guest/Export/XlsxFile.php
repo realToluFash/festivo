@@ -9,16 +9,24 @@ use Psl\Filesystem;
 use Psl\Math;
 use Psl\Regex;
 use Psl\Str;
+use Psl\Str\Grapheme;
+use Psl\Vec;
 use RuntimeException;
 use XMLWriter;
 use ZipArchive;
 
-/** The smallest workbook Excel, Numbers and Sheets all open: one sheet of text cells, the headings in bold. */
+/** The smallest workbook Excel, Numbers and Sheets all open: one sheet of text cells, the headings in bold, each column as wide as its longest cell. */
 final readonly class XlsxFile
 {
     private const string MAIN = 'http://schemas.openxmlformats.org/spreadsheetml/2006/main';
 
     private const string RELATIONSHIPS = 'http://schemas.openxmlformats.org/officeDocument/2006/relationships';
+
+    private const int NARROWEST = 10;
+
+    private const int WIDEST = 50;
+
+    private const int MARGIN = 2;
 
     /** @param list<list<string>> $rows the headings first */
     public static function of(string $sheet, array $rows): string
@@ -51,6 +59,16 @@ final readonly class XlsxFile
         $xml = self::document();
         $xml->startElement('worksheet');
         $xml->writeAttribute('xmlns', self::MAIN);
+        $xml->startElement('cols');
+        foreach (self::widths($rows) as $column => $width) {
+            $xml->startElement('col');
+            $xml->writeAttribute('min', (string) ($column + 1));
+            $xml->writeAttribute('max', (string) ($column + 1));
+            $xml->writeAttribute('width', (string) $width);
+            $xml->writeAttribute('customWidth', '1');
+            $xml->endElement();
+        }
+        $xml->endElement();
         $xml->startElement('sheetData');
 
         foreach ($rows as $at => $row) {
@@ -80,6 +98,25 @@ final readonly class XlsxFile
         $xml->endElement();
 
         return $xml->outputMemory();
+    }
+
+    /**
+     * In characters, as a person counts them: é is one.
+     *
+     * @param list<list<string>> $rows
+     *
+     * @return list<int>
+     */
+    private static function widths(array $rows): array
+    {
+        $longest = [];
+        foreach ($rows as $row) {
+            foreach ($row as $column => $value) {
+                $longest[$column] = Math\maxva($longest[$column] ?? 0, Grapheme\length(self::xmlSafe($value)));
+            }
+        }
+
+        return Vec\map($longest, static fn (int $length): int => Math\clamp($length + self::MARGIN, self::NARROWEST, self::WIDEST));
     }
 
     private static function workbook(string $sheet): string
