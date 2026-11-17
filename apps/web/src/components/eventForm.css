@@ -21,6 +21,10 @@
   gap: 7px;
 }
 
+.ev-new-gap:empty {
+  margin-top: -7px;
+}
+
 .ev-new-pair {
   display: grid;
   grid-template-columns: repeat(2, minmax(0, 1fr));

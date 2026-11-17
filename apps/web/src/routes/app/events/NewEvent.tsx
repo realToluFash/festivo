@@ -708,7 +708,7 @@ function EventForm({ organisation }: { organisation: Membership }) {
 /** What a start or end in the clocks' gap is saved as, in a region that is there before the line is, so it is read out (sc-10638). */
 function Gap({ id, line }: { id: string; line: string | null }) {
   return (
-    <div id={id} aria-live="polite">
+    <div id={id} className="ev-new-gap" aria-live="polite">
       {line != null && <p className="ev-said">{line}</p>}
     </div>
   );
