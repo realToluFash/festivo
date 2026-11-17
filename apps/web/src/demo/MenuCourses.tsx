@@ -23,7 +23,6 @@ import {
   othersFor,
   removeOutcome,
   removeVariant,
-  sameHint,
   stayingAfter,
   variantForm,
   variantSaveLabel,
@@ -32,6 +31,41 @@ import {
   withSavedVariants,
 } from './dishVariants.ts';
 import { AddVariantButton, RowLine, VariantFields, VariantInsets } from './DishVariants.tsx';
+import {
+  type Choice,
+  type ChoiceAsk,
+  type ChoiceForm,
+  type ChoiceMode,
+  type OptionForm,
+  CHW,
+  OPTION_MAX,
+  addChoiceOutcome,
+  blankChoice,
+  blankOption,
+  checkChoice,
+  choiceForm,
+  choiceSaveLabel,
+  choicesOf,
+  courseHint,
+  dishHidden,
+  firstChoiceProblem,
+  formDraftReasons,
+  hasChoices,
+  hasProblem,
+  optionPicked,
+  questionOf,
+  removeChoice,
+  removeChoiceOutcome,
+  savesAsDraft,
+  withSavedChoice,
+} from './dishChoices.ts';
+import {
+  AddChoiceButton,
+  ChoiceFields,
+  ChoiceInsets,
+  ChoiceIntro,
+  NotOffered,
+} from './DishChoices.tsx';
 import { DemoOffline } from './DemoOffline.tsx';
 import { EventsShell } from './EventParts.tsx';
 import { EventSidebar } from './EventSidebar.tsx';
@@ -55,7 +89,9 @@ import {
   headerLines,
   isPicked,
   isReady,
+  menuLinkLine,
   moveCourse,
+  onlyDrafts,
   newCourse,
   newDish,
   servedTime,
@@ -102,6 +138,7 @@ export function CoursesAt({
   budget: boolean;
 }) {
   const [navOpen, setNavOpen] = useState(false);
+  const [menuReady, setMenuReady] = useState<string | null>(null);
 
   return (
     <EventsShell
@@ -114,6 +151,7 @@ export function CoursesAt({
             tell={tell}
             inert={covered}
             waiting={waitingLine(keptInbox())}
+            menuLine={menuReady}
           />
         </div>
       )}
@@ -128,7 +166,7 @@ export function CoursesAt({
               onNav={() => setNavOpen((now) => !now)}
               withheld={first.system === 'noAccess'}
             />
-            <Body first={first} lang={lang} budget={budget} tell={tell} />
+            <Body first={first} lang={lang} budget={budget} tell={tell} onReady={setMenuReady} />
           </div>
         </div>
       )}
@@ -192,11 +230,13 @@ function Body({
   lang,
   budget,
   tell,
+  onReady,
 }: {
   first: CoursesStart;
   lang: Lang;
   budget: boolean;
   tell: Tell;
+  onReady: (line: string | null) => void;
 }) {
   const [retried, setRetried] = useState(false);
   if (first.system === 'noAccess') return <NotFound />;
@@ -220,7 +260,7 @@ function Body({
     );
   if (first.system === 'loading') return <Loading />;
 
-  return <Courses first={first} lang={lang} budget={budget} />;
+  return <Courses first={first} lang={lang} budget={budget} onReady={onReady} />;
 }
 
 function Refusal({
@@ -302,6 +342,21 @@ export type Open =
       forms: VariantForm[];
       pressed: boolean;
       failed: string | null;
+    }
+  | {
+      kind: 'choice';
+      courseId: string;
+      dishId: string;
+      mode: ChoiceMode;
+      choiceId: string | null;
+      form: ChoiceForm;
+      /** The option whose allergens are open; one at a time. */
+      openKey: string | null;
+      /** A picked option's bin, pressed: it removes nothing and says so until the next change. */
+      binRefused: string | null;
+      optionsFull: boolean;
+      pressed: boolean;
+      failed: string | null;
     };
 
 const dishIn = (courses: readonly EvCourse[], dishId: string): EvDish | null =>
@@ -372,6 +427,7 @@ function openOf(first: CoursesStart, lang: Lang): Open | null {
       added: '',
     };
   const dish = dishIn(first.courses, o.dishId) as EvDish;
+  if (o.kind === 'choice') return choiceOpen(o, dish);
   if (o.kind === 'variants')
     return {
       kind: 'variants',
@@ -397,13 +453,51 @@ function openOf(first: CoursesStart, lang: Lang): Open | null {
   };
 }
 
+const wasChoice = (dish: EvDish | null, choiceId: string | null): Choice | null =>
+  dish == null ? null : (choicesOf(dish).find((one) => one.id === choiceId) ?? null);
+
+function choiceOpen(o: Extract<CoursesStart['opened'], { kind: 'choice' }>, dish: EvDish): Open {
+  const was = wasChoice(dish, o.choiceId ?? null);
+  const base = was == null ? blankChoice() : choiceForm(was);
+  const over = o.options ?? [];
+  const options = Array.from({ length: Math.max(base.options.length, over.length) }, (_, at) => ({
+    ...(base.options[at] ?? blankOption()),
+    ...over[at],
+  }));
+  const form: ChoiceForm = { ...base, ...o.form, options };
+  const pressed = o.press === true;
+  const problem = pressed ? firstChoiceProblem(checkChoice(form, was), form, was) : null;
+  const keyAt = (at: number | undefined) => (at == null ? null : (options[at]?.key ?? null));
+
+  return {
+    kind: 'choice',
+    courseId: o.courseId,
+    dishId: o.dishId,
+    mode: o.mode,
+    choiceId: o.choiceId ?? null,
+    form,
+    openKey: problem?.open ?? keyAt(o.openAt),
+    binRefused: keyAt(o.binAt),
+    optionsFull: o.optionsFull === true,
+    pressed,
+    failed: null,
+  };
+}
+
 /** A state that opens pressed puts focus where a press would: the first field refused, or the limit line. */
 function firstFocus(
   open: Open | null,
   courses: readonly EvCourse[],
   budget: boolean,
 ): string | null {
+  if (open?.kind === 'choice' && open.binRefused != null) return `ch-${open.binRefused}-bin`;
+  if (open?.kind === 'choice' && open.optionsFull) return 'ch-add-option';
   if (open == null || !open.pressed) return null;
+  if (open.kind === 'choice') {
+    const was = wasChoice(dishIn(courses, open.dishId), open.choiceId);
+
+    return firstChoiceProblem(checkChoice(open.form, was), open.form, was)?.id ?? null;
+  }
   if (open.kind === 'variants') {
     const dish = dishIn(courses, open.dishId);
     if (dish == null) return null;
@@ -422,7 +516,17 @@ function firstFocus(
   return firstCourseProblem(checkCourse(open.form)) ?? (open.full ? 'mc-form-full' : null);
 }
 
-function Courses({ first, lang, budget }: { first: CoursesStart; lang: Lang; budget: boolean }) {
+function Courses({
+  first,
+  lang,
+  budget,
+  onReady,
+}: {
+  first: CoursesStart;
+  lang: Lang;
+  budget: boolean;
+  onReady: (line: string | null) => void;
+}) {
   const [courses, setCourses] = useState(first.courses);
   const [open, setOpen] = useState<Open | null>(() => openOf(first, lang));
   const [asking, setAsking] = useState(first.asking);
@@ -440,7 +544,13 @@ function Courses({ first, lang, budget }: { first: CoursesStart; lang: Lang; bud
     open == null || open.courseId == null
       ? null
       : (courses.find((one) => one.id === open.courseId) ?? null);
-  const openDish = open?.kind === 'variants' ? dishIn(courses, open.dishId) : null;
+  const openDish =
+    open?.kind === 'variants' || open?.kind === 'choice' ? dishIn(courses, open.dishId) : null;
+  const linkLine = menuLinkLine(courses);
+
+  useEffect(() => {
+    onReady(linkLine);
+  }, [linkLine, onReady]);
 
   useEffect(() => {
     if (focusAfter.current == null) return;
@@ -460,7 +570,7 @@ function Courses({ first, lang, budget }: { first: CoursesStart; lang: Lang; bud
     return now;
   }
 
-  function tellDone(words: string, more: string | null = null) {
+  function tellDone(words: string, more: Told['more'] = null) {
     setSaid({ words, more });
     focusAfter.current = 'mc-said';
   }
@@ -476,6 +586,8 @@ function Courses({ first, lang, budget }: { first: CoursesStart; lang: Lang; bud
     if (open.kind === 'editDish') return `mc-edit-${open.dishId}`;
     if (open.kind === 'variants')
       return open.mode === 'edit' ? `mc-vedit-${open.variantId ?? ''}` : `mc-addv-${open.dishId}`;
+    if (open.kind === 'choice')
+      return open.mode === 'edit' ? `mc-chedit-${open.choiceId ?? ''}` : `mc-addch-${open.dishId}`;
 
     return open.kind === 'addCourse' ? 'mc-add-course' : `mc-edit-${open.courseId ?? ''}`;
   }
@@ -803,6 +915,147 @@ function Courses({ first, lang, budget }: { first: CoursesStart; lang: Lang; bud
     tellDone(VW.folded(dish.name, staying.name, budget ? 'event' : null));
   }
 
+  function pressAddChoice(course: EvCourse, dish: EvDish) {
+    settle();
+    setSaid(null);
+    const outcome = addChoiceOutcome(dish);
+    if (outcome !== 'open') {
+      setRefused({ kind: 'addChoice', dishId: dish.id, why: outcome });
+      return;
+    }
+    setOpen({
+      kind: 'choice',
+      courseId: course.id,
+      dishId: dish.id,
+      mode: 'add',
+      choiceId: null,
+      form: blankChoice(),
+      openKey: null,
+      binRefused: null,
+      optionsFull: false,
+      pressed: false,
+      failed: null,
+    });
+    focusAfter.current = 'mc-panel-title';
+  }
+
+  function openEditChoice(course: EvCourse, dish: EvDish, choice: Choice) {
+    settle();
+    setSaid(null);
+    setOpen({
+      kind: 'choice',
+      courseId: course.id,
+      dishId: dish.id,
+      mode: 'edit',
+      choiceId: choice.id,
+      form: choiceForm(choice),
+      openKey: null,
+      binRefused: null,
+      optionsFull: false,
+      pressed: false,
+      failed: null,
+    });
+    focusAfter.current = 'mc-panel-title';
+  }
+
+  type ChoiceOpen = Extract<Open, { kind: 'choice' }>;
+
+  function changeChoice(now: ChoiceOpen, next: Partial<ChoiceOpen>) {
+    setOpen({ ...now, binRefused: null, optionsFull: false, ...next });
+  }
+
+  function pressBin(now: ChoiceOpen, key: string) {
+    const was = wasChoice(openDish, now.choiceId);
+    const option = now.form.options.find((one) => one.key === key);
+    const saved = was?.options.find((one) => one.id === option?.id);
+    if (saved != null && optionPicked(saved)) {
+      setOpen({ ...now, binRefused: key, optionsFull: false });
+      focusAfter.current = `ch-${key}-bin`;
+      return;
+    }
+    const options = now.form.options.filter((one) => one.key !== key);
+    const at = now.form.options.findIndex((one) => one.key === key);
+    changeChoice(now, {
+      form: { ...now.form, options },
+      openKey: now.openKey === key ? null : now.openKey,
+    });
+    const after = options[Math.min(at, options.length - 1)];
+    focusAfter.current = after == null ? 'ch-add-option' : `ch-${after.key}-name`;
+  }
+
+  function pressAddOption(now: ChoiceOpen) {
+    if (now.form.options.length >= OPTION_MAX) {
+      setOpen({ ...now, binRefused: null, optionsFull: true });
+      focusAfter.current = 'ch-add-option';
+      return;
+    }
+    const added: OptionForm = blankOption();
+    changeChoice(now, { form: { ...now.form, options: [...now.form.options, added] } });
+    focusAfter.current = `ch-${added.key}-name`;
+  }
+
+  function saveChoice() {
+    if (open?.kind !== 'choice' || openCourse == null) return;
+    const dish = openCourse.dishes.find((one) => one.id === open.dishId);
+    if (dish == null) return;
+    const was = wasChoice(dish, open.choiceId);
+    const errors = checkChoice(open.form, was);
+    if (hasProblem(errors)) {
+      const problem = firstChoiceProblem(errors, open.form, was);
+      setOpen({
+        ...open,
+        pressed: true,
+        failed: null,
+        binRefused: null,
+        openKey: problem?.open ?? open.openKey,
+      });
+      focusAfter.current = problem?.id ?? null;
+      return;
+    }
+    const fails = failsNow();
+    if (fails !== 'none') {
+      setOpen({
+        ...open,
+        pressed: true,
+        failed:
+          fails === 'forbidden'
+            ? CW.forbidden
+            : CW.failedSave(choiceSaveLabel(open.mode, savesAsDraft(open.form, was))),
+      });
+      focusAfter.current = 'mc-failed';
+      return;
+    }
+    const saved = withSavedChoice(dish, open.mode, open.choiceId, open.form, lang);
+    changeDish(openCourse, saved.dish);
+    setOpen(null);
+    tellDone(saved.said, saved.more);
+  }
+
+  function pressRemoveChoice(dish: EvDish, choice: Choice) {
+    settle();
+    setSaid(null);
+    const ask: ChoiceAsk = { choiceId: choice.id, kind: removeChoiceOutcome(choice) };
+    setAsking({ kind: 'choice', dishId: dish.id, ask });
+    if (ask.kind === 'ask') focusAfter.current = `mc-chask-${choice.id}`;
+  }
+
+  function confirmRemoveChoice(course: EvCourse, dish: EvDish, choice: Choice) {
+    const fails = failsNow();
+    if (fails !== 'none') {
+      setAsking(null);
+      setSaid({
+        words: fails === 'forbidden' ? CW.forbidden : CW.failedSave(CHW.removeChoice),
+        tone: 'fail',
+      });
+      focusAfter.current = 'mc-said';
+      return;
+    }
+    changeDish(course, removeChoice(dish, choice));
+    setAsking(null);
+    if (open?.kind === 'choice' && open.choiceId === choice.id) setOpen(null);
+    tellDone(CHW.removed(choice.question, dish.name));
+  }
+
   function move(at: number, to: number, focus: string | null) {
     settle();
     const result = moveCourse(courses, at, to);
@@ -982,6 +1235,17 @@ function Courses({ first, lang, budget }: { first: CoursesStart; lang: Lang; bud
                     onConfirmRemove: (dish, variant) => confirmRemoveVariant(course, dish, variant),
                     onConfirmFold: (dish, variant) => confirmFold(course, dish, variant),
                   }}
+                  choices={{
+                    lit: open?.kind === 'choice' ? open.choiceId : null,
+                    onAdd: (dish) => pressAddChoice(course, dish),
+                    onEdit: (dish, choice) => openEditChoice(course, dish, choice),
+                    onRemove: (dish, choice) => pressRemoveChoice(dish, choice),
+                    onKeep: (choice) => {
+                      setAsking(null);
+                      focusAfter.current = `mc-chremove-${choice.id}`;
+                    },
+                    onConfirmRemove: (dish, choice) => confirmRemoveChoice(course, dish, choice),
+                  }}
                 />
               ))}
             </ol>
@@ -1010,7 +1274,13 @@ function Courses({ first, lang, budget }: { first: CoursesStart; lang: Lang; bud
             </button>
             <div className="mn-panel-top">
               <div className="mn-panel-names">
-                {openCourse != null && <p className="mn-eyebrow">{openCourse.name}</p>}
+                {openCourse != null && (
+                  <p className="mn-eyebrow">
+                    {open.kind === 'choice' && open.mode === 'add' && openDish != null
+                      ? CHW.eyebrow(openDish.name)
+                      : openCourse.name}
+                  </p>
+                )}
                 <h2 id="mc-panel-title" tabIndex={-1}>
                   {panelTitle(open, openDish)}
                 </h2>
@@ -1105,6 +1375,46 @@ function Courses({ first, lang, budget }: { first: CoursesStart; lang: Lang; bud
                   }
                 />
               )}
+              {open.kind === 'choice' && openDish != null && (
+                <ChoiceFields
+                  form={open.form}
+                  errors={
+                    open.pressed ? checkChoice(open.form, wasChoice(openDish, open.choiceId)) : null
+                  }
+                  draft={
+                    savesAsDraft(open.form, wasChoice(openDish, open.choiceId))
+                      ? formDraftReasons(open.form, wasChoice(openDish, open.choiceId))
+                      : null
+                  }
+                  ways={variantsOf(openDish).length}
+                  openKey={open.openKey}
+                  binRefused={open.binRefused}
+                  optionsFull={open.optionsFull}
+                  lang={lang}
+                  intro={
+                    <ChoiceIntro
+                      ways={variantsOf(openDish).length}
+                      k={open.mode === 'add' ? choicesOf(openDish).length + 1 : null}
+                    />
+                  }
+                  onPatch={(next) => changeChoice(open, { form: { ...open.form, ...next } })}
+                  onOption={(key, next) =>
+                    changeChoice(open, {
+                      form: {
+                        ...open.form,
+                        options: open.form.options.map((one) =>
+                          one.key === key ? { ...one, ...next } : one,
+                        ),
+                      },
+                    })
+                  }
+                  onOpen={(key) =>
+                    changeChoice(open, { openKey: open.openKey === key ? null : key })
+                  }
+                  onBin={(key) => pressBin(open, key)}
+                  onAddOption={() => pressAddOption(open)}
+                />
+              )}
             </div>
             {!(open.kind === 'addDish' && open.tab === 'library') && (
               <div className="mn-panel-foot">
@@ -1127,10 +1437,16 @@ function Courses({ first, lang, budget }: { first: CoursesStart; lang: Lang; bud
                       if (open.kind === 'addCourse' || open.kind === 'editCourse') saveCourse();
                       else if (open.kind === 'addDish') saveNewDish();
                       else if (open.kind === 'variants') saveVariants();
+                      else if (open.kind === 'choice') saveChoice();
                       else saveDish();
                     }}
                   >
-                    {saveLabel(open)}
+                    {open.kind === 'choice'
+                      ? choiceSaveLabel(
+                          open.mode,
+                          savesAsDraft(open.form, wasChoice(openDish, open.choiceId)),
+                        )
+                      : saveLabel(open)}
                   </button>
                 </div>
                 {open.kind === 'addCourse' && (
@@ -1147,6 +1463,18 @@ function Courses({ first, lang, budget }: { first: CoursesStart; lang: Lang; bud
 
 function panelTitle(open: Open, dish: EvDish | null): string {
   if (open.kind === 'addCourse') return CW.addCourse;
+  if (open.kind === 'choice') {
+    if (open.mode === 'add') return CHW.addTitle;
+    const all = dish == null ? [] : choicesOf(dish);
+    const at = all.findIndex((one) => one.id === open.choiceId);
+    const choice = all[at];
+    if (choice == null) return CHW.addTitle;
+    const named = questionOf(choice, at);
+
+    return formDraftReasons(choiceForm(choice), null).length > 0
+      ? CHW.finishTitle(named)
+      : CHW.editTitle(named);
+  }
   if (open.kind === 'editCourse') return CW.editCourse;
   if (open.kind === 'addDish') return CW.addDish;
   if (open.kind === 'variants') {
@@ -1169,6 +1497,15 @@ function saveLabel(open: Open): string {
   if (open.kind === 'variants') return variantSaveLabel(open.mode);
 
   return CW.saveChanges;
+}
+
+interface ChoiceHandlers {
+  lit: string | null;
+  onAdd: (dish: EvDish) => void;
+  onEdit: (dish: EvDish, choice: Choice) => void;
+  onRemove: (dish: EvDish, choice: Choice) => void;
+  onKeep: (choice: Choice) => void;
+  onConfirmRemove: (dish: EvDish, choice: Choice) => void;
 }
 
 interface VariantHandlers {
@@ -1253,6 +1590,7 @@ function CourseCard({
   onAskRemove,
   onRemove,
   variants,
+  choices,
 }: {
   course: EvCourse;
   index: number;
@@ -1279,9 +1617,11 @@ function CourseCard({
   onAskRemove: (dish: EvDish) => void;
   onRemove: (dish: EvDish) => void;
   variants: VariantHandlers;
+  choices: ChoiceHandlers;
 }) {
   const ready = isReady(course);
-  const hint = course.answer === 'same' ? sameHint(course.dishes) : null;
+  const hint = course.answer === 'same' ? courseHint(course.dishes) : null;
+  const drafts = onlyDrafts(course);
   const sameOk = canSame(course);
   const asked = asking?.kind === 'course' && asking.courseId === course.id;
 
@@ -1323,7 +1663,7 @@ function CourseCard({
             <span className={ready ? 'mc-ring is-ready' : 'mc-ring is-empty'} aria-hidden="true">
               {ready && <Glyph name="tick" size={12} weight={3} />}
             </span>
-            {ready ? CW.readyTag : CW.emptyTag}
+            {ready ? CW.readyTag : drafts ? CHW.noFinishedDish : CW.emptyTag}
           </p>
         </div>
         {manage && (
@@ -1419,6 +1759,11 @@ function CourseCard({
                 refused?.kind === 'addVariant' && refused.dishId === dish.id ? refused.why : null
               }
               variants={variants}
+              choiceAsk={asking?.kind === 'choice' && asking.dishId === dish.id ? asking.ask : null}
+              choiceRefused={
+                refused?.kind === 'addChoice' && refused.dishId === dish.id ? refused.why : null
+              }
+              choices={choices}
             />
           ))}
         </ul>
@@ -1521,6 +1866,9 @@ function DishRow({
   variantAsk,
   addRefused,
   variants,
+  choiceAsk,
+  choiceRefused,
+  choices,
 }: {
   dish: EvDish;
   course: EvCourse;
@@ -1536,14 +1884,20 @@ function DishRow({
   variantAsk: VariantAsk | null;
   addRefused: 'limit' | 'picked' | null;
   variants: VariantHandlers;
+  choiceAsk: ChoiceAsk | null;
+  choiceRefused: 'limit' | 'picked' | null;
+  choices: ChoiceHandlers;
 }) {
   const withVariants = hasVariants(dish);
+  const withChoices = hasChoices(dish);
+  const ways = variantsOf(dish).length;
 
   return (
     <li className={lit ? 'mn-dish mc-dish is-lit' : 'mn-dish mc-dish'}>
       <div className="mn-dish-top">
         <div className="mn-dish-words">
           <h3>{waysName(dish)}</h3>
+          {dishHidden(dish) && <NotOffered variants={ways} />}
           {dish.desc !== '' && <p className="mn-quiet">{dish.desc}</p>}
           {!withVariants && <ContainsMark dish={dish} lang={lang} />}
           {!withVariants && dish.diets.length > 0 && (
@@ -1555,6 +1909,9 @@ function DishRow({
               ))}
             </ul>
           )}
+          {withChoices && (
+            <p className="mn-quiet">{withVariants ? CHW.plusVariantOptions : CHW.plusOptions}</p>
+          )}
         </div>
         {manage && (
           <div className="lib-acts" role="group" aria-label={CW.actionsFor(dish.name)}>
@@ -1562,6 +1919,11 @@ function DishRow({
               id={`mc-addv-${dish.id}`}
               dish={dish.name}
               onClick={() => variants.onAdd(dish)}
+            />
+            <AddChoiceButton
+              id={`mc-addch-${dish.id}`}
+              dish={dish.name}
+              onClick={() => choices.onAdd(dish)}
             />
             <HintButton
               id={`mc-edit-${dish.id}`}
@@ -1590,6 +1952,13 @@ function DishRow({
           words={[addRefused === 'limit' ? VW.limit : VW.dishPicked]}
         />
       )}
+      {choiceRefused != null && (
+        <RowLine
+          id={`mc-chrow-${dish.id}`}
+          words={[choiceRefused === 'limit' ? CHW.choicesLimit : CHW.dishPicked]}
+        />
+      )}
+      {withVariants && withChoices && <p className="ch-head">{CHW.variantsHead}</p>}
       {withVariants && (
         <VariantInsets
           dish={dish}
@@ -1605,6 +1974,19 @@ function DishRow({
           onKeep={variants.onKeep}
           onConfirmRemove={(variant) => variants.onConfirmRemove(dish, variant)}
           onConfirmFold={(variant) => variants.onConfirmFold(dish, variant)}
+        />
+      )}
+      {withChoices && (
+        <ChoiceInsets
+          dish={dish}
+          manage={manage}
+          lang={lang}
+          asking={choiceAsk}
+          lit={choices.lit}
+          onEdit={(choice) => choices.onEdit(dish, choice)}
+          onRemove={(choice) => choices.onRemove(dish, choice)}
+          onKeep={choices.onKeep}
+          onConfirmRemove={(choice) => choices.onConfirmRemove(dish, choice)}
         />
       )}
       {refused && (
