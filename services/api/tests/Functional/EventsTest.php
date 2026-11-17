@@ -449,7 +449,7 @@ final class EventsTest extends ApiTestCase
 
         $listed = self::page($this->as($this->owner, 'GET', $this->path('events')))['events'];
 
-        self::assertSame([['at' => '2030-11-14T16:00:00+01:00', 'title' => 'Owambe starts', 'note' => null, 'owner' => 'event', 'area' => 'events', 'action' => null]], $listed[0]['milestones']);
+        self::assertSame([['at' => '2030-11-14T16:00:00+01:00', 'title' => 'Owambe starts', 'note' => null, 'owner' => 'event', 'area' => 'events', 'action' => null, 'done' => false]], $listed[0]['milestones']);
     }
 
     /** @return iterable<string, array{SeededRole, ?EventRole, bool}> */

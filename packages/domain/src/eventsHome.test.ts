@@ -349,6 +349,7 @@ describe('nextStep', () => {
     owner: 'event' as const,
     area: 'event',
     action: null,
+    done: false,
   };
   const draft = {
     status: 'draft' as const,

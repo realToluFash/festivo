@@ -11,6 +11,8 @@ export interface Milestone {
   owner: MilestoneOwner;
   area: string;
   action: { label: string; link: string } | null;
+  /** A "You" milestone its area has seen through: passed, never overdue (sc-4022). */
+  done: boolean;
 }
 
 export interface EventTimeline {
@@ -26,7 +28,7 @@ export interface MarkedMilestone {
   nextUp: boolean;
 }
 
-/** The earliest at or after `now`; an overdue "You" milestone is undone while its area returns it, so it stays. */
+/** The earliest at or after `now`; an overdue "You" milestone stays until its area marks it done or stops returning it. */
 export function nextUp(
   milestones: readonly Milestone[],
   now: Date,
@@ -92,7 +94,7 @@ function standingOf(milestone: Milestone, now: Date, ended: boolean): MilestoneS
   if (ended && milestone.area === EVENT_AREA) return 'passed';
   if (new Date(milestone.at).getTime() >= now.getTime()) return 'upcoming';
 
-  return milestone.owner === 'you' ? 'overdue' : 'passed';
+  return milestone.owner === 'you' && !milestone.done ? 'overdue' : 'passed';
 }
 
 function earliestFirst(milestones: readonly Milestone[]): Milestone[] {

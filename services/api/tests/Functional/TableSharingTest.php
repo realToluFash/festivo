@@ -110,7 +110,7 @@ final class TableSharingTest extends ApiTestCase
         self::mockTime(new DateTimeImmutable('2030-06-08T10:00:00+01:00'));
 
         self::assertSame(['sharedAt' => null, 'shareBy' => '2030-06-05'], $this->sharingNow());
-        self::assertSame([['Share tables', '2030-06-05T23:59:59+01:00', 'you', 'seating']], $this->seatingMilestones());
+        self::assertSame([['Share tables', '2030-06-05T23:59:59+01:00', 'you', 'seating', false]], $this->seatingMilestones());
     }
 
     #[Test]
@@ -119,13 +119,13 @@ final class TableSharingTest extends ApiTestCase
         self::assertSame([], $this->seatingMilestones(), 'no Share by, no milestone');
 
         $this->share(['shareBy' => '2030-06-10']);
-        self::assertSame([['Share tables', '2030-06-10T23:59:59+01:00', 'you', 'seating']], $this->seatingMilestones());
+        self::assertSame([['Share tables', '2030-06-10T23:59:59+01:00', 'you', 'seating', false]], $this->seatingMilestones());
 
         $this->share(['shared' => true]);
-        self::assertSame([['Tables shared', '2030-06-03T10:00:00+01:00', 'you', 'seating']], $this->seatingMilestones());
+        self::assertSame([['Tables shared', '2030-06-03T10:00:00+01:00', 'you', 'seating', true]], $this->seatingMilestones(), 'done, so the clients mark it passed rather than overdue');
 
         $this->share(['shared' => false]);
-        self::assertSame([['Share tables', '2030-06-10T23:59:59+01:00', 'you', 'seating']], $this->seatingMilestones(), 'Stop sharing brings the saved date back');
+        self::assertSame([['Share tables', '2030-06-10T23:59:59+01:00', 'you', 'seating', false]], $this->seatingMilestones(), 'Stop sharing brings the saved date back');
     }
 
     #[Test]
@@ -306,15 +306,15 @@ final class TableSharingTest extends ApiTestCase
         return $seating['plan']['sharing'];
     }
 
-    /** @return list<array{0: string, 1: string, 2: string, 3: string}> each seating milestone's title, instant, owner and area */
+    /** @return list<array{0: string, 1: string, 2: string, 3: string, 4: bool}> each seating milestone's title, instant, owner, area and whether it is done */
     private function seatingMilestones(): array
     {
         $timeline = $this->as($this->owner, 'GET', '/api/events/' . $this->eventId . '/timeline');
-        $milestones = Type\vec(Type\shape(['at' => Type\string(), 'title' => Type\string(), 'owner' => Type\string(), 'area' => Type\string()], true))->coerce($timeline['milestones'] ?? null);
+        $milestones = Type\vec(Type\shape(['at' => Type\string(), 'title' => Type\string(), 'owner' => Type\string(), 'area' => Type\string(), 'done' => Type\bool()], true))->coerce($timeline['milestones'] ?? null);
 
         return Vec\map(
             Vec\filter($milestones, static fn (array $one): bool => 'seating' === $one['area']),
-            static fn (array $one): array => [$one['title'], $one['at'], $one['owner'], $one['area']],
+            static fn (array $one): array => [$one['title'], $one['at'], $one['owner'], $one['area'], $one['done']],
         );
     }
 

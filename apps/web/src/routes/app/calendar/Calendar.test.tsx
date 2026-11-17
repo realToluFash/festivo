@@ -82,6 +82,7 @@ const DINNER = event({
       owner: 'automatic',
       area: 'seating',
       action: null,
+      done: false,
     },
   ],
 });

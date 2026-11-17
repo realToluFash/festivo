@@ -58,7 +58,7 @@ final class EventTimelineTest extends ApiTestCase
         self::assertSame([
             'timeZone' => 'Africa/Lagos',
             'milestones' => [
-                ['at' => '2030-11-14T16:00:00+01:00', 'title' => 'Adé at 40 starts', 'note' => null, 'owner' => 'event', 'area' => 'events', 'action' => null],
+                ['at' => '2030-11-14T16:00:00+01:00', 'title' => 'Adé at 40 starts', 'note' => null, 'owner' => 'event', 'area' => 'events', 'action' => null, 'done' => false],
             ],
         ], $this->timeline($this->owner, $id));
     }
@@ -145,7 +145,7 @@ final class EventTimelineTest extends ApiTestCase
         $this->end($id, '2030-11-01 09:30:00');
 
         self::assertSame([
-            ['at' => '2030-11-01T10:30:00+01:00', 'title' => 'Owambe called off', 'note' => null, 'owner' => 'event', 'area' => 'events', 'action' => null],
+            ['at' => '2030-11-01T10:30:00+01:00', 'title' => 'Owambe called off', 'note' => null, 'owner' => 'event', 'area' => 'events', 'action' => null, 'done' => false],
         ], $this->timeline($this->owner, $id)['milestones']);
     }
 

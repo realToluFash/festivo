@@ -97,6 +97,7 @@ describe('todayMoment', () => {
           owner: 'automatic',
           area: 'guests',
           action: null,
+          done: false,
         },
       ],
     });

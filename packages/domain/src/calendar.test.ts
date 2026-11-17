@@ -17,7 +17,7 @@ import {
 import type { Milestone } from './timeline.ts';
 
 function milestone(at: string, title: string): Milestone {
-  return { at, title, note: null, owner: 'event', area: 'events', action: null };
+  return { at, title, note: null, owner: 'event', area: 'events', action: null, done: false };
 }
 
 function event(
