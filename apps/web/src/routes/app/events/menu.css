@@ -509,19 +509,19 @@
 
 /* 961 to 1199 px: docked, the panel leaves a course card under 26rem, so it stacks above the menu. */
 @media (60rem < width < 75rem) {
-  .shell .mc-split:has(> .mc-panel) {
+  .mc-split:has(> .mc-panel) {
     flex-direction: column;
     align-items: stretch;
   }
 
-  .shell .mc-split > .mc-panel {
+  .mc-split > .mc-panel {
     position: static;
     order: -1;
     width: auto;
     max-height: none;
   }
 
-  .shell .mc-split > .mc-panel .mn-panel-body {
+  .mc-split > .mc-panel .mn-panel-body {
     overflow: visible;
   }
 }

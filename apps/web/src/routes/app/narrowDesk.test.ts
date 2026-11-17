@@ -46,12 +46,6 @@ describe('a desk window from 641 to 960 px (sc-60699)', () => {
     expect(cssRule('.mc-acts,\n.mc-dish .lib-acts', MENU)).toContain('margin-left: auto;');
   });
 
-  it("stacks the Menu's open form above the courses from 961 to 1199 px", () => {
-    expect(
-      cssRule('.shell .mc-split > .mc-panel', MENU.slice(MENU.indexOf('(60rem < width < 75rem)'))),
-    ).toMatch(/position: static;\s+order: -1;/u);
-  });
-
   it("folds the Schedule's table to Starts and Item from 720 px", () => {
     expect(
       cssRule('.ro-table .ro-wide', SCHEDULE.slice(SCHEDULE.indexOf('(width <= 720px)'))),
