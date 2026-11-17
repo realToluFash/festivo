@@ -619,6 +619,7 @@ export function ArrivalNoteField({
   error = null,
   autoFocus = false,
   noteRef,
+  off = false,
   testID,
 }: {
   note: string;
@@ -626,6 +627,7 @@ export function ArrivalNoteField({
   error?: string | null;
   autoFocus?: boolean;
   noteRef?: RefObject<TextInputInstance | null>;
+  off?: boolean;
   testID: string;
 }) {
   const { t } = useTranslation();
@@ -642,6 +644,7 @@ export function ArrivalNoteField({
         value={note}
         onChangeText={onNote}
         autoFocus={autoFocus}
+        submitting={off}
         wrong={error != null}
         accessibilityLabel={`${t('eventForm.arrivalNote')} · ${t('eventForm.optional')}`}
         accessibilityHint={t('eventForm.arrivalNoteHint')}
@@ -1042,7 +1045,7 @@ export function CoverPhotoFields({
         onPress={onChange}
         testID="event.edit.cover.change"
       />
-      <PositionSlider position={position} onPosition={onPosition} />
+      <PositionSlider position={position} onPosition={onPosition} off={off} />
       <EventField
         label={t('eventCover.describe')}
         optional
@@ -1054,6 +1057,7 @@ export function CoverPhotoFields({
           value={described}
           wrong={describeError != null}
           onChangeText={onDescribed}
+          submitting={off}
           multiline
           accessibilityLabel={`${t('eventCover.describe')} · ${t('eventForm.optional')}`}
           testID="event.edit.cover.describe"
@@ -1080,14 +1084,17 @@ const POSITIONS: readonly Position[] = ['top', 'middle', 'bottom'];
 function PositionSlider({
   position,
   onPosition,
+  off,
 }: {
   position: Position;
   onPosition: (position: Position) => void;
+  off: boolean;
 }) {
   const { t } = useTranslation();
   const at = POSITIONS.indexOf(position);
   const showing = t(`eventCover.showing_${position}`);
   const step = (by: number) => {
+    if (off) return;
     const next = POSITIONS[Math.min(2, Math.max(0, at + by))];
     if (next != null) onPosition(next);
   };
@@ -1104,6 +1111,7 @@ function PositionSlider({
           accessibilityRole="adjustable"
           accessibilityLabel={t('eventCover.position')}
           accessibilityValue={{ text: showing }}
+          accessibilityState={{ disabled: off }}
           accessibilityActions={[{ name: 'increment' }, { name: 'decrement' }]}
           onAccessibilityAction={(action) =>
             step(action.nativeEvent.actionName === 'increment' ? 1 : -1)
@@ -1125,7 +1133,12 @@ function PositionSlider({
           importantForAccessibility="no-hide-descendants"
         >
           {POSITIONS.map((one) => (
-            <Pressable key={one} onPress={() => onPosition(one)} style={styles.stop} />
+            <Pressable
+              key={one}
+              onPress={() => onPosition(one)}
+              disabled={off}
+              style={styles.stop}
+            />
           ))}
         </View>
       </View>

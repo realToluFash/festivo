@@ -13,6 +13,7 @@ import {
   endMovedLine,
   eventFormErrors,
   eventNameLength,
+  aboveCover,
   firstRefusedOf,
   hostErrorsOf,
   isEventType,
@@ -748,6 +749,7 @@ export function NewEventScreen({
             onNote={(note) => changeVenue({ note })}
             error={errors.arrivalNote ?? null}
             noteRef={noteInput}
+            off={busy}
             testID="eventForm.arrivalNote"
           />
         </Part>
@@ -838,14 +840,6 @@ function Lines({ quiet, children }: { quiet: boolean; children: ReactNode }) {
       {children}
     </View>
   );
-}
-
-/** Whether the first refusal sits above the cover's Description in the form: Event name, Type or a host. */
-function aboveCover(first: ReturnType<typeof firstRefusedOf>): boolean {
-  if (first == null) return false;
-  if ('host' in first) return true;
-
-  return first.field === 'name' || first.field === 'type';
 }
 
 function cleared(was: EventErrors, field: EventFormField): EventErrors {
