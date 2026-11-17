@@ -118,3 +118,25 @@
 .tn-stop:is(.is-now, .is-next) :is(.tn-stop-time, .tn-stop-title) {
   font-weight: 600;
 }
+
+.tn-as-of {
+  display: flex;
+  align-items: flex-start;
+  gap: var(--spaceXs);
+  margin: var(--spaceXxs) 0 0;
+  color: var(--colorInkOnDark);
+  font: 600 14px/1.35 var(--fontFamily);
+}
+
+/* Out of the flow while empty, so the column's gap is not taken; display: none would silence the live region. */
+.tn-as-of:empty {
+  position: absolute;
+  margin: 0;
+}
+
+.tn-as-of-mark {
+  flex: none;
+  width: 16px;
+  height: 16px;
+  margin-top: 2px;
+}

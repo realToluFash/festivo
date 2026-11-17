@@ -35,16 +35,37 @@ function Said({ shown, said }: { shown: string; said: string | null }) {
   );
 }
 
-/** On an event day for a role with run_of_show.read, Now is the run of show (sc-61017, by sc-29875): the item Now, its until line and the run view's figure, Next alone on its row, the rail, and Open run of show. */
+/** sc-4028's crossed-out signal, as Today's offline band draws it, so one state has one shape. */
+function OfflineMark() {
+  return (
+    <svg
+      className="tn-as-of-mark"
+      viewBox="0 0 16 16"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth="1.5"
+      strokeLinecap="round"
+      aria-hidden="true"
+    >
+      <path d="M1.5 6a9.5 9.5 0 0 1 13 0M3.8 8.6a6.2 6.2 0 0 1 8.4 0M6.1 11.1a2.9 2.9 0 0 1 3.8 0" />
+      <path d="M2 2l12 12" />
+    </svg>
+  );
+}
+
+/** On an event day for a role with run_of_show.read, Now is the run of show (sc-61017, by sc-29875): the item Now, its until line and the run view's figure, Next alone on its row, the rail, and Open run of show; and how old it is once its reads stop landing (sc-62416). */
 export function RunNowBanner({
   now,
   run,
+  asOf,
   actions,
   open,
   titleRef,
 }: {
   now: Now;
   run: RunNow;
+  /** "Offline · as of 16:38", or null while the last landed read is 60 seconds old or less, or none has failed since. */
+  asOf: string | null;
   actions: BannerActions;
   open: Open;
   titleRef?: Ref<HTMLHeadingElement>;
@@ -88,6 +109,15 @@ export function RunNowBanner({
               )}
             </div>
           )}
+          {/* Always there, so a screen reader hears the line once, politely, as it appears, and not again while its words stay the same. */}
+          <p role="status" className="tn-as-of">
+            {asOf != null && (
+              <>
+                <OfflineMark />
+                <span>{asOf}</span>
+              </>
+            )}
+          </p>
         </div>
         <div className="today-now-side">
           {run.next != null && (
