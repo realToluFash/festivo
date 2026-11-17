@@ -7,10 +7,12 @@ export const OTHER = 'Grace Udo';
 export const COURSE = 'Mains';
 export const BEHIND_AFTER = 20;
 
-export type Word = 'behind' | 'serve' | 'tray' | 'kitchen' | 'notHere' | 'notFired' | 'served';
+export type Word =
+  'behind' | 'choice' | 'serve' | 'tray' | 'kitchen' | 'notHere' | 'notFired' | 'served';
 
 export const WORD_ORDER: readonly Word[] = [
   'behind',
+  'choice',
   'serve',
   'tray',
   'kitchen',
@@ -20,6 +22,7 @@ export const WORD_ORDER: readonly Word[] = [
 ];
 
 export const WORD: Record<Word, string> = {
+  choice: 'Waiting for a choice',
   behind: 'Behind',
   serve: 'To serve',
   tray: 'On a tray',

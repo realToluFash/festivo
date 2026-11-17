@@ -1,5 +1,20 @@
 /** How it's going (sc-34107, HowItsGoing.dc.html on page 35): the floor lead's view of the current course, on the API's service summary read. */
 
+import {
+  RUN_OUT_STATES,
+  RUN_OUT_WHAT,
+  type RunOut,
+  type RunOutStateName,
+  ITEM,
+  SECTION_TABLES,
+  countsWith,
+  heldTables,
+  leftEachWithout,
+  leftOut,
+  runOutSeed,
+  waiting,
+} from './RunOutModel.ts';
+
 export type SectionId = 'A' | 'B' | 'C' | 'D' | 'E';
 export type TrayStage = 'Dishing' | 'Checked' | 'On its way';
 export type AlertKind =
@@ -34,9 +49,10 @@ export interface Section {
 
 export interface KitchenItem {
   item: string;
+  course?: string | undefined;
   station: string | null;
   people: string;
-  state: 'Ready' | 'Preparing' | null;
+  state: 'Ready' | 'Preparing' | 'Run out' | null;
   readyIn: number | null;
   heldUpMin: number | null;
   waiting: number;
@@ -61,6 +77,7 @@ export interface Course {
   kitchen: number;
   toServe: number;
   notHere: number;
+  choice: number;
 }
 
 export interface Earlier {
@@ -95,6 +112,7 @@ export interface ServiceState {
   give: GiveSheet | null;
   refused: string;
   say: string;
+  runOut: RunOut | null;
 }
 
 export const LEAD = 'Ifeoma Nduka';
@@ -317,6 +335,7 @@ export function sample(): Summary {
       kitchen: 21,
       toServe: 50,
       notHere: 6,
+      choice: 0,
     },
     sections: SECTIONS.map((s) => ({ ...s })),
     waiters: WAITERS.map((w) => ({ ...w, tray: w.tray == null ? null : { ...w.tray } })),
@@ -339,6 +358,7 @@ export function fresh(): ServiceState {
     give: null,
     refused: '',
     say: '',
+    runOut: null,
   };
 }
 
@@ -511,6 +531,7 @@ export const SERVICE_STATES = [
   'offline',
   'notStarted',
   'noManage',
+  ...RUN_OUT_STATES,
 ] as const;
 
 export type ServiceStateName = (typeof SERVICE_STATES)[number];
@@ -530,6 +551,7 @@ export const SERVICE_STATE_WHAT: Record<ServiceStateName, string> = {
   offline: 'No connection · as of 20:22: the figures as last read, Pause and Give to… refused',
   notStarted: 'Before service starts: sc-4009’s not-started state and nothing else',
   noManage: 'Without service.manage: no How it’s going, Service opens on Plan',
+  ...RUN_OUT_WHAT,
 };
 
 export function seed(name: ServiceStateName): ServiceState {
@@ -556,7 +578,95 @@ export function seed(name: ServiceStateName): ServiceState {
       return { ...s, started: false };
     case 'noManage':
       return { ...s, manage: false };
+    default:
+      return runOutState(name);
   }
+}
+
+function runOutState(name: RunOutStateName): ServiceState {
+  const r = runOutSeed(name);
+  const s = { ...fresh(), runOut: r };
+  if (name === 'runOutNoManage') return { ...s, manage: false };
+  if (name === 'runOutOffline') return { ...s, online: false };
+  return s;
+}
+
+export const BEEF_LINE: KitchenItem = {
+  item: 'Beef',
+  station: 'Grill',
+  people: 'Tayo Bamidele',
+  state: 'Ready',
+  readyIn: null,
+  heldUpMin: null,
+  waiting: 0,
+};
+
+/** The read with a run-out item: the guests waiting for a choice counted first, left out of To serve and left each, and adding no wait toward Behind (sc-4026). */
+const FISH = 'Grilled fish';
+const FISH_TO_SERVE: Partial<Record<SectionId, number>> = { A: 5, B: 5, D: 4 };
+
+function fishReady(sum: Summary): Summary {
+  const fish = sum.kitchen.find((k) => k.item === FISH);
+  if (fish == null) return sum;
+  const moved = fish.waiting;
+  return {
+    ...sum,
+    course: {
+      ...sum.course,
+      kitchen: sum.course.kitchen - moved,
+      toServe: sum.course.toServe + moved,
+    },
+    sections: sum.sections.map((sec) => ({
+      ...sec,
+      toServe: sec.toServe + (FISH_TO_SERVE[sec.id] ?? 0),
+    })),
+    kitchen: sum.kitchen.map((k) =>
+      k === fish ? { ...k, state: 'Ready', readyIn: null, heldUpMin: null, waiting: 0 } : k,
+    ),
+    alerts: sum.alerts.filter((a) => !(a.kind === 'heldUp' && a.title.startsWith(FISH))),
+  };
+}
+
+export function shownSummary(s: ServiceState): Summary {
+  const r = s.runOut;
+  if (r == null) return s.summary;
+  const sum = fishReady(structuredClone(s.summary));
+  sum.course = { ...sum.course, ...countsWith(sum.course, r) };
+  const held = heldTables(r);
+  const unearned = sum.alerts.filter(
+    (a) => a.kind === 'behind' && held.includes(Number(a.table.replace('Table ', ''))),
+  );
+  sum.alerts = sum.alerts.filter((a) => !unearned.includes(a));
+  sum.sections = sum.sections.map((sec) => {
+    const tables = SECTION_TABLES[sec.id];
+    const behind = sec.behind && !unearned.some((a) => a.title === `${sec.name} is Behind`);
+    if (tables == null) return { ...sec, behind };
+    return {
+      ...sec,
+      behind,
+      leftEach: leftEachWithout(sec.leftEach, sec.people, leftOut(r, tables)),
+    };
+  });
+  sum.kitchen = sum.kitchen.flatMap((k) => {
+    if (k.item !== ITEM) return [k];
+    const now: KitchenItem = r.runOut ? { ...k, state: 'Run out', waiting: waiting(r).length } : k;
+    return [now, BEEF_LINE];
+  });
+  const e = r.earlier;
+  if (e != null) {
+    const at = sum.kitchen.map((k) => k.station).lastIndexOf(e.station);
+    sum.kitchen.splice(at < 0 ? sum.kitchen.length : at + 1, 0, {
+      item: e.item,
+      course: e.course,
+      station: e.station,
+      people: '',
+      state: 'Run out',
+      readyIn: null,
+      heldUpMin: null,
+      waiting: e.waiting,
+    });
+  }
+  return sum;
 }
 
 export type NextStateName = 'nextPaused' | 'nextGiven' | 'nextRefused';

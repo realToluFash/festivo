@@ -13,6 +13,8 @@ import {
   rowWords,
   sayIn,
   shown,
+  lettersAtEveryWidth,
+  weekIn,
 } from './today.ts';
 
 const us = sayIn('en-US');
@@ -388,5 +390,47 @@ describe('a first run for a member without Create events (?moment=firstAsk)', ()
   it('welcomes the member looking, not the owner', () => {
     expect(momentOf('first', us, { first: 'Ana' }).hello).toBe('Welcome, Ana');
     expect(momentOf('first', us).hello).toBe('Welcome, Folake');
+  });
+});
+
+describe('This week at 360 px and narrower (sc-61548)', () => {
+  const week = Array.from({ length: 7 }, (_, index) => addDays('2026-11-16', index));
+
+  it.each([
+    ['en-US', 'M T W T F S S'],
+    ['fr', 'L M M J V S D'],
+    ['es', 'L M X J V S D'],
+    ['pt', 'S T Q Q S S D'],
+    ['pt-PT', 'S T Q Q S S D'],
+  ])('writes the narrow weekday in %s', (locale, letters) => {
+    const say = sayIn(locale);
+
+    expect(week.map((date) => say.weekdayNarrow(date)).join(' ')).toBe(letters);
+  });
+
+  it('follows the page’s language, with each day’s full name for a screen reader', () => {
+    const days = weekIn(momentOf('plan', us).days, sayIn('fr'));
+
+    expect(days.map(({ narrow }) => narrow).join(' ')).toBe('M M J V S D L');
+    expect(days.map(({ spoken, number }) => `${spoken} ${number}`)[3]).toBe('vendredi 6');
+    expect(days[3]?.weekday).toBe('ven.');
+  });
+
+  it.each([
+    ['pt', true],
+    ['pt-PT', true],
+    ['pt-BR', true],
+    ['en', false],
+    ['es', false],
+    ['fr', false],
+  ])('in %s, writes the letter at every width: %s', (language, letters) => {
+    expect(lettersAtEveryWidth(language)).toBe(letters);
+  });
+
+  it('in Portuguese, reads the full weekday where the letter shows', () => {
+    const days = weekIn(momentOf('plan', us).days, sayIn('pt-PT'));
+
+    expect(days.map(({ narrow }) => narrow).join(' ')).toBe('T Q Q S S D S');
+    expect(days.map(({ spoken, number }) => `${spoken} ${number}`)[1]).toBe('quarta-feira 4');
   });
 });

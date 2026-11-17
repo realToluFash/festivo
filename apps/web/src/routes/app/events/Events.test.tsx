@@ -4573,7 +4573,7 @@ describe('A HEIC the browser cannot show, and a cover that will not load (sc-138
 
     chooseHeic();
 
-    await screen.findByRole('button', { name: 'Remove photo' });
+    await screen.findByRole('slider', { name: 'Photo position' });
     expect(document.querySelector('.ev-new-cover img')?.getAttribute('src')).toBe(COPY);
     expect(sent.map(({ line }) => line)).toContain(PREVIEW);
 
@@ -4615,6 +4615,307 @@ describe('A HEIC the browser cannot show, and a cover that will not load (sc-138
         sent.find(({ line }) => line === 'DELETE /api/orgs/org_1/event-cover-uploads')?.body,
       ).toEqual({ uploadKey: 'event_cover/org_1/2026/10/one.heic' }),
     );
+  });
+
+  describe('while its copy is on its way (sc-60915)', () => {
+    const SIGN = 'POST /api/orgs/org_1/event-cover-uploads';
+    const DISCARD = 'DELETE /api/orgs/org_1/event-cover-uploads';
+
+    /** Each HEIC gets its own key, and its copy waits until the test lets it land or fail. */
+    function slowCopies(answers: Record<string, Answer> = {}) {
+      const copies: { land: () => void; fail: () => void }[] = [];
+      let signed = 0;
+      const sent = serving(null, {
+        [SIGN]: () => {
+          signed += 1;
+
+          return json(
+            {
+              upload: {
+                url: 'http://store.test/upload/1',
+                key: `event_cover/org_1/2026/10/${signed}.heic`,
+                content_type: 'image/heic',
+              },
+            },
+            201,
+          );
+        },
+        [PREVIEW]: (body) =>
+          new Promise<Response>((resolve) => {
+            const key = (body as { uploadKey: string }).uploadKey;
+            copies.push({
+              land: () => resolve(json({ preview: `${COPY}#${key}` })),
+              fail: () => resolve(new Response(null, { status: 500 })),
+            });
+          }),
+        ...answers,
+      });
+
+      return { sent, copies };
+    }
+
+    async function waiting(answers: Record<string, Answer> = {}) {
+      signedIn();
+      const held = slowCopies(answers);
+      at('/app/events/new');
+      await screen.findByRole('heading', { level: 1, name: 'New event' });
+      chooseHeic();
+      await waitFor(() => expect(held.copies).toHaveLength(1));
+
+      return held;
+    }
+
+    function fillIn(): void {
+      fireEvent.change(document.getElementById('event-name')!, { target: { value: 'Owambe' } });
+      fireEvent.change(document.getElementById('event-type')!, { target: { value: 'wedding' } });
+      for (const [id, value] of [
+        ['event-start-date', '2026-11-14'],
+        ['event-start-time', '16:00'],
+        ['event-end-time', '23:00'],
+      ] as const)
+        fireEvent.change(document.getElementById(id)!, { target: { value } });
+    }
+
+    const discarded = (sent: { line: string; body: unknown }[]) =>
+      sent.filter(({ line }) => line === DISCARD).map(({ body }) => body);
+
+    it('shows Uploading… over the default cover with Change photo and Remove photo, then the photo with all its fields', async () => {
+      const { copies } = await waiting();
+
+      expect(screen.getByText('Uploading…').getAttribute('role')).toBe('status');
+      expect(document.querySelector('.ev-new-cover img')).toBeNull();
+      expect(screen.getByRole('button', { name: 'Change photo' })).toBeDefined();
+      expect(screen.getByText('The default cover comes back.')).toBeDefined();
+      expect(screen.queryByRole('slider', { name: 'Photo position' })).toBeNull();
+      expect(screen.queryByLabelText(/Describe the image/u)).toBeNull();
+      expect(screen.queryByRole('button', { name: 'Upload a photo' })).toBeNull();
+
+      await act(async () => copies[0]!.land());
+
+      await screen.findByRole('slider', { name: 'Photo position' });
+      expect(screen.queryByText('Uploading…')).toBeNull();
+      expect(document.querySelector('.ev-new-cover img')?.getAttribute('src')).toBe(
+        `${COPY}#event_cover/org_1/2026/10/1.heic`,
+      );
+      expect(screen.getByRole('slider', { name: 'Photo position' })).toHaveProperty('value', '50');
+      expect(screen.getByLabelText(/Describe the image/u)).toBeDefined();
+      expect(screen.getByRole('button', { name: 'Remove photo' })).toBeDefined();
+    });
+
+    it('holds Create event until the copy lands, then makes it the cover and opens the event', async () => {
+      const { sent, copies } = await waiting({
+        'POST /api/orgs/org_1/events': () => json({ event: event() }, 201),
+      });
+      fillIn();
+      fireEvent.click(screen.getByRole('button', { name: 'Create event' }));
+
+      await waitFor(() =>
+        expect(sent.map(({ line }) => line)).toContain('POST /api/orgs/org_1/events'),
+      );
+      await screen.findByRole('button', { name: 'Creating…' });
+      expect(screen.getByRole('button', { name: 'Change photo' })).toHaveProperty('disabled', true);
+      expect(screen.queryByRole('button', { name: 'Remove photo' })).toBeNull();
+      expect(screen.getByText('Uploading…')).toBeDefined();
+      expect(screen.getByRole('heading', { level: 1, name: 'New event' })).toBeDefined();
+      expect(sent.map(({ line }) => line)).not.toContain('PUT /api/events/ev_1/cover');
+
+      await act(async () => copies[0]!.land());
+
+      expect(
+        await screen.findByRole('heading', { level: 1, name: 'Adaeze and Tunde' }),
+      ).toBeDefined();
+      expect(sent.find(({ line }) => line === 'PUT /api/events/ev_1/cover')?.body).toEqual({
+        uploadKey: 'event_cover/org_1/2026/10/1.heic',
+        position: 50,
+        description: null,
+      });
+      expect(discarded(sent)).toEqual([]);
+    });
+
+    it('opens the event without its photo when the copy fails after Create event', async () => {
+      const { sent, copies } = await waiting({
+        'POST /api/orgs/org_1/events': () => json({ event: event() }, 201),
+      });
+      fillIn();
+      fireEvent.click(screen.getByRole('button', { name: 'Create event' }));
+      await screen.findByRole('button', { name: 'Creating…' });
+
+      await act(async () => copies[0]!.fail());
+
+      expect(
+        await screen.findByText(
+          'The event is saved without its photo. The photo did not upload. Try again.',
+        ),
+      ).toBeDefined();
+      expect(sent.map(({ line }) => line)).not.toContain('PUT /api/events/ev_1/cover');
+    });
+
+    it('says the photo did not upload when the copy fails before Create event, and creates without it', async () => {
+      const { sent, copies } = await waiting({
+        'POST /api/orgs/org_1/events': () => json({ event: event() }, 201),
+      });
+
+      await act(async () => copies[0]!.fail());
+
+      expect(await screen.findByText('The photo did not upload. Try again.')).toBeDefined();
+      expect(screen.getByRole('button', { name: 'Upload a photo' })).toBeDefined();
+      expect(document.querySelector('.ev-new-cover img')).toBeNull();
+
+      fillIn();
+      fireEvent.click(screen.getByRole('button', { name: 'Create event' }));
+
+      expect(
+        await screen.findByRole('heading', { level: 1, name: 'Adaeze and Tunde' }),
+      ).toBeDefined();
+      expect(sent.map(({ line }) => line)).not.toContain('PUT /api/events/ev_1/cover');
+    });
+
+    it('gives the frame to the last photo picked and discards the earlier copy, whichever lands first', async () => {
+      const { sent, copies } = await waiting();
+
+      fireEvent.click(screen.getByRole('button', { name: 'Change photo' }));
+      chooseHeic();
+      await waitFor(() => expect(copies).toHaveLength(2));
+
+      await act(async () => copies[1]!.land());
+      await screen.findByRole('slider', { name: 'Photo position' });
+      await act(async () => copies[0]!.land());
+
+      await waitFor(() =>
+        expect(discarded(sent)).toEqual([{ uploadKey: 'event_cover/org_1/2026/10/1.heic' }]),
+      );
+      expect(document.querySelector('.ev-new-cover img')?.getAttribute('src')).toBe(
+        `${COPY}#event_cover/org_1/2026/10/2.heic`,
+      );
+    });
+
+    it('keeps the default cover after Remove photo, discards the copy when it lands, and creates without a photo', async () => {
+      const { sent, copies } = await waiting({
+        'POST /api/orgs/org_1/events': () => json({ event: event() }, 201),
+      });
+
+      fireEvent.click(screen.getByRole('button', { name: 'Remove photo' }));
+      expect(screen.queryByText('Uploading…')).toBeNull();
+      expect(screen.getByRole('button', { name: 'Upload a photo' })).toBeDefined();
+
+      await act(async () => copies[0]!.land());
+
+      await waitFor(() =>
+        expect(discarded(sent)).toEqual([{ uploadKey: 'event_cover/org_1/2026/10/1.heic' }]),
+      );
+      expect(document.querySelector('.ev-new-cover img')).toBeNull();
+
+      fillIn();
+      fireEvent.click(screen.getByRole('button', { name: 'Create event' }));
+      expect(
+        await screen.findByRole('heading', { level: 1, name: 'Adaeze and Tunde' }),
+      ).toBeDefined();
+      expect(sent.map(({ line }) => line)).not.toContain('PUT /api/events/ev_1/cover');
+    });
+
+    it('a pick refused during the wait is not a pick: its reason shows and the HEIC still lands', async () => {
+      const { copies } = await waiting();
+
+      fireEvent.click(screen.getByRole('button', { name: 'Change photo' }));
+      fireEvent.change(document.getElementById('cover-file')!, {
+        target: { files: [new File(['x'], 'notes.txt', { type: 'text/plain' })] },
+      });
+
+      expect(
+        await screen.findByText(
+          'That file is not a photo we can use. Choose a JPEG, PNG, WebP or HEIC.',
+        ),
+      ).toBeDefined();
+      expect(screen.getByText('Uploading…')).toBeDefined();
+
+      await act(async () => copies[0]!.land());
+
+      await screen.findByRole('slider', { name: 'Photo position' });
+      expect(document.querySelector('.ev-new-cover img')?.getAttribute('src')).toBe(
+        `${COPY}#event_cover/org_1/2026/10/1.heic`,
+      );
+    });
+
+    it('asks before leaving with only a photo on its way, and discards the copy that lands after leaving', async () => {
+      const { sent, copies } = await waiting();
+
+      fireEvent.click(document.querySelector('.ev-crumb a')!);
+      const dialog = await screen.findByRole('alertdialog', { name: 'Leave without saving?' });
+      expect(within(dialog).getByText('What you typed for this event will be lost.')).toBeDefined();
+      fireEvent.click(within(dialog).getByRole('button', { name: 'Leave without saving' }));
+      await waitFor(() =>
+        expect(screen.queryByRole('heading', { level: 1, name: 'New event' })).toBeNull(),
+      );
+
+      await act(async () => copies[0]!.land());
+
+      await waitFor(() =>
+        expect(discarded(sent)).toEqual([{ uploadKey: 'event_cover/org_1/2026/10/1.heic' }]),
+      );
+    });
+
+    it('asks before going back with only a photo on its way', async () => {
+      signedIn();
+      slowCopies();
+      const router = createMemoryRouter(routes, {
+        initialEntries: ['/app/events', '/app/events/new'],
+        initialIndex: 1,
+      });
+      render(<RouterProvider router={router} />);
+      await screen.findByRole('heading', { level: 1, name: 'New event' });
+      chooseHeic();
+      await screen.findByText('Uploading…');
+
+      await act(() => router.navigate(-1));
+
+      const dialog = await screen.findByRole('alertdialog', { name: 'Leave without saving?' });
+      expect(within(dialog).getByText('What you typed for this event will be lost.')).toBeDefined();
+      expect(router.state.location.pathname).toBe('/app/events/new');
+    });
+
+    it('sends nothing for a HEIC picked just before leaving, while its pick check is still running', async () => {
+      signedIn();
+      const { sent } = slowCopies();
+      at('/app/events/new');
+      await screen.findByRole('heading', { level: 1, name: 'New event' });
+
+      chooseHeic();
+      fireEvent.click(document.querySelector('.ev-crumb a')!);
+      await waitFor(() =>
+        expect(screen.queryByRole('heading', { level: 1, name: 'New event' })).toBeNull(),
+      );
+      await act(async () => new Promise((settle) => setTimeout(settle, 0)));
+
+      expect(sent.map(({ line }) => line)).not.toContain(SIGN);
+    });
+
+    it('discards the copy when setting it as the cover is refused after Create event', async () => {
+      const { sent, copies } = await waiting({
+        'POST /api/orgs/org_1/events': () => json({ event: event() }, 201),
+        'PUT /api/events/ev_1/cover': () =>
+          problem(422, 'validation_failed', {
+            violations: [
+              {
+                propertyPath: 'uploadKey',
+                message: 'The photo did not upload. Try again.',
+                code: 'validation_failed',
+              },
+            ],
+          }),
+      });
+      fillIn();
+      fireEvent.click(screen.getByRole('button', { name: 'Create event' }));
+      await screen.findByRole('button', { name: 'Creating…' });
+
+      await act(async () => copies[0]!.land());
+
+      expect(
+        await screen.findByText(
+          'The event is saved without its photo. The photo did not upload. Try again.',
+        ),
+      ).toBeDefined();
+      expect(discarded(sent)).toEqual([{ uploadKey: 'event_cover/org_1/2026/10/1.heic' }]);
+    });
   });
 });
 
