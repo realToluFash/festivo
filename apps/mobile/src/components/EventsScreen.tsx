@@ -59,7 +59,6 @@ import { phoneTabBarClearance } from './TodayCover.tsx';
 import { LIST_EDGES, LIST_GAP } from './listFrame.ts';
 import { moveScreenReaderFocus } from './screenReaderFocus.ts';
 import { NewEventScreen } from './NewEvent.tsx';
-import { readOut } from './ReadOut.tsx';
 import { Text, type TextHandle } from './Text.tsx';
 import { Arrived } from './Skeleton.tsx';
 import {
@@ -374,7 +373,6 @@ export function EventsScreen({
     if (opensNew && router.canGoBack()) router.back();
   };
   const createdNew = (eventId: string) => {
-    readOut(t('eventForm.created'), { interrupts: true });
     setNewOpen(false);
     if (opensNew) router.replace(eventHref(eventId));
     else router.push(eventHref(eventId));
