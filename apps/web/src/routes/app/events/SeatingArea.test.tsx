@@ -3799,9 +3799,9 @@ describe('Who else is on the plan (sc-4719)', () => {
   beforeAll(standInPointerEvents);
 
   afterEach(() => {
+    vi.useRealTimers();
     __setConfig(before);
     vi.unstubAllGlobals();
-    vi.useRealTimers();
   });
 
   async function onPlanWith(
