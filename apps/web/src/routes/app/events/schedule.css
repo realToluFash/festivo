@@ -288,7 +288,7 @@
   border-radius: calc(var(--sizeHit) / 2 + var(--spaceHair));
 }
 
-.ro-day {
+.ro .ro-day {
   flex: 1 0 auto;
   flex-wrap: wrap;
   border-radius: calc(var(--sizeHit) / 2);
