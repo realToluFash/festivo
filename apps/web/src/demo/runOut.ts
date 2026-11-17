@@ -62,7 +62,23 @@ export interface RunOut {
   race: string | null;
   refused: string;
   say: string;
+  earlier?: EarlierRunOut | undefined;
 }
+
+/** An earlier course's item run out at its station while a plate still needs it (pm, 17 Nov): its kitchen line names its course and follows that station's items of the current course. */
+export interface EarlierRunOut {
+  course: string;
+  item: string;
+  station: string;
+  waiting: number;
+}
+
+export const SMALL_CHOPS: EarlierRunOut = {
+  course: 'Starter',
+  item: 'Small chops',
+  station: 'Fryer',
+  waiting: 1,
+};
 
 export interface Access {
   online: boolean;
@@ -492,8 +508,26 @@ export function withRunOut(s0: Summary, ro: RunOut | null): Summary {
       heldUpMin: null,
       waiting: 0,
     });
+  const e = ro.earlier;
+  if (e != null) {
+    const at = s.kitchen.map((k) => k.station).lastIndexOf(e.station);
+    s.kitchen.splice(at < 0 ? s.kitchen.length : at + 1, 0, {
+      item: e.item,
+      course: e.course,
+      station: e.station,
+      people: '',
+      state: null,
+      readyIn: null,
+      heldUpMin: null,
+      waiting: e.waiting,
+    });
+  }
   if (alertOn(ro)) s.alerts = [runOutAlert(ro), ...s.alerts];
   return s;
+}
+
+export function earlierLine(e: EarlierRunOut): string {
+  return `${e.course} · ${e.item} · ${e.station} · Run out`;
 }
 
 export function leftEachAfter(sec: Section, delta: number): Section {

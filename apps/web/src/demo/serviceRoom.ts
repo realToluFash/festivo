@@ -8,11 +8,11 @@ export const COURSE = 'Mains';
 export const BEHIND_AFTER = 20;
 
 export type Word =
-  'choice' | 'behind' | 'serve' | 'tray' | 'kitchen' | 'notHere' | 'notFired' | 'served';
+  'behind' | 'choice' | 'serve' | 'tray' | 'kitchen' | 'notHere' | 'notFired' | 'served';
 
 export const WORD_ORDER: readonly Word[] = [
-  'choice',
   'behind',
+  'choice',
   'serve',
   'tray',
   'kitchen',
@@ -165,7 +165,6 @@ export function isBehind(t: RoomTable): boolean {
 }
 
 export function wordOf(t: RoomTable): Word {
-  if (t.has.choice === true) return 'choice';
   if (isBehind(t)) return 'behind';
   return WORD_ORDER.find((w) => w !== 'behind' && t.has[w] === true) ?? 'served';
 }

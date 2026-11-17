@@ -10,6 +10,7 @@ import {
   openChoose,
   openPanel,
   runOutSample,
+  SMALL_CHOPS,
 } from './runOut.ts';
 
 export type SectionId = 'A' | 'B' | 'C' | 'D' | 'E';
@@ -54,6 +55,7 @@ export interface Section {
 
 export interface KitchenItem {
   item: string;
+  course?: string | undefined;
   station: string | null;
   people: string;
   state: 'Ready' | 'Preparing' | null;
@@ -546,6 +548,7 @@ export const SERVICE_STATES = [
   'runOutPlan',
   'runOutNoManage',
   'runOutOffline',
+  'runOutEarlier',
 ] as const;
 
 export type ServiceStateName = (typeof SERVICE_STATES)[number];
@@ -585,6 +588,8 @@ export const SERVICE_STATE_WHAT: Record<ServiceStateName, string> = {
   runOutNoManage:
     'Run out without service.manage: no alert, no panel, Plan, a choice by link refused (403)',
   runOutOffline: 'Run out with no connection: Choose pressed, refused, nothing kept',
+  runOutEarlier:
+    'Run out: Starter · Small chops run out at the Fryer too, its line after the Fryer’s Plantain',
 };
 
 export type OpeningView = 'going' | 'plan';
@@ -635,6 +640,8 @@ function runOutSeed(name: ServiceStateName): RunOut | null {
     case 'runOutPlan':
     case 'runOutNoManage':
       return base;
+    case 'runOutEarlier':
+      return { ...base, earlier: SMALL_CHOPS };
     case 'runOutPanel':
       return open(base);
     case 'runOutConfirm':

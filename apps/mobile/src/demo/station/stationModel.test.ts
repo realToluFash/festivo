@@ -367,7 +367,8 @@ describe('picking a station', () => {
 describe('the states the boards draw', () => {
   it('seeds every one', () => {
     for (const name of STATION_STATES) {
-      expect(seed(name).now).toBe(name.startsWith('runOut') ? RUN_OUT.at : at(19, 42));
+      const grill = name.startsWith('runOut') && name !== 'runOutEarlier';
+      expect(seed(name).now).toBe(grill ? RUN_OUT.at : at(19, 42));
     }
   });
 });
@@ -537,5 +538,31 @@ describe('run out, at the station that dishes it (sc-59384)', () => {
     expect(line(back, chicken)).toBe(4);
     expect(line(back, fish)).toBe(11);
     expect(leadServes(runOutWorld(), chicken, fish, 3)).toEqual(runOutWorld());
+  });
+
+  it('keeps the line with no count once nobody waits, until Mark available again (pm, 17 Nov)', () => {
+    const none = { ...out(), trays: [], waiting: [] };
+    expect(leftToDish(none).map((l) => l.item)).toContain(chicken);
+    expect(stateLine(none, chicken)).toEqual({
+      word: 'Run out',
+      line: 'Run out · 20:06',
+      waiting: '',
+    });
+    expect(offers(none, chicken).available).toBe(true);
+  });
+
+  it('is offered on an earlier course’s item while Left to dish lists it (pm, 17 Nov)', () => {
+    const s = fresh();
+    expect(leftToDish(s).find((l) => l.item === 'Small chops')?.label).toBe(
+      'Starter · Small chops',
+    );
+    expect(offers(s, 'Small chops').runOut).toBe(true);
+    const marked = seed('runOutEarlier');
+    expect(stateLine(marked, 'Small chops')).toEqual({
+      word: 'Run out',
+      line: 'Run out · 19:42',
+      waiting: '1 waiting for a choice',
+    });
+    expect(offers(marked, 'Plantain')).toMatchObject({ ready: true, runOut: true });
   });
 });

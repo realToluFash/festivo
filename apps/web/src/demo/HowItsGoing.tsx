@@ -40,6 +40,7 @@ import {
   ITEM,
   type RunOut,
   closePanel as closeRunOut,
+  earlierLine,
   kitchenLine,
   lateArrival,
   markRunOutAgain,
@@ -324,6 +325,13 @@ function HowItsGoing({ name }: { name: ServiceStateName }) {
             )}
           </div>
         )}
+        {ro?.earlier != null && state.manage && (
+          <p className="hig-meta">
+            In the product, {earlierLine(ro.earlier)} opens {ro.earlier.item}’s own choice panel,
+            with the {ro.earlier.course}’s items, as {ITEM}’s line opens {ITEM}’s. The demo plays{' '}
+            {ITEM}’s.
+          </p>
+        )}
       </section>
     </div>
   );
@@ -440,7 +448,9 @@ function Going({
             {kitchenRows(s)
               .filter((k) => k.station != null)
               .map((k) =>
-                ro != null && !ro.available && k.item === ITEM ? (
+                ro?.earlier != null && k.course != null ? (
+                  <EarlierKitchenRow key={k.item} line={earlierLine(ro.earlier)} n={k.waiting} />
+                ) : ro != null && !ro.available && k.item === ITEM ? (
                   <RunOutKitchenRow
                     key={k.item}
                     ro={ro}
@@ -679,6 +689,22 @@ function RunOutKitchenRow({
           {words}
         </>
       )}
+    </li>
+  );
+}
+
+function EarlierKitchenRow({ line, n }: { line: string; n: number }) {
+  return (
+    <li className="hig-kitchen-row ro-kitchen-row">
+      <span className="hig-alert-icon" aria-hidden="true">
+        <Glyph paths={BAN_GLYPH} size={18} />
+      </span>
+      <span className="hig-kitchen-words">
+        <span className="hig-title">
+          <strong>{line}</strong>
+        </span>
+        {n > 0 && <span className="hig-waiting">{waitingWord(n)}</span>}
+      </span>
     </li>
   );
 }

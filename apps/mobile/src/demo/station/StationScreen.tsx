@@ -564,9 +564,11 @@ function Left({
                     <Text size={z.line + 1} weight="bold">
                       {l.label}
                     </Text>
-                    <Text size={z.line} weight="semibold" style={styles.tabular}>
-                      {out ? sl.waiting : `${l.n} to dish`}
-                    </Text>
+                    {(!out || sl.waiting !== '') && (
+                      <Text size={z.line} weight="semibold" style={styles.tabular}>
+                        {out ? sl.waiting : `${l.n} to dish`}
+                      </Text>
+                    )}
                   </View>
                   <Chip
                     status={

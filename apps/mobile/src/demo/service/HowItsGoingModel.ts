@@ -49,6 +49,7 @@ export interface Section {
 
 export interface KitchenItem {
   item: string;
+  course?: string | undefined;
   station: string | null;
   people: string;
   state: 'Ready' | 'Preparing' | 'Run out' | null;
@@ -651,6 +652,20 @@ export function shownSummary(s: ServiceState): Summary {
     const now: KitchenItem = r.runOut ? { ...k, state: 'Run out', waiting: waiting(r).length } : k;
     return [now, BEEF_LINE];
   });
+  const e = r.earlier;
+  if (e != null) {
+    const at = sum.kitchen.map((k) => k.station).lastIndexOf(e.station);
+    sum.kitchen.splice(at < 0 ? sum.kitchen.length : at + 1, 0, {
+      item: e.item,
+      course: e.course,
+      station: e.station,
+      people: '',
+      state: 'Run out',
+      readyIn: null,
+      heldUpMin: null,
+      waiting: e.waiting,
+    });
+  }
   return sum;
 }
 

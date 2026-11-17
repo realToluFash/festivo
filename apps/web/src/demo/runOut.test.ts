@@ -23,8 +23,10 @@ import {
   runOutTables,
   waiting,
   withRunOut,
+  SMALL_CHOPS,
+  earlierLine,
 } from './runOut.ts';
-import { alertsOf, room, wordOf } from './serviceRoom.ts';
+import { WORD_ORDER, alertsOf, room, wordOf } from './serviceRoom.ts';
 
 const LEAD: Access = { online: true, manage: true };
 const names = (xs: readonly { name: string }[]) => xs.map((x) => x.name);
@@ -225,12 +227,33 @@ describe('How it’s going with Chicken run out', () => {
   });
 });
 
+describe('an earlier course’s item run out (pm, 17 Nov)', () => {
+  it('lists it at its station after the current course’s items, naming its course', () => {
+    const s = withRunOut(sample(), { ...runOutSample(), earlier: SMALL_CHOPS });
+    const items = s.kitchen.map((k) => k.item);
+    expect(items.indexOf('Small chops')).toBe(items.indexOf('Plantain') + 1);
+    expect(s.kitchen.find((k) => k.item === 'Small chops')).toMatchObject({
+      course: 'Starter',
+      station: 'Fryer',
+      waiting: 1,
+    });
+    expect(earlierLine(SMALL_CHOPS)).toBe('Starter · Small chops · Fryer · Run out');
+    expect(s.course.choice).toBe(withRunOut(sample(), runOutSample()).course.choice);
+  });
+});
+
 describe('Plan and List with Chicken run out', () => {
   it('tables 9, 12, 14 and 3 read Waiting for a choice', () => {
     const tables = runOutTables(room(), runOutSample());
     const word = (n: number) => wordOf(tables.find((t) => t.n === n)!);
     for (const n of [9, 12, 14, 3]) expect(word(n)).toBe('choice');
     expect(word(4)).toBe('kitchen');
+  });
+
+  it('puts Waiting for a choice second, after Behind (pm, 17 Nov)', () => {
+    expect(WORD_ORDER.slice(0, 3)).toEqual(['behind', 'choice', 'serve']);
+    const nine = runOutTables(room(), runOutSample()).find((t) => t.n === 9)!;
+    expect(wordOf({ ...nine, wait: 25 })).toBe('behind');
   });
 
   it('a wait for a choice adds nothing toward Behind, so table 8 is why Section B is Behind', () => {

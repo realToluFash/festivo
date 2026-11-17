@@ -346,7 +346,8 @@ export function stateLine(s: StationState, item: string): StateLine {
   const waiting = st.kind === 'preparing' && held > 0 ? `${held} waiting` : '';
   if (st.kind === 'ready') return { word: 'Ready', line: 'Ready', waiting: '' };
   if (st.kind === 'runOut') {
-    return { word: 'Run out', line: runOutLine(st.at), waiting: waitingLine(stillNeed(s, item)) };
+    const n = stillNeed(s, item);
+    return { word: 'Run out', line: runOutLine(st.at), waiting: n > 0 ? waitingLine(n) : '' };
   }
   const late = heldUp(s, item);
   if (late != null) return { word: 'Held up', line: `${late} min`, waiting };
@@ -951,6 +952,7 @@ export const STATION_STATES = [
   'runOutTaken',
   'runOutFaced',
   'runOutOffline',
+  'runOutEarlier',
 ] as const;
 
 export type StationStateName = (typeof STATION_STATES)[number];
@@ -1006,6 +1008,10 @@ export const STATION_STATE_WHAT: Record<StationStateName, readonly [string, stri
   runOutOffline: [
     'Run out… with no connection',
     'Refused on the device, and nothing kept to send later',
+  ],
+  runOutEarlier: [
+    'Run out on an earlier course’s item',
+    'The Fryer: Starter · Small chops, owed to one plate, marked run out beside Plantain',
   ],
 };
 
@@ -1095,5 +1101,7 @@ export function seed(name: StationStateName): StationState {
       return waiterMarks(confirmRunOut(askRunOut(runOutWorld(), RUN_OUT.item)), 'off');
     case 'runOutOffline':
       return askRunOut({ ...runOutWorld(), online: false, asOf: at(20, 5) }, RUN_OUT.item);
+    case 'runOutEarlier':
+      return confirmRunOut(askRunOut(fresh(), 'Small chops'));
   }
 }

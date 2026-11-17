@@ -8,6 +8,8 @@ import {
   sectionBehind,
   stateWord,
   tableOf,
+  WORD_ORDER,
+  wordOf,
 } from './ServiceRoomModel.ts';
 
 import {
@@ -263,6 +265,19 @@ describe('How it’s going and the room with Chicken run out', () => {
     expect(sum.kitchen.find((k) => k.item === 'Chicken')?.state).toBe('Ready');
   });
 
+  it('lists an earlier course’s run-out item at its station, after its current-course items (pm, 17 Nov)', () => {
+    const sum = shownSummary(seed('runOutEarlier'));
+    const items = sum.kitchen.map((k) => k.item);
+    expect(items.indexOf('Small chops')).toBe(items.indexOf('Plantain') + 1);
+    expect(sum.kitchen.find((k) => k.item === 'Small chops')).toMatchObject({
+      course: 'Starter',
+      station: 'Fryer',
+      state: 'Run out',
+      waiting: 1,
+    });
+    expect(sum.course).toEqual(shownSummary(seed('runOutAlert')).course);
+  });
+
   it('lets a held guest add no wait toward Behind on How it’s going (sc-4026)', () => {
     const behind = (name: Parameters<typeof seed>[0]) => {
       const sum = shownSummary(seed(name));
@@ -288,7 +303,7 @@ describe('How it’s going and the room with Chicken run out', () => {
     expect(b?.table).toBe(8);
   });
 
-  it('reads Waiting for a choice on the Plan ahead of Behind', () => {
+  it('reads Waiting for a choice on the Plan, second after Behind (pm, 17 Nov)', () => {
     const r = roomSeed('runOutPlan');
     const word = (n: number) => {
       const t = tableOf(r, n);
@@ -296,5 +311,15 @@ describe('How it’s going and the room with Chicken run out', () => {
     };
     expect([3, 9, 12, 14].map(word)).toEqual(Array(4).fill('Waiting for a choice'));
     expect(word(2)).toBe('On a tray');
+    expect(WORD_ORDER.slice(0, 3)).toEqual(['behind', 'choice', 'serve']);
+  });
+
+  it('keeps Behind on a table Behind by its other guests, a guest waiting for a choice or not', () => {
+    const nine = tableOf(roomSeed('runOutPlan'), 9);
+    if (nine == null) throw new Error('table 9');
+    const late = { ...nine, waitUnheld: 25 };
+    expect(isBehind(late)).toBe(true);
+    expect(wordOf(late)).toBe('behind');
+    expect(wordOf(nine)).toBe('choice');
   });
 });

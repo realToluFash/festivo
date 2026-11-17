@@ -283,11 +283,19 @@ function Blocks({
             key={k.item}
             k={k}
             first={i === 0}
-            onPress={s.manage ? onChoose : null}
+            onPress={s.manage && k.course == null ? onChoose : null}
           />
         ) : (
           <KitchenRow key={k.item} k={k} first={i === 0} />
         ),
+      )}
+      {s.manage && sum.kitchen.some((k) => k.state === 'Run out' && k.course != null) && (
+        <DemoOnly title="Demo only: an earlier course’s line">
+          <Text size={14}>
+            In the product this line opens Small chops’s own choice panel, with the Starter’s items,
+            as Chicken’s line opens Chicken’s. The demo plays Chicken’s.
+          </Text>
+        </DemoOnly>
       )}
     </View>
   );
@@ -573,7 +581,7 @@ function RunOutKitchenRow({
   onPress: ((ref: ViewInstance | null) => void) | null;
 }) {
   const ref = useRef<ViewInstance | null>(null);
-  const line = `${k.item} · ${k.station ?? ''} · Run out`;
+  const line = `${k.course == null ? '' : `${k.course} · `}${k.item} · ${k.station ?? ''} · Run out`;
   const sub = k.waiting > 0 ? waitingWords(k.waiting) : '';
   const words = (
     <>

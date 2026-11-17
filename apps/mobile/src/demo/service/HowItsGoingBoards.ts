@@ -28,6 +28,7 @@ const TITLE: Record<ServiceStateName, string> = {
   runOutAvailable: 'Run out · available again',
   runOutNoManage: 'Run out · without service.manage',
   runOutOffline: 'Run out · no connection',
+  runOutEarlier: 'Run out · an earlier course’s item',
 };
 
 export const SERVICE_BOARDS = SERVICE_STATES.map((state) => ({

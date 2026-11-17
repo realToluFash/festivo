@@ -63,7 +63,23 @@ export interface RunOut {
   refused: string;
   say: string;
   raised: number;
+  earlier?: EarlierRunOut | undefined;
 }
+
+/** An earlier course's item run out at its station while a plate still needs it (pm, 17 Nov): its kitchen line names its course and follows that station's items of the current course. */
+export interface EarlierRunOut {
+  course: string;
+  item: string;
+  station: string;
+  waiting: number;
+}
+
+export const SMALL_CHOPS: EarlierRunOut = {
+  course: 'Starter',
+  item: 'Small chops',
+  station: 'Fryer',
+  waiting: 1,
+};
 
 export interface Can {
   online: boolean;
@@ -474,6 +490,7 @@ export const RUN_OUT_STATES = [
   'runOutAvailable',
   'runOutNoManage',
   'runOutOffline',
+  'runOutEarlier',
 ] as const;
 
 export type RunOutStateName = (typeof RUN_OUT_STATES)[number];
@@ -493,6 +510,8 @@ export const RUN_OUT_WHAT: Record<RunOutStateName, string> = {
   runOutAvailable: 'After Mark available again: Chicken Ready, the alert and the count gone',
   runOutNoManage: 'Without service.manage: no alert, no panel, a choice by link refused (403)',
   runOutOffline: 'No connection: Choose pressed and refused, nothing kept',
+  runOutEarlier:
+    'Starter · Small chops run out at the Fryer too, owed to a guest already waiting on Chicken: its line follows the Fryer’s Plantain',
 };
 
 const LEAD_CAN: Can = { online: true, manage: true };
@@ -533,5 +552,7 @@ export function runOutSeed(name: RunOutStateName): RunOut {
       return settle(openPanel(r, { online: true, manage: false }));
     case 'runOutOffline':
       return settle(openPanel(r, { online: false, manage: true }));
+    case 'runOutEarlier':
+      return { ...r, earlier: SMALL_CHOPS };
   }
 }
