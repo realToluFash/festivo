@@ -5475,9 +5475,9 @@ describe('The Tables view (sc-4013)', () => {
 
     fireEvent.click(await screen.findByRole('button', { name: 'Tables' }));
     const cards = () =>
-      within(document.querySelector<HTMLElement>('.st-cards')!)
-        .getAllByRole('button')
-        .map((one) => one.getAttribute('aria-label'));
+      [...document.querySelectorAll('.st-cards .st-card-hit')].map((one) =>
+        one.getAttribute('aria-label'),
+      );
 
     expect(cards()).toEqual([
       'Table 2, 0 of 8, Stage',
@@ -5513,7 +5513,9 @@ describe('The Tables view (sc-4013)', () => {
     fireEvent.click(screen.getByRole('button', { name: 'Table 3, 0 of 10' }));
     expect(await screen.findAllByText('Bo Ade is at Table 3.')).not.toHaveLength(0);
     expect(screen.getByRole('button', { name: 'Undo' })).toBeDefined();
-    expect(screen.getByRole('button', { name: 'Table 3, 0 of 10' }).className).toContain('is-lit');
+    expect(
+      screen.getByRole('button', { name: 'Table 3, 0 of 10' }).closest('.st-card')?.className,
+    ).toContain('is-lit');
     expect((await screen.findByText('Saved')).closest('.st-canvas')?.className).toContain(
       'is-tables',
     );
@@ -5543,6 +5545,108 @@ describe('The Tables view (sc-4013)', () => {
     card('Table 2, 0 of 8, Stage').focus();
     fireEvent.keyDown(card('Table 2, 0 of 8, Stage'), { key: 'ArrowUp' });
     expect(document.activeElement).toBe(card('Table 3, 0 of 10'));
+  });
+
+  it('seats a picked guest in the chair clicked on a card, and lights the chair under the pointer', async () => {
+    signedIn();
+    const sent = await onSeating({
+      'GET /api/events/ev_1/seating-plan': () => seating(roomOfCards()),
+      'POST /api/events/ev_1/seating-plan/guests/seat': () =>
+        moved(roomOfCards(), [
+          { guestId: 'g_bo', from: null, to: { kind: 'table', id: 't3', seat: 6 } },
+        ]),
+    });
+
+    fireEvent.click(await screen.findByRole('button', { name: 'Tables' }));
+    expect(screen.queryByRole('button', { name: 'Table 3, Seat 6, Empty' })).toBeNull();
+    fireEvent.click(screen.getByRole('tab', { name: 'Seat' }));
+    fireEvent.click(screen.getByRole('button', { name: /Bo Ade/ }));
+
+    const chair = screen.getByRole('button', { name: 'Table 3, Seat 6, Empty' });
+
+    fireEvent.pointerEnter(chair);
+    expect(chair.closest('.st-card')?.className).toContain('is-lit');
+    expect(chair.closest('svg')?.querySelectorAll('.st-lit')).toHaveLength(1);
+
+    fireEvent.click(chair);
+    expect(await screen.findAllByText('Bo Ade is at Table 3.')).not.toHaveLength(0);
+    expect(sent.find((one) => one.line.endsWith('/guests/seat'))?.body).toMatchObject({
+      guestId: 'g_bo',
+      kind: 'table',
+      placeId: 't3',
+      seat: 6,
+    });
+  });
+
+  it('offers Swap with at a taken chair on a card, and Cancel changes nothing', async () => {
+    signedIn();
+    const sent = await onSeating({
+      'GET /api/events/ev_1/seating-plan': () => seating(roomOfCards()),
+      'POST /api/events/ev_1/seating-plan/guests/swap': () =>
+        moved(roomOfCards(), [
+          { guestId: 'g_bo', from: null, to: { kind: 'table', id: 't10', seat: 1 } },
+          { guestId: 'g_ada', from: { kind: 'table', id: 't10', seat: 1 }, to: null },
+        ]),
+    });
+
+    fireEvent.click(await screen.findByRole('button', { name: 'Tables' }));
+    fireEvent.click(screen.getByRole('tab', { name: 'Seat' }));
+    fireEvent.click(screen.getByRole('button', { name: /Bo Ade/ }));
+    fireEvent.click(screen.getByRole('button', { name: 'Table 10, Seat 1, Ada Obi' }));
+    expect(await screen.findByText('Table 10, seat 1 is Ada Obi’s.')).toBeDefined();
+    fireEvent.click(screen.getByRole('button', { name: 'Cancel' }));
+    expect(sent.some((one) => one.line.endsWith('/guests/swap'))).toBe(false);
+
+    fireEvent.click(screen.getByRole('button', { name: 'Table 10, Seat 1, Ada Obi' }));
+    fireEvent.click(await screen.findByRole('button', { name: 'Swap with Ada Obi' }));
+    expect(await screen.findAllByText('Bo Ade is at Table 10.')).not.toHaveLength(0);
+    expect(sent.find((one) => one.line.endsWith('/guests/swap'))?.body).toEqual({
+      guestId: 'g_bo',
+      withGuestId: 'g_ada',
+    });
+  });
+
+  it('picks a seated guest from their chair or their row in Seat, and moves only them', async () => {
+    signedIn();
+    const sent = await onSeating({
+      'GET /api/events/ev_1/seating-plan': () => seating(roomOfCards()),
+      'POST /api/events/ev_1/seating-plan/guests/seat': () =>
+        moved(roomOfCards(), [
+          {
+            guestId: 'g_ada',
+            from: { kind: 'table', id: 't10', seat: 1 },
+            to: { kind: 'table', id: 't3', seat: 1 },
+          },
+        ]),
+    });
+
+    fireEvent.click(await screen.findByRole('button', { name: 'Tables' }));
+    fireEvent.click(screen.getByRole('button', { name: 'Table 10, Seat 1, Ada Obi' }));
+    expect(await screen.findByText('Now pick a table for Ada Obi.')).toBeDefined();
+    const row = () =>
+      within(document.querySelector<HTMLElement>('.st-panel')!).getByRole('button', {
+        name: /Seat 1.*Ada Obi/,
+      });
+
+    expect(row().getAttribute('aria-pressed')).toBe('true');
+    expect(
+      screen
+        .getByRole('button', { name: 'Table 10, Seat 1, Ada Obi' })
+        .getAttribute('aria-pressed'),
+    ).toBe('true');
+
+    fireEvent.click(row());
+    expect(screen.queryByText('Now pick a table for Ada Obi.')).toBeNull();
+    fireEvent.click(screen.getByRole('button', { name: 'Table 10, 1 of 10, Stage' }));
+    fireEvent.click(row());
+    expect(screen.getByText('Now pick a table for Ada Obi.')).toBeDefined();
+
+    fireEvent.click(screen.getByRole('button', { name: 'Table 3, 0 of 10' }));
+    expect(await screen.findAllByText('Ada Obi is at Table 3.')).not.toHaveLength(0);
+    expect(sent.find((one) => one.line.endsWith('/guests/seat'))?.body).toMatchObject({
+      guestId: 'g_ada',
+      placeId: 't3',
+    });
   });
 });
 
@@ -5763,6 +5867,9 @@ describe('Deleting many with guests in them (sc-57680)', () => {
     await waitFor(() => expect(stepLine()).toBe('These seats changed since. Nothing was undone.'));
     expect(bodies(sent, 'delete')[0]?.emptyOnly).toBe(true);
     expect(screen.queryByRole('button', { name: 'Undo' })).toBeNull();
+    await waitFor(() =>
+      expect(document.activeElement).toBe(document.querySelector('.st-under-views .st-bar p')),
+    );
   });
 });
 
