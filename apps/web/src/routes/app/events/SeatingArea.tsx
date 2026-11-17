@@ -733,7 +733,6 @@ function Plan({
       const box = node.getBoundingClientRect();
       const at = target.getBoundingClientRect();
 
-      if (at.width === 0 && at.height === 0) return;
       const [dx, dy] = intoView(
         {
           x0: at.left - box.left,

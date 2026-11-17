@@ -2585,6 +2585,20 @@ function usSeating(planned: unknown, tableId?: string) {
 describe('Moving, turning and resizing on the Floor plan (sc-5028)', () => {
   beforeAll(standInPointerEvents);
 
+  const measure = Element.prototype.getBoundingClientRect;
+
+  beforeEach(() => {
+    vi.spyOn(Element.prototype, 'getBoundingClientRect').mockImplementation(function (
+      this: Element,
+    ) {
+      return this.matches('[data-table], [data-row], [data-seat]')
+        ? new DOMRect(340, 340, 40, 40)
+        : measure.call(this);
+    });
+  });
+
+  afterEach(() => vi.restoreAllMocks());
+
   it('moves a chosen table 10 cm with an arrow and 1 m with Shift, each a step with its version', async () => {
     signedIn();
     const sent = await onSeating({
@@ -4315,7 +4329,11 @@ describe('An item moved by keys stays clear of the keys strip (sc-61042)', () =>
     });
   }
 
-  async function keyed(answers: Record<string, Answer> = {}, more: Record<string, unknown> = {}) {
+  async function keyed(
+    answers: Record<string, Answer> = {},
+    more: Record<string, unknown> = {},
+    at = 400,
+  ) {
     signedIn();
     const long = table({ shape: 'rectangular', seats: 6, widthCm: 180, lengthCm: 76, ...more });
     const sent = await onSeating({
@@ -4332,10 +4350,35 @@ describe('An item moved by keys stays clear of the keys strip (sc-61042)', () =>
     const drawn = document.querySelector('[data-table="t1"]') as SVGGElement & HTMLElement;
 
     act(() => drawn.focus());
-    below = 400 - floorTop();
+    const was = floorTop();
+
+    below = at - was;
     fireEvent.keyDown(drawn, { key: 'Shift' });
     expect(document.querySelector('.st-keys')).not.toBeNull();
-    return { drawn, sent };
+    return { drawn, sent, was };
+  }
+
+  function watchShows() {
+    const shows: MutationCallback[] = [];
+
+    vi.stubGlobal(
+      'ResizeObserver',
+      class {
+        observe() {}
+        disconnect() {}
+      },
+    );
+    vi.stubGlobal(
+      'MutationObserver',
+      class {
+        constructor(callback: MutationCallback) {
+          shows.push(callback);
+        }
+        observe() {}
+        disconnect() {}
+      },
+    );
+    return shows;
   }
 
   it('pans by the least distance once an arrow, Shift+arrow or R has moved the item under the strip', async () => {
@@ -4433,6 +4476,40 @@ describe('An item moved by keys stays clear of the keys strip (sc-61042)', () =>
       expect(floorTop()).toBeCloseTo(was - 28, 0);
     } finally {
       STRIP.top = 600;
+      vi.unstubAllGlobals();
+      measured.mockRestore();
+    }
+  });
+
+  it('pans when the strip shows over the item that has focus', async () => {
+    const measured = measure();
+
+    watchShows();
+    try {
+      const { was } = await keyed({}, {}, 520);
+
+      expect(floorTop()).toBeCloseTo(was - 28, 0);
+    } finally {
+      vi.unstubAllGlobals();
+      measured.mockRestore();
+    }
+  });
+
+  it('pans when a bar appears over the item that has focus', async () => {
+    const measured = measure();
+    const shows = watchShows();
+
+    try {
+      const { was } = await keyed();
+      const strip = document.querySelector('.st-keys')!;
+
+      below = 520 - was;
+      act(() => {
+        for (const show of shows)
+          show([{ addedNodes: [strip] as unknown as NodeList } as MutationRecord], {} as never);
+      });
+      expect(floorTop()).toBeCloseTo(was - 28, 0);
+    } finally {
       vi.unstubAllGlobals();
       measured.mockRestore();
     }
