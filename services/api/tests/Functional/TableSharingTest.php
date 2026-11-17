@@ -227,6 +227,21 @@ final class TableSharingTest extends ApiTestCase
     }
 
     #[Test]
+    public function aSharedSeatedGuestMarkedNotComingTellsOpenGuestPagesToAskAgain(): void
+    {
+        $ada = $this->guest('Ada Obi', reply: 'coming');
+        $this->seat($ada, $this->addTable());
+        $this->share(['shared' => true]);
+        $hub = self::service(RecordingHub::class);
+        $hub->published = [];
+
+        $this->reply($ada, 'notComing');
+
+        self::assertContains('events/' . $this->eventId . '/guest-pages', $this->topicsPublished(), 'freeing the chair tells the open page');
+        self::assertArrayNotHasKey('seating', $this->open($this->token($ada)));
+    }
+
+    #[Test]
     public function aGuestLinkGetsAHubTokenForItsEventsSignalAndAnUnknownOneDoesNot(): void
     {
         $token = $this->token($this->guest('Ada Obi'));
