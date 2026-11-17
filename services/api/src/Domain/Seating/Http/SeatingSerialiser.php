@@ -4,22 +4,29 @@ declare(strict_types=1);
 
 namespace App\Domain\Seating\Http;
 
+use App\Domain\Seating\GuestSeater;
 use App\Entity\Event;
+use App\Entity\Guest;
+use App\Entity\SeatAssignment;
 use App\Entity\SeatingPlan;
 use App\Entity\SeatingRow;
 use App\Entity\SeatingSeat;
 use App\Entity\SeatingSection;
 use App\Entity\SeatingTable;
+use App\Enum\GuestReply;
 use App\Enum\MeasurementSystem;
+use App\Repository\GuestRepository;
+use App\Repository\SeatAssignmentRepository;
 use App\Repository\SeatingRowRepository;
 use App\Repository\SeatingSeatRepository;
 use App\Repository\SeatingSectionRepository;
 use App\Repository\SeatingTableRepository;
+use Psl\Dict;
 use Psl\Iter;
 use Psl\Math;
 use Psl\Vec;
 
-/** Seated guests count as none until sc-4013 can place them (sc-3998, sc-4000, sc-4003). */
+/** The plan and who sits where (sc-4013): each place's `seated` by seat number, and every guest who may be seated, with their chair or none. */
 final readonly class SeatingSerialiser
 {
     public function __construct(
@@ -27,6 +34,8 @@ final readonly class SeatingSerialiser
         private SeatingTableRepository $seatingTableRepository,
         private SeatingRowRepository $seatingRowRepository,
         private SeatingSeatRepository $seatingSeatRepository,
+        private SeatAssignmentRepository $seatAssignmentRepository,
+        private GuestRepository $guestRepository,
     ) {
     }
 
@@ -35,17 +44,26 @@ final readonly class SeatingSerialiser
     {
         return [
             'measurementSystem' => MeasurementSystem::forTerritory($event->getOrganisation()->getCountryCode())->value,
-            'plan' => null === $plan ? null : $this->plan($plan),
+            'plan' => null === $plan ? null : $this->plan($event, $plan),
         ];
     }
 
     /** @return array<string, mixed> */
-    private function plan(SeatingPlan $plan): array
+    private function plan(Event $event, SeatingPlan $plan): array
     {
         $sections = $this->seatingSectionRepository->findInPlan($plan);
         $tables = $this->seatingTableRepository->findInPlan($plan);
         $rows = $this->seatingRowRepository->findInPlan($plan);
         $singleSeats = $this->seatingSeatRepository->findInPlan($plan);
+        $assignments = $this->seatAssignmentRepository->findInPlan($plan);
+        $seated = static fn (SeatingTable|SeatingRow|SeatingSeat $place): array => Vec\map(
+            Vec\filter($assignments, static fn (SeatAssignment $at): bool => $at->getPlaceId()->equals($place->getId())),
+            static fn (SeatAssignment $at): array => ['seat' => $at->getSeat(), 'guestId' => $at->getGuest()->getId()->toRfc4122()],
+        );
+        $chairs = Dict\from_entries(Vec\map($assignments, static fn (SeatAssignment $at): array => [
+            $at->getGuest()->getId()->toRfc4122(),
+            ['kind' => GuestSeater::kindOf($at->getPlace()), 'id' => $at->getPlaceId()->toRfc4122(), 'seat' => $at->getSeat()],
+        ]));
 
         return [
             'id' => $plan->getId()->toRfc4122(),
@@ -55,17 +73,44 @@ final readonly class SeatingSerialiser
             'version' => $plan->getVersion(),
             'changedBy' => $plan->getChangedBy()?->getName(),
             'sections' => Vec\map($sections, static fn (SeatingSection $section): array => [...self::section($section), ...self::contents($section, $tables, $rows, $singleSeats)]),
-            'tables' => Vec\map($tables, self::table(...)),
-            'rows' => Vec\map($rows, self::row(...)),
-            'singleSeats' => Vec\map($singleSeats, self::singleSeat(...)),
+            'tables' => Vec\map($tables, static fn (SeatingTable $table): array => [...self::table($table), 'seated' => $seated($table)]),
+            'rows' => Vec\map($rows, static fn (SeatingRow $row): array => [...self::row($row), 'seated' => $seated($row)]),
+            'singleSeats' => Vec\map($singleSeats, static fn (SeatingSeat $seat): array => [...self::singleSeat($seat), 'seated' => $seated($seat)]),
+            'guests' => Vec\map(
+                Vec\filter($this->guestRepository->findOnList($event), GuestSeater::mayBeSeated(...)),
+                static fn (Guest $guest): array => self::guest($guest, $chairs[$guest->getId()->toRfc4122()] ?? null),
+            ),
             'withoutSection' => self::contents(null, $tables, $rows, $singleSeats),
             'counts' => [
                 'sections' => Iter\count($sections),
                 'tables' => Iter\count($tables),
                 'rows' => Iter\count($rows),
                 'singleSeats' => Iter\count($singleSeats),
-                'seatedGuests' => 0,
+                'seatedGuests' => Iter\count($assignments),
             ],
+        ];
+    }
+
+    /**
+     * A companion's `reply` is their lead's, and `fullName` is null for a companion with no name yet (a Held chair); `seat` is null while Without a seat.
+     *
+     * @param ?array{kind: string, id: string, seat: int} $seat
+     *
+     * @return array<string, mixed>
+     */
+    private static function guest(Guest $guest, ?array $seat): array
+    {
+        $lead = $guest->getHost() ?? $guest;
+
+        return [
+            'id' => $guest->getId()->toRfc4122(),
+            'fullName' => $guest->getFullName(),
+            'leadId' => $guest->getHost()?->getId()->toRfc4122(),
+            'position' => $guest->getPosition(),
+            'reply' => ($lead->getReply() ?? GuestReply::NoReply)->value,
+            'groupId' => $lead->getGroup()?->getId()->toRfc4122(),
+            'groupName' => $lead->getGroup()?->getName(),
+            'seat' => $seat,
         ];
     }
 

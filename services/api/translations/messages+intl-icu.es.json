@@ -101,5 +101,15 @@
     "validation.seating_renumber_taken": "{name} ya es el nombre de una mesa que no ha elegido.",
     "validation.seating_copy_outside_room": "La copia de {name} quedaría fuera de la sala, así que no se ha añadido nada.",
     "validation.seating_row_outside_room": "La fila {label} quedaría fuera de la sala.",
-    "seating.no_such_item": "Esta mesa, fila o asiento no está en el plano."
+    "seating.no_such_item": "Esta mesa, fila o asiento no está en el plano.",
+    "seating.table_full": "{table} is full. Pick another table, or move someone off it first.",
+    "seating.table_short": "{table} has {free, plural, one {{free, number} free seat} other {{free, number} free seats}}. {name}’s party is {party, number}.",
+    "seating.seat_taken": "Someone just took that seat. {name} is still without a seat.",
+    "seating.undo_stale": "These seats changed since. Nothing was undone.",
+    "seating.table_below_seated": "{count, plural, one {{count, number} guest is seated here} other {{count, number} guests are seated here}}. Move them first, or keep {keep, number} seats.",
+    "seating.row_below_seated": "{name} is in seat {seat, number}. Move them first, or keep {keep, number} seats.",
+    "seating.seat_in_use": "{name} is in this seat. Move them first.",
+    "seating.guest_not_waiting": "{name} is not coming or is off the list, so they can’t have a seat.",
+    "seating.companion_of": "Guest of {name}",
+    "validation.seating_no_such_chair": "Choose a seat that is on {name} and can be used."
 }
