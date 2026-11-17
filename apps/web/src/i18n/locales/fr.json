@@ -2677,6 +2677,7 @@
     "overview": "Aperçu",
     "guests": "Invités",
     "menu": "Menu",
+    "menuReady": "{{ready, number}} of {{count, number}} ready",
     "seating": "Plan de table",
     "messages": "Messages",
     "schedule": "Programme",
