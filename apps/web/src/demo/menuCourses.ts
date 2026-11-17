@@ -1408,7 +1408,7 @@ const STATES = {
         'k2-coconut': asks([{ ...sideChoice(false, 'c-opt'), required: false }]),
       }),
     }),
-  choiceDraft: () =>
+  choiceAsDraft: () =>
     start({
       name: 'A draft choice',
       note: 'Coconut rice waits on a choice with one option and no question: the Draft tag and its reasons, Not offered to guests by the name, and Finish for Edit.',
@@ -1754,7 +1754,7 @@ export const COURSES_PAGES: readonly { name: string; states: readonly DemoLink[]
         'choicesReadOnly',
         'choiceSaved',
         'choiceOptional',
-        'choiceDraft',
+        'choiceAsDraft',
         'addChoicePicked',
         'choicesAtLimit',
         'choiceRemoveConfirm',
