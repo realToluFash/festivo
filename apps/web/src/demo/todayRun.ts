@@ -1,4 +1,7 @@
-import { todayRailWindow } from '@soirely/domain';
+import { hourContext, todayRailWindow } from '@soirely/domain';
+import type { TFunction } from 'i18next';
+
+import { type RunNow as ShownRun, type RunStop, railSaid } from '../components/todayRun.ts';
 
 import { writtenTime } from './clock.ts';
 
@@ -78,14 +81,6 @@ export function expectedStarts(items: readonly RunItem[], clock: string): Map<Ru
   }
 
   return starts;
-}
-
-export type StopState = 'done' | 'now' | 'next' | 'later';
-
-export interface RunStop {
-  time: string;
-  title: string;
-  state: StopState;
 }
 
 export interface RunNow {
@@ -200,87 +195,41 @@ export function trackAt(state: NowState): { clock: string; items: RunItem[] } {
   };
 }
 
-type Lang = 'en' | 'es' | 'fr' | 'pt';
-
-/** The app's words for what the web's catalogue does not carry yet (todayScreen.runUntil, runOver, runBehindSaid, railStop), so both say the same. */
-const WORDS: Record<
-  Lang,
-  {
-    until: string;
-    untilAtOne: string;
-    over: string;
-    behindSaid: [one: string, other: string];
-    stop: string;
-    states: Record<StopState, string>;
-  }
-> = {
-  en: {
-    until: 'until {time}',
-    untilAtOne: 'until {time}',
-    over: '{n} min over',
-    behindSaid: ['{n} minute behind', '{n} minutes behind'],
-    stop: '{time} {title}, {state}',
-    states: { done: 'done', now: 'now', next: 'next', later: 'still to come' },
-  },
-  es: {
-    until: 'hasta las {time}',
-    untilAtOne: 'hasta la {time}',
-    over: '{n} min de más',
-    behindSaid: ['{n} minuto de retraso', '{n} minutos de retraso'],
-    stop: '{time}, «{title}», {state}',
-    states: { done: 'terminado', now: 'en curso', next: 'a continuación', later: 'después' },
-  },
-  fr: {
-    until: 'jusqu’à {time}',
-    untilAtOne: 'jusqu’à {time}',
-    over: '{n} min de dépassement',
-    behindSaid: ['{n} minute de retard', '{n} minutes de retard'],
-    stop: '{time}, « {title} », {state}',
-    states: { done: 'terminé', now: 'en cours', next: 'ensuite', later: 'plus tard' },
-  },
-  pt: {
-    until: 'até às {time}',
-    untilAtOne: 'até à {time}',
-    over: '{n} min a mais',
-    behindSaid: ['{n} minuto de atraso', '{n} minutos de atraso'],
-    stop: '{time}, «{title}», {state}',
-    states: { done: 'concluído', now: 'a decorrer', next: 'a seguir', later: 'depois' },
-  },
-};
-
-function langOf(locale: string): Lang {
-  const lang = locale.slice(0, 2);
-
-  return lang === 'es' || lang === 'fr' || lang === 'pt' ? lang : 'en';
-}
-
-const fill = (text: string, slots: Record<string, string>) =>
-  text.replaceAll(/\{(\w+)\}/gu, (whole, slot: string) => slots[slot] ?? whole);
-
-export function nowWordsIn(language: string, locale: string) {
-  const words = WORDS[langOf(language)];
-  const number = new Intl.NumberFormat(locale);
+/** The demo's moment in the product's words, from the web's catalogue, so the demo and Today say the same. */
+export function runWordsOf(run: RunNow, locale: string, t: TFunction): ShownRun {
   const clock = (hhmm: string) => writtenTime(hhmm, locale);
+  const rail = run.rail.map((stop) => ({ ...stop, time: clock(stop.time) }));
+  let until: string | null = null;
+  let untilSaid: string | null = null;
+
+  if (run.until?.kind === 'over') {
+    until = t('today.runOver', { count: run.until.minutes });
+    untilSaid = t('today.runOverSaid', { count: run.until.minutes });
+  } else if (run.until != null) {
+    const time = clock(run.until.time);
+
+    until = t('today.runUntil', { time, ...hourContext(time) });
+  }
 
   return {
-    clock,
-    until: (until: NonNullable<RunNow['until']>) =>
-      until.kind === 'over'
-        ? fill(words.over, { n: number.format(until.minutes) })
-        : fill(until.time.startsWith('01:') ? words.untilAtOne : words.until, {
-            time: clock(until.time),
-          }),
-    behindSaid: (count: number) =>
-      fill(words.behindSaid[count === 1 ? 0 : 1], { n: number.format(count) }),
-    railSaid: (rail: readonly RunStop[]) =>
-      rail
-        .map((stop) =>
-          fill(words.stop, {
-            time: clock(stop.time),
-            title: stop.title,
-            state: words.states[stop.state],
-          }),
-        )
-        .join('; '),
+    headline: run.title ?? (run.everything ? t('night.everything') : t('night.nothingOn')),
+    until,
+    untilSaid,
+    figure:
+      run.figure == null
+        ? null
+        : run.figure.kind === 'behind'
+          ? {
+              words: t('runView.behind', { count: run.figure.minutes }),
+              said: t('today.runBehindSaid', { count: run.figure.minutes }),
+            }
+          : {
+              words: t(run.figure.kind === 'onTime' ? 'runView.onTime' : 'runView.last'),
+              said: t(run.figure.kind === 'onTime' ? 'runView.onTime' : 'runView.last'),
+            },
+    next: run.next == null ? null : { time: clock(run.next.time), title: run.next.title },
+    rail,
+    railSaid: railSaid(rail, t),
+    track: null,
   };
 }
