@@ -36,6 +36,7 @@ import { DemoOffline } from './DemoOffline.tsx';
 import { EventsShell } from './EventParts.tsx';
 import { EventSidebar } from './EventSidebar.tsx';
 import { type SampleEvent } from './events.ts';
+import { RETRY_MS } from './general.ts';
 import { Pill } from './GuestsParts.tsx';
 import { clockOfKitchen } from './kitchen.ts';
 import {
@@ -435,6 +436,8 @@ function Courses({ first, lang, budget }: { first: CoursesStart; lang: Lang; bud
   const focusAfter = useRef<string | null>(firstFocus(open, first.courses, budget));
   const library = first.library ?? SAMPLE_LIBRARY;
   const [libraryFailed, setLibraryFailed] = useState(first.libraryFailed === true);
+  const [libraryRetrying, setLibraryRetrying] = useState(false);
+  const retryFails = useRef(first.libraryRetryFails === true);
   const manage = first.manage;
   const lines = headerLines(courses);
   const openCourse =
@@ -448,6 +451,17 @@ function Courses({ first, lang, budget }: { first: CoursesStart; lang: Lang; bud
     document.getElementById(focusAfter.current)?.focus();
     focusAfter.current = null;
   });
+
+  useEffect(() => {
+    if (!libraryRetrying) return;
+    const timer = setTimeout(() => {
+      setLibraryRetrying(false);
+      setLibraryFailed(retryFails.current);
+      retryFails.current = false;
+    }, RETRY_MS);
+
+    return () => clearTimeout(timer);
+  }, [libraryRetrying]);
 
   function settle() {
     setRefused(null);
@@ -1043,10 +1057,11 @@ function Courses({ first, lang, budget }: { first: CoursesStart; lang: Lang; bud
                   lang={lang}
                   budget={budget}
                   library={library}
-                  loading={first.libraryLoading === true}
+                  loading={first.libraryLoading === true || libraryRetrying}
                   failed={libraryFailed}
                   onRetry={() => {
                     setLibraryFailed(false);
+                    setLibraryRetrying(true);
                     focusAfter.current = 'mc-find';
                   }}
                   errors={

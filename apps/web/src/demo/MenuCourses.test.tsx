@@ -1,4 +1,4 @@
-import { cleanup, fireEvent, render, screen, within } from '@testing-library/react';
+import { cleanup, fireEvent, render, screen, waitFor, within } from '@testing-library/react';
 import { RouterProvider, createMemoryRouter } from 'react-router';
 import { beforeEach, describe, expect, it } from 'vitest';
 
@@ -141,9 +141,26 @@ describe('the event Menu (sc-3902)', () => {
     expect(within(panel()).queryByText(CW.libraryEmpty)).toBeNull();
     expect(within(panel()).queryByRole('button', { name: CW.startNewBlank })).toBeNull();
     fireEvent.click(within(panel()).getByRole('button', { name: CW.tryAgain }));
-    expect(document.getElementById('mc-found')?.textContent).toMatch(/ in the menu library$/);
+    expect(document.getElementById('mc-found')?.textContent).toBe(CW.libraryLoading);
     expect(document.activeElement?.id).toBe('mc-find');
     expect(within(panel()).queryByRole('button', { name: CW.tryAgain })).toBeNull();
+    await waitFor(() => {
+      expect(document.getElementById('mc-found')?.textContent).toMatch(/ in the menu library$/);
+    }, WAIT);
+  });
+
+  it('comes back to did-not-load when Try again fails again', SLOW, async () => {
+    await menu('addDishLibraryFailsAgain');
+
+    fireEvent.click(within(panel()).getByRole('button', { name: CW.tryAgain }));
+    expect(document.getElementById('mc-found')?.textContent).toBe(CW.libraryLoading);
+    await within(panel()).findByRole('button', { name: CW.tryAgain }, WAIT);
+    expect(document.getElementById('mc-found')?.textContent).toBe(CW.libraryFailed);
+    expect(within(panel()).queryByRole('button', { name: CW.startNewBlank })).toBeNull();
+    fireEvent.click(within(panel()).getByRole('button', { name: CW.tryAgain }));
+    await waitFor(() => {
+      expect(document.getElementById('mc-found')?.textContent).toMatch(/ in the menu library$/);
+    }, WAIT);
   });
 
   it('says an empty library has no dishes, and starts a new dish', SLOW, async () => {

@@ -562,6 +562,8 @@ export interface CoursesStart {
   libraryLoading?: boolean;
   /** The menu has loaded and the library Add dish lists did not. */
   libraryFailed?: boolean;
+  /** Try again on a library that did not load fails once more, then loads. */
+  libraryRetryFails?: boolean;
 }
 
 function start(over: Partial<CoursesStart> & { name: string; note: string }): CoursesStart {
@@ -692,6 +694,14 @@ const STATES = {
       note: 'The library request failed: says so with Try again, never that the library is empty. New dish works meanwhile.',
       opened: { kind: 'addDish', courseId: MAIN, tab: 'library' },
       libraryFailed: true,
+    }),
+  addDishLibraryFailsAgain: () =>
+    start({
+      name: 'Add dish, the library did not load, twice',
+      note: 'Try again loads, fails again and comes back to the same state; a second Try again loads the list.',
+      opened: { kind: 'addDish', courseId: MAIN, tab: 'library' },
+      libraryFailed: true,
+      libraryRetryFails: true,
     }),
   addDishEmptyLibrary: () =>
     start({
@@ -1232,6 +1242,7 @@ export const COURSES_PAGES: readonly { name: string; states: readonly DemoLink[]
         'addDish',
         'addDishLoading',
         'addDishLibraryFailed',
+        'addDishLibraryFailsAgain',
         'addDishNoMatch',
         'addDishEmptyLibrary',
         'addDishSame',
