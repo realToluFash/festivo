@@ -132,6 +132,10 @@ final readonly class ChoiceRules
             $violations[] = $this->violation('options', 'validation.choice_options_limit', ['{max}' => (string) MenuDishChoice::OPTIONS_MAXIMUM]);
         }
 
+        if ($sent['pick'] >= MenuDishChoice::OPTIONS_MAXIMUM) {
+            $violations[] = $this->violation('pick', 'validation.choice_options_limit', ['{max}' => (string) MenuDishChoice::OPTIONS_MAXIMUM]);
+        }
+
         $sentIds = Vec\filter_nulls(Vec\map($sent['options'], static fn (array $one): ?string => $one['id'] ?? null));
 
         if (Iter\any($picked, static fn (string $id): bool => !Iter\contains($sentIds, $id))) {

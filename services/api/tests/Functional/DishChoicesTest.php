@@ -105,6 +105,15 @@ final class DishChoicesTest extends ApiTestCase
     }
 
     #[Test]
+    public function aCountPastTheOptionsAChoiceCanHaveIsRefused(): void
+    {
+        $this->as($this->owner, 'POST', $this->choicesOf($this->jollof()), [...self::side(), 'pick' => 40000]);
+
+        self::assertSame(422, $this->statusCode());
+        self::assertSame('A choice can have at most 8 options.', $this->violation('pick'));
+    }
+
+    #[Test]
     public function aFourthChoiceIsRefused(): void
     {
         $jollof = $this->jollof();
