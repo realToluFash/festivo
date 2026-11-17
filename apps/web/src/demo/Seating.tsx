@@ -1039,7 +1039,11 @@ function Seating({
       place(toCm(event.clientX, event.clientY));
       return;
     }
-    if (event.pointerType === 'touch' && touches.current.size > 0) {
+    if (
+      event.pointerType === 'touch' &&
+      press.current?.kind === 'box' &&
+      touches.current.size > 0
+    ) {
       touches.current.add(event.pointerId);
       panWith(event);
       return;

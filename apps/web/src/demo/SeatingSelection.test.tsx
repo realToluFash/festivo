@@ -93,10 +93,19 @@ function boxThenSecondFinger(on: Element = room()): void {
   expect(document.querySelector('.st-box-drawn')).not.toBeNull();
   finger('down', 2, [to[0] + 40, to[1]], on);
   expect(document.querySelector('.st-box-drawn')).toBeNull();
+  const was = floorAt();
+
   finger('move', 1, [to[0] + 30, to[1] + 30]);
   finger('move', 2, [to[0] + 70, to[1] + 30]);
+  expect(floorAt()).not.toEqual(was);
   finger('up', 1, [to[0] + 30, to[1] + 30]);
   finger('up', 2, [to[0] + 70, to[1] + 30]);
+}
+
+function floorAt(): [string | null, string | null] {
+  const floor = document.querySelector('.st-floor');
+
+  return [floor?.getAttribute('x') ?? null, floor?.getAttribute('y') ?? null];
 }
 
 function apply(): void {
