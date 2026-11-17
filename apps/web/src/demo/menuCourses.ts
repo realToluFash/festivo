@@ -109,7 +109,7 @@ export const CW = {
   howAnswer: 'How guests answer',
   choose: 'Guests choose',
   same: 'Everyone gets the same',
-  sameNeedsOne: 'Everyone gets the same needs exactly one dish.',
+  sameNeedsOne: '“Everyone gets the same” needs exactly one dish.',
   skip: 'Guests may skip this course',
   skipOn: (course: string) => `Guests also see “No ${course.toLocaleLowerCase('en')} for me”.`,
   nowChoose: (course: string, n: number) => `${course} has ${n} dishes now, so guests choose.`,
