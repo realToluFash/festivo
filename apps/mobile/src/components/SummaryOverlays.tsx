@@ -27,7 +27,8 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import Svg, { Defs, LinearGradient, Rect, Stop } from 'react-native-svg';
 import { useTranslation } from 'react-i18next';
 
-import { SETTLED_MS, useFocusOnAnswer, useWindowOrigin } from './Screen.tsx';
+import { SETTLED_MS, bothRefs, useFocusOnAnswer, useWindowOrigin } from './Screen.tsx';
+import { useFocusedFieldInSight } from './focusedFieldInSight.ts';
 import { moveScreenReaderFocus, type ScreenReaderTarget } from './screenReaderFocus.ts';
 import {
   SilentWindowName,
@@ -213,6 +214,9 @@ export function FocusedScreen({
   const bottom = phone ? insets.bottom : 0;
   const cancel = waits ? stay : onCancel;
   const close = asking ? ask.onKeep : over != null ? over.onClose : cancel;
+  const scroll = useRef<ScrollViewInstance>(null);
+  const offset = useRef(0);
+  useFocusedFieldInSight(scroll, offset);
 
   return (
     <Window
@@ -258,8 +262,12 @@ export function FocusedScreen({
               </View>
             ) : (
               <ScrollView
-                ref={scrollRef}
+                ref={bothRefs(scroll, scrollRef)}
                 style={phone ? styles.fill : styles.sheetBody}
+                scrollEventThrottle={16}
+                onScroll={(event) => {
+                  offset.current = event.nativeEvent.contentOffset.y;
+                }}
                 contentContainerStyle={[
                   styles.body,
                   { gap, paddingBottom: bottom + tokens.space5xl },

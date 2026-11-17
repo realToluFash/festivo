@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 
-import { bottomOverKeys, focusWaitsForArrival } from './keyboard.ts';
+import { bottomOverKeys, focusWaitsForArrival, offsetShowingFoot } from './keyboard.ts';
 
 describe('bottomOverKeys', () => {
   it('rests where it was asked to while the keys are down', () => {
@@ -23,5 +23,22 @@ describe('focusWaitsForArrival', () => {
 
   it('leaves autoFocus to raise the keys with the slide on iOS', () => {
     expect(focusWaitsForArrival('ios')).toBe(false);
+  });
+});
+
+describe('offsetShowingFoot', () => {
+  const sight = { offset: 0, shown: 300, margin: 16 };
+
+  it('brings a field that fits wholly into sight, as offsetIntoView', () => {
+    expect(offsetShowingFoot({ ...sight, contentY: 400, height: 120 })).toBe(236);
+    expect(offsetShowingFoot({ ...sight, contentY: 100, height: 120 })).toBeNull();
+  });
+
+  it('shows the foot of a field taller than the sight, where its error comes', () => {
+    expect(offsetShowingFoot({ ...sight, contentY: 400, height: 340 })).toBe(456);
+  });
+
+  it('leaves a tall field whose foot is already in sight where it is', () => {
+    expect(offsetShowingFoot({ ...sight, offset: 300, contentY: 200, height: 340 })).toBeNull();
   });
 });
