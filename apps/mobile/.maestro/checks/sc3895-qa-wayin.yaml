@@ -1,4 +1,4 @@
-# sc-3895: the event's Schedule area while EVENT is happening shows Run of show above Run view.
+# sc-3895: the event's Schedule area while EVENT is happening shows Run of show above Run view. Pass METRO_URL and EVENT, an event that is happening.
 appId: host.exp.Exponent
 ---
 - openLink: ${METRO_URL}/--/events/${EVENT}?area=schedule

@@ -1,4 +1,4 @@
-# sc-3895: choose LATER's row in EVENT's night, then Skip it from the sheet.
+# sc-3895: choose LATER's row in EVENT's night, then Skip it from the sheet. Pass METRO_URL, EVENT (an event that is happening) and LATER (the id of one of its later items).
 appId: host.exp.Exponent
 ---
 - openLink: ${METRO_URL}/--/events/${EVENT}/night
