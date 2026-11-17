@@ -42,7 +42,7 @@ appId: host.exp.Exponent
 - openLink: ${METRO_URL}/--/events/${EVENT}/edit
 - extendedWaitUntil:
     visible:
-      id: 'eventForm.host.1'
+      id: 'eventForm.hosts.field.0'
     timeout: 30000
 - assertVisible: 'Dr Bello'
 - takeScreenshot: edit-hosted-by
