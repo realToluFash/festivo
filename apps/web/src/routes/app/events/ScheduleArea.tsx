@@ -11,7 +11,7 @@ import {
 } from '@soirely/api-client';
 import { eventDayOf, wallOfZoned, visibleLength } from '@soirely/domain';
 import type { TFunction } from 'i18next';
-import { type KeyboardEvent, useEffect, useMemo, useRef, useState } from 'react';
+import { Fragment, type KeyboardEvent, useEffect, useMemo, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Link } from 'react-router';
 
@@ -744,74 +744,94 @@ function PlaceTable({
         </h2>
         <p className="mn-sub ro-place-count">{t('schedule.items', { count: items.length })}</p>
       </div>
-      <table className="ro-table" aria-labelledby={id}>
-        <thead>
-          <tr>
-            <th scope="col" className="ro-starts">
-              {t('schedule.starts')}
-            </th>
-            <th scope="col" className="ro-wide ro-lasts">
-              {t('schedule.lasts')}
-            </th>
-            <th scope="col">{t('schedule.item')}</th>
-            <th scope="col" className="ro-wide ro-owner">
-              {t('schedule.owner')}
-            </th>
-          </tr>
-        </thead>
-        <tbody>
-          {items.map((one) => (
-            <tr key={one.id} className={lit === one.id ? 'is-lit' : undefined}>
-              <td className="ro-starts">{startsCell(one, reader, t)}</td>
-              <td className="ro-wide ro-lasts">{lastsCell(one.lengthMinutes, t)}</td>
-              <td>
-                <div className="ro-item">
-                  {manage ? (
-                    <button
-                      id={`ro-open-${one.id}`}
-                      type="button"
-                      className="ro-open"
-                      onClick={() => onOpen(one)}
-                    >
-                      {one.title}
-                    </button>
-                  ) : (
-                    <span className="ro-plain">{one.title}</span>
-                  )}
-                  <span className="ro-under">{underLine(one, t)}</span>
-                  {(one.fixedTime || one.showToGuests) && (
-                    <span className="ro-pills">
-                      {one.fixedTime && (
-                        <span className="ro-pill">
-                          <Glyph name="lock" size={13} weight={2.4} />
-                          {t('schedule.fixed')}
-                        </span>
-                      )}
-                      {one.showToGuests && (
-                        <span className="ro-pill">
-                          <Glyph name="eye" size={13} weight={2.4} />
-                          {t('schedule.shown')}
-                        </span>
-                      )}
-                    </span>
-                  )}
-                </div>
-              </td>
-              <td className="ro-wide ro-owner">
-                {one.ownerName == null ? (
-                  <span className="ro-quiet">{t('schedule.noOwner')}</span>
-                ) : (
-                  <>
-                    <span className="ro-owner-name">{one.ownerName}</span>
-                    {one.ownerRole != null && <span className="ro-quiet">{one.ownerRole}</span>}
-                  </>
-                )}
-              </td>
+      <div className="ro-fit">
+        <table className="ro-table" aria-labelledby={id}>
+          <thead>
+            <tr>
+              <th scope="col" className="ro-starts">
+                {t('schedule.starts')}
+              </th>
+              <th scope="col" className="ro-wide ro-lasts">
+                {t('schedule.lasts')}
+              </th>
+              <th scope="col">{t('schedule.item')}</th>
+              <th scope="col" className="ro-wide ro-owner">
+                {t('schedule.owner')}
+              </th>
             </tr>
-          ))}
-        </tbody>
-      </table>
+          </thead>
+          <tbody>
+            {items.map((one) => (
+              <tr key={one.id} className={lit === one.id ? 'is-lit' : undefined}>
+                <td className="ro-starts">{startsCell(one, reader, t)}</td>
+                <td className="ro-wide ro-lasts">{lastsCell(one.lengthMinutes, t)}</td>
+                <td>
+                  <div className="ro-item">
+                    {manage ? (
+                      <button
+                        id={`ro-open-${one.id}`}
+                        type="button"
+                        className="ro-open"
+                        onClick={() => onOpen(one)}
+                      >
+                        {one.title}
+                      </button>
+                    ) : (
+                      <span className="ro-plain">{one.title}</span>
+                    )}
+                    <span className="ro-under">
+                      <Words text={underLine(one, t)} />
+                    </span>
+                    {(one.fixedTime || one.showToGuests) && (
+                      <span className="ro-pills">
+                        {one.fixedTime && (
+                          <span className="ro-pill">
+                            <Glyph name="lock" size={13} weight={2.4} />
+                            {t('schedule.fixed')}
+                          </span>
+                        )}
+                        {one.showToGuests && (
+                          <span className="ro-pill">
+                            <Glyph name="eye" size={13} weight={2.4} />
+                            {t('schedule.shown')}
+                          </span>
+                        )}
+                      </span>
+                    )}
+                  </div>
+                </td>
+                <td className="ro-wide ro-owner">
+                  {one.ownerName == null ? (
+                    <span className="ro-quiet">{t('schedule.noOwner')}</span>
+                  ) : (
+                    <>
+                      <span className="ro-owner-name">
+                        <Words text={one.ownerName} />
+                      </span>
+                      {one.ownerRole != null && <span className="ro-quiet">{one.ownerRole}</span>}
+                    </>
+                  )}
+                </td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </div>
     </section>
+  );
+}
+
+/** Each word of an owner's name on one line, wrapping at its spaces only: "Okonkwo-Williams" is one word (sc-63743). */
+function Words({ text }: { text: string }) {
+  return (
+    <>
+      {text.split(' ').map((word, at) => (
+        <Fragment key={at}>
+          {at > 0 && ' '}
+          <span className="ro-word">{word}</span>
+        </Fragment>
+      ))}
+    </>
   );
 }
 
