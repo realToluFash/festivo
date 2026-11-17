@@ -1,4 +1,10 @@
-import { formatEventClock } from '@soirely/domain';
+import {
+  formatEventClock,
+  NOW_READ_GIVES_UP_MS,
+  NOW_STALE_AFTER_MS,
+  nowLineDueAt,
+  nowShown,
+} from '@soirely/domain';
 import { type ReactNode, useCallback, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 
@@ -9,11 +15,9 @@ import {
   type Answer,
   afterRead,
   asOfWords,
-  lineDueAt,
-  nowShows,
+  landedAt,
   outcomeOf,
   READ_EVERY_MS,
-  READ_GIVES_UP_MS,
   type Reads,
 } from './nowAge.ts';
 
@@ -59,13 +63,10 @@ const ANSWER_NAMES: Record<AnswerName, string> = {
   refused: 'Reads are refused (403)',
 };
 
-const landedAt = (at: Date): Reads => ({ landed: at, failing: false, refused: false });
-
 /** Each state's reads at the sample's clock: the static two never change, and live starts with a read landing as Today opens. */
 function startOf(state: ReadsState, clock: Date): Reads {
-  if (state === 'asOf')
-    return { ...landedAt(new Date(clock.getTime() - 2 * MINUTE)), failing: true };
-  if (state === 'asOfDay') return { ...landedAt(wallAt('2026-11-05', '23:52')), failing: true };
+  if (state === 'asOf') return landedAt(new Date(clock.getTime() - 2 * MINUTE), true);
+  if (state === 'asOfDay') return landedAt(wallAt('2026-11-05', '23:52'), true);
 
   return landedAt(clock);
 }
@@ -109,7 +110,7 @@ export function useNowReads(state: ReadsState | null, clock: string, locale: str
         setNow(at);
       };
 
-      if (given.kind === 'noAnswer') return setTimeout(answered, READ_GIVES_UP_MS);
+      if (given.kind === 'noAnswer') return setTimeout(answered, NOW_READ_GIVES_UP_MS);
 
       answered();
 
@@ -131,7 +132,7 @@ export function useNowReads(state: ReadsState | null, clock: string, locale: str
     };
   }, [state, answer, demoNow]);
 
-  const due = lineDueAt(reads, now)?.getTime() ?? null;
+  const due = nowLineDueAt(reads, now)?.getTime() ?? null;
 
   useEffect(() => {
     if (state !== 'live' || due == null) return;
@@ -143,19 +144,16 @@ export function useNowReads(state: ReadsState | null, clock: string, locale: str
 
   if (state == null) return { built: false, asOf: null, controls: null };
 
-  const shows = nowShows(reads, now);
-  const asOf =
-    shows.kind === 'run' && shows.asOf != null
-      ? asOfWords(shows.asOf, now, EVENT_ZONE, locale, t)
-      : null;
+  const shown = nowShown(reads, now);
+  const asOf = shown.asOf == null ? null : asOfWords(shown.asOf, now, EVENT_ZONE, locale, t);
   const controls =
     state === 'live' ? (
       <DemoOnly
         title={`Demo only: how Soirely answers Now's reads. Now reads every 50 seconds, and once at each choice here. ${
           reads.landed == null
             ? 'No read has landed yet.'
-            : `The last read landed at ${formatEventClock(reads.landed.toISOString(), EVENT_ZONE, locale)}.`
-        } The line shows once a read has failed and that one is more than 60 seconds old; a read with no answer fails after 10 seconds.`}
+            : `The last read landed at ${formatEventClock(reads.landed.at.toISOString(), EVENT_ZONE, locale)}.`
+        } The line shows once a read has failed and that one is more than ${NOW_STALE_AFTER_MS / 1000} seconds old; a read with no answer fails after ${NOW_READ_GIVES_UP_MS / 1000} seconds.`}
       >
         {(Object.keys(ANSWERS) as AnswerName[]).map((name) => (
           <SecondaryButton
@@ -168,5 +166,5 @@ export function useNowReads(state: ReadsState | null, clock: string, locale: str
       </DemoOnly>
     ) : null;
 
-  return { built: shows.kind === 'built', asOf, controls };
+  return { built: shown.schedule == null, asOf, controls };
 }
