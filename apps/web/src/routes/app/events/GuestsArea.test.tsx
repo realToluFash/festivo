@@ -2244,7 +2244,7 @@ describe('Guests from 961 to 1240 px (sc-61150)', () => {
 
   it('puts an open guest before the list, each full width, with Pick a guest hidden', () => {
     expect(cssRule('.gs-cols', band())).toContain('flex-flow: column nowrap;');
-    expect(cssRule('.gs-column', band())).toContain('order: -1;');
+    expect(band()).toMatch(/\n {2}\.gs-column \{\n {4}order: -1;/u);
     expect(cssRule('.gs-column:has(> .gs-pick)', band())).toContain('display: none;');
   });
 
