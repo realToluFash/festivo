@@ -3451,6 +3451,10 @@ describe('Choosing many and the Selection tools (sc-4717)', () => {
     answer(seating(withTables(table({ xCm: 600, version: 2 }), second({ version: 2 }))));
     await waitFor(() => expect(heard()).toBe('2 tables lined up on their left edges.'));
     expect(stepLine()).toBe('2 tables lined up on their left edges.');
+    expect(
+      screen.getByRole('button', { name: 'Undo' }).closest('.st-bar-body')?.querySelector('p')
+        ?.textContent,
+    ).toBe('2 tables lined up on their left edges.');
 
     fireEvent.click(screen.getByRole('button', { name: 'Undo' }));
     await waitFor(() => expect(furniture(sent)).toHaveLength(2));

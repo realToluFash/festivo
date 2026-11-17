@@ -256,21 +256,23 @@ export function StepLine({ bar, onUndo }: { bar: StepBar; onUndo: () => void }) 
         size={17}
         weight={2.2}
       />
-      <p>{bar.words}</p>
-      {(bar.undo != null || (bar.acts?.length ?? 0) > 0) && (
-        <span className="st-bar-acts">
-          {bar.acts?.map((act) => (
-            <button key={act.label} type="button" className="desk-text" onClick={act.run}>
-              {act.label}
-            </button>
-          ))}
-          {bar.undo != null && (
-            <button type="button" className="desk-text" onClick={onUndo}>
-              {t('seating.undo')}
-            </button>
-          )}
-        </span>
-      )}
+      <div className="st-bar-body">
+        <p>{bar.words}</p>
+        {(bar.undo != null || (bar.acts?.length ?? 0) > 0) && (
+          <span className="st-bar-acts">
+            {bar.acts?.map((act) => (
+              <button key={act.label} type="button" className="desk-text" onClick={act.run}>
+                {act.label}
+              </button>
+            ))}
+            {bar.undo != null && (
+              <button type="button" className="desk-text" onClick={onUndo}>
+                {t('seating.undo')}
+              </button>
+            )}
+          </span>
+        )}
+      </div>
     </div>
   );
 }
