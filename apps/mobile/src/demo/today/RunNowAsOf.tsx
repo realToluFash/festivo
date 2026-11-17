@@ -12,11 +12,10 @@ import type { Now } from '../../kit/today.ts';
 import { railLabels, type RunNow } from '../../kit/todayRun.ts';
 
 const LONG = 40;
-const RAIL_LABEL = 64;
 
 function Rail({ run }: { run: RunNow }) {
   const [width, setWidth] = useState(0);
-  const boxes = railLabels(run.rail.length, width, RAIL_LABEL, tokens.spaceXxs);
+  const boxes = railLabels(run.rail.length, width, tokens.spaceXxs);
   const last = Math.max(1, run.rail.length - 1);
   const on = run.rail.findIndex((stop) => stop.state === 'now');
   const reached = run.rail.reduce(
