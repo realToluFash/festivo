@@ -449,8 +449,7 @@ export function TableDrawing({
       data-table={table.id}
       onClick={onChoose}
       onKeyDown={(event: KeyboardEvent) => {
-        if (event.target !== event.currentTarget) return;
-        if (event.key !== 'Enter' && event.key !== ' ') return;
+        if (event.target !== event.currentTarget || event.key !== 'Enter') return;
         event.preventDefault();
         onChoose();
       }}

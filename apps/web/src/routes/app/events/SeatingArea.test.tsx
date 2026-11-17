@@ -3384,21 +3384,26 @@ describe('Choosing many and the Selection tools (sc-4717)', () => {
     await screen.findByRole('button', { name: TABLE_1 });
     const TABLE_3 = 'Table 3, round, 0 of 10 seats taken';
     const item = (name: string) => screen.getByRole('button', { name });
+    const space = (name: string, shiftKey = false) => {
+      act(() => item(name).focus());
+      fireEvent.keyDown(item(name), { key: ' ', shiftKey });
+      fireEvent.keyUp(item(name), { key: ' ', shiftKey });
+    };
 
     fireEvent.click(screen.getByRole('button', { name: 'Add to choice' }));
     fireEvent.keyDown(item(TABLE_1), { key: 'Enter' });
-    fireEvent.keyDown(item(TABLE_2), { key: ' ' });
+    space(TABLE_2);
     expect(await screen.findByRole('heading', { level: 2, name: '2 chosen' })).toBeDefined();
     fireEvent.keyDown(item(TABLE_3), { key: 'Enter' });
     expect(await screen.findByRole('heading', { level: 2, name: '3 chosen' })).toBeDefined();
-    fireEvent.keyDown(item(TABLE_3), { key: ' ' });
+    space(TABLE_3);
     expect(await screen.findByRole('heading', { level: 2, name: '2 chosen' })).toBeDefined();
 
     fireEvent.keyDown(window, { key: 'Escape' });
     expect(screen.getByRole('heading', { level: 2, name: '2 chosen' })).toBeDefined();
     fireEvent.keyDown(item(TABLE_3), { key: 'Enter', shiftKey: true });
     expect(await screen.findByRole('heading', { level: 2, name: '3 chosen' })).toBeDefined();
-    fireEvent.keyDown(item(TABLE_1), { key: ' ', shiftKey: true });
+    space(TABLE_1, true);
     expect(await screen.findByRole('heading', { level: 2, name: '2 chosen' })).toBeDefined();
 
     fireEvent.keyDown(item(TABLE_1), { key: 'Enter' });
@@ -4277,5 +4282,177 @@ describe('A second finger on a box pans and keeps the choice (sc-60666)', () => 
     finger('up', 2, [x + 70, y + 230]);
     fireEvent.click(floor);
     expect(screen.getByRole('heading', { level: 2, name: '2 chosen' })).toBeDefined();
+  });
+});
+
+describe('Holding Space pans with an item focused, and Space acts on release (sc-62095)', () => {
+  beforeAll(standInPointerEvents);
+
+  const TABLE_2 = 'Table 2, round, 0 of 10 seats taken';
+  const at = { button: 0, pointerId: 1 };
+
+  function heard(): string {
+    return document.querySelector('p.visually-hidden[aria-live]')?.textContent ?? '';
+  }
+
+  function chosen(): string | null {
+    return document.querySelector('.st-panel h2')?.textContent ?? null;
+  }
+
+  function item(name: string): Element {
+    return screen.getByRole('button', { name });
+  }
+
+  async function onTwo(): Promise<void> {
+    signedIn();
+    await onSeating({
+      'GET /api/events/ev_1/seating-plan': () =>
+        seating(withTables(table(), table({ id: 't2', name: 'Table 2', xCm: 600 }))),
+    });
+    await screen.findByRole('button', { name: TABLE_1 });
+    press('Zoom in', 3);
+  }
+
+  function spaceDrag(on: Element): void {
+    const floor = document.querySelector('.st-floor')!;
+    const room = document.querySelector('.st-room')!;
+    const was = centreOf('t1');
+
+    fireEvent.keyDown(on, { key: ' ' });
+    expect(fireEvent.mouseDown(floor, { button: 0 })).toBe(false);
+    fireEvent.pointerDown(floor, { ...at, clientX: 100, clientY: 100 });
+    fireEvent.pointerMove(room, { ...at, clientX: 160, clientY: 100 });
+    expect(centreOf('t1')).toBeCloseTo(was + 60, 0);
+    fireEvent.pointerUp(document.body, { ...at, clientX: 160, clientY: 100 });
+    fireEvent.click(floor);
+    fireEvent.keyUp(on, { key: ' ' });
+  }
+
+  async function addToChoice(): Promise<void> {
+    fireEvent.click(screen.getByRole('button', { name: 'Add to choice' }));
+    await waitFor(() =>
+      expect(
+        screen.getByRole('button', { name: 'Add to choice' }).getAttribute('aria-pressed'),
+      ).toBe('true'),
+    );
+  }
+
+  it.each([
+    ['clicked', false],
+    ['reached by Tab', true],
+  ])(
+    'pans with Table 1 %s and chosen alone, and keeps the choice, the panel and the focus',
+    async (_how, byTab) => {
+      await onTwo();
+      if (byTab) fireEvent.keyDown(window, { key: 'Tab' });
+      else await chooseTable(TABLE_1);
+      act(() => (item(TABLE_1) as SVGElement).focus());
+      if (byTab) {
+        fireEvent.keyDown(item(TABLE_1), { key: 'Enter' });
+        await screen.findByRole('heading', { level: 2, name: 'Table 1' });
+      }
+      const said = heard();
+
+      spaceDrag(item(TABLE_1));
+      expect(chosen()).toBe('Table 1');
+      expect(document.activeElement).toBe(item(TABLE_1));
+      expect(heard()).toBe(said);
+    },
+  );
+
+  it.each([false, true])(
+    'pans with Table 1 focused and nothing chosen, Add to choice %s, and chooses nothing',
+    async (adding) => {
+      await onTwo();
+      if (adding) await addToChoice();
+      act(() => (item(TABLE_1) as SVGElement).focus());
+      spaceDrag(item(TABLE_1));
+      expect(item(TABLE_1).getAttribute('aria-pressed')).toBe('false');
+      expect(document.activeElement).toBe(item(TABLE_1));
+      expect(screen.queryByRole('heading', { level: 2, name: 'Table 1' })).toBeNull();
+    },
+  );
+
+  it.each([false, true])(
+    'pans with Table 1 focused and two chosen, Add to choice %s, and keeps both',
+    async (adding) => {
+      await onTwo();
+      await chooseTable(TABLE_1);
+      fireEvent.click(item(TABLE_2), { shiftKey: true });
+      await screen.findByRole('heading', { level: 2, name: '2 chosen' });
+      if (adding) await addToChoice();
+      act(() => (item(TABLE_1) as SVGElement).focus());
+      const said = heard();
+
+      spaceDrag(item(TABLE_1));
+      expect(chosen()).toBe('2 chosen');
+      expect(document.activeElement).toBe(item(TABLE_1));
+      expect(heard()).toBe(said);
+    },
+  );
+
+  it('pans with Table 1 focused and chosen alone while Add to choice is on, and does not take it out', async () => {
+    await onTwo();
+    await chooseTable(TABLE_1);
+    await addToChoice();
+    act(() => (item(TABLE_1) as SVGElement).focus());
+    spaceDrag(item(TABLE_1));
+    expect(item(TABLE_1).getAttribute('aria-pressed')).toBe('true');
+  });
+
+  it('chooses on release, not on the press, and chooses Table 2 alone', async () => {
+    await onTwo();
+    await chooseTable(TABLE_1);
+    act(() => (item(TABLE_2) as SVGElement).focus());
+    fireEvent.keyDown(item(TABLE_2), { key: ' ' });
+    expect(chosen()).toBe('Table 1');
+    fireEvent.keyUp(item(TABLE_2), { key: ' ' });
+    expect(await screen.findByRole('heading', { level: 2, name: 'Table 2' })).toBeDefined();
+  });
+
+  it('adds on release with Shift held, as with Shift held only when Space comes up', async () => {
+    await onTwo();
+    await chooseTable(TABLE_1);
+    act(() => (item(TABLE_2) as SVGElement).focus());
+    fireEvent.keyDown(item(TABLE_2), { key: ' ', shiftKey: true });
+    expect(chosen()).toBe('Table 1');
+    fireEvent.keyUp(item(TABLE_2), { key: ' ', shiftKey: true });
+    expect(await screen.findByRole('heading', { level: 2, name: '2 chosen' })).toBeDefined();
+
+    fireEvent.keyDown(item(TABLE_2), { key: ' ' });
+    fireEvent.keyUp(item(TABLE_2), { key: ' ', shiftKey: true });
+    expect(await screen.findByRole('heading', { level: 2, name: 'Table 1' })).toBeDefined();
+  });
+
+  it('adds once on release while Add to choice is on, however long Space repeats', async () => {
+    await onTwo();
+    await chooseTable(TABLE_1);
+    await addToChoice();
+    act(() => (item(TABLE_2) as SVGElement).focus());
+    fireEvent.keyDown(item(TABLE_2), { key: ' ' });
+    for (let times = 0; times < 5; times += 1)
+      fireEvent.keyDown(item(TABLE_2), { key: ' ', repeat: true });
+    expect(chosen()).toBe('Table 1');
+    fireEvent.keyUp(item(TABLE_2), { key: ' ' });
+    expect(await screen.findByRole('heading', { level: 2, name: '2 chosen' })).toBeDefined();
+  });
+
+  it('does nothing on release once the focus has left the item Space went down on', async () => {
+    await onTwo();
+    await chooseTable(TABLE_1);
+    act(() => (item(TABLE_2) as SVGElement).focus());
+    fireEvent.keyDown(item(TABLE_2), { key: ' ' });
+    act(() => (item(TABLE_1) as SVGElement).focus());
+    fireEvent.keyUp(item(TABLE_1), { key: ' ' });
+    expect(chosen()).toBe('Table 1');
+  });
+
+  it('still acts on the press of Enter and Shift+Enter', async () => {
+    await onTwo();
+    await chooseTable(TABLE_1);
+    fireEvent.keyDown(item(TABLE_2), { key: 'Enter', shiftKey: true });
+    expect(await screen.findByRole('heading', { level: 2, name: '2 chosen' })).toBeDefined();
+    fireEvent.keyDown(item(TABLE_2), { key: 'Enter' });
+    expect(await screen.findByRole('heading', { level: 2, name: 'Table 2' })).toBeDefined();
   });
 });

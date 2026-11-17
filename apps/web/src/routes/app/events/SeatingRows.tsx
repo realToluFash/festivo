@@ -77,8 +77,7 @@ function itemClass(plan: SeatingPlan, item: { sectionId: string | null }): strin
 
 function onKeys(onChoose: () => void) {
   return (event: KeyboardEvent) => {
-    if (event.target !== event.currentTarget) return;
-    if (event.key !== 'Enter' && event.key !== ' ') return;
+    if (event.target !== event.currentTarget || event.key !== 'Enter') return;
     event.preventDefault();
     onChoose();
   };
