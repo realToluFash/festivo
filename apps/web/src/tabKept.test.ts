@@ -2,7 +2,7 @@ import { ApiError, ApiUnreachableError } from '@soirely/api-client';
 import { NotReached } from '@soirely/domain';
 import { describe, expect, it } from 'vitest';
 
-import { keptLoad, rekeep } from './tabKept.ts';
+import { forgetKept, keptLoad, rekeep } from './tabKept.ts';
 
 const refused = () => new ApiError({ type: 'about:blank', title: 'Broken', status: 500 });
 
@@ -45,6 +45,16 @@ describe("this tab's memory of what loaded (sc-65646)", () => {
     );
     await expect(
       keptLoad('menu:ev_2', Promise.reject(new TypeError('Failed'))),
+    ).rejects.toBeInstanceOf(TypeError);
+  });
+
+  it('forgets everything on signing out or changing organisation', async () => {
+    await keptLoad('guests:ev_1', Promise.resolve(['Ada']));
+
+    forgetKept();
+
+    await expect(
+      keptLoad('guests:ev_1', Promise.reject(new TypeError('Failed'))),
     ).rejects.toBeInstanceOf(TypeError);
   });
 });

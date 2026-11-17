@@ -158,9 +158,10 @@ function EventOf({
       },
       (error: unknown) => {
         if (!current) return;
-        const kept = keepsWhatLoaded(error)
+        const found = keepsWhatLoaded(error)
           ? keptFor<{ event: OrganisationEvent; tag: string }>(keptKeys.event(eventId), error)
           : null;
+        const kept = found?.value.event.organisationId === organisationId ? found : null;
 
         if (kept != null) keep(kept.at);
         setLoad((was) =>

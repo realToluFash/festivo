@@ -89,9 +89,14 @@ export const keptKeys = {
   people: (eventId: string) => `people:${eventId}`,
 };
 
-/** Tests only: a fresh tab. */
-export function __forgetTab(): void {
+/** Signing out or moving to another organisation: nothing one account or organisation loaded is shown under the next. */
+export function forgetKept(): void {
   kept = new Map();
   standingIn = false;
+}
+
+/** Tests only: a fresh tab. */
+export function __forgetTab(): void {
+  forgetKept();
   answers = 0;
 }

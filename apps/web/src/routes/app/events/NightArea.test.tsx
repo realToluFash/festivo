@@ -3,7 +3,7 @@ import { connection } from '@soirely/domain';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import { RouterProvider, createMemoryRouter } from 'react-router';
 
-import { __setSessionState, type Session } from '../../../session.ts';
+import { __setSessionState, forgetSession, type Session } from '../../../session.ts';
 import { OWNER_PERMISSIONS, membership } from '../../../test-memberships.ts';
 import { routes } from '../../index.tsx';
 
@@ -698,6 +698,55 @@ describe('moving to another area of an event while offline (sc-65646)', () => {
       ),
     );
     expect(kept()).toEqual([]);
+  });
+
+  it('shows nothing the last account kept once another signs in on the same tab', async () => {
+    const { go } = await loadedThenOffline();
+
+    await go('/app/events/ev_1/guests');
+    await screen.findByText('We could not load the guests.');
+    act(() => forgetSession());
+    signedIn();
+    await go('/app/events/ev_1');
+
+    expect(await screen.findByText('The event did not load. Try again in a moment.')).toBeDefined();
+    expect(screen.queryByText('Adaeze and Tunde')).toBeNull();
+    await go('/app/events/ev_1/guests');
+    expect(await screen.findByText('The event did not load. Try again in a moment.')).toBeDefined();
+    expect(screen.queryByText('Adaeze and Tunde')).toBeNull();
+  });
+
+  it('shows no event kept for another organisation than the one the tab is in', async () => {
+    const { go } = await loadedThenOffline();
+    const other = membership({ id: 'org_2', name: 'Other Events' });
+
+    await go('/app/events/ev_1/guests');
+    await screen.findByText('We could not load the guests.');
+    act(() =>
+      __setSessionState({
+        status: 'signedIn',
+        session: {
+          name: 'Folake Adeyemi',
+          email: 'folake@ire.events',
+          verified: true,
+          complete: true,
+          awaiting: null,
+          providers: [],
+          userId: 'u_folake',
+          needsOrganisation: false,
+          hasPassword: true,
+          organisation: other,
+          organisations: [IRE, other],
+          organisationCountry: null,
+          timezone: null,
+          waitingFor: null,
+        },
+      }),
+    );
+    await go('/app/events/ev_1');
+
+    expect(await screen.findByText('The event did not load. Try again in a moment.')).toBeDefined();
+    expect(screen.queryByText('Adaeze and Tunde')).toBeNull();
   });
 
   it('still says the event did not load for one this tab never loaded', async () => {
