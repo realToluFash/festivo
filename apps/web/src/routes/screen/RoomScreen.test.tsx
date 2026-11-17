@@ -6,7 +6,7 @@ import { RouterProvider, createMemoryRouter } from 'react-router';
 import { __setConfig, config } from '../../config.ts';
 import { cssRule, stylesheet } from '../../test-styles.ts';
 import { routes } from '../index.tsx';
-import { ASK_AGAIN_MS, screenLanguage } from './roomScreen.ts';
+import { ASK_EVERY_MS, screenLanguage } from './roomScreen.ts';
 
 function json(body: unknown, status = 200): Response {
   return new Response(JSON.stringify(body), {
@@ -159,14 +159,95 @@ describe('A screen in the room (sc-3897)', () => {
     expect(screenAsks(asked)).toHaveLength(2);
   });
 
-  it('goes offline when an ask fails, keeping what it showed', async () => {
-    await open([() => json(ON), () => Promise.reject(new TypeError('Failed to fetch')) as never]);
-    await screen.findByText('Ceremony');
+  describe('out of reach while the browser reports being online (sc-62588)', () => {
+    let down: 'up' | 'refused' | 'silent' = 'up';
+    const reachable = (body: unknown) => () =>
+      down === 'up'
+        ? json(body)
+        : down === 'refused'
+          ? (Promise.reject(new TypeError('Failed to fetch')) as never)
+          : (new Promise<Response>(() => {}) as never);
+    const after = (ms: number) => act(() => vi.advanceTimersByTimeAsync(ms));
+    const asOf = () => screen.queryByRole('status')?.textContent ?? null;
 
-    act(() => void window.dispatchEvent(new Event('online')));
+    beforeEach(() => {
+      down = 'up';
+      vi.useFakeTimers({
+        toFake: ['setTimeout', 'clearTimeout', 'setInterval', 'clearInterval', 'Date'],
+      });
+    });
 
-    await waitFor(() => expect(screen.getByRole('status').textContent).toBe('Times as of 19:40'));
-    expect(screen.getByText('Ceremony')).toBeDefined();
+    it('says Times as of within 10 seconds of the API stopping, keeping the last state', async () => {
+      await open([reachable(ON)]);
+      await after(0);
+      expect(screen.getByText('Ceremony')).toBeDefined();
+
+      down = 'refused';
+      await after(9_900);
+
+      expect(asOf()).toBe('Times as of 19:40');
+      expect(screen.getByText('Ceremony')).toBeDefined();
+    });
+
+    it('says it within 10 seconds when the network is cut and asks go unanswered', async () => {
+      await open([reachable(ON)]);
+      await after(0);
+
+      down = 'silent';
+      await after(9_900);
+
+      expect(asOf()).toBe('Times as of 19:40');
+    });
+
+    it.each(
+      (['refused', 'silent'] as const).flatMap((how) =>
+        [0, 500, 1_000, 1_750].map((offset) => [how, offset] as const),
+      ),
+    )('shows nothing for a %s drop of 5 seconds, %i ms after an answer', async (how, offset) => {
+      await open([reachable(ON)]);
+      await after(offset);
+
+      down = how;
+      for (let waited = 0; waited < 5_000; waited += 250) {
+        await after(250);
+        expect(asOf()).toBeNull();
+      }
+      down = 'up';
+      for (let waited = 0; waited < 10_000; waited += 250) {
+        await after(250);
+        expect(asOf()).toBeNull();
+      }
+    });
+
+    it('catches up on what changed once reachable, with no press', async () => {
+      let state: unknown = ON;
+      await open([() => reachable(state)()]);
+      await after(0);
+
+      down = 'refused';
+      await after(12_000);
+      expect(asOf()).toBe('Times as of 19:40');
+
+      state = live('19:52', 'Dinner', [['20:30', 'Cake']]);
+      down = 'up';
+      await after(2_000);
+
+      expect(asOf()).toBeNull();
+      expect(screen.getByText('Dinner')).toBeDefined();
+      expect(screen.queryByText('Ceremony')).toBeNull();
+    });
+
+    it('asks again on its own, so an overrun with no press moves the times on', async () => {
+      let state: unknown = ON;
+      await open([() => reachable(state)()]);
+      await after(0);
+      expect(screen.getByText('17:20')).toBeDefined();
+
+      state = live('19:41', 'Ceremony', [['17:30', 'Dinner']]);
+      await after(ASK_EVERY_MS + 500);
+
+      expect(screen.getByText('17:30')).toBeDefined();
+    });
   });
 
   it('asks again when the event signals, reading nothing from the signal itself', async () => {
@@ -187,16 +268,6 @@ describe('A screen in the room (sc-3897)', () => {
     expect(screenAsks(asked)).toHaveLength(2);
   });
 
-  it('asks again every minute, so an overrun with no press moves the times on', async () => {
-    vi.useFakeTimers({ toFake: ['setInterval', 'clearInterval'] });
-    await open([() => json(ON), () => json(live('19:41', 'Ceremony', [['17:30', 'Dinner']]))]);
-    await screen.findByText('17:20');
-
-    act(() => void vi.advanceTimersByTime(ASK_AGAIN_MS));
-
-    await screen.findByText('17:30');
-  });
-
   it('shows only that the link was replaced, with no event details and no full screen', async () => {
     await open([() => json({ kind: 'replaced', at: '2027-03-06T19:40:00+01:00' })]);
 
@@ -215,6 +286,20 @@ describe('A screen in the room (sc-3897)', () => {
     await screen.findByText('This screen link has been replaced');
     expect(screen.queryByText('Owambe')).toBeNull();
     expect(StubSource.made[0]!.readyState).toBe(StubSource.CLOSED);
+  });
+
+  it('thanks the room as soon as End now signals, without waiting to ask again', async () => {
+    const asked = await open([
+      () => json(ON),
+      () => json({ kind: 'finished', ...NAMED, at: '2027-03-06T19:41:00+01:00' }),
+    ]);
+    await screen.findByText('Ceremony');
+    await waitFor(() => expect(StubSource.made).toHaveLength(1));
+
+    act(() => StubSource.made[0]!.onmessage?.({ data: '[]' }));
+
+    expect(await screen.findByRole('heading', { name: 'Thank you for coming' })).toBeDefined();
+    expect(screenAsks(asked)).toHaveLength(2);
   });
 
   it('thanks the room once the event is Finished', async () => {
