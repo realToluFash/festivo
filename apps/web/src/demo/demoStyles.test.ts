@@ -236,7 +236,7 @@ const SHARED: readonly Family[] = [
 ];
 
 const CLASS = /\.(-?[_a-zA-Z][\w-]*)/gu;
-const LEADING = /^[\s&>+~]*\.(-?[_a-zA-Z][\w-]*)/u;
+const LEADING = /^[\s&>+~]*(?:[a-z][\w-]*)?(?::where\(|:is\()?\.(-?[_a-zA-Z][\w-]*)/u;
 
 function selectorsOf(css: string): string[] {
   const text = css.replace(/\/\*[\s\S]*?\*\//gu, '').replace(/(["'])(?:\\.|(?!\1).)*\1/gu, '""');
@@ -329,8 +329,14 @@ describe('demo stylesheets', () => {
     expect(collisions(demoSheets(), SHARED).join('\n')).toBe('');
   });
 
-  it('give every shared family a part of the demo', () => {
-    for (const family of SHARED) expect(family.part, family.prefix).not.toBe('');
+  it('give every shared family a part of the demo, and sheets that exist', () => {
+    const sheets = demoSheets();
+    for (const family of SHARED) {
+      expect(family.part, family.prefix).not.toBe('');
+      if (family.sheets === 'all') continue;
+      for (const sheet of family.sheets)
+        expect(sheets.has(sheet), `${family.prefix}: ${sheet}`).toBe(true);
+    }
   });
 
   it('find a class one sheet leads with and another names', () => {
@@ -340,6 +346,18 @@ describe('demo stylesheets', () => {
     ]);
 
     expect(collisions(sheets, SHARED)).toEqual(['.zz-probe: runOut.css, schedule.css']);
+  });
+
+  it('count a class as leading behind an element or :where()', () => {
+    const sheets = new Map([
+      ['schedule.css', ':where(.zz-probe) button {}\na.zz-tag.zz-own {}'],
+      ['runOut.css', '.rout .zz-probe {}\n.rout .zz-tag {}'],
+    ]);
+
+    expect(collisions(sheets, SHARED)).toEqual([
+      '.zz-probe: runOut.css, schedule.css',
+      '.zz-tag: runOut.css, schedule.css',
+    ]);
   });
 
   it('let a class that only ever sits beneath another pass', () => {
