@@ -49,6 +49,7 @@ final readonly class GuestSeater
         private Auditor $auditor,
         private RealtimePublisher $realtimePublisher,
         private TranslatorInterface $translator,
+        private GuestPageSignal $guestPageSignal,
     ) {
     }
 
@@ -207,6 +208,7 @@ final readonly class GuestSeater
         }
 
         $this->realtimePublisher->publish(RealtimeTopic::EventSeating, $event->getId()->toRfc4122(), $this->seatingSerialiser->seating($event, $seatingPlan));
+        $this->guestPageSignal->seatingChanged($event);
 
         return $done;
     }
