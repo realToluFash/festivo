@@ -21,8 +21,10 @@ import { useNavigate } from 'react-router';
 
 import { Broken, DateTime, EditText as Text } from '../components/EventPageParts.tsx';
 import { Glyph } from '../components/Glyph.tsx';
-import { Ask, Head, RedAction } from '../components/SettingsParts.tsx';
+import { Ask, Head } from '../components/SettingsParts.tsx';
 import {
+  ArrivalNoteField,
+  CoverPhotoFields,
   CoverPreview,
   CoverUpload,
   HostFields,
@@ -33,8 +35,10 @@ import {
 import { CURRENCY_CHOICES, EVENT_WORDS as W, TYPE_WORDS, type Wall } from './events.ts';
 import { meshFor } from '../mesh.ts';
 import {
+  CHOSEN,
   FILLED,
   NEW_WORDS as N,
+  NO_PHOTO,
   type NewEventState,
   type NewTyped,
   type Refusals,
@@ -88,7 +92,7 @@ export function NewEventForm({ state }: { state: NewEventState | null }) {
   const [typed, setTyped] = useState<NewTyped>(() => typedFor(state));
   const [tried, setTried] = useState(state === 'refused');
   const [status, setStatus] = useState<Status>(() => statusOf(state));
-  const cover = useCoverPick(() => change({ photo: true }));
+  const cover = useCoverPick(() => change(CHOSEN));
   const [server, setServer] = useState<Refusals>(
     state === 'server' ? { timeZone: N.zoneRefused } : {},
   );
@@ -118,6 +122,7 @@ export function NewEventForm({ state }: { state: NewEventState | null }) {
   const nameRef = useRef<HTMLInputElement>(null);
   const venueNameRef = useRef<HTMLInputElement>(null);
   const addressRef = useRef<HTMLInputElement>(null);
+  const noteRef = useRef<HTMLTextAreaElement>(null);
   const busy = status === 'creating' || status === 'created';
   const shown: Refusals = { ...(tried ? refusalsOf(typed) : {}), ...server };
   const hostErrors = hostWords(typed.hosts, tried);
@@ -143,7 +148,7 @@ export function NewEventForm({ state }: { state: NewEventState | null }) {
       endsAt: endRef,
       venueName: venueNameRef,
       venueAddress: addressRef,
-      arrivalNote: addressRef,
+      arrivalNote: noteRef,
       timeZone: zoneRef,
       currency: currencyRef,
     };
@@ -264,13 +269,15 @@ export function NewEventForm({ state }: { state: NewEventState | null }) {
         />
         {cover.input}
         {typed.photo ? (
-          !busy && (
-            <RedAction
-              label={W.removePhoto}
-              line={W.removePhotoLine}
-              onClick={() => change({ photo: false })}
-            />
-          )
+          <CoverPhotoFields
+            position={typed.position}
+            onPosition={(position) => change({ position })}
+            described={typed.described}
+            onDescribed={(described) => change({ described })}
+            onChange={cover.pick}
+            onRemove={() => change(NO_PHOTO)}
+            off={busy}
+          />
         ) : (
           <CoverUpload refusal={cover.refusal} off={busy} onUpload={cover.pick} />
         )}
@@ -334,6 +341,13 @@ export function NewEventForm({ state }: { state: NewEventState | null }) {
           addressError={shown.venueAddress ?? null}
           nameRef={venueNameRef}
           addressRef={addressRef}
+          off={busy}
+        />
+        <ArrivalNoteField
+          note={typed.note}
+          onNote={(note) => change({ note })}
+          error={shown.arrivalNote ?? null}
+          noteRef={noteRef}
           off={busy}
         />
       </Block>

@@ -110,6 +110,30 @@ describe('New event’s form at a desk (sc-48607)', () => {
     expect(router.state.location.pathname).toBe('/demo/events/evt-draft-4');
   });
 
+  it('keeps the venue’s arrival note under its address, and refuses one over 500 characters', async () => {
+    open('filled');
+
+    const venue = await screen.findByRole('region', { name: W.venue });
+    const note = within(venue).getByRole('textbox', { name: /Arrival note/ });
+    fireEvent.change(note, { target: { value: 'a'.repeat(501) } });
+    fireEvent.click(screen.getByRole('button', { name: 'Create event' }));
+
+    expect(screen.getByText('Shorten the arrival note to 500 characters or fewer.')).toBeDefined();
+    expect(document.activeElement).toBe(note);
+  });
+
+  it('gives a chosen photo the cover edit’s position and description, and Remove photo', async () => {
+    open('photo');
+
+    const cover = await screen.findByRole('region', { name: W.coverPhoto });
+    expect(within(cover).getByRole('slider', { name: W.position })).toBeDefined();
+    expect(within(cover).getByText(W.showing('middle'))).toBeDefined();
+    expect(within(cover).getByRole('textbox', { name: /Describe the image/ })).toBeDefined();
+    fireEvent.click(within(cover).getByRole('button', { name: W.removePhoto }));
+    expect(within(cover).queryByRole('slider')).toBeNull();
+    expect(within(cover).getByRole('button', { name: W.upload })).toBeDefined();
+  });
+
   it('asks first when leaving with something typed', async () => {
     open('leave');
 

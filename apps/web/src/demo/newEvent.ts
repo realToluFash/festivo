@@ -1,4 +1,5 @@
 import {
+  COVER_MIDDLE,
   EVENT_NAME_MAXIMUM,
   type EventDraft,
   type EventFormField,
@@ -12,6 +13,7 @@ import {
   newEventHosts,
 } from '@soirely/domain';
 
+import { ARRIVAL_NOTE, NOTE_WORDS } from './arrivalNote.ts';
 import { EVENT_WORDS as W, type Wall } from './events.ts';
 
 /** New event's states at a desk (sc-48607), each a ?state= on /demo/events/new. */
@@ -70,13 +72,20 @@ export interface NewTyped {
   type: EventType | '';
   hosts: string[];
   photo: boolean;
+  position: number;
+  described: string;
   start: Wall;
   end: Wall;
   venueName: string;
   venueAddress: string;
+  note: string;
   timeZone: string;
   currency: string;
 }
+
+/** A photo just chosen, and none: the cover edit's middle and no description either way. */
+export const CHOSEN = { photo: true, position: COVER_MIDDLE, described: '' } as const;
+export const NO_PHOTO = { photo: false, position: COVER_MIDDLE, described: '' } as const;
 
 export const ORG_DEFAULTS = { timeZone: 'Africa/Lagos', currency: 'NGN' };
 
@@ -85,10 +94,13 @@ export const BLANK: NewTyped = {
   type: '',
   hosts: [''],
   photo: false,
+  position: COVER_MIDDLE,
+  described: '',
   start: { date: '', time: '' },
   end: { date: '', time: '' },
   venueName: '',
   venueAddress: '',
+  note: '',
   ...ORG_DEFAULTS,
 };
 
@@ -97,10 +109,13 @@ export const FILLED: NewTyped = {
   type: 'wedding',
   hosts: ['Adaeze Obi', 'Tunde Bakare'],
   photo: false,
+  position: COVER_MIDDLE,
+  described: '',
   start: { date: '2027-03-13', time: '14:00' },
   end: { date: '2027-03-13', time: '23:00' },
   venueName: 'Eko Hotel',
   venueAddress: 'Adetokunbo Ademola Street, Victoria Island, Lagos',
+  note: 'Use the hotel’s main entrance on Adetokunbo Ademola Street. Parking is in the hotel’s car park.',
   ...ORG_DEFAULTS,
 };
 
@@ -124,6 +139,7 @@ const SKIPPED: NewTyped = {
   end: { date: '2027-03-28', time: '05:00' },
   venueName: 'The Landmark',
   venueAddress: '222 Marylebone Road, London NW1 6JQ',
+  note: ARRIVAL_NOTE,
   timeZone: 'Europe/London',
   currency: 'GBP',
 };
@@ -174,6 +190,7 @@ const WORDS: Record<string, string> = {
   endBeforeStart: W.endBeforeStart,
   venueNameTooLong: NEW_WORDS.venueNameTooLong,
   venueAddressTooLong: NEW_WORDS.venueAddressTooLong,
+  arrivalNoteTooLong: NOTE_WORDS.tooLong,
   currencyBlank: NEW_WORDS.currencyBlank,
 };
 
@@ -181,7 +198,12 @@ export function refusalsOf(typed: NewTyped): Refusals {
   const found: Refusals = {};
   for (const one of eventFormProblems({
     draft: draftOf(typed),
-    venue: { name: typed.venueName, address: typed.venueAddress, addressId: null, note: '' },
+    venue: {
+      name: typed.venueName,
+      address: typed.venueAddress,
+      addressId: null,
+      note: typed.note,
+    },
     timeZone: typed.timeZone,
     currency: typed.currency,
   }))

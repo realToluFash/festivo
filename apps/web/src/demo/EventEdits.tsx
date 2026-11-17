@@ -1,4 +1,5 @@
 import {
+  COVER_DESCRIPTION_MAXIMUM,
   COVER_MIDDLE,
   EVENT_NAME_MAXIMUM,
   EVENT_TYPES,
@@ -11,6 +12,8 @@ import {
   hostProblems,
   hostsSent,
   keepsLastHost,
+  positionPart,
+  visibleLength,
   startMoved,
   formatWallDay,
   timezoneLabel,
@@ -57,7 +60,7 @@ import {
 } from '../components/EventPageParts.tsx';
 import { type CoverStart, type CoverUploaded, CoverEdit } from '../components/CoverEdit.tsx';
 import { Glyph } from '../components/Glyph.tsx';
-import { Ask, RowWords, TextAction } from '../components/SettingsParts.tsx';
+import { Ask, RedAction, RowWords, TextAction } from '../components/SettingsParts.tsx';
 
 const LOCALE = 'en-US';
 
@@ -566,7 +569,6 @@ export function VenueFields({
 
 /** Venue: its name and address, suggestions from 3 characters, and the zone it is in when that differs. */
 export function VenuePart({ event, state, onDirty, onClose, onSave }: PartProps) {
-  const id = useId();
   const typing = state === 'venueSuggestions' || state === 'venueDown';
   const [name, setName] = useState(
     typing ? '' : state === 'venueZone' ? 'Eko Hotel' : (event.venue?.name ?? ''),
@@ -655,45 +657,68 @@ export function VenuePart({ event, state, onDirty, onClose, onSave }: PartProps)
         focus={typing}
         onPicked={setPicked}
       />
-      <div className="desk-field">
-        <label htmlFor={`${id}-note`} className="desk-label">
-          {NOTE_WORDS.label}
-          <span className="ev-optional">{` · ${W.optional}`}</span>
-        </label>
-        <div
-          className={noteError == null ? 'desk-box ev-note-box' : 'desk-box ev-note-box is-wrong'}
-        >
-          <textarea
-            ref={noteBox}
-            id={`${id}-note`}
-            rows={4}
-            value={note}
-            aria-invalid={noteError != null}
-            aria-describedby={
-              noteError == null ? `${id}-note-help` : `${id}-note-error ${id}-note-help`
-            }
-            onChange={(change) => {
-              setNote(change.target.value);
-              setForbidden(false);
-              if (!noteTooLong(change.target.value)) setNoteError(null);
-            }}
-          />
-        </div>
-        {noteError != null && (
-          <p id={`${id}-note-error`} className="desk-error">
-            <Glyph name="alert" size={15} weight={2.2} />
-            {noteError}
-          </p>
-        )}
-        <p id={`${id}-note-help`} className="desk-help">
-          {NOTE_WORDS.hint}
-        </p>
-      </div>
+      <ArrivalNoteField
+        note={note}
+        onNote={(typed) => {
+          setNote(typed);
+          setForbidden(false);
+          if (!noteTooLong(typed)) setNoteError(null);
+        }}
+        error={noteError}
+        noteRef={noteBox}
+      />
       <p className="visually-hidden" role="status">
         {said}
       </p>
       <OnceSaved />
     </Opened>
+  );
+}
+
+/** The venue's arrival note, shared by its part and New event: optional, with its hint and its refusal. */
+export function ArrivalNoteField({
+  note,
+  onNote,
+  error,
+  noteRef,
+  off = false,
+}: {
+  note: string;
+  onNote: (note: string) => void;
+  error: string | null;
+  noteRef?: Ref<HTMLTextAreaElement>;
+  off?: boolean;
+}) {
+  const id = useId();
+
+  return (
+    <div className="desk-field">
+      <label htmlFor={`${id}-note`} className="desk-label">
+        {NOTE_WORDS.label}
+        <span className="ev-optional">{` · ${W.optional}`}</span>
+      </label>
+      <div className={error == null ? 'desk-box ev-note-box' : 'desk-box ev-note-box is-wrong'}>
+        <textarea
+          ref={noteRef}
+          id={`${id}-note`}
+          rows={4}
+          value={note}
+          readOnly={off}
+          aria-invalid={error != null}
+          aria-describedby={error == null ? `${id}-note-help` : `${id}-note-error ${id}-note-help`}
+          onChange={(change) => onNote(change.target.value)}
+        />
+      </div>
+      {error != null && (
+        <p id={`${id}-note-error`} className="desk-error">
+          <Glyph name="alert" size={15} weight={2.2} />
+          {error}
+        </p>
+      )}
+      <p id={`${id}-note-help`} className="desk-help">
+        {NOTE_WORDS.hint}
+      </p>
+    </div>
   );
 }
 
@@ -1051,6 +1076,67 @@ export function CoverUpload({
         </button>
       )}
       <p className="desk-help">{W.accepted}</p>
+    </>
+  );
+}
+
+/** Once a photo is chosen, the cover edit's own fields: Change photo, Photo position, Describe the image and Remove photo. */
+export function CoverPhotoFields({
+  position,
+  onPosition,
+  described,
+  onDescribed,
+  onChange,
+  onRemove,
+  off = false,
+}: {
+  position: number;
+  onPosition: (position: number) => void;
+  described: string;
+  onDescribed: (described: string) => void;
+  onChange: () => void;
+  onRemove: () => void;
+  off?: boolean;
+}) {
+  const id = useId();
+  const part = positionPart(position);
+
+  return (
+    <>
+      <button type="button" className="desk-text" disabled={off} onClick={onChange}>
+        {W.changePhoto}
+      </button>
+      <div className="desk-field">
+        <label htmlFor={`${id}-position`} className="desk-label">
+          {W.position}
+        </label>
+        <input
+          id={`${id}-position`}
+          type="range"
+          className="ev-slider"
+          min={0}
+          max={100}
+          step={1}
+          value={position}
+          disabled={off}
+          aria-valuetext={W.showing(part)}
+          onChange={(change) => onPosition(Number(change.target.value))}
+        />
+        <div className="ev-slider-ends" aria-hidden="true">
+          <span>{W.top}</span>
+          <span>{W.bottom}</span>
+        </div>
+        <p className="desk-help">{W.showing(part)}</p>
+      </div>
+      <Text
+        label={W.describe}
+        optional
+        value={described}
+        help={`${W.describeHint} ${W.describeCount(visibleLength(described), COVER_DESCRIPTION_MAXIMUM)}`}
+        input={{ autoComplete: 'off', readOnly: off }}
+        onChange={(typed) => onDescribed(typed.slice(0, COVER_DESCRIPTION_MAXIMUM))}
+      />
+      {!off && <RedAction label={W.removePhoto} line={W.removePhotoLine} onClick={onRemove} />}
     </>
   );
 }
