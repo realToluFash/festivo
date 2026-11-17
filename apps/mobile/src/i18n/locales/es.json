@@ -2225,6 +2225,7 @@
     "nowLine": "Ahora · {{happening}}, {{until}}",
     "liveName": "En curso · {{name}}",
     "runUntil": "hasta {{time}}",
+    "runUntil_hour1": "hasta {{time}}",
     "runOver_one": "{{count, number}} min de más",
     "runOver_other": "{{count, number}} min de más",
     "runOver_many": "{{count, number}} min de más",
