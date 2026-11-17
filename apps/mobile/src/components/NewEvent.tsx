@@ -857,7 +857,7 @@ function currencyWords(
 }
 
 const styles = StyleSheet.create({
-  fill: { flex: 1 },
+  fill: { flexGrow: 1, flexShrink: 1 },
   body: {
     gap: tokens.space3xl,
     paddingTop: tokens.spaceXl,
