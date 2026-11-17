@@ -11,6 +11,7 @@ import {
 import {
   CHAIR_RADIUS_CM,
   chairsOf,
+  type FloorBox,
   isRoundShape,
   readTableSide,
   holdingName,
@@ -48,6 +49,7 @@ import {
   turned,
   usableSeats,
 } from './seatingDraw.ts';
+import { chairTipTop, freeTagWords, outNameY, wordsWide } from './seatingFreeTags.ts';
 import {
   Added,
   BackHead,
@@ -175,18 +177,15 @@ export interface ChairTip {
   words: string;
 }
 
-/** One guess at 12 to 13 px words, so the label and the free tag grow with every locale. */
-function wordsWide(words: string): number {
-  return words.length * 7;
-}
-
-export function ChairTipDrawing({ tip }: { tip: ChairTip }) {
+/** `cover` is where the bar floating over the room covers it, in the room's own pixels. */
+export function ChairTipDrawing({ tip, cover }: { tip: ChairTip; cover: FloorBox | null }) {
   const w = wordsWide(tip.words) + 20;
+  const top = chairTipTop(tip, w, cover);
 
   return (
     <g className="st-tip" aria-hidden="true">
-      <rect x={f(tip.x - w / 2)} y={f(tip.y - tip.r - 40)} width={f(w)} height="28" rx="10" />
-      <text x={f(tip.x)} y={f(tip.y - tip.r - 26)} textAnchor="middle" dominantBaseline="central">
+      <rect x={f(tip.x - w / 2)} y={f(top)} width={f(w)} height="28" rx="10" />
+      <text x={f(tip.x)} y={f(top + 14)} textAnchor="middle" dominantBaseline="central">
         {tip.words}
       </text>
     </g>
@@ -196,7 +195,7 @@ export function ChairTipDrawing({ tip }: { tip: ChairTip }) {
 /** While a guest is picked: "{n} free" on a green dashed outline, or "Full" on a grey one (sc-5030). */
 export function FreeTag({ x, y, n }: { x: number; y: number; n: number }) {
   const { t } = useTranslation();
-  const words = n === 0 ? t('seating.full') : t('seating.freeTag', { count: n });
+  const words = freeTagWords(t, n);
   const w = wordsWide(words) + 16;
 
   return (
@@ -533,7 +532,7 @@ export function TableDrawing({
     });
 
   const lit = chosen && chosenSeat == null;
-  const outY = round ? cy + Math.max(ey, 40) * s * 0.55 + 12 : cy + (table.lengthCm / 2) * s + 12;
+  const outY = outNameY({ kind: 'table', one: table }, s, oy);
   const bodyW = table.widthCm * s;
   const bodyH = table.lengthCm * s;
   const inside = table.name.length * 6.2 <= bodyW - 3 && bodyH >= 15;
@@ -597,7 +596,6 @@ export function TableDrawing({
             taken={takenAt(plan, table.id)}
             seats={room == null ? usableSeats(table) : null}
           />
-          {room != null && <FreeTag x={cx} y={outY + 20} n={room} />}
         </>
       ) : (
         <text
@@ -610,7 +608,6 @@ export function TableDrawing({
           {table.name}
         </text>
       )}
-      {!out && room != null && <FreeTag x={cx} y={cy + ey * s + 32} n={room} />}
       {onTable.map((ring, step) => (
         <ColleagueOutline
           key={ring.userId}

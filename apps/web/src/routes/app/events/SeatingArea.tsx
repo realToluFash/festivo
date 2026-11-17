@@ -103,6 +103,7 @@ import {
   ChairPanel,
   type ChairTip,
   ChairTipDrawing,
+  FreeTag,
   TableDrawing,
   TablePanel,
 } from './SeatingTables.tsx';
@@ -187,6 +188,7 @@ import {
   sectionOf,
   turned,
 } from './seatingDraw.ts';
+import { freeTags, freeTagWords } from './seatingFreeTags.ts';
 import { lengthField, lengthWords, tableSizeWords } from './seatingUnits.ts';
 import '../../../components/SettingsParts.css';
 import './seating.css';
@@ -485,6 +487,49 @@ function LoadingRoom({ label }: { label: string }) {
   );
 }
 
+/** Where the bar floating over the room covers it, in the room's own pixels, so a chair's label can keep clear of it (sc-5030). */
+function useCover(): [(node: HTMLDivElement | null) => void, FloorBox | null] {
+  const [node, setNode] = useState<HTMLDivElement | null>(null);
+  const [cover, setCover] = useState<FloorBox | null>(null);
+
+  useLayoutEffect(() => {
+    if (node == null) return;
+    const measure = () => {
+      const room = node.parentElement?.getBoundingClientRect();
+      const box = node.getBoundingClientRect();
+      const next =
+        room == null || box.height === 0
+          ? null
+          : {
+              x0: box.left - room.left,
+              y0: box.top - room.top,
+              x1: box.right - room.left,
+              y1: box.bottom - room.top,
+            };
+
+      setCover((now) =>
+        now != null &&
+        next != null &&
+        now.x0 === next.x0 &&
+        now.y0 === next.y0 &&
+        now.x1 === next.x1 &&
+        now.y1 === next.y1
+          ? now
+          : next,
+      );
+    };
+
+    measure();
+    if (typeof ResizeObserver === 'undefined') return;
+    const watch = new ResizeObserver(measure);
+
+    watch.observe(node);
+    return () => watch.disconnect();
+  });
+
+  return [setNode, cover];
+}
+
 function useCanvasSize(): [(node: HTMLDivElement | null) => void, { w: number; h: number }] {
   const [size, setSize] = useState({ w: 718, h: 719 });
   const observer = useRef<ResizeObserver | null>(null);
@@ -651,6 +696,7 @@ function Plan({
     size,
   );
   const canvasNode = useRef<HTMLDivElement | null>(null);
+  const [placeFloat, cover] = useCover();
   const press = useRef<{
     from: [number, number];
     moved: boolean;
@@ -2243,7 +2289,7 @@ function Plan({
             <p>{t('seating.firstItem')}</p>
           </div>
         ) : (
-          <div className="st-float st-under-views">
+          <div className="st-float st-under-views" ref={placeFloat}>
             {!readOnly && !empty && placing == null && party == null && (
               <ChooseBar
                 plan={plan}
@@ -2500,8 +2546,12 @@ function Plan({
               onDown={(event, handle) => onHandleDown(event, handled, handle)}
             />
           )}
+          {party != null &&
+            freeTags(drawn, floorItems(drawn), s, ox, oy, (n) => freeTagWords(t, n)).map((tag) => (
+              <FreeTag key={`free-${tag.id}`} x={tag.x} y={tag.y} n={tag.n} />
+            ))}
           {party != null && chairTip?.pick === party.lead.id && s >= CHAIRS_FROM_SCALE && (
-            <ChairTipDrawing tip={chairTip.tip} />
+            <ChairTipDrawing tip={chairTip.tip} cover={cover} />
           )}
           {tipped != null && tip != null && (
             <Tip

@@ -40,12 +40,12 @@ import {
   turned,
   usableSeats,
 } from './seatingDraw.ts';
+import { outNameY } from './seatingFreeTags.ts';
 import { chairStateOf, freeAt, takenAt } from './seatingGuests.ts';
 import {
   ChairMark,
   type ChairTip,
   FocusRing,
-  FreeTag,
   OutWords,
   StateMark,
   chairLabel,
@@ -288,17 +288,10 @@ export function RowDrawing({
       {s < CHAIRS_FROM_SCALE && (
         <OutWords
           x={cx}
-          y={cy + Math.max(ey, 40) * s + 12}
+          y={outNameY({ kind: 'row', one: row }, s, oy)}
           name={name}
           taken={takenAt(plan, row.id)}
           seats={room == null ? usableSeats(row) : null}
-        />
-      )}
-      {room != null && (
-        <FreeTag
-          x={cx}
-          y={s < CHAIRS_FROM_SCALE ? cy + Math.max(ey, 40) * s + 32 : cy + ey * s + 32}
-          n={room}
         />
       )}
       {rings.map((ring, step) => (
