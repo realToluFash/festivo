@@ -21,6 +21,7 @@ import { useTranslation } from 'react-i18next';
 import { useLocation, useNavigate } from 'react-router';
 
 import {
+  Broken,
   Crumb,
   Lead,
   ManageItem,
@@ -29,8 +30,7 @@ import {
 } from '../../../components/EventPageParts.tsx';
 import { type ButtonStep, EventCard } from '../../../components/EventCard.tsx';
 import { Glyph } from '../../../components/Glyph.tsx';
-import { ArrivalNotice } from '../../../components/PageArrival.tsx';
-import { Ask, Head } from '../../../components/SettingsParts.tsx';
+import { Ask, Head, TextAction } from '../../../components/SettingsParts.tsx';
 import { Toast } from '../../../components/Toast.tsx';
 import { useDeskTop } from '../../../deskTop.ts';
 import { listEventOf, shownEvent } from '../../../eventsList.ts';
@@ -128,8 +128,7 @@ export function Overview({
   const { t } = useTranslation();
   const location = useLocation();
   const navigate = useNavigate();
-  const [coverRefused] = useState(() => coverRefusal(location.state));
-  const coverLine = useRef<HTMLParagraphElement>(null);
+  const [coverRefused, setCoverRefused] = useState(() => coverRefusal(location.state));
   const [ended, setEnded] = useState(false);
   const [paused, setPaused] = useState(false);
   const [dirty, setDirty] = useState(false);
@@ -273,18 +272,23 @@ export function Overview({
       {resumed && <OutcomeLine words={t('eventPause.resumed', { name: event.name })} />}
       {ended && <OutcomeLine words={t(PHASE_WORD.finished)} />}
       {paused && <OutcomeLine words={t('eventPause.paused', { name: event.name })} />}
-      {coverRefused != null && (
-        <ArrivalNotice
-          role="alert"
-          line={t('eventCover.createdWithout', { reason: coverRefused })}
-          lineRef={coverLine}
-          focusable={false}
-          retry={t('eventEdit.open')}
-          onRetry={() => open('cover')}
-        />
-      )}
       <div className="ev-columns">
         <div className="ev-left">
+          {coverRefused != null && (
+            <Broken
+              action={
+                <TextAction
+                  label={t('eventCover.upload')}
+                  onClick={() => {
+                    setCoverRefused(null);
+                    open('cover');
+                  }}
+                />
+              }
+            >
+              {t('eventCover.createdWithout', { reason: coverRefused })}
+            </Broken>
+          )}
           {takesThankYou(event, phase) && (
             <ThankYouCard event={event} manages={manages} onChange={onChange} onSaid={setToast} />
           )}
