@@ -1703,6 +1703,82 @@ describe('seating guests (sc-4013, sc-4016, sc-5030)', () => {
   });
 
   it(
+    'draws each free tag above every item, over its table when the next table is under it',
+    SLOW,
+    async () => {
+      await seating('pickedTight');
+      const kids = [...room().children];
+      const items = kids.filter((one) => one.classList.contains('st-item'));
+      const lastItem = kids.indexOf(items[items.length - 1]!);
+
+      expect(kids.findIndex((one) => one.classList.contains('st-free'))).toBeGreaterThan(lastItem);
+      const ring = (name: RegExp) => item(name).querySelector('circle.st-room-for')!;
+      const tagBy = (name: RegExp) => {
+        const cx = Number(ring(name).getAttribute('cx'));
+        const cy = Number(ring(name).getAttribute('cy'));
+        const ys = [...room().querySelectorAll('.st-free text')]
+          .filter((one) => Math.abs(Number(one.getAttribute('x')) - cx) < 1)
+          .map((one) => Number(one.getAttribute('y')));
+
+        return ys.reduce((near, y) => (Math.abs(y - cy) < Math.abs(near - cy) ? y : near));
+      };
+      const top = (name: RegExp) =>
+        Number(ring(name).getAttribute('cy')) - Number(ring(name).getAttribute('r'));
+      const bottom = (name: RegExp) =>
+        Number(ring(name).getAttribute('cy')) + Number(ring(name).getAttribute('r'));
+
+      const rings = [...room().querySelectorAll('.st-room-for')].map((one) => {
+        if (one.tagName === 'circle') {
+          const [cx, cy, r] = ['cx', 'cy', 'r'].map((at) => Number(one.getAttribute(at)));
+
+          return { one, x0: cx! - r!, y0: cy! - r!, x1: cx! + r!, y1: cy! + r! };
+        }
+        const [, tx, ty] = /translate\(([-\d.]+) ([-\d.]+)\)/u.exec(
+          one.parentElement!.getAttribute('transform')!,
+        )!;
+        const x0 = Number(tx) + Number(one.getAttribute('x'));
+        const y0 = Number(ty) + Number(one.getAttribute('y'));
+
+        return {
+          one,
+          x0,
+          y0,
+          x1: x0 + Number(one.getAttribute('width')),
+          y1: y0 + Number(one.getAttribute('height')),
+        };
+      });
+      const taken = (name: RegExp, y: number) => {
+        const own = ring(name);
+        const tag = [...room().querySelectorAll('.st-free rect')].find(
+          (one) =>
+            Math.abs(
+              Number(one.getAttribute('x')) +
+                Number(one.getAttribute('width')) / 2 -
+                Number(own.getAttribute('cx')),
+            ) < 1,
+        )!;
+        const half = Number(tag.getAttribute('width')) / 2;
+
+        return rings.some(
+          (b) =>
+            b.one !== own &&
+            Number(own.getAttribute('cx')) - half < b.x1 &&
+            b.x0 < Number(own.getAttribute('cx')) + half &&
+            y - 11 < b.y1 &&
+            b.y0 < y + 11,
+        );
+      };
+
+      expect(taken(/^Table 3,/u, bottom(/^Table 3,/u) + 26)).toBe(true);
+      expect(taken(/^Table 3,/u, top(/^Table 3,/u) - 26)).toBe(true);
+      expect(tagBy(/^Table 4,/u)).toBeLessThan(top(/^Table 4,/u));
+      expect(tagBy(/^Table 3,/u)).toBeGreaterThan(bottom(/^Table 3,/u));
+      expect(tagBy(/^Table 10,/u)).toBeGreaterThan(bottom(/^Table 10,/u));
+      expect(tagBy(/^Table 6,/u)).toBeGreaterThan(bottom(/^Table 6,/u));
+    },
+  );
+
+  it(
     'arrows through every table, row and single seat in reading order, and seats with Enter',
     SLOW,
     async () => {
@@ -1732,6 +1808,28 @@ describe('seating guests (sc-4013, sc-4016, sc-5030)', () => {
     expect(await screen.findByText('Kwame Mensah and 1 guest are at Table 8.')).toBeDefined();
   });
 
+  it('keeps every free tag clear of the others at 25% in a close room', SLOW, async () => {
+    await seating('pickedTight');
+    const zoomOut = screen.getByRole('button', { name: 'Zoom out' });
+
+    while (zoomOut.getAttribute('aria-disabled') !== 'true') fireEvent.click(zoomOut);
+    const boxes = [...room().querySelectorAll('.st-free rect')].map((one) => {
+      const x = Number(one.getAttribute('x'));
+      const y = Number(one.getAttribute('y'));
+
+      return [x, y, x + Number(one.getAttribute('width')), y + 22] as const;
+    });
+
+    expect(boxes.length).toBeGreaterThan(3);
+    boxes.forEach((a, i) =>
+      boxes
+        .slice(i + 1)
+        .forEach((b) =>
+          expect(a[0] < b[2] && b[0] < a[2] && a[1] < b[3] && b[1] < a[3]).toBe(false),
+        ),
+    );
+  });
+
   it('labels a chair with its seat, guest and reply on hover and focus', SLOW, async () => {
     await seating('chairLabel');
     expect(within(room()).getByText('Seat 1, Sofia Rossi, Not sure yet')).toBeDefined();
@@ -1745,6 +1843,72 @@ describe('seating guests (sc-4013, sc-4016, sc-5030)', () => {
     fireEvent.blur(chair);
     expect(within(room()).queryByText('Seat 2, Luca Rossi, Coming')).toBeNull();
   });
+
+  it(
+    'draws the chair label under its chair where the bar over the room would hide it',
+    SLOW,
+    async () => {
+      const label = () => within(room()).getByText('Seat 1, Sofia Rossi, Not sure yet');
+      const top = () => Number(label().getAttribute('y'));
+
+      await seating('chairLabel');
+      const open = top();
+      const covered = vi
+        .spyOn(Element.prototype, 'getBoundingClientRect')
+        .mockImplementation(function (this: Element) {
+          const [right, bottom] =
+            this.classList.contains('st-canvas') || this.classList.contains('st-under-views')
+              ? [1280, 800]
+              : [0, 0];
+
+          return {
+            left: 0,
+            top: 0,
+            right,
+            bottom,
+            x: 0,
+            y: 0,
+            width: right,
+            height: bottom,
+          } as DOMRect;
+        });
+
+      await seating('chairLabel');
+      const chair = within(room()).getByRole('button', {
+        name: 'Table 9, Seat 1, Sofia Rossi, Not sure yet',
+      });
+      const cy = Number(chair.getAttribute('cy'));
+
+      expect(top()).toBeGreaterThan(cy);
+      expect(open).not.toBe(top());
+      covered.mockRestore();
+    },
+  );
+
+  it(
+    'draws the chair label under its chair where over it would run past the room’s top',
+    SLOW,
+    async () => {
+      await seating('chairLabel');
+      const label = () => within(room()).getByText('Seat 1, Sofia Rossi, Not sure yet');
+      const chair = () =>
+        Number(
+          within(room())
+            .getByRole('button', { name: 'Table 9, Seat 1, Sofia Rossi, Not sure yet' })
+            .getAttribute('cy'),
+        );
+
+      expect(Number(label().getAttribute('y'))).toBeLessThan(chair());
+      const lift = chair() - 30;
+
+      fireEvent.pointerDown(room(), { button: 0, pointerId: 1, clientX: 300, clientY: 400 });
+      fireEvent.pointerMove(window, { pointerId: 1, clientX: 300, clientY: 400 - lift });
+      fireEvent.pointerUp(window, { button: 0, pointerId: 1, clientX: 300, clientY: 400 - lift });
+
+      expect(chair()).toBeCloseTo(30, 0);
+      expect(Number(label().getAttribute('y'))).toBeGreaterThan(chair());
+    },
+  );
 
   it('drops the chair label once the pick ends, though the pointer never left', SLOW, async () => {
     await seating('chairLabel');
@@ -1795,6 +1959,17 @@ describe('seating guests (sc-4013, sc-4016, sc-5030)', () => {
     expect(
       screen.getAllByText('These seats changed since. Nothing was undone.').length,
     ).toBeGreaterThan(0);
+  });
+
+  it('says so when no other table has room for everyone at a table', SLOW, async () => {
+    await seating('moveAllNone');
+    const dialog = screen.getByRole('dialog', { name: /^Table 1,/u });
+
+    expect(
+      within(dialog).getByText('No other table has room for all 10. Move them one at a time.'),
+    ).toBeDefined();
+    expect(within(dialog).queryByText(/^Tables with room/u)).toBeNull();
+    expect(within(dialog).queryAllByRole('button')).toHaveLength(0);
   });
 
   it(

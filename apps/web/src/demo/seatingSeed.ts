@@ -944,6 +944,22 @@ export function seedOf(state: SeatingState | null): Ui {
         camera: at(0.2, 1200, 1100),
         bar: { kind: 'tint', words: pickWords(ui.tray[0]!), does: 'pick' },
       };
+    case 'pickedTight': {
+      const closer = (id: string, y: number) => (now: Plan) => moved(now, id, { y });
+      const tight = [
+        ...['t6', 't7', 't8', 't9', 't10'].map((id) => closer(id, 900)),
+        closer('rowA', 1090),
+      ].reduce((now, step) => step(now), plan);
+
+      return {
+        ...ui,
+        plan: tight,
+        tab: 'seat',
+        picked: 'kwame',
+        hover: 't8',
+        bar: { kind: 'tint', words: pickWords(ui.tray[0]!), does: 'pick' },
+      };
+    }
     case 'chairLabel':
       return {
         ...ui,
@@ -1048,6 +1064,30 @@ export function seedOf(state: SeatingState | null): Ui {
         hover: 't10',
         pop: { kind: 'moveAll', table: 't4' },
       };
+    case 'moveAllNone': {
+      const t10 = byId(plan, 't10');
+      const six = [
+        'Ada Obi',
+        'Tomás Silva',
+        'Chloé Martin',
+        'Femi Bello',
+        'Rui Costa',
+        'Lea Klein',
+      ];
+
+      return {
+        ...ui,
+        tab: 'seat',
+        plan: moved(plan, 't10', {
+          chairs: t10.chairs.map((chair, index) =>
+            index < six.length ? { state: 'taken', who: six[index]! } : chair,
+          ),
+        }),
+        chosen: ['t1'],
+        hover: 't1',
+        pop: { kind: 'moveAll', table: 't1' },
+      };
+    }
     case 'emptyTable':
       return { ...ui, tab: 'seat', chosen: ['t10'] };
     case 'everyoneSeated': {

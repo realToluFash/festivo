@@ -439,10 +439,7 @@ function ItemDrawing({
   const room = look.picking === true && item.kind !== 'single' ? free(item) : null;
 
   if (detail === 'out') {
-    const by =
-      item.kind === 'rect' || item.kind === 'head'
-        ? cy + ((item.l ?? 76) / 2) * s + 12
-        : cy + Math.max(ey, 40) * s * (item.kind === 'row' ? 1 : 0.55) + 12;
+    const by = nameAt(item, s, oy);
 
     words.push(
       <text
@@ -456,8 +453,7 @@ function ItemDrawing({
         {item.name}
       </text>,
     );
-    if (room != null) words.push(<FreeTag key="free" x={cx} y={by + 20} n={room} />);
-    else if (item.kind !== 'single') {
+    if (room == null && item.kind !== 'single') {
       const share = filled(item) / Math.max(1, usable(item));
 
       words.push(
@@ -540,7 +536,6 @@ function ItemDrawing({
         </g>
       ),
     );
-    if (detail !== 'out') marks.push(<FreeTag key="free" x={cx} y={cy + ey * s + 32} n={room} />);
   }
   onItem.forEach(({ who }, k) => {
     const pad = (lit ? 10 : 2) + RING_STEP * k;
@@ -685,6 +680,85 @@ function wordsWide(words: string): number {
   return words.length * 7;
 }
 
+export type Box = { x0: number; y0: number; x1: number; y1: number };
+
+/** An item's outline on screen, chairs included, as its rotation leaves it. */
+function footprint(item: Item, s: number, ox: number, oy: number): Box {
+  const [ex, ey] = extent(item);
+  const rad = (item.rot * Math.PI) / 180;
+  const hx = (Math.abs(ex * Math.cos(rad)) + Math.abs(ey * Math.sin(rad))) * s + 6;
+  const hy = (Math.abs(ex * Math.sin(rad)) + Math.abs(ey * Math.cos(rad))) * s + 6;
+  const cx = ox + item.x * s;
+  const cy = oy + item.y * s;
+
+  return { x0: cx - hx, y0: cy - hy, x1: cx + hx, y1: cy + hy };
+}
+
+function crosses(a: Box, b: Box): boolean {
+  return a.x0 < b.x1 && b.x0 < a.x1 && a.y0 < b.y1 && b.y0 < a.y1;
+}
+
+function nameAt(item: Item, s: number, oy: number): number {
+  const cy = oy + item.y * s;
+
+  return item.kind === 'rect' || item.kind === 'head'
+    ? cy + ((item.l ?? 76) / 2) * s + 12
+    : cy + Math.max(extent(item)[1], 40) * s * (item.kind === 'row' ? 1 : 0.55) + 12;
+}
+
+/** Below 50%, under the table's name; a tag that would cross one already placed goes a line lower (sc-5030). */
+function outTags(
+  items: readonly Item[],
+  s: number,
+  ox: number,
+  oy: number,
+): { id: string; x: number; y: number; n: number }[] {
+  const placed: Box[] = [];
+
+  return items
+    .filter((item) => item.kind !== 'single')
+    .map((item) => {
+      const n = free(item);
+      const x = ox + item.x * s;
+      const half = (wordsWide(n === 0 ? SW.fullTab : say(SW.freeTag, { n })) + 16) / 2;
+      const at = (y: number) => ({ x0: x - half, y0: y - 11, x1: x + half, y1: y + 11 });
+      let y = nameAt(item, s, oy) + 20;
+
+      while (placed.some((one) => crosses(at(y), one))) y += 24;
+      placed.push(at(y));
+      return { id: item.id, x, y, n };
+    });
+}
+
+/** Under its item, or over it when only the space under it is taken (sc-5030). */
+function freeTags(
+  items: readonly Item[],
+  s: number,
+  ox: number,
+  oy: number,
+): { id: string; x: number; y: number; n: number }[] {
+  const boxes = items.map((item) => ({ id: item.id, box: footprint(item, s, ox, oy) }));
+
+  return items
+    .filter((item) => item.kind !== 'single')
+    .map((item) => {
+      const n = free(item);
+      const own = footprint(item, s, ox, oy);
+      const x = (own.x0 + own.x1) / 2;
+      const half = (wordsWide(n === 0 ? SW.fullTab : say(SW.freeTag, { n })) + 16) / 2;
+      const clash = (y: number) =>
+        boxes.some(
+          (other) =>
+            other.id !== item.id &&
+            crosses({ x0: x - half, y0: y - 11, x1: x + half, y1: y + 11 }, other.box),
+        );
+      const below = own.y1 + 26;
+      const above = own.y0 - 26;
+
+      return { id: item.id, x, y: clash(below) && !clash(above) ? above : below, n };
+    });
+}
+
 /** While a guest is picked: "{n} free" on a green dashed outline, or "Full" on a grey one (sc-5030). */
 function FreeTag({ x, y, n }: { x: number; y: number; n: number }) {
   const words = n === 0 ? SW.fullTab : say(SW.freeTag, { n });
@@ -809,6 +883,7 @@ export function RoomDrawing({
   ghostAt = null,
   box = null,
   outlines = [],
+  cover = null,
   onFloor,
   onFloorMouse,
 }: {
@@ -829,6 +904,7 @@ export function RoomDrawing({
   ghostAt?: Item | null;
   box?: Rect | null;
   outlines?: readonly Outline[];
+  cover?: Box | null;
   onFloor?: (event: PointerEvent<SVGSVGElement>) => void;
   onFloorMouse?: (event: MouseEvent<SVGSVGElement>) => void;
 }) {
@@ -978,26 +1054,32 @@ export function RoomDrawing({
       {tip != null && (
         <Tip x={ox + tip.at[0] * s + 26} y={oy + tip.at[1] * s + 30} words={tip.words} />
       )}
+      {look.picking === true &&
+        (detail === 'out' ? outTags : freeTags)(ordered, s, ox, oy).map((tag) => (
+          <FreeTag key={`free-${tag.id}`} x={tag.x} y={tag.y} n={tag.n} />
+        ))}
       {detail !== 'out' && (
-        <ChairLabel items={items} spot={look.label ?? null} s={s} ox={ox} oy={oy} />
+        <ChairLabel items={items} spot={look.label ?? null} s={s} ox={ox} oy={oy} cover={cover} />
       )}
     </svg>
   );
 }
 
-/** The chair's name above it on hover or focus, never written on the picture otherwise (sc-5030). */
+/** The chair's name above it on hover or focus, or under it where the bar over the room or the room's top would hide it (sc-5030). */
 function ChairLabel({
   items,
   spot,
   s,
   ox,
   oy,
+  cover,
 }: {
   items: readonly Item[];
   spot: { id: string; i: number } | null;
   s: number;
   ox: number;
   oy: number;
+  cover: Box | null;
 }) {
   const item = spot == null ? undefined : items.find((one) => one.id === spot.id);
   const point = item == null || spot == null ? undefined : chairsOf(item)[spot.i];
@@ -1011,11 +1093,16 @@ function ChairLabel({
     word: chairSaid(item.chairs[spot.i] ?? { state: 'empty' }),
   });
   const w = wordsWide(words) + 20;
+  const over = y - CHAIR_R * s - 40;
+  const hidden =
+    over < 0 ||
+    (cover != null && crosses({ x0: x - w / 2, y0: over, x1: x + w / 2, y1: over + 28 }, cover));
+  const top = hidden ? y + CHAIR_R * s + 12 : over;
 
   return (
     <g className="st-tip" aria-hidden="true">
-      <rect x={f(x - w / 2)} y={f(y - CHAIR_R * s - 40)} width={f(w)} height="28" rx="10" />
-      <text x={f(x)} y={f(y - CHAIR_R * s - 26)} textAnchor="middle" dominantBaseline="central">
+      <rect x={f(x - w / 2)} y={f(top)} width={f(w)} height="28" rx="10" />
+      <text x={f(x)} y={f(top + 14)} textAnchor="middle" dominantBaseline="central">
         {words}
       </text>
     </g>
