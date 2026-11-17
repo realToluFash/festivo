@@ -2427,6 +2427,55 @@ describe('the batch helper', () => {
     }
   });
 
+  it('answers what the API holds of one track once the asked presses have reached it', async () => {
+    const event = '0f8e2c1a-5b3d-4e6f-9a7b-1c2d3e4f5a6b';
+    const reads = [
+      {
+        items: [
+          { place: 'Salle', startedAt: '2026-11-17T20:00:00+00:00', endedAt: null },
+          {
+            place: 'Jardin',
+            startedAt: '2026-11-17T18:00:00+00:00',
+            endedAt: '2026-11-17T19:00:00+00:00',
+          },
+        ],
+      },
+      {
+        items: [
+          {
+            place: 'Salle',
+            startedAt: '2026-11-17T20:00:00+00:00',
+            endedAt: '2026-11-17T20:01:00+00:00',
+          },
+          { place: 'Salle', startedAt: null, endedAt: null },
+          {
+            place: 'Jardin',
+            startedAt: '2026-11-17T18:00:00+00:00',
+            endedAt: '2026-11-17T19:00:00+00:00',
+          },
+        ],
+      },
+    ];
+    const asked = [];
+    const readSchedule = async (id) => {
+      asked.push(id);
+      return reads[Math.min(asked.length - 1, reads.length - 1)];
+    };
+    const { server, ask } = await helperFor('running', undefined, { readSchedule });
+    try {
+      expect(await ask(`/schedule?event=${event}&place=Salle&done=1`)).toEqual({
+        started: 1,
+        done: 1,
+      });
+      expect(asked).toEqual([event, event]);
+      expect(await ask('/schedule?event=..%2Fauth')).toEqual({
+        error: 'whose schedule? /schedule?event=<id> gave ../auth',
+      });
+    } finally {
+      server.close();
+    }
+  });
+
   it('turns an Android device to portrait, and leaves iOS to Maestro', async () => {
     const turned = [];
     const portrait = () => turned.push('portrait') && 1;
