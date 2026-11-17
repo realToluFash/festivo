@@ -4568,6 +4568,51 @@ describe('Seating a guest at a desk (sc-4013)', () => {
     expect(await screen.findByRole('button', { name: /Ada Obi \+ 2/ })).toBeDefined();
   });
 
+  it('asks before taking a guest’s chair, swaps on Swap with, and Undo trades them back', async () => {
+    signedIn();
+    const funmi = guest({ id: 'g_funmi', fullName: 'Funmi Adeyemi', position: 2 });
+    const kemi = guest({
+      id: 'g_kemi',
+      fullName: 'Kemi Ade',
+      position: 3,
+      seat: { kind: 'table', id: 't1', seat: 2 },
+    });
+    const before = [guest({ seat: { kind: 'table', id: 't1', seat: 3 } }), funmi, kemi];
+    const moves = [
+      { guestId: 'g_funmi', from: null, to: { kind: 'table', id: 't1', seat: 3 } },
+      { guestId: 'g_ada', from: { kind: 'table', id: 't1', seat: 3 }, to: null },
+    ];
+    const sent = await onSeating({
+      'GET /api/events/ev_1/seating-plan': () => seating(withGuests(before, table())),
+      'POST /api/events/ev_1/seating-plan/guests/swap': () =>
+        moved(withGuests([guest(), { ...funmi, seat: moves[0]!.to }, kemi], table()), moves),
+      'POST /api/events/ev_1/seating-plan/guests/undo': () =>
+        moved(withGuests(before, table()), []),
+    });
+
+    fireEvent.click(await screen.findByRole('tab', { name: 'Seat' }));
+    fireEvent.click(screen.getByRole('button', { name: /Funmi Adeyemi/ }));
+    press('Zoom in', 6);
+    fireEvent.click(screen.getByRole('button', { name: 'Table 1, Seat 2, Kemi Ade' }));
+    expect(await screen.findByText('Table 1, seat 2 is Kemi Ade’s.')).toBeDefined();
+    fireEvent.click(screen.getByRole('button', { name: 'Cancel' }));
+    expect(screen.queryByText('Table 1, seat 2 is Kemi Ade’s.')).toBeNull();
+    expect(sent.some((one) => one.line.endsWith('/guests/swap'))).toBe(false);
+
+    fireEvent.click(screen.getByRole('button', { name: 'Table 1, Seat 3, Ada Obi' }));
+    fireEvent.click(await screen.findByRole('button', { name: 'Swap with Ada Obi' }));
+    expect(await screen.findAllByText('Funmi Adeyemi is at Table 1.')).not.toHaveLength(0);
+    expect(sent.find((one) => one.line.endsWith('/guests/swap'))?.body).toEqual({
+      guestId: 'g_funmi',
+      withGuestId: 'g_ada',
+    });
+
+    fireEvent.click(screen.getByRole('button', { name: 'Undo' }));
+    await waitFor(() =>
+      expect(sent.find((one) => one.line.endsWith('/guests/undo'))?.body).toEqual({ moves }),
+    );
+  });
+
   it('says a full table and a short one, keeping the pick, and seats just the guest when asked', async () => {
     signedIn();
     const sent = await onSeating({

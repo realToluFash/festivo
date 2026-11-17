@@ -78,7 +78,7 @@ final readonly class GuestSeater
     {
         return $this->acting($event, $plan, $by, $guest, function () use ($guest, $other): Moved {
             $this->refuseUnlessWaiting($guest);
-            $theirs = $this->seatAssignmentRepository->findOneOf($other) ?? throw new ApiException(ErrorCode::SeatingUndoStale, 'seating.undo_stale');
+            $theirs = $this->seatAssignmentRepository->findOneOf($other) ?? throw new ApiException(ErrorCode::SeatingSeatTaken, 'seating.seat_taken', parameters: ['{name}' => $this->nameOf($guest)]);
             $mine = $this->seatAssignmentRepository->findOneOf($guest);
             $theirChair = self::chairOf($theirs);
 
