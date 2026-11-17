@@ -515,6 +515,13 @@ describe('the plan and the room (sc-3998, sc-4007)', () => {
         return `${box?.getAttribute('x')} ${box?.getAttribute('y')}`;
       }
 
+      const top = () => Number(document.querySelector('.st-floor[y]')?.getAttribute('y'));
+      const HALF_STROKE = 2.5;
+
+      function clear(before: number, reach = HALF_STROKE): void {
+        expect(at[3] + reach + top() - before).toBeCloseTo(strip[1] - 8, 0);
+      }
+
       async function chosen() {
         at = CLEAR;
         strip = [16, 520, 702, 600];
@@ -541,15 +548,17 @@ describe('the plan and the room (sc-3998, sc-4007)', () => {
 
         try {
           at = UNDER;
-          for (const [name, shiftKey] of [
-            ['ArrowUp', false],
-            ['ArrowLeft', true],
-            ['r', false],
+          const turned = (15 * Math.PI) / 180;
+
+          for (const [name, shiftKey, reach] of [
+            ['ArrowUp', false, HALF_STROKE],
+            ['ArrowLeft', true, HALF_STROKE],
+            ['r', false, HALF_STROKE * (Math.cos(turned) + Math.sin(turned))],
           ] as const) {
-            const before = floor();
+            const before = top();
 
             key(table, name, { shiftKey });
-            await waitFor(() => expect(floor()).not.toBe(before), WAIT);
+            await waitFor(() => clear(before, reach), WAIT);
           }
         } finally {
           measured.mockRestore();
@@ -565,10 +574,12 @@ describe('the plan and the room (sc-3998, sc-4007)', () => {
           const foot = down();
 
           at = UNDER;
-          const before = floor();
+          const before = top();
 
           key(table, 'ArrowDown', { shiftKey: true });
-          await waitFor(() => expect(floor()).not.toBe(before), WAIT);
+          // 600 + 8 clear - 520 of strip is 88 short, and the half stroke makes 90.5 up.
+          await waitFor(() => expect(before - top()).toBeCloseTo(90.5, 1), WAIT);
+          clear(before);
           expect(down()).toBe(foot);
         } finally {
           measured.mockRestore();
@@ -600,10 +611,10 @@ describe('the plan and the room (sc-3998, sc-4007)', () => {
           key(table, 'Tab');
           table.focus();
           await new Promise((done) => window.setTimeout(done, 50));
-          const before = floor();
+          const before = top();
 
           key(table, 'Enter');
-          await waitFor(() => expect(floor()).not.toBe(before), WAIT);
+          await waitFor(() => clear(before), WAIT);
         } finally {
           measured.mockRestore();
         }
@@ -643,11 +654,11 @@ describe('the plan and the room (sc-3998, sc-4007)', () => {
         try {
           at = [300, 440, 360, 500];
           grow();
-          const before = floor();
+          const before = top();
 
           strip = [16, 440, 702, 600];
           grow();
-          await waitFor(() => expect(floor()).not.toBe(before), WAIT);
+          await waitFor(() => clear(before), WAIT);
         } finally {
           measured.mockRestore();
           vi.unstubAllGlobals();
