@@ -297,6 +297,8 @@ function Courses({
   const [said, setSaid] = useState<Told | null>(null);
   const [dragging, setDragging] = useState<string | null>(null);
   const [library, setLibrary] = useState<{ dishes: Dish[]; prices: boolean } | null>(null);
+  const [libraryFailed, setLibraryFailed] = useState(false);
+  const [libraryTries, setLibraryTries] = useState(0);
   const [variantAsk, setVariantAsk] = useState<VariantAsk | null>(null);
   const [addRefused, setAddRefused] = useState<VariantHandlers['addRefused']>(null);
   const prices = canOn(event, 'budget.read');
@@ -321,13 +323,13 @@ function Courses({
 
     api.dishes(organisation.id).then(
       (found) => current && setLibrary({ dishes: found.dishes, prices: found.seesPrices }),
-      () => current && setLibrary({ dishes: [], prices: false }),
+      () => current && setLibraryFailed(true),
     );
 
     return () => {
       current = false;
     };
-  }, [manage, organisation]);
+  }, [manage, organisation, libraryTries]);
 
   useEffect(() => {
     if (open != null && open.courseId != null && openCourse == null) setOpen(null);
@@ -618,7 +620,10 @@ function Courses({
       onMenu(changed.menu);
       if (!onlyEvent && organisation != null)
         api.dishes(organisation.id).then(
-          (found) => setLibrary({ dishes: found.dishes, prices: found.seesPrices }),
+          (found) => {
+            setLibrary({ dishes: found.dishes, prices: found.seesPrices });
+            setLibraryFailed(false);
+          },
           () => undefined,
         );
       setOpen(null);
@@ -1185,7 +1190,13 @@ function Courses({
                   onlyEvent={open.onlyEvent}
                   course={openCourse}
                   library={shownLibrary}
-                  loading={library == null}
+                  loading={library == null && !libraryFailed}
+                  failed={libraryFailed}
+                  onRetry={() => {
+                    setLibraryFailed(false);
+                    setLibraryTries((tries) => tries + 1);
+                    focusAfter.current = 'mc-find';
+                  }}
                   prices={library?.prices === true}
                   language={language}
                   problems={

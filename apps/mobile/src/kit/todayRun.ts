@@ -43,23 +43,15 @@ export interface RunNow {
   track?: string;
 }
 
-/** Each stop's label box on a rail `width` wide: centred on its stop, at most `widest`, pushed in so none overlap. */
+/** Each stop's label box on a rail `width` wide: an equal share of the width less the gaps `apart` between them. */
 export function railLabels(
   count: number,
   width: number,
-  widest: number,
   apart: number,
 ): { left: number; width: number }[] {
-  const box = Math.min(widest, (width - (count - 1) * apart) / count);
-  const step = count > 1 ? width / (count - 1) : 0;
+  const box = (width - (count - 1) * apart) / count;
 
-  return Array.from({ length: count }, (_, index) => ({
-    left: Math.min(
-      Math.max(index * step - box / 2, index * (box + apart)),
-      width - (count - index) * box - (count - 1 - index) * apart,
-    ),
-    width: box,
-  }));
+  return Array.from({ length: count }, (_, index) => ({ left: index * (box + apart), width: box }));
 }
 
 const STATE_KEY: Record<TodayStopState, string> = {

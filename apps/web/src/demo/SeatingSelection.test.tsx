@@ -102,6 +102,26 @@ function boxThenSecondFinger(on: Element = room()): void {
   finger('up', 2, [to[0] + 70, to[1] + 30]);
 }
 
+function heading(): string | null {
+  return within(panel()).queryAllByRole('heading')[0]?.textContent ?? null;
+}
+
+function spacePan(on: Element): void {
+  const at = onScreen([250, 450]);
+
+  fireEvent.keyDown(on, { key: ' ' });
+  fireEvent.keyDown(on, { key: ' ', repeat: true });
+  expect(
+    fireEvent.mouseDown(room(), { button: 0, clientX: at[0], clientY: at[1] }),
+    'a press on the floor with Space held moves no focus',
+  ).toBe(false);
+  fireEvent.pointerDown(room(), { button: 0, pointerId: 1, clientX: at[0], clientY: at[1] });
+  fireEvent.pointerMove(window, { pointerId: 1, clientX: at[0] + 60, clientY: at[1] + 40 });
+  fireEvent.pointerUp(window, { pointerId: 1, clientX: at[0] + 60, clientY: at[1] + 40 });
+  fireEvent.keyDown(on, { key: ' ', repeat: true });
+  fireEvent.keyUp(on, { key: ' ' });
+}
+
 function floorAt(): [string | null, string | null] {
   const floor = document.querySelector('.st-floor');
 
@@ -197,12 +217,16 @@ describe('choosing many (sc-4717)', () => {
     fireEvent.keyDown(item(/^Table 1,/u), { key: 'Enter' });
     fireEvent.keyDown(item(/^Table 5,/u), { key: 'Enter', shiftKey: true });
     fireEvent.keyDown(item(/^Table 6,/u), { key: ' ', shiftKey: true });
+    item(/^Table 6,/u).focus();
+    fireEvent.keyUp(item(/^Table 6,/u), { key: ' ', shiftKey: true });
     expect(chosen()).toBe('3 chosen');
     fireEvent.keyDown(item(/^Table 6,/u), { key: 'Enter', shiftKey: true });
     expect(chosen()).toBe('2 chosen');
     fireEvent.click(toggle);
     fireEvent.keyDown(item(/^Table 6,/u), { key: 'Enter' });
+    item(/^Table 7,/u).focus();
     fireEvent.keyDown(item(/^Table 7,/u), { key: ' ' });
+    fireEvent.keyUp(item(/^Table 7,/u), { key: ' ' });
     expect(chosen()).toBe('4 chosen');
     fireEvent.keyDown(item(/^Table 1,/u), { key: 'Enter' });
     expect(chosen()).toBe('3 chosen');
@@ -360,6 +384,94 @@ describe('choosing many (sc-4717)', () => {
     expect(fireEvent.keyDown(document.body, { key: ' ' })).toBe(false);
     fireEvent.keyUp(document.body, { key: ' ' });
   });
+
+  it(
+    'pans with Space held on a focused table and keeps the choice, panel and focus (sc-62095)',
+    SLOW,
+    async () => {
+      const cases: { adding: boolean; before: 'alone' | 'several' | 'none' }[] = [
+        { adding: false, before: 'alone' },
+        { adding: false, before: 'several' },
+        { adding: false, before: 'none' },
+        { adding: true, before: 'alone' },
+        { adding: true, before: 'several' },
+        { adding: true, before: 'none' },
+      ];
+
+      for (const { adding, before } of cases) {
+        await seating();
+        if (before !== 'none') press(item(/^Table 6,/u));
+        if (before === 'several') press(item(/^Table 7,/u), { shiftKey: true });
+        if (adding) fireEvent.click(screen.getByRole('button', { name: 'Add to choice' }));
+        const table = item(/^Table 6,/u);
+
+        table.focus();
+        const was = { floor: floorAt(), chosen: chosen(), heading: heading(), said: said() };
+
+        spacePan(table);
+        expect(floorAt(), `${before}, adding ${adding}`).not.toEqual(was.floor);
+        expect(chosen(), `${before}, adding ${adding}`).toBe(was.chosen);
+        expect(heading(), `${before}, adding ${adding}`).toBe(was.heading);
+        expect(said(), `${before}, adding ${adding}`).toBe(was.said);
+        expect(document.activeElement).toBe(item(/^Table 6,/u));
+        expect(item(/^Table 6,/u).getAttribute('aria-pressed')).toBe(
+          before === 'none' ? 'false' : 'true',
+        );
+      }
+    },
+  );
+
+  it(
+    'chooses with Space on its release, once, and with Enter on the press (sc-62095)',
+    SLOW,
+    async () => {
+      await seating();
+      const t6 = item(/^Table 6,/u);
+
+      t6.focus();
+      fireEvent.keyDown(t6, { key: ' ' });
+      expect(heading()).not.toBe('Table 6');
+      fireEvent.keyUp(t6, { key: ' ' });
+      expect(heading()).toBe('Table 6');
+
+      const t7 = item(/^Table 7,/u);
+
+      t7.focus();
+      fireEvent.keyDown(t7, { key: ' ', shiftKey: true });
+      fireEvent.keyUp(t7, { key: ' ', shiftKey: true });
+      expect(chosen()).toBe('2 chosen');
+
+      fireEvent.click(screen.getByRole('button', { name: 'Add to choice' }));
+      const t8 = item(/^Table 8,/u);
+
+      t8.focus();
+      fireEvent.keyDown(t8, { key: ' ' });
+      for (let n = 0; n < 5; n += 1) fireEvent.keyDown(t8, { key: ' ', repeat: true });
+      expect(chosen()).toBe('2 chosen');
+      fireEvent.keyUp(t8, { key: ' ' });
+      expect(chosen()).toBe('3 chosen');
+
+      fireEvent.keyDown(t8, { key: 'Enter' });
+      expect(chosen()).toBe('2 chosen');
+      fireEvent.keyDown(t8, { key: 'Enter', shiftKey: true });
+      expect(chosen()).toBe('3 chosen');
+
+      await seating('seat');
+      fireEvent.click(within(panel()).getByRole('button', { name: /^Kwame Mensah \+ 1/u }));
+      const asking = 'Now pick a table for Kwame Mensah and 1 guest.';
+      const table = item(/^Table 8,/u);
+
+      table.focus();
+      spacePan(table);
+      expect(screen.getByText(asking)).toBeDefined();
+      expect(screen.queryByText('Kwame Mensah and 1 guest are at Table 8.')).toBeNull();
+
+      fireEvent.keyDown(table, { key: ' ' });
+      expect(screen.getByText(asking)).toBeDefined();
+      fireEvent.keyUp(table, { key: ' ' });
+      expect(await screen.findByText('Kwame Mensah and 1 guest are at Table 8.')).toBeDefined();
+    },
+  );
 
   it(
     'gives focus back to Select all of a kind and moves through it with arrows',
