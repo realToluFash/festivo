@@ -94,6 +94,9 @@ type Copy = Chosen & { sent: string };
 
 type Status = 'editing' | 'creating' | 'failed' | 'created';
 
+/** How long "Created. Opening the event." is up at least before the event opens, as the web demo holds it (sc-60915). */
+const OPENING_MS = 1600;
+
 /** New event (sc-48607): the event's own parts in today's order, in headed blocks, and Create event's answer right above it. */
 function EventForm({ organisation }: { organisation: Membership }) {
   const { t } = useTranslation();
@@ -132,6 +135,7 @@ function EventForm({ organisation }: { organisation: Membership }) {
   const describe = useRef<HTMLInputElement>(null);
   const preview = useRef<HTMLImageElement>(null);
   const taken = useRef<string | null>(null);
+  const createdAt = useRef(0);
   const copying = useCoverSending<Copy>();
   const currencies = useMemo(() => currencyChoices('', currency, locale, t), [currency, locale, t]);
   const zones = useMemo(
@@ -368,6 +372,9 @@ function EventForm({ organisation }: { organisation: Membership }) {
       const coverRefused =
         copy == null ? await coverOf(created.id, chosen) : await waited(created.id, copy);
 
+      await new Promise((done) =>
+        window.setTimeout(done, createdAt.current + OPENING_MS - Date.now()),
+      );
       leave.release();
       void navigate(
         `/app/events/${encodeURIComponent(created.id)}`,
@@ -390,8 +397,13 @@ function EventForm({ organisation }: { organisation: Membership }) {
     }
   }
 
-  async function coverOf(eventId: string, photo: Chosen | null): Promise<string | null> {
+  function sayCreated(): void {
+    createdAt.current = Date.now();
     setStatus('created');
+  }
+
+  async function coverOf(eventId: string, photo: Chosen | null): Promise<string | null> {
+    sayCreated();
 
     return photo == null ? null : sendCover(eventId, photo);
   }
@@ -405,7 +417,7 @@ function EventForm({ organisation }: { organisation: Membership }) {
         : 'refused' in landed
           ? refusalOf(landed.refused, t)
           : await sendCover(eventId, landed.landed);
-    setStatus('created');
+    sayCreated();
 
     return refused;
   }
