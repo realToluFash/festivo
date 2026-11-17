@@ -30,6 +30,7 @@ export interface Chair {
   state: ChairState;
   who?: string | undefined;
   party?: string | undefined;
+  reply?: Reply | undefined;
 }
 
 export interface Item {
@@ -263,6 +264,9 @@ const SEATED_AT: Readonly<Record<string, readonly string[]>> = {
   door: ['Grace Obi'],
 };
 
+/** The seated who have not said Coming; everyone else seated is Coming. */
+const SEATED_REPLY: Readonly<Record<string, Reply>> = { 'Sofia Rossi': 'notSure' };
+
 function chairsFor(
   id: string,
   seats: number,
@@ -280,7 +284,9 @@ function chairsFor(
     if (held.includes(number)) return { state: 'held' };
     if (left <= 0) return { state: 'empty' };
     left -= 1;
-    return { state: 'taken', who: names.shift() };
+    const who = names.shift();
+
+    return { state: 'taken', who, reply: who == null ? undefined : SEATED_REPLY[who] };
   });
 }
 
@@ -928,8 +934,16 @@ export function itemName(plan: Plan, item: Item, extra = ''): string {
   );
 }
 
+const REPLY_WORD: Record<Reply, string> = {
+  coming: SW.coming,
+  notSure: SW.notSureYet,
+  noReply: SW.noReply,
+};
+
+/** A taken chair says its guest and their reply, Coming included (sc-5030); the rest use sc-4013's words. */
 export function chairWord(chair: Chair): string {
-  if (chair.state === 'taken') return chair.who ?? SW.taken;
+  if (chair.state === 'taken')
+    return chair.who == null ? SW.taken : `${chair.who}, ${REPLY_WORD[chair.reply ?? 'coming']}`;
   return { held: SW.held, empty: SW.empty, unusable: SW.unusable }[chair.state];
 }
 
@@ -1390,7 +1404,9 @@ export function seatAt(item: Item, party: Party, chairs: readonly number[]): Ite
     chairs: item.chairs.map((chair, index) => {
       const at = chairs.indexOf(index);
 
-      return at < 0 || who[at] == null ? chair : { state: 'taken', who: who[at], party: party.id };
+      return at < 0 || who[at] == null
+        ? chair
+        : { state: 'taken', who: who[at], party: party.id, reply: party.reply };
     }),
   };
 }
@@ -1596,7 +1612,17 @@ export const SEATING_STATES = [
   { key: 'left', name: 'Priya Shah left', group: 'Who else is here' },
   { key: 'arriving', name: 'A colleague’s change arrives', group: 'Who else is here' },
   { key: 'seat', name: 'Seat: Without a seat 12', group: 'Seating guests' },
-  { key: 'picked', name: 'A party picked', group: 'Seating guests' },
+  { key: 'picked', name: 'A party picked, every table free or Full', group: 'Seating guests' },
+  {
+    key: 'pickedOut',
+    name: 'A party picked at 40%, the table the target',
+    group: 'Seating guests',
+  },
+  {
+    key: 'chairLabel',
+    name: 'A party picked at 150%, a chair’s label on hover',
+    group: 'Seating guests',
+  },
   { key: 'seated', name: 'Seated, with Undo', group: 'Seating guests' },
   { key: 'apart', name: 'Not side by side', group: 'Seating guests' },
   { key: 'full', name: 'A full table', group: 'Seating guests' },

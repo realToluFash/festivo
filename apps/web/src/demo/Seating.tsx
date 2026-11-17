@@ -1728,6 +1728,8 @@ function Seating({
         ? (ui.chosen[0] ?? null)
         : null,
     chair: ui.chair,
+    picking: ui.picked != null,
+    label: ui.chairLabel,
     chairsFor:
       detail === 'out'
         ? null
@@ -1940,6 +1942,7 @@ function Seating({
                   onItemEnter: (id) => {
                     if (ui$.current.picked != null) set((now) => ({ ...now, hover: id }));
                   },
+                  onChairLabel: (spot) => set((now) => ({ ...now, chairLabel: spot })),
                   onChair: (id, index) => {
                     if (ui$.current.picked != null) seatAt(id, index);
                     else

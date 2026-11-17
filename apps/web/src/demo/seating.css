@@ -2883,3 +2883,36 @@
 .is-row-down .st-view-wrap {
   padding-top: 132px;
 }
+
+/* sc-5030: while a guest is picked, every table says whether it has room, by outline and by word. */
+.st-room-for {
+  fill: none;
+  stroke: var(--deskGreen);
+  stroke-width: 2;
+  stroke-dasharray: 6 4;
+  pointer-events: none;
+}
+
+.st-room-for.is-full {
+  stroke: var(--colorInkTertiary);
+}
+
+.st-free {
+  pointer-events: none;
+}
+
+.st-free rect {
+  fill: color-mix(in srgb, var(--deskGreen) 12%, var(--colorCard));
+  stroke: var(--deskGreen);
+}
+
+.st-free text {
+  fill: var(--colorInk);
+  font: 600 12px var(--fontFamily);
+  font-variant-numeric: tabular-nums;
+}
+
+.st-free.is-full rect {
+  fill: var(--stSunk);
+  stroke: var(--colorInkTertiary);
+}
