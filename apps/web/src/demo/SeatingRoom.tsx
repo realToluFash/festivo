@@ -1059,19 +1059,30 @@ export function RoomDrawing({
           <FreeTag key={`free-${tag.id}`} x={tag.x} y={tag.y} n={tag.n} />
         ))}
       {detail !== 'out' && (
-        <ChairLabel items={items} spot={look.label ?? null} s={s} ox={ox} oy={oy} cover={cover} />
+        <ChairLabel
+          items={items}
+          spot={look.label ?? null}
+          s={s}
+          ox={ox}
+          oy={oy}
+          width={width}
+          cover={cover}
+        />
       )}
     </svg>
   );
 }
 
-/** The chair's name above it on hover or focus, or under it where the bar over the room or the room's top would hide it (sc-5030). */
+/** The chair's name above it on hover or focus, or under it where the bar over the room or the room's top would hide it, and slid inside the room's left and right edges (sc-5030). */
+const LABEL_INSET = 8;
+
 function ChairLabel({
   items,
   spot,
   s,
   ox,
   oy,
+  width,
   cover,
 }: {
   items: readonly Item[];
@@ -1079,6 +1090,7 @@ function ChairLabel({
   s: number;
   ox: number;
   oy: number;
+  width: number;
   cover: Box | null;
 }) {
   const item = spot == null ? undefined : items.find((one) => one.id === spot.id);
@@ -1093,16 +1105,17 @@ function ChairLabel({
     word: chairSaid(item.chairs[spot.i] ?? { state: 'empty' }),
   });
   const w = wordsWide(words) + 20;
+  const left = Math.max(LABEL_INSET, Math.min(x - w / 2, width - LABEL_INSET - w));
   const over = y - CHAIR_R * s - 40;
   const hidden =
     over < 0 ||
-    (cover != null && crosses({ x0: x - w / 2, y0: over, x1: x + w / 2, y1: over + 28 }, cover));
+    (cover != null && crosses({ x0: left, y0: over, x1: left + w, y1: over + 28 }, cover));
   const top = hidden ? y + CHAIR_R * s + 12 : over;
 
   return (
     <g className="st-tip" aria-hidden="true">
-      <rect x={f(x - w / 2)} y={f(top)} width={f(w)} height="28" rx="10" />
-      <text x={f(x)} y={f(top + 14)} textAnchor="middle" dominantBaseline="central">
+      <rect x={f(left)} y={f(top)} width={f(w)} height="28" rx="10" />
+      <text x={f(left + w / 2)} y={f(top + 14)} textAnchor="middle" dominantBaseline="central">
         {words}
       </text>
     </g>

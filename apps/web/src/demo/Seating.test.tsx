@@ -1910,6 +1910,34 @@ describe('seating guests (sc-4013, sc-4016, sc-5030)', () => {
     },
   );
 
+  it('keeps the chair label inside the room’s left and right edges after a pan', SLOW, async () => {
+    await seating('chairLabel');
+    const box = () =>
+      within(room()).getByText('Seat 1, Sofia Rossi, Not sure yet').previousElementSibling!;
+    const chair = () =>
+      Number(
+        within(room())
+          .getByRole('button', { name: 'Table 9, Seat 1, Sofia Rossi, Not sure yet' })
+          .getAttribute('cx'),
+      );
+    const width = Number(room().getAttribute('width'));
+    const pan = (dx: number) => {
+      fireEvent.pointerDown(room(), { button: 0, pointerId: 1, clientX: 600, clientY: 400 });
+      fireEvent.pointerMove(window, { pointerId: 1, clientX: 600 + dx, clientY: 400 });
+      fireEvent.pointerUp(window, { button: 0, pointerId: 1, clientX: 600 + dx, clientY: 400 });
+    };
+
+    pan(10 - chair());
+    expect(chair()).toBeCloseTo(10, 0);
+    expect(Number(box().getAttribute('x'))).toBe(8);
+
+    pan(width - 10 - chair());
+    const right = Number(box().getAttribute('x')) + Number(box().getAttribute('width'));
+
+    expect(chair()).toBeCloseTo(width - 10, 0);
+    expect(right).toBeCloseTo(width - 8, 0);
+  });
+
   it('drops the chair label once the pick ends, though the pointer never left', SLOW, async () => {
     await seating('chairLabel');
     key(item(/^Table 9,/u), 'Escape');
