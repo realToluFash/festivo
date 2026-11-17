@@ -1,7 +1,11 @@
 import { describe, expect, it } from 'vitest';
 
+import { clockOf, eventStateOf, shownEvent } from '../events/EventsModel.ts';
+import { EVENTS } from '../events/EventsSample.ts';
+import { RUN_EVENT } from '../runView/runViewModel.ts';
 import {
   NIGHT_BOARDS,
+  nightWayIn,
   at,
   dismiss,
   elapsedOf,
@@ -240,5 +244,22 @@ describe('the boards', () => {
   it('turns the picker into the plain place name with one track', () => {
     expect(nightAt('populated', { oneTrack: true }).night.tracks).toHaveLength(1);
     expect(nightAt('empty_track').night.tracks).toHaveLength(0);
+  });
+
+  it('offers the way in on the Schedule only while the event is happening now', () => {
+    const wedding = EVENTS.find((event) => event.id === RUN_EVENT);
+    if (wedding == null) throw new Error('no run event');
+    const on = (state: string | undefined) => shownEvent(wedding, clockOf(eventStateOf(state)));
+
+    expect(on('now').phase).toBe('happening_now');
+    expect(nightWayIn(on('now'))).toBe(true);
+    expect(nightWayIn(on(undefined))).toBe(false);
+    expect(nightWayIn({ ...on('now'), id: 'evt-other' })).toBe(false);
+    expect(NIGHT_BOARDS.map((board) => board.href)).toEqual(
+      expect.arrayContaining([
+        `/demo/events/${RUN_EVENT}?area=schedule&state=now`,
+        `/demo/events/${RUN_EVENT}?area=schedule`,
+      ]),
+    );
   });
 });

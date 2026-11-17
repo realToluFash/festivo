@@ -35,6 +35,7 @@ import { AREAS, type AreaKey, MORE_AREAS, PHONE_TABS } from './EventsSample.ts';
 import { AREA_WORDS, COMING, W } from './EventsWords.ts';
 import { SecondaryButton } from '../../components/Buttons.tsx';
 import { RUN_EVENT, RW as RUN_WORDS } from '../runView/runViewModel.ts';
+import { NW, nightWayIn } from '../night/nightModel.ts';
 import { useShell } from '../../components/settingsShell.ts';
 import { Back } from '../../components/SettingsParts.tsx';
 import { PageToast, Row, RowList } from '../../components/Summary.tsx';
@@ -615,9 +616,9 @@ export function AreaPage({
         </Text>
         {area === 'schedule' && event.id === RUN_EVENT && (
           <View style={styles.comingAct}>
-            {event.phase === 'happening_now' && (
+            {nightWayIn(event) && (
               <SecondaryButton
-                label={NIGHT_OPEN}
+                label={NW.title}
                 link
                 onPress={() => router.push('/demo/night')}
                 testID="event.schedule.night"
@@ -635,9 +636,6 @@ export function AreaPage({
     </>
   );
 }
-
-/** The app's way into the night (sc-3895): above Run view, only while the event is happening now. */
-const NIGHT_OPEN = 'Run of show';
 
 const MORE_FOOT = 116;
 

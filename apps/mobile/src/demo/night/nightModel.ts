@@ -1,4 +1,5 @@
 import { writtenTime } from '../clock.ts';
+import { RUN_EVENT } from '../runView/runViewModel.ts';
 
 /** The night screen (sc-3895, RunOfShow.dc.html's night frames on page e33): Now, Next and Later for one track, the presses, and every state the board's Tweak draws. Times are minutes from 05:00 on the event's first day. */
 export const NIGHT_EVENT_NAME = 'Adaeze & Tunde’s wedding';
@@ -693,6 +694,11 @@ const NAMES: Record<(typeof NIGHT_EXTRA_STATES)[number], string> = {
   loading: 'Loading: a skeleton of Now, Next and Later',
   empty_track: 'A day with nothing on it: [Nothing is planned for today.]',
 };
+
+/** The way into the night on the event's Schedule: the run event, only while it is happening now. */
+export function nightWayIn(event: { id: string; phase: string }): boolean {
+  return event.id === RUN_EVENT && event.phase === 'happening_now';
+}
 
 export function stateName(state: NightState): string {
   return state === 'loading' || state === 'empty_track' ? NAMES[state] : NIGHT_STATES[state].name;
