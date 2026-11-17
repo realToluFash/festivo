@@ -306,9 +306,25 @@ type Press =
       pointer: number;
     }
   | { kind: 'resize'; id: string; handle: Handle; item: Item; moved: boolean; pointer: number }
-  | { kind: 'pan'; from: Point; cx: number; cy: number; moved: boolean; pointer: number }
+  | {
+      kind: 'pan';
+      from: Point;
+      cx: number;
+      cy: number;
+      moved: boolean;
+      fingers: boolean;
+      pointer: number;
+    }
   | { kind: 'click'; id: string; shift: boolean; pointer: number }
-  | { kind: 'box'; from: Point; at: Point; base: string[]; moved: boolean; pointer: number }
+  | {
+      kind: 'box';
+      from: Point;
+      at: Point;
+      base: string[];
+      before: Pick<Ui, 'chosen' | 'chair' | 'panel' | 'notice' | 'tab'>;
+      moved: boolean;
+      pointer: number;
+    }
   | { kind: 'seat'; id: string; pointer: number };
 
 function keyStep(units: 'metric' | 'us', big: boolean): number {
@@ -1023,6 +1039,15 @@ function Seating({
       place(toCm(event.clientX, event.clientY));
       return;
     }
+    if (
+      event.pointerType === 'touch' &&
+      press.current?.kind === 'box' &&
+      touches.current.size > 0
+    ) {
+      touches.current.add(event.pointerId);
+      panWith(event);
+      return;
+    }
     if (ui.picked != null) {
       press.current = { kind: 'seat', id, pointer: event.pointerId };
       return;
@@ -1069,11 +1094,6 @@ function Seating({
       return;
     }
     if (event.pointerType === 'touch') touches.current.add(event.pointerId);
-    const now = press.current;
-
-    if (now?.kind === 'box' && touches.current.size > 1) {
-      set((ui_) => ({ ...ui_, chosen: now.base, box: null }));
-    }
     if (!ui.readOnly && ui.picked == null && !spaceHeld.current && touches.current.size < 2) {
       const at = toCm(event.clientX, event.clientY);
 
@@ -1082,17 +1102,33 @@ function Seating({
         from: at,
         at: [event.clientX, event.clientY],
         base: event.shiftKey || ui.adding ? ui.chosen : [],
+        before: {
+          chosen: ui.chosen,
+          chair: ui.chair,
+          panel: ui.panel,
+          notice: ui.notice,
+          tab: ui.tab,
+        },
         moved: false,
         pointer: event.pointerId,
       };
       return;
     }
+    panWith(event);
+  }
+
+  function panWith(event: ReactPointerEvent<Element>): void {
+    const now = press.current;
+    const fingers = touches.current.size > 1;
+
+    if (now?.kind === 'box' && fingers) set((ui_) => ({ ...ui_, ...now.before, box: null }));
     press.current = {
       kind: 'pan',
       from: [event.clientX, event.clientY],
       cx: (size.w / 2 - ox) / s,
       cy: (size.h / 2 - oy) / s,
       moved: false,
+      fingers,
       pointer: event.pointerId,
     };
   }
@@ -1208,6 +1244,7 @@ function Seating({
             note: null,
           }));
       } else if (now.kind === 'pan') {
+        if (now.fingers) return;
         if (!now.moved && kept != null) focusField(kept);
         else if (!now.moved) {
           set((ui_) => ({
