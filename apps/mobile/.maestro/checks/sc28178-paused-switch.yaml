@@ -18,9 +18,13 @@ appId: host.exp.Exponent
       CHANGE: pause
       MOVE: frame.settings
 - extendedWaitUntil:
-    visible:
-      id: 'accessPaused.switch'
+    visible: '{{t:accessPaused.since}}'
     timeout: 30000
+- scrollUntilVisible:
+    element:
+      id: 'accessPaused.switch'
+    centerElement: true
+    timeout: 15000
 - takeScreenshot: paused
 - tapOn:
     id: 'accessPaused.switch'
