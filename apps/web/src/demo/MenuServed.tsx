@@ -46,11 +46,14 @@ import {
   withoutChoice,
 } from './menuServed.ts';
 import { CoursesAt } from './MenuCourses.tsx';
+import { ActionGlyph } from './MenuLibrary.tsx';
 import { type CoursesStateName, coursesStart, isCoursesState } from './menuCourses.ts';
 import { type Lang, LANGS } from './menuLibrary.ts';
 import { useSwitcherStart } from './switcher.ts';
 import './guests.css';
 import './menu.css';
+import './menuLibrary.css';
+import './dishVariants.css';
 
 /** The event's Menu at a desk (board MenuServing, page e32): sc-3902's course cards and docked panel, with sc-34230's Items on every course's dishes and Served with this course. */
 export function MenuPage() {
@@ -755,17 +758,25 @@ function DishRow({
       {dish.variants.length > 0 && manage && (
         <div className="mn-variants-box">
           <p className="mn-items-head">{MW.variants}</p>
-          <ul className="mn-variants" aria-label={`${MW.variants} · ${dish.name}`}>
+          <ul className="vr-insets" aria-label={`${MW.variants} · ${dish.name}`}>
             {dish.variants.map((name) => (
-              <li key={name} className="mn-variant">
-                <span>{name}</span>
-                <IconButton
-                  id={variantKey(dish.id, name)}
-                  glyph="clear"
-                  label={mw(MW.removeVariantAria, { name })}
-                  hint={MW.remove}
-                  onClick={() => onRemoveVariant(name)}
-                />
+              <li key={name} className="vr-item">
+                <div className="vr-inset is-event">
+                  <div className="vr-words">
+                    <h4 className="vr-name">{name}</h4>
+                  </div>
+                  <div className="lib-acts vr-acts">
+                    <HintButton
+                      id={variantKey(dish.id, name)}
+                      label={mw(MW.removeVariantAria, { name })}
+                      hint={MW.remove}
+                      className="lib-act"
+                      onClick={() => onRemoveVariant(name)}
+                    >
+                      <ActionGlyph icon="remove" />
+                    </HintButton>
+                  </div>
+                </div>
               </li>
             ))}
           </ul>

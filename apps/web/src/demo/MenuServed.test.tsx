@@ -229,6 +229,24 @@ describe('removing a choice or the variants, and read only', () => {
     );
   });
 
+  it('draws the variants as sc-3903’s cards, each with its Remove', SLOW, async () => {
+    await menu('fold');
+
+    const list = screen.getByRole('list', { name: 'Variants · guests pick one · Grilled fish' });
+    expect(
+      within(list)
+        .getAllByRole('heading', { level: 4 })
+        .map((one) => one.textContent),
+    ).toEqual(['Croaker', 'Tilapia']);
+    expect(list.querySelectorAll('.vr-inset')).toHaveLength(2);
+  });
+
+  it('quotes the question in the removed states, as Remove does', SLOW, async () => {
+    await menu('removedTwo');
+
+    expect(screen.getByText('“And a side?” removed from Jollof rice.')).toBeTruthy();
+  });
+
   it('shows everything as text without menu.manage', SLOW, async () => {
     await menu('readOnly');
 

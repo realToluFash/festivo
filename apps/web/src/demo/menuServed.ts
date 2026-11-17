@@ -603,7 +603,7 @@ const STATES = {
       note: 'The choice went, and its item with it; Rice and Chicken stay.',
       courses: courses({ dishes: [withoutChoice(jollof(JOLLOF_ITEMS), 'ch1'), EGUSI] }),
       panel: null,
-      told: 'And a side? removed from Jollof rice.',
+      told: removedLine(jollof(JOLLOF_ITEMS), SIDE),
     }),
   removedOne: () =>
     start({
@@ -616,7 +616,7 @@ const STATES = {
         ],
       }),
       panel: null,
-      told: 'And a side? removed from Jollof rice.',
+      told: removedLine(jollof(JOLLOF_ITEMS), SIDE),
     }),
   fold: () =>
     start({
