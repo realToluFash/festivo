@@ -314,7 +314,7 @@ describe('Events Home (sc-3594)', () => {
   }
 
   function starts(title: string, at: string) {
-    return { at, title, note: null, owner: 'event', area: 'events', action: null };
+    return { at, title, note: null, owner: 'event', area: 'events', action: null, done: false };
   }
 
   function finished(count: number) {
@@ -5213,7 +5213,7 @@ describe('Make live asks for a missing host (sc-22143)', () => {
 
 describe("An event's timeline: Coming up and All dates (sc-3624)", () => {
   function milestone(at: string, title: string, owner = 'event') {
-    return { at, title, note: null, owner, area: 'events', action: null };
+    return { at, title, note: null, owner, area: 'events', action: null, done: false };
   }
 
   const MADRID = {

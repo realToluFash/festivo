@@ -6170,6 +6170,9 @@ describe('Share tables with guests (sc-4022)', () => {
     fireEvent.click(within(ask).getByRole('button', { name: 'Share tables' }));
 
     expect(await screen.findByText('Tables are shared with guests')).toBeDefined();
+    expect(
+      screen.getByText('Since Tue, Nov 17. Each guest’s page follows the plan as you change it.'),
+    ).toBeDefined();
     expect(sent.find((one) => one.line.startsWith('PATCH'))?.body).toEqual({ shared: true });
     expect(screen.queryByRole('alertdialog')).toBeNull();
 
@@ -6217,7 +6220,7 @@ describe('Share tables with guests (sc-4022)', () => {
     expect(screen.getByText('Choose a date, or leave Share by empty.')).toBeDefined();
     fireEvent.change(field, { target: { value: '2030-11-14' } });
     save();
-    expect(screen.getByText(/^Choose a date before the event, /)).toBeDefined();
+    expect(screen.getByText('Choose a date before the event, Thu, Nov 14.')).toBeDefined();
     fireEvent.change(field, { target: { value: '2020-01-01' } });
     save();
     expect(screen.getByText('Choose today or a later date.')).toBeDefined();
@@ -6228,8 +6231,9 @@ describe('Share tables with guests (sc-4022)', () => {
     save();
 
     expect(
-      await screen.findByText(/^Share tables by .*\. Nothing is shared until you share it\.$/),
+      await screen.findByText('Share tables by Fri, Nov 1. Nothing is shared until you share it.'),
     ).toBeDefined();
+    expect(screen.getByText('Fri, Nov 1')).toBeDefined();
     expect(sent.find((one) => one.line.startsWith('PATCH'))?.body).toEqual({
       shareBy: '2030-11-01',
     });
