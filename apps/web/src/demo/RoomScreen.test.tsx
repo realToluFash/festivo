@@ -128,10 +128,14 @@ describe('Show on a screen on the Schedule (sc-3897)', () => {
     );
     fireEvent.click(within(ballroom).getByRole('button', { name: 'Replace link' }));
     expect(document.activeElement?.textContent).toBe('Keep this link');
+    fireEvent.click(within(ballroom).getByRole('button', { name: 'Keep this link' }));
+    expect(document.activeElement?.id).toBe('ss-ballroom-replace');
+    fireEvent.click(within(ballroom).getByRole('button', { name: 'Replace link' }));
     fireEvent.click(within(ballroom).getByRole('button', { name: 'Replace link' }));
     expect(
       within(ballroom).getByText('Replaced at 17:25. The old link shows nothing.'),
     ).toBeDefined();
+    expect(document.activeElement?.id).toBe('ss-ballroom-replace');
   });
 
   it('says so and selects the link when the browser refuses the copy', SLOW, async () => {
