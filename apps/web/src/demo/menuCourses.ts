@@ -153,6 +153,8 @@ export const CW = {
   noMatch: (q: string) => `No dish name has “${q}” in it.`,
   libraryLoading: 'Loading the menu library…',
   libraryEmpty: 'The menu library has no dishes yet.',
+  libraryFailed: 'The menu library did not load.',
+  libraryFailedBody: 'Check your connection, then try again.',
   startNewBlank: 'Start a new dish',
   startNew: (q: string) => `Start a new dish called “${q}”`,
   add: 'Add',
@@ -672,6 +674,10 @@ export interface CoursesStart {
   library?: readonly LibDish[];
   /** The menu has loaded and the library Add dish lists has not yet. */
   libraryLoading?: boolean;
+  /** The menu has loaded and the library Add dish lists did not. */
+  libraryFailed?: boolean;
+  /** Try again on a library that did not load fails once more, then loads. */
+  libraryRetryFails?: boolean;
 }
 
 function start(over: Partial<CoursesStart> & { name: string; note: string }): CoursesStart {
@@ -795,6 +801,21 @@ const STATES = {
       note: 'Opened before the library has loaded: the count line says so over three bones, and no line quotes a search. New dish works meanwhile.',
       opened: { kind: 'addDish', courseId: MAIN, tab: 'library' },
       libraryLoading: true,
+    }),
+  addDishLibraryFailed: () =>
+    start({
+      name: 'Add dish, the library did not load',
+      note: 'The library request failed: says so with Try again, never that the library is empty. New dish works meanwhile.',
+      opened: { kind: 'addDish', courseId: MAIN, tab: 'library' },
+      libraryFailed: true,
+    }),
+  addDishLibraryFailsAgain: () =>
+    start({
+      name: 'Add dish, the library did not load, twice',
+      note: 'Try again loads, fails again and comes back to the same state; a second Try again loads the list.',
+      opened: { kind: 'addDish', courseId: MAIN, tab: 'library' },
+      libraryFailed: true,
+      libraryRetryFails: true,
     }),
   addDishEmptyLibrary: () =>
     start({
@@ -1697,6 +1718,8 @@ export const COURSES_PAGES: readonly { name: string; states: readonly DemoLink[]
       [
         'addDish',
         'addDishLoading',
+        'addDishLibraryFailed',
+        'addDishLibraryFailsAgain',
         'addDishNoMatch',
         'addDishEmptyLibrary',
         'addDishSame',
