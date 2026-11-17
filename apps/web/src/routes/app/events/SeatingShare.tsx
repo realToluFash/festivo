@@ -1,5 +1,5 @@
 import { ApiError, type SeatingPlan } from '@soirely/api-client';
-import { wallDay } from '@soirely/domain';
+import { formatWallDay, wallDay } from '@soirely/domain';
 import { useId, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 
@@ -9,7 +9,7 @@ import { Ask, Mark, TextAction } from '../../../components/SettingsParts.tsx';
 import { dateLocale } from '../../../i18n/index.ts';
 import { useServerNow } from '../../../serverNow.ts';
 import { type PlanApi } from './SeatingParts.tsx';
-import { shareDay, sharedCounts, shareByRefusal } from './seatingShare.ts';
+import { sharedCounts, shareByRefusal } from './seatingShare.ts';
 import '../../../components/eventPage.css';
 import './seatingShare.css';
 
@@ -130,7 +130,7 @@ function Shared({
 }) {
   const { t } = useTranslation();
   const { sharedAt, shareBy } = plan.sharing;
-  const day = sharedAt == null ? '' : shareDay(sharedAt.slice(0, 10), dateLocale());
+  const day = sharedAt == null ? '' : formatWallDay(sharedAt.slice(0, 10), dateLocale());
 
   return (
     <>
@@ -189,7 +189,7 @@ function ShareBy({ ctx, plan, onSaved }: { ctx: PlanApi; plan: SeatingPlan; onSa
     }
     setRefusal(
       refused === 'afterEvent'
-        ? t('seating.share.refusedAfterEvent', { day: shareDay(eventDay, locale) })
+        ? t('seating.share.refusedAfterEvent', { day: formatWallDay(eventDay, locale) })
         : refused === 'past'
           ? t('seating.share.refusedPast')
           : t('seating.share.refusedEmpty'),
@@ -233,7 +233,7 @@ function ShareBy({ ctx, plan, onSaved }: { ctx: PlanApi; plan: SeatingPlan; onSa
     );
 
   if (shareBy == null) return null;
-  const day = shareDay(shareBy, locale);
+  const day = formatWallDay(shareBy, locale);
 
   return (
     <div className="st-share-by">

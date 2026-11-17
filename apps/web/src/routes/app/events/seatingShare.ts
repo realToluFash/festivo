@@ -1,5 +1,4 @@
 import { type SeatingPlan } from '@soirely/api-client';
-import { formatEventWeekday } from '@soirely/domain';
 
 export type ShareByRefusal = 'empty' | 'afterEvent' | 'past';
 
@@ -14,11 +13,6 @@ export function shareByRefusal(
   if (typed < today) return 'past';
 
   return null;
-}
-
-/** A wall day as the demo writes it, "Wednesday, Nov 4". */
-export function shareDay(day: string, locale: string): string {
-  return formatEventWeekday(`${day}T12:00:00Z`, 'UTC', locale);
 }
 
 /** {n} counts Coming guests in a chair and {u} Coming guests without one, as sc-4016 counts them. */
