@@ -7,9 +7,11 @@ export const OTHER = 'Grace Udo';
 export const COURSE = 'Mains';
 export const BEHIND_AFTER = 20;
 
-export type Word = 'behind' | 'serve' | 'tray' | 'kitchen' | 'notHere' | 'notFired' | 'served';
+export type Word =
+  'choice' | 'behind' | 'serve' | 'tray' | 'kitchen' | 'notHere' | 'notFired' | 'served';
 
 export const WORD_ORDER: readonly Word[] = [
+  'choice',
   'behind',
   'serve',
   'tray',
@@ -20,6 +22,7 @@ export const WORD_ORDER: readonly Word[] = [
 ];
 
 export const WORD: Record<Word, string> = {
+  choice: 'Waiting for a choice',
   behind: 'Behind',
   serve: 'To serve',
   tray: 'On a tray',
@@ -37,6 +40,7 @@ export const KEY: readonly { word: Word; label: string }[] = WORD_ORDER.map((w) 
 export type Stage = 'To serve' | 'Dishing' | 'Checked' | 'On its way' | 'Served';
 export type SeatState =
   | Stage
+  | 'Waiting for a choice'
   | 'Waiting on the kitchen'
   | 'Not here yet'
   | 'Nothing for this course'
@@ -161,6 +165,7 @@ export function isBehind(t: RoomTable): boolean {
 }
 
 export function wordOf(t: RoomTable): Word {
+  if (t.has.choice === true) return 'choice';
   if (isBehind(t)) return 'behind';
   return WORD_ORDER.find((w) => w !== 'behind' && t.has[w] === true) ?? 'served';
 }

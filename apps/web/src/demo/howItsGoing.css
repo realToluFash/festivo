@@ -10,6 +10,7 @@
 }
 
 .hig-desk {
+  position: relative;
   display: flex;
   height: 800px;
 }
@@ -313,7 +314,8 @@
 .hig-count-list {
   display: grid;
   flex: 1;
-  grid-template-columns: repeat(4, minmax(0, 1fr));
+  grid-auto-columns: minmax(0, 1fr);
+  grid-auto-flow: column;
   gap: var(--spaceMd);
   margin: 0;
   padding: 0;
