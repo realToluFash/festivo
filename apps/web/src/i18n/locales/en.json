@@ -4124,6 +4124,8 @@
     "foundOf_other": "{{shown, number}} of {{count, number}} dishes",
     "noMatch": "No dish name has “{{query}}” in it.",
     "libraryEmpty": "The menu library has no dishes yet.",
+    "libraryFailed": "The menu library did not load.",
+    "libraryFailedBody": "Check your connection, then try again.",
     "startNew": "Start a new dish called “{{query}}”",
     "startNewBlank": "Start a new dish",
     "add": "Add",
