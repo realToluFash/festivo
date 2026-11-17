@@ -668,7 +668,47 @@
   width: 100%;
 }
 
-/* At 40rem and under (WCAG 2.2 1.4.10): one column, one place at a time, the table folded to Starts and Item, the form as its own page. */
+/* At 720px and under the page beside the sidebar is narrower than a phone's, so the day tabs stack and the table folds to Starts and Item (sc-60699). */
+@media (width <= 720px) {
+  .ro-days {
+    align-self: stretch;
+  }
+
+  .ro-day {
+    flex: 1;
+    flex-direction: column;
+    min-height: 56px;
+    padding: var(--spaceXs) var(--spaceSm);
+    line-height: 1.25;
+  }
+
+  .ro-day-sep {
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    overflow: hidden;
+    clip-path: inset(50%);
+  }
+
+  .ro-day-count {
+    font-weight: 400;
+  }
+
+  .ro-table .ro-wide {
+    display: none;
+  }
+
+  .ro-table .ro-starts {
+    width: 72px;
+    padding-left: var(--spaceXs);
+  }
+
+  .ro-under {
+    display: block;
+  }
+}
+
+/* At 40rem and under (WCAG 2.2 1.4.10): one column, one place at a time, the form as its own page. */
 @media (width <= 40rem) {
   .ro.desk-page {
     padding: var(--spaceLg) var(--spaceMd) var(--space3xl);
@@ -702,30 +742,6 @@
     height: 48px;
   }
 
-  .ro-days {
-    align-self: stretch;
-  }
-
-  .ro-day {
-    flex: 1;
-    flex-direction: column;
-    min-height: 56px;
-    padding: var(--spaceXs) var(--spaceSm);
-    line-height: 1.25;
-  }
-
-  .ro-day-sep {
-    position: absolute;
-    width: 1px;
-    height: 1px;
-    overflow: hidden;
-    clip-path: inset(50%);
-  }
-
-  .ro-day-count {
-    font-weight: 400;
-  }
-
   .ro-picker {
     display: block;
   }
@@ -745,19 +761,6 @@
     overflow: hidden;
     clip-path: inset(50%);
     white-space: nowrap;
-  }
-
-  .ro-table .ro-wide {
-    display: none;
-  }
-
-  .ro-table .ro-starts {
-    width: 72px;
-    padding-left: var(--spaceXs);
-  }
-
-  .ro-under {
-    display: block;
   }
 
   .ro.is-form .ro-chrome,

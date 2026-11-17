@@ -232,7 +232,7 @@ describe('The event’s Schedule (sc-3893)', () => {
     const tab = (await screen.findAllByRole('tab'))[0] as HTMLElement;
     expect(tab.closest('.shell-content .ev-page.desk-page')).not.toBeNull();
     expect(
-      cssRule('.shell-content.is-card .desk-page', STYLES.slice(STYLES.indexOf('(width > 60rem)'))),
+      cssRule('.shell-content.is-card .desk-page', STYLES.slice(STYLES.indexOf('(width > 40rem)'))),
     ).toContain('padding: 0;');
   });
 
@@ -808,6 +808,7 @@ describe('Show on a screen (sc-3897)', () => {
     expect(within(row).getByText('Replaced at 17:25. The old link shows nothing.')).toBeDefined();
     expect(said()).toBe('Screen link for Garden replaced.');
     expect(sent.find(({ line }) => line.endsWith('/replace'))?.body).toEqual({ place: 'Garden' });
+    expect(document.activeElement).toBe(within(row).getByRole('button', { name: 'Replace link' }));
   });
 
   it('holds three rows and says so while the links load', async () => {
@@ -866,7 +867,7 @@ describe('Show on a screen (sc-3897)', () => {
     expect(document.activeElement).toBe(within(row).getByRole('button', { name: 'Replace link' }));
   });
 
-  it('keeps the link when Keep this link is pressed', async () => {
+  it('keeps the link when Keep this link is pressed, back on that row’s Replace link', async () => {
     const sent = await onSchedule(withLinks());
     fireEvent.click(await screen.findByRole('button', { name: 'Show on a screen' }));
     const row = (await rowsOf())[0]!;
@@ -875,6 +876,7 @@ describe('Show on a screen (sc-3897)', () => {
     fireEvent.click(within(row).getByRole('button', { name: 'Keep this link' }));
 
     expect(within(row).getByRole('button', { name: 'Copy screen link' })).toBeDefined();
+    expect(document.activeElement).toBe(within(row).getByRole('button', { name: 'Replace link' }));
     expect(sent.some(({ line }) => line.endsWith('/replace'))).toBe(false);
   });
 });

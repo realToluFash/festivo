@@ -4,15 +4,18 @@ declare(strict_types=1);
 
 namespace App\Domain\Menu\Controller;
 
+use App\Domain\Menu\ChoiceRules;
 use App\Domain\Menu\CourseRules;
 use App\Domain\Menu\DishRules;
 use App\Domain\Menu\Http\MenuSerialiser;
 use App\Domain\Menu\MenuEditor;
+use App\Domain\Menu\Model\UnwarnedOption;
 use App\Domain\Menu\Model\UnwarnedPickers;
 use App\Domain\Menu\VariantRules;
 use App\Entity\Event;
 use App\Entity\MenuCourse;
 use App\Entity\MenuDish;
+use App\Entity\MenuDishChoice;
 use App\Entity\MenuDishVariant;
 use App\Entity\User;
 use App\Enum\ErrorCode;
@@ -28,6 +31,7 @@ use App\Repository\EventRepository;
 use App\Repository\MenuDishVariantRepository;
 use Psl\Iter;
 use Psl\Type;
+use Psl\Vec;
 use Symfony\Bundle\SecurityBundle\Security;
 use Symfony\Component\HttpFoundation\JsonResponse;
 use Symfony\Component\HttpFoundation\Request;
@@ -227,6 +231,47 @@ final readonly class MenuController
     {
         $event = $this->event($eventId);
         $this->menuEditor->removeVariant($event, $variant, $this->user());
+
+        return $this->menu($event);
+    }
+
+    /** A question inside the dish, saved as a draft while unfinished. 409 `choice_limit` at 3, and `menu_dish_picked` on a picked dish, until sc-3913. */
+    #[Route('/api/events/{eventId}/menu/dishes/{dishId}/choices', name: 'menu_choices_add', methods: ['POST'])]
+    #[InEvent(Permission::MenuManage)]
+    public function addChoice(Request $request, string $eventId, #[InThisEvent('dishId')] MenuDish $dish): JsonResponse
+    {
+        $event = $this->event($eventId);
+        $choice = $this->menuEditor->addChoice($event, $dish, Input::body($request, ChoiceRules::sent()), $this->user());
+
+        return $this->menu($event, Response::HTTP_CREATED, ['choiceId' => $choice->getId()->toRfc4122()]);
+    }
+
+    /** `unwarned` has a line per picked option given an allergen somebody who picked it has recorded, until sc-3913. */
+    #[Route('/api/events/{eventId}/menu/choices/{choiceId}', name: 'menu_choices_change', methods: ['PUT'])]
+    #[InEvent(Permission::MenuManage)]
+    public function changeChoice(Request $request, string $eventId, #[InThisEvent('choiceId')] MenuDishChoice $choice): JsonResponse
+    {
+        $event = $this->event($eventId);
+        $unwarned = $this->menuEditor->changeChoice($event, $choice, Input::body($request, ChoiceRules::sent()), $this->user());
+
+        return $this->menu($event, Response::HTTP_OK, [
+            'choiceId' => $choice->getId()->toRfc4122(),
+            'unwarnedOptions' => Vec\map($unwarned, static fn (UnwarnedOption $one): array => [
+                'optionId' => $one->optionId,
+                'option' => $one->option,
+                'count' => $one->pickers->count,
+                'allergens' => $one->pickers->allergens,
+            ]),
+        ]);
+    }
+
+    /** 409 `choice_answered` once guests have answered it, until sc-3913. */
+    #[Route('/api/events/{eventId}/menu/choices/{choiceId}', name: 'menu_choices_remove', methods: ['DELETE'])]
+    #[InEvent(Permission::MenuManage)]
+    public function removeChoice(string $eventId, #[InThisEvent('choiceId')] MenuDishChoice $choice): JsonResponse
+    {
+        $event = $this->event($eventId);
+        $this->menuEditor->removeChoice($event, $choice, $this->user());
 
         return $this->menu($event);
     }

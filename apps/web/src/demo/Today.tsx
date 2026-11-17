@@ -26,9 +26,8 @@ import { Banner, type BannerActions, NowBanner } from '../components/TodayBanner
 import { RunNowBanner } from '../components/TodayRunBanner.tsx';
 import { RunNowAsOfBanner } from './TodayRunAsOf.tsx';
 import { isReadsState, useNowReads } from './NowReads.tsx';
-import { FirstRun, YourEvents } from '../components/TodayParts.tsx';
+import { FirstRun, ThisWeek, YourEvents } from '../components/TodayParts.tsx';
 import { NeedsYou } from './TodayParts.tsx';
-import { ThisWeek } from './TodayWeek.tsx';
 import { TodaySidebar } from './TodaySidebar.tsx';
 import { isNowState, runNowOf, runWordsOf, trackAt } from './todayRun.ts';
 import { nightAtUrl } from './night.ts';

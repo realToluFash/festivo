@@ -13,9 +13,9 @@ import {
   rowWords,
   sayIn,
   shown,
-  lettersAtEveryWidth,
   weekIn,
 } from './today.ts';
+import { lettersAtEveryWidth } from '../components/today.ts';
 
 const us = sayIn('en-US');
 const gb = sayIn('en-GB');

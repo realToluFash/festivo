@@ -31,7 +31,7 @@ function told(): void {
   heard.forEach((listener) => listener());
 }
 
-/** The event, once its page has loaded it, for the band's crumb and the head of the event's sidebar. */
+/** The event, once its page has loaded it, for the head of the event's sidebar. */
 export function useShowEvent(eventId: string, event: OrganisationEvent | undefined): void {
   useEffect(() => {
     if (event == null) return;
@@ -57,10 +57,6 @@ export function useShownEvent(eventId: string | undefined): OrganisationEvent | 
   );
 
   return now != null && now.eventId === eventId ? now.event : undefined;
-}
-
-export function useShownEventName(eventId: string | undefined): string | undefined {
-  return useShownEvent(eventId)?.name;
 }
 
 let gone: string | null = null;

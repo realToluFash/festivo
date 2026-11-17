@@ -301,7 +301,7 @@ span {
   background: var(--colorNeutralFill);
 }
 
-/* Below a desk, page 29's header band: the crumb and the bell (sc-26270); at a desk each page's own top has the bell (sc-39509). */
+/* At a phone, the bell beside the bar (sc-26270); wider, each page's own top has the bell (sc-39509, sc-60699). */
 .shell-band {
   display: flex;
   align-items: center;
@@ -314,20 +314,6 @@ span {
   border: 1px solid var(--colorBorder);
   border-bottom: var(--borderHeader);
   border-radius: var(--radiusCardLarge) var(--radiusCardLarge) 0 0;
-}
-
-.shell-crumb {
-  flex: 1;
-  min-width: 0;
-  margin: 0;
-  font: var(--typeBody);
-  color: var(--colorInkSecondary);
-  overflow-wrap: anywhere;
-}
-
-.shell-crumb b {
-  font-weight: 600;
-  color: var(--colorInk);
 }
 
 /* Today's desk frame (sc-30410): the sidebar stays in view on the fill while the page scrolls in its card,
@@ -365,7 +351,8 @@ span {
   background: var(--colorCard);
 }
 
-@media (width > 60rem) {
+/* From 641 px the sidebar is beside the page (sc-60699). */
+@media (width > 40rem) {
   /* At a desk no page has the band (sc-39471, sc-39509): the page is one card 10 from the window's edges, and it scrolls inside the card. */
   .shell.is-bandless {
     grid-template-rows: 1fr;
@@ -786,22 +773,22 @@ span {
   }
 }
 
-/* ── Narrower than a tablet ───────────────────────────────────────────────────
- *
- * Only the surfaces that exist at this width: billing, account and
- * organisation settings, the guest pages and the public pages. Event
- * management is not responsive down to a phone — it is in the app, and a
- * narrow browser reaching for it gets the handoff rather than a cramped table.
- */
-
 @media (width <= 60rem) {
-  /* One column filling the window would share the spare height with the sidebar. */
+  .public-header {
+    padding: var(--spaceXl);
+  }
+}
+
+/* ── A phone: one bar, its links behind Menu (sc-13413) ───────────────────── */
+
+@media (width <= 40rem) {
+  /* The bar keeps the bell at its end (the language picker is in Menu's sheet). */
   .shell {
     --shellBlock: var(--spaceXl);
     --shellInline: var(--spaceXl);
 
-    grid-template-columns: minmax(0, 1fr);
-    grid-template-rows: auto auto 1fr;
+    grid-template-columns: minmax(0, 1fr) auto;
+    grid-template-rows: auto 1fr;
   }
 
   .shell-sidebar {
@@ -809,10 +796,6 @@ span {
     grid-row: auto;
     height: auto;
     border-bottom: var(--borderCard);
-  }
-
-  .shell-sidebar .today-side {
-    height: auto;
   }
 
   .shell-sidebar .today-places {
@@ -835,31 +818,9 @@ span {
   }
 
   .shell-band {
-    border-bottom: var(--borderHeader);
-  }
-
-  .public-header {
-    padding: var(--spaceXl);
-  }
-}
-
-/* ── A phone: one bar, its links behind Menu (sc-13413) ───────────────────── */
-
-@media (width <= 40rem) {
-  /* The bar keeps the bell at its end; the crumb goes (the language picker is in Menu's sheet). */
-  .shell {
-    grid-template-columns: minmax(0, 1fr) auto;
-    grid-template-rows: auto 1fr;
-  }
-
-  .shell-band {
     padding: 0 var(--spaceLg) 0 0;
     background: var(--colorCard);
     border-bottom: var(--borderCard);
-  }
-
-  .shell-crumb {
-    display: none;
   }
 
   .shell-content {
@@ -868,6 +829,7 @@ span {
 
   .shell-sidebar .today-side {
     flex-direction: row;
+    height: auto;
     align-items: center;
     gap: var(--spaceMd);
     padding: var(--spaceSm) var(--spaceLg);
