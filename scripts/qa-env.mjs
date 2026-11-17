@@ -20,7 +20,7 @@ import {
   writeFileSync,
 } from 'node:fs';
 import { homedir, hostname, networkInterfaces, tmpdir } from 'node:os';
-import { basename, dirname, extname, join, resolve } from 'node:path';
+import { basename, dirname, extname, join, posix, resolve } from 'node:path';
 import { Readable } from 'node:stream';
 import { pipeline } from 'node:stream/promises';
 import { fileURLToPath } from 'node:url';
@@ -3097,31 +3097,38 @@ export function composeBatch(
   const finish = (flow) => (onAndroid ? forAndroid(flow) : flow);
   aloneFlows(source, target, { catalogues, email, onAndroid, skipChecks: true });
   mkdirSync(join(target, '_checks'));
-  const subFlows = (flow, language, caller, chain) =>
+  const subFlows = (flow, language, caller, chain, dir = '') =>
     flow.replace(
-      /^(\s*(?:-\s*runFlow|file):\s*)(['"]?)([\w.-]+)\.ya?ml\2(?=\s*$)/gm,
-      (line, key, quote, name) => {
-        if (!existsSync(join(source, 'checks', `${name}.yaml`))) return line;
+      /^(\s*(?:-\s*runFlow|file):\s*)(['"]?)([\w./-]+)\.ya?ml\2(?=\s*$)/gm,
+      (line, key, quote, ref) => {
+        const name = posix.relative('checks', posix.join('checks', dir, ref));
+        if (name.startsWith('../') || !existsSync(join(source, 'checks', `${name}.yaml`)))
+          return line;
         if (chain.includes(name))
           throw new Error(`${[...chain, name].join(' → ')}: a check runs itself`);
-        const id = `${caller}.${name}`;
-        const path = join(target, '_checks', `${id}.flow.yaml`);
+        const id = `${caller}.${name.replaceAll('/', '.')}`;
+        const file = posix.join(posix.dirname(name), `${id}.flow.yaml`);
+        const path = join(target, '_checks', file);
         if (!existsSync(path)) {
           const sub = readFileSync(join(source, 'checks', `${name}.yaml`), 'utf8');
+          mkdirSync(dirname(path), { recursive: true });
           writeFileSync(
             path,
             finish(
               prefixShots(
-                subFlows(localise(sub, catalogues, language, { email }), language, id, [
-                  ...chain,
-                  name,
-                ]),
+                subFlows(
+                  localise(sub, catalogues, language, { email }),
+                  language,
+                  id,
+                  [...chain, name],
+                  posix.dirname(name),
+                ),
                 id,
               ),
             ),
           );
         }
-        return `${key}${id}.flow.yaml`;
+        return `${key}${posix.relative(dir, file)}`;
       },
     );
   for (const run of batchRuns(checks, languages)) {
