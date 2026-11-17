@@ -7,8 +7,8 @@ namespace App\Domain\Guest\Export;
 use Psl\Iter;
 use Psl\Str;
 
-/** A cell a spreadsheet would read as a formula is written as text: a guest named "=HYPERLINK(…)" runs nothing in the caterer's spreadsheet (OWASP, CSV Injection). */
-final readonly class SpreadsheetCell
+/** A CSV carries no types, so a cell Excel would read as a formula is written as text: a guest named "=HYPERLINK(…)" runs nothing in the caterer's spreadsheet (OWASP, CSV Injection). */
+final readonly class CsvCell
 {
     private const array FORMULA_STARTS = ['=', '+', '-', '@', "\t", "\r"];
 

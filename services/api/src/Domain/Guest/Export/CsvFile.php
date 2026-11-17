@@ -4,9 +4,10 @@ declare(strict_types=1);
 
 namespace App\Domain\Guest\Export;
 
+use Psl\Vec;
 use RuntimeException;
 
-/** UTF-8 with a byte order mark, so Excel opens accents as they were typed. */
+/** UTF-8 with a byte order mark, so Excel opens accents as they were typed, and every cell made safe to open (CsvCell). */
 final readonly class CsvFile
 {
     private const string BOM = "\u{FEFF}";
@@ -17,7 +18,7 @@ final readonly class CsvFile
         $stream = \fopen('php://temp', 'r+') ?: throw new RuntimeException('No memory stream for the CSV file.');
 
         foreach ($rows as $row) {
-            \fputcsv($stream, $row, ',', '"', '', "\r\n");
+            \fputcsv($stream, Vec\map($row, CsvCell::safe(...)), ',', '"', '', "\r\n");
         }
 
         \rewind($stream);

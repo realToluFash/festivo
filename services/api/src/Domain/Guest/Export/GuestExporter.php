@@ -58,10 +58,7 @@ final readonly class GuestExporter
 
         $rows = [
             $this->headings($needs),
-            ...Vec\map($picked, fn (Guest $person): array => Vec\map(
-                $this->row($person, $places, $recorded, $zone),
-                SpreadsheetCell::safe(...),
-            )),
+            ...Vec\map($picked, fn (Guest $person): array => $this->row($person, $places, $recorded, $zone)),
         ];
         $name = $this->fileName($event, $format, $zone);
 

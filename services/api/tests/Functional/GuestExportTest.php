@@ -123,12 +123,31 @@ final class GuestExportTest extends ApiTestCase
 
     #[Test]
     #[DataProvider('formulaStarts')]
-    public function aCellThatWouldBeReadAsAFormulaIsWrittenAsText(string $start): void
+    public function aCsvCellThatWouldBeReadAsAFormulaIsPrefixedWithAQuote(string $start): void
     {
         $guest = $this->add(['fullName' => 'Bisi', 'group' => ['name' => $start . 'HYPERLINK("http://x")']]);
 
         self::assertSame("'" . $start . 'HYPERLINK("http://x")', $this->csv($this->export('csv', [$this->id($guest)]))[1][2]);
-        self::assertSame("'" . $start . 'HYPERLINK("http://x")', $this->xlsx($this->export('xlsx', [$this->id($guest)]))[1][2]);
+    }
+
+    #[Test]
+    public function aCsvMobileNumberKeepsItsPlusBehindAQuote(): void
+    {
+        $guest = $this->add(['fullName' => 'Bisi', 'mobile' => ['countryCode' => 'NG', 'number' => '0803 123 4567']]);
+
+        self::assertSame("'+2348031234567", $this->csv($this->export('csv', [$this->id($guest)]))[1][6]);
+    }
+
+    #[Test]
+    #[DataProvider('formulaStarts')]
+    public function anExcelCellIsTextWithNothingAdded(string $start): void
+    {
+        $guest = $this->add(['fullName' => '=1+1', 'mobile' => ['countryCode' => 'NG', 'number' => '0803 123 4567'], 'group' => ['name' => $start . 'HYPERLINK("http://x")']]);
+
+        $raw = $this->export('xlsx', [$this->id($guest)]);
+
+        self::assertSame(['=1+1', '', $start . 'HYPERLINK("http://x")'], Vec\take($this->xlsx($raw)[1], 3));
+        self::assertSame('+2348031234567', $this->xlsx($raw)[1][6]);
     }
 
     #[Test]
@@ -268,7 +287,7 @@ final class GuestExportTest extends ApiTestCase
         return $rows;
     }
 
-    /** @return list<list<string>> each row's cells, as Excel would read them */
+    /** @return list<list<string>> each row's cells, as Excel would read them: text, never a formula */
     private function xlsx(string $raw): array
     {
         $path = Filesystem\create_temporary_file();
@@ -283,10 +302,12 @@ final class GuestExportTest extends ApiTestCase
 
         $document = new DOMDocument();
         self::assertTrue($document->loadXML($sheet));
+        self::assertSame(0, $document->getElementsByTagName('f')->length);
         $rows = [];
         foreach ($document->getElementsByTagName('row') as $row) {
             $cells = [];
             foreach ($row->getElementsByTagName('c') as $cell) {
+                self::assertSame('inlineStr', $cell->getAttribute('t'));
                 $cells[] = $cell->textContent;
             }
             $rows[] = $cells;
