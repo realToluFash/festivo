@@ -4,13 +4,14 @@ import {
   type Chair,
   type Detail,
   type Item,
-  type Person,
   type Plan,
   type Point,
+  type Rings,
   CHAIR_R,
   SW,
   chairWord,
   chairsOf,
+  chosenWords,
   extent,
   filled,
   initials,
@@ -34,7 +35,7 @@ export interface Look {
   faint: ReadonlySet<string>;
   overlap: ReadonlySet<string>;
   focus: string | null;
-  rings: Readonly<Record<string, Person>>;
+  rings: Rings;
   handles: string | null;
   chair: { id: string; i: number } | null;
   chairsFor: string | null;
@@ -48,6 +49,10 @@ export interface RoomHands {
   onChair?: (id: string, index: number) => void;
   onHandleDown?: (event: PointerEvent<SVGRectElement>, id: string, handle: Handle) => void;
 }
+
+/** Each further colleague's ring sits outside the last: its 2 px white gap, then its 3 px line, fixed at every zoom. */
+const RING_STEP = 5;
+const PILL_STEP = 24;
 
 const SEC_CLASS: Record<string, string> = {
   Blue: 'is-blue',
@@ -231,7 +236,9 @@ function ItemDrawing({
   const chosen = look.chosen.has(item.id);
   const lit = chosen || look.lit.has(item.id);
   const faint = look.faint.has(item.id);
-  const ring = look.rings[item.id];
+  const choices = (look.rings[item.id] ?? []).filter((one) => !one.who.viewer);
+  const onItem = choices.filter((one) => one.seat == null || detail === 'out');
+  const onSeat = detail === 'out' ? [] : choices.filter((one) => one.seat != null);
   const rot = `translate(${f(cx)} ${f(cy)}) rotate(${item.rot})`;
   const shapes: ReactNode[] = [];
   const marks: ReactNode[] = [];
@@ -339,6 +346,7 @@ function ItemDrawing({
           : String(index + 1)
         : undefined;
       const picked = look.chair?.id === item.id && look.chair.i === index;
+      const seated = onSeat.filter((one) => one.seat === index);
       // From 50% the keyboard reaches the chosen table's chairs; a pointer only once each is a 44 target (sc-5030).
       const target = (near && look.chairsFor != null) || look.chairsFor === item.id;
 
@@ -358,6 +366,17 @@ function ItemDrawing({
         );
         return;
       }
+      seated.forEach(({ who }, k) => {
+        const rr = r + 5.5 + RING_STEP * k;
+
+        marks.push(
+          <g key={`seat${index}.${k}`} className={`st-ring p${who.tone}`}>
+            <circle className="st-ring-gap" cx={f(x)} cy={f(y)} r={f(rr)} />
+            <circle className="st-ring-line" cx={f(x)} cy={f(y)} r={f(rr + 1.5)} />
+            <Pill x={x - rr * 0.72} y={y - rr * 0.72 - PILL_STEP * k} words={who.initials} />
+          </g>,
+        );
+      });
       body.push(
         <g key={`c${index}`}>
           {picked && <circle className="st-lit" cx={f(x)} cy={f(y)} r={f(Math.max(r + 8, 26))} />}
@@ -375,11 +394,10 @@ function ItemDrawing({
               className={near ? 'st-chair-hit' : 'st-chair-hit is-keys'}
               role="button"
               tabIndex={look.chairsFor === item.id ? 0 : -1}
-              aria-label={say(SW.chairName, {
-                table: item.name,
-                n: index + 1,
-                word: chairWord(chair),
-              })}
+              aria-label={
+                say(SW.chairName, { table: item.name, n: index + 1, word: chairWord(chair) }) +
+                chosenWords(seated.map(({ who }) => ({ who })))
+              }
               aria-pressed={picked}
               cx={f(x)}
               cy={f(y)}
@@ -486,17 +504,18 @@ function ItemDrawing({
     );
   }
 
-  if (ring != null) {
-    const pad = lit ? 10 : 2;
+  onItem.forEach(({ who }, k) => {
+    const pad = (lit ? 10 : 2) + RING_STEP * k;
+    const lift = PILL_STEP * k;
 
     if (round) {
       const rr = ex * s + pad + 3.5;
 
       marks.push(
-        <g key="ring" className={`st-ring p${ring.tone}`}>
+        <g key={`ring${k}`} className={`st-ring p${who.tone}`}>
           <circle className="st-ring-gap" cx={f(cx)} cy={f(cy)} r={f(rr)} />
           <circle className="st-ring-line" cx={f(cx)} cy={f(cy)} r={f(rr + 1.5)} />
-          <Pill x={cx - rr * 0.72} y={cy - rr * 0.72} words={ring.initials} />
+          <Pill x={cx - rr * 0.72} y={cy - rr * 0.72 - lift} words={who.initials} />
         </g>,
       );
     } else {
@@ -505,8 +524,16 @@ function ItemDrawing({
       const [px, py] = turn([-gw, -gh], item.rot);
 
       marks.push(
-        <g key="ring" className={`st-ring p${ring.tone}`}>
+        <g key={`ring${k}`} className={`st-ring p${who.tone}`}>
           <g transform={rot}>
+            <rect
+              className="st-ring-gap"
+              x={f(-gw)}
+              y={f(-gh)}
+              width={f(2 * gw)}
+              height={f(2 * gh)}
+              rx="10"
+            />
             <rect
               className="st-ring-line"
               x={f(-gw - 1.5)}
@@ -516,11 +543,11 @@ function ItemDrawing({
               rx="10"
             />
           </g>
-          <Pill x={cx + px} y={cy + py} words={ring.initials} />
+          <Pill x={cx + px} y={cy + py - lift} words={who.initials} />
         </g>,
       );
     }
-  }
+  });
   if (look.overlap.has(item.id))
     marks.push(
       round ? (
@@ -588,15 +615,7 @@ function ItemDrawing({
         .join(' ')}
       role={faint ? undefined : 'button'}
       tabIndex={faint ? undefined : tabbable ? 0 : -1}
-      aria-label={
-        faint
-          ? undefined
-          : itemName(
-              plan,
-              item,
-              ring != null && !ring.viewer ? say(SW.chosenBy, { name: ring.name }) : '',
-            )
-      }
+      aria-label={faint ? undefined : itemName(plan, item, chosenWords(choices))}
       aria-pressed={faint ? undefined : chosen}
       aria-hidden={faint ? true : undefined}
       data-item={item.id}
