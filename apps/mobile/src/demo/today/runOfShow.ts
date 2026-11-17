@@ -200,6 +200,8 @@ export interface RunMoment extends Moment {
   run: RunNow;
   /** sc-29978's figure beside Next, as `ArrivedFigure` draws it; none before anyone has arrived. */
   figure: Figure | null;
+  /** sc-62416's line under the figure while `?reads=` is set, null when it does not show; undefined draws the product's Now. */
+  asOf?: string | null;
 }
 
 export function withRun(
