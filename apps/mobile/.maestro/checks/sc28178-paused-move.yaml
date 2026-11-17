@@ -22,7 +22,14 @@ appId: host.exp.Exponent
     visible: '{{t:accessPaused.since}}'
     timeout: 20000
 - assertVisible: '.*Alpha.*'
-- assertVisible: '{{t:accessPaused.nextTitle}}'
-- assertVisible:
-    id: 'accessPaused.switch'
+# On a phone the card's lower half sits below the fold.
+- scrollUntilVisible:
+    element: '{{t:accessPaused.nextTitle}}'
+    centerElement: true
+    timeout: 15000
+- scrollUntilVisible:
+    element:
+      id: 'accessPaused.switch'
+    centerElement: true
+    timeout: 15000
 - takeScreenshot: paused
