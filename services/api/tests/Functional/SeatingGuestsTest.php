@@ -321,6 +321,25 @@ final class SeatingGuestsTest extends ApiTestCase
     }
 
     #[Test]
+    public function aGuestsDetailsSayWhereEachCompanionSitsSoRemovingOneCanAskFirst(): void
+    {
+        $table = $this->addTable();
+        $ada = $this->guest('Ada Obi', ['Chidi Obi', 'Nneka Obi']);
+        $this->seat($ada, $table);
+        $this->as($this->owner, 'POST', $this->plan() . '/guests/unseat', ['guestIds' => [$this->companionId('Nneka Obi')]]);
+        self::assertSame(200, $this->statusCode(), Json\encode($this->last()));
+
+        $details = Type\shape(['guest' => Type\shape(['companions' => Type\vec(Type\shape(['fullName' => Type\nullable(Type\string()), 'seat' => Type\mixed()], true))], true)], true)
+            ->coerce($this->as($this->owner, 'GET', '/api/events/' . $this->eventId . '/guests/' . $ada));
+        $list = Type\shape(['guests' => Type\vec(Type\shape(['fullName' => Type\nullable(Type\string()), 'companions' => Type\vec(Type\shape(['seat' => Type\mixed()], true))], true))], true)
+            ->coerce($this->as($this->owner, 'GET', '/api/events/' . $this->eventId . '/guests'));
+        $listed = Iter\first(Vec\filter($list['guests'], static fn (array $guest): bool => 'Ada Obi' === $guest['fullName'])) ?? self::fail('no Ada');
+
+        self::assertSame([['kind' => 'table', 'name' => 'Table 1'], null], Vec\map($details['guest']['companions'], static fn (array $one): mixed => $one['seat']));
+        self::assertSame([['kind' => 'table', 'name' => 'Table 1'], null], Vec\map($listed['companions'], static fn (array $one): mixed => $one['seat']));
+    }
+
+    #[Test]
     public function savingAnEditThatRemovedASeatedCompanionFreesTheirChair(): void
     {
         $table = $this->addTable();

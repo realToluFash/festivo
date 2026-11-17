@@ -3328,7 +3328,8 @@
     "guestRemovedWith": "{{name}} removed, with {{companions}}.",
     "undoOpen": "Undo is open for 10 seconds.",
     "backOnList": "Back on the list. As they were, with their link, reply and companions.",
-    "alreadyRemoved": "{{name}} was already removed by someone else."
+    "alreadyRemoved": "{{name}} was already removed by someone else.",
+    "seatedLine": "{{name}} has a seat at {{table}}. Removing this companion frees the seat."
   },
   "guestNumbers": {
     "title": "Guests",

@@ -1,5 +1,6 @@
 import {
   ApiError,
+  type CompanionSeat,
   GUEST_ANSWERS,
   GUEST_NAME_MAXIMUM,
   type GroupChoice,
@@ -1693,6 +1694,7 @@ function EditForm({
         <EditCompanions
           host={values.fullName.trim() === '' ? host.fullName : values.fullName.trim()}
           companions={values.companions}
+          seatOf={(id) => host.companions.find((one) => one.id === id)?.seat ?? null}
           said={said}
           words={words}
           needs={{ problems: needsProblems, open: opened.open, toggle: opened.toggle }}
@@ -1725,10 +1727,11 @@ export function Amber({
   );
 }
 
-/** sc-1468's places, filled in: three shown, then "{n} more companions"; each removed at once, nothing seated or fed yet to ask about. */
+/** sc-1468's places, filled in: three shown, then "{n} more companions"; a companion with a seat is asked about first, and the seat is freed only when the edit is saved (sc-4013). */
 function EditCompanions({
   host,
   companions,
+  seatOf,
   said,
   words,
   needs,
@@ -1738,6 +1741,7 @@ function EditCompanions({
 }: {
   host: string;
   companions: Values['companions'];
+  seatOf: (id: string | null) => CompanionSeat | null;
   said: string | null;
   words: (key: string) => string | undefined;
   needs: CompanionNeeds;
@@ -1747,11 +1751,22 @@ function EditCompanions({
 }) {
   const { t } = useTranslation();
   const [all, setAll] = useState(false);
+  const [asking, setAsking] = useState<{
+    asks: { name: string; seat: CompanionSeat }[];
+    after: Values['companions'];
+    at: number | null;
+  } | null>(null);
+  const asked = asking?.asks[0];
   const count = companions.length;
   const seen = (at: number) => all || at < SHOWN_COMPANIONS || companions[at]?.id == null;
   const unseen = companions.filter((_, at) => !seen(at)).length;
   const placeholder = (at: number) =>
     at === 0 ? t('guestList.guestOf', { host }) : t('guestList.guestOfNth', { host, nth: at + 1 });
+  const shownAt = (at: number) => {
+    const name = companions[at]?.name.trim() ?? '';
+
+    return name === '' ? placeholder(at) : name;
+  };
 
   return (
     <fieldset className="gs-fieldset gs-companions">
@@ -1759,17 +1774,25 @@ function EditCompanions({
       <PlacesStepper
         host={host}
         names={companions.map((one) => one.name)}
-        onStep={(kept, added) =>
-          onChange([
+        onStep={(kept, added) => {
+          const after = [
             ...kept.flatMap((at) => companions[at] ?? []),
             ...Array.from({ length: added }, () => ({ id: null, name: '', needs: NO_NEEDS })),
-          ])
-        }
+          ];
+          const asks = companions.flatMap((one, at) => {
+            const seat = kept.includes(at) ? null : seatOf(one.id);
+
+            return seat == null ? [] : [{ name: shownAt(at), seat }];
+          });
+
+          if (asks.length > 0) setAsking({ asks, after, at: null });
+          else onChange(after);
+        }}
       />
       {companions.map((companion, at) => {
         if (!seen(at)) return null;
         const label = t('guestList.companionName', { nth: at + 1, total: count });
-        const shown = companion.name.trim() === '' ? placeholder(at) : companion.name.trim();
+        const shown = shownAt(at);
 
         return (
           <div key={companion.id ?? `new-${at}`} className="gs-companion-block">
@@ -1784,7 +1807,14 @@ function EditCompanions({
                 onChange(companions.map((each, index) => (index === at ? { ...each, name } : each)))
               }
               onRemove={() => {
-                onChange(companions.filter((_, index) => index !== at));
+                const after = companions.filter((_, index) => index !== at);
+                const seat = seatOf(companion.id);
+
+                if (seat != null) {
+                  setAsking({ asks: [{ name: shown, seat }], after, at });
+                  return;
+                }
+                onChange(after);
                 onSaid(t('guestList.removed', { name: shown }));
                 focus(`companion-${at + 1 < count ? at : at - 1}`, 'places');
               }}
@@ -1815,6 +1845,38 @@ function EditCompanions({
         >
           {t('guestList.moreCompanions', { count: unseen })}
         </button>
+      )}
+      {asking != null && asked != null && (
+        <Ask
+          key={asking.asks.length}
+          title={t('guestList.removeTitle', { name: asked.name })}
+          line={t('guestList.seatedLine', {
+            name: asked.name,
+            table:
+              asked.seat.kind === 'row'
+                ? t('seating.rowName', { label: asked.seat.name })
+                : asked.seat.name,
+          })}
+          keep={t('guestList.cancel')}
+          go={t('guestList.remove')}
+          onKeep={() => setAsking(null)}
+          onGo={() => {
+            const { asks, after, at } = asking;
+
+            if (asks.length > 1) {
+              setAsking({ ...asking, asks: asks.slice(1) });
+              return;
+            }
+            setAsking(null);
+            onChange(after);
+            if (at == null) {
+              focus('places');
+              return;
+            }
+            onSaid(t('guestList.removed', { name: asked.name }));
+            focus(`companion-${at + 1 < count ? at : at - 1}`, 'places');
+          }}
+        />
       )}
       {said != null && (
         <p className="gs-ok" role="status">

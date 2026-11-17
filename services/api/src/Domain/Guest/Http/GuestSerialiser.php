@@ -9,6 +9,9 @@ use App\Domain\Guest\Model\GuestNeeds;
 use App\Entity\Event;
 use App\Entity\Guest;
 use App\Entity\GuestGroup;
+use App\Entity\SeatAssignment;
+use App\Entity\SeatingRow;
+use App\Entity\SeatingTable;
 use App\Enum\GuestReply;
 use App\Enum\GuestStanding;
 use App\Enum\NeedKind;
@@ -16,6 +19,7 @@ use App\Locale\GuestLanguage;
 use App\Locale\SupportedLocales;
 use App\Repository\GuestGroupRepository;
 use App\Repository\GuestRepository;
+use App\Repository\SeatAssignmentRepository;
 use DateTimeZone;
 use Psl\Dict;
 use Psl\Iter;
@@ -28,6 +32,7 @@ final readonly class GuestSerialiser
         private GuestRepository $guestRepository,
         private GuestNeedsRecord $guestNeedsRecord,
         private GuestGroupRepository $guestGroupRepository,
+        private SeatAssignmentRepository $seatAssignmentRepository,
     ) {
     }
 
@@ -41,6 +46,7 @@ final readonly class GuestSerialiser
             static fn (Guest $companion): string => $companion->getHost()?->getId()->toRfc4122() ?? '',
         );
         $needs = $contacts ? $this->guestNeedsRecord->of($everybody) : null;
+        $seats = $this->seatsOf(Vec\filter($everybody, static fn (Guest $guest): bool => null !== $guest->getHost()));
         $countOf = static function (array $those) use ($companions): array {
             $theirs = Iter\reduce($those, static fn (int $sum, Guest $host): int => $sum + Iter\count($companions[$host->getId()->toRfc4122()] ?? []), 0);
 
@@ -48,7 +54,7 @@ final readonly class GuestSerialiser
         };
 
         return [
-            'guests' => Vec\map($hosts, static fn (Guest $host): array => self::guest($host, $companions[$host->getId()->toRfc4122()] ?? [], $needs)),
+            'guests' => Vec\map($hosts, static fn (Guest $host): array => self::guest($host, $companions[$host->getId()->toRfc4122()] ?? [], $needs, $seats)),
             'counts' => $countOf($hosts),
             'groups' => Vec\map($this->guestGroupRepository->findOnEvent($event), static fn (GuestGroup $group): array => [
                 ...self::group($group),
@@ -58,6 +64,35 @@ final readonly class GuestSerialiser
         ];
     }
 
+    /**
+     * @param list<Guest> $companions
+     *
+     * @return array<string, array{kind: string, name: string}>
+     */
+    private function seatsOf(array $companions): array
+    {
+        return Dict\from_entries(Vec\map(
+            $this->seatAssignmentRepository->findOfGuests($companions),
+            static fn (SeatAssignment $assignment): array => [$assignment->getGuest()->getId()->toRfc4122(), self::seat($assignment)],
+        ));
+    }
+
+    /**
+     * Where a companion sits, so removing them asks first (sc-4013): a row by its label, which each client words.
+     *
+     * @return array{kind: string, name: string}
+     */
+    private static function seat(SeatAssignment $assignment): array
+    {
+        $place = $assignment->getPlace();
+
+        return match (true) {
+            $place instanceof SeatingTable => ['kind' => 'table', 'name' => $place->getName()],
+            $place instanceof SeatingRow => ['kind' => 'row', 'name' => $place->getLabel()],
+            default => ['kind' => 'seat', 'name' => $place->getName()],
+        };
+    }
+
     /** @return array{id: string, name: string} */
     public static function group(GuestGroup $group): array
     {
@@ -65,12 +100,13 @@ final readonly class GuestSerialiser
     }
 
     /**
-     * @param list<Guest>                $companions
-     * @param ?array<string, GuestNeeds> $needs      everybody's by id for a reader with guests.manage, null for anyone else
+     * @param list<Guest>                                      $companions
+     * @param ?array<string, GuestNeeds>                       $needs      everybody's by id for a reader with guests.manage, null for anyone else
+     * @param array<string, array{kind: string, name: string}> $seats      where each seated companion sits, by id
      *
      * @return array<string, mixed>
      */
-    private static function guest(Guest $host, array $companions, ?array $needs): array
+    private static function guest(Guest $host, array $companions, ?array $needs, array $seats): array
     {
         $reply = $host->getReply() ?? GuestReply::NoReply;
         $contacts = null !== $needs;
@@ -110,6 +146,7 @@ final readonly class GuestSerialiser
             ],
             ...$needsOf($host),
             'companions' => Vec\map($companions, static fn (Guest $companion): array => [
+                'seat' => $seats[$companion->getId()->toRfc4122()] ?? null,
                 'id' => $companion->getId()->toRfc4122(),
                 'fullName' => $companion->getFullName(),
                 'state' => self::companionState(GuestStanding::of($reply, companion: true, invited: $host->isInvited(), notComingByGuest: $companion->isNotComingByGuest())),
@@ -157,7 +194,7 @@ final readonly class GuestSerialiser
         $companions = $this->guestRepository->findCompanionsOf($host);
 
         return [
-            ...self::guest($host, $companions, $contacts ? $this->guestNeedsRecord->of([$host, ...$companions]) : null),
+            ...self::guest($host, $companions, $contacts ? $this->guestNeedsRecord->of([$host, ...$companions]) : null, $this->seatsOf($companions)),
             ...$contacts ? ['organisationLanguage' => SupportedLocales::narrow($host->getEvent()->getOrganisation()->getLocale())] : [],
             'added' => [
                 'at' => $host->getCreatedAt()->format(\DATE_ATOM),

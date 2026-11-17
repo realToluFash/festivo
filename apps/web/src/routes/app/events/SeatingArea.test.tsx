@@ -5154,12 +5154,13 @@ describe('A table’s guests in Seat, and the chairs in their states (sc-4013)',
   });
 
   const AT_T1 = [
-    guest({ seat: { kind: 'table', id: 't1', seat: 1 } }),
+    guest({ reply: 'maybe', seat: { kind: 'table', id: 't1', seat: 1 } }),
     guest({
       id: 'g_ada2',
       fullName: null,
       leadId: 'g_ada',
       position: 2,
+      reply: 'maybe',
       seat: { kind: 'table', id: 't1', seat: 2 },
     }),
   ];
@@ -5208,8 +5209,8 @@ describe('A table’s guests in Seat, and the chairs in their states (sc-4013)',
     const chairs = document.querySelectorAll('.st-panel .st-row.is-dense');
 
     expect([...chairs].slice(0, 3).map((one) => one.textContent)).toEqual([
-      'Seat 1Ada Obi',
-      'Seat 2Held for a companion',
+      'Seat 1Ada Obi · Not sure yet',
+      'Seat 2Held for a companion · Not sure yet',
       'Seat 3Empty',
     ]);
     expect(chairs).toHaveLength(10);

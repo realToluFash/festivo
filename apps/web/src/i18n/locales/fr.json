@@ -3483,7 +3483,8 @@
     "guestRemovedWith": "Vous avez retiré {{name}} de la liste, ainsi que {{companions}}.",
     "undoOpen": "Vous pouvez annuler pendant 10 secondes.",
     "backOnList": "De retour sur la liste, comme avant : avec son lien, sa réponse et ses accompagnants.",
-    "alreadyRemoved": "Quelqu’un d’autre a déjà retiré {{name}} de la liste."
+    "alreadyRemoved": "Quelqu’un d’autre a déjà retiré {{name}} de la liste.",
+    "seatedLine": "{{name}} has a seat at {{table}}. Removing this companion frees the seat."
   },
   "guestNumbers": {
     "title": "Invités",

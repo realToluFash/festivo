@@ -244,7 +244,18 @@ export function PlaceGuests({
                   />
                   <span className="st-row-words">
                     <span className="st-row-name">{t('seating.seatN', { n: seat })}</span>
-                    <span className="st-row-line">{chairStateWord(t, state, guest)}</span>
+                    <span className="st-row-line">
+                      {[
+                        chairStateWord(t, state, guest),
+                        guest?.reply === 'maybe'
+                          ? t('seating.notSureYet')
+                          : guest?.reply === 'noReply'
+                            ? t('seating.noReply')
+                            : null,
+                      ]
+                        .filter(Boolean)
+                        .join(' · ')}
+                    </span>
                   </span>
                 </li>
               );
