@@ -17,7 +17,16 @@ import { DemoOnly } from '../../steps/Lines.tsx';
 import { tokens } from '../../theme/tokens.ts';
 import { goBack } from '../DemoScreen.tsx';
 import { FlagLine, Glyph } from '../queue/QueueParts.tsx';
-import { ALERT_ICON, Chip, CountShape, Hatch, PATHS, TabBar, shared } from './HowItsGoingParts.tsx';
+import {
+  ALERT_ICON,
+  Chip,
+  type CountKey,
+  CountShape,
+  Hatch,
+  PATHS,
+  TabBar,
+  shared,
+} from './HowItsGoingParts.tsx';
 import { RequestCardView } from './RequestsScreen.tsx';
 import {
   AS_OF,
@@ -370,7 +379,8 @@ function SectionCard({ sec, r }: { sec: Section; r: Room }) {
   );
 }
 
-const SHAPE_OF: Partial<Record<Word, 'served' | 'onTray' | 'kitchen' | 'toServe'>> = {
+const SHAPE_OF: Partial<Record<Word, CountKey>> = {
+  choice: 'choice',
   served: 'served',
   tray: 'onTray',
   kitchen: 'kitchen',

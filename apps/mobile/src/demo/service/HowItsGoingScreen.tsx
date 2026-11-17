@@ -32,6 +32,7 @@ import {
   sectionName,
   seed,
   serviceStateOf,
+  shownSummary,
   waiterLine,
   waitersOn,
 } from './HowItsGoingModel.ts';
@@ -49,6 +50,16 @@ import {
   TextAction,
   shared,
 } from './HowItsGoingParts.tsx';
+import {
+  type Can,
+  type RunOut,
+  ITEM,
+  alertOf,
+  lateArrival,
+  openPanel,
+  waitingWords,
+} from './RunOutModel.ts';
+import { Refusal, RunOutPanel } from './RunOutPanel.tsx';
 
 export function HowItsGoingRoute() {
   const params = useLocalSearchParams<{ state?: string }>();
@@ -71,12 +82,24 @@ function ServiceLead({ start }: { start: ReturnType<typeof serviceStateOf> }) {
   const [tab, setTab] = useState<TabId>(() => (seed(start).manage ? 'service' : 'next'));
   const [note, setNote] = useState<{ id: string; words: string } | null>(null);
   const opener = useRef<ViewInstance | null>(null);
+  const runOpener = useRef<ViewInstance | null>(null);
+  const can: Can = { online: s.online, manage: s.manage };
 
   useReadOut(said === 0 || s.say === '' ? null : s.say, { answer: said });
 
   function apply(next: ServiceState): void {
     setS(next);
     setSaid((n) => n + 1);
+  }
+
+  function applyRunOut(next: RunOut): void {
+    apply({ ...s, runOut: next, say: next.say });
+  }
+
+  function choose(ref: ViewInstance | null): void {
+    if (s.runOut == null) return;
+    runOpener.current = ref;
+    applyRunOut(openPanel(s.runOut, can));
   }
 
   const tabs: TabId[] = s.manage
@@ -111,10 +134,21 @@ function ServiceLead({ start }: { start: ReturnType<typeof serviceStateOf> }) {
             {s.started ? `Mains · ${EVENT}` : EVENT}
           </Text>
           <Strip online={s.online} refused={s.give == null ? s.refused : ''} />
+          {s.runOut != null && !s.runOut.panel && (
+            <Refusal words={s.runOut.refused} offline={!s.online} />
+          )}
         </View>
         {shown === 'service' ? (
           s.started ? (
-            <Blocks s={s} apply={apply} note={note} setNote={setNote} opener={opener} wide={wide} />
+            <Blocks
+              s={s}
+              apply={apply}
+              note={note}
+              setNote={setNote}
+              opener={opener}
+              wide={wide}
+              onChoose={choose}
+            />
           ) : (
             <View style={shared.card}>
               <Text size={20} weight="bold" accessibilityRole="header">
@@ -154,7 +188,14 @@ function ServiceLead({ start }: { start: ReturnType<typeof serviceStateOf> }) {
           />
           <SecondaryButton
             label={s.online ? 'Go offline' : 'Back online'}
-            onPress={() => setS({ ...s, online: !s.online, refused: '' })}
+            onPress={() =>
+              setS({
+                ...s,
+                online: !s.online,
+                refused: '',
+                runOut: s.runOut == null ? null : { ...s.runOut, refused: '' },
+              })
+            }
             testID="service.demo.online"
           />
           <SecondaryButton
@@ -170,6 +211,15 @@ function ServiceLead({ start }: { start: ReturnType<typeof serviceStateOf> }) {
             }}
             testID="service.demo.manage"
           />
+          {s.runOut?.runOut === true && (
+            <SecondaryButton
+              label="A guest arrives late and starts waiting"
+              onPress={() => {
+                if (s.runOut != null) applyRunOut(lateArrival(s.runOut));
+              }}
+              testID="service.demo.late"
+            />
+          )}
         </DemoOnly>
       </ScrollView>
       <TabBar
@@ -179,6 +229,7 @@ function ServiceLead({ start }: { start: ReturnType<typeof serviceStateOf> }) {
         bottom={Math.max(insets.bottom, tokens.spaceSm)}
       />
       <GiveSheet s={s} apply={apply} opener={opener} setNote={setNote} />
+      <RunOutPanel r={s.runOut} can={can} onChange={applyRunOut} opener={runOpener} />
     </View>
   );
 }
@@ -192,6 +243,7 @@ function Blocks({
   setNote,
   opener,
   wide,
+  onChoose,
 }: {
   s: ServiceState;
   apply: (next: ServiceState) => void;
@@ -199,8 +251,10 @@ function Blocks({
   setNote: (n: Note) => void;
   opener: RefObject<ViewInstance | null>;
   wide: boolean;
+  onChoose: (ref: ViewInstance | null) => void;
 }) {
-  const sum = s.summary;
+  const sum = shownSummary(s);
+  const runAlert = s.runOut == null ? null : alertOf(s.runOut);
   const course = <CourseBlock sum={sum} wide={wide} />;
   const sections = (
     <View style={shared.card}>
@@ -223,9 +277,18 @@ function Blocks({
       <Text size={14} style={shared.secondary}>
         Each item as its station last marked it.
       </Text>
-      {sum.kitchen.map((k, i) => (
-        <KitchenRow key={k.item} k={k} first={i === 0} />
-      ))}
+      {sum.kitchen.map((k, i) =>
+        k.state === 'Run out' ? (
+          <RunOutKitchenRow
+            key={k.item}
+            k={k}
+            first={i === 0}
+            onPress={s.manage ? onChoose : null}
+          />
+        ) : (
+          <KitchenRow key={k.item} k={k} first={i === 0} />
+        ),
+      )}
     </View>
   );
   const alerts = (
@@ -236,17 +299,20 @@ function Blocks({
       <Text size={14} style={shared.secondary}>
         Newest first. Each leaves by itself once its cause clears.
       </Text>
-      {sum.alerts.length === 0 && (
+      {sum.alerts.length === 0 && runAlert == null && (
         <Text size={15} style={shared.secondary}>
           Nothing needs you.
         </Text>
+      )}
+      {runAlert != null && (
+        <RunOutAlertRow title={runAlert.title} sub={runAlert.sub} onChoose={onChoose} />
       )}
       {sum.alerts.map((a, i) => (
         <AlertRow
           key={a.id}
           s={s}
           a={a}
-          first={i === 0}
+          first={i === 0 && runAlert == null}
           note={note?.id === a.id ? note.words : ''}
           onPress={(ref) => {
             const b = buttonOf(s, a);
@@ -321,6 +387,7 @@ const READING_ORDER = [
 ];
 
 const COUNTS: readonly { key: CountKey; word: string }[] = [
+  { key: 'choice', word: 'Waiting for a choice' },
   { key: 'onTray', word: 'On a tray' },
   { key: 'kitchen', word: 'Waiting on the kitchen' },
   { key: 'toServe', word: 'To serve' },
@@ -328,6 +395,7 @@ const COUNTS: readonly { key: CountKey; word: string }[] = [
 ];
 
 const BAR_PART = {
+  choice: { backgroundColor: tokens.colorInk },
   served: { backgroundColor: tokens.colorAccent },
   onTray: { backgroundColor: tokens.colorAccentTintBorder },
   kitchen: { backgroundColor: tokens.colorTrack },
@@ -336,6 +404,7 @@ const BAR_PART = {
 
 function CourseBlock({ sum, wide }: { sum: Summary; wide: boolean }) {
   const c = sum.course;
+  const counts = COUNTS.filter((k) => k.key !== 'choice' || c.choice > 0);
   return (
     <View style={shared.card}>
       <Text size={13} weight="semibold" style={styles.kicker}>
@@ -349,7 +418,7 @@ function CourseBlock({ sum, wide }: { sum: Summary; wide: boolean }) {
         accessibilityElementsHidden
         importantForAccessibility="no-hide-descendants"
       >
-        {[...COUNTS]
+        {[...counts]
           .reverse()
           .filter((k) => c[k.key] > 0)
           .map((k) => (
@@ -359,7 +428,7 @@ function CourseBlock({ sum, wide }: { sum: Summary; wide: boolean }) {
           ))}
       </View>
       <View style={wide && styles.countsWide}>
-        {COUNTS.map((k, i) => (
+        {counts.map((k, i) => (
           <View
             key={k.key}
             accessible
@@ -490,6 +559,92 @@ function KitchenRow({ k, first }: { k: KitchenItem; first: boolean }) {
           {`${k.waiting} waiting`}
         </Text>
       )}
+    </View>
+  );
+}
+
+function RunOutKitchenRow({
+  k,
+  first,
+  onPress,
+}: {
+  k: KitchenItem;
+  first: boolean;
+  onPress: ((ref: ViewInstance | null) => void) | null;
+}) {
+  const ref = useRef<ViewInstance | null>(null);
+  const line = `${k.item} · ${k.station ?? ''} · Run out`;
+  const sub = k.waiting > 0 ? waitingWords(k.waiting) : '';
+  const words = (
+    <>
+      <View style={[shared.grow, styles.waiterText]}>
+        <View style={styles.kitchenHead}>
+          <Glyph paths={PATHS.ban} ink={tokens.colorInk} side={16} circle />
+          <Text size={16} weight="semibold" style={shared.grow}>
+            {line}
+          </Text>
+        </View>
+        {sub !== '' && (
+          <Text size={14} weight="medium">
+            {sub}
+          </Text>
+        )}
+      </View>
+      {onPress != null && <Glyph paths={PATHS.given} ink={tokens.colorAccentText} side={18} />}
+    </>
+  );
+  if (onPress == null)
+    return <View style={[styles.runOutKitchen, !first && shared.sep]}>{words}</View>;
+  return (
+    <Pressable
+      ref={ref}
+      onPress={() => onPress(ref.current)}
+      accessibilityRole="button"
+      accessibilityLabel={sub === '' ? line : `${line}, ${sub}`}
+      style={({ pressed }) => [
+        styles.runOutKitchen,
+        !first && shared.sep,
+        pressed && styles.pressed,
+      ]}
+      testID="service.kitchen.runOut"
+    >
+      {words}
+    </Pressable>
+  );
+}
+
+function RunOutAlertRow({
+  title,
+  sub,
+  onChoose,
+}: {
+  title: string;
+  sub: string;
+  onChoose: (ref: ViewInstance | null) => void;
+}) {
+  const ref = useRef<ViewInstance | null>(null);
+  return (
+    <View style={styles.alert} testID="service.alert.runOut">
+      <View style={styles.alertHead}>
+        <View style={styles.alertIcon}>
+          <Glyph paths={PATHS.ban} circle ink={tokens.colorInk} side={18} />
+        </View>
+        <View style={[shared.grow, styles.waiterText]}>
+          <Text size={16} weight="semibold">
+            {title}
+          </Text>
+          <Text size={14} style={shared.secondary}>
+            {sub}
+          </Text>
+        </View>
+      </View>
+      <PrimaryButton
+        label="Choose"
+        accessibilityLabel={`Choose what guests get instead of ${ITEM}`}
+        ref={ref}
+        onPress={() => onChoose(ref.current)}
+        testID="service.choose"
+      />
     </View>
   );
 }
@@ -712,4 +867,11 @@ const styles = StyleSheet.create({
     paddingVertical: 10,
   },
   pressed: { opacity: tokens.opacityPressed },
+  runOutKitchen: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: tokens.spaceMd,
+    minHeight: tokens.sizeHitPhonePrimary,
+    paddingVertical: 10,
+  },
 });
