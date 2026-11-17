@@ -1424,8 +1424,18 @@ function Plan({
           count: others,
           table: place,
         });
+  /** A chair stops being a target once the pick drops, so focus seated from it goes back to its table, not to the page's start. */
+  const focusAfterSeat = (item: FloorItem, from: Element | null) => {
+    if (!(from instanceof SVGElement) || from.closest('.st-room') == null) return;
+    const at = `.st-room [${itemAttribute(item.kind) ?? 'data-table'}="${item.one.id}"]`;
+
+    focusWhenFree(() => (from.isConnected ? from : document.querySelector<SVGElement>(at)));
+  };
   const seatAt = (item: FloorItem, seat: number | null = null, justGuest = false): void => {
     if (party == null || plan == null) return;
+    const from = choiceFrom.current ?? document.activeElement;
+
+    choiceFrom.current = null;
     const lead = party.lead;
     const name = lead.fullName ?? '';
     const place = itemName(t, item);
@@ -1481,6 +1491,7 @@ function Plan({
               onSeating(moved.seating);
               setPickedGuest(null);
               stepDone(seatedWords(name, 0, false, place), () => undoMoves(moved.moves));
+              focusAfterSeat(item, from);
             },
             () => refuseStep(t('seating.race', { name })),
           ),
@@ -1497,6 +1508,7 @@ function Plan({
 
         setBar({ tone: 'undo', words, undo: () => undoMoves(moved.moves), lit: item.one.id });
         setHeard(words);
+        focusAfterSeat(item, from);
       },
       (error: unknown) => {
         if (!(error instanceof ApiError)) refuseStep(t('seating.notSaved'));
@@ -2159,7 +2171,7 @@ function Plan({
     const empty = plan.counts.tables + plan.counts.rows + plan.counts.singleSeats === 0;
     const drawn = shown ?? plan;
     const handled =
-      !readOnly && shownPanel?.kind === 'table' && several.length < 2
+      !readOnly && tab === 'arrange' && shownPanel?.kind === 'table' && several.length < 2
         ? (drawn.tables.find((one) => one.id === shownPanel.id) ?? null)
         : null;
     const tipped = tip == null ? null : itemOf(tip.id, drawn);
@@ -2230,7 +2242,7 @@ function Plan({
           </div>
         ) : (
           <div className="st-float st-under-views">
-            {!readOnly && !empty && placing == null && (
+            {!readOnly && !empty && placing == null && party == null && (
               <ChooseBar
                 plan={plan}
                 adding={adding}

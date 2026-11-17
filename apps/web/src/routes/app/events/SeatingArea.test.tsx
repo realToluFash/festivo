@@ -6117,6 +6117,72 @@ describe('Seating on the Floor plan (sc-5030)', () => {
     expect(document.querySelectorAll('.st-room [data-table] [tabindex="0"]')).toHaveLength(0);
   });
 
+  it('makes no target of a held or an unusable chair, so a click there seats at the table', async () => {
+    signedIn();
+    const held = guest({
+      id: 'g_sofia2',
+      fullName: null,
+      leadId: 'g_sofia',
+      position: 3,
+      seat: { kind: 'table', id: 't1', seat: 2 },
+    });
+    const sent = await onSeating({
+      'GET /api/events/ev_1/seating-plan': () =>
+        seating(withGuests([guest(), SEATED, held], table(), T2)),
+      'POST /api/events/ev_1/seating-plan/guests/seat': () => seatedAt(3),
+    });
+
+    fireEvent.click(await screen.findByRole('tab', { name: 'Seat' }));
+    fireEvent.click(screen.getByRole('button', { name: /Ada Obi/ }));
+    press('Zoom in', 3);
+    expect(percent()).toBe('150%');
+    expect(screen.queryByRole('button', { name: /^Table 1, Seat 2,/ })).toBeNull();
+    expect(screen.queryByRole('button', { name: /^Table 2, Seat 1,/ })).toBeNull();
+    expect(screen.getByRole('button', { name: 'Table 1, Seat 3, Empty' })).toBeDefined();
+
+    fireEvent.click(document.querySelectorAll('[data-table="t1"] .st-chair')[1]!);
+    await screen.findAllByText('Ada Obi is at Table 1.');
+    expect(seatSent(sent)).toMatchObject({ placeId: 't1', seat: null });
+  });
+
+  it('keeps focus on the table after Enter on one of its chairs seats the guest', async () => {
+    signedIn();
+    await pickAda();
+
+    const t1 = screen.getByRole('button', { name: /^Table 1, (?!Seat)/ });
+    const chair = screen.getByRole('button', { name: 'Table 1, Seat 3, Empty' });
+
+    chair.focus();
+    fireEvent.keyDown(chair, { key: 'Enter' });
+    await screen.findAllByText('Ada Obi is at Table 1.');
+    await waitFor(() => expect(document.activeElement).toBe(t1));
+  });
+
+  it('takes the choose bar down while a guest is picked, as the demo does', async () => {
+    signedIn();
+    await pickAda();
+
+    expect(screen.queryByRole('group', { name: /choose/i })).toBeNull();
+    expect(screen.queryByRole('button', { name: 'Select all' })).toBeNull();
+    fireEvent.keyDown(window, { key: 'Escape' });
+    expect(screen.getByRole('button', { name: 'Select all' })).toBeDefined();
+  });
+
+  it('draws no resize handles and no legend for a table chosen in Seat', async () => {
+    signedIn();
+    await onSeating({
+      'GET /api/events/ev_1/seating-plan': () => seating(withGuests([SEATED], table())),
+    });
+
+    fireEvent.click(await screen.findByRole('tab', { name: 'Seat' }));
+    await chooseTable('Table 1, round, 1 of 10 seats taken');
+    expect(document.querySelectorAll('.st-handles')).toHaveLength(0);
+    expect(screen.queryByRole('list', { name: 'What the seats show' })).toBeNull();
+
+    fireEvent.click(screen.getByRole('tab', { name: 'Arrange' }));
+    expect(document.querySelectorAll('.st-handles')).toHaveLength(1);
+  });
+
   it('picks nobody and outlines nothing without seating.manage', async () => {
     signedIn();
     await onSeating(

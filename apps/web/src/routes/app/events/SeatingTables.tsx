@@ -148,6 +148,11 @@ export function chairSaid(t: T, state: ChairState, guest: SeatingGuest | null): 
   });
 }
 
+/** With a guest picked, held and unusable chairs are not targets, as on Tables (sc-4013): a click there goes to the table. */
+export function seatsOn(state: ChairState): boolean {
+  return state === 'taken' || state === 'empty';
+}
+
 /** Hover or focus on a chair shows its label; leaving it takes the label down. */
 export function chairTipHandlers(
   onChairTip: ((tip: ChairTip | null) => void) | undefined,
@@ -484,7 +489,7 @@ export function TableDrawing({
             square={table.shape === 'cocktail'}
             label={near ? chairLabel(state, guest, chair.seat) : undefined}
           />
-          {(chosen || picking || pointer) && (
+          {(chosen || picking || pointer) && (!picking || seatsOn(state)) && (
             <circle
               className={pointer ? 'st-chair-hit' : 'st-chair-hit is-keys'}
               role="button"

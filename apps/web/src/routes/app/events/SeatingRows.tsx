@@ -52,6 +52,7 @@ import {
   chairSaid,
   chairStateWord,
   chairTipHandlers,
+  seatsOn,
 } from './SeatingTables.tsx';
 import {
   centimetreUnit,
@@ -190,7 +191,7 @@ export function RowDrawing({
             square={false}
             label={near ? chairLabel(state, guest, chair.seat) : undefined}
           />
-          {(chosen || picking || pointer) && (
+          {(chosen || picking || pointer) && (!picking || seatsOn(state)) && (
             <circle
               className={pointer ? 'st-chair-hit' : 'st-chair-hit is-keys'}
               role="button"

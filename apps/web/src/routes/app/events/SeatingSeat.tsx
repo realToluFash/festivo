@@ -18,7 +18,7 @@ import {
 import { type FloorItem, itemName } from './seatingItems.ts';
 import { BackHead, Line, ShapeTile } from './SeatingParts.tsx';
 import { rowLine } from './SeatingRows.tsx';
-import { SeatLegend, StateMark, chairStateWord, tableLine } from './SeatingTables.tsx';
+import { StateMark, chairStateWord, tableLine } from './SeatingTables.tsx';
 
 /** The Seat tab's Without a seat: the switch, the count, search, a chip per group and a row per party (sc-4013). */
 export function SeatTray({
@@ -292,7 +292,6 @@ export function PlaceGuests({
           )}
         </>
       )}
-      <SeatLegend />
     </div>
   );
 }
