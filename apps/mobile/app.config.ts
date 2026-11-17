@@ -93,6 +93,7 @@ const config: ExpoConfig = {
     'expo-apple-authentication',
     'expo-system-ui',
     'expo-notifications',
+    'expo-sharing',
     // The system's photo picker needs no library access, so nothing asks for it or for the camera.
     [
       'expo-image-picker',
