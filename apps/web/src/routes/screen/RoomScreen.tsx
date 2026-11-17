@@ -33,9 +33,10 @@ function RoomScreen({ token, asked }: { token: string; asked: string | null }) {
   const asks = useRef({
     sent: 0,
     applied: 0,
-    open: 0,
     lastSentAt: 0,
     failingSince: null as number | null,
+    gone: false,
+    open: new Set<AbortController>(),
   });
   const outOfTouch = useRef<ReturnType<typeof setTimeout> | undefined>(undefined);
   const shown = load.kind === 'shown' ? load.screen : null;
@@ -54,15 +55,15 @@ function RoomScreen({ token, asked }: { token: string; asked: string | null }) {
     let settled = false;
 
     state.lastSentAt = sentAt;
-    state.open += 1;
+    state.open.add(abort);
 
     const settle = (): boolean => {
       if (settled) return false;
       settled = true;
-      state.open -= 1;
+      state.open.delete(abort);
       clearTimeout(timeout);
 
-      return mine > state.applied;
+      return !state.gone && mine > state.applied;
     };
     const failed = () => {
       if (!settle() || state.failingSince != null) return;
@@ -76,12 +77,13 @@ function RoomScreen({ token, asked }: { token: string; asked: string | null }) {
 
     api.roomScreen(token, { signal: abort.signal }).then(
       async (screen) => {
-        await showLanguage(screenLanguage(asked, screen));
         if (!settle()) return;
         state.applied = mine;
         state.failingSince = null;
         clearTimeout(outOfTouch.current);
-        setLoad({ kind: 'shown', screen, offline: false });
+        await showLanguage(screenLanguage(asked, screen));
+        if (!state.gone && state.applied === mine)
+          setLoad({ kind: 'shown', screen, offline: false });
       },
       (error: unknown) => {
         if (!(error instanceof ApiError && error.status === 404)) failed();
@@ -93,6 +95,17 @@ function RoomScreen({ token, asked }: { token: string; asked: string | null }) {
     );
   }, [token, asked, lost]);
 
+  useEffect(() => {
+    const state = asks.current;
+    state.gone = false;
+
+    return () => {
+      state.gone = true;
+      state.open.forEach((open) => open.abort());
+      clearTimeout(outOfTouch.current);
+    };
+  }, []);
+
   useEffect(ask, [ask]);
 
   useEffect(() => {
@@ -100,7 +113,7 @@ function RoomScreen({ token, asked }: { token: string; asked: string | null }) {
     const state = asks.current;
     const timer = setInterval(() => {
       const every = state.failingSince == null ? ASK_EVERY_MS : ASK_AGAIN_FAILING_MS;
-      if (state.open === 0 && Date.now() - state.lastSentAt >= every) ask();
+      if (Date.now() - state.lastSentAt >= every) ask();
     }, ASK_AGAIN_FAILING_MS / 4);
 
     window.addEventListener('online', ask);
@@ -112,8 +125,6 @@ function RoomScreen({ token, asked }: { token: string; asked: string | null }) {
       window.removeEventListener('offline', lost);
     };
   }, [ask, lost, replaced]);
-
-  useEffect(() => () => clearTimeout(outOfTouch.current), []);
 
   useEffect(() => () => void showLanguage(null), []);
 

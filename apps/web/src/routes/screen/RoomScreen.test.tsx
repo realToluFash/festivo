@@ -199,24 +199,25 @@ describe('A screen in the room (sc-3897)', () => {
       expect(asOf()).toBe('Times as of 19:40');
     });
 
-    it.each([0, 500, 1_000, 1_750])(
-      'shows nothing for a drop of 5 seconds, %i ms after an answer',
-      async (offset) => {
-        await open([reachable(ON)]);
-        await after(offset);
+    it.each(
+      (['refused', 'silent'] as const).flatMap((how) =>
+        [0, 500, 1_000, 1_750].map((offset) => [how, offset] as const),
+      ),
+    )('shows nothing for a %s drop of 5 seconds, %i ms after an answer', async (how, offset) => {
+      await open([reachable(ON)]);
+      await after(offset);
 
-        down = 'refused';
-        for (let waited = 0; waited < 5_000; waited += 250) {
-          await after(250);
-          expect(asOf()).toBeNull();
-        }
-        down = 'up';
-        for (let waited = 0; waited < 10_000; waited += 250) {
-          await after(250);
-          expect(asOf()).toBeNull();
-        }
-      },
-    );
+      down = how;
+      for (let waited = 0; waited < 5_000; waited += 250) {
+        await after(250);
+        expect(asOf()).toBeNull();
+      }
+      down = 'up';
+      for (let waited = 0; waited < 10_000; waited += 250) {
+        await after(250);
+        expect(asOf()).toBeNull();
+      }
+    });
 
     it('catches up on what changed once reachable, with no press', async () => {
       let state: unknown = ON;
