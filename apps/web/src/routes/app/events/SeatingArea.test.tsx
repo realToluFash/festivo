@@ -5304,6 +5304,45 @@ describe('A table’s guests in Seat, and the chairs in their states (sc-4013)',
     });
   });
 
+  it('seats by keyboard: a picked guest, arrows step between tables, Enter seats, Esc drops', async () => {
+    signedIn();
+    const T2 = table({ id: 't2', name: 'Table 2', seats: 4, xCm: 400 });
+    const sent = await onSeating({
+      'GET /api/events/ev_1/seating-plan': () => seating(withGuests([guest()], table(), T2)),
+      'POST /api/events/ev_1/seating-plan/guests/seat': () =>
+        moved(withGuests([guest({ seat: { kind: 'table', id: 't1', seat: 1 } })], table(), T2), [
+          { guestId: 'g_ada', from: null, to: { kind: 'table', id: 't1', seat: 1 } },
+        ]),
+    });
+
+    fireEvent.click(await screen.findByRole('tab', { name: 'Seat' }));
+    const ada = screen.getByRole('button', { name: /Ada Obi/ });
+
+    fireEvent.click(ada);
+    expect(screen.getByText('Now pick a table for Ada Obi.')).toBeDefined();
+    fireEvent.keyDown(window, { key: 'Escape' });
+    expect(screen.queryByText('Now pick a table for Ada Obi.')).toBeNull();
+
+    fireEvent.click(ada);
+    const t2 = screen.getByRole('button', { name: /^Table 2,/ });
+    const t1 = screen.getByRole('button', { name: /^Table 1,/ });
+
+    t2.focus();
+    fireEvent.keyDown(t2, { key: 'ArrowRight' });
+    expect(document.activeElement).toBe(t1);
+    fireEvent.keyDown(t1, { key: 'ArrowRight' });
+    expect(document.activeElement).toBe(t2);
+    fireEvent.keyDown(t2, { key: 'ArrowLeft' });
+    expect(document.activeElement).toBe(t1);
+
+    fireEvent.keyDown(t1, { key: 'Enter' });
+    expect(await screen.findAllByText('Ada Obi is at Table 1.')).not.toHaveLength(0);
+    expect(sent.find((one) => one.line.endsWith('/guests/seat'))?.body).toMatchObject({
+      guestId: 'g_ada',
+      placeId: 't1',
+    });
+  });
+
   it('takes Rename back to Arrange with the name field', async () => {
     signedIn();
     await onSeating({

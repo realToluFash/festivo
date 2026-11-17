@@ -1686,6 +1686,20 @@ function Plan({
     };
     const arrow = arrows[event.key];
 
+    if (arrow != null && party != null) {
+      event.preventDefault();
+      const order = inReadingOrder(floorItems(plan).filter((one) => one.kind === 'table'));
+      const back = arrow[0] + arrow[1] < 0;
+      const at = order.findIndex((one) => one.one.id === id);
+      const next =
+        at < 0
+          ? order.at(back ? -1 : 0)
+          : order[(at + (back ? -1 : 1) + order.length) % order.length];
+
+      if (next != null)
+        document.querySelector<SVGElement>(`[data-table="${next.one.id}"]`)?.focus();
+      return;
+    }
     if (arrow != null) {
       if (!chosen) return;
       event.preventDefault();
