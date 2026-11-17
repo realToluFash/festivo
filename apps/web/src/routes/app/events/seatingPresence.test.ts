@@ -48,6 +48,12 @@ describe('a connection that dies without a word (sc-4719, #62200)', () => {
     expect(gone.spoken).toBe('leftPlan Kemi Adeyemi');
   });
 
+  it('names everyone who went quiet in the same moment, not only the last', () => {
+    const gone = quieted(listed(NOBODY_ELSE, [SELF, KEMI, PRIYA], 0), 20_000, ME, say);
+
+    expect(gone.spoken).toBe('leftPlan Kemi Adeyemi leftPlan Priya Shah');
+  });
+
   it('keeps a colleague who keeps saying they are here', () => {
     let state = withKemiChoosing(0);
     for (let at = 5_000; at <= 60_000; at += 5_000) {

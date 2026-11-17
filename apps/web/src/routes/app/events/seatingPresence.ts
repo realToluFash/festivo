@@ -131,7 +131,7 @@ export function beat(
   };
 }
 
-/** Lets go of everyone unheard for {@link QUIET_MS}, whose connection died without a word; nobody while your own is not open, since then you cannot hear them. */
+/** Lets go of everyone unheard for {@link QUIET_MS}, whose connection died without a word, saying each by name; nobody while your own is not open, since then you cannot hear them. */
 export function quieted(
   state: PresenceState,
   now: number,
@@ -146,9 +146,9 @@ export function quieted(
       (state.heard[userId] ?? now) < now - QUIET_MS,
   );
   if (gone.length === 0) return state;
-  const last = hereNow(state.tabs, gone.at(-1)!)!;
+  const spoken = gone.map((userId) => say('leftPlan', hereNow(state.tabs, userId)!.name)).join(' ');
 
-  return { ...state, quiet: [...state.quiet, ...gone], spoken: say('leftPlan', last.name) };
+  return { ...state, quiet: [...state.quiet, ...gone], spoken };
 }
 
 /** A closed tab nobody renewed in time: its person leaves, unless another of their tabs is still here. */
