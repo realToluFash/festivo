@@ -34,8 +34,7 @@ RECENT_SECONDS = 60 * 60
 NEVER_SWEPT = "untracked-before-main-"
 MAESTRO_LOG = "maestro.log"
 HARNESS = ("bin", "state.json")
-# `.batch` holds the flows each batch run writes again; they are swept like any entry.
-RECORDS = {"release": ("installed",), ".batch": ()}
+SWEPT_INSIDE = {"release": ("installed",), ".batch": ()}
 STORY_NUMBER = re.compile(r"\d{4,}")
 STORY_REF = re.compile(r"sc-?(\d+)", re.I)
 # Evidence is attached on Shortcut by then, so `.qa/sc<N>*` has done its job.
@@ -180,13 +179,13 @@ def scratch_folders(config):
 
 
 def sweepable(scratch):
-    """The entries a sweep may clear: a folder holding a record the harness reads back is
-    swept entry by entry, around the record."""
+    """The entries a sweep may clear: folders in `SWEPT_INSIDE` are swept entry by entry,
+    keeping the names listed."""
     for entry in scratch.iterdir():
         if entry.name in HARNESS:
             continue
-        if entry.name in RECORDS and entry.is_dir() and not entry.is_symlink():
-            yield from (e for e in entry.iterdir() if e.name not in RECORDS[entry.name])
+        if entry.name in SWEPT_INSIDE and entry.is_dir() and not entry.is_symlink():
+            yield from (e for e in entry.iterdir() if e.name not in SWEPT_INSIDE[entry.name])
         else:
             yield entry
 
