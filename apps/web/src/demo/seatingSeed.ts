@@ -6,6 +6,7 @@ import {
   type Person,
   type Plan,
   type Point,
+  type Presence,
   type Rings,
   type SeatingState,
   COLOURS,
@@ -103,7 +104,7 @@ export interface Ui {
   snap: boolean;
   save: SaveState;
   people: Person[];
-  presence: 'chips' | 'overflow' | 'reconnecting';
+  presence: Presence;
   onPlanOpen: boolean;
   rings: Rings;
   bar: Bar | null;
@@ -840,7 +841,7 @@ export function seedOf(state: SeatingState | null): Ui {
     case 'presenceViewer':
       return { ...ui, people: [PRIYA, SADE] };
     case 'reconnecting':
-      return { ...ui, people: [], presence: 'reconnecting' };
+      return { ...ui, people: [], presence: 'reconnecting', rings: { t7: [{ who: PRIYA }] } };
     case 'left':
       return { ...ui, people: [SADE], spoken: say(SW.left, { name: PRIYA.name }) };
     case 'arriving':

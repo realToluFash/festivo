@@ -1467,6 +1467,23 @@ describe('a colleague’s choice on Tables and the List (sc-60717)', () => {
     view('List');
     expect(document.querySelector('.st-who')).toBeNull();
   });
+
+  it.each(['reconnecting', 'left'] as const)(
+    'shows no colleague’s mark on any view while %s',
+    SLOW,
+    async (state) => {
+      await seating(state);
+      expect(item(/^Table 7, /u).getAttribute('aria-label')).not.toMatch(/chosen by/u);
+      view('Tables');
+      expect(card('Table 7').getAttribute('aria-label')).not.toMatch(/chosen by/u);
+      expect(document.querySelector('.st-card-ring')).toBeNull();
+      view('List');
+      fireEvent.click(screen.getByRole('button', { name: /^All · /u }));
+      expect(screen.queryByRole('button', { name: /^Table 7.*chosen by/u })).toBeNull();
+      expect(listRow(/^Table 7/u)).toBeDefined();
+      expect(document.querySelector('.st-who')).toBeNull();
+    },
+  );
 });
 
 describe('seating guests (sc-4013, sc-4016, sc-5030)', () => {

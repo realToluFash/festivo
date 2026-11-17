@@ -6,6 +6,7 @@ import {
   type Item,
   type Plan,
   type Point,
+  type Presence,
   type Rings,
   CHAIR_R,
   SW,
@@ -18,6 +19,7 @@ import {
   isRound,
   itemName,
   lengthOf,
+  marksOf,
   ofWords,
   readingOrder,
   say,
@@ -36,6 +38,7 @@ export interface Look {
   overlap: ReadonlySet<string>;
   focus: string | null;
   rings: Rings;
+  presence: Presence;
   handles: string | null;
   chair: { id: string; i: number } | null;
   chairsFor: string | null;
@@ -236,7 +239,7 @@ function ItemDrawing({
   const chosen = look.chosen.has(item.id);
   const lit = chosen || look.lit.has(item.id);
   const faint = look.faint.has(item.id);
-  const choices = (look.rings[item.id] ?? []).filter((one) => !one.who.viewer);
+  const choices = marksOf(look.rings, look.presence, item.id);
   const onItem = choices.filter((one) => one.seat == null || detail === 'out');
   const onSeat = detail === 'out' ? [] : choices.filter((one) => one.seat != null);
   const rot = `translate(${f(cx)} ${f(cy)}) rotate(${item.rot})`;
@@ -954,6 +957,7 @@ export function MiniMap({
     overlap: new Set(),
     focus: null,
     rings: {},
+    presence: 'chips',
     handles: null,
     chair: null,
     chairsFor: null,

@@ -93,8 +93,12 @@ export interface Choice {
 
 export type Rings = Readonly<Record<string, readonly Choice[]>>;
 
+export type Presence = 'chips' | 'overflow' | 'reconnecting';
+
+const isColleague = (one: Choice): boolean => !one.who.viewer;
+
 export function chosenWords(choices: readonly Choice[] | undefined): string {
-  const shown = (choices ?? []).filter((one) => !one.who.viewer);
+  const shown = (choices ?? []).filter(isColleague);
   const whole = shown.filter((one) => one.seat == null).map((one) => one.who.name);
   const seats = shown
     .filter((one) => one.seat != null)
@@ -104,13 +108,9 @@ export function chosenWords(choices: readonly Choice[] | undefined): string {
 }
 
 /** The colleagues whose choice marks an item, in the order they chose it: never a viewer, and nobody while your own connection is down (sc-60717). */
-export function marksOf(
-  rings: Rings,
-  presence: 'chips' | 'overflow' | 'reconnecting',
-  id: string,
-): readonly Choice[] {
+export function marksOf(rings: Rings, presence: Presence, id: string): readonly Choice[] {
   if (presence === 'reconnecting') return [];
-  return (rings[id] ?? []).filter((one) => !one.who.viewer);
+  return (rings[id] ?? []).filter(isColleague);
 }
 
 /** A chair's own words: who chose that seat, joined as the language joins a list. */

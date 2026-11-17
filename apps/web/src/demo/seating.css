@@ -1971,8 +1971,8 @@
 
 .st-cards {
   display: grid;
-  grid-template-columns: repeat(auto-fill, 212px);
-  gap: 24px;
+  grid-template-columns: repeat(auto-fill, 242px);
+  gap: 6px;
   margin: 0;
   padding: 0;
   list-style: none;
@@ -2016,9 +2016,10 @@
   font: 700 12px/1 var(--fontFamily);
 }
 
-/* sc-60717: a colleague's ring outside the card, as on the plan: 2 px white, then 3 px in their colour, each further colleague 5 px out. */
+/* sc-60717: a colleague's ring outside the card, as on the plan: 2 px white, then 3 px in their colour, each further colleague 5 px out. Every slot reserves three rings and their pills, as on the iPad, so a live choice only paints. */
 .st-card-slot {
   position: relative;
+  padding: 27px 15px 15px;
 }
 
 .st-card.is-marked:focus-visible {
@@ -2027,28 +2028,33 @@
 
 .st-card-ring {
   position: absolute;
+  inset: calc(27px - var(--out)) calc(15px - var(--out)) calc(15px - var(--out));
   border: 3px solid var(--ring);
   box-shadow: inset 0 0 0 2px var(--colorCard);
   pointer-events: none;
 }
 
 .st-card-ring.is-k0 {
-  inset: -5px;
+  --out: 5px;
+
   border-radius: 25px;
 }
 
 .st-card-ring.is-k1 {
-  inset: -10px;
+  --out: 10px;
+
   border-radius: 30px;
 }
 
 .st-card-ring.is-k2 {
-  inset: -15px;
+  --out: 15px;
+
   border-radius: 35px;
 }
 
 .st-card-ring.is-k3 {
-  inset: -20px;
+  --out: 20px;
+
   border-radius: 40px;
 }
 
