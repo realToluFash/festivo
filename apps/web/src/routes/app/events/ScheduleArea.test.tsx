@@ -232,7 +232,7 @@ describe('The event’s Schedule (sc-3893)', () => {
     const tab = (await screen.findAllByRole('tab'))[0] as HTMLElement;
     expect(tab.closest('.shell-content .ev-page.desk-page')).not.toBeNull();
     expect(
-      cssRule('.shell-content.is-card .desk-page', STYLES.slice(STYLES.indexOf('(width > 60rem)'))),
+      cssRule('.shell-content.is-card .desk-page', STYLES.slice(STYLES.indexOf('(width > 40rem)'))),
     ).toContain('padding: 0;');
   });
 
