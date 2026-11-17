@@ -55,7 +55,7 @@
   }
 }
 
-/* Up to 1240 px, until the list and the guest fit at their 520 and 380, an open guest or form comes before the list, each at its own width. */
+/* Up to 1240 px, until the list and the guest fit at their 520 and 380, an open guest or form comes before the list, both at the card's width, as the demo's one column. */
 @media (40rem < width <= 77.5rem) {
   .shell .gs-cols {
     flex-flow: column nowrap;
@@ -64,6 +64,7 @@
 
   .shell :is(.gs-list, .gs-column) {
     flex: none;
+    max-width: none;
   }
 
   .shell .gs-column {
