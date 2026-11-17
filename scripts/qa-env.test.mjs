@@ -93,6 +93,7 @@ import {
   branchForStory,
   CACHE_CLEARER,
   clearApiCache,
+  staleInContainer,
   defaultNetwork,
   COMPOSE_PROJECT,
   emulatorAbi,
@@ -4430,5 +4431,30 @@ describe('withAvdRam', () => {
 
   it('adds the line when the config has none', () => {
     expect(withAvdRam('a=1', 4096)).toBe('a=1\nhw.ramSize=4096\n');
+  });
+});
+
+describe('staleInContainer', () => {
+  const a = 'a'.repeat(64);
+  const b = 'b'.repeat(64);
+  const host = new Map([
+    ['src/Enum/ErrorCode.php', a],
+    ['tests/Double/ScriptedMenuPicks.php', b],
+  ]);
+
+  it('finds nothing when the container serves the host bytes', () => {
+    const output = `${a}  src/Enum/ErrorCode.php\n${b}  tests/Double/ScriptedMenuPicks.php\n`;
+    expect(staleInContainer(host, output)).toEqual([]);
+  });
+
+  it('names a file served with other bytes', () => {
+    const output = `${a}  src/Enum/ErrorCode.php\n${a}  tests/Double/ScriptedMenuPicks.php\n`;
+    expect(staleInContainer(host, output)).toEqual(['tests/Double/ScriptedMenuPicks.php']);
+  });
+
+  it('names a file the container did not hash at all', () => {
+    expect(staleInContainer(host, `${a}  ./src/Enum/ErrorCode.php\n`)).toEqual([
+      'tests/Double/ScriptedMenuPicks.php',
+    ]);
   });
 });

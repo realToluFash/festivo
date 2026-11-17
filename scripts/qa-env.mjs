@@ -981,6 +981,67 @@ export function clearApiCache(root, exec = run) {
   ]);
 }
 
+// Docker Desktop's VM can go on serving a mounted file's old bytes after a checkout rewrote
+// it on the host, and nothing short of writing through the mount refreshes it (sc-60846).
+export function staleInContainer(hostHashes, sha256sumOutput) {
+  const served = new Map(
+    sha256sumOutput
+      .split('\n')
+      .map((line) => /^([0-9a-f]{64}) [ *](.+)$/.exec(line))
+      .filter(Boolean)
+      .map(([, hash, path]) => [path.replace(/^\.\//, ''), hash]),
+  );
+  return [...hostHashes].filter(([path, hash]) => served.get(path) !== hash).map(([path]) => path);
+}
+
+function apiServedHashes(root, paths) {
+  const result = spawnSync(
+    'docker',
+    ['compose', 'exec', '-T', 'api', 'sh', '-c', 'cd /app && xargs -0 sha256sum'],
+    { cwd: root, input: paths.join('\0'), encoding: 'utf8', maxBuffer: 64 * 1024 * 1024 },
+  );
+  return result.stdout ?? '';
+}
+
+function proveApiMount(root) {
+  step('The api container, serving this commit');
+  const api = join(root, 'services/api');
+  const hostHashes = new Map(
+    git(['ls-files', '-z'], api)
+      .split('\0')
+      .filter((path) => path && existsSync(join(api, path)))
+      .map((path) => [path, hashOf(join(api, path))]),
+  );
+  const paths = [...hostHashes.keys()];
+  const stale = staleInContainer(hostHashes, apiServedHashes(root, paths));
+  if (stale.length === 0) {
+    console.log(`  api container matches the commit (${paths.length} files)`);
+    return;
+  }
+  for (const path of stale) {
+    console.log(`  stale in the container, rewritten: ${path}`);
+    spawnSync(
+      'docker',
+      ['compose', 'exec', '-T', 'api', 'sh', '-c', 'cat > "$1"', 'sh', `/app/${path}`],
+      {
+        cwd: root,
+        input: readFileSync(join(api, path)),
+      },
+    );
+  }
+  const still = staleInContainer(
+    new Map(stale.map((path) => [path, hostHashes.get(path)])),
+    apiServedHashes(root, stale),
+  );
+  if (still.length > 0) {
+    throw new Error(
+      `the api container still serves old bytes of:\n  ${still.join('\n  ')}\n` +
+        'Restart Docker Desktop and run the checkout again.',
+    );
+  }
+  console.log(`  api container matches the commit after rewriting ${stale.length} files`);
+}
+
 const HERE = dirname(fileURLToPath(import.meta.url));
 
 // QA runs the copy in .qa/bin, gitignored, so checking out an old commit keeps the harness.
@@ -1382,6 +1443,8 @@ function checkout(args) {
     ['compose', 'up', '-d', '--wait', '--no-recreate', ...servicesToWait(composeServices(root))],
     { cwd: root },
   );
+
+  proveApiMount(root);
 
   const console_ = ['compose', 'exec', '-T', 'api', 'php', 'bin/console'];
   run('docker', [...console_, 'lexik:jwt:generate-keypair', '--skip-if-exists'], { cwd: root });
