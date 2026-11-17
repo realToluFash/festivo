@@ -74,7 +74,7 @@ import { useTranslation } from 'react-i18next';
 import { Link, useBlocker, useNavigate, useSearchParams } from 'react-router';
 
 import { api } from '../../../api.ts';
-import { keptKeys, keptLoad, rekeep, useAnsweredAgain } from '../../../tabKept.ts';
+import { keptKeys, keptLoad, useAnsweredAgain, useKeptAsShown } from '../../../tabKept.ts';
 import { GlassMark } from '../../../components/EventCard.tsx';
 import { useDeskTop } from '../../../deskTop.ts';
 import { Glyph } from '../../../components/Glyph.tsx';
@@ -378,9 +378,7 @@ export function GuestsArea({
     };
   }, [event.id, attempt, answeredAgain]);
 
-  useEffect(() => {
-    if (load.kind === 'loaded') rekeep(keptKeys.guests(event.id), load.list);
-  }, [event.id, load]);
+  useKeptAsShown(keptKeys.guests(event.id), load.kind === 'loaded' ? load.list : null);
 
   useEffect(() => {
     let current = true;

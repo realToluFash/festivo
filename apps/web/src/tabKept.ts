@@ -1,6 +1,6 @@
 import { ApiUnreachableError } from '@soirely/api-client';
 import { keepsWhatLoaded } from '@soirely/domain';
-import { useSyncExternalStore } from 'react';
+import { useEffect, useSyncExternalStore } from 'react';
 
 export interface Kept<T> {
   value: T;
@@ -27,6 +27,13 @@ export function rekeep<T>(key: string, value: T): void {
   const was = kept.get(key);
 
   if (was != null) kept.set(key, { value, at: was.at });
+}
+
+/** What the page shows now is what it stands on if Soirely stops answering: an edit of the host's own included. */
+export function useKeptAsShown<T>(key: string, shown: T | null): void {
+  useEffect(() => {
+    if (shown != null) rekeep(key, shown);
+  }, [key, shown]);
 }
 
 /** A 5xx on the token refresh is an answer, as the offline watch counts it: only a request with no answer at all is unreached. */

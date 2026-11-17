@@ -1,8 +1,9 @@
 import { ApiError, ApiUnreachableError } from '@soirely/api-client';
 import { NotReached } from '@soirely/domain';
+import { renderHook } from '@testing-library/react';
 import { describe, expect, it } from 'vitest';
 
-import { forgetKept, keptLoad, rekeep } from './tabKept.ts';
+import { forgetKept, keptLoad, rekeep, useKeptAsShown } from './tabKept.ts';
 
 const refused = () => new ApiError({ type: 'about:blank', title: 'Broken', status: 500 });
 
@@ -46,6 +47,20 @@ describe("this tab's memory of what loaded (sc-65646)", () => {
     await expect(
       keptLoad('menu:ev_2', Promise.reject(new TypeError('Failed'))),
     ).rejects.toBeInstanceOf(TypeError);
+  });
+
+  it('stands on what the page shows after the host’s own edit, not on the load before it', async () => {
+    await keptLoad('schedule:ev_1', Promise.resolve('loaded'));
+    const { rerender } = renderHook(({ shown }) => useKeptAsShown('schedule:ev_1', shown), {
+      initialProps: { shown: 'loaded' as string | null },
+    });
+
+    rerender({ shown: 'moved' });
+    rerender({ shown: null });
+
+    await expect(keptLoad('schedule:ev_1', Promise.reject(new TypeError('Failed')))).resolves.toBe(
+      'moved',
+    );
   });
 
   it('forgets everything on signing out or changing organisation', async () => {

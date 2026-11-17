@@ -7,7 +7,15 @@ import {
   type OrganisationEvent,
 } from '@soirely/api-client';
 import { firstName, initials, listFormat, numberFormat } from '@soirely/domain';
-import { type KeyboardEvent, useCallback, useEffect, useId, useRef, useState } from 'react';
+import {
+  type KeyboardEvent,
+  useCallback,
+  useEffect,
+  useId,
+  useMemo,
+  useRef,
+  useState,
+} from 'react';
 import { useTranslation } from 'react-i18next';
 
 import { api } from '../../../api.ts';
@@ -28,7 +36,7 @@ import { Toast } from '../../../components/Toast.tsx';
 import { currentLocale } from '../../../i18n/index.ts';
 import { focusWhenFree, LayersContext, useDeskLayers } from '../../../layers.ts';
 import { canOn, useSession } from '../../../session.ts';
-import { keptKeys, keptLoad, rekeep, useAnsweredAgain } from '../../../tabKept.ts';
+import { keptKeys, keptLoad, useAnsweredAgain, useKeptAsShown } from '../../../tabKept.ts';
 import '../../../components/SettingsParts.css';
 import './people.css';
 
@@ -91,12 +99,13 @@ export function EventPeople({ event }: { event: OrganisationEvent }) {
     };
   }, [event.id, attempt, manages, answeredAgain]);
 
-  useEffect(() => {
-    if (load.kind !== 'loaded') return;
-    const { kind: _loaded, ...shown } = load;
+  const shown = useMemo(() => {
+    if (load.kind !== 'loaded') return null;
+    const { kind: _loaded, ...people } = load;
 
-    rekeep(keptKeys.people(event.id), shown);
-  }, [event.id, load]);
+    return people;
+  }, [load]);
+  useKeptAsShown(keptKeys.people(event.id), shown);
 
   useEffect(() => {
     if (lit == null || lit.held) return;

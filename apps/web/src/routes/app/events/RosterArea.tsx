@@ -20,7 +20,7 @@ import { useTranslation } from 'react-i18next';
 import { Link } from 'react-router';
 
 import { api } from '../../../api.ts';
-import { keptKeys, keptLoad, useAnsweredAgain } from '../../../tabKept.ts';
+import { keptKeys, keptLoad, useAnsweredAgain, useKeptAsShown } from '../../../tabKept.ts';
 import { Glyph } from '../../../components/Glyph.tsx';
 import { Skeleton } from '../../../components/Skeleton.tsx';
 import { currentLocale } from '../../../i18n/index.ts';
@@ -109,6 +109,7 @@ export function RosterArea({ event }: { event: OrganisationEvent }) {
       current = false;
     };
   }, [event.id, attempt, answeredAgain]);
+  useKeptAsShown(keptKeys.staff(event.id), load.kind === 'loaded' ? load.staff : null);
 
   const topics = useMemo(() => [realtimeTopic('EventStaff', event.id)], [event.id]);
   useHubTopics(

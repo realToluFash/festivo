@@ -16,7 +16,7 @@ import { useTranslation } from 'react-i18next';
 import { Link } from 'react-router';
 
 import { api } from '../../../api.ts';
-import { keptKeys, keptLoad, useAnsweredAgain } from '../../../tabKept.ts';
+import { keptKeys, keptLoad, useAnsweredAgain, useKeptAsShown } from '../../../tabKept.ts';
 import { Glyph } from '../../../components/Glyph.tsx';
 import { Skeleton } from '../../../components/Skeleton.tsx';
 import { Toast } from '../../../components/Toast.tsx';
@@ -107,6 +107,7 @@ export function ScheduleArea({
       current = false;
     };
   }, [event.id, attempt, answeredAgain]);
+  useKeptAsShown(keptKeys.schedule(event.id), load.kind === 'loaded' ? load.schedule : null);
 
   const topics = useMemo(() => [realtimeTopic('EventSchedule', event.id)], [event.id]);
   useHubTopics(

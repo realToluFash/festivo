@@ -63,7 +63,13 @@ import { useTranslation } from 'react-i18next';
 import { Link } from 'react-router';
 
 import { api } from '../../../api.ts';
-import { keepLoaded, keptFor, keptKeys, useAnsweredAgain } from '../../../tabKept.ts';
+import {
+  keepLoaded,
+  keptFor,
+  keptKeys,
+  useAnsweredAgain,
+  useKeptAsShown,
+} from '../../../tabKept.ts';
 import { Glyph } from '../../../components/Glyph.tsx';
 import { Refreshing } from '../../../components/OfflineBand.tsx';
 import { useDeskTop } from '../../../deskTop.ts';
@@ -221,6 +227,7 @@ export function MenuArea({ event }: { event: OrganisationEvent }) {
       current = false;
     };
   }, [event.id, attempt, watch, keep, answeredAgain]);
+  useKeptAsShown(keptKeys.menu(event.id), load.kind === 'loaded' ? load.menu : null);
 
   const topics = useMemo(() => [realtimeTopic('EventMenu', event.id)], [event.id]);
   useHubTopics(

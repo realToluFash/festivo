@@ -35,7 +35,13 @@ import { useTranslation } from 'react-i18next';
 import { Link, useSearchParams } from 'react-router';
 
 import { api } from '../../../api.ts';
-import { keepLoaded, keptFor, keptKeys, useAnsweredAgain } from '../../../tabKept.ts';
+import {
+  keepLoaded,
+  keptFor,
+  keptKeys,
+  useAnsweredAgain,
+  useKeptAsShown,
+} from '../../../tabKept.ts';
 import { Glyph } from '../../../components/Glyph.tsx';
 import { useDeskTop } from '../../../deskTop.ts';
 import { dateLocale } from '../../../i18n/index.ts';
@@ -134,6 +140,7 @@ function NightArea({ event }: { event: OrganisationEvent }) {
       current = false;
     };
   }, [event.id, attempt, loaded, answeredAgain]);
+  useKeptAsShown(keptKeys.schedule(event.id), load.kind === 'loaded' ? load.schedule : null);
 
   const topics = useMemo(() => [realtimeTopic('EventSchedule', event.id)], [event.id]);
   useHubTopics(
