@@ -91,11 +91,14 @@ import {
   asDishLibrary,
 } from './dishes.ts';
 import {
+  type ChoiceDetails,
   type EventMenu,
   type MenuAnswer,
   type MenuChange,
   type MenuCourseDetails,
+  type MenuItem,
   asEventMenu,
+  asUnwarnedOptions,
   asUnwarnedPickers,
 } from './menu.ts';
 import {
@@ -106,6 +109,7 @@ import {
   type PressSent,
   asSchedule,
 } from './schedule.ts';
+import { type RoomScreen, type ScreenLink, asRoomScreen, asScreenLinks } from './screens.ts';
 
 /** A table call's answer: the plan whole, and the table it added or changed. */
 export interface SeatingWithTable {
@@ -2484,7 +2488,20 @@ export class ApiClient {
     );
   }
 
-  /** A hub token for this event's seating topic alone. */
+  /** Tells everyone with the plan open what you have chosen, or `null` for nothing; refused 403 to a viewer, whose choice is not shared (sc-4719). */
+  async chooseOnPlan(
+    eventId: string,
+    chosen: { kind: 'table' | 'row' | 'seat'; id: string; chair?: number | null } | null,
+  ): Promise<void> {
+    await this.put<undefined>(`${this.seatingPath(eventId)}/chosen`, { chosen });
+  }
+
+  /** Tells everyone with the plan open that you still have it open, editor or viewer (sc-4719). */
+  async sayHereOnPlan(eventId: string): Promise<void> {
+    await this.post<undefined>(`${this.seatingPath(eventId)}/here`);
+  }
+
+  /** A hub token for this event's seating, its editors' choices and who else has it open (sc-4719). */
   async seatingSubscription(eventId: string): Promise<RealtimeSubscription> {
     const body = await this.post<{ token?: unknown; expiresAt?: unknown }>(
       `${this.seatingPath(eventId)}/subscriptions`,
@@ -2660,7 +2677,7 @@ export class ApiClient {
   async changeMenuCourse(
     eventId: string,
     courseId: string,
-    details: MenuCourseDetails & { answer: MenuAnswer; skippable: boolean },
+    details: MenuCourseDetails & { answer: MenuAnswer; skippable: boolean; ownItems?: string[] },
   ): Promise<MenuChange> {
     return this.menuOf(await this.put<unknown>(this.menuCoursePath(eventId, courseId), details));
   }
@@ -2691,7 +2708,7 @@ export class ApiClient {
   async changeMenuDish(
     eventId: string,
     dishId: string,
-    details: Omit<DishDetails, 'lastPrice' | 'allowShared'>,
+    details: Omit<DishDetails, 'lastPrice' | 'allowShared'> & { items?: MenuItem[] },
   ): Promise<MenuChange> {
     return this.menuOf(await this.put<unknown>(this.menuDishPath(eventId, dishId), details));
   }
@@ -2730,6 +2747,35 @@ export class ApiClient {
     return `${this.menuPath(eventId)}/variants/${encodeURIComponent(variantId)}`;
   }
 
+  /** A question inside the dish (sc-3904), saved as a draft while unfinished; refused 409 `choice_limit` at 3, and `menu_dish_picked` on a picked dish until sc-3913. */
+  async addMenuChoice(
+    eventId: string,
+    dishId: string,
+    details: ChoiceDetails,
+  ): Promise<MenuChange> {
+    return this.menuOf(
+      await this.post<unknown>(`${this.menuDishPath(eventId, dishId)}/choices`, details),
+    );
+  }
+
+  /** On an answered choice, refused under `pick`, `required` and `draft`, and 409 `choice_option_picked` for a picked option left out; `unwarnedOptions` has a line per picked option given an allergen. */
+  async changeMenuChoice(
+    eventId: string,
+    choiceId: string,
+    details: ChoiceDetails,
+  ): Promise<MenuChange> {
+    return this.menuOf(await this.put<unknown>(this.menuChoicePath(eventId, choiceId), details));
+  }
+
+  /** Refused 409 `choice_answered` once guests have answered it. */
+  async removeMenuChoice(eventId: string, choiceId: string): Promise<MenuChange> {
+    return this.menuOf(await this.delete<unknown>(this.menuChoicePath(eventId, choiceId)));
+  }
+
+  private menuChoicePath(eventId: string, choiceId: string): string {
+    return `${this.menuPath(eventId)}/choices/${encodeURIComponent(choiceId)}`;
+  }
+
   /** A hub token for this event's menu topic alone. */
   async menuSubscription(eventId: string): Promise<RealtimeSubscription> {
     const body = await this.post<{ token?: unknown; expiresAt?: unknown }>(
@@ -2756,7 +2802,9 @@ export class ApiClient {
       menu,
       courseId: typeof record.courseId === 'string' ? record.courseId : null,
       dishId: typeof record.dishId === 'string' ? record.dishId : null,
+      choiceId: typeof record.choiceId === 'string' ? record.choiceId : null,
       unwarned: asUnwarnedPickers(record.unwarned),
+      unwarnedOptions: asUnwarnedOptions(record.unwarnedOptions),
     };
   }
 
@@ -2834,6 +2882,66 @@ export class ApiClient {
       token: typeof body.token === 'string' ? body.token : '',
       expiresAt: typeof body.expiresAt === 'string' ? body.expiresAt : '',
     };
+  }
+
+  /** A link for each place, Main first; refused 403 without run_of_show.manage (sc-3897). */
+  async screenLinks(eventId: string): Promise<ScreenLink[]> {
+    return this.screenLinksOf(
+      await this.get<unknown>(`/api/events/${encodeURIComponent(eventId)}/screen-links`),
+    );
+  }
+
+  /** The place's old link answers that it was replaced from now on; `place` is null for Main. */
+  async replaceScreenLink(eventId: string, place: string | null): Promise<ScreenLink[]> {
+    return this.screenLinksOf(
+      await this.post<unknown>(`/api/events/${encodeURIComponent(eventId)}/screen-links/replace`, {
+        place,
+      }),
+    );
+  }
+
+  /** The token is a credential, so it travels in the body. Refused `not_found` for a token never issued or a deleted event's. */
+  async roomScreen(token: string, { signal }: { signal?: AbortSignal } = {}): Promise<RoomScreen> {
+    const screen = asRoomScreen(
+      await this.post<unknown>(
+        '/api/screen-links/screen',
+        { token },
+        signal == null ? { anonymous: true } : { anonymous: true, signal },
+      ),
+    );
+
+    if (screen == null) {
+      throw new Error(
+        'The API answered the room screen in a shape this client does not know. Check RoomScreen in services/api.',
+      );
+    }
+
+    return screen;
+  }
+
+  /** A hub token for the event's bare signal to ask again; refused `not_found` once the link is replaced. */
+  async roomScreenSubscription(token: string): Promise<RealtimeSubscription> {
+    const body = await this.post<{ token?: unknown; expiresAt?: unknown }>(
+      '/api/screen-links/subscriptions',
+      { token },
+      { anonymous: true },
+    );
+
+    return {
+      token: typeof body.token === 'string' ? body.token : '',
+      expiresAt: typeof body.expiresAt === 'string' ? body.expiresAt : '',
+    };
+  }
+
+  private screenLinksOf(body: unknown): ScreenLink[] {
+    return (
+      asScreenLinks(body) ??
+      (() => {
+        throw new Error(
+          'The API answered the screen links in a shape this client does not know. Check ScreenLinkController in services/api.',
+        );
+      })()
+    );
   }
 
   private scheduleOf(body: unknown): Schedule {

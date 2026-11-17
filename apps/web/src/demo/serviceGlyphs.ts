@@ -30,3 +30,8 @@ export const HOURGLASS_GLYPH = [
   'M7 2c0 6 10 6 10 10S7 16 7 22',
   'M17 2c0 6-10 6-10 10s10 4 10 10',
 ];
+export const BAN_GLYPH = ['M22 12a10 10 0 1 1-20 0 10 10 0 1 1 20 0', 'm4.9 4.9 14.2 14.2'];
+export const ARROW_GLYPH = ['M5 12h14', 'm13 6 6 6-6 6'];
+export const CHECK_GLYPH = ['M20 6 9 17l-5-5'];
+export const CLOSE_GLYPH = ['M18 6 6 18', 'm6 6 12 12'];
+export const CHEVRON_GLYPH = ['m9 18 6-6-6-6'];

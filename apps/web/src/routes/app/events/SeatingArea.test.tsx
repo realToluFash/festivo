@@ -2,7 +2,7 @@ import { act, fireEvent, render, screen, waitFor, within } from '@testing-librar
 import i18next from 'i18next';
 import { afterEach, beforeAll, beforeEach, describe, expect, it, vi } from 'vitest';
 import { RouterProvider, createMemoryRouter } from 'react-router';
-import { type SeatingPlan } from '@soirely/api-client';
+import { type SeatingPlan, realtimeTopic } from '@soirely/api-client';
 
 import { __setConfig, config } from '../../../config.ts';
 import fr from '../../../i18n/locales/fr.json';
@@ -1981,7 +1981,9 @@ describe('At a narrow desk (sc-55937)', () => {
       ),
     );
     expect(screen.queryByRole('heading', { level: 2, name: 'Table 1' })).toBeNull();
-    expect(sent.filter((one) => !one.line.startsWith('GET'))).toEqual([]);
+    expect(
+      sent.filter((one) => !one.line.startsWith('GET') && !one.line.endsWith('/chosen')),
+    ).toEqual([]);
   });
 
   it('clears a refusal with the first Esc and leaves with the second', async () => {
@@ -2006,7 +2008,9 @@ describe('At a narrow desk (sc-55937)', () => {
     await waitFor(() =>
       expect(screen.queryByRole('heading', { level: 2, name: 'Table 1' })).toBeNull(),
     );
-    expect(sent.filter((one) => !one.line.startsWith('GET'))).toEqual([]);
+    expect(
+      sent.filter((one) => !one.line.startsWith('GET') && !one.line.endsWith('/chosen')),
+    ).toEqual([]);
   });
 
   it('leaves a row and a single seat by Esc in a field with nothing to undo', async () => {
@@ -2580,6 +2584,20 @@ function usSeating(planned: unknown, tableId?: string) {
 
 describe('Moving, turning and resizing on the Floor plan (sc-5028)', () => {
   beforeAll(standInPointerEvents);
+
+  const measure = Element.prototype.getBoundingClientRect;
+
+  beforeEach(() => {
+    vi.spyOn(Element.prototype, 'getBoundingClientRect').mockImplementation(function (
+      this: Element,
+    ) {
+      return this.matches('[data-table], [data-row], [data-seat]')
+        ? new DOMRect(340, 340, 40, 40)
+        : measure.call(this);
+    });
+  });
+
+  afterEach(() => vi.restoreAllMocks());
 
   it('moves a chosen table 10 cm with an arrow and 1 m with Shift, each a step with its version', async () => {
     signedIn();
@@ -3380,21 +3398,26 @@ describe('Choosing many and the Selection tools (sc-4717)', () => {
     await screen.findByRole('button', { name: TABLE_1 });
     const TABLE_3 = 'Table 3, round, 0 of 10 seats taken';
     const item = (name: string) => screen.getByRole('button', { name });
+    const space = (name: string, shiftKey = false) => {
+      act(() => item(name).focus());
+      fireEvent.keyDown(item(name), { key: ' ', shiftKey });
+      fireEvent.keyUp(item(name), { key: ' ', shiftKey });
+    };
 
     fireEvent.click(screen.getByRole('button', { name: 'Add to choice' }));
     fireEvent.keyDown(item(TABLE_1), { key: 'Enter' });
-    fireEvent.keyDown(item(TABLE_2), { key: ' ' });
+    space(TABLE_2);
     expect(await screen.findByRole('heading', { level: 2, name: '2 chosen' })).toBeDefined();
     fireEvent.keyDown(item(TABLE_3), { key: 'Enter' });
     expect(await screen.findByRole('heading', { level: 2, name: '3 chosen' })).toBeDefined();
-    fireEvent.keyDown(item(TABLE_3), { key: ' ' });
+    space(TABLE_3);
     expect(await screen.findByRole('heading', { level: 2, name: '2 chosen' })).toBeDefined();
 
     fireEvent.keyDown(window, { key: 'Escape' });
     expect(screen.getByRole('heading', { level: 2, name: '2 chosen' })).toBeDefined();
     fireEvent.keyDown(item(TABLE_3), { key: 'Enter', shiftKey: true });
     expect(await screen.findByRole('heading', { level: 2, name: '3 chosen' })).toBeDefined();
-    fireEvent.keyDown(item(TABLE_1), { key: ' ', shiftKey: true });
+    space(TABLE_1, true);
     expect(await screen.findByRole('heading', { level: 2, name: '2 chosen' })).toBeDefined();
 
     fireEvent.keyDown(item(TABLE_1), { key: 'Enter' });
@@ -3775,6 +3798,471 @@ describe('Choosing many and the Selection tools (sc-4717)', () => {
     expect(screen.queryByRole('button', { name: 'Add to choice' })).toBeNull();
     fireEvent.keyDown(window, { key: 'a', ctrlKey: true });
     expect(screen.queryByRole('heading', { name: '2 chosen' })).toBeNull();
+  });
+});
+
+describe('Who else is on the plan (sc-4719)', () => {
+  const before = config();
+  const LIST = 'GET /.well-known/mercure/subscriptions/events%2Fev_1%2Fseating';
+  const tab = (subscriber: string, userId: string, name: string, editor = true, active = true) => ({
+    type: 'Subscription',
+    subscriber,
+    topic: realtimeTopic('EventSeating', 'ev_1'),
+    active,
+    payload: { userId, name, editor },
+  });
+  const PRIYA = tab('urn:uuid:p1', 'u_priya', 'Priya Shah');
+  const SADE = tab('urn:uuid:s1', 'u_sade', 'Sade Bello', false);
+  const ME = tab('urn:uuid:me', 'u_folake', 'Folake Adeyemi');
+
+  beforeAll(standInPointerEvents);
+
+  afterEach(() => {
+    vi.useRealTimers();
+    __setConfig(before);
+    vi.unstubAllGlobals();
+  });
+
+  async function onPlanWith(
+    here: unknown[],
+    permissions: string[] = OWNER_PERMISSIONS,
+    more: Record<string, Answer> = {},
+  ) {
+    __setConfig({ ...before, mercureUrl: 'http://hub.test/.well-known/mercure' });
+    StubSource.made = [];
+    vi.stubGlobal('EventSource', StubSource);
+    signedIn();
+    const sent = await onSeating(
+      {
+        'GET /api/events/ev_1/seating-plan': () => seating(withTables(table())),
+        'POST /api/events/ev_1/seating-plan/subscriptions': () =>
+          json({ token: 'tok', expiresAt: new Date(Date.now() + 3_600_000).toISOString() }),
+        'POST /api/realtime/subscriptions': () =>
+          json({ token: 'tok', expiresAt: new Date(Date.now() + 3_600_000).toISOString() }),
+        [LIST]: () => json({ subscriptions: here }),
+        ...more,
+      },
+      permissions,
+    );
+    const seatingSource = () =>
+      StubSource.made.find((one) => decodeURIComponent(one.url).includes('/seating'));
+    await waitFor(() => expect(seatingSource()).toBeDefined());
+    const source = seatingSource()!;
+    act(() => source.onopen?.());
+    await screen.findByRole('button', { name: TABLE_1 });
+
+    return { sent, source };
+  }
+
+  const chosenSent = (sent: { line: string; body: unknown }[]) =>
+    sent
+      .filter((one) => one.line === 'PUT /api/events/ev_1/seating-plan/chosen')
+      .map((one) => one.body);
+
+  it('subscribes to the plan, its editors’ choices and who has it open, on one connection', async () => {
+    const { source } = await onPlanWith([]);
+    const topics = new URL(source.url).searchParams.getAll('topic');
+
+    expect(topics).toEqual([
+      realtimeTopic('EventSeating', 'ev_1'),
+      realtimeTopic('EventSeatingChoices', 'ev_1'),
+      '/.well-known/mercure/subscriptions/events%2Fev_1%2Fseating{/subscriber}',
+    ]);
+  });
+
+  it('shows nothing when you are alone, and never yourself', async () => {
+    await onPlanWith([ME]);
+
+    expect(document.querySelector('.st-faces')).toBeNull();
+    expect(screen.queryByText(/is on this plan/)).toBeNull();
+  });
+
+  it('shows two people as one chip and says who is on the plan', async () => {
+    await onPlanWith([ME, PRIYA]);
+
+    expect(await screen.findByRole('button', { name: 'Priya Shah' })).toBeDefined();
+    expect(screen.getByText('Priya Shah is on this plan')).toBeDefined();
+    expect(screen.getByRole('list', { name: 'Priya Shah is on this plan' })).toBeDefined();
+  });
+
+  it('counts three people, each once however many tabs they have, and says who can only view', async () => {
+    await onPlanWith([ME, PRIYA, tab('urn:uuid:p2', 'u_priya', 'Priya Shah'), SADE]);
+
+    const chips = await screen.findByRole('list', { name: 'Priya Shah and 1 other' });
+    expect(
+      within(chips)
+        .getAllByRole('button')
+        .map((one) => one.getAttribute('aria-label')),
+    ).toEqual(['Priya Shah', 'Sade Bello, can view']);
+    expect(chips.textContent).toBe('PSSB');
+  });
+
+  it('shows four chips and +n from six people, and lists them all', async () => {
+    const six = [
+      'Priya Shah',
+      'Sade Bello',
+      'Ana Souza',
+      'Julien Moreau',
+      'Kemi Okafor',
+      'Tom Baker',
+    ];
+    await onPlanWith(six.map((name, index) => tab(`urn:uuid:${index}`, `u_${index}`, name)));
+
+    const more = await screen.findByRole('button', { name: '2 more on this plan' });
+    expect(more.textContent).toBe('+2');
+    fireEvent.click(more);
+    const list = screen.getByRole('dialog', { name: 'On this plan' });
+    expect([...list.querySelectorAll('.st-row-name')].map((one) => one.textContent)).toEqual(six);
+  });
+
+  it('announces someone joining and leaving politely, but not their second tab', async () => {
+    const { source } = await onPlanWith([ME]);
+    const heard = () => document.querySelector('.st-top [aria-live="polite"]')?.textContent;
+
+    source.publish(tab('urn:uuid:k1', 'u_kemi', 'Kemi Adeyemi'));
+    await waitFor(() => expect(heard()).toBe('Kemi Adeyemi joined the plan.'));
+    expect(screen.getByRole('button', { name: 'Kemi Adeyemi' })).toBeDefined();
+
+    source.publish(tab('urn:uuid:k2', 'u_kemi', 'Kemi Adeyemi'));
+    source.publish(tab('urn:uuid:k2', 'u_kemi', 'Kemi Adeyemi', true, false));
+    expect(heard()).toBe('Kemi Adeyemi joined the plan.');
+    expect(screen.getByRole('button', { name: 'Kemi Adeyemi' })).toBeDefined();
+
+    source.publish(tab('urn:uuid:k1', 'u_kemi', 'Kemi Adeyemi', true, false));
+    await waitFor(() => expect(heard()).toBe('Kemi Adeyemi left the plan.'), { timeout: 2_000 });
+    expect(screen.queryByRole('button', { name: 'Kemi Adeyemi' })).toBeNull();
+  });
+
+  it('outlines what a colleague chooses with their initials and names them, until they clear it', async () => {
+    const { source } = await onPlanWith([ME, PRIYA]);
+
+    source.publish({ userId: 'u_priya', chosen: { kind: 'table', id: 't1', chair: null } });
+    const chosen = await screen.findByRole('button', { name: `${TABLE_1}, chosen by Priya Shah` });
+    expect(chosen.querySelector('.st-ring.p0')).not.toBeNull();
+    expect(chosen.querySelector('.st-initials')?.textContent).toBe('PS');
+
+    source.publish({ userId: 'u_priya', chosen: null });
+    await screen.findByRole('button', { name: TABLE_1 });
+    expect(document.querySelector('.st-ring')).toBeNull();
+  });
+
+  it('rings two colleagues on one table in the order they chose it, and a chosen seat on its chair (#60871)', async () => {
+    const KEMI = tab('urn:uuid:k1', 'u_kemi', 'Kemi Adeyemi');
+    const JULIEN = tab('urn:uuid:j1', 'u_julien', 'Julien Moreau');
+    const { source } = await onPlanWith([ME, PRIYA, KEMI, JULIEN]);
+    const pills = () =>
+      [...document.querySelectorAll('[data-table="t1"] .st-ring .st-initials')].map(
+        (one) => one.textContent,
+      );
+
+    source.publish({ userId: 'u_kemi', chosen: { kind: 'table', id: 't1', chair: null } });
+    source.publish({ userId: 'u_priya', chosen: { kind: 'table', id: 't1', chair: null } });
+    source.publish({ userId: 'u_julien', chosen: { kind: 'table', id: 't1', chair: 2 } });
+    await screen.findByRole('button', {
+      name: `${TABLE_1}, chosen by Kemi Adeyemi and Priya Shah, seat 2 chosen by Julien Moreau`,
+    });
+    expect(pills()).toEqual(['KA', 'PS', 'JM']);
+    const [inner, outer] = [...document.querySelectorAll('[data-table="t1"] .st-ring-gap')].map(
+      (one) => Number(one.getAttribute('r')),
+    );
+    expect(outer! - inner!).toBe(5);
+
+    const seat = document.querySelector('[data-table="t1"] .st-ring:last-child circle');
+    const chair = document.querySelectorAll('[data-table="t1"] .st-chair')[1];
+    expect(seat?.getAttribute('cx')).toBe(chair?.getAttribute('cx'));
+
+    while (Number(percent().replace('%', '')) >= 50) press('Zoom out');
+    expect(document.querySelectorAll('.st-room .st-chair')).toHaveLength(0);
+    expect(pills()).toEqual(['KA', 'PS', 'JM']);
+    const rings = [...document.querySelectorAll('[data-table="t1"] .st-ring-gap')].map((one) =>
+      one.getAttribute('cx'),
+    );
+    expect(new Set(rings).size).toBe(1);
+  });
+
+  it('moves a colleague who chooses again to the outside ring, after the later choice (#60848)', async () => {
+    const KEMI = tab('urn:uuid:k1', 'u_kemi', 'Kemi Adeyemi');
+    const { source } = await onPlanWith([ME, PRIYA, KEMI], OWNER_PERMISSIONS, {
+      'GET /api/events/ev_1/seating-plan': () =>
+        seating(withTables(table(), table({ id: 't2', name: 'Table 2', xCm: 400 }))),
+    });
+    const pills = () =>
+      [...document.querySelectorAll('[data-table="t1"] .st-ring .st-initials')].map(
+        (one) => one.textContent,
+      );
+
+    source.publish({ userId: 'u_kemi', chosen: { kind: 'table', id: 't1', chair: null } });
+    source.publish({ userId: 'u_priya', chosen: { kind: 'table', id: 't1', chair: null } });
+    source.publish({ userId: 'u_kemi', chosen: { kind: 'table', id: 't2', chair: null } });
+    await waitFor(() => expect(pills()).toEqual(['PS']));
+    source.publish({ userId: 'u_kemi', chosen: { kind: 'table', id: 't1', chair: null } });
+
+    await screen.findByRole('button', {
+      name: `${TABLE_1}, chosen by Priya Shah and Kemi Adeyemi`,
+    });
+    expect(pills()).toEqual(['PS', 'KA']);
+  });
+
+  it('names who chose a seat on the chair itself (#60848)', async () => {
+    const JULIEN = tab('urn:uuid:j1', 'u_julien', 'Julien Moreau');
+    const { source } = await onPlanWith([ME, JULIEN]);
+
+    source.publish({ userId: 'u_julien', chosen: { kind: 'table', id: 't1', chair: 2 } });
+    await screen.findByRole('button', { name: `${TABLE_1}, seat 2 chosen by Julien Moreau` });
+    while (Number(percent().replace('%', '')) < 150) press('Zoom in');
+
+    expect(
+      screen.getByRole('button', { name: 'Table 1, Seat 2, Empty, chosen by Julien Moreau' }),
+    ).toBeDefined();
+    expect(screen.getByRole('button', { name: 'Table 1, Seat 3, Empty' })).toBeDefined();
+  });
+
+  it('drops a colleague’s outline when they close the plan', async () => {
+    const { source } = await onPlanWith([ME, PRIYA]);
+
+    source.publish({ userId: 'u_priya', chosen: { kind: 'table', id: 't1', chair: null } });
+    await screen.findByRole('button', { name: `${TABLE_1}, chosen by Priya Shah` });
+    source.publish({ ...PRIYA, active: false });
+
+    await screen.findByRole('button', { name: TABLE_1 }, { timeout: 2_000 });
+    expect(document.querySelector('.st-ring')).toBeNull();
+    expect(screen.queryByRole('button', { name: 'Priya Shah' })).toBeNull();
+  });
+
+  it('announces nothing and keeps the outline when a colleague’s connection renews', async () => {
+    const { source } = await onPlanWith([ME, PRIYA]);
+    const heard = () => document.querySelector('.st-top [aria-live="polite"]')?.textContent ?? '';
+    source.publish({ userId: 'u_priya', chosen: { kind: 'table', id: 't1', chair: null } });
+    await screen.findByRole('button', { name: `${TABLE_1}, chosen by Priya Shah` });
+
+    source.publish({ ...PRIYA, active: false });
+    source.publish(tab('urn:uuid:p9', 'u_priya', 'Priya Shah'));
+    await new Promise((done) => setTimeout(done, 1_200));
+
+    expect(heard()).toBe('');
+    expect(screen.getByRole('button', { name: 'Priya Shah' })).toBeDefined();
+    expect(screen.getByRole('button', { name: `${TABLE_1}, chosen by Priya Shah` })).toBeDefined();
+  });
+
+  it('asks again for who is here when the list fails, while the connection stays open', async () => {
+    let asked = 0;
+    await onPlanWith([], OWNER_PERMISSIONS, {
+      [LIST]: () => (++asked === 1 ? json({}, 404) : json({ subscriptions: [ME, PRIYA] })),
+    });
+    expect(await screen.findByText('Can’t see who else is here. Reconnecting…')).toBeDefined();
+
+    expect(
+      await screen.findByRole('button', { name: 'Priya Shah' }, { timeout: 7_000 }),
+    ).toBeDefined();
+    expect(screen.queryByText('Can’t see who else is here. Reconnecting…')).toBeNull();
+    expect(asked).toBe(2);
+  }, 10_000);
+
+  it('never outlines what a viewer chooses', async () => {
+    const { source } = await onPlanWith([ME, SADE]);
+
+    source.publish({ userId: 'u_sade', chosen: { kind: 'table', id: 't1', chair: null } });
+
+    await screen.findByRole('button', { name: 'Sade Bello, can view' });
+    expect(screen.getByRole('button', { name: TABLE_1 })).toBeDefined();
+    expect(document.querySelector('.st-ring')).toBeNull();
+  });
+
+  it('tells colleagues what you choose and clear, and again when someone arrives', async () => {
+    const { sent, source } = await onPlanWith([ME]);
+
+    await chooseTable(TABLE_1);
+    await waitFor(() =>
+      expect(chosenSent(sent)).toEqual([{ chosen: { kind: 'table', id: 't1', chair: null } }]),
+    );
+
+    source.publish(PRIYA);
+    await waitFor(() => expect(chosenSent(sent)).toHaveLength(2));
+
+    fireEvent.keyDown(window, { key: 'Escape' });
+    await waitFor(() => expect(chosenSent(sent).at(-1)).toEqual({ chosen: null }));
+  });
+
+  it('never tells anyone what a viewer chooses', async () => {
+    const { sent } = await onPlanWith([ME, PRIYA], ['events.read', 'seating.read']);
+
+    await chooseTable(TABLE_1);
+
+    expect(chosenSent(sent)).toEqual([]);
+  });
+
+  it('says in the panel when you choose what a colleague has, and changes nothing', async () => {
+    const { source } = await onPlanWith([ME, PRIYA]);
+
+    source.publish({ userId: 'u_priya', chosen: { kind: 'table', id: 't1', chair: null } });
+    await chooseTable(`${TABLE_1}, chosen by Priya Shah`);
+
+    expect(
+      screen.getByText(
+        'Priya Shah has chosen this too. You can still change it. If you both save, the later change is refused and says why.',
+      ),
+    ).toBeDefined();
+    expect(screen.getByLabelText('Seats')).not.toHaveProperty('disabled', true);
+  });
+
+  it('hides the chips and every colleague’s ring, and says so, when its own connection drops (#62213)', async () => {
+    const { source } = await onPlanWith([ME, PRIYA]);
+    source.publish({ userId: 'u_priya', chosen: { kind: 'table', id: 't1', chair: null } });
+    await screen.findByRole('button', { name: `${TABLE_1}, chosen by Priya Shah` });
+
+    act(() => source.onerror?.());
+
+    expect(await screen.findByText('Can’t see who else is here. Reconnecting…')).toBeDefined();
+    expect(screen.queryByRole('button', { name: 'Priya Shah' })).toBeNull();
+    expect(screen.getByRole('button', { name: TABLE_1 })).toBeDefined();
+    expect(document.querySelector('.st-ring')).toBeNull();
+    expect(source.readyState).toBe(StubSource.CLOSED);
+  });
+
+  const seatingSources = () =>
+    StubSource.made.filter((one) => decodeURIComponent(one.url).includes('/seating'));
+  const beatsSent = (sent: { line: string }[]) =>
+    sent.filter((one) => one.line === 'POST /api/events/ev_1/seating-plan/here').length;
+  const heardOwn = (source: StubSource) => source.publish({ userId: 'u_folake', here: true });
+
+  it('says it is still here every 5 seconds while its connection is open, as a viewer too', async () => {
+    vi.useFakeTimers({ shouldAdvanceTime: true });
+    const { sent, source } = await onPlanWith([ME], ['events.read', 'seating.read']);
+    await waitFor(() => expect(beatsSent(sent)).toBe(1));
+
+    act(() => vi.advanceTimersByTime(5_000));
+    heardOwn(source);
+
+    await waitFor(() => expect(beatsSent(sent)).toBe(2));
+  });
+
+  it('lets a colleague whose connection died without a word go within 30 seconds, ring and all, and back once heard (#62200)', async () => {
+    vi.useFakeTimers({ shouldAdvanceTime: true });
+    const { source } = await onPlanWith([ME, PRIYA]);
+    const heard = () => document.querySelector('.st-top [aria-live="polite"]')?.textContent ?? '';
+    source.publish({ userId: 'u_priya', chosen: { kind: 'table', id: 't1', chair: null } });
+    await screen.findByRole('button', { name: `${TABLE_1}, chosen by Priya Shah` });
+
+    for (let second = 0; second < 30; second += 1) {
+      act(() => vi.advanceTimersByTime(1_000));
+      heardOwn(source);
+    }
+
+    expect(screen.queryByRole('button', { name: 'Priya Shah' })).toBeNull();
+    expect(screen.getByRole('button', { name: TABLE_1 })).toBeDefined();
+    expect(document.querySelector('.st-ring')).toBeNull();
+    expect(heard()).toBe('Priya Shah left the plan.');
+    expect(screen.queryByText('Can’t see who else is here. Reconnecting…')).toBeNull();
+
+    source.publish({ userId: 'u_priya', here: true });
+
+    expect(await screen.findByRole('button', { name: 'Priya Shah' })).toBeDefined();
+    expect(heard()).toBe('Priya Shah joined the plan.');
+  });
+
+  it('keeps a colleague who keeps saying they are here', async () => {
+    vi.useFakeTimers({ shouldAdvanceTime: true });
+    const { source } = await onPlanWith([ME, PRIYA]);
+    await screen.findByRole('button', { name: 'Priya Shah' });
+
+    for (let second = 0; second < 30; second += 1) {
+      act(() => vi.advanceTimersByTime(1_000));
+      heardOwn(source);
+      if (second % 5 === 0) source.publish({ userId: 'u_priya', here: true });
+    }
+
+    expect(screen.getByRole('button', { name: 'Priya Shah' })).toBeDefined();
+  });
+
+  it('takes its own connection for dead when it hears nothing, says so, and opens a new one (#62200)', async () => {
+    vi.useFakeTimers({ shouldAdvanceTime: true });
+    const { source } = await onPlanWith([ME, PRIYA]);
+    await screen.findByRole('button', { name: 'Priya Shah' });
+
+    act(() => vi.advanceTimersByTime(13_000));
+
+    expect(await screen.findByText('Can’t see who else is here. Reconnecting…')).toBeDefined();
+    expect(screen.queryByRole('button', { name: 'Priya Shah' })).toBeNull();
+    expect(source.readyState).toBe(StubSource.CLOSED);
+
+    act(() => vi.advanceTimersByTime(5_000));
+    await waitFor(() => expect(seatingSources()).toHaveLength(2));
+    act(() => seatingSources()[1]!.onopen?.());
+
+    expect(await screen.findByRole('button', { name: 'Priya Shah' })).toBeDefined();
+  });
+
+  class StubWorker {
+    static made: StubWorker[] = [];
+    url = '';
+    every = 0;
+    onmessage: (() => void) | null = null;
+    onerror: (() => void) | null = null;
+    terminated = false;
+    constructor(url: URL) {
+      this.url = url.href;
+      StubWorker.made.push(this);
+    }
+    postMessage(ms: number) {
+      this.every = ms;
+    }
+    terminate() {
+      this.terminated = true;
+    }
+  }
+
+  it('beats from a worker served from its own origin, whose timers a hidden tab does not hold back to one a minute', async () => {
+    StubWorker.made = [];
+    vi.stubGlobal('Worker', StubWorker);
+    const { sent } = await onPlanWith([ME]);
+    await waitFor(() => expect(beatsSent(sent)).toBe(1));
+    const beating = StubWorker.made.find((one) => one.every === 5_000)!;
+
+    expect(new URL(beating.url).origin).toBe(window.location.origin);
+
+    act(() => beating.onmessage?.());
+
+    await waitFor(() => expect(beatsSent(sent)).toBe(2));
+  });
+
+  it('beats from the page when the worker is refused after it was made, rather than going silent', async () => {
+    vi.useFakeTimers({ shouldAdvanceTime: true });
+    StubWorker.made = [];
+    vi.stubGlobal('Worker', StubWorker);
+    const { sent, source } = await onPlanWith([ME]);
+    await waitFor(() => expect(beatsSent(sent)).toBe(1));
+
+    act(() => StubWorker.made.forEach((one) => one.onerror?.()));
+    act(() => vi.advanceTimersByTime(5_000));
+    heardOwn(source);
+
+    await waitFor(() => expect(beatsSent(sent)).toBe(2));
+    expect(StubWorker.made.every((one) => one.terminated)).toBe(true);
+  });
+
+  it('neither leaves nor reconnects when its timers wake a minute late, and says it is here at once', async () => {
+    vi.useFakeTimers({ shouldAdvanceTime: true });
+    const { sent, source } = await onPlanWith([ME, PRIYA]);
+    const heard = () => document.querySelector('.st-top [aria-live="polite"]')?.textContent ?? '';
+    await waitFor(() => expect(beatsSent(sent)).toBe(1));
+
+    vi.setSystemTime(Date.now() + 60_000);
+    act(() => vi.advanceTimersByTime(1_000));
+    act(() => vi.advanceTimersByTime(1_000));
+
+    await waitFor(() => expect(beatsSent(sent)).toBeGreaterThanOrEqual(2));
+    expect(screen.queryByText('Can’t see who else is here. Reconnecting…')).toBeNull();
+    expect(source.readyState).not.toBe(StubSource.CLOSED);
+    expect(seatingSources()).toHaveLength(1);
+    expect(screen.getByRole('button', { name: 'Priya Shah' })).toBeDefined();
+    expect(heard()).not.toContain('left the plan');
+  });
+
+  it('shows no email address', async () => {
+    await onPlanWith([ME, PRIYA, SADE]);
+    await screen.findByRole('button', { name: 'Priya Shah' });
+
+    expect(document.body.textContent).not.toContain('@');
   });
 });
 
@@ -4167,5 +4655,495 @@ describe('Seating a guest at a desk (sc-4013)', () => {
 
     fireEvent.click(await screen.findByRole('tab', { name: 'Seat' }));
     expect(screen.getByRole('button', { name: /Ada Obi/ })).toHaveProperty('disabled', true);
+  });
+});
+
+describe('Holding Space pans with an item focused, and Space acts on release (sc-62095)', () => {
+  beforeAll(standInPointerEvents);
+
+  const TABLE_2 = 'Table 2, round, 0 of 10 seats taken';
+  const at = { button: 0, pointerId: 1 };
+
+  function heard(): string {
+    return document.querySelector('p.visually-hidden[aria-live]')?.textContent ?? '';
+  }
+
+  function chosen(): string | null {
+    return document.querySelector('.st-panel h2')?.textContent ?? null;
+  }
+
+  function item(name: string): Element {
+    return screen.getByRole('button', { name });
+  }
+
+  async function onTwo(): Promise<void> {
+    signedIn();
+    await onSeating({
+      'GET /api/events/ev_1/seating-plan': () =>
+        seating(withTables(table(), table({ id: 't2', name: 'Table 2', xCm: 600 }))),
+    });
+    await screen.findByRole('button', { name: TABLE_1 });
+    press('Zoom in', 3);
+  }
+
+  function spaceDrag(on: Element): void {
+    const floor = document.querySelector('.st-floor')!;
+    const room = document.querySelector('.st-room')!;
+    const was = centreOf('t1');
+
+    fireEvent.keyDown(on, { key: ' ' });
+    expect(fireEvent.mouseDown(floor, { button: 0 })).toBe(false);
+    fireEvent.pointerDown(floor, { ...at, clientX: 100, clientY: 100 });
+    fireEvent.pointerMove(room, { ...at, clientX: 160, clientY: 100 });
+    expect(centreOf('t1')).toBeCloseTo(was + 60, 0);
+    fireEvent.pointerUp(document.body, { ...at, clientX: 160, clientY: 100 });
+    fireEvent.click(floor);
+    fireEvent.keyUp(on, { key: ' ' });
+  }
+
+  async function addToChoice(): Promise<void> {
+    fireEvent.click(screen.getByRole('button', { name: 'Add to choice' }));
+    await waitFor(() =>
+      expect(
+        screen.getByRole('button', { name: 'Add to choice' }).getAttribute('aria-pressed'),
+      ).toBe('true'),
+    );
+  }
+
+  it.each([
+    ['clicked', false],
+    ['reached by Tab', true],
+  ])(
+    'pans with Table 1 %s and chosen alone, and keeps the choice, the panel and the focus',
+    async (_how, byTab) => {
+      await onTwo();
+      if (byTab) fireEvent.keyDown(window, { key: 'Tab' });
+      else await chooseTable(TABLE_1);
+      act(() => (item(TABLE_1) as SVGElement).focus());
+      if (byTab) {
+        fireEvent.keyDown(item(TABLE_1), { key: 'Enter' });
+        await screen.findByRole('heading', { level: 2, name: 'Table 1' });
+      }
+      const said = heard();
+
+      spaceDrag(item(TABLE_1));
+      expect(chosen()).toBe('Table 1');
+      expect(document.activeElement).toBe(item(TABLE_1));
+      expect(heard()).toBe(said);
+    },
+  );
+
+  it.each([false, true])(
+    'pans with Table 1 focused and nothing chosen, Add to choice %s, and chooses nothing',
+    async (adding) => {
+      await onTwo();
+      if (adding) await addToChoice();
+      act(() => (item(TABLE_1) as SVGElement).focus());
+      spaceDrag(item(TABLE_1));
+      expect(item(TABLE_1).getAttribute('aria-pressed')).toBe('false');
+      expect(document.activeElement).toBe(item(TABLE_1));
+      expect(screen.queryByRole('heading', { level: 2, name: 'Table 1' })).toBeNull();
+    },
+  );
+
+  it.each([false, true])(
+    'pans with Table 1 focused and two chosen, Add to choice %s, and keeps both',
+    async (adding) => {
+      await onTwo();
+      await chooseTable(TABLE_1);
+      fireEvent.click(item(TABLE_2), { shiftKey: true });
+      await screen.findByRole('heading', { level: 2, name: '2 chosen' });
+      if (adding) await addToChoice();
+      act(() => (item(TABLE_1) as SVGElement).focus());
+      const said = heard();
+
+      spaceDrag(item(TABLE_1));
+      expect(chosen()).toBe('2 chosen');
+      expect(document.activeElement).toBe(item(TABLE_1));
+      expect(heard()).toBe(said);
+    },
+  );
+
+  it('pans with Table 1 focused and chosen alone while Add to choice is on, and does not take it out', async () => {
+    await onTwo();
+    await chooseTable(TABLE_1);
+    await addToChoice();
+    act(() => (item(TABLE_1) as SVGElement).focus());
+    spaceDrag(item(TABLE_1));
+    expect(item(TABLE_1).getAttribute('aria-pressed')).toBe('true');
+  });
+
+  it('chooses on release, not on the press, and chooses Table 2 alone', async () => {
+    await onTwo();
+    await chooseTable(TABLE_1);
+    act(() => (item(TABLE_2) as SVGElement).focus());
+    fireEvent.keyDown(item(TABLE_2), { key: ' ' });
+    expect(chosen()).toBe('Table 1');
+    fireEvent.keyUp(item(TABLE_2), { key: ' ' });
+    expect(await screen.findByRole('heading', { level: 2, name: 'Table 2' })).toBeDefined();
+  });
+
+  it('adds on release with Shift held, as with Shift held only when Space comes up', async () => {
+    await onTwo();
+    await chooseTable(TABLE_1);
+    act(() => (item(TABLE_2) as SVGElement).focus());
+    fireEvent.keyDown(item(TABLE_2), { key: ' ', shiftKey: true });
+    expect(chosen()).toBe('Table 1');
+    fireEvent.keyUp(item(TABLE_2), { key: ' ', shiftKey: true });
+    expect(await screen.findByRole('heading', { level: 2, name: '2 chosen' })).toBeDefined();
+
+    fireEvent.keyDown(item(TABLE_2), { key: ' ' });
+    fireEvent.keyUp(item(TABLE_2), { key: ' ', shiftKey: true });
+    expect(await screen.findByRole('heading', { level: 2, name: 'Table 1' })).toBeDefined();
+  });
+
+  it('adds once on release while Add to choice is on, however long Space repeats', async () => {
+    await onTwo();
+    await chooseTable(TABLE_1);
+    await addToChoice();
+    act(() => (item(TABLE_2) as SVGElement).focus());
+    fireEvent.keyDown(item(TABLE_2), { key: ' ' });
+    for (let times = 0; times < 5; times += 1)
+      fireEvent.keyDown(item(TABLE_2), { key: ' ', repeat: true });
+    expect(chosen()).toBe('Table 1');
+    fireEvent.keyUp(item(TABLE_2), { key: ' ' });
+    expect(await screen.findByRole('heading', { level: 2, name: '2 chosen' })).toBeDefined();
+  });
+
+  it('does nothing on release once the focus has left the item Space went down on', async () => {
+    await onTwo();
+    await chooseTable(TABLE_1);
+    act(() => (item(TABLE_2) as SVGElement).focus());
+    fireEvent.keyDown(item(TABLE_2), { key: ' ' });
+    act(() => (item(TABLE_1) as SVGElement).focus());
+    fireEvent.keyUp(item(TABLE_1), { key: ' ' });
+    expect(chosen()).toBe('Table 1');
+  });
+
+  it('still acts on the press of Enter and Shift+Enter', async () => {
+    await onTwo();
+    await chooseTable(TABLE_1);
+    fireEvent.keyDown(item(TABLE_2), { key: 'Enter', shiftKey: true });
+    expect(await screen.findByRole('heading', { level: 2, name: '2 chosen' })).toBeDefined();
+    fireEvent.keyDown(item(TABLE_2), { key: 'Enter' });
+    expect(await screen.findByRole('heading', { level: 2, name: 'Table 2' })).toBeDefined();
+  });
+});
+
+describe('An item moved by keys stays clear of the keys strip (sc-61042)', () => {
+  beforeAll(standInPointerEvents);
+  beforeEach(() => localStorage.clear());
+
+  const STRIP = { left: 100, right: 618, top: 600, bottom: 680 };
+  let below = 0;
+
+  function floorTop(): number {
+    return Number(document.querySelector('.st-room-line')?.getAttribute('y'));
+  }
+
+  function rect(left: number, top: number, width: number, height: number): DOMRect {
+    return {
+      width,
+      height,
+      left,
+      top,
+      right: left + width,
+      bottom: top + height,
+      x: left,
+      y: top,
+    } as DOMRect;
+  }
+
+  function measure() {
+    return vi.spyOn(Element.prototype, 'getBoundingClientRect').mockImplementation(function (
+      this: Element,
+    ) {
+      if (this.getAttribute('data-table') === 't1') return rect(300, floorTop() + below, 100, 100);
+      if (this.classList.contains('st-keys'))
+        return rect(STRIP.left, STRIP.top, STRIP.right - STRIP.left, STRIP.bottom - STRIP.top);
+      return rect(0, 0, 0, 0);
+    });
+  }
+
+  async function keyed(
+    answers: Record<string, Answer> = {},
+    more: Record<string, unknown> = {},
+    at = 400,
+  ) {
+    signedIn();
+    const long = table({ shape: 'rectangular', seats: 6, widthCm: 180, lengthCm: 76, ...more });
+    const sent = await onSeating({
+      'GET /api/events/ev_1/seating-plan': () => seating(withTables(long)),
+      'PATCH /api/events/ev_1/seating-plan/furniture': (body) => {
+        const [item] = (body as { items: Record<string, number>[] }).items;
+
+        return seating(withTables({ ...long, ...item, version: 2 }));
+      },
+      ...answers,
+    });
+
+    await chooseTable('Table 1, rectangular, 0 of 6 seats taken');
+    const drawn = document.querySelector('[data-table="t1"]') as SVGGElement & HTMLElement;
+
+    act(() => drawn.focus());
+    const was = floorTop();
+
+    below = at - was;
+    fireEvent.keyDown(drawn, { key: 'Shift' });
+    expect(document.querySelector('.st-keys')).not.toBeNull();
+    return { drawn, sent, was };
+  }
+
+  async function nextFrame() {
+    await act(() => new Promise<void>((done) => requestAnimationFrame(() => done())));
+  }
+
+  function watchShows() {
+    const shows: MutationCallback[] = [];
+
+    vi.stubGlobal(
+      'ResizeObserver',
+      class {
+        observe() {}
+        disconnect() {}
+      },
+    );
+    vi.stubGlobal(
+      'MutationObserver',
+      class {
+        constructor(callback: MutationCallback) {
+          shows.push(callback);
+        }
+        observe() {}
+        disconnect() {}
+      },
+    );
+    return shows;
+  }
+
+  it('pans by the least distance once an arrow, Shift+arrow or R has moved the item under the strip', async () => {
+    const measured = measure();
+
+    try {
+      const { drawn } = await keyed();
+      const zoom = percent();
+
+      for (const key of [
+        { key: 'ArrowUp' },
+        { key: 'ArrowDown', shiftKey: true },
+        { key: 'ArrowLeft' },
+        { key: 'R' },
+      ]) {
+        const was = floorTop();
+
+        below = 520 - was;
+        fireEvent.keyDown(drawn, key);
+        expect(floorTop()).toBeCloseTo(was - 28, 0);
+        expect(percent()).toBe(zoom);
+      }
+    } finally {
+      measured.mockRestore();
+    }
+  });
+
+  it('does not move the plan for an item a key leaves clear', async () => {
+    const measured = measure();
+
+    try {
+      const { drawn } = await keyed();
+      const was = floorTop();
+
+      fireEvent.keyDown(drawn, { key: 'ArrowUp' });
+      expect(floorTop()).toBe(was);
+    } finally {
+      measured.mockRestore();
+    }
+  });
+
+  it('keeps the item clear when the room’s foot stops the arrow', async () => {
+    const measured = measure();
+
+    try {
+      const { drawn, sent } = await keyed({}, { yCm: 1762 });
+      const was = floorTop();
+
+      below = 520 - was;
+      fireEvent.keyDown(drawn, { key: 'ArrowDown' });
+      expect(furniture(sent)).toEqual([]);
+      expect(floorTop()).toBeCloseTo(was - 28, 0);
+    } finally {
+      measured.mockRestore();
+    }
+  });
+
+  it('pans when the strip grows to a second line while the item has focus', async () => {
+    const measured = measure();
+    const watched: { callback: ResizeObserverCallback; targets: Element[] }[] = [];
+
+    vi.stubGlobal(
+      'ResizeObserver',
+      class {
+        targets: Element[] = [];
+        constructor(callback: ResizeObserverCallback) {
+          watched.push({ callback, targets: this.targets });
+        }
+        observe(target: Element) {
+          this.targets.push(target);
+        }
+        disconnect() {}
+      },
+    );
+
+    try {
+      await keyed();
+      const was = floorTop();
+      const strip = document.querySelector('.st-keys')!;
+      const grow = () =>
+        act(() => {
+          for (const one of watched)
+            if (one.targets.includes(strip))
+              one.callback(
+                [{ target: strip, contentRect: strip.getBoundingClientRect() }] as never,
+                {} as ResizeObserver,
+              );
+        });
+
+      STRIP.top = 640;
+      grow();
+      below = 520 - was;
+      STRIP.top = 600;
+      grow();
+      await nextFrame();
+      expect(floorTop()).toBeCloseTo(was - 28, 0);
+    } finally {
+      STRIP.top = 600;
+      vi.unstubAllGlobals();
+      measured.mockRestore();
+    }
+  });
+
+  it('pans for where the item lies once a resize that grew the strip has been drawn', async () => {
+    const measured = measure();
+    const watched: { callback: ResizeObserverCallback; targets: Element[] }[] = [];
+
+    vi.stubGlobal(
+      'ResizeObserver',
+      class {
+        targets: Element[] = [];
+        constructor(callback: ResizeObserverCallback) {
+          watched.push({ callback, targets: this.targets });
+        }
+        observe(target: Element) {
+          this.targets.push(target);
+        }
+        disconnect() {}
+      },
+    );
+
+    try {
+      await keyed();
+      const was = floorTop();
+      const strip = document.querySelector('.st-keys')!;
+      const grow = () =>
+        act(() => {
+          for (const one of watched)
+            if (one.targets.includes(strip))
+              one.callback(
+                [{ target: strip, contentRect: strip.getBoundingClientRect() }] as never,
+                {} as ResizeObserver,
+              );
+        });
+
+      STRIP.top = 640;
+      grow();
+      STRIP.top = 600;
+      grow();
+      below = 520 - was;
+      await nextFrame();
+      expect(floorTop()).toBeCloseTo(was - 28, 0);
+    } finally {
+      STRIP.top = 600;
+      vi.unstubAllGlobals();
+      measured.mockRestore();
+    }
+  });
+
+  it('pans when the strip shows over the item that has focus', async () => {
+    const measured = measure();
+
+    watchShows();
+    try {
+      const { was } = await keyed({}, {}, 520);
+
+      expect(floorTop()).toBeCloseTo(was - 28, 0);
+    } finally {
+      vi.unstubAllGlobals();
+      measured.mockRestore();
+    }
+  });
+
+  it('pans when a bar appears over the item that has focus', async () => {
+    const measured = measure();
+    const shows = watchShows();
+
+    try {
+      const { was } = await keyed();
+      const strip = document.querySelector('.st-keys')!;
+
+      below = 520 - was;
+      act(() => {
+        for (const show of shows)
+          show([{ addedNodes: [strip] as unknown as NodeList } as MutationRecord], {} as never);
+      });
+      await nextFrame();
+      expect(floorTop()).toBeCloseTo(was - 28, 0);
+    } finally {
+      vi.unstubAllGlobals();
+      measured.mockRestore();
+    }
+  });
+
+  it('does not pan when the small map a zoom brings in shows while the item has focus', async () => {
+    const measured = measure();
+    const shows = watchShows();
+
+    try {
+      const { was } = await keyed();
+      const small = document.createElement('div');
+
+      small.className = 'st-float st-minimap';
+      below = 520 - was;
+      act(() => {
+        for (const show of shows)
+          show([{ addedNodes: [small] as unknown as NodeList } as MutationRecord], {} as never);
+      });
+      await nextFrame();
+      expect(floorTop()).toBe(was);
+    } finally {
+      vi.unstubAllGlobals();
+      measured.mockRestore();
+    }
+  });
+
+  it('never moves the plan for a click or a drag, even with the item where the strip was', async () => {
+    const measured = measure();
+
+    try {
+      const { drawn } = await keyed();
+      const was = floorTop();
+
+      below = 520 - was;
+      fireEvent.pointerDown(drawn, { button: 0, pointerId: 1, clientX: 350, clientY: 570 });
+      fireEvent.pointerUp(drawn, { button: 0, pointerId: 1, clientX: 350, clientY: 570 });
+      fireEvent.click(drawn);
+      expect(floorTop()).toBe(was);
+
+      fireEvent.pointerDown(drawn, { button: 0, pointerId: 1, clientX: 350, clientY: 570 });
+      fireEvent.pointerMove(drawn, { button: 0, pointerId: 1, clientX: 350, clientY: 640 });
+      fireEvent.pointerUp(drawn, { button: 0, pointerId: 1, clientX: 350, clientY: 640 });
+      expect(floorTop()).toBe(was);
+    } finally {
+      measured.mockRestore();
+    }
   });
 });

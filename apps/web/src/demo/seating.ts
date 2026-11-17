@@ -93,14 +93,31 @@ export interface Choice {
 
 export type Rings = Readonly<Record<string, readonly Choice[]>>;
 
+export type Presence = 'chips' | 'overflow' | 'reconnecting';
+
+const isColleague = (one: Choice): boolean => !one.who.viewer;
+
 export function chosenWords(choices: readonly Choice[] | undefined): string {
-  const shown = (choices ?? []).filter((one) => !one.who.viewer);
+  const shown = (choices ?? []).filter(isColleague);
   const whole = shown.filter((one) => one.seat == null).map((one) => one.who.name);
   const seats = shown
     .filter((one) => one.seat != null)
     .map((one) => say(SW.seatChosenBy, { n: (one.seat ?? 0) + 1, name: one.who.name }));
 
   return (whole.length === 0 ? '' : say(SW.chosenBy, { name: listed(whole) })) + seats.join('');
+}
+
+/** The colleagues whose choice marks an item, in the order they chose it: never a viewer, and nobody while your own connection is down (sc-60717). */
+export function marksOf(rings: Rings, presence: Presence, id: string): readonly Choice[] {
+  if (presence === 'reconnecting') return [];
+  return (rings[id] ?? []).filter(isColleague);
+}
+
+/** A chair's own words: who chose that seat, joined as the language joins a list. */
+export function seatChosenWords(choices: readonly Choice[], seat: number): string {
+  const names = choices.filter((one) => one.seat === seat).map((one) => one.who.name);
+
+  return names.length === 0 ? '' : say(SW.chosenBy, { name: listed(names) });
 }
 
 export const EVENT_ID = 'evt-wed-4';
@@ -498,9 +515,9 @@ export function isRound(item: Item): boolean {
   return item.kind === 'round' || item.kind === 'cocktail' || item.kind === 'single';
 }
 
-/** How far past its box a focused item's ring and halo reach once turned with it, in screen px: the halo's 17.5 offset and half its 5 px stroke (sc-57361). */
-export function focusReach(item: Item): number {
-  const reach = 17.5 + 5 / 2;
+/** How far past its box a focused item's ring and halo reach once turned with it, in screen px: the halo's 17.5 offset and half its 5 px stroke (sc-57361); with `drawn`, the box is the drawn one that already holds the halo, so only the half stroke. */
+export function focusReach(item: Item, drawn = false): number {
+  const reach = (drawn ? 0 : 17.5) + 5 / 2;
 
   if (isRound(item)) return reach;
   const angle = (item.rot * Math.PI) / 180;
@@ -1550,6 +1567,31 @@ export const SEATING_STATES = [
   { key: 'presenceBoth', name: 'You and Priya Shah chose Table 7', group: 'Who else is here' },
   { key: 'presenceSix', name: 'Six people here', group: 'Who else is here' },
   { key: 'presenceViewer', name: 'A viewer’s choice', group: 'Who else is here' },
+  {
+    key: 'presenceSeatTables',
+    name: 'Tables: Julien Moreau has chosen seat 2 of Table 9',
+    group: 'Who else is here',
+  },
+  {
+    key: 'presenceSeatList',
+    name: 'List: Julien Moreau’s seat, Table 9 open',
+    group: 'Who else is here',
+  },
+  {
+    key: 'presenceTwoTables',
+    name: 'Tables: two colleagues on Table 7, three on Table 4',
+    group: 'Who else is here',
+  },
+  {
+    key: 'presenceTwoList',
+    name: 'List: two colleagues on Table 7, three on Table 4',
+    group: 'Who else is here',
+  },
+  {
+    key: 'presenceBothTables',
+    name: 'Tables: you and Priya Shah chose Table 7',
+    group: 'Who else is here',
+  },
   { key: 'reconnecting', name: 'Reconnecting', group: 'Who else is here' },
   { key: 'left', name: 'Priya Shah left', group: 'Who else is here' },
   { key: 'arriving', name: 'A colleague’s change arrives', group: 'Who else is here' },

@@ -31,7 +31,7 @@ function told(): void {
   heard.forEach((listener) => listener());
 }
 
-/** The event, once its page has loaded it, for the band's crumb and the head of the event's sidebar. */
+/** The event, once its page has loaded it, for the head of the event's sidebar. */
 export function useShowEvent(eventId: string, event: OrganisationEvent | undefined): void {
   useEffect(() => {
     if (event == null) return;
@@ -59,8 +59,34 @@ export function useShownEvent(eventId: string | undefined): OrganisationEvent | 
   return now != null && now.eventId === eventId ? now.event : undefined;
 }
 
-export function useShownEventName(eventId: string | undefined): string | undefined {
-  return useShownEvent(eventId)?.name;
+let menuReady: { eventId: string; ready: number; courses: number } | null = null;
+
+/** The Menu page's count of ready courses, for the line under Menu in the event's sidebar while some course isn't ready (sc-3904). */
+export function useShowMenuReady(eventId: string, ready: number, courses: number): void {
+  useEffect(() => {
+    if (ready >= courses) return;
+    const mine = { eventId, ready, courses };
+    menuReady = mine;
+    told();
+
+    return () => {
+      if (menuReady !== mine) return;
+      menuReady = null;
+      told();
+    };
+  }, [eventId, ready, courses]);
+}
+
+function useMenuReady(eventId: string): { ready: number; courses: number } | null {
+  const now = useSyncExternalStore(
+    (listener) => {
+      heard.add(listener);
+      return () => heard.delete(listener);
+    },
+    () => menuReady,
+  );
+
+  return now != null && now.eventId === eventId ? now : null;
 }
 
 let gone: string | null = null;
@@ -132,6 +158,7 @@ export function EventNav({
   const navigate = useNavigate();
   const cameFromPage = fromPage(location.state);
   const event = useShownEvent(inside.eventId);
+  const menuLine = useMenuReady(inside.eventId);
 
   const backToPage = (click: MouseEvent<HTMLAnchorElement>) => {
     onFollow?.();
@@ -153,19 +180,32 @@ export function EventNav({
       <ul className="today-places">
         {SIDE_AREAS.map((area) => {
           const current = area === inside.area;
+          const sub =
+            area === 'menu' && menuLine != null
+              ? t('eventNav.menuReady', { ready: menuLine.ready, count: menuLine.courses })
+              : null;
 
           return (
             <li key={area}>
               <Link
                 to={eventAreaPath(inside.eventId, area)}
-                className={current ? 'today-place is-on' : 'today-place'}
+                className={['today-place', current && 'is-on', sub != null && 'has-line']
+                  .filter(Boolean)
+                  .join(' ')}
                 aria-current={current ? 'page' : undefined}
                 replace={current || (!inside.onPage && !(area === 'overview' && cameFromPage))}
                 state={inside.onPage || cameFromPage ? { fromEventPage: true } : undefined}
                 onClick={area === 'overview' && !inside.onPage ? backToPage : onFollow}
               >
                 <Glyph name={SIDE_AREA_GLYPHS[area]} />
-                {t(`eventNav.${area}`)}
+                {sub != null ? (
+                  <span className="ev-side-two">
+                    <span>{t(`eventNav.${area}`)}</span>
+                    <span className="ev-side-sub">{sub}</span>
+                  </span>
+                ) : (
+                  t(`eventNav.${area}`)
+                )}
               </Link>
             </li>
           );

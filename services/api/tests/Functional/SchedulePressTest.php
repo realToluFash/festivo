@@ -257,6 +257,56 @@ final class SchedulePressTest extends ApiTestCase
     }
 
     #[Test]
+    public function aLatePressThatWouldChangeAnotherItemIsRefusedAndNeverCounts(): void
+    {
+        $drinks = $this->add('Welcome drinks', '2027-03-06T17:00');
+        $speeches = $this->add('Speeches', '2027-03-06T18:00');
+        $dance = $this->add('First dance', '2027-03-06T19:00');
+        $this->press($this->owner, $drinks, 'start', '2027-03-06T17:05:00+01:00');
+        $this->press($this->owner, $drinks, 'done', '2027-03-06T17:50:00+01:00');
+        $this->press($this->colleague, $speeches, 'start', '2027-03-06T18:00:00+01:00');
+        $this->press($this->colleague, $speeches, 'done', '2027-03-06T18:40:00+01:00');
+
+        $refused = $this->press($this->colleague, $dance, 'start', '2027-03-06T16:00:00+01:00', 'offline-1');
+
+        self::assertSame(409, $this->statusCode());
+        self::assertSame('https://soirely.com/errors/track_busy', $refused['type'] ?? null);
+        self::assertSame(['name' => 'Ifeoma Nduka', 'at' => '2027-03-06T17:05:00+01:00'], $refused['superseded_by'] ?? null);
+        self::assertSame(['2027-03-06T17:05:00+01:00', '2027-03-06T17:50:00+01:00'], [$this->item($drinks)['startedAt'], $this->item($drinks)['endedAt']]);
+        self::assertSame(['2027-03-06T18:00:00+01:00', '2027-03-06T18:40:00+01:00'], [$this->item($speeches)['startedAt'], $this->item($speeches)['endedAt']]);
+        self::assertNull($this->item($dance)['startedAt']);
+
+        $this->press($this->owner, $dance, 'start', '2027-03-06T19:02:00+01:00');
+        self::assertSame(200, $this->statusCode());
+        self::assertSame('2027-03-06T19:02:00+01:00', $this->item($dance)['startedAt']);
+
+        $again = $this->press($this->colleague, $dance, 'start', '2027-03-06T16:00:00+01:00', 'offline-1');
+        self::assertSame(409, $this->statusCode());
+        self::assertSame('https://soirely.com/errors/track_busy', $again['type'] ?? null);
+        self::assertSame(['name' => 'Ifeoma Nduka', 'at' => '2027-03-06T17:05:00+01:00'], $again['superseded_by'] ?? null);
+        self::assertSame('2027-03-06T19:02:00+01:00', $this->item($dance)['startedAt']);
+    }
+
+    #[Test]
+    public function aLatePressThatWouldReviveAStartRefusedEarlierIsRefused(): void
+    {
+        $drinks = $this->add('Welcome drinks', '2027-03-06T17:00');
+        $speeches = $this->add('Speeches', '2027-03-06T18:00');
+        $this->press($this->owner, $drinks, 'start', '2027-03-06T17:05:00+01:00');
+        $this->press($this->colleague, $speeches, 'start', '2027-03-06T17:10:00+01:00');
+        self::assertSame(409, $this->statusCode());
+        $this->press($this->owner, $drinks, 'done', '2027-03-06T17:30:00+01:00');
+
+        $refused = $this->press($this->owner, $drinks, 'done', '2027-03-06T17:08:00+01:00');
+
+        self::assertSame(409, $this->statusCode());
+        self::assertSame('https://soirely.com/errors/track_busy', $refused['type'] ?? null);
+        self::assertSame(['name' => 'Tunde Bello', 'at' => '2027-03-06T17:10:00+01:00'], $refused['superseded_by'] ?? null);
+        self::assertSame('2027-03-06T17:30:00+01:00', $this->item($drinks)['endedAt']);
+        self::assertNull($this->item($speeches)['startedAt']);
+    }
+
+    #[Test]
     public function aReplayedPressThatLosesIsRefusedWithThePressItLostTo(): void
     {
         $speeches = $this->add('Speeches', '2027-03-06T19:00');

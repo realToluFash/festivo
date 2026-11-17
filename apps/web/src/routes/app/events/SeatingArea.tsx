@@ -16,8 +16,16 @@ import {
   type SectionColour,
   type SectionContents,
   type SingleSeat,
+  asColleagueChoice,
+  asPlanBeat,
+  asPlanSubscriber,
+  asPlanSubscribers,
   asSeating,
+  type ColleagueChoice,
+  type PlanSubscriber,
   realtimeTopic,
+  subscribersTopic,
+  subscribersUrl,
 } from '@soirely/api-client';
 import {
   ROOM_MAXIMUM_CM,
@@ -44,6 +52,7 @@ import {
   useEffect,
   useEffectEvent,
   useId,
+  useLayoutEffect,
   useRef,
   useState,
 } from 'react';
@@ -66,6 +75,7 @@ import { currentLocale } from '../../../i18n/index.ts';
 import { LayersContext, focusWhenFree, useDeskLayers } from '../../../layers.ts';
 import { pageTitle, usePageTitle } from '../../../pageTitle.ts';
 import { canOn, useSession } from '../../../session.ts';
+import { steadyTicks } from '../../../steadyTicks.ts';
 import {
   type Asking,
   BackHead,
@@ -112,6 +122,26 @@ import {
 import { fitOf, intoView, useCamera } from './seatingCamera.ts';
 import { type TrayFilter, pickedParty, seatedAt } from './seatingGuests.ts';
 import { SeatTray } from './SeatingSeat.tsx';
+import { Presence } from './SeatingPresence.tsx';
+import {
+  BEAT_MS,
+  type ColleagueRing,
+  NOBODY_ELSE,
+  type OwnChoice,
+  LEAVING_HOLD_MS,
+  type PresenceState,
+  RingsContext,
+  SILENT_MS,
+  beat,
+  changed,
+  chose,
+  colleaguesOf,
+  departed,
+  listed,
+  quieted,
+  ringsOf,
+  woke,
+} from './seatingPresence.ts';
 import {
   type Fold,
   type GridDraft,
@@ -144,11 +174,14 @@ import './seating.css';
 type Load = { kind: 'loading' } | { kind: 'failed' } | { kind: 'loaded'; seating: Seating };
 
 const RETRY_MS = 5_000;
+const WATCH_MS = 1_000;
 const RENEW_BEFORE_MS = 60_000;
 const PAN_FROM_PX = 4;
 const STEP_TRIES = 3;
 const STEP_RETRY_MS = 1_000;
 const SIZE_STEP_CM = 10;
+const ITEM_ATTRIBUTES = ['data-table', 'data-row', 'data-seat'];
+const ITEM = ITEM_ATTRIBUTES.map((attribute) => `[${attribute}]`).join(', ');
 
 type Drag =
   | {
@@ -163,53 +196,102 @@ type Drag =
   | { kind: 'resize'; table: Table; handle: Handle; pointer: number; last: Placement | null };
 const WHEEL_ZOOM = 300;
 
-/** The room as the API holds it, published to every page open on it (sc-3998). */
-function useLiveSeating(eventId: string, onSeating: (seating: Seating) => void, onGap: () => void) {
-  const latest = useRef({ onSeating, onGap });
+interface LiveHandlers {
+  onSeating: (seating: Seating) => void;
+  onGap: () => void;
+  onSubscribers: (list: PlanSubscriber[]) => void;
+  onSubscriber: (tab: PlanSubscriber) => void;
+  onChoice: (choice: ColleagueChoice) => void;
+  onBeat: (userId: string) => void;
+  onLost: () => void;
+}
+
+/** The room as the API holds it, published to every page open on it (sc-3998), with who else has it open and what its editors have chosen (sc-4719). */
+function useLiveSeating(eventId: string, handlers: LiveHandlers) {
+  const latest = useRef(handlers);
 
   useEffect(() => {
-    latest.current = { onSeating, onGap };
+    latest.current = handlers;
   });
 
   useEffect(() => {
     const hub = config().mercureUrl;
     if (hub === '') return;
 
+    const topic = realtimeTopic('EventSeating', eventId);
     let source: EventSource | null = null;
     let timer: ReturnType<typeof setTimeout> | undefined;
+    let listing: ReturnType<typeof setTimeout> | undefined;
     let stopped = false;
+    let heardAt = Date.now();
+    let open = false;
 
     const connect = async (): Promise<void> => {
       let subscription;
       try {
         subscription = await api.seatingSubscription(eventId);
       } catch {
+        latest.current.onLost();
         if (!stopped) timer = setTimeout(() => void connect(), RETRY_MS);
         return;
       }
       if (stopped) return;
 
       const url = new URL(hub);
-      url.searchParams.append('topic', realtimeTopic('EventSeating', eventId));
+      url.searchParams.append('topic', topic);
+      url.searchParams.append('topic', realtimeTopic('EventSeatingChoices', eventId));
+      url.searchParams.append('topic', subscribersTopic(topic));
       url.searchParams.append('authorization', subscription.token);
+      const token = subscription.token;
 
       source?.close();
+      clearTimeout(listing);
       source = new EventSource(url);
-      source.onopen = () => latest.current.onGap();
+      heardAt = Date.now();
+      open = false;
+      const opened = source;
+      const list = (): void => {
+        clearTimeout(listing);
+        fetch(subscribersUrl(hub, topic), { headers: { Authorization: `Bearer ${token}` } })
+          .then((response) => (response.ok ? response.json() : Promise.reject(new Error())))
+          .then(
+            (body: unknown) =>
+              !stopped && latest.current.onSubscribers(asPlanSubscribers(body, topic)),
+            () => {
+              if (stopped || source !== opened) return;
+              latest.current.onLost();
+              listing = setTimeout(list, RETRY_MS);
+            },
+          );
+      };
+      source.onopen = () => {
+        heardAt = Date.now();
+        open = true;
+        sayHere();
+        latest.current.onGap();
+        list();
+      };
       source.onmessage = (message: MessageEvent<string>) => {
-        let seating: Seating | null = null;
+        heardAt = Date.now();
+        let data: unknown = null;
         try {
-          seating = asSeating(JSON.parse(message.data));
+          data = JSON.parse(message.data);
         } catch {
-          seating = null;
+          data = null;
         }
+        const tab = asPlanSubscriber(data, topic);
+        if (tab != null) return latest.current.onSubscriber(tab);
+        const here = asPlanBeat(data);
+        if (here != null) return latest.current.onBeat(here);
+        const choice = asColleagueChoice(data);
+        if (choice != null) return latest.current.onChoice(choice);
+        const seating = asSeating(data);
         if (seating == null) latest.current.onGap();
         else latest.current.onSeating(seating);
       };
       source.onerror = () => {
-        if (source?.readyState !== EventSource.CLOSED || stopped) return;
-        clearTimeout(timer);
-        timer = setTimeout(() => void connect(), RETRY_MS);
+        if (stopped || source !== opened) return;
+        dropped();
       };
 
       const lapses = Date.parse(subscription.expiresAt) - Date.now() - RENEW_BEFORE_MS;
@@ -217,14 +299,120 @@ function useLiveSeating(eventId: string, onSeating: (seating: Seating) => void, 
       timer = setTimeout(() => void connect(), Math.max(lapses, RETRY_MS));
     };
 
+    /** Closed rather than left to the browser's retry, which would present a token that may have lapsed with the reader's access. */
+    const dropped = (): void => {
+      latest.current.onLost();
+      open = false;
+      source?.close();
+      source = null;
+      clearTimeout(listing);
+      clearTimeout(timer);
+      timer = setTimeout(() => void connect(), RETRY_MS);
+    };
+    const sayHere = (): void => {
+      if (open) api.sayHereOnPlan(eventId).catch(() => undefined);
+    };
+    let watchedAt = Date.now();
+    const stopBeating = steadyTicks(BEAT_MS, sayHere);
+    /** A page held back past a beat, by sleep or a hidden tab without a worker, says it is here and waits to be heard again rather than reconnecting. */
+    const stopWatching = steadyTicks(WATCH_MS, () => {
+      const now = Date.now();
+      const heldBack = now - watchedAt > BEAT_MS;
+      watchedAt = now;
+      if (source == null) return;
+      if (heldBack) {
+        heardAt = now;
+        sayHere();
+      } else if (now - heardAt > SILENT_MS) dropped();
+    });
+
     void connect();
 
     return () => {
       stopped = true;
       clearTimeout(timer);
+      clearTimeout(listing);
+      stopBeating();
+      stopWatching();
       source?.close();
     };
   }, [eventId]);
+}
+
+/** Who else has the plan open, and telling them what you have chosen: when it changes, when you (re)connect, and when someone arrives. */
+function usePresence(event: OrganisationEvent) {
+  const { t } = useTranslation();
+  const me = useSession().userId;
+  const editor = canOn(event, 'seating.manage');
+  const [presence, setPresence] = useState<PresenceState>(NOBODY_ELSE);
+  const mine = useRef<OwnChoice | null>(null);
+  const told = useRef<string>('null');
+  const holds = useRef<ReturnType<typeof setTimeout>[]>([]);
+
+  useEffect(() => {
+    const pending = holds.current;
+    return () => pending.forEach(clearTimeout);
+  }, []);
+
+  useEffect(() => {
+    const say = (key: 'joinedPlan' | 'leftPlan', name: string) => t(`seating.${key}`, { name });
+    let tickedAt = Date.now();
+    return steadyTicks(WATCH_MS, () => {
+      const now = Date.now();
+      const heldBack = now - tickedAt > BEAT_MS;
+      tickedAt = now;
+      setPresence((was) => (heldBack ? woke(was, now) : quieted(was, now, me, say)));
+    });
+  }, [me, t]);
+
+  const tell = useCallback(
+    (chosen: OwnChoice | null, again = false) => {
+      mine.current = chosen;
+      const key = JSON.stringify(chosen);
+      if (!editor || (!again && key === told.current)) return;
+      told.current = key;
+      api.chooseOnPlan(event.id, chosen).catch(() => {
+        told.current = 'unsent';
+      });
+    },
+    [editor, event.id],
+  );
+  const say = (key: 'joinedPlan' | 'leftPlan', name: string) => t(`seating.${key}`, { name });
+
+  const handlers: Omit<LiveHandlers, 'onSeating' | 'onGap'> = {
+    onSubscribers: (list) => {
+      setPresence((was) => listed(was, list, Date.now()));
+      if (mine.current != null) tell(mine.current, true);
+    },
+    onSubscriber: (tab) => {
+      setPresence((was) => changed(was, tab, me, say, Date.now()));
+      if (!tab.active)
+        holds.current.push(
+          setTimeout(
+            () => setPresence((was) => departed(was, tab.subscriber, me, say)),
+            LEAVING_HOLD_MS,
+          ),
+        );
+      if (tab.active && tab.userId !== me && mine.current != null) tell(mine.current, true);
+    },
+    onChoice: (choice) => {
+      if (choice.userId !== me) setPresence((was) => chose(was, choice));
+    },
+    onBeat: (userId) => {
+      if (userId !== me) setPresence((was) => beat(was, userId, Date.now(), say));
+    },
+    onLost: () =>
+      setPresence((was) => (was.connection === 'lost' ? was : { ...was, connection: 'lost' })),
+  };
+
+  return {
+    handlers,
+    tell,
+    people: colleaguesOf(presence, me),
+    rings: ringsOf(presence, me),
+    lost: presence.connection === 'lost',
+    spoken: presence.spoken,
+  };
 }
 
 const LOADING_ROOM = { w: 2400, l: 1800 } as const;
@@ -314,11 +502,13 @@ export function SeatingArea({ event }: { event: OrganisationEvent }) {
     };
   }, [event.id, attempt]);
 
-  useLiveSeating(
-    event.id,
-    (seating) => setLoad({ kind: 'loaded', seating }),
-    () => setAttempt((n) => n + 1),
-  );
+  const presence = usePresence(event);
+
+  useLiveSeating(event.id, {
+    onSeating: (seating) => setLoad({ kind: 'loaded', seating }),
+    onGap: () => setAttempt((n) => n + 1),
+    ...presence.handlers,
+  });
 
   const crumb = (
     <header className="st-top">
@@ -339,6 +529,7 @@ export function SeatingArea({ event }: { event: OrganisationEvent }) {
           </li>
         </ol>
       </nav>
+      <Presence people={presence.people} lost={presence.lost} spoken={presence.spoken} />
       {desk.bell}
     </header>
   );
@@ -392,6 +583,8 @@ export function SeatingArea({ event }: { event: OrganisationEvent }) {
         seating={load.seating}
         onSeating={(seating) => setLoad({ kind: 'loaded', seating })}
         reload={() => setAttempt((n) => n + 1)}
+        rings={presence.rings}
+        onChosen={presence.tell}
       />
     </div>
   );
@@ -402,11 +595,15 @@ function Plan({
   seating,
   onSeating,
   reload,
+  rings,
+  onChosen,
 }: {
   event: OrganisationEvent;
   seating: Seating;
   onSeating: (seating: Seating) => void;
   reload: () => void;
+  rings: Record<string, ColleagueRing[]>;
+  onChosen: (chosen: OwnChoice | null) => void;
 }) {
   const { t } = useTranslation();
   const { layers, covered, setHost } = useDeskLayers();
@@ -482,6 +679,7 @@ function Plan({
   } | null>(null);
   const spaceHeld = useRef(false);
   const spacePanned = useRef(false);
+  const spaceOn = useRef<{ id: string; shift: boolean } | null>(null);
   const touches = useRef(new Set<number>());
 
   useEffect(() => {
@@ -510,6 +708,18 @@ function Plan({
   const itemOf = (id: string, from: SeatingPlan | null = shown): FloorItem | null =>
     from == null ? null : (floorItems(from).find((item) => item.one.id === id) ?? null);
   const chosenItems = several.length > 1 ? several.flatMap((id) => itemOf(id) ?? []) : [];
+  const ownLead = shownPanel?.kind === 'chair' ? null : (chosenIds[0] ?? null);
+  const ownKind = ownLead == null ? null : (itemOf(ownLead)?.kind ?? null);
+  const ownChoice: OwnChoice | null =
+    shownPanel?.kind === 'chair'
+      ? { kind: 'table', id: shownPanel.id, chair: shownPanel.seat }
+      : ownLead == null || ownKind == null
+        ? null
+        : { kind: ownKind, id: ownLead, chair: null };
+  const ownKey = JSON.stringify(ownChoice);
+  const tellChosen = useEffectEvent(() => onChosen(ownChoice));
+
+  useEffect(() => tellChosen(), [ownKey]);
 
   const dropRefusal = () => setBar((was) => (was?.tone === 'amber' ? null : was));
   const open = (next: Panel | null, onItem = false) => {
@@ -589,23 +799,14 @@ function Plan({
     return () => node.removeEventListener('wheel', wheel);
   }, [hasRoom, zoomTo, panBy, view]);
 
-  useEffect(() => {
-    const node = canvasNode.current;
+  const keepClear = useCallback(
+    (target: Element) => {
+      const node = canvasNode.current;
 
-    if (node == null || !hasRoom) return;
-    let byKey = false;
-    const key = (event: KeyboardEvent) => {
-      byKey = event.key === 'Tab';
-    };
-    const point = () => {
-      byKey = false;
-    };
-    const follow = (event: FocusEvent) => {
-      const target = event.target;
-
-      if (!byKey || !(target instanceof Element) || target.closest('.st-room') == null) return;
+      if (node == null) return;
       const box = node.getBoundingClientRect();
       const at = target.getBoundingClientRect();
+
       const [dx, dy] = intoView(
         {
           x0: at.left - box.left,
@@ -628,6 +829,104 @@ function Plan({
       );
 
       if (dx !== 0 || dy !== 0) panBy(-dx, -dy);
+    },
+    [panBy, view],
+  );
+
+  const keyed = useRef<string | null>(null);
+  const keysShown =
+    keyboard && focusId != null && chosenIds.includes(focusId) && !readOnly && !adding;
+  const focusedItem = useCallback((): Element | null => {
+    const active = document.activeElement;
+
+    return active != null &&
+      canvasNode.current?.contains(active) === true &&
+      active.matches('[data-table], [data-row], [data-seat]')
+      ? active
+      : null;
+  }, []);
+
+  useLayoutEffect(() => {
+    const id = keyed.current;
+
+    keyed.current = null;
+    if (id == null) return;
+    const target = focusedItem();
+
+    if (target == null) return;
+    if (['data-table', 'data-row', 'data-seat'].some((one) => target.getAttribute(one) === id))
+      keepClear(target);
+  });
+
+  useLayoutEffect(() => {
+    const target = keysShown ? focusedItem() : null;
+
+    if (target != null) keepClear(target);
+  }, [keysShown, focusedItem, keepClear]);
+
+  const keyFocus = keyboard && focusId != null;
+
+  useEffect(() => {
+    const node = canvasNode.current;
+
+    if (!keyFocus || node == null || typeof ResizeObserver === 'undefined') return;
+    const tall = new WeakMap<Element, number>();
+    let frame = 0;
+    const clearSettled = () => {
+      cancelAnimationFrame(frame);
+      frame = requestAnimationFrame(() => {
+        const target = focusedItem();
+
+        if (target != null) keepClear(target);
+      });
+    };
+    const grows = new ResizeObserver((entries) => {
+      const grew = entries.some((entry) => {
+        const was = tall.get(entry.target);
+        const now = entry.target.getBoundingClientRect().height;
+
+        tall.set(entry.target, now);
+        return was != null && now > was;
+      });
+
+      if (grew) clearSettled();
+    });
+    const watch = () =>
+      node.querySelectorAll(`:scope > ${BY_KEYS_BAR}`).forEach((bar) => grows.observe(bar));
+    const shows = new MutationObserver((changes) => {
+      watch();
+      const shown = changes.some((change) =>
+        [...change.addedNodes].some((one) => one instanceof Element && one.matches(BY_KEYS_BAR)),
+      );
+
+      if (shown) clearSettled();
+    });
+
+    watch();
+    shows.observe(node, { childList: true });
+    return () => {
+      cancelAnimationFrame(frame);
+      grows.disconnect();
+      shows.disconnect();
+    };
+  }, [keyFocus, focusedItem, keepClear]);
+
+  useEffect(() => {
+    const node = canvasNode.current;
+
+    if (node == null || !hasRoom) return;
+    let byKey = false;
+    const key = (event: KeyboardEvent) => {
+      byKey = event.key === 'Tab';
+    };
+    const point = () => {
+      byKey = false;
+    };
+    const follow = (event: FocusEvent) => {
+      const target = event.target;
+
+      if (!byKey || !(target instanceof Element) || target.closest('.st-room') == null) return;
+      keepClear(target);
     };
 
     window.addEventListener('keydown', key, true);
@@ -638,7 +937,7 @@ function Plan({
       window.removeEventListener('pointerdown', point, true);
       node.removeEventListener('focusin', follow);
     };
-  }, [hasRoom, panBy, view]);
+  }, [hasRoom, keepClear]);
 
   useEffect(() => {
     const move = (event: PointerEvent) => {
@@ -717,24 +1016,6 @@ function Plan({
       open(null);
     }
   });
-
-  useEffect(() => {
-    const keys = (event: KeyboardEvent) => onKey(event);
-    const lift = (event: KeyboardEvent) => {
-      if (event.key !== ' ') return;
-      if (spacePanned.current || (spaceHeld.current && !control(event.target)))
-        event.preventDefault();
-      spaceHeld.current = false;
-      spacePanned.current = false;
-    };
-
-    window.addEventListener('keydown', keys);
-    window.addEventListener('keyup', lift);
-    return () => {
-      window.removeEventListener('keydown', keys);
-      window.removeEventListener('keyup', lift);
-    };
-  }, []);
 
   const attempt = <A,>(
     change: () => Promise<A>,
@@ -952,6 +1233,40 @@ function Plan({
       setNotice(null);
     }
   };
+
+  const onSpaceUp = useEffectEvent((event: KeyboardEvent) => {
+    const on = spaceOn.current;
+
+    spaceOn.current = null;
+    if (on == null || spacePanned.current) return;
+    const focused = document.activeElement;
+
+    if (!ITEM_ATTRIBUTES.some((attribute) => focused?.getAttribute(attribute) === on.id)) return;
+    const item = itemOf(on.id);
+
+    if (item == null) return;
+    if ((on.shift || event.shiftKey || adding) && !readOnly) toggle(on.id);
+    else open({ kind: item.kind, id: on.id }, true);
+  });
+
+  useEffect(() => {
+    const keys = (event: KeyboardEvent) => onKey(event);
+    const lift = (event: KeyboardEvent) => {
+      if (event.key !== ' ') return;
+      if (spacePanned.current || (spaceHeld.current && !control(event.target)))
+        event.preventDefault();
+      onSpaceUp(event);
+      spaceHeld.current = false;
+      spacePanned.current = false;
+    };
+
+    window.addEventListener('keydown', keys);
+    window.addEventListener('keyup', lift);
+    return () => {
+      window.removeEventListener('keydown', keys);
+      window.removeEventListener('keyup', lift);
+    };
+  }, []);
 
   const versionNow = (id: string): number => itemOf(id, newest.current)?.one.version ?? 0;
   const refNow = (kind: FloorItem['kind'], id: string) => ({ kind, id, version: versionNow(id) });
@@ -1302,7 +1617,7 @@ function Plan({
     if (readOnly || plan == null) return;
     const target = event.target as Element;
 
-    if (!target.matches('[data-table], [data-row], [data-seat]')) return;
+    if (!target.matches(ITEM)) return;
     const id = item.one.id;
     const chosen = chosenIds.includes(id);
     const arrows: Record<string, [number, number]> = {
@@ -1323,7 +1638,11 @@ function Plan({
         arrow[1] * step,
       ]);
 
-      if (mx === 0 && my === 0) return;
+      if (mx === 0 && my === 0) {
+        keepClear(target);
+        return;
+      }
+      keyed.current = id;
       arrange(
         moving.map((one) => ({
           ...placementOf(one),
@@ -1348,8 +1667,10 @@ function Plan({
 
       if (!insideRoom({ ...footprintOf(item), rotation }, plan)) {
         setNotice(t('seating.outside', { name: itemName(t, item) }));
+        keepClear(target);
         return;
       }
+      keyed.current = id;
       arrange([{ ...placementOf(item), rotation }]);
       setHeard(t('seating.turnedTo', { name: itemName(t, item), degrees: rotation }));
       return;
@@ -1715,6 +2036,9 @@ function Plan({
           height={size.h}
           viewBox={`0 0 ${size.w} ${size.h}`}
           role="group"
+          onMouseDown={(event) => {
+            if (spaceHeld.current) event.preventDefault();
+          }}
           onPointerDown={(event) => {
             panned.current = false;
             if (event.button !== 0 || !isFloor(event.target)) return;
@@ -1860,8 +2184,14 @@ function Plan({
                 }}
                 onKeyDownCapture={(event) => {
                   if (event.key !== 'Enter' && event.key !== ' ') return;
-                  if (!(event.target as Element).matches('[data-table], [data-row], [data-seat]'))
+                  if (!(event.target as Element).matches(ITEM)) return;
+                  if (event.key === ' ') {
+                    event.preventDefault();
+                    event.stopPropagation();
+                    spaceHeld.current = true;
+                    if (!event.repeat) spaceOn.current = { id, shift: event.shiftKey };
                     return;
+                  }
                   if ((event.shiftKey || adding) && !readOnly) {
                     event.preventDefault();
                     event.stopPropagation();
@@ -1870,8 +2200,7 @@ function Plan({
                 }}
                 onKeyDown={(event) => onItemKey(event, item)}
                 onFocus={(event) => {
-                  if ((event.target as Element).matches('[data-table], [data-row], [data-seat]'))
-                    setFocusId(id);
+                  if ((event.target as Element).matches(ITEM)) setFocusId(id);
                 }}
                 onBlur={() => setFocusId(null)}
               >
@@ -1938,9 +2267,7 @@ function Plan({
             onStop={() => setPlacing(null)}
           />
         )}
-        {keyboard && focusId != null && chosenIds.includes(focusId) && !readOnly && !adding && (
-          <KeysStrip system={system} />
-        )}
+        {keysShown && <KeysStrip system={system} />}
         {adding && !readOnly && <RulesStrip />}
         <p className="visually-hidden" aria-live="polite">
           {heard}
@@ -2114,84 +2441,86 @@ function Plan({
 
   return (
     <LayersContext value={layers}>
-      <div className="st-main" inert={covered}>
-        <div
-          className="st-canvas is-plan"
-          ref={(node) => {
-            canvasNode.current = node;
-            placeCanvas(node);
-          }}
-        >
-          {canvas}
-        </div>
-        <aside className="st-panel" aria-label={t('seating.panel')}>
-          {plan != null && shownPanel?.kind !== 'start' && (
-            <div className="st-tabs" role="tablist" aria-label={t('seating.panel')}>
-              {(['arrange', 'seat'] as const).map((one) => (
-                <button
-                  key={one}
-                  type="button"
-                  role="tab"
-                  id={`st-tab-${one}`}
-                  aria-selected={tab === one}
-                  aria-controls="st-panel-body"
-                  className={tab === one ? 'st-tab is-on' : 'st-tab'}
-                  onClick={() => {
-                    setTab(one);
-                    if (one === 'arrange') dropPick();
-                  }}
-                >
-                  {t(one === 'arrange' ? 'seating.arrangeTab' : 'seating.seatTab')}
-                </button>
-              ))}
-            </div>
-          )}
+      <RingsContext value={rings}>
+        <div className="st-main" inert={covered}>
           <div
-            className="st-panel-body"
-            id="st-panel-body"
-            role={plan != null && shownPanel?.kind !== 'start' ? 'tabpanel' : undefined}
-            aria-labelledby={
-              plan != null && shownPanel?.kind !== 'start' ? `st-tab-${tab}` : undefined
-            }
+            className="st-canvas is-plan"
+            ref={(node) => {
+              canvasNode.current = node;
+              placeCanvas(node);
+            }}
           >
-            {tab === 'seat' && plan != null && shownPanel?.kind !== 'start' ? (
-              <SeatTray
-                plan={plan}
-                filter={tray}
-                onFilter={setTray}
-                picked={pickedGuest}
-                onPick={pickGuest}
-                readOnly={readOnly}
-              />
-            ) : (
-              body
-            )}
+            {canvas}
           </div>
-        </aside>
-      </div>
-      <div ref={setHost} className="desk-layers" />
-      {asking?.kind === 'deleteItems' && plan != null && (
-        <DeleteItemsAsk
-          items={asking.ids.flatMap((id) => itemOf(id) ?? [])}
-          onKeep={() => setAsking(null)}
-          onGo={(items) => {
-            setAsking(null);
-            deleteStep(items);
-          }}
-        />
-      )}
-      {asking != null && asking.kind !== 'deleteItems' && plan != null && (
-        <AskFor
-          ctx={ctx}
-          plan={plan}
-          asking={asking}
-          onDone={() => {
-            setAsking(null);
-            open(null);
-          }}
-          onKeep={() => setAsking(null)}
-        />
-      )}
+          <aside className="st-panel" aria-label={t('seating.panel')}>
+            {plan != null && shownPanel?.kind !== 'start' && (
+              <div className="st-tabs" role="tablist" aria-label={t('seating.panel')}>
+                {(['arrange', 'seat'] as const).map((one) => (
+                  <button
+                    key={one}
+                    type="button"
+                    role="tab"
+                    id={`st-tab-${one}`}
+                    aria-selected={tab === one}
+                    aria-controls="st-panel-body"
+                    className={tab === one ? 'st-tab is-on' : 'st-tab'}
+                    onClick={() => {
+                      setTab(one);
+                      if (one === 'arrange') dropPick();
+                    }}
+                  >
+                    {t(one === 'arrange' ? 'seating.arrangeTab' : 'seating.seatTab')}
+                  </button>
+                ))}
+              </div>
+            )}
+            <div
+              className="st-panel-body"
+              id="st-panel-body"
+              role={plan != null && shownPanel?.kind !== 'start' ? 'tabpanel' : undefined}
+              aria-labelledby={
+                plan != null && shownPanel?.kind !== 'start' ? `st-tab-${tab}` : undefined
+              }
+            >
+              {tab === 'seat' && plan != null && shownPanel?.kind !== 'start' ? (
+                <SeatTray
+                  plan={plan}
+                  filter={tray}
+                  onFilter={setTray}
+                  picked={pickedGuest}
+                  onPick={pickGuest}
+                  readOnly={readOnly}
+                />
+              ) : (
+                body
+              )}
+            </div>
+          </aside>
+        </div>
+        <div ref={setHost} className="desk-layers" />
+        {asking?.kind === 'deleteItems' && plan != null && (
+          <DeleteItemsAsk
+            items={asking.ids.flatMap((id) => itemOf(id) ?? [])}
+            onKeep={() => setAsking(null)}
+            onGo={(items) => {
+              setAsking(null);
+              deleteStep(items);
+            }}
+          />
+        )}
+        {asking != null && asking.kind !== 'deleteItems' && plan != null && (
+          <AskFor
+            ctx={ctx}
+            plan={plan}
+            asking={asking}
+            onDone={() => {
+              setAsking(null);
+              open(null);
+            }}
+            onKeep={() => setAsking(null)}
+          />
+        )}
+      </RingsContext>
     </LayersContext>
   );
 }
@@ -2267,6 +2596,9 @@ function ZoomControls({ camera }: { camera: ReturnType<typeof useCamera> }) {
     </div>
   );
 }
+
+/** The bars whose showing or growing pans the plan for a focused item: the small map comes only with a zoom, and a zoom never pans (sc-61042). */
+const BY_KEYS_BAR = '.st-float:not(.st-minimap)';
 
 const SMALL_MAP_WIDTH = 160;
 const SMALL_MAP_SEAT_CM = 44;

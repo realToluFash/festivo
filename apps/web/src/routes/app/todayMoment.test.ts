@@ -182,6 +182,13 @@ describe('todayMoment', () => {
     });
   });
 
+  it('writes each day’s narrow weekday and the full one a screen reader hears (sc-61548)', () => {
+    const plan = moment([event('Wedding')]);
+
+    expect(plan.days.map(({ narrow }) => narrow).join(' ')).toBe('T W T F S S M');
+    expect(plan.days.map(({ spoken, number }) => `${spoken} ${number}`)[3]).toBe('Friday 6');
+  });
+
   it("takes this year from today in the event's zone, not the reader's", () => {
     const newYearsEve = new Date('2026-12-31T12:00:00Z');
     const auckland = { timeZone: 'Pacific/Auckland', venue: null };

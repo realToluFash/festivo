@@ -1192,6 +1192,38 @@ final readonly class SeatingPlanEditor
         return $ifMatch;
     }
 
+    /**
+     * Tells everyone with the plan open what this editor has chosen, or that they chose nothing; kept nowhere, so it is never a lock (sc-4719).
+     *
+     * @param array{kind: 'table'|'row'|'seat', id: string, chair?: int|null}|null $chosen `chair` is one of a table's chairs, by its number
+     */
+    public function announceChoice(Event $event, SeatingPlan $plan, User $user, ?array $chosen): void
+    {
+        $item = null === $chosen ? null : $this->itemIn($plan, $chosen['kind'], $chosen['id']);
+        $chair = $item instanceof SeatingTable ? $chosen['chair'] ?? null : null;
+        if ($item instanceof SeatingTable && null !== $chair && ($chair < 1 || $chair > $item->getSeats())) {
+            throw ApiException::notFound('seating.no_such_item');
+        }
+
+        $this->realtimePublisher->publish(RealtimeTopic::EventSeatingChoices, $event->getId()->toRfc4122(), [
+            'userId' => $user->getId()->toRfc4122(),
+            'chosen' => null === $item || null === $chosen ? null : [
+                'kind' => $chosen['kind'],
+                'id' => $item->getId()->toRfc4122(),
+                'chair' => $chair,
+            ],
+        ]);
+    }
+
+    /** Tells everyone with the plan open that this person still has it open, so a connection that died without a word is let go of within seconds rather than when the hub notices (sc-4719). */
+    public function announceHere(Event $event, User $user): void
+    {
+        $this->realtimePublisher->publish(RealtimeTopic::EventSeatingChoices, $event->getId()->toRfc4122(), [
+            'userId' => $user->getId()->toRfc4122(),
+            'here' => true,
+        ]);
+    }
+
     private static function changedSince(?User $changedBy): ApiException
     {
         $name = $changedBy?->getName();

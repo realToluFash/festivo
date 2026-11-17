@@ -227,6 +227,9 @@ export const say = {
   bothChose: (name: string) =>
     `${name} has chosen this too. You can still change it. If you both save, the later change is refused and says why.`,
   chosenBy: (name: string) => `, chosen by ${name}`,
+  seatChosenBy: (n: number, name: string) => `, seat ${n} chosen by ${name}`,
+  names: (names: readonly string[]) =>
+    listFormat('en', { style: 'long', type: 'conjunction' }).format(names),
   left: (name: string) => `${name} left the plan.`,
   party: (lead: string, plus: number) => (plus > 0 ? `${lead} + ${plus}` : lead),
   guestOf: (name: string) => `Guest of ${name}`,

@@ -26,6 +26,7 @@ import { GuestsCard } from './GuestsParts.tsx';
 import { ARRIVALS, GUESTS, READER, WEDDING, replyByOf } from './GuestsSample.ts';
 import { REPLY_WORD, W, say } from './GuestsWords.ts';
 import { DoorGlyph, MarkSlot } from '../../components/ReplyMark.tsx';
+import { type Seating, seatLineOf } from './DoorSeats.ts';
 import {
   NOW_AT,
   OFFLINE_SINCE,
@@ -68,15 +69,17 @@ function lineOf(p: Scanned, locale: string, twice: boolean): string {
   return g == null ? REPLY_WORD[p.kind] : replyLine(g, locale, replyByOf(WEDDING));
 }
 
-function saidOf(result: ScanResult, locale: string): string {
+function saidOf(result: ScanResult, locale: string, seating: Seating): string {
   if (result.kind === 'notOnList') return W.notOnList;
   if (result.kind === 'noList') return `${W.noListTitle}. ${W.noListBody}`;
   if (result.kind === 'cameraOff') return `${W.cameraOffTitle}. ${W.cameraOffBody}`;
   const [host, ...rest] = result.people;
   if (host == null) return '';
+  const said = (p: Scanned, line: string) =>
+    [p.name, seatLineOf(p.key, seating), line].filter((one) => one != null).join(', ');
   return [
-    `${host.name}, ${lineOf(host, locale, result.twice)}`,
-    ...rest.map((p) => `${p.name}, ${lineOf(p, locale, false)}`),
+    said(host, lineOf(host, locale, result.twice)),
+    ...rest.map((p) => said(p, lineOf(p, locale, false))),
   ]
     .concat(result.twice ? [W.nothingNew] : [])
     .join('. ');
@@ -128,6 +131,7 @@ function WarningMark() {
 function Result({
   result,
   locale,
+  seating,
   big,
   onArrive,
   onUndo,
@@ -135,6 +139,7 @@ function Result({
 }: {
   result: ScanResult;
   locale: string;
+  seating: Seating;
   big: boolean;
   onArrive: (key: string) => void;
   onUndo: (key: string) => void;
@@ -234,6 +239,14 @@ function Result({
       />
     );
   };
+  const seatOf = (p: Scanned, size: number) => {
+    const seat = seatLineOf(p.key, seating);
+    return seat == null ? null : (
+      <Text size={size} weight="semibold" style={styles.seat} testID={`scan.seat.${p.key}`}>
+        {seat}
+      </Text>
+    );
+  };
   const lead = (p: Scanned) => (
     <MarkSlot kind={p.arrivedAt != null ? 'arrived' : p.kind} side={p.companion ? 22 : 24} />
   );
@@ -252,6 +265,7 @@ function Result({
                   <Text size={20} weight="bold" accessibilityRole="header" style={styles.name}>
                     {host.name}
                   </Text>
+                  {seatOf(host, 15)}
                   <Text size={15} weight="medium" style={[styles.secondary, styles.figures]}>
                     {lineOf(host, locale, result.twice)}
                   </Text>
@@ -270,6 +284,7 @@ function Result({
                   <Text size={16} weight="semibold" style={styles.compName}>
                     {p.name}
                   </Text>
+                  {seatOf(p, 14)}
                   <Text size={14} weight="medium" style={[styles.secondary, styles.figures]}>
                     {lineOf(p, locale, false)}
                   </Text>
@@ -387,7 +402,15 @@ function CameraTop({ landscape }: { landscape: boolean }) {
 }
 
 /** Scan a code (sc-1301): the camera, the count, the viewfinder, and a result as the door's own row, larger. */
-export function ScannerScreen({ state, waiting }: { state: ScanState | null; waiting: number }) {
+export function ScannerScreen({
+  state,
+  waiting,
+  seating,
+}: {
+  state: ScanState | null;
+  waiting: number;
+  seating: Seating;
+}) {
   useCoverStatusBar('light', false);
   const { layout } = useShell();
   const insets = useSafeAreaInsets();
@@ -410,7 +433,7 @@ export function ScannerScreen({ state, waiting }: { state: ScanState | null; wai
     if (first == null) return null;
     const host = first.kind === 'guest' ? first.people[0] : undefined;
     if (state === 'arrivedFromScan' && host != null) return tell(null, say.arrivedName(host.name));
-    return tell(null, saidOf(first, locale));
+    return tell(null, saidOf(first, locale, seating));
   });
   useReadOut(told?.words ?? null, { answer: told?.tap });
   const camera = state !== 'offlineNoList' && state !== 'cameraOff';
@@ -437,7 +460,7 @@ export function ScannerScreen({ state, waiting }: { state: ScanState | null; wai
     const read = readOf(key);
     setLast(key);
     setResult(read);
-    setTold(tell(told, saidOf(read, locale)));
+    setTold(tell(told, saidOf(read, locale, seating)));
   };
   const onNext = () => setResult(null);
 
@@ -447,6 +470,7 @@ export function ScannerScreen({ state, waiting }: { state: ScanState | null; wai
         key={`${result.kind}.${result.kind === 'guest' ? result.people[0]?.key : ''}`}
         result={result}
         locale={locale}
+        seating={seating}
         big={big}
         onArrive={(key) => change(key, 1)}
         onUndo={(key) => change(key, -1)}
@@ -557,6 +581,7 @@ const styles = StyleSheet.create({
   grow: { flex: 1, minWidth: 0 },
   white: { color: tokens.colorInkOnDark },
   secondary: { color: tokens.colorInkSecondary },
+  seat: { lineHeight: 15 * 1.35, marginBottom: 2 },
   figures: { fontVariant: ['tabular-nums'] },
   body: { lineHeight: 15 * 1.45 },
   head: { lineHeight: 25, letterSpacing: 20 * -0.01 },

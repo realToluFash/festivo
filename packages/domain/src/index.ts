@@ -83,4 +83,6 @@ export * from './replyBy.ts';
 export * from './visibleText.ts';
 export * from './money.ts';
 export * from './dishLibrary.ts';
+export * from './dishChoices.ts';
+export * from './dishItems.ts';
 export * from './dishVariants.ts';

@@ -31,7 +31,7 @@ function sizeOf(file: File): Promise<{ width: number; height: number } | null> {
 }
 
 /** Upload's file chooser and its check of type, size and dimensions, so every cover picks a photo the same way. */
-export function useCoverPick(onChosen: () => void, refused: string | null = null) {
+export function useCoverPick(onChosen: (file: File) => void, refused: string | null = null) {
   const [refusal, setRefusal] = useState<string | null>(refused);
   const file = useRef<HTMLInputElement>(null);
 
@@ -44,7 +44,7 @@ export function useCoverPick(onChosen: () => void, refused: string | null = null
     if (refusing != null) return setRefusal(PICK_REFUSED[refusing]);
 
     setRefusal(null);
-    onChosen();
+    onChosen(one);
   };
 
   const input = (

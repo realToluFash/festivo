@@ -3168,6 +3168,10 @@ export function composeBatch(
   const finish = (flow) => (onAndroid ? forAndroid(flow) : flow);
   aloneFlows(source, target, { catalogues, email, onAndroid, skipChecks: true });
   mkdirSync(join(target, '_checks'));
+  cpSync(join(source, 'checks'), join(target, '_checks'), {
+    recursive: true,
+    filter: (path) => statSync(path).isDirectory() || !/\.ya?ml$/.test(path),
+  });
   const subFlows = (flow, language, caller, chain, dir = '') =>
     flow.replace(
       /^(\s*(?:-\s*runFlow|file):\s*)(['"]?)([\w./-]+)\.ya?ml\2(?=\s*$)/gm,
@@ -3753,6 +3757,7 @@ export function startHelper({
   device,
   onAndroid,
   changeMembership,
+  readSchedule,
   open = openOnEmulator,
   reload = reloadOnEmulator,
   portrait = portraitOnEmulator,
@@ -3827,6 +3832,22 @@ export function startHelper({
           200,
           await changeMembership(url.searchParams.get('change'), url.searchParams.get('org')),
         );
+      }
+      if (url.pathname === '/schedule') {
+        const event = url.searchParams.get('event') ?? '';
+        if (!UUID.test(event))
+          throw new Error(`whose schedule? /schedule?event=<id> gave ${event}`);
+        const want = Number(url.searchParams.get('done') ?? '0');
+        const place = url.searchParams.get('place');
+        if (!(await within(8000, apiState.move('up')))) return reply(200, { wait: true });
+        for (const deadline = Date.now() + 8000; ; await pause(1000)) {
+          const { items: all } = await readSchedule(event);
+          const items = place === null ? all : all.filter((item) => item.place === place);
+          const started = items.filter((item) => item.startedAt !== null).length;
+          const done = items.filter((item) => item.endedAt !== null).length;
+          if (done >= want) return reply(200, { started, done });
+          if (Date.now() >= deadline) return reply(200, { wait: true });
+        }
       }
       if (url.pathname === '/started') {
         if (!(await within(8000, apiState.move('up')))) return reply(200, { wait: true });
@@ -3965,9 +3986,10 @@ async function batch(args) {
     await apiState.move('up');
     await signedIn('/api/auth/locale', { method: 'PUT', body: { locale } });
   };
+  const member = apiSession(email, password, secret);
   const changeMembership = membershipChanges({
     email,
-    member: apiSession(email, password, secret),
+    member,
     ownerOf: (asked) => organisationOwner(root, asked),
     alone: () => accountAlone(root),
     sql: async (statement) => {
@@ -3989,6 +4011,7 @@ async function batch(args) {
     device,
     onAndroid,
     changeMembership,
+    readSchedule: (event) => member(`/api/events/${event}/schedule`, { method: 'GET' }),
     out,
   });
   // The secret stays with the helper: no flow is handed it.

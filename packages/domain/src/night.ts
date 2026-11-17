@@ -195,26 +195,28 @@ function elapsedOf(item: NightItem, at: number): NightElapsed {
   };
 }
 
+/** The latest projected end of every item not skipped, so an item passed over still counts. */
 function endsAboutOf<I extends NightItem>(
   ordered: readonly I[],
   expectedOf: (item: I) => string,
   at: number,
   timeZone: string,
 ): string | null {
-  const last = ordered.filter((item) => phaseOf(item) !== 'skipped').at(-1);
+  const ends = ordered
+    .filter((item) => phaseOf(item) !== 'skipped')
+    .map((item) => {
+      const length = item.lengthMinutes ?? 0;
+      const phase = phaseOf(item);
 
-  if (last == null) return null;
+      if (phase === 'waiting') return minutesOf(expectedOf(item)) + length;
+      if (phase === 'now') return Math.max(minutesOf(item.startedAt ?? item.planned) + length, at);
 
-  const length = last.lengthMinutes ?? 0;
-  const phase = phaseOf(last);
-  const end =
-    phase === 'waiting'
-      ? minutesOf(expectedOf(last)) + length
-      : phase === 'now'
-        ? Math.max(minutesOf(last.startedAt ?? last.planned) + length, at)
-        : minutesOf(last.endedAt ?? last.planned);
+      return minutesOf(item.endedAt ?? item.planned);
+    });
 
-  return zonedAt(new Date(end * 60_000), timeZone);
+  if (ends.length === 0) return null;
+
+  return zonedAt(new Date(Math.max(...ends) * 60_000), timeZone);
 }
 
 /** The latest actual end against the planned end of the last item not skipped; no length ends at its planned start. */

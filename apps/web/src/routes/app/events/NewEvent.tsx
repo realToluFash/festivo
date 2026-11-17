@@ -32,7 +32,7 @@ import { useTranslation } from 'react-i18next';
 import { useNavigate } from 'react-router';
 
 import { api } from '../../../api.ts';
-import { checkCoverPick } from '../../../coverPick.ts';
+import { type CoverSent, useCoverSending } from '../../../coverPick.ts';
 import {
   CoverPreview,
   CoverUpload,
@@ -42,7 +42,7 @@ import {
 import { Broken, DateTime, EditText } from '../../../components/EventPageParts.tsx';
 import { Glyph } from '../../../components/Glyph.tsx';
 import { CoverPhotoFields } from '../../../components/CoverEdit.tsx';
-import { Ask, TitleRow } from '../../../components/SettingsParts.tsx';
+import { Ask, RedAction, TitleRow } from '../../../components/SettingsParts.tsx';
 import { currentLocale, dateLocale } from '../../../i18n/index.ts';
 import { LayersContext, useDeskLayers } from '../../../layers.ts';
 import { meshFor } from '../../../mesh.ts';
@@ -89,7 +89,13 @@ function NewEventPage({ organisation }: { organisation: Membership }) {
 /** A photo chosen for the cover; one this browser cannot show is `sent` at once, so the server's copy stands in. */
 type Chosen = { file: File; url: string; sent: string | null };
 
+/** The server's viewable copy of a photo sent for one. */
+type Copy = Chosen & { sent: string };
+
 type Status = 'editing' | 'creating' | 'failed' | 'created';
+
+/** How long "Created. Opening the event." is up at least before the event opens, as the web demo holds it (sc-60915). */
+const OPENING_MS = 1600;
 
 /** New event (sc-48607): the event's own parts in today's order, in headed blocks, and Create event's answer right above it. */
 function EventForm({ organisation }: { organisation: Membership }) {
@@ -116,6 +122,7 @@ function EventForm({ organisation }: { organisation: Membership }) {
   const [hostsChecked, setHostsChecked] = useState(false);
   const [chosen, setChosen] = useState<Chosen | null>(null);
   const [coverRefusal, setCoverRefusal] = useState<string | null>(null);
+  const [sending, setSending] = useState(false);
   const [position, setPosition] = useState(COVER_MIDDLE);
   const [description, setDescription] = useState('');
   const [tooLong, setTooLong] = useState(false);
@@ -128,6 +135,8 @@ function EventForm({ organisation }: { organisation: Membership }) {
   const describe = useRef<HTMLInputElement>(null);
   const preview = useRef<HTMLImageElement>(null);
   const taken = useRef<string | null>(null);
+  const createdAt = useRef(0);
+  const copying = useCoverSending<Copy>();
   const currencies = useMemo(() => currencyChoices('', currency, locale, t), [currency, locale, t]);
   const zones = useMemo(
     () => timeZoneChoices(organisation.timezone, timeZone),
@@ -143,7 +152,7 @@ function EventForm({ organisation }: { organisation: Membership }) {
     hosts: hosts.map((row) => row.name),
   });
   const [blank] = useState(typed);
-  const dirty = typed !== blank || chosen != null;
+  const dirty = typed !== blank || chosen != null || sending;
   const leave = useLeaveGuard({ dirty, busy, body: t('eventForm.leaveBody') });
 
   useEffect(() => {
@@ -218,34 +227,54 @@ function EventForm({ organisation }: { organisation: Membership }) {
     }));
   }
 
+  /** A refused pick is not a pick, so a HEIC on its way keeps going; of those that go, only the last one picked may take the frame (sc-60915). */
   async function pick(file: File | undefined): Promise<void> {
     if (fileInput.current != null) fileInput.current.value = '';
     if (file == null) return;
 
-    const checked = await checkCoverPick(file);
+    const checked = await copying.check(file);
+    if (checked == null) return;
 
     if (checked.refusal != null) {
       setCoverRefusal(t(`eventCover.refused_${checked.refusal}`));
       return;
     }
 
-    let shown: Chosen;
-
-    try {
-      shown = checked.shows
-        ? { file, url: URL.createObjectURL(file), sent: null }
-        : { file, ...(await sendForCopy(file)) };
-    } catch (error) {
-      setCoverRefusal(refusalOf(error, t));
-      return;
-    }
-
     setCoverRefusal(null);
-    setChosen(shown);
     setPosition(COVER_MIDDLE);
     setDescription('');
     setTooLong(false);
     touched();
+
+    if (checked.shows) {
+      copying.stop();
+      setSending(false);
+      setChosen({ file, url: URL.createObjectURL(file), sent: null });
+      return;
+    }
+
+    const copy = copying.send(
+      sendForCopy(file).then((sent): Copy => ({ file, ...sent })),
+      (stale) => discardCoverUpload(organisation.id, stale.sent),
+    );
+    setChosen(null);
+    setSending(true);
+
+    const landed = await copy;
+    if (landed == null) return;
+
+    setSending(false);
+    if ('refused' in landed) return setCoverRefusal(refusalOf(landed.refused, t));
+    setCoverRefusal(null);
+    setChosen(landed.landed);
+  }
+
+  function stopSending(): void {
+    copying.stop();
+    setSending(false);
+    setCoverRefusal(null);
+    touched();
+    requestAnimationFrame(() => uploadButton.current?.focus());
   }
 
   /** The server reads every new photo whole, so a damaged one is refused before it is placed. */
@@ -322,6 +351,7 @@ function EventForm({ organisation }: { organisation: Membership }) {
 
     setUnsent(0);
     setStatus('creating');
+    const copy = copying.onItsWay();
     const land = focusWhereSent();
     const sentVenue = venueSent(venue);
     const sentNote = arrivalNoteSent(venue.note);
@@ -339,9 +369,12 @@ function EventForm({ organisation }: { organisation: Membership }) {
         hosts: hostsSent(sentHosts.map((row) => row.name)),
       });
 
-      setStatus('created');
-      const coverRefused = chosen == null ? null : await sendCover(created.id, chosen);
+      const coverRefused =
+        copy == null ? await coverOf(created.id, chosen) : await waited(created.id, copy);
 
+      await new Promise((done) =>
+        window.setTimeout(done, createdAt.current + OPENING_MS - Date.now()),
+      );
       leave.release();
       void navigate(
         `/app/events/${encodeURIComponent(created.id)}`,
@@ -362,6 +395,31 @@ function EventForm({ organisation }: { organisation: Membership }) {
 
       setStatus('failed');
     }
+  }
+
+  function sayCreated(): void {
+    createdAt.current = Date.now();
+    setStatus('created');
+  }
+
+  async function coverOf(eventId: string, photo: Chosen | null): Promise<string | null> {
+    sayCreated();
+
+    return photo == null ? null : sendCover(eventId, photo);
+  }
+
+  /** Created is said only once the copy on its way has landed and is the cover, or has been refused (sc-60915). */
+  async function waited(eventId: string, copy: Promise<CoverSent<Copy>>): Promise<string | null> {
+    const landed = await copy;
+    const refused =
+      landed == null
+        ? null
+        : 'refused' in landed
+          ? refusalOf(landed.refused, t)
+          : await sendCover(eventId, landed.landed);
+    sayCreated();
+
+    return refused;
   }
 
   const nameLength = eventNameLength(draft.name);
@@ -417,11 +475,18 @@ function EventForm({ organisation }: { organisation: Membership }) {
       </FormBlock>
 
       <FormBlock title={t('eventForm.coverHeading')}>
-        <CoverPreview
-          photo={chosen == null ? null : <img ref={preview} src={chosen.url} alt="" />}
-          mesh={meshFor(draft.type === '' ? 'new-event' : draft.type)}
-          className="ev-new-cover"
-        />
+        <div className="ev-new-frame">
+          <CoverPreview
+            photo={chosen == null ? null : <img ref={preview} src={chosen.url} alt="" />}
+            mesh={meshFor(draft.type === '' ? 'new-event' : draft.type)}
+            className="ev-new-cover"
+          />
+          {sending && (
+            <p className="ev-cover-uploading" role="status">
+              {t('eventCover.uploading')}
+            </p>
+          )}
+        </div>
         <input
           ref={fileInput}
           id="cover-file"
@@ -432,7 +497,26 @@ function EventForm({ organisation }: { organisation: Membership }) {
           aria-hidden="true"
           onChange={(change) => void pick(change.target.files?.[0])}
         />
-        {chosen != null ? (
+        {sending ? (
+          <>
+            {coverRefusal != null && <Broken>{coverRefusal}</Broken>}
+            <button
+              type="button"
+              className="desk-text"
+              disabled={busy}
+              onClick={() => fileInput.current?.click()}
+            >
+              {t('eventCover.change')}
+            </button>
+            {!busy && (
+              <RedAction
+                label={t('eventCover.remove')}
+                line={t('eventCover.removeLine')}
+                onClick={stopSending}
+              />
+            )}
+          </>
+        ) : chosen != null ? (
           <CoverPhotoFields
             position={position}
             onPosition={(next) => {

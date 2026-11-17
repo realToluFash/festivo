@@ -23,6 +23,20 @@ export function fieldLeft(field: ViewInstance | null): void {
   if (focused === field) focused = null;
 }
 
+const reshapes = new Set<() => void>();
+
+/** A field has been laid out afresh or given its error; only the focused one counts: it grew as it was typed in, moved, or its error came. */
+export function fieldReshaped(field: ViewInstance | null): void {
+  if (field != null && field === focused) reshapes.forEach((reshaped) => reshaped());
+}
+
+/** Calls `reshaped` each time the focused field changes shape or place. Returns the unsubscribe. */
+export function watchFocusedFieldReshaped(reshaped: () => void): () => void {
+  reshapes.add(reshaped);
+
+  return () => reshapes.delete(reshaped);
+}
+
 /** Calls `moved` each time focus moves to a field, as the keys stay up. Returns the unsubscribe. */
 export function watchFocusedField(moved: () => void): () => void {
   watchers.add(moved);

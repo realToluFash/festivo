@@ -3,6 +3,7 @@ import { describe, expect, it } from 'vitest';
 import { listStateOf } from './EventsModel.ts';
 import {
   BLANK,
+  DESCRIBE_TOO_LONG,
   FILLED,
   NEW_STATES,
   checkOf,
@@ -31,6 +32,7 @@ describe('New event in the demo (sc-48607)', () => {
   it('sends a filled form with nothing to fix', () => {
     expect(checkOf(FILLED)).toEqual({
       refusals: {},
+      cover: null,
       hosts: [null, null],
       count: 0,
       summary: null,
@@ -66,6 +68,37 @@ describe('New event in the demo (sc-48607)', () => {
     expect(refusalsOf({ ...FILLED, name: 'a'.repeat(121) }).name).toBe(
       'Shorten the name to 120 characters or fewer.',
     );
+  });
+
+  it('refuses an arrival note over 500 characters, under the venue and before the time zone', () => {
+    expect(refusalsOf({ ...FILLED, note: 'a'.repeat(500) }).arrivalNote).toBeUndefined();
+    expect(refusalsOf({ ...FILLED, note: 'a'.repeat(501) }).arrivalNote).toBe(
+      'Shorten the arrival note to 500 characters or fewer.',
+    );
+    expect(firstRefused({ arrivalNote: 'x', timeZone: 'y' }, [null])).toEqual({
+      field: 'arrivalNote',
+    });
+  });
+
+  it('refuses a photo description over 250 characters on Create, after the hosts and before Starts', () => {
+    const photo = { ...FILLED, photo: true };
+    expect(checkOf({ ...photo, described: 'a'.repeat(250) }).cover).toBeNull();
+    expect(checkOf({ ...photo, described: '👋🏽'.repeat(250) }).cover).toBeNull();
+    const long = checkOf({ ...photo, described: 'a'.repeat(251) });
+    expect(long).toMatchObject({ cover: DESCRIBE_TOO_LONG, count: 1 });
+    expect(DESCRIBE_TOO_LONG).toBe('Shorten the description to 250 characters or fewer.');
+    expect(checkOf({ ...FILLED, described: 'a'.repeat(251) }).cover).toBeNull();
+    expect(firstRefused({}, [null], DESCRIBE_TOO_LONG)).toEqual({ cover: true });
+    expect(firstRefused({ type: 'x', startsAt: 'y' }, [null], DESCRIBE_TOO_LONG)).toEqual({
+      field: 'type',
+    });
+    expect(firstRefused({}, [null, 'z'], DESCRIBE_TOO_LONG)).toEqual({ host: 1 });
+    expect(firstRefused({ startsAt: 'y' }, [null], DESCRIBE_TOO_LONG)).toEqual({ cover: true });
+  });
+
+  it('opens a chosen photo at the middle with no description, as the cover edit does', () => {
+    expect(typedFor('newPhoto')).toMatchObject({ photo: true, position: 'middle', described: '' });
+    expect(typedSomething({ ...BLANK, note: 'Side door' })).toBe(true);
   });
 
   it('puts focus on Event name first, a host before the start, and a host after nothing else', () => {

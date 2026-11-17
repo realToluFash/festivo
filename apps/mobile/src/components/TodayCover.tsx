@@ -11,7 +11,7 @@ import {
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import Svg, { Circle, Defs, LinearGradient, Rect, Stop } from 'react-native-svg';
 
-import { tabBarSides } from './bodyEdges.ts';
+import { coverRowSides, pastSides, sidePadding, tabBarSides } from './bodyEdges.ts';
 import { Text } from './Text.tsx';
 import { useWholeWords } from './Title.tsx';
 import { CAPSULE_LABEL } from '../layout/capsuleFit.ts';
@@ -627,10 +627,17 @@ export function TodayCover({
   words?: Animated.AnimatedInterpolation<number> | number;
 }) {
   const day = moment.kind === 'day';
+  const insets = useSafeAreaInsets();
 
   if (layout === 'landscape')
     return (
-      <View style={[styles.banner, { height: coverBody(moment, layout) }]}>
+      <View
+        style={
+          day
+            ? [styles.banner, styles.bannerGrows, { minHeight: coverBody(moment, layout) }]
+            : [styles.banner, { height: coverBody(moment, layout) }]
+        }
+      >
         <Mesh
           moment={moment}
           pieces={BANNER_PIECES}
@@ -667,7 +674,7 @@ export function TodayCover({
       />
       <Animated.View style={[styles.coverWords, { opacity: words }]}>
         {phone ? (
-          <View style={[styles.topPhone, { marginTop: top }]}>
+          <View style={[styles.topPhone, coverRowSides(insets), { marginTop: top }]}>
             <OrgButton />
             <View style={styles.grow} />
             <SearchAndBell />
@@ -676,7 +683,15 @@ export function TodayCover({
           <TabletTop top={top} onTab={onTab} />
         )}
         <View style={[styles.grow, { minHeight: footClear(moment, phone) }]} />
-        <View style={phone ? styles.footPhone : day ? styles.footTabletNow : styles.footTablet}>
+        <View
+          style={
+            phone
+              ? [styles.footPhone, sidePadding(tokens.spaceXxl, insets)]
+              : day
+                ? styles.footTabletNow
+                : styles.footTablet
+          }
+        >
           {day ? (
             <NowBlock moment={moment} wide={!phone} />
           ) : phone ? (
@@ -748,6 +763,7 @@ export function Band({
   const phone = layout === 'phone';
   const [row, setRow] = useState<number>();
   const endsPastTile = useEndsPastTile();
+  const insets = useSafeAreaInsets();
   const { labelSize, measure } = useCapsuleLabels(
     useTabLabels(),
     phone ? 0 : tabletRow(row, endsPastTile),
@@ -766,7 +782,10 @@ export function Band({
         <EventMesh event={now.event} shade="day" />
       )}
       <View
-        style={[phone ? styles.topPhone : styles.topTablet, { marginTop: top }]}
+        style={[
+          phone ? [styles.topPhone, coverRowSides(insets)] : styles.topTablet,
+          { marginTop: top },
+        ]}
         onLayout={(event) => setRow(event.nativeEvent.layout.width)}
       >
         {!phone && measure}
@@ -784,7 +803,7 @@ export function Band({
         </View>
       </View>
       {now != null && (
-        <View style={styles.bandNow}>
+        <View style={[styles.bandNow, phone && pastSides(tokens.spaceXl, insets)]}>
           <View style={styles.liveDot} />
           <Text size={13.5} weight="semibold" numberOfLines={1} style={styles.white}>
             {moment.run != null
@@ -1130,7 +1149,6 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     gap: tokens.spaceSm,
     paddingTop: tokens.spaceXxs,
-    paddingHorizontal: tokens.spaceXl,
   },
   topTablet: {
     flexDirection: 'row',
@@ -1138,13 +1156,14 @@ const styles = StyleSheet.create({
     paddingTop: tokens.spaceMd,
     paddingHorizontal: tokens.space3xl,
   },
-  footPhone: { marginHorizontal: tokens.spaceXxl, marginBottom: SHEET_RISE + 22 },
+  footPhone: { marginBottom: SHEET_RISE + 22 },
   footTablet: { marginHorizontal: tokens.space5xl, marginBottom: SHEET_RISE + 30, maxWidth: 620 },
   footTabletNow: { marginHorizontal: tokens.space5xl, marginBottom: SHEET_RISE + tokens.space4xl },
   banner: { borderRadius: tokens.space4xl, overflow: 'hidden' },
   bannerBell: { position: 'absolute', right: tokens.spaceXxl, top: 18 },
   bannerGreeting: { position: 'absolute', left: 30, bottom: tokens.space4xl, maxWidth: 520 },
-  bannerNow: { position: 'absolute', left: tokens.space4xl, right: tokens.space4xl, bottom: 26 },
+  bannerGrows: { justifyContent: 'flex-end' },
+  bannerNow: { marginHorizontal: tokens.space4xl, marginBottom: 26, marginTop: 76 },
   band: { overflow: 'hidden' },
   bandTitle: { position: 'absolute', left: 0, right: 0, alignItems: 'center' },
   bandNow: {

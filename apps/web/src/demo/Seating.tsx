@@ -363,8 +363,10 @@ function Seating({
   const held = useRef<string | null>(null);
   const spaceHeld = useRef(false);
   const spacePanned = useRef(false);
+  const spaceOn = useRef<{ id: string; shift: boolean } | null>(null);
   const touches = useRef(new Set<number>());
   const [focusId, setFocusId] = useState<string | null>(null);
+  const keyed = useRef<string | null>(null);
   const [keyboard, setKeyboard] = useState(first.focus?.startsWith('item:') === true);
   const [placingAt, setPlacingAt] = useState<Point | null>(
     first.ghost != null && first.placing != null ? [first.ghost.x, first.ghost.y] : null,
@@ -1388,6 +1390,23 @@ function Seating({
       );
   }
 
+  function activate(id: string, shift: boolean): void {
+    const now = ui$.current;
+
+    if (now.picked != null) seatAt(id);
+    else if (shift || now.adding)
+      set((ui_) => ({
+        ...ui_,
+        chosen: ui_.chosen.includes(id)
+          ? ui_.chosen.filter((one) => one !== id)
+          : [...ui_.chosen, id],
+        panel: null,
+        chair: null,
+        notice: null,
+      }));
+    else choose([id]);
+  }
+
   function onItemKey(event: ReactKeyboardEvent<SVGGElement>, id: string): void {
     const now = ui$.current;
     const item = now.plan.items.find((one) => one.id === id);
@@ -1401,20 +1420,15 @@ function Seating({
       ArrowDown: [0, 1],
     };
 
-    if (event.key === 'Enter' || event.key === ' ') {
+    if (event.key === ' ') {
       event.preventDefault();
-      if (now.picked != null) seatAt(id);
-      else if (event.shiftKey || now.adding)
-        set((ui_) => ({
-          ...ui_,
-          chosen: ui_.chosen.includes(id)
-            ? ui_.chosen.filter((one) => one !== id)
-            : [...ui_.chosen, id],
-          panel: null,
-          chair: null,
-          notice: null,
-        }));
-      else choose([id]);
+      spaceHeld.current = true;
+      if (!event.repeat) spaceOn.current = { id, shift: event.shiftKey };
+      return;
+    }
+    if (event.key === 'Enter') {
+      event.preventDefault();
+      activate(id, event.shiftKey);
       return;
     }
     if (event.key in arrows) {
@@ -1429,6 +1443,7 @@ function Seating({
         return;
       }
       if (!chosen || now.readOnly || now.plan.room == null) return;
+      keyed.current = id;
       const [ax, ay] = arrows[event.key]!;
       const step = keyStep(now.units, event.shiftKey);
       const room_ = now.plan.room;
@@ -1460,6 +1475,7 @@ function Seating({
       event.preventDefault();
       const rot = (item.rot + 15) % 360;
 
+      keyed.current = id;
       commit(id, (plan) => ({
         ...plan,
         items: plan.items.map((one) => (one.id === id ? { ...one, rot } : one)),
@@ -1529,6 +1545,15 @@ function Seating({
       if (event.key !== ' ') return;
       if (spacePanned.current || (spaceHeld.current && !control(event.target)))
         event.preventDefault();
+      const on = spaceOn.current;
+
+      spaceOn.current = null;
+      if (
+        on != null &&
+        !spacePanned.current &&
+        document.activeElement?.getAttribute('data-item') === on.id
+      )
+        activate(on.id, on.shift || event.shiftKey);
       spaceHeld.current = false;
       spacePanned.current = false;
     };
@@ -1590,6 +1615,57 @@ function Seating({
     return () => node.removeEventListener('wheel', wheel);
   });
 
+  function keepClear(target: Element, drawn: boolean): void {
+    const node = canvas.current;
+
+    if (node == null || ui$.current.view !== 'plan' || ui$.current.plan.room == null) return;
+    const box = node.getBoundingClientRect();
+    const at = target.getBoundingClientRect();
+    const ringed = ui$.current.plan.items.find(
+      (item) => item.id === target.getAttribute('data-item'),
+    );
+    const reach = ringed == null ? 0 : focusReach(ringed, drawn);
+    const [dx, dy] = intoView(
+      {
+        x0: at.left - box.left - reach,
+        y0: at.top - box.top - reach,
+        x1: at.right - box.left + reach,
+        y1: at.bottom - box.top + reach,
+      },
+      size.w,
+      size.h,
+      [...node.querySelectorAll('.st-float')].map((bar) => {
+        const on = bar.getBoundingClientRect();
+
+        return {
+          x0: on.left - box.left,
+          y0: on.top - box.top,
+          x1: on.right - box.left,
+          y1: on.bottom - box.top,
+        };
+      }),
+    );
+
+    if (dx === 0 && dy === 0) return;
+    const cx = (size.w / 2 - oRef.current[0] - dx) / sRef.current;
+    const cy = (size.h / 2 - oRef.current[1] - dy) / sRef.current;
+
+    set((now) => ({ ...now, camera: { s: sRef.current, cx, cy } }));
+  }
+  const keepClear$ = useRef(keepClear);
+
+  keepClear$.current = keepClear;
+
+  function focusedItem(): Element | null {
+    const active = document.activeElement;
+
+    return active != null &&
+      canvas.current?.contains(active) === true &&
+      active.matches('[data-item]')
+      ? active
+      : null;
+  }
+
   useEffect(() => {
     const node = canvas.current;
 
@@ -1599,44 +1675,21 @@ function Seating({
 
       if (!(target instanceof Element) || target.closest('[data-item]') == null) return;
       if (!target.matches(':focus-visible')) return;
-      if (ui$.current.view !== 'plan' || ui$.current.plan.room == null) return;
-      const box = node.getBoundingClientRect();
-      const at = target.getBoundingClientRect();
       // The ring and halo are drawn once this focus renders, so the box does not hold them yet.
-      const ringed = ui$.current.plan.items.find(
-        (item) => item.id === target.getAttribute('data-item'),
-      );
-      const reach = ringed == null ? 0 : focusReach(ringed);
-      const [dx, dy] = intoView(
-        {
-          x0: at.left - box.left - reach,
-          y0: at.top - box.top - reach,
-          x1: at.right - box.left + reach,
-          y1: at.bottom - box.top + reach,
-        },
-        size.w,
-        size.h,
-        [...node.querySelectorAll('.st-float')].map((bar) => {
-          const on = bar.getBoundingClientRect();
-
-          return {
-            x0: on.left - box.left,
-            y0: on.top - box.top,
-            x1: on.right - box.left,
-            y1: on.bottom - box.top,
-          };
-        }),
-      );
-
-      if (dx === 0 && dy === 0) return;
-      const cx = (size.w / 2 - oRef.current[0] - dx) / sRef.current;
-      const cy = (size.h / 2 - oRef.current[1] - dy) / sRef.current;
-
-      set((now) => ({ ...now, camera: { s: sRef.current, cx, cy } }));
+      keepClear(target, false);
     };
 
     node.addEventListener('focusin', follow);
     return () => node.removeEventListener('focusin', follow);
+  });
+
+  useLayoutEffect(() => {
+    const id = keyed.current;
+
+    keyed.current = null;
+    const target = focusedItem();
+
+    if (id != null && target?.getAttribute('data-item') === id) keepClear(target, true);
   });
 
   const items = ui.plan.items;
@@ -1669,6 +1722,7 @@ function Seating({
     overlap: overlaps,
     focus: keyboard ? focusId : null,
     rings: ui.rings,
+    presence: ui.presence,
     handles:
       ui.chosen.length === 1 && !ui.readOnly && ui.chair == null && ui.tab === 'arrange'
         ? (ui.chosen[0] ?? null)
@@ -1695,6 +1749,34 @@ function Seating({
     !ui.readOnly &&
     !ui.adding &&
     ui.view === 'plan';
+
+  useLayoutEffect(() => {
+    const target = keysShown ? focusedItem() : null;
+
+    if (target != null) keepClear$.current(target, true);
+  }, [keysShown]);
+
+  useEffect(() => {
+    const node = canvas.current;
+
+    if (!keysShown || node == null || typeof ResizeObserver === 'undefined') return;
+    const tall = new WeakMap<Element, number>();
+    const watch = new ResizeObserver((entries) => {
+      const grew = entries.some((entry) => {
+        const was = tall.get(entry.target);
+        const now = entry.target.getBoundingClientRect().height;
+
+        tall.set(entry.target, now);
+        return was != null && now > was;
+      });
+      const target = grew ? focusedItem() : null;
+
+      if (target != null) keepClear$.current(target, true);
+    });
+
+    node.querySelectorAll('.st-float').forEach((bar) => watch.observe(bar));
+    return () => watch.disconnect();
+  }, [keysShown]);
   const outlines = gridOutlines(ui);
   const showSave = room != null || ui.panel?.kind !== 'start';
 
@@ -1848,6 +1930,9 @@ function Seating({
                 box={ui.box}
                 outlines={outlines}
                 onFloor={onFloor}
+                onFloorMouse={(event) => {
+                  if (spaceHeld.current) event.preventDefault();
+                }}
                 hands={{
                   onItemDown,
                   onItemKey,

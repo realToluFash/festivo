@@ -11,11 +11,13 @@ enum RealtimeTopic: string
 {
     case UserNotifications = 'users/{id}/notifications';
     case EventSeating = 'events/{id}/seating';
+    case EventSeatingChoices = 'events/{id}/seating/choices';
     case EventGuests = 'events/{id}/guests';
     case EventHeadcount = 'events/{id}/headcount';
     case EventStaff = 'events/{id}/staff';
     case EventSchedule = 'events/{id}/schedule';
     case EventMenu = 'events/{id}/menu';
+    case EventScreens = 'events/{id}/screens';
 
     public function for(string $id): string
     {

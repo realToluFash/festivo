@@ -8,7 +8,7 @@ import {
 import { type RefObject, useEffect, useId, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 
-import { checkCoverPick } from '../coverPick.ts';
+import { useCoverSending } from '../coverPick.ts';
 import type { Mesh } from '../mesh.ts';
 import { Photo } from './EventCard.tsx';
 import { Broken, EditText, Opened } from './EventPageParts.tsx';
@@ -81,8 +81,7 @@ export function CoverEdit<Saved>({
   const fileInput = useRef<HTMLInputElement>(null);
   const picker = useRef<HTMLButtonElement>(null);
   const describe = useRef<HTMLInputElement>(null);
-  const picks = useRef(0);
-  const uploads = useRef(0);
+  const sending = useCoverSending<CoverUploaded>();
   const held = useRef(chosen);
   const open = useRef(true);
   const focusPicker = useRef(true);
@@ -108,7 +107,7 @@ export function CoverEdit<Saved>({
   });
   useEffect(() => {
     const first = start.uploading;
-    if (first != null) follow(first, ++uploads.current);
+    if (first != null) follow(first);
 
     return () => {
       open.current = false;
@@ -117,35 +116,34 @@ export function CoverEdit<Saved>({
     // eslint-disable-next-line react-hooks/exhaustive-deps -- the design demo's first upload is followed once, on opening.
   }, []);
 
-  function follow(uploadingNow: Promise<CoverUploaded>, mine: number): void {
-    uploadingNow.then(
-      (uploaded) => {
-        if (!open.current || mine !== uploads.current) return discard(uploaded);
-        if (held.current != null) discard(held.current);
-        focusPicker.current = document.activeElement === picker.current;
-        setChosen(uploaded);
-        setRemoved(false);
-        setPosition(COVER_MIDDLE);
-        setDescription('');
-        setTooLong(false);
-        setPickRefused(null);
+  function follow(uploadingNow: Promise<CoverUploaded>): void {
+    void sending.send(uploadingNow, discard).then((sent) => {
+      if (sent == null) return;
+      if ('refused' in sent) {
         setUploading(false);
-      },
-      (error: unknown) => {
-        if (!open.current || mine !== uploads.current) return;
-        setUploading(false);
-        setPickRefused(wordsOf(error));
-      },
-    );
+        setPickRefused(wordsOf(sent.refused));
+        return;
+      }
+
+      const uploaded = sent.landed;
+      if (held.current != null) discard(held.current);
+      focusPicker.current = document.activeElement === picker.current;
+      setChosen(uploaded);
+      setRemoved(false);
+      setPosition(COVER_MIDDLE);
+      setDescription('');
+      setTooLong(false);
+      setPickRefused(null);
+      setUploading(false);
+    });
   }
 
   async function pick(file: File | undefined): Promise<void> {
     if (fileInput.current != null) fileInput.current.value = '';
     if (file == null) return;
 
-    const mine = ++picks.current;
-    const checked = await checkCoverPick(file);
-    if (!open.current || mine !== picks.current) return;
+    const checked = await sending.check(file);
+    if (checked == null) return;
 
     if (checked.refusal != null) {
       setPickRefused(t(`eventCover.refused_${checked.refusal}`));
@@ -154,11 +152,11 @@ export function CoverEdit<Saved>({
 
     setPickRefused(null);
     setUploading(true);
-    follow(upload(file, checked.shows), ++uploads.current);
+    follow(upload(file, checked.shows));
   }
 
   function remove(): void {
-    uploads.current += 1;
+    sending.stop();
     if (chosen != null) discard(chosen);
     setChosen(null);
     setRemoved(true);

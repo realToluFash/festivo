@@ -275,6 +275,17 @@ describe('Run of show on the night (sc-3895)', () => {
     expect(liveRegion()?.textContent).toBe('First dance started.');
   });
 
+  it('keeps focus on the night after a press replaces the pressed button', async () => {
+    await onNight(NIGHT, { answers: { [PRESS_SPEECHES]: answered(GAP) } });
+    const done = await screen.findByRole('button', { name: 'Done: Speeches' });
+
+    done.focus();
+    fireEvent.click(done);
+
+    const start = await screen.findByRole('button', { name: 'Start now: First dance' });
+    await waitFor(() => expect(document.activeElement).toBe(start));
+  });
+
   it('docks a chosen Later row with Start now, Skip and Move, and Move offers Leave it', async () => {
     await onNight(GAP, { now: '20:29' });
 
@@ -496,6 +507,21 @@ describe('Run of show on the night (sc-3895)', () => {
       expect(screen.queryByRole('link', { name: 'End now' })).toBeNull();
       expect(screen.getByRole('button', { name: 'Track: Ballroom' })).toBeDefined();
     });
+  });
+
+  it('opens on the track Today followed, named by ?track= (sc-61017)', async () => {
+    const foyer = item('it_bar', 'Late bar', '19:30', {
+      place: 'Foyer',
+      lengthMinutes: 60,
+      startedAt: at('19:30'),
+    });
+    await onNight([...NIGHT, foyer], {
+      url: `/app/events/ev_1/schedule?${new URLSearchParams({ track: '2030-11-15|Foyer' }).toString()}`,
+    });
+
+    expect(await screen.findByRole('button', { name: 'Track: Foyer' })).toBeDefined();
+    const now = screen.getByRole('region', { name: 'Now' });
+    expect(within(now).getByRole('heading', { name: 'Late bar' })).toBeDefined();
   });
 
   it('says a day with nothing on it has nothing planned, and links to the Schedule', async () => {

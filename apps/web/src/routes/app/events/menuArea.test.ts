@@ -21,6 +21,9 @@ const dish = (id: string, picked = false): MenuDish => ({
   diets: [],
   libraryDishId: null,
   variants: [],
+  choices: [],
+  offered: true,
+  items: [],
   picked,
 });
 
@@ -31,6 +34,8 @@ const course = (id: string, dishes: MenuDish[] = []): MenuCourse => ({
   answer: 'choose',
   skippable: false,
   dishes,
+  ownItems: [],
+  items: [],
 });
 
 describe('the course form', () => {
@@ -82,6 +87,25 @@ describe('the menu', () => {
   it('knows a course guests have picked from', () => {
     expect(coursePicked(course('a', [dish('x'), dish('y', true)]))).toBe(true);
     expect(coursePicked(course('a', [dish('x')]))).toBe(false);
+  });
+
+  it('counts an answer to a choice as a pick of its course', () => {
+    const asked: MenuDish = {
+      ...dish('x'),
+      choices: [
+        {
+          id: 'side',
+          question: 'And a side?',
+          pick: 1,
+          required: false,
+          draft: false,
+          noneAnswers: 1,
+          options: [],
+        },
+      ],
+    };
+
+    expect(coursePicked(course('a', [asked]))).toBe(true);
   });
 
   it('moves nowhere past either end', () => {
