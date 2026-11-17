@@ -3,7 +3,7 @@ import {
   MENU_COURSE_MAXIMUM,
   MENU_COURSE_NAME_MAXIMUM,
 } from '@soirely/api-client';
-import { courseReady, visibleLength } from '@soirely/domain';
+import { courseReady, dishPicked, visibleLength } from '@soirely/domain';
 
 /** The event's Menu page (sc-3902): what it checks before sending, and what it counts. */
 
@@ -51,8 +51,7 @@ export const canAddCourse = (courses: readonly MenuCourse[]): boolean =>
 
 export const isReady = (course: MenuCourse): boolean => courseReady(course);
 
-export const coursePicked = (course: MenuCourse): boolean =>
-  course.dishes.some((dish) => dish.picked);
+export const coursePicked = (course: MenuCourse): boolean => course.dishes.some(dishPicked);
 
 export const canSame = (course: MenuCourse): boolean => course.dishes.length === 1;
 

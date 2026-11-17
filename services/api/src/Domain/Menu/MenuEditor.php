@@ -165,10 +165,8 @@ final readonly class MenuEditor
         $this->locked($event, function () use ($event, $course, $by): void {
             $dishes = $this->menuDishRepository->findOnCourse($course);
 
-            foreach ($dishes as $dish) {
-                if ([] !== $this->menuPicks->pickersOf($dish)) {
-                    throw new ApiException(ErrorCode::MenuCoursePicked, 'menu.course_picked');
-                }
+            if (Iter\any($dishes, $this->dishPicked(...))) {
+                throw new ApiException(ErrorCode::MenuCoursePicked, 'menu.course_picked');
             }
 
             foreach ($dishes as $dish) {
@@ -252,7 +250,7 @@ final readonly class MenuEditor
     public function removeDish(Event $event, MenuDish $dish, User $by): void
     {
         $this->locked($event, function () use ($dish, $by): void {
-            if ([] !== $this->menuPicks->pickersOf($dish)) {
+            if ($this->dishPicked($dish)) {
                 throw new ApiException(ErrorCode::MenuDishPicked, 'menu.dish_picked');
             }
 
@@ -370,7 +368,7 @@ final readonly class MenuEditor
                 throw new ApiException(ErrorCode::ChoiceLimit, 'menu.choice_limit', parameters: ['{max}' => MenuDishChoice::PER_DISH_MAXIMUM]);
             }
 
-            if ($this->dishPicked($dish, $choices)) {
+            if ($this->dishPicked($dish)) {
                 throw new ApiException(ErrorCode::MenuDishPicked, 'menu.dish_picked');
             }
 
@@ -473,12 +471,12 @@ final readonly class MenuEditor
         return new ChoiceAnswers(Vec\map($picked, static fn (MenuChoiceOption $one): string => $one->getId()->toRfc4122()), $this->menuPicks->noneAnswersTo($choice));
     }
 
-    /** @param list<MenuDishChoice> $choices an answer to any of them counts as a pick, as for Remove */
-    private function dishPicked(MenuDish $dish, array $choices): bool
+    /** The one count Remove, Delete course and Add a choice refuse on: the dish's picks, a variant's, or an answer to one of its choices. */
+    private function dishPicked(MenuDish $dish): bool
     {
         return [] !== $this->menuPicks->pickersOf($dish)
             || Iter\any($this->menuDishVariantRepository->findOnDish($dish), fn (MenuDishVariant $one): bool => [] !== $this->menuPicks->pickersOfVariant($one))
-            || Iter\any($choices, fn (MenuDishChoice $one): bool => $this->answersTo($one, $this->menuChoiceOptionRepository->findOnChoice($one))->answered());
+            || Iter\any($this->menuDishChoiceRepository->findOnDish($dish), fn (MenuDishChoice $one): bool => $this->answersTo($one, $this->menuChoiceOptionRepository->findOnChoice($one))->answered());
     }
 
     /** @param callable(int): MenuDish $made */

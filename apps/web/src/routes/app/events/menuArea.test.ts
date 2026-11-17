@@ -86,6 +86,25 @@ describe('the menu', () => {
     expect(coursePicked(course('a', [dish('x')]))).toBe(false);
   });
 
+  it('counts an answer to a choice as a pick of its course', () => {
+    const asked: MenuDish = {
+      ...dish('x'),
+      choices: [
+        {
+          id: 'side',
+          question: 'And a side?',
+          pick: 1,
+          required: false,
+          draft: false,
+          noneAnswers: 1,
+          options: [],
+        },
+      ],
+    };
+
+    expect(coursePicked(course('a', [asked]))).toBe(true);
+  });
+
   it('moves nowhere past either end', () => {
     expect(moveTarget(0, -1, 3)).toBeNull();
     expect(moveTarget(2, 3, 3)).toBeNull();

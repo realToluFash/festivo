@@ -30,6 +30,7 @@ import {
   choiceDetailsOf,
   choiceFormOf,
   choiceProblems,
+  dishPicked,
   firstChoiceProblem,
   formDraftReasons,
   hasChoiceProblem,
@@ -780,7 +781,7 @@ function Courses({
   function askRemove(dish: MenuDish) {
     settle();
     setSaid(null);
-    if (dish.picked) {
+    if (dishPicked(dish)) {
       setRefused({ kind: 'dish', id: dish.id });
       return;
     }

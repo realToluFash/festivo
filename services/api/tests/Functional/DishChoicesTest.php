@@ -228,6 +228,25 @@ final class DishChoicesTest extends ApiTestCase
     }
 
     #[Test]
+    public function anAnswerToASetDishsChoiceRefusesRemovingTheDishAndDeletingItsCourse(): void
+    {
+        $jollof = $this->jollof();
+        $main = $this->courseNamed('Main');
+        $this->as($this->owner, 'PUT', $this->path('/courses/' . $main), ['name' => 'Main', 'answer' => 'same', 'skippable' => false]);
+        $this->addChoice($jollof, self::side());
+        $this->picks(self::optionId($this->choices()[0], 0), $this->guest('Tolu Adeyemi', []));
+
+        $this->as($this->owner, 'DELETE', $this->path('/dishes/' . $jollof));
+        self::assertSame(409, $this->statusCode());
+        self::assertSame('https://soirely.com/errors/menu_dish_picked', $this->last()['type'] ?? null);
+
+        $this->as($this->owner, 'DELETE', $this->path('/courses/' . $main));
+        self::assertSame(409, $this->statusCode());
+        self::assertSame('https://soirely.com/errors/menu_course_picked', $this->last()['type'] ?? null);
+        self::assertCount(1, $this->choices());
+    }
+
+    #[Test]
     public function aPickOfAVariantCountsAsAPickOfTheDish(): void
     {
         $jollof = $this->jollof();
