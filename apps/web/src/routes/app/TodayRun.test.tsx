@@ -1,8 +1,9 @@
 import type { Membership } from '@soirely/api-client';
-import { fireEvent, render, screen } from '@testing-library/react';
+import { act, fireEvent, render, screen } from '@testing-library/react';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { RouterProvider, createMemoryRouter } from 'react-router';
 
+import { RUN_AGAIN_MS } from '../../components/useRunSchedule.ts';
 import { __setSessionState } from '../../session.ts';
 import { membership, OWNER_PERMISSIONS } from '../../test-memberships.ts';
 import { routes } from '../index.tsx';
@@ -105,8 +106,8 @@ function json(body: unknown): Response {
   });
 }
 
-/** Today's events and the event's running order; every other request left waiting. */
-function serving(permissions: string[], items: unknown[]) {
+/** Today's events and the event's running order, read afresh on each request; every other request left waiting. */
+function serving(permissions: string[], items: unknown[] | (() => unknown[])) {
   return vi.spyOn(globalThis, 'fetch').mockImplementation(async (input) => {
     const url = new URL(String(input));
 
@@ -122,7 +123,7 @@ function serving(permissions: string[], items: unknown[]) {
           earliest: at('05:00'),
           latest: '2030-11-16T03:00:00+00:00',
           itemsMaximum: 200,
-          items,
+          items: typeof items === 'function' ? items() : items,
         },
       });
 
@@ -206,5 +207,34 @@ describe('Now on the web’s Today from the run of show (sc-61017)', () => {
     ).toBeDefined();
     expect(screen.getByRole('button', { name: 'Open the event' })).toBeDefined();
     expect(screen.queryByRole('button', { name: 'Open run of show' })).toBeNull();
+  });
+
+  it('reads the running order again every RUN_AGAIN_MS, so a press elsewhere shows with no reload', async () => {
+    vi.useFakeTimers({ toFake: ['Date', 'setInterval', 'clearInterval'] });
+    vi.setSystemTime(new Date(NOW));
+    let items: unknown[] = [ARRIVE, DINNER, SPEECHES, DANCE];
+    serving(READS, () => items);
+    open();
+
+    expect(await screen.findByRole('heading', { level: 1, name: 'Speeches' })).toBeDefined();
+
+    items = [ARRIVE, DINNER, { ...SPEECHES, endedAt: at('20:01') }, DANCE];
+    await act(() => vi.advanceTimersByTimeAsync(RUN_AGAIN_MS));
+
+    expect(await screen.findByRole('heading', { level: 1, name: 'Nothing is on' })).toBeDefined();
+  });
+
+  it('reads the running order again on returning to the browser tab', async () => {
+    let items: unknown[] = [ARRIVE, DINNER, SPEECHES, DANCE];
+    serving(READS, () => items);
+    open();
+
+    expect(await screen.findByRole('heading', { level: 1, name: 'Speeches' })).toBeDefined();
+
+    items = [ARRIVE, DINNER, { ...SPEECHES, endedAt: at('20:01') }, DANCE];
+    vi.spyOn(document, 'visibilityState', 'get').mockReturnValue('visible');
+    fireEvent(document, new Event('visibilitychange'));
+
+    expect(await screen.findByRole('heading', { level: 1, name: 'Nothing is on' })).toBeDefined();
   });
 });
