@@ -38,6 +38,7 @@ import { HANDOFF_PAGES, forgetAnyway } from './handoff.ts';
 import { PHONE_FIT_PAGES } from './longName.ts';
 import { DESK_FIT_PAGES } from './deskFit.ts';
 import { NOW_STATE_NAMES, NOW_STATES } from './todayRun.ts';
+import { READS_STATE_NAMES, READS_STATES } from './NowReads.tsx';
 import { GUEST_PAGES } from './guest.ts';
 import { GUEST_KITCHEN_PAGES } from './guestKitchen.ts';
 import { GUEST_PARTY_PAGES } from './guestCompanions.ts';
@@ -155,7 +156,15 @@ const TODAY_MOMENTS: { key: string; name: string }[] = [
     key: `day&now=${state}`,
     name: `The event day, ${NOW_STATE_NAMES[state]}`,
   })),
-  { key: 'dayNow', name: 'The event day, built now' },
+  ...READS_STATES.map((state) => ({
+    key: `day&reads=${state}`,
+    name: `The event day, Now's reads stop landing (sc-62416): ${READS_STATE_NAMES[state]}`,
+  })),
+  { key: 'day&now=over&reads=asOfDay', name: 'The event day, past its end, the line with its day' },
+  {
+    key: 'dayNow',
+    name: 'The event day, built now (also after a refused read, or a first read failing)',
+  },
   { key: 'quiet', name: 'A quiet week' },
   { key: 'first', name: 'A first run' },
   { key: 'firstAsk', name: 'A first run, without Create events' },

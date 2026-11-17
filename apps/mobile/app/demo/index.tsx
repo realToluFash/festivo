@@ -253,6 +253,21 @@ const PAGES: readonly { page: string; boards: readonly Board[] }[] = [
         what: '1,204/1,250 beside Next; try the iPhone SE',
         href: '/demo/today?moment=day&now=on&arrived=thousands',
       },
+      {
+        title: 'Now · reads stop landing',
+        what: 'Offline · as of 16:38 under the figure (sc-62416)',
+        href: '/demo/today?moment=day&now=on&reads=asOf',
+      },
+      {
+        title: 'Now · reads stop landing, day form',
+        what: 'The last read landed yesterday; try the iPhone SE in French',
+        href: '/demo/today?moment=day&now=over&reads=asOfDay',
+      },
+      {
+        title: 'Now · reads live',
+        what: 'Choose how Soirely answers; the line shows within 60 s, a refusal builds Now',
+        href: '/demo/today?moment=day&now=on&reads=live',
+      },
       { title: 'A quiet week', what: 'Nothing due, nothing on', href: '/demo/today?moment=quiet' },
       { title: 'A first run', what: 'No events yet', href: '/demo/today?moment=first' },
     ],
