@@ -41,8 +41,8 @@ describe('Share by', () => {
   });
 
   it('writes the day as the locale does', () => {
-    expect(shareDay('2026-11-04')).toBe('Wednesday, Nov 4');
-    expect(shareDay('2026-11-04', 'fr')).toBe('mercredi 4 nov.');
+    expect(shareDay('2026-11-04')).toBe('Wed, Nov 4');
+    expect(shareDay('2026-11-04', 'fr')).toBe('mer. 4 nov.');
   });
 });
 

@@ -1734,6 +1734,28 @@ describe('seating guests (sc-4013, sc-4016, sc-5030)', () => {
     },
   );
 
+  it(
+    'arrows through every table, row and single seat in reading order, and seats with Enter',
+    SLOW,
+    async () => {
+      await seating('picked');
+      const t10 = item(/^Table 10,/u);
+
+      t10.focus();
+      key(t10, 'ArrowRight');
+      expect(document.activeElement).toBe(item(/^Row A,/u));
+      key(item(/^Row A,/u), 'ArrowDown');
+      expect(document.activeElement).toBe(item(/^By the door,/u));
+      key(item(/^By the door,/u), 'ArrowUp');
+      expect(document.activeElement).toBe(item(/^Row A,/u));
+      key(item(/^Row A,/u), 'ArrowLeft');
+      expect(document.activeElement).toBe(t10);
+      key(t10, 'ArrowRight');
+      key(item(/^Row A,/u), 'Enter');
+      expect(await screen.findByText('Kwame Mensah and 1 guest are at Row A.')).toBeDefined();
+    },
+  );
+
   it('draws no chairs below 50%, so the table is the target', SLOW, async () => {
     await seating('pickedOut');
     expect(within(room()).queryAllByRole('button', { name: /, Seat \d+, /u })).toHaveLength(0);

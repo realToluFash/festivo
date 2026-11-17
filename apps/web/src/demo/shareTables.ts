@@ -35,9 +35,10 @@ export const SHARED_ON = '2026-11-02';
 
 const LOCALE = 'en-US';
 
+/** "Wed, Nov 4": the house short weekday, as Overview's Reply by and the Schedule write a day (qa, #65438, 17 Nov). */
 export function shareDay(date: string, locale: string = LOCALE): string {
   return new Intl.DateTimeFormat(locale, {
-    weekday: 'long',
+    weekday: 'short',
     month: 'short',
     day: 'numeric',
     timeZone: 'UTC',

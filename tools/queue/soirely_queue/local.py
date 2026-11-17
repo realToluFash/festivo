@@ -4,6 +4,8 @@ machine holds ops' shared duties, and it never touches another computer.
 The checks run in the minute, with no model. Each finding becomes an ops work item of kind
 `machine`, which this machine's ops takes even while another machine holds the ops lease."""
 
+import collections
+import fnmatch
 import json
 import os
 import pathlib
@@ -33,6 +35,10 @@ SMALL_BYTES = 1_000_000
 RECENT_SECONDS = 60 * 60
 NEVER_SWEPT = "untracked-before-main-"
 MAESTRO_LOG = "maestro.log"
+# Every log Maestro's --debug-output writes beside its screenshots (sc-64887).
+MAESTRO_LOGS = (MAESTRO_LOG, "device-simulator.log", "device-logcat.txt", "device-xctest.log",
+                "xctest_runner_*.log")
+MAESTRO_RUNS = pathlib.Path(".maestro", "tests")
 HARNESS = ("bin", "state.json")
 SWEPT_INSIDE = {"release": ("installed",), ".batch": ()}
 STORY_NUMBER = re.compile(r"\d{4,}")
@@ -198,15 +204,19 @@ def finished(stories, numbers, states):
                                       "Done" in states and s.get("done")) for s in known)
 
 
+def maestro_log_kind(name):
+    return next((kind for kind in MAESTRO_LOGS if fnmatch.fnmatchcase(name, kind)), None)
+
+
 def sweep_maestro_logs(scratch, now, say=print):
     """Deletes every Maestro debug log a day old in a tester's `.qa/`: qa-env trims each run's,
     and these are from before that or from runs killed part way."""
-    freed, gone = 0, 0
+    freed, gone = 0, collections.Counter()
     for entry in sweepable(scratch):
         if entry.name.startswith(NEVER_SWEPT) or entry.is_symlink():
             continue
-        logs = [entry] if entry.name == MAESTRO_LOG else \
-            entry.rglob(MAESTRO_LOG) if entry.is_dir() else []
+        logs = [entry] if maestro_log_kind(entry.name) else \
+            (p for p in entry.rglob("*") if maestro_log_kind(p.name)) if entry.is_dir() else []
         for log in logs:
             try:
                 found = log.lstat()
@@ -219,9 +229,34 @@ def sweep_maestro_logs(scratch, now, say=print):
             except OSError as error:
                 say(f"warning: could not sweep {log}: {error}")
                 continue
-            freed, gone = freed + found.st_size, gone + 1
+            freed = freed + found.st_size
+            gone[maestro_log_kind(log.name)] += 1
     if gone:
-        say(f"swept {amount(freed)} of Maestro logs from {scratch}: {gone} {MAESTRO_LOG}")
+        named = ", ".join(f"{gone[kind]} {kind}" for kind in MAESTRO_LOGS if gone[kind])
+        say(f"swept {amount(freed)} of Maestro logs from {scratch}: {named}")
+
+
+def sweep_maestro_runs(now, say=print):
+    """Deletes the run folders a day old under `~/.maestro/tests`, where Maestro writes a run
+    made without --debug-output, which no tester's sweep sees."""
+    runs = pathlib.Path.home() / MAESTRO_RUNS
+    if not runs.is_dir():
+        return
+    freed, gone = 0, 0
+    for run in runs.iterdir():
+        if not run.is_dir() or run.is_symlink():
+            continue
+        try:
+            newest, size = footprint(run)
+            if now - newest < SWEEP_SECONDS:
+                continue
+            shutil.rmtree(run)
+        except OSError as error:
+            say(f"warning: could not sweep {run}: {error}")
+            continue
+        freed, gone = freed + size, gone + 1
+    if gone:
+        say(f"swept {amount(freed)} of Maestro runs from {runs}: {gone} run folders")
 
 
 def sweep_scratch(db, config, now=None, say=print, cwds=None):
@@ -235,6 +270,7 @@ def sweep_scratch(db, config, now=None, say=print, cwds=None):
         return False
     store.set_meta(db, "scratch_swept", {"period": period})
     stories = store.stories(db)
+    sweep_maestro_runs(now, say)
     for tester, scratch in scratch_folders(config):
         sweep_maestro_logs(scratch, now, say)
         held, freed, gone = held_stories(stories, tester), 0, 0

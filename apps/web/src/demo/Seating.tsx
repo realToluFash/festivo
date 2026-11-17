@@ -1559,7 +1559,7 @@ function Seating({
     if (event.key in arrows) {
       event.preventDefault();
       if (now.picked != null) {
-        const order = readingOrder(now.plan.items.filter(isTable));
+        const order = readingOrder(now.plan.items);
         const at = order.findIndex((one) => one.id === id);
         const step = event.key === 'ArrowLeft' || event.key === 'ArrowUp' ? -1 : 1;
         const next = order[(at + step + order.length) % order.length];

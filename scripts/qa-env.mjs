@@ -3042,26 +3042,45 @@ async function maestro(args) {
 
 export const KEPT_LOG_BYTES = 5 * 1024 * 1024;
 
-// Maestro's debug log runs to about 200 MB a run (sc-63635). Only a failed run keeps one, its tail.
+// Maestro's debug logs run to hundreds of MB a run (sc-63635, sc-64887). A failed run keeps the
+// newest of each kind, its tail.
+export const MAESTRO_LOGS = [
+  'maestro.log',
+  'device-simulator.log',
+  'device-logcat.txt',
+  'device-xctest.log',
+  /^xctest_runner_.*\.log$/,
+];
+
+const logKind = (name) =>
+  MAESTRO_LOGS.find((kind) => (typeof kind === 'string' ? kind === name : kind.test(name)));
+
 export function trimMaestroLogs(out, { since = 0, failed = false } = {}) {
   if (!existsSync(out)) return;
   const logs = readdirSync(out, { recursive: true, withFileTypes: true })
-    .filter((entry) => entry.isFile() && entry.name === 'maestro.log')
+    .filter((entry) => entry.isFile() && logKind(entry.name))
     .map((entry) => join(entry.parentPath, entry.name))
-    .map((path) => ({ path, stat: statSync(path) }))
+    .map((path) => ({ path, kind: logKind(basename(path)), stat: statSync(path) }))
     .filter((log) => log.stat.mtimeMs >= since)
     .sort((a, b) => b.stat.mtimeMs - a.stat.mtimeMs);
-  const kept = failed ? logs.shift() : null;
-  for (const log of logs) rmSync(log.path, { force: true });
-  if (!kept || kept.stat.size <= KEPT_LOG_BYTES) return;
+  const kept = new Map();
+  for (const log of logs) {
+    if (failed && !kept.has(log.kind)) kept.set(log.kind, log);
+    else rmSync(log.path, { force: true });
+  }
+  for (const log of kept.values()) keepTail(log);
+}
+
+function keepTail({ path, stat }) {
+  if (stat.size <= KEPT_LOG_BYTES) return;
   const tail = Buffer.alloc(KEPT_LOG_BYTES);
-  const fd = openSync(kept.path, 'r');
+  const fd = openSync(path, 'r');
   try {
-    readSync(fd, tail, 0, KEPT_LOG_BYTES, kept.stat.size - KEPT_LOG_BYTES);
+    readSync(fd, tail, 0, KEPT_LOG_BYTES, stat.size - KEPT_LOG_BYTES);
   } finally {
     closeSync(fd);
   }
-  writeFileSync(kept.path, tail);
+  writeFileSync(path, tail);
 }
 
 const BASE32 = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ234567';

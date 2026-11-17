@@ -4582,6 +4582,51 @@ describe("a Maestro run's debug logs", () => {
     expect([existsSync(log), existsSync(batch)]).toEqual([true, false]);
   });
 
+  const DEVICE_LOGS = [
+    'device-simulator.log',
+    'device-logcat.txt',
+    'device-xctest.log',
+    'xctest_runner_2026-11-17_044334.log',
+  ];
+  const withDeviceLogs = (out, under, at) =>
+    DEVICE_LOGS.map((name) => {
+      const path = join(out, under, name);
+      writeFileSync(path, name);
+      utimesSync(path, at / 1000, at / 1000);
+      return path;
+    });
+
+  it("delete the device's logs after a run that passed, every copy, and the evidence stays", () => {
+    const { out, evidence } = run();
+    const logs = [
+      ...withDeviceLogs(out, '.maestro/tests/2026-11-17_044334', Date.now() - 1000),
+      ...withDeviceLogs(out, '_batch/logs', Date.now()),
+    ];
+    trimMaestroLogs(out, { failed: false });
+    expect(logs.filter(existsSync)).toEqual([]);
+    expect(existsSync(evidence)).toBe(true);
+  });
+
+  it("keep the newest of each of the device's logs after a run that failed", () => {
+    const { out } = run();
+    const older = withDeviceLogs(out, '.maestro/tests/2026-11-17_044334', Date.now() - 1000);
+    const newer = withDeviceLogs(out, '_batch/logs', Date.now());
+    trimMaestroLogs(out, { failed: true });
+    expect([older.filter(existsSync), newer.filter(existsSync)]).toEqual([[], newer]);
+  });
+
+  it("cut a failed run's device log to its last 5 MB", () => {
+    const { out } = run();
+    const [simulator] = withDeviceLogs(out, '_batch/logs', Date.now());
+    writeFileSync(
+      simulator,
+      Buffer.concat([Buffer.alloc(100, 'a'), Buffer.alloc(KEPT_LOG_BYTES, 'z')]),
+    );
+    trimMaestroLogs(out, { failed: true });
+    const kept = readFileSync(simulator);
+    expect([kept.length, kept.includes('a')]).toEqual([KEPT_LOG_BYTES, false]);
+  });
+
   it('ask nothing of a run that left no folder', () => {
     expect(() => trimMaestroLogs(join(tmpdir(), 'no-such-maestro-run'))).not.toThrow();
   });
