@@ -131,6 +131,19 @@ final class CrossOriginTest extends ApiTestCase
         self::assertStringContainsString('if-match', Str\lowercase((string) $this->client->getResponse()->headers->get('Access-Control-Allow-Headers')));
     }
 
+    /** Without it a night press from the web is refused before it leaves the browser, and waits to send for ever. */
+    #[Test]
+    public function aPreflightAllowsAPressIdempotencyKey(): void
+    {
+        $this->client->request('OPTIONS', '/api/events/0193f5a8-0000-7000-8000-000000000000/schedule/items/0193f5a8-0000-7000-8000-000000000001/presses', server: [
+            'HTTP_ORIGIN' => self::ALLOWED,
+            'HTTP_ACCESS_CONTROL_REQUEST_METHOD' => 'POST',
+            'HTTP_ACCESS_CONTROL_REQUEST_HEADERS' => 'authorization, content-type, idempotency-key',
+        ]);
+
+        self::assertStringContainsString('idempotency-key', Str\lowercase((string) $this->client->getResponse()->headers->get('Access-Control-Allow-Headers')));
+    }
+
     #[Test]
     public function anAllowedOriginStillHasToBeSignedIn(): void
     {

@@ -8,15 +8,15 @@ appId: host.exp.Exponent
     timeout: 30000
 - scrollUntilVisible:
     element:
-      id: 'eventForm.start.date'
+      id: 'eventForm.startDate'
     direction: DOWN
     centerElement: true
 - assertNotVisible:
-    id: 'eventForm.start.date'
+    id: 'eventForm.startDate'
     text: '.*\b${DAY}\b.*'
 - takeScreenshot: before
 - tapOn:
-    id: 'eventForm.start.date'
+    id: 'eventForm.startDate'
 - extendedWaitUntil:
     visible:
       text: 'OK'
@@ -30,6 +30,6 @@ appId: host.exp.Exponent
 - assertNotVisible:
     text: 'OK'
 - assertVisible:
-    id: 'eventForm.start.date'
+    id: 'eventForm.startDate'
     text: '.*\b${DAY}\b.*'
 - takeScreenshot: kept

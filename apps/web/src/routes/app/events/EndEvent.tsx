@@ -115,6 +115,7 @@ export function EndButton({
             keep={t('eventEnd.keepItOn')}
             confirm={t(callOff ? 'eventEnd.callOff' : 'eventEnd.endNow')}
             sending={t(callOff ? 'eventEnd.callingOff' : 'eventEnd.ending')}
+            red={callOff}
             onGo={() => {
               if (asking.kind !== 'confirm') return;
               if (!callOff && thankYouOver(draft)) {

@@ -85,6 +85,24 @@ export interface Person {
   viewer: boolean;
 }
 
+/** `seat` counts chairs from 0; the ring's name says it from 1. */
+export interface Choice {
+  who: Person;
+  seat?: number;
+}
+
+export type Rings = Readonly<Record<string, readonly Choice[]>>;
+
+export function chosenWords(choices: readonly Choice[] | undefined): string {
+  const shown = (choices ?? []).filter((one) => !one.who.viewer);
+  const whole = shown.filter((one) => one.seat == null).map((one) => one.who.name);
+  const seats = shown
+    .filter((one) => one.seat != null)
+    .map((one) => say(SW.seatChosenBy, { n: (one.seat ?? 0) + 1, name: one.who.name }));
+
+  return (whole.length === 0 ? '' : say(SW.chosenBy, { name: listed(whole) })) + seats.join('');
+}
+
 export const EVENT_ID = 'evt-wed-4';
 export const SEATING_AT = `/demo/events/${EVENT_ID}/seating`;
 export const EVENT_NAME = 'Adaeze & Tunde’s wedding';

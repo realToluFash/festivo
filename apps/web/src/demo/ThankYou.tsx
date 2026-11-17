@@ -1,10 +1,9 @@
 import { hostsLine } from '@soirely/domain';
 import { type RefObject, useEffect, useId, useRef, useState } from 'react';
 
-import { ConfirmDialog } from '../components/ConfirmDialog.tsx';
 import { Alert, Opened } from '../components/EventPageParts.tsx';
 import { Glyph } from '../components/Glyph.tsx';
-import { Head } from '../components/SettingsParts.tsx';
+import { Ask, Head } from '../components/SettingsParts.tsx';
 import { type SampleEvent, EVENT_WORDS as W } from './events.ts';
 import { Thanks } from './Thanks.tsx';
 import {
@@ -235,10 +234,6 @@ export function EndNowAsk({
   const [field, setField] = useState(start);
   const timer = useRef<number | null>(null);
 
-  useEffect(() => {
-    if (start.tried) box.current?.focus();
-  }, [start.tried]);
-
   useEffect(
     () => () => {
       if (timer.current != null) window.clearTimeout(timer.current);
@@ -259,24 +254,24 @@ export function EndNowAsk({
   }
 
   return (
-    <ConfirmDialog
-      id={`${id}-end`}
+    <Ask
       title={W.endTitle(event.name)}
+      line={W.endLine}
       keep={W.keepItOn}
-      go={field.busy ? TY_WORDS.ending : W.endNow}
-      pending={field.busy}
-      refusal={
-        field.failed && (
-          <Alert>
-            {cleanThankYou(field.draft) === '' ? TY_WORDS.notEndedPlain : TY_WORDS.notEnded}
-          </Alert>
-        )
+      go={W.endNow}
+      red={false}
+      busy={field.busy ? TY_WORDS.ending : undefined}
+      failed={
+        field.failed
+          ? cleanThankYou(field.draft) === ''
+            ? TY_WORDS.notEndedPlain
+            : TY_WORDS.notEnded
+          : undefined
       }
+      first={start.tried ? box : undefined}
       onKeep={onKeep}
       onGo={go}
     >
-      <p>{W.endBody}</p>
-      <p>{W.endFinal}</p>
       <ThankYouField
         id={`${id}-field`}
         label="shown"
@@ -289,6 +284,6 @@ export function EndNowAsk({
           setField({ ...field, draft: value, tried: field.tried && thankYouOver(value) })
         }
       />
-    </ConfirmDialog>
+    </Ask>
   );
 }

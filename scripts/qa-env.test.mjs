@@ -93,6 +93,8 @@ import {
   branchForStory,
   CACHE_CLEARER,
   clearApiCache,
+  execOutput,
+  staleInContainer,
   defaultNetwork,
   COMPOSE_PROJECT,
   emulatorAbi,
@@ -3250,7 +3252,9 @@ describe('the flows a batch runs', () => {
             else if (/\.ya?ml$/.test(path)) follow(reached);
           }
         };
-        for (const file of readdirSync(join(target, '_checks')))
+        for (const file of readdirSync(join(target, '_checks')).filter((name) =>
+          name.endsWith('.yaml'),
+        ))
           follow(join(target, '_checks', file));
         expect(unreached).toEqual([]);
       } finally {
@@ -3297,6 +3301,13 @@ describe('the flows a batch runs', () => {
       expect(
         existsSync(join(target, '_checks/sc23267-start-cold.fr.sc23267-start-cold-once.flow.yaml')),
       ).toBe(true);
+      const joined = 'sc28178/sc28178-gone-moves-on.es.sc28178.joined.flow.yaml';
+      expect(readFileSync(join(target, '_checks/sc28178-gone-moves-on.es.yaml'), 'utf8')).toContain(
+        `file: ${joined}`,
+      );
+      const sub = readFileSync(join(target, '_checks', joined), 'utf8');
+      expect(sub).toContain(localise("'{{t:switcher.switched}}'", catalogues, 'es'));
+      expect(sub).not.toContain('{{t:');
       const session = readFileSync(join(target, 'batch/session.yaml'), 'utf8');
       expect(session).not.toContain('{{t:');
       expect(session).toMatch(/when:\s+visible:\s+id: 'settings\\\.\.\*'\s+commands:/);
@@ -4421,5 +4432,48 @@ describe('withAvdRam', () => {
 
   it('adds the line when the config has none', () => {
     expect(withAvdRam('a=1', 4096)).toBe('a=1\nhw.ramSize=4096\n');
+  });
+});
+
+describe('staleInContainer', () => {
+  const a = 'a'.repeat(64);
+  const b = 'b'.repeat(64);
+  const host = new Map([
+    ['src/Enum/ErrorCode.php', a],
+    ['tests/Double/ScriptedMenuPicks.php', b],
+  ]);
+
+  it('finds nothing when the container serves the host bytes', () => {
+    const output = `${a}  src/Enum/ErrorCode.php\n${b}  tests/Double/ScriptedMenuPicks.php\n`;
+    expect(staleInContainer(host, output)).toEqual([]);
+  });
+
+  it('names a file served with other bytes', () => {
+    const output = `${a}  src/Enum/ErrorCode.php\n${a}  tests/Double/ScriptedMenuPicks.php\n`;
+    expect(staleInContainer(host, output)).toEqual(['tests/Double/ScriptedMenuPicks.php']);
+  });
+
+  it('names a file the container did not hash at all', () => {
+    expect(staleInContainer(host, `${a}  ./src/Enum/ErrorCode.php\n`)).toEqual([
+      'tests/Double/ScriptedMenuPicks.php',
+    ]);
+  });
+});
+
+describe('execOutput', () => {
+  it('returns the stdout of an exec that succeeded', () => {
+    expect(execOutput({ status: 0, stdout: 'ok\n', stderr: '' }, 'exec')).toBe('ok\n');
+  });
+
+  it('throws with the stderr when the exec failed, rather than reading empty stdout', () => {
+    expect(() =>
+      execOutput({ status: 1, stdout: '', stderr: 'service "api" is not running\n' }, 'exec api'),
+    ).toThrow('exec api exited 1: service "api" is not running');
+  });
+
+  it('throws when docker could not be spawned', () => {
+    expect(() =>
+      execOutput({ status: null, error: new Error('spawn docker ENOENT') }, 'exec api'),
+    ).toThrow('exec api: spawn docker ENOENT');
   });
 });

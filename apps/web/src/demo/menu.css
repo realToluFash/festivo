@@ -356,6 +356,12 @@
   transform: translateX(-50%);
 }
 
+.mn-icon:last-child > .mn-hint {
+  right: 0;
+  left: auto;
+  transform: none;
+}
+
 .mn-hint::after {
   position: absolute;
   top: 100%;

@@ -109,7 +109,7 @@ export const CW = {
   howAnswer: 'How guests answer',
   choose: 'Guests choose',
   same: 'Everyone gets the same',
-  sameNeedsOne: 'Everyone gets the same needs exactly one dish.',
+  sameNeedsOne: '“Everyone gets the same” needs exactly one dish.',
   skip: 'Guests may skip this course',
   skipOn: (course: string) => `Guests also see “No ${course.toLocaleLowerCase('en')} for me”.`,
   nowChoose: (course: string, n: number) => `${course} has ${n} dishes now, so guests choose.`,
@@ -134,6 +134,9 @@ export const CW = {
   inLibrary: (n: number) => `${n === 1 ? '1 dish' : `${n} dishes`} in the menu library`,
   foundOf: (shown: number, all: number) => `${shown} of ${all === 1 ? '1 dish' : `${all} dishes`}`,
   noMatch: (q: string) => `No dish name has “${q}” in it.`,
+  libraryLoading: 'Loading the menu library…',
+  libraryEmpty: 'The menu library has no dishes yet.',
+  startNewBlank: 'Start a new dish',
   startNew: (q: string) => `Start a new dish called “${q}”`,
   add: 'Add',
   addAria: (name: string) => `Add ${name}`,
@@ -165,6 +168,8 @@ export const CW = {
   dishPicked: 'Guests have picked this dish.',
   coursePicked: 'Guests have picked from this course.',
   lock: 'Your role, Coordinator, can see this menu but not change it. Someone whose role can change Menu can.',
+  lockOnEvent: (role: string) =>
+    `Your role on this event, ${role}, can see this menu but not change it. Someone whose role can change Menu can.`,
   loading: 'Loading the menu…',
   refreshing: 'Refreshing…',
   forbidden: 'Nothing was changed. Your role does not include the permission this needs.',
@@ -539,6 +544,8 @@ export interface CoursesStart {
   note: string;
   courses: EvCourse[];
   manage: boolean;
+  /** The read-only line: the organisation role's, or a Member's role on this event (sc-59617). */
+  lock: string;
   opened: Opened | null;
   asking: Asking | null;
   refused: Refused | null;
@@ -549,12 +556,15 @@ export interface CoursesStart {
   failing: 'none' | 'network' | 'forbidden';
   /** The menu library Add dish lists, when a state needs one with variants. */
   library?: readonly LibDish[];
+  /** The menu has loaded and the library Add dish lists has not yet. */
+  libraryLoading?: boolean;
 }
 
 function start(over: Partial<CoursesStart> & { name: string; note: string }): CoursesStart {
   return {
     courses: sampleCourses(),
     manage: true,
+    lock: CW.lock,
     opened: null,
     asking: null,
     refused: null,
@@ -665,6 +675,20 @@ const STATES = {
       note: 'Nothing found, and a new dish with the name filled in.',
       opened: { kind: 'addDish', courseId: MAIN, tab: 'library', q: 'plantain' },
     }),
+  addDishLoading: () =>
+    start({
+      name: 'Add dish, the library still loading',
+      note: 'Opened before the library has loaded: the count line says so over three bones, and no line quotes a search. New dish works meanwhile.',
+      opened: { kind: 'addDish', courseId: MAIN, tab: 'library' },
+      libraryLoading: true,
+    }),
+  addDishEmptyLibrary: () =>
+    start({
+      name: 'Add dish, the library has no dishes',
+      note: 'Nothing to find: says the library is empty and starts a new dish instead.',
+      opened: { kind: 'addDish', courseId: MAIN, tab: 'library' },
+      library: [],
+    }),
   addDishSame: () =>
     start({
       name: 'Add dish, on an Everyone gets the same course',
@@ -738,6 +762,20 @@ const STATES = {
       name: 'Read only, without menu.manage',
       note: 'Every course and dish as text, and no controls.',
       manage: false,
+    }),
+  readOnlyCanView: () =>
+    start({
+      name: 'Read only, a Member with Can view',
+      note: 'The line names the role on this event, as People shows it, not the organisation role.',
+      manage: false,
+      lock: CW.lockOnEvent('Can view'),
+    }),
+  readOnlyCheckIn: () =>
+    start({
+      name: 'Read only, a Member with Can check guests in',
+      note: 'The longest line the Menu shows: it wraps whole at 1280 px and at a 320 px window.',
+      manage: false,
+      lock: CW.lockOnEvent('Can check guests in'),
     }),
   emptyReadOnly: () =>
     start({
@@ -1151,7 +1189,16 @@ export const COURSES_PAGES: readonly { name: string; states: readonly DemoLink[]
   {
     name: 'The menu, its courses and their order',
     states: (
-      ['menu', 'loading', 'empty', 'courseMoved', 'menuReadOnly', 'emptyReadOnly'] as const
+      [
+        'menu',
+        'loading',
+        'empty',
+        'courseMoved',
+        'menuReadOnly',
+        'readOnlyCanView',
+        'readOnlyCheckIn',
+        'emptyReadOnly',
+      ] as const
     ).map(link),
   },
   {
@@ -1170,7 +1217,15 @@ export const COURSES_PAGES: readonly { name: string; states: readonly DemoLink[]
   {
     name: 'Add dish, from the library or new',
     states: (
-      ['addDish', 'addDishNoMatch', 'addDishSame', 'addDishNew', 'addDishNewBlank'] as const
+      [
+        'addDish',
+        'addDishLoading',
+        'addDishNoMatch',
+        'addDishEmptyLibrary',
+        'addDishSame',
+        'addDishNew',
+        'addDishNewBlank',
+      ] as const
     ).map(link),
   },
   {

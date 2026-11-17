@@ -163,6 +163,14 @@ describe('the presses', () => {
     expect(dismiss(night).lost).toBeNull();
     expect(pressDone(night, 'hall', 'dance').lost).toBeNull();
   });
+
+  it('words a losing replay that names nobody with the 409’s own words', () => {
+    expect(nightAt('replay_lost_unnamed').night.lost).toEqual({
+      title: 'First dance',
+      by: null,
+      said: 'This item has not started yet, so it cannot be done.',
+    });
+  });
 });
 
 describe('the end of the night', () => {
@@ -216,6 +224,7 @@ describe('the boards', () => {
         'later_skipped',
         'offline',
         'replay_lost',
+        'replay_lost_unnamed',
         'read_only',
         'end_behind',
         'end_ahead',
