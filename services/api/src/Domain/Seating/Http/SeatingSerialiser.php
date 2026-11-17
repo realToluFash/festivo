@@ -21,6 +21,8 @@ use App\Repository\SeatingRowRepository;
 use App\Repository\SeatingSeatRepository;
 use App\Repository\SeatingSectionRepository;
 use App\Repository\SeatingTableRepository;
+use App\Repository\TableSharingRepository;
+use DateTimeZone;
 use Psl\Dict;
 use Psl\Iter;
 use Psl\Math;
@@ -36,6 +38,7 @@ final readonly class SeatingSerialiser
         private SeatingSeatRepository $seatingSeatRepository,
         private SeatAssignmentRepository $seatAssignmentRepository,
         private GuestRepository $guestRepository,
+        private TableSharingRepository $tableSharingRepository,
     ) {
     }
 
@@ -72,6 +75,7 @@ final readonly class SeatingSerialiser
             'lengthCm' => $plan->getLengthCm(),
             'version' => $plan->getVersion(),
             'changedBy' => $plan->getChangedBy()?->getName(),
+            'sharing' => $this->sharing($event, $plan),
             'sections' => Vec\map($sections, static fn (SeatingSection $section): array => [...self::section($section), ...self::contents($section, $tables, $rows, $singleSeats)]),
             'tables' => Vec\map($tables, static fn (SeatingTable $table): array => [...self::table($table), 'seated' => $seated($table)]),
             'rows' => Vec\map($rows, static fn (SeatingRow $row): array => [...self::row($row), 'seated' => $seated($row)]),
@@ -111,6 +115,17 @@ final readonly class SeatingSerialiser
             'groupId' => $lead->getGroup()?->getId()->toRfc4122(),
             'groupName' => $lead->getGroup()?->getName(),
             'seat' => $seat,
+        ];
+    }
+
+    /** @return array{sharedAt: ?string, shareBy: ?string} sharedAt at the offset in force in the event's zone, shareBy a day in it (sc-4022) */
+    private function sharing(Event $event, SeatingPlan $plan): array
+    {
+        $sharing = $this->tableSharingRepository->findOneForPlan($plan);
+
+        return [
+            'sharedAt' => $sharing?->getSharedAt()?->setTimezone(new DateTimeZone($event->getTimeZone()))->format(\DATE_ATOM),
+            'shareBy' => $sharing?->getShareBy()?->format('Y-m-d'),
         ];
     }
 

@@ -164,6 +164,7 @@ import {
   SelectionPanel,
   StepLine,
 } from './SeatingSelection.tsx';
+import { ShareTables } from './SeatingShare.tsx';
 import {
   COLUMNS_MAX,
   boxOf,
@@ -2674,6 +2675,7 @@ function Plan({
     body = (
       <>
         <RoomHead ctx={ctx} plan={plan} />
+        <ShareTables ctx={ctx} plan={plan} />
         {notice != null && <Said>{notice}</Said>}
         {readOnly ? (
           <Line>{t('seating.readOnly')}</Line>

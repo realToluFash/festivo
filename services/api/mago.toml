@@ -307,7 +307,8 @@ permit = [
 
 # Venue & seating: an event's one plan, its room and its sections (sc-3998). Each
 # change goes to the audit trail and out on the plan's topic. A duplicated event
-# copies its plan through this scope (EventDuplicator).
+# copies its plan through this scope (EventDuplicator). Share by adds its milestone to
+# the event's timeline (sc-4022).
 [[guard.perimeter.rules]]
 namespace = "App\\Domain\\Seating\\"
 permit = [
@@ -315,6 +316,7 @@ permit = [
     "@layer:external",
     "@layer:shared",
     "@layer:domain_seating",
+    "@layer:domain_event",
     "@layer:repository",
     "@layer:audit",
     "@layer:realtime",
@@ -324,7 +326,8 @@ permit = [
 # Guests: an event's list and adding to it (sc-1468). A mobile number is checked by the
 # account's parser, a name folded by the shared rule; each add is audited and published.
 # A guest's own page shows the event's cover as the event's page serialises it (sc-1526),
-# and the items the hosts show to guests as the running order works them out (sc-3899).
+# and the items the hosts show to guests as the running order works them out (sc-3899),
+# and their table once the hosts share the tables (sc-4022).
 [[guard.perimeter.rules]]
 namespace = "App\\Domain\\Guest\\"
 permit = [
@@ -334,6 +337,7 @@ permit = [
     "@layer:domain_guest",
     "@layer:domain_event",
     "@layer:domain_run_of_show",
+    "@layer:domain_seating",
     "@layer:domain_user",
     "@layer:repository",
     "@layer:audit",

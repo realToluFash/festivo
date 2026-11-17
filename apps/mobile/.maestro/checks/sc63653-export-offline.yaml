@@ -1,0 +1,21 @@
+# sc-63653: the Export button's offline stand-in on ${EV}, in airplane mode.
+appId: host.exp.Exponent
+---
+- openLink: ${METRO_URL}/--/events/${EV}?area=guests
+- extendedWaitUntil:
+    visible:
+      id: 'guests.search'
+    timeout: 30000
+- waitForAnimationToEnd
+- setAirplaneMode: enabled
+- extendedWaitUntil:
+    visible:
+      id: 'guests.export.offline'
+    timeout: 45000
+- waitForAnimationToEnd
+- takeScreenshot: offline
+- setAirplaneMode: disabled
+- extendedWaitUntil:
+    visible:
+      id: 'guests.export'
+    timeout: 45000

@@ -91,6 +91,7 @@ final readonly class SeatingPlanEditor
         private SeatAssignmentRepository $seatAssignmentRepository,
         private GuestSeater $guestSeater,
         private GuestRepository $guestRepository,
+        private GuestPageSignal $guestPageSignal,
     ) {
     }
 
@@ -1314,6 +1315,7 @@ final readonly class SeatingPlanEditor
     private function published(Event $event, ?SeatingPlan $plan): void
     {
         $this->realtimePublisher->publish(RealtimeTopic::EventSeating, $event->getId()->toRfc4122(), $this->seatingSerialiser->seating($event, $plan));
+        null === $plan ? $this->guestPageSignal->send($event) : $this->guestPageSignal->seatingChanged($event);
     }
 
     /** @return array<string, mixed> */
