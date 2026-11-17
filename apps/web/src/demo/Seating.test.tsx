@@ -1708,7 +1708,8 @@ describe('seating guests (sc-4013, sc-4016, sc-5030)', () => {
     async () => {
       await seating('pickedTight');
       const kids = [...room().children];
-      const lastItem = kids.findLastIndex((one) => one.classList.contains('st-item'));
+      const items = kids.filter((one) => one.classList.contains('st-item'));
+      const lastItem = kids.indexOf(items[items.length - 1]!);
 
       expect(kids.findIndex((one) => one.classList.contains('st-free'))).toBeGreaterThan(lastItem);
       const ring = (name: RegExp) => item(name).querySelector('circle.st-room-for')!;
