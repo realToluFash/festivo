@@ -22,6 +22,7 @@ import {
   feet,
   filled,
   fitOf,
+  freedFrom,
   focusReach,
   intoView,
   inside,
@@ -600,5 +601,24 @@ describe('a colleague’s marks on Tables and the List (sc-60717)', () => {
 
     expect(seatChosenWords(marks, 2)).toBe(', chosen by Ana Souza');
     expect(seatChosenWords(marks, 0)).toBe('');
+  });
+});
+
+describe('the guests a deleted or emptied item frees', () => {
+  it('sends each taken chair back to Without a seat on their own, coming, and skips held or empty chairs', () => {
+    const table: Item = {
+      ...newItem('round', [], [0, 0]),
+      chairs: [
+        { state: 'taken', who: 'Ines Duarte', party: 'p1' },
+        { state: 'held', who: 'Musa Bello' },
+        { state: 'empty' },
+        { state: 'taken', who: 'Kofi Mensah' },
+      ],
+    };
+
+    expect(freedFrom([table])).toEqual([
+      { id: 'back-Ines Duarte', name: 'Ines Duarte', companions: [], group: null, reply: 'coming' },
+      { id: 'back-Kofi Mensah', name: 'Kofi Mensah', companions: [], group: null, reply: 'coming' },
+    ]);
   });
 });

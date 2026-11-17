@@ -43,6 +43,8 @@ import {
   detailOf,
   filled,
   firstFree,
+  freedFrom,
+  freedParty,
   fitOf,
   focusReach,
   free,
@@ -688,13 +690,7 @@ function Seating({
         const was = item?.chairs[chair];
 
         if (party == null || item == null || was?.who == null) return now;
-        const moved: Party = {
-          id: `back-${was.who}`,
-          name: was.who,
-          companions: [],
-          group: null,
-          reply: 'coming',
-        };
+        const moved = freedParty(was.who);
 
         return {
           ...now,
@@ -726,15 +722,7 @@ function Seating({
         const item = now.plan.items.find((one) => one.id === tableId);
 
         if (item == null) return now;
-        const back: Party[] = item.chairs
-          .filter((chair) => chair.state === 'taken' && chair.who != null)
-          .map((chair) => ({
-            id: `back-${chair.who}`,
-            name: chair.who!,
-            companions: [],
-            group: null,
-            reply: 'coming',
-          }));
+        const back = freedFrom([item]);
 
         return {
           ...now,
@@ -2641,17 +2629,7 @@ function Asking() {
     );
   }
   const doomed = ui.plan.items.filter((item) => asking.ids.includes(item.id));
-  const freed: Party[] = doomed.flatMap((item) =>
-    item.chairs
-      .filter((chair) => chair.state === 'taken' && chair.who != null)
-      .map((chair) => ({
-        id: `back-${chair.who}`,
-        name: chair.who!,
-        companions: [],
-        group: null,
-        reply: 'coming' as const,
-      })),
-  );
+  const freed = freedFrom(doomed);
 
   if (doomed.length > 1) {
     const seated = seatedOf(doomed);

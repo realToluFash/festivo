@@ -29,6 +29,7 @@ import {
   sideBySide,
   usable,
   filled,
+  freedFrom,
 } from './seating.ts';
 import {
   type Fold,
@@ -1197,17 +1198,7 @@ function choosingSeed(state: SeatingState, ui: Ui): Ui {
     }
     case 'deleteManyChanged': {
       const doomed = plan.items.filter((item) => SIX_TABLES.includes(item.id));
-      const freed: Party[] = doomed.flatMap((item) =>
-        item.chairs
-          .filter((chair) => chair.state === 'taken' && chair.who != null)
-          .map((chair) => ({
-            id: `back-${chair.who}`,
-            name: chair.who!,
-            companions: [],
-            group: null,
-            reply: 'coming' as const,
-          })),
-      );
+      const freed = freedFrom(doomed);
       const after = { ...plan, items: plan.items.filter((item) => !SIX_TABLES.includes(item.id)) };
       const since = seated(after, [...ui.tray, ...freed], freed[0]!.id, 't8');
 

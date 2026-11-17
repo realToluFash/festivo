@@ -78,6 +78,18 @@ export interface Party {
   behind?: boolean;
 }
 
+export function freedParty(who: string): Party {
+  return { id: `back-${who}`, name: who, companions: [], group: null, reply: 'coming' };
+}
+
+export function freedFrom(items: readonly Item[]): Party[] {
+  return items.flatMap((item) =>
+    item.chairs.flatMap((chair) =>
+      chair.state === 'taken' && chair.who != null ? [freedParty(chair.who)] : [],
+    ),
+  );
+}
+
 export interface Person {
   name: string;
   initials: string;
