@@ -18,7 +18,7 @@ import {
   zonedAt,
 } from '@soirely/domain';
 import { randomUUID } from 'expo-crypto';
-import { type ReactNode, useCallback, useEffect, useRef, useState } from 'react';
+import { type ReactNode, type Ref, useCallback, useEffect, useRef, useState } from 'react';
 import {
   AppState,
   Modal,
@@ -69,7 +69,7 @@ import { useReadOut } from './ReadOut.tsx';
 import { SETTLED_MS, Screen } from './Screen.tsx';
 import { bodyEdges } from './bodyEdges.ts';
 import { moveScreenReaderFocus } from './screenReaderFocus.ts';
-import { Text } from './Text.tsx';
+import { Text, type TextHandle } from './Text.tsx';
 
 const READ_AGAIN_MS = 10_000;
 const SEND_AGAIN_MS = 10_000;
@@ -239,6 +239,7 @@ export function useNight(eventId: string) {
 export function NightView({
   eventId,
   kind,
+  titleRef,
   top,
   contentStyle,
   onEvent,
@@ -247,6 +248,8 @@ export function NightView({
 }: {
   eventId: string;
   kind: LayoutKind;
+  /** The night's own heading, as its demo draws it, which the frame leaves out. */
+  titleRef: Ref<TextHandle>;
   /** Above the night, at the top of what scrolls: a tablet's Back. */
   top: ReactNode;
   contentStyle: ViewStyle;
@@ -267,6 +270,9 @@ export function NightView({
     return (
       <Screen edges={bodyEdges(kind)} contentStyle={contentStyle}>
         {top}
+        <Text size={28} weight="bold" accessibilityRole="header" ref={titleRef}>
+          {t('runView.title')}
+        </Text>
         <Text size={15} style={styles.secondary} accessibilityRole="alert" testID="night.failed">
           {t('runView.failed')}
         </Text>
@@ -278,6 +284,7 @@ export function NightView({
       night={night}
       schedule={night.load.kind === 'loaded' ? night.load.schedule : null}
       kind={kind}
+      titleRef={titleRef}
       top={top}
       contentStyle={contentStyle}
       onEndNow={onEndNow}
@@ -290,6 +297,7 @@ function Shown({
   night,
   schedule,
   kind,
+  titleRef,
   top,
   contentStyle,
   onEndNow,
@@ -298,6 +306,7 @@ function Shown({
   night: ReturnType<typeof useNight>;
   schedule: Schedule | null;
   kind: LayoutKind;
+  titleRef: Ref<TextHandle>;
   top: ReactNode;
   contentStyle: ViewStyle;
   onEndNow: () => void;
@@ -403,6 +412,7 @@ function Shown({
       <Screen edges={bodyEdges(kind)} style={styles.grow} contentStyle={contentStyle}>
         {top}
         <NightHead
+          titleRef={titleRef}
           subtitle={
             event == null
               ? null

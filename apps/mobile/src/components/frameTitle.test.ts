@@ -29,11 +29,11 @@ describe('a phone’s header title inside an event (sc-30413)', () => {
     expect(frame).not.toMatch(/untitled:\s*inEvent/u);
   });
 
-  it('stays on All dates, Edit details and every framed screen but the event’s Overview', () => {
+  it('stays on All dates, Edit details and every framed screen but the event’s Overview and its night', () => {
     const untitled = framed.filter((file) => frames(file).some((tag) => /\buntitled\b/u.test(tag)));
 
     expect(framed).toContain(join('app', 'events', '[id]', 'dates.tsx'));
-    expect(untitled).toEqual([EVENT_SCREEN]);
+    expect(untitled).toEqual([EVENT_SCREEN, join('app', 'events', '[id]', 'night.tsx')]);
   });
 
   it('on the Overview, hands the card’s name the focus the frame’s title had', () => {
