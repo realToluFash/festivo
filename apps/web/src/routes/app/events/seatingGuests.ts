@@ -111,3 +111,17 @@ export function initialsOf(name: string): string {
     .map((word) => [...word][0]?.toLocaleUpperCase() ?? '')
     .join('');
 }
+
+/** The chairs at a table or row nobody sits in and that can be used: its "{n} free" while a guest is picked (sc-5030). */
+export function freeAt(
+  plan: SeatingPlan,
+  place: { id: string; seats: number; unusableSeats: readonly number[] },
+): number {
+  const taken = new Set(
+    plan.guests.flatMap((guest) => (guest.seat?.id === place.id ? [guest.seat.seat] : [])),
+  );
+
+  return Array.from({ length: place.seats }, (_, index) => index + 1).filter(
+    (seat) => !taken.has(seat) && !place.unusableSeats.includes(seat),
+  ).length;
+}

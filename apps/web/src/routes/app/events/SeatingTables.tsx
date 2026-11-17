@@ -38,7 +38,10 @@ import { currentLocale } from '../../../i18n/index.ts';
 import {
   CHAIRS_FROM_SCALE,
   f,
+  chairsTakePointer,
+  hitPad,
   POINTER_CHAIRS_FROM_SCALE,
+  POINTER_TARGET_PX,
   readCount,
   rotations,
   sectionOf,
@@ -59,7 +62,7 @@ import { Overlaps, PositionFields } from './SeatingArrange.tsx';
 import { ColleagueNote, ColleagueOutline } from './SeatingPresence.tsx';
 import { chosenBy, useRings } from './seatingPresence.ts';
 import { placementOf } from './seatingItems.ts';
-import { type ChairState, chairStateOf, initialsOf, takenAt } from './seatingGuests.ts';
+import { type ChairState, chairStateOf, freeAt, initialsOf, takenAt } from './seatingGuests.ts';
 import {
   centimetreUnit,
   tableLengthWords,
@@ -127,6 +130,77 @@ export function chairStateWord(t: T, state: ChairState, guest: SeatingGuest | nu
   return t(
     { held: 'seating.held', empty: 'seating.empty', unusable: 'seating.unusable' }[state] as
       'seating.held' | 'seating.empty' | 'seating.unusable',
+  );
+}
+
+/** Only a chair on the picture adds its guest's reply, Coming included; Tables, the List and the panel keep chairStateWord (sc-5030). */
+export function chairSaid(t: T, state: ChairState, guest: SeatingGuest | null): string {
+  if (state !== 'taken' || guest?.fullName == null) return chairStateWord(t, state, guest);
+  return t('seating.guestReply', {
+    name: guest.fullName,
+    reply: t(
+      guest.reply === 'coming'
+        ? 'seating.coming'
+        : guest.reply === 'maybe'
+          ? 'seating.notSureYet'
+          : 'seating.noReply',
+    ),
+  });
+}
+
+/** Hover or focus on a chair shows its label; leaving it takes the label down. */
+export function chairTipHandlers(
+  onChairTip: ((tip: ChairTip | null) => void) | undefined,
+  tip: ChairTip,
+) {
+  if (onChairTip == null) return {};
+  return {
+    onPointerEnter: () => onChairTip(tip),
+    onPointerLeave: () => onChairTip(null),
+    onFocus: () => onChairTip(tip),
+    onBlur: () => onChairTip(null),
+  };
+}
+
+/** Where a chair's label shows, above the chair, on hover or focus while a guest is picked (sc-5030). */
+export interface ChairTip {
+  x: number;
+  y: number;
+  r: number;
+  words: string;
+}
+
+/** One guess at 12 to 13 px words, so the label and the free tag grow with every locale. */
+function wordsWide(words: string): number {
+  return words.length * 7;
+}
+
+export function ChairTipDrawing({ tip }: { tip: ChairTip }) {
+  const w = wordsWide(tip.words) + 20;
+
+  return (
+    <g className="st-tip" aria-hidden="true">
+      <rect x={f(tip.x - w / 2)} y={f(tip.y - tip.r - 40)} width={f(w)} height="28" rx="10" />
+      <text x={f(tip.x)} y={f(tip.y - tip.r - 26)} textAnchor="middle" dominantBaseline="central">
+        {tip.words}
+      </text>
+    </g>
+  );
+}
+
+/** While a guest is picked: "{n} free" on a green dashed outline, or "Full" on a grey one (sc-5030). */
+export function FreeTag({ x, y, n }: { x: number; y: number; n: number }) {
+  const { t } = useTranslation();
+  const words = n === 0 ? t('seating.full') : t('seating.freeTag', { count: n });
+  const w = wordsWide(words) + 16;
+
+  return (
+    <g className={n === 0 ? 'st-free is-full' : 'st-free'} aria-hidden="true">
+      <rect x={f(x - w / 2)} y={f(y - 11)} width={f(w)} height="22" rx="11" />
+      <text x={f(x)} y={f(y)} textAnchor="middle" dominantBaseline="central">
+        {words}
+      </text>
+    </g>
   );
 }
 
@@ -293,8 +367,11 @@ export function TableDrawing({
   chosen,
   chosenSeat,
   outside,
+  picking = false,
+  tinted = false,
   onChoose,
   onChair,
+  onChairTip,
 }: {
   plan: SeatingPlan;
   table: SeatingTable;
@@ -304,8 +381,11 @@ export function TableDrawing({
   chosen: boolean;
   chosenSeat: number | null;
   outside: boolean;
+  picking?: boolean;
+  tinted?: boolean;
   onChoose: () => void;
   onChair: (seat: number) => void;
+  onChairTip?: (tip: ChairTip | null) => void;
 }) {
   const { t } = useTranslation();
   const cx = ox + table.xCm * s;
@@ -314,8 +394,11 @@ export function TableDrawing({
   const round = isRoundShape(table.shape);
   const rot = `translate(${f(cx)} ${f(cy)}) rotate(${table.rotation})`;
   const near = s >= POINTER_CHAIRS_FROM_SCALE;
+  const placed = chairsOf(table);
+  const pointer = chairsTakePointer(placed, s);
   const r = CHAIR_RADIUS_CM * s;
   const section = sectionOf(plan, table);
+  const room = picking ? freeAt(plan, table) : null;
   const rings = useRings(table.id);
   const box = (pad: number, className: string, key: string) =>
     round ? (
@@ -359,7 +442,7 @@ export function TableDrawing({
   const chairs: ReactNode[] = [];
 
   if (!out)
-    chairsOf(table).forEach((chair) => {
+    placed.forEach((chair) => {
       const [px, py] = turned([chair.x, chair.y], table.rotation);
       const x = cx + px * s;
       const y = cy + py * s;
@@ -401,24 +484,33 @@ export function TableDrawing({
             square={table.shape === 'cocktail'}
             label={near ? chairLabel(state, guest, chair.seat) : undefined}
           />
-          {(chosen || near) && (
+          {(chosen || picking || pointer) && (
             <circle
-              className={near ? 'st-chair-hit' : 'st-chair-hit is-keys'}
+              className={pointer ? 'st-chair-hit' : 'st-chair-hit is-keys'}
               role="button"
-              tabIndex={chosen ? 0 : -1}
+              tabIndex={chosen || picking ? 0 : -1}
               aria-label={chosenBy(
                 t,
                 t('seating.chairName', {
                   table: table.name,
                   seat: chair.seat,
-                  state: chairStateWord(t, state, guest),
+                  state: chairSaid(t, state, guest),
                 }),
                 seated.map((ring) => ({ ...ring, chair: null })),
               )}
               aria-pressed={chosenSeat === chair.seat}
               cx={f(x)}
               cy={f(y)}
-              r="22"
+              r={POINTER_TARGET_PX / 2}
+              {...chairTipHandlers(onChairTip, {
+                x,
+                y,
+                r,
+                words: t('seating.seatLabel', {
+                  seat: chair.seat,
+                  state: chairSaid(t, state, guest),
+                }),
+              })}
               onClick={(event) => {
                 event.stopPropagation();
                 onChair(chair.seat);
@@ -436,6 +528,7 @@ export function TableDrawing({
     });
 
   const lit = chosen && chosenSeat == null;
+  const outY = round ? cy + Math.max(ey, 40) * s * 0.55 + 12 : cy + (table.lengthCm / 2) * s + 12;
   const bodyW = table.widthCm * s;
   const bodyH = table.lengthCm * s;
   const inside = table.name.length * 6.2 <= bodyW - 3 && bodyH >= 15;
@@ -465,20 +558,42 @@ export function TableDrawing({
         onChoose();
       }}
     >
-      {lit && box(10, 'st-lit', 'lit')}
-      {box(0, 'st-hit', 'hit')}
+      {(lit || tinted) && box(10, 'st-lit', 'lit')}
+      {round ? (
+        <circle
+          className="st-hit"
+          cx={f(cx)}
+          cy={f(cy)}
+          r={f(Math.max(ex * s, POINTER_TARGET_PX / 2))}
+        />
+      ) : (
+        <g transform={rot}>
+          <rect
+            className="st-hit"
+            x={f(-ex * s - hitPad(ex, s))}
+            y={f(-ey * s - hitPad(ey, s))}
+            width={f(2 * (ex * s + hitPad(ex, s)))}
+            height={f(2 * (ey * s + hitPad(ey, s)))}
+            rx="8"
+          />
+        </g>
+      )}
       <g className="st-item-body">
         {body}
         {chairs}
       </g>
+      {room != null && box(6, room === 0 ? 'st-room-for is-full' : 'st-room-for', 'room')}
       {out ? (
-        <OutWords
-          x={cx}
-          y={round ? cy + Math.max(ey, 40) * s * 0.55 + 12 : cy + (table.lengthCm / 2) * s + 12}
-          name={table.name}
-          taken={takenAt(plan, table.id)}
-          seats={usableSeats(table)}
-        />
+        <>
+          <OutWords
+            x={cx}
+            y={outY}
+            name={table.name}
+            taken={takenAt(plan, table.id)}
+            seats={room == null ? usableSeats(table) : null}
+          />
+          {room != null && <FreeTag x={cx} y={outY + 20} n={room} />}
+        </>
       ) : (
         <text
           className="st-name"
@@ -490,6 +605,7 @@ export function TableDrawing({
           {table.name}
         </text>
       )}
+      {!out && room != null && <FreeTag x={cx} y={cy + ey * s + 32} n={room} />}
       {onTable.map((ring, step) => (
         <ColleagueOutline
           key={ring.userId}

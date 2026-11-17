@@ -29,22 +29,29 @@ import { chosenBy, useRings } from './seatingPresence.ts';
 import { placementOf } from './seatingItems.ts';
 import {
   CHAIRS_FROM_SCALE,
+  chairsTakePointer,
   f,
+  hitPad,
   POINTER_CHAIRS_FROM_SCALE,
+  POINTER_TARGET_PX,
   readCount,
   rotations,
   sectionOf,
   turned,
   usableSeats,
 } from './seatingDraw.ts';
-import { chairStateOf, takenAt } from './seatingGuests.ts';
+import { chairStateOf, freeAt, takenAt } from './seatingGuests.ts';
 import {
   ChairMark,
+  type ChairTip,
   FocusRing,
+  FreeTag,
   OutWords,
   StateMark,
   chairLabel,
+  chairSaid,
   chairStateWord,
+  chairTipHandlers,
 } from './SeatingTables.tsx';
 import {
   centimetreUnit,
@@ -108,8 +115,11 @@ export function RowDrawing({
   chosen,
   chosenSeat,
   outside,
+  picking = false,
+  tinted = false,
   onChoose,
   onChair,
+  onChairTip,
 }: {
   plan: SeatingPlan;
   row: SeatingRow;
@@ -119,14 +129,20 @@ export function RowDrawing({
   chosen: boolean;
   chosenSeat: number | null;
   outside: boolean;
+  picking?: boolean;
+  tinted?: boolean;
   onChoose: () => void;
   onChair: (seat: number) => void;
+  onChairTip?: (tip: ChairTip | null) => void;
 }) {
   const { t } = useTranslation();
   const cx = ox + row.xCm * s;
   const cy = oy + row.yCm * s;
   const [ex, ey] = rowExtent(row);
   const near = s >= POINTER_CHAIRS_FROM_SCALE;
+  const placed = rowSeatsOf(row);
+  const pointer = chairsTakePointer(placed, s);
+  const room = picking ? freeAt(plan, row) : null;
   const r = CHAIR_RADIUS_CM * s;
   const section = sectionOf(plan, row);
   const rings = useRings(row.id);
@@ -150,7 +166,7 @@ export function RowDrawing({
   const seats: ReactNode[] = [];
 
   if (s >= CHAIRS_FROM_SCALE)
-    rowSeatsOf(row).forEach((chair) => {
+    placed.forEach((chair) => {
       const [px, py] = turned([chair.x, chair.y], row.rotation);
       const x = cx + px * s;
       const y = cy + py * s;
@@ -174,20 +190,29 @@ export function RowDrawing({
             square={false}
             label={near ? chairLabel(state, guest, chair.seat) : undefined}
           />
-          {(chosen || near) && (
+          {(chosen || picking || pointer) && (
             <circle
-              className={near ? 'st-chair-hit' : 'st-chair-hit is-keys'}
+              className={pointer ? 'st-chair-hit' : 'st-chair-hit is-keys'}
               role="button"
-              tabIndex={chosen ? 0 : -1}
+              tabIndex={chosen || picking ? 0 : -1}
               aria-label={t('seating.rowSeatName', {
                 label: row.label,
                 seat: chair.seat,
-                state: chairStateWord(t, state, guest),
+                state: chairSaid(t, state, guest),
               })}
               aria-pressed={chosenSeat === chair.seat}
               cx={f(x)}
               cy={f(y)}
-              r="22"
+              r={POINTER_TARGET_PX / 2}
+              {...chairTipHandlers(onChairTip, {
+                x,
+                y,
+                r,
+                words: t('seating.seatLabel', {
+                  seat: chair.seat,
+                  state: chairSaid(t, state, guest),
+                }),
+              })}
               onClick={(event) => {
                 event.stopPropagation();
                 onChair(chair.seat);
@@ -227,8 +252,17 @@ export function RowDrawing({
       onClick={onChoose}
       onKeyDown={onKeys(onChoose)}
     >
-      {lit && box(10, 'st-lit')}
-      {box(0, 'st-hit')}
+      {(lit || tinted) && box(10, 'st-lit')}
+      <g transform={`translate(${f(cx)} ${f(cy)}) rotate(${row.rotation})`}>
+        <rect
+          className="st-hit"
+          x={f(-ex * s - hitPad(ex, s))}
+          y={f(-ey * s - hitPad(ey, s))}
+          width={f(2 * (ex * s + hitPad(ex, s)))}
+          height={f(2 * (ey * s + hitPad(ey, s)))}
+          rx="8"
+        />
+      </g>
       <g className="st-item-body">
         <rect
           className="st-row-tab"
@@ -249,13 +283,21 @@ export function RowDrawing({
         </text>
         {seats}
       </g>
+      {room != null && box(6, room === 0 ? 'st-room-for is-full' : 'st-room-for')}
       {s < CHAIRS_FROM_SCALE && (
         <OutWords
           x={cx}
           y={cy + Math.max(ey, 40) * s + 12}
           name={name}
           taken={takenAt(plan, row.id)}
-          seats={usableSeats(row)}
+          seats={room == null ? usableSeats(row) : null}
+        />
+      )}
+      {room != null && (
+        <FreeTag
+          x={cx}
+          y={s < CHAIRS_FROM_SCALE ? cy + Math.max(ey, 40) * s + 32 : cy + ey * s + 32}
+          n={room}
         />
       )}
       {rings.map((ring, step) => (

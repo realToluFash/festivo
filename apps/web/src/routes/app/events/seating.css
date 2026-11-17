@@ -2066,7 +2066,7 @@
   white-space: nowrap;
 }
 
-/* Move everyone to…: an answer by the panel, over the room. */
+/* Move everyone to…, by the panel; a short party or a taken chair, under the table (sc-5030). */
 .st-pop {
   z-index: 9;
   display: flex;
@@ -2077,6 +2077,14 @@
   border-radius: 18px;
   background: var(--colorCard);
   box-shadow: var(--stLift);
+}
+
+.st-pop.is-short {
+  width: 330px;
+}
+
+.st-pop.is-swap {
+  width: 340px;
 }
 
 .st-pop.is-move-all {
@@ -2267,4 +2275,37 @@
 .st-card-slot {
   position: relative;
   padding: 27px 15px 15px;
+}
+
+/* sc-5030: while a guest is picked, every table and row says whether it has room, by outline and by word. */
+.st-room-for {
+  fill: none;
+  stroke: var(--deskGreen);
+  stroke-width: 2;
+  stroke-dasharray: 6 4;
+  pointer-events: none;
+}
+
+.st-room-for.is-full {
+  stroke: var(--colorInkTertiary);
+}
+
+.st-free {
+  pointer-events: none;
+}
+
+.st-free rect {
+  fill: color-mix(in srgb, var(--deskGreen) 12%, var(--colorCard));
+  stroke: var(--deskGreen);
+}
+
+.st-free text {
+  fill: var(--colorInk);
+  font: 600 12px var(--fontFamily);
+  font-variant-numeric: tabular-nums;
+}
+
+.st-free.is-full rect {
+  fill: var(--stSunk);
+  stroke: var(--colorInkTertiary);
 }
