@@ -83,3 +83,31 @@ export function seatedAt(plan: SeatingPlan, placeId: string, seat: number): Seat
     plan.guests.find((guest) => guest.seat?.id === placeId && guest.seat.seat === seat) ?? null
   );
 }
+
+export type ChairState = 'taken' | 'held' | 'empty' | 'unusable';
+
+/** A chair's state: Held is a companion with no name yet in it. */
+export function chairStateOf(
+  plan: SeatingPlan,
+  placeId: string,
+  seat: number,
+  unusable: boolean,
+): { state: ChairState; guest: SeatingGuest | null } {
+  const guest = seatedAt(plan, placeId, seat);
+
+  if (guest != null) return { state: guest.fullName == null ? 'held' : 'taken', guest };
+  return { state: unusable ? 'unusable' : 'empty', guest: null };
+}
+
+export function takenAt(plan: SeatingPlan, placeId: string): number {
+  return plan.guests.filter((guest) => guest.seat?.id === placeId).length;
+}
+
+export function initialsOf(name: string): string {
+  return name
+    .split(/\s+/u)
+    .filter(Boolean)
+    .slice(0, 2)
+    .map((word) => [...word][0]?.toLocaleUpperCase() ?? '')
+    .join('');
+}

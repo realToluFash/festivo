@@ -2006,3 +2006,61 @@
   color: var(--colorInkSecondary);
   font: 700 13px/1 var(--fontFamily);
 }
+
+.st-chair.is-taken,
+.st-chair-half {
+  fill: var(--stTaken);
+  stroke: var(--stTaken);
+}
+
+.st-chair.is-held {
+  fill: var(--colorCard);
+  stroke: var(--stTaken);
+}
+
+.st-chair-text.is-on-dark {
+  fill: var(--colorInkOnDark);
+  font-weight: 700;
+}
+
+.st-legend {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px 14px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.st-legend li {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  color: var(--colorInkSecondary);
+  font: 500 13px/1.3 var(--fontFamily);
+  white-space: nowrap;
+}
+
+/* Move everyone to…: an answer by the panel, over the room. */
+.st-pop {
+  z-index: 9;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  box-sizing: border-box;
+  padding: 14px var(--spaceLg);
+  border-radius: 18px;
+  background: var(--colorCard);
+  box-shadow: var(--stLift);
+}
+
+.st-pop.is-move-all {
+  top: 140px;
+  right: 16px;
+  width: 300px;
+}
+
+.st-pop h2 {
+  margin: 0;
+  font: 700 17px/1.3 var(--fontFamily);
+}

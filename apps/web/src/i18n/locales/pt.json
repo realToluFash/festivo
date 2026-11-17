@@ -3151,7 +3151,20 @@
     "swapLine": "{{table}}, seat {{n, number}} is {{name}}’s.",
     "swapWith": "Swap with {{name}}",
     "race": "Someone just took that seat. {{name}} is still without a seat.",
-    "undoRefused": "These seats changed since. Nothing was undone."
+    "undoRefused": "These seats changed since. Nothing was undone.",
+    "taken": "Taken",
+    "held": "Held for a companion",
+    "legend": "What the seats show",
+    "seatN": "Seat {{n, number}}",
+    "unseatAll": "Unseat everyone",
+    "tableEmpty": "{{table}} is empty now.",
+    "movedAll_one": "{{count, number}} guest moved to {{table}}.",
+    "movedAll_other": "{{count, number}} guests moved to {{table}}.",
+    "moveAll": "Move everyone to…",
+    "rename": "Rename",
+    "roomForAll": "Tables with room for all {{n, number}}.",
+    "freeLine": "{{section}} · {{n, number}} free",
+    "emptyTable": "Nobody here yet. Pick a guest in Seat, then this table."
   },
   "onboarding": {
     "step": "Passo {{step, number}} de 2",
