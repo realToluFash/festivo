@@ -237,6 +237,29 @@ def rest_node(pull, merged):
             "mergeCommit": {"oid": pull["merge_commit_sha"]} if merged else None}
 
 
+def pull(number):
+    """One pull request read now, for one the sync's window of 15 merges has passed."""
+    owner, name = repository()
+    found = api(f"repos/{owner}/{name}/pulls/{number}")
+    pr = slim({**rest_node(found, bool(found.get("merged_at"))), "reviews": {"nodes": []}})
+    pr["lead"] = lead_verdicts(rest_reviews(owner, name, number))
+    pr["carried"] = None
+    if pr["state"] == "open":
+        pr["threads"] = rest_threads(owner, name, number, [])
+        pr["checks"] = rest_checks(owner, name, pr["head_sha"])
+        pr["mergeable"] = MERGEABLE[found.get("mergeable")].lower()
+    return pr
+
+
+def merged_for_story(story_id):
+    """A story's merged pull requests, found by search rather than the last sync's window."""
+    owner, name = repository()
+    found = api(f"search/issues?q=repo:{owner}/{name}+is:pr+is:merged+%22sc-{story_id}%22"
+                "&per_page=30")
+    prs = [pull(item["number"]) for item in (found or {}).get("items", [])]
+    return sorted((pr for pr in prs if pr["story_id"] == story_id), key=lambda pr: pr["number"])
+
+
 def rest_reviews(owner, name, number):
     return [{"databaseId": r["id"], "body": r.get("body"), "createdAt": r.get("submitted_at"),
              "commit": {"oid": r.get("commit_id")}}

@@ -24,6 +24,8 @@ import type { Tell } from '../components/SettingsParts.tsx';
 import type { Open } from '../components/today.ts';
 import { Banner, type BannerActions, NowBanner } from '../components/TodayBanner.tsx';
 import { RunNowBanner } from '../components/TodayRunBanner.tsx';
+import { RunNowAsOfBanner } from './TodayRunAsOf.tsx';
+import { isReadsState, useNowReads } from './NowReads.tsx';
 import { FirstRun, ThisWeek, YourEvents } from '../components/TodayParts.tsx';
 import { NeedsYou } from './TodayParts.tsx';
 import { TodaySidebar } from './TodaySidebar.tsx';
@@ -77,6 +79,10 @@ export function Today({ search = null }: { search?: SearchStart | null }) {
 
     return runWordsOf(runNowOf(items, clock), locale, t);
   }, [nowState, locale, t]);
+  const rawReads = params.get('reads');
+  // Now's own reads aging (sc-62416): `?reads=` shows the line, or runs the reads live; without it Now is as sc-61017 left it.
+  const readsState = name === 'day' && isReadsState(rawReads) ? rawReads : null;
+  const reads = useNowReads(readsState, trackAt(nowState).clock, locale);
   const moment = useMemo(
     () =>
       renamed(
@@ -146,13 +152,24 @@ export function Today({ search = null }: { search?: SearchStart | null }) {
               <AccessPaused />
             ) : (
               <>
-                {moment.now != null && moment.full ? (
-                  <RunNowBanner now={moment.now} run={run} actions={ACTIONS} open={open} />
+                {moment.now != null && moment.full && !reads.built ? (
+                  readsState == null ? (
+                    <RunNowBanner now={moment.now} run={run} actions={ACTIONS} open={open} />
+                  ) : (
+                    <RunNowAsOfBanner
+                      now={moment.now}
+                      run={run}
+                      asOf={reads.asOf}
+                      actions={ACTIONS}
+                      open={open}
+                    />
+                  )
                 ) : moment.now != null ? (
                   <NowBanner now={moment.now} full={false} actions={ACTIONS} open={open} />
                 ) : (
                   <Banner moment={moment} actions={ACTIONS} open={open} />
                 )}
+                {reads.controls}
                 {moment.kind === 'first' ? (
                   <FirstRun open={open} create={!asks} />
                 ) : (
