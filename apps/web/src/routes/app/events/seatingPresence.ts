@@ -25,7 +25,6 @@ export interface PresenceState {
   tabs: Record<string, PlanSubscriber>;
   /** Everyone seen, in the order they arrived, for their colour. */
   arrived: string[];
-  /** Each editor's latest choice, the earliest chosen first. */
   chosen: ColleagueChoice[];
   /** Tabs closed but still counted, until {@link departed} lets them go. */
   leaving: string[];
