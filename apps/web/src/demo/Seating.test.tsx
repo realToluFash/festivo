@@ -1885,6 +1885,31 @@ describe('seating guests (sc-4013, sc-4016, sc-5030)', () => {
     },
   );
 
+  it(
+    'draws the chair label under its chair where over it would run past the room’s top',
+    SLOW,
+    async () => {
+      await seating('chairLabel');
+      const label = () => within(room()).getByText('Seat 1, Sofia Rossi, Not sure yet');
+      const chair = () =>
+        Number(
+          within(room())
+            .getByRole('button', { name: 'Table 9, Seat 1, Sofia Rossi, Not sure yet' })
+            .getAttribute('cy'),
+        );
+
+      expect(Number(label().getAttribute('y'))).toBeLessThan(chair());
+      const lift = chair() - 30;
+
+      fireEvent.pointerDown(room(), { button: 0, pointerId: 1, clientX: 300, clientY: 400 });
+      fireEvent.pointerMove(window, { pointerId: 1, clientX: 300, clientY: 400 - lift });
+      fireEvent.pointerUp(window, { button: 0, pointerId: 1, clientX: 300, clientY: 400 - lift });
+
+      expect(chair()).toBeCloseTo(30, 0);
+      expect(Number(label().getAttribute('y'))).toBeGreaterThan(chair());
+    },
+  );
+
   it('drops the chair label once the pick ends, though the pointer never left', SLOW, async () => {
     await seating('chairLabel');
     key(item(/^Table 9,/u), 'Escape');
