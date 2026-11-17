@@ -7,10 +7,8 @@ namespace App\Domain\RunOfShow\Screen;
 use App\Entity\Event;
 use App\Entity\ScheduleItem;
 use App\Entity\ScreenLink;
-use App\Enum\RealtimeTopic;
 use App\Http\Exception\ApiException;
 use App\Http\LinkTokens;
-use App\Realtime\RealtimePublisher;
 use App\Repository\ScheduleItemRepository;
 use App\Repository\ScreenLinkRepository;
 use Doctrine\DBAL\Connection;
@@ -38,7 +36,7 @@ final readonly class ScreenLinks
         private ScheduleItemRepository $scheduleItemRepository,
         private EntityManagerInterface $entityManager,
         private Connection $connection,
-        private RealtimePublisher $realtimePublisher,
+        private ScreenSignal $screenSignal,
         private ClockInterface $clock,
     ) {
     }
@@ -86,7 +84,7 @@ final readonly class ScreenLinks
             $this->entityManager->persist(new ScreenLink($event, $place, $seed, LinkTokens::hash($this->token($seed))));
         });
 
-        $this->realtimePublisher->publish(RealtimeTopic::EventScreens, $event->getId()->toRfc4122(), []);
+        $this->screenSignal->send($event);
     }
 
     public function find(#[SensitiveParameter] string $token): ?ScreenLink

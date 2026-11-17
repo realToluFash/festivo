@@ -207,6 +207,37 @@ final class RoomScreenTest extends ApiTestCase
     }
 
     #[Test]
+    public function endNowSignalsTheScreensWithNoEventDataAndTheyThankTheRoom(): void
+    {
+        $this->sample();
+        $token = $this->tokenFor('Garden');
+        $hub = self::service(RecordingHub::class);
+        $hub->published = [];
+        self::mockTime(new DateTimeImmutable('2027-03-06T13:00:00Z'));
+
+        $this->as($this->owner, 'POST', '/api/events/' . $this->eventId . '/end');
+        self::assertSame(200, $this->statusCode(), Json\encode($this->last()));
+
+        $update = $hub->lastOn(RealtimeTopic::EventScreens->for($this->eventId)) ?? self::fail('nothing published');
+        self::assertSame('[]', $update->getData());
+        self::assertTrue($update->isPrivate());
+        self::assertSame('finished', $this->screen($token)['kind']);
+    }
+
+    #[Test]
+    public function endNowWorksWhenTheHubRefusesAndTheScreensCatchUpOnTheirNextAsk(): void
+    {
+        $this->sample();
+        $token = $this->tokenFor('Garden');
+        self::service(RecordingHub::class)->failuresLeft = 1;
+        self::mockTime(new DateTimeImmutable('2027-03-06T13:00:00Z'));
+
+        $this->as($this->owner, 'POST', '/api/events/' . $this->eventId . '/end');
+        self::assertSame(200, $this->statusCode(), Json\encode($this->last()));
+        self::assertSame('finished', $this->screen($token)['kind']);
+    }
+
+    #[Test]
     public function aScreenLinkGetsAHubTokenForItsEventsSignalAlone(): void
     {
         $this->sample();
