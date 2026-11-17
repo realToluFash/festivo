@@ -11,8 +11,8 @@ export interface Milestone {
   owner: MilestoneOwner;
   area: string;
   action: { label: string; link: string } | null;
-  /** A "You" milestone its area has seen through: passed, never overdue (sc-4022). */
-  done: boolean;
+  /** A "You" milestone its area has seen through: passed, never overdue (sc-4022). The API always sends it; a milestone made on a client may leave it out. */
+  done?: boolean;
 }
 
 export interface EventTimeline {
@@ -94,7 +94,7 @@ function standingOf(milestone: Milestone, now: Date, ended: boolean): MilestoneS
   if (ended && milestone.area === EVENT_AREA) return 'passed';
   if (new Date(milestone.at).getTime() >= now.getTime()) return 'upcoming';
 
-  return milestone.owner === 'you' && !milestone.done ? 'overdue' : 'passed';
+  return milestone.owner === 'you' && milestone.done !== true ? 'overdue' : 'passed';
 }
 
 function earliestFirst(milestones: readonly Milestone[]): Milestone[] {

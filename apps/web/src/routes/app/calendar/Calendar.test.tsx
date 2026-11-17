@@ -74,6 +74,7 @@ const DINNER = event({
       owner: 'you',
       area: 'guests',
       action: { label: 'Open guests', link: '/app/events/ev_dinner/guests' },
+      done: false,
     },
     {
       at: '2026-11-12T09:00:00+01:00',
