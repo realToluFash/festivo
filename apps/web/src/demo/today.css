@@ -231,3 +231,12 @@
 .today-days.has-letters .today-weekday-spoken {
   display: block;
 }
+
+/* A desk window whose page is under 620 px, as at 641 px with the sidebar beside it: the strip's sides give 12 px to the six days, so French's MER. and JEU. keep 4 px apart (sc-61548). */
+@media (width > 40rem) {
+  @container today (width < 620px) {
+    .fits-phone .today-strip {
+      padding-inline: var(--spaceXxs);
+    }
+  }
+}
