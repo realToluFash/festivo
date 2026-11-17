@@ -111,7 +111,7 @@ export const W = {
   discardChanges: 'Discard changes',
   notSaved: 'Not saved. Nothing was changed. Try again.',
   offline: 'You are offline. Nothing was saved.',
-  offlineLine: 'Your changes stay in this form. Save again once you’re connected.',
+  offlineLine: 'Your changes stay in this form. Save again once you are connected.',
   // Record a reply
   theirReply: 'Their reply',
   howTold: 'How did they tell you?',
