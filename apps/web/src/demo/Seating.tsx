@@ -363,6 +363,7 @@ function Seating({
   const held = useRef<string | null>(null);
   const spaceHeld = useRef(false);
   const spacePanned = useRef(false);
+  const spaceOn = useRef<{ id: string; shift: boolean } | null>(null);
   const touches = useRef(new Set<number>());
   const [focusId, setFocusId] = useState<string | null>(null);
   const [keyboard, setKeyboard] = useState(first.focus?.startsWith('item:') === true);
@@ -1388,6 +1389,23 @@ function Seating({
       );
   }
 
+  function activate(id: string, shift: boolean): void {
+    const now = ui$.current;
+
+    if (now.picked != null) seatAt(id);
+    else if (shift || now.adding)
+      set((ui_) => ({
+        ...ui_,
+        chosen: ui_.chosen.includes(id)
+          ? ui_.chosen.filter((one) => one !== id)
+          : [...ui_.chosen, id],
+        panel: null,
+        chair: null,
+        notice: null,
+      }));
+    else choose([id]);
+  }
+
   function onItemKey(event: ReactKeyboardEvent<SVGGElement>, id: string): void {
     const now = ui$.current;
     const item = now.plan.items.find((one) => one.id === id);
@@ -1401,20 +1419,15 @@ function Seating({
       ArrowDown: [0, 1],
     };
 
-    if (event.key === 'Enter' || event.key === ' ') {
+    if (event.key === ' ') {
       event.preventDefault();
-      if (now.picked != null) seatAt(id);
-      else if (event.shiftKey || now.adding)
-        set((ui_) => ({
-          ...ui_,
-          chosen: ui_.chosen.includes(id)
-            ? ui_.chosen.filter((one) => one !== id)
-            : [...ui_.chosen, id],
-          panel: null,
-          chair: null,
-          notice: null,
-        }));
-      else choose([id]);
+      spaceHeld.current = true;
+      if (!event.repeat) spaceOn.current = { id, shift: event.shiftKey };
+      return;
+    }
+    if (event.key === 'Enter') {
+      event.preventDefault();
+      activate(id, event.shiftKey);
       return;
     }
     if (event.key in arrows) {
@@ -1529,6 +1542,15 @@ function Seating({
       if (event.key !== ' ') return;
       if (spacePanned.current || (spaceHeld.current && !control(event.target)))
         event.preventDefault();
+      const on = spaceOn.current;
+
+      spaceOn.current = null;
+      if (
+        on != null &&
+        !spacePanned.current &&
+        document.activeElement?.getAttribute('data-item') === on.id
+      )
+        activate(on.id, on.shift || event.shiftKey);
       spaceHeld.current = false;
       spacePanned.current = false;
     };
