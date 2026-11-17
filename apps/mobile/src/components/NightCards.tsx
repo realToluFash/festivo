@@ -1,5 +1,5 @@
 import { type LaterRow, type NightView, timeSlot } from '@soirely/domain';
-import type { ReactNode, Ref } from 'react';
+import type { ReactNode } from 'react';
 import { Pressable, StyleSheet, View, type ViewInstance } from 'react-native';
 import Svg, { Circle, Path } from 'react-native-svg';
 import { useTranslation } from 'react-i18next';
@@ -20,7 +20,7 @@ import {
 import type { LayoutKind } from '../layout/classify.ts';
 import { tokens } from '../theme/tokens.ts';
 import { SecondaryButton } from './Buttons.tsx';
-import { Text, type TextHandle } from './Text.tsx';
+import { Text } from './Text.tsx';
 
 type Shown = NightView<NightShownItem>;
 type Row = LaterRow<NightShownItem>;
@@ -84,7 +84,6 @@ export function Glyph({
 }
 
 export function NightHead({
-  titleRef,
   subtitle,
   view,
   label,
@@ -93,7 +92,6 @@ export function NightHead({
   menuOpen,
   onMenu,
 }: {
-  titleRef?: Ref<TextHandle> | undefined;
   subtitle: string | null;
   view: Shown | null;
   label: string;
@@ -110,9 +108,6 @@ export function NightHead({
     <View style={styles.head}>
       <View style={styles.headTop}>
         <View style={styles.grow}>
-          <Text size={28} weight="bold" accessibilityRole="header" ref={titleRef}>
-            {t('runView.title')}
-          </Text>
           {subtitle != null && (
             <Text size={15} weight="medium" style={[styles.secondary, styles.num]}>
               {subtitle}

@@ -29,7 +29,6 @@ export default function EventNight() {
       current="events"
       title={t('runView.title')}
       titleRef={title}
-      untitled
       back={phone ? { label: t('runView.back'), onPress: back } : undefined}
       backInBody
       inEvent={{
@@ -44,7 +43,6 @@ export default function EventNight() {
       <NightView
         eventId={id}
         kind={kind}
-        titleRef={title}
         top={
           phone ? null : <BackButton label={t('runView.back')} onPress={back} testID="night.back" />
         }
