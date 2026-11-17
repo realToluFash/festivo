@@ -26,6 +26,9 @@ export function ShowOnScreen({ eventId, onClose }: { eventId: string; onClose: (
   const title = useRef<HTMLHeadingElement>(null);
   const keep = useRef<HTMLButtonElement>(null);
   const [links, setLinks] = useState<ScreenLink[]>([]);
+  const [load, setLoad] = useState<'loading' | 'failed' | 'loaded'>('loading');
+  const [round, setRound] = useState(0);
+  const [back, setBack] = useState<string | null>(null);
   const [asking, setAsking] = useState<string | null>(null);
   const [replacing, setReplacing] = useState(false);
   const [said, setSaid] = useState<Said | null>(null);
@@ -37,25 +40,40 @@ export function ShowOnScreen({ eventId, onClose }: { eventId: string; onClose: (
 
   useEffect(() => {
     title.current?.focus();
+  }, []);
+
+  useEffect(() => {
     let current = true;
 
     api.screenLinks(eventId).then(
       (answer) => {
-        if (current) setLinks(answer);
+        if (!current) return;
+        setLinks(answer);
+        setLoad('loaded');
       },
       () => {
-        if (current) setSaid({ words: t('showOnScreen.failed'), done: false });
+        if (current) setLoad('failed');
       },
     );
 
     return () => {
       current = false;
     };
-  }, [eventId, t]);
+  }, [eventId, round]);
 
   useEffect(() => {
     if (asking != null) keep.current?.focus();
   }, [asking]);
+
+  useEffect(() => {
+    if (back != null) document.getElementById(replaceId(back))?.focus();
+  }, [back]);
+
+  function tryAgain() {
+    setLoad('loading');
+    setRound((was) => was + 1);
+    title.current?.focus();
+  }
 
   function copy(link: ScreenLink) {
     const place = named(link);
@@ -82,6 +100,8 @@ export function ShowOnScreen({ eventId, onClose }: { eventId: string; onClose: (
       },
       () => {
         setReplacing(false);
+        setAsking(null);
+        setBack(keyOf(link));
         setSaid({ words: t('showOnScreen.replaceFailed', { place }), done: false });
       },
     );
@@ -106,7 +126,19 @@ export function ShowOnScreen({ eventId, onClose }: { eventId: string; onClose: (
             {t('showOnScreen.line')}
           </p>
         </div>
-        {links.length > 0 && (
+        {load === 'loading' && (
+          <ul className="ss-rows skeleton-rows" aria-hidden="true">
+            {[0, 1, 2].map((row) => (
+              <li key={row} className="skeleton-row skeleton-row-76">
+                <span className="skeleton-row-bars">
+                  <span className="skeleton-bar skeleton-bar-first" />
+                  <span className="skeleton-bar skeleton-bar-second" />
+                </span>
+              </li>
+            ))}
+          </ul>
+        )}
+        {load === 'loaded' && links.length > 0 && (
           <ul className="ss-rows">
             {links.map((link, at) => {
               const place = named(link);
@@ -170,9 +202,11 @@ export function ShowOnScreen({ eventId, onClose }: { eventId: string; onClose: (
                       </a>
                       <button
                         type="button"
+                        id={replaceId(keyOf(link))}
                         className="gs-pill is-secondary"
                         onClick={() => {
                           setSaid(null);
+                          setBack(null);
                           setAsking(keyOf(link));
                         }}
                       >
@@ -185,14 +219,23 @@ export function ShowOnScreen({ eventId, onClose }: { eventId: string; onClose: (
             })}
           </ul>
         )}
-        <p className={said?.done === false ? 'ss-said is-ink' : 'ss-said'} role="status">
-          {said != null && (
-            <>
-              {said.done && <Glyph name="tick" size={17} weight={2.6} />}
-              {said.words}
-            </>
+        <div className="ss-status">
+          <p className={saidClass(load, said)} role="status">
+            {load === 'loading' && t('showOnScreen.loading')}
+            {load === 'failed' && t('showOnScreen.failed')}
+            {load === 'loaded' && said != null && (
+              <>
+                {said.done && <Glyph name="tick" size={17} weight={2.6} />}
+                {said.words}
+              </>
+            )}
+          </p>
+          {load === 'failed' && (
+            <button type="button" className="link-button" onClick={tryAgain}>
+              {t('showOnScreen.tryAgain')}
+            </button>
           )}
-        </p>
+        </div>
         <div className="dialog-actions">
           <button type="button" className="gs-pill is-secondary" onClick={onClose}>
             {t('showOnScreen.close')}
@@ -201,6 +244,17 @@ export function ShowOnScreen({ eventId, onClose }: { eventId: string; onClose: (
       </div>
     </>
   );
+}
+
+function saidClass(load: 'loading' | 'failed' | 'loaded', said: Said | null): string {
+  if (load === 'loading') return 'ss-said is-quiet';
+  if (load === 'failed' || said?.done === false) return 'ss-said is-ink';
+
+  return 'ss-said';
+}
+
+function replaceId(key: string): string {
+  return `ss-replace-${encodeURIComponent(key)}`;
 }
 
 function linkId(key: string): string {

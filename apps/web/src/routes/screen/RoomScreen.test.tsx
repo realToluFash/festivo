@@ -118,6 +118,14 @@ describe('A screen in the room (sc-3897)', () => {
     expect(screen.queryByRole('status')).toBeNull();
   });
 
+  it('is blank but for Full screen before its first answer', async () => {
+    await open([() => new Promise<Response>(() => {}) as never]);
+
+    expect(screen.getByRole('button', { name: 'Full screen' })).toBeDefined();
+    expect(screen.queryByRole('heading')).toBeNull();
+    expect(screen.queryByRole('status')).toBeNull();
+  });
+
   it('has no Now between items, and the event’s name alone with nothing left', async () => {
     await open([() => json(live('19:40', null, [['20:00', 'Dinner']]))]);
     await screen.findByText('Dinner');

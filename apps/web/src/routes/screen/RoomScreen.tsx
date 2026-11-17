@@ -80,7 +80,7 @@ function RoomScreen({ token, asked }: { token: string; asked: string | null }) {
       <div className="rs-stage">
         <div className="rs-fill" data-testid="room-screen">
           {load.kind === 'shown' && <Shown screen={load.screen} offline={load.offline} />}
-          {load.kind === 'shown' && !replaced && <FullScreen />}
+          {!replaced && <FullScreen />}
         </div>
       </div>
     </main>

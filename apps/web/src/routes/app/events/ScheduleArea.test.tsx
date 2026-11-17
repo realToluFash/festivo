@@ -810,6 +810,62 @@ describe('Show on a screen (sc-3897)', () => {
     expect(sent.find(({ line }) => line.endsWith('/replace'))?.body).toEqual({ place: 'Garden' });
   });
 
+  it('holds three rows and says so while the links load', async () => {
+    await onSchedule(
+      withLinks({ 'GET /api/events/ev_1/screen-links': () => new Promise(() => {}) }),
+    );
+    fireEvent.click(await screen.findByRole('button', { name: 'Show on a screen' }));
+
+    const dialog = screen.getByRole('dialog', { name: 'Show on a screen' });
+    expect(within(dialog).queryAllByRole('listitem')).toHaveLength(0);
+    expect(dialog.querySelectorAll('.skeleton-row')).toHaveLength(3);
+    expect(within(dialog).getByRole('status').textContent).toBe('Loading the screen links…');
+  });
+
+  it('says the links did not load, and Try again loads them', async () => {
+    let asks = 0;
+    await onSchedule(
+      withLinks({
+        'GET /api/events/ev_1/screen-links': () =>
+          ++asks === 1 ? problem('internal', 500) : json(LINKS),
+      }),
+    );
+    fireEvent.click(await screen.findByRole('button', { name: 'Show on a screen' }));
+    const dialog = screen.getByRole('dialog', { name: 'Show on a screen' });
+
+    await waitFor(() =>
+      expect(within(dialog).getByRole('status').textContent).toBe('The screen links did not load.'),
+    );
+    fireEvent.click(within(dialog).getByRole('button', { name: 'Try again' }));
+
+    expect(within(dialog).getByRole('status').textContent).toBe('Loading the screen links…');
+    expect(await rowsOf()).toHaveLength(2);
+  });
+
+  it('keeps the old link when Replace link fails, back on that row’s Replace link', async () => {
+    await onSchedule(
+      withLinks({
+        'POST /api/events/ev_1/screen-links/replace': () => problem('internal', 500),
+      }),
+    );
+    fireEvent.click(await screen.findByRole('button', { name: 'Show on a screen' }));
+    const row = (await rowsOf())[1]!;
+
+    fireEvent.click(within(row).getByRole('button', { name: 'Replace link' }));
+    const ask = within(row).getByRole('group', { name: 'Replace the screen link for Garden?' });
+    fireEvent.click(within(ask).getByRole('button', { name: 'Replace link' }));
+
+    await waitFor(() =>
+      expect(said()).toBe(
+        'The link for Garden was not replaced, so the old link still works. Try again.',
+      ),
+    );
+    expect(within(row).queryByRole('group')).toBeNull();
+    expect(within(row).getByText(`${window.location.origin}/s/tok_garden`)).toBeDefined();
+    expect(within(row).queryByText(/Replaced at/)).toBeNull();
+    expect(document.activeElement).toBe(within(row).getByRole('button', { name: 'Replace link' }));
+  });
+
   it('keeps the link when Keep this link is pressed', async () => {
     const sent = await onSchedule(withLinks());
     fireEvent.click(await screen.findByRole('button', { name: 'Show on a screen' }));
