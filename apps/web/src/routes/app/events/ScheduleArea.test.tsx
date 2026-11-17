@@ -243,7 +243,7 @@ describe('The event’s Schedule (sc-3893)', () => {
     expect(word).toContain('max-width: var(--roWordCap);');
     expect(word).toContain('overflow-wrap: anywhere;');
     expect(cssRule('.ro-fit', SCHEDULE_CSS)).toContain(
-      '--roWordCap: calc(100cqw - 136px - 2 * var(--spaceMd) - 6rem);',
+      '--roWordCap: calc(100cqw - 136px - 2 * var(--spaceMd) - 5.5rem);',
     );
     expect(
       cssRule('.ro-fit', SCHEDULE_CSS.slice(SCHEDULE_CSS.indexOf('(width <= 720px)'))),
