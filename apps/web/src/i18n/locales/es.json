@@ -2841,6 +2841,7 @@
     "coming": "Coming",
     "freeTag_one": "{{count, number}} free",
     "freeTag_other": "{{count, number}} free",
+    "freeTag_many": "{{count, number}} free",
     "full": "Full",
     "empty": "Libre",
     "unusable": "Inutilizable",
