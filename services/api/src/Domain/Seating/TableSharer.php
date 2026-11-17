@@ -94,21 +94,21 @@ final readonly class TableSharer
         $day = DateTimeImmutable::createFromFormat('!Y-m-d', Str\trim($typed), new DateTimeZone('UTC'));
 
         if (false === $day || $day->format('Y-m-d') !== Str\trim($typed)) {
-            throw $this->refused('validation.share_by_invalid');
+            throw $this->shareByRefusal('validation.share_by_invalid');
         }
 
         if ($day->format('Y-m-d') < $this->clock->now()->setTimezone($zone)->format('Y-m-d')) {
-            throw $this->refused('validation.share_by_past');
+            throw $this->shareByRefusal('validation.share_by_past');
         }
 
         if ($day->format('Y-m-d') >= $event->getStartsAt()->setTimezone($zone)->format('Y-m-d')) {
-            throw $this->refused('validation.share_by_not_before_event');
+            throw $this->shareByRefusal('validation.share_by_not_before_event');
         }
 
         return $day;
     }
 
-    private function refused(string $key): ApiException
+    private function shareByRefusal(string $key): ApiException
     {
         return ApiException::validation([[
             'propertyPath' => 'shareBy',
