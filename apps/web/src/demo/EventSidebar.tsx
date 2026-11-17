@@ -10,6 +10,7 @@ import { OrgSwitcher } from './OrgSwitcher.tsx';
 import { SAMPLE } from './rules.ts';
 import type { Tell } from '../components/SettingsParts.tsx';
 import { SearchRow } from './Search.tsx';
+import './narrowDesk.css';
 
 interface Reader {
   name: string;
