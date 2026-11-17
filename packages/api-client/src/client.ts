@@ -2891,9 +2891,13 @@ export class ApiClient {
   }
 
   /** The token is a credential, so it travels in the body. Refused `not_found` for a token never issued or a deleted event's. */
-  async roomScreen(token: string): Promise<RoomScreen> {
+  async roomScreen(token: string, { signal }: { signal?: AbortSignal } = {}): Promise<RoomScreen> {
     const screen = asRoomScreen(
-      await this.post<unknown>('/api/screen-links/screen', { token }, { anonymous: true }),
+      await this.post<unknown>(
+        '/api/screen-links/screen',
+        { token },
+        signal == null ? { anonymous: true } : { anonymous: true, signal },
+      ),
     );
 
     if (screen == null) {

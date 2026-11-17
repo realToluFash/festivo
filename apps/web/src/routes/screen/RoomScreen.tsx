@@ -7,7 +7,14 @@ import { api } from '../../api.ts';
 import { dateLocale, showLanguage } from '../../i18n/index.ts';
 import { NotFound } from '../public/NotFound.tsx';
 import { useHubTopics } from '../app/events/useHubTopics.ts';
-import { ASK_AGAIN_MS, FIRST_ASK_RETRY_MS, screenLanguage, screenTime } from './roomScreen.ts';
+import {
+  ASK_AGAIN_FAILING_MS,
+  ASK_EVERY_MS,
+  ASK_TIMEOUT_MS,
+  OUT_OF_TOUCH_MS,
+  screenLanguage,
+  screenTime,
+} from './roomScreen.ts';
 import './roomScreen.css';
 
 type Load =
@@ -23,34 +30,78 @@ export function RoomScreenPage() {
 
 function RoomScreen({ token, asked }: { token: string; asked: string | null }) {
   const [load, setLoad] = useState<Load>({ kind: 'asking' });
-  const asking = useRef(0);
+  const asks = useRef({
+    sent: 0,
+    applied: 0,
+    open: 0,
+    lastSentAt: 0,
+    failingSince: null as number | null,
+  });
+  const outOfTouch = useRef<ReturnType<typeof setTimeout> | undefined>(undefined);
   const shown = load.kind === 'shown' ? load.screen : null;
   const replaced = shown?.kind === 'replaced';
 
-  const ask = useCallback(() => {
-    const mine = ++asking.current;
+  const lost = useCallback(
+    () => setLoad((was) => (was.kind === 'shown' ? { ...was, offline: true } : was)),
+    [],
+  );
 
-    api.roomScreen(token).then(
+  const ask = useCallback(() => {
+    const state = asks.current;
+    const mine = ++state.sent;
+    const sentAt = Date.now();
+    const abort = new AbortController();
+    let settled = false;
+
+    state.lastSentAt = sentAt;
+    state.open += 1;
+
+    const settle = (): boolean => {
+      if (settled) return false;
+      settled = true;
+      state.open -= 1;
+      clearTimeout(timeout);
+
+      return mine > state.applied;
+    };
+    const failed = () => {
+      if (!settle() || state.failingSince != null) return;
+      state.failingSince = sentAt;
+      outOfTouch.current = setTimeout(lost, sentAt + OUT_OF_TOUCH_MS - Date.now());
+    };
+    const timeout = setTimeout(() => {
+      failed();
+      abort.abort();
+    }, ASK_TIMEOUT_MS);
+
+    api.roomScreen(token, { signal: abort.signal }).then(
       async (screen) => {
         await showLanguage(screenLanguage(asked, screen));
-        if (mine === asking.current) setLoad({ kind: 'shown', screen, offline: false });
+        if (!settle()) return;
+        state.applied = mine;
+        state.failingSince = null;
+        clearTimeout(outOfTouch.current);
+        setLoad({ kind: 'shown', screen, offline: false });
       },
       (error: unknown) => {
-        if (mine !== asking.current) return;
-        if (error instanceof ApiError && error.status === 404) setLoad({ kind: 'gone' });
-        else setLoad((was) => (was.kind === 'shown' ? { ...was, offline: true } : was));
+        if (!(error instanceof ApiError && error.status === 404)) failed();
+        else if (settle()) {
+          state.applied = mine;
+          setLoad({ kind: 'gone' });
+        }
       },
     );
-  }, [token, asked]);
+  }, [token, asked, lost]);
 
   useEffect(ask, [ask]);
 
-  const heard = load.kind === 'shown';
-
   useEffect(() => {
     if (replaced) return undefined;
-    const timer = setInterval(ask, heard ? ASK_AGAIN_MS : FIRST_ASK_RETRY_MS);
-    const lost = () => setLoad((was) => (was.kind === 'shown' ? { ...was, offline: true } : was));
+    const state = asks.current;
+    const timer = setInterval(() => {
+      const every = state.failingSince == null ? ASK_EVERY_MS : ASK_AGAIN_FAILING_MS;
+      if (state.open === 0 && Date.now() - state.lastSentAt >= every) ask();
+    }, ASK_AGAIN_FAILING_MS / 4);
 
     window.addEventListener('online', ask);
     window.addEventListener('offline', lost);
@@ -60,7 +111,9 @@ function RoomScreen({ token, asked }: { token: string; asked: string | null }) {
       window.removeEventListener('online', ask);
       window.removeEventListener('offline', lost);
     };
-  }, [ask, replaced, heard]);
+  }, [ask, lost, replaced]);
+
+  useEffect(() => () => clearTimeout(outOfTouch.current), []);
 
   useEffect(() => () => void showLanguage(null), []);
 
