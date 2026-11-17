@@ -3250,7 +3250,9 @@ describe('the flows a batch runs', () => {
             else if (/\.ya?ml$/.test(path)) follow(reached);
           }
         };
-        for (const file of readdirSync(join(target, '_checks')))
+        for (const file of readdirSync(join(target, '_checks')).filter((name) =>
+          name.endsWith('.yaml'),
+        ))
           follow(join(target, '_checks', file));
         expect(unreached).toEqual([]);
       } finally {
@@ -3297,6 +3299,13 @@ describe('the flows a batch runs', () => {
       expect(
         existsSync(join(target, '_checks/sc23267-start-cold.fr.sc23267-start-cold-once.flow.yaml')),
       ).toBe(true);
+      const joined = 'sc28178/sc28178-gone-moves-on.es.sc28178.joined.flow.yaml';
+      expect(readFileSync(join(target, '_checks/sc28178-gone-moves-on.es.yaml'), 'utf8')).toContain(
+        `file: ${joined}`,
+      );
+      const sub = readFileSync(join(target, '_checks', joined), 'utf8');
+      expect(sub).toContain(localise("'{{t:switcher.switched}}'", catalogues, 'es'));
+      expect(sub).not.toContain('{{t:');
       const session = readFileSync(join(target, 'batch/session.yaml'), 'utf8');
       expect(session).not.toContain('{{t:');
       expect(session).toMatch(/when:\s+visible:\s+id: 'settings\\\.\.\*'\s+commands:/);

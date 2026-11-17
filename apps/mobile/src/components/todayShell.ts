@@ -4,6 +4,7 @@ import type { ViewInstance } from 'react-native';
 /** Where a tap on Today goes: the demo names it in a toast, the signed-in app opens it. */
 export type Opens =
   | { to: 'event'; id: string; name: string }
+  | { to: 'runOfShow'; id: string; name: string; track: string | null }
   | { to: 'calendar' | 'events' | 'create' | 'notifications' | 'search' | 'account' };
 
 /** What the switcher's opener names, and what a tap on it does. */

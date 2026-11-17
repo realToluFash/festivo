@@ -21,14 +21,17 @@ import { useNavigate } from 'react-router';
 
 import { Broken, DateTime, EditText as Text } from '../components/EventPageParts.tsx';
 import { Glyph } from '../components/Glyph.tsx';
-import { Ask, Head } from '../components/SettingsParts.tsx';
+import { Ask } from '../components/SettingsParts.tsx';
+import {
+  CoverPreview,
+  CoverUpload,
+  FormBlock as Block,
+  Select,
+} from '../components/EventFormParts.tsx';
 import {
   ArrivalNoteField,
   CoverPhotoFields,
-  CoverPreview,
-  CoverUpload,
   HostFields,
-  Select,
   VenueFields,
   ZoneSelect,
 } from './EventEdits.tsx';
@@ -53,7 +56,6 @@ import {
 } from './newEvent.ts';
 import { useCoverPick } from './useCoverPick.tsx';
 import { useLeaveAsk } from './useLeaveAsk.ts';
-import './newEvent.css';
 
 const LOCALE = 'en-US';
 const ORGANISATION = 'Ire Events';
@@ -106,7 +108,6 @@ export function NewEventForm({ state }: { state: NewEventState | null }) {
   const [summary, setSummary] = useState<string | null>(() =>
     state === 'refused' ? N.problems(checkOf(typedFor(state)).count) : null,
   );
-  const [said, setSaid] = useState<string | null>(null);
   const [leaving, setLeaving] = useState(state === 'leave');
   const [target, setTarget] = useState<Target | null>(() =>
     state === 'refused' ? targetOf(typedFor(state), {}) : null,
@@ -119,7 +120,6 @@ export function NewEventForm({ state }: { state: NewEventState | null }) {
   const zoneRef = useRef<HTMLDivElement>(null);
   const currencyRef = useRef<HTMLDivElement>(null);
   const hostFields = useRef<(HTMLInputElement | null)[]>([]);
-  const hostFocus = useRef<number | null>(null);
   const nameRef = useRef<HTMLInputElement>(null);
   const venueNameRef = useRef<HTMLInputElement>(null);
   const addressRef = useRef<HTMLInputElement>(null);
@@ -130,12 +130,6 @@ export function NewEventForm({ state }: { state: NewEventState | null }) {
   const hostErrors = hostWords(typed.hosts, tried);
   const skipped = skippedLine(typed.start.date, typed.start.time, typed.timeZone, LOCALE, WORDED);
   const nameLength = eventNameLength(typed.name);
-
-  useEffect(() => {
-    if (hostFocus.current == null) return;
-    hostFields.current[hostFocus.current]?.focus();
-    hostFocus.current = null;
-  });
 
   useEffect(() => {
     if (target == null) return;
@@ -262,14 +256,12 @@ export function NewEventForm({ state }: { state: NewEventState | null }) {
           errors={hostErrors}
           off={busy}
           fieldsRef={hostFields}
-          focusAtRef={hostFocus}
-          onSaid={setSaid}
         />
       </Block>
 
       <Block title={W.coverPhoto}>
         <CoverPreview
-          photo={typed.photo}
+          photo={typed.photo ? <Glyph name="photo" size={56} weight={1.6} /> : null}
           mesh={meshFor(typed.type === '' ? 'new-event' : typed.type)}
           className="ev-new-cover"
         />
@@ -287,7 +279,12 @@ export function NewEventForm({ state }: { state: NewEventState | null }) {
             off={busy}
           />
         ) : (
-          <CoverUpload refusal={cover.refusal} off={busy} onUpload={cover.pick} />
+          <CoverUpload
+            words={{ line: W.coverLine, upload: W.upload, accepted: W.accepted }}
+            refusal={cover.refusal}
+            off={busy}
+            onUpload={cover.pick}
+          />
         )}
       </Block>
 
@@ -406,9 +403,6 @@ export function NewEventForm({ state }: { state: NewEventState | null }) {
           {status === 'creating' ? N.creating : N.create}
         </button>
       </div>
-      <p className="desk-unseen" role="status">
-        {said}
-      </p>
       {(leaving || away.blocked) && (
         <Ask
           title={N.leaveTitle}
@@ -433,15 +427,4 @@ function targetOf(typed: NewTyped, server: Refusals): Target | null {
   const first = firstRefused(check.refusals, check.hosts, check.cover);
 
   return first == null ? null : { ...first };
-}
-
-function Block({ title, children }: { title: string; children: ReactNode }) {
-  const id = useId();
-
-  return (
-    <section className="desk-block ev-new-block" aria-labelledby={id}>
-      <Head title={<span id={id}>{title}</span>} />
-      <div className="ev-new-fields">{children}</div>
-    </section>
-  );
 }

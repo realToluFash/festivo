@@ -533,6 +533,8 @@ export interface OrganisationEvent {
   createdAt: string;
   /** What the caller may do on this event: a Member's follow their role on it, not the organisation's (sc-29915). */
   permissions: string[];
+  /** A Member's role on this event, where their `permissions` come from; null for every other organisation role, and absent reads as null (sc-59617). */
+  roleOnEvent?: EventRole | null;
 }
 
 /** The tiles' measure on Events (sc-23284), which each event's guest line adds up to: `notReplied` is the guests who owe an answer and the companions held behind them. */
@@ -4701,10 +4703,13 @@ function asOrganisationEvent(raw: unknown): OrganisationEvent | null {
   const replyBy = candidate.replyBy ?? null;
   const repliesCloseAt = candidate.repliesCloseAt ?? null;
   const repliesClosedOn = candidate.repliesClosedOn ?? null;
+  const roleOnEvent =
+    candidate.roleOnEvent == null ? null : (oneOf(candidate.roleOnEvent, EVENT_ROLES) ?? undefined);
 
   if (
     status == null ||
     permissions == null ||
+    roleOnEvent === undefined ||
     phase == null ||
     !isStringOrNull(concludedAt) ||
     deleteRefusedBecause === undefined ||
@@ -4753,6 +4758,7 @@ function asOrganisationEvent(raw: unknown): OrganisationEvent | null {
     ...(candidate.repliesClosedOn === undefined ? {} : { repliesClosedOn }),
     createdAt: candidate.createdAt as string,
     permissions,
+    ...(candidate.roleOnEvent === undefined ? {} : { roleOnEvent }),
   };
 }
 

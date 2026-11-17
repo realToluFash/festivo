@@ -25,11 +25,9 @@ export interface NightTrack {
   items: readonly NightItem[];
 }
 
-export interface Lost {
-  title: string;
-  by: string;
-  at: number;
-}
+/** A losing replay: who won and when, from the 409's `superseded_by`, or, when it names nobody, the 409's own words. */
+export type Lost =
+  { title: string; by: string; at: number } | { title: string; by: null; said: string };
 
 export interface Night {
   clock: number;
@@ -568,6 +566,16 @@ export const NIGHT_STATES = {
     clock: '20:33',
     hall: { ...GAP, dance: ['20:31'] },
     lost: { title: 'First dance', by: 'Ifeoma Nduka', at: at('20:31') },
+  },
+  replay_lost_unnamed: {
+    name: 'A losing replay that names nobody: the 409’s own words',
+    clock: '20:06',
+    hall: SPEAKING,
+    lost: {
+      title: 'First dance',
+      by: null,
+      said: 'This item has not started yet, so it cannot be done.',
+    },
   },
   read_only: {
     name: 'View only (run_of_show.read)',

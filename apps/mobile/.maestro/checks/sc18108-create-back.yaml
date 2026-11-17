@@ -26,10 +26,10 @@ appId: host.exp.Exponent
       ID: eventForm.type.wedding
 - scrollUntilVisible:
     element:
-      id: 'eventForm.start.date'
+      id: 'eventForm.startDate'
     direction: DOWN
 - tapOn:
-    id: 'eventForm.start.date'
+    id: 'eventForm.startDate'
 - runFlow:
     when:
       visible: 'Dismiss'
@@ -38,7 +38,7 @@ appId: host.exp.Exponent
 - tapOn: 'OK'
 - waitForAnimationToEnd
 - tapOn:
-    id: 'eventForm.start.time'
+    id: 'eventForm.startTime'
 - runFlow:
     when:
       visible: 'Dismiss'
@@ -48,10 +48,10 @@ appId: host.exp.Exponent
 - waitForAnimationToEnd
 - scrollUntilVisible:
     element:
-      id: 'eventForm.end.date'
+      id: 'eventForm.endDate'
     direction: DOWN
 - tapOn:
-    id: 'eventForm.end.date'
+    id: 'eventForm.endDate'
 - tapOn: '${TOMORROW}'
 - runFlow:
     when:
@@ -61,7 +61,7 @@ appId: host.exp.Exponent
 - tapOn: 'OK'
 - waitForAnimationToEnd
 - tapOn:
-    id: 'eventForm.end.time'
+    id: 'eventForm.endTime'
 - runFlow:
     when:
       visible: 'Dismiss'

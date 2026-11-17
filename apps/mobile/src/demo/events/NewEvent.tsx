@@ -20,6 +20,7 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { ArrivalNoteField, CoverPhotoFields } from '../../components/EventEdits.tsx';
 import { EventNotice } from '../../components/EventNotice.tsx';
 import { focusChecked } from '../../components/Field.tsx';
+import { DoneLine, Legend, SheetBody, SheetLayer } from '../../components/FormLayers.tsx';
 import { BoxField, type Picking, PickerLayer, pick } from '../../components/MomentPick.tsx';
 import { useReadOut } from '../../components/ReadOut.tsx';
 import {
@@ -30,8 +31,6 @@ import { Pill } from '../../components/SettingsParts.tsx';
 import { type AskProps, FocusedScreen } from '../../components/Summary.tsx';
 import { Text } from '../../components/Text.tsx';
 import { tokens } from '../../theme/tokens.ts';
-import { DoneLine } from '../guests/GuestsParts.tsx';
-import { Legend, SheetBody, SheetLayer } from '../guests/GuestEdit.tsx';
 import {
   ASK_WIDTH,
   AlertLine,

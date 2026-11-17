@@ -2,21 +2,14 @@ import { readFileSync } from 'node:fs';
 import { join } from 'node:path';
 
 import { createInstance } from 'i18next';
+import { TODAY_RAIL_STOPS } from '@soirely/domain';
 import { describe, expect, it } from 'vitest';
 
 import en from '../../i18n/locales/en.json';
+import { railLabels } from '../../kit/todayRun.ts';
 import { momentOf, sayIn } from '../today.ts';
 import { COUNTS, figureOf } from './arrived.ts';
-import {
-  LONG_TITLE,
-  RAIL_STOPS,
-  type RunItem,
-  railLabels,
-  railWindow,
-  runNowOf,
-  trackAt,
-  withRun,
-} from './runOfShow.ts';
+import { LONG_TITLE, type RunItem, runNowOf, trackAt, withRun } from './runOfShow.ts';
 
 const us = sayIn('en-US');
 const NAME = 'Adaeze & Tunde’s wedding';
@@ -26,35 +19,11 @@ const nowAt = (state: Parameters<typeof trackAt>[0]) => {
   return runNowOf(NAME, items, clock, us);
 };
 
-describe('the rail’s six, on a track of ten', () => {
-  const ten = Array.from({ length: 10 }, (_, index) => index + 1);
-
-  it('starts at the item before Now', () => {
-    expect(railWindow(ten, 3)).toEqual([3, 4, 5, 6, 7, 8]);
-  });
-
-  it('fills from earlier items near the end', () => {
-    expect(railWindow(ten, 8)).toEqual([5, 6, 7, 8, 9, 10]);
-  });
-
-  it('starts at the first when the first is Now', () => {
-    expect(railWindow(ten, 0)).toEqual([1, 2, 3, 4, 5, 6]);
-  });
-
-  it('shows the last six when everything is done', () => {
-    expect(railWindow(ten, 10)).toEqual([5, 6, 7, 8, 9, 10]);
-  });
-
-  it('shows a track of six or fewer whole', () => {
-    expect(railWindow([1, 2, 3, 4], 2)).toEqual([1, 2, 3, 4]);
-  });
-});
-
 describe('the rail’s labels', () => {
   const ends = (box: { left: number; width: number }) => box.left + box.width;
 
   it.each([327, 345, 682, 1000])('never share space on a rail %d pt wide', (width) => {
-    for (let count = 1; count <= RAIL_STOPS; count += 1) {
+    for (let count = 1; count <= TODAY_RAIL_STOPS; count += 1) {
       const boxes = railLabels(count, width, 64, 4);
 
       expect(boxes[0]?.left).toBeCloseTo(0);
@@ -271,12 +240,11 @@ describe('the figure beside Next, as sc-29978 draws it', () => {
     expect(withRun(day, 'on', figureOf(COUNTS.none, numbers), us)?.figure).toBeNull();
   });
 
-  it('is drawn by sc-29978’s part, with no second copy of it or its helpers', () => {
+  it('is drawn by sc-29978’s part beside the product’s Now, with no second copy of either', () => {
     const cover = readFileSync(join(import.meta.dirname, 'RunCover.tsx'), 'utf8');
 
-    expect(cover).toContain(
-      "import { ArrivedFigure, Chips, WhiteButton } from './ArrivedCover.tsx';",
-    );
-    expect(cover).not.toMatch(/function (Ring|Chips|WhiteButton)\b|react-native-svg/u);
+    expect(cover).toContain("import { ArrivedFigure } from './ArrivedCover.tsx';");
+    expect(cover).toContain("import { RunNowBlock } from '../../components/TodayRun.tsx';");
+    expect(cover).not.toMatch(/function (Ring|Chips|WhiteButton|Rail|Head)\b|react-native-svg/u);
   });
 });
