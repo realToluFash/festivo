@@ -4302,7 +4302,7 @@
     "unwarned_other": "{{count, number}} convidados que escolheram o prato {{dish}} têm registado: {{allergens}}. Ainda ninguém lhes disse nada.",
     "unwarned_many": "{{count, number}} de convidados que escolheram o prato {{dish}} têm registado: {{allergens}}. Ainda ninguém lhes disse nada.",
     "lock": "A sua função, {{role}}, pode ver este menu mas não alterá-lo. Podem fazê-lo as funções com permissão para alterar Menu.",
-    "lockOnEvent": "A sua função neste evento, {{role}}, permite ver este menu mas não alterá-lo. Podem fazê-lo as funções com permissão para alterar Menu.",
+    "lockOnEvent": "A sua função neste evento, «{{role}}», permite ver este menu mas não alterá-lo. Podem fazê-lo as funções com permissão para alterar Menu.",
     "loading": "A carregar o menu…",
     "forbidden": "Nada foi alterado. A sua função não inclui a permissão necessária.",
     "failedSave": "Nada foi guardado. Verifique a ligação e clique novamente em {{button}}.",
