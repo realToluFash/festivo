@@ -18,7 +18,7 @@ import {
 import { ARRIVAL_NOTE, NOTE_WORDS } from './arrivalNote.ts';
 import { EVENT_WORDS as W, type Wall } from './events.ts';
 
-/** New event's states at a desk (sc-48607), each a ?state= on /demo/events/new. */
+/** New event's states at a desk (sc-48607), each a ?state= on /demo/events/new; the four `photoSend…` are a HEIC's copy on its way (sc-60915). */
 export const NEW_EVENT_STATES = [
   'filled',
   'refused',
@@ -32,8 +32,24 @@ export const NEW_EVENT_STATES = [
   'created',
   'photo',
   'photoRefused',
+  'photoSending',
+  'photoSendingCreating',
+  'photoSendFailed',
+  'photoSendLost',
 ] as const;
 export type NewEventState = (typeof NEW_EVENT_STATES)[number];
+
+/** The states that open with a HEIC's copy still on its way to the server (sc-60915). */
+export const SENDING_STATES: readonly NewEventState[] = [
+  'photoSending',
+  'photoSendingCreating',
+  'photoSendLost',
+];
+
+/** A file this browser cannot show itself goes to the server for a copy first; the demo takes a HEIC as one in every browser. */
+export function sentForCopy(file: File): boolean {
+  return /^image\/hei[cf]$/u.test(file.type) || /\.hei[cf]$/iu.test(file.name);
+}
 
 export function newEventStateOf(raw: string | null): NewEventState | null {
   return NEW_EVENT_STATES.find((one) => one === raw) ?? null;

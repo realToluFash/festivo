@@ -142,6 +142,13 @@ const TODAY_MOMENTS: { key: string; name: string }[] = [
   { key: 'plan&invites=none', name: 'A planning day, invitations not sent' },
   { key: 'plan&starts=later', name: 'A planning day, the event starts later today' },
   { key: 'plan&week=rows', name: 'A planning day, events sharing days in rows' },
+  { key: 'plan&needs=one', name: 'A planning day, one thing needs you' },
+  { key: 'plan&needs=overdue', name: 'A planning day, overdue rows first' },
+  { key: 'plan&needs=none', name: 'A planning day, nothing needs you' },
+  {
+    key: 'plan&needs=overdue&name=long',
+    name: 'A planning day, an overdue row for an event name of 120 characters',
+  },
   { key: 'planNow', name: 'A planning day, built now' },
   { key: 'day', name: 'The event day, Now as the run of show' },
   ...NOW_STATES.filter((state) => state !== 'on').map((state) => ({
