@@ -1146,13 +1146,17 @@ final readonly class SeatingPlanEditor
     public function announceChoice(Event $event, SeatingPlan $plan, User $user, ?array $chosen): void
     {
         $item = null === $chosen ? null : $this->itemIn($plan, $chosen['kind'], $chosen['id']);
+        $chair = $item instanceof SeatingTable ? $chosen['chair'] ?? null : null;
+        if ($item instanceof SeatingTable && null !== $chair && ($chair < 1 || $chair > $item->getSeats())) {
+            throw ApiException::notFound('seating.no_such_item');
+        }
 
         $this->realtimePublisher->publish(RealtimeTopic::EventSeatingChoices, $event->getId()->toRfc4122(), [
             'userId' => $user->getId()->toRfc4122(),
             'chosen' => null === $item || null === $chosen ? null : [
                 'kind' => $chosen['kind'],
                 'id' => $item->getId()->toRfc4122(),
-                'chair' => $item instanceof SeatingTable ? $chosen['chair'] ?? null : null,
+                'chair' => $chair,
             ],
         ]);
     }

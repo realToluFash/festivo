@@ -190,6 +190,20 @@ final class SeatingPresenceTest extends ApiTestCase
         }
     }
 
+    #[Test]
+    public function aChairPastTheTablesSeatsIsNotFound(): void
+    {
+        $table = $this->addTable();
+        $before = Iter\count(self::service(RecordingHub::class)->published);
+
+        foreach ([0, 99] as $chair) {
+            $this->as($this->owner, 'PUT', $this->chosen(), ['chosen' => ['kind' => 'table', 'id' => $table, 'chair' => $chair]]);
+            self::assertSame(404, $this->statusCode(), (string) $chair);
+        }
+
+        self::assertCount($before, self::service(RecordingHub::class)->published);
+    }
+
     /** @return non-empty-string */
     private function token(User $as): string
     {
