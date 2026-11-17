@@ -6158,6 +6158,47 @@ describe('Seating on the Floor plan (sc-5030)', () => {
     await waitFor(() => expect(document.activeElement).toBe(t1));
   });
 
+  it('steps the arrows through tables, rows and single seats in reading order, and Enter on a row seats there', async () => {
+    signedIn();
+    const sent = await onSeating({
+      'GET /api/events/ev_1/seating-plan': () =>
+        seating({
+          ...withRowsAndSeats([row()], [single()]),
+          tables: [table()],
+          guests: [guest()],
+        }),
+      'POST /api/events/ev_1/seating-plan/guests/seat': () =>
+        moved(
+          {
+            ...withRowsAndSeats([row()], [single()]),
+            tables: [table()],
+            guests: [guest({ seat: { kind: 'row', id: 'r1', seat: 1 } })],
+          },
+          [{ guestId: 'g_ada', from: null, to: { kind: 'row', id: 'r1', seat: 1 } }],
+        ),
+    });
+
+    fireEvent.click(await screen.findByRole('tab', { name: 'Seat' }));
+    fireEvent.click(screen.getByRole('button', { name: /Ada Obi/ }));
+    const one = (at: string) => document.querySelector<SVGElement>(`.st-room ${at}`)!;
+
+    one('[data-seat="s1"]').focus();
+    fireEvent.keyDown(one('[data-seat="s1"]'), { key: 'ArrowRight' });
+    expect(document.activeElement).toBe(one('[data-row="r1"]'));
+    fireEvent.keyDown(one('[data-row="r1"]'), { key: 'ArrowDown' });
+    expect(document.activeElement).toBe(one('[data-table="t1"]'));
+    fireEvent.keyDown(one('[data-table="t1"]'), { key: 'ArrowRight' });
+    expect(document.activeElement).toBe(one('[data-seat="s1"]'));
+    fireEvent.keyDown(one('[data-seat="s1"]'), { key: 'ArrowLeft' });
+    expect(document.activeElement).toBe(one('[data-table="t1"]'));
+    fireEvent.keyDown(one('[data-table="t1"]'), { key: 'ArrowUp' });
+    expect(document.activeElement).toBe(one('[data-row="r1"]'));
+
+    fireEvent.keyDown(one('[data-row="r1"]'), { key: 'Enter' });
+    await screen.findAllByText('Ada Obi is at Row A.');
+    expect(seatSent(sent)).toMatchObject({ guestId: 'g_ada', placeId: 'r1', seat: null });
+  });
+
   it('takes the choose bar down while a guest is picked, as the demo does', async () => {
     signedIn();
     await pickAda();

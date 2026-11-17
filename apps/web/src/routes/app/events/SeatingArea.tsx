@@ -1808,7 +1808,7 @@ function Plan({
 
     if (arrow != null && party != null) {
       event.preventDefault();
-      const order = inReadingOrder(floorItems(plan).filter((one) => one.kind === 'table'));
+      const order = inReadingOrder(floorItems(plan));
       const back = arrow[0] + arrow[1] < 0;
       const at = order.findIndex((one) => one.one.id === id);
       const next =
@@ -1817,7 +1817,9 @@ function Plan({
           : order[(at + (back ? -1 : 1) + order.length) % order.length];
 
       if (next != null)
-        document.querySelector<SVGElement>(`[data-table="${next.one.id}"]`)?.focus();
+        document
+          .querySelector<SVGElement>(`.st-room [${itemAttribute(next.kind)}="${next.one.id}"]`)
+          ?.focus();
       return;
     }
     if (arrow != null) {
