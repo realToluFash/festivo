@@ -29,7 +29,7 @@ final readonly class PressReplay
         foreach ($items as $item) {
             $id = $item->getId()->toRfc4122();
             $runs[$id] = new ItemRun();
-            $trackOf[$id] = EventDay::of($item->getStartsAt()) . "\0" . ($item->getPlace() ?? '');
+            $trackOf[$id] = self::track($item);
         }
 
         $now = [];
@@ -67,6 +67,54 @@ final readonly class PressReplay
         }
 
         return new Replayed($runs, $losses);
+    }
+
+    /**
+     * Whether a press, replayed at its time, would change any other item on its track: the press it would have
+     * overturned or revived first, as the loss it is refused with (sc-3895, 17 Nov). Null when it reaches no further than its own item.
+     *
+     * @param list<ScheduleItem>  $items
+     * @param list<SchedulePress> $presses the standing ones, the new press among them
+     */
+    public static function overreach(array $items, array $presses, SchedulePress $press): ?PressLoss
+    {
+        $without = self::of($items, Vec\filter($presses, static fn (SchedulePress $other): bool => $other !== $press));
+        $with = self::of($items, $presses);
+        $own = $press->getItem();
+        $track = self::track($own);
+        $changed = [];
+
+        foreach ($items as $item) {
+            $id = $item->getId()->toRfc4122();
+
+            if ($item !== $own && self::track($item) === $track && !self::sameRun($without->runs[$id], $with->runs[$id])) {
+                $changed[$id] = true;
+            }
+        }
+
+        if ([] === $changed) {
+            return null;
+        }
+
+        foreach (Vec\sort($presses, self::inPressOrder(...)) as $other) {
+            $key = $other->getId()->toRfc4122();
+
+            if (isset($changed[$other->getItem()->getId()->toRfc4122()]) && ($without->losses[$key] ?? null)?->code !== ($with->losses[$key] ?? null)?->code) {
+                return new PressLoss(ErrorCode::TrackBusy, $other);
+            }
+        }
+
+        return new PressLoss(ErrorCode::TrackBusy, null);
+    }
+
+    private static function track(ScheduleItem $item): string
+    {
+        return EventDay::of($item->getStartsAt()) . "\0" . ($item->getPlace() ?? '');
+    }
+
+    private static function sameRun(ItemRun $a, ItemRun $b): bool
+    {
+        return $a->startedAt?->format('Uv') === $b->startedAt?->format('Uv') && $a->endedAt?->format('Uv') === $b->endedAt?->format('Uv') && $a->skipped === $b->skipped;
     }
 
     private static function refusal(SchedulePress $press, ItemRun $run, ?ItemRun $trackNow): ?PressLoss
