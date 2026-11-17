@@ -2,7 +2,6 @@ import { ApiUnreachableError } from '@soirely/api-client';
 import { keepsWhatLoaded } from '@soirely/domain';
 import { useSyncExternalStore } from 'react';
 
-/** A load this tab has had answered, and when (sc-65646). */
 export interface Kept<T> {
   value: T;
   at: Date;
@@ -24,7 +23,6 @@ export function keepLoaded<T>(key: string, value: T, at: Date = new Date()): voi
   for (const listener of [...listeners]) listener();
 }
 
-/** A change the page made to what it shows, kept as of the load it came from. */
 export function rekeep<T>(key: string, value: T): void {
   const was = kept.get(key);
 
