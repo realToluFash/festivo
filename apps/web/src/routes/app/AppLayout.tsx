@@ -50,6 +50,7 @@ import { type Handoff, useHandoff } from './events/handoff.ts';
 import { Skeleton } from '../../components/Skeleton.tsx';
 import { arriveAt, pageStart } from '../../pageArrival.ts';
 import './narrowDesk.css';
+import './wideDesk.css';
 
 /**
  * The signed-in shell, built for a desk.
