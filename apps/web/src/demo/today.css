@@ -164,7 +164,7 @@
   color: var(--colorAccentText);
 }
 
-/* This week at 360 px and narrower, and in Portuguese at every phone width: each day but today writes its narrow weekday, and a screen reader hears its full name (sc-61548). */
+/* This week at 360 px and narrower, and in Portuguese at every width: each day but today writes its narrow weekday, and a screen reader hears its full name (sc-61548). */
 .today-weekday-narrow,
 .today-weekday-spoken {
   display: none;
@@ -193,16 +193,14 @@
   }
 }
 
-@media (width <= 40rem) {
-  .today-days.has-letters .today-weekday-short {
-    display: none;
-  }
+.today-days.has-letters .today-weekday-short {
+  display: none;
+}
 
-  .today-days.has-letters .today-weekday-narrow {
-    display: inline;
-  }
+.today-days.has-letters .today-weekday-narrow {
+  display: inline;
+}
 
-  .today-days.has-letters .today-weekday-spoken {
-    display: block;
-  }
+.today-days.has-letters .today-weekday-spoken {
+  display: block;
 }

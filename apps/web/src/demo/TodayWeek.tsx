@@ -3,7 +3,7 @@ import { useTranslation } from 'react-i18next';
 import { Glyph } from '../components/Glyph.tsx';
 import type { AgendaDay, Open, StripBar } from '../components/today.ts';
 import { EventCover, Head } from '../components/TodayParts.tsx';
-import { lettersAtPhone, type Moment, type WeekDay } from './today.ts';
+import { lettersAtEveryWidth, type Moment, type WeekDay } from './today.ts';
 
 function Bar({ bar }: { bar: StripBar }) {
   const shape = bar.openLeft ? 'today-bar is-open' : 'today-bar';
@@ -111,7 +111,7 @@ function Agenda({ days, nothing }: { days: AgendaDay[]; nothing: string }) {
   );
 }
 
-/** The product's This week, with each day but today writing its narrow weekday at 360 px and narrower, and in Portuguese at 640 px and narrower (sc-61548). */
+/** The product's This week, with each day but today writing its narrow weekday at 360 px and narrower, and in Portuguese at every width (sc-61548). */
 export function ThisWeek({ moment, open }: { moment: Moment; open: Open }) {
   const { t, i18n } = useTranslation();
   const { nextUp } = moment;
@@ -123,7 +123,10 @@ export function ThisWeek({ moment, open }: { moment: Moment; open: Open }) {
         title={t('today.thisWeek')}
         link={{ label: t('nav.calendar'), onClick: () => open({ to: 'calendar' }) }}
       />
-      <Strip moment={moment} letters={lettersAtPhone(i18n.resolvedLanguage ?? i18n.language)} />
+      <Strip
+        moment={moment}
+        letters={lettersAtEveryWidth(i18n.resolvedLanguage ?? i18n.language)}
+      />
       {nextUp == null ? (
         <Agenda days={moment.agenda} nothing={moment.nothing} />
       ) : (

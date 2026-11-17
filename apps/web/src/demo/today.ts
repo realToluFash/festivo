@@ -163,8 +163,8 @@ export interface WeekDay extends StripDay {
   spoken: string;
 }
 
-/** Portuguese's short weekday is the whole word in Portugal ("quarta"), so its days write the letter at every phone width, whatever the region (sc-61548). */
-export function lettersAtPhone(language: string): boolean {
+/** Portuguese's short weekday is the whole word in Portugal ("quarta"), so its days write the letter at every width, a desk's too, whatever the region (sc-61548). */
+export function lettersAtEveryWidth(language: string): boolean {
   return language.split('-')[0] === 'pt';
 }
 

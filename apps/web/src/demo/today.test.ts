@@ -10,7 +10,7 @@ import {
   repliesOf,
   sayIn,
   shown,
-  lettersAtPhone,
+  lettersAtEveryWidth,
   weekIn,
 } from './today.ts';
 
@@ -365,8 +365,8 @@ describe('This week at 360 px and narrower (sc-61548)', () => {
     ['en', false],
     ['es', false],
     ['fr', false],
-  ])('in %s, writes the letter at every phone width: %s', (language, letters) => {
-    expect(lettersAtPhone(language)).toBe(letters);
+  ])('in %s, writes the letter at every width: %s', (language, letters) => {
+    expect(lettersAtEveryWidth(language)).toBe(letters);
   });
 
   it('in Portuguese, reads the full weekday where the letter shows', () => {
