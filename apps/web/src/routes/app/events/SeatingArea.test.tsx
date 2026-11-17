@@ -5356,3 +5356,81 @@ describe('A table’s guests in Seat, and the chairs in their states (sc-4013)',
     expect(screen.getByRole('textbox', { name: 'Name' })).toBeDefined();
   });
 });
+
+describe('The Tables view (sc-4013)', () => {
+  beforeEach(() => {
+    localStorage.clear();
+  });
+
+  const SECTIONS = [
+    { id: 's_stage', name: 'Stage', colour: 'blue', version: 1 },
+    { id: 's_garden', name: 'Garden', colour: 'olive', version: 1 },
+  ];
+
+  function roomOfCards() {
+    return {
+      ...withGuests(
+        [
+          guest({ seat: { kind: 'table', id: 't10', seat: 1 } }),
+          guest({ id: 'g_bo', fullName: 'Bo Ade', position: 2 }),
+        ],
+        table({ id: 't10', name: 'Table 10', sectionId: 's_stage', xCm: 300 }),
+        table({ id: 't2', name: 'Table 2', sectionId: 's_stage', xCm: 700, seats: 8 }),
+        table({ id: 't1', name: 'Table 1', sectionId: 's_garden', xCm: 1100 }),
+        table({ id: 't3', name: 'Table 3', sectionId: null, xCm: 1500 }),
+      ),
+      sections: plan(SECTIONS).sections,
+    };
+  }
+
+  it('shows a card per table by section, then by name in number order, and filters by section', async () => {
+    signedIn();
+    await onSeating({
+      'GET /api/events/ev_1/seating-plan': () => seating(roomOfCards()),
+    });
+
+    fireEvent.click(await screen.findByRole('button', { name: 'Tables' }));
+    const cards = () =>
+      within(document.querySelector<HTMLElement>('.st-cards')!)
+        .getAllByRole('button')
+        .map((one) => one.getAttribute('aria-label'));
+
+    expect(cards()).toEqual([
+      'Table 2, 0 of 8, Stage',
+      'Table 10, 1 of 10, Stage',
+      'Table 1, 0 of 10, Garden',
+      'Table 3, 0 of 10',
+    ]);
+    expect(document.querySelectorAll('.st-cards .st-chair.is-taken')).toHaveLength(1);
+
+    fireEvent.click(screen.getByRole('button', { name: 'Garden' }));
+    expect(cards()).toEqual(['Table 1, 0 of 10, Garden']);
+    fireEvent.click(screen.getByRole('button', { name: 'All sections' }));
+    expect(cards()).toHaveLength(4);
+  });
+
+  it('seats a picked guest at the card clicked, with Undo', async () => {
+    signedIn();
+    const sent = await onSeating({
+      'GET /api/events/ev_1/seating-plan': () => seating(roomOfCards()),
+      'POST /api/events/ev_1/seating-plan/guests/seat': () =>
+        moved(roomOfCards(), [
+          { guestId: 'g_bo', from: null, to: { kind: 'table', id: 't3', seat: 1 } },
+        ]),
+    });
+
+    fireEvent.click(await screen.findByRole('button', { name: 'Tables' }));
+    fireEvent.click(screen.getByRole('tab', { name: 'Seat' }));
+    fireEvent.click(screen.getByRole('button', { name: /Bo Ade/ }));
+    expect(screen.getByText('Now pick a table for Bo Ade.')).toBeDefined();
+
+    fireEvent.click(screen.getByRole('button', { name: 'Table 3, 0 of 10' }));
+    expect(await screen.findAllByText('Bo Ade is at Table 3.')).not.toHaveLength(0);
+    expect(screen.getByRole('button', { name: 'Undo' })).toBeDefined();
+    expect(sent.find((one) => one.line.endsWith('/guests/seat'))?.body).toMatchObject({
+      guestId: 'g_bo',
+      kind: 'table',
+      placeId: 't3',
+    });
+  });
+});

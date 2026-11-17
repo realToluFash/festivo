@@ -3164,7 +3164,11 @@
     "rename": "Rename",
     "roomForAll": "Tables with room for all {{n, number}}.",
     "freeLine": "{{section}} · {{n, number}} free",
-    "emptyTable": "Nobody here yet. Pick a guest in Seat, then this table."
+    "emptyTable": "Nobody here yet. Pick a guest in Seat, then this table.",
+    "floorPlan": "Floor plan",
+    "tablesView": "Tables",
+    "view": "View",
+    "allSections": "All sections"
   },
   "onboarding": {
     "step": "Paso {{step, number}} de 2",

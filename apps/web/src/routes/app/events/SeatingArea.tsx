@@ -87,6 +87,7 @@ import {
   type PlanApi,
   Refused,
   Said,
+  Swatch,
   type TableNote,
 } from './SeatingParts.tsx';
 import {
@@ -121,6 +122,7 @@ import {
 } from './seatingItems.ts';
 import { fitOf, intoView, useCamera } from './seatingCamera.ts';
 import { type TrayFilter, pickedParty, seatedAt } from './seatingGuests.ts';
+import { type SeatingView, TablesView, ViewSwitch } from './SeatingCards.tsx';
 import { MoveAllPop, PlaceGuests, SeatTray } from './SeatingSeat.tsx';
 import { Presence } from './SeatingPresence.tsx';
 import {
@@ -664,6 +666,8 @@ function Plan({
   const [tab, setTab] = useState<'arrange' | 'seat'>('arrange');
   const [pickedGuest, setPickedGuest] = useState<string | null>(null);
   const [moveFrom, setMoveFrom] = useState<string | null>(null);
+  const [seatingView, setSeatingView] = useState<SeatingView>('plan');
+  const [cardSection, setCardSection] = useState<string | null>(null);
   const [tray, setTray] = useState<TrayFilter>({ unsure: false, search: '', groups: [] });
   const party = plan == null || readOnly ? null : pickedParty(plan, pickedGuest);
   const dropPick = () => {
@@ -2014,6 +2018,7 @@ function Plan({
   const { addRow, addSeat } = useAddRowAndSeat(ctx);
 
   let canvas: ReactNode = null;
+  let cards: ReactNode = null;
 
   if (plan != null) {
     const { s, ox, oy } = camera;
@@ -2076,6 +2081,30 @@ function Plan({
             acts: [{ label: t('seating.cancel'), run: dropPick }],
           };
     const shownBar = bar ?? pickBar;
+
+    cards = (
+      <div className="st-view-wrap">
+        {shownBar != null && <StepLine bar={shownBar} onUndo={undo} />}
+        <TablesView
+          plan={plan}
+          section={cardSection}
+          onSection={setCardSection}
+          lit={(item) => chosenIds.includes(item.one.id)}
+          onCard={(item) =>
+            party != null
+              ? seatAt(item, item.kind === 'seat' ? 1 : null)
+              : open({ kind: item.kind, id: item.one.id }, true)
+          }
+        />
+        {moveFrom != null && itemOf(moveFrom) != null && (
+          <MoveAllPop
+            plan={plan}
+            from={itemOf(moveFrom)!}
+            onMove={(to) => moveAll(itemOf(moveFrom)!, to)}
+          />
+        )}
+      </div>
+    );
 
     canvas = (
       <>
@@ -2561,13 +2590,16 @@ function Plan({
       <RingsContext value={rings}>
         <div className="st-main" inert={covered}>
           <div
-            className="st-canvas is-plan"
+            className={
+              seatingView === 'tables' && plan != null ? 'st-canvas is-tables' : 'st-canvas is-plan'
+            }
             ref={(node) => {
               canvasNode.current = node;
               placeCanvas(node);
             }}
           >
-            {canvas}
+            {seatingView === 'tables' && plan != null ? cards : canvas}
+            {plan != null && <ViewSwitch view={seatingView} onView={setSeatingView} />}
           </div>
           <aside className="st-panel" aria-label={t('seating.panel')}>
             {plan != null && shownPanel?.kind !== 'start' && (
@@ -2820,17 +2852,6 @@ function placedIn(answer: Placed): { id: string; name: string; seats: number } |
 /** A panel's buttons are drawn again as it closes, so the one that opened it is found again by its name. */
 function nameOf(element: Element): string {
   return element.getAttribute('aria-label') ?? element.textContent ?? '';
-}
-
-function Swatch({ colour, size = 20 }: { colour: SectionColour | null; size?: 16 | 20 }) {
-  return (
-    <span
-      className={
-        colour == null ? `st-swatch is-none is-${size}` : `st-swatch is-${colour} is-${size}`
-      }
-      aria-hidden="true"
-    />
-  );
 }
 
 /** Blank, unreadable or out of range, said beside the field in the organisation's units. */
