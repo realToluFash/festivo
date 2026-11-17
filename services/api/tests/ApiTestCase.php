@@ -21,6 +21,7 @@ abstract class ApiTestCase extends WebTestCase
 
     protected function setUp(): void
     {
-        $this->client = self::createClient();
+        // Symfony's own default is `en-us`, which would write every screen's dates in US order (sc-65714).
+        $this->client = self::createClient(server: ['HTTP_ACCEPT_LANGUAGE' => 'en']);
     }
 }

@@ -72,7 +72,7 @@ final readonly class DeletionController
 
         return [
             'restoreClosesAt' => $closes->format(\DATE_ATOM),
-            'restoreCloses' => $this->userMailer->deadline($closes, $user, $this->userMailer->shownLocaleFor($user)),
+            'restoreCloses' => $this->userMailer->deadline($closes, $user, $this->userMailer->formattingLocaleFor($user)),
         ];
     }
 

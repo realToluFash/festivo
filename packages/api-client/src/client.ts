@@ -1003,7 +1003,7 @@ export interface ClientOptions {
   baseUrl: () => string;
   tokens?: TokenStore;
   refreshTokenIn?: RefreshTokenDelivery;
-  /** The reader's language, for the API's own locale negotiation. */
+  /** The reader's language, with the device's region while the device speaks it, which the dates the API writes for a screen follow (sc-65714). */
   locale?: () => string | null;
   /** The device's IANA zone, which sets an account's own until it has one (sc-868). */
   timeZone?: () => string | null;

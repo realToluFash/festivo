@@ -87,8 +87,8 @@ final readonly class UserMailer
         return $this->accountLanguage->of($user, $asked);
     }
 
-    /** The language a server-written date on a screen is in: the one the request asked for, else the account's (sc-9267). */
-    public function shownLocaleFor(User $user): string
+    /** The tag a server-written date on a screen is in: the language the request asked for, with the device's region while the device speaks it (sc-65714), else the account's (sc-9267). */
+    public function formattingLocaleFor(User $user): string
     {
         return $this->accountLanguage->shown($user);
     }
@@ -97,6 +97,12 @@ final readonly class UserMailer
     public function answeredLocale(): string
     {
         return $this->accountLanguage->answered();
+    }
+
+    /** The same, with the device's region while the device speaks it, for a sentence a screen quotes (sc-65714). */
+    public function answeredFormattingLocale(): string
+    {
+        return $this->accountLanguage->answeredFormatting();
     }
 
     /** A time for a person (sc-868), in the zone and with the label `deadline()` shares: their zone, else UTC, "WAT" or "UTC+04:00". */
@@ -114,7 +120,7 @@ final readonly class UserMailer
         return ($formatter->format($local) ?: $local->format('Y-m-d H:i')) . ' ' . $label;
     }
 
-    /** A deadline in the house order for English (sc-6758), not always as the screens write it: "Saturday 24 Oct at 14:20 WAT". */
+    /** A deadline in the house order for English (sc-6758), "Saturday 24 Oct at 14:20 WAT"; a tag with a region writes the date part in its order (sc-65714). */
     public function deadline(DateTimeImmutable $at, User $user, string $locale): string
     {
         [$local, $label] = self::local($at, $user);
@@ -134,7 +140,7 @@ final readonly class UserMailer
         $pattern = new IntlDatePatternGenerator($dates)->getBestPattern('EEEEMMMd') ?: 'EEEE d MMM';
         $formatter = IntlDateFormatter::create($dates, IntlDateFormatter::NONE, IntlDateFormatter::NONE, $local->getTimezone()->getName(), null, $pattern);
 
-        return $this->line('time.dateAt', $locale, [
+        return $this->line('time.dateAt', SupportedLocales::narrow($locale), [
             '{date}' => $formatter?->format($local) ?: $local->format('Y-m-d'),
             '{time}' => $local->format('H:i'),
             '{hour}' => (int) $local->format('G'),

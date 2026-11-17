@@ -17,6 +17,9 @@ final class RequestLocaleListener
     /** Set only when the request named a supported language itself, so a default is never mistaken for a choice. */
     public const ASKED = '_asked_locale';
 
+    /** The tag a screen's dates are written in (sc-65714): the device's full tag while its language is the settled one, else that language alone. */
+    public const FORMATTING = '_formatting_locale';
+
     public function __invoke(RequestEvent $event): void
     {
         if (!$event->isMainRequest()) {
@@ -24,35 +27,36 @@ final class RequestLocaleListener
         }
 
         $request = $event->getRequest();
+        $header = $request->headers->get('Accept-Language');
+        $tags = null === $header ? [] : $this->preferences($header);
 
         $explicit = $request->query->get('locale');
         if (\is_string($explicit) && SupportedLocales::supports($explicit)) {
-            $this->apply($request, SupportedLocales::narrow($explicit));
+            $this->apply($request, SupportedLocales::narrow($explicit), $tags);
             $request->attributes->set(self::ASKED, SupportedLocales::narrow($explicit));
 
             return;
         }
 
-        $header = $request->headers->get('Accept-Language');
-        if (null !== $header) {
-            foreach ($this->preferences($header) as $candidate) {
-                if (SupportedLocales::supports($candidate)) {
-                    $this->apply($request, SupportedLocales::narrow($candidate));
-                    $request->attributes->set(self::ASKED, SupportedLocales::narrow($candidate));
+        foreach ($tags as $candidate) {
+            if (SupportedLocales::supports($candidate)) {
+                $this->apply($request, SupportedLocales::narrow($candidate), $tags);
+                $request->attributes->set(self::ASKED, SupportedLocales::narrow($candidate));
 
-                    return;
-                }
+                return;
             }
         }
 
-        $this->apply($request, SupportedLocales::DEFAULT);
+        $this->apply($request, SupportedLocales::DEFAULT, $tags);
     }
 
-    private function apply(\Symfony\Component\HttpFoundation\Request $request, string $locale): void
+    /** @param list<string> $tags */
+    private function apply(\Symfony\Component\HttpFoundation\Request $request, string $locale, array $tags): void
     {
         $request->attributes->set('_locale', $locale);
         $request->setLocale($locale);
         $request->attributes->set(self::ATTRIBUTE, $locale);
+        $request->attributes->set(self::FORMATTING, SupportedLocales::formatting($locale, $tags));
     }
 
     /** @return list<string> */
