@@ -343,6 +343,7 @@ describe('This week at 360 px and narrower (sc-61548)', () => {
     ['fr', 'L M M J V S D'],
     ['es', 'L M X J V S D'],
     ['pt', 'S T Q Q S S D'],
+    ['pt-PT', 'S T Q Q S S D'],
   ])('writes the narrow weekday in %s', (locale, letters) => {
     const say = sayIn(locale);
 
@@ -372,6 +373,6 @@ describe('This week at 360 px and narrower (sc-61548)', () => {
     const days = weekIn(momentOf('plan', us).days, sayIn('pt-PT'));
 
     expect(days.map(({ narrow }) => narrow).join(' ')).toBe('T Q Q S S D S');
-    expect(days.map(({ spoken }) => spoken)).toContain('quarta-feira');
+    expect(days.map(({ spoken, number }) => `${spoken} ${number}`)[1]).toBe('quarta-feira 4');
   });
 });
