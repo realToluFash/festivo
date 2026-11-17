@@ -1,0 +1,103 @@
+/* sc-3897's Show on a screen, as its demo draws it (src/demo/showOnScreen.css): a row per place, its link and its three actions. */
+.dialog.ss-dialog {
+  width: 46rem;
+}
+
+.ss-line {
+  margin: 0;
+  color: var(--colorInkSecondary);
+  font: var(--typeSmall);
+}
+
+.ss-rows {
+  display: flex;
+  flex-direction: column;
+  margin: 0;
+  padding: 0;
+  border: 1px solid var(--colorBorder);
+  border-radius: var(--radiusRow);
+  list-style: none;
+}
+
+.ss-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--spaceLg) var(--spaceXl);
+  align-items: center;
+  padding: var(--spaceXl);
+}
+
+.ss-row + .ss-row {
+  border-top: 1px solid var(--colorBorder);
+}
+
+.ss-what {
+  display: flex;
+  flex: 1 1 12rem;
+  flex-direction: column;
+  gap: var(--spaceXxs);
+  min-width: 0;
+}
+
+.ss-place {
+  margin: 0;
+  color: var(--colorInk);
+  font: 600 16px/1.3 var(--fontFamily);
+}
+
+.ss-link {
+  margin: 0;
+  overflow: hidden;
+  color: var(--colorInkSecondary);
+  font: var(--typeSmall);
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.ss-replaced,
+.ss-said {
+  display: flex;
+  gap: var(--spaceXs);
+  align-items: center;
+  margin: 0;
+  color: var(--colorAccentText);
+  font: var(--typeSmall);
+}
+
+.ss-said.is-ink {
+  color: var(--colorInk);
+}
+
+.ss-said:empty {
+  display: none;
+}
+
+.ss-acts {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--spaceSm);
+  align-items: center;
+}
+
+.ss-acts .gs-pill {
+  gap: var(--spaceXs);
+  align-self: auto;
+  text-decoration: none;
+}
+
+.ss-ask {
+  display: flex;
+  flex: 1 1 100%;
+  flex-direction: column;
+  gap: var(--spaceSm);
+  padding: var(--spaceLg) var(--spaceXl);
+  border: 1px solid var(--colorInsetBorder);
+  border-radius: var(--radiusRow);
+  background: var(--colorInset);
+}
+
+.ss-ask-title {
+  margin: 0;
+  color: var(--colorInk);
+  font: 600 15px/1.3 var(--fontFamily);
+}
