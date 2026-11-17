@@ -24,7 +24,7 @@ describe('the rail’s labels', () => {
 
   it.each([327, 345, 682, 1000])('never share space on a rail %d pt wide', (width) => {
     for (let count = 1; count <= TODAY_RAIL_STOPS; count += 1) {
-      const boxes = railLabels(count, width, 64, 4);
+      const boxes = railLabels(count, width, 4);
 
       expect(boxes[0]?.left).toBeCloseTo(0);
       expect(ends(boxes.at(-1) ?? { left: 0, width: 0 })).toBeLessThanOrEqual(width + 0.001);
@@ -34,15 +34,21 @@ describe('the rail’s labels', () => {
     }
   });
 
-  it('gives each of six about 51 pt on an iPhone SE, and 64 pt where there is room', () => {
-    expect(railLabels(6, 327, 64, 4)[2]?.width).toBeCloseTo(51.2, 1);
-    expect(railLabels(6, 682, 64, 4).map(({ width }) => width)).toEqual(Array(6).fill(64));
+  it('shares the rail equally, with no cap', () => {
+    expect(railLabels(2, 327, 4).map(({ width }) => width)).toEqual([161.5, 161.5]);
+    expect(railLabels(6, 327, 4)[2]?.width).toBeCloseTo(51.2, 1);
+    expect(railLabels(6, 682, 4)[2]?.width).toBeCloseTo(110.3, 1);
   });
 
-  it('centres a middle label on its stop where there is room', () => {
-    const box = railLabels(6, 682, 64, 4)[2];
+  it.each([327, 682])('puts each label under its own stop on a rail %d pt wide', (width) => {
+    for (let count = 2; count <= TODAY_RAIL_STOPS; count += 1) {
+      railLabels(count, width, 4).forEach((box, index) => {
+        const stop = (width / (count - 1)) * index;
 
-    expect((box?.left ?? 0) + 32).toBeCloseTo((682 / 5) * 2);
+        expect(box.left).toBeLessThanOrEqual(stop + 0.001);
+        expect(ends(box)).toBeGreaterThanOrEqual(stop - 0.001);
+      });
+    }
   });
 });
 
