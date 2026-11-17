@@ -28,13 +28,8 @@ import {
   FormBlock as Block,
   Select,
 } from '../components/EventFormParts.tsx';
-import {
-  ArrivalNoteField,
-  CoverPhotoFields,
-  HostFields,
-  VenueFields,
-  ZoneSelect,
-} from './EventEdits.tsx';
+import { CoverPhotoFields } from '../components/CoverEdit.tsx';
+import { HostFields, VenueFields, ZoneSelect } from './EventEdits.tsx';
 import { CURRENCY_CHOICES, EVENT_WORDS as W, TYPE_WORDS, type Wall } from './events.ts';
 import { meshFor } from '../mesh.ts';
 import {
@@ -114,6 +109,7 @@ export function NewEventForm({ state }: { state: NewEventState | null }) {
   );
   const away = useLeaveAsk(typedSomething(typed) && status !== 'created');
   const id = useId();
+  const noteId = `${id}-note`;
   const typeRef = useRef<HTMLDivElement>(null);
   const startRef = useRef<HTMLFieldSetElement>(null);
   const endRef = useRef<HTMLFieldSetElement>(null);
@@ -123,7 +119,6 @@ export function NewEventForm({ state }: { state: NewEventState | null }) {
   const nameRef = useRef<HTMLInputElement>(null);
   const venueNameRef = useRef<HTMLInputElement>(null);
   const addressRef = useRef<HTMLInputElement>(null);
-  const noteRef = useRef<HTMLTextAreaElement>(null);
   const describeRef = useRef<HTMLInputElement>(null);
   const busy = status === 'creating' || status === 'created';
   const shown: Refusals = { ...(tried ? refusalsOf(typed) : {}), ...server };
@@ -148,13 +143,13 @@ export function NewEventForm({ state }: { state: NewEventState | null }) {
       endsAt: endRef,
       venueName: venueNameRef,
       venueAddress: addressRef,
-      arrivalNote: noteRef,
+      arrivalNote: { current: document.getElementById(noteId) },
       timeZone: zoneRef,
       currency: currencyRef,
     };
     const field = at[target.field].current;
     (field?.querySelector<HTMLElement>('input, select') ?? field)?.focus();
-  }, [target]);
+  }, [target, noteId]);
 
   useEffect(() => {
     if (status === 'creating' && state !== 'creating') {
@@ -270,9 +265,9 @@ export function NewEventForm({ state }: { state: NewEventState | null }) {
           <CoverPhotoFields
             position={typed.position}
             onPosition={(position) => change({ position })}
-            described={typed.described}
-            onDescribed={(described) => change({ described })}
-            describeError={tried ? coverRefusalOf(typed) : null}
+            description={typed.described}
+            onDescription={(described) => change({ described })}
+            tooLong={tried && coverRefusalOf(typed) != null}
             describeRef={describeRef}
             onChange={cover.pick}
             onRemove={() => change(NO_PHOTO)}
@@ -346,13 +341,10 @@ export function NewEventForm({ state }: { state: NewEventState | null }) {
           addressError={shown.venueAddress ?? null}
           nameRef={venueNameRef}
           addressRef={addressRef}
-          off={busy}
-        />
-        <ArrivalNoteField
           note={typed.note}
           onNote={(note) => change({ note })}
-          error={shown.arrivalNote ?? null}
-          noteRef={noteRef}
+          noteError={shown.arrivalNote ?? null}
+          noteId={noteId}
           off={busy}
         />
       </Block>

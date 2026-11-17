@@ -461,6 +461,7 @@ export function NewEventScreen({
             onNote={(note) => !busy && change({ note })}
             error={shown.arrivalNote ?? null}
             noteRef={noteRef}
+            off={busy}
             testID="events.new.venue.note"
           />
         </Part>
