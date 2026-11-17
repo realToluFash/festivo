@@ -1655,7 +1655,7 @@
   "eventForm": {
     "title": "Nuevo evento",
     "aboutHeading": "Sobre el evento",
-    "coverHeading": "Cover photo",
+    "coverHeading": "Foto de portada",
     "whenHeading": "Cuándo",
     "venueHeading": "Lugar",
     "zoneHeading": "Zona horaria y moneda",
