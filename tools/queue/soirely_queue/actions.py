@@ -1129,7 +1129,8 @@ def to_qa(c, a):
     story = c.story(a.story)
     linguists_own(c, story, "Ready For QA")
     merged = [pr for pr in store.prs_for_story(c.db, story["id"])
-              if pr["state"] == "merged" and not W.design_pr(pr)]
+              if pr["state"] == "merged" and not W.design_pr(pr)] or \
+        [pr for pr in github.merged_for_story(story["id"]) if not W.design_pr(pr)]
     if not merged:
         raise Refused(f"sc-{story['id']} has no merged pull request")
     if left := open_tasks(story):
