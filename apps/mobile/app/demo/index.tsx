@@ -165,7 +165,7 @@ const PAGES: readonly { page: string; boards: readonly Board[] }[] = [
       { title: 'The event day', what: 'The cover is Now', href: '/demo/today?moment=day' },
       {
         title: 'The event day · built now',
-        what: 'The dates, and Open the event',
+        what: 'The dates, and Open the event; also Now after a refused read',
         href: '/demo/today?moment=dayNow',
       },
       {
