@@ -244,6 +244,10 @@ def pull(number):
     pr = slim({**rest_node(found, bool(found.get("merged_at"))), "reviews": {"nodes": []}})
     pr["lead"] = lead_verdicts(rest_reviews(owner, name, number))
     pr["carried"] = None
+    if pr["state"] == "open":
+        pr["threads"] = rest_threads(owner, name, number, [])
+        pr["checks"] = rest_checks(owner, name, pr["head_sha"])
+        pr["mergeable"] = MERGEABLE[found.get("mergeable")].lower()
     return pr
 
 

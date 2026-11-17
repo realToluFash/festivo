@@ -218,6 +218,21 @@ class RestCalls(unittest.TestCase):
                           for pr in found], [(8, "merged", MERGED, None)])
         self.assertEqual(found[0]["lead"][0]["verdict"], "pass")
 
+    def test_an_open_pull_read_alone_carries_its_threads_checks_and_mergeable(self):
+        fake = FakeGh(routes({"repos/o/n/pulls/7": {**pull(7), "mergeable": True}}))
+        with mock.patch("soirely_queue.github.gh", fake):
+            found = github.pull(7)
+        self.assertEqual((found["state"], found["checks"], found["mergeable"]),
+                         ("open", "green", "mergeable"))
+        self.assertEqual([len(t["comments"]) for t in found["threads"]], [2, 1])
+
+    def test_a_merged_pull_read_alone_skips_threads_and_checks(self):
+        fake = FakeGh(routes({"repos/o/n/pulls/8": pull(8, "closed", "2026-10-18T20:00:00Z")}))
+        with mock.patch("soirely_queue.github.gh", fake):
+            found = github.pull(8)
+        self.assertEqual((found["state"], found["threads"]), ("merged", []))
+        self.assertFalse([p for p in fake.paths() if "comments" in p or "check-runs" in p])
+
     def test_files_name_a_renamed_files_old_path_too(self):
         listed = [{"filename": "apps/mobile/src/demo/Card.tsx", "additions": 0, "deletions": 0,
                    "status": "renamed", "previous_filename": "apps/mobile/src/ui/Card.tsx"},
