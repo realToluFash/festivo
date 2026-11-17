@@ -1073,9 +1073,9 @@ export function RoomDrawing({
   );
 }
 
-/** The chair's name above it on hover or focus, or under it where the bar over the room or the room's top would hide it, and slid inside the room's left and right edges (sc-5030). */
 const LABEL_INSET = 8;
 
+/** The chair's name above it on hover or focus, or under it where the bar over the room or the room's top would hide it, and slid inside the room's left and right edges (sc-5030). */
 function ChairLabel({
   items,
   spot,
