@@ -671,6 +671,7 @@ function Plan({
   const [cardSection, setCardSection] = useState<string | null>(null);
   const [tray, setTray] = useState<TrayFilter>({ unsure: false, search: '', groups: [] });
   const party = plan == null || readOnly ? null : pickedParty(plan, pickedGuest);
+  const movingFrom = party?.lead.seat ?? null;
   const dropPick = () => {
     setPickedGuest(null);
     setBar((was) => (was?.tone === 'undo' ? was : null));
@@ -1311,6 +1312,15 @@ function Plan({
     pickGuest(there.id);
     return true;
   };
+  /** On Tables, a taken chair picks who sits there with nothing picked; their own chair again drops them. */
+  const pickSeated = (item: FloorItem, seat: number) => {
+    const there = readOnly || plan == null ? null : seatedAt(plan, item.one.id, seat);
+
+    if (there == null) return;
+    setTab('seat');
+    if (pickedGuest === there.id) dropPick();
+    else pickGuest(there.id);
+  };
   const unseatAll = (item: FloorItem) => {
     const place = itemName(t, item);
 
@@ -1384,7 +1394,11 @@ function Plan({
     const kind: SeatingPlaceKind = item.kind;
     const there = seat == null ? null : seatedAt(plan, item.one.id, seat);
 
-    if (there != null && there.id !== lead.id) {
+    if (there?.id === lead.id) {
+      dropPick();
+      return;
+    }
+    if (there != null) {
       const theirs = there.fullName ?? '';
 
       setBar({
@@ -2119,11 +2133,15 @@ function Plan({
             section={cardSection}
             onSection={setCardSection}
             lit={(item) => chosenIds.includes(item.one.id) || shownBar?.lit === item.one.id}
+            picking={party != null}
+            moving={movingFrom}
+            readOnly={readOnly}
             onCard={(item) =>
               party != null
                 ? seatAt(item, item.kind === 'seat' ? 1 : null)
                 : open({ kind: item.kind, id: item.one.id }, true)
             }
+            onChair={(item, seat) => (party != null ? seatAt(item, seat) : pickSeated(item, seat))}
           />
         </div>
         {!readOnly && <SaveLine state={save} onTryAgain={tryAgain} />}
@@ -2596,11 +2614,12 @@ function Plan({
         chips={chips}
       />
     );
-    const item =
+    const shownPlace =
       party == null &&
       (shownPanel?.kind === 'table' || shownPanel?.kind === 'chair' || shownPanel?.kind === 'row')
-        ? itemOf(shownPanel.id)
+        ? shownPanel.id
         : null;
+    const item = itemOf(movingFrom?.id ?? shownPlace ?? '');
 
     if (item == null || item.kind === 'seat') return trayOf(true);
     return (
@@ -2608,9 +2627,11 @@ function Plan({
         plan={plan}
         item={item}
         readOnly={readOnly}
+        movingSeat={movingFrom?.seat ?? null}
+        onPickSeated={pickSeated}
         tray={trayOf(false)}
-        onUnseatAll={() => unseatAll(item)}
-        onMoveAll={() => setMoveFrom(item.one.id)}
+        onUnseatAll={unseatAll}
+        onMoveAll={(from) => setMoveFrom(from.one.id)}
         onRename={rename}
       />
     );

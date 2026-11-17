@@ -200,6 +200,8 @@ export function PlaceGuests({
   plan,
   item,
   readOnly,
+  movingSeat,
+  onPickSeated,
   tray,
   onUnseatAll,
   onMoveAll,
@@ -208,9 +210,11 @@ export function PlaceGuests({
   plan: SeatingPlan;
   item: Extract<FloorItem, { kind: 'table' | 'row' }>;
   readOnly: boolean;
+  movingSeat: number | null;
+  onPickSeated: (item: FloorItem, seat: number) => void;
   tray: ReactNode;
-  onUnseatAll: () => void;
-  onMoveAll: () => void;
+  onUnseatAll: (item: FloorItem) => void;
+  onMoveAll: (item: FloorItem) => void;
   onRename: (item: FloorItem) => void;
 }) {
   const { t } = useTranslation();
@@ -236,8 +240,8 @@ export function PlaceGuests({
                 place.unusableSeats.includes(seat),
               );
 
-              return (
-                <li key={seat} className="st-row is-dense">
+              const words = (
+                <>
                   <StateMark
                     state={state}
                     square={item.kind === 'table' && item.one.shape === 'cocktail'}
@@ -257,14 +261,32 @@ export function PlaceGuests({
                         .join(' · ')}
                     </span>
                   </span>
+                </>
+              );
+              const on = movingSeat === seat;
+
+              return (
+                <li key={seat} className="st-row is-dense">
+                  {state === 'taken' && !readOnly ? (
+                    <button
+                      type="button"
+                      className={on ? 'st-party is-seat is-on' : 'st-party is-seat'}
+                      aria-pressed={on}
+                      onClick={() => onPickSeated(item, seat)}
+                    >
+                      {words}
+                    </button>
+                  ) : (
+                    words
+                  )}
                 </li>
               );
             })}
           </ul>
           {!readOnly && (
             <div className="st-acts">
-              <TextAction label={t('seating.unseatAll')} onClick={onUnseatAll} />
-              <TextAction label={t('seating.moveAll')} onClick={onMoveAll} />
+              <TextAction label={t('seating.unseatAll')} onClick={() => onUnseatAll(item)} />
+              <TextAction label={t('seating.moveAll')} onClick={() => onMoveAll(item)} />
               <TextAction label={t('seating.rename')} onClick={() => onRename(item)} />
             </div>
           )}
