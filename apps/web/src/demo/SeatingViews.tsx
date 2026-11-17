@@ -1,15 +1,18 @@
 import { Fragment } from 'react';
 
 import {
+  CARD_SIZE,
+  CHAIR_HIT,
   type Choice,
   type Item,
   type Party,
   type Plan,
   SW,
+  cardScale,
   chairWord,
+  chairsFit,
   chairsOf,
   chosenWords,
-  extent,
   filled,
   inSectionOrder,
   isRound,
@@ -64,11 +67,9 @@ function CardDrawing({
   choices: readonly Choice[];
   chairs: CardChairs | null;
 }) {
-  const w = 188;
-  const h = 132;
-  const [ex, ey] = extent(item);
-  const turned = item.rot % 180 !== 0 ? [ey, ex] : [ex, ey];
-  const s = Math.min((w - 16) / (2 * turned[0]!), (h - 12) / (2 * turned[1]!), 0.45);
+  const w = CARD_SIZE.w;
+  const h = CARD_SIZE.h;
+  const s = cardScale(item);
   const cx = w / 2;
   const cy = h / 2;
   const r = 22 * s;
@@ -79,73 +80,75 @@ function CardDrawing({
       width={w}
       height={h}
       viewBox={`0 0 ${w} ${h}`}
-      aria-hidden="true"
+      aria-hidden={chairs == null ? true : undefined}
       focusable="false"
     >
-      {isRound(item) && item.kind !== 'single' ? (
-        <circle className="st-body" cx={cx} cy={cy} r={((item.d ?? 180) / 2) * s} />
-      ) : item.kind === 'rect' || item.kind === 'head' ? (
-        <g transform={`translate(${cx} ${cy}) rotate(${item.rot})`}>
-          <rect
-            className="st-body"
-            x={(-(item.w ?? 180) / 2) * s}
-            y={(-(item.l ?? 76) / 2) * s}
-            width={(item.w ?? 180) * s}
-            height={(item.l ?? 76) * s}
-            rx="3"
-          />
-        </g>
-      ) : null}
-      {chairsOf(item).map((point, index) => {
-        const [px, py] = turn(point, item.rot);
-        const lit = chairs?.lit === index || chairs?.on === index;
-
-        return lit ? (
-          <g key={index}>
-            <circle
-              className="st-lit"
-              cx={cx + px * s}
-              cy={cy + py * s}
-              r={Math.max(r + 5, CHAIR_HIT / 2 + 2)}
+      <g aria-hidden="true">
+        {isRound(item) && item.kind !== 'single' ? (
+          <circle className="st-body" cx={cx} cy={cy} r={((item.d ?? 180) / 2) * s} />
+        ) : item.kind === 'rect' || item.kind === 'head' ? (
+          <g transform={`translate(${cx} ${cy}) rotate(${item.rot})`}>
+            <rect
+              className="st-body"
+              x={(-(item.w ?? 180) / 2) * s}
+              y={(-(item.l ?? 76) / 2) * s}
+              width={(item.w ?? 180) * s}
+              height={(item.l ?? 76) * s}
+              rx="3"
             />
+          </g>
+        ) : null}
+        {chairsOf(item).map((point, index) => {
+          const [px, py] = turn(point, item.rot);
+          const lit = chairs?.lit === index || chairs?.on === index;
+
+          return lit ? (
+            <g key={index}>
+              <circle
+                className="st-lit"
+                cx={cx + px * s}
+                cy={cy + py * s}
+                r={Math.max(r + 5, CHAIR_HIT / 2 + 2)}
+              />
+              <ChairMark
+                x={cx + px * s}
+                y={cy + py * s}
+                r={r}
+                chair={item.chairs[index] ?? { state: 'empty' }}
+                square={item.kind === 'cocktail'}
+              />
+            </g>
+          ) : (
             <ChairMark
+              key={index}
               x={cx + px * s}
               y={cy + py * s}
               r={r}
               chair={item.chairs[index] ?? { state: 'empty' }}
               square={item.kind === 'cocktail'}
             />
-          </g>
-        ) : (
-          <ChairMark
-            key={index}
-            x={cx + px * s}
-            y={cy + py * s}
-            r={r}
-            chair={item.chairs[index] ?? { state: 'empty' }}
-            square={item.kind === 'cocktail'}
-          />
-        );
-      })}
-      {chairsOf(item).flatMap((point, index) => {
-        const [px, py] = turn(point, item.rot);
-        const x = cx + px * s;
-        const y = cy + py * s;
+          );
+        })}
+        {chairsOf(item).flatMap((point, index) => {
+          const [px, py] = turn(point, item.rot);
+          const x = cx + px * s;
+          const y = cy + py * s;
 
-        return choices
-          .filter((one) => one.seat === index)
-          .map(({ who }, k) => {
-            const rr = r + 5.5 + RING_STEP * k;
+          return choices
+            .filter((one) => one.seat === index)
+            .map(({ who }, k) => {
+              const rr = r + 5.5 + RING_STEP * k;
 
-            return (
-              <g key={`seat${index}.${k}`} className={`st-ring p${who.tone}`}>
-                <circle className="st-ring-gap" cx={x} cy={y} r={rr} />
-                <circle className="st-ring-line" cx={x} cy={y} r={rr + 1.5} />
-                <Pill x={x - rr * 0.72} y={y - rr * 0.72 - PILL_STEP * k} words={who.initials} />
-              </g>
-            );
-          });
-      })}
+              return (
+                <g key={`seat${index}.${k}`} className={`st-ring p${who.tone}`}>
+                  <circle className="st-ring-gap" cx={x} cy={y} r={rr} />
+                  <circle className="st-ring-line" cx={x} cy={y} r={rr + 1.5} />
+                  <Pill x={x - rr * 0.72} y={y - rr * 0.72 - PILL_STEP * k} words={who.initials} />
+                </g>
+              );
+            });
+        })}
+      </g>
       {chairs != null &&
         chairsOf(item).map((point, index) => {
           const chair = item.chairs[index] ?? { state: 'empty' as const };
@@ -185,9 +188,6 @@ function CardDrawing({
   );
 }
 
-/** A card's chairs as targets (sc-4013): 24 px each, the web's floor (WCAG 2.2 SC 2.5.8). */
-const CHAIR_HIT = 24;
-
 interface CardChairs {
   target: (chair: Item['chairs'][number], index: number) => boolean;
   /** In the tab order: the lit card's chairs only, as the plan's `chairsFor`. */
@@ -207,7 +207,7 @@ export function TablesView() {
   );
   const picking = ui.picked != null;
   const chairsOn = (item: Item): CardChairs | null =>
-    ui.readOnly
+    ui.readOnly || !chairsFit(item)
       ? null
       : {
           target: (chair) => chair.state === 'taken' || (picking && chair.state === 'empty'),

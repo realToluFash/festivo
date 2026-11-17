@@ -1556,9 +1556,9 @@ describe('a colleague’s choice on Tables and the List (sc-60717)', () => {
       within(screen.getByRole('group', { name: 'View' })).getByRole('button', { name }),
     );
   const card = (name: string) => {
-    const found = within(document.querySelector<HTMLElement>('.st-cards')!).getAllByRole('button', {
-      name: new RegExp(`^${name}, `, 'u'),
-    });
+    const found = within(document.querySelector<HTMLElement>('.st-cards')!)
+      .getAllByRole('button', { name: new RegExp(`^${name}, `, 'u') })
+      .filter((one) => one.classList.contains('st-card-hit'));
 
     expect(found).toHaveLength(1);
     return found[0]!;
@@ -1592,7 +1592,9 @@ describe('a colleague’s choice on Tables and the List (sc-60717)', () => {
 
     expect(ringsOn(table)).toEqual(['JM']);
     expect(table.getAttribute('aria-label')).toMatch(/, seat 2 chosen by Julien Moreau$/u);
-    expect(table.querySelector('.st-card-art .st-ring')?.textContent).toBe('JM');
+    expect(table.closest('.st-card')?.querySelector('.st-card-art .st-ring')?.textContent).toBe(
+      'JM',
+    );
   });
 
   it('shows your Tint and a colleague’s ring on one card', SLOW, async () => {
@@ -1600,7 +1602,7 @@ describe('a colleague’s choice on Tables and the List (sc-60717)', () => {
     const table = card('Table 7');
 
     expect(table.getAttribute('aria-pressed')).toBe('true');
-    expect(table.className).toContain('is-lit');
+    expect(table.closest('.st-card')?.className).toContain('is-lit');
     expect(ringsOn(table)).toEqual(['PS']);
   });
 
@@ -1791,6 +1793,77 @@ describe('the Tables and List views (sc-4013, sc-4016)', () => {
     expect(screen.queryByRole('button', { name: /^Table 1, round/u })).toBeNull();
     fireEvent.click(screen.getByRole('button', { name: /^Table 8, round/u }));
     expect(await screen.findByText('Kwame Mensah and 1 guest are at Table 8.')).toBeDefined();
+  });
+
+  it(
+    'seats a picked party from a free chair on a card, and swaps on a taken one',
+    SLOW,
+    async () => {
+      await seating('tablesChair');
+      fireEvent.click(screen.getByRole('button', { name: 'Table 8, Seat 8, Empty' }));
+      expect(await screen.findByText('Kwame Mensah and 1 guest are at Table 8.')).toBeDefined();
+      expect(
+        screen.getByRole('button', { name: /^Table 8, round, 7 of 10 seats taken/u }),
+      ).toBeDefined();
+      expect(screen.getByRole('button', { name: 'Table 8, Seat 8, Kwame Mensah' })).toBeDefined();
+      expect(screen.getByRole('button', { name: /^Table 8, Seat 9, / })).toBeDefined();
+
+      await seating('tablesSwap');
+      const ask = screen.getByRole('dialog', { name: /^Table 4,/u });
+
+      expect(within(ask).getByText('Table 4, seat 3 is Funmi Adeyemi’s.')).toBeDefined();
+      fireEvent.click(within(ask).getByRole('button', { name: 'Swap with Funmi Adeyemi' }));
+      expect(await screen.findByText('Lucía Ortega is at Table 4.')).toBeDefined();
+      expect(within(panel()).getByRole('button', { name: /^Funmi Adeyemi/u })).toBeDefined();
+    },
+  );
+
+  it('picks a seated guest from a card’s chair and moves only them', SLOW, async () => {
+    await seating('tables');
+    fireEvent.click(screen.getByRole('button', { name: 'Table 4, Seat 3, Funmi Adeyemi' }));
+    expect(screen.getByText('Now pick a table for Funmi Adeyemi.')).toBeDefined();
+    expect(
+      within(panel()).getByRole('button', { name: /^Seat 3 Funmi Adeyemi/u, pressed: true }),
+    ).toBeDefined();
+    fireEvent.click(screen.getByRole('button', { name: /^Table 8, round, 5 of 10/u }));
+    expect(await screen.findByText('Funmi Adeyemi is at Table 8.')).toBeDefined();
+    expect(screen.getByRole('button', { name: /^Table 4, round, 7 of 10/u })).toBeDefined();
+    expect(screen.getByRole('button', { name: 'Table 8, Seat 6, Funmi Adeyemi' })).toBeDefined();
+    fireEvent.click(screen.getByRole('button', { name: 'Undo' }));
+    expect(screen.getByRole('button', { name: 'Table 4, Seat 3, Funmi Adeyemi' })).toBeDefined();
+  });
+
+  it(
+    'picks a seated guest in Seat, swaps two seated guests, and drops a pick on their own chair',
+    SLOW,
+    async () => {
+      await seating('tablesMoving');
+      fireEvent.click(screen.getByRole('button', { name: 'Table 8, Seat 1, Amara Diallo' }));
+      fireEvent.click(
+        within(screen.getByRole('dialog', { name: /^Table 8,/u })).getByRole('button', {
+          name: 'Swap with Amara Diallo',
+        }),
+      );
+      expect(await screen.findByText('Funmi Adeyemi is at Table 8.')).toBeDefined();
+      expect(screen.getByRole('button', { name: 'Table 4, Seat 3, Amara Diallo' })).toBeDefined();
+      expect(screen.getByRole('button', { name: 'Table 8, Seat 1, Funmi Adeyemi' })).toBeDefined();
+
+      await seating('tableGuests');
+      fireEvent.click(within(panel()).getByRole('button', { name: /^Seat 3 Funmi Adeyemi/u }));
+      expect(screen.getByText('Now pick a table for Funmi Adeyemi.')).toBeDefined();
+      fireEvent.click(within(panel()).getByRole('button', { name: /^Seat 3 Funmi Adeyemi/u }));
+      expect(screen.queryByText('Now pick a table for Funmi Adeyemi.')).toBeNull();
+
+      await seating('tablesMoving');
+      fireEvent.click(screen.getByRole('button', { name: 'Table 4, Seat 3, Funmi Adeyemi' }));
+      expect(screen.queryByText('Now pick a table for Funmi Adeyemi.')).toBeNull();
+    },
+  );
+
+  it('keeps chairs out of reach when read only', SLOW, async () => {
+    await seating('readOnly');
+    fireEvent.click(screen.getByRole('button', { name: 'Tables' }));
+    expect(screen.queryByRole('button', { name: /^Table 4, Seat 3, / })).toBeNull();
   });
 
   it(
