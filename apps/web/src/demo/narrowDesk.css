@@ -1,0 +1,65 @@
+/* A desk window from 641 to 960 px (sc-60699): the sidebar stays beside the page at 252 px, so the page is 379 to 698 px wide and every page holds there with no sideways scroll and no word broken. 961 and up, and 640 and down, are as on main. */
+@media (40rem < width <= 60rem) {
+  .today.desk .desk-page {
+    padding-inline: var(--spaceXxl);
+  }
+
+  /* A title keeps its words whole; what sits beside it goes under it once both do not fit. */
+  .today.desk .desk-top {
+    flex-wrap: wrap;
+    row-gap: var(--spaceLg);
+  }
+
+  .today.desk .desk-title {
+    min-width: auto;
+  }
+
+  .today.desk :is(.desk-title, .desk-title *) {
+    overflow-wrap: normal;
+  }
+
+  /* Settings puts its list above the page, as the product does up to 60rem, and the two scroll as one. */
+  .today.desk .desk-main:has(> .desk-list) {
+    flex-direction: column;
+    overflow-y: auto;
+  }
+
+  .today.desk .desk-main > .desk-list {
+    width: auto;
+    overflow: visible;
+    border-right: 0;
+    border-bottom: 1px solid var(--colorBorder);
+  }
+
+  .today.desk .desk-main > .desk-list ~ .desk-page {
+    flex: none;
+    overflow: visible;
+  }
+
+  /* Events: the search gives up room to Filter, which keeps its word. */
+  .today.desk .ev-search {
+    flex: 1 1 0;
+  }
+
+  .today.desk .ev-filter-at {
+    flex: none;
+  }
+
+  /* Calendar: the month and its steps keep a line, and Month, Agenda and Show go under them once both do not fit. */
+  .today.desk .cal-tools {
+    flex-wrap: wrap;
+    row-gap: var(--spaceLg);
+  }
+
+  .today.desk .cal-month-row {
+    flex: 1 0 auto;
+    flex-wrap: wrap;
+    row-gap: var(--spaceLg);
+  }
+
+  /* Saturday's "+N more" ends at the week's edge rather than starting past its inset. */
+  .today.desk .cal-more.is-from-6 {
+    right: 0;
+    left: auto;
+  }
+}
