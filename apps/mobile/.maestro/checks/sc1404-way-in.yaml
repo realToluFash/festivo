@@ -1,0 +1,12 @@
+# sc-1404: the way in, the Schedule area's Run view button on the event page.
+appId: host.exp.Exponent
+---
+- openLink: ${METRO_URL}/--/events/${EVENT}?area=schedule
+- extendedWaitUntil: { visible: { id: 'never.there' }, timeout: 8000, optional: true }
+- waitForAnimationToEnd
+- takeScreenshot: schedule-area
+- scrollUntilVisible: { element: { id: 'events.schedule.run' }, timeout: 15000 }
+- takeScreenshot: run-view-button
+- tapOn: { id: 'events.schedule.run' }
+- extendedWaitUntil: { visible: { id: 'never.there' }, timeout: 6000, optional: true }
+- takeScreenshot: opened

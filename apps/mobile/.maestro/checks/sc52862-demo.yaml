@@ -1,0 +1,20 @@
+# sc-52862: the app demo's event page (evt-wed-4), Overview, then Details from the top where it is its own area (a tablet; on a phone Details is Overview's section), and Details' Venue row with Open in maps, for the side-by-side margin pairs. Needs ${METRO_URL}.
+appId: host.exp.Exponent
+---
+- setOrientation: PORTRAIT
+- waitForAnimationToEnd
+- openLink: ${METRO_URL}/--/demo/events/evt-wed-4
+- waitForAnimationToEnd:
+    timeout: 8000
+- takeScreenshot: overview
+- tapOn:
+    id: 'event.area.details'
+    optional: true
+- waitForAnimationToEnd
+- takeScreenshot: details
+- scrollUntilVisible:
+    element:
+      id: 'event.maps'
+    centerElement: true
+    timeout: 20000
+- takeScreenshot: venue

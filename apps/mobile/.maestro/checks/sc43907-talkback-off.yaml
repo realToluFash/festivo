@@ -1,0 +1,31 @@
+# sc-43907: with TalkBack off, New event with Event name typed and Type blank, scrolled to Create event; Create event scrolls the form back to Type, refused, and nothing else changes.
+appId: host.exp.Exponent
+---
+- openLink: ${METRO_URL}/--/events/new
+- extendedWaitUntil:
+    visible:
+      id: 'eventForm.name'
+    timeout: 30000
+- tapOn:
+    id: 'eventForm.name'
+- inputText: 'TalkBack check'
+- hideKeyboard
+- scrollUntilVisible:
+    element:
+      id: 'eventForm.send'
+    direction: DOWN
+- assertNotVisible:
+    id: 'eventForm.type'
+- takeScreenshot: before
+- tapOn:
+    id: 'eventForm.send'
+- takeScreenshot: tapped
+- extendedWaitUntil:
+    visible:
+      id: 'eventForm.type'
+    timeout: 5000
+- waitForAnimationToEnd
+- assertVisible:
+    id: 'eventForm.type'
+- assertVisible: 'Choose what kind of event it is.'
+- takeScreenshot: refused

@@ -1,0 +1,30 @@
+# sc-57219: 501 refused, delete one: refusal gone, 500 of 500, Ask to join sends. Run last: it sends. TOKEN.
+appId: host.exp.Exponent
+---
+- openLink: ${METRO_URL}/--/join/${TOKEN}
+- extendedWaitUntil:
+    visible:
+      id: requestToJoin.message
+    timeout: 30000
+- waitForAnimationToEnd
+- tapOn:
+    id: requestToJoin.message
+- inputText: 'aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa'
+- tapOn:
+    id: requestToJoin.ask
+- extendedWaitUntil:
+    visible: '.*(?:Keep your message to 500|Raccourcissez votre message|Encurte a mensagem|Acorte su mensaje).*'
+    timeout: 10000
+- eraseText: 1
+- waitForAnimationToEnd
+- takeScreenshot: back-500
+- assertNotVisible: '.*(?:Keep your message to 500|Raccourcissez votre message|Encurte a mensagem|Acorte su mensaje).*'
+- assertVisible: '.*500 (?:of|sur|de) 500.*'
+- tapOn:
+    id: requestToJoin.ask
+- waitForAnimationToEnd
+- extendedWaitUntil:
+    notVisible:
+      id: requestToJoin.ask
+    timeout: 15000
+- takeScreenshot: sent

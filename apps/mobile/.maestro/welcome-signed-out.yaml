@@ -1,0 +1,54 @@
+# The app launched on welcome, after signing out whoever an earlier flow left signed in:
+# Home, No organisation, Complete your profile or the two-factor overdue screen. sc-30157.
+# sign-in-screen-language.yaml cannot do this: its /--/welcome link draws welcome over a session.
+# batch/sign-out.yaml is its batch counterpart: a screen added to one is added to the other.
+appId: host.exp.Exponent
+---
+- launchApp:
+    appId: host.exp.Exponent
+    stopApp: true
+- openLink: ${METRO_URL}/--/
+- extendedWaitUntil:
+    visible:
+      id: 'welcome\.brand|home\.openSettings|noOrganisation|completeProfile\..*|twoFactorOverdue\.signOut'
+    timeout: 90000
+- runFlow:
+    when:
+      visible:
+        id: 'completeProfile\.left'
+    file: sign-out-from-complete-profile.yaml
+- runFlow:
+    when:
+      visible:
+        id: 'twoFactorOverdue.signOut'
+    file: overdue-sign-out.yaml
+- runFlow:
+    when:
+      visible:
+        id: 'noOrganisation'
+    commands:
+      - tapOn:
+          id: 'noOrganisation.signOut'
+      - extendedWaitUntil:
+          visible:
+            id: 'welcome.email'
+          timeout: 30000
+- runFlow:
+    when:
+      visible:
+        id: 'home.openSettings'
+    commands:
+      - openLink: ${METRO_URL}/--/settings
+      - runFlow: settings-sign-out-tap.yaml
+      - extendedWaitUntil:
+          visible:
+            id: 'welcome.email'
+          timeout: 30000
+- launchApp:
+    appId: host.exp.Exponent
+    stopApp: true
+- openLink: ${METRO_URL}/--/
+- extendedWaitUntil:
+    visible:
+      id: 'welcome.brand'
+    timeout: 90000

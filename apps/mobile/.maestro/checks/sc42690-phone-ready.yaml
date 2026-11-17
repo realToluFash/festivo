@@ -1,0 +1,10 @@
+# Change your mobile number, at rest with its Code picker showing, for a TalkBack pass. sc-42690.
+appId: host.exp.Exponent
+---
+- openLink: ${METRO_URL}/--/phone
+- extendedWaitUntil:
+    visible:
+      id: 'phone.country'
+    timeout: 30000
+- waitForAnimationToEnd
+- takeScreenshot: phone-ready

@@ -1,0 +1,36 @@
+# sc-46879: as Can view, ${CHLOE}'s page (invited by WhatsApp) beside the demo's guestViewer.
+appId: host.exp.Exponent
+---
+- setOrientation: ${ORIENT}
+- openLink: ${METRO_URL}/--/events/${LIVE}?area=guests
+- extendedWaitUntil:
+    visible:
+      id: 'guests.card'
+    timeout: 30000
+- waitForAnimationToEnd:
+    timeout: 4000
+- tapOn:
+    id: 'guests.search'
+- inputText: 'Chlo'
+- hideKeyboard
+- extendedWaitUntil:
+    visible:
+      id: 'guests.row.${CHLOE}'
+    timeout: 10000
+- tapOn:
+    id: 'guests.row.${CHLOE}'
+- extendedWaitUntil:
+    visible:
+      id: 'guest.${CHLOE}'
+    timeout: 20000
+- waitForAnimationToEnd:
+    timeout: 3000
+- takeScreenshot: guestViewer
+- scroll
+- takeScreenshot: guestViewer-scrolled
+- openLink: ${METRO_URL}/--/demo/guests?state=guestViewer
+- waitForAnimationToEnd:
+    timeout: 8000
+- takeScreenshot: demo-guestViewer
+- scroll
+- takeScreenshot: demo-guestViewer-scrolled

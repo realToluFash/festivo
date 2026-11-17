@@ -1,0 +1,23 @@
+# sc-37811: a person's page (Priya, a Member) and the role screen opened from it. Needs ${METRO_URL}.
+appId: host.exp.Exponent
+---
+- openLink: ${METRO_URL}/--/settings/members
+- extendedWaitUntil:
+    visible:
+      id: 'members.card'
+    timeout: 30000
+- scrollUntilVisible:
+    element:
+      id: 'members.row.811758e3-1ee4-412c-837d-ad7fb42663e0'
+- tapOn:
+    id: 'members.row.811758e3-1ee4-412c-837d-ad7fb42663e0'
+- extendedWaitUntil:
+    visible:
+      id: 'members.changeRole'
+    timeout: 15000
+- waitForAnimationToEnd
+- takeScreenshot: person
+- tapOn:
+    id: 'members.changeRole'
+- waitForAnimationToEnd
+- takeScreenshot: role

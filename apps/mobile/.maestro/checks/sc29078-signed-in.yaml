@@ -1,0 +1,6 @@
+# Signed in and home: the step before sc29078-confetti-unreachable, which needs a held session. sc-29078.
+appId: host.exp.Exponent
+---
+- openLink: ${METRO_URL}/--/
+- waitForAnimationToEnd
+- takeScreenshot: signed-in
