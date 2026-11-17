@@ -19,7 +19,8 @@ import { useTranslation } from 'react-i18next';
 import { Switch } from '../../../components/GeneralParts.tsx';
 import { Glyph } from '../../../components/Glyph.tsx';
 import { HintButton } from '../../../components/HintButton.tsx';
-import { ActionGlyph, ContainsMark, DishFields, Wrong } from '../menu/DishParts.tsx';
+import { ActionGlyph, ContainsMark, DishFields } from '../menu/DishParts.tsx';
+import { Wrong } from '../menu/MenuFields.tsx';
 import {
   AddVariantButton,
   NameDescFields,
