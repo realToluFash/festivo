@@ -158,6 +158,9 @@ describe('The event’s Menu (sc-3902)', () => {
     expect(cards[2]?.textContent).toContain('Empty · not shown to guests');
     expect(screen.getByText('3 courses · 3 dishes')).toBeDefined();
     expect(screen.getByText('2 of 3 courses ready')).toBeDefined();
+    expect(screen.getByText('2 of 3 ready').closest('a')?.getAttribute('href')).toBe(
+      '/app/events/ev_1/menu',
+    );
     expect(
       within(cards[1] as HTMLElement).getAllByText('Contains: Celery', { selector: 'p' }),
     ).toHaveLength(2);
@@ -177,6 +180,7 @@ describe('The event’s Menu (sc-3902)', () => {
 
     expect(await screen.findByText('2 courses · 3 dishes')).toBeDefined();
     expect(screen.queryByText(/courses ready/)).toBeNull();
+    expect(screen.queryByText('2 of 2 ready')).toBeNull();
   });
 
   it('says No menu yet with Add course when there are no courses', async () => {
