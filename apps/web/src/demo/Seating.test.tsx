@@ -1722,6 +1722,20 @@ describe('seating guests (sc-4013, sc-4016, sc-5030)', () => {
     expect(within(room()).queryByText('Seat 2, Luca Rossi, Coming')).toBeNull();
   });
 
+  it('drops the chair label once the pick ends, though the pointer never left', SLOW, async () => {
+    await seating('chairLabel');
+    key(item(/^Table 9,/u), 'Escape');
+    expect(within(room()).queryByText('Seat 1, Sofia Rossi, Not sure yet')).toBeNull();
+    await seating('chairLabel');
+    const free = within(room()).getAllByRole('button', { name: /^Table 9, Seat \d+, Empty/u })[0]!;
+
+    fireEvent.pointerEnter(free);
+    expect(within(room()).getByText(/^Seat \d+, Empty$/u)).toBeDefined();
+    fireEvent.click(free);
+    expect(await screen.findByText(/ (is|are) at Table 9\.$/u)).toBeDefined();
+    expect(within(room()).queryByText(/^Seat \d+, Empty$/u)).toBeNull();
+  });
+
   it(
     'refuses a full table, and offers Seat just {name} when the party won’t fit',
     SLOW,

@@ -584,6 +584,7 @@ function Seating({
           chair: null,
           pop: null,
           hover: null,
+          chairLabel: null,
           bar: party == null ? null : { kind: 'tint', words: pickWords(party), does: 'pick' },
         };
       }),
@@ -1729,7 +1730,7 @@ function Seating({
         : null,
     chair: ui.chair,
     picking: ui.picked != null,
-    label: ui.chairLabel,
+    label: ui.picked != null ? ui.chairLabel : null,
     chairsFor:
       detail === 'out'
         ? null
