@@ -25,6 +25,7 @@ const cover = () => screen.getByRole('region', { name: W.coverPhoto });
 const waiting = () => within(cover()).queryByRole('status');
 const ready = () => screen.findByRole('textbox', { name: /Event name/ });
 const later = (ms: number) => act(async () => vi.advanceTimersByTimeAsync(ms));
+let small = false;
 
 function choose(file: File) {
   const input = cover().querySelector<HTMLInputElement>('input[type="file"]');
@@ -33,6 +34,7 @@ function choose(file: File) {
 }
 
 beforeEach(() => {
+  small = false;
   __setConfig({ ...tested, environment: 'development' });
   vi.useFakeTimers({ shouldAdvanceTime: true });
   vi.stubGlobal(
@@ -42,8 +44,8 @@ beforeEach(() => {
   vi.stubGlobal(
     'Image',
     class {
-      naturalWidth = 2400;
-      naturalHeight = 1350;
+      naturalWidth = small ? 200 : 2400;
+      naturalHeight = small ? 200 : 1350;
       onload: (() => void) | null = null;
       set src(_: string) {
         queueMicrotask(() => this.onload?.());
@@ -165,15 +167,34 @@ describe('New event with a HEIC still on its way (sc-60915)', () => {
   });
 
   it('drops the copy when Remove photo is pressed during the wait', SLOW, async () => {
-    open('photoSending');
+    open();
     await ready();
 
+    choose(HEIC());
+    await within(cover()).findByRole('status');
     fireEvent.click(within(cover()).getByRole('button', { name: W.removePhoto }));
     expect(waiting()).toBeNull();
-    fireEvent.click(screen.getByRole('button', { name: 'Create event' }));
     await later(3100);
 
     expect(cover().querySelector('.ev-preview.is-photo')).toBeNull();
+    expect(within(cover()).getByRole('button', { name: W.upload })).toBeDefined();
+  });
+
+  it('lets a pick refused during the wait go once the wait ends', SLOW, async () => {
+    open();
+    await ready();
+
+    choose(HEIC());
+    await within(cover()).findByRole('status');
+    small = true;
+    choose(JPEG());
+    expect(await within(cover()).findByText(W.refusedDimensions)).toBeDefined();
+    await later(3100);
+    await within(cover()).findByRole('slider', { name: W.position });
+    fireEvent.click(within(cover()).getByRole('button', { name: W.removePhoto }));
+
+    expect(within(cover()).getByRole('button', { name: W.upload })).toBeDefined();
+    expect(within(cover()).queryByText(W.refusedDimensions)).toBeNull();
   });
 
   it('asks before leaving when the photo on its way is the only change', SLOW, async () => {

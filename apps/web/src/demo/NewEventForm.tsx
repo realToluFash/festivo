@@ -212,6 +212,7 @@ export function NewEventForm({ state }: { state: NewEventState | null }) {
   function settle(mine: number, lands: boolean): void {
     if (mine !== sends.current) return;
     setSending(false);
+    if (lands) cover.setRefusal(null);
     if (lands) return pressed.current ? setTyped((was) => ({ ...was, ...CHOSEN })) : change(CHOSEN);
     if (pressed.current) return setLost(W.uploadFailed);
     cover.setRefusal(W.uploadFailed);
@@ -220,6 +221,7 @@ export function NewEventForm({ state }: { state: NewEventState | null }) {
   function stopSending(): void {
     sends.current += 1;
     setSending(false);
+    cover.setRefusal(null);
     change(NO_PHOTO);
   }
 
