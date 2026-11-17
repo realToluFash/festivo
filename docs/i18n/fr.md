@@ -100,6 +100,7 @@ One way to say each recurring thing, everywhere. Seeded from the catalogues as t
 
 ## Decided phrasings
 
+- **17 nov. 2026. Quand aucune autre table n’a de place, pour tout déplacer** (sc-65656 pour sc-5030, `web:seating.roomForNone_*`). Le pendant de `roomForAll_*`, avec ses mots : « Aucune autre table n’a de place libre. », qui vaut aussi pour 0 ; pour plusieurs, « Aucune autre table ne peut accueillir les 3 personnes. Déplacez-les une par une. », au féminin par « personnes » ; `_many` sans article et avec « de ». « Déplacer », comme `moveAll`.
 - **17 nov. 2026. La ligne au-dessus des tables qui ont de la place, pour tout déplacer** (sc-64380 pour sc-4013, `web:seating.roomForAll_*`). Pour une personne (et pour 0, que le français compte au singulier) : « Tables avec une place libre. », sans « pour lui » ni « pour elle », qui imposerait un accord. Pour plusieurs : « Tables pouvant accueillir les 3 personnes. » ; `_many` sans article et avec « de » : « Tables pouvant accueillir 1 000 000 de personnes. ». « Personnes » plutôt qu’« invités », car la table compte aussi des accompagnants.
   Dated, newest first: the wording, where it is used, and why it won over the alternative.
 
